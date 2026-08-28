@@ -619,7 +619,13 @@ def preguntar_motor(sistema, perfil, historial, dicho, contexto='', al_vuelo=Non
     if not al_vuelo:
         with urllib.request.urlopen(req, timeout=TIMEOUT_MOTOR) as r:
             j = json.loads(r.read())
-        return _recortar(limpiar((j.get('message') or {}).get('content', '').strip()))
+        crudo = (j.get('message') or {}).get('content', '').strip()
+        # Devuelve LO MISMO que el camino con streaming: (lo que se manda,
+        # lo que dijo el motor en crudo). Antes devolvia un solo valor, y el
+        # que llama desempaqueta dos — bastaba con apagar el streaming para
+        # que reventara. Las dos salidas de una funcion tienen que tener la
+        # misma forma o la funcion tiene dos funciones adentro.
+        return _recortar(limpiar(crudo)), crudo
 
     entero, pendiente = '', ''
     with urllib.request.urlopen(req, timeout=TIMEOUT_MOTOR) as r:
@@ -824,9 +830,25 @@ def atender(rel, sistema, p, de, dicho):
         contexto = ''
     salio = []
 
+    # ── UNA RESPUESTA, UNA BURBUJA ────────────────────────────────────────
+    #
+    # Antes cada frase terminada salia sola, y con razon: sobre CPU una
+    # respuesta tardaba noventa segundos y mandar la primera frase a los diez
+    # era la diferencia entre esperar y creer que se colgo.
+    #
+    # Sobre la GPU la respuesta ENTERA tarda cinco o seis segundos, asi que
+    # ese reparto dejo de proteger a nadie y empezo a estorbar: la persona
+    # recibia cuatro, cinco, seis globos seguidos por una sola pregunta. La
+    # queja fue textual — «no hay conversación fluida, que aparezca que estoy
+    # teniendo una conversación». Nadie que conversa contesta en seis
+    # mensajes: contesta una vez.
+    #
+    # Asi que va entera, en un solo mensaje, mientras el «escribiendo…» hace
+    # su trabajo. Se deja el reparto por frases detras de un interruptor
+    # porque si algun dia esto vuelve a una maquina lenta, hace falta otra vez.
+    por_frases = os.environ.get('AURA_POR_FRASES', '') == '1'
+
     def soltar(frase):
-        # cada frase terminada sale ya: la persona lee mientras se escribe el
-        # resto. Si una falla, se guarda para el envio final y no se pierde.
         try:
             rel.enviar(de, frase)
             salio.append(frase)
@@ -836,7 +858,8 @@ def atender(rel, sistema, p, de, dicho):
     try:
         with Pensando(rel, de):
             resto, entero = preguntar_motor(sistema, p, p['historial'], dicho,
-                                            contexto, al_vuelo=soltar)
+                                            contexto,
+                                            al_vuelo=soltar if por_frases else None)
     except Exception as e:
         log('motor caido:', type(e).__name__, str(e)[:120])
         if not salio:

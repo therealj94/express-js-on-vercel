@@ -234,19 +234,29 @@ def main():
         print('\nLa charla libre, contra el motor\n')
         post(BASE, '/enviar', {**ana, 'para': 'aura@prueba.local',
                                'texto': '¿Qué es ORIGEN?'})
-        ms = espera_mensajes(ana, 6)
+        ms = espera_mensajes(ana, 5)
         ok(len(ms) >= 5 and 'RESPUESTA-DEL-MOTOR' in ms[4].get('texto', ''),
            'la respuesta del motor llega al chat')
-        ok(len(ms) >= 6 and 'SEGUNDA' in ms[5].get('texto', ''),
-           'y llega EN DOS: la primera frase sale sin esperar al resto',
-           f'llegaron {len(ms) - 4} trozos')
-        ok('primera parte' in ms[4].get('texto', '') and 'SEGUNDA' not in ms[4].get('texto', ''),
-           'el corte es por frase, no a mitad de palabra')
+        # UNA RESPUESTA, UNA BURBUJA.
+        #
+        # Antes esta prueba exigia lo contrario —que llegara «EN DOS», la
+        # primera frase sin esperar al resto— y estaba bien exigirlo: sobre
+        # CPU una respuesta tardaba noventa segundos y adelantar la primera
+        # frase era la diferencia entre esperar y creer que se colgo.
+        #
+        # Sobre la GPU la respuesta entera tarda seis segundos. Ese reparto
+        # dejo de proteger a nadie y paso a estorbar: cuatro, cinco, seis
+        # globos seguidos por una sola pregunta. La queja fue textual — «no
+        # hay conversación fluida». Nadie que conversa contesta seis veces.
+        resto = [m for m in ms[4:] if (m.get('texto') or '').strip()]
+        ok(len(resto) == 1,
+           'y llega en UNA sola: nadie que conversa contesta en seis mensajes',
+           f'llegaron {len(resto)}: '
+           f'{[(m.get("texto") or "")[:34] for m in resto]}')
+        ok('SEGUNDA' in ms[4].get('texto', ''),
+           'con la respuesta completa adentro, no cortada')
         ok('me alegra' in ms[4].get('texto', ''),
-           'la cortesía de apertura NO viaja sola: va pegada a la respuesta',
-           'un primer mensaje que solo saluda hace esperar por nada')
-        ok(de_usuario()[0].get('stream') is True,
-           'se le pidio al motor que hable mientras piensa')
+           'la cortesía de apertura no viaja sola: va pegada a la respuesta')
         # Sobre CPU el techo era 110 y protegia a la persona: a 6 tokens por
         # segundo, cada palabra de mas era espera de verdad. Sobre GPU son 40
         # tok/s y ese mismo techo empezo a CORTAR la respuesta a media frase
