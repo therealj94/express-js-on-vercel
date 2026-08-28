@@ -85,10 +85,9 @@ console.log('\nla espera avanza');
 prueba('el pensando cambia con el tiempo, no se queda quieto', () => {
   const m = app.match(/function auraTextoPensando\(T\) \{([\s\S]*?)\n  \}/);
   assert.ok(m, 'no está auraTextoPensando');
-  const f = new Function('T', 'auraDesdeCuando', 'Date',
-    m[1].replace('auraDesdeCuando', 'auraDesdeCuando'));
+  const f = new Function('T', 'auraSegundosEsperando', m[1]);
   const T = { pensando: 'a', pensandoMas: 'b', pensandoMucho: 'c' };
-  const enSegundo = (s) => f(T, 1000, { now: () => 1000 + s * 1000 });
+  const enSegundo = (s) => f(T, () => s);
   assert.equal(enSegundo(1), 'a', 'al segundo ya no dice lo primero');
   assert.equal(enSegundo(8), 'b',
     'a los ocho segundos sigue diciendo lo mismo que al primero: quieta');
@@ -97,12 +96,38 @@ prueba('el pensando cambia con el tiempo, no se queda quieto', () => {
   assert.notEqual(enSegundo(1), enSegundo(8), 'las tres son la misma frase');
 });
 
-prueba('las dos pantallas usan la MISMA cuenta del mismo momento', () => {
-  const burbuja = /t: auraTextoPensando\(T\)/.test(app);
-  const voz = /pensando: auraTextoPensando\(aTxt\(\)\)/.test(app);
-  assert.ok(burbuja, 'la burbuja no usa la cuenta que avanza');
-  assert.ok(voz, 'la pantalla de voz se quedó con la etiqueta fija: dos ' +
-    'cuentas distintas del mismo momento terminan diciendo cosas distintas');
+prueba('las TRES pantallas usan la MISMA cuenta del mismo momento', () => {
+  const donde = {
+    'la burbuja': /t: auraTextoPensando\(T\)/,
+    'la pantalla de voz': /pensando: auraTextoPensando\(aTxt\(\)\)/,
+    'el hilo de PULSE2CHAT': /<i><\/i><i><\/i><i><\/i><span>\$\{esc\(auraTextoPensando\(aTxt\(\)\)\)\}/,
+  };
+  for (const [nombre, re] of Object.entries(donde)) {
+    assert.ok(re.test(app), nombre + ' se quedó con la etiqueta fija: dos ' +
+      'cuentas distintas del mismo momento terminan diciendo cosas distintas');
+  }
+});
+
+prueba('el hilo sabe desde cuándo espera aunque nadie arranque su reloj', () => {
+  /* El hilo no enciende `auraDesdeCuando` —espera por su ventana, no por la
+     bandera de la burbuja—, así que sin esto su línea se quedaría clavada
+     en la primera frase para siempre. */
+  const m = app.match(/function auraSegundosEsperando\(\) \{([\s\S]*?)\n  \}/);
+  assert.ok(m, 'no está auraSegundosEsperando');
+  assert.ok(/auraEsperandoHasta - AURA_VENTANA/.test(m[1]),
+    'no deduce el arranque de la ventana del hilo');
+  assert.ok(/Math\.max\(\.\.\.arranques\)/.test(m[1]),
+    'no se queda con la espera en curso: una vieja dejaría la línea en «está ' +
+    'tardando» desde el primer segundo de la siguiente');
+  const f = new Function('auraDesdeCuando', 'auraEsperandoHasta', 'AURA_VENTANA', 'Date',
+    m[1]);
+  const ahora = 100000;
+  const D = { now: () => ahora };
+  assert.equal(f(0, 0, 60000, D), 0, 'sin espera devuelve algo distinto de cero');
+  assert.equal(f(0, ahora - 3000 + 60000, 60000, D), 3,
+    'el hilo solo: mal contado');
+  assert.equal(f(ahora - 2000, ahora - 9000 + 60000, 60000, D), 2,
+    'gana la espera vieja en vez de la que está en curso');
 });
 
 console.log('\nel reloj no se queda encendido');

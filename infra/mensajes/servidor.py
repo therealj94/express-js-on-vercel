@@ -375,6 +375,35 @@ def version_servida():
     return _version
 
 
+def version_de_aura():
+    """La huella del asistente que esta corriendo al lado, si dejo alguna.
+
+    AU-RA no es un servidor: no tiene puerto propio ni /salud donde mirar —
+    lee la bandeja de este relevo y contesta. Asi que la deja escrita al
+    arrancar y este GET la sirve. Es la misma cura que version_servida y por
+    la misma razon, pero donde mas se nota: el prompt es lo que decide COMO
+    contesta, y hasta ahora «¿esta desplegado el prompt nuevo?» solo se podia
+    responder entrando a la maquina, o preguntandole a ella y adivinando por
+    el tono.
+
+    Se lee en cada peticion y no se guarda: al reves que la propia, esta
+    cambia sin que este proceso se entere —AU-RA se reinicia sola— y
+    cachearla seria servir la de antes justo cuando importa. Es un fichero
+    pequeño en disco local; el coste no se nota.
+
+    Si no hay fichero, se dice que no lo hay. Callarse dejaria «no esta
+    desplegado» y «este relevo no sabe» con la misma cara, que es el fallo
+    que esto viene a arreglar.
+    """
+    try:
+        with open('/srv/aura/version.json', 'rb') as f:
+            return json.loads(f.read().decode('utf-8'))
+    except FileNotFoundError:
+        return {'estado': 'sin huella'}
+    except Exception:
+        return {'estado': 'ilegible'}
+
+
 def correo_de_sesion(token):
     """Le pregunta al backend de la wallet de quien es esta sesion.
 
@@ -1000,7 +1029,8 @@ class Relevo(BaseHTTPRequestHandler):
     def do_GET(self):
         if self.path.rstrip('/').endswith('/salud'):
             return self._json(200, {'vivo': True, 'cuando': int(time.time()),
-                                    'version': version_servida()})
+                                    'version': version_servida(),
+                                    'aura': version_de_aura()})
         # La llave publica de los avisos. Publica de verdad: es la mitad que el
         # navegador necesita para suscribirse, y sin la privada no firma nada.
         if self.path.rstrip('/').endswith('/llave-avisos'):

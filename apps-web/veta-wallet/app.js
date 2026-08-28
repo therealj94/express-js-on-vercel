@@ -7717,7 +7717,11 @@ const VETA = (() => {
   let auraEsperandoHasta = 0;
   const auraEsperando = () => Date.now() < auraEsperandoHasta;
 
-  function auraEsperar() { auraEsperandoHasta = Date.now() + 60000; chatLatir(); }
+  /* Cuánto se le da a una respuesta antes de dejar de esperarla. Tiene
+     nombre porque de aquí sale también DESDE CUÁNDO se espera, que es lo que
+     hace avanzar la línea de estado del hilo. */
+  const AURA_VENTANA = 60000;
+  function auraEsperar() { auraEsperandoHasta = Date.now() + AURA_VENTANA; chatLatir(); }
   function auraLlego() { auraEsperandoHasta = 0; chatLatir(); }
 
   function chatLatir() {
@@ -11169,8 +11173,21 @@ const VETA = (() => {
    * mostrando la misma palabra tranquila. */
   let auraDesdeCuando = 0;
 
+  /* Desde cuándo se está esperando, mire quien mire. Hay dos relojes porque
+     hay dos formas de esperar —la burbuja arranca el suyo, el hilo lo deduce
+     de su ventana— y gana el más reciente, que es la espera en curso. Una
+     sola cuenta para las tres pantallas: con dos, una diría «pensando» y la
+     otra «está tardando» del mismo segundo. */
+  function auraSegundosEsperando() {
+    const arranques = [auraDesdeCuando,
+                       auraEsperandoHasta ? auraEsperandoHasta - AURA_VENTANA : 0]
+      .filter(Boolean);
+    if (!arranques.length) return 0;
+    return (Date.now() - Math.max(...arranques)) / 1000;
+  }
+
   function auraTextoPensando(T) {
-    const seg = auraDesdeCuando ? (Date.now() - auraDesdeCuando) / 1000 : 0;
+    const seg = auraSegundosEsperando();
     return seg > 14 ? T.pensandoMucho : seg > 5 ? T.pensandoMas : T.pensando;
   }
 
@@ -11439,7 +11456,7 @@ const VETA = (() => {
     const pensandoAqui = esAura(c) && auraEsperando() && !aguja;
     const globoPensando = pensandoAqui
       ? `<div class="cha-b cha-suyo cha-pensando" aria-live="polite">
-           <i></i><i></i><i></i><span>${esc(t('au.pensando'))}</span>
+           <i></i><i></i><i></i><span>${esc(auraTextoPensando(aTxt()))}</span>
          </div>` : '';
 
     /* Y NO ABRE VACÍO. Antes, entrar al hilo de AU-RA por primera vez daba
@@ -12804,18 +12821,43 @@ const VETA = (() => {
     p.style.width = `${Math.round(antes.width)}px`;
     p.style.right = 'auto';
     p.style.bottom = 'auto';
+    /* El techo generoso para MEDIR: hace falta conocer el alto natural del
+       panel antes de decidir dónde ponerlo. El definitivo se pone al final,
+       ya sabiendo dónde quedó. */
     p.style.maxHeight = `${Math.round(altoV - 2 * M)}px`;
     const pc = p.getBoundingClientRect();
+    /* Y EL ALTO SE MIRA ACOTADO. Un panel más alto que la pantalla no cabe en
+       ninguna posición: puesto tal cual, la cuenta de abajo da una `y`
+       negativa y el recorte lo empuja arriba, dejándolo colgando por debajo. */
+    const hueco = altoV - 2 * M;
+    const alto = Math.min(pc.height, hueco);
     // a la izquierda o a la derecha, del mismo lado al que esté pegado el orbe
     const izqda = c.left + c.width / 2 < izqV + anchoV / 2;
     let x = izqda ? c.left : c.right - pc.width;
     // encima si cabe, y si no, debajo; nunca fuera de lo que se ve
-    let y = c.top - pc.height - 12;
-    if (y < arribaV + M) y = Math.min(c.bottom + 12, arribaV + altoV - pc.height - M);
+    let y = c.top - alto - 12;
+    if (y < arribaV + M) y = Math.min(c.bottom + 12, arribaV + altoV - alto - M);
     x = Math.max(izqV + M, Math.min(x, izqV + anchoV - pc.width - M));
-    y = Math.max(arribaV + M, Math.min(y, arribaV + altoV - pc.height - M));
+    y = Math.max(arribaV + M, Math.min(y, arribaV + altoV - alto - M));
     p.style.left = `${Math.round(x)}px`;
     p.style.top = `${Math.round(y)}px`;
+    /* ── Y EL TECHO, AL SITIO DONDE QUEDÓ ───────────────────────────────────
+     *
+     * Aquí estaba el fallo que se veía en la mano: el panel se colocaba con
+     * la altura que tenía EN ESE INSTANTE, y el contenido le crecía después.
+     * Se abre con el saludo —492 px—, la cuenta lo pone a 344 porque ahí
+     * termina justo en el borde de abajo, y acto seguido entra el segundo
+     * globo, el de ofrecer el micrófono: 620 px de alto en un sitio donde
+     * caben 492. Ciento veintiocho píxeles fuera de la pantalla, con la caja
+     * de escribir entre ellos. Se arreglaba solo en el siguiente repintado,
+     * que además lo hacía saltar de golpe a otra posición.
+     *
+     * El techo era del alto de la pantalla entera, que es cierto solo si el
+     * panel arranca pegado arriba. Puesto al hueco QUE QUEDA DEBAJO DE `y`,
+     * lo que crezca de más se convierte en desplazamiento dentro del hilo
+     * —que ya tiene su barra— en vez de en desbordamiento. Y nunca aprieta:
+     * la `y` de arriba ya garantiza que ahí abajo cabe `alto`. */
+    p.style.maxHeight = `${Math.round(Math.min(hueco, arribaV + altoV - y - M))}px`;
   }
 
   /* Cuando la orden viene del HILO y no de la burbuja, el cerebro determinista

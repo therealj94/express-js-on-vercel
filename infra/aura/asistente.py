@@ -491,8 +491,11 @@ def cargar_saber():
     return [f for f in fichas if f.get('publico') is not False]
 
 
+RUTA_PROMPT = DATOS / 'PROMPT-AURA.md'
+
+
 def cargar_prompt():
-    md = (DATOS / 'PROMPT-AURA.md').read_text()
+    md = RUTA_PROMPT.read_text()
     i = md.index('```')
     j = md.index('```', i + 3)
     return md[i + 3:j].strip()
@@ -1706,6 +1709,57 @@ def templar(sistema):
         log('no se pudo templar el motor:', str(e)[:80])
 
 
+def huella_viva():
+    """La huella del codigo que ESTE proceso esta corriendo, y del prompt que
+    cargo al arrancar.
+
+    ── POR QUE HACE FALTA ────────────────────────────────────────────────────
+
+    El relevo ya la publica (version_servida, en servidor.py) y se invento por
+    un caso concreto: un arreglo estuvo diez dias en el repositorio sin estar
+    en la maquina, y desde fuera no habia forma de notarlo — /salud contestaba
+    «vivo: true» con la misma alegria sirviendo cualquier version. Averiguarlo
+    costo medir tiempos de respuesta, que no es manera de trabajar.
+
+    AU-RA se habia quedado sin esa cura, y es donde mas se nota: el prompt es
+    lo que decide como contesta. «¿Esta desplegado el prompt nuevo?» no tenia
+    respuesta que no fuera entrar a la maquina a mirar, o preguntarle a AU-RA
+    y adivinar por el tono.
+
+    Se calcula de los ficheros ABIERTOS AL ARRANCAR y se deja escrito para que
+    el relevo lo sirva. Del arranque y no del disco de ahora mismo: lo que
+    importa es lo que este proceso tiene cargado. Un fichero cambiado y sin
+    reiniciar es exactamente el fallo que esto viene a hacer visible, asi que
+    leer el disco de nuevo lo taparia.
+    """
+    import hashlib
+    def h(ruta):
+        try:
+            with open(ruta, 'rb') as f:
+                return hashlib.sha256(f.read()).hexdigest()[:10]
+        except Exception:
+            return 'desconocida'
+    return {
+        'asistente': h(os.path.abspath(__file__)),
+        'prompt': h(RUTA_PROMPT),
+        'desde': int(time.time()),
+        'modelos': f'{MODELO_RAPIDA}+{MODELO_PENSADORA}',
+        'abierta': probadores() is None,
+    }
+
+
+def dejar_huella():
+    """La deja donde el relevo pueda leerla. Si no se puede escribir, se sigue
+    igual: saber que version corre es una comodidad, no una condicion para
+    contestarle a nadie."""
+    try:
+        tmp = DATOS / 'version.json.tmp'
+        tmp.write_text(json.dumps(huella_viva()), encoding='utf-8')
+        tmp.replace(DATOS / 'version.json')   # atomico: el relevo nunca lee a medias
+    except Exception as e:
+        log('no se pudo dejar la huella:', type(e).__name__, str(e)[:80])
+
+
 def main():
     llave = llave_del_asistente()
     _candado = instancia_unica()
@@ -1733,6 +1787,7 @@ def main():
             except Exception as e:
                 log('el latido de templado fallo:', type(e).__name__, str(e)[:80])
     threading.Thread(target=latido_templado, daemon=True).start()
+    dejar_huella()
     _quienes = probadores()
     log(f'AU-RA de pie · {len(saber)} fichas · {MODELO_RAPIDA}+{MODELO_PENSADORA} · '
         + ('ABIERTA a todos' if _quienes is None else f'{len(_quienes)} probadores'))
