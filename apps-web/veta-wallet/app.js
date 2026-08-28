@@ -11795,10 +11795,65 @@ const VETA = (() => {
          convierte una bienvenida en un anuncio, que es justo lo contrario de
          lo que hace falta con alguien que acaba de llegar y todavía duda. */
       const saludo = auraVisita ? aTxt().holaVisita : aTxt().hola;
-      auraCharla.push({ de: 'aura', txt: saludo });
+      auraCharla.push({ de: 'aura', txt: saludo, saludo: true });
       AURA.hablar(saludo, idiomaActivo());
     }
     pintarAura();
+    auraTraerHilo();
+  }
+
+  /* ── LA BURBUJA CONTINÚA LA CONVERSACIÓN, NO LA EMPIEZA ─────────────────
+   *
+   * «el botón burbuja que está en todos lados que es pulse2chat con AURA».
+   * Para quien la usa es lo mismo que el chat, y tiene razón: es el MISMO
+   * hilo, con la misma AU-RA, contra el mismo relevo. Lo único que era
+   * distinto es que el panel no lo enseñaba — abría en blanco, con su saludo,
+   * como si no se hubieran visto nunca.
+   *
+   * Eso hace dos daños. El obvio: se pierde de vista lo que uno acaba de
+   * preguntar. Y el que se nota más: AU-RA sí se acuerda —su memoria vive en
+   * el nodo— así que contesta refiriéndose a algo que en pantalla no está.
+   * Parece que hablara sola.
+   *
+   * El saludo se pinta igual y de inmediato: abrir tiene que ser instantáneo,
+   * y el hilo viaja por la red. Cuando llega, si había conversación, el
+   * saludo se retira — «hola, soy AU-RA» encima de una charla a medias sobra.
+   */
+  let auraTrayendo = null;
+
+  async function auraTraerHilo() {
+    if (auraTrayendo || auraVisita || !CHAT.listo?.()) return;
+    /* En CADA apertura, no una sola vez. El hilo se mueve por fuera del
+       panel —se puede conversar con AU-RA desde el chat de PULSE2CHAT— y una
+       burbuja que trae la charla la primera vez y nunca más enseña algo viejo
+       con toda la seguridad del mundo, que es peor que no enseñar nada. */
+    auraTrayendo = (async () => {
+      try {
+        // bandeja() devuelve {mensajes, enLinea}, no un arreglo. Ya costó una
+        // vez un «.filter is not a function».
+        const d = await CHAT.bandeja(AURA_CHAT_ID);
+        const ms = (d?.mensajes || []).filter((m) => (m.texto || '').trim()).slice(-20);
+        if (!ms.length) return;
+        const delHilo = ms.map((m) => ({
+          de: m.de === AURA_CHAT_ID ? 'aura' : 'yo', txt: m.texto.trim() }));
+        /* Lo que dijo el PANEL y no está en el hilo se conserva: los avisos
+           de «no pude alcanzarla», la ayuda, la oferta con botones. Nacen y
+           mueren acá y el relevo no los conoce; tirarlos al refrescar sería
+           borrarle a alguien lo que acaba de leer. Se comparan por texto
+           porque es lo único que las dos listas comparten. */
+        const enElHilo = new Set(delHilo.map((b) => b.txt));
+        const solasDelPanel = auraCharla.filter(
+          (b) => !b.saludo && !enElHilo.has(b.txt));
+        auraCharla = [...delHilo, ...solasDelPanel];
+        if (auraCharla.length > 40) auraCharla = auraCharla.slice(-40);
+        if (auraAbierta) pintarAura();
+      } catch (e) {
+        // Sin hilo se conversa igual: el panel anda, solo empieza en blanco.
+        console.warn('AU-RA no pudo traer el hilo:', e);
+      } finally {
+        auraTrayendo = null;
+      }
+    })();
   }
 
   /* La lista de lo que se le puede decir: un boton en el Nucleo la abre.
