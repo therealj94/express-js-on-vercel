@@ -119,7 +119,11 @@ def _decimales_en_palabras(dec):
     cero uno» lo entiende cualquiera. En una aplicacion de plata, que se
     entienda gana sobre que sea elegante.
     """
-    if len(dec) == 2 and dec != '00':
+    # EL CERO DE LOS CENTAVOS. `int('05')` es 5, y «cinco» dicho detras de la
+    # coma es CINCUENTA centavos: diez veces el monto real, en voz alta, en
+    # una aplicacion de plata. «12,05» se decia «doce coma cinco».
+    # Con cero delante se dice digito por digito: «doce coma cero cinco».
+    if len(dec) == 2 and dec != '00' and dec[0] != '0':
         return _hasta_cien(int(dec))
     return ' '.join(UNO_A_QUINCE[int(d)] for d in dec)
 

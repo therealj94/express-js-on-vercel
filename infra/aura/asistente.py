@@ -507,14 +507,33 @@ SALUDITO = _re.compile(
 # Salio en TODAS las respuestas del nodo el 28-ago. No informa nada — se lo
 # conto ella misma— y repetido en cada turno se siente vigilada. Come hasta
 # el primer punto porque es siempre una oracion entera de relleno.
-PREAMBULO = _re.compile(
-    # ESTRUCTURA, y no es un detalle de forma. Los ARRANQUES van juntos en su
-    # propio grupo, y la COLA —«…hasta el primer punto»— se aplica a todos.
-    # Puestos en fila sin agrupar, la cola queda pegada solo a la ultima rama
-    # y las demas borran tres palabras y dejan la oracion coja: «Me alegra que
-    # tengas una tienda» se convertia en «Tengas una tienda».
-    r'^\s*(?:'
-    r'(?:'
+# ── DOS CLASES DE PREAMBULO, Y NO SE TRATAN IGUAL ─────────────────────────
+#
+# La diferencia no es de estilo, es de qué pasa si se llevan todo el mensaje.
+#
+#   CORTESIA — «me alegra que tengas una tienda», «entiendo tu preocupación».
+#   No informan nada. Si se llevan el mensaje entero, perfecto: ese mensaje
+#   era relleno de punta a punta y no habia nada que salvar.
+#
+#   ANUNCIO — «vamos a ver cómo funciona tu Genesis ID», «te explico:».
+#   Estos ANUNCIAN algo, asi que van ANTES de algo. Si al quitarlos no queda
+#   nada, entonces no eran un anuncio: eran la respuesta. «Vamos a ver cómo
+#   funciona tu Genesis ID y para qué te sirve.» se borraba entera y el
+#   mensaje salia vacio.
+#
+# La cola comun lleva `(?!\s*(?:pero|sin embargo|aunque)\b)`, y no es estilo:
+# sin eso, «Eso es una pregunta interesante, PERO no puedo predecir el
+# precio.» se borraba ENTERA — el limpiador comiendose una negativa de
+# seguridad. Donde aparece un «pero», ahi empieza lo que de verdad se dijo.
+#
+# Y la estructura importa: los arranques van juntos en su grupo y la cola se
+# aplica a todos. Puestos en fila sin agrupar, la cola queda pegada solo a la
+# ultima rama y las demas borran tres palabras dejando la oracion coja — «Me
+# alegra que tengas una tienda» se convertia en «Tengas una tienda».
+_COLA = r'(?:(?!\s*(?:pero|sin embargo|aunque)\b)[^.!?:\n]){0,160}[.!?:]\s*'
+
+PREAMBULO_CORTESIA = _re.compile(
+    r'^\s*(?:(?:'
     #   «me alegra SABER que»: hasta dos palabras entre medio. Sin eso el
     #   patron pedia el «que» pegado y se colaba por una sola palabra.
     r'(?:me alegra|me da gusto|qu[eé] bueno)(?:\s+\w+){0,2}\s+que'
@@ -523,18 +542,14 @@ PREAMBULO = _re.compile(
     r'|tengo notado que'
     #   «Entiendo, Tere.» / «Entiendo tu preocupación.» — sin el «que».
     r'|(?:entiendo|comprendo)\b'
-    r')'
-    # LA COLA. El `(?!\s*(?:pero|sin embargo|aunque)\b)` no es estilo: sin el,
-    # «Eso es una pregunta interesante, PERO no puedo predecir el precio.» se
-    # borraba ENTERA — el limpiador comiendose una negativa de seguridad. Una
-    # advertencia perdida es infinitamente peor que un preambulo que sobra.
-    # Donde aparece un «pero», ahi empieza lo que de verdad se dijo.
-    r'(?:(?!\s*(?:pero|sin embargo|aunque)\b)[^.!?\n]){0,160}[.!?]\s*'
+    r')' + _COLA + r')+',
+    _re.IGNORECASE)
+
+PREAMBULO_ANUNCIO = _re.compile(
     # \w* al final del verbo: en español el pronombre se pega («explicarTE»,
     # «ayudarTE», «contarTE») y un \b ahi no cierra nunca.
-    r'|vamos a (?:hablar|explicar|contar|ver|ayudar|revisar)\w*\b[^.!?\n]{0,160}[.!?:]\s*'
-    r'|(?:aqu[ií] te|te)\s+(?:explico|cuento|dejo)\b[^.!?\n]{0,80}[.!?:]\s*'
-    r')+',
+    r'^\s*(?:vamos a (?:hablar|explicar|contar|ver|ayudar|revisar)\w*\b[^.!?:\n]{0,90}[.!?:]\s*'
+    r'|(?:aqu[ií] te|te)\s+(?:explico|cuento|dejo)\b[^.!?:\n]{0,40}[.!?:]\s*)+',
     _re.IGNORECASE)
 
 # El titulo que devuelve la pregunta antes de contestarla: «¿Qué es AUKA?»
@@ -545,7 +560,8 @@ ECO = _re.compile(r'^\s*¿[^?\n]{3,80}\?\s*\n+', _re.MULTILINE)
 # El cierre de operadora: «¿Te gustaría saber más?» / «¿Hay algo más en lo
 # que pueda ayudarte?». Si hay algo mas, lo van a preguntar.
 CIERRE_HUECO = _re.compile(
-    r'\s*¿\s*(?:te gustar[ií]a|quer[ée]s|deseas|hay algo m[aá]s|necesitas algo)\b'
+    r'\s*¿\s*(?:te gustar[ií]a saber m[aá]s|hay algo m[aá]s|necesit[aá]s algo m[aá]s|'
+    r'puedo ayudarte en algo m[aá]s)\b'
     r'[^?\n]{0,90}\?\s*$', _re.IGNORECASE)
 
 # El markdown. El modelo escribe para una pagina web y esto es un CHAT: los
@@ -562,6 +578,18 @@ MARCAS = [
 ]
 
 
+# Lo que NO se puede perder en un recorte de estilo. Nace de un caso real:
+# el limpiador se comio «ese correo que te pidio la frase de respaldo es una
+# estafa» y dejo solo «No le contestes».
+_INTOCABLE = _re.compile(
+    r'\d'                                   # cualquier cifra: montos, fechas
+    r'|\b(estafa|estafar|robo|roban|fraude|enga[nñ]|falso|falsa|'
+    r'contrase[nñ]a|clave|llave privada|frase|semilla|doce palabras|'
+    r'nunca|jam[aá]s|no le des|no compartas|cuidado|ojo|peligro|'
+    r'no puedo|no se puede|no garantiz|no promet)',
+    _re.IGNORECASE)
+
+
 def limpiar(texto):
     """Lo que el modelo pone y no deberia, quitado deterministamente.
 
@@ -571,9 +599,35 @@ def limpiar(texto):
     «Hola Tere» de cada turno.
     """
     crudo = (texto or '').strip()
-    # Primero el relleno puro: saludos, preambulos y la fuga de las fichas.
-    sin_relleno = CIERRE_HUECO.sub(
-        '', PREAMBULO.sub('', SALUDITO.sub('', FUGAS.sub('', crudo)))).strip()
+    # Los saludos SI pueden llevarse todo: «¡Hola Tere! Me alegra que tengas
+    # una tienda.» es relleno de punta a punta y no hay nada que salvar.
+    # La cortesia SI puede llevarse todo: si el mensaje entero era «¡Hola
+    # Tere! Me alegra que tengas una tienda», no habia nada que salvar.
+    sin_saludo = PREAMBULO_CORTESIA.sub(
+        '', SALUDITO.sub('', FUGAS.sub('', crudo))).strip()
+    if not sin_saludo:
+        return ''
+    # El ANUNCIO no: va antes de algo, y si al quitarlo no queda nada, es que
+    # no era un anuncio sino la respuesta.
+    sin_relleno = CIERRE_HUECO.sub('', PREAMBULO_ANUNCIO.sub('', sin_saludo)).strip()
+    if not sin_relleno:
+        sin_relleno = sin_saludo
+    # ── LA GUARDA DURA ────────────────────────────────────────────────────
+    #
+    # Lo que se borra se COMPARA: si en el recorte se fue una palabra de
+    # seguridad o una cifra, no se borra nada y se sigue con el texto entero.
+    #
+    # Esto no es prudencia general: es por un caso concreto y reproducido.
+    # «Entiendo tu duda: ese correo que te pidió la frase de respaldo es una
+    # estafa. No le contestes.» quedaba en «No le contestes.» — el aviso de
+    # estafa borrado por un limpiador de estilo. Un preambulo que sobra es
+    # una molestia; una advertencia borrada le puede costar la plata a
+    # alguien, y una cifra borrada le cambia el monto.
+    #
+    # Cuando las dos cosas chocan, gana el contenido. Siempre.
+    ido = sin_saludo[:len(sin_saludo) - len(sin_relleno)]
+    if _INTOCABLE.search(ido):
+        sin_relleno = sin_saludo
     # Si de todo el trozo no queda NADA, es que el trozo era relleno de punta
     # a punta — «¡Hola Tere! Me alegra que tengas una tienda.» y se acabo. Eso
     # se tira entero: mandarlo es hacer esperar a alguien por un mensaje que

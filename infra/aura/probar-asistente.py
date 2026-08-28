@@ -589,6 +589,32 @@ def main():
            in de_usuario()[antes_e + 1]['messages'][-1]['content'],
            'y avisándole que eso ya lo dijo, no a ciegas')
 
+        print('\nEl limpiador no puede borrar lo que importa\n')
+        # Todos estos los encontró una revisión crítica, reproducidos contra
+        # el módulo. El peor, de lejos, es el primero: el limpiador de ESTILO
+        # se comía un aviso de ESTAFA. Cuando el estilo y el contenido chocan,
+        # gana el contenido — siempre.
+        NO_SE_TOCA = [
+            ('Entiendo tu duda: ese correo que te pidió la frase de respaldo '
+             'es una estafa. No le contestes.', 'estafa',
+             'un aviso de estafa NO se borra por quitar un preámbulo'),
+            ('Te explico: ORIGEN es la moneda de la cadena y sirve para pagar.',
+             'ORIGEN es la moneda',
+             'una respuesta correcta entera no puede quedar en blanco'),
+            ('Vamos a ver cómo funciona tu Genesis ID y para qué te sirve.',
+             'Genesis ID',
+             'un anuncio va ANTES de algo: si no queda nada, era la respuesta'),
+            ('Puedo dejarte preparado el envío. ¿Querés que lo haga?', '¿Querés',
+             'una oferta con su pregunta no se convierte en afirmación'),
+            ('Te quedan 1.234,56 ORIGEN según la cadena.', '1.234,56',
+             'y una cifra nunca se pierde en un recorte de estilo'),
+        ]
+        for t, aguja, que in NO_SE_TOCA:
+            ok(aguja in lim(t), que, f'quedó {lim(t)!r}')
+        # y la cortesía pura SÍ se va entera, que era el punto original
+        ok(lim('¡Hola Tere!\n\nMe alegra que tengas una tienda.') == '',
+           'pero la cortesía de punta a punta sigue yéndose entera')
+
         print('\nLa voz: se pide, no se impone\n')
         # Que venga APAGADA importa: una nota de voz en cada respuesta es un
         # regalo para quien la quiere y una molestia para quien no. Si esto se

@@ -70,6 +70,24 @@ for texto, aguja, que in MONTOS:
     got = decir.para_la_voz(texto)
     ok(aguja in got, que, f'«{texto}»\n           → «{got}»')
 
+print('\nEl cero de los centavos, que decía otro monto\n')
+
+# Reproducido en producción: «12,05» se decía «doce coma cinco», y «cinco»
+# detrás de la coma es CINCUENTA centavos — diez veces el monto real, dicho
+# en voz alta en una aplicación de plata. int('05') es 5, y ahí murió.
+CENTAVOS = [
+    ('Te quedan 12,05 dólares.', 'doce coma cero cinco', 'doce con cinco centavos'),
+    ('La comisión es 0,05 ORIGEN.', 'cero coma cero cinco', 'cinco centésimas'),
+    ('Quedó en 100,01.', 'cien coma cero uno', 'un centavo'),
+    ('Son 5,09 lempiras.', 'cinco coma cero nueve', 'nueve centavos'),
+]
+for texto, aguja, que in CENTAVOS:
+    got = decir.para_la_voz(texto)
+    ok(aguja in got, f'«{texto}» son {que}', f'dijo «{got}»')
+# y lo que ya andaba bien no se rompe
+ok('doce coma cincuenta' in decir.para_la_voz('Son 12,50 dólares.'),
+   'y los centavos sin cero adelante se siguen diciendo como número')
+
 print('\nEl número respira: no sale pegado a lo de al lado\n')
 
 t = decir.para_la_voz('El saldo quedó en 1.234,56 ORIGEN y la comisión fue de 0,001.')
