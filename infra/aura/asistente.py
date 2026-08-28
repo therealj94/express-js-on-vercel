@@ -590,6 +590,79 @@ _INTOCABLE = _re.compile(
     _re.IGNORECASE)
 
 
+# ── EL VOSEO, QUE ES LO QUE LA HACE SONAR DE ACA ──────────────────────────
+#
+# El prompt lo pide desde el primer dia —«de vos o de usted, nunca de tú»— y
+# el modelo contesta «¿Y tú cómo estás?» igual. Es lo que hace un modelo
+# entrenado sobre todo con español de España y de México.
+#
+# Y no es un detalle de gusto: es lo primero que delata a una maquina para un
+# oido centroamericano. La queja fue textual —«contestó súper robótico… no
+# como debía una persona humana»— y la respuesta que la provoco decia «tú».
+#
+# Se corrige aca, deterministamente, porque a un modelo abierto no se le
+# confia una regla de estilo: ya paso con «según las fichas», con «Hola
+# Tere» y con las listas.
+#
+# Solo formas CERRADAS y sin ambiguedad. «ves», «vas», «estás» y «das» son
+# iguales en las dos formas y no se tocan. Los imperativos son los mas
+# delicados —«mira» tambien es un sustantivo— asi que van los tres de uso
+# diario y ninguno mas.
+_VOSEO = [
+    # SOLO CON TILDE. `tú` es el pronombre; `tu` sin tilde es el posesivo —
+    # «tu identidad», «tu billetera»— y en voseo es EXACTAMENTE igual.
+    # Cambiando los dos salia «Es vos identidad», que no es español de
+    # ningun lado. Lo encontro la propia prueba.
+    (r'\btú\b', 'vos'),
+    (r'\bcontigo\b', 'con vos'),
+    (r'\b(a|para|de|por|en|con|hacia|sin|sobre)\s+ti\b', r'\1 vos'),
+    (r'\beres\b', 'sos'),
+    (r'\btienes\b', 'tenés'),
+    (r'\bpuedes\b', 'podés'),
+    (r'\bquieres\b', 'querés'),
+    (r'\bsabes\b', 'sabés'),
+    (r'\bdebes\b', 'debés'),
+    (r'\bhaces\b', 'hacés'),
+    (r'\bdices\b', 'decís'),
+    (r'\bvienes\b', 'venís'),
+    (r'\bnecesitas\b', 'necesitás'),
+    (r'\bprefieres\b', 'preferís'),
+    (r'\bentiendes\b', 'entendés'),
+    (r'\bconoces\b', 'conocés'),
+    (r'\brecibes\b', 'recibís'),
+    (r'\benv[ií]as\b', 'enviás'),
+    (r'\bguardas\b', 'guardás'),
+    (r'\bpagas\b', 'pagás'),
+    (r'\bcobras\b', 'cobrás'),
+    (r'\bdime\b', 'decime'),
+    (r'\bcu[eé]ntame\b', 'contame'),
+    (r'\bpreg[uú]ntame\b', 'preguntame'),
+    # los verbos de todos los dias en esta casa: plata, cuenta y trabajo
+    (r'\btrabajas\b', 'trabajás'), (r'\bbuscas\b', 'buscás'),
+    (r'\busas\b', 'usás'), (r'\bganas\b', 'ganás'),
+    (r'\bhablas\b', 'hablás'), (r'\bentras\b', 'entrás'),
+    (r'\bmiras\b', 'mirás'), (r'\besperas\b', 'esperás'),
+    (r'\bcompras\b', 'comprás'), (r'\bvendes\b', 'vendés'),
+    (r'\bahorras\b', 'ahorrás'), (r'\bmandas\b', 'mandás'),
+    (r'\btomas\b', 'tomás'), (r'\bllevas\b', 'llevás'),
+    (r'\baceptas\b', 'aceptás'), (r'\bverificas\b', 'verificás'),
+    (r'\bretiras\b', 'retirás'), (r'\bdeseas\b', 'querés'),
+]
+_VOSEO = [(_re.compile(p, _re.IGNORECASE), r) for p, r in _VOSEO]
+
+
+def vosear(texto):
+    """De tú a vos, respetando mayuscula inicial de cada palabra cambiada."""
+    t = texto or ''
+    for patron, con in _VOSEO:
+        def cambio(m, con=con):
+            nuevo = m.expand(con) if '\\' in con else con
+            # «Tú» al principio de una frase tiene que salir «Vos», no «vos»
+            return nuevo[0].upper() + nuevo[1:] if m.group(0)[0].isupper() else nuevo
+        t = patron.sub(cambio, t)
+    return t
+
+
 def limpiar(texto):
     """Lo que el modelo pone y no deberia, quitado deterministamente.
 
@@ -643,7 +716,7 @@ def limpiar(texto):
     sin_marcas = sin_marcas.strip()
     # el eco va DESPUES de quitar el markdown: el titulo suele venir como
     # «**¿Qué es AUKA?**» y sin quitar los asteriscos no se reconoce
-    t = ECO.sub('', sin_marcas.lstrip()).strip()
+    t = vosear(ECO.sub('', sin_marcas.lstrip()).strip())
     # LA RED, y contra QUE se mide. Un limpiador que se come la respuesta es
     # peor que la mugre que venia a sacar, pero la vuelta atras es a
     # `sin_marcas`, nunca al crudo. Midiendolo contra el crudo, quitar un
@@ -753,7 +826,19 @@ def preguntar_motor(sistema, perfil, historial, dicho, contexto='', al_vuelo=Non
             # GPU son 40 tok/s, y el techo bajo dejo de proteger a la persona
             # y empezo a cortarle la respuesta a media frase — que es peor que
             # esperar dos segundos mas. Se sube al doble largo.
-            'num_predict': 300 if pensadora else 170,
+            # ── POR QUE MENOS, Y POR QUE MUCHO MENOS CON VOZ ────────────
+            # «en voz nunca salió». Salió: el registro tiene la nota. Pero
+            # eran 39,7 SEGUNDOS de audio, que tardan 34 en generarse — y
+            # nadie espera cuarenta segundos mirando una pelotita. La voz no
+            # fallaba: la respuesta era demasiado larga para decirse.
+            #
+            # Una respuesta hablada se mide en segundos de audio, no en
+            # caracteres, y por encima de quince segundos deja de ser una
+            # contestacion y pasa a ser un discurso. Con voz encendida se
+            # pide la mitad: unas tres frases, doce segundos de audio, y
+            # llega mientras la persona sigue mirando.
+            'num_predict': (90 if perfil.get('voz') else
+                            (240 if pensadora else 140)),
             # ── EL FRENO DE LAS LISTAS ────────────────────────────────────
             # El prompt le pide en tres lugares que no escriba listas ni
             # titulos, y las escribe igual: es lo que hace un modelo

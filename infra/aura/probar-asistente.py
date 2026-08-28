@@ -309,7 +309,7 @@ def main():
         # tok/s y ese mismo techo empezo a CORTAR la respuesta a media frase
         # — se vio en el nodo el 28-ago. Lo que se comprueba ya no es un
         # numero fijo sino la propiedad: alcanza para una respuesta entera.
-        ok(de_usuario()[0]['options'].get('num_predict', 0) >= 150,
+        ok(de_usuario()[0]['options'].get('num_predict', 0) >= 120,
            'el techo de palabras alcanza para terminar la frase',
            f"num_predict = {de_usuario()[0]['options'].get('num_predict')}")
         # La ventana. Sin esta linea ollama usa 4096, la peticion con memoria
@@ -620,6 +620,35 @@ def main():
         ok(lim('¡Hola Tere!\n\nMe alegra que tengas una tienda.') == '',
            'pero la cortesía de punta a punta sigue yéndose entera')
 
+        print('\nHabla de vos, que es lo que la hace sonar de acá\n')
+        # «contestó súper robótico… no como debía una persona humana». La
+        # respuesta que lo provocó decía «¿Y tú cómo estás?». El prompt pide
+        # voseo desde el primer día y el modelo contesta «tú» igual: es lo
+        # que hace uno entrenado sobre todo con español de España y México.
+        # Para un oído centroamericano, ese «tú» es lo PRIMERO que delata a
+        # una máquina.
+        vos = aura.vosear
+        PARES = [
+            ('¿Y tú cómo estás?', 'vos', 'el «tú» que disparó la queja'),
+            ('Tú puedes guardar lo que quieres.', 'podés', 'puedes → podés'),
+            ('Si necesitas ayuda, dime.', 'decime', 'y los imperativos también'),
+            ('Esto es para ti.', 'para vos', '«para ti» no lo dice nadie acá'),
+            ('Cuéntame en qué trabajas.', 'trabajás', 'y los verbos de todos los días'),
+        ]
+        for t, aguja, que in PARES:
+            ok(aguja in vos(t), que, f'«{t}» → «{vos(t)}»')
+        # y lo que YA es igual en las dos formas no se toca: tocarlo sería
+        # inventar palabras que nadie dice
+        # LA TRAMPA DEL «TU» SIN TILDE, que encontró esta misma prueba:
+        # `tú` es el pronombre, `tu` es el posesivo, y en voseo el posesivo
+        # NO cambia. Cambiando los dos salía «Es vos identidad».
+        for igual in ['Es tu identidad única.', 'Entrá con tu Genesis ID.',
+                      'Tu billetera tiene saldo.', 'Ya ves que el oro no baja.',
+                      'Vas a poder cobrar.', 'Estás verificado.',
+                      'Me das el número y listo.']:
+            ok(vos(igual) == igual, f'«{igual}» se queda igual, y está bien',
+               f'lo cambió a «{vos(igual)}»')
+
         print('\n«Hablame de AUKA» es una PREGUNTA, no una orden de voz\n')
         # Antes bastaba con que la frase midiera menos de 40 y llevara «habla»
         # adentro. Y «hablame de AUKA», «hablame del oro», «hablame de la
@@ -653,6 +682,21 @@ def main():
         ok(len(de_usuario()) == antes_v,
            'y encender la voz NO gasta motor: es de la casa, como los modos',
            'no hay nada que pensar en «con voz»')
+
+        # CON VOZ, LA RESPUESTA SE PIDE MÁS CORTA. «en voz nunca salió»:
+        # salía, pero eran 39,7 SEGUNDOS de audio que tardan 34 en
+        # generarse, y nadie espera cuarenta segundos mirando una pelotita.
+        # Una respuesta hablada se mide en segundos, no en caracteres.
+        antes_c = len(de_usuario())
+        post(BASE, '/enviar', {**ana, 'para': 'aura@prueba.local',
+                               'texto': '¿Qué es ORIGEN otra vez?'})
+        fin = time.time() + 25
+        while time.time() < fin and len(de_usuario()) == antes_c:
+            time.sleep(0.3)
+        conVoz = de_usuario()[-1]['options'].get('num_predict', 999)
+        ok(conVoz <= 100,
+           'con la voz encendida se pide una respuesta que se pueda DECIR',
+           f'num_predict = {conVoz} — a más de cien, el audio pasa de 15s')
 
         antes_v = len(de_usuario())
         post(BASE, '/enviar', {**ana, 'para': 'aura@prueba.local',
