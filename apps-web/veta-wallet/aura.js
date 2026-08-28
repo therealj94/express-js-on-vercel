@@ -1289,6 +1289,13 @@ const AURA = (() => {
     energia: v => { red.energiaMeta = v; },
     montarOrbe, animoOrbe, nivelOrbe,
     hablar, pararVoz,
+    /* ¿Esta frase exacta está grabada con nuestra voz? Lo pregunta la puerta
+       única de app.js para elegir camino: si está, suena el fichero —al
+       instante, sin GPU y sin red—; si no está, va a la voz en vivo, que
+       también es nuestra. Sin esto, «no está grabada» significaba «que la
+       diga el navegador», y ahí es donde salía la voz robótica vieja en
+       medio de una conversación con la nuestra. */
+    tieneGrabada: (texto, lang = 'es') => !!VOZ_MAPA[claveVoz(texto, lang)],
     puedeEscuchar, escuchar, dejarDeEscuchar,
     reducido: REDUCIDO,
   };

@@ -11149,8 +11149,11 @@ const VETA = (() => {
    * No se apaga de verdad: se pide silencio. Apagarla la sacaría del sitio de
    * la pista y le movería el interruptor de Ajustes a quien la quiere puesta;
    * el silencio sostenido no toca ninguna de las dos cosas. */
+  let auraGrabadaSonando = false;   // suena una de las frases del banco
+
   const auraVozEnCurso = () =>
-    auraAlguienEscucha() || auraSonando || !!auraCortarVozBurbuja || auraPensando;
+    auraAlguienEscucha() || auraSonando || !!auraCortarVozBurbuja
+    || auraPensando || auraGrabadaSonando;
 
   let musicaCalladaPorVoz = false;
 
@@ -12793,10 +12796,45 @@ const VETA = (() => {
    */
   let auraCortarVozBurbuja = null;
 
+  /* ── LA ÚNICA PUERTA POR DONDE HABLA AU-RA ────────────────────────────────
+   *
+   * Había dos, y por eso se oían dos voces distintas en la misma sesión: la
+   * burbuja y el hilo pedían la voz en vivo —la nuestra—, y la bienvenida, la
+   * galaxia y el recorrido llamaban a `AURA.hablar`, que solo sabe de dos
+   * cosas: si la frase EXACTA está entre las 248 grabadas, suena el fichero;
+   * si no está, la dice el navegador. Y la voz del navegador es la robótica
+   * vieja. Bastaba una frase con tu nombre —que por ser tuya nunca va a estar
+   * grabada— para que la asistente cambiara de voz a mitad del saludo.
+   *
+   * Ahora el orden es uno solo y va de mejor a peor:
+   *
+   *   1. GRABADA  — si la frase exacta está en el banco: al instante, sin red
+   *                 y sin GPU. Es la mejor de las tres y por eso va primera.
+   *   2. EN VIVO  — cualquier otra frase, dicha por la misma voz en el nodo.
+   *                 Tarda un par de segundos y por eso no es la primera, pero
+   *                 sigue siendo la nuestra: aquí es donde entra tu nombre.
+   *   3. NAVEGADOR — último recurso de verdad: sin sesión o con el nodo caído.
+   *                 Antes era el segundo escalón; ahora hay que quedarse sin
+   *                 las otras dos para llegar hasta él.
+   */
   async function auraVozDeLaCasa(txt) {
     // lo anterior se calla: dos respuestas hablando encima es peor que una
     try { auraCortarVozBurbuja?.(); } catch (e) { /* ya no sonaba */ }
     auraCortarVozBurbuja = null;
+    const idioma = idiomaActivo();
+    if (AURA.tieneGrabada?.(txt, idioma)) {
+      /* Grabada: suena ya. La bandera existe para que `auraVozEnCurso` la
+         vea —`AURA.hablar` no toca ninguna de las otras—, y así este camino
+         calla la música por el mismo sitio que los demás en vez de tener su
+         propio apaño. */
+      auraGrabadaSonando = true;
+      auraMusicaAlDia();
+      try { await AURA.hablar(txt, idioma); }
+      finally { auraGrabadaSonando = false; auraMusicaAlDia(); }
+      // y cierra el mismo ciclo que la voz en vivo: terminó, vuelve a oír
+      if (auraConversando && auraAbierta) setTimeout(auraOirEnLaBurbuja, 250);
+      return;
+    }
     if (!CHAT.listo?.() || !CHAT.vozEnVivo) return AURA.hablar(txt, idiomaActivo());
     try {
       AURA.pararVoz();          // que no se pisen la grabada y la nuestra
@@ -13465,19 +13503,24 @@ const VETA = (() => {
     const T = aTxt();
     const nombre = (sesion?.nombre || '').split(' ')[0] || '';
     const sub = $('#aurab-sub');
-    if (sub) sub.textContent = T.bienv1.replace('{nombre}', nombre ? nombre : '').replace(', .', '.');
-    // La voz dice la frase NEUTRA (una sola grabacion para todos); el nombre
-    // va en el subtitulo. Y cada frase vive en pantalla un minimo legible:
-    // sin esto, un navegador sin voces cerraba la bienvenida en un suspiro.
-    await Promise.all([AURA.hablar(T.bienv1Voz, idiomaActivo()), espera(3400)]);
+    const linea1 = T.bienv1.replace('{nombre}', nombre ? nombre : '').replace(', .', '.');
+    if (sub) sub.textContent = linea1;
+    /* LA VOZ DICE TU NOMBRE. Antes decía la frase neutra —una sola grabación
+       para todos— y el nombre se quedaba escrito en el subtítulo: leías «Hola,
+       José» mientras oías «Hola» a secas. Ahora se dice la misma línea que se
+       lee, porque la voz en vivo puede decir cualquier cosa; la neutra sigue
+       sirviendo a quien entra sin nombre, y esa sí está grabada, así que suena
+       al instante. Cada frase vive en pantalla un mínimo legible: sin esto, un
+       navegador sin voces cerraba la bienvenida en un suspiro. */
+    await Promise.all([auraVozDeLaCasa(nombre ? linea1 : T.bienv1Voz), espera(3400)]);
     if (!$('#aurab-sub')) return;     // la saltaron a mitad de frase
     $('#aurab-sub').textContent = T.bienv2;
-    await Promise.all([AURA.hablar(T.bienv2, idiomaActivo()), espera(4600)]);
+    await Promise.all([auraVozDeLaCasa(T.bienv2), espera(4600)]);
     if (!$('#aurab-sub')) return;
     // La cadena tambien se presenta: es la noticia del ecosistema, y quien
     // entra tiene que saber sobre QUE late todo esto.
     $('#aurab-sub').textContent = T.bienv3;
-    await Promise.all([AURA.hablar(T.bienv3, idiomaActivo()), espera(4600)]);
+    await Promise.all([auraVozDeLaCasa(T.bienv3), espera(4600)]);
     auraBienFin();
   }
 
@@ -13906,7 +13949,11 @@ const VETA = (() => {
       (nombre ? T.bienv1.replace('{nombre}', nombre) : T.bienv1Voz),
       T.bienv2, T.bienv3,
     ];
-    const voces = [T.bienv1Voz, T.bienv2, T.bienv3];
+    /* Lo dicho es lo escrito. `voces` existía para decir la frase NEUTRA
+       mientras en pantalla aparecía la que lleva tu nombre; con una sola
+       puerta de voz eso dejó de hacer falta, y decir una cosa distinta de la
+       que se lee era, además, lo que hacía sonar dos voces en un saludo. */
+    const voces = [nombre ? frases[0] : T.bienv1Voz, T.bienv2, T.bienv3];
     const espera = (ms) => new Promise(r => setTimeout(r, ms));
     for (let i = 0; i < frases.length; i++) {
       if (!vigente()) return;
@@ -13915,7 +13962,7 @@ const VETA = (() => {
          escucha no espera de más, y quien la tiene en silencio alcanza a
          leerla igual. */
       const leer = espera(2600 + frases[i].length * 34);
-      if (conVoz) await Promise.all([AURA.hablar(voces[i], idiomaActivo()).catch(() => {}), leer]);
+      if (conVoz) await Promise.all([auraVozDeLaCasa(voces[i]).catch(() => {}), leer]);
       else await leer;
     }
     if (vigente()) aedCallar();
@@ -14003,7 +14050,7 @@ const VETA = (() => {
        parada en menos de tres segundos y medio. */
     const yo = tourPaso;
     const lectura = Math.max(3200, p.p.length * 48);
-    Promise.all([AURA.hablar(p.p, idiomaActivo()), espera(lectura)]).then(() => {
+    Promise.all([auraVozDeLaCasa(p.p), espera(lectura)]).then(() => {
       if (tourPaso !== yo) return;                  // lo movieron a mano
       if ($('#aura-tour').classList.contains('oculto')) return;
       if (tourPaso < paradas.length - 1) { tourPaso++; pintarTour(); }
