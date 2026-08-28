@@ -119,9 +119,36 @@ class MotorFalso(BaseHTTPRequestHandler):
         # verdad. Sin esto la prueba pasaba sin medir el streaming: el motor
         # falso contestaba de un tiron y el codigo nuevo se comportaba como el
         # viejo.
-        TROZOS = ['Ana, me alegra que hayas preguntado eso. ',
-                  'RESPUESTA-DEL-MOTOR primera parte de lo preguntado. ',
-                  'Y ESTA ES LA SEGUNDA parte del asunto.']
+        # La coletilla numerada NO es un capricho. Un motor de mentira que
+        # contesta SIEMPRE lo mismo hace saltar el guardia de repetición en
+        # cada turno, y entonces la prueba mide el guardia en vez de medir lo
+        # que quería medir. Un motor real varía; este también.
+        # Para probar el guardia hay una pregunta aparte, más abajo.
+        # ...y la variación va AL PRINCIPIO, no al final: el guardia compara
+        # el arranque, que es donde vive la repetición. Una coletilla al final
+        # deja dos respuestas casi idénticas y el guardia salta igual.
+        # Contestar SOBRE la pregunta es además lo que hace un motor de verdad.
+        pregunta = ahora.split(']')[-1].strip()[:44] or 'nada'
+        # El armazon TAMBIEN cambia con la pregunta, no solo el hueco: dos
+        # respuestas que comparten setenta caracteres de molde se parecen
+        # aunque el relleno sea distinto, y entonces la prueba mide el
+        # guardia de repeticion en vez de lo que venia a medir.
+        # suma de codigos y no hash(): hash() de una cadena cambia en cada
+        # proceso de Python, y una prueba que cambia sola es peor que no
+        # tenerla — un dia pasa, otro dia falla, y nadie confia en ella.
+        marco = sum(map(ord, pregunta)) % 3
+        armazon = [
+            (f'Ana, sobre {pregunta} te cuento. ',
+             f'RESPUESTA-DEL-MOTOR primera parte de {pregunta}. ',
+             'Y ESTA ES LA SEGUNDA parte del asunto.'),
+            (f'Mirá, {pregunta} funciona asi, me alegra que preguntes. ',
+             f'RESPUESTA-DEL-MOTOR el detalle de {pregunta} sin vueltas. ',
+             'Y ESTA ES LA SEGUNDA cosa que importa aca.'),
+            (f'Ana, me alegra que hayas preguntado eso de {pregunta}. ',
+             f'RESPUESTA-DEL-MOTOR lo central de {pregunta} en una linea. ',
+             'Y ESTA ES LA SEGUNDA mitad, la que cierra.'),
+        ][marco]
+        TROZOS = list(armazon)
         if not cuerpo.get('stream'):
             r = json.dumps({'message': {'role': 'assistant',
                                         'content': ''.join(TROZOS)}}).encode()
@@ -476,6 +503,70 @@ def main():
         ok(not any('motor está apagado' in (m.get('texto') or '') for m in nuevos),
            'nunca dice «mi motor está apagado»: es mentira y habla de las tripas',
            str([(m.get('texto') or '')[:50] for m in nuevos]))
+
+        print('\nUn saludo se contesta saludando\n')
+        # En la captura de producción, a un «Hola» contestó «Veta Wallet y
+        # MyTokenPay pueden ayudarte a lograr eso.» — un fragmento sin cabeza.
+        # El modelo no tiene nada que contestarle a un saludo, así que recita
+        # el perfil o suelta un pedazo de otra respuesta.
+        antes_s = len(de_usuario())
+        post(BASE, '/enviar', {**ana, 'para': 'aura@prueba.local', 'texto': 'Hola'})
+        ms = espera_texto(ana, 'andás', 12)
+        ok(any('andás' in (m.get('texto') or '') for m in ms),
+           'a un «Hola» se contesta saludando, no con un pedazo de otra cosa')
+        ok(len(de_usuario()) == antes_s,
+           'y NO gasta motor: es la frase más común de todas y sale al instante')
+        post(BASE, '/enviar', {**ana, 'para': 'aura@prueba.local', 'texto': 'buenas'})
+        ms = espera_texto(ana, 'Acá estoy', 12)
+        ok(any('Acá estoy' in (m.get('texto') or '') for m in ms),
+           'el segundo saludo es OTRA frase: repetir la misma delata la máquina')
+        # ...pero un saludo CON pregunta adentro sí va al modelo
+        antes_s = len(de_usuario())
+        post(BASE, '/enviar', {**ana, 'para': 'aura@prueba.local',
+                               'texto': 'hola, ¿qué es AUKA?'})
+        fin = time.time() + 25
+        while time.time() < fin and len(de_usuario()) == antes_s:
+            time.sleep(0.3)
+        ok(len(de_usuario()) > antes_s,
+           'y «hola, ¿qué es AUKA?» sí va al modelo: ahí hay una pregunta')
+
+        print('\nNunca media palabra\n')
+        rec = aura._recortar
+        ok(rec('El oro protege tus ahorros. Y además no dis') ==
+           'El oro protege tus ahorros.',
+           'una frase cortada a mitad de palabra se recorta a la anterior')
+        ok(rec('AUKA sigue el precio del oro.') == 'AUKA sigue el precio del oro.',
+           'y una frase completa no se toca')
+        ok(rec('¿Querés que te lo explique?') == '¿Querés que te lo explique?',
+           'una pregunta también cierra bien')
+        corto = 'Se cortó todo menos esto que sigue y sigue sin cerrar nunca'
+        ok(rec(corto) == corto,
+           'si retroceder dejaría un pedazo diminuto, mejor la frase coja')
+
+        print('\nEl eco: cuando se copia a sí misma\n')
+        # Pasó en producción, con captura: dos preguntas distintas y la MISMA
+        # respuesta palabra por palabra. El modelo ve su propia respuesta en
+        # el historial y la repite, sobre todo si la pregunta es vaga. Ahí ya
+        # no es una conversación, es un eco.
+        post(BASE, '/enviar', {**ana, 'para': 'aura@prueba.local',
+                               'texto': 'ECO uno'})
+        time.sleep(6)
+        antes_e = len(de_usuario())
+        post(BASE, '/enviar', {**ana, 'para': 'aura@prueba.local',
+                               'texto': 'ECO dos'})
+        fin = time.time() + 30
+        while time.time() < fin and len(de_usuario()) < antes_e + 2:
+            time.sleep(0.3)
+        pedidas = len(de_usuario()) - antes_e
+        ok(pedidas == 2,
+           'si iba a contestar lo mismo que antes, se vuelve a preguntar',
+           f'llamadas: {pedidas}')
+        ok(pedidas >= 2 and de_usuario()[antes_e + 1]['options'].get('temperature', 0)
+           > de_usuario()[antes_e]['options'].get('temperature', 1),
+           'y con más temperatura: repetir con las MISMAS palabras era el problema')
+        ok(pedidas >= 2 and 'ya se lo dijiste'
+           in de_usuario()[antes_e + 1]['messages'][-1]['content'],
+           'y avisándole que eso ya lo dijo, no a ciegas')
 
         print('\nLa voz: se pide, no se impone\n')
         # Que venga APAGADA importa: una nota de voz en cada respuesta es un

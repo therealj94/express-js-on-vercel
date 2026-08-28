@@ -77,6 +77,7 @@ import fcntl
 import json
 import os
 import pathlib
+import re as _re
 import stat
 import sys
 import threading
@@ -298,14 +299,34 @@ def origen_de(addr):
     return int(j['result'], 16) / 1e18
 
 
-def quien_es(rel, correo, perfil):
-    """La linea de contexto de la persona: nombre, gid, saldo. Con cache de
-    cinco minutos — el saldo no cambia tan rapido como para pagar un RPC por
-    pregunta, y si cambia, cinco minutos de desfase no enganan a nadie."""
+# ── CUANDO EL SALDO VIAJA, Y CUANDO NO ────────────────────────────────────
+#
+# El saldo viajaba en CADA pregunta, y eso rompio la conversacion de una forma
+# que no se ve venir. Ante un «Hola» o un «¿qué podés hacer?» el modelo no
+# tiene nada concreto a lo que agarrarse, asi que recita lo unico concreto que
+# tiene delante: «Tengo notado que tu billetera tiene 20.9918 ORIGEN». Y como
+# esa respuesta queda en el historial, en el turno siguiente se copia a si
+# misma. Dos preguntas distintas, la misma respuesta palabra por palabra —
+# pasado en produccion, con captura.
+#
+# Asi que el saldo solo viaja cuando la pregunta es DE PLATA. Si alguien
+# pregunta cuanto tiene, lo tiene; si saluda, no le recitan su cuenta.
+DE_PLATA = _re.compile(
+    r'\b(saldo|cuanto|cuánto|plata|dinero|billetera|wallet|origen|balance|'
+    r'tengo|ten[eé]s|monto|transferi|envi|mand[aá]|cobr|pag|deposit|retir)',
+    _re.IGNORECASE)
+
+
+def quien_es(rel, correo, perfil, dicho=''):
+    """La linea de contexto de la persona: nombre, gid, y el saldo SOLO si
+    viene al caso. Con cache de cinco minutos — el saldo no cambia tan rapido
+    como para pagar un RPC por pregunta."""
     ahora = time.time()
+    con_saldo = bool(DE_PLATA.search(dicho or ''))
     en_cache = _SALDOS.get(correo)
     if en_cache and ahora - en_cache[0] < 300:
-        return en_cache[1]
+        base, saldo = en_cache[1], en_cache[2]
+        return f'{base}; {saldo}' if (con_saldo and saldo) else base
     f = rel.ficha(correo)
     partes = []
     nombre = (f.get('nombre') or '').strip()
@@ -313,16 +334,17 @@ def quien_es(rel, correo, perfil):
         partes.append(f"se llama {nombre.split()[0]}")
     if (f.get('gid') or '').strip():
         partes.append(f"su Genesis ID declarado es {f['gid'].strip()[:40]}")
+    saldo = ''
     addr = (f.get('addr') or '').strip()
     if addr.startswith('0x') and len(addr) == 42:
         try:
-            b = origen_de(addr)
-            partes.append(f"su billetera tiene {b:,.4f} ORIGEN en la cadena")
+            saldo = f"su billetera tiene {origen_de(addr):,.4f} ORIGEN en la cadena"
         except Exception:
             pass   # sin dato no hay linea; inventar esta prohibido
-    linea = ('; '.join(partes)) if partes else ''
-    _SALDOS[correo] = (ahora, linea)
-    return linea
+    base = ('; '.join(partes)) if partes else ''
+    _SALDOS[correo] = (ahora, base, saldo)
+    return f'{base}; {saldo}' if (con_saldo and saldo and base) else (
+        saldo if (con_saldo and saldo) else base)
 
 
 # ── la entrevista de entrada ─────────────────────────────────────────────────
@@ -393,6 +415,16 @@ MOTOR_CAIDO = (
 NO_SALIO = (
     "Se me enredó la respuesta. Preguntámelo de otra forma y te la doy bien.")
 
+# Un saludo se contesta saludando, y sin gastar motor. Van varios porque
+# alguien que saluda tres veces y recibe tres veces la misma frase exacta
+# descubre la maquina en el acto — que es justo lo que se esta tratando de
+# que no pase. El ultimo se repite: a la cuarta ya no importa.
+SALUDO_CORTO = (
+    "Hola. ¿En qué andás? Preguntame lo que quieras del ecosistema.",
+    "Acá estoy. Contame qué necesitás.",
+    "Hola de nuevo. ¿Qué querés saber?",
+)
+
 TECHO_MSG = (
     "Por hoy llegamos al tope de preguntas que puedo atender por persona — "
     "estamos en prueba y el motor es uno solo. Mañana seguimos.")
@@ -438,7 +470,6 @@ def todo_el_saber(saber):
     return '\n'.join(f"— {f['tema']}: {f.get('es', '')}" for f in saber)
 
 
-import re as _re
 
 FUGAS = _re.compile(
     r"(^\s*(seg[uú]n|de acuerdo (a|con)|conforme a)\s+(las?\s+)?fichas?,?\s*)"
@@ -471,22 +502,33 @@ SALUDITO = _re.compile(
 # conto ella misma— y repetido en cada turno se siente vigilada. Come hasta
 # el primer punto porque es siempre una oracion entera de relleno.
 PREAMBULO = _re.compile(
-    # El `(?!\s*(?:pero|sin embargo|aunque)\b)` de cada paso NO es un detalle
-    # de estilo: sin el, «Eso es una pregunta interesante, PERO no puedo
-    # predecir el precio.» se borraba ENTERA — el limpiador comiendose una
-    # negativa de seguridad. Una advertencia perdida es infinitamente peor
-    # que un preambulo que sobra. Donde aparece un «pero», ahi empieza lo que
-    # de verdad se dijo, y ahi el borrado se detiene.
-    r'^\s*(?:(?:me alegra|qu[eé] bueno)\s+que'
-    r'(?:(?!\s*(?:pero|sin embargo|aunque)\b)[^.!?\n]){0,160}[.!?]\s*'
-    # «Entiendo, Tere.» / «Entiendo tu preocupación.» — sin el «que». Es la
-    # misma frase de relleno con otra puntuacion, y salio igual en el nodo.
+    # ESTRUCTURA, y no es un detalle de forma. Los ARRANQUES van juntos en su
+    # propio grupo, y la COLA —«…hasta el primer punto»— se aplica a todos.
+    # Puestos en fila sin agrupar, la cola queda pegada solo a la ultima rama
+    # y las demas borran tres palabras y dejan la oracion coja: «Me alegra que
+    # tengas una tienda» se convertia en «Tengas una tienda».
+    r'^\s*(?:'
+    r'(?:'
+    #   «me alegra SABER que»: hasta dos palabras entre medio. Sin eso el
+    #   patron pedia el «que» pegado y se colaba por una sola palabra.
+    r'(?:me alegra|me da gusto|qu[eé] bueno)(?:\s+\w+){0,2}\s+que'
+    #   «Tengo notado que…» no es español de nadie, y ademas anuncia que va a
+    #   decir un dato en vez de decirlo.
+    r'|tengo notado que'
+    #   «Entiendo, Tere.» / «Entiendo tu preocupación.» — sin el «que».
     r'|(?:entiendo|comprendo)\b'
-    r'(?:(?!\s*(?:pero|sin embargo|aunque)\b)[^.!?\n]){0,70}[.!?]\s*'
+    r')'
+    # LA COLA. El `(?!\s*(?:pero|sin embargo|aunque)\b)` no es estilo: sin el,
+    # «Eso es una pregunta interesante, PERO no puedo predecir el precio.» se
+    # borraba ENTERA — el limpiador comiendose una negativa de seguridad. Una
+    # advertencia perdida es infinitamente peor que un preambulo que sobra.
+    # Donde aparece un «pero», ahi empieza lo que de verdad se dijo.
+    r'(?:(?!\s*(?:pero|sin embargo|aunque)\b)[^.!?\n]){0,160}[.!?]\s*'
     # \w* al final del verbo: en español el pronombre se pega («explicarTE»,
-    # «ayudarTE», «contarTE») y un \b ahi no cierra nunca
+    # «ayudarTE», «contarTE») y un \b ahi no cierra nunca.
     r'|vamos a (?:hablar|explicar|contar|ver|ayudar|revisar)\w*\b[^.!?\n]{0,160}[.!?:]\s*'
-    r'|(?:aqu[ií] te|te)\s+(?:explico|cuento|dejo)\b[^.!?\n]{0,80}[.!?:]\s*)+',
+    r'|(?:aqu[ií] te|te)\s+(?:explico|cuento|dejo)\b[^.!?\n]{0,80}[.!?:]\s*'
+    r')+',
     _re.IGNORECASE)
 
 # El titulo que devuelve la pregunta antes de contestarla: «¿Qué es AUKA?»
@@ -552,8 +594,36 @@ def limpiar(texto):
     return (t[0].upper() + t[1:]) if t else ''
 
 
+def _es_repetida(nueva, historial, umbral=0.90):
+    """¿Esto es casi lo mismo que lo ultimo que dijo?
+
+    Se comparan los primeros 200 caracteres, que es donde vive el arranque —
+    que es justo lo que se repite. Comparar el texto entero perdona el caso:
+    dos respuestas que empiezan igual y divergen al final igual se leen como
+    la misma cosa.
+
+    El umbral es ALTO a proposito. Lo que paso en produccion fue una copia
+    palabra por palabra, no un parecido: dos respuestas del mismo tema se
+    parecen legitimamente («El Genesis ID es tu identidad…» dos veces no es
+    un error), y cada falso positivo cuesta una generacion entera de mas.
+    Se caza la copia, no el parecido.
+    """
+    import difflib
+    n = (nueva or '').strip()
+    if len(n) < 30:
+        return False
+    for m in reversed(historial or []):
+        if m.get('role') == 'assistant':
+            viejo = (m.get('content') or '').strip()
+            if not viejo:
+                return False
+            return difflib.SequenceMatcher(
+                None, n[:200].lower(), viejo[:200].lower()).ratio() >= umbral
+    return False
+
+
 def preguntar_motor(sistema, perfil, historial, dicho, contexto='', al_vuelo=None,
-                    frenar_listas=True):
+                    frenar_listas=True, variar=False):
     """El sistema llega YA ARMADO y es siempre el mismo: eso es lo que hace
     que Ollama lo cachee y que la segunda pregunta no vuelva a pagar los dos
     minutos de lectura. Lo que cambia —quien pregunta y que pregunta— viaja
@@ -598,7 +668,10 @@ def preguntar_motor(sistema, perfil, historial, dicho, contexto='', al_vuelo=Non
         # y en esta maquina cada segundo se nota
         'keep_alive': '30m',
         'options': {
-            'temperature': 0.3,
+            # Mas temperatura solo cuando se esta repreguntando por haber
+            # repetido: si se contesta igual que antes, decirlo con las
+            # mismas palabras exactas es justamente el problema.
+            'temperature': 0.75 if variar else 0.3,
             # Sobre CPU esto era 110/220 y era lo correcto: a 6 tokens por
             # segundo cada palabra de mas costaba espera de verdad. Sobre la
             # GPU son 40 tok/s, y el techo bajo dejo de proteger a la persona
@@ -700,10 +773,28 @@ def _es_cortesia(frase):
 
 
 def _recortar(texto):
-    if len(texto) > 900:
-        corte = texto.rfind('.', 0, 900)
-        texto = texto[:corte + 1 if corte > 200 else 900].strip()
-    return texto
+    """Nunca se muestra media palabra.
+
+    El techo de palabras del motor corta donde le toca, y donde le toca es a
+    veces a mitad de «disminuya» — la persona lee «no dis» y ahi termina el
+    mensaje. Se ve roto, y con razon: esta roto.
+
+    Asi que si el texto no termina en un signo de cierre, se retrocede hasta
+    la ultima frase COMPLETA. Se pierde media oracion y se gana un mensaje
+    que se puede leer, que es el unico que sirve. Solo se deja tal cual si
+    retroceder dejaria un pedazo demasiado corto: ahi es mejor la frase coja
+    que un mensaje de tres palabras.
+    """
+    t = (texto or '').strip()
+    if len(t) > 900:
+        corte = t.rfind('.', 0, 900)
+        t = t[:corte + 1 if corte > 200 else 900].strip()
+    if t and t[-1] not in '.!?…:»"\'':
+        corte = max(t.rfind('. '), t.rfind('.\n'), t.rfind('? '), t.rfind('! '),
+                    t.rfind('.'), t.rfind('?'), t.rfind('!'))
+        if corte >= len(t) * 0.5:
+            t = t[:corte + 1].strip()
+    return t
 
 
 def mandar_voz(rel, para, texto, registro):
@@ -831,6 +922,22 @@ def atender(rel, sistema, p, de, dicho):
             rel.enviar(de, CAMBIO_VOZ[p['voz']])
             return
 
+    # EL SALUDO SUELTO. «Hola», «buenas», «qué tal» — la frase mas comun de
+    # todas, y la que peor le sale al modelo: no tiene nada que contestar, asi
+    # que recita el perfil o suelta un pedazo de otra respuesta. En la captura
+    # de produccion, a un «Hola» contesto «Veta Wallet y MyTokenPay pueden
+    # ayudarte a lograr eso.» — un fragmento sin cabeza.
+    #
+    # Un saludo se contesta saludando, y eso lo escribe la casa: sale al
+    # instante, sale bien siempre, y no gasta motor. Solo cuando el mensaje
+    # es UNICAMENTE el saludo; «hola, ¿qué es AUKA?» va al modelo como debe.
+    if len(bajo) <= 22 and _re.fullmatch(
+            r'\s*(hola|buenas|buenos dias|buenas tardes|buenas noches|hey|'
+            r'que tal|como estas|holi|saludos)[\s!¡.,?¿]*', bajo):
+        p['saludos'] = p.get('saludos', 0) + 1
+        rel.enviar(de, SALUDO_CORTO[min(p['saludos'] - 1, len(SALUDO_CORTO) - 1)])
+        return
+
     # la entrevista, en orden y sin gastar motor
     for i, (campo, _) in enumerate(PREGUNTAS):
         if campo not in p:
@@ -846,7 +953,7 @@ def atender(rel, sistema, p, de, dicho):
         return
 
     try:
-        contexto = quien_es(rel, de, p)
+        contexto = quien_es(rel, de, p, dicho)
     except Exception:
         contexto = ''
     salio = []
@@ -897,6 +1004,25 @@ def atender(rel, sistema, p, de, dicho):
                 resto, entero = preguntar_motor(sistema, p, p['historial'],
                                                 dicho, contexto,
                                                 al_vuelo=None, frenar_listas=False)
+            # LA RESPUESTA REPETIDA.
+            #
+            # Un modelo que ve su propia respuesta anterior en el historial
+            # tiende a repetirla, sobre todo si la pregunta nueva es vaga
+            # («hola», «¿qué podés hacer?»). Paso en produccion con captura:
+            # dos preguntas distintas, la misma respuesta palabra por palabra,
+            # y ahi ya no es una conversacion, es un eco.
+            #
+            # Se mira contra lo ultimo que dijo. Si es casi lo mismo, se
+            # vuelve a preguntar UNA vez con mas temperatura y avisandole que
+            # eso ya lo dijo. Cuesta unos segundos y salva la conversacion.
+            elif not por_frases and _es_repetida(resto, p.get('historial')):
+                log('respuesta casi identica a la anterior, repregunto')
+                resto, entero = preguntar_motor(
+                    sistema, p, p['historial'],
+                    dicho + '\n[eso que ibas a contestar ya se lo dijiste hace '
+                            'un momento: contestá otra cosa, o decilo distinto '
+                            'y mas corto]',
+                    contexto, al_vuelo=None, variar=True)
     except Exception as e:
         log('motor caido:', type(e).__name__, str(e)[:120])
         if not salio:
