@@ -134,10 +134,16 @@ await p.addInitScript(({ u, m }) => {
   }
   window.SpeechRecognition = Oyente;
   window.webkitSpeechRecognition = Oyente;
+  /* Con `resultIndex`, como lo emite el navegador de verdad: el oído único
+     lee SOLO desde ahí —es lo que arregló el «salen cosas random»— y un
+     evento sin ese campo se lee como si nada hubiera cambiado. */
   window.__oir = (txt) => {
     const o = window.__ultimoOyente;
     if (!o || !o.onresult) return false;
-    o.onresult({ results: [Object.assign([{ transcript: txt }], { isFinal: true })] });
+    const res = Object.assign([{ transcript: txt }], { isFinal: true });
+    o._rs = o._rs || [];
+    o._rs.push(res);
+    o.onresult({ results: o._rs, resultIndex: o._rs.length - 1 });
     return true;
   };
   /* Y se cuenta si alguien llama al sintetizador del navegador — la voz vieja.

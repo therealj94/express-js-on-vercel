@@ -133,6 +133,19 @@ TIMEOUT_MOTOR = int(os.environ.get('AURA_TIMEOUT', '90'))
 # si conviene frenar. Nadie llega a 200 conversando.
 TECHO_DIA = int(os.environ.get('AURA_TECHO', '200'))
 
+# ── EL FRENO DE RAFAGA ────────────────────────────────────────────────────
+#
+# Con AU-RA abierta a todos, lo que protege el motor ya no es una lista de
+# nombres sino cuanto pide cada quien. El techo diario cubre el abuso lento;
+# esto cubre el rapido: seis preguntas en un minuto es mas de lo que nadie
+# CONVERSA —es un dedo trabado o un guion— y con un solo motor eso deja a los
+# demas esperando detras.
+#
+# No se castiga: se pide un momento y se sigue. Quien de verdad conversa no
+# lo choca nunca; quien lo choca, espera unos segundos.
+RAFAGA = int(os.environ.get('AURA_RAFAGA', '6'))          # preguntas
+RAFAGA_VENTANA = float(os.environ.get('AURA_RAFAGA_S', '60'))   # en segundos
+
 # Cuantos turnos de memoria lleva cada charla al motor. Mas historial empuja
 # las fichas fuera de la ventana del modelo, y sin fichas el modelo inventa.
 MEMORIA = 8
@@ -259,13 +272,30 @@ def instancia_unica():
 # ── quien puede hablarle ─────────────────────────────────────────────────────
 
 def probadores():
-    """Un correo por linea; # comenta. Se relee en cada vuelta a proposito:
-    agregar a alguien es editar el archivo, sin reiniciar nada."""
+    """A quien le contesta AU-RA. VACIO = A TODO EL MUNDO.
+
+    ── POR QUE CAMBIO ────────────────────────────────────────────────────
+
+    Era una lista de tres correos, y lo que recibia quien no estaba en ella
+    era SILENCIO: ni una respuesta, ni un «todavia no». Alguien a quien le
+    enseñan la app toca AU-RA, escribe, y no pasa nada — y no hay forma de
+    saber desde fuera si esta rota o si no te toca.
+
+    Se pidio abrirla a todos y se abre. La lista sigue existiendo por si
+    algun dia hace falta volver a cerrar —una linea en un archivo— pero
+    vacia significa abierta, que es lo que corresponde a un producto que se
+    entrega.
+
+    Lo que protege el motor ya no es quien sos sino CUANTO PEDIS: el techo
+    por persona y por dia (TECHO_DIA) y el freno de golpe (RAFAGA), que
+    estan abajo. Un limite por uso escala; una lista de nombres, no.
+    """
     f = DATOS / 'probadores.txt'
     if not f.exists():
-        return set()
-    return {l.strip().lower() for l in f.read_text().splitlines()
-            if l.strip() and not l.strip().startswith('#')}
+        return None                     # sin archivo: abierta
+    lista = {l.strip().lower() for l in f.read_text().splitlines()
+             if l.strip() and not l.strip().startswith('#')}
+    return lista or None                # archivo vacio: tambien abierta
 
 
 # ── la memoria del asistente ─────────────────────────────────────────────────
@@ -438,6 +468,10 @@ SALUDO_CORTO = (
     "Acá estoy. Contame qué necesitás.",
     "Hola de nuevo. ¿Qué querés saber?",
 )
+
+RAFAGA_MSG = (
+    'Pará un segundo que te sigo — vas más rápido que yo. Dale unos segundos '
+    'y seguimos.')
 
 TECHO_MSG = (
     "Por hoy llegamos al tope de preguntas que puedo atender por persona — "
@@ -1371,18 +1405,40 @@ def atender(rel, sistema, p, de, dicho):
         rel.enviar(de, SALUDO_CORTO[min(p['saludos'] - 1, len(SALUDO_CORTO) - 1)])
         return
 
-    # la entrevista, en orden y sin gastar motor
-    for i, (campo, _) in enumerate(PREGUNTAS):
-        if campo not in p:
-            p[campo] = dicho[:400]
-            rel.enviar(de, PREGUNTAS[i + 1][1] if i + 1 < len(PREGUNTAS) else CIERRE)
-            return
+    # ── LO QUE CUENTE SE GUARDA; LA ENTREVISTA SE FUE ─────────────────────
+    #
+    # Aca habia un formulario de tres preguntas que se tragaba los tres
+    # primeros mensajes FUERAN LO QUE FUERAN. Medido con una cuenta nueva:
+    #
+    #     «Hola»                        → «¿A qué te dedicás?»
+    #     «Tengo una pulpería»          → «¿Y qué estudiaste?»
+    #     «¿Qué es ORIGEN?»             → «¿qué te gustaría lograr?»
+    #
+    # La tercera es el desastre: alguien hace una pregunta de verdad y recibe
+    # otra pregunta. Su duda queda sin contestar y encima parece que no la
+    # escucharon. Un formulario en la puerta de una conversacion es la forma
+    # mas rapida de que alguien no vuelva.
+    #
+    # Ahora lo que cuente SE GUARDA en silencio —sirve para elegir los
+    # ejemplos— y contesta el modelo, que tiene en su prompt la seccion «TE
+    # INTERESA QUIEN TE HABLA»: pregunta cuando algo abre una puerta, una
+    # cosa a la vez, y nunca en vez de contestar. Preguntar es de quien
+    # escucha; interrogar, de quien tramita.
+    if 'trabajo' not in p and len(dicho) > 12 and not _de_la_casa(dicho) \
+            and '?' not in dicho and '¿' not in dicho:
+        p['trabajo'] = dicho[:400]
 
     # el techo del dia — solo para lo que gasta motor
     if p.get('dia') != hoy():
         p['dia'], p['usadas'] = hoy(), 0
     if p['usadas'] >= TECHO_DIA:
         rel.enviar(de, TECHO_MSG)
+        return
+    # Y el freno de golpe. Va DESPUES del techo diario y ANTES del motor: no
+    # gasta GPU y se contesta al instante, que es justo lo que hace falta
+    # cuando alguien esta disparando preguntas mas rapido de lo que se leen.
+    if hay_rafaga(de):
+        rel.enviar(de, RAFAGA_MSG)
         return
 
     try:
@@ -1556,6 +1612,25 @@ def atender_charla(rel, sistema, perfiles, correo):
 
 # ── el bucle ─────────────────────────────────────────────────────────────────
 
+_RAFAGAS = {}                       # correo -> [instantes]
+_CANDADO_RAFAGA = threading.Lock()
+
+
+def hay_rafaga(correo):
+    """True si esta pidiendo mas rapido de lo que nadie conversa."""
+    ahora = time.time()
+    with _CANDADO_RAFAGA:
+        v = [t for t in _RAFAGAS.get(correo, []) if ahora - t < RAFAGA_VENTANA]
+        v.append(ahora)
+        _RAFAGAS[correo] = v
+        # y la memoria no crece sin fin: se limpia a quien lleva rato callado
+        if len(_RAFAGAS) > 500:
+            for k in [k for k, ts in _RAFAGAS.items()
+                      if not ts or ahora - ts[-1] > RAFAGA_VENTANA * 4]:
+                _RAFAGAS.pop(k, None)
+        return len(v) > RAFAGA
+
+
 EN_CURSO = set()
 CANDADO_CURSO = threading.Lock()
 
@@ -1568,7 +1643,7 @@ def vuelta(rel, sistema, perfiles, tanda):
     #     rechazo — agregar a alguien mañana es editar probadores.txt.
     for s in rel.solicitudes():
         c = (s.get('correo') or '').lower()
-        if c not in lista:
+        if lista is not None and c not in lista:
             continue
         rel.aceptar(c)
         log('amistad aceptada:', c)
@@ -1587,8 +1662,9 @@ def vuelta(rel, sistema, perfiles, tanda):
     #     mientras el motor pensaba quedaria detras del sello para siempre.
     for conv in rel.conversaciones():
         c = (conv.get('correo') or '').lower()
-        if c == CORREO or c.startswith('g:') or c not in lista:
-            continue   # grupos no, a proposito (ver cabecera); fuera de lista, silencio
+        if c == CORREO or c.startswith('g:') \
+                or (lista is not None and c not in lista):
+            continue   # grupos no, a proposito (ver cabecera)
         ult = conv.get('ultimo') or {}
         with CANDADO_PERFILES:
             p = perfil_de(perfiles, c, tope=ahora_ms if c not in perfiles else None)
@@ -1657,8 +1733,9 @@ def main():
             except Exception as e:
                 log('el latido de templado fallo:', type(e).__name__, str(e)[:80])
     threading.Thread(target=latido_templado, daemon=True).start()
+    _quienes = probadores()
     log(f'AU-RA de pie · {len(saber)} fichas · {MODELO_RAPIDA}+{MODELO_PENSADORA} · '
-        f'{len(probadores())} probadores')
+        + ('ABIERTA a todos' if _quienes is None else f'{len(_quienes)} probadores'))
     with ThreadPoolExecutor(max_workers=HILOS) as tanda:
         while True:
             try:

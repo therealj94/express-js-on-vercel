@@ -203,6 +203,7 @@ def main():
         env={**os.environ, 'AURA_RELEVO': BASE, 'AURA_CORREO': 'aura@prueba.local',
              'AURA_DATOS': str(datos), 'AURA_MOTOR': f'http://127.0.0.1:{p_motor}',
              'AURA_MODELO': 'llama3.2', 'AURA_PASO': '0.4',
+             'AURA_RAFAGA': '9999',   # ver arriba: la suite no conversa, dispara
              'HTTP_PROXY': '', 'HTTPS_PROXY': '', 'http_proxy': '', 'https_proxy': ''},
         stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
     time.sleep(2)
@@ -258,32 +259,55 @@ def main():
         s = saludos[0].get('texto', '')
         ok('servidor' in s and 'punta a punta' in s,
            'el saludo dice la verdad del cifrado, sin letra chica')
-        ok('dedic' in s, 'y arranca la entrevista: a que te dedicas')
+        ok('dedic' in s, 'y el saludo invita a contar en qué anda')
 
-        print('\nLa entrevista, en orden y sin improvisar\n')
+        print('\nUNA PREGUNTA SE CONTESTA — no se cambia por otra pregunta\n')
+        # Aquí había un formulario de tres preguntas que se tragaba los tres
+        # primeros mensajes fueran lo que fueran. Medido con una cuenta nueva
+        # en producción: «¿Qué es ORIGEN?» recibía «¿qué te gustaría lograr?».
+        # Alguien hace una pregunta de verdad, recibe otra pregunta, y su duda
+        # queda sin contestar.
         post(BASE, '/enviar', {**ana, 'para': 'aura@prueba.local',
                                'texto': 'Soy contadora en una ferretería'})
         ms = espera_mensajes(ana, 2)
-        ok(len(ms) >= 2 and 'estudiaste' in ms[1].get('texto', ''),
-           'primera respuesta guardada; pregunta por los estudios')
-        post(BASE, '/enviar', {**ana, 'para': 'aura@prueba.local',
-                               'texto': 'Contaduría pública en la UNAH'})
-        ms = espera_mensajes(ana, 3)
-        ok(len(ms) >= 3 and 'lograr' in ms[2].get('texto', ''),
-           'segunda guardada; pregunta qué busca')
-        post(BASE, '/enviar', {**ana, 'para': 'aura@prueba.local',
-                               'texto': 'Quiero ahorrar en oro'})
-        ms = espera_mensajes(ana, 4)
-        ok(len(ms) >= 4 and 'te conozco' in ms[3].get('texto', ''),
-           'cierra la entrevista y abre la charla libre')
-        ok(not de_usuario(), 'la entrevista NO gasto motor: es codigo, no modelo')
-
-        print('\nLa charla libre, contra el motor\n')
+        ok(len(ms) >= 2, 'lo que cuenta recibe respuesta')
         post(BASE, '/enviar', {**ana, 'para': 'aura@prueba.local',
                                'texto': '¿Qué es ORIGEN?'})
+        ms = espera_mensajes(ana, 4)
+        _suyas = [m.get('texto', '') for m in ms if m.get('de') == 'aura@prueba.local']
+        ok(_suyas and 'RESPUESTA-DEL-MOTOR' in _suyas[-1],
+           'y una PREGUNTA va al modelo, no al formulario',
+           f'contestó: {_suyas[-1][:90]!r} — el formulario se la tragaba')
+        ok('lograr' not in (_suyas[-1] or ''),
+           'no te devuelve una pregunta en vez de tu respuesta',
+           'recibir «¿qué querés lograr?» cuando preguntaste qué es ORIGEN es '
+           'la forma más rápida de que alguien no vuelva')
+
+        print('\nLa charla libre, contra el motor\n')
+        # Se cuenta desde ANTES de esta pregunta: sin el formulario, los
+        # mensajes anteriores también fueron al motor y tienen su respuesta.
+        # Contar todas las del hilo mediría la conversación entera en vez de
+        # esta pregunta.
+        _antes = len([m for m in bandeja_de(ana)
+                      if m.get('de') == 'aura@prueba.local'
+                      and 'RESPUESTA-DEL-MOTOR' in (m.get('texto') or '')])
+        _llamadasAntes = len(de_usuario())
+        post(BASE, '/enviar', {**ana, 'para': 'aura@prueba.local',
+                               # Una pregunta DISTINTA de la anterior: dos casi
+                               # iguales disparan el guardián de eco —que
+                               # repregunta— y entonces esto contaría DOS
+                               # llamadas al motor por una sola pregunta.
+                               'texto': '¿Cuánto cuesta cobrar con MyTokenPay?'})
         ms = espera_mensajes(ana, 5)
-        ok(len(ms) >= 5 and 'RESPUESTA-DEL-MOTOR' in ms[4].get('texto', ''),
-           'la respuesta del motor llega al chat')
+        # Por el ÚLTIMO mensaje suyo y no por el índice 4: el índice contaba
+        # con los cuatro mensajes del formulario de bienvenida, que ya no
+        # existe. Una prueba atada a una posición se rompe cada vez que cambia
+        # el flujo, y lo que quiere comprobar no es dónde está la respuesta
+        # sino que la respuesta esté.
+        _suyas = [m.get('texto', '') for m in ms if m.get('de') == 'aura@prueba.local']
+        ok(_suyas and 'RESPUESTA-DEL-MOTOR' in _suyas[-1],
+           'la respuesta del motor llega al chat',
+           f'la última suya fue: {(_suyas or [""])[-1][:80]!r}')
         # UNA RESPUESTA, UNA BURBUJA.
         #
         # Antes esta prueba exigia lo contrario —que llegara «EN DOS», la
@@ -295,23 +319,33 @@ def main():
         # dejo de proteger a nadie y paso a estorbar: cuatro, cinco, seis
         # globos seguidos por una sola pregunta. La queja fue textual — «no
         # hay conversación fluida». Nadie que conversa contesta seis veces.
-        resto = [m for m in ms[4:] if (m.get('texto') or '').strip()]
-        ok(len(resto) == 1,
+        # Se cuentan las respuestas del motor, no las posiciones: la marca
+        # RESPUESTA-DEL-MOTOR distingue lo que dijo el modelo de los saludos y
+        # avisos que escribe la casa, que no se reparten en globos.
+        _delMotor = [x for x in _suyas if 'RESPUESTA-DEL-MOTOR' in x][_antes:]
+        ok(len(_delMotor) == 1,
            'y llega en UNA sola: nadie que conversa contesta en seis mensajes',
-           f'llegaron {len(resto)}: '
-           f'{[(m.get("texto") or "")[:34] for m in resto]}')
-        ok('SEGUNDA' in ms[4].get('texto', ''),
+           f'llegaron {len(_delMotor)}: {[x[:34] for x in _delMotor]}')
+        ok(_delMotor and 'SEGUNDA' in _delMotor[-1],
            'con la respuesta completa adentro, no cortada')
-        ok('me alegra' in ms[4].get('texto', ''),
-           'la cortesía de apertura no viaja sola: va pegada a la respuesta')
+        # LA PROPIEDAD, no una frase. Antes esto buscaba «me alegra», que es
+        # una de las tres aperturas que usa el motor de mentira según la
+        # pregunta: con otra pregunta, la prueba fallaba sin que nada
+        # estuviera mal. Lo que importa es que ninguna burbuja sea SOLO
+        # cortesía — eso hace esperar por nada.
+        _soloCortesia = [x for x in _suyas[-3:]
+                         if len(x) < 120 and aura._es_cortesia(x)]
+        ok(not _soloCortesia,
+           'la cortesía de apertura no viaja sola: va pegada a la respuesta',
+           f'llegó una burbuja que solo saluda: {_soloCortesia}')
         # Sobre CPU el techo era 110 y protegia a la persona: a 6 tokens por
         # segundo, cada palabra de mas era espera de verdad. Sobre GPU son 40
         # tok/s y ese mismo techo empezo a CORTAR la respuesta a media frase
         # — se vio en el nodo el 28-ago. Lo que se comprueba ya no es un
         # numero fijo sino la propiedad: alcanza para una respuesta entera.
-        ok(de_usuario()[0]['options'].get('num_predict', 0) >= 120,
+        ok(de_usuario()[-1]['options'].get('num_predict', 0) >= 120,
            'el techo de palabras alcanza para terminar la frase',
-           f"num_predict = {de_usuario()[0]['options'].get('num_predict')}")
+           f"num_predict = {de_usuario()[-1]['options'].get('num_predict')}")
         # La ventana. Sin esta linea ollama usa 4096, la peticion con memoria
         # llega a 3814, rebalsa al escribir y RELEE los 3814 desde cero: 170
         # segundos de espera antes de la primera letra. Se mide en el numero,
@@ -319,32 +353,41 @@ def main():
         # El freno de las listas. El prompt se lo pide en tres lugares y el
         # modelo las escribe igual; esto las corta en seco. Si alguien saca
         # estas marcas, AU-RA vuelve a maquetar en vez de conversar.
-        paren = de_usuario()[0]['options'].get('stop') or []
+        paren = de_usuario()[-1]['options'].get('stop') or []
         ok(any('1.' in x for x in paren) and any('**' in x for x in paren),
            'la generación se corta apenas empieza una lista o un título',
            f'stop = {paren}')
 
-        ctx = de_usuario()[0]['options'].get('num_ctx')
+        ctx = de_usuario()[-1]['options'].get('num_ctx')
         ok(ctx is not None and ctx >= 6144,
            'la ventana da lugar al historial: sin eso se relee todo cada vez',
            f'num_ctx = {ctx} (con 4096 la peticion de 3814 rebalsa)')
-        mem = de_usuario()[0]['messages']
+        mem = de_usuario()[-1]['messages']
         largo = sum(len(m.get('content', '')) for m in mem)
         ok(largo / 3.6 < ctx * 0.75,
            'y la peticion entera entra holgada en esa ventana',
            f'~{largo/3.6:.0f} tokens contra una ventana de {ctx}')
-        ok(len(de_usuario()) == 1, 'un mensaje, una llamada al motor')
+        # Una pregunta, UNA llamada. Se mide el delta y no el total: sin el
+        # formulario de bienvenida, los mensajes de antes también fueron al
+        # motor y tienen su llamada.
+        ok(len(de_usuario()) == _llamadasAntes + 1,
+           'un mensaje, una llamada al motor',
+           f'{len(de_usuario()) - _llamadasAntes} llamadas para una pregunta')
         if de_usuario():
-            sistema = de_usuario()[0]['messages'][0]['content']
+            sistema = de_usuario()[-1]['messages'][0]['content']
             ok('AU-RA' in sistema and 'LO QUE SABES DE LA CASA' in sistema,
                'viajo el prompt de la casa y las fichas')
             ok('ORIGEN' in sistema and 'gramin' in sistema,
                'y la ficha que viajo es la de ORIGEN, con su contenido')
-            usuario = de_usuario()[0]['messages'][-1]['content']
-            ok('contadora' in usuario and 'UNAH' in usuario,
+            usuario = de_usuario()[-1]['messages'][-1]['content']
+            # Solo el oficio: el formulario que exigía estudios e intereses
+            # antes de contestar nada se fue. Lo que la persona cuente se
+            # guarda; lo que no cuente, no se le saca.
+            ok('contadora' in usuario,
                'el perfil viaja en el turno de usuario, no en el sistema')
             ok('se llama Ana' in usuario,
-               'y el nombre de la ficha del chat viaja tambien')
+               'y el nombre de la ficha del chat viaja tambien',
+               f'el turno decía: {usuario[:110]!r}')
             ok('contadora' not in sistema,
                'y el sistema NO lo lleva: por eso se puede cachear')
             # normalizado: el prompt esta formateado para leerse y una regla
@@ -358,13 +401,15 @@ def main():
                                'texto': '¿Y qué podés hacer vos?'})
         # se espera a la LLAMADA, no a un numero de mensajes: con streaming una
         # respuesta puede llegar en uno o en varios
+        _hasta = len(de_usuario()) + 1
         fin = time.time() + 25
-        while time.time() < fin and len(de_usuario()) < 2:
+        while time.time() < fin and len(de_usuario()) < _hasta:
             time.sleep(0.3)
-        ok(len(de_usuario()) == 2, 'segunda pregunta, segunda llamada')
-        if len(de_usuario()) == 2:
-            a1 = de_usuario()[0]['messages'][0]['content']
-            a2 = de_usuario()[1]['messages'][0]['content']
+        ok(len(de_usuario()) == _hasta, 'segunda pregunta, segunda llamada',
+           f'llamadas: {len(de_usuario())}, se esperaban {_hasta}')
+        if len(de_usuario()) >= 2:
+            a1 = de_usuario()[-2]['messages'][0]['content']
+            a2 = de_usuario()[-1]['messages'][0]['content']
             ok(a1 == a2, 'el mensaje de sistema es IDENTICO byte por byte',
                'si cambia, Ollama no lo cachea y cada pregunta paga la lectura entera')
             # Ya no son 30 minutos: con eso, cualquier hueco —el almuerzo,
@@ -624,6 +669,54 @@ def main():
            'y «¿te interesa saber más?» también se va',
            'salió en producción cerrando una respuesta sobre el cielo')
 
+        print('\nAbierta a todos, y con freno de ráfaga\n')
+        # ABIERTA. La lista de probadores dejaba en SILENCIO a quien no
+        # estuviera en ella: ni respuesta ni un «todavía no». Vacía o ausente
+        # ahora significa abierta — lo que protege el motor es cuánto pedís,
+        # no quién sos.
+        import tempfile as _tmp, pathlib as _pl
+        _carp = _pl.Path(_tmp.mkdtemp())
+        _viejo = aura.DATOS
+        try:
+            aura.DATOS = _carp
+            ok(aura.probadores() is None,
+               'sin archivo de lista, AU-RA contesta a todo el mundo',
+               'un producto que se entrega no puede dejar a nadie en silencio')
+            (_carp / 'probadores.txt').write_text('# solo comentarios\n\n')
+            ok(aura.probadores() is None,
+               'y un archivo vacío también es «abierta»',
+               'si no, borrar los nombres cerraría la puerta sin querer')
+            (_carp / 'probadores.txt').write_text('alguien@ejemplo.com\n')
+            ok(aura.probadores() == {'alguien@ejemplo.com'},
+               'y con nombres dentro, se puede volver a cerrar en una línea')
+        finally:
+            aura.DATOS = _viejo
+
+        # Y NADIE MÁS LLAMA A probadores() esperando un conjunto. Cambiarla
+        # para que devuelva None dejó un `len(probadores())` en la línea de
+        # arranque: el servicio moría al levantar, en bucle de reinicio, con
+        # AU-RA muda para todos. Un `grep` habría bastado y no lo hice.
+        import re as _re2
+        _src = _pl.Path(aura.__file__).read_text()
+        _malos = [l.strip() for l in _src.splitlines()
+                  if 'probadores()' in l and _re2.search(r'len\(\s*probadores\(\)', l)]
+        ok(not _malos,
+           'nadie usa probadores() como si siempre fuera un conjunto',
+           f'devuelve None cuando está abierta: {_malos}')
+
+        # EL FRENO DE RÁFAGA. Seis en un minuto es más de lo que nadie
+        # conversa; el séptimo espera. No castiga: pide un momento.
+        _paso = [aura.hay_rafaga('rafaga@prueba') for _ in range(aura.RAFAGA)]
+        ok(not any(_paso),
+           f'las primeras {aura.RAFAGA} preguntas del minuto pasan sin freno',
+           f'frenó en la {_paso.index(True) + 1 if True in _paso else 0}ª')
+        ok(aura.hay_rafaga('rafaga@prueba'),
+           'y la siguiente pide un momento',
+           'con un solo motor, una ráfaga deja a los demás esperando detrás')
+        ok(not aura.hay_rafaga('otro@prueba'),
+           'el freno es POR PERSONA: la ráfaga de uno no frena a nadie más',
+           'un freno global convertiría a un abusón en una caída para todos')
+
         print('\nLo de la casa y lo de la vida se distinguen\n')
         # No es un clasificador de temas —eso no se puede— sino una lista de
         # NUESTRAS palabras, que sí se puede enumerar. Decide dos cosas: si
@@ -879,6 +972,12 @@ def main():
             env={**os.environ, 'AURA_RELEVO': BASE, 'AURA_CORREO': 'aura@prueba.local',
                  'AURA_DATOS': str(datos), 'AURA_MOTOR': f'http://127.0.0.1:{p_motor}',
                  'AURA_MODELO': 'llama3.2', 'AURA_PASO': '0.4',
+             'AURA_RAFAGA': '9999',   # ver arriba: la suite no conversa, dispara
+                 # La suite dispara decenas de preguntas seguidas —eso es una
+                 # prueba, no una conversación— y chocaría el freno de ráfaga,
+                 # que existe para el caso contrario. Se le abre la ventana:
+                 # el freno tiene su propia comprobación, aparte.
+                 'AURA_RAFAGA': '9999',
                  'HTTP_PROXY': '', 'HTTPS_PROXY': '', 'http_proxy': '', 'https_proxy': ''},
             stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
         globals()['asistente'] = asistente2

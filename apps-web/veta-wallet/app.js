@@ -11109,6 +11109,27 @@ const VETA = (() => {
 
   let dictando = null;
 
+  /* ── UN SOLO OÍDO, CON DESTINO ──────────────────────────────────────────
+   *
+   * Había TRES micrófonos distintos —el del hilo, el de la burbuja
+   * (`AURA.escuchar`) y el grabado— y cada arreglo tocaba uno y dejaba los
+   * otros rotos. El de la burbuja no avisaba NUNCA cuando terminaba sin oír
+   * nada: ni `alTexto` ni `alFallar`, así que el «Te escucho» se quedaba
+   * puesto para siempre. Esa era la traba.
+   *
+   * Ahora el oído es uno y lo único que cambia es A DÓNDE va lo que oye. El
+   * hilo lo manda por la cola del chat; la burbuja lo mete en su charla. El
+   * ciclo, los errores, el reenganche y los estados son los MISMOS para los
+   * dos: un arreglo arregla en todas partes, que era el punto.
+   */
+  let auraOidoDestino = null;   // (textoFinal) → void
+  let auraOidoParcial = null;   // (textoParcial) → void
+
+  /** ¿Alguien quiere seguir escuchando? El hilo en modo voz, o la burbuja
+      conversando. Si nadie, el oído se cierra y se queda cerrado. */
+  const auraAlguienEscucha = () =>
+    (auraCharlando && esAura(chatSt.con)) || (auraConversando && auraAbierta);
+
   /** Cierra el micrófono sin mandar lo que se llevaba dicho.
 
       `abort()` y no `stop()`: stop() cierra pero ENTREGA lo capturado como
@@ -11133,6 +11154,7 @@ const VETA = (() => {
   function auraEscuchar() {
     if (dictando || auraSonando || auraBuscandoVoz) return;
     auraDictar();
+    if (auraAbierta) pintarAura();
   }
 
   function auraDictar() {
@@ -11180,14 +11202,17 @@ const VETA = (() => {
       final = final.trim();
       // lo dicho SE VE mientras se dice: es la única forma de saber que te
       // está entendiendo antes de soltar
-      if (campo() && !final) campo().value = parcial;
-      if (auraPantalla) { auraDicho = parcial; pintarChat(); }
+      if (auraOidoParcial) auraOidoParcial(parcial);
+      else {
+        if (campo() && !final) campo().value = parcial;
+        if (auraPantalla) { auraDicho = parcial; pintarChat(); }
+      }
       if (final) {
         /* Por la COLA y no por el formulario: si AU-RA acaba de llevarte a
            otra pantalla, el formulario ya no existe — y la frase tiene que
            llegar igual. El micrófono SIGUE ABIERTO: es un modo continuo. */
-        if (campo()) campo().value = '';
-        chatMandarDicho(final);
+        if (auraOidoDestino) auraOidoDestino(final);
+        else { if (campo()) campo().value = ''; chatMandarDicho(final); }
       }
     };
     /* Un error DURO —el permiso denegado, o no hay micrófono— apaga el modo y
@@ -11196,8 +11221,15 @@ const VETA = (() => {
     r.onerror = (ev) => {
       dictando = null;
       const duro = ['not-allowed', 'service-not-allowed', 'audio-capture'].includes(ev?.error);
-      if (duro && auraCharlando) { auraCharlando = false; avisar(t('au.sinMicro')); }
+      if (duro) {
+        // se apaga DONDE ESTUVIERA encendido, y se dice: un modo que muere
+        // callado es la peor forma de fallar
+        auraCharlando = false;
+        auraConversando = false;
+        avisar(t('au.sinMicro'));
+      }
       pintarChat();
+      if (auraAbierta) pintarAura();
     };
     /* ── EL CICLO SE CIERRA ACÁ ─────────────────────────────────────────────
        El reconocedor se cierra solo cada tanto, pase lo que pase: por un
@@ -11205,8 +11237,11 @@ const VETA = (() => {
        modo sigue encendido y ella no está hablando, se vuelve a abrir. Eso es
        lo que hace que se pueda conversar sin tocar nada. */
     r.onend = () => {
-      if (dictando) { dictando = null; pintarChat(); }
-      if (auraCharlando && esAura(chatSt.con) && !auraSonando && !auraBuscandoVoz) {
+      if (dictando) { dictando = null; pintarChat(); if (auraAbierta) pintarAura(); }
+      /* SE REENGANCHA MIRE QUIEN MIRE. Antes solo preguntaba por el hilo, así
+         que en la burbuja el micrófono se cerraba solo y nadie lo volvía a
+         abrir: el «Te escucho» quedaba puesto sobre un micrófono muerto. */
+      if (auraAlguienEscucha() && !auraSonando && !auraBuscandoVoz) {
         setTimeout(auraEscuchar, 250);
       }
     };
@@ -11997,6 +12032,8 @@ const VETA = (() => {
       vozAsi: 'Así te hablo de ahora en más.',
       conversarOn: 'Hablar sin tocar nada', conversarOff: 'Dejar de escuchar',
       conversando: 'Te escucho — hablá cuando quieras',
+      abriendoMic: 'Abriendo el micrófono…',
+      hablando: 'Hablando…',
       micInvita: 'Si querés, hablemos en voz alta: activás el micrófono una vez y ya no tocás nada más — te escucho, te contesto, y sigo escuchando.',
       micActivar: 'Activar el micrófono',
       micListo: 'Listo, te escucho. Hablá cuando quieras y te voy contestando; para cortar, tocá el micrófono otra vez.',
@@ -12130,6 +12167,8 @@ const VETA = (() => {
       vozAsi: 'This is how I will speak from now on.',
       conversarOn: 'Talk without tapping', conversarOff: 'Stop listening',
       conversando: "I'm listening — speak whenever you like",
+      abriendoMic: 'Opening the microphone…',
+      hablando: 'Speaking…',
       micInvita: "If you like, let's talk out loud: turn the microphone on once and you never tap again — I listen, I answer, and I keep listening.",
       micActivar: 'Turn on the microphone',
       micListo: "Done, I'm listening. Speak whenever you like and I'll answer; to stop, tap the microphone again.",
@@ -12167,7 +12206,13 @@ const VETA = (() => {
   };
   const aTxt = () => AURA_TXT[idiomaActivo() === 'en' ? 'en' : 'es'];
 
-  let auraLienzo = null, auraAbierta = false, auraCharla = [], auraOyendo = false;
+  let auraLienzo = null, auraAbierta = false, auraCharla = [];
+  /* `auraOyendo` ya no es una variable propia: era exactamente la que se
+     quedaba en `true` cuando el micrófono de la burbuja moría sin avisar —el
+     «Te escucho» colgado sobre un oído muerto—. Ahora se PREGUNTA al oído
+     único, que es el que sabe la verdad. Un estado con dos dueños termina
+     siempre con los dos diciendo cosas distintas. */
+  const auraOyendo = () => !!dictando && auraConversando;
   /* Visita = todavía no entró. Manda sobre TODO lo que AU-RA hace: el saludo,
      los chips y a dónde va cada pregunta. Se pone en `ir()`, que es el único
      sitio donde se cambia de pantalla, así que no hay forma de que una vista
@@ -12372,9 +12417,9 @@ const VETA = (() => {
       // cerrar la burbuja apaga la conversación: no se sigue escuchando a
       // alguien que acaba de cerrar la ventana
       auraConversando = false;
-      auraOyendo = false;
+      auraSoltarOido();
       try { auraCortarVozBurbuja?.(); } catch (e) { /* ya no sonaba */ }
-      AURA.pararVoz(); AURA.dejarDeEscuchar();
+      AURA.pararVoz();
       return pintarAura();
     }
     if (!auraCharla.length) {
@@ -12576,16 +12621,28 @@ const VETA = (() => {
           m.botones ? `<div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">${
             m.botones.map(b => `<button class="btn btn-oro btn-sm" style="padding:8px 14px;font-size:12px"
               onclick="VETA.auraChip(${jsTxt(b.di)})">${esc(b.txt)}</button>`).join('')}</div>` : ''}</div>`).join('')}
-        ${auraPensando ? `<div class="aura-b aura-pensando"><i></i><i></i><i></i>
-          <span>${esc(T.pensando)}</span></div>` : ''}
-        ${auraConversando && !auraPensando ? `<div class="aura-b aura-pensando aura-oyendo">
-          <i></i><i></i><i></i><span>${esc(auraOyendo ? T.teEscucho : T.conversando)}</span></div>` : ''}
+        ${/* ── LA LÍNEA DE ESTADO, QUE NO PUEDE FALTAR NUNCA ────────────────
+              «me sale escuchando, no sé si me escuchó, si está pensando».
+              El estado sale de UNA sola cuenta, en orden de prioridad, y
+              siempre dice algo mientras el modo está puesto. Un modo sin
+              estado visible es un modo en el que no sabés si el problema
+              sos vos o la máquina. */''}
+        ${(() => {
+          const habla = !!auraCortarVozBurbuja;
+          const est = auraPensando ? { c: 'aura-pensando', t: T.pensando }
+            : habla ? { c: 'aura-hablando', t: T.hablando }
+            : auraConversando ? { c: 'aura-oyendo',
+                                  t: auraOyendo() ? T.teEscucho : T.abriendoMic }
+            : null;
+          return est ? `<div class="aura-b aura-pensando ${est.c}" aria-live="polite">
+            <i></i><i></i><i></i><span>${esc(est.t)}</span></div>` : '';
+        })()}
       </div>
       <div class="aura-chips">${auraSugerencias().map(c =>
         `<button class="aura-chip" onclick="VETA.auraChip(${jsTxt(c)})">${esc(c)}</button>`).join('')}</div>
       <form class="aura-pie" onsubmit="return VETA.auraManda(event)">
         ${AURA.puedeEscuchar() ? `
-        <button type="button" class="aura-mic${auraConversando ? ' hablando' : auraOyendo ? ' oyendo' : ''}"
+        <button type="button" class="aura-mic${auraConversando ? ' hablando' : auraOyendo() ? ' oyendo' : ''}"
                 onclick="VETA.auraConversar()"
                 aria-pressed="${auraConversando}"
                 aria-label="${esc(auraConversando ? T.conversarOff : T.conversarOn)}"
@@ -12708,10 +12765,17 @@ const VETA = (() => {
     if (!CHAT.listo?.() || !CHAT.vozEnVivo) return AURA.hablar(txt, idiomaActivo());
     try {
       AURA.pararVoz();          // que no se pisen la grabada y la nuestra
+      /* EL MICRÓFONO SE CIERRA ANTES DE QUE SUENE NADA — también acá. La
+         pantalla de voz ya lo hacía y la burbuja no: con el micrófono abierto
+         el reconocedor la transcribe a ELLA por el altavoz y manda sus
+         palabras como si fueran tuyas. Se contestaba sola. */
+      auraCallarMicro();
       await auraSonarEnVivo(txt, {
-        alEmpezar: (cortar) => { auraCortarVozBurbuja = cortar; },
+        alEmpezar: (cortar) => { auraCortarVozBurbuja = cortar; if (auraAbierta) pintarAura(); },
+        alPrimerSonido: () => { if (auraAbierta) pintarAura(); },
       });
       auraCortarVozBurbuja = null;
+      if (auraAbierta) pintarAura();
     } catch (e) {
       console.warn('la voz de la casa no salió, va la grabada:', e);
       auraCortarVozBurbuja = null;
@@ -12807,8 +12871,7 @@ const VETA = (() => {
   function auraConversar() {
     auraConversando = !auraConversando;
     if (!auraConversando) {
-      AURA.dejarDeEscuchar();
-      auraOyendo = false;
+      auraSoltarOido();
       try { auraCortarVozBurbuja?.(); } catch (e) { /* ya no sonaba */ }
       return pintarAura();
     }
@@ -12817,59 +12880,39 @@ const VETA = (() => {
     auraOirEnLaBurbuja();
   }
 
+  /* La burbuja escucha CON EL MISMO OÍDO que el hilo — solo cambia a dónde va
+     lo que oye. Antes tenía el suyo (`AURA.escuchar`), que no avisaba nunca
+     cuando terminaba sin oír nada: ni resultado ni error, así que `auraOyendo`
+     se quedaba en true y el «Te escucho» colgado sobre un micrófono muerto.
+     Esa era la traba. Ahora el estado sale de `dictando`, que es el mismo que
+     mira el hilo, y el reenganche lo hace el `onend` de siempre. */
   function auraOirEnLaBurbuja() {
-    if (!auraConversando || !auraAbierta || auraOyendo) return;
-    auraOyendo = true;
-    pintarAura();
-    const caja = () => $('#aura-in');
-    if (caja()) caja().placeholder = aTxt().teEscucho;
-    AURA.escuchar(idiomaActivo(), (dicho) => {
-      auraOyendo = false;
-      if (caja()) { caja().value = ''; caja().placeholder = aTxt().escribi; }
-      if (dicho) {
-        auraCharla.push({ de: 'yo', txt: dicho });
-        pintarAura();
-        auraSeso(dicho);        // la respuesta reengancha el oído al terminar
-      } else {
-        // Silencio: no pasó nada, se sigue escuchando. Un modo que se apaga
-        // porque te tomaste tres segundos para pensar no es un modo.
-        pintarAura();
-        setTimeout(auraOirEnLaBurbuja, 300);
-      }
-    }, (motivo) => {
-      auraOyendo = false;
-      if (caja()) caja().placeholder = aTxt().escribi;
-      /* Un fallo DURO —sin micrófono, o el permiso denegado— apaga el modo y
-         lo dice. Los blandos (un corte, un «no te oí») solo cierran esta
-         vuelta y se vuelve a abrir. */
-      const duro = /sin-microfono|not-allowed|denied|audio-capture/.test(String(motivo || ''));
-      if (duro) { auraConversando = false; auraDecir(aTxt().micErr); }
-      else if (auraConversando) setTimeout(auraOirEnLaBurbuja, 500);
+    if (!auraConversando || !auraAbierta) return;
+    auraOidoParcial = (parcial) => {
+      const c = $('#aura-in');
+      if (c) c.value = parcial;
+    };
+    auraOidoDestino = (dicho) => {
+      const c = $('#aura-in');
+      if (c) c.value = '';
+      auraCharla.push({ de: 'yo', txt: dicho });
       pintarAura();
-    }, (parcial) => { if (caja()) caja().value = parcial; });
+      auraSeso(dicho);        // la respuesta reengancha el oído al terminar
+    };
+    auraEscuchar();
   }
 
-  function auraMic() {
-    if (auraOyendo) { AURA.dejarDeEscuchar(); auraOyendo = false; return pintarAura(); }
-    auraOyendo = true; pintarAura();
-    // El eco del oido: en cuanto arranca se dice «te escucho», y lo que va
-    // entendiendo se pinta EN VIVO en la caja. Hablarle a un orbe mudo sin
-    // saber si detecta era la queja exacta; esto es la respuesta.
-    const caja = () => $('#aura-in');
-    if (caja()) caja().placeholder = aTxt().teEscucho;
-    AURA.escuchar(idiomaActivo(), dicho => {
-      auraOyendo = false;
-      if (caja()) { caja().value = ''; caja().placeholder = aTxt().escribi; }
-      if (dicho) { auraCharla.push({ de: 'yo', txt: dicho }); pintarAura(); auraSeso(dicho); }
-      else pintarAura();
-    }, () => {
-      auraOyendo = false;
-      if (caja()) caja().placeholder = aTxt().escribi;
-      auraDecir(aTxt().micErr);
-    }, parcial => {
-      if (caja()) caja().value = parcial;
-    });
+  /** Suelta el oído de la burbuja: vuelve a su destino de siempre, el hilo. */
+  function auraSoltarOido() {
+    auraOidoDestino = null;
+    auraOidoParcial = null;
+    auraCallarMicro();
   }
+
+  /* Aquí vivía `auraMic`, el micrófono de UN SOLO TIRO de la burbuja:
+     tocabas, decía una cosa y se apagaba. Lo reemplaza `auraConversar`, que
+     es un modo y no un turno, y que usa el oído único. Dejarlo habría sido
+     dejar el cuarto micrófono. */
 
   // ── el seso ───────────────────────────────────────────────────────────────
   const sinTildes = x => x.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
@@ -14956,7 +14999,7 @@ const VETA = (() => {
            auraCallar, chatSugerir, chatBajar, chatMirarScroll,
            auraVozPantalla, auraVozCerrar,
            // AU-RA: el orbe, el panel, la bienvenida y el recorrido.
-           auraToca, auraManda, auraMic, auraConversar, auraRegistroElegir, auraChip, auraTourVa, auraTourFin,
+           auraToca, auraManda, auraConversar, auraRegistroElegir, auraChip, auraTourVa, auraTourFin,
            pantallaLlena, gcAbrir, gcCerrar, gcZoom, aedCallar,
            chatGestosTocar, vsEntrar, vsSalir, vsOjos, vsMirada, tourGenesis, musicaAlterna, versionMirar, version, prontoMirar,
            _bienvenidaGalaxia: (v) => auraBienvenidaGalaxia(v),
