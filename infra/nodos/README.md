@@ -1,5 +1,23 @@
 # Watchdog de sincronización de los nodos
 
+> **Este documento describe la cadena 8532 sobre Polygon Edge, que ya no
+> existe.** La cadena vigente es la **5550**, sobre Hyperledger Besu con
+> consenso QBFT y 7 validadores que se turnan.
+>
+> Qué cambia para quien venga a operar los nodos:
+>
+> - **La falla de abajo es de Polygon Edge y no aplica a Besu.** El watchdog se
+>   mantiene como red de seguridad genérica, no porque este bug siga vivo.
+> - **Ya no hay un nodo especial.** Todo lo que dice «node1 es el validador y
+>   reiniciarlo detiene la cadena» dejó de ser cierto: los 7 firman por turnos
+>   y QBFT aguanta 2 caídos. La variante prudente del watchdog para el
+>   validador perdió su motivo.
+> - **Las IP de más abajo son las de las máquinas viejas** y no se han vuelto a
+>   verificar desde la migración; hace falta una credencial de AWS.
+>
+> El análisis del syncer se conserva porque explica por qué se montó el
+> vigilante, y porque es el registro de un diagnóstico que costó semanas.
+
 ## El problema
 
 Los nodos no validadores (node2, node4, node5, node6) se quedaban trabados

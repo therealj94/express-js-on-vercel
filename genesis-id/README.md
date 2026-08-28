@@ -425,4 +425,4 @@ contar como coincidencia fuerte.
   se crea desde la consola de IAM.
 - **Mover los retos de vivacidad a Mongo** si algún día Genesis ID corre en más
   de una instancia. Hoy viven en memoria, que es correcto con una sola.
-- **Anclar el hash de la bitácora** en la cadena 8532.
+- **Anclar el hash de la bitácora** en la cadena 5550.

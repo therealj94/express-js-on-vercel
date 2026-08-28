@@ -43,7 +43,7 @@ export default function FundCard({ nav }) {
   // Hay dos saldos de ORIGEN y no se suman.
   //
   // El comprado (depósitos de USDT) vive en el backend y se cobra con un
-  // decremento; el de la billetera vive en la cadena 8532 y se cobra firmando
+  // decremento; el de la billetera vive en la cadena 5550 y se cobra firmando
   // una transferencia. Una recarga sale entera de uno o del otro: mezclarlas
   // significa que si la segunda mitad falla hay que devolver la primera, y ese
   // camino tiene más formas de salir mal que de salir bien.

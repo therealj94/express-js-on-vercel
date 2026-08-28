@@ -124,7 +124,7 @@ Genesis ID no son pestañas: se entra y se vuelve, igual que alla.
 
 ### Los saldos salen de la cadena, no de un resumen
 
-`cadena.js` lee los **quince tokens** de la red 8532 por RPC, uno por uno, con
+`cadena.js` lee los **quince tokens** de la red 5550 por RPC, uno por uno, con
 los mismos contratos que usa el telefono, y saca los precios de las mismas
 fuentes: el oro y la plata de CoinGecko (AUKA sigue la onza de oro, AGKA la de
 plata, ORIGEN es un gramin — 1/55 de gramo), el precio de ONDK del backend, y
