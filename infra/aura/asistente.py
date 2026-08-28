@@ -123,7 +123,15 @@ TIMEOUT_MOTOR = int(os.environ.get('AURA_TIMEOUT', '90'))
 # Techo de respuestas DEL MOTOR por persona por dia. La entrevista no cuenta:
 # no gasta motor. Sin techo, una persona con un bucle deja al motor ocupado
 # para los otros catorce.
-TECHO_DIA = int(os.environ.get('AURA_TECHO', '60'))
+# Estaba en 60 y lo choque probando, en una tarde, sin buscarlo: son unas
+# tres conversaciones de verdad. Quien esta usando la app para algo —o
+# enseñandosela a alguien— lo choca tambien, y lo que recibe es «mañana
+# seguimos», que delante de otra persona es peor que no tener asistente.
+#
+# 200 sigue siendo un techo contra el bucle, que es para lo unico que existe:
+# 200 preguntas seguidas de una sola persona son cuatro horas de motor, y ahi
+# si conviene frenar. Nadie llega a 200 conversando.
+TECHO_DIA = int(os.environ.get('AURA_TECHO', '200'))
 
 # Cuantos turnos de memoria lleva cada charla al motor. Mas historial empuja
 # las fichas fuera de la ventana del modelo, y sin fichas el modelo inventa.
@@ -559,9 +567,15 @@ ECO = _re.compile(r'^\s*¿[^?\n]{3,80}\?\s*\n+', _re.MULTILINE)
 
 # El cierre de operadora: «¿Te gustaría saber más?» / «¿Hay algo más en lo
 # que pueda ayudarte?». Si hay algo mas, lo van a preguntar.
+# Las formas se fueron encontrando UNA A UNA en produccion, y por eso la lista
+# crece: el prompt lo prohibe con todas las letras y el modelo lo escribe
+# igual. «¿Te interesa saber mas sobre otros colores en el cielo?» salio el
+# 28-ago, cerrando una respuesta sobre por que el cielo es azul.
 CIERRE_HUECO = _re.compile(
-    r'\s*¿\s*(?:te gustar[ií]a saber m[aá]s|hay algo m[aá]s|necesit[aá]s algo m[aá]s|'
-    r'puedo ayudarte en algo m[aá]s)\b'
+    r'\s*¿\s*(?:te gustar[ií]a saber m[aá]s|te interesa(?:r[ií]a)? saber m[aá]s|'
+    r'hay algo m[aá]s|necesit[aá]s algo m[aá]s|quer[eé]s saber m[aá]s|'
+    r'te (?:gustar[ií]a|interesa) que te (?:cuente|explique)|'
+    r'puedo ayudarte en algo m[aá]s|en qu[eé] m[aá]s puedo ayudarte)\b'
     r'[^?\n]{0,90}\?\s*$', _re.IGNORECASE)
 
 # El markdown. El modelo escribe para una pagina web y esto es un CHAT: los
@@ -682,9 +696,20 @@ def limpiar(texto):
         return ''
     # El ANUNCIO no: va antes de algo, y si al quitarlo no queda nada, es que
     # no era un anuncio sino la respuesta.
-    sin_relleno = CIERRE_HUECO.sub('', PREAMBULO_ANUNCIO.sub('', sin_saludo)).strip()
+    # Se APUNTA lo que se quita, en vez de deducirlo por la diferencia de
+    # largos. Ver la guarda de abajo: deducirlo suponia que todo se quitaba
+    # del principio, y el cierre hueco se quita del FINAL.
+    quitado = []
+
+    def _apunta(m):
+        quitado.append(m.group(0))
+        return ''
+
+    sin_relleno = CIERRE_HUECO.sub(
+        _apunta, PREAMBULO_ANUNCIO.sub(_apunta, sin_saludo)).strip()
     if not sin_relleno:
         sin_relleno = sin_saludo
+        quitado.clear()
     # ── LA GUARDA DURA ────────────────────────────────────────────────────
     #
     # Lo que se borra se COMPARA: si en el recorte se fue una palabra de
@@ -698,8 +723,17 @@ def limpiar(texto):
     # alguien, y una cifra borrada le cambia el monto.
     #
     # Cuando las dos cosas chocan, gana el contenido. Siempre.
-    ido = sin_saludo[:len(sin_saludo) - len(sin_relleno)]
-    if _INTOCABLE.search(ido):
+    # Antes esto era `sin_saludo[:len(sin_saludo) - len(sin_relleno)]`, o sea:
+    # «lo quitado son los primeros N caracteres». Vale cuando se quita un
+    # preambulo y NO vale cuando se quita un cierre — ahi esos primeros N
+    # caracteres son el principio de lo que SE QUEDA, no lo que se fue.
+    #
+    # El fallo se veia asi: «Es una estafa: no le contestes. ¿Hay algo mas en
+    # lo que pueda ayudarte?» conservaba la coletilla, porque la guarda leia
+    # «Es una estafa: n…» —el texto bueno— creia que se estaba borrando un
+    # aviso de estafa, y lo deshacia todo. La guarda protegia el texto de si
+    # misma.
+    if _INTOCABLE.search(' '.join(quitado)):
         sin_relleno = sin_saludo
     # Si de todo el trozo no queda NADA, es que el trozo era relleno de punta
     # a punta — «¡Hola Tere! Me alegra que tengas una tienda.» y se acabo. Eso
@@ -764,6 +798,61 @@ def _es_repetida(nueva, historial, umbral=0.90, prefijo=60):
     return False
 
 
+# ── ¿ESTO ES DE LA CASA, O ES DE LA VIDA? ────────────────────────────────
+#
+# Sirve para UNA cosa y hay que decir para cual: cuando alguien pregunta algo
+# que no es del ecosistema, se le quita al modelo el material con el que
+# arrastra la respuesta de vuelta. Medido, con el hilo limpio y este mismo
+# prompt: «Me siento solo estos dias» contestaba hablando de proteger los
+# ahorros en ORIGEN y de abrir una billetera.
+#
+# El prompt YA le pide que no lo haga, en mayusculas y con su parrafo. No
+# alcanza — un modelo de siete mil millones de parametros, con quince fichas
+# del ecosistema delante y una linea que dice que la persona «busca proteger
+# sus ahorros», va a hablar de ahorros. A una regla de estilo no se le confia
+# un modelo abierto; ya se aprendio con las listas y con «segun las fichas».
+#
+# Asi que en vez de pedirselo mejor, se le saca la tentacion: para una
+# pregunta de la vida no viaja la linea de su oficio ni de lo que busca, y si
+# viaja un aviso corto. La lista es de palabras de la casa, no de temas: es
+# imposible acertar todos los temas del mundo y es facil enumerar los
+# nuestros.
+_DE_LA_CASA = _re.compile(
+    r"\b(origen|origenes|auka|agka|ondk|gramin|gramines|"
+    r"genesis|g[eé]nesis|veta|wallet|billetera|monedero|"
+    r"pulse ?2? ?chat|mytokenpay|my token pay|ordenex|ordenscan|aucorp|"
+    r"orden global|cadena|blockchain|token|tokens|cripto|"
+    r"tarjeta|saldo|cobrar|cobro|enviar plata|transferir|comisi[oó]n|"
+    r"validador|nodo|staking|semilla|doce palabras|llave privada|contrase[ñn]a|"
+    r"kyc|verificar|verificaci[oó]n|dep[oó]sito|retiro|oro|onza)\b",
+    _re.IGNORECASE)
+
+# Y esto va aparte: aunque la pregunta no nombre nada de la casa, si toca
+# dinero o seguridad NO se afloja nada. «Me conviene invertir?» no nombra
+# ORIGEN y sigue siendo terreno donde AU-RA no opina.
+# Con RAIZ y no con palabra entera: «estafa» no casaba con «estafaron», que
+# es justo como lo escribe alguien a quien acaban de estafar.
+_DELICADO = _re.compile(
+    r"\b(invertir|invierto|inversi[oó]n|comprar|vender|ganancia|rendimiento|"
+    r"impuesto\w*|declarar|sat|dian|"
+    r"estaf\w*|fraud\w*|rob(o|ar|aron|aste|é)|timaron|hacke\w*|phishing)\b",
+    _re.IGNORECASE)
+
+
+def _de_la_casa(dicho):
+    """¿La pregunta es del ecosistema (o de algo donde no se afloja)?"""
+    t = str(dicho or '')
+    return bool(_DE_LA_CASA.search(t) or _DELICADO.search(t))
+
+
+AVISO_DE_LA_VIDA = (
+    '[esto NO es del ecosistema: contestale de verdad y con lo que sabés, '
+    'como una amiga que entiende del tema. No menciones Orden Global, ORIGEN, '
+    'la billetera ni los ahorros; no cierres llevándolo para allá. Si de '
+    'verdad viene al caso, ya vendrá solo]'
+)
+
+
 def preguntar_motor(sistema, perfil, historial, dicho, contexto='', al_vuelo=None,
                     frenar_listas=True, variar=False):
     """El sistema llega YA ARMADO y es siempre el mismo: eso es lo que hace
@@ -791,14 +880,42 @@ def preguntar_motor(sistema, perfil, historial, dicho, contexto='', al_vuelo=Non
     `al_vuelo(texto)` se llama con cada frase terminada. Si no se pasa, la
     funcion se comporta como antes y devuelve todo junto.
     """
+    de_la_casa = _de_la_casa(dicho)
+    # ── EL FRENO DE LISTAS NO VALE PARA TODO ──────────────────────────────
+    #
+    # Existe para que una explicacion del ecosistema no salga maquetada como
+    # un folleto, y ahi hace falta. Pero para una pregunta de la vida la
+    # estructura ES la respuesta: quien pregunta como armar un curriculum
+    # quiere los pasos.
+    #
+    # Con el freno puesto, «¿Como hago un curriculum?» devolvia «puede parecer
+    # abrumador, pero con organizacion lo podes hacer muy bien» — cortado
+    # justo antes del primer paso, y sin decir uno solo. Medido en el nodo.
+    #
+    # Se apaga para lo que no es de la casa. El limpiador de la salida quita
+    # los asteriscos igual, asi que la lista sale en prosa y no maquetada.
+    if frenar_listas and not de_la_casa:
+        frenar_listas = False
     datos = []
     if contexto:
         datos.append(contexto)
-    if perfil.get('trabajo'):
+    # El oficio y «lo que busca» solo viajan cuando la pregunta es de la casa:
+    # son para ELEGIR EL EJEMPLO —a quien tiene una pulperia se le habla de
+    # cobrar con QR—, y en una pregunta de la vida no hay ejemplo que elegir.
+    # Ahi lo unico que hacen es dar la excusa para volver a los ahorros.
+    if perfil.get('trabajo') and de_la_casa:
         datos.append(f"se dedica a {perfil.get('trabajo','')[:120]}; "
                      f"se formo en {perfil.get('estudios','')[:120]}; "
                      f"busca {perfil.get('interes','')[:120]}")
     quien = f"[quien te habla: {'; '.join(datos)}]\n" if datos else ''
+    # El aviso solo cuando hay ALGUIEN preguntando. Sin perfil no hay persona:
+    # es el templado del arranque, que manda «hola» a secas para que la
+    # primera persona del dia no pague los 237 segundos del arranque en frio.
+    # Pegarle el aviso le cambiaba el turno, y con eso dejaba de ser
+    # distinguible de una pregunta de verdad — siete comprobaciones en rojo
+    # de una sola linea, porque se corrian todos los indices.
+    if not de_la_casa and perfil:
+        quien += AVISO_DE_LA_VIDA + '\n'
     mensajes = ([{'role': 'system', 'content': sistema}]
                 + historial[-MEMORIA:]
                 + [{'role': 'user', 'content': quien + str(dicho)[:1000]}])
@@ -832,13 +949,24 @@ def preguntar_motor(sistema, perfil, historial, dicho, contexto='', al_vuelo=Non
             # nadie espera cuarenta segundos mirando una pelotita. La voz no
             # fallaba: la respuesta era demasiado larga para decirse.
             #
-            # Una respuesta hablada se mide en segundos de audio, no en
-            # caracteres, y por encima de quince segundos deja de ser una
-            # contestacion y pasa a ser un discurso. Con voz encendida se
-            # pide la mitad: unas tres frases, doce segundos de audio, y
-            # llega mientras la persona sigue mirando.
-            'num_predict': (70 if perfil.get('voz') else
-                            (240 if pensadora else 140)),
+            # ── EL TECHO DE PALABRAS ──────────────────────────────────────
+            #
+            # Estaba en 70 con la voz encendida, y tenia sentido cuando la voz
+            # era un ARCHIVO: habia que esperar a que se grabara entera, asi
+            # que una respuesta larga eran veinte segundos de pelotita quieta.
+            # Pedir la mitad de palabras era pedir la mitad de espera.
+            #
+            # Ya no. La voz sale en vivo y el primer sonido llega a los 2,8s
+            # dure lo que dure la respuesta (ver infra/aura/voz.py). Ese techo
+            # dejo de proteger a nadie y empezo a cortar: en el hilo de
+            # produccion, 17 de 119 respuestas —el 14%— terminaban a media
+            # palabra («...similar al», «...para que me sirve»).
+            #
+            # Se sube a 200 con voz. Sigue siendo corto —el prompt pide tres
+            # frases y las pide en cuatro sitios—, pero ahora el techo es un
+            # techo de emergencia y no el que decide donde termina la frase.
+            'num_predict': (200 if perfil.get('voz') else
+                            (240 if pensadora else 160)),
             # ── EL FRENO DE LAS LISTAS ────────────────────────────────────
             # El prompt le pide en tres lugares que no escriba listas ni
             # titulos, y las escribe igual: es lo que hace un modelo
@@ -875,14 +1003,21 @@ def preguntar_motor(sistema, perfil, historial, dicho, contexto='', al_vuelo=Non
         with urllib.request.urlopen(req, timeout=TIMEOUT_MOTOR) as r:
             j = json.loads(r.read())
         crudo = (j.get('message') or {}).get('content', '').strip()
+        # `done_reason` == 'length' significa QUE EL MOTOR SE QUEDO SIN TECHO,
+        # no que termino de hablar. Es la diferencia entre un punto final y un
+        # tijeretazo, y hasta ahora se adivinaba mirando el ultimo caracter.
+        # Adivinar fallaba justo en el caso peor: una frase larga cortada a
+        # mitad de palabra no tiene ningun signo raro al final — solo termina.
+        cortado = j.get('done_reason') == 'length'
         # Devuelve LO MISMO que el camino con streaming: (lo que se manda,
         # lo que dijo el motor en crudo). Antes devolvia un solo valor, y el
         # que llama desempaqueta dos — bastaba con apagar el streaming para
         # que reventara. Las dos salidas de una funcion tienen que tener la
         # misma forma o la funcion tiene dos funciones adentro.
-        return _recortar(limpiar(crudo)), crudo
+        return _recortar(limpiar(crudo), cortado), crudo
 
     entero, pendiente = '', ''
+    cortado = False
     with urllib.request.urlopen(req, timeout=TIMEOUT_MOTOR) as r:
         for linea in r:
             if not linea.strip():
@@ -898,6 +1033,7 @@ def preguntar_motor(sistema, perfil, historial, dicho, contexto='', al_vuelo=Non
             # seria un tartamudeo. Y el primer envio pide 40 caracteres para
             # que no salga un «Hola.» solitario.
             if j.get('done'):
+                cortado = j.get('done_reason') == 'length'
                 break
             corte = max(pendiente.rfind('. '), pendiente.rfind('.\n'),
                         pendiente.rfind('? '), pendiente.rfind('! '))
@@ -917,13 +1053,58 @@ def preguntar_motor(sistema, perfil, historial, dicho, contexto='', al_vuelo=Non
                 limpia = limpiar(frase) if frase else ''
                 if limpia:
                     al_vuelo(limpia)
-    resto = _recortar(limpiar(pendiente.strip()))
+    resto = _recortar(limpiar(pendiente.strip()), cortado)
     return resto, entero
 
 
 _CORTESIA = _re.compile(
     r"^(hola|buen[oa]s?)\b|me alegra|qu[eé] (buena|linda) pregunta|"
     r"gracias por (preguntar|escribir)|encantada", _re.IGNORECASE)
+
+
+_PROMESA = _re.compile(
+    r"\b(vamos a (ayudarte|explicarte|ver|contarte)|te (explico|cuento|dejo|"
+    r"muestro|comparto)|aqu[ií] (te dejo|van|tienes|ten[eé]s)|"
+    r"segu[ií] estos pasos|estos son los pasos|los pasos son|"
+    r"lo primero que|te lo explico|ahora te)\b", _re.IGNORECASE)
+
+
+def _promete_y_no_cumple(texto):
+    """¿Esto ANUNCIA una respuesta en vez de darla?
+
+    El freno de listas corta la generacion en cuanto el modelo empieza a
+    maquetar. Cuando lo que alcanzo a escribir antes del corte fue la entrada
+    —«Vamos a ayudarte a crear un curriculum que destaque tu experiencia.»—
+    queda un mensaje que TERMINA EN PUNTO y no dice nada. La regla vieja
+    miraba los dos puntos finales y a este no lo veia: cierra bien.
+
+    Salio de produccion: «¿Como hago un curriculum?» devolvio esa frase y
+    nada mas. La persona se queda esperando los pasos que nunca llegan.
+
+    Dos condiciones, y la segunda es la que lo hace util: que sea CORTO, y
+    que el anuncio este en la ULTIMA frase.
+
+    Lo de la ultima frase no es un detalle. «Mira, te cuento. Funciona asi y
+    asa. Y esto otro.» tambien dice «te cuento», y cumple — el anuncio abre y
+    detras viene lo prometido. Lo que no cumple es cuando el anuncio ES el
+    final, porque ahi no vino nada detras. Sin esa distincion, esto saltaba
+    con respuestas perfectamente sanas y hacia repreguntar al motor de gusto.
+    """
+    t = (texto or '').strip()
+    if len(t) >= 160:
+        return False
+    m = None
+    for m in _PROMESA.finditer(t):
+        pass          # el ULTIMO anuncio, que es el que puede quedar colgando
+    if not m:
+        return False
+    # Donde empieza la ULTIMA frase. Si el anuncio cae ahi dentro, no vino
+    # nada detras. Se mide por frases y no buscando el siguiente punto: el
+    # punto suele estar pegado al anuncio mismo («te cuento. ») y esa cuenta
+    # daba siempre cero.
+    cortes = [c.end() for c in _re.finditer(r'[.!?…]\s+', t)]
+    ultima = cortes[-1] if cortes else 0
+    return m.start() >= ultima
 
 
 def _es_cortesia(frase):
@@ -933,8 +1114,14 @@ def _es_cortesia(frase):
     return len(frase) < 120 and bool(_CORTESIA.search(frase))
 
 
-def _recortar(texto):
+def _recortar(texto, cortado=False):
     """Nunca se muestra media palabra.
+
+    `cortado` viene del motor: True cuando se quedo sin techo de palabras en
+    vez de terminar de hablar. Con esa certeza se retrocede SIEMPRE hasta la
+    ultima frase completa; sin ella habia que adivinar por el ultimo caracter,
+    y adivinar fallaba justo en el caso peor —una frase larga cortada a mitad
+    de palabra no deja ninguna pista, solo termina—.
 
     El techo de palabras del motor corta donde le toca, y donde le toca es a
     veces a mitad de «disminuya» — la persona lee «no dis» y ahi termina el
@@ -962,8 +1149,16 @@ def _recortar(texto):
         # Una palabra cortada, en cambio, se tolera si recortarla dejaria un
         # pedazo diminuto: ahi la frase coja dice mas que tres palabras.
         promesa = t[-1] in ':;,'
-        if corte > 0 and (promesa or corte >= len(t) * 0.5):
+        if corte > 0 and (cortado or promesa or corte >= len(t) * 0.5):
             t = t[:corte + 1].strip()
+        elif cortado:
+            # Cortado y sin un solo punto en toda la respuesta: no hay frase
+            # completa a la que volver. Se cierra en la ultima palabra ENTERA
+            # y con puntos suspensivos, que es lo que hace una persona a la
+            # que se le acaba el aire. Peor seria «...para que me sir».
+            hueco = t.rfind(' ')
+            if hueco > 40:
+                t = t[:hueco].rstrip(' ,;:') + '…'
     return t
 
 
@@ -1245,7 +1440,8 @@ def atender(rel, sistema, p, de, dicho):
             #
             # Una respuesta que termina en dos puntos SIEMPRE esta cortada:
             # nadie cierra una idea con «:». Se repregunta sin el freno.
-            promesa = (resto or '').rstrip().endswith((':', ';', ','))
+            promesa = ((resto or '').rstrip().endswith((':', ';', ','))
+                       or _promete_y_no_cumple(resto))
             if not por_frases and (len((resto or '').strip()) < 40 or promesa):
                 log('respuesta vacia, cortisima o con promesa colgando; '
                     'repregunto sin el freno')
@@ -1297,7 +1493,11 @@ def atender(rel, sistema, p, de, dicho):
     # Sin limpiarlo, a la voz le llegaba el markdown entero: un trozo que era
     # solo «**» no tiene nada que pronunciar y tumbaba el motor de voz (y si
     # no lo tumbara, leeria «asterisco asterisco» en voz alta).
-    r = limpiar(entero or '') or resto
+    # `_recortar` tambien aca, y no solo `limpiar`. Sin esto la voz decia una
+    # cosa y el chat otra: al chat iba `resto`, que si pasa por el recorte, y
+    # a la nota de voz iba este `r` sin recortar — o sea que se OIA la media
+    # palabra que en pantalla no se veia.
+    r = _recortar(limpiar(entero or '')) or resto
     # La nota de voz, si esta persona la pidio. Va en otro hilo y detras del
     # texto: leer es instantaneo, grabar tarda. Ver mandar_voz.
     if p.get('voz') in REGISTROS and r:

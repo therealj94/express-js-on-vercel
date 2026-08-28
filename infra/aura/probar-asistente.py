@@ -489,7 +489,15 @@ def main():
         antes_q = len(de_usuario())
         n_ms = len([m for m in bandeja_de(ana)])
         post(BASE, '/enviar', {**ana, 'para': 'aura@prueba.local',
-                               'texto': 'MAQUETA: explicame todo con ventajas'})
+                               # De la casa a proposito: el freno de listas
+                               # solo corre para lo del ecosistema. Para una
+                               # pregunta de la vida —un curriculum, una
+                               # receta— la estructura ES la respuesta y el
+                               # freno se apaga, asi que con una pregunta
+                               # cualquiera esto no mediria el freno sino su
+                               # ausencia.
+                               'texto': 'MAQUETA: explicame el Genesis ID '
+                                        'con todas sus ventajas'})
         fin = time.time() + 30
         while time.time() < fin and len(de_usuario()) < antes_q + 2:
             time.sleep(0.3)
@@ -502,6 +510,21 @@ def main():
         ok(pedidas >= 2 and de_usuario()[antes_q]['options'].get('stop')
            and not de_usuario()[antes_q + 1]['options'].get('stop'),
            'la primera va CON el freno y la repregunta SIN él')
+
+        # Y EL FRENO NO CORRE PARA LO QUE NO ES DE LA CASA. Con él puesto,
+        # «¿Cómo hago un currículum?» devolvía «puede parecer abrumador, pero
+        # con organización lo podés hacer muy bien» — cortado justo antes del
+        # primer paso y sin dar uno solo. Medido contra el nodo el 28-ago.
+        antes_v = len(de_usuario())
+        post(BASE, '/enviar', {**ana, 'para': 'aura@prueba.local',
+                               'texto': '¿Cómo hago un currículum?'})
+        fin = time.time() + 25
+        while time.time() < fin and len(de_usuario()) <= antes_v:
+            time.sleep(0.3)
+        ok(len(de_usuario()) > antes_v
+           and not de_usuario()[antes_v]['options'].get('stop'),
+           'y para una pregunta de la vida el freno no se pone',
+           'los pasos de un currículum SON la respuesta; cortarlos la vacía')
         nuevos = bandeja_de(ana)[n_ms:]
         ok(any('RESPUESTA-DEL-MOTOR' in (m.get('texto') or '') for m in nuevos),
            'y la persona termina recibiendo una respuesta de verdad')
@@ -547,6 +570,105 @@ def main():
         corto = 'Se cortó todo menos esto que sigue y sigue sin cerrar nunca'
         ok(rec(corto) == corto,
            'si retroceder dejaría un pedazo diminuto, mejor la frase coja')
+
+        # ── CUANDO EL MOTOR AVISA QUE SE QUEDÓ SIN TECHO ──────────────────
+        #
+        # Adivinar por el último carácter fallaba justo en el caso peor: una
+        # frase larga cortada a mitad de palabra no deja ninguna pista, solo
+        # termina. Ollama lo dice —done_reason='length'— y con esa certeza el
+        # recorte deja de ser una apuesta.
+        #
+        # El caso de abajo salió del hilo REAL de producción: 17 de 119
+        # respuestas terminaban así.
+        real = ('AUKA te permite proteger tus ahorros en un activo que '
+                'mantiene su valor a largo plazo, similar al')
+        ok(rec(real) == real,
+           'sin el aviso, una frase larga cortada pasa entera (lo que pasaba)',
+           'no es que esté bien: es que sin el dato no hay forma de saberlo')
+        ok(rec(real, True) == 'AUKA te permite proteger tus ahorros en un '
+                              'activo que mantiene su valor a largo plazo.'
+           or rec(real, True).endswith('.') or rec(real, True).endswith('…'),
+           'CON el aviso se retrocede a la frase completa',
+           f'quedó: {rec(real, True)!r}')
+        sinpunto = ('Para crear un currículum que destaque tu experiencia '
+                    'seguí estos pasos y vas a ver que no es tan difícil como')
+        r2 = rec(sinpunto, True)
+        ok(r2.endswith('…') and not r2.endswith('como…'.replace('como', 'com')),
+           'y si no hay ningún punto al que volver, cierra en palabra entera',
+           f'quedó: {r2!r}')
+        ok(' ' not in r2[-2:] and not r2[:-1].endswith(' '),
+           'sin dejar un espacio colgando antes de los puntos suspensivos',
+           f'quedó: {r2!r}')
+
+        print('\nLa guarda protegía el texto de sí misma\n')
+        # `limpiar` deshace el recorte si en lo borrado se fue una palabra de
+        # seguridad o una cifra. Deducía lo borrado como «los primeros N
+        # caracteres», y eso vale para un preámbulo y NO para un cierre, que
+        # se quita del final: leía el principio del texto que SE QUEDA.
+        #
+        # Resultado: cualquier aviso de estafa que terminara con «¿hay algo
+        # más?» conservaba la coletilla, porque la guarda creía que estaba
+        # borrando el aviso.
+        lim = aura.limpiar
+        ok(lim('Es una estafa: no le contestes. ¿Hay algo más en lo que pueda ayudarte?')
+           == 'Es una estafa: no le contestes.',
+           'el cierre hueco se va aunque la respuesta hable de una estafa')
+        ok(lim('Tenés 1.234,56 ORIGEN. ¿Necesitás algo más?') == 'Tenés 1.234,56 ORIGEN.',
+           'y aunque lleve una cifra')
+        ok('estafa' in lim('Entiendo tu duda: ese correo que te pidió la frase de '
+                           'respaldo es una estafa. No le contestes.'),
+           'y la guarda SIGUE protegiendo lo que tiene que proteger',
+           'quitar un preámbulo nunca puede llevarse el aviso con él')
+        ok(lim('El cielo es azul por la atmósfera. ¿Te interesa saber más sobre los colores?')
+           == 'El cielo es azul por la atmósfera.',
+           'y «¿te interesa saber más?» también se va',
+           'salió en producción cerrando una respuesta sobre el cielo')
+
+        print('\nLo de la casa y lo de la vida se distinguen\n')
+        # No es un clasificador de temas —eso no se puede— sino una lista de
+        # NUESTRAS palabras, que sí se puede enumerar. Decide dos cosas: si
+        # viaja la línea del oficio de la persona, y si viaja el aviso de que
+        # esto no es del ecosistema.
+        #
+        # Existe porque el prompt solo no alcanzaba. Medido contra el nodo,
+        # con el hilo limpio: «Me siento solo estos días» contestaba hablando
+        # de proteger los ahorros en ORIGEN y de abrir una billetera, con el
+        # párrafo del prompt que lo prohíbe en mayúsculas y todo.
+        casa = aura._de_la_casa
+        for q in ['¿Qué es ORIGEN?', '¿Cuánto tengo de saldo?',
+                  'quiero cobrar con el QR', '¿la comisión de MyTokenPay?',
+                  'mi Genesis ID', '¿cuándo abre Ordenex?']:
+            ok(casa(q), f'es de la casa: «{q}»')
+        for q in ['Me siento solo estos días', '¿Cómo hago un currículum?',
+                  '¿Qué cocino con arroz y huevo?', '¿Por qué el cielo es azul?',
+                  'mi hija empieza la escuela mañana']:
+            ok(not casa(q), f'es de la vida: «{q}»')
+        # Y lo delicado NO se afloja aunque no nombre la casa: «me conviene
+        # invertir» no dice ORIGEN y sigue siendo terreno con reglas.
+        for q in ['¿me conviene invertir?', '¿pago impuestos por esto?',
+                  'creo que me estafaron', 'dame tus doce palabras']:
+            ok(casa(q), f'y lo delicado sigue con sus reglas: «{q}»')
+
+        print('\nUna promesa que cierra en punto también es una promesa\n')
+        pr = aura._promete_y_no_cumple
+        ok(pr('Vamos a ayudarte a crear un currículum que destaque tu experiencia.'),
+           'el caso real: anuncia los pasos y no da ninguno',
+           'salió de producción — el freno de listas cortó justo después, y la '
+           'regla vieja no lo veía porque termina en punto')
+        ok(pr('Aquí te dejo algunos pensamientos.'), 'y el de «aquí te dejo»')
+        ok(pr('Para armar un currículum, seguí estos pasos:'),
+           'y el que ni siquiera cierra')
+        ok(not pr('AUKA sigue el precio del oro.'),
+           'una respuesta corta que CONTESTA no es una promesa')
+        # El que rompió las pruebas la primera vez: el anuncio va al PRINCIPIO
+        # y detrás viene lo prometido. Eso cumple, y confundirlo hacía
+        # repreguntarle al motor de gusto en cada turno.
+        ok(not pr('Ana, sobre el saldo te cuento. Funciona así y asá. Y esto cierra.'),
+           'un anuncio con la respuesta detrás cumple, y no se repregunta')
+        largo = ('Te explico: un currículum lleva tus datos arriba, después la '
+                 'experiencia de lo más nuevo a lo más viejo, y al final los '
+                 'estudios. Una hoja alcanza, porque nadie lee la segunda.')
+        ok(not pr(largo), 'y una larga que explica de verdad, también')
 
         print('\nEl eco se mide por el ARRANQUE, no por el total\n')
         rep = aura._es_repetida
@@ -683,10 +805,23 @@ def main():
            'y encender la voz NO gasta motor: es de la casa, como los modos',
            'no hay nada que pensar en «con voz»')
 
-        # CON VOZ, LA RESPUESTA SE PIDE MÁS CORTA. «en voz nunca salió»:
-        # salía, pero eran 39,7 SEGUNDOS de audio que tardan 34 en
-        # generarse, y nadie espera cuarenta segundos mirando una pelotita.
-        # Una respuesta hablada se mide en segundos, no en caracteres.
+        # CON VOZ, EL TECHO ES UN TECHO DE EMERGENCIA — y esto CAMBIÓ.
+        #
+        # Estaba en 70 y la razón era buena: la voz era un ARCHIVO, había que
+        # esperar a que se grabara entera, y una respuesta larga eran cuarenta
+        # segundos de pelotita quieta. Pedir menos palabras era pedir menos
+        # espera.
+        #
+        # Esa razón ya no existe. La voz sale en vivo y el primer sonido llega
+        # a los 2,8s dure lo que dure (infra/aura/voz.py). Lo único que hacía
+        # el techo de 70 era CORTAR: en el hilo real de producción, 17 de 119
+        # respuestas terminaban a media palabra.
+        #
+        # Así que se mira lo que hoy importa: que exista un techo —una
+        # respuesta hablada sin límite sigue siendo un discurso— y que sea lo
+        # bastante alto para que no sea él quien decide dónde termina la
+        # frase. Quien decide es el prompt, que pide tres frases en cuatro
+        # sitios distintos.
         antes_c = len(de_usuario())
         post(BASE, '/enviar', {**ana, 'para': 'aura@prueba.local',
                                'texto': '¿Qué es ORIGEN otra vez?'})
@@ -694,9 +829,10 @@ def main():
         while time.time() < fin and len(de_usuario()) == antes_c:
             time.sleep(0.3)
         conVoz = de_usuario()[-1]['options'].get('num_predict', 999)
-        ok(conVoz <= 100,
-           'con la voz encendida se pide una respuesta que se pueda DECIR',
-           f'num_predict = {conVoz} — a más de cien, el audio pasa de 15s')
+        ok(80 < conVoz <= 220,
+           'con la voz encendida hay techo, y no tan bajo que corte la frase',
+           f'num_predict = {conVoz} — por debajo de 80 corta a media palabra; '
+           f'por encima de 220 deja de ser una contestación y es un discurso')
 
         antes_v = len(de_usuario())
         post(BASE, '/enviar', {**ana, 'para': 'aura@prueba.local',
