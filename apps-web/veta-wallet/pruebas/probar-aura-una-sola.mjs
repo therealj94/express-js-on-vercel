@@ -129,14 +129,19 @@ await p.evaluate(() => {
 await p.goto('http://127.0.0.1:8899/index.html');
 await p.waitForTimeout(2200);
 await p.evaluate(() => VETA.ir('app'));
-await p.waitForTimeout(2500);
+await p.waitForTimeout(3000);
 
-/* El alta en el relevo. En producción la hace la app al entrar al chat; acá
-   se hace a mano porque esta prueba no pasa por esa pantalla, y sin alta el
-   cliente no tiene llave y todo lo demás falla con «llave incorrecta». */
-await p.evaluate(() => CHAT.alta({ correo: 'jose@ordenglobal.org', nombre: 'José',
-                                   direccion: '0xaaaa' }));
-await p.waitForTimeout(600);
+/* CONECTADA DESDE QUE ABRE EL DASHBOARD. Se comprueba sin tocar la pestaña
+   del chat: entrar a la app tiene que dejar la sesión de chat lista, porque
+   si no, la bola de la esquina le pregunta al modelo, se encuentra sin
+   sesión y vuelve a contestar «eso todavía no lo sé» — la unificación
+   existiría y no se notaría. */
+console.log('\nConectada desde que abre, sin tocar la pestaña del chat\n');
+ok(await p.evaluate(() => CHAT.listo()),
+   'entrar al dashboard deja la sesión de chat lista',
+   'sin esto la bola sigue muda para todo lo que no sean sus reglas');
+ok(await p.evaluate(() => !!CHAT.quienSoy()?.correo),
+   'y con identidad, no a medias');
 
 await p.evaluate(() => CHAT.pedirAmistad('aura@ordenglobal.org')).catch(() => null);
 await p.waitForTimeout(2200);

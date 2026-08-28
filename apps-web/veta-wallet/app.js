@@ -431,7 +431,27 @@ const VETA = (() => {
     /* AU-RA acompaña toda la sesion; fuera de ella no existe. Las seis
        tarjetas de la bienvenida vieja ya no salen solas: quedaron en Ajustes
        para quien quiera leerlas — la puerta de entrada ahora es de AU-RA. */
-    if (destino === 'app') { auraVisita = false; auraDespertar(); }
+    if (destino === 'app') {
+      auraVisita = false;
+      auraDespertar();
+      /* ══ CONECTADA DESDE QUE ABRE EL DASHBOARD ═══════════════════════════
+       *
+       * El pedido fue textual: «desde que se abre el dashboard desde ahí debe
+       * estar ya conectado». Y hasta acá pasaba lo contrario: `chatEntrar()`
+       * solo corría al tocar la pestaña PULSE2CHAT, así que en el Núcleo
+       * `CHAT.listo()` era false — y la bola que está a la vista en TODA la
+       * app le preguntaba al modelo, se encontraba sin sesión de chat y
+       * volvía a contestar «eso todavía no lo sé». O sea: la unificación
+       * existía y no se notaba, porque la puerta estaba cerrada.
+       *
+       * Se enciende al entrar. No cuesta: es un alta que ya se iba a hacer,
+       * hecha unos segundos antes. Y de paso el buzón de llamadas queda vivo
+       * desde el principio en vez de desde que alguien toca el chat.
+       *
+       * `catch` mudo a propósito: si falla, la app entra igual. Nadie puede
+       * quedarse afuera de su billetera porque no levantó el chat. */
+      chatEntrar().catch(() => {});
+    }
     else {
       /* AU-RA TAMBIÉN ATIENDE A QUIEN NO HA ENTRADO. Antes desaparecía fuera
          de la sesión, y eso dejaba mudo justo el momento en que más se duda:
@@ -5444,7 +5464,7 @@ const VETA = (() => {
      se puede contestar: «¿esto que estoy viendo es lo último que subimos, o
      mi navegador se quedó con una copia vieja?». La ficha de Ajustes lo
      enseña, y con eso se sabe. */
-  const VETA_V = '06f2ad0b02';
+  const VETA_V = '417a21f8d2';
   const VETA_FECHA = '2026-08-28';
 
   const AET_V = 'e250bbe2f5';
@@ -7764,9 +7784,10 @@ const VETA = (() => {
       // siempre hay mensajes suyos, y con eso la ventana no se abriría nunca.
       if (!igual && auraEsperando() && esAura(chatSt.con)
           && m.length && m[m.length - 1].de === AURA_CHAT_ID) auraLlego();
-      // Las DOS medidas se toman ANTES de tocar nada: despues de repintar la
-      // altura ya cambio y no hay forma de saber donde estaba la persona, y
-      // despues de asignar msgs ya no hay con que comparar cuantos habia.
+      // El aviso de «llegó algo» se decide ACA —hace falta saber cuántos
+      // había antes—, pero quién se mueve y quién no lo decide pintarChat(),
+      // que es el único que sabe que acaba de destruir el hilo. Tenerlo en
+      // los dos lados era tener dos reglas peleando por lo mismo.
       const estabaAbajo = chatEnElFondo();
       const llegoAlgo = !chatSt.msgs || m.length > chatSt.msgs.length;
       chatSt.msgs = m;
@@ -7774,7 +7795,6 @@ const VETA = (() => {
       if (!igual) {
         if (!estabaAbajo && llegoAlgo) chatHayNuevos = true;
         pintarChat();
-        if (estabaAbajo) chatAlFinal();
         auraCharlaSonar();
       }
     } catch (e) {
@@ -9638,7 +9658,25 @@ const VETA = (() => {
     }
     if (h) {
       const txt = $('#chat-txt')?.value;
+      /* DÓNDE ESTABA LEYENDO. `innerHTML` no mueve el hilo: lo DESTRUYE y
+         construye otro, y el nuevo nace con el scroll en cero. Por eso «se
+         sube solo» — y arreglar solo el salto al fondo lo dejó peor: dejó de
+         irse abajo y empezó a irse ARRIBA, que es la misma interrupción con
+         otro destino.
+         Se guarda la posición y se devuelve. Y se guarda TAMBIÉN cuánto medía
+         el hilo: si llegó un mensaje nuevo, el contenido creció por debajo y
+         devolver el mismo número deja a la persona exactamente donde estaba
+         mirando, que es lo único que se le pidió a esto. */
+      const viejo = $('#chat-msgs');
+      const donde = viejo ? viejo.scrollTop : null;
+      const alFondo = !viejo
+        || viejo.scrollHeight - viejo.scrollTop - viejo.clientHeight <= CERCA_DEL_FONDO;
       h.innerHTML = chatHilo();
+      const nuevo = $('#chat-msgs');
+      if (nuevo) {
+        // pegado al fondo sigue pegado; subido se queda donde estaba
+        nuevo.scrollTop = alFondo ? nuevo.scrollHeight : (donde ?? 0);
+      }
       const c = $('#chat-txt');
       if (c && txt) c.value = txt;
     }
@@ -9723,9 +9761,12 @@ const VETA = (() => {
   }
 
   function chatBajar() {
+    // Primero se repinta y DESPUES se baja: al revés, el repintado destruye
+    // el hilo que se acaba de bajar y lo deja donde estaba. Es el mismo
+    // motivo por el que el hilo «se subía solo», visto desde el otro lado.
     chatHayNuevos = false;
-    chatAlFinal();
     pintarChat();
+    chatAlFinal();
   }
 
   /** Se llama al hacer scroll: si volviste al fondo, el aviso sobra. */
