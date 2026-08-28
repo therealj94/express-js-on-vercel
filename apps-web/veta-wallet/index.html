@@ -2487,6 +2487,17 @@ body.en-p2c .chay-cara{background:var(--p2c-grad);color:#03122E;
   border-radius:999px;padding:4px 12px;font-size:12px;font-weight:600;cursor:pointer}
 /* La voz de ella pegada a su respuesta, no como tarjeta aparte */
 .cha-voz-aura{margin-top:6px;opacity:.85}
+/* Los tres puntos del panel del orbe. Antes de esto, preguntarle algo que las
+   reglas no sabían dejaba el panel quieto cinco segundos: no había forma de
+   saber si estaba pensando o si se había colgado. */
+.aura-pensando{display:inline-flex;align-items:center;gap:8px;opacity:.75}
+.aura-pensando i{width:6px;height:6px;border-radius:50%;background:currentColor;
+  animation:aurapunto 1.2s ease-in-out infinite}
+.aura-pensando i:nth-child(2){animation-delay:.18s}
+.aura-pensando i:nth-child(3){animation-delay:.36s}
+.aura-pensando span{font-size:12px}
+@keyframes aurapunto{0%,60%,100%{opacity:.3;transform:translateY(0)}30%{opacity:1;transform:translateY(-3px)}}
+@media (prefers-reduced-motion:reduce){.aura-pensando i{animation:none;opacity:.7}}
 /* La pastilla de «llegó algo». Existe para poder NO arrastrar a nadie: quien
    subió a releer se entera sin que el hilo se le mueva bajo el dedo. */
 .cha-nuevos{position:absolute;left:50%;transform:translateX(-50%);bottom:96px;

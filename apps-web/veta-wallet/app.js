@@ -11099,6 +11099,13 @@ const VETA = (() => {
       variosCon: 'Tengo {n} contactos que se parecen a «{quien}». ¿A cuál de todos?',
       okAsi: 'Perfecto. Cuando quieras, acá estoy — abajo a la derecha.',
       nose: 'Eso todavía no lo sé — soy el modelo 1 y sigo aprendiendo. ¿Era alguna de estas?',
+      // Cuando el modelo tarda de mas. NO se finge una respuesta: se dice
+      // que paso y se deja la puerta al hilo, donde va a aparecer igual
+      // cuando llegue — porque la pregunta se mando de verdad.
+      tardo: 'Me está costando más de lo normal. Te dejo la respuesta en el chat en cuanto la tenga.',
+      irAlChat: 'Ver en PULSE2CHAT', pensando: 'Pensando…',
+      falloRed: 'No pude alcanzarla ahora mismo. Probá de nuevo en un momento.',
+      enPrueba: 'Todavía estoy en pruebas con un grupo chico, y esta cuenta no está en él. Lo que sé del ecosistema te lo cuento igual: preguntame de ORIGEN, de la cadena o de tu Genesis ID.',
       // El precio y la actividad: datos que AU-RA YA tiene y hasta ahora no
       // decía. Cuando no llegaron, se dice que no llegaron.
       precio: 'El {sim} está a {precio}. Es el precio con el que se calcula todo lo que ves en tu billetera.',
@@ -11224,6 +11231,10 @@ const VETA = (() => {
       variosCon: 'I have {n} contacts that look like “{quien}”. Which one?',
       okAsi: 'All right. Whenever you want, I am right here — bottom right.',
       nose: 'I do not know that yet — I am model 1 and still learning. Did you mean one of these?',
+      tardo: 'This is taking longer than usual. I will leave the answer in your chat as soon as I have it.',
+      irAlChat: 'Open PULSE2CHAT', pensando: 'Thinking…',
+      falloRed: "I couldn't reach her just now. Try again in a moment.",
+      enPrueba: 'I am still testing with a small group and this account is not in it. I can still tell you about the ecosystem: ask me about ORIGEN, the chain or your Genesis ID.',
       precio: '{sim} is at {precio}. That is the price everything in your wallet is calculated with.',
       precioNo: "Today's price has not reached me yet. I will tell you the moment it does — I will not make one up.",
       precioDecl: '{sim} is at {precio}, but that number does not come from a market: the Board of Directors set it in minute {acta}, in force since {fecha}. {sim} does not trade anywhere yet, so there is no market price to give you — there is a resolution, and I am telling it to you as it stands.',
@@ -11433,6 +11444,8 @@ const VETA = (() => {
           m.botones ? `<div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">${
             m.botones.map(b => `<button class="btn btn-oro btn-sm" style="padding:8px 14px;font-size:12px"
               onclick="VETA.auraChip(${jsTxt(b.di)})">${esc(b.txt)}</button>`).join('')}</div>` : ''}</div>`).join('')}
+        ${auraPensando ? `<div class="aura-b aura-pensando"><i></i><i></i><i></i>
+          <span>${esc(T.pensando)}</span></div>` : ''}
       </div>
       <div class="aura-chips">${auraSugerencias().map(c =>
         `<button class="aura-chip" onclick="VETA.auraChip(${jsTxt(c)})">${esc(c)}</button>`).join('')}</div>
@@ -11771,12 +11784,86 @@ const VETA = (() => {
     const deFabrica = auraFabrica(d);
     if (deFabrica) return auraDecir(deFabrica, { voz });
 
-    /* CUANDO NO ENTIENDE. «Eso todavía no lo sé» y punto es una puerta
-       cerrada: la persona no sabe si preguntó mal, si la app no sirve o si
-       tiene que rendirse. Ahora se busca lo más parecido —palabra por palabra
-       contra lo que AU-RA sí sabe hacer— y se ofrece con botones. Si ni eso,
-       se ofrecen las tres de siempre. Nunca se queda nadie sin salida. */
-    auraDecir(T.nose, { voz, botones: auraLoMasParecido(d).slice(0, 3) });
+    /* ══ Y AQUÍ DEJA DE DECIR «NO SÉ» ═════════════════════════════════════
+     *
+     * Había DOS AU-RA y no se conocían. Esta —la bola que flota en toda la
+     * app— es de reglas: sabe llevarte a cobrar, dejar un envío listo, decir
+     * tu saldo. Todo lo demás terminaba acá, en «eso todavía no lo sé».
+     *
+     * Y la que SÍ sabe —el modelo de verdad, con el prompt de la casa, las
+     * fichas y la memoria de tu conversación— estaba escondida dentro de una
+     * pestaña de chat. O sea: la que se veía era la tonta.
+     *
+     * Ahora las reglas siguen yendo primero, y con razón: son instantáneas y
+     * son las que tocan dinero — «mandá 15 a María» tiene que resolverlo
+     * código, no un modelo. Pero lo que las reglas no reconocen ya no se
+     * devuelve como derrota: se le pregunta a ella.
+     *
+     * Y se le pregunta POR EL HILO DE SIEMPRE, no por un canal aparte. Así
+     * es literalmente la misma AU-RA: la misma memoria, el mismo modo, la
+     * misma voz elegida. Lo que preguntes desde la burbuja aparece en
+     * PULSE2CHAT, y lo que preguntaste ayer en el chat lo recuerda hoy la
+     * burbuja. Una sola, con un solo hilo.
+     */
+    auraAlModelo(dicho, T, voz);
+  }
+
+  /* Cuánto se espera a que conteste. Medido contra el nodo: la mediana está
+     en 5,7 s y el peor caso visto fue 9,1 (cuando el guardia de eco la hace
+     repensar). 45 s es techo de emergencia, no de trabajo. */
+  const AURA_ESPERA = 45000;
+  let auraPensando = false;
+
+  async function auraAlModelo(dicho, T, voz) {
+    if (auraPensando) return;             // una pregunta a la vez
+    if (!CHAT.listo?.()) {
+      // sin chat no hay modelo: se dice la verdad y se ofrece la salida
+      return auraDecir(T.nose, { voz, botones: auraLoMasParecido(dicho).slice(0, 3) });
+    }
+    auraPensando = true;
+    pintarAura();
+    try {
+      // bandeja() devuelve {mensajes, enLinea}, no un arreglo: tratarlo como
+      // arreglo revienta con «.filter is not a function». Lo encontró la
+      // prueba, no la lectura.
+      const suyos = async () => ((await CHAT.bandeja(AURA_CHAT_ID))?.mensajes || [])
+        .filter((m) => m.de === AURA_CHAT_ID);
+      const antes = new Set((await suyos()).map((m) => m.id));
+      await CHAT.enviar(AURA_CHAT_ID, dicho);
+      const hasta = Date.now() + AURA_ESPERA;
+      while (Date.now() < hasta) {
+        await new Promise((r) => setTimeout(r, 1200));
+        const nuevos = (await suyos())
+          .filter((m) => !antes.has(m.id) && (m.texto || '').trim());
+        if (nuevos.length) {
+          auraPensando = false;
+          return auraDecir(nuevos[nuevos.length - 1].texto, { voz });
+        }
+      }
+      // Tardó de más. No se finge una respuesta: se dice qué pasó y se deja
+      // la puerta al hilo, donde la respuesta va a aparecer igual cuando
+      // llegue — porque se mandó de verdad, no se perdió.
+      auraPensando = false;
+      // Sin boton: los botones de este panel mandan una FRASE, no una ruta,
+      // y uno que no lleva a ningun lado es peor que ninguno. El mensaje ya
+      // dice donde va a aparecer la respuesta.
+      auraDecir(T.tardo, { voz });
+    } catch (e) {
+      /* UN ERROR NO SE DISFRAZA DE «NO SÉ». Esta rama tapaba el motivo y
+         devolvía exactamente el mismo mensaje que cuando no entiende: la
+         persona no podía distinguir «no te entendí» de «se cayó la red», y
+         yo tampoco pude — pasé tres intentos buscando por qué la prueba veía
+         un «no sé» instantáneo, y era esto. Ahora el motivo va al registro y
+         el mensaje dice que fue un fallo, no una ignorancia. */
+      console.warn('AU-RA no pudo preguntarle al modelo:', e);
+      auraPensando = false;
+      /* «Hace falta que te acepte» no es un fallo de red: es que esta cuenta
+         todavía no está en el grupo de prueba. Decir «no pude alcanzarla»
+         mandaría a alguien a revisar su wifi por algo que no tiene que ver
+         con su wifi. */
+      const noAceptada = /acepte|403/i.test(String(e?.message || e));
+      auraDecir(noAceptada ? T.enPrueba : (T.falloRed || T.nose), { voz });
+    }
   }
 
   /* Lo más parecido a lo que se dijo. Sin diccionario ni modelo: cada destino
