@@ -110,7 +110,30 @@ const MUSICA = (() => {
     ? VOL * (agacheHondo ? 0.10 : 0.22)
     : VOL);
 
+  /* EL SILENCIO SOSTENIDO. El agache dura un tiempo que se fija de antemano;
+     una conversación no sabe cuánto va a durar. Así que esto es otra cosa: un
+     silencio que se pide y se devuelve, y mientras haya alguien pidiéndolo la
+     música no vuelve a subir aunque otra parte del programa se lo mande.
+     Se lleva por nombre —no por cuenta— porque el mismo pedido puede llegar
+     dos veces (la burbuja abre, y adentro empieza a hablar) y devolverse una
+     sola: con nombres eso no deja la música muda para siempre. */
+  const callados = new Set();
+
+  function callar(quien = 'voz') {
+    callados.add(quien);
+    if (sonando) rampa(0, 0.35);
+  }
+
+  function devolver(quien = 'voz') {
+    callados.delete(quien);
+    if (!callados.size && sonando) rampa(nivel(), 1.1);
+  }
+
   function rampa(a, seg) {
+    /* El portero: mientras alguien tenga pedido el silencio, todo camino que
+       suba el volumen —encender, el fin de un agache, la swell— llega aquí y
+       se queda en cero. Un solo sitio, y ninguno se olvida. */
+    if (callados.size) a = 0;
     if (!gan || !ctx) return;
     const t = ctx.currentTime;
     gan.gain.cancelScheduledValues(t);
@@ -235,6 +258,8 @@ const MUSICA = (() => {
 
   return {
     encender, apagar, alterna, agachar, crecer, desdeElPrincipio, volumen, ultimoAgache,
+    callar, devolver,
+    callada: () => callados.size > 0,
     puesta: () => puesta,
     quiere,
     alCambiar: (fn) => { alCambiar = fn; },

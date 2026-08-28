@@ -9734,6 +9734,7 @@ const VETA = (() => {
     // chat ya no esté a la vista: si alguien se va a otra pestaña con la voz
     // encendida, la capa tiene que seguir ahí y no quedar congelada.
     auraVozPintar();
+    auraMusicaAlDia();   // igual que la capa: antes del corte por vista
     if (vistaActual !== 'chat') return;
     const caja = $('#p2c');
     if (!caja) return;
@@ -11129,6 +11130,37 @@ const VETA = (() => {
       conversando. Si nadie, el oído se cierra y se queda cerrado. */
   const auraAlguienEscucha = () =>
     (auraCharlando && esAura(chatSt.con)) || (auraConversando && auraAbierta);
+
+  /* ── LA MÚSICA SE CALLA CUANDO HAY VOZ ────────────────────────────────────
+   *
+   * Estaban las dos sonando encima. La pista de fondo se apagaba POR PANTALLA
+   * (`musicaSegunVista`), que es una cuenta que no sabe nada de esto: en el
+   * Inicio, que es donde la música toca, la burbuja se abre sobre la misma
+   * pantalla — la vista no cambia, así que la música seguía puesta mientras
+   * AU-RA hablaba. Y peor del otro lado: el micrófono abierto oía la pista y
+   * se la mandaba a transcribir.
+   *
+   * Se calla en los TRES momentos, no solo mientras habla ella: mientras
+   * escucha (si no, se transcribe la canción), mientras piensa (bajar y subir
+   * en los tres segundos de espera es peor que dejarlo bajo) y mientras habla.
+   * Vuelve sola al soltar, con una subida de segundo y pico para que no
+   * aparezca de golpe.
+   *
+   * No se apaga de verdad: se pide silencio. Apagarla la sacaría del sitio de
+   * la pista y le movería el interruptor de Ajustes a quien la quiere puesta;
+   * el silencio sostenido no toca ninguna de las dos cosas. */
+  const auraVozEnCurso = () =>
+    auraAlguienEscucha() || auraSonando || !!auraCortarVozBurbuja || auraPensando;
+
+  let musicaCalladaPorVoz = false;
+
+  function auraMusicaAlDia() {
+    const hay = auraVozEnCurso();
+    if (hay === musicaCalladaPorVoz) return;   // solo en el cambio
+    musicaCalladaPorVoz = hay;
+    try { hay ? window.MUSICA?.callar('aura') : window.MUSICA?.devolver('aura'); }
+    catch (e) { /* sin música armada: no hay nada que callar */ }
+  }
 
   /** Cierra el micrófono sin mandar lo que se llevaba dicho.
 
@@ -12578,6 +12610,9 @@ const VETA = (() => {
   }
 
   function pintarAura() {
+    /* Antes del corte de abajo: cerrar la burbuja también es un cambio de
+       estado, y es justo el que tiene que devolver la música. */
+    auraMusicaAlDia();
     const p = $('#aura-panel');
     const T = aTxt();
     p.classList.toggle('ver', auraAbierta);
@@ -12771,7 +12806,7 @@ const VETA = (() => {
          palabras como si fueran tuyas. Se contestaba sola. */
       auraCallarMicro();
       await auraSonarEnVivo(txt, {
-        alEmpezar: (cortar) => { auraCortarVozBurbuja = cortar; if (auraAbierta) pintarAura(); },
+        alEmpezar: (cortar) => { auraCortarVozBurbuja = cortar; auraMusicaAlDia(); if (auraAbierta) pintarAura(); },
         alPrimerSonido: () => { if (auraAbierta) pintarAura(); },
       });
       auraCortarVozBurbuja = null;
@@ -12781,6 +12816,10 @@ const VETA = (() => {
       auraCortarVozBurbuja = null;
       AURA.hablar(txt, idiomaActivo());
     }
+    /* El repintado de arriba lleva la música consigo, pero solo si el panel
+       está abierto. Ella también habla con la burbuja cerrada —el saludo de
+       la entrada— y ahí no hay repintado que lo arrastre: se avisa a mano. */
+    auraMusicaAlDia();
     /* Y ACÁ SE CIERRA EL CICLO: terminó de hablar, vuelve a escuchar. Es esta
        línea la que convierte «tocar para hablar» en «conversar». */
     if (auraConversando && auraAbierta) setTimeout(auraOirEnLaBurbuja, 250);
