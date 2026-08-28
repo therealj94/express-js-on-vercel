@@ -195,6 +195,7 @@ body.en-visor #at-cursor,
 body.en-visor #ae-dice,
 body.en-visor #pantalla-llena,
 body.en-visor #aura-orbe,
+body.en-visor #aura-panel,
 body.en-visor #at-boton,
 /* El panel del propio cielo también se aparta: es HTML plano encima de una
    pantalla partida en dos ojos, así que se vería torcido y a un solo ojo.
@@ -251,6 +252,7 @@ body.en-cine .tabs,
 body.en-cine #ae-saludo,
 body.en-cine #ae-dice,
 body.en-cine #aura-orbe,
+body.en-cine #aura-panel,
 body.en-cine #at-boton,
 body.en-cine #musica-btn,
 body.en-cine #pantalla-llena,
@@ -3775,7 +3777,14 @@ a.btn{text-decoration:none}
    alguien se pierde en vez de firmar. */
 body.en-ventana .riel,
 body.en-ventana .tabs,
-body.en-ventana .aura-orbe,
+/* `#aura-orbe` y no `.aura-orbe`: el orbe es un id y NINGÚN elemento del
+   documento lleva esa clase, así que esta línea no ocultaba nada. Se veía
+   así: Ordenexchange abre la wallet en una emergente de 420 px para firmar
+   un envío, la ventana viene limpia —sin menú ni pestañas— y la bola de
+   AU-RA queda flotando encima del formulario, justo en el rincón donde vive
+   el botón de confirmar. El panel se suma a la lista por lo mismo. */
+body.en-ventana #aura-orbe,
+body.en-ventana #aura-panel,
 body.en-ventana #techo,
 body.en-ventana #velo-og,
 body.en-ventana #galaxia,

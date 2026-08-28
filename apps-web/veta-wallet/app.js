@@ -433,6 +433,7 @@ const VETA = (() => {
        para quien quiera leerlas — la puerta de entrada ahora es de AU-RA. */
     if (destino === 'app') {
       auraVisita = false;
+      auraOtraSesion();   // lo que estuviera esperando es de antes: se calla
       auraDespertar();
       /* ══ CONECTADA DESDE QUE ABRE EL DASHBOARD ═══════════════════════════
        *
@@ -472,6 +473,12 @@ const VETA = (() => {
          justo cuando pulsaba «abrir mi cuenta»: llegaba al formulario y AU-RA
          ya no se acordaba de lo que le acababa de preguntar. */
       if (cerrandoSesion) auraCharla = [];
+      /* Y el testigo cambia SIEMPRE, no solo al cerrar sesión: cualquier
+         salida de la app deja atrás lo que se estuviera esperando. Vaciar
+         `auraCharla` sin esto no alcanzaba — el bucle seguía vivo y volvía a
+         escribir en el hilo recién vaciado un rato después. */
+      auraOtraSesion();
+      auraTrayendo = null;
       pintarAura();
       tourApagar();
       AURA.pararVoz(); AURA.pararRed();
@@ -10242,46 +10249,12 @@ const VETA = (() => {
   let auraSonando = null;
   const auraYaSono = new Set();
 
-  async function auraCharlarAlterna() {
-    if (!esAura(chatSt.con)) return;
-    auraCharlando = !auraCharlando;
-    if (!auraCharlando) {
-      // Salir del modo calla TODO por el mismo sitio que el botón de callar:
-      // dos maneras distintas de parar lo mismo es una de las dos olvidándose
-      // de algo, y acá lo olvidado seguiría hablando fuera del modo.
-      auraCallar();
-      if (dictando) { try { dictando.stop(); } catch (e) {} dictando = null; }
-      pintarChat();
-      return;
-    }
-    /* LAS NOTAS DE VOZ SE APAGAN AL ENTRAR, y esto es exactamente al revés
-       de lo que hacía antes.
-
-       Antes se ENCENDÍAN: sin nota grabada no había nada que reproducir. Pero
-       la nota ya no es de donde sale el sonido —ahora se pide en vivo, ver
-       auraDecirEnVivo— y dejarla encendida hace dos daños, uno visible y uno
-       no:
-
-         · «me envía una nota de voz, eso no funciona»: aparece un adjunto
-           por cada frase en un modo cuyo diseño dice, literalmente, que no
-           hay archivos.
-         · Y el que no se ve: el nodo grabaría la MISMA respuesta dos veces,
-           y las dos pelean por la misma GPU. La voz en vivo se quedaría
-           esperando detrás de una nota que nadie va a tocar, que es
-           justamente lo que se vino a arreglar.
-
-       El registro elegido NO se pierde: se guarda aparte, porque «con qué voz
-       habla» y «me manda archivos» dejaron de ser la misma cosa. */
-    if (auraVoz) {
-      try { localStorage.setItem('veta.aura.registro', auraVoz); } catch (e) {}
-      await auraVozElegir('');
-    }
-    // Lo que ya está en el hilo NO se reproduce: entrar al modo no puede
-    // significar oír de golpe las diez respuestas anteriores.
-    (chatSt.msgs || []).forEach((m) => { if (m.id) auraYaSono.add(m.id); });
-    pintarChat();
-    auraDictar();
-  }
+  /* La puerta al modo voz es `auraVozPantalla`, más abajo, y es la ÚNICA.
+     Acá vivía `auraCharlarAlterna`, que hacía lo mismo y mejor —apagaba las
+     notas, guardaba el registro— y no la llamaba nadie: el chip del hilo
+     apunta a `auraVozPantalla`. Dos puertas para lo mismo es una puerta que
+     se arregla y otra que se usa, y eso fue exactamente lo que pasó. Su
+     lógica se mudó allá; la función se fue. */
 
   /** Suena lo nuevo que dijo ella, EN ORDEN, y al terminar vuelve a abrir el
       micrófono.
@@ -10368,7 +10341,7 @@ const VETA = (() => {
       // se acabó lo que había por decir: recién ahí se vuelve a escuchar
       auraSonando = null;
       pintarChat();
-      if (auraCharlando && esAura(chatSt.con)) auraDictar();
+      if (auraCharlando && esAura(chatSt.con)) auraEscuchar();
       return;
     }
     auraDiciendo = true;
@@ -10411,6 +10384,10 @@ const VETA = (() => {
        pide la voz y sale el primer sonido pasan unos segundos, y una pelotita
        moviéndose en silencio es peor que una quieta —parece que se rompió—.
        Hasta el primer trozo la cara es la de pensar, que es la verdad. */
+    /* EL MICRÓFONO SE CIERRA ANTES DE QUE SUENE NADA. Si queda abierto, el
+       reconocedor transcribe a AU-RA por el altavoz y manda sus palabras como
+       si fueran tuyas — ella se contesta sola y no hay forma de meter baza. */
+    auraCallarMicro();
     auraVivo = { ctx, cortar };
     auraBuscandoVoz = true;
     auraAnaliza = ctx;
@@ -10477,7 +10454,7 @@ const VETA = (() => {
       avisar(t('au.vozLenta'));
       if (!auraVoz) await auraVozElegir(auraRegistro());
     }
-    if (auraCharlando && esAura(chatSt.con)) auraDictar();
+    if (auraCharlando && esAura(chatSt.con)) auraEscuchar();
   }
 
   /** Engancha la pelotita al volumen real, midiendo del analizador que le
@@ -10503,7 +10480,7 @@ const VETA = (() => {
       // se acabó la cola: recién ahí se vuelve a escuchar
       auraSonando = null;
       pintarChat();
-      if (auraCharlando && esAura(chatSt.con)) auraDictar();
+      if (auraCharlando && esAura(chatSt.con)) auraEscuchar();
       return;
     }
     const a = new Audio(CHAT.urlArchivo(archivo));
@@ -10533,6 +10510,11 @@ const VETA = (() => {
     try { auraSonando?.pause(); } catch (e) { /* ya no sonaba */ }
     auraSonando = null;
     pintarChat();
+    /* Y SE VUELVE A ESCUCHAR. Callar es para meter baza, no para terminar la
+       conversación: quien la corta es porque quiere decir algo. Antes, tras
+       «Callar» quedaba todo quieto y había que tocar el micrófono otra vez —
+       en un modo cuya promesa es no tocar nada. */
+    if (auraCharlando && esAura(chatSt.con)) setTimeout(auraEscuchar, 200);
   }
 
   /* ── LA PANTALLA DE VOZ ──────────────────────────────────────────────────
@@ -10570,10 +10552,51 @@ const VETA = (() => {
 
   async function auraVozPantalla() {
     if (!esAura(chatSt.con)) return;
+    /* ── SIN MICRÓFONO NO SE ABRE ──────────────────────────────────────────
+     *
+     * En Firefox, y en los iOS anteriores a Safari 14.5, no existe el
+     * reconocimiento de voz del navegador. Sin esta guarda se abría igual:
+     * una pantalla negra a pantalla completa, con la pelotita quieta, sin
+     * línea de estado y sin decir por qué. Nada de lo que hay ahí funciona, y
+     * la única salida es la ✕ de la esquina. */
+    if (!puedeDictar()) return avisar(t('au.sinDictado'));
+
+    /* LO QUE YA ESTÁ EN EL HILO SE MARCA PRIMERO, ANTES DE CUALQUIER `await`.
+     *
+     * Estaba después, y por eso entrar al modo la primera vez era esto: la
+     * pelotita se abría y AU-RA empezaba a recitar TODAS sus respuestas
+     * anteriores, una detrás de otra, en una sola parrafada. El await de
+     * abajo recarga los mensajes, la recarga dispara auraCharlaSonar, y para
+     * cuando llegaba el marcado ya estaban todos en la cola.
+     *
+     * Marcar es lo primero. Después se vuelve a marcar, por lo que haya
+     * llegado durante la espera. */
+    const marcarLoViejo = () =>
+      (chatSt.msgs || []).forEach((m) => { if (m.id) auraYaSono.add(m.id); });
+    marcarLoViejo();
+
     auraPantalla = true;
     auraCharlando = true;
-    if (!auraVoz) await auraVozElegir('calida');
-    (chatSt.msgs || []).forEach((m) => { if (m.id) auraYaSono.add(m.id); });
+
+    /* LAS NOTAS DE VOZ SE APAGAN, no se encienden — al revés de lo que hacía.
+     *
+     * Encenderlas tenía sentido cuando la nota grabada ERA el sonido. Ya no:
+     * la voz se pide en vivo (auraDecirEnVivo). Dejarlas encendidas hace dos
+     * daños. El visible: en el hilo queda escrito, de tu parte, «hablame con
+     * voz calida» —que nunca escribiste— y desde entonces cada respuesta
+     * escrita te llega con un reproductor pegado debajo, en este teléfono y
+     * en la computadora, hasta que alguien lo apague a mano. El invisible: el
+     * nodo graba la misma respuesta dos veces y las dos pelean por la misma
+     * GPU, así que la voz en vivo espera detrás de una nota que nadie va a
+     * tocar.
+     *
+     * El registro elegido NO se pierde: se guarda aparte. «Con qué voz habla»
+     * y «me manda archivos» dejaron de ser la misma cosa. */
+    if (auraVoz) {
+      try { localStorage.setItem('veta.aura.registro', auraVoz); } catch (e) {}
+      await auraVozElegir('');
+      marcarLoViejo();
+    }
     pintarChat();
     auraDictar();
   }
@@ -10702,6 +10725,32 @@ const VETA = (() => {
   const puedeDictar = () => !!(window.SpeechRecognition || window.webkitSpeechRecognition);
   let dictando = null;
 
+  /** Cierra el micrófono sin mandar lo que se llevaba dicho.
+
+      `abort()` y no `stop()`: stop() cierra pero ENTREGA lo capturado como
+      resultado final, y ese resultado dispara el envío. Se veía en las dos
+      puntas: tocabas la pelotita para cortar una frase a medias y se mandaba
+      igual; y cuando AU-RA empezaba a hablar con el micrófono abierto, el
+      reconocedor la transcribía A ELLA y mandaba sus propias palabras como si
+      fueran tuyas. Los manejadores se quitan antes, para que ni el onend
+      reabra nada. */
+  function auraCallarMicro() {
+    if (!dictando) return;
+    const r = dictando;
+    dictando = null;
+    try { r.onresult = r.onerror = r.onend = null; r.abort(); }
+    catch (e) { try { r.stop(); } catch (e2) { /* ya estaba cerrado */ } }
+  }
+
+  /** Abre el micrófono SOLO si no está abierto. El ciclo del modo voz se
+      reengancha por acá, y no por `auraDictar`, que es un interruptor: llamar
+      a un interruptor para «abrir» lo APAGA si ya estaba abierto, y ese era
+      justo el caso del final de una respuesta. */
+  function auraEscuchar() {
+    if (dictando || auraSonando || auraBuscandoVoz) return;
+    auraDictar();
+  }
+
   function auraDictar() {
     if (dictando) { try { dictando.stop(); } catch (e) {} dictando = null; pintarChat(); return; }
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -10709,6 +10758,11 @@ const VETA = (() => {
     const r = new SR();
     r.lang = idiomaActivo() === 'en' ? 'en-US' : 'es-HN';
     r.interimResults = true;
+    /* `continuous` para que un silencio para pensar no cierre el micrófono.
+       Sin esto, cinco segundos callado y el reconocedor se cerraba solo: la
+       pelotita pasaba a «quieta», hablabas igual y no te oía nadie — el modo
+       muerto sin un aviso. */
+    r.continuous = true;
     const campo = () => $('#chat-txt');
     r.onresult = (ev) => {
       // lo dicho SE VE mientras se dice: el texto es el protagonista, la voz
@@ -10725,8 +10779,26 @@ const VETA = (() => {
         else pintarChat();
       }
     };
-    r.onerror = () => { dictando = null; pintarChat(); };
-    r.onend = () => { if (dictando) { dictando = null; pintarChat(); } };
+    /* Un error DURO —el permiso denegado, o no hay micrófono— apaga el modo y
+       lo dice. Los blandos (un corte de red del reconocedor, un «no-speech»)
+       solo cierran esta vuelta; el onend de abajo la vuelve a abrir. */
+    r.onerror = (ev) => {
+      dictando = null;
+      const duro = ['not-allowed', 'service-not-allowed', 'audio-capture'].includes(ev?.error);
+      if (duro && auraCharlando) { auraCharlando = false; avisar(t('au.sinMicro')); }
+      pintarChat();
+    };
+    /* ── EL CICLO SE CIERRA ACÁ ─────────────────────────────────────────────
+       El reconocedor se cierra solo cada tanto, pase lo que pase: por un
+       silencio largo, por un corte, o porque el navegador lo decidió. Si el
+       modo sigue encendido y ella no está hablando, se vuelve a abrir. Eso es
+       lo que hace que se pueda conversar sin tocar nada. */
+    r.onend = () => {
+      if (dictando) { dictando = null; pintarChat(); }
+      if (auraCharlando && esAura(chatSt.con) && !auraSonando && !auraBuscandoVoz) {
+        setTimeout(auraEscuchar, 250);
+      }
+    };
     dictando = r;
     pintarChat();
     r.start();
@@ -11440,10 +11512,18 @@ const VETA = (() => {
       tourFinGid: 'Ese es tu ecosistema. Solo te falta una llave: tu Genesis ID. ¿Lo creamos ahora?',
       sig: 'Siguiente', atras: 'Atrás', salir: 'Salir del recorrido', fin: 'Entrar a mi Núcleo',
       toca: 'Tocá el orbe para escucharla',
-      hola: 'Te damos la bienvenida, ',
+      // `bienvenidoA` y no `hola`: la clave `hola` ya existe arriba, en la misma
+      // tabla, con el saludo del panel. En JavaScript gana la ÚLTIMA, así que
+      // esta pisaba a aquella y al tocar la burbuja AU-RA decía «Te damos la
+      // bienvenida,» y se cortaba ahí — una frase a la mitad, sin nombre
+      // detrás, y la voz cortándose igual. Dos cosas distintas, dos nombres.
+      bienvenidoA: 'Te damos la bienvenida, ',
       saltar: 'SALTAR',
       ecoTitulo: 'EL ECOSISTEMA ORDEN GLOBAL',
       escribi: 'Preguntame o pedime…',
+      // Antes esto era un `return` mudo: la segunda pregunta quedaba
+      // escrita en el hilo, sin respuesta y sin aviso, para siempre.
+      unaAlaVez: 'Dejame terminar con la anterior y te contesto esa. Es una a la vez: el motor es uno solo.',
       con: {
         origen: 'ORIGEN es la moneda de la cadena de Orden Global, y su valor está referenciado al oro: un ORIGEN es un gramin, la cincuentaicincoava parte de un gramo de oro, al precio del oro de hoy. La fórmula no la ponemos nosotros y no cambia, así que la podés rehacer con una calculadora. Se envía en segundos por nuestra propia cadena.',
         cadena: 'Orden Global corre sobre su propia Layer 1: la cadena 5550, con Hyperledger Besu, consenso QBFT y máquina Shanghai. Ya no vivimos prestados en la red de otro — más rápida, más nuestra, sin pedirle permiso a nadie. Todo se puede ver en ordenscan.com.',
@@ -11454,6 +11534,7 @@ const VETA = (() => {
         og: 'Orden Global es un ecosistema completo: tu dinero (Veta Wallet), tu gente (PULSE2CHAT), tu negocio (MyTokenPay) y tu identidad (Genesis ID), todos conectados sobre nuestra propia cadena. Una cuenta, todas las puertas.',
         comision: 'La comisión de red se paga siempre en ORIGEN, también cuando enviás otro token, y es mínima: nuestra cadena es propia. El equivalente lo ves antes de confirmar cualquier envío.',
         remesas: 'Con remesas ves cuánto llega del otro lado después de la comisión y del cambio, en nueve países. Te abro el calculador.',
+        seguro: 'Sí, y te digo en qué exactamente, que es lo que importa. Tu dinero lo custodiás vos: la llave vive en tu teléfono y no la tenemos nosotros, así que nadie puede mover lo tuyo sin tu contraseña — ni yo. Cada movimiento queda escrito en nuestra propia cadena y lo podés comprobar en ordenscan.com sin pedirnos permiso a nadie. Los mensajes van cerrados de punta a punta. Y lo que no te voy a decir es que nada puede salir mal: si perdés tus doce palabras, no hay quien te las devuelva, tampoco nosotros. Por eso se guardan bien desde el primer día.',
         aucorp: 'AuCorp lleva las cuentas en moneda local del ecosistema: tus cuentas en moneda local, en 21 monedas del continente, con esta misma cuenta y sin otra contraseña. Entrás por su esfera del Núcleo: abrís cuentas, depositás con tu referencia, cambiás con la tasa real dicha con su fecha y su margen, y retirás a tu banco. La tarjeta AuCorp ya se está armando y se va a pedir desde esa misma plataforma. AuCorp es dueña de Ordenex y aliada de Orden Global.',
         pronto: 'Ordenexchange y AuCorp ya abrieron: la casa de cambio y las cuentas en moneda local, las dos con esta misma cuenta desde su esfera del Núcleo. AuCorp es la que antes se llamaba AUBANK: cambió el nombre, no la casa. El ecosistema no es una lista cerrada. Crece.',
       },
@@ -11558,10 +11639,11 @@ const VETA = (() => {
       tourFinGid: 'That is your ecosystem. You are missing one key: your Genesis ID. Shall we create it now?',
       sig: 'Next', atras: 'Back', salir: 'Exit tour', fin: 'Enter my Nucleus',
       toca: 'Tap the orb to hear her',
-      hola: 'Welcome, ',
+      bienvenidoA: 'Welcome, ',
       saltar: 'SKIP',
       ecoTitulo: 'THE ORDEN GLOBAL ECOSYSTEM',
       escribi: 'Ask me or tell me…',
+      unaAlaVez: 'Let me finish the previous one and I will answer that. One at a time: there is a single engine.',
       con: {
         origen: 'ORIGEN — spelled with an E, and said the Spanish way: oh-REE-hen — is the currency of the Orden Global chain, and its value is referenced to gold. One ORIGEN is one gramin, the fifty-fifth part of a gram of gold, at today’s gold price. We do not set the formula and it does not change, so you can redo it with a calculator. It moves in seconds over our own chain.',
         cadena: 'Orden Global runs on its own Layer 1: chain 5550, with Hyperledger Besu, QBFT consensus and the Shanghai machine. We no longer live borrowed on someone else’s network. Everything is public at ordenscan.com.',
@@ -11572,6 +11654,7 @@ const VETA = (() => {
         og: 'Orden Global is a complete ecosystem: your money (Veta Wallet), your people (PULSE2CHAT), your business (MyTokenPay) and your identity (Genesis ID), all wired over our own chain. One account, every door.',
         comision: 'The network fee is always paid in ORIGEN, even when you send another token, and it is minimal: the chain is ours. You see the equivalent before confirming any transfer.',
         remesas: 'Remittances shows how much arrives on the other side after fees and exchange, in nine countries. Opening the calculator.',
+        seguro: 'Yes, and let me tell you exactly how, which is what matters. You hold your own money: the key lives on your phone and we do not have it, so nobody can move what is yours without your password — not even me. Every movement is written on our own chain and you can check it at ordenscan.com without asking anyone. Messages are sealed end to end. And what I will not tell you is that nothing can go wrong: if you lose your twelve words, nobody can give them back, us included. That is why they are kept safe from day one.',
         aucorp: 'AuCorp is the fiat side of the ecosystem: your local-currency accounts, in 21 currencies of the continent, with this same account and no extra password. You enter through its sphere in the Nucleus: open accounts, deposit with your reference, exchange at the real rate stated with its date and margin, and withdraw to your bank. The AuCorp card is being built and will be requested from that same platform. AuCorp owns Ordenex and is an ally of Orden Global.',
         pronto: 'Ordenexchange and AuCorp are both open now: the exchange and your local-currency accounts, both with this same account from their sphere in the Nucleus. AuCorp is what used to be called AUBANK: the name changed, not the house. The ecosystem is not a closed list. It grows.',
       },
@@ -11772,6 +11855,9 @@ const VETA = (() => {
       const seguir = () => {
         const g = auraOrbeSitio();
         if (g) auraOrbeColocar(g.x, g.y, false);
+        // y el panel con ella: todo el trabajo del teclado estaba puesto en la
+        // burbuja, y lo que el teclado tapa es el panel
+        auraPanelJuntoAlOrbe();
       };
       window.visualViewport.addEventListener('resize', seguir);
       window.visualViewport.addEventListener('scroll', seguir);
@@ -11890,6 +11976,27 @@ const VETA = (() => {
     const T = aTxt();
     p.classList.toggle('ver', auraAbierta);
     if (!auraAbierta) return;
+    /* ── LO QUE ESTABAS ESCRIBIENDO NO SE PIERDE ────────────────────────
+     *
+     * `innerHTML` destruye y rehace el panel entero, y la caja de texto nace
+     * vacía y sin foco. Todo lo que repinta con el panel abierto se llevaba
+     * el borrador por delante: la respuesta que llega, el cambio de vista, el
+     * cambio de idioma.
+     *
+     * Y se sufría justo cuando más molesta: preguntás algo, ves los puntitos,
+     * y mientras esperás vas escribiendo la siguiente. A los seis segundos
+     * llega la respuesta, la caja se vacía de golpe y en el teléfono se cierra
+     * el teclado, porque el elemento que tenía el foco dejó de existir.
+     *
+     * Se guarda antes y se devuelve después: el texto, dónde estaba el cursor
+     * y si tenía el foco. Es el mismo remedio que el del hilo del chat con
+     * `scrollTop`, y por el mismo motivo. */
+    const caja = p.querySelector('#aura-in');
+    const borrador = caja ? {
+      txt: caja.value,
+      cursor: caja.selectionStart,
+      tenia: document.activeElement === caja,
+    } : null;
     p.innerHTML = `
       <div class="aura-cab">
         <div><b>AU-RA</b> <span class="aura-beta">MODELO 1 · BETA</span>
@@ -11919,6 +12026,68 @@ const VETA = (() => {
       </form>`;
     const h = $('#aura-hilo');
     if (h) h.scrollTop = h.scrollHeight;
+    if (borrador && borrador.txt) {
+      const nueva = p.querySelector('#aura-in');
+      if (nueva) {
+        nueva.value = borrador.txt;
+        if (borrador.tenia) {
+          nueva.focus();
+          // el cursor donde estaba, no al final: quien estaba corrigiendo una
+          // palabra del medio no tiene por qué volver a buscarla
+          try { nueva.setSelectionRange(borrador.cursor, borrador.cursor); }
+          catch (e) { /* algunos navegadores no dejan en ciertos tipos */ }
+        }
+      }
+    }
+    auraPanelJuntoAlOrbe();
+  }
+
+  /* ── EL PANEL SE ABRE DONDE ESTÁ LA BURBUJA ─────────────────────────────
+   *
+   * El arrastre escribe left/top sobre el orbe y recuerda dónde lo dejaste,
+   * pero el panel era CSS puro anclado abajo a la derecha. Así que quien es
+   * zurdo corría la burbuja al borde izquierdo —que es exactamente lo que el
+   * código invita a hacer— la tocaba, y el panel se abría en la esquina
+   * contraria. Se pierde el vínculo entre lo que tocaste y lo que se abrió.
+   *
+   * Y de paso resuelve el teclado: al recolocarlo se mira el visualViewport,
+   * que es lo que de verdad queda a la vista cuando el teclado sube. Antes
+   * eso solo movía la burbuja, y el panel se quedaba debajo del teclado —
+   * escribías a ciegas, sin ver el hilo ni el botón de mandar. */
+  function auraPanelJuntoAlOrbe() {
+    const p = $('#aura-panel'), o = $('#aura-orbe');
+    if (!p || !o || !auraAbierta) return;
+    const vv = window.visualViewport;
+    const altoV = vv ? vv.height : window.innerHeight;
+    const anchoV = vv ? vv.width : window.innerWidth;
+    const arribaV = vv ? vv.offsetTop : 0;
+    const izqV = vv ? vv.offsetLeft : 0;
+    const c = o.getBoundingClientRect();
+    const M = 8;
+    /* SE MIDE DESPUÉS DE SOLTAR EL ANCLAJE, NO ANTES. El panel viene del CSS
+       con `left:8; right:8`, o sea estirado; al poner `right:auto` se encoge,
+       el texto se reacomoda y el alto CAMBIA. Midiendo antes se calculaba la
+       posición con un alto que ya no era el suyo, y el panel terminaba
+       asomando por debajo de la pantalla. Se le fija el ancho que ya tenía
+       para que soltar el anclaje no le cambie la forma, y recién ahí se mide.
+       El techo de altura evita el otro caso: un panel más alto que la
+       pantalla, donde ninguna posición cabe. */
+    const antes = p.getBoundingClientRect();
+    p.style.width = `${Math.round(antes.width)}px`;
+    p.style.right = 'auto';
+    p.style.bottom = 'auto';
+    p.style.maxHeight = `${Math.round(altoV - 2 * M)}px`;
+    const pc = p.getBoundingClientRect();
+    // a la izquierda o a la derecha, del mismo lado al que esté pegado el orbe
+    const izqda = c.left + c.width / 2 < izqV + anchoV / 2;
+    let x = izqda ? c.left : c.right - pc.width;
+    // encima si cabe, y si no, debajo; nunca fuera de lo que se ve
+    let y = c.top - pc.height - 12;
+    if (y < arribaV + M) y = Math.min(c.bottom + 12, arribaV + altoV - pc.height - M);
+    x = Math.max(izqV + M, Math.min(x, izqV + anchoV - pc.width - M));
+    y = Math.max(arribaV + M, Math.min(y, arribaV + altoV - pc.height - M));
+    p.style.left = `${Math.round(x)}px`;
+    p.style.top = `${Math.round(y)}px`;
   }
 
   function auraDecir(txt, opciones = {}) {
@@ -11997,6 +12166,11 @@ const VETA = (() => {
       [/comision|fee|gas/, T.con.comision],
       // AuCorp tiene respuesta propia: mandarla al cajón de «lo que viene»
       // era tratar una casa abierta como una promesa.
+      // «¿Es seguro?» es uno de los cuatro chips que la app le OFRECE a
+      // quien llega sin cuenta, y hasta ahora caía en «eso todavía no lo sé
+      // contestar»: la app sugería una pregunta y no sabía la respuesta.
+      // De todas las que se pueden fallar, esa es la peor.
+      [/segur|confia|estafa|robo|hacke|safe|secure|security|scam|trust/, T.con.seguro],
       [/aucorp|aubank|banca|fiat|moneda local|local currency/, T.con.aucorp],
       [/ordenexchange|pronto|coming/, T.con.pronto],
     ];
@@ -12271,13 +12445,34 @@ const VETA = (() => {
   const AURA_ESPERA = 45000;
   let auraPensando = false;
 
+  /* ── EL TESTIGO DE LA SESIÓN ────────────────────────────────────────────
+   *
+   * Cambia cada vez que se entra, se sale o se cambia de cuenta. La espera de
+   * abajo lo mira en cada vuelta, y si cambió, se calla y se va.
+   *
+   * Sin esto pasaba lo siguiente, y no es cosmético: preguntás algo, ves los
+   * tres puntos, tocás Salir sin esperar, y entre uno y cuarenta y cinco
+   * segundos después el bucle —que nadie canceló— encuentra la respuesta y la
+   * escribe en el panel. Que ahora es el panel de la pantalla de acceso, o el
+   * de la siguiente persona que entre en ese teléfono. La respuesta a lo que
+   * preguntó otro, en la pantalla de quien no preguntó nada. */
+  let auraSesion = 0;
+  const auraOtraSesion = () => { auraSesion++; };
+
   async function auraAlModelo(dicho, T, voz) {
-    if (auraPensando) return;             // una pregunta a la vez
+    if (auraPensando) {
+      /* No se traga en silencio. Antes esto era un `return` mudo: la pregunta
+         quedaba escrita en el hilo, sin respuesta y sin aviso, para siempre.
+         Se contesta en el acto diciendo lo que pasa, que es la verdad. */
+      return auraDecir(T.unaAlaVez, { voz: false });
+    }
     if (!CHAT.listo?.()) {
       // sin chat no hay modelo: se dice la verdad y se ofrece la salida
       return auraDecir(T.nose, { voz, botones: auraLoMasParecido(dicho).slice(0, 3) });
     }
     auraPensando = true;
+    const miSesion = auraSesion;
+    const abiertoAlPreguntar = auraAbierta;
     pintarAura();
     try {
       // bandeja() devuelve {mensajes, enLinea}, no un arreglo: tratarlo como
@@ -12290,13 +12485,20 @@ const VETA = (() => {
       const hasta = Date.now() + AURA_ESPERA;
       while (Date.now() < hasta) {
         await new Promise((r) => setTimeout(r, 1200));
+        if (miSesion !== auraSesion) { auraPensando = false; return; }
         const nuevos = (await suyos())
           .filter((m) => !antes.has(m.id) && (m.texto || '').trim());
         if (nuevos.length) {
           auraPensando = false;
-          return auraDecir(nuevos[nuevos.length - 1].texto, { voz });
+          /* La voz solo si el panel seguía abierto. Cerrar es el gesto
+             universal de «ya no». Sin esto, alguien que se cansa de esperar y
+             cierra guarda el teléfono, y treinta segundos después AU-RA
+             empieza a hablar sola sin nada suyo en pantalla. */
+          return auraDecir(nuevos[nuevos.length - 1].texto,
+                           { voz: voz && abiertoAlPreguntar && auraAbierta });
         }
       }
+      if (miSesion !== auraSesion) { auraPensando = false; return; }
       // Tardó de más. No se finge una respuesta: se dice qué pasó y se deja
       // la puerta al hilo, donde la respuesta va a aparecer igual cuando
       // llegue — porque se mandó de verdad, no se perdió.
@@ -12304,7 +12506,7 @@ const VETA = (() => {
       // Sin boton: los botones de este panel mandan una FRASE, no una ruta,
       // y uno que no lleva a ningun lado es peor que ninguno. El mensaje ya
       // dice donde va a aparecer la respuesta.
-      auraDecir(T.tardo, { voz });
+      auraDecir(T.tardo, { voz: voz && abiertoAlPreguntar && auraAbierta });
     } catch (e) {
       /* UN ERROR NO SE DISFRAZA DE «NO SÉ». Esta rama tapaba el motivo y
          devolvía exactamente el mismo mensaje que cuando no entiende: la
@@ -12418,7 +12620,7 @@ const VETA = (() => {
       <button class="aurab-saltar" onclick="VETA.auraBienFin()">${T.saltar}</button>
       <div class="aurab-caja">
         <div class="orbe-grande" onclick="VETA.auraBienToca()"><canvas></canvas></div>
-        ${quien ? `<p class="aurab-hola">${T.hola}<b>${esc(quien)}</b></p>` : ''}
+        ${quien ? `<p class="aurab-hola">${T.bienvenidoA}<b>${esc(quien)}</b></p>` : ''}
         <div class="aurab-nombre">AU-RA</div>
         <div class="aurab-linaje">${T.ecoTitulo} · <b>MODELO 1 · BETA</b></div>
         <p class="aurab-sub" id="aurab-sub"></p>
@@ -14012,7 +14214,7 @@ const VETA = (() => {
            nuAbrir,
            // El rincon de AU-RA en el chat: modos, voz y dictado.
            auraModoChat, auraVozMenu, auraVozElegir, auraDictar,
-           auraCharlarAlterna, auraCallar, chatBajar, chatMirarScroll,
+           auraCallar, chatBajar, chatMirarScroll,
            auraVozPantalla, auraVozCerrar,
            // AU-RA: el orbe, el panel, la bienvenida y el recorrido.
            auraToca, auraManda, auraMic, auraChip, auraTourVa, auraTourFin,
@@ -14092,6 +14294,15 @@ const VETA = (() => {
            _atPunto: (p) => atPunto(p), _atTablero: (v) => atTablero(v),
            _bienvenidaAura: () => auraBienvenida(true),
            _auraTxt: () => AURA_TXT,
+           /* Solo para las pruebas: el estado del modo voz, que vive en
+              variables del módulo y desde fuera no se puede mirar. Sin esto,
+              cuando el ciclo se corta hay que adivinar en qué eslabón. */
+           _auraVozEstado: () => ({
+             charlando: auraCharlando, pantalla: auraPantalla,
+             dictando: !!dictando, sonando: !!auraSonando,
+             buscando: auraBuscandoVoz, yaSono: auraYaSono.size,
+             porDecir: auraPorDecir.length, diciendo: auraDiciendo,
+           }),
            _identidad: x => { identidad = x; },
            /* Abrir un hilo sin relevo detrás. Es la única forma de probar las
               notas de voz de punta a punta: hace falta una conversación

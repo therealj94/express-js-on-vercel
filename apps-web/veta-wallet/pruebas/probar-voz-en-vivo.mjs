@@ -202,6 +202,25 @@ if (process.env.VERBOSO) { p.on('console', m => console.log('   [nav]', m.text()
    compromete a sonarlo— y con qué duración. */
 await p.addInitScript(({ u, m }) => {
   window.OG_API = u; window.OG_MENSAJES_API = m;
+  /* UN RECONOCEDOR DE VOZ DE MENTIRA, porque el modo no se abre sin uno — y
+     eso es a propósito: en Firefox o en un iOS viejo, abrir una pantalla negra
+     con la pelotita quieta y nada que funcione es peor que no abrirla. Un
+     teléfono de verdad sí lo tiene, así que aquí se pone uno que no escucha
+     nada pero existe. No transcribe: lo que se prueba en este archivo es la
+     VOZ DE ELLA, no el dictado. */
+  class OyenteDeMentira {
+    start() { this._vivo = true; }
+    stop() { this._vivo = false; if (this.onend) this.onend(); }
+    abort() { this._vivo = false; }
+    addEventListener() {}
+    removeEventListener() {}
+  }
+  /* Se REEMPLAZA, no se rellena si falta. Chromium sí trae reconocedor, y en
+     una máquina sin micrófono falla con 'audio-capture' — que ahora apaga el
+     modo y lo dice, como debe. Con `||` el de mentira no entraba nunca y esta
+     prueba medía esa caída en vez de la voz. */
+  window.SpeechRecognition = OyenteDeMentira;
+  window.webkitSpeechRecognition = OyenteDeMentira;
   window.__sonado = [];
   const t0 = performance.now();
   window.__fallos = [];
@@ -260,7 +279,10 @@ await p.evaluate(() => {
     catch (e) { window.__fallos.push(String(e && e.stack || e)); throw e; }
   };
 });
-await p.evaluate(() => VETA.auraCharlarAlterna());
+/* `auraVozPantalla` y no `auraCharlarAlterna`: aquella hacía lo mismo,
+   mejor, y no la llamaba nadie —el chip del hilo apunta acá—. Se borró y
+   su lógica se mudó a esta. */
+await p.evaluate(() => VETA.auraVozPantalla());
 await p.waitForTimeout(600);
 await p.evaluate(() => { window.__sonado.length = 0; window.__t = performance.now(); });
 await decir('El Genesis ID es tu identidad única en todo el ecosistema. '
@@ -275,6 +297,15 @@ const primero = await p.evaluate(() => ({
   desde: window.__sonado.length ? window.__sonado[0].en - window.__t : -1,
   dura: window.__sonado[0]?.dura || 0,
 }));
+if (process.env.VERBOSO) console.log('   DIAG estado:',
+  JSON.stringify(await p.evaluate(() => ({
+    pantalla: !!document.querySelector('.aura-voz'),
+    est: document.querySelector('.aura-voz-est')?.textContent || null,
+    suyo: document.querySelector('.aura-voz-suyo')?.textContent || null,
+    burbujas: document.querySelectorAll('#chat-msgs .cha-b, .cha-b').length,
+    vozEnVivo: typeof CHAT.vozEnVivo,
+    ...VETA._auraVozEstado(),
+  }))));
 if (process.env.VERBOSO) console.log('   DIAG fallos:',
   JSON.stringify(await p.evaluate(() => window.__fallos)));
 ok(primero.n >= 1, 'empieza a sonar sin esperar el resto',
