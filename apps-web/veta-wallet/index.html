@@ -2342,7 +2342,21 @@ body.en-p2c .editInput:focus{border-color:var(--p2c-cyan)}
      azul vuelve al Núcleo, y las pestañas de abajo siguen puestas—. */
   body.en-p2c .riel{display:none}
   body.en-p2c .lienzo{padding:0}
-  .p2c{grid-template-columns:1fr;height:calc(100svh - 76px)}
+  /* `- var(--teclado)`: `svh` es la altura con el navegador abierto del todo y
+     NO encoge cuando sube el teclado, así que la pantalla quedaba más alta que
+     lo visible y el navegador la desplazaba solo para enseñar el campo — eso
+     era «se sube solo la conversación». Lo que tapa el teclado lo mide
+     `seguirTeclado()` en app.js con `visualViewport`, que es lo único que lo
+     sabe; sin teclado vale 0 y esto es exactamente lo de antes. */
+  .p2c{grid-template-columns:1fr;height:calc(100svh - 76px - var(--teclado, 0px))}
+  /* Y los `min-height` de arriba, o no sirve de nada encoger el chat: `body` y
+     `#app` piden 100svh cada uno, así que el documento seguía midiendo la
+     pantalla entera aunque el chat cupiera — y lo que el navegador desplaza es
+     EL DOCUMENTO, no el chat. Medido: .p2c bajaba a 368 y el documento seguía
+     en 844 con 444 visibles. */
+  body.en-p2c{min-height:calc(100svh - var(--teclado, 0px))}
+  body.en-p2c #app{min-height:calc(100svh - var(--teclado, 0px))}
+  body.en-p2c .lienzo{min-height:0}
   .p2c-casa{border-right:0}
   .p2c[data-abierto] .p2c-casa{display:none}
   .p2c:not([data-abierto]) .chat-hilo{display:none}

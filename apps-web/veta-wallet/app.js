@@ -10731,6 +10731,54 @@ const VETA = (() => {
     $('#chat-hilo form.cha-pie')?.requestSubmit();
   }
 
+  /* ── EL TECLADO Y EL «SE SUBE SOLO» ────────────────────────────────────
+   *
+   * «escribo algo en pulse2chat y se sube solo la conversación, y me toca
+   *  bajar y me vuelve a subir solo»
+   *
+   * No era el repintado —eso ya estaba arreglado— sino UNA UNIDAD DE CSS. La
+   * pantalla del chat mide `calc(100svh - 76px)` en el teléfono, y `svh` es
+   * la altura de la ventana con el navegador ABIERTO DEL TODO: un número
+   * fijo, que NO encoge cuando sube el teclado.
+   *
+   * Entonces pasa esto, y pasa siempre:
+   *   1. tocás el campo y sube el teclado, que se come media pantalla;
+   *   2. la página sigue midiendo lo mismo, así que ahora es MÁS ALTA que lo
+   *      que se ve;
+   *   3. el navegador la desplaza solo, para enseñarte el campo donde estás
+   *      escribiendo — y eso, en pantalla, es la conversación yéndose arriba;
+   *   4. bajás con el dedo, el navegador vuelve a desplazarla para que el
+   *      campo siga a la vista, y se sube otra vez.
+   *
+   * `dvh` tampoco sirve: en el Safari del iPhone tampoco cuenta el teclado.
+   * Lo único que lo sabe es `visualViewport`, que es lo que de verdad se ve.
+   * Se mide cuánto tapa el teclado y se le resta a la pantalla del chat: si la
+   * página cabe entera en lo visible, el navegador no tiene nada que
+   * desplazar, y no desplaza.
+   *
+   * Sin teclado la variable vale cero y no cambia absolutamente nada. */
+  function seguirTeclado() {
+    const vv = window.visualViewport;
+    if (!vv) return;
+    const tapado = Math.max(0, Math.round(window.innerHeight - vv.height - vv.offsetTop));
+    // 120 px de umbral: las barras del navegador que aparecen y desaparecen al
+    // desplazar también mueven el visualViewport unas decenas de píxeles, y
+    // reaccionar a eso sería temblar en vez de acomodarse.
+    const alto = tapado > 120 ? tapado : 0;
+    document.documentElement.style.setProperty('--teclado', alto + 'px');
+    /* Y si la página ya venía desplazada de antes, se devuelve arriba: el
+       desplazamiento que causó el teclado no se deshace solo. */
+    if (alto && window.scrollY) window.scrollTo(0, 0);
+    // Con el hilo abierto y pegado al fondo, el teclado le cambia el alto:
+    // hay que volver a pegarlo, o queda a media pantalla de lo último.
+    if (alto && vistaActual === 'chat' && chatEnElFondo()) chatAlFinal();
+  }
+
+  if (window.visualViewport) {
+    window.visualViewport.addEventListener('resize', seguirTeclado);
+    window.visualViewport.addEventListener('scroll', seguirTeclado);
+  }
+
   const puedeDictar = () => !!(window.SpeechRecognition || window.webkitSpeechRecognition);
   let dictando = null;
 
