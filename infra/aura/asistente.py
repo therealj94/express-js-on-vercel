@@ -733,9 +733,16 @@ def preguntar_motor(sistema, perfil, historial, dicho, contexto='', al_vuelo=Non
     modelo = MODELO_PENSADORA if pensadora else MODELO_RAPIDA
     cuerpo = json.dumps({
         'model': modelo, 'messages': mensajes, 'stream': bool(al_vuelo),
-        # el modelo se queda cargado entre preguntas: cargarlo cuesta segundos
-        # y en esta maquina cada segundo se nota
-        'keep_alive': '30m',
+        # ── POR QUE 24 HORAS Y NO 30 MINUTOS ──────────────────────────
+        # Con 30m, CUALQUIER hueco de media hora saca el modelo de la VRAM:
+        # el almuerzo, la noche, toda la mañana. Y el arranque en frio esta
+        # medido en este mismo nodo — 237 segundos. O sea que la primera
+        # persona que escribia cada mañana esperaba casi cuatro minutos, y
+        # no habia forma de saberlo desde fuera: parecia «esta lento».
+        # La maquina es DEDICADA a esto. No hay nadie con quien turnarse la
+        # memoria de video, asi que soltarla no compra nada y cuesta cuatro
+        # minutos al primero de cada dia.
+        'keep_alive': '24h',
         'options': {
             # Mas temperatura solo cuando se esta repreguntando por haber
             # repetido: si se contesta igual que antes, decirlo con las
@@ -993,12 +1000,24 @@ def atender(rel, sistema, p, de, dicho):
         p['voz'] = ''
         rel.enviar(de, VOZ_APAGADA)
         return
-    if len(bajo) < 40 and ('voz' in bajo or 'voice' in bajo or 'habla' in bajo):
-        pedido = next((r for r in REGISTROS if r in bajo), '')
-        if pedido or 'con voz' in bajo or 'hablame' in bajo or 'voice on' in bajo:
-            p['voz'] = pedido or 'calida'
-            rel.enviar(de, CAMBIO_VOZ[p['voz']])
-            return
+    # ENCENDER LA VOZ ES UNA ORDEN CERRADA, NO UNA PALABRA SUELTA.
+    #
+    # Antes bastaba con que la frase midiera menos de 40 y llevara «habla»
+    # adentro. Y «hablame de AUKA», «hablame del oro», «hablame de la
+    # tarjeta» son la forma MAS natural de preguntar en español latino, y
+    # las tres miden menos de 40: la persona preguntaba algo y AU-RA le
+    # encendia las notas de voz. Ahora la frase tiene que ser la orden
+    # ENTERA — con «de» detras, es una pregunta y va al modelo.
+    orden_voz = _re.fullmatch(
+        r'\s*(?:hablame|hablar|habla)?\s*(?:con\s+)?voz\s*'
+        r'(calida|sobria|agil)?\s*[.!]?\s*'
+        r'|\s*(?:hablame|habla)\s+con\s+voz\s+(calida|sobria|agil)\s*[.!]?\s*'
+        r'|\s*voice\s+on\s*', bajo)
+    if orden_voz:
+        pedido = next((g for g in orden_voz.groups() if g), '')
+        p['voz'] = pedido or 'calida'
+        rel.enviar(de, CAMBIO_VOZ[p['voz']])
+        return
 
     # EL SALUDO SUELTO. «Hola», «buenas», «qué tal» — la frase mas comun de
     # todas, y la que peor le sale al modelo: no tiene nada que contestar, asi
@@ -1282,6 +1301,21 @@ def main():
                + todo_el_saber(saber))
     perfiles = cargar_perfiles()
     templar(sistema)
+    # ── Y SE MANTIENE TEMPLADO ────────────────────────────────────────────
+    # `keep_alive` largo le dice a Ollama que no suelte el modelo, pero un
+    # latido cada tanto lo asegura pase lo que pase (un reinicio de Ollama,
+    # una limpieza de memoria, un cambio de modelo por el modo pensador).
+    # Cuesta un token cada veinte minutos — 0,2 segundos de GPU, 72 veces al
+    # dia en una maquina que no hace otra cosa. Contra los 237 segundos que
+    # pagaba el primero de cada mañana, es regalado.
+    def latido_templado():
+        while True:
+            time.sleep(1200)
+            try:
+                templar(sistema)
+            except Exception as e:
+                log('el latido de templado fallo:', type(e).__name__, str(e)[:80])
+    threading.Thread(target=latido_templado, daemon=True).start()
     log(f'AU-RA de pie · {len(saber)} fichas · {MODELO_RAPIDA}+{MODELO_PENSADORA} · '
         f'{len(probadores())} probadores')
     with ThreadPoolExecutor(max_workers=HILOS) as tanda:

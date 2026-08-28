@@ -5464,7 +5464,7 @@ const VETA = (() => {
      se puede contestar: «¿esto que estoy viendo es lo último que subimos, o
      mi navegador se quedó con una copia vieja?». La ficha de Ajustes lo
      enseña, y con eso se sabe. */
-  const VETA_V = '417a21f8d2';
+  const VETA_V = '55f6c0b347';
   const VETA_FECHA = '2026-08-28';
 
   const AET_V = 'e250bbe2f5';
@@ -11391,6 +11391,7 @@ const VETA = (() => {
       AURA.montarOrbe(objetivo);
       auraLienzo = objetivo;
     }
+    auraOrbeArrastrable();
     if (auraVisita) vigilarInvitacion();
   }
 
@@ -11419,6 +11420,139 @@ const VETA = (() => {
   function ajustarOrbe() {
     $('#aura-orbe').classList.toggle('tapado',
       auraVisita && invitacionesVisibles.size > 0 && !auraAbierta);
+  }
+
+  /* ══ LA BURBUJA SE MUEVE ═══════════════════════════════════════════════════
+   *
+   * «la burbuja donde puedo hablar con aura corrido … que se puede mover,
+   *  abrir y cerrar».
+   *
+   * Tres gestos y ni uno más, que es el contrato que usan todas las burbujas
+   * que funcionan: TOCAR para abrir, ARRASTRAR para mover, y soltarla cerca
+   * de un borde para que se acomode ahí. Un cuarto gesto es un gesto que
+   * nadie descubre.
+   *
+   * Cuatro cosas que parecen detalles y son la diferencia entre que se sienta
+   * viva o barata:
+   *
+   *   · EL AGARRE. Se guarda dónde tocó el dedo DENTRO de la burbuja. Sin
+   *     eso, agarrarla del borde la hace saltar para centrarse bajo el dedo.
+   *   · OCHO PÍXELES. Por debajo es un toque y abre; por encima es arrastre.
+   *     Sin umbral, cualquier temblor del pulgar convierte un toque en un
+   *     arrastre de dos píxeles y la burbuja no abre nunca.
+   *   · UN SOLO DEDO. Se recuerda el `pointerId` y se ignora cualquier otro:
+   *     en un teléfono la palma apoya y manda eventos que no son de nadie.
+   *   · EL TECLADO, que es el que rompe todo y no existe en el escritorio.
+   *     Cuando sube, en iOS el viewport de maquetado NO se achica: lo que
+   *     está fijo abajo queda DETRÁS del teclado, invisible. Se escucha
+   *     `visualViewport` y la burbuja se sube con él.
+   *
+   * Dónde quedó se recuerda: alguien que la corrió a la izquierda porque es
+   * zurdo no tiene que volver a correrla en cada pantalla.
+   */
+  const AURA_POS = 'veta.aura.orbe.pos';
+  const AURA_MARGEN = 12;
+  let auraArr = null;
+
+  function auraOrbeSitio() {
+    try {
+      const g = JSON.parse(localStorage.getItem(AURA_POS) || 'null');
+      if (g && typeof g.x === 'number' && typeof g.y === 'number') return g;
+    } catch { /* sin memoria, al sitio de siempre */ }
+    return null;
+  }
+
+  function auraOrbeColocar(x, y, conAnimacion) {
+    const o = $('#aura-orbe');
+    if (!o) return;
+    const vv = window.visualViewport;
+    const anchoV = vv ? vv.width : window.innerWidth;
+    const altoV = vv ? vv.height : window.innerHeight;
+    const w = o.offsetWidth || 64, h = o.offsetHeight || 64;
+    // Nunca fuera de la pantalla, ni debajo del teclado: `visualViewport`
+    // ya descuenta el teclado, así que el techo de abajo se mueve con él.
+    const px = Math.max(AURA_MARGEN, Math.min(x, anchoV - w - AURA_MARGEN));
+    const py = Math.max(AURA_MARGEN, Math.min(y, altoV - h - AURA_MARGEN));
+    o.style.transition = conAnimacion ? 'left .22s cubic-bezier(.2,.9,.3,1), top .22s cubic-bezier(.2,.9,.3,1)' : 'none';
+    o.style.left = `${px}px`;
+    o.style.top = `${py + (vv ? vv.offsetTop : 0)}px`;
+    o.style.right = 'auto';
+    o.style.bottom = 'auto';
+    return { x: px, y: py };
+  }
+
+  function auraOrbeGuardar(p) {
+    try { localStorage.setItem(AURA_POS, JSON.stringify(p)); } catch { /* da igual */ }
+  }
+
+  function auraOrbeArrastrable() {
+    const o = $('#aura-orbe');
+    if (!o || o.dataset.mueve) return;
+    o.dataset.mueve = '1';
+
+    const guardado = auraOrbeSitio();
+    if (guardado) auraOrbeColocar(guardado.x, guardado.y, false);
+
+    o.addEventListener('pointerdown', (e) => {
+      if (e.button !== 0 && e.pointerType === 'mouse') return;
+      const c = o.getBoundingClientRect();
+      auraArr = { id: e.pointerId, dx: e.clientX - c.left, dy: e.clientY - c.top,
+                  x0: e.clientX, y0: e.clientY, movio: false };
+      try { o.setPointerCapture(e.pointerId); } catch { /* sin captura igual anda */ }
+    });
+
+    o.addEventListener('pointermove', (e) => {
+      if (!auraArr || e.pointerId !== auraArr.id) return;   // un solo dedo
+      const d = Math.hypot(e.clientX - auraArr.x0, e.clientY - auraArr.y0);
+      if (!auraArr.movio && d < 8) return;                  // todavía es un toque
+      auraArr.movio = true;
+      o.classList.add('arrastrando');
+      auraOrbeColocar(e.clientX - auraArr.dx, e.clientY - auraArr.dy, false);
+    });
+
+    const soltar = (e) => {
+      if (!auraArr || (e && e.pointerId !== auraArr.id)) return;
+      const movio = auraArr.movio;
+      auraArr = null;
+      o.classList.remove('arrastrando');
+      if (!movio) return;                                   // fue un toque: abre solo
+      /* Se acomoda al borde más cercano. Una burbuja suelta a mitad de
+         pantalla tapa contenido y se toca sin querer; pegada a un lado
+         estorba lo mínimo y se encuentra siempre en el mismo sitio. */
+      const c = o.getBoundingClientRect();
+      const vv = window.visualViewport;
+      const anchoV = vv ? vv.width : window.innerWidth;
+      const izq = c.left + c.width / 2 < anchoV / 2;
+      const p = auraOrbeColocar(izq ? AURA_MARGEN : anchoV - c.width - AURA_MARGEN,
+                                c.top - (vv ? vv.offsetTop : 0), true);
+      if (p) auraOrbeGuardar(p);
+    };
+    o.addEventListener('pointerup', soltar);
+    o.addEventListener('pointercancel', soltar);
+
+    /* Un arrastre NO puede abrir el panel. Sin esto, mover la burbuja
+       termina siempre con el panel abierto encima de lo que se quería ver. */
+    o.addEventListener('click', (e) => {
+      if (o.dataset.arrastro === '1') { e.stopImmediatePropagation(); e.preventDefault(); }
+    }, true);
+    o.addEventListener('pointerup', () => {
+      o.dataset.arrastro = o.classList.contains('arrastrando') ? '1' : '0';
+      setTimeout(() => { o.dataset.arrastro = '0'; }, 0);
+    }, true);
+
+    // el teclado: se escucha y la burbuja se sube con él
+    if (window.visualViewport) {
+      const seguir = () => {
+        const g = auraOrbeSitio();
+        if (g) auraOrbeColocar(g.x, g.y, false);
+      };
+      window.visualViewport.addEventListener('resize', seguir);
+      window.visualViewport.addEventListener('scroll', seguir);
+    }
+    window.addEventListener('resize', () => {
+      const g = auraOrbeSitio();
+      if (g) auraOrbeColocar(g.x, g.y, false);
+    });
   }
 
   function auraToca() {

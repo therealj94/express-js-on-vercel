@@ -367,8 +367,13 @@ def main():
             a2 = de_usuario()[1]['messages'][0]['content']
             ok(a1 == a2, 'el mensaje de sistema es IDENTICO byte por byte',
                'si cambia, Ollama no lo cachea y cada pregunta paga la lectura entera')
-            ok(de_usuario()[1].get('keep_alive') == '30m',
-               'el modelo se queda cargado entre preguntas')
+            # Ya no son 30 minutos: con eso, cualquier hueco —el almuerzo,
+            # la noche— sacaba el modelo de la VRAM y el primero de la mañana
+            # pagaba los 237 segundos del arranque en frío, medidos en el
+            # nodo. La máquina es dedicada: soltar la memoria no compra nada.
+            ok(de_usuario()[1].get('keep_alive') in ('24h', '-1'),
+               'el modelo NO se suelta entre sesiones, no solo entre preguntas',
+               f"keep_alive = {de_usuario()[1].get('keep_alive')}")
 
         print('\nLos dos modos de pensar\n')
         post(BASE, '/enviar', {**ana, 'para': 'aura@prueba.local',
@@ -614,6 +619,22 @@ def main():
         # y la cortesía pura SÍ se va entera, que era el punto original
         ok(lim('¡Hola Tere!\n\nMe alegra que tengas una tienda.') == '',
            'pero la cortesía de punta a punta sigue yéndose entera')
+
+        print('\n«Hablame de AUKA» es una PREGUNTA, no una orden de voz\n')
+        # Antes bastaba con que la frase midiera menos de 40 y llevara «habla»
+        # adentro. Y «hablame de AUKA», «hablame del oro», «hablame de la
+        # tarjeta» son la forma MÁS natural de preguntar en español latino:
+        # la persona preguntaba algo y AU-RA le encendía las notas de voz.
+        antes_h = len(de_usuario())
+        post(BASE, '/enviar', {**ana, 'para': 'aura@prueba.local',
+                               'texto': 'hablame de AUKA'})
+        fin = time.time() + 25
+        while time.time() < fin and len(de_usuario()) == antes_h:
+            time.sleep(0.3)
+        ok(len(de_usuario()) > antes_h,
+           '«hablame de AUKA» va al modelo, no enciende la voz',
+           'es la forma más natural de preguntar y se la estaba tragando el '
+           'detector de comandos')
 
         print('\nLa voz: se pide, no se impone\n')
         # Que venga APAGADA importa: una nota de voz en cada respuesta es un

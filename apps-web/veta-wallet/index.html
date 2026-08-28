@@ -1218,6 +1218,14 @@ body.en-cerebro .lienzo{max-width:none;padding:0}
 #aura-orbe .aura-nombre{position:absolute;left:50%;bottom:-16px;transform:translateX(-50%);
   font-size:9px;font-weight:800;letter-spacing:.22em;color:var(--oroLt);opacity:.85;white-space:nowrap}
 #aura-orbe[data-oculto]{display:none}
+/* Mientras se arrastra: sin transición (o va a rastras del dedo), un poco
+   más grande para que se sienta agarrada, y sin el menú del navegador al
+   dejar el dedo apoyado. `touch-action:none` es lo que impide que el gesto
+   se lo lleve el scroll de la página. */
+#aura-orbe{touch-action:none;-webkit-user-select:none;user-select:none;
+  -webkit-touch-callout:none}
+#aura-orbe.arrastrando{transition:none!important;transform:scale(1.08);
+  filter:drop-shadow(0 10px 30px rgba(126,216,196,.55))}
 /* Apartado, no borrado: se desvanece cuando la invitación de la portada está
    en pantalla, y vuelve sola al pasar de largo. */
 #aura-orbe.tapado{opacity:0;transform:scale(.82);pointer-events:none;
@@ -4529,9 +4537,9 @@ body.en-ventana .lienzo::before{
 
 <!-- El saber publico que Genesis dejo salir. Lo genera
      infra/cerebro/publicar-saber.mjs; no se edita a mano. -->
-<script src="saber.js?v=417a21f8d2"></script>
-<script src="telemetria.js?v=417a21f8d2"></script>
-<script src="qr.js?v=417a21f8d2"></script>
+<script src="saber.js?v=55f6c0b347"></script>
+<script src="telemetria.js?v=55f6c0b347"></script>
+<script src="qr.js?v=55f6c0b347"></script>
 <!-- La cripto para entrar con la frase semilla. Se carga aparte y no dentro
      de app.js porque son 13 KB que solo hacen falta si alguien elige ese
      camino, y porque asi se puede probar sola (pruebas/probar-llaves.mjs). -->
@@ -4674,24 +4682,24 @@ body.en-ventana .lienzo::before{
   </div>
 </div>
 
-<script src="vendor/cripto-llaves.js?v=417a21f8d2"></script>
-<script src="llaves.js?v=417a21f8d2"></script>
-<script src="tono.js?v=417a21f8d2"></script>
-<script src="llamada.js?v=417a21f8d2"></script>
-<script src="llamadaGrupo.js?v=417a21f8d2"></script>
-<script src="velas.js?v=417a21f8d2"></script>
-<script src="cadena.js?v=417a21f8d2"></script>
-<script src="datos.js?v=417a21f8d2"></script>
-<script src="aura.js?v=417a21f8d2"></script>
-<script src="candado.js?v=417a21f8d2"></script>
-<script src="chat.js?v=417a21f8d2"></script>
-<script src="i18n.js?v=417a21f8d2"></script>
-<script src="galaxia.js?v=417a21f8d2"></script>
+<script src="vendor/cripto-llaves.js?v=55f6c0b347"></script>
+<script src="llaves.js?v=55f6c0b347"></script>
+<script src="tono.js?v=55f6c0b347"></script>
+<script src="llamada.js?v=55f6c0b347"></script>
+<script src="llamadaGrupo.js?v=55f6c0b347"></script>
+<script src="velas.js?v=55f6c0b347"></script>
+<script src="cadena.js?v=55f6c0b347"></script>
+<script src="datos.js?v=55f6c0b347"></script>
+<script src="aura.js?v=55f6c0b347"></script>
+<script src="candado.js?v=55f6c0b347"></script>
+<script src="chat.js?v=55f6c0b347"></script>
+<script src="i18n.js?v=55f6c0b347"></script>
+<script src="galaxia.js?v=55f6c0b347"></script>
 <!-- GENESIS CORE: el cerebro del ecosistema, el mismo volumen que se proyecta
      en la sala de Genesis ID. Solo lo usa su vista. -->
-<script src="cerebro-og.js?v=417a21f8d2"></script>
+<script src="cerebro-og.js?v=55f6c0b347"></script>
 <!-- MODO VISOR: la casa dentro de un visor (WebXR, cartón o 360 en pantalla). -->
-<script src="visor.js?v=417a21f8d2"></script>
-<script src="musica.js?v=417a21f8d2"></script>
-<script src="airtouch.js?v=417a21f8d2"></script>
-<script src="app.js?v=417a21f8d2"></script>
+<script src="visor.js?v=55f6c0b347"></script>
+<script src="musica.js?v=55f6c0b347"></script>
+<script src="airtouch.js?v=55f6c0b347"></script>
+<script src="app.js?v=55f6c0b347"></script>
