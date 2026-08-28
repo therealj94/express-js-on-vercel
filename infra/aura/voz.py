@@ -138,6 +138,9 @@ MIN_TROZO = 25          # por debajo de esto no vale la pena una generacion
 # frases y la persona oye dos montos donde hay uno.
 CIFRA = re.compile(r'\d[\d.,]*\d|\d')
 CIFRA_PARTIDA = re.compile(r'\d[.,]$')
+# Una letra de verdad, con tildes y eñes. Un trozo sin ninguna no se puede
+# decir en voz alta, y al motor no le da igual: se cae.
+LETRA = re.compile(r'[^\W\d_]', re.UNICODE)
 
 _CIERRE = {'.': 'punto', '!': 'punto', '?': 'pregunta', ':': 'dospuntos',
            ';': 'punto', ',': 'coma'}
@@ -190,7 +193,22 @@ def trozos(texto):
             else:
                 salida.append(resto)
 
-    # 3) a cada trozo, su silencio y su marca de respiro
+    # 3) fuera lo que no se puede pronunciar.
+    #
+    # Un trozo sin una sola letra —«**», «1.», «---»— no produce ningun
+    # fonema, y el motor no devuelve audio vacio: se cae con «Expected
+    # reduction dim 1 to have non-zero size» y se lleva puesta la nota
+    # entera. Paso en produccion. Lo que no tiene letras se pega al trozo
+    # anterior (por si eran signos de puntuacion sueltos) o se descarta.
+    con_voz = []
+    for t in salida:
+        if LETRA.search(t):
+            con_voz.append(t)
+        elif con_voz:
+            con_voz[-1] = (con_voz[-1] + ' ' + t).strip()
+    salida = con_voz
+
+    # 4) a cada trozo, su silencio y su marca de respiro
     final = []
     for i, t in enumerate(salida):
         ultimo = t[-1] if t else ''
@@ -369,11 +387,20 @@ class Motor:
                 # la semilla fija por voz: sin esto el timbre deriva de un
                 # trozo al siguiente y la misma nota suena a dos personas
                 self.torch.manual_seed(v['semilla'])
-                w = self.modelo.generate(
-                    t, language_id='es',
-                    exaggeration=v['exageracion'],
-                    cfg_weight=v['apego'],
-                    temperature=v['temperatura'])
+                try:
+                    w = self.modelo.generate(
+                        t, language_id='es',
+                        exaggeration=v['exageracion'],
+                        cfg_weight=v['apego'],
+                        temperature=v['temperatura'])
+                except Exception as e:
+                    # UN trozo que se cae no puede llevarse la nota entera.
+                    # Se salta y se sigue: una nota a la que le falta una
+                    # frase todavia sirve; una nota que no existe, no. Queda
+                    # en el registro para poder mirarlo despues.
+                    print(f'trozo saltado ({type(e).__name__}): {t[:60]!r}',
+                          flush=True)
+                    continue
                 a = w.squeeze(0).cpu().numpy().astype(np.float32)
                 if respiro and pedazos:
                     # el respiro corto ANTES de la cifra: se le suma al

@@ -524,19 +524,23 @@ def limpiar(texto):
     # no dice nada. Quien llama tiene que saber tratar el vacio.
     if not sin_relleno:
         return ''
-    t = sin_relleno
+    # El markdown se va SIEMPRE y no tiene vuelta atras. No quita sentido —
+    # cambia «**oro**» por «oro»— y en cambio dejarlo pasar significa que la
+    # nota de voz diga «asterisco asterisco oro asterisco asterisco».
+    sin_marcas = sin_relleno
     for patron, con in MARCAS:
-        t = patron.sub(con, t)
+        sin_marcas = patron.sub(con, sin_marcas)
+    sin_marcas = sin_marcas.strip()
     # el eco va DESPUES de quitar el markdown: el titulo suele venir como
     # «**¿Qué es AUKA?**» y sin quitar los asteriscos no se reconoce
-    t = ECO.sub('', t.lstrip()).strip()
-    # LA RED. Un limpiador que se come la RESPUESTA es peor que la mugre que
-    # venia a sacar. Pero se compara contra `sin_relleno`, no contra el
-    # original: si se comparara contra el original, quitar un saludo largo
-    # parecería «se comió medio mensaje» y devolvería el saludo de vuelta —
-    # que es exactamente lo que pasó la primera vez.
-    if len(t) < len(sin_relleno) * 0.5:
-        t = sin_relleno
+    t = ECO.sub('', sin_marcas.lstrip()).strip()
+    # LA RED, y contra QUE se mide. Un limpiador que se come la respuesta es
+    # peor que la mugre que venia a sacar, pero la vuelta atras es a
+    # `sin_marcas`, nunca al crudo. Midiendolo contra el crudo, quitar un
+    # titulo largo parecia «se comio media respuesta» y devolvia el texto CON
+    # los asteriscos puestos — la red restaurando justo lo que hay que sacar.
+    if len(t) < len(sin_marcas) * 0.5:
+        t = sin_marcas
     return (t[0].upper() + t[1:]) if t else ''
 
 
@@ -843,7 +847,14 @@ def atender(rel, sistema, p, de, dicho):
     if not salio and not resto:
         rel.enviar(de, MOTOR_CAIDO)
         return
-    r = (entero or '').strip() or resto
+    # `entero` es lo que dijo el motor EN CRUDO — con sus asteriscos, sus
+    # «1.» y su «¡Hola Tere!». Lo que sale al chat ya va limpio porque cada
+    # frase pasa por limpiar() al mandarse, pero esto de aca se usa para DOS
+    # cosas que no pasaban por ahi: la memoria de la charla y la nota de voz.
+    # Sin limpiarlo, a la voz le llegaba el markdown entero: un trozo que era
+    # solo «**» no tiene nada que pronunciar y tumbaba el motor de voz (y si
+    # no lo tumbara, leeria «asterisco asterisco» en voz alta).
+    r = limpiar(entero or '') or resto
     # La nota de voz, si esta persona la pidio. Va en otro hilo y detras del
     # texto: leer es instantaneo, grabar tarda. Ver mandar_voz.
     if p.get('voz') in REGISTROS and r:

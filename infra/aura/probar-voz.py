@@ -149,6 +149,27 @@ ok(voz.VOCES['sobria']['aire'] > voz.VOCES['agil']['aire'],
    'y respira más largo, porque a un monto hay que darle lugar')
 ok(voz.VOZ_POR_DEFECTO in voz.VOCES, 'la voz por defecto existe')
 
+print('\nLo que el motor no puede pronunciar\n')
+
+# Esto tumbó las notas de voz en producción: al motor le llegaba el texto
+# CRUDO del modelo, con markdown, y un trozo que era solo «**» no produce
+# ningún fonema — el motor no devuelve audio vacío, se cae y se lleva la
+# nota entera.
+for crudo, q in [
+    ('El Genesis ID es tu identidad. ** Y sirve para entrar a todo el sistema.',
+     'asteriscos sueltos'),
+    ('Las ventajas son claras. --- Entrás a todo con una sola verificación.',
+     'una raya de separación'),
+    ('Tenés dos caminos. 1. Entrás a la aplicación y tocás verificar tu cuenta.',
+     'un número de lista suelto'),
+]:
+    t = voz.trozos(crudo)
+    mudos = [x[0] for x in t if not voz.LETRA.search(x[0])]
+    ok(not mudos, f'ningún trozo queda mudo: {q}', f'mudos: {mudos}')
+    ok(''.join(x[0] for x in t).count('sistema') + ''.join(x[0] for x in t).count('verificar')
+       + ''.join(x[0] for x in t).count('verificación') >= 1,
+       f'y no se pierde el texto de al lado: {q}')
+
 print('\nLo que NO puede pasar\n')
 
 ok(voz.trozos('') == [] and voz.trozos(None) == [],

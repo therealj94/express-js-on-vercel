@@ -388,6 +388,16 @@ def main():
         ok(lim('¡Hola Tere!\n\nMe alegra que tengas una tienda de abarrotes.') == '',
            'un trozo que es relleno de punta a punta se tira entero, no se manda')
 
+        # Esta salió a producción: la red de seguridad medía contra el texto
+        # CRUDO, así que al quitar un título largo el resto quedaba corto, la
+        # red creía que se había comido la respuesta y devolvía el crudo CON
+        # los asteriscos. La red restaurando justo lo que hay que sacar.
+        md = lim('### ¿Cómo te puede ayudar Ordenex?\n\n'
+                 '1. **Protección de Ahorros**: cuidás tu plata del bajón.')
+        ok('*' not in md and '#' not in md,
+           'el markdown se va SIEMPRE, aunque la red de seguridad se dispare',
+           f'quedó {md!r}')
+
         # LO QUE NO SE PUEDE PERDER NUNCA. Una versión del limpiador se comió
         # «pero no puedo predecir el precio» — una negativa de seguridad. Un
         # preámbulo que sobra es una molestia; una advertencia borrada es un
