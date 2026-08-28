@@ -2500,6 +2500,20 @@ body.en-p2c .chay-cara{background:var(--p2c-grad);color:#03122E;
 /* Los tres puntos del panel del orbe. Antes de esto, preguntarle algo que las
    reglas no sabían dejaba el panel quieto cinco segundos: no había forma de
    saber si estaba pensando o si se había colgado. */
+/* Los puntitos de «pensando» en el HILO, no solo en la pantalla de voz. Se
+   reusa la animación de `.aura-pensando`, que ya existe y ya está probada;
+   acá solo se le da la forma de un globo del chat para que se lea como lo que
+   es —ella, a punto de contestar— y no como un mensaje más. */
+.cha-pensando{flex-direction:row;align-items:center;gap:7px;
+  padding:10px 14px;border-radius:16px 16px 16px 5px;
+  background:rgba(9,42,44,.55);border:1px solid rgba(126,216,196,.12);
+  color:var(--verde-claro,#7ed8c4);font-size:13px;opacity:.85}
+.cha-pensando i{width:6px;height:6px;border-radius:50%;background:currentColor;
+  display:inline-block;animation:aurapunto 1.2s ease-in-out infinite}
+.cha-pensando i:nth-child(2){animation-delay:.18s}
+.cha-pensando i:nth-child(3){animation-delay:.36s}
+/* Las sugerencias del hilo vacío: nadie adivina los poderes de una asistente. */
+.cha-sugiere{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-top:14px}
 .aura-pensando{display:inline-flex;align-items:center;gap:8px;opacity:.75}
 .aura-pensando i{width:6px;height:6px;border-radius:50%;background:currentColor;
   animation:aurapunto 1.2s ease-in-out infinite}
@@ -2507,7 +2521,7 @@ body.en-p2c .chay-cara{background:var(--p2c-grad);color:#03122E;
 .aura-pensando i:nth-child(3){animation-delay:.36s}
 .aura-pensando span{font-size:12px}
 @keyframes aurapunto{0%,60%,100%{opacity:.3;transform:translateY(0)}30%{opacity:1;transform:translateY(-3px)}}
-@media (prefers-reduced-motion:reduce){.aura-pensando i{animation:none;opacity:.7}}
+@media (prefers-reduced-motion:reduce){.aura-pensando i,.cha-pensando i{animation:none;opacity:.7}}
 /* La pastilla de «llegó algo». Existe para poder NO arrastrar a nadie: quien
    subió a releer se entera sin que el hilo se le mueva bajo el dedo. */
 .cha-nuevos{position:absolute;left:50%;transform:translateX(-50%);bottom:96px;

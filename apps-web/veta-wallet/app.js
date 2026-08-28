@@ -10722,6 +10722,15 @@ const VETA = (() => {
     chatSt.mandando = false;
   }
 
+  /** Una sugerencia del hilo vacío: se escribe en el campo y se manda, que es
+      lo que haría la persona. No se manda «por debajo»: así queda escrito lo
+      que preguntó y la conversación tiene principio. */
+  function chatSugerir(txt) {
+    const c = $('#chat-txt');
+    if (c) { c.value = txt; c.focus(); }
+    $('#chat-hilo form.cha-pie')?.requestSubmit();
+  }
+
   const puedeDictar = () => !!(window.SpeechRecognition || window.webkitSpeechRecognition);
   let dictando = null;
 
@@ -10893,6 +10902,35 @@ const VETA = (() => {
     const lista = aguja
       ? (chatSt.msgs || []).filter(m => (m.texto || '').toLowerCase().includes(aguja))
       : chatSt.msgs;
+    /* ── EL HILO DICE QUE ESTÁ PENSANDO ────────────────────────────────────
+     *
+     * El estado existía y solo se pintaba en la pantalla de voz. En el hilo
+     * escrito, entre que mandás y que llega, la pantalla se quedaba QUIETA
+     * cinco o diez segundos: sin puntitos, sin nada girando, sin una palabra.
+     * En un chat con una persona al menos sale «fulano está escribiendo».
+     *
+     * Se siente como lentitud aunque el número no cambie —y el número está
+     * medido: entre 3,3 y 6,6 segundos contra el nodo—. La mitad de «tarda
+     * mucho» es no saber si te oyó. */
+    const pensandoAqui = esAura(c) && auraEsperando() && !aguja;
+    const globoPensando = pensandoAqui
+      ? `<div class="cha-b cha-suyo cha-pensando" aria-live="polite">
+           <i></i><i></i><i></i><span>${esc(t('au.pensando'))}</span>
+         </div>` : '';
+
+    /* Y NO ABRE VACÍO. Antes, entrar al hilo de AU-RA por primera vez daba
+       «Acá no hay nada todavía. Escribí lo primero.» — la misma frase que si
+       abrieras el chat de un desconocido. Nadie adivina los poderes de una
+       asistente: se le enseñan. Son las mismas sugerencias que ofrece la
+       burbuja, así que no hay dos listas que mantener. */
+    const vacioDeAura = esAura(c) && !aguja
+      ? `<div class="vacio cha-vacio-aura">
+           <b>${esc(t('cha.hiloT'))}</b>${esc(t('cha.hiloP'))}
+           <div class="cha-sugiere">${auraSugerencias().map((x) =>
+             `<button type="button" class="aura-chip"
+                onclick="VETA.chatSugerir(${jsTxt(x)})">${esc(x)}</button>`).join('')}</div>
+         </div>` : '';
+
     const cuerpo = chatSt.msgs === null
       ? `<div class="cha-cargando"><span class="girando"></span></div>`
       : (lista.length
@@ -10901,7 +10939,12 @@ const VETA = (() => {
             + lista.map(chatBurbuja).join('')
           : aguja
             ? `<div class="vacio"><b>${t('cha.nadaEnHilo')}</b>${t('cha.nadaEnHiloP')}</div>`
-            : `<div class="vacio"><b>${t('cha.hiloT')}</b>${t('cha.hiloP')}</div>`);
+            : vacioDeAura
+              || `<div class="vacio"><b>${t('cha.hiloT')}</b>${t('cha.hiloP')}</div>`)
+        // el globo va SIEMPRE al final, tenga el hilo mensajes o no: en la
+        // práctica los tiene —acabás de escribir— pero colgarlo de eso hacía
+        // que dependiera de algo que no tiene nada que ver
+        + globoPensando;
 
     return `
       <div class="cha-hcab">
@@ -14214,7 +14257,7 @@ const VETA = (() => {
            nuAbrir,
            // El rincon de AU-RA en el chat: modos, voz y dictado.
            auraModoChat, auraVozMenu, auraVozElegir, auraDictar,
-           auraCallar, chatBajar, chatMirarScroll,
+           auraCallar, chatSugerir, chatBajar, chatMirarScroll,
            auraVozPantalla, auraVozCerrar,
            // AU-RA: el orbe, el panel, la bienvenida y el recorrido.
            auraToca, auraManda, auraMic, auraChip, auraTourVa, auraTourFin,
@@ -14294,6 +14337,7 @@ const VETA = (() => {
            _atPunto: (p) => atPunto(p), _atTablero: (v) => atTablero(v),
            _bienvenidaAura: () => auraBienvenida(true),
            _auraTxt: () => AURA_TXT,
+           _auraEsperar: () => { auraEsperar(); pintarChat(); },
            /* Solo para las pruebas: el estado del modo voz, que vive en
               variables del módulo y desde fuera no se puede mirar. Sin esto,
               cuando el ciclo se corta hay que adivinar en qué eslabón. */

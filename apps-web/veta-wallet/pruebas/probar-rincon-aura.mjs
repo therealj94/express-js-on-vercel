@@ -254,6 +254,31 @@ ok(/punta a punta|end-to-end/i.test(gente.sello),
 ok(!gente.claseMsgs.includes('cha-de-aura'), 'sin la clase de ella');
 ok(!/beta/i.test(gente.sub), 'el subtítulo es el de siempre');
 
+console.log('\nEl hilo dice que está pensando, y no abre vacío\n');
+/* Dos cosas que el hilo de AU-RA no hacía y el chat entre personas sí:
+   avisar de que está por contestar, y no recibirte con un cuadro vacío. */
+await p.evaluate(() => VETA._chatCon({ id: 'aura@ordenglobal.org', nombre: 'AU-RA' }));
+await p.waitForTimeout(400);
+const sug = await p.evaluate(() =>
+  [...document.querySelectorAll('#chat-msgs .cha-sugiere .aura-chip')]
+    .map((b) => b.textContent.trim()));
+ok(sug.length >= 3,
+   'el hilo vacío de AU-RA ofrece qué preguntarle',
+   `se vieron ${sug.length} sugerencias; antes era «Acá no hay nada todavía» y nada más`);
+ok(!(await p.evaluate(() => !!document.querySelector('#chat-msgs .cha-pensando'))),
+   'y sin nada en vuelo no dice que esté pensando');
+
+/* `auraEsperar()` es lo que marca «le pregunté y estoy esperando»: lo llama
+   el envío real. Se dispara a mano para mirar el globo sin un modelo detrás. */
+await p.evaluate(() => VETA._chatCon({ id: 'aura@ordenglobal.org', nombre: 'AU-RA',
+  __msgs: 1 }));
+await p.evaluate(() => { VETA._auraEsperar(); });
+await p.waitForTimeout(300);
+ok(await p.evaluate(() => !!document.querySelector('#chat-msgs .cha-pensando')
+   || !!document.querySelector('.cha-pensando')),
+   'y cuando hay una pregunta en vuelo, lo dice',
+   'entre mandar y recibir la pantalla se quedaba quieta cinco o diez segundos');
+
 await nav.close(); sv.close(); api.close(); relevo.kill();
 console.log(fallos ? `\n${fallos} comprobación(es) fallaron\n` : '\nTodo en verde\n');
 process.exit(fallos ? 1 : 0);
