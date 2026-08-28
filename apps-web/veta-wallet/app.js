@@ -7716,7 +7716,10 @@ const VETA = (() => {
 
   function chatLatir() {
     chatParar();
-    const cada = auraEsperando() ? 1200 : 5000;
+    /* 800 y no 1200 en la ventana rápida: es un READ al relevo (barato) y
+       el medio sondeo de ahorro se siente en cada respuesta hablada. Fuera
+       de la ventana, el ritmo tranquilo de siempre. */
+    const cada = auraEsperando() ? 800 : 5000;
     chatReloj = setInterval(() => {
       if (vistaActual !== 'chat' || document.hidden) return;
       if (chatSt.con) chatCargarMsgs(true); else chatCargarConvs();
