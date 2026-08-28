@@ -930,9 +930,18 @@ def main():
         antes_v = len(de_usuario())
         post(BASE, '/enviar', {**ana, 'para': 'aura@prueba.local',
                                'texto': 'sin voz'})
-        ms = espera_texto(ana, 'notas de voz')
-        ok(any('dejo de mandarte' in (m.get('texto') or '').lower() for m in ms),
-           'y apagarla también, con una sola palabra')
+        # Se afirma la PROPIEDAD, no la frase: que conteste, y que lo que
+        # conteste no prometa un archivo. La promesa vieja —«dejo de mandarte
+        # notas de voz»— dejo de ser cierta el dia que las notas se retiraron,
+        # y una prueba clavada a una frase concreta convierte cualquier cambio
+        # de redaccion en un fallo falso.
+        ms = espera_texto(ana, 'me callo')
+        dicho = ' '.join((m.get('texto') or '') for m in ms).lower()
+        ok('me callo' in dicho, 'y apagarla también, con una sola palabra',
+           f'contestó: {dicho[-90:]!r}')
+        ok('nota' not in dicho and 'archivo' not in dicho,
+           'y no promete un archivo que ya no existe',
+           'las notas de voz se retiraron: la voz va en vivo')
         ok(len(de_usuario()) == antes_v, 'apagarla tampoco gasta motor')
 
         print('\nZoe, desde fuera\n')

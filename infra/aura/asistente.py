@@ -104,7 +104,6 @@ MODELO_PENSADORA = os.environ.get('AURA_MODELO_PENSADOR', 'llama3.1:8b')
 VOZ = os.environ.get('AURA_VOZ', 'http://127.0.0.1:8123').rstrip('/')
 # Los tres registros que entiende el servicio de voz. El nombre que ve la
 # persona vive alla; aca solo viajan las llaves.
-REGISTROS = ('calida', 'sobria', 'agil')
 # La cadena, para leer el saldo PUBLICO de la persona (es dato de cadena, no
 # un secreto: cualquiera con la direccion lo ve en el explorador).
 RPC = os.environ.get('AURA_RPC', 'https://ordenglobal-rpc.com')
@@ -219,21 +218,6 @@ class Relevo:
 
     def enviar(self, para, texto):
         return _post('/enviar', self._f({'para': para, 'texto': texto}))
-
-    def subir(self, datos, mime, nombre, tipo='voz'):
-        """Sube un adjunto y devuelve su id.
-
-        El binario NO viaja dentro del mensaje: primero se sube y despues se
-        manda el id. Asi un reintento no duplica megas en el hilo.
-        """
-        d = _post('/subir', self._f({
-            'tipo': tipo, 'mime': mime, 'nombre': nombre,
-            'datos': base64.b64encode(datos).decode()}), timeout=60)
-        return d.get('id', '')
-
-    def enviar_voz(self, para, archivo):
-        return _post('/enviar', self._f({
-            'para': para, 'texto': '', 'tipo': 'voz', 'archivo': archivo}))
 
     def ficha(self, de):
         try:
@@ -435,20 +419,19 @@ CAMBIO_RAPIDA = (
     "Listo — modo rápido. Contesto al vuelo; si querés más fondo, decime "
     "«modo pensador».")
 
-# La voz se apaga con una palabra y se enciende con una palabra. Por defecto
-# viene APAGADA: una nota de voz en cada respuesta es un regalo para quien la
-# quiere y una molestia para quien no, y en la duda no se elige por la
-# persona. Quien la quiere, la pide.
+# La voz se apaga con una palabra y se enciende con una palabra. Lo que se
+# elige aqui es CON QUE VOZ habla —calida, sobria, agil—, no si manda
+# archivos: las notas de voz se retiraron y la voz va en vivo. El registro
+# elegido lo usa la wallet al pedirla.
 CAMBIO_VOZ = {
-    'calida': 'Listo, te hablo con la voz cálida. Te sigo escribiendo igual, '
-              'la nota va aparte por si preferís escuchar.',
+    'calida': 'Listo, te hablo con la voz cálida. Te sigo escribiendo igual: '
+              'lo que leés y lo que oís es lo mismo.',
     'sobria': 'Listo, voz sobria: más lenta y más clara, la que uso para los '
               'montos.',
     'agil':   'Listo, voz ágil: más rápida y con más energía.',
 }
-VOZ_APAGADA = 'Listo, dejo de mandarte notas de voz. Para volver, decime «con voz».'
-VOZ_NO_ESTA = ('Ahora mismo no puedo grabarte la nota, pero el texto lo tenés '
-               'arriba completo.')
+VOZ_APAGADA = ('Listo, me callo. Para que vuelva a hablarte, tocá el micrófono '
+               'o decime «con voz».')
 
 MOTOR_CAIDO = (
     "Ahora mismo no puedo pensar: mi motor está apagado. Ya avisé a la casa — "
@@ -783,7 +766,7 @@ def limpiar(texto):
         return ''
     # El markdown se va SIEMPRE y no tiene vuelta atras. No quita sentido —
     # cambia «**oro**» por «oro»— y en cambio dejarlo pasar significa que la
-    # nota de voz diga «asterisco asterisco oro asterisco asterisco».
+    # voz diga «asterisco asterisco oro asterisco asterisco».
     sin_marcas = sin_relleno
     for patron, con in MARCAS:
         sin_marcas = patron.sub(con, sin_marcas)
@@ -1202,100 +1185,6 @@ def _recortar(texto, cortado=False):
     return t
 
 
-def mandar_voz(rel, para, texto, registro):
-    """Graba la respuesta y la manda como nota de voz.
-
-    Corre EN OTRO HILO y despues de que el texto ya salio, y las dos cosas
-    son a proposito:
-
-      · Despues, porque leer es instantaneo y grabar tarda unos segundos.
-        Quien prefiere leer ya termino; quien prefiere escuchar espera un
-        rato corto. Al reves —esperar la voz para recien mostrar el texto—
-        castigaria a todos por el gusto de algunos.
-      · En otro hilo, porque si grabar tarda, la siguiente pregunta de esa
-        persona (o de otra) no tiene por que esperar detras.
-
-    Si la voz falla, no pasa nada: el texto ya esta arriba y completo. Una
-    nota que no salio es una molestia; una respuesta que no salio es un
-    problema. Por eso esto nunca lanza hacia arriba.
-    """
-    # ── LA PRIMERA FRASE NO ESPERA AL RESTO ───────────────────────────────
-    #
-    # Grabar la respuesta ENTERA y mandarla al final es lo que hacia que la
-    # voz «nunca saliera»: veinte o cuarenta segundos mirando una pelotita
-    # quieta, y cualquiera se va antes.
-    #
-    # Se parte en dos: la primera frase sale sola, y el resto va detras. La
-    # primera es corta a proposito, asi que suena en unos seis segundos en
-    # vez de veinte — y mientras la persona la escucha, la segunda se esta
-    # grabando. El tiempo TOTAL no baja; lo que baja es el tiempo hasta que
-    # pasa algo, que es lo unico que se siente.
-    #
-    # Dos y no cinco: cada trozo paga su viaje de red y su subida, y con
-    # frases muy cortas el reparto cuesta mas de lo que ahorra.
-    entero = (texto or '').strip()
-    partes = [entero]
-    if len(entero) > 110:
-        # Se parte POR EL MEDIO, no por el primer punto que aparezca. Con la
-        # primera frase sola, una respuesta de una sola oracion no se parte
-        # nunca, y una que empieza con tres palabras deja un primer pedazo
-        # de tres segundos seguido de un hueco largo. Partiendo cerca de la
-        # mitad, la espera hasta que se oye algo cae A LA MITAD, que es
-        # exactamente lo que se quiere.
-        #
-        # Se prefiere un final de frase; si no hay ninguno util, una coma.
-        # Cortar en una coma es aceptable porque el motor de voz ya trocea
-        # por unidades de aliento: la juntura cae donde ya habia una pausa.
-        medio = len(entero) // 2
-        mejor = -1
-        for signos in (('. ', '? ', '! '), (', ',)):
-            candidatos = []
-            for signo in signos:
-                d = entero.find(signo)
-                while d != -1:
-                    corte = d + len(signo.rstrip())
-                    # LAS DOS MITADES PAREJAS, o no se parte. Un primer
-                    # pedazo de tres palabras seguido de un hueco de doce
-                    # segundos no suena a que empezo antes: suena roto.
-                    # Si el unico corte posible esta muy al principio, es
-                    # mejor esperar la respuesta entera.
-                    if 0.35 <= corte / len(entero) <= 0.65:
-                        candidatos.append(corte)
-                    d = entero.find(signo, d + 1)
-            if candidatos:
-                mejor = min(candidatos, key=lambda c: abs(c - medio))
-                break
-        if mejor > 0:
-            partes = [entero[:mejor].strip(), entero[mejor:].strip()]
-
-    for i, parte in enumerate(partes):
-        if not parte:
-            continue
-        try:
-            cuerpo = json.dumps({'texto': parte[:1200], 'voz': registro}).encode()
-            req = urllib.request.Request(
-                VOZ + '/decir', data=cuerpo, method='POST',
-                headers={'Content-Type': 'application/json'})
-            # 180s: la voz genera casi a tiempo real, asi que una respuesta
-            # larga puede pedir medio minuto. El techo esta para que un
-            # cuelgue no deje el hilo colgado, no para cortar trabajo sano.
-            with urllib.request.urlopen(req, timeout=180) as r:
-                mp3 = r.read()
-                segundos = r.headers.get('X-Duracion', '?')
-            if not mp3:
-                continue
-            iid = rel.subir(mp3, 'audio/mpeg', 'aura.mp3')
-            if iid:
-                rel.enviar_voz(para, iid)
-                log(f'voz {i + 1}/{len(partes)} para {para}: {segundos}s · '
-                    f'{len(mp3) // 1024} KB · {registro}')
-        except Exception as e:
-            # Un trozo que falla no se lleva los otros: media respuesta
-            # hablada sirve mas que ninguna, y el texto ya esta completo
-            # arriba de todos modos.
-            log('la voz no salio para', para, f'({type(e).__name__})',
-                str(e)[:80])
-
 
 class Pensando:
     """Mantiene vivo el «esta escribiendo…» mientras el motor trabaja.
@@ -1550,21 +1439,29 @@ def atender(rel, sistema, p, de, dicho):
         return
     # `entero` es lo que dijo el motor EN CRUDO — con sus asteriscos, sus
     # «1.» y su «¡Hola Tere!». Lo que sale al chat ya va limpio porque cada
-    # frase pasa por limpiar() al mandarse, pero esto de aca se usa para DOS
-    # cosas que no pasaban por ahi: la memoria de la charla y la nota de voz.
-    # Sin limpiarlo, a la voz le llegaba el markdown entero: un trozo que era
-    # solo «**» no tiene nada que pronunciar y tumbaba el motor de voz (y si
-    # no lo tumbara, leeria «asterisco asterisco» en voz alta).
-    # `_recortar` tambien aca, y no solo `limpiar`. Sin esto la voz decia una
-    # cosa y el chat otra: al chat iba `resto`, que si pasa por el recorte, y
-    # a la nota de voz iba este `r` sin recortar — o sea que se OIA la media
-    # palabra que en pantalla no se veia.
+    # frase pasa por limpiar() al mandarse; esto de aca es para la MEMORIA de
+    # la charla, que no pasaba por ahi. Sin limpiarlo, lo que recordaba de si
+    # misma llevaba el markdown entero, y de ahi lo copiaba a la respuesta
+    # siguiente. `_recortar` tambien, y no solo `limpiar`: al chat va `resto`,
+    # que si pasa por el recorte, y sin esto la memoria guardaba la media
+    # palabra que en pantalla no se vio.
     r = _recortar(limpiar(entero or '')) or resto
-    # La nota de voz, si esta persona la pidio. Va en otro hilo y detras del
-    # texto: leer es instantaneo, grabar tarda. Ver mandar_voz.
-    if p.get('voz') in REGISTROS and r:
-        threading.Thread(target=mandar_voz, args=(rel, de, r, p['voz']),
-                         daemon=True).start()
+    # ── LAS NOTAS DE VOZ SE RETIRARON ─────────────────────────────────────
+    #
+    # Aqui salia un hilo a grabar la respuesta entera y mandarla como archivo.
+    # Tenia todo el sentido cuando la nota ERA el sonido; despues llego la voz
+    # en vivo y quedaron las dos haciendo el mismo trabajo sobre la misma GPU.
+    #
+    # Medido en el nodo el 28-ago, un dia cualquiera: 46 notas se comieron 657
+    # segundos de GPU, contra 23 respuestas de voz en vivo que gastaron unos
+    # 80. Casi el triple de trabajo, en archivos que nadie abre — y como la
+    # grabacion toma el MISMO candado que necesita la voz en vivo, era la voz
+    # en vivo la que esperaba detras. Las respuestas de 21, 34 y 59 segundos
+    # que se venian sufriendo eran esto: AU-RA compitiendo consigo misma. Lo
+    # dificil de verlo fue que las dos cosas funcionaban bien por separado.
+    #
+    # Elegir voz —calida, sobria, agil— sigue vivo y sigue importando: es con
+    # la que habla EN VIVO, y eso lo guarda la wallet por su cuenta.
     # el cupo se gasta solo cuando la respuesta SALIO: si enviar lanza, el
     # que llama reintenta y la pregunta no se cobra dos veces
     p['usadas'] += 1
