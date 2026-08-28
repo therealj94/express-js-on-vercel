@@ -67,7 +67,7 @@ Los confirmados mandan sobre el diseño de este archivo:
                                PROMPT-AURA.md, saber.json
   AURA_MOTOR     http://127.0.0.1:11434
   AURA_MODELO    llama3.2
-  AURA_PASO      segundos entre vueltas (4)
+  AURA_PASO      segundos entre vueltas (1.2)
 
 En el primer arranque, si no hay llave.txt, se da de alta solo en el relevo y
 guarda la llave con permisos 600. La llave NUNCA va al repositorio.
@@ -108,7 +108,13 @@ REGISTROS = ('calida', 'sobria', 'agil')
 # La cadena, para leer el saldo PUBLICO de la persona (es dato de cadena, no
 # un secreto: cualquiera con la direccion lo ve en el explorador).
 RPC = os.environ.get('AURA_RPC', 'https://ordenglobal-rpc.com')
-PASO = float(os.environ.get('AURA_PASO', '4'))
+# Cada cuanto mira el relevo. Estaba en 4 segundos, y con eso un mensaje
+# esperaba hasta cuatro segundos ANTES de que AU-RA se enterara de que
+# existia — espera muerta, sin nadie trabajando, encima de los cinco
+# segundos que cuesta pensar la respuesta. Con quince probadores el relevo
+# no se despeina por mirarlo cada segundo, y esos tres segundos son la
+# diferencia entre «contesta» y «se tarda».
+PASO = float(os.environ.get('AURA_PASO', '1.2'))
 
 # La maquina es un t2.large sin GPU: una respuesta puede tardar medio minuto.
 # El timeout corto tipico (10s) mataria respuestas perfectamente sanas.
@@ -594,19 +600,21 @@ def limpiar(texto):
     return (t[0].upper() + t[1:]) if t else ''
 
 
-def _es_repetida(nueva, historial, umbral=0.90):
+def _es_repetida(nueva, historial, umbral=0.90, prefijo=60):
     """¿Esto es casi lo mismo que lo ultimo que dijo?
 
-    Se comparan los primeros 200 caracteres, que es donde vive el arranque —
-    que es justo lo que se repite. Comparar el texto entero perdona el caso:
-    dos respuestas que empiezan igual y divergen al final igual se leen como
-    la misma cosa.
+    Se miran DOS cosas, porque un eco tiene dos formas y una sola medida no
+    atrapa las dos:
 
-    El umbral es ALTO a proposito. Lo que paso en produccion fue una copia
-    palabra por palabra, no un parecido: dos respuestas del mismo tema se
-    parecen legitimamente («El Genesis ID es tu identidad…» dos veces no es
-    un error), y cada falso positivo cuesta una generacion entera de mas.
-    Se caza la copia, no el parecido.
+      · EL ARRANQUE IDENTICO. Dos respuestas que empiezan con los mismos
+        sesenta caracteres son la misma respuesta para quien la lee, aunque
+        despues se separen. Esto paso en produccion y la medida global NO lo
+        atrapo: «¿Qué es AUKA?» y «¿Y el Genesis ID?» compartian los primeros
+        CIENTO OCHO caracteres exactos y daban 82% de parecido — por debajo
+        del umbral, y sin embargo cualquiera que lo lee ve el copiado.
+      · EL PARECIDO GLOBAL, alto y a proposito. Dos respuestas del mismo tema
+        se parecen legitimamente, y cada falso positivo cuesta una generacion
+        entera de mas. Se caza la copia, no el parecido.
     """
     import difflib
     n = (nueva or '').strip()
@@ -617,6 +625,13 @@ def _es_repetida(nueva, historial, umbral=0.90):
             viejo = (m.get('content') or '').strip()
             if not viejo:
                 return False
+            comun = 0
+            for x, y in zip(n.lower(), viejo.lower()):
+                if x != y:
+                    break
+                comun += 1
+            if comun >= prefijo:
+                return True
             return difflib.SequenceMatcher(
                 None, n[:200].lower(), viejo[:200].lower()).ratio() >= umbral
     return False
@@ -1015,7 +1030,11 @@ def atender(rel, sistema, p, de, dicho):
             # Se mira contra lo ultimo que dijo. Si es casi lo mismo, se
             # vuelve a preguntar UNA vez con mas temperatura y avisandole que
             # eso ya lo dijo. Cuesta unos segundos y salva la conversacion.
-            elif not por_frases and _es_repetida(resto, p.get('historial')):
+            # `if` y no `elif`: encadenados, una repregunta por respuesta
+            # vacia dejaba al guardia de eco sin correr sobre el resultado de
+            # esa repregunta, que es justo cuando mas facil es que salga
+            # repetida. Las dos comprobaciones son sobre lo que HAY ahora.
+            if not por_frases and _es_repetida(resto, p.get('historial')):
                 log('respuesta casi identica a la anterior, repregunto')
                 resto, entero = preguntar_motor(
                     sistema, p, p['historial'],

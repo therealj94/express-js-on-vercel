@@ -64,6 +64,7 @@ Environment=AURA_MODELO=llama3.2
 # turno en cola se comia el tiempo y la respuesta moria en «motor apagado» —
 # paso en la prueba real del 27-ago.
 Environment=AURA_TIMEOUT=300
+Environment=AURA_PASO=1.2
 Restart=always
 RestartSec=8
 

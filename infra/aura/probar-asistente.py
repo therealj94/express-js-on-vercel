@@ -543,6 +543,27 @@ def main():
         ok(rec(corto) == corto,
            'si retroceder dejaría un pedazo diminuto, mejor la frase coja')
 
+        print('\nEl eco se mide por el ARRANQUE, no por el total\n')
+        rep = aura._es_repetida
+        h = lambda t: [{'role': 'assistant', 'content': t}]
+        # El caso REAL de producción: «¿Qué es AUKA?» y «¿Y el Genesis ID?»
+        # compartían los primeros CIENTO OCHO caracteres exactos y daban 82%
+        # de parecido global — por debajo del umbral, y sin embargo cualquiera
+        # que lo lee ve el copiado. La medida global no atrapa esta forma.
+        A = ('AUKA es un token que sigue el precio del oro, lo que significa que '
+             'su valor se mantiene estable a largo plazo. Esto es útil para '
+             'proteger tus ahorros, como los que ganás en tu tienda.')
+        B = ('AUKA es un token que sigue el precio del oro, lo que significa que '
+             'su valor se mantiene estable a largo plazo. Sirve contra la '
+             'devaluación de tu moneda local.')
+        C = ('El Genesis ID es tu identidad única en el ecosistema. Con eso '
+             'entrás a todo sin repetir papeles en cada lugar.')
+        ok(rep(B, h(A)), 'dos respuestas con el mismo arranque exacto son un eco')
+        ok(rep(A, h(A)), 'y la copia palabra por palabra, obviamente')
+        ok(not rep(C, h(A)), 'pero dos respuestas de temas distintos no lo son')
+        ok(not rep('Sí, ya abrió.', h(A)),
+           'y una respuesta corta nunca dispara: no hay eco en tres palabras')
+
         print('\nEl eco: cuando se copia a sí misma\n')
         # Pasó en producción, con captura: dos preguntas distintas y la MISMA
         # respuesta palabra por palabra. El modelo ve su propia respuesta en

@@ -7649,12 +7649,31 @@ const VETA = (() => {
   /* El latido: mientras el chat esta en pantalla se refresca solo. Cinco
      segundos con el hilo abierto y quince con solo la lista — mirar una lista
      no es esperar una respuesta. */
+  /* Cinco segundos está bien para un chat entre personas: nadie contesta
+     antes. Pero con AU-RA se sabe que la respuesta viene, y esperarla mirando
+     cada cinco segundos agrega hasta cinco segundos de nada encima de los que
+     ya cuesta pensarla — la queja fue «se tarda mucho», y la mitad de esa
+     tardanza era esto, no el motor.
+
+     Así que se mira rápido SOLO mientras se está esperando: desde que se le
+     manda algo hasta que contesta, con techo de un minuto por si la respuesta
+     nunca llega. Fuera de esa ventana vuelve a cinco segundos, porque
+     martillar el relevo todo el día para nada no es velocidad, es ruido. */
+  let auraEsperandoHasta = 0;
+  const auraEsperando = () => Date.now() < auraEsperandoHasta;
+
+  function auraEsperar() { auraEsperandoHasta = Date.now() + 60000; chatLatir(); }
+  function auraLlego() { auraEsperandoHasta = 0; chatLatir(); }
+
   function chatLatir() {
     chatParar();
+    const cada = auraEsperando() ? 1200 : 5000;
     chatReloj = setInterval(() => {
       if (vistaActual !== 'chat' || document.hidden) return;
       if (chatSt.con) chatCargarMsgs(true); else chatCargarConvs();
-    }, 5000);
+      // al vencerse la ventana rápida se vuelve al ritmo tranquilo
+      if (cada === 1200 && !auraEsperando()) chatLatir();
+    }, cada);
   }
   function chatParar() { if (chatReloj) { clearInterval(chatReloj); chatReloj = null; } }
 
@@ -7740,6 +7759,11 @@ const VETA = (() => {
         x.reacciones ? Object.entries(x.reacciones).sort().join(',') : '',
       ].join('~')).join('|');
       const igual = callado && chatSt.msgs && huella(chatSt.msgs) === huella(m);
+      // Contestó: se cierra la ventana rápida y se vuelve al ritmo tranquilo.
+      // Se mira si el ÚLTIMO es suyo, no si hay alguno: en un hilo con AU-RA
+      // siempre hay mensajes suyos, y con eso la ventana no se abriría nunca.
+      if (!igual && auraEsperando() && esAura(chatSt.con)
+          && m.length && m[m.length - 1].de === AURA_CHAT_ID) auraLlego();
       chatSt.msgs = m;
       chatSt.error = null;
       if (!igual) { pintarChat(); chatAlFinal(); }
@@ -7830,6 +7854,8 @@ const VETA = (() => {
     try {
       await CHAT.enviar(chatSt.con.id, texto, chatSt.citando?.id);
       chatSt.citando = null;
+      // A AU-RA se le sabe que va a contestar: se mira rápido hasta que llegue
+      if (esAura(chatSt.con)) auraEsperar();
       await chatCargarMsgs();
       chatCargarConvs();
     } catch (e) {
