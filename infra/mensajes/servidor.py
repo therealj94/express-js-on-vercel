@@ -111,6 +111,13 @@ WALLET_URL = os.environ.get(
 VAPID_PEM = os.environ.get('MENSAJES_VAPID_PEM', '/srv/mensajes/vapid.pem')
 VAPID_CONTACTO = 'mailto:info@ordenglobal.org'
 PULSO = {}                       # correo -> ultima consulta de bandeja (epoch)
+# La huella que deja AU-RA al arrancar. En memoria a proposito: describe un
+# proceso vivo, y un proceso que se murio no tiene version que contar.
+HUELLAS = {}                     # correo -> {asistente, prompt, modelos, ...}
+# De quien es la huella que sale en /salud. Cualquiera con llave puede dejar la
+# suya —la ruta no distingue—, pero solo esta se publica: /salud es publico y
+# no es sitio para lo que quiera escribir cualquiera.
+CORREO_AURA = os.environ.get('AURA_CORREO', 'aura@ordenglobal.org').lower()
 PULSO_FRESCO = 45
 
 # La presencia que se ENSEÑA es otra cosa que el pulso de arriba. PULSO dice
@@ -376,32 +383,20 @@ def version_servida():
 
 
 def version_de_aura():
-    """La huella del asistente que esta corriendo al lado, si dejo alguna.
+    """La huella que dejo AU-RA la ultima vez que arranco.
 
-    AU-RA no es un servidor: no tiene puerto propio ni /salud donde mirar —
-    lee la bandeja de este relevo y contesta. Asi que la deja escrita al
-    arrancar y este GET la sirve. Es la misma cura que version_servida y por
-    la misma razon, pero donde mas se nota: el prompt es lo que decide COMO
-    contesta, y hasta ahora «¿esta desplegado el prompt nuevo?» solo se podia
-    responder entrando a la maquina, o preguntandole a ella y adivinando por
-    el tono.
+    Llega por POST /huella —AU-RA vive en la maquina de la GPU, no en esta— y
+    se sirve aqui para que «¿esta desplegado el prompt nuevo?» se conteste con
+    un GET, igual que version_servida contesta por este relevo.
 
-    Se lee en cada peticion y no se guarda: al reves que la propia, esta
-    cambia sin que este proceso se entere —AU-RA se reinicia sola— y
-    cachearla seria servir la de antes justo cuando importa. Es un fichero
-    pequeño en disco local; el coste no se nota.
-
-    Si no hay fichero, se dice que no lo hay. Callarse dejaria «no esta
-    desplegado» y «este relevo no sabe» con la misma cara, que es el fallo
-    que esto viene a arreglar.
+    Si no hay nada, se dice que no lo hay. Callarse dejaria «no esta
+    desplegado» y «este relevo no se entero» con la misma cara, que es
+    exactamente el fallo que esto viene a arreglar.
     """
-    try:
-        with open('/srv/aura/version.json', 'rb') as f:
-            return json.loads(f.read().decode('utf-8'))
-    except FileNotFoundError:
+    h = HUELLAS.get(CORREO_AURA)
+    if not h:
         return {'estado': 'sin huella'}
-    except Exception:
-        return {'estado': 'ilegible'}
+    return dict(h)
 
 
 def correo_de_sesion(token):
@@ -1542,6 +1537,36 @@ class Relevo(BaseHTTPRequestHandler):
                 return self._json(200, {'mensajes': hilo[-TOPE_BANDEJA:],
                                         'enLinea': (not ID_GRUPO.fullmatch(desde))
                                                    and presente(desde)})
+
+            if ruta == '/huella':
+                """Quien corre por su cuenta deja dicho que version corre.
+
+                AU-RA no es un servidor: no tiene puerto propio ni /salud donde
+                mirar — lee esta bandeja y contesta. Y vive en OTRA maquina, la
+                de la GPU, asi que tampoco vale dejar un fichero en disco para
+                que este relevo lo lea. Lo manda por el mismo canal que ya usa,
+                con la misma llave, y este /salud lo publica.
+
+                Existe por un caso concreto: un arreglo estuvo diez dias en el
+                repositorio sin estar en la maquina y desde fuera no habia
+                forma de notarlo. Con AU-RA duele mas, porque el prompt es lo
+                que decide COMO contesta, y «¿esta desplegado el prompt nuevo?»
+                solo se podia responder entrando a la maquina o preguntandole a
+                ella y adivinando por el tono.
+
+                Se guarda lo que se entiende y nada mas: es un texto que llega
+                de fuera, y devolverlo tal cual en /salud —que es publico— seria
+                servir lo que quiera escribir quien tenga una llave.
+                """
+                h = b.get('huella') or {}
+                if not isinstance(h, dict):
+                    return self._json(400, {'error': 'huella ilegible'})
+                HUELLAS[correo] = {k: str(h.get(k, ''))[:80]
+                                   for k in ('asistente', 'prompt', 'modelos')
+                                   if h.get(k) is not None}
+                HUELLAS[correo]['abierta'] = bool(h.get('abierta'))
+                HUELLAS[correo]['desde'] = int(time.time())
+                return self._json(200, {'ok': True})
 
             if ruta == '/olvidar':
                 """Vaciar un hilo, o quitarlo de mi lista. SOLO DE MI LADO.

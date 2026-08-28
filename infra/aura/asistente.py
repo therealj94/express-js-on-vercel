@@ -197,6 +197,9 @@ class Relevo:
     def conversaciones(self):
         return _post('/conversaciones', self._f({})).get('conversaciones', [])
 
+    def huella(self, h):
+        return _post('/huella', self._f({'huella': h}))
+
     def bandeja(self, desde):
         return _post('/bandeja', self._f({'desde': desde})).get('mensajes', [])
 
@@ -1748,14 +1751,18 @@ def huella_viva():
     }
 
 
-def dejar_huella():
-    """La deja donde el relevo pueda leerla. Si no se puede escribir, se sigue
-    igual: saber que version corre es una comodidad, no una condicion para
-    contestarle a nadie."""
+def dejar_huella(rel):
+    """La manda al relevo, que es quien tiene un /salud que mirar.
+
+    Primero se penso en dejarla en un fichero para que el relevo lo leyera; no
+    sirve: el relevo corre en OTRA maquina. Por el canal que ya existe —la
+    misma llave, la misma direccion— no hace falta ninguna otra cosa.
+
+    Si no se puede, se sigue igual: saber que version corre es una comodidad,
+    no una condicion para contestarle a nadie.
+    """
     try:
-        tmp = DATOS / 'version.json.tmp'
-        tmp.write_text(json.dumps(huella_viva()), encoding='utf-8')
-        tmp.replace(DATOS / 'version.json')   # atomico: el relevo nunca lee a medias
+        rel.huella(huella_viva())
     except Exception as e:
         log('no se pudo dejar la huella:', type(e).__name__, str(e)[:80])
 
@@ -1787,7 +1794,7 @@ def main():
             except Exception as e:
                 log('el latido de templado fallo:', type(e).__name__, str(e)[:80])
     threading.Thread(target=latido_templado, daemon=True).start()
-    dejar_huella()
+    dejar_huella(rel)
     _quienes = probadores()
     log(f'AU-RA de pie · {len(saber)} fichas · {MODELO_RAPIDA}+{MODELO_PENSADORA} · '
         + ('ABIERTA a todos' if _quienes is None else f'{len(_quienes)} probadores'))

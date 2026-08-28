@@ -103,27 +103,37 @@ def dice_si_esta_abierta():
             'no informa de si le contesta a todo el mundo o solo a una lista')
 
 
-def la_deja_de_una_pieza():
+def la_manda_al_relevo():
+    """Por el canal que ya existe, no por un fichero: el relevo corre en OTRA
+    máquina —AU-RA vive en la de la GPU— así que dejarla en disco no la haría
+    llegar a ninguna parte."""
     d, mio, g = casa()
-    g['dejar_huella']()
-    afirmar((d / 'version.json').exists(), 'no escribió nada')
-    afirmar(json.loads((d / 'version.json').read_text())['prompt']
-            == sha(d / 'PROMPT-AURA.md'), 'escribió otra cosa')
-    afirmar(not (d / 'version.json.tmp').exists(),
-            'quedó el temporal: el relevo puede leerlo a medias')
+    mandado = []
+
+    class RelevoFalso:
+        def huella(self, h):
+            mandado.append(h)
+
+    g['dejar_huella'](RelevoFalso())
+    afirmar(mandado, 'no mandó nada al relevo')
+    afirmar(mandado[0]['prompt'] == sha(d / 'PROMPT-AURA.md'), 'mandó otra cosa')
 
 
-def no_poder_escribirla_no_la_tumba():
+def que_falle_el_relevo_no_la_tumba():
     d, mio, g = casa()
-    g['DATOS'] = pathlib.Path('/no/existe/por/aqui')
-    g['dejar_huella']()   # saber la versión es comodidad, no condición
+
+    class RelevoCaido:
+        def huella(self, h):
+            raise OSError('sin red')
+
+    g['dejar_huella'](RelevoCaido())   # comodidad, no condición
 
 
 prueba('es la del archivo de verdad, no un número puesto a mano', es_la_del_archivo)
 prueba('distingue un prompt de otro, que es para lo que existe', distingue_dos_prompts)
 prueba('dice si está abierta a todos', dice_si_esta_abierta)
-prueba('la deja escrita, y de una sola pieza', la_deja_de_una_pieza)
-prueba('no poder escribirla no tumba a AU-RA', no_poder_escribirla_no_la_tumba)
+prueba('la manda al relevo, que es quien tiene un /salud', la_manda_al_relevo)
+prueba('que el relevo esté caído no tumba a AU-RA', que_falle_el_relevo_no_la_tumba)
 
 
 print('\ny el relevo la sirve')
@@ -132,25 +142,38 @@ print('\ny el relevo la sirve')
 def el_relevo_la_publica():
     txt = RELEVO.read_text()
     afirmar("'aura': version_de_aura()" in txt, '/salud no publica la huella')
-    g = cargar(RELEVO, ('version_de_aura',), {'json': json})
-    r = g['version_de_aura']()
-    afirmar(isinstance(r, dict), 'no devuelve un objeto')
-    # en esta máquina no hay /srv/aura, así que tiene que decir que no la sabe
-    afirmar('estado' in r or 'prompt' in r,
-            'devuelve algo que no dice ni la versión ni que no la sabe: '
-            '«no está desplegado» y «este relevo no se enteró» quedan con la '
-            'misma cara, que es el fallo que esto viene a arreglar')
+    afirmar("if ruta == '/huella':" in txt, 'no hay ruta por donde recibirla')
+    g = cargar(RELEVO, ('version_de_aura',),
+               {'HUELLAS': {}, 'CORREO_AURA': 'aura@ordenglobal.org'})
+    afirmar(g['version_de_aura']() == {'estado': 'sin huella'},
+            'sin huella no lo dice: «no está desplegado» y «este relevo no se '
+            'enteró» quedan con la misma cara, que es el fallo que esto viene '
+            'a arreglar')
+    g['HUELLAS']['aura@ordenglobal.org'] = {'prompt': 'abc1234567'}
+    afirmar(g['version_de_aura']()['prompt'] == 'abc1234567', 'no la sirve')
 
 
-def no_la_cachea():
-    cuerpo = RELEVO.read_text().split('def version_de_aura')[1].split('\ndef ')[0]
-    afirmar('global _version' not in cuerpo,
-            'la cachea: AU-RA se reinicia sola y este relevo serviría la de '
-            'antes justo cuando importa saberlo')
+def solo_publica_la_de_aura():
+    """Cualquiera con llave puede dejar la suya; /salud es público y no es
+    sitio para lo que quiera escribir cualquiera."""
+    g = cargar(RELEVO, ('version_de_aura',),
+               {'HUELLAS': {'otro@ejemplo.com': {'prompt': 'lo-que-sea'}},
+                'CORREO_AURA': 'aura@ordenglobal.org'})
+    afirmar(g['version_de_aura']() == {'estado': 'sin huella'},
+            'publica la huella de cualquiera que la mande')
 
 
-prueba('lo publica en /salud, y sin fichero dice que no lo hay', el_relevo_la_publica)
-prueba('la lee en cada petición, no una vez y para siempre', no_la_cachea)
+def guarda_solo_lo_que_entiende():
+    cuerpo = RELEVO.read_text().split("if ruta == '/huella':")[1].split("if ruta ==")[0]
+    afirmar("for k in ('asistente', 'prompt', 'modelos')" in cuerpo,
+            'guarda el objeto entero tal como llega: /salud terminaría '
+            'sirviendo lo que escriba quien tenga una llave')
+    afirmar('[:80]' in cuerpo, 'no acota el largo de lo que llega')
+
+
+prueba('lo publica en /salud, y sin huella dice que no la hay', el_relevo_la_publica)
+prueba('solo publica la de AU-RA, no la de cualquiera', solo_publica_la_de_aura)
+prueba('guarda solo los campos que entiende, y acotados', guarda_solo_lo_que_entiende)
 
 print(f'\n{mal} mal\n' if mal else '\ntodo bien\n')
 raise SystemExit(1 if mal else 0)
