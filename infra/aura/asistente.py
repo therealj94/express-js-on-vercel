@@ -837,7 +837,7 @@ def preguntar_motor(sistema, perfil, historial, dicho, contexto='', al_vuelo=Non
             # contestacion y pasa a ser un discurso. Con voz encendida se
             # pide la mitad: unas tres frases, doce segundos de audio, y
             # llega mientras la persona sigue mirando.
-            'num_predict': (90 if perfil.get('voz') else
+            'num_predict': (70 if perfil.get('voz') else
                             (240 if pensadora else 140)),
             # ── EL FRENO DE LAS LISTAS ────────────────────────────────────
             # El prompt le pide en tres lugares que no escriba listas ni
@@ -984,26 +984,82 @@ def mandar_voz(rel, para, texto, registro):
     nota que no salio es una molestia; una respuesta que no salio es un
     problema. Por eso esto nunca lanza hacia arriba.
     """
-    try:
-        cuerpo = json.dumps({'texto': texto[:1200], 'voz': registro}).encode()
-        req = urllib.request.Request(
-            VOZ + '/decir', data=cuerpo, method='POST',
-            headers={'Content-Type': 'application/json'})
-        # 180s: la voz genera casi a tiempo real, asi que una respuesta larga
-        # puede pedir medio minuto. El techo esta para que un cuelgue no deje
-        # el hilo colgado para siempre, no para cortar trabajo sano.
-        with urllib.request.urlopen(req, timeout=180) as r:
-            mp3 = r.read()
-            segundos = r.headers.get('X-Duracion', '?')
-        if not mp3:
-            return
-        iid = rel.subir(mp3, 'audio/mpeg', 'aura.mp3')
-        if iid:
-            rel.enviar_voz(para, iid)
-            log(f'nota de voz para {para}: {segundos}s · {len(mp3) // 1024} KB'
-                f' · {registro}')
-    except Exception as e:
-        log('la voz no salio para', para, f'({type(e).__name__})', str(e)[:80])
+    # ── LA PRIMERA FRASE NO ESPERA AL RESTO ───────────────────────────────
+    #
+    # Grabar la respuesta ENTERA y mandarla al final es lo que hacia que la
+    # voz «nunca saliera»: veinte o cuarenta segundos mirando una pelotita
+    # quieta, y cualquiera se va antes.
+    #
+    # Se parte en dos: la primera frase sale sola, y el resto va detras. La
+    # primera es corta a proposito, asi que suena en unos seis segundos en
+    # vez de veinte — y mientras la persona la escucha, la segunda se esta
+    # grabando. El tiempo TOTAL no baja; lo que baja es el tiempo hasta que
+    # pasa algo, que es lo unico que se siente.
+    #
+    # Dos y no cinco: cada trozo paga su viaje de red y su subida, y con
+    # frases muy cortas el reparto cuesta mas de lo que ahorra.
+    entero = (texto or '').strip()
+    partes = [entero]
+    if len(entero) > 110:
+        # Se parte POR EL MEDIO, no por el primer punto que aparezca. Con la
+        # primera frase sola, una respuesta de una sola oracion no se parte
+        # nunca, y una que empieza con tres palabras deja un primer pedazo
+        # de tres segundos seguido de un hueco largo. Partiendo cerca de la
+        # mitad, la espera hasta que se oye algo cae A LA MITAD, que es
+        # exactamente lo que se quiere.
+        #
+        # Se prefiere un final de frase; si no hay ninguno util, una coma.
+        # Cortar en una coma es aceptable porque el motor de voz ya trocea
+        # por unidades de aliento: la juntura cae donde ya habia una pausa.
+        medio = len(entero) // 2
+        mejor = -1
+        for signos in (('. ', '? ', '! '), (', ',)):
+            candidatos = []
+            for signo in signos:
+                d = entero.find(signo)
+                while d != -1:
+                    corte = d + len(signo.rstrip())
+                    # LAS DOS MITADES PAREJAS, o no se parte. Un primer
+                    # pedazo de tres palabras seguido de un hueco de doce
+                    # segundos no suena a que empezo antes: suena roto.
+                    # Si el unico corte posible esta muy al principio, es
+                    # mejor esperar la respuesta entera.
+                    if 0.35 <= corte / len(entero) <= 0.65:
+                        candidatos.append(corte)
+                    d = entero.find(signo, d + 1)
+            if candidatos:
+                mejor = min(candidatos, key=lambda c: abs(c - medio))
+                break
+        if mejor > 0:
+            partes = [entero[:mejor].strip(), entero[mejor:].strip()]
+
+    for i, parte in enumerate(partes):
+        if not parte:
+            continue
+        try:
+            cuerpo = json.dumps({'texto': parte[:1200], 'voz': registro}).encode()
+            req = urllib.request.Request(
+                VOZ + '/decir', data=cuerpo, method='POST',
+                headers={'Content-Type': 'application/json'})
+            # 180s: la voz genera casi a tiempo real, asi que una respuesta
+            # larga puede pedir medio minuto. El techo esta para que un
+            # cuelgue no deje el hilo colgado, no para cortar trabajo sano.
+            with urllib.request.urlopen(req, timeout=180) as r:
+                mp3 = r.read()
+                segundos = r.headers.get('X-Duracion', '?')
+            if not mp3:
+                continue
+            iid = rel.subir(mp3, 'audio/mpeg', 'aura.mp3')
+            if iid:
+                rel.enviar_voz(para, iid)
+                log(f'voz {i + 1}/{len(partes)} para {para}: {segundos}s · '
+                    f'{len(mp3) // 1024} KB · {registro}')
+        except Exception as e:
+            # Un trozo que falla no se lleva los otros: media respuesta
+            # hablada sirve mas que ninguna, y el texto ya esta completo
+            # arriba de todos modos.
+            log('la voz no salio para', para, f'({type(e).__name__})',
+                str(e)[:80])
 
 
 class Pensando:

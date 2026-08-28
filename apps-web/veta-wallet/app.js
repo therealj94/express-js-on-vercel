@@ -5464,7 +5464,7 @@ const VETA = (() => {
      se puede contestar: «¿esto que estoy viendo es lo último que subimos, o
      mi navegador se quedó con una copia vieja?». La ficha de Ajustes lo
      enseña, y con eso se sabe. */
-  const VETA_V = '55f6c0b347';
+  const VETA_V = 'aac88cd2a2';
   const VETA_FECHA = '2026-08-28';
 
   const AET_V = 'e250bbe2f5';
@@ -10263,35 +10263,52 @@ const VETA = (() => {
     auraDictar();
   }
 
-  /** Suena lo nuevo que dijo ella, y al terminar vuelve a abrir el micrófono.
-      Solo lo ÚLTIMO: si llegaron dos notas mientras no mirábamos, encadenar
-      todas sería un discurso, no una respuesta. */
+  /** Suena lo nuevo que dijo ella, EN ORDEN, y al terminar vuelve a abrir el
+      micrófono.
+
+      Una respuesta llega ahora en dos pedazos —la primera frase sale sola,
+      sin esperar a que se grabe el resto— así que hay que encolarlos y
+      tocarlos seguidos. Reproducir solo el último dejaría a la persona
+      oyendo la mitad final de una frase que nunca empezó. */
+  const auraCola = [];
+
   function auraCharlaSonar() {
-    if (!auraCharlando || !esAura(chatSt.con) || auraSonando) return;
+    if (!auraCharlando || !esAura(chatSt.con)) return;
     const nuevas = (chatSt.msgs || []).filter(
       (m) => m.de === AURA_CHAT_ID && m.tipo === 'voz' && m.archivo
              && m.id && !auraYaSono.has(m.id));
-    if (!nuevas.length) return;
-    nuevas.forEach((m) => auraYaSono.add(m.id));
-    const ultima = nuevas[nuevas.length - 1];
-    const a = new Audio(CHAT.urlArchivo(ultima.archivo));
+    nuevas.forEach((m) => { auraYaSono.add(m.id); auraCola.push(m.archivo); });
+    if (auraSonando || !auraCola.length) return;
+    auraSonarSiguiente();
+  }
+
+  function auraSonarSiguiente() {
+    const archivo = auraCola.shift();
+    if (!archivo) {
+      // se acabó la cola: recién ahí se vuelve a escuchar
+      auraSonando = null;
+      pintarChat();
+      if (auraCharlando && esAura(chatSt.con)) auraDictar();
+      return;
+    }
+    const a = new Audio(CHAT.urlArchivo(archivo));
     a.crossOrigin = 'anonymous';   // hace falta para poder medir su nivel
     auraSonando = a;
     if (auraPantalla) auraMirarNivel(a);
     pintarChat();
-    const seguir = () => {
-      auraSonando = null;
-      pintarChat();
-      // el micrófono se reabre SOLO si el modo sigue encendido: apagarlo
-      // mientras ella habla tiene que cortar de verdad, no volver a escuchar
-      if (auraCharlando && esAura(chatSt.con)) auraDictar();
-    };
+    // Al terminar un pedazo se pasa al siguiente SIN pausa: los dos son la
+    // misma respuesta partida, y un silencio entre medio la haría sonar
+    // como dos mensajes distintos.
+    const seguir = () => { auraSonando = null; auraSonarSiguiente(); };
     a.onended = seguir;
     a.onerror = seguir;
     a.play().catch(() => seguir());   // sin permiso de sonido, no se traba
   }
 
   function auraCallar() {
+    // Callar es callar: se vacía también lo que estaba en cola. Si no, se
+    // corta un pedazo y arranca el siguiente, que es peor que no callarse.
+    auraCola.length = 0;
     try { auraSonando?.pause(); } catch (e) { /* ya no sonaba */ }
     auraSonando = null;
     pintarChat();
