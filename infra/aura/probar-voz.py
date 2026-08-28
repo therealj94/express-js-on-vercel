@@ -252,6 +252,24 @@ ok("b.get('idioma') == 'en'" in _fuente2,
    'y un idioma inventado cae a español, no a un error',
    'la voz no se puede tumbar mandando {"idioma": "xx"}')
 
+# El oído: misma puerta que la voz, y sin GPU no se ofrece.
+_oir = ''
+for _n in ast.walk(_arb):
+    if isinstance(_n, ast.FunctionDef) and _n.name == '_oir':
+        _oir = ast.get_source_segment(_fuente, _n) or ''
+ok('_puede(quien, llave)' in _oir and '_hay_cupo(quien)' in _oir,
+   'el oído tiene la misma puerta y el mismo cupo que la voz',
+   'un transcriptor sin puerta es GPU gratis para el primero que lo encuentre')
+ok('OIDO.modelo is None' in _oir and '503' in _oir,
+   'y sin GPU no se ofrece: oír mal los montos es peor que no oír',
+   'los números están medidos en la clase Oido — en CPU no hay producto')
+ok('X-Correo' in _fuente and 'X-Llave' in _fuente
+   and 'X-Correo, X-Llave, X-Idioma' in _fuente,
+   'las cabeceras de la credencial están permitidas en CORS',
+   'sin eso el navegador ni manda la petición — el fallo invisible de siempre')
+ok('TOPE_AUDIO' in _oir,
+   'y el audio tiene tope: nadie sube una película al transcriptor')
+
 print('\nLo que NO puede pasar\n')
 
 ok(voz.trozos('') == [] and voz.trozos(None) == [],

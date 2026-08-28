@@ -2076,6 +2076,12 @@ const VETA = (() => {
     if (vistaActual === 'enviar' && cual !== 'enviar') avisarChat = null;
     const veniaDe = vistaActual;
     vistaActual = cual;
+    /* La burbuja y su panel se apartan al entrar a PULSE2CHAT y vuelven al
+       salir. Si el panel estaba abierto se cierra de verdad —con su
+       micrófono y su voz— y no solo se esconde: una conversación de burbuja
+       sonando debajo del chat serían las dos AU-RA hablando a la vez. */
+    if (cual === 'chat' && auraAbierta) auraToca();
+    ajustarOrbe();
     /* El botón de entrar en VR es del Inicio: el visor ES la galaxia, y
        ofrecerlo desde la billetera prometería un viaje que no sale de ahí. */
     pintarVR();
@@ -10540,14 +10546,19 @@ const VETA = (() => {
           auraSonando = { pause: cortar };
           pintarChat();
           auraLatir(an);
+          // y desde este instante se la puede INTERRUMPIR hablando encima:
+          // la vigía escucha con el eco cancelado mientras ella suena
+          auraVigiaEmpezar();
         },
       });
     } catch (e) {
       auraBuscandoVoz = false;
+      auraVigiaParar();
       auraVivo = null;
       throw e;
     }
     auraBuscandoVoz = false;   // por si no vino ni un trozo
+    auraVigiaParar();
     if (auraVivo?.ctx === ctxMio) {
       auraVivo = null;
       auraSonando = null;
@@ -10618,6 +10629,7 @@ const VETA = (() => {
     // haría que se callara y volviera a hablar sola tres segundos después.
     auraCola.length = 0;
     auraPorDecir.length = 0;
+    auraVigiaParar();
     try { auraVivo?.cortar(); } catch (e) { /* no había nada en vivo */ }
     auraVivo = null;
     auraBuscandoVoz = false;
@@ -10922,7 +10934,179 @@ const VETA = (() => {
     window.visualViewport.addEventListener('scroll', seguirTeclado);
   }
 
-  const puedeDictar = () => !!(window.SpeechRecognition || window.webkitSpeechRecognition);
+  /* Se puede dictar si el navegador trae reconocedor... O si no lo trae pero
+     sabe grabar: ahí escucha el OÍDO DE LA CASA (Whisper en nuestro nodo, vía
+     CHAT.oir). Firefox y el iOS viejo pasan de «este navegador no sabe
+     escuchar» a escuchar con el nuestro. */
+  const puedeGrabarOido = () =>
+    !!(navigator.mediaDevices?.getUserMedia && window.MediaRecorder && CHAT.oir);
+  const puedeDictar = () =>
+    !!(window.SpeechRecognition || window.webkitSpeechRecognition) || puedeGrabarOido();
+
+  /* ── EL MEDIDOR DE VOZ ──────────────────────────────────────────────────
+     Un micrófono con un analizador y una sola pregunta: ¿hay alguien
+     hablando AHORA? Calibra el piso de ruido en los primeros 400 ms y de ahí
+     en más compara contra tres veces ese piso (con un mínimo absoluto, que
+     en una sala muda el triple de nada sigue siendo nada). Lo usan el oído
+     grabado —para cortar la frase cuando te callás— y la vigía de
+     interrupción —para callarla a ELLA cuando hablás encima—. */
+  async function auraMedidorDeVoz() {
+    const stream = await navigator.mediaDevices.getUserMedia({
+      audio: { echoCancellation: true, noiseSuppression: true } });
+    const Ctx = window.AudioContext || window.webkitAudioContext;
+    const ctx = new Ctx();
+    if (ctx.state === 'suspended') { try { await ctx.resume(); } catch (e) {} }
+    const an = ctx.createAnalyser();
+    an.fftSize = 512;
+    ctx.createMediaStreamSource(stream).connect(an);
+    const datos = new Uint8Array(an.fftSize);
+    const rms = () => {
+      an.getByteTimeDomainData(datos);
+      let suma = 0;
+      for (let i = 0; i < datos.length; i++) {
+        const v = (datos[i] - 128) / 128;
+        suma += v * v;
+      }
+      return Math.sqrt(suma / datos.length);
+    };
+    let piso = 0.008;
+    const t0 = Date.now();
+    const calibra = setInterval(() => {
+      if (Date.now() - t0 < 400) piso = Math.max(piso, rms() * 1.2);
+      else clearInterval(calibra);
+    }, 40);
+    return {
+      stream,
+      hayVoz: () => rms() > Math.max(piso * 3, 0.02),
+      cerrar: () => {
+        clearInterval(calibra);
+        try { ctx.close(); } catch (e) { /* ya estaba */ }
+        stream.getTracks().forEach((t) => t.stop());
+      },
+    };
+  }
+
+  /* ── EL OÍDO GRABADO: dictar sin reconocedor del navegador ──────────────
+   *
+   * Graba con MediaRecorder, corta la frase cuando el medidor lleva 900 ms
+   * sin voz, manda el audio al nodo (CHAT.oir) y el texto sigue por la MISMA
+   * cola que el dictado normal. El objeto que deja en `dictando` imita al
+   * reconocedor en lo único que el resto del código usa —stop, abort y los
+   * manejadores— para que auraCallarMicro y el estado funcionen sin saber
+   * cuál de los dos oídos está puesto. */
+  function auraDictarGrabando() {
+    const shim = {
+      _vivo: true,
+      onresult: null, onerror: null, onend: null,
+      stop() { this._vivo = false; this._cerrar?.(); },
+      abort() { this._vivo = false; this._cerrar?.(); },
+    };
+    dictando = shim;
+    pintarChat();
+    (async () => {
+      let medidor = null, rec = null, reloj = null;
+      const cerrar = () => {
+        if (reloj) { clearInterval(reloj); reloj = null; }
+        try { if (rec && rec.state !== 'inactive') rec.stop(); } catch (e) {}
+        medidor?.cerrar();
+      };
+      shim._cerrar = cerrar;
+      try {
+        medidor = await auraMedidorDeVoz();
+      } catch (e) {
+        // permiso denegado o sin micrófono: igual que el error duro del
+        // reconocedor — se apaga el modo y SE DICE
+        dictando = null;
+        if (auraCharlando) { auraCharlando = false; avisar(t('au.sinMicro')); }
+        pintarChat();
+        return;
+      }
+      const ciclo = () => {
+        if (!shim._vivo) return;
+        let trozos = [];
+        try { rec = new MediaRecorder(medidor.stream); }
+        catch (e) { cerrar(); dictando = null; pintarChat(); return; }
+        rec.ondataavailable = (ev) => { if (ev.data && ev.data.size) trozos.push(ev.data); };
+        let hablo = false, vozDesde = 0, silencioDesde = 0;
+        rec.onstop = async () => {
+          if (!shim._vivo || !hablo) { if (shim._vivo) ciclo(); return; }
+          const audio = new Blob(trozos);
+          try {
+            const texto = await CHAT.oir(audio, idiomaActivo());
+            if (texto && shim._vivo) chatMandarDicho(texto);
+          } catch (e) {
+            console.warn('el oído de la casa no oyó:', e);
+            if (shim._vivo) avisar(t('cha.eRedP'));
+          }
+          if (shim._vivo) ciclo();
+        };
+        rec.start();
+        const t0 = Date.now();
+        reloj = setInterval(() => {
+          if (!shim._vivo) { clearInterval(reloj); return; }
+          const ahora = Date.now();
+          if (medidor.hayVoz()) {
+            silencioDesde = 0;
+            if (!vozDesde) vozDesde = ahora;
+            // 250 ms seguidos de voz = está hablando de verdad, no un ruido
+            if (!hablo && ahora - vozDesde > 250) { hablo = true; pintarChat(); }
+          } else {
+            vozDesde = 0;
+            if (hablo) {
+              if (!silencioDesde) silencioDesde = ahora;
+              // 900 ms callado después de hablar: la frase terminó
+              if (ahora - silencioDesde > 900) { clearInterval(reloj); rec.stop(); }
+            }
+          }
+          // tope de un minuto sin hablar o de 30 s hablando: se recicla, que
+          // la grabación no crezca sin fin
+          if ((!hablo && ahora - t0 > 60000) || (hablo && ahora - t0 > 30000)) {
+            clearInterval(reloj);
+            rec.stop();
+          }
+        }, 60);
+      };
+      ciclo();
+    })();
+  }
+
+  /* ── LA VIGÍA: interrumpirla HABLANDO ENCIMA ────────────────────────────
+   *
+   * Mientras ella suena, el medidor —con cancelación de eco, que borra su
+   * propia voz del micrófono— espera 450 ms seguidos de voz humana. Si los
+   * hay, se calla y te escucha: el «pará, pará» de una conversación de
+   * verdad, sin botón. El botón de callar se queda igual: la vigía depende
+   * de que el navegador cancele bien el eco, y donde no lo haga, el dedo
+   * sigue mandando. */
+  let auraVigia = null;
+
+  async function auraVigiaEmpezar() {
+    if (auraVigia || !navigator.mediaDevices?.getUserMedia) return;
+    const mia = { parar: () => {} };
+    auraVigia = mia;
+    let medidor = null;
+    try { medidor = await auraMedidorDeVoz(); }
+    catch (e) { if (auraVigia === mia) auraVigia = null; return; }
+    if (auraVigia !== mia) { medidor.cerrar(); return; }   // ya la pararon
+    let vozDesde = 0;
+    const reloj = setInterval(() => {
+      if (!auraSonando) return;          // todavía no suena: no hay a quién callar
+      if (medidor.hayVoz()) {
+        if (!vozDesde) vozDesde = Date.now();
+        if (Date.now() - vozDesde > 450) {
+          auraVigiaParar();
+          auraCallar();                  // se calla ella; auraCallar reabre el oído
+        }
+      } else vozDesde = 0;
+    }, 60);
+    mia.parar = () => { clearInterval(reloj); medidor.cerrar(); };
+  }
+
+  function auraVigiaParar() {
+    try { auraVigia?.parar(); } catch (e) { /* nunca arrancó */ }
+    auraVigia = null;
+  }
+
   let dictando = null;
 
   /** Cierra el micrófono sin mandar lo que se llevaba dicho.
@@ -10954,7 +11138,8 @@ const VETA = (() => {
   function auraDictar() {
     if (dictando) { try { dictando.stop(); } catch (e) {} dictando = null; pintarChat(); return; }
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (!SR) return;
+    // sin reconocedor del navegador, escucha el oído de la casa
+    if (!SR) { if (puedeGrabarOido()) auraDictarGrabando(); return; }
     const r = new SR();
     r.lang = idiomaActivo() === 'en' ? 'en-US' : 'es-HN';
     r.interimResults = true;
@@ -12034,8 +12219,14 @@ const VETA = (() => {
   }
 
   function ajustarOrbe() {
+    /* DENTRO DE PULSE2CHAT LA BURBUJA SE APARTA. Ahí AU-RA ya tiene su casa
+       —su hilo en la lista, con todo lo del chat— y la bolita flotando encima
+       es la misma asistente dos veces en la misma pantalla, tapando la lista
+       o el compositor. Al salir del chat vuelve sola: la burbuja es el acceso
+       DESDE el resto del ecosistema, no desde adentro. */
     $('#aura-orbe').classList.toggle('tapado',
-      auraVisita && invitacionesVisibles.size > 0 && !auraAbierta);
+      vistaActual === 'chat'
+      || (auraVisita && invitacionesVisibles.size > 0 && !auraAbierta));
   }
 
   /* ══ LA BURBUJA SE MUEVE ═══════════════════════════════════════════════════
@@ -14842,6 +15033,13 @@ const VETA = (() => {
            _atPunto: (p) => atPunto(p), _atTablero: (v) => atTablero(v),
            _bienvenidaAura: () => auraBienvenida(true),
            _auraTxt: () => AURA_TXT,
+           _auraDecirEnVivo: (t) => auraDecirEnVivo(t),
+           /* Simula «ya está sonando» sin un mp3 decodificable: lo usa la
+              prueba de la vigía, que mide la interrupción y no el decodificador. */
+           _auraSimularHablando: () => {
+             if (auraVivo) auraSonando = { pause: auraVivo.cortar };
+             auraVigiaEmpezar();
+           },
            _vista: () => vistaActual,
            _auraDesdeElHilo: (t) => auraDesdeElHilo(t),
            _auraEsperar: () => { auraEsperar(); pintarChat(); },

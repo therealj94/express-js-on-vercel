@@ -454,6 +454,86 @@ def escalonar(partes):
              (cabeza[corte:].strip(), ms, False)] + list(partes[1:]))
 
 
+# ── EL OÍDO ───────────────────────────────────────────────────────────────
+#
+# Whisper (faster-whisper, `small` en la GPU). Existe para que el ESCUCHAR
+# también sea de la casa: el reconocedor del navegador manda el audio a los
+# servidores del navegador, y en los navegadores que no traen ninguno
+# (Firefox, iOS viejo) el modo voz directamente no existía.
+#
+# La eleccion del tamaño esta MEDIDA en esta maquina, en circulo cerrado
+# —nuestra voz dice una frase, el oido la escucha—:
+#
+#     tiny  CPU: 0,5s  → «Quiero un biarque insorigana Maria»   (basura)
+#     base  CPU: 7,0s  → «Kirun B. Arquins, Origena, Maria»     (basura lenta)
+#     small GPU: <0,1s → «Quiero enviar quince origen a Maria
+#                          y después ver mi actividad.»          (perfecta)
+#
+# O sea: en CPU no hay producto — ni rapido ni fiel. En GPU es las dos cosas.
+# Por eso, si la GPU no esta, el oido NO se ofrece (503): oir mal los montos
+# en una billetera es peor que no oir.
+#
+# La PISTA le da el vocabulario de la casa: sin ella, «ORIGEN» y «AUKA» se
+# transcriben como les suene. Es el mismo truco que un humano nuevo en la
+# empresa: primero le decis los nombres propios.
+PISTA_OIDO = {
+    'es': 'Veta Wallet, Orden Global: enviar, cobrar, actividad, saldo, '
+          'ORIGEN, AUKA, AGKA, ONDK, Genesis ID, MyTokenPay, Ordenex, tarjeta',
+    'en': 'Veta Wallet, Orden Global: send, charge, activity, balance, '
+          'ORIGEN, AUKA, AGKA, ONDK, Genesis ID, MyTokenPay, Ordenex, card',
+}
+TOPE_AUDIO = 2 * 1024 * 1024      # ~40s de opus; nadie dicta mas de un tiron
+
+
+class Oido:
+    def __init__(self):
+        self.modelo = None
+        self.turno = threading.Lock()   # de a uno: es rapidisimo, no hace cola
+
+    def cargar(self):
+        """En la GPU o nada — ver la tabla de arriba. Y las librerias CUDA de
+        ctranslate2 se buscan en las que ya trae torch, ANTES del import:
+        dlopen lee el entorno del momento."""
+        try:
+            import glob as _glob
+            rutas = _glob.glob(os.path.join(os.path.dirname(os.__file__), '..',
+                                            'site-packages', 'nvidia', '*', 'lib'))
+            if rutas:
+                os.environ['LD_LIBRARY_PATH'] = (':'.join(rutas) + ':'
+                    + os.environ.get('LD_LIBRARY_PATH', ''))
+            from faster_whisper import WhisperModel
+            t0 = time.time()
+            self.modelo = WhisperModel('small', device='cuda', compute_type='float16')
+            # se templa con un segundo de silencio: la primera transcripcion
+            # real no paga la inicializacion de CUDA
+            import numpy as _np
+            list(self.modelo.transcribe(_np.zeros(16000, dtype=_np.float32),
+                                        language='es', beam_size=1)[0])
+            print(f'oido listo en {time.time() - t0:.0f}s (small, GPU)', flush=True)
+        except Exception as e:
+            self.modelo = None
+            print(f'sin oido ({type(e).__name__}: {str(e)[:120]}) — '
+                  f'el navegador seguira escuchando con el suyo', flush=True)
+
+    def oir(self, crudo, idioma='es'):
+        """Bytes de audio (lo que grabe el navegador: webm/opus, lo que sea
+        que ffmpeg entienda) → texto. Lanza si no hay oido."""
+        if self.modelo is None:
+            raise RuntimeError('sin oido')
+        wav = subprocess.run(
+            ['ffmpeg', '-loglevel', 'error', '-i', 'pipe:0',
+             '-ar', '16000', '-ac', '1', '-f', 'f32le', 'pipe:1'],
+            input=crudo, capture_output=True, timeout=30).stdout
+        audio = np.frombuffer(wav, dtype=np.float32)
+        if len(audio) < 1600:      # menos de una decima: no hay nada que oir
+            return ''
+        with self.turno:
+            segs, _ = self.modelo.transcribe(
+                audio, language=idioma, beam_size=2,
+                initial_prompt=PISTA_OIDO.get(idioma, PISTA_OIDO['es']))
+            return ' '.join(s.text.strip() for s in segs).strip()
+
+
 class Motor:
     """El modelo cargado, con UN solo turno a la vez.
 
@@ -605,6 +685,7 @@ class Motor:
 
 
 MOTOR = Motor()
+OIDO = Oido()
 
 # ── LA PUERTA: QUIEN PUEDE PEDIR VOZ ──────────────────────────────────────
 #
@@ -716,7 +797,8 @@ def servir():
             self.send_response(204)
             self._permiso()
             self.send_header('Access-Control-Allow-Methods', 'POST, GET, OPTIONS')
-            self.send_header('Access-Control-Allow-Headers', 'Content-Type')
+            self.send_header('Access-Control-Allow-Headers',
+                             'Content-Type, X-Correo, X-Llave, X-Idioma')
             self.send_header('Access-Control-Max-Age', '86400')
             self.send_header('Content-Length', '0')
             self.end_headers()
@@ -741,6 +823,8 @@ def servir():
         def do_POST(self):
             if self.path == '/hablar':
                 return self._hablar()
+            if self.path == '/oir':
+                return self._oir()
             if self.path != '/decir':
                 return self._json(404, {'error': 'no'})
             if not MOTOR.listo.is_set():
@@ -774,6 +858,42 @@ def servir():
             print(f'dicho: {segundos:.1f}s de audio en {time.time() - t0:.1f}s '
                   f'· voz={voz} · {len(mp3) // 1024} KB', flush=True)
 
+
+        def _oir(self):
+            """El oido de la casa: audio del navegador → texto.
+
+            Misma puerta que /hablar —el relevo dice si conoce a quien pide—
+            y mismo cupo. La credencial viaja en CABECERAS y no en el cuerpo,
+            porque el cuerpo es el audio crudo: meter un JSON alrededor de
+            dos megas de opus seria pagar un tercio mas de subida en base64.
+            """
+            if OIDO.modelo is None:
+                # sin GPU no se ofrece: oir mal los montos en una billetera
+                # es peor que no oir (los numeros, arriba, en la clase)
+                return self._json(503, {'error': 'sin oído'})
+            quien = str(self.headers.get('X-Correo', ''))[:120].lower()
+            llave = str(self.headers.get('X-Llave', ''))[:200]
+            if not _puede(quien, llave):
+                return self._json(403, {'error': 'no te conozco'})
+            if not _hay_cupo(quien):
+                return self._json(429, {'error': 'muchas seguidas'})
+            idioma = 'en' if self.headers.get('X-Idioma') == 'en' else 'es'
+            try:
+                n = int(self.headers.get('Content-Length', 0))
+            except Exception:
+                n = 0
+            if not (0 < n <= TOPE_AUDIO):
+                return self._json(413, {'error': 'audio muy grande o vacío'})
+            crudo = self.rfile.read(n)
+            t0 = time.time()
+            try:
+                texto = OIDO.oir(crudo, idioma)
+            except Exception as e:
+                print('oír falló:', type(e).__name__, str(e)[:150], flush=True)
+                return self._json(500, {'error': 'no se pudo oír'})
+            print(f'oído a {quien}: {len(crudo) // 1024} KB → '
+                  f'{len(texto)} car en {time.time() - t0:.1f}s', flush=True)
+            return self._json(200, {'texto': texto})
 
         def _hablar(self):
             """La voz EN VIVO, para el navegador.
@@ -886,6 +1006,11 @@ def servir():
 
 if __name__ == '__main__':
     threading.Thread(target=MOTOR.cargar, daemon=True).start()
+    # el oido carga DESPUES de la voz y en su propio hilo: la voz es lo que
+    # no puede esperar, y el oido son tres segundos que a nadie apuran
+    threading.Thread(
+        target=lambda: (MOTOR.listo.wait(600), OIDO.cargar()),
+        daemon=True).start()
     print(f'voz de AU-RA escuchando en {ESCUCHA}:{PUERTO} (cargando modelo…)',
           flush=True)
     servir()

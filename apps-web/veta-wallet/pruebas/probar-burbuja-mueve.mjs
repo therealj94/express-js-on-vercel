@@ -126,6 +126,23 @@ ok(trasRecargar && Math.abs(trasRecargar.y - trasSoltar.y) < 60,
    'y al volver a entrar sigue donde la dejaste',
    `estaba en y=${trasSoltar.y}, volvió en y=${trasRecargar?.y}`);
 
+console.log('\nDentro de PULSE2CHAT la burbuja se aparta, y al salir vuelve\n');
+/* En el chat AU-RA ya tiene su casa —su hilo en la lista— y la bolita encima
+   es la misma asistente dos veces, tapando la lista o el compositor. */
+await p.evaluate(() => VETA.auraToca());        // panel abierto, para el caso duro
+await p.waitForTimeout(400);
+await p.evaluate(() => VETA.vista('chat'));
+await p.waitForTimeout(600);
+ok((await caja())?.oculto || await p.evaluate(() =>
+     document.querySelector('#aura-orbe').classList.contains('tapado')),
+   'al abrir PULSE2CHAT la burbuja se esconde');
+ok(!(await p.evaluate(() => document.querySelector('#aura-panel')?.classList.contains('ver'))),
+   'y su panel abierto se cerró de verdad, no quedó sonando debajo');
+await p.evaluate(() => VETA.vista('nucleo'));
+await p.waitForTimeout(600);
+ok(!(await p.evaluate(() => document.querySelector('#aura-orbe').classList.contains('tapado'))),
+   'y al salir del chat la burbuja vuelve sola');
+
 await p.screenshot({ path: '/tmp/claude-0/-home-user-express-js-on-vercel/0391d4fe-0c9f-53b0-b60e-0030ebf74708/scratchpad/burbuja.png' });
 
 console.log('\n  (el teclado no se puede probar en un navegador de escritorio:');

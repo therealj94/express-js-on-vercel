@@ -753,6 +753,34 @@ const CHAT = (() => {
   const FORMATO_VOZ = 'trozos-mp3-v1';
   const RAIZ = BASE.replace(/\/mensajes$/, '');
 
+  /* ── EL OÍDO DE LA CASA ─────────────────────────────────────────────────
+   *
+   * Audio grabado en el navegador → texto, transcrito por NUESTRO nodo
+   * (Whisper en la GPU). Existe para dos cosas: los navegadores que no traen
+   * reconocedor (Firefox, iOS viejo), y que escuchar también sea de la casa.
+   *
+   * La credencial va en CABECERAS y no en el cuerpo: el cuerpo es el audio
+   * crudo, y envolver dos megas de opus en JSON sería pagar un tercio más de
+   * subida en base64. Vive acá por la misma regla que vozEnVivo: la llave no
+   * sale de este archivo.
+   */
+  async function oir(audio, idioma) {
+    const res = await fetch(RAIZ + '/oir', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/octet-stream',
+                 'X-Correo': yo?.correo || '', 'X-Llave': llave || '',
+                 'X-Idioma': idioma === 'en' ? 'en' : 'es' },
+      body: audio,
+    });
+    if (!res.ok) {
+      const e = new Error('oír http ' + res.status);
+      e.code = res.status;
+      throw e;
+    }
+    const d = await res.json().catch(() => ({}));
+    return (d.texto || '').trim();
+  }
+
   async function vozEnVivo({ texto, voz, idioma, alTrozo, senal }) {
     /* Cuelga del MISMO sitio que el relevo, no de un dominio propio del nodo.
        Asi no hay CORS que arreglar, ni certificado nuevo que renovar, ni un
@@ -825,7 +853,7 @@ const CHAT = (() => {
            estados, subirEstado, borrarEstado, estadoVisto,
            publicarMiLlave, codigoCon,
            grupoCrear, grupoInfo, grupoEditar, grupoInvitar, grupoSalir, grupoUnirse,
-           esGrupo, urlArchivo, vozEnVivo,
+           esGrupo, urlArchivo, vozEnVivo, oir,
            puedeGrabar, grabarInicio, grabarFin, subirVoz, segundosDeVoz,
            escuchar, dejarDeEscuchar, senalar, turno,
            reaccionar, escribiendo,
