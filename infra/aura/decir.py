@@ -197,11 +197,21 @@ LEXICO = {
     'Veta Wallet': 'Veta Wólet',
     'VetaWallet': 'Veta Wólet',
     'AuCorp': 'Au Corp',
-    'Genesis ID': 'Génesis I-D',
-    'GenesisID': 'Génesis I-D',
+    # El «ID» va EN INGLES, confirmado por la casa: se dice «ai-di», no
+    # «i-de». Es la unica parte del nombre que no se españoliza.
+    'Genesis ID': 'Génesis Ai-Di',
+    'GenesisID': 'Génesis Ai-Di',
+    'Genesis Id': 'Génesis Ai-Di',
+    # Los dos tokens del metal. AUKA es Gold Kapital y AGKA es Silver
+    # Kapital, con K — el nombre esta armado con el simbolo quimico delante
+    # (Au el oro, Ag la plata). Se dicen como PALABRA, no deletreados:
+    # «áuka» y «ágka». Deletrear A-G-K-A en una nota de voz suena a numero de
+    # serie, y esto es el nombre de una moneda.
+    'AUKA': 'Áuka',
+    'AGKA': 'Ágka',
+    'ONDK': 'O-N-D-K',
     # sueltas, por si el modelo las escribe sin el compañero
     'Wallet': 'Wólet',
-    'ONDK': 'O-N-D-K',
 }
 # Se aplica de mas largo a mas corto: si no, «Wallet» se comeria la mitad de
 # «Veta Wallet» y quedaria «Veta Wólet» mal armado.

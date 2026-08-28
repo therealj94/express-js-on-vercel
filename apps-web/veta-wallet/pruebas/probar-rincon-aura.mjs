@@ -151,24 +151,78 @@ ok(!(await p.$('.cha-aura-vozop')), 'y el cajón se cierra con el mismo botón')
    de adentro: que exista el botón, que al tocarlo aparezca la tira que dice
    qué está pasando, y que se pueda apagar. */
 ok(await p.$('.cha-aura-hablar'), 'hay un botón para HABLAR, no solo para escribir');
-ok(!(await p.$('.cha-aura-charla')),
-   'y apagado no ocupa lugar: la tira de conversación no está');
-await p.evaluate(() => VETA.auraCharlarAlterna());
+ok(!(await p.$('.aura-voz')), 'y apagado no ocupa lugar: la pantalla no está');
+
+/* La pantalla de voz. El pedido fue explícito —«como ChatGPT cuando pongo
+   modo voz y me sale la pelotita»— así que se comprueba lo que se ve:
+   que sea una pantalla APARTE, que tenga su pelotita, que diga en qué
+   estado está, y que al salir el hilo siga completo y escrito. */
+await p.evaluate(() => VETA.auraVozPantalla());
+await p.waitForTimeout(600);
+const window_alto = await p.evaluate(() => window.innerHeight);
+const vz = await p.evaluate(() => {
+  const v = document.querySelector('.aura-voz');
+  const msgs = document.querySelector('#chat-msgs');
+  return {
+    hay: !!v,
+    delBody: !!v && v.parentElement === document.body,
+    orbe: !!document.querySelector('.aura-pelota'),
+    capas: document.querySelectorAll('.aura-pelota span').length,
+    // que se VEA, no solo que exista: #aura-orbe ya estaba usado por el
+    // botón flotante de AU-RA, y reusar ese id dejaba la pelotita de 64px
+    // pegada a una esquina — existía y no se veía
+    ancho: Math.round(document.querySelector('.aura-pelota')?.getBoundingClientRect().width || 0),
+    fijo: getComputedStyle(document.querySelector('.aura-pelota') || document.body).position,
+    estado: document.querySelector('.aura-voz-est')?.textContent.trim() || '',
+    boton: document.querySelector('.aura-voz-b')?.textContent.trim() || '',
+    pelotaToca: document.querySelector('.aura-pelota')?.tagName === 'BUTTON',
+    salir: !!document.querySelector('.aura-voz-x'),
+    nota: document.querySelector('.aura-voz-nota')?.textContent.trim() || '',
+    // `fixed`: tiene que tapar también la barra de abajo. Media pantalla de
+    // app asomando no es una pantalla de voz, es un panel.
+    tapa: !!v && !!msgs && getComputedStyle(v).position === 'fixed',
+    alto: Math.round(v?.getBoundingClientRect().height || 0),
+  };
+});
+ok(vz.hay, 'tocando HABLAR se abre una pantalla de voz aparte');
+ok(vz.orbe && vz.capas === 3, 'con su pelotita, que es lo único que hay que mirar');
+ok(vz.ancho >= 120, 'y la pelotita se VE: mide lo que tiene que medir',
+   `mide ${vz.ancho}px de ancho`);
+ok(vz.fijo === 'relative',
+   'no está pegada a una esquina: vive en el centro de su pantalla', vz.fijo);
+// Quieta NO repite la instrucción arriba y abajo: el botón ya la dice, y
+// decirla dos veces en la misma pantalla es ruido. Lo que se comprueba es
+// que SIEMPRE haya algo que te diga qué hacer, no dónde está escrito.
+ok(vz.boton.length > 2 && !/undefined|au\./.test(vz.boton),
+   'siempre dice qué hacer, sin claves crudas', `botón: «${vz.boton}»`);
+ok(!/undefined|au\./.test(vz.estado),
+   'y la línea de estado nunca enseña una clave sin traducir', vz.estado);
+ok(vz.pelotaToca, 'la pelotita se toca: es lo más grande y lo más obvio');
+ok(vz.salir, 'con una salida clara');
+// los DOS idiomas: la página se pinta en inglés en este navegador, y una
+// comprobación atada a una sola lengua se pone roja sin que nada esté mal —
+// ya me pasó una vez con esta misma suite
+ok(/escrit|written/i.test(vz.nota),
+   'y avisa que lo hablado queda escrito: es lo que hace que no dé miedo usarla',
+   vz.nota);
+ok(vz.tapa, 'la pantalla se pone ENCIMA de todo, no al costado');
+// Que mida la pantalla ENTERA. Metida dentro del hilo medía 768 de 844 y
+// dejaba la barra de abajo asomando: el contenedor del chat lleva
+// `transform` para su animación, y un `fixed` dentro de un ancestro con
+// transform se mide contra ese ancestro, no contra la pantalla.
+ok(vz.alto >= window_alto - 2,
+   'y ocupa la pantalla entera, sin dejar la barra asomando',
+   `mide ${vz.alto}px de ${window_alto}`);
+ok(vz.delBody, 'porque cuelga del body, no de un contenedor con transform');
+
+await p.screenshot({ path: '/tmp/claude-0/-home-user-express-js-on-vercel/0391d4fe-0c9f-53b0-b60e-0030ebf74708/scratchpad/pantalla-voz.png' });
+
+/* Y lo que más importa al salir: el hilo sigue ahí, con todo. */
+await p.evaluate(() => VETA.auraVozCerrar());
 await p.waitForTimeout(400);
-const charla = await p.evaluate(() => ({
-  tira: !!document.querySelector('.cha-aura-charla'),
-  dice: document.querySelector('.cha-aura-est')?.textContent.trim() || '',
-  onda: document.querySelectorAll('.cha-aura-onda i').length,
-  boton: document.querySelector('.cha-aura-hablar')?.getAttribute('aria-pressed'),
-}));
-ok(charla.tira, 'encendido aparece la tira de conversación');
-ok(charla.dice.length > 10 && !/undefined/.test(charla.dice),
-   'que dice EN PALABRAS qué está pasando, no un icono que late', charla.dice);
-ok(charla.onda === 5, 'con su onda, que se mueve cuando hay algo que oír');
-ok(charla.boton === 'true', 'y el botón queda marcado como encendido (accesible)');
-await p.evaluate(() => VETA.auraCharlarAlterna());
-await p.waitForTimeout(300);
-ok(!(await p.$('.cha-aura-charla')), 'y se apaga con el mismo botón');
+ok(!(await p.$('.aura-voz')), 'se sale y la pantalla se va');
+ok(!!(await p.$('#chat-msgs')),
+   'y el hilo sigue completo: lo hablado nunca dejó de ser texto');
 ok(!aura.llamar, 'SIN botones de llamar ni video: a un bot no se le timbra');
 ok(/beta/i.test(aura.sub), 'el subtítulo dice qué es, no un correo');
 ok(aura.claseMsgs.includes('cha-de-aura'), 'el hilo lleva su clase para el estilo');

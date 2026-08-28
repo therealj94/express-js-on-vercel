@@ -2487,6 +2487,78 @@ body.en-p2c .chay-cara{background:var(--p2c-grad);color:#03122E;
   border-radius:999px;padding:4px 12px;font-size:12px;font-weight:600;cursor:pointer}
 /* La voz de ella pegada a su respuesta, no como tarjeta aparte */
 .cha-voz-aura{margin-top:6px;opacity:.85}
+/* La pastilla de «llegó algo». Existe para poder NO arrastrar a nadie: quien
+   subió a releer se entera sin que el hilo se le mueva bajo el dedo. */
+.cha-nuevos{position:absolute;left:50%;transform:translateX(-50%);bottom:96px;
+  z-index:6;display:inline-flex;align-items:center;gap:6px;border:none;
+  background:#C9A961;color:#14100C;border-radius:999px;padding:7px 14px;
+  font-size:12px;font-weight:700;cursor:pointer;box-shadow:0 4px 14px rgba(0,0,0,.4)}
+.cha-nuevos svg{width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:2.5}
+
+/* ══ LA PANTALLA DE VOZ ═══════════════════════════════════════════════════
+   Mientras se habla no se lee un chat: se mira una cosa que responde. El
+   hilo estorba y las burbujas distraen, asi que se tapan. Al salir, todo lo
+   hablado ya esta escrito ahi atras — nunca dejo de ser texto. */
+/* `fixed` y no `absolute`: tiene que tapar TAMBIEN la barra de abajo. Media
+   pantalla de app asomando por debajo no es una pantalla de voz, es un
+   panel — y lo que se pidio fue lo primero. */
+.aura-voz{position:fixed;inset:0;z-index:120;display:flex;flex-direction:column;
+  background:radial-gradient(120% 90% at 50% 30%,#1a2a4a 0%,#0d1526 55%,#080d18 100%)}
+.aura-voz-x{position:absolute;top:14px;right:16px;width:38px;height:38px;
+  border:1px solid rgba(255,255,255,.18);background:rgba(255,255,255,.06);
+  color:#D8CFBE;border-radius:50%;font-size:16px;cursor:pointer;line-height:1}
+.aura-voz-medio{flex:1;display:flex;flex-direction:column;align-items:center;
+  justify-content:center;gap:26px;padding:32px 26px;text-align:center}
+/* La pelotita respira: necesita aire alrededor o parece un boton */
+.aura-pelota{margin-bottom:6px}
+.aura-voz-est{font:600 13px/1 ui-monospace,Menlo,monospace;letter-spacing:.16em;
+  text-transform:uppercase;color:#8FB4E8;margin:0}
+/* Lo que dice la persona, en gris y mientras lo dice: es la unica forma de
+   saber que te entendio ANTES de soltar el boton. */
+.aura-voz-mio{color:#9FB0C9;font-size:17px;line-height:1.45;margin:0;max-width:34ch}
+/* Y lo que contesto ella, para que el oido tenga respaldo: si un monto se
+   oye mal, se puede LEER. Es la razon por la que esto no tapa el numero. */
+.aura-voz-suyo{color:#EAF1FB;font-size:19px;line-height:1.5;margin:0;max-width:36ch}
+.aura-voz-pie{padding:0 26px 34px;display:flex;flex-direction:column;
+  align-items:center;gap:12px}
+.aura-voz-b{display:inline-flex;align-items:center;gap:8px;border-radius:999px;
+  padding:14px 26px;font-size:15px;font-weight:700;cursor:pointer;
+  border:1px solid rgba(143,180,232,.45);background:rgba(143,180,232,.12);color:#CFE0F7}
+.aura-voz-b.on{background:#8FB4E8;color:#0d1526;border-color:#8FB4E8}
+.aura-voz-b svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2}
+.aura-voz-nota{margin:0;font-size:11px;color:#6B7C96;text-align:center}
+
+/* LA PELOTITA. No es decoracion: es el unico sitio donde mirar, asi que
+   tiene que decir en que estado esta sin leer una palabra.
+     quieta   respira despacio, esperando
+     oyendo   late abierta, como quien presta atencion
+     pensando gira: hay trabajo adentro
+     hablando se mueve CON EL SONIDO (--nivel lo pone el analizador de audio
+              con el volumen real, no con una animacion inventada) */
+.aura-pelota{position:relative;width:150px;height:150px;--nivel:1;
+  border:none;background:none;padding:0;cursor:pointer;display:block}
+.aura-pelota:focus-visible{outline:2px solid #8FB4E8;outline-offset:8px;border-radius:50%}
+.aura-pelota span{position:absolute;inset:0;border-radius:50%}
+.aura-pelota span:nth-child(1){
+  background:radial-gradient(circle at 34% 30%,#BBD5FF 0%,#5B8FD6 42%,#2C5AA0 74%,#1a3a6b 100%);
+  box-shadow:0 0 60px rgba(91,143,214,.55),inset -12px -16px 40px rgba(0,0,0,.4)}
+.aura-pelota span:nth-child(2){border:1px solid rgba(143,180,232,.35)}
+.aura-pelota span:nth-child(3){border:1px solid rgba(143,180,232,.18)}
+.aura-pelota.quieta span:nth-child(1){animation:respirar 4.5s ease-in-out infinite}
+.aura-pelota.oyendo span:nth-child(1){animation:respirar 1.9s ease-in-out infinite}
+.aura-pelota.oyendo span:nth-child(2){animation:aro 1.9s ease-out infinite}
+.aura-pelota.oyendo span:nth-child(3){animation:aro 1.9s ease-out .95s infinite}
+.aura-pelota.pensando span:nth-child(1){animation:respirar 1.1s ease-in-out infinite}
+.aura-pelota.pensando span:nth-child(2){animation:girar 2.2s linear infinite;
+  border-color:transparent;border-top-color:rgba(187,213,255,.8)}
+.aura-pelota.hablando span:nth-child(1){transform:scale(var(--nivel));
+  transition:transform .07s linear}
+.aura-pelota.hablando span:nth-child(2){animation:aro 1.3s ease-out infinite}
+@keyframes respirar{0%,100%{transform:scale(1)}50%{transform:scale(1.07)}}
+@keyframes aro{0%{transform:scale(1);opacity:.7}100%{transform:scale(1.6);opacity:0}}
+@keyframes girar{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion:reduce){
+  .aura-pelota span{animation:none!important;transform:none!important}}
 .cha-voz-aura audio{height:32px;max-width:210px}
 /* El cajon de las tres voces. Cada una dice PARA QUE sirve, no como suena:
    quien elige no esta comparando timbres, esta eligiendo si quiere que le
@@ -4446,9 +4518,9 @@ body.en-ventana .lienzo::before{
 
 <!-- El saber publico que Genesis dejo salir. Lo genera
      infra/cerebro/publicar-saber.mjs; no se edita a mano. -->
-<script src="saber.js?v=13acf297ad"></script>
-<script src="telemetria.js?v=13acf297ad"></script>
-<script src="qr.js?v=13acf297ad"></script>
+<script src="saber.js?v=06f2ad0b02"></script>
+<script src="telemetria.js?v=06f2ad0b02"></script>
+<script src="qr.js?v=06f2ad0b02"></script>
 <!-- La cripto para entrar con la frase semilla. Se carga aparte y no dentro
      de app.js porque son 13 KB que solo hacen falta si alguien elige ese
      camino, y porque asi se puede probar sola (pruebas/probar-llaves.mjs). -->
@@ -4591,24 +4663,24 @@ body.en-ventana .lienzo::before{
   </div>
 </div>
 
-<script src="vendor/cripto-llaves.js?v=13acf297ad"></script>
-<script src="llaves.js?v=13acf297ad"></script>
-<script src="tono.js?v=13acf297ad"></script>
-<script src="llamada.js?v=13acf297ad"></script>
-<script src="llamadaGrupo.js?v=13acf297ad"></script>
-<script src="velas.js?v=13acf297ad"></script>
-<script src="cadena.js?v=13acf297ad"></script>
-<script src="datos.js?v=13acf297ad"></script>
-<script src="aura.js?v=13acf297ad"></script>
-<script src="candado.js?v=13acf297ad"></script>
-<script src="chat.js?v=13acf297ad"></script>
-<script src="i18n.js?v=13acf297ad"></script>
-<script src="galaxia.js?v=13acf297ad"></script>
+<script src="vendor/cripto-llaves.js?v=06f2ad0b02"></script>
+<script src="llaves.js?v=06f2ad0b02"></script>
+<script src="tono.js?v=06f2ad0b02"></script>
+<script src="llamada.js?v=06f2ad0b02"></script>
+<script src="llamadaGrupo.js?v=06f2ad0b02"></script>
+<script src="velas.js?v=06f2ad0b02"></script>
+<script src="cadena.js?v=06f2ad0b02"></script>
+<script src="datos.js?v=06f2ad0b02"></script>
+<script src="aura.js?v=06f2ad0b02"></script>
+<script src="candado.js?v=06f2ad0b02"></script>
+<script src="chat.js?v=06f2ad0b02"></script>
+<script src="i18n.js?v=06f2ad0b02"></script>
+<script src="galaxia.js?v=06f2ad0b02"></script>
 <!-- GENESIS CORE: el cerebro del ecosistema, el mismo volumen que se proyecta
      en la sala de Genesis ID. Solo lo usa su vista. -->
-<script src="cerebro-og.js?v=13acf297ad"></script>
+<script src="cerebro-og.js?v=06f2ad0b02"></script>
 <!-- MODO VISOR: la casa dentro de un visor (WebXR, cartón o 360 en pantalla). -->
-<script src="visor.js?v=13acf297ad"></script>
-<script src="musica.js?v=13acf297ad"></script>
-<script src="airtouch.js?v=13acf297ad"></script>
-<script src="app.js?v=13acf297ad"></script>
+<script src="visor.js?v=06f2ad0b02"></script>
+<script src="musica.js?v=06f2ad0b02"></script>
+<script src="airtouch.js?v=06f2ad0b02"></script>
+<script src="app.js?v=06f2ad0b02"></script>

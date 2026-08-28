@@ -5444,7 +5444,7 @@ const VETA = (() => {
      se puede contestar: «¿esto que estoy viendo es lo último que subimos, o
      mi navegador se quedó con una copia vieja?». La ficha de Ajustes lo
      enseña, y con eso se sabe. */
-  const VETA_V = '13acf297ad';
+  const VETA_V = '06f2ad0b02';
   const VETA_FECHA = '2026-08-28';
 
   const AET_V = 'e250bbe2f5';
@@ -7764,9 +7764,19 @@ const VETA = (() => {
       // siempre hay mensajes suyos, y con eso la ventana no se abriría nunca.
       if (!igual && auraEsperando() && esAura(chatSt.con)
           && m.length && m[m.length - 1].de === AURA_CHAT_ID) auraLlego();
+      // Las DOS medidas se toman ANTES de tocar nada: despues de repintar la
+      // altura ya cambio y no hay forma de saber donde estaba la persona, y
+      // despues de asignar msgs ya no hay con que comparar cuantos habia.
+      const estabaAbajo = chatEnElFondo();
+      const llegoAlgo = !chatSt.msgs || m.length > chatSt.msgs.length;
       chatSt.msgs = m;
       chatSt.error = null;
-      if (!igual) { pintarChat(); chatAlFinal(); auraCharlaSonar(); }
+      if (!igual) {
+        if (!estabaAbajo && llegoAlgo) chatHayNuevos = true;
+        pintarChat();
+        if (estabaAbajo) chatAlFinal();
+        auraCharlaSonar();
+      }
     } catch (e) {
       chatSt.error = chatMotivo(e);
       if (!callado) pintarChat();
@@ -9600,6 +9610,10 @@ const VETA = (() => {
   }
 
   function pintarChat() {
+    // La pantalla de voz cuelga del body y se repinta SIEMPRE, aunque el
+    // chat ya no esté a la vista: si alguien se va a otra pestaña con la voz
+    // encendida, la capa tiene que seguir ahí y no quedar congelada.
+    auraVozPintar();
     if (vistaActual !== 'chat') return;
     const caja = $('#p2c');
     if (!caja) return;
@@ -9681,6 +9695,42 @@ const VETA = (() => {
   function chatAlFinal() {
     const m = $('#chat-msgs');
     if (m) m.scrollTop = m.scrollHeight;
+  }
+
+  /* ── EL HILO QUE SE SUBE SOLO ────────────────────────────────────────────
+   *
+   * «cuando recibo mensaje no sé por qué el chat se sube aunque baje, se sube
+   * solo y sigue pasando». Era esto: cada refresco terminaba en chatAlFinal()
+   * SIN PREGUNTAR, asi que si alguien habia subido a releer algo, el siguiente
+   * refresco lo devolvia al fondo. Y al bajar el refresco a 1,2 segundos para
+   * que AU-RA se sintiera rapida, lo que se hizo fue empeorarlo: ahora lo
+   * arrancaba de la lectura cada segundo y pico.
+   *
+   * La regla que usa cualquier chat: se pega al fondo SOLO si ya estabas en el
+   * fondo. Si subiste, no se te mueve nada — y si mientras tanto llega algo,
+   * se avisa con una pastilla en vez de arrastrarte.
+   *
+   * `cerca` con margen de 80 px y no exactitud: un dedo deja el hilo a tres
+   * pixeles del fondo y eso sigue siendo «estoy abajo».
+   */
+  const CERCA_DEL_FONDO = 80;
+  let chatHayNuevos = false;
+
+  function chatEnElFondo() {
+    const m = $('#chat-msgs');
+    if (!m) return true;   // sin hilo pintado, el fondo es donde se empieza
+    return m.scrollHeight - m.scrollTop - m.clientHeight <= CERCA_DEL_FONDO;
+  }
+
+  function chatBajar() {
+    chatHayNuevos = false;
+    chatAlFinal();
+    pintarChat();
+  }
+
+  /** Se llama al hacer scroll: si volviste al fondo, el aviso sobra. */
+  function chatMirarScroll() {
+    if (chatHayNuevos && chatEnElFondo()) { chatHayNuevos = false; pintarChat(); }
   }
 
   /* La invitacion de contacto. Se GENERA como enlace web —la camara del
@@ -10184,7 +10234,9 @@ const VETA = (() => {
     nuevas.forEach((m) => auraYaSono.add(m.id));
     const ultima = nuevas[nuevas.length - 1];
     const a = new Audio(CHAT.urlArchivo(ultima.archivo));
+    a.crossOrigin = 'anonymous';   // hace falta para poder medir su nivel
     auraSonando = a;
+    if (auraPantalla) auraMirarNivel(a);
     pintarChat();
     const seguir = () => {
       auraSonando = null;
@@ -10202,6 +10254,146 @@ const VETA = (() => {
     try { auraSonando?.pause(); } catch (e) { /* ya no sonaba */ }
     auraSonando = null;
     pintarChat();
+  }
+
+  /* ── LA PANTALLA DE VOZ ──────────────────────────────────────────────────
+   *
+   * «no está bien diseñado, eso no funciona como por ejemplo ChatGPT cuando
+   *  pongo modo voz y me sale la pelotita y estoy hablando y me contesta sin
+   *  esperar nada, y cuando me salgo me sale toda la conversación que tuve»
+   *
+   * Ahi esta dicho el diseño entero, y son tres cosas:
+   *
+   *   1. UNA PANTALLA APARTE. Mientras se habla no se lee un chat: se mira
+   *      una cosa que responde. El hilo estorba y las burbujas distraen.
+   *   2. NADA DE ARCHIVOS. En modo voz la nota de voz NO se pinta en ningun
+   *      lado: es el sonido de la respuesta, no un adjunto que alguien tenga
+   *      que ir a tocar. Recibir un archivo por cada frase es lo contrario de
+   *      conversar.
+   *   3. AL SALIR, TODO ESCRITO. Lo hablado quedo en el hilo como texto desde
+   *      el primer momento — no hay que transcribir nada al salir porque
+   *      nunca dejo de ser texto. Es buscable y queda.
+   *
+   * La pelotita no es decoracion: es el unico sitio donde mirar, y por eso
+   * tiene que decir en que estado esta sin leer una palabra. Late despacio
+   * cuando escucha, se agita cuando piensa, y se mueve CON EL SONIDO cuando
+   * habla — con el nivel real del audio, no con una animacion inventada, que
+   * es la diferencia entre parecer viva y parecer un gif.
+   */
+  let auraPantalla = false;
+  let auraDicho = '';        // lo que la persona esta diciendo, en vivo
+  let auraNivel = 0;         // 0..1, el volumen de ella mientras habla
+  let auraAnaliza = null;
+
+  const auraEstado = () => auraSonando ? 'hablando'
+    : auraEsperando() ? 'pensando'
+    : dictando ? 'oyendo' : 'quieta';
+
+  async function auraVozPantalla() {
+    if (!esAura(chatSt.con)) return;
+    auraPantalla = true;
+    auraCharlando = true;
+    if (!auraVoz) await auraVozElegir('calida');
+    (chatSt.msgs || []).forEach((m) => { if (m.id) auraYaSono.add(m.id); });
+    pintarChat();
+    auraDictar();
+  }
+
+  function auraVozCerrar() {
+    auraPantalla = false;
+    auraCharlando = false;
+    auraDicho = '';
+    try { auraSonando?.pause(); } catch (e) { /* ya no sonaba */ }
+    auraSonando = null;
+    if (dictando) { try { dictando.stop(); } catch (e) {} dictando = null; }
+    try { auraAnaliza?.close(); } catch (e) { /* nunca se abrio */ }
+    auraAnaliza = null;
+    auraNivel = 0;
+    // Lo hablado YA esta en el hilo: nunca dejo de ser texto.
+    pintarChat();
+    chatAlFinal();
+  }
+
+  /** Engancha la pelotita al volumen REAL de lo que ella dice. Si el navegador
+      no deja (algunos bloquean el analisis de audio de otro origen), se cae a
+      un latido parejo: peor, pero nunca roto. */
+  function auraMirarNivel(audio) {
+    try {
+      const Ctx = window.AudioContext || window.webkitAudioContext;
+      if (!Ctx) return;
+      const ctx = new Ctx();
+      const src = ctx.createMediaElementSource(audio);
+      const an = ctx.createAnalyser();
+      an.fftSize = 256;
+      src.connect(an); an.connect(ctx.destination);
+      auraAnaliza = ctx;
+      const datos = new Uint8Array(an.frequencyBinCount);
+      const tic = () => {
+        if (!auraSonando) { auraNivel = 0; return; }
+        an.getByteFrequencyData(datos);
+        const medio = datos.reduce((a, b) => a + b, 0) / datos.length;
+        auraNivel = Math.min(1, medio / 90);
+        const orbe = $('#aura-pelota');
+        if (orbe) orbe.style.setProperty('--nivel', (1 + auraNivel * 0.35).toFixed(3));
+        requestAnimationFrame(tic);
+      };
+      tic();
+    } catch (e) { /* sin analisis, la pelotita late parejo */ }
+  }
+
+  /* La capa cuelga del BODY, no del hilo, y no es un capricho de orden: el
+     contenedor del chat lleva `transform` para su animación de entrada, y un
+     `position:fixed` dentro de un ancestro con transform deja de medirse
+     contra la pantalla y pasa a medirse contra ese ancestro. Puesta adentro
+     media 768 px en una pantalla de 844 y dejaba la barra de abajo asomando.
+     Colgada del body tapa todo, que es lo que se pidió. Es además el patrón
+     que ya usa el resto de la app para lo que va encima de todo. */
+  function auraVozPintar() {
+    let capa = document.getElementById('aura-voz');
+    if (!auraPantalla) { capa?.remove(); return; }
+    if (!capa) {
+      capa = document.createElement('div');
+      capa.id = 'aura-voz';
+      document.body.appendChild(capa);
+    }
+    capa.className = 'aura-voz';
+    capa.innerHTML = pantallaVoz();
+  }
+
+  function pantallaVoz() {
+    const est = auraEstado();
+    // Quieta no dice nada: el botón de abajo ya dice qué hacer, y repetirlo
+    // dos veces en la misma pantalla es ruido. La línea de estado existe para
+    // los tres estados en que SÍ está pasando algo.
+    const dice = { oyendo: t('au.oyendo'), pensando: t('au.pensando'),
+                   hablando: t('au.hablarOn'), quieta: '' }[est];
+    // Lo ultimo que dijo ELLA, para tener algo que leer mientras habla. Solo
+    // lo ultimo: la pantalla de voz no es el hilo, el hilo esta afuera.
+    const suyo = [...(chatSt.msgs || [])].reverse()
+      .find((m) => m.de === AURA_CHAT_ID && (m.texto || '').trim());
+    return `
+      <button type="button" class="aura-voz-x" onclick="VETA.auraVozCerrar()"
+              aria-label="${t('cha.cerrar')}">✕</button>
+      <div class="aura-voz-medio">
+        <button type="button" class="aura-pelota ${est}" id="aura-pelota"
+                onclick="VETA.${'auraDictar'}()" aria-label="${t('au.tocaHablar')}">
+          <span></span><span></span><span></span>
+        </button>
+        ${dice ? `<p class="aura-voz-est">${dice}</p>` : ''}
+        ${auraDicho ? `<p class="aura-voz-mio">${esc(auraDicho)}</p>` : ''}
+        ${suyo && est !== 'oyendo' ? `<p class="aura-voz-suyo">${esc(suyo.texto)}</p>` : ''}
+      </div>
+      <div class="aura-voz-pie">
+        ${est === 'hablando'
+          ? `<button type="button" class="aura-voz-b" onclick="VETA.auraCallar()">
+               ${t('au.callar')}</button>`
+          : `<button type="button" class="aura-voz-b aura-voz-mic${dictando ? ' on' : ''}"
+                     onclick="VETA.auraDictar()">
+               <svg viewBox="0 0 24 24"><path d="M12 3a3 3 0 0 1 3 3v6a3 3 0 0 1-6 0V6a3 3 0 0 1 3-3z"/>
+               <path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>
+               ${dictando ? t('au.oyendo') : t('au.tocaHablar')}</button>`}
+        <p class="aura-voz-nota">${t('au.quedaEscrito')}</p>
+      </div>`;
   }
 
   function auraVozMenu() {
@@ -10255,8 +10447,12 @@ const VETA = (() => {
       // es solo la forma de escribirlo
       const txt = Array.from(ev.results).map(x => x[0].transcript).join(' ').trim();
       if (campo()) campo().value = txt;
+      // en la pantalla de voz lo dicho se ve mientras se dice: es la unica
+      // forma de saber que te esta entendiendo antes de soltar
+      if (auraPantalla) { auraDicho = txt; pintarChat(); }
       if (ev.results[ev.results.length - 1].isFinal) {
         dictando = null;
+        if (auraPantalla) auraDicho = '';
         if (txt) $('#chat-hilo form.cha-pie')?.requestSubmit();
         else pintarChat();
       }
@@ -10433,7 +10629,7 @@ const VETA = (() => {
         <button type="button" class="cha-aura-chip${modoP ? ' on' : ''}"
                 onclick="VETA.auraModoChat('pensadora')">${t('au.chModoP')}</button>
         <button type="button" class="cha-aura-chip cha-aura-hablar${auraCharlando ? ' on' : ''}"
-                onclick="VETA.auraCharlarAlterna()"
+                onclick="VETA.auraVozPantalla()"
                 aria-pressed="${auraCharlando}">
           <svg viewBox="0 0 24 24"><path d="M12 3a3 3 0 0 1 3 3v6a3 3 0 0 1-6 0V6a3 3 0 0 1 3-3z"/>
           <path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>${auraCharlando
@@ -10476,7 +10672,14 @@ const VETA = (() => {
         <button onclick="VETA.chatBuscarHiloAbrir()" aria-label="${t('cha.cancelar')}">✕</button>
       </div>` : ''}
       ${chatSt.ficha ? chatFicha() : ''}
-      <div class="cha-msgs${esAura(c) ? ' cha-de-aura' : ''}" id="chat-msgs" onclick="VETA.chatGestosTocar(event)">${cuerpo}</div>
+      <div class="cha-msgs${esAura(c) ? ' cha-de-aura' : ''}" id="chat-msgs"
+           onscroll="VETA.chatMirarScroll()"
+           onclick="VETA.chatGestosTocar(event)">${cuerpo}</div>
+      ${chatHayNuevos ? `
+      <button type="button" class="cha-nuevos" onclick="VETA.chatBajar()">
+        <svg viewBox="0 0 24 24"><path d="M12 5v14M6 13l6 6 6-6"/></svg>
+        ${t('cha.hayNuevos')}
+      </button>` : ''}
       ${chatSt.grabando ? `
       <div class="cha-grab">
         <span class="cha-grab-pt"></span>
@@ -10762,7 +10965,8 @@ const VETA = (() => {
     } else if (m.tipo === 'archivo') {
       adj = `<a class="cha-arch" href="${esc(dir)}"${marca} target="_blank" rel="noopener">
                <svg viewBox="0 0 24 24">${ICO.doc}</svg>${esc(m.nombre || t('cha.unArchivo'))}</a>`;
-    } else if (m.tipo === 'voz' && !mio && esAura(chatSt.con) && !m.texto) {
+    } else if (m.tipo === 'voz' && !mio && esAura(chatSt.con) && !m.texto
+               && !auraCharlando) {
       /* La voz de AU-RA no es una nota que ella «manda»: es la MISMA
          respuesta de arriba, dicha. Pintarla como tarjeta aparte, con su
          hora y su burbuja, convierte cada contestación en dos cosas — y eso
@@ -13264,7 +13468,8 @@ const VETA = (() => {
            nuAbrir,
            // El rincon de AU-RA en el chat: modos, voz y dictado.
            auraModoChat, auraVozMenu, auraVozElegir, auraDictar,
-           auraCharlarAlterna, auraCallar,
+           auraCharlarAlterna, auraCallar, chatBajar, chatMirarScroll,
+           auraVozPantalla, auraVozCerrar,
            // AU-RA: el orbe, el panel, la bienvenida y el recorrido.
            auraToca, auraManda, auraMic, auraChip, auraTourVa, auraTourFin,
            pantallaLlena, gcAbrir, gcCerrar, gcZoom, aedCallar,

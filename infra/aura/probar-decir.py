@@ -90,8 +90,17 @@ NOMBRES = [
      'MyTokenPay no se lee en español'),
     ('Podés escribirme por PULSE2CHAT cuando quieras.', 'Puls Chat',
      'y el 2 de PULSE2CHAT NO se dice «dos»'),
-    ('Hacé tu Genesis ID una sola vez.', 'Génesis I-D',
-     'ID se deletrea, no se lee «id»'),
+    # La casa lo confirmó: el «ID» va EN INGLÉS. Es la única parte del
+    # nombre que no se españoliza.
+    ('Hacé tu Genesis ID una sola vez.', 'Génesis Ai-Di',
+     'el ID de Genesis ID se dice en inglés, «ai-di»'),
+    # AUKA es Gold Kapital y AGKA es Silver Kapital, con K — el símbolo
+    # químico va delante (Au el oro, Ag la plata). Se dicen como PALABRA:
+    # deletrear A-G-K-A suena a número de serie, y esto es una moneda.
+    ('AUKA sigue el oro y AGKA la plata.', 'Áuka',
+     'AUKA se dice como palabra, no deletreada'),
+    ('AUKA sigue el oro y AGKA la plata.', 'Ágka',
+     'y AGKA también'),
     ('Ordenex es la casa de cambio de AuCorp.', 'Ordenex',
      'lo que ya es palabra en español no se toca'),
     ('ORIGEN sigue el precio del oro.', 'ORIGEN',
