@@ -12,6 +12,7 @@ una aplicacion de plata eso no es un detalle de estilo.
 """
 
 import os
+import pathlib
 import sys
 
 import numpy as np
@@ -169,6 +170,62 @@ for crudo, q in [
     ok(''.join(x[0] for x in t).count('sistema') + ''.join(x[0] for x in t).count('verificar')
        + ''.join(x[0] for x in t).count('verificación') >= 1,
        f'y no se pierde el texto de al lado: {q}')
+
+print('\nEl candado no puede quedarse tomado\n')
+
+# ESTE ES DE LOS QUE DEJAN EL SERVICIO MUDO. `decir_al_vuelo` es un
+# GENERADOR, y un generador que se abandona a mitad —porque quien escuchaba
+# cerró la app, o se le fue la señal— nunca sale de un `with`. Con el candado
+# de la GPU abrazando el bucle entero, quedaba tomado PARA SIEMPRE y nadie
+# más podía hablar hasta reiniciar el servicio.
+#
+# Lo encontré probando: maté un curl a mitad de una respuesta y la voz quedó
+# muda. En producción pasa el primer día, con la primera persona que se sale
+# del chat mientras AU-RA está hablando.
+#
+# Se comprueba en el ÁRBOL del código y no ejecutándolo, porque para
+# ejecutarlo haría falta una GPU: si vuelve a aparecer un `yield` dentro del
+# candado, esto se pone en rojo sin encender nada.
+import ast  # noqa: E402
+_arbol = ast.parse(pathlib.Path(voz.__file__).read_text())
+_conYield = []
+for _n in ast.walk(_arbol):
+    if isinstance(_n, ast.FunctionDef) and _n.name == 'decir_al_vuelo':
+        for _w in ast.walk(_n):
+            if isinstance(_w, ast.With) and any(
+                    isinstance(x, (ast.Yield, ast.YieldFrom)) for x in ast.walk(_w)):
+                _conYield.append(_w.lineno)
+ok(not _conYield,
+   'ningún `yield` vive dentro del candado de la GPU',
+   f'hay uno en la línea {_conYield} — quien se vaya a mitad deja la voz muda '
+   f'para todos')
+ok('with self.turno' in pathlib.Path(voz.__file__).read_text(),
+   'pero el candado SIGUE existiendo: dos generaciones a la vez la dejan sin '
+   'memoria de video')
+
+print('\nLas dos rutas contestan, cada una la suya\n')
+
+# Al meter la ruta nueva, el cuerpo de `/decir` quedó colgando DENTRO de
+# `_hablar`: `do_POST` terminaba en el 404 y devolvía None sin contestar
+# nada. El chat se quedó 120 segundos esperando una nota de voz que nunca
+# iba a llegar, y leyendo el archivo no se ve — se ve corriéndolo.
+_fuente = pathlib.Path(voz.__file__).read_text()
+_arb = ast.parse(_fuente)
+_rutas = {}
+for _n in ast.walk(_arb):
+    if isinstance(_n, ast.FunctionDef) and _n.name in ('do_POST', '_hablar'):
+        _cuerpo = ast.get_source_segment(_fuente, _n) or ''
+        _rutas[_n.name] = _cuerpo
+ok('MOTOR.decir(' in _rutas.get('do_POST', ''),
+   '/decir vive en do_POST y contesta la nota entera',
+   'si esto está en rojo, el chat espera una nota que nunca llega')
+ok('decir_al_vuelo' in _rutas.get('_hablar', ''),
+   'y /hablar es la que entrega en vivo, por trozos')
+ok('MOTOR.decir(' not in _rutas.get('_hablar', ''),
+   'y no están mezcladas: cada ruta hace lo suyo')
+ok("Transfer-Encoding" in _fuente and "b'0\\r\\n\\r\\n'" in _fuente,
+   'el envío en vivo cierra su último trozo',
+   'sin el cierre, quien escucha se queda esperando después de oírlo todo')
 
 print('\nLo que NO puede pasar\n')
 
