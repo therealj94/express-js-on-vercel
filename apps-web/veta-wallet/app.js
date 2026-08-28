@@ -11302,10 +11302,14 @@ const VETA = (() => {
         <button onclick="VETA.chatDejarCita()" aria-label="${t('cha.quitarCita')}">×</button>
       </div>` : ''}
       <form class="cha-pie" onsubmit="return VETA.chatMandar(event)">
-        <label class="cha-clip" title="${t('cha.adjuntar')}">
+        ${/* Con AU-RA el clip no aparece: solo entiende texto, y una foto
+              subida que ella ignora es una promesa rota con miniatura. El
+              propio código lo decía de las notas de voz; el clip era la
+              misma mentira por otra ranura. */''}
+        ${esAura(c) ? '' : `<label class="cha-clip" title="${t('cha.adjuntar')}">
           <svg viewBox="0 0 24 24"><path d="M21 11.5 12.5 20a5 5 0 0 1-7-7l8.5-8.5a3.4 3.4 0 0 1 4.8 4.8L10.3 17.8a1.8 1.8 0 0 1-2.5-2.5l7.8-7.8"/></svg>
           <input type="file" onchange="VETA.chatAdjuntar(this)" hidden>
-        </label>
+        </label>`}
         <input id="chat-txt" placeholder="${t('cha.escribi')}" autocomplete="off" maxlength="2000"
                oninput="VETA.chatTecleando()">
         ${/* El micrófono solo aparece si el navegador sabe grabar. Un botón que
@@ -11409,6 +11413,13 @@ const VETA = (() => {
         <dt>${t('cha.enCadena')}</dt>
         <dd class="mono">${dir ? esc(cortaDir(dir)) : `<span class="chaf-nada">${t('cha.sinDirC')}</span>`}</dd>
       </dl>
+      ${/* AU-RA NO ES UNA PERSONA y su ficha no puede fingir que sí. El
+            código de seguridad compara aparatos de dos HUMANOS; con ella, o
+            sale un número incomparable o un «no hay», y las dos cosas
+            contradicen el sello del hilo. Mandarle ORIGEN o guardarla en
+            contactos, igual de sin sentido. Quedan silenciar y vaciar, que
+            sí significan algo. */''}
+      ${esAura(c) ? '' : `
       ${/* EL CODIGO DE SEGURIDAD, POR FIN A LA VISTA.
             Estaba construido desde el primer día y no se enseñaba en ninguna
             pantalla, o sea que no existía: un código que nadie puede comparar
@@ -11426,15 +11437,16 @@ const VETA = (() => {
             : `<button class="btn btn-linea btn-sm" onclick="VETA.chatVerCodigo()">
                  <svg class="btn-ic" viewBox="0 0 24 24"><rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
                  ${t('cha.verCodigo')}</button>`}
-      </div>
+      </div>`}
       <div class="chaf-acciones">
+        ${esAura(c) ? '' : `
         ${dir ? `<button class="btn btn-oro btn-sm" onclick="VETA.chatEnviarOrigen()">${t('cha.mandarOrigen')}</button>` : ''}
-        <button class="btn btn-linea btn-sm" onclick="VETA.chatGuardarContacto()">${t('cha.guardarCon')}</button>
+        <button class="btn btn-linea btn-sm" onclick="VETA.chatGuardarContacto()">${t('cha.guardarCon')}</button>`}
         <button class="btn btn-linea btn-sm" onclick="VETA.chatSilenciar(${jsTxt(c?.id || '')})">${
           t(estaMudo(c?.id) ? 'cha.conSonidoBtn' : 'cha.silenciarBtn')}</button>
         <button class="btn btn-linea btn-sm" onclick="VETA.chatOlvidar(false)">${t('cha.vaciar')}</button>
         <button class="btn btn-linea btn-sm chaf-malo" onclick="VETA.chatOlvidar(true)">${t('cha.borrarConv')}</button>
-        ${c?.id && !c.esGrupo ? `<button class="btn btn-linea btn-sm chaf-malo"
+        ${c?.id && !c.esGrupo && !esAura(c) ? `<button class="btn btn-linea btn-sm chaf-malo"
           onclick="VETA.p2cBloquear(${jsTxt(c.id)},true)">${t('cha.bloquear')}</button>` : ''}
       </div>
       <p class="chaf-honesto">${t('cha.olvidarNota')}</p>`);
