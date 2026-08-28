@@ -5499,7 +5499,7 @@ const VETA = (() => {
      se puede contestar: «¿esto que estoy viendo es lo último que subimos, o
      mi navegador se quedó con una copia vieja?». La ficha de Ajustes lo
      enseña, y con eso se sabe. */
-  const VETA_V = 'a2907b44ba';
+  const VETA_V = '10f957f023';
   const VETA_FECHA = '2026-08-28';
 
   const AET_V = 'e250bbe2f5';
@@ -11195,20 +11195,27 @@ const VETA = (() => {
      para siempre despierta el teléfono cada segundo sin que nadie lo esté
      viendo. Se enciende cuando empieza la espera y se apaga cuando termina. */
   let auraLatido = null;
+  let auraFase = '';        // 'pensando' | 'voz' | '' — para no mezclar esperas
 
+  /* Pensar y preparar la voz son DOS esperas seguidas, no una. Si el reloj no
+     se pusiera a cero al pasar de una a la otra, la línea de la voz heredaría
+     los segundos de pensar y diría «está tardando» al primer instante, cuando
+     todavía no había tardado nada. */
   function auraLatirSegunEstado() {
-    const hace = auraPensando || auraBuscandoVoz;
-    if (hace && !auraLatido) {
-      auraDesdeCuando = Date.now();
+    const fase = auraPensando ? 'pensando' : auraBuscandoVoz ? 'voz' : '';
+    if (fase !== auraFase) {
+      auraFase = fase;
+      auraDesdeCuando = fase ? Date.now() : 0;
+    }
+    if (fase && !auraLatido) {
       auraLatido = setInterval(() => {
-        if (!(auraPensando || auraBuscandoVoz)) return auraLatirSegunEstado();
         if (auraAbierta) pintarAura();
-        if (auraPantalla) auraVozPintar();
+        else if (auraPantalla) auraVozPintar();
+        else auraLatirSegunEstado();   // sin nada a la vista, al menos revisar
       }, 1000);
-    } else if (!hace && auraLatido) {
+    } else if (!fase && auraLatido) {
       clearInterval(auraLatido);
       auraLatido = null;
-      auraDesdeCuando = 0;
     }
   }
 
@@ -12137,6 +12144,10 @@ const VETA = (() => {
       pensandoMas: 'Sigo en eso…',
       pensandoMucho: 'Está tardando más de lo normal. Sigo acá.',
       buscandoVoz: 'Preparando la voz…',
+      /* La voz se genera de a una en la GPU: si hay otra respuesta hablando,
+         esta hace cola y puede tardar. Se dice, y se dice ADEMÁS que el texto
+         ya está — que es la parte que resuelve la espera. */
+      buscandoVozTarda: 'La voz está tardando. El texto ya lo tenés acá arriba.',
       micInvita: 'Si querés, hablemos en voz alta: activás el micrófono una vez y ya no tocás nada más — te escucho, te contesto, y sigo escuchando.',
       micActivar: 'Activar el micrófono',
       micListo: 'Listo, te escucho. Hablá cuando quieras y te voy contestando; para cortar, tocá el micrófono otra vez.',
@@ -12275,6 +12286,7 @@ const VETA = (() => {
       pensandoMas: 'Still on it…',
       pensandoMucho: 'This is taking longer than usual. I am still here.',
       buscandoVoz: 'Getting my voice ready…',
+      buscandoVozTarda: 'My voice is taking a while. The text is already up there.',
       micInvita: "If you like, let's talk out loud: turn the microphone on once and you never tap again — I listen, I answer, and I keep listening.",
       micActivar: 'Turn on the microphone',
       micListo: "Done, I'm listening. Speak whenever you like and I'll answer; to stop, tap the microphone again.",
@@ -12745,7 +12757,9 @@ const VETA = (() => {
                todavía se está armando en el nodo. Son dos segundos en los que
                antes no decía nada — ni puntos, ni línea, ni nada— y quedaba
                igual que si se hubiera terminado. */
-            : auraBuscandoVoz ? { c: 'aura-preparando', t: T.buscandoVoz }
+            : auraBuscandoVoz ? { c: 'aura-preparando',
+                                  t: auraSegundosEsperando() > 8
+                                     ? T.buscandoVozTarda : T.buscandoVoz }
             : auraConversando ? { c: 'aura-oyendo',
                                   t: auraOyendo() ? T.teEscucho : T.abriendoMic }
             : null;

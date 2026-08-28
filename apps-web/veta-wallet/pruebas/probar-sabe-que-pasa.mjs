@@ -35,11 +35,11 @@ function lineaDeEstado(banderas) {
   };
   const f = new Function('T', 'auraCortarVozBurbuja', 'auraGrabadaSonando',
     'auraPensando', 'auraBuscandoVoz', 'auraConversando', 'auraOyendo',
-    'auraTextoPensando',
+    'auraTextoPensando', 'auraSegundosEsperando',
     'const habla = !!auraCortarVozBurbuja || auraGrabadaSonando;' + cuerpo + 'return est;');
   return f(T, banderas.cortar || null, !!banderas.grabada, !!banderas.pensando,
     !!banderas.buscandoVoz, !!banderas.conversando, () => !!banderas.oyendo,
-    () => T.pensando);
+    () => T.pensando, () => banderas.seg || 0);
 }
 
 const momentos = [
@@ -136,13 +136,41 @@ prueba('late solo mientras hay espera, y se apaga', () => {
   const m = app.match(/function auraLatirSegunEstado\(\) \{([\s\S]*?)\n  \}/);
   assert.ok(m, 'no está auraLatirSegunEstado');
   const c = m[1];
-  assert.ok(/const hace = auraPensando \|\| auraBuscandoVoz;/.test(c),
+  assert.ok(/auraPensando \? 'pensando' : auraBuscandoVoz \? 'voz' : ''/.test(c),
     'no mira las dos esperas');
   assert.ok(/clearInterval\(auraLatido\)/.test(c),
     'nunca se apaga: un intervalo para siempre despierta el teléfono cada ' +
     'segundo sin que nadie lo esté mirando');
-  assert.ok(/if \(hace && !auraLatido\)/.test(c),
+  assert.ok(/if \(fase && !auraLatido\)/.test(c),
     'no comprueba si ya está latiendo: cada repintado dejaría un reloj más');
+});
+
+prueba('pensar y preparar la voz son dos esperas, no una', () => {
+  /* Son dos esperas seguidas. Sin poner el reloj a cero al pasar de una a la
+     otra, la línea de la voz hereda los segundos de pensar y dice «está
+     tardando» al primer instante, cuando todavía no tardó nada. */
+  const m = app.match(/function auraLatirSegunEstado\(\) \{([\s\S]*?)\n  \}/);
+  const c = m[1];
+  assert.ok(/if \(fase !== auraFase\)/.test(c), 'no distingue una fase de la otra');
+  assert.ok(/auraDesdeCuando = fase \? Date\.now\(\) : 0;/.test(c),
+    'no pone el reloj a cero al cambiar de espera');
+});
+
+prueba('si la voz tarda, lo dice — y dice que el texto ya está', () => {
+  const est = (seg) => {
+    const cuerpo = app.match(/const habla = !!auraCortarVozBurbuja \|\| auraGrabadaSonando;([\s\S]*?)return est \?/)[1];
+    const T = { buscandoVoz: 'preparando', buscandoVozTarda: 'tarda' };
+    return new Function('T', 'auraCortarVozBurbuja', 'auraGrabadaSonando',
+      'auraPensando', 'auraBuscandoVoz', 'auraConversando', 'auraOyendo',
+      'auraTextoPensando', 'auraSegundosEsperando',
+      'const habla = !!auraCortarVozBurbuja || auraGrabadaSonando;' + cuerpo + 'return est;')
+      (T, null, false, false, true, false, () => false, () => '', () => seg);
+  };
+  assert.equal(est(2).t, 'preparando', 'a los dos segundos ya se queja');
+  assert.equal(est(20).t, 'tarda',
+    'a los veinte segundos sigue diciendo «preparando la voz», que a esa ' +
+    'altura ya no informa de nada. La voz se genera de a una en la GPU: si ' +
+    'hay otra respuesta hablando, esta hace cola y puede tardar de verdad');
 });
 
 prueba('lo arrancan los dos repintados', () => {
