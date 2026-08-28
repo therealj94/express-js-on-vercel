@@ -105,6 +105,24 @@ VOCES = {
 }
 VOZ_POR_DEFECTO = 'calida'
 
+# Como viene armado el cuerpo de /hablar. Va en una cabecera para que el que
+# escucha pueda comprobarlo en vez de suponerlo: si algun dia cambia el
+# reparto de los trozos, una version vieja de la app se da cuenta y se pasa
+# a la nota de voz, en vez de tocar ruido.
+FORMATO = 'trozos-mp3-v1'
+
+# Los sitios cuyo navegador puede pedir voz. Es LA MISMA lista del relevo, a
+# proposito: son la misma casa vista desde dos puertas, y dos listas que
+# tendrian que decir lo mismo terminan diciendo cosas distintas.
+ORIGENES = {
+    'https://www.vetawallet.com',
+    'https://vetawallet.com',
+    'https://app.vetawallet.com',
+    'https://main.d289v5ffkexk23.amplifyapp.com',   # el ensayo
+    'http://localhost:8899',                        # y el escritorio de quien lo hace
+    'http://127.0.0.1:8899',
+}
+
 # ── LA TABLA DE SILENCIOS ─────────────────────────────────────────────────
 #
 # Milisegundos de silencio DESPUES de cada trozo, segun con que signo
@@ -367,6 +385,75 @@ def a_mp3(wav_bytes, kbps=64):
 
 # ── EL MOTOR ──────────────────────────────────────────────────────────────
 
+# ── SOLO EL PRIMER TROZO VA CORTO ─────────────────────────────────────────
+#
+# El primero corto para que se oiga algo pronto; los demas, unidades de
+# aliento enteras. Parece poca cosa y detras hay dos cosas medidas en esta
+# maquina, las dos contraintuitivas.
+#
+# PRIMERA: el motor va MAS RAPIDO que el tiempo real, poco pero constante.
+#
+#      caracteres   genera   audio
+#          19        2,6s     3,1s
+#          34        3,5s     4,2s
+#          58        4,5s     5,3s
+#          74        5,2s     6,2s
+#         155        7,5s     8,3s
+#
+# Cada trozo deja medio segundo de sobra, y ese margen se acumula. Por eso
+# mientras suena un trozo se alcanza a fabricar el siguiente y la voz sigue
+# sola: con estos trozos, los silencios medidos de punta a punta fueron de
+# nueve decimas, que a oido es una pausa entre frases.
+#
+# SEGUNDA, y es la que impide trocear mas fino: EL MOTOR ES MUCHISIMO MENOS
+# EFICIENTE EN TROZOS CORTOS. La misma frase, entera y partida:
+#
+#      88 caracteres de una vez  →  6,2s de audio   (0,070 s/caracter)
+#      partida en 30 + 34 + 22   →  14,3s de audio  (0,137 a 0,245)
+#
+# Cada generacion arrastra un par de segundos de sobra pase lo que pase. Se
+# probo repartir toda la respuesta en trozos cortos —queda mas fluida, los
+# silencios bajan a una decima— y el precio fue que la misma respuesta pasaba
+# de 13,4s a 20,6s de audio: la mitad de rapido, arrastrando las palabras.
+# Una pausa de nueve decimas entre frases suena a persona; hablar a media
+# velocidad suena a que algo va mal. Asi que se corta uno y no mas.
+ARRANQUE = 24     # el primero corto a proposito: es el que decide la espera
+MIN_CORTE = 12    # por debajo de esto el pedazo no llega ni a una palabra util
+
+
+def _cortar_cerca(t, tope):
+    """Donde partir `t` para que el pedazo no pase de `tope`, sin partir palabras.
+
+    Se prefiere una coma —ahi la voz ya iba a pausar y el corte no se oye— y
+    si no hay, el ultimo espacio que entre. Devuelve -1 si no hay ningun sitio
+    decente: mas vale un trozo largo que una palabra partida al medio.
+    """
+    coma = t.rfind(', ', 0, tope + 1)
+    if coma >= MIN_CORTE:
+        return coma + 1
+    hueco = t.rfind(' ', 0, tope + 1)
+    return hueco if hueco >= MIN_CORTE else -1
+
+
+def escalonar(partes):
+    """Parte en dos la primera unidad de aliento, si es larga. Nada mas.
+
+    El corte va a mitad de frase y no se oye: los trozos se pegan con fundido
+    y ruido de sala, y el que escucha oye una sola voz seguida. Lo que si se
+    oiria —y por eso solo el primero— es trocear toda la respuesta: ver arriba.
+    """
+    if not partes:
+        return []
+    cabeza, ms, respiro = partes[0]
+    if len(cabeza) <= ARRANQUE * 2:
+        return list(partes)
+    corte = _cortar_cerca(cabeza, ARRANQUE)
+    if corte <= 0 or len(cabeza) - corte < MIN_CORTE:
+        return list(partes)
+    return ([(cabeza[:corte].strip(), SILENCIOS['ninguno'], respiro),
+             (cabeza[corte:].strip(), ms, False)] + list(partes[1:]))
+
+
 class Motor:
     """El modelo cargado, con UN solo turno a la vez.
 
@@ -455,49 +542,9 @@ class Motor:
         entera se podia elegir el tramo mas callado de todos.
         """
         v = VOCES.get(voz) or VOCES[VOZ_POR_DEFECTO]
-        partes = trozos(humanizar(para_la_voz(texto)))
+        partes = escalonar(trozos(humanizar(para_la_voz(texto))))
         if not partes:
             return
-        # ── EL PRIMER TROZO VA CORTO A PROPOSITO ──────────────────────────
-        #
-        # El audio se genera a una vez tiempo real: un trozo de cinco
-        # segundos tarda cinco en estar. Con las unidades de aliento
-        # normales, la primera medía eso — y la persona esperaba cinco
-        # segundos de silencio antes de oír nada.
-        #
-        # Se parte la primera en su primera coma o a las pocas palabras. Sale
-        # un arranque de dos segundos que ya está a los dos segundos, y para
-        # cuando termina de sonar el siguiente trozo ya se generó. De ahí en
-        # adelante la voz no se vuelve a detener: el resto se genera mientras
-        # se escucha lo anterior.
-        #
-        # Solo el PRIMERO. Trocear todo así pagaría un arranque de modelo por
-        # cada frase corta y sonaría entrecortado.
-        # DOCE A VEINTICUATRO CARACTERES, y el numero sale de medir el motor
-        # en esta misma maquina, no de calcular:
-        #
-        #     3 car →  1,4s de audio en 1,7s   (costo fijo ≈ 0,3s)
-        #    16 car →  1,4s de audio en 1,6s   (costo fijo ≈ 0,2s)
-        #    35 car →  3,9s de audio en 3,7s
-        #    68 car →  4,6s de audio en 4,3s
-        #
-        # El costo FIJO por llamada es de dos decimas: lo que se paga es el
-        # audio, casi a una vez tiempo real. Asi que el tiempo hasta el
-        # primer sonido lo decide el LARGO del primer trozo y nada mas.
-        # Con 39 caracteres salia a los 4,7s; con 16 sale a los 2.
-        #
-        # Cortar a mitad de frase no se oye: los trozos se unen con fundido y
-        # ruido de sala, asi que para quien escucha es una sola voz seguida.
-        cabeza, ms0, resp0 = partes[0]
-        if len(cabeza) > 40:
-            corte = cabeza.find(', ', 12)
-            if corte == -1 or corte > 24:
-                hueco = cabeza.rfind(' ', 12, 24)
-                corte = hueco if hueco != -1 else -1
-            if 12 <= corte <= 24:
-                partes = ([(cabeza[:corte + 1].strip(), SILENCIOS['ninguno'], resp0),
-                           (cabeza[corte + 1:].strip(), ms0, False)]
-                          + partes[1:])
         fondo = None
         for i, (t, ms, respiro) in enumerate(partes):
             # ── EL CANDADO SE TOMA POR TROZO, NO POR RESPUESTA ─────────────
@@ -634,11 +681,44 @@ def servir():
         def log_message(self, *a):
             pass
 
+        def _permiso(self):
+            """Autoriza al navegador, si quien pregunta es una de nuestras webs.
+
+            La misma lista que el relevo y por el mismo motivo: /decir lo llama
+            el cerebro desde dentro, pero /hablar lo llama el NAVEGADOR de la
+            persona, y para un navegador esto es otro dominio.
+
+            Y una cabecera que no está en la lista de expuestas NO EXISTE del
+            otro lado — el navegador la borra sin decir nada. Por eso va
+            `X-Formato`: sin exponerla, la app leía vacío, creía que el nodo
+            hablaba otro idioma y se caía a la nota de voz. Con curl no se ve
+            (curl no hace CORS); con un navegador, cada vez.
+            """
+            o = self.headers.get('Origin')
+            if o in ORIGENES:
+                self.send_header('Access-Control-Allow-Origin', o)
+                self.send_header('Access-Control-Expose-Headers', 'X-Formato, X-Duracion')
+                # el origen decide la respuesta: cada cache guarda su copia
+                self.send_header('Vary', 'Origin')
+
+        def do_OPTIONS(self):
+            # El vuelo previo. El POST lleva Content-Type: application/json, y
+            # eso obliga al navegador a preguntar antes. Sin esto, el POST de
+            # la voz ni sale de la máquina.
+            self.send_response(204)
+            self._permiso()
+            self.send_header('Access-Control-Allow-Methods', 'POST, GET, OPTIONS')
+            self.send_header('Access-Control-Allow-Headers', 'Content-Type')
+            self.send_header('Access-Control-Max-Age', '86400')
+            self.send_header('Content-Length', '0')
+            self.end_headers()
+
         def _json(self, codigo, cuerpo):
             b = json.dumps(cuerpo).encode()
             self.send_response(codigo)
             self.send_header('Content-Type', 'application/json')
             self.send_header('Content-Length', str(len(b)))
+            self._permiso()
             self.end_headers()
             self.wfile.write(b)
 
@@ -688,10 +768,28 @@ def servir():
             """La voz EN VIVO, para el navegador.
 
             Se entrega en trozos con `Transfer-Encoding: chunked`, que es lo
-            que permite que un `<audio>` empiece a sonar con el primero. No
-            hace falta ningun protocolo nuevo: un MP3 que llega de a poco es
-            algo que todos los navegadores saben tocar desde hace veinte
-            años.
+            que permite empezar a sonar con el primero en vez de esperar el
+            archivo entero.
+
+            ── POR QUE CADA TROZO LLEVA SU TAMAÑO DELANTE ───────────────────
+
+            Cada trozo es un MP3 COMPLETO, y el navegador los toca uno tras
+            otro. Para eso tiene que saber donde termina uno y empieza el
+            siguiente — y esa marca hay que ponerla aca, porque del otro lado
+            NO SE VE: `fetch` entrega los bytes como se le da la gana (a
+            veces medio trozo, a veces dos juntos) y los limites del
+            `chunked` los consume el navegador sin enseñarselos a nadie.
+
+            Asi que antes de cada MP3 van ocho digitos hexadecimales con su
+            largo. Ocho bytes por trozo, y del otro lado el corte es exacto
+            en vez de adivinado.
+
+            Se penso en no marcarlos: varios MP3 pegados uno detras de otro
+            forman un MP3 valido —asi funciona la radio por internet— y el
+            navegador lo tocaria de corrido sin ayuda. Pero eso necesita
+            MediaSource, que en el Safari de iPhone no existio hasta hace
+            poco, y este audio tiene que sonar en el telefono de quien lo
+            pidio. Partido en trozos suena con Web Audio, que anda en todos.
 
             ── QUIEN PUEDE PEDIR VOZ ────────────────────────────────────────
 
@@ -726,21 +824,36 @@ def servir():
 
             t0 = time.time()
             primera = None
+            pasos = []
             self.send_response(200)
-            self.send_header('Content-Type', 'audio/mpeg')
+            self.send_header('Content-Type', 'application/octet-stream')
+            self.send_header('X-Formato', FORMATO)
             self.send_header('Cache-Control', 'no-store')
             self.send_header('Transfer-Encoding', 'chunked')
             self.send_header('X-Accel-Buffering', 'no')   # que nadie lo junte
+            self._permiso()
             self.end_headers()
             total = 0.0
             try:
                 for mp3, segundos in MOTOR.decir_al_vuelo(texto, voz):
                     if primera is None:
                         primera = time.time() - t0
+                    # Cada trozo con su cuenta, y no es ruido de registro: es
+                    # el unico sitio donde se ve si la voz se va a cortar. El
+                    # que escucha se queda sin audio cuando un trozo tarda en
+                    # llegar MAS de lo que dura el anterior, y eso solo se ve
+                    # comparando estas dos columnas.
+                    print(f'  trozo {len(pasos) + 1}: {segundos:.1f}s de audio, '
+                          f'listo a los {time.time() - t0:.1f}s', flush=True)
+                    pasos.append((round(time.time() - t0, 1), round(segundos, 1)))
                     total += segundos
-                    # cada trozo con su tamaño delante, como manda chunked
-                    self.wfile.write(f'{len(mp3):X}\r\n'.encode())
-                    self.wfile.write(mp3)
+                    # El cuerpo del trozo son ocho digitos con el largo del
+                    # mp3 y despues el mp3. Lo de afuera —el tamaño en hexa
+                    # con sus \r\n— es el sobre del `chunked`, que es otra
+                    # cosa y no llega al navegador.
+                    cuerpo = f'{len(mp3):08X}'.encode() + mp3
+                    self.wfile.write(f'{len(cuerpo):X}\r\n'.encode())
+                    self.wfile.write(cuerpo)
                     self.wfile.write(b'\r\n')
                     self.wfile.flush()
                 self.wfile.write(b'0\r\n\r\n')   # y el cierre, que faltaba

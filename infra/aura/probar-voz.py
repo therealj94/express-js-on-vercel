@@ -227,6 +227,17 @@ ok("Transfer-Encoding" in _fuente and "b'0\\r\\n\\r\\n'" in _fuente,
    'el envío en vivo cierra su último trozo',
    'sin el cierre, quien escucha se queda esperando después de oírlo todo')
 
+# Cada trozo lleva su largo delante y sin eso NO SE OYE NADA: del otro lado
+# `fetch` entrega los bytes como quiere, los límites del `chunked` no se ven,
+# y el navegador no sabría dónde termina un mp3 y empieza el otro. Es una
+# línea fácil de borrar por «simplificar» y el fallo aparece lejos.
+ok(':08X' in _rutas.get('_hablar', ''),
+   'cada trozo va con su tamaño delante, en ocho dígitos',
+   'sin la marca, del otro lado no se puede cortar y no suena nada')
+ok("send_header('X-Formato'" in _rutas.get('_hablar', '') and hasattr(voz, 'FORMATO'),
+   'y el formato se anuncia, para que una app vieja se dé cuenta',
+   'si cambia el reparto, más vale que lo note y se pase a la nota de voz')
+
 print('\nLo que NO puede pasar\n')
 
 ok(voz.trozos('') == [] and voz.trozos(None) == [],

@@ -733,6 +733,80 @@ const CHAT = (() => {
   const esGrupo = id => /^g:[0-9a-f]{16}$/.test(String(id || ''));
   const urlArchivo = id => BASE + '/archivo/' + id;
 
+  /* ── LA VOZ EN VIVO ───────────────────────────────────────────────────────
+   *
+   * Le pide al nodo que diga un texto y va entregando el audio POR TROZOS,
+   * segun se va fabricando, en vez de esperar el archivo entero. Es la
+   * diferencia entre oir la primera palabra a los tres segundos u oirla a
+   * los veinte.
+   *
+   * Vive aca y no en la app por una sola razon: la llave. Esta es la casa de
+   * la llave, y la unica manera de que no ande dando vueltas por el resto del
+   * codigo es que quien la tiene haga la llamada. Afuera se pide «deci esto»
+   * y se reciben trozos de sonido; la credencial no sale de este archivo.
+   *
+   * `alTrozo` se llama con cada MP3 (un ArrayBuffer) apenas llega. Devuelve
+   * cuando ya no queda nada por decir. Si algo falla, LANZA: quien llama
+   * tiene una nota de voz con la que arreglarselas, y un fallo callado lo
+   * dejaria esperando un sonido que no viene.
+   */
+  const FORMATO_VOZ = 'trozos-mp3-v1';
+  const RAIZ = BASE.replace(/\/mensajes$/, '');
+
+  async function vozEnVivo({ texto, voz, alTrozo, senal }) {
+    /* Cuelga del MISMO sitio que el relevo, no de un dominio propio del nodo.
+       Asi no hay CORS que arreglar, ni certificado nuevo que renovar, ni un
+       nombre mas que cuidar — y sobre todo: el nodo con la GPU no recibe nada
+       de internet, contesta solo por dentro. */
+    const res = await fetch(RAIZ + '/hablar', {
+      method: 'POST', signal: senal,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ correo: yo?.correo, llave, texto, voz }),
+    });
+    if (!res.ok) {
+      const e = new Error('voz http ' + res.status);
+      e.code = res.status;
+      throw e;
+    }
+    /* Se comprueba el formato en vez de suponerlo. Una app vieja contra un
+       nodo nuevo tiene que darse cuenta y volver a la nota de voz; sin esto
+       se pondria a tocar bytes que no son audio. */
+    if (res.headers.get('X-Formato') !== FORMATO_VOZ) {
+      throw new Error('formato de voz desconocido');
+    }
+    if (!res.body) throw new Error('sin cuerpo');
+
+    /* El lector entrega los bytes como quiere —a veces medio trozo, a veces
+       dos juntos—, asi que hay que ir juntando hasta tener uno entero. Por
+       eso cada trozo trae su largo delante: el corte es exacto. */
+    const lector = res.body.getReader();
+    let resto = new Uint8Array(0);
+    const pegar = (a, b) => {
+      const j = new Uint8Array(a.length + b.length);
+      j.set(a); j.set(b, a.length);
+      return j;
+    };
+    const CABEZA = 8;   // ocho digitos hexadecimales con el tamaño del mp3
+    for (;;) {
+      const { done, value } = await lector.read();
+      if (value) resto = pegar(resto, value);
+      // Se sacan TODOS los trozos completos que haya, no solo uno: una
+      // lectura puede traer dos, y devolver el segundo recien con la lectura
+      // siguiente lo retrasaria sin motivo.
+      for (;;) {
+        if (resto.length < CABEZA) break;
+        const largo = parseInt(
+          new TextDecoder().decode(resto.subarray(0, CABEZA)), 16);
+        if (!Number.isFinite(largo) || largo <= 0) throw new Error('trozo ilegible');
+        if (resto.length < CABEZA + largo) break;
+        const mp3 = resto.slice(CABEZA, CABEZA + largo);
+        resto = resto.subarray(CABEZA + largo);
+        await alTrozo(mp3.buffer);
+      }
+      if (done) break;
+    }
+  }
+
   /* La llave publica de los avisos, del propio relevo. Sin llave (el servidor
      aun no la tiene) devuelve null y la app ofrece los avisos como «no
      disponibles» en vez de fallar al suscribir. */
@@ -748,7 +822,7 @@ const CHAT = (() => {
            estados, subirEstado, borrarEstado, estadoVisto,
            publicarMiLlave, codigoCon,
            grupoCrear, grupoInfo, grupoEditar, grupoInvitar, grupoSalir, grupoUnirse,
-           esGrupo, urlArchivo,
+           esGrupo, urlArchivo, vozEnVivo,
            puedeGrabar, grabarInicio, grabarFin, subirVoz, segundosDeVoz,
            escuchar, dejarDeEscuchar, senalar, turno,
            reaccionar, escribiendo,

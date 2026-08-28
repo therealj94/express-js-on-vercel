@@ -10246,16 +10246,36 @@ const VETA = (() => {
     if (!esAura(chatSt.con)) return;
     auraCharlando = !auraCharlando;
     if (!auraCharlando) {
-      try { auraSonando?.pause(); } catch (e) { /* ya no sonaba */ }
-      auraSonando = null;
+      // Salir del modo calla TODO por el mismo sitio que el botón de callar:
+      // dos maneras distintas de parar lo mismo es una de las dos olvidándose
+      // de algo, y acá lo olvidado seguiría hablando fuera del modo.
+      auraCallar();
       if (dictando) { try { dictando.stop(); } catch (e) {} dictando = null; }
       pintarChat();
       return;
     }
-    // Sin voz del lado del servidor no hay nada que reproducir: si está
-    // apagada se enciende sola al entrar, porque nadie que toca «Hablar»
-    // quiere que le contesten por escrito.
-    if (!auraVoz) await auraVozElegir('calida');
+    /* LAS NOTAS DE VOZ SE APAGAN AL ENTRAR, y esto es exactamente al revés
+       de lo que hacía antes.
+
+       Antes se ENCENDÍAN: sin nota grabada no había nada que reproducir. Pero
+       la nota ya no es de donde sale el sonido —ahora se pide en vivo, ver
+       auraDecirEnVivo— y dejarla encendida hace dos daños, uno visible y uno
+       no:
+
+         · «me envía una nota de voz, eso no funciona»: aparece un adjunto
+           por cada frase en un modo cuyo diseño dice, literalmente, que no
+           hay archivos.
+         · Y el que no se ve: el nodo grabaría la MISMA respuesta dos veces,
+           y las dos pelean por la misma GPU. La voz en vivo se quedaría
+           esperando detrás de una nota que nadie va a tocar, que es
+           justamente lo que se vino a arreglar.
+
+       El registro elegido NO se pierde: se guarda aparte, porque «con qué voz
+       habla» y «me manda archivos» dejaron de ser la misma cosa. */
+    if (auraVoz) {
+      try { localStorage.setItem('veta.aura.registro', auraVoz); } catch (e) {}
+      await auraVozElegir('');
+    }
     // Lo que ya está en el hilo NO se reproduce: entrar al modo no puede
     // significar oír de golpe las diez respuestas anteriores.
     (chatSt.msgs || []).forEach((m) => { if (m.id) auraYaSono.add(m.id); });
@@ -10275,11 +10295,206 @@ const VETA = (() => {
   function auraCharlaSonar() {
     if (!auraCharlando || !esAura(chatSt.con)) return;
     const nuevas = (chatSt.msgs || []).filter(
-      (m) => m.de === AURA_CHAT_ID && m.tipo === 'voz' && m.archivo
-             && m.id && !auraYaSono.has(m.id));
-    nuevas.forEach((m) => { auraYaSono.add(m.id); auraCola.push(m.archivo); });
+      (m) => m.de === AURA_CHAT_ID && m.id && !auraYaSono.has(m.id));
+
+    /* EN VIVO: lo que llega ESCRITO se dice, sin esperar ninguna grabación.
+       Ese es el cambio entero. El texto aparece en cuanto el modelo lo tiene,
+       así que pedir la voz desde acá es pedirla lo antes que se puede.
+
+       Las frases que llegan juntas se dicen en UNA sola llamada: la respuesta
+       sale del cerebro partida en varios mensajes, y una llamada por frase
+       sería pagar el viaje —y la cola de la GPU— tres veces para decir lo
+       mismo. El nodo ya la vuelve a partir por dentro, mejor que acá. */
+    const escrito = nuevas.filter((m) => m.tipo !== 'voz' && (m.texto || '').trim());
+    escrito.forEach((m) => auraYaSono.add(m.id));
+    if (escrito.length) {
+      auraPorDecir.push(escrito.map((m) => m.texto.trim()).join(' '));
+      auraDecirLoSiguiente();
+      return;
+    }
+
+    /* Y si igual llegó una nota grabada —alguien dejó las notas encendidas, o
+       la voz en vivo no salió y se cayó a esto—, se toca como siempre. */
+    const notas = nuevas.filter((m) => m.tipo === 'voz' && m.archivo);
+    notas.forEach((m) => { auraYaSono.add(m.id); auraCola.push(m.archivo); });
     if (auraSonando || !auraCola.length) return;
     auraSonarSiguiente();
+  }
+
+  /* ── DECIRLO EN VIVO ──────────────────────────────────────────────────────
+   *
+   * «por qué se tarda tanto en contestar, por eso hicimos lo de los nodos
+   *  para que esto no pasara»
+   *
+   * Antes: el nodo grababa la respuesta ENTERA, la subía como archivo al
+   * relevo, y recién ahí el teléfono la bajaba y la tocaba. Para oír la
+   * primera palabra había que esperar la última.
+   *
+   * Ahora el sonido baja por trozos según se fabrica, y el primero suena a
+   * los tres segundos. El número no salió de calcular sino de medir el motor
+   * en la máquina: el costo fijo por llamada son dos décimas y lo demás es el
+   * audio, casi a una vez tiempo real. O sea que el tiempo hasta que se oye
+   * algo lo decide el largo del PRIMER trozo, y por eso el nodo lo corta
+   * corto a propósito.
+   *
+   * Los trozos se PROGRAMAN en el reloj del audio, cada uno pegado al final
+   * del anterior, en vez de encadenarlos con `onended`. Encadenando, entre un
+   * trozo y el siguiente se cuela el tiempo que tarda el navegador en
+   * arrancar el próximo —unas decenas de milisegundos, suficientes para que
+   * una frase partida a la mitad suene partida a la mitad—. Programados,
+   * empalman exactos.
+   *
+   * Si algo de esto falla, NO se queda en silencio: se vuelven a encender las
+   * notas de voz. Es más lento, pero se oye, y una función de voz que no
+   * suena no es una función de voz.
+   */
+  const auraPorDecir = [];
+  let auraDiciendo = false;
+  let auraBuscandoVoz = false;   // se pidio la voz y todavia no sale sonido
+  let auraVivo = null;      // {ctx, cortar} de lo que se está diciendo ahora
+
+  /** Con qué registro habla. Sobrevive a apagar las notas, porque «con qué voz
+      habla» y «me manda archivos» son dos cosas distintas desde que la voz
+      dejó de venir en archivos. */
+  const auraRegistro = () => {
+    try { return auraVoz || localStorage.getItem('veta.aura.registro') || 'calida'; }
+    catch (e) { return auraVoz || 'calida'; }
+  };
+
+  async function auraDecirLoSiguiente() {
+    if (auraDiciendo) return;
+    const texto = auraPorDecir.shift();
+    if (!texto) {
+      // se acabó lo que había por decir: recién ahí se vuelve a escuchar
+      auraSonando = null;
+      pintarChat();
+      if (auraCharlando && esAura(chatSt.con)) auraDictar();
+      return;
+    }
+    auraDiciendo = true;
+    try {
+      await auraDecirEnVivo(texto);
+    } catch (e) {
+      auraDiciendo = false;
+      return auraVozEnVivoFallo(e, texto);
+    }
+    auraDiciendo = false;
+    auraDecirLoSiguiente();
+  }
+
+  /** Pide la voz y la va tocando. Vuelve cuando terminó de sonar TODO, no
+      cuando terminó de bajar: si volviera al bajar, el turno se cerraría con
+      ella todavía hablando y el micrófono se abriría encima de su propia voz. */
+  async function auraDecirEnVivo(texto) {
+    const Ctx = window.AudioContext || window.webkitAudioContext;
+    if (!Ctx || !CHAT.vozEnVivo) throw new Error('sin audio');
+    const ctx = new Ctx();
+    // En iPhone el contexto nace dormido; lo despierta el toque que encendió
+    // el modo, que ya ocurrió. Sin esto no sonaría nada y no diría por qué.
+    if (ctx.state === 'suspended') { try { await ctx.resume(); } catch (e) {} }
+
+    const an = ctx.createAnalyser();
+    an.fftSize = 256;
+    an.connect(ctx.destination);
+    const ctrl = new AbortController();
+    const fuentes = [];
+    let cuando = 0;          // reloj del contexto: dónde empieza el próximo
+    let cortado = false;
+
+    const cortar = () => {
+      cortado = true;
+      ctrl.abort();
+      fuentes.forEach((f) => { try { f.stop(); } catch (e) {} });
+      try { ctx.close(); } catch (e) {}
+    };
+    /* Se puede cortar DESDE YA, pero todavía no está «hablando»: entre que se
+       pide la voz y sale el primer sonido pasan unos segundos, y una pelotita
+       moviéndose en silencio es peor que una quieta —parece que se rompió—.
+       Hasta el primer trozo la cara es la de pensar, que es la verdad. */
+    auraVivo = { ctx, cortar };
+    auraBuscandoVoz = true;
+    auraAnaliza = ctx;
+    pintarChat();
+
+    try {
+      await CHAT.vozEnVivo({
+        texto, voz: auraRegistro(), senal: ctrl.signal,
+        alTrozo: async (buf) => {
+          if (cortado) return;
+          // decodeAudioData con promesa no existe en Safari viejo; la forma
+          // con callbacks la entienden todos.
+          const sonido = await new Promise((ok, mal) => {
+            try { const r = ctx.decodeAudioData(buf, ok, mal); if (r?.then) r.then(ok, mal); }
+            catch (e) { mal(e); }
+          });
+          if (cortado) return;
+          const f = ctx.createBufferSource();
+          f.buffer = sonido;
+          f.connect(an);
+          // Un pelín de margen la primera vez: programar en el instante justo
+          // llega tarde y el navegador se lo come.
+          const t = Math.max(ctx.currentTime + 0.08, cuando);
+          f.start(t);
+          cuando = t + sonido.duration;
+          fuentes.push(f);
+          if (auraBuscandoVoz) {
+            // ya hay sonido: recién ahora está hablando de verdad
+            auraBuscandoVoz = false;
+            auraSonando = { pause: cortar };
+            pintarChat();
+            auraLatir(an);
+          }
+        },
+      });
+    } catch (e) {
+      auraBuscandoVoz = false;
+      cortar();
+      auraVivo = null;
+      throw e;
+    }
+    // Esperar a que termine de SONAR lo último programado.
+    auraBuscandoVoz = false;   // por si no vino ni un trozo
+    const falta = Math.max(0, (cuando - ctx.currentTime) * 1000);
+    await new Promise((ok) => setTimeout(ok, falta + 60));
+    if (auraVivo?.ctx === ctx) {
+      auraVivo = null;
+      auraSonando = null;
+      try { ctx.close(); } catch (e) {}
+      auraAnaliza = null;
+    }
+  }
+
+  /** La voz en vivo no salió. Se avisa UNA vez y se vuelven a encender las
+      notas de voz, que son más lentas pero llegan. Callarse sería peor. */
+  let auraAvisadoFallo = false;
+  async function auraVozEnVivoFallo(e, texto) {
+    auraSonando = null;
+    auraVivo = null;
+    pintarChat();
+    if (e?.name === 'AbortError') return;   // lo cortó la persona, no es fallo
+    if (!auraAvisadoFallo) {
+      auraAvisadoFallo = true;
+      avisar(t('au.vozLenta'));
+      if (!auraVoz) await auraVozElegir(auraRegistro());
+    }
+    if (auraCharlando && esAura(chatSt.con)) auraDictar();
+  }
+
+  /** Engancha la pelotita al volumen real, midiendo del analizador que le
+      pasen. Lo usan las dos formas de sonar —la nota grabada y la voz en
+      vivo—, que es la única razón por la que esto está suelto. */
+  function auraLatir(an) {
+    const datos = new Uint8Array(an.frequencyBinCount);
+    const tic = () => {
+      if (!auraSonando) { auraNivel = 0; return; }
+      an.getByteFrequencyData(datos);
+      const medio = datos.reduce((a, b) => a + b, 0) / datos.length;
+      auraNivel = Math.min(1, medio / 90);
+      const orbe = $('#aura-pelota');
+      if (orbe) orbe.style.setProperty('--nivel', (1 + auraNivel * 0.35).toFixed(3));
+      requestAnimationFrame(tic);
+    };
+    tic();
   }
 
   function auraSonarSiguiente() {
@@ -10308,7 +10523,13 @@ const VETA = (() => {
   function auraCallar() {
     // Callar es callar: se vacía también lo que estaba en cola. Si no, se
     // corta un pedazo y arranca el siguiente, que es peor que no callarse.
+    // Las dos colas, la de notas y la de lo que falta decir: dejar una viva
+    // haría que se callara y volviera a hablar sola tres segundos después.
     auraCola.length = 0;
+    auraPorDecir.length = 0;
+    try { auraVivo?.cortar(); } catch (e) { /* no había nada en vivo */ }
+    auraVivo = null;
+    auraBuscandoVoz = false;
     try { auraSonando?.pause(); } catch (e) { /* ya no sonaba */ }
     auraSonando = null;
     pintarChat();
@@ -10344,7 +10565,7 @@ const VETA = (() => {
   let auraAnaliza = null;
 
   const auraEstado = () => auraSonando ? 'hablando'
-    : auraEsperando() ? 'pensando'
+    : auraBuscandoVoz || auraEsperando() ? 'pensando'
     : dictando ? 'oyendo' : 'quieta';
 
   async function auraVozPantalla() {
@@ -10361,8 +10582,7 @@ const VETA = (() => {
     auraPantalla = false;
     auraCharlando = false;
     auraDicho = '';
-    try { auraSonando?.pause(); } catch (e) { /* ya no sonaba */ }
-    auraSonando = null;
+    auraCallar();   // por el mismo sitio, para no olvidarse de una cola
     if (dictando) { try { dictando.stop(); } catch (e) {} dictando = null; }
     try { auraAnaliza?.close(); } catch (e) { /* nunca se abrio */ }
     auraAnaliza = null;
@@ -10385,17 +10605,7 @@ const VETA = (() => {
       an.fftSize = 256;
       src.connect(an); an.connect(ctx.destination);
       auraAnaliza = ctx;
-      const datos = new Uint8Array(an.frequencyBinCount);
-      const tic = () => {
-        if (!auraSonando) { auraNivel = 0; return; }
-        an.getByteFrequencyData(datos);
-        const medio = datos.reduce((a, b) => a + b, 0) / datos.length;
-        auraNivel = Math.min(1, medio / 90);
-        const orbe = $('#aura-pelota');
-        if (orbe) orbe.style.setProperty('--nivel', (1 + auraNivel * 0.35).toFixed(3));
-        requestAnimationFrame(tic);
-      };
-      tic();
+      auraLatir(an);
     } catch (e) { /* sin analisis, la pelotita late parejo */ }
   }
 
