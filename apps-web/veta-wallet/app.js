@@ -9735,6 +9735,7 @@ const VETA = (() => {
     // encendida, la capa tiene que seguir ahí y no quedar congelada.
     auraVozPintar();
     auraMusicaAlDia();   // igual que la capa: antes del corte por vista
+    auraLatirSegunEstado();
     if (vistaActual !== 'chat') return;
     const caja = $('#p2c');
     if (!caja) return;
@@ -10783,7 +10784,10 @@ const VETA = (() => {
     // Quieta no dice nada: el botón de abajo ya dice qué hacer, y repetirlo
     // dos veces en la misma pantalla es ruido. La línea de estado existe para
     // los tres estados en que SÍ está pasando algo.
-    const dice = { oyendo: t('au.oyendo'), pensando: t('au.pensando'),
+    /* «Pensando» avanza también acá: es la misma espera y el mismo reclamo,
+       y tener dos cuentas distintas del mismo momento en dos pantallas es
+       cómo se llega a que una diga una cosa y la otra otra. */
+    const dice = { oyendo: t('au.oyendo'), pensando: auraTextoPensando(aTxt()),
                    hablando: t('au.hablarOn'), quieta: '' }[est];
     // Lo ultimo que dijo ELLA, para tener algo que leer mientras habla. Solo
     // lo ultimo: la pantalla de voz no es el hilo, el hilo esta afuera.
@@ -11150,6 +11154,46 @@ const VETA = (() => {
    * la pista y le movería el interruptor de Ajustes a quien la quiere puesta;
    * el silencio sostenido no toca ninguna de las dos cosas. */
   let auraGrabadaSonando = false;   // suena una de las frases del banco
+
+  /* ── QUE LA ESPERA SE VEA AVANZAR ─────────────────────────────────────────
+   *
+   * «Pensando…» quieto durante seis segundos se lee como colgado. Es el
+   * reclamo de siempre —«no sé si me escuchó, no sé si está pensando»— y no
+   * se arregla poniendo la palabra: se arregla haciendo que la palabra
+   * CAMBIE, porque eso es lo único que distingue una respuesta en camino de
+   * una app muerta.
+   *
+   * Los cortes no son de adorno. La mediana medida contra el nodo está en
+   * 5,7 s: a los 5 todavía es normal y solo hace falta señal de vida; pasados
+   * los 14 ya se salió de lo normal y lo honesto es decirlo, no seguir
+   * mostrando la misma palabra tranquila. */
+  let auraDesdeCuando = 0;
+
+  function auraTextoPensando(T) {
+    const seg = auraDesdeCuando ? (Date.now() - auraDesdeCuando) / 1000 : 0;
+    return seg > 14 ? T.pensandoMucho : seg > 5 ? T.pensandoMas : T.pensando;
+  }
+
+  /* Un solo latido, y solo mientras hay algo que mirar: un intervalo puesto
+     para siempre despierta el teléfono cada segundo sin que nadie lo esté
+     viendo. Se enciende cuando empieza la espera y se apaga cuando termina. */
+  let auraLatido = null;
+
+  function auraLatirSegunEstado() {
+    const hace = auraPensando || auraBuscandoVoz;
+    if (hace && !auraLatido) {
+      auraDesdeCuando = Date.now();
+      auraLatido = setInterval(() => {
+        if (!(auraPensando || auraBuscandoVoz)) return auraLatirSegunEstado();
+        if (auraAbierta) pintarAura();
+        if (auraPantalla) auraVozPintar();
+      }, 1000);
+    } else if (!hace && auraLatido) {
+      clearInterval(auraLatido);
+      auraLatido = null;
+      auraDesdeCuando = 0;
+    }
+  }
 
   const auraVozEnCurso = () =>
     auraAlguienEscucha() || auraSonando || !!auraCortarVozBurbuja
@@ -12069,6 +12113,13 @@ const VETA = (() => {
       conversando: 'Te escucho — hablá cuando quieras',
       abriendoMic: 'Abriendo el micrófono…',
       hablando: 'Hablando…',
+      /* LA ESPERA TIENE QUE AVANZAR. «Pensando…» quieto durante seis segundos
+         se lee como colgado: no distinguís una respuesta que viene de una app
+         que se murió. Estas tres dicen lo mismo en tres momentos, y ese
+         cambio —que la frase se mueva— es la señal de que sigue viva. */
+      pensandoMas: 'Sigo en eso…',
+      pensandoMucho: 'Está tardando más de lo normal. Sigo acá.',
+      buscandoVoz: 'Preparando la voz…',
       micInvita: 'Si querés, hablemos en voz alta: activás el micrófono una vez y ya no tocás nada más — te escucho, te contesto, y sigo escuchando.',
       micActivar: 'Activar el micrófono',
       micListo: 'Listo, te escucho. Hablá cuando quieras y te voy contestando; para cortar, tocá el micrófono otra vez.',
@@ -12204,6 +12255,9 @@ const VETA = (() => {
       conversando: "I'm listening — speak whenever you like",
       abriendoMic: 'Opening the microphone…',
       hablando: 'Speaking…',
+      pensandoMas: 'Still on it…',
+      pensandoMucho: 'This is taking longer than usual. I am still here.',
+      buscandoVoz: 'Getting my voice ready…',
       micInvita: "If you like, let's talk out loud: turn the microphone on once and you never tap again — I listen, I answer, and I keep listening.",
       micActivar: 'Turn on the microphone',
       micListo: "Done, I'm listening. Speak whenever you like and I'll answer; to stop, tap the microphone again.",
@@ -12616,6 +12670,7 @@ const VETA = (() => {
     /* Antes del corte de abajo: cerrar la burbuja también es un cambio de
        estado, y es justo el que tiene que devolver la música. */
     auraMusicaAlDia();
+    auraLatirSegunEstado();
     const p = $('#aura-panel');
     const T = aTxt();
     p.classList.toggle('ver', auraAbierta);
@@ -12666,13 +12721,18 @@ const VETA = (() => {
               estado visible es un modo en el que no sabés si el problema
               sos vos o la máquina. */''}
         ${(() => {
-          const habla = !!auraCortarVozBurbuja;
-          const est = auraPensando ? { c: 'aura-pensando', t: T.pensando }
+          const habla = !!auraCortarVozBurbuja || auraGrabadaSonando;
+          const est = auraPensando ? { c: 'aura-pensando', t: auraTextoPensando(T) }
             : habla ? { c: 'aura-hablando', t: T.hablando }
+            /* Y el hueco que faltaba: la respuesta ya está escrita y la voz
+               todavía se está armando en el nodo. Son dos segundos en los que
+               antes no decía nada — ni puntos, ni línea, ni nada— y quedaba
+               igual que si se hubiera terminado. */
+            : auraBuscandoVoz ? { c: 'aura-preparando', t: T.buscandoVoz }
             : auraConversando ? { c: 'aura-oyendo',
                                   t: auraOyendo() ? T.teEscucho : T.abriendoMic }
             : null;
-          return est ? `<div class="aura-b aura-pensando ${est.c}" aria-live="polite">
+          return est ? `<div class="aura-b aura-estado ${est.c}" aria-live="polite">
             <i></i><i></i><i></i><span>${esc(est.t)}</span></div>` : '';
         })()}
       </div>
@@ -12843,14 +12903,23 @@ const VETA = (() => {
          el reconocedor la transcribe a ELLA por el altavoz y manda sus
          palabras como si fueran tuyas. Se contestaba sola. */
       auraCallarMicro();
+      /* EL HUECO MUDO. Entre pedir la voz y que salga el primer sonido pasan
+         un par de segundos, y en la burbuja no se veía nada: ni puntos, ni
+         línea, ni pelotita — quedaba igual que si ya hubiera terminado. La
+         bandera es la misma que usa la pantalla de voz, para que las dos
+         digan lo mismo del mismo momento. */
+      auraBuscandoVoz = true;
+      if (auraAbierta) pintarAura();
       await auraSonarEnVivo(txt, {
         alEmpezar: (cortar) => { auraCortarVozBurbuja = cortar; auraMusicaAlDia(); if (auraAbierta) pintarAura(); },
-        alPrimerSonido: () => { if (auraAbierta) pintarAura(); },
+        alPrimerSonido: () => { auraBuscandoVoz = false; if (auraAbierta) pintarAura(); },
       });
+      auraBuscandoVoz = false;
       auraCortarVozBurbuja = null;
       if (auraAbierta) pintarAura();
     } catch (e) {
       console.warn('la voz de la casa no salió, va la grabada:', e);
+      auraBuscandoVoz = false;   // si no, la línea se queda «preparando» para siempre
       auraCortarVozBurbuja = null;
       AURA.hablar(txt, idiomaActivo());
     }

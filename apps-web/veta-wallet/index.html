@@ -2549,14 +2549,26 @@ body.en-p2c .chay-cara{background:var(--p2c-grad);color:#03122E;
   border:1px solid rgba(126,216,196,.25);border-radius:9px;font:inherit;
   font-size:11px;padding:4px 6px;max-width:104px;margin-left:auto;margin-right:8px}
 @media (prefers-reduced-motion:reduce){.aura-mic.hablando{animation:none}}
-.aura-pensando{display:inline-flex;align-items:center;gap:8px;opacity:.75}
-.aura-pensando i{width:6px;height:6px;border-radius:50%;background:currentColor;
+/* LA FORMA Y EL SIGNIFICADO, SEPARADOS. `.aura-pensando` hacía las dos
+   cosas: dibujaba los tres puntos Y quería decir «está pensando». Como toda
+   línea de estado necesitaba los puntos, toda línea de estado terminaba
+   diciendo «pensando» aunque dijera otra cosa — y la respuesta ya escrita en
+   pantalla se quedaba con los puntos de pensar debajo, que es justo la
+   señal de «todavía no llegó». Ahora `.aura-estado` es la forma y las otras
+   son lo que significa: cada una con su color, para leerlo de un vistazo sin
+   llegar a la letra. */
+.aura-estado{display:inline-flex;align-items:center;gap:8px;opacity:.75}
+.aura-estado i{width:6px;height:6px;border-radius:50%;background:currentColor;
   animation:aurapunto 1.2s ease-in-out infinite}
-.aura-pensando i:nth-child(2){animation-delay:.18s}
-.aura-pensando i:nth-child(3){animation-delay:.36s}
-.aura-pensando span{font-size:12px}
+.aura-estado i:nth-child(2){animation-delay:.18s}
+.aura-estado i:nth-child(3){animation-delay:.36s}
+.aura-estado span{font-size:12px}
+/* Preparar la voz no es pensar: la respuesta YA está leída ahí arriba y lo
+   único que falta es el sonido. Va en crema y más apagado — presente, pero
+   sin reclamar la atención que reclama una espera de verdad. */
+.aura-preparando{color:var(--crema,#F3ECD9);opacity:.55}
 @keyframes aurapunto{0%,60%,100%{opacity:.3;transform:translateY(0)}30%{opacity:1;transform:translateY(-3px)}}
-@media (prefers-reduced-motion:reduce){.aura-pensando i,.cha-pensando i{animation:none;opacity:.7}}
+@media (prefers-reduced-motion:reduce){.aura-estado i,.cha-pensando i{animation:none;opacity:.7}}
 /* La pastilla de «llegó algo». Existe para poder NO arrastrar a nadie: quien
    subió a releer se entera sin que el hilo se le mueva bajo el dedo. */
 .cha-nuevos{position:absolute;left:50%;transform:translateX(-50%);bottom:96px;

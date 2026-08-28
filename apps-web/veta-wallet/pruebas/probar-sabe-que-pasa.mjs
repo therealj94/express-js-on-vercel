@@ -1,0 +1,141 @@
+/* QUE NUNCA SE QUEDE SIN SABER QUÉ PASA.
+ *
+ * «Me sale escuchando, no sé si me escuchó, si está pensando, tarda en
+ * contestar.» El arreglo no es poner la palabra: es que la palabra CAMBIE.
+ * Una etiqueta quieta durante seis segundos no se distingue de una app
+ * muerta, y esa es exactamente la sensación que se reportó.
+ *
+ * Se prueban tres cosas:
+ *   — que no quede NINGÚN momento de espera sin línea de estado;
+ *   — que el «pensando» avance con el tiempo, en las dos pantallas;
+ *   — que el reloj que lo hace avanzar se apague solo.
+ */
+import { readFileSync } from 'node:fs';
+import { strict as assert } from 'node:assert';
+
+const app = readFileSync(new URL('../app.js', import.meta.url), 'utf8');
+
+let mal = 0;
+const prueba = (nombre, fn) => {
+  try { fn(); console.log('  ok  ' + nombre); }
+  catch (e) { mal++; console.log('  MAL ' + nombre + '\n      ' + e.message); }
+};
+
+console.log('\nninguna espera sin línea');
+
+/* La línea de estado se saca del propio archivo y se corre de verdad, con
+   las banderas puestas a mano: así se prueba lo que se ve, no el texto. */
+function lineaDeEstado(banderas) {
+  const cuerpo = app.match(/const habla = !!auraCortarVozBurbuja \|\| auraGrabadaSonando;([\s\S]*?)return est \?/)[1];
+  const T = {
+    pensando: 'Pensando…', pensandoMas: 'Sigo en eso…',
+    pensandoMucho: 'Está tardando más de lo normal. Sigo acá.',
+    hablando: 'Hablando…', buscandoVoz: 'Preparando la voz…',
+    teEscucho: 'Te escucho…', abriendoMic: 'Abriendo el micrófono…',
+  };
+  const f = new Function('T', 'auraCortarVozBurbuja', 'auraGrabadaSonando',
+    'auraPensando', 'auraBuscandoVoz', 'auraConversando', 'auraOyendo',
+    'auraTextoPensando',
+    'const habla = !!auraCortarVozBurbuja || auraGrabadaSonando;' + cuerpo + 'return est;');
+  return f(T, banderas.cortar || null, !!banderas.grabada, !!banderas.pensando,
+    !!banderas.buscandoVoz, !!banderas.conversando, () => !!banderas.oyendo,
+    () => T.pensando);
+}
+
+const momentos = [
+  ['piensa',                     { pensando: true }],
+  ['prepara la voz',             { buscandoVoz: true }],
+  ['habla en vivo',              { cortar: () => {} }],
+  ['habla una frase grabada',    { grabada: true }],
+  ['escucha',                    { conversando: true, oyendo: true }],
+  ['abre el micrófono',          { conversando: true, oyendo: false }],
+];
+
+for (const [nombre, banderas] of momentos) {
+  prueba('mientras ' + nombre + ', dice algo', () => {
+    const est = lineaDeEstado(banderas);
+    assert.ok(est && est.t, 'se queda muda: la persona no sabe si sigue viva');
+  });
+}
+
+prueba('preparar la voz NO se ve como pensar', () => {
+  /* Lo encontró la prueba de navegador: `.aura-pensando` hacía dos trabajos
+     —dibujaba los puntos Y quería decir «pensando»—, así que toda línea de
+     estado heredaba el significado de una sola de ellas. Con la respuesta ya
+     escrita en pantalla, debajo seguían los puntos de pensar, que es la señal
+     de «todavía no llegó». La forma es `.aura-estado`; el significado, cada
+     clase por su lado. */
+  const marca = app.match(/return est \? `<div class="([^"]+)"/)[1];
+  assert.ok(marca.includes('aura-estado'), 'la forma no tiene clase propia');
+  assert.ok(!marca.includes('aura-pensando'),
+    'toda línea de estado nace diciendo «pensando», diga lo que diga');
+  assert.equal(lineaDeEstado({ buscandoVoz: true }).c, 'aura-preparando',
+    'preparar la voz se pinta como otro estado, no con el suyo');
+  assert.equal(lineaDeEstado({ pensando: true }).c, 'aura-pensando',
+    'y pensar sí tiene que decir que piensa');
+});
+
+prueba('quieta no dice nada (el silencio también es información)', () => {
+  assert.equal(lineaDeEstado({}), null,
+    'una línea de estado permanente deja de ser una señal y pasa a ser adorno');
+});
+
+console.log('\nla espera avanza');
+
+prueba('el pensando cambia con el tiempo, no se queda quieto', () => {
+  const m = app.match(/function auraTextoPensando\(T\) \{([\s\S]*?)\n  \}/);
+  assert.ok(m, 'no está auraTextoPensando');
+  const f = new Function('T', 'auraDesdeCuando', 'Date',
+    m[1].replace('auraDesdeCuando', 'auraDesdeCuando'));
+  const T = { pensando: 'a', pensandoMas: 'b', pensandoMucho: 'c' };
+  const enSegundo = (s) => f(T, 1000, { now: () => 1000 + s * 1000 });
+  assert.equal(enSegundo(1), 'a', 'al segundo ya no dice lo primero');
+  assert.equal(enSegundo(8), 'b',
+    'a los ocho segundos sigue diciendo lo mismo que al primero: quieta');
+  assert.equal(enSegundo(20), 'c',
+    'a los veinte sigue tan tranquila como al principio, y ya no es normal');
+  assert.notEqual(enSegundo(1), enSegundo(8), 'las tres son la misma frase');
+});
+
+prueba('las dos pantallas usan la MISMA cuenta del mismo momento', () => {
+  const burbuja = /t: auraTextoPensando\(T\)/.test(app);
+  const voz = /pensando: auraTextoPensando\(aTxt\(\)\)/.test(app);
+  assert.ok(burbuja, 'la burbuja no usa la cuenta que avanza');
+  assert.ok(voz, 'la pantalla de voz se quedó con la etiqueta fija: dos ' +
+    'cuentas distintas del mismo momento terminan diciendo cosas distintas');
+});
+
+console.log('\nel reloj no se queda encendido');
+
+prueba('late solo mientras hay espera, y se apaga', () => {
+  const m = app.match(/function auraLatirSegunEstado\(\) \{([\s\S]*?)\n  \}/);
+  assert.ok(m, 'no está auraLatirSegunEstado');
+  const c = m[1];
+  assert.ok(/const hace = auraPensando \|\| auraBuscandoVoz;/.test(c),
+    'no mira las dos esperas');
+  assert.ok(/clearInterval\(auraLatido\)/.test(c),
+    'nunca se apaga: un intervalo para siempre despierta el teléfono cada ' +
+    'segundo sin que nadie lo esté mirando');
+  assert.ok(/if \(hace && !auraLatido\)/.test(c),
+    'no comprueba si ya está latiendo: cada repintado dejaría un reloj más');
+});
+
+prueba('lo arrancan los dos repintados', () => {
+  assert.equal((app.match(/^\s*auraLatirSegunEstado\(\);$/gm) || []).length, 2,
+    'tiene que llamarse desde pintarAura y pintarChat, ni más ni menos');
+});
+
+console.log('\nel hueco de la voz queda tapado en los dos finales');
+
+prueba('la bandera de preparar la voz se baja también si falla', () => {
+  const i = app.indexOf('async function auraVozDeLaCasa(');
+  const cuerpo = app.slice(i, i + 3000);
+  const bajadas = (cuerpo.match(/auraBuscandoVoz = false/g) || []).length;
+  assert.ok(bajadas >= 3,
+    'se baja en ' + bajadas + ' sitio(s). Hacen falta tres: al primer sonido, ' +
+    'al terminar, y en el fallo — si no, la línea se queda «preparando la voz» ' +
+    'para siempre sobre una voz que nunca va a llegar');
+});
+
+console.log(mal ? `\n${mal} mal\n` : '\ntodo bien\n');
+process.exit(mal ? 1 : 0);

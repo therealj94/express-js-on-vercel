@@ -14,8 +14,8 @@
 import { readFileSync } from 'node:fs';
 import { strict as assert } from 'node:assert';
 
-const musica = readFileSync(new URL('./musica.js', import.meta.url), 'utf8');
-const app = readFileSync(new URL('./app.js', import.meta.url), 'utf8');
+const musica = readFileSync(new URL('../musica.js', import.meta.url), 'utf8');
+const app = readFileSync(new URL('../app.js', import.meta.url), 'utf8');
 
 let mal = 0;
 const prueba = async (nombre, fn) => {
