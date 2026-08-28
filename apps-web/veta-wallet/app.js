@@ -10385,12 +10385,24 @@ const VETA = (() => {
   /** Pide la voz y la va tocando. Vuelve cuando terminó de sonar TODO, no
       cuando terminó de bajar: si volviera al bajar, el turno se cerraría con
       ella todavía hablando y el micrófono se abriría encima de su propia voz. */
-  async function auraDecirEnVivo(texto) {
+  /* ── EL REPRODUCTOR DE LA VOZ DE LA CASA ────────────────────────────────
+   *
+   * Uno solo, y lo usan los dos sitios donde AU-RA habla: la pantalla de voz
+   * del hilo y la burbuja. Antes la burbuja tenía su propia voz —`AURA.hablar`,
+   * de frases grabadas— y en cuanto decía algo que no estaba grabado se caía
+   * al sintetizador del sistema. Eso era el «me contestó la voz vieja
+   * robótica»: dos voces distintas para la misma AU-RA, y la fea saliendo
+   * justo cuando contestaba algo interesante.
+   *
+   * Devuelve una función para cortar. Los ganchos son opcionales: quien no
+   * quiera pintar nada, no pasa ninguno.
+   */
+  async function auraSonarEnVivo(texto, ganchos = {}) {
     const Ctx = window.AudioContext || window.webkitAudioContext;
-    if (!Ctx || !CHAT.vozEnVivo) throw new Error('sin audio');
+    if (!Ctx || !CHAT.vozEnVivo || !CHAT.listo?.()) throw new Error('sin voz de la casa');
     const ctx = new Ctx();
-    // En iPhone el contexto nace dormido; lo despierta el toque que encendió
-    // el modo, que ya ocurrió. Sin esto no sonaría nada y no diría por qué.
+    // En iPhone el contexto nace dormido; lo despierta un toque de la persona,
+    // que siempre hubo antes de llegar acá. Sin esto no suena y no dice por qué.
     if (ctx.state === 'suspended') { try { await ctx.resume(); } catch (e) {} }
 
     const an = ctx.createAnalyser();
@@ -10400,6 +10412,7 @@ const VETA = (() => {
     const fuentes = [];
     let cuando = 0;          // reloj del contexto: dónde empieza el próximo
     let cortado = false;
+    let primero = true;
 
     const cortar = () => {
       cortado = true;
@@ -10407,18 +10420,7 @@ const VETA = (() => {
       fuentes.forEach((f) => { try { f.stop(); } catch (e) {} });
       try { ctx.close(); } catch (e) {}
     };
-    /* Se puede cortar DESDE YA, pero todavía no está «hablando»: entre que se
-       pide la voz y sale el primer sonido pasan unos segundos, y una pelotita
-       moviéndose en silencio es peor que una quieta —parece que se rompió—.
-       Hasta el primer trozo la cara es la de pensar, que es la verdad. */
-    /* EL MICRÓFONO SE CIERRA ANTES DE QUE SUENE NADA. Si queda abierto, el
-       reconocedor transcribe a AU-RA por el altavoz y manda sus palabras como
-       si fueran tuyas — ella se contesta sola y no hay forma de meter baza. */
-    auraCallarMicro();
-    auraVivo = { ctx, cortar };
-    auraBuscandoVoz = true;
-    auraAnaliza = ctx;
-    pintarChat();
+    ganchos.alEmpezar?.(cortar, ctx);
 
     try {
       await CHAT.vozEnVivo({
@@ -10441,29 +10443,54 @@ const VETA = (() => {
           f.start(t);
           cuando = t + sonido.duration;
           fuentes.push(f);
-          if (auraBuscandoVoz) {
-            // ya hay sonido: recién ahora está hablando de verdad
-            auraBuscandoVoz = false;
-            auraSonando = { pause: cortar };
-            pintarChat();
-            auraLatir(an);
-          }
+          if (primero) { primero = false; ganchos.alPrimerSonido?.(an, cortar); }
+        },
+      });
+    } catch (e) { cortar(); throw e; }
+    // Esperar a que termine de SONAR lo último programado, no lo último que
+    // llegó: si volviera al bajar, el turno se cerraría con ella hablando.
+    const falta = Math.max(0, (cuando - ctx.currentTime) * 1000);
+    await new Promise((ok) => setTimeout(ok, falta + 60));
+    if (!cortado) { try { ctx.close(); } catch (e) {} }
+    return cortar;
+  }
+
+  /** La pantalla de voz: lo mismo, con la pelotita enganchada. */
+  async function auraDecirEnVivo(texto) {
+    /* EL MICRÓFONO SE CIERRA ANTES DE QUE SUENE NADA. Si queda abierto, el
+       reconocedor transcribe a AU-RA por el altavoz y manda sus palabras como
+       si fueran tuyas — ella se contesta sola y no hay forma de meter baza. */
+    auraCallarMicro();
+    let ctxMio = null;
+    try {
+      await auraSonarEnVivo(texto, {
+        alEmpezar: (cortar, ctx) => {
+          ctxMio = ctx;
+          /* Se puede cortar DESDE YA, pero todavía no está «hablando»: entre
+             que se pide la voz y sale el primer sonido pasan unos segundos, y
+             una pelotita moviéndose en silencio es peor que una quieta —parece
+             que se rompió—. Hasta el primer trozo la cara es la de pensar. */
+          auraVivo = { ctx, cortar };
+          auraBuscandoVoz = true;
+          auraAnaliza = ctx;
+          pintarChat();
+        },
+        alPrimerSonido: (an, cortar) => {
+          auraBuscandoVoz = false;
+          auraSonando = { pause: cortar };
+          pintarChat();
+          auraLatir(an);
         },
       });
     } catch (e) {
       auraBuscandoVoz = false;
-      cortar();
       auraVivo = null;
       throw e;
     }
-    // Esperar a que termine de SONAR lo último programado.
     auraBuscandoVoz = false;   // por si no vino ni un trozo
-    const falta = Math.max(0, (cuando - ctx.currentTime) * 1000);
-    await new Promise((ok) => setTimeout(ok, falta + 60));
-    if (auraVivo?.ctx === ctx) {
+    if (auraVivo?.ctx === ctxMio) {
       auraVivo = null;
       auraSonando = null;
-      try { ctx.close(); } catch (e) {}
       auraAnaliza = null;
     }
   }
@@ -11676,6 +11703,18 @@ const VETA = (() => {
       saltar: 'SALTAR',
       ecoTitulo: 'EL ECOSISTEMA ORDEN GLOBAL',
       escribi: 'Preguntame o pedime…',
+      // El saludo por el nombre, para quien ya se verificó. `{momento}` es
+      // «Buenos días» o el que toque según el reloj DEL TELÉFONO, que es el
+      // de la persona: dar los buenos días a las once de la noche delata a
+      // la máquina más que cualquier otra cosa.
+      holaNombre: '{momento}, {nombre}. ¿Cómo vas hoy? Contame en qué andás y te ayudo.',
+      saludoDia: 'Buenos días', saludoTarde: 'Buenas tardes', saludoNoche: 'Buenas noches',
+      conversarOn: 'Hablar sin tocar nada', conversarOff: 'Dejar de escuchar',
+      conversando: 'Te escucho — hablá cuando quieras',
+      micInvita: 'Si querés, hablemos en voz alta: activás el micrófono una vez y ya no tocás nada más — te escucho, te contesto, y sigo escuchando.',
+      micActivar: 'Activar el micrófono',
+      micListo: 'Listo, te escucho. Hablá cuando quieras y te voy contestando; para cortar, tocá el micrófono otra vez.',
+      micNoHay: 'Este navegador no sabe escuchar. Escribime y te leo igual de bien.',
       // Antes esto era un `return` mudo: la segunda pregunta quedaba
       // escrita en el hilo, sin respuesta y sin aviso, para siempre.
       unaAlaVez: 'Dejame terminar con la anterior y te contesto esa. Es una a la vez: el motor es uno solo.',
@@ -11798,6 +11837,14 @@ const VETA = (() => {
       saltar: 'SKIP',
       ecoTitulo: 'THE ORDEN GLOBAL ECOSYSTEM',
       escribi: 'Ask me or tell me…',
+      holaNombre: '{momento}, {nombre}. How are you doing today? Tell me what you need.',
+      saludoDia: 'Good morning', saludoTarde: 'Good afternoon', saludoNoche: 'Good evening',
+      conversarOn: 'Talk without tapping', conversarOff: 'Stop listening',
+      conversando: "I'm listening — speak whenever you like",
+      micInvita: "If you like, let's talk out loud: turn the microphone on once and you never tap again — I listen, I answer, and I keep listening.",
+      micActivar: 'Turn on the microphone',
+      micListo: "Done, I'm listening. Speak whenever you like and I'll answer; to stop, tap the microphone again.",
+      micNoHay: "This browser can't listen. Write to me and I'll read you just as well.",
       unaAlaVez: 'Let me finish the previous one and I will answer that. One at a time: there is a single engine.',
       con: {
         origen: 'ORIGEN — spelled with an E, and said the Spanish way: oh-REE-hen — is the currency of the Orden Global chain, and its value is referenced to gold. One ORIGEN is one gramin, the fifty-fifth part of a gram of gold, at today’s gold price. We do not set the formula and it does not change, so you can redo it with a calculator. It moves in seconds over our own chain.',
@@ -12026,7 +12073,15 @@ const VETA = (() => {
   function auraToca() {
     auraAbierta = !auraAbierta;
     ajustarOrbe();
-    if (!auraAbierta) { AURA.pararVoz(); AURA.dejarDeEscuchar(); return pintarAura(); }
+    if (!auraAbierta) {
+      // cerrar la burbuja apaga la conversación: no se sigue escuchando a
+      // alguien que acaba de cerrar la ventana
+      auraConversando = false;
+      auraOyendo = false;
+      try { auraCortarVozBurbuja?.(); } catch (e) { /* ya no sonaba */ }
+      AURA.pararVoz(); AURA.dejarDeEscuchar();
+      return pintarAura();
+    }
     if (!auraCharla.length) {
       // El primer saludo del panel se DICE: tocar el orbe es un gesto, asi
       // que el audio tiene permiso. Es tambien la prueba viva de que la voz
@@ -12035,9 +12090,19 @@ const VETA = (() => {
          puerta y está siempre a la vista. Repetirla dentro del primer globo
          convierte una bienvenida en un anuncio, que es justo lo contrario de
          lo que hace falta con alguien que acaba de llegar y todavía duda. */
-      const saludo = auraVisita ? aTxt().holaVisita : aTxt().hola;
+      const saludo = auraSaludoDeHoy();
       auraCharla.push({ de: 'aura', txt: saludo, saludo: true });
-      AURA.hablar(saludo, idiomaActivo());
+      auraVozDeLaCasa(saludo);
+      /* Y SE OFRECE HABLAR, una sola vez por navegador. Nadie adivina que la
+         burbuja escucha: hay que decirlo. Una vez y no en cada apertura —una
+         oferta repetida deja de ser una oferta y pasa a ser una molestia—, y
+         solo a quien ya entró: sin credenciales no hay voz nuestra que
+         contestar, y ofrecer lo que no se puede dar es peor que callarse. */
+      if (!auraVisita && AURA.puedeEscuchar() && !auraYaOfreciMicro()) {
+        auraMarcarOfreciMicro();
+        auraCharla.push({ de: 'aura', txt: aTxt().micInvita, saludo: true,
+          botones: [{ txt: aTxt().micActivar, di: 'activar el microfono' }] });
+      }
     }
     pintarAura();
     auraTraerHilo();
@@ -12095,6 +12160,42 @@ const VETA = (() => {
         auraTrayendo = null;
       }
     })();
+  }
+
+  /* ── EL SALUDO, POR TU NOMBRE ───────────────────────────────────────────
+   *
+   * «si tiene genesis id lo salude y diga hola, el nombre, cómo estás el día
+   *  de hoy»
+   *
+   * Con identidad verificada saluda por el nombre y pregunta de verdad; sin
+   * ella, el saludo de siempre. La diferencia no es cosmética: quien ya se
+   * verificó le dio su nombre a la casa, y una casa que te pidió el nombre y
+   * después te saluda como a un desconocido no da mucha confianza.
+   *
+   * El nombre sale de la SESIÓN, no de una llamada nueva: ya está ahí desde
+   * que entraste. Solo el primero —«María» y no «María Elena Rodríguez»—,
+   * porque es un saludo, no un pasaporte.
+   *
+   * La hora se mira para no dar los buenos días a las once de la noche. Es el
+   * reloj del teléfono, que es el de la persona.
+   */
+  const LLAVE_MICRO = 'veta.aura.micro.ofrecido';
+  const auraYaOfreciMicro = () => {
+    try { return localStorage.getItem(LLAVE_MICRO) === '1'; } catch (e) { return false; }
+  };
+  const auraMarcarOfreciMicro = () => {
+    try { localStorage.setItem(LLAVE_MICRO, '1'); } catch (e) { /* modo privado */ }
+  };
+
+  function auraSaludoDeHoy() {
+    const T = aTxt();
+    if (auraVisita) return T.holaVisita;
+    const nombre = String(sesion?.nombre || '').trim().split(/\s+/)[0];
+    if (!nombre || !esVerificada()) return T.hola;
+    const h = new Date().getHours();
+    const momento = h < 6 ? T.saludoNoche : h < 13 ? T.saludoDia
+      : h < 20 ? T.saludoTarde : T.saludoNoche;
+    return rell(T.holaNombre, { momento, nombre });
   }
 
   /* La lista de lo que se le puede decir: un boton en el Nucleo la abre.
@@ -12165,13 +12266,18 @@ const VETA = (() => {
               onclick="VETA.auraChip(${jsTxt(b.di)})">${esc(b.txt)}</button>`).join('')}</div>` : ''}</div>`).join('')}
         ${auraPensando ? `<div class="aura-b aura-pensando"><i></i><i></i><i></i>
           <span>${esc(T.pensando)}</span></div>` : ''}
+        ${auraConversando && !auraPensando ? `<div class="aura-b aura-pensando aura-oyendo">
+          <i></i><i></i><i></i><span>${esc(auraOyendo ? T.teEscucho : T.conversando)}</span></div>` : ''}
       </div>
       <div class="aura-chips">${auraSugerencias().map(c =>
         `<button class="aura-chip" onclick="VETA.auraChip(${jsTxt(c)})">${esc(c)}</button>`).join('')}</div>
       <form class="aura-pie" onsubmit="return VETA.auraManda(event)">
         ${AURA.puedeEscuchar() ? `
-        <button type="button" class="aura-mic${auraOyendo ? ' oyendo' : ''}" onclick="VETA.auraMic()"
-                aria-label="Hablar">
+        <button type="button" class="aura-mic${auraConversando ? ' hablando' : auraOyendo ? ' oyendo' : ''}"
+                onclick="VETA.auraConversar()"
+                aria-pressed="${auraConversando}"
+                aria-label="${esc(auraConversando ? T.conversarOff : T.conversarOn)}"
+                title="${esc(auraConversando ? T.conversarOff : T.conversarOn)}">
           <svg viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>
         </button>` : ''}
         <input id="aura-in" placeholder="${T.escribi}" autocomplete="off" maxlength="300">
@@ -12257,7 +12363,51 @@ const VETA = (() => {
     auraCharla.push({ de: 'aura', txt, botones: opciones.botones });
     if (auraCharla.length > 40) auraCharla = auraCharla.slice(-40);
     pintarAura();
-    if (opciones.voz) AURA.hablar(txt, idiomaActivo());
+    if (opciones.voz) auraVozDeLaCasa(txt);
+  }
+
+  /* ── UNA SOLA AU-RA, UNA SOLA VOZ ───────────────────────────────────────
+   *
+   * «tenemos voces cruzadas: pregunté MyTokenPay y me contestó la voz vieja
+   *  robótica. Tenemos una AI propia, tenemos que usarla en todo momento.»
+   *
+   * Tenía razón y el motivo estaba a la vista: la burbuja hablaba con
+   * `AURA.hablar`, que toca una frase GRABADA si la conoce y, si no la
+   * conoce, se cae al sintetizador del navegador — la voz de contestador.
+   * Así que las cuatro frases de siempre sonaban bien y todo lo demás sonaba
+   * a máquina. Dos voces distintas para la misma AU-RA, y la fea saliendo
+   * justo cuando contestaba algo que valía la pena.
+   *
+   * Ahora habla nuestra voz, la del nodo, la misma del hilo. Las grabadas
+   * quedan para UN caso y por un motivo que no se puede saltar: quien
+   * todavía no entró no tiene credenciales, y el motor de voz —que sale a
+   * internet— no atiende a quien no reconoce. Antes de entrar, entonces,
+   * suenan las de siempre; desde que entrás, es ella.
+   *
+   * Y si la voz de la casa falla —el nodo caído, la red cortada— se cae a
+   * las grabadas en vez de quedarse muda. Peor voz es mejor que ninguna.
+   */
+  let auraCortarVozBurbuja = null;
+
+  async function auraVozDeLaCasa(txt) {
+    // lo anterior se calla: dos respuestas hablando encima es peor que una
+    try { auraCortarVozBurbuja?.(); } catch (e) { /* ya no sonaba */ }
+    auraCortarVozBurbuja = null;
+    if (!CHAT.listo?.() || !CHAT.vozEnVivo) return AURA.hablar(txt, idiomaActivo());
+    try {
+      AURA.pararVoz();          // que no se pisen la grabada y la nuestra
+      await auraSonarEnVivo(txt, {
+        alEmpezar: (cortar) => { auraCortarVozBurbuja = cortar; },
+      });
+      auraCortarVozBurbuja = null;
+    } catch (e) {
+      console.warn('la voz de la casa no salió, va la grabada:', e);
+      auraCortarVozBurbuja = null;
+      AURA.hablar(txt, idiomaActivo());
+    }
+    /* Y ACÁ SE CIERRA EL CICLO: terminó de hablar, vuelve a escuchar. Es esta
+       línea la que convierte «tocar para hablar» en «conversar». */
+    if (auraConversando && auraAbierta) setTimeout(auraOirEnLaBurbuja, 250);
   }
 
   /* ── LO QUE SE ESCRIBE EN EL HILO TAMBIÉN MUEVE LA APP ──────────────────
@@ -12320,6 +12470,71 @@ const VETA = (() => {
      puede quedarse. */
   function auraApartar() {
     if (matchMedia('(max-width: 900px)').matches) { auraAbierta = false; pintarAura(); }
+  }
+
+  /* ── CONVERSAR POR LA BURBUJA, SIN TOCAR NADA ───────────────────────────
+   *
+   * «que pueda hablar desde el chat burbuja con voz, no con notas de voz, sino
+   *  fluido, hablar sin tener que tocar un botón para que me escuche»
+   *
+   * El micrófono de la burbuja era de UN SOLO TIRO: tocabas, decía una cosa, y
+   * se apagaba. Para la segunda frase había que volver a tocar — que es
+   * exactamente lo que se pidió que no hiciera falta.
+   *
+   * Ahora es un modo. Se enciende una vez y el ciclo se cierra solo: escucha,
+   * te oye, contesta con su voz, y en cuanto termina de hablar vuelve a
+   * escuchar. Se apaga tocando otra vez, o cerrando la burbuja.
+   *
+   * El micrófono NO se abre mientras ella habla, y no es por prolijidad: el
+   * reconocedor la transcribiría a ELLA por el altavoz y mandaría sus palabras
+   * como si fueran tuyas — se contestaría sola y no habría forma de meter
+   * baza. Por eso se reengancha DESPUÉS de que termina de sonar, y no antes.
+   */
+  let auraConversando = false;
+
+  function auraConversar() {
+    auraConversando = !auraConversando;
+    if (!auraConversando) {
+      AURA.dejarDeEscuchar();
+      auraOyendo = false;
+      try { auraCortarVozBurbuja?.(); } catch (e) { /* ya no sonaba */ }
+      return pintarAura();
+    }
+    auraAbierta = true;
+    pintarAura();
+    auraOirEnLaBurbuja();
+  }
+
+  function auraOirEnLaBurbuja() {
+    if (!auraConversando || !auraAbierta || auraOyendo) return;
+    auraOyendo = true;
+    pintarAura();
+    const caja = () => $('#aura-in');
+    if (caja()) caja().placeholder = aTxt().teEscucho;
+    AURA.escuchar(idiomaActivo(), (dicho) => {
+      auraOyendo = false;
+      if (caja()) { caja().value = ''; caja().placeholder = aTxt().escribi; }
+      if (dicho) {
+        auraCharla.push({ de: 'yo', txt: dicho });
+        pintarAura();
+        auraSeso(dicho);        // la respuesta reengancha el oído al terminar
+      } else {
+        // Silencio: no pasó nada, se sigue escuchando. Un modo que se apaga
+        // porque te tomaste tres segundos para pensar no es un modo.
+        pintarAura();
+        setTimeout(auraOirEnLaBurbuja, 300);
+      }
+    }, (motivo) => {
+      auraOyendo = false;
+      if (caja()) caja().placeholder = aTxt().escribi;
+      /* Un fallo DURO —sin micrófono, o el permiso denegado— apaga el modo y
+         lo dice. Los blandos (un corte, un «no te oí») solo cierran esta
+         vuelta y se vuelve a abrir. */
+      const duro = /sin-microfono|not-allowed|denied|audio-capture/.test(String(motivo || ''));
+      if (duro) { auraConversando = false; auraDecir(aTxt().micErr); }
+      else if (auraConversando) setTimeout(auraOirEnLaBurbuja, 500);
+      pintarAura();
+    }, (parcial) => { if (caja()) caja().value = parcial; });
   }
 
   function auraMic() {
@@ -12419,6 +12634,18 @@ const VETA = (() => {
     const T = aTxt();
     const d = sinTildes(dicho);
     const voz = true;
+
+    /* «Activar el micrófono» es una orden como cualquier otra: se puede decir,
+       escribir o tocar en el botón de la invitación. Va ANTES del recorrido
+       porque «hablar» aparece en las dos y el micrófono es lo más concreto.
+       No corre desde el hilo —ahí manda la pantalla de voz, que es otra
+       cosa— y por eso mira `auraSoloActuar`. */
+    if (!auraSoloActuar
+        && /activar (el )?microfono|activa (el )?microfono|prende (el )?microfono|quiero hablar|hablemos|conversar|turn on (the )?mic|activate (the )?mic/.test(d)) {
+      if (!AURA.puedeEscuchar()) return auraDecir(T.micNoHay, { voz: true });
+      auraConversar();
+      return auraDecir(T.micListo, { voz: true });
+    }
 
     // el recorrido
     if (/recorrido|tour|conoce|ensename|muestrame|show me|take the tour/.test(d)) return auraTour();
@@ -14417,7 +14644,7 @@ const VETA = (() => {
            auraCallar, chatSugerir, chatBajar, chatMirarScroll,
            auraVozPantalla, auraVozCerrar,
            // AU-RA: el orbe, el panel, la bienvenida y el recorrido.
-           auraToca, auraManda, auraMic, auraChip, auraTourVa, auraTourFin,
+           auraToca, auraManda, auraMic, auraConversar, auraChip, auraTourVa, auraTourFin,
            pantallaLlena, gcAbrir, gcCerrar, gcZoom, aedCallar,
            chatGestosTocar, vsEntrar, vsSalir, vsOjos, vsMirada, tourGenesis, musicaAlterna, versionMirar, version, prontoMirar,
            _bienvenidaGalaxia: (v) => auraBienvenidaGalaxia(v),
