@@ -479,14 +479,20 @@ class Motor:
         print(f'voz lista en {time.time() - t0:.0f}s · '
               f'{torch.cuda.memory_allocated() / 1e9:.1f} GB de VRAM', flush=True)
 
-    def decir(self, texto, voz=VOZ_POR_DEFECTO):
+    def decir(self, texto, voz=VOZ_POR_DEFECTO, idioma='es'):
         """Texto a audio, ya humanizado y pegado. Devuelve (mp3, segundos)."""
         v = VOCES.get(voz) or VOCES[VOZ_POR_DEFECTO]
         # Antes que nada, TRADUCIR DE ESCRITO A HABLADO. «0,001» y
         # «MyTokenPay» estan perfectos en la pantalla y son ilegibles en voz
         # alta: el motor atropella los digitos y lee el ingles en español.
         # Ver decir.py — nace de dos quejas reales de produccion.
-        partes = trozos(humanizar(para_la_voz(texto)))
+        #
+        # SOLO EN ESPAÑOL. El humanizado es castellano de punta a punta —el
+        # voseo, los numeros en letras, el «Mirá,» de apertura— y pasarselo a
+        # un texto ingles lo dejaria diciendo «veintiun mil» en medio de una
+        # frase en ingles. Para ingles, el texto va como esta: el troceado por
+        # signos y los silencios funcionan igual en los dos idiomas.
+        partes = trozos(humanizar(para_la_voz(texto)) if idioma == 'es' else texto)
         if not partes:
             return b'', 0.0
         pedazos, silencios = [], []
@@ -497,7 +503,7 @@ class Motor:
                 self.torch.manual_seed(v['semilla'])
                 try:
                     w = self.modelo.generate(
-                        t, language_id='es',
+                        t, language_id=idioma,
                         exaggeration=v['exageracion'],
                         cfg_weight=v['apego'],
                         temperature=v['temperatura'])
@@ -519,7 +525,7 @@ class Motor:
         audio = pegar(pedazos, silencios)
         return a_mp3(a_wav(audio)), len(audio) / MUESTREO
 
-    def decir_al_vuelo(self, texto, voz=VOZ_POR_DEFECTO):
+    def decir_al_vuelo(self, texto, voz=VOZ_POR_DEFECTO, idioma='es'):
         """Lo mismo, pero SOLTANDO cada trozo apenas esta.
 
         ── POR QUE EXISTE ──────────────────────────────────────────────────
@@ -542,7 +548,9 @@ class Motor:
         entera se podia elegir el tramo mas callado de todos.
         """
         v = VOCES.get(voz) or VOCES[VOZ_POR_DEFECTO]
-        partes = escalonar(trozos(humanizar(para_la_voz(texto))))
+        # el humanizado solo en español; ver decir() para el porqué
+        partes = escalonar(trozos(
+            humanizar(para_la_voz(texto)) if idioma == 'es' else texto))
         if not partes:
             return
         fondo = None
@@ -568,7 +576,7 @@ class Motor:
                 self.torch.manual_seed(v['semilla'])
                 try:
                     w = self.modelo.generate(
-                        t, language_id='es',
+                        t, language_id=idioma,
                         exaggeration=v['exageracion'],
                         cfg_weight=v['apego'],
                         temperature=v['temperatura'])
@@ -744,11 +752,14 @@ def servir():
                 return self._json(400, {'error': 'json inválido'})
             texto = str(b.get('texto', ''))[:1200]
             voz = str(b.get('voz', VOZ_POR_DEFECTO))
+            # «es» salvo que pidan «en»: cualquier otra cosa cae a español,
+            # que un idioma inventado no puede tumbar la voz
+            idioma = 'en' if b.get('idioma') == 'en' else 'es'
             if not texto.strip():
                 return self._json(400, {'error': 'sin texto'})
             t0 = time.time()
             try:
-                mp3, segundos = MOTOR.decir(texto, voz)
+                mp3, segundos = MOTOR.decir(texto, voz, idioma)
             except Exception as e:
                 print('voz falló:', type(e).__name__, str(e)[:200], flush=True)
                 return self._json(500, {'error': 'no salió'})
@@ -819,6 +830,9 @@ def servir():
                 return self._json(429, {'error': 'muchas seguidas'})
             texto = str(b.get('texto', ''))[:1200]
             voz = str(b.get('voz', VOZ_POR_DEFECTO))
+            # «es» salvo que pidan «en»: cualquier otra cosa cae a español,
+            # que un idioma inventado no puede tumbar la voz
+            idioma = 'en' if b.get('idioma') == 'en' else 'es'
             if not texto.strip():
                 return self._json(400, {'error': 'sin texto'})
 
@@ -835,7 +849,7 @@ def servir():
             self.end_headers()
             total = 0.0
             try:
-                for mp3, segundos in MOTOR.decir_al_vuelo(texto, voz):
+                for mp3, segundos in MOTOR.decir_al_vuelo(texto, voz, idioma):
                     if primera is None:
                         primera = time.time() - t0
                     # Cada trozo con su cuenta, y no es ruido de registro: es

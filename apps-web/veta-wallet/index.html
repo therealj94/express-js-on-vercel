@@ -1143,7 +1143,10 @@ button:not(:disabled):active,[role=button]:active,summary:active,
   text-align:center;color:var(--bruma)}
 .tabs{display:none}
 
-#tostada{position:fixed;left:50%;bottom:26px;transform:translate(-50%,140%);z-index:60;
+/* La tostada por ENCIMA de todo lo que no sea el visor (9000): con 60 quedaba
+   DEBAJO de la pantalla de voz (120), y el único aviso de «la voz no salió»
+   se pintaba donde nadie podía verlo. Un aviso invisible no avisa. */
+#tostada{position:fixed;left:50%;bottom:26px;transform:translate(-50%,140%);z-index:500;
   opacity:0;visibility:hidden;
   padding:13px 22px;border-radius:100px;background:rgba(6,44,46,.96);border:1px solid var(--linea);
   font-size:14px;font-weight:600;box-shadow:0 18px 50px -18px rgba(0,0,0,.9);
@@ -2536,6 +2539,12 @@ body.en-p2c .chay-cara{background:var(--p2c-grad);color:#03122E;
 @keyframes auraLatMic{0%,100%{box-shadow:0 0 0 0 rgba(126,216,196,.34)}
   50%{box-shadow:0 0 0 7px rgba(126,216,196,0)}}
 .aura-oyendo{color:var(--verde-claro,#7ed8c4)}
+/* El selector de voz de la burbuja: discreto, de la casa, sin cromo del
+   sistema. Elegir una voz se confirma OYÉNDOLA, así que el control puede ser
+   chico: el que manda es el oído. */
+.aura-voz-sel{background:rgba(9,42,44,.8);color:var(--crema,#F3ECD9);
+  border:1px solid rgba(126,216,196,.25);border-radius:9px;font:inherit;
+  font-size:11px;padding:4px 6px;max-width:104px;margin-left:auto;margin-right:8px}
 @media (prefers-reduced-motion:reduce){.aura-mic.hablando{animation:none}}
 .aura-pensando{display:inline-flex;align-items:center;gap:8px;opacity:.75}
 .aura-pensando i{width:6px;height:6px;border-radius:50%;background:currentColor;
@@ -3926,7 +3935,7 @@ body.en-ventana .lienzo::before{
      JS muriera, la frase se lee igual y el velo se desvanece solo (CSS). -->
 <div id="velo-og" aria-hidden="true">
   <img src="assets/apps/og.png" alt="">
-  <div class="velo-frase">El futuro es orden.</div>
+  <div class="velo-frase">El futuro es Orden.</div>
 </div>
 
 <!-- El cielo de la entrada. Lo monta y lo apaga app.js con galaxia.js. -->

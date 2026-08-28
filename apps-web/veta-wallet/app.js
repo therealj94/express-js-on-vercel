@@ -7903,17 +7903,23 @@ const VETA = (() => {
     if (chatSt.con) CHAT.escribiendo(chatSt.con.id);
   }
 
-  async function chatMandar(ev) {
-    ev.preventDefault();
-    const c = $('#chat-txt');
-    const texto = (c?.value || '').trim();
-    if (!texto || chatSt.mandando || !chatSt.con) return;
+  /* ── EL ENVÍO ES UNA FUNCIÓN, NO UN FORMULARIO ──────────────────────────
+   *
+   * El dictado mandaba haciendo `requestSubmit()` sobre el formulario del
+   * chat, y eso ata el envío al DOM: si AU-RA te acaba de llevar a otra
+   * pantalla —«llevame a cobrar», dicho en voz alta— el formulario ya no
+   * existe, y la frase siguiente se perdía EN SILENCIO. En un modo cuyo trato
+   * es «hablá, que yo me encargo», perder lo hablado sin decirlo es lo peor
+   * que se puede hacer.
+   *
+   * Devuelve si SALIÓ. Quien llama decide qué hacer con un no. */
+  async function chatMandarTexto(texto) {
+    texto = (texto || '').trim();
+    if (!texto || chatSt.mandando || !chatSt.con) return false;
     chatSt.mandando = true;
-    c.value = '';
-    /* PRIMERO SE ACTÚA Y DESPUÉS SE MANDA, y ese orden importa: abrir la
-       pantalla que te pidieron tiene que ser instantáneo, y el viaje al relevo
-       tarda lo que tarde. El mensaje se manda igual —queda escrito en el hilo
-       y ella lo contesta— así que no se pierde nada por actuar antes. */
+    /* PRIMERO SE ACTÚA Y DESPUÉS SE MANDA: abrir la pantalla que te pidieron
+       tiene que ser instantáneo, y el viaje al relevo tarda lo que tarde. El
+       mensaje se manda igual, así que no se pierde nada por actuar antes. */
     if (esAura(chatSt.con)) { try { auraDesdeElHilo(texto); } catch (e) {} }
     try {
       await CHAT.enviar(chatSt.con.id, texto, chatSt.citando?.id);
@@ -7922,13 +7928,64 @@ const VETA = (() => {
       if (esAura(chatSt.con)) auraEsperar();
       await chatCargarMsgs();
       chatCargarConvs();
+      return true;
     } catch (e) {
-      // Lo escrito vuelve al campo: perder un mensaje por un fallo de red es
-      // hacerle escribirlo otra vez a quien ya lo escribio.
-      if (c) c.value = texto;
       chatSt.error = chatMotivo(e);
       pintarChat();
-    } finally { chatSt.mandando = false; $('#chat-txt')?.focus(); }
+      return false;
+    } finally { chatSt.mandando = false; }
+  }
+
+  async function chatMandar(ev) {
+    ev.preventDefault();
+    const c = $('#chat-txt');
+    const texto = (c?.value || '').trim();
+    if (!texto || chatSt.mandando) return;
+    c.value = '';
+    const salio = await chatMandarTexto(texto);
+    if (!salio) {
+      // Lo escrito vuelve al campo: perder un mensaje por un fallo de red es
+      // hacerle escribirlo otra vez a quien ya lo escribio.
+      const c2 = $('#chat-txt');
+      if (c2 && !c2.value) c2.value = texto;
+    }
+    $('#chat-txt')?.focus();
+  }
+
+  /* ── LA COLA DE LO DICHO ────────────────────────────────────────────────
+   *
+   * Las frases habladas entran acá y salen en orden. Existe por dos razones
+   * medidas: un envío «en vuelo» rechaza al siguiente (y hablando rápido eso
+   * pasa), y un fallo de red no puede tirar la frase a la basura sin avisar.
+   * Si de verdad no sale, se dice — y si el campo del chat está a la vista,
+   * la frase se deja ahí, donde un dedo la puede mandar. */
+  const chatDichoCola = [];
+  let chatDichoBombeando = false;
+
+  async function chatMandarDicho(texto) {
+    chatDichoCola.push(texto);
+    if (chatDichoBombeando) return;
+    chatDichoBombeando = true;
+    try {
+      while (chatDichoCola.length) {
+        // `frase` y no `t`: acá `t` es la función de traducción, y taparla
+        // con la variable del bucle rompería el aviso de abajo sin ruido.
+        const frase = chatDichoCola[0];
+        const salio = await chatMandarTexto(frase);
+        if (salio) { chatDichoCola.shift(); continue; }
+        if (chatSt.mandando) {          // en vuelo: se espera y se reintenta
+          await new Promise((r) => setTimeout(r, 350));
+          continue;
+        }
+        // Fallo real. Se avisa, y la frase va al campo si existe — donde un
+        // dedo la puede mandar. Perderla en silencio no es una opción.
+        chatDichoCola.shift();
+        const c = $('#chat-txt');
+        if (c && !c.value) c.value = frase;
+        avisar(t('cha.eRedP'));
+        break;
+      }
+    } finally { chatDichoBombeando = false; }
   }
 
 
@@ -10424,7 +10481,7 @@ const VETA = (() => {
 
     try {
       await CHAT.vozEnVivo({
-        texto, voz: auraRegistro(), senal: ctrl.signal,
+        texto, voz: auraRegistro(), idioma: idiomaActivo(), senal: ctrl.signal,
         alTrozo: async (buf) => {
           if (cortado) return;
           // decodeAudioData con promesa no existe en Safari viejo; la forma
@@ -10904,19 +10961,45 @@ const VETA = (() => {
        muerto sin un aviso. */
     r.continuous = true;
     const campo = () => $('#chat-txt');
+    /* ── EL LECTOR DE UN RECONOCEDOR CONTINUO, y esto tiene historia ────────
+     *
+     * «las letras que salen se buguean: salen, se quitan, salen cosas random»
+     *
+     * Era esto, y era mío. Al poner `continuous` no adapté el lector, y en
+     * modo continuo `ev.results` ACUMULA todo desde que arrancó el micrófono.
+     * Dos fallos de una vez:
+     *
+     *   · el texto se armaba juntando TODOS los resultados, así que la
+     *     segunda frase salía con la primera pegada delante, y la tercera
+     *     con las dos — texto repetido apareciendo y desapareciendo;
+     *   · al mandar se hacía `dictando = null` pero NADIE apagaba el
+     *     reconocedor: seguía vivo, con sus manejadores puestos, escribiendo
+     *     en la caja con el estado ya en «quieta» y re-mandando lo acumulado
+     *     en cada final. De ahí lo «random».
+     *
+     * El patrón correcto de un reconocedor continuo es leer SOLO desde
+     * `ev.resultIndex` —lo que cambió en este evento— y despachar cada final
+     * NUEVO por separado, dejando el micrófono abierto, que para eso es
+     * continuo. Lo pendiente (el parcial) es lo único que se enseña. */
     r.onresult = (ev) => {
-      // lo dicho SE VE mientras se dice: el texto es el protagonista, la voz
-      // es solo la forma de escribirlo
-      const txt = Array.from(ev.results).map(x => x[0].transcript).join(' ').trim();
-      if (campo()) campo().value = txt;
-      // en la pantalla de voz lo dicho se ve mientras se dice: es la unica
-      // forma de saber que te esta entendiendo antes de soltar
-      if (auraPantalla) { auraDicho = txt; pintarChat(); }
-      if (ev.results[ev.results.length - 1].isFinal) {
-        dictando = null;
-        if (auraPantalla) auraDicho = '';
-        if (txt) $('#chat-hilo form.cha-pie')?.requestSubmit();
-        else pintarChat();
+      let final = '', parcial = '';
+      for (let i = ev.resultIndex; i < ev.results.length; i++) {
+        const res = ev.results[i];
+        if (res.isFinal) final += res[0].transcript;
+        else parcial += res[0].transcript;
+      }
+      parcial = parcial.trim();
+      final = final.trim();
+      // lo dicho SE VE mientras se dice: es la única forma de saber que te
+      // está entendiendo antes de soltar
+      if (campo() && !final) campo().value = parcial;
+      if (auraPantalla) { auraDicho = parcial; pintarChat(); }
+      if (final) {
+        /* Por la COLA y no por el formulario: si AU-RA acaba de llevarte a
+           otra pantalla, el formulario ya no existe — y la frase tiene que
+           llegar igual. El micrófono SIGUE ABIERTO: es un modo continuo. */
+        if (campo()) campo().value = '';
+        chatMandarDicho(final);
       }
     };
     /* Un error DURO —el permiso denegado, o no hay micrófono— apaga el modo y
@@ -11709,6 +11792,9 @@ const VETA = (() => {
       // la máquina más que cualquier otra cosa.
       holaNombre: '{momento}, {nombre}. ¿Cómo vas hoy? Contame en qué andás y te ayudo.',
       saludoDia: 'Buenos días', saludoTarde: 'Buenas tardes', saludoNoche: 'Buenas noches',
+      vozEtiqueta: 'La voz con la que habla',
+      vozNombre: { calida: 'Voz cálida', sobria: 'Voz sobria', agil: 'Voz ágil' },
+      vozAsi: 'Así te hablo de ahora en más.',
       conversarOn: 'Hablar sin tocar nada', conversarOff: 'Dejar de escuchar',
       conversando: 'Te escucho — hablá cuando quieras',
       micInvita: 'Si querés, hablemos en voz alta: activás el micrófono una vez y ya no tocás nada más — te escucho, te contesto, y sigo escuchando.',
@@ -11839,6 +11925,9 @@ const VETA = (() => {
       escribi: 'Ask me or tell me…',
       holaNombre: '{momento}, {nombre}. How are you doing today? Tell me what you need.',
       saludoDia: 'Good morning', saludoTarde: 'Good afternoon', saludoNoche: 'Good evening',
+      vozEtiqueta: 'The voice she speaks with',
+      vozNombre: { calida: 'Warm voice', sobria: 'Steady voice', agil: 'Quick voice' },
+      vozAsi: 'This is how I will speak from now on.',
       conversarOn: 'Talk without tapping', conversarOff: 'Stop listening',
       conversando: "I'm listening — speak whenever you like",
       micInvita: "If you like, let's talk out loud: turn the microphone on once and you never tap again — I listen, I answer, and I keep listening.",
@@ -12187,6 +12276,16 @@ const VETA = (() => {
     try { localStorage.setItem(LLAVE_MICRO, '1'); } catch (e) { /* modo privado */ }
   };
 
+  /* Elegir la voz desde la burbuja. Solo guarda el REGISTRO —con qué
+     temperamento habla la voz en vivo— y lo confirma DICIÉNDOLO con la voz
+     elegida: la única manera honesta de elegir una voz es oírla. En visita no
+     se ofrece: antes de entrar no hay voz en vivo que cambiar. */
+  function auraRegistroElegir(cual) {
+    if (!['calida', 'sobria', 'agil'].includes(cual)) return;
+    try { localStorage.setItem('veta.aura.registro', cual); } catch (e) {}
+    auraVozDeLaCasa(aTxt().vozAsi);
+  }
+
   function auraSaludoDeHoy() {
     const T = aTxt();
     if (auraVisita) return T.holaVisita;
@@ -12257,6 +12356,13 @@ const VETA = (() => {
       <div class="aura-cab">
         <div><b>AU-RA</b> <span class="aura-beta">MODELO 1 · BETA</span>
           <small>${T.ecoTitulo}</small></div>
+        ${!auraVisita ? `
+        <select class="aura-voz-sel" onchange="VETA.auraRegistroElegir(this.value)"
+                aria-label="${esc(T.vozEtiqueta)}" title="${esc(T.vozEtiqueta)}">
+          ${['calida', 'sobria', 'agil'].map((v) =>
+            `<option value="${v}"${auraRegistro() === v ? ' selected' : ''}>${
+              esc(T.vozNombre[v])}</option>`).join('')}
+        </select>` : ''}
         <button class="aura-x" onclick="VETA.auraToca()" aria-label="Cerrar">✕</button>
       </div>
       <div class="aura-hilo" id="aura-hilo">
@@ -13233,7 +13339,7 @@ const VETA = (() => {
       fructificad: 'Be fruitful, and multiply;\nreplenish the earth.',
       proposito: nombre ? `That is your place here, ${nombre}.\nNot to watch it: to be part of it.`
         : 'That is your place here.\nNot to watch it: to be part of it.',
-      cierre: 'THE FUTURE IS ORDER.',
+      cierre: 'THE FUTURE IS ORDEN.',
       saltar: 'Skip',
     };
   }
@@ -14644,7 +14750,7 @@ const VETA = (() => {
            auraCallar, chatSugerir, chatBajar, chatMirarScroll,
            auraVozPantalla, auraVozCerrar,
            // AU-RA: el orbe, el panel, la bienvenida y el recorrido.
-           auraToca, auraManda, auraMic, auraConversar, auraChip, auraTourVa, auraTourFin,
+           auraToca, auraManda, auraMic, auraConversar, auraRegistroElegir, auraChip, auraTourVa, auraTourFin,
            pantallaLlena, gcAbrir, gcCerrar, gcZoom, aedCallar,
            chatGestosTocar, vsEntrar, vsSalir, vsOjos, vsMirada, tourGenesis, musicaAlterna, versionMirar, version, prontoMirar,
            _bienvenidaGalaxia: (v) => auraBienvenidaGalaxia(v),

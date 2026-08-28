@@ -753,7 +753,7 @@ const CHAT = (() => {
   const FORMATO_VOZ = 'trozos-mp3-v1';
   const RAIZ = BASE.replace(/\/mensajes$/, '');
 
-  async function vozEnVivo({ texto, voz, alTrozo, senal }) {
+  async function vozEnVivo({ texto, voz, idioma, alTrozo, senal }) {
     /* Cuelga del MISMO sitio que el relevo, no de un dominio propio del nodo.
        Asi no hay CORS que arreglar, ni certificado nuevo que renovar, ni un
        nombre mas que cuidar — y sobre todo: el nodo con la GPU no recibe nada
@@ -761,7 +761,10 @@ const CHAT = (() => {
     const res = await fetch(RAIZ + '/hablar', {
       method: 'POST', signal: senal,
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ correo: yo?.correo, llave, texto, voz }),
+      // el idioma viaja: sin él, una respuesta en inglés salía dicha con la
+      // fonética del español — acento de doblaje en la propia asistente
+      body: JSON.stringify({ correo: yo?.correo, llave, texto, voz,
+                             idioma: idioma === 'en' ? 'en' : 'es' }),
     });
     if (!res.ok) {
       const e = new Error('voz http ' + res.status);

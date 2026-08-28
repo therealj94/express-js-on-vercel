@@ -224,6 +224,20 @@ ok(trasContestar > antesDeHablar,
    `el micrófono se abrió ${antesDeHablar} veces antes y ${trasContestar} después: `
    + 'si no crece, hay que tocar el botón otra vez y no es conversar');
 
+console.log('\nLa voz se elige en la burbuja, y se confirma OYÉNDOLA\n');
+const sel = await p.evaluate(() =>
+  [...document.querySelectorAll('#aura-panel .aura-voz-sel option')].map((o) => o.value));
+ok(sel.join(',') === 'calida,sobria,agil',
+   'el selector ofrece los tres registros', `ofreció: ${sel.join(',')}`);
+const pedidosSel = pedidosHablar;
+await p.evaluate(() => VETA.auraRegistroElegir('sobria'));
+await p.waitForTimeout(1500);
+ok(await p.evaluate(() => localStorage.getItem('veta.aura.registro')) === 'sobria',
+   'la elección queda guardada');
+ok(pedidosHablar > pedidosSel,
+   'y se confirma diciéndola con la voz de la casa',
+   'la única manera honesta de elegir una voz es oírla');
+
 console.log('\nCerrar la burbuja apaga el micrófono\n');
 await p.evaluate(() => VETA.auraToca());
 await p.waitForTimeout(500);

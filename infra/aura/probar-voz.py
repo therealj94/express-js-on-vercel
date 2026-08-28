@@ -238,6 +238,20 @@ ok("send_header('X-Formato'" in _rutas.get('_hablar', '') and hasattr(voz, 'FORM
    'y el formato se anuncia, para que una app vieja se dé cuenta',
    'si cambia el reparto, más vale que lo note y se pase a la nota de voz')
 
+# El idioma viaja hasta el modelo, y el humanizado español NO toca el inglés.
+# Sin la guarda, un texto en inglés saldría con «Mirá,» delante y los números
+# dichos en castellano en medio de la frase.
+_fuente2 = pathlib.Path(voz.__file__).read_text()
+ok(_fuente2.count('language_id=idioma') == 2 and "language_id='es'" not in _fuente2,
+   'el idioma que llega es el que habla, en las dos rutas',
+   'un language_id fijo deja al inglés con acento de doblaje')
+ok(_fuente2.count("if idioma == 'es' else") == 2,
+   'y el humanizado castellano solo corre para el castellano',
+   'voseo y números en letras dentro de una frase en inglés')
+ok("b.get('idioma') == 'en'" in _fuente2,
+   'y un idioma inventado cae a español, no a un error',
+   'la voz no se puede tumbar mandando {"idioma": "xx"}')
+
 print('\nLo que NO puede pasar\n')
 
 ok(voz.trozos('') == [] and voz.trozos(None) == [],
