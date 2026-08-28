@@ -804,10 +804,19 @@ def _recortar(texto):
     if len(t) > 900:
         corte = t.rfind('.', 0, 900)
         t = t[:corte + 1 if corte > 200 else 900].strip()
-    if t and t[-1] not in '.!?…:»"\'':
+    # los dos puntos NO cierran nada: anuncian lo que viene, y si lo que
+    # viene se corto, queda una promesa sin cumplir
+    if t and t[-1] not in '.!?…»"\'':
         corte = max(t.rfind('. '), t.rfind('.\n'), t.rfind('? '), t.rfind('! '),
                     t.rfind('.'), t.rfind('?'), t.rfind('!'))
-        if corte >= len(t) * 0.5:
+        # Una PROMESA colgando se corta siempre, cueste lo que cueste. «Aquí
+        # te dejo algunos pensamientos motivadores:» y nada detras es peor
+        # que una respuesta corta: promete y no cumple, y la persona se queda
+        # esperando algo que no va a llegar. Paso en produccion, con captura.
+        # Una palabra cortada, en cambio, se tolera si recortarla dejaria un
+        # pedazo diminuto: ahi la frase coja dice mas que tres palabras.
+        promesa = t[-1] in ':;,'
+        if corte > 0 and (promesa or corte >= len(t) * 0.5):
             t = t[:corte + 1].strip()
     return t
 
@@ -1014,8 +1023,18 @@ def atender(rel, sistema, p, de, dicho):
             # Se vuelve a preguntar UNA vez sin ese freno. Es preferible una
             # respuesta con forma de lista a ninguna respuesta, y con el
             # limpiador de la salida la lista queda decente igual.
-            if not por_frases and len((resto or '').strip()) < 40:
-                log('respuesta vacia o cortisima, repregunto sin el freno')
+            # LA PROMESA ROTA. «Aquí te dejo algunos pensamientos motivadores:»
+            # y ahi termina el mensaje. Paso en produccion, con captura: el
+            # freno de listas corto justo despues de los dos puntos, y lo que
+            # quedo fue un anuncio sin nada detras — peor que una lista fea y
+            # peor que no contestar, porque promete y no cumple.
+            #
+            # Una respuesta que termina en dos puntos SIEMPRE esta cortada:
+            # nadie cierra una idea con «:». Se repregunta sin el freno.
+            promesa = (resto or '').rstrip().endswith((':', ';', ','))
+            if not por_frases and (len((resto or '').strip()) < 40 or promesa):
+                log('respuesta vacia, cortisima o con promesa colgando; '
+                    'repregunto sin el freno')
                 resto, entero = preguntar_motor(sistema, p, p['historial'],
                                                 dicho, contexto,
                                                 al_vuelo=None, frenar_listas=False)

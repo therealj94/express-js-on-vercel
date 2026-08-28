@@ -5444,7 +5444,7 @@ const VETA = (() => {
      se puede contestar: «¿esto que estoy viendo es lo último que subimos, o
      mi navegador se quedó con una copia vieja?». La ficha de Ajustes lo
      enseña, y con eso se sabe. */
-  const VETA_V = '7bada07ec6';
+  const VETA_V = '13acf297ad';
   const VETA_FECHA = '2026-08-28';
 
   const AET_V = 'e250bbe2f5';
@@ -7766,7 +7766,7 @@ const VETA = (() => {
           && m.length && m[m.length - 1].de === AURA_CHAT_ID) auraLlego();
       chatSt.msgs = m;
       chatSt.error = null;
-      if (!igual) { pintarChat(); chatAlFinal(); }
+      if (!igual) { pintarChat(); chatAlFinal(); auraCharlaSonar(); }
     } catch (e) {
       chatSt.error = chatMotivo(e);
       if (!callado) pintarChat();
@@ -10127,6 +10127,83 @@ const VETA = (() => {
   let auraVoz = localStorage.getItem('veta.aura.voz') || '';
   let auraVozAbierta = false;
 
+  /* ── MODO CONVERSACIÓN ──────────────────────────────────────────────────
+   *
+   * El pedido, textual: «la idea es que yo tenga una opción para que pueda
+   * hablar con AURA y no tener que escribir, tener una conversación». Y la
+   * queja de al lado: «con el tema de voz es tedioso me salga como notas de
+   * voz» — recibir un archivo que hay que ir a tocar no es conversar.
+   *
+   * Encendido, el turno se cierra solo: se habla, ella contesta, su voz suena
+   * SOLA, y al terminar de sonar el micrófono se vuelve a abrir. No hay que
+   * tocar nada entre una cosa y la otra, que es lo único que separa una
+   * conversación de un intercambio de archivos.
+   *
+   * Lo que NO hace, y conviene saberlo: no se puede interrumpir hablándole
+   * encima. Para eso hace falta que escuche y hable a la vez, y eso no es un
+   * botón que falte: es otro tipo de modelo. Mientras ella habla hay un botón
+   * de callar, que es la versión honesta de lo mismo.
+   *
+   * El permiso de sonido del navegador se consigue con el toque que ENCIENDE
+   * el modo: sin ese gesto, el primer audio no arrancaría solo y la persona
+   * creería que se rompió. */
+  let auraCharlando = false;
+  let auraSonando = null;
+  const auraYaSono = new Set();
+
+  async function auraCharlarAlterna() {
+    if (!esAura(chatSt.con)) return;
+    auraCharlando = !auraCharlando;
+    if (!auraCharlando) {
+      try { auraSonando?.pause(); } catch (e) { /* ya no sonaba */ }
+      auraSonando = null;
+      if (dictando) { try { dictando.stop(); } catch (e) {} dictando = null; }
+      pintarChat();
+      return;
+    }
+    // Sin voz del lado del servidor no hay nada que reproducir: si está
+    // apagada se enciende sola al entrar, porque nadie que toca «Hablar»
+    // quiere que le contesten por escrito.
+    if (!auraVoz) await auraVozElegir('calida');
+    // Lo que ya está en el hilo NO se reproduce: entrar al modo no puede
+    // significar oír de golpe las diez respuestas anteriores.
+    (chatSt.msgs || []).forEach((m) => { if (m.id) auraYaSono.add(m.id); });
+    pintarChat();
+    auraDictar();
+  }
+
+  /** Suena lo nuevo que dijo ella, y al terminar vuelve a abrir el micrófono.
+      Solo lo ÚLTIMO: si llegaron dos notas mientras no mirábamos, encadenar
+      todas sería un discurso, no una respuesta. */
+  function auraCharlaSonar() {
+    if (!auraCharlando || !esAura(chatSt.con) || auraSonando) return;
+    const nuevas = (chatSt.msgs || []).filter(
+      (m) => m.de === AURA_CHAT_ID && m.tipo === 'voz' && m.archivo
+             && m.id && !auraYaSono.has(m.id));
+    if (!nuevas.length) return;
+    nuevas.forEach((m) => auraYaSono.add(m.id));
+    const ultima = nuevas[nuevas.length - 1];
+    const a = new Audio(CHAT.urlArchivo(ultima.archivo));
+    auraSonando = a;
+    pintarChat();
+    const seguir = () => {
+      auraSonando = null;
+      pintarChat();
+      // el micrófono se reabre SOLO si el modo sigue encendido: apagarlo
+      // mientras ella habla tiene que cortar de verdad, no volver a escuchar
+      if (auraCharlando && esAura(chatSt.con)) auraDictar();
+    };
+    a.onended = seguir;
+    a.onerror = seguir;
+    a.play().catch(() => seguir());   // sin permiso de sonido, no se traba
+  }
+
+  function auraCallar() {
+    try { auraSonando?.pause(); } catch (e) { /* ya no sonaba */ }
+    auraSonando = null;
+    pintarChat();
+  }
+
   function auraVozMenu() {
     auraVozAbierta = !auraVozAbierta;
     pintarChat();
@@ -10355,6 +10432,13 @@ const VETA = (() => {
                 onclick="VETA.auraModoChat('rapida')">${t('au.chModoR')}</button>
         <button type="button" class="cha-aura-chip${modoP ? ' on' : ''}"
                 onclick="VETA.auraModoChat('pensadora')">${t('au.chModoP')}</button>
+        <button type="button" class="cha-aura-chip cha-aura-hablar${auraCharlando ? ' on' : ''}"
+                onclick="VETA.auraCharlarAlterna()"
+                aria-pressed="${auraCharlando}">
+          <svg viewBox="0 0 24 24"><path d="M12 3a3 3 0 0 1 3 3v6a3 3 0 0 1-6 0V6a3 3 0 0 1 3-3z"/>
+          <path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>${auraCharlando
+            ? t('au.hablarOn') : t('au.hablar')}
+        </button>
         <button type="button" class="cha-aura-chip cha-aura-voz${auraVoz ? ' on' : ''}"
                 onclick="VETA.auraVozMenu()"
                 aria-label="${auraVoz ? t('au.chVozOn') : t('au.chVozOff')}">
@@ -10363,6 +10447,14 @@ const VETA = (() => {
                           : t('au.chVozOff')}
         </button>
       </div>
+      ${auraCharlando ? `
+      <div class="cha-aura-charla${auraSonando ? ' hablando' : dictando ? ' oyendo' : ''}">
+        <span class="cha-aura-onda"><i></i><i></i><i></i><i></i><i></i></span>
+        <span class="cha-aura-est">${auraSonando ? t('au.hablarOn')
+          : dictando ? t('au.oyendo') : t('au.hablarComo')}</span>
+        ${auraSonando ? `<button type="button" class="cha-aura-callar"
+                 onclick="VETA.auraCallar()">${t('au.callar')}</button>` : ''}
+      </div>` : ''}
       ${auraVozAbierta ? `
       <div class="cha-aura-voces" role="group" aria-label="${t('au.vozElegir')}">
         ${AURA_VOCES.map(v => `
@@ -10670,6 +10762,17 @@ const VETA = (() => {
     } else if (m.tipo === 'archivo') {
       adj = `<a class="cha-arch" href="${esc(dir)}"${marca} target="_blank" rel="noopener">
                <svg viewBox="0 0 24 24">${ICO.doc}</svg>${esc(m.nombre || t('cha.unArchivo'))}</a>`;
+    } else if (m.tipo === 'voz' && !mio && esAura(chatSt.con) && !m.texto) {
+      /* La voz de AU-RA no es una nota que ella «manda»: es la MISMA
+         respuesta de arriba, dicha. Pintarla como tarjeta aparte, con su
+         hora y su burbuja, convierte cada contestación en dos cosas — y eso
+         fue exactamente la queja: «es tedioso que me salga como notas de
+         voz». Va compacta y pegada a lo que dice. */
+      const segs = CHAT.segundosDeVoz(m.nombre);
+      adj = `<div class="cha-voz cha-voz-aura">
+               <audio src="${esc(dir)}"${marca} controls preload="none"></audio>
+               ${segs ? `<span class="cha-voz-t">${segs}s</span>` : ''}
+             </div>`;
     } else if (m.tipo === 'voz') {
       /* Una nota de voz se OYE en la burbuja: no es una tarjeta que se baja.
          Se usa el reproductor del navegador —`controls`— en vez de dibujar uno
@@ -13161,6 +13264,7 @@ const VETA = (() => {
            nuAbrir,
            // El rincon de AU-RA en el chat: modos, voz y dictado.
            auraModoChat, auraVozMenu, auraVozElegir, auraDictar,
+           auraCharlarAlterna, auraCallar,
            // AU-RA: el orbe, el panel, la bienvenida y el recorrido.
            auraToca, auraManda, auraMic, auraChip, auraTourVa, auraTourFin,
            pantallaLlena, gcAbrir, gcCerrar, gcZoom, aedCallar,

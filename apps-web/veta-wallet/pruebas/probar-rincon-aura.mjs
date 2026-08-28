@@ -145,6 +145,30 @@ ok(voces.razones.every(r => r.length > 3) && new Set(voces.razones).size === 4,
 await p.evaluate(() => VETA.auraVozMenu());
 await p.waitForTimeout(200);
 ok(!(await p.$('.cha-aura-vozop')), 'y el cajón se cierra con el mismo botón');
+
+/* El modo de HABLAR, que es el pedido de fondo: «que pueda hablar con AURA y
+   no tener que escribir». Se comprueba lo que la persona ve, no la variable
+   de adentro: que exista el botón, que al tocarlo aparezca la tira que dice
+   qué está pasando, y que se pueda apagar. */
+ok(await p.$('.cha-aura-hablar'), 'hay un botón para HABLAR, no solo para escribir');
+ok(!(await p.$('.cha-aura-charla')),
+   'y apagado no ocupa lugar: la tira de conversación no está');
+await p.evaluate(() => VETA.auraCharlarAlterna());
+await p.waitForTimeout(400);
+const charla = await p.evaluate(() => ({
+  tira: !!document.querySelector('.cha-aura-charla'),
+  dice: document.querySelector('.cha-aura-est')?.textContent.trim() || '',
+  onda: document.querySelectorAll('.cha-aura-onda i').length,
+  boton: document.querySelector('.cha-aura-hablar')?.getAttribute('aria-pressed'),
+}));
+ok(charla.tira, 'encendido aparece la tira de conversación');
+ok(charla.dice.length > 10 && !/undefined/.test(charla.dice),
+   'que dice EN PALABRAS qué está pasando, no un icono que late', charla.dice);
+ok(charla.onda === 5, 'con su onda, que se mueve cuando hay algo que oír');
+ok(charla.boton === 'true', 'y el botón queda marcado como encendido (accesible)');
+await p.evaluate(() => VETA.auraCharlarAlterna());
+await p.waitForTimeout(300);
+ok(!(await p.$('.cha-aura-charla')), 'y se apaga con el mismo botón');
 ok(!aura.llamar, 'SIN botones de llamar ni video: a un bot no se le timbra');
 ok(/beta/i.test(aura.sub), 'el subtítulo dice qué es, no un correo');
 ok(aura.claseMsgs.includes('cha-de-aura'), 'el hilo lleva su clase para el estilo');

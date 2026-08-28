@@ -2462,6 +2462,32 @@ body.en-p2c .chay-cara{background:var(--p2c-grad);color:#03122E;
 .cha-aura-chip.on{background:#C9A961;color:#14100C}
 .cha-aura-chip svg{width:13px;height:13px;fill:none;stroke:currentColor;stroke-width:2}
 .cha-aura-voz:not(.on){opacity:.55}
+/* La tira de conversación. Dice EN PALABRAS qué está pasando —te escucho,
+   hablando— porque un icono que late no distingue «te oigo» de «estoy
+   pensando», y esa diferencia es la que hace que alguien sepa si tiene que
+   hablar o esperar. */
+.cha-aura-charla{display:flex;align-items:center;gap:10px;padding:10px 14px;
+  background:rgba(201,169,97,.07);border-bottom:1px solid rgba(201,169,97,.25)}
+.cha-aura-est{font-size:12px;color:#9A8C76;flex:1}
+.cha-aura-charla.oyendo .cha-aura-est{color:#7FD1AE}
+.cha-aura-charla.hablando .cha-aura-est{color:#C9A961;font-weight:600}
+.cha-aura-onda{display:inline-flex;align-items:flex-end;gap:2px;height:16px}
+.cha-aura-onda i{width:2px;height:4px;background:#9A8C76;border-radius:1px}
+.cha-aura-charla.oyendo .cha-aura-onda i{background:#7FD1AE}
+.cha-aura-charla.hablando .cha-aura-onda i{background:#C9A961}
+.cha-aura-charla.oyendo .cha-aura-onda i,
+.cha-aura-charla.hablando .cha-aura-onda i{animation:ondear .9s ease-in-out infinite}
+.cha-aura-onda i:nth-child(2){animation-delay:.15s}
+.cha-aura-onda i:nth-child(3){animation-delay:.3s}
+.cha-aura-onda i:nth-child(4){animation-delay:.45s}
+.cha-aura-onda i:nth-child(5){animation-delay:.6s}
+@keyframes ondear{0%,100%{height:4px}50%{height:15px}}
+@media (prefers-reduced-motion:reduce){.cha-aura-onda i{animation:none!important;height:9px}}
+.cha-aura-callar{border:1px solid rgba(201,169,97,.5);background:none;color:#C9A961;
+  border-radius:999px;padding:4px 12px;font-size:12px;font-weight:600;cursor:pointer}
+/* La voz de ella pegada a su respuesta, no como tarjeta aparte */
+.cha-voz-aura{margin-top:6px;opacity:.85}
+.cha-voz-aura audio{height:32px;max-width:210px}
 /* El cajon de las tres voces. Cada una dice PARA QUE sirve, no como suena:
    quien elige no esta comparando timbres, esta eligiendo si quiere que le
    expliquen despacio o que le contesten rapido. Por eso el nombre va grande
@@ -4420,9 +4446,9 @@ body.en-ventana .lienzo::before{
 
 <!-- El saber publico que Genesis dejo salir. Lo genera
      infra/cerebro/publicar-saber.mjs; no se edita a mano. -->
-<script src="saber.js?v=7bada07ec6"></script>
-<script src="telemetria.js?v=7bada07ec6"></script>
-<script src="qr.js?v=7bada07ec6"></script>
+<script src="saber.js?v=13acf297ad"></script>
+<script src="telemetria.js?v=13acf297ad"></script>
+<script src="qr.js?v=13acf297ad"></script>
 <!-- La cripto para entrar con la frase semilla. Se carga aparte y no dentro
      de app.js porque son 13 KB que solo hacen falta si alguien elige ese
      camino, y porque asi se puede probar sola (pruebas/probar-llaves.mjs). -->
@@ -4565,24 +4591,24 @@ body.en-ventana .lienzo::before{
   </div>
 </div>
 
-<script src="vendor/cripto-llaves.js?v=7bada07ec6"></script>
-<script src="llaves.js?v=7bada07ec6"></script>
-<script src="tono.js?v=7bada07ec6"></script>
-<script src="llamada.js?v=7bada07ec6"></script>
-<script src="llamadaGrupo.js?v=7bada07ec6"></script>
-<script src="velas.js?v=7bada07ec6"></script>
-<script src="cadena.js?v=7bada07ec6"></script>
-<script src="datos.js?v=7bada07ec6"></script>
-<script src="aura.js?v=7bada07ec6"></script>
-<script src="candado.js?v=7bada07ec6"></script>
-<script src="chat.js?v=7bada07ec6"></script>
-<script src="i18n.js?v=7bada07ec6"></script>
-<script src="galaxia.js?v=7bada07ec6"></script>
+<script src="vendor/cripto-llaves.js?v=13acf297ad"></script>
+<script src="llaves.js?v=13acf297ad"></script>
+<script src="tono.js?v=13acf297ad"></script>
+<script src="llamada.js?v=13acf297ad"></script>
+<script src="llamadaGrupo.js?v=13acf297ad"></script>
+<script src="velas.js?v=13acf297ad"></script>
+<script src="cadena.js?v=13acf297ad"></script>
+<script src="datos.js?v=13acf297ad"></script>
+<script src="aura.js?v=13acf297ad"></script>
+<script src="candado.js?v=13acf297ad"></script>
+<script src="chat.js?v=13acf297ad"></script>
+<script src="i18n.js?v=13acf297ad"></script>
+<script src="galaxia.js?v=13acf297ad"></script>
 <!-- GENESIS CORE: el cerebro del ecosistema, el mismo volumen que se proyecta
      en la sala de Genesis ID. Solo lo usa su vista. -->
-<script src="cerebro-og.js?v=7bada07ec6"></script>
+<script src="cerebro-og.js?v=13acf297ad"></script>
 <!-- MODO VISOR: la casa dentro de un visor (WebXR, cartón o 360 en pantalla). -->
-<script src="visor.js?v=7bada07ec6"></script>
-<script src="musica.js?v=7bada07ec6"></script>
-<script src="airtouch.js?v=7bada07ec6"></script>
-<script src="app.js?v=7bada07ec6"></script>
+<script src="visor.js?v=13acf297ad"></script>
+<script src="musica.js?v=13acf297ad"></script>
+<script src="airtouch.js?v=13acf297ad"></script>
+<script src="app.js?v=13acf297ad"></script>

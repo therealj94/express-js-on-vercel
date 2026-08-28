@@ -638,6 +638,10 @@ es: {
   // Las tres voces. La descripcion dice PARA QUE sirve cada una, no como
   // suena: quien elige no esta comparando timbres, esta eligiendo si quiere
   // que le expliquen despacio o que le contesten rapido.
+  // El modo en que no hace falta escribir: se habla y ella contesta hablando.
+  'au.hablar': 'Hablar', 'au.hablarOn': 'Hablando',
+  'au.hablarComo': 'Tocá el micrófono y hablá. Te contesta en voz y vuelve a escucharte.',
+  'au.callar': 'Callar', 'au.oyendo': 'Te escucho…',
   'au.vozElegir': 'Elegí cómo te habla',
   'au.vozCalidaQue': 'Conversa y explica con calma',
   'au.vozSobriaQue': 'Lenta y clara, para montos',
@@ -1595,6 +1599,9 @@ en: {
   'au.chSub': 'House intelligence · beta', 'au.chModoR': 'Fast',
   'au.chModoP': 'Thinker', 'au.chVozOn': 'Voice on',
   'au.chVozOff': 'No voice', 'au.chDictar': 'Talk to her (your words become text)',
+  'au.hablar': 'Talk', 'au.hablarOn': 'Talking',
+  'au.hablarComo': 'Tap the mic and talk. She answers out loud and listens again.',
+  'au.callar': 'Stop', 'au.oyendo': 'Listening…',
   'au.vozElegir': 'Choose how she speaks',
   'au.vozCalidaQue': 'Talks and explains calmly',
   'au.vozSobriaQue': 'Slow and clear, for amounts',
