@@ -85,10 +85,15 @@ import time
 import unicodedata
 import urllib.error
 import urllib.request
+
+from candado import Candado
+from oido import NoSePudoOir, oir_nota
 from concurrent.futures import ThreadPoolExecutor
 
 RELEVO = os.environ.get('AURA_RELEVO', 'https://cerebro.ordenscan.com/mensajes').rstrip('/')
 CORREO = os.environ.get('AURA_CORREO', 'aura@ordenglobal.org').lower()
+# Alias para que se lea igual desde oido.py, que habla de «el asistente».
+ASISTENTE = CORREO
 DATOS = pathlib.Path(os.environ.get('AURA_DATOS', '/srv/aura'))
 MOTOR = os.environ.get('AURA_MOTOR', 'http://127.0.0.1:11434').rstrip('/')
 # EL MODELO. Uno solo, y elegido midiendo: se compararon siete contra este
@@ -1270,7 +1275,7 @@ def perfil_de(perfiles, correo, tope=None):
     return p
 
 
-def atender(rel, sistema, p, de, dicho):
+def atender(rel, sistema, p, de, dicho, mensaje=None):
     """Atiende UN mensaje. Si lanza, el que llama decide reintentar o saltar;
     aqui no se avanza ningun tope."""
     if not p.get('saludado'):
@@ -1280,9 +1285,38 @@ def atender(rel, sistema, p, de, dicho):
         p['saludado'] = True
         return
 
+    if not dicho and (mensaje or {}).get('tipo') == 'voz':
+        # ── LA NOTA DE VOZ, QUE ANTES SE DEVOLVIA SIN ESCUCHAR ─────────────
+        #
+        # Aca se contestaba «Por ahora solo entiendo texto» a TODO adjunto,
+        # notas de voz incluidas. Y era raro de una forma que se nota: ELLA
+        # HABLA CON VOZ. Le hablabas con voz y no te oia.
+        #
+        # El oido ya existia —`/oir`, Whisper en la misma GPU, que la
+        # billetera usa desde hace tiempo para dictar— y este fichero no lo
+        # llamaba ni una vez. Lo que faltaba era el camino: bajar el audio del
+        # relevo, abrirlo (viene cifrado, con una llave que viaja dentro del
+        # sobre) y mandarlo a transcribir. Ver oido.py.
+        #
+        # Se avisa de que se esta escuchando ANTES de empezar: transcribir un
+        # minuto de audio tarda lo suyo, y un silencio de veinte segundos
+        # despues de mandar una nota se lee como que no llego.
+        rel.escribiendo(de)
+        try:
+            dicho = oir_nota(mensaje, CANDADO, RELEVO, VOZ, ASISTENTE, LLAVE,
+                             idioma=p.get('idioma', 'es'))
+            log(f'oida una nota de voz de {de}: {len(dicho)} caracteres')
+        except NoSePudoOir as e:
+            # El motivo va en palabras distintas para cada caso a proposito:
+            # «no pude bajarla», «no la pude abrir» y «no le entendi» mandan a
+            # mirar sitios distintos.
+            log(f'no pude oir la nota de {de}:', str(e))
+            rel.enviar(de, e.para_la_persona)
+            return
+
     if not dicho:
-        # Un adjunto, o un mensaje cifrado de un cliente viejo. No se adivina.
-        rel.enviar(de, 'Por ahora solo entiendo texto. ¿Me lo escribís?')
+        # Una foto, un archivo, o un mensaje cifrado de un cliente viejo.
+        rel.enviar(de, 'Por ahora entiendo texto y notas de voz. ¿Me lo escribís?')
         return
 
     # Cambiar de modo es de la casa, no del modelo: se detecta aqui, en seco.
@@ -1631,7 +1665,7 @@ def atender_charla(rel, sistema, perfiles, correo):
     nuevos.sort(key=lambda m: m.get('cuando', 0))
     for m in nuevos[:POR_VUELTA]:
         try:
-            atender(rel, sistema, p, correo, (m.get('texto') or '').strip())
+            atender(rel, sistema, p, correo, (m.get('texto') or '').strip(), m)
         except Exception as e:
             with CANDADO_PERFILES:
                 f = p.setdefault('falla', {'id': None, 'n': 0})
@@ -1845,10 +1879,46 @@ def dejar_huella(rel):
         log('no se pudo dejar la huella:', type(e).__name__, str(e)[:80])
 
 
+CANDADO = None      # el de AU-RA, se fabrica en main()
+LLAVE = ''          # su llave del relevo, para llamar a /oir
+
+
+def publicar_candado(rel):
+    """Da de alta la llave de aparato de AU-RA en el relevo.
+
+    Sin esto AU-RA no es destinataria de nada: los mensajes le llegan en claro
+    —porque la app no tiene a quien cerrarselos— y las notas de voz llegan
+    cifradas con una llave que nadie mando, o sea ilegibles para todos.
+    Publicarla la convierte en un aparato mas de la conversacion.
+
+    Se publica en CADA arranque a proposito, no solo la primera vez: es
+    idempotente en el relevo (misma llave, mismo id) y asi una base que se
+    limpio no deja a AU-RA sorda para siempre sin que nadie se entere.
+    """
+    global CANDADO
+    CANDADO = Candado(str(DATOS / 'candado.json'))
+    try:
+        # Los campos se llaman `id` y `pub`, como en /llaves/publicar del
+        # relevo. Puse otros nombres a la primera y el relevo contestaba 400
+        # «faltan datos» — que es correcto pero no dice cuales.
+        _post('/llaves/publicar', {'correo': CORREO, 'llave': LLAVE,
+                                   'id': CANDADO.id, 'pub': CANDADO.publica_b64})
+        log(f'llave de aparato publicada · {CANDADO.id}')
+    except Exception as e:
+        # Sin llave publicada AU-RA sigue contestando texto en claro, como
+        # hasta hoy. Lo que se pierde son las notas de voz, y se dice.
+        log('AVISO — no pude publicar la llave de aparato:',
+            type(e).__name__, str(e)[:100],
+            '· las notas de voz no se van a poder abrir')
+
+
 def main():
+    global LLAVE
     llave = llave_del_asistente()
+    LLAVE = llave
     _candado = instancia_unica()
     rel = Relevo(CORREO, llave)
+    publicar_candado(rel)
     saber = cargar_saber()
     # El sistema se arma UNA sola vez y no cambia nunca mas: es la condicion
     # para que Ollama lo cachee entre preguntas.
