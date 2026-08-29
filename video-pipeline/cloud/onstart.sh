@@ -54,6 +54,12 @@ if   [ "$VRAM" -ge 80000 ]; then PREC=bf16
 elif [ "$VRAM" -ge 40000 ]; then PREC=fp8
 else PREC=int8; fi
 echo "==> VRAM ${VRAM} MB -> ${PREC}"
+# BF16 de H3 pesa ~110 GB; con FLUX.2 encima no caben en 300 GB.
+LIBRE0=$(df -BG --output=avail "$WORK" | tail -1 | tr -dc 0-9)
+echo "==> disco disponible al empezar: ${LIBRE0} GB"
+if [ "$PREC" = "bf16" ] && [ "${LIBRE0:-999}" -lt 380 ]; then
+  echo "!! Con BF16 y ${LIBRE0} GB el disco quedará al límite. Usa --disk 400."
+fi
 
 M="$WORK/ComfyUI/models"; mkdir -p "$M"/{diffusion_models,text_encoders,vae,loras}
 stage() {  # repo, "patrones separados por espacio", destino
@@ -77,6 +83,15 @@ tiene wan && stage Comfy-Org/Wan_2.2_ComfyUI_Repackaged \
 tiene flux && stage Comfy-Org/FLUX.2-dev_ComfyUI \
   "split_files/diffusion_models/*fp8* split_files/text_encoders/* split_files/vae/*" "$M/_img"
 hf download fal/MiniMax-H3-Realism-People-LoRA --local-dir "$M/loras/h3-realism" || true
+# Las plantillas oficiales de H3 cargan los modelos turbo COMO LoRA. Sin este
+# fichero en models/loras, ComfyUI marca el workflow como "modelo faltante", y
+# el botón de descarga que ofrece baja el fichero AL DISPOSITIVO del usuario,
+# no al pod: desde un iPad no hay forma de arreglarlo. Se baja aquí.
+if tiene h3; then
+  stage Comfy-Org/MiniMax-H3 "*turbo*step*" "$M/_turbo"
+  find "$M/_turbo" -name '*.safetensors' -exec mv -n {} "$M/loras/" \; 2>/dev/null
+  rm -rf "$M/_turbo"
+fi
 
 # colocar todo en el árbol de ComfyUI
 # Clasificar por RUTA de origen y por nombre. Los turbo de H3 se distribuyen

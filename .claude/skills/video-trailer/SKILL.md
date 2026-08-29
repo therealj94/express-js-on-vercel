@@ -174,6 +174,20 @@ workflows, colas, QC, acabado, destruir — se hace sin molestarle.
 Cuando algo falle, decirlo con el dato concreto (qué línea del log, qué coste) en
 vez de suavizarlo. Ha pagado hosts rotos y agradece el diagnóstico directo.
 
+## Antes de encender: dos cosas que faltaron la primera vez
+
+1. **Los workflows deben estar ya en `prompts/workflows/` en formato API.** Sin
+   eso José acaba montando nodos a mano en un iPad, que es exactamente lo que
+   este pipeline existe para evitar. Si no están, construirlos con el esquema de
+   nodos que la autoprueba vuelca al log, y no encender hasta tenerlos.
+2. **Disco: 400 GB si la GPU tiene 96 GB** (BF16 pesa ~110 GB y con FLUX.2 no
+   cabe en 300).
+
+El registro completo de lo que falló y por qué está en
+`video-pipeline/POSTMORTEM.md`. Su conclusión gobierna cómo trabajar aquí:
+**verificar el efecto, no la llamada** — cinco de los ocho fallos fueron entradas
+mal formadas que la API aceptó sin quejarse.
+
 ## Referencias
 
 - [`references/vast.md`](references/vast.md) — API de Vast, selección de host y los

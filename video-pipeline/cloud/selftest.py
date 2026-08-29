@@ -114,21 +114,39 @@ def main() -> int:
             if isinstance(e[0], list) and e[0]:
                 modelos += [f"{clase}.{nombre}={x}" for x in e[0][:4]]
     print(f"  3/5 pesos visibles: {len(modelos)}", flush=True)
+    # Esquema de los nodos de H3: con esto se pueden escribir workflows a mano
+    # más tarde, sin necesidad de tener el pod encendido.
+    for n in h3[:10]:
+        req = info[n].get("input", {}).get("required", {})
+        print(f"     NODO {n}: {list(req)[:12]}", flush=True)
     for m in modelos[:8]:
         print(f"        {m}", flush=True)
     if not modelos:
         print("AUTOPRUEBA: FALLO — ComfyUI no ve ningún peso"); return 1
 
-    patrones = ["**/*minimax*.json", "**/*h3*.json", "**/*wan*.json", "**/*flux*.json"]
-    plantilla = None
-    for pat in patrones:
+    # Buscar plantillas y quedarse con una que NO pida imagen de entrada: las de
+    # first-last-frame necesitan ficheros que no existen en un pod recién hecho,
+    # y hacían fallar la prueba por una razón que no era la instalación.
+    candidatas = []
+    for pat in ("**/*minimax*.json", "**/*h3*.json", "**/*wan*.json", "**/*flux*.json"):
         for raiz in ("/workspace/venv/lib", "/workspace/ComfyUI"):
-            hits = glob.glob(os.path.join(raiz, pat), recursive=True)
-            hits = [h for h in hits if "template" in h.lower() or "workflow" in h.lower()]
-            if hits:
-                plantilla = sorted(hits)[0]; break
-        if plantilla:
-            break
+            candidatas += [h for h in glob.glob(os.path.join(raiz, pat), recursive=True)
+                           if "template" in h.lower() or "workflow" in h.lower()]
+    candidatas = sorted(set(candidatas))
+
+    def pide_imagen(ruta: str) -> bool:
+        try:
+            return "LoadImage" in open(ruta).read()
+        except Exception:
+            return True
+
+    sin_imagen = [c for c in candidatas if not pide_imagen(c)]
+    plantilla = (sin_imagen or candidatas or [None])[0]
+
+    # Volcar al log el inventario, para poder construir workflows sin el pod
+    print(f"  -- plantillas encontradas: {len(candidatas)}", flush=True)
+    for c in candidatas[:20]:
+        print(f"     {'T2V' if c in sin_imagen else 'img'}  {os.path.basename(c)}", flush=True)
     if not plantilla:
         print("  4/5 sin plantilla oficial en disco: no se puede generar sin workflow")
         print("AUTOPRUEBA: PARCIAL — instalación y pesos OK, generación no probada")
