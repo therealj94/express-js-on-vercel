@@ -190,5 +190,27 @@ prueba('la bandera de preparar la voz se baja también si falla', () => {
     'para siempre sobre una voz que nunca va a llegar');
 });
 
+prueba('«Hablando…» no se puede quedar puesto para siempre', () => {
+  /* Encontrado mirando una foto de la app en un navegador sin altavoz: la
+     línea decía «Hablando…» y nadie hablaba. La petición de voz no tenía
+     techo, así que si el nodo tarda o la conexión se traba, la promesa no
+     termina nunca y la pantalla queda prometiendo una voz que no va a sonar.
+     Es la mitad del «se queda pegado, más de 30 segundos y no dijo nada». */
+  const i = app.indexOf('async function auraVozDeLaCasa(');
+  const cuerpo = app.slice(i, i + 6500);
+  const m = cuerpo.match(/const techo = setTimeout\(\(\) => \{([\s\S]{0,220}?)\}, (\d+)\);/);
+  assert.ok(m, 'la petición de voz no tiene techo de espera');
+  const seg = Number(m[2]) / 1000;
+  assert.ok(seg >= 12 && seg <= 40,
+    `el techo es de ${seg}s. Por debajo de 12 corta voces que iban a llegar ` +
+    '(el peor caso medido en el nodo fue 7,8 s); por encima de 40 deja de ser ' +
+    'un techo y la pantalla se queda pegada igual');
+  assert.ok(/auraTurnoVoz\+\+/.test(m[1]),
+    'al vencerse no sube el turno: el audio que llegue tarde sonaría igual');
+  assert.ok(/finally \{ clearTimeout\(techo\); \}/.test(cuerpo),
+    'no se cancela al terminar bien: el techo saltaría sobre una voz que sí ' +
+    'sonó y cortaría la siguiente');
+});
+
 console.log(mal ? `\n${mal} mal\n` : '\ntodo bien\n');
 process.exit(mal ? 1 : 0);

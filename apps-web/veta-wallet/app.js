@@ -13108,6 +13108,22 @@ const VETA = (() => {
          que ya mostraba otra cosa. */
       const miTurno = opciones.turno ?? auraTurnoVoz;
       const caduco = () => miTurno !== auraTurnoVoz;
+      /* ── Y UN TECHO DE ESPERA ─────────────────────────────────────────────
+       *
+       * La petición de voz no tenía ninguno: si el nodo tardaba o la conexión
+       * se trababa, la promesa nunca terminaba y «Hablando…» se quedaba
+       * puesto para siempre sobre un silencio. Es lo que se vio —«se queda
+       * pegado, más de 30 segundos y no dijo nada»— y también lo que se ve en
+       * un navegador sin altavoz, que es donde lo encontré.
+       *
+       * 25 s es techo de emergencia, no de trabajo: medido en el nodo, el
+       * primer sonido llega a los 4 s y el peor caso reciente fue 7,8. Lo que
+       * pase de 25 no viene en camino, viene roto — y entonces lo honesto es
+       * soltar la pantalla, no seguir prometiendo una voz que no va a sonar. */
+      const techo = setTimeout(() => {
+        if (!caduco()) { auraTurnoVoz++; try { auraCortarVozBurbuja?.(); } catch (e) {} }
+      }, 25000);
+      try {
       await auraSonarEnVivo(txt, {
         alEmpezar: (cortar) => {
           if (caduco()) { try { cortar(); } catch (e) {} return; }
@@ -13116,6 +13132,7 @@ const VETA = (() => {
         },
         alPrimerSonido: () => { auraBuscandoVoz = false; if (auraAbierta) pintarAura(); },
       });
+      } finally { clearTimeout(techo); }
       auraBuscandoVoz = false;
       auraCortarVozBurbuja = null;
       if (auraAbierta) pintarAura();
