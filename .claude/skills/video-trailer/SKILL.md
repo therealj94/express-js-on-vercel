@@ -180,3 +180,14 @@ vez de suavizarlo. Ha pagado hosts rotos y agradece el diagnóstico directo.
   fallos silenciosos. Leer antes de crear instancias.
 - [`references/calidad.md`](references/calidad.md) — artesanía de prompts, LoRAs,
   referencias propias, y dónde Seedance sigue ganando. Leer al planificar planos.
+
+## Sacar los resultados del pod
+
+Por defecto se descargan desde ComfyUI en el navegador. Si hay bucket
+configurado (`RCLONE_CONF_B64` + `RCLONE_REMOTE`), el pod sube
+`/workspace/outputs` cada minuto y los clips pasan a ser alcanzables por nombre
+de dominio — lo que permite correr el QC y el acabado sobre ellos sin que José
+mueva un dedo, y los salva si la instancia muere de golpe.
+
+Guía de alta en `video-pipeline/ALMACENAMIENTO.md`. Proponerla solo con la GPU
+apagada y después de una sesión que ya haya funcionado.

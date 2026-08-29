@@ -141,6 +141,27 @@ if [ "${AUTH_OK:-0}" != "1" ]; then
     >> "$WORK/comfy.log" 2>&1 &
 fi
 
+# --- Subida automática de resultados (opcional) ----------------------------
+# Si hay bucket configurado, el pod sube lo que genere cada minuto. Así los
+# clips salen del pod sin depender de SSH ni de que nadie esté mirando, y
+# sobreviven aunque la instancia muera de golpe.
+if [ -n "${RCLONE_CONF_B64:-}" ] && [ -n "${RCLONE_REMOTE:-}" ]; then
+  curl -fsSL https://rclone.org/install.sh | bash >/dev/null 2>&1 || \
+    apt-get install -y -qq rclone || true
+  if command -v rclone >/dev/null; then
+    mkdir -p /root/.config/rclone
+    echo "$RCLONE_CONF_B64" | base64 -d > /root/.config/rclone/rclone.conf
+    nohup bash -c 'while true; do
+        rclone copy /workspace/outputs "'"$RCLONE_REMOTE"'" \
+          --transfers 4 --checkers 8 --min-age 20s >> /workspace/rclone.log 2>&1
+        sleep 60
+      done' >/dev/null 2>&1 &
+    echo "==> subida automática activa -> ${RCLONE_REMOTE}"
+  else
+    echo "!! rclone no se instaló; los resultados solo saldrán por el navegador"
+  fi
+fi
+
 cat <<EOF
 
 =========================================================
