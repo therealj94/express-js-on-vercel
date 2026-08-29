@@ -122,3 +122,68 @@ Contra eso solo funciona una cosa: **verificar el efecto, no la llamada.** ¿Se
 mapeó el puerto? ¿Cuántos ficheros bajó? ¿Está la autenticación activa? Cada
 "sí" debe leerse de un estado observable, nunca asumirse porque la llamada no dio
 error.
+
+---
+
+# Retrospectiva: qué haría distinto para que fuera de primera
+
+Los ocho fallos de arriba son de ejecución. Estos son de criterio, y pesan más.
+
+## 1. Empezamos por el final
+
+Se construyó la infraestructura antes de comprobar que el modelo produce algo que
+a José le guste. Lo correcto era gastar los primeros $8 en **veinte clips por
+API** y responder "¿esto se parece a lo que quiero?". Solo entonces automatizar.
+
+Se gastaron en fontanería y quedaron cero clips. El orden correcto es:
+**resultado → repetibilidad → coste**. Se hizo al revés.
+
+## 2. Se optimizó la métrica equivocada
+
+Todo el diseño persigue el coste por clip: $0.04 contra $0.40 de la API. A su
+volumen real —un tráiler de vez en cuando— eso son decenas de dólares al año.
+El cuello de botella real es su tiempo y su criterio, y la complejidad que se
+añadió para ahorrar esos dólares le costó una mañana entera.
+
+**Optimizar el coste marginal solo tiene sentido cuando el volumen es alto y el
+sistema ya funciona.** Aquí no se cumplía ninguna de las dos.
+
+## 3. Se construyó demasiado antes de la primera prueba real
+
+`look.py`, `post.py`, `extend.py`, `shotlist.py` se escribieron sin haber visto
+un solo fotograma generado. Están probados contra mocks y ffmpeg, pero **ninguno
+se ha validado contra salida real del modelo**. Puede que la biblia de estilo
+mejore las tomas o puede que no: no hay evidencia.
+
+Lo correcto: un camino mínimo de punta a punta que funcione, y crecer desde ahí
+con cada pieza justificada por algo observado.
+
+## 4. La interfaz fue una idea tardía
+
+Poner a alguien delante de un editor de nodos en un iPad debería haberse
+descartado en el primer minuto, no después de una mañana. La pregunta "¿cómo lo
+va a usar?" se hizo demasiado tarde, y la respuesta cambió el diseño entero.
+
+## 5. No se modeló el coste de operar, solo el de computar
+
+El presupuesto contaba GPU y disco. No contaba hosts rotos, reinicios,
+depuración ni el tiempo del usuario. El coste real de la primera sesión fue
+**~30 veces** el del compute que produjo.
+
+## 6. El sistema depende de una persona
+
+Todo esto necesita a Claude en la conversación para funcionar. Un diseño de
+primera no depende de que el operador esté disponible: o corre solo, o el
+usuario puede operarlo sin ayuda. Hoy no cumple ninguna de las dos.
+
+## Lo que construiría en su lugar
+
+1. **Semana 1, sin infraestructura.** API de H3, veinte clips, cerrar el look y
+   el guion. Coste ~$8, resultado: material real y criterio formado.
+2. **Semana 2, solo si el volumen lo pide.** Autohospedar *una* tanda con el
+   camino mínimo, midiendo tiempos reales.
+3. **Semana 3, automatizar lo que se repitió.** Nada antes de haberlo hecho a
+   mano dos veces.
+
+La regla que resume la retrospectiva: **no automatices lo que todavía no has
+hecho funcionar a mano.**
