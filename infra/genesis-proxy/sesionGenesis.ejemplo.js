@@ -16,7 +16,11 @@ const sesionGenesis = async (req, res, next) => {
     if (!cabecera) return res.status(401).json({ message: "missing token" });
 
     const datos = jwt.verify(cabecera.split(" ")[1], process.env.PASS_TOKEN, {
-      algorithm: "HS256",
+      // PLURAL Y EN LISTA. `algorithm` en singular es la opcion de `sign`:
+      // `verify` no la conoce y la ignora sin avisar, asi que la restriccion
+      // no se aplica. Este fichero es un EJEMPLO para copiar, y el singular
+      // llego a estar copiado en 38 llamadas del backend por venir de aqui.
+      algorithms: ["HS256"],
     });
 
     const usuario = await Users.findOne({ _id: datos.userId });

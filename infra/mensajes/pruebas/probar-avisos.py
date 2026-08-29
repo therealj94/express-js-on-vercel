@@ -22,7 +22,26 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 AQUI = os.path.dirname(os.path.abspath(__file__))
 SERVIDOR = os.path.join(AQUI, '..', 'servidor.py')
-PUERTO = 8407
+# El puerto se lo pide al sistema en vez de llevarlo escrito.
+#
+# Con un numero fijo, dos pruebas de esta carpeta no pueden correr a la vez, y
+# cualquier cosa que ya este escuchando ahi hace que el relevo no levante. Y no
+# falla diciendo «puerto ocupado»: falla contestando lo que sirva el OTRO
+# proceso, que suele ser un 404 en HTML, y la prueba muere con un
+# «Expecting value: line 1 column 1» que parece que el relevo esta roto.
+#
+# Ya paso: probar-editar.py llevaba el 8791, que es donde el CI levanta el
+# servidor estatico de las pruebas de navegador.
+import socket as _socket
+
+def _puerto_libre():
+    s = _socket.socket()
+    s.bind(('127.0.0.1', 0))
+    p = s.getsockname()[1]
+    s.close()
+    return p
+
+PUERTO = _puerto_libre()
 PUERTO_PUSH = 8408
 BASE = f'http://127.0.0.1:{PUERTO}'
 

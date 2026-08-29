@@ -29,16 +29,26 @@
  * fallo es un nombre de opcion mal escrito, y eso no se ve ejercitando una
  * ruta —la firma sigue cuadrando— solo se ve mirando como esta escrita.
  */
-import { readFileSync, readdirSync, statSync } from 'fs'
+import { readFileSync, readdirSync, statSync, existsSync } from 'fs'
 import jwt from 'jsonwebtoken'
 import assert from 'assert'
 
-const RAIZ = new URL('..', import.meta.url).pathname.replace(/\/$/, '')
+/* Mira el REPOSITORIO ENTERO y no solo este backend: los dos sitios de donde
+   salio la copia mala eran ficheros de plantilla —el ejemplo del proxy de
+   Genesis y el fragmento de idempotencia—, o sea justo los que se copian. Una
+   prueba que solo vigilara el destino y no el molde deja el error volviendo. */
+const ARRIBA = new URL('../../..', import.meta.url).pathname.replace(/\/$/, '')
+const AQUI = new URL('..', import.meta.url).pathname.replace(/\/$/, '')
+/* Si el backend se despliega solo —en el slug de Heroku va sin el resto del
+   repositorio— «tres arriba» no es la raiz de nada. Se comprueba en vez de
+   suponerlo, y si no esta, se vigila al menos esta casa. */
+const RAIZ = existsSync(ARRIBA + '/apps-web') ? ARRIBA : AQUI
 
 function archivos(dir) {
   const fuera = []
   for (const n of readdirSync(dir)) {
     if (n === 'node_modules' || n === '.git' || n.startsWith('.')) continue
+    if (n === 'dist' || n === 'build' || n === 'orden-global-app') continue
     const r = dir + '/' + n
     if (statSync(r).isDirectory()) fuera.push(...archivos(r))
     else if (n.endsWith('.js') || n.endsWith('.mjs')) fuera.push(r)

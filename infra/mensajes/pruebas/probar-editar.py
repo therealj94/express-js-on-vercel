@@ -23,7 +23,27 @@ import urllib.request
 
 AQUI = pathlib.Path(__file__).resolve().parent
 SERVIDOR = AQUI.parent / 'servidor.py'
-PUERTO = int(os.environ.get('PUERTO_PRUEBA', '8791'))
+# EL PUERTO SE LO PIDE AL SISTEMA, no se escribe a mano.
+#
+# Aca decia 8791, que es EXACTAMENTE donde el CI levanta el servidor estatico
+# para las pruebas de navegador. Cuando los dos coinciden, el relevo no llega a
+# levantar, `/alta` le pega al servidor de ficheros, contesta un 404 en HTML y
+# la prueba muere con «Expecting value: line 1 column 1». No decia «puerto
+# ocupado» por ningun lado: parecia que el relevo estaba roto.
+#
+# Las demas pruebas de esta carpeta llevan cada una su numero (8399, 8402,
+# 8407, 8417), lo cual funciona pero se rompe sola en cuanto dos coinciden. Se
+# pide uno libre y se acabo el problema para siempre.
+import socket as _socket
+
+def _puerto_libre():
+    s = _socket.socket()
+    s.bind(('127.0.0.1', 0))
+    p = s.getsockname()[1]
+    s.close()
+    return p
+
+PUERTO = int(os.environ.get('PUERTO_PRUEBA') or _puerto_libre())
 BASE = f'http://127.0.0.1:{PUERTO}'
 mal = 0
 
