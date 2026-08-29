@@ -45,6 +45,21 @@ import CryptoJS from "crypto-js";
 const NUEVO = process.env.PASS_TOKEN;
 const VIEJO = process.env.PASS_TOKEN_VIEJO;
 
+/* El sello de lo cifrado con PASS_TOKEN.
+ *
+ * AES solo no dice si la clave era la correcta: al descifrar con una ajena, el
+ * relleno cuadra por casualidad cerca de 4 de cada 1000 veces y sale un texto
+ * cualquiera en vez de nada. Medido: 207 de 50000. No abre ninguna puerta
+ * —`isAdmin` compara ese texto con el token que llega y no coincide— pero es
+ * una respuesta inventada donde tiene que haber un «no», y ponia roja la
+ * prueba una de cada doscientas y pico veces sin que nada estuviera mal.
+ *
+ * Con el sello la respuesta es firme: la firma cuadra o no cuadra. */
+const SELLO = "v2";
+
+const firmar = (cuerpo, clave) =>
+  CryptoJS.HmacSHA256(cuerpo, clave).toString(CryptoJS.enc.Hex).slice(0, 32);
+
 /** Errores que no dependen de la firma: reintentar con otro secreto no cambia nada. */
 const NO_ES_LA_FIRMA = new Set(["TokenExpiredError", "NotBeforeError"]);
 
@@ -78,7 +93,8 @@ export function verify(token, secreto, opciones) {
  */
 export function cifrarConToken(texto) {
   if (!NUEVO) throw new Error("PASS_TOKEN no esta configurado");
-  return CryptoJS.AES.encrypt(String(texto), NUEVO).toString();
+  const cuerpo = CryptoJS.AES.encrypt(String(texto), NUEVO).toString();
+  return `${SELLO}.${firmar(cuerpo, NUEVO)}.${cuerpo}`;
 }
 
 /**
@@ -89,12 +105,33 @@ export function cifrarConToken(texto) {
  */
 export function descifrarConToken(cifrado) {
   if (!cifrado) return "";
+  const txt = String(cifrado);
+
+  // Lo sellado: la firma dice SI o NO, sin depender de la suerte del relleno.
+  if (txt.startsWith(SELLO + ".")) {
+    const [, firma, ...resto] = txt.split(".");
+    const cuerpo = resto.join(".");
+    for (const clave of [NUEVO, VIEJO]) {
+      if (!clave || firmar(cuerpo, clave) !== firma) continue;
+      try {
+        return CryptoJS.AES.decrypt(cuerpo, clave).toString(CryptoJS.enc.Utf8);
+      } catch (e) {
+        return "";
+      }
+    }
+    return "";
+  }
+
+  // Lo guardado ANTES del sello. Aca no hay forma de distinguir «la clave era
+  // la buena» de «el relleno cuadro por casualidad», asi que se hace lo unico
+  // que se puede: probar. Se sigue leyendo para no echar a la calle a los
+  // administradores que ya tienen su sesion guardada del modo viejo; en cuanto
+  // vuelvan a entrar, su campo pasa a estar sellado y esta rama deja de
+  // tocarles.
   for (const clave of [NUEVO, VIEJO]) {
     if (!clave) continue;
     try {
-      const claro = CryptoJS.AES.decrypt(String(cifrado), clave).toString(
-        CryptoJS.enc.Utf8
-      );
+      const claro = CryptoJS.AES.decrypt(txt, clave).toString(CryptoJS.enc.Utf8);
       if (claro) return claro;
     } catch (e) {
       // Con la clave equivocada el relleno no cuadra: se prueba la siguiente.

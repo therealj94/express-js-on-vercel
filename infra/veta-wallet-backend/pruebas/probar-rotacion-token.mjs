@@ -40,7 +40,11 @@ const jwtReal = (await import("jsonwebtoken")).default;
 const CryptoJS = (await import("crypto-js")).default;
 
 let pasadas = 0;
+// Se cuentan las corridas en vez de escribir el total a mano: el numero fijo se
+// queda viejo en cuanto se agrega una prueba, y decia «15 de 13».
+let corridas = 0;
 const prueba = (nombre, fn) => {
+  corridas++;
   try {
     fn();
     console.log(`  ✓ ${nombre}`);
@@ -97,10 +101,32 @@ prueba("descifrarConToken lee lo cifrado con el secreto NUEVO", () => {
 });
 
 prueba("descifrarConToken devuelve vacio si ninguno sirve, sin reventar", () => {
-  const ajeno = CryptoJS.AES.encrypt("x", "otra-clave-cualquiera").toString();
-  assert.equal(sesion.descifrarConToken(ajeno), "");
   assert.equal(sesion.descifrarConToken(null), "");
   assert.equal(sesion.descifrarConToken("no-es-cifrado"), "");
+  assert.equal(sesion.descifrarConToken("v2.firmainventada.loquesea"), "");
+});
+
+// Esta se corre MIL veces a proposito. Antes del sello, un blob ajeno devolvia
+// texto inventado cerca de 4 de cada 1000 veces —el relleno de AES cuadra por
+// casualidad—, asi que una sola vuelta la habria dado por buena casi siempre y
+// habria puesto la prueba en rojo de vez en cuando sin que nada cambiara.
+prueba("un dato sellado con OTRA clave no se lee nunca, ni por casualidad", () => {
+  for (let i = 0; i < 1000; i++) {
+    const cuerpo = CryptoJS.AES.encrypt("token-de-admin", "ajena-" + i).toString();
+    const firma = CryptoJS.HmacSHA256(cuerpo, "ajena-" + i)
+      .toString(CryptoJS.enc.Hex)
+      .slice(0, 32);
+    assert.equal(sesion.descifrarConToken(`v2.${firma}.${cuerpo}`), "");
+  }
+});
+
+// Y lo guardado del modo viejo se sigue leyendo, pero no puede devolver el
+// secreto de otro: eso es lo que de verdad importa de esa rama.
+prueba("lo guardado sin sello nunca entrega el token de otra clave", () => {
+  for (let i = 0; i < 1000; i++) {
+    const ajeno = CryptoJS.AES.encrypt("token-de-admin", "ajena-" + i).toString();
+    assert.notEqual(sesion.descifrarConToken(ajeno), "token-de-admin");
+  }
 });
 
 prueba("estadoRotacion dice la verdad", () => {
@@ -141,4 +167,4 @@ prueba("una sesion guardada ANTES de rotar se sigue leyendo", () => {
 });
 
 fs.unlinkSync(tmp);
-console.log(`\n${pasadas} de 13 pruebas pasadas\n`);
+console.log(`\n${pasadas} de ${corridas} pruebas pasadas\n`);
