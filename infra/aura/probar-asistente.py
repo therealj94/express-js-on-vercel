@@ -511,15 +511,29 @@ def main():
         # Cero usos en siete días: nadie lo notó. Ahora lo que se comprueba es
         # que la orden NO haga nada raro y que siempre conteste el mismo
         # modelo, que es lo que se vino a dejar.
+        # Los botones «Rápida» y «Pensadora» estuvieron a la vista, así que
+        # alguien va a escribirlo. Se le dice la verdad en una línea: mandarlo
+        # al modelo le devolvía un muro de preguntas genéricas —medido en
+        # producción— porque «modo pensador» no es una pregunta de nada.
         antes_m = len(de_usuario())
         post(BASE, '/enviar', {**ana, 'para': 'aura@prueba.local',
                                'texto': 'modo pensador'})
-        fin = time.time() + 20
-        while time.time() < fin and len(de_usuario()) == antes_m:
+        ms = espera_texto(ana, 'dos modos', seg=15)
+        dicho = ' '.join((m.get('texto') or '') for m in ms).lower()
+        ok('ya no hay dos modos' in dicho,
+           'a «modo pensador» se le contesta que ya no existe',
+           f'contestó: {dicho[-120:]!r}')
+        ok(len(de_usuario()) == antes_m,
+           'y no gasta motor: lo contesta la casa',
+           'mandarlo al modelo devuelve un muro de preguntas genéricas')
+
+        # Y sigue habiendo UN solo modelo para todo lo demás.
+        antes_u = len(de_usuario())
+        post(BASE, '/enviar', {**ana, 'para': 'aura@prueba.local',
+                               'texto': '¿Qué es AUKA?'})
+        fin = time.time() + 25
+        while time.time() < fin and len(de_usuario()) == antes_u:
             time.sleep(0.3)
-        ok(len(de_usuario()) > antes_m,
-           '«modo pensador» ya no es una orden: va al modelo como cualquier frase',
-           'si se la tragara en seco, quien la diga se queda sin respuesta')
         ok(de_usuario()[-1].get('model') == 'llama3.2',
            'y contesta el ÚNICO modelo que hay',
            f"contestó {de_usuario()[-1].get('model')!r}: volvió el segundo modelo, "

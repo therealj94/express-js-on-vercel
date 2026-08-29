@@ -202,7 +202,16 @@ const hay = (t) => enElHilo.some((x) => x.includes(t));
 ok(hay('Cuánto cuesta cobrar'),
    'lo que preguntaste de verdad sigue ahí',
    `el hilo tiene: ${JSON.stringify(enElHilo)}`);
-for (const orden of ['modo pensador', 'hablame con voz sobria', 'sin voz']) {
+/* «modo pensador» SALIÓ de esta lista, y a propósito. Era una orden de
+   ajuste —la mandaba un botón— y por eso se escondía del hilo. Los botones se
+   fueron con el modo, que estaba roto; ahora es una frase que la persona
+   escribe y que recibe respuesta («ya no hay dos modos»). Esconder algo que
+   se dijo y que va a ser contestado deja una respuesta sin pregunta, que es
+   peor que la suciedad que esto venía a evitar. */
+ok(hay('modo pensador'),
+   '«modo pensador» sí se ve: ya no es un botón, es algo que dijiste',
+   `el hilo tiene: ${JSON.stringify(enElHilo)}`);
+for (const orden of ['hablame con voz sobria', 'sin voz']) {
   ok(!hay(orden), `«${orden}» no ensucia la conversación`,
      `el hilo tiene: ${JSON.stringify(enElHilo)}`);
 }

@@ -485,6 +485,12 @@ SALUDO_CORTO = (
 # escritas y no las obedece cuando la entrada esta vacia—: se arregla no
 # preguntandole. Contesta la casa, al instante, en su voz, y devolviendo la
 # pelota con algo concreto en vez de con cuatro preguntas.
+# Y lo que fue una orden y ya no lo es. Los botones «Rápida» y «Pensadora»
+# estuvieron a la vista, así que alguien va a escribirlo — y contestarle con
+# un muro de preguntas genéricas es peor que decirle la verdad en una línea.
+MODO_RETIRADO = ('Ya no hay dos modos: pienso de una sola manera y contesto '
+                 'igual de rápido para todo. Preguntame nomás.')
+
 SIN_CONTENIDO = (
     "Contame vos. Puedo hablar de lo que quieras — donde más te sirvo es acá "
     "adentro: ORIGEN, tu cuenta, la cadena, Genesis ID.",
@@ -1350,6 +1356,13 @@ def atender(rel, sistema, p, de, dicho):
             r'que tal|como estas|holi|saludos)[\s!¡.,?¿]*', bajo):
         p['saludos'] = p.get('saludos', 0) + 1
         rel.enviar(de, SALUDO_CORTO[min(p['saludos'] - 1, len(SALUDO_CORTO) - 1)])
+        return
+
+    # Lo que fue una orden de modo y ya no existe: se dice, y se dice corto.
+    if len(bajo) < 40 and ('modo pensador' in bajo or 'modo profundo' in bajo
+                           or 'modo rapido' in bajo or 'pensa mas' in bajo
+                           or 'thinker mode' in bajo or 'fast mode' in bajo):
+        rel.enviar(de, MODO_RETIRADO)
         return
 
     # Lo que devuelve la pelota sin preguntar nada. Ver SIN_CONTENIDO: el
