@@ -121,11 +121,23 @@ if [ "${QUALITY_CHAIN:-1}" = "1" ]; then
   hf download numz/SeedVR2_comfyUI --local-dir "$MODELS/SEEDVR2" || \
     echo "(SeedVR2 no descargado; revisa el nombre del repo en HF)"
 
-  # Modelo de imagen para generar el primer frame a alta resolución.
-  # Controlar composición y luz en un still cuesta segundos, no minutos.
-  hf download Comfy-Org/Qwen-Image_ComfyUI \
+  # LoRAs de H3 — el mayor salto de realismo por MB descargado.
+  #  realism-people : piel, ojos, microexpresiones, luz de cine (125 MB)
+  #  prompt-rewriter: sustituto abierto del H3-Context-IR cerrado de MiniMax
+  hf download fal/MiniMax-H3-Realism-People-LoRA --local-dir "$MODELS/loras/h3-realism" \
+    || echo "(realism LoRA no disponible con ese nombre; búscalo en fal/ o en Civitai)"
+  hf download fal/MiniMax-H3-Prompt-Rewriter-LoRA --local-dir "$MODELS/loras/h3-rewriter" \
+    || echo "(prompt-rewriter LoRA no descargado)"
+
+  # Modelo de imagen para el primer frame. FLUX.2 [dev] lidera fotorrealismo
+  # en pesos abiertos: 32B DiT, ~32 GB en FP8 (cabe de sobra en 96 GB).
+  IMG_REPO="${IMG_REPO:-Comfy-Org/FLUX.2-dev_ComfyUI}"
+  hf download "$IMG_REPO" \
     --include "split_files/diffusion_models/*fp8*" "split_files/text_encoders/*" "split_files/vae/*" \
-    --local-dir "$MODELS/_img_stage" || true
+    --local-dir "$MODELS/_img_stage" \
+    || hf download Comfy-Org/Qwen-Image_ComfyUI \
+         --include "split_files/diffusion_models/*fp8*" "split_files/text_encoders/*" "split_files/vae/*" \
+         --local-dir "$MODELS/_img_stage" || true
   for sub in diffusion_models text_encoders vae; do
     [ -d "$MODELS/_img_stage/split_files/$sub" ] && \
       rsync -a "$MODELS/_img_stage/split_files/$sub/" "$MODELS/$sub/"
