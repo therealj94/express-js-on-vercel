@@ -62,7 +62,7 @@ const verifyTokenUser = async (req, res, next) => {
     const decodedToken = jwt.verify(
       token.split(" ")[1],
       process.env.PASS_TOKEN,
-      { algorithm: "HS256" }
+      { algorithms: ["HS256"] }
     );
     const idUser = decodedToken.userId;
     const user = await Users.findOne({ _id: idUser });

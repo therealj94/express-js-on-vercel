@@ -16,7 +16,7 @@ export const allTokens = async (req, res) => {
     const decodedToken = jwt.verify(
       token.split(" ")[1],
       process.env.PASS_TOKEN,
-      { algorithm: "HS256" }
+      { algorithms: ["HS256"] }
     );
     const address = decodedToken.address;
     const { chain_id } = req.params;
@@ -81,7 +81,7 @@ export const allNFT = async (req, res) => {
     const decodedToken = jwt.verify(
       token.split(" ")[1],
       process.env.PASS_TOKEN,
-      { algorithm: "HS256" }
+      { algorithms: ["HS256"] }
     );
     const address = decodedToken.address;
     const { chain_id } = req.params;
@@ -127,7 +127,7 @@ export const tokenAddre2 = async (req, res) => {
       token.split(" ")[1],
       process.env.PASS_TOKEN,
       {
-        algorithm: "HS256",
+        algorithms: ["HS256"],
       }
     );
     const address = decodedToken.address;
@@ -236,7 +236,7 @@ export const getTokenData = async (req, res) => {
     const decodedToken = jwt.verify(
       token.split(" ")[1],
       process.env.PASS_TOKEN,
-      { algorithm: "HS256" }
+      { algorithms: ["HS256"] }
     );
     const address = decodedToken.address;
     const { chain_id, addr } = req.params;
@@ -273,7 +273,7 @@ export const getTokenData = async (req, res) => {
 // //     const decodedToken = jwt.verify(
 // //       token.split(" ")[1],
 // //       process.env.PASS_TOKEN,
-// //       { algorithm: "HS256" }
+// //       { algorithms: ["HS256"] }
 // //     );
 // //     const address = decodedToken.address;
 // //     const { chain_id, addr } = req.params;

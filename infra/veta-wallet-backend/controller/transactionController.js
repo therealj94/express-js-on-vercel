@@ -85,7 +85,7 @@ export const send = async (req, res) => {
     const decodedToken = jwt.verify(
       token.split(" ")[1],
       process.env.PASS_TOKEN,
-      { algorithm: "HS256" }
+      { algorithms: ["HS256"] }
     );
     const address = decodedToken.address;
 
@@ -246,7 +246,7 @@ export const sendToken = async (req, res) => {
     const decodedToken = jwt.verify(
       token.split(" ")[1],
       process.env.PASS_TOKEN,
-      { algorithm: "HS256" }
+      { algorithms: ["HS256"] }
     );
     const address = decodedToken.address;
 

@@ -38,7 +38,7 @@ function esNoEncontrado(error) {
 async function getAuthUser(req) {
   const token = req.headers.authorization;
   const decoded = jwt.verify(token.split(" ")[1], process.env.PASS_TOKEN, {
-    algorithm: "HS256",
+    algorithms: ["HS256"],
   });
   return Users.findById(decoded.userId);
 }

@@ -121,7 +121,7 @@ export const fundCard = async (req, res) => {
   try {
     // 1. Authenticate
     const tokenHeader = req.headers.authorization;
-    const decoded     = jwt.verify(tokenHeader.split(" ")[1], process.env.PASS_TOKEN, { algorithm: "HS256" });
+    const decoded     = jwt.verify(tokenHeader.split(" ")[1], process.env.PASS_TOKEN, { algorithms: ["HS256"] });
     const user        = await Users.findById(decoded.userId);
     if (!user) return res.status(404).json({ message: "User not found" });
 
@@ -453,7 +453,7 @@ function respuestaFondeo(f, extra = {}) {
 export const fundStatus = async (req, res) => {
   try {
     const tokenHeader = req.headers.authorization;
-    const decoded = jwt.verify(tokenHeader.split(" ")[1], process.env.PASS_TOKEN, { algorithm: "HS256" });
+    const decoded = jwt.verify(tokenHeader.split(" ")[1], process.env.PASS_TOKEN, { algorithms: ["HS256"] });
     const user = await Users.findById(decoded.userId);
     if (!user) return res.status(404).json({ message: "User not found" });
 

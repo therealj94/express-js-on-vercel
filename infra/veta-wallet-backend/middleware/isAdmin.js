@@ -15,7 +15,7 @@ const isAdmin = async (req, res, next) => {
             return res.status(401).json({ message: "missing token" });
       }
 
-    const decodedToken = jwt.verify(token.split(' ')[1], process.env.PASS_TOKEN, { algorithm: 'HS256' });
+    const decodedToken = jwt.verify(token.split(' ')[1], process.env.PASS_TOKEN, { algorithms: ["HS256"] });
     const idUser = decodedToken.userId;
     const user = await Users.findOne({_id: idUser});
 

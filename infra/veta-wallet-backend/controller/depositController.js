@@ -59,7 +59,7 @@ async function usuarioDeLaPeticion(req) {
   const header = req.headers.authorization;
   if (!header) return null;
   const decoded = jwt.verify(header.split(" ")[1], process.env.PASS_TOKEN, {
-    algorithm: "HS256",
+    algorithms: ["HS256"],
   });
   return Users.findOne({ _id: decoded.userId });
 }

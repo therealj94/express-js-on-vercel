@@ -307,7 +307,7 @@ export const refresh = async (req, res) => {
     let decoded;
     try {
       decoded = jwt.verify(refreshToken, process.env.PASS_TOKEN, {
-        algorithm: "HS256",
+        algorithms: ["HS256"],
       });
     } catch {
       return res.status(401).json({ message: "Unauthorized" });
@@ -534,7 +534,7 @@ export const cerrarSesion = async (req, res) => {
   try {
     const token = req.headers.authorization;
     const decoded = jwt.verify(token.split(" ")[1], process.env.PASS_TOKEN, {
-      algorithm: "HS256",
+      algorithms: ["HS256"],
     });
 
     const user = await User.findById(decoded.userId);

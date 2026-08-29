@@ -19,7 +19,7 @@ const sesionGenesis = async (req, res, next) => {
     if (!cabecera) return res.status(401).json({ message: "missing token" });
 
     const datos = jwt.verify(cabecera.split(" ")[1], process.env.PASS_TOKEN, {
-      algorithm: "HS256",
+      algorithms: ["HS256"],
     });
 
     const usuario = await Users.findOne({ _id: datos.userId });

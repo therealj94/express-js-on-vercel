@@ -46,7 +46,7 @@ export const getUserPublic = async (req, res) => {
     const decodedToken = jwt.verify(
       token.split(" ")[1],
       process.env.PASS_TOKEN,
-      { algorithm: "HS256" }
+      { algorithms: ["HS256"] }
     );
     const address = decodedToken.address;
 
@@ -67,7 +67,7 @@ export const getDateUser = async (req, res) => {
     const decodedToken = jwt.verify(
       token.split(" ")[1],
       process.env.PASS_TOKEN,
-      { algorithm: "HS256" }
+      { algorithms: ["HS256"] }
     );
     const address = decodedToken.address;
 
@@ -97,7 +97,7 @@ export const changePassword = async (req, res) => {
     const decodedToken = jwt.verify(
       token.split(" ")[1],
       process.env.PASS_TOKEN,
-      { algorithm: "HS256" }
+      { algorithms: ["HS256"] }
     );
     const address = decodedToken.address;
 
@@ -138,7 +138,7 @@ export const decryptedPrivateKey = async (req, res) => {
     const decodedToken = jwt.verify(
       token.split(" ")[1],
       process.env.PASS_TOKEN,
-      { algorithm: "HS256" }
+      { algorithms: ["HS256"] }
     );
     const address = decodedToken.address;
 
@@ -168,7 +168,7 @@ export const decryptedSeed = async (req, res) => {
     const decodedToken = jwt.verify(
       token.split(" ")[1],
       process.env.PASS_TOKEN,
-      { algorithm: "HS256" }
+      { algorithms: ["HS256"] }
     );
     const address = decodedToken.address;
 
@@ -197,7 +197,7 @@ export const updateUser = async (req, res) => {
     const decodedToken = jwt.verify(
       token.split(" ")[1],
       process.env.PASS_TOKEN,
-      { algorithm: "HS256" }
+      { algorithms: ["HS256"] }
     );
     const address = decodedToken.address;
 
@@ -233,7 +233,7 @@ export const noPrivate = async (req, res) => {
     const decodedToken = jwt.verify(
       token.split(" ")[1],
       process.env.PASS_TOKEN,
-      { algorithm: "HS256" }
+      { algorithms: ["HS256"] }
     );
     const address = decodedToken.address;
     const user = await Users.findOne({ address: address });
@@ -259,7 +259,7 @@ export const yesPrivate = async (req, res) => {
     const decodedToken = jwt.verify(
       token.split(" ")[1],
       process.env.PASS_TOKEN,
-      { algorithm: "HS256" }
+      { algorithms: ["HS256"] }
     );
     const address = decodedToken.address;
     console.log(address);
@@ -287,7 +287,7 @@ export const addUserBloqued = async (req, res) => {
     const decodedToken = jwt.verify(
       token.split(" ")[1],
       process.env.PASS_TOKEN,
-      { algorithm: "HS256" }
+      { algorithms: ["HS256"] }
     );
     const address = decodedToken.address;
 
@@ -318,7 +318,7 @@ export const getUserBloqued = async (req, res) => {
     const decodedToken = jwt.verify(
       token.split(" ")[1],
       process.env.PASS_TOKEN,
-      { algorithm: "HS256" }
+      { algorithms: ["HS256"] }
     );
     const address = decodedToken.address;
 
@@ -342,7 +342,7 @@ export const removeUserBloqued = async (req, res) => {
     const decodedToken = jwt.verify(
       token.split(" ")[1],
       process.env.PASS_TOKEN,
-      { algorithm: "HS256" }
+      { algorithms: ["HS256"] }
     );
     const address = decodedToken.address;
 
@@ -396,7 +396,7 @@ export const deleteAccount = async (req, res) => {
 
     const token = req.headers.authorization;
     const decodedToken = jwt.verify(token.split(" ")[1], process.env.PASS_TOKEN, {
-      algorithm: "HS256",
+      algorithms: ["HS256"],
     });
 
     const user = await Users.findOne({ address: decodedToken.address });

@@ -42,7 +42,7 @@ export const startKyc = async (req, res) => {
   try {
     const token = req.headers.authorization;
     const decodedToken = jwt.verify(token.split(" ")[1], process.env.PASS_TOKEN, {
-      algorithm: "HS256",
+      algorithms: ["HS256"],
     });
 
     const user = await Users.findOne({ _id: decodedToken.userId });
@@ -109,7 +109,7 @@ export const getKycStatus = async (req, res) => {
   try {
     const token = req.headers.authorization;
     const decodedToken = jwt.verify(token.split(" ")[1], process.env.PASS_TOKEN, {
-      algorithm: "HS256",
+      algorithms: ["HS256"],
     });
 
     const user = await Users.findOne({ _id: decodedToken.userId }).select(
@@ -135,7 +135,7 @@ export const getKycStatus = async (req, res) => {
 export const saveProfile = async (req, res) => {
   try {
     const token = req.headers.authorization;
-    const decoded = jwt.verify(token.split(" ")[1], process.env.PASS_TOKEN, { algorithm: "HS256" });
+    const decoded = jwt.verify(token.split(" ")[1], process.env.PASS_TOKEN, { algorithms: ["HS256"] });
     const user = await Users.findById(decoded.userId);
     if (!user) return res.status(404).json({ message: "User not found" });
 
@@ -177,7 +177,7 @@ export const saveProfile = async (req, res) => {
 export const getProfile = async (req, res) => {
   try {
     const token = req.headers.authorization;
-    const decoded = jwt.verify(token.split(" ")[1], process.env.PASS_TOKEN, { algorithm: "HS256" });
+    const decoded = jwt.verify(token.split(" ")[1], process.env.PASS_TOKEN, { algorithms: ["HS256"] });
     const user = await Users.findById(decoded.userId).select(
       "name second_name gender phone_country_code phone_number birth_date individual_identification_type individual_identification expiration_date occupation annual_salary account_purpose expected_monthly_volume home_address"
     );

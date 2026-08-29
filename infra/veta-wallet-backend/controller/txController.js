@@ -13,7 +13,7 @@ export const getTxForChainIdScan = async (req, res) => {
     const decodedToken = jwt.verify(
       token.split(" ")[1],
       process.env.PASS_TOKEN,
-      { algorithm: "HS256" }
+      { algorithms: ["HS256"] }
     );
     const address = decodedToken.address;
     // Antes esto leia config.json, que es un ARRAY de 6 cadenas, con
@@ -100,7 +100,7 @@ export const allTx = async (req, res) => {
     const decodedToken = jwt.verify(
       token.split(" ")[1],
       process.env.PASS_TOKEN,
-      { algorithm: "HS256" }
+      { algorithms: ["HS256"] }
     );
     const address = decodedToken.address;
 
@@ -126,7 +126,7 @@ export const txForId = async (req, res) => {
     const decodedToken = jwt.verify(
       token.split(" ")[1],
       process.env.PASS_TOKEN,
-      { algorithm: "HS256" }
+      { algorithms: ["HS256"] }
     );
     const address = decodedToken.address;
 
@@ -156,7 +156,7 @@ export const txForChainId = async (req, res) => {
     const decodedToken = jwt.verify(
       token.split(" ")[1],
       process.env.PASS_TOKEN,
-      { algorithm: "HS256" }
+      { algorithms: ["HS256"] }
     );
     const address = decodedToken.address;
     const { chain_id } = req.body;
@@ -194,7 +194,7 @@ export const txForChainIdForIndex = async (req, res) => {
     const decodedToken = jwt.verify(
       token.split(" ")[1],
       process.env.PASS_TOKEN,
-      { algorithm: "HS256" }
+      { algorithms: ["HS256"] }
     );
     const address = decodedToken.address;
     const user = await Users.findOne({ address: address });
