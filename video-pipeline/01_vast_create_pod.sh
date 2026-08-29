@@ -32,6 +32,9 @@ QUERY="reliability > 0.99 \
  disk_space > ${MIN_DISK} \
  inet_down > 500 \
  inet_up > 200 \
+ inet_down_cost < ${MAX_INET_COST:-0.02} \
+ inet_up_cost < ${MAX_INET_COST:-0.02} \
+ storage_cost < ${MAX_STORAGE_COST:-0.15} \
  cuda_vers >= 12.8 \
  duration > 3 \
  dph_total < ${MAX_DPH}"
