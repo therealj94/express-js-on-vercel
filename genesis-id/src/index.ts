@@ -22,6 +22,7 @@ import { cargaPesadas } from './middleware/proteger.js'
 import { sesionRouter } from './routes/sesion.js'
 import { appsRouter } from './routes/apps.js'
 import { panelRouter } from './routes/panel.js'
+import { publicoRouter } from './routes/publico.js'
 import { telemetriaRouter } from './routes/telemetria.js'
 import { analiticaRouter } from './routes/analitica.js'
 import { directorioAppsRouter, directorioPanelRouter } from './routes/directorio.js'
@@ -123,6 +124,19 @@ app.use((_req, res, siguiente) => {
 
 app.get(['/', '/admin'], (_req, res) => {
   res.sendFile(join(__dirname, '..', 'public', 'admin.html'))
+})
+
+/**
+ * La comprobación pública de la bitácora.
+ *
+ * Es la única pantalla de Genesis ID que no pide nada para entrar, y tiene que
+ * seguir siéndolo: existe para que alguien de fuera —un regulador, un banco
+ * corresponsal, un cliente desconfiado— pueda comprobar por su cuenta que el
+ * registro de auditoría no se ha cortado. Ponerle una puerta la convertiría
+ * otra vez en nuestra palabra, que es justo lo que vino a sustituir.
+ */
+app.get(['/comprobar', '/comprobar.html'], (_req, res) => {
+  res.sendFile(join(__dirname, '..', 'public', 'comprobar.html'))
 })
 
 /**
@@ -417,10 +431,12 @@ app.get('/api', (_req, res) => {
       telemetria: '/api/v1/telemetria/eventos — uso y errores de las apps',
       panel: '/api/panel/* — cumplimiento (sesión de operador)',
       analitica: '/api/panel/analitica/* — métricas del ecosistema',
+      publico: '/api/publico/* — anclas de la bitácora, sin autenticación',
     },
   })
 })
 
+app.use('/api/publico', publicoRouter)
 app.use('/api/sesion', sesionRouter)
 app.use('/api/v1/telemetria', telemetriaRouter)
 app.use('/api/v1/directorio', directorioAppsRouter)

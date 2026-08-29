@@ -315,7 +315,28 @@ export interface DatosGenesis {
   casos: Caso[]
   movimientos: Movimiento[]
   bitacora: EntradaBitacora[]
+  /** Punteros a las anclas escritas en la cadena. Ver `audit/ancla.ts`. */
+  anclas: AnclaGuardada[]
   version: number
+}
+
+/**
+ * Un ancla ya echada.
+ *
+ * Se guarda SOLO como puntero: la prueba no está aquí, está en la cadena. Si
+ * alguien manipulara esta lista, la comprobación contra la cadena lo delata —
+ * que es justo lo que hace que valga la pena guardarla en un sitio que
+ * controlamos nosotros.
+ */
+export interface AnclaGuardada {
+  fecha: string
+  entradas: number
+  hash: string
+  integra: boolean
+  /** Hash de la transacción en la cadena, si llegó a escribirse. */
+  tx?: string
+  desde?: string
+  cadenaId?: number
 }
 
 export type { Movimiento, Alerta }

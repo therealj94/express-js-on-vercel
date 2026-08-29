@@ -20,13 +20,28 @@
  *    no nosotros, y quien tenga la cadena de conexión de Mongo no los toca. Es
  *    lo más barato que de verdad está fuera, y va siempre.
  * 2. En una dirección que se configure (`GENESIS_ANCLA_URL`), si se pone. Ahí
- *    encaja un bucket con bloqueo de objetos, o un contrato en la 5550.
+ *    encaja un bucket con bloqueo de objetos.
+ * 3. EN LA CADENA 5550, si hay llave (`GENESIS_ANCLA_LLAVE`). Este es el bueno,
+ *    y es el que cambia la conversación: los dos primeros destinos siguen
+ *    siendo sitios donde mandamos nosotros —un registro que pagamos, un bucket
+ *    que administramos—, así que ante un regulador siguen valiendo lo que vale
+ *    nuestra palabra. Una transacción en una cadena con validadores no se
+ *    puede retirar ni reescribir, ni por nosotros. Deja de ser «confíen en
+ *    nosotros» y pasa a ser «compruébenlo ustedes».
  *
- * Lo que NO es: una prueba criptográfica de tiempo. Es un testigo. Sirve porque
- * está en otro sitio y porque es diario, no porque sea inviolable.
+ * Los tres son INDEPENDIENTES: que falle uno no impide los otros. Es a
+ * propósito —si el ancla dependiera de que los tres salgan bien, el destino
+ * más frágil decidiría por los demás y algunos días no habría constancia de
+ * ninguna clase.
+ *
+ * Lo que NO es: una prueba criptográfica de tiempo emitida por un tercero de
+ * confianza. Es un testigo, y en el caso de la cadena, un testigo que no
+ * podemos callar después.
  */
 
+import { store } from '../store.js'
 import { anclaje, verificarCadena } from './bitacora.js'
+import { escribirEnLaCadena, direccionDe } from './cadena.js'
 
 const HORA = 3600_000
 
@@ -47,6 +62,33 @@ export interface Ancla {
   publicada: boolean
   destino?: string
   error?: string
+  /** Lo escrito en la cadena, cuando hay llave y salió bien. */
+  cadena?: { tx: string; desde: string; cadenaId: number }
+  errorCadena?: string
+}
+
+/**
+ * El texto exacto que se escribe en la cadena.
+ *
+ * TEXTO PLANO Y NO 32 BYTES PELADOS, A PROPOSITO. El hash suelto es más corto y
+ * más barato, pero para leerlo hace falta saber de antemano qué es y de dónde
+ * salió. Así, cualquiera que abra la transacción en un explorador y pase el
+ * `data` de hexadecimal a texto ve una frase que se explica sola: de quién es,
+ * qué versión, de qué día, cuántos asientos y qué hash. La diferencia son unos
+ * ochenta bytes de gas en una cadena propia — es decir, nada.
+ *
+ * El formato NO cambia sin subir el `1` del principio: hay transacciones ya
+ * escritas que se leen con él.
+ */
+export function renglonAncla(a: Pick<Ancla, 'fecha' | 'entradas' | 'hash' | 'integra'>): string {
+  return `GENESIS-ID/ANCLA/1 ${a.fecha} n=${a.entradas} h=${a.hash} integra=${a.integra ? 1 : 0}`
+}
+
+/** La dirección desde la que se anclan, para publicarla. Nunca la llave. */
+export function direccionDelAncla(): string | null {
+  const llave = process.env.GENESIS_ANCLA_LLAVE?.trim()
+  if (!llave) return null
+  try { return direccionDe(llave) } catch { return null }
 }
 
 let encendida = false
@@ -118,6 +160,53 @@ export async function echarAncla(): Promise<Ancla> {
       )
     }
   }
+
+  /* ── El destino de la cadena ───────────────────────────────────────────────
+     Va aparte del anterior y con su propio `try`: son dos garantías distintas
+     y ninguna es requisito de la otra. */
+  const llave = process.env.GENESIS_ANCLA_LLAVE?.trim()
+  if (llave) {
+    const rpc = process.env.GENESIS_ANCLA_RPC?.trim()
+      || process.env.GENESIS_RPC_URL?.trim()
+      || 'https://rpc.ordenglobal-rpc.com/'
+    const cadenaId = Number(process.env.GENESIS_CADENA_ID || 5550)
+    try {
+      const escrito = await escribirEnLaCadena(
+        rpc, llave, new TextEncoder().encode(renglonAncla(ancla)), cadenaId)
+      ancla.cadena = { tx: escrito.hash, desde: escrito.desde, cadenaId }
+      ancla.publicada = true
+      console.log(
+        `[genesis-id] ANCLA-BITACORA en la cadena ${cadenaId}: ${escrito.hash} ` +
+        `desde ${escrito.desde}`,
+      )
+    } catch (e: any) {
+      /* El mensaje del error se guarda; la llave NO aparece en él porque
+         `escribirEnLaCadena` nunca la mete en lo que lanza. */
+      ancla.errorCadena = String(e?.message || e)
+      console.error(
+        `[genesis-id] AVISO: el ancla no llegó a la cadena: ${ancla.errorCadena}`,
+      )
+    }
+  }
+
+  /* Se apunta el ancla. Es un PUNTERO, no la prueba: la prueba vive en la
+     cadena y esta lista solo dice dónde mirar. Por eso da igual que esté en la
+     misma base que la bitácora —quien la manipule no gana nada, porque lo que
+     se comprueba es la transacción, no este renglón.
+
+     Se guardan las últimas 400: algo más de un año de anclas diarias. Pasado
+     eso, la que se cae ya está en la cadena para siempre y en el registro del
+     servicio; lo que se pierde es la comodidad de tenerla a mano. */
+  const anclas = store.todo().anclas
+  anclas.push({
+    fecha: ancla.fecha, entradas: ancla.entradas, hash: ancla.hash,
+    integra: ancla.integra,
+    ...(ancla.cadena
+      ? { tx: ancla.cadena.tx, desde: ancla.cadena.desde, cadenaId: ancla.cadena.cadenaId }
+      : {}),
+  })
+  if (anclas.length > 400) anclas.splice(0, anclas.length - 400)
+  store.guardar()
 
   ultima = ancla
   return ancla

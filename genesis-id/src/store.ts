@@ -38,7 +38,7 @@ export const motor = MONGO_URL ? 'mongodb' : 'archivo'
 function vacio(): DatosGenesis {
   return {
     identidades: [], negocios: [], operadores: [], sesiones: [],
-    aplicaciones: [], casos: [], movimientos: [], bitacora: [], version: 2,
+    aplicaciones: [], casos: [], movimientos: [], bitacora: [], anclas: [], version: 2,
   }
 }
 
