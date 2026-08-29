@@ -54,7 +54,9 @@ for repo in \
   https://github.com/Comfy-Org/ComfyUI-Manager \
   https://github.com/kijai/ComfyUI-KJNodes \
   https://github.com/Kosinkadink/ComfyUI-VideoHelperSuite \
-  https://github.com/city96/ComfyUI-GGUF ; do
+  https://github.com/city96/ComfyUI-GGUF \
+  https://github.com/numz/ComfyUI-SeedVR2_VideoUpscaler \
+  https://github.com/Fannovel16/ComfyUI-Frame-Interpolation ; do
   d="$CN/$(basename "$repo")"
   [ -d "$d" ] || git clone --depth 1 "$repo" "$d"
   [ -f "$d/requirements.txt" ] && pip install -q -r "$d/requirements.txt" || true
@@ -111,6 +113,26 @@ for sub in diffusion_models text_encoders vae; do
   [ -d "$MODELS/_wan_stage/split_files/$sub" ] && \
     rsync -a "$MODELS/_wan_stage/split_files/$sub/" "$MODELS/$sub/"
 done
+# 5c. Cadena de calidad: still de referencia (imagen) + upscale + interpolación.
+#     Sustituye al H3-Regenerate-2K de MiniMax, que no es público.
+if [ "${QUALITY_CHAIN:-1}" = "1" ]; then
+  # SeedVR2 — upscale por difusión con consistencia temporal (768p -> 2K/4K)
+  mkdir -p "$MODELS/SEEDVR2"
+  hf download numz/SeedVR2_comfyUI --local-dir "$MODELS/SEEDVR2" || \
+    echo "(SeedVR2 no descargado; revisa el nombre del repo en HF)"
+
+  # Modelo de imagen para generar el primer frame a alta resolución.
+  # Controlar composición y luz en un still cuesta segundos, no minutos.
+  hf download Comfy-Org/Qwen-Image_ComfyUI \
+    --include "split_files/diffusion_models/*fp8*" "split_files/text_encoders/*" "split_files/vae/*" \
+    --local-dir "$MODELS/_img_stage" || true
+  for sub in diffusion_models text_encoders vae; do
+    [ -d "$MODELS/_img_stage/split_files/$sub" ] && \
+      rsync -a "$MODELS/_img_stage/split_files/$sub/" "$MODELS/$sub/"
+  done
+  rm -rf "$MODELS/_img_stage"
+fi
+
 rm -rf "$MODELS/_h3_stage" "$MODELS/_wan_stage"
 
 du -sh "$MODELS"/* 2>/dev/null || true
