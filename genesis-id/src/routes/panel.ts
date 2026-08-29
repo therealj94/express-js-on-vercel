@@ -17,6 +17,7 @@ import { resumenMovimientos, buscarMovimientos } from '../aml/almacenMovimientos
 import { crearOperador, PERMISOS, quitarSegundoFactor, saludSegundoFactor } from '../auth/operadores.js'
 import { entregarExpediente } from '../motor/expediente.js'
 import * as vieja from '../motor/cadenaVieja.js'
+import { recorrido } from '../motor/demo.js'
 import { crearAplicacion, revocar, rotar, ALCANCES } from '../auth/aplicaciones.js'
 import { biometriaConfigurada, proveedorBiometria } from '../kyc/biometria.js'
 import { leerFotos } from '../kyc/fotosDocumento.js'
@@ -113,6 +114,26 @@ panelRouter.get('/resumen', async (_req, res) => {
  * diferencia deja de ser invisible.
  */
 const POR_PAGINA = 300
+
+/* ── EL RECORRIDO DE DEMOSTRACION ───────────────────────────────────────────
+ *
+ * Enseñar el producto obligaba a abrir el expediente de una persona real
+ * delante de quien mira —o sea, enseñar su documento y su cara sin que haya
+ * dado permiso para eso— o a describirlo con palabras, que no convence a nadie.
+ *
+ * Esta ruta es la tercera opción: el camino entero con una persona que no
+ * existe. No escribe nada, no cuenta para la analítica y no entra en la
+ * bitácora — una demo que crea registros de mentira ensucia las cifras de
+ * cumplimiento, y unas cifras con basura dentro no valen para lo único que
+ * valen, que es responderle a un auditor.
+ *
+ * Va detrás de `identidad.ver`: no hay ningún dato real que proteger, pero el
+ * panel entero está detrás de una sesión y hacer una excepción para esta ruta
+ * sería una puerta más que vigilar sin ganar nada.
+ */
+panelRouter.get('/demo', exigePermiso('identidad.ver'), (_req, res) => {
+  res.json(recorrido())
+})
 
 /* ── EL RESPALDO DE LA CADENA 8532 ──────────────────────────────────────────
  *

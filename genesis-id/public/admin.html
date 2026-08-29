@@ -333,6 +333,26 @@ pre{background:#0F1927;border:1px solid var(--line2);border-radius:10px;padding:
 .qi-filtros input,.qi-filtros select{border-radius:4px;background:#0F1927}
 /* Las dos casillas del respaldo. 40 px de alto porque el panel se abre desde
    el teléfono y una casilla de 16 px no se acierta con el pulgar. */
+/* La demostración. Tres columnas por paso —qué hizo ella, qué recibe Genesis,
+   qué ve el operador— porque las tres cosas pasan A LA VEZ y contarlas en fila
+   haría pensar que son tres momentos distintos. */
+.dm-pasos{display:flex;flex-direction:column;gap:10px}
+.dm-paso{display:flex;gap:14px;padding:14px;border-radius:10px;
+  border:1px solid var(--line);background:var(--surface)}
+.dm-paso.dm-malo{border-color:rgba(240,119,107,.35)}
+.dm-num{width:30px;height:30px;flex:0 0 auto;border-radius:50%;display:grid;place-items:center;
+  background:var(--line);color:var(--txt);font-weight:700;font-size:13px}
+.dm-cuerpo{flex:1;min-width:0}
+.dm-cab{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:9px}
+.dm-tiempo{font-size:11.5px;color:var(--mut);margin-left:auto}
+.dm-tres{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;font-size:12.5px;
+  color:var(--txt);line-height:1.5}
+.dm-paso.dm-malo .dm-tres{grid-template-columns:repeat(2,1fr)}
+@media (max-width:860px){.dm-tres,.dm-paso.dm-malo .dm-tres{grid-template-columns:1fr;gap:10px}}
+.dm-rot{display:block;font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;
+  color:var(--mut);margin-bottom:3px}
+.dm-json{margin:0;padding:12px;border-radius:8px;background:#0F1927;overflow-x:auto;
+  font-size:12px;line-height:1.6;color:var(--txt)}
 .c8-nota{margin-top:4px;font-size:11.5px;color:var(--mut);line-height:1.35}
 .c8-check{display:inline-flex;align-items:center;gap:7px;min-height:40px;padding:0 4px;
   font-size:13px;color:var(--mut);cursor:pointer;white-space:nowrap}
@@ -847,6 +867,8 @@ const PESTANAS = [
   /* El respaldo de la cadena que se cerró. Va DESPUÉS de la bitácora y antes
      de los ajustes: se consulta poco, pero cuando se consulta es porque
      alguien está reclamando algo y hay prisa. */
+  { id: 'demo', txt: 'Demostración', permiso: 'identidad.ver',
+    titulo: 'El camino entero con una persona que no existe, para enseñarlo' },
   { id: 'cadena8532', txt: 'Cadena 8532', permiso: 'identidad.ver',
     titulo: 'El respaldo de la cadena anterior, cerrada el 10-ago' },
   { id: 'ajustes', txt: 'Operadores y apps', permiso: '*' },
@@ -1953,6 +1975,87 @@ function origen8532(wei) {
 let f8532 = { texto: '', tipo: '', minimo: '', conSaldo: false, movieron: false,
               orden: 'saldo', desde: 0 }
 let traidas8532 = []
+
+/* ── LA DEMOSTRACION ────────────────────────────────────────────────────────
+ *
+ * Enseñar el producto obligaba a abrir el expediente de una persona real —o
+ * sea, su documento y su cara— delante de quien mira. Esto es el camino entero
+ * con alguien que no existe.
+ *
+ * El aviso va ARRIBA y en rojo, no al pie: quien entra a esta pantalla por
+ * error tiene que saber en el primer vistazo que nada de lo que ve es real.
+ */
+VISTAS.demo = async function () {
+  const d = await api('/panel/demo')
+  const p = d.persona
+
+  $('#vista').innerHTML = `
+    <div class="aviso grave" style="margin-bottom:16px">
+      <div><b>Demostración.</b> ${esc(d.aviso)}</div>
+    </div>
+
+    <div class="rz-titulo">La persona del ejemplo</div>
+    <div class="rz-bloque"><div class="rz-campos">
+      ${celda8('Nombre', esc(p.nombreDeclarado), 'declarado por ella')}
+      ${celda8('Correo', esc(p.email), 'dominio que no puede existir')}
+      ${celda8('Documento', esc(p.documento.numero), esc(p.documento.tipo))}
+      ${celda8('Genesis ID', esc(p.gid), 'el que recibiría al final', true)}
+    </div></div>
+
+    <div class="rz-titulo" style="margin-top:22px">El camino, paso por paso</div>
+    <div class="dm-pasos">
+      ${d.pasos.map((x, i) => `
+        <div class="dm-paso">
+          <div class="dm-num">${i + 1}</div>
+          <div class="dm-cuerpo">
+            <div class="dm-cab">
+              <b>${esc(x.titulo)}</b>
+              ${pill(x.estado, x.estado === 'verificada' ? 'ok' : 'info')}
+              ${pill(x.automatico ? 'automático' : 'lo decide una persona',
+                     x.automatico ? 'mut' : 'warn')}
+              <span class="dm-tiempo">${esc(x.duracionTipica)}</span>
+            </div>
+            <div class="dm-tres">
+              <div><span class="dm-rot">Qué hizo ella</span>${esc(x.queHizoLaPersona)}</div>
+              <div><span class="dm-rot">Qué recibe Genesis ID</span>${esc(x.queRecibeGenesis)}</div>
+              <div><span class="dm-rot">Qué ve el operador</span>${esc(x.queVeElOperador)}</div>
+            </div>
+          </div>
+        </div>`).join('')}
+    </div>
+
+    ${/* Las salidas que no son la buena. Una demo que solo enseña el camino
+          feliz vende algo que no existe: lo que decide si un sistema de
+          cumplimiento sirve es qué hace cuando algo NO cuadra. */''}
+    <div class="rz-titulo" style="margin-top:22px">Y cuando no cuadra</div>
+    <div class="dm-pasos">
+      ${d.salidas.map((x) => `
+        <div class="dm-paso dm-malo">
+          <div class="dm-num">✕</div>
+          <div class="dm-cuerpo">
+            <div class="dm-cab"><b>${esc(x.titulo)}</b>${pill(x.estado, 'bad')}</div>
+            <div class="dm-tres">
+              <div><span class="dm-rot">Por qué pasa</span>${esc(x.porQuePasa)}</div>
+              <div><span class="dm-rot">Qué queda</span>${esc(x.queQueda)}</div>
+            </div>
+          </div>
+        </div>`).join('')}
+    </div>
+
+    ${/* La mitad que nadie enseña: se enseña el trámite y no el RESULTADO, que
+          es justo lo que le importa a quien va a integrar. Y lo que NO se
+          entrega, con todas las letras. */''}
+    <div class="rz-titulo" style="margin-top:22px">Lo que recibe la app que la mandó</div>
+    <div class="rz-bloque">
+      <pre class="dm-json">${esc(JSON.stringify(
+        Object.fromEntries(Object.entries(d.loQueRecibeLaApp).filter(([k]) => k !== 'noRecibe')),
+        null, 2))}</pre>
+      <p class="chaf-honesto" style="margin:12px 0 0">
+        Lo que <b>no</b> recibe, tenga la clave que tenga:
+        ${d.loQueRecibeLaApp.noRecibe.map((x) => esc(x)).join(' · ')}.
+      </p>
+    </div>`
+}
 
 VISTAS.cadena8532 = async function () {
   $('#vista').innerHTML = `
