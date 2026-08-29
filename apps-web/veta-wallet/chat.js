@@ -600,6 +600,49 @@ const CHAT = (() => {
     } catch { return { ok: false, motivo: 'fallo' }; }
   }
 
+  /**
+   * Apagar los avisos.
+   *
+   * `/desuscribir` existía en el relevo desde el principio y NADIE la llamaba:
+   * se podían encender los avisos y no había forma de apagarlos desde la app.
+   * Quien se arrepentía tenía que ir a los ajustes del navegador a buscar el
+   * permiso del sitio, que casi nadie sabe hacer y menos en un teléfono.
+   *
+   * Se hacen las DOS cosas y en este orden: primero se le dice al relevo que
+   * no mande más —eso es lo que corta los avisos de verdad— y después se
+   * suelta la suscripción del navegador. Al revés, si lo segundo falla, el
+   * relevo se queda mandando a un buzón que ya no se lee.
+   *
+   * El PERMISO del navegador no se toca: no se puede revocar desde el código,
+   * y además no hace falta. Sin suscripción no llega nada, y si mañana se
+   * vuelven a encender no hay que volver a pedirlo.
+   */
+  async function quitarAvisos() {
+    let sus = null;
+    try {
+      const reg = obrero || await registrarObrero();
+      sus = reg ? await reg.pushManager.getSubscription() : null;
+    } catch { /* sin obrero no hay suscripción que soltar */ }
+
+    try {
+      await pedir('/desuscribir', firmado({ suscripcion: sus ? sus.toJSON() : {} }));
+    } catch {
+      return { ok: false, motivo: 'relevo' };
+    }
+    try { if (sus) await sus.unsubscribe(); } catch { /* ya estaba suelta */ }
+    return { ok: true };
+  }
+
+  /** ¿Están los avisos encendidos AHORA? Se pregunta al navegador, que es
+      quien lo sabe: guardarlo aparte sería tener dos verdades. */
+  async function avisosPuestos() {
+    if (!puedeAvisar() || Notification.permission !== 'granted') return false;
+    try {
+      const reg = obrero || await registrarObrero();
+      return !!(reg && await reg.pushManager.getSubscription());
+    } catch { return false; }
+  }
+
   /** La llave pública de VAPID viene en base64url y el navegador la quiere en bytes. */
   function base64aBytes(s) {
     const pad = '='.repeat((4 - (s.length % 4)) % 4);
@@ -847,6 +890,7 @@ const CHAT = (() => {
 
   return { alta, rehacerAlta, listo, quienSoy, olvidarLlave, archivoAbierto,
            conversaciones, bandeja, enviar, subir, enviarAdjunto, leido, olvidar,
+           quitarAvisos, avisosPuestos,
            buscar, ficha, perfil, pago,
            circulo, pedirAmistad, responderAmistad, quitarAmigo,
            bloquear, bloqueados, borrarMsg,

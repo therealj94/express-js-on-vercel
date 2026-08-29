@@ -2776,12 +2776,64 @@ const VETA = (() => {
   /* Activar los avisos del chat. La llave viene del relevo; los motivos de
      fallo se dicen con nombre propio, porque «no se pudo» no le sirve a nadie
      para arreglarlo. */
+  /* ── LOS AVISOS SE PUEDEN APAGAR ──────────────────────────────────────
+   *
+   * Antes la campana solo aparecia con el permiso sin decidir, y en cuanto se
+   * concedia DESAPARECIA. O sea que se podian encender y no habia forma de
+   * apagarlos: quien se arrepentia tenia que ir a los ajustes del navegador a
+   * buscar el permiso del sitio. Casi nadie sabe hacer eso, y menos en un
+   * telefono. `/desuscribir` estaba en el relevo desde el principio, sin que
+   * nadie la llamara.
+   *
+   * Ahora es un interruptor con dos estados, y se pregunta al navegador cual
+   * es —no se guarda aparte— porque guardarlo seria tener dos verdades y que
+   * la campana mintiera en cuanto se desincronizaran. */
+  let chatAvisosOn = false;
+
+  /* La campana se repinta A MANO, y no con pintarChat().
+     `pintarChat` refresca `#p2c-arriba`, `#p2c-cuerpo` y `#chat-hilo`; la
+     cabecera con la campana la pinta `chat()` UNA VEZ y no se vuelve a tocar.
+     O sea que cambiar el estado y llamar a pintarChat dejaba el interruptor
+     funcionando de verdad y el boton mintiendo — apagabas los avisos y la
+     campana seguia diciendo «activar». Lo cazo la prueba. */
+  function chatPintarCampana() {
+    const b = $('#cha-avisos');
+    if (!b) return;
+    b.classList.toggle('on', chatAvisosOn);
+    b.setAttribute('aria-pressed', chatAvisosOn ? 'true' : 'false');
+    const dice = t(chatAvisosOn ? 'cha.avisosQuitar' : 'cha.avisos');
+    b.title = dice;
+    b.setAttribute('aria-label', dice);
+    const raya = b.querySelector('line');
+    if (chatAvisosOn && raya) raya.remove();
+    if (!chatAvisosOn && !raya) {
+      const svg = b.querySelector('svg');
+      const l = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+      l.setAttribute('x1', '3'); l.setAttribute('y1', '3');
+      l.setAttribute('x2', '21'); l.setAttribute('y2', '21');
+      svg?.appendChild(l);
+    }
+  }
+
+  async function chatMirarAvisos() {
+    chatAvisosOn = await CHAT.avisosPuestos();
+    chatPintarCampana();
+  }
+
   async function chatAvisos() {
+    if (chatAvisosOn) {
+      const r = await CHAT.quitarAvisos();
+      if (!r.ok) return avisar(t('cha.avisosNo'));
+      chatAvisosOn = false;
+      chatPintarCampana();
+      return avisar(t('cha.avisosFuera'));
+    }
     const llave = await CHAT.llaveAvisos();
     if (!llave) return avisar(t('cha.avisosSinLlave'));
     const r = await CHAT.pedirAvisos(llave);
     if (r.ok) {
-      $('#cha-avisos')?.classList.add('oculto');
+      chatAvisosOn = true;
+      chatPintarCampana();
       return avisar(t('cha.avisosOk'));
     }
     avisar(r.motivo === 'negado' ? t('cha.avisosNegado')
@@ -7538,13 +7590,21 @@ const VETA = (() => {
                 se ofrece donde puede cumplirse —hay soporte y el permiso no
                 esta ni dado ni negado— porque un boton que no puede hacer
                 nada enseña a no tocar botones. */''}
-          ${(CHAT.puedeAvisar() && typeof Notification !== 'undefined' && Notification.permission === 'default')
-            ? `<button class="p2c-yo p2c-campana" id="cha-avisos" onclick="VETA.chatAvisos()"
-                       title="${t('cha.avisos')}" aria-label="${t('cha.avisos')}">
+          ${/* Se ofrece siempre que PUEDA cumplirse: con el permiso sin
+                decidir (para encenderlos) o ya concedido (para apagarlos).
+                Solo se esconde si el navegador no puede o si se nego, que es
+                cuando el boton no podria hacer nada. */''}
+          ${(CHAT.puedeAvisar() && typeof Notification !== 'undefined' && Notification.permission !== 'denied')
+            ? `<button class="p2c-yo p2c-campana${chatAvisosOn ? ' on' : ''}" id="cha-avisos"
+                       onclick="VETA.chatAvisos()"
+                       title="${t(chatAvisosOn ? 'cha.avisosQuitar' : 'cha.avisos')}"
+                       aria-label="${t(chatAvisosOn ? 'cha.avisosQuitar' : 'cha.avisos')}"
+                       aria-pressed="${chatAvisosOn ? 'true' : 'false'}">
                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
                       stroke-linecap="round" stroke-linejoin="round">
                    <path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/>
                    <path d="M13.7 21a2 2 0 0 1-3.4 0"/>
+                   ${chatAvisosOn ? '' : '<line x1="3" y1="3" x2="21" y2="21"/>'}
                  </svg>
                </button>` : ''}
           <button class="p2c-yo" onclick="VETA.chatCodigo()"
@@ -7617,6 +7677,10 @@ const VETA = (() => {
       if (!esVerificada()) { chatSt.puerta = 'falta'; return pintarChat(); }
     }
     chatSt.puerta = 'abierta';
+    // Se mira si los avisos estan puestos para que la campana salga en su
+    // estado de verdad desde el primer pintado. Sin await: es una consulta al
+    // navegador y no tiene que hacer esperar a la puerta del chat.
+    chatMirarAvisos();
     try {
       if (!CHAT.listo()) {
         await CHAT.alta({ correo: sesion?.correo, nombre: sesion?.nombre,
@@ -13256,23 +13320,23 @@ const VETA = (() => {
     if (matchMedia('(max-width: 900px)').matches) { auraAbierta = false; pintarAura(); }
   }
 
-  /* ── CONVERSAR POR LA BURBUJA, SIN TOCAR NADA ───────────────────────────
+  /* ── HABLARLE A LA BURBUJA ──────────────────────────────────────────────
    *
-   * «que pueda hablar desde el chat burbuja con voz, no con notas de voz, sino
-   *  fluido, hablar sin tener que tocar un botón para que me escuche»
+   * `auraConversando` dice si AHORA MISMO se le está hablando: se enciende al
+   * apretar el botón de hablar y se apaga al soltarlo. De ahí sale la línea de
+   * estado («Te escucho») y de ahí sabe la música que tiene que callarse.
    *
-   * El micrófono de la burbuja era de UN SOLO TIRO: tocabas, decía una cosa, y
-   * se apagaba. Para la segunda frase había que volver a tocar — que es
-   * exactamente lo que se pidió que no hiciera falta.
+   * AVISO PARA QUIEN LEA ESTO BUSCANDO EL MODO MANOS LIBRES: no existe. Acá
+   * había un comentario largo que describía un modo que se encendía una vez y
+   * se cerraba solo —escucha, contesta, vuelve a escuchar— y ese modo SE
+   * RETIRÓ al poner pulsar-para-hablar. Se quitó porque encadenaba
+   * `onend → escuchar → start()` y reventaba con InvalidStateError, y porque
+   * dejaba huecos y ruidos raros entre frases. La variable sobrevivió con otro
+   * significado; el comentario se había quedado describiendo otro producto.
    *
-   * Ahora es un modo. Se enciende una vez y el ciclo se cierra solo: escucha,
-   * te oye, contesta con su voz, y en cuanto termina de hablar vuelve a
-   * escuchar. Se apaga tocando otra vez, o cerrando la burbuja.
-   *
-   * El micrófono NO se abre mientras ella habla, y no es por prolijidad: el
-   * reconocedor la transcribiría a ELLA por el altavoz y mandaría sus palabras
-   * como si fueran tuyas — se contestaría sola y no habría forma de meter
-   * baza. Por eso se reengancha DESPUÉS de que termina de sonar, y no antes.
+   * Lo que SÍ sigue en pie de aquello: el micrófono no se abre mientras ella
+   * habla. No es prolijidad — el reconocedor la transcribiría a ELLA por el
+   * altavoz y mandaría sus palabras como si fueran tuyas.
    */
   let auraConversando = false;
 

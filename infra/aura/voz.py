@@ -7,10 +7,15 @@ Hasta ahora la app leia el texto con la voz del navegador: `speechSynthesis`.
 Eso es una voz de sistema operativo, y suena a lo que es — a maquina. El
 pedido fue textual: «una voz que funcione bien natural no esa robotica».
 
-Asi que la voz se fabrica ACA, en el servidor, con un modelo de verdad, y
-viaja al chat como NOTA DE VOZ: el mismo tipo de mensaje que graba una
-persona. El relevo ya lo admite (`tipo: 'voz'`) y la app ya lo pinta con su
-reproductor. No hubo que tocar nada de eso: ya estaba.
+Asi que la voz se fabrica ACA, en el servidor, con un modelo de verdad.
+    COMO LLEGA AL OIDO DE LA PERSONA, HOY. Al principio viajaba al chat como
+NOTA DE VOZ —el mismo tipo de mensaje que graba una persona— y este parrafo lo
+decia asi. Ya no: las notas de voz de AU-RA se retiraron, porque costaban 657
+segundos de GPU al dia y eran la causa de las esperas de 21 a 59 segundos.
+Ahora la app pide `/hablar` y suena EN VIVO mientras se genera, sin dejar nada
+en el hilo.
+    Y `/oir` va en el sentido contrario, que es de lo mismo: la persona graba y
+AU-RA transcribe. Ver infra/aura/oido.py.
 
     ── LO QUE HACE EL MOTOR Y LO QUE HACEMOS NOSOTROS ───────────────────────
 

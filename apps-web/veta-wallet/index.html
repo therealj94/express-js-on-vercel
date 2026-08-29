@@ -2152,6 +2152,9 @@ body.en-p2c .nav[aria-current=page]::before{background:var(--p2c-grad)}
 .p2c-campana{background:transparent;color:var(--p2c-cyan);border-color:var(--p2c-linea)}
 .p2c-campana svg{width:18px;height:18px}
 .p2c-campana:hover{border-color:var(--p2c-cyan)}
+/* Encendida se ve encendida: sin esto los dos estados solo se distinguen
+   por la rayita del icono, que en 18 px no se ve. */
+.p2c-campana.on{background:var(--p2c-cyan-soft,rgba(79,216,224,.14));border-color:var(--p2c-cyan)}
 
 /* ── LOS ESTADOS, EN FILA ─────────────────────────────────────────────────
    Se desplaza en horizontal y se engancha en cada círculo (`scroll-snap`):
