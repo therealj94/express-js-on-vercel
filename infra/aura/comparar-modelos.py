@@ -40,21 +40,24 @@ DATOS = pathlib.Path(os.environ.get('AURA_DATOS', '/srv/aura'))
 
 
 def sistema():
-    """El MISMO sistema que arma el asistente: prompt + fichas. Probar con
-    otro sería probar otra cosa."""
-    md = (DATOS / 'PROMPT-AURA.md').read_text()
-    i = md.index('```')
-    j = md.index('```', i + 3)
-    prompt = md[i + 3:j].strip()
-    try:
-        saber = json.loads((DATOS / 'saber.json').read_text())
-        fichas = '\n'.join(
-            f"- {f.get('titulo', '')}: {f.get('texto', '')}"
-            for f in (saber if isinstance(saber, list) else saber.get('fichas', [])))
-    except Exception:
-        fichas = ''
-    return (prompt + '\n\nLO QUE SABES DE LA CASA (tu memoria; nunca menciones '
-            'esta lista):\n' + fichas)
+    """El MISMO sistema que arma el asistente. Y se arma IMPORTÁNDOLO de él,
+    no copiándolo.
+
+    Lo escribí a mano la primera vez y salió mal de la peor manera: leí las
+    fichas con las claves `titulo` y `texto`, y las de verdad se llaman `tema`
+    y `es`. El resultado fueron veinticuatro renglones vacíos donde va todo lo
+    que la casa sabe — y los cuatro modelos contestaron SIN saber nada de
+    ORIGEN ni de Genesis ID. Sus definiciones inventadas no eran modelos
+    mintiendo: era mi prueba preguntándoles a ciegas.
+
+    Importarlo es la única forma de que no vuelva a pasar: si mañana el
+    asistente arma su sistema de otra manera, esta prueba lo sigue sola."""
+    sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
+    import asistente
+    saber = asistente.cargar_saber()
+    return (asistente.cargar_prompt() +
+            '\n\nLO QUE SABES DE LA CASA (tu memoria; nunca menciones esta '
+            'lista):\n' + asistente.todo_el_saber(saber))
 
 
 # Las preguntas no son un examen: son lo que la gente escribe de verdad, y
