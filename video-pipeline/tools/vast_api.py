@@ -148,13 +148,18 @@ def main() -> int:
         url = r.get("result_url")
         if not url:
             print(json.dumps(r, indent=2)); return 1
-        for intento in range(12):          # el log tarda unos segundos en publicarse
+        # El log se publica en un objeto firmado que tarda en existir: hasta
+        # entonces devuelve AccessDenied (403), no un 404. Hay que reintentar.
+        for intento in range(40):
             try:
                 with request.urlopen(url, timeout=30) as f:
-                    print(f.read().decode("utf-8", "replace")); return 0
+                    texto = f.read().decode("utf-8", "replace")
+                if "<Code>AccessDenied" not in texto:
+                    print(texto); return 0
             except error.HTTPError:
-                time.sleep(5)
-        print("El log aún no está disponible; reintenta en un minuto.")
+                pass
+            time.sleep(1.5)
+        print("El log no se publicó tras 60 s; reintenta.")
 
     elif a.cmd in ("start", "stop"):
         api(V0 + f"/instances/{a.id}/", "PUT",
