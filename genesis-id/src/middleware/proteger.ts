@@ -58,7 +58,7 @@ export function exigePermiso(permiso: string) {
 }
 
 export function exigeApp(...alcances: string[]) {
-  return (req: Request, res: Response, siguiente: NextFunction) => {
+  const guardia = (req: Request, res: Response, siguiente: NextFunction) => {
     const clave = String(req.headers['x-api-key'] || '').trim()
     const app = aplicacionDeClave(clave)
     if (!app) {
@@ -73,6 +73,14 @@ export function exigeApp(...alcances: string[]) {
     req.app_ecosistema = app
     siguiente()
   }
+  /* Los alcances quedan colgados de la propia función.
+     Así el documento de la API los LEE del código en vez de repetirlos en una
+     tabla aparte: una tabla aparte es una promesa que se rompe la primera vez
+     que alguien aprieta un permiso y no se acuerda de la documentación. Y un
+     documento que promete menos permiso del que se pide manda al integrador a
+     depurar un 403 que su propio manual dijo que no podía pasar. */
+  ;(guardia as any).alcances = alcances
+  return guardia
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

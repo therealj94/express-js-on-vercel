@@ -13,6 +13,8 @@ import {
 } from '../aml/listas.js'
 import { estadoTemporizador, unaVuelta } from '../aml/temporizador.js'
 import { consultar, verificarCadena, anclaje, registrar, sellar } from '../audit/bitacora.js'
+import { verEnganche, ponerEnganche, quitarEnganche, probarEnganche, EVENTOS }
+  from '../enganches/enganches.js'
 import { resumenMovimientos, buscarMovimientos } from '../aml/almacenMovimientos.js'
 import { crearOperador, PERMISOS, quitarSegundoFactor, saludSegundoFactor } from '../auth/operadores.js'
 import { entregarExpediente } from '../motor/expediente.js'
@@ -787,6 +789,46 @@ panelRouter.post('/aplicaciones/:id/rotar', exigePermiso('*'), (req, res) => {
   const secreta = rotar(req.params.id, req.operador!.email)
   if (!secreta) return res.status(404).json({ error: 'Aplicación no encontrada' })
   res.json({ ok: true, clave_secreta: secreta })
+})
+
+/* ── Enganches ──────────────────────────────────────────────────────────────
+   Todo esto pide el permiso `*` porque poner un enganche es decidir a qué
+   servidor de fuera se le van a mandar avisos de estado de identidades. Es una
+   salida de datos, y las salidas de datos no las abre cualquiera. */
+
+panelRouter.get('/aplicaciones/:id/enganche', exigePermiso('*'), (req, res) => {
+  const app = store.todo().aplicaciones.find((a) => a.id === req.params.id)
+  if (!app) return res.status(404).json({ error: 'Aplicación no encontrada' })
+  res.json({ enganche: verEnganche(app), eventos: EVENTOS })
+})
+
+panelRouter.put('/aplicaciones/:id/enganche', exigePermiso('*'), (req, res) => {
+  const app = store.todo().aplicaciones.find((a) => a.id === req.params.id)
+  if (!app) return res.status(404).json({ error: 'Aplicación no encontrada' })
+  const { url, eventos } = req.body ?? {}
+  if (!url) return res.status(400).json({ error: 'Hace falta la dirección' })
+
+  const r = ponerEnganche(app, String(url), Array.isArray(eventos) ? eventos.map(String) : [],
+    req.operador!.email)
+  if (!r.ok) return res.status(400).json({ error: r.error })
+  // El secreto se enseña aquí y nunca más, igual que la clave de API.
+  res.json({ ok: true, secreto: r.secreto })
+})
+
+panelRouter.delete('/aplicaciones/:id/enganche', exigePermiso('*'), (req, res) => {
+  const app = store.todo().aplicaciones.find((a) => a.id === req.params.id)
+  if (!app) return res.status(404).json({ error: 'Aplicación no encontrada' })
+  if (!quitarEnganche(app, req.operador!.email)) {
+    return res.status(404).json({ error: 'Esa aplicación no tiene enganche' })
+  }
+  res.json({ ok: true })
+})
+
+panelRouter.post('/aplicaciones/:id/enganche/probar', exigePermiso('*'), (req, res) => {
+  const app = store.todo().aplicaciones.find((a) => a.id === req.params.id)
+  if (!app) return res.status(404).json({ error: 'Aplicación no encontrada' })
+  if (!probarEnganche(app)) return res.status(400).json({ error: 'No hay enganche activo' })
+  res.json({ ok: true, nota: 'Mandado. Mire el resultado en el estado del enganche.' })
 })
 
 panelRouter.post('/aplicaciones/:id/revocar', exigePermiso('*'), (req, res) => {

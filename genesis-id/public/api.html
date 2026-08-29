@@ -1,0 +1,261 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Genesis ID · API</title>
+<style>
+/* Misma paleta del panel —azul tinta y oro del logotipo—, pero con densidad de
+   documentación técnica: se lee en una pantalla partida, con el editor al lado,
+   y se busca por Ctrl+F. Por eso todo está en una sola página y desplegado; un
+   acordeón que oculta la mitad rompe la búsqueda del navegador, que es la
+   herramienta que de verdad usa quien integra.
+
+   El color aquí hace un trabajo concreto: distinguir el método de un vistazo.
+   No hay más color que ese, ni oro decorativo. */
+:root{
+  --bg:#0B111C; --panel:#142033; --panel2:#101A29; --line:#24374F; --line2:#1B2A41;
+  --gold:#F5B32B; --cyan:#7FB2E8; --txt:#E9EEF6; --mut:#9DB0C8; --faint:#64798F;
+  --ok:#35B77D; --warn:#E2893C; --bad:#E0685D;
+  --get:#7FB2E8; --post:#35B77D; --put:#E2893C; --del:#E0685D;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:var(--bg);color:var(--txt);
+ font:14.5px/1.6 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+.mono,code,pre{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+a{color:var(--cyan);text-decoration:none}
+a:hover{text-decoration:underline}
+code{background:rgba(127,178,232,.11);padding:1.5px 5px;border-radius:4px;font-size:.9em}
+strong{font-weight:650;color:#FFF}
+
+.marco{display:grid;grid-template-columns:250px minmax(0,1fr);min-height:100vh}
+@media (max-width:860px){.marco{grid-template-columns:1fr}nav{position:static!important;height:auto!important;border-right:0!important;border-bottom:1px solid var(--line2)}}
+
+nav{position:sticky;top:0;height:100vh;overflow-y:auto;border-right:1px solid var(--line2);
+ padding:22px 16px;background:var(--panel2)}
+nav .marca{font-weight:700;letter-spacing:-.01em;font-size:16px;margin-bottom:3px}
+nav .ver{color:var(--faint);font-size:12px;margin-bottom:20px}
+nav h4{color:var(--faint);font-size:10.5px;letter-spacing:.09em;text-transform:uppercase;
+ margin:18px 0 7px;font-weight:650}
+nav a{display:block;padding:3.5px 0;color:var(--mut);font-size:13px;line-height:1.35}
+nav a:hover{color:var(--txt);text-decoration:none}
+nav .m{font-size:9.5px;font-weight:700;letter-spacing:.05em;margin-right:6px;vertical-align:1px}
+
+main{padding:36px 34px 90px;max-width:960px}
+@media (max-width:600px){main{padding:24px 18px 60px}}
+
+h1{font-size:27px;font-weight:650;letter-spacing:-.015em}
+.lema{color:var(--mut);margin-top:6px;font-size:15.5px}
+.intro{margin-top:18px;max-width:68ch}
+.intro p{margin-bottom:12px}
+
+h2{font-size:19px;font-weight:650;margin:46px 0 4px;padding-top:14px;
+ border-top:1px solid var(--line2);letter-spacing:-.005em}
+h2 .desc{display:block;color:var(--mut);font-size:14px;font-weight:400;margin-top:4px}
+
+.op{border:1px solid var(--line2);border-radius:11px;margin-top:16px;overflow:hidden;
+ background:var(--panel2)}
+.op > .cab{display:flex;gap:11px;align-items:baseline;flex-wrap:wrap;padding:13px 16px;
+ background:var(--panel);border-bottom:1px solid var(--line2)}
+.m{display:inline-block;padding:2px 7px;border-radius:5px;font-size:10.5px;font-weight:700;
+ letter-spacing:.05em;font-family:ui-monospace,monospace}
+.m.get{color:var(--get);background:rgba(127,178,232,.14)}
+.m.post{color:var(--post);background:rgba(53,183,125,.14)}
+.m.put{color:var(--put);background:rgba(226,137,60,.14)}
+.m.delete{color:var(--del);background:rgba(224,104,93,.14)}
+.cab .ruta{font-family:ui-monospace,monospace;font-size:14px;word-break:break-all}
+.cab .ruta .par{color:var(--gold)}
+.cab .res{color:var(--mut);font-size:13.5px;width:100%}
+
+.cuerpo{padding:15px 16px}
+.cuerpo > p{max-width:68ch;margin-bottom:11px}
+.cuerpo > ul{margin:0 0 11px 20px;max-width:68ch}
+.cuerpo > ul li{margin-bottom:4px}
+
+h5{color:var(--faint);font-size:10.5px;letter-spacing:.09em;text-transform:uppercase;
+ margin:18px 0 8px;font-weight:650}
+h5:first-child{margin-top:0}
+
+table{width:100%;border-collapse:collapse;font-size:13px}
+td{padding:6px 12px 6px 0;border-bottom:1px solid var(--line2);vertical-align:top}
+tr:last-child td{border-bottom:0}
+td.k{font-family:ui-monospace,monospace;color:var(--cyan);white-space:nowrap}
+td.t{color:var(--faint);font-size:11.5px;white-space:nowrap;font-family:ui-monospace,monospace}
+td.d{color:var(--mut)}
+.req{color:var(--gold);font-size:10px;font-weight:700;margin-left:5px;letter-spacing:.04em}
+.cod{font-family:ui-monospace,monospace;font-weight:600;white-space:nowrap}
+.cod.c2{color:var(--ok)} .cod.c4{color:var(--warn)} .cod.c5{color:var(--bad)}
+
+.alc{display:inline-block;padding:1.5px 7px;border-radius:5px;font-size:11.5px;
+ font-family:ui-monospace,monospace;color:var(--gold);background:rgba(245,179,43,.11);
+ border:1px solid rgba(245,179,43,.24);margin-right:5px}
+.sinalc{color:var(--faint);font-size:12.5px}
+
+pre{background:#0C1522;border:1px solid var(--line2);border-radius:9px;padding:13px;
+ overflow-x:auto;font-size:12.5px;line-height:1.55;color:var(--cyan);margin:10px 0}
+.nota{border-left:2px solid var(--gold);padding-left:14px;color:var(--mut);margin:16px 0;max-width:68ch}
+.cargando{color:var(--mut);padding:40px 0}
+</style>
+</head>
+<body>
+<div class="marco">
+  <nav id="nav"><div class="marca">Genesis ID</div><div class="ver">API</div></nav>
+  <main id="main"><div class="cargando">Cargando la documentación…</div></main>
+</div>
+
+<script>
+/* Se dibuja aquí y no se carga un visor de OpenAPI de un CDN por dos motivos.
+   El de peso: un visor genérico son cientos de kilobytes para enseñar
+   veintitrés rutas. El que de verdad decide: es documentación de un producto de
+   cumplimiento, y meter un script de un tercero en la página que la enseña es
+   darle a ese tercero la posibilidad de cambiar lo que dice. */
+
+const $ = (s) => document.querySelector(s)
+const esc = (t) => String(t ?? '').replace(/[<>&]/g, (c) => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;' }[c]))
+
+/** Lo justo de Markdown para lo que se escribe en el documento. */
+function texto(md) {
+  const bloques = String(md || '').split('\n\n')
+  return bloques.map((b) => {
+    const lineas = b.split('\n')
+    if (lineas.every((l) => l.startsWith('- '))) {
+      return '<ul>' + lineas.map((l) => `<li>${enLinea(l.slice(2))}</li>`).join('') + '</ul>'
+    }
+    return `<p>${enLinea(b)}</p>`
+  }).join('')
+}
+const enLinea = (t) => esc(t)
+  .replace(/`([^`]+)`/g, '<code>$1</code>')
+  .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+
+const claseCodigo = (c) => 'cod c' + String(c)[0]
+
+function pintarPropiedades(props, obligatorios = []) {
+  return '<table>' + Object.entries(props).map(([k, v]) => `<tr>
+    <td class="k">${esc(k)}${obligatorios.includes(k) ? '<span class="req">OBLIGATORIO</span>' : ''}</td>
+    <td class="t">${esc(v.type || '')}${v.items ? `&lt;${esc(v.items.type || 'object')}&gt;` : ''}</td>
+    <td class="d">${enLinea(v.description || '')}</td>
+  </tr>`).join('') + '</table>'
+}
+
+function pintarOperacion(camino, metodo, op) {
+  const ruta = esc(camino).replace(/\{(\w+)\}/g, '<span class="par">{$1}</span>')
+  const alcances = op.security?.[0]?.claveDeApi || []
+  const cuerpo = op.requestBody?.content?.['application/json']?.schema
+
+  const partes = []
+  if (op.description) partes.push(texto(op.description))
+
+  partes.push('<h5>Autenticación</h5>' + (alcances.length
+    ? `<div>Cabecera <code>X-API-Key</code>, con ${alcances.length === 1 ? 'el alcance' : 'los alcances'} `
+      + alcances.map((a) => `<span class="alc">${esc(a)}</span>`).join('') + '</div>'
+    : '<div class="sinalc">Esta ruta no pide alcance de aplicación.</div>'))
+
+  if (op.parameters?.length) {
+    partes.push('<h5>En la ruta</h5><table>' + op.parameters.map((p) => `<tr>
+      <td class="k">${esc(p.name)}</td><td class="t">${esc(p.schema?.type || '')}</td>
+      <td class="d">${enLinea(p.description || '')}</td></tr>`).join('') + '</table>')
+  }
+
+  if (cuerpo?.properties) {
+    partes.push('<h5>Cuerpo (JSON)</h5>' + pintarPropiedades(cuerpo.properties, cuerpo.required || []))
+  }
+
+  partes.push('<h5>Respuestas</h5><table>' + Object.entries(op.responses).map(([c, r]) => `<tr>
+    <td class="${claseCodigo(c)}">${esc(c)}</td>
+    <td class="d">${enLinea(r.description || '')}</td></tr>`).join('') + '</table>')
+
+  return `<div class="op" id="${esc(op.operationId)}">
+    <div class="cab">
+      <span class="m ${metodo}">${metodo.toUpperCase()}</span>
+      <span class="ruta">${ruta}</span>
+      <span class="res">${esc(op.summary)}</span>
+    </div>
+    <div class="cuerpo">${partes.join('')}</div>
+  </div>`
+}
+
+function pintar(doc) {
+  const porEtiqueta = new Map()
+  for (const [camino, metodos] of Object.entries(doc.paths)) {
+    for (const [metodo, op] of Object.entries(metodos)) {
+      const t = op.tags?.[0] || 'general'
+      if (!porEtiqueta.has(t)) porEtiqueta.set(t, [])
+      porEtiqueta.get(t).push({ camino, metodo, op })
+    }
+  }
+  /* El orden de `tags` del documento manda; lo que no esté ahí va detrás. Es
+     un orden de lectura —primero dar de alta a alguien, después consultarlo—
+     y no el alfabético, que reparte el recorrido al azar. */
+  const orden = (doc.tags || []).map((t) => t.name)
+  const etiquetas = [...porEtiqueta.keys()].sort((a, b) => {
+    const ia = orden.indexOf(a), ib = orden.indexOf(b)
+    return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib)
+  })
+  const descripcionDe = (t) => (doc.tags || []).find((x) => x.name === t)?.description || ''
+
+  const secciones = etiquetas.map((t) => `
+    <h2 id="s-${esc(t)}">${esc(t)}<span class="desc">${esc(descripcionDe(t))}</span></h2>
+    ${porEtiqueta.get(t).map((o) => pintarOperacion(o.camino, o.metodo, o.op)).join('')}`)
+
+  const avisos = Object.entries(doc.webhooks || {})
+  const seccionAvisos = !avisos.length ? '' : `
+    <h2 id="s-avisos">avisos (webhooks)<span class="desc">Lo que Genesis ID le manda a usted cuando algo cambia</span></h2>
+    <div class="nota">Configúrelos desde el panel de cumplimiento: se le entrega un secreto,
+    una sola vez, con el que se firma cada envío. Todos los avisos llegan a la misma
+    dirección; el campo <code>evento</code> y la cabecera <code>X-Genesis-Evento</code>
+    dicen cuál es.</div>
+    ${texto(avisos[0][1].post.description)}
+    <h5>Comprobar la firma</h5>
+    <pre>// Node
+const [, t, v1] = /t=(\\d+),v1=([a-f0-9]+)/.exec(req.get('X-Genesis-Firma')) || []
+const esperada = crypto.createHmac('sha256', SECRETO)
+  .update(t + '.' + cuerpoCrudo)          // el cuerpo TAL CUAL llegó, sin re-serializar
+  .digest('hex')
+
+if (Math.abs(Date.now() / 1000 - Number(t)) > 300) return res.sendStatus(400)  // viejo
+if (!crypto.timingSafeEqual(Buffer.from(v1, 'hex'), Buffer.from(esperada, 'hex'))) {
+  return res.sendStatus(401)
+}
+if (yaProcesado(req.body.entregaId)) return res.sendStatus(200)   // repetido
+res.sendStatus(200)                        // conteste ANTES de ponerse a trabajar</pre>
+    <h5>Los eventos</h5>
+    <table>${avisos.map(([e, w]) => `<tr>
+      <td class="k">${esc(e)}</td>
+      <td class="d">${esc(w.post.summary.replace(/^Aviso: /, ''))}</td></tr>`).join('')}</table>
+    <div class="cuerpo" style="padding-left:0">
+      <h5>Lo que lleva dentro</h5>
+      ${pintarPropiedades(avisos[0][1].post.requestBody.content['application/json'].schema.properties)}
+    </div>`
+
+  $('#main').innerHTML = `
+    <h1>${esc(doc.info.title)}</h1>
+    <div class="lema">${esc(doc.info.summary || '')}</div>
+    <div class="intro">${texto(doc.info.description)}</div>
+    <h5 style="margin-top:26px">Servidor</h5>
+    <pre>${esc(doc.servers[0].url)}/api/v1</pre>
+    <div class="nota">El documento OpenAPI 3.1 en crudo está en
+      <a href="/api/publico/openapi.json">/api/publico/openapi.json</a> — sin clave, para
+      generar el cliente antes de pedir una.</div>
+    ${secciones.join('')}
+    ${seccionAvisos}`
+
+  $('#nav').innerHTML = `<div class="marca">Genesis ID</div><div class="ver">API v${esc(doc.info.version)}</div>`
+    + etiquetas.map((t) => `<h4><a href="#s-${esc(t)}" style="color:inherit">${esc(t)}</a></h4>`
+      + porEtiqueta.get(t).map((o) => `<a href="#${esc(o.op.operationId)}">
+          <span class="m ${o.metodo}" style="background:none;padding:0">${o.metodo.toUpperCase()}</span>
+          ${esc(o.op.summary)}</a>`).join('')).join('')
+    + (avisos.length ? '<h4><a href="#s-avisos" style="color:inherit">avisos</a></h4>'
+      + avisos.map(([e]) => `<a href="#s-avisos">${esc(e)}</a>`).join('') : '')
+}
+
+fetch('/api/publico/openapi.json')
+  .then((r) => r.json())
+  .then(pintar)
+  .catch(() => {
+    $('#main').innerHTML = '<div class="cargando">No se pudo cargar el documento de la API. '
+      + 'Está en <a href="/api/publico/openapi.json">/api/publico/openapi.json</a>.</div>'
+  })
+</script>
+</body>
+</html>

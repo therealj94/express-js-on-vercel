@@ -21,6 +21,7 @@
 import { store } from '../store.js'
 import { gidPersonal, id } from '../lib/uid.js'
 import { registrar } from '../audit/bitacora.js'
+import { avisar, type Evento } from '../enganches/enganches.js'
 import { enviarSinEsperar } from '../correo/enviar.js'
 import { identidadAprobada, identidadRechazada } from '../correo/plantillas.js'
 import { revisarDocumento } from '../kyc/documento.js'
@@ -88,6 +89,11 @@ export function iniciar(email: string, origen: string): Identidad {
     vencimientoDocumento: null,
     estado: 'iniciada',
     gid: null,
+    /* De dónde vino, para saber a quién avisar cuando se decida. Se saca del
+       `origen` en vez de pedirlo aparte porque el origen ya lo trae —las rutas
+       de aplicación llaman con `app:<clave>`— y un parámetro más es un
+       parámetro que alguien olvida pasar en la ruta siguiente. */
+    creadaPor: origen.startsWith('app:') ? origen.slice(4) : null,
     documento: null,
     biometria: null,
     tamiz: null,
@@ -662,6 +668,16 @@ function anotar(identidad: Identidad, estado: EstadoIdentidad, operador: string,
   identidad.decisiones.push({ estado, operador, motivo, fecha: ahora() })
   identidad.estado = estado
   identidad.actualizadaEn = ahora()
+
+  /* El aviso a las aplicaciones sale de AQUI y no de cada función de decisión.
+     Es el único sitio por el que pasan las cuatro —revisión, aprobación,
+     rechazo, suspensión— y la quinta que se añada mañana. Puesto en cada una,
+     se olvida en la que se escriba con prisa, y un evento que a veces no sale
+     es peor que no tenerlo: el integrador se fía.
+
+     Solo encola; no espera a nadie. Una decisión de cumplimiento no puede
+     depender de que el servidor de un tercero conteste. */
+  avisar(`identidad.${estado}` as Evento, identidad, { motivo })
 }
 
 export function enviarARevision(idn: string, actor: string, motivo = 'Pendiente de revisión'): Identidad | null {

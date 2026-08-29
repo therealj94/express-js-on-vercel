@@ -36,6 +36,9 @@
 import { Router } from 'express'
 import { store } from '../store.js'
 import { direccionDelAncla, renglonAncla, estadoAncla } from '../audit/ancla.js'
+import { construirOpenApi, rutasDe } from '../api/openapi.js'
+import { appsRouter } from './apps.js'
+import { directorioAppsRouter } from './directorio.js'
 
 export const publicoRouter = Router()
 
@@ -44,6 +47,20 @@ export const publicoRouter = Router()
 publicoRouter.use((_req, res, siguiente) => {
   res.setHeader('Cache-Control', 'no-store')
   siguiente()
+})
+
+/**
+ * El documento OpenAPI.
+ *
+ * Va en lo público y sin clave a propósito: quien está decidiendo si integrar
+ * Genesis ID todavía no tiene clave, y pedirle una para leer la documentación
+ * es pedirle que se comprometa antes de saber qué le ofrecen.
+ */
+publicoRouter.get('/openapi.json', (req, res) => {
+  const servidor = `${req.protocol}://${req.get('host')}`
+  res.json(construirOpenApi(
+    [...rutasDe(appsRouter, '/api/v1'), ...rutasDe(directorioAppsRouter, '/api/v1/directorio')],
+    servidor))
 })
 
 publicoRouter.get('/anclas', (_req, res) => {

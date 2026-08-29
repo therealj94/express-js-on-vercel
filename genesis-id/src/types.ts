@@ -84,6 +84,16 @@ export interface Identidad {
   /** El UID solo existe cuando la identidad está verificada. */
   gid: string | null
 
+  /**
+   * La aplicación que la dio de alta, si vino por la API.
+   *
+   * Se guarda para saber A QUIEN AVISAR cuando se decida. Sin esto, una app que
+   * manda a alguien a verificarse no tiene forma de enterarse del resultado
+   * hasta que la persona vuelve y se vincula — y el aviso llegaría tarde o no
+   * llegaría. Vacío para las que se crean desde el panel.
+   */
+  creadaPor?: string | null
+
   documento: RevisionDocumento | null
   biometria: ResultadoBiometria | null
   tamiz: ResultadoTamiz | null
@@ -147,6 +157,8 @@ export interface DocumentoNegocio {
 
 export interface Negocio {
   id: string
+  /** La aplicación que lo dio de alta, si vino por la API. Ver `Identidad`. */
+  creadaPor?: string | null
   /** Correo del dueño, que debe tener su propia identidad personal. */
   emailDueno: string
   gidDueno: string | null
@@ -251,6 +263,41 @@ export interface Aplicacion {
   activa: boolean
   creadaEn: string
   ultimoUso: string | null
+  /** A dónde avisar cuando cambia algo. Ver `enganches/enganches.ts`. */
+  enganche?: Enganche
+}
+
+export interface Enganche {
+  url: string
+  /** Vacío quiere decir «todos». */
+  eventos: string[]
+  activo: boolean
+  puestoEn: string
+  /**
+   * El secreto con el que se firma cada envío.
+   *
+   * Se guarda RECUPERABLE, al revés que `hashClave`, y la diferencia tiene
+   * motivo: de la clave de API solo hay que COMPROBAR que la que llega es la
+   * buena, y para eso basta el hash. Aquí hay que FIRMAR, y no se puede firmar
+   * con un hash. Se dice en voz alta porque es la clase de asimetría que
+   * alguien lee como un descuido.
+   */
+  secreto: string
+}
+
+/** Un aviso concreto a una aplicación concreta, con su historia de intentos. */
+export interface Entrega {
+  id: string
+  app: string
+  evento: string
+  url: string
+  cuerpo: string
+  intentos: number
+  proximoIntento: number
+  estado: 'pendiente' | 'entregada' | 'fallida' | 'cancelada'
+  creadaEn: string
+  entregadaEn?: string
+  ultimoError?: string
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -317,6 +364,8 @@ export interface DatosGenesis {
   bitacora: EntradaBitacora[]
   /** Punteros a las anclas escritas en la cadena. Ver `audit/ancla.ts`. */
   anclas: AnclaGuardada[]
+  /** Cola de avisos a las aplicaciones. Ver `enganches/enganches.ts`. */
+  entregas: Entrega[]
   version: number
 }
 

@@ -10,6 +10,7 @@ import { prepararTelemetria, hayMongo as telemetriaEnMongo } from './analitica/e
 import { estadoListas, hayListas, iniciarListas } from './aml/listas.js'
 import { estadoTemporizador, iniciarTemporizadorListas } from './aml/temporizador.js'
 import { estadoAncla, iniciarAncla } from './audit/ancla.js'
+import { iniciarEnganches, estadoEnganches } from './enganches/enganches.js'
 import { saludSegundoFactor } from './auth/operadores.js'
 import { bitacoraFirmable } from './lib/cripto.js'
 import { cargarGafiDesdeMongo, estadoGafi, listasVencidas } from './aml/paises.js'
@@ -135,6 +136,10 @@ app.get(['/', '/admin'], (_req, res) => {
  * registro de auditoría no se ha cortado. Ponerle una puerta la convertiría
  * otra vez en nuestra palabra, que es justo lo que vino a sustituir.
  */
+app.get(['/api-docs', '/documentacion', '/integrar'], (_req, res) => {
+  res.sendFile(join(__dirname, '..', 'public', 'api.html'))
+})
+
 app.get(['/comprobar', '/comprobar.html'], (_req, res) => {
   res.sendFile(join(__dirname, '..', 'public', 'comprobar.html'))
 })
@@ -416,6 +421,12 @@ app.get('/healthz', (_req, res) => {
       bitacoraSitiosEnChoque: saludBitacora().sitiosEnChoque,
       bitacoraRoturas: cadena.sellos.map((x) => x.rotaEn).filter((x) => x !== null),
       telemetriaPersistente: telemetriaEnMongo(),
+      /* Los avisos a las aplicaciones. `enganchesFallidos` es el que importa:
+         un aviso que se rindió es un integrador que se quedó sin enterarse, y
+         eso no se nota desde dentro —aquí todo salió bien. */
+      enganchesConfigurados: estadoEnganches().configurados,
+      enganchesPendientes: estadoEnganches().pendientes,
+      enganchesFallidos: estadoEnganches().fallidas,
     },
   })
 })
@@ -432,6 +443,7 @@ app.get('/api', (_req, res) => {
       panel: '/api/panel/* — cumplimiento (sesión de operador)',
       analitica: '/api/panel/analitica/* — métricas del ecosistema',
       publico: '/api/publico/* — anclas de la bitácora, sin autenticación',
+      documentacion: '/api/publico/openapi.json — la API entera, y /api para leerla',
     },
   })
 })
@@ -589,6 +601,7 @@ export async function arrancar(): Promise<void> {
   /* Y el ancla de la bitacora, que es la otra mitad de la firma: la firma
      impide inventar entradas, el ancla impide borrarlas sin que se note. */
   iniciarAncla()
+  iniciarEnganches()
 
   const admin = asegurarAdministrador()
   const appsNuevas = asegurarAplicaciones()
