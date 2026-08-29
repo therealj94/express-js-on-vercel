@@ -86,7 +86,16 @@ let reales = null;
 try {
   const salida = execFileSync('python3', ['-c', `
 import json,boto3,os
-p="/tmp/claude-0/-home-user-express-js-on-vercel/0391d4fe-0c9f-53b0-b60e-0030ebf74708/scratchpad/aws_llaves.json"
+import glob
+# LAS LLAVES NO LLEVAN LA RUTA ESCRITA.
+# Aca habia una ruta absoluta con el identificador de UNA sesion de trabajo
+# dentro. Fuera de esa sesion no existe, y el fichero no puede vivir en el
+# repositorio porque son credenciales. Se busca donde suele estar, o se dice
+# por AWS_LLAVES.
+p = os.environ.get("AWS_LLAVES") or next(
+    iter(sorted(glob.glob("/tmp/claude-*/*/*/scratchpad/aws_llaves.json"))), "")
+if not p:
+    raise SystemExit("No encuentro aws_llaves.json. Pasalo en AWS_LLAVES.")
 c=json.load(open(p))
 s=boto3.Session(aws_access_key_id=c["AccessKeyId"],aws_secret_access_key=c["SecretAccessKey"],region_name="us-east-1")
 a=s.client("ses").describe_active_receipt_rule_set()

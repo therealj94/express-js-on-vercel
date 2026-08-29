@@ -106,7 +106,7 @@ console.log('\nLa charla con AU-RA\n');
 await p.evaluate(() => VETA._chatCon({ id: 'aura@ordenglobal.org', nombre: 'AU-RA' }));
 await p.waitForSelector('.cha-hcab', { timeout: 8000 }).catch(() => null);
 await p.waitForTimeout(300);
-await p.screenshot({ path: '/tmp/claude-0/-home-user-express-js-on-vercel/0391d4fe-0c9f-53b0-b60e-0030ebf74708/scratchpad/rincon.png' });
+await p.screenshot({ path: '/tmp/rincon.png' });
 const aura = await p.evaluate(() => ({
   tira: !!document.querySelector('.cha-aura-tira'),
   beta: document.querySelector('.cha-aura-beta')?.textContent || '',
@@ -215,7 +215,7 @@ ok(vz.alto >= window_alto - 2,
    `mide ${vz.alto}px de ${window_alto}`);
 ok(vz.delBody, 'porque cuelga del body, no de un contenedor con transform');
 
-await p.screenshot({ path: '/tmp/claude-0/-home-user-express-js-on-vercel/0391d4fe-0c9f-53b0-b60e-0030ebf74708/scratchpad/pantalla-voz.png' });
+await p.screenshot({ path: '/tmp/pantalla-voz.png' });
 
 /* Y lo que más importa al salir: el hilo sigue ahí, con todo. */
 await p.evaluate(() => VETA.auraVozCerrar());

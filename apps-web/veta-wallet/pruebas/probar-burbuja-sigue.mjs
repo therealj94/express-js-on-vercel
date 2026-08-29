@@ -168,7 +168,7 @@ ok(b3.some((b) => b.txt.includes('en segundos')),
    'lo que llegó mientras estaba cerrada aparece al abrir',
    `burbujas: ${JSON.stringify(b3.map((x) => x.txt.slice(0, 40)))}`);
 
-await p.screenshot({ path: '/tmp/claude-0/-home-user-express-js-on-vercel/0391d4fe-0c9f-53b0-b60e-0030ebf74708/scratchpad/burbuja-sigue.png' });
+await p.screenshot({ path: '/tmp/burbuja-sigue.png' });
 await nav.close(); sv.close(); api.close();
 try { relevo.kill(); } catch { /* ya no estaba */ }
 console.log(fallos ? `\n${fallos} comprobación(es) fallaron\n` : '\nTodo en verde\n');

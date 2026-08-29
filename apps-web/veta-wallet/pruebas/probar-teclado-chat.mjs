@@ -184,7 +184,7 @@ ok(Math.abs(vuelta.p2c - sinT.p2c) < 4,
    'y la pantalla recupera su alto',
    `${sinT.p2c} antes, ${vuelta.p2c} después`);
 
-await p.screenshot({ path: '/tmp/claude-0/-home-user-express-js-on-vercel/0391d4fe-0c9f-53b0-b60e-0030ebf74708/scratchpad/teclado.png' });
+await p.screenshot({ path: '/tmp/teclado.png' });
 await nav.close(); sv.close(); api.close();
 console.log(fallos ? `\n${fallos} comprobación(es) fallaron\n` : '\nTodo en verde\n');
 process.exit(fallos ? 1 : 0);

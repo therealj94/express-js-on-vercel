@@ -383,7 +383,7 @@ ok(respaldo.aviso || respaldo.pidio,
    'lo dice y se pasa a la nota de voz',
    'falló en silencio: la persona se queda esperando un sonido que no viene');
 
-await p.screenshot({ path: '/tmp/claude-0/-home-user-express-js-on-vercel/0391d4fe-0c9f-53b0-b60e-0030ebf74708/scratchpad/voz-en-vivo.png' });
+await p.screenshot({ path: '/tmp/voz-en-vivo.png' });
 
 await nav.close(); sv.close(); api.close(); puerta.close();
 try { relevo.kill(); } catch { /* ya no estaba */ }

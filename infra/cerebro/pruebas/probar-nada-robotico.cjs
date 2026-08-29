@@ -19,12 +19,37 @@
 const {chromium}=require('playwright');
 const fs=require('fs');
 const RUTA='file:///home/user/express-js-on-vercel/infra/cerebro/index.html';
-const MAN=process.argv[2]||'/tmp/claude-0/-home-user-express-js-on-vercel/'+
-  '0391d4fe-0c9f-53b0-b60e-0030ebf74708/scratchpad/audio/manifiesto.json';
+/* EL MANIFIESTO NO LLEVA LA RUTA ESCRITA.
+   Aca habia una ruta absoluta con el identificador de UNA sesion de trabajo
+   dentro: fuera de esa sesion no existe, y esta prueba fallaba siempre en
+   cualquier otra maquina. Se pasa por argumento, por AURA_MANIFIESTO, o se
+   busca donde suele quedar. */
+const MAN = process.argv[2] || process.env.AURA_MANIFIESTO ||
+  (require('glob') ? null : null) ||
+  (function () {
+    const raiz = '/tmp';
+    for (const d of (fs.existsSync(raiz) ? fs.readdirSync(raiz) : [])) {
+      if (!d.startsWith('claude-')) continue;
+      const pila = [require('path').join(raiz, d)];
+      while (pila.length) {
+        const aqui = pila.pop();
+        let hijos = [];
+        try { hijos = fs.readdirSync(aqui, { withFileTypes: true }); } catch { continue }
+        for (const h of hijos) {
+          const r = require('path').join(aqui, h.name);
+          if (h.isDirectory()) { if (pila.length < 200) pila.push(r) }
+          else if (r.endsWith('/audio/manifiesto.json')) return r;
+        }
+      }
+    }
+    return '';
+  })();
 
 (async()=>{
-  if(!fs.existsSync(MAN)){
-    console.log('no hay manifiesto en '+MAN+' — grábalo antes con rendir.py');
+  if(!MAN || !fs.existsSync(MAN)){
+    console.log('no hay manifiesto de audio. Grabalo con rendir.py, o pasa la ruta:');
+    console.log('  node pruebas/probar-nada-robotico.cjs <manifiesto.json>');
+    console.log('  o AURA_MANIFIESTO=<ruta> node pruebas/probar-nada-robotico.cjs');
     process.exitCode=1; return;
   }
   const manifiesto=fs.readFileSync(MAN);

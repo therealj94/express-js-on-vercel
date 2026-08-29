@@ -3,7 +3,7 @@
    leyendo CSS, se comprueba mirando. */
 const {chromium}=require('playwright');
 const RUTA='/home/user/express-js-on-vercel/infra/cerebro/index.html';
-const SAL='/tmp/claude-0/-home-user-express-js-on-vercel/0391d4fe-0c9f-53b0-b60e-0030ebf74708/scratchpad/tiros/';
+const SAL='/tmp/tiros-cerebro/';
 require('fs').mkdirSync(SAL,{recursive:true});
 
 const VOZ=()=>{

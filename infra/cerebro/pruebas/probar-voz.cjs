@@ -120,6 +120,6 @@ const RUTA = '/home/user/express-js-on-vercel/infra/cerebro/index.html';
   console.log('ESPAÑOL · la interfaz dice:', r.titulo, '/', r.boton);
 
   console.log('\nerrores totales:', err.length ? err.join(' | ').slice(0,400) : 'ninguno');
-  await p.screenshot({path:'/tmp/claude-0/-home-user-express-js-on-vercel/0391d4fe-0c9f-53b0-b60e-0030ebf74708/scratchpad/cerebro.png'});
+  await p.screenshot({path:'/tmp/cerebro.png'});
   await b.close();
 })().catch(e => console.log('FALLO DEL TEST:', e.message));

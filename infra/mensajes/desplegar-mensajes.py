@@ -6,9 +6,22 @@ y `caddy validate` antes de recargar --si no valida, se restaura y se avisa--.
 Al final se comprueba desde FUERA que /mensajes/salud contesta 200 sin
 contraseña y que lo interno sigue en 401.
 """
+import os
 import json, time, boto3, os, sys
 
-S = '/tmp/claude-0/-home-user-express-js-on-vercel/0391d4fe-0c9f-53b0-b60e-0030ebf74708/scratchpad'
+# EL SCRATCHPAD SE BUSCA, no se escribe.
+#
+# Aca habia una ruta absoluta con el identificador de UNA sesion de trabajo
+# metido dentro. Fuera de esa sesion no existe, asi que este guion se rompia
+# solo en cuanto la sesion terminaba. Lo que vive ahi son credenciales, que no
+# pueden estar en el repositorio; asi que se busca donde suele estar, o se dice
+# a mano con OG_SCRATCHPAD.
+import glob as _glob
+
+S = os.environ.get('OG_SCRATCHPAD') or next(
+    iter(sorted(_glob.glob('/tmp/claude-*/*/*/scratchpad'))), '')
+if not S:
+    raise SystemExit('No encuentro la carpeta de trabajo. Pasala en OG_SCRATCHPAD.')
 AQUI = os.path.dirname(os.path.abspath(__file__))
 
 # ─────────────────────────────────────────────────────────────────────────────

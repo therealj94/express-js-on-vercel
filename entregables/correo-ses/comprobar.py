@@ -23,8 +23,21 @@ import boto3
 DOMINIO = 'ordenglobal.org'
 REMITENTE = 'correo.ordenglobal.org'
 REGION = 'us-east-1'
-LLAVES = ('/tmp/claude-0/-home-user-express-js-on-vercel/'
-          '0391d4fe-0c9f-53b0-b60e-0030ebf74708/scratchpad/aws_llaves.json')
+# LAS LLAVES NO LLEVAN LA RUTA ESCRITA.
+#
+# Aca habia una ruta absoluta con el identificador de UNA sesion de trabajo
+# metido dentro. Fuera de esa sesion no existe, asi que este guion se rompia
+# solo en cuanto la sesion terminaba — y no diciendo «faltan las llaves», sino
+# con un fichero que no aparece.
+#
+# El fichero no puede vivir en el repositorio (son credenciales), asi que se
+# busca donde suele estar o se dice a mano con AWS_LLAVES.
+import glob
+
+LLAVES = os.environ.get('AWS_LLAVES') or next(
+    iter(sorted(glob.glob('/tmp/claude-*/*/*/scratchpad/aws_llaves.json'))), '')
+if not LLAVES:
+    raise SystemExit('No encuentro aws_llaves.json. Pasalo en AWS_LLAVES.')
 
 fallos = []
 avisos = []

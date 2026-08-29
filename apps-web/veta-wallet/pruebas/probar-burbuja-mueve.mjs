@@ -143,7 +143,7 @@ await p.waitForTimeout(600);
 ok(!(await p.evaluate(() => document.querySelector('#aura-orbe').classList.contains('tapado'))),
    'y al salir del chat la burbuja vuelve sola');
 
-await p.screenshot({ path: '/tmp/claude-0/-home-user-express-js-on-vercel/0391d4fe-0c9f-53b0-b60e-0030ebf74708/scratchpad/burbuja.png' });
+await p.screenshot({ path: '/tmp/burbuja.png' });
 
 console.log('\n  (el teclado no se puede probar en un navegador de escritorio:');
 console.log('   el código lo escucha con visualViewport, pero queda SIN PROBAR)\n');

@@ -215,7 +215,7 @@ ok(pos.x >= 0 && pos.y >= 0 && pos.x + pos.w <= 391 && pos.y + pos.h <= 845,
    'y entero dentro de la pantalla',
    `panel en ${Math.round(pos.x)},${Math.round(pos.y)} de ${Math.round(pos.w)}x${Math.round(pos.h)}`);
 
-await p.screenshot({ path: '/tmp/claude-0/-home-user-express-js-on-vercel/0391d4fe-0c9f-53b0-b60e-0030ebf74708/scratchpad/panel-aura.png' });
+await p.screenshot({ path: '/tmp/panel-aura.png' });
 await nav.close(); sv.close(); api.close();
 try { relevo.kill(); } catch { /* ya no estaba */ }
 console.log(fallos ? `\n${fallos} comprobación(es) fallaron\n` : '\nTodo en verde\n');
