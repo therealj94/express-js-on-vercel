@@ -126,7 +126,10 @@ jobs:
         run: |
           for f in probar-candado.mjs probar-firma-bulto.mjs probar-chat-vivo.mjs \
                    probar-grupo.mjs probar-p2c-completo.mjs probar-voz.mjs \
-                   probar-textos.mjs probar-movil-cabecera.mjs; do
+                   probar-textos.mjs probar-movil-cabecera.mjs \
+                   probar-estados-24h.mjs probar-pulsar-hablar.mjs \
+                   probar-globo-crece.mjs probar-musica-calla.mjs \
+                   probar-una-sola-voz.mjs probar-sabe-que-pasa.mjs; do
             [ -f "$f" ] || continue
             echo "── $f"
             node "$f"
