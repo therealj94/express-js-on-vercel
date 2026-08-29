@@ -137,9 +137,27 @@ console.log('\n── las casas se reconocen: logo y nombre ──────�
     conLogo: (window.__AE_APPS || []).filter((a) => a.logo).length,
     conIco: (window.__AE_APPS || []).filter((a) => a.ico).length,
   }));
-  ok('la casa le pasa sus nueve apps a la galaxia', casas.apps.length === 9, casas.apps.join(','));
+  /* CUÁNTAS SON LO DICE LA CASA, NO ESTA PRUEBA.
+     Aquí estaba escrito «9» a mano y llevaba tiempo en rojo: se sumaron MINAS
+     y DBNX y nadie vino a actualizar el número. Una prueba que se queda vieja
+     sola es una prueba que se aprende a ignorar, y entonces el día que se
+     rompe algo de verdad tampoco se mira.
+     La lista sale de MUNDOS en app.js, que es de donde salen las casas de
+     verdad — comparar la galaxia consigo misma no comprobaría nada: sería
+     cierto siempre, incluso el día en que la casa deje de pasarle una. */
+  const { readFileSync } = await import('node:fs');
+  const fuente = readFileSync(new URL('../app.js', import.meta.url), 'utf8');
+  const trozo = fuente.slice(fuente.indexOf('const MUNDOS = ['));
+  const deLaCasa = [...trozo.slice(0, trozo.indexOf('\n  ];')).matchAll(/\{ id: '([^']+)'/g)]
+    .map((m) => m[1]);
+  const faltan = deLaCasa.filter((k) => !casas.apps.includes(k));
+  ok('la casa le pasa TODAS sus apps a la galaxia',
+     deLaCasa.length >= 9 && faltan.length === 0,
+     faltan.length ? `no llegaron: ${faltan.join(',')}`
+                   : `${deLaCasa.length} casas, todas presentes`);
   ok('con logotipo de verdad las que lo tienen', casas.conLogo >= 5, `${casas.conLogo} logos`);
-  ok('y el ícono de línea para todas', casas.conIco === 9, `${casas.conIco} íconos`);
+  ok('y el ícono de línea para todas', casas.conIco === deLaCasa.length,
+     `${casas.conIco} íconos de ${deLaCasa.length} casas`);
   /* Las marcas se pintan en texturas de canvas: se comprueba que el planeta
      de la wallet lleva PIXELES suyos y no un disco vacío. */
   const pintado = await p.evaluate(async () => {
