@@ -175,6 +175,7 @@ jobs:
                    probar-textos.mjs probar-movil-cabecera.mjs \
                    probar-estados-24h.mjs probar-pulsar-hablar.mjs \
                    probar-avisos-apagar.mjs probar-denunciar.mjs \
+                   probar-actividad-scan.mjs \
                    probar-globo-crece.mjs probar-musica-calla.mjs \
                    probar-una-sola-voz.mjs probar-sabe-que-pasa.mjs; do
             [ -f "$f" ] || continue

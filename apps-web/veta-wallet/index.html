@@ -1121,6 +1121,12 @@ button:not(:disabled):active,[role=button]:active,summary:active,
   padding:0;border-top:0;display:block;background:none}
 .hilera{display:flex;align-items:center;gap:14px;padding:14px 0;border-bottom:1px solid rgba(255,255,255,.05)}
 .hilera:last-child{border-bottom:0}
+/* El enlace al explorador de cada movimiento. Va con 40 px de alto y de
+   ancho propio —no estirado a la fila— porque tocar la fila entera abriría
+   una pestaña nueva sin querer cada vez que alguien desliza la lista. */
+.hilera .act-scan{display:inline-flex;align-items:center;min-height:40px;padding:2px 0;
+  font-size:12px;color:var(--oro);text-decoration:none;opacity:.85}
+.hilera .act-scan:hover{opacity:1;text-decoration:underline}
 .hilera .ic{width:38px;height:38px;flex:0 0 auto;border-radius:12px;display:grid;place-items:center;
   background:rgba(201,169,97,.11);border:1px solid var(--linea2)}
 .hilera .ic svg{width:17px;height:17px;stroke:var(--oro);fill:none;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}

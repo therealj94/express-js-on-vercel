@@ -2450,12 +2450,31 @@ const VETA = (() => {
       const sim = m.symbol || m.token || (m.usdtAmount != null ? 'ORIGEN' : '');
       // en un envío interesa a quién fue; en lo recibido, de quién vino
       const contra = entra ? (m.from || m.to) : (m.to || m.from);
+      /* ── EL ENLACE AL EXPLORADOR ────────────────────────────────────────
+       *
+       * La actividad enseñaba la dirección y la fecha como texto suelto, sin
+       * una sola forma de llegar a ordenscan. Y la casa entera dice lo
+       * contrario: AU-RA contesta «cada movimiento queda escrito en nuestra
+       * cadena y lo podés comprobar en ordenscan.com sin pedirle permiso a
+       * nadie», y el comprobante de un pago en el chat sí enlaza. Desde la
+       * pantalla donde de verdad se mira el dinero, no se podía.
+       *
+       * Solo se enlaza lo que TIENE hash. Un movimiento de tarjeta o de fiat
+       * no pasa por la cadena, así que un enlace ahí llevaría a un «no
+       * encontrado» — que se lee como que la cadena perdió tu plata, y es
+       * peor que no ofrecer nada. */
+      const hash = m.hash || m.txHash || '';
+      const sello = `${esc(cortaDir(contra || hash || ''))} · ${esc(cuando(movCuando(m)))}`;
       return `
       <div class="hilera">
         <div class="ic"><svg viewBox="0 0 24 24">${entra ? ICO.recibir : ICO.enviar}</svg></div>
         <div class="txt">
           <b>${entra ? t('act.entra') : t('act.sale')}${sim ? ` <em class="act-sim">${esc(sim)}</em>` : ''}</b>
-          <small class="mono">${esc(cortaDir(contra || m.hash || ''))} · ${esc(cuando(movCuando(m)))}</small>
+          <small class="mono">${sello}</small>
+          ${hash ? `<a class="act-scan" href="${esc(EXPLORADOR + '/tx/' + hash)}"
+                       target="_blank" rel="noopener"
+                       onclick="event.stopPropagation()"
+                       title="${esc(hash)}">${t('act.verScan')}</a>` : ''}
         </div>
         <div class="val ${entra ? 'entra' : 'sale'}">${entra ? '+' : '−'}${oro(monto)}</div>
       </div>`;
