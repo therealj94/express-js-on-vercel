@@ -1,6 +1,11 @@
 # Pipeline de video generativo — MiniMax H3 + Wan 2.2 (nube y local)
 
-Objetivo: generar clips tipo Seedance 2.5 de forma desatendida, en Vast.ai y en PC local.
+Objetivo: generar clips tipo Seedance 2.5, en Vast.ai y en PC local.
+
+> **Empieza por [`EMPEZAR.md`](./EMPEZAR.md)** (sesión 1 paso a paso).
+> [`VEREDICTO.md`](./VEREDICTO.md) tiene la recomendación final y manda sobre este
+> documento donde haya contradicción. [`CALIDAD.md`](./CALIDAD.md) para tráilers,
+> [`COSTOS.md`](./COSTOS.md) para el modelo de costos.
 
 ---
 
@@ -8,7 +13,7 @@ Objetivo: generar clips tipo Seedance 2.5 de forma desatendida, en Vast.ai y en 
 
 | Modelo | Pesos abiertos | Notas |
 |---|---|---|
-| **MiniMax H3 (Hailuo 3.0)** | ✅ 3-ago-2026, `MiniMaxAI/MiniMax-H3` y `Comfy-Org/MiniMax-H3` | 33B denso, omni-modal, audio nativo sincronizado, 4–15 s, 768p nativo. Licencia comunitaria **excluye despliegue local en US / EU / UK / KR**. Los módulos `H3-Context-IR` (reescritura de prompt) y `H3-Regenerate-2K` (upscale) **no** son públicos → el local no iguala la demo de la API sin upscaler propio. |
+| **MiniMax H3 (Hailuo 3.0)** | ✅ 3-ago-2026, `MiniMaxAI/MiniMax-H3` y `Comfy-Org/MiniMax-H3` | 33B denso, omni-modal, audio nativo sincronizado, 4–15 s, 768p nativo. **#2 en el Video Arena de image-to-video**, por encima de Seedance 2.0. Licencia comunitaria **excluye despliegue local en US / EU / UK / KR**. Los módulos `Context-IR` y `Regenerate-2K` no son públicos, pero hay sustitutos abiertos: LoRA `prompt-rewriter` y SeedVR2. |
 | **Wan 2.2** | ✅ Apache 2.0 (`Wan-AI/Wan2.2-*`) | Última Wan con pesos. 2.5/2.6/2.7/3.0 son **API-only**. Es la mejor base para LoRAs y control fino. |
 | **Seedance 2.5** | ❌ cerrado | ~60B, 4K, hasta 30 s, 50 referencias. No se replica localmente. Es el techo, no el objetivo. |
 
@@ -20,8 +25,8 @@ La A100 es Ampere: **no tiene FP8 ni FP4 nativos**. Los checkpoints de H3 se dis
 
 Orden de preferencia real en Vast.ai para este pipeline:
 
-1. **RTX 5090 32 GB** — mejor $/clip. FP8 + NVFP4 nativos. Suficiente para H3 15 s a 832×480–768p y Wan 2.2 14B con offload.
-2. **RTX 6000 Pro Blackwell 96 GB** — si quieres BF16 puro (61.7 GB de difusión + 48 GB de text encoder) sin cuantizar y entrenar LoRAs cómodo.
+1. **RTX PRO 6000 WS 96 GB (~$0.67/h)** — el default. BF16 sin cuantizar para H3, y FLUX.2 FP8 en la misma sesión. Es la opción de calidad.
+2. **RTX 5090 32 GB (~$0.35/h)** — mejor $/clip para barridos de semillas y volumen. H3 en INT8/FP8: se nota en piel y pelo.
 3. **H100 80 GB** — rápida y con FP8, pero cara por hora.
 4. **A100 80 GB** — solo si el precio/hora es < 60 % de la H100. Los scripts la soportan igual (`GPU_NAME` es configurable).
 
@@ -50,7 +55,6 @@ Filtros de confiabilidad que aplica el script (lo importante):
 
 Ver [`01_vast_create_pod.sh`](./01_vast_create_pod.sh). Antes, `./00_preflight.sh` verifica claves, saldo y ofertas disponibles sin gastar nada.
 
-**Empieza por [`EMPEZAR.md`](./EMPEZAR.md)** (sesión 1 paso a paso) y [`VEREDICTO.md`](./VEREDICTO.md) (stack y presupuesto).
 
 ## 2. Instalación en el pod
 
@@ -96,7 +100,7 @@ La misma cola JSON y el mismo `03_run_queue.py` funcionan en local apuntando a `
 
 1. **Prototipa en API** (H3 ~US$0.08/s, Seedance 2.5 ~US$0.23/s) hasta cerrar guion y prompts. Iterar en GPU rentada mientras aún no sabes qué quieres es la forma más cara de trabajar.
 2. **Producción en local/Vast** con H3 pesos abiertos una vez la cola está definida.
-3. **Wan 2.2 + LoRA** para consistencia de personaje entre tomas — H3 no tiene ecosistema de LoRA maduro todavía.
+3. **LoRAs de H3**: `Realism People` (125 MB, piel y microexpresiones) y `prompt-rewriter`. Wan 2.2 + LoRA propio para consistencia de personaje entre tomas.
 4. **Upscale y audio** fuera del modelo: SeedVR2 para 2K, y mezcla en DaVinci. El `Regenerate-2K` de MiniMax no es público.
 5. **Revisa la licencia de H3 según tu jurisdicción** antes de uso comercial: el despliegue local con pesos está excluido en US/EU/UK/KR, y organizaciones con ingresos ≥ US$20M requieren autorización previa.
 
