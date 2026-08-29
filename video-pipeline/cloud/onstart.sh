@@ -94,37 +94,57 @@ LIBRE=$(df -BG --output=avail "$WORK" | tail -1 | tr -dc 0-9)
 echo "==> disco libre: ${LIBRE} GB"
 [ "${LIBRE:-99}" -lt 15 ] && echo "!! Queda poco disco: la generación puede fallar al guardar."
 
-# --- Caddy delante de ComfyUI: sin esto el puerto queda abierto a internet ---
-curl -fsSL "https://github.com/caddyserver/caddy/releases/latest/download/caddy_linux_amd64.tar.gz" \
-  -o /tmp/caddy.tgz && tar -xzf /tmp/caddy.tgz -C /usr/local/bin caddy && chmod +x /usr/local/bin/caddy \
-  && CADDY_OK=1 || CADDY_OK=0
-
+# --- Autenticación delante de ComfyUI -------------------------------------
+# ComfyUI no tiene login. En una IP pública sin proxy, cualquiera que escanee
+# el puerto tiene tu GPU. Regla: si la autenticación no se puede montar, el
+# servicio NO se expone (falla cerrado, nunca abierto).
 mkdir -p "$WORK/outputs"
-nohup env COMFY_PORT=$PORT "$WORK/venv/bin/python" "$WORK/ComfyUI/main.py" \
-  --listen 127.0.0.1 --port 9000 --output-directory "$WORK/outputs" \
-  >> "$WORK/comfy.log" 2>&1 &
+apt-get install -y -qq nginx openssl || true
 
-if [ "$CADDY_OK" = "1" ]; then
-  HASH=$(caddy hash-password --plaintext "$UI_PASS")
-  cat > /etc/caddy.json <<EOF
-{"apps":{"http":{"servers":{"s":{"listen":[":${PORT}"],"routes":[{"handle":[
- {"handler":"authentication","providers":{"http_basic":{"accounts":[
-   {"username":"${UI_USER}","password":"${HASH}"}]}}},
- {"handler":"reverse_proxy","upstreams":[{"dial":"127.0.0.1:9000"}]}]}]}}}}}
-EOF
-  nohup caddy run --config /etc/caddy.json >> "$WORK/caddy.log" 2>&1 &
-  echo "==> ComfyUI protegido con usuario/clave en el puerto ${PORT}"
-else
-  echo "!! Caddy no se instaló. Abriendo ComfyUI SIN clave — destruye la instancia al terminar."
-  pkill -f "ComfyUI/main.py"
-  nohup "$WORK/venv/bin/python" "$WORK/ComfyUI/main.py" --listen 0.0.0.0 --port $PORT \
-    --output-directory "$WORK/outputs" >> "$WORK/comfy.log" 2>&1 &
+if command -v nginx >/dev/null && command -v openssl >/dev/null; then
+  HASH=$(openssl passwd -apr1 "$UI_PASS")            # formato htpasswd
+  printf '%s:%s\n' "$UI_USER" "$HASH" > /etc/nginx/.htpasswd
+  cat > /etc/nginx/sites-available/comfy <<NGINX
+server {
+    listen ${PORT} default_server;
+    client_max_body_size 512M;
+    location / {
+        auth_basic           "video-pipeline";
+        auth_basic_user_file /etc/nginx/.htpasswd;
+        proxy_pass         http://127.0.0.1:9000;
+        proxy_http_version 1.1;
+        proxy_set_header   Upgrade \$http_upgrade;      # ComfyUI usa WebSocket
+        proxy_set_header   Connection "upgrade";        # para el progreso
+        proxy_set_header   Host \$host;
+        proxy_read_timeout 3600s;
+        proxy_send_timeout 3600s;
+        proxy_buffering    off;
+    }
+}
+NGINX
+  rm -f /etc/nginx/sites-enabled/default
+  ln -sf /etc/nginx/sites-available/comfy /etc/nginx/sites-enabled/comfy
+  if nginx -t 2>&1; then
+    nohup "$WORK/venv/bin/python" "$WORK/ComfyUI/main.py" \
+      --listen 127.0.0.1 --port 9000 --output-directory "$WORK/outputs" \
+      >> "$WORK/comfy.log" 2>&1 &
+    nginx || service nginx start || true
+    AUTH_OK=1
+  fi
+fi
+
+if [ "${AUTH_OK:-0}" != "1" ]; then
+  echo "!! No se pudo montar la autenticación. ComfyUI queda SOLO en localhost."
+  echo "!! Accede por túnel:  ssh -p <puerto> -L 8188:127.0.0.1:9000 root@<host>"
+  nohup "$WORK/venv/bin/python" "$WORK/ComfyUI/main.py" \
+    --listen 127.0.0.1 --port 9000 --output-directory "$WORK/outputs" \
+    >> "$WORK/comfy.log" 2>&1 &
 fi
 
 cat <<EOF
 
 =========================================================
-  LISTO. Abre el puerto ${PORT} desde el panel de Vast.
+  LISTO.  autenticación: ${AUTH_OK:-0}  (1 = puerto ${PORT} protegido)
   Usuario: ${UI_USER}
   Clave  : ${UI_PASS}
   Guarda esta clave: no vuelve a mostrarse.
