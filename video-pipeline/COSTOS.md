@@ -82,7 +82,7 @@ arranque en frío domina la factura y no gastas tiempo en operar nada.
 - Arranque en frío de 30–45 min por sesión (mitigado con colas grandes, no con muchas pequeñas).
 - El local **no** iguala la demo de la API: `Context-IR` y `Regenerate-2K` de MiniMax no son públicos; el upscale a 2K lo pones tú (SeedVR2 / Topaz).
 - Riesgo de host: por eso los filtros `reliability > 0.99` y `verified=true`.
-- Una instancia olvidada factura sola. De ahí `watchdog_spend.sh` y `MAX_SPEND_USD`.
+- Una instancia olvidada factura sola. De ahí `guardian.sh` (plazo y piso de saldo).
 - Licencia de H3: el despliegue local con pesos está excluido en US/EU/UK/KR, y organizaciones con ingresos ≥ US$20M requieren autorización previa.
 
 ---

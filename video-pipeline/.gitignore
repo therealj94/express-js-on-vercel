@@ -6,3 +6,7 @@ logs_*.txt
 outputs/
 prompts/queue.json
 __pycache__/
+prompts/q_*.json
+prompts/cola.json
+prompts/workflows/*_api.json
+*.tar

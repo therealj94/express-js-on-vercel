@@ -20,7 +20,7 @@ echo "==> [2/6] Creando pod"
 . ./.pod
 SSH="ssh -p ${SSH_PORT} -o StrictHostKeyChecking=accept-new root@${SSH_HOST}"
 
-./watchdog_spend.sh & WATCHDOG=$!
+HORAS=8 PISO=15 ./guardian.sh & WATCHDOG=$!
 trap 'kill "$WATCHDOG" 2>/dev/null || true' EXIT
 
 echo "==> [3/6] Instalando (30-45 min)"

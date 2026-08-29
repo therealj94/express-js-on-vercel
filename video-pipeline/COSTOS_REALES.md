@@ -14,9 +14,9 @@ cuánto tarda de verdad un clip. Con ese dato, `costo.py` deja de ser una estima
 
 | Concepto | Precio | Fuente |
 |---|---|---|
-| RTX PRO 6000 WS 96 GB en Vast | $0.67/h (uso $0.70 al planificar) | Vast |
-| RTX PRO 6000 Server | $0.97/h | Vast |
-| RTX 5090 32 GB | $0.31–0.45/h | Vast |
+| RTX PRO 6000 WS 96 GB | **$1.11–1.20/h** observado en mercado | consulta a la API, 29-ago |
+| RTX PRO 6000 Max-Q 96 GB | $0.94–1.14/h | consulta a la API |
+| RTX 5090 32 GB | $0.35–0.44/h | consulta a la API |
 | Disco | $0.10–0.15/GB/mes (uso $0.12) | Vast, definido por host |
 | Tráfico | $0–0.02/GB (uso $0.01) | Vast, definido por host |
 | API MiniMax H3 | ~$0.08/s | — |
@@ -27,8 +27,14 @@ cuánto tarda de verdad un clip. Con ese dato, `costo.py` deja de ser una estima
 | ComfyUI, Wan2GP, SeedVR2, pesos H3/Wan/FLUX.2, LoRA Realism People, DaVinci Resolve | **$0** | — |
 
 **El disco no es gratis mientras el pod existe.** 350 GB a $0.12/GB/mes son $42/mes, o
-**$0.058 por hora encendido** — un 8 % sobre el precio de la GPU. Y sigue corriendo con
-la instancia detenida: solo destruirla lo para.
+**$0.058 por hora encendido**. Y sigue corriendo con la instancia detenida: solo
+destruirla lo para.
+
+> **Corrección importante.** Las cifras de las secciones 2 y 3 se calcularon con
+> $0.70/h, que era el precio de la página comercial de Vast. **El mercado real
+> está en $1.11–1.20/h**, así que multiplica por ~1,6 todo lo que sigue: un
+> tráiler de 12 planos a 30 pasos sale ~$15, no ~$9. Con el modelo turbo de
+> 4 pasos baja a ~$5. `tools/costo.py --dph 1.20` da la cifra correcta.
 
 ---
 
@@ -103,7 +109,7 @@ Los que de verdad duelen y no aparecen en la factura:
 
 | Riesgo | Costo si pasa | Mitigación (ya implementada) |
 |---|---|---|
-| Pod olvidado un fin de semana | ~$35 | `AUTO_DESTROY=1` + `watchdog_spend.sh` |
+| Pod olvidado un fin de semana | ~$35 | `AUTO_DESTROY=1` + `guardian.sh` |
 | Pod olvidado un mes (solo disco) | ~$42 | destruir, nunca detener |
 | Instalación fallida y repetida | $1.32 cada intento | `02_install_cloud.sh` es idempotente |
 | Elegir A100 por parecer barata | 2–3× más lenta por clip | `GPU_NAME=RTX_PRO_6000_WS` por defecto |

@@ -189,16 +189,31 @@ fi
 # Si viene una cola, el pod genera todo solo y avisa por el log cuando termina.
 # José no abre nada: los clips salen por el bucket y la instancia se destruye.
 if [ -n "${JOB_QUEUE_B64:-}" ]; then
-  echo "$JOB_QUEUE_B64" | base64 -d > "$WORK/cola.json"
+  # La cola va JUNTO a los workflows: el runner resuelve job["workflow"] como
+  # ruta relativa a la propia cola, así que dejarla en /workspace la haría
+  # buscar en /workspace/workflows y no encontrar nada — la tanda entera se
+  # perdería después de haber pagado la instalación.
+  mkdir -p "$WORK/prompts"
+  echo "$JOB_QUEUE_B64" | base64 -d > "$WORK/prompts/cola.json"
   echo "${JOB_RUNNER_B64:-}" | base64 -d > "$WORK/03_run_queue.py" 2>/dev/null
-  echo "$JOB_WORKFLOWS_B64" | base64 -d > "$WORK/workflows.tar" 2>/dev/null && \
+  echo "${JOB_WORKFLOWS_B64:-}" | base64 -d > "$WORK/workflows.tar" 2>/dev/null && \
     tar xf "$WORK/workflows.tar" -C "$WORK" 2>/dev/null
-  echo "==> TRABAJO: arrancando cola desatendida"
-  "$WORK/venv/bin/python" "$WORK/03_run_queue.py" \
-      --queue "$WORK/cola.json" --out "$WORK/outputs" 2>&1 | tail -60
-  # Dar tiempo a que rclone suba lo último antes de que nadie destruya nada.
-  sleep 90
-  echo "==> TRABAJO COMPLETO"     # el guardián ve esto y destruye la instancia
+
+  # Comprobaciones antes de gastar: sin runner o sin workflows no hay tanda.
+  N_WF=$(ls "$WORK/prompts/workflows/"*.json 2>/dev/null | wc -l)
+  if [ ! -s "$WORK/03_run_queue.py" ] || [ "$N_WF" -eq 0 ]; then
+    echo "!! TRABAJO ABORTADO: runner=$( [ -s "$WORK/03_run_queue.py" ] && echo ok || echo FALTA )," \
+         "workflows=${N_WF}. No se genera nada."
+    echo "==> TRABAJO COMPLETO"
+  else
+    echo "==> TRABAJO: ${N_WF} workflows, arrancando cola desatendida"
+    # 8188 es nginx y pide contraseña; ComfyUI escucha en 9000.
+    COMFY_URL=http://127.0.0.1:9000 "$WORK/venv/bin/python" "$WORK/03_run_queue.py" \
+        --queue "$WORK/prompts/cola.json" --out "$WORK/outputs" 2>&1 | tail -60
+    # Dar tiempo a que rclone suba lo último antes de que nadie destruya nada.
+    sleep 90
+    echo "==> TRABAJO COMPLETO"   # el guardián ve esto y destruye la instancia
+  fi
 fi
 
 cat <<EOF
