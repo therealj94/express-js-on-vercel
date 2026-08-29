@@ -25,7 +25,6 @@ const RUTA='file:///home/user/express-js-on-vercel/infra/cerebro/index.html';
    cualquier otra maquina. Se pasa por argumento, por AURA_MANIFIESTO, o se
    busca donde suele quedar. */
 const MAN = process.argv[2] || process.env.AURA_MANIFIESTO ||
-  (require('glob') ? null : null) ||
   (function () {
     const raiz = '/tmp';
     for (const d of (fs.existsSync(raiz) ? fs.readdirSync(raiz) : [])) {
