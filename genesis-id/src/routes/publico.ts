@@ -37,6 +37,7 @@ import { Router } from 'express'
 import { store } from '../store.js'
 import { direccionDelAncla, renglonAncla, estadoAncla } from '../audit/ancla.js'
 import { construirOpenApi, rutasDe } from '../api/openapi.js'
+import { direccionDelEmisor } from '../credencial/credencial.js'
 import { appsRouter } from './apps.js'
 import { directorioAppsRouter } from './directorio.js'
 
@@ -94,6 +95,54 @@ publicoRouter.get('/anclas', (_req, res) => {
       enLaCadena: Boolean(a.tx),
     })).reverse(),
     atrasada: estadoAncla().atrasada,
+  })
+})
+
+/**
+ * Todo lo que hace falta para comprobar una credencial.
+ *
+ * Y con una advertencia que va delante de los datos, no debajo: **esto también
+ * lo decimos nosotros**. Si alguien se conforma con leer de aquí la dirección
+ * del emisor, no ha comprobado nada — solo ha cambiado «confiar en la firma»
+ * por «confiar en esta respuesta». La dirección buena es la que está escrita en
+ * la cadena, y por eso se da la transacción exacta donde leerla.
+ */
+publicoRouter.get('/emisor', (_req, res) => {
+  const publicado = store.todo().publicado || {}
+  const revocadas = store.todo().identidades
+    .filter((i) => i.gid && i.estado !== 'verificada')
+    .map((i) => i.gid!)
+    .sort()
+
+  res.json({
+    ojo:
+      'Esta respuesta la damos nosotros. Para comprobar de verdad, lea la dirección '
+      + 'del emisor de la transacción `emisor.tx` en la cadena, no de aquí.',
+    algoritmo: 'secp256k1-keccak-eip191 — lo mismo que `personal_sign`',
+    comoSeComprueba:
+      'ethers.verifyMessage(mensaje, firma) devuelve una dirección. Tiene que ser '
+      + 'igual a la del emisor publicada en la cadena. Después mire `expiraEn` y la '
+      + 'lista de revocadas.',
+    emisor: publicado.emisor
+      ? { ...publicado.emisor, enLaCadena: true }
+      : {
+          direccion: direccionDelEmisor(),
+          enLaCadena: false,
+          ojo: 'Todavía no está publicado en la cadena: comprobar una credencial '
+            + 'exige, hoy, confiar en este servicio.',
+        },
+    cadenaId: Number(process.env.GENESIS_CADENA_ID || 5550),
+    revocadas: {
+      /* La lista va entera y no un hash: con un hash habría que pedírnosla para
+         saber si un GID está dentro, y volveríamos al problema que la credencial
+         vino a quitar. */
+      gids: revocadas,
+      n: revocadas.length,
+      enLaCadena: publicado.revocadas || null,
+      ojo: 'Entre que se suspende a alguien y que la lista se publica en la cadena '
+        + 'hay una ventana de horas. Es real y por eso se dice aquí.',
+    },
+    pagina: '/credencial',
   })
 })
 

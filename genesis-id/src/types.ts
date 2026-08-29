@@ -366,6 +366,16 @@ export interface DatosGenesis {
   anclas: AnclaGuardada[]
   /** Cola de avisos a las aplicaciones. Ver `enganches/enganches.ts`. */
   entregas: Entrega[]
+  /**
+   * Lo que ya se publicó en la cadena sobre las credenciales.
+   *
+   * No es la prueba —la prueba está en la cadena—: es la nota de qué se publicó
+   * ya, para no volver a pagar gas cada día por escribir lo mismo.
+   */
+  publicado?: {
+    emisor?: { direccion: string; tx: string; fecha: string }
+    revocadas?: { huella: string; n: number; tx: string; fecha: string }
+  }
   version: number
 }
 

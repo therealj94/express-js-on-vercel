@@ -140,6 +140,15 @@ app.get(['/api-docs', '/documentacion', '/integrar'], (_req, res) => {
   res.sendFile(join(__dirname, '..', 'public', 'api.html'))
 })
 
+/**
+ * Comprobar una credencial. También sin puerta, y por el mismo motivo: quien
+ * recibe una credencial de alguien no es cliente nuestro y no tiene por qué
+ * serlo — esa es justamente la gracia.
+ */
+app.get(['/credencial', '/credencial.html'], (_req, res) => {
+  res.sendFile(join(__dirname, '..', 'public', 'credencial.html'))
+})
+
 app.get(['/comprobar', '/comprobar.html'], (_req, res) => {
   res.sendFile(join(__dirname, '..', 'public', 'comprobar.html'))
 })
@@ -214,6 +223,30 @@ for (const modulo of ['cerebro-3d.js', 'cara-3d.js', 'voz-core.js', 'guion-core.
     res.sendFile(join(__dirname, '..', 'public', modulo))
   })
 }
+
+/**
+ * El comprobador de firmas del navegador.
+ *
+ * Es lo único que carga `/credencial`, y se sirve DESDE AQUI y no de un CDN a
+ * propósito: esa página existe para que no haga falta confiar en Genesis ID, y
+ * traer el verificador de un tercero no lo arreglaría —solo movería la
+ * confianza a alguien que nadie eligió, y que además puede cambiar el archivo
+ * mañana sin avisar.
+ *
+ * Que el código sea nuestro se dice en la propia página, junto a las cuatro
+ * líneas para comprobarlo con `ethers` sin abrirla. Esa es la salida honesta;
+ * esconderlo no lo era.
+ *
+ * Se genera con `npm run construir:firma`, y una prueba carga ESTE archivo y
+ * comprueba que sigue recuperando bien la dirección: un generado que se queda
+ * viejo en el repositorio no avisa solo.
+ */
+app.get('/lib/firma.js', (_req, res) => {
+  res.type('application/javascript')
+  // Un año: el archivo no cambia, y si cambia cambia su contenido entero.
+  res.setHeader('Cache-Control', 'public, max-age=31536000')
+  res.sendFile(join(__dirname, '..', 'public', 'lib', 'firma.js'))
+})
 
 /**
  * El mapa del ecosistema, aparte de la página.

@@ -284,6 +284,46 @@ const TEXTOS: Record<string, Texto> = {
     devuelve: '`{ gid, cuenta, app }` y, con `gid.perfil`, el perfil público.',
     errores: { '401': 'Token inválido o vencido' },
   },
+  'POST /api/v1/credenciales': {
+    resumen: 'Emitir la credencial que se lleva la persona',
+    descripcion:
+      'Devuelve un documento firmado que la persona guarda y enseña. Quien lo recibe lo '
+      + 'comprueba **sin llamarnos**: la firma es `personal_sign` (EIP-191, secp256k1), '
+      + 'así que `ethers.verifyMessage(mensaje, firma)` la verifica y devuelve una '
+      + 'dirección — la del emisor, que Genesis ID publica en la cadena 5550.\n\n'
+      + 'Eso quita tres cosas de golpe: que nos enteremos de cada sitio donde esa persona '
+      + 'se identifica, que una caída nuestra deje a nadie sin poder identificarse, y que '
+      + 'haya que integrarse con nosotros para aceptar identidades de Orden Global.\n\n'
+      + '**Pida solo los atributos que necesite.** `verificada` va siempre; el resto solo '
+      + 'si se piden. Una credencial que lleva todo lo que se sabe «por si acaso» es un '
+      + 'documento que la persona enseña sin saber qué está enseñando. En particular, '
+      + '`mayorDeEdad` sale como un sí o un no y **no revela la fecha de nacimiento**.\n\n'
+      + '**El candado es el mismo que el de `/sso/token`:** la cuenta tiene que estar '
+      + 'atada a ese GID en su aplicación. Y con más motivo — un token se retira, una '
+      + 'credencial ya emitida no.\n\n'
+      + '**Vence.** 90 días por defecto, 365 como máximo. El vencimiento es el único '
+      + 'mecanismo de revocación que funciona sin conexión, y por eso los plazos son '
+      + 'cortos. La lista de revocadas se publica aparte, en la cadena.',
+    cuerpo: {
+      gid: s('string'),
+      cuenta: s('string', 'La cuenta de esa persona en su aplicación, ya vinculada'),
+      atributos: {
+        type: 'array', items: { type: 'string' },
+        description: 'mayorDeEdad · nacionalidad · nombre · nivelRiesgo. '
+          + '`verificada` va siempre y no hace falta pedirlo',
+      },
+      dias: s('number', 'Vigencia. Entre 1 y 365; 90 por defecto'),
+    },
+    obligatorios: ['gid', 'cuenta'],
+    devuelve:
+      '`{ mensaje, firma, emisor, credencial, comoSeComprueba }`. Guarde y entregue '
+      + '`mensaje` **tal cual**: si se vuelve a serializar, la firma deja de cuadrar.',
+    errores: {
+      '403': 'Esa cuenta no está atada a ese GID en su aplicación',
+      '404': 'GID no encontrado',
+      '503': 'La emisión de credenciales no está configurada en este despliegue',
+    },
+  },
   'POST /api/v1/negocios': {
     resumen: 'Abrir un expediente de empresa (KYB)',
     descripcion:
@@ -461,6 +501,7 @@ export function construirOpenApi(rutas: RutaViva[], servidor: string) {
       { name: 'sso', description: 'Inicio de sesión único del ecosistema' },
       { name: 'movimientos', description: 'Monitoreo de transacciones (AML)' },
       { name: 'vinculos', description: 'Atar cuentas de su aplicación a un GID' },
+      { name: 'credenciales', description: 'La credencial que se lleva la persona' },
       { name: 'tamiz', description: 'Listas de sanciones' },
       { name: 'directorio', description: 'Directorio de personas del ecosistema' },
     ],

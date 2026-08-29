@@ -17,6 +17,7 @@ import { registrar } from '../audit/bitacora.js'
 import { emitirReto, comprobarReto } from '../kyc/vivacidad.js'
 import { guardarRostroCotejo } from '../kyc/fotosDocumento.js'
 import { biometriaConfigurada } from '../kyc/biometria.js'
+import { emitir as emitirCredencial, ATRIBUTOS, type Atributo } from '../credencial/credencial.js'
 import type { Movimiento } from '../types.js'
 
 export const appsRouter = Router()
@@ -499,6 +500,54 @@ appsRouter.post('/sso/verificar', limite(300), exigeApp('gid.verificar'), async 
     expira: new Date(reclamos.exp * 1000).toISOString(),
     perfil: req.app_ecosistema!.alcances.includes('gid.perfil') ? ids.perfilPublico(identidad) : undefined,
   })
+})
+
+// ─────────────────────────────────────────────────────────────────────────────
+// La credencial que se lleva la persona
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Emite la credencial firmada de uno de SUS usuarios.
+ *
+ * El candado es el mismo que el de `/sso/token`, y por el mismo motivo: hay que
+ * mandar la cuenta, y esa cuenta tiene que estar atada a ese GID en ESTA
+ * aplicación. Sin eso, una clave de API comprometida serviría para emitirse
+ * credenciales de cualquier verificado del ecosistema — y una credencial, al
+ * contrario que un token, no se puede retirar una vez emitida.
+ *
+ * Los atributos se piden expresamente. La credencial no lleva «todo lo que se
+ * sabe por si acaso»: eso convierte un documento que la persona enseña en un
+ * documento que la persona enseña sin saber qué está enseñando.
+ */
+appsRouter.post('/credenciales', limite(30), exigeApp('credencial.emitir'), async (req, res) => {
+  const { gid, cuenta, atributos, dias } = req.body ?? {}
+  const g = normalizarGid(String(gid || ''))
+  if (!gidValido(g) || !cuenta) {
+    return res.status(400).json({ error: 'Hacen falta un GID válido y la cuenta' })
+  }
+  const identidad = ids.porGid(g)
+  if (!identidad) return res.status(404).json({ error: 'GID no encontrado' })
+
+  const atada = identidad.vinculos.some(
+    (v) => v.app === req.app_ecosistema!.clave && v.cuenta === String(cuenta))
+  if (!atada) {
+    return res.status(403).json({ error: 'Esa cuenta no está atada a este GID en esta aplicación' })
+  }
+
+  const pedidos = (Array.isArray(atributos) ? atributos : [])
+    .filter((a: unknown): a is Atributo => typeof a === 'string' && a in ATRIBUTOS)
+
+  /* El plazo se acota aquí y no se confía al que llama: una credencial a diez
+     años es una identidad que no se puede retirar en diez años, y el vencimiento
+     es el único mecanismo de revocación que funciona sin conexión. */
+  const plazo = Math.min(Math.max(Number(dias) || 90, 1), 365)
+
+  const r = emitirCredencial(identidad, pedidos, plazo)
+  if (!r.ok) return res.status(503).json({ error: r.error })
+
+  registrar(`app:${req.app_ecosistema!.clave}`, 'credencial.emitida', identidad.id,
+    { gid: g, atributos: Object.keys(r.credencial.credencial.atributos), dias: plazo })
+  res.json(r.credencial)
 })
 
 // ─────────────────────────────────────────────────────────────────────────────

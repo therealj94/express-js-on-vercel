@@ -42,6 +42,9 @@
 import { store } from '../store.js'
 import { anclaje, verificarCadena } from './bitacora.js'
 import { escribirEnLaCadena, direccionDe } from './cadena.js'
+import {
+  direccionDelEmisor, renglonEmisor, renglonRevocadas, huellaDeRevocadas,
+} from '../credencial/credencial.js'
 
 const HORA = 3600_000
 
@@ -189,6 +192,12 @@ export async function echarAncla(): Promise<Ancla> {
     }
   }
 
+  /* Y con el ancla salen las dos cosas de las que dependen las credenciales:
+     quién las firma y cuáles ya no valen. Van pegadas al ancla porque comparten
+     el mismo requisito —una llave con gas— y porque el día que el ancla no
+     salga, tampoco habrá salido esto, y conviene que se vea junto. */
+  if (llave) await publicarLoDeLasCredenciales(llave)
+
   /* Se apunta el ancla. Es un PUNTERO, no la prueba: la prueba vive en la
      cadena y esta lista solo dice dónde mirar. Por eso da igual que esté en la
      misma base que la bitácora —quien la manipule no gana nada, porque lo que
@@ -210,6 +219,65 @@ export async function echarAncla(): Promise<Ancla> {
 
   ultima = ancla
   return ancla
+}
+
+/**
+ * Publica en la cadena la dirección del emisor y la lista de revocadas.
+ *
+ * SOLO CUANDO CAMBIAN. Escribir lo mismo todos los días cuesta gas y, peor,
+ * llena la dirección del ancla de renglones repetidos entre los que hay que
+ * buscar el que importa. Una credencial se comprueba contra la ULTIMA
+ * publicación de cada clase, y así hay pocas y cada una significa algo.
+ */
+async function publicarLoDeLasCredenciales(llave: string): Promise<void> {
+  const rpc = process.env.GENESIS_ANCLA_RPC?.trim()
+    || process.env.GENESIS_RPC_URL?.trim()
+    || 'https://rpc.ordenglobal-rpc.com/'
+  const cadenaId = Number(process.env.GENESIS_CADENA_ID || 5550)
+  const datos = store.todo()
+  datos.publicado = datos.publicado || {}
+
+  const escribir = async (texto: string) =>
+    (await escribirEnLaCadena(rpc, llave, new TextEncoder().encode(texto), cadenaId)).hash
+
+  // ── Quién firma ───────────────────────────────────────────────────────────
+  const emisor = direccionDelEmisor()
+  if (emisor && datos.publicado.emisor?.direccion !== emisor) {
+    try {
+      const fecha = new Date().toISOString()
+      const tx = await escribir(renglonEmisor(emisor, fecha))
+      datos.publicado.emisor = { direccion: emisor, tx, fecha }
+      console.log(`[genesis-id] emisor de credenciales publicado en la cadena: ${tx}`)
+    } catch (e: any) {
+      /* Sin esto, las credenciales que se emitan no se pueden comprobar sin
+         preguntarnos — que es justo lo que vinieron a evitar. Se avisa fuerte. */
+      console.error(
+        `[genesis-id] AVISO: el emisor de credenciales NO está publicado en la cadena. `
+        + `Hasta que lo esté, comprobar una credencial exige confiar en este servicio. `
+        + `(${e?.message || e})`)
+    }
+  }
+
+  // ── Cuáles ya no valen ────────────────────────────────────────────────────
+  /* Revocada es toda identidad que TUVO GID y ya no está verificada. El GID no
+     se borra al suspender —hace falta para la trazabilidad— así que es
+     exactamente esta condición y no «estado === suspendida»: una identidad que
+     se suspendió y luego se rechazó también tiene que salir aquí. */
+  const revocadas = datos.identidades
+    .filter((i) => i.gid && i.estado !== 'verificada')
+    .map((i) => i.gid!)
+  const huella = huellaDeRevocadas(revocadas)
+
+  if (datos.publicado.revocadas?.huella !== huella) {
+    try {
+      const fecha = new Date().toISOString()
+      const tx = await escribir(renglonRevocadas(revocadas, fecha))
+      datos.publicado.revocadas = { huella, n: revocadas.length, tx, fecha }
+      console.log(`[genesis-id] lista de revocadas publicada (${revocadas.length}): ${tx}`)
+    } catch (e: any) {
+      console.error(`[genesis-id] AVISO: la lista de revocadas no llegó a la cadena: ${e?.message || e}`)
+    }
+  }
 }
 
 /** Pone el ancla diaria en marcha. Se llama una vez, al arrancar. */

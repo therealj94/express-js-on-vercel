@@ -25,6 +25,7 @@ export const ALCANCES = {
   'vinculo.crear': 'Atar una cuenta de la app a un GID',
   'negocio.crear': 'Registrar un negocio para KYB',
   'movimiento.enviar': 'Enviar movimientos para monitoreo AML',
+  'credencial.emitir': 'Emitir a sus usuarios la credencial que se llevan consigo',
   'tamiz.direccion': 'Consultar si una dirección está sancionada',
   'telemetria.enviar': 'Reportar uso y errores al panel de analítica',
   'directorio.enviar': 'Sincronizar su padrón de usuarios con el directorio',
@@ -41,7 +42,7 @@ export const APPS_ECOSISTEMA: { clave: string; nombre: string; alcances: Alcance
     // y además manda movimientos para el monitoreo.
     alcances: [
       'identidad.crear', 'identidad.leer', 'identidad.documento',
-      'gid.verificar', 'gid.perfil', 'vinculo.crear',
+      'gid.verificar', 'gid.perfil', 'vinculo.crear', 'credencial.emitir',
       'movimiento.enviar', 'tamiz.direccion', 'telemetria.enviar', 'directorio.enviar',
     ],
   },
