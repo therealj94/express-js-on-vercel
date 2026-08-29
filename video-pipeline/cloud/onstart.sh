@@ -213,6 +213,12 @@ if [ -n "${JOB_QUEUE_B64:-}" ]; then
     # Dar tiempo a que rclone suba lo último antes de que nadie destruya nada.
     sleep 90
     echo "==> TRABAJO COMPLETO"   # el guardián ve esto y destruye la instancia
+
+    # NO hay autodestrucción: Vast solo entrega la clave de instancia DESPUÉS
+    # de crearla, cuando el entorno del pod ya está fijado, y meter aquí la
+    # clave de la cuenta daría control total sobre ella a la máquina de un
+    # tercero. El apagado depende del guardián y, en último término, del botón
+    # Destroy y del piso de saldo.
   fi
 fi
 

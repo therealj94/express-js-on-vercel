@@ -158,7 +158,10 @@ def main() -> int:
             # máquina, corre el disco y el onstart nunca llega a ejecutarse.
             "target_state": "running",
         })
-        print(json.dumps(r, indent=2))
+        # La clave de instancia llega DESPUÉS de crear, así que no puede
+        # viajar en el entorno del pod: no se filtra en la salida y punto.
+        print(json.dumps({k: v for k, v in r.items()
+                          if k != "instance_api_key"}, indent=2))
         print(f'\nInstancia {r.get("new_contract")} creada. '
               f'Vigila con: status / logs {r.get("new_contract")}')
 
