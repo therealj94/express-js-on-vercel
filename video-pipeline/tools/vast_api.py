@@ -91,6 +91,8 @@ def main() -> int:
     c.add_argument("--disk", type=float, default=350)
     c.add_argument("--port", type=int, default=8188)
     c.add_argument("--env", action="append", default=[], metavar="K=V")
+    c.add_argument("--selftest", help="script que el pod ejecuta al final; su "
+                                      "salida viaja por el log de Vast")
 
     sub.add_parser("status")
     for name in ("logs", "destroy", "start", "stop"):
@@ -114,6 +116,14 @@ def main() -> int:
 
     elif a.cmd == "create":
         onstart = Path(a.onstart).read_text()
+        if a.selftest:
+            # Se incrusta en base64: así el script viaja sin que el shell tenga
+            # que escapar comillas ni dólares, y el pod se prueba a sí mismo.
+            import base64
+            b64 = base64.b64encode(Path(a.selftest).read_bytes()).decode()
+            onstart += (f'\n\necho "== autoprueba =="\n'
+                        f'echo {b64} | base64 -d > /workspace/selftest.py\n'
+                        f'"$WORK/venv/bin/python" /workspace/selftest.py 2>&1 | tail -40\n')
         # Un puerto se declara con la CADENA ENTERA como clave y "1" de valor
         # (así lo codifica parse_env del CLI oficial). Con {"-p": "8188:8188"}
         # el backend no da error: simplemente no mapea nada.
