@@ -82,9 +82,15 @@ def preguntar(modelo, sis, dicho, timeout=180):
                      {'role': 'user', 'content': dicho}],
         'stream': False,
         'keep_alive': '10m',
-        # Los MISMOS topes que usa el asistente con voz: comparar con otros
-        # sería medir un modelo que nadie va a usar.
-        'options': {'num_predict': 200, 'temperature': 0.7, 'num_ctx': 4096},
+        # LOS MISMOS TOPES QUE USA EL ASISTENTE, y la ventana sobre todo.
+        #
+        # Aquí puse 4096 primero y estaba mal: el asistente usa 8192, y con
+        # 4096 el sistema —3245 tokens de prompt más las fichas— se trunca y
+        # el modelo contesta sin la mitad de sus reglas. Habría medido a cada
+        # candidato mutilado, y encima de forma desigual: al más verboso le
+        # cabe menos. Es exactamente el error contra el que avisa el título de
+        # este archivo, cometido en la línea siguiente.
+        'options': {'num_predict': 200, 'temperature': 0.7, 'num_ctx': 8192},
     }).encode()
     req = urllib.request.Request(MOTOR + '/api/chat', data=cuerpo, method='POST',
                                  headers={'Content-Type': 'application/json'})
