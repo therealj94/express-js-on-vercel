@@ -114,7 +114,10 @@ def main() -> int:
 
     elif a.cmd == "create":
         onstart = Path(a.onstart).read_text()
-        env = {"-p": f"{a.port}:{a.port}"}
+        # Un puerto se declara con la CADENA ENTERA como clave y "1" de valor
+        # (así lo codifica parse_env del CLI oficial). Con {"-p": "8188:8188"}
+        # el backend no da error: simplemente no mapea nada.
+        env = {f"-p {a.port}:{a.port}": "1"}
         for kv in a.env:
             k, _, v = kv.partition("=")
             env[k] = v
