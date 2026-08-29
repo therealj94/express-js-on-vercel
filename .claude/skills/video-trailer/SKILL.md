@@ -9,6 +9,29 @@ Herramientas en `video-pipeline/` del repo `express-js-on-vercel`, rama
 `claude/minimax-wan-video-pipeline-vkugaz`. Documentación larga en
 `video-pipeline/VEREDICTO.md`, `CALIDAD.md`, `COSTOS_REALES.md`.
 
+## José no abre ComfyUI. Nunca.
+
+La primera sesión real falló por esto: se le dejó montando nodos a mano en un
+iPad. Su parte es describir los planos y elegir entre opciones; todo lo demás se
+ejecuta solo. Si un plan requiere que él toque la interfaz de ComfyUI, el plan
+está mal — ver `video-pipeline/SIMPLE.md`.
+
+El modo desatendido lleva el trabajo dentro de la instancia y se apaga al
+terminar:
+
+```bash
+ID=<id> HORAS=8 PISO=15 ./guardian.sh &      # SIEMPRE antes de crear
+python3 tools/vast_api.py create --offer <id> --disk 400 \
+  --onstart cloud/onstart.sh \
+  --job prompts/q_stills.json --workflows prompts/workflows
+```
+
+El pod genera la cola, escribe `TRABAJO COMPLETO` en su log, y el guardián lo
+destruye. Nadie abre un navegador.
+
+Y si José quiere usar una foto suya, la manda por el chat: va al bucket y el pod
+la recoge. "¿Dónde subo esto?" no debería ser una pregunta que tenga que hacerse.
+
 ## La regla que ordena todo el trabajo
 
 **Planificar es gratis; generar cuesta por hora.** Todo lo que pueda decidirse con

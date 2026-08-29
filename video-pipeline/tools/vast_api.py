@@ -93,6 +93,10 @@ def main() -> int:
     c.add_argument("--env", action="append", default=[], metavar="K=V")
     c.add_argument("--selftest", help="script que el pod ejecuta al final; su "
                                       "salida viaja por el log de Vast")
+    c.add_argument("--job", help="cola JSON que el pod ejecuta solo, sin que "
+                                 "nadie abra ComfyUI")
+    c.add_argument("--workflows", help="carpeta de workflows en formato API que "
+                                       "acompaña a --job")
 
     sub.add_parser("status")
     for name in ("logs", "destroy", "start", "stop"):
@@ -131,6 +135,21 @@ def main() -> int:
         for kv in a.env:
             k, _, v = kv.partition("=")
             env[k] = v
+        if a.job:
+            import base64
+            env["JOB_QUEUE_B64"] = base64.b64encode(
+                Path(a.job).read_bytes()).decode()
+            # El runner también tiene que viajar: sin SSH no hay forma de
+            # copiarlo después.
+            env["JOB_RUNNER_B64"] = base64.b64encode(
+                Path("03_run_queue.py").read_bytes()).decode()
+            if a.workflows:
+                import io, tarfile
+                buf = io.BytesIO()
+                with tarfile.open(fileobj=buf, mode="w") as tar:
+                    tar.add(a.workflows, arcname="prompts/workflows")
+                env["JOB_WORKFLOWS_B64"] = base64.b64encode(buf.getvalue()).decode()
+
         r = api(V0 + f"/asks/{a.offer}/", "PUT", {
             "client_id": "me", "image": a.image, "disk": a.disk,
             "onstart": onstart, "env": env, "runtype": "ssh",

@@ -185,6 +185,22 @@ if [ -n "${RCLONE_CONF_B64:-}" ] && [ -n "${RCLONE_REMOTE:-}" ]; then
   fi
 fi
 
+# --- Modo desatendido -------------------------------------------------------
+# Si viene una cola, el pod genera todo solo y avisa por el log cuando termina.
+# José no abre nada: los clips salen por el bucket y la instancia se destruye.
+if [ -n "${JOB_QUEUE_B64:-}" ]; then
+  echo "$JOB_QUEUE_B64" | base64 -d > "$WORK/cola.json"
+  echo "${JOB_RUNNER_B64:-}" | base64 -d > "$WORK/03_run_queue.py" 2>/dev/null
+  echo "$JOB_WORKFLOWS_B64" | base64 -d > "$WORK/workflows.tar" 2>/dev/null && \
+    tar xf "$WORK/workflows.tar" -C "$WORK" 2>/dev/null
+  echo "==> TRABAJO: arrancando cola desatendida"
+  "$WORK/venv/bin/python" "$WORK/03_run_queue.py" \
+      --queue "$WORK/cola.json" --out "$WORK/outputs" 2>&1 | tail -60
+  # Dar tiempo a que rclone suba lo último antes de que nadie destruya nada.
+  sleep 90
+  echo "==> TRABAJO COMPLETO"     # el guardián ve esto y destruye la instancia
+fi
+
 cat <<EOF
 
 =========================================================
