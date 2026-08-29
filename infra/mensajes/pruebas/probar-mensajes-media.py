@@ -12,7 +12,7 @@ y comprueba lo que la app necesita que sea verdad:
 
 Sin dependencias fuera de la stdlib + PIL (solo para fabricar el PNG).
 """
-import base64, io, json, os, socket, subprocess, sys, tempfile, time
+import base64, io, json, os, socket, struct, subprocess, sys, tempfile, time, zlib
 import urllib.error, urllib.request
 
 AQUI = os.path.dirname(os.path.abspath(__file__))
@@ -42,16 +42,34 @@ def post(base, ruta, cuerpo):
 
 def png_de_prueba():
     """Un PNG chiquito pero real (no bytes al azar): si el día de mañana el
-    servidor tocara el contenido, una imagen válida lo delataría."""
-    from PIL import Image
-    img = Image.new('RGB', (24, 24))
-    px = img.load()
-    for x in range(24):
-        for y in range(24):
-            px[x, y] = (x * 10, y * 10, (x + y) * 5)
-    buf = io.BytesIO()
-    img.save(buf, format='PNG')
-    return buf.getvalue()
+    servidor tocara el contenido, una imagen válida lo delataría.
+
+    SE ARMA A MANO, sin Pillow. Antes hacía `from PIL import Image`, y Pillow no
+    viene con Python: en la máquina donde se escribió estaba instalado, y en el
+    CI no. La prueba moría con «No module named PIL» —un error que se lee como
+    problema de entorno y se pasa de largo— y con ella las otras diez del relevo,
+    porque el trabajo entero se corta en la primera que falla.
+
+    Un PNG son cuatro trozos con su CRC. Son quince líneas y `zlib` y `struct`
+    vienen de serie, así que la prueba pasa a correr en cualquier sitio sin
+    instalar nada. La imagen es la misma: 24x24, un degradado.
+    """
+    ancho = alto = 24
+    filas = b''
+    for y in range(alto):
+        filas += b'\x00'                       # sin filtro en esta fila
+        for x in range(ancho):
+            filas += bytes((x * 10 % 256, y * 10 % 256, (x + y) * 5 % 256))
+
+    def trozo(nombre, datos):
+        return (struct.pack('>I', len(datos)) + nombre + datos
+                + struct.pack('>I', zlib.crc32(nombre + datos) & 0xFFFFFFFF))
+
+    ihdr = struct.pack('>IIBBBBB', ancho, alto, 8, 2, 0, 0, 0)   # 8 bits, RGB
+    return (b'\x89PNG\r\n\x1a\n'
+            + trozo(b'IHDR', ihdr)
+            + trozo(b'IDAT', zlib.compress(filas, 9))
+            + trozo(b'IEND', b''))
 
 
 def main():

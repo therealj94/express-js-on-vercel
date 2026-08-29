@@ -220,25 +220,13 @@ try {
 
       console.log(`\n  ── ${ancho} px`);
 
-      /* HUECOS SIN RELLENAR, A LA VISTA.
-         En nexuscoder hay un enlace de contacto que dice «[COMPLETAR: correo de
-         contacto]» y un pie que dice «[COMPLETAR: razón social · registro]».
-         Esa pagina todavia no esta publicada —nexuscoder.com es de otro— asi
-         que el hueco esta haciendo su trabajo de recordatorio. Lo que no puede
-         pasar es que se publique con el corchete puesto, y hasta hoy nada lo
-         impedia: se veia en el barrido como un aviso de tamaño de boton y se
-         leia por encima.
-         Ahora es FALLO. Para publicar hay que poner el dato de verdad —no me lo
-         puedo inventar, menos una razon social y un registro mercantil— o
-         quitar el hueco a proposito. */
-      if (ancho === ANCHOS[0]) {
-        const huecos = await pag.evaluate(() =>
-          (document.body.innerText.match(/\[COMPLETAR[^\]]*\]?/g) || []).slice(0, 6));
-        if (huecos.length) {
-          malo(`${huecos.length} hueco(s) sin rellenar, a la vista de cualquiera`,
-               huecos.join(' · '));
-        }
-      }
+      /* Aca hubo una comprobacion de los huecos «[COMPLETAR: …]». Se movio a
+         apps-web/subir.py, que es la puerta de produccion: es donde de verdad
+         hay que impedirlos. Aca dejaba el CI en rojo permanente por la pagina
+         de nexuscoder, que no esta publicada y donde el hueco esta haciendo su
+         trabajo de recordatorio — y un fallo permanente que todos saben que hay
+         que ignorar ensenia a ignorar la lista entera. */
+
       if (m.anchoDoc > ancho) {
         malo(`la página se desplaza a lo ancho`, `documento ${m.anchoDoc} vs pantalla ${ancho}`);
       } else {

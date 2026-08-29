@@ -160,6 +160,46 @@ def sellar(raiz):
     return version
 
 
+# ── UN HUECO SIN RELLENAR NO SE PUBLICA ──────────────────────────────────────
+#
+# En la pagina de nexuscoder hay un enlace de contacto que dice «[COMPLETAR:
+# correo de contacto]» y un pie que dice «[COMPLETAR: razon social · registro]».
+# Ahi estan a proposito: son el recordatorio de un dato que todavia no existe, y
+# esa pagina no esta publicada.
+#
+# Lo que no puede pasar es que se publique con el corchete puesto. Primero puse
+# la comprobacion en el barrido de movil, y estaba en el sitio equivocado: dejaba
+# el CI en rojo permanente por una pagina que nadie ha subido, y una lista con un
+# fallo que todos saben que hay que ignorar ensenia a ignorar la lista entera.
+#
+# El guardian va aca, en la puerta de produccion. Mientras el hueco siga puesto,
+# la pagina no sube y se dice exactamente que falta.
+def huecos_sin_rellenar(raiz):
+    encontrados = []
+    for base, _, nombres in os.walk(raiz):
+        for n in nombres:
+            if not n.endswith(('.html', '.js', '.json', '.css')):
+                continue
+            r = os.path.join(base, n)
+            if not se_sube(os.path.relpath(r, raiz)):
+                continue
+            try:
+                texto = open(r, encoding='utf-8', errors='ignore').read()
+            except OSError:
+                continue
+            for m in re.finditer(r'\[COMPLETAR[^\]]{0,120}\]?', texto):
+                encontrados.append((os.path.relpath(r, raiz), m.group(0)))
+    return encontrados
+
+
+_huecos = huecos_sin_rellenar(RAIZ)
+if _huecos:
+    print(f"\n  NO SE SUBE: hay {len(_huecos)} hueco(s) sin rellenar, y se verian publicados:\n")
+    for donde, que in _huecos[:20]:
+        print(f"    {donde}  ->  {que}")
+    print("\n  Poner el dato de verdad, o quitar el hueco a proposito, y volver a subir.")
+    sys.exit(1)
+
 sellar(RAIZ)
 
 archivos = {}
