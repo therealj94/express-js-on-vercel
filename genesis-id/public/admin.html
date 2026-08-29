@@ -331,6 +331,13 @@ pre{background:#0F1927;border:1px solid var(--line2);border-radius:10px;padding:
    Cian y no ámbar: en este sistema el ámbar es duda y el rojo es rechazo; que
    algo esté en cola no es ninguna de las dos cosas, es información. */
 .qi-filtros input,.qi-filtros select{border-radius:4px;background:#0F1927}
+/* Las dos casillas del respaldo. 40 px de alto porque el panel se abre desde
+   el teléfono y una casilla de 16 px no se acierta con el pulgar. */
+.c8-nota{margin-top:4px;font-size:11.5px;color:var(--mut);line-height:1.35}
+.c8-check{display:inline-flex;align-items:center;gap:7px;min-height:40px;padding:0 4px;
+  font-size:13px;color:var(--mut);cursor:pointer;white-space:nowrap}
+.c8-check input{width:16px;height:16px;accent-color:var(--oro);cursor:pointer}
+.c8-check:hover{color:var(--txt)}
 .qi-mas{width:100%;margin-top:10px;padding:12px;min-height:44px;border-radius:8px;border:1px dashed var(--line);background:transparent;color:var(--mut);cursor:pointer}
 .qi-mas:hover{color:var(--txt);border-color:var(--mut)}
 /* Seis filtros no caben con el ancho automático de los tres de identidades: el
@@ -837,6 +844,11 @@ const PESTANAS = [
   { id: 'movimientos', txt: 'Movimientos', permiso: 'caso.ver' },
   { id: 'listas', txt: 'Listas', permiso: 'listas.ver' },
   { id: 'bitacora', txt: 'Bitácora', permiso: 'bitacora.ver' },
+  /* El respaldo de la cadena que se cerró. Va DESPUÉS de la bitácora y antes
+     de los ajustes: se consulta poco, pero cuando se consulta es porque
+     alguien está reclamando algo y hay prisa. */
+  { id: 'cadena8532', txt: 'Cadena 8532', permiso: 'identidad.ver',
+    titulo: 'El respaldo de la cadena anterior, cerrada el 10-ago' },
   { id: 'ajustes', txt: 'Operadores y apps', permiso: '*' },
   // La analítica vive en su propia página pero se entra desde aquí: tener dos
   // direcciones sueltas que nadie recuerda es la forma más segura de que un
@@ -1904,6 +1916,135 @@ function verEntrada(n) {
 }
 
 // ── Operadores y aplicaciones ───────────────────────────────────────────────
+/* ── EL RESPALDO DE LA CADENA 8532 ──────────────────────────────────────────
+ *
+ * La cadena vieja se cerró el 10-ago y su nodo ya no contesta. Lo único que
+ * queda es el volcado del corte, que estaba en un bucket de S3 y en ningún
+ * sitio más. Las preguntas que se le hacen —«¿cuánto tenía esta dirección
+ * antes del cambio?»— llegan justo cuando alguien reclama, o sea cuando no
+ * hay tiempo de bajar un fichero de 5 MB y abrirlo a mano.
+ *
+ * Los saldos se pintan desde CADENAS con BigInt. Un saldo en wei tiene hasta
+ * 21 dígitos y `Number` guarda 15: formatearlos con aritmética normal da
+ * cifras que parecen bien y están mal, en un respaldo que ya no se puede
+ * volver a consultar para descubrirlo.
+ */
+const UNO_8532 = 10n ** 18n
+
+/* Celda propia y no la de `resumen`: aquella vive DENTRO de esa vista —o sea
+   que desde aquí no existe— y además su tercer parámetro es una clase CSS, no
+   un subtítulo. Llamarla como si lo fuera metía texto dentro de un `class`.
+   Ésta lleva la nota debajo, que es lo que hace falta acá: un número del corte
+   sin decir de qué corte es no dice nada. */
+const celda8 = (rotulo, valor, nota, grande) => `
+  <div class="rz-celda">
+    <span class="rz-ojillo">${rotulo}</span>
+    <div class="rz-dato num ${grande ? 'rz-cuenta' : ''}">${valor}</div>
+    ${nota ? `<div class="c8-nota">${esc(String(nota))}</div>` : ''}
+  </div>`
+
+function origen8532(wei) {
+  const v = BigInt(wei)
+  const ent = v / UNO_8532
+  const dec = (v % UNO_8532).toString().padStart(18, '0').slice(0, 4).replace(/0+$/, '')
+  return ent.toLocaleString('es') + (dec ? ',' + dec : '')
+}
+
+let f8532 = { texto: '', tipo: '', minimo: '', conSaldo: false, movieron: false,
+              orden: 'saldo', desde: 0 }
+let traidas8532 = []
+
+VISTAS.cadena8532 = async function () {
+  $('#vista').innerHTML = `
+    <div class="filtros qi-filtros mv-filtros">
+      <input id="c8Texto" placeholder="Buscar por dirección o hash" oninput="recargar8532()">
+      <select id="c8Tipo" onchange="recargar8532()">
+        <option value="">Todo</option>
+        <option value="billetera">Billeteras</option>
+        <option value="contrato">Contratos</option>
+      </select>
+      <input id="c8Min" type="number" min="0" placeholder="Saldo mínimo (ORIGEN)"
+             oninput="recargar8532()">
+      <select id="c8Orden" onchange="recargar8532()">
+        <option value="saldo">Por saldo</option>
+        <option value="nonce">Por movimientos</option>
+        <option value="direccion">Por dirección</option>
+      </select>
+      <label class="c8-check"><input type="checkbox" id="c8Saldo" onchange="recargar8532()">
+        Solo con saldo</label>
+      <label class="c8-check"><input type="checkbox" id="c8Mov" onchange="recargar8532()">
+        Solo las que movieron</label>
+    </div>
+    <div id="c8Ficha"></div>
+    <div id="c8Tabla"><div class="vacio">Cargando…</div></div>`
+  f8532.desde = 0
+  await recargar8532()
+}
+
+async function recargar8532(mas = false) {
+  const q = new URLSearchParams({
+    texto: $('#c8Texto')?.value || '',
+    tipo: $('#c8Tipo')?.value || '',
+    minimo: $('#c8Min')?.value || '',
+    orden: $('#c8Orden')?.value || 'saldo',
+    conSaldo: $('#c8Saldo')?.checked ? '1' : '',
+    movieron: $('#c8Mov')?.checked ? '1' : '',
+    desde: String(mas ? traidas8532.length : 0),
+    limite: '100',
+  })
+  const r = await api('/panel/cadena-8532?' + q)
+  traidas8532 = mas ? traidas8532.concat(r.cuentas) : r.cuentas
+
+  /* La ficha de la cadena se pinta UNA vez y no se toca al filtrar: son los
+     datos del corte, no del filtro. Mezclarlos haría que «332 cuentas» cambiara
+     al escribir en el buscador y ya no se sabría qué está contando. */
+  $('#c8Ficha').innerHTML = `
+    <div class="rz-titulo">La cadena que se cerró</div>
+    <div class="rz-bloque"><div class="rz-campos">
+      ${celda8('Cadena', r.cadena.id, r.cadena.motor, true)}
+      ${celda8('Estado', 'Cerrada', 'sustituida por la ' + r.cadena.sustituidaPor)}
+      ${celda8('Corte', r.cadena.cortadaEn, 'el volcado que decidió la 5550')}
+      ${celda8('Cuentas', r.resumen.cuentas, `${r.resumen.billeteras} billeteras · ${r.resumen.contratos} contratos`, true)}
+      ${celda8('ORIGEN total', origen8532(r.resumen.origenTotal), 'en el momento del corte', true)}
+      ${celda8('Billeteras con saldo', r.resumen.billeterasConSaldo,
+              `${r.resumen.billeterasQueMovieron} movieron algo alguna vez`, true)}
+      ${/* Se enseña aunque sea cero, y sobre todo PORQUE es cero: «hay cuentas
+            sin dueño conocido» asusta hasta que se ve que no guardan nada. */''}
+      ${celda8('Sin dirección conocida', r.resumen.sinDireccionConocida,
+              origen8532(r.resumen.origenSinDireccion) + ' ORIGEN en ellas', true)}
+    </div></div>
+    <p class="chaf-honesto" style="margin:10px 0 18px">
+      Raíz de estado <code class="mono">${esc(String(r.cadena.raizDeEstado).slice(0, 26))}…</code>
+      · origen del dato: <code class="mono">${esc(String(r.cadena.origenDelDato))}</code>
+    </p>`
+
+  const l = traidas8532
+  $('#c8Tabla').innerHTML = `
+    <div class="qi-marco">
+      <div class="qi-cinta">
+        <span class="qi-ojillo">Cuentas del corte</span>
+        <span class="qi-cuenta num">${l.length < r.total
+          ? `${l.length} de ${r.total}` : `${r.total}`} · suman ${origen8532(r.sumaFiltrada)} ORIGEN</span>
+      </div>
+      ${l.length ? `<div class="qi-cola">
+        ${l.map((c) => `<div class="qi-fila">
+          <div class="qi-quien">
+            <div class="qi-nombre mono">${esc(c.direccion || '—')}</div>
+            <div class="qi-datos num">${c.direccion
+              ? `${c.nonce} movimiento${c.nonce === 1 ? '' : 's'}`
+              : `sin dirección conocida · ${esc(c.hash.slice(0, 22))}…`}</div>
+          </div>
+          <div class="qi-sellos">${pill(c.tipo, c.tipo === 'billetera' ? 'ok' : 'mut')}</div>
+          <div class="qi-meta">
+            <div class="qi-apps num">${origen8532(c.saldo)} ORIGEN</div>
+          </div>
+        </div>`).join('')}
+      </div>` : '<div class="vacio">Ninguna cuenta cumple el filtro</div>'}
+      ${r.hayMas ? `<button class="qi-mas" onclick="recargar8532(true)">
+        Ver las ${r.total - l.length} que faltan</button>` : ''}
+    </div>`
+}
+
 VISTAS.ajustes = async function () {
   const [o, a] = await Promise.all([api('/panel/operadores'), api('/panel/aplicaciones')])
   $('#vista').innerHTML = `

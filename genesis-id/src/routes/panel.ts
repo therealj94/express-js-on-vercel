@@ -16,6 +16,7 @@ import { consultar, verificarCadena, anclaje, registrar, sellar } from '../audit
 import { resumenMovimientos, buscarMovimientos } from '../aml/almacenMovimientos.js'
 import { crearOperador, PERMISOS, quitarSegundoFactor, saludSegundoFactor } from '../auth/operadores.js'
 import { entregarExpediente } from '../motor/expediente.js'
+import * as vieja from '../motor/cadenaVieja.js'
 import { crearAplicacion, revocar, rotar, ALCANCES } from '../auth/aplicaciones.js'
 import { biometriaConfigurada, proveedorBiometria } from '../kyc/biometria.js'
 import { leerFotos } from '../kyc/fotosDocumento.js'
@@ -112,6 +113,41 @@ panelRouter.get('/resumen', async (_req, res) => {
  * diferencia deja de ser invisible.
  */
 const POR_PAGINA = 300
+
+/* ── EL RESPALDO DE LA CADENA 8532 ──────────────────────────────────────────
+ *
+ * La cadena vieja se cerró el 10-ago y su nodo ya no contesta. Lo único que
+ * queda es el volcado del corte — el MISMO que decidió qué saldo se llevó cada
+ * quien a la 5550. Estaba en un bucket de S3 y en ningún sitio más.
+ *
+ * Va detrás de `identidad.ver` y no de un permiso nuevo: son direcciones y
+ * saldos de una cadena pública, el mismo tipo de dato que ya ve cualquiera en
+ * un explorador. Inventar un permiso para esto solo añadiría una cosa más que
+ * configurar mal.
+ */
+panelRouter.get('/cadena-8532', exigePermiso('identidad.ver'), (req, res) => {
+  const q = req.query as Record<string, string>
+  res.json({
+    cadena: vieja.respaldo().cadena,
+    resumen: vieja.respaldo().resumen,
+    ...vieja.buscar({
+      texto: q.texto, tipo: q.tipo, minimo: q.minimo,
+      soloConSaldo: q.conSaldo === '1',
+      soloQueMovieron: q.movieron === '1',
+      orden: (q.orden as any) || 'saldo',
+      desde: Number(q.desde) || 0,
+      limite: Number(q.limite) || 100,
+    }),
+  })
+})
+
+/** Qué tenía UNA dirección en la cadena vieja. Es la pregunta que llega cuando
+    alguien reclama, y hasta hoy se contestaba abriendo un fichero de 5 MB. */
+panelRouter.get('/cadena-8532/:direccion', exigePermiso('identidad.ver'), (req, res) => {
+  const c = vieja.porDireccion(req.params.direccion)
+  if (!c) return res.status(404).json({ error: 'Esa dirección no estaba en el corte de la 8532' })
+  res.json({ cuenta: c, cadena: vieja.respaldo().cadena })
+})
 
 panelRouter.get('/identidades', exigePermiso('identidad.ver'), (req, res) => {
   const { estado, riesgo, texto } = req.query as Record<string, string>
