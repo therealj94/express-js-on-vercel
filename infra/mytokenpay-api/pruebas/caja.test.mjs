@@ -7,10 +7,89 @@
 //
 //   node --test pruebas/caja.test.mjs
 
-import test from 'node:test'
+import test, { after } from 'node:test'
 import assert from 'node:assert/strict'
+import { spawn } from 'node:child_process'
+import { createServer } from 'node:net'
+import { dirname, join } from 'node:path'
+import { fileURLToPath } from 'node:url'
 
-const BASE = process.env.API || 'http://127.0.0.1:3399'
+/* LA PRUEBA LEVANTA SU PROPIO API.
+ *
+ * Aca decia `http://127.0.0.1:3399` y no arrancaba nada. O sea que solo corria
+ * si alguien habia dejado un servidor puesto a mano en ese puerto exacto, y en
+ * cualquier otro sitio moria con «fetch failed» — que se lee como un problema
+ * de red y se pasa de largo. Nunca estuvo en el CI.
+ *
+ * Y lo que prueba no es un detalle: que una parte no se pague dos veces, que
+ * dos personas no paguen la misma porcion, que nadie retire mas de lo que
+ * tiene, y que un comercio sin verificar no pueda cobrar. Todo eso llevaba sin
+ * comprobarse.
+ *
+ * El API cae a almacen EN MEMORIA cuando no hay MONGODB_URI —es la eleccion
+ * explicita que documenta lib/almacen.ts— asi que no hace falta base ninguna.
+ */
+const AQUI = dirname(fileURLToPath(import.meta.url))
+const CASA = join(AQUI, '..')
+
+async function puertoLibre() {
+  return new Promise((ok) => {
+    const s = createServer()
+    s.listen(0, '127.0.0.1', () => {
+      const p = s.address().port
+      s.close(() => ok(p))
+    })
+  })
+}
+
+let api = null
+let BASE = process.env.API
+
+/* El administrador se siembra al arrancar si estan estas dos variables (ver
+   src/index.ts). La prueba las necesita para pedir su token, asi que las pone
+   ella: antes se daban por puestas en el entorno de quien corriera la prueba,
+   que es otra forma de «solo corre en la maquina donde alguien lo preparo». */
+process.env.ADMIN_EMAIL ||= 'admin@prueba.local'
+process.env.ADMIN_PASSWORD ||= 'clave-solo-de-prueba-y-bien-larga'
+
+if (!BASE) {
+  const puerto = await puertoLibre()
+  BASE = `http://127.0.0.1:${puerto}`
+  api = spawn(process.execPath, [join(CASA, 'node_modules', 'tsx', 'dist', 'cli.mjs'),
+                                 join(CASA, 'src', 'index.ts')], {
+    cwd: CASA,
+    env: {
+      ...process.env,
+      PORT: String(puerto),
+      MONGODB_URI: '',
+      NODE_ENV: 'test',
+      ADMIN_EMAIL: process.env.ADMIN_EMAIL,
+      ADMIN_PASSWORD: process.env.ADMIN_PASSWORD,
+    },
+    stdio: 'ignore',
+  })
+  /* `unref` y un `after`, las dos cosas.
+     Sin `unref` el hijo mantiene vivo el bucle de eventos del corredor de
+     pruebas: las pruebas pasan, y el proceso se queda colgado para siempre sin
+     imprimir el resumen. Es lo que hizo la primera version de esto. */
+  api.unref()
+  after(() => api?.kill())
+  process.on('exit', () => api?.kill())
+
+  let vivo = false
+  for (let i = 0; i < 80; i++) {
+    await new Promise((r) => setTimeout(r, 250))
+    try {
+      const r = await fetch(BASE + '/healthz')
+      if (r.ok) { vivo = true; break }
+    } catch { /* todavia no */ }
+  }
+  if (!vivo) {
+    api.kill()
+    throw new Error(`El API no levanto en ${BASE} en 20 s. ` +
+                    'Corré `npm install` en infra/mytokenpay-api si faltan dependencias.')
+  }
+}
 
 async function pedir(ruta, { metodo = 'GET', cuerpo, token } = {}) {
   const r = await fetch(BASE + ruta, {
