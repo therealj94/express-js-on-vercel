@@ -1,0 +1,29 @@
+{
+  "defaults": {
+    "still_workflow": "workflows/flux2_api.json",
+    "video_workflow": "workflows/h3_i2v_api.json",
+    "negative": "blurry, low quality, watermark, text, deformed hands, plastic skin, flicker",
+    "duration_s": 5,
+    "fps": 24
+  },
+  "shots": [
+    {
+      "id": "01_apertura",
+      "still": "Aerial photograph of an open-pit mineral mine at golden hour, long shadows, dust suspended in warm air, heavy machinery small in frame, shot on 35mm anamorphic, shallow depth of field, natural film grain",
+      "motion": "slow descent toward the pit floor, dust drifting across frame, machinery moving below, subtle handheld float",
+      "stills": 6,
+      "still_seed": 1000,
+      "seeds": [1, 2, 3, 4, 5, 6, 7, 8],
+      "pick": null
+    },
+    {
+      "id": "02_geologo",
+      "still": "Medium close-up portrait of a mining geologist in a black and gold hard hat examining a mineral core sample, soft window light from the left, 85mm lens, natural skin texture with visible pores, catchlight in the eyes",
+      "motion": "he turns the core sample slowly in his hands and glances up at camera, breathing visible, micro-expressions",
+      "stills": 6,
+      "still_seed": 2000,
+      "seeds": [11, 12, 13, 14, 15, 16, 17, 18],
+      "pick": null
+    }
+  ]
+}
