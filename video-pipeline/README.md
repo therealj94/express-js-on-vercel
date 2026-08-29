@@ -2,7 +2,8 @@
 
 Objetivo: generar clips tipo Seedance 2.5, en Vast.ai y en PC local.
 
-> **Empieza por [`EMPEZAR.md`](./EMPEZAR.md)** (sesión 1 paso a paso).
+> **Empieza por [`TU_PARTE.md`](./TU_PARTE.md)** — lo único que tienes que hacer tú.
+> [`EMPEZAR.md`](./EMPEZAR.md) es la sesión 1 con todo el detalle.
 > [`VEREDICTO.md`](./VEREDICTO.md) tiene la recomendación final y manda sobre este
 > documento donde haya contradicción. [`CALIDAD.md`](./CALIDAD.md) para tráilers,
 > [`COSTOS_REALES.md`](./COSTOS_REALES.md) para el presupuesto (`tools/costo.py` lo recalcula).
