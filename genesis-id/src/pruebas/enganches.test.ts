@@ -17,7 +17,7 @@
 // —comprobando lo que un integrador comprobaría— porque es ahí donde importa
 // que funcione.
 
-import { test, describe, before, beforeEach, after } from 'node:test'
+import { test, describe, beforeEach } from 'node:test'
 import assert from 'node:assert/strict'
 import { mkdtempSync } from 'fs'
 import { tmpdir } from 'os'
@@ -301,5 +301,31 @@ describe('los enganches', () => {
     /* Que la lista pública y la que se usa de verdad no puedan separarse. */
     assert.ok(EVENTOS.includes('identidad.verificada'))
     assert.equal(new Set(EVENTOS).size, EVENTOS.length, 'hay eventos repetidos')
+  })
+})
+
+describe('el secreto de firma', () => {
+  /* Se separa del resto porque no es una prueba de comportamiento: es la
+     prueba de que el secreto es SECRETO. Un secreto con la hora dentro y
+     cuarenta bits de azar —que es lo que da el generador de identificadores de
+     la casa— se adivina mirando el reloj y probando, y con él se pueden firmar
+     avisos que la aplicación del integrador se cree. */
+  test('NO LLEVA LA HORA DENTRO, y tiene 256 bits', () => {
+    const a: any = { id: 's1', clave: 's1', nombre: 's1', hashClave: '', pistaClave: '',
+      alcances: [], activa: true, creadaEn: '', ultimoUso: null }
+    const r = ponerEnganche(a, 'https://ejemplo.invalid/x', [], 'a@b.invalid')
+    assert.ok(r.ok)
+    const secreto = (r as any).secreto as string
+
+    assert.match(secreto, /^gse_[A-Za-z0-9_-]{43}$/, '32 bytes en base64url son 43 caracteres')
+
+    // La hora en base 36 —el formato que usa `id()`— no puede aparecer dentro.
+    const ahora = Date.now().toString(36).slice(0, 6)
+    assert.ok(!secreto.includes(ahora), 'el secreto lleva la hora dentro')
+
+    // Y dos seguidos no se parecen.
+    const b: any = { ...a, id: 's2', clave: 's2' }
+    const r2 = ponerEnganche(b, 'https://ejemplo.invalid/x', [], 'a@b.invalid')
+    assert.notEqual((r2 as any).secreto, secreto)
   })
 })

@@ -2173,14 +2173,16 @@ VISTAS.ajustes = async function () {
 
     <h2>Aplicaciones del ecosistema</h2>
     <div class="tarjeta scroll">
-      <table><thead><tr><th>Aplicación</th><th>Clave</th><th>Alcances</th><th>Estado</th><th>Último uso</th><th></th></tr></thead><tbody>
+      <table><thead><tr><th>Aplicación</th><th>Clave</th><th>Alcances</th><th>Avisos</th><th>Estado</th><th>Último uso</th><th></th></tr></thead><tbody>
       ${a.aplicaciones.map((x) => `<tr>
         <td><div>${esc(x.nombre)}</div><div style="color:var(--faint);font-size:11.5px">${esc(x.clave)}</div></td>
         <td class="num" style="font-size:11.5px">${esc(x.pistaClave)}</td>
-        <td style="font-size:11px;color:var(--mut);max-width:280px">${esc(x.alcances.join(', '))}</td>
+        <td style="font-size:11px;color:var(--mut);max-width:240px">${esc(x.alcances.join(', '))}</td>
+        <td>${engancheCelda(x)}</td>
         <td>${pill(x.activa ? 'activa' : 'revocada', x.activa ? 'ok' : 'bad')}</td>
         <td style="font-size:11.5px;color:var(--faint)">${fecha(x.ultimoUso)}</td>
         <td style="white-space:nowrap">
+          <button class="g" onclick="verAvisos('${x.id}','${esc(x.nombre)}')">Avisos</button>
           <button class="g" onclick="rotarApp('${x.id}')">Rotar</button>
           ${x.activa ? `<button class="g" onclick="revocarApp('${x.id}')">Revocar</button>` : ''}
         </td>
@@ -2205,6 +2207,76 @@ async function activarOperador(id, activo) {
   await api(`/panel/operadores/${id}/activo`, { method: 'POST', body: JSON.stringify({ activo }) })
   avisar('Actualizado'); ir('ajustes')
 }
+/* La columna de avisos enseña UNA cosa: si hay entregas fallidas.
+   Un aviso que se rindió es un integrador que no se enteró de una aprobación, y
+   eso no se nota desde aquí —aquí todo salió bien— así que si no salta a la
+   vista en la tabla, no lo mira nadie hasta que alguien se queja. */
+function engancheCelda(x) {
+  const e = x.enganche
+  if (!e) return '<span style="color:var(--faint);font-size:12px">—</span>'
+  if (!e.activo) return pill('apagado', 'mut')
+  const f = e.entregas.fallidas
+  return f ? pill(`${f} sin entregar`, 'bad')
+    : e.entregas.pendientes ? pill(`${e.entregas.pendientes} en cola`, 'warn')
+    : pill('al día', 'ok')
+}
+
+async function verAvisos(id, nombre) {
+  const r = await api(`/panel/aplicaciones/${id}/enganche`)
+  const e = r.enganche
+  const ult = e?.entregas?.ultima
+  abrirFicha(`Avisos · ${esc(nombre)}`, `
+    ${e ? `
+      <div class="item"><div class="t">A dónde van</div>
+        <div class="d" style="word-break:break-all">${esc(e.url)}</div></div>
+      <div class="item"><div class="t">Qué eventos</div>
+        <div class="d">${e.eventos.length ? esc(e.eventos.join(', ')) : 'todos'}</div></div>
+      <div class="item"><div class="t">Entregas</div>
+        <div class="d">${e.entregas.entregadas} entregadas · ${e.entregas.pendientes} en cola ·
+        <span style="color:${e.entregas.fallidas ? 'var(--bad)' : 'inherit'}">${e.entregas.fallidas} sin entregar</span></div></div>
+      ${ult ? `<div class="item"><div class="t">La última</div>
+        <div class="d">${esc(ult.evento)} — ${esc(ult.estado)}, ${ult.intentos} intento(s)
+        ${ult.ultimoError ? `<br><span style="color:var(--bad)">${esc(ult.ultimoError)}</span>` : ''}</div></div>` : ''}
+      <div class="acciones">
+        <button class="g" onclick="probarAviso('${id}')">Mandar uno de prueba</button>
+        <button class="bad" onclick="quitarAviso('${id}')">Quitar</button>
+      </div>`
+    : '<div class="item"><div class="d">Esta aplicación no recibe avisos. Sin ellos tiene que '
+      + 'preguntar cada tanto por cada persona pendiente.</div></div>'}
+    <div class="acciones"><button class="p" onclick="ponerAviso('${id}')">
+      ${e ? 'Cambiar la dirección' : 'Configurar'}</button></div>
+    <div class="item aviso2" style="margin-top:14px">El secreto de firma se enseña UNA vez, al
+      configurarlo. Con él, quien recibe los avisos comprueba que salieron de aquí; sin
+      comprobarlo, cualquiera que adivine su dirección puede mandarle identidades aprobadas.</div>`)
+}
+
+async function ponerAviso(id) {
+  const url = prompt('Dirección https donde recibirlos:'); if (!url) return
+  const eventos = prompt('Eventos separados por coma (vacío = todos):', '') || ''
+  try {
+    const r = await api(`/panel/aplicaciones/${id}/enganche`, {
+      method: 'PUT',
+      body: JSON.stringify({ url, eventos: eventos.split(',').map((s) => s.trim()).filter(Boolean) }),
+    })
+    abrirFicha('Secreto de firma', `<div class="item aviso2">Se muestra una sola vez.
+      Cópielo ahora: con él se comprueba la cabecera <code>X-Genesis-Firma</code> de cada
+      aviso.</div><pre>${esc(r.secreto)}</pre>`)
+  } catch (e) { alert(e.message) }
+}
+
+async function probarAviso(id) {
+  try {
+    await api(`/panel/aplicaciones/${id}/enganche/probar`, { method: 'POST' })
+    avisar('Mandado. Vuelva a abrir para ver si llegó.')
+  } catch (e) { alert(e.message) }
+}
+
+async function quitarAviso(id) {
+  if (!confirm('¿Dejar de mandarle avisos a esta aplicación?')) return
+  await api(`/panel/aplicaciones/${id}/enganche`, { method: 'DELETE' })
+  cerrarFicha(); avisar('Quitado'); ir('ajustes')
+}
+
 async function rotarApp(id) {
   if (!confirm('La clave actual dejará de funcionar en el acto. ¿Continuar?')) return
   const r = await api(`/panel/aplicaciones/${id}/rotar`, { method: 'POST' })

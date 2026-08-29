@@ -47,7 +47,7 @@
  * vez de prometer algo que no se cumple.
  */
 
-import { createHmac, timingSafeEqual } from 'crypto'
+import { createHmac, timingSafeEqual, randomBytes } from 'crypto'
 import { store } from '../store.js'
 import { id } from '../lib/uid.js'
 import { registrar } from '../audit/bitacora.js'
@@ -321,7 +321,13 @@ export function ponerEnganche(
   const malos = eventos.filter((e) => !EVENTOS.includes(e as Evento))
   if (malos.length) return { ok: false, error: `Eventos que no existen: ${malos.join(', ')}` }
 
-  const secreto = 'gse_' + id() + id()
+  /* 32 bytes del generador criptográfico, no dos identificadores pegados.
+     `id()` sirve para nombrar cosas —lleva la hora dentro y unos 40 bits de
+     azar— y eso está bien para un identificador y mal para un secreto con el
+     que se firma: la mitad del valor es adivinable mirando el reloj. Aquí el
+     secreto es lo único que separa un aviso nuestro de uno que se inventó
+     cualquiera. */
+  const secreto = 'gse_' + randomBytes(32).toString('base64url')
   app.enganche = {
     url: u.toString(), eventos, activo: true, secreto,
     puestoEn: new Date().toISOString(),

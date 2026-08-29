@@ -769,6 +769,8 @@ panelRouter.get('/aplicaciones', exigePermiso('*'), (_req, res) => {
     aplicaciones: store.todo().aplicaciones.map((a) => ({
       id: a.id, clave: a.clave, nombre: a.nombre, pistaClave: a.pistaClave,
       alcances: a.alcances, activa: a.activa, creadaEn: a.creadaEn, ultimoUso: a.ultimoUso,
+      // El enganche, sin su secreto. Ver `verEnganche`.
+      enganche: verEnganche(a),
     })),
     alcancesDisponibles: ALCANCES,
   })
