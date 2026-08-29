@@ -20,7 +20,7 @@ window.AURA_SABER = [
       "gold",
       "gramin"
     ],
-    "es": "ORIGEN es la moneda de la cadena de Orden Global, y su valor está referenciado al oro: un ORIGEN es un gramin, la cincuentaicincoava parte de un gramo de oro, al precio del oro de hoy. La fórmula no la ponemos nosotros y no cambia, así que el precio lo podés rehacer con una calculadora cuando quieras. Se envía en segundos por nuestra propia cadena.",
+    "es": "ORIGEN es la moneda de la cadena de Orden Global, y su valor está referenciado al oro: un ORIGEN es un gramin, un gramo de oro dividido entre cincuenta y cinco, al precio del oro de hoy. La fórmula no la ponemos nosotros y no cambia, así que el precio lo podés rehacer con una calculadora cuando quieras. Se envía en segundos por nuestra propia cadena.",
     "en": "ORIGEN is the currency of the Orden Global chain, and its value is referenced to gold: one ORIGEN is one gramin, the fifty-fifth part of a gram of gold, at today's gold price. We do not set the formula and it does not change, so you can redo the price with a calculator whenever you like. It sends in seconds over our own chain."
   },
   {

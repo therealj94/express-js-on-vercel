@@ -11,6 +11,7 @@ import { estadoListas, hayListas, iniciarListas } from './aml/listas.js'
 import { estadoTemporizador, iniciarTemporizadorListas } from './aml/temporizador.js'
 import { estadoAncla, iniciarAncla } from './audit/ancla.js'
 import { saludSegundoFactor } from './auth/operadores.js'
+import { bitacoraFirmable } from './lib/cripto.js'
 import { cargarGafiDesdeMongo, estadoGafi, listasVencidas } from './aml/paises.js'
 import { correoEncendido, correoRemitente } from './correo/enviar.js'
 import { biometriaConfigurada, proveedorBiometria } from './kyc/biometria.js'
@@ -257,8 +258,26 @@ app.get('/healthz', (_req, res) => {
   const ancla = estadoAncla()
   const dosFactores = saludSegundoFactor()
   const listo = hayListas() && cadena.integra && motor === 'mongodb' && guardaBien
+
+  /* CUMPLIMIENTO, APARTE DEL ESTADO DE SERVICIO.
+     `estado` contesta «¿esto sirve peticiones bien?», que es lo que necesita
+     saber quien depura una caída, y por eso no se mezcla. Pero un servicio de
+     KYC que contesta «ok» con la bitácora sin firmar y sin segundo factor en
+     quien aprueba está diciendo una verdad que se lee como otra. Acá va la
+     otra pregunta, con su nombre, y con la lista de lo que falta: un booleano
+     en rojo sin decir qué es no lo arregla nadie. */
+  const faltaCumplir: string[] = []
+  if (!cadena.firmas.hayLlave) faltaCumplir.push('bitácora sin firmar (falta GENESIS_BITACORA_CLAVE)')
+  if (dosFactores.obligadosSinPonerlo > 0) {
+    faltaCumplir.push(
+      `segundo factor sin activar en ${dosFactores.obligadosSinPonerlo} operador(es) que lo tienen exigido`)
+  }
+  if (cadena.firmas.degradadaEn !== null) faltaCumplir.push('hay entradas sin firma detrás de firmadas')
+  if (cadena.sellos.length) faltaCumplir.push(`${cadena.sellos.length} rotura(s) de cadena selladas`)
+
   res.json({
     estado: listo ? 'ok' : 'degradado',
+    cumplimiento: { completo: faltaCumplir.length === 0, falta: faltaCumplir },
     en: new Date().toISOString(),
     version: { commit: COMMIT.slice(0, 12), rama: RAMA, arrancadoEn: ARRANQUE },
     comprobaciones: {
@@ -604,6 +623,33 @@ export async function arrancar(): Promise<void> {
   }
   if (!process.env.GENESIS_SSO_SECRETO) {
     avisos.push('SIN GENESIS_SSO_SECRETO: el inicio de sesión único entre apps está desactivado.')
+  }
+
+  /* LAS DOS QUE FALTABAN, Y SON LAS DOS DE CUMPLIMIENTO.
+     Este servicio decide identidades verificadas y guarda documentos de
+     personas. Sus dos garantías frente a alguien de DENTRO son la bitácora
+     firmada y el segundo factor de quien aprueba. En producción, hoy, las dos
+     están apagadas: 1886 entradas sin firmar y ningún operador con segundo
+     factor, aunque el propio código lo declara obligatorio para admin y
+     cumplimiento. Nada lo decía al arrancar y `/healthz` contestaba «ok».
+     Que no se avise no las apaga menos. */
+  if (!bitacoraFirmable()) {
+    avisos.push(
+      'BITACORA SIN FIRMAR: el encadenado detecta a un extraño, pero quien tenga escritura ' +
+      'sobre la base puede reescribir la cadena entera y que verifique limpia. Defina ' +
+      'GENESIS_BITACORA_CLAVE (32 caracteres o más) para que cada eslabón lleve HMAC con ' +
+      'una llave que no vive en la base. Las entradas ya escritas se quedan sin firma: eso ' +
+      'es correcto y queda a la vista en /healthz.',
+    )
+  }
+  const df = saludSegundoFactor()
+  if (df.obligadosSinPonerlo > 0) {
+    avisos.push(
+      `SEGUNDO FACTOR SIN ACTIVAR en ${df.obligadosSinPonerlo} operador(es) de rol ` +
+      `${df.exigidoEnRoles.join(' o ')}: ${df.quienesFaltan.join(', ')}. Hoy el panel que ` +
+      'aprueba identidades se abre solo con contraseña. Se activa desde el panel: ' +
+      'Mi cuenta → Segundo factor.',
+    )
   }
   for (const a of avisos) console.warn(`[genesis-id] AVISO — ${a}`)
 
