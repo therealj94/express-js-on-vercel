@@ -20,7 +20,8 @@ import argparse, json, os, sys, time
 from pathlib import Path
 from urllib import request, error, parse
 
-BASE = "https://console.vast.ai/api/v0"
+BASE = "https://console.vast.ai/api"
+V0, V1 = "/v0", "/v1"   # Vast movió instances a v1; bundles y asks siguen en v0
 
 
 def api(path: str, method: str = "GET", body: dict | None = None) -> dict:
@@ -61,7 +62,7 @@ def search(gpu: str, max_dph: float, min_ram: int, min_disk: int, limit: int) ->
         "type": "on-demand",
         "limit": limit,
     }
-    return api("/bundles/?q=" + parse.quote(json.dumps(q)))["offers"][:limit]
+    return api(V0 + "/bundles/?q=" + parse.quote(json.dumps(q)))["offers"][:limit]
 
 
 def fmt(o: dict) -> str:
@@ -99,7 +100,7 @@ def main() -> int:
     a = ap.parse_args()
 
     if a.cmd == "whoami":
-        u = api("/users/current/")
+        u = api(V0 + "/users/current/")
         print(f'{u.get("username")}  saldo ${u.get("credit", 0):.2f}  '
               f'{u.get("email","")}')
 
@@ -117,7 +118,7 @@ def main() -> int:
         for kv in a.env:
             k, _, v = kv.partition("=")
             env[k] = v
-        r = api(f"/asks/{a.offer}/", "PUT", {
+        r = api(V0 + f"/asks/{a.offer}/", "PUT", {
             "client_id": "me", "image": a.image, "disk": a.disk,
             "onstart": onstart, "env": env, "runtype": "ssh",
             "label": "video-pipeline",
@@ -127,13 +128,17 @@ def main() -> int:
               f'Vigila con: status / logs {r.get("new_contract")}')
 
     elif a.cmd == "status":
-        for i in api("/instances/").get("instances", []):
-            print(f'{i["id"]:>10}  {i.get("actual_status","?"):<10} '
-                  f'${i.get("dph_total",0):.3f}/h  {i.get("gpu_name","?")}  '
-                  f'{i.get("public_ipaddr","?")}  puertos={i.get("ports")}')
+        for i in api(V1 + "/instances/").get("instances", []):
+            # los campos llegan a None mientras la instancia arranca
+            estado = i.get("actual_status") or i.get("cur_state") or "arrancando"
+            dph = i.get("dph_total") or 0.0
+            puertos = ",".join(sorted((i.get("ports") or {}).keys())) or "-"
+            print(f'{i["id"]:>10}  {estado:<12} ${dph:.3f}/h  '
+                  f'{i.get("gpu_name") or "?":<12} {i.get("public_ipaddr") or "?":<16} '
+                  f'puertos={puertos}  {i.get("status_msg") or ""}'.rstrip())
 
     elif a.cmd == "logs":
-        r = api(f"/instances/request_logs/{a.id}/", "PUT", {"tail": "400"})
+        r = api(V0 + f"/instances/request_logs/{a.id}/", "PUT", {"tail": "400"})
         url = r.get("result_url")
         if not url:
             print(json.dumps(r, indent=2)); return 1
@@ -146,7 +151,7 @@ def main() -> int:
         print("El log aún no está disponible; reintenta en un minuto.")
 
     elif a.cmd == "destroy":
-        api(f"/instances/{a.id}/", "DELETE", {})
+        api(V0 + f"/instances/{a.id}/", "DELETE", {})
         print(f"Instancia {a.id} destruida. Deja de facturar (compute y disco).")
 
     return 0
