@@ -141,6 +141,28 @@ def firmado(u, extra):
     return {'correo': u['correo'], 'llave': u['llave'], **extra}
 
 
+def reposar(quieto=1.0, plazo=6):
+    """Espera a que DEJEN de llegar avisos.
+
+    Los avisos salen en un hilo aparte, asi que `enviados.clear()` justo despues
+    de una peticion no garantiza nada: lo de la peticion anterior puede estar
+    todavia en camino y aparecer en la tanda siguiente. Esperar un numero fijo
+    de segundos tampoco sirve —en una maquina lenta se queda corto, y ahi fue
+    donde el CI vio cuatro envios donde esta maquina veia dos—. Se espera a que
+    pase `quieto` segundos sin que llegue nada nuevo.
+    """
+    fin = time.time() + plazo
+    cuantos = len(enviados)
+    calma = time.time()
+    while time.time() < fin:
+        time.sleep(0.1)
+        if len(enviados) != cuantos:
+            cuantos = len(enviados)
+            calma = time.time()
+        elif time.time() - calma >= quieto:
+            return
+
+
 def esperar(cuantos, plazo=8):
     fin = time.time() + plazo
     while time.time() < fin:
@@ -173,8 +195,29 @@ try:
 
     # Hay que ser amigos para escribirse: es la regla del relevo, no un rodeo
     # de la prueba. Sin esto el mensaje se rechaza y no habria nada que empujar.
+    enviados.clear()
     pedir('/amistad/pedir', firmado(beto, {'para': ana['correo']}))
+
+    # SE ESPERA A QUE LLEGUEN LOS DE LA SOLICITUD ANTES DE SEGUIR.
+    #
+    # `/amistad/pedir` tambien avisa —«una persona esperando», dice el relevo— y
+    # lo hace EN UN HILO APARTE, para no hacerle esperar la red de Google a
+    # quien mando la solicitud. Ana tiene dos aparatos apuntados, o sea dos
+    # avisos en camino.
+    #
+    # Aca abajo se limpiaba la lista y se mandaba el mensaje enseguida. En esta
+    # maquina los dos de la solicitud ya habian llegado y se iban con el
+    # `clear()`; en el CI, que es mas lento, llegaban DESPUES y se sumaban a
+    # los dos del mensaje: cuatro envios, cada testigo repetido. Parecia un
+    # aviso duplicado de verdad —el fallo que mas se nota en un telefono— y era
+    # esta carrera.
+    #
+    # De paso se comprueba que la solicitud avisa, que antes no lo miraba nadie.
+    ok('la solicitud de amistad tambien avisa al telefono', esperar(2),
+       f'{len(enviados)} envios')
+
     pedir('/amistad/responder', firmado(ana, {'de': beto['correo'], 'aceptar': True}))
+    reposar()   # por si `responder` empujara algo algun dia
 
     print('\n── un mensaje avisa al telefono ─────────────────────────────')
     enviados.clear()
@@ -192,9 +235,18 @@ try:
            str(enviados[0].get('channelId')))
 
     print('\n── una llamada suena distinto ───────────────────────────────')
+    # Se deja que termine de llegar todo lo del mensaje ANTES de limpiar. Si no,
+    # un aviso de mensaje rezagado cae dentro de esta tanda y `enviados[0]` es
+    # un mensaje en vez de una llamada: las tres comprobaciones de abajo miran
+    # ese primero y fallarian diciendo que el canal esta mal, que es una pista
+    # falsa de las caras.
+    reposar()
     enviados.clear()
     pedir('/senal', firmado(beto, {'para': ana['correo'], 'tipo': 'llamo', 'datos': {}}))
-    ok('el timbre sale', esperar(1), f'{len(enviados)} envíos')
+    # DOS, uno por aparato. Antes pedia uno solo y se conformaba: un timbre que
+    # suena en el telefono pero no en la tablet habria pasado por bueno, y es
+    # justo el fallo que se nota —te llaman y suena donde no estas mirando.
+    ok('el timbre sale en los dos aparatos', esperar(2), f'{len(enviados)} envíos')
     if enviados:
         m = enviados[0]
         ok('por el canal de llamadas', m.get('channelId') == 'llamadas', str(m.get('channelId')))
