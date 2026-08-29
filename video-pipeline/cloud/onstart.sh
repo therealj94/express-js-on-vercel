@@ -59,10 +59,16 @@ M="$WORK/ComfyUI/models"; mkdir -p "$M"/{diffusion_models,text_encoders,vae,lora
 stage() {  # repo, patrón, destino temporal
   hf download "$1" --include $2 --local-dir "$3" || echo "!! fallo descargando $1"
 }
-stage Comfy-Org/MiniMax-H3 "*${PREC}* *fl2va* *ref2va* *vae* *text_encoder*" "$M/_h3"
-stage Comfy-Org/Wan_2.2_ComfyUI_Repackaged \
+# MODELS decide qué se baja: cada bloque que quitas son minutos y GB menos.
+#   h3   ~35 GB  vídeo (imprescindible)      flux ~35 GB  stills de alta calidad
+#   wan  ~10 GB  control fino y LoRAs        lora  125 MB realismo (siempre)
+MODELS="${MODELS:-h3,flux,wan}"
+tiene() { case ",$MODELS," in *",$1,"*) return 0;; *) return 1;; esac; }
+
+tiene h3 && stage Comfy-Org/MiniMax-H3 "*${PREC}* *fl2va* *ref2va* *vae* *text_encoder*" "$M/_h3"
+tiene wan && stage Comfy-Org/Wan_2.2_ComfyUI_Repackaged \
   "split_files/diffusion_models/wan2.2_ti2v_5B* split_files/text_encoders/* split_files/vae/*" "$M/_wan"
-stage Comfy-Org/FLUX.2-dev_ComfyUI \
+tiene flux && stage Comfy-Org/FLUX.2-dev_ComfyUI \
   "split_files/diffusion_models/*fp8* split_files/text_encoders/* split_files/vae/*" "$M/_img"
 hf download fal/MiniMax-H3-Realism-People-LoRA --local-dir "$M/loras/h3-realism" || true
 
