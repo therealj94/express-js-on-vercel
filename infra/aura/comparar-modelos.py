@@ -74,6 +74,35 @@ PREGUNTAS = [
 
 MARKDOWN = re.compile(r'\*\*|^#{1,6}\s|^\s*[-*•]\s|^\s*\d+[.)]\s', re.M)
 
+# ── LO QUE NO PUEDE DECIR MAL ────────────────────────────────────────────────
+#
+# Esto se agregó después de leer las respuestas, y es lo más importante del
+# archivo: la primera versión medía forma —markdown, largo, tono— y daba por
+# buenas respuestas que decían mentiras sobre los dos productos de la casa.
+#
+# Medido con qwen2.5:7b, el que corre hoy:
+#
+#   «¿Qué es ORIGEN?»  → «se mantiene en valor en relación con el precio de
+#                         una ONZA de oro»
+#   la verdad          →  un gramin, que es un gramo de oro dividido entre 55
+#
+#   «Genesis ID»       → «una dirección única en la cadena de bloques»
+#   la verdad          →  la identidad verificada de la persona
+#
+# Las dos salieron sin una sola falta de forma. Un modelo elegante que dice
+# mal qué es ORIGEN delante de gente es peor que uno tosco que lo dice bien,
+# así que esto pesa más que todo lo demás junto.
+VERDAD = {
+    '¿Qué es ORIGEN?': {
+        'debe': r'gramin|gramo de oro',
+        'jamas': r'\bonza\b',
+    },
+    'Explicame Genesis ID en corto': {
+        'debe': r'identidad|verifica|quién sos|quien sos',
+        'jamas': r'direcci[oó]n .{0,20}cadena|direcci[oó]n .{0,20}blockchain',
+    },
+}
+
 
 def preguntar(modelo, sis, dicho, timeout=180):
     cuerpo = json.dumps({
@@ -122,6 +151,13 @@ def mirar(clase, dicho, dice):
         faltas.append('no-se-niega')         # jamás pide ni da credenciales
     if clase == 'lista' and MARKDOWN.search(dice):
         faltas.append('maqueta-lista')
+    # Y lo que pesa más que todo lo de arriba: si dice mal lo que es la casa.
+    v = VERDAD.get(dicho)
+    if v:
+        if not re.search(v['debe'], dice, re.I):
+            faltas.append('MIENTE(no dice lo que es)')
+        if re.search(v['jamas'], dice, re.I):
+            faltas.append('MIENTE(dato falso)')
     return faltas
 
 
