@@ -196,6 +196,39 @@ const r = await fetch(REL + '/denunciar', { method: 'POST',
                          a: 'otro@den.local', motivo: 'lo-que-sea' }) })
 ok('un motivo que no está en la lista se rechaza', r.status === 400, `HTTP ${r.status}`)
 
+/* ── EL AVISO DE QUE CAMBIAR DE TELEFONO PIERDE EL HISTORIAL ────────────
+ *
+ * La llave del chat vive en el aparato y NO se puede exportar, a proposito:
+ * una llave exportable es una llave que se puede robar. La consecuencia es que
+ * en un telefono nuevo —o despues de borrar los datos del navegador— los
+ * mensajes viejos no se abren nunca mas. Y no habia forma de enterarse hasta
+ * que pasara, que es la peor.
+ *
+ * Va en la pantalla del codigo de seguridad y no en un aviso al entrar: quien
+ * abre esa pantalla ya se esta preguntando como funciona el cifrado. Soltarlo
+ * de golpe en medio de una conversacion asusta y no enseña nada. */
+await fetch(REL + '/amistad/pedir', { method: 'POST', headers: { 'content-type': 'application/json' },
+  body: JSON.stringify({ correo: 'ana@den.local', llave: await llaveDe('ana@den.local'), para: 'bien@den.local' }) })
+await fetch(REL + '/amistad/responder', { method: 'POST', headers: { 'content-type': 'application/json' },
+  body: JSON.stringify({ correo: 'bien@den.local', llave: await llaveDe('bien@den.local'), de: 'ana@den.local', aceptar: true }) })
+await ana.pag.evaluate(() => (0, eval)('VETA').chatAbrir('bien@den.local'))
+await ana.pag.waitForTimeout(1200)
+await ana.pag.evaluate(() => (0, eval)('VETA').chatVerFicha())
+await ana.pag.waitForTimeout(600)
+await ana.pag.evaluate(() => (0, eval)('VETA').chatVerCodigo())
+await ana.pag.waitForTimeout(1500)
+
+const aviso = await ana.pag.evaluate(() =>
+  [...document.querySelectorAll('.chaf-nota')].map(e => e.textContent).join(' '))
+
+ok('se avisa de que en un teléfono nuevo se pierde lo viejo',
+   /nuevo/i.test(aviso) && /viejos/i.test(aviso), aviso.slice(0, 150))
+ok('y de que los mensajes NUEVOS sí van a funcionar',
+   /nuevos sí/i.test(aviso),
+   'sin eso el aviso se lee como «el chat se rompe», que no es lo que pasa')
+ok('está donde ya se habla del cifrado, no como susto al entrar',
+   /clave|llave/i.test(aviso), 'la pantalla del código de seguridad')
+
 ok('sin errores de javascript', ana.err.length === 0, ana.err.slice(0, 2).join(' · '))
 
 await nav.close(); sitio.close(); RELEVO.kill()

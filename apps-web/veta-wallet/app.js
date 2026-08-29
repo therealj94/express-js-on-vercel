@@ -12004,6 +12004,22 @@ const VETA = (() => {
             : `<button class="btn btn-linea btn-sm" onclick="VETA.chatVerCodigo()">
                  <svg class="btn-ic" viewBox="0 0 24 24"><rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
                  ${t('cha.verCodigo')}</button>`}
+        ${/* ── LO QUE PASA SI CAMBIÁS DE TELÉFONO ──────────────────────────
+              La llave vive en este aparato y NO se puede exportar —a
+              propósito: una llave exportable es una llave que se puede robar.
+              La consecuencia es que en un teléfono nuevo los mensajes viejos
+              no se abren nunca más, y no había forma de enterarse hasta que
+              pasara, que es la peor.
+
+              Va SIEMPRE, no solo cuando ya hay código. Lo puse dentro de esa
+              rama primero y no salía nunca en el caso más común —el chat
+              recién abierto, sin código todavía—, que es justo cuando alguien
+              está mirando cómo funciona esto. Lo cazó la prueba.
+
+              Y va acá y no en un aviso al entrar: quien abre esta pantalla ya
+              se está preguntando por el cifrado. Soltarlo de golpe en medio de
+              una conversación asusta y no enseña nada. */''}
+        <p class="chaf-nota chaf-honesto">${t('cha.codigoAparato')}</p>
       </div>`}
       <div class="chaf-acciones">
         ${esAura(c) ? '' : `
