@@ -331,6 +331,8 @@ pre{background:#0F1927;border:1px solid var(--line2);border-radius:10px;padding:
    Cian y no ámbar: en este sistema el ámbar es duda y el rojo es rechazo; que
    algo esté en cola no es ninguna de las dos cosas, es información. */
 .qi-filtros input,.qi-filtros select{border-radius:4px;background:#0F1927}
+.qi-mas{width:100%;margin-top:10px;padding:12px;min-height:44px;border-radius:8px;border:1px dashed var(--line);background:transparent;color:var(--mut);cursor:pointer}
+.qi-mas:hover{color:var(--txt);border-color:var(--mut)}
 /* Seis filtros no caben con el ancho automático de los tres de identidades: el
    de texto manda y el resto se acomoda. */
 .mv-filtros{align-items:center}
@@ -983,6 +985,10 @@ VISTAS.resumen = async function () {
       ${celda('Rechazadas', idn.rechazadas, '', true)}
       ${celda('Suspendidas', idn.suspendidas, '', true)}
       ${celda('Marcadas PEP', idn.pep, '', true)}
+      ${/* Si esto no es cero, ordenscan enseña «no verificada» sobre gente
+            que SI lo esta: pregunta por direccion, y esas no la tienen. */''}
+      ${celda('Verificadas sin dirección', idn.verificadasSinDireccion ?? 0,
+              'ordenscan no las puede ver: pregunta por dirección', true)}
       ${celda('Negocios rechazados', ng.rechazados, '', true)}
       ${celda('Casos reportados', cs.reportados, '', true)}
       ${celda('Casos cerrados', cs.cerrados, '', true)}
@@ -1034,11 +1040,21 @@ VISTAS.identidades = async function () {
   await recargarIdentidades()
 }
 
-async function recargarIdentidades() {
+/* Lo que ya se trajo. Se guarda fuera de la funcion porque «traer mas» tiene
+   que AÑADIR a lo que hay, no repintar desde cero: repintar perderia el sitio
+   donde estabas mirando, que en una cola de trabajo es medio trabajo. */
+let idsTraidas = []
+
+async function recargarIdentidades(mas = false) {
   const q = new URLSearchParams({
     texto: $('#fTexto')?.value || '', estado: $('#fEstado')?.value || '', riesgo: $('#fRiesgo')?.value || '',
+    desde: String(mas ? idsTraidas.length : 0),
   })
-  const { identidades: lista } = await api('/panel/identidades?' + q)
+  const r = await api('/panel/identidades?' + q)
+  idsTraidas = mas ? idsTraidas.concat(r.identidades) : r.identidades
+  const lista = idsTraidas
+  const total = r.total
+  const hayMas = r.hayMas
 
   /* Colores de estado PROPIOS de la cola en lugar del mapa global: el mapa
      global pinta «en-revision» en ámbar, y en este sistema el ámbar es duda.
@@ -1062,7 +1078,12 @@ async function recargarIdentidades() {
     <div class="qi-marco">
       <div class="qi-cinta">
         <span class="qi-ojillo">Cola de trabajo</span>
-        <span class="qi-cuenta num">${lista.length} identidad${lista.length === 1 ? '' : 'es'}${
+        ${/* Se dice «N de M» cuando faltan. Antes ponia solo N —las que
+              cabian— y el tablero contaba M: dos numeros distintos en dos
+              pantallas y nada que explicara la diferencia. */''}
+        <span class="qi-cuenta num">${lista.length < total
+          ? `${lista.length} de ${total} identidades`
+          : `${total} identidad${total === 1 ? '' : 'es'}`}${
           pendientes ? ` · ${pendientes} espera${pendientes === 1 ? '' : 'n'} revisión` : ''}</span>
       </div>
       ${orden.length ? `<div class="qi-cola">
@@ -1087,6 +1108,10 @@ async function recargarIdentidades() {
           </div>
         </div>`).join('')}
       </div>` : '<div class="vacio">No hay identidades que cumplan el filtro</div>'}
+      ${/* El boton solo sale si de verdad falta algo. Un «ver mas» permanente
+            que no trae nada enseña a no tocarlo. */''}
+      ${hayMas ? `<button class="qi-mas" onclick="recargarIdentidades(true)">
+        Ver las ${total - lista.length} que faltan</button>` : ''}
     </div>`
 }
 

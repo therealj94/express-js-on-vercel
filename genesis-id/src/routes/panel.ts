@@ -48,6 +48,24 @@ panelRouter.get('/resumen', async (_req, res) => {
       suspendidas: porEstado('suspendida'),
       sinTerminar: porEstado('iniciada') + porEstado('datos'),
       riesgoAlto: d.identidades.filter((i) => i.riesgo?.nivel === 'alto' || i.riesgo?.nivel === 'inaceptable').length,
+      /* ── LAS QUE ORDENSCAN NO PUEDE VER ─────────────────────────────────
+       *
+       * El explorador pregunta por DIRECCION: «¿hay identidad verificada
+       * detras de esta?». Genesis la busca en los vinculos de cada identidad,
+       * asi que una identidad verificada cuyo vinculo no trae direccion es
+       * invisible desde ordenscan — para siempre, y sin que nada lo diga.
+       *
+       * Pasa con las que se ataron antes de que existiera ese campo. La
+       * conexion funciona (comprobado: ordenscan contesta `consultado: true`),
+       * pero sobre una identidad sin direccion contesta «no verificada», que
+       * se lee como si estuviera desconectado.
+       *
+       * Se cuenta aqui para que se vea en vez de sospecharse. Si este numero
+       * es cero, ordenscan y Genesis ID dicen exactamente lo mismo.
+       */
+      verificadasSinDireccion: d.identidades.filter(
+        (i) => i.estado === 'verificada'
+          && !i.vinculos.some((v) => (v.direccion || '').trim())).length,
       pep: d.identidades.filter((i) => i.pep).length,
     },
     negocios: {
@@ -75,17 +93,41 @@ panelRouter.get('/resumen', async (_req, res) => {
 // Identidades
 // ─────────────────────────────────────────────────────────────────────────────
 
+/* ── LA LISTA CORTABA EN 300 Y NO LO DECIA ──────────────────────────────────
+ *
+ * Habia un `.slice(0, 300)` sin aviso, y encima `total` informaba la longitud
+ * de la lista YA CORTADA. O sea que con mas de 300 identidades:
+ *
+ *   · el tablero contaba las de verdad (`d.identidades.length`)
+ *   · la lista enseñaba 300 y decia «300»
+ *   · y nada explicaba la diferencia entre los dos numeros
+ *
+ * Peor todavia: se ordena por ultima modificacion, asi que CUALES 300 se ven
+ * cambia solo. Una identidad que estaba ayer desaparece hoy sin que nadie la
+ * haya tocado — basta con que otras 300 se hayan movido. Eso es exactamente
+ * «estan todas pero a veces no aparece».
+ *
+ * Ahora `total` son las que CUADRAN con el filtro, y la pagina se pide con
+ * `desde`. El panel enseña «N de M» y un boton para traer mas, asi que la
+ * diferencia deja de ser invisible.
+ */
+const POR_PAGINA = 300
+
 panelRouter.get('/identidades', exigePermiso('identidad.ver'), (req, res) => {
   const { estado, riesgo, texto } = req.query as Record<string, string>
   const t = (texto || '').toLowerCase()
-  const lista = store.todo().identidades
+  const desde = Math.max(0, Number(req.query.desde) || 0)
+  const cuantas = Math.min(POR_PAGINA, Math.max(1, Number(req.query.limite) || POR_PAGINA))
+  const cuadran = store.todo().identidades
     .filter((i) =>
       (!estado || i.estado === estado) &&
       (!riesgo || i.riesgo?.nivel === riesgo) &&
       (!t || i.email.includes(t) || (i.nombreLegal || '').toLowerCase().includes(t) ||
         (i.nombreDeclarado || '').toLowerCase().includes(t) || (i.gid || '').toLowerCase().includes(t)))
     .sort((a, b) => b.actualizadaEn.localeCompare(a.actualizadaEn))
-    .slice(0, 300)
+
+  const lista = cuadran
+    .slice(desde, desde + cuantas)
     .map((i) => ({
       id: i.id, email: i.email, gid: i.gid, estado: i.estado,
       nombre: i.nombreLegal ?? i.nombreDeclarado,
@@ -98,7 +140,15 @@ panelRouter.get('/identidades', exigePermiso('identidad.ver'), (req, res) => {
       apps: i.vinculos.map((v) => v.app),
       actualizadaEn: i.actualizadaEn,
     }))
-  res.json({ identidades: lista, total: lista.length })
+  /* `total` son las que CUADRAN, no las que caben en esta pagina. Devolver lo
+     segundo era mentir con un numero, que es la peor forma de mentir: nadie lo
+     comprueba. `hayMas` va aparte para que el panel no tenga que hacer cuentas. */
+  res.json({
+    identidades: lista,
+    total: cuadran.length,
+    desde,
+    hayMas: desde + lista.length < cuadran.length,
+  })
 })
 
 /** Ficha completa. Es la vista donde el operador decide, así que va todo. */
