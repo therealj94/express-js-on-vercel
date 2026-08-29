@@ -93,7 +93,7 @@ def main() -> int:
     c.add_argument("--env", action="append", default=[], metavar="K=V")
 
     sub.add_parser("status")
-    for name in ("logs", "destroy"):
+    for name in ("logs", "destroy", "start", "stop"):
         p = sub.add_parser(name)
         p.add_argument("id", type=int)
 
@@ -122,6 +122,9 @@ def main() -> int:
             "client_id": "me", "image": a.image, "disk": a.disk,
             "onstart": onstart, "env": env, "runtype": "ssh",
             "label": "video-pipeline",
+            # sin target_state la instancia se crea DETENIDA: se reserva la
+            # máquina, corre el disco y el onstart nunca llega a ejecutarse.
+            "target_state": "running",
         })
         print(json.dumps(r, indent=2))
         print(f'\nInstancia {r.get("new_contract")} creada. '
@@ -149,6 +152,11 @@ def main() -> int:
             except error.HTTPError:
                 time.sleep(5)
         print("El log aún no está disponible; reintenta en un minuto.")
+
+    elif a.cmd in ("start", "stop"):
+        api(V0 + f"/instances/{a.id}/", "PUT",
+            {"state": "running" if a.cmd == "start" else "stopped"})
+        print(f"Instancia {a.id}: {a.cmd}. Ojo: detener NO para el cobro de disco.")
 
     elif a.cmd == "destroy":
         api(V0 + f"/instances/{a.id}/", "DELETE", {})
