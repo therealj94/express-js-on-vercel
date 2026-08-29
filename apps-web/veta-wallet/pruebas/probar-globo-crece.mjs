@@ -136,27 +136,18 @@ prueba('una frase encolada no calla a la anterior', () => {
     'oiría la última');
 });
 
-prueba('el micrófono se reabre UNA vez, al final de toda la respuesta', () => {
-  /* El único sitio que puede reabrirlo sin condición es quien vacía la cola:
-     ahí la respuesta ya terminó de verdad. Todos los demás tienen que mirar
-     `seguido`, o una frase del medio abriría el micrófono mientras ella sigue
-     hablando — que es exactamente cómo se contestaba a sí misma. */
-  const iCola = app.indexOf('async function auraVaciarColaBurbuja');
-  const finCola = app.indexOf('\n  }', iCola);
-  assert.ok(iCola > 0 && finCola > iCola, 'no está auraVaciarColaBurbuja');
-  const sueltos = [];
-  let i = app.indexOf('setTimeout(auraOirEnLaBurbuja, 250)');
-  while (i > 0) {
-    const dentroDeLaCola = i > iCola && i < finCola;
-    const linea = app.slice(app.lastIndexOf('\n', i) + 1, i);
-    if (!dentroDeLaCola && !linea.includes('!seguido')) sueltos.push(linea.trim());
-    i = app.indexOf('setTimeout(auraOirEnLaBurbuja, 250)', i + 1);
-  }
-  assert.equal(sueltos.length, 0,
-    'estos reabren el oído sin mirar si la respuesta sigue:\n        '
-    + sueltos.join('\n        '));
-  assert.ok(app.slice(iCola, finCola).includes('setTimeout(auraOirEnLaBurbuja, 250)'),
-    'y quien vacía la cola NO lo reabre al final: la conversación se corta ahí');
+prueba('el micrófono NO se reabre solo: lo abre el dedo', () => {
+  /* Esta prueba decía lo contrario —«se reabre UNA vez, al final de toda la
+     respuesta»— y era correcta mientras el modo era manos libres. Dejó de
+     serlo con pulsar para hablar, y una prueba que fija el comportamiento
+     viejo es peor que ninguna: obliga a devolver justo lo que se vino a
+     quitar. El reenganche automático era además `onend` llamando a `start()`
+     en cadena, que es lo que tumbaba la pestaña en el teléfono. */
+  assert.equal((app.match(/setTimeout\(auraOirEnLaBurbuja/g) || []).length, 0,
+    'volvió el reenganche automático: se abre el micrófono mientras ella ' +
+    'todavía suena en el altavoz, y de ahí sale que se transcriba a sí misma');
+  assert.ok(/function auraPulsarEmpezar\(\)/.test(app),
+    'no está pulsar para hablar, así que no hay quién abra el micrófono');
 });
 
 prueba('una pregunta nueva tira lo que quedaba de la anterior', () => {

@@ -98,12 +98,17 @@ prueba('la frase grabada también calla la música', () => {
     'se baja fuera de un finally: si la voz falla, la música no vuelve nunca');
 });
 
-prueba('la frase grabada cierra el mismo ciclo que la voz en vivo', () => {
+prueba('ni la frase grabada reabre el micrófono sola', () => {
+  /* Antes se comprobaba lo contrario: que al terminar una frase del banco se
+     volviera a escuchar, para que el modo manos libres no se cortara ahí. Con
+     pulsar para hablar el micrófono lo abre el dedo y nada más, así que lo que
+     hay que fijar es que NADIE lo reabra por su cuenta. */
   const rama = puerta.slice(puerta.indexOf('AURA.tieneGrabada'));
-  const corte = rama.indexOf('return;');
-  assert.ok(/auraConversando && auraAbierta.*auraOirEnLaBurbuja/s.test(rama.slice(0, corte)),
-    'termina la frase grabada y NO vuelve a escuchar: en medio de una ' +
-    'conversación, una frase del banco la deja muerta');
+  assert.ok(!/auraOirEnLaBurbuja/.test(rama),
+    'la rama grabada reabre el oído al terminar: eso lo abre mientras el ' +
+    'altavoz todavía suena');
+  assert.ok(/auraGrabadaSonando = false/.test(rama),
+    'no baja la bandera al terminar: la música quedaría muda para siempre');
 });
 
 console.log(mal ? `\n${mal} mal\n` : '\ntodo bien\n');

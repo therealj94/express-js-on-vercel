@@ -10843,7 +10843,13 @@ const VETA = (() => {
               aria-label="${t('cha.cerrar')}">✕</button>
       <div class="aura-voz-medio">
         <button type="button" class="aura-pelota ${est}" id="aura-pelota"
-                onclick="VETA.${'auraDictar'}()" aria-label="${t('au.tocaHablar')}">
+                style="touch-action:none"
+                onpointerdown="VETA.auraPulsarEmpezar(event)"
+                onpointerup="VETA.auraPulsarSoltar()"
+                onpointercancel="VETA.auraPulsarSoltar()"
+                onpointerleave="VETA.auraPulsarSoltar()"
+                oncontextmenu="return false"
+                aria-label="${esc(aTxt().pulsaHabla)}">
           <span></span><span></span><span></span>
         </button>
         ${dice ? `<p class="aura-voz-est">${dice}</p>` : ''}
@@ -10854,11 +10860,16 @@ const VETA = (() => {
         ${est === 'hablando'
           ? `<button type="button" class="aura-voz-b" onclick="VETA.auraCallar()">
                ${t('au.callar')}</button>`
-          : `<button type="button" class="aura-voz-b aura-voz-mic${dictando ? ' on' : ''}"
-                     onclick="VETA.auraDictar()">
+          : `<button type="button" class="aura-voz-b aura-voz-mic${auraPulsando ? ' on' : ''}"
+                     style="touch-action:none"
+                     onpointerdown="VETA.auraPulsarEmpezar(event)"
+                     onpointerup="VETA.auraPulsarSoltar()"
+                     onpointercancel="VETA.auraPulsarSoltar()"
+                     onpointerleave="VETA.auraPulsarSoltar()"
+                     oncontextmenu="return false">
                <svg viewBox="0 0 24 24"><path d="M12 3a3 3 0 0 1 3 3v6a3 3 0 0 1-6 0V6a3 3 0 0 1 3-3z"/>
                <path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>
-               ${dictando ? t('au.oyendo') : t('au.tocaHablar')}</button>`}
+               ${esc(auraPulsando ? aTxt().pulsaSuelta : aTxt().pulsaHabla)}</button>`}
         <p class="aura-voz-nota">${t('au.quedaEscrito')}</p>
       </div>`;
   }
@@ -11301,6 +11312,56 @@ const VETA = (() => {
     if (auraAbierta) pintarAura();
   }
 
+  /* ── PULSAR PARA HABLAR ───────────────────────────────────────────────────
+   *
+   * El micrófono automático tenía cinco piezas que podían fallar, y con UNA
+   * sola persona usándolo ya fallaba: se abría solo, se cerraba por 900 ms de
+   * silencio, un vigía la interrumpía a los 450 ms de voz, se reenganchaba al
+   * terminar de hablar, y donde el navegador cancelaba mal el eco se
+   * transcribía a sí misma. Cada pieza tenía su razón; juntas eran una máquina
+   * que nadie podía predecir, y encima el reenganche —`onend` llamando a
+   * `start()` en el acto— es la receta del `InvalidStateError` en cadena que
+   * termina tumbando la pestaña en el teléfono.
+   *
+   * Mientras apretás, te escucha. Cuando soltás, contesta. Se acabó.
+   *
+   * No es rendirse: es que el dedo ya sabe cuándo empezaste y cuándo
+   * terminaste, y adivinarlo con un medidor de volumen es resolver un
+   * problema que no hacía falta tener. Interrumpirla también sale gratis —
+   * apretar la calla— así que el vigía sobra. */
+  let auraPulsando = false;
+
+  function auraPulsarEmpezar() {
+    if (auraPulsando) return;
+    auraPulsando = true;
+    /* Apretar CALLA lo que esté diciendo: eso es interrumpirla, y ya no hace
+       falta ningún medidor que lo adivine. */
+    auraVozCallarCola();
+    try { auraCallar?.(); } catch (e) { /* no estaba hablando */ }
+    auraConversando = true;      // para que la línea de estado diga que escucha
+    /* A DÓNDE VA LO QUE SE OIGA, y esto va ANTES de abrir el micrófono. La
+       burbuja y el hilo son dos sitios distintos; si no se apunta, lo dicho
+       cae en el destino de la vez anterior — o en ninguno. */
+    if (auraAbierta) auraApuntarOidoALaBurbuja();
+    else auraSoltarOido();       // el hilo: su destino es el de siempre
+    if (!dictando) auraDictar();
+    if (auraAbierta) pintarAura();
+    pintarChat();
+  }
+
+  function auraPulsarSoltar() {
+    if (!auraPulsando) return;
+    auraPulsando = false;
+    auraConversando = false;
+    /* `stop()` y NO `abort()`: stop cierra ENTREGANDO lo que oyó, que es
+       justo lo que se quiere al soltar. abort lo tira, y era lo correcto en
+       el otro caso —callar el micrófono porque ella va a hablar— pero acá
+       sería perder la frase que la persona acaba de decir. */
+    if (dictando) { try { dictando.stop(); } catch (e) { dictando = null; } }
+    if (auraAbierta) pintarAura();
+    pintarChat();
+  }
+
   function auraDictar() {
     if (dictando) { try { dictando.stop(); } catch (e) {} dictando = null; pintarChat(); return; }
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -11382,11 +11443,16 @@ const VETA = (() => {
        lo que hace que se pueda conversar sin tocar nada. */
     r.onend = () => {
       if (dictando) { dictando = null; pintarChat(); if (auraAbierta) pintarAura(); }
-      /* SE REENGANCHA MIRE QUIEN MIRE. Antes solo preguntaba por el hilo, así
-         que en la burbuja el micrófono se cerraba solo y nadie lo volvía a
-         abrir: el «Te escucho» quedaba puesto sobre un micrófono muerto. */
-      if (auraAlguienEscucha() && !auraSonando && !auraBuscandoVoz) {
-        setTimeout(auraEscuchar, 250);
+      /* NO SE REENGANCHA. Aquí estaba el reenganche automático, y era el
+         corazón del modo manos libres: al cerrarse el reconocedor se volvía a
+         abrir solo. También era un bucle `onend` → `start()` que en el
+         teléfono encadena `InvalidStateError` hasta tumbar la pestaña.
+         Con pulsar para hablar no hace falta: el micrófono vive lo que dura
+         el dedo, ni un milisegundo más. */
+      if (auraPulsando && !auraSonando && !auraBuscandoVoz) {
+        // el dedo SIGUE apretado y el navegador cerró por su cuenta (pasa a
+        // los ~60 s): se reabre, porque quien manda es el dedo
+        setTimeout(() => { if (auraPulsando) auraEscuchar(); }, 250);
       }
     };
     dictando = r;
@@ -12175,6 +12241,8 @@ const VETA = (() => {
       vozNombre: { calida: 'Voz cálida', sobria: 'Voz sobria', agil: 'Voz ágil' },
       vozAsi: 'Así te hablo de ahora en más.',
       conversarOn: 'Hablar sin tocar nada', conversarOff: 'Dejar de escuchar',
+      pulsaHabla: 'Mantené apretado para hablar',
+      pulsaSuelta: 'Soltá para que conteste',
       conversando: 'Te escucho — hablá cuando quieras',
       abriendoMic: 'Abriendo el micrófono…',
       hablando: 'Hablando…',
@@ -12189,9 +12257,9 @@ const VETA = (() => {
          esta hace cola y puede tardar. Se dice, y se dice ADEMÁS que el texto
          ya está — que es la parte que resuelve la espera. */
       buscandoVozTarda: 'La voz está tardando. El texto ya lo tenés acá arriba.',
-      micInvita: 'Si querés, hablemos en voz alta: activás el micrófono una vez y ya no tocás nada más — te escucho, te contesto, y sigo escuchando.',
-      micActivar: 'Activar el micrófono',
-      micListo: 'Listo, te escucho. Hablá cuando quieras y te voy contestando; para cortar, tocá el micrófono otra vez.',
+      micInvita: 'Si querés, hablemos en voz alta: mantené apretado el micrófono mientras hablás, y soltá para que te conteste.',
+      micActivar: 'Probar el micrófono',
+      micListo: 'Mantené apretado el micrófono de acá abajo mientras hablás, y soltá cuando termines. Apretarlo también me calla, por si me quiero pasar de larga.',
       micNoHay: 'Este navegador no sabe escuchar. Escribime y te leo igual de bien.',
       // Antes esto era un `return` mudo: la segunda pregunta quedaba
       // escrita en el hilo, sin respuesta y sin aviso, para siempre.
@@ -12321,6 +12389,8 @@ const VETA = (() => {
       vozNombre: { calida: 'Warm voice', sobria: 'Steady voice', agil: 'Quick voice' },
       vozAsi: 'This is how I will speak from now on.',
       conversarOn: 'Talk without tapping', conversarOff: 'Stop listening',
+      pulsaHabla: 'Hold to talk',
+      pulsaSuelta: 'Let go and I will answer',
       conversando: "I'm listening — speak whenever you like",
       abriendoMic: 'Opening the microphone…',
       hablando: 'Speaking…',
@@ -12328,9 +12398,9 @@ const VETA = (() => {
       pensandoMucho: 'This is taking longer than usual. I am still here.',
       buscandoVoz: 'Getting my voice ready…',
       buscandoVozTarda: 'My voice is taking a while. The text is already up there.',
-      micInvita: "If you like, let's talk out loud: turn the microphone on once and you never tap again — I listen, I answer, and I keep listening.",
-      micActivar: 'Turn on the microphone',
-      micListo: "Done, I'm listening. Speak whenever you like and I'll answer; to stop, tap the microphone again.",
+      micInvita: "If you like, let's talk out loud: hold the microphone down while you speak, and let go for my answer.",
+      micActivar: 'Try the microphone',
+      micListo: "Hold the microphone below while you speak, and let go when you are done. Pressing it also stops me, in case I go on too long.",
       micNoHay: "This browser can't listen. Write to me and I'll read you just as well.",
       unaAlaVez: 'Let me finish the previous one and I will answer that. One at a time: there is a single engine.',
       con: {
@@ -12812,11 +12882,24 @@ const VETA = (() => {
         `<button class="aura-chip" onclick="VETA.auraChip(${jsTxt(c)})">${esc(c)}</button>`).join('')}</div>
       <form class="aura-pie" onsubmit="return VETA.auraManda(event)">
         ${AURA.puedeEscuchar() ? `
-        <button type="button" class="aura-mic${auraConversando ? ' hablando' : auraOyendo() ? ' oyendo' : ''}"
-                onclick="VETA.auraConversar()"
-                aria-pressed="${auraConversando}"
-                aria-label="${esc(auraConversando ? T.conversarOff : T.conversarOn)}"
-                title="${esc(auraConversando ? T.conversarOff : T.conversarOn)}">
+        ${/* PULSAR PARA HABLAR. `pointerdown/up` y no `click`: click llega al
+              soltar, o sea que con click no hay «mientras apretás». Y
+              `pointercancel` y `pointerleave` cuentan como soltar — si se
+              suelta fuera del botón, o el sistema se lleva el gesto (una
+              llamada entrante, deslizar para volver), el micrófono tiene que
+              cerrarse igual. Sin eso queda abierto para siempre.
+              `touch-action:none` evita que el navegador se quede el gesto
+              creyendo que vas a desplazar la pantalla. */''}
+        <button type="button" class="aura-mic${auraPulsando ? ' hablando' : ''}"
+                style="touch-action:none"
+                onpointerdown="VETA.auraPulsarEmpezar(event)"
+                onpointerup="VETA.auraPulsarSoltar()"
+                onpointercancel="VETA.auraPulsarSoltar()"
+                onpointerleave="VETA.auraPulsarSoltar()"
+                oncontextmenu="return false"
+                aria-pressed="${auraPulsando}"
+                aria-label="${esc(T.pulsaHabla)}"
+                title="${esc(T.pulsaHabla)}">
           <svg viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>
         </button>` : ''}
         <input id="aura-in" placeholder="${T.escribi}" autocomplete="off" maxlength="300">
@@ -12997,7 +13080,10 @@ const VETA = (() => {
       try { await AURA.hablar(txt, idioma); }
       finally { auraGrabadaSonando = false; auraMusicaAlDia(); }
       // y cierra el mismo ciclo que la voz en vivo: terminó, vuelve a oír
-      if (!seguido && auraConversando && auraAbierta) setTimeout(auraOirEnLaBurbuja, 250);
+      /* Ya no se reabre el oído al terminar de hablar: con pulsar para
+         hablar, el micrófono vive lo que dura el dedo. Reabrirlo aquí era la
+         mitad del modo manos libres — y la mitad de los enredos, porque se
+         abría mientras ella todavía sonaba en el altavoz. */
       return;
     }
     if (!CHAT.listo?.() || !CHAT.vozEnVivo) return AURA.hablar(txt, idiomaActivo());
@@ -13034,7 +13120,7 @@ const VETA = (() => {
     auraMusicaAlDia();
     /* Y ACÁ SE CIERRA EL CICLO: terminó de hablar, vuelve a escuchar. Es esta
        línea la que convierte «tocar para hablar» en «conversar». */
-    if (!seguido && auraConversando && auraAbierta) setTimeout(auraOirEnLaBurbuja, 250);
+    // ídem: quien decide cuándo escuchar es el dedo, no el final de una frase
   }
 
   /* ── LA COLA DE LA BURBUJA ────────────────────────────────────────────────
@@ -13074,7 +13160,7 @@ const VETA = (() => {
     } finally {
       auraVaciandoCola = false;
       auraMusicaAlDia();
-      if (auraConversando && auraAbierta) setTimeout(auraOirEnLaBurbuja, 250);
+      // ídem: se acabó la cola y NO se vuelve a escuchar solo
     }
   }
 
@@ -13160,26 +13246,18 @@ const VETA = (() => {
    */
   let auraConversando = false;
 
-  function auraConversar() {
-    auraConversando = !auraConversando;
-    if (!auraConversando) {
-      auraSoltarOido();
-      try { auraCortarVozBurbuja?.(); } catch (e) { /* ya no sonaba */ }
-      return pintarAura();
-    }
-    auraAbierta = true;
-    pintarAura();
-    auraOirEnLaBurbuja();
-  }
-
   /* La burbuja escucha CON EL MISMO OÍDO que el hilo — solo cambia a dónde va
      lo que oye. Antes tenía el suyo (`AURA.escuchar`), que no avisaba nunca
      cuando terminaba sin oír nada: ni resultado ni error, así que `auraOyendo`
      se quedaba en true y el «Te escucho» colgado sobre un micrófono muerto.
      Esa era la traba. Ahora el estado sale de `dictando`, que es el mismo que
      mira el hilo, y el reenganche lo hace el `onend` de siempre. */
-  function auraOirEnLaBurbuja() {
-    if (!auraConversando || !auraAbierta) return;
+  /** A dónde va lo que se oiga: al panel de la burbuja. Está separado de
+      empezar a escuchar porque son dos cosas distintas —el destino se pone al
+      apretar, y quien escucha es el dedo— y tenerlas pegadas fue justo el
+      fallo: al quitar el modo automático, nadie apuntaba el oído a la burbuja
+      y lo que se decía ahí no llegaba a ninguna parte. Lo cazó la prueba. */
+  function auraApuntarOidoALaBurbuja() {
     auraOidoParcial = (parcial) => {
       const c = $('#aura-in');
       if (c) c.value = parcial;
@@ -13189,9 +13267,8 @@ const VETA = (() => {
       if (c) c.value = '';
       auraCharla.push({ de: 'yo', txt: dicho });
       pintarAura();
-      auraSeso(dicho);        // la respuesta reengancha el oído al terminar
+      auraSeso(dicho);
     };
-    auraEscuchar();
   }
 
   /** Suelta el oído de la burbuja: vuelve a su destino de siempre, el hilo. */
@@ -13202,7 +13279,7 @@ const VETA = (() => {
   }
 
   /* Aquí vivía `auraMic`, el micrófono de UN SOLO TIRO de la burbuja:
-     tocabas, decía una cosa y se apagaba. Lo reemplaza `auraConversar`, que
+     tocabas, decía una cosa y se apagaba. Lo reemplaza pulsar para hablar, que
      es un modo y no un turno, y que usa el oído único. Dejarlo habría sido
      dejar el cuarto micrófono. */
 
@@ -13290,7 +13367,10 @@ const VETA = (() => {
     if (!auraSoloActuar
         && /activar (el )?microfono|activa (el )?microfono|prende (el )?microfono|quiero hablar|hablemos|conversar|turn on (the )?mic|activate (the )?mic/.test(d)) {
       if (!AURA.puedeEscuchar()) return auraDecir(T.micNoHay, { voz: true });
-      auraConversar();
+      /* Ya no enciende un modo: no hay modo que encender. Abre la burbuja
+         —que es donde vive el botón— y explica el gesto. Encender algo que
+         despues no existe seria peor que no entender la orden. */
+      auraAbierta = true;
       return auraDecir(T.micListo, { voz: true });
     }
 
@@ -15354,7 +15434,8 @@ const VETA = (() => {
            auraCallar, chatSugerir, chatBajar, chatMirarScroll,
            auraVozPantalla, auraVozCerrar,
            // AU-RA: el orbe, el panel, la bienvenida y el recorrido.
-           auraToca, auraManda, auraConversar, auraRegistroElegir, auraChip, auraTourVa, auraTourFin,
+           auraToca, auraManda, auraRegistroElegir,
+           auraPulsarEmpezar, auraPulsarSoltar, auraChip, auraTourVa, auraTourFin,
            pantallaLlena, gcAbrir, gcCerrar, gcZoom, aedCallar,
            chatGestosTocar, vsEntrar, vsSalir, vsOjos, vsMirada, tourGenesis, musicaAlterna, versionMirar, version, prontoMirar,
            _bienvenidaGalaxia: (v) => auraBienvenidaGalaxia(v),

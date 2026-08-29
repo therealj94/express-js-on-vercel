@@ -188,7 +188,7 @@ ok(b1.some((x) => /micrófono|microphone/i.test(x)),
    'nadie adivina que la burbuja escucha: hay que decirlo');
 const botones = await p.evaluate(() =>
   [...document.querySelectorAll('#aura-panel .aura-b button')].map((b) => b.textContent.trim()));
-ok(botones.some((x) => /Activar|Turn on/i.test(x)), 'con su botón para encenderlo',
+ok(botones.some((x) => /Probar|Try/i.test(x)), 'con su botón para probarlo',
    `los botones fueron: ${JSON.stringify(botones)}`);
 
 console.log('\nHabla con NUESTRA voz, no con la robótica\n');
@@ -201,17 +201,27 @@ ok(vozUsada === 0,
    'y el sintetizador del navegador no se usó ni una vez',
    `lo llamaron ${vozUsada} veces — esa es la voz vieja robótica`);
 
-console.log('\nSe conversa sin volver a tocar nada\n');
-await p.evaluate(() => VETA.auraConversar());
+console.log('\nSe habla apretando, y se contesta al soltar\n');
+/* ESTE BLOQUE DECÍA LO CONTRARIO. Comprobaba el modo manos libres: que al
+ * encenderlo una vez el micrófono se quedara puesto, y que al terminar de
+ * contestar volviera a escuchar SOLA. Era correcto mientras ese fue el modo,
+ * y se cambió por lo que se sufrió con la app en la mano —«sigue crashing,
+ * pésimo de escucha, está como loco»— con UNA sola persona usándola.
+ *
+ * El automatismo tenía cinco piezas y ninguna forma de saber cuál falló; el
+ * reenganche, además, era `onend` llamando a `start()` en cadena, que es lo
+ * que tumba la pestaña en el teléfono. Ahora manda el dedo. */
+await p.evaluate(() => VETA.auraPulsarEmpezar());
 await p.waitForTimeout(600);
-ok(await p.evaluate(() => window.__oidos >= 1), 'al encenderlo, abre el micrófono',
+ok(await p.evaluate(() => window.__oidos >= 1), 'al apretar, abre el micrófono',
    `arrancó ${await p.evaluate(() => window.__oidos)} veces`);
 ok(await p.evaluate(() => !!document.querySelector('#aura-panel .aura-mic.hablando')),
-   'y se ve encendido, para que nadie lo deje puesto sin querer');
+   'y mientras lo tenés apretado se ve que está escuchando');
 
 const antesDeHablar = await p.evaluate(() => window.__oidos);
 const pedidosAntes = pedidosHablar;
 await p.evaluate(() => window.__oir('¿qué es ORIGEN?'));
+await p.evaluate(() => VETA.auraPulsarSoltar());
 await p.waitForTimeout(3000);
 const trasHablar = await burbujas();
 ok(trasHablar.some((x) => x.includes('ORIGEN')),
@@ -228,14 +238,19 @@ ok(pedidosHablar > pedidosAntes,
  * es ruido que se lee como cobertura. Lo comprueba probar-globo-crece, que
  * sí simula un mensaje creciendo — y está verificado quitando el arreglo. */
 
-/* LA COMPROBACIÓN QUE DEFINE EL MODO: al terminar de hablar vuelve a
-   escuchar SOLA. Sin esto es «tocar para hablar» con otro nombre. */
+/* LA COMPROBACIÓN QUE DEFINE EL MODO NUEVO, y es la contraria de la de
+   antes: al soltar, el micrófono NO se vuelve a abrir solo. Si se abriera,
+   estaría escuchando mientras ella suena en el altavoz — que es de donde
+   salía que se transcribiera a sí misma. */
 await p.waitForTimeout(3500);
 const trasContestar = await p.evaluate(() => window.__oidos);
-ok(trasContestar > antesDeHablar,
-   'y al terminar de contestar vuelve a escuchar SOLA',
+ok(trasContestar === antesDeHablar,
+   'y al soltar NO se vuelve a abrir solo: manda el dedo',
    `el micrófono se abrió ${antesDeHablar} veces antes y ${trasContestar} después: `
-   + 'si no crece, hay que tocar el botón otra vez y no es conversar');
+   + 'si crece, volvió el reenganche automático');
+ok(!await p.evaluate(() => !!document.querySelector('#aura-panel .aura-mic.hablando')),
+   'y el botón ya no se ve apretado',
+   'quedaría diciendo que escucha con el micrófono cerrado');
 
 console.log('\nLa voz se elige en la burbuja, y se confirma OYÉNDOLA\n');
 const sel = await p.evaluate(() =>
