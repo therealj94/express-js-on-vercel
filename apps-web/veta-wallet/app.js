@@ -10398,21 +10398,25 @@ const VETA = (() => {
        sale del cerebro partida en varios mensajes, y una llamada por frase
        sería pagar el viaje —y la cola de la GPU— tres veces para decir lo
        mismo. El nodo ya la vuelve a partir por dentro, mejor que acá. */
-    const escrito = nuevas.filter((m) => m.tipo !== 'voz' && (m.texto || '').trim());
+    /* ── SE ESPERA A QUE TERMINE DE ESCRIBIRLA ────────────────────────────
+     *
+     * Aquí también estuvo el troceo —decir cada frase apenas cerraba— y aquí
+     * también sonaba mal por lo mismo: cada frase es una petición y un
+     * contexto de audio propios, y entre una y otra queda el silencio entero
+     * que el nodo tarda en arrancar la siguiente.
+     *
+     * El texto SÍ se ve crecer, que es lo que se pedía; la voz espera a que
+     * la respuesta esté completa y sale de una, sin huecos. Son dos cosas
+     * distintas y no tienen por qué ir al mismo ritmo: se lee mucho más
+     * rápido de lo que se habla. */
+    const escrito = nuevas.filter(
+      (m) => m.tipo !== 'voz' && !m.parcial && (m.texto || '').trim());
     const trozos = [];
     escrito.forEach((m) => {
       const txt = m.texto.trim();
-      const ya = auraYaSono.get(m.id) || 0;
-      /* De un mensaje a medias solo se dice hasta el último punto: leer media
-         frase y completarla en la vuelta siguiente suena a tartamudeo. */
-      const listo = m.parcial
-        ? Math.max(txt.lastIndexOf('. '), txt.lastIndexOf('.\n'),
-                   txt.lastIndexOf('? '), txt.lastIndexOf('! ')) + 1
-        : txt.length;
-      if (listo <= ya) return;
-      const trozo = txt.slice(ya, listo).trim();
-      auraYaSono.set(m.id, listo);
-      if (trozo) trozos.push(trozo);
+      if ((auraYaSono.get(m.id) || 0) >= txt.length) return;
+      auraYaSono.set(m.id, txt.length);
+      trozos.push(txt);
     });
     if (trozos.length) {
       auraPorDecir.push(trozos.join(' '));
@@ -13571,8 +13575,14 @@ const VETA = (() => {
        * panel — no una copia del texto: la charla se recorta a 40 y una copia
        * apuntaría a un sitio que ya no existe. */
       let globo = -1;
-      let dichoEnVoz = 0;      // cuántos caracteres ya se mandaron a la voz
-      const puedeHablar = () => voz && abiertoAlPreguntar && auraAbierta;
+      /* Y HABLA UNO SOLO. El hilo en modo voz (auraCharlaSonar) y la burbuja
+         son dos caminos distintos con dos motores distintos, y los dos miran
+         los MISMOS mensajes. Con la burbuja abierta sobre un hilo en modo
+         voz, los dos decían la misma respuesta encimada — «está como loco,
+         escucha dos veces». Manda el hilo, que es de quien es la pantalla de
+         voz; la burbuja se calla mientras ese modo esté puesto. */
+      const puedeHablar = () => voz && abiertoAlPreguntar && auraAbierta
+        && !(auraCharlando && esAura(chatSt.con));
       while (Date.now() < hasta) {
         await new Promise((r) => setTimeout(r, 700));
         if (miSesion !== auraSesion) { auraPensando = false; return; }
@@ -13590,24 +13600,31 @@ const VETA = (() => {
           auraCharla[globo].txt = txt;
         }
         pintarAura();
-        /* LA VOZ NO ESPERA A LA RESPUESTA ENTERA. En cuanto hay una frase
-           cerrada, se dice — y las siguientes se van encolando detrás. Así el
-           primer sonido llega a los ~4 s en vez de a los ~10, que era texto
-           entero primero y recién después pedir la voz.
-           Se corta en el ÚLTIMO punto: decir media frase y completarla en el
-           trozo siguiente suena a tartamudeo. */
-        if (puedeHablar()) {
-          const listo = m.parcial
-            ? Math.max(txt.lastIndexOf('. '), txt.lastIndexOf('.\n'),
-                       txt.lastIndexOf('? '), txt.lastIndexOf('! ')) + 1
-            : txt.length;
-          if (listo > dichoEnVoz) {
-            const trozo = txt.slice(dichoEnVoz, listo).trim();
-            dichoEnVoz = listo;
-            if (trozo) auraVozEncolar(trozo);
-          }
+        if (!m.parcial) {
+          /* ── LA VOZ SE PIDE UNA SOLA VEZ, CON LA RESPUESTA ENTERA ────────
+           *
+           * Aquí estuvo puesto lo contrario —una petición por frase, para que
+           * el primer sonido llegara antes— y fue un mal cambio. Lo dijo el
+           * oído antes que ninguna medición: «hay un vacío entre voz, ruidos
+           * raros».
+           *
+           * La causa: cada frase abría SU petición y SU contexto de audio. El
+           * nodo tarda dos o tres segundos en empezar a generar, así que entre
+           * frase y frase quedaba ese silencio entero, y abrir y cerrar un
+           * contexto por frase mete chasquidos en los bordes.
+           *
+           * Y era romper algo que ya estaba resuelto: el nodo parte la
+           * respuesta por dentro y programa los trozos en UN reloj, cada uno
+           * pegado al final del anterior, con la primera parte corta a
+           * propósito para que suene pronto. Pedida entera, la voz sale sin
+           * huecos y el primer sonido llega igual de rápido. Trocear desde
+           * afuera solo servía para deshacer ese trabajo.
+           *
+           * `auraVozEncolar` y no `auraVozDeLaCasa` a secas: la cola es la que
+           * deja que una pregunta nueva calle lo que quedaba de la anterior. */
+          if (puedeHablar()) auraVozEncolar(txt);
+          return;      // terminó de escribirla: se cierra el turno
         }
-        if (!m.parcial) return;      // terminó de escribirla: se cierra el turno
       }
       if (miSesion !== auraSesion) { auraPensando = false; return; }
       // Tardó de más. No se finge una respuesta: se dice qué pasó y se deja

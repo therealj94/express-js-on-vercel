@@ -221,6 +221,13 @@ ok(pedidosHablar > pedidosAntes,
    'y contesta con la voz de la casa',
    `pedidos a /hablar: ${pedidosAntes} antes, ${pedidosHablar} después`);
 
+/* «Una respuesta, una petición de voz» NO se comprueba acá y no es un
+ * olvido: en esta prueba no hay asistente detrás, así que «¿qué es ORIGEN?»
+ * la contesta el cerebro local de la wallet en un solo mensaje ya completo.
+ * Trocear o no trocear da lo mismo, y una comprobación que no puede fallar
+ * es ruido que se lee como cobertura. Lo comprueba probar-globo-crece, que
+ * sí simula un mensaje creciendo — y está verificado quitando el arreglo. */
+
 /* LA COMPROBACIÓN QUE DEFINE EL MODO: al terminar de hablar vuelve a
    escuchar SOLA. Sin esto es «tocar para hablar» con otro nombre. */
 await p.waitForTimeout(3500);

@@ -32,7 +32,7 @@ console.log('\nlo que se dice en voz alta se cuenta por letras');
    salen y en qué orden— y no la forma del texto. */
 function repartir(vueltas) {
   const cuerpo = app.match(
-    /const escrito = nuevas\.filter[\s\S]*?if \(trozos\.length\) \{[\s\S]*?\n    \}/)[0];
+    /const escrito = nuevas\.filter\([\s\S]*?if \(trozos\.length\) \{[\s\S]*?\n    \}/)[0];
   const yaSono = new Map();
   const dichos = [];
   /* Sin tocarle un `return`: el primero que aparece es el `if (listo <= ya)
@@ -49,71 +49,80 @@ function repartir(vueltas) {
   return dichos;
 }
 
-prueba('un mensaje que crece se dice entero, no solo su primera frase', () => {
+prueba('no se dice nada mientras la está escribiendo', () => {
+  /* Estuvo al revés —cada frase se decía apenas cerraba, para que el primer
+     sonido llegara antes— y sonaba mal. Lo dijo el oído antes que ninguna
+     medición: «hay un vacío entre voz, ruidos raros». Cada frase abría SU
+     petición y SU contexto de audio, así que entre una y otra quedaba el
+     silencio entero que el nodo tarda en arrancar la siguiente, y abrir y
+     cerrar contextos deja chasquidos en los bordes. */
+  const dicho = repartir([
+    [{ id: 'a', de: 'aura', texto: 'Uno es uno. ', parcial: 1 }],
+    [{ id: 'a', de: 'aura', texto: 'Uno es uno. Dos es dos. ', parcial: 1 }],
+  ]).join(' ');
+  assert.equal(dicho, '',
+    'habló con la respuesta a medias: eso es una petición de voz por frase, ' +
+    'y entre frase y frase quedan dos o tres segundos de silencio');
+});
+
+prueba('y al terminar se pide UNA vez, con la respuesta entera', () => {
   const dicho = repartir([
     [{ id: 'a', de: 'aura', texto: 'Uno es uno. ', parcial: 1 }],
     [{ id: 'a', de: 'aura', texto: 'Uno es uno. Dos es dos. ', parcial: 1 }],
     [{ id: 'a', de: 'aura', texto: 'Uno es uno. Dos es dos. Y tres.' }],
-  ]).join(' | ');
-  assert.ok(dicho.includes('Uno es uno.'), 'no dijo la primera');
-  assert.ok(dicho.includes('Dos es dos.'),
-    'se comió la segunda: con la cuenta por mensaje, el id quedaba marcado al ' +
-    'oír la primera frase y el resto no se decía nunca');
-  assert.ok(dicho.includes('Y tres.'), 'se comió el final');
+  ]);
+  assert.equal(dicho.length, 1,
+    `se pidió ${dicho.length} veces: el nodo ya parte la respuesta por dentro ` +
+    'y programa los trozos en UN reloj, pegados. Trocear desde afuera deshace eso');
+  assert.ok(dicho[0].includes('Uno es uno.') && dicho[0].includes('Y tres.'),
+    'no fue la respuesta entera: ' + JSON.stringify(dicho[0]));
 });
 
-prueba('y cada frase se dice UNA sola vez', () => {
+prueba('y no se repite si vuelve a llegar igual', () => {
   const dicho = repartir([
-    [{ id: 'a', de: 'aura', texto: 'Uno es uno. ', parcial: 1 }],
-    [{ id: 'a', de: 'aura', texto: 'Uno es uno. ', parcial: 1 }],   // sin cambios
-    [{ id: 'a', de: 'aura', texto: 'Uno es uno. Dos es dos. ', parcial: 1 }],
-    [{ id: 'a', de: 'aura', texto: 'Uno es uno. Dos es dos.' }],
-  ]).join(' ');
-  const veces = (t) => dicho.split(t).length - 1;
-  assert.equal(veces('Uno es uno.'), 1, `«Uno es uno.» se dijo ${veces('Uno es uno.')} veces`);
-  assert.equal(veces('Dos es dos.'), 1, `«Dos es dos.» se dijo ${veces('Dos es dos.')} veces`);
-});
-
-prueba('de un mensaje a medias no se dice media frase', () => {
-  const dicho = repartir([
-    [{ id: 'a', de: 'aura', texto: 'Esto está a medio escr', parcial: 1 }],
-  ]).join(' ');
-  assert.equal(dicho, '',
-    'dijo media frase: leer «Esto está a medio escr» y completarlo en la ' +
-    'vuelta siguiente suena a tartamudeo');
-});
-
-prueba('pero cuando ya no es parcial, se dice aunque no termine en punto', () => {
-  const dicho = repartir([
-    [{ id: 'a', de: 'aura', texto: 'Sin punto final', parcial: 1 }],
-    [{ id: 'a', de: 'aura', texto: 'Sin punto final' }],
-  ]).join(' ');
-  assert.ok(dicho.includes('Sin punto final'),
-    'la respuesta terminó y se quedó muda esperando un punto que no viene');
+    [{ id: 'a', de: 'aura', texto: 'Ya está completa.' }],
+    [{ id: 'a', de: 'aura', texto: 'Ya está completa.' }],
+    [{ id: 'a', de: 'aura', texto: 'Ya está completa.' }],
+  ]);
+  assert.equal(dicho.length, 1, `la dijo ${dicho.length} veces`);
 });
 
 console.log('\nla burbuja crece, no se duplica');
 
 prueba('el panel reescribe SU globo en vez de empujar uno nuevo', () => {
   const i = app.indexOf('async function auraAlModelo');
-  const cuerpo = app.slice(i, i + 4200);
+  const cuerpo = app.slice(i, i + 5600);
   assert.ok(/auraCharla\[globo\]\.txt = txt;/.test(cuerpo),
     'no reescribe: cada trozo dejaría un globo más, que es lo que se vino a evitar');
-  assert.ok(/if \(!m\.parcial\) return;/.test(cuerpo),
+  assert.ok(/if \(!m\.parcial\) \{[\s\S]{0,1800}return;/.test(cuerpo),
     'no espera a que termine: se queda con la primera frase como si fuera todo');
   assert.ok(/let globo = -1;/.test(cuerpo) && !/auraCharla\.length - 1\]\.txt/.test(cuerpo),
     'guarda el globo de una forma que la charla recortada a 40 puede invalidar');
 });
 
-prueba('la voz arranca antes de que termine el texto', () => {
+prueba('el texto se ve crecer, pero la voz espera a que esté completa', () => {
+  /* Son dos cosas distintas y no tienen por qué ir al mismo ritmo: se lee
+     mucho más rápido de lo que se habla. El texto creciendo es lo que se
+     pidió; la voz troceada era un invento que sonaba a hueco. */
   const i = app.indexOf('async function auraAlModelo');
-  const cuerpo = app.slice(i, i + 4200);
-  assert.ok(/auraVozEncolar\(trozo\)/.test(cuerpo), 'no encola nada');
-  const iVoz = cuerpo.indexOf('auraVozEncolar');
-  const iFin = cuerpo.indexOf('if (!m.parcial) return;');
-  assert.ok(iVoz > 0 && iFin > iVoz,
-    'pide la voz DESPUÉS de cerrar el turno: eso es esperar la respuesta entera, ' +
-    'que es justo lo que hacía que el primer sonido llegara a los ~10 s');
+  const cuerpo = app.slice(i, i + 5600);
+  assert.ok(/auraCharla\[globo\]\.txt = txt;/.test(cuerpo), 'el texto no crece');
+  assert.ok(/if \(!m\.parcial\) \{[\s\S]{0,1600}auraVozEncolar\(txt\)/.test(cuerpo),
+    'pide la voz con la respuesta a medias: eso es una petición por frase, y ' +
+    'entre frase y frase quedan dos o tres segundos de silencio');
+  assert.ok(!/auraVozEncolar\(trozo\)/.test(cuerpo), 'quedó el troceo viejo');
+});
+
+prueba('habla UNO solo: la burbuja se calla si el hilo está en modo voz', () => {
+  /* Dos caminos, dos motores, los mismos mensajes. Con la burbuja abierta
+     sobre un hilo en modo voz los dos decían la misma respuesta encimada —
+     «está como loco, escucha dos veces». */
+  const i = app.indexOf('async function auraAlModelo');
+  const cuerpo = app.slice(i, i + 5600);
+  const m = cuerpo.match(/const puedeHablar = \(\) =>([\s\S]{0,180}?);/);
+  assert.ok(m, 'no está puedeHablar');
+  assert.ok(/auraCharlando/.test(m[1]),
+    'la burbuja habla aunque el hilo esté en modo voz: se oyen las dos a la vez');
 });
 
 console.log('\nla cola no se pisa a sí misma');
