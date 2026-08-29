@@ -1,9 +1,26 @@
 // Ejercita el script de migracion REAL contra una coleccion en memoria.
 // Cubre los casos que importan: lo normal, lo ya migrado, lo corrupto, y una
 // escritura que sale mal para comprobar que se restaura sola.
-import CryptoJS from "crypto-js";
-import mongoose from "mongoose";
-import * as m from "./lib/cripto.js";
+/* LA CAJA SE MONTA ACA, no se da por supuesta.
+   Antes esto importaba "./lib/cripto.js" y "mongoose" a secas, lo cual solo
+   resuelve si la prueba corre DENTRO de /tmp/mtest —un andamio montado a mano
+   el 5-ago que no existe en el CI ni en ninguna otra maquina—. Ver caja.mjs. */
+import { pathToFileURL } from "node:url";
+import { join } from "node:path";
+import { montarCaja } from "./caja.mjs";
+
+const caja = montarCaja();
+process.on("exit", caja.tirar);
+
+const CryptoJS = (await import(pathToFileURL(
+  join(caja.carpeta, "node_modules", "crypto-js", "index.js")).href)).default;
+/* El mongoose de mentira se importa por su ruta EXACTA dentro de la caja, que
+   es la misma a la que resuelve el `import "mongoose"` de migrar.js. Asi los
+   dos comparten la coleccion en memoria; con dos instancias distintas la
+   prueba miraria un almacen vacio y se pondria verde sin ejercitar nada. */
+const mongoose = (await import(pathToFileURL(
+  join(caja.carpeta, "node_modules", "mongoose", "index.cjs")).href)).default;
+const m = await import(pathToFileURL(caja.cripto).href);
 
 const VIEJA = process.env.PASS_ADM;
 const store = mongoose.__store;
@@ -27,7 +44,7 @@ store.docs = [
 store.fallarRelectura.add("u6");
 
 const antes = JSON.parse(JSON.stringify(store.docs));
-await import("./migrar.js");
+await import(pathToFileURL(caja.guion).href);
 
 // El process.exit(0) del script corta aca, asi que las comprobaciones van en
 // un hook de salida.

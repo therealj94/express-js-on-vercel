@@ -6,7 +6,10 @@
 // en ese detalle, asi que es lo que hay que imitar bien.
 
 import { createRequire } from 'module'
+import { fileURLToPath } from 'node:url'
 const require = createRequire(import.meta.url)
+// En un .mjs no hay __dirname; se saca de la propia URL del fichero.
+const __dirname = fileURLToPath(new URL('.', import.meta.url))
 
 // Coleccion de mentira con indice unico sobre (clave, usuario).
 const filas = []
@@ -35,13 +38,59 @@ const Idempotencia = {
   },
 }
 
-// Se compila el modulo real y se le inyecta la coleccion de mentira.
-const babel = require('/tmp/vw-deploy/node_modules/@babel/core')
+/* SE PRUEBA EL MODULO QUE ESTA DESPLEGADO, no una copia.
+ *
+ * Aca decia `/tmp/vw-deploy/lib/idempotencia.js`, una carpeta de trabajo que ya
+ * no existe: la prueba llevaba tiempo muriendo con «Cannot find module» y nadie
+ * lo veia, porque tampoco esta en la lista del CI.
+ *
+ * Al ir a arreglarlo aparecio lo de verdad: el `idempotencia.js` que vive en
+ * ESTA carpeta —el del taller donde se construyo— tiene 190 lineas, y el que
+ * corre en produccion, `veta-wallet-backend/lib/idempotencia.js`, tiene 268.
+ * Le faltan enteras las 78 del sello DERIVADO, que es justo la parte que impide
+ * el pago doble cuando el cliente no manda `idempotencyKey`. O sea que la
+ * prueba, de haber corrido, habria estado en verde contra codigo viejo.
+ *
+ * Se lee el del backend, y punto. Si algun dia se mueve, esta prueba lo dice.
+ */
 const fs = require('fs')
-const fuente = fs.readFileSync('/tmp/vw-deploy/lib/idempotencia.js', 'utf8')
+const path = require('path')
+
+const VIVO = path.join(__dirname, '..', '..', 'veta-wallet-backend', 'lib', 'idempotencia.js')
+if (!fs.existsSync(VIVO)) {
+  console.error(`No encuentro el modulo desplegado en ${VIVO}.`)
+  console.error('Si se movio, hay que apuntar esta prueba al sitio nuevo — no a una copia.')
+  process.exit(1)
+}
+
+const BACK = path.join(__dirname, '..', '..', 'veta-wallet-backend')
+
+/* Babel resuelve sus presets desde donde esta EL, no desde donde estamos
+   nosotros, asi que hace falta la ruta absoluta del preset y no su nombre.
+   Con el nombre a secas falla con un MODULE_NOT_FOUND que apunta a las tripas
+   de babel y no dice en ningun momento que lo que falta es el preset. */
+let babel, presetEnv
+for (const raiz of [BACK, __dirname]) {
+  try {
+    const req = createRequire(path.join(raiz, 'x.js'))
+    babel = req('@babel/core')
+    presetEnv = req.resolve('@babel/preset-env')
+    break
+  } catch { /* se prueba el siguiente sitio */ }
+}
+if (!babel || !presetEnv) {
+  console.error('Falta @babel/core o @babel/preset-env.')
+  console.error('Corré `npm install` en infra/veta-wallet-backend y volvé a intentar.')
+  process.exit(1)
+}
+
+const fuente = fs.readFileSync(VIVO, 'utf8')
   .replace('import Idempotencia from "../models/Idempotencia";', 'const Idempotencia = globalThis.__COL;')
 globalThis.__COL = Idempotencia
-const { code } = babel.transformSync(fuente, { presets: [['@babel/preset-env', { targets: { node: 'current' } }]], cwd: '/tmp/vw-deploy', babelrc: false, configFile: false })
+const { code } = babel.transformSync(fuente, {
+  presets: [[presetEnv, { targets: { node: 'current' } }]],
+  cwd: BACK, babelrc: false, configFile: false,
+})
 const mod = {}
 new Function('exports', 'require', 'module', code)(mod, require, { exports: mod })
 const { reservar, completar, marcarFallo, seSabeQueNoSalio, responderSiCorresponde, normalizarSello } = mod

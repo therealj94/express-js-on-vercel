@@ -70,6 +70,30 @@ jobs:
             node "$f"
           done
 
+      # Las tres pruebas que NO corrian en ningun sitio. Dos leian de
+      # /tmp/mtest y /tmp/vw-deploy —andamios montados a mano en una maquina—
+      # y la del taller de idempotencia apuntaba ademas a una copia del modulo
+      # 78 lineas mas vieja que la desplegada. Guardan la rotacion de PASS_ADM
+      # y el sello de los envios: las dos cosas que impiden, respectivamente,
+      # perder el acceso a los fondos de alguien y cobrarle dos veces.
+      - name: La rotacion de PASS_ADM
+        working-directory: infra/veta-wallet-migracion
+        run: |
+          npm ci --no-audit --no-fund
+          npm run prueba
+
+      - name: El sello de los envios
+        working-directory: infra/veta-wallet-idempotencia
+        run: node pruebas/unidad.test.mjs
+
+      - name: El relevo de mensajes
+        working-directory: infra/mensajes
+        run: |
+          for f in pruebas/*.py; do
+            echo "── $f"
+            python3 "$f"
+          done
+
   # ── Lo lento: navegador de verdad, en los anchos de verdad ───────────────
   navegador:
     name: Navegador

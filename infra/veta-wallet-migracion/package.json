@@ -1,0 +1,13 @@
+{
+  "name": "veta-wallet-migracion",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "La rotacion de PASS_ADM y las pruebas que la guardan",
+  "scripts": {
+    "prueba": "MIGRAR=si PASS_ADM=clave-vieja-de-prueba PASS_ADM_NUEVA=clave-nueva-de-prueba-bien-larga node pruebas/migracion.test.js && MIGRAR=si PASS_ADM=clave-vieja-de-prueba PASS_ADM_NUEVA=clave-nueva-de-prueba-bien-larga node pruebas/idempotencia.test.js"
+  },
+  "devDependencies": {
+    "crypto-js": "^4.2.0"
+  }
+}
