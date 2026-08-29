@@ -497,36 +497,33 @@ def main():
                'el modelo NO se suelta entre sesiones, no solo entre preguntas',
                f"keep_alive = {de_usuario()[1].get('keep_alive')}")
 
-        print('\nLos dos modos de pensar\n')
-        post(BASE, '/enviar', {**ana, 'para': 'aura@prueba.local',
-                               'texto': 'modo pensador'})
-        ms = espera_texto(ana, 'modo pensador')
-        ok(any('modo pensador' in (m.get('texto') or '').lower() for m in ms),
-           'cambiar de modo contesta al instante')
+        print('\nUn solo modelo, y el modo pensador retirado\n')
+        # Esta prueba comprobaba que «modo pensador» cambiara al modelo
+        # grande. Lo hacía, y el modelo grande estaba ROTO: gemma2 no tiene
+        # turno de sistema —su plantilla pega el prompt dentro del turno del
+        # usuario— así que le contestaba al manual en vez de a la persona:
+        #
+        #   «¿Qué es ORIGEN?» -> «Excelente, me ha quedado claro.»
+        #   «Dame las ventajas» -> «¡Excelente trabajo! Me gusta cómo has
+        #                            definido el rol de AU-RA.»
+        #
+        # Comentaba las instrucciones en voz alta y de paso las filtraba.
+        # Cero usos en siete días: nadie lo notó. Ahora lo que se comprueba es
+        # que la orden NO haga nada raro y que siempre conteste el mismo
+        # modelo, que es lo que se vino a dejar.
         antes_m = len(de_usuario())
         post(BASE, '/enviar', {**ana, 'para': 'aura@prueba.local',
-                               'texto': '¿Qué es AUKA?'})
-        fin = time.time() + 25
+                               'texto': 'modo pensador'})
+        fin = time.time() + 20
         while time.time() < fin and len(de_usuario()) == antes_m:
             time.sleep(0.3)
-        ok(len(de_usuario()) == antes_m + 1
-           and de_usuario()[-1].get('model') == 'llama3.1:8b',
-           'en modo pensador pregunta al modelo grande')
-        post(BASE, '/enviar', {**ana, 'para': 'aura@prueba.local',
-                               'texto': 'modo rápido'})
-        ms = espera_texto(ana, 'modo rápido')
-        antes_r = len(de_usuario())
-        post(BASE, '/enviar', {**ana, 'para': 'aura@prueba.local',
-                               'texto': '¿Y AGKA?'})
-        fin = time.time() + 25
-        while time.time() < fin and len(de_usuario()) == antes_r:
-            time.sleep(0.3)
+        ok(len(de_usuario()) > antes_m,
+           '«modo pensador» ya no es una orden: va al modelo como cualquier frase',
+           'si se la tragara en seco, quien la diga se queda sin respuesta')
         ok(de_usuario()[-1].get('model') == 'llama3.2',
-           'y al volver al rapido, vuelve al modelo chico')
-        ok(not any('modo' in m['content'].lower()
-                   for pet in de_usuario() for m in pet['messages']
-                   if m['role'] == 'user' and 'modo pensador' == m['content'].strip().lower()),
-           'los cambios de modo no gastan motor: son de la casa')
+           'y contesta el ÚNICO modelo que hay',
+           f"contestó {de_usuario()[-1].get('model')!r}: volvió el segundo modelo, "
+           'y con él el minuto de recarga al cambiar')
 
         print('\nLo que el modelo pone y no debería\n')
         # Todos estos salieron DE VERDAD del nodo el 28-ago. El prompt ya

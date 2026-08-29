@@ -10903,12 +10903,15 @@ const VETA = (() => {
    * separarse: cambiar la frase de un botón sin cambiar la de ocultar dejaría
    * la orden a la vista otra vez. */
   const ordenVoz = (cual) => (cual ? `hablame con voz ${cual}` : 'sin voz');
-  const ordenModo = (cual) => (cual === 'pensadora' ? 'modo pensador' : 'modo rápido');
 
   function esOrdenDeAjuste(txt) {
     const t = String(txt || '').trim().toLowerCase();
     if (!t) return false;
-    return t === ordenVoz('') || t === ordenModo('pensadora') || t === ordenModo('')
+    /* «modo pensador» salió de esta lista con el modo. Ya no es una orden,
+       así que ahora es una frase como cualquier otra — y esconder del hilo
+       algo que la persona sí dijo, y que va a recibir una respuesta normal,
+       la dejaría mirando una respuesta sin pregunta. */
+    return t === ordenVoz('')
       || ['calida', 'cálida', 'sobria', 'agil', 'ágil'].some((v) => t === ordenVoz(v));
   }
 
@@ -10924,18 +10927,6 @@ const VETA = (() => {
     } catch (e) { avisar(t('cha.eRedP')); }
     chatSt.mandando = false;
     pintarChat();
-  }
-
-  /** Los botones de modo mandan la orden POR EL CHAT: es la misma frase que
-      cualquiera puede escribir, el boton solo la ahorra. */
-  async function auraModoChat(cual) {
-    if (chatSt.mandando || !esAura(chatSt.con)) return;
-    chatSt.mandando = true;
-    try {
-      await CHAT.enviar(chatSt.con.id, ordenModo(cual));
-      await chatCargarMsgs();
-    } catch (e) { avisar(t('cha.eRedP')); }
-    chatSt.mandando = false;
   }
 
   /** Una sugerencia del hilo vacío: se escribe en el campo y se manda, que es
@@ -11649,23 +11640,21 @@ const VETA = (() => {
         </button>
       </div>
       ${esAura(c) ? (() => {
-        /* El modo encendido no se guarda en ningun lado: se LEE del hilo.
-           AU-RA confirma cada cambio con una frase fija; el ultimo de esos
-           mensajes dice en que modo esta. Un estado guardado aparte se
-           desincroniza (otro aparato, otra sesion); el hilo no miente. */
-        let modoP = false;
-        for (const m of (chatSt.msgs || [])) {
-          if (m.de !== AURA_CHAT_ID) continue;
-          if (/modo pensador\b/i.test(m.texto || '')) modoP = true;
-          else if (/modo r[aá]pido\b/i.test(m.texto || '')) modoP = false;
-        }
+        /* LOS DOS BOTONES DE MODO SE FUERON.
+         *
+         * «Rápida» y «Pensadora» elegían entre dos modelos, y el pensador
+         * estaba roto desde que existe: gemma2 no tiene turno de sistema, así
+         * que el prompt entero le llegaba como si lo hubiera dicho la persona
+         * y le contestaba al manual —«¡Excelente trabajo! Me gusta cómo has
+         * definido el rol de AU-RA»— comentando sus instrucciones en voz alta.
+         * Cero usos en siete días: nadie lo notó.
+         *
+         * Ahora hay un solo modelo, elegido midiendo siete. Dejar los botones
+         * sería ofrecer una elección que ya no existe, y un botón que no hace
+         * nada enseña a no tocar botones. */
         return `
       <div class="cha-aura-tira">
         <span class="cha-aura-beta">AU-RA · beta</span>
-        <button type="button" class="cha-aura-chip${!modoP ? ' on' : ''}"
-                onclick="VETA.auraModoChat('rapida')">${t('au.chModoR')}</button>
-        <button type="button" class="cha-aura-chip${modoP ? ' on' : ''}"
-                onclick="VETA.auraModoChat('pensadora')">${t('au.chModoP')}</button>
         <button type="button" class="cha-aura-chip cha-aura-hablar${auraCharlando ? ' on' : ''}"
                 onclick="VETA.auraVozPantalla()"
                 aria-pressed="${auraCharlando}">
@@ -15471,7 +15460,7 @@ const VETA = (() => {
            // El Nucleo: la portada del ecosistema.
            nuAbrir,
            // El rincon de AU-RA en el chat: modos, voz y dictado.
-           auraModoChat, auraVozMenu, auraVozElegir, auraDictar,
+           auraVozMenu, auraVozElegir, auraDictar,
            auraCallar, chatSugerir, chatBajar, chatMirarScroll,
            auraVozPantalla, auraVozCerrar,
            // AU-RA: el orbe, el panel, la bienvenida y el recorrido.

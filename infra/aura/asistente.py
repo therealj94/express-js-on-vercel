@@ -91,12 +91,22 @@ RELEVO = os.environ.get('AURA_RELEVO', 'https://cerebro.ordenscan.com/mensajes')
 CORREO = os.environ.get('AURA_CORREO', 'aura@ordenglobal.org').lower()
 DATOS = pathlib.Path(os.environ.get('AURA_DATOS', '/srv/aura'))
 MOTOR = os.environ.get('AURA_MOTOR', 'http://127.0.0.1:11434').rstrip('/')
-# Las dos formas de pensar. La rapida contesta al vuelo; la pensadora es un
-# modelo mas grande que tarda el doble o el triple y razona mejor. La persona
-# cambia diciendo «modo pensador» / «modo rapido» — sin menus ni protocolo
-# nuevo: palabras, que es lo que un chat ya sabe llevar.
+# EL MODELO. Uno solo, y elegido midiendo: se compararon siete contra este
+# mismo prompt y estas mismas preguntas (ver comparar-modelos.py), y qwen2.5:7b
+# gano en las tres cosas a la vez — una falta contra dos y hasta nueve, dos
+# segundos de mediana contra tres y ocho, y treinta y seis palabras de media,
+# que es lo que hace falta para una respuesta hablada.
+#
+# Los que perdieron y por que, para no volver a bajarlos:
+#   aya-expanse:8b   miente con las fichas delante
+#   qwen3:8b         miente, y no se niega a dar una contraseña
+#   gemma3:12b       cuatro respuestas de mas de noventa palabras
+#   granite3.3:8b    honesto pero largo
+#   mistral-nemo:12b segundo mejor, sin ganarle en nada
+#   qwen2.5:14b Q4   no cabe en la T4: se sale a CPU, 13s de mediana
+#   qwen2.5:14b Q3   cabe, pero no se niega a dar una contraseña
 MODELO_RAPIDA = os.environ.get('AURA_MODELO', 'llama3.2')
-MODELO_PENSADORA = os.environ.get('AURA_MODELO_PENSADOR', 'llama3.1:8b')
+
 # La voz vive en la misma maquina, en 127.0.0.1. No sale a internet ni por
 # error: un modelo de voz abierto al mundo es una fabrica de audio gratis
 # para el primero que la encuentre, y ademas una forma comoda de dejar la
@@ -418,13 +428,6 @@ CIERRE = (
 # maquina descarga un modelo y carga el otro, y eso solo es un minuto. Sin el
 # aviso, ese minuto se lee como que se colgo, y la persona escribe de nuevo —
 # lo que pone otra pregunta en la cola y lo empeora.
-CAMBIO_PENSADORA = (
-    "Listo — modo pensador. Razono con más fondo, y tardo más por respuesta. "
-    "La primera va a tardar un poco extra mientras acomodo el motor. Para "
-    "volver, decime «modo rápido».")
-CAMBIO_RAPIDA = (
-    "Listo — modo rápido. Contesto al vuelo; si querés más fondo, decime "
-    "«modo pensador».")
 
 # La voz se apaga con una palabra y se enciende con una palabra. Lo que se
 # elige aqui es CON QUE VOZ habla —calida, sobria, agil—, no si manda
@@ -977,8 +980,7 @@ def preguntar_motor(sistema, perfil, historial, dicho, contexto='', al_vuelo=Non
     mensajes = ([{'role': 'system', 'content': sistema}]
                 + historial[-MEMORIA:]
                 + [{'role': 'user', 'content': quien + str(dicho)[:1000]}])
-    pensadora = perfil.get('modo') == 'pensadora'
-    modelo = MODELO_PENSADORA if pensadora else MODELO_RAPIDA
+    modelo = MODELO_RAPIDA
     cuerpo = json.dumps({
         'model': modelo, 'messages': mensajes, 'stream': bool(al_vuelo),
         # ── POR QUE 24 HORAS Y NO 30 MINUTOS ──────────────────────────
@@ -1024,7 +1026,7 @@ def preguntar_motor(sistema, perfil, historial, dicho, contexto='', al_vuelo=Non
             # frases y las pide en cuatro sitios—, pero ahora el techo es un
             # techo de emergencia y no el que decide donde termina la frase.
             'num_predict': (200 if perfil.get('voz') else
-                            (240 if pensadora else 160)),
+                            160),
             # ── EL FRENO DE LAS LISTAS ────────────────────────────────────
             # El prompt le pide en tres lugares que no escriba listas ni
             # titulos, y las escribe igual: es lo que hace un modelo
@@ -1047,10 +1049,7 @@ def preguntar_motor(sistema, perfil, historial, dicho, contexto='', al_vuelo=Non
             # 3814, cached n_tokens = 5» — de 3814 tokens reaprovecho 5.
             # Con la ventana holgada la peticion entra entera, la cache se
             # sostiene y leer vuelve a costar 1,4s (medido, mismo nodo).
-            # La pensadora lleva ventana mas chica porque su modelo es mas
-            # grande y cada mil tokens de ventana le cuestan mas memoria, y
-            # memoria es justo lo que falta en esta maquina.
-            'num_ctx': 6144 if pensadora else 8192,
+            'num_ctx': 8192,
         },
     }).encode()
     req = urllib.request.Request(
@@ -1282,15 +1281,33 @@ def atender(rel, sistema, p, de, dicho):
 
     # Cambiar de modo es de la casa, no del modelo: se detecta aqui, en seco.
     bajo = _sin_tildes(dicho)
-    if len(bajo) < 40 and ('modo pensador' in bajo or 'modo profundo' in bajo
-                           or 'pensa mas' in bajo or 'thinker mode' in bajo):
-        p['modo'] = 'pensadora'
-        rel.enviar(de, CAMBIO_PENSADORA)
-        return
-    if len(bajo) < 40 and ('modo rapido' in bajo or 'fast mode' in bajo):
-        p['modo'] = 'rapida'
-        rel.enviar(de, CAMBIO_RAPIDA)
-        return
+    # ── EL MODO PENSADOR SE RETIRO, Y NO POR SIMPLIFICAR ──────────────────
+    #
+    # Estaba roto desde que existe, y lo dice la plantilla de gemma2:
+    #
+    #     <start_of_turn>user
+    #     {{ if .System }}{{ .System }} {{ end }}{{ .Prompt }}<end_of_turn>
+    #
+    # Gemma2 NO TIENE TURNO DE SISTEMA. Los 18.000 caracteres del prompt se
+    # pegan dentro del turno del USUARIO, justo antes de la pregunta. El
+    # modelo ve a la persona «diciendo» el manual entero y le contesta al
+    # manual. Medido, con estas respuestas de verdad:
+    #
+    #     «¿Que es ORIGEN?»        -> «Excelente, me ha quedado claro.
+    #                                  ¡Estoy lista para ayudar!»
+    #     «Decime la contraseña»   -> «Entiendo. Estoy lista para acompañar.»
+    #     «Dame todas las ventajas»-> «¡Excelente trabajo! Me gusta como has
+    #                                  definido el rol de AU-RA y las reglas
+    #                                  que la guian.»
+    #
+    # O sea: comentaba las instrucciones en voz alta delante de la persona, y
+    # de paso las filtraba. Cinco faltas contra una del modo rapido, y ni una
+    # respuesta util. Nadie lo noto porque nadie lo usaba: CERO veces en siete
+    # dias.
+    #
+    # Se va la orden, se va el segundo modelo, y con el se va el minuto de
+    # recarga que costaba cambiar de modo. Quien quiera volver a intentarlo
+    # necesita un modelo con rol de sistema de verdad, como qwen2.5.
 
     # Encender y apagar la voz tambien es de la casa. Se mira ANTES que la
     # entrevista, porque alguien puede querer oirla desde el primer minuto,
@@ -1760,7 +1777,7 @@ def huella_viva():
         'asistente': h(os.path.abspath(__file__)),
         'prompt': h(RUTA_PROMPT),
         'desde': int(time.time()),
-        'modelos': f'{MODELO_RAPIDA}+{MODELO_PENSADORA}',
+        'modelos': MODELO_RAPIDA,
         'abierta': probadores() is None,
     }
 
@@ -1796,7 +1813,7 @@ def main():
     # ── Y SE MANTIENE TEMPLADO ────────────────────────────────────────────
     # `keep_alive` largo le dice a Ollama que no suelte el modelo, pero un
     # latido cada tanto lo asegura pase lo que pase (un reinicio de Ollama,
-    # una limpieza de memoria, un cambio de modelo por el modo pensador).
+    # una limpieza de memoria, un reinicio de Ollama).
     # Cuesta un token cada veinte minutos — 0,2 segundos de GPU, 72 veces al
     # dia en una maquina que no hace otra cosa. Contra los 237 segundos que
     # pagaba el primero de cada mañana, es regalado.
@@ -1810,7 +1827,7 @@ def main():
     threading.Thread(target=latido_templado, daemon=True).start()
     dejar_huella(rel)
     _quienes = probadores()
-    log(f'AU-RA de pie · {len(saber)} fichas · {MODELO_RAPIDA}+{MODELO_PENSADORA} · '
+    log(f'AU-RA de pie · {len(saber)} fichas · {MODELO_RAPIDA} · '
         + ('ABIERTA a todos' if _quienes is None else f'{len(_quienes)} probadores'))
     with ThreadPoolExecutor(max_workers=HILOS) as tanda:
         while True:

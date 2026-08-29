@@ -632,8 +632,7 @@ es: {
   'cha.escribi': 'Escribí un mensaje…', 'cha.mandar': 'Mandar',
   'au.chSello': 'Esta conversación la procesa nuestro servidor: así puede contestarte.',
   'au.chSelloP': 'Tus chats con personas siguen cifrados de punta a punta — ahí no entra nadie, AU-RA tampoco.',
-  'au.chSub': 'Inteligencia de la casa · beta', 'au.chModoR': 'Rápida',
-  'au.chModoP': 'Pensadora', 'au.chVozOn': 'Voz encendida',
+  'au.chSub': 'Inteligencia de la casa · beta', 'au.chVozOn': 'Voz encendida',
   'au.chVozOff': 'Sin voz', 'au.chDictar': 'Hablarle (se escribe lo que digas)',
   // Las tres voces. La descripcion dice PARA QUE sirve cada una, no como
   // suena: quien elige no esta comparando timbres, esta eligiendo si quiere
@@ -1603,8 +1602,7 @@ en: {
   'cha.escribi': 'Write a message…', 'cha.mandar': 'Send',
   'au.chSello': 'This conversation is processed by our server: that is how she can answer.',
   'au.chSelloP': 'Your chats with people remain end-to-end encrypted — no one gets in there, not even AU-RA.',
-  'au.chSub': 'House intelligence · beta', 'au.chModoR': 'Fast',
-  'au.chModoP': 'Thinker', 'au.chVozOn': 'Voice on',
+  'au.chSub': 'House intelligence · beta', 'au.chVozOn': 'Voice on',
   'au.chVozOff': 'No voice', 'au.chDictar': 'Talk to her (your words become text)',
   'au.hablar': 'Talk', 'au.hablarOn': 'Talking',
   'au.hablarComo': 'Tap the mic and talk. She answers out loud and listens again.',
