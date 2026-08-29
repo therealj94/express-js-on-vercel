@@ -18,7 +18,7 @@ import { Router } from 'express'
 import { exigeOperador, exigePermiso } from '../middleware/proteger.js'
 import {
   resumen, porApp, paises, retencion, errores, errorDetalle, marcarError,
-  embudoKyc, saludEcosistema, serviciosVigilados,
+  embudoKyc, tiemposDeVerificacion, saludEcosistema, serviciosVigilados,
 } from '../analitica/consultas.js'
 import { explorar, afectadosPorError, ultimasSesiones } from '../analitica/explorador.js'
 import { almacen, leerCenso } from '../analitica/eventos.js'
@@ -131,6 +131,13 @@ analiticaRouter.get('/retencion', async (req, res) => {
 
 analiticaRouter.get('/embudo', (_req, res) => {
   res.json(embudoKyc())
+})
+
+/* Cuánto tarda una verificación y cuánto lleva esperando la cola. Es la cifra
+   sobre la que vive una operación de cumplimiento y no se medía en ningún
+   sitio, teniendo `verificadaEn` guardado desde siempre. */
+analiticaRouter.get('/tiempos', (req, res) => {
+  res.json(tiemposDeVerificacion(Math.min(365, Math.max(1, Number(req.query.dias) || 30))))
 })
 
 // ── Errores ──────────────────────────────────────────────────────────────────

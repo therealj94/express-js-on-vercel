@@ -452,6 +452,78 @@ export async function marcarError(
 // mueve: dice exactamente en qué pantalla se cae la gente.
 // ─────────────────────────────────────────────────────────────────────────────
 
+/**
+ * Cuánto tarda una verificación, y cuánto lleva esperando la cola.
+ *
+ * ── POR QUE FALTABA, Y POR QUE IMPORTA ──────────────────────────────────────
+ *
+ * La analítica medía cuántas identidades hay en cada estado, y `duracionMedia`
+ * —que es de la telemetría de las apps, o sea lo que tarda una pantalla en
+ * cargar, nada que ver—. Cuánto tarda una PERSONA en quedar verificada no se
+ * medía en ningún sitio, teniendo `verificadaEn` guardado desde siempre.
+ *
+ * Es la cifra sobre la que vive una operación de cumplimiento. «Tenemos 40 en
+ * revisión» no dice nada por sí solo: cuarenta con dos horas de espera es un
+ * equipo trabajando, y cuarenta con nueve días es una persona que ya se fue a
+ * otra app y no vuelve.
+ *
+ * ── LA MEDIANA Y EL PERCENTIL 90, NO EL PROMEDIO ────────────────────────────
+ *
+ * Un promedio de espera lo destroza un solo caso raro: una identidad olvidada
+ * tres semanas sube la media de todo el mes y hace pensar que el equipo va mal
+ * cuando va bien. La mediana dice cómo le fue a la mitad de la gente; el p90,
+ * qué tan malo es el mal día. Las dos juntas son la verdad; el promedio solo,
+ * casi nunca.
+ */
+export function tiemposDeVerificacion(dias = 30) {
+  const ids = store.todo().identidades
+  const ahora = Date.now()
+  const desde = ahora - dias * 24 * 3600 * 1000
+
+  const horas = (ms: number) => Math.round((ms / 3600000) * 10) / 10
+
+  /* Las DECIDIDAS en la ventana, medidas de que empezó a que se aprobó. Se
+     filtra por la fecha de decisión y no por la de creación: si no, una
+     identidad que empezó hace dos meses y se aprobó ayer no contaría, que es
+     justo la que más tardó. */
+  const decididas = ids
+    .filter((i) => i.verificadaEn && Date.parse(i.verificadaEn) >= desde)
+    .map((i) => Date.parse(i.verificadaEn!) - Date.parse(i.creadaEn))
+    .filter((ms) => ms >= 0)
+    .sort((a, b) => a - b)
+
+  const percentil = (p: number) =>
+    decididas.length ? horas(decididas[Math.min(decididas.length - 1,
+      Math.floor(decididas.length * p))]) : null
+
+  /* Y la cola de AHORA, que es otra pregunta: no cuánto tardaron las que ya
+     salieron, sino cuánto lleva esperando quien todavía está dentro. Una cola
+     puede estar creciendo con los tiempos históricos preciosos. */
+  const enCola = ids
+    .filter((i) => i.estado === 'en-revision')
+    .map((i) => ahora - Date.parse(i.actualizadaEn))
+    .sort((a, b) => b - a)
+
+  return {
+    dias,
+    decididas: decididas.length,
+    medianaHoras: percentil(0.5),
+    p90Horas: percentil(0.9),
+    masRapidaHoras: decididas.length ? horas(decididas[0]) : null,
+    masLentaHoras: decididas.length ? horas(decididas[decididas.length - 1]) : null,
+    cola: {
+      esperando: enCola.length,
+      /* La más vieja de la cola es el número que hay que mirar: es el peor
+         caso que está ocurriendo AHORA, y el que se convierte en una queja. */
+      masViejaHoras: enCola.length ? horas(enCola[0]) : null,
+      medianaEsperaHoras: enCola.length ? horas(enCola[Math.floor(enCola.length / 2)]) : null,
+      /* Cuántas llevan más de un día. Es el umbral a partir del cual alguien
+         que se estaba dando de alta ya se fue a hacer otra cosa. */
+      masDeUnDia: enCola.filter((ms) => ms > 24 * 3600000).length,
+    },
+  }
+}
+
 export function embudoKyc() {
   const ids = store.todo().identidades
   const cuenta = (...estados: string[]) => ids.filter((i) => estados.includes(i.estado)).length
@@ -465,15 +537,43 @@ export function embudoKyc() {
     { paso: 'Aprobada', n: cuenta('verificada') },
   ]
 
+  /* ── LA CAIDA DEL ULTIMO PASO NO ERA UNA CAIDA ──────────────────────────
+   *
+   * «Aprobada» cuenta solo `verificada`, y el paso anterior incluye a todo el
+   * que pasó la biometría. Así que la diferencia entre los dos metía en el
+   * mismo saco tres cosas que no se parecen en nada:
+   *
+   *   · quien ESTA ESPERANDO a que el equipo lo mire  (en-revision)
+   *   · quien fue RECHAZADO
+   *   · quien estaba verificado y se le SUSPENDIO
+   *
+   * Y eso se lee como «se nos cae la gente al final del embudo» cuando lo que
+   * hay es una cola sin atender. Son problemas opuestos: uno se arregla
+   * cambiando el producto, el otro poniendo a alguien a revisar. Un embudo que
+   * los confunde manda a arreglar lo que no está roto.
+   */
+  const esperando = cuenta('en-revision')
+  const rechazadas = cuenta('rechazada')
+  const suspendidas = cuenta('suspendida')
+
   return {
     pasos: pasos.map((p, i) => ({
       ...p,
       porcentaje: ids.length ? Math.round((p.n / ids.length) * 1000) / 10 : 0,
       /** Cuántos se pierden en ESTE paso respecto del anterior. */
       caida: i === 0 ? 0 : pasos[i - 1].n - p.n,
+      /* En el último paso, de esa «caída» hay que descontar a quien no se ha
+         ido a ningún sitio: sigue esperando. Va aparte y con su nombre. */
+      esperando: i === pasos.length - 1 ? esperando : 0,
+      /* Lo que de verdad se perdió en el paso: la caída MENOS los que esperan.
+         En los pasos de en medio es igual que `caida`; en el último es la
+         diferencia entre «se nos va la gente» y «hay cola». */
+      perdidos: i === 0 ? 0
+        : Math.max(0, (pasos[i - 1].n - p.n) - (i === pasos.length - 1 ? esperando : 0)),
     })),
-    rechazadas: cuenta('rechazada'),
-    suspendidas: cuenta('suspendida'),
+    esperandoDecision: esperando,
+    rechazadas,
+    suspendidas,
     porNacionalidad: ordenar(
       ids.reduce((o: Record<string, number>, i) => {
         const k = i.nacionalidad || '??'
