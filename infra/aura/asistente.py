@@ -1756,6 +1756,40 @@ def templar(sistema):
         log('no se pudo templar el motor:', str(e)[:80])
 
 
+def _avisar_del_modelo():
+    """Que el modelo configurado EXISTA en el motor, y decirlo si no.
+
+    `MODELO_RAPIDA` sale de AURA_MODELO, y si esa variable falta cae a
+    'llama3.2' — que no esta instalado en la maquina de produccion, donde solo
+    hay qwen2.5:7b. O sea que perder la variable (un fichero de servicio que se
+    reescribe, un `systemctl edit` que se come el Environment) no tumba AU-RA:
+    la deja de pie contestando un error a cada persona que le escriba, sin que
+    ni el registro ni /salud digan por que.
+
+    Un default que no puede funcionar es peor que no tener default. No se pone
+    aqui el nombre bueno a mano —eso solo mueve el problema— se COMPRUEBA, que
+    ademas atrapa el caso de que alguien borre el modelo del motor.
+
+    No se aborta a proposito: si el modelo se esta descargando todavia, AU-RA
+    tiene que poder levantarse y empezar a servir en cuanto termine.
+    """
+    try:
+        req = urllib.request.Request(MOTOR + '/api/tags')
+        with urllib.request.urlopen(req, timeout=8) as r:
+            hay = [m.get('name', '') for m in json.loads(r.read() or b'{}').get('models', [])]
+    except Exception as e:
+        log('AVISO — no pude preguntarle al motor que modelos tiene:',
+            type(e).__name__, str(e)[:80])
+        return
+    # Ollama nombra 'qwen2.5:7b'; pedir 'qwen2.5' sirve igual y es el mismo.
+    cuadra = any(m == MODELO_RAPIDA or m.split(':')[0] == MODELO_RAPIDA.split(':')[0]
+                 for m in hay)
+    if not cuadra:
+        log(f'AVISO — el modelo configurado ({MODELO_RAPIDA}) NO esta en el motor. '
+            f'Lo que hay: {hay or "nada"}. Toda respuesta va a fallar hasta que '
+            f'se descargue o se corrija AURA_MODELO.')
+
+
 def huella_viva():
     """La huella del codigo que ESTE proceso esta corriendo, y del prompt que
     cargo al arrancar.
@@ -1840,6 +1874,7 @@ def main():
     threading.Thread(target=latido_templado, daemon=True).start()
     dejar_huella(rel)
     _quienes = probadores()
+    _avisar_del_modelo()
     log(f'AU-RA de pie · {len(saber)} fichas · {MODELO_RAPIDA} · '
         + ('ABIERTA a todos' if _quienes is None else f'{len(_quienes)} probadores'))
     with ThreadPoolExecutor(max_workers=HILOS) as tanda:

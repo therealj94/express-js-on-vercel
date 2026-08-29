@@ -52,7 +52,11 @@ a{color:inherit;text-decoration:none}
 .gate-langs button{font-family:var(--sans);font-weight:600;font-size:14px;color:var(--crema);background:rgba(255,255,255,.04);
   border:1px solid var(--line);border-radius:100px;padding:13px 30px;cursor:pointer;transition:.25s;letter-spacing:.02em}
 .gate-langs button:hover{border-color:var(--gold);background:rgba(217,180,95,.08);transform:translateY(-2px)}
-.gate-sound{display:flex;align-items:center;gap:10px;color:var(--ash);font-size:12.5px;cursor:pointer;user-select:none;letter-spacing:.03em}
+.gate-sound{display:flex;align-items:center;gap:10px;color:var(--ash);font-size:12.5px;cursor:pointer;user-select:none;letter-spacing:.03em;
+/* Los dos interruptores de la puerta —sonido y modo cine— median 19 y 39 px
+   de alto. Son las DOS decisiones que se le piden a alguien antes de entrar
+   al sitio; fallar el toque ahi es empezar mal. */
+  min-height:40px}
 .gate-sound .box{width:34px;height:18px;border-radius:100px;border:1px solid var(--line);position:relative;transition:.25s;background:rgba(255,255,255,.03)}
 .gate-sound .box::after{content:"";position:absolute;top:2px;left:2px;width:12px;height:12px;border-radius:50%;background:var(--ash);transition:.25s}
 .gate-sound.on .box{background:rgba(116,230,200,.2);border-color:var(--signal)}
@@ -67,7 +71,9 @@ a{color:inherit;text-decoration:none}
 /* ── Chrome mínimo ── */
 #chrome{position:fixed;inset:0;z-index:90;pointer-events:none;opacity:0;transition:opacity 1s .3s}
 #chrome.on{opacity:1}
-.corner{position:fixed;top:22px;left:26px;display:flex;align-items:center;gap:11px;pointer-events:auto}
+.corner{position:fixed;top:22px;left:26px;display:flex;align-items:center;gap:11px;pointer-events:auto;
+  /* 40 px de alto: por debajo de eso se falla el toque en un telefono. */
+  min-height:40px}
 .corner img{height:26px;width:auto}
 .corner .cn{font-family:var(--serif);font-size:15px;letter-spacing:.01em;border-left:1px solid var(--line);padding-left:11px;color:var(--crema)}
 @media(max-width:600px){.corner .cn{display:none}}
@@ -288,7 +294,10 @@ footer{margin-top:18vh;border-top:1px solid var(--line);background:var(--void2);
 .foot-brand .fb-mk span{font-family:var(--serif);font-size:21px}
 .foot-brand p{font-size:14px;color:var(--ash);max-width:34ch;line-height:1.6}
 .foot-col h5{font-size:11px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:#5a6072;margin-bottom:16px}
-.foot-col a{display:block;font-size:14px;color:var(--ash);padding:5px 0;transition:.2s}
+/* Los enlaces del pie median 32 px. Son la unica salida del sitio hacia las
+   otras casas del ecosistema —la billetera, Genesis ID, el explorador— y
+   estan en la parte de abajo, que se toca con el pulgar de lado. */
+.foot-col a{display:flex;align-items:center;min-height:40px;font-size:14px;color:var(--ash);padding:5px 0;transition:.2s}
 .foot-col a:hover{color:var(--signal)}
 .social{display:flex;gap:11px;margin-top:22px}
 .social a{width:40px;height:40px;border-radius:11px;border:1px solid var(--line);display:grid;place-items:center;transition:.25s}

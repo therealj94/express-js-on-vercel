@@ -517,7 +517,11 @@ section h2 {
 .pantalla h2 { margin: 14px 0 8px; font-size: 17px; font-weight: 600; letter-spacing: -.01em; color: var(--texto); text-transform: none; letter-spacing: normal; }
 .pantalla p { margin: 0; color: var(--medio); font-size: 13px; line-height: 1.6; }
 .pantalla a.boton {
-  display: inline-block; margin-top: 16px; padding: 10px 18px;
+  /* 40 px clavados. Medía 110x40 justos, que redondeando se queda corto: es el
+     boton con el que un operador entra al panel desde la pantalla de revision,
+     y no hay razon para dejarlo en el limite. */
+  display: inline-flex; align-items: center; min-height: 44px;
+  margin-top: 16px; padding: 12px 18px;
   background: var(--oro); color: #10161F; text-decoration: none;
   border-radius: var(--r); font-weight: 600; font-size: 13px;
 }

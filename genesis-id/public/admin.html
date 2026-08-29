@@ -37,7 +37,8 @@ body{background:radial-gradient(1100px 640px at 50% -12%,#16233A,#0B111C);color:
   color:var(--cyan);background:rgba(127,178,232,.13);border:1px solid rgba(127,178,232,.28);
   vertical-align:1px}
 .qi-cripto{color:var(--mut);white-space:nowrap}
-button{font:inherit;cursor:pointer;border:0;border-radius:9px;padding:8px 14px;background:var(--line);color:var(--txt)}
+/* 40 px de alto: por debajo de eso se falla el toque en un telefono. */
+button{font:inherit;cursor:pointer;border:0;border-radius:9px;padding:10px 14px;min-height:40px;background:var(--line);color:var(--txt)}
 button:hover{filter:brightness(1.18)}
 button:disabled{opacity:.45;cursor:not-allowed}
 button.p{background:var(--gold);color:#10161F;font-weight:700}

@@ -116,6 +116,9 @@ header{position:sticky;top:0;z-index:20;backdrop-filter:blur(14px);
   padding:16px 0}
 .marca{display:flex;align-items:center;gap:12px}
 .marca img{height:38px;width:auto}
+  /* 40 px de alto: por debajo de eso se falla el toque en un telefono. */
+.marca{min-height:40px}
+.marca>a,a.marca{display:flex;align-items:center;min-height:40px}
 .marca b{font:500 18px/1 'Mono',monospace;letter-spacing:-.01em}
 .marca b i{font-style:normal;color:var(--violetaLt)}
 nav{display:flex;align-items:center;gap:28px;font:400 14.5px/1 'Sans',sans-serif;color:var(--niebla)}
@@ -123,7 +126,8 @@ nav a:hover{color:var(--cianLt)}
 @media (max-width:860px){nav a{display:none}}
 .idioma{display:flex;border:1px solid var(--linea);border-radius:999px;overflow:hidden}
 .idioma button{appearance:none;border:0;background:none;color:var(--humo);cursor:pointer;
-  font:500 12px/1 'Mono',monospace;letter-spacing:.1em;padding:8px 12px}
+  /* 40 px de alto: por debajo de eso se falla el toque en un telefono. */
+  font:500 12px/1 'Mono',monospace;letter-spacing:.1em;padding:14px 12px;min-height:40px}
 .idioma button[aria-pressed="true"]{background:rgba(34,211,238,.14);color:var(--cianLt)}
 
 /* ═══ HÉROE ══════════════════════════════════════════════════════════════════ */

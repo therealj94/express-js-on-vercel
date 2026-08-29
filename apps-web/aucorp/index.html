@@ -121,7 +121,9 @@ p{margin:0;text-wrap:pretty}
 .top.pegada{background:rgba(246,242,233,.90);backdrop-filter:blur(14px);
   border-bottom-color:var(--linea)}
 .top-in{display:flex;align-items:center;gap:26px;height:70px}
-.marca{display:flex;align-items:center;gap:11px;text-decoration:none;margin-right:auto}
+.marca{display:flex;align-items:center;gap:11px;text-decoration:none;margin-right:auto;
+  /* 40 px de alto: por debajo de eso se falla el toque en un telefono. */
+  min-height:40px}
 .marca .glifo{width:26px;height:26px;flex:none}
 .marca .nom{font:700 19px/1 'Cinzel',Georgia,serif;letter-spacing:.05em;color:var(--tinta)}
 .top.oscura .marca .nom{color:var(--oroPl)}
@@ -133,13 +135,16 @@ p{margin:0;text-wrap:pretty}
   #btnCuenta{display:none}
   .marca .nom{font-size:17px}
 }
+/* 40 px de alto: por debajo de eso se falla el toque en un telefono. */
 .nav a{font:500 14.5px/1 'Plex',sans-serif;color:var(--tinta2);text-decoration:none;
+  display:flex;align-items:center;min-height:40px;
   padding:6px 0;border-bottom:1px solid transparent;transition:color .2s,border-color .2s}
 .nav a:hover{color:var(--oro);border-bottom-color:var(--oro)}
 .top.oscura .nav a{color:rgba(241,223,174,.78)}
 .top.oscura .nav a:hover{color:var(--oroPl);border-bottom-color:var(--oroPl)}
 .idiomas{display:flex;flex:none;border:1px solid var(--linea);border-radius:999px;overflow:hidden}
-.idiomas button{background:none;border:0;padding:6px 12px;cursor:pointer;
+.idiomas button{background:none;border:0;padding:14px 12px;min-height:40px;cursor:pointer;
+  /* 40 px de alto: por debajo de eso se falla el toque en un telefono. */
   font:500 12px/1 'PlexMono',monospace;letter-spacing:.08em;color:var(--tinta3)}
 .idiomas button[aria-pressed=true]{background:var(--tinta);color:var(--hueso)}
 .top.oscura .idiomas{border-color:rgba(227,192,105,.30)}
@@ -274,7 +279,11 @@ footer{background:var(--pozo);color:rgba(246,242,233,.55);padding:60px 0 44px;fo
 @media (min-width:820px){.pie{grid-template-columns:1.4fr 1fr 1fr}}
 footer h4{font:500 11.5px/1 'PlexMono',monospace;letter-spacing:.14em;text-transform:uppercase;
   color:var(--oroLt);margin:0 0 16px}
-footer a{color:rgba(246,242,233,.62);text-decoration:none;display:block;padding:5px 0}
+/* Los enlaces del pie median 33 px. En AuCorp el pie es el mapa entero del
+   sitio en movil —el menu de arriba se esconde por debajo de 940 px— asi
+   que son LOS enlaces de navegacion, no un adorno del final. */
+footer a{color:rgba(246,242,233,.62);text-decoration:none;display:flex;align-items:center;
+  min-height:40px;padding:5px 0}
 footer a:hover{color:var(--oroPl)}
 .pie .nom{font:700 21px/1 'Cinzel',Georgia,serif;letter-spacing:.05em;color:var(--oroPl)}
 .pie p{margin-top:14px;max-width:42ch;line-height:1.6}

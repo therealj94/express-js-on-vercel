@@ -134,6 +134,9 @@ h1,h2,h3,.disp{font-family:var(--disp);font-weight:600;letter-spacing:-.02em}
 .r-desc{margin-top:11px;font-size:13.5px;color:var(--niebla);line-height:1.55;
   display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 .r-pie{margin-top:13px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:12px;color:var(--niebla2)}
+/* El «Abrir» de cada tarjeta media 35x14. Es EL enlace de la tarjeta —lo que
+   uno viene a tocar— y era el blanco mas chico de la pagina. */
+.r-pie a{display:inline-flex;align-items:center;min-height:40px;padding:0 6px}
 .chapa{display:inline-flex;align-items:center;gap:5px;padding:3px 9px;border-radius:100px;font-size:11.5px;font-weight:700}
 .ch-ok{background:rgba(52,211,153,.13);color:var(--ok)}
 .ch-rev{background:rgba(251,191,36,.13);color:var(--alerta)}
@@ -209,7 +212,8 @@ h1,h2,h3,.disp{font-family:var(--disp);font-weight:600;letter-spacing:-.02em}
 .techo .tm{display:flex;align-items:center;gap:10px;font-family:var(--disp);font-weight:800;font-size:17px;letter-spacing:-.02em}
 .techo .tm img{width:28px;height:28px;border-radius:8px}
 .idiomas{display:flex;flex:none;border:1px solid var(--borde);border-radius:100px;overflow:hidden;background:rgba(23,18,36,.7)}
-.idiomas button{padding:7px 14px;font-size:12px;font-weight:700;letter-spacing:.08em;color:var(--niebla2);transition:.2s}
+  /* 40 px de alto: por debajo de eso se falla el toque en un telefono. */
+.idiomas button{padding:13px 14px;min-height:40px;font-size:12px;font-weight:700;letter-spacing:.08em;color:var(--niebla2);transition:.2s}
 .idiomas button[aria-pressed=true]{background:linear-gradient(100deg,var(--violeta),var(--azul));color:#fff}
 
 /* EL TECHO EN UN TELEFONO.
@@ -322,7 +326,10 @@ h1,h2,h3,.disp{font-family:var(--disp);font-weight:600;letter-spacing:-.02em}
 .cierre .btns{margin-top:34px;display:flex;gap:12px;flex-wrap:wrap}
 .pie{border-top:1px solid var(--borde);padding:24px clamp(20px,5vw,60px);display:flex;gap:18px;flex-wrap:wrap;
   align-items:center;justify-content:space-between;max-width:1440px;margin:0 auto;font-size:12.5px;color:var(--niebla2)}
-.pie a{color:var(--niebla)}
+/* Los enlaces del pie median QUINCE pixeles de alto: el correo de contacto,
+   los terminos y la privacidad. Los dos ultimos son los que pide una tienda
+   de aplicaciones que se puedan encontrar. */
+.pie a{color:var(--niebla);display:inline-flex;align-items:center;min-height:40px;padding:0 4px}
 .pie a:hover{color:var(--cian)}
 .pie nav{display:flex;gap:16px;flex-wrap:wrap}
 
