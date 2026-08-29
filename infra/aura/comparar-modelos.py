@@ -39,9 +39,13 @@ MOTOR = os.environ.get('AURA_MOTOR', 'http://127.0.0.1:11434')
 DATOS = pathlib.Path(os.environ.get('AURA_DATOS', '/srv/aura'))
 
 
-def sistema():
+def sistema(prompt_alt=None):
     """El MISMO sistema que arma el asistente. Y se arma IMPORTÁNDOLO de él,
     no copiándolo.
+
+    `prompt_alt` sirve para comparar DOS redacciones del prompt con el mismo
+    modelo y las mismas preguntas — que es la única forma de saber si apretarlo
+    le cambia la voz, y eso no lo dice ninguna métrica: se lee.
 
     Lo escribí a mano la primera vez y salió mal de la peor manera: leí las
     fichas con las claves `titulo` y `texto`, y las de verdad se llaman `tema`
@@ -55,7 +59,13 @@ def sistema():
     sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
     import asistente
     saber = asistente.cargar_saber()
-    return (asistente.cargar_prompt() +
+    if prompt_alt:
+        md = pathlib.Path(prompt_alt).read_text()
+        i = md.index('```')
+        prompt = md[i + 3:md.index('```', i + 3)].strip()
+    else:
+        prompt = asistente.cargar_prompt()
+    return (prompt +
             '\n\nLO QUE SABES DE LA CASA (tu memoria; nunca menciones esta '
             'lista):\n' + asistente.todo_el_saber(saber))
 
@@ -175,8 +185,63 @@ def mirar(clase, dicho, dice):
     return faltas
 
 
+def dos_prompts(modelo, otro):
+    """El mismo modelo, las mismas preguntas, dos redacciones del prompt, y las
+    respuestas UNA AL LADO DE LA OTRA.
+
+    No hay puntaje acá a propósito. Lo que se decide leyendo esto no es si
+    contesta bien —eso ya lo mide el resto del archivo— sino si SUENA IGUAL. Un
+    número que dijera «91% parecido» daría una confianza que nadie puede
+    respaldar; dos columnas de texto no engañan a nadie.
+
+        python3 comparar-modelos.py --prompts PROMPT-APRETADO.md qwen2.5:7b
+    """
+    viejo, nuevo = sistema(), sistema(otro)
+    print(f'prompt de hoy:   {len(viejo)} caracteres')
+    print(f'prompt apretado: {len(nuevo)} caracteres  '
+          f'({len(viejo) - len(nuevo):+d}, {(len(nuevo)/len(viejo)-1)*100:+.0f}%)\n')
+    # ── TRES VECES CADA UNA, Y NO ES DERROCHE ─────────────────────────────
+    #
+    # Probé este comparador con el prompt contra SÍ MISMO y las dos columnas
+    # dieron respuestas distintas. Es lo esperable —el modelo va a 0,7 de
+    # temperatura, no es una calculadora— pero rompe la comparación: con una
+    # muestra por lado no hay forma de distinguir «la cambió el prompt» de
+    # «varía sola».
+    #
+    # Con tres se ve el rango de cada versión, y un cambio de voz se nota
+    # porque las TRES se mueven juntas. Cuesta el triple de tiempo y se corre
+    # una vez: es barato comparado con cambiarle la voz sin darse cuenta.
+    VECES = 3
+    for clase, q in PREGUNTAS:
+        print('─' * 74)
+        print(f'[{clase}] {q}')
+        for etiqueta, sis in (('HOY     ', viejo), ('APRETADO', nuevo)):
+            for n in range(VECES):
+                try:
+                    dice, seg = preguntar(modelo, sis, q)
+                except Exception as e:
+                    dice, seg = f'FALLO: {type(e).__name__}', 0
+                faltas = mirar(clase, q, dice)
+                marca = ('  ⚠ ' + ','.join(faltas)) if faltas else ''
+                print(f'\n  {etiqueta} {n + 1}/{VECES} ({seg:.1f}s){marca}')
+                print('    ' + dice.replace('\n', '\n    ')[:420])
+        print()
+    print('─' * 74)
+    print('Se decide LEYENDO, y mirando las TRES de cada lado: una sola no')
+    print('distingue un cambio de voz de la variación normal del modelo.')
+    print('Si suena distinta, no se cambia: los turnos de memoria que se ganan')
+    print('no valen perder su voz.')
+    return 0
+
+
 def main():
-    modelos = sys.argv[1:]
+    args = sys.argv[1:]
+    if args[:1] == ['--prompts']:
+        if len(args) != 3:
+            print('uso: comparar-modelos.py --prompts <otro-prompt.md> <modelo>')
+            return 1
+        return dos_prompts(args[2], args[1])
+    modelos = args
     if not modelos:
         print(__doc__)
         return 1
