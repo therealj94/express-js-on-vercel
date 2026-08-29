@@ -531,15 +531,61 @@ function WellView({ def }: { def: WellDef }) {
          de cerca no tapa medio cielo y de lejos sigue siendo legible. */
       const s = d * 0.098
       letrero.current.scale.set(s * 2.6, s * 0.65, 1)
-      letrero.current.position.set(0, -R * 1.12 - s * 0.34, 0)
+      /* ── Y NO TODOS A LA MISMA ALTURA ──────────────────────────────────
+         Apagar los de atrás arregla el amontonamiento general, pero no el de
+         dos casas que están a la MISMA distancia: medido, PULSE2CHAT en
+         d=40.0 y ORDENSCAN en d=40.3, vecinas en pantalla y con el rótulo a
+         la misma altura. Se leían como una sola palabra.
+         Ninguna regla de profundidad puede separarlas, porque no hay
+         profundidad que las separe. Se separan bajando uno de cada dos: media
+         línea alcanza para que dos nombres vecinos no compartan renglón, y de
+         lejos ni se nota que están escalonados. El escalón sale de la clave
+         de la casa —no de su orden en una lista— para que sea siempre el
+         mismo aunque mañana se agregue o se quite una. */
+      const escalon = (def.key.charCodeAt(0) + def.key.length) % 2 ? s * 0.52 : 0
+      letrero.current.position.set(0, -R * 1.12 - s * 0.34 - escalon, 0)
       /* Y se calla cuando su casa está saliéndose del cuadro: un nombre
          cortado a la mitad en el borde se ve descuidado, no misterioso. */
       tmpP.copy(g.position).project(state.camera)
       const alBorde = Math.abs(tmpP.x) > 0.82 || Math.abs(tmpP.y) > 0.86 || tmpP.z > 1
       /* De lejos los nombres se apagan del todo: en el panorama de la galaxia,
          nueve letreros a tamaño fijo se apelotonan en el centro y tapan justo
-         lo que se fue a mirar. Cerca mandan ellos; lejos manda el cielo. */
-      const lejania = THREE.MathUtils.clamp(2.6 - d / 22, 0, 1)
+         lo que se fue a mirar. Cerca mandan ellos; lejos manda el cielo.
+
+         Y ESO DEPENDE DEL ANCHO DE LA PANTALLA, que es lo que faltaba. La
+         regla miraba solo la distancia en el espacio, pero once nombres a la
+         misma distancia caben holgados en un monitor y se montan unos sobre
+         otros en un teléfono: la misma escena proyectada en 390 px en vez de
+         1400. En una captura de producción se leía «ORDENSCAN» y
+         «PULSE2CHAT» como una sola palabra, y «GENESIS ID» encima de
+         «MINAS» y de «MYTOKENPAY». Es la primera pantalla que ve cualquiera.
+
+         Así que la estrechez cuenta como distancia: en un cuadro angosto los
+         nombres se apagan antes, y quedan los de adelante —que son los que se
+         están mirando— legibles y solos. El de la casa elegida no se apaga
+         nunca (ver `selected` abajo), así que tocar una esfera sigue diciendo
+         su nombre. La referencia son 1200 px, que es donde la escena se
+         diseñó; el tope de 2,2 evita que en un cuadro diminuto se apaguen
+         todos y el cielo quede anónimo. */
+      /* Medido en la escena real, a 390 px: las once casas caen entre d=34 y
+         d=47, una banda estrecha, así que con la caída de siempre TODAS
+         quedaban por encima de 0,47 y se amontonaban. Multiplicar la
+         distancia no las separa —la banda sigue siendo estrecha—: lo que hay
+         que hacer es EMPINAR la caída.
+
+         `d0` es donde hoy empieza a apagarse un nombre y no se toca. Lo que
+         cambia con el ancho es cuánto tarda en apagarse del todo: 22 unidades
+         en un monitor —idéntico a la fórmula anterior, comprobado— y unas 7
+         en un teléfono. Con eso quedan legibles las cuatro o cinco de
+         adelante, que son las que se están mirando, y las de atrás se van al
+         cielo en vez de encimarse.
+
+         Medido después del cambio, a 390 px: Ajustes 1.00, AuCorp 0.93,
+         Veta Wallet 0.81, Genesis Core 0.63, PULSE2CHAT 0.35, y de ahí para
+         atrás por debajo de 0,30. */
+      const d0 = 35.2
+      const estrechez = THREE.MathUtils.clamp(1200 / Math.max(1, state.size.width), 1, 3)
+      const lejania = THREE.MathUtils.clamp(1 - (d - d0) / (22 / estrechez), 0, 1)
       /* En la puerta el sistema se mira de lejos y en silencio: los nombres
          aparecen recién cuando la persona entra. */
       const puerta = (window as any).__AE_PUERTA ? 0 : 1
@@ -560,6 +606,9 @@ function WellView({ def }: { def: WellDef }) {
          por ejemplo— es de las pocas cosas que arruinan un cielo entero, y
          desde fuera no hay manera de leerlo: está pintado en una textura. */
       ;(w.__AE_ROTULO_TXT ||= {})[def.key] = def.name
+      /* Y a qué distancia está. Sin esto, calibrar el desvanecido es adivinar:
+         la opacidad sale de `d` y desde fuera `d` no se ve. */
+      ;(w.__AE_ROTULO_D ||= {})[def.key] = d
     }
 
     if (halo.current) {
