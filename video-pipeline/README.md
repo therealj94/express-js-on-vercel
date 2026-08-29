@@ -3,6 +3,7 @@
 Objetivo: generar clips tipo Seedance 2.5, en Vast.ai y en PC local.
 
 > **Empieza por [`TU_PARTE.md`](./TU_PARTE.md)** — lo único que tienes que hacer tú.
+> Sin terminal (iPad/navegador): [`SIN_TERMINAL.md`](./SIN_TERMINAL.md).
 > [`EMPEZAR.md`](./EMPEZAR.md) es la sesión 1 con todo el detalle.
 > [`VEREDICTO.md`](./VEREDICTO.md) tiene la recomendación final y manda sobre este
 > documento donde haya contradicción. [`CALIDAD.md`](./CALIDAD.md) para tráilers,
