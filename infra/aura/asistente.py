@@ -1934,6 +1934,20 @@ def main():
     # Cuesta un token cada veinte minutos — 0,2 segundos de GPU, 72 veces al
     # dia en una maquina que no hace otra cosa. Contra los 237 segundos que
     # pagaba el primero de cada mañana, es regalado.
+    # ── Y LA HUELLA SE VUELVE A DEJAR EN CADA LATIDO ──────────────────────
+    #
+    # `dejar_huella` se llamaba UNA sola vez, al arrancar. La huella vive en el
+    # relevo, asi que cualquier redespliegue del relevo la borra — y desde ese
+    # momento /salud contesta «aura: sin huella», que se lee como que AU-RA
+    # esta caida cuando esta perfectamente viva.
+    #
+    # Pasó hoy, al desplegar la denuncia: el relevo se reinicio, AU-RA siguió
+    # atendiendo sin enterarse, y la unica forma de recuperar la respuesta a
+    # «¿que version del asistente corre?» era reiniciar AU-RA. O sea: perder
+    # el dato para volver a tenerlo.
+    #
+    # Va en el latido que ya existe, que corre cada veinte minutos y no cuesta
+    # nada. Una peticion cada veinte minutos contra el propio relevo.
     def latido_templado():
         while True:
             time.sleep(1200)
@@ -1941,6 +1955,10 @@ def main():
                 templar(sistema)
             except Exception as e:
                 log('el latido de templado fallo:', type(e).__name__, str(e)[:80])
+            try:
+                dejar_huella(rel)
+            except Exception as e:
+                log('no pude refrescar la huella:', type(e).__name__, str(e)[:80])
     threading.Thread(target=latido_templado, daemon=True).start()
     dejar_huella(rel)
     _quienes = probadores()

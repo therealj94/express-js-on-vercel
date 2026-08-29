@@ -175,5 +175,42 @@ prueba('lo publica en /salud, y sin huella dice que no la hay', el_relevo_la_pub
 prueba('solo publica la de AU-RA, no la de cualquiera', solo_publica_la_de_aura)
 prueba('guarda solo los campos que entiende, y acotados', guarda_solo_lo_que_entiende)
 
+# ── QUE LA HUELLA SE VUELVA A DEJAR, Y NO SOLO AL ARRANCAR ───────────────────
+#
+# `dejar_huella` se llamaba UNA vez, en main(). La huella vive en el RELEVO, asi
+# que cualquier redespliegue del relevo la borra — y desde ahi /salud contesta
+# «aura: sin huella», que se lee como que AU-RA esta caida estando viva.
+#
+# Paso el 29-ago al desplegar la denuncia: el relevo se reinicio, AU-RA siguio
+# atendiendo sin enterarse, y la unica forma de recuperar la respuesta a «que
+# version del asistente corre» era reiniciar AU-RA. O sea, perder el servicio
+# para recuperar el dato.
+#
+# Esto se comprueba LEYENDO el codigo a proposito: el fallo es «se llama una vez
+# en vez de cada tanto», y eso no se ve ejercitando la funcion —funciona
+# perfectamente— solo se ve mirando desde donde se llama.
+import re as _re
+_fuente = open(AQUI / 'asistente.py').read() if 'AQUI' in dir() else open(
+    __file__.replace('probar-huella.py', 'asistente.py')).read()
+
+_i = _fuente.index('def latido_templado():')
+_j = _fuente.index('threading.Thread(target=latido_templado', _i)
+_latido = _fuente[_i:_j]
+
+def _refresca():
+    assert 'dejar_huella' in _latido, (
+        'sin esto, un redespliegue del relevo deja /salud diciendo «sin huella» '
+        'hasta que alguien reinicie AU-RA')
+
+
+def _no_tumba():
+    assert _latido.count('except Exception') >= 2, (
+        'el latido tambien mantiene templado el motor: si refrescar la huella '
+        'lo rompiera, se perderia lo uno y lo otro')
+
+
+prueba('la huella se refresca en el latido, no solo al arrancar', _refresca)
+prueba('y un fallo al refrescarla no tumba el latido', _no_tumba)
+
 print(f'\n{mal} mal\n' if mal else '\ntodo bien\n')
 raise SystemExit(1 if mal else 0)
