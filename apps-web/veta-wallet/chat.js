@@ -725,6 +725,14 @@ const CHAT = (() => {
      esta dentro. Sin la segunda mitad, aceptar a alguien seria una puerta que
      no se puede volver a cerrar — y eso hace que la gente no acepte a nadie. */
   const bloquear = (a, si = true) => pedir('/bloquear', firmado({ a, bloquear: !!si }));
+
+  /* Denunciar. Bloquea en el mismo gesto —lo hace el relevo— porque quien
+     denuncia casi siempre quiere ademas dejar de ver a esa persona, y pedirlo
+     en dos pasos es hacerle trabajo a alguien que ya lo esta pasando mal.
+     El TEXTO del mensaje no viaja: va cifrado y el relevo no puede abrirlo.
+     Va su id, que es lo que permite pedirselo a las dos partes si hace falta. */
+  const denunciar = (a, motivo, nota = '', id = '') =>
+    pedir('/denunciar', firmado({ a, motivo, nota, id }));
   const bloqueados = () => pedir('/bloqueados', firmado({})).then(d => d.gente || []);
   /* Borrar un mensaje. `paraTodos` solo lo puede hacer quien lo escribio, y el
      relevo lo comprueba: aqui no se decide nada, solo se pide. */
@@ -893,7 +901,7 @@ const CHAT = (() => {
            quitarAvisos, avisosPuestos,
            buscar, ficha, perfil, pago,
            circulo, pedirAmistad, responderAmistad, quitarAmigo,
-           bloquear, bloqueados, borrarMsg,
+           bloquear, denunciar, bloqueados, borrarMsg,
            estados, subirEstado, borrarEstado, estadoVisto,
            publicarMiLlave, codigoCon,
            grupoCrear, grupoInfo, grupoEditar, grupoInvitar, grupoSalir, grupoUnirse,

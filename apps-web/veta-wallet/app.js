@@ -9355,6 +9355,89 @@ const VETA = (() => {
     } catch (e) { avisar(chatMotivo(e)); }
   }
 
+  /* ── DENUNCIAR ──────────────────────────────────────────────────────────
+   *
+   * No habia forma de denunciar a nadie. Se podia bloquear y silenciar, pero
+   * bloquear te protege a VOS y deja a esa persona haciendo lo mismo con todos
+   * los demas. Para una app con chat entre personas eso no es solo una
+   * carencia: las tiendas lo exigen —Apple lo pide explicitamente para
+   * contenido de usuarios— y es de la misma familia que lo que ya nos bloqueo
+   * una vez con /privacidad.
+   *
+   * Los motivos son una lista cerrada. Un campo libre suena mas flexible pero
+   * llega todo como «otro» y no se puede ordenar la bandeja de quien revisa ni
+   * ver que problema se repite. La nota va aparte, para el detalle.
+   *
+   * Se dice CON TODAS LAS LETRAS que bloquear va incluido, antes de tocar
+   * nada: quien denuncia tiene derecho a saber que ademas va a dejar de ver a
+   * esa persona, y enterarse despues es una sorpresa desagradable en el peor
+   * momento posible. */
+  const MOTIVOS_DENUNCIA = ['estafa', 'acoso', 'contenido', 'suplantacion', 'spam', 'otro'];
+
+  function chatDenunciar(correo, mid = '') {
+    chatSt.denuncia = { a: correo, mensaje: mid, motivo: '' };
+    pintarChat();
+    setTimeout(() => $('#den-nota')?.focus(), 60);
+  }
+
+  function chatDenunciarCerrar() {
+    chatSt.denuncia = null;
+    pintarChat();
+  }
+
+  function chatDenunciarMotivo(m) {
+    if (!chatSt.denuncia) return;
+    chatSt.denuncia.motivo = m;
+    pintarChat();
+  }
+
+  async function chatDenunciarHacer(ev) {
+    ev?.preventDefault?.();
+    const den = chatSt.denuncia;
+    if (!den?.motivo) return avisar(t('cha.denElegir'));
+    const nota = $('#den-nota')?.value || '';
+    try {
+      await CHAT.denunciar(den.a, den.motivo, nota, den.mensaje);
+      chatSt.denuncia = null;
+      if (chatSt.con?.id === den.a) { chatSt.con = null; chatSt.ficha = null; }
+      await chatCargarCirculo();
+      chatCargarConvs();
+      chatCargarEstados();
+      avisar(t('cha.denOk'));
+    } catch (e) { avisar(chatMotivo(e)); }
+    return false;
+  }
+
+  function chatHojaDenuncia() {
+    const d = chatSt.denuncia;
+    if (!d) return '';
+    const quien = String(d.a).split('@')[0];
+    return `
+      <div class="cha-ficha" onclick="if(event.target===this)VETA.chatDenunciarCerrar()">
+        <div class="chaf-hoja">
+          <button class="chaf-x" onclick="VETA.chatDenunciarCerrar()"
+                  aria-label="${t('tok.volver')}">✕</button>
+          <h3>${t('cha.denunciarA').replace('{n}', esc(quien))}</h3>
+          <p class="chaf-honesto" style="margin:10px 0 0;padding:0;border:0">${t('cha.denNota')}</p>
+          <form onsubmit="return VETA.chatDenunciarHacer(event)" style="margin-top:14px">
+            <div class="den-motivos" role="radiogroup" aria-label="${t('cha.denMotivo')}">
+              ${MOTIVOS_DENUNCIA.map((m) => `
+                <button type="button" class="den-motivo${d.motivo === m ? ' on' : ''}"
+                        role="radio" aria-checked="${d.motivo === m ? 'true' : 'false'}"
+                        onclick="VETA.chatDenunciarMotivo('${m}')">${t('cha.den_' + m)}</button>`).join('')}
+            </div>
+            <input id="den-nota" class="editInput" style="margin-top:12px"
+                   placeholder="${t('cha.denDetalle')}" maxlength="500" autocomplete="off">
+            <div class="chaf-acciones" style="margin-top:14px">
+              <button type="submit" class="btn btn-linea chaf-malo btn-sm">${t('cha.denunciar')}</button>
+              <button type="button" class="btn btn-linea btn-sm"
+                      onclick="VETA.chatDenunciarCerrar()">${t('cha.cancelar')}</button>
+            </div>
+          </form>
+        </div>
+      </div>`;
+  }
+
   /** La ficha de alguien del círculo, desde la lista de gente. */
   function p2cFichaRapida(correo) {
     const a = (chatSt.circulo?.amigos || []).find(x => x.correo === correo);
@@ -9876,7 +9959,8 @@ const VETA = (() => {
          borrar un estado propio y el quitar a alguien del circulo.
          `#p2c-capas` se repinta pase lo que pase, que es lo que una hoja
          modal necesita. */
-      capas.innerHTML = p2cVisor() + p2cCompositor() + chatHoja() + chatHojaElegir();
+      capas.innerHTML = p2cVisor() + p2cCompositor() + chatHoja() + chatHojaElegir()
+        + chatHojaDenuncia();
       const nueva = $('#p2c-est-txt');
       if (nueva && guardado) {
         nueva.value = guardado.v;
@@ -11930,7 +12014,9 @@ const VETA = (() => {
         <button class="btn btn-linea btn-sm" onclick="VETA.chatOlvidar(false)">${t('cha.vaciar')}</button>
         <button class="btn btn-linea btn-sm chaf-malo" onclick="VETA.chatOlvidar(true)">${t('cha.borrarConv')}</button>
         ${c?.id && !c.esGrupo && !esAura(c) ? `<button class="btn btn-linea btn-sm chaf-malo"
-          onclick="VETA.p2cBloquear(${jsTxt(c.id)},true)">${t('cha.bloquear')}</button>` : ''}
+          onclick="VETA.p2cBloquear(${jsTxt(c.id)},true)">${t('cha.bloquear')}</button>
+        <button class="btn btn-linea btn-sm chaf-malo"
+          onclick="VETA.chatDenunciar(${jsTxt(c.id)})">${t('cha.denunciar')}</button>` : ''}
       </div>
       <p class="chaf-honesto">${t('cha.olvidarNota')}</p>`);
   }
@@ -15500,6 +15586,7 @@ const VETA = (() => {
 
   return { ir, pestana, ojo, vista, mandar, copiar, compartir, salir, reintentar, avisar, idioma,
            velasCambiar, velasAmpliar, chatAvisos,
+           chatDenunciar, chatDenunciarCerrar, chatDenunciarMotivo, chatDenunciarHacer,
            reclavePedir, reclaveSalir, ojoReclave,
            llaveAbrir, llaveCerrar, llaveEntrar,
            llaveCuantas, llaveOjo, llaveModo,

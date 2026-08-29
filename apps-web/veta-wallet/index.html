@@ -2155,6 +2155,15 @@ body.en-p2c .nav[aria-current=page]::before{background:var(--p2c-grad)}
 /* Encendida se ve encendida: sin esto los dos estados solo se distinguen
    por la rayita del icono, que en 18 px no se ve. */
 .p2c-campana.on{background:var(--p2c-cyan-soft,rgba(79,216,224,.14));border-color:var(--p2c-cyan)}
+/* Los motivos de una denuncia. Botones y no un <select>: en un teléfono el
+   desplegable esconde las opciones detrás de un toque, y acá lo que importa es
+   que se vean todas de una — quien está denunciando no está para explorar. */
+.den-motivos{display:flex;flex-wrap:wrap;gap:8px}
+.den-motivo{padding:10px 13px;min-height:40px;border-radius:100px;font-size:13px;
+  border:1px solid var(--p2c-linea);background:transparent;color:var(--bruma);
+  cursor:pointer;transition:.15s}
+.den-motivo:hover{border-color:var(--p2c-cyan)}
+.den-motivo.on{background:rgba(240,119,107,.14);border-color:#F0776B;color:#F0776B}
 
 /* ── LOS ESTADOS, EN FILA ─────────────────────────────────────────────────
    Se desplaza en horizontal y se engancha en cada círculo (`scroll-snap`):

@@ -650,6 +650,18 @@ def ya_hablaron(d, a, b):
 # conversación que uno quería terminar.
 TOPE_BLOQUEOS = 500
 
+# ── LAS DENUNCIAS ────────────────────────────────────────────────────────────
+#
+# Los motivos son una LISTA CERRADA a proposito. Un campo libre suena mas
+# flexible, pero en la practica llega todo como «otro» y no se puede ordenar la
+# bandeja de quien revisa ni ver que problema es el que se repite. La nota
+# libre va aparte, para el detalle.
+MOTIVOS_DENUNCIA = ('estafa', 'acoso', 'contenido', 'suplantacion', 'spam', 'otro')
+
+# Por persona. Sin tope, una cuenta puede llenar la bandeja y tapar las
+# denuncias de verdad — que es exactamente lo que haria alguien de mala fe.
+TOPE_DENUNCIAS = 100
+
 
 def bloqueados_de(d, correo):
     return set(d.get('bloqueos', {}).get(str(correo).lower(), []))
@@ -1797,6 +1809,71 @@ class Relevo(BaseHTTPRequestHandler):
                 d.setdefault('circulo', {}).pop(par(correo, otro), None)
                 guardar(d)
                 return self._json(200, {'ok': True})
+
+            if ruta == '/denunciar':
+                """Denunciar a alguien, o un mensaje suyo.
+
+                ── POR QUE ESTA RUTA EXISTE ────────────────────────────────
+
+                No habia ninguna. Se podia bloquear y silenciar, pero no habia
+                forma de DECIRLE A LA CASA que alguien esta haciendo algo malo.
+                Bloquear te protege a vos y deja a esa persona haciendo lo
+                mismo con todos los demas.
+
+                Y para una aplicacion con chat entre personas eso no es solo
+                una carencia de producto: las tiendas lo exigen —Apple lo pide
+                explicitamente para contenido de usuarios— y es de la misma
+                familia que lo que ya nos bloqueo una vez con /privacidad.
+
+                ── QUE SE GUARDA, Y QUE NO ─────────────────────────────────
+
+                Se guarda quien denuncia, a quien, el motivo elegido y —si
+                denuncia UN MENSAJE— su id. NO se guarda el texto del mensaje:
+                viaja cifrado y el relevo no puede abrirlo ni deberia. Con el
+                id, quien revise puede pedirselo a las dos partes si hace
+                falta, que es como se hace en cualquier sitio serio.
+
+                ── BLOQUEAR VA INCLUIDO ────────────────────────────────────
+
+                Quien denuncia casi siempre quiere ademas dejar de ver a esa
+                persona, y pedirselo en dos pasos es hacerle trabajo a alguien
+                que ya lo esta pasando mal. Se bloquea en el mismo gesto, con
+                las mismas consecuencias de /bloquear —incluido romper el lazo.
+                """
+                otro = str(b.get('a', '')).lower()
+                motivo = str(b.get('motivo', ''))[:40]
+                nota = str(b.get('nota', ''))[:500]
+                mid = str(b.get('id', ''))[:60]
+                if not correo_valido(otro) or otro == correo:
+                    return self._json(400, {'error': 'faltan datos'})
+                if motivo not in MOTIVOS_DENUNCIA:
+                    return self._json(400, {'error': 'motivo inválido'})
+
+                mias = [x for x in d.setdefault('denuncias', [])
+                        if x.get('de') == correo]
+                # Un tope por persona: sin el, una cuenta puede llenar la
+                # bandeja de quien revisa y tapar las denuncias de verdad.
+                if len(mias) >= TOPE_DENUNCIAS:
+                    return self._json(429, {'error': 'demasiadas denuncias'})
+
+                d['denuncias'].append({
+                    'id': secrets.token_hex(8), 'de': correo, 'a': otro, 'motivo': motivo,
+                    'nota': nota, 'mensaje': mid,
+                    'cuando': int(time.time() * 1000), 'visto': False,
+                })
+
+                # Y se bloquea, con las mismas consecuencias que /bloquear.
+                lista = d.setdefault('bloqueos', {}).setdefault(correo, [])
+                if otro not in lista and len(lista) < TOPE_BLOQUEOS:
+                    lista.append(otro)
+                d.setdefault('circulo', {}).pop(par(correo, otro), None)
+
+                guardar(d)
+                # Se deja rastro en el registro: una denuncia que solo vive en
+                # un JSON que nadie mira es lo mismo que no tenerla.
+                print(f'DENUNCIA · {correo} -> {otro} · {motivo}'
+                      + (f' · mensaje {mid}' if mid else ''), flush=True)
+                return self._json(200, {'ok': True, 'bloqueado': True})
 
             if ruta == '/bloquear':
                 otro = str(b.get('a', '')).lower()
