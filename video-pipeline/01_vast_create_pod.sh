@@ -79,7 +79,7 @@ printf 'SSH_HOST=%s\nSSH_PORT=%s\nINSTANCE_ID=%s\n' "$SSH_HOST" "$SSH_PORT" "$IN
 echo "==> Subiendo instalador y cola"
 scp -P "$SSH_PORT" -o StrictHostKeyChecking=accept-new \
   02_install_cloud.sh 03_run_queue.py "root@${SSH_HOST}:/workspace/"
-scp -P "$SSH_PORT" -r prompts "root@${SSH_HOST}:/workspace/" 2>/dev/null || true
+scp -P "$SSH_PORT" -r prompts tools "root@${SSH_HOST}:/workspace/" 2>/dev/null || true
 
 cat <<EOF
 

@@ -57,15 +57,27 @@ def nodes_by_title(wf: dict) -> dict[str, str]:
     return out
 
 
-def set_input(wf: dict, nid: str, key: str, value) -> None:
+def set_input(wf: dict, nid: str | None, key: str, value) -> None:
+    """Fija inputs[key] en el nodo etiquetado; si no lo hay, en el único nodo
+    que declare ese input. Así basta con etiquetar PROMPT/NEGATIVE/SAVE:
+    seed, steps, cfg, width... se localizan solos aunque compartan nodo."""
     if nid and key in wf[nid].get("inputs", {}):
         wf[nid]["inputs"][key] = value
+        return
+    owners = [n for n, node in wf.items()
+              if key in node.get("inputs", {})
+              and not isinstance(node["inputs"][key], list)]  # list = viene por link
+    if len(owners) == 1:
+        wf[owners[0]]["inputs"][key] = value
 
 
 def build(workflow_path: Path, job: dict) -> dict:
     wf = copy.deepcopy(json.loads(workflow_path.read_text()))
     t = nodes_by_title(wf)
-    frames = max(1, int(round(job["duration_s"] * job["fps"])))
+    # H3 y Wan trabajan con longitudes 4n+1 (5 s a 24 fps = 121, no 120).
+    # Pasar un valor no alineado hace que el VAE recorte o falle.
+    raw = max(1, int(round(job["duration_s"] * job["fps"])))
+    frames = round(raw / 4) * 4 + 1
 
     set_input(wf, t.get("PROMPT"), "text", job["prompt"])
     set_input(wf, t.get("NEGATIVE"), "text", job.get("negative", ""))

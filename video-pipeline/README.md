@@ -48,7 +48,9 @@ Filtros de confiabilidad que aplica el script (lo importante):
 - `duration > 3` — el host se compromete a ≥ 3 días.
 - Orden por `dph_total` ascendente, y se descarta cualquier oferta interrumpible salvo que fijes `INTERRUPTIBLE=1`.
 
-Ver [`01_vast_create_pod.sh`](./01_vast_create_pod.sh).
+Ver [`01_vast_create_pod.sh`](./01_vast_create_pod.sh). Antes, `./00_preflight.sh` verifica claves, saldo y ofertas disponibles sin gastar nada.
+
+**Empieza por [`EMPEZAR.md`](./EMPEZAR.md)** (sesión 1 paso a paso) y [`VEREDICTO.md`](./VEREDICTO.md) (stack y presupuesto).
 
 ## 2. Instalación en el pod
 
