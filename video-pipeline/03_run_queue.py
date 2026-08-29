@@ -90,6 +90,10 @@ def build(workflow_path: Path, job: dict) -> dict:
         set_input(wf, t.get("LATENT"), key, val)
     if job.get("image"):
         set_input(wf, t.get("IMAGE"), "image", job["image"])
+    # FL2VA: segundo extremo del plano. Anclar los dos extremos es lo que
+    # impide que el color y la identidad deriven al encadenar segmentos.
+    if job.get("image_last"):
+        set_input(wf, t.get("LAST_IMAGE"), "image", job["image_last"])
     set_input(wf, t.get("SAVE"), "filename_prefix", job["id"])
     return wf
 

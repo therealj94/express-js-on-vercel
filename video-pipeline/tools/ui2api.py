@@ -32,7 +32,8 @@ LABEL_RULES: list[tuple[str, dict]] = [
     ("NEGATIVE", {"class_re": r"CLIPTextEncode|TextEncode", "title_re": r"neg"}),
     ("SEED",     {"input": "seed"}),
     ("LATENT",   {"input": "length"}),
-    ("IMAGE",    {"class_re": r"^LoadImage"}),
+    ("IMAGE",      {"class_re": r"^LoadImage", "not_title_re": r"last|final|end"}),
+    ("LAST_IMAGE", {"class_re": r"^LoadImage"}),
     ("SAVE",     {"input": "filename_prefix"}),
 ]
 
@@ -201,7 +202,7 @@ def main() -> int:
         # steps/cfg no se etiquetan: comparten nodo con seed y el runner los
         # localiza por nombre de input.
         faltan = [l for l, _ in LABEL_RULES
-                  if l not in assigned and l not in ("IMAGE", "NEGATIVE")]
+                  if l not in assigned and l not in ("IMAGE", "LAST_IMAGE", "NEGATIVE")]
         if faltan:
             print(f"!! Sin asignar: {faltan}. Renómbralos a mano en ComfyUI "
                   f"(clic derecho -> Title) o edita el JSON.", file=sys.stderr)
