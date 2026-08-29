@@ -79,9 +79,17 @@ tiene flux && stage Comfy-Org/FLUX.2-dev_ComfyUI \
 hf download fal/MiniMax-H3-Realism-People-LoRA --local-dir "$M/loras/h3-realism" || true
 
 # colocar todo en el árbol de ComfyUI
+# Clasificar por RUTA de origen y por nombre. Los turbo de H3 se distribuyen
+# como LoRA (~1.8 GB) y ComfyUI solo los ve en models/loras: si caen en
+# diffusion_models, el workflow los da por "faltantes" aunque estén descargados.
 find "$M/_h3" -name '*.safetensors' 2>/dev/null | while read -r f; do
-  case "$f" in *text_encoder*|*umt5*|*t5*) d=text_encoders;; *vae*) d=vae;; *) d=diffusion_models;; esac
-  mv -n "$f" "$M/$d/"
+  case "$f" in
+    */loras/*|*lora*|*turbo*)          d=loras ;;
+    *text_encoder*|*umt5*|*t5*|*qwen*) d=text_encoders ;;
+    *vae*)                             d=vae ;;
+    *)                                 d=diffusion_models ;;
+  esac
+  mkdir -p "$M/$d"; mv -n "$f" "$M/$d/"
 done
 for s in diffusion_models text_encoders vae; do
   for stg in _wan _img; do
