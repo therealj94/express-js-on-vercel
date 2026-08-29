@@ -1,5 +1,9 @@
 # Modelo de costos — pipeline alquilado (agosto 2026)
 
+> **Desglose actualizado y de abajo hacia arriba en [`COSTOS_REALES.md`](./COSTOS_REALES.md)**,
+> calculado con `tools/costo.py`. Este documento explica la mecánica de cobro de Vast;
+> las cifras finales están allí.
+
 Decisión tomada: **alquilar, no comprar**. Una RTX 5090 en calle está en $4,700–5,000
 (MSRP $1,999) por la crisis de GDDR7, que no se normaliza antes de Q4-2026. La misma
 GPU en Vast.ai cuesta $0.31–0.45/h; el punto de equilibrio de la compra son ~18,500
