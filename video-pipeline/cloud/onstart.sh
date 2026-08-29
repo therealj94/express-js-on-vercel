@@ -56,8 +56,14 @@ else PREC=int8; fi
 echo "==> VRAM ${VRAM} MB -> ${PREC}"
 
 M="$WORK/ComfyUI/models"; mkdir -p "$M"/{diffusion_models,text_encoders,vae,loras}
-stage() {  # repo, patrón, destino temporal
-  hf download "$1" --include $2 --local-dir "$3" || echo "!! fallo descargando $1"
+stage() {  # repo, "patrones separados por espacio", destino
+  # OJO: --include acepta UN patrón. Si se pasan varios seguidos, el CLI los
+  # toma como nombres de fichero e IGNORA el filtro entero: se descarga el
+  # repositorio completo (100+ GB) y el disco revienta. Un flag por patrón.
+  local repo="$1" dst="$3" args=() pat
+  for pat in $2; do args+=(--include "$pat"); done
+  hf download "$repo" "${args[@]}" --local-dir "$dst" \
+    || echo "!! fallo descargando $repo"
 }
 # MODELS decide qué se baja: cada bloque que quitas son minutos y GB menos.
 #   h3   ~35 GB  vídeo (imprescindible)      flux ~35 GB  stills de alta calidad
@@ -84,6 +90,9 @@ for s in diffusion_models text_encoders vae; do
 done
 rm -rf "$M"/_h3 "$M"/_wan "$M"/_img
 du -sh "$M"/* 2>/dev/null
+LIBRE=$(df -BG --output=avail "$WORK" | tail -1 | tr -dc 0-9)
+echo "==> disco libre: ${LIBRE} GB"
+[ "${LIBRE:-99}" -lt 15 ] && echo "!! Queda poco disco: la generación puede fallar al guardar."
 
 # --- Caddy delante de ComfyUI: sin esto el puerto queda abierto a internet ---
 curl -fsSL "https://github.com/caddyserver/caddy/releases/latest/download/caddy_linux_amd64.tar.gz" \
