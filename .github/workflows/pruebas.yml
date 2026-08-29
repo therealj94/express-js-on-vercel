@@ -97,6 +97,17 @@ jobs:
           npm ci --no-audit --no-fund
           node --test pruebas/caja.test.mjs
 
+      # El candado de AU-RA y su oido. El primero abre un navegador de verdad
+      # con el candado.js que se despacha: sin eso solo se comprobaria que las
+      # dos implementaciones en Python estan de acuerdo entre ellas.
+      - name: El oido de AU-RA
+        working-directory: infra/aura
+        run: |
+          python3 -m pip install --quiet cryptography
+          python3 probar-candado-aura.py
+          python3 probar-oido.py
+          python3 probar-modelo-existe.py
+
       - name: El relevo de mensajes
         working-directory: infra/mensajes
         run: |
@@ -163,6 +174,7 @@ jobs:
                    probar-grupo.mjs probar-p2c-completo.mjs probar-voz.mjs \
                    probar-textos.mjs probar-movil-cabecera.mjs \
                    probar-estados-24h.mjs probar-pulsar-hablar.mjs \
+                   probar-avisos-apagar.mjs probar-denunciar.mjs \
                    probar-globo-crece.mjs probar-musica-calla.mjs \
                    probar-una-sola-voz.mjs probar-sabe-que-pasa.mjs; do
             [ -f "$f" ] || continue
