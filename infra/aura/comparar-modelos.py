@@ -122,7 +122,18 @@ def preguntar(modelo, sis, dicho, timeout=180):
         # candidato mutilado, y encima de forma desigual: al más verboso le
         # cabe menos. Es exactamente el error contra el que avisa el título de
         # este archivo, cometido en la línea siguiente.
-        'options': {'num_predict': 200, 'temperature': 0.7, 'num_ctx': 8192},
+        'options': {
+            'num_predict': 200, 'temperature': 0.7, 'num_ctx': 8192,
+            # ── Y EL FRENO DE LISTAS, que también es de producción ─────────
+            #
+            # El asistente corta la generación en cuanto el modelo empieza a
+            # maquetar. Sin estas paradas yo estaba contando faltas de
+            # markdown que en la app NO PASAN: medía al modelo suelto y la
+            # gente lo usa con el freno puesto. Tercera vez que mi instrumento
+            # mide algo que nadie experimenta — la ventana, las fichas, y
+            # ahora esto.
+            'stop': ['\n1.', '\n2.', '\n- ', '\n* ', '\n**', '\n#', '\n\n**'],
+        },
     }).encode()
     req = urllib.request.Request(MOTOR + '/api/chat', data=cuerpo, method='POST',
                                  headers={'Content-Type': 'application/json'})
