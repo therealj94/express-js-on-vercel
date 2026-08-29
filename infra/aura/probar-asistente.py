@@ -402,6 +402,38 @@ def main():
             ok('frase de respaldo' in plano,
                'las reglas duras van en cada peticion, no solo en el papel')
 
+        print('\nLo que devuelve la pelota lo contesta la casa\n')
+        # «Qué», «qué me cuentas» — no son preguntas, son pasarle la pelota a
+        # la otra persona. Y es lo que peor le sale a un modelo chico: sin
+        # contenido al que agarrarse se va a asistente genérico. Medido en
+        # producción, con captura: «Qué» y «Qué me cuentas» devolvieron dos
+        # párrafos casi iguales, ninguno de AU-RA, con un muro de preguntas
+        # personales y ofertas de «consejos para la cocina».
+        for suelta in ('Qué', 'Qué me cuentas'):
+            antes_p = len(de_usuario())
+            post(BASE, '/enviar', {**ana, 'para': 'aura@prueba.local', 'texto': suelta})
+            ms = espera_texto(ana, 'ecosistema', seg=12)
+            dicho = (ms[-1].get('texto') or '') if ms else ''
+            ok('cocina' not in dicho.lower() and len(dicho) < 220,
+               f'«{suelta}» no dispara el muro de preguntas genéricas',
+               f'contestó: {dicho[:160]!r}')
+            ok(len(de_usuario()) == antes_p,
+               f'y «{suelta}» no gasta motor: la contesta la casa',
+               'con el modelo, dos entradas sin contenido dan dos párrafos '
+               'casi iguales y ninguno suena a ella')
+
+        # Y lo que SÍ es una pregunta sigue yendo al modelo, que era el riesgo
+        # de atajar por palabra suelta: «qué es AUKA» empieza con «qué».
+        antes_p = len(de_usuario())
+        post(BASE, '/enviar', {**ana, 'para': 'aura@prueba.local',
+                               'texto': '¿Qué es AUKA?'})
+        fin = time.time() + 20
+        while time.time() < fin and len(de_usuario()) == antes_p:
+            time.sleep(0.3)
+        ok(len(de_usuario()) > antes_p,
+           'pero «¿Qué es AUKA?» SÍ llega al motor',
+           'atajar por la primera palabra dejaría preguntas de verdad sin contestar')
+
         print('\nUna respuesta, un globo — y se escribe a la vista\n')
         # Lo que se pide es contradictorio solo en apariencia: que la respuesta
         # se VEA venir (y no cinco segundos de puntitos y un bloque de golpe),

@@ -13101,8 +13101,19 @@ const VETA = (() => {
          digan lo mismo del mismo momento. */
       auraBuscandoVoz = true;
       if (auraAbierta) pintarAura();
+      /* EL TURNO. Si mientras se pedía esta voz llegó una pregunta nueva, lo
+         que vuelva del nodo ya no vale: se corta en cuanto se puede cortar,
+         que es justo el instante en que existe con qué. Sin esto, el audio de
+         la respuesta anterior llegaba tarde y sonaba encima de una pantalla
+         que ya mostraba otra cosa. */
+      const miTurno = opciones.turno ?? auraTurnoVoz;
+      const caduco = () => miTurno !== auraTurnoVoz;
       await auraSonarEnVivo(txt, {
-        alEmpezar: (cortar) => { auraCortarVozBurbuja = cortar; auraMusicaAlDia(); if (auraAbierta) pintarAura(); },
+        alEmpezar: (cortar) => {
+          if (caduco()) { try { cortar(); } catch (e) {} return; }
+          auraCortarVozBurbuja = cortar; auraMusicaAlDia();
+          if (auraAbierta) pintarAura();
+        },
         alPrimerSonido: () => { auraBuscandoVoz = false; if (auraAbierta) pintarAura(); },
       });
       auraBuscandoVoz = false;
@@ -13134,6 +13145,15 @@ const VETA = (() => {
    * ella sigue hablando, que es como se contestaba a sí misma. */
   const auraColaBurbuja = [];
   let auraVaciandoCola = false;
+  /* EL TURNO DE LA VOZ, y esto arregla algo que se vio en pantalla: «la voz
+     dijo algo que no está en lo que muestra».
+     Cortar solo puede cortar lo que YA está sonando. Entre que se pide la voz
+     y sale el primer sonido pasan dos o tres segundos, y en esa ventana no hay
+     nada que cortar: `auraCortarVozBurbuja` todavía es null. Así que se pedía
+     callar, se mandaba la pregunta nueva, y el audio de la ANTERIOR llegaba
+     después y sonaba igual — encima de una pantalla que ya mostraba otra cosa.
+     Con un número de turno, lo pedido antes de callar llega y se tira. */
+  let auraTurnoVoz = 0;
 
   function auraVozEncolar(texto) {
     if (!String(texto || '').trim()) return;
@@ -13144,17 +13164,21 @@ const VETA = (() => {
   /** Corta lo que esté diciendo y tira lo que quedaba por decir. Lo llama una
       pregunta nueva: nadie quiere oír el final de la respuesta anterior. */
   function auraVozCallarCola() {
+    auraTurnoVoz++;                       // lo de antes ya no vale
     auraColaBurbuja.length = 0;
     try { auraCortarVozBurbuja?.(); } catch (e) { /* ya no sonaba */ }
     auraCortarVozBurbuja = null;
+    auraBuscandoVoz = false;              // y la línea deja de decir «preparando»
   }
 
   async function auraVaciarColaBurbuja() {
     auraVaciandoCola = true;
     try {
+      const mio = auraTurnoVoz;
       while (auraColaBurbuja.length) {
+        if (mio !== auraTurnoVoz) break;   // la callaron: lo que quedaba no va
         const t = auraColaBurbuja.shift();
-        try { await auraVozDeLaCasa(t, { seguido: true }); }
+        try { await auraVozDeLaCasa(t, { seguido: true, turno: mio }); }
         catch (e) { console.warn('una frase no sonó:', e); }
       }
     } finally {

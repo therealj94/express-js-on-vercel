@@ -150,6 +150,26 @@ prueba('el micrófono NO se reabre solo: lo abre el dedo', () => {
     'no está pulsar para hablar, así que no hay quién abra el micrófono');
 });
 
+prueba('y lo pedido ANTES de callar se tira cuando llega tarde', () => {
+  /* Se vio en pantalla: «la voz dijo algo que no está en lo que muestra».
+     Cortar solo corta lo que YA suena, y entre pedir la voz y el primer
+     sonido pasan dos o tres segundos en los que no hay nada que cortar. En
+     esa ventana llegaba una pregunta nueva, y el audio de la anterior sonaba
+     igual, encima de una pantalla que ya mostraba otra cosa. */
+  const i = app.indexOf('async function auraVozDeLaCasa');
+  const cuerpo = app.slice(i, i + 5200);
+  assert.ok(/const miTurno = opciones\.turno \?\? auraTurnoVoz;/.test(cuerpo),
+    'la voz no lleva número de turno: no hay forma de saber si caducó');
+  assert.ok(/if \(caduco\(\)\) \{ try \{ cortar\(\); \} catch \(e\) \{\} return; \}/.test(cuerpo),
+    'llega el audio viejo y suena igual: hay que cortarlo en cuanto existe con ' +
+    'qué cortarlo, que es ese mismo instante');
+  const j = app.indexOf('function auraVozCallarCola');
+  assert.ok(/auraTurnoVoz\+\+/.test(app.slice(j, j + 400)),
+    'callar no sube el turno, así que nada caduca nunca');
+  assert.ok(/auraBuscandoVoz = false/.test(app.slice(j, j + 400)),
+    'la línea de estado se queda en «preparando la voz» sobre una voz cancelada');
+});
+
 prueba('una pregunta nueva tira lo que quedaba de la anterior', () => {
   const i = app.indexOf('async function auraAlModelo');
   assert.ok(/auraVozCallarCola\(\);/.test(app.slice(i, i + 1500)),

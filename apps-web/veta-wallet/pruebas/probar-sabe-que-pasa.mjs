@@ -182,7 +182,7 @@ console.log('\nel hueco de la voz queda tapado en los dos finales');
 
 prueba('la bandera de preparar la voz se baja también si falla', () => {
   const i = app.indexOf('async function auraVozDeLaCasa(');
-  const cuerpo = app.slice(i, i + 3000);
+  const cuerpo = app.slice(i, i + 6500);
   const bajadas = (cuerpo.match(/auraBuscandoVoz = false/g) || []).length;
   assert.ok(bajadas >= 3,
     'se baja en ' + bajadas + ' sitio(s). Hacen falta tres: al primer sonido, ' +

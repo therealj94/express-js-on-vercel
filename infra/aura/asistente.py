@@ -462,6 +462,34 @@ SALUDO_CORTO = (
     "Hola de nuevo. ¿Qué querés saber?",
 )
 
+# ── LO QUE NO PREGUNTA NADA ──────────────────────────────────────────────────
+#
+# «Qué», «qué me cuentas», «y?», «dale». No son preguntas: son la forma de
+# pasarle la pelota a la otra persona. Y son EXACTAMENTE lo que peor le sale a
+# un modelo de siete mil millones: sin contenido al que agarrarse, se va a
+# asistente genérico. Medido en produccion, con captura:
+#
+#     «Qué»            → «¿Cómo estás? ¿Qué ondas? ¿Estás teniendo un buen
+#                         día? [...] Puedo ayudarte con consejos para la
+#                         cocina, planes para el fin de semana»
+#     «Qué me cuentas» → casi el mismo parrafo otra vez
+#
+# Dos respuestas casi iguales, ninguna de AU-RA, y un muro de preguntas
+# personales: el prompt le pide interes por la persona y sin nada mas de que
+# hablar lo cumple al pie de la letra, todo junto y de una vez.
+#
+# Con un modelo chico esto no se arregla escribiendo mas reglas —ya estan
+# escritas y no las obedece cuando la entrada esta vacia—: se arregla no
+# preguntandole. Contesta la casa, al instante, en su voz, y devolviendo la
+# pelota con algo concreto en vez de con cuatro preguntas.
+SIN_CONTENIDO = (
+    "Contame vos. Puedo hablar de lo que quieras — donde más te sirvo es acá "
+    "adentro: ORIGEN, tu cuenta, la cadena, Genesis ID.",
+    "Lo que se te ocurra. Si querés una punta: preguntame cuánto vale ORIGEN "
+    "hoy, o qué hace falta para verificarte.",
+    "Vos dirás. Estoy para lo del ecosistema y para lo que no lo sea también.",
+)
+
 RAFAGA_MSG = (
     'Pará un segundo que te sigo — vas más rápido que yo. Dale unos segundos '
     'y seguimos.')
@@ -1305,6 +1333,18 @@ def atender(rel, sistema, p, de, dicho):
             r'que tal|como estas|holi|saludos)[\s!¡.,?¿]*', bajo):
         p['saludos'] = p.get('saludos', 0) + 1
         rel.enviar(de, SALUDO_CORTO[min(p['saludos'] - 1, len(SALUDO_CORTO) - 1)])
+        return
+
+    # Lo que devuelve la pelota sin preguntar nada. Ver SIN_CONTENIDO: el
+    # modelo chico las contesta con un muro de preguntas genericas, asi que
+    # las contesta la casa. Tiene que ser la frase ENTERA — «que es AUKA»
+    # empieza con «que» y es una pregunta de verdad, y va al modelo.
+    if len(bajo) <= 26 and _re.fullmatch(
+            r'\s*(que|que me cuentas|que contas|que hay|y|y\?|ok|oka|dale|'
+            r'contame|contame algo|hablame|nada|jaja|jeje|listo|bueno|'
+            r'what|so|tell me something)[\s!¡.,?¿]*', bajo):
+        p['pelota'] = p.get('pelota', 0) + 1
+        rel.enviar(de, SIN_CONTENIDO[min(p['pelota'] - 1, len(SIN_CONTENIDO) - 1)])
         return
 
     # ── LO QUE CUENTE SE GUARDA; LA ENTREVISTA SE FUE ─────────────────────
