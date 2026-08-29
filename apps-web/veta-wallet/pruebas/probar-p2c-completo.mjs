@@ -14,13 +14,41 @@ import { mkdtempSync, rmSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
 import { createServer } from 'net'
+import { createServer as crearServidorHttp } from 'node:http'
+import { readFile as leerArchivo } from 'node:fs/promises'
+import { join as joinPath, extname as extName } from 'node:path'
 
 const PUERTO = await new Promise((r) => {
   const s = createServer(); s.listen(0, '127.0.0.1', () => { const p = s.address().port; s.close(() => r(p)) })
 })
 const REL = `http://127.0.0.1:${PUERTO}`
 const ORIGEN = 'https://cerebro.ordenscan.com'
-const SITIO = 'http://127.0.0.1:8791/apps-web/veta-wallet/index.html'
+
+/* ── LA PRUEBA SIRVE SU PROPIO SITIO ───────────────────────────────────────
+ *
+ * Aquí había una dirección fija al puerto 8791, y esta prueba NO levantaba
+ * nada ahí: dependía de que alguien tuviera un servidor puesto a mano. Sin
+ * él muere con ERR_CONNECTION_REFUSED antes de la primera comprobación, y
+ * así llevaba tiempo — treinta y tres comprobaciones que nadie ejecutaba.
+ *
+ * Una prueba que no puede correr sola no protege nada, y peor: figura en la
+ * carpeta como si protegiera. Todas las demás del repo levantan lo suyo;
+ * esta ahora también, en un puerto que pide el sistema. */
+const RAIZ = new URL('../../../', import.meta.url).pathname
+const TIPOS = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8',
+                '.css': 'text/css; charset=utf-8', '.png': 'image/png', '.jpg': 'image/jpeg',
+                '.json': 'application/json', '.mp3': 'audio/mpeg', '.svg': 'image/svg+xml' }
+const sitio = crearServidorHttp(async (q, r) => {
+  try {
+    const rel = decodeURIComponent(q.url.split('?')[0])
+    const f = joinPath(RAIZ, rel.endsWith('/') ? rel + 'index.html' : rel)
+    const d = await leerArchivo(f)
+    r.writeHead(200, { 'Content-Type': TIPOS[extName(f)] || 'application/octet-stream' })
+    r.end(d)
+  } catch { r.writeHead(404); r.end('no') }
+})
+await new Promise((ok) => sitio.listen(0, '127.0.0.1', ok))
+const SITIO = `http://127.0.0.1:${sitio.address().port}/apps-web/veta-wallet/index.html`
 const SERVIDOR = process.env.SERVIDOR_MENSAJES ||
   new URL('../../../infra/mensajes/servidor.py', import.meta.url).pathname
 const CARPETA = mkdtempSync(join(tmpdir(), 'p2c-'))
@@ -54,7 +82,7 @@ async function abrir(correo, nombre, addr) {
   }, [ORIGEN, correo, llave])
   await pag.route('**/*', async (route) => {
     const u = route.request().url()
-    if (u.startsWith('http://127.0.0.1:8791')) return route.continue()
+    if (u.startsWith(`http://127.0.0.1:${sitio.address().port}`)) return route.continue()
     if (u.startsWith(ORIGEN)) {
       let b = route.request().postData()
       try { const j = JSON.parse(b || '{}'); if (j.sesion) { delete j.sesion; b = JSON.stringify(j) } } catch {}
