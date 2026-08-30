@@ -57,6 +57,24 @@ import unicodedata
 DATOS = None                  # lo pone `preparar()`
 PREMIO = '1 ORIGEN'
 
+# ── EL TOPE ────────────────────────────────────────────────────────────────
+#
+# Doscientos premios y se acaba. Lo puso Jose el 30-ago-2026.
+#
+# Un regalo sin tope no es una campaña: es una cuenta abierta. Doscientos son
+# doscientos gramos de oro entre cincuenta y cinco, y eso se sabe de antemano
+# — que es justo lo que un tope compra: saber cuanto vas a gastar ANTES.
+#
+# Y se comprueba en DOS sitios, igual que las dos llaves:
+#
+#   · Antes de preguntar. Hacer tres preguntas para despues decir «se acabo»
+#     es la peor forma posible de decirlo, y ademas queda como una estafa
+#     aunque no lo sea.
+#   · Al anotar. Entre que alguien empieza y manda su direccion pueden entrar
+#     otros veinte; sin esta segunda comprobacion se pagarian doscientos
+#     veinte.
+TOPE_PREMIOS = int(os.environ.get('AURA_TOPE_PREMIOS', '200'))
+
 # De donde salen los premios. Es publica —una direccion siempre lo es— y esta
 # aqui para dos cosas: para que quien pague sepa de donde, y para RECHAZARLA si
 # alguien la manda como suya.
@@ -272,6 +290,10 @@ def anotar(quien, direccion, aciertos):
             d = _cargar()
         except RegistroIlegible:
             return False, 'ilegible'       # ver `ya_reclamo`: se falla cerrado
+        # El tope, DENTRO del candado y con la lista ya leida: comprobarlo
+        # fuera dejaria pasar a dos a la vez justo en el ultimo premio.
+        if len(d['reclamos']) >= TOPE_PREMIOS:
+            return False, 'agotado'
         for r in d['reclamos']:
             if r.get('quien') == quien:
                 return False, 'telefono'
@@ -289,6 +311,29 @@ def anotar(quien, direccion, aciertos):
         })
         _guardar(d)
     return True, None
+
+
+def cuantos_van():
+    """Reclamos hechos. `None` si el registro no se puede leer."""
+    with _candado:
+        try:
+            return len(_cargar()['reclamos'])
+        except RegistroIlegible:
+            return None
+
+
+def quedan():
+    """Cuantos premios sobran. Cero si se acabaron o si no se puede saber.
+
+    Que un registro ilegible devuelva cero es a proposito: es la misma regla
+    de fallar cerrado. Si no se puede contar, no se reparte.
+    """
+    van = cuantos_van()
+    return 0 if van is None else max(0, TOPE_PREMIOS - van)
+
+
+def agotado():
+    return quedan() <= 0
 
 
 def por_pagar():
@@ -325,4 +370,6 @@ def resumen():
                     'ilegible': True}
     return {'reclamos': len(rs),
             'por_pagar': sum(1 for r in rs if not r.get('pagado')),
-            'pagados': sum(1 for r in rs if r.get('pagado'))}
+            'pagados': sum(1 for r in rs if r.get('pagado')),
+            'tope': TOPE_PREMIOS,
+            'quedan': max(0, TOPE_PREMIOS - len(rs))}

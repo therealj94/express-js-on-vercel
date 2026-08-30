@@ -206,7 +206,10 @@ class ElPagoNoSaleSOLO(unittest.TestCase):
         premio.anotar('50477777777', UNA, 3)
         self.assertTrue(premio.marcar_pagado(UNA, '0xabc'))
         self.assertEqual(premio.por_pagar(), [])
-        self.assertEqual(premio.resumen(), {'reclamos': 1, 'por_pagar': 0, 'pagados': 1})
+        # Se comprueban los campos que importan y no el diccionario entero:
+        # añadirle uno nuevo no puede romper una prueba que habla de pagos.
+        r = premio.resumen()
+        self.assertEqual((r['reclamos'], r['por_pagar'], r['pagados']), (1, 0, 1))
 
     def test_no_se_paga_dos_veces_el_mismo(self):
         premio.anotar('50488888888', UNA, 3)
@@ -273,6 +276,78 @@ class LoQueDiceNoSePuedeDECIR(unittest.TestCase):
                           'rentabilidad', 'se multiplica', 'vas a ganar más']:
             self.assertNotIn(prohibido, junto, f'dice «{prohibido}»')
 
+
+
+class ElTope(unittest.TestCase):
+    """Doscientos y se acaba. Un regalo sin tope no es una campaña: es una
+    cuenta abierta."""
+
+    def setUp(self):
+        limpio()
+
+    def _llenar(self, n):
+        for i in range(n):
+            ok, motivo = premio.anotar(f'504{i:08d}', f'0x{i:040x}', 3)
+            if not ok:
+                return i, motivo
+        return n, None
+
+    def test_al_llegar_al_tope_se_cierra(self):
+        premio.TOPE_PREMIOS = 5
+        try:
+            hechos, motivo = self._llenar(8)
+            self.assertEqual(hechos, 5)
+            self.assertEqual(motivo, 'agotado')
+        finally:
+            premio.TOPE_PREMIOS = 200
+
+    def test_quedan_cuenta_bien(self):
+        premio.TOPE_PREMIOS = 3
+        try:
+            self.assertEqual(premio.quedan(), 3)
+            premio.anotar('50411111111', UNA, 3)
+            self.assertEqual(premio.quedan(), 2)
+            self.assertFalse(premio.agotado())
+            self._llenar(5)
+            self.assertTrue(premio.agotado())
+            self.assertEqual(premio.quedan(), 0)
+        finally:
+            premio.TOPE_PREMIOS = 200
+
+    def test_SE_COMPRUEBA_AL_ANOTAR_Y_NO_SOLO_ANTES(self):
+        """Entre que alguien empieza a jugar y manda su dirección pueden entrar
+        otros veinte. Sin la segunda comprobación se pagarían 220."""
+        premio.TOPE_PREMIOS = 2
+        try:
+            self.assertFalse(premio.agotado())      # como al arrancar el juego
+            self._llenar(2)                         # entran otros mientras juega
+            ok, motivo = premio.anotar('50499999999', OTRA, 3)
+            self.assertFalse(ok)
+            self.assertEqual(motivo, 'agotado')
+        finally:
+            premio.TOPE_PREMIOS = 200
+
+    def test_con_el_registro_ilegible_NO_se_reparte(self):
+        """Misma regla de fallar cerrado: si no se puede contar, no se da."""
+        premio.anotar('50411111111', UNA, 3)
+        premio._archivo().write_text('roto', encoding='utf8')
+        self.assertIsNone(premio.cuantos_van())
+        self.assertEqual(premio.quedan(), 0)
+        self.assertTrue(premio.agotado())
+
+    def test_el_tope_por_defecto_es_doscientos(self):
+        import re as _re
+        fuente = (AQUI / 'premio.py').read_text(encoding='utf8')
+        m = _re.search(r"TOPE_PREMIOS = int\(os\.environ\.get\('AURA_TOPE_PREMIOS', '(\d+)'\)\)",
+                       fuente)
+        self.assertIsNotNone(m)
+        self.assertEqual(m.group(1), '200')
+
+    def test_el_resumen_dice_cuantos_quedan(self):
+        premio.anotar('50411111111', UNA, 3)
+        r = premio.resumen()
+        self.assertEqual(r['tope'], 200)
+        self.assertEqual(r['quedan'], 199)
 
 if __name__ == '__main__':
     unittest.main(verbosity=2)

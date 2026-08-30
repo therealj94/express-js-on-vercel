@@ -1325,6 +1325,15 @@ def _arrancar_juego(rel, p, de):
     """Abre el juego, o dice que ya cobro. Comprueba ANTES de preguntar: hacer
     tres preguntas para despues decir «ya cobraste» es la peor forma posible de
     decirlo."""
+    # El tope, ANTES de preguntar nada. Hacer tres preguntas para despues
+    # decir «se acabó» es la peor forma posible de decirlo, y queda como una
+    # estafa aunque no lo sea.
+    if premio.agotado():
+        registro.anotar('juego', paso='agotado')
+        rel.enviar(de, 'Se acabaron los ORIGEN de esta ronda. 🌱\n\n'
+                       'Igual te enseño lo mismo gratis si querés, y cuando '
+                       'abramos otra te aviso por acá.')
+        return
     if premio.ya_reclamo(telefono=de):
         rel.enviar(de, 'Este número ya reclamó su ORIGEN. 🌱 Es uno por '
                        'persona, pero seguí preguntándome lo que quieras.')
@@ -1375,10 +1384,18 @@ def _atender_juego(rel, p, de, dicho):
     p.pop('juego', None)
     if not ok:
         registro.anotar('juego', paso='repetido', por=motivo)
-        rel.enviar(de, 'Esa billetera ya recibió su ORIGEN. 🌱 Es uno por '
-                       'persona — pero seguí preguntándome lo que quieras.'
-                   if motivo == 'billetera' else
-                   'Este número ya reclamó su ORIGEN. 🌱 Uno por persona.')
+        rel.enviar(de, {
+            'billetera': 'Esa billetera ya recibió su ORIGEN. 🌱 Es uno por '
+                         'persona — pero seguí preguntándome lo que quieras.',
+            'telefono': 'Este número ya reclamó su ORIGEN. 🌱 Uno por persona.',
+            # Entraron otros mientras esta persona jugaba. Se le dice con el
+            # nombre correcto y sin culparla: llego tarde por segundos.
+            'agotado': 'Uf — se acabaron los ORIGEN mientras jugabas. 🌱 '
+                       'Lo siento de verdad. Cuando abramos otra ronda te '
+                       'aviso por acá, y lo que aprendiste te queda igual.',
+            'ilegible': 'Se me trabó algo al anotarte. Escribime en un rato y '
+                        'lo reviso — tu premio no se pierde.',
+        }.get(motivo, 'No pude anotarte ahora mismo. Probá en un rato.'))
         return True
 
     registro.anotar('juego', paso='ganado', aciertos=j.get('aciertos', 0))
