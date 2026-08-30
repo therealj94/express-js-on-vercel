@@ -415,5 +415,58 @@ class ElDiscoLLENONOAVISA(unittest.TestCase):
         self.assertNotIn('subprocess', cuerpo)
 
 
+class METASONDOSTRAMITES(unittest.TestCase):
+    """«meta se envió pero no aparece» — José, 30-ago.
+
+    Son DOS, Meta los muestra en pantallas separadas, y es fácil hacer uno
+    creyendo que se hizo el otro: la verificación del NEGOCIO y la aprobación
+    del NOMBRE PARA MOSTRAR. Los dos bloquean el tope de 250 mensajes al día.
+
+    El parte avisaba de uno solo, así que el otro quedaba invisible — que es
+    como se arregla la mitad de un problema y se sigue igual de bloqueado."""
+
+    def _info(self, verificacion='pending_submission', nombre='APPROVED',
+              rechazo=None):
+        return {'phone': {'name_status': nombre, 'messaging_limit_tier': 'TIER_250',
+                          'health_status': {'can_send_message': 'LIMITED'}},
+                'waba': {'business_verification_status': verificacion},
+                'nameRejectionReason': rechazo}
+
+    def _pend(self, info):
+        with mock.patch.object(vistazo, '_http', return_value=info):
+            return vistazo._whatsapp('clave', 'cuenta')[1]
+
+    def test_avisa_del_negocio_sin_enviar(self):
+        p = ' '.join(self._pend(self._info()))
+        self.assertIn('SIN ENVIAR', p)
+
+    def test_y_TAMBIEN_del_nombre_sin_aprobar(self):
+        """El que faltaba: sin él, José arreglaba uno y seguía en 250."""
+        p = ' '.join(self._pend(self._info(nombre='AVAILABLE_WITHOUT_REVIEW')))
+        self.assertIn('nombre para mostrar', p)
+        self.assertIn('AVAILABLE_WITHOUT_REVIEW', p)
+
+    def test_los_dos_a_la_vez_salen_los_dos(self):
+        p = self._pend(self._info(nombre='PENDING_REVIEW'))
+        self.assertEqual(len(p), 2, f'solo avisó de uno: {p}')
+
+    def test_si_el_nombre_lo_RECHAZARON_dice_por_que(self):
+        p = ' '.join(self._pend(self._info(nombre='DECLINED',
+                                          rechazo='no coincide con el negocio')))
+        self.assertIn('no coincide con el negocio', p)
+
+    def test_distingue_SIN_ENVIAR_de_EN_REVISION(self):
+        """No es lo mismo: uno necesita que José haga algo, el otro que
+        espere. Decirlos igual haría que reenviara lo que ya está en cola."""
+        sin_enviar = ' '.join(self._pend(self._info('pending_submission')))
+        en_revision = ' '.join(self._pend(self._info('pending')))
+        self.assertIn('SIN ENVIAR', sin_enviar)
+        self.assertNotIn('SIN ENVIAR', en_revision)
+        self.assertIn('pending', en_revision)
+
+    def test_y_con_todo_aprobado_no_molesta(self):
+        self.assertEqual(self._pend(self._info('verified', 'APPROVED')), [])
+
+
 if __name__ == '__main__':
     unittest.main(verbosity=2)

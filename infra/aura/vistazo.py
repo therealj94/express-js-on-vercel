@@ -118,8 +118,30 @@ def _whatsapp(clave, cuenta):
     lineas, pend = [], []
     tel = info.get('phone') or {}
     waba = info.get('waba') or {}
-    if waba.get('business_verification_status') != 'verified':
-        pend.append('la verificación de negocio de Meta sigue sin enviar')
+
+    # ── SON DOS TRAMITES, Y EL PARTE AVISABA DE UNO ─────────────────────────
+    #
+    # Meta los muestra en pantallas separadas y es facil hacer uno creyendo que
+    # se hizo el otro — le paso a Jose el 30-ago: «meta se envió pero no
+    # aparece». Los DOS tienen que estar para salir del tope de 250:
+    #
+    #   · la verificacion del NEGOCIO (Business Manager)
+    #   · la aprobacion del NOMBRE PARA MOSTRAR (el del numero)
+    #
+    # Avisar solo del primero dejaba el segundo invisible, que es como se
+    # arregla la mitad de un problema y se sigue sin poder mandar mensajes.
+    estado = waba.get('business_verification_status')
+    if estado == 'pending_submission':
+        pend.append('la verificación de negocio de Meta sigue SIN ENVIAR')
+    elif estado and estado != 'verified':
+        pend.append(f'la verificación de negocio de Meta está en «{estado}»')
+
+    nombre = tel.get('name_status')
+    if nombre and nombre != 'APPROVED':
+        motivo = info.get('nameRejectionReason')
+        pend.append(f'el nombre para mostrar sin aprobar ({nombre})'
+                    + (f' — {motivo}' if motivo else ''))
+
     if tel.get('health_status', {}).get('can_send_message') != 'AVAILABLE':
         lineas.append(f'WhatsApp limitado a {tel.get("messaging_limit_tier", "?")}')
 
