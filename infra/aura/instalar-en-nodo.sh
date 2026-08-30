@@ -2,7 +2,7 @@
 # Instala el motor y el asistente en la maquina de AU-RA. Corre EN EL NODO,
 # mandado por SSM. Idempotente: correrlo dos veces no rompe nada.
 #
-# Espera en el entorno: U_ASISTENTE U_CANDADO U_OIDO U_WHATSAPP U_GUARDIA U_REGISTRO U_GUION U_PREMIO U_VISTAZO U_PARTE U_PROMPT
+# Espera en el entorno: U_ASISTENTE U_CANDADO U_OIDO U_WHATSAPP U_GUARDIA U_REGISTRO U_GUION U_PREMIO U_VISTAZO U_PARTE U_PARTE_SERVICE U_PARTE_TIMER U_PROMPT
 # U_SABER U_PROBADORES — las URL firmadas para bajar cada archivo (el nodo no
 # tiene permisos de S3 y no los necesita: la firma viaja en la URL y muere en
 # dos horas).
@@ -114,46 +114,11 @@ systemctl is-active aura
 journalctl -u aura -n 5 --no-pager
 
 echo "== el parte, 7:30 y 19:30 =="
-# Comparte el entorno del servicio a proposito: el destinatario del parte y la
-# clave de WhatsApp tienen que ser LOS MISMOS, y dos sitios donde ponerlos es
-# un sitio donde olvidarse.
-cat > /etc/systemd/system/aura-parte.service <<'UNIT'
-[Unit]
-Description=El parte de Orden Global por WhatsApp
-After=network-online.target
-
-[Service]
-Type=oneshot
-ExecStart=/usr/bin/python3 /srv/aura/parte-diario.py
-WorkingDirectory=/srv/aura
-Environment=AURA_DATOS=/srv/aura
-Environment=AURA_PARTE_PARA=50432136457
-EnvironmentFile=-/etc/aura-correo.env
-EnvironmentFile=-/etc/aura-whatsapp.env
-UNIT
-
-# EN UTC Y A PROPOSITO. La maquina corre en UTC y Honduras esta en UTC-6 todo
-# el ano —no mueve el reloj en verano—, asi que 7:30 son las 13:30 y 19:30 son
-# la 1:30 del dia siguiente. Se deja escrito en UTC en vez de con `Timezone=`
-# porque esa opcion es de systemd v252 y esta maquina trae una anterior: ahi se
-# ignora en silencio y el parte llegaria seis horas corrido.
-cat > /etc/systemd/system/aura-parte.timer <<'UNIT'
-[Unit]
-Description=Parte de Orden Global a las 7:30 y 19:30 de Honduras
-
-[Timer]
-OnCalendar=*-*-* 13:30:00 UTC
-OnCalendar=*-*-* 01:30:00 UTC
-# Si la maquina estaba apagada a la hora, el parte sale al arrancar. Un parte
-# que se salta un dia es justo el dia que uno queria mirar.
-Persistent=true
-# Para no pegarle al proveedor en el mismo segundo todos los dias.
-RandomizedDelaySec=90
-
-[Install]
-WantedBy=timers.target
-UNIT
-
+# Las unidades son ARCHIVOS DEL REPOSITORIO, no un heredoc aqui. Estaban
+# escritas en dos sitios —este y el desplegador— y dos sitios que mandan sobre
+# la misma unidad es como una de las dos se queda vieja sin que nadie lo note.
+curl -sS --fail -o /etc/systemd/system/aura-parte.service "$U_PARTE_SERVICE"
+curl -sS --fail -o /etc/systemd/system/aura-parte.timer   "$U_PARTE_TIMER"
 systemctl daemon-reload
 systemctl enable --now aura-parte.timer
 systemctl list-timers aura-parte.timer --no-pager

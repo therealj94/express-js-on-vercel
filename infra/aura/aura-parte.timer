@@ -1,0 +1,19 @@
+[Unit]
+Description=Parte de Orden Global a las 7:30 y 19:30 de Honduras
+
+[Timer]
+# EN UTC Y A PROPOSITO. La maquina corre en UTC y Honduras esta en UTC-6 todo
+# el ano —no mueve el reloj en verano—, asi que 7:30 son las 13:30 y 19:30 son
+# la 1:30 del dia siguiente. Se escribe en UTC en vez de usar `Timezone=`
+# porque esa opcion es de systemd v252: en una version anterior se ignora EN
+# SILENCIO y el parte llegaria seis horas corrido, que es peor que fallar.
+OnCalendar=*-*-* 13:30:00 UTC
+OnCalendar=*-*-* 01:30:00 UTC
+# Si la maquina estaba apagada a la hora, el parte sale al arrancar. El dia que
+# se salta es justo el dia que uno queria mirar.
+Persistent=true
+# Para no pegarle al proveedor en el mismo segundo todos los dias.
+RandomizedDelaySec=90
+
+[Install]
+WantedBy=timers.target

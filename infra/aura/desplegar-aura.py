@@ -52,6 +52,11 @@ ARCHIVOS = ['asistente.py', 'candado.py', 'oido.py', 'whatsapp.py',
 # mismas que usa el cerebro.
 LADO = {
     'PROMPT-AURA.md': os.path.join(AQUI, 'PROMPT-AURA.md'),
+    # Las unidades del parte, desde el repositorio. Estuvieron escritas a la vez
+    # aqui y en `instalar-en-nodo.sh`, y dos sitios que mandan sobre la misma
+    # unidad es como una de las dos se queda vieja sin que nadie lo note.
+    'aura-parte.service': os.path.join(AQUI, 'aura-parte.service'),
+    'aura-parte.timer': os.path.join(AQUI, 'aura-parte.timer'),
     'saber.json': os.path.abspath(
         os.path.join(AQUI, '..', 'cerebro', 'conocimiento', 'saber.json')),
 }
@@ -117,6 +122,18 @@ def main():
                  f'python3 -c "import ast,sys; ast.parse(open(\'/srv/aura/{nombre}.nuevo\').read())"',
                  f'mv /srv/aura/{nombre}.nuevo /srv/aura/{nombre}']
 
+    cmds += [
+        f'curl -sS --fail -o /etc/systemd/system/aura-parte.service'
+        f' "{urls["aura-parte.service"]}"',
+        f'curl -sS --fail -o /etc/systemd/system/aura-parte.timer'
+        f' "{urls["aura-parte.timer"]}"',
+        # `--now` y no solo `enable`: el enlace por si solo no arranca nada,
+        # porque `timers.target` ya paso hace rato y no se vuelve a alcanzar
+        # hasta el proximo reinicio. Sin esto el temporizador queda puesto,
+        # `is-enabled` dice que si, y el parte no sale nunca.
+        'systemctl daemon-reload',
+        'systemctl enable --now aura-parte.timer',
+    ]
     cmds += ['mkdir -p /etc/systemd/system/aura.service.d',
              f'curl -sS --fail -o /etc/systemd/system/aura.service.d/whatsapp.conf "{url_dropin}"']
 
@@ -138,12 +155,7 @@ def main():
     cmds += [
         'systemctl daemon-reload',
         'systemctl restart aura',
-        # La unidad del parte la escribe `instalar-en-nodo.sh`: un solo dueno
-        # por unidad. Aqui solo se MIRA, porque un despliegue que deja el
-        # temporizador sin instalar y no lo dice es un parte que no llega y
-        # nadie sabe por que.
-        'systemctl list-timers aura-parte.timer --no-pager'
-        ' || echo "SIN TEMPORIZADOR DEL PARTE: corre instalar-en-nodo.sh"',
+        'systemctl list-timers aura-parte.timer --no-pager',
         'sleep 8',
         'systemctl is-active aura',
         # Lo que de verdad se quiere ver: que arranco y que dice de WhatsApp.
