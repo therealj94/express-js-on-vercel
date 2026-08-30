@@ -11,7 +11,7 @@ Corre en el pod detrás de la misma autenticación de nginx.
 from __future__ import annotations
 
 import copy, json, os, subprocess, sys, threading, time
-from http.server import BaseHTTPRequestHandler, HTTPServer
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib import request
 
@@ -24,6 +24,13 @@ CALIDADES = {
     "rapida": ("h3_t2v_api.json", 4, 720, 1280),
     "buena":  ("h3_calidad_api.json", 20, 768, 1344),
 }
+
+# Estado de los encargos, en memoria. La generación tarda minutos y NINGÚN
+# navegador móvil mantiene abierta una petición tanto rato: Safari la corta con
+# "TypeError: Load failed" aunque nginx espere una hora. Por eso el POST
+# responde al instante con un identificador y la página pregunta por el estado.
+TRABAJOS: dict[str, dict] = {}
+_LOCK = threading.Lock()
 
 PAGINA = """<!doctype html><html lang="es"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
@@ -66,24 +73,44 @@ button:disabled{opacity:.5}
 
 <script>
 const $=s=>document.querySelector(s);
+// El encargo vive en el pod, no en esta pestaña: se guarda el id para poder
+// cerrar el móvil, volver, y seguir viendo en qué va.
+const ID=()=>localStorage.getItem("trabajo");
 async function refrescar(){
-  const r=await fetch("api/clips").then(r=>r.json()).catch(()=>[]);
+  const r=await fetch("api/clips").then(r=>r.json()).catch(()=>null);
+  if(!r) return;
   $("#lista").innerHTML=r.map(n=>
     `<div class="clip"><video src="ver/${encodeURIComponent(n)}" controls playsinline preload="none"></video>
      <a href="ver/${encodeURIComponent(n)}" download>${n}</a></div>`).join("");
 }
+async function vigilar(){
+  const id=ID(); if(!id){ $("#b").disabled=false; return; }
+  let t;
+  try{ t=await fetch("api/estado/"+id).then(r=>r.json()); }
+  catch(e){ $("#estado").textContent="Sin señal, reintentando…"; return; }
+  if(t.estado==="trabajando"){
+    $("#b").disabled=true;
+    $("#estado").textContent=`Generando… ${t.seg}s. Puedes cerrar esto y volver.`;
+    return;
+  }
+  $("#b").disabled=false; localStorage.removeItem("trabajo");
+  $("#estado").textContent = t.estado==="listo" ? "Listo: "+t.archivo
+                                                : "Error: "+(t.error||"desconocido");
+  refrescar();
+}
 $("#b").onclick=async()=>{
   const prompt=$("#p").value.trim();
   if(!prompt){$("#estado").textContent="Escribe algo primero.";return;}
-  $("#b").disabled=true; $("#estado").textContent="Generando… puede tardar de 2 a 8 minutos.";
+  $("#b").disabled=true; $("#estado").textContent="Enviando…";
   try{
     const r=await fetch("api/generar",{method:"POST",headers:{"Content-Type":"application/json"},
       body:JSON.stringify({prompt,calidad:$("#c").value,segundos:+$("#d").value})}).then(r=>r.json());
-    $("#estado").textContent = r.ok ? "Listo: "+r.archivo : "Error: "+(r.error||"desconocido");
-  }catch(e){ $("#estado").textContent="Error: "+e; }
-  $("#b").disabled=false; refrescar();
+    if(r.id){ localStorage.setItem("trabajo",r.id); vigilar(); }
+    else { $("#estado").textContent="Error: "+(r.error||"desconocido"); $("#b").disabled=false; }
+  }catch(e){ $("#estado").textContent="Error: "+e; $("#b").disabled=false; }
 };
-refrescar(); setInterval(refrescar, 30000);
+refrescar(); vigilar();
+setInterval(vigilar, 5000); setInterval(refrescar, 30000);
 </script></body></html>"""
 
 
@@ -131,6 +158,20 @@ def generar(prompt: str, calidad: str, segundos: int) -> dict:
     return {"ok": False, "error": "se agotó el tiempo"}
 
 
+def trabajar(ident: str, prompt: str, calidad: str, segundos: int) -> None:
+    """Genera en segundo plano y deja el resultado donde la página lo consulte."""
+    try:
+        r = generar(prompt, calidad, segundos)
+    except Exception as e:                       # noqa: BLE001
+        r = {"ok": False, "error": str(e)[:300]}
+    with _LOCK:
+        t0 = TRABAJOS.get(ident, {}).get("t0", time.time())
+        TRABAJOS[ident] = {
+            "estado": "listo" if r.get("ok") else "error",
+            "archivo": r.get("archivo"), "error": r.get("error"), "t0": t0,
+        }
+
+
 class H(BaseHTTPRequestHandler):
     def log_message(self, *a): pass
 
@@ -148,6 +189,11 @@ class H(BaseHTTPRequestHandler):
             v = sorted((p.name for p in OUT.glob("*.mp4")),
                        key=lambda n: (OUT / n).stat().st_mtime, reverse=True)
             return self._envia(json.dumps(v[:20]).encode())
+        if self.path.startswith("/api/estado/"):
+            with _LOCK:
+                t = dict(TRABAJOS.get(self.path[12:], {"estado": "desconocido"}))
+            t["seg"] = int(time.time() - t.pop("t0", time.time()))
+            return self._envia(json.dumps(t).encode())
         if self.path.startswith("/ver/"):
             from urllib.parse import unquote
             f = OUT / unquote(self.path[5:])
@@ -162,12 +208,21 @@ class H(BaseHTTPRequestHandler):
             return self._envia(b"{}", code=404)
         n = int(self.headers.get("Content-Length", 0))
         d = json.loads(self.rfile.read(n) or b"{}")
-        r = generar(d.get("prompt", ""), d.get("calidad", "buena"),
-                    int(d.get("segundos", 5)))
-        self._envia(json.dumps(r).encode())
+        if not d.get("prompt", "").strip():
+            return self._envia(json.dumps({"error": "prompt vacío"}).encode())
+        ident = f"t{int(time.time()*1000)}"
+        with _LOCK:
+            TRABAJOS[ident] = {"estado": "trabajando", "t0": time.time()}
+        threading.Thread(target=trabajar, daemon=True, args=(
+            ident, d["prompt"], d.get("calidad", "buena"),
+            int(d.get("segundos", 5)))).start()
+        self._envia(json.dumps({"id": ident}).encode())
 
 
 if __name__ == "__main__":
     OUT.mkdir(parents=True, exist_ok=True)
     print(f"estudio escuchando en :{PUERTO}", flush=True)
-    HTTPServer(("127.0.0.1", PUERTO), H).serve_forever()
+    # Con hilos: mientras un clip se genera, la lista y el estado siguen
+    # respondiendo. Con el servidor de un solo hilo la página se quedaba
+    # congelada los minutos que durase la generación.
+    ThreadingHTTPServer(("127.0.0.1", PUERTO), H).serve_forever()
