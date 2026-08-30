@@ -105,6 +105,36 @@ PLANTILLAS = [
         ],
     },
     {
+        # ── EL PARTE DE JOSE, DOS VECES AL DIA ─────────────────────────────
+        #
+        # Hace falta plantilla y no se puede evitar: se comprobo el 30-ago que
+        # «Direct Send» —el modo de Meta que manda un mensaje de utilidad sin
+        # plantilla— NO esta habilitado en esta cuenta. La respuesta fue
+        # literal: «Direct Send is not enabled for this WhatsApp account. Use an
+        # approved message template instead.»
+        #
+        # Y hace falta porque un parte a las ocho de la mañana cae SIEMPRE
+        # fuera de las 24 horas desde el ultimo mensaje: si dependiera de que
+        # Jose escriba primero, no seria un parte, seria una respuesta.
+        #
+        # El resumen entero viaja en {{2}}. Un hueco de plantilla admite hasta
+        # unos mil caracteres, que es de sobra para un parte que se lee de pie.
+        # Y {{2}} NO puede ser lo ultimo del texto —Meta rechaza una variable al
+        # final—, por eso la linea de cierre.
+        'name': 'og_parte_del_dia',
+        'category': 'UTILITY',
+        'components': [
+            cuerpo(
+                'Parte de Orden Global — {{1}}\n\n'
+                '{{2}}\n\n'
+                'Escribime si querés que profundice en algo.',
+                ['jueves 8:00',
+                 '3 identidades esperando revisión · 12 premios por pagar · '
+                 'todo lo demás en orden']),
+            PIE,
+        ],
+    },
+    {
         'name': 'genesisid_identidad_rechazada',
         'category': 'UTILITY',
         'components': [
