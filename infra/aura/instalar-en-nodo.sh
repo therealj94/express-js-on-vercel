@@ -2,9 +2,17 @@
 # Instala el motor y el asistente en la maquina de AU-RA. Corre EN EL NODO,
 # mandado por SSM. Idempotente: correrlo dos veces no rompe nada.
 #
-# Espera en el entorno: U_ASISTENTE U_PROMPT U_SABER U_PROBADORES — las URL
-# firmadas para bajar cada archivo (el nodo no tiene permisos de S3 y no los
-# necesita: la firma viaja en la URL y muere en dos horas).
+# Espera en el entorno: U_ASISTENTE U_CANDADO U_OIDO U_WHATSAPP U_PROMPT
+# U_SABER U_PROBADORES — las URL firmadas para bajar cada archivo (el nodo no
+# tiene permisos de S3 y no los necesita: la firma viaja en la URL y muere en
+# dos horas).
+#
+# LOS MODULOS DE AL LADO NO SON OPCIONALES. `asistente.py` los importa arriba
+# del todo —candado, oido, whatsapp—, asi que si falta uno el servicio no
+# arranca: revienta con ImportError antes de la primera linea util. Estuvieron
+# fuera de esta lista un tiempo porque se desplegaron a mano por otra via, y
+# una reinstalacion limpia habria dejado a AU-RA sin arrancar sin que nada
+# explicara por que.
 set -e
 
 echo "== quien soy =="
@@ -40,6 +48,9 @@ ollama pull llama3.2
 echo "== la casa del asistente =="
 mkdir -p /srv/aura
 curl -sS --fail -o /srv/aura/asistente.py    "$U_ASISTENTE"
+curl -sS --fail -o /srv/aura/candado.py      "$U_CANDADO"
+curl -sS --fail -o /srv/aura/oido.py         "$U_OIDO"
+curl -sS --fail -o /srv/aura/whatsapp.py     "$U_WHATSAPP"
 curl -sS --fail -o /srv/aura/PROMPT-AURA.md  "$U_PROMPT"
 curl -sS --fail -o /srv/aura/saber.json      "$U_SABER"
 # la lista de probadores no se pisa si ya existe: puede tener gente agregada a
@@ -65,6 +76,12 @@ Environment=AURA_MODELO=llama3.2
 # paso en la prueba real del 27-ago.
 Environment=AURA_TIMEOUT=300
 Environment=AURA_PASO=1.2
+# WhatsApp. La clave NO se escribe aqui: va en /etc/aura-whatsapp.env, con
+# permisos 600, porque este archivo lo lee cualquiera que entre a la maquina y
+# `systemctl cat aura` lo imprime entero. El servicio arranca igual si el
+# archivo no existe (`-`), y entonces WhatsApp queda apagado y lo dice en el
+# registro — que es lo correcto: es una boca sin poner, no una averia.
+EnvironmentFile=-/etc/aura-whatsapp.env
 Restart=always
 RestartSec=8
 

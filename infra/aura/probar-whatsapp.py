@@ -308,5 +308,58 @@ class MismoTratoQueElRelevo(unittest.TestCase):
         self.assertEqual(faltan, [], f'le falta: {faltan}')
 
 
+
+class LaListaQueCasiLoMataEnSilencio(unittest.TestCase):
+    """La lista de WhatsApp es SUYA, no la de correos.
+
+    Aplicar `probadores.txt` —que tiene correos— a un numero de telefono no es
+    «cerrado a unos pocos»: es cerrado a todo el mundo, para siempre, y sin que
+    nada lo diga. Este fichero de pruebas existe en buena parte por esto.
+    """
+
+    def _cargar_asistente(self, carpeta):
+        """Carga solo la funcion, sin arrancar el asistente entero."""
+        import pathlib
+        fuente = pathlib.Path(__file__).with_name('asistente.py').read_text(
+            encoding='utf8')
+        i = fuente.index('def probadores_whatsapp()')
+        j = fuente.index('def vuelta_whatsapp(')
+        ambito = {'DATOS': carpeta}
+        exec(compile(fuente[i:j], 'asistente', 'exec'), ambito)
+        return ambito['probadores_whatsapp']
+
+    def test_sin_archivo_atiende_a_todos(self):
+        import pathlib, tempfile
+        with tempfile.TemporaryDirectory() as d:
+            f = self._cargar_asistente(pathlib.Path(d))
+            self.assertIsNone(f(), 'sin lista tiene que estar abierta')
+
+    def test_un_archivo_de_solo_comentarios_tambien_esta_abierto(self):
+        import pathlib, tempfile
+        with tempfile.TemporaryDirectory() as d:
+            (pathlib.Path(d) / 'probadores-whatsapp.txt').write_text(
+                '# nadie todavia\n\n', encoding='utf8')
+            f = self._cargar_asistente(pathlib.Path(d))
+            self.assertIsNone(f())
+
+    def test_NO_lee_la_lista_de_correos(self):
+        """El fallo que se estaba a punto de cometer: si leyera
+        `probadores.txt`, ningun telefono estaria dentro y AU-RA quedaria muda
+        en WhatsApp sin una sola señal."""
+        import pathlib, tempfile
+        with tempfile.TemporaryDirectory() as d:
+            (pathlib.Path(d) / 'probadores.txt').write_text(
+                'alguien@ejemplo.invalid\n', encoding='utf8')
+            f = self._cargar_asistente(pathlib.Path(d))
+            self.assertIsNone(f(), 'se coló la lista de correos: AU-RA quedaría muda')
+
+    def test_con_numeros_cierra_de_verdad(self):
+        import pathlib, tempfile
+        with tempfile.TemporaryDirectory() as d:
+            (pathlib.Path(d) / 'probadores-whatsapp.txt').write_text(
+                '# los de casa\n+50761234567\n', encoding='utf8')
+            f = self._cargar_asistente(pathlib.Path(d))
+            self.assertEqual(f(), {'+50761234567'})
+
 if __name__ == '__main__':
     unittest.main(verbosity=2)

@@ -1773,6 +1773,33 @@ def vuelta(rel, sistema, perfiles, tanda):
         tanda.submit(_uno)
 
 
+def probadores_whatsapp():
+    """A quien le contesta AU-RA en WhatsApp. VACIO O SIN ARCHIVO = A TODOS.
+
+    ── POR QUE NO SE REUSA `probadores()` ────────────────────────────────
+
+    Porque son dos espacios de direcciones distintos y mezclarlos mata el
+    puente en silencio. `probadores.txt` tiene CORREOS; en WhatsApp la gente
+    llega con un TELEFONO. Un telefono nunca va a estar en una lista de
+    correos, asi que aplicar esa lista aqui no es «cerrado a unos pocos»: es
+    CERRADO A TODO EL MUNDO, para siempre, sin que nada lo diga.
+
+    Y es exactamente el fallo que `probadores()` documenta como inaceptable —
+    alguien escribe, no pasa nada, y no hay forma de saber si esta roto o si no
+    te toca. Solo que peor, porque aqui no habria ni una persona que si pasara.
+
+    Asi que WhatsApp tiene su propia lista, con numeros, y con las mismas
+    reglas: sin archivo o vacia, abierta. Lo que protege el motor sigue siendo
+    cuanto se pide (TECHO_DIA, RAFAGA), no quien lo pide.
+    """
+    f = DATOS / 'probadores-whatsapp.txt'
+    if not f.exists():
+        return None
+    lista = {l.strip() for l in f.read_text().splitlines()
+             if l.strip() and not l.strip().startswith('#')}
+    return lista or None
+
+
 def vuelta_whatsapp(rel_wa, sistema, perfiles, tanda):
     """Lo mismo que `vuelta`, pero sobre WhatsApp.
 
@@ -1788,16 +1815,17 @@ def vuelta_whatsapp(rel_wa, sistema, perfiles, tanda):
     AU-RA por WhatsApp sale del mismo sitio que una por la wallet.
     """
     ahora_ms = int(time.time() * 1000)
-    lista = probadores()
+    lista = probadores_whatsapp()
     for conv in rel_wa.conversaciones():
         c = (conv.get('correo') or '').strip()
         if not c:
             continue
-        # La lista de probadores tambien manda aqui. Un numero de WhatsApp no
-        # esta en un archivo de correos, asi que se admite tal cual cuando la
-        # lista esta abierta y se exige explicitamente cuando no: abrir AU-RA a
-        # todo WhatsApp por olvido seria abrirla al mundo entero.
         if lista is not None and c not in lista:
+            # Se dice en el registro. La leccion esta en `probadores()`: a
+            # quien no estaba en la lista le llegaba SILENCIO, y desde fuera no
+            # habia forma de saber si el asistente estaba roto o si no te
+            # tocaba. Al menos que se vea desde dentro.
+            log('whatsapp: fuera de la lista, no se atiende:', c)
             continue
         with CANDADO_PERFILES:
             p = perfil_de(perfiles, c, tope=ahora_ms if c not in perfiles else None)
