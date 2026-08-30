@@ -88,6 +88,7 @@ import urllib.request
 
 from candado import Candado
 import whatsapp as wa
+import guardia
 from oido import NoSePudoOir, oir_nota
 from concurrent.futures import ThreadPoolExecutor
 
@@ -1485,12 +1486,30 @@ def atender(rel, sistema, p, de, dicho, mensaje=None):
     # Si el relevo no supiera editar (uno viejo, sin la ruta), la primera
     # frase igual salio y el resto se manda detras: peor, pero nunca mudo.
     creciendo = {'id': None, 'texto': ''}
+    cortado = {'por': None}
 
     def soltar(frase):
         """Cada frase terminada. La primera abre el globo; las demas lo
-        agrandan."""
+        agrandan.
+
+        Y aqui pasa EL GUARDIA. Se mira lo acumulado y no la frase suelta,
+        porque «bajo la Regulacion A de la SEC» puede quedar partido en dos
+        frases y ninguna de las dos, por si sola, dice nada raro.
+
+        Cuando salta, lo acumulado se sustituye entero y se deja de agrandar:
+        lo que venga detras ya no importa. En el chat de la casa el globo se
+        reescribe con la frase segura; en WhatsApp todavia no habia salido
+        nada, asi que sale limpio.
+        """
+        if cortado['por']:
+            return                      # ya salto: lo que siga no se manda
         try:
             junto = (creciendo['texto'] + ' ' + frase).strip()
+            revisado, motivo = guardia.revisar(junto)
+            if motivo:
+                log(f'GUARDIA ({motivo}) cortó la respuesta a', de)
+                cortado['por'] = motivo
+                junto = revisado
             if creciendo['id']:
                 rel.editar(creciendo['id'], junto, parcial=True)
             else:
@@ -1601,6 +1620,13 @@ def atender(rel, sistema, p, de, dicho, mensaje=None):
     # podes leerla en voz alta y dejar de esperar».
     if creciendo['id']:
         entero_visto = (creciendo['texto'] + (' ' + resto if resto else '')).strip()
+        # Y otra vez al cerrar, sobre el texto COMPLETO. Es la ultima puerta:
+        # `resto` es lo que quedo sin frase terminada y nunca paso por `soltar`,
+        # asi que sin esto podria colarse justo en el cierre.
+        entero_visto, motivo_cierre = guardia.revisar(entero_visto)
+        if motivo_cierre and not cortado['por']:
+            log(f'GUARDIA ({motivo_cierre}) cortó el cierre para', de)
+            cortado['por'] = motivo_cierre
         try:
             rel.editar(creciendo['id'], entero_visto, parcial=False)
         except wa.NoSalio:
@@ -1618,7 +1644,10 @@ def atender(rel, sistema, p, de, dicho, mensaje=None):
                 try: rel.enviar(de, resto)
                 except Exception: pass
     elif resto:
-        rel.enviar(de, resto)
+        resto_visto, motivo_resto = guardia.revisar(resto)
+        if motivo_resto:
+            log(f'GUARDIA ({motivo_resto}) cortó la respuesta suelta a', de)
+        rel.enviar(de, resto_visto)
     if not salio and not resto:
         # NO se dice «mi motor esta apagado»: el motor contesto, lo que paso
         # es que no quedo nada util. Ademas el prompt le prohibe hablar de
