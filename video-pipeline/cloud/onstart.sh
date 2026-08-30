@@ -30,7 +30,10 @@ python3.11 -m venv "$WORK/venv"; . "$WORK/venv/bin/activate"
 pip install -q --upgrade pip wheel
 pip install -q torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu128
 pip install -q "huggingface_hub[cli,hf_transfer]" websocket-client requests
-export HF_HUB_ENABLE_HF_TRANSFER=1 HF_HOME="$WORK/hf"
+# hf_transfer está deprecado y el backend nuevo (Xet) revienta con los ficheros
+# grandes de H3: "File reconstruction error: Internal Writer Error". Con el
+# host a 2 Gbps la descarga HTTP normal va sobrada, así que se desactiva Xet.
+export HF_HUB_DISABLE_XET=1 HF_HOME="$WORK/hf"
 [ -n "${HF_TOKEN:-}" ] && hf auth login --token "$HF_TOKEN" --add-to-git-credential
 
 # --- ComfyUI + nodos ---
@@ -63,13 +66,21 @@ fi
 
 M="$WORK/ComfyUI/models"; mkdir -p "$M"/{diffusion_models,text_encoders,vae,loras}
 stage() {  # repo, "patrones separados por espacio", destino
+  # Con reintentos: una descarga de 110 GB cortada a la mitad deja el pod
+  # inservible y ya ha pasado.
   # OJO: --include acepta UN patrón. Si se pasan varios seguidos, el CLI los
   # toma como nombres de fichero e IGNORA el filtro entero: se descarga el
   # repositorio completo (100+ GB) y el disco revienta. Un flag por patrón.
   local repo="$1" dst="$3" args=() pat
   for pat in $2; do args+=(--include "$pat"); done
-  hf download "$repo" "${args[@]}" --local-dir "$dst" \
-    || echo "!! fallo descargando $repo"
+  local intento
+  for intento in 1 2 3; do
+    hf download "$repo" "${args[@]}" --local-dir "$dst" && return 0
+    echo "!! descarga de $repo falló (intento ${intento}/3), reintentando..."
+    sleep 15
+  done
+  echo "!! FALLO DEFINITIVO descargando $repo"
+  return 1
 }
 # MODELS decide qué se baja: cada bloque que quitas son minutos y GB menos.
 #   h3   ~35 GB  vídeo (imprescindible)      flux ~35 GB  stills de alta calidad
