@@ -213,6 +213,26 @@ class RelevoWhatsApp:
         return {}
 
     def ficha(self, de):
+        """VACIA A PROPOSITO, y esto no es un hueco por llenar.
+
+        En el chat de la casa `ficha()` devuelve el nombre, el Genesis ID
+        declarado y la DIRECCION de la billetera, y con esa direccion
+        `quien_es()` consulta el saldo en la cadena y se lo pasa al modelo. Eso
+        esta bien ahi: la persona entro con su correo y su llave, y le estamos
+        contando a ella lo suyo.
+
+        En WhatsApp lo unico que sabemos de quien escribe es un NUMERO DE
+        TELEFONO. Nadie demostro que ese numero sea de la persona cuya
+        billetera se consultaria: no hay sesion, no hay llave, no hay vinculo.
+        Devolver aqui una ficha de verdad seria contarle el saldo de alguien a
+        quien tenga ese numero — un chip clonado, un telefono prestado, un
+        numero reciclado por la operadora.
+
+        Asi que devuelve vacio, y `quien_es()` no arma ninguna linea. El dia
+        que haya que atar un telefono a una identidad, se ata en Genesis ID con
+        su prueba, y ENTONCES se decide que se puede contar. No antes, y no
+        aqui.
+        """
         return {}
 
     # ── leer ────────────────────────────────────────────────────────────────

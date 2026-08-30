@@ -107,6 +107,23 @@ jobs:
           python3 probar-candado-aura.py
           python3 probar-oido.py
           python3 probar-modelo-existe.py
+          python3 probar-huella.py
+          python3 probar-asistente.py
+
+      # El guardia y el puente de WhatsApp. Van APARTE y sin la libreria de
+      # cripto porque no la necesitan, y porque son los dos que se escribieron
+      # despues de un fallo en produccion: si algun dia el bloque de arriba se
+      # cae por una dependencia, estos tienen que seguir corriendo igual.
+      #
+      # `probar-guardia.py` es el que importa mas. Sus dos primeras pruebas son
+      # los textos EXACTOS que AU-RA le mando a gente de verdad por WhatsApp
+      # —la mentira de la SEC y la respuesta que se fue al chino—. Que sigan en
+      # verde es lo unico que garantiza que no vuelvan a salir.
+      - name: El guardia de AU-RA y su puente de WhatsApp
+        working-directory: infra/aura
+        run: |
+          python3 probar-guardia.py
+          python3 probar-whatsapp.py
 
       - name: El relevo de mensajes
         working-directory: infra/mensajes

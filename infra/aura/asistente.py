@@ -331,9 +331,27 @@ def cargar_perfiles():
 
 
 def guardar_perfiles(p):
+    """Guarda los perfiles, con permisos, y de una pieza.
+
+    LOS PERMISOS NO SON CEREMONIA. Aqui dentro esta el historial de lo que la
+    gente le cuenta a AU-RA —ocho turnos por persona, con su nombre, a que se
+    dedica y que le preocupa del dinero—. Se escribia con los permisos que
+    tocara por defecto; que la carpeta sea 700 lo tapaba, pero un archivo con
+    datos de personas no puede depender de que el permiso este UN NIVEL MAS
+    ARRIBA. El dia que alguien copie la carpeta, mueva el archivo o cambie
+    `AURA_DATOS`, el dato viaja con los permisos que lleve puestos.
+
+    Y el temporal tambien: entre que se escribe y se renombra hay un archivo
+    completo con todo dentro. Se crea con 600 desde el primer byte.
+    """
     with CANDADO_PERFILES:
         tmp = DATOS / 'perfiles.tmp'
-        tmp.write_text(json.dumps(p, ensure_ascii=False, indent=1))
+        # `os.open` con el modo puesto: crear-y-luego-chmod deja una ventana en
+        # la que el archivo ya tiene el contenido y todavia no los permisos.
+        fd = os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_TRUNC,
+                     stat.S_IRUSR | stat.S_IWUSR)
+        with os.fdopen(fd, 'w', encoding='utf8') as fh:
+            json.dump(p, fh, ensure_ascii=False, indent=1)
         tmp.replace(DATOS / 'perfiles.json')   # atomico: nunca medio archivo
 
 

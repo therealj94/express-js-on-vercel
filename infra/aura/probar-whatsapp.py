@@ -533,5 +533,43 @@ class ElFrenoEstaDondeEstanLasLLAMADAS(unittest.TestCase):
                                     f'dos llamadas salieron pegadas ({b - a:.3f}s)')
 
 
+
+class NoSeCuentaElDineroDeNadiePorTelefono(unittest.TestCase):
+    """Hoy no se filtra un saldo por WhatsApp. Esta prueba existe para que siga
+    siendo una DECISION y no una casualidad.
+
+    En el chat de la casa, `ficha()` da la dirección de la billetera y con ella
+    `quien_es()` consulta el saldo y se lo pasa al modelo. Ahí está bien: la
+    persona entró con su correo y su llave.
+
+    En WhatsApp lo único que se sabe de quien escribe es un número. Nadie
+    demostró que ese número sea de esa persona. Si alguien «mejora» `ficha()`
+    para que devuelva datos de verdad, esta prueba se pone roja antes de que un
+    saldo llegue a un teléfono que no se verificó.
+    """
+
+    def test_la_ficha_de_whatsapp_no_da_NADA(self):
+        rel = wa.RelevoWhatsApp()
+        self.assertEqual(rel.ficha(QUIEN), {})
+
+    def test_ni_nombre_ni_gid_ni_direccion_de_billetera(self):
+        f = wa.RelevoWhatsApp().ficha(QUIEN)
+        for campo in ('nombre', 'gid', 'addr'):
+            self.assertNotIn(campo, f, f'«{campo}» viajaría al modelo por WhatsApp')
+
+    def test_asi_quien_es_no_arma_ninguna_linea(self):
+        """La comprobación de verdad: con la ficha vacía, la línea de contexto
+        que se le pasa al modelo sale vacía, así que no hay saldo que contar."""
+        rel = wa.RelevoWhatsApp()
+        f = rel.ficha(QUIEN)
+        partes = []
+        if (f.get('nombre') or '').strip():
+            partes.append('nombre')
+        if (f.get('gid') or '').strip():
+            partes.append('gid')
+        addr = (f.get('addr') or '').strip()
+        self.assertEqual(partes, [])
+        self.assertFalse(addr.startswith('0x'), 'habría dirección que consultar')
+
 if __name__ == '__main__':
     unittest.main(verbosity=2)
