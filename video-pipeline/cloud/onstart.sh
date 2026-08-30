@@ -22,9 +22,8 @@ python3.11 -m venv "$WORK/venv"; . "$WORK/venv/bin/activate"
 pip install -q --upgrade pip wheel
 pip install -q torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu128
 pip install -q "huggingface_hub[cli,hf_transfer]" websocket-client requests
-# hf_transfer está deprecado y el backend nuevo (Xet) revienta con los ficheros
-# grandes de H3: "File reconstruction error: Internal Writer Error". Con el
-# host a 2 Gbps la descarga HTTP normal va sobrada, así que se desactiva Xet.
+# Xet revienta con los ficheros grandes de H3 ("Internal Writer Error") y
+# hf_transfer está deprecado: descarga HTTP normal.
 export HF_HUB_DISABLE_XET=1 HF_HOME="$WORK/hf"
 [ -n "${HF_TOKEN:-}" ] && hf auth login --token "$HF_TOKEN" --add-to-git-credential
 
@@ -80,9 +79,19 @@ stage() {  # repo, "patrones separados por espacio", destino
 MODELS="${MODELS:-h3,flux,wan}"
 tiene() { case ",$MODELS," in *",$1,"*) return 0;; *) return 1;; esac; }
 
-tiene h3 && stage Comfy-Org/MiniMax-H3 "*${PREC}* *fl2va* *ref2va* *vae* *text_encoder*" "$M/_h3"
+# Ficheros EXACTOS, no patrones: el repo pesa 471 GB y "*bf16*" casa con 270,
+# incluyendo duplicados que no se usan. El juego mínimo son 42 GB.
+case "$PREC" in
+  bf16|fp8) DIF=minimax_h3_fl2va_pruned_fp8_scaled.safetensors
+            TXT=qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors ;;
+  *)        DIF=minimax_h3_fl2va_pruned_int8_convrot.safetensors
+            TXT=qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors ;;
+esac
+tiene h3 && stage Comfy-Org/MiniMax-H3 \
+  "diffusion_models/${DIF} text_encoders/${TXT} vae/minimax_h3_video_vae_fp16.safetensors vae/minimax_h3_audio_vae_fp32.safetensors" \
+  "$M/_h3"
 tiene wan && stage Comfy-Org/Wan_2.2_ComfyUI_Repackaged \
-  "split_files/diffusion_models/wan2.2_ti2v_5B* split_files/text_encoders/* split_files/vae/*" "$M/_wan"
+  "split_files/diffusion_models/wan2.2_ti2v_5B*" "$M/_wan"
 tiene flux && stage Comfy-Org/FLUX.2-dev_ComfyUI \
   "split_files/diffusion_models/*fp8* split_files/text_encoders/* split_files/vae/*" "$M/_img"
 hf download fal/MiniMax-H3-Realism-People-LoRA --local-dir "$M/loras/h3-realism" || true
