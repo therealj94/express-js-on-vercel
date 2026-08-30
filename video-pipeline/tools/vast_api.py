@@ -142,6 +142,8 @@ def main() -> int:
                 gzip.compress(Path(a.job).read_bytes(), 9)).decode()
             # El runner también tiene que viajar: sin SSH no hay forma de
             # copiarlo después.
+            env["ESTUDIO_B64"] = base64.b64encode(
+                gzip.compress(Path("cloud/estudio.py").read_bytes(), 9)).decode()
             env["JOB_RUNNER_B64"] = base64.b64encode(
                 gzip.compress(Path("03_run_queue.py").read_bytes(), 9)).decode()
             if a.workflows:

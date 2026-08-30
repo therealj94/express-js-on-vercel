@@ -56,10 +56,8 @@ if [ "$PREC" = "bf16" ] && [ "${LIBRE0:-999}" -lt 380 ]; then
 fi
 
 M="$WORK/ComfyUI/models"; mkdir -p "$M"/{diffusion_models,text_encoders,vae,loras}
-# Descarga con aria2c y 16 conexiones por fichero. El cliente de Hugging Face
-# usa UNA conexión y HF la limita a ~15-20 Mbps: tres hosts en tres países
-# dieron lo mismo, así que el cuello es HF, no la red del pod. Con 16 hilos
-# sube a cientos de Mbps.
+# aria2c con 16 conexiones: el cliente de HF usa una sola y HF la limita a
+# ~15-20 Mbps. Tres hosts dieron lo mismo, así que el cuello es HF.
 baja() {  # repo, ruta_dentro_del_repo, destino
   local url="https://huggingface.co/$1/resolve/main/$2"
   local dst="$3" nom="${2##*/}"
@@ -73,10 +71,8 @@ baja() {  # repo, ruta_dentro_del_repo, destino
   echo "!! FALLO DEFINITIVO: $nom"; return 1
 }
 
-# Un modelo para todo: H3 genera imagen fija además de vídeo, así que los
-# stills de casting salen del mismo modelo que los clips. Eso ahorra los 35 GB
-# de FLUX y, más importante, hace que la imagen de partida y el vídeo compartan
-# estética — que es justo lo que pide un look unificado.
+# Un modelo para todo: H3 hace imagen fija además de vídeo. Ahorra los 35 GB
+# de FLUX y hace que still y clip compartan estética.
 case "$PREC" in
   bf16|fp8) DIF=minimax_h3_fl2va_pruned_fp8_scaled.safetensors ;;
   *)        DIF=minimax_h3_fl2va_pruned_int8_convrot.safetensors ;;
@@ -98,9 +94,7 @@ echo "==> disco libre: ${LIBRE} GB"
 [ "${LIBRE:-99}" -lt 15 ] && echo "!! Queda poco disco: la generación puede fallar al guardar."
 
 # --- Voz y labial (VOZ=1) ---------------------------------------------------
-# La voz no se le pide al modelo de vídeo: su labial en español es una lotería
-# y esta pieza tiene una sola línea hablada. Se genera aparte y se sincroniza
-# encima. Chatterbox es abierto y en pruebas ciegas ganó a los de pago.
+# La voz aparte: el labial en español de H3 es una lotería.
 if [ "${VOZ:-0}" = "1" ]; then
   pip install -q chatterbox-tts || echo "!! chatterbox no instalado"
   d="$WORK/LatentSync"
@@ -124,6 +118,13 @@ if command -v nginx >/dev/null && command -v openssl >/dev/null; then
 server {
     listen ${PORT} default_server;
     client_max_body_size 512M;
+    location /estudio/ {
+        auth_basic           "video-pipeline";
+        auth_basic_user_file /etc/nginx/.htpasswd;
+        proxy_pass         http://127.0.0.1:9100/;
+        proxy_read_timeout 3600s;
+        proxy_send_timeout 3600s;
+    }
     location / {
         auth_basic           "video-pipeline";
         auth_basic_user_file /etc/nginx/.htpasswd;
@@ -188,6 +189,7 @@ if [ -n "${JOB_QUEUE_B64:-}" ]; then
   mkdir -p "$WORK/prompts"
   echo "$JOB_QUEUE_B64" | base64 -d | gunzip > "$WORK/prompts/cola.json"
   echo "${JOB_RUNNER_B64:-}" | base64 -d | gunzip > "$WORK/03_run_queue.py" 2>/dev/null
+  echo "${ESTUDIO_B64:-}" | base64 -d | gunzip > "$WORK/estudio.py" 2>/dev/null
   echo "${JOB_WORKFLOWS_B64:-}" | base64 -d > "$WORK/workflows.tar" 2>/dev/null && \
     tar xzf "$WORK/workflows.tar" -C "$WORK" 2>/dev/null
 
@@ -211,10 +213,8 @@ if [ -n "${JOB_QUEUE_B64:-}" ]; then
     # siguiente. Que los resultados salgan del pod no puede depender de un
     # único servicio gratuito — ni de que el puerto del pod sea alcanzable,
     # que en este proveedor a menudo no lo es.
-    # Servicios que devuelven la URL en TEXTO PLANO. El intento anterior usó
-    # file.io, que responde JSON envuelto en HTML: el parseo produjo enlaces
-    # falsos que en el log parecían correctos. Aquí no se parsea nada — se
-    # imprime la respuesta cruda, que además permite diagnosticar sin adivinar.
+    # Respuesta cruda, sin parsear: file.io devolvía JSON en HTML y el parseo
+    # producía enlaces falsos que en el log parecían buenos.
     echo "==> ENLACES DE DESCARGA"
     for f in "$WORK"/outputs/*.mp4; do
       [ -f "$f" ] || continue
@@ -231,6 +231,13 @@ if [ -n "${JOB_QUEUE_B64:-}" ]; then
     # Sin autodestrucción: la clave de instancia llega DESPUÉS de crear, y
     # poner la de la cuenta daría control total a una máquina ajena.
   fi
+fi
+
+# El estudio: la página simple que sí se puede usar desde un móvil. ComfyUI
+# sigue disponible en la raíz para quien quiera el editor de nodos.
+if [ -s "$WORK/estudio.py" ]; then
+  nohup "$WORK/venv/bin/python" -u "$WORK/estudio.py" >> "$WORK/estudio.log" 2>&1 &
+  echo "==> estudio en /estudio/"
 fi
 
 cat <<EOF
