@@ -236,8 +236,25 @@ fi
 # El estudio: la página simple que sí se puede usar desde un móvil. ComfyUI
 # sigue disponible en la raíz para quien quiera el editor de nodos.
 if [ -s "$WORK/estudio.py" ]; then
-  nohup "$WORK/venv/bin/python" -u "$WORK/estudio.py" >> "$WORK/estudio.log" 2>&1 &
-  echo "==> estudio en /estudio/"
+  # setsid: sin él el proceso muere con el grupo del onstart al terminar éste,
+  # y la página responde 502 sin dejar rastro en ningún log visible.
+  setsid nohup "$WORK/venv/bin/python" -u "$WORK/estudio.py" \
+    >> "$WORK/estudio.log" 2>&1 < /dev/null &
+  # Verificar el EFECTO, no la llamada: que el puerto conteste de verdad.
+  for _ in 1 2 3 4 5 6 7 8 9 10; do
+    curl -sf -m 3 -o /dev/null http://127.0.0.1:9100/ && break; sleep 2
+  done
+  if curl -sf -m 5 -o /dev/null http://127.0.0.1:9100/; then
+    echo "==> estudio VIVO en /estudio/"
+  else
+    echo "==> estudio NO ARRANCÓ. Motivo:"; tail -20 "$WORK/estudio.log"
+  fi
+  # Vigilante: si el estudio se cae, vuelve a levantarlo. Nadie puede entrar
+  # por SSH a reiniciarlo a mano.
+  setsid nohup bash -c 'while true; do sleep 20;
+    curl -sf -m 5 -o /dev/null http://127.0.0.1:9100/ ||
+      '"$WORK"'/venv/bin/python -u '"$WORK"'/estudio.py >> '"$WORK"'/estudio.log 2>&1;
+  done' > /dev/null 2>&1 < /dev/null &
 fi
 
 cat <<EOF
