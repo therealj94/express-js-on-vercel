@@ -571,5 +571,63 @@ class NoSeCuentaElDineroDeNadiePorTelefono(unittest.TestCase):
         self.assertEqual(partes, [])
         self.assertFalse(addr.startswith('0x'), 'habría dirección que consultar')
 
+class LasListasVANPORinteractive(unittest.TestCase):
+    """El campo se llama `interactive`, no `list`.
+
+    Mandarlo como `list` devuelve 200 CON su messageId y el proveedor tira la
+    lista en silencio: al teléfono llega el texto pelado. Pasó el 30-ago y
+    costó un rato entero, hasta que se leyó su documentación y se comprobó
+    mirando `metadata.waInteractive` del mensaje guardado — no el código de
+    respuesta, que miente."""
+
+    def _envio(self, filas, boton='Ver opciones'):
+        visto = {}
+
+        def _falso(metodo, ruta, cuerpo=None, timeout=25):
+            visto['ruta'], visto['cuerpo'] = ruta, cuerpo
+            return {'success': True}
+
+        rel = wa.RelevoWhatsApp(cuenta='c1')
+        rel._hilos['5049'] = 'h1'
+        with mock.patch.object(wa, '_pedir', _falso):
+            rel.con_lista('5049', 'texto', boton, filas)
+        return visto['cuerpo']
+
+    def test_el_campo_es_interactive_y_NO_list(self):
+        c = self._envio([('a', 'Uno')])
+        self.assertIn('interactive', c)
+        self.assertNotIn('list', c, 'usa el campo que el proveedor descarta')
+        self.assertEqual(c['interactive']['type'], 'list')
+
+    def test_lleva_la_forma_que_espera_meta(self):
+        c = self._envio([('of:negocio', 'Tengo un negocio')])
+        i = c['interactive']
+        self.assertIn('text', i['body'])
+        self.assertIn('button', i['action'])
+        fila = i['action']['sections'][0]['rows'][0]
+        self.assertEqual(fila['id'], 'of:negocio')
+        self.assertEqual(fila['title'], 'Tengo un negocio')
+
+    def test_diez_filas_es_el_techo_de_meta(self):
+        c = self._envio([(f'id{i}', f'Fila {i}') for i in range(15)])
+        self.assertEqual(len(c['interactive']['action']['sections'][0]['rows']), 10)
+
+    def test_un_titulo_largo_se_recorta_en_vez_de_tumbar_el_mensaje(self):
+        """Meta no recorta: rechaza el mensaje entero y la charla se queda
+        muda. Misma regla que los botones."""
+        c = self._envio([('a', 'T' * 60)])
+        self.assertEqual(len(c['interactive']['action']['sections'][0]['rows'][0]['title']),
+                         wa.RelevoWhatsApp.TOPE_FILA)
+
+    def test_una_fila_sin_descripcion_no_manda_el_campo_vacio(self):
+        fila = self._envio([('a', 'Uno')])['interactive']['action']['sections'][0]['rows'][0]
+        self.assertNotIn('description', fila)
+
+    def test_sin_hilo_no_revienta(self):
+        rel = wa.RelevoWhatsApp(cuenta='c1')
+        with mock.patch.object(wa, '_pedir', lambda *a, **k: {'data': []}):
+            self.assertEqual(rel.con_lista('nadie', 't', 'b', [('a', 'Uno')]), {})
+
+
 if __name__ == '__main__':
     unittest.main(verbosity=2)

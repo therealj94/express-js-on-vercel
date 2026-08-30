@@ -1549,6 +1549,25 @@ def atender(rel, sistema, p, de, dicho, mensaje=None):
     if 'pais' not in p:
         p['pais'] = guion.pais_de_numero(de)
 
+    def _mandar_nodo(cual):
+        """Un nodo, por el mejor camino que admita el canal.
+
+        Lista > botones > texto. Se decide AQUI y no en cada sitio: cuando
+        `oficio` paso de tres botones a siete filas, sin esto habria habido
+        que acordarse de los tres sitios que lo mandaban.
+        """
+        n = guion.nodo(cual, idi, p.get('nombre', ''), p.get('pais', ''))
+        if n.get('lista') and hasattr(rel, 'con_lista'):
+            boton, filas = n['lista']
+            rel.con_lista(de, n['texto'], boton, filas)
+        elif n.get('botones') and hasattr(rel, 'con_botones'):
+            rel.con_botones(de, n['texto'], n['botones'])
+        else:
+            rel.enviar(de, guion.como_texto(cual, idi, p.get('nombre', ''),
+                                            p.get('pais', '')))
+        return n
+
+
     # ── LA PUERTA DEL IDIOMA VA PRIMERO. SIEMPRE ────────────────────────────
     #
     # Esto estaba mal y se vio en la prueba de Jose del 30-ago a las 18:14:
@@ -1569,7 +1588,8 @@ def atender(rel, sistema, p, de, dicho, mensaje=None):
         registro.anotar('idioma', cual=elegido)
         p['nodo'] = guion.TRAS_ELEGIR_IDIOMA
         registro.anotar('guion', nodo=p['nodo'])
-        rel.enviar(de, guion.nodo(p['nodo'], elegido)['texto'])
+        idi = elegido
+        _mandar_nodo(p['nodo'])
         return
 
     if not p.get('idioma'):
@@ -1627,8 +1647,7 @@ def atender(rel, sistema, p, de, dicho, mensaje=None):
             if pide_mas:
                 p['nodo'] = 'oficio-otro'
                 p['visto'] = int(time.time())
-                rel.enviar(de, guion.nodo('oficio-otro', idi,
-                                          p.get('nombre', ''))['texto'])
+                _mandar_nodo('oficio-otro')
                 return
             escrito = ' '.join((dicho or '').split())[:40]
             # Se guarda como lo dice la persona, sin normalizar contra ninguna
@@ -1640,12 +1659,7 @@ def atender(rel, sistema, p, de, dicho, mensaje=None):
         p['nodo'] = destino
         p['visto'] = int(time.time())
         registro.anotar('guion', nodo=destino)
-        n = guion.nodo(destino, idi, p.get('nombre', ''), p.get('pais', ''))
-        if n.get('botones') and hasattr(rel, 'con_botones'):
-            rel.con_botones(de, n['texto'], n['botones'])
-        else:
-            rel.enviar(de, guion.como_texto(destino, idi, p.get('nombre', ''),
-                                            p.get('pais', '')))
+        _mandar_nodo(destino)
         return
 
     destino = guion.por_toque(toco) or guion.por_texto(dicho, p.get('nodo'))

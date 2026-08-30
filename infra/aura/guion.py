@@ -137,44 +137,59 @@ NODOS = {
         'espera': 'nombre',
     },
 
-    # ── UNA SOLA PREGUNTA, Y LOS BOTONES SON ATAJOS ─────────────────────────
+    # ── UNA SOLA PREGUNTA, CON SIETE OPCIONES ───────────────────────────────
     #
-    # Eran dos —pais y oficio— y Jose pidio juntarlas. El pais ya no se
-    # pregunta: sale del prefijo del numero (ver `pais_de_numero`), asi que
-    # queda una sola y el embudo se acorta un mensaje entero.
+    # Eran dos preguntas —pais y oficio— y Jose pidio juntarlas y dar mas
+    # opciones. El pais ya no se pregunta (sale del prefijo del numero) y el
+    # oficio usa una LISTA de WhatsApp, no botones: hasta diez filas, cada una
+    # con su subtitulo.
     #
-    # POR QUE TRES BOTONES Y NO DIEZ. Jose pidio «más opciones o poner otro y
-    # especificar». WhatsApp tiene listas de hasta diez filas, asi que se
-    # probo contra el proveedor de verdad: contesta 200 y TIRA la lista en
-    # silencio — al telefono llega solo el texto pelado. Comprobado el 30-ago
-    # mirando el mensaje guardado, no la documentacion.
+    # Que se pudiera no era obvio. Probado con el campo `list` devolvia 200 y
+    # el proveedor tiraba la lista en silencio; el campo bueno es
+    # `interactive`, y se supo leyendo su documentacion despues de que el 200
+    # enganara una vez. Ver `whatsapp.con_lista`.
     #
-    # Asi que tres, y el tercero es «Otro» — que no es un cajon de sastre: es
-    # el permiso explicito para escribir. La linea «escribilo como quieras»
-    # esta arriba porque la mayoria no toca ningun boton, y quien escribe
-    # «enfermera» o «taxista de noche» nos dice mas que cualquier categoria
-    # nuestra.
+    # Las descripciones son la mitad del valor: «Tengo un negocio / Pulpería,
+    # taller, tienda» se reconoce sin pensarlo. Y la ultima fila deja escribir,
+    # porque ninguna lista cubre a todo el mundo.
     'oficio': {
         'texto': {
             'es': ('{nombre}, ¿a qué te dedicás?\n\n'
-                   'Escribímelo como quieras — o tocá una de estas si te '
-                   'queda cómoda.'),
+                   'Elegí la que más se parezca — o escribímelo con tus '
+                   'palabras, como prefieras.'),
             'en': ('{nombre}, what do you do?\n\n'
-                   'Write it however you like — or tap one of these if it '
-                   'fits.'),
+                   'Pick the closest one — or just write it in your own '
+                   'words, whichever you prefer.'),
         },
-        'botones': {
-            'es': [('Tengo un negocio', 'of:negocio'),
-                   ('Trabajo asalariado', 'of:asalariado'),
-                   ('Otro', 'of:otro')],
-            'en': [('I have a business', 'of:negocio'),
-                   ('I am employed', 'of:asalariado'),
-                   ('Other', 'of:otro')],
+        # SIN EJEMPLOS, lo pidio Jose. Y tiene razon de sobra: un ejemplo
+        # ACOTA en vez de abrir. Quien lee «Tengo un negocio / Pulpería,
+        # taller, tienda» y tiene una barberia duda de si cuenta; sin el
+        # subtitulo, «Tengo un negocio» le queda perfecto. La lista se lee
+        # ademas de un vistazo, que es de lo que se trata.
+        'lista': {
+            'es': ('Ver opciones', [
+                ('of:negocio', 'Tengo un negocio'),
+                ('of:asalariado', 'Tengo un empleo'),
+                ('of:independiente', 'Trabajo por mi cuenta'),
+                ('of:remesas', 'Recibo remesas'),
+                ('of:agro', 'Trabajo en el campo'),
+                ('of:estudiante', 'Estudio'),
+                ('of:otro', 'Otra cosa'),
+            ]),
+            'en': ('See options', [
+                ('of:negocio', 'I have a business'),
+                ('of:asalariado', 'I have a job'),
+                ('of:independiente', 'I work for myself'),
+                ('of:remesas', 'I receive remittances'),
+                ('of:agro', 'I work the land'),
+                ('of:estudiante', 'I study'),
+                ('of:otro', 'Something else'),
+            ]),
         },
         'espera': 'oficio',
     },
 
-    # Quien toca «Otro» pidio escribir. Se le pregunta y se espera.
+    # Quien elige «Otra cosa» pidio escribir. Se le pregunta y se espera.
     'oficio-otro': {
         'texto': {
             'es': 'Contame vos, {nombre}: ¿a qué te dedicás?',
@@ -795,6 +810,7 @@ def nodo(nombre, idioma=POR_OMISION, quien='', pais=''):
                  else _sin_nombre(texto))
     return {'texto': texto,
             'botones': _en(n.get('botones'), idioma),
+            'lista': _en(n.get('lista'), idioma),
             'espera': n.get('espera')}
 
 
@@ -833,8 +849,14 @@ TRAS_ELEGIR_IDIOMA = 'nombre'
 
 # Los botones del oficio no llevan a un nodo: son la RESPUESTA a la pregunta.
 # Dos se guardan tal cual y el tercero abre el texto libre.
-OFICIOS = {'of:negocio': {'es': 'tengo un negocio', 'en': 'I have a business'},
-           'of:asalariado': {'es': 'trabajo asalariado', 'en': 'employed'}}
+OFICIOS = {
+    'of:negocio': {'es': 'tengo un negocio', 'en': 'I have a business'},
+    'of:asalariado': {'es': 'trabajo asalariado', 'en': 'employed'},
+    'of:independiente': {'es': 'trabajo por mi cuenta', 'en': 'self-employed'},
+    'of:remesas': {'es': 'recibo remesas', 'en': 'receives remittances'},
+    'of:agro': {'es': 'trabajo en el campo', 'en': 'works in farming'},
+    'of:estudiante': {'es': 'estudio', 'en': 'studies'},
+}
 
 
 def oficio_de_toque(id_boton, idioma=POR_OMISION):

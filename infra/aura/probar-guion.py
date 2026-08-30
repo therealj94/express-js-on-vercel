@@ -581,19 +581,32 @@ class UnaSolaPreguntaYELOTRODEJAESCRIBIR(unittest.TestCase):
         self.assertTrue(pide_mas)
         self.assertEqual(guion.nodo('oficio-otro', 'es')['espera'], 'oficio')
 
-    def test_la_pregunta_INVITA_a_escribir_antes_de_ofrecer_botones(self):
-        """El proveedor tira las listas de WhatsApp en silencio (comprobado
-        contra la API el 30-ago), así que con tres botones el texto libre no es
-        el respaldo: es el camino principal."""
-        for idioma, frase in (('es', 'como quieras'), ('en', 'however you like')):
+    def test_la_pregunta_INVITA_a_escribir_ademas_de_la_lista(self):
+        """Ninguna lista cubre a todo el mundo, y quien escribe «enfermera»
+        nos dice más que cualquier fila nuestra."""
+        for idioma, frase in (('es', 'con tus palabras'),
+                              ('en', 'in your own words')):
             self.assertIn(frase, guion.nodo('oficio', idioma, 'Ana')['texto'])
 
-    def test_y_los_tres_botones_caben_en_whatsapp(self):
+    def test_la_lista_da_SIETE_opciones_y_cabe_en_whatsapp(self):
+        import whatsapp
         for idioma in guion.IDIOMAS:
-            botones = guion.nodo('oficio', idioma)['botones']
-            self.assertEqual(len(botones), 3)
-            for titulo, _ in botones:
-                self.assertLessEqual(len(titulo), guion.TOPE_BOTON, titulo)
+            boton, filas = guion.nodo('oficio', idioma)['lista']
+            self.assertEqual(len(filas), 7, idioma)
+            self.assertLessEqual(len(filas), whatsapp.RelevoWhatsApp.TOPE_FILAS)
+            self.assertLessEqual(len(boton), 20, boton)
+            for fila in filas:
+                self.assertLessEqual(len(fila[1]),
+                                     whatsapp.RelevoWhatsApp.TOPE_FILA, fila[1])
+
+    def test_las_opciones_NO_llevan_ejemplos(self):
+        """Lo pidió José, y tiene razón: un ejemplo ACOTA en vez de abrir.
+        Quien lee «Tengo un negocio / Pulpería, taller, tienda» y tiene una
+        barbería duda de si cuenta."""
+        for idioma in guion.IDIOMAS:
+            for fila in guion.nodo('oficio', idioma)['lista'][1]:
+                self.assertEqual(len(fila), 2,
+                                 f'«{fila[1]}» lleva ejemplo: {fila[2:]}')
 
 
 if __name__ == '__main__':

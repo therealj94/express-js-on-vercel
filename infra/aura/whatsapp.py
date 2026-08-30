@@ -357,6 +357,46 @@ class RelevoWhatsApp:
                         for t, d in (botones or [])[:3]],
         })
 
+    # WhatsApp corta el titulo de una fila en 24 caracteres y la descripcion
+    # en 72. Diez filas es el techo de Meta.
+    TOPE_FILA, TOPE_DESC, TOPE_FILAS = 24, 72, 10
+
+    def con_lista(self, para, texto, boton, filas):
+        """Un mensaje con hasta DIEZ opciones, cada una con su subtitulo.
+
+        Tres botones era el techo que creiamos tener. El campo se llama
+        `interactive` y no `list` — probar con el nombre equivocado devuelve
+        200 y el proveedor tira la lista EN SILENCIO, que fue exactamente el
+        rato que se perdio el 30-ago antes de leer su documentacion. El 200 no
+        prueba nada: lo que prueba es `metadata.waInteractive` en el mensaje
+        guardado.
+
+        `filas` son `(id, titulo, descripcion)`. La descripcion es el lujo que
+        no dan los botones: «Tengo un negocio / Pulpería, taller, tienda» se
+        entiende sin pensarlo, y quien duda se reconoce en el subtitulo.
+        """
+        hilo = self._hilo_de(para)
+        if not hilo:
+            self.log('sin hilo para', para, '- no se pudo guiar')
+            return {}
+        rows = []
+        for f in (filas or [])[:self.TOPE_FILAS]:
+            fid, titulo = f[0], f[1]
+            desc = f[2] if len(f) > 2 else ''
+            fila = {'id': str(fid)[:200], 'title': str(titulo)[:self.TOPE_FILA]}
+            if desc:
+                fila['description'] = str(desc)[:self.TOPE_DESC]
+            rows.append(fila)
+        return _pedir('POST', f'/inbox/conversations/{hilo}/messages', {
+            'accountId': self.cuenta,
+            'interactive': {
+                'type': 'list',
+                'body': {'text': (texto or '').strip()[:1024]},
+                'action': {'button': str(boton)[:20],
+                           'sections': [{'rows': rows}]},
+            },
+        })
+
     def enviar(self, para, texto, parcial=False):
         """Manda, o guarda si es un trozo.
 
