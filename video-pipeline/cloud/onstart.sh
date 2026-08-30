@@ -203,7 +203,17 @@ if [ -n "${JOB_QUEUE_B64:-}" ]; then
     COMFY_URL=http://127.0.0.1:9000 stdbuf -oL -eL "$WORK/venv/bin/python" -u "$WORK/03_run_queue.py" \
         --queue "$WORK/prompts/cola.json" --out "$WORK/outputs" 2>&1
     # Dar tiempo a que rclone suba lo último antes de que nadie destruya nada.
-    sleep 90
+    sleep 20
+    # Sacar los resultados del pod sin depender de que nadie entre a
+    # descargarlos: un enlace público por clip, impreso en el log. Sin cuentas
+    # ni credenciales. Los enlaces caducan solos a los pocos días.
+    echo "==> ENLACES DE DESCARGA"
+    for f in "$WORK"/outputs/*.mp4 "$WORK"/outputs/*.png; do
+      [ -f "$f" ] || continue
+      U=$(curl -s --max-time 300 -F "file=@${f}" https://0x0.st 2>/dev/null | tr -d '\r\n')
+      case "$U" in http*) echo "    $(basename "$f") -> $U" ;;
+                   *)     echo "    $(basename "$f") -> no se pudo subir" ;; esac
+    done
     echo "==> TRABAJO COMPLETO"   # el guardián ve esto y destruye la instancia
 
     # Sin autodestrucción: la clave de instancia llega DESPUÉS de crear, y
