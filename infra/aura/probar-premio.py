@@ -115,6 +115,24 @@ class LaDireccion(unittest.TestCase):
         mismo no tiene sentido, y peor: haría que el registro la marque como
         cobrada y nadie más pudiera usarla."""
         self.assertIsNotNone(premio.problema_con(premio.BILLETERA_PREMIOS.lower()))
+
+    def test_TAMBIEN_se_rechaza_la_billetera_VIEJA_de_premios(self):
+        """La de premios cambió, y la vieja anduvo circulando: está en
+        mensajes, en notas y en la versión anterior del archivo. Alguien la
+        puede pegar de buena fe. Si solo se rechazara la que paga hoy, mandarnos
+        la vieja sería un premio pagado a una cuenta nuestra — y en una cadena
+        eso no se deshace."""
+        vieja = '0x746268404cc9ca2ef0ac344f02b236db232c3ad8'
+        self.assertIsNotNone(premio.problema_con(vieja))
+        self.assertIsNotNone(premio.problema_con(vieja.upper().replace('0X', '0x')))
+
+    def test_ninguna_billetera_nuestra_se_puede_cobrar(self):
+        for w in premio.BILLETERAS_INTERNAS:
+            self.assertIsNotNone(premio.problema_con(w), w)
+
+    def test_la_de_alguien_mas_SI_se_paga(self):
+        self.assertIsNone(
+            premio.problema_con('0x1111111111111111111111111111111111111111'))
         self.assertIsNone(premio.problema_con(UNA))
 
     def test_la_de_premios_tiene_forma_valida(self):

@@ -75,10 +75,27 @@ PREMIO = '1 ORIGEN'
 #     veinte.
 TOPE_PREMIOS = int(os.environ.get('AURA_TOPE_PREMIOS', '200'))
 
-# De donde salen los premios. Es publica —una direccion siempre lo es— y esta
-# aqui para dos cosas: para que quien pague sepa de donde, y para RECHAZARLA si
-# alguien la manda como suya.
-BILLETERA_PREMIOS = '0x746268404cc9ca2ef0ac344f02b236db232c3ad8'
+# De donde salen los premios: la billetera de mercadeo. Es publica —una
+# direccion siempre lo es— y esta aqui para dos cosas: para que quien pague
+# sepa de donde, y para RECHAZARLA si alguien la manda como suya.
+BILLETERA_PREMIOS = os.environ.get(
+    'AURA_BILLETERA_PREMIOS',
+    '0xdb11c06794d779eaf8aac59f099ae32ef493bdd4').lower()
+
+# NUESTRAS billeteras, todas. No solo la que paga hoy.
+#
+# La de premios cambio —antes era la 0x7462…— y esa direccion vieja anduvo
+# circulando: esta en mensajes, en notas y en la version anterior de este
+# archivo. Alguien puede pegarla de buena fe creyendo que es la suya, o no tan
+# de buena fe. Si solo se rechazara la que paga hoy, mandarnos la vieja seria
+# un premio pagado a una cuenta nuestra, y en una cadena eso no se deshace.
+#
+# Una direccion que sale de esta lista no vuelve a entrar: quitar una de aqui
+# es abrir exactamente ese agujero.
+BILLETERAS_INTERNAS = {
+    BILLETERA_PREMIOS,
+    '0x746268404cc9ca2ef0ac344f02b236db232c3ad8',   # la anterior de premios
+}
 
 _candado = threading.Lock()
 
@@ -208,11 +225,11 @@ def problema_con(direccion):
     """Por que NO se puede pagar a esa direccion. `None` si esta bien."""
     if not direccion:
         return None
-    if direccion == BILLETERA_PREMIOS.lower():
-        # Alguien mandando la direccion de la que salen los premios. No es
-        # necesariamente picardia —puede haberla copiado de algun sitio— pero
-        # pagarse a uno mismo no tiene ningun sentido.
-        return 'Esa es la billetera desde la que mandamos los premios. Mandame la tuya.'
+    if direccion.lower() in BILLETERAS_INTERNAS:
+        # Alguien mandando una billetera nuestra. No es necesariamente picardia
+        # —la vieja de premios anduvo circulando y se puede copiar de buena fe—
+        # pero pagarnos a nosotros mismos no tiene ningun sentido.
+        return 'Esa es una billetera nuestra. Mandame la tuya.'
     return None
 
 

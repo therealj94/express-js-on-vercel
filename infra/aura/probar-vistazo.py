@@ -300,5 +300,62 @@ class LosReiniciosQueNADIEVE(unittest.TestCase):
             self._corre('', codigo=1)
 
 
+class LaBilleteraQuePAGA(unittest.TestCase):
+    """Prometer 200 premios con la billetera vacía es el fallo que no avisa:
+    nadie lo nota hasta que alguien gana, manda su dirección, y no hay con qué
+    pagarle — y para entonces ya se prometió en público."""
+
+    def _saldo(self, origen):
+        crudo = ('{"result":"0x%x"}' % int(origen * 10 ** 18)).encode()
+        r = mock.MagicMock()
+        r.__enter__.return_value.read.return_value = crudo
+        return mock.patch.object(vistazo.urllib.request, 'urlopen', return_value=r)
+
+    def test_si_NO_alcanza_es_un_pendiente(self):
+        with self._saldo(30):
+            lineas, pend = vistazo._billetera('0xdb11', quedan=185)
+        self.assertTrue(pend)
+        self.assertIn('30 ORIGEN', pend[0])
+        self.assertIn('185 premios', pend[0])
+
+    def test_si_alcanza_es_solo_un_dato(self):
+        with self._saldo(501):
+            lineas, pend = vistazo._billetera('0xdb11', quedan=185)
+        self.assertEqual(pend, [])
+        self.assertIn('501 ORIGEN', lineas[0])
+
+    def test_sin_direccion_no_se_inventa_nada(self):
+        self.assertEqual(vistazo._billetera('', 200), ([], []))
+
+    def test_la_direccion_sale_del_MODULO_no_de_una_copia(self):
+        """Dos sitios con la misma dirección es un sitio donde queda la vieja."""
+        class P:
+            BILLETERA_PREMIOS = '0xdb11c06794d779eaf8aac59f099ae32ef493bdd4'
+            def resumen(self): return {'quedan': 200, 'tope': 200}
+        vistas = []
+        with mock.patch.object(vistazo, '_genesis', return_value=([], [])), \
+             mock.patch.object(vistazo, '_cadena', return_value=([], [])), \
+             mock.patch.object(vistazo, '_whatsapp', return_value=([], [])), \
+             mock.patch.object(vistazo, '_correo', return_value=([], [])), \
+             mock.patch.object(vistazo, '_reinicios', return_value=([], [])), \
+             mock.patch.object(vistazo, '_billetera',
+                               side_effect=lambda d, q: (vistas.append(d), ([], []))[1]):
+            vistazo.juntar(premio=P())
+        self.assertEqual(vistas, [P.BILLETERA_PREMIOS])
+
+    def test_una_billetera_que_no_se_puede_consultar_SE_DICE(self):
+        class P:
+            BILLETERA_PREMIOS = '0xdb11'
+            def resumen(self): return {'quedan': 200, 'tope': 200}
+        with mock.patch.object(vistazo, '_genesis', return_value=([], [])), \
+             mock.patch.object(vistazo, '_cadena', return_value=([], [])), \
+             mock.patch.object(vistazo, '_whatsapp', return_value=([], [])), \
+             mock.patch.object(vistazo, '_correo', return_value=([], [])), \
+             mock.patch.object(vistazo, '_reinicios', return_value=([], [])), \
+             mock.patch.object(vistazo, '_billetera', side_effect=OSError('rpc caído')):
+            d = vistazo.juntar(premio=P())
+        self.assertTrue(any('billetera' in r for r in d['rotas']))
+
+
 if __name__ == '__main__':
     unittest.main(verbosity=2)

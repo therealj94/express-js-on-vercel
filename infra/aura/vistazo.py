@@ -133,6 +133,32 @@ def _whatsapp(clave, cuenta):
     return lineas, pend
 
 
+def _billetera(direccion, quedan):
+    """Si la billetera que paga los premios alcanza para los que faltan.
+
+    POR QUE ESTA AQUI: prometer doscientos premios con la billetera vacia es el
+    fallo que no avisa. Nadie lo nota hasta que alguien gana, manda su
+    direccion, y no hay con que pagarle — y para entonces ya se prometio en
+    publico. La cuenta es de primaria y no la estaba haciendo nadie.
+
+    Se pregunta a la cadena, que es la unica fuente que no se puede quedar
+    vieja. Sin direccion no se mira nada y no se inventa.
+    """
+    if not direccion:
+        return [], []
+    cuerpo = json.dumps({'jsonrpc': '2.0', 'method': 'eth_getBalance',
+                         'params': [direccion, 'latest'], 'id': 1}).encode()
+    req = urllib.request.Request(RPC, data=cuerpo,
+                                 headers={'Content-Type': 'application/json'})
+    with urllib.request.urlopen(req, timeout=20) as r:
+        saldo = int(json.loads(r.read())['result'], 16) / 10 ** 18
+
+    if quedan and saldo < quedan:
+        return [], [f'la billetera de premios tiene {saldo:.0f} ORIGEN y faltan '
+                    f'{quedan} premios por dar']
+    return [f'billetera de premios: {saldo:.0f} ORIGEN'], []
+
+
 # Cuantos reinicios en 24h dejan de ser normales. Uno o dos es un despliegue;
 # ocho es algo que se esta cayendo solo y `Restart=always` lo esta tapando.
 TOPE_REINICIOS = int(os.environ.get('AURA_TOPE_REINICIOS', '4'))
@@ -252,6 +278,12 @@ def juntar(registro=None, premio=None, clave_wa='', cuenta_wa=''):
                 lineas.append(f'quedan {p["quedan"]} de {p["tope"]} premios')
         except Exception as e:
             rotas.append(f'los premios no se pudieron leer ({type(e).__name__})')
+            p = {}
+        # La direccion se le pregunta al propio modulo en vez de repetirla aqui:
+        # dos sitios con la misma direccion es un sitio donde queda la vieja.
+        mirar('la billetera de premios',
+              lambda: _billetera(getattr(premio, 'BILLETERA_PREMIOS', ''),
+                                 p.get('quedan') or 0))
 
     return {'pendientes': pendientes, 'lineas': lineas, 'rotas': rotas}
 
