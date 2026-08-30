@@ -1,0 +1,8 @@
+[Unit]
+Description=Copia de los datos de AU-RA a S3
+After=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/copia-aura.sh
+Environment=AURA_DATOS=/srv/aura

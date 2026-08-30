@@ -269,5 +269,36 @@ class ElCorreo(unittest.TestCase):
         self.assertIn('BODY.PEEK[', fuente)
 
 
+class LosReiniciosQueNADIEVE(unittest.TestCase):
+    """`Restart=always` hace que un servicio que se cae cada media hora se vea
+    igual que uno sano: «active (running)». Había 47 arranques en el journal y
+    nadie lo sabía."""
+
+    def _corre(self, salida, codigo=0):
+        r = mock.Mock(returncode=codigo, stdout=salida, stderr='')
+        with mock.patch.object(vistazo.shutil, 'which', return_value='/usr/bin/journalctl'), \
+             mock.patch.object(vistazo.subprocess, 'run', return_value=r):
+            return vistazo._reinicios()
+
+    def test_muchos_reinicios_son_un_PENDIENTE(self):
+        _, pend = self._corre('AU-RA de pie\n' * 47)
+        self.assertTrue(pend)
+        self.assertIn('47', pend[0])
+
+    def test_uno_o_dos_es_un_despliegue_y_no_alarma(self):
+        lineas, pend = self._corre('AU-RA de pie\n' * 2)
+        self.assertEqual(pend, [])
+        self.assertIn('2 reinicio', lineas[0])
+
+    def test_sin_journalctl_se_calla_en_vez_de_inventar(self):
+        """Otra máquina, no una avería. Igual que el correo sin credenciales."""
+        with mock.patch.object(vistazo.shutil, 'which', return_value=None):
+            self.assertEqual(vistazo._reinicios(), ([], []))
+
+    def test_pero_si_journalctl_FALLA_eso_si_se_dice(self):
+        with self.assertRaises(OSError):
+            self._corre('', codigo=1)
+
+
 if __name__ == '__main__':
     unittest.main(verbosity=2)

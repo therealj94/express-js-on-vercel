@@ -64,12 +64,63 @@ def _datos_falsos(pendientes=('12 premios por pagar',)):
 class _Base(unittest.TestCase):
     def correr(self, rel, plantillas, para=('50432136457',)):
         with mock.patch.object(pd, 'PARA', list(para)), \
+             mock.patch.object(pd.registro, 'preparar'), \
+             mock.patch.object(pd.premio, 'preparar'), \
              mock.patch.object(pd.vistazo, 'juntar', return_value=_datos_falsos()), \
              mock.patch.object(pd.registro, 'anotar'), \
              mock.patch.object(pd.whatsapp, 'RelevoWhatsApp', return_value=rel), \
              mock.patch.object(pd.whatsapp, '_pedir', plantillas), \
              mock.patch.object(pd.time, 'sleep'):
             return pd.main()
+
+
+class ElParteABRELOSARCHIVOS(unittest.TestCase):
+    """El fallo del 30-ago, y de los peores: mentir tranquilizando.
+
+    `registro` y `premio` guardan la carpeta en una global que pone
+    `preparar()`. En `asistente.py` la pone el arranque — pero el parte corre
+    como servicio SUELTO, otro proceso y otra memoria, y ahí nadie la ponía.
+
+    Sin carpeta los dos módulos no leen nada Y NO LANZAN: `premio.resumen()`
+    contesta «quedan 200 de 200» y `registro.resumen()` contesta cero. Con 40
+    premios entregados el parte habría seguido diciendo 200, tan campante.
+
+    Una fuente rota que se calla ya la cubren las pruebas de `vistazo`. Ésta
+    cubre la otra mitad: una fuente que ni se abrió y contesta ceros."""
+
+    def test_prepara_registro_y_premio_ANTES_de_mirar(self):
+        orden = []
+        rel = RelevoFalso()
+        with mock.patch.object(pd, 'PARA', ['50432136457']), \
+             mock.patch.object(pd.registro, 'preparar',
+                               side_effect=lambda d: orden.append('registro')), \
+             mock.patch.object(pd.premio, 'preparar',
+                               side_effect=lambda d: orden.append('premio')), \
+             mock.patch.object(pd.vistazo, 'juntar',
+                               side_effect=lambda **k: (orden.append('mirar'),
+                                                        _datos_falsos())[1]), \
+             mock.patch.object(pd.registro, 'anotar'), \
+             mock.patch.object(pd.whatsapp, 'RelevoWhatsApp', return_value=rel), \
+             mock.patch.object(pd.whatsapp, '_pedir', mock.Mock()), \
+             mock.patch.object(pd.time, 'sleep'):
+            pd.main()
+        self.assertIn('registro', orden, 'no preparó el registro: anota en el vacío')
+        self.assertIn('premio', orden, 'no preparó los premios: informaría 200 siempre')
+        self.assertLess(orden.index('registro'), orden.index('mirar'))
+        self.assertLess(orden.index('premio'), orden.index('mirar'))
+
+    def test_les_pasa_la_MISMA_carpeta_que_el_asistente(self):
+        vistas = []
+        with mock.patch.object(pd, 'PARA', ['50432136457']), \
+             mock.patch.object(pd.registro, 'preparar', side_effect=vistas.append), \
+             mock.patch.object(pd.premio, 'preparar', side_effect=vistas.append), \
+             mock.patch.object(pd.vistazo, 'juntar', return_value=_datos_falsos()), \
+             mock.patch.object(pd.registro, 'anotar'), \
+             mock.patch.object(pd.whatsapp, 'RelevoWhatsApp', return_value=RelevoFalso()), \
+             mock.patch.object(pd.whatsapp, '_pedir', mock.Mock()), \
+             mock.patch.object(pd.time, 'sleep'):
+            pd.main()
+        self.assertEqual(vistas, [pd.DATOS, pd.DATOS])
 
 
 class SeIntentaLoBaratoPrimero(_Base):
@@ -177,6 +228,8 @@ class SiNoSALEsedice(_Base):
         orden = []
         rel = RelevoFalso(revienta=RuntimeError('caído'))
         with mock.patch.object(pd, 'PARA', ['50432136457']), \
+             mock.patch.object(pd.registro, 'preparar'), \
+             mock.patch.object(pd.premio, 'preparar'), \
              mock.patch.object(pd.vistazo, 'juntar', return_value=_datos_falsos()), \
              mock.patch.object(pd.registro, 'anotar',
                                side_effect=lambda *a, **k: orden.append('anotar')), \

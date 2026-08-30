@@ -1,0 +1,14 @@
+[Unit]
+Description=Copia diaria de los datos de AU-RA
+
+[Timer]
+# 09:20 UTC = 03:20 de Honduras: la hora mas muerta, y lejos de los dos partes
+# (13:30 y 01:30 UTC) para que una copia lenta no le pise el turno a nada.
+OnCalendar=*-*-* 09:20:00 UTC
+# Si la maquina estuvo apagada, la copia sale al arrancar. Saltarse un dia de
+# copia es justo lo que uno lamenta al mes siguiente.
+Persistent=true
+RandomizedDelaySec=300
+
+[Install]
+WantedBy=timers.target

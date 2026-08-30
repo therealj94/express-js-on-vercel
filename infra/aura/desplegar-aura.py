@@ -57,6 +57,12 @@ LADO = {
     # unidad es como una de las dos se queda vieja sin que nadie lo note.
     'aura-parte.service': os.path.join(AQUI, 'aura-parte.service'),
     'aura-parte.timer': os.path.join(AQUI, 'aura-parte.timer'),
+    # La copia diaria. El guion va a /usr/local/bin y las unidades a systemd:
+    # el nodo escribe con el rol de la instancia, que SOLO puede poner objetos
+    # bajo `copias/aura/` — ni leer, ni borrar, ni listar.
+    'copia-aura.sh': os.path.join(AQUI, 'copia-aura.sh'),
+    'aura-copia.service': os.path.join(AQUI, 'aura-copia.service'),
+    'aura-copia.timer': os.path.join(AQUI, 'aura-copia.timer'),
     'saber.json': os.path.abspath(
         os.path.join(AQUI, '..', 'cerebro', 'conocimiento', 'saber.json')),
 }
@@ -131,8 +137,16 @@ def main():
         # porque `timers.target` ya paso hace rato y no se vuelve a alcanzar
         # hasta el proximo reinicio. Sin esto el temporizador queda puesto,
         # `is-enabled` dice que si, y el parte no sale nunca.
+        f'curl -sS --fail -o /usr/local/bin/copia-aura.sh "{urls["copia-aura.sh"]}"',
+        'chmod 755 /usr/local/bin/copia-aura.sh',
+        'bash -n /usr/local/bin/copia-aura.sh',
+        f'curl -sS --fail -o /etc/systemd/system/aura-copia.service'
+        f' "{urls["aura-copia.service"]}"',
+        f'curl -sS --fail -o /etc/systemd/system/aura-copia.timer'
+        f' "{urls["aura-copia.timer"]}"',
         'systemctl daemon-reload',
         'systemctl enable --now aura-parte.timer',
+        'systemctl enable --now aura-copia.timer',
     ]
     cmds += ['mkdir -p /etc/systemd/system/aura.service.d',
              f'curl -sS --fail -o /etc/systemd/system/aura.service.d/whatsapp.conf "{url_dropin}"']
@@ -155,7 +169,7 @@ def main():
     cmds += [
         'systemctl daemon-reload',
         'systemctl restart aura',
-        'systemctl list-timers aura-parte.timer --no-pager',
+        'systemctl list-timers aura-parte.timer aura-copia.timer --no-pager',
         'sleep 8',
         'systemctl is-active aura',
         # Lo que de verdad se quiere ver: que arranco y que dice de WhatsApp.

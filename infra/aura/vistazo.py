@@ -36,7 +36,9 @@
 import imaplib
 import json
 import os
+import shutil
 import ssl
+import subprocess
 import time
 import urllib.request
 from email.header import decode_header, make_header
@@ -131,6 +133,35 @@ def _whatsapp(clave, cuenta):
     return lineas, pend
 
 
+# Cuantos reinicios en 24h dejan de ser normales. Uno o dos es un despliegue;
+# ocho es algo que se esta cayendo solo y `Restart=always` lo esta tapando.
+TOPE_REINICIOS = int(os.environ.get('AURA_TOPE_REINICIOS', '4'))
+
+
+def _reinicios():
+    """Cuantas veces se levanto AU-RA en el ultimo dia.
+
+    POR QUE ESTO IMPORTA: la unidad tiene `Restart=always`, asi que un fallo
+    que la tumba cada media hora se ve exactamente igual que un servicio sano
+    —«active (running)»— y nadie se entera. Al mirar el journal habia 47
+    arranques y nadie lo sabia.
+
+    Si no hay `journalctl` esto no es una averia, es una maquina distinta: se
+    calla, igual que el correo sin credenciales. Lo que SI se dice es que
+    estando el mandato, falle.
+    """
+    if not shutil.which('journalctl'):
+        return [], []
+    s = subprocess.run(['journalctl', '-u', 'aura', '--since', '-24h', '--no-pager'],
+                       capture_output=True, text=True, timeout=30)
+    if s.returncode != 0:
+        raise OSError((s.stderr or 'journalctl fallo').strip()[:80])
+    n = s.stdout.count('AU-RA de pie')
+    if n > TOPE_REINICIOS:
+        return [], [f'AU-RA se reinició {n} veces en 24h (algo la está tumbando)']
+    return ([f'{n} reinicio(s) en 24h'] if n else []), []
+
+
 def _correo():
     """Remitente, asunto y fecha. NUNCA el cuerpo. Ver la cabecera."""
     if not (CORREO_SERVIDOR and CORREO_USUARIO and CORREO_CLAVE):
@@ -197,6 +228,7 @@ def juntar(registro=None, premio=None, clave_wa='', cuenta_wa=''):
     mirar('la cadena', _cadena)
     mirar('WhatsApp', lambda: _whatsapp(clave_wa, cuenta_wa))
     mirar('el correo', _correo)
+    mirar('los reinicios', _reinicios)
 
     if registro is not None:
         try:

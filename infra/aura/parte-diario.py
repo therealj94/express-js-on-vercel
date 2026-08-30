@@ -23,6 +23,7 @@ nada que contar», que es justo la confusion que este modulo existe para evitar.
 """
 
 import os
+import pathlib
 import sys
 import time
 
@@ -36,6 +37,10 @@ import whatsapp
 # agregar a alguien y otro donde olvidarse.
 PARA = [x.strip() for x in (os.environ.get('AURA_PARTE_PARA') or '').split(',')
         if x.strip()]
+
+# La misma carpeta que usa el asistente. El parte corre en otro proceso, asi
+# que aqui se vuelve a decir cual es.
+DATOS = pathlib.Path(os.environ.get('AURA_DATOS', '/srv/aura'))
 
 PLANTILLA = os.environ.get('AURA_PARTE_PLANTILLA', 'og_parte_del_dia')
 IDIOMA = os.environ.get('AURA_PARTE_IDIOMA', 'es')
@@ -87,6 +92,23 @@ def main():
     if not PARA:
         print('AURA_PARTE_PARA vacio: no hay a quien mandarle el parte')
         return 1
+
+    # SIN ESTO EL PARTE MIENTE, Y MIENTE TRANQUILIZANDO.
+    #
+    # `registro` y `premio` guardan la carpeta en una global que pone
+    # `preparar()`. Dentro de `asistente.py` la pone el arranque, pero el parte
+    # corre como servicio SUELTO —otro proceso, otra memoria— y ahi nadie la
+    # habia puesto. Sin carpeta los dos modulos no leen nada y no lanzan:
+    # `premio.resumen()` contesta «quedan 200 de 200» y `registro.resumen()`
+    # contesta cero.
+    #
+    # O sea que con 40 premios entregados el parte habria seguido diciendo 200,
+    # y `anotar('parte')` no habria dejado ni rastro. Un parte que se calla una
+    # fuente rota es el fallo que este modulo existe para evitar; uno que
+    # informa ceros de una fuente que no abrio es el mismo fallo, peor, porque
+    # ni siquiera se ve raro.
+    registro.preparar(DATOS)
+    premio.preparar(DATOS)
 
     cuenta = os.environ.get('ZERNIO_CUENTA', '')
     datos = vistazo.juntar(registro=registro, premio=premio,
