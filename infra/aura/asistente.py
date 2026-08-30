@@ -451,14 +451,6 @@ def quien_es(rel, correo, perfil, dicho=''):
 # La entrevista es la primera impresion del producto: va escrita, no
 # improvisada. Y no gasta motor: contesta al instante.
 
-SALUDO = (
-    "Hola, soy AU-RA, la inteligencia de Orden Global. Estás en el grupo de "
-    "prueba, así que bienvenido dos veces.\n\n"
-    "Una cosa primero, porque acá se dice todo: esta conversación conmigo la "
-    "procesa nuestro servidor para poder contestarte. Tus chats con otras "
-    "personas siguen cifrados de punta a punta y ahí no entra nadie — yo "
-    "tampoco.\n\n"
-    "Para ayudarte mejor me gustaría conocerte un poco. ¿A qué te dedicás?")
 
 PREGUNTAS = [
     ('trabajo', None),   # la hace el saludo
@@ -467,10 +459,6 @@ PREGUNTAS = [
                 "Orden Global — ahorrar, pagar, entender la cadena, otra cosa?"),
 ]
 
-CIERRE = (
-    "Gracias — con eso ya te conozco. Preguntame lo que quieras del "
-    "ecosistema: ORIGEN, la cadena, tu Genesis ID, la tarjeta, lo que venga. "
-    "Y si algo no lo sé, te lo digo derecho.")
 
 # Se avisa que la PRIMERA tarda mas, y no por cortesia: al cambiar de modo la
 # maquina descarga un modelo y carga el otro, y eso solo es un minuto. Sin el
@@ -481,27 +469,15 @@ CIERRE = (
 # elige aqui es CON QUE VOZ habla —calida, sobria, agil—, no si manda
 # archivos: las notas de voz se retiraron y la voz va en vivo. El registro
 # elegido lo usa la wallet al pedirla.
-CAMBIO_VOZ = {
-    'calida': 'Listo, te hablo con la voz cálida. Te sigo escribiendo igual: '
-              'lo que leés y lo que oís es lo mismo.',
-    'sobria': 'Listo, voz sobria: más lenta y más clara, la que uso para los '
-              'montos.',
-    'agil':   'Listo, voz ágil: más rápida y con más energía.',
-}
-VOZ_APAGADA = ('Listo, me callo. Para que vuelva a hablarte, tocá el micrófono '
-               'o decime «con voz».')
+# La persona LEE esto, asi que va en los dos idiomas. Se quedo en espanol
+# hasta el 30-ago porque nadie lo cruzo con una charla en ingles.
 
-MOTOR_CAIDO = (
-    "Ahora mismo no puedo pensar: mi motor está apagado. Ya avisé a la casa — "
-    "probá de nuevo en un rato.")
 
 # Cuando el motor SI contesto pero no quedo nada util. No es lo mismo que
 # estar caido, y decir «mi motor está apagado» ahi es dos errores en una
 # frase: es mentira, y habla de las tripas de la casa, que el prompt le
 # prohibe. Se pide de otra manera, que es lo que hace una persona que no
 # entendio la pregunta.
-NO_SALIO = (
-    "Se me enredó la respuesta. Preguntámelo de otra forma y te la doy bien.")
 
 # Un saludo se contesta saludando, y sin gastar motor. Van varios porque
 # alguien que saluda tres veces y recibe tres veces la misma frase exacta
@@ -536,8 +512,6 @@ SALUDO_CORTO = (
 # Y lo que fue una orden y ya no lo es. Los botones «Rápida» y «Pensadora»
 # estuvieron a la vista, así que alguien va a escribirlo — y contestarle con
 # un muro de preguntas genéricas es peor que decirle la verdad en una línea.
-MODO_RETIRADO = ('Ya no hay dos modos: pienso de una sola manera y contesto '
-                 'igual de rápido para todo. Preguntame nomás.')
 
 SIN_CONTENIDO = (
     "Contame vos. Puedo hablar de lo que quieras — donde más te sirvo es acá "
@@ -547,13 +521,7 @@ SIN_CONTENIDO = (
     "Vos dirás. Estoy para lo del ecosistema y para lo que no lo sea también.",
 )
 
-RAFAGA_MSG = (
-    'Pará un segundo que te sigo — vas más rápido que yo. Dale unos segundos '
-    'y seguimos.')
 
-TECHO_MSG = (
-    "Por hoy llegamos al tope de preguntas que puedo atender por persona — "
-    "estamos en prueba y el motor es uno solo. Mañana seguimos.")
 
 
 # ── el motor ─────────────────────────────────────────────────────────────────
@@ -974,12 +942,20 @@ def _de_la_casa(dicho):
     return bool(_DE_LA_CASA.search(t) or _DELICADO.search(t))
 
 
-AVISO_DE_LA_VIDA = (
-    '[esto NO es del ecosistema: contestale de verdad y con lo que sabés, '
-    'como una amiga que entiende del tema. No menciones Orden Global, ORIGEN, '
-    'la billetera ni los ahorros; no cierres llevándolo para allá. Si de '
-    'verdad viene al caso, ya vendrá solo]'
-)
+# Este aviso NO lo lee la persona: se le pega al turno del motor. Va en los
+# dos idiomas igual, porque un aviso en espanol dentro de una charla en ingles
+# le empuja el idioma al modelo — que es como se cruzan las palabras.
+AVISO_DE_LA_VIDA = {
+    'es': ('[esto NO es del ecosistema: contestale de verdad y con lo que '
+           'sabés, como una amiga que entiende del tema. No menciones Orden '
+           'Global, ORIGEN, la billetera ni los ahorros; no cierres llevándolo '
+           'para allá. Si de verdad viene al caso, ya vendrá solo]'),
+    'en': ('[this is NOT about the ecosystem: answer for real, with what you '
+           'know, like a friend who understands the topic. Do not mention '
+           'Orden Global, ORIGEN, the wallet or savings; do not steer the '
+           'ending back there. If it genuinely comes up, it will come up on '
+           'its own]'),
+}
 
 
 def preguntar_motor(sistema, perfil, historial, dicho, contexto='', al_vuelo=None,
@@ -1044,7 +1020,7 @@ def preguntar_motor(sistema, perfil, historial, dicho, contexto='', al_vuelo=Non
     # distinguible de una pregunta de verdad — siete comprobaciones en rojo
     # de una sola linea, porque se corrian todos los indices.
     if not de_la_casa and perfil:
-        quien += AVISO_DE_LA_VIDA + '\n'
+        quien += AVISO_DE_LA_VIDA[_idi(p)] + '\n'
     mensajes = ([{'role': 'system', 'content': sistema}]
                 + historial[-MEMORIA:]
                 + [{'role': 'user', 'content': quien + str(dicho)[:1000]}])
@@ -1742,7 +1718,7 @@ def atender(rel, sistema, p, de, dicho, mensaje=None):
     if not p.get('saludado'):
         # El saludo se perdio (o nunca salio): se saluda ANTES de consumir
         # nada. El mensaje de la persona no era respuesta a ninguna pregunta.
-        rel.enviar(de, SALUDO)
+        rel.enviar(de, guion.frase('saludo-probador', _idi(p)))
         p['saludado'] = True
         return
 
@@ -1816,7 +1792,7 @@ def atender(rel, sistema, p, de, dicho, mensaje=None):
     if len(bajo) < 40 and ('sin voz' in bajo or 'callate' in bajo
                            or 'no voz' in bajo or 'voice off' in bajo):
         p['voz'] = ''
-        rel.enviar(de, VOZ_APAGADA)
+        rel.enviar(de, guion.frase('voz-apagada', _idi(p)))
         return
     # ENCENDER LA VOZ ES UNA ORDEN CERRADA, NO UNA PALABRA SUELTA.
     #
@@ -1834,7 +1810,7 @@ def atender(rel, sistema, p, de, dicho, mensaje=None):
     if orden_voz:
         pedido = next((g for g in orden_voz.groups() if g), '')
         p['voz'] = pedido or 'calida'
-        rel.enviar(de, CAMBIO_VOZ[p['voz']])
+        rel.enviar(de, guion.frase('voz-' + p['voz'], _idi(p)))
         return
 
     # EL SALUDO SUELTO. «Hola», «buenas», «qué tal» — la frase mas comun de
@@ -1857,7 +1833,7 @@ def atender(rel, sistema, p, de, dicho, mensaje=None):
     if len(bajo) < 40 and ('modo pensador' in bajo or 'modo profundo' in bajo
                            or 'modo rapido' in bajo or 'pensa mas' in bajo
                            or 'thinker mode' in bajo or 'fast mode' in bajo):
-        rel.enviar(de, MODO_RETIRADO)
+        rel.enviar(de, guion.frase('un-solo-modo', _idi(p)))
         return
 
     # Lo que devuelve la pelota sin preguntar nada. Ver SIN_CONTENIDO: el
@@ -1899,13 +1875,13 @@ def atender(rel, sistema, p, de, dicho, mensaje=None):
     if p.get('dia') != hoy():
         p['dia'], p['usadas'] = hoy(), 0
     if p['usadas'] >= TECHO_DIA:
-        rel.enviar(de, TECHO_MSG)
+        rel.enviar(de, guion.frase('tope-del-dia', _idi(p)))
         return
     # Y el freno de golpe. Va DESPUES del techo diario y ANTES del motor: no
     # gasta GPU y se contesta al instante, que es justo lo que hace falta
     # cuando alguien esta disparando preguntas mas rapido de lo que se leen.
     if hay_rafaga(de):
-        rel.enviar(de, RAFAGA_MSG)
+        rel.enviar(de, guion.frase('vas-muy-rapido', _idi(p)))
         return
 
     try:
@@ -1964,6 +1940,8 @@ def atender(rel, sistema, p, de, dicho, mensaje=None):
         try:
             junto = (creciendo['texto'] + ' ' + frase).strip()
             revisado, motivo = guardia.revisar(junto)
+            if motivo == 'idioma':
+                revisado = guion.frase('respuesta-rota', _idi(p))
             if motivo:
                 log(f'GUARDIA ({motivo}) cortó la respuesta a', de)
                 # Aqui SI se guarda el texto, y es la unica vez: es lo que
@@ -2073,7 +2051,7 @@ def atender(rel, sistema, p, de, dicho, mensaje=None):
     except Exception as e:
         log('motor caido:', type(e).__name__, str(e)[:120])
         if not salio:
-            rel.enviar(de, MOTOR_CAIDO)
+            rel.enviar(de, guion.frase('motor-caido', _idi(p)))
         return
     # ── Y SE CIERRA EL GLOBO ──────────────────────────────────────────────
     #
@@ -2087,6 +2065,8 @@ def atender(rel, sistema, p, de, dicho, mensaje=None):
         # `resto` es lo que quedo sin frase terminada y nunca paso por `soltar`,
         # asi que sin esto podria colarse justo en el cierre.
         entero_visto, motivo_cierre = guardia.revisar(entero_visto)
+        if motivo_cierre == 'idioma':
+            entero_visto = guion.frase('respuesta-rota', _idi(p))
         if motivo_cierre and not cortado['por']:
             log(f'GUARDIA ({motivo_cierre}) cortó el cierre para', de)
             registro.anotar('guardia', motivo=motivo_cierre,
@@ -2111,6 +2091,8 @@ def atender(rel, sistema, p, de, dicho, mensaje=None):
                 except Exception: pass
     elif resto:
         resto_visto, motivo_resto = guardia.revisar(resto)
+        if motivo_resto == 'idioma':
+            resto_visto = guion.frase('respuesta-rota', _idi(p))
         if motivo_resto:
             log(f'GUARDIA ({motivo_resto}) cortó la respuesta suelta a', de)
             registro.anotar('guardia', motivo=motivo_resto, texto=resto[:1200])
@@ -2122,7 +2104,7 @@ def atender(rel, sistema, p, de, dicho, mensaje=None):
         # las tripas de la casa, y «mi motor» es exactamente eso. Se pide de
         # otra manera, que es lo que haria una persona que no entendio.
         log('respuesta vacia hasta despues de repreguntar, para', de)
-        rel.enviar(de, NO_SALIO)
+        rel.enviar(de, guion.frase('no-salio', _idi(p)))
         return
     # `entero` es lo que dijo el motor EN CRUDO — con sus asteriscos, sus
     # «1.» y su «¡Hola Tere!». Lo que sale al chat ya va limpio porque cada
@@ -2251,7 +2233,7 @@ def vuelta(rel, sistema, perfiles, tanda):
         with CANDADO_PERFILES:
             p = perfil_de(perfiles, c, tope=ahora_ms)
         try:
-            rel.enviar(c, SALUDO)
+            rel.enviar(c, guion.frase('saludo-probador', _idi(p)))
             p['saludado'] = True   # solo con el saludo ENVIADO de verdad
         except Exception as e:
             log('saludo no salio para', c, '- se saluda con su primer mensaje:',

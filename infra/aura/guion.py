@@ -1002,6 +1002,98 @@ FRASES = {
         'es': 'Por ahora entiendo texto y notas de voz. ¿Me lo escribís?',
         'en': 'For now I understand text and voice notes. Could you write it?',
     },
+    # ── LAS QUE VIVIAN COMO CONSTANTES EN `asistente.py` ────────────────────
+    #
+    # Nueve, todas en espanol. Una de ellas —MODO_RETIRADO— salio el 30-ago a
+    # las 13:25 en medio de una charla ENTERA en ingles: la persona venia de
+    # jugar en ingles y de golpe leyo «Contame vos. Puedo hablar de lo que
+    # quieras». Jose: «me cambió el idioma, necesito esto estar al 100».
+    #
+    # Se me escaparon porque la prueba anterior buscaba literales pegados a
+    # `rel.enviar(`, y estas son constantes de modulo. La prueba nueva recorre
+    # el arbol del fuente y no se le escapa ninguna.
+    'saludo-probador': {
+        'es': ('Hola, soy AU-RA, la inteligencia de Orden Global. Estás en el '
+               'grupo de prueba, así que bienvenido dos veces.\n\n'
+               'Una cosa primero, porque acá se dice todo: esta conversación '
+               'conmigo la procesa nuestro servidor para poder contestarte. '
+               'Tus chats con otras personas siguen cifrados de punta a punta '
+               'y ahí no entro.'),
+        'en': ('Hi, I am AU-RA, Orden Global\'s intelligence. You are in the '
+               'test group, so welcome twice over.\n\n'
+               'One thing first, because here everything gets said: this '
+               'conversation with me is processed by our server so I can '
+               'answer you. Your chats with other people stay end-to-end '
+               'encrypted and I do not go in there.'),
+    },
+    'cierre-conocido': {
+        'es': ('Gracias — con eso ya te conozco. Preguntame lo que quieras del '
+               'ecosistema: ORIGEN, la cadena, tu Genesis ID, la tarjeta, lo '
+               'que venga. Y si algo no lo sé, te lo digo derecho.'),
+        'en': ('Thanks — now I know you. Ask me anything about the ecosystem: '
+               'ORIGEN, the chain, your Genesis ID, the card, whatever comes '
+               'up. And if I do not know something, I will tell you straight.'),
+    },
+    'voz-apagada': {
+        'es': ('Listo, me callo. Para que vuelva a hablarte, tocá el micrófono '
+               'o decime «con voz».'),
+        'en': ('Done, I will stay quiet. To have me speak again, tap the '
+               'microphone or tell me «with voice».'),
+    },
+    'motor-caido': {
+        'es': ('Ahora mismo no puedo pensar: mi motor está apagado. Ya avisé a '
+               'la casa — probá de nuevo en un rato.'),
+        'en': ('Right now I cannot think: my engine is down. I already told the '
+               'house — try again in a little while.'),
+    },
+    'no-salio': {
+        'es': ('Se me enredó la respuesta. Preguntámelo de otra forma y te la '
+               'doy bien.'),
+        'en': ('My answer got tangled. Ask me another way and I will get it '
+               'right.'),
+    },
+    'un-solo-modo': {
+        'es': ('Ya no hay dos modos: pienso de una sola manera y contesto igual '
+               'de rápido para todo. Preguntame nomás.'),
+        'en': ('There are no two modes any more: I think one way and answer '
+               'just as fast for everything. Just ask me.'),
+    },
+    'vas-muy-rapido': {
+        'es': ('Pará un segundo que te sigo — vas más rápido que yo. Dale unos '
+               'segundos y seguimos.'),
+        'en': ('Hold on a second so I can keep up — you are going faster than '
+               'me. Give it a few seconds and we continue.'),
+    },
+    'tope-del-dia': {
+        'es': ('Por hoy llegamos al tope de preguntas que puedo atender por '
+               'persona — estamos en prueba y el motor es uno solo. Mañana '
+               'seguimos.'),
+        'en': ('We have hit today\'s limit of questions I can handle per '
+               'person — we are in testing and there is only one engine. We '
+               'continue tomorrow.'),
+    },
+    'voz-calida': {
+        'es': ('Listo, te hablo con la voz cálida. Te sigo escribiendo igual, '
+               'para que lo que leés y lo que oís sea lo mismo.'),
+        'en': ('Done, I will speak with the warm voice. I keep writing too, so '
+               'what you read and what you hear are the same.'),
+    },
+    'voz-sobria': {
+        'es': ('Listo, voz sobria: más lenta y más clara, la que uso para los '
+               'montos.'),
+        'en': ('Done, plain voice: slower and clearer, the one I use for '
+               'amounts.'),
+    },
+    'voz-agil': {
+        'es': 'Listo, voz ágil: más rápida y con más energía.',
+        'en': 'Done, brisk voice: faster and with more energy.',
+    },
+    'respuesta-rota': {
+        'es': ('Perdón, se me enredó la respuesta a mitad de camino. ¿Me lo '
+               'volvés a preguntar?'),
+        'en': ('Sorry, my answer got tangled halfway through. Could you ask me '
+               'again?'),
+    },
     'charlas-rotas': {
         'es': 'No pude leer las charlas ({e}). Probá de nuevo en un rato.',
         'en': 'I could not read the chats ({e}). Try again in a while.',

@@ -132,6 +132,7 @@ jobs:
           python3 probar-parte-diario.py
           python3 probar-pagador.py
           python3 probar-espejo.py
+          python3 probar-idiomas.py
 
       - name: El relevo de mensajes
         working-directory: infra/mensajes
