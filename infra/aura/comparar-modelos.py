@@ -158,6 +158,13 @@ def mirar(clase, dicho, dice):
     real, no de un gusto."""
     faltas = []
     palabras = len(dice.split())
+    # La falta que motivo esta comparacion entera: qwen2.5:7b se va al chino a
+    # mitad de charla (30-ago, con captura). Se mide con EL MISMO detector que
+    # usa el guardia en produccion — si difirieran, esto aprobaria un modelo
+    # que el guardia despues calla a cada rato.
+    import guardia as _g
+    if _g.se_fue_de_idioma(dice):
+        faltas.append('OTRO-IDIOMA')
     if MARKDOWN.search(dice):
         faltas.append('markdown')            # la voz leería «asterisco asterisco»
     if palabras > 90:

@@ -69,19 +69,25 @@
    "tema": "La cadena 5550",
    "publico": true,
    "revisadoPor": "jose@ordenglobal.org",
-   "revisadoEn": "2026-08-16",
+   "revisadoEn": "2026-08-30",
    "palabras": [
-    "cadena",
-    "chain",
     "5550",
     "besu",
-    "qbft",
-    "shanghai",
     "blockchain",
-    "layer"
+    "cadena",
+    "chain",
+    "chainlist",
+    "layer",
+    "nodo",
+    "qbft",
+    "rpc",
+    "shanghai",
+    "tps",
+    "validador",
+    "validadores"
    ],
-   "es": "Orden Global corre sobre su propia Layer 1: la cadena 5550, con Hyperledger Besu, consenso QBFT y máquina Shanghai. Ya no vivimos prestados en la red de otro — más rápida, más nuestra, sin pedirle permiso a nadie. Todo se puede ver en ordenscan.com.",
-   "en": "Orden Global runs on its own Layer 1: chain 5550, with Hyperledger Besu, QBFT consensus and the Shanghai machine. We no longer live on somebody else's network — faster, more ours, asking nobody for permission. It can all be seen at ordenscan.com."
+   "es": "Orden Global corre sobre su propia Layer 1: la cadena 5550, con Hyperledger Besu —el mismo software que usan bancos y consorcios—, consenso QBFT con siete validadores en rotación y bloques cada diez segundos. Ya no vivimos prestados en la red de otro. Todo se puede ver en ordenscan.com, el nodo público contesta a cualquier billetera compatible, y la cadena figura en chainlist.org/chain/5550, un directorio que no controlamos.",
+   "en": "Orden Global runs on its own Layer 1: chain 5550, on Hyperledger Besu — the same software banks and consortia use —, QBFT consensus with seven rotating validators and ten-second blocks. We no longer live borrowed on someone else's network. Everything is visible at ordenscan.com, the public node answers any compatible wallet, and the chain is listed at chainlist.org/chain/5550 — a directory we do not control."
   },
   {
    "id": "gid",
@@ -135,7 +141,7 @@
    "tema": "AU-RA",
    "publico": true,
    "revisadoPor": "j.ordonez@ordenglobal.org (pedido por chat, 27-ago)",
-   "revisadoEn": "2026-08-27",
+   "revisadoEn": "2026-08-30",
    "palabras": [
     "asistente",
     "assistant",
@@ -147,8 +153,8 @@
     "version",
     "who are you"
    ],
-   "es": "Soy AU-RA, la inteligencia de Orden Global — versión beta, y creciendo con cada versión. Converso con vos aquí en el chat y también vivo dentro de la billetera. Tengo dos formas de pensar: la rápida, que contesta al vuelo, y la pensadora, que se toma su tiempo para preguntas con más fondo — me decís «modo pensador» o «modo rápido» y cambio. Nunca toco tu dinero: preparo y explico, pero firmás vos.",
-   "en": "I am AU-RA, Orden Global's intelligence — beta version, and growing with each release. I chat with you here and I also live inside the wallet. I have two ways of thinking: the fast one, answering on the fly, and the thoughtful one, which takes its time for deeper questions — tell me 'thinker mode' or 'fast mode' and I switch. I never touch your money: I prepare and explain, but you sign."
+   "es": "Soy AU-RA, la inteligencia de Orden Global — versión beta, y creciendo con cada versión. Converso con vos aquí en el chat y también vivo dentro de la billetera. Tengo dos formas de pensar: la rápida, que contesta al vuelo, y la pensadora, que se toma su tiempo para preguntas con más fondo — me decís «modo pensador» o «modo rápido» y cambio. Nunca toco tu dinero: preparo y explico, pero firmás vos. Soy el modelo 1 del ecosistema, y lo que viene para mí se cuenta cuando ya exista — acá no se prometen capacidades por adelantado.",
+   "en": "I am AU-RA, Orden Global's intelligence — beta version, and growing with each release. I chat with you here and I also live inside the wallet. I have two ways of thinking: the fast one, answering on the fly, and the thoughtful one, which takes its time for deeper questions — tell me 'thinker mode' or 'fast mode' and I switch. I never touch your money: I prepare and explain, but you sign. I am the ecosystem's model 1, and what comes next for me gets told when it exists — no capabilities are promised in advance here."
   },
   {
    "id": "og",
@@ -621,6 +627,90 @@
    ],
    "es": "Si tenés un negocio, MyTokenPay te deja cobrar en ORIGEN sin aparatos nuevos: generás un código QR con el monto, el cliente lo escanea desde su Veta Wallet, y el pago te llega a tu billetera en segundos, con la comisión fija de la casa (0,001 ORIGEN). Tu negocio además aparece en el directorio del ecosistema, donde ya hay comercios en diecinueve países. Para emitir códigos de cobro a tu nombre hace falta tu Genesis ID verificado.",
    "en": "If you run a business, MyTokenPay lets you charge in ORIGEN with no new hardware: you generate a QR with the amount, the customer scans it from their Veta Wallet, and the payment reaches your wallet in seconds, with the house's flat fee (0.001 ORIGEN). Your business also appears in the ecosystem directory, which already lists merchants in nineteen countries. Issuing charge codes in your name requires your verified Genesis ID."
+  },
+  {
+   "id": "sfs",
+   "tema": "El Sistema Financiero Social — la idea que ordena todo",
+   "publico": true,
+   "revisadoPor": "marco teorico SFS ago-2026 (subido por Jose 30-ago)",
+   "revisadoEn": "2026-08-30",
+   "palabras": [
+    "sfs",
+    "sistema financiero social",
+    "pilares",
+    "pilar",
+    "social financial system",
+    "pillars",
+    "vision",
+    "proposito"
+   ],
+   "es": "El Sistema Financiero Social (SFS) es la idea que ordena todo lo que hacemos. El problema es conocido y duele: en Latinoamérica el que ahorra recibe 3–4% mientras la inflación corre al 4–6%, y la empresa pequeña que necesita capital o no califica o paga tasas de 18–40%. El capital existe; el acceso no. El SFS conecta directamente al que tiene capital con el que lo necesita, sobre tres pilares: Orden Global, la tecnología —cadena propia, billetera, identidad—; AuCorp, la parte centralizada —custodia y casa de cambio—; y DBNX, el cumplimiento independiente —Genesis ID y la calificación de las empresas que entran—. Tres piezas, una sola conexión.",
+   "en": "The Social Financial System (SFS) is the idea behind everything we do. The problem is well known: in Latin America savers earn 3–4% while inflation runs 4–6%, and small businesses either do not qualify for capital or pay 18–40%. The capital exists; access does not. The SFS connects those who have capital directly with those who need it, on three pillars: Orden Global — the technology: own chain, wallet, identity; AuCorp — the centralized side: custody and exchange; and DBNX — the independent verification pillar: Genesis ID and the vetting of companies that join. Three pieces, one connection."
+  },
+  {
+   "id": "dbnx",
+   "tema": "DBNX — el pilar del cumplimiento",
+   "publico": true,
+   "revisadoPor": "marco teorico SFS ago-2026 (subido por Jose 30-ago)",
+   "revisadoEn": "2026-08-30",
+   "palabras": [
+    "dbnx",
+    "cumplimiento",
+    "kyc",
+    "aml",
+    "calificacion",
+    "nueva zelanda",
+    "new zealand",
+    "compliance"
+   ],
+   "es": "DBNX es el pilar del cumplimiento del ecosistema: una compañía independiente, constituida en Nueva Zelanda, que lleva Genesis ID —la verificación de identidad con biometría—, el tamizado contra listas internacionales, y la calificación por etapas de las empresas que entran al ecosistema. Que sea independiente es a propósito: el que evalúa no puede ser el mismo que emite.",
+   "en": "DBNX is the verification pillar of the ecosystem: an independent company, formed in New Zealand, that runs Genesis ID — biometric identity checks —, screening against international lists, and stage-based vetting of the companies that join the ecosystem. Its independence is deliberate: the one who evaluates cannot be the one who issues."
+  },
+  {
+   "id": "verificable-por-fuera",
+   "tema": "Cómo comprobar Orden Global sin creernos nada",
+   "publico": true,
+   "revisadoPor": "marco teorico SFS ago-2026 (subido por Jose 30-ago)",
+   "revisadoEn": "2026-08-30",
+   "palabras": [
+    "verificar",
+    "comprobar",
+    "confiar",
+    "estafa",
+    "scam",
+    "real",
+    "chainlist",
+    "lei",
+    "gleif",
+    "verify",
+    "trust",
+    "legit",
+    "de verdad",
+    "existe"
+   ],
+   "es": "¿Que si somos de verdad? No me creas a mí: comprobalo por fuera, en sitios que no controlamos. La cadena 5550 figura en chainlist.org/chain/5550 — el directorio público de redes que mantiene gente sin ninguna relación con nosotros, con ORIGEN como su moneda. Orden Global Corp. y Au Corp. tienen cada una su código LEI activo, el identificador de veinte caracteres que usa la banca mundial, y cualquiera puede buscarlos en gleif.org. Y cada movimiento de la cadena está a la vista en ordenscan.com. Medición propia, y confirmación de terceros: las dos juntas.",
+   "en": "Are we real? Do not take my word for it — check us from the outside, on sites we do not control. Chain 5550 is listed at chainlist.org/chain/5550, the public network directory maintained by people with no relation to us, with ORIGEN as its currency. Orden Global Corp. and Au Corp. each hold an active LEI — the twenty-character identifier used by global banking — and anyone can look them up at gleif.org. And every movement on the chain is public at ordenscan.com. Our own measurements, and third-party confirmation: both together."
+  },
+  {
+   "id": "por-que-referenciado",
+   "tema": "Por qué ORIGEN está referenciado al oro y no atado 1 a 1",
+   "publico": true,
+   "revisadoPor": "marco teorico SFS ago-2026 (subido por Jose 30-ago)",
+   "revisadoEn": "2026-08-30",
+   "palabras": [
+    "respaldo",
+    "respaldado",
+    "referenciado",
+    "backing",
+    "backed",
+    "1 a 1",
+    "uno a uno",
+    "stablecoin",
+    "boveda",
+    "vault"
+   ],
+   "es": "Que ORIGEN esté referenciado al oro —y no atado 1 a 1— es una decisión de diseño, no una carencia. Atado 1 a 1 sería una copia rígida: útil solo como recibo de algo guardado en otro lado. Referenciado, ORIGEN acompaña el precio del oro —te protege de la inflación— y sigue siendo ágil como moneda de todos los días: mandar, cobrar, guardar. La fórmula es pública, nadie de acá decide cuánto vale, y la podés rehacer con una calculadora. Y lo que se está trabajando sobre el respaldo del metal se cuenta cuando esté hecho — acá no se anuncia lo que no existe todavía.",
+   "en": "ORIGEN being referenced to gold — not pegged 1 to 1 — is a design decision, not a shortcoming. Pegged 1 to 1 it would be a rigid copy: useful only as a receipt for something stored elsewhere. Referenced, ORIGEN tracks the price of gold — protecting you from inflation — while staying agile as an everyday currency: send, charge, keep. The formula is public, nobody here decides its value, and you can redo it with a calculator. As for the metal backing work under way: we tell it when it is done — nothing gets announced here before it exists."
   }
  ]
 }
