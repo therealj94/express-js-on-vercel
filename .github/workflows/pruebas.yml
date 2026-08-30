@@ -133,6 +133,13 @@ jobs:
           python3 probar-pagador.py
           python3 probar-espejo.py
           python3 probar-idiomas.py
+          python3 probar-decir.py
+          # El vigia vive en su propia carpeta: es lo unico que corre FUERA del
+          # nodo, y por eso no comparte ni un import con el resto.
+          (cd vigia && python3 probar-vigia.py)
+          # `probar-voz.py` queda fuera a proposito: necesita numpy, que no
+          # esta en esta maquina de CI y solo hace falta para el canal de voz.
+          # Se corre a mano en el nodo cuando se toca la voz.
 
       - name: El relevo de mensajes
         working-directory: infra/mensajes
