@@ -89,7 +89,7 @@ baja "$R" "vae/minimax_h3_audio_vae_fp32.safetensors"            "$M/vae"
 baja "$R" "loras/minimax_h3_fl2v_turbo_4step_v1.0_768p_comfyui_bf16.safetensors" "$M/loras"
 baja "$R" "loras/minimax_h3_fl2v_turbo_8step_v1.0_comfyui_bf16.safetensors"      "$M/loras"
 baja fal/MiniMax-H3-Realism-People-LoRA \
-     "minimax_h3_realism_people.safetensors" "$M/loras" || true
+     "h3-realism-people-t2v-i2v-r2v.safetensors" "$M/loras" || true
 
 rm -rf "$M"/_h3 "$M"/_wan "$M"/_img "$M"/_turbo
 du -sh "$M"/* 2>/dev/null

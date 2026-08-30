@@ -110,7 +110,13 @@ def build(workflow_path: Path, job: dict) -> dict:
 
 def run_job(wf: dict, poll: float = 3.0, timeout: int = 3600) -> list[str]:
     """Encola y espera. Devuelve las rutas relativas de los ficheros generados."""
-    pid = api("/prompt", {"prompt": wf, "client_id": CLIENT_ID})["prompt_id"]
+    try:
+        pid = api("/prompt", {"prompt": wf, "client_id": CLIENT_ID})["prompt_id"]
+    except error.HTTPError as e:
+        # Un 400 de ComfyUI trae en el cuerpo QUÉ nodo y QUÉ campo falla.
+        # Sin eso solo se ve "Bad Request" y hay que adivinar, que fue
+        # exactamente lo que pasó con la primera tanda de nueve planos.
+        raise RuntimeError(f"HTTP {e.code}: {e.read().decode('utf-8','replace')[:900]}")
     deadline = time.time() + timeout
     while time.time() < deadline:
         hist = api(f"/history/{pid}")
