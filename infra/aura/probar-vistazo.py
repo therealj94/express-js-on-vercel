@@ -440,20 +440,30 @@ class METASONDOSTRAMITES(unittest.TestCase):
         p = ' '.join(self._pend(self._info()))
         self.assertIn('SIN ENVIAR', p)
 
-    def test_y_TAMBIEN_del_nombre_sin_aprobar(self):
-        """El que faltaba: sin él, José arreglaba uno y seguía en 250."""
-        p = ' '.join(self._pend(self._info(nombre='AVAILABLE_WITHOUT_REVIEW')))
-        self.assertIn('nombre para mostrar', p)
-        self.assertIn('AVAILABLE_WITHOUT_REVIEW', p)
+    def test_el_nombre_sin_aprobar_NO_es_una_tarea_suelta(self):
+        """Se intentó mandarlo a revisión con la API: el proveedor contestó
+        «success, PENDING_REVIEW» y Meta lo descartó — seguía en
+        AVAILABLE_WITHOUT_REVIEW con pendingStatus NONE.
 
-    def test_los_dos_a_la_vez_salen_los_dos(self):
-        p = self._pend(self._info(nombre='PENDING_REVIEW'))
-        self.assertEqual(len(p), 2, f'solo avisó de uno: {p}')
+        `AVAILABLE_WITHOUT_REVIEW` se destraba VERIFICANDO EL NEGOCIO. Ponerlo
+        como pendiente aparte manda a José a buscar un botón que no existe."""
+        d = self._info(nombre='AVAILABLE_WITHOUT_REVIEW')
+        with mock.patch.object(vistazo, '_http', return_value=d):
+            lineas, pend = vistazo._whatsapp('clave', 'cuenta')
+        self.assertEqual(len(pend), 1, f'lo puso como tarea aparte: {pend}')
+        self.assertIn('se aprueba al verificar el negocio', ' '.join(lineas))
 
-    def test_si_el_nombre_lo_RECHAZARON_dice_por_que(self):
+    def test_pero_un_nombre_RECHAZADO_si_es_tarea_suya(self):
+        """Ahí sí hay que elegir otro, y Meta dice por qué."""
         p = ' '.join(self._pend(self._info(nombre='DECLINED',
                                           rechazo='no coincide con el negocio')))
+        self.assertIn('rechazó el nombre', p)
         self.assertIn('no coincide con el negocio', p)
+        self.assertIn('hay que cambiarlo', p)
+
+    def test_y_si_el_negocio_YA_esta_verificado_y_el_nombre_no_pasa_eso_es_raro(self):
+        p = ' '.join(self._pend(self._info('verified', 'AVAILABLE_WITHOUT_REVIEW')))
+        self.assertIn('pese a estar el negocio verificado', p)
 
     def test_distingue_SIN_ENVIAR_de_EN_REVISION(self):
         """No es lo mismo: uno necesita que José haga algo, el otro que

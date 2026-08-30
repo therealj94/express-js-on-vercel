@@ -136,11 +136,28 @@ def _whatsapp(clave, cuenta):
     elif estado and estado != 'verified':
         pend.append(f'la verificación de negocio de Meta está en «{estado}»')
 
+    # EL NOMBRE NO ES UN TRAMITE APARTE, y creerlo cuesta una tarde. El 30-ago
+    # lo mande a revision con la API del proveedor: contesto «success:true,
+    # PENDING_REVIEW» y Meta lo DESCARTO — al consultar de nuevo seguia en
+    # AVAILABLE_WITHOUT_REVIEW con `pendingStatus: NONE`. Meta solo revisa un
+    # nombre NUEVO; mandar el mismo no es un cambio.
+    #
+    # `AVAILABLE_WITHOUT_REVIEW` significa que el nombre se puede usar pero no
+    # paso revision formal, y eso se destraba VERIFICANDO EL NEGOCIO. Por eso
+    # aqui se dice como consecuencia y no como tarea suelta: mandar a Jose a
+    # buscar un boton que no existe es peor que no decirle nada.
     nombre = tel.get('name_status')
-    if nombre and nombre != 'APPROVED':
-        motivo = info.get('nameRejectionReason')
-        pend.append(f'el nombre para mostrar sin aprobar ({nombre})'
-                    + (f' — {motivo}' if motivo else ''))
+    motivo = info.get('nameRejectionReason')
+    if nombre == 'DECLINED':
+        # Esto SI es tarea suya: hay que elegir otro nombre.
+        pend.append('Meta rechazó el nombre para mostrar'
+                    + (f' — {motivo}' if motivo else '') + ': hay que cambiarlo')
+    elif nombre and nombre != 'APPROVED' and estado == 'verified':
+        # Negocio verificado y el nombre sigue sin aprobar: ahi si es raro.
+        pend.append(f'el nombre para mostrar sigue en {nombre} pese a estar '
+                    'el negocio verificado')
+    elif nombre and nombre != 'APPROVED':
+        lineas.append(f'el nombre se aprueba al verificar el negocio ({nombre})')
 
     if tel.get('health_status', {}).get('can_send_message') != 'AVAILABLE':
         lineas.append(f'WhatsApp limitado a {tel.get("messaging_limit_tier", "?")}')
