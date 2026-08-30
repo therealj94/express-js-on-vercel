@@ -56,72 +56,42 @@ if [ "$PREC" = "bf16" ] && [ "${LIBRE0:-999}" -lt 380 ]; then
 fi
 
 M="$WORK/ComfyUI/models"; mkdir -p "$M"/{diffusion_models,text_encoders,vae,loras}
-stage() {  # repo, "patrones separados por espacio", destino
-  # Con reintentos: una descarga de 110 GB cortada a la mitad deja el pod
-  # inservible y ya ha pasado.
-  # OJO: --include acepta UN patrón. Si se pasan varios seguidos, el CLI los
-  # toma como nombres de fichero e IGNORA el filtro entero: se descarga el
-  # repositorio completo (100+ GB) y el disco revienta. Un flag por patrón.
-  local repo="$1" dst="$3" args=() pat
-  for pat in $2; do args+=(--include "$pat"); done
+# Descarga con aria2c y 16 conexiones por fichero. El cliente de Hugging Face
+# usa UNA conexión y HF la limita a ~15-20 Mbps: tres hosts en tres países
+# dieron lo mismo, así que el cuello es HF, no la red del pod. Con 16 hilos
+# sube a cientos de Mbps.
+baja() {  # repo, ruta_dentro_del_repo, destino
+  local url="https://huggingface.co/$1/resolve/main/$2"
+  local dst="$3" nom="${2##*/}"
   local intento
   for intento in 1 2 3; do
-    hf download "$repo" "${args[@]}" --local-dir "$dst" && return 0
-    echo "!! descarga de $repo falló (intento ${intento}/3), reintentando..."
-    sleep 15
+    aria2c -x16 -s16 -k10M --file-allocation=none --console-log-level=warn \
+      --header="Authorization: Bearer ${HF_TOKEN}" \
+      -d "$dst" -o "$nom" "$url" && return 0
+    echo "!! $nom falló (intento ${intento}/3)"; sleep 10
   done
-  echo "!! FALLO DEFINITIVO descargando $repo"
-  return 1
+  echo "!! FALLO DEFINITIVO: $nom"; return 1
 }
-# MODELS decide qué se baja: cada bloque que quitas son minutos y GB menos.
-#   h3   ~35 GB  vídeo (imprescindible)      flux ~35 GB  stills de alta calidad
-#   wan  ~10 GB  control fino y LoRAs        lora  125 MB realismo (siempre)
-MODELS="${MODELS:-h3,flux,wan}"
-tiene() { case ",$MODELS," in *",$1,"*) return 0;; *) return 1;; esac; }
 
-# Ficheros EXACTOS, no patrones: el repo pesa 471 GB y "*bf16*" casa con 270,
-# incluyendo duplicados que no se usan. El juego mínimo son 42 GB.
+# Un modelo para todo: H3 genera imagen fija además de vídeo, así que los
+# stills de casting salen del mismo modelo que los clips. Eso ahorra los 35 GB
+# de FLUX y, más importante, hace que la imagen de partida y el vídeo compartan
+# estética — que es justo lo que pide un look unificado.
 case "$PREC" in
-  bf16|fp8) DIF=minimax_h3_fl2va_pruned_fp8_scaled.safetensors
-            TXT=qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors ;;
-  *)        DIF=minimax_h3_fl2va_pruned_int8_convrot.safetensors
-            TXT=qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors ;;
+  bf16|fp8) DIF=minimax_h3_fl2va_pruned_fp8_scaled.safetensors ;;
+  *)        DIF=minimax_h3_fl2va_pruned_int8_convrot.safetensors ;;
 esac
-tiene h3 && stage Comfy-Org/MiniMax-H3 \
-  "diffusion_models/${DIF} text_encoders/${TXT} vae/minimax_h3_video_vae_fp16.safetensors vae/minimax_h3_audio_vae_fp32.safetensors" \
-  "$M/_h3"
-tiene wan && stage Comfy-Org/Wan_2.2_ComfyUI_Repackaged \
-  "split_files/diffusion_models/wan2.2_ti2v_5B*" "$M/_wan"
-tiene flux && stage Comfy-Org/FLUX.2-dev_ComfyUI \
-  "split_files/diffusion_models/*fp8* split_files/text_encoders/* split_files/vae/*" "$M/_img"
-hf download fal/MiniMax-H3-Realism-People-LoRA --local-dir "$M/loras/h3-realism" || true
-# Los turbo de H3 se cargan COMO LoRA. Fuera de models/loras ComfyUI los da
-# por faltantes, y su botón de descarga los baja al dispositivo del usuario.
-if tiene h3; then
-  stage Comfy-Org/MiniMax-H3 "*turbo*step*" "$M/_turbo"
-  find "$M/_turbo" -name '*.safetensors' -exec mv -n {} "$M/loras/" \; 2>/dev/null
-  rm -rf "$M/_turbo"
-fi
+R=Comfy-Org/MiniMax-H3
+baja "$R" "diffusion_models/${DIF}"                              "$M/diffusion_models"
+baja "$R" "text_encoders/qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors" "$M/text_encoders"
+baja "$R" "vae/minimax_h3_video_vae_fp16.safetensors"            "$M/vae"
+baja "$R" "vae/minimax_h3_audio_vae_fp32.safetensors"            "$M/vae"
+baja "$R" "loras/minimax_h3_fl2v_turbo_4step_v1.0_768p_comfyui_bf16.safetensors" "$M/loras"
+baja "$R" "loras/minimax_h3_fl2v_turbo_8step_v1.0_comfyui_bf16.safetensors"      "$M/loras"
+baja fal/MiniMax-H3-Realism-People-LoRA \
+     "minimax_h3_realism_people.safetensors" "$M/loras" || true
 
-# colocar todo en el árbol de ComfyUI
-# Clasificar por RUTA de origen y por nombre. Los turbo de H3 se distribuyen
-# como LoRA (~1.8 GB) y ComfyUI solo los ve en models/loras: si caen en
-# diffusion_models, el workflow los da por "faltantes" aunque estén descargados.
-find "$M/_h3" -name '*.safetensors' 2>/dev/null | while read -r f; do
-  case "$f" in
-    */loras/*|*lora*|*turbo*)          d=loras ;;
-    *text_encoder*|*umt5*|*t5*|*qwen*) d=text_encoders ;;
-    *vae*)                             d=vae ;;
-    *)                                 d=diffusion_models ;;
-  esac
-  mkdir -p "$M/$d"; mv -n "$f" "$M/$d/"
-done
-for s in diffusion_models text_encoders vae; do
-  for stg in _wan _img; do
-    [ -d "$M/$stg/split_files/$s" ] && rsync -a "$M/$stg/split_files/$s/" "$M/$s/"
-  done
-done
-rm -rf "$M"/_h3 "$M"/_wan "$M"/_img
+rm -rf "$M"/_h3 "$M"/_wan "$M"/_img "$M"/_turbo
 du -sh "$M"/* 2>/dev/null
 LIBRE=$(df -BG --output=avail "$WORK" | tail -1 | tr -dc 0-9)
 echo "==> disco libre: ${LIBRE} GB"
