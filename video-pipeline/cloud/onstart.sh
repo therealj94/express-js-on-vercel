@@ -211,20 +211,20 @@ if [ -n "${JOB_QUEUE_B64:-}" ]; then
     # siguiente. Que los resultados salgan del pod no puede depender de un
     # único servicio gratuito — ni de que el puerto del pod sea alcanzable,
     # que en este proveedor a menudo no lo es.
+    # Servicios que devuelven la URL en TEXTO PLANO. El intento anterior usó
+    # file.io, que responde JSON envuelto en HTML: el parseo produjo enlaces
+    # falsos que en el log parecían correctos. Aquí no se parsea nada — se
+    # imprime la respuesta cruda, que además permite diagnosticar sin adivinar.
     echo "==> ENLACES DE DESCARGA"
-    for f in "$WORK"/outputs/*.mp4 "$WORK"/outputs/*.png; do
+    for f in "$WORK"/outputs/*.mp4; do
       [ -f "$f" ] || continue
-      n=$(basename "$f"); U=""
-      U=$(curl -s --max-time 300 -F "file=@${f}" https://0x0.st 2>/dev/null | tr -d '\r\n')
-      case "$U" in http*) ;; *)
-        U=$(curl -s --max-time 300 --upload-file "$f" "https://transfer.sh/$n" 2>/dev/null | tr -d '\r\n') ;;
-      esac
-      case "$U" in http*) ;; *)
-        U=$(curl -sL --max-time 300 -F "file=@${f}" https://file.io 2>/dev/null \
-            | sed -n 's/.*"link":"\([^"]*\)".*/\1/p') ;;
-      esac
-      case "$U" in http*) echo "    $n -> $U" ;;
-                   *)     echo "    $n -> NINGÚN DESTINO ACEPTÓ LA SUBIDA" ;; esac
+      n=$(basename "$f")
+      A=$(curl -s --max-time 300 -F "reqtype=fileupload" -F "fileToUpload=@${f}" \
+            https://catbox.moe/user/api.php 2>&1 | tr -d '\r\n')
+      B=$(curl -s --max-time 300 -F "file=@${f}" https://0x0.st 2>&1 | tr -d '\r\n')
+      echo "    $n"
+      echo "      catbox: ${A:0:110}"
+      echo "      0x0   : ${B:0:110}"
     done
     echo "==> TRABAJO COMPLETO"   # el guardián ve esto y destruye la instancia
 
