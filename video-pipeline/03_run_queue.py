@@ -18,7 +18,7 @@ Uso:
 """
 from __future__ import annotations
 
-import argparse, copy, json, os, sys, time, uuid
+import argparse, copy, json, os, subprocess, sys, time, uuid
 from pathlib import Path
 from urllib import request, error
 
@@ -203,6 +203,23 @@ def main() -> int:
                     "prompt": job["prompt"],
                 }
                 print(f"    ok en {time.time()-t0:.0f}s -> {files}")
+                # Subir AL VUELO, no al final: si la tanda muere en el plano 7,
+                # los seis anteriores ya están fuera. Y el usuario puede ver
+                # resultados mientras el resto se genera.
+                for f in files:
+                    ruta = outdir / f
+                    if not ruta.exists():
+                        continue
+                    try:
+                        r = subprocess.run(
+                            ["curl", "-s", "--max-time", "300",
+                             "-F", "reqtype=fileupload",
+                             "-F", f"fileToUpload=@{ruta}",
+                             "https://catbox.moe/user/api.php"],
+                            capture_output=True, text=True, timeout=330)
+                        print(f"    enlace: {r.stdout.strip()[:110]}", flush=True)
+                    except Exception as e:
+                        print(f"    subida falló: {e}", flush=True)
                 break
             except Exception as exc:  # noqa: BLE001 - se reporta y se sigue
                 print(f"    fallo: {exc}", file=sys.stderr)
