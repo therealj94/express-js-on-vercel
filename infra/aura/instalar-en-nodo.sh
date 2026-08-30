@@ -2,7 +2,7 @@
 # Instala el motor y el asistente en la maquina de AU-RA. Corre EN EL NODO,
 # mandado por SSM. Idempotente: correrlo dos veces no rompe nada.
 #
-# Espera en el entorno: U_ASISTENTE U_CANDADO U_OIDO U_WHATSAPP U_GUARDIA U_REGISTRO U_GUION U_PREMIO U_VISTAZO U_PROMPT
+# Espera en el entorno: U_ASISTENTE U_CANDADO U_OIDO U_WHATSAPP U_GUARDIA U_REGISTRO U_GUION U_PREMIO U_VISTAZO U_PARTE U_PROMPT
 # U_SABER U_PROBADORES — las URL firmadas para bajar cada archivo (el nodo no
 # tiene permisos de S3 y no los necesita: la firma viaja en la URL y muere en
 # dos horas).
@@ -56,6 +56,7 @@ curl -sS --fail -o /srv/aura/registro.py     "$U_REGISTRO"
 curl -sS --fail -o /srv/aura/guion.py        "$U_GUION"
 curl -sS --fail -o /srv/aura/premio.py       "$U_PREMIO"
 curl -sS --fail -o /srv/aura/vistazo.py      "$U_VISTAZO"
+curl -sS --fail -o /srv/aura/parte-diario.py "$U_PARTE"
 curl -sS --fail -o /srv/aura/PROMPT-AURA.md  "$U_PROMPT"
 curl -sS --fail -o /srv/aura/saber.json      "$U_SABER"
 # la lista de probadores no se pisa si ya existe: puede tener gente agregada a
@@ -111,3 +112,48 @@ systemctl enable --now aura
 sleep 4
 systemctl is-active aura
 journalctl -u aura -n 5 --no-pager
+
+echo "== el parte, 7:30 y 19:30 =="
+# Comparte el entorno del servicio a proposito: el destinatario del parte y la
+# clave de WhatsApp tienen que ser LOS MISMOS, y dos sitios donde ponerlos es
+# un sitio donde olvidarse.
+cat > /etc/systemd/system/aura-parte.service <<'UNIT'
+[Unit]
+Description=El parte de Orden Global por WhatsApp
+After=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/python3 /srv/aura/parte-diario.py
+WorkingDirectory=/srv/aura
+Environment=AURA_DATOS=/srv/aura
+Environment=AURA_PARTE_PARA=50432136457
+EnvironmentFile=-/etc/aura-correo.env
+EnvironmentFile=-/etc/aura-whatsapp.env
+UNIT
+
+# EN UTC Y A PROPOSITO. La maquina corre en UTC y Honduras esta en UTC-6 todo
+# el ano —no mueve el reloj en verano—, asi que 7:30 son las 13:30 y 19:30 son
+# la 1:30 del dia siguiente. Se deja escrito en UTC en vez de con `Timezone=`
+# porque esa opcion es de systemd v252 y esta maquina trae una anterior: ahi se
+# ignora en silencio y el parte llegaria seis horas corrido.
+cat > /etc/systemd/system/aura-parte.timer <<'UNIT'
+[Unit]
+Description=Parte de Orden Global a las 7:30 y 19:30 de Honduras
+
+[Timer]
+OnCalendar=*-*-* 13:30:00 UTC
+OnCalendar=*-*-* 01:30:00 UTC
+# Si la maquina estaba apagada a la hora, el parte sale al arrancar. Un parte
+# que se salta un dia es justo el dia que uno queria mirar.
+Persistent=true
+# Para no pegarle al proveedor en el mismo segundo todos los dias.
+RandomizedDelaySec=90
+
+[Install]
+WantedBy=timers.target
+UNIT
+
+systemctl daemon-reload
+systemctl enable --now aura-parte.timer
+systemctl list-timers aura-parte.timer --no-pager

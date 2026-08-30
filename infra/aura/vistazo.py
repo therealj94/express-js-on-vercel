@@ -249,6 +249,36 @@ def texto(datos):
     return t if len(t) <= TOPE else t[:TOPE - 1].rsplit('\n', 1)[0] + '\n…'
 
 
+# El hueco de una plantilla NO admite saltos de linea, ni tabuladores, ni cuatro
+# espacios seguidos. Meta no los limpia: rechaza el envio entero. Como el parte
+# de las 7:30 casi siempre cae fuera de la ventana de 24h —y entonces solo se
+# puede mandar por plantilla— esto no es un detalle: es la diferencia entre que
+# el parte llegue o no llegue.
+_TOPE_HUECO = 900
+
+
+def para_plantilla(datos):
+    """El mismo parte, en una sola linea, para el hueco de la plantilla.
+
+    Los saltos se vuelven separadores visibles en vez de desaparecer: sin esto
+    «premios por pagar» y «cadena en el bloque 39.949» quedarian pegados y el
+    parte se leeria como una frase sola.
+    """
+    trozos = []
+    for etiqueta, cuales in (('NECESITA VOS', datos['pendientes']),
+                             ('NO SE PUDO MIRAR', datos['rotas']),
+                             ('', datos['lineas'])):
+        if not cuales:
+            continue
+        junto = ' · '.join(' '.join(str(c).split()) for c in cuales)
+        trozos.append(f'{etiqueta}: {junto}' if etiqueta else junto)
+    t = ' — '.join(trozos) or 'Todo en orden, y todo se pudo mirar.'
+    # Por si alguna linea traia un salto propio de una fuente externa (un asunto
+    # de correo, por ejemplo): aqui ya no puede quedar ninguno.
+    t = ' '.join(t.split())
+    return t if len(t) <= _TOPE_HUECO else t[:_TOPE_HUECO - 1].rsplit(' ', 1)[0] + '…'
+
+
 def cuando():
     """«jueves 7:30», para el primer hueco de la plantilla."""
     dias = ['lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado', 'domingo']

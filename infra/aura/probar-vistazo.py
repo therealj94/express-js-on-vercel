@@ -150,6 +150,53 @@ class CabeEnLaPlantilla(unittest.TestCase):
         self.assertFalse(vistazo.texto(d).endswith('…'))
 
 
+class ElHuecoDeLaPlantillaNOADMITESALTOS(unittest.TestCase):
+    """Meta no limpia un hueco con saltos de línea: rechaza el envío entero. Y
+    el parte de las 7:30 casi siempre cae fuera de la ventana de 24h, así que
+    la plantilla es el único camino que queda — si revienta, no hay parte."""
+
+    def _datos(self):
+        return {'pendientes': ['12 premio(s) por pagar', 'la verificación sin enviar'],
+                'rotas': ['el correo no se pudo mirar (OSError)'],
+                'lineas': ['cadena en el bloque 39.949', 'quedan 185 de 200 premios']}
+
+    def test_NI_UN_SALTO_NI_UN_TABULADOR_NI_CUATRO_ESPACIOS(self):
+        t = vistazo.para_plantilla(self._datos())
+        for prohibido, nombre in [('\n', 'salto'), ('\r', 'retorno'),
+                                  ('\t', 'tabulador'), ('    ', 'cuatro espacios')]:
+            self.assertNotIn(prohibido, t, f'lleva un {nombre}: Meta lo rechaza')
+
+    def test_aunque_una_fuente_traiga_su_propio_salto(self):
+        """Un asunto de correo puede traer un salto de línea de fuera."""
+        d = self._datos()
+        d['lineas'].append('· Meta: tu\nplantilla\tfue aprobada')
+        self.assertNotIn('\n', vistazo.para_plantilla(d))
+        self.assertNotIn('\t', vistazo.para_plantilla(d))
+
+    def test_no_se_pega_todo_en_una_frase_sola(self):
+        """Sin separadores visibles el parte se lee como una sola oración."""
+        t = vistazo.para_plantilla(self._datos())
+        self.assertIn(' · ', t)
+        self.assertIn('NECESITA VOS:', t)
+        self.assertIn('NO SE PUDO MIRAR:', t)
+
+    def test_lo_que_necesita_una_persona_sigue_yendo_primero(self):
+        t = vistazo.para_plantilla(self._datos())
+        self.assertTrue(t.startswith('NECESITA VOS'), t[:40])
+        self.assertLess(t.index('premio(s) por pagar'), t.index('bloque'))
+
+    def test_un_parte_enorme_cabe_igual(self):
+        d = {'pendientes': [f'pendiente {i} con texto de sobra' for i in range(80)],
+             'rotas': [], 'lineas': ['relleno'] * 80}
+        t = vistazo.para_plantilla(d)
+        self.assertLessEqual(len(t), 900)
+        self.assertNotIn('\n', t)
+
+    def test_todo_en_orden_tambien_cabe(self):
+        t = vistazo.para_plantilla({'pendientes': [], 'rotas': [], 'lineas': []})
+        self.assertIn('todo se pudo mirar', t)
+
+
 class ElParteNoEsParaCUALQUIERA(unittest.TestCase):
     """Lleva identidades en cola, premios por pagar y el estado de Meta."""
 

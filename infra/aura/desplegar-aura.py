@@ -43,7 +43,7 @@ CUBO = 'og-5550-arranque-548380372606'
 NODO = 'i-02653feadc919d3a4'          # aura-gpu, us-east-1
 ARCHIVOS = ['asistente.py', 'candado.py', 'oido.py', 'whatsapp.py',
             'guardia.py', 'registro.py', 'guion.py', 'premio.py',
-            'vistazo.py']
+            'vistazo.py', 'parte-diario.py']
 
 # El prompt y las fichas viajan con el codigo, y no es un detalle: la voz de
 # AU-RA y lo que SABE se cambian ahi, no en el codigo. Subir solo los .py
@@ -138,6 +138,12 @@ def main():
     cmds += [
         'systemctl daemon-reload',
         'systemctl restart aura',
+        # La unidad del parte la escribe `instalar-en-nodo.sh`: un solo dueno
+        # por unidad. Aqui solo se MIRA, porque un despliegue que deja el
+        # temporizador sin instalar y no lo dice es un parte que no llega y
+        # nadie sabe por que.
+        'systemctl list-timers aura-parte.timer --no-pager'
+        ' || echo "SIN TEMPORIZADOR DEL PARTE: corre instalar-en-nodo.sh"',
         'sleep 8',
         'systemctl is-active aura',
         # Lo que de verdad se quiere ver: que arranco y que dice de WhatsApp.
