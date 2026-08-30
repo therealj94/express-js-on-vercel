@@ -579,7 +579,7 @@ def cargar_prompt():
     return md[i + 3:j].strip()
 
 
-def todo_el_saber(saber):
+def todo_el_saber(saber, idioma='es'):
     """TODAS las fichas, siempre igual, byte por byte.
 
     Antes se elegian las fichas que tocaban la pregunta, y sonaba sensato:
@@ -595,8 +595,22 @@ def todo_el_saber(saber):
     Con el sistema FIJO, la primera pregunta paga el precio una vez y todas
     las siguientes solo procesan lo nuevo. Lo que la persona pregunta y quien
     es viajan en el turno de usuario, que es corto y cambia sin costo.
+
+    ── Y EN SU IDIOMA, QUE ES LO QUE FALTABA ───────────────────────────────
+
+    Esto leia siempre `f['es']`, aunque cada ficha tenga su version inglesa
+    desde hace meses. El resultado: quien elegia English recibia el guion
+    traducido pero el MOTOR pensaba con las fichas en espanol, y colaba
+    palabras — «se cruzan palabras en español», dijo Jose el 30-ago probando.
+    No era el modelo mezclando idiomas: era su memoria, que estaba entera en
+    uno solo.
+
+    Se arma un sistema por idioma. Alternar entre los dos cuesta una
+    relectura de cache, y vale: una charla entera consistente vale mas que el
+    segundo que se ahorra al cambiar de persona.
     """
-    return '\n'.join(f"— {f['tema']}: {f.get('es', '')}" for f in saber)
+    return '\n'.join(f"— {f['tema']}: {f.get(idioma) or f.get('es', '')}"
+                     for f in saber)
 
 
 
@@ -1305,6 +1319,16 @@ def hoy():
     return time.strftime('%Y-%m-%d')
 
 
+def _idi(p):
+    """El idioma de esa persona, con el espanol de respaldo.
+
+    Existe porque los mensajes de fuera del guion se mandan desde sitios que
+    solo tienen el perfil a mano, y repetir `p.get('idioma') or 'es'` en diez
+    lugares es como uno de los diez se queda sin traducir.
+    """
+    return (p or {}).get('idioma') or guion.POR_OMISION
+
+
 def perfil_de(perfiles, correo, tope=None):
     p = perfiles.setdefault(correo, {})
     p.setdefault('historial', [])
@@ -1348,6 +1372,13 @@ _PIDE_PARTE = _re.compile(
 _ARRANQUES = _re.compile(
     r'^\s*(?:me\s+llamo|mi\s+nombre\s+es|soy|my\s+name\s+is|i\s*am|i\'m|'
     r'call\s+me|es|it\'s)\s+', _re.IGNORECASE)
+# Verbos con los que empieza una frase, nunca un nombre. Cubre los titulos de
+# las listas y lo que la gente escribe cuando cuenta en vez de presentarse.
+_ARRANQUE_VERBO = _re.compile(
+    r"^(tengo|trabajo|estudio|recibo|hago|vivo|quiero|necesito|busco|ando|"
+    r"soy|estoy|vendo|manejo|cuido|tiene|tienen|"
+    r"i|we|have|work|study|receive|want|need|live|do|am|is)$",
+    _re.IGNORECASE)
 _NOMBRE_BUENO = _re.compile(r"^[A-Za-zÁÉÍÓÚÜÑáéíóúüñ][A-Za-zÁÉÍÓÚÜÑáéíóúüñ'’-]{1,19}$")
 
 
@@ -1363,6 +1394,17 @@ def _leer_nombre(dicho):
         return None
     # Una frase larga no es una presentacion: «no te voy a decir mi nombre».
     if len(t.split()) > 5:
+        return None
+    # Ni una frase que empieza por un verbo: «tengo un negocio», «trabajo por
+    # mi cuenta». Son titulos de botones de otra pantalla, y bautizaron a Jose
+    # como «Tengo» el 30-ago. El `toco` ya los filtra; esto cubre a quien los
+    # TRANSCRIBE a mano, que pasa todo el tiempo.
+    if _ARRANQUE_VERBO.match(primera):
+        return None
+    # Y tampoco el titulo de una opcion del guion, transcrito a mano. Se
+    # pregunta al guion en vez de repetir la lista: una opcion nueva queda
+    # cubierta sin que nadie la anote en dos sitios.
+    if guion.es_titulo_de_opcion(dicho):
         return None
     # «MELANY» se guarda como «Melany»: quien escribe en mayusculas no quiere
     # que le griten el nombre en cada mensaje el resto de la charla.
@@ -1394,13 +1436,10 @@ def _arrancar_juego(rel, p, de):
     # estafa aunque no lo sea.
     if premio.agotado():
         registro.anotar('juego', paso='agotado')
-        rel.enviar(de, 'Se acabaron los ORIGEN de esta ronda. 🌱\n\n'
-                       'Igual te enseño lo mismo gratis si querés, y cuando '
-                       'abramos otra te aviso por acá.')
+        rel.enviar(de, guion.frase('premios-agotados', _idi(p)))
         return
     if premio.ya_reclamo(telefono=de):
-        rel.enviar(de, 'Este número ya reclamó su ORIGEN. 🌱 Es uno por '
-                       'persona, pero seguí preguntándome lo que quieras.')
+        rel.enviar(de, guion.frase('ya-reclamo', _idi(p)))
         return
     p['juego'] = premio.arrancar()
     p['nodo'] = None
@@ -1437,13 +1476,11 @@ def _atender_juego(rel, p, de, dicho):
             p.pop('juego', None)
             return None
         j['pedido'] = j.get('pedido', 0) + 1
-        rel.enviar(de, 'Te sigo debiendo tu ORIGEN. Cuando tengas la dirección '
-                       'de tu Veta Wallet —empieza con 0x— pegámela por acá.')
+        rel.enviar(de, guion.frase('falta-direccion', _idi(p)))
         return True
 
-    malo = premio.problema_con(direccion)
-    if malo:
-        rel.enviar(de, malo)
+    if premio.problema_con(direccion):
+        rel.enviar(de, guion.frase('billetera-nuestra', _idi(p)))
         return True
 
     ok, motivo = premio.anotar(de, direccion, j.get('aciertos', 0))
@@ -1453,28 +1490,27 @@ def _atender_juego(rel, p, de, dicho):
         rel.enviar(de, {
             'billetera': 'Esa billetera ya recibió su ORIGEN. 🌱 Es uno por '
                          'persona — pero seguí preguntándome lo que quieras.',
-            'telefono': 'Este número ya reclamó su ORIGEN. 🌱 Uno por persona.',
+            'telefono': guion.frase('ya-cobro-telefono', _idi(p)),
             # Entraron otros mientras esta persona jugaba. Se le dice con el
             # nombre correcto y sin culparla: llego tarde por segundos.
-            'agotado': 'Uf — se acabaron los ORIGEN mientras jugabas. 🌱 '
-                       'Lo siento de verdad. Cuando abramos otra ronda te '
-                       'aviso por acá, y lo que aprendiste te queda igual.',
-            'ilegible': 'Se me trabó algo al anotarte. Escribime en un rato y '
-                        'lo reviso — tu premio no se pierde.',
-        }.get(motivo, 'No pude anotarte ahora mismo. Probá en un rato.'))
+            'agotado': guion.frase('agotado-jugando', _idi(p)),
+            'ilegible': guion.frase('registro-ilegible', _idi(p)),
+        }.get(motivo, guion.frase('no-pude-anotar', _idi(p))))
         return True
 
     registro.anotar('juego', paso='ganado', aciertos=j.get('aciertos', 0))
-    rel.enviar(de, 'Anotado. 🌱 Tu ORIGEN sale hacia esa billetera en las '
-                   'próximas horas — lo revisa una persona antes de mandarlo.\n\n'
-                   'Cuando llegue lo vas a ver en tu Veta Wallet, y en '
-                   'ordenscan.com si querés comprobarlo vos.')
+    rel.enviar(de, guion.frase('anotado', _idi(p)))
     return True
 
 
 def atender(rel, sistema, p, de, dicho, mensaje=None):
     """Atiende UN mensaje. Si lanza, el que llama decide reintentar o saltar;
-    aqui no se avanza ningun tope."""
+    aqui no se avanza ningun tope.
+
+    `sistema` es un diccionario por idioma —ver `arrancar`—. Se acepta tambien
+    una cadena suelta para no romper a quien lo llame de otra manera; entonces
+    vale para los dos.
+    """
     # ── EL GUION VA ANTES QUE EL MOTOR ────────────────────────────────────
     #
     # Si lo que llega es un boton tocado, o algo que lleva derecho a un nodo
@@ -1523,8 +1559,8 @@ def atender(rel, sistema, p, de, dicho, mensaje=None):
                 rel.enviar(de, espejo.texto_resumen(espejo.resumen(rel, de)))
         except Exception as e:
             # El espejo caido no puede tumbar al asistente: se dice y se sigue.
-            rel.enviar(de, f'No pude leer las charlas ({type(e).__name__}). '
-                           'Probá de nuevo en un rato.')
+            rel.enviar(de, guion.frase('charlas-rotas', idi,
+                                       e=type(e).__name__))
         return
 
     # ── EL JUEGO VA ANTES QUE TODO ────────────────────────────────────────
@@ -1548,6 +1584,10 @@ def atender(rel, sistema, p, de, dicho, mensaje=None):
     # pregunta: ver `guion.pais_de_numero`.
     if 'pais' not in p:
         p['pais'] = guion.pais_de_numero(de)
+    # El motor tiene que PENSAR en su idioma, no traducir al final: ver
+    # `todo_el_saber`.
+    if isinstance(sistema, dict):
+        sistema = sistema.get(idi) or sistema.get('es')
 
     def _mandar_nodo(cual):
         """Un nodo, por el mejor camino que admita el canal.
@@ -1636,9 +1676,24 @@ def atender(rel, sistema, p, de, dicho, mensaje=None):
     espera = actual.get('espera') if actual else None
     if espera in SIGUIENTE:
         if espera == 'nombre':
-            nom = _leer_nombre(dicho)
+            # UN BOTON DE OTRA PANTALLA NO ES UN NOMBRE.
+            #
+            # 30-ago 18:41: Jose tenia en pantalla la pregunta del nombre y
+            # tambien una lista anterior. Toco «Tengo un negocio» de la lista
+            # vieja —WhatsApp deja tocar botones de mensajes de mas arriba— y
+            # el texto del boton entro como su nombre: «Thanks, Tengo».
+            #
+            # Lo que llega con `toco` es siempre una respuesta a OTRA
+            # pregunta: aqui no se pidio ningun boton. Se ignora y se vuelve a
+            # preguntar, en vez de bautizar a alguien con el titulo de un
+            # boton.
+            nom = None if toco else _leer_nombre(dicho)
             if nom:
                 p['nombre'] = nom
+            elif toco:
+                p['visto'] = int(time.time())
+                _mandar_nodo('nombre')
+                return
         else:
             # El oficio puede venir de un boton o escrito. «Otro» no es un
             # oficio: es alguien pidiendo escribir, y se le abre el turno sin
@@ -1722,7 +1777,7 @@ def atender(rel, sistema, p, de, dicho, mensaje=None):
 
     if not dicho:
         # Una foto, un archivo, o un mensaje cifrado de un cliente viejo.
-        rel.enviar(de, 'Por ahora entiendo texto y notas de voz. ¿Me lo escribís?')
+        rel.enviar(de, guion.frase('solo-texto-y-voz', _idi(p)))
         return
 
     # Cambiar de modo es de la casa, no del modelo: se detecta aqui, en seco.
@@ -2533,13 +2588,24 @@ def main():
     saber = cargar_saber()
     # El sistema se arma UNA sola vez y no cambia nunca mas: es la condicion
     # para que Ollama lo cachee entre preguntas.
-    sistema = (cargar_prompt() +
-               '\n\nLO QUE SABES DE LA CASA (tu memoria; nunca menciones esta lista):\n'
-               + todo_el_saber(saber))
+    # Uno por idioma. Ver `todo_el_saber`: el motor tiene que PENSAR en el
+    # idioma de la persona, no traducir al final.
+    base = cargar_prompt()
+    sistema = {
+        'es': (base + '\n\nLO QUE SABES DE LA CASA (tu memoria; nunca '
+               'menciones esta lista):\n' + todo_el_saber(saber, 'es')),
+        'en': (base + '\n\nIMPORTANT: this person chose English. Answer only '
+               'in English — never mix Spanish words in.\n\nWHAT YOU KNOW '
+               '(your memory; never mention this list):\n'
+               + todo_el_saber(saber, 'en')),
+    }
     registro.preparar(DATOS)
     premio.preparar(DATOS)
     perfiles = cargar_perfiles()
-    templar(sistema)
+    # Se templan LOS DOS: quien escriba primero en ingles no puede pagar el
+    # arranque en frio solo por no ser el idioma mayoritario.
+    for _cual in sistema.values():
+        templar(_cual)
     # ── Y SE MANTIENE TEMPLADO ────────────────────────────────────────────
     # `keep_alive` largo le dice a Ollama que no suelte el modelo, pero un
     # latido cada tanto lo asegura pase lo que pase (un reinicio de Ollama,
@@ -2565,7 +2631,8 @@ def main():
         while True:
             time.sleep(1200)
             try:
-                templar(sistema)
+                for _cual in sistema.values():
+                    templar(_cual)
             except Exception as e:
                 log('el latido de templado fallo:', type(e).__name__, str(e)[:80])
             try:

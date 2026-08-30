@@ -67,7 +67,7 @@ def sistema(prompt_alt=None):
         prompt = asistente.cargar_prompt()
     return (prompt +
             '\n\nLO QUE SABES DE LA CASA (tu memoria; nunca menciones esta '
-            'lista):\n' + asistente.todo_el_saber(saber))
+            'lista):\n' + asistente.todo_el_saber(saber, 'es'))
 
 
 # Las preguntas no son un examen: son lo que la gente escribe de verdad, y

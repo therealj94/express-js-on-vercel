@@ -609,5 +609,97 @@ class UnaSolaPreguntaYELOTRODEJAESCRIBIR(unittest.TestCase):
                                  f'«{fila[1]}» lleva ejemplo: {fila[2:]}')
 
 
+class NADASALEENUNSOLOIDIOMA(unittest.TestCase):
+    """«probando en inglés se cruzan palabras en español» — José, 30-ago.
+
+    La causa de fondo no era el guion —que ya estaba traducido— sino que el
+    MOTOR pensaba con las fichas en español, y que los mensajes de fuera del
+    guion nunca se tradujeron. Quien elegía English jugaba en inglés y de
+    golpe leía «Anotado. Tu ORIGEN sale hacia esa billetera», justo en el
+    momento del premio: el que decide si se queda."""
+
+    def test_cada_nodo_tiene_los_dos_idiomas(self):
+        for nombre, n in guion.NODOS.items():
+            for campo in ('texto', 'botones', 'lista'):
+                v = n.get(campo)
+                if isinstance(v, dict):
+                    for idioma in guion.IDIOMAS:
+                        self.assertIn(idioma, v, f'{nombre}.{campo}')
+                        self.assertTrue(v[idioma], f'{nombre}.{campo}/{idioma}')
+
+    def test_y_el_ingles_NO_es_el_español_copiado(self):
+        """Una traducción olvidada se ve como texto idéntico en los dos."""
+        for nombre, n in guion.NODOS.items():
+            if nombre == 'idioma':
+                continue          # la puerta es bilingüe a propósito
+            es = guion.nodo(nombre, 'es', 'Ana')['texto']
+            en = guion.nodo(nombre, 'en', 'Ana')['texto']
+            self.assertNotEqual(es, en, f'{nombre}: el inglés es el español')
+
+    def test_cada_FRASE_suelta_tiene_los_dos(self):
+        for clave, t in guion.FRASES.items():
+            for idioma in guion.IDIOMAS:
+                self.assertIn(idioma, t, f'FRASES[{clave}]')
+                self.assertTrue(t[idioma].strip(), f'FRASES[{clave}]/{idioma}')
+            self.assertNotEqual(t['es'], t['en'], clave)
+
+    def test_ningun_mensaje_suelto_quedo_escrito_a_mano_en_asistente(self):
+        """Un literal en medio del código es un literal que nadie traduce.
+        Los que salen a la persona van por `guion.frase`."""
+        fuente = (AQUI / 'asistente.py').read_text(encoding='utf8')
+        sospechosos = re.findall(r"rel\.enviar\(de, *'([^']{25,})", fuente)
+        self.assertEqual(sospechosos, [],
+                         f'mensajes a mano en vez de guion.frase: {sospechosos}')
+
+    def test_el_motor_recibe_el_saber_EN_SU_IDIOMA(self):
+        """Era la causa raíz: `todo_el_saber` leía siempre `f['es']`, así que
+        el modelo tenía toda su memoria en español."""
+        fuente = (AQUI / 'asistente.py').read_text(encoding='utf8')
+        i = fuente.index('def todo_el_saber')
+        cuerpo = fuente[i:fuente.index('\ndef ', i + 10)]
+        self.assertIn("f.get(idioma)", cuerpo)
+        # y se arma un sistema por idioma
+        j = fuente.index("sistema = {")
+        self.assertIn("todo_el_saber(saber, 'en')", fuente[j:j + 600])
+
+    def test_las_fichas_de_verdad_tienen_las_dos_versiones(self):
+        import json
+        d = json.loads((AQUI / '..' / 'cerebro' / 'conocimiento' /
+                        'saber.json').read_text(encoding='utf8'))
+        sin_ingles = [f['id'] for f in d['fichas']
+                      if f.get('publico') and not (f.get('en') or '').strip()]
+        self.assertEqual(sin_ingles, [],
+                         f'fichas públicas sin inglés: {sin_ingles}')
+
+
+class UnBotonDeOtraPantallaNOESUNNOMBRE(unittest.TestCase):
+    """30-ago 18:41. José tenía en pantalla la pregunta del nombre y también
+    una lista anterior. Tocó «Tengo un negocio» de la lista vieja —WhatsApp
+    deja tocar botones de mensajes de más arriba— y el título entró como su
+    nombre: «Thanks, Tengo»."""
+
+    def test_los_titulos_de_las_opciones_se_reconocen_como_tales(self):
+        for t in ['Tengo un negocio', 'Otra cosa', 'Something else',
+                  'Cuidar mis ahorros', 'Volver', 'I have a job']:
+            self.assertTrue(guion.es_titulo_de_opcion(t), t)
+
+    def test_pero_un_nombre_de_verdad_no(self):
+        for t in ['José', 'Melany', 'Ana María', 'Sarah', '']:
+            self.assertFalse(guion.es_titulo_de_opcion(t), t)
+
+    def test_se_calcula_del_guion_no_de_una_lista_aparte(self):
+        """Una opción nueva queda cubierta sin que nadie la anote dos veces."""
+        fuente = (AQUI / 'guion.py').read_text(encoding='utf8')
+        i = fuente.index('def es_titulo_de_opcion')
+        cuerpo = fuente[i:fuente.index('\ndef ', i + 10)]
+        self.assertIn('NODOS.values()', cuerpo)
+
+    def test_y_el_asistente_ignora_el_toque_en_el_nodo_del_nombre(self):
+        fuente = (AQUI / 'asistente.py').read_text(encoding='utf8')
+        i = fuente.index("if espera == 'nombre':")
+        self.assertIn('None if toco else _leer_nombre(dicho)',
+                      fuente[i:i + 1200])
+
+
 if __name__ == '__main__':
     unittest.main(verbosity=2)

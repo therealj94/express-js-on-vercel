@@ -777,6 +777,126 @@ MONEDAS_EN = {
 }
 
 
+# ── LO QUE AU-RA DICE FUERA DEL GUION ───────────────────────────────────────
+#
+# El guion habla los dos idiomas desde el 30-ago, pero estos mensajes sueltos
+# —los del juego, sobre todo— seguian en espanol nada mas. Quien elegia
+# English jugaba en ingles y de golpe leia «Anotado. Tu ORIGEN sale hacia esa
+# billetera»: justo en el momento del premio, que es el que decide si se
+# queda.
+#
+# Estan aqui y no repartidos por `asistente.py` porque un mensaje suelto en el
+# medio del codigo es un mensaje que nadie traduce nunca. `frase()` cae al
+# espanol si falta una traduccion, y hay prueba de que no falta ninguna.
+FRASES = {
+    'premios-agotados': {
+        'es': ('Se acabaron los ORIGEN de esta ronda. 🌱\n\nIgual te enseño lo '
+               'mismo gratis si querés, y cuando abramos otra te aviso por acá.'),
+        'en': ('This round of ORIGEN is finished. 🌱\n\nI can still teach you '
+               'the same thing for free, and I will let you know here when we '
+               'open another one.'),
+    },
+    'ya-reclamo': {
+        'es': ('Este número ya reclamó su ORIGEN. 🌱 Es uno por persona, pero '
+               'seguí preguntándome lo que quieras.'),
+        'en': ('This number already claimed its ORIGEN. 🌱 It is one per '
+               'person, but keep asking me anything you like.'),
+    },
+    'falta-direccion': {
+        'es': ('Te sigo debiendo tu ORIGEN. Cuando tengas la dirección de tu '
+               'Veta Wallet —empieza con 0x— pegámela por acá.'),
+        'en': ('I still owe you your ORIGEN. When you have your Veta Wallet '
+               'address —it starts with 0x— paste it here.'),
+    },
+    'anotado': {
+        'es': ('Anotado. 🌱 Tu ORIGEN va en camino a esa billetera.\n\nCuando '
+               'llegue lo vas a ver en tu Veta Wallet, y en ordenscan.com si '
+               'querés comprobarlo vos.'),
+        'en': ('Got it. 🌱 Your ORIGEN is on its way to that wallet.\n\nWhen it '
+               'lands you will see it in your Veta Wallet, and on ordenscan.com '
+               'if you want to check it yourself.'),
+    },
+    'ya-cobro-telefono': {
+        'es': 'Este número ya reclamó su ORIGEN. 🌱 Uno por persona.',
+        'en': 'This number already claimed its ORIGEN. 🌱 One per person.',
+    },
+    'ya-cobro-billetera': {
+        'es': ('Esa billetera ya recibió un ORIGEN. 🌱 Es uno por persona y por '
+               'billetera.'),
+        'en': ('That wallet already received an ORIGEN. 🌱 One per person and '
+               'per wallet.'),
+    },
+    'agotado-jugando': {
+        'es': ('Uf — se acabaron los ORIGEN mientras jugabas. 🌱 Lo siento de '
+               'verdad. Cuando abramos otra ronda te aviso por acá, y lo que '
+               'aprendiste te queda igual.'),
+        'en': ('Ah — the ORIGEN ran out while you were playing. 🌱 I am truly '
+               'sorry. I will let you know here when we open another round, and '
+               'what you learned stays with you anyway.'),
+    },
+    'registro-ilegible': {
+        'es': ('Se me trabó algo al anotarte. Escribime en un rato y lo reviso '
+               '— tu premio no se pierde.'),
+        'en': ('Something jammed while registering you. Write me in a while and '
+               'I will check it — your prize is not lost.'),
+    },
+    'no-pude-anotar': {
+        'es': 'No pude anotarte ahora mismo. Probá en un rato.',
+        'en': 'I could not register you right now. Try again in a while.',
+    },
+    'billetera-nuestra': {
+        'es': 'Esa es una billetera nuestra. Mandame la tuya.',
+        'en': 'That is one of our wallets. Send me yours.',
+    },
+    'solo-texto-y-voz': {
+        'es': 'Por ahora entiendo texto y notas de voz. ¿Me lo escribís?',
+        'en': 'For now I understand text and voice notes. Could you write it?',
+    },
+    'charlas-rotas': {
+        'es': 'No pude leer las charlas ({e}). Probá de nuevo en un rato.',
+        'en': 'I could not read the chats ({e}). Try again in a while.',
+    },
+}
+
+
+def es_titulo_de_opcion(texto):
+    """Si eso que escribieron es, palabra por palabra, el titulo de un boton o
+    de una fila de lista del guion — en cualquier idioma.
+
+    Sirve para no confundir la transcripcion de un boton con una respuesta
+    libre. El caso que lo motivo: «Tengo un negocio» entrando como nombre de
+    pila. El `toco` cubre a quien TOCA el boton; esto cubre a quien lo copia a
+    mano, que con teclados grandes y gente mayor pasa todo el tiempo.
+
+    Se calcula del guion y no de una lista aparte: una opcion nueva queda
+    cubierta sin que nadie se acuerde de anotarla en dos sitios.
+    """
+    t = _llano(texto)
+    if not t:
+        return False
+    for n in NODOS.values():
+        for idioma in IDIOMAS:
+            for titulo, _destino in (_en(n.get('botones'), idioma) or []):
+                if _llano(titulo) == t:
+                    return True
+            lista = _en(n.get('lista'), idioma)
+            for fila in (lista[1] if lista else []):
+                if _llano(fila[1]) == t:
+                    return True
+    return False
+
+
+def frase(clave, idioma=POR_OMISION, **huecos):
+    """Un mensaje de fuera del guion, en su idioma.
+
+    Cae al espanol si falta la traduccion: media conversacion en un idioma es
+    peor que toda en el otro, y quedarse MUDO es peor que las dos.
+    """
+    t = FRASES.get(clave) or {}
+    texto = t.get(idioma) or t.get(POR_OMISION) or ''
+    return texto.format(**huecos) if huecos else texto
+
+
 def moneda_de(pais, idioma=POR_OMISION):
     """Como se llama la plata donde vive esa persona.
 
