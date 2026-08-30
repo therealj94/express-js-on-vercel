@@ -62,8 +62,12 @@ def cmd_finish(src: str, dst: str, look: str, ratio: float, fps_out: int,
     # 1. Encuadre de cine. Recortar a 2.39:1 no es decorativo: cambia dónde
     #    cae el ojo y esconde los bordes, que es donde el modelo falla más.
     if ratio:
-        # ancho completo, alto = ancho/relación, centrado. Par para yuv420p.
-        filtros.append(f"crop=iw:2*floor(iw/{ratio}/2):0:(ih-iw/{ratio})/2")
+        # Una relación < 1 es vertical (9:16 = 0.5625). Recortar por alto ahí
+        # dejaría un vídeo de móvil en una rendija: hay que recortar por ancho.
+        if ratio < 1:
+            filtros.append(f"crop=2*floor(ih*{ratio}/2):ih:(iw-ih*{ratio})/2:0")
+        else:
+            filtros.append(f"crop=iw:2*floor(iw/{ratio}/2):0:(ih-iw/{ratio})/2")
 
     # 2. Curva de color. Sin esto se ve "de IA" aunque el modelo sea perfecto.
     g = GRADES.get(look)
@@ -93,6 +97,16 @@ def cmd_finish(src: str, dst: str, look: str, ratio: float, fps_out: int,
          "-pix_fmt", "yuv420p", "-movflags", "+faststart",
          "-c:a", "aac", "-b:a", "192k", dst])
     print(f"{dst}")
+
+
+def cmd_reverse(src: str, dst: str) -> None:
+    """Invierte un clip. Un modelo al que se le pide 'rebobinar' produce papilla;
+    generar la acción hacia delante e invertirla da un rebobinado físicamente
+    creíble, que es como se hace en cine."""
+    Path(dst).parent.mkdir(parents=True, exist_ok=True)
+    run(["ffmpeg", "-y", "-i", src, "-vf", "reverse", "-af", "areverse",
+         "-c:v", "libx264", "-crf", "16", "-pix_fmt", "yuv420p", dst])
+    print(dst)
 
 
 def cmd_qc(outdir: str, prefix: str | None) -> None:
@@ -166,6 +180,9 @@ def main() -> int:
     f.add_argument("--grain", type=float, default=6)
     f.add_argument("--fade", type=float, default=0.0)
 
+    r = sub.add_parser("reverse")
+    r.add_argument("src"); r.add_argument("-o", "--output", required=True)
+
     q = sub.add_parser("qc")
     q.add_argument("outdir"); q.add_argument("--prefix")
 
@@ -174,7 +191,9 @@ def main() -> int:
     c.add_argument("--cols", type=int, default=4)
 
     a = ap.parse_args()
-    if a.cmd == "finish":
+    if a.cmd == "reverse":
+        cmd_reverse(a.src, a.output)
+    elif a.cmd == "finish":
         cmd_finish(a.src, a.output, a.look, a.ratio, a.fps, a.grain, a.fade)
     elif a.cmd == "qc":
         cmd_qc(a.outdir, a.prefix)

@@ -1,14 +1,6 @@
 #!/usr/bin/env bash
-# ONSTART para Vast.ai — se pega en "On-start Script" al crear la instancia.
-# El pod se instala solo al arrancar: no hace falta SSH ni terminal.
-# Al terminar, ComfyUI queda accesible desde el navegador con usuario y clave.
-#
-# Variables que debes poner en la plantilla de Vast (sección Environment):
-#   HF_TOKEN   = tu token de Hugging Face (read)
-#   UI_PASS    = la clave con la que entrarás a ComfyUI  (opcional; si no,
-#                se genera una y aparece en el log)
-#
-# Progreso:  /workspace/onstart.log   (visible desde el botón Logs de Vast)
+# ONSTART de Vast: el pod se instala solo, sin SSH. Variables: HF_TOKEN,
+# UI_USER, UI_PASS, MODELS (h3,flux,wan), VOZ. Progreso en el log de Vast.
 set -uo pipefail
 exec > >(tee -a /workspace/onstart.log) 2>&1
 echo "===== onstart $(date -u) ====="
@@ -94,10 +86,8 @@ tiene wan && stage Comfy-Org/Wan_2.2_ComfyUI_Repackaged \
 tiene flux && stage Comfy-Org/FLUX.2-dev_ComfyUI \
   "split_files/diffusion_models/*fp8* split_files/text_encoders/* split_files/vae/*" "$M/_img"
 hf download fal/MiniMax-H3-Realism-People-LoRA --local-dir "$M/loras/h3-realism" || true
-# Las plantillas oficiales de H3 cargan los modelos turbo COMO LoRA. Sin este
-# fichero en models/loras, ComfyUI marca el workflow como "modelo faltante", y
-# el botón de descarga que ofrece baja el fichero AL DISPOSITIVO del usuario,
-# no al pod: desde un iPad no hay forma de arreglarlo. Se baja aquí.
+# Los turbo de H3 se cargan COMO LoRA. Fuera de models/loras ComfyUI los da
+# por faltantes, y su botón de descarga los baja al dispositivo del usuario.
 if tiene h3; then
   stage Comfy-Org/MiniMax-H3 "*turbo*step*" "$M/_turbo"
   find "$M/_turbo" -name '*.safetensors' -exec mv -n {} "$M/loras/" \; 2>/dev/null
@@ -127,6 +117,19 @@ du -sh "$M"/* 2>/dev/null
 LIBRE=$(df -BG --output=avail "$WORK" | tail -1 | tr -dc 0-9)
 echo "==> disco libre: ${LIBRE} GB"
 [ "${LIBRE:-99}" -lt 15 ] && echo "!! Queda poco disco: la generación puede fallar al guardar."
+
+# --- Voz y labial (VOZ=1) ---------------------------------------------------
+# La voz no se le pide al modelo de vídeo: su labial en español es una lotería
+# y esta pieza tiene una sola línea hablada. Se genera aparte y se sincroniza
+# encima. Chatterbox es abierto y en pruebas ciegas ganó a los de pago.
+if [ "${VOZ:-0}" = "1" ]; then
+  pip install -q chatterbox-tts || echo "!! chatterbox no instalado"
+  d="$WORK/LatentSync"
+  [ -d "$d" ] || git clone --depth 1 https://github.com/bytedance/LatentSync "$d"
+  pip install -q -r "$d/requirements.txt" 2>/dev/null || \
+    echo "!! requisitos de LatentSync incompletos: el labial se hará en post"
+  echo "==> voz y labial preparados"
+fi
 
 # --- Autenticación delante de ComfyUI -------------------------------------
 # ComfyUI no tiene login. En una IP pública sin proxy, cualquiera que escanee
@@ -197,8 +200,7 @@ if [ -n "${RCLONE_CONF_B64:-}" ] && [ -n "${RCLONE_REMOTE:-}" ]; then
 fi
 
 # --- Modo desatendido -------------------------------------------------------
-# Si viene una cola, el pod genera todo solo y avisa por el log cuando termina.
-# José no abre nada: los clips salen por el bucket y la instancia se destruye.
+# Con una cola, el pod genera todo solo y lo avisa por el log.
 if [ -n "${JOB_QUEUE_B64:-}" ]; then
   # La cola va JUNTO a los workflows: el runner resuelve job["workflow"] como
   # ruta relativa a la propia cola, así que dejarla en /workspace la haría
@@ -210,7 +212,7 @@ if [ -n "${JOB_QUEUE_B64:-}" ]; then
   echo "${JOB_WORKFLOWS_B64:-}" | base64 -d > "$WORK/workflows.tar" 2>/dev/null && \
     tar xf "$WORK/workflows.tar" -C "$WORK" 2>/dev/null
 
-  # Comprobaciones antes de gastar: sin runner o sin workflows no hay tanda.
+  # Sin runner o sin workflows no hay tanda: abortar antes de gastar.
   N_WF=$(ls "$WORK/prompts/workflows/"*.json 2>/dev/null | wc -l)
   if [ ! -s "$WORK/03_run_queue.py" ] || [ "$N_WF" -eq 0 ]; then
     echo "!! TRABAJO ABORTADO: runner=$( [ -s "$WORK/03_run_queue.py" ] && echo ok || echo FALTA )," \
@@ -225,11 +227,8 @@ if [ -n "${JOB_QUEUE_B64:-}" ]; then
     sleep 90
     echo "==> TRABAJO COMPLETO"   # el guardián ve esto y destruye la instancia
 
-    # NO hay autodestrucción: Vast solo entrega la clave de instancia DESPUÉS
-    # de crearla, cuando el entorno del pod ya está fijado, y meter aquí la
-    # clave de la cuenta daría control total sobre ella a la máquina de un
-    # tercero. El apagado depende del guardián y, en último término, del botón
-    # Destroy y del piso de saldo.
+    # Sin autodestrucción: la clave de instancia llega DESPUÉS de crear, y
+    # poner la de la cuenta daría control total a una máquina ajena.
   fi
 fi
 
