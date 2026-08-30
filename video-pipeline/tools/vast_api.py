@@ -147,7 +147,9 @@ def main() -> int:
             if a.workflows:
                 import io, tarfile
                 buf = io.BytesIO()
-                with tarfile.open(fileobj=buf, mode="w") as tar:
+                # Comprimido: un tar en claro de 7 KB de JSON ocupa 27 KB en
+                # base64 y revienta el límite de 32 KB del entorno.
+                with tarfile.open(fileobj=buf, mode="w:gz") as tar:
                     tar.add(a.workflows, arcname="prompts/workflows")
                 env["JOB_WORKFLOWS_B64"] = base64.b64encode(buf.getvalue()).decode()
 

@@ -189,7 +189,7 @@ if [ -n "${JOB_QUEUE_B64:-}" ]; then
   echo "$JOB_QUEUE_B64" | base64 -d | gunzip > "$WORK/prompts/cola.json"
   echo "${JOB_RUNNER_B64:-}" | base64 -d | gunzip > "$WORK/03_run_queue.py" 2>/dev/null
   echo "${JOB_WORKFLOWS_B64:-}" | base64 -d > "$WORK/workflows.tar" 2>/dev/null && \
-    tar xf "$WORK/workflows.tar" -C "$WORK" 2>/dev/null
+    tar xzf "$WORK/workflows.tar" -C "$WORK" 2>/dev/null
 
   # Sin runner o sin workflows no hay tanda: abortar antes de gastar.
   N_WF=$(ls "$WORK/prompts/workflows/"*.json 2>/dev/null | wc -l)
