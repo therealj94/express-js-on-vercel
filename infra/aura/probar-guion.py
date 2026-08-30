@@ -121,8 +121,13 @@ class LosBotonesCabenEnWhatsApp(unittest.TestCase):
         nada — y sin ninguna señal de que algo se rompió."""
         for nombre, idioma, _t, botones in cada_nodo():
             for titulo, destino in botones:
+                # Dos familias de botones NO llevan a un nodo: son la
+                # RESPUESTA a la pregunta del nodo donde están. Los del idioma
+                # fijan el idioma; los del oficio guardan a qué se dedica.
                 if guion.idioma_de_toque(destino):
-                    continue      # los de la puerta fijan idioma, no van a un nodo
+                    continue
+                if str(destino).startswith('of:'):
+                    continue
                 self.assertIn(destino, guion.NODOS,
                               f'«{titulo}» ({nombre}) lleva a «{destino}», que no existe')
 
@@ -140,7 +145,7 @@ class LosBotonesCabenEnWhatsApp(unittest.TestCase):
         # de elegir idioma (TRAS_ELEGIR_IDIOMA) y `saludo` viene de contestar
         # el nombre. Exigirles un botón sería pedir que la entrada tenga
         # entrada.
-        entrada = {'idioma', 'nombre', 'pais', 'oficio', 'saludo'}
+        entrada = {'idioma', 'nombre', 'oficio', 'oficio-otro', 'saludo'}
         huerfanos = set(guion.NODOS) - alcanzables - entrada
         self.assertEqual(huerfanos, set(), f'no se llega a: {huerfanos}')
 
@@ -487,12 +492,11 @@ class LasTresPreguntasDeEntrada(unittest.TestCase):
     def test_la_cadena_va_completa_y_en_orden(self):
         fuente = (AQUI / 'asistente.py').read_text(encoding='utf8')
         i = fuente.index('SIGUIENTE = {')
-        self.assertIn("'nombre': 'pais', 'pais': 'oficio', 'oficio': 'saludo'",
-                      fuente[i:i + 120])
+        self.assertIn("'nombre': 'oficio', 'oficio': 'saludo'", fuente[i:i + 90])
 
     def test_cada_paso_espera_su_dato(self):
-        for nodo, dato in [('nombre', 'nombre'), ('pais', 'pais'),
-                           ('oficio', 'oficio')]:
+        for nodo, dato in [('nombre', 'nombre'), ('oficio', 'oficio'),
+                           ('oficio-otro', 'oficio')]:
             for idioma in guion.IDIOMAS:
                 self.assertEqual(guion.nodo(nodo, idioma)['espera'], dato,
                                  f'{nodo}/{idioma}')
@@ -531,10 +535,65 @@ class LasTresPreguntasDeEntrada(unittest.TestCase):
     def test_preguntar_el_pais_y_el_oficio_NO_es_un_interrogatorio(self):
         """Cada pregunta va sola y dice para qué sirve. Un nodo que pregunta
         tres cosas a la vez se contesta a medias o no se contesta."""
-        for nodo in ('nombre', 'pais', 'oficio'):
+        for nodo in ('nombre', 'oficio', 'oficio-otro'):
             for idioma in guion.IDIOMAS:
                 t = guion.nodo(nodo, idioma, 'Ana')['texto']
                 self.assertLessEqual(t.count('?'), 2, f'{nodo}/{idioma}')
+
+
+class UnaSolaPreguntaYELOTRODEJAESCRIBIR(unittest.TestCase):
+    """«junta país y oficio en una sola, usar más opciones o poner otro y
+    especificar» — José, 30-ago."""
+
+    def test_el_pais_ya_no_se_pregunta(self):
+        """Sale del prefijo del número: preguntarlo gastaba un mensaje del
+        embudo para averiguar algo que viene en cada mensaje que manda."""
+        self.assertNotIn('pais', guion.NODOS)
+
+    def test_y_se_deduce_bien_de_los_numeros_de_la_region(self):
+        for numero, esperado in [('50432136457', 'honduras'),
+                                 ('5215512345678', 'mexico'),
+                                 ('573001234567', 'colombia'),
+                                 ('18091234567', 'republica dominicana')]:
+            self.assertEqual(guion.pais_de_numero(numero), esperado, numero)
+
+    def test_el_mas_largo_gana_o_Estados_Unidos_se_come_a_Dominicana(self):
+        self.assertEqual(guion.pais_de_numero('18091234567'),
+                         'republica dominicana')
+        self.assertEqual(guion.pais_de_numero('12125550100'), '')
+
+    def test_un_numero_desconocido_NO_inventa_pais(self):
+        for n in ('12125550100', '50712345678', '441234567890', '', 'hola'):
+            self.assertEqual(guion.pais_de_numero(n), '', n)
+
+    def test_los_botones_del_oficio_son_RESPUESTAS_no_destinos(self):
+        for id_boton, esperado in [('of:negocio', 'tengo un negocio'),
+                                   ('of:asalariado', 'trabajo asalariado')]:
+            oficio, pide_mas = guion.oficio_de_toque(id_boton)
+            self.assertEqual(oficio, esperado)
+            self.assertFalse(pide_mas)
+
+    def test_OTRO_no_se_guarda_como_oficio_sino_que_abre_el_turno(self):
+        """«Otro» no es un oficio: es alguien pidiendo escribir. Guardarlo
+        dejaría a media docena de personas con «otro» de ocupación."""
+        oficio, pide_mas = guion.oficio_de_toque('of:otro')
+        self.assertIsNone(oficio)
+        self.assertTrue(pide_mas)
+        self.assertEqual(guion.nodo('oficio-otro', 'es')['espera'], 'oficio')
+
+    def test_la_pregunta_INVITA_a_escribir_antes_de_ofrecer_botones(self):
+        """El proveedor tira las listas de WhatsApp en silencio (comprobado
+        contra la API el 30-ago), así que con tres botones el texto libre no es
+        el respaldo: es el camino principal."""
+        for idioma, frase in (('es', 'como quieras'), ('en', 'however you like')):
+            self.assertIn(frase, guion.nodo('oficio', idioma, 'Ana')['texto'])
+
+    def test_y_los_tres_botones_caben_en_whatsapp(self):
+        for idioma in guion.IDIOMAS:
+            botones = guion.nodo('oficio', idioma)['botones']
+            self.assertEqual(len(botones), 3)
+            for titulo, _ in botones:
+                self.assertLessEqual(len(titulo), guion.TOPE_BOTON, titulo)
 
 
 if __name__ == '__main__':

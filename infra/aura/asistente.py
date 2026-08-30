@@ -1544,6 +1544,10 @@ def atender(rel, sistema, p, de, dicho, mensaje=None):
     # vez y no en cada vuelta.
     toco = (mensaje or {}).get('toco')
     idi = p.get('idioma') or guion.POR_OMISION
+    # El pais se deduce del prefijo del numero y se guarda una vez. No se
+    # pregunta: ver `guion.pais_de_numero`.
+    if 'pais' not in p:
+        p['pais'] = guion.pais_de_numero(de)
 
     # ── LA PUERTA DEL IDIOMA VA PRIMERO. SIEMPRE ────────────────────────────
     #
@@ -1604,7 +1608,10 @@ def atender(rel, sistema, p, de, dicho, mensaje=None):
     # faciles antes de contar nada: quien sos, de donde, y a que te dedicas.
     # No es un formulario — el pais decide como se llama su moneda y el oficio
     # decide de que vale la pena hablarle.
-    SIGUIENTE = {'nombre': 'pais', 'pais': 'oficio', 'oficio': 'saludo'}
+    # Dos preguntas y ya: como se llama y a que se dedica. El pais no se
+    # pregunta —sale del prefijo de su numero— y por eso el embudo se acorto
+    # un mensaje.
+    SIGUIENTE = {'nombre': 'oficio', 'oficio': 'saludo'}
     actual = guion.nodo(p.get('nodo') or '', idi)
     espera = actual.get('espera') if actual else None
     if espera in SIGUIENTE:
@@ -1612,11 +1619,23 @@ def atender(rel, sistema, p, de, dicho, mensaje=None):
             nom = _leer_nombre(dicho)
             if nom:
                 p['nombre'] = nom
-        elif (dicho or '').strip():
-            # Pais y oficio se guardan como los dice la persona, recortados.
-            # No se normalizan contra una lista: «la capital» o «taxista de
-            # noche» dicen mas de ella que cualquier categoria nuestra.
-            p[espera] = ' '.join((dicho or '').split())[:40]
+        else:
+            # El oficio puede venir de un boton o escrito. «Otro» no es un
+            # oficio: es alguien pidiendo escribir, y se le abre el turno sin
+            # guardar nada ni avanzar.
+            del_boton, pide_mas = guion.oficio_de_toque(toco, idi)
+            if pide_mas:
+                p['nodo'] = 'oficio-otro'
+                p['visto'] = int(time.time())
+                rel.enviar(de, guion.nodo('oficio-otro', idi,
+                                          p.get('nombre', ''))['texto'])
+                return
+            escrito = ' '.join((dicho or '').split())[:40]
+            # Se guarda como lo dice la persona, sin normalizar contra ninguna
+            # lista: «taxista de noche» dice mas que cualquier categoria
+            # nuestra.
+            if del_boton or escrito:
+                p['oficio'] = del_boton or escrito
         destino = SIGUIENTE[espera]
         p['nodo'] = destino
         p['visto'] = int(time.time())

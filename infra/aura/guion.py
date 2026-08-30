@@ -137,33 +137,48 @@ NODOS = {
         'espera': 'nombre',
     },
 
-    # ── EL PAIS. No es un formulario: es para nombrarle SU moneda ───────────
+    # ── UNA SOLA PREGUNTA, Y LOS BOTONES SON ATAJOS ─────────────────────────
     #
-    # «La moneda de tu país se devalúa» es un folleto. «El lempira compra
-    # menos que el año pasado» le habla a ella. La diferencia entre las dos
-    # frases es este mensaje, y por eso vale el paso extra.
-    'pais': {
-        'texto': {
-            'es': ('{nombre}, ¿desde qué país me escribís?'),
-            'en': ('{nombre}, what country are you writing from?'),
-        },
-        'espera': 'pais',
-    },
-
-    # ── A QUE SE DEDICA ─────────────────────────────────────────────────────
+    # Eran dos —pais y oficio— y Jose pidio juntarlas. El pais ya no se
+    # pregunta: sale del prefijo del numero (ver `pais_de_numero`), asi que
+    # queda una sola y el embudo se acorta un mensaje entero.
     #
-    # Lo pidio Jose. Y sirve dos veces: para elegir de que hablarle —a quien
-    # tiene un negocio le importa cobrar, a quien es asalariado le importa
-    # que no se le achique el sueldo— y porque queda en el historial, asi que
-    # el motor tambien lo sabe cuando la charla se sale del guion.
+    # POR QUE TRES BOTONES Y NO DIEZ. Jose pidio «más opciones o poner otro y
+    # especificar». WhatsApp tiene listas de hasta diez filas, asi que se
+    # probo contra el proveedor de verdad: contesta 200 y TIRA la lista en
+    # silencio — al telefono llega solo el texto pelado. Comprobado el 30-ago
+    # mirando el mensaje guardado, no la documentacion.
+    #
+    # Asi que tres, y el tercero es «Otro» — que no es un cajon de sastre: es
+    # el permiso explicito para escribir. La linea «escribilo como quieras»
+    # esta arriba porque la mayoria no toca ningun boton, y quien escribe
+    # «enfermera» o «taxista de noche» nos dice mas que cualquier categoria
+    # nuestra.
     'oficio': {
         'texto': {
-            'es': ('Buenísimo. ¿Y a qué te dedicás, {nombre}?\n\n'
-                   'Te lo pregunto para hablarte de lo que te sirve a vos y no '
-                   'de todo lo demás.'),
-            'en': ('Great. And what do you do, {nombre}?\n\n'
-                   'I ask so I can talk about what actually helps you, not '
-                   'everything else.'),
+            'es': ('{nombre}, ¿a qué te dedicás?\n\n'
+                   'Escribímelo como quieras — o tocá una de estas si te '
+                   'queda cómoda.'),
+            'en': ('{nombre}, what do you do?\n\n'
+                   'Write it however you like — or tap one of these if it '
+                   'fits.'),
+        },
+        'botones': {
+            'es': [('Tengo un negocio', 'of:negocio'),
+                   ('Trabajo asalariado', 'of:asalariado'),
+                   ('Otro', 'of:otro')],
+            'en': [('I have a business', 'of:negocio'),
+                   ('I am employed', 'of:asalariado'),
+                   ('Other', 'of:otro')],
+        },
+        'espera': 'oficio',
+    },
+
+    # Quien toca «Otro» pidio escribir. Se le pregunta y se espera.
+    'oficio-otro': {
+        'texto': {
+            'es': 'Contame vos, {nombre}: ¿a qué te dedicás?',
+            'en': 'Tell me yourself, {nombre}: what do you do?',
         },
         'espera': 'oficio',
     },
@@ -695,6 +710,47 @@ MONEDAS = {
 }
 MONEDA_GENERAL = {'es': 'la moneda de tu país', 'en': 'your local currency'}
 
+# ── EL PAIS SALE DEL NUMERO, NO DE UNA PREGUNTA ─────────────────────────────
+#
+# Un +504 escribe desde Honduras casi siempre. Preguntarselo gasta un mensaje
+# del embudo para averiguar algo que ya viene en la cabecera de cada mensaje
+# que manda.
+#
+# Y OJO CON LA ASIMETRIA, porque es la razon de que esto sea distinto del
+# idioma: adivinar el idioma por el prefijo es caro —un hondureno en Houston
+# lee el mensaje en el idioma equivocado y se va—; adivinar la MONEDA es
+# barato, porque lo peor que pasa es nombrar la moneda de su pais de origen en
+# vez de la de donde vive, que ademas suele ser la que le duele. Por eso el
+# idioma se pregunta y el pais no.
+#
+# Los paises dolarizados y España NO estan: ver `MONEDAS`. Un prefijo que no
+# este aqui cae en la frase general, que sigue siendo cierta.
+PREFIJOS = {
+    '504': 'honduras', '502': 'guatemala', '505': 'nicaragua',
+    '506': 'costa rica', '509': 'haiti', '591': 'bolivia', '595': 'paraguay',
+    '598': 'uruguay', '52': 'mexico', '57': 'colombia', '54': 'argentina',
+    '56': 'chile', '51': 'peru', '58': 'venezuela', '55': 'brasil',
+    # Republica Dominicana comparte el +1 con Estados Unidos y Canada, asi que
+    # se distingue por el codigo de area. Van antes que cualquier prefijo mas
+    # corto: la busqueda es del mas largo al mas corto.
+    '1809': 'republica dominicana', '1829': 'republica dominicana',
+    '1849': 'republica dominicana',
+}
+
+
+def pais_de_numero(numero):
+    """El pais probable de un numero de WhatsApp. Cadena vacia si no se sabe.
+
+    Se prueba del prefijo mas largo al mas corto: si no, el +1 de Estados
+    Unidos se comeria a la Republica Dominicana.
+    """
+    t = ''.join(ch for ch in str(numero or '') if ch.isdigit())
+    for largo in sorted({len(k) for k in PREFIJOS}, reverse=True):
+        pais = PREFIJOS.get(t[:largo])
+        if pais:
+            return pais
+    return''
+
 MONEDAS_EN = {
     'honduras': 'lempiras', 'guatemala': 'quetzales', 'nicaragua': 'córdobas',
     'costa rica': 'colones', 'mexico': 'pesos', 'méxico': 'pesos',
@@ -774,6 +830,25 @@ def _sin_nombre(texto):
 # A donde va la persona en cuanto elige idioma. NO al inicio: al nombre. La
 # informacion viene despues de saber con quien se esta hablando.
 TRAS_ELEGIR_IDIOMA = 'nombre'
+
+# Los botones del oficio no llevan a un nodo: son la RESPUESTA a la pregunta.
+# Dos se guardan tal cual y el tercero abre el texto libre.
+OFICIOS = {'of:negocio': {'es': 'tengo un negocio', 'en': 'I have a business'},
+           'of:asalariado': {'es': 'trabajo asalariado', 'en': 'employed'}}
+
+
+def oficio_de_toque(id_boton, idioma=POR_OMISION):
+    """Lo que dijo al tocar un boton del oficio.
+
+    Devuelve `(oficio, pide_mas)`. `pide_mas` en cierto es «Otro»: no se
+    guarda nada todavia porque «otro» no es un oficio — es alguien pidiendo
+    escribir.
+    """
+    s = str(id_boton or '')
+    if s == 'of:otro':
+        return None, True
+    quien = OFICIOS.get(s)
+    return (_en(quien, idioma) if quien else None), False
 
 
 def idioma_de_toque(id_boton):
