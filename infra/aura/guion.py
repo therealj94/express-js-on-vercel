@@ -102,12 +102,14 @@ NODOS = {
     # mensaje que la persona lee sin haber invertido nada en la charla.
     'idioma': {
         'texto': {
-            'es': ('Soy AU-RA, de Orden Global. 🌎\n\n'
+            'es': ('Soy AU-RA — la inteligencia propia de Orden Global. 🌎\n\n'
                    '¿En qué idioma seguimos?\n'
-                   "I'm AU-RA, from Orden Global. Which language?"),
-            'en': ('Soy AU-RA, de Orden Global. 🌎\n\n'
+                   "I'm AU-RA — Orden Global's own intelligence. "
+                   'Which language?'),
+            'en': ('Soy AU-RA — la inteligencia propia de Orden Global. 🌎\n\n'
                    '¿En qué idioma seguimos?\n'
-                   "I'm AU-RA, from Orden Global. Which language?"),
+                   "I'm AU-RA — Orden Global's own intelligence. "
+                   'Which language?'),
         },
         'botones': {
             'es': [('Español', 'lang:es'), ('English', 'lang:en')],
@@ -129,10 +131,20 @@ NODOS = {
     # un atajo saldria disparado a otro nodo.
     'nombre': {
         'texto': {
-            'es': ('Perfecto. 🌎\n\n'
-                   'Antes de nada — ¿cómo te llamás?'),
-            'en': ('Perfect. 🌎\n\n'
-                   'First things first — what is your name?'),
+            'es': ('Soy el modelo 1 de Orden Global — hecho por la casa, no '
+                   'alquilado a nadie. 🌱\n\n'
+                   'No estoy para contestar preguntas sueltas: estoy para '
+                   'acompañarte. Te explico, te preparo lo que necesités y me '
+                   'acuerdo de vos la próxima vez.\n\n'
+                   'Y para eso tengo que saber con quién hablo. ¿Cómo te '
+                   'llamás?'),
+            'en': ('I am Orden Global\'s model 1 — built in-house, not rented '
+                   'from anyone. 🌱\n\n'
+                   'I am not here to answer loose questions: I am here to stay '
+                   'with you. I explain, I prepare what you need, and I '
+                   'remember you next time.\n\n'
+                   'And for that I need to know who I am talking to. What is '
+                   'your name?'),
         },
         'espera': 'nombre',
     },
@@ -198,6 +210,113 @@ NODOS = {
         'espera': 'oficio',
     },
 
+    # ── QUIEN ES AU-RA. La pregunta que mas se hace y peor se contestaba ────
+    #
+    # Lo pidio Jose: que se venda como lo que es —la inteligencia PROPIA de la
+    # casa, modelo 1— y que se note la diferencia con una AI de proposito
+    # general.
+    #
+    # La diferencia se cuenta con hechos, no con adjetivos: se acuerda de vos,
+    # vive donde esta tu dinero, y NO firma nada. Ese ultimo es el que mas
+    # tranquiliza y el que ninguna AI grande puede decir, porque ninguna esta
+    # dentro de una billetera.
+    'quien-soy': {
+        'texto': {
+            'es': ('Soy AU-RA, modelo 1 — la inteligencia de la casa. No es una '
+                   'AI alquilada con otro nombre: corre en nuestros servidores '
+                   'y aprende de lo nuestro.\n\n'
+                   'La diferencia con las otras: ellas contestan y se olvidan. '
+                   'Yo me acuerdo de vos, vivo dentro de tu billetera y te '
+                   'preparo lo que necesités.\n\n'
+                   'Y algo que ninguna debería poder hacer: yo NUNCA toco tu '
+                   'dinero. Preparo, explico — firmás vos.'),
+            'en': ('I am AU-RA, model 1 — this house\'s own intelligence. Not a '
+                   'rented AI under another name: I run on our servers and I '
+                   'learn from what is ours.\n\n'
+                   'The difference with the others: they answer and forget. I '
+                   'remember you, I live inside your wallet, and I prepare what '
+                   'you need.\n\n'
+                   'And something none of them should be able to do: I NEVER '
+                   'touch your money. I prepare and explain — you sign.'),
+        },
+        'botones': {
+            'es': [('¿Qué es la casa?', 'familia'),
+                   ('Ganá 1 ORIGEN', 'ganar'),
+                   ('¿Qué puedo hacer?', 'que-hago')],
+            'en': [('What is the house?', 'familia'),
+                   ('Win 1 ORIGEN', 'ganar'),
+                   ('What can I do?', 'que-hago')],
+        },
+    },
+
+    # ── EL MOMENTO, SIN PROMETER NADA ───────────────────────────────────────
+    #
+    # Jose lo pidio asi: «este es el momento para entrar antes que Orden Global
+    # se expanda mundialmente, ser parte de la familia».
+    #
+    # Se vende la PERTENENCIA, jamas el rendimiento. «Entra ahora que va a
+    # subir» seria promocion de valores en un WhatsApp abierto — lo mismo que
+    # ya nos costo caro con lo de la SEC. «Estamos empezando y podés ser de los
+    # primeros» es cierto, es atractivo, y no promete un centavo.
+    'familia': {
+        'texto': {
+            'es': ('Orden Global no es una app: es la casa entera. Tu dinero '
+                   '(Veta Wallet), tu identidad (Genesis ID), tu negocio '
+                   '(MyTokenPay) y tu gente — todo sobre nuestra propia '
+                   'cadena.\n\n'
+                   'Y está empezando. Hoy somos los que estamos armándolo desde '
+                   'Latinoamérica, para Latinoamérica. Cuando esto sea grande, '
+                   'vos vas a poder decir que estabas desde el principio.\n\n'
+                   'No te pido que me creas: comprobalo en ordenscan.com.'),
+            'en': ('Orden Global is not an app: it is the whole house. Your '
+                   'money (Veta Wallet), your identity (Genesis ID), your '
+                   'business (MyTokenPay) and your people — all on our own '
+                   'chain.\n\n'
+                   'And it is just starting. Right now we are the ones building '
+                   'it from Latin America, for Latin America. When this gets '
+                   'big, you will be able to say you were here from the '
+                   'start.\n\n'
+                   'Do not take my word for it: check ordenscan.com.'),
+        },
+        'botones': {
+            'es': [('Ganá 1 ORIGEN', 'ganar'),
+                   ('¿Es real esto?', 'comprobar'),
+                   ('¿Qué puedo hacer?', 'que-hago')],
+            'en': [('Win 1 ORIGEN', 'ganar'),
+                   ('Is this real?', 'comprobar'),
+                   ('What can I do?', 'que-hago')],
+        },
+    },
+
+    # ── COMPROBARLO POR FUERA. El mejor argumento que tiene la casa ─────────
+    #
+    # Y el unico que no depende de que nos crean. Estaba solo en una ficha del
+    # motor; ahora tambien es un nodo escrito, que no puede alucinar.
+    'comprobar': {
+        'texto': {
+            'es': ('No me creas a mí — mirá en sitios que no controlamos:\n\n'
+                   '🔗 chainlist.org/chain/5550 — el directorio público de '
+                   'redes. Ahí está la nuestra, con ORIGEN como su moneda.\n\n'
+                   '🏛️ gleif.org — el registro que usa la banca mundial. Orden '
+                   'Global Corp. y Au Corp. tienen su código activo.\n\n'
+                   '🔍 ordenscan.com — cada movimiento de la cadena, a la '
+                   'vista.'),
+            'en': ('Do not take my word — look at places we do not control:\n\n'
+                   '🔗 chainlist.org/chain/5550 — the public network directory. '
+                   'Ours is there, with ORIGEN as its currency.\n\n'
+                   '🏛️ gleif.org — the registry world banking uses. Orden '
+                   'Global Corp. and Au Corp. each hold an active code.\n\n'
+                   '🔍 ordenscan.com — every movement on the chain, in the '
+                   'open.'),
+        },
+        'botones': {
+            'es': [('Ganá 1 ORIGEN', 'ganar'), ('Quiero empezar', 'empezar'),
+                   ('Volver', 'familia')],
+            'en': [('Win 1 ORIGEN', 'ganar'), ('I want to start', 'empezar'),
+                   ('Back', 'familia')],
+        },
+    },
+
     # ── EL SALUDO: UNA PREGUNTA, NO UN DISCURSO ─────────────────────────────
     #
     # Aqui es donde se decide si la persona se queda. La tentacion es explicar
@@ -209,10 +328,17 @@ NODOS = {
     # persona le duele el dinero. Elegir una ya es contar algo de si misma.
     'saludo': {
         'texto': {
-            'es': ('Gracias, {nombre}. Ya sé con quién hablo. 🤝\n\n'
-                   'Una última y arrancamos: ¿qué te trajo hasta acá?'),
-            'en': ('Thanks, {nombre}. Now I know who I am talking to. 🤝\n\n'
-                   'One last thing and we start: what brought you here?'),
+            'es': ('Gracias, {nombre}. 🤝\n\n'
+                   'Te cuento dónde te estás metiendo: Orden Global está '
+                   'construyendo una sola moneda para toda América Latina, y '
+                   'está empezando. Entrar ahora es ser de los primeros.\n\n'
+                   'Pero primero lo tuyo: ¿qué te trajo hasta acá?'),
+            'en': ('Thanks, {nombre}. 🤝\n\n'
+                   'Here is what you are walking into: Orden Global is '
+                   'building one single currency for all of Latin America, and '
+                   'it is just starting. Coming in now means being among the '
+                   'first.\n\n'
+                   'But first, you: what brought you here?'),
         },
         'botones': {
             'es': [('Cuidar mis ahorros', 'ahorro'),
@@ -642,6 +768,30 @@ ATAJOS = [
     # la frase, la segunda caia en el menu.
     (re.compile(r'^\s*(menu|menú|opciones|ayuda|empezar|inicio|'
                 r'que podes hacer|que puedes hacer)\s*[.!?]*\s*$'), 'inicio'),
+
+    # ── LOS TRES QUE MAS VENDEN, Y POR ESO NO VAN AL MOTOR ──────────────────
+    #
+    # «¿quién sos?», «¿esto es real?» y «¿qué es Orden Global?» son las tres
+    # preguntas que deciden si alguien se queda, y las tres iban al motor: las
+    # contestaba distinto cada vez y una acababa mandando a la persona a un
+    # correo. Ahora son texto escrito — dicen lo que dicen, no pueden alucinar,
+    # y salen al instante sin gastar GPU.
+    #
+    # Van en ATAJOS y no en TEMAS a proposito: los de tema se bloquean cuando
+    # el mensaje parece una pregunta, y estas SON preguntas. Por eso los
+    # patrones son especificos en vez de palabras sueltas — «de verdad» a secas
+    # atraparia «de verdad necesito ayuda con las remesas».
+    (re.compile(r'\b(quien sos|quien eres|que sos vos|que eres tu|sos una ia|'
+                r'eres una ia|sos un bot|eres un bot|sos humana|eres humana|'
+                r'who are you|are you a bot|are you an ai|are you human)\b'),
+     'quien-soy'),
+    (re.compile(r'\b(estafa|scam|fraude|son de verdad|es de verdad|'
+                r'son reales|es real esto|esto es real|como se que|'
+                r'como puedo comprobar|is this real|is this a scam|'
+                r'chainlist|gleif|how do i know)\b'), 'comprobar'),
+    (re.compile(r'\b(que es orden global|quienes son ustedes|de que se trata|'
+                r'what is orden global|who is orden global|'
+                r'que hace orden global)\b'), 'familia'),
 ]
 
 # ── LOS ATAJOS DE TEMA, QUE SON OTRA COSA ───────────────────────────────────

@@ -701,5 +701,99 @@ class UnBotonDeOtraPantallaNOESUNNOMBRE(unittest.TestCase):
                       fuente[i:i + 1200])
 
 
+class VENDEPEROSINPROMETERNADA(unittest.TestCase):
+    """«sepamos vendernos desde el saludo… este es el momento para entrar
+    antes que Orden Global se expanda mundialmente, ser parte de la familia»
+    — José, 30-ago.
+
+    La línea es fina y hay que sostenerla: se vende la PERTENENCIA, jamás el
+    rendimiento. «Entrá ahora que va a subir» sería promoción de valores en un
+    WhatsApp abierto — lo mismo que ya costó caro con lo de la SEC. «Estamos
+    empezando y podés ser de los primeros» es cierto, es atractivo, y no
+    promete un centavo."""
+
+    VENTA = ('idioma', 'nombre', 'saludo', 'quien-soy', 'familia', 'comprobar')
+
+    def test_el_arranque_dice_que_AURA_es_de_la_casa(self):
+        for idioma in guion.IDIOMAS:
+            t = guion.nodo('idioma', idioma)['texto'].lower()
+            self.assertTrue('propia' in t or 'own' in t,
+                            f'{idioma}: no dice que la IA es nuestra')
+
+    def test_se_presenta_como_modelo_1_y_dice_que_acompaña(self):
+        for idioma in guion.IDIOMAS:
+            t = guion.nodo('nombre', idioma)['texto'].lower()
+            self.assertIn('1', t, f'{idioma}: no dice qué modelo es')
+            self.assertTrue('acuerdo de vos' in t or 'remember you' in t,
+                            f'{idioma}: no dice que se acuerda de la persona')
+
+    def test_lo_que_la_distingue_es_que_NO_TOCA_EL_DINERO(self):
+        """Es lo que más tranquiliza y lo que ninguna AI grande puede decir,
+        porque ninguna vive dentro de una billetera."""
+        for idioma in guion.IDIOMAS:
+            t = guion.nodo('quien-soy', idioma)['texto'].lower()
+            self.assertTrue('nunca toco tu dinero' in t or
+                            'never touch your money' in t, idioma)
+
+    def test_NINGUNO_de_los_nodos_de_venta_promete_ganancia(self):
+        for nodo in self.VENTA:
+            for idioma in guion.IDIOMAS:
+                t = guion.nodo(nodo, idioma, 'Ana').get('texto', '').lower()
+                for prohibido in ['va a subir', 'will go up', 'ganancia',
+                                  'rendimiento', 'rentabilidad', 'profit',
+                                  'return', 'invertí', 'invest', 'oportunidad',
+                                  'oportunity', 'multiplic', 'garantiz',
+                                  'guarantee', 'precio', 'price']:
+                    self.assertNotIn(prohibido, t, f'{nodo}/{idioma}: «{prohibido}»')
+
+    def test_el_gancho_es_SER_DE_LOS_PRIMEROS_no_ganar_dinero(self):
+        for idioma, frase in (('es', 'de los primeros'), ('en', 'the first')):
+            t = guion.nodo('saludo', idioma, 'Ana')['texto'].lower()
+            self.assertIn(frase, t, idioma)
+
+    def test_y_el_de_pertenencia_no_pone_fecha_a_nada(self):
+        """Una fecha es una promesa. «Está empezando» es un hecho."""
+        for idioma in guion.IDIOMAS:
+            t = guion.nodo('familia', idioma)['texto'].lower()
+            self.assertNotIn('2026', t)
+            self.assertNotIn('2027', t)
+            for f in ['pronto vamos a', 'en unos meses', 'coming soon',
+                      'next year', 'el año que viene']:
+                self.assertNotIn(f, t, f'{idioma}: pone fecha con «{f}»')
+
+    def test_comprobar_da_las_TRES_fuentes_que_no_controlamos(self):
+        for idioma in guion.IDIOMAS:
+            t = guion.nodo('comprobar', idioma)['texto']
+            for fuente in ['chainlist.org/chain/5550', 'gleif.org',
+                           'ordenscan.com']:
+                self.assertIn(fuente, t, f'{idioma}: falta {fuente}')
+
+    def test_las_tres_preguntas_que_venden_NO_van_al_motor(self):
+        """Iban al motor, que las contestaba distinto cada vez y una acababa
+        mandando a la persona a un correo."""
+        for dicho, destino in [
+                ('quién sos', 'quien-soy'), ('who are you', 'quien-soy'),
+                ('sos una IA', 'quien-soy'),
+                ('¿esto es estafa?', 'comprobar'),
+                ('is this a scam', 'comprobar'),
+                ('¿cómo sé que son de verdad?', 'comprobar'),
+                ('qué es orden global', 'familia'),
+                ('de qué se trata', 'familia')]:
+            self.assertEqual(guion.por_texto(dicho), destino, dicho)
+
+    def test_pero_no_atrapan_frases_normales(self):
+        """«de verdad» a secas atraparía «de verdad necesito ayuda»."""
+        for dicho in ['de verdad necesito ayuda con las remesas',
+                      '¿cuánto me cobran?', 'quiero saber de mi saldo',
+                      'me estafaron en otro lado, ayudame']:
+            self.assertIsNone(guion.por_texto(dicho), f'atrapó: «{dicho}»')
+
+    def test_y_el_guardia_no_corta_ninguno(self):
+        for nodo in self.VENTA:
+            for idioma in guion.IDIOMAS:
+                t = guion.nodo(nodo, idioma, 'Ana')['texto']
+                self.assertIsNone(guardia.revisar(t)[1], f'{nodo}/{idioma}')
+
+
 if __name__ == '__main__':
     unittest.main(verbosity=2)
