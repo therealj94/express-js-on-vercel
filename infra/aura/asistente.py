@@ -89,6 +89,7 @@ import urllib.request
 from candado import Candado
 import whatsapp as wa
 import guardia
+import registro
 from oido import NoSePudoOir, oir_nota
 from concurrent.futures import ThreadPoolExecutor
 
@@ -166,6 +167,22 @@ RAFAGA_VENTANA = float(os.environ.get('AURA_RAFAGA_S', '60'))   # en segundos
 
 # Cuantos turnos de memoria lleva cada charla al motor. Mas historial empuja
 # las fichas fuera de la ventana del modelo, y sin fichas el modelo inventa.
+# ── CUANTO SE GUARDA DE UNA PERSONA ─────────────────────────────────────────
+#
+# Un mes sin escribir y se borra todo lo suyo: su perfil, su historial, lo que
+# contó de su trabajo. Lo decidio Jose el 30-ago-2026.
+#
+# Antes no se borraba NADA, nunca. Ahi dentro esta lo que la gente le cuenta a
+# AU-RA —a que se dedica, que le preocupa del dinero, ocho turnos de charla— y
+# lo de alguien que escribio una vez hace un año seguia guardado. Para una
+# empresa que vende cumplimiento, guardar conversaciones sin plazo ni criterio
+# es lo contrario de lo que se le pide a un cliente.
+#
+# El plazo se cuenta desde la ULTIMA VEZ QUE ESCRIBIO, no desde que se creo el
+# perfil: alguien que escribe todas las semanas no pierde su historial nunca, y
+# alguien que escribio una vez desaparece al mes.
+PLAZO_DIAS = int(os.environ.get('AURA_PLAZO_DIAS', '30'))
+
 MEMORIA = 8
 
 # Cuantos mensajes de una misma persona se atienden por vuelta. No se pierde
@@ -1289,6 +1306,11 @@ def perfil_de(perfiles, correo, tope=None):
     p.setdefault('historial', [])
     p.setdefault('dia', hoy())
     p.setdefault('usadas', 0)
+    # Cuando se le vio por ultima vez. Es lo que decide el olvido, y se pone
+    # tambien al CREAR el perfil: sin eso, uno recien creado no tendria fecha y
+    # el olvido tendria que adivinar — que es como se borra a alguien que acaba
+    # de escribir.
+    p.setdefault('visto', int(time.time()))
     if tope is not None:
         # Una charla sin tope conocido arranca EN EL PRESENTE. Es la guarda
         # contra la avalancha: perfil perdido o probador re-agregado no
@@ -1505,6 +1527,7 @@ def atender(rel, sistema, p, de, dicho, mensaje=None):
     # frase igual salio y el resto se manda detras: peor, pero nunca mudo.
     creciendo = {'id': None, 'texto': ''}
     cortado = {'por': None}
+    empezo = time.time()
 
     def soltar(frase):
         """Cada frase terminada. La primera abre el globo; las demas lo
@@ -1526,6 +1549,11 @@ def atender(rel, sistema, p, de, dicho, mensaje=None):
             revisado, motivo = guardia.revisar(junto)
             if motivo:
                 log(f'GUARDIA ({motivo}) cortó la respuesta a', de)
+                # Aqui SI se guarda el texto, y es la unica vez: es lo que
+                # AU-RA estuvo a punto de decirle a alguien, y sin leerlo no
+                # se puede arreglar. Ver la cabecera de registro.py.
+                registro.anotar('guardia', motivo=motivo, texto=junto[:1200])
+                registro.avisar(rel, motivo, junto)
                 cortado['por'] = motivo
                 junto = revisado
             if creciendo['id']:
@@ -1644,6 +1672,9 @@ def atender(rel, sistema, p, de, dicho, mensaje=None):
         entero_visto, motivo_cierre = guardia.revisar(entero_visto)
         if motivo_cierre and not cortado['por']:
             log(f'GUARDIA ({motivo_cierre}) cortó el cierre para', de)
+            registro.anotar('guardia', motivo=motivo_cierre,
+                            texto=(creciendo['texto'] + ' ' + resto)[:1200])
+            registro.avisar(rel, motivo_cierre, creciendo['texto'] + ' ' + resto)
             cortado['por'] = motivo_cierre
         try:
             rel.editar(creciendo['id'], entero_visto, parcial=False)
@@ -1665,6 +1696,8 @@ def atender(rel, sistema, p, de, dicho, mensaje=None):
         resto_visto, motivo_resto = guardia.revisar(resto)
         if motivo_resto:
             log(f'GUARDIA ({motivo_resto}) cortó la respuesta suelta a', de)
+            registro.anotar('guardia', motivo=motivo_resto, texto=resto[:1200])
+            registro.avisar(rel, motivo_resto, resto)
         rel.enviar(de, resto_visto)
     if not salio and not resto:
         # NO se dice «mi motor esta apagado»: el motor contesto, lo que paso
@@ -1706,6 +1739,17 @@ def atender(rel, sistema, p, de, dicho, mensaje=None):
         {'role': 'user', 'content': dicho[:600]},
         {'role': 'assistant', 'content': r[:600]},
     ])[-MEMORIA:]
+    # Se le vio hoy: el reloj del olvido vuelve a cero.
+    p['visto'] = int(time.time())
+    # Y queda la nota de operacion. SIN EL TEXTO, a proposito: si aqui viajara
+    # lo que se dijo, esto seria una transcripcion de todas las conversaciones
+    # para siempre — justo lo que el plazo de treinta dias vino a evitar. Lo
+    # que hace falta para saber si AU-RA esta bien son estos cuatro numeros.
+    registro.anotar('respuesta',
+                    ms=int((time.time() - empezo) * 1000),
+                    largo=len(r or ''),
+                    corto=bool(cortado['por']),
+                    voz=bool(p.get('voz')))
 
 
 def atender_charla(rel, sistema, perfiles, correo):
@@ -1853,6 +1897,53 @@ def probadores_whatsapp():
     lista = {l.strip() for l in f.read_text().splitlines()
              if l.strip() and not l.strip().startswith('#')}
     return lista or None
+
+
+def olvidar_inactivos(perfiles, ahora=None):
+    """Borra el rastro de quien lleva PLAZO_DIAS sin escribir.
+
+    Se borra el perfil ENTERO —historial, oficio, todo—, no solo la charla. Lo
+    que queda a medias no es privacidad: es un archivo con el nombre y el oficio
+    de alguien y sin lo unico que le daba sentido.
+
+    ── LO QUE SE CUIDA, Y POR QUE ─────────────────────────────────────────
+
+    · No se toca a quien se esta atendiendo AHORA (`EN_CURSO`). Su hilo tiene el
+      perfil en la mano; borrarlo por debajo lo deja escribiendo en un
+      diccionario que ya no esta en ninguna parte, y la persona se queda sin
+      respuesta a mitad.
+
+    · Un perfil sin fecha no se borra: se le pone la de hoy y se le da su mes.
+      Los que ya existian no la tienen, y tratar «sin fecha» como «viejisimo»
+      seria borrar a todo el mundo la primera vez que esto corre.
+
+    · No se registra a QUIEN se olvido, solo cuantos. Un registro que dice «se
+      borro a fulano» es justo el dato que se acaba de decidir no guardar.
+
+    Devuelve cuantos se olvidaron.
+    """
+    ahora = int(ahora if ahora is not None else time.time())
+    plazo = PLAZO_DIAS * 86400
+    with CANDADO_CURSO:
+        atendiendo = set(EN_CURSO)
+    olvidados = 0
+    with CANDADO_PERFILES:
+        for quien in list(perfiles):
+            if quien in atendiendo:
+                continue
+            p = perfiles.get(quien) or {}
+            visto = p.get('visto')
+            if not isinstance(visto, (int, float)):
+                # Sin fecha: se le pone la de ahora y se le da su plazo entero.
+                p['visto'] = ahora
+                continue
+            if ahora - visto > plazo:
+                perfiles.pop(quien, None)
+                olvidados += 1
+    if olvidados:
+        guardar_perfiles(perfiles)
+        log(f'olvidados {olvidados} perfiles por {PLAZO_DIAS} dias sin escribir')
+    return olvidados
 
 
 def vuelta_whatsapp(rel_wa, sistema, perfiles, tanda):
@@ -2083,6 +2174,7 @@ def main():
     sistema = (cargar_prompt() +
                '\n\nLO QUE SABES DE LA CASA (tu memoria; nunca menciones esta lista):\n'
                + todo_el_saber(saber))
+    registro.preparar(DATOS)
     perfiles = cargar_perfiles()
     templar(sistema)
     # ── Y SE MANTIENE TEMPLADO ────────────────────────────────────────────
@@ -2117,6 +2209,13 @@ def main():
                 dejar_huella(rel)
             except Exception as e:
                 log('no pude refrescar la huella:', type(e).__name__, str(e)[:80])
+            # El olvido va en el latido y no en un reloj propio: ya hay un sitio
+            # que se despierta cada veinte minutos, y un hilo mas para borrar
+            # cuatro lineas al mes es una pieza mas que puede fallar sola.
+            try:
+                olvidar_inactivos(perfiles)
+            except Exception as e:
+                log('el olvido fallo:', type(e).__name__, str(e)[:80])
     threading.Thread(target=latido_templado, daemon=True).start()
     dejar_huella(rel)
     _quienes = probadores()

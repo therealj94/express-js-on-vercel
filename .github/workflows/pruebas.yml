@@ -124,6 +124,8 @@ jobs:
         run: |
           python3 probar-guardia.py
           python3 probar-whatsapp.py
+          python3 probar-olvido.py
+          python3 probar-registro.py
 
       - name: El relevo de mensajes
         working-directory: infra/mensajes
