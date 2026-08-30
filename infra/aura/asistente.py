@@ -1564,13 +1564,29 @@ def atender(rel, sistema, p, de, dicho, mensaje=None):
         p['saludado'] = True
         registro.anotar('idioma', cual=elegido)
         p['nodo'] = guion.TRAS_ELEGIR_IDIOMA
-        n = guion.nodo(p['nodo'], elegido)
-        rel.enviar(de, n['texto'])
+        registro.anotar('guion', nodo=p['nodo'])
+        rel.enviar(de, guion.nodo(p['nodo'], elegido)['texto'])
         return
 
     if not p.get('idioma'):
+        # ── Y NO SE REPITE. Nueve veces, 30-ago 18:21 ──────────────────────
+        #
+        # Al arrancar con los perfiles vacios, AU-RA encontro nueve mensajes
+        # de Jose sin atender y, como ninguno traia idioma, contesto la puerta
+        # NUEVE VECES en sesenta y siete segundos.
+        #
+        # No fue cosa del borrado: pasa igual cuando alguien escribe tres
+        # mensajes seguidos —«hola», «buenas», «¿hay alguien?»— antes de que
+        # conteste. Una pregunta repetida a los cuatro segundos no es un bot
+        # torpe: es spam, y en WhatsApp se paga con un bloqueo.
+        #
+        # Si la puerta YA esta en su pantalla, con sus botones, el mensaje
+        # siguiente se consume sin volver a mandarla.
+        ya_esta = p.get('nodo') == 'idioma'
         p['nodo'], p['saludado'] = 'idioma', True
         p['visto'] = int(time.time())
+        if ya_esta:
+            return
         n = guion.nodo('idioma', guion.POR_OMISION)
         registro.anotar('guion', nodo='idioma')
         if hasattr(rel, 'con_botones'):
@@ -1584,26 +1600,40 @@ def atender(rel, sistema, p, de, dicho, mensaje=None):
     # Sin esto, alguien que se llame como un atajo —o que conteste «Origen»
     # por seguirle la corriente— saldria disparado a otro nodo en vez de
     # quedar registrado como su nombre.
+    # Cada paso guarda SU dato y pasa al siguiente. Tres preguntas cortas y
+    # faciles antes de contar nada: quien sos, de donde, y a que te dedicas.
+    # No es un formulario — el pais decide como se llama su moneda y el oficio
+    # decide de que vale la pena hablarle.
+    SIGUIENTE = {'nombre': 'pais', 'pais': 'oficio', 'oficio': 'saludo'}
     actual = guion.nodo(p.get('nodo') or '', idi)
-    if actual and actual.get('espera') == 'nombre':
-        nom = _leer_nombre(dicho)
-        if nom:
-            p['nombre'] = nom
-        p['nodo'] = 'saludo'
+    espera = actual.get('espera') if actual else None
+    if espera in SIGUIENTE:
+        if espera == 'nombre':
+            nom = _leer_nombre(dicho)
+            if nom:
+                p['nombre'] = nom
+        elif (dicho or '').strip():
+            # Pais y oficio se guardan como los dice la persona, recortados.
+            # No se normalizan contra una lista: «la capital» o «taxista de
+            # noche» dicen mas de ella que cualquier categoria nuestra.
+            p[espera] = ' '.join((dicho or '').split())[:40]
+        destino = SIGUIENTE[espera]
+        p['nodo'] = destino
         p['visto'] = int(time.time())
-        registro.anotar('guion', nodo='saludo')
-        n = guion.nodo('saludo', idi, p.get('nombre', ''))
+        registro.anotar('guion', nodo=destino)
+        n = guion.nodo(destino, idi, p.get('nombre', ''), p.get('pais', ''))
         if n.get('botones') and hasattr(rel, 'con_botones'):
             rel.con_botones(de, n['texto'], n['botones'])
         else:
-            rel.enviar(de, guion.como_texto('saludo', idi, p.get('nombre', '')))
+            rel.enviar(de, guion.como_texto(destino, idi, p.get('nombre', ''),
+                                            p.get('pais', '')))
         return
 
     destino = guion.por_toque(toco) or guion.por_texto(dicho, p.get('nodo'))
     if not destino and not p.get('saludado'):
         destino = 'saludo'
     if destino:
-        n = guion.nodo(destino, idi, p.get('nombre', ''))
+        n = guion.nodo(destino, idi, p.get('nombre', ''), p.get('pais', ''))
         p['nodo'] = destino
         p['saludado'] = True
         p['visto'] = int(time.time())
@@ -1617,7 +1647,8 @@ def atender(rel, sistema, p, de, dicho, mensaje=None):
             # Un canal sin botones —el chat de la casa— recibe las opciones
             # como una linea al final. Un guion que solo funciona en WhatsApp
             # seria dos productos distintos manteniendose por separado.
-            rel.enviar(de, guion.como_texto(destino, idi, p.get('nombre', '')))
+            rel.enviar(de, guion.como_texto(destino, idi, p.get('nombre', ''),
+                                            p.get('pais', '')))
         return
 
     if not p.get('saludado'):

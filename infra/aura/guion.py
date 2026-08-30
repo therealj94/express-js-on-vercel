@@ -137,6 +137,37 @@ NODOS = {
         'espera': 'nombre',
     },
 
+    # ── EL PAIS. No es un formulario: es para nombrarle SU moneda ───────────
+    #
+    # «La moneda de tu país se devalúa» es un folleto. «El lempira compra
+    # menos que el año pasado» le habla a ella. La diferencia entre las dos
+    # frases es este mensaje, y por eso vale el paso extra.
+    'pais': {
+        'texto': {
+            'es': ('{nombre}, ¿desde qué país me escribís?'),
+            'en': ('{nombre}, what country are you writing from?'),
+        },
+        'espera': 'pais',
+    },
+
+    # ── A QUE SE DEDICA ─────────────────────────────────────────────────────
+    #
+    # Lo pidio Jose. Y sirve dos veces: para elegir de que hablarle —a quien
+    # tiene un negocio le importa cobrar, a quien es asalariado le importa
+    # que no se le achique el sueldo— y porque queda en el historial, asi que
+    # el motor tambien lo sabe cuando la charla se sale del guion.
+    'oficio': {
+        'texto': {
+            'es': ('Buenísimo. ¿Y a qué te dedicás, {nombre}?\n\n'
+                   'Te lo pregunto para hablarte de lo que te sirve a vos y no '
+                   'de todo lo demás.'),
+            'en': ('Great. And what do you do, {nombre}?\n\n'
+                   'I ask so I can talk about what actually helps you, not '
+                   'everything else.'),
+        },
+        'espera': 'oficio',
+    },
+
     # ── EL SALUDO: UNA PREGUNTA, NO UN DISCURSO ─────────────────────────────
     #
     # Aqui es donde se decide si la persona se queda. La tentacion es explicar
@@ -148,15 +179,10 @@ NODOS = {
     # persona le duele el dinero. Elegir una ya es contar algo de si misma.
     'saludo': {
         'texto': {
-            'es': ('Mucho gusto, {nombre}. 🤝\n\n'
-                   'Te voy a hacer una sola pregunta para no hacerte perder el '
-                   'tiempo, porque lo que te sirva a vos no es lo mismo que le '
-                   'sirve a otro.\n\n'
-                   '{nombre}, ¿qué te trajo hasta acá?'),
-            'en': ('Nice to meet you, {nombre}. 🤝\n\n'
-                   'One question, so I do not waste your time — what helps you '
-                   'is not what helps the next person.\n\n'
-                   '{nombre}, what brought you here?'),
+            'es': ('Gracias, {nombre}. Ya sé con quién hablo. 🤝\n\n'
+                   'Una última y arrancamos: ¿qué te trajo hasta acá?'),
+            'en': ('Thanks, {nombre}. Now I know who I am talking to. 🤝\n\n'
+                   'One last thing and we start: what brought you here?'),
         },
         'botones': {
             'es': [('Cuidar mis ahorros', 'ahorro'),
@@ -174,14 +200,13 @@ NODOS = {
     'ahorro': {
         'texto': {
             'es': ('Te entiendo, {nombre}. Es la pregunta que más me hacen.\n\n'
-                   'Guardás en la moneda de tu país y en un año compra menos. '
-                   'No es que ganes menos: es que la moneda vale menos.\n\n'
+                   'Guardás en {moneda} y en un año compra menos. No es que '
+                   'ganes menos: es que la moneda vale menos.\n\n'
                    'Nosotros medimos con otra vara — el oro. Lo que guardás en '
                    'ORIGEN sigue al oro, no a la devaluación de tu país.'),
             'en': ('I hear you, {nombre}. It is the question I get most.\n\n'
-                   'You save in your country currency and a year later it buys '
-                   'less. You are not earning less: the currency is worth '
-                   'less.\n\n'
+                   'You save in {moneda} and a year later it buys less. You are '
+                   'not earning less: the currency is worth less.\n\n'
                    'We measure with a different yardstick — gold. What you keep '
                    'in ORIGEN follows gold, not your country devaluation.'),
         },
@@ -647,7 +672,55 @@ def _en(valor, idioma):
     return valor.get(idioma) or valor.get(POR_OMISION)
 
 
-def nodo(nombre, idioma=POR_OMISION, quien=''):
+# ── LA MONEDA DE CADA PAIS ──────────────────────────────────────────────────
+#
+# «La moneda de tu país se devalúa» es un folleto. «Guardás en lempiras y en un
+# año compra menos» le habla a ella. Esa es toda la razon de preguntar el pais.
+#
+# Se escribe como la nombra la gente —«en pesos», «en lempiras»— y no con el
+# codigo ISO: nadie dice «guardo en HNL».
+#
+# El dolar y el euro NO estan y es a proposito: a quien ahorra en dolares no se
+# le puede decir que su moneda se achica todos los años, seria mentira y
+# ademas la notaria. Un pais que no este aqui cae en el texto general, que
+# sigue siendo verdadero.
+MONEDAS = {
+    'honduras': 'lempiras', 'guatemala': 'quetzales', 'nicaragua': 'córdobas',
+    'costa rica': 'colones', 'mexico': 'pesos', 'méxico': 'pesos',
+    'colombia': 'pesos', 'argentina': 'pesos', 'chile': 'pesos',
+    'republica dominicana': 'pesos', 'dominicana': 'pesos', 'uruguay': 'pesos',
+    'peru': 'soles', 'perú': 'soles', 'bolivia': 'bolivianos',
+    'paraguay': 'guaraníes', 'venezuela': 'bolívares', 'brasil': 'reales',
+    'brazil': 'reales', 'haiti': 'gourdes', 'haití': 'gourdes',
+}
+MONEDA_GENERAL = {'es': 'la moneda de tu país', 'en': 'your local currency'}
+
+MONEDAS_EN = {
+    'honduras': 'lempiras', 'guatemala': 'quetzales', 'nicaragua': 'córdobas',
+    'costa rica': 'colones', 'mexico': 'pesos', 'méxico': 'pesos',
+    'colombia': 'pesos', 'argentina': 'pesos', 'chile': 'pesos',
+    'republica dominicana': 'pesos', 'dominicana': 'pesos', 'uruguay': 'pesos',
+    'peru': 'soles', 'perú': 'soles', 'bolivia': 'bolivianos',
+    'paraguay': 'guaraníes', 'venezuela': 'bolívares', 'brasil': 'reais',
+    'brazil': 'reais', 'haiti': 'gourdes', 'haití': 'gourdes',
+}
+
+
+def moneda_de(pais, idioma=POR_OMISION):
+    """Como se llama la plata donde vive esa persona.
+
+    Sin pais reconocido devuelve la frase general, que sigue siendo cierta —
+    nunca se inventa una moneda ni se deja el hueco crudo.
+    """
+    t = _llano(pais or '')
+    tabla = MONEDAS_EN if idioma == 'en' else MONEDAS
+    for nombre_pais, moneda in tabla.items():
+        if _llano(nombre_pais) in t:
+            return moneda
+    return MONEDA_GENERAL.get(idioma, MONEDA_GENERAL['es'])
+
+
+def nodo(nombre, idioma=POR_OMISION, quien='', pais=''):
     """El nodo, en su idioma y con el nombre de la persona ya puesto.
 
     `quien` es como se llama quien esta del otro lado. Si no lo sabemos, los
@@ -659,6 +732,8 @@ def nodo(nombre, idioma=POR_OMISION, quien=''):
     if not n:
         return None
     texto = _en(n.get('texto'), idioma) or ''
+    if '{moneda}' in texto:
+        texto = texto.replace('{moneda}', moneda_de(pais, idioma))
     if '{nombre}' in texto:
         texto = (texto.replace('{nombre}', quien) if quien
                  else _sin_nombre(texto))
@@ -770,14 +845,14 @@ def por_texto(dicho, desde=None, idioma=None):
     return None
 
 
-def como_texto(nombre, idioma=POR_OMISION, quien=''):
+def como_texto(nombre, idioma=POR_OMISION, quien='', pais=''):
     """El nodo escrito para un canal SIN botones — el chat de la casa.
 
     Las opciones van como una linea al final, en la voz de AU-RA y no como una
     lista numerada: en el chat la persona escribe, y escribir «la billetera» es
     tan facil como tocar un boton que no existe.
     """
-    n = nodo(nombre, idioma, quien)
+    n = nodo(nombre, idioma, quien, pais)
     if not n:
         return None
     if not n.get('botones'):

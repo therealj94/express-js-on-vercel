@@ -140,7 +140,7 @@ class LosBotonesCabenEnWhatsApp(unittest.TestCase):
         # de elegir idioma (TRAS_ELEGIR_IDIOMA) y `saludo` viene de contestar
         # el nombre. Exigirles un botón sería pedir que la entrada tenga
         # entrada.
-        entrada = {'idioma', guion.TRAS_ELEGIR_IDIOMA, 'saludo'}
+        entrada = {'idioma', 'nombre', 'pais', 'oficio', 'saludo'}
         huerfanos = set(guion.NODOS) - alcanzables - entrada
         self.assertEqual(huerfanos, set(), f'no se llega a: {huerfanos}')
 
@@ -396,7 +396,7 @@ class LaPuertaDelIdiomaVAPRIMERO(unittest.TestCase):
     def test_quien_no_eligio_idioma_va_a_la_puerta_escriba_lo_que_escriba(self):
         b = self._bloque()
         i = b.index("if not p.get('idioma')")
-        self.assertIn("p['nodo'], p['saludado'] = 'idioma'", b[i:i + 260])
+        self.assertIn("p['nodo'], p['saludado'] = 'idioma'", b[i:i + 1400])
 
     def test_HOLA_sigue_siendo_un_atajo_valido(self):
         """No se arregló quitando el atajo: se arregló poniéndolo después. Un
@@ -437,8 +437,8 @@ class EsPersonalANTESDeSerInformativo(unittest.TestCase):
 
     def test_sin_nombre_la_frase_sigue_cerrando_bien(self):
         t = guion.nodo('saludo', 'es', '')['texto']
-        self.assertIn('Mucho gusto.', t)
-        self.assertIn('¿Qué te trajo hasta acá?', t)
+        self.assertIn('Gracias.', t)
+        self.assertIn('¿qué te trajo hasta acá?', t)
 
     def test_las_tres_puertas_son_lo_que_LE_DUELE_no_productos(self):
         """Elegir una ya es contar algo de sí misma."""
@@ -447,6 +447,94 @@ class EsPersonalANTESDeSerInformativo(unittest.TestCase):
         for b in botones:
             for producto in ['ORIGEN', 'Veta', 'Genesis', 'AUKA', 'ONDK']:
                 self.assertNotIn(producto, b, f'el botón «{b}» es un producto')
+
+
+class ElEMBUDONOSEREPITE(unittest.TestCase):
+    """Nueve veces, 30-ago 18:21:48 → 18:22:55.
+
+    Al arrancar con los perfiles vacíos, AU-RA encontró nueve mensajes de José
+    sin atender y, como ninguno traía idioma, contestó la puerta NUEVE VECES en
+    sesenta y siete segundos.
+
+    No fue cosa del borrado: pasa igual cuando alguien escribe tres mensajes
+    seguidos antes de que conteste. Una pregunta repetida a los cuatro segundos
+    no es un bot torpe — es spam, y en WhatsApp se paga con un bloqueo."""
+
+    FUENTE = (AQUI / 'asistente.py').read_text(encoding='utf8')
+
+    def test_si_la_puerta_YA_esta_en_pantalla_no_se_manda_otra_vez(self):
+        i = self.FUENTE.index("if not p.get('idioma')")
+        bloque = self.FUENTE[i:i + 1500]
+        self.assertIn("ya_esta = p.get('nodo') == 'idioma'", bloque)
+        # y el return va ANTES de cualquier envío
+        corte = bloque.index('if ya_esta:')
+        self.assertIn('return', bloque[corte:corte + 60])
+        self.assertNotIn('rel.con_botones', bloque[:corte],
+                         'manda la puerta antes de comprobar si ya está')
+
+    def test_el_mensaje_se_consume_igual(self):
+        """Volver sin mandar nada no puede dejar el mensaje sin atender: si no,
+        el tope no avanza y vuelve a entrar en la vuelta siguiente, para
+        siempre."""
+        i = self.FUENTE.index("ya_esta = p.get('nodo') == 'idioma'")
+        bloque = self.FUENTE[i:i + 300]
+        self.assertIn("p['visto']", bloque, 'no marca que lo vio')
+
+
+class LasTresPreguntasDeEntrada(unittest.TestCase):
+    """«pregunta eso de qué país, qué se dedica» — José, 30-ago."""
+
+    def test_la_cadena_va_completa_y_en_orden(self):
+        fuente = (AQUI / 'asistente.py').read_text(encoding='utf8')
+        i = fuente.index('SIGUIENTE = {')
+        self.assertIn("'nombre': 'pais', 'pais': 'oficio', 'oficio': 'saludo'",
+                      fuente[i:i + 120])
+
+    def test_cada_paso_espera_su_dato(self):
+        for nodo, dato in [('nombre', 'nombre'), ('pais', 'pais'),
+                           ('oficio', 'oficio')]:
+            for idioma in guion.IDIOMAS:
+                self.assertEqual(guion.nodo(nodo, idioma)['espera'], dato,
+                                 f'{nodo}/{idioma}')
+
+    def test_el_pais_sirve_para_NOMBRARLE_SU_MONEDA(self):
+        """Es toda la razón de preguntarlo: «guardás en lempiras» le habla a
+        ella; «la moneda de tu país» es un folleto."""
+        t = guion.nodo('ahorro', 'es', 'Ana', 'Honduras')['texto']
+        self.assertIn('lempiras', t)
+        self.assertNotIn('la moneda de tu país', t)
+
+    def test_un_pais_que_no_conocemos_NO_inventa_una_moneda(self):
+        t = guion.nodo('ahorro', 'es', 'Ana', 'Estados Unidos')['texto']
+        self.assertIn('la moneda de tu país', t)
+        self.assertNotIn('{moneda}', t)
+
+    def test_ni_sin_pais(self):
+        for idioma in guion.IDIOMAS:
+            for nodo in guion.NODOS:
+                t = guion.nodo(nodo, idioma, '', '')['texto']
+                self.assertNotIn('{moneda}', t, f'{nodo}/{idioma}')
+
+    def test_el_dolar_NO_esta_en_la_tabla_y_es_a_proposito(self):
+        """A quien ahorra en dólares no se le puede decir que su moneda se
+        achica todos los años: sería mentira, y además la notaría."""
+        for falso in ['estados unidos', 'usa', 'panama', 'ecuador',
+                      'el salvador', 'españa']:
+            self.assertNotIn(falso, guion.MONEDAS)
+
+    def test_las_monedas_se_escriben_como_las_dice_la_gente(self):
+        """Nadie dice «guardo en HNL»."""
+        for pais, moneda in guion.MONEDAS.items():
+            self.assertTrue(moneda.islower(), f'{pais}: {moneda}')
+            self.assertGreater(len(moneda), 4, f'{pais}: parece un código ISO')
+
+    def test_preguntar_el_pais_y_el_oficio_NO_es_un_interrogatorio(self):
+        """Cada pregunta va sola y dice para qué sirve. Un nodo que pregunta
+        tres cosas a la vez se contesta a medias o no se contesta."""
+        for nodo in ('nombre', 'pais', 'oficio'):
+            for idioma in guion.IDIOMAS:
+                t = guion.nodo(nodo, idioma, 'Ana')['texto']
+                self.assertLessEqual(t.count('?'), 2, f'{nodo}/{idioma}')
 
 
 if __name__ == '__main__':
