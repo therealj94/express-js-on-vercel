@@ -207,12 +207,24 @@ if [ -n "${JOB_QUEUE_B64:-}" ]; then
     # Sacar los resultados del pod sin depender de que nadie entre a
     # descargarlos: un enlace público por clip, impreso en el log. Sin cuentas
     # ni credenciales. Los enlaces caducan solos a los pocos días.
+    # Tres destinos: si uno está caído o bloquea al host, se prueba el
+    # siguiente. Que los resultados salgan del pod no puede depender de un
+    # único servicio gratuito — ni de que el puerto del pod sea alcanzable,
+    # que en este proveedor a menudo no lo es.
     echo "==> ENLACES DE DESCARGA"
     for f in "$WORK"/outputs/*.mp4 "$WORK"/outputs/*.png; do
       [ -f "$f" ] || continue
+      n=$(basename "$f"); U=""
       U=$(curl -s --max-time 300 -F "file=@${f}" https://0x0.st 2>/dev/null | tr -d '\r\n')
-      case "$U" in http*) echo "    $(basename "$f") -> $U" ;;
-                   *)     echo "    $(basename "$f") -> no se pudo subir" ;; esac
+      case "$U" in http*) ;; *)
+        U=$(curl -s --max-time 300 --upload-file "$f" "https://transfer.sh/$n" 2>/dev/null | tr -d '\r\n') ;;
+      esac
+      case "$U" in http*) ;; *)
+        U=$(curl -sL --max-time 300 -F "file=@${f}" https://file.io 2>/dev/null \
+            | sed -n 's/.*"link":"\([^"]*\)".*/\1/p') ;;
+      esac
+      case "$U" in http*) echo "    $n -> $U" ;;
+                   *)     echo "    $n -> NINGÚN DESTINO ACEPTÓ LA SUBIDA" ;; esac
     done
     echo "==> TRABAJO COMPLETO"   # el guardián ve esto y destruye la instancia
 
