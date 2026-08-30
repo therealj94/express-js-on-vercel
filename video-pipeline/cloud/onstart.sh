@@ -200,8 +200,8 @@ if [ -n "${JOB_QUEUE_B64:-}" ]; then
   else
     echo "==> TRABAJO: ${N_WF} workflows, arrancando cola desatendida"
     # 8188 es nginx y pide contraseña; ComfyUI escucha en 9000.
-    COMFY_URL=http://127.0.0.1:9000 "$WORK/venv/bin/python" "$WORK/03_run_queue.py" \
-        --queue "$WORK/prompts/cola.json" --out "$WORK/outputs" 2>&1 | tail -60
+    COMFY_URL=http://127.0.0.1:9000 stdbuf -oL -eL "$WORK/venv/bin/python" -u "$WORK/03_run_queue.py" \
+        --queue "$WORK/prompts/cola.json" --out "$WORK/outputs" 2>&1
     # Dar tiempo a que rclone suba lo último antes de que nadie destruya nada.
     sleep 90
     echo "==> TRABAJO COMPLETO"   # el guardián ve esto y destruye la instancia
