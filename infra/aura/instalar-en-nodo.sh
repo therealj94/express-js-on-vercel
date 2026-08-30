@@ -2,7 +2,7 @@
 # Instala el motor y el asistente en la maquina de AU-RA. Corre EN EL NODO,
 # mandado por SSM. Idempotente: correrlo dos veces no rompe nada.
 #
-# Espera en el entorno: U_ASISTENTE U_CANDADO U_OIDO U_WHATSAPP U_GUARDIA U_REGISTRO U_GUION U_PROMPT
+# Espera en el entorno: U_ASISTENTE U_CANDADO U_OIDO U_WHATSAPP U_GUARDIA U_REGISTRO U_GUION U_PREMIO U_PROMPT
 # U_SABER U_PROBADORES — las URL firmadas para bajar cada archivo (el nodo no
 # tiene permisos de S3 y no los necesita: la firma viaja en la URL y muere en
 # dos horas).
@@ -54,6 +54,7 @@ curl -sS --fail -o /srv/aura/whatsapp.py     "$U_WHATSAPP"
 curl -sS --fail -o /srv/aura/guardia.py      "$U_GUARDIA"
 curl -sS --fail -o /srv/aura/registro.py     "$U_REGISTRO"
 curl -sS --fail -o /srv/aura/guion.py        "$U_GUION"
+curl -sS --fail -o /srv/aura/premio.py       "$U_PREMIO"
 curl -sS --fail -o /srv/aura/PROMPT-AURA.md  "$U_PROMPT"
 curl -sS --fail -o /srv/aura/saber.json      "$U_SABER"
 # la lista de probadores no se pisa si ya existe: puede tener gente agregada a

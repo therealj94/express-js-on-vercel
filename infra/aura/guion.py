@@ -80,7 +80,7 @@ NODOS = {
     # Empieza por el dolor, que ademas es verdad y esta escrito en las fichas:
     # las monedas de la region pierden valor con los años y el que ahorra en
     # ellas ve como su esfuerzo se le hace agua. Eso no hay que explicarlo en
-    # Honduras: se sabe.
+    # ningun pais de la region: se sabe de Mexico para abajo.
     #
     # Y promete POCO tiempo. «Treinta segundos» baja el costo de seguir
     # leyendo, que es la unica decision que se toma en esta pantalla.
@@ -91,9 +91,12 @@ NODOS = {
             '— es por la moneda.\n\n'
             'Nosotros medimos con otra vara. Te lo cuento en treinta segundos.'),
         'botones': [
+            # El premio va PRIMERO. Es el boton que da un motivo para tocar
+            # algo, y quien lo toca termina aprendiendo lo mismo que le
+            # contaria el camino largo — pero quedandose.
+            ('Ganá 1 ORIGEN', 'ganar'),
             ('¿Cómo es eso?', 'como-funciona'),
             ('¿Qué puedo hacer?', 'que-hago'),
-            ('Hablar con alguien', 'persona'),
         ],
     },
 
@@ -274,6 +277,37 @@ NODOS = {
         ],
     },
 
+    # ── EL JUEGO ───────────────────────────────────────────────────────────
+    #
+    # No es un adorno: es la puerta que mejor convierte. Alguien que llega por
+    # curiosidad se va en veinte segundos; alguien que llega por un gramo de
+    # oro se queda tres minutos, y en esos tres minutos aprende a usar el
+    # producto. El premio paga la atencion, y las preguntas son el contenido.
+    #
+    # Se dice UNO POR PERSONA desde la primera linea. Escondido, se descubre al
+    # final y se siente estafa; dicho de entrada es una regla y ya.
+    'ganar': {
+        'texto': (
+            'Te regalo 1 ORIGEN por aprender a usar tu plata. 🌱\n\n'
+            'Son tres preguntas. Si te equivocás no pasa nada: te explico y '
+            'seguimos — no es un examen.\n\n'
+            'Al final abrís tu Veta Wallet, me pasás tu dirección y te lo mando. '
+            'Uno por persona.'),
+        'botones': [
+            ('Dale, empecemos', 'ganar-va'),
+            ('¿Qué es ORIGEN?', 'como-funciona'),
+            ('Ahora no', 'que-hago'),
+        ],
+    },
+
+    # Nodo puente: lo toma el juego, que se encarga desde aqui. El texto no se
+    # usa —lo pisa la primera pregunta— pero el nodo existe para que el boton
+    # tenga a donde llevar y para que la prueba de nodos huerfanos pase.
+    'ganar-va': {
+        'texto': 'Arrancamos.',
+        'botones': None,
+    },
+
     # ── Los dos caminos que NO contestan solos ─────────────────────────────
     'persona': {
         'texto': (
@@ -316,7 +350,7 @@ ATAJOS = [
 # ── LOS ATAJOS DE TEMA, QUE SON OTRA COSA ───────────────────────────────────
 #
 # «remesas» es alguien diciendo de que quiere hablar. «¿cuanto cuesta mandar
-# plata a Honduras?» es una PREGUNTA, y contestarle un menu es no haberla
+# plata a mi mama?» es una PREGUNTA, y contestarle un menu es no haberla
 # leido.
 #
 # La primera version no distinguia y atrapaba las dos. Lo cazo la prueba que
@@ -333,6 +367,7 @@ TEMAS = [
     (re.compile(r'\b(genesis ?id|verificar|verificacion|identidad)\b'), 'genesis'),
     (re.compile(r'\b(frase de respaldo|semilla|seed)\b'), 'llaves'),
     (re.compile(r'\b(origen|gramin)\b'), 'como-funciona'),
+    (re.compile(r'\b(premio|regalo|gratis|ganar|concurso)\b'), 'ganar'),
     (re.compile(r'\b(auka|agka)\b'), 'monedas'),
 ]
 

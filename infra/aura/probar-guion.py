@@ -38,7 +38,7 @@ class NoAtrapaANadie(unittest.TestCase):
 
     def test_UNA_PREGUNTA_DE_VERDAD_NO_ENCAJA_Y_VA_AL_MOTOR(self):
         for pregunta in [
-            '¿cuánto cuesta mandar plata a Honduras?',
+            '¿cuánto cuesta mandar plata a mi mamá?',
             'no me llegó mi transferencia de ayer',
             '¿qué cocino hoy?',
             'mi mamá no puede entrar a la app',

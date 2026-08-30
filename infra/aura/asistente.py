@@ -91,6 +91,7 @@ import whatsapp as wa
 import guardia
 import registro
 import guion
+import premio
 from oido import NoSePudoOir, oir_nota
 from concurrent.futures import ThreadPoolExecutor
 
@@ -1320,6 +1321,74 @@ def perfil_de(perfiles, correo, tope=None):
     return p
 
 
+def _arrancar_juego(rel, p, de):
+    """Abre el juego, o dice que ya cobro. Comprueba ANTES de preguntar: hacer
+    tres preguntas para despues decir «ya cobraste» es la peor forma posible de
+    decirlo."""
+    if premio.ya_reclamo(telefono=de):
+        rel.enviar(de, 'Este número ya reclamó su ORIGEN. 🌱 Es uno por '
+                       'persona, pero seguí preguntándome lo que quieras.')
+        return
+    p['juego'] = premio.arrancar()
+    p['nodo'] = None
+    registro.anotar('juego', paso='arranca')
+    rel.enviar(de, premio.pregunta_de(p['juego']))
+
+
+def _atender_juego(rel, p, de, dicho):
+    """Un turno del juego. Devuelve algo si lo consumio, `None` si no.
+
+    Devolver `None` es importante: quien esta jugando y de golpe pregunta otra
+    cosa no puede quedar atrapado. Se le suelta y sigue su camino.
+    """
+    j = p['juego']
+
+    # Primero las preguntas.
+    if j.get('paso', 0) < len(premio.PREGUNTAS):
+        texto, termino = premio.responder(j, dicho)
+        if termino:
+            rel.enviar(de, texto + '\n\n' + premio.PIDE_BILLETERA)
+        else:
+            rel.enviar(de, texto)
+        return True
+
+    # Despues, la direccion.
+    direccion = premio.leer_direccion(dicho)
+    if not direccion:
+        # Si escribio otra cosa, se le recuerda UNA vez y despues se le suelta:
+        # insistir con la billetera a quien esta preguntando otra cosa es
+        # exactamente atrapar.
+        if j.get('pedido', 0) >= 1:
+            p.pop('juego', None)
+            return None
+        j['pedido'] = j.get('pedido', 0) + 1
+        rel.enviar(de, 'Te sigo debiendo tu ORIGEN. Cuando tengas la dirección '
+                       'de tu Veta Wallet —empieza con 0x— pegámela por acá.')
+        return True
+
+    malo = premio.problema_con(direccion)
+    if malo:
+        rel.enviar(de, malo)
+        return True
+
+    ok, motivo = premio.anotar(de, direccion, j.get('aciertos', 0))
+    p.pop('juego', None)
+    if not ok:
+        registro.anotar('juego', paso='repetido', por=motivo)
+        rel.enviar(de, 'Esa billetera ya recibió su ORIGEN. 🌱 Es uno por '
+                       'persona — pero seguí preguntándome lo que quieras.'
+                   if motivo == 'billetera' else
+                   'Este número ya reclamó su ORIGEN. 🌱 Uno por persona.')
+        return True
+
+    registro.anotar('juego', paso='ganado', aciertos=j.get('aciertos', 0))
+    rel.enviar(de, 'Anotado. 🌱 Tu ORIGEN sale hacia esa billetera en las '
+                   'próximas horas — lo revisa una persona antes de mandarlo.\n\n'
+                   'Cuando llegue lo vas a ver en tu Veta Wallet, y en '
+                   'ordenscan.com si querés comprobarlo vos.')
+    return True
+
+
 def atender(rel, sistema, p, de, dicho, mensaje=None):
     """Atiende UN mensaje. Si lanza, el que llama decide reintentar o saltar;
     aqui no se avanza ningun tope."""
@@ -1336,6 +1405,16 @@ def atender(rel, sistema, p, de, dicho, mensaje=None):
     #
     # Y no encierra a nadie: lo que no encaja con ningun nodo devuelve `None` y
     # sigue su camino de siempre. Ver la cabecera de guion.py.
+    # ── EL JUEGO VA ANTES QUE TODO ────────────────────────────────────────
+    #
+    # Quien esta jugando esta contestando una pregunta, no navegando. Si el
+    # guion mirara primero, «el oro» —una respuesta perfecta— podria caer en
+    # algun atajo y sacar a la persona del juego a mitad de camino.
+    if p.get('juego'):
+        salida = _atender_juego(rel, p, de, dicho)
+        if salida is not None:
+            return
+
     destino = guion.por_toque((mensaje or {}).get('toco')) \
         or guion.por_texto(dicho, p.get('nodo'))
     if not destino and not p.get('saludado'):
@@ -1346,6 +1425,9 @@ def atender(rel, sistema, p, de, dicho, mensaje=None):
         p['saludado'] = True
         p['visto'] = int(time.time())
         registro.anotar('guion', nodo=destino)
+        # Arrancar el juego es lo unico que un nodo hace ademas de hablar.
+        if destino == 'ganar-va':
+            return _arrancar_juego(rel, p, de)
         if n.get('botones') and hasattr(rel, 'con_botones'):
             rel.con_botones(de, n['texto'], n['botones'])
         else:
@@ -2208,6 +2290,7 @@ def main():
                '\n\nLO QUE SABES DE LA CASA (tu memoria; nunca menciones esta lista):\n'
                + todo_el_saber(saber))
     registro.preparar(DATOS)
+    premio.preparar(DATOS)
     perfiles = cargar_perfiles()
     templar(sistema)
     # ── Y SE MANTIENE TEMPLADO ────────────────────────────────────────────
