@@ -204,28 +204,33 @@ if [ -n "${JOB_QUEUE_B64:-}" ]; then
     # 8188 es nginx y pide contraseña; ComfyUI escucha en 9000.
     COMFY_URL=http://127.0.0.1:9000 stdbuf -oL -eL "$WORK/venv/bin/python" -u "$WORK/03_run_queue.py" \
         --queue "$WORK/prompts/cola.json" --out "$WORK/outputs" 2>&1
-    # Dar tiempo a que rclone suba lo último antes de que nadie destruya nada.
-    sleep 20
-    # Sacar los resultados del pod sin depender de que nadie entre a
-    # descargarlos: un enlace público por clip, impreso en el log. Sin cuentas
-    # ni credenciales. Los enlaces caducan solos a los pocos días.
-    # Tres destinos: si uno está caído o bloquea al host, se prueba el
-    # siguiente. Que los resultados salgan del pod no puede depender de un
-    # único servicio gratuito — ni de que el puerto del pod sea alcanzable,
-    # que en este proveedor a menudo no lo es.
-    # Respuesta cruda, sin parsear: file.io devolvía JSON en HTML y el parseo
-    # producía enlaces falsos que en el log parecían buenos.
-    echo "==> ENLACES DE DESCARGA"
-    for f in "$WORK"/outputs/*.mp4; do
-      [ -f "$f" ] || continue
-      n=$(basename "$f")
-      A=$(curl -s --max-time 300 -F "reqtype=fileupload" -F "fileToUpload=@${f}" \
-            https://catbox.moe/user/api.php 2>&1 | tr -d '\r\n')
-      B=$(curl -s --max-time 300 -F "file=@${f}" https://0x0.st 2>&1 | tr -d '\r\n')
-      echo "    $n"
-      echo "      catbox: ${A:0:110}"
-      echo "      0x0   : ${B:0:110}"
-    done
+    # El runner ya sube cada clip según sale. Esto es la red de seguridad:
+    # barre la carpeta entera por si algo se generó fuera de la cola (el
+    # estudio, un reintento) o una subida falló en su momento.
+    #
+    # Se subía a catbox y 0x0.st: los DOS rechazan subidas de centro de datos,
+    # así que nueve clips salieron con enlaces que no servían. Hugging Face es
+    # el único destino con la ida y la vuelta verificadas byte a byte.
+    if [ -n "${HF_REPO:-}" ] && [ -n "${HF_TOKEN:-}" ]; then
+      echo "==> ENTREGA FINAL a ${HF_REPO}"
+      HF_HUB_DISABLE_XET=1 "$WORK/venv/bin/python" - <<PY 2>&1 | tail -30
+import os, pathlib
+from huggingface_hub import HfApi
+api = HfApi(token=os.environ["HF_TOKEN"])
+for f in sorted(pathlib.Path("$WORK/outputs").glob("*")):
+    if f.suffix.lower() not in (".mp4", ".png", ".jpg", ".json"):
+        continue
+    try:
+        api.upload_file(path_or_fileobj=str(f), path_in_repo=f.name,
+                        repo_id=os.environ["HF_REPO"], repo_type="dataset")
+        print(f"    ok {f.name} ({f.stat().st_size/1e6:.1f} MB)")
+    except Exception as e:
+        print(f"    FALLO {f.name}: {str(e)[:160]}")
+PY
+    else
+      echo "!! SIN ENTREGA: falta HF_REPO o HF_TOKEN. Los clips se quedan"
+      echo "   dentro del pod y MUEREN al destruirlo."
+    fi
     echo "==> TRABAJO COMPLETO"   # el guardián ve esto y destruye la instancia
 
     # Sin autodestrucción: la clave de instancia llega DESPUÉS de crear, y

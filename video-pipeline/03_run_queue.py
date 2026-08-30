@@ -139,6 +139,31 @@ def run_job(wf: dict, poll: float = 3.0, timeout: int = 3600) -> list[str]:
     raise TimeoutError(f"prompt {pid} excedió {timeout}s")
 
 
+def entregar(ruta: Path) -> None:
+    """Sube el clip a un repo privado de Hugging Face.
+
+    Los tres servicios anónimos que se probaron antes (0x0.st, catbox, file.io)
+    rechazan subidas de centro de datos o devuelven HTML que parece un enlace.
+    Hugging Face es el único destino cuyo viaje de ida Y VUELTA está verificado
+    byte a byte: el mismo canal por el que bajan los 42 GB de pesos.
+
+    Un fallo aquí no puede tumbar la tanda: el clip ya está en disco.
+    """
+    repo = os.environ.get("HF_REPO")
+    token = os.environ.get("HF_TOKEN")
+    if not (repo and token and ruta.exists()):
+        return
+    try:
+        from huggingface_hub import HfApi
+        HfApi(token=token).upload_file(
+            path_or_fileobj=str(ruta), path_in_repo=ruta.name,
+            repo_id=repo, repo_type="dataset")
+        print(f"    entregado: {repo}/{ruta.name} "
+              f"({ruta.stat().st_size/1e6:.1f} MB)", flush=True)
+    except Exception as e:                        # noqa: BLE001
+        print(f"    ENTREGA FALLÓ ({ruta.name}): {str(e)[:200]}", flush=True)
+
+
 def expand(queue: dict) -> list[dict]:
     """Aplica defaults y despliega los jobs con varias seeds."""
     defaults = queue.get("defaults", {})
@@ -207,19 +232,7 @@ def main() -> int:
                 # los seis anteriores ya están fuera. Y el usuario puede ver
                 # resultados mientras el resto se genera.
                 for f in files:
-                    ruta = outdir / f
-                    if not ruta.exists():
-                        continue
-                    try:
-                        r = subprocess.run(
-                            ["curl", "-s", "--max-time", "300",
-                             "-F", "reqtype=fileupload",
-                             "-F", f"fileToUpload=@{ruta}",
-                             "https://catbox.moe/user/api.php"],
-                            capture_output=True, text=True, timeout=330)
-                        print(f"    enlace: {r.stdout.strip()[:110]}", flush=True)
-                    except Exception as e:
-                        print(f"    subida falló: {e}", flush=True)
+                    entregar(outdir / f)
                 break
             except Exception as exc:  # noqa: BLE001 - se reporta y se sigue
                 print(f"    fallo: {exc}", file=sys.stderr)
