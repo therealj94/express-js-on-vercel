@@ -11,6 +11,7 @@ import { estadoListas, hayListas, iniciarListas } from './aml/listas.js'
 import { estadoTemporizador, iniciarTemporizadorListas } from './aml/temporizador.js'
 import { estadoAncla, iniciarAncla } from './audit/ancla.js'
 import { iniciarEnganches, estadoEnganches } from './enganches/enganches.js'
+import { estadoWhatsApp } from './enganches/whatsapp.js'
 import { saludSegundoFactor } from './auth/operadores.js'
 import { bitacoraFirmable } from './lib/cripto.js'
 import { cargarGafiDesdeMongo, estadoGafi, listasVencidas } from './aml/paises.js'
@@ -460,6 +461,10 @@ app.get('/healthz', (_req, res) => {
       enganchesConfigurados: estadoEnganches().configurados,
       enganchesPendientes: estadoEnganches().pendientes,
       enganchesFallidos: estadoEnganches().fallidas,
+      /* El aviso a la PERSONA por WhatsApp. `whatsappFallidos` es el que
+         importa: cada uno es alguien que sigue esperando una respuesta que ya
+         se dio, y desde dentro no se nota — la identidad figura decidida. */
+      whatsapp: estadoWhatsApp(),
     },
   })
 })

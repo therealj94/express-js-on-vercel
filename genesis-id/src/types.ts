@@ -288,6 +288,14 @@ export interface Enganche {
 /** Un aviso concreto a una aplicación concreta, con su historia de intentos. */
 export interface Entrega {
   id: string
+  /**
+   * Por dónde sale.
+   *
+   * Ausente es `http`, y así se quedan las entregas que ya estaban en la cola
+   * cuando esto se añadió: no hace falta migrar nada.
+   */
+  canal?: 'http' | 'whatsapp'
+  /** La aplicación destinataria, o `persona` cuando el aviso es a alguien. */
   app: string
   evento: string
   url: string

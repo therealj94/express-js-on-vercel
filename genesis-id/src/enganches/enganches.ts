@@ -51,6 +51,7 @@ import { createHmac, timingSafeEqual, randomBytes } from 'crypto'
 import { store } from '../store.js'
 import { id } from '../lib/uid.js'
 import { registrar } from '../audit/bitacora.js'
+import { entregarWhatsApp } from './whatsapp.js'
 import type { Aplicacion, Entrega, Enganche } from '../types.js'
 
 /** Los avisos que existen. Uno por cambio que a una app le cambia qué hacer. */
@@ -190,6 +191,33 @@ export function avisar(
 let corriendo = false
 
 async function entregar(e: Entrega): Promise<void> {
+  /* El canal de WhatsApp sale por otro sitio y no tiene enganche que
+     comprobar: el destinatario es una persona, no una aplicación. Se atiende
+     antes de buscar la aplicación, porque `persona` no es ninguna y la
+     búsqueda de abajo lo cancelaría por «enganche apagado». */
+  if (e.canal === 'whatsapp') {
+    e.intentos++
+    try {
+      await entregarWhatsApp(e.url, e.cuerpo)
+      e.estado = 'entregada'
+      e.entregadaEn = new Date().toISOString()
+      delete e.ultimoError
+    } catch (err: any) {
+      e.ultimoError = String(err?.message || err).slice(0, 200)
+      if (e.intentos >= ESPERAS.length) {
+        e.estado = 'fallida'
+        /* Queda escrito. Un aviso que se rindió es una persona que se quedó
+           esperando una respuesta que ya se dio, y eso no se nota desde
+           dentro: aquí la identidad figura decidida y todo en orden. */
+        registrar('sistema', 'whatsapp.fallido', e.evento,
+          { entrega: e.id, error: e.ultimoError })
+      } else {
+        e.proximoIntento = Date.now() + ESPERAS[e.intentos - 1]
+      }
+    }
+    return
+  }
+
   const app = store.todo().aplicaciones.find((a) => a.clave === e.app)
   const secreto = app?.enganche?.secreto
   if (!app?.enganche?.activo || !secreto) {

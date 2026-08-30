@@ -22,6 +22,7 @@ import { store } from '../store.js'
 import { gidPersonal, id } from '../lib/uid.js'
 import { registrar } from '../audit/bitacora.js'
 import { avisar, type Evento } from '../enganches/enganches.js'
+import { avisarPersona } from '../enganches/whatsapp.js'
 import { enviarSinEsperar } from '../correo/enviar.js'
 import { identidadAprobada, identidadRechazada } from '../correo/plantillas.js'
 import { revisarDocumento } from '../kyc/documento.js'
@@ -678,6 +679,14 @@ function anotar(identidad: Identidad, estado: EstadoIdentidad, operador: string,
      Solo encola; no espera a nadie. Una decisión de cumplimiento no puede
      depender de que el servidor de un tercero conteste. */
   avisar(`identidad.${estado}` as Evento, identidad, { motivo })
+
+  /* Y a LA PERSONA por WhatsApp, si tiene teléfono y está configurado.
+     Va aquí por el mismo motivo que el aviso a las aplicaciones: es el único
+     sitio por el que pasan las cuatro decisiones. Y va DESPUES, porque si algo
+     de esto fallara, el aviso a las aplicaciones ya está encolado.
+
+     Solo encola. Una decisión de cumplimiento no espera a WhatsApp. */
+  avisarPersona(identidad, motivo)
 }
 
 export function enviarARevision(idn: string, actor: string, motivo = 'Pendiente de revisión'): Identidad | null {
