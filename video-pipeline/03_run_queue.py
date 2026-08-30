@@ -79,8 +79,18 @@ def build(workflow_path: Path, job: dict) -> dict:
     raw = max(1, int(round(job["duration_s"] * job["fps"])))
     frames = round(raw / 4) * 4 + 1
 
-    set_input(wf, t.get("PROMPT"), "text", job["prompt"])
-    set_input(wf, t.get("NEGATIVE"), "text", job.get("negative", ""))
+    # Según el nodo el campo se llama "text" (CLIPTextEncode) o "prompt"
+    # (MiniMaxH3ImageToVideo). Se prueban los dos: el que no exista se ignora.
+    # Según el nodo el campo se llama "text" (CLIPTextEncode) o "prompt"
+    # (MiniMaxH3ImageToVideo): se prueban los dos.
+    for campo in ("text", "prompt"):
+        set_input(wf, t.get("PROMPT"), campo, job["prompt"])
+    # El negativo SOLO si hay un nodo etiquetado. Sin esa condición, la búsqueda
+    # por nombre de campo cae en el mismo nodo del prompt y lo deja vacío —
+    # el workflow se ejecuta y genera ruido, sin decir por qué.
+    if t.get("NEGATIVE"):
+        for campo in ("text", "prompt"):
+            set_input(wf, t["NEGATIVE"], campo, job.get("negative", ""))
     for key in ("seed", "noise_seed"):
         set_input(wf, t.get("SEED"), key, job["seed"])
     set_input(wf, t.get("STEPS"), "steps", job["steps"])
