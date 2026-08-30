@@ -29,6 +29,7 @@ import json
 import os
 import sys
 import unittest
+import urllib.error
 from unittest import mock
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -404,6 +405,133 @@ class ElPrimerHolaNoSePuedeTRAGAR(unittest.TestCase):
         import time
         ahora = int(time.time() * 1000)
         self.assertEqual(ahora - wa.tope_de_contacto_nuevo(ahora), wa.VENTANA_MS)
+
+
+class Red:
+    """Un `urlopen` de mentira.
+
+    Se parchea LA RED, no `_pedir`. La primera version de estas pruebas
+    parcheaba `_pedir` entero — y entonces el freno y los reintentos, que viven
+    DENTRO de `_pedir`, no se ejecutaban: la prueba medía el simulacro y daba
+    verde con el código roto.
+    """
+
+    def __init__(self, fallos_al_enviar=0, codigo=429):
+        self.fallos, self.codigo = fallos_al_enviar, codigo
+        self.enviados, self.marcas, self.intentos_post = [], [], 0
+
+    def __call__(self, req, timeout=None):
+        import time as t
+        self.marcas.append(t.time())
+        url, metodo = req.full_url, req.get_method()
+        if '/messages' in url and metodo == 'POST':
+            self.intentos_post += 1
+            if self.fallos > 0:
+                self.fallos -= 1
+                raise urllib.error.HTTPError(url, self.codigo, 'no', {}, None)
+            self.enviados.append(json.loads(req.data)['message'])
+            return Respuesta({'id': 'wamid-1'})
+        if '/inbox/conversations?' in url:
+            return Respuesta({'data': [{'id': HILO, 'participantId': QUIEN,
+                                        'updatedTime': '2026-08-30T12:00:00.000Z'}]})
+        return Respuesta({})
+
+
+class Respuesta:
+    def __init__(self, d): self.d = json.dumps(d).encode()
+    def read(self): return self.d
+    def __enter__(self): return self
+    def __exit__(self, *a): return False
+
+
+def con_red(r):
+    return mock.patch('urllib.request.urlopen', r)
+
+
+class LaRespuestaQueSeTIRO(unittest.TestCase):
+    """La regresión del 30-ago 03:35: «me dejó en visto».
+
+    La respuesta estaba escrita entera. El cierre del globo —que en WhatsApp ES
+    el envío— se comió un 429, el error se tragó, el tope avanzó igual, y a la
+    persona le quedó el visto y nada más. Una respuesta perdida es peor que una
+    tardía: la tardía llega.
+    """
+
+    def test_un_429_pasajero_NO_pierde_la_respuesta(self):
+        """Lo que de verdad arregla el caso: se reintenta y sale."""
+        r = Red(fallos_al_enviar=2)
+        with con_red(r), mock.patch.object(wa, 'ESPERAS_429', (0, 0, 0)), \
+             mock.patch.object(wa, 'HUECO', 0):
+            rel = wa.RelevoWhatsApp()
+            rel.conversaciones()
+            g = rel.enviar(QUIEN, 'La resp', parcial=True)
+            rel.editar(g['id'], 'La respuesta entera.', parcial=False)
+        self.assertEqual(r.enviados, ['La respuesta entera.'])
+        self.assertEqual(r.intentos_post, 3, 'no reintentó lo suficiente')
+
+    def test_si_no_hay_forma_LANZA_para_que_se_reintente_despues(self):
+        r = Red(fallos_al_enviar=99)
+        with con_red(r), mock.patch.object(wa, 'ESPERAS_429', ()), \
+             mock.patch.object(wa, 'HUECO', 0):
+            rel = wa.RelevoWhatsApp()
+            rel.conversaciones()
+            g = rel.enviar(QUIEN, 'x', parcial=True)
+            with self.assertRaises(wa.NoSalio):
+                rel.editar(g['id'], 'La respuesta entera.', parcial=False)
+        self.assertEqual(r.enviados, [], 'no salió nada, como debe ser')
+
+    def test_UN_400_NO_SE_REINTENTA(self):
+        """Un error de formato no mejora insistiendo, y reintentarlo gasta el
+        cupo que hace falta para lo que sí."""
+        r = Red(fallos_al_enviar=99, codigo=400)
+        with con_red(r), mock.patch.object(wa, 'HUECO', 0):
+            rel = wa.RelevoWhatsApp()
+            rel.conversaciones()
+            with self.assertRaises(Exception):
+                rel.enviar(QUIEN, 'hola')
+        self.assertEqual(r.intentos_post, 1, 'reintentó un 400')
+
+    def test_media_respuesta_ya_enviada_NO_se_reintenta(self):
+        """Reintentar mandaría otra vez lo que ya llegó: la persona vería la
+        respuesta duplicada, que es peor que verla a medias."""
+        largo = ('Parrafo. ' * 700).strip()
+        self.assertGreater(len(largo), wa.TOPE_TEXTO)
+        r = Red()
+        # El primer trozo sale; a partir del segundo, 429 para siempre.
+        real = r.__call__
+        def falla_del_segundo(req, timeout=None):
+            if '/messages' in req.full_url and req.get_method() == 'POST' and r.enviados:
+                raise urllib.error.HTTPError(req.full_url, 429, 'no', {}, None)
+            return real(req, timeout)
+        with con_red(falla_del_segundo), mock.patch.object(wa, 'ESPERAS_429', ()), \
+             mock.patch.object(wa, 'HUECO', 0):
+            rel = wa.RelevoWhatsApp()
+            rel.conversaciones()
+            g = rel.enviar(QUIEN, 'x', parcial=True)
+            salida = rel.editar(g['id'], largo, parcial=False)     # no lanza
+        self.assertEqual(len(r.enviados), 1)
+        self.assertTrue(salida.get('aMedias'))
+
+
+class ElFrenoEstaDondeEstanLasLLAMADAS(unittest.TestCase):
+    """Frenar el bucle no bastaba: una vuelta descubre varias charlas, cada una
+    va en su hilo, y cada una hace cinco o seis llamadas. «Una vuelta cada cinco
+    segundos» eran veinte llamadas en ráfaga, y el proveedor las cortó con 429."""
+
+    def test_seis_hilos_a_la_vez_salen_de_uno_en_uno(self):
+        import threading
+        r = Red()
+        with con_red(r), mock.patch.object(wa, 'HUECO', 0.05):
+            hilos = [threading.Thread(target=lambda: wa._pedir('GET', '/x'))
+                     for _ in range(6)]
+            for h in hilos: h.start()
+            for h in hilos: h.join()
+        self.assertEqual(len(r.marcas), 6)
+        r.marcas.sort()
+        for a, b in zip(r.marcas, r.marcas[1:]):
+            self.assertGreaterEqual(round(b - a, 3), 0.04,
+                                    f'dos llamadas salieron pegadas ({b - a:.3f}s)')
+
 
 if __name__ == '__main__':
     unittest.main(verbosity=2)

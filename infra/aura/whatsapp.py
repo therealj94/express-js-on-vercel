@@ -71,19 +71,77 @@ TOPE_TEXTO = 4000
 VENTANA_MS = 24 * 3600 * 1000
 
 
+class NoSalio(Exception):
+    """La respuesta no llego a salir de verdad.
+
+    Existe para distinguir dos cosas que el cerebro trataba igual y no lo son:
+
+      · En el chat de la casa, si falla CERRAR el globo, el texto ya esta en el
+        relevo — se ve, se lee, solo queda marcado como parcial. Tragarse ese
+        error es correcto.
+      · En WhatsApp no hay globo que cerrar: el cierre ES el envio. Si falla,
+        no salio NADA, y la respuesta entera —ya escrita, ya pagada en tiempo
+        de motor— se pierde.
+
+    Por eso esta excepcion sube en vez de quedarse: `atender_charla` no avanza
+    el tope y el mensaje se vuelve a atender. Contestar tarde es mejor que no
+    contestar.
+    """
+
+
 def encendido():
     """Sin clave ni cuenta, esto sencillamente no esta puesto en marcha."""
     return bool(CLAVE and CUENTA)
 
 
+# ── EL FRENO, Y POR QUE ESTA AQUI Y NO EN EL BUCLE ──────────────────────────
+#
+# La primera version freno el SONDEO —una vuelta cada cinco segundos— y creyo
+# que con eso bastaba. No basto: una vuelta descubre tres charlas, cada charla
+# se atiende en su propio hilo, y cada una hace cinco o seis llamadas (bandeja,
+# escribiendo, enviar, editar, editar, leido). O sea que «una vuelta cada cinco
+# segundos» eran veinte llamadas en rafaga, y el proveedor las corto con 429.
+#
+# El freno tiene que estar donde estan las llamadas, no donde esta el bucle.
+# Aqui se serializan TODAS, vengan del hilo que vengan, con un hueco minimo
+# entre una y la siguiente.
+_CANDADO_RITMO = threading.Lock()
+_ULTIMA = [0.0]
+HUECO = float(os.environ.get('ZERNIO_HUECO', '1.2'))
+
+# Reintentos ante un 429 o un corte de red. Es lo que evita que una respuesta ya
+# escrita se pierda por un tropiezo de un segundo: ver `_soltar`.
+ESPERAS_429 = (2, 5, 12, 30)
+
+
 def _pedir(metodo, ruta, cuerpo=None, timeout=25):
     datos = json.dumps(cuerpo).encode() if cuerpo is not None else None
-    req = urllib.request.Request(
-        BASE + ruta, method=metodo, data=datos,
-        headers={'Authorization': 'Bearer ' + CLAVE,
-                 'Content-Type': 'application/json'})
-    with urllib.request.urlopen(req, timeout=timeout) as r:
-        return json.loads(r.read() or b'{}')
+    ultimo = None
+    for intento in range(len(ESPERAS_429) + 1):
+        with _CANDADO_RITMO:
+            espera = HUECO - (time.time() - _ULTIMA[0])
+            if espera > 0:
+                time.sleep(espera)
+            _ULTIMA[0] = time.time()
+        req = urllib.request.Request(
+            BASE + ruta, method=metodo, data=datos,
+            headers={'Authorization': 'Bearer ' + CLAVE,
+                     'Content-Type': 'application/json'})
+        try:
+            with urllib.request.urlopen(req, timeout=timeout) as r:
+                return json.loads(r.read() or b'{}')
+        except urllib.error.HTTPError as e:
+            # Solo se reintenta lo que se arregla esperando. Un 400 o un 401 no
+            # mejoran por insistir, y reintentarlos es gastar el cupo que hace
+            # falta para lo que si.
+            if e.code not in (429, 500, 502, 503, 504):
+                raise
+            ultimo = e
+        except (urllib.error.URLError, TimeoutError, OSError) as e:
+            ultimo = e
+        if intento < len(ESPERAS_429):
+            time.sleep(ESPERAS_429[intento])
+    raise ultimo
 
 
 def _ms(iso):
@@ -281,7 +339,20 @@ class RelevoWhatsApp:
         return self._soltar(para, entero)
 
     def _soltar(self, para, texto):
-        """El unico sitio por el que sale texto hacia WhatsApp."""
+        """El unico sitio por el que sale texto hacia WhatsApp.
+
+        SI ESTO FALLA, LANZA. Y es importante que lo haga.
+
+        Como la respuesta se guarda entera y sale al cerrar el globo, un fallo
+        justo en el cierre no pierde una frase: pierde LA RESPUESTA COMPLETA,
+        ya escrita y ya pagada en tiempo de motor. Paso el 30-ago a las
+        03:35:11 con un 429 —«no cerro el globo»—: la respuesta se tiro, el
+        tope avanzo igual, y a la persona le quedo el visto y nada mas.
+
+        Lanzando, `atender_charla` no avanza el tope y el mensaje se vuelve a
+        atender en la vuelta siguiente. Es preferible contestar tarde a no
+        contestar.
+        """
         texto = (texto or '').strip()
         if not texto:
             return {}          # un mensaje vacio lo rechaza Meta, y con razon
@@ -290,9 +361,22 @@ class RelevoWhatsApp:
             self.log('sin hilo para', para, '- no se pudo contestar')
             return {}
         ultimo = {}
+        salieron = 0
         for parte in trozos(texto):
-            ultimo = _pedir('POST', f'/inbox/conversations/{hilo}/messages',
-                            {'accountId': self.cuenta, 'message': parte})
+            try:
+                ultimo = _pedir('POST', f'/inbox/conversations/{hilo}/messages',
+                                {'accountId': self.cuenta, 'message': parte})
+                salieron += 1
+            except Exception as e:
+                # Si ya habia salido algun trozo, se corta y no se relanza: al
+                # reintentar se mandaria otra vez lo que ya llego, y la persona
+                # veria la respuesta duplicada. Media respuesta con aviso es
+                # mejor que una respuesta y media.
+                if salieron:
+                    self.log('respuesta a medias para', para,
+                             f'({salieron} trozos), no se reintenta:', str(e)[:70])
+                    return {'id': (ultimo or {}).get('id'), 'aMedias': True}
+                raise NoSalio(str(e)) from e
         return {'id': (ultimo or {}).get('id')}
 
 

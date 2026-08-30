@@ -1603,6 +1603,12 @@ def atender(rel, sistema, p, de, dicho, mensaje=None):
         entero_visto = (creciendo['texto'] + (' ' + resto if resto else '')).strip()
         try:
             rel.editar(creciendo['id'], entero_visto, parcial=False)
+        except wa.NoSalio:
+            # WhatsApp: el cierre ES el envio, asi que esto no es «no se cerro
+            # el globo», es «la respuesta no salio». Sube para que no se avance
+            # el tope y se vuelva a atender. Ver la nota en `wa.NoSalio`.
+            log('la respuesta a', de, 'NO salio; se reintenta en la vuelta siguiente')
+            raise
         except Exception as e:
             # Si el cierre falla, lo peor posible es dejarla «escribiendo»
             # para siempre: se manda el resto suelto, que al menos completa
