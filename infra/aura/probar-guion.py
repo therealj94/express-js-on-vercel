@@ -145,7 +145,10 @@ class LosBotonesCabenEnWhatsApp(unittest.TestCase):
         # de elegir idioma (TRAS_ELEGIR_IDIOMA) y `saludo` viene de contestar
         # el nombre. Exigirles un botón sería pedir que la entrada tenga
         # entrada.
-        entrada = {'idioma', 'nombre', 'oficio', 'oficio-otro', 'saludo'}
+        # Los del embudo de entrada y los del camino del equipo: se
+        # encadenan solos desde `atender`, ningún botón los apunta.
+        entrada = {'idioma', 'nombre', 'oficio', 'oficio-otro', 'saludo',
+                   'equipo-otro', 'equipo-pais', 'equipo-listo'}
         huerfanos = set(guion.NODOS) - alcanzables - entrada
         self.assertEqual(huerfanos, set(), f'no se llega a: {huerfanos}')
 
@@ -234,8 +237,9 @@ class ElCanalSinBotones(unittest.TestCase):
         self.assertIn('·', t, 'las opciones tienen que verse como opciones')
 
     def test_un_nodo_sin_botones_sale_tal_cual(self):
-        self.assertEqual(guion.como_texto('persona'),
-                         guion.nodo('persona', 'es')['texto'])
+        # `nombre` no tiene botones: espera que la persona escriba.
+        self.assertEqual(guion.como_texto('nombre'),
+                         guion.nodo('nombre', 'es')['texto'])
 
     def test_un_nodo_que_no_existe_no_revienta(self):
         self.assertIsNone(guion.como_texto('inventado'))
@@ -793,6 +797,118 @@ class VENDEPEROSINPROMETERNADA(unittest.TestCase):
             for idioma in guion.IDIOMAS:
                 t = guion.nodo(nodo, idioma, 'Ana')['texto']
                 self.assertIsNone(guardia.revisar(t)[1], f'{nodo}/{idioma}')
+
+
+class HABLARCONELEQUIPO(unittest.TestCase):
+    """«poner la opción quiero hablar con el equipo y ahí hacer preguntas
+    quién es, qué país y qué ocupa saber para dirigirlo; y puede poner quiero
+    invertir y lo diriges a mi whatsapp» — José, 30-ago.
+
+    La mitad del valor de este camino no la ve quien escribe: es el aviso que
+    le llega a José ANTES de que la persona le escriba. Sin eso le llega un
+    «hola» de un número desconocido y tiene que empezar preguntando lo que la
+    persona ya contó — que es exactamente la sensación de ser un número."""
+
+    def test_se_llega_por_boton_y_escribiendo_en_los_dos_idiomas(self):
+        for t in ['quiero hablar con el equipo', 'hablar con alguien',
+                  'quiero contactar', 'talk to the team', 'talk to a person']:
+            self.assertEqual(guion.por_texto(t), 'equipo', t)
+
+    def test_quiero_invertir_lleva_al_camino_de_una_persona(self):
+        for t in ['quiero invertir', 'I want to invest', 'can I invest',
+                  'soy inversionista', 'investor']:
+            self.assertEqual(guion.por_texto(t), 'inversion', t)
+
+    def test_y_ese_camino_da_el_WHATSAPP_de_jose(self):
+        """Un «hablá con una persona» que no da un número no es hablar con
+        nadie. Y quien pregunta por invertir quiere hablar YA: un correo es
+        donde esa persona se pierde."""
+        t = guion.nodo('equipo-listo', 'es', 'Ana')['texto']
+        self.assertIn('wa.me/50432136457', t)
+        self.assertIn('info@ordenglobal.org', t, 'sin salida por correo')
+
+    def test_pregunta_el_MOTIVO_con_seis_opciones(self):
+        for idioma in guion.IDIOMAS:
+            _boton, filas = guion.nodo('equipo', idioma)['lista']
+            self.assertEqual(len(filas), 6, idioma)
+            ids = [f[0] for f in filas]
+            self.assertIn('eq:invertir', ids, 'falta la opción de invertir')
+            self.assertIn('eq:otro', ids, 'no deja escribir')
+
+    def test_NO_vuelve_a_preguntar_lo_que_ya_sabe(self):
+        """Nombre y oficio ya vienen del embudo. Preguntar de nuevo lo que la
+        persona ya dijo es la forma más rápida de que se sienta un número."""
+        for idioma in guion.IDIOMAS:
+            t = guion.nodo('equipo', idioma, 'Ana')['texto'].lower()
+            for otra_vez in ['cómo te llamás', 'what is your name',
+                             'a qué te dedicás', 'what do you do']:
+                self.assertNotIn(otra_vez, t, f'{idioma}: repregunta «{otra_vez}»')
+
+    def test_el_pais_solo_se_pregunta_si_el_prefijo_no_lo_dijo(self):
+        fuente = (AQUI / 'asistente.py').read_text(encoding='utf8')
+        i = fuente.index("elif espera == 'motivo':")
+        self.assertIn("'equipo-pais' if not p.get('pais') else 'equipo-listo'",
+                      fuente[i:i + 1400])
+
+    def test_OTRA_COSA_abre_el_texto_libre_y_no_se_guarda(self):
+        motivo, pide_mas = guion.motivo_de_toque('eq:otro')
+        self.assertIsNone(motivo)
+        self.assertTrue(pide_mas)
+        self.assertEqual(guion.nodo('equipo-otro', 'es')['espera'], 'motivo')
+
+    def test_cada_motivo_se_lee_como_una_frase_para_jose(self):
+        for id_boton in guion.MOTIVOS:
+            for idioma in guion.IDIOMAS:
+                m, _ = guion.motivo_de_toque(id_boton, idioma)
+                self.assertTrue(m and m[0].islower(),
+                                f'{id_boton}/{idioma}: no encaja en «Ana {m}»')
+
+
+class ELAVISOQUELELLEGAAJOSE(unittest.TestCase):
+    """Lo que hace útil todo el camino: José sabe quién es antes de que le
+    escriba."""
+
+    FICHA = {'nombre': 'Ana', 'pais': 'guatemala', 'oficio': 'tengo un negocio',
+             'motivo': 'quiere invertir', 'idioma': 'es'}
+
+    def test_lleva_nombre_numero_pais_oficio_y_motivo(self):
+        a = guion.aviso_para_el_equipo(self.FICHA, '50255551234')
+        for dato in ['Ana', '50255551234', 'Guatemala', 'tengo un negocio',
+                     'quiere invertir']:
+            self.assertIn(dato, a, f'al aviso le falta {dato}')
+
+    def test_avisa_si_la_persona_habla_ingles(self):
+        """José tiene que saber en qué idioma contestarle antes de escribir."""
+        a = guion.aviso_para_el_equipo({**self.FICHA, 'idioma': 'en'}, '1555')
+        self.assertIn('inglés', a)
+        self.assertNotIn('inglés', guion.aviso_para_el_equipo(self.FICHA, '1555'))
+
+    def test_va_en_espanol_aunque_la_persona_hable_ingles(self):
+        """Lo lee José, no la persona."""
+        a = guion.aviso_para_el_equipo({**self.FICHA, 'idioma': 'en'}, '1555')
+        self.assertIn('quiere hablar con vos', a)
+
+    def test_sin_datos_no_revienta_ni_deja_huecos(self):
+        a = guion.aviso_para_el_equipo({}, '50499999999')
+        self.assertIn('Alguien', a)
+        self.assertNotIn('None', a)
+        self.assertNotIn('· ·', a)
+
+    def test_se_manda_ANTES_de_darle_el_whatsapp(self):
+        """Si se mandara después y fallara, José recibiría el «hola» sin
+        contexto — que es justo lo que este camino vino a evitar."""
+        fuente = (AQUI / 'asistente.py').read_text(encoding='utf8')
+        i = fuente.index("elif espera == 'motivo':")
+        bloque = fuente[i:i + 1600]
+        self.assertLess(bloque.index('_derivar_al_equipo'),
+                        bloque.index("_mandar_nodo(destino)"))
+
+    def test_si_el_aviso_falla_la_persona_igual_recibe_el_whatsapp(self):
+        fuente = (AQUI / 'asistente.py').read_text(encoding='utf8')
+        i = fuente.index('def _derivar_al_equipo')
+        cuerpo = fuente[i:fuente.index('\ndef ', i + 10)]
+        self.assertIn('except Exception', cuerpo,
+                      'un aviso caído tumbaría la derivación')
 
 
 if __name__ == '__main__':

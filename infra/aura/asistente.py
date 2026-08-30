@@ -1295,6 +1295,26 @@ def hoy():
     return time.strftime('%Y-%m-%d')
 
 
+def _derivar_al_equipo(rel, p, de):
+    """Le avisa a Jose QUIEN esta por escribirle, antes de que le escriba.
+
+    Es la mitad del valor de este camino. Sin esto le llega un «hola» de un
+    numero desconocido y tiene que empezar preguntando lo que la persona ya
+    conto — que es exactamente la sensacion de ser un numero.
+
+    Si el aviso falla no se cae nada: la persona ya tiene el WhatsApp y puede
+    escribir igual. Se deja anotado y se sigue.
+    """
+    registro.anotar('equipo', motivo=(p.get('motivo') or '')[:40])
+    for jefe in vistazo.JEFES:
+        if not jefe.isdigit():
+            continue          # la lista admite correos; aqui solo telefonos
+        try:
+            rel.enviar(jefe, guion.aviso_para_el_equipo(p, de))
+        except Exception as e:
+            log('el aviso al equipo no salio:', type(e).__name__, str(e)[:70])
+
+
 def _idi(p):
     """El idioma de esa persona, con el espanol de respaldo.
 
@@ -1647,7 +1667,8 @@ def atender(rel, sistema, p, de, dicho, mensaje=None):
     # Dos preguntas y ya: como se llama y a que se dedica. El pais no se
     # pregunta —sale del prefijo de su numero— y por eso el embudo se acorto
     # un mensaje.
-    SIGUIENTE = {'nombre': 'oficio', 'oficio': 'saludo'}
+    SIGUIENTE = {'nombre': 'oficio', 'oficio': 'saludo',
+                 'motivo': 'equipo-pais', 'pais': 'equipo-listo'}
     actual = guion.nodo(p.get('nodo') or '', idi)
     espera = actual.get('espera') if actual else None
     if espera in SIGUIENTE:
@@ -1670,6 +1691,38 @@ def atender(rel, sistema, p, de, dicho, mensaje=None):
                 p['visto'] = int(time.time())
                 _mandar_nodo('nombre')
                 return
+        elif espera == 'motivo':
+            # Igual que el oficio: puede venir de un boton o escrito.
+            del_boton, pide_mas = guion.motivo_de_toque(toco, idi)
+            if pide_mas:
+                p['nodo'] = 'equipo-otro'
+                p['visto'] = int(time.time())
+                _mandar_nodo('equipo-otro')
+                return
+            escrito = ' '.join((dicho or '').split())[:60]
+            if del_boton or escrito:
+                p['motivo'] = del_boton or escrito
+            # El pais solo se pregunta si el prefijo no lo dijo: preguntarle de
+            # donde es a quien escribe desde un +504 delata que no estabamos
+            # escuchando.
+            destino = 'equipo-pais' if not p.get('pais') else 'equipo-listo'
+            p['nodo'] = destino
+            p['visto'] = int(time.time())
+            registro.anotar('guion', nodo=destino)
+            if destino == 'equipo-listo':
+                _derivar_al_equipo(rel, p, de)
+            _mandar_nodo(destino)
+            return
+        elif espera == 'pais':
+            escrito = ' '.join((dicho or '').split())[:40]
+            if escrito and not toco:
+                p['pais'] = escrito
+            p['nodo'] = 'equipo-listo'
+            p['visto'] = int(time.time())
+            registro.anotar('guion', nodo='equipo-listo')
+            _derivar_al_equipo(rel, p, de)
+            _mandar_nodo('equipo-listo')
+            return
         else:
             # El oficio puede venir de un boton o escrito. «Otro» no es un
             # oficio: es alguien pidiendo escribir, y se le abre el turno sin

@@ -680,8 +680,8 @@ NODOS = {
                    'If anything gets stuck, tell me here and we sort it out.'),
         },
         'botones': {
-            'es': [('Hablar con alguien', 'persona'), ('Volver', 'inicio')],
-            'en': [('Talk to a person', 'persona'), ('Back', 'inicio')],
+            'es': [('Hablar con el equipo', 'equipo'), ('Volver', 'inicio')],
+            'en': [('Talk to the team', 'equipo'), ('Back', 'inicio')],
         },
     },
 
@@ -711,25 +711,85 @@ NODOS = {
         'texto': {'es': 'Arrancamos.', 'en': 'Here we go.'},
     },
 
-    # ── HABLAR CON ALGUIEN ES HABLAR CON ALGUIEN ────────────────────────────
+    # ── HABLAR CON EL EQUIPO: PRIMERO SE PREGUNTA PARA QUE ─────────────────
     #
-    # Un «hablar con una persona» que no da un numero no es hablar con nadie.
-    # Va el WhatsApp de Jose como enlace directo, y el correo para quien
-    # prefiera escribir.
-    'persona': {
+    # Lo pidio Jose: «hacer preguntas quién es, qué país y qué ocupa saber
+    # para dirigirlo». Antes esto daba el correo y ya, y a Jose le llegaba un
+    # «hola» sin saber de quien.
+    #
+    # El nombre, el pais y el oficio YA los tenemos del embudo. Lo unico que
+    # falta es el MOTIVO, y con eso alcanza para dirigir. Preguntar de nuevo lo
+    # que ya nos dijo es la forma mas rapida de que alguien se sienta un
+    # numero.
+    'equipo': {
         'texto': {
-            'es': ('Dale. Escribile directo a José por WhatsApp:\n'
+            'es': ('Dale, {nombre}. Te conecto con la persona que te sirve.\n\n'
+                   '¿De qué querés hablar?'),
+            'en': ('Sure, {nombre}. Let me connect you with the right '
+                   'person.\n\n'
+                   'What do you want to talk about?'),
+        },
+        'lista': {
+            'es': ('Ver opciones', [
+                ('eq:invertir', 'Quiero invertir'),
+                ('eq:negocio', 'Poner mi negocio'),
+                ('eq:cuenta', 'Un problema con mi cuenta'),
+                ('eq:proyecto', 'Saber más del proyecto'),
+                ('eq:alianza', 'Una alianza o propuesta'),
+                ('eq:otro', 'Otra cosa'),
+            ]),
+            'en': ('See options', [
+                ('eq:invertir', 'I want to invest'),
+                ('eq:negocio', 'List my business'),
+                ('eq:cuenta', 'A problem with my account'),
+                ('eq:proyecto', 'Learn more about it'),
+                ('eq:alianza', 'A partnership or proposal'),
+                ('eq:otro', 'Something else'),
+            ]),
+        },
+        'espera': 'motivo',
+    },
+
+    # Quien elige «otra cosa» escribe. Se le pregunta y se espera.
+    'equipo-otro': {
+        'texto': {
+            'es': 'Contame en una línea qué necesitás, {nombre}, y te dirijo.',
+            'en': 'Tell me in one line what you need, {nombre}, and I will '
+                  'point you the right way.',
+        },
+        'espera': 'motivo',
+    },
+
+    # ── LO QUE FALTA PARA DIRIGIRLO ────────────────────────────────────────
+    #
+    # Solo se pregunta si el prefijo del telefono no lo dijo. A quien escribe
+    # desde un +504 no se le pregunta de donde es: ya lo sabemos, y
+    # preguntarlo delata que no estabamos escuchando.
+    'equipo-pais': {
+        'texto': {
+            'es': '¿Y desde qué país me escribís, {nombre}?',
+            'en': 'And what country are you writing from, {nombre}?',
+        },
+        'espera': 'pais',
+    },
+
+    # ── DERIVADO. Con el WhatsApp de Jose, no con un correo ────────────────
+    'equipo-listo': {
+        'texto': {
+            'es': ('Listo, {nombre}. Escribile directo a José:\n'
                    'wa.me/50432136457\n\n'
-                   'O por correo a info@ordenglobal.org, contando qué '
-                   'necesitás.\n\n'
-                   'Si es algo de tu cuenta que puedo resolver yo, contámelo '
-                   'por acá y lo intento primero.'),
-            'en': ('Sure. Message José directly on WhatsApp:\n'
+                   'Ya le pasé quién sos y qué necesitás, así que no vas a '
+                   'tener que contar todo de nuevo.\n\n'
+                   'Si preferís correo: info@ordenglobal.org'),
+            'en': ('Done, {nombre}. Message José directly:\n'
                    'wa.me/50432136457\n\n'
-                   'Or email info@ordenglobal.org and tell them what you '
-                   'need.\n\n'
-                   'If it is something about your account that I can solve, '
-                   'tell me here and I will try first.'),
+                   'I already passed on who you are and what you need, so you '
+                   'will not have to explain it all again.\n\n'
+                   'If you prefer email: info@ordenglobal.org'),
+        },
+        'botones': {
+            'es': [('Ganá 1 ORIGEN', 'ganar'), ('Mientras, contame', 'que-hago')],
+            'en': [('Win 1 ORIGEN', 'ganar'), ('Meanwhile, tell me', 'que-hago')],
         },
     },
 
@@ -741,16 +801,20 @@ NODOS = {
     # hacer una maquina.
     'inversion': {
         'texto': {
-            'es': ('Eso lo habla una persona, no yo.\n\n'
-                   'Escribile a José por WhatsApp: wa.me/50432136457\n'
-                   'O a info@ordenglobal.org\n\n'
-                   'No es una evasiva: de eso no me corresponde hablar a mí, y '
-                   'preferís la respuesta buena antes que la rápida.'),
-            'en': ('A person handles that, not me.\n\n'
-                   'Message José on WhatsApp: wa.me/50432136457\n'
-                   'Or write to info@ordenglobal.org\n\n'
-                   'This is not a dodge: it is not mine to answer, and you '
-                   'want the right answer rather than the fast one.'),
+            'es': ('Eso lo habla una persona, no yo: de eso no me '
+                   'corresponde hablar a mí.\n\n'
+                   'Te conecto con José en un segundo — o si preferís '
+                   'escribir, a info@ordenglobal.org.'),
+            'en': ('A person handles that, not me: it is not mine to '
+                   'answer.\n\n'
+                   'Let me connect you with José in a second — or if you '
+                   'prefer writing, info@ordenglobal.org.'),
+        },
+        'botones': {
+            'es': [('Dale, conectame', 'equipo'),
+                   ('¿Qué es la casa?', 'familia')],
+            'en': [('Yes, connect me', 'equipo'),
+                   ('What is the house?', 'familia')],
         },
     },
 }
@@ -761,7 +825,9 @@ ATAJOS = [
     # Todo lo que huela a invertir va a una persona, y va ANTES que los demas
     # atajos: «quiero invertir en origen» no puede caer en el nodo de ORIGEN.
     (re.compile(r'\b(invertir|inversion|inversionista|invierto|accionista|'
-                r'rendimiento|ganancia|rentabilidad|ondk|acciones?)\b'), 'inversion'),
+                r'rendimiento|ganancia|rentabilidad|ondk|acciones?|'
+                r'invest|investing|investor|investment|shares?|'
+                r'stake|returns?|dividend)\b'), 'inversion'),
     # ANCLADO de punta a punta, como el saludo. «ayuda» a secas es alguien
     # pidiendo el menu; «necesito ayuda con remesas» es alguien diciendo lo que
     # le pasa, y contestarle el menu es no haberlo leido. Con `\b` en medio de
@@ -789,6 +855,10 @@ ATAJOS = [
                 r'son reales|es real esto|esto es real|como se que|'
                 r'como puedo comprobar|is this real|is this a scam|'
                 r'chainlist|gleif|how do i know)\b'), 'comprobar'),
+    (re.compile(r'\b(hablar con (el equipo|alguien|una persona|un humano)|'
+                r'quiero hablar con|contactar|contacto|'
+                r'talk to (the team|someone|a person|a human)|'
+                r'contact (you|the team))\b'), 'equipo'),
     (re.compile(r'\b(que es orden global|quienes son ustedes|de que se trata|'
                 r'what is orden global|who is orden global|'
                 r'que hace orden global)\b'), 'familia'),
@@ -1099,6 +1169,57 @@ FRASES = {
         'en': 'I could not read the chats ({e}). Try again in a while.',
     },
 }
+
+
+# Lo que la persona dice que necesita, para dirigirla y para que Jose lo sepa
+# ANTES de que le escriba. La clave viaja en el boton; el texto va al aviso.
+MOTIVOS = {
+    'eq:invertir': {'es': 'quiere invertir', 'en': 'wants to invest'},
+    'eq:negocio': {'es': 'quiere poner su negocio',
+                   'en': 'wants to list their business'},
+    'eq:cuenta': {'es': 'tiene un problema con su cuenta',
+                  'en': 'has a problem with their account'},
+    'eq:proyecto': {'es': 'quiere saber más del proyecto',
+                    'en': 'wants to know more about the project'},
+    'eq:alianza': {'es': 'trae una alianza o propuesta',
+                   'en': 'brings a partnership or proposal'},
+}
+
+
+def motivo_de_toque(id_boton, idioma=POR_OMISION):
+    """`(motivo, pide_mas)`. «Otra cosa» abre el texto libre y no guarda nada:
+    «otro» no es un motivo, es alguien pidiendo escribir."""
+    s = str(id_boton or '')
+    if s == 'eq:otro':
+        return None, True
+    m = MOTIVOS.get(s)
+    return (_en(m, idioma) if m else None), False
+
+
+def aviso_para_el_equipo(p, numero):
+    """La ficha de quien esta por escribir, para el telefono de Jose.
+
+    Es la mitad del valor de todo este camino. Sin esto, a Jose le llega un
+    «hola» de un numero desconocido y tiene que empezar preguntando lo que la
+    persona ya conto — que es exactamente la sensacion de ser un numero.
+
+    Va en espanol siempre: lo lee Jose, no la persona.
+    """
+    quien = (p.get('nombre') or '').strip() or 'Alguien'
+    lineas = [f'🔔 {quien} quiere hablar con vos.', '']
+    pais = (p.get('pais') or '').strip()
+    oficio = (p.get('oficio') or '').strip()
+    señas = ' · '.join(x for x in (pais.title() if pais else '', oficio) if x)
+    lineas.append(f'👤 {quien} · +{numero}')
+    if señas:
+        lineas.append(f'📍 {señas}')
+    motivo = (p.get('motivo') or '').strip()
+    if motivo:
+        lineas.append(f'💬 {motivo}')
+    if p.get('idioma') == 'en':
+        lineas.append('🌐 habla en inglés')
+    lineas += ['', 'Ya tiene tu WhatsApp.']
+    return '\n'.join(lineas)
 
 
 def es_titulo_de_opcion(texto):
