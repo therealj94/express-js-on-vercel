@@ -69,110 +69,212 @@ def _llano(t):
 # Los textos son cortos a proposito: esto se lee en un telefono, de pie, con
 # una mano. Lo que no entra en cuatro lineas no se lee.
 NODOS = {
+    # ── LA PRIMERA PANTALLA ────────────────────────────────────────────────
+    #
+    # Es la unica que importa de verdad: si esta no engancha, no hay segunda.
+    #
+    # NO empieza con «somos un ecosistema». Eso es una categoria, no un motivo
+    # para quedarse, y ademas no significa nada para quien esta parado en una
+    # pulperia con el telefono en la mano.
+    #
+    # Empieza por el dolor, que ademas es verdad y esta escrito en las fichas:
+    # las monedas de la region pierden valor con los años y el que ahorra en
+    # ellas ve como su esfuerzo se le hace agua. Eso no hay que explicarlo en
+    # Honduras: se sabe.
+    #
+    # Y promete POCO tiempo. «Treinta segundos» baja el costo de seguir
+    # leyendo, que es la unica decision que se toma en esta pantalla.
     'inicio': {
         'texto': (
-            'Soy AU-RA, la asistente de Orden Global.\n\n'
-            'Te puedo contar de qué va esto, ayudarte con tu cuenta, o pasarte '
-            'con una persona. También podés escribirme lo que quieras y te '
-            'contesto.'),
+            'Soy AU-RA, la inteligencia de Orden Global.\n\n'
+            'Lo que ahorrás hoy, en un año compra menos. No es por lo que ganás '
+            '— es por la moneda.\n\n'
+            'Nosotros medimos con otra vara. Te lo cuento en treinta segundos.'),
         'botones': [
-            ('¿Qué es esto?', 'que-es'),
-            ('Quiero mi cuenta', 'cuenta'),
+            ('¿Cómo es eso?', 'como-funciona'),
+            ('¿Qué puedo hacer?', 'que-hago'),
             ('Hablar con alguien', 'persona'),
         ],
     },
 
-    'que-es': {
+    'como-funciona': {
         'texto': (
-            'Orden Global es un ecosistema para mover, guardar y cobrar dinero '
-            'en Latinoamérica, sobre una cadena de bloques propia.\n\n'
-            'En la práctica son tres cosas: una billetera (Veta Wallet), una '
-            'identidad que sirve en todas las apps (Genesis ID), y un chat '
-            'cifrado (PULSE2CHAT).'),
+            'ORIGEN es la moneda de la casa y sigue al oro: uno vale un gramo de '
+            'oro dividido entre cincuenta y cinco, al precio de hoy.\n\n'
+            'La fórmula es pública y no la ponemos nosotros. Podés rehacer el '
+            'precio con una calculadora cuando quieras.'),
         'botones': [
-            ('La billetera', 'billetera'),
-            ('Mi identidad', 'genesis'),
-            ('¿Y las monedas?', 'monedas'),
+            ('¿Y si el oro baja?', 'honesto'),
+            ('¿Dónde lo guardo?', 'billetera'),
+            ('Volver', 'inicio'),
+        ],
+    },
+
+    # ── EL NODO QUE MAS VENDE, Y VENDE PORQUE NO VENDE ─────────────────────
+    #
+    # Aqui se dice que el oro baja y que no hay oro en boveda. Parece un mal
+    # negocio decirlo en la tercera pantalla; es al reves. Quien llega a un
+    # numero de WhatsApp preguntando por una moneda de oro ya escucho diez
+    # promesas y no le creyo a ninguna. Lo que no ha escuchado nunca es que le
+    # digan la parte incomoda antes de que la busque.
+    #
+    # Y la salida no es una promesa: es «comprobalo vos», con la direccion del
+    # explorador. Eso no lo puede decir quien esta mintiendo.
+    'honesto': {
+        'texto': (
+            'Baja. El oro sube y baja, y no te voy a decir lo contrario.\n\n'
+            'Y otra que casi nadie dice: no hay oro en bóveda detrás de ORIGEN. '
+            'Hay una referencia de precio.\n\n'
+            'Lo que sí podés comprobar sin pedirnos permiso es la cadena: cada '
+            'movimiento está en ordenscan.com.'),
+        'botones': [
+            ('Me gusta eso', 'que-hago'),
+            ('¿Y las otras?', 'monedas'),
+            ('Volver', 'como-funciona'),
+        ],
+    },
+
+    # El reparto. Tres puertas y cada una es una VIDA distinta: el que manda
+    # plata, el que vende, el que ahorra. No «productos» — situaciones.
+    'que-hago': {
+        'texto': (
+            'Con la misma cuenta: guardás tu plata, le mandás a tu gente, y le '
+            'cobrás a tus clientes con un QR.\n\n'
+            '¿Cuál te toca a vos?'),
+        'botones': [
+            ('Mandar plata', 'remesas'),
+            ('Tengo un negocio', 'negocio'),
+            ('Guardar mis ahorros', 'billetera'),
+        ],
+    },
+
+    'remesas': {
+        'texto': (
+            'Le mandás a tu gente en nueve países, y antes de confirmar ves '
+            'exactamente cuánto le llega del otro lado — ya con la comisión y el '
+            'cambio descontados.\n\n'
+            'Sin sorpresas al final. Eso es lo que más se agradece.'),
+        'botones': [
+            ('¿Cuánto cobran?', 'comision'),
+            ('Quiero empezar', 'empezar'),
+            ('Volver', 'que-hago'),
+        ],
+    },
+
+    'comision': {
+        'texto': (
+            'La comisión de red es de 0,001 ORIGEN, y se paga en ORIGEN aunque '
+            'mandés otra moneda.\n\n'
+            'Es mínima porque la cadena es nuestra: no le alquilamos la red a '
+            'nadie. El equivalente lo ves antes de confirmar.'),
+        'botones': [
+            ('Quiero empezar', 'empezar'),
+            ('Volver', 'que-hago'),
+        ],
+    },
+
+    'negocio': {
+        'texto': (
+            'Cobrás con un QR desde tu teléfono: ponés el monto, tu cliente lo '
+            'escanea, y el pago te llega en segundos. Sin datáfono ni aparatos '
+            'nuevos.\n\n'
+            'Tu negocio además entra al directorio, donde ya hay comercios en '
+            'diecinueve países.'),
+        'botones': [
+            ('¿Qué necesito?', 'negocio-como'),
+            ('¿Cuánto cobran?', 'comision'),
+            ('Volver', 'que-hago'),
+        ],
+    },
+
+    'negocio-como': {
+        'texto': (
+            'Tu teléfono y tu Genesis ID verificado. Nada más.\n\n'
+            'La identidad es para que quien te pague sepa que del otro lado hay '
+            'alguien real, y para que vos puedas emitir cobros a tu nombre.'),
+        'botones': [
+            ('¿Cómo la saco?', 'genesis'),
+            ('Quiero empezar', 'empezar'),
         ],
     },
 
     'billetera': {
         'texto': (
-            'Veta Wallet guarda tu dinero y lo mueve. Podés recibir, enviar, '
-            'cambiar entre monedas y cobrarle a un cliente con un QR.\n\n'
-            'Tus llaves son tuyas: yo no las tengo ni las necesito. Vos firmás '
-            'con tu contraseña, yo solo preparo.'),
+            'Veta Wallet: guardás, mandás, recibís y cambiás entre monedas, todo '
+            'desde el teléfono.\n\n'
+            'Tus llaves son tuyas. Yo preparo, vos firmás con tu contraseña.'),
         'botones': [
-            ('¿Cómo empiezo?', 'cuenta'),
-            ('¿Es seguro?', 'seguro'),
-            ('Volver', 'que-es'),
+            ('¿Y si pierdo el cel?', 'llaves'),
+            ('Quiero empezar', 'empezar'),
+            ('Volver', 'que-hago'),
+        ],
+    },
+
+    # Este nodo no esta para vender: esta para que nadie pierda su plata. Y
+    # justamente por eso es de los que mas confianza dan.
+    'llaves': {
+        'texto': (
+            'Tu frase de respaldo es lo único que abre tu dinero si perdés el '
+            'teléfono. Guardala escrita en un sitio seguro.\n\n'
+            'Y no se la digas a nadie. Si alguien te la pide —aunque diga que es '
+            'de Orden Global, aunque diga que soy yo— es mentira.'),
+        'botones': [
+            ('Entendido', 'que-hago'),
+            ('Quiero empezar', 'empezar'),
         ],
     },
 
     'genesis': {
         'texto': (
-            'Genesis ID es tu identidad verificada. La hacés una vez —tu '
-            'documento y una foto— y te sirve en todas las apps de Orden '
-            'Global sin volver a mandar papeles.\n\n'
-            'La revisa una persona, no una máquina. Suele tardar menos de un '
-            'día, y te avisamos cuando esté.'),
+            'Te verificás una vez y quedás verificado en todo el ecosistema. La '
+            'revisa una persona, no una máquina, y suele estar en menos de un '
+            'día.\n\n'
+            'Te sirve para cobrar a tu nombre, para el chat y para lo que venga.'),
         'botones': [
-            ('Quiero hacerla', 'cuenta'),
-            ('¿Qué piden?', 'genesis-que'),
-            ('Volver', 'que-es'),
+            ('¿Qué me piden?', 'genesis-que'),
+            ('Quiero empezar', 'empezar'),
+            ('Volver', 'que-hago'),
         ],
     },
 
     'genesis-que': {
         'texto': (
-            'Tu documento de identidad —el de tu país— y una foto tuya del '
-            'momento, para comprobar que sos vos y no una foto de una foto.\n\n'
-            'Las fotos del documento se guardan cifradas y se borran a los '
-            'cinco años. La única imagen que queda es el retrato de tu '
-            'credencial, porque es tu credencial.'),
-        'botones': [('Empezar', 'cuenta'), ('Volver', 'genesis')],
+            'Tu documento y una foto tuya del momento, para saber que sos vos y '
+            'no una foto de una foto.\n\n'
+            'Las imágenes del documento se guardan cifradas y se borran a los '
+            'cinco años. La única que queda es tu retrato, porque es tu '
+            'credencial.'),
+        'botones': [
+            ('Quiero empezar', 'empezar'),
+            ('Volver', 'genesis'),
+        ],
     },
 
     'monedas': {
         'texto': (
-            'Hay varias, y cada una hace algo distinto. ORIGEN y AUKA siguen el '
-            'precio del oro; AGKA el de la plata; ONDK es la de la casa.\n\n'
-            'Te cuento de la que quieras, o escribime el nombre de una.'),
+            'ORIGEN sigue al oro por gramo. AUKA sigue la onza de oro y AGKA la '
+            'de plata.\n\n'
+            'Ojo con esto, que prefiero decírtelo yo: siguen el precio, no te '
+            'entregan el metal.'),
         'botones': [
-            ('ORIGEN', 'origen'),
-            ('¿Cómo se compran?', 'cuenta'),
-            ('Volver', 'que-es'),
+            ('¿Y ORIGEN?', 'como-funciona'),
+            ('Quiero empezar', 'empezar'),
+            ('Volver', 'que-hago'),
         ],
     },
 
-    'origen': {
+    'empezar': {
         'texto': (
-            'ORIGEN sigue el precio del oro: cada uno equivale a un gramo de oro '
-            'dividido entre cincuenta y cinco, al precio del día.\n\n'
-            'Si querés saber si te conviene para lo tuyo, eso lo habla mejor una '
-            'persona que yo.'),
-        'botones': [('Hablar con alguien', 'persona'), ('Volver', 'monedas')],
+            'Bajás Veta Wallet, ponés tu correo y ya tenés cuenta. La '
+            'verificación la hacés ahí adentro cuando quieras.\n\n'
+            'Si se te traba algo, contámelo por acá y lo vemos.'),
+        'botones': [
+            ('Hablar con alguien', 'persona'),
+            ('Volver', 'inicio'),
+        ],
     },
 
-    'seguro': {
-        'texto': (
-            'Tu frase de respaldo es tuya y solo tuya: no se la digas a nadie, '
-            'ni a mí. Yo nunca te la voy a pedir.\n\n'
-            'Guardala escrita en un sitio seguro. Es lo único que abre tu dinero '
-            'si perdés el teléfono.'),
-        'botones': [('Volver', 'billetera')],
-    },
-
-    'cuenta': {
-        'texto': (
-            'Se abre desde la app de Veta Wallet: la bajás, ponés tu correo y '
-            'listo. La verificación de identidad la hacés ahí mismo cuando '
-            'quieras.\n\n'
-            'Si algo se te traba, contame qué pasó y lo vemos.'),
-        'botones': [('Hablar con alguien', 'persona'), ('Volver', 'inicio')],
-    },
-
-    # ── El camino que NO contesta solo ──────────────────────────────────────
+    # ── Los dos caminos que NO contestan solos ─────────────────────────────
     'persona': {
         'texto': (
             'Dale. Escribile a info@ordenglobal.org contando qué necesitás y te '
@@ -187,10 +289,9 @@ NODOS = {
     # esa persona queria.
     'inversion': {
         'texto': (
-            'Eso lo habla una persona, no yo. Escribile a info@ordenglobal.org '
-            'y te contesta alguien que puede darte la información formal.\n\n'
-            'No es una evasiva: de regulación, licencias y de si algo es una '
-            'inversión no me corresponde hablar a mí.'),
+            'Eso lo habla una persona, no yo. Escribile a info@ordenglobal.org y '
+            'te contesta alguien que puede darte la información formal.\n\n'
+            'No es una evasiva: de eso no me corresponde hablar a mí.'),
         'botones': None,
     },
 }
@@ -200,11 +301,58 @@ NODOS = {
 ATAJOS = [
     (re.compile(r'^\s*(hola|buenas|buenos dias|buenas tardes|buenas noches|'
                 r'hey|holi|que tal|saludos)\s*[.!]*\s*$'), 'inicio'),
+    # Todo lo que huela a invertir va a una persona, y va ANTES que los demas
+    # atajos: «quiero invertir en origen» no puede caer en el nodo de ORIGEN.
     (re.compile(r'\b(invertir|inversion|inversionista|invierto|accionista|'
-                r'rendimiento|ganancia)\b'), 'inversion'),
-    (re.compile(r'\b(menu|opciones|ayuda|que podes hacer|que puedes hacer|'
-                r'empezar|inicio)\b'), 'inicio'),
+                r'rendimiento|ganancia|rentabilidad|ondk|acciones?)\b'), 'inversion'),
+    # ANCLADO de punta a punta, como el saludo. «ayuda» a secas es alguien
+    # pidiendo el menu; «necesito ayuda con remesas» es alguien diciendo lo que
+    # le pasa, y contestarle el menu es no haberlo leido. Con `\b` en medio de
+    # la frase, la segunda caia en el menu.
+    (re.compile(r'^\s*(menu|menú|opciones|ayuda|empezar|inicio|'
+                r'que podes hacer|que puedes hacer)\s*[.!?]*\s*$'), 'inicio'),
 ]
+
+# ── LOS ATAJOS DE TEMA, QUE SON OTRA COSA ───────────────────────────────────
+#
+# «remesas» es alguien diciendo de que quiere hablar. «¿cuanto cuesta mandar
+# plata a Honduras?» es una PREGUNTA, y contestarle un menu es no haberla
+# leido.
+#
+# La primera version no distinguia y atrapaba las dos. Lo cazo la prueba que
+# existe justamente para eso — la que dice que lo que no encaja va al motor.
+#
+# La regla: un atajo de tema solo vale si el mensaje es CORTO y NO es una
+# pregunta. Quien escribe cuatro palabras sin signo esta nombrando un tema;
+# quien escribe una frase con «?» quiere una respuesta, no una puerta.
+TEMAS = [
+    (re.compile(r'\b(remesa|remesas|mandar plata|enviar plata|mandar dinero|'
+                r'enviar dinero)\b'), 'remesas'),
+    (re.compile(r'\b(mi negocio|negocio|cobrar|cobro|qr|mytokenpay|'
+                r'pulperia|tienda)\b'), 'negocio'),
+    (re.compile(r'\b(genesis ?id|verificar|verificacion|identidad)\b'), 'genesis'),
+    (re.compile(r'\b(frase de respaldo|semilla|seed)\b'), 'llaves'),
+    (re.compile(r'\b(origen|gramin)\b'), 'como-funciona'),
+    (re.compile(r'\b(auka|agka)\b'), 'monedas'),
+]
+
+# Cuatro palabras. Con cinco ya empiezan a caber preguntas de verdad
+# («cuanto me cobran por mandar plata»), y con tres se escapan temas que la
+# gente escribe con articulo («lo de las remesas»).
+TOPE_TEMA = 4
+
+# Y el signo de pregunta NO ALCANZA para saber si algo es una pregunta: en
+# WhatsApp casi nadie lo pone. «cuantos ORIGEN tengo» son tres palabras, no
+# lleva signo, y es tan pregunta como la que mas — se colaba al nodo de ORIGEN
+# en vez de ir a mirar su saldo.
+#
+# Lo que de verdad delata la pregunta es la palabra con que empieza. Quien
+# escribe «remesas» esta nombrando un tema; quien escribe «cuanto», «como» o
+# «tengo» quiere una respuesta.
+INTERROGA = re.compile(
+    r'\b(que|qué|cuanto|cuantos|cuanta|cuantas|como|cuando|donde|cual|cuales|'
+    r'quien|quienes|por que|porque|tengo|tenes|puedo|podes|hay|sirve|funciona|'
+    r'necesito|quiero saber)\b')
 
 
 def nodo(nombre):
@@ -248,6 +396,14 @@ def por_texto(dicho, desde=None):
     for patron, destino in ATAJOS:
         if patron.search(t):
             return destino
+
+    # Los de tema, solo si es corto y no es una pregunta. Ver `TEMAS` e
+    # `INTERROGA`: el signo no alcanza, la palabra sí.
+    if ('?' not in t and len(t.split()) <= TOPE_TEMA
+            and not INTERROGA.search(t)):
+        for patron, destino in TEMAS:
+            if patron.search(t):
+                return destino
     return None
 
 

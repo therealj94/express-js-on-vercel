@@ -54,15 +54,15 @@ class NoAtrapaANadie(unittest.TestCase):
     def test_un_boton_TRANSCRITO_a_mano_si_lleva(self):
         """Mucha gente no toca el botón: copia el texto y lo escribe. Con
         teclados grandes y con gente mayor pasa todo el tiempo."""
-        self.assertEqual(guion.por_texto('La billetera', desde='que-es'), 'billetera')
-        self.assertEqual(guion.por_texto('la billetera', desde='que-es'), 'billetera')
-        self.assertEqual(guion.por_texto('LA BILLETERA', desde='que-es'), 'billetera')
+        self.assertEqual(guion.por_texto('Mandar plata', desde='que-hago'), 'remesas')
+        self.assertEqual(guion.por_texto('mandar plata', desde='que-hago'), 'remesas')
+        self.assertEqual(guion.por_texto('MANDAR PLATA', desde='que-hago'), 'remesas')
 
     def test_pero_solo_los_botones_DE_ESE_nodo(self):
         """Escribir «la billetera» desde otro sitio no salta ahí por su
         cuenta: eso sería adivinar, y adivinar es como se pierde a alguien que
         estaba preguntando otra cosa."""
-        self.assertIsNone(guion.por_texto('la billetera', desde='seguro'))
+        self.assertIsNone(guion.por_texto('me gusta eso', desde='llaves'))
 
 
 class LosAtajos(unittest.TestCase):
@@ -194,8 +194,8 @@ class ElCanalSinBotones(unittest.TestCase):
     WhatsApp serían dos productos manteniéndose por separado."""
 
     def test_las_opciones_salen_como_texto(self):
-        t = guion.como_texto('que-es')
-        self.assertIn('La billetera', t)
+        t = guion.como_texto('que-hago')
+        self.assertIn('Mandar plata', t)
         self.assertIn('·', t, 'las opciones tienen que verse como opciones')
 
     def test_un_nodo_sin_botones_sale_tal_cual(self):
@@ -237,6 +237,29 @@ class ElAsistenteLoUsaANTESDelMotor(unittest.TestCase):
         self.assertIn("p['nodo'] = destino", fuente,
                       'sin recordar el nodo, escribir el título de un botón no funciona')
 
+
+
+class UnaPreguntaSINSignoSigueSiendoUnaPregunta(unittest.TestCase):
+    """En WhatsApp casi nadie pone «¿». Si el guion se fía del signo, atrapa a
+    todo el mundo — y lo hizo: «cuántos ORIGEN tengo» caía en el nodo de ORIGEN
+    en vez de ir a mirar el saldo de esa persona."""
+
+    def test_preguntas_cortas_y_sin_signo_van_al_motor(self):
+        for p in ['cuántos ORIGEN tengo', 'qué es AUKA', 'cómo cobro',
+                  'cuánto cuesta', 'dónde bajo la app', 'tengo un problema',
+                  'necesito ayuda con remesas', 'puedo cobrar con QR']:
+            self.assertIsNone(guion.por_texto(p), f'atrapó: «{p}»')
+
+    def test_pero_el_tema_a_secas_si_abre_su_puerta(self):
+        """Quien escribe «remesas» está nombrando de qué quiere hablar."""
+        self.assertEqual(guion.por_texto('remesas'), 'remesas')
+        self.assertEqual(guion.por_texto('mi negocio'), 'negocio')
+        self.assertEqual(guion.por_texto('genesis id'), 'genesis')
+        self.assertEqual(guion.por_texto('AUKA'), 'monedas')
+
+    def test_una_frase_larga_nunca_es_un_tema(self):
+        self.assertIsNone(
+            guion.por_texto('quisiera ver lo de las remesas para mi familia'))
 
 if __name__ == '__main__':
     unittest.main(verbosity=2)
