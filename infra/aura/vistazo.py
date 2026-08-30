@@ -172,20 +172,34 @@ def _reinicios():
     —«active (running)»— y nadie se entera. Al mirar el journal habia 47
     arranques y nadie lo sabia.
 
-    Si no hay `journalctl` esto no es una averia, es una maquina distinta: se
+    SE LE PREGUNTA A SYSTEMD, NO AL JOURNAL. La primera version contaba las
+    lineas «AU-RA de pie» del journal, y eso cuenta TAMBIEN los despliegues: el
+    parte de las 15:31 aviso «se reinició 12 veces, algo la está tumbando» y
+    las doce eran despliegues mios de esa misma tarde. `NRestarts` es el
+    contador propio de systemd y solo sube cuando el servicio se cae y `Restart`
+    lo levanta — que es justo lo que se quiere saber.
+
+    Un vigilante que grita en falso se termina ignorando, y a partir de ahi ya
+    no vigila nada. Vale mas perderse un reinicio que inventar una averia.
+
+    Si no hay `systemctl` esto no es una averia, es una maquina distinta: se
     calla, igual que el correo sin credenciales. Lo que SI se dice es que
     estando el mandato, falle.
     """
-    if not shutil.which('journalctl'):
+    if not shutil.which('systemctl'):
         return [], []
-    s = subprocess.run(['journalctl', '-u', 'aura', '--since', '-24h', '--no-pager'],
+    s = subprocess.run(['systemctl', 'show', 'aura', '-p', 'NRestarts'],
                        capture_output=True, text=True, timeout=30)
     if s.returncode != 0:
-        raise OSError((s.stderr or 'journalctl fallo').strip()[:80])
-    n = s.stdout.count('AU-RA de pie')
+        raise OSError((s.stderr or 'systemctl fallo').strip()[:80])
+    try:
+        n = int(s.stdout.strip().split('=', 1)[1])
+    except (IndexError, ValueError):
+        raise OSError('no pude leer NRestarts: ' + s.stdout.strip()[:60])
     if n > TOPE_REINICIOS:
-        return [], [f'AU-RA se reinició {n} veces en 24h (algo la está tumbando)']
-    return ([f'{n} reinicio(s) en 24h'] if n else []), []
+        return [], [f'AU-RA se cayó y volvió a arrancar {n} veces '
+                    f'(algo la está tumbando)']
+    return ([f'{n} caída(s) desde el último despliegue'] if n else []), []
 
 
 def _correo():

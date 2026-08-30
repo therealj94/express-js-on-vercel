@@ -56,7 +56,8 @@ class UnaFuenteRotaSEDICE(unittest.TestCase):
         with mock.patch.object(vistazo, '_genesis', return_value=([], [])), \
              mock.patch.object(vistazo, '_cadena', return_value=([], [])), \
              mock.patch.object(vistazo, '_whatsapp', return_value=([], [])), \
-             mock.patch.object(vistazo, '_correo', return_value=([], [])):
+             mock.patch.object(vistazo, '_correo', return_value=([], [])), \
+             mock.patch.object(vistazo, '_reinicios', return_value=([], [])):
             self.assertIn('todo se pudo mirar', vistazo.texto(vistazo.juntar()))
 
         with mock.patch.object(vistazo, '_genesis', side_effect=OSError('x')), \
@@ -271,33 +272,48 @@ class ElCorreo(unittest.TestCase):
 
 class LosReiniciosQueNADIEVE(unittest.TestCase):
     """`Restart=always` hace que un servicio que se cae cada media hora se vea
-    igual que uno sano: «active (running)». Había 47 arranques en el journal y
-    nadie lo sabía."""
+    igual que uno sano: «active (running)». Nadie mira eso."""
 
     def _corre(self, salida, codigo=0):
         r = mock.Mock(returncode=codigo, stdout=salida, stderr='')
-        with mock.patch.object(vistazo.shutil, 'which', return_value='/usr/bin/journalctl'), \
+        with mock.patch.object(vistazo.shutil, 'which', return_value='/usr/bin/systemctl'), \
              mock.patch.object(vistazo.subprocess, 'run', return_value=r):
             return vistazo._reinicios()
 
-    def test_muchos_reinicios_son_un_PENDIENTE(self):
-        _, pend = self._corre('AU-RA de pie\n' * 47)
+    def test_NO_cuenta_los_despliegues(self):
+        """El fallo del parte de las 15:31: contaba las líneas «AU-RA de pie»
+        del journal, que suben con cada despliegue. Avisó «12 veces, algo la
+        está tumbando» y las doce eran despliegues míos de esa tarde.
+
+        `NRestarts` es el contador de systemd y solo sube cuando el servicio se
+        CAE. Un vigilante que grita en falso se termina ignorando."""
+        lineas, pend = self._corre('NRestarts=0\n')
+        self.assertEqual(pend, [], 'inventó una avería con cero caídas')
+        self.assertEqual(lineas, [])
+
+    def test_muchas_caidas_SI_son_un_pendiente(self):
+        _, pend = self._corre('NRestarts=47\n')
         self.assertTrue(pend)
         self.assertIn('47', pend[0])
 
-    def test_uno_o_dos_es_un_despliegue_y_no_alarma(self):
-        lineas, pend = self._corre('AU-RA de pie\n' * 2)
+    def test_una_o_dos_se_cuentan_sin_alarmar(self):
+        lineas, pend = self._corre('NRestarts=2\n')
         self.assertEqual(pend, [])
-        self.assertIn('2 reinicio', lineas[0])
+        self.assertIn('2 caída', lineas[0])
 
-    def test_sin_journalctl_se_calla_en_vez_de_inventar(self):
+    def test_sin_systemctl_se_calla_en_vez_de_inventar(self):
         """Otra máquina, no una avería. Igual que el correo sin credenciales."""
         with mock.patch.object(vistazo.shutil, 'which', return_value=None):
             self.assertEqual(vistazo._reinicios(), ([], []))
 
-    def test_pero_si_journalctl_FALLA_eso_si_se_dice(self):
+    def test_pero_si_systemctl_FALLA_eso_si_se_dice(self):
         with self.assertRaises(OSError):
             self._corre('', codigo=1)
+
+    def test_una_respuesta_que_no_se_entiende_tambien_se_dice(self):
+        """Callarse porque el formato cambió es dejar de vigilar en silencio."""
+        with self.assertRaises(OSError):
+            self._corre('cualquier cosa\n')
 
 
 class LaBilleteraQuePAGA(unittest.TestCase):
