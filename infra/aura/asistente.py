@@ -87,6 +87,7 @@ import urllib.error
 import urllib.request
 
 from candado import Candado
+import whatsapp as wa
 from oido import NoSePudoOir, oir_nota
 from concurrent.futures import ThreadPoolExecutor
 
@@ -1772,6 +1773,55 @@ def vuelta(rel, sistema, perfiles, tanda):
         tanda.submit(_uno)
 
 
+def vuelta_whatsapp(rel_wa, sistema, perfiles, tanda):
+    """Lo mismo que `vuelta`, pero sobre WhatsApp.
+
+    Se escribe aparte y no se mete dentro de `vuelta` porque las dos fuentes
+    no se parecen en lo que importa: en el chat de la casa hay amistades que
+    aceptar y grupos que saltar, y en WhatsApp cualquiera puede escribirle a un
+    numero. Meterlas juntas obligaria a llenar `vuelta` de condiciones sobre
+    de donde viene cada charla, que es como se ensucia una funcion que hoy se
+    lee de un tiron.
+
+    Lo que si se comparte —y es lo que vale— es `atender_charla`: el mismo
+    cerebro, la misma cuenta de reintentos, el mismo tope. Una respuesta de
+    AU-RA por WhatsApp sale del mismo sitio que una por la wallet.
+    """
+    ahora_ms = int(time.time() * 1000)
+    lista = probadores()
+    for conv in rel_wa.conversaciones():
+        c = (conv.get('correo') or '').strip()
+        if not c:
+            continue
+        # La lista de probadores tambien manda aqui. Un numero de WhatsApp no
+        # esta en un archivo de correos, asi que se admite tal cual cuando la
+        # lista esta abierta y se exige explicitamente cuando no: abrir AU-RA a
+        # todo WhatsApp por olvido seria abrirla al mundo entero.
+        if lista is not None and c not in lista:
+            continue
+        with CANDADO_PERFILES:
+            p = perfil_de(perfiles, c, tope=ahora_ms if c not in perfiles else None)
+            tope = p.get('tope', 0)
+        if (conv.get('ultimo') or {}).get('cuando', 0) <= tope:
+            continue
+        with CANDADO_CURSO:
+            if c in EN_CURSO:
+                continue
+            EN_CURSO.add(c)
+
+        def _uno(quien=c):
+            try:
+                atender_charla(rel_wa, sistema, perfiles, quien)
+            except Exception as e:
+                log('charla de whatsapp fallida', quien,
+                    type(e).__name__, str(e)[:120])
+            finally:
+                with CANDADO_CURSO:
+                    EN_CURSO.discard(quien)
+
+        tanda.submit(_uno)
+
+
 def templar(sistema):
     """Una pregunta de mentira al arrancar, para que la primera persona no
     pague el arranque en frio.
@@ -1965,6 +2015,15 @@ def main():
     _avisar_del_modelo()
     log(f'AU-RA de pie · {len(saber)} fichas · {MODELO_RAPIDA} · '
         + ('ABIERTA a todos' if _quienes is None else f'{len(_quienes)} probadores'))
+    # WhatsApp, si esta configurado. Sin clave no existe y no se avisa como
+    # fallo: es una boca mas que puede estar puesta o no.
+    rel_wa = None
+    if wa.encendido():
+        rel_wa = wa.RelevoWhatsApp(registrar=log)
+        log('WhatsApp encendido · cuenta', wa.CUENTA)
+    else:
+        log('WhatsApp apagado (falta ZERNIO_CLAVE o ZERNIO_CUENTA)')
+
     with ThreadPoolExecutor(max_workers=HILOS) as tanda:
         while True:
             try:
@@ -1973,6 +2032,15 @@ def main():
                 # el relevo caido o la red rota no tumban el servicio
                 log('vuelta fallida:', type(e).__name__, str(e)[:140])
                 time.sleep(10)
+            # Su propio `try`: que el proveedor de WhatsApp este caido no puede
+            # dejar sin atender el chat de la casa, ni al reves. Son dos
+            # puertas distintas y una no cierra la otra.
+            if rel_wa is not None:
+                try:
+                    vuelta_whatsapp(rel_wa, sistema, perfiles, tanda)
+                except Exception as e:
+                    log('vuelta de whatsapp fallida:',
+                        type(e).__name__, str(e)[:140])
             time.sleep(PASO)
 
 
