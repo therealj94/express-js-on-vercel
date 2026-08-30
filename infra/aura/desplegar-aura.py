@@ -43,6 +43,17 @@ CUBO = 'og-5550-arranque-548380372606'
 NODO = 'i-02653feadc919d3a4'          # aura-gpu, us-east-1
 ARCHIVOS = ['asistente.py', 'candado.py', 'oido.py', 'whatsapp.py']
 
+# El prompt y las fichas viajan con el codigo, y no es un detalle: la voz de
+# AU-RA y lo que SABE se cambian ahi, no en el codigo. Subir solo los .py
+# dejaba el arreglo de una alucinacion sin desplegar — que fue exactamente lo
+# que paso con lo de la SEC. Las fichas no viven en esta carpeta: son las
+# mismas que usa el cerebro.
+LADO = {
+    'PROMPT-AURA.md': os.path.join(AQUI, 'PROMPT-AURA.md'),
+    'saber.json': os.path.abspath(
+        os.path.join(AQUI, '..', 'cerebro', 'conocimiento', 'saber.json')),
+}
+
 # El complemento de la unidad. Se pone como drop-in y no reescribiendo el
 # `.service`: el original lo escribio `instalar-en-nodo.sh` y pisarlo desde
 # aqui haria que dos sitios distintos manden sobre lo mismo.
@@ -69,10 +80,11 @@ def main():
     s3, ssm = ses.client('s3'), ses.client('ssm')
 
     urls = {}
-    for nombre in ARCHIVOS:
+    fuentes = {n: os.path.join(AQUI, n) for n in ARCHIVOS}
+    fuentes.update(LADO)
+    for nombre, ruta in fuentes.items():
         clave = 'aura/' + nombre
-        s3.put_object(Bucket=CUBO, Key=clave,
-                      Body=open(os.path.join(AQUI, nombre), 'rb').read())
+        s3.put_object(Bucket=CUBO, Key=clave, Body=open(ruta, 'rb').read())
         urls[nombre] = s3.generate_presigned_url(
             'get_object', Params={'Bucket': CUBO, 'Key': clave}, ExpiresIn=1800)
         print('subido', nombre)
@@ -83,6 +95,19 @@ def main():
         ExpiresIn=1800)
 
     cmds = ['set -e', 'mkdir -p /srv/aura']
+
+    # El prompt y las fichas primero, con su propia comprobacion: un JSON roto
+    # o un prompt sin su bloque dejan a AU-RA sin arrancar, y es mejor que se
+    # note aqui que en el reinicio.
+    cmds += [
+        f'curl -sS --fail -o /srv/aura/saber.json.nuevo "{urls["saber.json"]}"',
+        'python3 -c "import json,sys; json.load(open(\'/srv/aura/saber.json.nuevo\'))"',
+        'mv /srv/aura/saber.json.nuevo /srv/aura/saber.json',
+        f'curl -sS --fail -o /srv/aura/PROMPT-AURA.md.nuevo "{urls["PROMPT-AURA.md"]}"',
+        'grep -q \'```\' /srv/aura/PROMPT-AURA.md.nuevo',
+        'mv /srv/aura/PROMPT-AURA.md.nuevo /srv/aura/PROMPT-AURA.md',
+    ]
+
     for nombre in ARCHIVOS:
         # A un temporal primero y se mueve: si la descarga se corta a la mitad,
         # el archivo bueno sigue en su sitio y el servicio sigue de pie.

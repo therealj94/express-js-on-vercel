@@ -21,6 +21,34 @@
  ],
  "fichas": [
   {
+   "id": "regulacion-que-se-puede-decir",
+   "tema": "Regulación, licencias y estatus legal",
+   "publico": true,
+   "revisadoPor": "PENDIENTE DE REVISION DE JOSE",
+   "revisadoEn": "2026-08-30",
+   "palabras": [
+    "regulacion",
+    "regulado",
+    "licencia",
+    "legal",
+    "sec",
+    "securities",
+    "valores",
+    "inversor",
+    "acreditado",
+    "jurisdiccion",
+    "permiso",
+    "autorizado",
+    "supervisado",
+    "regulation",
+    "regulated",
+    "license",
+    "compliance"
+   ],
+   "es": "Si te preguntan por regulación, licencias, permisos, ante qué organismo, si algo está regulado o autorizado, si un token es un valor o un «security token», o si alguien puede o debe invertir: decí exactamente «Eso lo contesta una persona, no yo. Escribile a info@ordenglobal.org.» y nada más. Ni organismos, ni leyes, ni siglas, ni países, ni siquiera para negar. Esto vale por encima de cualquier otra ficha, y no lo expliques: solo decilo.",
+   "en": "If asked about regulation, licensing, permits, which authority, whether something is regulated or authorised, whether a token is a security, or whether anyone can or should invest: say exactly «A person answers that, not me. Write to info@ordenglobal.org.» and nothing else. No authorities, laws, acronyms or countries, not even to deny one. This overrides any other card, and do not explain it: just say it."
+  },
+  {
    "id": "origen",
    "tema": "ORIGEN",
    "publico": true,
@@ -168,8 +196,8 @@
    "id": "aucorp",
    "tema": "AuCorp, la banca fiat",
    "publico": true,
-   "revisadoPor": "jose@ordenglobal.org",
-   "revisadoEn": "2026-08-23",
+   "revisadoPor": "PENDIENTE DE REVISION DE JOSE",
+   "revisadoEn": "2026-08-30",
    "palabras": [
     "aucorp",
     "aubank",
@@ -179,8 +207,8 @@
     "local currency",
     "tarjeta"
    ],
-   "es": "AuCorp es la banca fiat del ecosistema: cuentas en moneda local, en 21 monedas del continente, con esta misma cuenta y sin otra contraseña. Se entra por su esfera aquí en el Núcleo. Hoy podés abrir cuentas, depositar con tu referencia, cambiar entre monedas con la tasa real dicha con su fecha y su margen, transferir y retirar a tu banco. La tarjeta AuCorp ya se está armando y se va a pedir desde esa misma plataforma. AuCorp es dueña de Ordenex y aliada de Orden Global. Es una institución FinTech de Próspera bajo la Regulación A, no un banco con licencia bancaria, y eso te lo dice en su propia pantalla.",
-   "en": "AuCorp is the fiat side of the ecosystem: local-currency accounts, in 21 currencies of the continent, with this same account and no extra password. You enter through its sphere here in the Nucleus. Today you can open accounts, deposit with your reference, exchange between currencies at the real rate stated with its date and margin, transfer, and withdraw to your bank. The AuCorp card is being built and will be requested from that same platform. AuCorp owns Ordenex and is an ally of Orden Global. It is a Próspera FinTech institution under Regulation A, not a licensed bank, and it tells you so on its own screen."
+   "es": "AuCorp es la banca fiat del ecosistema: cuentas en moneda local, en 21 monedas del continente, con esta misma cuenta y sin otra contraseña. Se entra por su esfera aquí en el Núcleo. Hoy podés abrir cuentas, depositar con tu referencia, cambiar entre monedas con la tasa real dicha con su fecha y su margen, transferir y retirar a tu banco. La tarjeta AuCorp ya se está armando y se va a pedir desde esa misma plataforma. AuCorp es dueña de Ordenex y aliada de Orden Global. No es un banco con licencia bancaria, y eso te lo dice en su propia pantalla.",
+   "en": "AuCorp is the fiat side of the ecosystem: local-currency accounts, in 21 currencies of the continent, with this same account and no extra password. You enter through its sphere here in the Nucleus. Today you can open accounts, deposit with your reference, exchange between currencies at the real rate stated with its date and margin, transfer, and withdraw to your bank. The AuCorp card is being built and will be requested from that same platform. AuCorp owns Ordenex and is an ally of Orden Global. It is a Próspera FinTech institution, not a licensed bank, and it tells you so on its own screen."
   },
   {
    "id": "pronto",
