@@ -23,12 +23,13 @@ if ! command -v ollama >/dev/null; then
   curl -fsSL https://ollama.com/install.sh | sh
 fi
 # ── UN MODELO CARGADO A LA VEZ ────────────────────────────────────────────
-# La maquina tiene 8 GB. La rapida (3B) ocupa 2,5 y la pensadora (8B) ocupa
-# 5,2: juntas no entran, y el 27-ago el nucleo mato al motor por eso mismo
-# («Out of memory: Killed process llama-server, anon-rss 5255380kB»). AU-RA
-# quedo contestando «mi motor esta apagado» a todo el mundo.
-# Con esto Ollama descarga un modelo ANTES de cargar el otro: cambiar de modo
-# cuesta un minuto de carga, pero no se lleva puesto el servicio.
+# La maquina de hoy es una T4 con 15 GB de video y 15,7 GB de RAM, y el 14b
+# ocupa ~10 GB mas su ventana: un segundo modelo cargado lo empuja a CPU o lo
+# mata. El 27-ago (en la maquina anterior, de 8 GB) el nucleo mato al motor
+# exactamente por cargar dos a la vez — «Out of memory: Killed llama-server» —
+# y AU-RA quedo contestando «mi motor esta apagado» a todo el mundo. Con un
+# solo modelo para los dos papeles esto casi no juega, pero se deja puesto:
+# es el seguro contra el proximo que pruebe un modelo a mano en el nodo.
 mkdir -p /etc/systemd/system/ollama.service.d
 cat > /etc/systemd/system/ollama.service.d/memoria.conf <<'OLL'
 [Service]
@@ -43,7 +44,7 @@ sleep 3
 ss -ltn | grep 11434 || (echo "ollama no escucha" && exit 1)
 
 echo "== el modelo =="
-ollama pull llama3.2
+ollama pull qwen2.5:14b
 
 echo "== la casa del asistente =="
 mkdir -p /srv/aura
@@ -77,7 +78,14 @@ Wants=ollama.service
 ExecStart=/usr/bin/python3 /srv/aura/asistente.py
 WorkingDirectory=/srv/aura
 Environment=AURA_DATOS=/srv/aura
-Environment=AURA_MODELO=llama3.2
+# qwen2.5:14b en LOS DOS papeles, y no es capricho: se midio el 30-ago contra
+# qwen2.5:7b, llama3.1:8b y gemma3:12b con las diez preguntas de produccion
+# (comparar-modelos.py). Fue el UNICO con cero faltas — los demas o se alargan
+# o, como gemma3:12b, dicen mal que es ORIGEN, que pesa mas que todo. Y un
+# solo modelo para rapida y pensadora significa que nunca se descarga: la T4
+# de 15 GB lo tiene siempre caliente y no paga el minuto de swap.
+Environment=AURA_MODELO=qwen2.5:14b
+Environment=AURA_MODELO_PENSADOR=qwen2.5:14b
 # 300 y no 90: el motor en CPU tarda hasta 90s por respuesta, y una pregunta
 # que llega DETRAS de otra espera su turno en la cola de Ollama. Con 90 el
 # turno en cola se comia el tiempo y la respuesta moria en «motor apagado» —
