@@ -115,6 +115,86 @@ NODOS = {
         },
     },
 
+    # ── EL NOMBRE. La segunda puerta, y la que cambia todo ──────────────────
+    #
+    # Antes de esto el arranque tiraba el argumento de ORIGEN en el primer
+    # mensaje: informacion a alguien que todavia no dijo ni como se llama. Se
+    # leia como folleto, y un folleto se cierra.
+    #
+    # Preguntar el nombre cuesta un mensaje y compra tres cosas: la persona
+    # contesta algo facil (y quien contesta una vez contesta la siguiente), la
+    # charla deja de ser anonima, y AU-RA puede llamarla por su nombre el
+    # resto del camino. `espera` le dice al asistente que lo que escriba aqui
+    # ES el dato, no un comando — si no, alguien que se llame algo parecido a
+    # un atajo saldria disparado a otro nodo.
+    'nombre': {
+        'texto': {
+            'es': ('Perfecto. 🌎\n\n'
+                   'Antes de nada — ¿cómo te llamás?'),
+            'en': ('Perfect. 🌎\n\n'
+                   'First things first — what is your name?'),
+        },
+        'espera': 'nombre',
+    },
+
+    # ── EL SALUDO: UNA PREGUNTA, NO UN DISCURSO ─────────────────────────────
+    #
+    # Aqui es donde se decide si la persona se queda. La tentacion es explicar
+    # ORIGEN de una; el error es el mismo de cualquier vendedor que habla
+    # antes de escuchar. Se dice UNA frase que duele —la devaluacion, que la
+    # vive todo el mundo en la region— y despues se le pregunta a ella.
+    #
+    # Las tres puertas no son «productos»: son las tres formas en que a una
+    # persona le duele el dinero. Elegir una ya es contar algo de si misma.
+    'saludo': {
+        'texto': {
+            'es': ('Mucho gusto, {nombre}. 🤝\n\n'
+                   'Te voy a hacer una sola pregunta para no hacerte perder el '
+                   'tiempo, porque lo que te sirva a vos no es lo mismo que le '
+                   'sirve a otro.\n\n'
+                   '{nombre}, ¿qué te trajo hasta acá?'),
+            'en': ('Nice to meet you, {nombre}. 🤝\n\n'
+                   'One question, so I do not waste your time — what helps you '
+                   'is not what helps the next person.\n\n'
+                   '{nombre}, what brought you here?'),
+        },
+        'botones': {
+            'es': [('Cuidar mis ahorros', 'ahorro'),
+                   ('Mandar plata', 'remesas'),
+                   ('Tengo un negocio', 'negocio')],
+            'en': [('Protect my savings', 'ahorro'),
+                   ('Send money', 'remesas'),
+                   ('I have a business', 'negocio')],
+        },
+    },
+
+    # El camino del que ahorra. Antes caia en `billetera`, que le explicaba la
+    # HERRAMIENTA sin haberle nombrado el PROBLEMA. Este empieza por el
+    # problema, que es el suyo y lo reconoce al leerlo.
+    'ahorro': {
+        'texto': {
+            'es': ('Te entiendo, {nombre}. Es la pregunta que más me hacen.\n\n'
+                   'Guardás en la moneda de tu país y en un año compra menos. '
+                   'No es que ganes menos: es que la moneda vale menos.\n\n'
+                   'Nosotros medimos con otra vara — el oro. Lo que guardás en '
+                   'ORIGEN sigue al oro, no a la devaluación de tu país.'),
+            'en': ('I hear you, {nombre}. It is the question I get most.\n\n'
+                   'You save in your country currency and a year later it buys '
+                   'less. You are not earning less: the currency is worth '
+                   'less.\n\n'
+                   'We measure with a different yardstick — gold. What you keep '
+                   'in ORIGEN follows gold, not your country devaluation.'),
+        },
+        'botones': {
+            'es': [('¿Y si el oro baja?', 'honesto'),
+                   ('¿Dónde lo guardo?', 'billetera'),
+                   ('Ganá 1 ORIGEN', 'ganar')],
+            'en': [('If gold drops?', 'honesto'),
+                   ('Where do I keep it?', 'billetera'),
+                   ('Win 1 ORIGEN', 'ganar')],
+        },
+    },
+
     'inicio': {
         'texto': {
             'es': ('Lo que ahorrás hoy, en un año compra menos. No es por lo '
@@ -567,20 +647,66 @@ def _en(valor, idioma):
     return valor.get(idioma) or valor.get(POR_OMISION)
 
 
-def nodo(nombre, idioma=POR_OMISION):
+def nodo(nombre, idioma=POR_OMISION, quien=''):
+    """El nodo, en su idioma y con el nombre de la persona ya puesto.
+
+    `quien` es como se llama quien esta del otro lado. Si no lo sabemos, los
+    huecos `{nombre}` no se dejan crudos ni se rellenan con «amigo»: se quita
+    el hueco y la frase se cierra sola. Un «Mucho gusto, {nombre}» en pantalla
+    es peor que no saludar, y un «Mucho gusto, amigo» suena a promocion.
+    """
     n = NODOS.get(nombre)
     if not n:
         return None
-    return {'texto': _en(n.get('texto'), idioma),
-            'botones': _en(n.get('botones'), idioma)}
+    texto = _en(n.get('texto'), idioma) or ''
+    if '{nombre}' in texto:
+        texto = (texto.replace('{nombre}', quien) if quien
+                 else _sin_nombre(texto))
+    return {'texto': texto,
+            'botones': _en(n.get('botones'), idioma),
+            'espera': n.get('espera')}
+
+
+# Cuando no hay nombre, el hueco no se deja crudo ni se rellena con «amigo»:
+# se quita, y la frase se cierra sola. «Mucho gusto, {nombre}» en pantalla es
+# peor que no saludar, y «Mucho gusto, amigo» suena a promocion de cable.
+#
+# Son dos casos y hay que tratarlos distinto, porque la puntuacion cae de
+# lados opuestos:
+#
+#   «Mucho gusto, {nombre}.»        el hueco cierra  -> se va la coma de ANTES
+#   «{nombre}, ¿qué te trajo?»      el hueco abre    -> se va la coma de DESPUES
+#                                                       y la frase se capitaliza
+_ABRE = re.compile(r'^\{nombre\}\s*,\s*', re.M)
+_CIERRA = re.compile(r'\s*[,;:]?\s*\{nombre\}')
+
+
+def _sin_nombre(texto):
+    def _mayus(m):
+        resto = texto[m.end():m.end() + 1]
+        return ''
+    t = _ABRE.sub('', texto)
+    t = _CIERRA.sub('', t)
+    # La linea que empezaba con «{nombre}, ¿qué...» ahora empieza en minuscula.
+    salida = []
+    for linea in t.split('\n'):
+        cabeza = re.match(r'^([¿¡«"]*)([a-záéíóúñ])', linea)
+        salida.append(linea[:cabeza.end() - 1] + cabeza.group(2).upper()
+                      + linea[cabeza.end():] if cabeza else linea)
+    return '\n'.join(salida)
+
+
+# A donde va la persona en cuanto elige idioma. NO al inicio: al nombre. La
+# informacion viene despues de saber con quien se esta hablando.
+TRAS_ELEGIR_IDIOMA = 'nombre'
 
 
 def idioma_de_toque(id_boton):
     """«lang:en» -> «en». `None` si ese boton no elige idioma.
 
     Los dos botones de la puerta no llevan a un nodo: cambian el idioma y
-    despues siguen al inicio. Por eso no estan en NODOS y `por_toque` los
-    ignora — se resuelven aqui.
+    despues siguen. Por eso no estan en NODOS y `por_toque` los ignora — se
+    resuelven aqui.
     """
     s = str(id_boton or '')
     if s.startswith('lang:'):
@@ -644,14 +770,14 @@ def por_texto(dicho, desde=None, idioma=None):
     return None
 
 
-def como_texto(nombre, idioma=POR_OMISION):
+def como_texto(nombre, idioma=POR_OMISION, quien=''):
     """El nodo escrito para un canal SIN botones — el chat de la casa.
 
     Las opciones van como una linea al final, en la voz de AU-RA y no como una
     lista numerada: en el chat la persona escribe, y escribir «la billetera» es
     tan facil como tocar un boton que no existe.
     """
-    n = nodo(nombre, idioma)
+    n = nodo(nombre, idioma, quien)
     if not n:
         return None
     if not n.get('botones'):

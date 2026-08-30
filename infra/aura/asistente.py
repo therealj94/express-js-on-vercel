@@ -1331,6 +1331,46 @@ _PIDE_PARTE = _re.compile(
 # «charlas» a secas, o «charla 2176»: el espejo. Anclado de punta a punta por
 # la misma razon que el parte — «me gustan las charlas con vos» es una persona
 # conversando, no un comando.
+# ── SACAR EL NOMBRE DE LO QUE SEA QUE ESCRIBAN ──────────────────────────────
+#
+# Nadie contesta «Melany» a secas. Contestan «me llamo Melany», «soy Melany
+# Ordóñez», «Melany 😊», o mandan una frase entera. Guardar el mensaje crudo
+# daria un «Mucho gusto, me llamo Melany Ordóñez» que delata a la maquina en
+# el segundo mensaje.
+#
+# Se saca el PRIMER nombre y nada mas — es como se habla, y ademas es el dato
+# menos comprometedor de los que la persona podria darnos.
+#
+# Y si no se reconoce nada parecido a un nombre, se sigue SIN nombre en vez de
+# guardar basura: el guion sabe cerrarse solo sin el (ver `_sin_nombre`). Una
+# persona que no quiso decirlo no tiene que ver su propia evasiva convertida
+# en su nombre el resto de la charla.
+_ARRANQUES = _re.compile(
+    r'^\s*(?:me\s+llamo|mi\s+nombre\s+es|soy|my\s+name\s+is|i\s*am|i\'m|'
+    r'call\s+me|es|it\'s)\s+', _re.IGNORECASE)
+_NOMBRE_BUENO = _re.compile(r"^[A-Za-zÁÉÍÓÚÜÑáéíóúüñ][A-Za-zÁÉÍÓÚÜÑáéíóúüñ'’-]{1,19}$")
+
+
+def _leer_nombre(dicho):
+    """El primer nombre, o `None` si no se reconoce ninguno."""
+    t = _ARRANQUES.sub('', (dicho or '').strip())
+    # Fuera emojis y puntuacion de adorno; queda lo que se pueda leer en voz.
+    t = _re.sub(r'[^A-Za-zÁÉÍÓÚÜÑáéíóúüñ\'’\- ]', ' ', t).strip()
+    if not t:
+        return None
+    primera = t.split()[0]
+    if not _NOMBRE_BUENO.match(primera):
+        return None
+    # Una frase larga no es una presentacion: «no te voy a decir mi nombre».
+    if len(t.split()) > 5:
+        return None
+    # «MELANY» se guarda como «Melany»: quien escribe en mayusculas no quiere
+    # que le griten el nombre en cada mensaje el resto de la charla.
+    if primera.isupper() and len(primera) > 1:
+        primera = primera.capitalize()
+    return primera[:1].upper() + primera[1:]
+
+
 _PIDE_CHARLAS = _re.compile(
     r'^\s*charlas?\s*(?P<sufijo>\d{2,15})?\s*[.!]*\s*$', _re.IGNORECASE)
 
@@ -1503,21 +1543,67 @@ def atender(rel, sistema, p, de, dicho, mensaje=None):
     # siguen al inicio. Queda guardado en el perfil, asi que se pregunta UNA
     # vez y no en cada vuelta.
     toco = (mensaje or {}).get('toco')
+    idi = p.get('idioma') or guion.POR_OMISION
+
+    # ── LA PUERTA DEL IDIOMA VA PRIMERO. SIEMPRE ────────────────────────────
+    #
+    # Esto estaba mal y se vio en la prueba de Jose del 30-ago a las 18:14:
+    # escribio «Hola» y AU-RA le contesto el argumento de ORIGEN de una, sin
+    # preguntarle el idioma ni nada de el.
+    #
+    # La causa: «hola» es un ATAJO que lleva a `inicio`, y los atajos se
+    # resolvian ANTES de mirar si la persona ya habia elegido idioma. Como
+    # casi todo el mundo empieza con «hola», la puerta casi nunca se veia — la
+    # habiamos construido y estaba muerta.
+    #
+    # Ahora nada se resuelve antes que esto. Quien no eligio idioma va a la
+    # puerta, escriba lo que escriba.
     elegido = guion.idioma_de_toque(toco)
     if elegido:
         p['idioma'] = elegido
+        p['saludado'] = True
         registro.anotar('idioma', cual=elegido)
-        destino = 'inicio'
-    else:
-        destino = guion.por_toque(toco) or guion.por_texto(dicho, p.get('nodo'))
-    idi = p.get('idioma') or guion.POR_OMISION
+        p['nodo'] = guion.TRAS_ELEGIR_IDIOMA
+        n = guion.nodo(p['nodo'], elegido)
+        rel.enviar(de, n['texto'])
+        return
 
-    # A quien todavia no eligio se le pregunta primero. Es el unico mensaje
-    # bilingue del guion y solo se ve una vez en la vida de la charla.
+    if not p.get('idioma'):
+        p['nodo'], p['saludado'] = 'idioma', True
+        p['visto'] = int(time.time())
+        n = guion.nodo('idioma', guion.POR_OMISION)
+        registro.anotar('guion', nodo='idioma')
+        if hasattr(rel, 'con_botones'):
+            rel.con_botones(de, n['texto'], n['botones'])
+        else:
+            rel.enviar(de, guion.como_texto('idioma'))
+        return
+
+    # ── LO QUE ESCRIBE EN UN NODO QUE ESPERA UN DATO, ES EL DATO ────────────
+    #
+    # Sin esto, alguien que se llame como un atajo —o que conteste «Origen»
+    # por seguirle la corriente— saldria disparado a otro nodo en vez de
+    # quedar registrado como su nombre.
+    actual = guion.nodo(p.get('nodo') or '', idi)
+    if actual and actual.get('espera') == 'nombre':
+        nom = _leer_nombre(dicho)
+        if nom:
+            p['nombre'] = nom
+        p['nodo'] = 'saludo'
+        p['visto'] = int(time.time())
+        registro.anotar('guion', nodo='saludo')
+        n = guion.nodo('saludo', idi, p.get('nombre', ''))
+        if n.get('botones') and hasattr(rel, 'con_botones'):
+            rel.con_botones(de, n['texto'], n['botones'])
+        else:
+            rel.enviar(de, guion.como_texto('saludo', idi, p.get('nombre', '')))
+        return
+
+    destino = guion.por_toque(toco) or guion.por_texto(dicho, p.get('nodo'))
     if not destino and not p.get('saludado'):
-        destino = 'inicio' if p.get('idioma') else 'idioma'
+        destino = 'saludo'
     if destino:
-        n = guion.nodo(destino, idi)
+        n = guion.nodo(destino, idi, p.get('nombre', ''))
         p['nodo'] = destino
         p['saludado'] = True
         p['visto'] = int(time.time())
@@ -1531,7 +1617,7 @@ def atender(rel, sistema, p, de, dicho, mensaje=None):
             # Un canal sin botones —el chat de la casa— recibe las opciones
             # como una linea al final. Un guion que solo funciona en WhatsApp
             # seria dos productos distintos manteniendose por separado.
-            rel.enviar(de, guion.como_texto(destino, idi))
+            rel.enviar(de, guion.como_texto(destino, idi, p.get('nombre', '')))
         return
 
     if not p.get('saludado'):

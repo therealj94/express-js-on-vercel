@@ -135,10 +135,13 @@ class LosBotonesCabenEnWhatsApp(unittest.TestCase):
                 alcanzables.add(d)
         for _, d in guion.ATAJOS:
             alcanzables.add(d)
-        # `idioma` es LA PUERTA: no la apunta ningún botón porque es donde se
-        # entra. Exigirle un camino de vuelta sería pedir que la entrada tenga
+        # Los tres primeros pasos no los apunta ningún botón: son el embudo de
+        # entrada, y se encadenan solos. `idioma` es la puerta, `nombre` viene
+        # de elegir idioma (TRAS_ELEGIR_IDIOMA) y `saludo` viene de contestar
+        # el nombre. Exigirles un botón sería pedir que la entrada tenga
         # entrada.
-        huerfanos = set(guion.NODOS) - alcanzables - {'idioma'}
+        entrada = {'idioma', guion.TRAS_ELEGIR_IDIOMA, 'saludo'}
+        huerfanos = set(guion.NODOS) - alcanzables - entrada
         self.assertEqual(huerfanos, set(), f'no se llega a: {huerfanos}')
 
 
@@ -358,6 +361,92 @@ class LoQueELGUIONNOPUEDEDECIR(unittest.TestCase):
         # Y que el oro baja, dicho antes de que lo pregunten.
         self.assertIn("sube y baja", es)
         self.assertIn("up and down", en)
+
+
+class LaPuertaDelIdiomaVAPRIMERO(unittest.TestCase):
+    """El fallo del 30-ago a las 18:14, puesto como prueba.
+
+    José escribió «Hola» y AU-RA le contestó el argumento de ORIGEN de una,
+    sin preguntarle el idioma ni nada de él. La causa: «hola» es un ATAJO que
+    lleva a `inicio`, y los atajos se resolvían antes de mirar si la persona
+    ya había elegido idioma. Como casi todo el mundo empieza con «hola», la
+    puerta estaba construida y muerta.
+
+    Estas pruebas miran el ORDEN dentro de `atender`, que es donde vivía el
+    error: qué se comprueba antes que qué."""
+
+    FUENTE = (AQUI / 'asistente.py').read_text(encoding='utf8')
+
+    def _bloque(self):
+        """Desde el marcador hasta donde se resuelve el destino: ahí vivía el
+        error, y ahí tiene que seguir mirándose."""
+        i = self.FUENTE.index('LA PUERTA DEL IDIOMA VA PRIMERO')
+        j = self.FUENTE.index('if not destino and not', i)
+        return self.FUENTE[i:j]
+
+    def test_el_idioma_se_comprueba_ANTES_que_los_atajos(self):
+        b = self._bloque()
+        corte = b.index("if not p.get('idioma')")
+        despues = b[corte:]
+        self.assertIn('por_texto', despues,
+                      'los atajos se resuelven antes que la puerta del idioma')
+        self.assertNotIn('por_texto', b[:corte],
+                         'hay un por_texto ANTES de la puerta: el bug de las 18:14')
+
+    def test_quien_no_eligio_idioma_va_a_la_puerta_escriba_lo_que_escriba(self):
+        b = self._bloque()
+        i = b.index("if not p.get('idioma')")
+        self.assertIn("p['nodo'], p['saludado'] = 'idioma'", b[i:i + 260])
+
+    def test_HOLA_sigue_siendo_un_atajo_valido(self):
+        """No se arregló quitando el atajo: se arregló poniéndolo después. Un
+        «hola» de alguien que YA eligió idioma tiene que seguir funcionando."""
+        self.assertEqual(guion.por_texto('hola'), 'inicio')
+
+    def test_tras_elegir_idioma_se_va_al_nombre_no_al_argumento(self):
+        self.assertEqual(guion.TRAS_ELEGIR_IDIOMA, 'nombre')
+        self.assertEqual(guion.nodo('nombre', 'es')['espera'], 'nombre')
+
+
+class EsPersonalANTESDeSerInformativo(unittest.TestCase):
+    """«necesito sea bien personal, que preguntes más de la persona» — José,
+    30-ago, después de probarlo. El arranque tiraba el argumento de ORIGEN en
+    el primer mensaje: información a alguien que no dijo ni cómo se llama."""
+
+    def test_el_saludo_PREGUNTA_en_vez_de_explicar(self):
+        for idioma in guion.IDIOMAS:
+            t = guion.nodo('saludo', idioma, 'Ana')['texto']
+            self.assertIn('?', t, f'{idioma}: el saludo no pregunta nada')
+            for producto in ['ORIGEN', 'Veta Wallet', 'Genesis ID', 'gramo']:
+                self.assertNotIn(producto, t,
+                                 f'{idioma}: vende «{producto}» antes de escuchar')
+
+    def test_usa_el_nombre_cuando_lo_sabe(self):
+        for idioma in guion.IDIOMAS:
+            t = guion.nodo('saludo', idioma, 'Ana')['texto']
+            self.assertIn('Ana', t, f'{idioma}: sabe el nombre y no lo usa')
+
+    def test_y_NO_deja_el_hueco_crudo_cuando_no_lo_sabe(self):
+        """«Mucho gusto, {nombre}» en pantalla es peor que no saludar."""
+        for nodo in guion.NODOS:
+            for idioma in guion.IDIOMAS:
+                t = guion.nodo(nodo, idioma, '')['texto']
+                self.assertNotIn('{nombre}', t, f'{nodo}/{idioma}')
+                self.assertNotIn(' ,', t, f'{nodo}/{idioma}: coma huérfana')
+                self.assertNotIn('..', t, f'{nodo}/{idioma}')
+
+    def test_sin_nombre_la_frase_sigue_cerrando_bien(self):
+        t = guion.nodo('saludo', 'es', '')['texto']
+        self.assertIn('Mucho gusto.', t)
+        self.assertIn('¿Qué te trajo hasta acá?', t)
+
+    def test_las_tres_puertas_son_lo_que_LE_DUELE_no_productos(self):
+        """Elegir una ya es contar algo de sí misma."""
+        botones = [b[0] for b in guion.nodo('saludo', 'es', '')['botones']]
+        self.assertEqual(len(botones), 3)
+        for b in botones:
+            for producto in ['ORIGEN', 'Veta', 'Genesis', 'AUKA', 'ONDK']:
+                self.assertNotIn(producto, b, f'el botón «{b}» es un producto')
 
 
 if __name__ == '__main__':
