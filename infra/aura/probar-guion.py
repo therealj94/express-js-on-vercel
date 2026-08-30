@@ -261,5 +261,71 @@ class UnaPreguntaSINSignoSigueSiendoUnaPregunta(unittest.TestCase):
         self.assertIsNone(
             guion.por_texto('quisiera ver lo de las remesas para mi familia'))
 
+class LoQueELGUIONNOPUEDEDECIR(unittest.TestCase):
+    """La terminología del expediente de la Junta (14/08/2026), aplicada.
+
+    «La figura es REFERENCIADO, nunca respaldado: terminología no negociable en
+    todos los documentos. No existe oro físico extraído ni custodiado en bóveda;
+    el oro está en etapa de recurso o potencial minero dentro de concesiones sin
+    formalizar.»
+
+    Esto va como prueba y no como comentario porque la presión para escribirlo
+    es real y vuelve: «cuando miran que dicen no hay respaldo se asustan». Es
+    verdad que asusta — y la salida es contar mejor lo que SÍ es, no afirmar una
+    bóveda que la propia Junta dice que no está firmada."""
+
+    TEXTOS = " ".join(n.get("texto", "") for n in guion.NODOS.values()).lower()
+
+    def test_NO_promete_oro_en_boveda(self):
+        for f in ["oro en bóveda", "oro en boveda", "en bóveda", "custodiad",
+                  "barras de oro", "lingote"]:
+            self.assertNotIn(f, self.TEXTOS, f"promete «{f}»")
+
+    def test_NO_dice_que_ORIGEN_AUKA_o_AGKA_estan_respaldadas(self):
+        """ONDK sí puede: es la única excepción del ecosistema y está aprobada
+        en dos fichas. Las otras tres, no."""
+        for moneda in ["origen", "auka", "agka"]:
+            for verbo in ["respaldad", "respaldo en oro", "garantizad"]:
+                self.assertFalse(
+                    f"{moneda} está {verbo}" in self.TEXTOS
+                    or f"{moneda} sí está {verbo}" in self.TEXTOS,
+                    f"dice que {moneda.upper()} está {verbo}")
+
+    def test_NO_inventa_certificaciones(self):
+        """La NI 43-101 es un estándar de reporte de recursos mineros, NO una
+        certificación de barras en bóveda — eso lo hace LBMA. Nombrar cualquiera
+        de las dos hoy sería inventar un papel que no existe."""
+        for f in ["ni 43-101", "lbma", "certificado internacional",
+                  "certificación internacional", "auditoría externa",
+                  "auditoria externa"]:
+            self.assertNotIn(f, self.TEXTOS, f"nombra «{f}»")
+
+    def test_ONDK_se_nombra_SIN_precio_y_SIN_insinuar_ganancia(self):
+        """Es un valor negociable. Se puede decir qué es; no se puede vender.
+
+        Se mira SOLO el nodo donde se lo nombra: buscar estas palabras en todo
+        el guion daba falsos —«no es por lo que ganás» abre la conversación y
+        habla del sueldo de la persona, no de un token."""
+        donde = " ".join(n.get("texto", "") for n in guion.NODOS.values()
+                         if "ONDK" in n.get("texto", "")).lower()
+        self.assertTrue(donde, "ONDK no aparece en ningún nodo")
+        for f in ["apreciación", "apreciacion", "recompra", "ganás", "rendimiento",
+                  "va a subir", "invertí", "precio de ondk", "vale ", "oportunidad"]:
+            self.assertNotIn(f, donde, f"vende ONDK con «{f}»")
+
+    def test_pero_SI_cuenta_lo_que_de_verdad_respalda_a_ONDK(self):
+        """Es el mejor argumento que hay y es cierto: no dejarlo sin decir."""
+        self.assertIn("ondk", self.TEXTOS, "no nombra ONDK en ningún lado")
+        self.assertIn("respaldado", self.TEXTOS)
+        for parte in ["minería", "compañías"]:
+            self.assertIn(parte, self.TEXTOS, f"no dice que lo respalda {parte}")
+
+    def test_sigue_diciendo_la_parte_incomoda(self):
+        """El nodo vende PORQUE no vende. Suavizarlo hasta que desaparezca la
+        parte incómoda sería perder lo único que lo hace creíble."""
+        self.assertIn("no te entregan el metal", self.TEXTOS)
+        self.assertIn("sube y baja", self.TEXTOS)
+
+
 if __name__ == '__main__':
     unittest.main(verbosity=2)

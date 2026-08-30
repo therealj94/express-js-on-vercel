@@ -126,10 +126,12 @@ NODOS = {
     'honesto': {
         'texto': (
             'Baja. El oro sube y baja, y no te voy a decir lo contrario.\n\n'
-            'Y otra que casi nadie dice: no hay oro en bóveda detrás de ORIGEN. '
-            'Hay una referencia de precio.\n\n'
-            'Lo que sí podés comprobar sin pedirnos permiso es la cadena: cada '
-            'movimiento está en ordenscan.com.'),
+            'Pero mirá la diferencia: la moneda de tu país baja y no vuelve. '
+            'El oro baja y sube. Por eso medimos con esa vara.\n\n'
+            'ORIGEN no es un certificado de oro guardado: es una moneda para '
+            'mover plata, con el precio atado a una fórmula pública del oro.\n\n'
+            'Acá adentro nadie decide cuánto vale — y cada movimiento está a la '
+            'vista en ordenscan.com.'),
         'botones': [
             ('Me gusta eso', 'que-hago'),
             ('¿Y las otras?', 'monedas'),
@@ -255,9 +257,14 @@ NODOS = {
 
     'monedas': {
         'texto': (
-            'ORIGEN sigue al oro por gramo. AUKA sigue la onza de oro y AGKA la '
-            'de plata.\n\n'
-            'Ojo con esto, que prefiero decírtelo yo: siguen el precio, no te '
+            'Cada una tiene su trabajo:\n\n'
+            '🟡 ORIGEN — la de todos los días: mandar, cobrar, guardar.\n'
+            '🥇 AUKA — la onza de oro. 🥈 AGKA — la de plata.\n'
+            '🏛️ ONDK — Orden Global hecha token.\n\n'
+            'ONDK es el único del ecosistema que sí está respaldado: su valor '
+            'viene de los activos del grupo — la minería, la infraestructura y '
+            'las compañías. Es otra cosa distinta, y eso lo habla una persona.\n\n'
+            'De AUKA y AGKA prefiero decírtelo yo: siguen el precio, no te '
             'entregan el metal.'),
         'botones': [
             ('¿Y ORIGEN?', 'como-funciona'),
