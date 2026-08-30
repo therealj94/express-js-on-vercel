@@ -45,6 +45,31 @@
 # quien viene a invertir quiere hablar con una persona: mandarselo a una es
 # mejor producto Y mas seguro. Las dos cosas a la vez, que no pasa siempre.
 
+# ── DOS IDIOMAS, Y LA PREGUNTA VA PRIMERO ───────────────────────────────────
+#
+# Pedido de Jose: «desde preguntar el idioma ingles o espanol, de ahi partir».
+# El nodo `idioma` es la puerta de entrada y es el UNICO mensaje bilingue del
+# guion: a partir de ahi todo va en el idioma que la persona eligio.
+#
+# Se pregunta en vez de adivinar por el prefijo del telefono. Un +1 puede ser
+# un hondureno en Houston y un +52 un canadiense en Cancun; adivinar mal en el
+# primer mensaje es el peor momento para equivocarse, porque es el unico en el
+# que la persona todavia no invirtio nada en la charla y se va sin costo.
+#
+# ── LOS ENLACES NO SON ADORNO ───────────────────────────────────────────────
+#
+# Cada nodo que nombra una pieza del sistema lleva su enlace. Un guion que
+# explica Veta Wallet y no dice donde esta obliga a la persona a buscarla, y
+# ahi se pierde. Los cuatro que se usan:
+#
+#   app.vetawallet.com   la billetera
+#   ordenscan.com        el explorador, para comprobar sin pedir permiso
+#   ordenglobal.org      la casa
+#   wa.me/50432136457    el WhatsApp de Jose, para hablar con una persona
+#
+# El de `wa.me` es el que mas importa: «hablar con alguien» que no da un numero
+# no es hablar con alguien.
+
 import re
 import unicodedata
 
@@ -69,276 +94,406 @@ def _llano(t):
 # Los textos son cortos a proposito: esto se lee en un telefono, de pie, con
 # una mano. Lo que no entra en cuatro lineas no se lee.
 NODOS = {
-    # ── LA PRIMERA PANTALLA ────────────────────────────────────────────────
+
+    # ── LA PUERTA. El unico mensaje bilingue del guion ──────────────────────
     #
-    # Es la unica que importa de verdad: si esta no engancha, no hay segunda.
-    #
-    # NO empieza con «somos un ecosistema». Eso es una categoria, no un motivo
-    # para quedarse, y ademas no significa nada para quien esta parado en una
-    # pulperia con el telefono en la mano.
-    #
-    # Empieza por el dolor, que ademas es verdad y esta escrito en las fichas:
-    # las monedas de la region pierden valor con los años y el que ahorra en
-    # ellas ve como su esfuerzo se le hace agua. Eso no hay que explicarlo en
-    # ningun pais de la region: se sabe de Mexico para abajo.
-    #
-    # Y promete POCO tiempo. «Treinta segundos» baja el costo de seguir
-    # leyendo, que es la unica decision que se toma en esta pantalla.
+    # Se pregunta el idioma en vez de adivinarlo por el prefijo: un +1 puede
+    # ser un hondureno en Houston. Equivocarse aqui es equivocarse en el unico
+    # mensaje que la persona lee sin haber invertido nada en la charla.
+    'idioma': {
+        'texto': {
+            'es': ('Soy AU-RA, de Orden Global. 🌎\n\n'
+                   '¿En qué idioma seguimos?\n'
+                   "I'm AU-RA, from Orden Global. Which language?"),
+            'en': ('Soy AU-RA, de Orden Global. 🌎\n\n'
+                   '¿En qué idioma seguimos?\n'
+                   "I'm AU-RA, from Orden Global. Which language?"),
+        },
+        'botones': {
+            'es': [('Español', 'lang:es'), ('English', 'lang:en')],
+            'en': [('Español', 'lang:es'), ('English', 'lang:en')],
+        },
+    },
+
     'inicio': {
-        'texto': (
-            'Soy AU-RA, la inteligencia de Orden Global.\n\n'
-            'Lo que ahorrás hoy, en un año compra menos. No es por lo que ganás '
-            '— es por la moneda.\n\n'
-            'Nosotros medimos con otra vara. Te lo cuento en treinta segundos.'),
-        'botones': [
-            # El premio va PRIMERO. Es el boton que da un motivo para tocar
-            # algo, y quien lo toca termina aprendiendo lo mismo que le
-            # contaria el camino largo — pero quedandose.
-            ('Ganá 1 ORIGEN', 'ganar'),
-            ('¿Cómo es eso?', 'como-funciona'),
-            ('¿Qué puedo hacer?', 'que-hago'),
-        ],
+        'texto': {
+            'es': ('Lo que ahorrás hoy, en un año compra menos. No es por lo '
+                   'que ganás — es por la moneda.\n\n'
+                   'Nosotros medimos con otra vara: el oro. Te lo cuento en '
+                   'treinta segundos.'),
+            'en': ('What you save today buys less a year from now. It is not '
+                   'what you earn — it is the currency.\n\n'
+                   'We measure with a different yardstick: gold. Thirty '
+                   'seconds and you will see it.'),
+        },
+        'botones': {
+            'es': [('Ganá 1 ORIGEN', 'ganar'), ('¿Cómo es eso?', 'como-funciona'),
+                   ('¿Qué puedo hacer?', 'que-hago')],
+            'en': [('Win 1 ORIGEN', 'ganar'), ('How does that work?', 'como-funciona'),
+                   ('What can I do?', 'que-hago')],
+        },
     },
 
     'como-funciona': {
-        'texto': (
-            'ORIGEN es la moneda de la casa y sigue al oro: uno vale un gramo de '
-            'oro dividido entre cincuenta y cinco, al precio de hoy.\n\n'
-            'La fórmula es pública y no la ponemos nosotros. Podés rehacer el '
-            'precio con una calculadora cuando quieras.'),
-        'botones': [
-            ('¿Y si el oro baja?', 'honesto'),
-            ('¿Dónde lo guardo?', 'billetera'),
-            ('Volver', 'inicio'),
-        ],
+        'texto': {
+            'es': ('ORIGEN es la moneda de la casa y sigue al oro: uno vale un '
+                   'gramo de oro dividido entre cincuenta y cinco, al precio '
+                   'de hoy.\n\n'
+                   'La fórmula es pública y no la ponemos nosotros. Podés '
+                   'rehacer el precio con una calculadora cuando quieras.'),
+            'en': ('ORIGEN is our currency and it follows gold: one is worth a '
+                   'gram of gold divided by fifty-five, at today price.\n\n'
+                   'The formula is public and it is not ours to set. You can '
+                   'redo the price with a calculator whenever you want.'),
+        },
+        'botones': {
+            'es': [('¿Y si el oro baja?', 'honesto'), ('¿Dónde lo guardo?', 'billetera'),
+                   ('Volver', 'inicio')],
+            'en': [('If gold drops?', 'honesto'), ('Where do I keep it?', 'billetera'),
+                   ('Back', 'inicio')],
+        },
     },
 
-    # ── EL NODO QUE MAS VENDE, Y VENDE PORQUE NO VENDE ─────────────────────
+    # ── EL NODO QUE MAS VENDE, Y VENDE PORQUE NO VENDE ──────────────────────
     #
-    # Aqui se dice que el oro baja y que no hay oro en boveda. Parece un mal
-    # negocio decirlo en la tercera pantalla; es al reves. Quien llega a un
-    # numero de WhatsApp preguntando por una moneda de oro ya escucho diez
-    # promesas y no le creyo a ninguna. Lo que no ha escuchado nunca es que le
-    # digan la parte incomoda antes de que la busque.
-    #
-    # Y la salida no es una promesa: es «comprobalo vos», con la direccion del
-    # explorador. Eso no lo puede decir quien esta mintiendo.
+    # Quien llega a un WhatsApp preguntando por una moneda de oro ya escucho
+    # diez promesas y no le creyo a ninguna. Lo que no escucho nunca es que le
+    # digan la parte incomoda antes de buscarla. La salida no es una promesa:
+    # es «comprobalo vos», con la direccion del explorador.
     'honesto': {
-        'texto': (
-            'Baja. El oro sube y baja, y no te voy a decir lo contrario.\n\n'
-            'Pero mirá la diferencia: la moneda de tu país baja y no vuelve. '
-            'El oro baja y sube. Por eso medimos con esa vara.\n\n'
-            'ORIGEN no es un certificado de oro guardado: es una moneda para '
-            'mover plata, con el precio atado a una fórmula pública del oro.\n\n'
-            'Acá adentro nadie decide cuánto vale — y cada movimiento está a la '
-            'vista en ordenscan.com.'),
-        'botones': [
-            ('Me gusta eso', 'que-hago'),
-            ('¿Y las otras?', 'monedas'),
-            ('Volver', 'como-funciona'),
-        ],
+        'texto': {
+            'es': ('Baja. El oro sube y baja, y no te voy a decir lo '
+                   'contrario.\n\n'
+                   'Pero mirá la diferencia: la moneda de tu país baja y no '
+                   'vuelve. El oro baja y sube.\n\n'
+                   'ORIGEN no es un certificado de oro guardado: es una moneda '
+                   'para mover plata, con el precio atado a una fórmula '
+                   'pública del oro.\n\n'
+                   'Acá nadie decide cuánto vale, y cada movimiento está a la '
+                   'vista en ordenscan.com'),
+            'en': ('It drops. Gold goes up and down, and I am not going to '
+                   'tell you otherwise.\n\n'
+                   'But look at the difference: your country currency goes '
+                   'down and stays down. Gold goes down and comes back.\n\n'
+                   'ORIGEN is not a certificate for stored gold. It is a '
+                   'currency to move money, priced by a public gold '
+                   'formula.\n\n'
+                   'Nobody here decides what it is worth, and every movement '
+                   'is public at ordenscan.com'),
+        },
+        'botones': {
+            'es': [('Me gusta eso', 'que-hago'), ('¿Y las otras?', 'monedas'),
+                   ('Volver', 'como-funciona')],
+            'en': [('I like that', 'que-hago'), ('The other coins?', 'monedas'),
+                   ('Back', 'como-funciona')],
+        },
     },
 
-    # El reparto. Tres puertas y cada una es una VIDA distinta: el que manda
-    # plata, el que vende, el que ahorra. No «productos» — situaciones.
     'que-hago': {
-        'texto': (
-            'Con la misma cuenta: guardás tu plata, le mandás a tu gente, y le '
-            'cobrás a tus clientes con un QR.\n\n'
-            '¿Cuál te toca a vos?'),
-        'botones': [
-            ('Mandar plata', 'remesas'),
-            ('Tengo un negocio', 'negocio'),
-            ('Guardar mis ahorros', 'billetera'),
-        ],
+        'texto': {
+            'es': ('Con la misma cuenta: guardás tu plata, le mandás a tu '
+                   'gente, y le cobrás a tus clientes con un QR.\n\n'
+                   '¿Cuál te toca a vos?'),
+            'en': ('One account for all of it: keep your money, send it to '
+                   'your people, and charge your customers with a QR.\n\n'
+                   'Which one is yours?'),
+        },
+        'botones': {
+            'es': [('Mandar plata', 'remesas'), ('Tengo un negocio', 'negocio'),
+                   ('Guardar mis ahorros', 'billetera')],
+            'en': [('Send money', 'remesas'), ('I have a business', 'negocio'),
+                   ('Keep my savings', 'billetera')],
+        },
     },
 
     'remesas': {
-        'texto': (
-            'Le mandás a tu gente en nueve países, y antes de confirmar ves '
-            'exactamente cuánto le llega del otro lado — ya con la comisión y el '
-            'cambio descontados.\n\n'
-            'Sin sorpresas al final. Eso es lo que más se agradece.'),
-        'botones': [
-            ('¿Cuánto cobran?', 'comision'),
-            ('Quiero empezar', 'empezar'),
-            ('Volver', 'que-hago'),
-        ],
+        'texto': {
+            'es': ('Le mandás a tu gente en nueve países, y antes de confirmar '
+                   'ves exactamente cuánto le llega del otro lado — ya con la '
+                   'comisión y el cambio descontados.\n\n'
+                   'Sin sorpresas al final. Eso es lo que más se agradece.'),
+            'en': ('Send to your people across nine countries, and before you '
+                   'confirm you see exactly what lands on the other side — fee '
+                   'and exchange already taken out.\n\n'
+                   'No surprises at the end. That is the part people thank us '
+                   'for.'),
+        },
+        'botones': {
+            'es': [('¿Cuánto cobran?', 'comision'), ('Quiero empezar', 'empezar'),
+                   ('Volver', 'que-hago')],
+            'en': [('What is the fee?', 'comision'), ('I want to start', 'empezar'),
+                   ('Back', 'que-hago')],
+        },
     },
 
     'comision': {
-        'texto': (
-            'La comisión de red es de 0,001 ORIGEN, y se paga en ORIGEN aunque '
-            'mandés otra moneda.\n\n'
-            'Es mínima porque la cadena es nuestra: no le alquilamos la red a '
-            'nadie. El equivalente lo ves antes de confirmar.'),
-        'botones': [
-            ('Quiero empezar', 'empezar'),
-            ('Volver', 'que-hago'),
-        ],
+        'texto': {
+            'es': ('La comisión de red es de 0,001 ORIGEN, y se paga en ORIGEN '
+                   'aunque mandés otra moneda.\n\n'
+                   'Es mínima porque la cadena es nuestra: no le alquilamos la '
+                   'red a nadie. El equivalente lo ves antes de confirmar.'),
+            'en': ('The network fee is 0.001 ORIGEN, paid in ORIGEN even if '
+                   'you send another coin.\n\n'
+                   'It is tiny because the chain is ours: we rent the network '
+                   'from nobody. You see the equivalent before confirming.'),
+        },
+        'botones': {
+            'es': [('Quiero empezar', 'empezar'), ('Volver', 'que-hago')],
+            'en': [('I want to start', 'empezar'), ('Back', 'que-hago')],
+        },
     },
 
     'negocio': {
-        'texto': (
-            'Cobrás con un QR desde tu teléfono: ponés el monto, tu cliente lo '
-            'escanea, y el pago te llega en segundos. Sin datáfono ni aparatos '
-            'nuevos.\n\n'
-            'Tu negocio además entra al directorio, donde ya hay comercios en '
-            'diecinueve países.'),
-        'botones': [
-            ('¿Qué necesito?', 'negocio-como'),
-            ('¿Cuánto cobran?', 'comision'),
-            ('Volver', 'que-hago'),
-        ],
+        'texto': {
+            'es': ('Cobrás con un QR desde tu teléfono: ponés el monto, tu '
+                   'cliente lo escanea, y el pago te llega en segundos. Sin '
+                   'datáfono ni aparatos nuevos.\n\n'
+                   'Tu negocio además entra al directorio, donde ya hay '
+                   'comercios en diecinueve países.'),
+            'en': ('Charge with a QR from your phone: you set the amount, your '
+                   'customer scans it, and the payment lands in seconds. No '
+                   'card terminal, no new hardware.\n\n'
+                   'Your business also joins the directory, with merchants in '
+                   'nineteen countries already.'),
+        },
+        'botones': {
+            'es': [('¿Qué necesito?', 'negocio-como'), ('¿Cuánto cobran?', 'comision'),
+                   ('Volver', 'que-hago')],
+            'en': [('What do I need?', 'negocio-como'), ('What is the fee?', 'comision'),
+                   ('Back', 'que-hago')],
+        },
     },
 
     'negocio-como': {
-        'texto': (
-            'Tu teléfono y tu Genesis ID verificado. Nada más.\n\n'
-            'La identidad es para que quien te pague sepa que del otro lado hay '
-            'alguien real, y para que vos puedas emitir cobros a tu nombre.'),
-        'botones': [
-            ('¿Cómo la saco?', 'genesis'),
-            ('Quiero empezar', 'empezar'),
-        ],
+        'texto': {
+            'es': ('Tu teléfono y tu Genesis ID verificado. Nada más.\n\n'
+                   'La identidad es para que quien te pague sepa que del otro '
+                   'lado hay alguien real, y para que vos puedas emitir cobros '
+                   'a tu nombre.'),
+            'en': ('Your phone and your verified Genesis ID. Nothing else.\n\n'
+                   'The identity is so whoever pays you knows there is a real '
+                   'person on the other side, and so you can issue charges in '
+                   'your own name.'),
+        },
+        'botones': {
+            'es': [('¿Cómo la saco?', 'genesis'), ('Quiero empezar', 'empezar')],
+            'en': [('How do I get it?', 'genesis'), ('I want to start', 'empezar')],
+        },
     },
 
     'billetera': {
-        'texto': (
-            'Veta Wallet: guardás, mandás, recibís y cambiás entre monedas, todo '
-            'desde el teléfono.\n\n'
-            'Tus llaves son tuyas. Yo preparo, vos firmás con tu contraseña.'),
-        'botones': [
-            ('¿Y si pierdo el cel?', 'llaves'),
-            ('Quiero empezar', 'empezar'),
-            ('Volver', 'que-hago'),
-        ],
+        'texto': {
+            'es': ('Veta Wallet: guardás, mandás, recibís y cambiás entre '
+                   'monedas, todo desde el teléfono.\n\n'
+                   'Tus llaves son tuyas. Yo preparo, vos firmás con tu '
+                   'contraseña.\n\n'
+                   'Está en app.vetawallet.com'),
+            'en': ('Veta Wallet: keep, send, receive and swap between coins, '
+                   'all from your phone.\n\n'
+                   'Your keys are yours. I prepare, you sign with your '
+                   'password.\n\n'
+                   'It lives at app.vetawallet.com'),
+        },
+        'botones': {
+            'es': [('¿Y si pierdo el cel?', 'llaves'), ('Quiero empezar', 'empezar'),
+                   ('Volver', 'que-hago')],
+            'en': [('If I lose my phone?', 'llaves'), ('I want to start', 'empezar'),
+                   ('Back', 'que-hago')],
+        },
     },
 
-    # Este nodo no esta para vender: esta para que nadie pierda su plata. Y
-    # justamente por eso es de los que mas confianza dan.
     'llaves': {
-        'texto': (
-            'Tu frase de respaldo es lo único que abre tu dinero si perdés el '
-            'teléfono. Guardala escrita en un sitio seguro.\n\n'
-            'Y no se la digas a nadie. Si alguien te la pide —aunque diga que es '
-            'de Orden Global, aunque diga que soy yo— es mentira.'),
-        'botones': [
-            ('Entendido', 'que-hago'),
-            ('Quiero empezar', 'empezar'),
-        ],
+        'texto': {
+            'es': ('Tu frase de respaldo es lo único que abre tu dinero si '
+                   'perdés el teléfono. Guardala escrita en un sitio '
+                   'seguro.\n\n'
+                   'Y no se la digas a nadie. Si alguien te la pide —aunque '
+                   'diga que es de Orden Global, aunque diga que soy yo— es '
+                   'mentira.'),
+            'en': ('Your recovery phrase is the only thing that opens your '
+                   'money if you lose your phone. Write it down and keep it '
+                   'somewhere safe.\n\n'
+                   'And never tell it to anyone. If someone asks for it — even '
+                   'claiming to be Orden Global, even claiming to be me — it '
+                   'is a lie.'),
+        },
+        'botones': {
+            'es': [('Entendido', 'que-hago'), ('Quiero empezar', 'empezar')],
+            'en': [('Understood', 'que-hago'), ('I want to start', 'empezar')],
+        },
     },
 
     'genesis': {
-        'texto': (
-            'Te verificás una vez y quedás verificado en todo el ecosistema. La '
-            'revisa una persona, no una máquina, y suele estar en menos de un '
-            'día.\n\n'
-            'Te sirve para cobrar a tu nombre, para el chat y para lo que venga.'),
-        'botones': [
-            ('¿Qué me piden?', 'genesis-que'),
-            ('Quiero empezar', 'empezar'),
-            ('Volver', 'que-hago'),
-        ],
+        'texto': {
+            'es': ('Te verificás una vez y quedás verificado en todo el '
+                   'ecosistema. La revisa una persona, no una máquina, y suele '
+                   'estar en menos de un día.\n\n'
+                   'Te sirve para cobrar a tu nombre, para el chat y para lo '
+                   'que venga.'),
+            'en': ('Verify once and you are verified across the whole '
+                   'ecosystem. A person reviews it, not a machine, and it '
+                   'usually takes less than a day.\n\n'
+                   'You need it to charge in your own name, for the chat, and '
+                   'for whatever comes next.'),
+        },
+        'botones': {
+            'es': [('¿Qué me piden?', 'genesis-que'), ('Quiero empezar', 'empezar'),
+                   ('Volver', 'que-hago')],
+            'en': [('What do they ask?', 'genesis-que'), ('I want to start', 'empezar'),
+                   ('Back', 'que-hago')],
+        },
     },
 
     'genesis-que': {
-        'texto': (
-            'Tu documento y una foto tuya del momento, para saber que sos vos y '
-            'no una foto de una foto.\n\n'
-            'Las imágenes del documento se guardan cifradas y se borran a los '
-            'cinco años. La única que queda es tu retrato, porque es tu '
-            'credencial.'),
-        'botones': [
-            ('Quiero empezar', 'empezar'),
-            ('Volver', 'genesis'),
-        ],
+        'texto': {
+            'es': ('Tu documento y una foto tuya del momento, para saber que '
+                   'sos vos y no una foto de una foto.\n\n'
+                   'Las imágenes del documento se guardan cifradas y se borran '
+                   'a los cinco años. La única que queda es tu retrato, porque '
+                   'es tu credencial.'),
+            'en': ('Your ID document and a live photo of you, so we know it is '
+                   'you and not a photo of a photo.\n\n'
+                   'The document images are stored encrypted and deleted after '
+                   'five years. The only one that stays is your portrait, '
+                   'because that is your credential.'),
+        },
+        'botones': {
+            'es': [('Quiero empezar', 'empezar'), ('Volver', 'genesis')],
+            'en': [('I want to start', 'empezar'), ('Back', 'genesis')],
+        },
     },
 
+    # ── LAS CUATRO MONEDAS ──────────────────────────────────────────────────
+    #
+    # Aqui esta la frase que contesta el miedo, y la dijo Jose: AUKA y AGKA no
+    # salen hasta que el respaldo este firmado. Es mejor argumento que afirmar
+    # una boveda —que el expediente de la Junta dice que no existe— porque es
+    # verdad hoy y porque decir «no lo sacamos todavia» es exactamente lo que
+    # NO hace quien esta vendiendo humo.
+    #
+    # ONDK si esta respaldado y es la unica excepcion del ecosistema. Se nombra
+    # sin precio, sin apreciacion y sin invitar a nada: es un valor negociable.
     'monedas': {
-        'texto': (
-            'Cada una tiene su trabajo:\n\n'
-            '🟡 ORIGEN — la de todos los días: mandar, cobrar, guardar.\n'
-            '🥇 AUKA — la onza de oro. 🥈 AGKA — la de plata.\n'
-            '🏛️ ONDK — Orden Global hecha token.\n\n'
-            'ONDK es el único del ecosistema que sí está respaldado: su valor '
-            'viene de los activos del grupo — la minería, la infraestructura y '
-            'las compañías. Es otra cosa distinta, y eso lo habla una persona.\n\n'
-            'De AUKA y AGKA prefiero decírtelo yo: siguen el precio, no te '
-            'entregan el metal.'),
-        'botones': [
-            ('¿Y ORIGEN?', 'como-funciona'),
-            ('Quiero empezar', 'empezar'),
-            ('Volver', 'que-hago'),
-        ],
+        'texto': {
+            'es': ('Cada una tiene su trabajo:\n\n'
+                   '🟡 ORIGEN — la de todos los días: mandar, cobrar, '
+                   'guardar.\n'
+                   '🥇 AUKA — el oro. 🥈 AGKA — la plata.\n'
+                   '🏛️ ONDK — Orden Global hecha token.\n\n'
+                   'AUKA y AGKA todavía no las sacamos: no salen hasta que el '
+                   'respaldo del metal esté firmado. Se está trabajando en '
+                   'Próspera.\n\n'
+                   'Cuando salgan van a seguir el precio del metal, no te lo '
+                   'entregan. Prefiero decírtelo yo.\n\n'
+                   'ONDK sí está respaldado — por la minería y las compañías '
+                   'del grupo. De eso te habla una persona.'),
+            'en': ('Each one has a job:\n\n'
+                   '🟡 ORIGEN — the everyday one: send, charge, keep.\n'
+                   '🥇 AUKA — gold. 🥈 AGKA — silver.\n'
+                   '🏛️ ONDK — Orden Global as a token.\n\n'
+                   'AUKA and AGKA are not out yet: they do not launch until '
+                   'the metal backing is signed. That work is under way in '
+                   'Próspera.\n\n'
+                   'When they launch they will follow the metal price, they '
+                   'do not hand you the metal. I would rather say it.\n\n'
+                   'ONDK is backed — by the group mining and companies. A '
+                   'person talks to you about that one.'),
+        },
+        'botones': {
+            'es': [('¿Y ORIGEN?', 'como-funciona'), ('Quiero empezar', 'empezar'),
+                   ('Volver', 'que-hago')],
+            'en': [('And ORIGEN?', 'como-funciona'), ('I want to start', 'empezar'),
+                   ('Back', 'que-hago')],
+        },
     },
 
     'empezar': {
-        'texto': (
-            'Bajás Veta Wallet, ponés tu correo y ya tenés cuenta. La '
-            'verificación la hacés ahí adentro cuando quieras.\n\n'
-            'Si se te traba algo, contámelo por acá y lo vemos.'),
-        'botones': [
-            ('Hablar con alguien', 'persona'),
-            ('Volver', 'inicio'),
-        ],
+        'texto': {
+            'es': ('Entrá a app.vetawallet.com, ponés tu correo y ya tenés '
+                   'cuenta. La verificación la hacés ahí adentro cuando '
+                   'quieras.\n\n'
+                   'Si se te traba algo, contámelo por acá y lo vemos.'),
+            'en': ('Go to app.vetawallet.com, enter your email and you have an '
+                   'account. You do the verification inside, whenever you '
+                   'want.\n\n'
+                   'If anything gets stuck, tell me here and we sort it out.'),
+        },
+        'botones': {
+            'es': [('Hablar con alguien', 'persona'), ('Volver', 'inicio')],
+            'en': [('Talk to a person', 'persona'), ('Back', 'inicio')],
+        },
     },
 
-    # ── EL JUEGO ───────────────────────────────────────────────────────────
-    #
-    # No es un adorno: es la puerta que mejor convierte. Alguien que llega por
-    # curiosidad se va en veinte segundos; alguien que llega por un gramo de
-    # oro se queda tres minutos, y en esos tres minutos aprende a usar el
-    # producto. El premio paga la atencion, y las preguntas son el contenido.
-    #
-    # Se dice UNO POR PERSONA desde la primera linea. Escondido, se descubre al
-    # final y se siente estafa; dicho de entrada es una regla y ya.
     'ganar': {
-        'texto': (
-            'Te regalo 1 ORIGEN por aprender a usar tu plata. 🌱\n\n'
-            'Son tres preguntas. Si te equivocás no pasa nada: te explico y '
-            'seguimos — no es un examen.\n\n'
-            'Al final abrís tu Veta Wallet, me pasás tu dirección y te lo mando. '
-            'Uno por persona.'),
-        'botones': [
-            ('Dale, empecemos', 'ganar-va'),
-            ('¿Qué es ORIGEN?', 'como-funciona'),
-            ('Ahora no', 'que-hago'),
-        ],
+        'texto': {
+            'es': ('Te regalo 1 ORIGEN por aprender a usar tu plata. 🌱\n\n'
+                   'Son tres preguntas. Si te equivocás no pasa nada: te '
+                   'explico y seguimos — no es un examen.\n\n'
+                   'Al final abrís tu Veta Wallet, me pasás tu dirección y te '
+                   'lo mando. Uno por persona.'),
+            'en': ('I will give you 1 ORIGEN for learning how your money '
+                   'works. 🌱\n\n'
+                   'Three questions. Getting one wrong is fine: I explain and '
+                   'we keep going — this is not an exam.\n\n'
+                   'At the end you open your Veta Wallet, send me your address '
+                   'and I send it. One per person.'),
+        },
+        'botones': {
+            'es': [('Dale, empecemos', 'ganar-va'), ('¿Qué es ORIGEN?', 'como-funciona'),
+                   ('Ahora no', 'que-hago')],
+            'en': [('Let us start', 'ganar-va'), ('What is ORIGEN?', 'como-funciona'),
+                   ('Not now', 'que-hago')],
+        },
     },
 
-    # Nodo puente: lo toma el juego, que se encarga desde aqui. El texto no se
-    # usa —lo pisa la primera pregunta— pero el nodo existe para que el boton
-    # tenga a donde llevar y para que la prueba de nodos huerfanos pase.
     'ganar-va': {
-        'texto': 'Arrancamos.',
-        'botones': None,
+        'texto': {'es': 'Arrancamos.', 'en': 'Here we go.'},
     },
 
-    # ── Los dos caminos que NO contestan solos ─────────────────────────────
+    # ── HABLAR CON ALGUIEN ES HABLAR CON ALGUIEN ────────────────────────────
+    #
+    # Un «hablar con una persona» que no da un numero no es hablar con nadie.
+    # Va el WhatsApp de Jose como enlace directo, y el correo para quien
+    # prefiera escribir.
     'persona': {
-        'texto': (
-            'Dale. Escribile a info@ordenglobal.org contando qué necesitás y te '
-            'responde alguien del equipo.\n\n'
-            'Si es algo de tu cuenta que puedo resolver yo, contámelo por acá y '
-            'lo intento primero.'),
-        'botones': None,
+        'texto': {
+            'es': ('Dale. Escribile directo a José por WhatsApp:\n'
+                   'wa.me/50432136457\n\n'
+                   'O por correo a info@ordenglobal.org, contando qué '
+                   'necesitás.\n\n'
+                   'Si es algo de tu cuenta que puedo resolver yo, contámelo '
+                   'por acá y lo intento primero.'),
+            'en': ('Sure. Message José directly on WhatsApp:\n'
+                   'wa.me/50432136457\n\n'
+                   'Or email info@ordenglobal.org and tell them what you '
+                   'need.\n\n'
+                   'If it is something about your account that I can solve, '
+                   'tell me here and I will try first.'),
+        },
     },
 
-    # Para quien pregunta por invertir. NO se le cuenta la oportunidad: se le
-    # pasa a una persona. Ver la cabecera — es lo mas seguro y ademas es lo que
-    # esa persona queria.
+    # ── LO LEGAL Y LO DE INVERTIR NO SE CONTESTA SOLO ───────────────────────
+    #
+    # Antes este nodo mandaba a un correo y ya. Ahora da un WhatsApp: quien
+    # pregunta por invertir quiere hablar YA, y un correo es donde esa persona
+    # se pierde. Sigue sin contarle la oportunidad — eso es lo que no puede
+    # hacer una maquina.
     'inversion': {
-        'texto': (
-            'Eso lo habla una persona, no yo. Escribile a info@ordenglobal.org y '
-            'te contesta alguien que puede darte la información formal.\n\n'
-            'No es una evasiva: de eso no me corresponde hablar a mí.'),
-        'botones': None,
+        'texto': {
+            'es': ('Eso lo habla una persona, no yo.\n\n'
+                   'Escribile a José por WhatsApp: wa.me/50432136457\n'
+                   'O a info@ordenglobal.org\n\n'
+                   'No es una evasiva: de eso no me corresponde hablar a mí, y '
+                   'preferís la respuesta buena antes que la rápida.'),
+            'en': ('A person handles that, not me.\n\n'
+                   'Message José on WhatsApp: wa.me/50432136457\n'
+                   'Or write to info@ordenglobal.org\n\n'
+                   'This is not a dodge: it is not mine to answer, and you '
+                   'want the right answer rather than the fast one.'),
+        },
     },
 }
 
-# Lo que escribe alguien y lleva derecho a un nodo, sin pasar por el motor. Es
-# el atajo para quien no toca botones — la mayoria de la gente escribe.
 ATAJOS = [
     (re.compile(r'^\s*(hola|buenas|buenos dias|buenas tardes|buenas noches|'
                 r'hey|holi|que tal|saludos)\s*[.!]*\s*$'), 'inicio'),
@@ -397,11 +552,46 @@ INTERROGA = re.compile(
     r'necesito|quiero saber)\b')
 
 
-def nodo(nombre):
-    return NODOS.get(nombre)
+IDIOMAS = ('es', 'en')
+POR_OMISION = 'es'
+
+
+def _en(valor, idioma):
+    """Un campo del nodo en el idioma pedido.
+
+    Si falta la traduccion se cae al espanol en vez de devolver vacio: media
+    conversacion en un idioma es peor que toda en el otro.
+    """
+    if not isinstance(valor, dict):
+        return valor
+    return valor.get(idioma) or valor.get(POR_OMISION)
+
+
+def nodo(nombre, idioma=POR_OMISION):
+    n = NODOS.get(nombre)
+    if not n:
+        return None
+    return {'texto': _en(n.get('texto'), idioma),
+            'botones': _en(n.get('botones'), idioma)}
+
+
+def idioma_de_toque(id_boton):
+    """«lang:en» -> «en». `None` si ese boton no elige idioma.
+
+    Los dos botones de la puerta no llevan a un nodo: cambian el idioma y
+    despues siguen al inicio. Por eso no estan en NODOS y `por_toque` los
+    ignora — se resuelven aqui.
+    """
+    s = str(id_boton or '')
+    if s.startswith('lang:'):
+        cual = s[5:]
+        if cual in IDIOMAS:
+            return cual
+    return None
 
 
 def por_toque(id_boton):
+
     """El nodo al que lleva un boton tocado.
 
     `id_boton` es lo que WhatsApp devuelve en `metadata.interactiveId`: el
@@ -412,7 +602,7 @@ def por_toque(id_boton):
     return NODOS.get(id_boton) and id_boton or None
 
 
-def por_texto(dicho, desde=None):
+def por_texto(dicho, desde=None, idioma=None):
     """A donde lleva lo que alguien ESCRIBIO. `None` si no lleva a ningun lado.
 
     Se mira, en este orden:
@@ -430,10 +620,15 @@ def por_texto(dicho, desde=None):
     if not t:
         return None
 
+    # Se comparan los botones de LOS DOS idiomas, no solo el elegido: alguien
+    # que puso «English» y despues transcribe «Volver» —porque asi lo vio en
+    # una captura, o porque cambio de idea— tiene que llegar igual. Encerrar a
+    # una persona por el idioma que toco una vez es la peor forma de guiar.
     n = NODOS.get(desde or '')
-    for titulo, destino in (n or {}).get('botones') or []:
-        if _llano(titulo) == t:
-            return destino
+    for lengua in IDIOMAS:
+        for titulo, destino in (_en((n or {}).get('botones'), lengua) or []):
+            if _llano(titulo) == t:
+                return destino
 
     for patron, destino in ATAJOS:
         if patron.search(t):
@@ -449,14 +644,14 @@ def por_texto(dicho, desde=None):
     return None
 
 
-def como_texto(nombre):
+def como_texto(nombre, idioma=POR_OMISION):
     """El nodo escrito para un canal SIN botones — el chat de la casa.
 
     Las opciones van como una linea al final, en la voz de AU-RA y no como una
     lista numerada: en el chat la persona escribe, y escribir «la billetera» es
     tan facil como tocar un boton que no existe.
     """
-    n = NODOS.get(nombre)
+    n = nodo(nombre, idioma)
     if not n:
         return None
     if not n.get('botones'):

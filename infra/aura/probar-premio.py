@@ -179,12 +179,18 @@ class ElExamenEsUnaClase(unittest.TestCase):
         lección que evita que a alguien le vacíen la billetera, y aquí se
         aprende cobrando en vez de perdiendo."""
         q = premio.PREGUNTAS[-1]
-        self.assertIn('respaldo', q['pregunta'].lower())
-        for r in ['a nadie', 'nadie', 'a ninguno', 'solo yo']:
+        self.assertIn('respaldo', premio._en(q['pregunta'], 'es').lower())
+        self.assertIn('recovery phrase', premio._en(q['pregunta'], 'en').lower())
+        # Se acepta la respuesta en cualquiera de los dos idiomas: quien va por
+        # el camino en inglés y contesta «a nadie» acertó igual.
+        for r in ['a nadie', 'nadie', 'a ninguno', 'solo yo',
+                  'no one', 'nobody', 'only me']:
             self.assertTrue(q['acierta'].search(premio._llano(r)), r)
-        # Y si se equivoca, la enseñanza es tajante.
-        self.assertIn('nadie', q['ensena'].lower())
-        self.assertIn('rob', q['ensena'].lower())
+        # Y si se equivoca, la enseñanza es tajante en los dos.
+        self.assertIn('nadie', premio._en(q['ensena'], 'es').lower())
+        self.assertIn('rob', premio._en(q['ensena'], 'es').lower())
+        self.assertIn('nobody', premio._en(q['ensena'], 'en').lower())
+        self.assertIn('robbing', premio._en(q['ensena'], 'en').lower())
 
 
 class NoAtrapaAlQueSeAburre(unittest.TestCase):
@@ -280,18 +286,26 @@ class LoQueDiceNoSePuedeDECIR(unittest.TestCase):
     rendimiento o de inversión sería exactamente la frase que no puede salir."""
 
     def test_ningun_texto_del_juego_lo_cortaria_el_guardia(self):
-        textos = [premio.PIDE_BILLETERA]
-        for q in premio.PREGUNTAS:
-            textos += [q['pregunta'], q['ensena'], q['bien']]
+        textos = []
+        for idioma in premio.IDIOMAS:
+            textos.append(premio.pide_billetera(idioma))
+            for q in premio.PREGUNTAS:
+                textos += [premio._en(q[c], idioma)
+                           for c in ('pregunta', 'ensena', 'bien')]
         for t in textos:
             self.assertIsNone(guardia.revisar(t)[1], f'lo cortaría: «{t[:60]}»')
 
     def test_no_promete_ganancia_en_ninguna_parte(self):
-        junto = ' '.join([premio.PIDE_BILLETERA]
-                         + [q['pregunta'] + q['ensena'] + q['bien']
-                            for q in premio.PREGUNTAS]).lower()
+        partes = []
+        for idioma in premio.IDIOMAS:
+            partes.append(premio.pide_billetera(idioma))
+            for q in premio.PREGUNTAS:
+                partes += [premio._en(q[c], idioma)
+                           for c in ('pregunta', 'ensena', 'bien')]
+        junto = ' '.join(partes).lower()
         for prohibido in ['invertí', 'invertir', 'rendimiento', 'ganancia',
-                          'rentabilidad', 'se multiplica', 'vas a ganar más']:
+                          'rentabilidad', 'se multiplica', 'vas a ganar más',
+                          'invest', 'return on', 'profit', 'guaranteed']:
             self.assertNotIn(prohibido, junto, f'dice «{prohibido}»')
 
 

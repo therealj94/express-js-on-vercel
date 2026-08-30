@@ -1357,7 +1357,8 @@ def _arrancar_juego(rel, p, de):
     p['juego'] = premio.arrancar()
     p['nodo'] = None
     registro.anotar('juego', paso='arranca')
-    rel.enviar(de, premio.pregunta_de(p['juego']))
+    rel.enviar(de, premio.pregunta_de(p['juego'],
+                                      p.get('idioma') or premio.POR_OMISION))
 
 
 def _atender_juego(rel, p, de, dicho):
@@ -1369,10 +1370,11 @@ def _atender_juego(rel, p, de, dicho):
     j = p['juego']
 
     # Primero las preguntas.
+    idi = p.get('idioma') or premio.POR_OMISION
     if j.get('paso', 0) < len(premio.PREGUNTAS):
-        texto, termino = premio.responder(j, dicho)
+        texto, termino = premio.responder(j, dicho, idi)
         if termino:
-            rel.enviar(de, texto + '\n\n' + premio.PIDE_BILLETERA)
+            rel.enviar(de, texto + '\n\n' + premio.pide_billetera(idi))
         else:
             rel.enviar(de, texto)
         return True
@@ -1469,12 +1471,27 @@ def atender(rel, sistema, p, de, dicho, mensaje=None):
         if salida is not None:
             return
 
-    destino = guion.por_toque((mensaje or {}).get('toco')) \
-        or guion.por_texto(dicho, p.get('nodo'))
-    if not destino and not p.get('saludado'):
+    # ── EL IDIOMA, QUE SE PREGUNTA Y SE RECUERDA ────────────────────────────
+    #
+    # Los dos botones de la puerta no llevan a un nodo: fijan el idioma y
+    # siguen al inicio. Queda guardado en el perfil, asi que se pregunta UNA
+    # vez y no en cada vuelta.
+    toco = (mensaje or {}).get('toco')
+    elegido = guion.idioma_de_toque(toco)
+    if elegido:
+        p['idioma'] = elegido
+        registro.anotar('idioma', cual=elegido)
         destino = 'inicio'
+    else:
+        destino = guion.por_toque(toco) or guion.por_texto(dicho, p.get('nodo'))
+    idi = p.get('idioma') or guion.POR_OMISION
+
+    # A quien todavia no eligio se le pregunta primero. Es el unico mensaje
+    # bilingue del guion y solo se ve una vez en la vida de la charla.
+    if not destino and not p.get('saludado'):
+        destino = 'inicio' if p.get('idioma') else 'idioma'
     if destino:
-        n = guion.nodo(destino)
+        n = guion.nodo(destino, idi)
         p['nodo'] = destino
         p['saludado'] = True
         p['visto'] = int(time.time())
@@ -1488,7 +1505,7 @@ def atender(rel, sistema, p, de, dicho, mensaje=None):
             # Un canal sin botones —el chat de la casa— recibe las opciones
             # como una linea al final. Un guion que solo funciona en WhatsApp
             # seria dos productos distintos manteniendose por separado.
-            rel.enviar(de, guion.como_texto(destino))
+            rel.enviar(de, guion.como_texto(destino, idi))
         return
 
     if not p.get('saludado'):

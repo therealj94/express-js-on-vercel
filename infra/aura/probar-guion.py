@@ -33,6 +33,25 @@ import guion   # noqa: E402
 import guardia  # noqa: E402
 
 
+# ── RECORRER LOS DOS IDIOMAS ────────────────────────────────────────────────
+#
+# Desde que el guion habla espanol e ingles, cada regla —el tope del boton, el
+# largo del texto, que ningun destino apunte al vacio— tiene que valer en LOS
+# DOS. Comprobar solo el espanol dejaria el ingles sin vigilar, que es
+# exactamente donde nadie va a mirar.
+
+def cada_nodo():
+    """(nombre, idioma, texto, botones) de todos los nodos en los dos idiomas."""
+    for nombre in guion.NODOS:
+        for idioma in guion.IDIOMAS:
+            n = guion.nodo(nombre, idioma)
+            yield nombre, idioma, n.get('texto') or '', n.get('botones') or []
+
+
+def todo_el_texto():
+    return ' '.join(t for _, _, t, _ in cada_nodo()).lower()
+
+
 class NoAtrapaANadie(unittest.TestCase):
     """La regla que separa guiar de atrapar."""
 
@@ -87,21 +106,23 @@ class LosBotonesCabenEnWhatsApp(unittest.TestCase):
     def test_ningun_titulo_pasa_de_veinte_caracteres(self):
         """Meta rechaza el mensaje ENTERO, no recorta el título. Un carácter de
         más deja la conversación muda."""
-        for nombre, n in guion.NODOS.items():
-            for titulo, _ in (n.get('botones') or []):
+        for nombre, idioma, _t, botones in cada_nodo():
+            for titulo, _ in botones:
                 self.assertLessEqual(
                     len(titulo), guion.TOPE_BOTON,
                     f'«{titulo}» en el nodo «{nombre}» tiene {len(titulo)}')
 
     def test_nunca_mas_de_tres(self):
-        for nombre, n in guion.NODOS.items():
-            self.assertLessEqual(len(n.get('botones') or []), 3, nombre)
+        for nombre, idioma, _t, botones in cada_nodo():
+            self.assertLessEqual(len(botones), 3, f'{nombre}/{idioma}')
 
     def test_todos_los_botones_llevan_a_un_nodo_QUE_EXISTE(self):
         """Un botón que apunta a la nada deja a la persona tocando sin que pase
         nada — y sin ninguna señal de que algo se rompió."""
-        for nombre, n in guion.NODOS.items():
-            for titulo, destino in (n.get('botones') or []):
+        for nombre, idioma, _t, botones in cada_nodo():
+            for titulo, destino in botones:
+                if guion.idioma_de_toque(destino):
+                    continue      # los de la puerta fijan idioma, no van a un nodo
                 self.assertIn(destino, guion.NODOS,
                               f'«{titulo}» ({nombre}) lleva a «{destino}», que no existe')
 
@@ -109,12 +130,15 @@ class LosBotonesCabenEnWhatsApp(unittest.TestCase):
         """Un nodo al que no llega ningún botón ni ningún atajo es texto muerto:
         se mantiene, se revisa, y nadie lo lee nunca."""
         alcanzables = {'inicio'}
-        for n in guion.NODOS.values():
-            for _, d in (n.get('botones') or []):
+        for _n, _i, _t, botones in cada_nodo():
+            for _, d in botones:
                 alcanzables.add(d)
         for _, d in guion.ATAJOS:
             alcanzables.add(d)
-        huerfanos = set(guion.NODOS) - alcanzables
+        # `idioma` es LA PUERTA: no la apunta ningún botón porque es donde se
+        # entra. Exigirle un camino de vuelta sería pedir que la entrada tenga
+        # entrada.
+        huerfanos = set(guion.NODOS) - alcanzables - {'idioma'}
         self.assertEqual(huerfanos, set(), f'no se llega a: {huerfanos}')
 
 
@@ -128,29 +152,30 @@ class ElGuionNoPuedeDECIRLoQueElGuardiaCORTA(unittest.TestCase):
     """
 
     def test_NINGUN_NODO_DICE_ALGO_QUE_EL_GUARDIA_CORTARIA(self):
-        for nombre, n in guion.NODOS.items():
-            _, motivo = guardia.revisar(n['texto'])
+        for nombre, idioma, texto, _b in cada_nodo():
+            _, motivo = guardia.revisar(texto)
             self.assertIsNone(
                 motivo, f'el nodo «{nombre}» dice algo que el guardia corta ({motivo})')
 
     def test_ni_los_titulos_de_los_botones(self):
-        for nombre, n in guion.NODOS.items():
-            for titulo, _ in (n.get('botones') or []):
+        for nombre, idioma, _t, botones in cada_nodo():
+            for titulo, _ in botones:
                 self.assertIsNone(guardia.revisar(titulo)[1], f'{nombre}: «{titulo}»')
 
     def test_el_camino_del_inversionista_NO_le_cuenta_la_oportunidad(self):
         """Orden Global no tiene ninguna licencia emitida. Un camino automático
         que le hable de invertir a alguien es exactamente donde ocurre una
         tergiversación de valores."""
-        t = guion.NODOS['inversion']['texto'].lower()
+        t = ' '.join(guion.nodo('inversion', i)['texto']
+                     for i in guion.IDIOMAS).lower()
         self.assertIn('info@ordenglobal.org', t)
         for prohibido in ['rendimiento', 'ganancia', 'rentabilidad', 'oportunidad',
                           'te conviene', 'seguro que', 'garantiza']:
             self.assertNotIn(prohibido, t, f'el camino de inversión dice «{prohibido}»')
 
     def test_ni_uno_solo_promete_nada_del_dinero_de_nadie(self):
-        for nombre, n in guion.NODOS.items():
-            t = n['texto'].lower()
+        for nombre, idioma, texto, _b in cada_nodo():
+            t = texto.lower()
             for prohibido in ['garantiza', 'sin riesgo', 'seguro que vas a',
                               'te vas a hacer', 'rentabilidad']:
                 self.assertNotIn(prohibido, t, f'{nombre}: «{prohibido}»')
@@ -164,16 +189,16 @@ class ComoSuena(unittest.TestCase):
         habla la persona."""
         feos = {'productos', 'servicios', 'faq', 'soporte', 'menu', 'opciones',
                 'informacion', 'more info', 'salir'}
-        for nombre, n in guion.NODOS.items():
-            for titulo, _ in (n.get('botones') or []):
+        for nombre, idioma, _t, botones in cada_nodo():
+            for titulo, _ in botones:
                 self.assertNotIn(guion._llano(titulo), feos,
                                  f'«{titulo}» en {nombre} suena a central telefónica')
 
     def test_no_hay_numeros_de_menu(self):
         """«1) Billetera 2) Identidad» es exactamente lo que no se quería."""
-        for nombre, n in guion.NODOS.items():
-            self.assertIsNone(re.match(r'^\s*\d[\).]', n['texto']), nombre)
-            for titulo, _ in (n.get('botones') or []):
+        for nombre, idioma, texto, _b in cada_nodo():
+            self.assertIsNone(re.match(r'^\s*\d[\).]', texto), f'{nombre}/{idioma}')
+            for titulo, _ in _b:
                 self.assertIsNone(re.match(r'^\s*\d[\).]?\s', titulo), titulo)
 
     def test_los_textos_se_leen_de_pie_y_con_una_mano(self):
@@ -183,7 +208,9 @@ class ComoSuena(unittest.TestCase):
                                  f'el nodo «{nombre}» tiene {len(n["texto"])} caracteres')
 
     def test_habla_de_vos_como_toda_la_casa(self):
-        junto = ' '.join(n['texto'] for n in guion.NODOS.values()).lower()
+        """Solo el español: el voseo no tiene equivalente en inglés, y exigirlo
+        allá sería una regla inventada."""
+        junto = ' '.join(t for _n, i, t, _b in cada_nodo() if i == 'es').lower()
         self.assertNotIn(' tú ', junto)
         self.assertNotIn('puedes', junto)
         self.assertIn('podés', junto)
@@ -199,7 +226,8 @@ class ElCanalSinBotones(unittest.TestCase):
         self.assertIn('·', t, 'las opciones tienen que verse como opciones')
 
     def test_un_nodo_sin_botones_sale_tal_cual(self):
-        self.assertEqual(guion.como_texto('persona'), guion.NODOS['persona']['texto'])
+        self.assertEqual(guion.como_texto('persona'),
+                         guion.nodo('persona', 'es')['texto'])
 
     def test_un_nodo_que_no_existe_no_revienta(self):
         self.assertIsNone(guion.como_texto('inventado'))
@@ -274,7 +302,7 @@ class LoQueELGUIONNOPUEDEDECIR(unittest.TestCase):
     verdad que asusta — y la salida es contar mejor lo que SÍ es, no afirmar una
     bóveda que la propia Junta dice que no está firmada."""
 
-    TEXTOS = " ".join(n.get("texto", "") for n in guion.NODOS.values()).lower()
+    TEXTOS = todo_el_texto()
 
     def test_NO_promete_oro_en_boveda(self):
         for f in ["oro en bóveda", "oro en boveda", "en bóveda", "custodiad",
@@ -306,8 +334,7 @@ class LoQueELGUIONNOPUEDEDECIR(unittest.TestCase):
         Se mira SOLO el nodo donde se lo nombra: buscar estas palabras en todo
         el guion daba falsos —«no es por lo que ganás» abre la conversación y
         habla del sueldo de la persona, no de un token."""
-        donde = " ".join(n.get("texto", "") for n in guion.NODOS.values()
-                         if "ONDK" in n.get("texto", "")).lower()
+        donde = " ".join(t for _n, _i, t, _b in cada_nodo() if "ONDK" in t).lower()
         self.assertTrue(donde, "ONDK no aparece en ningún nodo")
         for f in ["apreciación", "apreciacion", "recompra", "ganás", "rendimiento",
                   "va a subir", "invertí", "precio de ondk", "vale ", "oportunidad"]:
@@ -323,8 +350,14 @@ class LoQueELGUIONNOPUEDEDECIR(unittest.TestCase):
     def test_sigue_diciendo_la_parte_incomoda(self):
         """El nodo vende PORQUE no vende. Suavizarlo hasta que desaparezca la
         parte incómoda sería perder lo único que lo hace creíble."""
-        self.assertIn("no te entregan el metal", self.TEXTOS)
-        self.assertIn("sube y baja", self.TEXTOS)
+        es = " ".join(t for _n, i, t, _b in cada_nodo() if i == "es").lower()
+        en = " ".join(t for _n, i, t, _b in cada_nodo() if i == "en").lower()
+        # Que las de metal no entregan metal, en los dos idiomas.
+        self.assertIn("no te lo entregan", es)
+        self.assertIn("do not hand you the metal", en)
+        # Y que el oro baja, dicho antes de que lo pregunten.
+        self.assertIn("sube y baja", es)
+        self.assertIn("up and down", en)
 
 
 if __name__ == '__main__':

@@ -120,48 +120,106 @@ def _llano(t):
 #
 # Cada una: lo que se pregunta, lo que cuenta como acierto, y QUE SE APRENDE si
 # no se acierta. Lo tercero es lo que convierte el examen en clase.
+# ── LAS TRES PREGUNTAS, EN LOS DOS IDIOMAS ─────────────────────────────────
+#
+# Quien elige English y despues recibe las preguntas en espanol se va, y con
+# razon: le prometimos algo en su idioma y se lo dimos en otro. El juego es el
+# gancho de todo el embudo — romperlo ahi es romperlo entero.
+#
+# `acierta` es UNA SOLA expresion para los dos idiomas, no una por idioma. La
+# gente contesta como le sale: alguien en el camino en ingles escribe «gold» y
+# alguien en el camino en espanol escribe «oro», pero tambien pasa al reves —y
+# quien contesta bien en el otro idioma acerto igual. Partirlas seria inventar
+# un error que no existe.
+
 PREGUNTAS = [
     {
-        'pregunta': (
-            'Primera, la más fácil.\n\n'
-            '¿A qué sigue el precio de ORIGEN?'),
+        'pregunta': {
+            'es': ('Primera, la más fácil.\n\n'
+                   '¿A qué sigue el precio de ORIGEN?'),
+            'en': ('First one, the easy one.\n\n'
+                   'What does the price of ORIGEN follow?'),
+        },
         'acierta': re.compile(r'\b(oro|gold|metal)\b'),
-        'ensena': (
-            'Casi. Sigue al ORO — no al dólar ni a la moneda de tu país. Por '
-            'eso lo que guardás no se achica cuando tu moneda se devalúa.'),
-        'bien': '¡Eso! Al oro. Ni al dólar ni a tu moneda local.',
+        'ensena': {
+            'es': ('Casi. Sigue al ORO — no al dólar ni a la moneda de tu país. '
+                   'Por eso lo que guardás no se achica cuando tu moneda se '
+                   'devalúa.'),
+            'en': ('Close. It follows GOLD — not the dollar, not your country '
+                   'currency. That is why what you keep does not shrink when '
+                   'your currency does.'),
+        },
+        'bien': {
+            'es': '¡Eso! Al oro. Ni al dólar ni a tu moneda local.',
+            'en': 'That is it! Gold. Not the dollar, not your local currency.',
+        },
     },
     {
-        'pregunta': (
-            'Segunda.\n\n'
-            'Un ORIGEN equivale a un gramo de oro dividido entre… ¿cuánto?'),
-        'acierta': re.compile(r'\b(55|cincuenta y cinco|cincuenta ?y ?cinco)\b'),
-        'ensena': (
-            'Entre cincuenta y cinco. Se le dice «un gramin». Y la fórmula es '
-            'pública: podés rehacer el precio con una calculadora cuando '
-            'quieras, sin preguntarle a nadie.'),
-        'bien': (
-            '¡Exacto! Entre cincuenta y cinco. Un «gramin». Y esa fórmula es '
-            'pública: la podés rehacer vos con una calculadora.'),
+        'pregunta': {
+            'es': ('Segunda.\n\n'
+                   'Un ORIGEN equivale a un gramo de oro dividido entre… '
+                   '¿cuánto?'),
+            'en': ('Second.\n\n'
+                   'One ORIGEN equals a gram of gold divided by… how much?'),
+        },
+        'acierta': re.compile(r'\b(55|cincuenta y cinco|cincuenta ?y ?cinco|'
+                              r'fifty ?five|fifty-five)\b'),
+        'ensena': {
+            'es': ('Entre cincuenta y cinco. Se le dice «un gramin». Y la '
+                   'fórmula es pública: podés rehacer el precio con una '
+                   'calculadora cuando quieras, sin preguntarle a nadie.'),
+            'en': ('By fifty-five. We call it «a gramin». And the formula is '
+                   'public: you can redo the price with a calculator whenever '
+                   'you want, without asking anyone.'),
+        },
+        'bien': {
+            'es': ('¡Exacto! Entre cincuenta y cinco. Un «gramin». Y esa '
+                   'fórmula es pública: la podés rehacer vos con una '
+                   'calculadora.'),
+            'en': ('Exactly! By fifty-five. A «gramin». And that formula is '
+                   'public: you can redo it yourself with a calculator.'),
+        },
     },
     {
         # LA PREGUNTA QUE JUSTIFICA EL PREMIO ENTERO. Se aprende cobrando en
         # vez de perdiendo, que es la unica forma buena de aprender esto.
-        'pregunta': (
-            'Última, y es la que más me importa.\n\n'
-            'Tu frase de respaldo —esas palabras que te da la billetera—, '
-            '¿a quién se la podés dar?'),
+        'pregunta': {
+            'es': ('Última, y es la que más me importa.\n\n'
+                   'Tu frase de respaldo —esas palabras que te da la '
+                   'billetera—, ¿a quién se la podés dar?'),
+            'en': ('Last one, and the one I care about most.\n\n'
+                   'Your recovery phrase —those words the wallet gives you—, '
+                   'who can you give it to?'),
+        },
         'acierta': re.compile(r'\b(a nadie|nadie|ninguno|ninguna|a ninguno|'
-                              r'solo yo|solo a mi|nadie mas|a mi)\b'),
-        'ensena': (
-            'A NADIE. Ni a mí, ni a nadie que diga que es de Orden Global. '
-            'Quien te la pida te está robando, sin excepción. Es lo único que '
-            'abre tu dinero.'),
-        'bien': (
-            '¡Esa es! A nadie. Ni a mí. Quien te la pida te está robando, '
-            'aunque diga que es de la casa.'),
+                              r'solo yo|solo a mi|nadie mas|a mi|'
+                              r'no ?one|nobody|only me|myself)\b'),
+        'ensena': {
+            'es': ('A NADIE. Ni a mí, ni a nadie que diga que es de Orden '
+                   'Global. Quien te la pida te está robando, sin excepción. '
+                   'Es lo único que abre tu dinero.'),
+            'en': ('NOBODY. Not me, not anyone claiming to be Orden Global. '
+                   'Whoever asks for it is robbing you, no exceptions. It is '
+                   'the only thing that opens your money.'),
+        },
+        'bien': {
+            'es': ('¡Esa es! A nadie. Ni a mí. Quien te la pida te está '
+                   'robando, aunque diga que es de la casa.'),
+            'en': ('That is the one! Nobody. Not even me. Whoever asks for it '
+                   'is robbing you, even if they say they are us.'),
+        },
     },
 ]
+
+IDIOMAS = ('es', 'en')
+POR_OMISION = 'es'
+
+
+def _en(valor, idioma):
+    """Un campo en el idioma pedido, con el espanol de respaldo."""
+    if not isinstance(valor, dict):
+        return valor
+    return valor.get(idioma) or valor.get(POR_OMISION)
 
 
 # ── Los estados del juego ───────────────────────────────────────────────────
@@ -174,12 +232,12 @@ def arrancar():
     return {'paso': 0, 'desde': int(time.time())}
 
 
-def pregunta_de(estado):
+def pregunta_de(estado, idioma=POR_OMISION):
     i = (estado or {}).get('paso', 0)
-    return PREGUNTAS[i]['pregunta'] if i < len(PREGUNTAS) else None
+    return _en(PREGUNTAS[i]['pregunta'], idioma) if i < len(PREGUNTAS) else None
 
 
-def responder(estado, dicho):
+def responder(estado, dicho, idioma=POR_OMISION):
     """Mira lo que contestaron. Devuelve `(texto, terminado)`.
 
     Nunca deja a nadie afuera: si se equivoca, se le explica y se pasa a la
@@ -194,18 +252,29 @@ def responder(estado, dicho):
     estado.setdefault('aciertos', 0)
     if acerto:
         estado['aciertos'] += 1
-    texto = q['bien'] if acerto else q['ensena']
+    texto = _en(q['bien'] if acerto else q['ensena'], idioma)
 
     if estado['paso'] < len(PREGUNTAS):
-        return texto + '\n\n' + PREGUNTAS[estado['paso']]['pregunta'], False
+        siguiente = _en(PREGUNTAS[estado['paso']]['pregunta'], idioma)
+        return texto + '\n\n' + siguiente, False
     return texto, True
 
 
-PIDE_BILLETERA = (
-    'Listo, terminaste. Ya sabés más de tu plata que la mayoría. 🌱\n\n'
-    'Ahora lo tuyo: abrí tu Veta Wallet, copiá la dirección de tu billetera '
-    '—empieza con 0x— y pegámela por acá.\n\n'
-    'Ahí te mando tu ORIGEN.')
+PIDE_BILLETERA = {
+    'es': ('Listo, terminaste. Ya sabés más de tu plata que la mayoría. 🌱\n\n'
+           'Ahora lo tuyo: abrí tu Veta Wallet en app.vetawallet.com, copiá la '
+           'dirección de tu billetera —empieza con 0x— y pegámela por acá.\n\n'
+           'Ahí te mando tu ORIGEN.'),
+    'en': ('Done, you finished. You now know more about your money than most '
+           'people. 🌱\n\n'
+           'Your turn: open your Veta Wallet at app.vetawallet.com, copy your '
+           'wallet address —it starts with 0x— and paste it here.\n\n'
+           'That is where I send your ORIGEN.'),
+}
+
+
+def pide_billetera(idioma=POR_OMISION):
+    return _en(PIDE_BILLETERA, idioma)
 
 
 # ── La direccion que mandan ─────────────────────────────────────────────────
