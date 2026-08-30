@@ -130,6 +130,8 @@ RPC = os.environ.get('AURA_RPC', 'https://ordenglobal-rpc.com')
 # no se despeina por mirarlo cada segundo, y esos tres segundos son la
 # diferencia entre «contesta» y «se tarda».
 PASO = float(os.environ.get('AURA_PASO', '1.2'))
+# El ritmo de WhatsApp es SUYO: ver la nota en el bucle principal.
+PASO_WA = float(os.environ.get('AURA_PASO_WHATSAPP', '5'))
 
 # La maquina es un t2.large sin GPU: una respuesta puede tardar medio minuto.
 # El timeout corto tipico (10s) mataria respuestas perfectamente sanas.
@@ -1816,6 +1818,24 @@ def vuelta_whatsapp(rel_wa, sistema, perfiles, tanda):
     """
     ahora_ms = int(time.time() * 1000)
     lista = probadores_whatsapp()
+
+    # EL TOPE DE UN CONTACTO NUEVO NO PUEDE SER «AHORA».
+    #
+    # En el chat de la casa arrancar en el presente es correcto: el perfil se
+    # crea al aceptar la amistad, ANTES de que llegue ningun mensaje, y sirve
+    # de guarda contra recontestar doscientos mensajes viejos.
+    #
+    # En WhatsApp no hay ese momento. La primera vez que vemos a alguien ES
+    # por su mensaje, asi que un tope en el presente queda POR ENCIMA de ese
+    # mensaje y lo entierra para siempre. Le paso al primer «Hola» de la
+    # primera prueba: llego al proveedor, y AU-RA no contesto nunca.
+    #
+    # El tope de un contacto nuevo son las 24 horas hacia atras, y el numero no
+    # es arbitrario: fuera de esa ventana Meta rechaza el texto libre, o sea
+    # que es exactamente lo mas viejo que TENEMOS PERMITIDO contestar. Ni se
+    # pierde lo pendiente ni se contesta un archivo historico.
+    tope_nuevo = wa.tope_de_contacto_nuevo(ahora_ms)
+
     for conv in rel_wa.conversaciones():
         c = (conv.get('correo') or '').strip()
         if not c:
@@ -1827,9 +1847,16 @@ def vuelta_whatsapp(rel_wa, sistema, perfiles, tanda):
             # tocaba. Al menos que se vea desde dentro.
             log('whatsapp: fuera de la lista, no se atiende:', c)
             continue
+        nuevo = c not in perfiles
         with CANDADO_PERFILES:
-            p = perfil_de(perfiles, c, tope=ahora_ms if c not in perfiles else None)
+            p = perfil_de(perfiles, c, tope=tope_nuevo if nuevo else None)
             tope = p.get('tope', 0)
+        if nuevo:
+            # Se guarda YA. Antes solo se guardaba dentro de `atender_charla`,
+            # asi que un contacto que se creaba y se saltaba no llegaba nunca
+            # al disco: en cada reinicio volvia a ser nuevo.
+            guardar_perfiles(perfiles)
+            log('whatsapp: contacto nuevo', c, '·', conv.get('nombre') or '')
         if (conv.get('ultimo') or {}).get('cuando', 0) <= tope:
             continue
         with CANDADO_CURSO:
@@ -2046,6 +2073,7 @@ def main():
     # WhatsApp, si esta configurado. Sin clave no existe y no se avisa como
     # fallo: es una boca mas que puede estar puesta o no.
     rel_wa = None
+    proximo_wa = [0.0]      # en una lista para poder tocarlo desde el bucle
     if wa.encendido():
         rel_wa = wa.RelevoWhatsApp(registrar=log)
         log('WhatsApp encendido · cuenta', wa.CUENTA)
@@ -2063,10 +2091,34 @@ def main():
             # Su propio `try`: que el proveedor de WhatsApp este caido no puede
             # dejar sin atender el chat de la casa, ni al reves. Son dos
             # puertas distintas y una no cierra la otra.
-            if rel_wa is not None:
+            # WHATSAPP VA A SU PROPIO RITMO, NO AL DEL CHAT DE LA CASA.
+            #
+            # `PASO` es 1,2 segundos porque el relevo es NUESTRO y aguanta lo
+            # que le pidamos. Zernio es de otro y tiene limites: sondearlo al
+            # mismo ritmo daba «429 Too Many Requests» cada pocos minutos, y
+            # cada 429 es una vuelta en la que no se mira si alguien escribio.
+            #
+            # Cinco segundos es de sobra: nadie nota la diferencia contra un
+            # asistente que tarda medio minuto en pensar, y baja de cincuenta
+            # peticiones por minuto a doce.
+            if rel_wa is not None and time.time() >= proximo_wa[0]:
                 try:
                     vuelta_whatsapp(rel_wa, sistema, perfiles, tanda)
+                    proximo_wa[0] = time.time() + PASO_WA
+                except urllib.error.HTTPError as e:
+                    if e.code == 429:
+                        # Que nos frenen no es una averia: es que pedimos
+                        # demasiado. Se espera de verdad en vez de reintentar
+                        # en el siguiente segundo y volver a chocar.
+                        proximo_wa[0] = time.time() + PASO_WA * 6
+                        log('whatsapp: el proveedor nos frena, espero',
+                            int(PASO_WA * 6), 's')
+                    else:
+                        proximo_wa[0] = time.time() + PASO_WA
+                        log('vuelta de whatsapp fallida:',
+                            type(e).__name__, str(e)[:140])
                 except Exception as e:
+                    proximo_wa[0] = time.time() + PASO_WA
                     log('vuelta de whatsapp fallida:',
                         type(e).__name__, str(e)[:140])
             time.sleep(PASO)

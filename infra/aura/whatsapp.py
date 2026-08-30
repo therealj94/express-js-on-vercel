@@ -189,14 +189,25 @@ class RelevoWhatsApp:
             return []
         d = _pedir('GET', f'/inbox/conversations/{hilo}/messages'
                           f'?accountId={self.cuenta}&limit=100&sortOrder=asc')
+        # OJO CON LOS NOMBRES: esta ruta NO devuelve lo mismo que el aviso del
+        # webhook, aunque hablen de lo mismo. Aqui la lista se llama
+        # `messages` (no `data`), el texto `message` (no `text`) y lo entrante
+        # es `incoming` (no `inbound`).
+        #
+        # Esto no se dedujo: se leyo de una respuesta de verdad. La primera
+        # version se escribio a partir del esquema del webhook —que si usa
+        # `data`/`text`/`inbound`— y la bandeja salia SIEMPRE vacia: AU-RA
+        # marcaba la charla como leida y no contestaba nada, que es peor que no
+        # hacer nada. Y las pruebas pasaban, porque el proveedor de mentira
+        # estaba escrito con la misma suposicion equivocada.
         salida = []
-        for m in d.get('data') or []:
-            entrante = (m.get('direction') or '') == 'inbound'
+        for m in d.get('messages') or []:
+            entrante = (m.get('direction') or '') == 'incoming'
             salida.append({
                 'id': m.get('id'),
                 'de': desde if entrante else 'aura',
-                'texto': m.get('text') or '',
-                'cuando': _ms(m.get('sentAt')),
+                'texto': m.get('message') or '',
+                'cuando': _ms(m.get('sentAt') or m.get('createdAt')),
                 'tipo': 'voz' if _es_voz(m) else 'texto',
                 'adjuntos': m.get('attachments') or [],
             })
@@ -292,6 +303,27 @@ def _es_voz(m):
         if 'audio' in t or a.get('voiceNote'):
             return True
     return False
+
+
+def tope_de_contacto_nuevo(ahora_ms=None):
+    """El tope con el que arranca alguien a quien vemos por primera vez.
+
+    NO ES «AHORA», y esa es toda la gracia. En el chat de la casa el perfil se
+    crea al aceptar la amistad —antes de que llegue ningun mensaje— asi que un
+    tope en el presente es correcto y protege de recontestar un archivo viejo.
+
+    En WhatsApp no existe ese momento: la primera vez que vemos a alguien ES
+    por su mensaje. Un tope en el presente queda POR ENCIMA de ese mensaje y lo
+    entierra para siempre. Paso de verdad con el primer «Hola» de la primera
+    prueba: llego al proveedor y AU-RA no contesto nunca.
+
+    Se arranca 24 horas atras, y el numero no es arbitrario: fuera de esa
+    ventana Meta rechaza el texto libre, o sea que es exactamente lo mas viejo
+    que TENEMOS PERMITIDO contestar.
+    """
+    if ahora_ms is None:
+        ahora_ms = int(time.time() * 1000)
+    return ahora_ms - VENTANA_MS
 
 
 def fuera_de_ventana(bandeja):

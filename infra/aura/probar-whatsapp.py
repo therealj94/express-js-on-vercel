@@ -64,7 +64,10 @@ class Proveedor:
             self.escribiendo.append(ruta)
             return {}
         if '/messages' in ruta and metodo == 'GET':
-            return {'data': self.mensajes}
+            # `messages`, no `data`. Copiado de una respuesta REAL del
+            # proveedor: ver la nota en `bandeja()`.
+            return {'status': 'success', 'messages': self.mensajes,
+                    'pagination': {'hasMore': False, 'nextCursor': None}}
         if '/messages' in ruta and metodo == 'POST':
             self.enviados.append(cuerpo.get('message'))
             return {'id': 'wamid-' + str(len(self.enviados))}
@@ -126,9 +129,9 @@ class NoSeContestaASiMisma(unittest.TestCase):
 
     def test_la_bandeja_distingue_lo_nuestro_de_lo_suyo(self):
         p = Proveedor(mensajes=[
-            {'id': 'm1', 'direction': 'inbound', 'text': 'hola',
+            {'id': 'm1', 'direction': 'incoming', 'message': 'hola',
              'sentAt': '2026-08-30T12:00:00.000Z', 'attachments': []},
-            {'id': 'm2', 'direction': 'outbound', 'text': 'hola, soy AU-RA',
+            {'id': 'm2', 'direction': 'outgoing', 'message': 'hola, soy AU-RA',
              'sentAt': '2026-08-30T12:00:05.000Z', 'attachments': []},
         ])
         with con_proveedor(p):
@@ -146,9 +149,9 @@ class NoSeContestaASiMisma(unittest.TestCase):
 
     def test_el_orden_es_del_mas_viejo_al_mas_nuevo(self):
         p = Proveedor(mensajes=[
-            {'id': 'a', 'direction': 'inbound', 'text': 'uno',
+            {'id': 'a', 'direction': 'incoming', 'message': 'uno',
              'sentAt': '2026-08-30T12:00:00.000Z'},
-            {'id': 'b', 'direction': 'inbound', 'text': 'dos',
+            {'id': 'b', 'direction': 'incoming', 'message': 'dos',
              'sentAt': '2026-08-30T12:00:09.000Z'},
         ])
         with con_proveedor(p):
@@ -277,7 +280,7 @@ class NotasDeVoz(unittest.TestCase):
         """AU-RA ya sabe transcribir; lo que hace falta es que le llegue
         etiquetado, porque el cerebro decide por el `tipo`."""
         p = Proveedor(mensajes=[{
-            'id': 'v1', 'direction': 'inbound', 'text': '',
+            'id': 'v1', 'direction': 'incoming', 'message': '',
             'sentAt': '2026-08-30T12:00:00.000Z',
             'attachments': [{'type': 'audio/ogg'}]}])
         with con_proveedor(p):
@@ -287,7 +290,7 @@ class NotasDeVoz(unittest.TestCase):
 
     def test_una_foto_no_es_voz(self):
         p = Proveedor(mensajes=[{
-            'id': 'f1', 'direction': 'inbound', 'text': '',
+            'id': 'f1', 'direction': 'incoming', 'message': '',
             'sentAt': '2026-08-30T12:00:00.000Z',
             'attachments': [{'type': 'image/jpeg'}]}])
         with con_proveedor(p):
@@ -360,6 +363,47 @@ class LaListaQueCasiLoMataEnSilencio(unittest.TestCase):
                 '# los de casa\n+50761234567\n', encoding='utf8')
             f = self._cargar_asistente(pathlib.Path(d))
             self.assertEqual(f(), {'+50761234567'})
+
+
+class ElPrimerHolaNoSePuedeTRAGAR(unittest.TestCase):
+    """La regresion que costo la primera prueba de verdad.
+
+    El «Hola» llego al proveedor a las 02:59:38 y AU-RA no contesto nunca. El
+    motivo: al ver por primera vez a alguien se le ponia el tope EN EL PRESENTE
+    —copiado del chat de la casa, donde es correcto porque el perfil nace al
+    aceptar la amistad, antes de cualquier mensaje—. En WhatsApp la primera vez
+    que vemos a alguien es POR su mensaje, asi que ese tope quedaba por encima y
+    lo enterraba.
+    """
+
+    def test_el_tope_de_un_contacto_nuevo_NO_es_ahora(self):
+        import time
+        ahora = int(time.time() * 1000)
+        tope = wa.tope_de_contacto_nuevo(ahora)
+        self.assertLess(tope, ahora, 'el tope arranca en el presente: se traga el primer mensaje')
+
+    def test_un_mensaje_recien_llegado_queda_POR_ENCIMA_del_tope(self):
+        """Es la condicion exacta que decide si se atiende o se descarta."""
+        import time
+        ahora = int(time.time() * 1000)
+        recien = ahora - 5_000            # llego hace cinco segundos
+        self.assertGreater(recien, wa.tope_de_contacto_nuevo(ahora),
+                           'un mensaje de hace cinco segundos se descartaria')
+
+    def test_pero_un_archivo_viejo_NO_se_recontesta(self):
+        """La otra mitad: el tope existe para no contestar 200 mensajes de la
+        semana pasada a medio minuto cada uno."""
+        import time
+        ahora = int(time.time() * 1000)
+        de_hace_tres_dias = ahora - 3 * 24 * 3600 * 1000
+        self.assertLess(de_hace_tres_dias, wa.tope_de_contacto_nuevo(ahora))
+
+    def test_el_corte_es_la_ventana_en_que_SE_PUEDE_contestar(self):
+        """No es un numero elegido a dedo: fuera de 24 h Meta rechaza el texto
+        libre, asi que el tope es justo lo mas viejo que se puede responder."""
+        import time
+        ahora = int(time.time() * 1000)
+        self.assertEqual(ahora - wa.tope_de_contacto_nuevo(ahora), wa.VENTANA_MS)
 
 if __name__ == '__main__':
     unittest.main(verbosity=2)
