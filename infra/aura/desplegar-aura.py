@@ -42,7 +42,7 @@ AQUI = os.path.dirname(os.path.abspath(__file__))
 CUBO = 'og-5550-arranque-548380372606'
 NODO = 'i-02653feadc919d3a4'          # aura-gpu, us-east-1
 ARCHIVOS = ['asistente.py', 'candado.py', 'oido.py', 'whatsapp.py',
-            'guardia.py', 'registro.py']
+            'guardia.py', 'registro.py', 'guion.py']
 
 # El prompt y las fichas viajan con el codigo, y no es un detalle: la voz de
 # AU-RA y lo que SABE se cambian ahi, no en el codigo. Subir solo los .py

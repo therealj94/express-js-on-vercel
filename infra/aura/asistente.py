@@ -90,6 +90,7 @@ from candado import Candado
 import whatsapp as wa
 import guardia
 import registro
+import guion
 from oido import NoSePudoOir, oir_nota
 from concurrent.futures import ThreadPoolExecutor
 
@@ -1322,6 +1323,38 @@ def perfil_de(perfiles, correo, tope=None):
 def atender(rel, sistema, p, de, dicho, mensaje=None):
     """Atiende UN mensaje. Si lanza, el que llama decide reintentar o saltar;
     aqui no se avanza ningun tope."""
+    # ── EL GUION VA ANTES QUE EL MOTOR ────────────────────────────────────
+    #
+    # Si lo que llega es un boton tocado, o algo que lleva derecho a un nodo
+    # escrito, se contesta de ahi y no se enciende el motor. Sale al instante,
+    # no cuesta GPU, y —lo que mas importa— NO PUEDE ALUCINAR: es texto que
+    # escribimos nosotros.
+    #
+    # Va antes del saludo porque el propio saludo es un nodo del guion: quien
+    # escribe por primera vez recibe las tres puertas, no un «¿en que te
+    # ayudo?» al vacio.
+    #
+    # Y no encierra a nadie: lo que no encaja con ningun nodo devuelve `None` y
+    # sigue su camino de siempre. Ver la cabecera de guion.py.
+    destino = guion.por_toque((mensaje or {}).get('toco')) \
+        or guion.por_texto(dicho, p.get('nodo'))
+    if not destino and not p.get('saludado'):
+        destino = 'inicio'
+    if destino:
+        n = guion.nodo(destino)
+        p['nodo'] = destino
+        p['saludado'] = True
+        p['visto'] = int(time.time())
+        registro.anotar('guion', nodo=destino)
+        if n.get('botones') and hasattr(rel, 'con_botones'):
+            rel.con_botones(de, n['texto'], n['botones'])
+        else:
+            # Un canal sin botones —el chat de la casa— recibe las opciones
+            # como una linea al final. Un guion que solo funciona en WhatsApp
+            # seria dos productos distintos manteniendose por separado.
+            rel.enviar(de, guion.como_texto(destino))
+        return
+
     if not p.get('saludado'):
         # El saludo se perdio (o nunca salio): se saluda ANTES de consumir
         # nada. El mensaje de la persona no era respuesta a ninguna pregunta.

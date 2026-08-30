@@ -281,6 +281,7 @@ class RelevoWhatsApp:
         salida = []
         for m in d.get('messages') or []:
             entrante = (m.get('direction') or '') == 'incoming'
+            meta = m.get('metadata') or {}
             salida.append({
                 'id': m.get('id'),
                 'de': desde if entrante else 'aura',
@@ -288,6 +289,13 @@ class RelevoWhatsApp:
                 'cuando': _ms(m.get('sentAt') or m.get('createdAt')),
                 'tipo': 'voz' if _es_voz(m) else 'texto',
                 'adjuntos': m.get('attachments') or [],
+                # QUE BOTON TOCO, si toco uno. Viene en `metadata.interactiveId`
+                # y es el `payload` que mandamos nosotros. Sin esto habria que
+                # adivinar por el texto del boton, que funciona hasta que dos
+                # botones se llaman parecido.
+                'toco': (meta.get('interactiveId')
+                         if meta.get('interactiveType') in
+                            ('button_reply', 'list_reply') else None),
             })
         return salida
 
@@ -326,6 +334,28 @@ class RelevoWhatsApp:
                    {'accountId': self.cuenta}, timeout=6)
         except Exception:
             pass
+
+    def con_botones(self, para, texto, botones):
+        """Un mensaje con hasta tres puertas.
+
+        Es lo unico que NO pasa por el globo: un nodo del guion sale entero de
+        una vez, porque ya esta escrito y no hay nada que esperar. Por eso
+        tampoco cuesta motor.
+
+        WhatsApp corta el titulo en 20 caracteres y no recorta: Meta rechaza el
+        mensaje ENTERO, y la conversacion se queda muda. Se recorta aqui, y hay
+        una prueba en el guion que vigila que no haga falta.
+        """
+        hilo = self._hilo_de(para)
+        if not hilo:
+            self.log('sin hilo para', para, '- no se pudo guiar')
+            return {}
+        return _pedir('POST', f'/inbox/conversations/{hilo}/messages', {
+            'accountId': self.cuenta,
+            'message': (texto or '').strip()[:1024],
+            'buttons': [{'type': 'postback', 'title': t[:20], 'payload': d}
+                        for t, d in (botones or [])[:3]],
+        })
 
     def enviar(self, para, texto, parcial=False):
         """Manda, o guarda si es un trozo.

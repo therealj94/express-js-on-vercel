@@ -126,6 +126,7 @@ jobs:
           python3 probar-whatsapp.py
           python3 probar-olvido.py
           python3 probar-registro.py
+          python3 probar-guion.py
 
       - name: El relevo de mensajes
         working-directory: infra/mensajes
