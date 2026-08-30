@@ -911,5 +911,47 @@ class ELAVISOQUELELLEGAAJOSE(unittest.TestCase):
                       'un aviso caído tumbaría la derivación')
 
 
+class UNSOLOCAMINODESALIDA(unittest.TestCase):
+    """Un nodo con LISTA salía sin sus opciones: «¿De qué querés hablar?» y
+    ninguna puerta debajo.
+
+    El bloque general de `atender` mandaba botones y, si no había, texto pelado
+    — no sabía de listas. `_mandar_nodo` existía justo para esto y ese sitio no
+    lo usaba. Se vio simulando la charla entera contra el código desplegado, no
+    leyéndolo: es el tipo de fallo que se lee bien y se vive mal."""
+
+    FUENTE = (AQUI / 'asistente.py').read_text(encoding='utf8')
+
+    def test_nadie_manda_un_nodo_a_mano(self):
+        """`con_botones` y `como_texto` solo pueden aparecer DENTRO de
+        `_mandar_nodo`. Fuera de ahí es un camino que se olvidará del próximo
+        formato — como se olvidó de las listas."""
+        i = self.FUENTE.index('def _mandar_nodo')
+        j = self.FUENTE.index('\n    # Dos preguntas y ya', i)
+        dentro = self.FUENTE[i:j]
+        fuera = self.FUENTE[:i] + self.FUENTE[j:]
+        for camino in ('rel.con_botones(', 'rel.con_lista(', 'guion.como_texto('):
+            self.assertIn(camino, dentro, f'{camino} no está en _mandar_nodo')
+            self.assertNotIn(camino, fuera,
+                             f'{camino} se usa fuera de _mandar_nodo: ese '
+                             f'camino se va a olvidar del próximo formato')
+
+    def test_y_mandar_nodo_prueba_la_lista_ANTES_que_los_botones(self):
+        """Si un nodo tuviera las dos, la lista gana: es la que cabe más."""
+        i = self.FUENTE.index('def _mandar_nodo')
+        bloque = self.FUENTE[i:i + 900]
+        self.assertLess(bloque.index("n.get('lista')"), bloque.index("n.get('botones')"))
+
+    def test_ningun_nodo_con_lista_se_queda_sin_camino(self):
+        """Si un nodo tiene lista, `nodo()` tiene que devolverla — si no, sale
+        el texto solo y la persona no ve ninguna opción."""
+        con_lista = [n for n, v in guion.NODOS.items() if v.get('lista')]
+        self.assertTrue(con_lista, 'ningún nodo usa listas: ¿se perdieron?')
+        for nombre in con_lista:
+            for idioma in guion.IDIOMAS:
+                l = guion.nodo(nombre, idioma)['lista']
+                self.assertTrue(l and l[0] and l[1], f'{nombre}/{idioma}')
+
+
 if __name__ == '__main__':
     unittest.main(verbosity=2)

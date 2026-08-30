@@ -202,6 +202,37 @@ def _reinicios():
     return ([f'{n} caída(s) desde el último despliegue'] if n else []), []
 
 
+# Cuando el disco deja de ser un dato y pasa a ser un aviso. A 85 todavia hay
+# margen para actuar; a 95 ya se estan perdiendo escrituras y el sintoma no es
+# «disco lleno», es AU-RA muda sin explicacion.
+TOPE_DISCO = int(os.environ.get('AURA_TOPE_DISCO', '85'))
+
+
+def _disco():
+    """Cuanto queda en la maquina.
+
+    POR QUE ESTA AQUI: el disco lleno no avisa. El servicio sigue «active», el
+    motor sigue cargado, y lo que falla es lo que ESCRIBE — los perfiles, el
+    registro, los reclamos de premio. O sea que la primera senal de un disco
+    lleno seria alguien reclamando su ORIGEN dos veces porque el archivo no se
+    pudo guardar.
+
+    Se mira con `statvfs`, que no necesita ejecutar nada ni parsear la salida
+    de `df` — un formato de `df` distinto no puede romper el parte.
+    """
+    st = os.statvfs('/')
+    total = st.f_blocks * st.f_frsize
+    libre = st.f_bavail * st.f_frsize
+    if not total:
+        return [], []
+    usado = round(100 * (1 - libre / total))
+    libre_gb = libre / 1024 ** 3
+    if usado >= TOPE_DISCO:
+        return [], [f'el disco del nodo va al {usado}% '
+                    f'(quedan {libre_gb:.0f} GB)']
+    return [f'disco {usado}%, {libre_gb:.0f} GB libres'], []
+
+
 def _correo():
     """Remitente, asunto y fecha. NUNCA el cuerpo. Ver la cabecera."""
     if not (CORREO_SERVIDOR and CORREO_USUARIO and CORREO_CLAVE):
@@ -269,6 +300,7 @@ def juntar(registro=None, premio=None, clave_wa='', cuenta_wa=''):
     mirar('WhatsApp', lambda: _whatsapp(clave_wa, cuenta_wa))
     mirar('el correo', _correo)
     mirar('los reinicios', _reinicios)
+    mirar('el disco', _disco)
 
     if registro is not None:
         try:

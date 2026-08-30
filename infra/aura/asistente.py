@@ -1750,7 +1750,6 @@ def atender(rel, sistema, p, de, dicho, mensaje=None):
     if not destino and not p.get('saludado'):
         destino = 'saludo'
     if destino:
-        n = guion.nodo(destino, idi, p.get('nombre', ''), p.get('pais', ''))
         p['nodo'] = destino
         p['saludado'] = True
         p['visto'] = int(time.time())
@@ -1758,14 +1757,12 @@ def atender(rel, sistema, p, de, dicho, mensaje=None):
         # Arrancar el juego es lo unico que un nodo hace ademas de hablar.
         if destino == 'ganar-va':
             return _arrancar_juego(rel, p, de)
-        if n.get('botones') and hasattr(rel, 'con_botones'):
-            rel.con_botones(de, n['texto'], n['botones'])
-        else:
-            # Un canal sin botones —el chat de la casa— recibe las opciones
-            # como una linea al final. Un guion que solo funciona en WhatsApp
-            # seria dos productos distintos manteniendose por separado.
-            rel.enviar(de, guion.como_texto(destino, idi, p.get('nombre', ''),
-                                            p.get('pais', '')))
+        # POR `_mandar_nodo` Y NO A MANO. Esto mandaba botones y nada mas, asi
+        # que un nodo con LISTA salia sin sus opciones: «¿De qué querés
+        # hablar?» y ninguna puerta debajo. Se vio simulando la charla entera
+        # el 30-ago, y es justo lo que `_mandar_nodo` existe para evitar —
+        # estaba escrito y este sitio no lo usaba.
+        _mandar_nodo(destino)
         return
 
     if not p.get('saludado'):

@@ -776,16 +776,20 @@ NODOS = {
     # ── DERIVADO. Con el WhatsApp de Jose, no con un correo ────────────────
     'equipo-listo': {
         'texto': {
-            'es': ('Listo, {nombre}. Escribile directo a José:\n'
+            # El nombre de la persona va al principio y el del dueño NO se
+            # repite: quien se llame José leia «Listo, José. Escribile directo
+            # a José», que se lee como una plantilla mal rellenada. Se dice
+            # «escribile» y el numero: ya se sabe a quien.
+            'es': ('Listo, {nombre}. Escribile directo por WhatsApp:\n'
                    'wa.me/50432136457\n\n'
                    'Ya le pasé quién sos y qué necesitás, así que no vas a '
                    'tener que contar todo de nuevo.\n\n'
-                   'Si preferís correo: info@ordenglobal.org'),
-            'en': ('Done, {nombre}. Message José directly:\n'
+                   'Si preferís escribir: info@ordenglobal.org'),
+            'en': ('Done, {nombre}. Message directly on WhatsApp:\n'
                    'wa.me/50432136457\n\n'
                    'I already passed on who you are and what you need, so you '
                    'will not have to explain it all again.\n\n'
-                   'If you prefer email: info@ordenglobal.org'),
+                   'If you prefer writing: info@ordenglobal.org'),
         },
         'botones': {
             'es': [('Ganá 1 ORIGEN', 'ganar'), ('Mientras, contame', 'que-hago')],

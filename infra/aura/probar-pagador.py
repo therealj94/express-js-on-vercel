@@ -305,5 +305,44 @@ class ElAvisoCaidoNoDeshaceElPago(_Base):
                         'un aviso caído deshizo un pago hecho')
 
 
+class LOQUEPAGAESLOQUESEVIGILA(unittest.TestCase):
+    """El parte vigilaba el saldo de MERCADEO —296 ORIGEN— mientras la
+    billetera que de verdad manda los premios tenía 205.
+
+    Si esa se vaciara, el parte habría seguido diciendo 296 tan tranquilo
+    mientras cada premio fallaba por falta de fondos. Un vigilante que mira el
+    bolsillo equivocado es peor que ninguno: da tranquilidad falsa."""
+
+    def test_el_pagador_firma_con_la_billetera_que_premio_declara(self):
+        """`vistazo` mira el saldo de `premio.BILLETERA_PREMIOS`. Si el pagador
+        firmara con otra, se estaría vigilando un bolsillo que no se gasta."""
+        from eth_account import Account
+        cuenta = Account.from_key('0x' + 'ab' * 32)
+        # No se compara la llave —que no sale de su nodo— sino que la dirección
+        # declarada esté entre las nuestras: es lo comprobable desde aquí.
+        self.assertIn(premio.BILLETERA_PREMIOS, premio.BILLETERAS_INTERNAS)
+        self.assertTrue(premio.BILLETERA_PREMIOS.startswith('0x'))
+        self.assertEqual(len(premio.BILLETERA_PREMIOS), 42)
+        self.assertEqual(premio.BILLETERA_PREMIOS, premio.BILLETERA_PREMIOS.lower(),
+                         'en minúsculas, o la comparación con lo que escribe '
+                         'la gente falla a veces')
+        del cuenta
+
+    def test_vistazo_mira_ESA_y_no_otra(self):
+        fuente = (AQUI / 'vistazo.py').read_text(encoding='utf8')
+        self.assertIn("getattr(premio, 'BILLETERA_PREMIOS', '')", fuente,
+                      'vistazo repite una dirección en vez de preguntársela a '
+                      '`premio`: dos sitios con la misma dirección es un sitio '
+                      'donde queda la vieja')
+
+    def test_las_billeteras_viejas_siguen_sin_poder_cobrar(self):
+        """Ya cambió dos veces. Las anteriores andan circulando en mensajes y
+        notas, y alguien puede pegar una de buena fe."""
+        for vieja in ['0x746268404cc9ca2ef0ac344f02b236db232c3ad8',
+                      '0xdb11c06794d779eaf8aac59f099ae32ef493bdd4']:
+            self.assertIn(vieja, premio.BILLETERAS_INTERNAS, vieja)
+            self.assertIsNotNone(premio.problema_con(vieja), vieja)
+
+
 if __name__ == '__main__':
     unittest.main(verbosity=2)

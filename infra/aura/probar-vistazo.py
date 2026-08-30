@@ -57,7 +57,8 @@ class UnaFuenteRotaSEDICE(unittest.TestCase):
              mock.patch.object(vistazo, '_cadena', return_value=([], [])), \
              mock.patch.object(vistazo, '_whatsapp', return_value=([], [])), \
              mock.patch.object(vistazo, '_correo', return_value=([], [])), \
-             mock.patch.object(vistazo, '_reinicios', return_value=([], [])):
+             mock.patch.object(vistazo, '_reinicios', return_value=([], [])), \
+             mock.patch.object(vistazo, '_disco', return_value=([], [])):
             self.assertIn('todo se pudo mirar', vistazo.texto(vistazo.juntar()))
 
         with mock.patch.object(vistazo, '_genesis', side_effect=OSError('x')), \
@@ -371,6 +372,47 @@ class LaBilleteraQuePAGA(unittest.TestCase):
              mock.patch.object(vistazo, '_billetera', side_effect=OSError('rpc caído')):
             d = vistazo.juntar(premio=P())
         self.assertTrue(any('billetera' in r for r in d['rotas']))
+
+
+class ElDiscoLLENONOAVISA(unittest.TestCase):
+    """El disco lleno no da la cara: el servicio sigue «active», el motor
+    sigue cargado, y lo que falla es lo que ESCRIBE — los perfiles, el
+    registro, los reclamos de premio.
+
+    O sea que la primera señal de un disco lleno sería alguien reclamando su
+    ORIGEN dos veces porque el archivo no se pudo guardar."""
+
+    def _con(self, por_ciento):
+        class St:
+            f_frsize = 4096
+            f_blocks = 1000000
+            f_bavail = int(1000000 * (100 - por_ciento) / 100)
+        return mock.patch.object(vistazo.os, 'statvfs', return_value=St())
+
+    def test_lleno_es_un_pendiente(self):
+        with self._con(92):
+            lineas, pend = vistazo._disco()
+        self.assertTrue(pend)
+        self.assertIn('92%', pend[0])
+
+    def test_con_sitio_es_solo_un_dato(self):
+        with self._con(40):
+            lineas, pend = vistazo._disco()
+        self.assertEqual(pend, [])
+        self.assertIn('40%', lineas[0])
+
+    def test_avisa_ANTES_de_que_sea_tarde(self):
+        """A 95 ya se están perdiendo escrituras. El aviso tiene que llegar
+        cuando todavía se puede hacer algo."""
+        self.assertLessEqual(vistazo.TOPE_DISCO, 90)
+
+    def test_no_ejecuta_df_ni_parsea_su_salida(self):
+        """Un formato de `df` distinto no puede romper el parte."""
+        fuente = (AQUI / 'vistazo.py').read_text(encoding='utf8')
+        i = fuente.index('def _disco')
+        cuerpo = fuente[i:fuente.index('\ndef ', i + 10)]
+        self.assertIn('statvfs', cuerpo)
+        self.assertNotIn('subprocess', cuerpo)
 
 
 if __name__ == '__main__':

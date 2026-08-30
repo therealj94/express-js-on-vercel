@@ -76,27 +76,37 @@ PREMIO = '1 ORIGEN'
 #     veinte.
 TOPE_PREMIOS = int(os.environ.get('AURA_TOPE_PREMIOS', '200'))
 
-# De donde salen los premios: la billetera de mercadeo. Es publica —una
-# direccion siempre lo es— y esta aqui para dos cosas: para que quien pague
-# sepa de donde, y para RECHAZARLA si alguien la manda como suya.
+# LA QUE PAGA DE VERDAD, que desde el 30-ago es la del pagador automatico y no
+# la de mercadeo.
+#
+# La distincion no es cosmetica y ya mordio: el parte vigilaba el saldo de
+# MERCADEO —296 ORIGEN— mientras la que de verdad manda los premios tenia 205.
+# Si esa se vaciara, el parte habria seguido diciendo 296 tan tranquilo
+# mientras cada premio fallaba por falta de fondos. Lo que se vigila tiene que
+# ser lo que se gasta.
+#
+# Es publica —una direccion siempre lo es— y esta aqui para dos cosas: para
+# saber de donde sale el dinero, y para RECHAZARLA si alguien la manda como
+# suya.
 BILLETERA_PREMIOS = os.environ.get(
     'AURA_BILLETERA_PREMIOS',
-    '0xdb11c06794d779eaf8aac59f099ae32ef493bdd4').lower()
+    '0x51279aa19dff9820158b461998e213b93759c861').lower()
 
 # NUESTRAS billeteras, todas. No solo la que paga hoy.
 #
-# La de premios cambio —antes era la 0x7462…— y esa direccion vieja anduvo
-# circulando: esta en mensajes, en notas y en la version anterior de este
-# archivo. Alguien puede pegarla de buena fe creyendo que es la suya, o no tan
-# de buena fe. Si solo se rechazara la que paga hoy, mandarnos la vieja seria
-# un premio pagado a una cuenta nuestra, y en una cadena eso no se deshace.
+# La de premios ya cambio DOS veces —0x7462… y luego mercadeo— y esas
+# direcciones andan circulando: estan en mensajes, en notas y en versiones
+# anteriores de este archivo. Alguien puede pegar una de buena fe creyendo que
+# es la suya, o no tan de buena fe. Si solo se rechazara la que paga hoy,
+# mandarnos una vieja seria un premio pagado a una cuenta nuestra, y en una
+# cadena eso no se deshace.
 #
-# Una direccion que sale de esta lista no vuelve a entrar: quitar una de aqui
-# es abrir exactamente ese agujero.
+# Una direccion que entra a esta lista no sale: quitar una de aqui es abrir
+# exactamente ese agujero.
 BILLETERAS_INTERNAS = {
     BILLETERA_PREMIOS,
-    '0x746268404cc9ca2ef0ac344f02b236db232c3ad8',   # la anterior de premios
-    '0x51279aa19dff9820158b461998e213b93759c861',   # la del pagador automatico
+    '0x746268404cc9ca2ef0ac344f02b236db232c3ad8',   # la primera de premios
+    '0xdb11c06794d779eaf8aac59f099ae32ef493bdd4',   # mercadeo, que la fondea
 }
 
 # ── EL CANDADO ES DOBLE, Y DESDE EL PAGO AUTOMATICO TIENE QUE SERLO ─────────
