@@ -17,14 +17,16 @@ HORAS_MES = 730
 def main() -> None:
     p = argparse.ArgumentParser()
     # --- precios (verificados 29-ago-2026) ---
-    p.add_argument("--dph", type=float, default=0.70, help="USD/hora de la GPU")
+    p.add_argument("--dph", type=float, default=1.15, help="USD/hora de la GPU (medido)")
     p.add_argument("--disco-gb", type=float, default=350)
     p.add_argument("--disco-gb-mes", type=float, default=0.12, help="USD/GB/mes")
     p.add_argument("--bw-gb", type=float, default=0.01, help="USD/GB de tráfico")
     p.add_argument("--pesos-gb", type=float, default=75, help="descarga por sesión")
-    # --- tiempos (ESTIMADOS: medir en la sesión 1) ---
-    p.add_argument("--min-instalar", type=float, default=45)
-    p.add_argument("--min-clip", type=float, default=3.5, help="clip 5 s @832x480")
+    # --- tiempos: MEDIDOS el 30-ago-2026 en RTX PRO 6000 WS ---
+    p.add_argument("--min-instalar", type=float, default=40,
+                   help="medido: 25-55 min segun la red del host")
+    p.add_argument("--min-clip", type=float, default=2.0,
+                   help="MEDIDO 30-ago: 93-142 s por clip de 5-8 s a 720x1280, turbo 4 pasos")
     p.add_argument("--min-still", type=float, default=0.6, help="imagen FLUX.2")
     p.add_argument("--min-upscale", type=float, default=3.0, help="SeedVR2 a 2K")
     # --- escenarios ---

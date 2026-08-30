@@ -187,3 +187,59 @@ usuario puede operarlo sin ayuda. Hoy no cumple ninguna de las dos.
 
 La regla que resume la retrospectiva: **no automatices lo que todavía no has
 hecho funcionar a mano.**
+
+---
+
+# Cierre del 30-ago-2026: qué quedó funcionando
+
+## Lo que se demostró
+
+**El pipeline genera.** Nueve planos, cero errores, dos veces seguidas. El pod se
+instala solo, recibe el trabajo dentro, genera la cola y avisa — sin que nadie
+abra ComfyUI.
+
+Tiempos **medidos**, ya no estimados:
+
+| | |
+|---|---|
+| Instalación (46 GB con aria2c) | 25-55 min según la red del host |
+| Clip de 5-8 s a 720×1280, turbo 4 pasos | **93-142 s** |
+| Nueve planos completos | **14-21 min** |
+| Coste de generar los nueve | **~$0.25** |
+| Con instalación incluida | **~$1.60-2.50** |
+
+`tools/costo.py` está calibrado con estas cifras.
+
+## El único problema sin resolver: la entrega
+
+Los clips se generan y se quedan **dentro del pod**. Todo lo demás funciona.
+
+- El puerto mapeado **no es alcanzable** en estos hosts: mapean en Docker pero
+  no abren al exterior. `ERR_CONNECTION_TIMED_OUT` desde móvil y desde iPad.
+- El `execute` de Vast solo admite `ls`, `du` y `cat`, y solo con la instancia
+  detenida.
+- El canal del log transporta texto, no binarios: `cat` de un mp4 no devuelve
+  el fichero.
+- Los tres servicios de subida gratuitos que probé (0x0.st, transfer.sh,
+  file.io) **no funcionaron**, y el error fue mío por partida doble: escribí el
+  uploader sin poder probarlo desde este entorno, y el parseo de la respuesta de
+  file.io producía enlaces falsos que parecían válidos en el log.
+
+**La lección es la misma de todo el proyecto: no dar por bueno lo que no se ha
+verificado.** La entrega se escribió a ciegas y por eso falló, igual que los
+doce fallos anteriores.
+
+## La vía que sí puede verificarse
+
+Hugging Face con **token de escritura**. Es el único destino de subida que este
+entorno alcanza — de ahí se bajaron 46 GB hoy mismo, así que la ida y la vuelta
+están probadas. El pod sube a un repo privado y los ficheros se recuperan desde
+aquí.
+
+Requiere un token tipo *Write* (el actual es de solo lectura). Es el único
+bloqueo pendiente.
+
+## Coste total del proyecto
+
+$52.03 iniciales → **$41.41**. Gastados **$10.62** en dos días, dieciséis fallos
+corregidos y un pipeline que genera pero todavía no entrega.
