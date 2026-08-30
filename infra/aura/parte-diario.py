@@ -51,18 +51,30 @@ def _libre(rel, para, cuando_, cuerpo):
     OJO CON EL SILENCIO: `_soltar` devuelve `{}` —sin lanzar— cuando todavia no
     existe la charla con esa persona, que es exactamente el caso la primera vez
     que se manda un parte. Dar eso por enviado saltaria la plantilla y el parte
-    desapareceria sin una linea en el journal. Por eso aqui no basta con que no
-    haya excepcion: tiene que volver un identificador del proveedor.
+    desapareceria sin una linea en el journal.
+
+    LO QUE NO SIRVE PARA DETECTARLO es mirar el `id` de la respuesta. La
+    respuesta del proveedor a un envio bueno NO SIEMPRE LO TRAE —comprobado
+    contra la API el 30-ago: el parte llego a WhatsApp y aqui figuraba como
+    fallido—, asi que esa comprobacion daba por caido lo que si salio y mandaba
+    ADEMAS la plantilla: parte duplicado y cupo de plantilla quemado dos veces
+    al dia.
+
+    El unico caso mudo de verdad es la charla que no existe, y eso se pregunta
+    directamente. Lo demas ya lanza solo: `_soltar` levanta `NoSalio` cuando el
+    envio falla.
     """
-    r = rel.enviar(para, f'Parte de {cuando_}\n\n{cuerpo}') or {}
-    if not r.get('id'):
+    if not any(c.get('correo') == para for c in rel.conversaciones()):
         raise NoLlego('no hay charla abierta con esa persona')
+    rel.enviar(para, f'Parte de {cuando_}\n\n{cuerpo}')
 
 
 def _plantilla(cuenta, para, cuando_, plano):
     """Fuera de la ventana. El hueco va aplanado o Meta rechaza el envio."""
+    # La ruta es la de ABRIR CONVERSACION, no una de «mandar mensaje»: a quien
+    # nunca escribio no hay hilo al que contestar, asi que empezar uno con una
+    # plantilla aprobada ES el envio. Mismo cuerpo exacto que usa Genesis ID.
     whatsapp._pedir('POST', '/inbox/conversations', {
-        'platform': 'whatsapp',
         'accountId': cuenta,
         'participantId': para,
         'templateName': PLANTILLA,

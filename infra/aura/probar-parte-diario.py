@@ -33,15 +33,28 @@ _e.loader.exec_module(pd)
 
 
 class RelevoFalso:
-    def __init__(self, devuelve=None, revienta=None):
+    """Copiado de una respuesta de verdad del proveedor.
+
+    En particular: un envio bueno NO siempre trae `id` en la respuesta. Se
+    comprobo contra la API el 30-ago —el parte llego a WhatsApp y el codigo lo
+    daba por fallido— y por eso el falso lo devuelve vacio por omision: si el
+    codigo vuelve a fiarse del `id`, estas pruebas se ponen rojas.
+    """
+
+    def __init__(self, charlas=('50432136457', '50499999999'),
+                 devuelve=None, revienta=None):
+        self.charlas = list(charlas)
         self.devuelve, self.revienta = devuelve, revienta
         self.mandado = []
+
+    def conversaciones(self):
+        return [{'correo': c} for c in self.charlas]
 
     def enviar(self, para, texto, parcial=False):
         self.mandado.append((para, texto))
         if self.revienta:
             raise self.revienta
-        return self.devuelve
+        return self.devuelve if self.devuelve is not None else {}
 
 
 def _datos_falsos(pendientes=('12 premios por pagar',)):
@@ -62,7 +75,7 @@ class _Base(unittest.TestCase):
 class SeIntentaLoBaratoPrimero(_Base):
 
     def test_si_hay_ventana_va_por_libre_y_NO_gasta_plantilla(self):
-        rel = RelevoFalso(devuelve={'id': 'wamid.1'})
+        rel = RelevoFalso()
         plantillas = mock.Mock()
         self.assertEqual(self.correr(rel, plantillas), 0)
         self.assertEqual(len(rel.mandado), 1)
@@ -71,29 +84,48 @@ class SeIntentaLoBaratoPrimero(_Base):
     def test_el_libre_conserva_los_saltos(self):
         """Un parte de una sola linea se lee mucho peor, y por el libre no hace
         falta aplanarlo."""
-        rel = RelevoFalso(devuelve={'id': 'wamid.1'})
+        rel = RelevoFalso()
         self.correr(rel, mock.Mock())
         self.assertIn('\n', rel.mandado[0][1])
         self.assertIn('Parte de', rel.mandado[0][1])
 
 
-class ElSilencioCUENTACOMOFALLO(_Base):
-    """La numero 1 de la cabecera."""
+class UnEnvioBuenoNOSEDAPORFALLIDO(_Base):
+    """El error del 30-ago, puesto como prueba.
 
-    def test_devolver_vacio_NO_es_haber_enviado(self):
-        rel = RelevoFalso(devuelve={})      # sin charla abierta: `_soltar` calla
+    La respuesta del proveedor a un envío bueno no siempre trae `id`. Fiarse de
+    ese campo daba por caído lo que sí había salido, y entonces se mandaba
+    ADEMÁS la plantilla: parte duplicado y cupo quemado dos veces al día."""
+
+    def test_sin_id_en_la_respuesta_NO_se_manda_la_plantilla_encima(self):
+        for respuesta in ({}, {'id': None}, None):
+            with self.subTest(respuesta=respuesta):
+                rel = RelevoFalso(devuelve=respuesta)
+                plantillas = mock.Mock()
+                self.assertEqual(self.correr(rel, plantillas), 0)
+                plantillas.assert_not_called()
+
+    def test_una_respuesta_a_medias_tampoco_se_duplica(self):
+        """`_soltar` ya decidió no reintentar cuando salieron algunos trozos.
+        Mandar la plantilla encima sería la duplicación que evitó."""
+        rel = RelevoFalso(devuelve={'id': 'x', 'aMedias': True})
+        plantillas = mock.Mock()
+        self.correr(rel, plantillas)
+        plantillas.assert_not_called()
+
+
+class ElSilencioCUENTACOMOFALLO(_Base):
+    """La número 1 de la cabecera: la charla que todavía no existe."""
+
+    def test_sin_charla_abierta_va_por_plantilla(self):
+        rel = RelevoFalso(charlas=[])
         plantillas = mock.Mock()
         self.assertEqual(self.correr(rel, plantillas), 0)
         plantillas.assert_called_once()
+        self.assertEqual(rel.mandado, [], 'intentó escribir en una charla que no existe')
 
-    def test_devolver_None_tampoco(self):
-        rel = RelevoFalso(devuelve=None)
-        plantillas = mock.Mock()
-        self.correr(rel, plantillas)
-        plantillas.assert_called_once()
-
-    def test_y_un_id_vacio_tampoco(self):
-        rel = RelevoFalso(devuelve={'id': None})
+    def test_con_la_charla_de_OTRA_persona_tampoco_vale(self):
+        rel = RelevoFalso(charlas=['50499999999'])
         plantillas = mock.Mock()
         self.correr(rel, plantillas)
         plantillas.assert_called_once()
@@ -133,7 +165,7 @@ class SiNoSALEsedice(_Base):
         self.assertEqual(self.correr(RelevoFalso(), mock.Mock(), para=()), 1)
 
     def test_un_destinatario_caido_no_impide_el_de_al_lado(self):
-        rel = RelevoFalso(devuelve={'id': 'x'})
+        rel = RelevoFalso()
         plantillas = mock.Mock()
         r = self.correr(rel, plantillas, para=('50432136457', '50499999999'))
         self.assertEqual(r, 0)
