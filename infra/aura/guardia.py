@@ -69,6 +69,35 @@ PROHIBIDO = re.compile(
   | supervisad[oa]s?\s+por
   | \bsecurity\s+token\b | valor\s+negociable
   | oferta\s+publica | prospecto
+
+    # ── Lo que se colo el 30-ago a las 04:28 ────────────────────────────────
+    #
+    # Lo de arriba caza «la Regulacion A de la SEC» y no cazaba NADA de esto,
+    # que es el mismo invento con otras palabras y le llego a una persona real:
+    #
+    #   «Orden Global se ha registrado y opera bajo el marco legal de varios
+    #    paises» · «opera en varios paises de America Latina y Europa» · «en
+    #    Brasil la regulacion es permisiva, en Argentina mas restrictiva» ·
+    #    «tokens no regulados (no valores)»
+    #
+    # Se puede cortar ancho SIN MIEDO A PASARSE porque la ficha no deja matiz:
+    # ante cualquier cosa legal la respuesta aprobada es una sola frase, y esa
+    # frase no contiene ni una de estas palabras. Cortar de mas aqui cuesta que
+    # alguien lea «eso lo contesta una persona»; cortar de menos cuesta que una
+    # empresa afirme por escrito un estatus legal que no tiene.
+  | (?:se\s+ha|nos\s+hemos|estamos|esta|estan)\s+registrad
+  | registrad[oa]s?\s+(?:en|ante|bajo)
+  | marco\s+legal | espacio\s+legal | marco\s+(?:legal|regulatorio)
+  | oper(?:a|amos|an)\s+(?:legalmente|bajo|en\s+(?:varios|un\s+(?:marco|espacio)))
+  | no\s+regulad
+  | no\s+(?:es|son)\s+(?:un\s+)?valor(?:es)?\b
+  | la\s+regulacion\s+(?:es|varia|en\s)
+  | regulacion\s+(?:especifica|permisiva|restrictiva)
+  | \bpermisiv | \brestrictiv
+  | (?:leyes|normativas?)\s+locales
+  | \bjurisdiccion
+  | autorizad[oa]s?\s+(?:por|en|para)
+  | \bcompliance\b
     ''')
 
 

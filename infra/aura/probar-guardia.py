@@ -151,5 +151,62 @@ class LoQueDevuelve(unittest.TestCase):
         self.assertEqual(g.revisar(t)[1], 'legal')
 
 
+class LoQueSECOLOEL30AGO(unittest.TestCase):
+    """A las 04:28 AU-RA le dijo a una persona real que Orden Global «se ha
+    registrado y opera bajo el marco legal de varios países», y le describió la
+    regulación de Brasil, Argentina, Chile y Colombia. Todo inventado.
+
+    El guardia de entonces solo cazaba la frase de la SEC: esto es el mismo
+    invento con otras palabras y pasaba entero."""
+
+    def test_corta_TODO_lo_que_dijo_de_verdad(self):
+        for t in [
+            'Orden Global se ha registrado y opera bajo el marco legal de varios países.',
+            'Actualmente, Orden Global opera en varios países de América Latina y Europa.',
+            'En Brasil la regulación es bastante permisiva, pero en Argentina y Chile '
+            'la situación es más restrictiva.',
+            'La empresa opera en un marco legal que permite tokens no regulados (no valores).',
+            'Es importante estar al tanto de las leyes locales y posibles cambios.',
+            'Orden Global opera en un espacio legal complejo.',
+        ]:
+            self.assertTrue(g.toca_lo_legal(t), f'PASÓ: {t[:60]}')
+
+    def test_y_sigue_cortando_lo_de_antes(self):
+        for t in ['Orden Global se constituyó bajo la Regulación A de la SEC.',
+                  'Estamos regulados por la CNBS.',
+                  'Tenemos licencia bancaria vigente.']:
+            self.assertTrue(g.toca_lo_legal(t), t)
+
+    def test_ORIGEN_no_es_un_valor_TAMPOCO_se_dice(self):
+        """La ficha lo dice entero: ni siquiera para NEGAR. Decir «no es un
+        valor» es una afirmación jurídica igual que decir que sí lo es."""
+        self.assertTrue(g.toca_lo_legal('ORIGEN no es un valor.'))
+
+
+class NOSELLEVAPORDELANTELONORMAL(unittest.TestCase):
+    """Un guardia que corta de más deja a AU-RA muda y se termina apagando.
+    Estas son frases del día a día que TIENEN que pasar."""
+
+    def test_la_respuesta_aprobada_pasa(self):
+        self.assertFalse(g.toca_lo_legal(
+            'Eso lo contesta una persona, no yo. Escribile a info@ordenglobal.org.'))
+
+    def test_lo_de_todos_los_dias_pasa(self):
+        for t in [
+            'Lo que ahorrás hoy, en un año compra menos. No es por lo que ganás.',
+            'Te regalo 1 ORIGEN por aprender a usar tu plata. Son tres preguntas.',
+            'Tu Veta Wallet la abrís en dos minutos y las llaves quedan solo con vos.',
+            'Mandar plata con ORIGEN te cuesta bastante menos que una remesa.',
+            'ORIGEN se respalda con oro: cada uno equivale a una fracción de onza.',
+            'Con Genesis ID verificás tu identidad una vez y te sirve en todo el ecosistema.',
+        ]:
+            self.assertFalse(g.toca_lo_legal(t), f'CORTÓ de más: {t[:60]}')
+
+    def test_registrado_en_su_sentido_normal_pasa(self):
+        """«quedó registrado tu reclamo» no es una afirmación jurídica."""
+        self.assertFalse(g.toca_lo_legal(
+            'Ya quedó registrado tu reclamo, te aviso cuando lo revisemos.'))
+
+
 if __name__ == '__main__':
     unittest.main(verbosity=2)
