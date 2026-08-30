@@ -1,0 +1,13 @@
+[Unit]
+Description=Paga los premios pendientes cada tres minutos
+
+[Timer]
+# Cada tres minutos: quien manda su direccion espera el premio AHORA — ese es
+# el momento magico del embudo, y a los diez minutos ya es tramite. Con el
+# tope de cinco por corrida, el peor ritmo posible son ~100 por hora, que es
+# mas de lo que la campana entera reparte en un dia bueno.
+OnCalendar=*:0/3
+Persistent=false
+
+[Install]
+WantedBy=timers.target

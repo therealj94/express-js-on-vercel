@@ -25,15 +25,16 @@
 # leccion que evita que a alguien le vacien la billetera, y aqui se aprende
 # cobrando en vez de perdiendo.
 #
-# ── LO QUE ESTO NO HACE: PAGAR SOLO ─────────────────────────────────────────
+# ── LO QUE ESTO NO HACE: PAGAR ──────────────────────────────────────────────
 #
-# Este modulo comprueba, deduplica y deja el pago LISTO. No lo manda.
+# Este modulo comprueba, deduplica y deja el pago LISTO. No lo manda, y hay
+# una prueba que vigila que aqui no entre nada que firme.
 #
-# Mandarlo solo obligaria a poner la llave privada de una billetera con fondos
-# en la misma maquina que corre un modelo de lenguaje y habla con internet. Un
-# fallo de logica o una entrada rara ahi no es una respuesta fea: es la
-# billetera vacia. Esa es una decision de Jose, no una que se toma escribiendo
-# codigo, y mientras tanto revisar y pagar es un boton.
+# El que paga es `pagador.py`, un PROCESO APARTE que Jose autorizo el 30-ago:
+# no conversa con nadie, no importa el motor, y firma con una billetera
+# dedicada que se fondea con lo justo — el peor fallo imaginable pierde lo que
+# hay en ella y ni un gramin mas. La separacion es la seguridad: el proceso
+# que habla no puede pagar, y el proceso que paga no escucha a nadie.
 #
 # ── LAS DOS LLAVES, QUE SON DE JOSE Y SON LAS CORRECTAS ─────────────────────
 #
@@ -95,9 +96,48 @@ BILLETERA_PREMIOS = os.environ.get(
 BILLETERAS_INTERNAS = {
     BILLETERA_PREMIOS,
     '0x746268404cc9ca2ef0ac344f02b236db232c3ad8',   # la anterior de premios
+    '0x51279aa19dff9820158b461998e213b93759c861',   # la del pagador automatico
 }
 
-_candado = threading.Lock()
+# ── EL CANDADO ES DOBLE, Y DESDE EL PAGO AUTOMATICO TIENE QUE SERLO ─────────
+#
+# El `threading.Lock` protege entre hilos DEL MISMO proceso. Pero desde que el
+# pagador corre como servicio aparte, hay DOS procesos leyendo y escribiendo
+# `premios.json`: el asistente anota reclamos y el pagador los marca pagados.
+# Un candado de hilos no ve al otro proceso, y la carrera perdida es la peor
+# posible: el pagador marca «pagado», el asistente pisa el archivo con su copia
+# vieja, el reclamo vuelve a «sin pagar» — y se paga DOS VECES. En una cadena
+# eso no se deshace.
+#
+# Por eso ademas del lock de hilos se toma un `flock` sobre un archivo de
+# traba: ese si lo ven los dos procesos, y el sistema lo suelta solo si el
+# proceso muere — no queda trabado para siempre por un crash.
+class _CandadoDoble:
+    def __init__(self):
+        self._hilos = threading.Lock()
+        self._fd = None
+
+    def __enter__(self):
+        self._hilos.acquire()
+        if DATOS is not None:
+            import fcntl
+            self._fd = os.open(DATOS / 'premios.traba',
+                               os.O_WRONLY | os.O_CREAT,
+                               stat.S_IRUSR | stat.S_IWUSR)
+            fcntl.flock(self._fd, fcntl.LOCK_EX)
+        return self
+
+    def __exit__(self, *exc):
+        if self._fd is not None:
+            import fcntl
+            fcntl.flock(self._fd, fcntl.LOCK_UN)
+            os.close(self._fd)
+            self._fd = None
+        self._hilos.release()
+        return False
+
+
+_candado = _CandadoDoble()
 
 DIRECCION = re.compile(r'0x[0-9a-fA-F]{40}')
 

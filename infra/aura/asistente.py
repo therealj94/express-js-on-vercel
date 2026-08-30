@@ -92,6 +92,7 @@ import guardia
 import registro
 import guion
 import premio
+import espejo
 import vistazo
 from oido import NoSePudoOir, oir_nota
 from concurrent.futures import ThreadPoolExecutor
@@ -1327,6 +1328,13 @@ _PIDE_PARTE = _re.compile(
     _re.IGNORECASE)
 
 
+# «charlas» a secas, o «charla 2176»: el espejo. Anclado de punta a punta por
+# la misma razon que el parte — «me gustan las charlas con vos» es una persona
+# conversando, no un comando.
+_PIDE_CHARLAS = _re.compile(
+    r'^\s*charlas?\s*(?P<sufijo>\d{2,15})?\s*[.!]*\s*$', _re.IGNORECASE)
+
+
 def _pide_el_parte(dicho):
     """ANCLADO de punta a punta, como los demas atajos de la casa.
 
@@ -1459,6 +1467,24 @@ def atender(rel, sistema, p, de, dicho, mensaje=None):
                            clave_wa=os.environ.get('ZERNIO_CLAVE', ''),
                            cuenta_wa=os.environ.get('ZERNIO_CUENTA', ''))
         rel.enviar(de, f'Parte de {vistazo.cuando()}\n\n' + vistazo.texto(d))
+        return
+
+    # ── EL ESPEJO: SOLO PARA QUIEN PUEDE PEDIR EL PARTE ─────────────────────
+    #
+    # Muestra numeros y charlas privadas de gente real: misma lista que el
+    # parte, y el que mira no se lista a si mismo. Ver espejo.py.
+    m_esp = _PIDE_CHARLAS.match(dicho or '')
+    if m_esp and vistazo.puede_pedirlo(de):
+        registro.anotar('espejo', que='detalle' if m_esp.group('sufijo') else 'resumen')
+        try:
+            if m_esp.group('sufijo'):
+                rel.enviar(de, espejo.detalle(rel, m_esp.group('sufijo'), de))
+            else:
+                rel.enviar(de, espejo.texto_resumen(espejo.resumen(rel, de)))
+        except Exception as e:
+            # El espejo caido no puede tumbar al asistente: se dice y se sigue.
+            rel.enviar(de, f'No pude leer las charlas ({type(e).__name__}). '
+                           'Probá de nuevo en un rato.')
         return
 
     # ── EL JUEGO VA ANTES QUE TODO ────────────────────────────────────────

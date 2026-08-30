@@ -2,7 +2,7 @@
 # Instala el motor y el asistente en la maquina de AU-RA. Corre EN EL NODO,
 # mandado por SSM. Idempotente: correrlo dos veces no rompe nada.
 #
-# Espera en el entorno: U_ASISTENTE U_CANDADO U_OIDO U_WHATSAPP U_GUARDIA U_REGISTRO U_GUION U_PREMIO U_VISTAZO U_PARTE U_PARTE_SERVICE U_PARTE_TIMER U_PROMPT
+# Espera en el entorno: U_ASISTENTE U_CANDADO U_OIDO U_WHATSAPP U_GUARDIA U_REGISTRO U_GUION U_PREMIO U_VISTAZO U_PARTE U_PAGADOR U_ESPEJO U_PARTE_SERVICE U_PARTE_TIMER U_PAGOS_SERVICE U_PAGOS_TIMER U_PROMPT
 # U_SABER U_PROBADORES — las URL firmadas para bajar cada archivo (el nodo no
 # tiene permisos de S3 y no los necesita: la firma viaja en la URL y muere en
 # dos horas).
@@ -57,6 +57,8 @@ curl -sS --fail -o /srv/aura/guion.py        "$U_GUION"
 curl -sS --fail -o /srv/aura/premio.py       "$U_PREMIO"
 curl -sS --fail -o /srv/aura/vistazo.py      "$U_VISTAZO"
 curl -sS --fail -o /srv/aura/parte-diario.py "$U_PARTE"
+curl -sS --fail -o /srv/aura/pagador.py      "$U_PAGADOR"
+curl -sS --fail -o /srv/aura/espejo.py       "$U_ESPEJO"
 curl -sS --fail -o /srv/aura/PROMPT-AURA.md  "$U_PROMPT"
 curl -sS --fail -o /srv/aura/saber.json      "$U_SABER"
 # la lista de probadores no se pisa si ya existe: puede tener gente agregada a
@@ -119,6 +121,12 @@ echo "== el parte, 7:30 y 19:30 =="
 # la misma unidad es como una de las dos se queda vieja sin que nadie lo note.
 curl -sS --fail -o /etc/systemd/system/aura-parte.service "$U_PARTE_SERVICE"
 curl -sS --fail -o /etc/systemd/system/aura-parte.timer   "$U_PARTE_TIMER"
+curl -sS --fail -o /etc/systemd/system/aura-pagos.service "$U_PAGOS_SERVICE"
+curl -sS --fail -o /etc/systemd/system/aura-pagos.timer   "$U_PAGOS_TIMER"
+# El venv del pagador: eth-account no entra al python del sistema (PEP 668) y
+# tampoco hace falta que entre — solo firma un proceso, y ese trae el suyo.
+[ -x /srv/aura/venv-pagos/bin/python3 ] || python3 -m venv /srv/aura/venv-pagos
+/srv/aura/venv-pagos/bin/pip install -q eth-account
 systemctl daemon-reload
-systemctl enable --now aura-parte.timer
+systemctl enable --now aura-parte.timer aura-pagos.timer
 systemctl list-timers aura-parte.timer --no-pager
