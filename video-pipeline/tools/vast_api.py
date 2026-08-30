@@ -121,12 +121,13 @@ def main() -> int:
     elif a.cmd == "create":
         onstart = Path(a.onstart).read_text()
         if a.selftest:
-            # Se incrusta en base64: así el script viaja sin que el shell tenga
-            # que escapar comillas ni dólares, y el pod se prueba a sí mismo.
-            import base64
-            b64 = base64.b64encode(Path(a.selftest).read_bytes()).decode()
+            # Comprimido antes de codificar: la API rechaza onstart de más de
+            # 16 KB, y el script en base64 plano ya se pasaba él solo.
+            import base64, gzip
+            b64 = base64.b64encode(
+                gzip.compress(Path(a.selftest).read_bytes(), 9)).decode()
             onstart += (f'\n\necho "== autoprueba =="\n'
-                        f'echo {b64} | base64 -d > /workspace/selftest.py\n'
+                        f'echo {b64} | base64 -d | gunzip > /workspace/selftest.py\n'
                         f'"$WORK/venv/bin/python" /workspace/selftest.py 2>&1 | tail -40\n')
         # Un puerto se declara con la CADENA ENTERA como clave y "1" de valor
         # (así lo codifica parse_env del CLI oficial). Con {"-p": "8188:8188"}
@@ -136,13 +137,13 @@ def main() -> int:
             k, _, v = kv.partition("=")
             env[k] = v
         if a.job:
-            import base64
+            import base64, gzip
             env["JOB_QUEUE_B64"] = base64.b64encode(
-                Path(a.job).read_bytes()).decode()
+                gzip.compress(Path(a.job).read_bytes(), 9)).decode()
             # El runner también tiene que viajar: sin SSH no hay forma de
             # copiarlo después.
             env["JOB_RUNNER_B64"] = base64.b64encode(
-                Path("03_run_queue.py").read_bytes()).decode()
+                gzip.compress(Path("03_run_queue.py").read_bytes(), 9)).decode()
             if a.workflows:
                 import io, tarfile
                 buf = io.BytesIO()

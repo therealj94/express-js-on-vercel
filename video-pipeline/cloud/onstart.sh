@@ -194,8 +194,8 @@ if [ -n "${JOB_QUEUE_B64:-}" ]; then
   # buscar en /workspace/workflows y no encontrar nada — la tanda entera se
   # perdería después de haber pagado la instalación.
   mkdir -p "$WORK/prompts"
-  echo "$JOB_QUEUE_B64" | base64 -d > "$WORK/prompts/cola.json"
-  echo "${JOB_RUNNER_B64:-}" | base64 -d > "$WORK/03_run_queue.py" 2>/dev/null
+  echo "$JOB_QUEUE_B64" | base64 -d | gunzip > "$WORK/prompts/cola.json"
+  echo "${JOB_RUNNER_B64:-}" | base64 -d | gunzip > "$WORK/03_run_queue.py" 2>/dev/null
   echo "${JOB_WORKFLOWS_B64:-}" | base64 -d > "$WORK/workflows.tar" 2>/dev/null && \
     tar xf "$WORK/workflows.tar" -C "$WORK" 2>/dev/null
 
