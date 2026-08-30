@@ -128,6 +128,7 @@ jobs:
           python3 probar-registro.py
           python3 probar-guion.py
           python3 probar-premio.py
+          python3 probar-vistazo.py
 
       - name: El relevo de mensajes
         working-directory: infra/mensajes

@@ -92,6 +92,7 @@ import guardia
 import registro
 import guion
 import premio
+import vistazo
 from oido import NoSePudoOir, oir_nota
 from concurrent.futures import ThreadPoolExecutor
 
@@ -1321,6 +1322,21 @@ def perfil_de(perfiles, correo, tope=None):
     return p
 
 
+_PIDE_PARTE = _re.compile(
+    r'^\s*(actualizar|parte|resumen|estado|como vamos|cómo vamos)\s*[.!?]*\s*$',
+    _re.IGNORECASE)
+
+
+def _pide_el_parte(dicho):
+    """ANCLADO de punta a punta, como los demas atajos de la casa.
+
+    «actualizar» a secas pide el parte; «como actualizo la app» es una pregunta
+    de alguien y no puede caer aqui. Con `\b` en medio de la frase caeria, y ya
+    nos paso hoy con la palabra «ayuda».
+    """
+    return bool(_PIDE_PARTE.match(dicho or ''))
+
+
 def _arrancar_juego(rel, p, de):
     """Abre el juego, o dice que ya cobro. Comprueba ANTES de preguntar: hacer
     tres preguntas para despues decir «ya cobraste» es la peor forma posible de
@@ -1422,6 +1438,27 @@ def atender(rel, sistema, p, de, dicho, mensaje=None):
     #
     # Y no encierra a nadie: lo que no encaja con ningun nodo devuelve `None` y
     # sigue su camino de siempre. Ver la cabecera de guion.py.
+    # ── EL PARTE, A PEDIDO ────────────────────────────────────────────────
+    #
+    # «actualizar» y AU-RA arma el parte y lo manda. No cuesta motor y no puede
+    # alucinar: son cuentas leidas de sitios de verdad.
+    #
+    # Y va RESTRINGIDO. El parte lleva identidades en cola, premios por pagar y
+    # el estado de Meta: no es para cualquiera que adivine la palabra. Sin
+    # `AURA_PARTE_PARA` puesto no lo recibe nadie, que es lo correcto por
+    # defecto.
+    #
+    # Pedido asi no hace falta plantilla de Meta: si Jose escribe, la ventana de
+    # 24 horas esta abierta y el texto libre pasa. La plantilla solo hace falta
+    # para el parte de las 7:30 y las 19:30, que llega sin que nadie escriba.
+    if _pide_el_parte(dicho) and vistazo.puede_pedirlo(de):
+        registro.anotar('parte', quien='a pedido')
+        d = vistazo.juntar(registro=registro, premio=premio,
+                           clave_wa=os.environ.get('ZERNIO_CLAVE', ''),
+                           cuenta_wa=os.environ.get('ZERNIO_CUENTA', ''))
+        rel.enviar(de, f'Parte de {vistazo.cuando()}\n\n' + vistazo.texto(d))
+        return
+
     # ── EL JUEGO VA ANTES QUE TODO ────────────────────────────────────────
     #
     # Quien esta jugando esta contestando una pregunta, no navegando. Si el

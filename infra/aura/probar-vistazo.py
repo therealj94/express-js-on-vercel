@@ -1,0 +1,226 @@
+#!/usr/bin/env python3
+"""El parte que AU-RA le manda a José.
+
+POR QUE ESTAS PRUEBAS EXISTEN
+
+Un parte diario falla de tres formas, y la primera es la que ya nos costó caro:
+
+  1. SE CALLA LO QUE NO PUDO MIRAR. Es la lección del 30-ago. Un parte que
+     omite la fuente rota se ve igual de bien que uno completo, y entonces
+     «todo en orden» significa dos cosas distintas —«miré y está bien» y «no
+     pude mirar»—. Así fue como una mentira sobre la SEC estuvo horas saliendo
+     sin que nadie se enterara.
+
+  2. SE LO MANDA A QUIEN NO ES. El parte lleva identidades en cola, premios por
+     pagar y el estado de la cuenta de Meta. Que lo reciba cualquiera que
+     escriba «actualizar» es una fuga de números internos.
+
+  3. NO CABE. El hueco de una plantilla de WhatsApp no se recorta si te pasás:
+     Meta rechaza el mensaje ENTERO, y el parte no llega.
+"""
+
+import os
+import pathlib
+import sys
+import unittest
+from unittest import mock
+
+AQUI = pathlib.Path(__file__).resolve().parent
+sys.path.insert(0, str(AQUI))
+import vistazo   # noqa: E402
+
+
+class UnaFuenteRotaSEDICE(unittest.TestCase):
+    """La lección más cara del día, convertida en prueba."""
+
+    def test_lo_que_no_se_pudo_mirar_APARECE_en_el_parte(self):
+        with mock.patch.object(vistazo, '_genesis', side_effect=OSError('caído')), \
+             mock.patch.object(vistazo, '_cadena', return_value=(['cadena ok'], [])), \
+             mock.patch.object(vistazo, '_whatsapp', return_value=([], [])), \
+             mock.patch.object(vistazo, '_correo', return_value=([], [])):
+            d = vistazo.juntar()
+        self.assertTrue(d['rotas'], 'se calló una fuente caída')
+        self.assertIn('Genesis ID', d['rotas'][0])
+        self.assertIn('NO SE PUDO MIRAR', vistazo.texto(d))
+
+    def test_una_fuente_rota_NO_tumba_las_demas(self):
+        with mock.patch.object(vistazo, '_genesis', side_effect=OSError('caído')), \
+             mock.patch.object(vistazo, '_cadena', return_value=(['bloque 123'], [])), \
+             mock.patch.object(vistazo, '_whatsapp', return_value=([], [])), \
+             mock.patch.object(vistazo, '_correo', return_value=([], [])):
+            d = vistazo.juntar()
+        self.assertIn('bloque 123', ' '.join(d['lineas']))
+
+    def test_TODO_EN_ORDEN_solo_si_TODO_se_pudo_mirar(self):
+        """Es la frase más peligrosa del parte: no puede significar «no miré»."""
+        with mock.patch.object(vistazo, '_genesis', return_value=([], [])), \
+             mock.patch.object(vistazo, '_cadena', return_value=([], [])), \
+             mock.patch.object(vistazo, '_whatsapp', return_value=([], [])), \
+             mock.patch.object(vistazo, '_correo', return_value=([], [])):
+            self.assertIn('todo se pudo mirar', vistazo.texto(vistazo.juntar()))
+
+        with mock.patch.object(vistazo, '_genesis', side_effect=OSError('x')), \
+             mock.patch.object(vistazo, '_cadena', return_value=([], [])), \
+             mock.patch.object(vistazo, '_whatsapp', return_value=([], [])), \
+             mock.patch.object(vistazo, '_correo', return_value=([], [])):
+            t = vistazo.texto(vistazo.juntar())
+        self.assertNotIn('Todo en orden', t, 'dijo «todo en orden» sin haber mirado todo')
+
+    def test_juntar_NUNCA_levanta(self):
+        """Si el parte pudiera reventar, el día que algo raro pase es el día que
+        no hay parte — justo cuando más falta hace."""
+        for falla in ['_genesis', '_cadena', '_whatsapp', '_correo']:
+            with mock.patch.object(vistazo, falla, side_effect=Exception('boom')):
+                vistazo.juntar()      # no lanza
+
+    def test_un_registro_que_revienta_tambien_se_dice(self):
+        class Roto:
+            def resumen(self, h): raise ValueError('archivo ilegible')
+        with mock.patch.object(vistazo, '_genesis', return_value=([], [])), \
+             mock.patch.object(vistazo, '_cadena', return_value=([], [])), \
+             mock.patch.object(vistazo, '_whatsapp', return_value=([], [])), \
+             mock.patch.object(vistazo, '_correo', return_value=([], [])):
+            d = vistazo.juntar(registro=Roto())
+        self.assertTrue(any('registro' in r for r in d['rotas']))
+
+
+class LoQuePideUnaPersonaVAPRIMERO(unittest.TestCase):
+    """El parte contesta una pregunta: «¿hay algo que necesite que YO haga?».
+    Si eso no está arriba, el parte se deja de leer."""
+
+    def _parte(self, **kw):
+        with mock.patch.object(vistazo, '_genesis', return_value=([], [])), \
+             mock.patch.object(vistazo, '_cadena', return_value=(['bloque 9'], [])), \
+             mock.patch.object(vistazo, '_whatsapp', return_value=([], [])), \
+             mock.patch.object(vistazo, '_correo', return_value=([], [])):
+            d = vistazo.juntar(**kw)
+        d['pendientes'].append('3 identidades esperando')
+        return vistazo.texto(d)
+
+    def test_los_pendientes_van_arriba_del_todo(self):
+        t = self._parte()
+        self.assertTrue(t.startswith('NECESITA VOS'), t[:40])
+        self.assertLess(t.index('identidades'), t.index('bloque 9'))
+
+    def test_los_premios_por_pagar_son_un_pendiente(self):
+        class P:
+            def resumen(self): return {'por_pagar': 12, 'quedan': 188, 'tope': 200}
+        with mock.patch.object(vistazo, '_genesis', return_value=([], [])), \
+             mock.patch.object(vistazo, '_cadena', return_value=([], [])), \
+             mock.patch.object(vistazo, '_whatsapp', return_value=([], [])), \
+             mock.patch.object(vistazo, '_correo', return_value=([], [])):
+            d = vistazo.juntar(premio=P())
+        self.assertTrue(any('12 premio' in p for p in d['pendientes']))
+        self.assertTrue(any('188 de 200' in l for l in d['lineas']))
+
+    def test_un_corte_del_guardia_es_un_pendiente(self):
+        class R:
+            def resumen(self, h):
+                return {'por_evento': {'guardia': 2, 'respuesta': 40},
+                        'mediana_ms': 8000}
+        with mock.patch.object(vistazo, '_genesis', return_value=([], [])), \
+             mock.patch.object(vistazo, '_cadena', return_value=([], [])), \
+             mock.patch.object(vistazo, '_whatsapp', return_value=([], [])), \
+             mock.patch.object(vistazo, '_correo', return_value=([], [])):
+            d = vistazo.juntar(registro=R())
+        self.assertTrue(any('guardia cortó 2' in p for p in d['pendientes']))
+        self.assertTrue(any('40 respuestas' in l for l in d['lineas']))
+
+
+class CabeEnLaPlantilla(unittest.TestCase):
+    """Meta no recorta un hueco largo: rechaza el mensaje entero, y el parte no
+    llega. Un parte que no llega es peor que uno corto."""
+
+    def test_un_parte_enorme_se_recorta_solo(self):
+        d = {'pendientes': [f'pendiente numero {i} con texto de sobra' for i in range(60)],
+             'lineas': ['una linea mas'] * 60, 'rotas': []}
+        t = vistazo.texto(d)
+        self.assertLessEqual(len(t), vistazo.TOPE)
+        self.assertTrue(t.endswith('…'), 'recortó sin avisar que recortó')
+
+    def test_y_al_recortar_SOBREVIVE_lo_que_necesita_una_persona(self):
+        d = {'pendientes': ['pagar los premios'],
+             'lineas': ['relleno ' * 40] * 40, 'rotas': []}
+        t = vistazo.texto(d)
+        self.assertIn('pagar los premios', t, 'se comió el pendiente y dejó el relleno')
+
+    def test_uno_normal_no_se_toca(self):
+        d = {'pendientes': ['3 identidades esperando'], 'lineas': ['todo lo demás bien'],
+             'rotas': []}
+        self.assertFalse(vistazo.texto(d).endswith('…'))
+
+
+class ElParteNoEsParaCUALQUIERA(unittest.TestCase):
+    """Lleva identidades en cola, premios por pagar y el estado de Meta."""
+
+    def test_sin_configurar_NO_LO_RECIBE_NADIE(self):
+        with mock.patch.object(vistazo, 'JEFES', set()):
+            self.assertFalse(vistazo.puede_pedirlo('50432136457'))
+            self.assertFalse(vistazo.puede_pedirlo('cualquiera'))
+
+    def test_solo_quien_esta_en_la_lista(self):
+        with mock.patch.object(vistazo, 'JEFES', {'50432136457'}):
+            self.assertTrue(vistazo.puede_pedirlo('50432136457'))
+            self.assertFalse(vistazo.puede_pedirlo('50499999999'))
+
+    def test_no_distingue_mayusculas_ni_espacios(self):
+        with mock.patch.object(vistazo, 'JEFES', {'j.ordonez@ordenglobal.org'}):
+            self.assertTrue(vistazo.puede_pedirlo('  J.Ordonez@OrdenGlobal.org '))
+
+
+class LaPalabraQuePideElParte(unittest.TestCase):
+
+    def _pide(self, t):
+        fuente = (AQUI / 'asistente.py').read_text(encoding='utf8')
+        import re
+        i = fuente.index('_PIDE_PARTE = _re.compile(')
+        j = fuente.index('def _arrancar_juego', i)
+        ambito = {'_re': re}
+        exec(compile(fuente[i:j], 'asistente', 'exec'), ambito)
+        return ambito['_pide_el_parte'](t)
+
+    def test_actualizar_a_secas_pide_el_parte(self):
+        for t in ['actualizar', 'Actualizar', ' actualizar ', 'parte', 'resumen',
+                  'cómo vamos']:
+            self.assertTrue(self._pide(t), t)
+
+    def test_PERO_UNA_PREGUNTA_CON_ESA_PALABRA_NO(self):
+        """«como actualizo la app» es alguien preguntando. Con `\\b` en medio de
+        la frase caería aquí, y ya nos pasó hoy con la palabra «ayuda»."""
+        for t in ['cómo actualizo la app', 'no me deja actualizar la wallet',
+                  'quiero un resumen de lo que hace origen',
+                  'cuál es el estado de mi verificación']:
+            self.assertFalse(self._pide(t), f'atrapó: «{t}»')
+
+
+class ElCorreo(unittest.TestCase):
+
+    def test_sin_credenciales_no_se_mira_y_no_revienta(self):
+        with mock.patch.object(vistazo, 'CORREO_SERVIDOR', ''):
+            self.assertEqual(vistazo._correo(), ([], []))
+
+    def test_SE_ABRE_SOLO_PARA_LEER(self):
+        """Sin `readonly`, mirar el correo lo marcaría como leído: el parte
+        cambiaría el buzón que viene a mirar, y al día siguiente diría que no
+        hay nada nuevo."""
+        fuente = (AQUI / 'vistazo.py').read_text(encoding='utf8')
+        self.assertIn("select('INBOX', readonly=True)", fuente)
+
+    def test_NO_SE_BAJA_EL_CUERPO_DE_NINGUN_CORREO(self):
+        """Remitente, asunto y fecha bastan para saber si algo necesita
+        respuesta. Bajar el contenido de los correos de una empresa a un
+        servidor de GPU es más dato en riesgo por cada línea de parte."""
+        fuente = (AQUI / 'vistazo.py').read_text(encoding='utf8')
+        self.assertIn('HEADER.FIELDS (FROM SUBJECT)', fuente)
+        for peligro in ['BODY[TEXT]', 'RFC822)', 'BODY[]']:
+            self.assertNotIn(peligro, fuente, f'se baja el cuerpo con «{peligro}»')
+
+    def test_usa_BODY_PEEK_para_no_marcar_leido(self):
+        """`BODY[...]` marca leído aunque la carpeta esté en solo lectura en
+        algunos servidores. `BODY.PEEK[...]` nunca."""
+        fuente = (AQUI / 'vistazo.py').read_text(encoding='utf8')
+        self.assertIn('BODY.PEEK[', fuente)
+
+
+if __name__ == '__main__':
+    unittest.main(verbosity=2)

@@ -2,7 +2,7 @@
 # Instala el motor y el asistente en la maquina de AU-RA. Corre EN EL NODO,
 # mandado por SSM. Idempotente: correrlo dos veces no rompe nada.
 #
-# Espera en el entorno: U_ASISTENTE U_CANDADO U_OIDO U_WHATSAPP U_GUARDIA U_REGISTRO U_GUION U_PREMIO U_PROMPT
+# Espera en el entorno: U_ASISTENTE U_CANDADO U_OIDO U_WHATSAPP U_GUARDIA U_REGISTRO U_GUION U_PREMIO U_VISTAZO U_PROMPT
 # U_SABER U_PROBADORES — las URL firmadas para bajar cada archivo (el nodo no
 # tiene permisos de S3 y no los necesita: la firma viaja en la URL y muere en
 # dos horas).
@@ -55,6 +55,7 @@ curl -sS --fail -o /srv/aura/guardia.py      "$U_GUARDIA"
 curl -sS --fail -o /srv/aura/registro.py     "$U_REGISTRO"
 curl -sS --fail -o /srv/aura/guion.py        "$U_GUION"
 curl -sS --fail -o /srv/aura/premio.py       "$U_PREMIO"
+curl -sS --fail -o /srv/aura/vistazo.py      "$U_VISTAZO"
 curl -sS --fail -o /srv/aura/PROMPT-AURA.md  "$U_PROMPT"
 curl -sS --fail -o /srv/aura/saber.json      "$U_SABER"
 # la lista de probadores no se pisa si ya existe: puede tener gente agregada a
@@ -86,6 +87,13 @@ Environment=AURA_PASO=1.2
 Environment=AURA_AVISAR_A=jose@ordenglobal.org
 # Un mes sin escribir y se borra todo lo de esa persona.
 Environment=AURA_PLAZO_DIAS=30
+# Quien puede pedir el parte escribiendo «actualizar». Vacio = nadie, que
+# es lo correcto: el parte lleva identidades en cola, premios por pagar y
+# el estado de la cuenta de Meta.
+Environment=AURA_PARTE_PARA=50432136457
+# El buzon de COPIAS. Nunca las credenciales del buzon real de nadie: asi
+# el bot no puede escribir en nombre de Jose ni borrarle nada.
+EnvironmentFile=-/etc/aura-correo.env
 # WhatsApp. La clave NO se escribe aqui: va en /etc/aura-whatsapp.env, con
 # permisos 600, porque este archivo lo lee cualquiera que entre a la maquina y
 # `systemctl cat aura` lo imprime entero. El servicio arranca igual si el
