@@ -45,26 +45,45 @@ TRAMOS = ('admin', 'legal', 'tecnologico', 'mercadeo', 'contable', 'operacion')
 
 # Como se escribe la lista:
 #
-#   AURA_ESCALAFON="50432136457:admin, j.ordonez@ordenglobal.org:admin,
+#   AURA_ESCALAFON="50432136457|j.ordonez@ordenglobal.org:admin,
 #                   50499999999:legal, 50488888888:tecnologico"
 #
 # Telefono o correo, dos puntos, tramo. Lo que no encaje se ignora — y se
 # ignora ENTERO: un tramo mal escrito no degrada a la persona a otro tramo,
 # la deja fuera. Degradar en silencio es como alguien termina con permisos
 # que nadie le dio.
+#
+# ── UNA PERSONA, VARIOS SITIOS DONDE ESCRIBE: LA BARRA ─────────────────────
+#
+# La barra junta las formas de escribirle a la MISMA persona. Jose escribe
+# desde su telefono y desde su correo, y son el.
+#
+# No es comodidad: es la regla 1. Sin la barra, poner el telefono y el correo
+# como dos admin le daria DOS firmas — pediria desde el telefono y aprobaria
+# desde el correo, y «nadie se aprueba a si mismo» quedaria en nada, saltado
+# por escribirse dos veces en una lista.
+#
+# Asi que lo que cuenta para firmar no es el numero ni el correo: es LA
+# PERSONA, y una persona es todo lo que va junto antes de los dos puntos.
 _CRUDO = os.environ.get('AURA_ESCALAFON') or ''
 
 
 def _leer(crudo):
+    """`{persona: (tramo, [formas de escribirle])}`.
+
+    La persona se llama como su PRIMERA forma — normalmente el telefono, que
+    es por donde llega el aviso.
+    """
     gente = {}
     for trozo in crudo.split(','):
         trozo = trozo.strip()
         if not trozo or ':' not in trozo:
             continue
-        quien, _, tramo = trozo.rpartition(':')
-        quien, tramo = quien.strip().lower(), tramo.strip().lower()
-        if quien and tramo in TRAMOS:
-            gente[quien] = tramo
+        quienes, _, tramo = trozo.rpartition(':')
+        tramo = tramo.strip().lower()
+        formas = [x.strip().lower() for x in quienes.split('|') if x.strip()]
+        if formas and tramo in TRAMOS:
+            gente[formas[0]] = (tramo, formas)
     return gente
 
 
@@ -92,15 +111,37 @@ def normal(quien):
     return ''.join(c for c in q if c.isdigit())
 
 
-def tramo_de(quien):
-    """El tramo de esa persona, o `None` si no esta en la lista."""
+def persona_de(quien):
+    """QUIEN es, sin importar por donde escribio. `None` si no esta.
+
+    Es lo unico que se puede comparar para decidir si dos mensajes son de la
+    misma persona. Comparar el numero no sirve: el mismo la manda desde su
+    correo y ya no cuadra.
+    """
     q = normal(quien)
     if not q:
         return None
-    for clave, tramo in GENTE.items():
-        if normal(clave) == q:
-            return tramo
+    for persona, (_tramo, formas) in GENTE.items():
+        if any(normal(f) == q for f in formas):
+            return persona
     return None
+
+
+def formas_de(persona):
+    """Todas las formas de escribirle a esa persona."""
+    ficha = GENTE.get(normal_persona(persona))
+    return list(ficha[1]) if ficha else []
+
+
+def normal_persona(quien):
+    p = persona_de(quien)
+    return p if p is not None else normal(quien)
+
+
+def tramo_de(quien):
+    """El tramo de esa persona, o `None` si no esta en la lista."""
+    p = persona_de(quien)
+    return GENTE[p][0] if p else None
 
 
 def es_admin(quien):
@@ -108,21 +149,24 @@ def es_admin(quien):
 
 
 def admins():
-    """Los admin, tal como estan escritos en la lista — que es como hay que
-    escribirles."""
-    return [q for q, t in GENTE.items() if t == 'admin']
+    """Los admin, uno por PERSONA — no uno por telefono.
+
+    Que devuelva personas y no formas es lo que hace que contarlas signifique
+    algo: dos correos del mismo no son dos firmas.
+    """
+    return [p for p, (t, _f) in GENTE.items() if t == 'admin']
 
 
 def hay_con_quien_aprobar(sin_contar=None):
-    """¿Queda algun admin que pueda aprobar lo de esta persona?
+    """¿Queda alguna PERSONA admin que pueda aprobar lo de esta?
 
-    Con UN solo admin en la lista, ese admin no puede pedir nada que necesite
-    aprobacion: no hay quien se la de, y aprobarse solo esta prohibido. Es
-    incomodo a proposito — que la unica salida sea sumar un segundo admin, y
-    no saltarse la regla.
+    Con un solo admin —aunque figure con tres correos— nadie puede pedir lo
+    que necesita firma: no hay quien se la de, y aprobarse solo esta
+    prohibido. Es incomodo a proposito: la unica salida es sumar una SEGUNDA
+    PERSONA, no una segunda forma de escribirle a la misma.
     """
-    yo = normal(sin_contar) if sin_contar else None
-    return any(normal(a) != yo for a in admins())
+    yo = persona_de(sin_contar) if sin_contar else None
+    return any(a != yo for a in admins())
 
 
 def como_se_dice(tramo):

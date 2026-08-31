@@ -142,8 +142,13 @@ def huella(clave, valores, quien):
     importa: aprobar «reiniciar aura» no puede valer para el mismo encargo
     pedido por otra persona.
     """
+    # Va contra la PERSONA, no contra el número: el mismo encargo pedido por
+    # José desde su correo y desde su teléfono es el mismo encargo. Si fuera
+    # por el número, aprobar uno no cubriría al otro y aparecerían encargos
+    # gemelos que nadie entiende.
     crudo = json.dumps(
-        {'clave': clave, 'valores': valores or {}, 'quien': escalafon.normal(quien)},
+        {'clave': clave, 'valores': valores or {},
+         'quien': escalafon.normal_persona(quien)},
         sort_keys=True, ensure_ascii=False)
     return hashlib.sha256(crudo.encode('utf8')).hexdigest()[:16]
 
@@ -196,7 +201,8 @@ def pedir(quien, clave, valores=None):
         if necesita:
             mios = [e for e in libro['encargos']
                     if e['estado'] == 'pedido'
-                    and escalafon.normal(e['quien']) == escalafon.normal(quien)]
+                    and escalafon.normal_persona(e['quien'])
+                    == escalafon.normal_persona(quien)]
             if len(mios) >= TOPE_ABIERTOS:
                 return None, (f'ya tenés {len(mios)} encargos esperando '
                               'respuesta. Esperá a que contesten esos')
@@ -205,6 +211,10 @@ def pedir(quien, clave, valores=None):
             'clave': clave,
             'valores': limpios,
             'quien': escalafon.normal(quien),
+            # POR DONDE escribió arriba; QUIÉN es, aquí. La firma se compara
+            # contra esto: sin ello, pedir desde el teléfono y aprobar desde
+            # el correo sería aprobarse a sí mismo sin que nadie lo vea.
+            'persona': escalafon.normal_persona(quien),
             'tramo': tramo,
             'riesgo': catalogo.ENCARGOS[clave]['riesgo'],
             'huella': huella(clave, limpios, quien),
@@ -256,8 +266,11 @@ def _firmar(quien, id_encargo, nuevo, motivo=None, huella_vista=None):
             return None, f'no hay ningún encargo {id_encargo}'
         if e['estado'] != 'pedido':
             return None, _yaEsta(e)
-        # REGLA 1. Va después de encontrarlo para poder decir por qué.
-        if escalafon.normal(e['quien']) == escalafon.normal(quien):
+        # REGLA 1. Va después de encontrarlo para poder decir por qué. Se
+        # compara la PERSONA: José pidiendo desde el teléfono y firmando desde
+        # el correo sigue siendo José firmándose solo.
+        if (e.get('persona') or escalafon.normal(e['quien'])) \
+                == escalafon.normal_persona(quien):
             return None, ('ese encargo lo pediste vos. Nadie se aprueba a sí '
                           'mismo — que lo mire otro admin')
         # REGLA 2.
@@ -266,6 +279,7 @@ def _firmar(quien, id_encargo, nuevo, motivo=None, huella_vista=None):
                           'firma. Pedilo de nuevo y volvé a leerlo')
         e['estado'] = nuevo
         e['firma'] = escalafon.normal(quien)
+        e['firmo_persona'] = escalafon.normal_persona(quien)
         e['firmado_en'] = int(time.time())
         e['motivo'] = motivo
         _escribir(libro)
@@ -329,11 +343,12 @@ def listos():
 
 
 def mios(quien, cuantos=10):
-    q = escalafon.normal(quien)
+    """Lo que pidió esa PERSONA, escriba desde donde escriba."""
+    q = escalafon.normal_persona(quien)
     with CANDADO:
         libro = _leer()
         return [dict(e) for e in libro['encargos']
-                if escalafon.normal(e['quien']) == q][-cuantos:]
+                if (e.get('persona') or escalafon.normal(e['quien'])) == q][-cuantos:]
 
 
 # ── Hacer ───────────────────────────────────────────────────────────────────

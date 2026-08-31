@@ -40,7 +40,8 @@ ABOGADA = '50422222222'     # legal
 TECNICO = '50433333333'     # tecnologico
 NADIE = '50499999999'       # fuera de la lista
 
-LISTA = (f'{JEFE}:admin, {OTRA_JEFA}:admin, {ABOGADA}:legal, '
+CORREO_JEFE = 'j.ordonez@ordenglobal.org'    # el MISMO José, otro sitio
+LISTA = (f'{JEFE}|{CORREO_JEFE}:admin, {OTRA_JEFA}:admin, {ABOGADA}:legal, '
          f'{TECNICO}:tecnologico')
 
 
@@ -145,6 +146,64 @@ class NADIESEAPRUEBAASIMISMO(_Base):
         e, mal = encargos.pedir(JEFE, 'parte')
         self.assertIsNotNone(e, mal)
         self.assertEqual(e['estado'], 'aprobado')
+
+
+class UNAPERSONANOSONDOSFIRMAS(_Base):
+    """El agujero del 31-ago, encontrado antes de encender nada.
+
+    José escribe desde su teléfono y desde j.ordonez@ordenglobal.org. Si la
+    lista los cuenta como dos admin, «nadie se aprueba a sí mismo» se salta
+    escribiéndose dos veces: pide desde el teléfono, firma desde el correo, y
+    el control desaparece sin que nadie toque una línea de código.
+
+    Lo que cuenta para firmar no es el número ni el correo: es LA PERSONA.
+    """
+
+    def test_el_telefono_y_el_correo_del_mismo_son_UNA_persona(self):
+        self.assertEqual(escalafon.persona_de(JEFE),
+                         escalafon.persona_de(CORREO_JEFE))
+
+    def test_y_los_dos_llevan_su_tramo(self):
+        self.assertEqual(escalafon.tramo_de(CORREO_JEFE), 'admin')
+        self.assertEqual(escalafon.tramo_de('J.Ordonez@OrdenGlobal.org'), 'admin')
+
+    def test_NO_puede_pedir_desde_el_telefono_y_firmar_desde_el_correo(self):
+        e, mal = encargos.pedir(JEFE, 'desplegar')
+        self.assertIsNotNone(e, mal)
+        hecho, mal = encargos.aprobar(CORREO_JEFE, e['id'])
+        self.assertIsNone(hecho, 'se firmó a sí mismo cambiando de sitio')
+        self.assertIn('lo pediste vos', mal)
+
+    def test_ni_al_reves(self):
+        e, mal = encargos.pedir(CORREO_JEFE, 'desplegar')
+        self.assertIsNotNone(e, mal)
+        hecho, mal = encargos.aprobar(JEFE, e['id'])
+        self.assertIsNone(hecho, 'se firmó a sí mismo cambiando de sitio')
+
+    def test_los_admin_se_cuentan_por_PERSONA_no_por_correo(self):
+        escalafon.recargar(f'{JEFE}|{CORREO_JEFE}|otro@ordenglobal.org:admin')
+        self.assertEqual(len(escalafon.admins()), 1,
+                         'tres formas del mismo cuentan como tres admin')
+        self.assertFalse(escalafon.hay_con_quien_aprobar(JEFE))
+        e, mal = encargos.pedir(CORREO_JEFE, 'desplegar')
+        self.assertIsNone(e, 'pudo pedir algo que solo podría firmarse solo')
+
+    def test_pero_OTRA_persona_si_le_firma(self):
+        e, _ = encargos.pedir(CORREO_JEFE, 'desplegar')
+        hecho, mal = encargos.aprobar(OTRA_JEFA, e['id'])
+        self.assertIsNone(mal, mal)
+        self.assertEqual(hecho['estado'], 'aprobado')
+
+    def test_lo_que_pidio_por_un_sitio_le_sale_en_lo_suyo_por_el_otro(self):
+        encargos.pedir(JEFE, 'desplegar')
+        self.assertEqual(len(encargos.mios(CORREO_JEFE)), 1,
+                         'lo que pidió por teléfono no aparece en lo suyo')
+
+    def test_la_huella_es_la_misma_escriba_desde_donde_escriba(self):
+        """Si no, aprobar lo pedido por teléfono no cubriría lo mismo pedido
+        por correo, y aparecerían encargos gemelos que nadie entiende."""
+        self.assertEqual(encargos.huella('desplegar', {}, JEFE),
+                         encargos.huella('desplegar', {}, CORREO_JEFE))
 
 
 class SOLOUNADMINCONTESTA(_Base):
