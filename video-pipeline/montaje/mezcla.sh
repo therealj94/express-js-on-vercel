@@ -18,8 +18,12 @@ done
 ENT="$ENT -i click.wav"; k=$((i+1))
 FIL="${FIL}[$k:a]adelay=26300|26300[ck];"; MIX="${MIX}[ck]"; N=$((i+1))
 
+# El ambiente va SIEMPRE: es lo que hace que los planos suenen a sitios.
+ENT="$ENT -i ambiente.wav"; amb=$((k+1))
+FIL="${FIL}[$amb:a]volume=0.62[amb];"; MIX="${MIX}[amb]"; N=$((N+1))
+
 if [ "$CAMA" = "1" ]; then
-  ENT="$ENT -i cama.wav"; c=$((k+1))
+  ENT="$ENT -i cama.wav"; c=$((amb+1))
   # sidechain: el colchón se aparta solo cuando entra la voz y vuelve al callar.
   FIL="${FIL}[$c:a]volume=0.85[cama];"
   MIX="${MIX}[cama]"; N=$((N+1))
