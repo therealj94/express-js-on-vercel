@@ -41,7 +41,7 @@ TECNICO = '50433333333'     # tecnologico
 NADIE = '50499999999'       # fuera de la lista
 
 CORREO_JEFE = 'j.ordonez@ordenglobal.org'    # el MISMO José, otro sitio
-LISTA = (f'{JEFE}|{CORREO_JEFE}:admin, {OTRA_JEFA}:admin, {ABOGADA}:legal, '
+LISTA = (f'{JEFE}/{CORREO_JEFE}:admin, {OTRA_JEFA}:admin, {ABOGADA}:legal, '
          f'{TECNICO}:tecnologico')
 
 
@@ -181,7 +181,7 @@ class UNAPERSONANOSONDOSFIRMAS(_Base):
         self.assertIsNone(hecho, 'se firmó a sí mismo cambiando de sitio')
 
     def test_los_admin_se_cuentan_por_PERSONA_no_por_correo(self):
-        escalafon.recargar(f'{JEFE}|{CORREO_JEFE}|otro@ordenglobal.org:admin')
+        escalafon.recargar(f'{JEFE}/{CORREO_JEFE}/otro@ordenglobal.org:admin')
         self.assertEqual(len(escalafon.admins()), 1,
                          'tres formas del mismo cuentan como tres admin')
         self.assertFalse(escalafon.hay_con_quien_aprobar(JEFE))
@@ -459,6 +459,43 @@ class ELLIBRONOEJECUTA(unittest.TestCase):
         """Lleva quién pidió qué: no es de lectura pública en la máquina."""
         self.assertIn('S_IRUSR | stat.S_IWUSR', self.FUENTE)
 
+
+
+
+class LALISTAVIVEENUNARCHIVODEENTORNO(unittest.TestCase):
+    """31-ago, 23:49. La primera versión separaba las formas de una persona
+    con `|`. Escrito en el archivo de entorno del nodo sin comillas, la shell
+    lo leyó como una TUBERÍA e intentó ejecutar `j.ordonez@…:admin`.
+
+    No pasó nada —dio «not found»— pero la forma del fallo es la mala: un
+    separador que significa algo en la shell es un separador que algún día
+    ejecuta lo que lleva al lado. Esta prueba fija que no vuelva.
+    """
+
+    def test_el_separador_no_significa_nada_en_una_shell(self):
+        fuente = (AQUI / 'escalafon.py').read_text(encoding='utf8')
+        i = fuente.index('quienes.split(')
+        sep = fuente[i:i + 30]
+        for peligroso in ['|', ';', '&', '$', '`', '>', '<', '(', ')', '*', '?']:
+            self.assertNotIn(f"split('{peligroso}')", sep,
+                             f'el separador «{peligroso}» lo interpreta la shell')
+
+    def test_y_no_puede_aparecer_dentro_de_un_correo_ni_de_un_telefono(self):
+        """Si apareciera, partiría a alguien en dos personas — y una de las
+        dos podría firmarle a la otra."""
+        escalafon.recargar('50432136457/jose.ordonez+og@ordenglobal.org:admin')
+        self.assertEqual(len(escalafon.admins()), 1)
+        self.assertEqual(escalafon.tramo_de('jose.ordonez+og@ordenglobal.org'),
+                         'admin')
+        escalafon.recargar('')
+
+    def test_la_lista_entera_se_lee_aunque_venga_con_espacios(self):
+        escalafon.recargar('  50432136457 / j.ordonez@ordenglobal.org : admin ,'
+                           ' 50499998888 : legal ')
+        self.assertEqual(escalafon.tramo_de('50432136457'), 'admin')
+        self.assertEqual(escalafon.tramo_de('j.ordonez@ordenglobal.org'), 'admin')
+        self.assertEqual(escalafon.tramo_de('50499998888'), 'legal')
+        escalafon.recargar('')
 
 if __name__ == '__main__':
     unittest.main(verbosity=2)

@@ -45,7 +45,7 @@ TRAMOS = ('admin', 'legal', 'tecnologico', 'mercadeo', 'contable', 'operacion')
 
 # Como se escribe la lista:
 #
-#   AURA_ESCALAFON="50432136457|j.ordonez@ordenglobal.org:admin,
+#   AURA_ESCALAFON="50432136457/j.ordonez@ordenglobal.org:admin,
 #                   50499999999:legal, 50488888888:tecnologico"
 #
 # Telefono o correo, dos puntos, tramo. Lo que no encaje se ignora — y se
@@ -65,6 +65,17 @@ TRAMOS = ('admin', 'legal', 'tecnologico', 'mercadeo', 'contable', 'operacion')
 #
 # Asi que lo que cuenta para firmar no es el numero ni el correo: es LA
 # PERSONA, y una persona es todo lo que va junto antes de los dos puntos.
+#
+# LA BARRA ES `/` Y NO `|` POR UNA RAZON CONCRETA. La primera version usaba
+# `|`, y al escribirlo en el archivo de entorno del nodo sin comillas, la
+# shell lo leyo como una TUBERIA: intento ejecutar `j.ordonez@...:admin` como
+# un comando. Salio un «not found» y no paso nada, pero la forma del fallo es
+# la mala — un separador que significa algo en la shell es un separador que
+# algun dia ejecuta lo que lleva al lado.
+#
+# `/` no significa nada en una shell, no aparece en un telefono, y no es
+# valido ni en el nombre ni en el dominio de un correo. No se puede confundir
+# con nada.
 _CRUDO = os.environ.get('AURA_ESCALAFON') or ''
 
 
@@ -81,7 +92,7 @@ def _leer(crudo):
             continue
         quienes, _, tramo = trozo.rpartition(':')
         tramo = tramo.strip().lower()
-        formas = [x.strip().lower() for x in quienes.split('|') if x.strip()]
+        formas = [x.strip().lower() for x in quienes.split('/') if x.strip()]
         if formas and tramo in TRAMOS:
             gente[formas[0]] = (tramo, formas)
     return gente
