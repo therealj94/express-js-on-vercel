@@ -33,7 +33,7 @@ object SignalReader {
 
     fun read(context: Context): SignalSnapshot {
         val telephony = context.getSystemService(Context.TELEPHONY_SERVICE) as? TelephonyManager
-            ?: return SignalSnapshot("sin radio", null, null, null, null)
+            ?: return SignalSnapshot("Red: sin radio", null, null, null, null)
 
         val type = networkTypeName(context, telephony)
         if (!hasPermission(context)) return SignalSnapshot(type, null, null, null, null)
@@ -83,20 +83,20 @@ object SignalReader {
         if (ContextCompat.checkSelfPermission(context, Manifest.permission.READ_PHONE_STATE) !=
             PackageManager.PERMISSION_GRANTED
         ) {
-            return "tipo de red: hace falta permiso"
+            return "Red: hace falta el permiso de estado del teléfono"
         }
         return when (runCatching { telephony.dataNetworkType }.getOrDefault(0)) {
-            TelephonyManager.NETWORK_TYPE_NR -> "5G"
-            TelephonyManager.NETWORK_TYPE_LTE -> "4G LTE"
+            TelephonyManager.NETWORK_TYPE_NR -> "Red: 5G"
+            TelephonyManager.NETWORK_TYPE_LTE -> "Red: 4G LTE"
             TelephonyManager.NETWORK_TYPE_HSPAP,
             TelephonyManager.NETWORK_TYPE_HSPA,
             TelephonyManager.NETWORK_TYPE_UMTS,
-            -> "3G"
+            -> "Red: 3G"
             TelephonyManager.NETWORK_TYPE_EDGE,
             TelephonyManager.NETWORK_TYPE_GPRS,
-            -> "2G"
-            TelephonyManager.NETWORK_TYPE_UNKNOWN -> "sin datos móviles"
-            else -> "otra"
+            -> "Red: 2G"
+            TelephonyManager.NETWORK_TYPE_UNKNOWN -> "Red: sin datos móviles"
+            else -> "Red: otra"
         }
     }
 }

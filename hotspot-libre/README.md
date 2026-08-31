@@ -169,8 +169,18 @@ De ahí salen tres diagnósticos distintos, y solo uno se arregla andando:
 | RSRP | SINR | Qué pasa |
 |---|---|---|
 | débil | limpia | Estás lejos o hay paredes. **Moverse ayuda.** |
+| débil | sucia | La peor combinación. Moverse es lo primero. |
+| media | sucia | Con esta calidad el LTE da pocos Mbps **aunque el plan sea ilimitado**. Moverse puede ganar algo. |
 | fuerte | sucia | Celda saturada. Moverse no cambia nada; prueba a otra hora. |
 | fuerte | limpia | La radio está bien; el techo está en otro sitio. |
+
+La potencia se clasifica en tres niveles, no en dos. Con solo «fuerte» y
+«débil», un −104 dBm —que la propia ficha llama «regular»— salía descrito
+como señal fuerte y con el consejo de **no** moverse, justo al revés de lo
+que tocaba.
+
+Y ojo con la palabra «ilimitado»: significa que no te cortan los datos, no
+que la radio vaya rápido. Con la calidad por los suelos, el plan da igual.
 
 La pantalla guarda **el mejor punto visto**, para poder recorrer la casa
 mirando el número en vez de memorizarlo mientras caminas. También muestra el

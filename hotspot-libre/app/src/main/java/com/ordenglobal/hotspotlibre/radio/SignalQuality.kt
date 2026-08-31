@@ -36,32 +36,64 @@ object SignalQuality {
         else -> "inservible"
     }
 
-    /** Qué hacer, en una frase, según lo que digan los dos números. */
+    private enum class Strength { FUERTE, MEDIA, DEBIL }
+
+    private fun strength(rsrp: Int) = when {
+        rsrp >= -95 -> Strength.FUERTE
+        rsrp >= -105 -> Strength.MEDIA
+        else -> Strength.DEBIL
+    }
+
+    /**
+     * Qué hacer, en una frase, según lo que digan los dos números.
+     *
+     * Con tres niveles de potencia y no dos. Tratando como «fuerte» todo lo
+     * que no fuera pésimo, un −104 dBm —que la propia ficha llama «regular»—
+     * salía descrito como señal fuerte y con el consejo de no moverse. Justo
+     * al revés de lo que tocaba.
+     */
     fun verdict(rsrp: Int?, sinr: Int?): String {
         if (rsrp == null) {
             return "El teléfono no da los datos de la radio. Concede el permiso " +
                 "de ubicación: Android lo exige para leer la información de la celda."
         }
 
-        val weak = rsrp < -105
         val dirty = sinr != null && sinr < 5
+        val mediocre = sinr != null && sinr < 13
 
-        return when {
-            weak && dirty ->
-                "Señal débil Y sucia: estás lejos de la antena y además hay ruido. " +
-                    "Muévete hacia una ventana y prueba de nuevo; es el caso donde " +
-                    "cambiar de sitio más se nota."
-            weak ->
+        return when (strength(rsrp)) {
+            Strength.DEBIL -> if (dirty) {
+                "Señal débil Y sucia: es la peor combinación. Muévete hacia una " +
+                    "ventana o a una planta alta y mira si sube la potencia; aquí " +
+                    "es donde más se nota cambiar de sitio."
+            } else {
                 "Señal débil pero limpia: estás lejos de la antena o hay paredes " +
                     "en medio. Aquí SÍ ayuda moverte — ventana, planta alta, lejos " +
                     "del hormigón y del metal."
-            dirty ->
-                "Llega fuerte pero sucia: eso es celda saturada o interferencia, " +
-                    "no distancia. Moverte no lo va a arreglar. Prueba a otra hora: " +
-                    "si de madrugada mejora, era saturación y no hay nada que hacer."
-            else ->
-                "La radio está bien. Si aun así va lento, el techo no es la señal: " +
-                    "mira la cuota de tu plan o mide con el botón de arriba."
+            }
+
+            Strength.MEDIA -> if (dirty) {
+                "Ni la potencia ni la calidad acompañan: con esta calidad, el LTE " +
+                    "da unos pocos Mbps aunque el plan sea ilimitado. Prueba a " +
+                    "moverte y vigila el mejor punto visto; si no sube, es la celda " +
+                    "y solo queda probar a otra hora."
+            } else {
+                "Potencia justita pero limpia. Moverte puede ganar algo; mira si " +
+                    "el mejor punto visto sube respecto al de ahora."
+            }
+
+            Strength.FUERTE -> when {
+                dirty ->
+                    "Llega fuerte pero sucia: eso es celda saturada o interferencia, " +
+                        "no distancia. Moverte no lo va a arreglar. Prueba a otra hora: " +
+                        "si de madrugada mejora, era saturación y no hay nada que hacer."
+                mediocre ->
+                    "Buena potencia y calidad aceptable. Da para navegar; si va lento, " +
+                        "el techo no está en la radio."
+                else ->
+                    "La radio está bien. Si aun así va lento, el techo no es la señal: " +
+                        "mira la cuota de tu plan o mide con el botón de arriba."
+            }
         }
     }
 

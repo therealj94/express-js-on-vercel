@@ -100,9 +100,14 @@ private fun HomeScreen(modifier: Modifier = Modifier) {
     var bestRsrp by remember { mutableStateOf<Int?>(null) }
     var hasSignalPermission by remember { mutableStateOf(SignalReader.hasPermission(context)) }
 
-    val askLocation = rememberLauncherForActivityResult(
-        ActivityResultContracts.RequestPermission(),
-    ) { granted -> hasSignalPermission = granted }
+    // Los dos permisos van juntos: sin ubicación no hay potencia ni calidad,
+    // y sin estado del teléfono no hay tipo de red. Pedir solo el primero
+    // dejaba la ficha diciendo «hace falta permiso» para siempre.
+    val askRadioPermissions = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions(),
+    ) { granted ->
+        hasSignalPermission = granted[Manifest.permission.ACCESS_FINE_LOCATION] == true
+    }
 
     // Con el servicio parado nadie publica; la pantalla se refresca sola.
     LaunchedEffect(Unit) {
@@ -251,13 +256,20 @@ private fun HomeScreen(modifier: Modifier = Modifier) {
                         "la antena a la que estás enganchado delata dónde estás.",
                     style = MaterialTheme.typography.bodySmall,
                 )
-                Button(onClick = { askLocation.launch(Manifest.permission.ACCESS_FINE_LOCATION) }) {
-                    Text("Conceder permiso")
-                }
+                Button(
+                    onClick = {
+                        askRadioPermissions.launch(
+                            arrayOf(
+                                Manifest.permission.ACCESS_FINE_LOCATION,
+                                Manifest.permission.READ_PHONE_STATE,
+                            ),
+                        )
+                    },
+                ) { Text("Conceder permisos") }
             }
 
             if (snapshot != null) {
-                Text("Red: ${snapshot.networkType}", fontWeight = FontWeight.Bold)
+                Text(snapshot.networkType, fontWeight = FontWeight.Bold)
                 Text(
                     SignalQuality.summary(snapshot.rsrpDbm, snapshot.sinrDb),
                     fontFamily = FontFamily.Monospace,
