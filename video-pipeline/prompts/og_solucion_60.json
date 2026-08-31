@@ -1,0 +1,149 @@
+{
+  "proyecto": "Orden Global — Enviadas 24, entregadas 23.9",
+  "formato": {
+    "aspect": "9:16 vertical",
+    "gen_w": 720,
+    "gen_h": 1280,
+    "final_w": 1080,
+    "final_h": 1920,
+    "fps": 24,
+    "nota_duracion": "6 planos x 10 s = 60 s exactos."
+  },
+  "idea": {
+    "es_la_parte_2": "El primer comercial mostró el robo: 24 salen, 14 llegan muertas, seis dings, 31 horas. Este es el mismo camino sin camino.",
+    "premisa": "Un hombre manda 24 rosas y llegan en el mismo gesto. No hay eslabones porque no hay cadena.",
+    "el_remate": "Llegan 23.9. Se suelta un pétalo, cae al suelo, y ella lo recoge. Es lo único que se pierde en todo el viaje — y ni siquiera se sale de la habitación.",
+    "por_que_funciona": "Prometer pérdida cero suena a mentira. Enseñar el pétalo que se cayó y ponerle número lo hace creíble: es tan poco que se puede contar.",
+    "rima_con_la_parte_1": {
+      "sonido": "Allí seis dings de dureza creciente, el sexto raspa. Aquí UNO solo, suave, y nada más.",
+      "reloj": "Allí MAR 10:40 → MIÉ 17:30, treinta y una horas. Aquí 17:30:00 → 17:30:04, cuatro segundos.",
+      "contador": "Allí ámbar bajando a golpes: 24, 21, 19, 16, 14. Aquí un único −0.1 en dorado: 24 → 23.9.",
+      "la_victima": "Allí ella nunca ve el robo. Aquí ella ve la única pérdida que hubo, la recoge del suelo y se la queda."
+    },
+    "regla_de_rodaje": "Nadie celebra. Ni sonrisas de anuncio, ni cámara lenta, ni música triunfal. La entrega perfecta se rueda como algo normal, porque la idea es que debería serlo."
+  },
+  "defaults": {
+    "video_workflow": "workflows/h3_calidad_api.json",
+    "duration_s": 10,
+    "fps": 24,
+    "negative": "text, letters, numbers, subtitles, captions, watermark, brand names, logos, signage with readable words, screens with readable text, horizontal composition, letterboxing, black bars, cartoon, animation, 3D render, CGI flowers, artificial flowers, glitter, cellophane, hologram, sparkles, magic effects, teleport effects, light trails, particles, drone shot, gimbal glide, slow motion, orange and teal grading, glossy advertising lighting, beauty retouching, poreless skin, perfect teeth, model looks, big smile, celebration, cheering, plastic skin, waxy face, deformed hands, extra fingers, morphing, flicker",
+    "steps": 20
+  },
+  "look_base": "shot on full-frame cinema camera, vintage 35mm spherical prime, T2.8, locked off or slow handheld with small organic drift, natural practical light only, real 35mm grain, muted true colour, milky blacks, documentary realism, calm observational framing, nobody performing for the camera, no advertising gloss",
+  "casting": [
+    {
+      "id": "REMITENTE",
+      "rol": "quien manda las flores",
+      "retrato": "Vertical portrait of a 44 year old Latin American man, short dark hair going grey at the temples, a day of stubble, a plain dark blue shirt with the sleeves rolled to the forearms, a worn wedding ring, large ordinary hands with short clean nails, calm neutral expression, not looking at camera, warm afternoon shop light, visible pores and facial asymmetry"
+    },
+    {
+      "id": "FLORISTA",
+      "rol": "la que no se queda nada",
+      "retrato": "Vertical portrait of a 55 year old woman in a grey work apron behind a florist counter, hair tied back, reading glasses pushed up on her head, completely ordinary and unremarkable, neutral working expression, not looking at camera, warm shop window light, visible pores and expression lines, no makeup"
+    },
+    {
+      "id": "RECEPTORA",
+      "rol": "quien las recibe",
+      "retrato": "Vertical portrait of a 40 year old Latin American woman, dark shoulder-length hair loosely tied back with strands escaping at the temples, no makeup, faint freckles across the nose, a small mole under the left eye, cream knit sweater with sleeves pushed to the forearms, neutral expression, warm low sun from a window camera-left, visible pores and facial asymmetry"
+    },
+    {
+      "id": "RAMO_24",
+      "rol": "objeto",
+      "retrato": "Vertical still life of a full bouquet of twenty-four deep red roses in a cone of brown kraft paper tied with a cream satin ribbon, heads packed into an even dome with no gaps, paper taut and sharply folded, cut stems bound in damp paper towel inside a clear full water sleeve, water beading on the outer petals, fresh and heavy, photographic, real flowers with visible petal texture"
+    }
+  ],
+  "shots": [
+    {
+      "id": "01_el_envio",
+      "titulo": "EL ENVÍO",
+      "segundos": 10,
+      "move": "static",
+      "reparto": ["REMITENTE", "FLORISTA", "RAMO_24"],
+      "overlay": "contador 24 · reloj 17:30:00",
+      "still": "A florist shop counter in warm afternoon light, exactly the same counter and the same wall of flower buckets as before, a full bouquet of twenty-four deep red roses in taut brown kraft paper lying across the counter, a 55 year old woman in a grey apron behind it with both hands flat on the paper, a 44 year old man in a dark blue shirt on the near side of the counter, natural skin texture with visible pores and fine hair, facial asymmetry, unstyled hair, working hands with short nails, no beauty retouching, no posing, calm documentary realism",
+      "motion": "she folds the kraft paper closed over the full bouquet without taking anything out of it, tightens the cream ribbon into a knot and slides the whole bouquet across the counter to him, he lifts it with both hands and feels the weight settle, neither of them hurries and neither looks at the camera",
+      "gesto": "ella dobla el papel sobre el ramo COMPLETO y lo empuja entero",
+      "nota": "Mismo mostrador y misma florista que en la parte 1. Allí sacaba tres rosas; aquí la mano hace el mismo movimiento y no saca nada. El público que vio el primer vídeo lo va a notar."
+    },
+    {
+      "id": "02_las_manos_que_envian",
+      "titulo": "LAS MANOS QUE ENVÍAN",
+      "segundos": 10,
+      "move": "static",
+      "reparto": ["REMITENTE", "RAMO_24"],
+      "overlay": "el único click · −0.1",
+      "still": "Tight close on a pair of large male hands with short clean nails and a worn wedding ring holding the full bouquet of twenty-four deep red roses in taut kraft paper, held upright at chest height and pushed slightly forward toward the lens, the paper cone and the packed dome of roses filling most of the tall frame, warm afternoon shop light from camera-left, a soft warm out of focus background, no face in frame, visible skin texture and hair on the forearms, photographic realism",
+      "motion": "his hands close firmly around the paper cone and push the bouquet forward toward the lens until it nearly fills the frame, and hold it there completely still, one single outer petal loosens at the edge of the dome and begins to tip away from the flower",
+      "gesto": "un solo pétalo exterior se afloja justo al final del plano",
+      "nota": "PLANO BISAGRA. Este y el 03 son el mismo gesto rodado dos veces: mismo encuadre, misma altura, misma velocidad. El corte entre ellos es el producto entero. Sin caras, así que repetirlo es barato."
+    },
+    {
+      "id": "03_las_manos_que_reciben",
+      "titulo": "LAS MANOS QUE RECIBEN",
+      "segundos": 10,
+      "move": "static",
+      "reparto": ["RECEPTORA", "RAMO_24"],
+      "overlay": "reloj 17:30:04",
+      "still": "Tight close on a pair of female hands with short nails and forearms in pushed-up cream knit sleeves taking the same full bouquet of twenty-four deep red roses in the same taut kraft paper, held at the same height and the same distance from the lens, the paper cone and the packed dome filling most of the tall frame, but the light is now cool low sun from camera-right and the out of focus background is a domestic hallway with a wooden door frame, no face in frame, visible skin texture, photographic realism",
+      "motion": "her hands close around the paper cone exactly where his were and take the weight, the bouquet dips a few centimetres as she accepts it, and the loosened outer petal detaches and falls out of the bottom of the frame",
+      "gesto": "el pétalo suelto se desprende y cae fuera de cuadro",
+      "nota": "Mismo encuadre que el 02, luz y fondo distintos. El pétalo que se aflojó allí, aquí se cae. Es el 0.1."
+    },
+    {
+      "id": "04_el_petalo",
+      "titulo": "EL PÉTALO",
+      "segundos": 10,
+      "move": "static",
+      "reparto": [],
+      "overlay": "23.9",
+      "still": "Extreme close on a warm wooden floor in low late afternoon sun raking across the grain, a single deep red rose petal lying alone on the boards, one small bead of water on its surface, the fine down along its curled edge catching the light, razor-thin depth of field, dust motes drifting in the light above it, no people at all, photographic realism, macro detail on the petal surface",
+      "motion": "the petal settles and rocks once on the wood and comes to rest completely still, dust drifting slowly through the light above it, then a woman's hand enters the frame from above, picks the petal up between two fingertips and lifts it out of frame",
+      "gesto": "ella lo recoge del suelo con dos dedos",
+      "nota": "Aquí aterriza el número: ENTREGADAS 23.9. Lo único que se perdió en todo el viaje sigue dentro de la casa, y se puede recoger con dos dedos. Sin caras: el plano más seguro de la pieza."
+    },
+    {
+      "id": "05_ella",
+      "titulo": "ELLA",
+      "segundos": 10,
+      "move": "push",
+      "reparto": ["RECEPTORA", "RAMO_24"],
+      "overlay": "—",
+      "still": "Medium shot of a 40 year old woman in a cream knit sweater standing in a domestic hallway in warm low late afternoon sun from a window camera-left, holding the full heavy bouquet of twenty-four deep red roses in taut kraft paper against her chest, water still beading on the outer petals, the single loose petal held between two fingers of her free hand, the lower quarter of the tall frame dark and clean, natural skin texture with visible pores and fine hair, facial asymmetry, ordinary teeth, unstyled hair, no beauty retouching, no posing, documentary realism",
+      "motion": "she lowers her face into the roses and breathes in, her eyes close for half a second, and a small real smile starts at the eyes before it reaches her mouth, then she looks down at the single petal between her fingers and turns it over once, unbothered",
+      "gesto": "mira el pétalo suelto y no le da importancia",
+      "nota": "Nada de celebración. Una sonrisa pequeña y real. La entrega perfecta se rueda como algo normal."
+    },
+    {
+      "id": "06_el_cierre",
+      "titulo": "EL CIERRE",
+      "segundos": 10,
+      "move": "static",
+      "reparto": ["RAMO_24"],
+      "overlay": "ENVIADAS 24 · ENTREGADAS 23.9",
+      "still": "The full bouquet of twenty-four deep red roses in taut kraft paper standing upright in a plain glass jar of water on a wooden table beside a window, warm low late afternoon sun raking across it, the single loose petal lying flat on the table next to the jar, the room quiet and empty around it, deep clean shadow filling the lower part of the tall frame, photographic realism, real petal texture and water",
+      "motion": "the roses stand completely still in the light, a slow drift of dust crossing the sunbeam, one drop of water slides down the outside of the glass jar, nothing else moves at all",
+      "gesto": "una gota baja por el cristal; nada más se mueve",
+      "nota": "Diez segundos de quietud después de la parte 1, que era pura rapiña. El aguijón y el monograma se montan encima de este plano."
+    }
+  ],
+  "post": {
+    "nota": "TODO esto se compone al editar. Ningún generador de vídeo hace texto legible ni sincroniza un sonido con un fotograma exacto.",
+    "contador": {
+      "posicion": "arriba al centro",
+      "texto_inicial": "ROSAS ENVIADAS · 24",
+      "comportamiento": "Se queda quieto en 24 durante todo el trayecto. En el plano 03, cuando cae el pétalo, un único click suave y un '−0.1' en DORADO — no en ámbar — y el número pasa a 23.9. Nada más en toda la pieza.",
+      "contraste": "La parte 1 entrenó al público con seis dings de dureza creciente. Aquí el primero y único es suave y llega tarde. Esa es la broma."
+    },
+    "reloj": {
+      "posicion": "arriba a la izquierda",
+      "recorrido": "17:30:00 → 17:30:04",
+      "proposito": "Cuatro segundos frente a las treinta y una horas del primero. El reloj marca SEGUNDOS, y ese cambio de unidad es la mitad del chiste."
+    },
+    "subtitulos": "Las tres frases finales, si se mantienen. Pendiente de tu texto.",
+    "cierre": "Negro, monograma OG dorado, 'ORDEN GLOBAL', y el aguijón 'ENVIADAS 24 · ENTREGADAS 23.9'."
+  },
+  "pendiente": [
+    "Las tres frases finales (¿las dice el remitente, ella, o van solo escritas?).",
+    "¿El repartidor de la parte 1 aparece en ésta? Ahora mismo NO sale nadie de Orden Global: la idea es que no hay intermediario que enseñar. Confírmame si prefieres que salga."
+  ]
+}
