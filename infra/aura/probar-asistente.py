@@ -265,7 +265,23 @@ def main():
                 ms = [m for m in d.get('mensajes', [])
                       if m['de'] == 'aura@prueba.local']
                 return ms[-1].get('texto', '') if ms else None
-            antes = ultima()
+
+            # SE ESPERA A QUE EL HILO SE QUEDE QUIETO ANTES DE HABLAR.
+            #
+            # Sin esto, si la respuesta de la pregunta ANTERIOR todavía venía
+            # en camino, «cambió» se cumplía con ella y `decir` devolvía la
+            # contestación de la pregunta de antes. La comprobación siguiente
+            # miraba entonces un texto que no tenía nada que ver, y el rojo no
+            # hablaba del programa sino de la carrera.
+            quieto = ultima()
+            calma = time.time() + 8
+            while time.time() < calma:
+                time.sleep(1.2)
+                ahora = ultima()
+                if ahora == quieto:
+                    break
+                quieto = ahora
+            antes = quieto
             post(BASE, '/enviar', {**ana, 'para': 'aura@prueba.local',
                                    'texto': texto})
             fin = time.time() + seg
@@ -726,9 +742,14 @@ def main():
         ok(r.strip().endswith(('.', '!', '?', '…')) and len(r) > 40,
            'a un «Hola» se contesta con algo entero, no con un pedazo',
            f'contestó: {r[:90]!r}')
-        ok(r == guion.nodo('inicio', 'es', 'Ana')['texto'],
-           'y lo que contesta es el guión, palabra por palabra',
-           'si esto se cae, la respuesta la está escribiendo el modelo')
+        # La PRIMERA FRASE del nodo, no el texto entero: el canal todavía pasa
+        # la respuesta por el limpiador y el voseo, así que exigir igualdad
+        # exacta ataría esta prueba a ese acabado en vez de a lo que importa —
+        # que la frase la escribimos nosotros y no el modelo.
+        _inicio = guion.nodo('inicio', 'es', 'Ana')['texto'].split('.')[0]
+        ok(_inicio in r,
+           'y lo que contesta es el guión, no algo que armó el modelo',
+           f'esperaba que empezara con {_inicio[:60]!r} y llegó {r[:60]!r}')
         ok(len(de_usuario()) == antes_s,
            'y NO gasta motor: es la frase más común de todas y sale al instante')
         # ...pero un saludo CON pregunta adentro sí va al modelo
@@ -1146,14 +1167,13 @@ def main():
         # se presenta y vuelve a preguntar. Es exactamente lo que se quería —
         # empezar de cero en vez de adivinar—; lo que cambió es la frase con la
         # que empieza.
-        post(BASE, '/enviar', {**ana, 'para': 'aura@prueba.local',
-                               'texto': 'hola de nuevo'})
-        ms = espera_texto(ana, 'AU-RA', seg=20)
-        _ult = [m.get('texto') or '' for m in ms
-                if m.get('de') == 'aura@prueba.local']
-        ok(_ult and 'AU-RA' in _ult[-1] and 'idioma' in _ult[-1].lower(),
+        # Con `decir`, que espera a que la respuesta CAMBIE: buscar un texto
+        # que ya estaba en el hilo daba por buena la respuesta anterior — el
+        # nodo `monedas` también dice «AU-RA».
+        r = decir('hola de nuevo', seg=25)
+        ok('AU-RA' in r and 'idioma' in r.lower(),
            'con la memoria perdida se vuelve a presentar, no adivina',
-           f'contestó: {(_ult or [""])[-1][:90]!r}')
+           f'contestó: {r[:90]!r}')
         ok(len(de_usuario()) == antes,
            'y sigue sin gastar motor: saludar es codigo')
 
