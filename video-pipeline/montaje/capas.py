@@ -40,17 +40,16 @@ def menos(valor="−0.1") -> Image.Image:
 
 
 def cierre(logo="og.png") -> Image.Image:
+    """Solo el logo y las dos cifras. El nombre se oye, no se lee."""
     im = Image.new("RGBA", (W, H), NEGRO + (255,))
     d = ImageDraw.Draw(im)
     lg = Image.open(logo).convert("RGBA")
-    lg.thumbnail((360, 360))
-    im.alpha_composite(lg, ((W - lg.width) // 2, 380))
-    t = "ORDEN GLOBAL"; ft = f(R, 40)
-    d.text(((W - d.textlength(t, font=ft)) / 2, 640), t, font=ft, fill=ORO)
-    d.line((240, 712, 480, 712), fill=ORO + (90,), width=1)
-    for y, txt, col in ((752, "ENVIADAS      24", BLANCO),
-                        (800, "ENTREGADAS  23.9", ORO)):
-        fm = f(M, 29)
+    lg.thumbnail((400, 400))
+    im.alpha_composite(lg, ((W - lg.width) // 2, 430))
+    d.line((250, 700, 470, 700), fill=ORO + (70,), width=1)
+    fm = f(M, 30)
+    for y, txt, col in ((744, "ENVIADAS      24", BLANCO),
+                        (794, "ENTREGADAS  23.9", ORO)):
         d.text(((W - d.textlength(txt, font=fm)) / 2, y), txt, font=fm, fill=col)
     return im
 
