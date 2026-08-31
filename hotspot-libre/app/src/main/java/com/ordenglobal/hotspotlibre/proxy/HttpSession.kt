@@ -1,11 +1,14 @@
 package com.ordenglobal.hotspotlibre.proxy
 
 import com.ordenglobal.hotspotlibre.core.LogBus
+import com.ordenglobal.hotspotlibre.core.Stats
+import com.ordenglobal.hotspotlibre.core.TunnelLog
 import com.ordenglobal.hotspotlibre.net.Outbound
 import java.io.InputStream
 import java.io.OutputStream
 import java.net.Socket
 import java.net.URI
+import java.util.concurrent.CountDownLatch
 
 /**
  * Lado HTTP del proxy: CONNECT para túneles TLS y forma absoluta para HTTP plano.
@@ -21,7 +24,13 @@ object HttpSession {
         "te", "trailer", "upgrade", "proxy-authenticate", "proxy-authorization",
     )
 
-    fun handle(client: Socket, input: InputStream, output: OutputStream, firstLine: String) {
+    fun handle(
+        server: ProxyServer,
+        client: Socket,
+        input: InputStream,
+        output: OutputStream,
+        firstLine: String,
+    ) {
         val parts = firstLine.split(" ")
         if (parts.size < 3) {
             fail(output, 400, "Petición mal formada")
@@ -31,14 +40,20 @@ object HttpSession {
         val headers = readHeaders(input)
 
         if (method == "CONNECT") {
-            tunnel(client, input, output, target)
+            tunnel(server, client, input, output, target)
         } else {
-            forward(client, input, output, method, target, parts[2], headers)
+            forward(server, client, input, output, method, target, parts[2], headers)
         }
     }
 
     /** CONNECT host:443 — abrimos el socket y nos quitamos del medio. */
-    private fun tunnel(client: Socket, input: InputStream, output: OutputStream, target: String) {
+    private fun tunnel(
+        server: ProxyServer,
+        client: Socket,
+        input: InputStream,
+        output: OutputStream,
+        target: String,
+    ) {
         val host = target.substringBeforeLast(':')
         val port = target.substringAfterLast(':', "443").toIntOrNull() ?: 443
 
@@ -53,12 +68,13 @@ object HttpSession {
 
         output.write("HTTP/1.1 200 Connection established\r\n\r\n".toByteArray())
         output.flush()
-        LogBus.ok("proxy", "túnel abierto → $host:$port")
-        relay(client, upstream, input, output)
+        TunnelLog.opened(host, port, Stats.activeConnections())
+        relay(server, client, upstream, input, output)
     }
 
     /** GET http://host/path — reescribimos a forma origen y reenviamos. */
     private fun forward(
+        server: ProxyServer,
         client: Socket,
         input: InputStream,
         output: OutputStream,
@@ -101,18 +117,28 @@ object HttpSession {
         out.write(request.toString().toByteArray())
         out.flush()
 
-        LogBus.ok("proxy", "$method → $host:$port$path")
-        relay(client, upstream, input, output)
+        LogBus.debug("proxy", "$method → $host:$port$path")
+        relay(server, client, upstream, input, output)
     }
 
     /** Bombea en las dos direcciones y no vuelve hasta que ambas terminan. */
-    private fun relay(client: Socket, upstream: Socket, input: InputStream, output: OutputStream) {
-        val upThread = Thread {
-            pump(input, upstream.getOutputStream(), Direction.UPLOAD, upstream)
+    private fun relay(
+        server: ProxyServer,
+        client: Socket,
+        upstream: Socket,
+        input: InputStream,
+        output: OutputStream,
+    ) {
+        val uploadDone = CountDownLatch(1)
+        server.execute {
+            try {
+                pump(input, upstream.getOutputStream(), Direction.UPLOAD, upstream)
+            } finally {
+                uploadDone.countDown()
+            }
         }
-        upThread.start()
         pump(upstream.getInputStream(), output, Direction.DOWNLOAD, client)
-        upThread.join()
+        uploadDone.await()
         runCatching { upstream.close() }
     }
 

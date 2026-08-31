@@ -55,30 +55,33 @@ object Stats {
         publish()
     }
 
+    /**
+     * Camino caliente: se llama una vez por bloque leído, en el hilo que
+     * mueve los bytes. Aquí solo se suman enteros — ni objetos nuevos, ni
+     * StateFlow, ni disco. Publicar en cada bloque hacía que a 50 Mbps la
+     * pantalla se recompusiera cientos de veces por segundo y le robara al
+     * proxy justo la CPU que necesitaba.
+     */
     fun addDown(bytes: Long) {
         totalDown.addAndGet(bytes)
         sessionDown.addAndGet(bytes)
-        publish()
-        flushThrottled()
     }
 
     fun addUp(bytes: Long) {
         totalUp.addAndGet(bytes)
         sessionUp.addAndGet(bytes)
-        publish()
-        flushThrottled()
     }
 
     fun connectionOpened() {
         active.incrementAndGet()
         tunnels.incrementAndGet()
-        publish()
     }
 
     fun connectionClosed() {
         active.updateAndGet { if (it > 0) it - 1 else 0 }
-        publish()
     }
+
+    fun activeConnections(): Int = active.get().toInt()
 
     fun resetSession() {
         sessionDown.set(0)
@@ -86,6 +89,26 @@ object Stats {
         flush()
         publish()
     }
+
+    /**
+     * Publica el estado a la UI y espacia el guardado a disco. Lo llama el
+     * servicio una vez por segundo: una recomposición por segundo alcanza
+     * de sobra para leer unos contadores.
+     */
+    fun tick() {
+        publish()
+        flushThrottled()
+    }
+
+    /** Lectura directa de los atómicos, sin depender del ritmo del tick. */
+    fun snapshot(): Counters = Counters(
+        totalDown = totalDown.get(),
+        totalUp = totalUp.get(),
+        sessionDown = sessionDown.get(),
+        sessionUp = sessionUp.get(),
+        activeConnections = active.get().toInt(),
+        openedTunnels = tunnels.get(),
+    )
 
     /** Bytes movidos por el proxy en esta sesión, para el límite de datos. */
     fun sessionTotal(): Long = sessionDown.get() + sessionUp.get()
@@ -105,28 +128,15 @@ object Stats {
         }
     }
 
-    /**
-     * Publicar es barato (un StateFlow que además conflaciona), así que se
-     * hace siempre: si se limitara, el último tramo de una descarga que
-     * termina dentro de la ventana no llegaría nunca a la pantalla. Lo que sí
-     * se espacia es escribir a disco, que es lo caro.
-     */
     private fun flushThrottled() {
         val now = System.currentTimeMillis()
-        if (now - lastFlush < 5_000) return
+        if (now - lastFlush < 30_000) return
         lastFlush = now
         flush()
     }
 
     private fun publish() {
-        _state.value = Counters(
-            totalDown = totalDown.get(),
-            totalUp = totalUp.get(),
-            sessionDown = sessionDown.get(),
-            sessionUp = sessionUp.get(),
-            activeConnections = active.get().toInt(),
-            openedTunnels = tunnels.get(),
-        )
+        _state.value = snapshot()
     }
 }
 

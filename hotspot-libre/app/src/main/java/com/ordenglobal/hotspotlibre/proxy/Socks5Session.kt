@@ -1,6 +1,8 @@
 package com.ordenglobal.hotspotlibre.proxy
 
 import com.ordenglobal.hotspotlibre.core.LogBus
+import com.ordenglobal.hotspotlibre.core.Stats
+import com.ordenglobal.hotspotlibre.core.TunnelLog
 import com.ordenglobal.hotspotlibre.net.DialError
 import com.ordenglobal.hotspotlibre.net.Outbound
 import java.io.DataInputStream
@@ -9,6 +11,7 @@ import java.io.OutputStream
 import java.net.Inet4Address
 import java.net.InetAddress
 import java.net.Socket
+import java.util.concurrent.CountDownLatch
 
 /**
  * SOCKS5 sin autenticación (RFC 1928), solo el comando CONNECT.
@@ -32,7 +35,12 @@ object Socks5Session {
     private const val REP_CMD_UNSUPPORTED = 0x07
 
     /** Se entra aquí con el byte de versión (0x05) ya devuelto al stream. */
-    fun handle(client: Socket, input: InputStream, output: OutputStream) {
+    fun handle(
+        server: ProxyServer,
+        client: Socket,
+        input: InputStream,
+        output: OutputStream,
+    ) {
         val data = DataInputStream(input)
 
         // Saludo: VER | NMETHODS | METHODS...
@@ -93,14 +101,18 @@ object Socks5Session {
         }
 
         reply(output, REP_OK)
-        LogBus.ok("socks5", "túnel abierto → $host:$port")
+        TunnelLog.opened(host, port, Stats.activeConnections())
 
-        val upThread = Thread {
-            pump(input, upstream.getOutputStream(), Direction.UPLOAD, upstream)
+        val uploadDone = CountDownLatch(1)
+        server.execute {
+            try {
+                pump(input, upstream.getOutputStream(), Direction.UPLOAD, upstream)
+            } finally {
+                uploadDone.countDown()
+            }
         }
-        upThread.start()
         pump(upstream.getInputStream(), output, Direction.DOWNLOAD, client)
-        upThread.join()
+        uploadDone.await()
         runCatching { upstream.close() }
     }
 

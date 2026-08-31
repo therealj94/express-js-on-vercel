@@ -78,6 +78,38 @@ service/TetherService.kt   Servicio en primer plano con contadores en vivo
 service/WatchdogWorker.kt  Revive el servicio si MIUI lo mató
 ```
 
+## Rendimiento
+
+El proxy mueve cada byte por espacio de usuario, así que el coste por bloque
+importa. Medido en el banco de pruebas (`ThroughputTest` y `LoadTest`, x86,
+sin interfaz gráfica de por medio):
+
+| | Antes | Después |
+|---|---|---|
+| Un túnel | 3 329 Mbps | 12 653 Mbps |
+| 64 túneles en paralelo | 9 340 Mbps | 16 063 Mbps |
+| Emisiones a la UI durante la prueba | 402 | 3 |
+
+De dónde sale:
+
+- **Los contadores ya no publican por bloque.** El camino caliente solo suma
+  enteros; el servicio publica una vez por segundo. Antes, a 50 Mbps, la
+  pantalla se recomponía cientos de veces por segundo.
+- **Los túneles se resumen** en una línea por segundo en vez de una por
+  conexión. Cargar una página abre decenas de túneles hacia rastreadores, y
+  esa línea se escribía desde el hilo que movía los bytes.
+- **Buffers de socket de 512 KB fijados antes del `bind`/`connect`**, que es
+  cuando se negocia la ventana TCP. Con la ventana por defecto, un enlace de
+  50 Mbps y 100 ms de latencia se queda muy por debajo de su capacidad.
+- **Cabeceras leídas sobre un stream con buffer.** Se leen byte a byte: sin
+  buffer, cada byte era una llamada al sistema.
+- **Un solo pool para las dos direcciones.** Antes cada conexión creaba un
+  hilo suelto para la subida; un speedtest abre ~100 conexiones.
+
+Los números de arriba son de x86 sin interfaz. En un teléfono la diferencia
+debería ser mayor, porque allí la recomposición de Compose y el recolector de
+basura cuestan mucho más — pero eso solo lo confirma tu teléfono.
+
 ## Límites conocidos
 
 - **No hay modo VPN.** Capturar todo el tráfico con `VpnService` exigiría una
@@ -87,6 +119,8 @@ service/WatchdogWorker.kt  Revive el servicio si MIUI lo mató
 - **El PAC no es WPAD.** El descubrimiento automático necesita el puerto 80 y
   Android no deja a una app sin root abrir puertos bajo 1024, así que la URL
   del PAC se pega a mano una vez por dispositivo.
+- **Un relay en espacio de usuario nunca iguala al reenvío del kernel.** Si
+  el operador no estuviera mirando, el tethering normal sería más rápido.
 - **Detectar clientes** depende de `/proc/net/arp`, ilegible para apps desde
   Android 10. Cuando no está disponible se cae a un barrido de la subred, que
   es más lento y no reporta MAC.

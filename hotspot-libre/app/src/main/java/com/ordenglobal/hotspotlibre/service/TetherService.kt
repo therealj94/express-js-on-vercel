@@ -93,18 +93,23 @@ class TetherService : Service() {
         startNotifier()
     }
 
-    /** Refresca la notificación con los contadores reales cada 5 segundos. */
+    /**
+     * Único punto que publica contadores: una vez por segundo. El camino
+     * caliente solo suma enteros; el coste de construir el estado y repintar
+     * se paga aquí, a ritmo fijo, y no una vez por bloque de 64 KB.
+     */
     private fun startNotifier() {
         notifier?.cancel()
         notifier = scope.launch {
             while (true) {
-                val counters = Stats.state.value
+                Stats.tick()
+                val counters = Stats.snapshot()
                 val text = "${counters.activeConnections} conexiones · " +
                     "↓ ${counters.sessionDown.humanBytes()} · ↑ ${counters.sessionUp.humanBytes()}"
                 runCatching {
                     notificationManager().notify(NOTIFICATION_ID, buildNotification(text))
                 }
-                delay(5_000)
+                delay(1_000)
             }
         }
     }

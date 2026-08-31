@@ -17,7 +17,7 @@ enum class Direction { DOWNLOAD, UPLOAD }
  * funcionen las subidas grandes o no.
  */
 fun pump(source: InputStream, sink: OutputStream, direction: Direction, sinkSocket: Socket?) {
-    val buffer = ByteArray(16 * 1024)
+    val buffer = ByteArray(64 * 1024)
     try {
         while (true) {
             val read = source.read(buffer)

@@ -1,6 +1,7 @@
 package com.ordenglobal.hotspotlibre.net
 
 import com.ordenglobal.hotspotlibre.core.LogBus
+import com.ordenglobal.hotspotlibre.proxy.ProxyServer
 import java.net.ConnectException
 import java.net.InetAddress
 import java.net.InetSocketAddress
@@ -62,6 +63,12 @@ object Outbound {
         return try {
             socket.tcpNoDelay = true
             socket.soTimeout = READ_TIMEOUT_MS
+            // Antes del connect, por la misma razón que en el ServerSocket:
+            // la ventana TCP se negocia en el handshake.
+            runCatching {
+                socket.receiveBufferSize = ProxyServer.SOCKET_BUFFER_BYTES
+                socket.sendBufferSize = ProxyServer.SOCKET_BUFFER_BYTES
+            }
             socket.connect(InetSocketAddress(address, port), CONNECT_TIMEOUT_MS)
             DialResult.ok(socket)
         } catch (_: SocketTimeoutException) {

@@ -30,6 +30,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -53,7 +54,9 @@ import com.ordenglobal.hotspotlibre.net.TtlManager
 import com.ordenglobal.hotspotlibre.service.TetherService
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
@@ -86,6 +89,15 @@ private fun HomeScreen(modifier: Modifier = Modifier) {
 
     val counters by Stats.state.collectAsStateWithLifecycle()
     val logs by LogBus.lines.collectAsStateWithLifecycle()
+    var verbose by remember { mutableStateOf(LogBus.verbose) }
+
+    // Con el servicio parado nadie publica; la pantalla se refresca sola.
+    LaunchedEffect(Unit) {
+        while (true) {
+            Stats.tick()
+            delay(1_000)
+        }
+    }
 
     var running by remember { mutableStateOf(settings.proxyEnabled) }
     var autoStart by remember { mutableStateOf(settings.autoStart) }
@@ -262,6 +274,25 @@ private fun HomeScreen(modifier: Modifier = Modifier) {
         }
 
         Section("Registro en vivo") {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween,
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Text("Detalle por conexión")
+                Switch(
+                    checked = verbose,
+                    onCheckedChange = {
+                        verbose = it
+                        LogBus.verbose = it
+                    },
+                )
+            }
+            Text(
+                "Apagado, los túneles se resumen en una línea por segundo. " +
+                    "Encenderlo cuesta velocidad: cada conexión escribe y repinta.",
+                style = MaterialTheme.typography.bodySmall,
+            )
             logs.takeLast(25).forEach {
                 Text(it.render(), fontFamily = FontFamily.Monospace, fontSize = 12.sp)
             }

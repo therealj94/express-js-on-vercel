@@ -146,7 +146,7 @@ class ProxyServerTest {
 
     @Test
     fun `cuenta los bytes que atraviesan el proxy`() {
-        val before = Stats.state.value.totalDown
+        val before = Stats.snapshot().totalDown
         connectToProxy().use { socket ->
             socket.write(
                 "GET http://127.0.0.1:$originPort/ HTTP/1.1\r\nHost: 127.0.0.1\r\n\r\n",
@@ -155,7 +155,7 @@ class ProxyServerTest {
         }
         assertTrue(
             "los contadores no se movieron",
-            Stats.state.value.totalDown > before,
+            Stats.snapshot().totalDown > before,
         )
     }
 

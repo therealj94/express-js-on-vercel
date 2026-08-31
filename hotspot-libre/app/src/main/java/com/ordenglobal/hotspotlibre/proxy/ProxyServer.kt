@@ -4,11 +4,13 @@ import com.ordenglobal.hotspotlibre.core.LogBus
 import com.ordenglobal.hotspotlibre.core.Stats
 import com.ordenglobal.hotspotlibre.core.humanBytes
 import com.ordenglobal.hotspotlibre.net.Outbound
+import java.io.BufferedInputStream
 import java.io.PushbackInputStream
 import java.net.InetSocketAddress
 import java.net.ServerSocket
 import java.net.Socket
 import java.util.concurrent.Executors
+import java.util.concurrent.RejectedExecutionException
 import java.util.concurrent.ThreadPoolExecutor
 import java.util.concurrent.TimeUnit
 import kotlin.concurrent.thread
@@ -28,9 +30,24 @@ class ProxyServer(
     @Volatile private var running = false
     private var capAnnounced = false
 
+    /**
+     * Un solo pool para las dos direcciones de cada conexión. Antes cada
+     * relay creaba un hilo suelto para la subida: con las ~100 conexiones
+     * que abre un speedtest eso son 200 hilos nuevos con su pila cada uno,
+     * creados y tirados en segundos. Aquí se reciclan.
+     */
     private val workers = Executors.newCachedThreadPool { runnable ->
         Thread(runnable, "proxy-worker").apply { isDaemon = true }
     } as ThreadPoolExecutor
+
+    /** Ejecuta en el pool; si está saturado, en un hilo propio antes que perder la conexión. */
+    fun execute(task: Runnable) {
+        try {
+            workers.execute(task)
+        } catch (_: RejectedExecutionException) {
+            Thread(task, "proxy-overflow").apply { isDaemon = true }.start()
+        }
+    }
 
     fun start() {
         if (running) return
@@ -53,6 +70,11 @@ class ProxyServer(
         try {
             val socket = ServerSocket()
             socket.reuseAddress = true
+            // Antes del bind: el tamaño de ventana se negocia en el
+            // handshake, así que fijarlo después no serviría de nada. Con la
+            // ventana por defecto, un enlace móvil de 50 Mbps y 100 ms de
+            // latencia se queda muy por debajo de su capacidad.
+            socket.receiveBufferSize = SOCKET_BUFFER_BYTES
             socket.bind(InetSocketAddress("0.0.0.0", port), 128)
             serverSocket = socket
             LogBus.ok("proxy", "Escuchando en el puerto $port (HTTP + SOCKS5)")
@@ -82,8 +104,12 @@ class ProxyServer(
             }
             client.tcpNoDelay = true
             client.soTimeout = 120_000
+            runCatching { client.sendBufferSize = SOCKET_BUFFER_BYTES }
 
-            val input = PushbackInputStream(client.getInputStream(), 1)
+            // Buffer antes del pushback: la cabecera se lee byte a byte y sin
+            // esto cada byte es una llamada al sistema. El relay lee después
+            // de este mismo stream, así que nada de lo bufferizado se pierde.
+            val input = PushbackInputStream(BufferedInputStream(client.getInputStream(), 32 * 1024), 1)
             val output = client.getOutputStream()
 
             val first = input.read()
@@ -91,11 +117,11 @@ class ProxyServer(
             input.unread(first)
 
             if (first == 0x05) {
-                Socks5Session.handle(client, input, output)
+                Socks5Session.handle(this, client, input, output)
             } else {
                 val line = HttpSession.readLine(input) ?: return
                 if (line.isBlank()) return
-                HttpSession.handle(client, input, output, line)
+                HttpSession.handle(this, client, input, output, line)
             }
         } catch (_: Exception) {
             // Cliente que se va a mitad del handshake: ruido, no error.
@@ -115,6 +141,11 @@ class ProxyServer(
             onCapReached()
         }
         return true
+    }
+
+    companion object {
+        /** 512 KB cubre el producto ancho de banda × latencia de un enlace móvil rápido. */
+        const val SOCKET_BUFFER_BYTES = 512 * 1024
     }
 
     fun awaitTermination() {

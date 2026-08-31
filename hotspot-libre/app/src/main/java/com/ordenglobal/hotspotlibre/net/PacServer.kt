@@ -55,7 +55,7 @@ class PacServer(private val port: Int, private val proxyPort: Int) {
             }
             runCatching {
                 client.use {
-                    drainRequest(it.getInputStream())
+                    drainRequest(java.io.BufferedInputStream(it.getInputStream(), 4096))
                     val body = pacBody()
                     val response = "HTTP/1.1 200 OK\r\n" +
                         "Content-Type: application/x-ns-proxy-autoconfig\r\n" +
