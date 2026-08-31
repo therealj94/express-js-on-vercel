@@ -151,10 +151,53 @@ class PacServer(private val port: Int, private val proxyPort: Int) {
                 <li>Servidor: <code>$ip</code> · Puerto: <code>$proxyPort</code></li>
               </ol>
 
+              <h2>Medir desde este equipo</h2>
+              <p>Este es el número que dice si el operador te está limitando el
+                 compartir. Mídelo <b>dos veces</b>: una con el proxy puesto y otra
+                 sin él. Gasta unos 8 MB cada vez.</p>
+              <p><button id="run">Medir ahora</button> <span id="out"></span></p>
+              <p id="hint" style="opacity:.75"></p>
+
               <h2>Si algo no carga</h2>
               <p>Las apps que no respetan la configuración de proxy —bastantes juegos y
                  algunas apps de sistema— saldrán por fuera. Seguirán funcionando, pero
                  sin pasar por aquí. Los navegadores sí lo respetan siempre.</p>
+              <script>
+                const url = "https://speed.cloudflare.com/__down?bytes=8000000";
+                const out = document.getElementById("out");
+                const hint = document.getElementById("hint");
+                document.getElementById("run").onclick = async (event) => {
+                  const button = event.target;
+                  button.disabled = true;
+                  out.textContent = " midiendo…";
+                  hint.textContent = "";
+                  try {
+                    // Se cronometra desde el primer trozo recibido: abrir la
+                    // conexión es latencia, no ancho de banda.
+                    const response = await fetch(url + "&t=" + Date.now(), { cache: "no-store" });
+                    const reader = response.body.getReader();
+                    let bytes = 0, start = 0;
+                    while (true) {
+                      const { done, value } = await reader.read();
+                      if (done) break;
+                      if (!start) start = performance.now();
+                      bytes += value.length;
+                    }
+                    const seconds = (performance.now() - start) / 1000;
+                    const mbps = (bytes * 8 / 1e6) / seconds;
+                    out.textContent = " " + mbps.toFixed(1) + " Mbps";
+                    hint.textContent = "Apunta este número y repite con el proxy " +
+                      "en el otro estado. Si sin proxy ya te da mucho menos de lo " +
+                      "que mide el teléfono por su cuenta, es el operador limitando " +
+                      "el compartir, no la app.";
+                  } catch (error) {
+                    out.textContent = " falló: " + error.message;
+                    hint.textContent = "Sin salida a internet desde este equipo. " +
+                      "Revisa que el proxy esté bien puesto, o quítalo para probar.";
+                  }
+                  button.disabled = false;
+                };
+              </script>
             </body>
             </html>
         """.trimIndent()

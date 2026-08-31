@@ -49,6 +49,7 @@ import com.ordenglobal.hotspotlibre.net.CheckResult
 import com.ordenglobal.hotspotlibre.net.ClientScanner
 import com.ordenglobal.hotspotlibre.net.Diagnostics
 import com.ordenglobal.hotspotlibre.net.LocalAddresses
+import com.ordenglobal.hotspotlibre.net.SpeedProbe
 import com.ordenglobal.hotspotlibre.net.TetherClient
 import com.ordenglobal.hotspotlibre.net.TtlManager
 import com.ordenglobal.hotspotlibre.service.TetherService
@@ -105,6 +106,8 @@ private fun HomeScreen(modifier: Modifier = Modifier) {
     var ttlText by remember { mutableStateOf(settings.ttl.toString()) }
     var capText by remember { mutableStateOf(settings.dataCapMb.toString()) }
     var clients by remember { mutableStateOf<List<TetherClient>>(emptyList()) }
+    var probing by remember { mutableStateOf(false) }
+    var verdict by remember { mutableStateOf<String?>(null) }
     var checks by remember { mutableStateOf<List<CheckResult>>(emptyList()) }
 
     val ip = remember(running) { LocalAddresses.hotspotIp() }
@@ -212,6 +215,42 @@ private fun HomeScreen(modifier: Modifier = Modifier) {
                     clients = withContext(Dispatchers.IO) { ClientScanner.scan() }
                 }
             }) { Text("Refrescar") }
+        }
+
+        Section("¿De dónde viene la lentitud?") {
+            Text(
+                "Baja lo mismo por dos caminos: directo por los datos del " +
+                    "teléfono, y a través del proxy. Comparar los dos números " +
+                    "dice si la culpa es de la app, de tu señal o del operador.",
+                style = MaterialTheme.typography.bodyMedium,
+            )
+            Text(
+                "Gasta unos 16 MB de datos móviles.",
+                style = MaterialTheme.typography.bodySmall,
+            )
+            Button(
+                enabled = !probing,
+                onClick = {
+                    probing = true
+                    verdict = null
+                    scope.launch {
+                        val (_, _, text) = withContext(Dispatchers.IO) {
+                            SpeedProbe.run(settings.proxyPort)
+                        }
+                        verdict = text
+                        probing = false
+                    }
+                },
+            ) { Text(if (probing) "Midiendo…" else "Medir ahora") }
+
+            verdict?.let { Text(it, style = MaterialTheme.typography.bodyMedium) }
+
+            Text(
+                "El tercer número —el que dice si el operador te limita el " +
+                    "compartir— se mide desde el equipo conectado, en la página " +
+                    "de ayuda del teléfono.",
+                style = MaterialTheme.typography.bodySmall,
+            )
         }
 
         Section("Consumo por el proxy") {

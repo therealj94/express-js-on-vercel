@@ -153,6 +153,30 @@ Dos causas distintas, las dos del proxy:
   lanzan escalonadas cada 250 ms alternando familias y gana la primera que
   conteste; la familia ganadora ordena los intentos siguientes.
 
+## Saber de dónde viene la lentitud
+
+Hay tres sospechosos —la señal del teléfono, el proxy y el operador— y se
+separan con tres números:
+
+1. **En la app, «Medir ahora»** baja lo mismo por dos caminos: directo por los
+   datos móviles y a través del propio proxy. La diferencia entre esos dos es
+   lo único que acusa al proxy. Si los dos salen igual de bajos, el techo está
+   fuera de la app.
+2. **Desde el equipo conectado**, en `http://IP:8889/`, hay un medidor que se
+   ejecuta en el navegador. Mídelo dos veces: con el proxy puesto y sin él.
+
+Cómo leerlo:
+
+| Directo | Por el proxy | Equipo sin proxy | Culpable |
+|---|---|---|---|
+| bajo | bajo | — | la señal o el operador |
+| alto | bajo | — | la app |
+| alto | alto | bajo | el operador, limitando el compartir |
+
+El cronómetro arranca en el primer byte recibido, no al abrir la conexión:
+abrir es latencia, no ancho de banda, y mezclarlos hace parecer lento un
+enlace que solo tarda en arrancar.
+
 ## Al conectar un dispositivo
 
 Desde el equipo recién conectado, abrir `http://IP:8889/` en el navegador. Esa
