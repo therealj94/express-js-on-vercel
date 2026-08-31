@@ -1,11 +1,13 @@
 package com.ordenglobal.hotspotlibre.net
 
 import com.ordenglobal.hotspotlibre.core.LogBus
-import java.io.InputStream
 import java.net.HttpURLConnection
 import java.net.InetSocketAddress
 import java.net.Proxy
 import java.net.URL
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.atomic.AtomicLong
+import kotlin.concurrent.thread
 
 data class SpeedResult(
     val label: String,
@@ -22,33 +24,101 @@ data class SpeedResult(
     }
 }
 
+/** Construye la URL de descarga para un tamaño dado. */
+fun interface DownloadUrl {
+    fun forBytes(bytes: Int): String
+}
+
 /**
- * Mide de dónde viene la lentitud.
+ * Mide de dónde viene la lentitud: la señal, el proxy o el operador.
  *
- * La misma descarga por dos caminos: directo por los datos móviles del
- * teléfono, y a través del propio proxy. La diferencia entre los dos números
- * es lo único que acusa al proxy; si los dos son igual de bajos, el techo
- * está en el enlace o en el operador y no hay nada que optimizar en el código.
+ * Tres decisiones vienen de haber medido mal la primera vez:
+ *
+ * 1. **Varias conexiones a la vez.** Con una sola, un enlace móvil da muy por
+ *    debajo de su capacidad: la latencia limita cuánto puede viajar sin
+ *    confirmar. Por eso los speedtest abren varias. Midiendo con una sola
+ *    salían 2 Mbps en un enlace que daba 7.
+ * 2. **Calentamiento antes de cronometrar.** La primera petición paga DNS y
+ *    TLS. Como el camino directo se medía primero, cargaba con ese coste y el
+ *    del proxy salía «más rápido»: de ahí una latencia añadida negativa.
+ * 3. **Dos rondas, y se queda la mejor.** Una sola medida en móvil tiene tanto
+ *    ruido que no da para acusar a nadie.
  */
 object SpeedProbe {
 
-    /** Endpoint público de medición; responde el tamaño exacto que se le pida. */
-    const val DEFAULT_URL = "https://speed.cloudflare.com/__down?bytes=8000000"
+    private const val STREAMS = 4
+    private const val BYTES_PER_STREAM = 1_000_000
+    private const val ROUNDS = 2
+    private const val WARMUP_BYTES = 100_000
 
     private const val CONNECT_TIMEOUT_MS = 15_000
     private const val READ_TIMEOUT_MS = 30_000
 
-    fun measureDirect(url: String = DEFAULT_URL): SpeedResult =
+    private val cloudflare = DownloadUrl { "https://speed.cloudflare.com/__down?bytes=$it" }
+
+    fun measureDirect(url: DownloadUrl = cloudflare): SpeedResult =
         measure("Directo por los datos del teléfono", url, Proxy.NO_PROXY)
 
-    fun measureThroughProxy(proxyPort: Int, url: String = DEFAULT_URL): SpeedResult =
+    fun measureThroughProxy(proxyPort: Int, url: DownloadUrl = cloudflare): SpeedResult =
         measure(
             "A través del proxy",
             url,
             Proxy(Proxy.Type.HTTP, InetSocketAddress("127.0.0.1", proxyPort)),
         )
 
-    private fun measure(label: String, url: String, proxy: Proxy): SpeedResult {
+    private fun measure(label: String, url: DownloadUrl, proxy: Proxy): SpeedResult {
+        // Calentamiento: paga DNS, TLS y el arranque del proxy fuera del reloj,
+        // y de paso da la latencia ya con el camino abierto.
+        val warmup = downloadOne(url.forBytes(WARMUP_BYTES), proxy)
+        if (warmup.error != null) return SpeedResult(label, 0.0, 0, 0, warmup.error)
+
+        var best = 0.0
+        var total = 0L
+        repeat(ROUNDS) {
+            val round = downloadParallel(url, proxy)
+            if (round.error == null && round.mbps > best) best = round.mbps
+            total += round.bytes
+        }
+
+        if (total == 0L) return SpeedResult(label, 0.0, warmup.firstByteMs, 0, "no bajó nada")
+        return SpeedResult(label, best, warmup.firstByteMs, total)
+    }
+
+    private class Sample(val mbps: Double, val bytes: Long, val firstByteMs: Long, val error: String?)
+
+    /** Varias descargas simultáneas; el ritmo es el del conjunto. */
+    private fun downloadParallel(url: DownloadUrl, proxy: Proxy): Sample {
+        val bytes = AtomicLong()
+        val firstByte = AtomicLong()
+        val done = CountDownLatch(STREAMS)
+        val failure = java.util.concurrent.atomic.AtomicReference<String?>(null)
+
+        repeat(STREAMS) {
+            thread(isDaemon = true) {
+                val sample = downloadOne(url.forBytes(BYTES_PER_STREAM), proxy) { at ->
+                    // El reloj arranca con el primer byte de la primera
+                    // conexión que conteste, no con el de cada una.
+                    firstByte.compareAndSet(0, at)
+                }
+                if (sample.error != null) failure.compareAndSet(null, sample.error)
+                bytes.addAndGet(sample.bytes)
+                done.countDown()
+            }
+        }
+        done.await()
+
+        val started = firstByte.get()
+        if (started == 0L) return Sample(0.0, 0, 0, failure.get() ?: "sin respuesta")
+        val seconds = (System.nanoTime() - started) / 1e9
+        val mbps = if (seconds > 0) (bytes.get() * 8 / 1e6) / seconds else 0.0
+        return Sample(mbps, bytes.get(), 0, null)
+    }
+
+    private fun downloadOne(
+        url: String,
+        proxy: Proxy,
+        onFirstByte: (Long) -> Unit = {},
+    ): Sample {
         var connection: HttpURLConnection? = null
         return try {
             val started = System.nanoTime()
@@ -60,46 +130,37 @@ object SpeedProbe {
             }
 
             val code = connection.responseCode
-            if (code !in 200..299) {
-                return SpeedResult(label, 0.0, 0, 0, "el servidor respondió $code")
-            }
+            if (code !in 200..299) return Sample(0.0, 0, 0, "el servidor respondió $code")
 
-            val stream: InputStream = connection.inputStream
             val buffer = ByteArray(64 * 1024)
             var total = 0L
             var firstByteAt = 0L
-
-            while (true) {
-                val read = stream.read(buffer)
-                if (read < 0) break
-                if (firstByteAt == 0L) firstByteAt = System.nanoTime()
-                total += read
+            connection.inputStream.use { stream ->
+                while (true) {
+                    val read = stream.read(buffer)
+                    if (read < 0) break
+                    if (firstByteAt == 0L) {
+                        firstByteAt = System.nanoTime()
+                        onFirstByte(firstByteAt)
+                    }
+                    total += read
+                }
             }
-            stream.close()
 
             val ttfb = if (firstByteAt == 0L) 0 else (firstByteAt - started) / 1_000_000
-            // Se cronometra desde el primer byte: el tiempo de abrir la
-            // conexión es latencia, no ancho de banda, y mezclarlos haría
-            // parecer lento un enlace que solo tarda en arrancar.
-            val transferSeconds = (System.nanoTime() - firstByteAt) / 1e9
-            val mbps = if (transferSeconds > 0) (total * 8 / 1e6) / transferSeconds else 0.0
-
-            SpeedResult(label, mbps, ttfb, total)
+            Sample(0.0, total, ttfb, null)
         } catch (e: Exception) {
-            SpeedResult(label, 0.0, 0, 0, e.message ?: e.javaClass.simpleName)
+            Sample(0.0, 0, 0, e.message ?: e.javaClass.simpleName)
         } finally {
             runCatching { connection?.disconnect() }
         }
     }
 
-    /**
-     * Traduce los dos números a una acusación concreta. Es el punto de todo
-     * esto: decir a quién hay que reclamarle.
-     */
+    /** Traduce los números a una acusación concreta, o a un «no se sabe». */
     fun verdict(direct: SpeedResult, proxied: SpeedResult): String {
         if (!direct.ok) {
-            return "El teléfono no llegó a bajar nada por su cuenta " +
-                "(${direct.error}). Sin señal no hay nada que medir: repite con datos móviles activos."
+            return "El teléfono no llegó a bajar nada por su cuenta (${direct.error}). " +
+                "Sin señal no hay nada que medir: repite con datos móviles activos."
         }
         if (!proxied.ok) {
             return "El enlace del teléfono da ${"%.1f".format(direct.mbps)} Mbps, pero por el " +
@@ -107,35 +168,46 @@ object SpeedProbe {
         }
 
         val ratio = proxied.mbps / direct.mbps
-        val extraLatency = proxied.firstByteMs - direct.firstByteMs
-        val head = "Enlace: ${"%.1f".format(direct.mbps)} Mbps · " +
-            "por el proxy: ${"%.1f".format(proxied.mbps)} Mbps " +
-            "(${(ratio * 100).toInt()} %) · el proxy añade ${extraLatency} ms de espera.\n\n"
+        val gap = direct.mbps - proxied.mbps
+        val latency = proxied.firstByteMs - direct.firstByteMs
+
+        val head = buildString {
+            append("Enlace: ${"%.1f".format(direct.mbps)} Mbps · ")
+            append("por el proxy: ${"%.1f".format(proxied.mbps)} Mbps (${(ratio * 100).toInt()} %)\n")
+            append("Primer byte: ${direct.firstByteMs} ms directo · ${proxied.firstByteMs} ms por el proxy")
+            // Una diferencia negativa no es que el proxy vaya más rápido que
+            // la red: es ruido de medida. Decir «añade -454 ms» era absurdo.
+            append(if (latency > 20) " (el proxy añade $latency ms)" else " (sin espera añadida apreciable)")
+            append("\n\n")
+        }
 
         return head + when {
-            ratio >= 0.8 ->
-                "El proxy no es el problema: te deja casi todo el enlace. " +
-                "Si aun así navegas lento, el techo es tu señal o el operador. " +
-                "Para separar esos dos: mide desde el equipo conectado con la " +
-                "página de ayuda, primero SIN el proxy puesto. Si ahí ya baja " +
-                "respecto a este número, es el operador limitándote el compartir."
-            ratio >= 0.5 ->
-                "El proxy se está quedando con parte del enlace, pero no es el " +
-                "culpable principal. Mide también desde el equipo conectado: si " +
-                "sin proxy tampoco alcanza el número del enlace, es el operador."
+            ratio >= 0.85 ->
+                "El proxy no es el problema: te deja casi todo el enlace. El techo " +
+                    "es tu señal o el operador. Para separarlos: mide desde el equipo " +
+                    "conectado SIN el proxy puesto. Si ahí ya baja respecto a este " +
+                    "número, es el operador limitándote el compartir."
+            gap < 1.0 ->
+                "La diferencia es de ${"%.1f".format(gap)} Mbps: en móvil eso entra en " +
+                    "el ruido de una medida. Repite un par de veces antes de sacar " +
+                    "conclusiones; si se mantiene, es el proxy."
+            ratio >= 0.6 ->
+                "El proxy se queda con parte del enlace, pero no es el culpable " +
+                    "principal. Mide también desde el equipo conectado: si sin proxy " +
+                    "tampoco alcanza el número del enlace, es el operador."
             else ->
-                "El proxy se está comiendo más de la mitad del enlace. Esto sí " +
-                "es cosa de la app: mándame el reporte con «Copiar reporte»."
+                "El proxy se está comiendo más de un tercio del enlace. Esto sí es " +
+                    "cosa de la app: mándame el reporte con «Copiar reporte»."
         }
     }
 
-    fun run(proxyPort: Int, url: String = DEFAULT_URL): Triple<SpeedResult, SpeedResult, String> {
+    fun run(proxyPort: Int): Triple<SpeedResult, SpeedResult, String> {
         LogBus.info("medida", "Midiendo el enlace directo…")
-        val direct = measureDirect(url)
+        val direct = measureDirect()
         LogBus.info("medida", direct.render())
 
         LogBus.info("medida", "Midiendo a través del proxy…")
-        val proxied = measureThroughProxy(proxyPort, url)
+        val proxied = measureThroughProxy(proxyPort)
         LogBus.info("medida", proxied.render())
 
         return Triple(direct, proxied, verdict(direct, proxied))

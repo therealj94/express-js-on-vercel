@@ -162,6 +162,14 @@ separan con tres números:
    datos móviles y a través del propio proxy. La diferencia entre esos dos es
    lo único que acusa al proxy. Si los dos salen igual de bajos, el techo está
    fuera de la app.
+
+   Se mide con **cuatro conexiones a la vez**, como hace un speedtest. Con una
+   sola, un enlace móvil da muy por debajo de su capacidad —la latencia limita
+   cuánto puede viajar sin confirmar— y salían 2 Mbps en un enlace que daba 7.
+   Antes de cronometrar hay un calentamiento que paga DNS y TLS, porque si no
+   el primer camino medido carga con ese coste y el segundo parece más rápido.
+   Se hacen dos rondas y se toma la mejor: una sola medida en móvil tiene
+   demasiado ruido para acusar a nadie.
 2. **Desde el equipo conectado**, en `http://IP:8889/`, hay un medidor que se
    ejecuta en el navegador. Mídelo dos veces: con el proxy puesto y sin él.
 

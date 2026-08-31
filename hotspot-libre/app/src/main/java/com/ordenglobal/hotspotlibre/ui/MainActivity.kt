@@ -219,9 +219,10 @@ private fun HomeScreen(modifier: Modifier = Modifier) {
 
         Section("¿De dónde viene la lentitud?") {
             Text(
-                "Baja lo mismo por dos caminos: directo por los datos del " +
-                    "teléfono, y a través del proxy. Comparar los dos números " +
-                    "dice si la culpa es de la app, de tu señal o del operador.",
+                "Baja lo mismo por dos caminos —directo por los datos del " +
+                    "teléfono y a través del proxy— con cuatro conexiones a la " +
+                    "vez, como hace un speedtest. Comparar los dos números dice " +
+                    "si la culpa es de la app, de tu señal o del operador.",
                 style = MaterialTheme.typography.bodyMedium,
             )
             Text(
