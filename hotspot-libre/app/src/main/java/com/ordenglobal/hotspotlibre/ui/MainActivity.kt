@@ -249,7 +249,8 @@ private fun HomeScreen(modifier: Modifier = Modifier) {
             Text(
                 "El tercer número —el que dice si el operador te limita el " +
                     "compartir— se mide desde el equipo conectado, en la página " +
-                    "de ayuda del teléfono.",
+                    "de ayuda. Para medir «sin proxy», quítalo en el equipo: si " +
+                    "apagas el interruptor de arriba se cae también la página.",
                 style = MaterialTheme.typography.bodySmall,
             )
         }

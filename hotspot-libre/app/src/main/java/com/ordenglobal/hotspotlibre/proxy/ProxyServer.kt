@@ -20,7 +20,7 @@ import kotlin.concurrent.thread
  * por el primer byte. Un solo puerto que configurar en cada dispositivo.
  */
 class ProxyServer(
-    private val port: Int,
+    val port: Int,
     /** Corte automático al llegar a estos bytes de sesión; 0 = sin límite. */
     private val dataCapBytes: Long = 0,
     private val onCapReached: () -> Unit = {},

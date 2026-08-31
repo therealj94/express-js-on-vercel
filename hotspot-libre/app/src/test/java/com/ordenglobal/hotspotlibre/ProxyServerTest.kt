@@ -196,6 +196,21 @@ class ProxyServerTest {
         ws.close()
     }
 
+    /**
+     * Escribir la dirección del proxy en el navegador es lo primero que hace
+     * cualquiera. Antes devolvía un error incomprensible; ahora responde la
+     * misma página de ayuda, así no hay que acertar el segundo puerto.
+     */
+    @Test
+    fun `apuntar el navegador al puerto del proxy da la pagina de ayuda`() {
+        connectToProxy().use { socket ->
+            socket.write("GET / HTTP/1.1\r\nHost: 127.0.0.1:$proxyPort\r\n\r\n")
+            val response = socket.readAll()
+            assertTrue("no respondió la ayuda: $response", response.contains("Manual"))
+            assertTrue("no vino como HTML", response.contains("text/html"))
+        }
+    }
+
     // --- utilidades ---
 
     private class ProxyClient(val socket: Socket) : AutoCloseable {

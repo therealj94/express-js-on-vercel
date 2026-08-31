@@ -31,7 +31,7 @@ object Diagnostics {
         checks += checkListening(proxyPort)
         checks += checkHttpConnect(proxyPort)
         checks += checkSocks5(proxyPort)
-        checks += checkListening(pacPort).copy(name = "Servidor PAC (puerto $pacPort)")
+        checks += checkListening(pacPort).copy(name = "Página de ayuda (puerto $pacPort)")
 
         checks.forEach {
             if (it.passed) LogBus.ok("test", "${it.name}: ${it.detail}")

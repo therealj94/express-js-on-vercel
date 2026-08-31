@@ -187,10 +187,15 @@ enlace que solo tarda en arrancar.
 
 ## Al conectar un dispositivo
 
-Desde el equipo recién conectado, abrir `http://IP:8889/` en el navegador. Esa
-página la sirve el propio teléfono y se ve **sin tener el proxy configurado
-todavía**, que es justo el momento en que hacen falta las instrucciones. Trae
-los pasos para Windows, macOS, Linux, Android e iPhone.
+Desde el equipo recién conectado, abrir en el navegador **`http://IP:8888/`
+—la misma dirección del proxy—** o `http://IP:8889/`. Las dos sirven la misma
+página: no hay que acertar un segundo puerto, porque escribir la dirección del
+proxy en el navegador es lo primero que hace cualquiera. Se ve **sin tener el
+proxy configurado todavía**, que es justo cuando hacen falta las
+instrucciones, y trae los pasos para Windows, macOS, Linux, Android e iPhone.
+
+Para medir «sin proxy», quita el proxy **en el equipo**. Apagar el interruptor
+de la app tumba también la página de ayuda, que es justo la que ibas a usar.
 
 ## Límites conocidos
 

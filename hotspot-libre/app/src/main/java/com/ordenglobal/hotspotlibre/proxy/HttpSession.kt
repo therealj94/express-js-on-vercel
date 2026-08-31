@@ -3,7 +3,9 @@ package com.ordenglobal.hotspotlibre.proxy
 import com.ordenglobal.hotspotlibre.core.LogBus
 import com.ordenglobal.hotspotlibre.core.Stats
 import com.ordenglobal.hotspotlibre.core.TunnelLog
+import com.ordenglobal.hotspotlibre.net.LocalAddresses
 import com.ordenglobal.hotspotlibre.net.Outbound
+import com.ordenglobal.hotspotlibre.net.SetupPage
 import java.io.InputStream
 import java.io.OutputStream
 import java.net.Socket
@@ -51,8 +53,27 @@ object HttpSession {
 
         if (method == "CONNECT") {
             tunnel(server, client, input, output, target)
+        } else if (target.startsWith("/")) {
+            // Petición en forma origen: no viene de un cliente configurado con
+            // proxy, sino de alguien que escribió esta dirección en el
+            // navegador. En vez de un error incomprensible, se le da la
+            // página que explica cómo configurarlo.
+            serveSetupPage(output, server.port)
         } else {
             forward(server, client, input, output, method, target, parts[2], headers)
+        }
+    }
+
+    private fun serveSetupPage(output: OutputStream, proxyPort: Int) {
+        val body = SetupPage.html(LocalAddresses.hotspotIp(), proxyPort, proxyPort + 1)
+            .toByteArray()
+        val header = "HTTP/1.1 200 OK\r\n" +
+            "Content-Type: text/html; charset=utf-8\r\n" +
+            "Content-Length: ${body.size}\r\n" +
+            "Connection: close\r\n\r\n"
+        runCatching {
+            output.write(header.toByteArray() + body)
+            output.flush()
         }
     }
 
