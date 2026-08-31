@@ -110,6 +110,39 @@ Los números de arriba son de x86 sin interfaz. En un teléfono la diferencia
 debería ser mayor, porque allí la recomposición de Compose y el recolector de
 basura cuestan mucho más — pero eso solo lo confirma tu teléfono.
 
+## Trampas de Android que la app esquiva
+
+Cuatro cosas que fallan en silencio si no se tratan a propósito. Las dos
+primeras salieron de contrastar el código con la documentación de Android;
+ninguna da error, simplemente no funcionan.
+
+- **El servicio se declara `connectedDevice`, no `dataSync`.** Desde Android 15
+  un servicio `dataSync` se corta a las 6 horas dentro de un mismo día y la app
+  muere con `RemoteServiceException`. Un proxy de hotspot está encendido todo
+  el día. `connectedDevice` no tiene ese límite, y su requisito se cumple
+  declarando `CHANGE_NETWORK_STATE`.
+- **El aviso de encendido del hotspot se pide desde código.** Desde Android 8
+  los avisos implícitos no despiertan receptores declarados en el manifiesto,
+  así que `WIFI_AP_STATE_CHANGED` declarado ahí no llega nunca.
+- **Se prueban todas las direcciones de cada nombre.** Muchos dominios
+  resuelven a IPv6 y a IPv4 a la vez, y según cómo el operador dé la conexión
+  móvil una de las dos familias no sale. Quedarse con la primera hacía fallar
+  siempre sitios perfectamente accesibles, sin patrón visible.
+- **Solo se atiende a la red local.** El proxy escucha en `0.0.0.0` porque la
+  IP del hotspot aparece y cambia sola; con el teléfono conectado a un wifi
+  ajeno, eso dejaría a cualquiera de esa red salir por tus datos móviles.
+
+Referencias: [tiempos límite de los servicios en primer plano](https://developer.android.com/develop/background-work/services/fgs/timeout),
+[tipos de servicio](https://developer.android.com/develop/background-work/services/fgs/service-types),
+[restricciones de avisos implícitos](https://developer.android.com/develop/background-work/background-tasks/broadcasts).
+
+## Al conectar un dispositivo
+
+Desde el equipo recién conectado, abrir `http://IP:8889/` en el navegador. Esa
+página la sirve el propio teléfono y se ve **sin tener el proxy configurado
+todavía**, que es justo el momento en que hacen falta las instrucciones. Trae
+los pasos para Windows, macOS, Linux, Android e iPhone.
+
 ## Límites conocidos
 
 - **No hay modo VPN.** Capturar todo el tráfico con `VpnService` exigiría una
@@ -119,6 +152,15 @@ basura cuestan mucho más — pero eso solo lo confirma tu teléfono.
 - **El PAC no es WPAD.** El descubrimiento automático necesita el puerto 80 y
   Android no deja a una app sin root abrir puertos bajo 1024, así que la URL
   del PAC se pega a mano una vez por dispositivo.
+- **Un proxy manual es poroso por diseño.** Las apps que no respetan la
+  configuración de proxy —bastantes juegos y algunas apps de sistema— salen
+  por fuera, y esos paquetes llegan al operador con el TTL delator. Los
+  navegadores sí lo respetan siempre. Cobertura completa solo la da el modo
+  TTL, con root.
+- **Sin reutilización de conexión en HTTP plano.** Cada petición en forma
+  absoluta abre y cierra su conexión (`Connection: close`). Como casi todo el
+  tráfico real va por HTTPS, y ahí el túnel CONNECT sí se mantiene abierto,
+  no compensa la complejidad de reusar conexiones por host.
 - **Un relay en espacio de usuario nunca iguala al reenvío del kernel.** Si
   el operador no estuviera mirando, el tethering normal sería más rápido.
 - **Detectar clientes** depende de `/proc/net/arp`, ilegible para apps desde

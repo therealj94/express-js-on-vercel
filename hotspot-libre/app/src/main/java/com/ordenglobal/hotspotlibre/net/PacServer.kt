@@ -1,6 +1,7 @@
 package com.ordenglobal.hotspotlibre.net
 
 import com.ordenglobal.hotspotlibre.core.LogBus
+import java.io.BufferedInputStream
 import java.io.InputStream
 import java.net.InetSocketAddress
 import java.net.ServerSocket
@@ -34,13 +35,16 @@ class PacServer(private val port: Int, private val proxyPort: Int) {
 
     fun url(): String? = LocalAddresses.hotspotIp()?.let { "http://$it:$port/proxy.pac" }
 
+    /** Página de instrucciones para abrir desde el equipo recién conectado. */
+    fun setupUrl(): String? = LocalAddresses.hotspotIp()?.let { "http://$it:$port/" }
+
     private fun loop() {
         try {
             val socket = ServerSocket()
             socket.reuseAddress = true
             socket.bind(InetSocketAddress("0.0.0.0", port), 16)
             serverSocket = socket
-            LogBus.ok("pac", "Archivo PAC disponible en ${url() ?: "el puerto $port"}")
+            LogBus.ok("pac", "Ayuda de conexión en ${setupUrl() ?: "el puerto $port"}")
         } catch (e: Exception) {
             running = false
             LogBus.warn("pac", "No se pudo publicar el PAC en $port: ${e.message}")
@@ -55,33 +59,105 @@ class PacServer(private val port: Int, private val proxyPort: Int) {
             }
             runCatching {
                 client.use {
-                    drainRequest(java.io.BufferedInputStream(it.getInputStream(), 4096))
-                    val body = pacBody()
+                    val path = readRequestPath(BufferedInputStream(it.getInputStream(), 4096))
+                    val (type, body) = if (path.startsWith("/proxy.pac")) {
+                        "application/x-ns-proxy-autoconfig" to pacBody()
+                    } else {
+                        "text/html; charset=utf-8" to setupPage()
+                    }
+                    val bytes = body.toByteArray()
                     val response = "HTTP/1.1 200 OK\r\n" +
-                        "Content-Type: application/x-ns-proxy-autoconfig\r\n" +
-                        "Content-Length: ${body.toByteArray().size}\r\n" +
-                        "Connection: close\r\n\r\n$body"
-                    it.getOutputStream().write(response.toByteArray())
+                        "Content-Type: $type\r\n" +
+                        "Content-Length: ${bytes.size}\r\n" +
+                        "Connection: close\r\n\r\n"
+                    it.getOutputStream().write(response.toByteArray() + bytes)
                     it.getOutputStream().flush()
                 }
             }
         }
     }
 
-    private fun drainRequest(input: InputStream) {
+    /** Devuelve la ruta pedida y consume el resto de la petición. */
+    private fun readRequestPath(input: InputStream): String {
+        val first = StringBuilder()
         var consecutiveNewlines = 0
         var read = 0
+        var line = 0
         while (read < 8192) {
             val byte = input.read()
-            if (byte < 0) return
+            if (byte < 0) break
             read++
             if (byte == '\n'.code) {
                 consecutiveNewlines++
-                if (consecutiveNewlines == 2) return
+                line++
+                if (consecutiveNewlines == 2) break
             } else if (byte != '\r'.code) {
                 consecutiveNewlines = 0
+                if (line == 0) first.append(byte.toChar())
             }
         }
+        return first.toString().split(" ").getOrNull(1) ?: "/"
+    }
+
+    /**
+     * Página de ayuda servida desde el propio teléfono.
+     *
+     * Un equipo recién conectado al hotspot todavía no tiene el proxy puesto,
+     * pero sí alcanza esta IP: es el único sitio donde se le pueden dar las
+     * instrucciones en el momento exacto en que las necesita.
+     */
+    private fun setupPage(): String {
+        val ip = LocalAddresses.hotspotIp() ?: "192.168.43.1"
+        return """
+            <!doctype html>
+            <html lang="es">
+            <head>
+              <meta charset="utf-8">
+              <meta name="viewport" content="width=device-width, initial-scale=1">
+              <title>Conectar a Hotspot Libre</title>
+              <style>
+                :root { color-scheme: light dark; }
+                body { font: 16px/1.6 system-ui, sans-serif; margin: 0; padding: 24px;
+                       max-width: 40rem; margin-inline: auto; }
+                code { background: rgba(128,128,128,.18); padding: .15em .4em; border-radius: 4px; }
+                .big { font-size: 1.6rem; font-weight: 700; letter-spacing: .02em;
+                       font-family: ui-monospace, monospace; margin: .3em 0 1em; }
+                h2 { font-size: 1.05rem; margin-top: 2rem; }
+                li { margin-bottom: .4rem; }
+              </style>
+            </head>
+            <body>
+              <h1>Ya casi</h1>
+              <p>Falta un paso: decirle a este equipo que salga a internet por el teléfono.</p>
+              <p>Dirección del proxy:</p>
+              <p class="big">$ip:$proxyPort</p>
+
+              <h2>Windows, macOS y escritorios Linux</h2>
+              <p>Es lo más rápido: pega esta URL en «configuración automática del proxy»
+                 y no hay que tocar nada más, ni siquiera si luego cambia el puerto.</p>
+              <p class="big">http://$ip:$port/proxy.pac</p>
+
+              <h2>Android</h2>
+              <ol>
+                <li>Ajustes → Wi-Fi → mantén pulsada esta red → Modificar</li>
+                <li>Opciones avanzadas → Proxy → <b>Manual</b></li>
+                <li>Nombre de host: <code>$ip</code> · Puerto: <code>$proxyPort</code></li>
+              </ol>
+
+              <h2>iPhone y iPad</h2>
+              <ol>
+                <li>Ajustes → Wi-Fi → la (i) junto a esta red</li>
+                <li>Abajo del todo: Configurar proxy → <b>Manual</b></li>
+                <li>Servidor: <code>$ip</code> · Puerto: <code>$proxyPort</code></li>
+              </ol>
+
+              <h2>Si algo no carga</h2>
+              <p>Las apps que no respetan la configuración de proxy —bastantes juegos y
+                 algunas apps de sistema— saldrán por fuera. Seguirán funcionando, pero
+                 sin pasar por aquí. Los navegadores sí lo respetan siempre.</p>
+            </body>
+            </html>
+        """.trimIndent()
     }
 
     /**

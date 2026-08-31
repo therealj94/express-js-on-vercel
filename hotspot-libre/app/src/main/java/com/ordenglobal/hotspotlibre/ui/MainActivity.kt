@@ -143,14 +143,19 @@ private fun HomeScreen(modifier: Modifier = Modifier) {
                 )
             }
             Text(
-                "Configuración automática (Windows/macOS/Linux): " +
-                    (ip?.let { "http://$it:${settings.pacPort}/proxy.pac" } ?: "—"),
+                "Desde el equipo recién conectado, abre " +
+                    (ip?.let { "http://$it:${settings.pacPort}/" } ?: "—") +
+                    " y ahí están los pasos para su sistema. Se ve sin tener " +
+                    "el proxy puesto todavía.",
                 style = MaterialTheme.typography.bodySmall,
             )
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 OutlinedButton(onClick = {
                     copy(context, "${ip ?: ""}:${settings.proxyPort}")
                 }) { Text("Copiar dirección") }
+                OutlinedButton(onClick = {
+                    copy(context, ip?.let { "http://$it:${settings.pacPort}/" } ?: "")
+                }) { Text("Copiar ayuda") }
                 OutlinedButton(onClick = {
                     scope.launch {
                         checks = withContext(Dispatchers.IO) {
@@ -180,8 +185,9 @@ private fun HomeScreen(modifier: Modifier = Modifier) {
             )
             Button(onClick = {
                 val port = portText.toIntOrNull()
-                if (port == null || port !in 1024..65535) {
-                    toast(context, "El puerto debe estar entre 1024 y 65535")
+                // 65534 y no 65535: el PAC se publica en el puerto siguiente.
+                if (port == null || port !in 1024..65534) {
+                    toast(context, "El puerto debe estar entre 1024 y 65534")
                     return@Button
                 }
                 settings.proxyPort = port

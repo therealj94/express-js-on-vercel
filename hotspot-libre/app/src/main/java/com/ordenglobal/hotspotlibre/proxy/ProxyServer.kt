@@ -102,8 +102,14 @@ class ProxyServer(
                 runCatching { client.close() }
                 return
             }
+            if (!isLocalClient(client)) {
+                LogBus.warn("proxy", "Rechazado ${client.inetAddress?.hostAddress}: no es de la red local")
+                runCatching { client.close() }
+                return
+            }
             client.tcpNoDelay = true
-            client.soTimeout = 120_000
+            client.soTimeout = CLIENT_IDLE_TIMEOUT_MS
+            client.keepAlive = true
             runCatching { client.sendBufferSize = SOCKET_BUFFER_BYTES }
 
             // Buffer antes del pushback: la cabecera se lee byte a byte y sin
@@ -131,6 +137,22 @@ class ProxyServer(
         }
     }
 
+    /**
+     * Solo atiende a quien está en la red local.
+     *
+     * El proxy escucha en 0.0.0.0 porque la IP del hotspot aparece y cambia
+     * sola. El efecto colateral es que, con el teléfono conectado a un wifi
+     * ajeno, cualquiera de esa red podría salir a internet por tus datos
+     * móviles. Esto lo cierra sin depender de a qué interfaz se ató.
+     */
+    private fun isLocalClient(client: Socket): Boolean {
+        val address = client.inetAddress ?: return false
+        return address.isLoopbackAddress ||
+            address.isSiteLocalAddress ||
+            address.isLinkLocalAddress ||
+            address.isAnyLocalAddress
+    }
+
     /** Corta el tráfico nuevo al llegar al límite, avisando una sola vez. */
     private fun overCap(): Boolean {
         if (dataCapBytes <= 0) return false
@@ -146,6 +168,9 @@ class ProxyServer(
     companion object {
         /** 512 KB cubre el producto ancho de banda × latencia de un enlace móvil rápido. */
         const val SOCKET_BUFFER_BYTES = 512 * 1024
+
+        /** Mismo criterio que la salida: no matar conexiones abiertas pero calladas. */
+        const val CLIENT_IDLE_TIMEOUT_MS = 15 * 60 * 1000
     }
 
     fun awaitTermination() {

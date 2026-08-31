@@ -9,6 +9,7 @@ import java.io.OutputStream
 import java.net.Socket
 import java.net.URI
 import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
 
 /**
  * Lado HTTP del proxy: CONNECT para túneles TLS y forma absoluta para HTTP plano.
@@ -138,8 +139,14 @@ object HttpSession {
             }
         }
         pump(upstream.getInputStream(), output, Direction.DOWNLOAD, client)
-        uploadDone.await()
+
+        // Cerrar los dos extremos despierta a la subida si estaba bloqueada
+        // leyendo de un cliente que ya no va a mandar nada. Sin esto su hilo
+        // se queda esperando hasta el temporizador, y con uno largo eso es
+        // un hilo perdido por cada conexión.
         runCatching { upstream.close() }
+        runCatching { client.close() }
+        uploadDone.await(5, TimeUnit.SECONDS)
     }
 
     private fun readHeaders(input: InputStream): List<Pair<String, String>> {

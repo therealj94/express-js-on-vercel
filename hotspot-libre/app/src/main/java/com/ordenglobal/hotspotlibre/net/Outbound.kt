@@ -28,7 +28,13 @@ class DialResult private constructor(val socket: Socket?, val error: DialError?)
 object Outbound {
 
     private const val CONNECT_TIMEOUT_MS = 15_000
-    private const val READ_TIMEOUT_MS = 120_000
+    /**
+     * 15 minutos, no 2. Con 2 minutos se cortaban solas las conexiones que
+     * están abiertas pero calladas: notificaciones push, sesiones de juego,
+     * pestañas en segundo plano. Con el cierre en cascada de abajo, un
+     * temporizador largo ya no deja hilos colgados.
+     */
+    private const val READ_TIMEOUT_MS = 15 * 60 * 1000
 
     /**
      * Puertos en los que escuchamos nosotros. Se registran al arrancar.
@@ -48,21 +54,44 @@ object Outbound {
      * apuntar a la IP local y el bucle sería idéntico.
      */
     fun dial(host: String, port: Int): DialResult {
-        val address = try {
-            InetAddress.getByName(host)
+        val addresses = try {
+            InetAddress.getAllByName(host)
         } catch (_: UnknownHostException) {
             return DialResult.fail(DialError.Dns)
         }
+        if (addresses.isEmpty()) return DialResult.fail(DialError.Dns)
 
-        if (port in selfPorts && LocalAddresses.isSelf(address)) {
+        if (port in selfPorts && addresses.any { LocalAddresses.isSelf(it) }) {
             LogBus.warn("proxy", "Bucle evitado: $host:$port es este mismo proxy")
             return DialResult.fail(DialError.Loop)
         }
 
+        // Se prueban todas las direcciones del nombre, no solo la primera.
+        // Muchos dominios resuelven a IPv6 e IPv4 a la vez, y según cómo el
+        // operador dé la conexión móvil una de las dos familias no sale.
+        // Quedarse con la primera hacía que sitios perfectamente accesibles
+        // fallaran siempre, sin patrón aparente.
+        var lastError: DialError = DialError.Timeout
+        for (address in addresses) {
+            when (val attempt = connectTo(address, port)) {
+                is Attempt.Ok -> return DialResult.ok(attempt.socket)
+                is Attempt.Failed -> lastError = attempt.error
+            }
+        }
+        return DialResult.fail(lastError)
+    }
+
+    private sealed class Attempt {
+        class Ok(val socket: Socket) : Attempt()
+        class Failed(val error: DialError) : Attempt()
+    }
+
+    private fun connectTo(address: InetAddress, port: Int): Attempt {
         val socket = Socket()
         return try {
             socket.tcpNoDelay = true
             socket.soTimeout = READ_TIMEOUT_MS
+            socket.keepAlive = true
             // Antes del connect, por la misma razón que en el ServerSocket:
             // la ventana TCP se negocia en el handshake.
             runCatching {
@@ -70,16 +99,16 @@ object Outbound {
                 socket.sendBufferSize = ProxyServer.SOCKET_BUFFER_BYTES
             }
             socket.connect(InetSocketAddress(address, port), CONNECT_TIMEOUT_MS)
-            DialResult.ok(socket)
+            Attempt.Ok(socket)
         } catch (_: SocketTimeoutException) {
             runCatching { socket.close() }
-            DialResult.fail(DialError.Timeout)
+            Attempt.Failed(DialError.Timeout)
         } catch (_: ConnectException) {
             runCatching { socket.close() }
-            DialResult.fail(DialError.Refused)
+            Attempt.Failed(DialError.Refused)
         } catch (e: Exception) {
             runCatching { socket.close() }
-            DialResult.fail(DialError.Other(e.message ?: e.javaClass.simpleName))
+            Attempt.Failed(DialError.Other(e.message ?: e.javaClass.simpleName))
         }
     }
 }

@@ -7,6 +7,7 @@ import android.app.PendingIntent
 import android.app.Service
 import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.content.pm.ServiceInfo
 import android.os.Build
 import android.os.IBinder
@@ -44,11 +45,33 @@ class TetherService : Service() {
 
     override fun onBind(intent: Intent?): IBinder? = null
 
+    private val hotspotWatcher = HotspotWatcher()
+
     override fun onCreate() {
         super.onCreate()
         settings = Settings(this)
         Stats.load(this)
         createChannel()
+        registerHotspotWatcher()
+    }
+
+    /**
+     * El aviso de encendido del hotspot hay que pedirlo desde código.
+     * Declarado en el manifiesto no llega nunca: desde Android 8 los avisos
+     * implícitos no despiertan receptores declarados ahí, así que la opción
+     * de arranque automático era, sencillamente, código muerto.
+     */
+    private fun registerHotspotWatcher() {
+        val filter = IntentFilter(HotspotWatcher.AP_STATE_CHANGED)
+        runCatching {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                registerReceiver(hotspotWatcher, filter, RECEIVER_NOT_EXPORTED)
+            } else {
+                registerReceiver(hotspotWatcher, filter)
+            }
+        }.onFailure {
+            LogBus.warn("hotspot", "Este teléfono no avisa del estado del hotspot; queda el chequeo periódico")
+        }
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -127,6 +150,7 @@ class TetherService : Service() {
     }
 
     override fun onDestroy() {
+        runCatching { unregisterReceiver(hotspotWatcher) }
         notifier?.cancel()
         proxy?.stop()
         pac?.stop()
@@ -140,7 +164,7 @@ class TetherService : Service() {
             startForeground(
                 NOTIFICATION_ID,
                 notification,
-                ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC,
+                ServiceInfo.FOREGROUND_SERVICE_TYPE_CONNECTED_DEVICE,
             )
         } else {
             startForeground(NOTIFICATION_ID, notification)

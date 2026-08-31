@@ -12,6 +12,7 @@ import java.net.Inet4Address
 import java.net.InetAddress
 import java.net.Socket
 import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
 
 /**
  * SOCKS5 sin autenticación (RFC 1928), solo el comando CONNECT.
@@ -112,8 +113,14 @@ object Socks5Session {
             }
         }
         pump(upstream.getInputStream(), output, Direction.DOWNLOAD, client)
-        uploadDone.await()
+
+        // Cerrar los dos extremos despierta a la subida si estaba bloqueada
+        // leyendo de un cliente que ya no va a mandar nada. Sin esto su hilo
+        // se queda esperando hasta el temporizador, y con uno largo eso es
+        // un hilo perdido por cada conexión.
         runCatching { upstream.close() }
+        runCatching { client.close() }
+        uploadDone.await(5, TimeUnit.SECONDS)
     }
 
     private fun readIp(data: DataInputStream, size: Int): String? {

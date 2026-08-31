@@ -2,6 +2,8 @@ package com.ordenglobal.hotspotlibre.net
 
 import java.io.File
 import java.net.InetAddress
+import java.util.concurrent.Executors
+import java.util.concurrent.TimeUnit
 
 data class TetherClient(
     val ip: String,
@@ -45,23 +47,32 @@ object ClientScanner {
         }.getOrDefault(emptyList())
     }
 
-    /** Barrido de los .1-.254 del prefijo local. Solo si ARP no está disponible. */
+    /**
+     * Barrido de los .1-.254 del prefijo local. Solo si ARP no está disponible.
+     *
+     * Con un pool acotado: 254 hilos de golpe en un teléfono compiten con el
+     * proxy justo mientras mueve datos, que es cuando el usuario abre esta
+     * pantalla a mirar quién está conectado.
+     */
     private fun sweepSubnet(): List<TetherClient> {
         val own = LocalAddresses.hotspotIp() ?: return emptyList()
         val prefix = own.substringBeforeLast('.')
         val found = mutableListOf<TetherClient>()
-        val threads = (1..254).map { host ->
-            Thread {
-                val ip = "$prefix.$host"
-                if (ip == own) return@Thread
+        val pool = Executors.newFixedThreadPool(16) { runnable ->
+            Thread(runnable, "arp-sweep").apply { isDaemon = true }
+        }
+        (1..254).forEach { host ->
+            val ip = "$prefix.$host"
+            if (ip == own) return@forEach
+            pool.execute {
                 val alive = runCatching {
                     InetAddress.getByName(ip).isReachable(300)
                 }.getOrDefault(false)
                 if (alive) synchronized(found) { found += TetherClient(ip, "—", true) }
             }
         }
-        threads.forEach { it.start() }
-        threads.forEach { runCatching { it.join(1500) } }
-        return found.sortedBy { it.ip }
+        pool.shutdown()
+        runCatching { pool.awaitTermination(10, TimeUnit.SECONDS) }
+        return synchronized(found) { found.sortedBy { it.ip } }
     }
 }
