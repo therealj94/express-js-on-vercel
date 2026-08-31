@@ -51,6 +51,7 @@ class Proveedor:
         self.leidos = []
         self.escribiendo = []
         self.mensajes = mensajes if mensajes is not None else []
+        self.ordenes_pedidos = []
 
     def __call__(self, metodo, ruta, cuerpo=None, timeout=25):
         if ruta.startswith('/inbox/conversations?'):
@@ -67,8 +68,26 @@ class Proveedor:
         if '/messages' in ruta and metodo == 'GET':
             # `messages`, no `data`. Copiado de una respuesta REAL del
             # proveedor: ver la nota en `bandeja()`.
-            return {'status': 'success', 'messages': self.mensajes,
-                    'pagination': {'hasMore': False, 'nextCursor': None}}
+            #
+            # Y RECORTA COMO EL DE VERDAD. `self.mensajes` va del mas viejo al
+            # mas nuevo; el proveedor devuelve como mucho `limit`, tomados del
+            # extremo que diga `sortOrder`. Un doble que devuelve siempre la
+            # lista entera no es un doble: es un sitio donde el fallo de las
+            # charlas largas no puede aparecer. Ya paso una vez con
+            # `data`/`messages`, y las pruebas pasaban mientras la bandeja
+            # salia vacia en produccion.
+            import urllib.parse as _up
+            q = _up.parse_qs(_up.urlparse(ruta).query)
+            limite = int((q.get('limit') or ['100'])[0])
+            orden = (q.get('sortOrder') or ['asc'])[0]
+            self.ordenes_pedidos.append(orden)
+            todos = list(self.mensajes)
+            trozo = (todos[-limite:][::-1] if orden == 'desc'
+                     else todos[:limite])
+            return {'status': 'success', 'messages': trozo,
+                    'sortOrderApplied': orden,
+                    'pagination': {'hasMore': len(todos) > limite,
+                                   'nextCursor': None}}
         if '/messages' in ruta and metodo == 'POST':
             self.enviados.append(cuerpo.get('message'))
             return {'id': 'wamid-' + str(len(self.enviados))}
@@ -161,6 +180,68 @@ class NoSeContestaASiMisma(unittest.TestCase):
             b = rel.bandeja(QUIEN)
         self.assertLess(b[0]['cuando'], b[1]['cuando'])
         self.assertGreater(b[0]['cuando'], 0, 'la fecha no se supo leer')
+
+
+class LaCharlaLargaQUENOSEVUELVEMUDA(unittest.TestCase):
+    """El fallo numero 4, y el peor de todos porque no se ve.
+
+    31-ago, 01:32. Jose escribio «Hola» y AU-RA no contesto. El servicio
+    estaba vivo, el motor templado y el mensaje habia llegado al proveedor.
+    Su charla tenia mas de 100 mensajes de tanto probar, y `bandeja` pedia
+    los 100 mas VIEJOS: lo nuevo no cabia en la pagina, `atender_charla` no
+    veia nada pendiente, y la charla quedaba muda para siempre.
+
+    Lo grave es a quien le toca: cuanto MAS se usa AU-RA con alguien, antes
+    se le calla. Los desconocidos —charlas de cuatro mensajes— seguian
+    contestados, asi que desde fuera todo se veia bien.
+    """
+
+    def _charla_de(self, cuantos):
+        return [{'id': f'm{i}', 'direction': 'incoming',
+                 'message': f'mensaje {i}',
+                 'sentAt': f'2026-08-30T12:{i // 60:02d}:{i % 60:02d}.000Z',
+                 'attachments': []}
+                for i in range(cuantos)]
+
+    def test_lo_ultimo_llega_aunque_haya_150_mensajes_antes(self):
+        p = Proveedor(mensajes=self._charla_de(150))
+        with con_proveedor(p):
+            rel = wa.RelevoWhatsApp()
+            rel.conversaciones()
+            b = rel.bandeja(QUIEN)
+        self.assertEqual(b[-1]['texto'], 'mensaje 149',
+                         'la charla larga perdio lo ultimo: AU-RA queda muda')
+
+    def test_y_sigue_llegando_del_mas_viejo_al_mas_nuevo(self):
+        """La firma promete ese orden y el tope de `atender_charla` depende de
+        el. Traer lo nuevo al reves seria cambiar un fallo por otro."""
+        p = Proveedor(mensajes=self._charla_de(150))
+        with con_proveedor(p):
+            rel = wa.RelevoWhatsApp()
+            rel.conversaciones()
+            b = rel.bandeja(QUIEN)
+        horas = [m['cuando'] for m in b]
+        self.assertEqual(horas, sorted(horas), 'la bandeja vino desordenada')
+
+    def test_una_charla_corta_sigue_entera(self):
+        p = Proveedor(mensajes=self._charla_de(3))
+        with con_proveedor(p):
+            rel = wa.RelevoWhatsApp()
+            rel.conversaciones()
+            b = rel.bandeja(QUIEN)
+        self.assertEqual([m['texto'] for m in b],
+                         ['mensaje 0', 'mensaje 1', 'mensaje 2'])
+
+    def test_se_le_piden_los_nuevos_al_proveedor(self):
+        """La prueba de arriba pasaria tambien si trajeramos la charla ENTERA.
+        Esto fija lo que de verdad protege: se pide el extremo nuevo."""
+        p = Proveedor(mensajes=self._charla_de(150))
+        with con_proveedor(p):
+            rel = wa.RelevoWhatsApp()
+            rel.conversaciones()
+            rel.bandeja(QUIEN)
+        self.assertEqual(p.ordenes_pedidos, ['desc'],
+                         'se pidieron los mensajes por el extremo viejo')
 
 
 class TextoLargo(unittest.TestCase):

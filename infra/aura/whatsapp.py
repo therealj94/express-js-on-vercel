@@ -255,18 +255,34 @@ class RelevoWhatsApp:
         return salida
 
     def bandeja(self, desde):
-        """Los mensajes de esa charla, del mas viejo al mas nuevo.
+        """Los ULTIMOS mensajes de esa charla, del mas viejo al mas nuevo.
 
         `de` se rellena con el telefono cuando el mensaje es entrante y con
         nuestro propio nombre cuando es nuestro: `atender_charla` filtra por
         ese campo para saber que esta pendiente, y sin la distincion se
         contestaria a nuestras propias respuestas.
+
+        ── POR QUE `desc` Y NO `asc` ────────────────────────────────────────
+
+        31-ago, 01:32. Jose escribio «Hola» y AU-RA no contesto NADA. El
+        servicio estaba vivo, el motor templado, el mensaje habia llegado al
+        proveedor. Pero su charla ya tenia mas de 100 mensajes de tanto
+        probar, y esta ruta pide 100: con `asc` devolvia los 100 mas VIEJOS,
+        asi que lo nuevo no cabia y `atender_charla` no veia nada pendiente.
+
+        Y no era un fallo que se notara: era una charla que dejaba de existir
+        sin avisar, en silencio, y justo la de quien mas habla con ella. Se
+        arreglaba solo para nadie: cuanto mas se usa AU-RA con alguien, antes
+        se le vuelve muda.
+
+        `desc` trae los 100 mas NUEVOS y se invierten aqui. Es lo que hace
+        falta: el tope solo mira hacia adelante, lo viejo ya se contesto.
         """
         hilo = self._hilo_de(desde)
         if not hilo:
             return []
         d = _pedir('GET', f'/inbox/conversations/{hilo}/messages'
-                          f'?accountId={self.cuenta}&limit=100&sortOrder=asc')
+                          f'?accountId={self.cuenta}&limit=100&sortOrder=desc')
         # OJO CON LOS NOMBRES: esta ruta NO devuelve lo mismo que el aviso del
         # webhook, aunque hablen de lo mismo. Aqui la lista se llama
         # `messages` (no `data`), el texto `message` (no `text`) y lo entrante
@@ -279,7 +295,11 @@ class RelevoWhatsApp:
         # hacer nada. Y las pruebas pasaban, porque el proveedor de mentira
         # estaba escrito con la misma suposicion equivocada.
         salida = []
-        for m in d.get('messages') or []:
+        # Llegan del mas nuevo al mas viejo (`desc`): se dan vuelta para
+        # cumplir lo que promete la firma. Y despues se ordenan por hora, que
+        # es lo unico de lo que depende el tope: si el proveedor algun dia
+        # ignora `sortOrder`, el orden que entregamos sigue siendo el bueno.
+        for m in reversed(d.get('messages') or []):
             entrante = (m.get('direction') or '') == 'incoming'
             meta = m.get('metadata') or {}
             salida.append({
@@ -297,6 +317,7 @@ class RelevoWhatsApp:
                          if meta.get('interactiveType') in
                             ('button_reply', 'list_reply') else None),
             })
+        salida.sort(key=lambda m: m['cuando'])
         return salida
 
     def _hilo_de(self, quien):

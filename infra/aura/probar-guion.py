@@ -30,6 +30,21 @@ import unittest
 AQUI = pathlib.Path(__file__).resolve().parent
 sys.path.insert(0, str(AQUI))
 import guion   # noqa: E402
+
+
+def aura_respiro():
+    """`RESPIRO_PUERTA` leido del fuente, sin importar `asistente`.
+
+    Importarlo aqui arrastraria el motor, `cryptography` y medio nodo dentro
+    de una prueba del GUION. Se lee el numero del arbol, que es lo unico que
+    hace falta."""
+    import ast
+    t = ast.parse((AQUI / 'asistente.py').read_text(encoding='utf8'))
+    for n in t.body:
+        if isinstance(n, ast.Assign) and getattr(n.targets[0], 'id', '') \
+                == 'RESPIRO_PUERTA':
+            return n.value.value
+    raise AssertionError('RESPIRO_PUERTA ya no existe en asistente.py')
 import guardia  # noqa: E402
 
 
@@ -403,9 +418,12 @@ class LaPuertaDelIdiomaVAPRIMERO(unittest.TestCase):
                          'hay un por_texto ANTES de la puerta: el bug de las 18:14')
 
     def test_quien_no_eligio_idioma_va_a_la_puerta_escriba_lo_que_escriba(self):
+        # Sobre el bloque ENTERO, no sobre los primeros 1400 caracteres: la
+        # ventana fija se rompio en cuanto el comentario de al lado crecio, y
+        # una prueba que se cae por un comentario deja de leerse.
         b = self._bloque()
         i = b.index("if not p.get('idioma')")
-        self.assertIn("p['nodo'], p['saludado'] = 'idioma'", b[i:i + 1400])
+        self.assertIn("p['nodo'], p['saludado'] = 'idioma'", b[i:])
 
     def test_HOLA_sigue_siendo_un_atajo_valido(self):
         """No se arregló quitando el atajo: se arregló poniéndolo después. Un
@@ -415,6 +433,42 @@ class LaPuertaDelIdiomaVAPRIMERO(unittest.TestCase):
     def test_tras_elegir_idioma_se_va_al_nombre_no_al_argumento(self):
         self.assertEqual(guion.TRAS_ELEGIR_IDIOMA, 'nombre')
         self.assertEqual(guion.nodo('nombre', 'es')['espera'], 'nombre')
+
+
+class LaPuertaSEPUEDECONTESTARESCRIBIENDO(unittest.TestCase):
+    """El botón no es la única forma de contestar, y creer que sí dejaba gente
+    muda para siempre: quien escribía «español» no elegía nada, el guardia
+    anti-repetición se tragaba ese mensaje y todos los siguientes."""
+
+    def test_las_formas_normales_de_decirlo_valen(self):
+        for dicho, espera in [
+                ('Español', 'es'), ('espanol', 'es'), ('ESPAÑOL', 'es'),
+                ('  español  ', 'es'), ('castellano', 'es'), ('es', 'es'),
+                ('English', 'en'), ('english', 'en'), ('inglés', 'en'),
+                ('ingles', 'en'), ('en', 'en'), ('English.', 'en')]:
+            self.assertEqual(guion.idioma_de_texto(dicho), espera,
+                             f'«{dicho}» no se entendió como {espera}')
+
+    def test_lo_que_NO_es_una_respuesta_no_elige_nada(self):
+        """Adivinar de más es peor que preguntar: mete a alguien en un idioma
+        que no pidió y ya no vuelve a preguntárselo."""
+        for dicho in ['hola', 'buenas', '¿hay alguien?', '',
+                      'quiero saber más de Orden Global',
+                      'me gustaría que me expliques en español qué es ORIGEN']:
+            self.assertIsNone(guion.idioma_de_texto(dicho),
+                              f'«{dicho}» eligió idioma sin que nadie lo pida')
+
+    def test_ni_None_ni_un_numero_la_rompen(self):
+        for basura in [None, '', '   ', '\n']:
+            self.assertIsNone(guion.idioma_de_texto(basura))
+
+    def test_cada_forma_lleva_a_UN_solo_idioma(self):
+        """Una forma en las dos listas la haría depender del orden del
+        diccionario, que es la clase de fallo que aparece al actualizar
+        Python y no al escribirlo."""
+        es = set(guion._IDIOMA_ESCRITO['es'])
+        en = set(guion._IDIOMA_ESCRITO['en'])
+        self.assertEqual(es & en, set(), f'formas ambiguas: {es & en}')
 
 
 class EsPersonalANTESDeSerInformativo(unittest.TestCase):
@@ -471,23 +525,50 @@ class ElEMBUDONOSEREPITE(unittest.TestCase):
 
     FUENTE = (AQUI / 'asistente.py').read_text(encoding='utf8')
 
-    def test_si_la_puerta_YA_esta_en_pantalla_no_se_manda_otra_vez(self):
+    def _puerta(self):
         i = self.FUENTE.index("if not p.get('idioma')")
-        bloque = self.FUENTE[i:i + 1500]
-        self.assertIn("ya_esta = p.get('nodo') == 'idioma'", bloque)
+        return self.FUENTE[i:self.FUENTE.index('LO QUE ESCRIBE EN UN NODO', i)]
+
+    def test_si_la_puerta_YA_esta_en_pantalla_no_se_manda_otra_vez(self):
+        b = self._puerta()
+        self.assertIn("p.get('nodo') == 'idioma'", b)
         # y el return va ANTES de cualquier envío
-        corte = bloque.index('if ya_esta:')
-        self.assertIn('return', bloque[corte:corte + 60])
-        self.assertNotIn('rel.con_botones', bloque[:corte],
+        corte = b.index('if ya_esta:')
+        self.assertIn('return', b[corte:corte + 60])
+        self.assertNotIn('rel.con_botones', b[:corte],
                          'manda la puerta antes de comprobar si ya está')
 
     def test_el_mensaje_se_consume_igual(self):
         """Volver sin mandar nada no puede dejar el mensaje sin atender: si no,
         el tope no avanza y vuelve a entrar en la vuelta siguiente, para
         siempre."""
-        i = self.FUENTE.index("ya_esta = p.get('nodo') == 'idioma'")
-        bloque = self.FUENTE[i:i + 300]
-        self.assertIn("p['visto']", bloque, 'no marca que lo vio')
+        b = self._puerta()
+        self.assertIn("p['visto']", b[:b.index('if ya_esta:')],
+                      'no marca que lo vio antes de callarse')
+
+    def test_PERO_el_silencio_no_es_para_siempre(self):
+        """El otro lado del mismo guardia, y el que faltaba.
+
+        Callar la puerta desde el segundo mensaje y no volver a mandarla NUNCA
+        deja mudo a quien vuelve al otro día: escribe, nadie contesta, y no hay
+        nada roto que mirar. La ráfaga se distingue de la vuelta por el reloj.
+        """
+        b = self._puerta()
+        self.assertIn('RESPIRO_PUERTA', b,
+                      'el silencio de la puerta no caduca nunca')
+        self.assertIn("p['puerta'] = ahora", b,
+                      'no anota cuándo la mandó: sin eso el reloj no sirve')
+        self.assertGreaterEqual(aura_respiro(), 300,
+                                'un respiro corto vuelve a ser spam')
+
+    def test_y_se_puede_contestar_ESCRIBIENDO_no_solo_tocando(self):
+        """Los botones se pierden con el scroll, en el correo no existen, y
+        mucha gente contesta escribiendo. Sin esto, quien escribía «español»
+        no elegía nada y el guardia de arriba lo callaba para siempre."""
+        i = self.FUENTE.index('LA PUERTA DEL IDIOMA VA PRIMERO')
+        b = self.FUENTE[i:self.FUENTE.index("if not p.get('idioma')", i)]
+        self.assertIn('idioma_de_texto', b,
+                      'la puerta solo admite el botón')
 
 
 class LasTresPreguntasDeEntrada(unittest.TestCase):

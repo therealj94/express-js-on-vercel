@@ -1375,6 +1375,41 @@ def idioma_de_toque(id_boton):
     return None
 
 
+# Como se escribe «español» y «english» cuando NO se toca el boton. Un teclado
+# sin tildes, un «esp», un «ingles» dicho en espanol: todo eso es la misma
+# persona contestando la misma pregunta.
+_IDIOMA_ESCRITO = {
+    'es': ('espanol', 'español', 'castellano', 'es', 'esp', 'spanish',
+           'en espanol', 'en español'),
+    'en': ('english', 'en', 'ingles', 'inglés', 'eng', 'in english'),
+}
+
+
+def idioma_de_texto(dicho):
+    """El idioma que alguien ESCRIBIO en la puerta. `None` si no dijo ninguno.
+
+    ── POR QUE HACE FALTA ───────────────────────────────────────────────────
+
+    La puerta se contestaba SOLO tocando el boton. Quien escribia «español» en
+    vez de tocarlo no elegia nada, y el guardia que impide repetir la puerta
+    se tragaba ese mensaje y todos los siguientes: la persona quedaba muda
+    para siempre, sin un error en ningun lado.
+
+    Y no es un caso raro. Los botones se pierden al hacer scroll, en el correo
+    no existen, y mucha gente contesta escribiendo por costumbre.
+
+    Se mira solo cuando la persona TODAVIA no tiene idioma, asi que puede ser
+    generoso sin miedo: aqui «en» solo puede querer decir «English».
+    """
+    s = (dicho or '').strip().lower().strip('.!¡¿?,;:"\'()')
+    if not s or len(s) > 24:
+        return None                 # una frase larga no es una respuesta de dos
+    for cual, formas in _IDIOMA_ESCRITO.items():
+        if s in formas:
+            return cual
+    return None
+
+
 def por_toque(id_boton):
 
     """El nodo al que lleva un boton tocado.

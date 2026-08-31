@@ -202,6 +202,12 @@ HILOS = 3
 # Un mensaje venenoso no puede dejar la charla ciclando para siempre.
 REINTENTOS = 3
 
+# Cuanto se calla la puerta del idioma antes de volver a ofrecerla. Corto no
+# alcanza —tres mensajes seguidos son una rafaga y repetirla es spam— y no
+# tenerlo era peor: quien volvia al otro dia no recibia nada nunca mas.
+# Diez minutos separan las dos cosas sin ambiguedad.
+RESPIRO_PUERTA = 600
+
 
 def log(*a):
     print(time.strftime('%H:%M:%S'), *a, flush=True)
@@ -1020,7 +1026,12 @@ def preguntar_motor(sistema, perfil, historial, dicho, contexto='', al_vuelo=Non
     # distinguible de una pregunta de verdad — siete comprobaciones en rojo
     # de una sola linea, porque se corrian todos los indices.
     if not de_la_casa and perfil:
-        quien += AVISO_DE_LA_VIDA[_idi(p)] + '\n'
+        # `perfil`, no `p`: aqui la persona se llama `perfil`. Con `p` esto era
+        # un NameError que solo saltaba en la pregunta de la vida —la de fuera
+        # de casa—, o sea que AU-RA contestaba bien de Orden Global y se moria
+        # con «¿como esta el clima?». Y se moria hacia AFUERA: la persona leia
+        # «mi motor esta apagado», que es mentira, el motor estaba entero.
+        quien += AVISO_DE_LA_VIDA[_idi(perfil)] + '\n'
     mensajes = ([{'role': 'system', 'content': sistema}]
                 + historial[-MEMORIA:]
                 + [{'role': 'user', 'content': quien + str(dicho)[:1000]}])
@@ -1617,7 +1628,13 @@ def atender(rel, sistema, p, de, dicho, mensaje=None):
     #
     # Ahora nada se resuelve antes que esto. Quien no eligio idioma va a la
     # puerta, escriba lo que escriba.
+    # Tocado O ESCRITO. Lo segundo se agrego el 31-ago: la puerta solo admitia
+    # el boton, y quien contestaba «español» escribiendo quedaba mudo para
+    # siempre — ver `guion.idioma_de_texto`. Solo se lee el texto mientras no
+    # haya idioma; despues, «en» vuelve a ser una palabra cualquiera.
     elegido = guion.idioma_de_toque(toco)
+    if not elegido and not p.get('idioma'):
+        elegido = guion.idioma_de_texto(dicho)
     if elegido:
         p['idioma'] = elegido
         p['saludado'] = True
@@ -1642,11 +1659,23 @@ def atender(rel, sistema, p, de, dicho, mensaje=None):
         #
         # Si la puerta YA esta en su pantalla, con sus botones, el mensaje
         # siguiente se consume sin volver a mandarla.
-        ya_esta = p.get('nodo') == 'idioma'
+        # ── PERO TAMPOCO PARA SIEMPRE ──────────────────────────────────────
+        #
+        # El guardia de arriba callaba la puerta desde el segundo mensaje y
+        # ya no la volvia a mandar NUNCA. Contra los nueve seguidos funciona;
+        # contra alguien que vuelve al otro dia, no: escribe, no le contesta
+        # nadie, y no hay nada roto que mirar.
+        #
+        # La rafaga y la vuelta se distinguen por el reloj. Dentro de la
+        # rafaga se calla; pasado el respiro, la puerta se ofrece otra vez.
+        ahora = int(time.time())
+        ya_esta = (p.get('nodo') == 'idioma'
+                   and ahora - int(p.get('puerta') or 0) < RESPIRO_PUERTA)
         p['nodo'], p['saludado'] = 'idioma', True
-        p['visto'] = int(time.time())
+        p['visto'] = ahora
         if ya_esta:
             return
+        p['puerta'] = ahora
         n = guion.nodo('idioma', guion.POR_OMISION)
         registro.anotar('guion', nodo='idioma')
         if hasattr(rel, 'con_botones'):

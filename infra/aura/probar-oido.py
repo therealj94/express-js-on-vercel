@@ -256,14 +256,23 @@ def motor_de_mentira(sistema, perfil, historial, dicho, *a, **k):
     # (contexto, al_vuelo…) y una firma exacta ata la prueba a un detalle que
     # no esta probando.
     oido_por_el_motor['dicho'] = dicho
-    return 'te oí'
+    # DOS valores, como el de verdad (`resto, entero`). Devolviendo uno solo,
+    # `atender` se caia con ValueError y lo enmascaraba como «motor apagado»:
+    # la prueba de arriba pasaba igual —la nota no se rebotó— pero nunca se
+    # recorria el camino entero.
+    return 'te oí', 'te oí'
 
 
 aura.preguntar_motor = motor_de_mentira
 
 ARCHIVOS['nota6'] = AUDIO
 rel = RelevoDeMentira()
-p = {'saludado': True, 'historial': [], 'dia': aura.hoy(), 'usadas': 0}
+# CON IDIOMA, que es lo que tiene cualquiera que ya fue saludado. Sin el, lo
+# primero que hace `atender` es la puerta del idioma —correctamente— y la nota
+# de voz no llega al oido: la prueba daba rojo por un perfil imposible, no por
+# un fallo. Un perfil de mentira que no puede existir prueba otro programa.
+p = {'saludado': True, 'idioma': 'es', 'historial': [], 'dia': aura.hoy(),
+     'usadas': 0}
 aura.atender(rel, 'sistema', p, 'ana@x.com', '',
              {'tipo': 'voz', 'archivo': 'nota6'})
 
@@ -276,7 +285,8 @@ ok('y al motor le llega lo que la persona DIJO',
 
 # Y una foto sigue rebotando, que es lo correcto: no hay ojos, solo oído.
 rel2 = RelevoDeMentira()
-p2 = {'saludado': True, 'historial': [], 'dia': aura.hoy(), 'usadas': 0}
+p2 = {'saludado': True, 'idioma': 'es', 'historial': [], 'dia': aura.hoy(),
+      'usadas': 0}
 aura.atender(rel2, 'sistema', p2, 'ana@x.com', '',
              {'tipo': 'imagen', 'archivo': 'nota6'})
 ok('una foto sí se rebota, y ahora dice que también entiende notas de voz',

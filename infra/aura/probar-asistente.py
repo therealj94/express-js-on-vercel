@@ -35,6 +35,7 @@ RAIZ = AQUI.parent.parent
 # tiene su guarda de __main__.
 sys.path.insert(0, str(AQUI))
 import asistente as aura  # noqa: E402
+import guion              # noqa: E402
 
 fallos = 0
 
@@ -249,6 +250,32 @@ def main():
                 time.sleep(0.4)
             return ms
 
+        def decir(texto, seg=25):
+            """Manda un mensaje y devuelve LO QUE CONTESTÓ a ése.
+
+            Contando mensajes —«espera 4»— la prueba se ata al largo del
+            embudo: cada paso nuevo corre todos los números y las
+            comprobaciones de abajo empiezan a medir la respuesta de otra
+            pregunta. Esperar a que la ÚLTIMA suya cambie mide lo que importa
+            y sobrevive a que el guión crezca.
+            """
+            def ultima():
+                _, d = post(BASE, '/bandeja',
+                            {**ana, 'desde': 'aura@prueba.local'})
+                ms = [m for m in d.get('mensajes', [])
+                      if m['de'] == 'aura@prueba.local']
+                return ms[-1].get('texto', '') if ms else None
+            antes = ultima()
+            post(BASE, '/enviar', {**ana, 'para': 'aura@prueba.local',
+                                   'texto': texto})
+            fin = time.time() + seg
+            while time.time() < fin:
+                ahora = ultima()
+                if ahora is not None and ahora != antes:
+                    return ahora
+                time.sleep(0.4)
+            return ultima() or ''
+
         print('\nLa puerta: amistad y lista de prueba\n')
         post(BASE, '/amistad/pedir', {**ana, 'para': 'aura@prueba.local'})
         post(BASE, '/amistad/pedir', {**zoe, 'para': 'aura@prueba.local'})
@@ -265,7 +292,30 @@ def main():
         s = saludos[0].get('texto', '')
         ok('servidor' in s and 'punta a punta' in s,
            'el saludo dice la verdad del cifrado, sin letra chica')
-        ok('dedic' in s, 'y el saludo invita a contar en qué anda')
+
+        print('\nEL EMBUDO: idioma, nombre y oficio antes de la charla\n')
+        # Antes de esto, el saludo invitaba a contar en qué andaba y de ahí se
+        # iba derecho al motor. Ahora lo primero es el embudo —idioma, nombre,
+        # oficio— y estas comprobaciones lo recorren en vez de saltárselo.
+        #
+        # Y ESCRIBIENDO, no tocando: en el correo no hay botones. Es el mismo
+        # camino de quien pierde los botones con el scroll en WhatsApp, y el
+        # que dejaba gente muda para siempre hasta el 31-ago.
+        r = decir('hola')
+        ok('idioma' in r.lower(), 'lo primero que pregunta es el idioma',
+           f'contestó: {r[:90]!r}')
+
+        r = decir('Español')
+        ok('idioma' not in r.lower(),
+           'el idioma ESCRITO se acepta igual que el botón',
+           f'volvió a preguntar el idioma: {r[:90]!r} — quien escribe en vez '
+           'de tocar quedaba mudo para siempre')
+        ok('llam' in r or 'nombre' in r.lower(),
+           'y sigue al nombre, que es el paso siguiente del embudo',
+           f'siguió con: {r[:90]!r}')
+
+        decir('Ana')
+        decir('Tengo un empleo')
 
         print('\nUNA PREGUNTA SE CONTESTA — no se cambia por otra pregunta\n')
         # Aquí había un formulario de tres preguntas que se tragaba los tres
@@ -273,17 +323,13 @@ def main():
         # en producción: «¿Qué es ORIGEN?» recibía «¿qué te gustaría lograr?».
         # Alguien hace una pregunta de verdad, recibe otra pregunta, y su duda
         # queda sin contestar.
-        post(BASE, '/enviar', {**ana, 'para': 'aura@prueba.local',
-                               'texto': 'Soy contadora en una ferretería'})
-        ms = espera_mensajes(ana, 2)
-        ok(len(ms) >= 2, 'lo que cuenta recibe respuesta')
-        post(BASE, '/enviar', {**ana, 'para': 'aura@prueba.local',
-                               'texto': '¿Qué es ORIGEN?'})
-        ms = espera_mensajes(ana, 4)
-        _suyas = [m.get('texto', '') for m in ms if m.get('de') == 'aura@prueba.local']
-        ok(_suyas and 'RESPUESTA-DEL-MOTOR' in _suyas[-1],
+        r = decir('Soy contadora en una ferretería')
+        ok(bool(r), 'lo que cuenta recibe respuesta')
+        r = decir('¿Qué es ORIGEN?')
+        ok('RESPUESTA-DEL-MOTOR' in r,
            'y una PREGUNTA va al modelo, no al formulario',
-           f'contestó: {_suyas[-1][:90]!r} — el formulario se la tragaba')
+           f'contestó: {r[:90]!r} — el formulario se la tragaba')
+        _suyas = [r]
         ok('lograr' not in (_suyas[-1] or ''),
            'no te devuelve una pregunta en vez de tu respuesta',
            'recibir «¿qué querés lograr?» cuando preguntaste qué es ORIGEN es '
@@ -298,18 +344,15 @@ def main():
                       if m.get('de') == 'aura@prueba.local'
                       and 'RESPUESTA-DEL-MOTOR' in (m.get('texto') or '')])
         _llamadasAntes = len(de_usuario())
-        post(BASE, '/enviar', {**ana, 'para': 'aura@prueba.local',
-                               # Una pregunta DISTINTA de la anterior: dos casi
-                               # iguales disparan el guardián de eco —que
-                               # repregunta— y entonces esto contaría DOS
-                               # llamadas al motor por una sola pregunta.
-                               'texto': '¿Cuánto cuesta cobrar con MyTokenPay?'})
-        ms = espera_mensajes(ana, 5)
-        # Por el ÚLTIMO mensaje suyo y no por el índice 4: el índice contaba
-        # con los cuatro mensajes del formulario de bienvenida, que ya no
-        # existe. Una prueba atada a una posición se rompe cada vez que cambia
-        # el flujo, y lo que quiere comprobar no es dónde está la respuesta
-        # sino que la respuesta esté.
+        # Una pregunta DISTINTA de la anterior: dos casi iguales disparan el
+        # guardián de eco —que repregunta— y entonces esto contaría DOS
+        # llamadas al motor por una sola pregunta.
+        #
+        # Con `decir` y no contando mensajes: «espera 5» se cumplía con lo que
+        # ya había en el hilo, así que estas comprobaciones medían la respuesta
+        # ANTERIOR. Se esperaba a nada.
+        decir('¿Cuánto cuesta cobrar con MyTokenPay?')
+        ms = bandeja_de(ana)
         _suyas = [m.get('texto', '') for m in ms if m.get('de') == 'aura@prueba.local']
         ok(_suyas and 'RESPUESTA-DEL-MOTOR' in _suyas[-1],
            'la respuesta del motor llega al chat',
@@ -670,17 +713,24 @@ def main():
         # MyTokenPay pueden ayudarte a lograr eso.» — un fragmento sin cabeza.
         # El modelo no tiene nada que contestarle a un saludo, así que recita
         # el perfil o suelta un pedazo de otra respuesta.
+        # LO QUE CAMBIO, Y LO QUE NO. Antes «Hola» devolvía una frase de saludo
+        # («¿cómo andás?»), y una DISTINTA la segunda vez. Con el embudo,
+        # «hola» es un atajo al nodo `inicio` del guión: la respuesta ya no es
+        # un saludo sino la primera frase del argumento.
+        #
+        # Lo que esta prueba protege sigue en pie y es lo importante: la
+        # respuesta la escribimos NOSOTROS, entera, sin motor. El fragmento sin
+        # cabeza de la captura no puede volver.
         antes_s = len(de_usuario())
-        post(BASE, '/enviar', {**ana, 'para': 'aura@prueba.local', 'texto': 'Hola'})
-        ms = espera_texto(ana, 'andás', 12)
-        ok(any('andás' in (m.get('texto') or '') for m in ms),
-           'a un «Hola» se contesta saludando, no con un pedazo de otra cosa')
+        r = decir('Hola')
+        ok(r.strip().endswith(('.', '!', '?', '…')) and len(r) > 40,
+           'a un «Hola» se contesta con algo entero, no con un pedazo',
+           f'contestó: {r[:90]!r}')
+        ok(r == guion.nodo('inicio', 'es', 'Ana')['texto'],
+           'y lo que contesta es el guión, palabra por palabra',
+           'si esto se cae, la respuesta la está escribiendo el modelo')
         ok(len(de_usuario()) == antes_s,
            'y NO gasta motor: es la frase más común de todas y sale al instante')
-        post(BASE, '/enviar', {**ana, 'para': 'aura@prueba.local', 'texto': 'buenas'})
-        ms = espera_texto(ana, 'Acá estoy', 12)
-        ok(any('Acá estoy' in (m.get('texto') or '') for m in ms),
-           'el segundo saludo es OTRA frase: repetir la misma delata la máquina')
         # ...pero un saludo CON pregunta adentro sí va al modelo
         antes_s = len(de_usuario())
         post(BASE, '/enviar', {**ana, 'para': 'aura@prueba.local',
@@ -957,16 +1007,25 @@ def main():
         # adentro. Y «hablame de AUKA», «hablame del oro», «hablame de la
         # tarjeta» son la forma MÁS natural de preguntar en español latino:
         # la persona preguntaba algo y AU-RA le encendía las notas de voz.
+        # Lo que se protege es que NO encienda la voz. A dónde va la pregunta
+        # cambió a mejor: hoy «hablame de AUKA» es un atajo al nodo `monedas`
+        # del guión, así que se contesta al instante, sin GPU y sin poder
+        # inventar. Exigir que gaste motor sería exigir lo peor de las dos.
         antes_h = len(de_usuario())
-        post(BASE, '/enviar', {**ana, 'para': 'aura@prueba.local',
-                               'texto': 'hablame de AUKA'})
-        fin = time.time() + 25
-        while time.time() < fin and len(de_usuario()) == antes_h:
-            time.sleep(0.3)
-        ok(len(de_usuario()) > antes_h,
-           '«hablame de AUKA» va al modelo, no enciende la voz',
+        _, _bv = post(BASE, '/bandeja', {**ana, 'desde': 'aura@prueba.local'})
+        _vozAntes = sum(1 for m in _bv.get('mensajes', [])
+                        if m.get('tipo') == 'voz')
+        r = decir('hablame de AUKA')
+        ok(bool(r), '«hablame de AUKA» recibe respuesta')
+        _, _bv = post(BASE, '/bandeja', {**ana, 'desde': 'aura@prueba.local'})
+        ok(sum(1 for m in _bv.get('mensajes', []) if m.get('tipo') == 'voz')
+           == _vozAntes,
+           '«hablame de AUKA» NO enciende la voz: es una pregunta, no una orden',
            'es la forma más natural de preguntar y se la estaba tragando el '
            'detector de comandos')
+        ok(len(de_usuario()) == antes_h,
+           'y la contesta el guión, sin gastar motor',
+           f'gastó {len(de_usuario()) - antes_h} llamada(s) al modelo')
 
         print('\nLa voz: se pide, no se impone\n')
         # Que venga APAGADA importa: una nota de voz en cada respuesta es un
@@ -1083,11 +1142,18 @@ def main():
            'al arrancar sin memoria NO recontesta el historial (cero motor)')
         ok(len(visto['peticiones']) > len(de_usuario()),
            'y el arranque TEMPLA el motor: la primera persona no paga el frio')
+        # Sin memoria no hay idioma guardado, así que lo primero es la puerta:
+        # se presenta y vuelve a preguntar. Es exactamente lo que se quería —
+        # empezar de cero en vez de adivinar—; lo que cambió es la frase con la
+        # que empieza.
         post(BASE, '/enviar', {**ana, 'para': 'aura@prueba.local',
                                'texto': 'hola de nuevo'})
-        ms = espera_texto(ana, 'conocerte', seg=20)
-        ok(any('conocerte' in (m.get('texto') or '') for m in ms),
-           'con la memoria perdida se vuelve a presentar, no adivina')
+        ms = espera_texto(ana, 'AU-RA', seg=20)
+        _ult = [m.get('texto') or '' for m in ms
+                if m.get('de') == 'aura@prueba.local']
+        ok(_ult and 'AU-RA' in _ult[-1] and 'idioma' in _ult[-1].lower(),
+           'con la memoria perdida se vuelve a presentar, no adivina',
+           f'contestó: {(_ult or [""])[-1][:90]!r}')
         ok(len(de_usuario()) == antes,
            'y sigue sin gastar motor: saludar es codigo')
 
