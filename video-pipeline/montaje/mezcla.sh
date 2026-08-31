@@ -1,7 +1,8 @@
 #!/bin/bash
 # Mezcla la narración y el click sobre el montaje. VOZ=claude|ald
 set -e
-V=${VOZ:-claude}
+V=${VOZ:-em_alex}
+PFX=${PFX:-k}
 DUR=$(python3 -c "
 import subprocess,re
 s=subprocess.run(['ffmpeg','-i','borrador.mp4'],capture_output=True,text=True).stderr
@@ -12,7 +13,7 @@ import json; print(' '.join(str(int(t*1000)) for t,_ in json.load(open('guion_vo
 
 ENT=""; FIL=""; i=0
 for ms in $G; do
-  i=$((i+1)); ENT="$ENT -i v_${V}_${i}.wav"
+  i=$((i+1)); ENT="$ENT -i ${PFX}_${V}_${i}.wav"
   FIL="${FIL}[$i:a]adelay=${ms}|${ms}[l$i];"
 done
 # El click cae a los 26,3 s: el instante en que se suelta el pétalo.
