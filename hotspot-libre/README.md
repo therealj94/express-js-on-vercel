@@ -153,6 +153,33 @@ Dos causas distintas, las dos del proxy:
   lanzan escalonadas cada 250 ms alternando familias y gana la primera que
   conteste; la familia ganadora ordena los intentos siguientes.
 
+## Señal móvil
+
+Ninguna app amplifica la señal: eso es antena, distancia y obstáculos. Lo que
+sí hace la sección «Señal móvil» es leer los dos números que las barras
+esconden, y decir si moverse serviría de algo.
+
+- **RSRP** (dBm) — cuánta señal llega. Depende de la distancia y de lo que haya
+  en medio. Es lo único que mejora cambiando de sitio.
+- **SINR** (dB) — cuán limpia llega. Mucha señal pero sucia significa celda
+  saturada o interferencia.
+
+De ahí salen tres diagnósticos distintos, y solo uno se arregla andando:
+
+| RSRP | SINR | Qué pasa |
+|---|---|---|
+| débil | limpia | Estás lejos o hay paredes. **Moverse ayuda.** |
+| fuerte | sucia | Celda saturada. Moverse no cambia nada; prueba a otra hora. |
+| fuerte | limpia | La radio está bien; el techo está en otro sitio. |
+
+La pantalla guarda **el mejor punto visto**, para poder recorrer la casa
+mirando el número en vez de memorizarlo mientras caminas. También muestra el
+identificador de celda: si cambia al moverte, te has enganchado a otra antena.
+
+Android exige el permiso de ubicación para todo esto — la antena a la que
+estás enganchado delata dónde estás, así que el sistema lo trata como dato de
+ubicación.
+
 ## Saber de dónde viene la lentitud
 
 Hay tres sospechosos —la señal del teléfono, el proxy y el operador— y se

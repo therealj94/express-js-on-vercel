@@ -4,6 +4,13 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
+    <uses-permission android:name="android.permission.READ_PHONE_STATE" />
+    <!--
+      Android trata la información de la celda como dato de ubicación —la
+      antena a la que estás enganchado dice dónde estás—, así que sin este
+      permiso no hay forma de leer potencia ni calidad de señal.
+    -->
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <!--
       connectedDevice y no dataSync: desde Android 15 un servicio dataSync se

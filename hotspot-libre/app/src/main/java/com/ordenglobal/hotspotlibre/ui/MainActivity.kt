@@ -10,6 +10,7 @@ import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -50,6 +51,9 @@ import com.ordenglobal.hotspotlibre.net.ClientScanner
 import com.ordenglobal.hotspotlibre.net.Diagnostics
 import com.ordenglobal.hotspotlibre.net.LocalAddresses
 import com.ordenglobal.hotspotlibre.net.SpeedProbe
+import com.ordenglobal.hotspotlibre.radio.SignalQuality
+import com.ordenglobal.hotspotlibre.radio.SignalReader
+import com.ordenglobal.hotspotlibre.radio.SignalSnapshot
 import com.ordenglobal.hotspotlibre.net.TetherClient
 import com.ordenglobal.hotspotlibre.net.TtlManager
 import com.ordenglobal.hotspotlibre.service.TetherService
@@ -92,10 +96,25 @@ private fun HomeScreen(modifier: Modifier = Modifier) {
     val logs by LogBus.lines.collectAsStateWithLifecycle()
     var verbose by remember { mutableStateOf(LogBus.verbose) }
 
+    var signal by remember { mutableStateOf<SignalSnapshot?>(null) }
+    var bestRsrp by remember { mutableStateOf<Int?>(null) }
+    var hasSignalPermission by remember { mutableStateOf(SignalReader.hasPermission(context)) }
+
+    val askLocation = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission(),
+    ) { granted -> hasSignalPermission = granted }
+
     // Con el servicio parado nadie publica; la pantalla se refresca sola.
     LaunchedEffect(Unit) {
         while (true) {
             Stats.tick()
+            val now = withContext(Dispatchers.IO) { SignalReader.read(context) }
+            signal = now
+            // El mejor visto se guarda para poder recorrer la casa mirando la
+            // pantalla: sin eso hay que memorizar números mientras caminas.
+            now.rsrpDbm?.let { current ->
+                if (bestRsrp == null || current > bestRsrp!!) bestRsrp = current
+            }
             delay(1_000)
         }
     }
@@ -215,6 +234,53 @@ private fun HomeScreen(modifier: Modifier = Modifier) {
                     clients = withContext(Dispatchers.IO) { ClientScanner.scan() }
                 }
             }) { Text("Refrescar") }
+        }
+
+        Section("Señal móvil") {
+            val snapshot = signal
+            Text(
+                "Ninguna app puede amplificar la señal — eso es antena y " +
+                    "distancia. Lo que sí se puede es leer los números reales y " +
+                    "decirte si moverte serviría de algo.",
+                style = MaterialTheme.typography.bodyMedium,
+            )
+
+            if (!hasSignalPermission) {
+                Text(
+                    "Android exige el permiso de ubicación para dar estos datos: " +
+                        "la antena a la que estás enganchado delata dónde estás.",
+                    style = MaterialTheme.typography.bodySmall,
+                )
+                Button(onClick = { askLocation.launch(Manifest.permission.ACCESS_FINE_LOCATION) }) {
+                    Text("Conceder permiso")
+                }
+            }
+
+            if (snapshot != null) {
+                Text("Red: ${snapshot.networkType}", fontWeight = FontWeight.Bold)
+                Text(
+                    SignalQuality.summary(snapshot.rsrpDbm, snapshot.sinrDb),
+                    fontFamily = FontFamily.Monospace,
+                    fontSize = 13.sp,
+                )
+                bestRsrp?.let { best ->
+                    Text(
+                        "Mejor punto visto: $best dBm (${SignalQuality.rsrpLabel(best)}) — " +
+                            "recorre la casa mirando este número y quédate donde suba.",
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                }
+                snapshot.band?.let { Text(it, style = MaterialTheme.typography.bodySmall) }
+                snapshot.cellId?.let {
+                    Text(
+                        "$it — si cambia al moverte, te pasaste a otra antena.",
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                }
+                Text(SignalQuality.verdict(snapshot.rsrpDbm, snapshot.sinrDb))
+            }
+
+            OutlinedButton(onClick = { bestRsrp = null }) { Text("Reiniciar el mejor punto") }
         }
 
         Section("¿De dónde viene la lentitud?") {
