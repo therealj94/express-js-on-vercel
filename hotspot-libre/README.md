@@ -136,6 +136,23 @@ Referencias: [tiempos límite de los servicios en primer plano](https://develope
 [tipos de servicio](https://developer.android.com/develop/background-work/services/fgs/service-types),
 [restricciones de avisos implícitos](https://developer.android.com/develop/background-work/background-tasks/broadcasts).
 
+## Por qué fallaba Speedtest
+
+Dos causas distintas, las dos del proxy:
+
+- **La cabecera `Upgrade` se descartaba.** La regla general dice que
+  `Connection` y `Upgrade` son cabeceras de salto y no se reenvían — pero en
+  una petición de cambio de protocolo *son la petición*. Al quitarlas, cada
+  WebSocket sobre HTTP plano se convertía en un 200 corriente y el cliente se
+  quedaba esperando un 101 que no llegaba. Speedtest recurre a eso cuando no
+  puede ir por HTTPS, y lo reporta como «socket error / firewall».
+- **Las direcciones se probaban en fila.** Una IPv6 que el operador anuncia
+  pero no encamina no rechaza la conexión: se queda callada. Hasta que no
+  expiraba el temporizador no se probaba la IPv4 buena — diez segundos de
+  espera antes de cada dominio con doble familia, que es media web. Ahora se
+  lanzan escalonadas cada 250 ms alternando familias y gana la primera que
+  conteste; la familia ganadora ordena los intentos siguientes.
+
 ## Al conectar un dispositivo
 
 Desde el equipo recién conectado, abrir `http://IP:8889/` en el navegador. Esa

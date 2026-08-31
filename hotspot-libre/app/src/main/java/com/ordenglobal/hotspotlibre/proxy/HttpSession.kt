@@ -25,6 +25,15 @@ object HttpSession {
         "te", "trailer", "upgrade", "proxy-authenticate", "proxy-authorization",
     )
 
+    /**
+     * En una petición de cambio de protocolo, `Connection` y `Upgrade` no son
+     * cabeceras de salto: son la petición misma. Quitarlas —que es lo que
+     * manda hacer la regla general— convertía cada WebSocket sobre HTTP en un
+     * 200 normal que el cliente no entiende. Speedtest usa exactamente eso
+     * cuando no puede ir por HTTPS, y responde «socket error».
+     */
+    private val HOP_BY_HOP_ON_UPGRADE = HOP_BY_HOP - setOf("connection", "upgrade")
+
     fun handle(
         server: ProxyServer,
         client: Socket,
@@ -105,20 +114,28 @@ object HttpSession {
             return
         }
 
+        val isUpgrade = headers.any { it.first.equals("upgrade", true) }
+        val drop = if (isUpgrade) HOP_BY_HOP_ON_UPGRADE else HOP_BY_HOP
+
         val out = upstream.getOutputStream()
         val request = StringBuilder("$method $path $version\r\n")
         var sawHost = false
         for ((name, value) in headers) {
-            if (name.lowercase() in HOP_BY_HOP) continue
+            if (name.lowercase() in drop) continue
             if (name.equals("host", true)) sawHost = true
             request.append("$name: $value\r\n")
         }
         if (!sawHost) request.append("Host: $host\r\n")
-        request.append("Connection: close\r\n\r\n")
+        if (!isUpgrade) request.append("Connection: close\r\n")
+        request.append("\r\n")
         out.write(request.toString().toByteArray())
         out.flush()
 
-        LogBus.debug("proxy", "$method → $host:$port$path")
+        if (isUpgrade) {
+            LogBus.ok("proxy", "cambio de protocolo → $host:$port$path")
+        } else {
+            LogBus.debug("proxy", "$method → $host:$port$path")
+        }
         relay(server, client, upstream, input, output)
     }
 

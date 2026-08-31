@@ -159,6 +159,43 @@ class ProxyServerTest {
         )
     }
 
+    @Test
+    fun `deja pasar un cambio de protocolo tipo WebSocket`() {
+        // Un origen que solo cambia de protocolo si le llega la cabecera
+        // Upgrade intacta. Si el proxy la quita, responde 200 y el cliente
+        // se queda esperando un 101 que no llega: «socket error».
+        val ws = ServerSocket(0)
+        thread(isDaemon = true) {
+            val client = ws.accept()
+            val reader = client.getInputStream().bufferedReader()
+            var sawUpgrade = false
+            while (true) {
+                val line = reader.readLine() ?: break
+                if (line.isEmpty()) break
+                if (line.startsWith("Upgrade:", true)) sawUpgrade = true
+            }
+            val response = if (sawUpgrade) {
+                "HTTP/1.1 101 Switching Protocols\r\nUpgrade: websocket\r\n\r\n"
+            } else {
+                "HTTP/1.1 200 OK\r\nContent-Length: 0\r\n\r\n"
+            }
+            client.getOutputStream().write(response.toByteArray())
+            client.getOutputStream().flush()
+        }
+
+        connectToProxy().use { socket ->
+            socket.write(
+                "GET http://127.0.0.1:${ws.localPort}/ws HTTP/1.1\r\n" +
+                    "Host: 127.0.0.1\r\n" +
+                    "Upgrade: websocket\r\n" +
+                    "Connection: Upgrade\r\n\r\n",
+            )
+            val status = socket.readLine()
+            assertTrue("el proxy se comió la cabecera Upgrade: $status", status.contains("101"))
+        }
+        ws.close()
+    }
+
     // --- utilidades ---
 
     private class ProxyClient(val socket: Socket) : AutoCloseable {

@@ -96,6 +96,14 @@ class ProxyServer(
     }
 
     private fun serve(client: Socket) {
+        if (Stats.activeConnections() >= MAX_CONCURRENT) {
+            // Cada relay ocupa dos hilos bloqueados. Sin techo, una tanda de
+            // pestañas puede dejar al teléfono con cientos de hilos y quitarle
+            // al propio proxy la CPU que necesita.
+            LogBus.warn("proxy", "$MAX_CONCURRENT conexiones a la vez: se rechazan nuevas hasta que bajen")
+            runCatching { client.close() }
+            return
+        }
         Stats.connectionOpened()
         try {
             if (overCap()) {
@@ -171,6 +179,12 @@ class ProxyServer(
 
         /** Mismo criterio que la salida: no matar conexiones abiertas pero calladas. */
         const val CLIENT_IDLE_TIMEOUT_MS = 15 * 60 * 1000
+
+        /**
+         * Techo de conexiones simultáneas. Un navegador rara vez pasa de cien;
+         * esto no estorba al uso normal y evita que el teléfono se ahogue.
+         */
+        const val MAX_CONCURRENT = 256
     }
 
     fun awaitTermination() {
