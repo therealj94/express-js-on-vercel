@@ -18,9 +18,11 @@
 # ── LOS TRAMOS ─────────────────────────────────────────────────────────────
 #
 #   admin        aprueba lo de los demas. Es el unico tramo que desbloquea.
-#   legal        pide cosas de cumplimiento, plazos, papeles.
-#   tecnologico  pide cosas de la cadena, el nodo, los despliegues.
-#   operacion    pide cosas del dia a dia: cuentas, saldos, gente.
+#   legal        cumplimiento, plazos, papeles.
+#   tecnologico  la cadena, el nodo, los despliegues.
+#   mercadeo     la gente que llega, las campanas, lo que se dice afuera.
+#   contable     el dinero: billeteras, premios pagados, cuentas.
+#   operacion    el dia a dia que no cae en ninguno de los otros.
 #   (nadie)      todo el mundo que no este en la lista. No puede pedir NADA.
 #
 # El tramo por omision es «nadie», y eso es lo correcto: una lista mal escrita
@@ -39,7 +41,7 @@
 import os
 
 
-TRAMOS = ('admin', 'legal', 'tecnologico', 'operacion')
+TRAMOS = ('admin', 'legal', 'tecnologico', 'mercadeo', 'contable', 'operacion')
 
 # Como se escribe la lista:
 #
@@ -129,5 +131,7 @@ def como_se_dice(tramo):
         'admin': 'administración',
         'legal': 'legal',
         'tecnologico': 'tecnología',
+        'mercadeo': 'mercadeo',
+        'contable': 'contabilidad',
         'operacion': 'operación',
     }.get(tramo, 'sin tramo')

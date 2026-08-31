@@ -51,7 +51,8 @@ ENCARGOS = {
         'titulo': 'El parte del día',
         'que_hace': 'Arma el parte de tu área y te lo manda acá mismo.',
         'riesgo': 'mira',
-        'quien': ('admin', 'legal', 'tecnologico', 'operacion'),
+        'quien': ('admin', 'legal', 'tecnologico', 'mercadeo', 'contable',
+                  'operacion'),
         'pide': [],
     },
     'cadena': {
@@ -65,7 +66,15 @@ ENCARGOS = {
         'titulo': 'Saldos de la campaña',
         'que_hace': 'Lee de la cadena lo que queda en la billetera de premios.',
         'riesgo': 'mira',
-        'quien': ('admin', 'operacion'),
+        'quien': ('admin', 'contable', 'operacion'),
+        'pide': [],
+    },
+    'gente': {
+        'titulo': 'Cómo viene la gente',
+        'que_hace': ('Cuánta gente nueva llegó, en qué idioma, cuántos '
+                     'jugaron y cuántos pidieron hablar con el equipo.'),
+        'riesgo': 'mira',
+        'quien': ('admin', 'mercadeo'),
         'pide': [],
     },
     'papeles': {
@@ -100,7 +109,8 @@ ENCARGOS = {
         'que_hace': ('Le pasa el trabajo a Claude, que lo hace en el '
                      'repositorio y deja los cambios listos para revisar.'),
         'riesgo': 'ejecuta',
-        'quien': ('admin', 'legal', 'tecnologico', 'operacion'),
+        'quien': ('admin', 'legal', 'tecnologico', 'mercadeo', 'contable',
+                  'operacion'),
         # 1200 caracteres: alcanza para explicar un encargo de verdad y se lee
         # entero en un teléfono antes de aprobarlo.
         'pide': [('trabajo', _texto(1200))],

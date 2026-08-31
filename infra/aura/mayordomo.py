@@ -34,6 +34,7 @@
 import json
 import os
 import pathlib
+import stat
 import subprocess
 import sys
 import time
@@ -92,13 +93,27 @@ def _correr(llave, segundos=180):
 
 
 def _parte(e):
-    import registro
+    """El parte DEL TRAMO de quien lo pidió, no el de todos.
+
+    A quien lleva lo legal, «el disco al 71%» no le dice nada y le corre hacia
+    abajo lo único que le importaba. Ver `miradas.py`.
+    """
+    import miradas
     import premio
-    import vistazo
-    d = vistazo.juntar(registro=registro, premio=premio,
-                       clave_wa=os.environ.get('ZERNIO_CLAVE', ''),
-                       cuenta_wa=os.environ.get('ZERNIO_CUENTA', ''))
-    return True, f'Parte de {vistazo.cuando()}\n\n' + vistazo.texto(d)
+    import registro
+    d = miradas.para(e['tramo'], registro=registro, premio=premio,
+                     clave_wa=os.environ.get('ZERNIO_CLAVE', ''),
+                     cuenta_wa=os.environ.get('ZERNIO_CUENTA', ''),
+                     encargos=encargos)
+    return True, miradas.texto(e['tramo'], d)
+
+
+def _gente(e):
+    import miradas
+    import premio
+    import registro
+    d = miradas.para('mercadeo', registro=registro, premio=premio)
+    return True, miradas.texto('mercadeo', d)
 
 
 def _cadena(e):
@@ -108,8 +123,15 @@ def _cadena(e):
 
 
 def _saldos(e):
+    import premio
     import vistazo
-    lineas, pend = vistazo._billetera()
+    # `_billetera` necesita la dirección y cuántos premios quedan: se le
+    # preguntan al propio módulo en vez de repetirlos aquí. Dos sitios con la
+    # misma dirección es un sitio donde queda la vieja — ya pasó el 30-ago,
+    # cuando el parte vigilaba la billetera de marketing y no la que paga.
+    p = premio.resumen()
+    lineas, pend = vistazo._billetera(getattr(premio, 'BILLETERA_PREMIOS', ''),
+                                      p.get('quedan') or 0)
     return True, '\n'.join(['La billetera de premios']
                            + [f'• {x}' for x in lineas + pend])
 
@@ -149,47 +171,75 @@ def _reiniciar(e):
 
 
 def _claude(e):
-    """El puente: le pasa el encargo a Claude, que trabaja en el repositorio.
+    """El puente con Claude: se deja en la COLA, y Claude la lee.
 
-    NO corre nada aquí. Entrega el texto —ya firmado por un admin— a un gancho
-    HTTPS, y ahí termina la responsabilidad de este nodo. Lo que Claude puede
-    hacer lo decide Claude con sus propios permisos, no nosotros con los
-    nuestros: son dos cercos, no uno.
+    ── POR QUE UNA COLA Y NO UNA LLAVE EN EL NODO ─────────────────────────
 
-    Sin gancho puesto, el encargo NO se pierde: queda escrito en el libro, en
-    «fallido», diciendo exactamente qué falta. Un puente a medias que se traga
-    encargos en silencio es peor que no tener puente.
+    La otra forma era guardar una llave de Claude en el nodo para que abriera
+    sesiones solo. Funciona y es automática — y pone en esta máquina el
+    secreto que más puede hacer si se filtra: uno que abre sesiones con
+    permiso de escribir en el repositorio.
+
+    Con la cola, el nodo no guarda ninguna llave nueva y no puede empezar
+    nada por su cuenta. Escribe el encargo firmado en un archivo; cuando José
+    abre una sesión, Claude la lee y hace lo que ya está aprobado. Es un paso
+    más lento y un secreto menos — y el paso lo da una persona.
+
+    Se escribe en modo «agregar»: un encargo no puede pisar a otro, ni
+    siquiera si dos llegan en el mismo segundo.
     """
-    if not GANCHO_CLAUDE:
-        return False, ('el puente con Claude todavía no está conectado '
-                       '(falta AURA_CLAUDE_GANCHO). El encargo quedó escrito '
-                       f'con el número {e["id"]}: no se perdió')
-    cuerpo = json.dumps({
+    linea = json.dumps({
         'id': e['id'],
         'trabajo': e['valores']['trabajo'],
         'pidio': e['quien'],
         'tramo': e['tramo'],
         'firmo': e['firma'],
         'huella': e['huella'],
-    }).encode()
-    req = urllib.request.Request(
-        GANCHO_CLAUDE, data=cuerpo,
-        headers={'Content-Type': 'application/json',
-                 **({'Authorization': 'Bearer ' + GANCHO_CLAVE} if GANCHO_CLAVE else {})})
+        'cuando': int(time.time()),
+    }, ensure_ascii=False)
+    cola = DATOS / 'para-claude.jsonl'
+    # 0600 desde que nace: lleva quién pidió qué, y esta máquina tiene más
+    # cuentas que la nuestra.
+    fd = os.open(cola, os.O_WRONLY | os.O_CREAT | os.O_APPEND,
+                 stat.S_IRUSR | stat.S_IWUSR)
+    with os.fdopen(fd, 'a', encoding='utf8') as fh:
+        fh.write(linea + '\n')
+
+    # Y si algún día hay un gancho puesto, además se avisa por ahí. La cola
+    # sigue siendo la verdad: el gancho es un aviso, no el canal.
+    aviso = ''
+    if GANCHO_CLAUDE:
+        try:
+            req = urllib.request.Request(
+                GANCHO_CLAUDE, data=linea.encode(),
+                headers={'Content-Type': 'application/json',
+                         **({'Authorization': 'Bearer ' + GANCHO_CLAVE}
+                            if GANCHO_CLAVE else {})})
+            with urllib.request.urlopen(req, timeout=45):
+                aviso = '\n\nY se avisó por el gancho.'
+        except Exception as err:
+            # El encargo YA está en la cola: el aviso caído no lo pierde.
+            aviso = f'\n\n(el aviso al gancho no salió: {type(err).__name__})'
+
+    return True, (f'Encargo {e["id"]} anotado para Claude.\n\n'
+                  'Queda en la cola con tu nombre y el de quien lo firmó. '
+                  'La próxima vez que José abra una sesión, Claude lo lee y '
+                  'lo hace.' + aviso)
+
+
+def en_cola():
+    """Cuántos encargos esperan a que Claude los lea. Para el parte: una cola
+    que crece sin que nadie la mire es una cola que no sirve."""
+    cola = DATOS / 'para-claude.jsonl'
     try:
-        with urllib.request.urlopen(req, timeout=45) as r:
-            respuesta = (r.read() or b'')[:300].decode('utf8', 'replace')
-    except urllib.error.HTTPError as err:
-        return False, f'el puente contestó {err.code}'
-    except Exception as err:
-        return False, f'no se pudo llegar al puente: {type(err).__name__}'
-    return True, ('Encargo entregado a Claude.\n\n'
-                  'Cuando termine vas a ver los cambios en el repositorio.\n\n'
-                  + respuesta[:200])
+        return sum(1 for x in cola.read_text(encoding='utf8').splitlines() if x.strip())
+    except Exception:
+        return 0
 
 
 MANOS = {
     'parte': _parte,
+    'gente': _gente,
     'cadena': _cadena,
     'saldos': _saldos,
     'papeles': _papeles,

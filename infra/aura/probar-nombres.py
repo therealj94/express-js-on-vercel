@@ -41,7 +41,8 @@ FUENTES = ['asistente.py', 'guion.py', 'guardia.py', 'premio.py', 'pagador.py',
            # Los permisos. Un nombre mal escrito aquí no da un error bonito:
            # da una rama que no corre, y una rama de permiso que no corre es
            # una puerta abierta.
-           'escalafon.py', 'catalogo.py', 'encargos.py', 'mayordomo.py']
+           'escalafon.py', 'catalogo.py', 'encargos.py', 'mayordomo.py',
+           'miradas.py']
 
 INTEGRADOS = set(dir(builtins)) | {'__file__', '__name__', '__doc__',
                                    '__spec__', '__package__', '__builtins__'}

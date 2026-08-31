@@ -188,51 +188,90 @@ class SEAVISAALOSDOS(_Base):
         self.assertEqual(encargos.ver(i)['estado'], 'hecho')
 
 
-class ELPUENTECONCLAUDE(_Base):
+class LACOLADECLAUDE(_Base):
+    """El puente no arranca nada solo: deja el encargo firmado en una cola.
 
-    def test_sin_gancho_puesto_lo_dice_y_NO_pierde_el_encargo(self):
-        i = self.firmado('claude', {'trabajo': 'ordená el README'}, quien=JEFE)
-        with mock.patch.object(mayordomo, 'GANCHO_CLAUDE', ''):
-            mayordomo.una_vuelta(self.rel)
-        f = encargos.ver(i)
-        self.assertEqual(f['estado'], 'fallido')
-        self.assertIn('no está conectado', f['resultado'])
-        self.assertIn(i, f['resultado'], 'no dice el número: parece perdido')
+    Lo que hay que probar no es que «funcione», sino que NO PIERDA NADA y que
+    no se lleve más de lo que le toca."""
 
-    def test_con_gancho_manda_el_trabajo_firmado_y_nada_mas(self):
-        i = self.firmado('claude', {'trabajo': 'ordená el README'}, quien=TECNICO)
-        mandado = {}
+    def setUp(self):
+        super().setUp()
+        self.dc = mock.patch.object(mayordomo, 'DATOS', self.dir)
+        self.dc.start()
 
-        class Respuesta:
-            def read(self): return b'recibido'
-            def __enter__(self): return self
-            def __exit__(self, *a): pass
+    def tearDown(self):
+        self.dc.stop()
+        super().tearDown()
 
-        def abrir(req, timeout=45):
-            mandado['url'] = req.full_url
-            mandado['cuerpo'] = json.loads(req.data)
-            mandado['cabeceras'] = dict(req.headers)
-            return Respuesta()
+    def cola(self):
+        f = self.dir / 'para-claude.jsonl'
+        if not f.exists():
+            return []
+        return [json.loads(x) for x in f.read_text(encoding='utf8').splitlines() if x.strip()]
 
-        with mock.patch.object(mayordomo, 'GANCHO_CLAUDE', 'https://x/y'), \
-             mock.patch.object(mayordomo.urllib.request, 'urlopen', abrir):
-            mayordomo.una_vuelta(self.rel)
-
+    def test_el_encargo_firmado_queda_escrito_en_la_cola(self):
+        i = self.firmado('claude', {'trabajo': 'ordená el README'})
+        mayordomo.una_vuelta(self.rel)
         self.assertEqual(encargos.ver(i)['estado'], 'hecho')
-        self.assertEqual(mandado['cuerpo']['trabajo'], 'ordená el README')
-        self.assertEqual(mandado['cuerpo']['firmo'], JEFE)
-        self.assertEqual(mandado['cuerpo']['pidio'], TECNICO)
-        # Lo que NO viaja: el libro entero, otros encargos, nada de nadie más.
-        self.assertEqual(set(mandado['cuerpo']),
-                         {'id', 'trabajo', 'pidio', 'tramo', 'firmo', 'huella'})
+        c = self.cola()
+        self.assertEqual(len(c), 1)
+        self.assertEqual(c[0]['id'], i)
+        self.assertEqual(c[0]['trabajo'], 'ordená el README')
+        self.assertEqual(c[0]['pidio'], TECNICO)
+        self.assertEqual(c[0]['firmo'], JEFE)
 
-    def test_un_puente_caido_deja_el_encargo_en_fallido_no_en_hecho(self):
-        i = self.firmado('claude', {'trabajo': 'algo'}, quien=TECNICO)
+    def test_y_NADA_MAS_que_eso(self):
+        """Un archivo que se lee después no puede llevar de arrastre el libro
+        entero, ni encargos de otra gente."""
+        self.firmado('claude', {'trabajo': 'algo'})
+        self.firmado('claude', {'trabajo': 'otra cosa'})
+        mayordomo.una_vuelta(self.rel)
+        for fila in self.cola():
+            self.assertEqual(set(fila), {'id', 'trabajo', 'pidio', 'tramo',
+                                         'firmo', 'huella', 'cuando'})
+
+    def test_dos_encargos_no_se_pisan(self):
+        self.firmado('claude', {'trabajo': 'uno'})
+        self.firmado('claude', {'trabajo': 'dos'})
+        mayordomo.una_vuelta(self.rel)
+        self.assertEqual([x['trabajo'] for x in self.cola()], ['uno', 'dos'])
+
+    def test_la_cola_se_escribe_solo_para_su_dueno(self):
+        """Lleva quién pidió qué: no es de lectura pública en la máquina."""
+        import stat as st
+        self.firmado('claude', {'trabajo': 'algo'})
+        mayordomo.una_vuelta(self.rel)
+        modo = (self.dir / 'para-claude.jsonl').stat().st_mode
+        self.assertEqual(st.S_IMODE(modo) & 0o077, 0,
+                         'la cola de encargos la puede leer cualquiera')
+
+    def test_se_le_dice_a_la_persona_que_quedo_anotado_y_con_que_numero(self):
+        i = self.firmado('claude', {'trabajo': 'algo'})
+        mayordomo.una_vuelta(self.rel)
+        self.assertIn(i, self.avisos[0][1])
+
+    def test_en_cola_cuenta_lo_que_espera(self):
+        self.assertEqual(mayordomo.en_cola(), 0)
+        self.firmado('claude', {'trabajo': 'uno'})
+        mayordomo.una_vuelta(self.rel)
+        self.assertEqual(mayordomo.en_cola(), 1)
+
+    def test_un_gancho_caido_NO_pierde_el_encargo(self):
+        """La cola es la verdad; el gancho es un aviso. Si el aviso falla, el
+        encargo sigue anotado — al revés sería un puente que se traga cosas."""
+        i = self.firmado('claude', {'trabajo': 'algo'})
         with mock.patch.object(mayordomo, 'GANCHO_CLAUDE', 'https://x/y'), \
              mock.patch.object(mayordomo.urllib.request, 'urlopen',
                                mock.Mock(side_effect=OSError('sin red'))):
             mayordomo.una_vuelta(self.rel)
-        self.assertEqual(encargos.ver(i)['estado'], 'fallido')
+        self.assertEqual(encargos.ver(i)['estado'], 'hecho')
+        self.assertEqual(len(self.cola()), 1)
+        self.assertIn('no salió', encargos.ver(i)['resultado'])
+
+    def test_sin_firma_no_llega_a_la_cola(self):
+        e, _ = encargos.pedir(TECNICO, 'claude', {'trabajo': 'algo'})
+        mayordomo.una_vuelta(self.rel)
+        self.assertEqual(self.cola(), [], 'entró a la cola sin que nadie firmara')
 
 
 class NOSEARMANCOMANDOSPEGANDOTEXTO(unittest.TestCase):
