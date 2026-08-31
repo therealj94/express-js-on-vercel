@@ -37,7 +37,11 @@ AQUI = pathlib.Path(__file__).resolve().parent
 # Todo lo que corre en el nodo. Un archivo que no este aqui no esta protegido.
 FUENTES = ['asistente.py', 'guion.py', 'guardia.py', 'premio.py', 'pagador.py',
            'whatsapp.py', 'vistazo.py', 'espejo.py', 'registro.py', 'oido.py',
-           'candado.py', 'parte-diario.py']
+           'candado.py', 'parte-diario.py',
+           # Los permisos. Un nombre mal escrito aquí no da un error bonito:
+           # da una rama que no corre, y una rama de permiso que no corre es
+           # una puerta abierta.
+           'escalafon.py', 'catalogo.py', 'encargos.py', 'mayordomo.py']
 
 INTEGRADOS = set(dir(builtins)) | {'__file__', '__name__', '__doc__',
                                    '__spec__', '__package__', '__builtins__'}
