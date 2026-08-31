@@ -95,9 +95,20 @@ def main() -> int:
             print(f'   aviso: {shot["id"]} pide {seg}s; por encima de '
                   f'{MAX_FIABLE_S}s H3 pierde la cara y lava el color.',
                   file=sys.stderr)
+        # Un negativo por plano. Hace falta de verdad: casi toda la pieza
+        # prohíbe "mirar a cámara", pero el plano que habla al espectador lo
+        # NECESITA. Con un único negativo global hay que elegir entre que los
+        # actores rompan la cuarta pared en todos los planos o en ninguno.
+        negativo = dfl.get("negative", "")
+        if shot.get("negative_quitar"):
+            for frase in shot["negative_quitar"]:
+                negativo = negativo.replace(f", {frase}", "").replace(f"{frase}, ", "")
+        if shot.get("negative_añadir"):
+            negativo += ", " + ", ".join(shot["negative_añadir"])
+
         jobs.append({
             "id": shot["id"], "workflow": a.workflow,
-            "prompt": prompt, "negative": dfl.get("negative", ""),
+            "prompt": prompt, "negative": negativo,
             "seed": 1000 + i * 7, "steps": a.steps, "cfg": 1.0,
             "width": fmt.get("gen_w", 720), "height": fmt.get("gen_h", 1280),
             "duration_s": seg, "fps": fmt.get("fps", 24),

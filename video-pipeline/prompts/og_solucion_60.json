@@ -26,7 +26,7 @@
     "video_workflow": "workflows/h3_calidad_api.json",
     "duration_s": 10,
     "fps": 24,
-    "negative": "text, letters, numbers, subtitles, captions, watermark, brand names, logos, signage with readable words, screens with readable text, horizontal composition, letterboxing, black bars, cartoon, animation, 3D render, CGI flowers, artificial flowers, glitter, cellophane, hologram, sparkles, magic effects, teleport effects, light trails, particles, drone shot, gimbal glide, slow motion, orange and teal grading, glossy advertising lighting, beauty retouching, poreless skin, perfect teeth, model looks, big smile, celebration, cheering, plastic skin, waxy face, deformed hands, extra fingers, morphing, flicker",
+    "negative": "text, letters, numbers, subtitles, captions, watermark, brand names, logos, embroidered logo, signage with readable words, screens with readable text, horizontal composition, letterboxing, black bars, cartoon, animation, 3D render, CGI flowers, artificial flowers, glitter, cellophane, hologram, sparkles, magic effects, teleport effects, light trails, particles, drone shot, gimbal glide, slow motion, orange and teal grading, glossy advertising lighting, beauty retouching, poreless skin, perfect teeth, model looks, big smile, celebration, cheering, looking at camera, addressing the camera, plastic skin, waxy face, deformed hands, extra fingers, morphing, flicker",
     "steps": 20
   },
   "look_base": "shot on full-frame cinema camera, vintage 35mm spherical prime, T2.8, locked off or slow handheld with small organic drift, natural practical light only, real 35mm grain, muted true colour, milky blacks, documentary realism, calm observational framing, nobody performing for the camera, no advertising gloss",
@@ -45,6 +45,11 @@
       "id": "RECEPTORA",
       "rol": "quien las recibe",
       "retrato": "Vertical portrait of a 40 year old Latin American woman, dark shoulder-length hair loosely tied back with strands escaping at the temples, no makeup, faint freckles across the nose, a small mole under the left eye, cream knit sweater with sleeves pushed to the forearms, neutral expression, warm low sun from a window camera-left, visible pores and facial asymmetry"
+    },
+    {
+      "id": "PORTAVOZ",
+      "rol": "quien cierra",
+      "retrato": "Vertical portrait of a 38 year old Latin American woman with an open direct face, dark hair pulled back plainly, no makeup, faint lines at the corners of the eyes, a small chip on one front tooth, a plain dark navy work shirt buttoned to the second button with a completely clean empty left chest area and no markings on it, calm level expression, warm low afternoon light from camera-left, visible pores and facial asymmetry, ordinary and credible rather than polished"
     },
     {
       "id": "RAMO_24",
@@ -114,16 +119,22 @@
       "nota": "Nada de celebración. Una sonrisa pequeña y real. La entrega perfecta se rueda como algo normal."
     },
     {
-      "id": "06_el_cierre",
-      "titulo": "EL CIERRE",
+      "id": "06_la_pregunta",
+      "titulo": "LA PREGUNTA",
       "segundos": 10,
-      "move": "static",
-      "reparto": ["RAMO_24"],
+      "move": "push",
+      "reparto": ["PORTAVOZ"],
       "overlay": "ENVIADAS 24 · ENTREGADAS 23.9",
-      "still": "The full bouquet of twenty-four deep red roses in taut kraft paper standing upright in a plain glass jar of water on a wooden table beside a window, warm low late afternoon sun raking across it, the single loose petal lying flat on the table next to the jar, the room quiet and empty around it, deep clean shadow filling the lower part of the tall frame, photographic realism, real petal texture and water",
-      "motion": "the roses stand completely still in the light, a slow drift of dust crossing the sunbeam, one drop of water slides down the outside of the glass jar, nothing else moves at all",
-      "gesto": "una gota baja por el cristal; nada más se mueve",
-      "nota": "Diez segundos de quietud después de la parte 1, que era pura rapiña. El aguijón y el monograma se montan encima de este plano."
+      "negative_quitar": ["looking at camera", "addressing the camera"],
+      "still": "Medium close on a 38 year old Latin American woman standing in the same warm domestic hallway in low late afternoon sun from a window camera-left, wearing a plain dark navy work shirt with a clean empty left chest area and no markings of any kind on it, the full bouquet of red roses soft and out of focus on a table behind her, the lower quarter of the tall frame dark and clean, natural skin texture with visible pores and fine hair, facial asymmetry, ordinary teeth, unstyled hair pulled back, no makeup, no beauty retouching, documentary realism",
+      "motion": "she looks straight into the camera lens with a calm, level, matter-of-fact expression and speaks three short sentences without smiling, she blinks once before she starts, a small pause between the second and third sentence, and on the last sentence the corner of her mouth lifts very slightly, nothing more",
+      "gesto": "en la última frase se le levanta apenas una comisura",
+      "voz": [
+        "Nadie te dice cuánto se queda cada quien.",
+        "Nosotros no nos quedamos con nada.",
+        "¿Te gustaría recibir siempre lo que es tuyo?"
+      ],
+      "nota": "EL PECHO VA VACÍO A PROPÓSITO. Ningún modelo de vídeo dibuja un logo real: inventa manchas que parecen letras. El monograma OG se compone encima en montaje, sobre un pecho liso y sin arrugas — por eso el negativo prohíbe 'embroidered logo'."
     }
   ],
   "post": {
