@@ -27,6 +27,10 @@ ul{margin:0 0 16px 22px}li{margin-bottom:7px;color:#DCE9E7}
 strong{color:var(--txt)}
 hr{border:0;border-top:1px solid var(--linea);margin:28px 0}
 code{background:var(--panel);padding:2px 6px;border-radius:5px;font-size:14px}
+table{width:100%;border-collapse:collapse;margin:0 0 18px;font-size:14.5px;display:block;overflow-x:auto}
+th,td{border:1px solid var(--linea);padding:9px 11px;text-align:left;vertical-align:top}
+th{background:var(--panel);color:var(--oro);font-weight:600;white-space:nowrap}
+td{color:#DCE9E7}
 a{color:var(--oro)}
 footer{border-top:1px solid var(--linea);padding:24px 0 40px;color:#6C918E;font-size:13.5px;text-align:center}
 </style>
@@ -47,29 +51,33 @@ footer{border-top:1px solid var(--linea);padding:24px 0 40px;color:#6C918E;font-
 <p>Veta Wallet es una billetera digital operada por Orden Global Corp. Permite</p>
 <p>guardar y enviar activos digitales, comprar ORIGEN depositando USDT y usar una</p>
 <p>tarjeta Visa virtual emitida por nuestro proveedor.</p>
-<p>Esta política explica **qué datos recogemos, para qué, con quién los</p>
-<p>compartimos y qué podés hacer con ellos.** Está escrita para que se entienda,</p>
+<p>Esta política explica <strong>qué datos recogemos, para qué, con quién los</p>
+<p>compartimos y qué podés hacer con ellos.</strong> Está escrita para que se entienda,</p>
 <p>no para cubrirnos.</p>
 <hr>
 <h2>2. Qué datos recogemos</h2>
 <h3>2.1 Los que nos das</h3>
-<p>| Dato | Cuándo | Para qué |</p>
-<p>|---|---|---|</p>
-<p>| Correo electrónico | Al registrarte | Identificarte, recuperar tu cuenta, avisarte de movimientos |</p>
-<p>| Contraseña | Al registrarte | Autenticarte y descifrar tu clave privada |</p>
-<p>| Nombre y apellido | Al pedir la tarjeta | Requisito del emisor de la tarjeta |</p>
-<p>| Documento de identidad y selfie | Verificación de identidad (KYC) | Obligación legal contra el lavado de dinero |</p>
-<p>| Fecha de nacimiento, nacionalidad, domicilio | Verificación de identidad | Obligación legal |</p>
-<p>| Teléfono | Al activar la verificación por SMS | Enviarte los códigos de compras online |</p>
-<p>| Ocupación, origen de fondos, volumen esperado | Verificación de identidad | Obligación legal |</p>
+<table>
+<thead><tr><th>Dato</th><th>Cuándo</th><th>Para qué</th></tr></thead>
+<tbody>
+<tr><td>Correo electrónico</td><td>Al registrarte</td><td>Identificarte, recuperar tu cuenta, avisarte de movimientos</td></tr>
+<tr><td>Contraseña</td><td>Al registrarte</td><td>Autenticarte y descifrar tu clave privada</td></tr>
+<tr><td>Nombre y apellido</td><td>Al pedir la tarjeta</td><td>Requisito del emisor de la tarjeta</td></tr>
+<tr><td>Documento de identidad y selfie</td><td>Verificación de identidad (KYC)</td><td>Obligación legal contra el lavado de dinero</td></tr>
+<tr><td>Fecha de nacimiento, nacionalidad, domicilio</td><td>Verificación de identidad</td><td>Obligación legal</td></tr>
+<tr><td>Teléfono</td><td>Al activar la verificación por SMS</td><td>Enviarte los códigos de compras online</td></tr>
+<tr><td>Ocupación, origen de fondos, volumen esperado</td><td>Verificación de identidad</td><td>Obligación legal</td></tr>
+</tbody></table>
 <h3>2.2 Los que se generan al usar la app</h3>
-<p>| Dato | Para qué |</p>
-<p>|---|---|</p>
-<p>| Dirección de tu billetera | Es tu identificador en la cadena de bloques |</p>
-<p>| Historial de transacciones | Mostrarte tu actividad |</p>
-<p>| Movimientos de la tarjeta | Mostrarte tus consumos |</p>
-<p>| Registro de sesiones (fecha, hora) | Que puedas ver dónde está abierta tu cuenta |</p>
-<p>| Registros técnicos de error | Encontrar y arreglar fallas |</p>
+<table>
+<thead><tr><th>Dato</th><th>Para qué</th></tr></thead>
+<tbody>
+<tr><td>Dirección de tu billetera</td><td>Es tu identificador en la cadena de bloques</td></tr>
+<tr><td>Historial de transacciones</td><td>Mostrarte tu actividad</td></tr>
+<tr><td>Movimientos de la tarjeta</td><td>Mostrarte tus consumos</td></tr>
+<tr><td>Registro de sesiones (fecha, hora)</td><td>Que puedas ver dónde está abierta tu cuenta</td></tr>
+<tr><td>Registros técnicos de error</td><td>Encontrar y arreglar fallas</td></tr>
+</tbody></table>
 <h3>2.3 Lo que NO recogemos</h3>
 <ul>
 <li><strong>No usamos rastreadores publicitarios.</strong> Ninguno. La app no tiene SDK de</li>
@@ -110,15 +118,17 @@ footer{border-top:1px solid var(--linea);padding:24px 0 40px;color:#6C918E;font-
 <hr>
 <h2>4. Con quién compartimos datos</h2>
 <p>Solo con quienes hacen falta para que la app funcione, y solo lo necesario.</p>
-<p>| Proveedor | Qué recibe | Por qué |</p>
-<p>|---|---|---|</p>
-<p>| <strong>CryptoMate</strong> | Nombre, documento, domicilio, fecha de nacimiento | Es el emisor de la tarjeta Visa. Sin estos datos no puede emitirla |</p>
-<p>| <strong>Amazon Web Services (Rekognition)</strong> | La foto del documento y el selfie, en el momento del cotejo | Comprueba que la cara del selfie es la del documento. Ni el selfie ni la foto se guardan ahí: se cotejan y se descartan |</p>
-<p>| <strong>Render</strong> | Los datos de verificación de identidad | Es donde corre Genesis ID, la plataforma que hace la verificación |</p>
-<p>| <strong>MongoDB Atlas</strong> | Todos los datos de la cuenta | Es donde vive nuestra base de datos |</p>
-<p>| <strong>Heroku (Salesforce)</strong> | Tráfico de la app | Es donde corre nuestro servidor |</p>
-<p>| <strong>Expo</strong> | Identificador anónimo del dispositivo | Entregar actualizaciones y notificaciones |</p>
-<p>| <strong>Autoridades</strong> | Lo que exija una orden válida | Obligación legal |</p>
+<table>
+<thead><tr><th>Proveedor</th><th>Qué recibe</th><th>Por qué</th></tr></thead>
+<tbody>
+<tr><td><strong>CryptoMate</strong></td><td>Nombre, documento, domicilio, fecha de nacimiento</td><td>Es el emisor de la tarjeta Visa. Sin estos datos no puede emitirla</td></tr>
+<tr><td><strong>Amazon Web Services (Rekognition)</strong></td><td>La foto del documento y el selfie, en el momento del cotejo</td><td>Comprueba que la cara del selfie es la del documento. Ni el selfie ni la foto se guardan ahí: se cotejan y se descartan</td></tr>
+<tr><td><strong>Render</strong></td><td>Los datos de verificación de identidad</td><td>Es donde corre Genesis ID, la plataforma que hace la verificación</td></tr>
+<tr><td><strong>MongoDB Atlas</strong></td><td>Todos los datos de la cuenta</td><td>Es donde vive nuestra base de datos</td></tr>
+<tr><td><strong>Heroku (Salesforce)</strong></td><td>Tráfico de la app</td><td>Es donde corre nuestro servidor</td></tr>
+<tr><td><strong>Expo</strong></td><td>Identificador anónimo del dispositivo</td><td>Entregar actualizaciones y notificaciones</td></tr>
+<tr><td><strong>Autoridades</strong></td><td>Lo que exija una orden válida</td><td>Obligación legal</td></tr>
+</tbody></table>
 <p>Ninguno de ellos puede usar tus datos para sus propios fines.</p>
 <p><strong>Datos públicos por naturaleza:</strong> las transacciones en una cadena de bloques</p>
 <p>son públicas. Tu dirección, tus saldos y tus movimientos on-chain los puede</p>
@@ -128,15 +138,17 @@ footer{border-top:1px solid var(--linea);padding:24px 0 40px;color:#6C918E;font-
 <h2>5. Dónde y cuánto tiempo</h2>
 <p>Los datos se almacenan en servidores situados en Estados Unidos. El cotejo de
 rostro se resuelve en la región us-east-1 de Amazon Web Services.</p>
-<p>| Dato | Cuánto lo guardamos |</p>
-<p>|---|---|</p>
-<p>| Cuenta activa | Mientras la cuenta exista |</p>
-<p>| Datos de verificación de identidad | 5 años desde el cierre, por obligación legal |</p>
-<p>| Imágenes de tu documento (anverso y reverso) | 5 años, cifradas y con cada acceso registrado. Se borran solas al cumplirse el plazo |</p>
-<p>| Tu selfie de verificación | <strong>No se guarda.</strong> Se coteja con la foto del documento en el momento y se descarta |</p>
-<p>| Registros de transacciones | 5 años, por obligación legal |</p>
-<p>| Registros técnicos | 90 días |</p>
-<p>| Cuenta eliminada | Solo el material cifrado y lo que exija la ley |</p>
+<table>
+<thead><tr><th>Dato</th><th>Cuánto lo guardamos</th></tr></thead>
+<tbody>
+<tr><td>Cuenta activa</td><td>Mientras la cuenta exista</td></tr>
+<tr><td>Datos de verificación de identidad</td><td>5 años desde el cierre, por obligación legal</td></tr>
+<tr><td>Imágenes de tu documento (anverso y reverso)</td><td>5 años, cifradas y con cada acceso registrado. Se borran solas al cumplirse el plazo</td></tr>
+<tr><td>Tu selfie de verificación</td><td><strong>No se guarda.</strong> Se coteja con la foto del documento en el momento y se descarta</td></tr>
+<tr><td>Registros de transacciones</td><td>5 años, por obligación legal</td></tr>
+<tr><td>Registros técnicos</td><td>90 días</td></tr>
+<tr><td>Cuenta eliminada</td><td>Solo el material cifrado y lo que exija la ley</td></tr>
+</tbody></table>
 <p>Los 5 años no son un capricho: la normativa de prevención de lavado de dinero</p>
 <p>obliga a conservar los registros de identificación de clientes durante ese</p>
 <p>plazo, aunque la persona cierre la cuenta.</p>
@@ -162,14 +174,16 @@ rostro se resuelve en la región us-east-1 de Amazon Web Services.</p>
 <h2>7. Tus derechos</h2>
 <p>Podés ejercerlos escribiendo a <strong>privacidad@vetawallet.com</strong>. Respondemos</p>
 <p>dentro de los 30 días.</p>
-<p>| Derecho | Qué podés hacer |</p>
-<p>|---|---|</p>
-<p>| <strong>Acceso</strong> | Pedir una copia de todo lo que tenemos sobre vos |</p>
-<p>| <strong>Rectificación</strong> | Corregir un dato equivocado |</p>
-<p>| <strong>Eliminación</strong> | Borrar tu cuenta — desde la app o escribiéndonos |</p>
-<p>| <strong>Portabilidad</strong> | Recibir tus datos en un formato que puedas llevarte |</p>
-<p>| <strong>Oposición</strong> | Pedir que dejemos de tratar tus datos para un fin concreto |</p>
-<p>| <strong>Reclamo</strong> | Presentarlo ante la autoridad de protección de datos de tu país |</p>
+<table>
+<thead><tr><th>Derecho</th><th>Qué podés hacer</th></tr></thead>
+<tbody>
+<tr><td><strong>Acceso</strong></td><td>Pedir una copia de todo lo que tenemos sobre vos</td></tr>
+<tr><td><strong>Rectificación</strong></td><td>Corregir un dato equivocado</td></tr>
+<tr><td><strong>Eliminación</strong></td><td>Borrar tu cuenta — desde la app o escribiéndonos</td></tr>
+<tr><td><strong>Portabilidad</strong></td><td>Recibir tus datos en un formato que puedas llevarte</td></tr>
+<tr><td><strong>Oposición</strong></td><td>Pedir que dejemos de tratar tus datos para un fin concreto</td></tr>
+<tr><td><strong>Reclamo</strong></td><td>Presentarlo ante la autoridad de protección de datos de tu país</td></tr>
+</tbody></table>
 <h3>Cómo eliminar tu cuenta</h3>
 <p>Desde la app: <strong>Ajustes → Eliminar cuenta.</strong> Te pide cuatro confirmaciones y</p>
 <p>tu contraseña.</p>
@@ -191,12 +205,14 @@ rostro se resuelve en la región us-east-1 de Amazon Web Services.</p>
 <p>y creés que tu hijo abrió una cuenta, escribinos y la eliminamos.</p>
 <hr>
 <h2>9. Permisos que pide la app</h2>
-<p>| Permiso | Para qué | ¿Obligatorio? |</p>
-<p>|---|---|---|</p>
-<p>| <strong>Cámara</strong> | Escanear códigos QR y fotografiar tu documento | No. Podés escribir la dirección a mano |</p>
-<p>| <strong>Fotos</strong> | Subir la imagen de tu documento | No. Podés usar la cámara |</p>
-<p>| <strong>Notificaciones</strong> | Avisarte cuando recibís fondos o hay un consumo | No |</p>
-<p>| <strong>Face ID / Huella</strong> | Desbloquear la app y autorizar operaciones | No. Siempre podés usar la contraseña |</p>
+<table>
+<thead><tr><th>Permiso</th><th>Para qué</th><th>¿Obligatorio?</th></tr></thead>
+<tbody>
+<tr><td><strong>Cámara</strong></td><td>Escanear códigos QR y fotografiar tu documento</td><td>No. Podés escribir la dirección a mano</td></tr>
+<tr><td><strong>Fotos</strong></td><td>Subir la imagen de tu documento</td><td>No. Podés usar la cámara</td></tr>
+<tr><td><strong>Notificaciones</strong></td><td>Avisarte cuando recibís fondos o hay un consumo</td><td>No</td></tr>
+<tr><td><strong>Face ID / Huella</strong></td><td>Desbloquear la app y autorizar operaciones</td><td>No. Siempre podés usar la contraseña</td></tr>
+</tbody></table>
 <p>Si negás un permiso, la app sigue funcionando; solo se desactiva esa función.</p>
 <hr>
 <h2>10. Cambios en esta política</h2>

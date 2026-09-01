@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Instalar Orden Global en Android &middot; Veta Wallet</title>
+<meta name="description" content="Cómo instalar la app de Orden Global en un teléfono Android mientras no está en la Play Store. Paso a paso, con los avisos que va a mostrar Android y qué tocar en cada uno.">
+<meta name="robots" content="noindex">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%2304191A'/%3E%3Cpath d='M16 6l8.5 5v10L16 26l-8.5-5V11z' fill='none' stroke='%23C9A961' stroke-width='2.2' stroke-linejoin='round'/%3E%3C/svg%3E">
+<style>
+:root{--oro:#C9A961;--fondo:#04191A;--panel:#072526;--linea:#123E3F;--txt:#EAF3F2;--txt2:#9FBDBA;--alerta:#E8B84B}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--fondo);color:var(--txt);font:16px/1.75 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;-webkit-font-smoothing:antialiased}
+.env{max-width:760px;margin:0 auto;padding:0 22px}
+header{border-bottom:1px solid var(--linea);background:rgba(7,37,38,.8);position:sticky;top:0;backdrop-filter:blur(8px);z-index:5}
+.barra{display:flex;align-items:center;gap:20px;padding:16px 0;flex-wrap:wrap}
+.logo{font-weight:800;font-size:17px;color:var(--txt);text-decoration:none}
+.logo span{color:var(--oro)}
+nav{display:flex;gap:16px;margin-left:auto;font-size:14.5px}
+nav a{color:var(--txt2);text-decoration:none}
+nav a:hover,nav a.on{color:var(--oro)}
+main{padding:38px 0 60px}
+h1{font-size:30px;line-height:1.22;margin:0 0 14px;letter-spacing:-.6px}
+.entrada{color:var(--txt2);font-size:17px;margin-bottom:30px}
+h2{font-size:20px;margin:38px 0 12px;color:var(--oro);letter-spacing:-.2px}
+p{margin:0 0 14px;color:#DCE9E7}
+strong{color:var(--txt)}
+a{color:var(--oro)}
+hr{border:0;border-top:1px solid var(--linea);margin:32px 0}
+footer{border-top:1px solid var(--linea);padding:24px 0 40px;color:#6C918E;font-size:13.5px;text-align:center}
+
+/* El botón de bajar. Grande a propósito: casi todo el mundo abre esto desde
+   el teléfono y con una mano. */
+.bajar{display:block;background:var(--oro);color:#04191A;text-align:center;
+  font-weight:800;font-size:18px;padding:17px 20px;border-radius:13px;
+  text-decoration:none;margin:6px 0 10px}
+.bajar:active{transform:translateY(1px)}
+.peso{text-align:center;color:var(--txt2);font-size:14px;margin-bottom:26px}
+
+/* Los pasos. El número va afuera para que la vista lo siga sin leer. */
+ol.pasos{list-style:none;counter-reset:p;margin:0}
+ol.pasos>li{counter-increment:p;position:relative;padding:0 0 26px 52px;
+  border-left:1px solid var(--linea);margin-left:16px}
+ol.pasos>li:last-child{border-left-color:transparent}
+ol.pasos>li::before{content:counter(p);position:absolute;left:-16px;top:-2px;
+  width:32px;height:32px;border-radius:50%;background:var(--oro);color:#04191A;
+  font-weight:800;font-size:15px;display:flex;align-items:center;justify-content:center}
+ol.pasos h3{font-size:17.5px;margin:2px 0 8px;letter-spacing:-.2px}
+
+/* Lo que la pantalla del teléfono va a decir, tal cual. Que se vea que es una
+   cita del aparato y no algo nuestro. */
+.pantalla{background:var(--panel);border:1px solid var(--linea);
+  border-left:3px solid var(--alerta);border-radius:9px;padding:13px 15px;
+  margin:12px 0;color:#F0E4C4;font-size:15px}
+.pantalla b{display:block;color:var(--alerta);font-size:12.5px;
+  text-transform:uppercase;letter-spacing:.7px;margin-bottom:5px;font-weight:700}
+.tocar{color:var(--oro);font-weight:700}
+
+.aviso{background:var(--panel);border:1px solid var(--linea);border-radius:11px;
+  padding:18px 20px;margin:22px 0}
+.aviso h3{color:var(--oro);font-size:17px;margin:0 0 8px}
+.aviso p:last-child{margin-bottom:0}
+.nunca{border-color:#5A3535;background:#1E1112}
+.nunca h3{color:#E88B8B}
+
+dl.problemas{margin:8px 0 0}
+dl.problemas dt{font-weight:700;color:var(--txt);margin-top:16px}
+dl.problemas dd{margin:4px 0 0;color:#DCE9E7}
+</style>
+</head>
+<body>
+<header><div class="env barra">
+  <a class="logo" href="/">VETA <span>WALLET</span></a>
+  <nav><a href="/privacidad">Privacidad</a><a href="/terminos">Términos</a></nav>
+</div></header>
+
+<main class="env">
+
+<h1>Instalar Orden Global en Android</h1>
+<p class="entrada">Cinco minutos. Tu teléfono te va a mostrar tres avisos:
+abajo están los tres, con lo que hay que tocar en cada uno.</p>
+
+<a class="bajar" href="https://expo.dev/artifacts/eas/eE8qIGTdiLekFFopSMx4axF4z8TH8NhpjSLZv_U5MzI.apk">Descargar la app</a>
+<p class="peso">137 MB &middot; solo Android &middot; versión 1.33.0</p>
+
+<div class="aviso">
+  <h3>Por qué te vamos a avisar de todo antes</h3>
+  <p>Como la app todavía no está en la Play Store, se instala con un archivo
+  que te damos nosotros. Android eso lo marca — y hace bien, porque es la misma
+  puerta por la que entran las apps maliciosas.</p>
+  <p><strong>Por eso te contamos los avisos antes de que salgan: quien te
+  quiere estafar nunca te dice de antemano lo que vas a ver.</strong></p>
+</div>
+
+<h2>Antes de empezar</h2>
+<p>Esto es <strong>solo para teléfonos Android</strong>. Si tenés iPhone,
+todavía no se puede — te avisamos cuando esté.</p>
+<p>Necesitás unos <strong>300 MB libres</strong> en el teléfono.</p>
+<p>Y hacelo <strong>desde el teléfono</strong>, no desde la computadora: el
+archivo tiene que quedar en el aparato donde vas a usar la app.</p>
+
+<hr>
+
+<h2>Los pasos</h2>
+
+<ol class="pasos">
+
+<li>
+  <h3>Tocá «Descargar la app»</h3>
+  <p>El botón dorado de arriba. Va a empezar a bajar y aparece esto:</p>
+  <div class="pantalla"><b>lo dice tu navegador</b>
+    «Este tipo de archivo puede dañar tu dispositivo.<br>
+    ¿Quieres conservar orden-global.apk de todos modos?»</div>
+  <p>Tocá <span class="tocar">Descargar de todos modos</span> o
+  <span class="tocar">Aceptar</span>.</p>
+  <p>Ese aviso sale con <em>cualquier</em> app que no venga de la tienda, sea
+  de quien sea. El navegador no sabe qué hay adentro: solo sabe que es un
+  instalador.</p>
+</li>
+
+<li>
+  <h3>Abrí el archivo</h3>
+  <p>Bajá la barra de notificaciones y tocá la descarga terminada. O entrá a
+  <strong>Archivos → Descargas</strong> y buscá
+  <strong>orden-global.apk</strong>.</p>
+</li>
+
+<li>
+  <h3>Dale permiso a tu navegador, una sola vez</h3>
+  <div class="pantalla"><b>lo dice Android</b>
+    «Por seguridad, tu teléfono no puede instalar aplicaciones desconocidas
+    de esta fuente.»</div>
+  <p>Tocá <span class="tocar">Configuración</span> (o
+  <span class="tocar">Ajustes</span>) y activá
+  <span class="tocar">Permitir de esta fuente</span>. Después tocá la flecha
+  de volver.</p>
+  <p>Ojo con lo que estás haciendo, porque conviene entenderlo: ese permiso se
+  lo estás dando a <strong>tu navegador</strong>, no a nosotros. Y lo podés
+  apagar de nuevo cuando termines de instalar.</p>
+</li>
+
+<li>
+  <h3>Instalar</h3>
+  <p>Tocá <span class="tocar">Instalar</span>. Tarda menos de un minuto.</p>
+  <div class="pantalla"><b>puede decir Play Protect</b>
+    «Play Protect no reconoce al desarrollador de esta app.»</div>
+  <p>Tocá <span class="tocar">Instalar de todas formas</span> — a veces está
+  escondido detrás de <span class="tocar">Más detalles</span>.</p>
+  <p>Google dice eso de toda app que no pasó por su tienda. No está diciendo
+  que encontró algo malo: está diciendo que no la revisó.</p>
+</li>
+
+<li>
+  <h3>Entrá con tu correo de siempre</h3>
+  <p>Abrí <strong>Orden Global</strong> y entrá con el mismo correo que usás en
+  la web. Es la misma cuenta: lo que tenés ya está ahí.</p>
+</li>
+
+</ol>
+
+<hr>
+
+<h2>Cuando esté en la Play Store</h2>
+<p>La estamos subiendo. En cuanto esté, <strong>se baja desde la Play Store
+como cualquier otra app</strong>: sin ningún aviso, sin permisos raros, y con
+las actualizaciones llegándote solas.</p>
+<p>Si la instalás ahora, no vas a tener que borrar nada: cuando salga en la
+tienda te lo decimos y se pasa sin perder tus datos.</p>
+
+<hr>
+
+<h2>Si algo sale mal</h2>
+<dl class="problemas">
+  <dt>«No se pudo instalar» o «la aplicación no se instaló»</dt>
+  <dd>Casi siempre es espacio. Liberá 300 MB y probá otra vez.</dd>
+
+  <dt>No encuentro el archivo que bajé</dt>
+  <dd>Archivos → Descargas. Se llama <strong>orden-global.apk</strong>.</dd>
+
+  <dt>Ya la tenía instalada de antes</dt>
+  <dd>Instalá encima, no hace falta borrar nada. Tus datos se quedan.</dd>
+
+  <dt>Tengo iPhone</dt>
+  <dd>Todavía no se puede. Te avisamos apenas esté.</dd>
+
+  <dt>No me deja de ninguna manera</dt>
+  <dd>Escribinos y lo vemos con vos:
+  <a href="https://wa.me/50432136457">wa.me/50432136457</a></dd>
+</dl>
+
+<div class="aviso nunca">
+  <h3>Dos cosas que nunca vamos a hacer</h3>
+  <p><strong>Nunca te vamos a pedir tu contraseña, tu frase de respaldo ni tus
+  doce palabras.</strong> Ni por correo, ni por WhatsApp, ni por teléfono, ni
+  nadie del equipo. Quien te las pida te está robando, aunque diga que es de
+  la casa.</p>
+  <p><strong>Nunca te vamos a mandar la app por otro camino.</strong> Solo por
+  un correo nuestro o nuestro WhatsApp. Si te llega un enlace de Orden Global
+  por otro lado, no lo abras y avisanos.</p>
+</div>
+
+</main>
+
+<footer><div class="env">
+  Orden Global Corp &middot;
+  <a href="/privacidad">Privacidad</a> &middot;
+  <a href="/terminos">Términos</a>
+</div></footer>
+</body>
+</html>
