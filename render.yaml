@@ -122,3 +122,48 @@ services:
       #   value: "30"
       # - key: GENESIS_SESION_HORAS        # duración de la sesión del panel
       #   value: "8"
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # EL BUZÓN DE AU-RA
+  #
+  # Por donde la burbuja del ecosistema habla con AU-RA. La razón de que esta
+  # pieza exista está en `infra/aura/buzon/servidor.js`, en corto:
+  #
+  # AU-RA vive en el nodo de la GPU, y ese nodo NO ACEPTA NINGUNA ENTRADA de
+  # internet. Ahí dentro vive también la llave privada que firma los pagos de
+  # los premios. Se podía abrir un puerto en esa máquina; se decidió que no.
+  # La web deja el recado aquí y el nodo lo recoge SALIENDO, igual que ya hace
+  # con WhatsApp. Cuesta uno o dos segundos de espera.
+  #
+  # POR QUÉ ES UN SERVICIO APARTE Y NO UNA RUTA EN GENESIS ID
+  #
+  # Genesis ID guarda documentos de identidad cifrados. Colgarle al lado un
+  # chat abierto al público junta las dos superficies de ataque y hace que un
+  # fallo del chat pueda tumbar el KYC. Son dos procesos a propósito, y cuesta
+  # un plan más.
+  - type: web
+    name: aura-buzon
+    runtime: node
+    rootDir: infra/aura/buzon
+    # `starter` por lo mismo que genesis-id: en el plan gratis el servicio se
+    # duerme a los 15 minutos sin tráfico y arranca en frío en medio minuto.
+    # La burbuja es justo donde alguien está MIRANDO LA PANTALLA mientras
+    # espera; medio minuto en blanco ahí es la persona que se fue.
+    plan: starter
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /healthz
+    autoDeploy: true
+    envVars:
+      - key: NODE_VERSION
+        value: "20"
+
+      # La llave con la que el NODO se identifica para recoger los recados.
+      # sync:false = Render la pide en el panel y NO queda escrita en el repo.
+      #
+      # La misma cadena va en `/etc/aura-buzon.env` del nodo, chmod 600. Sin
+      # ella el buzón arranca igual pero no deja recoger nada — mejor mudo que
+      # abierto —, y `/healthz` publica `llaveConfigurada` para que eso se vea
+      # desde fuera en vez de descubrirse porque nadie contesta.
+      - key: AURA_BUZON_LLAVE
+        sync: false

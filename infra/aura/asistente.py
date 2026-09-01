@@ -100,6 +100,7 @@ import miradas
 import oficios
 import presentacion
 import puerta
+import recadero
 import vistazo
 from oido import NoSePudoOir, oir_nota
 from concurrent.futures import ThreadPoolExecutor
@@ -2954,6 +2955,15 @@ def main():
     else:
         log('WhatsApp apagado (falta ZERNIO_CLAVE o ZERNIO_CUENTA)')
 
+    # La tercera puerta: la burbuja del ecosistema, via el buzon. Misma forma
+    # que las otras dos —su ritmo, su `try`— para que una caida no cierre las
+    # demas. Sin `AURA_BUZON` no existe, y eso no es un fallo.
+    proximo_bz = [0.0]
+    if recadero.encendido():
+        log('Buzón encendido ·', recadero.DONDE)
+    else:
+        log('Buzón apagado (falta AURA_BUZON o AURA_BUZON_LLAVE)')
+
     with ThreadPoolExecutor(max_workers=HILOS) as tanda:
         while True:
             try:
@@ -2994,6 +3004,22 @@ def main():
                 except Exception as e:
                     proximo_wa[0] = time.time() + PASO_WA
                     log('vuelta de whatsapp fallida:',
+                        type(e).__name__, str(e)[:140])
+
+            # El buzón. El más rápido de los tres porque es el único donde hay
+            # alguien MIRANDO LA PANTALLA mientras espera: en WhatsApp la gente
+            # deja el mensaje y se va, en la web se queda viendo los tres
+            # puntitos. Dos segundos ahí se sienten; treinta en WhatsApp no.
+            if recadero.encendido() and time.time() >= proximo_bz[0]:
+                try:
+                    recadero.vuelta(sistema, perfiles, tanda, registrar=log)
+                    proximo_bz[0] = time.time() + recadero.PASO
+                except Exception as e:
+                    # El buzón caído se espera más: si Render está reiniciando,
+                    # insistir cada dos segundos no lo levanta antes y llena el
+                    # registro de lo mismo.
+                    proximo_bz[0] = time.time() + recadero.PASO * 8
+                    log('vuelta del buzón fallida:',
                         type(e).__name__, str(e)[:140])
             time.sleep(PASO)
 
