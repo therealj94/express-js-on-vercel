@@ -239,13 +239,13 @@ def bloque_sistema_solar(t, dur, icono, orbitas):
     return im
 
 
-def bloque_funciones(t, t0, items):
+def bloque_funciones(t, t0, items, paso=2.7):
     im = lienzo(); d = ImageDraw.Draw(im, "RGBA")
     for it in items:
         rel = t + t0 - it["t"]
-        if not (0 <= rel <= 2.7):
+        if not (0 <= rel <= paso):
             continue
-        op = suave(min(rel, 0.3) / 0.3) * suave(min(2.7 - rel, 0.4) / 0.4)
+        op = suave(min(rel, 0.3) / 0.3) * suave(min(paso - rel, 0.45) / 0.45)
         # El verbo grande y la marca pequeña debajo: el espectador de la prueba
         # se perdía entre nombres que todavía no significan nada para él.
         f = fuente(F_TIT, 66)
@@ -272,7 +272,7 @@ def bloque_funciones(t, t0, items):
         n = 26
         for k in range(n):
             x = W / 2 - (n * 15) / 2 + k * 15
-            viva = k / n <= rel / 2.7
+            viva = k / n <= rel / paso
             d.ellipse([x - 3, H - 230 - 3, x + 3, H - 230 + 3],
                       fill=(ORO if viva else (60, 55, 44)) + (int(255 * op),))
     return im
@@ -337,12 +337,12 @@ def bloque_origen(t, dur, rotulos, t0):
     im = lienzo(); d = ImageDraw.Draw(im, "RGBA")
     cy = H / 2 - 120
     if t < 1.5:                              # la pepita, sola
-        pepita(im, W/2, cy, 290, int(255 * suave(min(t/0.7, 1.0))))
+        pepita(im, W/2, cy, 470, 255)
     elif t < 3.4:                            # se reparte en 55
         a = suave((t - 1.5) / 1.9)
-        pepita(im, W/2, cy, 290, int(255 * (1 - a)))
+        pepita(im, W/2, cy, int(470 - 180 * a), int(255 * (1 - a)))
         cols, fil = 11, 5                    # 11 x 5 = 55, y se pueden contar
-        paso, r = 88, 27
+        paso, r = 94, 30
         x0 = W/2 - (cols-1)*paso/2
         y0 = cy - (fil-1)*paso/2
         for k in range(55):
@@ -352,7 +352,7 @@ def bloque_origen(t, dur, rotulos, t0):
             marca_origen(d, px, py, r * (0.35 + 0.65*a), int(235 * a))
     else:                                    # una crece y se queda
         a = suave((t - 3.4) / 1.0)
-        cols, fil, paso, r = 11, 5, 88, 27
+        cols, fil, paso, r = 11, 5, 94, 30
         x0, y0 = W/2 - (cols-1)*paso/2, cy - (fil-1)*paso/2
         for k in range(55):
             if k == 27:
@@ -365,6 +365,52 @@ def bloque_origen(t, dur, rotulos, t0):
         if 0 <= rel <= r_["dur"]:
             op = int(255 * suave(min(rel, .3)/.3) * suave(min(r_["dur"]-rel, .35)/.35))
             centrar(d, r_["texto"], fuente(F_TIT, 58), H/2 + 330, TEXTO + (op,))
+    return im
+
+
+def bloque_oro_apertura(t, dur, rotulos, t0):
+    """El oro abriendo la película, con una luz cruzándolo.
+
+    Es la corrección de fondo: la versión anterior abría con puntos dorados y un
+    espectador frío lo llamó "el recurso más viejo del manual para que algo
+    parezca elegante sin tener que filmar nada real". Si el oro es lo que
+    distingue a la marca, tiene que ser lo PRIMERO, no un bloque del minuto 30.
+
+    La pepita se renderiza una vez y encima pasa una banda de luz: volver a
+    calcular el relieve en cada fotograma costaría minutos por segundo de vídeo,
+    y el barrido de un reflejo sobre metal se lee igual de bien como una banda
+    que cruza."""
+    im = lienzo(); d = ImageDraw.Draw(im, "RGBA")
+    lado = 940
+    a = suave(min(t / 1.6, 1.0))
+    if a > 0.02:
+        if lado not in _CACHE_PEPITA:
+            _CACHE_PEPITA[lado] = _pepita_render(lado, 21)
+        src = _CACHE_PEPITA[lado].copy()
+
+        # La banda de luz: una franja diagonal que recorre la pieza de izquierda
+        # a derecha y solo suma donde ya hay metal.
+        avance = (t / dur) * 2.2 - 0.4
+        yy, xx = np.mgrid[0:lado, 0:lado]
+        eje = (xx / lado) * 0.75 + (yy / lado) * 0.25
+        banda = np.exp(-((eje - avance) ** 2) / 0.010) * 165
+        arr = np.array(src).astype(np.int16)
+        vivo = arr[..., 3] > 8
+        for c in range(3):
+            arr[..., c] = np.where(vivo,
+                                   np.clip(arr[..., c] + banda * (1.0 - c * 0.14),
+                                           0, 255),
+                                   arr[..., c])
+        src = Image.fromarray(arr.astype(np.uint8), "RGBA")
+        if a < 1:
+            src.putalpha(src.split()[3].point(lambda v: int(v * a)))
+        im.alpha_composite(src, ((W - lado) // 2, (H - lado) // 2 - 120))
+
+    for r in rotulos:
+        rel = t + t0 - r["t"]
+        if 0 <= rel <= r["dur"]:
+            op = int(255 * suave(min(rel, .45)/.45) * suave(min(r["dur"]-rel, .45)/.45))
+            centrar(d, r["texto"], fuente(F_TIT, 62), H / 2 + 500, TEXTO + (op,))
     return im
 
 
@@ -470,7 +516,11 @@ def main():
             elif e == "sistema_solar":
                 im = bloque_sistema_solar(tl, b["dur"], icono, b["orbitas"])
             elif e == "funciones_dentro":
-                im = bloque_funciones(tl, b["t"], b["items"])
+                im = bloque_funciones(tl, b["t"], b["items"],
+                                      paso=(b["items"][1]["t"] - b["items"][0]["t"])
+                                      if len(b["items"]) > 1 else b["dur"])
+            elif e == "oro_apertura":
+                im = bloque_oro_apertura(tl, b["dur"], b["rotulos"], b["t"])
             elif e == "origen":
                 im = bloque_origen(tl, b["dur"], b["rotulos"], b["t"])
             elif e == "recibo":

@@ -41,10 +41,28 @@ def pieza(dur: float) -> np.ndarray:
     t = np.arange(n) / SR
     x = np.zeros(n)
 
+    # ARCO. La primera versión era un bucle: "empieza igual que termina, no
+    # acompaña la narrativa, rellena el silencio". Ahora la pieza crece desde el
+    # oro hasta el comprobante —que es el clímax— y resuelve en el logo.
+    #
+    # La curva: entra contenida, sube sin parar hasta el 78% de la pieza, y ahí
+    # abre. Sin esto, un montaje de 46 s se siente plano por bien que corte.
+    clima = 0.78
+    arco = np.where(t < dur * clima,
+                    0.42 + 0.58 * (t / (dur * clima)) ** 1.35,
+                    1.0 - 0.30 * ((t - dur * clima) / (dur * (1 - clima))) ** 2)
+
     # Bajo sostenido en la, sin tercera: deja sitio a que la imagen decida el
     # ánimo, igual que en la otra película.
     for f, a in ((55.0, 0.30), (110.0, 0.16), (164.81, 0.07)):
         x += a * (np.sin(2*np.pi*f*t) + np.sin(2*np.pi*(f+0.06)*t)) / 2
+
+    # La tercera MAYOR entra solo en el clímax: es el "algo se resolvió" que la
+    # versión en bucle no tenía. Es el mismo recurso que en musica_erosion.py,
+    # donde el motivo volvía entero tras el giro.
+    ent = np.clip((t - dur * clima) / 2.0, 0, 1)
+    x += (np.sin(2*np.pi*138.59*t) * 0.13 +
+          np.sin(2*np.pi*207.65*t) * 0.07) * ent
 
     # Pulso. El tiempo fuerte de cada compás pega más: es el que marca el corte.
     k = 0
@@ -53,7 +71,9 @@ def pieza(dur: float) -> np.ndarray:
         largo = min(int(0.42 * SR), n - i)
         if largo > 0:
             fuerte = (k % 4 == 0)
-            x[i:i+largo] += golpe_grave(largo) * (0.62 if fuerte else 0.26)
+            # El pulso también crece: es lo que hace que la subida se sienta.
+            g = arco[min(i, n - 1)]
+            x[i:i+largo] += golpe_grave(largo) * (0.62 if fuerte else 0.26) * g
         # Contratiempo, media unidad después: es lo que le da el trote.
         j = int((k + 0.5) * PULSO * SR)
         largo = min(int(0.10 * SR), n - j)
@@ -69,6 +89,7 @@ def pieza(dur: float) -> np.ndarray:
     x += b * 0.012 * (0.5 + 0.5*np.sin(2*np.pi*0.05*t)**2)
 
     # Entra rápido y sale largo: el cierre necesita cola, la apertura no.
+    x *= arco
     x *= np.clip(t / 0.8, 0, 1) * np.clip((dur - t) / 3.0, 0, 1)
     x /= np.max(np.abs(x)) + 1e-9
     return x * 0.78

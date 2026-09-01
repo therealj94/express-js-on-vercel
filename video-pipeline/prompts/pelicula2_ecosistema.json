@@ -37,51 +37,78 @@
   "_gesto": "Cada transicion es la misma y sale del logo: lo que hay en pantalla se deshace en puntos y los puntos se rehacen en lo siguiente. El logo de Orden Global son lineas que, donde se cruzan, se rompen en una reticula de puntos; ese es el unico truco de la pelicula y no se toma prestado de nadie.",
   "bloques": [
     {
-      "id": "01_nace",
+      "id": "01_el_oro",
       "t": 0.0,
-      "dur": 4.0,
-      "escena": "puntos_a_logo",
-      "detalle": "Un punto dorado en el centro. A los 0,6 s aparecen 400 mas, dispersos y en deriva lenta. Se ordenan en la reticula del centro del logo y desde ahi los arcos concentricos se dibujan hacia fuera hasta cerrar la marca.",
-      "activo": "orden-global/orden-global-logo.png",
-      "_pendiente": "redibujar el logo por codigo: el PNG es de 603 px y a 1080 pixela"
+      "dur": 7.0,
+      "escena": "oro_apertura",
+      "detalle": "Negro absoluto. Entra una pepita de oro llenando el cuadro, con una luz cruzandola despacio. Nada mas. Es la apertura: el oro no aparece al final, ES el principio.",
+      "plano_real": "macro_pepita",
+      "rotulos": [
+        {
+          "t": 3.8,
+          "dur": 2.2,
+          "texto": "Un gramo de oro.",
+          "tipo": "titular"
+        }
+      ]
     },
     {
-      "id": "02_tesis",
-      "t": 4.0,
-      "dur": 3.0,
+      "id": "02_cincuenta_y_cinco",
+      "t": 7.0,
+      "dur": 5.0,
+      "escena": "origen",
+      "detalle": "La pepita se parte en 55 marcas de ORIGEN, en una reticula de 11x5 que se puede contar. Una crece y se queda.",
+      "rotulos": [
+        {
+          "t": 9.4,
+          "dur": 2.2,
+          "texto": "Cincuenta y cinco ORIGEN.",
+          "tipo": "titular"
+        }
+      ]
+    },
+    {
+      "id": "03_nace",
+      "t": 12.0,
+      "dur": 4.5,
+      "escena": "puntos_a_logo",
+      "detalle": "La marca de ORIGEN se deshace en polvo dorado y el polvo se rehace en el logo de Orden Global.",
+      "activo": "orden-global/orden-global-logo.png"
+    },
+    {
+      "id": "04_tesis",
+      "t": 16.5,
+      "dur": 3.2,
       "escena": "rotulos",
       "rotulos": [
         {
-          "t": 4.2,
+          "t": 16.7,
           "dur": 1.4,
           "texto": "Una identidad.",
           "tipo": "titular"
         },
         {
-          "t": 5.7,
+          "t": 18.2,
           "dur": 1.4,
           "texto": "Todo el ecosistema.",
           "tipo": "titular"
         }
-      ],
-      "_fuente": "Literal de la pantalla de arranque de la app: 'UNA IDENTIDAD · TODO EL ECOSISTEMA'. La mia decia 'Una sola app / Todo adentro', que decia menos y no era suya."
+      ]
     },
     {
-      "id": "03_la_app",
-      "t": 7.0,
-      "dur": 4.0,
+      "id": "05_la_app",
+      "t": 19.7,
+      "dur": 4.3,
       "escena": "sistema_solar",
-      "detalle": "Los puntos se rehacen en el sistema solar REAL de la app: Veta Wallet en el centro, en un halo dorado, y orbitando alrededor Chat, MyTokenPay, Genesis ID, Ordenexchange y AuCorp, unidos al centro por lineas finas. Es su propia interfaz, no una inventada.",
       "activo": "veta-wallet/veta-wallet-icono.png",
       "rotulos": [
         {
-          "t": 8.6,
-          "dur": 1.2,
+          "t": 21.6,
+          "dur": 1.6,
           "texto": "Veta Wallet",
           "tipo": "dato"
         }
       ],
-      "_pendiente": "el icono es de 760x359; sirve justo. El logo de Veta (256 px) no sirve",
       "orbitas": [
         {
           "nombre": "Chat",
@@ -111,84 +138,38 @@
       ]
     },
     {
-      "id": "04_funciones",
-      "t": 11.0,
-      "dur": 19.0,
+      "id": "06_funciones",
+      "t": 24.0,
+      "dur": 10.8,
       "escena": "funciones_dentro",
-      "detalle": "El icono se abre y las funciones aparecen DENTRO de el, una cada 2,7 s, como pantallas que entran y salen. El verbo grande; la marca, si la tiene, pequena y debajo.",
+      "detalle": "Tres golpes de 3,6 s en vez de siete de 2,7. Cada uno con imagen real detras, no con fondo negro.",
       "items": [
         {
-          "t": 11.0,
+          "t": 24.0,
           "verbo": "Guardá. Mandá. Recibí.",
           "marca": null,
-          "visual": "una tarjeta de saldo gira sobre su eje y se asienta"
+          "plano_real": "macro_manos_telefono"
         },
         {
-          "t": 13.7,
-          "verbo": "Verificate una vez.",
-          "marca": "Genesis ID",
-          "visual": "un documento se sella y un candado se cierra"
-        },
-        {
-          "t": 16.4,
+          "t": 27.6,
           "verbo": "Cobrá con un código.",
           "marca": "MyTokenPay",
-          "visual": "un QR se forma de puntos y una luz de lector lo barre"
+          "plano_real": "macro_qr_lector"
         },
         {
-          "t": 19.1,
-          "verbo": "Hablá sin salir de la app.",
-          "marca": "Chat",
-          "visual": "burbujas de chat que entran una tras otra"
-        },
-        {
-          "t": 21.8,
-          "verbo": "Preguntá lo que sea.",
-          "marca": "AU-RA",
-          "visual": "una onda de voz responde y la respuesta se escribe sola"
-        },
-        {
-          "t": 24.5,
+          "t": 31.2,
           "verbo": "De un país a otro.",
           "marca": null,
-          "visual": "seis siluetas de pais y una linea de puntos que las cose"
-        },
-        {
-          "t": 27.2,
-          "verbo": "Cambiá entre monedas.",
-          "marca": null,
-          "visual": "dos fichas que rotan e intercambian su sitio"
+          "plano_real": "macro_mostrador"
         }
       ]
     },
     {
-      "id": "05_origen",
-      "t": 30.0,
-      "dur": 5.4,
-      "escena": "origen",
-      "detalle": "Idea de Jose: una pepita de oro y de ahi se forma ORIGEN. Hecha EXACTA: un ORIGEN es un gramo entre 55, asi que la pepita no se convierte en una moneda -se DIVIDE en 55-. Es la formula publica, animada. Y esa diferencia no es un detalle: una pepita que se convierte en la moneda dice 'esta moneda es oro', que es la inferencia que el acta de Junta prohibe; una pepita que se divide en 55 dice 'asi se mide', que es lo que si es cierto.",
-      "rotulos": [
-        {
-          "t": 31.6,
-          "dur": 1.5,
-          "texto": "Un gramo de oro.",
-          "tipo": "titular"
-        },
-        {
-          "t": 33.4,
-          "dur": 1.9,
-          "texto": "Cincuenta y cinco ORIGEN.",
-          "tipo": "titular"
-        }
-      ],
-      "_pendiente": "La pepita va dibujada aqui, estilizada. Una pepita fotografica de verdad seria UN still en la GPU: $0,012. Si Jose la quiere real, entra en la misma tanda de la pelicula 1."
-    },
-    {
-      "id": "05_el_recibo",
-      "t": 35.4,
-      "dur": 5.5,
+      "id": "07_el_recibo",
+      "t": 34.8,
+      "dur": 6.0,
       "escena": "recibo",
-      "detalle": "EL CLIMAX, y es lo unico que ningun banco puede ensenar. NO es un hash: es un recibo legible que se arma de puntos, con fecha, hora, monto y el estado. Debajo, en pequeno, el numero de la transaccion. La linea 'lo puede ver cualquiera' es lo que lo separa de la pantalla de un banco.",
+      "detalle": "Un comprobante legible que se arma de puntos. Fecha, hora, estado.",
       "recibo": {
         "titulo": "Comprobante",
         "campos": [
@@ -209,13 +190,13 @@
       },
       "rotulos": [
         {
-          "t": 35.6,
-          "dur": 1.6,
+          "t": 35.0,
+          "dur": 1.8,
           "texto": "Todo queda escrito.",
           "tipo": "titular"
         },
         {
-          "t": 39.0,
+          "t": 38.6,
           "dur": 1.8,
           "texto": "ordenscan.com",
           "tipo": "dato"
@@ -223,15 +204,14 @@
       ]
     },
     {
-      "id": "06_cierre",
-      "t": 40.9,
-      "dur": 5.6,
+      "id": "08_cierre",
+      "t": 40.8,
+      "dur": 5.7,
       "escena": "logo_a_puntos_a_logo",
-      "detalle": "Todo lo que hay en pantalla se deshace a la vez y los puntos regresan al centro rehaciendo la marca. La pelicula cierra el mismo circulo con el que abrio.",
       "activo": "orden-global/orden-global-logo.png",
       "rotulos": [
         {
-          "t": 42.4,
+          "t": 42.0,
           "dur": 3.4,
           "texto": "Orden Global. Un sistema financiero que se puede comprobar.",
           "tipo": "rotulo"
@@ -244,5 +224,8 @@
     "El directorio de comercios: los treinta son de muestra y diez tienen dominios example.com.",
     "Ordenex como mercado: nunca ha operado. Por eso 'Cambiá entre monedas' se queda en la funcion de la billetera y no ensena un libro de ordenes.",
     "Cualquier cifra de adopcion, precio, proyeccion o rendimiento."
-  ]
+  ],
+  "_reestructura": "El primer montaje abria con puntos, recitaba siete funciones seguidas y dejaba el oro para el minuto 30. Un espectador frio se perdio en el segundo 18 -'deja de proponer una vision y recita una lista de supermercado'- y le puso un 5 sobre 10 de presupuesto: 'particulas doradas, el recurso mas viejo del manual, para que algo parezca elegante SIN TENER QUE FILMAR NADA REAL'. Ahora el oro ABRE la pelicula, de el sale todo lo demas, y las siete funciones se comprimen en tres golpes.",
+  "_decision_jose": "El bloque del oro se queda por decision suya. Queda anotado que en TRES pruebas independientes el espectador concluyo solo 'respaldada por oro fisico', que es lo que el acta de Junta del 14/08/2026 prohibe afirmar, y que el propio critico pidio MAS oro. Riesgo asumido por el cliente.",
+  "_planos_reales": "Cuatro planos macro que faltan y que son los que dan peso: macro_pepita, macro_manos_telefono, macro_qr_lector y macro_mostrador. Van en la misma tanda que las repeticiones de la pelicula 1, para no pagar dos instalaciones."
 }

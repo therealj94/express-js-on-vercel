@@ -108,21 +108,23 @@ if __name__ == "__main__":
     sal = sys.argv[1] if len(sys.argv) > 1 else "sonido_eco.wav"
     dur = float(sys.argv[2]) if len(sys.argv) > 2 else 46.5
 
+    # Reordenado sobre la estructura nueva: el oro abre, las funciones son tres
+    # golpes y no siete, y el clímax es el comprobante.
     ev = [
-        (0.4, polvo, 0.9),          # los puntos buscándose
-        (3.3, impacto, 1.0),        # la marca se cierra
-        (7.2, polvo, 0.5),          # los puntos se rehacen en la app
-        (8.0, impacto, 0.45),       # el halo de Veta asienta
-    ]
-    # Un clic por función. Coinciden con los cortes, que van a 2,7 s.
-    for k in range(7):
-        ev.append((11.0 + k * 2.7, clic, 0.85))
-    ev += [
-        (16.4, barrido, 1.0),       # el lector barre el QR
-        (30.2, moneda, 1.0),        # la pepita entra
-        (32.4, moneda, 0.55),       # se divide en 55
-        (36.6, sello, 1.0),         # el comprobante confirma
-        (41.0, impacto, 0.8),       # el cierre
+        (0.9, moneda, 1.0),          # el oro entra
+        (3.6, moneda, 0.45),         # la luz lo cruza
+        (7.2, impacto, 0.7),         # se parte
+        (8.0, polvo, 0.8),           # las 55 marcas
+        (12.2, polvo, 1.0),          # el polvo busca la marca
+        (14.8, impacto, 1.0),        # el logo se cierra
+        (19.9, polvo, 0.5),          # se rehace en la app
+        (20.7, impacto, 0.45),       # el halo asienta
+        (24.1, clic, 0.9),
+        (27.7, clic, 0.9),
+        (31.3, clic, 0.9),
+        (28.4, barrido, 1.0),        # el lector sobre el QR
+        (35.0, sello, 1.0),          # el comprobante confirma
+        (41.0, impacto, 0.85),       # el cierre
     ]
     y = pista(dur, ev)
     sf.write(sal, np.column_stack([y, y]), SR)
