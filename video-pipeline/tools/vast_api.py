@@ -129,6 +129,20 @@ def main() -> int:
             onstart += (f'\n\necho "== autoprueba =="\n'
                         f'echo {b64} | base64 -d | gunzip > /workspace/selftest.py\n'
                         f'"$WORK/venv/bin/python" /workspace/selftest.py 2>&1 | tail -40\n')
+        # El onstart entero viaja comprimido, no solo la autoprueba. El script
+        # crecio hasta 14 KB y con la autoprueba encima pasaba de los 16.384
+        # que acepta la API, que responde "invalid_args" sin decir cual. Un
+        # arranque autoextraible lo deja en un tercio.
+        import base64 as _b64, gzip as _gz
+        _payload = _b64.b64encode(_gz.compress(onstart.encode(), 9)).decode()
+        onstart = ("#!/bin/bash\n"
+                   f"echo {_payload} | base64 -d | gunzip > /root/arranque.sh\n"
+                   "bash /root/arranque.sh\n")
+        if len(onstart) > 16000:
+            sys.exit(f"onstart comprimido son {len(onstart)} caracteres y el "
+                     f"limite son 16.384. Adelgaza cloud/onstart.sh.")
+        print(f"onstart: {len(_payload)} caracteres comprimidos")
+
         # Un puerto se declara con la CADENA ENTERA como clave y "1" de valor
         # (así lo codifica parse_env del CLI oficial). Con {"-p": "8188:8188"}
         # el backend no da error: simplemente no mapea nada.
