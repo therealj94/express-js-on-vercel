@@ -1532,6 +1532,24 @@ def _atender_juego(rel, p, de, dicho):
 
 
 
+def _recordar(p, dicho, contestado):
+    """Apunta un ida y vuelta en la memoria de esa persona.
+
+    Existe para que el GUION deje huella igual que el motor: sin esto, cada
+    respuesta del guion es un hueco que paga la pregunta siguiente. Ver
+    `_mandar_nodo`.
+
+    El tope y el recorte son los mismos que usa el motor — dos memorias con
+    reglas distintas es una memoria que se comporta de dos maneras.
+    """
+    if not contestado:
+        return
+    p['historial'] = ((p.get('historial') or []) + [
+        {'role': 'user', 'content': (dicho or '')[:600]},
+        {'role': 'assistant', 'content': contestado[:600]},
+    ])[-MEMORIA:]
+
+
 def _que_falta(hueco):
     """Le pregunta a la persona el dato que falta, con sus opciones si las
     tiene. Sin decir las opciones, «reiniciar» se contesta con cualquier cosa
@@ -1771,6 +1789,30 @@ def atender(rel, sistema, p, de, dicho, mensaje=None):
         Lista > botones > texto. Se decide AQUI y no en cada sitio: cuando
         `oficio` paso de tres botones a siete filas, sin esto habria habido
         que acordarse de los tres sitios que lo mandaban.
+
+        ── Y SE APUNTA EN LA MEMORIA, QUE ES LA MITAD DEL TRABAJO ──────────
+
+        1-sep, 02:19. Captura de una conversacion de verdad, en ingles:
+
+            persona: What is the fee?
+            AU-RA:   The network fee is 0.001 ORIGEN...      (del guion)
+            persona: In dollars how much is It
+            AU-RA:   It looks like there might be a bit of confusion.
+                     Could you please clarify what you're asking about?
+
+        Una pregunta perfectamente clara —«y eso en dolares cuanto es»—
+        contestada como si nunca se hubiera dicho nada. Y desde el lado de la
+        persona no hay excusa posible: AU-RA acababa de decirselo.
+
+        La causa: lo que sale del GUION no entraba en `p['historial']`. Para
+        el motor, la conversacion empezaba en «In dollars how much is It»,
+        sin ningun «it» al que referirse.
+
+        Cuanto mejor es el guion, peor se pone esto: cada respuesta buena que
+        da el guion es un hueco de memoria que la siguiente pregunta paga.
+
+        Se guarda lo que la persona LEYO —no el nombre del nodo— porque es lo
+        unico a lo que puede referirse despues.
         """
         n = guion.nodo(cual, idi, p.get('nombre', ''), p.get('pais', ''))
         if n.get('lista') and hasattr(rel, 'con_lista'):
@@ -1781,6 +1823,7 @@ def atender(rel, sistema, p, de, dicho, mensaje=None):
         else:
             rel.enviar(de, guion.como_texto(cual, idi, p.get('nombre', ''),
                                             p.get('pais', '')))
+        _recordar(p, dicho, n.get('texto') or '')
         return n
 
 

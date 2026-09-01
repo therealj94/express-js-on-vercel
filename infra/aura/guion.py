@@ -824,8 +824,16 @@ NODOS = {
 }
 
 ATAJOS = [
+    # EN LOS DOS IDIOMAS. Estaba solo en español, asi que quien saludaba en
+    # ingles —«hello», «hi», «good morning»— se saltaba el atajo y le contestaba
+    # el MOTOR: cuatro segundos de GPU, una respuesta distinta cada vez, y la
+    # posibilidad de inventar. Justo las tres cosas que este atajo existe para
+    # evitar. AU-RA habla los dos idiomas desde el 30-ago; los atajos no.
     (re.compile(r'^\s*(hola|buenas|buenos dias|buenas tardes|buenas noches|'
-                r'hey|holi|que tal|saludos)\s*[.!]*\s*$'), 'inicio'),
+                r'hey|holi|que tal|saludos|'
+                r'hello|hi|hiya|good morning|good afternoon|good evening|'
+                r'greetings|how are you|whats up|what\'s up)\s*[.!]*\s*$'),
+     'inicio'),
     # Todo lo que huela a invertir va a una persona, y va ANTES que los demas
     # atajos: «quiero invertir en origen» no puede caer en el nodo de ORIGEN.
     (re.compile(r'\b(invertir|inversion|inversionista|invierto|accionista|'
@@ -837,7 +845,8 @@ ATAJOS = [
     # le pasa, y contestarle el menu es no haberlo leido. Con `\b` en medio de
     # la frase, la segunda caia en el menu.
     (re.compile(r'^\s*(menu|menú|opciones|ayuda|empezar|inicio|'
-                r'que podes hacer|que puedes hacer)\s*[.!?]*\s*$'), 'inicio'),
+                r'que podes hacer|que puedes hacer|'
+                r'help|options|start|what can you do)\s*[.!?]*\s*$'), 'inicio'),
 
     # ── LOS TRES QUE MAS VENDEN, Y POR ESO NO VAN AL MOTOR ──────────────────
     #

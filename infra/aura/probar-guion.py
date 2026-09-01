@@ -105,6 +105,28 @@ class LosAtajos(unittest.TestCase):
         for saludo in ['hola', 'Hola!', 'buenas', 'buenos días', 'qué tal']:
             self.assertEqual(guion.por_texto(saludo), 'inicio', saludo)
 
+    def test_Y_EN_INGLES_TAMBIEN(self):
+        """1-sep: los atajos estaban solo en español. Quien saludaba en inglés
+        se los saltaba y le contestaba el MOTOR — cuatro segundos de GPU, una
+        respuesta distinta cada vez y la posibilidad de inventar. Las tres
+        cosas que el atajo existe para evitar.
+
+        AU-RA habla los dos idiomas desde el 30-ago. Los atajos no."""
+        for saludo in ['hello', 'Hello!', 'hi', 'good morning', 'good evening',
+                       'greetings', 'how are you']:
+            self.assertEqual(guion.por_texto(saludo), 'inicio', saludo)
+
+    def test_y_el_menu_en_ingles_igual(self):
+        for x in ['help', 'options', 'start', 'what can you do']:
+            self.assertEqual(guion.por_texto(x), 'inicio', x)
+
+    def test_pero_en_ingles_tampoco_atrapa_una_pregunta(self):
+        """«help me send money» es alguien diciendo lo que le pasa. Contestarle
+        el menú es no haberlo leído — la misma regla que en español."""
+        for x in ['hello, how much is the fee', 'hi I need help with a transfer',
+                  'help me send money', 'start my wallet please']:
+            self.assertIsNone(guion.por_texto(x), x)
+
     def test_pero_un_saludo_CON_pregunta_detras_no(self):
         """«hola, cuánto cuesta» es una pregunta, no un saludo. Contestarle el
         menú es no haberla leído."""
@@ -1024,9 +1046,13 @@ class UNSOLOCAMINODESALIDA(unittest.TestCase):
 
     def test_y_mandar_nodo_prueba_la_lista_ANTES_que_los_botones(self):
         """Si un nodo tuviera las dos, la lista gana: es la que cabe más."""
-        i = self.FUENTE.index('def _mandar_nodo')
-        bloque = self.FUENTE[i:i + 900]
-        self.assertLess(bloque.index("n.get('lista')"), bloque.index("n.get('botones')"))
+        # Desde el CUERPO, no desde el `def`: la ventana fija se rompió en
+        # cuanto el comentario de arriba creció, y una prueba que se cae por
+        # un comentario deja de leerse.
+        i = self.FUENTE.index('n = guion.nodo(cual, idi')
+        bloque = self.FUENTE[i:i + 700]
+        self.assertLess(bloque.index("n.get('lista')"),
+                        bloque.index("n.get('botones')"))
 
     def test_ningun_nodo_con_lista_se_queda_sin_camino(self):
         """Si un nodo tiene lista, `nodo()` tiene que devolverla — si no, sale
