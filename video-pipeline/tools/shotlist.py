@@ -39,8 +39,14 @@ from __future__ import annotations
 import argparse, json, sys
 from pathlib import Path
 
+# MiniMax H3 NO puede generar un solo fotograma: su nodo exige length >= 5
+# ("Value 1 smaller than min of 5"). Con duration_s=0 salía length=1 y el
+# 1-sep los 101 stills fallaron uno por uno, después de pagar una hora de
+# instalación. Cinco fotogramas a 1 fps dan length=5, que además ya cae en la
+# rejilla 4n+1 que el modelo necesita; del clip resultante se toma el primer
+# fotograma como still.
 STILL_DEFAULTS = {"width": 1280, "height": 720, "steps": 28, "cfg": 3.5,
-                  "duration_s": 0, "fps": 1, "retries": 1}
+                  "duration_s": 5, "fps": 1, "retries": 1}
 VIDEO_DEFAULTS = {"width": 832, "height": 480, "steps": 30, "cfg": 5.0,
                   "duration_s": 5, "fps": 24, "retries": 2}
 

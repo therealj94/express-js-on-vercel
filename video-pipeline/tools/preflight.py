@@ -227,6 +227,19 @@ def cola(ruta, vertical):
     if not faltan:
         ok("todos los workflows que pide la cola existen")
 
+    # MiniMax H3 exige length >= 5: no sabe generar un solo fotograma. El 1-sep
+    # los 101 stills salieron con length=1 y fallaron uno por uno DESPUÉS de
+    # pagar una hora de instalación. El modelo lo rechaza con
+    # "Value 1 smaller than min of 5", así que se comprueba antes de encender.
+    for j in jobs:
+        n = max(1, int(round(j.get("duration_s", 0) * j.get("fps", 1))))
+        if n < 5:
+            mal(f"'{j['id']}' pide {n} fotograma(s) y H3 exige 5 como mínimo: "
+                f"la tanda entera fallaría igual que el 1-sep")
+            break
+    else:
+        ok(f"longitud correcta: {max(1, int(round(jobs[0].get('duration_s', 0) * jobs[0].get('fps', 1))))} fotogramas por trabajo")
+
     # 4n+1: lo resuelve 03_run_queue, pero conviene saber que sigue ahí.
     if "4n+1" in (RAIZ / "03_run_queue.py").read_text():
         ok("el runner sigue ajustando la longitud a 4n+1")
