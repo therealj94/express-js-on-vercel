@@ -13565,7 +13565,93 @@ const VETA = (() => {
     if (/saldo|cuanto tengo|mi cuenta|mis |actividad|resumen|envia|enviar|mandar|cobrar|tarjeta|verificad|balance|my |send|charge|activity/.test(d))
       return auraDecir(T.vSinCuenta, { voz, botones: abrir });
 
-    return auraDecir(T.vNoSe, { voz, botones: abrir });
+    /* Lo que este guión NO sabe se lo preguntamos a la AU-RA de verdad.
+       Ver `auraBuzonPregunta` justo abajo. */
+    return auraBuzonPregunta(dicho, T, voz, abrir);
+  }
+
+  /* ── LA AU-RA DE VERDAD, PARA QUIEN TODAVÍA NO TIENE CUENTA ─────────────
+   *
+   * EL HUECO QUE ESTO TAPA
+   *
+   * Con la sesión abierta, la burbuja YA hablaba con la AU-RA de verdad: va
+   * por PULSE2CHAT (`chat.js` → cerebro.ordenscan.com/mensajes) y del otro
+   * lado contesta el nodo. Eso funciona y no se toca.
+   *
+   * Quien NO tiene cuenta no tiene por dónde: sin sesión no hay PULSE2CHAT,
+   * así que hasta hoy la visita se quedaba con lo que este archivo trae
+   * escrito. Y la visita es justo la persona del principio del embudo — la
+   * que llega, pregunta, y decide si abre una billetera o se va.
+   *
+   * POR QUÉ EL GUIÓN LOCAL SIGUE PRIMERO
+   *
+   * Lo que este archivo sabe contestar lo contesta AL INSTANTE, sin red y
+   * sin gastar la tarjeta del nodo. Mandar «hola» a dar la vuelta por Render
+   * para recibir lo mismo dos segundos después es peor producto. El buzón es
+   * para lo que aquí no está.
+   *
+   * Y SI EL BUZÓN NO CONTESTA, SE DICE LO DE SIEMPRE
+   *
+   * Sin red, con el servicio reiniciando o dormido, la respuesta de siempre
+   * sale igual. Una AU-RA que enmudece cuando se cae un servicio es peor que
+   * una que sabe menos. */
+  const BUZON = String(window.OG_BUZON || 'https://aura-buzon.onrender.com');
+  const BUZON_ESPERA_MS = 25000;   // lo que se aguanta antes de rendirse
+  const BUZON_PASO_MS = 900;       // cada cuánto se pregunta si ya contestó
+
+  /* La sesión la reparte el NODO, que es quien tiene el escalafón: aquí solo
+     se guarda la que él devolvió. No se inventa ninguna —una inventada desde
+     el navegador sería el visitante eligiendo su propio nombre, que es
+     exactamente lo que `portal.py` existe para impedir. */
+  function auraBuzonSesion (nueva) {
+    try {
+      if (nueva) localStorage.setItem('og.aura.sesion', nueva);
+      return localStorage.getItem('og.aura.sesion') || null;
+    } catch (_) { return null; }   // navegador en privado: se habla sin memoria
+  }
+
+  async function auraBuzonPregunta (dicho, T, voz, abrir) {
+    const deSiempre = () => auraDecir(T.vNoSe, { voz, botones: abrir });
+    if (auraPensando) return auraDecir(T.unaAlaVez, { voz: false });
+
+    auraPensando = true;
+    const miSesion = auraSesion;      // si se va de la pantalla, no se escribe
+    pintarAura();
+    try {
+      const dejar = await fetch(BUZON + '/decir', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ texto: dicho, sesion: auraBuzonSesion() })
+      });
+      if (!dejar.ok) return deSiempre();
+      const { ticket } = await dejar.json();
+      if (!ticket) return deSiempre();
+
+      const hasta = Date.now() + BUZON_ESPERA_MS;
+      while (Date.now() < hasta) {
+        await new Promise(r => setTimeout(r, BUZON_PASO_MS));
+        if (miSesion !== auraSesion) return;        // se fue: no se escribe
+        const r = await fetch(BUZON + '/oir/' + encodeURIComponent(ticket));
+        if (!r.ok) continue;
+        const j = await r.json();
+        if (!j.listo) continue;
+        if (j.sesion) auraBuzonSesion(j.sesion);
+        if (!String(j.texto || '').trim()) return deSiempre();
+        return auraDecir(j.texto, {
+          voz,
+          /* Los botones vienen del MISMO guión que WhatsApp. Se pasan tal
+             cual para que las dos puertas ofrezcan lo mismo: en cuanto una
+             enseñe opciones distintas, vuelve a haber dos AU-RA. */
+          botones: (j.botones || []).map(b => ({ txt: b.texto, di: b.texto }))
+        });
+      }
+      return deSiempre();
+    } catch (_) {
+      return deSiempre();
+    } finally {
+      auraPensando = false;
+      pintarAura();
+    }
   }
 
   function auraSeso(dicho) {
