@@ -49,10 +49,27 @@ function cargarCliente(base, token, almacen) {
   const nombres = [...src.matchAll(/^(?:async function|function) (\w+)|^const (\w+) =/gm)]
     .map((m) => m[1] || m[2]);
   const envoltorio = `
+    /* El almacén falso RECHAZA lo mismo que el de verdad.
+       Antes aceptaba cualquier nombre, y por eso esta prueba pasaba en verde
+       mientras en el teléfono no se guardaba nada: el nombre del cajón se
+       armaba con el correo, la arroba lo hacía inválido, y los \`.catch()\`
+       —que están para que un llavero que se niegue no tumbe el chat— se
+       comían el error. Un doble más permisivo que la pieza real no prueba
+       nada; prueba que el doble funciona. */
+    const nombreVale = (k) => typeof k === 'string' && /^[\\w.-]+$/.test(k);
     const SecureStore = {
-      getItemAsync: async (k) => (k in almacen ? almacen[k] : null),
-      setItemAsync: async (k, v) => { almacen[k] = v; },
-      deleteItemAsync: async (k) => { delete almacen[k]; },
+      getItemAsync: async (k) => {
+        if (!nombreVale(k)) throw new Error('Invalid key provided to SecureStore');
+        return (k in almacen ? almacen[k] : null);
+      },
+      setItemAsync: async (k, v) => {
+        if (!nombreVale(k)) throw new Error('Invalid key provided to SecureStore');
+        almacen[k] = v;
+      },
+      deleteItemAsync: async (k) => {
+        if (!nombreVale(k)) throw new Error('Invalid key provided to SecureStore');
+        delete almacen[k];
+      },
     };
     const Constants = { expoConfig: { extra: { mensajesApi: base } } };
     const getToken = () => token;
@@ -91,12 +108,18 @@ function cargarCliente(base, token, almacen) {
   const BASE = `http://127.0.0.1:${pRelevo}`;
   const CUENTA = { email: 'info@ordenkapital.com', name: 'José Enamorado', addr: '0xaaaa' };
 
+  /* El MISMO nombre de cajón que arma el cliente. No se copia a mano: si un
+     día cambia allá y no aquí, la prueba miraría un cajón que no existe y
+     daría verde por vacío. */
+  const cajon = (c) => 'og.llaveChat.' + c.replace(
+    /[^\w.]/g, (ch) => '-' + ch.charCodeAt(0).toString(16).padStart(2, '0'));
+
   try {
     // ── el primer teléfono se da de alta y se queda con la llave ──
     const tel1 = {};
     const M1 = cargarCliente(BASE, 'jwt-de-jose', tel1);
     await M1.alta(CUENTA);
-    const llave1 = tel1['og.llaveChat.info@ordenkapital.com'];
+    const llave1 = tel1[cajon('info@ordenkapital.com')];
     comprobar(!!llave1, 'el primer teléfono recibe su llave');
 
     // ── un teléfono SIN sesión: el 409 de siempre, que sigue estando bien ──
@@ -112,7 +135,7 @@ function cargarCliente(base, token, almacen) {
     const tel2 = {};
     const M2 = cargarCliente(BASE, 'jwt-de-jose', tel2);
     await M2.alta(CUENTA);
-    const llave2 = tel2['og.llaveChat.info@ordenkapital.com'];
+    const llave2 = tel2[cajon('info@ordenkapital.com')];
     comprobar(!!llave2, 'tras reinstalar, la app vuelve a tener llave');
     comprobar(llave2 === llave1,
       'y es la MISMA — una nueva mataría al primer teléfono',
@@ -153,7 +176,7 @@ function cargarCliente(base, token, almacen) {
     const MAna = cargarCliente(BASE, 'jwt-de-ana', telAna);
     // Ana entra de verdad como ella y se queda con su llave.
     await MAna.alta({ email: 'ana@ordenglobal.org', name: 'Ana', addr: '0xbbbb' });
-    const llaveAna = telAna['og.llaveChat.ana@ordenglobal.org'];
+    const llaveAna = telAna[cajon('ana@ordenglobal.org')];
     comprobar(!!llaveAna, 'Ana se da de alta con su propia cuenta');
 
     // Y AHORA el caso: almacén vacío —recién reinstalada—, la sesión es de
@@ -165,11 +188,11 @@ function cargarCliente(base, token, almacen) {
     comprobar(!fallo,
       'con el correo desincronizado el alta NO se cae: se corrige sola',
       fallo ? `se cayó con ${fallo.code} ${fallo.motivo || ''}` : '');
-    comprobar(telCruzado['og.llaveChat.ana@ordenglobal.org'] === llaveAna,
+    comprobar(telCruzado[cajon('ana@ordenglobal.org')] === llaveAna,
       'y termina con la llave de la cuenta que la SESIÓN prueba',
-      telCruzado['og.llaveChat.ana@ordenglobal.org'] === llaveAna ? ''
+      telCruzado[cajon('ana@ordenglobal.org')] === llaveAna ? ''
         : 'no guardó la llave de Ana');
-    comprobar(!telCruzado['og.llaveChat.info@ordenkapital.com'],
+    comprobar(!telCruzado[cajon('info@ordenkapital.com')],
       'sin quedarse con nada de la cuenta que pidió por error');
 
     // El relevo, por su lado, tiene que SABER decir cuál de las tres causas

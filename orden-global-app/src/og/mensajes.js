@@ -47,6 +47,26 @@ async function pedir(ruta, body, ms = 15000) {
   } finally { clearTimeout(t); }
 }
 
+/* ══ EL NOMBRE DEL CAJÓN NO PUEDE LLEVAR ARROBA ═══════════════════════════
+ *
+ * El almacén seguro sólo acepta nombres de `[A-Za-z0-9._-]`. Cualquier otra
+ * cosa —y la arroba de un correo es «cualquier otra cosa»— hace que TIRE:
+ * «Invalid key provided to SecureStore».
+ *
+ * O sea que `og.llaveChat.` + un correo es un nombre inválido SIEMPRE, para
+ * todo el mundo. Y como guardar y leer se hacen con `.catch()` —para que un
+ * llavero que se niegue no tumbe el chat— el error no se veía en ninguna
+ * parte: la llave sencillamente no se guardaba nunca. Cada arranque volvía a
+ * pedirla. Funcionaba de casualidad, porque el alta la rescata con la sesión.
+ *
+ * La arroba se escribe como `-40`, su código en hexadecimal. Escapar TAMBIÉN
+ * el guion (`-` → `-2d`) es lo que hace que dos correos distintos no puedan
+ * caer nunca en el mismo cajón: sin eso, el correo `a-40b` y el correo `a@b`
+ * darían el mismo nombre, y una persona abriría el chat de la otra. */
+const cajonDe = (correo) =>
+  'og.llaveChat.' + String(correo || '').replace(
+    /[^\w.]/g, (c) => '-' + c.charCodeAt(0).toString(16).padStart(2, '0'));
+
 export async function alta(cuenta) {
   yo = { correo: (cuenta.email || '').toLowerCase(), nombre: cuenta.name || cuenta.nombre || '', addr: cuenta.addr || '' };
   // El GID viaja en el alta cuando la cuenta ya lo tiene: con él /buscar
@@ -59,7 +79,7 @@ export async function alta(cuenta) {
   // relevo la llave de la cuenta anterior, el relevo no la reconocía, y todo
   // —conversaciones, mensajes que llegan, buscar gente— respondía 401 para
   // siempre. La persona veía «sin conexión» con el wifi perfecto.
-  const donde = 'og.llaveChat.' + yo.correo;
+  const donde = cajonDe(yo.correo);
   let g = await SecureStore.getItemAsync(donde).catch(() => null);
   if (!g) {
     // Migración de la etiqueta vieja: se hereda SOLO si el relevo la valida
@@ -158,6 +178,8 @@ export async function alta(cuenta) {
  */
 export async function rehacerAlta(cuenta) {
   const correo = (cuenta.email || '').toLowerCase();
+  await SecureStore.deleteItemAsync(cajonDe(correo)).catch(() => {});
+  // Y el nombre inválido de antes, por si algún llavero llegó a admitirlo.
   await SecureStore.deleteItemAsync('og.llaveChat.' + correo).catch(() => {});
   await SecureStore.deleteItemAsync('og.llaveChat').catch(() => {});
   llave = null;
