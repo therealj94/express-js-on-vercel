@@ -3,7 +3,13 @@
 # entra la voz. Antes iba a 0.17 y quedaba en -33 dBFS, inaudible en un movil.
 set -e
 PFX=$1; DUR=$2; SALIDA=$3
-G=$(python3 -c "import json;print(' '.join(str(int(t*1000)) for t,_ in json.load(open('guion_${PFX}.json'))))")
+# Si voces_el.py tuvo que adelantar alguna línea para que cupiera, sus tiempos
+# mandan sobre los del guion. Sin esto la frase se colocaría donde ya no cabe.
+G=$(python3 -c "
+import json, os
+p = 'tiempos_${PFX}.json'
+t = json.load(open(p)) if os.path.exists(p) else [x for x, _ in json.load(open('guion_${PFX}.json'))]
+print(' '.join(str(int(v*1000)) for v in t))")
 ENT=""; FIL=""; MIX=""; i=0
 for ms in $G; do i=$((i+1)); ENT="$ENT -i v${PFX:0:1}_${i}.wav"
   FIL="${FIL}[$i:a]adelay=${ms}|${ms}[l$i];"; MIX="${MIX}[l$i]"; done
