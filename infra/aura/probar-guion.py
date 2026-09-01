@@ -741,13 +741,39 @@ class NADASALEENUNSOLOIDIOMA(unittest.TestCase):
                         self.assertTrue(v[idioma], f'{nombre}.{campo}/{idioma}')
 
     def test_y_el_ingles_NO_es_el_español_copiado(self):
-        """Una traducción olvidada se ve como texto idéntico en los dos."""
+        """Una traducción olvidada se ve como texto idéntico en los dos.
+
+        Se salta un nodo cuyo texto es SOLO un hueco. Ahí no hay nada que
+        traducir —el nodo no tiene ni una palabra propia— y quien escribe la
+        frase en su idioma es el módulo que trae el dato: `precio.py` para
+        `{precio}`. Y esa frase tiene su propia prueba de que existe en los
+        dos, en `probar-precio.py`.
+
+        La excepción se mide sobre el texto CRUDO y solo si es un hueco
+        entero: un nodo con un hueco dentro de una frase de verdad sigue
+        teniendo que estar traducido.
+        """
         for nombre, n in guion.NODOS.items():
             if nombre == 'idioma':
                 continue          # la puerta es bilingüe a propósito
+            crudo = (n.get('texto') or {}).get('es', '')
+            if re.fullmatch(r'\{\w+\}', crudo.strip()):
+                continue          # el nodo es un hueco: traduce quien lo llena
             es = guion.nodo(nombre, 'es', 'Ana')['texto']
             en = guion.nodo(nombre, 'en', 'Ana')['texto']
             self.assertNotEqual(es, en, f'{nombre}: el inglés es el español')
+
+    def test_pero_el_HUECO_lo_traduce_alguien(self):
+        """La excepción de arriba solo vale si de verdad hay dos idiomas al
+        otro lado. Si no, sería una puerta para colar nodos sin traducir."""
+        import precio
+        for nombre, n in guion.NODOS.items():
+            crudo = (n.get('texto') or {}).get('es', '')
+            if not re.fullmatch(r'\{\w+\}', crudo.strip()):
+                continue
+            self.assertEqual(crudo.strip(), '{precio}',
+                             f'{nombre}: hueco nuevo sin quien lo traduzca')
+            self.assertNotEqual(precio.NO_SE_SABE['es'], precio.NO_SE_SABE['en'])
 
     def test_cada_FRASE_suelta_tiene_los_dos(self):
         for clave, t in guion.FRASES.items():

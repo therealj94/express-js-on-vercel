@@ -542,6 +542,26 @@ NODOS = {
         },
     },
 
+    # ── EL PRECIO ──────────────────────────────────────────────────────────
+    #
+    # El texto entero llega hecho desde `precio.py`, con el numero de VERDAD.
+    # Antes esta pregunta caia al motor, y el motor contestaba de memoria: el
+    # 1-sep dijo que el gramo de oro estaba a 65 dolares —estaba a 140,74— y
+    # dio un ORIGEN a 1,18 cuando valia 2,56. Un 54% de error en un dato de
+    # dinero, con la cuenta escrita paso a paso para que pareciera comprobada.
+    #
+    # Una pregunta con UNA respuesta exacta no tiene por que pasar por un
+    # modelo. Esto sale al instante, no gasta tarjeta y no puede inventar.
+    'precio': {
+        'texto': {'es': '{precio}', 'en': '{precio}'},
+        'botones': {
+            'es': [('Abrir mi billetera', 'empezar'), ('¿Qué es un gramin?', 'ahorro'),
+                   ('Volver', 'inicio')],
+            'en': [('Open my wallet', 'empezar'), ('What is a gramin?', 'ahorro'),
+                   ('Back', 'inicio')],
+        },
+    },
+
     'billetera': {
         'texto': {
             'es': ('Veta Wallet: guardás, mandás, recibís y cambiás entre '
@@ -875,6 +895,25 @@ ATAJOS = [
     (re.compile(r'\b(que es orden global|quienes son ustedes|de que se trata|'
                 r'what is orden global|who is orden global|'
                 r'que hace orden global)\b'), 'familia'),
+
+    # EL PRECIO. Va aqui —en los generales, no en los de tema— porque casi
+    # siempre llega como pregunta, y los de tema se bloquean cuando hay signo.
+    #
+    # Atrapa las dos formas en que la gente lo pregunta de verdad, sacadas de
+    # la captura del 1-sep: «what's the price of one origen to USD» y «cuanto
+    # vale un origen en dolares». Y tambien «en mi wallet sale otra cosa», que
+    # es la misma pregunta hecha desde la desconfianza y merece el numero, no
+    # una disculpa.
+    (re.compile(r'\b((cuanto|cuánto) (vale|cuesta|est(a|á))[^?]{0,25}'
+                r'(origen|auka|agka|gramin)|'
+                r'(precio|valor|cotizacion|cotización) (de |del )?'
+                r'(un |1 )?(origen|auka|agka|oro|gramin)|'
+                r'origen (en|a) (dolares|dólares|usd)|'
+                r'(price|value|worth) of (a |an |one |1 )?(origen|auka|agka|gramin)|'
+                r'(how much|what) (is|does)[^?]{0,25}(origen|gramin)[^?]{0,15}'
+                r'(worth|cost|usd|dollar)|'
+                r'origen (to|in) (usd|dollars)|'
+                r'(wallet|billetera) (sale|dice|muestra|says|shows))\b'), 'precio'),
 ]
 
 # ── LOS ATAJOS DE TEMA, QUE SON OTRA COSA ───────────────────────────────────
@@ -1287,7 +1326,7 @@ def moneda_de(pais, idioma=POR_OMISION):
     return MONEDA_GENERAL.get(idioma, MONEDA_GENERAL['es'])
 
 
-def nodo(nombre, idioma=POR_OMISION, quien='', pais=''):
+def nodo(nombre, idioma=POR_OMISION, quien='', pais='', precio=''):
     """El nodo, en su idioma y con el nombre de la persona ya puesto.
 
     `quien` es como se llama quien esta del otro lado. Si no lo sabemos, los
@@ -1299,6 +1338,12 @@ def nodo(nombre, idioma=POR_OMISION, quien='', pais=''):
     if not n:
         return None
     texto = _en(n.get('texto'), idioma) or ''
+    # El precio llega DE FUERA, ya escrito. Este modulo no sale a internet ni
+    # sabe de oro: es una tabla de textos y tiene que poder leerse y probarse
+    # sin red. Quien lo trae es `precio.py`, que lee la misma fuente que la
+    # billetera. Ver por que en la cabecera de ese archivo.
+    if '{precio}' in texto:
+        texto = texto.replace('{precio}', precio or '')
     if '{moneda}' in texto:
         texto = texto.replace('{moneda}', moneda_de(pais, idioma))
     if '{nombre}' in texto:
@@ -1463,13 +1508,49 @@ _SOLO_ESPANOL = {
 # escrito en el otro idioma. Hacen falta porque un saludo suelto —«hello»— es
 # UNA palabra, y la regla de dos de ventaja lo dejaba sin decidir: quien
 # escribia «hello» seguia recibiendo español.
+# ── LAS PALABRAS QUE DECIDEN SOLAS ──────────────────────────────────────────
+#
+# Se amplio con la captura del 1-sep. Alguien escribio, en ingles:
+#
+#     «Whats the price of one origen to USD ?»
+#
+# y AU-RA le contesto en español, despues de haberle contestado en ingles el
+# mensaje anterior. Dos motivos, los dos de aqui:
+#
+#   · «whats» NO es «what». En el telefono casi nadie pone el apostrofo, asi
+#     que la forma que de verdad se escribe era la unica que faltaba. Ahora se
+#     quitan los apostrofos antes de mirar y estan las formas sin el.
+#   · «price», «USD», «dollars» no estaban. Era una pregunta de dinero en
+#     ingles sin una sola palabra de dinero en ingles en la lista.
+#
+# Lo que NO se mete aqui, y es la parte que cuesta acertar:
+#
+#   · «the», «me», «no», «a», «is» — existen en los dos o aparecen sueltas en
+#     frases españolas. Hay prueba de que «the» a secas no decide.
+#   · NUESTROS PROPIOS NOMBRES Y LOS CODIGOS DE MONEDA. «wallet» estuvo en
+#     esta lista media hora y era un error: nuestro producto se llama Veta
+#     Wallet, asi que «en mi veta wallet sale 2.56 USD» —una frase en español
+#     entera— contaba dos palabras inglesas. Un nombre de marca no dice en que
+#     idioma habla nadie, y «USD» tampoco: se escribe igual en los dos.
+#
+# La regla que sale de ahi: una palabra solo entra si alguien que habla
+# español NUNCA la escribiria dentro de una frase en español.
 _DECISIVAS = {
     'en': {'hello', 'hi', 'hey', 'thanks', 'thank', 'please', 'sorry',
-           'what', 'how', 'why', 'where', 'when', 'money', 'wallet', 'send',
-           'help', 'want', 'need', 'good', 'morning', 'afternoon', 'evening'},
+           'what', 'whats', 'how', 'hows', 'why', 'where', 'when', 'who',
+           'money', 'send', 'help', 'want', 'need', 'good',
+           'morning', 'afternoon', 'evening',
+           # dinero, que es de lo que se habla aqui
+           'price', 'worth', 'cost', 'costs', 'much', 'dollar', 'dollars',
+           'fee', 'fees', 'buy', 'sell', 'account',
+           'balance', 'address', 'open', 'your', 'youre', 'dont', 'doesnt',
+           'cant', 'im', 'ive', 'thats', 'about', 'know', 'tell', 'give'},
     'es': {'hola', 'buenas', 'gracias', 'quiero', 'necesito', 'cuanto',
            'cuánto', 'cómo', 'como', 'qué', 'porque', 'plata', 'dinero',
-           'billetera', 'ayuda', 'buenos', 'días', 'dias', 'tardes'},
+           'billetera', 'ayuda', 'buenos', 'días', 'dias', 'tardes',
+           'precio', 'vale', 'cuesta', 'dolares', 'dólares', 'oro', 'plata',
+           'comprar', 'vender', 'cuenta', 'saldo', 'direccion', 'dirección',
+           'abrir', 'sale', 'decime', 'contame', 'sos', 'usted'},
 }
 
 
@@ -1485,7 +1566,10 @@ def en_que_habla(dicho, por_omision=None):
     # Una tilde o una eñe son español y no hay vuelta de hoja.
     if any(c in s for c in 'áéíóúñ¿¡'):
         return 'es'
-    palabras = set(re.findall(r"[a-zA-Zñáéíóú']+", s))
+    # Sin apostrofos: en el telefono se escribe «whats», «dont», «im». Si se
+    # dejan, «what's» y «whats» son dos palabras distintas y la lista solo
+    # conoce una — que fue justo el fallo del 1-sep.
+    palabras = set(re.findall(r'[a-zA-Zñáéíóú]+', s.replace("'", '')))
 
     # Una palabra decisiva Y ninguna del otro idioma: alcanza. Es el caso del
     # saludo suelto, que es justo con lo que empieza casi todo el mundo.

@@ -98,6 +98,7 @@ import escalafon
 import espejo
 import miradas
 import oficios
+import precio
 import presentacion
 import puerta
 import recadero
@@ -1897,7 +1898,17 @@ def _atender(rel, sistema, p, de, dicho, mensaje=None):
         Se guarda lo que la persona LEYO —no el nombre del nodo— porque es lo
         unico a lo que puede referirse despues.
         """
-        n = guion.nodo(cual, idi, p.get('nombre', ''), p.get('pais', ''))
+        # El precio se trae EN EL MOMENTO, de la misma fuente que la
+        # billetera. Nunca de la memoria del modelo: ver `precio.py`.
+        vale = ''
+        if cual == 'precio':
+            try:
+                vale = precio.como_se_dice(idi) or precio.NO_SE_SABE.get(
+                    idi, precio.NO_SE_SABE['es'])
+            except Exception as e:
+                log('no pude leer el precio:', type(e).__name__, str(e)[:80])
+                vale = precio.NO_SE_SABE.get(idi, precio.NO_SE_SABE['es'])
+        n = guion.nodo(cual, idi, p.get('nombre', ''), p.get('pais', ''), vale)
         if n.get('lista') and hasattr(rel, 'con_lista'):
             boton, filas = n['lista']
             rel.con_lista(de, n['texto'], boton, filas)
