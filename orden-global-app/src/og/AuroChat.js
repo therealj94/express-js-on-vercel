@@ -20,8 +20,8 @@
 // Y la mitad que sí importa: que este archivo cifre no garantiza que el
 // mensaje SALGA cifrado. Si el otro no tiene ninguna llave publicada, `cerrar`
 // no puede hacer sobre y el texto sale en claro. Hoy, en producción, 18 de 34
-// fichas no tienen ni un aparato publicado, así que no es un caso raro.
-// PENDIENTE: que la pantalla lo diga cuando pasa. Hoy no lo dice.
+// fichas no tienen ni un aparato publicado, así que no es un caso raro — y por
+// eso esta pantalla lo dice cuando pasa (`t.sinCifrar`, en `enviarTexto`).
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import {
   View, Text, TextInput, Pressable, FlatList, StyleSheet, Modal, Animated,
@@ -100,6 +100,23 @@ const TXT = {
      * publicada. Se dice en el momento, no en una pantalla de ajustes: es de
      * ese mensaje, no de la app. */
     sinCifrar: 'Se envió sin cifrar: esa persona todavía no abrió el chat en ningún aparato.',
+    /* ── el círculo ──────────────────────────────────────────────────────
+       El texto del 403 tiene que decir DOS cosas: que no es la red, y que hay
+       algo que hacer. «No se pudo enviar» era mentira a medias y dejaba a la
+       persona reintentando contra una pared. */
+    faltaTit: 'Todavía no te aceptó',
+    faltaTxt: 'Para escribirle hace falta que te acepte en su círculo. Mandale la solicitud y te avisamos cuando conteste.',
+    mandarSolicitud: 'Mandar solicitud',
+    pedidoIdo: 'Solicitud enviada',
+    aceptado: 'Ya se pueden escribir',
+    rechazado: 'Solicitud rechazada',
+    noSePudo: 'No se pudo. Probá de nuevo.',
+    solicTit: 'Te quieren escribir',
+    aceptar: 'Aceptar',
+    rechazar: 'Rechazar',
+    enviadas: 'Esperando respuesta',
+    enviadaCorto: 'Enviada',
+    cancelar: 'Cancelar',
     sinRedT: 'Sin conexión',
     sinRedConvos: 'No pudimos traer tus conversaciones. Revisa tu conexión; tus chats siguen ahí.',
     sinRedHilo: 'No pudimos traer los mensajes de esta conversación.',
@@ -164,6 +181,19 @@ const TXT = {
     adjNoAbre: 'This attachment could not be opened here',
     sinFirma: 'Signature not verified',
     sinCifrar: 'Sent unencrypted: that person has not opened the chat on any device yet.',
+    faltaTit: 'They have not accepted you yet',
+    faltaTxt: 'To write to them they need to accept you into their circle. Send the request and we will tell you when they answer.',
+    mandarSolicitud: 'Send request',
+    pedidoIdo: 'Request sent',
+    aceptado: 'You can write to each other now',
+    rechazado: 'Request declined',
+    noSePudo: 'It did not work. Try again.',
+    solicTit: 'They want to write to you',
+    aceptar: 'Accept',
+    rechazar: 'Decline',
+    enviadas: 'Waiting for an answer',
+    enviadaCorto: 'Sent',
+    cancelar: 'Cancel',
     sinRedT: 'No connection',
     sinRedConvos: 'We could not fetch your conversations. Check your connection; your chats are still there.',
     sinRedHilo: 'We could not fetch the messages of this conversation.',
@@ -347,6 +377,14 @@ export default function AuroChat({ nav, params }) {
   const [con, setCon] = useState(null);                  // la conversación abierta
   const [hilo, setHilo] = useState([]);
   const [pendientes, setPendientes] = useState([]);      // burbujas mías aún sin entrar (o fallidas)
+  /* ══ EL CÍRCULO ══════════════════════════════════════════════════════════
+   * `circulo` son las solicitudes: las que me llegaron y las que mandé.
+   * `faltaAceptar` es el correo de alguien que me devolvió un 403 al
+   * escribirle — no me aceptó todavía—, para poder ofrecerle la solicitud en
+   * el sitio donde se descubre el problema y no en un menú aparte. */
+  const [circulo, setCirculo] = useState(null);
+  const [faltaAceptar, setFaltaAceptar] = useState(null);
+  const [pidiendo, setPidiendo] = useState(false);
   const [sinRed, setSinRed] = useState(false);           // el relevo no contesta: se DICE, no se finge vacío
   const [llaveOtra, setLlaveOtra] = useState(false);     // el relevo SÍ contesta: la llave quedó en la instalación anterior
   const reparando = useRef(false);                       // cerrojo: la reparación de la llave se intenta UNA vez
@@ -514,12 +552,46 @@ export default function AuroChat({ nav, params }) {
       } else setSinRed(true);
     }
   }, [aprenderNombres, account?.email]);
+  /* EL CÍRCULO VIAJA CON EL MISMO LATIDO, y eso no es un detalle de eficiencia.
+     En la web se carga UNA vez al entrar y no se vuelve a pedir nunca: si la
+     solicitud llega mientras tenés el chat abierto, el globito no aparece y no
+     te enterás hasta recargar la página entera. En producción hay solicitudes
+     de hace diez días sin contestar. Aquí se pide con cada vuelta. */
+  const traerCirculo = useCallback(async () => {
+    try { setCirculo(await M.circulo()); } catch { /* el banner de red ya avisa */ }
+  }, []);
   useEffect(() => {
     if (puerta !== 'abierta' || con) return;
     traerConvos();
-    const r = setInterval(traerConvos, 5000);
+    traerCirculo();
+    const r = setInterval(() => { traerConvos(); traerCirculo(); }, 5000);
     return () => clearInterval(r);
-  }, [puerta, con, traerConvos]);
+  }, [puerta, con, traerConvos, traerCirculo]);
+
+  /* Mandar la solicitud, y aceptarla o rechazarla. Después de cada una se
+     vuelve a pedir el círculo: sin eso la pantalla seguiría enseñando el
+     estado de antes y la persona tocaría dos veces. */
+  const mandarSolicitud = useCallback(async (para) => {
+    if (!para || pidiendo) return;
+    setPidiendo(true); hap();
+    try {
+      await M.pedirAmistad(para);
+      setFaltaAceptar(null);
+      await traerCirculo();
+      toast(t.pedidoIdo);
+    } catch { toast(t.noSePudo, 'error'); }
+    finally { setPidiendo(false); }
+  }, [pidiendo, traerCirculo, t]);
+
+  const responder = useCallback(async (de, aceptar) => {
+    hap();
+    try {
+      await M.responderAmistad(de, aceptar);
+      await traerCirculo();
+      await traerConvos();
+      toast(aceptar ? t.aceptado : t.rechazado);
+    } catch { toast(t.noSePudo, 'error'); }
+  }, [traerCirculo, traerConvos, t]);
 
   // Abrir el hilo de una persona: se pinta con lo que ya se sabe y la ficha
   // (nombre real, dirección, foto) llega después — esperarla dejaría la
@@ -664,7 +736,20 @@ export default function AuroChat({ nav, params }) {
       setTexto((x) => (x.trim() === cuerpo ? '' : x));
       await traerHilo();
       setPendientes((p) => p.filter((x) => x.idLocal !== mio.idLocal));
-    } catch {
+    } catch (e) {
+      /* EL 403 NO ES UN FALLO DE RED, Y REINTENTAR NO LO ARREGLA NUNCA.
+         El relevo contesta 403 cuando esa persona todavía no te aceptó en su
+         círculo. Antes caía en este mismo `catch` mudo: quedaba una burbuja
+         roja con «Reintentar» que iba a fallar siempre, sin una palabra de
+         por qué, y sin forma de mandar la solicitud desde ningún sitio de la
+         app. Ahora se dice qué pasa y se ofrece el único gesto que lo
+         resuelve, aquí mismo. */
+      if (e && e.code === 403) {
+        setFaltaAceptar(destino);
+        setPendientes((p) => p.filter((x) => x.idLocal !== mio.idLocal));
+        setTexto((x) => (x.trim() === cuerpo ? cuerpo : x));
+        return;
+      }
       // la burbuja roja conserva el texto y ofrece reintentar: la caja se
       // libera para lo siguiente, el mensaje ya no puede desaparecer
       setPendientes((p) => p.map((x) => (x.idLocal === mio.idLocal ? { ...x, pendiente: false, fallo: true } : x)));
@@ -822,12 +907,29 @@ export default function AuroChat({ nav, params }) {
   // wallet, porque guardarContacto ya hace los dos asientos de un solo
   // guardado. Un contacto que solo existe en una de las dos libretas acaba
   // contando historias distintas en Enviar y en el chat.
+  /* «AGREGAR» AHORA AGREGA DE VERDAD.
+   *
+   * Antes esto sólo escribía en la libreta local del teléfono y decía
+   * «Guardado en tus contactos», y ahí terminaba: al relevo no le llegaba
+   * nada. La persona creía que había agregado a alguien, abría el hilo, y el
+   * relevo le contestaba 403 porque nunca hubo solicitud. Un botón que dice
+   * que hizo algo y no lo hizo es peor que no tener el botón.
+   *
+   * El relevo ya calcula el `lazo` de cada persona que devuelve el buscador
+   * —'amigos', 'enviada', 'recibida', 'bloqueado', 'no'— y la app lo tiraba a
+   * la basura. Con él se sabe si hay que pedir o si ya está pedido, y no se
+   * manda dos veces.
+   *
+   * La libreta se sigue guardando: son dos cosas distintas y las dos hacen
+   * falta. La libreta es tuya y le pone el nombre con el que vos lo conocés;
+   * el círculo es de los dos y es el que da permiso para escribir. */
   const agregarBuscado = async (p) => {
     try {
       await guardarContacto(p.correo, p.nombre, p.addr, account?.email);
-      hap(); toast(t.guardado);
       cargarLibreta();
-    } catch { toast(t.noGuardo, 'error'); }
+    } catch { toast(t.noGuardo, 'error'); return; }
+    if (p.lazo === 'amigos' || p.lazo === 'enviada') { hap(); toast(t.guardado); return; }
+    await mandarSolicitud(p.correo);
   };
 
   // ── editar nombre / eliminar de mi libreta ────────────────────────────
@@ -1199,6 +1301,22 @@ export default function AuroChat({ nav, params }) {
             <Text style={st.chipNuevosTxt}>{t.nuevos}</Text>
           </Pressable>
         )}
+        {/* EL 403, DICHO DONDE SE DESCUBRE. Aparece justo encima de la caja de
+            escribir —el sitio exacto donde la persona se acaba de topar con el
+            problema— y trae el único gesto que lo resuelve. Antes esto era una
+            burbuja roja con «Reintentar» que iba a fallar para siempre. */}
+        {faltaAceptar === destino && (
+          <View style={st.faltaCaja}>
+            <Icon name="people" size={20} color={C.gold} />
+            <Text style={st.faltaTit}>{t.faltaTit}</Text>
+            <Text style={st.faltaTxt}>{t.faltaTxt}</Text>
+            <Pressable onPress={() => mandarSolicitud(destino)} disabled={pidiendo} style={st.faltaBtn}>
+              {pidiendo
+                ? <ActivityIndicator color={C.darkText} size="small" />
+                : <Text style={st.faltaBtnTxt}>{t.mandarSolicitud}</Text>}
+            </Pressable>
+          </View>
+        )}
         <View style={st.emojis}>
           {['👍', '🙏', '🎉', '💛', '😂', '🤝', '🔥', '✨', '💰', '🚀'].map((e) => (
             <Pressable key={e} onPress={() => setTexto((x) => x + e)} hitSlop={4}><Text style={st.emoji}>{e}</Text></Pressable>
@@ -1287,6 +1405,52 @@ export default function AuroChat({ nav, params }) {
           </Pressable>
         </View>
       </View>
+      {/* ══ LAS SOLICITUDES QUE TE LLEGARON ═══════════════════════════════
+          Va ARRIBA de las conversaciones y no en una pestaña aparte, a
+          propósito: en la web están en una pestaña que no se recarga sola, y
+          por eso hay solicitudes de hace diez días que su destinatario nunca
+          vio. Lo que no se ve, no existe. */}
+      {circulo?.recibidas?.length > 0 && (
+        <View style={st.solicCaja}>
+          <Text style={st.solicTit}>{t.solicTit}</Text>
+          {circulo.recibidas.map((p) => (
+            <View key={p.correo} style={st.solicFila}>
+              <Avatar nombre={p.nombre || p.correo} correo={p.correo} foto={p.foto} tam={38} />
+              <View style={{ flex: 1, minWidth: 0 }}>
+                <Text style={st.solicNom} numberOfLines={1}>{p.nombre || p.correo}</Text>
+                <Text style={st.solicSub} numberOfLines={1}>{p.nota || p.correo}</Text>
+              </View>
+              <Pressable onPress={() => responder(p.correo, true)} style={st.solicSi}>
+                <Text style={st.solicSiTxt}>{t.aceptar}</Text>
+              </Pressable>
+              <Pressable onPress={() => responder(p.correo, false)} style={st.solicNo} hitSlop={6}>
+                <Icon name="close" size={16} color={C.txt3} />
+              </Pressable>
+            </View>
+          ))}
+        </View>
+      )}
+      {/* Las que mandaste vos, con su salida. Sin este botón, una solicitud
+          mandada por error se queda para siempre: la ruta existe en el relevo
+          y en la web no hay dónde tocarla. */}
+      {circulo?.enviadas?.length > 0 && (
+        <View style={st.solicCaja}>
+          <Text style={st.solicTit}>{t.enviadas}</Text>
+          {circulo.enviadas.map((p) => (
+            <View key={p.correo} style={st.solicFila}>
+              <Avatar nombre={p.nombre || p.correo} correo={p.correo} foto={p.foto} tam={30} />
+              <Text style={[st.solicNom, { flex: 1 }]} numberOfLines={1}>{p.nombre || p.correo}</Text>
+              <Pressable onPress={async () => {
+                hap();
+                try { await M.quitarAmigo(p.correo); await traerCirculo(); }
+                catch { toast(t.noSePudo, 'error'); }
+              }} hitSlop={6}>
+                <Text style={st.solicCancel}>{t.cancelar}</Text>
+              </Pressable>
+            </View>
+          ))}
+        </View>
+      )}
       {/* el relevo no contesta pero hay lista vieja a la vista: banner */}
       {sinRed && convos !== null && (
         <View style={st.bannerRed}>
@@ -1360,17 +1524,32 @@ export default function AuroChat({ nav, params }) {
                       </View>
                     )}
                   </View>
-                  {/* AGREGAR guarda en mis dos libretas de un toque; si ya es
-                      mío, la marca lo dice y no se ofrece guardarlo de nuevo */}
-                  {enBusca && (yaMio ? (
-                    <Icon name="checkmark-circle" size={20} color={C.up} />
-                  ) : (
-                    <Pressable onPress={() => agregarBuscado(item)} hitSlop={6}>
-                      <LinearGradient colors={G.gold} style={st.guardaBtn} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
-                        <Text style={st.guardaBtnTxt}>{t.agregar}</Text>
-                      </LinearGradient>
-                    </Pressable>
-                  ))}
+                  {/* EL BOTÓN DICE EN QUÉ PUNTO ESTÁ LA RELACIÓN, no si está
+                      en mi libreta. El relevo manda el `lazo` de cada
+                      resultado justamente para esto —lo dice su propio
+                      comentario— y la app lo tiraba: enseñaba «Agregar» a
+                      quien ya te había mandado una solicitud, y una palomita
+                      de «ya es mío» a quien no te acepta y no te va a dejar
+                      escribirle. La libreta local no es el círculo. */}
+                  {enBusca && (
+                    item.lazo === 'amigos' ? (
+                      <Icon name="checkmark-circle" size={20} color={C.up} />
+                    ) : item.lazo === 'enviada' ? (
+                      <Text style={st.lazoTxt}>{t.enviadaCorto}</Text>
+                    ) : item.lazo === 'recibida' ? (
+                      <Pressable onPress={() => responder(item.correo, true)} hitSlop={6}>
+                        <LinearGradient colors={G.gold} style={st.guardaBtn} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
+                          <Text style={st.guardaBtnTxt}>{t.aceptar}</Text>
+                        </LinearGradient>
+                      </Pressable>
+                    ) : (
+                      <Pressable onPress={() => agregarBuscado(item)} hitSlop={6} disabled={pidiendo}>
+                        <LinearGradient colors={G.gold} style={st.guardaBtn} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
+                          <Text style={st.guardaBtnTxt}>{t.agregar}</Text>
+                        </LinearGradient>
+                      </Pressable>
+                    )
+                  )}
                 </Pressable>
               </Entrada>
             );
@@ -1503,6 +1682,27 @@ const st = StyleSheet.create({
   pagoHash: { color: C.txt3, fontSize: 10.5, flexShrink: 1, fontVariant: ['tabular-nums'] },
   emojis: { flexDirection: 'row', justifyContent: 'space-around', paddingVertical: 7, borderTopWidth: 1, borderTopColor: C.line2 },
   emoji: { fontSize: 21 },
+  /* El círculo. Las solicitudes recibidas llevan borde dorado —piden un gesto—
+     y las enviadas se quedan calladas en gris: son un recordatorio, no una
+     tarea. */
+  solicCaja: { marginHorizontal: 16, marginTop: 12, padding: 12, borderRadius: 16, borderWidth: 1, borderColor: C.line, backgroundColor: C.panel2, gap: 10 },
+  solicTit: { color: C.goldLt, fontSize: 11.5, fontWeight: '800', letterSpacing: 0.8, textTransform: 'uppercase' },
+  solicFila: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  solicNom: { color: C.txt, fontSize: 14.5, fontWeight: '700' },
+  solicSub: { color: C.txt3, fontSize: 12.5, marginTop: 1 },
+  solicSi: { paddingHorizontal: 14, paddingVertical: 7, borderRadius: 9, backgroundColor: C.gold },
+  solicSiTxt: { color: C.darkText, fontSize: 13, fontWeight: '800' },
+  solicNo: { padding: 6 },
+  solicCancel: { color: C.txt3, fontSize: 13, fontWeight: '700' },
+
+  /* El aviso del 403, pegado a la caja de escribir. */
+  faltaCaja: { marginHorizontal: 12, marginBottom: 8, padding: 14, borderRadius: 14, borderWidth: 1, borderColor: C.line, backgroundColor: C.panel2, alignItems: 'center', gap: 5 },
+  faltaTit: { color: C.txt, fontSize: 15, fontWeight: '800' },
+  faltaTxt: { color: C.txt2, fontSize: 13, lineHeight: 18.5, textAlign: 'center' },
+  faltaBtn: { marginTop: 6, paddingHorizontal: 18, paddingVertical: 9, borderRadius: 10, backgroundColor: C.gold, minWidth: 150, alignItems: 'center' },
+  faltaBtnTxt: { color: C.darkText, fontSize: 13.5, fontWeight: '800' },
+
+  lazoTxt: { color: C.txt3, fontSize: 12.5, fontWeight: '700' },
   filaEscribe: { flexDirection: 'row', gap: 8, paddingHorizontal: 12, paddingBottom: 10, alignItems: 'flex-end' },
   clip: { width: 42, height: 42, borderRadius: 21, borderWidth: 1, borderColor: C.line, alignItems: 'center', justifyContent: 'center' },
   // la imagen adentro de la burbuja: ancho fijo cómodo, el server no manda

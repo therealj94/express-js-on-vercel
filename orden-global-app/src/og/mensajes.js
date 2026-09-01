@@ -270,7 +270,24 @@ async function llaveroDe(correos) {
   });
   if (faltan.length) {
     const r = await pedir('/llaves/de', firmado({ correos: faltan }));
-    for (const c of faltan) llavero.set(c, { aparatos: r.llaves?.[c] || [], en: ahora });
+    for (const c of faltan) {
+      const aps = r.llaves?.[c] || [];
+      /* EL VACÍO NO SE GUARDA. Y esto no es una optimización al revés: es lo
+         que decide si un mensaje sale cifrado o en claro.
+         El relevo no entrega las llaves de alguien que todavía no te aceptó.
+         Si abriste su hilo demasiado pronto, te llevabas una lista vacía —y
+         se guardaba cinco minutos. Te aceptaba, escribías dentro de esos
+         cinco minutos, `cerrar` no encontraba a quién hacerle sobre, y el
+         mensaje salía EN CLARO. Justo los primeros de una relación que acaba
+         de empezar, que suelen ser los que la gente cuida.
+         Vaciar el llavero al aceptar no alcanza: lo vacía QUIEN ACEPTA, y el
+         que se quedó con la caché mala es quien pidió. Se probó y se vio
+         fallar (pruebas/probar-circulo-app.cjs).
+         Guardar un vacío ahorra una petición; no guardarlo evita mandar en
+         claro sin querer. No hay comparación posible entre las dos cosas. */
+      if (aps.length) llavero.set(c, { aparatos: aps, en: ahora });
+      else llavero.delete(c);
+    }
   }
   const mapa = {};
   for (const c of correos) mapa[c] = llavero.get(c)?.aparatos || [];
@@ -491,6 +508,57 @@ export async function bandeja(desde) {
 // mayúsculas) y cada persona del resultado ya trae su gid — se pasa tal cual.
 export const buscar = (q) => pedir('/buscar', firmado({ q }));
 export const conversaciones = () => pedir('/conversaciones', firmado({}));
+
+/* ══ EL CÍRCULO ═══════════════════════════════════════════════════════════
+ *
+ * Pedir, aceptar, rechazar, quitar, bloquear y denunciar. Las seis rutas
+ * llevaban tiempo escritas y probadas en el relevo, y la app NO LLAMABA A
+ * NINGUNA. No es que la pantalla estuviera escondida: la función no existía.
+ *
+ * Lo que eso hacía, visto desde el teléfono: buscabas a alguien, tocabas
+ * «Agregar» —que sólo escribe en la libreta local—, se abría el hilo igual,
+ * escribías, y el relevo contestaba 403 «hace falta que te acepte». La app se
+ * comía ese error y dejaba una burbuja roja con «Reintentar» que iba a fallar
+ * para siempre. Y del otro lado, quien recibía una solicitud no tenía dónde
+ * verla: en producción hay seis esperando respuesta desde hace diez días,
+ * todas dirigidas a gente que usa el teléfono.
+ *
+ * La regla de verdad vive en el relevo. Esto es sólo la puerta: quien se
+ * saltara la app y hablara directo con el servidor seguiría recibiendo su 403.
+ */
+export const circulo = () => pedir('/amistad/lista', firmado({}));
+export const pedirAmistad = (para, nota) =>
+  pedir('/amistad/pedir', firmado({ para, nota: nota || '' }));
+export const quitarAmigo = (con) => pedir('/amistad/quitar', firmado({ con }));
+
+/* Aceptar o rechazar. Y AL ACEPTAR SE OLVIDA LO QUE SE SABÍA DE ESA PERSONA.
+ *
+ * El llavero guarda cinco minutos lo que devuelve `/llaves/de`, y guarda
+ * TAMBIÉN el resultado vacío. Antes de aceptarte, tus llaves no se entregan,
+ * así que quien te abrió el hilo demasiado pronto se quedó con una lista
+ * vacía cacheada. Si escribe dentro de esos cinco minutos, `cerrar` no puede
+ * hacer sobre y EL MENSAJE SALE EN CLARO — justo los primeros mensajes de una
+ * relación que acaba de empezar, que suelen ser los que la gente cuida.
+ *
+ * En la web esto se tapó por el lado equivocado: se vacía el llavero dentro
+ * de `estados()`, con un comentario que dice que es «para alguien a quien se
+ * acaba de aceptar». O sea que el fallo se conocía, y se remendó en la única
+ * función que casualmente pasaba por ahí. Aquí se vacía donde ocurre. */
+export const responderAmistad = async (de, aceptar) => {
+  const r = await pedir('/amistad/responder', firmado({ de, aceptar: !!aceptar }));
+  if (aceptar) llavero.delete(String(de || '').toLowerCase());
+  return r;
+};
+
+/* Bloquear y denunciar. La solicitud protege de quien todavía no entró; esto,
+   de quien ya está dentro. Sin la segunda mitad, aceptar a alguien sería una
+   puerta que no se puede volver a cerrar — y eso hace que la gente no acepte
+   a nadie. Además, una app con chat en la tienda de Apple está obligada a
+   ofrecer denunciar contenido de otras personas: hoy la app no lo ofrece. */
+export const bloquear = (a, si = true) => pedir('/bloquear', firmado({ a, bloquear: !!si }));
+export const bloqueados = () => pedir('/bloqueados', firmado({})).then((d) => d.gente || []);
+export const denunciar = (a, motivo, nota = '', id = '') =>
+  pedir('/denunciar', firmado({ a, motivo, nota, id }));
 export const leido = (de) => pedir('/leido', firmado({ de }));
 
 /* Vaciar un hilo, o quitarlo de la lista. Y hay que decirlo con todas las
