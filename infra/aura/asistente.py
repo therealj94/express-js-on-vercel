@@ -204,6 +204,20 @@ POR_VUELTA = 4
 # que la suya entre a la cola.
 HILOS = 3
 
+# LA VENTANA DEL MODELO, Y POR QUE SE CONFIGURA.
+#
+# Estaba escrita a mano en 8192 porque era lo que cabia en la T4 compartiendo
+# tarjeta con la voz. En una tarjeta mas grande cabe mas, y cambiarla no puede
+# obligar a tocar el codigo — es un numero que depende de la MAQUINA, no del
+# programa.
+#
+# Y va atada a `HILOS`: ollama reserva memoria para `num_ctx` POR CADA
+# conversacion en paralelo. Pedir 16384 con tres hilos son 48k de memoria de
+# atencion, y si no cabe, ollama no avisa: tira capas al procesador y todo se
+# vuelve siete veces mas lento sin un solo error. Paso el 1-sep, midiendo.
+# `probar-motor.py` comprueba que los dos numeros cuadren con la tarjeta.
+VENTANA = int(os.environ.get('AURA_VENTANA', '12288'))
+
 # Al tercer fallo seguido atendiendo el mismo mensaje, se salta con ruido.
 # Un mensaje venenoso no puede dejar la charla ciclando para siempre.
 REINTENTOS = 3
@@ -1110,7 +1124,7 @@ def preguntar_motor(sistema, perfil, historial, dicho, contexto='', al_vuelo=Non
             # 3814, cached n_tokens = 5» — de 3814 tokens reaprovecho 5.
             # Con la ventana holgada la peticion entra entera, la cache se
             # sostiene y leer vuelve a costar 1,4s (medido, mismo nodo).
-            'num_ctx': 8192,
+            'num_ctx': VENTANA,
         },
     }).encode()
     req = urllib.request.Request(

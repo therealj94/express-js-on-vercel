@@ -150,7 +150,8 @@ def para(tramo, registro=None, premio=None, clave_wa='', cuenta_wa='',
     wa = lambda: vistazo._whatsapp(clave_wa, cuenta_wa)   # noqa: E731
 
     if tramo == 'tecnologico':
-        fuentes = [('la cadena', vistazo._cadena),
+        fuentes = [('el motor', vistazo._motor),
+                   ('la cadena', vistazo._cadena),
                    ('el disco', vistazo._disco),
                    ('los reinicios', vistazo._reinicios)]
         quiere = ('respuesta', 'guardia')
@@ -168,7 +169,8 @@ def para(tramo, registro=None, premio=None, clave_wa='', cuenta_wa='',
         quiere = ('pago',)
         premios, billetera = True, True
     else:                                  # admin: le toca todo
-        fuentes = [('Genesis ID', vistazo._genesis),
+        fuentes = [('el motor', vistazo._motor),
+                   ('Genesis ID', vistazo._genesis),
                    ('la cadena', vistazo._cadena),
                    ('Meta', wa),
                    ('el correo', vistazo._correo),
@@ -203,6 +205,15 @@ def para(tramo, registro=None, premio=None, clave_wa='', cuenta_wa='',
                                      'firma: ' + ', '.join(e['id'] for e in esperan[:6]))
         except Exception as e:
             rotas.append(f'los encargos no se pudieron leer ({type(e).__name__})')
+
+    if tramo == 'admin':
+        try:
+            import mayordomo
+            n = mayordomo.en_cola()
+            if n:
+                pendientes.append(f'{n} encargo(s) esperando que Claude los lea')
+        except Exception:
+            pass          # sin mayordomo a mano no es un fallo del parte
 
     for falta in CIEGO.get(tramo, ()):
         rotas.append(falta)

@@ -36,6 +36,7 @@
 import imaplib
 import json
 import os
+import re
 import shutil
 import ssl
 import subprocess
@@ -270,6 +271,90 @@ def _disco():
         return [], [f'el disco del nodo va al {usado}% '
                     f'(quedan {libre_gb:.0f} GB)']
     return [f'disco {usado}%, {libre_gb:.0f} GB libres'], []
+
+
+# ── EL MOTOR: QUE ESTE ENTERO EN LA TARJETA ─────────────────────────────────
+#
+# POR QUE ESTA FUENTE EXISTE
+#
+# 1-sep. Midiendo para decidir una tarjeta nueva aparecio esto en el registro
+# de ollama:
+#
+#     load_tensors: offloaded 45/49 layers to GPU
+#
+# Cuatro de las cuarenta y nueve capas del modelo corrian en el PROCESADOR,
+# porque la voz ocupa 4,6 GB de los 15 de la tarjeta y el modelo ya no cabia.
+# Cada palabra que AU-RA escribia cruzaba al procesador y volvia, cuatro veces.
+#
+# Estuvo asi DIAS. Nadie lo vio, y no habia como verlo: el servicio decia
+# «active», el modelo contestaba, las respuestas eran buenas. Solo era siete
+# veces mas lento — y «lento» se atribuye a la maquina, no a un fallo.
+#
+# Esa es la clase de averia que este parte existe para cazar: la que no rompe
+# nada, no levanta ninguna excepcion, y sale carisima.
+#
+# Se mira en el REGISTRO de ollama y no preguntandole al modelo, porque el
+# modelo no sabe donde esta: contesta igual con capas afuera.
+
+TOPE_VRAM_LIBRE = int(os.environ.get('AURA_TOPE_VRAM', '400'))   # MiB
+
+
+def _motor():
+    """El modelo, la tarjeta y si esta todo donde tiene que estar."""
+    import subprocess
+    lineas, pend = [], []
+
+    # 1 · Las capas. Lo que importa de verdad.
+    try:
+        r = subprocess.run(
+            ['journalctl', '-u', 'ollama', '--no-pager', '-n', '400'],
+            capture_output=True, text=True, timeout=20)
+        ult = None
+        for l in r.stdout.splitlines():
+            m = re.search(r'offloaded (\d+)/(\d+) layers', l)
+            if m:
+                ult = (int(m.group(1)), int(m.group(2)))
+        if ult:
+            hay, total = ult
+            if hay < total:
+                pend.append(f'el modelo NO cabe en la tarjeta: {total - hay} de '
+                            f'{total} capas corren en el procesador, y eso lo '
+                            f'hace varias veces mas lento')
+            else:
+                lineas.append(f'modelo entero en la tarjeta ({hay}/{total} capas)')
+    except Exception as e:
+        pend.append(f'no se pudo comprobar si el modelo cabe ({type(e).__name__})')
+
+    # 2 · Cuanta memoria queda. Sin margen, el proximo arranque tira capas.
+    try:
+        r = subprocess.run(['nvidia-smi', '--query-gpu=memory.used,memory.total',
+                            '--format=csv,noheader,nounits'],
+                           capture_output=True, text=True, timeout=15)
+        usado, total = [int(x.strip()) for x in r.stdout.strip().split(',')]
+        libre = total - usado
+        if libre < TOPE_VRAM_LIBRE:
+            pend.append(f'la tarjeta va al límite: quedan {libre} MiB de '
+                        f'{total} — el próximo arranque puede tirar capas')
+        else:
+            lineas.append(f'tarjeta {usado} de {total} MiB')
+    except Exception:
+        pass          # sin GPU no es un fallo: puede ser otra maquina
+
+    # 3 · Que el modelo este cargado y con que ventana.
+    try:
+        d = _http(os.environ.get('AURA_MOTOR', 'http://127.0.0.1:11434')
+                  + '/api/ps', timeout=10)
+        cargados = d.get('models') or []
+        if not cargados:
+            lineas.append('el motor está frío: el primero del día va a esperar')
+        else:
+            m = cargados[0]
+            lineas.append(f"motor {m.get('name')} · ventana "
+                          f"{m.get('context_length', '?')}")
+    except Exception as e:
+        pend.append(f'el motor no contesta ({type(e).__name__})')
+
+    return lineas, pend
 
 
 def _correo():
