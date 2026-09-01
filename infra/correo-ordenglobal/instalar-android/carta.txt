@@ -1,0 +1,122 @@
+Asunto: Tu app de Orden Global ya está lista para instalar
+
+Hola {nombre}:
+
+Ya podés instalar Orden Global en tu teléfono Android.
+
+Todavía no está en la Play Store — la estamos subiendo. Mientras tanto se
+instala con un archivo que te damos nosotros, y como no viene de la tienda,
+Android te va a mostrar tres avisos. Son normales y abajo te digo
+exactamente cuáles son y qué tocar en cada uno.
+
+Te los cuento ANTES para que no te asusten: quien te quiere estafar nunca te
+avisa de lo que vas a ver.
+
+
+────────────────────────────────────────────────────────────────────
+CÓMO INSTALARLA · cinco minutos, solo Android
+────────────────────────────────────────────────────────────────────
+
+Esto es SOLO para teléfonos Android. Si tenés iPhone, todavía no: te
+avisamos cuando esté.
+
+Necesitás unos 300 MB libres. La descarga pesa 137 MB.
+
+
+PASO 1 · Abrí este enlace DESDE EL TELÉFONO
+
+    {enlace}
+
+No desde la computadora: el archivo tiene que quedar en el teléfono.
+Si te llegó este correo a la compu, abrilo en el celular.
+
+
+PASO 2 · Descargá
+
+Va a aparecer un aviso del navegador:
+
+    «Este tipo de archivo puede dañar tu dispositivo»
+
+Tocá «Descargar de todos modos». Ese aviso sale con CUALQUIER app que no
+venga de la tienda, sea de quien sea.
+
+
+PASO 3 · Abrí el archivo descargado
+
+Bajá la barra de notificaciones y tocá la descarga. O entrá a Archivos →
+Descargas → «orden-global.apk».
+
+
+PASO 4 · Dale permiso a tu navegador, una sola vez
+
+Android va a decir:
+
+    «Por seguridad, tu teléfono no puede instalar apps desconocidas
+     de esta fuente»
+
+Tocá «Configuración» o «Ajustes» y activá «Permitir de esta fuente».
+Después tocá la flecha de volver.
+
+Esto se lo estás dando a tu NAVEGADOR (Chrome), no a nosotros. Y lo podés
+apagar de nuevo cuando termines.
+
+
+PASO 5 · Instalar
+
+Tocá «Instalar». Tarda menos de un minuto.
+
+Puede salir un último aviso de Play Protect diciendo que no reconoce al
+desarrollador. Tocá «Instalar de todas formas». Google dice eso de toda app
+que no pasó por su tienda — todavía no le hemos pasado la nuestra.
+
+
+PASO 6 · Entrá
+
+Abrí Orden Global y entrá con el mismo correo que usás en la web. Es la
+misma cuenta: lo que tenés está ahí.
+
+
+────────────────────────────────────────────────────────────────────
+SI ALGO SALE MAL
+────────────────────────────────────────────────────────────────────
+
+«No se pudo instalar» o «la app no se instaló»
+    Casi siempre es espacio. Liberá 300 MB y probá otra vez.
+
+No encuentro el archivo descargado
+    Archivos → Descargas. Se llama «orden-global.apk».
+
+Ya la tenía instalada de antes
+    Instalá encima, no hace falta borrar nada. Tus datos se quedan.
+
+Tengo iPhone
+    Todavía no. Te avisamos.
+
+No me deja de ninguna manera
+    Escribinos y lo vemos juntos: wa.me/50432136457
+
+
+────────────────────────────────────────────────────────────────────
+DOS COSAS QUE NUNCA VAMOS A HACER
+────────────────────────────────────────────────────────────────────
+
+1. NUNCA te vamos a pedir tu contraseña, tu frase de respaldo ni tus doce
+   palabras. Ni por correo, ni por WhatsApp, ni por teléfono, ni nadie del
+   equipo. Quien te las pida te está robando, aunque diga que es de la casa.
+
+2. NUNCA te vamos a mandar la app por otro camino que no sea un correo
+   nuestro o nuestro WhatsApp. Si te llega un enlace de Orden Global por
+   otro lado, no lo abras y avisanos.
+
+
+Cualquier cosa, contestá este correo o escribinos por WhatsApp.
+
+El equipo de Orden Global
+ordenglobal.org
+
+
+────────────────────────────────────────────────────────────────────
+Recibís este correo porque tenés una cuenta en Orden Global.
+Si no querés recibir más avisos como este: {baja}
+No vas a dejar de recibir los correos de tu cuenta (entrar, recuperar la
+contraseña), que son otra cosa.
