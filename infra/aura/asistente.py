@@ -96,6 +96,7 @@ import catalogo
 import encargos
 import escalafon
 import espejo
+import oficios
 import puerta
 import vistazo
 from oido import NoSePudoOir, oir_nota
@@ -1676,6 +1677,27 @@ def atender(rel, sistema, p, de, dicho, mensaje=None):
     # `todo_el_saber`.
     if isinstance(sistema, dict):
         sistema = sistema.get(idi) or sistema.get('es')
+
+    # ── EL OFICIO DE QUIEN ESCRIBE ─────────────────────────────────────────
+    #
+    # A quien esta en el escalafon se le SUMA el trozo de su area: quien
+    # escribe de contabilidad recibe a alguien que sabe de contabilidad, con
+    # la memoria de contabilidad y sus cautelas. Es la misma AU-RA hablando
+    # desde otro sitio, no otro bot — ver `oficios.py`.
+    #
+    # SE SUMA, no reemplaza. El prompt de la casa y el guardia siguen
+    # corriendo igual para todos: un oficio decide tono y memoria, nunca
+    # permiso. Los permisos los decide el escalafon, que no lee `oficios`.
+    _tramo_suyo = escalafon.tramo_de(de)
+    if _tramo_suyo and oficios.existe(_tramo_suyo):
+        try:
+            extra = oficios.sistema(_tramo_suyo, DATOS)
+            if extra:
+                sistema = sistema + '\n\n' + extra
+        except Exception as e:
+            # Un saber ilegible no puede dejar a nadie sin AU-RA: se sigue
+            # con el prompt de la casa, que es el que de verdad protege.
+            log('el saber de', _tramo_suyo, 'no se pudo leer:', type(e).__name__)
 
     def _mandar_nodo(cual):
         """Un nodo, por el mejor camino que admita el canal.

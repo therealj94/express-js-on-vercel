@@ -27,6 +27,9 @@ import pathlib
 import sys
 import time
 
+import encargos
+import escalafon
+import miradas
 import registro
 import premio
 import vistazo
@@ -35,6 +38,17 @@ import whatsapp
 # A quien va. Es el mismo AURA_PARTE_PARA que decide quien puede pedirlo
 # escribiendo «actualizar»: una sola lista, para que no haya un sitio donde
 # agregar a alguien y otro donde olvidarse.
+#
+# ── Y ADEMAS, EL ESCALAFON ─────────────────────────────────────────────────
+#
+# Desde el 1-sep el parte no es uno: es el de CADA TRAMO, y va a la persona
+# que lleva ese tramo. Nicole recibe el de mercadeo, Carlos el de tecnologia,
+# Melany el suyo con las tres cosas juntas.
+#
+# `AURA_PARTE_PARA` se queda para quien no esta en el escalafon —un buzon de
+# copia, un correo— y para no romper lo que ya funcionaba. Quien este en las
+# dos listas recibe UNA vez: se junta por persona antes de mandar, que es la
+# diferencia entre un parte y dos partes iguales seguidos.
 PARA = [x.strip() for x in (os.environ.get('AURA_PARTE_PARA') or '').split(',')
         if x.strip()]
 
@@ -88,9 +102,36 @@ def _plantilla(cuenta, para, cuando_, plano):
     })
 
 
+def a_quien_le_toca():
+    """`[(donde, tramos)]` — sin repetir persona, y solo telefonos.
+
+    El escalafon primero: quien esta ahi recibe EL SUYO. Los de
+    `AURA_PARTE_PARA` que no esten en el escalafon reciben el de admin, que es
+    el que llevaba el parte antes de que hubiera tramos.
+    """
+    fuera, vistos = [], set()
+    for persona in escalafon.GENTE:
+        tramos = escalafon.tramos_de(persona)
+        donde = next((f for f in escalafon.formas_de(persona) if f.isdigit()), None)
+        if not donde:
+            continue          # a quien no tiene telefono no se le manda por aqui
+        fuera.append((donde, list(tramos)))
+        vistos.add(escalafon.normal_persona(donde))
+    for quien in PARA:
+        # `persona_de` devuelve `None` a quien no esta en el escalafon: se le
+        # manda el de admin, como siempre.
+        if escalafon.normal_persona(quien) in vistos:
+            continue
+        fuera.append((quien, ['admin']))
+        vistos.add(escalafon.normal_persona(quien))
+    return fuera
+
+
 def main():
-    if not PARA:
-        print('AURA_PARTE_PARA vacio: no hay a quien mandarle el parte')
+    gente = a_quien_le_toca()
+    if not gente:
+        print('nadie en el escalafon ni en AURA_PARTE_PARA: no hay a quien '
+              'mandarle el parte')
         return 1
 
     # SIN ESTO EL PARTE MIENTE, Y MIENTE TRANQUILIZANDO.
@@ -109,31 +150,44 @@ def main():
     # ni siquiera se ve raro.
     registro.preparar(DATOS)
     premio.preparar(DATOS)
+    encargos.preparar(DATOS)
 
     cuenta = os.environ.get('ZERNIO_CUENTA', '')
-    datos = vistazo.juntar(registro=registro, premio=premio,
-                           clave_wa=os.environ.get('ZERNIO_CLAVE', ''),
-                           cuenta_wa=cuenta)
+    clave = os.environ.get('ZERNIO_CLAVE', '')
     cuando_ = vistazo.cuando()
-    cuerpo = vistazo.texto(datos)
-    plano = vistazo.para_plantilla(datos)
 
-    # Se anota ANTES de mandar. Si el envio revienta a mitad, el registro ya
-    # sabe que el parte se armo y con que — si no, un fallo de red borraria
-    # tambien la unica huella de que hubo algo que contar.
-    registro.anotar('parte', quien='programado',
-                    pendientes=len(datos['pendientes']), rotas=len(datos['rotas']))
+    # Una mirada por COMBINACION de tramos, no una por persona: Nicole y otra
+    # de mercadeo comparten la misma, y armarla dos veces seria preguntarle a
+    # la cadena y a Meta el doble de veces por el mismo parte.
+    armados = {}
+
+    def parte_de(tramos):
+        llave = tuple(tramos)
+        if llave not in armados:
+            d = miradas.para(list(llave), registro=registro, premio=premio,
+                             clave_wa=clave, cuenta_wa=cuenta,
+                             encargos=encargos)
+            armados[llave] = (miradas.texto(list(llave), d),
+                              vistazo.para_plantilla(d),
+                              len(d['pendientes']), len(d['rotas']))
+        return armados[llave]
 
     rel = whatsapp.RelevoWhatsApp(cuenta=cuenta)
     malos = 0
-    for para in PARA:
+    for para, tramos in gente:
+        cuerpo, plano, n_pend, n_rotas = parte_de(tramos)
+        # Se anota ANTES de mandar. Si el envio revienta a mitad, el registro ya
+        # sabe que el parte se armo y con que — si no, un fallo de red borraria
+        # tambien la unica huella de que hubo algo que contar.
+        registro.anotar('parte', quien='programado', tramo='+'.join(tramos),
+                        pendientes=n_pend, rotas=n_rotas)
         for intento, camino in enumerate((_libre, _plantilla)):
             try:
                 if camino is _libre:
                     _libre(rel, para, cuando_, cuerpo)
                 else:
                     _plantilla(cuenta, para, cuando_, plano)
-                print(f'parte enviado a {para[-4:]} por '
+                print(f'parte de {"+".join(tramos)} enviado a {para[-4:]} por '
                       + ('la ventana libre' if intento == 0 else 'plantilla'))
                 break
             except Exception as e:

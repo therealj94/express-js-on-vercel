@@ -327,22 +327,32 @@ def ver(id_encargo):
         return dict(e) if e else None
 
 
-def esperando():
-    """Lo que está pedido y sin contestar, del más viejo al más nuevo."""
+def _mirar(cual):
+    """Los encargos en ese estado, caducando de paso.
+
+    SOLO ESCRIBE SI ALGO CAMBIO. Escribir en cada lectura parece inofensivo y
+    no lo es: el parte lee esto, y en una maquina donde la carpeta todavia no
+    existe —o donde el parte corre sin permiso de escritura— una lectura
+    reventaba y el parte salia diciendo «los encargos no se pudieron leer»
+    cuando el libro estaba perfecto. Lo cazo la prueba del parte el 1-sep.
+    """
     with CANDADO:
         libro = _leer()
+        antes = [e['estado'] for e in libro['encargos']]
         _caducar(libro)
-        _escribir(libro)
-        return [dict(e) for e in libro['encargos'] if e['estado'] == 'pedido']
+        if [e['estado'] for e in libro['encargos']] != antes:
+            _escribir(libro)
+        return [dict(e) for e in libro['encargos'] if e['estado'] == cual]
+
+
+def esperando():
+    """Lo que está pedido y sin contestar, del más viejo al más nuevo."""
+    return _mirar('pedido')
 
 
 def listos():
     """Aprobados y sin hacer todavía. Es lo que lee el mayordomo."""
-    with CANDADO:
-        libro = _leer()
-        _caducar(libro)
-        _escribir(libro)
-        return [dict(e) for e in libro['encargos'] if e['estado'] == 'aprobado']
+    return _mirar('aprobado')
 
 
 def mios(quien, cuantos=10):

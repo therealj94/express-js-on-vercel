@@ -42,7 +42,7 @@ FUENTES = ['asistente.py', 'guion.py', 'guardia.py', 'premio.py', 'pagador.py',
            # da una rama que no corre, y una rama de permiso que no corre es
            # una puerta abierta.
            'escalafon.py', 'catalogo.py', 'encargos.py', 'mayordomo.py',
-           'miradas.py', 'puerta.py']
+           'miradas.py', 'puerta.py', 'oficios.py']
 
 INTEGRADOS = set(dir(builtins)) | {'__file__', '__name__', '__doc__',
                                    '__spec__', '__package__', '__builtins__'}

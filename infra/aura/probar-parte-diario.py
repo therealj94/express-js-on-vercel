@@ -66,7 +66,7 @@ class _Base(unittest.TestCase):
         with mock.patch.object(pd, 'PARA', list(para)), \
              mock.patch.object(pd.registro, 'preparar'), \
              mock.patch.object(pd.premio, 'preparar'), \
-             mock.patch.object(pd.vistazo, 'juntar', return_value=_datos_falsos()), \
+             mock.patch.object(pd.miradas, 'para', return_value=_datos_falsos()), \
              mock.patch.object(pd.registro, 'anotar'), \
              mock.patch.object(pd.whatsapp, 'RelevoWhatsApp', return_value=rel), \
              mock.patch.object(pd.whatsapp, '_pedir', plantillas), \
@@ -96,9 +96,9 @@ class ElParteABRELOSARCHIVOS(unittest.TestCase):
                                side_effect=lambda d: orden.append('registro')), \
              mock.patch.object(pd.premio, 'preparar',
                                side_effect=lambda d: orden.append('premio')), \
-             mock.patch.object(pd.vistazo, 'juntar',
-                               side_effect=lambda **k: (orden.append('mirar'),
-                                                        _datos_falsos())[1]), \
+             mock.patch.object(pd.miradas, 'para',
+                               side_effect=lambda *a, **k: (orden.append('mirar'),
+                                                            _datos_falsos())[1]), \
              mock.patch.object(pd.registro, 'anotar'), \
              mock.patch.object(pd.whatsapp, 'RelevoWhatsApp', return_value=rel), \
              mock.patch.object(pd.whatsapp, '_pedir', mock.Mock()), \
@@ -114,7 +114,7 @@ class ElParteABRELOSARCHIVOS(unittest.TestCase):
         with mock.patch.object(pd, 'PARA', ['50432136457']), \
              mock.patch.object(pd.registro, 'preparar', side_effect=vistas.append), \
              mock.patch.object(pd.premio, 'preparar', side_effect=vistas.append), \
-             mock.patch.object(pd.vistazo, 'juntar', return_value=_datos_falsos()), \
+             mock.patch.object(pd.miradas, 'para', return_value=_datos_falsos()), \
              mock.patch.object(pd.registro, 'anotar'), \
              mock.patch.object(pd.whatsapp, 'RelevoWhatsApp', return_value=RelevoFalso()), \
              mock.patch.object(pd.whatsapp, '_pedir', mock.Mock()), \
@@ -230,7 +230,7 @@ class SiNoSALEsedice(_Base):
         with mock.patch.object(pd, 'PARA', ['50432136457']), \
              mock.patch.object(pd.registro, 'preparar'), \
              mock.patch.object(pd.premio, 'preparar'), \
-             mock.patch.object(pd.vistazo, 'juntar', return_value=_datos_falsos()), \
+             mock.patch.object(pd.miradas, 'para', return_value=_datos_falsos()), \
              mock.patch.object(pd.registro, 'anotar',
                                side_effect=lambda *a, **k: orden.append('anotar')), \
              mock.patch.object(pd.whatsapp, 'RelevoWhatsApp', return_value=rel), \
@@ -239,6 +239,81 @@ class SiNoSALEsedice(_Base):
              mock.patch.object(pd.time, 'sleep'):
             pd.main()
         self.assertEqual(orden[0], 'anotar')
+
+
+class ACADAQUIENELSUYO(unittest.TestCase):
+    """Desde el 1-sep el parte no es uno: es el de cada tramo.
+
+    Un parte con cosas que no son tuyas no se lee a medias — se deja de leer
+    entero. Nicole no tiene por qué recibir el disco del nodo.
+    """
+
+    def setUp(self):
+        import escalafon
+        self.esc = escalafon
+        escalafon.recargar(
+            '50432136457/j.ordonez@ordenglobal.org:admin,'
+            '50498782176:admin,'
+            '50433467760:mercadeo,'
+            '50499080571:legal+contable+mercadeo,'
+            'sin.telefono@ordenglobal.org:legal')
+
+    def tearDown(self):
+        self.esc.recargar('')
+
+    def test_cada_persona_recibe_los_tramos_que_lleva(self):
+        with mock.patch.object(pd, 'PARA', []):
+            toca = dict(pd.a_quien_le_toca())
+        self.assertEqual(toca['50433467760'], ['mercadeo'])
+        self.assertEqual(toca['50499080571'], ['legal', 'contable', 'mercadeo'])
+        self.assertEqual(toca['50432136457'], ['admin'])
+
+    def test_a_quien_no_tiene_telefono_no_se_le_manda_por_aqui(self):
+        with mock.patch.object(pd, 'PARA', []):
+            toca = dict(pd.a_quien_le_toca())
+        self.assertNotIn('sin.telefono@ordenglobal.org', toca)
+
+    def test_quien_esta_en_las_DOS_listas_recibe_UNA_vez(self):
+        """Y con su tramo, no con el de admin: dos partes iguales seguidos es
+        como se deja de leer el parte."""
+        with mock.patch.object(pd, 'PARA', ['50433467760', '+504 3213-6457']):
+            toca = pd.a_quien_le_toca()
+        self.assertEqual(len(toca), len({q for q, _ in toca}))
+        self.assertEqual(dict(toca)['50433467760'], ['mercadeo'])
+
+    def test_quien_NO_esta_en_el_escalafon_sigue_recibiendo_el_de_admin(self):
+        """`AURA_PARTE_PARA` se queda para un buzón de copia. Lo que ya
+        funcionaba no se rompe porque haya tramos nuevos."""
+        with mock.patch.object(pd, 'PARA', ['50411112222']):
+            self.assertEqual(dict(pd.a_quien_le_toca())['50411112222'], ['admin'])
+
+    def test_sin_nadie_en_ninguna_lista_lo_dice_y_sale_con_error(self):
+        self.esc.recargar('')
+        with mock.patch.object(pd, 'PARA', []):
+            self.assertEqual(pd.main(), 1)
+
+    def test_el_parte_se_arma_UNA_vez_por_combinacion_no_por_persona(self):
+        """Nicole y otra de mercadeo comparten el mismo. Armarlo dos veces es
+        preguntarle a la cadena y a Meta el doble de veces por lo mismo."""
+        self.esc.recargar('50433467760:mercadeo, 50411113333:mercadeo,'
+                          '50432136457:admin')
+        armados = []
+        rel = RelevoFalso()
+        with mock.patch.object(pd, 'PARA', []), \
+             mock.patch.object(pd.registro, 'preparar'), \
+             mock.patch.object(pd.premio, 'preparar'), \
+             mock.patch.object(pd.encargos, 'preparar'), \
+             mock.patch.object(pd.registro, 'anotar'), \
+             mock.patch.object(pd.miradas, 'para',
+                               side_effect=lambda ts, **k: (armados.append(tuple(ts)),
+                                                            _datos_falsos())[1]), \
+             mock.patch.object(pd.whatsapp, 'RelevoWhatsApp', return_value=rel), \
+             mock.patch.object(pd.whatsapp, '_pedir', mock.Mock()), \
+             mock.patch.object(pd.time, 'sleep'):
+            pd.main()
+        self.assertEqual(len(armados), len(set(armados)),
+                         f'armó el mismo parte más de una vez: {armados}')
+        self.assertEqual(set(armados), {('mercadeo',), ('admin',)})
 
 
 if __name__ == '__main__':

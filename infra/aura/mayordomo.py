@@ -117,6 +117,38 @@ def _gente(e):
     return True, miradas.texto('mercadeo', d)
 
 
+def _apunte(e):
+    """Guarda el apunte del area Y lo deja en la cola de Claude.
+
+    Los dos sitios importan y son distintos: el saber del area es lo que AU-RA
+    va a leer manana cuando alguien de ahi le escriba; la cola es para que lo
+    que se decidio en un WhatsApp no se quede en ese WhatsApp.
+
+    Si el saber se guarda y la cola falla, el apunte NO se pierde — se dice
+    que la mitad no salio. Al reves seria peor: dar por anotado algo que no
+    quedo en ninguna parte.
+    """
+    import oficios
+    tramo = e['tramo']
+    texto = e['valores']['apunte']
+    oficios.apuntar(DATOS, tramo, e['quien'], texto)
+
+    aviso = ''
+    try:
+        _a_la_cola({'id': e['id'], 'trabajo': f'[apunte de {tramo}] {texto}',
+                    'pidio': e['quien'], 'tramo': tramo,
+                    'firmo': 'apunte', 'huella': e['huella'],
+                    'cuando': int(time.time())})
+    except Exception as err:
+        aviso = ('\n\n(quedó en la memoria del área, pero NO llegó a la cola '
+                 f'de Claude: {type(err).__name__})')
+    n = len(oficios.apuntes(DATOS, tramo))
+    return True, (f'Anotado en la memoria de {tramo}.\n\n'
+                  f'«{texto[:120]}{"…" if len(texto) > 120 else ""}»\n\n'
+                  f'Van {n} apunte(s) de tu área. AU-RA lo va a tener presente '
+                  'la próxima vez que alguien de ahí le escriba.' + aviso)
+
+
 def _cadena(e):
     import vistazo
     lineas, pend = vistazo._cadena()
@@ -171,6 +203,21 @@ def _reiniciar(e):
     return False, f'no se pudo reiniciar {servicio}:\n{salida}'
 
 
+def _a_la_cola(fila):
+    """Una línea en la cola de Claude. Devuelve lo escrito.
+
+    En modo «agregar» y 0600: un encargo no puede pisar a otro ni aunque dos
+    lleguen en el mismo segundo, y el archivo lleva quién pidió qué.
+    """
+    linea = json.dumps(fila, ensure_ascii=False)
+    fd = os.open(DATOS / 'para-claude.jsonl',
+                 os.O_WRONLY | os.O_CREAT | os.O_APPEND,
+                 stat.S_IRUSR | stat.S_IWUSR)
+    with os.fdopen(fd, 'a', encoding='utf8') as fh:
+        fh.write(linea + '\n')
+    return linea
+
+
 def _claude(e):
     """El puente con Claude: se deja en la COLA, y Claude la lee.
 
@@ -189,7 +236,7 @@ def _claude(e):
     Se escribe en modo «agregar»: un encargo no puede pisar a otro, ni
     siquiera si dos llegan en el mismo segundo.
     """
-    linea = json.dumps({
+    linea = _a_la_cola({
         'id': e['id'],
         'trabajo': e['valores']['trabajo'],
         'pidio': e['quien'],
@@ -197,14 +244,7 @@ def _claude(e):
         'firmo': e['firma'],
         'huella': e['huella'],
         'cuando': int(time.time()),
-    }, ensure_ascii=False)
-    cola = DATOS / 'para-claude.jsonl'
-    # 0600 desde que nace: lleva quién pidió qué, y esta máquina tiene más
-    # cuentas que la nuestra.
-    fd = os.open(cola, os.O_WRONLY | os.O_CREAT | os.O_APPEND,
-                 stat.S_IRUSR | stat.S_IWUSR)
-    with os.fdopen(fd, 'a', encoding='utf8') as fh:
-        fh.write(linea + '\n')
+    })
 
     # Y si algún día hay un gancho puesto, además se avisa por ahí. La cola
     # sigue siendo la verdad: el gancho es un aviso, no el canal.
@@ -240,6 +280,7 @@ def en_cola():
 
 MANOS = {
     'parte': _parte,
+    'apunte': _apunte,
     'gente': _gente,
     'cadena': _cadena,
     'saldos': _saldos,

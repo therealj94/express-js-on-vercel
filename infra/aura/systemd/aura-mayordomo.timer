@@ -1,0 +1,24 @@
+# Cada tres minutos.
+#
+# POR QUE TRES Y NO UNO NI QUINCE
+#
+# Un minuto no compra nada: entre que el admin lee el aviso y toca el boton
+# pasan minutos, no segundos. Quince es demasiado para «reinicia aura», que se
+# pide justamente cuando algo anda mal y se espera mirando el telefono.
+#
+# Tres deja el peor caso en tres minutos desde la firma, que se aguanta de pie,
+# y son veinte vueltas por hora — casi todas sin nada que hacer y sin costo:
+# el mayordomo lee un archivo y sale.
+[Unit]
+Description=AU-RA · vuelta del mayordomo cada 3 minutos
+
+[Timer]
+OnBootSec=4min
+OnUnitActiveSec=3min
+# Sin esto, una maquina apagada un rato se despierta y no recupera la vuelta
+# perdida: lo firmado se quedaria esperando hasta la siguiente.
+Persistent=true
+Unit=aura-mayordomo.service
+
+[Install]
+WantedBy=timers.target

@@ -77,6 +77,19 @@ ENCARGOS = {
         'quien': ('admin', 'mercadeo'),
         'pide': [],
     },
+    'apunte': {
+        'titulo': 'Anotar lo que vamos a hacer',
+        'que_hace': ('Lo guarda como memoria de tu área y se lo pasa a '
+                     'Claude. AU-RA lo va a tener presente la próxima vez.'),
+        # RIESGO «mira» A PROPOSITO. Anotar lo que uno ya sabe de su propia
+        # area no le da a nadie ningun permiso nuevo — es memoria, no una
+        # orden. Pedir firma para esto lo mataria en una semana, y una
+        # memoria que nadie escribe es una memoria que no existe.
+        'riesgo': 'mira',
+        'quien': ('admin', 'legal', 'tecnologico', 'mercadeo', 'contable',
+                  'operacion'),
+        'pide': [('apunte', _texto(900))],
+    },
     'papeles': {
         'titulo': 'Papeles y plazos',
         'que_hace': 'Qué vence, qué está sin firmar y qué falta presentar.',
