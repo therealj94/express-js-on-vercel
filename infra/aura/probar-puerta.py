@@ -110,11 +110,44 @@ class CADAUNOVESULISTA(_Base):
         self.assertIn('desplegar', claves)
         self.assertNotIn('papeles', claves)
 
-    def test_el_admin_ve_todo(self):
-        puerta.menu(self.rel, JOSE)
-        claves = [f[0].replace(puerta.TOCO_PEDIR, '')
-                  for f in self.rel.listas[0][2]]
-        self.assertEqual(set(claves), set(catalogo.ENCARGOS))
+    def test_el_admin_LLEGA_a_todo(self):
+        """Meta admite diez filas y el admin ya pasa de diez, así que el menú
+        se pagina. Lo que hay que garantizar no cambia: que pueda LLEGAR a
+        todo. Recortar en silencio sería esconderle cosas que puede pedir —y
+        ése es el fallo que no se descubre nunca: no falla nada, simplemente
+        hay una función que nadie usa porque nadie sabe que está."""
+        vistas = set()
+        for pagina in (0, 1):
+            rel = _Relevo()
+            puerta.menu(rel, JOSE, desde=pagina)
+            vistas |= {f[0].replace(puerta.TOCO_PEDIR, '')
+                       for f in rel.listas[0][2]}
+        vistas -= {'+mas', '+menos'}
+        self.assertEqual(vistas, set(catalogo.ENCARGOS))
+
+    def test_y_la_fila_de_VER_EL_RESTO_lleva_de_verdad_al_resto(self):
+        """Sin esto, el botón existiría y no haría nada — que es peor que no
+        tenerlo, porque la persona cree que ya vio todo."""
+        rel = _Relevo()
+        puerta.toque(rel, JOSE, puerta.TOCO_MAS)
+        self.assertTrue(rel.listas, 'tocar «ver el resto» no abrió nada')
+        claves = {f[0].replace(puerta.TOCO_PEDIR, '') for f in rel.listas[0][2]}
+        self.assertIn('claude', claves)
+
+    def test_y_se_puede_volver(self):
+        rel = _Relevo()
+        puerta.toque(rel, JOSE, puerta.TOCO_MENOS)
+        claves = {f[0].replace(puerta.TOCO_PEDIR, '') for f in rel.listas[0][2]}
+        self.assertIn('parte', claves)
+
+    def test_quien_TIENE_POCAS_no_ve_ninguna_fila_de_paginar(self):
+        """Una fila de «ver el resto» cuando no hay resto es un menú que se
+        burla de quien lo abre."""
+        escalafon.recargar(f'{TECNICO}:tecnologico')
+        rel = _Relevo()
+        puerta.menu(rel, TECNICO)
+        claves = [f[0] for f in rel.listas[0][2]]
+        self.assertNotIn(puerta.TOCO_MAS, claves)
 
     def test_se_ve_a_simple_vista_que_necesita_firma(self):
         puerta.menu(self.rel, TECNICO)

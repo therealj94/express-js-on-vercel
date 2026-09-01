@@ -497,6 +497,39 @@ def marcar_pagado(direccion, tx):
     return False
 
 
+def quienes(cuantos=10):
+    """Los ultimos premios, CON NOMBRE. `None` si el archivo no se puede leer.
+
+    ── POR QUE HIZO FALTA ──────────────────────────────────────────────────
+
+    Jose, 1-sep: «queria saber a quien se le envio 1 ORIGEN, no se me notifico
+    y pregunte y no supo contestar».
+
+    Tenia razon en las dos mitades. `resumen()` cuenta —cuantos reclamados,
+    cuantos pagados, cuantos quedan— y NUNCA dice a quien. Asi que aunque
+    preguntara, no habia de donde sacarlo: no era que AU-RA no entendiera la
+    pregunta, es que el dato no estaba a mano en ninguna parte.
+
+    Un contador de premios que no puede decir a quien se le pago es un
+    contador, no un registro.
+
+    Lo devuelve en crudo; quien lo ensene decide cuanto recorta. Aqui no se
+    formatea porque este modulo tiene prohibido saber de WhatsApp.
+    """
+    with _candado:
+        try:
+            rs = _cargar()['reclamos']
+        except RegistroIlegible:
+            return None
+    ordenados = sorted(rs, key=lambda r: r.get('cuando') or 0, reverse=True)
+    return [{'quien': r.get('quien') or '',
+             'direccion': r.get('direccion') or '',
+             'pagado': bool(r.get('pagado')),
+             'tx': r.get('tx'),
+             'cuando': r.get('cuando') or 0}
+            for r in ordenados[:cuantos]]
+
+
 def resumen():
     with _candado:
         try:

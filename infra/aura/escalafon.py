@@ -222,6 +222,16 @@ def admins():
     return [p for p, ficha in GENTE.items() if 'admin' in ficha[0]]
 
 
+def personas():
+    """TODAS las personas de la lista, una vez cada una.
+
+    Igual que `admins()` devuelve personas y no buzones: quien lleva un
+    telefono y un correo es UNA persona, y contarla dos veces es como se
+    termina creyendo que hay mas gente —o mas firmas— de las que hay.
+    """
+    return list(GENTE)
+
+
 def hay_con_quien_aprobar(sin_contar=None):
     """¿Queda alguna PERSONA admin que pueda aprobar lo de esta?
 

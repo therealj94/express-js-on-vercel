@@ -169,6 +169,67 @@ def _saldos(e):
                            + [f'• {x}' for x in lineas + pend])
 
 
+def _roles(e):
+    """El equipo y lo que puede pedir cada uno. Sale del ESCALAFON.
+
+    Jose lo pidio como «ver el rol de cada uno». Se lee de la unica fuente que
+    hay: una segunda lista de roles seria una lista que se queda vieja, y ya
+    vimos como acaba eso — `AURA_PARTE_PARA` llevaba semanas vacia y por eso la
+    ficha del traspaso no le llegaba a nadie.
+    """
+    import catalogo
+    import escalafon
+    lineas = []
+    for persona in escalafon.personas():
+        formas = escalafon.formas_de(persona)
+        tramos = []
+        for d in formas:
+            for t in escalafon.tramos_de(d):
+                if t not in tramos:
+                    tramos.append(t)
+        nombre = escalafon.nombre_de(formas[0] if formas else '') or persona
+        puede = [c for c, _f in catalogo.para(tramos)]
+        marca = ' ⭐' if escalafon.es_admin(formas[0] if formas else '') else ''
+        lineas.append(f'*{nombre}*{marca} · {escalafon.como_se_dicen(tramos)}')
+        lineas.append(f'   puede: {", ".join(puede) if puede else "nada"}')
+    if not lineas:
+        return False, 'El escalafón está vacío: nadie puede pedirme nada.'
+    return True, '\n'.join(['Quién es quién', '', '⭐ = firma lo de los demás',
+                            ''] + lineas)
+
+
+def _premios(e):
+    """A quien se le pago, con nombre. Ver `catalogo.ENCARGOS['premios']`.
+
+    Se ensena el nombre si esa persona esta en el escalafon, y si no, las
+    cuatro ultimas cifras — igual que hace el espejo. Son telefonos de gente,
+    y el numero entero no hace falta para saber a quien se le pago.
+    """
+    import escalafon
+    import premio
+    import time
+    filas = premio.quienes(10)
+    if filas is None:
+        return False, 'No pude leer el archivo de premios.'
+    if not filas:
+        return True, 'Todavía no reclamó el premio nadie.'
+    lineas = []
+    for r in filas:
+        q = r['quien']
+        nombre = escalafon.nombre_de(q) or f'…{str(q)[-4:]}'
+        cuando = (time.strftime('%d-%b %H:%M', time.localtime(r['cuando']))
+                  if r['cuando'] else '')
+        estado = '✅ pagado' if r['pagado'] else '⏳ sin pagar'
+        lineas.append(f'{nombre} · {estado} · {cuando}')
+        if r['tx']:
+            lineas.append(f'   {r["tx"]}')
+    p = premio.resumen()
+    return True, '\n'.join(
+        [f'Premios · {p.get("pagados") or 0} pagados, '
+         f'{p.get("por_pagar") or 0} sin pagar, {p.get("quedan") or 0} quedan',
+         ''] + lineas)
+
+
 def _papeles(e):
     import vistazo
     lineas, pend = vistazo._genesis()
@@ -284,6 +345,8 @@ MANOS = {
     'gente': _gente,
     'cadena': _cadena,
     'saldos': _saldos,
+    'premios': _premios,
+    'roles': _roles,
     'papeles': _papeles,
     'desplegar': _desplegar,
     'reiniciar': _reiniciar,

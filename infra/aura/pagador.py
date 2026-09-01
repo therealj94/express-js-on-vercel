@@ -47,6 +47,7 @@ import sys
 import time
 import urllib.request
 
+import escalafon
 import premio
 import registro
 import whatsapp
@@ -139,7 +140,48 @@ def _idioma_de(quien):
         return 'es'
 
 
+def _avisar_a_los_admin(rel, quien, direccion, tx):
+    """Y a los admin. Nunca lanza: el pago ya salio y esto es un aviso.
+
+    Jose, 1-sep: «queria saber a quien se le envio 1 ORIGEN, no se me notifico».
+    Hasta hoy este archivo le escribia SOLO al que gano — el que menos falta le
+    hace, porque ademas lo ve en su saldo.
+
+    Un premio es plata de la casa saliendo sola, sin que nadie firme nada. Eso
+    esta bien —para eso la billetera se fondea con lo justo— pero saliendo EN
+    SILENCIO no: quien responde por ese dinero tiene que enterarse el mismo dia,
+    no cuando se le ocurra preguntar.
+    """
+    corta = direccion[:6] + '…' + direccion[-4:]
+    nombre = escalafon.nombre_de(quien) or f'…{str(quien)[-4:]}'
+    texto = (f'🌱 Premio pagado\n\n'
+             f'1 ORIGEN → *{nombre}*\n'
+             f'{corta}\n\n'
+             f'{tx}')
+    for persona in escalafon.admins():
+        for donde in escalafon.formas_de(persona):
+            if not donde.isdigit():
+                continue
+            try:
+                rel.enviar(donde, texto)
+            except Exception as e:
+                print(f'el aviso del premio no salio a …{donde[-4:]}: '
+                      f'{type(e).__name__}', file=sys.stderr)
+            break        # un aviso por persona, no por buzón
+
+
 def _avisar(rel, quien, direccion, tx):
+    # ── LOS DOS AVISOS SON INDEPENDIENTES ──────────────────────────────────
+    #
+    # El de los admin va PRIMERO y en su propio `try`. La primera version lo
+    # metio dentro del `try` del recibo, y eso lo dejaba peor que antes: si le
+    # falla el mensaje al que gano —numero malo, WhatsApp caido— tampoco se
+    # enteraban los admin, que es exactamente el caso en que mas falta hace
+    # saber que salio plata.
+    try:
+        _avisar_a_los_admin(rel, quien, direccion, tx)
+    except Exception as e:
+        print(f'aviso a admin fallido: {type(e).__name__}', file=sys.stderr)
     try:
         rel.enviar(quien, _recibo(direccion, tx, _idioma_de(quien)))
         return True

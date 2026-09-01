@@ -57,11 +57,25 @@ def le_abre(dicho):
 
 # ── 1 · Pedir ───────────────────────────────────────────────────────────────
 
-def menu(rel, quien):
-    """La lista de lo que puede pedir esa persona. `False` si no le toca."""
-    tramos = escalafon.tramos_de(quien)
-    if not tramos:
-        return False
+# ── EL TECHO DE DIEZ FILAS ──────────────────────────────────────────────────
+#
+# Meta admite DIEZ filas en una lista y no recorta: rechaza el mensaje ENTERO.
+# Un menu de once filas no es un menu con una fila de mas — es un menu que no
+# aparece, y una persona mirando un chat mudo.
+#
+# El admin llego a once el 1-sep al agregar «roles» y «premios». Lo cazo la
+# prueba que existe justo para eso, antes de que lo viera nadie.
+#
+# Se pagina en vez de recortar. Recortar seria esconderle a un admin cosas que
+# puede pedir, sin decirselo — y ese es el fallo que no se descubre: no falla
+# nada, simplemente hay una funcion que nadie usa nunca porque nadie sabe que
+# esta. La ultima fila abre el resto.
+TOPE_FILAS = 10
+TOCO_MAS = 'enc:+mas'
+TOCO_MENOS = 'enc:+menos'
+
+
+def _filas_de(tramos):
     filas = []
     for clave, ficha in catalogo.para(tramos):
         marca = RIESGO.get(ficha['riesgo'], '')
@@ -77,6 +91,33 @@ def menu(rel, quien):
         filas.append((TOCO_PEDIR + clave,
                       f'{marca} {ficha["titulo"]}'[:24],
                       que + cola))
+    return filas
+
+
+def menu(rel, quien, desde=0):
+    """La lista de lo que puede pedir esa persona. `False` si no le toca.
+
+    `desde` es la pagina: con mas de diez cosas, la ultima fila abre el resto.
+    """
+    tramos = escalafon.tramos_de(quien)
+    if not tramos:
+        return False
+    todas = _filas_de(tramos)
+
+    if len(todas) <= TOPE_FILAS:
+        filas, cola_fila = todas, None
+    elif not desde:
+        filas = todas[:TOPE_FILAS - 1]
+        cola_fila = (TOCO_MAS, '⋯ Ver el resto',
+                     f'Las otras {len(todas) - (TOPE_FILAS - 1)} cosas que '
+                     f'podés pedirme.')
+    else:
+        filas = todas[TOPE_FILAS - 1:][:TOPE_FILAS - 1]
+        cola_fila = (TOCO_MENOS, '⋯ Volver al principio',
+                     'Las primeras de la lista.')
+    if cola_fila:
+        filas = filas + [cola_fila]
+
     cabeza = (f'Sos {escalafon.como_se_dicen(tramos)}. Esto es lo que podés '
               f'pedirme.\n\n'
               '👁 sale al momento · ⚠️🔧 lo tiene que firmar otro admin')
@@ -165,6 +206,10 @@ def toque(rel, quien, payload, hacer=None):
     Devuelve `True` si lo atendió — quien llama no tiene que hacer nada más.
     """
     p = str(payload or '')
+
+    if p in (TOCO_MAS, TOCO_MENOS):
+        menu(rel, quien, desde=1 if p == TOCO_MAS else 0)
+        return True
 
     if p.startswith(TOCO_PEDIR):
         clave = p[len(TOCO_PEDIR):]

@@ -69,6 +69,39 @@ ENCARGOS = {
         'quien': ('admin', 'contable', 'operacion'),
         'pide': [],
     },
+    # ── QUIEN ES QUIEN ─────────────────────────────────────────────────────
+    #
+    # Jose lo pidio como «poder ver el rol de cada uno». Sale del escalafon,
+    # que es la unica fuente: una segunda lista de roles seria una lista que se
+    # queda vieja, y ya vimos como termina eso con `AURA_PARTE_PARA`.
+    'roles': {
+        'titulo': 'Quién es quién',
+        'que_hace': 'El equipo, el tramo de cada uno y qué puede pedirme.',
+        'riesgo': 'mira',
+        'quien': ('admin',),
+        'pide': [],
+    },
+
+    # ── A QUIEN SE LE PAGO ─────────────────────────────────────────────────
+    #
+    # Jose, 1-sep: «queria saber a quien se le envio 1 ORIGEN, no se me
+    # notifico y pregunte y no supo contestar».
+    #
+    # `saldos` dice cuanto QUEDA en la billetera; `gente` dice cuantos
+    # jugaron. Ninguna decia A QUIEN. Un contador de premios que no puede
+    # nombrar a quien se le pago es un contador, no un registro.
+    'premios': {
+        'titulo': 'A quién se le pagó',
+        'que_hace': ('Los últimos premios con nombre, si ya se pagaron y el '
+                     'número de la transacción.'),
+        # «mira» y no «toca»: leer a quien se le pago no mueve un centavo. Lo
+        # que si hace es enseñar telefonos de gente, y por eso el tramo esta
+        # cerrado a quien responde por ese dinero.
+        'riesgo': 'mira',
+        'quien': ('admin', 'contable'),
+        'pide': [],
+    },
+
     'gente': {
         'titulo': 'Cómo viene la gente',
         'que_hace': ('Cuánta gente nueva llegó, en qué idioma, cuántos '
