@@ -1,0 +1,108 @@
+{
+  "proyecto": "Orden Global — Parte 2",
+  "titulo_de_trabajo": "Las mismas rosas",
+  "referencia": {
+    "fichero": "la parte 1 que José aprobó (IMG_9051.MP4, 60 s, 720x1280, 24 fps)",
+    "medido": {
+      "planos": 13,
+      "duracion_media_s": 4.2,
+      "plano_mas_corto_s": 2,
+      "plano_mas_largo_s": 11,
+      "nota": "El time-lapse de 11 s es la única excepción, y funciona porque el tiempo pasa DENTRO del plano."
+    },
+    "leccion": "Mi primer montaje usaba planos de 9,5 s de media: más del doble. Por eso se sentía lento. No era el minuto de duración, era el tamaño de los planos.",
+    "cierre_de_la_parte_1": [
+      "Este comercial no es sobre flores, es sobre cambiar cómo te llega lo que es tuyo.",
+      "Por eso hicimos esto, para ti."
+    ],
+    "estilo": {
+      "sobreimpresos": "Cartela negra translúcida de esquinas redondeadas arriba al centro con 'ROSAS ENVIADAS' y el contador; cápsula con fecha y hora a la izquierda. Sans-serif geométrica, blanca, caja alta.",
+      "sonido": "Foley muy presente y realista: papel, tijeras, el pitido del escáner y el tic-tac del reloj en el time-lapse. Debajo, un colchón electrónico ambiental muy sutil.",
+      "paleta": "Desaturada y orgánica: marrón del papel kraft, azul oscuro de la ropa, y el rojo de las rosas apagándose hasta granate.",
+      "luz": "Naturalista. Día suave al principio, fluorescente frío y hostil en el almacén, atardecer cálido al final.",
+      "final": "Fundido a negro, el monograma OG dorado solo, sin eslogan escrito, y el sonido se apaga."
+    }
+  },
+  "historia": {
+    "una_frase": "Las mismas veinticuatro rosas hacen el viaje otra vez. Esta vez no hay viaje.",
+    "continuidad": "La parte 1 termina prometiendo un cambio: «por eso hicimos esto, para ti». La parte 2 empieza donde aquella acabó —el ramo muerto sobre la mesa— y enseña el cambio cumplido.",
+    "por_que_dura_la_mitad": "La parte 1 dura un minuto porque el robo lleva tiempo: camión, almacén, una noche en un estante. La parte 2 dura treinta segundos porque en medio no hay nada que contar. La duración es el argumento.",
+    "el_sujeto": "Las rosas, siempre. Y esta vez casi no hay personas: en la parte 1 cada cara era alguien que se quedaba con algo."
+  },
+  "planos": [
+    {"n": 1, "t": "0.0-3.5", "id": "01_las_muertas", "fuente": "NUEVO",
+     "que_se_ve": "Cenital sobre la mesa de entrada: catorce rosas muertas en el papel arrugado, como quedaron al final de la parte 1.",
+     "hud": "ROSAS ENVIADAS 14", "voz": "Así llegaron la última vez."},
+    {"n": 2, "t": "3.5-7.0", "id": "02_floreria", "fuente": "01_el_envio (recorte)",
+     "que_se_ve": "La misma florista, el mismo mostrador. Envuelve un ramo completo de veinticuatro.",
+     "hud": "el contador vuelve a 24 · reloj 17:30:00", "voz": "Hoy salieron las mismas veinticuatro."},
+    {"n": 3, "t": "7.0-10.0", "id": "03_el_lazo", "fuente": "01_el_envio (recorte final)",
+     "que_se_ve": "Aprieta la cinta y empuja el ramo por el mostrador.",
+     "hud": "24 · 17:30:00", "voz": ""},
+    {"n": 4, "t": "10.0-13.0", "id": "04_manos_envian", "fuente": "02_las_manos_que_envian",
+     "que_se_ve": "Las manos del remitente sostienen el ramo y lo empujan hacia el lente.",
+     "hud": "24 · 17:30:00", "voz": ""},
+    {"n": 5, "t": "13.0-17.0", "id": "05_manos_reciben", "fuente": "03_las_manos_que_reciben",
+     "que_se_ve": "EL CORTE. Mismo encuadre, misma altura: ahora son manos de mujer y otra casa.",
+     "hud": "24 · el reloj salta a 17:30:04", "voz": "Cuatro segundos después estaban en sus manos."},
+    {"n": 6, "t": "17.0-20.0", "id": "06_ella", "fuente": "03 (segunda mitad)",
+     "que_se_ve": "Baja el ramo y aparece su cara. Rosas frescas, con agua.",
+     "hud": "24 · 17:30:04", "voz": ""},
+    {"n": 7, "t": "20.0-23.0", "id": "07_el_petalo_cae", "fuente": "03 (final) o 04 (inicio)",
+     "que_se_ve": "Un pétalo se suelta y cae fuera de cuadro.",
+     "hud": "24 baja a 23.9 · un click suave", "voz": "Se soltó un pétalo."},
+    {"n": 8, "t": "23.0-27.0", "id": "08_macro", "fuente": "04_el_petalo (recortado antes del dedo)",
+     "que_se_ve": "Macro: el pétalo solo sobre la madera, con el sol rasante.",
+     "hud": "23.9", "voz": "Ese fue todo el costo del envío."},
+    {"n": 9, "t": "27.0-30.0", "id": "09_cierre", "fuente": "montaje",
+     "que_se_ve": "Fundido a negro. El monograma OG dorado, solo, como en la parte 1.",
+     "hud": "ENVIADAS 24 · ENTREGADAS 23.9", "voz": "Lo que sale, llega."}
+  ],
+  "sonido": {
+    "criterio": "Copiar el planteamiento de la parte 1: foley muy presente y un colchón casi inaudible debajo. Y una ausencia deliberada.",
+    "foley": [
+      {"t": 4.2, "que": "papel kraft: la florista envuelve"},
+      {"t": 8.0, "que": "la cinta apretando y el papel tensándose"},
+      {"t": 10.5, "que": "el ramo cambiando de manos"},
+      {"t": 21.5, "que": "el pétalo tocando la madera — el sonido más pequeño de la pieza"}
+    ],
+    "la_ausencia": "En la parte 1 el tic-tac del reloj marca la espera durante el time-lapse. Aquí ese sonido NO EXISTE, porque no hay espera. Quien vio la primera lo va a echar de menos sin saber por qué.",
+    "el_click": "Uno solo, suave, en el fotograma exacto en que cae el pétalo. En la parte 1 eran seis dings de dureza creciente.",
+    "colchon": "Acorde grave sostenido, sin tercera, a -14 dBFS de pico. Se siente, no se escucha.",
+    "regla_aprendida": "El ambiente a más de 0.30 enmascara las consonantes: 'gasto de envío' se transcribía como 'gasto rendido'. Se verifica con oir.py, no a oído."
+  },
+  "voz": {
+    "motor": "Kokoro em_alex a velocidad 0.86, en CPU y sin coste",
+    "criterio": "La parte 1 habla una sola vez, al final, y en boca de una persona. Aquí la voz acompaña desde el principio pero deja silencio entre frases.",
+    "pendiente": "El porcentaje real de comisión, para cambiar «todo el costo del envío» por un dato: «menos de un uno por ciento»."
+  },
+  "sobreimpresos": {
+    "copiar_de_la_parte_1": "Cartela negra translúcida de esquinas redondeadas arriba al centro, sans-serif blanca en caja alta, y la cápsula de hora a la izquierda.",
+    "diferencia": "En la parte 1 el contador baja seis veces. Aquí baja una, y de 0.1.",
+    "regla_aprendida": "El número solo puede cambiar en el fotograma del suceso que lo causa. Cambiarlo antes fue el motivo literal de que un espectador se perdiera."
+  },
+  "fases": [
+    {"fase": 1, "nombre": "Generar el plano nuevo", "gpu": true,
+     "detalle": "Tres semillas del ramo muerto, 6 s, 720x1280, 20 pasos.",
+     "tiempo": "31-41 min", "coste": "$0.63-$0.83",
+     "verificacion": "ver.py sobre las tres; se elige por defectos, no por gusto."},
+    {"fase": 2, "nombre": "Recortar y montar", "gpu": false,
+     "detalle": "Nueve bloques del material existente con los sobreimpresos.",
+     "tiempo": "minutos", "coste": "$0",
+     "verificacion": "fotogramas en los cambios de HUD"},
+    {"fase": 3, "nombre": "Voz y sonido", "gpu": false,
+     "detalle": "Kokoro, foley sintetizado, colchón y mezcla.",
+     "tiempo": "minutos", "coste": "$0",
+     "verificacion": "oir.py: el guion se oye entero y no se oye nada de más."},
+    {"fase": 4, "nombre": "Prueba de comprensión", "gpu": false,
+     "detalle": "Un espectador sin contexto responde qué entiende y dónde se pierde.",
+     "tiempo": "minutos", "coste": "$0",
+     "verificacion": "si dice que lo pasaría de largo, se corrige antes de enseñártelo."},
+    {"fase": 5, "nombre": "Máster", "gpu": true,
+     "detalle": "Subida a 1080x1920, grano y color.",
+     "tiempo": "sin medir", "coste": "~$0.50 estimado",
+     "verificacion": "el único número de este plan que es una suposición."}
+  ],
+  "total": {"tiempo": "unas 2 horas", "coste": "$1.10-$1.35",
+            "nota": "De eso, solo 40 minutos son de máquina encendida. El resto es montaje, y el montaje no cuesta."}
+}
