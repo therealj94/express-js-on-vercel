@@ -132,17 +132,44 @@ def como_le_digo(nombre, correo):
     return primero.capitalize() if primero.isupper() else primero
 
 
-def carta(nombre, correo, llave):
-    t = (AQUI / 'carta.txt').read_text(encoding='utf8')
-    # El asunto va en la primera linea del archivo; se quita del cuerpo.
-    if t.startswith('Asunto:'):
-        t = t.split('\n', 1)[1].lstrip('\n')
-    quien = como_le_digo(nombre, correo)
-    # Sin nombre, «Hola:» a secas — y se quita el espacio que dejaria el hueco.
-    return (t.replace('Hola {nombre}:', f'Hola {quien}:' if quien else 'Hola:')
-             .replace('{nombre}', quien)
-             .replace('{enlace}', ENLACE)
-             .replace('{baja}', enlace_de_baja(correo, llave)))
+CARTA_JS = (AQUI / '../../veta-wallet-backend/lib/cartaInstalar.js').resolve()
+
+
+def carta(nombre, correo):
+    """La carta, DIBUJADA POR LA PLANTILLA DE LA CASA.
+
+    ── POR QUE SE LLAMA A NODE EN VEZ DE REESCRIBIRLA AQUI ──────────────────
+
+    El marco de los correos —el borde, el pie, el aviso de que nunca pedimos
+    la contrasena— vive en `lib/correo.js` y lo usan las cinco cartas que la
+    casa ya manda. Copiarlo a Python serian DOS marcos que se tienen que poner
+    de acuerdo, y el dia que alguien cambie el pie por una razon legal, una de
+    las dos cartas seguiria mandando el viejo.
+
+    Asi que esto no dibuja nada: le pide la carta al mismo archivo que la
+    dibuja para todos los demas, y manda lo que le devuelva.
+
+    Devuelve `(asunto, html, texto)`. Las DOS versiones, porque hay clientes
+    que no pintan HTML y una carta que llega en blanco es peor que no
+    mandarla.
+    """
+    import json
+    import subprocess
+    guion = (
+        "import {cartaInstalar} from %s;"
+        "const c=cartaInstalar(JSON.parse(process.argv[1]));"
+        "process.stdout.write(JSON.stringify(c));"
+        % json.dumps(str(CARTA_JS))
+    )
+    r = subprocess.run(
+        ['node', '--input-type=module', '-e', guion,
+         json.dumps({'nombre': nombre or '', 'correo': correo})],
+        capture_output=True, text=True, timeout=60,
+        env={**os.environ})
+    if r.returncode != 0 or not r.stdout.strip():
+        raise RuntimeError('la plantilla no dibujo: ' + (r.stderr or '')[:200])
+    d = json.loads(r.stdout)
+    return d['asunto'], d['html'], d['texto']
 
 
 def main():
@@ -181,7 +208,8 @@ def main():
               'Para probar primero: --prueba\n\n'
               'Así se ve la primera carta:\n' + '─' * 60)
         if gente:
-            print(carta(gente[0][1], gente[0][0], llave)[:1400])
+            _a, _h, t = carta(gente[0][1], gente[0][0])
+            print(t[:1200])
         return 0
     else:
         print(f'Vas a mandarle a {len(gente)} personas. Esto NO se puede '
@@ -195,13 +223,14 @@ def main():
     hechas = fallidas = 0
     for correo, nombre in gente:
         try:
+            asunto, html, texto = carta(nombre, correo)
             ses.send_email(
                 FromEmailAddress=DE,
                 Destination={'ToAddresses': [correo]},
                 Content={'Simple': {
-                    'Subject': {'Data': ASUNTO, 'Charset': 'UTF-8'},
-                    'Body': {'Text': {'Data': carta(nombre, correo, llave),
-                                      'Charset': 'UTF-8'}}}})
+                    'Subject': {'Data': asunto, 'Charset': 'UTF-8'},
+                    'Body': {'Html': {'Data': html, 'Charset': 'UTF-8'},
+                             'Text': {'Data': texto, 'Charset': 'UTF-8'}}}})
             apuntar(correo)
             hechas += 1
             print(f'  ✓ …{correo[-18:]}')
