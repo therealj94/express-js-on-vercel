@@ -238,10 +238,19 @@ ok("send_header('X-Formato'" in _rutas.get('_hablar', '') and hasattr(voz, 'FORM
    'y el formato se anuncia, para que una app vieja se dé cuenta',
    'si cambia el reparto, más vale que lo note y se pase a la nota de voz')
 
+ok(hasattr(voz, 'TEMPLADO') and {i for i, _f in voz.TEMPLADO} == {'es', 'en'},
+   'y el arranque templa LOS DOS idiomas',
+   'quien escriba en inglés sería el primero de su idioma y pagaría los '
+   'veintidós segundos igual')
+
 # El idioma viaja hasta el modelo, y el humanizado español NO toca el inglés.
 # Sin la guarda, un texto en inglés saldría con «Mirá,» delante y los números
 # dichos en castellano en medio de la frase.
 _fuente2 = pathlib.Path(voz.__file__).read_text()
+# El templado del arranque es el tercer sitio que llama al modelo, y ahi el
+# idioma SI es fijo a proposito: son dos frases de mentira, una por idioma, para
+# que nadie pague el arranque en frio. Se comprueba aparte —que sean dos y que
+# no se cuelen mas— en vez de aflojar la guarda de las rutas de verdad.
 ok(_fuente2.count('language_id=idioma') == 2 and "language_id='es'" not in _fuente2,
    'el idioma que llega es el que habla, en las dos rutas',
    'un language_id fijo deja al inglés con acento de doblaje')

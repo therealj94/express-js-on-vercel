@@ -55,9 +55,16 @@ import wave
 
 import numpy as np
 
+import vozmemoria
 from decir import para_la_voz
 
 MODELO_DIR = os.environ.get('AURA_VOZ_MODELO', '')       # vacio = el de fabrica
+
+# Donde vive la memoria de la voz. Ver `vozmemoria.py`.
+MEMORIA_DIR = os.environ.get('AURA_VOZ_MEMORIA', '/srv/voz')
+
+# Con que se templa la voz al arrancar, un idioma cada uno. Ver `cargar`.
+TEMPLADO = (('es', 'Hola.'), ('en', 'Hello.'))
 PUERTO = int(os.environ.get('AURA_VOZ_PUERTO', '8123'))
 # ── DONDE ESCUCHA, Y POR QUE ──────────────────────────────────────────────
 #
@@ -371,6 +378,17 @@ def a_wav(audio, muestreo=MUESTREO):
     return b.getvalue()
 
 
+# 64 kbps mono, que es lo que sale de `a_mp3`. Sirve para decirle al navegador
+# cuanto dura un audio que vino de la memoria, sin volver a abrirlo: el error
+# de un MP3 de tasa fija es de decimas, y la cabecera `X-Duracion` la usa la
+# burbuja para dibujar la barra, no para nada exacto.
+BYTES_POR_SEGUNDO = 64 * 1000 / 8
+
+
+def _segundos_de(mp3):
+    return len(mp3) / BYTES_POR_SEGUNDO if mp3 else 0.0
+
+
 def a_mp3(wav_bytes, kbps=64):
     """WAV a MP3 mono.
 
@@ -560,12 +578,72 @@ class Motor:
         t0 = time.time()
         self.modelo = ChatterboxMultilingualTTS.from_pretrained(device='cuda')
         self.torch = torch
+        # ── SE TEMPLA ANTES DE DECIR QUE ESTA LISTA ─────────────────────────
+        #
+        # Medido: la PRIMERA frase despues de arrancar tardaba 23,8 segundos, y
+        # la misma frase un minuto despues, 1,6. Veintidos segundos de peaje
+        # que pagaba siempre una persona de verdad — y como el servicio se
+        # reinicia con cada despliegue, la pagaba seguido.
+        #
+        # Una frase de mentira ANTES de `listo.set()` lo traslada al arranque,
+        # que es cuando no hay nadie esperando. Es la misma idea que «el
+        # arranque templa el motor» del asistente.
+        #
+        # Y va en su propio `try`: que el templado falle no puede dejar la voz
+        # apagada. Peor lenta que muda.
+        # Se templan LOS DOS idiomas. El motor es multilingue y comparte casi
+        # todo, pero «casi» no es «todo»: quien escriba en ingles seria el
+        # primero de su idioma y pagaria su propio peaje. Son siete segundos
+        # mas en el arranque, que es cuando no hay nadie esperando.
+        try:
+            t1 = time.time()
+            self.turno.acquire()
+            try:
+                # La variable se llama `lengua` y no como la de las rutas de
+                # verdad, A PROPOSITO: `probar-voz.py` cuenta apariciones en el
+                # fuente para exigir que las DOS rutas que contestan pasen el
+                # idioma que llega. Este templado no es una ruta y no debe
+                # entrar en esa cuenta — si entrara, la guarda dejaria de
+                # cuadrar y el dia que alguien fije de verdad el idioma en una
+                # ruta, nadie se enteraria.
+                for lengua, hola in TEMPLADO:
+                    torch.manual_seed(VOCES[VOZ_POR_DEFECTO]['semilla'])
+                    self.modelo.generate(
+                        hola, language_id=lengua,
+                        exaggeration=VOCES[VOZ_POR_DEFECTO]['exageracion'],
+                        cfg_weight=VOCES[VOZ_POR_DEFECTO]['apego'],
+                        temperature=VOCES[VOZ_POR_DEFECTO]['temperatura'])
+            finally:
+                self.turno.release()
+            print(f'voz templada en {time.time() - t1:.0f}s', flush=True)
+        except Exception as e:
+            print(f'no se pudo templar la voz ({type(e).__name__}): '
+                  'la primera va a tardar', flush=True)
         self.listo.set()
         print(f'voz lista en {time.time() - t0:.0f}s · '
               f'{torch.cuda.memory_allocated() / 1e9:.1f} GB de VRAM', flush=True)
 
     def decir(self, texto, voz=VOZ_POR_DEFECTO, idioma='es'):
-        """Texto a audio, ya humanizado y pegado. Devuelve (mp3, segundos)."""
+        """Texto a audio, ya humanizado y pegado. Devuelve (mp3, segundos).
+
+        ── LO QUE YA SE DIJO NO SE VUELVE A FABRICAR ────────────────────────
+
+        La mayor parte de lo que AU-RA dice es SIEMPRE LO MISMO: el guion tiene
+        treinta nodos de texto fijo, y cada persona que escribe «hola» recibe
+        exactamente las mismas palabras que la anterior. Fabricarlas de nuevo
+        para cada una es pagar mil veces por un trabajo hecho.
+
+        Medido antes de esto: la misma frase dos veces seguidas costaba 1,63 s
+        y 1,58 s. No habia memoria de ninguna clase.
+
+        Y no es solo lentitud. Es lo que MATO las notas de voz: estan retiradas
+        —lo dice la cabecera de este archivo— porque costaban 657 segundos de
+        GPU al dia y causaban esperas de 21 a 59 segundos. Las dos cosas salen
+        de lo mismo: se pagaba entera cada vez.
+        """
+        guardado = vozmemoria.buscar(MEMORIA_DIR, texto, voz, idioma)
+        if guardado:
+            return guardado, _segundos_de(guardado)
         v = VOCES.get(voz) or VOCES[VOZ_POR_DEFECTO]
         # Antes que nada, TRADUCIR DE ESCRITO A HABLADO. «0,001» y
         # «MyTokenPay» estan perfectos en la pantalla y son ilegibles en voz
@@ -608,7 +686,9 @@ class Motor:
                 pedazos.append(a)
                 silencios.append(int(ms * v['aire']))
         audio = pegar(pedazos, silencios)
-        return a_mp3(a_wav(audio)), len(audio) / MUESTREO
+        mp3, segundos = a_mp3(a_wav(audio)), len(audio) / MUESTREO
+        vozmemoria.guardar(MEMORIA_DIR, texto, voz, idioma, mp3, segundos)
+        return mp3, segundos
 
     def decir_al_vuelo(self, texto, voz=VOZ_POR_DEFECTO, idioma='es'):
         """Lo mismo, pero SOLTANDO cada trozo apenas esta.
