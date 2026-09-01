@@ -10,3 +10,5 @@ prompts/q_*.json
 prompts/cola.json
 prompts/workflows/*_api.json
 *.tar
+guardian.log
+pesos.log
