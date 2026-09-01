@@ -43,6 +43,14 @@
  * estrictamente mejor; las dos son razonables, y la diferencia queda escrita
  * aquí en vez de descubrirse después.
  */
+/* PRIMERO ESTO, ANTES QUE @noble. En Android no existe
+   `globalThis.crypto.getRandomValues`, y sin él `randomPrivateKey()` no
+   devuelve una llave mala: TIRA, y se lleva por delante el candado entero.
+   Ver `azar.js`, que cuenta el fallo completo. */
+/* Con la extensión puesta: Metro resuelve las dos formas, pero `probar-candado`
+   carga ESTE archivo con el Node de verdad, y Node exige la extensión. */
+import { ponerElAzar } from './azar.js';
+
 import { p256 } from '@noble/curves/p256';
 import { sha256 } from '@noble/hashes/sha2';
 import { hkdf } from '@noble/hashes/hkdf';
@@ -124,6 +132,35 @@ const bytesATexto = (b) => {
 
 const azar = (n) => Crypto.getRandomBytes(n);
 
+/* El suelo de azar que @noble busca en el global, puesto antes de que nadie
+   se lo pida. Se llama aquí, en el cuerpo del módulo, para que ya esté hecho
+   cuando alguien importe este archivo y llame a cualquier cosa. */
+ponerElAzar();
+
+/* ── UNA LLAVE PRIVADA, SIN PASAR POR EL GLOBAL ────────────────────────────
+ *
+ * La de @noble saca sus bytes de `globalThis.crypto`, que en Android no
+ * existe. `ponerElAzar()` lo pone, pero de eso depende TODO el
+ * candado, y el sitio donde se generan las llaves es justo el que no puede
+ * quedarse sin plan B: el `catch` de `mias()` volvía a llamar a lo mismo que
+ * acababa de tirar, así que el plan B moría del mismo golpe que el plan A.
+ *
+ * Así que aquí los bytes se piden a `expo-crypto` directamente —el generador
+ * del sistema— y no se depende del global para nada.
+ *
+ * Se REINTENTA en vez de recortar. Un valor de 32 bytes cae fuera de
+ * [1, n-1] con probabilidad de una entre cuatro mil millones, pero recortar
+ * o hacer módulo para «arreglarlo» sesga la llave hacia los valores bajos, y
+ * una llave sesgada es una llave más fácil de adivinar. Descartar y volver a
+ * tirar no sesga nada. */
+function llavePrivada() {
+  for (let i = 0; i < 8; i++) {
+    const k = azar(32);
+    if (p256.utils.isValidPrivateKey(k)) return k;
+  }
+  throw new Error('no se pudo generar una llave privada');
+}
+
 // ── el par de llaves de ESTE aparato ───────────────────────────────────────
 const CAJON = 'p2c.candado.priv';
 /* Un SEGUNDO par, sólo para firmar. No se reutiliza el de acuerdo por la misma
@@ -159,14 +196,14 @@ export async function mias() {
            se les AGREGA el de firma al lado y desde ahí firman como los
            nuevos. Es la única forma de que nadie pierda su historial. */
         if (!guardadaF || deB64(guardadaF).length !== 32) {
-          guardadaF = aB64(p256.utils.randomPrivateKey());
+          guardadaF = aB64(llavePrivada());
           await SecureStore.setItemAsync(CAJON_FIRMA, guardadaF).catch(() => {});
         }
         mio = armar(deB64(guardada), deB64(guardadaF));
         return mio;
       }
-      const priv = p256.utils.randomPrivateKey();
-      const privF = p256.utils.randomPrivateKey();
+      const priv = llavePrivada();
+      const privF = llavePrivada();
       await SecureStore.setItemAsync(CAJON, aB64(priv)).catch(() => {});
       await SecureStore.setItemAsync(CAJON_FIRMA, aB64(privF)).catch(() => {});
       mio = armar(priv, privF);
@@ -176,7 +213,7 @@ export async function mias() {
          igual mientras la app esté abierta, y al cerrarla se pierde. Es peor
          que guardarlo y muchísimo mejor que mandar el texto en claro. */
       try {
-        mio = { ...armar(p256.utils.randomPrivateKey(), p256.utils.randomPrivateKey()),
+        mio = { ...armar(llavePrivada(), llavePrivada()),
                 volatil: true };
       }
       catch { mio = null; }

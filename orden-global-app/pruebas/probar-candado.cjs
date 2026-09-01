@@ -89,10 +89,59 @@ registerHooks({
   },
 });
 
+/* ══ Y AHORA SE LE QUITA A NODE LO QUE EL TELÉFONO NO TIENE ════════════════
+ *
+ * Esta prueba pasó en verde durante semanas mientras el candado NO cifraba
+ * una sola letra en Android. El motivo es de método, no de descuido:
+ *
+ * `@noble` saca su azar de `globalThis.crypto.getRandomValues`. Node lo trae
+ * desde la 19. Hermes —el motor de la app en Android— NO. Así que
+ * `randomPrivateKey()` no devolvía una llave mala: TIRABA, y como el `catch`
+ * de `mias()` volvía a llamar a lo mismo, el plan B moría con el plan A. El
+ * candado quedaba muerto en el teléfono: no publicaba su llave, mandaba los
+ * mensajes EN CLARO y no abría ninguno. En pantalla, «Cifrado para otro de
+ * tus aparatos» en todas las conversaciones.
+ *
+ * La prueba corría en un sitio MÁS CAPAZ que el real, así que no probaba lo
+ * que hacía falta. Se le quita el global antes de cargar el módulo.
+ *
+ * ── HASTA DÓNDE LLEGA ESTO, DICHO SIN ADORNOS ─────────────────────────────
+ *
+ * Quitarlo NO reproduce Hermes del todo, y conviene saberlo antes de confiar
+ * de más: en Node, `@noble/hashes` resuelve su `crypto` por la condición de
+ * exportación de node y termina en `node:crypto`, así que sigue teniendo azar
+ * aunque el global no esté. En Metro la condición es la del navegador y ahí
+ * sólo queda el global — que no existe.
+ *
+ * O sea que esto no comprueba «tira igual que en el teléfono». Comprueba lo
+ * otro, que es lo que hace falta: que el módulo carga sin el global de Node y
+ * que DEJA PUESTO un `getRandomValues` que da bytes de verdad. Sin el
+ * arreglo, esa segunda comprobación se pone roja. Y el sitio donde se generan
+ * las llaves ya no pasa por el global en absoluto: pide los bytes a
+ * `expo-crypto`, que en Android es el generador del sistema.
+ *
+ * La web no se entera: se cargó en su propio contexto con una referencia al
+ * objeto, y borrar el nombre global no destruye el objeto. */
+const cryptoDeNode = globalThis.crypto;
+delete globalThis.crypto;
+
 let APP;
 (async () => {
   // El módulo del teléfono es ESM; Node lo carga con import() dinámico.
   APP = await import(path.join(__dirname, '..', 'src', 'og', 'candado.js'));
+
+  console.log('\n── sin `crypto` global, como en Android ─────────────────────');
+  ok('el candado carga sin `globalThis.crypto` de Node',
+    globalThis.crypto !== cryptoDeNode);
+  ok('y deja puesto un `getRandomValues` que da bytes de verdad',
+    (() => {
+      const f = globalThis.crypto?.getRandomValues;
+      if (typeof f !== 'function') return false;
+      const a = f(new Uint8Array(32));
+      const b = f(new Uint8Array(32));
+      // Ni ceros ni dos tiradas iguales: las dos son señal de azar de mentira.
+      return a.some((x) => x !== 0) && a.join() !== b.join();
+    })());
 
   console.log('\n── las dos se presentan ─────────────────────────────────────');
   const llaveWeb = await WEB.miLlave();
