@@ -485,7 +485,19 @@ export default function AuroChat({ nav, params }) {
             await traerConvos();          // con la llave nueva, otra vez
             return;
           } catch (e2) {
-            if (!(e2 && e2.code === 409)) { setSinRed(true); return; }
+            if (!(e2 && e2.code === 409)) {
+              /* EL CERROJO SE SUELTA CUANDO EL FALLO NO ES DEFINITIVO.
+                 Estaba puesto para no girar en bucle, y hacía falta. Pero no
+                 se soltaba NUNCA: un tropiezo cualquiera —la red, una
+                 excepción inesperada dentro del alta— dejaba el chat muerto
+                 hasta reiniciar la app, mostrando «este chat quedó en tu
+                 instalación anterior», que además no era verdad.
+                 El 409 sí es definitivo y ahí el cerrojo se queda echado: si
+                 el correo tiene otro dueño de verdad, insistir no arregla
+                 nada. Cualquier otra cosa merece otro intento. */
+              reparando.current = false;
+              setSinRed(true); return;
+            }
             // Se guarda POR QUE, para decirle a la persona a dónde ir.
             setMotivoOtra(e2.motivo || null);
           }

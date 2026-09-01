@@ -67,6 +67,29 @@ const cajonDe = (correo) =>
   'og.llaveChat.' + String(correo || '').replace(
     /[^\w.]/g, (c) => '-' + c.charCodeAt(0).toString(16).padStart(2, '0'));
 
+/* DIAGNÓSTICO TEMPORAL — quitar cuando se resuelva.
+ *
+ * En un teléfono, `alta()` se está cayendo ANTES de tocar la red: el relevo no
+ * ve ni un intento, y sin embargo el chat sí le habla por otras rutas. Desde
+ * este lado no hay forma de ver la excepción, así que se le pide al teléfono
+ * que la cuente: una sola línea al relevo, con el texto del error y una marca
+ * de qué paquete está corriendo, para saber además si la actualización por
+ * aire llegó.
+ *
+ * No lleva nada de la persona salvo el correo que ya viaja en el alta. */
+const MARCA_PAQUETE = 'ota-2026-09-01-b';
+function contarElFallo(correo, paso, e) {
+  try {
+    fetch(BASE + '/alta', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        correo, diag: `${MARCA_PAQUETE} paso=${paso} ${e && (e.message || e)}`.slice(0, 200),
+      }),
+    }).catch(() => {});
+  } catch { /* si ni esto se puede, se sigue */ }
+}
+
 export async function alta(cuenta) {
   yo = { correo: (cuenta.email || '').toLowerCase(), nombre: cuenta.name || cuenta.nombre || '', addr: cuenta.addr || '' };
   // El GID viaja en el alta cuando la cuenta ya lo tiene: con él /buscar
@@ -74,12 +97,16 @@ export async function alta(cuenta) {
   // pintarlo bajo el nombre. Sin GID la clave ni aparece (JSON.stringify se
   // come los undefined) y el relevo no toca la que ya tuviera guardada.
   if (cuenta.genesisUid) yo.gid = cuenta.genesisUid;
+  let paso = 'inicio';                       // DIAGNOSTICO TEMPORAL
+  try {                                      // DIAGNOSTICO TEMPORAL
+  paso = 'cajon';
   // La llave se guarda ATADA AL CORREO. Antes vivía en una sola etiqueta
   // global, y eso rompía a quien cambiaba de cuenta: la app le presentaba al
   // relevo la llave de la cuenta anterior, el relevo no la reconocía, y todo
   // —conversaciones, mensajes que llegan, buscar gente— respondía 401 para
   // siempre. La persona veía «sin conexión» con el wifi perfecto.
   const donde = cajonDe(yo.correo);
+  paso = 'leer-cajon';
   let g = await SecureStore.getItemAsync(donde).catch(() => null);
   if (!g) {
     // Migración de la etiqueta vieja: se hereda SOLO si el relevo la valida
@@ -104,6 +131,7 @@ export async function alta(cuenta) {
 
      Va siempre que haya sesión, también con llave local: no molesta, y cubre
      el caso de una llave vieja que el relevo ya no reconoce. */
+  paso = 'cuerpo';
   const cuerpo = { ...yo };
   if (g) cuerpo.llave = g;
   /* ══ LA SESIÓN, VIVA ══════════════════════════════════════════════════════
@@ -124,7 +152,9 @@ export async function alta(cuenta) {
    * Si no se puede renovar —sin refresco y sin credenciales guardadas— se
    * manda lo que haya: puede seguir sirviendo, y si no, el mensaje de volver
    * a entrar SÍ es el correcto. */
+  paso = 'sesion';
   try { await ensureSession(); } catch (e) { /* se sigue con lo que haya */ }
+  paso = 'token';
   const sesion = cuenta.sesion || getToken();
   if (sesion) cuerpo.sesion = sesion;
   /* ══ QUIEN MANDA ES LA SESIÓN, NO EL CORREO GUARDADO ══════════════════════
@@ -148,6 +178,7 @@ export async function alta(cuenta) {
    * No se puede repetir para siempre: al segundo intento `yo.correo` ya ES el
    * correo probado, la condición no se cumple y el error sale como cualquier
    * otro. */
+  paso = 'red';
   let d;
   try {
     d = await pedir('/alta', cuerpo);
@@ -164,7 +195,14 @@ export async function alta(cuenta) {
      mensaje. Si esperara al primero, quien acaba de instalar no podría RECIBIR
      nada cifrado hasta escribir él, y su primera conversación entera llegaría
      en claro. */
+  paso = 'publicar';
   publicarMiLlave().catch(() => null);
+  } catch (e) {                              // DIAGNOSTICO TEMPORAL
+    /* Sólo lo que se cae ANTES de la red interesa: un 409 o un 401 del relevo
+       ya se ven en su registro, y contarlos otra vez sería ruido. */
+    if (!(e && e.code)) contarElFallo(yo?.correo, paso, e);
+    throw e;
+  }
 }
 
 /**
