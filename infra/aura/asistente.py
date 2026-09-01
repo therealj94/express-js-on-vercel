@@ -92,7 +92,11 @@ import guardia
 import registro
 import guion
 import premio
+import catalogo
+import encargos
+import escalafon
 import espejo
+import puerta
 import vistazo
 from oido import NoSePudoOir, oir_nota
 from concurrent.futures import ThreadPoolExecutor
@@ -1510,6 +1514,45 @@ def _atender_juego(rel, p, de, dicho):
     return True
 
 
+
+def _que_falta(hueco):
+    """Le pregunta a la persona el dato que falta, con sus opciones si las
+    tiene. Sin decir las opciones, «reiniciar» se contesta con cualquier cosa
+    y se rechaza tres veces seguidas."""
+    forma = hueco[1]
+    if forma['clase'] == 'una-de':
+        return (f'¿Cuál {hueco[0]}?\n\n'
+                + '\n'.join('• ' + o for o in forma['opciones']))
+    return (f'Contame el {hueco[0]}, con detalle.\n\n'
+            f'Lo va a leer entero quien lo firme, así que escribilo claro. '
+            f'Hasta {forma["largo"]} caracteres.')
+
+
+def _hacer_encargo(rel):
+    """Lo que ejecuta un encargo que SALE SOLO — solo los de mirar.
+
+    El mayordomo se importa aqui dentro y no arriba a proposito: asi el
+    asistente no lo carga si nadie pide nada, y sobre todo, `puerta.py` no
+    tiene que conocerlo. El que dibuja la puerta no puede hacer nada.
+    """
+    def hacer(e):
+        try:
+            import mayordomo
+            mano = mayordomo.MANOS.get(e['clave'])
+            if not mano:
+                rel.enviar(e['quien'], f'{e["id"]}: no hay quien lo haga')
+                return
+            encargos.tomar(e['id'])
+            bien, texto = mano(e)
+            encargos.terminar(e['id'], bien, texto)
+            rel.enviar(e['quien'], texto)
+        except Exception as err:
+            encargos.terminar(e['id'], False, f'{type(err).__name__}')
+            rel.enviar(e['quien'],
+                       f'{e["id"]}: no se pudo — {type(err).__name__}')
+    return hacer
+
+
 def atender(rel, sistema, p, de, dicho, mensaje=None):
     """Atiende UN mensaje. Si lanza, el que llama decide reintentar o saltar;
     aqui no se avanza ningun tope.
@@ -1568,6 +1611,44 @@ def atender(rel, sistema, p, de, dicho, mensaje=None):
             # El espejo caido no puede tumbar al asistente: se dice y se sigue.
             rel.enviar(de, guion.frase('charlas-rotas', idi,
                                        e=type(e).__name__))
+        return
+
+    # ── LA PUERTA DE LOS ENCARGOS ──────────────────────────────────────────
+    #
+    # Solo para quien esta en el escalafon. Y AU-RA no ejecuta nada aqui:
+    # `puerta` llama a `encargos`, que ANOTA. Quien hace las cosas es el
+    # mayordomo, en otro proceso, y solo lo que ya lleva firma.
+    #
+    # Va antes del juego y de todo lo demas porque un boton de firmar tocado
+    # es una decision, no una conversacion: si algo de mas arriba se lo come,
+    # el admin toca «Aprobar» y no pasa nada, que es la peor forma de fallar
+    # que puede tener esto.
+    if toco:
+        atendido = puerta.toque(rel, de, toco, hacer=_hacer_encargo(rel))
+        if atendido is True:
+            return
+        if isinstance(atendido, tuple) and atendido[0] == 'espera':
+            # Le falta un dato al encargo: se pregunta y se espera lo escrito.
+            p['encargo_pendiente'] = atendido[1]
+            hueco = catalogo.ENCARGOS[atendido[1]]['pide'][0]
+            rel.enviar(de, _que_falta(hueco))
+            return
+
+    if p.get('encargo_pendiente'):
+        clave = p.pop('encargo_pendiente')
+        hueco = catalogo.ENCARGOS[clave]['pide'][0]
+        puerta.pedir(rel, de, clave, {hueco[0]: dicho},
+                     hacer=_hacer_encargo(rel))
+        return
+
+    if puerta.le_abre(dicho) and escalafon.tramo_de(de):
+        registro.anotar('encargo', que='menu')
+        puerta.menu(rel, de)
+        return
+
+    if (dicho or '').strip().lower() in ('mis encargos', 'lo mio', 'lo mío') \
+            and escalafon.tramo_de(de):
+        puerta.mios(rel, de)
         return
 
     # ── EL JUEGO VA ANTES QUE TODO ────────────────────────────────────────
