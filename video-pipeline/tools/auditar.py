@@ -35,8 +35,11 @@ def main():
     c = genai.Client(api_key=os.environ["GEMINI_API_KEY"])
 
     planos = "\n\n".join(
-        f"PLANO {i} — {s['titulo']} ({s['segundos']}s)\n"
-        f"INTENCIÓN: {s.get('nota', '(sin nota)')}\n"
+        # Los shotlist nuevos traen 'id' y heredan la duración de defaults;
+        # los guiones viejos traen 'titulo' y 'segundos'. Vale cualquiera.
+        f"PLANO {i} — {s.get('titulo') or s['id']} "
+        f"({s.get('segundos', g.get('defaults', {}).get('duration_s', '?'))}s)\n"
+        f"INTENCIÓN: {s.get('nota') or s.get('_nota', '(sin nota)')}\n"
         f"PROMPT: {s['still']} || MOVIMIENTO: {s['motion']}"
         for i, s in enumerate(g["shots"], 1))
 
@@ -44,7 +47,7 @@ def main():
 antes de que se generen con un modelo de vídeo. Responde en español, directo.
 
 LO QUE EL ANUNCIO QUIERE CONTAR:
-{json.dumps(g.get('la_idea') or g.get('historia') or g.get('idea'), ensure_ascii=False, indent=1)}
+{json.dumps(g.get('la_idea') or g.get('historia') or g.get('idea') or g.get('_nota'), ensure_ascii=False, indent=1)}
 
 LOS PLANOS:
 {planos}
