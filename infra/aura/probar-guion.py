@@ -748,9 +748,14 @@ class NADASALEENUNSOLOIDIOMA(unittest.TestCase):
         self.assertIn("todo_el_saber(saber, 'en')", fuente[j:j + 600])
 
     def test_las_fichas_de_verdad_tienen_las_dos_versiones(self):
+        """Mira el saber DEL REPOSITORIO, que en el nodo no está: allí vive
+        una copia en otra ruta. Se salta en vez de dar rojo — una prueba que
+        falla por no ser su máquina enseña a ignorar el rojo."""
         import json
-        d = json.loads((AQUI / '..' / 'cerebro' / 'conocimiento' /
-                        'saber.json').read_text(encoding='utf8'))
+        ruta = AQUI / '..' / 'cerebro' / 'conocimiento' / 'saber.json'
+        if not ruta.exists():
+            self.skipTest('el saber del repositorio no está en esta máquina')
+        d = json.loads(ruta.read_text(encoding='utf8'))
         sin_ingles = [f['id'] for f in d['fichas']
                       if f.get('publico') and not (f.get('en') or '').strip()]
         self.assertEqual(sin_ingles, [],

@@ -203,9 +203,36 @@ class ElParteNoEsParaCUALQUIERA(unittest.TestCase):
     """Lleva identidades en cola, premios por pagar y el estado de Meta."""
 
     def test_sin_configurar_NO_LO_RECIBE_NADIE(self):
-        with mock.patch.object(vistazo, 'JEFES', set()):
-            self.assertFalse(vistazo.puede_pedirlo('50432136457'))
-            self.assertFalse(vistazo.puede_pedirlo('cualquiera'))
+        """LAS DOS LISTAS VACIAS, no solo una.
+
+        Desde el 1-sep `puede_pedirlo` mira tambien el escalafon. Esta prueba
+        limpiaba solo `JEFES`, asi que pasaba en una maquina sin escalafon y
+        FALLABA en el nodo, donde si lo hay — o sea que dejaba de medir el
+        programa y pasaba a medir el entorno. Una prueba que depende de la
+        maquina donde corre no es una prueba.
+        """
+        import escalafon
+        antes = escalafon.GENTE
+        escalafon.recargar('')
+        try:
+            with mock.patch.object(vistazo, 'JEFES', set()):
+                self.assertFalse(vistazo.puede_pedirlo('50432136457'))
+                self.assertFalse(vistazo.puede_pedirlo('cualquiera'))
+        finally:
+            escalafon.GENTE = antes
+
+    def test_pero_quien_esta_en_el_ESCALAFON_si_puede(self):
+        """Es lo que arreglo el fallo del 1-sep: «actualizar» estaba muerto
+        porque `AURA_PARTE_PARA` no la puso nunca nadie."""
+        import escalafon
+        antes = escalafon.GENTE
+        escalafon.recargar('Nicole=50433467760:mercadeo')
+        try:
+            with mock.patch.object(vistazo, 'JEFES', set()):
+                self.assertTrue(vistazo.puede_pedirlo('50433467760'))
+                self.assertFalse(vistazo.puede_pedirlo('50499999999'))
+        finally:
+            escalafon.GENTE = antes
 
     def test_solo_quien_esta_en_la_lista(self):
         with mock.patch.object(vistazo, 'JEFES', {'50432136457'}):
