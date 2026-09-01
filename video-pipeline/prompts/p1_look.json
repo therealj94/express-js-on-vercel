@@ -1,0 +1,254 @@
+{
+  "_nota": "Pelicula 1 del lanzamiento. Sustituye al tratamiento 'al reves', que fallo la prueba de publico frio: sin haber visto los tres anuncios anteriores nadie entendia el contador 24/14 ni la rafaga de planos invertidos, y el dorado con el oro y los nombres de las monedas se leia literalmente como estafa piramidal. Aqui no hay oro, ni monedas, ni contadores, ni dorado: luz de dia, gente normal, y una sola cosa que pasa. Un espectador frio lo resumio en una linea: 'la hija esta fuera, le manda a la mama y le llega completo'. SEGUNDA PRUEBA: el rotulo del coste (0,001 $) se leyo como mentira -'nadie regala nada'- y quedo ULTIMO en credibilidad, por detras de no decir nada. No se presume: va como una linea mas del comprobante. Y la moneda NO se explica: 'una sola moneda para Latinoamerica referenciada al oro' produjo 'no entendi ni un carajo' y, por segunda vez, la inferencia prohibida de que hay oro en una boveda nuestra. ORIGEN queda como infraestructura invisible, igual que en la parte 1 nunca se dijo 'dinero'. La salida a moneda local se ensena con TARJETA, nunca con Ordenex: 'la Visa mil veces; la casa de cambio de ellos me suena a un local que manana cierran'. Jose decide: no se ensena la cifra, solo que llego. El rotulo 'Salieron 50. Llegaron 50.' se cae -implicaria una estabilidad que una unidad referenciada al oro no tiene si la senora la conserva- y queda 'Cuatro segundos' y el comprobante.",
+  "defaults": {
+    "still_workflow": "workflows/h3_calidad_api.json",
+    "video_workflow": "workflows/h3_i2v_api.json",
+    "duration_s": 4,
+    "fps": 24,
+    "negative": "plastic skin, waxy face, smoothed pores, extra fingers, deformed hands, warped face, dead eyes, text, watermark, logo, subtitles, oversaturated, HDR halo, blown highlights, banding, flicker, temporal jitter, morphing, ghosting, fisheye distortion, tilted horizon, low resolution, blurry, jpeg artifacts",
+    "look": "apple_human",
+    "width": 720,
+    "height": 1280
+  },
+  "shots": [
+    {
+      "id": "01_pulperia",
+      "still": "A 58 year old Central American woman behind the counter of a small neighbourhood corner shop, weathered face, no makeup, grey streaks in tied-back hair, worn cotton blouse, handing a bag of bread to a customer off frame. Shelves of everyday goods behind her, hand written price cards, a plastic curtain in the doorway, hard midday light coming in from the street. Documentary framing, medium shot, shot on 35mm, cinematic still frame, shot on ARRI Alexa 35, Panavision Primo 85mm, T2.0, large north-facing window light, soft wrap, gentle negative fill, natural catchlights in the eyes, warm neutral skin tones, desaturated surroundings, soft teal shadows, natural skin texture with visible pores and fine hair, no plastic smoothing, no beauty retouch, filmic contrast, gentle highlight rolloff, 35mm-like",
+      "motion": "she sets the bag down on the counter and wipes her hands on a cloth, dust visible in the doorway light, locked-off camera, no camera movement, only subject moves, shot on ARRI Alexa 35, Panavision Primo 85mm, T2.0, large north-facing window light, soft wrap, gentle negative fill, natural catchlights in the eyes, warm neutral skin tones, desaturated surroundings, soft teal shadows, natural skin texture with visible pores and fine hair, no plastic smoothing, no beauty retouch, filmic contrast, gentle highlight rolloff, 35mm-like",
+      "move": "static",
+      "stills": 6,
+      "seeds": [
+        1101,
+        1102,
+        1103,
+        1104,
+        1105,
+        1106
+      ],
+      "pick": null,
+      "negative": "plastic skin, waxy face, smoothed pores, extra fingers, deformed hands, warped face, dead eyes, text, watermark, logo, subtitles, oversaturated, HDR halo, blown highlights, banding, flicker, temporal jitter, morphing, ghosting, fisheye distortion, tilted horizon, low resolution, blurry, jpeg artifacts"
+    },
+    {
+      "id": "02_telefono_mostrador",
+      "still": "Close on a scratched budget smartphone lying face down on a worn wooden shop counter, beside a chipped coin tray, a roll of receipt paper and a jar of loose sweets. Behind it, out of focus, the shelves of a neighbourhood corner shop and a plastic strip curtain over the doorway. Hard midday light from the street rakes across the scratched counter. No screen visible. Documentary detail shot, shallow depth of field, shot on 35mm, cinematic still frame, shot on ARRI Alexa 35, Panavision Primo 85mm, T2.0, large north-facing window light, soft wrap, gentle negative fill, natural catchlights in the eyes, warm neutral skin tones, desaturated surroundings, soft teal shadows, natural skin texture with visible pores and fine hair, no plastic smoothing, no beauty retouch, filmic contrast, gentle highlight rolloff, 35mm-like",
+      "motion": "the phone buzzes once against the wood and shifts a few millimetres, locked-off camera, no camera movement, only subject moves, shot on ARRI Alexa 35, Panavision Primo 85mm, T2.0, large north-facing window light, soft wrap, gentle negative fill, natural catchlights in the eyes, warm neutral skin tones, desaturated surroundings, soft teal shadows, natural skin texture with visible pores and fine hair, no plastic smoothing, no beauty retouch, filmic contrast, gentle highlight rolloff, 35mm-like",
+      "move": "static",
+      "stills": 6,
+      "seeds": [
+        1201,
+        1202,
+        1203,
+        1204,
+        1205,
+        1206
+      ],
+      "pick": null,
+      "negative": "plastic skin, waxy face, smoothed pores, extra fingers, deformed hands, warped face, dead eyes, text, watermark, logo, subtitles, oversaturated, HDR halo, blown highlights, banding, flicker, temporal jitter, morphing, ghosting, fisheye distortion, tilted horizon, low resolution, blurry, jpeg artifacts"
+    },
+    {
+      "id": "03_hija_cocina",
+      "still": "A 31 year old Central American woman standing in the small kitchen of a cramped rented apartment in a colder country, still wearing a work uniform polo, tired face, hair pulled back, one cupboard door open behind her, late afternoon window light, a coat on a chair. Medium shot, documentary framing, shot on 35mm, cinematic still frame, shot on ARRI Alexa 35, Panavision Primo 85mm, T2.0, large north-facing window light, soft wrap, gentle negative fill, natural catchlights in the eyes, warm neutral skin tones, desaturated surroundings, soft teal shadows, natural skin texture with visible pores and fine hair, no plastic smoothing, no beauty retouch, filmic contrast, gentle highlight rolloff, 35mm-like",
+      "motion": "she leans back against the counter and lets her shoulders drop, breathing out, locked-off camera, no camera movement, only subject moves, shot on ARRI Alexa 35, Panavision Primo 85mm, T2.0, large north-facing window light, soft wrap, gentle negative fill, natural catchlights in the eyes, warm neutral skin tones, desaturated surroundings, soft teal shadows, natural skin texture with visible pores and fine hair, no plastic smoothing, no beauty retouch, filmic contrast, gentle highlight rolloff, 35mm-like",
+      "move": "static",
+      "stills": 6,
+      "seeds": [
+        1301,
+        1302,
+        1303,
+        1304,
+        1305,
+        1306
+      ],
+      "pick": null,
+      "negative": "plastic skin, waxy face, smoothed pores, extra fingers, deformed hands, warped face, dead eyes, text, watermark, logo, subtitles, oversaturated, HDR halo, blown highlights, banding, flicker, temporal jitter, morphing, ghosting, fisheye distortion, tilted horizon, low resolution, blurry, jpeg artifacts"
+    },
+    {
+      "id": "04_abre_app",
+      "still": "Over the shoulder close shot of the same young woman's hands holding a smartphone in a small kitchen, thumb resting on the dark screen, chipped nail polish, a cheap watch on her wrist, soft window light from the left. The phone screen is completely black and empty. Documentary detail shot, cinematic still frame, shot on ARRI Alexa 35, Panavision Primo 85mm, T2.0, large north-facing window light, soft wrap, gentle negative fill, natural catchlights in the eyes, warm neutral skin tones, desaturated surroundings, soft teal shadows, natural skin texture with visible pores and fine hair, no plastic smoothing, no beauty retouch, filmic contrast, gentle highlight rolloff, 35mm-like",
+      "motion": "her thumb taps the dark screen once and stays there, locked-off camera, no camera movement, only subject moves, shot on ARRI Alexa 35, Panavision Primo 85mm, T2.0, large north-facing window light, soft wrap, gentle negative fill, natural catchlights in the eyes, warm neutral skin tones, desaturated surroundings, soft teal shadows, natural skin texture with visible pores and fine hair, no plastic smoothing, no beauty retouch, filmic contrast, gentle highlight rolloff, 35mm-like",
+      "move": "static",
+      "stills": 8,
+      "seeds": [
+        1401,
+        1402,
+        1403,
+        1404,
+        1405,
+        1406,
+        1407,
+        1408
+      ],
+      "pick": null,
+      "negative": "plastic skin, waxy face, smoothed pores, extra fingers, deformed hands, warped face, dead eyes, text, watermark, logo, subtitles, oversaturated, HDR halo, blown highlights, banding, flicker, temporal jitter, morphing, ghosting, fisheye distortion, tilted horizon, low resolution, blurry, jpeg artifacts"
+    },
+    {
+      "id": "05_elige_contacto",
+      "still": "Tight top down shot of a young woman's hands holding a smartphone over a narrow kitchen counter, thumb mid scroll, chipped nail polish, a cheap watch on her wrist. The phone screen is completely black and empty. Below and out of focus, a chipped mug, a set of keys and a folded work schedule on the laminate counter. Soft late afternoon window light from the left. Documentary detail shot, shot on 35mm, cinematic still frame, shot on ARRI Alexa 35, Panavision Primo 85mm, T2.0, large north-facing window light, soft wrap, gentle negative fill, natural catchlights in the eyes, warm neutral skin tones, desaturated surroundings, soft teal shadows, natural skin texture with visible pores and fine hair, no plastic smoothing, no beauty retouch, filmic contrast, gentle highlight rolloff, 35mm-like",
+      "motion": "her thumb scrolls down slowly and stops, locked-off camera, no camera movement, only subject moves, shot on ARRI Alexa 35, Panavision Primo 85mm, T2.0, large north-facing window light, soft wrap, gentle negative fill, natural catchlights in the eyes, warm neutral skin tones, desaturated surroundings, soft teal shadows, natural skin texture with visible pores and fine hair, no plastic smoothing, no beauty retouch, filmic contrast, gentle highlight rolloff, 35mm-like",
+      "move": "static",
+      "stills": 8,
+      "seeds": [
+        1501,
+        1502,
+        1503,
+        1504,
+        1505,
+        1506,
+        1507,
+        1508
+      ],
+      "pick": null,
+      "negative": "plastic skin, waxy face, smoothed pores, extra fingers, deformed hands, warped face, dead eyes, text, watermark, logo, subtitles, oversaturated, HDR halo, blown highlights, banding, flicker, temporal jitter, morphing, ghosting, fisheye distortion, tilted horizon, low resolution, blurry, jpeg artifacts"
+    },
+    {
+      "id": "06_pone_dedo",
+      "still": "Very tight macro shot of a thumb pressing and holding on a completely black empty phone screen, the rest of the hand steady around the worn plastic case, a cheap watch strap at the edge of frame. Warm late afternoon daylight rakes across the glass, showing faint fingerprints and a hairline scratch. The kitchen behind is a soft wash of out of focus shapes. Documentary macro detail, shot on 35mm, cinematic still frame, shot on ARRI Alexa 35, Panavision Primo 85mm, T2.0, large north-facing window light, soft wrap, gentle negative fill, natural catchlights in the eyes, warm neutral skin tones, desaturated surroundings, soft teal shadows, natural skin texture with visible pores and fine hair, no plastic smoothing, no beauty retouch, filmic contrast, gentle highlight rolloff, 35mm-like",
+      "motion": "the thumb presses down and holds, then lifts away, locked-off camera, no camera movement, only subject moves, shot on ARRI Alexa 35, Panavision Primo 85mm, T2.0, large north-facing window light, soft wrap, gentle negative fill, natural catchlights in the eyes, warm neutral skin tones, desaturated surroundings, soft teal shadows, natural skin texture with visible pores and fine hair, no plastic smoothing, no beauty retouch, filmic contrast, gentle highlight rolloff, 35mm-like",
+      "move": "static",
+      "stills": 8,
+      "seeds": [
+        1601,
+        1602,
+        1603,
+        1604,
+        1605,
+        1606,
+        1607,
+        1608
+      ],
+      "pick": null,
+      "negative": "plastic skin, waxy face, smoothed pores, extra fingers, deformed hands, warped face, dead eyes, text, watermark, logo, subtitles, oversaturated, HDR halo, blown highlights, banding, flicker, temporal jitter, morphing, ghosting, fisheye distortion, tilted horizon, low resolution, blurry, jpeg artifacts"
+    },
+    {
+      "id": "07_suena_pulperia",
+      "still": "The same scratched phone lying face down on the worn wooden shop counter beside the coin tray, with the corner shop soft and out of focus behind it, shelves of everyday goods and hand written price cards. The older shopkeeper's hand, weathered and ringless, enters frame from the right. Hard midday light from the street doorway. Documentary detail shot, shallow depth of field, shot on 35mm, cinematic still frame, shot on ARRI Alexa 35, Panavision Primo 85mm, T2.0, large north-facing window light, soft wrap, gentle negative fill, natural catchlights in the eyes, warm neutral skin tones, desaturated surroundings, soft teal shadows, natural skin texture with visible pores and fine hair, no plastic smoothing, no beauty retouch, filmic contrast, gentle highlight rolloff, 35mm-like",
+      "motion": "her hand reaches in and turns the phone over, locked-off camera, no camera movement, only subject moves, shot on ARRI Alexa 35, Panavision Primo 85mm, T2.0, large north-facing window light, soft wrap, gentle negative fill, natural catchlights in the eyes, warm neutral skin tones, desaturated surroundings, soft teal shadows, natural skin texture with visible pores and fine hair, no plastic smoothing, no beauty retouch, filmic contrast, gentle highlight rolloff, 35mm-like",
+      "move": "static",
+      "stills": 6,
+      "seeds": [
+        1701,
+        1702,
+        1703,
+        1704,
+        1705,
+        1706
+      ],
+      "pick": null,
+      "negative": "plastic skin, waxy face, smoothed pores, extra fingers, deformed hands, warped face, dead eyes, text, watermark, logo, subtitles, oversaturated, HDR halo, blown highlights, banding, flicker, temporal jitter, morphing, ghosting, fisheye distortion, tilted horizon, low resolution, blurry, jpeg artifacts"
+    },
+    {
+      "id": "08_cara_senora",
+      "still": "Close up of the 58 year old shopkeeper looking down at a phone held just below frame, reading glasses low on her nose, the light of the screen faint on her face, mouth closed, the small movement of someone who has just understood something. Corner shop out of focus behind her. Documentary close up, shot on 35mm, cinematic still frame, shot on ARRI Alexa 35, Panavision Primo 85mm, T2.0, large north-facing window light, soft wrap, gentle negative fill, natural catchlights in the eyes, warm neutral skin tones, desaturated surroundings, soft teal shadows, natural skin texture with visible pores and fine hair, no plastic smoothing, no beauty retouch, filmic contrast, gentle highlight rolloff, 35mm-like",
+      "motion": "she reads, and her eyebrows lift very slightly, mouth closed, slow dolly push in, steady, constant speed, shot on ARRI Alexa 35, Panavision Primo 85mm, T2.0, large north-facing window light, soft wrap, gentle negative fill, natural catchlights in the eyes, warm neutral skin tones, desaturated surroundings, soft teal shadows, natural skin texture with visible pores and fine hair, no plastic smoothing, no beauty retouch, filmic contrast, gentle highlight rolloff, 35mm-like",
+      "move": "push",
+      "stills": 8,
+      "seeds": [
+        1801,
+        1802,
+        1803,
+        1804,
+        1805,
+        1806,
+        1807,
+        1808
+      ],
+      "pick": null,
+      "negative": "plastic skin, waxy face, smoothed pores, extra fingers, deformed hands, warped face, dead eyes, text, watermark, logo, subtitles, oversaturated, HDR halo, blown highlights, banding, flicker, temporal jitter, morphing, ghosting, fisheye distortion, tilted horizon, low resolution, blurry, jpeg artifacts"
+    },
+    {
+      "id": "09_ensena_pantalla",
+      "still": "The shopkeeper turning a phone around to show its screen to a young man stacking crates on the other side of the counter, both mid gesture, the young man leaning in, a genuine unposed half smile on both faces, mouths closed. The phone screen is completely black and empty. Corner shop interior, midday light. Documentary medium shot, cinematic still frame, shot on ARRI Alexa 35, Panavision Primo 85mm, T2.0, large north-facing window light, soft wrap, gentle negative fill, natural catchlights in the eyes, warm neutral skin tones, desaturated surroundings, soft teal shadows, natural skin texture with visible pores and fine hair, no plastic smoothing, no beauty retouch, filmic contrast, gentle highlight rolloff, 35mm-like",
+      "motion": "she turns the phone toward him and he leans in to look, locked-off camera, no camera movement, only subject moves, shot on ARRI Alexa 35, Panavision Primo 85mm, T2.0, large north-facing window light, soft wrap, gentle negative fill, natural catchlights in the eyes, warm neutral skin tones, desaturated surroundings, soft teal shadows, natural skin texture with visible pores and fine hair, no plastic smoothing, no beauty retouch, filmic contrast, gentle highlight rolloff, 35mm-like",
+      "move": "static",
+      "stills": 8,
+      "seeds": [
+        1901,
+        1902,
+        1903,
+        1904,
+        1905,
+        1906,
+        1907,
+        1908
+      ],
+      "pick": null,
+      "negative": "plastic skin, waxy face, smoothed pores, extra fingers, deformed hands, warped face, dead eyes, text, watermark, logo, subtitles, oversaturated, HDR halo, blown highlights, banding, flicker, temporal jitter, morphing, ghosting, fisheye distortion, tilted horizon, low resolution, blurry, jpeg artifacts"
+    },
+    {
+      "id": "10_ve_detalle",
+      "still": "Over the shoulder shot of the 31 year old woman in the cramped rented kitchen, holding the phone closer to her face, screen completely black and empty, her expression settled and calm, still in her work uniform polo. Behind her the open cupboard, a coat over a chair and a window going blue with evening light. Medium close shot, documentary framing, shot on 35mm, cinematic still frame, shot on ARRI Alexa 35, Panavision Primo 85mm, T2.0, large north-facing window light, soft wrap, gentle negative fill, natural catchlights in the eyes, warm neutral skin tones, desaturated surroundings, soft teal shadows, natural skin texture with visible pores and fine hair, no plastic smoothing, no beauty retouch, filmic contrast, gentle highlight rolloff, 35mm-like",
+      "motion": "her thumb taps once and she looks at the screen without moving, locked-off camera, no camera movement, only subject moves, shot on ARRI Alexa 35, Panavision Primo 85mm, T2.0, large north-facing window light, soft wrap, gentle negative fill, natural catchlights in the eyes, warm neutral skin tones, desaturated surroundings, soft teal shadows, natural skin texture with visible pores and fine hair, no plastic smoothing, no beauty retouch, filmic contrast, gentle highlight rolloff, 35mm-like",
+      "move": "static",
+      "stills": 6,
+      "seeds": [
+        2001,
+        2002,
+        2003,
+        2004,
+        2005,
+        2006
+      ],
+      "pick": null,
+      "negative": "plastic skin, waxy face, smoothed pores, extra fingers, deformed hands, warped face, dead eyes, text, watermark, logo, subtitles, oversaturated, HDR halo, blown highlights, banding, flicker, temporal jitter, morphing, ghosting, fisheye distortion, tilted horizon, low resolution, blurry, jpeg artifacts"
+    },
+    {
+      "id": "11_tarjeta",
+      "still": "Close on the weathered hands of the 58 year old shopkeeper holding a plain unbranded payment card, sliding it into a small card terminal on the counter of a neighbourhood pharmacy, another customer waiting out of focus behind her. Shelves of boxed medicine, a handwritten sign taped to the glass, hard afternoon light from the street door. No visible logos or text on the card. Documentary detail shot, shallow depth of field, shot on 35mm, cinematic still frame, shot on ARRI Alexa 35, Panavision Primo 85mm, T2.0, large north-facing window light, soft wrap, gentle negative fill, natural catchlights in the eyes, warm neutral skin tones, desaturated surroundings, soft teal shadows, natural skin texture with visible pores and fine hair, no plastic smoothing, no beauty retouch, filmic contrast, gentle highlight rolloff, 35mm-like",
+      "motion": "she pushes the card into the terminal and it settles, her other hand resting on the counter, locked-off camera, no camera movement, only subject moves, shot on ARRI Alexa 35, Panavision Primo 85mm, T2.0, large north-facing window light, soft wrap, gentle negative fill, natural catchlights in the eyes, warm neutral skin tones, desaturated surroundings, soft teal shadows, natural skin texture with visible pores and fine hair, no plastic smoothing, no beauty retouch, filmic contrast, gentle highlight rolloff, 35mm-like",
+      "move": "static",
+      "stills": 8,
+      "seeds": [
+        2301,
+        2302,
+        2303,
+        2304,
+        2305,
+        2306,
+        2307,
+        2308
+      ],
+      "pick": null,
+      "_nota": "La tarjeta va SIN marca. Es el elemento de confianza mas fuerte que hay -'la Visa mil veces, si me roban puedo ir a pelear al banco'- pero la auditoria dice que antes de grabarla hay que confirmar con el emisor que hoy se emite y se usa una tarjeta de verdad. Si Jose lo confirma, la marca se compone despues en local sobre la tarjeta lisa; si no, el plano se cae y no se insinua.",
+      "negative": "plastic skin, waxy face, smoothed pores, extra fingers, deformed hands, warped face, dead eyes, text, watermark, logo, subtitles, oversaturated, HDR halo, blown highlights, banding, flicker, temporal jitter, morphing, ghosting, fisheye distortion, tilted horizon, low resolution, blurry, jpeg artifacts"
+    },
+    {
+      "id": "11_caras_calle",
+      "still": "A 44 year old Central American market vendor standing still in a busy street market looking directly into the lens, apron on, no smile, absolutely ordinary, the market moving and out of focus behind him. Overcast daylight. Documentary portrait, shot on 35mm, cinematic still frame, shot on ARRI Alexa 35, Panavision Primo 85mm, T2.0, large north-facing window light, soft wrap, gentle negative fill, natural catchlights in the eyes, warm neutral skin tones, desaturated surroundings, soft teal shadows, natural skin texture with visible pores and fine hair, no plastic smoothing, no beauty retouch, filmic contrast, gentle highlight rolloff, 35mm-like",
+      "motion": "he holds the look at the lens, blinking once, market moving behind him, locked-off camera, no camera movement, only subject moves, shot on ARRI Alexa 35, Panavision Primo 85mm, T2.0, large north-facing window light, soft wrap, gentle negative fill, natural catchlights in the eyes, warm neutral skin tones, desaturated surroundings, soft teal shadows, natural skin texture with visible pores and fine hair, no plastic smoothing, no beauty retouch, filmic contrast, gentle highlight rolloff, 35mm-like",
+      "move": "static",
+      "stills": 8,
+      "seeds": [
+        2101,
+        2102,
+        2103,
+        2104,
+        2105,
+        2106,
+        2107,
+        2108
+      ],
+      "pick": null,
+      "negative": "plastic skin, waxy face, smoothed pores, extra fingers, deformed hands, warped face, dead eyes, text, watermark, logo, subtitles, oversaturated, HDR halo, blown highlights, banding, flicker, temporal jitter, morphing, ghosting, fisheye distortion, tilted horizon, low resolution, blurry, jpeg artifacts"
+    },
+    {
+      "id": "12_caras_calle_b",
+      "still": "A 26 year old Central American woman in a motorcycle delivery jacket standing still on a residential street looking directly into the lens, helmet under her arm, no smile, absolutely ordinary, low houses and power lines out of focus behind her. Overcast daylight. Documentary portrait, shot on 35mm, cinematic still frame, shot on ARRI Alexa 35, Panavision Primo 85mm, T2.0, large north-facing window light, soft wrap, gentle negative fill, natural catchlights in the eyes, warm neutral skin tones, desaturated surroundings, soft teal shadows, natural skin texture with visible pores and fine hair, no plastic smoothing, no beauty retouch, filmic contrast, gentle highlight rolloff, 35mm-like",
+      "motion": "she holds the look at the lens, wind moving a strand of hair, locked-off camera, no camera movement, only subject moves, shot on ARRI Alexa 35, Panavision Primo 85mm, T2.0, large north-facing window light, soft wrap, gentle negative fill, natural catchlights in the eyes, warm neutral skin tones, desaturated surroundings, soft teal shadows, natural skin texture with visible pores and fine hair, no plastic smoothing, no beauty retouch, filmic contrast, gentle highlight rolloff, 35mm-like",
+      "move": "static",
+      "stills": 8,
+      "seeds": [
+        2201,
+        2202,
+        2203,
+        2204,
+        2205,
+        2206,
+        2207,
+        2208
+      ],
+      "pick": null,
+      "negative": "plastic skin, waxy face, smoothed pores, extra fingers, deformed hands, warped face, dead eyes, text, watermark, logo, subtitles, oversaturated, HDR halo, blown highlights, banding, flicker, temporal jitter, morphing, ghosting, fisheye distortion, tilted horizon, low resolution, blurry, jpeg artifacts"
+    }
+  ],
+  "_workflows": "El still y el clip salen del MISMO modelo: el instalador no baja FLUX porque H3 hace imagen fija ademas de video, lo que ahorra 35 GB y hace que el still y el clip compartan estetica. Un still es H3 con length=1. h3_i2v_api.json NO existe todavia: MiniMaxH3ImageToVideo esta cableado sin imagen pese a llamarse asi y a que los pesos son fl2va. Se construye en el pod, preguntandole a /object_info los nombres reales de sus entradas, y se verifica con un clip antes de lanzar la cola. Si no verifica, se cae al t2v de h3_calidad_api, que es el camino probado: 45 de 46 clips sin un fallo."
+}
