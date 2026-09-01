@@ -5,12 +5,14 @@ Lo importante de este archivo no es la API: es el REPARTO. Antes narraba
 una sola voz de principio a fin, y eso contradecía el propio guion. En los
 tres anuncios hablan tres personas distintas:
 
-  narrador  el que mira desde fuera y cuenta lo que cambió con los años
+  narrador  el que cuenta lo que cambió con los años, y también el que cierra
   testigo   el que lo está viviendo, y solo dice "¿Tiene que ser así?"
-  og        el joven de la camisa que contesta "Por eso hicimos esto. Por ti."
 
-Que la pregunta y la respuesta salgan de bocas distintas es el anuncio
-entero. Con una sola voz, el cierre suena a que el narrador se autorresponde.
+El cierre lo probamos con una voz joven distinta, la del de la camisa de
+Orden Global. No funciona: a esas alturas el espectador lleva un minuto con
+una voz y cambiarla en la última frase se oye como un corte, no como otro
+personaje. La pieza se rompe justo donde tiene que rematar. El testigo sí
+aguanta el cambio porque interrumpe en mitad del anuncio, no al final.
 
 La dirección también cambia por época: 1985 se lee con calidez y algo de
 nostalgia, hoy se lee seco y más lento. El dato duro (los treinta y tres
@@ -32,8 +34,12 @@ API = "https://api.elevenlabs.io/v1/text-to-speech"
 REPARTO = {
     "narrador": "aviXFY7Zd7b9DnCUwaCh",  # Maico, latinoamericano, cálido y seco
     "testigo": "J3JSkWXJwqClE1dIxQM9",   # Diego, íntimo, casi susurrado
-    "og": "LY1fdYL8QcEDyEkAT4Qq",        # Brian CM, joven, el que responde
 }
+
+# Duración final de cada anuncio. La última línea no tiene una línea
+# siguiente contra la que medirse, así que su hueco es lo que queda de vídeo:
+# sin esto, un cierre largo se sale por el final y el montaje lo corta a medias.
+FIN = {"llave": 74.10, "mesa": 58.59, "dia": 65.88}
 
 # Cada tono es una forma de leer. "stability" alta aplana la interpretación;
 # baja la deja suelta y arriesga. "style" empuja la expresividad.
@@ -43,7 +49,11 @@ TONOS = {
     "seco":    {"stability": 0.66, "similarity_boost": 0.82, "style": 0.03},
     "dato":    {"stability": 0.80, "similarity_boost": 0.85, "style": 0.00},
     "intimo":  {"stability": 0.38, "similarity_boost": 0.82, "style": 0.35},
-    "abierto": {"stability": 0.40, "similarity_boost": 0.80, "style": 0.30},
+    # El cierre es el mismo narrador, no un locutor de marca. Con style 0.30
+    # sonaba "institucional" y se percibia como otra persona aunque la voz
+    # fuera la misma: el salto desde el 0.03 de "seco" delataba el corte. Se
+    # queda un poco por encima del resto —lo justo para que abra— y nada mas.
+    "abierto": {"stability": 0.55, "similarity_boost": 0.82, "style": 0.10},
 }
 
 # Papel y tono línea por línea. El índice es el número de línea del guion.
@@ -55,7 +65,7 @@ DIRECCION = {
         7: ("narrador", "calido"), 8: ("narrador", "seco"),
         9: ("narrador", "seco"), 10: ("narrador", "seco"),
         11: ("narrador", "dato"), 12: ("narrador", "seco"),
-        13: ("og", "abierto"),
+        13: ("narrador", "abierto"),
     },
     "mesa": {
         1: ("narrador", "calido"), 2: ("narrador", "calido"),
@@ -63,7 +73,7 @@ DIRECCION = {
         5: ("narrador", "neutro"), 6: ("narrador", "neutro"),
         7: ("narrador", "seco"), 8: ("narrador", "seco"),
         9: ("narrador", "seco"), 10: ("narrador", "dato"),
-        11: ("og", "abierto"),
+        11: ("narrador", "abierto"),
     },
     "dia": {
         1: ("narrador", "neutro"), 2: ("narrador", "neutro"),
@@ -72,7 +82,7 @@ DIRECCION = {
         7: ("narrador", "seco"), 8: ("narrador", "seco"),
         9: ("narrador", "dato"), 10: ("narrador", "seco"),
         11: ("testigo", "intimo"),   # "¿Tiene que ser así?" — la vive él
-        12: ("og", "abierto"),
+        12: ("narrador", "abierto"),
     },
 }
 
@@ -159,7 +169,8 @@ def main(nombres):
             salida = f"v{pfx[0]}_{i}.wav"
             # 0,12 s de margen: dos frases que se tocan justo suenan pegadas
             # aunque técnicamente no se solapen.
-            tope = guion[i][0] - t - 0.12 if i < len(guion) else 1e9
+            tope = (guion[i][0] - t - 0.12 if i < len(guion)
+                    else FIN[pfx] - t - 0.40)
 
             # El modelo no da dos veces la misma toma: la misma frase salió
             # entre 3,90 s y 4,73 s en pruebas. Así que se hace como en un
