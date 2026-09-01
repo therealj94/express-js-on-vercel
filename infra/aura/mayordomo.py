@@ -101,11 +101,12 @@ def _parte(e):
     import miradas
     import premio
     import registro
-    d = miradas.para(e['tramo'], registro=registro, premio=premio,
+    suyos = e.get('tramos') or [e['tramo']]
+    d = miradas.para(suyos, registro=registro, premio=premio,
                      clave_wa=os.environ.get('ZERNIO_CLAVE', ''),
                      cuenta_wa=os.environ.get('ZERNIO_CUENTA', ''),
                      encargos=encargos)
-    return True, miradas.texto(e['tramo'], d)
+    return True, miradas.texto(suyos, d)
 
 
 def _gente(e):

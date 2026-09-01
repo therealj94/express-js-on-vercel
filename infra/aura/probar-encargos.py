@@ -497,5 +497,84 @@ class LALISTAVIVEENUNARCHIVODEENTORNO(unittest.TestCase):
         self.assertEqual(escalafon.tramo_de('50499998888'), 'legal')
         escalafon.recargar('')
 
+class UNAPERSONAPUEDELLEVARVARIOSSOMBREROS(_Base):
+    """Melany lleva legal, contabilidad y mercadeo. Mayra, contabilidad y
+    legal. En una casa de este tamaño es lo normal.
+
+    La alternativa era escribirlas tres veces en la lista, y eso vuelve a ser
+    el agujero de la identidad con otra ropa: tres filas del mismo son tres
+    personas para cualquier cosa que cuente filas.
+    """
+
+    MELANY = '50499080571'
+    MELANY_MAIL = 'melany.ordonez@ordenglobal.org'
+
+    def setUp(self):
+        super().setUp()
+        escalafon.recargar(
+            f'{JEFE}/{CORREO_JEFE}:admin, {OTRA_JEFA}:admin, '
+            f'{self.MELANY}/{self.MELANY_MAIL}:legal+contable+mercadeo')
+
+    def test_lleva_los_tres_y_el_principal_es_el_primero(self):
+        self.assertEqual(escalafon.tramos_de(self.MELANY),
+                         ('legal', 'contable', 'mercadeo'))
+        self.assertEqual(escalafon.tramo_de(self.MELANY), 'legal')
+
+    def test_puede_pedir_lo_de_los_TRES(self):
+        for clave in ['papeles', 'saldos', 'gente']:
+            e, mal = encargos.pedir(self.MELANY, clave)
+            self.assertIsNotNone(e, f'{clave}: {mal}')
+
+    def test_pero_NO_lo_que_no_es_de_ninguno_de_los_tres(self):
+        for clave in ['desplegar', 'reiniciar', 'cadena']:
+            e, mal = encargos.pedir(self.MELANY, clave, {'servicio': 'aura'})
+            self.assertIsNone(e, f'pudo pedir «{clave}» sin ser de tecnología')
+
+    def test_y_el_motivo_nombra_TODOS_sus_tramos(self):
+        """«no es de legal» a alguien que también lleva contabilidad y
+        mercadeo suena a error del sistema, no a un permiso que le falta."""
+        e, mal = encargos.pedir(self.MELANY, 'cadena')
+        self.assertIn('legal, contabilidad y mercadeo', mal)
+
+    def test_sigue_sin_poder_firmar_nada(self):
+        """Tres tramos no son un ascenso: admin es admin."""
+        self.assertFalse(escalafon.es_admin(self.MELANY))
+        # Lo pide un admin —TECNICO no está en esta lista— y Melany intenta
+        # firmarlo.
+        e, mal = encargos.pedir(JEFE, 'desplegar')
+        self.assertIsNotNone(e, mal)
+        hecho, mal = encargos.aprobar(self.MELANY, e['id'])
+        self.assertIsNone(hecho)
+        self.assertIn('admin', mal)
+
+    def test_el_encargo_guarda_todos_sus_tramos(self):
+        e, _ = encargos.pedir(self.MELANY, 'papeles')
+        self.assertEqual(e['tramos'], ['legal', 'contable', 'mercadeo'])
+        self.assertEqual(e['tramo'], 'legal')
+
+    def test_un_tramo_mal_escrito_no_le_quita_los_buenos(self):
+        escalafon.recargar(f'{self.MELANY}:legal+inventado+contable')
+        self.assertEqual(escalafon.tramos_de(self.MELANY), ('legal', 'contable'))
+
+    def test_pero_si_NINGUNO_es_valido_queda_fuera(self):
+        escalafon.recargar(f'{self.MELANY}:inventado+otrofalso')
+        self.assertEqual(escalafon.tramos_de(self.MELANY), ())
+        e, mal = encargos.pedir(self.MELANY, 'parte')
+        self.assertIsNone(e)
+
+    def test_el_menu_no_repite_filas(self):
+        """Quien lleva tres sombreros tiene que ver UN menú, no tres pegados
+        con «El parte del día» tres veces."""
+        claves = [k for k, _ in catalogo.para(('legal', 'contable', 'mercadeo'))]
+        self.assertEqual(len(claves), len(set(claves)), claves)
+        self.assertIn('papeles', claves)
+        self.assertIn('saldos', claves)
+        self.assertIn('gente', claves)
+
+    def test_y_respeta_el_orden_del_catalogo_no_el_de_sus_tramos(self):
+        claves = [k for k, _ in catalogo.para(('mercadeo', 'legal'))]
+        self.assertEqual(claves, [k for k in catalogo.ENCARGOS if k in claves])
+
+
 if __name__ == '__main__':
     unittest.main(verbosity=2)

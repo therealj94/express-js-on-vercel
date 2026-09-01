@@ -200,5 +200,52 @@ class ELPARTELLEVASUNOMBRE(_Base):
             self.assertIn(tramo, escalafon.TRAMOS, tramo)
 
 
+class VARIOSSOMBREROSUNSOLOPARTE(_Base):
+    """Melany lleva legal, contabilidad y mercadeo. Quiere UN parte con las
+    tres cosas — no tres partes, ni el mismo aviso escrito tres veces."""
+
+    def test_ve_lo_de_sus_tres_tramos(self):
+        t = self.mirar(['legal', 'contable', 'mercadeo'])
+        self.assertIn('genesis', t, 'le falta lo legal')
+        self.assertIn('billetera', t, 'le falta lo contable')
+        self.assertIn('eligieron idioma', t, 'le falta lo de mercadeo')
+
+    def test_y_NO_lo_que_no_es_de_ninguno(self):
+        t = self.mirar(['legal', 'contable', 'mercadeo'])
+        for ajeno in ['disco', 'cadena', 'reinicios']:
+            self.assertNotIn(ajeno, t, f'está viendo «{ajeno}»')
+
+    def test_nada_sale_dos_veces(self):
+        """Contabilidad y mercadeo miran los dos los premios. Si se pega una
+        mirada detrás de otra, «quedan 200 de 205» sale dos veces y el parte
+        deja de leerse como un parte."""
+        d = miradas.para(['contable', 'mercadeo'], registro=self.registro,
+                         premio=self.premio)
+        for k in ('pendientes', 'lineas', 'rotas'):
+            self.assertEqual(len(d[k]), len(set(d[k])), f'{k} repetido: {d[k]}')
+
+    def test_los_puntos_ciegos_de_los_tres_salen_una_vez_cada_uno(self):
+        d = miradas.para(['legal', 'contable', 'mercadeo'],
+                         registro=self.registro, premio=self.premio)
+        rotas = ' '.join(d['rotas'])
+        for falta in ['vencimientos', 'costos de la nube', 'de dónde llega']:
+            self.assertEqual(rotas.count(falta), 1, f'«{falta}»: {d["rotas"]}')
+
+    def test_con_varios_el_titulo_no_miente_diciendo_que_es_de_uno(self):
+        d = miradas.para(['legal', 'contable'], registro=self.registro,
+                         premio=self.premio)
+        titulo = miradas.texto(['legal', 'contable'], d).split('·')[0]
+        self.assertNotIn('legal', titulo.lower())
+        self.assertIn('Tu parte', titulo)
+
+    def test_con_uno_solo_sigue_diciendo_de_quien_es(self):
+        d = miradas.para(['contable'], registro=self.registro, premio=self.premio)
+        self.assertTrue(miradas.texto(['contable'], d).startswith('Parte contable'))
+
+    def test_una_lista_vacia_no_revienta(self):
+        d = miradas.para([], registro=self.registro, premio=self.premio)
+        self.assertTrue(d['lineas'] or d['pendientes'] or d['rotas'])
+
+
 if __name__ == '__main__':
     unittest.main(verbosity=2)

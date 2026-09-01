@@ -176,14 +176,16 @@ def pedir(quien, clave, valores=None):
     No ejecuta nada, ni siquiera lo que sale solo: eso lo decide quien llama,
     mirando `sale_solo`.
     """
-    tramo = escalafon.tramo_de(quien)
-    if not tramo:
+    tramos = escalafon.tramos_de(quien)
+    if not tramos:
         return None, 'no estás en la lista: pedile a un admin que te sume'
     if not catalogo.existe(clave):
         return None, 'ese encargo no existe'
-    if not catalogo.puede(tramo, clave):
+    # Contra TODOS sus tramos, no solo el principal: quien lleva legal y
+    # contabilidad puede pedir lo de las dos.
+    if not catalogo.puede(tramos, clave):
         return None, (f'«{catalogo.ENCARGOS[clave]["titulo"]}» no es de '
-                      f'{escalafon.como_se_dice(tramo)}')
+                      f'{escalafon.como_se_dicen(tramos)}')
     limpios, mal = catalogo.limpiar_todo(clave, valores)
     if mal:
         return None, mal
@@ -215,7 +217,8 @@ def pedir(quien, clave, valores=None):
             # contra esto: sin ello, pedir desde el teléfono y aprobar desde
             # el correo sería aprobarse a sí mismo sin que nadie lo vea.
             'persona': escalafon.normal_persona(quien),
-            'tramo': tramo,
+            'tramo': tramos[0],
+            'tramos': list(tramos),
             'riesgo': catalogo.ENCARGOS[clave]['riesgo'],
             'huella': huella(clave, limpios, quien),
             'estado': 'pedido' if necesita else 'aprobado',

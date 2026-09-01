@@ -125,15 +125,29 @@ def existe(clave):
     return clave in ENCARGOS
 
 
+def _tramos(tramo):
+    """Uno o varios, siempre como conjunto. Quien lleva tres sombreros puede
+    pedir lo de los tres."""
+    if not tramo:
+        return set()
+    return {tramo} if isinstance(tramo, str) else set(tramo)
+
+
 def puede(tramo, clave):
-    """¿Este tramo puede pedir este encargo?"""
+    """¿Puede pedir este encargo? `tramo` puede ser uno o una lista."""
     e = ENCARGOS.get(clave)
-    return bool(e) and tramo in e['quien']
+    return bool(e) and bool(_tramos(tramo) & set(e['quien']))
 
 
 def para(tramo):
-    """Lo que este tramo puede pedir, en el orden de la lista."""
-    return [(k, v) for k, v in ENCARGOS.items() if tramo in v['quien']]
+    """Lo que puede pedir, EN EL ORDEN DE LA LISTA y sin repetir.
+
+    El orden sale de aquí y no de sus tramos: quien lleva tres sombreros
+    tiene que ver un menú, no tres menús pegados con las mismas filas
+    repetidas.
+    """
+    suyos = _tramos(tramo)
+    return [(k, v) for k, v in ENCARGOS.items() if suyos & set(v['quien'])]
 
 
 def necesita_permiso(clave):

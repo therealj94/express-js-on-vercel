@@ -54,11 +54,11 @@ def le_abre(dicho):
 
 def menu(rel, quien):
     """La lista de lo que puede pedir esa persona. `False` si no le toca."""
-    tramo = escalafon.tramo_de(quien)
-    if not tramo:
+    tramos = escalafon.tramos_de(quien)
+    if not tramos:
         return False
     filas = []
-    for clave, ficha in catalogo.para(tramo):
+    for clave, ficha in catalogo.para(tramos):
         marca = RIESGO.get(ficha['riesgo'], '')
         cola = ' · necesita firma' if catalogo.necesita_permiso(clave) else ''
         # La descripción se recorta contando la cola, no antes. Meta corta la
@@ -72,7 +72,7 @@ def menu(rel, quien):
         filas.append((TOCO_PEDIR + clave,
                       f'{marca} {ficha["titulo"]}'[:24],
                       que + cola))
-    cabeza = (f'Sos {escalafon.como_se_dice(tramo)}. Esto es lo que podés '
+    cabeza = (f'Sos {escalafon.como_se_dicen(tramos)}. Esto es lo que podés '
               f'pedirme.\n\n'
               '👁 sale al momento · ⚠️🔧 lo tiene que firmar otro admin')
     rel.con_lista(quien, cabeza, 'Ver', filas)
@@ -147,7 +147,8 @@ def _como_se_lo_muestro(e):
             f'{ficha["titulo"]}\n'
             f'{ficha["que_hace"]}\n\n'
             + ''.join(f'{k}:\n{v}\n\n' for k, v in (e['valores'] or {}).items())
-            + f'Lo pidió: {quien} ({escalafon.como_se_dice(e["tramo"])})\n'
+            + f'Lo pidió: {quien} '
+              f'({escalafon.como_se_dicen(e.get("tramos") or [e["tramo"]])})\n'
               f'Caduca en 24 h.')
 
 

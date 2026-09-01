@@ -129,7 +129,24 @@ def _de_los_premios(premio, con_billetera):
 
 def para(tramo, registro=None, premio=None, clave_wa='', cuenta_wa='',
          encargos=None):
-    """Lo que le toca ver a este tramo. Nunca levanta."""
+    """Lo que le toca ver. `tramo` puede ser uno o varios. Nunca levanta.
+
+    Con varios se JUNTAN las miradas, sin repetir: Melany lleva legal,
+    contabilidad y mercadeo, y quiere UN parte con las tres cosas — no tres
+    partes, ni el mismo aviso escrito tres veces.
+    """
+    if not isinstance(tramo, str):
+        suyos = list(dict.fromkeys(tramo or ['admin']))
+        if len(suyos) > 1:
+            junta = {'pendientes': [], 'lineas': [], 'rotas': []}
+            for uno in suyos:
+                d = para(uno, registro, premio, clave_wa, cuenta_wa, encargos)
+                for k in junta:
+                    for x in d[k]:
+                        if x not in junta[k]:      # sin repetir
+                            junta[k].append(x)
+            return junta
+        tramo = suyos[0] if suyos else 'admin'
     wa = lambda: vistazo._whatsapp(clave_wa, cuenta_wa)   # noqa: E731
 
     if tramo == 'tecnologico':
@@ -194,6 +211,11 @@ def para(tramo, registro=None, premio=None, clave_wa='', cuenta_wa='',
 
 
 def texto(tramo, datos):
-    """El parte de ese tramo, listo para mandar."""
-    return f'{TITULOS.get(tramo, "Parte")} · {vistazo.cuando()}\n\n' \
-           + vistazo.texto(datos)
+    """El parte de ese tramo, listo para mandar. `tramo` puede ser varios."""
+    if isinstance(tramo, str):
+        titulo = TITULOS.get(tramo, 'Parte')
+    else:
+        suyos = list(dict.fromkeys(tramo or []))
+        titulo = (TITULOS.get(suyos[0], 'Parte') if len(suyos) == 1
+                  else 'Tu parte del día')
+    return f'{titulo} · {vistazo.cuando()}\n\n' + vistazo.texto(datos)

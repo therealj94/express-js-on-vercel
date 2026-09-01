@@ -53,6 +53,21 @@ TRAMOS = ('admin', 'legal', 'tecnologico', 'mercadeo', 'contable', 'operacion')
 # la deja fuera. Degradar en silencio es como alguien termina con permisos
 # que nadie le dio.
 #
+# ── UNA PERSONA PUEDE LLEVAR VARIOS TRAMOS: EL MAS ─────────────────────────
+#
+# En una casa de este tamaño lo normal es llevar dos sombreros. Melany lleva
+# legal, contabilidad y mercadeo; Mayra, contabilidad y legal:
+#
+#   50499080571/melany.ordonez@ordenglobal.org:legal+contable+mercadeo
+#
+# La alternativa era escribir a la misma persona tres veces, y eso vuelve a
+# ser el agujero de ayer con otra ropa: tres filas del mismo son tres
+# personas para cualquier cosa que cuente filas. Un renglon por persona,
+# siempre.
+#
+# El PRIMER tramo es el principal: es el que se nombra al saludar y el que
+# encabeza su parte. Los demas suman lo que puede pedir.
+#
 # ── UNA PERSONA, VARIOS SITIOS DONDE ESCRIBE: LA BARRA ─────────────────────
 #
 # La barra junta las formas de escribirle a la MISMA persona. Jose escribe
@@ -90,11 +105,15 @@ def _leer(crudo):
         trozo = trozo.strip()
         if not trozo or ':' not in trozo:
             continue
-        quienes, _, tramo = trozo.rpartition(':')
-        tramo = tramo.strip().lower()
+        quienes, _, tramos = trozo.rpartition(':')
+        # Se quedan SOLO los tramos que existen. Uno mal escrito no tumba a la
+        # persona entera si lleva otros buenos —seria castigar de mas— pero
+        # tampoco se inventa: sin ninguno valido, fuera.
+        suyos = tuple(x.strip().lower() for x in tramos.split('+')
+                      if x.strip().lower() in TRAMOS)
         formas = [x.strip().lower() for x in quienes.split('/') if x.strip()]
-        if formas and tramo in TRAMOS:
-            gente[formas[0]] = (tramo, formas)
+        if formas and suyos:
+            gente[formas[0]] = (suyos, formas)
     return gente
 
 
@@ -149,14 +168,25 @@ def normal_persona(quien):
     return p if p is not None else normal(quien)
 
 
-def tramo_de(quien):
-    """El tramo de esa persona, o `None` si no esta en la lista."""
+def tramos_de(quien):
+    """TODOS los tramos de esa persona. Tupla vacia si no esta en la lista."""
     p = persona_de(quien)
-    return GENTE[p][0] if p else None
+    return GENTE[p][0] if p else ()
+
+
+def tramo_de(quien):
+    """El tramo PRINCIPAL —el primero— o `None`.
+
+    Es el que se nombra al saludar y el que encabeza su parte. Para decidir si
+    puede pedir algo se usa `tramos_de`: quien lleva tres sombreros puede
+    pedir lo de los tres.
+    """
+    suyos = tramos_de(quien)
+    return suyos[0] if suyos else None
 
 
 def es_admin(quien):
-    return tramo_de(quien) == 'admin'
+    return 'admin' in tramos_de(quien)
 
 
 def admins():
@@ -165,7 +195,7 @@ def admins():
     Que devuelva personas y no formas es lo que hace que contarlas signifique
     algo: dos correos del mismo no son dos firmas.
     """
-    return [p for p, (t, _f) in GENTE.items() if t == 'admin']
+    return [p for p, (ts, _f) in GENTE.items() if 'admin' in ts]
 
 
 def hay_con_quien_aprobar(sin_contar=None):
@@ -178,6 +208,16 @@ def hay_con_quien_aprobar(sin_contar=None):
     """
     yo = persona_de(sin_contar) if sin_contar else None
     return any(a != yo for a in admins())
+
+
+def como_se_dicen(tramos):
+    """«legal, contabilidad y mercadeo» — para leerlo, no para el codigo."""
+    nombres = [como_se_dice(t) for t in (tramos or ())]
+    if not nombres:
+        return 'sin tramo'
+    if len(nombres) == 1:
+        return nombres[0]
+    return ', '.join(nombres[:-1]) + ' y ' + nombres[-1]
 
 
 def como_se_dice(tramo):
