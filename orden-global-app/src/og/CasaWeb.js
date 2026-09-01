@@ -43,7 +43,7 @@ import {
 import { C } from '../theme';
 import { Icon } from '../icons';
 import { hap } from '../ui';
-import { getToken } from '../api';
+import { getToken, ensureSession } from '../api';
 import { loadSession } from '../accounts';
 
 let WebViewNativo = null;
@@ -83,6 +83,15 @@ export default function CasaWeb({ nav, params }) {
     let vivo = true;
     (async () => {
       try {
+        /* SESION VIVA ANTES DE ABRIR. `getToken()` devuelve lo que haya en
+           memoria, vencido o no, y el JWT de la wallet dura cuarenta minutos.
+           Con uno vencido esta pantalla abria la web SIN sesion: la persona
+           veia el formulario de entrar dentro de la app, que es justo el
+           parpadeo que este componente existe para evitar.
+           `ensureSession()` lo renueva con el token de refresco de treinta
+           dias, sin pedir contrasena. Si no se puede, se sigue con lo que
+           haya: la web sabra pedir lo suyo. */
+        try { await ensureSession(); } catch (e) { /* se sigue */ }
         const [token, cuenta] = await Promise.all([getToken(), loadSession()]);
         /* Se manda TODO lo que la cuenta ya sabe. La web puede recuperar el
            nombre y la direccion preguntandole a la API con el token, pero

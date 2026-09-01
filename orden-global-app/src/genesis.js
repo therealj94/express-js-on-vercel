@@ -1,5 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { API_BASE, getToken } from './api';
+import { API_BASE, getToken, ensureSession } from './api';
 
 // ============================================================
 // Genesis ID — identidad digital de Orden Global.
@@ -58,6 +58,10 @@ async function puente(ruta, cuerpo) {
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), 25000);
   try {
+    /* Misma regla que el chat y que CasaWeb: el token de memoria puede estar
+       vencido —dura cuarenta minutos— y aqui eso sale como «tu Genesis ID no
+       se pudo comprobar», que manda a la persona a mirar donde no es. */
+    try { await ensureSession(); } catch (e) { /* se sigue con lo que haya */ }
     const token = getToken();
     const res = await fetch(`${API_BASE}/genesis${ruta}`, {
       method: cuerpo ? 'POST' : 'GET',
