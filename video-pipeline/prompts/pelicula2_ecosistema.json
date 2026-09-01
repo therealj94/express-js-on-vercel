@@ -11,7 +11,7 @@
     "ancho": 1080,
     "alto": 1920,
     "fps": 30,
-    "dur_s": 44.4
+    "dur_s": 46.5
   },
   "paleta": {
     "fondo": "#0B0B0C",
@@ -138,7 +138,7 @@
         {
           "t": 19.1,
           "verbo": "Hablá sin salir de la app.",
-          "marca": "PULSE2CHAT",
+          "marca": "Chat",
           "visual": "burbujas de chat que entran una tras otra"
         },
         {
@@ -225,14 +225,14 @@
     {
       "id": "06_cierre",
       "t": 40.9,
-      "dur": 3.5,
+      "dur": 5.6,
       "escena": "logo_a_puntos_a_logo",
       "detalle": "Todo lo que hay en pantalla se deshace a la vez y los puntos regresan al centro rehaciendo la marca. La pelicula cierra el mismo circulo con el que abrio.",
       "activo": "orden-global/orden-global-logo.png",
       "rotulos": [
         {
           "t": 42.4,
-          "dur": 2.0,
+          "dur": 3.4,
           "texto": "Orden Global. Un sistema financiero que se puede comprobar.",
           "tipo": "rotulo"
         }

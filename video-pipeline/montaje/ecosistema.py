@@ -19,6 +19,8 @@ import subprocess
 import sys
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+
 import numpy as np
 from PIL import Image, ImageDraw, ImageFont
 
@@ -145,6 +147,25 @@ def bloque_icono(t, dur, icono, nombre):
     return im
 
 
+ICONOS = {}
+
+
+def _cargar_iconos():
+    """Los iconos reales del paquete. Se cargan una vez y se reusan."""
+    if ICONOS:
+        return
+    for nombre, ruta in (("Genesis ID", "genesis-id/genesis-id-icono.png"),
+                         ("MyTokenPay", "mytokenpay/mytokenpay-icono.png"),
+                         ("Chat", "pulse2chat/pulse2chat-logo.png"),
+                         # Estos dos llegaron despues, en JPG con fondo solido;
+                         # se les quito por luminancia y se guardaron en PNG.
+                         ("Ordenexchange", "ordenex/ordenex-logo.png"),
+                         ("AuCorp", "aucorp/aucorp-logo.png")):
+        f = LOGOS / ruta
+        if f.exists():
+            ICONOS[nombre] = Image.open(f).convert("RGBA")
+
+
 def bloque_sistema_solar(t, dur, icono, orbitas):
     """El sistema solar REAL de la app: Veta en el centro y el resto orbitando.
 
@@ -153,6 +174,7 @@ def bloque_sistema_solar(t, dur, icono, orbitas):
     la suya: la app de verdad coloca Veta Wallet en un halo dorado con Chat,
     MyTokenPay, Genesis ID, Ordenexchange y AuCorp girando alrededor, unidos por
     lineas finas. Y el gesto orbital rima con el logo, que tambien son anillos."""
+    _cargar_iconos()
     im = lienzo(); d = ImageDraw.Draw(im, "RGBA")
     cx, cy = W / 2, H / 2 - 60
     a = suave(min(t / 1.1, 1.0))
@@ -181,7 +203,7 @@ def bloque_sistema_solar(t, dur, icono, orbitas):
         halo[..., 3] = alfa.astype(np.uint8)
         im.alpha_composite(Image.fromarray(halo, "RGBA"),
                            (int(cx) - R, int(cy) - R))
-        pegar_centrado(im, icono, max(8, int(340 * a)), dy=-60, opacidad=a)
+        pegar_centrado(im, icono, max(8, int(440 * a)), dy=-60, opacidad=a)
     # El nombre bien lejos del halo, que encima quedaba blanco sobre oro.
     centrar(d, "Veta Wallet", fuente(F_DAT, 32), cy + 372, TEXTO + (int(235 * a),))
 
@@ -193,10 +215,20 @@ def bloque_sistema_solar(t, dur, icono, orbitas):
         rad = np.radians(o["ang"])
         x = cx + np.cos(rad) * o["r"] * a
         y = cy + np.sin(rad) * o["r"] * a
-        rr = 58 * ap
+        rr = 62 * ap
         d.ellipse([x - rr, y - rr, x + rr, y + rr],
-                  fill=(34, 44, 42, int(230 * ap)),
+                  fill=(26, 34, 33, int(235 * ap)),
                   outline=(150, 132, 80, int(180 * ap)), width=2)
+        # El icono real dentro del circulo. Ordenexchange y AuCorp no tienen
+        # archivo en el paquete y se quedan solo con su marca.
+        arch = ICONOS.get(o["nombre"])
+        if arch is not None and ap > 0.05:
+            ic = arch.copy()
+            lado = max(6, int(rr * 1.45))
+            ic.thumbnail((lado, lado), Image.LANCZOS)
+            if ap < 1:
+                ic.putalpha(ic.split()[3].point(lambda v: int(v * ap)))
+            im.alpha_composite(ic, (int(x - ic.width / 2), int(y - ic.height / 2)))
         f = fuente(F_DAT, 22)
         an = d.textbbox((0, 0), o["nombre"], font=f)
         ancho_t = an[2] - an[0]
@@ -224,7 +256,17 @@ def bloque_funciones(t, t0, items):
                    font=f, fill=TEXTO + (int(255 * op),))
             y += (a[3] - a[1]) + 22
         if it.get("marca"):
-            centrar(d, it["marca"], fuente(F_DAT, 30), y + 34,
+            _cargar_iconos()
+            ic = ICONOS.get(it["marca"])
+            yl = y + 34
+            if ic is not None:
+                # El icono de la marca junto a su nombre: estaban sin usar.
+                g = ic.copy(); g.thumbnail((92, 92), Image.LANCZOS)
+                if op < 1:
+                    g.putalpha(g.split()[3].point(lambda v: int(v * op)))
+                im.alpha_composite(g, (int(W / 2 - g.width / 2), int(yl + 6)))
+                yl += g.height + 14
+            centrar(d, it["marca"], fuente(F_DAT, 30), yl,
                     ORO + (int(210 * op),))
         # Una barra de puntos que avanza con el compás: mide el paso sin reloj.
         n = 26
@@ -260,23 +302,29 @@ def marca_origen(d, cx, cy, r, op):
                 fill=ORO + (op,))
 
 
-def pepita(d, cx, cy, r, op, semilla=3):
-    """Una pepita estilizada: poligono irregular con el borde iluminado.
+from pepita import pepita as _pepita_render
 
-    Es un marcador. Una pepita fotografica de verdad es UN still en la GPU
-    ($0,012) y encaja en la misma tanda de la otra pelicula."""
-    rng = np.random.default_rng(semilla)
-    n = 13
-    ang = np.sort(rng.uniform(0, 2*np.pi, n))
-    rad = r * rng.uniform(0.72, 1.0, n)
-    pts = [(cx + np.cos(a)*rr, cy + np.sin(a)*rr) for a, rr in zip(ang, rad)]
-    d.polygon(pts, fill=(150, 116, 40, op))
-    d.line(pts + [pts[0]], fill=ORO + (op,), width=4, joint="curve")
-    for _ in range(9):                      # brillos: el oro sin brillo es barro
-        a, rr = rng.uniform(0, 2*np.pi), r * rng.uniform(0.15, 0.6)
-        x, y = cx + np.cos(a)*rr, cy + np.sin(a)*rr
-        b = rng.integers(6, 15)
-        d.ellipse([x-b, y-b, x+b, y+b], fill=(246, 224, 160, int(op*0.65)))
+_CACHE_PEPITA = {}
+
+
+def pepita(im, cx, cy, r, op, semilla=21):
+    """Pega la pepita renderizada. Ya no se dibuja: se ilumina.
+
+    La versión anterior era un polígono amarillo con manchas claras y parecía
+    masa. Un metal casi no tiene componente difusa —es casi todo reflejo, y su
+    color sale del tinte de ese reflejo—, así que sombrearlo como plástico da
+    plastilina por bien que se elija el amarillo. pepita.py construye un relieve
+    fractal, saca sus normales y le calcula reflejo de entorno, dos especulares
+    y oclusión. Se cachea porque generar 460x460 en cada fotograma sería absurdo.
+    """
+    lado = max(8, int(r * 2))
+    if lado not in _CACHE_PEPITA:
+        _CACHE_PEPITA[lado] = _pepita_render(lado, semilla)
+    src = _CACHE_PEPITA[lado]
+    if op < 255:
+        src = src.copy()
+        src.putalpha(src.split()[3].point(lambda v: int(v * op / 255)))
+    im.alpha_composite(src, (int(cx - lado / 2), int(cy - lado / 2)))
 
 
 def bloque_origen(t, dur, rotulos, t0):
@@ -289,12 +337,12 @@ def bloque_origen(t, dur, rotulos, t0):
     im = lienzo(); d = ImageDraw.Draw(im, "RGBA")
     cy = H / 2 - 120
     if t < 1.5:                              # la pepita, sola
-        pepita(d, W/2, cy, 150, int(255 * suave(min(t/0.7, 1.0))))
+        pepita(im, W/2, cy, 290, int(255 * suave(min(t/0.7, 1.0))))
     elif t < 3.4:                            # se reparte en 55
         a = suave((t - 1.5) / 1.9)
-        pepita(d, W/2, cy, 150, int(255 * (1 - a)))
+        pepita(im, W/2, cy, 290, int(255 * (1 - a)))
         cols, fil = 11, 5                    # 11 x 5 = 55, y se pueden contar
-        paso, r = 74, 22
+        paso, r = 88, 27
         x0 = W/2 - (cols-1)*paso/2
         y0 = cy - (fil-1)*paso/2
         for k in range(55):
@@ -304,7 +352,7 @@ def bloque_origen(t, dur, rotulos, t0):
             marca_origen(d, px, py, r * (0.35 + 0.65*a), int(235 * a))
     else:                                    # una crece y se queda
         a = suave((t - 3.4) / 1.0)
-        cols, fil, paso, r = 11, 5, 74, 22
+        cols, fil, paso, r = 11, 5, 88, 27
         x0, y0 = W/2 - (cols-1)*paso/2, cy - (fil-1)*paso/2
         for k in range(55):
             if k == 27:
