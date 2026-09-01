@@ -1419,6 +1419,94 @@ def idioma_de_texto(dicho):
     return None
 
 
+# ── EN QUE IDIOMA ESTA ESCRITO ESTE MENSAJE ────────────────────────────────
+#
+# POR QUE HACE FALTA, APARTE DE LA PUERTA
+#
+# La puerta pregunta el idioma UNA VEZ y lo guarda. Y despues no vuelve a
+# mirar — asi que el guion contesta para siempre en el idioma de aquel dia.
+#
+# El motor no: el prompt le dice «en el idioma de la persona, si escribe en
+# ingles contestas en ingles», y obedece. O sea que el sistema se comportaba
+# de DOS maneras: el motor te seguia, el guion no. Alguien que eligio español
+# y despues escribe en ingles recibia media conversacion en cada idioma —
+# exactamente la queja de Jose del 30-ago, «me cambio el idioma».
+#
+# Y pasa de verdad: mucha gente de la region escribe en los dos segun con
+# quien esta, o prueba en ingles a ver si le entienden.
+#
+# ── POR QUE ES CONSERVADOR A PROPOSITO ────────────────────────────────────
+#
+# Cambiarle el idioma a alguien que no lo pidio es peor que no cambiarselo:
+# se lee como que la maquina se equivoco. Asi que hace falta una señal CLARA
+# —palabras que solo existen en un idioma— y ante la duda se queda como
+# estaba. «ok», «no», «hola», un numero o un nombre no deciden nada.
+
+_SOLO_INGLES = {
+    'the', 'what', 'how', 'when', 'where', 'why', 'is', 'are', 'was', 'were',
+    'do', 'does', 'did', 'can', 'could', 'would', 'should', 'have', 'has',
+    'want', 'need', 'know', 'think', 'about', 'with', 'from', 'this', 'that',
+    'there', 'here', 'your', 'my', 'me', 'you', 'and', 'but', 'for', 'not',
+    'much', 'many', 'money', 'send', 'wallet', 'fee', 'help', 'please',
+    'thanks', 'thank', 'hello', 'yes', 'dollars', 'dollar', 'account',
+}
+_SOLO_ESPANOL = {
+    'que', 'qué', 'como', 'cómo', 'cuando', 'cuándo', 'donde', 'dónde',
+    'por', 'para', 'con', 'sin', 'una', 'unos', 'unas', 'los', 'las',
+    'del', 'este', 'esta', 'eso', 'esto', 'muy', 'pero', 'porque', 'quiero',
+    'necesito', 'puedo', 'tengo', 'gracias', 'plata', 'dinero', 'billetera',
+    'cuenta', 'ayuda', 'hola', 'sirve', 'cuanto', 'cuánto', 'cuesta',
+}
+
+
+# Palabras que por si solas deciden: no aparecen casi nunca en un mensaje
+# escrito en el otro idioma. Hacen falta porque un saludo suelto —«hello»— es
+# UNA palabra, y la regla de dos de ventaja lo dejaba sin decidir: quien
+# escribia «hello» seguia recibiendo español.
+_DECISIVAS = {
+    'en': {'hello', 'hi', 'hey', 'thanks', 'thank', 'please', 'sorry',
+           'what', 'how', 'why', 'where', 'when', 'money', 'wallet', 'send',
+           'help', 'want', 'need', 'good', 'morning', 'afternoon', 'evening'},
+    'es': {'hola', 'buenas', 'gracias', 'quiero', 'necesito', 'cuanto',
+           'cuánto', 'cómo', 'como', 'qué', 'porque', 'plata', 'dinero',
+           'billetera', 'ayuda', 'buenos', 'días', 'dias', 'tardes'},
+}
+
+
+def en_que_habla(dicho, por_omision=None):
+    """El idioma de ESTE mensaje, o `por_omision` si no esta claro.
+
+    Se mira por palabras enteras y no por letras: «no» existe en los dos, y
+    un acento no aparece en un teclado sin tildes.
+    """
+    s = (dicho or '').lower()
+    if not s.strip():
+        return por_omision
+    # Una tilde o una eñe son español y no hay vuelta de hoja.
+    if any(c in s for c in 'áéíóúñ¿¡'):
+        return 'es'
+    palabras = set(re.findall(r"[a-zA-Zñáéíóú']+", s))
+
+    # Una palabra decisiva Y ninguna del otro idioma: alcanza. Es el caso del
+    # saludo suelto, que es justo con lo que empieza casi todo el mundo.
+    dec_en = palabras & _DECISIVAS['en']
+    dec_es = palabras & _DECISIVAS['es']
+    if dec_en and not dec_es:
+        return 'en'
+    if dec_es and not dec_en:
+        return 'es'
+
+    # Si no, dos de ventaja: con una sola palabra en comun se cambiaria de
+    # idioma por un «me» o un «no», que existen en los dos.
+    ingles = len(palabras & _SOLO_INGLES)
+    espanol = len(palabras & _SOLO_ESPANOL)
+    if ingles >= espanol + 2:
+        return 'en'
+    if espanol >= ingles + 2:
+        return 'es'
+    return por_omision
+
+
 def por_toque(id_boton):
 
     """El nodo al que lleva un boton tocado.

@@ -1614,7 +1614,26 @@ def atender(rel, sistema, p, de, dicho, mensaje=None):
     # Python no avisa de esto al importar: revienta corriendo, con
     # UnboundLocalError. `probar-nombres.py` lo caza ahora.
     toco = (mensaje or {}).get('toco')
-    idi = p.get('idioma') or guion.POR_OMISION
+
+    # ── EL IDIOMA SIGUE A LA PERSONA, NO AL DIA QUE ELIGIO ─────────────────
+    #
+    # La puerta pregunta el idioma una vez y lo guarda. El GUION usaba ese, y
+    # el MOTOR usaba el del mensaje —se lo dice el prompt—: o sea que el
+    # sistema se comportaba de dos maneras y quien cambiaba de idioma recibia
+    # media conversacion en cada uno. Es la queja de Jose del 30-ago.
+    #
+    # Ahora manda lo que la persona ESCRIBIO, si esta claro. Si no lo esta
+    # —«ok», «si», un nombre, un numero— se queda el guardado: cambiarle el
+    # idioma a alguien que no lo pidio se lee como que la maquina se equivoco.
+    #
+    # Y se GUARDA el cambio: si escribio dos veces en ingles, el parte y el
+    # recibo del premio tambien van en ingles. Media casa en un idioma y
+    # media en otro es peor que cualquiera de los dos.
+    _guardado = p.get('idioma') or guion.POR_OMISION
+    idi = guion.en_que_habla(dicho, _guardado)
+    if idi != _guardado and p.get('idioma'):
+        p['idioma'] = idi
+        log(f'…{str(de)[-4:]} escribió en {idi}: se le cambia el idioma')
 
     # ── EL GUION VA ANTES QUE EL MOTOR ────────────────────────────────────
     #

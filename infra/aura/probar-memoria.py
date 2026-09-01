@@ -65,6 +65,19 @@ class _Relevo:
         return {}
 
 
+# CADA PRUEBA CON SU PROPIA IDENTIDAD, y no es un detalle de estilo.
+#
+# `asistente.hay_rafaga(de)` es un freno GLOBAL: seis preguntas en sesenta
+# segundos y corta. Con todas las pruebas hablando como «ana@x.com», la
+# séptima llamada del archivo se comía el freno y fallaba una prueba que no
+# tenía nada que ver — y peor, fallaba SOLO al correr el archivo entero, que
+# es como se pierde media hora buscando un fallo que no existe.
+#
+# El freno hace bien su trabajo. Lo que estaba mal eran las pruebas.
+def _quien(caso):
+    return f'{caso.id().rsplit(".", 1)[-1]}@prueba.local'
+
+
 def _perfil(**k):
     p = {'idioma': 'es', 'saludado': True, 'nombre': 'Ana', 'pais': 'honduras',
          'historial': [], 'dia': aura.hoy(), 'usadas': 0, 'nodo': None}
@@ -78,7 +91,7 @@ class LOQUECONTESTAELGUIONSEACUERDA(unittest.TestCase):
     def _hablar(self, dicho, p=None):
         rel = _Relevo()
         p = p if p is not None else _perfil()
-        aura.atender(rel, 'sistema de prueba', p, 'ana@x.com', dicho, {})
+        aura.atender(rel, 'sistema de prueba', p, _quien(self), dicho, {})
         return rel, p
 
     def test_una_respuesta_del_guion_queda_en_la_memoria(self):
@@ -155,12 +168,65 @@ class LAPUERTADELIDIOMANOCUENTA(unittest.TestCase):
     def test_la_puerta_no_deja_huella(self):
         rel = _Relevo()
         p = {'historial': [], 'dia': aura.hoy(), 'usadas': 0}
-        aura.atender(rel, 'sistema', p, 'ana@x.com', 'hola', {})
+        aura.atender(rel, 'sistema', p, _quien(self), 'hola', {})
         self.assertTrue(rel.dicho, 'no mandó la puerta')
         self.assertIn('idioma', rel.dicho[0].lower())
         self.assertEqual(p['historial'], [],
                          'la puerta del idioma se comió dos turnos de memoria')
 
+
+
+
+class ELIDIOMASIGUEALAPERSONA(unittest.TestCase):
+    """La puerta pregunta el idioma UNA VEZ y lo guarda. Y no volvía a mirar.
+
+    El motor sí seguía a la persona —se lo dice el prompt— así que el sistema
+    se comportaba de dos maneras: el motor te seguía, el guión no. Quien
+    cambiaba de idioma recibía media conversación en cada uno.
+
+    Es la queja de José del 30-ago: «me cambió el idioma».
+    """
+
+    def _hablar(self, dicho, p):
+        rel = _Relevo()
+        aura.atender(rel, 'sistema', p, _quien(self), dicho, {})
+        return rel, p
+
+    def test_quien_eligio_español_y_escribe_en_ingles_recibe_ingles(self):
+        p = _perfil(idioma='es')
+        self._hablar('hello', p)
+        self.assertEqual(p['idioma'], 'en')
+
+    def test_y_al_reves(self):
+        p = _perfil(idioma='en')
+        self._hablar('hola, quiero abrir mi billetera', p)
+        self.assertEqual(p['idioma'], 'es')
+
+    def test_lo_AMBIGUO_no_le_cambia_el_idioma_a_nadie(self):
+        """«ok», «sí», un nombre o un número no deciden nada. Cambiárselo a
+        quien no lo pidió se lee como que la máquina se equivocó."""
+        for dicho in ['ok', 'si', 'Maria', '123', '👍', 'no']:
+            p = _perfil(idioma='es')
+            self._hablar(dicho, p)
+            self.assertEqual(p['idioma'], 'es', f'«{dicho}» le cambió el idioma')
+
+    def test_el_guion_contesta_en_el_idioma_del_MENSAJE(self):
+        """Es lo que fallaba: el guión iba por el guardado."""
+        p = _perfil(idioma='es')
+        rel, _p = self._hablar('hello', p)
+        self.assertTrue(rel.dicho)
+        # El nodo `inicio` en inglés no lleva tildes ni palabras españolas.
+        self.assertNotIn('ahorrás', rel.dicho[0])
+
+    def test_una_tilde_es_español_y_no_hay_vuelta_de_hoja(self):
+        self.assertEqual(guion.en_que_habla('¿cuánto?'), 'es')
+        self.assertEqual(guion.en_que_habla('el niño'), 'es')
+
+    def test_hace_falta_ventaja_clara_no_una_palabra_suelta(self):
+        """«me» y «no» existen en los dos. Con una sola palabra en común se
+        cambiaría de idioma por nada."""
+        self.assertIsNone(guion.en_que_habla('me no'))
+        self.assertIsNone(guion.en_que_habla('the'))
 
 if __name__ == '__main__':
     unittest.main(verbosity=2)
