@@ -1901,9 +1901,10 @@ def _atender(rel, sistema, p, de, dicho, mensaje=None):
         # El precio se trae EN EL MOMENTO, de la misma fuente que la
         # billetera. Nunca de la memoria del modelo: ver `precio.py`.
         vale = ''
-        if cual == 'precio':
+        if cual in ('precio', 'monedas'):
             try:
-                vale = precio.como_se_dice(idi) or precio.NO_SE_SABE.get(
+                vale = (precio.tabla(idi) if cual == 'monedas'
+                        else precio.como_se_dice(idi)) or precio.NO_SE_SABE.get(
                     idi, precio.NO_SE_SABE['es'])
             except Exception as e:
                 log('no pude leer el precio:', type(e).__name__, str(e)[:80])

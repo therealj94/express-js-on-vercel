@@ -224,5 +224,127 @@ class ELIDIOMADELACAPTURA(unittest.TestCase):
             self.assertIsNone(guion.en_que_habla(f), f)
 
 
+class TODASLASMONEDAS(unittest.TestCase):
+    """«Ocupo sepa todos los precios tokens también sepa su precio y se mueven».
+
+    Mirándolo de verdad, la respuesta honesta tiene TRES grupos, y la
+    diferencia entre ellos importa más que las cifras:
+
+      · ORIGEN, AUKA, AGKA — siguen un metal y se mueven solas.
+      · ONDK — precio DECLARADO por la Junta. Entre actas NO se mueve.
+      · IBS, HARV — no tienen precio de ninguna clase.
+
+    Confundir «declarado» con «de mercado» es el malentendido caro de esta
+    casa, y es justo lo que AU-RA tiene que saber explicar.
+    """
+
+    def _tablas(self):
+        with mock.patch.object(precio, 'onza', lambda *a, **k: 4374.26), \
+             mock.patch.object(precio, 'onza_plata', lambda *a, **k: 64.70):
+            return {i: precio.tabla(i) for i in ('es', 'en')}
+
+    def test_estan_LAS_SEIS_publicas(self):
+        """También las que no tienen precio: una lista que solo muestra las que
+        llevan número da a entender que las otras no existen, y quien tenga
+        HARV en su billetera merece saber por qué no ve una cifra."""
+        for t in self._tablas().values():
+            for m in ['ORIGEN', 'AUKA', 'AGKA', 'ONDK', 'IBS', 'Harvi']:
+                self.assertIn(m, t, m)
+
+    def test_las_tres_del_metal_llevan_su_numero(self):
+        for t in self._tablas().values():
+            self.assertIn('2.56', t)        # ORIGEN
+            self.assertIn('4,374', t)       # AUKA, la onza de oro
+            self.assertIn('64.70', t)       # AGKA, la onza de plata
+
+    def test_y_se_dice_que_SE_MUEVEN_y_que_pueden_BAJAR(self):
+        """Lo que pidió José. Y «pueden bajar» no es un añadido pesimista: una
+        moneda que solo se cuenta cuando sube es una promesa disfrazada."""
+        es, en = self._tablas()['es'], self._tablas()['en']
+        self.assertIn('se mueven', es)
+        self.assertIn('bajar', es)
+        self.assertIn('move on their own', en)
+        self.assertIn('go down', en)
+
+    def test_ONDK_NO_LLEVA_LA_CIFRA(self):
+        """La regla de la casa, con prueba propia en `probar-guion.py`: se
+        nombra sin precio, sin apreciación, sin recompra y sin invitación.
+        Decir la cifra es empezar a venderlo."""
+        for t in self._tablas().values():
+            self.assertNotIn('2.15', t, 'sacó el precio declarado de ONDK')
+            self.assertNotIn('2,15', t)
+
+    def test_pero_SI_se_dice_QUE_ES_y_DONDE_mirarlo(self):
+        """No dar la cifra no es esconderla: el libro es público y está a un
+        clic. Lo que no pasa es que se la ofrezcamos nosotros."""
+        for t in self._tablas().values():
+            self.assertIn('ONDK', t)
+            self.assertIn(precio.LIBRO_ONDK, t)
+
+    def test_y_que_ONDK_NO_SE_MUEVE_que_es_lo_contrario_de_las_otras(self):
+        es, en = self._tablas()['es'], self._tablas()['en']
+        self.assertIn('no se mueve', es)
+        self.assertIn('not* move', en)
+        self.assertIn('no un precio de mercado', es)
+        self.assertIn('not a market price', en)
+
+    def test_IBS_y_HARV_se_dicen_SIN_PRECIO_no_se_esconden(self):
+        es, en = self._tablas()['es'], self._tablas()['en']
+        self.assertIn('sin precio', es)
+        self.assertIn('No cotizan', es)
+        self.assertIn('no price', en)
+
+    def test_ninguna_tabla_invita_a_comprar(self):
+        for t in self._tablas().values():
+            b = t.lower()
+            for f in ['comprá', 'compra ahora', 'oportunidad', 'va a subir',
+                      'buena inversión', 'buy now', 'good investment',
+                      'opportunity', 'will rise', 'garantiz', 'respaldad',
+                      'backed', 'guaranteed']:
+                self.assertNotIn(f, b, f)
+
+    def test_sin_oro_NO_se_ensena_media_tabla(self):
+        """Media tabla con huecos parece un fallo y encima da pie a que alguien
+        use la mitad que sí salió."""
+        with mock.patch.object(precio, 'onza', lambda *a, **k: None), \
+             mock.patch.object(precio, 'onza_plata', lambda *a, **k: None):
+            for i in ('es', 'en'):
+                self.assertEqual(precio.tabla(i), precio.NO_SE_SABE[i])
+
+    def test_si_falta_SOLO_la_plata_lo_demas_sigue_saliendo(self):
+        """Que se caiga una fuente de plata no puede dejar sin precio al ORIGEN,
+        que es por el que pregunta todo el mundo."""
+        with mock.patch.object(precio, 'onza', lambda *a, **k: 4374.26), \
+             mock.patch.object(precio, 'onza_plata', lambda *a, **k: None):
+            t = precio.tabla('es')
+        self.assertIn('2.56', t)
+        self.assertIn('—', t, 'la plata sin dato tiene que verse como un guion')
+
+    def test_todos_devuelve_las_seis_y_dice_cual_se_mueve(self):
+        with mock.patch.object(precio, 'onza', lambda *a, **k: 4374.26), \
+             mock.patch.object(precio, 'onza_plata', lambda *a, **k: 64.70):
+            d = precio.todos()
+        self.assertEqual(set(d), {'ORIGEN', 'AUKA', 'AGKA', 'ONDK', 'IBS', 'HARV'})
+        for m in ('ORIGEN', 'AUKA', 'AGKA'):
+            self.assertTrue(d[m]['se_mueve'], m)
+            self.assertTrue(d[m]['usd'], m)
+        for m in ('ONDK', 'IBS', 'HARV'):
+            self.assertFalse(d[m]['se_mueve'], m)
+            self.assertIsNone(d[m]['usd'], m)
+
+    def test_preguntar_por_todas_lleva_al_nodo_de_todas(self):
+        for f in ['precios de todos los tokens', 'que monedas tienen',
+                  'lista de precios', 'all the prices',
+                  'what tokens do you have']:
+            self.assertEqual(guion.por_texto(f), 'monedas', f)
+
+    def test_pero_preguntar_por_UNA_sigue_dando_UNA(self):
+        """Quien dice «cuánto vale un origen» quiere un número, no una lista
+        de seis."""
+        self.assertEqual(guion.por_texto('cuanto vale un origen'), 'precio')
+        self.assertEqual(guion.por_texto('Whats the price of one origen to USD ?'),
+                         'precio')
+
+
 if __name__ == '__main__':
     unittest.main(verbosity=2)

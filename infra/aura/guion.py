@@ -552,6 +552,20 @@ NODOS = {
     #
     # Una pregunta con UNA respuesta exacta no tiene por que pasar por un
     # modelo. Esto sale al instante, no gasta tarjeta y no puede inventar.
+    # TODAS las monedas de la casa, incluidas las que NO tienen precio. Una
+    # lista que solo muestra las que llevan numero da a entender que las otras
+    # no existen, y quien tenga HARV en su billetera merece saber por que no ve
+    # una cifra al lado. El texto llega hecho desde `precio.py`.
+    'monedas': {
+        'texto': {'es': '{precio}', 'en': '{precio}'},
+        'botones': {
+            'es': [('Abrir mi billetera', 'empezar'), ('¿Qué es un gramin?', 'ahorro'),
+                   ('Volver', 'inicio')],
+            'en': [('Open my wallet', 'empezar'), ('What is a gramin?', 'ahorro'),
+                   ('Back', 'inicio')],
+        },
+    },
+
     'precio': {
         'texto': {'es': '{precio}', 'en': '{precio}'},
         'botones': {
@@ -914,6 +928,17 @@ ATAJOS = [
                 r'(worth|cost|usd|dollar)|'
                 r'origen (to|in) (usd|dollars)|'
                 r'(wallet|billetera) (sale|dice|muestra|says|shows))\b'), 'precio'),
+
+    # Y cuando preguntan por TODAS. Va DESPUES del de una sola: quien dice
+    # «cuanto vale un origen» quiere un numero, no una lista de seis.
+    (re.compile(r'\b((precios?|valores?) de (todos|todas|las monedas|los tokens)|'
+                r'(todas las|que) monedas (tienen|hay|manejan)|'
+                r'lista de (precios|monedas|tokens)|'
+                r'(cuales|cuáles) (son las|monedas)|'
+                r'(all|every) (the )?(prices|tokens|coins)|'
+                r'(price|prices) (list|of all)|'
+                r'what (coins|tokens) (do you have|are there)|'
+                r'(auka|agka|ondk|harv|harvi|ibs) (y|and) )\b'), 'monedas'),
 ]
 
 # ── LOS ATAJOS DE TEMA, QUE SON OTRA COSA ───────────────────────────────────
