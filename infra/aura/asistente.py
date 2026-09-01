@@ -98,6 +98,7 @@ import escalafon
 import espejo
 import miradas
 import oficios
+import latido
 import precio
 import presentacion
 import puerta
@@ -1338,11 +1339,36 @@ def _derivar_al_equipo(rel, p, de):
 
     Si el aviso falla no se cae nada: la persona ya tiene el WhatsApp y puede
     escribir igual. Se deja anotado y se sigue.
+
+    ── QUIEN LO RECIBE, Y POR QUE ESTO CAMBIO ─────────────────────────────
+
+    Antes se leia `vistazo.JEFES`, que sale de la variable `AURA_PARTE_PARA`.
+    Esa variable ESTA VACIA en el nodo, asi que el bucle recorria cero
+    personas y la ficha no le llegaba nunca a nadie. La funcion existia,
+    estaba bien escrita, y era un no-op silencioso — peor que no tenerla,
+    porque parecia hecho.
+
+    Ahora manda el ESCALAFON, que es la unica fuente sobre quien es admin.
+    `AURA_PARTE_PARA` se conserva de respaldo por si algun dia el escalafon
+    esta vacio, con el mismo orden que usa `vistazo.puede_pedirlo`: dos listas
+    para la misma pregunta es como una de las dos se queda vieja sin que nadie
+    lo note, y esta se quedo vieja del todo.
     """
     registro.anotar('equipo', motivo=(p.get('motivo') or '')[:40])
-    for jefe in vistazo.JEFES:
-        if not jefe.isdigit():
-            continue          # la lista admite correos; aqui solo telefonos
+    a_quien = []
+    for persona in escalafon.admins():
+        for donde in escalafon.formas_de(persona):
+            if donde.isdigit():
+                a_quien.append(donde)
+                break         # un aviso por persona, no por buzón
+    if not a_quien:
+        a_quien = [j for j in vistazo.JEFES if j.isdigit()]
+    if not a_quien:
+        # Que nadie lo reciba no puede volver a pasar en silencio: es una
+        # persona interesada que se pierde.
+        log('NADIE recibe la ficha del traspaso: revisá AURA_ESCALAFON')
+        return
+    for jefe in a_quien:
         try:
             rel.enviar(jefe, guion.aviso_para_el_equipo(p, de))
         except Exception as e:
@@ -1532,6 +1558,18 @@ def _atender_juego(rel, p, de, dicho):
     rel.enviar(de, guion.frase('anotado', _idi(p)))
     return True
 
+
+
+# Los mensajes saltados de la ultima hora. El vigilante avisa con UNO: un
+# mensaje saltado es una persona que escribio y no recibio nada.
+SALTADOS = []
+VENTANA_SALTADOS = 3600
+
+
+def saltados_recientes(ahora=None):
+    ahora = ahora if ahora is not None else time.time()
+    SALTADOS[:] = [t for t in SALTADOS if ahora - t <= VENTANA_SALTADOS]
+    return len(SALTADOS)
 
 
 DISCULPA = {
@@ -2580,6 +2618,7 @@ def atender_charla(rel, sistema, perfiles, correo):
                 # Va en su propio `try` porque si el relevo es justo lo que
                 # está caído, este aviso también falla — y no puede tumbar la
                 # vuelta de los demás por intentar disculparse.
+                SALTADOS.append(time.time())
                 try:
                     _avisar_del_salto(rel, p, correo)
                 except Exception as e2:
@@ -3134,6 +3173,16 @@ def main():
                     if _bz_igual[1] == 1 or _bz_igual[1] % 100 == 0:
                         log('vuelta del buzón fallida:', quees,
                             f'(×{_bz_igual[1]})' if _bz_igual[1] > 1 else '')
+            # ── EL LATIDO ─────────────────────────────────────────────────
+            #
+            # Una linea, al final de cada vuelta, para que OTRO proceso pueda
+            # ver que este sigue girando. Systemd vigila que el proceso exista;
+            # nadie vigilaba que contestara, y por eso AU-RA estuvo cuatro
+            # horas y media muda el 1-sep con el servicio en «active».
+            #
+            # Va aqui abajo del todo a proposito: si se escribiera arriba,
+            # latiria igual aunque las tres puertas estuvieran reventando.
+            latido.latir(DATOS, saltados=saltados_recientes())
             time.sleep(PASO)
 
 
