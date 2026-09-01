@@ -299,5 +299,40 @@ class LAPUERTANOEJECUTA(unittest.TestCase):
         self.assertNotIn('import mayordomo', self.FUENTE)
 
 
+
+
+class LOMASESPECIFICOMANDA(_Base):
+    """«mis encargos» y «encargos» se parecen demasiado.
+
+    Estaban las dos en `PALABRAS`, y como el menú se miraba primero, quien
+    escribía «mis encargos» recibía la lista de lo que PUEDE pedir en vez de
+    cómo quedó lo que YA pidió. Lo cazó una simulación en el nodo el 1-sep.
+    """
+
+    FUENTE = (AQUI / 'asistente.py').read_text(encoding='utf8')
+
+    def test_mis_encargos_NO_abre_el_menu(self):
+        self.assertFalse(puerta.le_abre('mis encargos'))
+        self.assertFalse(puerta.le_abre('lo mío'))
+
+    def test_pero_encargos_a_secas_SI(self):
+        self.assertTrue(puerta.le_abre('encargos'))
+        self.assertTrue(puerta.le_abre('menú'))
+
+    def test_y_se_mira_ANTES_que_el_menu(self):
+        """Aunque un día vuelva a estar en las dos listas."""
+        i = self.FUENTE.index("'mis encargos'")
+        j = self.FUENTE.index('puerta.le_abre(dicho)')
+        self.assertLess(i, j, 'el menú se come a «mis encargos»')
+
+    def test_mios_enseña_COMO_QUEDO_lo_pedido(self):
+        e = puerta.pedir(self.rel, TECNICO, 'desplegar')
+        self.rel.textos.clear()
+        puerta.mios(self.rel, TECNICO)
+        dicho = self.rel.a(TECNICO)
+        self.assertIn(e['id'], dicho)
+        self.assertIn('esperando firma', dicho)
+        self.assertNotIn('lo que podés pedirme', dicho)
+
 if __name__ == '__main__':
     unittest.main(verbosity=2)

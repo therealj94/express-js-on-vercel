@@ -198,5 +198,133 @@ class NingunNombreSEINVENTA(unittest.TestCase):
                         f'el lector no vio el NameError: {fuera}')
 
 
+# ── Y NINGUNO SE USA ANTES DE EXISTIR ──────────────────────────────────────
+#
+# 1-sep, 01:20. Al meter la puerta de los encargos en `atender` quedo un
+# `if toco:` VEINTE LINEAS ANTES de `toco = (mensaje or {}).get('toco')`.
+#
+# La prueba de arriba no lo vio, y no podia: recorre los ambitos y pregunta
+# «¿este nombre existe en algun sitio visible?». `toco` existia — cuarenta
+# lineas mas abajo. Lo que faltaba no era el nombre: era el ORDEN.
+#
+# Python tampoco avisa al importar. Revienta corriendo, con UnboundLocalError,
+# y en este caso reventaba en la primera linea de `atender` que corre para
+# cualquiera. AU-RA se quedo muda para TODO EL MUNDO cuatro horas y media,
+# con el servicio diciendo «active» y el motor caliente.
+#
+# Perseguir el fallo anterior es como se llega al siguiente. Esta prueba mira
+# lo que la otra no puede: dentro de cada funcion, que ningun nombre LOCAL se
+# lea antes de la linea donde se le asigna algo.
+
+def _locales_usadas_antes_de_existir(arch):
+    arbol = ast.parse((AQUI / arch).read_text(encoding='utf8'))
+    fuera = []
+
+    def revisar(fn):
+        # Los parametros existen desde la primera linea.
+        a = fn.args
+        listos = {x.arg for x in a.posonlyargs + a.args + a.kwonlyargs}
+        for x in (a.vararg, a.kwarg):
+            if x:
+                listos.add(x.arg)
+        # Donde se asigna cada nombre por primera vez, y donde se lee.
+        nace, lee = {}, []
+
+        def recorrer(n, dentro_de_bucle=False):
+            for hijo in ast.iter_child_nodes(n):
+                # Otro ámbito: lo suyo es suyo.
+                if isinstance(hijo, (ast.FunctionDef, ast.AsyncFunctionDef,
+                                     ast.Lambda, ast.ClassDef)):
+                    listos.add(getattr(hijo, 'name', ''))
+                    continue
+                # Una comprensión ata su variable ANTES de evaluar el cuerpo,
+                # aunque en el fuente el cuerpo se escriba primero:
+                # `[f['tema'] for f in saber]` está bien. Contarlas daba tres
+                # falsos positivos, y una prueba con falsos positivos se apaga.
+                if isinstance(hijo, AMBITOS_POR_COMPRENSION):
+                    continue
+                # En un bucle, lo de abajo corre otra vez con lo de arriba ya
+                # asignado: ahí el orden textual no prueba nada.
+                bucle = dentro_de_bucle or isinstance(hijo, (ast.For, ast.While))
+                if isinstance(hijo, ast.Name):
+                    if isinstance(hijo.ctx, ast.Store):
+                        nace.setdefault(hijo.id, hijo.lineno)
+                    elif isinstance(hijo.ctx, ast.Load) and not bucle:
+                        lee.append((hijo.id, hijo.lineno))
+                elif isinstance(hijo, (ast.Import, ast.ImportFrom)):
+                    for al in hijo.names:
+                        nace.setdefault((al.asname or al.name).split('.')[0],
+                                        hijo.lineno)
+                elif isinstance(hijo, (ast.Global, ast.Nonlocal)):
+                    listos.update(hijo.names)
+                elif isinstance(hijo, ast.ExceptHandler) and hijo.name:
+                    nace.setdefault(hijo.name, hijo.lineno)
+                recorrer(hijo, bucle)
+
+        recorrer(fn)
+        for nombre, linea in lee:
+            if nombre in listos or nombre not in nace:
+                continue          # es parámetro, o viene de fuera de la función
+            if linea < nace[nombre]:
+                fuera.append(f'{arch}:{linea} usa `{nombre}`, que recién se '
+                             f'asigna en la línea {nace[nombre]}')
+
+    for n in ast.walk(arbol):
+        if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef)):
+            revisar(n)
+    return fuera
+
+
+class NINGUNNOMBRESEUSAANTESDEEXISTIR(unittest.TestCase):
+
+    def test_ninguna_fuente_lee_una_local_antes_de_asignarla(self):
+        culpables = []
+        for arch in FUENTES:
+            if (AQUI / arch).exists():
+                culpables += _locales_usadas_antes_de_existir(arch)
+        self.assertEqual(
+            culpables, [],
+            'se usa antes de existir — UnboundLocalError esperando a una '
+            'persona:\n  ' + '\n  '.join(culpables))
+
+    def test_la_prueba_CAZA_el_fallo_que_la_hizo_nacer(self):
+        """El caso del 1-sep, reducido: el `if` antes de la asignación."""
+        import tempfile
+        malo = ('def atender(rel, mensaje):\n'
+                '    if toco:\n'
+                '        return 1\n'
+                '    toco = (mensaje or {}).get("toco")\n')
+        d = pathlib.Path(tempfile.mkdtemp())
+        (d / 'malo.py').write_text(malo, encoding='utf8')
+        global AQUI
+        antes, AQUI = AQUI, d
+        try:
+            fuera = _locales_usadas_antes_de_existir('malo.py')
+        finally:
+            AQUI = antes
+        self.assertTrue(any('`toco`' in f for f in fuera), fuera)
+
+    def test_y_NO_se_queja_de_lo_que_esta_bien(self):
+        """Un bucle usa arriba lo que asigna abajo, y es correcto: la segunda
+        vuelta ya lo tiene. Una prueba que da falsos positivos se apaga."""
+        import tempfile
+        bueno = ('def f(xs):\n'
+                 '    total = 0\n'
+                 '    for x in xs:\n'
+                 '        total = total + x\n'
+                 '        y = sigue if False else x\n'
+                 '        sigue = y\n'
+                 '    return total\n')
+        d = pathlib.Path(tempfile.mkdtemp())
+        (d / 'ok.py').write_text(bueno, encoding='utf8')
+        global AQUI
+        antes, AQUI = AQUI, d
+        try:
+            fuera = _locales_usadas_antes_de_existir('ok.py')
+        finally:
+            AQUI = antes
+        self.assertEqual(fuera, [], fuera)
+
+
 if __name__ == '__main__':
     unittest.main(verbosity=2)

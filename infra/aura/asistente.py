@@ -1578,6 +1578,26 @@ def atender(rel, sistema, p, de, dicho, mensaje=None):
     una cadena suelta para no romper a quien lo llame de otra manera; entonces
     vale para los dos.
     """
+    # ── LO QUE HACE FALTA DESDE LA PRIMERA LINEA ──────────────────────────
+    #
+    # `toco` y `idi` se leen AQUI, arriba del todo, porque los usa casi todo
+    # lo que viene despues — incluido el manejo de errores, que es donde mas
+    # duele que falten.
+    #
+    # Estaban mas abajo, y dos cosas quedaron usandolos antes:
+    #
+    #   · la puerta de los encargos leia `toco` veinte lineas antes de que
+    #     existiera. AU-RA se quedo muda para TODO EL MUNDO cuatro horas y
+    #     media el 1-sep, con el servicio diciendo «active».
+    #   · el `except` del espejo —que existe justo para que un fallo no tumbe
+    #     la conversacion— usaba `idi`. O sea que la red de seguridad se caia
+    #     sola, en el momento exacto en que hacia falta.
+    #
+    # Python no avisa de esto al importar: revienta corriendo, con
+    # UnboundLocalError. `probar-nombres.py` lo caza ahora.
+    toco = (mensaje or {}).get('toco')
+    idi = p.get('idioma') or guion.POR_OMISION
+
     # ── EL GUION VA ANTES QUE EL MOTOR ────────────────────────────────────
     #
     # Si lo que llega es un boton tocado, o algo que lleva derecho a un nodo
@@ -1641,6 +1661,15 @@ def atender(rel, sistema, p, de, dicho, mensaje=None):
                                        e=type(e).__name__))
         return
 
+    # QUE BOTON TOCO, SI TOCO UNO. Se lee AQUI, antes de la primera linea que
+    # lo usa — que es la puerta de los encargos, justo debajo.
+    #
+    # Estaba mas abajo, en la puerta del idioma, y al meter la de los encargos
+    # encima quedo un uso ANTES de la asignacion. Python no avisa de eso al
+    # importar: revienta en tiempo de ejecucion, con UnboundLocalError, en la
+    # PRIMERA linea de `atender` que corre para cualquiera. Y como revienta
+    # antes de contestar, AU-RA se quedo muda para TODO EL MUNDO durante
+    # cuatro horas y media el 1-sep, con el servicio diciendo «active».
     # ── LA PUERTA DE LOS ENCARGOS ──────────────────────────────────────────
     #
     # Solo para quien esta en el escalafon. Y AU-RA no ejecuta nada aqui:
@@ -1676,14 +1705,18 @@ def atender(rel, sistema, p, de, dicho, mensaje=None):
         rel.enviar(de, presentacion.para(de))
         return
 
+    # LO MAS ESPECIFICO PRIMERO. «mis encargos» y «encargos» se parecen
+    # demasiado: si el menú se mira antes, se come al otro y quien pregunta
+    # cómo quedó lo suyo recibe la lista de lo que puede pedir.
+    if (dicho or '').strip().lower() in ('mis encargos', 'lo mio', 'lo mío',
+                                         'lo que pedí', 'lo que pedi') \
+            and escalafon.tramo_de(de):
+        puerta.mios(rel, de)
+        return
+
     if puerta.le_abre(dicho) and escalafon.tramo_de(de):
         registro.anotar('encargo', que='menu')
         puerta.menu(rel, de)
-        return
-
-    if (dicho or '').strip().lower() in ('mis encargos', 'lo mio', 'lo mío') \
-            and escalafon.tramo_de(de):
-        puerta.mios(rel, de)
         return
 
     # ── EL JUEGO VA ANTES QUE TODO ────────────────────────────────────────
@@ -1701,8 +1734,7 @@ def atender(rel, sistema, p, de, dicho, mensaje=None):
     # Los dos botones de la puerta no llevan a un nodo: fijan el idioma y
     # siguen al inicio. Queda guardado en el perfil, asi que se pregunta UNA
     # vez y no en cada vuelta.
-    toco = (mensaje or {}).get('toco')
-    idi = p.get('idioma') or guion.POR_OMISION
+    # `toco` e `idi` ya se leyeron arriba, antes de la puerta de los encargos.
     # El pais se deduce del prefijo del numero y se guarda una vez. No se
     # pregunta: ver `guion.pais_de_numero`.
     if 'pais' not in p:

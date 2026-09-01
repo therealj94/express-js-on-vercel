@@ -34,8 +34,13 @@ import encargos
 # Lo que abre la puerta. Anclado de punta a punta como los demas atajos de la
 # casa: «encargos» a secas, no «cuando pueda mandame los encargos» — que es
 # una frase de conversacion y no una orden.
+# «mis encargos» NO está aquí a propósito: tiene su propia puerta, la que
+# enseña CÓMO QUEDÓ lo que pediste. Estaba en las dos, y como esta se mira
+# primero, quien escribía «mis encargos» recibía el menú — la lista de lo que
+# PUEDE pedir en vez de lo que YA pidió. Dos palabras casi iguales que hacen
+# cosas distintas: la que es más específica manda.
 PALABRAS = ('encargos', 'encargo', 'pedir', 'menu', 'menú', 'que puedo pedir',
-            'qué puedo pedir', 'mis encargos')
+            'qué puedo pedir')
 
 # Como se marcan los toques. El prefijo evita chocar con los del guion.
 TOCO_PEDIR = 'enc:'          # enc:<clave>
