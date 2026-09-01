@@ -1,0 +1,142 @@
+{
+  "proyecto": "Orden Global — Parte 2, opción C",
+  "titulo": "Un día",
+  "la_idea": {
+    "una_frase": "Un día entero de una persona, desde que suena el despertador hasta que se sienta en la cama de noche. No le vemos la cara ni una sola vez, hasta que hace la pregunta.",
+    "el_golpe": "Cuarenta y cinco segundos de manos, espalda, pies y nuca. Cuando por fin aparece su cara es porque va a decir algo, y lo que dice es «¿Tiene que ser así?». Ahí se acaba el aguante del espectador y el nuestro a la vez.",
+    "por_que_esto_y_no_otra_cosa": "El modelo no puede repetir una cara entre planos: lo hemos comprobado tres veces hoy. En vez de pelearme con eso, lo convierto en la estructura. Un solo plano con cara en toda la pieza, y es el más importante.",
+    "la_respuesta": "A la pregunta le contesta el portavoz, mirando a cámara: «Por eso hicimos esto. Por ti.» Es tu frase de la parte 1 y aquí funciona como respuesta a una pregunta real, no como eslogan."
+  },
+  "metodo_de_realismo": {
+    "de_donde_sale": "Del anuncio que mandó José, analizado plano a plano. Su realismo no es casualidad: es una receta, y estas son sus cinco reglas.",
+    "reglas": [
+      "LUZ SUCIA: fluorescente institucional verdosa o luz plana de día nublado. Nunca luz de estudio, nunca hora dorada de anuncio.",
+      "ÓPTICA CON GRANO: 35mm, profundidad de campo orgánica y no exagerada, grano de película real. La nitidez digital delata el anuncio.",
+      "ENCUADRE OBSERVACIONAL: rodar A TRAVÉS de cristales, marcos de puerta y objetos en primer término, para que el espectador se sienta mirando y no siendo vendido.",
+      "ENERGÍA BAJA: nadie proyecta, nadie actúa. Cansancio de verdad, gestos pequeños, derrota aceptada.",
+      "IMPERFECCIÓN A PROPÓSITO: encuadres ligeramente descentrados, deriva mínima de cámara en mano, espacios usados y algo desordenados."
+    ],
+    "aplicacion": "Estas cinco reglas están escritas dentro de CADA prompt de esta pieza, no solo en el look general. Es la primera vez que las meto plano a plano."
+  },
+  "estructura": {
+    "primera_mitad": "Ruidosa y apretada: planos cortos, luz fea, sonido de trámite. La vida se le va en cosas que no eligió.",
+    "segunda_mitad": "Al aparecer su cara, todo se limpia. El ruido desaparece y queda su voz. Es el mismo recurso del anuncio de referencia: saturar y después despejar.",
+    "duracion": "15 planos, 58 s de metraje más 6 s de cierre."
+  },
+  "formato": {"aspect": "9:16 vertical", "gen_w": 720, "gen_h": 1280,
+    "final_w": 1080, "final_h": 1920, "fps": 24, "duracion_total_s": 64},
+  "defaults": {
+    "video_workflow": "workflows/h3_calidad_api.json",
+    "duration_s": 4, "fps": 24, "steps": 20,
+    "negative": "text, letters, numbers, subtitles, captions, watermark, brand names, logos, signage with readable words, readable documents, screens with readable text, readable user interface, horizontal composition, letterboxing, black bars, cartoon, animation, 3D render, studio lighting, golden hour glow, glossy advertising lighting, beauty retouching, poreless skin, model looks, symmetrical composition, centred composition, clean tidy set, drone shot, gimbal glide, slow motion, orange and teal grading, big smile, celebration, crying, tears, looking at camera, addressing the camera, talking, speaking, moving lips, plastic skin, waxy face, deformed hands, extra fingers, morphing, flicker, crooked teeth, deformed teeth, distorted mouth"
+  },
+  "look_base": "shot on 35mm film, vintage spherical prime, T2.8, organic shallow depth of field that is not excessive, real film grain, institutional fluorescent or flat overcast light with a slight green cast, milky blacks, handheld with the smallest drift, framing slightly off centre, lived-in cluttered spaces, observational documentary realism, nobody performing, no advertising gloss",
+  "casting": [
+    {"id": "ELLA", "rol": "el único rostro de la pieza",
+     "retrato": "Vertical portrait of a 29 year old Latin American woman, dark hair scraped back with strands escaping, no makeup at all, faint dark circles under the eyes, a small scar on one eyebrow, chapped lips, a plain worn t-shirt, an exhausted flat expression with no self-pity in it, lit only by cold street light through a window, visible pores and facial asymmetry, even natural teeth, ordinary and unglamorous"},
+    {"id": "PORTAVOZ", "rol": "quien responde",
+     "retrato": "Vertical portrait of a 29 year old Latin American man with an ordinary open face, short dark hair, light stubble, a plain dark navy work shirt buttoned to the second button with a completely clean empty left chest area and no markings on it, calm level expression, soft overcast daylight, visible pores and facial asymmetry, even natural teeth, credible rather than polished"}
+  ],
+  "shots": [
+    {"id": "01_el_despertador", "titulo": "05:40", "segundos": 4, "move": "static",
+     "reparto": [], "hud": "05:40",
+     "still": "Extreme close on a hand reaching out of a dark tangle of bedsheets to silence a phone lying face up on the floor beside a mattress, the screen the only light in the room and blown out with no readable interface, a charger cable and a glass of water on the floor beside it, the room otherwise almost black, framing slightly off centre, real film grain, no face in frame, observational documentary realism",
+     "motion": "the hand comes out slowly, taps the screen twice before it goes dark, and withdraws back under the sheet, leaving the room in near darkness"},
+
+    {"id": "02_el_agua", "titulo": "EL AGUA", "segundos": 3, "move": "static",
+     "reparto": [], "hud": "",
+     "still": "Tight close on a cheap shower head in a small tiled bathroom with the tiles cracked and stained around it, a thin weak stream of water coming out of it, a bar of soap on a ledge, cold flat light from a small frosted window, damp on the wall, framing slightly off centre, real film grain, no people in frame, observational documentary realism",
+     "motion": "the weak stream falters, thins almost to nothing for a second and comes back, and steam does not form at all"},
+
+    {"id": "03_el_bus", "titulo": "EL BUS", "segundos": 4, "move": "handheld",
+     "reparto": [], "hud": "06:20",
+     "still": "Shot from behind at chest height inside a crowded city bus at dawn, the backs and shoulders of standing passengers pressed together filling the frame, a woman's hand gripping a worn metal bar in the foreground, condensation on the windows and grey light outside, everything slightly green from the interior lights, framing slightly off centre, real film grain, no faces recognisable, observational documentary realism",
+     "motion": "the bus rocks and everyone sways together, the hand tightens on the bar as it brakes, and a shoulder presses into frame and out again",
+     "nota": "Rodado desde atrás y entre gente: encuadre observacional puro, y ni una cara reconocible."},
+
+    {"id": "04_la_ventanilla", "titulo": "EL TRÁMITE", "segundos": 4, "move": "static",
+     "reparto": [], "hud": "07:55",
+     "still": "Shot through the scratched glass of a service window in a government office, the scratches and fingerprints on the glass sharp in the foreground and everything beyond slightly soft, a pair of woman's hands sliding a worn folder across the counter towards the gap, a bored hand on the far side already reaching to push it back, green fluorescent light overhead, nothing readable on the folder, framing slightly off centre, real film grain, no faces in frame, observational documentary realism",
+     "motion": "the folder slides forward and is pushed back in the same movement, almost without pause, and the woman's hands stay flat on the counter for a beat before they lift away",
+     "nota": "El cristal rayado en primer término es el truco del anuncio de referencia: te sientes mirando, no siendo vendido."},
+
+    {"id": "05_el_trabajo", "titulo": "EL TURNO", "segundos": 4, "move": "static",
+     "reparto": [], "hud": "09:10",
+     "still": "Tight close on a pair of woman's hands scanning items across a supermarket checkout scanner, the conveyor belt worn and marked, a cheap plastic divider and someone else's groceries in the foreground, harsh green fluorescent light from above, the till itself blown out with nothing readable on it, framing slightly off centre, real film grain, no face in frame, observational documentary realism",
+     "motion": "the hands take an item, pass it across the scanner, set it down and reach for the next in a rhythm that does not vary at all",
+     "nota": "El plano tiene que sentirse como si pudiera durar ocho horas más."},
+
+    {"id": "06_el_recibo", "titulo": "LA CUENTA", "segundos": 4, "move": "static",
+     "reparto": [], "hud": "",
+     "still": "Extreme close on a long thermal receipt curling out of a printer into a pair of tired hands, the paper slightly shiny and the print unreadable, a chipped counter surface underneath and a set of keys beside it, flat cold light, framing slightly off centre, razor-thin depth of field, real film grain, no face in frame, observational documentary realism",
+     "motion": "the receipt keeps coming out longer than expected, the hands turn it over once and let the end of it hang down out of frame"},
+
+    {"id": "07_el_estante", "titulo": "LO QUE NO SE LLEVA", "segundos": 4, "move": "static",
+     "reparto": [], "hud": "",
+     "still": "Tight close on a woman's hand putting a packet back onto a supermarket shelf, the shelf edge and other packets slightly out of focus around it, harsh fluorescent light, the shelf a little untidy with gaps in it, nothing readable on any packaging, framing slightly off centre, real film grain, no face in frame, observational documentary realism",
+     "motion": "the hand holds the packet for a beat, turns it once, and puts it back on the shelf, and the fingers rest on it for a second before letting go",
+     "nota": "El gesto más pequeño del anuncio y el que más duele. No hace falta decir por qué lo devuelve."},
+
+    {"id": "08_la_fila_de_noche", "titulo": "OTRA VEZ LA FILA", "segundos": 4, "move": "static",
+     "reparto": [], "hud": "18:40",
+     "still": "Shot through a doorway from outside, the doorframe dark in the foreground on both sides, a queue of people standing in a narrow strip-lit corridor beyond, seen from behind so no faces are recognisable, a woman's back second in line with a folder under one arm, green fluorescent light, the floor scuffed, framing slightly off centre, real film grain, observational documentary realism",
+     "motion": "the queue does not move, one person shifts their weight, and the woman with the folder changes it from one arm to the other"},
+
+    {"id": "09_la_llave", "titulo": "LLEGAR", "segundos": 4, "move": "static",
+     "reparto": [], "hud": "21:15",
+     "still": "Extreme close on a hand putting a key into the lock of a scratched metal door in a badly lit corridor, paint peeling around the lock and old stickers half scraped off the metal, a single bare bulb light from above, the key ring holding only two keys, framing slightly off centre, razor-thin depth of field, real film grain, no face in frame, observational documentary realism",
+     "motion": "the key goes in and turns with some resistance, the hand pushes the door and it sticks for a moment before giving"},
+
+    {"id": "10_el_cuarto", "titulo": "EL CUARTO", "segundos": 4, "move": "static",
+     "reparto": [], "hud": "",
+     "still": "A small rented room seen from the doorway, a mattress on the floor with the sheets unmade, clothes on a rail because there is no wardrobe, a suitcase still packed in a corner, a plate and a mug on the floor, cold blue street light coming through a window with no curtain, the room lived-in and untidy, framing slightly off centre, real film grain, no people in frame, observational documentary realism",
+     "motion": "nothing moves except the light from a passing car sweeping slowly across the wall and away"},
+
+    {"id": "11_de_espaldas", "titulo": "DE ESPALDAS", "segundos": 4, "move": "static",
+     "reparto": [], "hud": "",
+     "still": "A woman seen from directly behind sitting on the edge of a mattress in a dark room, her shoulders rounded and her head slightly down, cold blue street light from a window in front of her drawing the outline of her shoulders and hair, the rest of the room in near darkness, her face not visible at all, framing slightly off centre, real film grain, observational documentary realism",
+     "motion": "she sits completely still, then her shoulders rise and fall once with a long breath, and her head lifts a few centimetres",
+     "nota": "El último plano sin cara. Aquí el espectador ya lleva cuarenta y cinco segundos sin verle el rostro a nadie."},
+
+    {"id": "12_su_cara", "titulo": "LA PREGUNTA", "segundos": 6, "move": "static",
+     "reparto": ["ELLA"], "hud": "",
+     "voz_que_le_doblamos": "¿Tiene que ser así?",
+     "still": "Medium close on a 29 year old Latin American woman sitting on the edge of a mattress in a dark room, her face lit only by cold blue street light from a window camera-left and the other side of her face in shadow, no makeup, dark circles, chapped lips, hair scraped back with strands escaping, a plain worn t-shirt, the untidy room falling away behind her into darkness, framing slightly off centre, real film grain, natural skin texture with visible pores and facial asymmetry, no beauty retouching, observational documentary realism",
+     "motion": "she lifts her head and looks slightly off to one side of the lens with a flat exhausted expression, her mouth closed and still, she blinks once slowly and breathes out, and holds completely still",
+     "nota": "EL PLANO DE LA PIEZA, y el único con cara en cincuenta segundos. Va MUDO: la pregunta se dobla encima. Mira ligeramente a un lado del lente, no directamente, para que la pregunta suene a pensamiento y no a cámara."},
+
+    {"id": "13_el_portavoz", "titulo": "LA RESPUESTA", "segundos": 6, "move": "static",
+     "reparto": ["PORTAVOZ"], "hud": "",
+     "voz_que_le_doblamos": "Por eso hicimos esto. Por ti.",
+     "negative_quitar": ["looking at camera", "addressing the camera"],
+     "negative_añadir": ["open mouth", "singing", "mouthing words"],
+     "still": "Medium close on a 29 year old Latin American man standing in a plain room in soft overcast daylight from a window camera-left, wearing a plain dark navy work shirt with a completely clean empty left chest area and no markings of any kind on it, a bare wall behind him with the marks of removed pictures still on the paint, the lower quarter of the tall frame dark and clean, framing slightly off centre, real film grain, natural skin texture with visible pores and light stubble, facial asymmetry, no beauty retouching, observational documentary realism",
+     "motion": "he looks straight into the camera lens with a calm level expression, his mouth closed and still throughout, he blinks once slowly, his chest rises and falls with quiet breathing, and he gives one small nod at the very end, no lip movement of any kind",
+     "nota": "El contraste está en la luz: ella en azul frío de noche, él en luz de día suave. El anuncio pasa de lo feo a lo limpio sin decirlo."}
+  ],
+  "cierre": {"t": "58-64 s", "fuente": "montaje",
+    "que_se_ve": "Fundido a negro y el monograma OG dorado solo, sin eslogan escrito, como en la parte 1."},
+  "sonido": {
+    "primera_mitad": "Collage asfixiante y creciente: el zumbido del fluorescente, el pitido del escáner de caja repitiéndose, el bus, papeles, un reloj. Nunca música. Las capas se van sumando sin que se note.",
+    "el_corte": "En el plano 12, cuando aparece su cara, TODO desaparece de golpe. Silencio absoluto bajo su pregunta. Es el mismo recurso del anuncio de referencia: saturar y después despejar, y el silencio funciona como un respiro físico.",
+    "segunda_mitad": "Solo un aire de habitación muy limpio bajo el portavoz. Nada más.",
+    "regla": "El pitido del escáner de caja del plano 05 vuelve a aparecer bajo los planos 06, 07 y 08, cada vez más bajo. Es el sonido de su trabajo persiguiéndola el resto del día."
+  },
+  "voz": {
+    "lo_que_doblamos_nosotros": ["¿Tiene que ser así?", "Por eso hicimos esto. Por ti."],
+    "la_narracion": "Ninguna. Esta pieza no lleva narrador: solo esas dos frases. Si hiciera falta un narrador para entenderla, estaría mal montada.",
+    "nota": "Las dos frases se generan con la boca cerrada y se doblan. Si el labial no convence, la pregunta puede ir escrita en pantalla y el portavoz cortarse al negro."
+  },
+  "por_que_esta_puede_funcionar": [
+    "Trece de quince planos no tienen cara, y los dos que la tienen aparecen una sola vez cada uno. Es la pieza que menos depende de lo que el modelo no sabe hacer.",
+    "Todo pasa en un día, así que no hay que sostener continuidad entre épocas ni entre personajes.",
+    "La historia es literal y completa: se levanta, va, le dicen que no, trabaja, deja algo en el estante, vuelve, se sienta. Se entiende sin una palabra.",
+    "Y la pregunta la hace ella, no la marca. La marca solo responde."
+  ],
+  "riesgos": [
+    {"que": "El plano 12 es el más importante y lleva cara",
+     "mitigacion": "Se generan tres semillas del 12 en la misma tanda. Cuesta dos clips más, unos $0.18, y es donde se juega la pieza."},
+    {"que": "Que el plano 03 del bus salga con caras reconocibles",
+     "mitigacion": "El prompt pide explícitamente rodar desde atrás y sin caras reconocibles; si sale mal, se repite, que es barato."}
+  ]
+}
