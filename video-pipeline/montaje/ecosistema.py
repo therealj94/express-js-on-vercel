@@ -100,7 +100,8 @@ def lienzo():
 
 
 def pegar_centrado(base, im, ancho, dy=0, opacidad=1.0):
-    alto = int(im.height * ancho / im.width)
+    ancho = max(2, int(ancho))
+    alto = max(2, int(im.height * ancho / im.width))
     im = im.resize((ancho, alto), Image.LANCZOS)
     if opacidad < 1:
         al = im.split()[3].point(lambda v: int(v * opacidad))
@@ -141,6 +142,68 @@ def bloque_icono(t, dur, icono, nombre):
     if t > 1.4:
         op = int(255 * suave(min((t - 1.4) / 0.5, 1.0)))
         centrar(d, nombre, fuente(F_DAT, 34), H / 2 + 150, APAGADO + (op,))
+    return im
+
+
+def bloque_sistema_solar(t, dur, icono, orbitas):
+    """El sistema solar REAL de la app: Veta en el centro y el resto orbitando.
+
+    La primera version ponia un icono suelto, y antes de eso un dock de seis que
+    ademas contradecia el rotulo. Las dos eran interfaces inventadas peores que
+    la suya: la app de verdad coloca Veta Wallet en un halo dorado con Chat,
+    MyTokenPay, Genesis ID, Ordenexchange y AuCorp girando alrededor, unidos por
+    lineas finas. Y el gesto orbital rima con el logo, que tambien son anillos."""
+    im = lienzo(); d = ImageDraw.Draw(im, "RGBA")
+    cx, cy = W / 2, H / 2 - 60
+    a = suave(min(t / 1.1, 1.0))
+
+    # Primero las lineas: son lo que dice que el centro sostiene al resto.
+    for k, o in enumerate(orbitas):
+        ap = suave(min(max((t - 0.5 - k * 0.14) / 0.6, 0), 1))
+        if ap <= 0:
+            continue
+        rad = np.radians(o["ang"])
+        x = cx + np.cos(rad) * o["r"] * a
+        y = cy + np.sin(rad) * o["r"] * a
+        d.line([cx, cy, cx + (x - cx) * ap, cy + (y - cy) * ap],
+               fill=(120, 104, 62, int(150 * ap)), width=2)
+
+    # El halo de Veta. Apilar elipses no sirve: por poco alfa que lleve cada
+    # una, se suman y sale un disco amarillo macizo. Un degradado de verdad se
+    # calcula por pixel, con la opacidad cayendo con el radio.
+    if a > 0.02:
+        R = int(330 * a)
+        yy, xx = np.mgrid[-R:R + 1, -R:R + 1]
+        dist = np.sqrt(xx ** 2 + yy ** 2) / R
+        alfa = np.clip(1.0 - dist, 0, 1) ** 2.2 * 150 * a
+        halo = np.zeros((2 * R + 1, 2 * R + 1, 4), np.uint8)
+        halo[..., 0], halo[..., 1], halo[..., 2] = ORO
+        halo[..., 3] = alfa.astype(np.uint8)
+        im.alpha_composite(Image.fromarray(halo, "RGBA"),
+                           (int(cx) - R, int(cy) - R))
+        pegar_centrado(im, icono, max(8, int(340 * a)), dy=-60, opacidad=a)
+    # El nombre bien lejos del halo, que encima quedaba blanco sobre oro.
+    centrar(d, "Veta Wallet", fuente(F_DAT, 32), cy + 372, TEXTO + (int(235 * a),))
+
+    # Y los mundos que orbitan, cada uno entrando con su retardo.
+    for k, o in enumerate(orbitas):
+        ap = suave(min(max((t - 0.5 - k * 0.14) / 0.6, 0), 1))
+        if ap <= 0:
+            continue
+        rad = np.radians(o["ang"])
+        x = cx + np.cos(rad) * o["r"] * a
+        y = cy + np.sin(rad) * o["r"] * a
+        rr = 58 * ap
+        d.ellipse([x - rr, y - rr, x + rr, y + rr],
+                  fill=(34, 44, 42, int(230 * ap)),
+                  outline=(150, 132, 80, int(180 * ap)), width=2)
+        f = fuente(F_DAT, 22)
+        an = d.textbbox((0, 0), o["nombre"], font=f)
+        ancho_t = an[2] - an[0]
+        # Sin esto "Chat" y "Ordenexchange" se salian por los bordes.
+        tx = min(max(x - ancho_t / 2 - an[0], 10), W - ancho_t - 10)
+        d.text((tx, y + rr + 14), o["nombre"], font=f,
+               fill=APAGADO + (int(230 * ap),))
     return im
 
 
@@ -356,6 +419,8 @@ def main():
             elif e == "icono_unico":
                 im = bloque_icono(tl, b["dur"], icono,
                                   b["rotulos"][0]["texto"])
+            elif e == "sistema_solar":
+                im = bloque_sistema_solar(tl, b["dur"], icono, b["orbitas"])
             elif e == "funciones_dentro":
                 im = bloque_funciones(tl, b["t"], b["items"])
             elif e == "origen":

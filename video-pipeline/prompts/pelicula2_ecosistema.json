@@ -11,7 +11,7 @@
     "ancho": 1080,
     "alto": 1920,
     "fps": 30,
-    "dur_s": 43.4
+    "dur_s": 44.4
   },
   "paleta": {
     "fondo": "#0B0B0C",
@@ -53,24 +53,25 @@
       "rotulos": [
         {
           "t": 4.2,
-          "dur": 1.3,
-          "texto": "Una sola app.",
+          "dur": 1.4,
+          "texto": "Una identidad.",
           "tipo": "titular"
         },
         {
-          "t": 5.6,
-          "dur": 1.3,
-          "texto": "Todo adentro.",
+          "t": 5.7,
+          "dur": 1.4,
+          "texto": "Todo el ecosistema.",
           "tipo": "titular"
         }
-      ]
+      ],
+      "_fuente": "Literal de la pantalla de arranque de la app: 'UNA IDENTIDAD · TODO EL ECOSISTEMA'. La mia decia 'Una sola app / Todo adentro', que decia menos y no era suya."
     },
     {
       "id": "03_la_app",
       "t": 7.0,
-      "dur": 3.0,
-      "escena": "icono_unico",
-      "detalle": "Los puntos se rehacen en UN solo icono, grande y centrado: Veta Wallet. No entra un dock de seis. Debajo, pequeno, el nombre.",
+      "dur": 4.0,
+      "escena": "sistema_solar",
+      "detalle": "Los puntos se rehacen en el sistema solar REAL de la app: Veta Wallet en el centro, en un halo dorado, y orbitando alrededor Chat, MyTokenPay, Genesis ID, Ordenexchange y AuCorp, unidos al centro por lineas finas. Es su propia interfaz, no una inventada.",
       "activo": "veta-wallet/veta-wallet-icono.png",
       "rotulos": [
         {
@@ -80,53 +81,80 @@
           "tipo": "dato"
         }
       ],
-      "_pendiente": "el icono es de 760x359; sirve justo. El logo de Veta (256 px) no sirve"
+      "_pendiente": "el icono es de 760x359; sirve justo. El logo de Veta (256 px) no sirve",
+      "orbitas": [
+        {
+          "nombre": "Chat",
+          "ang": 205,
+          "r": 430
+        },
+        {
+          "nombre": "MyTokenPay",
+          "ang": 335,
+          "r": 440
+        },
+        {
+          "nombre": "Genesis ID",
+          "ang": 160,
+          "r": 450
+        },
+        {
+          "nombre": "Ordenexchange",
+          "ang": 35,
+          "r": 440
+        },
+        {
+          "nombre": "AuCorp",
+          "ang": 268,
+          "r": 400
+        }
+      ]
     },
     {
       "id": "04_funciones",
-      "t": 10.0,
+      "t": 11.0,
       "dur": 19.0,
       "escena": "funciones_dentro",
       "detalle": "El icono se abre y las funciones aparecen DENTRO de el, una cada 2,7 s, como pantallas que entran y salen. El verbo grande; la marca, si la tiene, pequena y debajo.",
       "items": [
         {
-          "t": 10.0,
+          "t": 11.0,
           "verbo": "Guardá. Mandá. Recibí.",
           "marca": null,
           "visual": "una tarjeta de saldo gira sobre su eje y se asienta"
         },
         {
-          "t": 12.7,
+          "t": 13.7,
           "verbo": "Verificate una vez.",
           "marca": "Genesis ID",
           "visual": "un documento se sella y un candado se cierra"
         },
         {
-          "t": 15.4,
+          "t": 16.4,
           "verbo": "Cobrá con un código.",
           "marca": "MyTokenPay",
           "visual": "un QR se forma de puntos y una luz de lector lo barre"
         },
         {
-          "t": 18.1,
+          "t": 19.1,
           "verbo": "Hablá sin salir de la app.",
           "marca": "PULSE2CHAT",
           "visual": "burbujas de chat que entran una tras otra"
         },
         {
-          "t": 20.8,
+          "t": 21.8,
           "verbo": "Preguntá lo que sea.",
           "marca": "AU-RA",
           "visual": "una onda de voz responde y la respuesta se escribe sola"
         },
         {
-          "t": 23.5,
+          "t": 24.5,
           "verbo": "De un país a otro.",
           "marca": null,
           "visual": "seis siluetas de pais y una linea de puntos que las cose"
         },
         {
-          "t": 26.2,
+          "t": 27.2,
           "verbo": "Cambiá entre monedas.",
           "marca": null,
           "visual": "dos fichas que rotan e intercambian su sitio"
@@ -135,19 +163,19 @@
     },
     {
       "id": "05_origen",
-      "t": 29.0,
+      "t": 30.0,
       "dur": 5.4,
       "escena": "origen",
       "detalle": "Idea de Jose: una pepita de oro y de ahi se forma ORIGEN. Hecha EXACTA: un ORIGEN es un gramo entre 55, asi que la pepita no se convierte en una moneda -se DIVIDE en 55-. Es la formula publica, animada. Y esa diferencia no es un detalle: una pepita que se convierte en la moneda dice 'esta moneda es oro', que es la inferencia que el acta de Junta prohibe; una pepita que se divide en 55 dice 'asi se mide', que es lo que si es cierto.",
       "rotulos": [
         {
-          "t": 30.6,
+          "t": 31.6,
           "dur": 1.5,
           "texto": "Un gramo de oro.",
           "tipo": "titular"
         },
         {
-          "t": 32.4,
+          "t": 33.4,
           "dur": 1.9,
           "texto": "Cincuenta y cinco ORIGEN.",
           "tipo": "titular"
@@ -157,7 +185,7 @@
     },
     {
       "id": "05_el_recibo",
-      "t": 34.4,
+      "t": 35.4,
       "dur": 5.5,
       "escena": "recibo",
       "detalle": "EL CLIMAX, y es lo unico que ningun banco puede ensenar. NO es un hash: es un recibo legible que se arma de puntos, con fecha, hora, monto y el estado. Debajo, en pequeno, el numero de la transaccion. La linea 'lo puede ver cualquiera' es lo que lo separa de la pantalla de un banco.",
@@ -181,13 +209,13 @@
       },
       "rotulos": [
         {
-          "t": 34.6,
+          "t": 35.6,
           "dur": 1.6,
           "texto": "Todo queda escrito.",
           "tipo": "titular"
         },
         {
-          "t": 38.0,
+          "t": 39.0,
           "dur": 1.8,
           "texto": "ordenscan.com",
           "tipo": "dato"
@@ -196,14 +224,14 @@
     },
     {
       "id": "06_cierre",
-      "t": 39.9,
+      "t": 40.9,
       "dur": 3.5,
       "escena": "logo_a_puntos_a_logo",
       "detalle": "Todo lo que hay en pantalla se deshace a la vez y los puntos regresan al centro rehaciendo la marca. La pelicula cierra el mismo circulo con el que abrio.",
       "activo": "orden-global/orden-global-logo.png",
       "rotulos": [
         {
-          "t": 41.4,
+          "t": 42.4,
           "dur": 2.0,
           "texto": "Orden Global. Un sistema financiero que se puede comprobar.",
           "tipo": "rotulo"

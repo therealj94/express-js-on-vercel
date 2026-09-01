@@ -12,7 +12,7 @@
   "shots": [
     {
       "id": "01_pulperia",
-      "still": "A 58 year old Central American shopkeeper behind the counter of a small neighbourhood corner shop, deep nasolabial lines, sun damaged forearms, grey streaks in tied-back hair, a fabric plaster on one finger, reading glasses pushed up on her head, a faded apron with a visibly repaired seam. She hands a paper bag of bread to a customer off frame. Behind her, crowded shelves of everyday goods, hand written price cards taped on crooked, a plastic strip curtain over the doorway. Hard midday sun blows out the doorway behind her and bounces back off the street, uneven and slightly green. Documentary framing, medium shot, shot on 35mm",
+      "still": "a 60 year old Central American shopkeeper with indigenous features, medium brown sun-weathered skin, deep lines across her forehead and around her mouth, heavy-lidded dark brown eyes, black hair heavily streaked with grey and pulled straight back tight, reading glasses pushed up on top of her head, thin lips, a grey patterned short-sleeved blouse under a pale cream apron with a chest pocket. A 58 year old Central American shopkeeper behind the counter of a small neighbourhood corner shop, deep nasolabial lines, sun damaged forearms, grey streaks in tied-back hair, a fabric plaster on one finger, reading glasses pushed up on her head, a faded apron with a visibly repaired seam. She hands a paper bag of bread to a customer off frame. Behind her, crowded shelves of everyday goods, hand written price cards taped on crooked, a plastic strip curtain over the doorway. Hard midday sun blows out the doorway behind her and bounces back off the street, uneven and slightly green. Documentary framing, medium shot, shot on 35mm",
       "motion": "she sets the bag down, wipes both hands on her apron, and glances toward the door without turning her head much; a slow blink; her shoulders drop as she settles her weight onto the other foot",
       "move": "handheld",
       "stills": 6,
@@ -24,7 +24,8 @@
         1105,
         1106
       ],
-      "pick": null
+      "pick": null,
+      "_personaje": "senora"
     },
     {
       "id": "02_telefono_mostrador",
@@ -44,7 +45,7 @@
     },
     {
       "id": "03_hija_cocina",
-      "still": "A 31 year old Central American woman standing in the narrow kitchen of a cramped rented apartment in a colder country, still in a work uniform polo with a name tag clipped to it, a faint pressure mark on her neck from the collar, damp hair at the temples, chapped lips, no makeup. One cupboard door hangs open behind her, a coat over a chair, a mug with the string of a tea bag hanging out, condensation across the window. Flat late afternoon light through that window, cold and slightly blue against the warm bulb overhead. Medium shot, documentary framing, shot on 35mm",
+      "still": "a 31 year old Central American woman with olive skin, straight black shoulder-length hair tucked behind her ears, thick straight eyebrows, a small nose, full lips and no makeup, wearing a plain unmarked pale grey-green work polo. A 31 year old Central American woman standing in the narrow kitchen of a cramped rented apartment in a colder country, still in a plain work uniform polo with no lettering, a faint pressure mark on her neck from the collar, damp hair at the temples, chapped lips, no makeup. One cupboard door hangs open behind her, a coat over a chair, a mug with the string of a tea bag hanging out, condensation across the window. Flat late afternoon light through that window, cold and slightly blue against the warm bulb overhead. Medium shot, documentary framing, shot on 35mm",
       "motion": "she leans back against the counter, lets her shoulders drop, breathes out through her nose, and closes her eyes for a beat longer than a blink",
       "move": "handheld",
       "stills": 6,
@@ -56,11 +57,12 @@
         1305,
         1306
       ],
-      "pick": null
+      "pick": null,
+      "_personaje": "hija"
     },
     {
       "id": "04_abre_app",
-      "still": "Over the shoulder close shot of the same young woman's hands holding a smartphone in a narrow kitchen, thumb resting on the lit screen, its glow on the fingertips, a grown-out gel manicure chipped at the tips, a small pale scar across one knuckle, a cheap watch with a worn strap. The phone case has a faded price sticker still on it. The screen is completely black and empty. Soft cold window light from the left, warm bulb spill from behind. Documentary detail shot, shallow depth of field, shot on 35mm",
+      "still": "the hands of a 31 year old Central American woman with olive skin, a grown-out chipped manicure and a cheap watch with a worn strap. Over the shoulder close shot of the same young woman's hands holding a smartphone in a narrow kitchen, thumb resting on the lit screen, its glow on the fingertips, a grown-out gel manicure chipped at the tips, a small pale scar across one knuckle, a cheap watch with a worn strap. The phone case has a faded price sticker still on it. The screen is completely black and empty. Soft cold window light from the left, warm bulb spill from behind. Documentary detail shot, shallow depth of field, shot on 35mm",
       "motion": "her thumb hovers for a moment, taps the dark screen once, and stays there; her other hand tightens slightly on the phone",
       "move": "static",
       "stills": 8,
@@ -74,11 +76,12 @@
         1407,
         1408
       ],
-      "pick": null
+      "pick": null,
+      "_personaje": "hija"
     },
     {
       "id": "05_elige_contacto",
-      "still": "Tight top down shot of a young woman's hands holding a smartphone over a narrow laminate kitchen counter, thumb mid scroll, chipped manicure, a hangnail, a cheap watch strap. The phone screen is on and throws a soft even glow up onto the fingers and face, its content out of focus and illegible. Below and out of focus, a chipped mug, a set of keys on a lanyard, a folded work schedule and a crumb-scattered counter with a worn patch in the laminate. Soft cold window light from the left. Documentary detail shot, shot on 35mm",
+      "still": "the hands of a 31 year old Central American woman with olive skin, a grown-out chipped manicure and a cheap watch with a worn strap. Tight top down shot of a young woman's hands holding a smartphone over a narrow laminate kitchen counter, thumb mid scroll, chipped manicure, a hangnail, a cheap watch strap. The phone screen is on and throws a soft even glow up onto the fingers and face, its content out of focus and illegible. Below and out of focus, a chipped mug, a set of keys on a lanyard, a folded work schedule and a crumb-scattered counter with a worn patch in the laminate. Soft cold window light from the left. Documentary detail shot, shot on 35mm",
       "motion": "her thumb scrolls down slowly, overshoots, comes back up a little and stops",
       "move": "static",
       "stills": 8,
@@ -92,11 +95,12 @@
         1507,
         1508
       ],
-      "pick": null
+      "pick": null,
+      "_personaje": "hija"
     },
     {
       "id": "06_pone_dedo",
-      "still": "Very tight macro shot of a thumb pressing and holding on a lit phone screen whose content is out of focus and illegible, the glow spilling around the thumb, the rest of the hand steady around a worn plastic case, a cheap watch strap at the edge of frame, a faint scar across the knuckle. Warm late afternoon daylight rakes across the glass and reveals fingerprints, dust and a hairline scratch. The kitchen behind is a soft wash of out of focus shapes. Documentary macro detail, shot on 35mm",
+      "still": "the hands of a 31 year old Central American woman with olive skin, a grown-out chipped manicure and a cheap watch with a worn strap. Very tight macro shot of a thumb pressing and holding on a lit phone screen whose content is out of focus and illegible, the glow spilling around the thumb, the rest of the hand steady around a worn plastic case, a cheap watch strap at the edge of frame, a faint scar across the knuckle. Warm late afternoon daylight rakes across the glass and reveals fingerprints, dust and a hairline scratch. The kitchen behind is a soft wash of out of focus shapes. Documentary macro detail, shot on 35mm",
       "motion": "the thumb hesitates, presses down and holds, the pad of it flattening and going pale at the edge, then lifts away",
       "move": "static",
       "stills": 8,
@@ -110,11 +114,12 @@
         1607,
         1608
       ],
-      "pick": null
+      "pick": null,
+      "_personaje": "hija"
     },
     {
       "id": "07_suena_pulperia",
-      "still": "The same scratched phone lying face down on the worn wooden shop counter beside the chipped coin tray, the corner shop soft and out of focus behind it with crowded shelves and hand written price cards. The shopkeeper's weathered, ringless hand enters frame from the right, a fabric plaster on one finger. Hard midday light from the street doorway, uneven and bouncing back off the pavement. Documentary detail shot, shallow depth of field, shot on 35mm",
+      "still": "the weathered brown hands of a 60 year old Central American woman, short unpainted nails, prominent veins and knuckles. The same scratched phone lying face down on the worn wooden shop counter beside the chipped coin tray, the corner shop soft and out of focus behind it with crowded shelves and hand written price cards. The shopkeeper's weathered, ringless hand enters frame from the right, a fabric plaster on one finger. Hard midday light from the street doorway, uneven and bouncing back off the pavement. Documentary detail shot, shallow depth of field, shot on 35mm",
       "motion": "her hand reaches in, hesitates a moment over the phone, then turns it over",
       "move": "static",
       "stills": 6,
@@ -126,11 +131,12 @@
         1705,
         1706
       ],
-      "pick": null
+      "pick": null,
+      "_personaje": "senora"
     },
     {
       "id": "08_cara_senora",
-      "still": "Close up of the 58 year old shopkeeper looking down at a phone held just below frame, reading glasses now low on her nose, the faint light of the screen on her face, mouth closed, sun damaged skin with visible pores and fine hair, a strand loose at her temple. The crowded corner shop is out of focus behind her, the blown out doorway a soft white shape at the edge. Hard bounced midday light from the left, softer fill from the street. Documentary close up, shot on 35mm",
+      "still": "a 60 year old Central American shopkeeper with indigenous features, medium brown sun-weathered skin, deep lines across her forehead and around her mouth, heavy-lidded dark brown eyes, black hair heavily streaked with grey and pulled straight back tight, reading glasses pushed up on top of her head, thin lips, a grey patterned short-sleeved blouse under a pale cream apron with a chest pocket. Close up of the 58 year old shopkeeper looking down at a phone held just below frame, reading glasses now low on her nose, the faint light of the screen on her face, mouth closed, sun damaged skin with visible pores and fine hair, a strand loose at her temple. The crowded corner shop is out of focus behind her, the blown out doorway a soft white shape at the edge. Hard bounced midday light from the left, softer fill from the street. Documentary close up, shot on 35mm",
       "motion": "her eyes track across the screen twice, she blinks, her jaw loosens and she presses her lips together, chin dimpling very slightly; she does not smile",
       "move": "push",
       "stills": 8,
@@ -144,11 +150,12 @@
         1807,
         1808
       ],
-      "pick": null
+      "pick": null,
+      "_personaje": "senora"
     },
     {
       "id": "09_ensena_pantalla",
-      "still": "The shopkeeper turning a phone around to show its screen to a young man in a stained t-shirt stacking crates on the other side of the counter, both caught mid gesture, unposed, mouths closed. The phone screen is on and throws a soft even glow up onto the fingers and face, its content out of focus and illegible. Crowded corner shop interior, crates on the floor, a crooked hand written sign taped to the shelf behind them, hard midday light from the doorway. Documentary medium shot, shot on 35mm",
+      "still": "a 60 year old Central American shopkeeper with indigenous features, medium brown sun-weathered skin, deep lines across her forehead and around her mouth, heavy-lidded dark brown eyes, black hair heavily streaked with grey and pulled straight back tight, reading glasses pushed up on top of her head, thin lips, a grey patterned short-sleeved blouse under a pale cream apron with a chest pocket. The shopkeeper turning a phone around to show its screen to a young man in a stained t-shirt stacking crates on the other side of the counter, both caught mid gesture, unposed, mouths closed. The phone screen is on and throws a soft even glow up onto the fingers and face, its content out of focus and illegible. Crowded corner shop interior, crates on the floor, a crooked hand written sign taped to the shelf behind them, hard midday light from the doorway. Documentary medium shot, shot on 35mm",
       "motion": "she turns the phone toward him, he stops with a crate half lifted and leans in squinting, then lets out a short laugh, more breath than sound, and shakes his head slowly while she watches his face and not the phone",
       "move": "handheld",
       "stills": 8,
@@ -162,11 +169,12 @@
         1907,
         1908
       ],
-      "pick": null
+      "pick": null,
+      "_personaje": "senora"
     },
     {
       "id": "10_ve_detalle",
-      "still": "Over the shoulder shot of the 31 year old woman in the cramped rented kitchen, holding the phone closer to her face, screen lit and glowing on her face, its content out of focus and illegible, her expression settled, still in her work uniform polo with the name tag. Behind her the open cupboard, a coat over a chair and a window going blue with evening. The overhead bulb is warm and slightly too yellow against it. Medium close shot, documentary framing, shot on 35mm",
+      "still": "a 31 year old Central American woman with olive skin, straight black shoulder-length hair tucked behind her ears, thick straight eyebrows, a small nose, full lips and no makeup, wearing a plain unmarked pale grey-green work polo. Over the shoulder shot of the 31 year old woman in the cramped rented kitchen, holding the phone closer to her face, screen lit and glowing on her face, its content out of focus and illegible, her expression settled, still in her plain work uniform polo. Behind her the open cupboard, a coat over a chair and a window going blue with evening. The overhead bulb is warm and slightly too yellow against it. Medium close shot, documentary framing, shot on 35mm",
       "motion": "her thumb taps once and she reads without moving, then lets out a breath and lowers the phone a few centimetres",
       "move": "static",
       "stills": 6,
@@ -178,11 +186,12 @@
         2005,
         2006
       ],
-      "pick": null
+      "pick": null,
+      "_personaje": "hija"
     },
     {
       "id": "10b_comprobante",
-      "still": "Very tight macro insert of a smartphone held in a woman's hand in a dim kitchen, the screen filling most of the frame, lit and glowing with its content out of focus and illegible, a thumb resting at the lower edge of the glass, fingerprints and a hairline scratch catching the light. Behind and far out of focus, the warm bulb of the kitchen and a window gone blue with evening. Documentary macro insert, very shallow depth of field, shot on 35mm",
+      "still": "the hands of a 31 year old Central American woman with olive skin, a grown-out chipped manicure and a cheap watch with a worn strap. Very tight macro insert of a smartphone held in a woman's hand in a dim kitchen, the screen filling most of the frame, lit and glowing with its content out of focus and illegible, a thumb resting at the lower edge of the glass, fingerprints and a hairline scratch catching the light. Behind and far out of focus, the warm bulb of the kitchen and a window gone blue with evening. Documentary macro insert, very shallow depth of field, shot on 35mm",
       "motion": "the phone is held still, the smallest hand tremor visible, and the thumb shifts once at the edge of the glass",
       "move": "static",
       "stills": 7,
@@ -196,11 +205,12 @@
         2407
       ],
       "pick": null,
-      "_nota": "Inserto que faltaba. El comprobante es el clima de la pieza y no habia ningun plano donde se leyera; sin el, la historia se queda en una intencion invisible. La pantalla va encendida e ilegible y el recibo real se compone aqui."
+      "_nota": "Inserto que faltaba. El comprobante es el clima de la pieza y no habia ningun plano donde se leyera; sin el, la historia se queda en una intencion invisible. La pantalla va encendida e ilegible y el recibo real se compone aqui.",
+      "_personaje": "hija"
     },
     {
       "id": "11_tarjeta",
-      "still": "Close on the weathered hands of the 58 year old shopkeeper holding a plain unbranded dark payment card with its EMV chip and magnetic stripe clearly visible and sliding it into a small card terminal on the counter of a neighbourhood pharmacy, a fabric plaster on one finger. Another customer waits out of focus behind her. Shelves of boxed medicine, a handwritten sign taped to the glass, a curling promotional poster. Hard afternoon light through the street door, uneven, with a cold fluorescent tube overhead fighting it. No visible logos or text on the card. Documentary detail shot, shallow depth of field, shot on 35mm",
+      "still": "a 60 year old Central American shopkeeper with indigenous features, medium brown sun-weathered skin, deep lines across her forehead and around her mouth, heavy-lidded dark brown eyes, black hair heavily streaked with grey and pulled straight back tight, reading glasses pushed up on top of her head, thin lips, a grey patterned short-sleeved blouse under a pale cream apron with a chest pocket. Close on the weathered hands of the 58 year old shopkeeper holding a plain unbranded dark payment card with its EMV chip and magnetic stripe clearly visible and sliding it into a small card terminal on the counter of a neighbourhood pharmacy, a fabric plaster on one finger. Another customer waits out of focus behind her. Shelves of boxed medicine, a handwritten sign taped to the glass, a curling promotional poster. Hard afternoon light through the street door, uneven, with a cold fluorescent tube overhead fighting it. No visible logos or text on the card. Documentary detail shot, shallow depth of field, shot on 35mm",
       "motion": "she pushes the card into the terminal, it settles, and she rests her other hand flat on the counter and waits",
       "move": "static",
       "stills": 8,
@@ -215,7 +225,8 @@
         2308
       ],
       "pick": null,
-      "_nota": "La tarjeta va SIN marca. Es el elemento de confianza mas fuerte que hay -'la Visa mil veces, si me roban puedo ir a pelear al banco'- pero la auditoria dice que antes de grabarla hay que confirmar con el emisor que hoy se emite y se usa una tarjeta de verdad. Si Jose lo confirma, la marca se compone despues en local sobre la tarjeta lisa; si no, el plano se cae y no se insinua."
+      "_nota": "La tarjeta va SIN marca. Es el elemento de confianza mas fuerte que hay -'la Visa mil veces, si me roban puedo ir a pelear al banco'- pero la auditoria dice que antes de grabarla hay que confirmar con el emisor que hoy se emite y se usa una tarjeta de verdad. Si Jose lo confirma, la marca se compone despues en local sobre la tarjeta lisa; si no, el plano se cae y no se insinua.",
+      "_personaje": "senora"
     },
     {
       "id": "11_caras_calle",
@@ -254,5 +265,6 @@
       "pick": null
     }
   ],
-  "_workflows": "El still y el clip salen del MISMO modelo: el instalador no baja FLUX porque H3 hace imagen fija ademas de video, lo que ahorra 35 GB y hace que el still y el clip compartan estetica. Un still es H3 con length=1. h3_i2v_api.json NO existe todavia: MiniMaxH3ImageToVideo esta cableado sin imagen pese a llamarse asi y a que los pesos son fl2va. Se construye en el pod, preguntandole a /object_info los nombres reales de sus entradas, y se verifica con un clip antes de lanzar la cola. Si no verifica, se cae al t2v de h3_calidad_api, que es el camino probado: 45 de 46 clips sin un fallo."
+  "_workflows": "El still y el clip salen del MISMO modelo: el instalador no baja FLUX porque H3 hace imagen fija ademas de video, lo que ahorra 35 GB y hace que el still y el clip compartan estetica. Un still es H3 con length=1. h3_i2v_api.json NO existe todavia: MiniMaxH3ImageToVideo esta cableado sin imagen pese a llamarse asi y a que los pesos son fl2va. Se construye en el pod, preguntandole a /object_info los nombres reales de sus entradas, y se verifica con un clip antes de lanzar la cola. Si no verifica, se cae al t2v de h3_calidad_api, que es el camino probado: 45 de 46 clips sin un fallo.",
+  "_continuidad": "La ficha fisica de cada personaje va literal al principio de su prompt, identica en todos sus planos. Es la unica forma de que texto-a-video mantenga la misma persona: generando cada plano por separado sin esto, la senora salio centroamericana en el plano medio y europea en los OCHO primeros planos, y las manos de la hija cambiaron de tono de piel entre tomas."
 }
