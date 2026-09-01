@@ -100,8 +100,14 @@ const TXT = {
     // Culpar a la red cuando el servidor SÍ contestó —y contestó que esta
     // instalación no es la de antes— manda a la persona a revisar su wifi
     // durante horas. Se dice lo que pasa y dónde están sus mensajes.
-    otraTit: 'Este chat quedó en tu instalación anterior',
-    otraTxt: 'Tus conversaciones están a salvo en el servidor. Intentamos recuperarlas con tu sesión de la wallet y no se pudo: entrá de nuevo a tu cuenta desde Ajustes y volvé a abrir el chat. Mientras tanto, el resto de la app funciona con normalidad.',
+    /* DOS CAUSAS, DOS SALIDAS. El relevo las distingue y llevan a sitios
+       opuestos: una se arregla volviendo a entrar aquí mismo; la otra, con el
+       teléfono donde el chat sigue abierto. Con un solo texto se mandaba a la
+       mitad de la gente al sitio equivocado. */
+    otraTit: 'Tenés que entrar de nuevo a tu cuenta',
+    otraTxt: 'Tus conversaciones están a salvo en el servidor. Tu sesión venció —dura poco a propósito— y hace falta para abrir el chat en este teléfono. Entrá de nuevo desde Ajustes y volvé acá. Mientras tanto, el resto de la app funciona con normalidad.',
+    otraTit2: 'Este chat quedó en tu instalación anterior',
+    otraTxt2: 'Tus conversaciones están a salvo en el servidor. El chat sigue abierto en el teléfono donde lo usabas antes: abrilo ahí una vez y volvé acá. Mientras tanto, el resto de la app funciona con normalidad.',
   },
   en: {
     marca: 'PULSE CHAT', sub: 'People and groups, with Genesis ID',
@@ -149,8 +155,10 @@ const TXT = {
     sinRedHilo: 'We could not fetch the messages of this conversation.',
     sinRedBusca: 'The search did not go through. Check your connection and try again.',
     reint: 'RETRY', bannerRed: 'Offline — retrying…',
-    otraTit: 'This chat stayed in your previous install',
-    otraTxt: 'Your conversations are safe on the server. We tried to recover them with your wallet session and could not: sign in to your account again from Settings and reopen the chat. Meanwhile the rest of the app works normally.',
+    otraTit: 'You need to sign in again',
+    otraTxt: 'Your conversations are safe on the server. Your session expired —it is short on purpose— and it is needed to open the chat on this phone. Sign in again from Settings and come back. Meanwhile the rest of the app works normally.',
+    otraTit2: 'This chat stayed in your previous install',
+    otraTxt2: 'Your conversations are safe on the server. The chat is still open on the phone you used before: open it there once and come back. Meanwhile the rest of the app works normally.',
   },
 };
 
@@ -313,6 +321,9 @@ export default function AuroChat({ nav, params }) {
   const { lang } = useLang();
   const t = TXT[lang] || TXT.es;
   const { account } = useAccount();
+  /* Por qué el relevo dijo que no: «sesion-no-vale» (se arregla entrando de
+     nuevo) o «sin-sesion» / otro dueño (se arregla con el teléfono anterior). */
+  const [motivoOtra, setMotivoOtra] = React.useState(null);
   const [puerta, setPuerta] = useState('mirando');       // mirando | falta | abierta
   const [convos, setConvos] = useState(null);
   const [busca, setBusca] = useState('');
@@ -467,6 +478,8 @@ export default function AuroChat({ nav, params }) {
             return;
           } catch (e2) {
             if (!(e2 && e2.code === 409)) { setSinRed(true); return; }
+            // Se guarda POR QUE, para decirle a la persona a dónde ir.
+            setMotivoOtra(e2.motivo || null);
           }
         }
         setLlaveOtra(true);
@@ -1261,8 +1274,10 @@ export default function AuroChat({ nav, params }) {
           // más importa— que los mensajes NO se perdieron.
           <View style={st.redCaja}>
             <Icon name="key" size={22} color={C.gold} />
-            <Text style={st.redTit}>{t.otraTit}</Text>
-            <Text style={st.redTxt}>{t.otraTxt}</Text>
+            <Text style={st.redTit}>
+              {motivoOtra === 'sesion-no-vale' ? t.otraTit : t.otraTit2}</Text>
+            <Text style={st.redTxt}>
+              {motivoOtra === 'sesion-no-vale' ? t.otraTxt : t.otraTxt2}</Text>
           </View>
         ) : sinRed ? (
           <View style={st.redCaja}>

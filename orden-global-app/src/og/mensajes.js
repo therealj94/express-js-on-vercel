@@ -11,7 +11,7 @@ import Constants from 'expo-constants';
 // El JWT de la wallet. Es la ÚNICA prueba de identidad que el relevo sabe
 // comprobar por su cuenta, y con ella devuelve la llave de un correo que ya
 // tiene dueño en vez de dar el portazo del 409.
-import { getToken } from '../api';
+import { getToken, ensureSession } from '../api';
 import * as CANDADO from './candado';
 
 const BASE = ((Constants.expoConfig?.extra || {}).mensajesApi || 'https://cerebro.ordenscan.com/mensajes').replace(/\/$/, '');
@@ -28,7 +28,17 @@ async function pedir(ruta, body, ms = 15000) {
       body: JSON.stringify(body),
     });
     const d = await res.json().catch(() => ({}));
-    if (!res.ok) { const e = new Error(d.error || 'http ' + res.status); e.code = res.status; throw e; }
+    if (!res.ok) {
+      const e = new Error(d.error || 'http ' + res.status);
+      e.code = res.status;
+      /* EL MOTIVO VIAJA CON EL ERROR. El relevo distingue dos causas del 409
+         —«sesion-no-vale» y «sin-sesion»— porque llevan a sitios opuestos:
+         una se arregla volviendo a entrar, la otra buscando el teléfono
+         anterior. Sin esto se perdía en el camino y la pantalla enseñaba el
+         mismo texto para las dos. */
+      if (d.motivo) e.motivo = d.motivo;
+      throw e;
+    }
     return d;
   } finally { clearTimeout(t); }
 }
@@ -72,6 +82,25 @@ export async function alta(cuenta) {
      el caso de una llave vieja que el relevo ya no reconoce. */
   const cuerpo = { ...yo };
   if (g) cuerpo.llave = g;
+  /* ══ LA SESIÓN, VIVA ══════════════════════════════════════════════════════
+   *
+   * `getToken()` devuelve lo que haya en memoria, VENCIDO O NO. El JWT de la
+   * wallet dura CUARENTA MINUTOS, así que quien abre el chat un rato después
+   * de entrar mandaba un token muerto: el relevo se lo lleva al backend, el
+   * backend dice 401, y el rescate se cae con `motivo: 'sesion-no-vale'`.
+   *
+   * De cara a la persona eso salía como «este chat quedó en tu instalación
+   * anterior — entrá de nuevo a tu cuenta desde Ajustes», que es pedirle que
+   * arregle a mano algo que la app sabe hacer sola: `ensureSession()` renueva
+   * con el token de refresco (30 días) sin pedir contraseña.
+   *
+   * O sea que la máquina tenía la llave en el bolsillo y le pedía a la
+   * persona que fuera a buscar la suya.
+   *
+   * Si no se puede renovar —sin refresco y sin credenciales guardadas— se
+   * manda lo que haya: puede seguir sirviendo, y si no, el mensaje de volver
+   * a entrar SÍ es el correcto. */
+  try { await ensureSession(); } catch (e) { /* se sigue con lo que haya */ }
   const sesion = cuenta.sesion || getToken();
   if (sesion) cuerpo.sesion = sesion;
   const d = await pedir('/alta', cuerpo);
