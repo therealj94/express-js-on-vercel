@@ -368,6 +368,29 @@ export async function subir(nombre, tipo, mime, datos) {
   return { ...d, llave: c.llave, iv: c.iv };
 }
 
+/* ══ LO QUE ES PÚBLICO SE SUBE EN CLARO, Y SE DICE ═════════════════════════
+ *
+ * Las fotos de perfil y de grupo NO son parte de una conversación: el relevo
+ * las reparte a cualquiera que te vea en una lista, dentro del resumen de la
+ * ficha. Cifrarlas no protege nada —quien recibe la foto no recibe la llave—
+ * y sí rompe: se subían por `subir()`, que cifra, y las dos pantallas tiraban
+ * la llave y se quedaban sólo con el `id`. El resultado era que el relevo
+ * servía bytes cifrados con `Content-Type: image/jpeg` y la foto NO SE PODÍA
+ * VER NUNCA. No es que se viera mal: no se veía.
+ *
+ * Así que aquí no hay decisión que tomar sobre privacidad, hay una confusión
+ * que deshacer: lo de la conversación va cerrado y lo del directorio va
+ * abierto, cada uno por su función y con su nombre puesto.
+ *
+ * Si algún día una foto de perfil tuviera que ser privada, esto NO es lo que
+ * hay que cambiar: habría que cambiar el relevo, que hoy la reparte a quien
+ * pregunte. */
+export async function subirPublico(nombre, tipo, mime, datos) {
+  return await pedir('/subir', firmado({
+    nombre, tipo, mime, datos: String(datos || ''),
+  }), 120000);
+}
+
 /* base64 CLÁSICO —con + / y relleno—, que es el que habla el relevo. NO es el
    base64url del candado: mezclarlos sube un archivo que después no se arma. */
 const ALF64 = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';

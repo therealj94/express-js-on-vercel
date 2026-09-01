@@ -11,9 +11,17 @@
 //     al escanear se ofrece guardarlo — un contacto que se pierde obliga a
 //     volver a escanear, y eso ya no es una red;
 //   · adjuntos (📎) ≤ 8 MB: el id largo del archivo ES su permiso.
-// Sin cifrado de extremo a extremo en esta versión: no se promete en ningún
-// texto de esta pantalla — y la verdad completa no se calla, vive en
-// AjustesAuro → «Privacidad y seguridad», que es donde se va a buscarla.
+// CIFRADO DE PUNTA A PUNTA, con el mismo sobre que la web (candado.js). Esta
+// línea decía lo contrario —«sin cifrado de extremo a extremo en esta
+// versión»— durante todo el tiempo en que ya lo tenía, y eso no es un detalle:
+// un comentario que miente hace perder horas a quien viene detrás buscando el
+// fallo en el sitio equivocado. Hoy pasó.
+//
+// Y la mitad que sí importa: que este archivo cifre no garantiza que el
+// mensaje SALGA cifrado. Si el otro no tiene ninguna llave publicada, `cerrar`
+// no puede hacer sobre y el texto sale en claro. Hoy, en producción, 18 de 34
+// fichas no tienen ni un aparato publicado, así que no es un caso raro.
+// PENDIENTE: que la pantalla lo diga cuando pasa. Hoy no lo dice.
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import {
   View, Text, TextInput, Pressable, FlatList, StyleSheet, Modal, Animated,

@@ -182,7 +182,11 @@ export default function AjustesAuro({ nav }) {
     if (a.base64.length * 0.75 > TOPE_ARCHIVO) { toast(t.grande, 'error'); return; }
     setSubiendo(true);
     try {
-      const { id } = await M.subir(a.fileName || 'foto.jpg', 'imagen', a.mimeType || 'image/jpeg', a.base64);
+      /* EN CLARO A PROPÓSITO: el relevo reparte esta foto a cualquiera
+         que te vea en una lista, así que cifrarla no protegía nada y sí
+         la rompía — se subía cerrada, se tiraba la llave, y se servía
+         como imagen algo que ningún visor podía abrir. */
+      const { id } = await M.subirPublico(a.fileName || 'foto.jpg', 'imagen', a.mimeType || 'image/jpeg', a.base64);
       await M.perfil({ foto: id });
       setFoto(id); hap(); toast(t.guardado);
     } catch { toast(t.noSubio, 'error'); }
