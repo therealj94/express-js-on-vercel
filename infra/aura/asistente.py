@@ -96,6 +96,7 @@ import catalogo
 import encargos
 import escalafon
 import espejo
+import miradas
 import oficios
 import presentacion
 import puerta
@@ -1605,18 +1606,29 @@ def atender(rel, sistema, p, de, dicho, mensaje=None):
     # para el parte de las 7:30 y las 19:30, que llega sin que nadie escriba.
     if _pide_el_parte(dicho) and vistazo.puede_pedirlo(de):
         registro.anotar('parte', quien='a pedido')
-        d = vistazo.juntar(registro=registro, premio=premio,
-                           clave_wa=os.environ.get('ZERNIO_CLAVE', ''),
-                           cuenta_wa=os.environ.get('ZERNIO_CUENTA', ''))
-        rel.enviar(de, f'Parte de {vistazo.cuando()}\n\n' + vistazo.texto(d))
+        # EL SUYO, no el de todos. A quien lleva mercadeo, «el disco al 71%»
+        # no le dice nada — es la misma razon por la que el parte de las 7:30
+        # ya va por tramo. Quien no este en el escalafon recibe el de admin,
+        # que es como funcionaba antes.
+        suyos = list(escalafon.tramos_de(de)) or ['admin']
+        d = miradas.para(suyos, registro=registro, premio=premio,
+                         clave_wa=os.environ.get('ZERNIO_CLAVE', ''),
+                         cuenta_wa=os.environ.get('ZERNIO_CUENTA', ''),
+                         encargos=encargos)
+        rel.enviar(de, miradas.texto(suyos, d))
         return
 
     # ── EL ESPEJO: SOLO PARA QUIEN PUEDE PEDIR EL PARTE ─────────────────────
     #
     # Muestra numeros y charlas privadas de gente real: misma lista que el
     # parte, y el que mira no se lista a si mismo. Ver espejo.py.
+    # SOLO ADMIN, y no «quien puede pedir el parte». El espejo enseña
+    # numeros y conversaciones privadas de gente real: que Nicole pueda ver
+    # su parte de mercadeo no quiere decir que pueda leer las charlas de
+    # nadie. Antes iban por la misma puerta, y con `puede_pedirlo` mirando
+    # ahora el escalafon, esa puerta se habria abierto a los seis.
     m_esp = _PIDE_CHARLAS.match(dicho or '')
-    if m_esp and vistazo.puede_pedirlo(de):
+    if m_esp and escalafon.es_admin(de):
         registro.anotar('espejo', que='detalle' if m_esp.group('sufijo') else 'resumen')
         try:
             if m_esp.group('sufijo'):

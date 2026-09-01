@@ -64,6 +64,29 @@ JEFES = {x.strip().lower() for x in
 
 
 def puede_pedirlo(quien):
+    """¿Esta persona puede pedir el parte escribiendo «actualizar»?
+
+    ── DOS LISTAS ERAN UNA LISTA DONDE OLVIDARSE DE ALGUIEN ────────────────
+
+    1-sep. Todo el sistema de permisos paso al ESCALAFON, y estas dos cosas
+    —el parte a pedido y el espejo— se quedaron mirando `AURA_PARTE_PARA`,
+    que es de antes. Nadie la puso nunca en el nodo. O sea que estaban
+    MUERTAS: `JEFES` vacio, esto devolvia `False` a todo el mundo, y quien
+    escribiera «actualizar» no recibia nada. Sin error, sin aviso.
+
+    Es el fallo que se escribio en la cabecera del escalafon —«esa respuesta
+    no puede vivir desparramada»— cometido en el mismo archivo que lo dice.
+
+    Ahora la fuente es el escalafon, y `AURA_PARTE_PARA` se queda como
+    respaldo para quien no este en el (un buzon de copia). Quien esta en
+    cualquiera de las dos, puede.
+    """
+    try:
+        import escalafon
+        if escalafon.tramos_de(quien):
+            return True
+    except Exception:
+        pass          # sin escalafon a mano, queda la lista vieja
     return bool(JEFES) and str(quien).strip().lower() in JEFES
 
 

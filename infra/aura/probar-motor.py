@@ -216,5 +216,62 @@ def _fuentes_de(tramo):
     return vistas
 
 
+
+
+class UNASOLALISTADEQUIENPUEDEQUE(unittest.TestCase):
+    """1-sep. Todo el sistema de permisos pasó al escalafón, y dos cosas —el
+    parte a pedido y el espejo— se quedaron mirando `AURA_PARTE_PARA`, que es
+    de antes y que nadie puso nunca en el nodo.
+
+    O sea que estaban MUERTAS: quien escribiera «actualizar» no recibía nada,
+    sin error y sin aviso. Es exactamente el fallo que la cabecera del
+    escalafón describe —«esa respuesta no puede vivir desparramada»— cometido
+    en el archivo que lo dice.
+    """
+
+    FUENTE = (AQUI / 'asistente.py').read_text(encoding='utf8')
+
+    def setUp(self):
+        import escalafon
+        self.esc = escalafon
+        escalafon.recargar('Jose=50432136457:admin, Nicole=50433467760:mercadeo')
+        self.jefes = mock.patch.object(vistazo, 'JEFES', set())
+        self.jefes.start()
+
+    def tearDown(self):
+        self.jefes.stop()
+        self.esc.recargar('')
+
+    def test_quien_esta_en_el_escalafon_puede_pedir_su_parte(self):
+        """Aunque `AURA_PARTE_PARA` esté vacío, que es como está el nodo."""
+        self.assertTrue(vistazo.puede_pedirlo('50433467760'))
+        self.assertTrue(vistazo.puede_pedirlo('50432136457'))
+
+    def test_y_quien_no_esta_en_ninguna_lista_NO(self):
+        self.assertFalse(vistazo.puede_pedirlo('50499999999'))
+
+    def test_la_lista_vieja_sigue_valiendo_de_respaldo(self):
+        """Para un buzón de copia que no es una persona del escalafón."""
+        with mock.patch.object(vistazo, 'JEFES', {'copias@ordenglobal.org'}):
+            self.assertTrue(vistazo.puede_pedirlo('copias@ordenglobal.org'))
+
+    def test_EL_ESPEJO_sigue_siendo_solo_de_admin(self):
+        """Enseña números y conversaciones privadas de gente real. Que Nicole
+        vea su parte de mercadeo no quiere decir que pueda leer las charlas de
+        nadie — y al pasar `puede_pedirlo` al escalafón, esa puerta se habría
+        abierto a los seis si iban por la misma comprobación."""
+        i = self.FUENTE.index('EL ESPEJO')
+        bloque = self.FUENTE[i:i + 900]
+        self.assertIn('escalafon.es_admin(de)', bloque,
+                      'el espejo se abrió a todo el escalafón')
+        self.assertNotIn('vistazo.puede_pedirlo(de)', bloque)
+
+    def test_y_el_parte_a_pedido_es_EL_SUYO_no_el_de_todos(self):
+        i = self.FUENTE.index('EL PARTE, A PEDIDO')
+        bloque = self.FUENTE[i:i + 2200]
+        self.assertIn('escalafon.tramos_de(de)', bloque,
+                      'a quien lleva mercadeo le manda el disco del nodo')
+        self.assertIn('miradas.para', bloque)
+
 if __name__ == '__main__':
     unittest.main(verbosity=2)

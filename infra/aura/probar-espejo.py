@@ -57,15 +57,25 @@ class SoloParaJose(unittest.TestCase):
         self.assertEqual([f['numero'] for f in filas], ['50498782176'])
         self.assertIn('No encuentro', espejo.detalle(rel, '6457', JOSE))
 
-    def test_el_comando_esta_detras_de_la_misma_puerta_que_el_parte(self):
-        """La llave es del asistente: el bloque del espejo exige
-        `vistazo.puede_pedirlo`, la misma lista del parte."""
+    def test_el_comando_esta_detras_de_una_puerta_MAS_ESTRECHA_que_el_parte(self):
+        """1-sep: el espejo dejó de compartir puerta con el parte, y es más
+        estricto, no menos.
+
+        Antes los dos preguntaban `vistazo.puede_pedirlo`. Cuando esa función
+        pasó a mirar el escalafón —para arreglar que «actualizar» estaba
+        muerto—, la misma línea habría abierto el espejo a las seis personas
+        del equipo. Y el espejo enseña números y conversaciones privadas de
+        gente real: que Nicole pueda ver su parte de mercadeo no quiere decir
+        que pueda leer las charlas de nadie.
+
+        Ahora es `escalafon.es_admin`: José y Medardo, nadie más.
+        """
         fuente = (AQUI / 'asistente.py').read_text(encoding='utf8')
-        bloque = fuente[fuente.index('_PIDE_CHARLAS.match'):][:200]
-        self.assertIn('puede_pedirlo', bloque)
-
-
-class MuestraLoQueSALIO(unittest.TestCase):
+        bloque = fuente[fuente.index('_PIDE_CHARLAS.match'):][:400]
+        self.assertIn('escalafon.es_admin(de)', bloque,
+                      'el espejo se abrió a todo el escalafón')
+        self.assertNotIn('puede_pedirlo', bloque,
+                         'volvió a compartir puerta con el parte')
 
     def test_el_resumen_trae_los_dos_lados_del_ultimo_intercambio(self):
         rel = RelevoFalso({'50498782176': _charla('Medardo')})
