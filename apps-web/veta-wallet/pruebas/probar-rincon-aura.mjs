@@ -120,8 +120,21 @@ const aura = await p.evaluate(() => ({
 }));
 ok(aura.tira, 'tiene su tira propia');
 ok(/beta/i.test(aura.beta), 'con la insignia de beta a la vista');
-ok(aura.chips.some(x => /Rápida|Fast/.test(x)) && aura.chips.some(x => /Pensadora|Thinker/.test(x)),
-   'los dos modos de pensar son botones', aura.chips.join(' · '));
+/* LOS DOS MODOS DE PENSAR YA NO SON BOTONES, Y ESTA PRUEBA SE QUEDÓ VIEJA.
+ *
+ * «Rápida» y «Pensadora» elegían entre dos modelos. El pensador estaba roto
+ * desde que existe —gemma2 no tiene turno de sistema, así que el prompt le
+ * llegaba como si lo hubiera dicho la persona y contestaba comentando sus
+ * propias instrucciones— y tuvo cero usos en siete días. Se quitaron al pasar
+ * a un solo modelo, elegido midiendo siete.
+ *
+ * Lo que se comprueba ahora es lo contrario, y es lo que hace falta: que NO
+ * vuelvan. Un botón que ofrece una elección que ya no existe enseña a no
+ * tocar botones.
+ */
+ok(!aura.chips.some(x => /Rápida|Fast|Pensadora|Thinker/.test(x)),
+   'los modos de pensar ya no están: hay un solo modelo', aura.chips.join(' · '));
+ok(aura.chips.length >= 2, 'pero la tira sí tiene sus botones', aura.chips.join(' · '));
 ok(aura.chips.some(x => /voz|voice/i.test(x)), 'el botón de voz está en la tira');
 
 /* Ya no es un interruptor: son TRES voces. Se comprueba abriendo el cajón,
