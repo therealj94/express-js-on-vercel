@@ -6,7 +6,12 @@ exec > >(tee -a /workspace/onstart.log) 2>&1
 echo "===== onstart $(date -u) ====="
 
 WORK=/workspace
-PORT=8188
+# El puerto que publica la instancia y el que escucha nginx tienen que ser el
+# MISMO. Estaban fijados por separado —aqui 8188, y en la creacion con --port—
+# y bastaba pasar otro numero para publicar un puerto que nadie atiende:
+# ComfyUI solo escucha en 127.0.0.1:9000, asi que desde fuera no contesta nada
+# y el pod parece muerto estando perfecto. Ahora viaja desde la creacion.
+PORT=${UI_PORT:-8188}
 UI_USER="${UI_USER:-jose}"
 UI_PASS="${UI_PASS:-$(head -c 9 /dev/urandom | base64 | tr -d '/+=')}"
 

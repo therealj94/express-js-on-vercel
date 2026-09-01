@@ -147,6 +147,8 @@ def main() -> int:
         # (así lo codifica parse_env del CLI oficial). Con {"-p": "8188:8188"}
         # el backend no da error: simplemente no mapea nada.
         env = {f"-p {a.port}:{a.port}": "1"}
+        # Y el mismo numero viaja dentro, para que nginx escuche donde se publica.
+        env["UI_PORT"] = str(a.port)
         for kv in a.env:
             k, _, v = kv.partition("=")
             env[k] = v
