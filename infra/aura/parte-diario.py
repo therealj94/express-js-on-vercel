@@ -22,6 +22,7 @@ silencio — un parte que dejo de llegar sin avisar se confunde con «no hubo
 nada que contar», que es justo la confusion que este modulo existe para evitar.
 """
 
+import json
 import os
 import pathlib
 import sys
@@ -152,6 +153,15 @@ def main():
     premio.preparar(DATOS)
     encargos.preparar(DATOS)
 
+    # Los perfiles, para el termómetro. Este parte corre en OTRO proceso —lo
+    # dispara un temporizador— así que se leen del disco. Si no se pueden
+    # leer, el termómetro se queda fuera y el resto del parte sale igual: es
+    # un renglón, no el parte.
+    try:
+        perfiles = json.loads((DATOS / 'perfiles.json').read_text())
+    except Exception:
+        perfiles = None
+
     cuenta = os.environ.get('ZERNIO_CUENTA', '')
     clave = os.environ.get('ZERNIO_CLAVE', '')
     cuando_ = vistazo.cuando()
@@ -166,7 +176,7 @@ def main():
         if llave not in armados:
             d = miradas.para(list(llave), registro=registro, premio=premio,
                              clave_wa=clave, cuenta_wa=cuenta,
-                             encargos=encargos)
+                             encargos=encargos, perfiles=perfiles)
             armados[llave] = (miradas.texto(list(llave), d),
                               vistazo.para_plantilla(d),
                               len(d['pendientes']), len(d['rotas']))

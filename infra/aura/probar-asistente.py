@@ -167,14 +167,32 @@ class MotorFalso(BaseHTTPRequestHandler):
         # solo estado, y la prueba del crecimiento pasaria o fallaria segun
         # como venga el dia. Una prueba que depende del reloj no prueba nada.
         pausa = 0.5 if 'DESPACIO' in json.dumps(cuerpo) else 0.05
-        for i, t in enumerate(TROZOS):
-            for pedazo in [t[:len(t)//2], t[len(t)//2:]]:
-                self.wfile.write((json.dumps(
-                    {'message': {'role': 'assistant', 'content': pedazo}, 'done': False}) + '\n').encode())
-                self.wfile.flush()
-                time.sleep(pausa)
-        self.wfile.write((json.dumps({'message': {'content': ''}, 'done': True}) + '\n').encode())
-        self.wfile.flush()
+        # QUE EL OTRO LADO CUELGUE NO ES UN FALLO DE LA PRUEBA.
+        #
+        # El asistente deja de leer a media respuesta a proposito —el guardia
+        # corta, o repregunta— y entonces esto revienta con BrokenPipeError.
+        # Ollama de verdad hace lo mismo y no le pasa nada: es un cliente que
+        # se fue.
+        #
+        # Sin este `try`, la excepcion subia por el hilo del servidor y la
+        # prueba TERMINABA CON CODIGO 1 despues de imprimir «Todo en verde».
+        # Verde por dentro y roja por fuera es lo peor que puede ser una
+        # bateria: quien mire el codigo de salida no se la cree, y quien mire
+        # el texto no se entera de los fallos de verdad.
+        try:
+            for i, t in enumerate(TROZOS):
+                for pedazo in [t[:len(t)//2], t[len(t)//2:]]:
+                    self.wfile.write((json.dumps(
+                        {'message': {'role': 'assistant', 'content': pedazo}, 'done': False}) + '\n').encode())
+                    self.wfile.flush()
+                    time.sleep(pausa)
+            self.wfile.write((json.dumps({'message': {'content': ''}, 'done': True}) + '\n').encode())
+            self.wfile.flush()
+        except (BrokenPipeError, ConnectionResetError):
+            pass
+
+    def handle_error(self, *_a):
+        pass          # ver arriba: un cliente que se va no es un error
 
 
 def main():

@@ -366,6 +366,18 @@ def probadores():
 
 CANDADO_PERFILES = threading.Lock()
 
+# Los perfiles que estan en uso, para que el parte pueda leer el termometro.
+#
+# Es EL MISMO diccionario que usa el bucle, no una copia. Con una copia, la
+# gente que llegara despues no apareceria nunca y el termometro diria numeros
+# de la hora del arranque — un numero viejo presentado como el de ahora es la
+# misma clase de mentira que el precio inventado.
+#
+# Por eso el bucle NO hace `perfiles = cargar_perfiles()` a secas: rellena
+# este, y se lo lleva. No se pasa por parametro porque `atender` ya lleva seis
+# y el parte es lo unico que lo necesita.
+PERFILES_VIVOS = {}
+
 
 def cargar_perfiles():
     f = DATOS / 'perfiles.json'
@@ -1680,6 +1692,25 @@ def atender(rel, sistema, p, de, dicho, mensaje=None):
     """
     arranco = time.monotonic()
     antes = p.get('usadas') or 0
+
+    # ── LOS DIAS EN QUE SE LE VIO ─────────────────────────────────────────
+    #
+    # De aqui sale «cuantos volvieron», que es la unica nota que no se puede
+    # fingir: nadie vuelve a hablar con algo que no le sirvio. Ni encuestas ni
+    # botones — quien vuelve al dia siguiente ya lo dijo.
+    #
+    # Va en esta envoltura y no junto a los ocho `p['visto'] = ...` que hay
+    # repartidos: uno solo de esos ocho olvidado seria una persona que volvio y
+    # no cuenta, y el numero quedaria mal sin que nadie lo note.
+    #
+    # Son FECHAS, no horas, y solo cuatro: cuenta si volvio, no a que hora
+    # entra. Guardar menos de lo que hace falta es la manera barata de no tener
+    # que cuidarlo despues.
+    dias = p.get('dias_vistos') or []
+    d = hoy()
+    if d not in dias:
+        p['dias_vistos'] = (dias + [d])[-4:]
+
     try:
         return _atender(rel, sistema, p, de, dicho, mensaje)
     finally:
@@ -1774,7 +1805,7 @@ def _atender(rel, sistema, p, de, dicho, mensaje=None):
         d = miradas.para(suyos, registro=registro, premio=premio,
                          clave_wa=os.environ.get('ZERNIO_CLAVE', ''),
                          cuenta_wa=os.environ.get('ZERNIO_CUENTA', ''),
-                         encargos=encargos)
+                         encargos=encargos, perfiles=PERFILES_VIVOS)
         rel.enviar(de, miradas.texto(suyos, d))
         return
 
@@ -3029,7 +3060,9 @@ def main():
     }
     registro.preparar(DATOS)
     premio.preparar(DATOS)
-    perfiles = cargar_perfiles()
+    PERFILES_VIVOS.clear()
+    PERFILES_VIVOS.update(cargar_perfiles())
+    perfiles = PERFILES_VIVOS           # EL MISMO, no una copia
     # Se templan LOS DOS: quien escriba primero en ingles no puede pagar el
     # arranque en frio solo por no ser el idioma mayoritario.
     for _cual in sistema.values():

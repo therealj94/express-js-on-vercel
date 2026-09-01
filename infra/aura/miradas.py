@@ -25,6 +25,7 @@
 
 import os
 
+import termometro
 import vistazo
 
 # Cada mirada devuelve `{pendientes, lineas, rotas}` — la misma forma que
@@ -128,7 +129,7 @@ def _de_los_premios(premio, con_billetera):
 
 
 def para(tramo, registro=None, premio=None, clave_wa='', cuenta_wa='',
-         encargos=None):
+         encargos=None, perfiles=None):
     """Lo que le toca ver. `tramo` puede ser uno o varios. Nunca levanta.
 
     Con varios se JUNTAN las miradas, sin repetir: Melany lleva legal,
@@ -140,7 +141,8 @@ def para(tramo, registro=None, premio=None, clave_wa='', cuenta_wa='',
         if len(suyos) > 1:
             junta = {'pendientes': [], 'lineas': [], 'rotas': []}
             for uno in suyos:
-                d = para(uno, registro, premio, clave_wa, cuenta_wa, encargos)
+                d = para(uno, registro, premio, clave_wa, cuenta_wa,
+                         encargos, perfiles)
                 for k in junta:
                     for x in d[k]:
                         if x not in junta[k]:      # sin repetir
@@ -187,6 +189,18 @@ def para(tramo, registro=None, premio=None, clave_wa='', cuenta_wa='',
         pendientes.extend(ps)
     except Exception as e:
         rotas.append(f'el registro no se pudo leer ({type(e).__name__})')
+
+    # ── EL TERMOMETRO ────────────────────────────────────────────────────
+    #
+    # Va a mercadeo y a admin: son los que deciden que hacer con esto. Al
+    # tramo tecnologico no le sirve saber cuanta gente volvio, y meterselo
+    # seria una linea mas que aprende a saltarse — y el dia que saltandola se
+    # salte una que importa, el parte dejo de servir.
+    #
+    # En el parte y no en un panel aparte: un numero que hay que ir a buscar
+    # es un numero que nadie mira.
+    if tramo in ('mercadeo', 'admin') and perfiles is not None:
+        lineas.extend(termometro.texto(perfiles, registro))
 
     if premios:
         ls, ps, rs = _de_los_premios(premio, billetera)
