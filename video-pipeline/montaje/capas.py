@@ -57,7 +57,12 @@ def cierre(logo="og.png") -> Image.Image:
 if __name__ == "__main__":
     hud("24", "17:30:00").save("cap_p1.png")
     hud("24", "17:30:01").save("cap_p2.png")
-    hud("23.9", "17:30:04", resalta=True).save("cap_p3.png")
+    # El plano 03 cambia A MITAD: hasta que cae el pétalo el contador sigue
+    # en 24 y el reloj en 17:30:00. Ponerlo en 23.9 desde el primer fotograma
+    # hacía que el número cambiara seis segundos ANTES de lo que lo causa, y
+    # ahí es exactamente donde el espectador se perdía.
+    hud("24", "17:30:00").save("cap_p3_antes.png")
+    hud("23.9", "17:30:04", resalta=True).save("cap_p3_despues.png")
     hud("23.9", "17:30:04").save("cap_p4.png")
     hud("23.9", "17:30:04").save("cap_p5.png")
     menos().save("cap_menos.png")
