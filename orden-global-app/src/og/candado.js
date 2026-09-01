@@ -43,13 +43,14 @@
  * estrictamente mejor; las dos son razonables, y la diferencia queda escrita
  * aquí en vez de descubrirse después.
  */
-/* PRIMERO ESTO, ANTES QUE @noble. En Android no existe
-   `globalThis.crypto.getRandomValues`, y sin él `randomPrivateKey()` no
-   devuelve una llave mala: TIRA, y se lleva por delante el candado entero.
-   Ver `azar.js`, que cuenta el fallo completo. */
-/* Con la extensión puesta: Metro resuelve las dos formas, pero `probar-candado`
-   carga ESTE archivo con el Node de verdad, y Node exige la extensión. */
-import { ponerElAzar } from './azar.js';
+/* PRIMERO ESTO, Y NO ES UN CAPRICHO DE ORDEN. En Android no existe
+   `globalThis.crypto.getRandomValues`, y @noble se queda con lo que haya en
+   el global EN EL MOMENTO EN QUE SE CARGA. Este import va delante porque
+   `azar.js` pone el suelo en su propio cuerpo, al importarse; si fuera detrás,
+   @noble ya habría mirado y guardado `undefined`. Ver `azar.js`.
+   La extensión va puesta porque `probar-candado` carga este archivo con el
+   Node de verdad, y Node la exige. */
+import './azar.js';
 
 import { p256 } from '@noble/curves/p256';
 import { sha256 } from '@noble/hashes/sha2';
@@ -132,18 +133,17 @@ const bytesATexto = (b) => {
 
 const azar = (n) => Crypto.getRandomBytes(n);
 
-/* El suelo de azar que @noble busca en el global, puesto antes de que nadie
-   se lo pida. Se llama aquí, en el cuerpo del módulo, para que ya esté hecho
-   cuando alguien importe este archivo y llame a cualquier cosa. */
-ponerElAzar();
-
 /* ── UNA LLAVE PRIVADA, SIN PASAR POR EL GLOBAL ────────────────────────────
  *
  * La de @noble saca sus bytes de `globalThis.crypto`, que en Android no
- * existe. `ponerElAzar()` lo pone, pero de eso depende TODO el
+ * existe. `azar.js` lo pone al importarse, pero de ESO depende todo el
  * candado, y el sitio donde se generan las llaves es justo el que no puede
  * quedarse sin plan B: el `catch` de `mias()` volvía a llamar a lo mismo que
  * acababa de tirar, así que el plan B moría del mismo golpe que el plan A.
+ * Y hubo una segunda vuelta de lo mismo: el suelo llegaba TARDE, porque
+ * @noble se queda con el global al cargarse y el suelo se ponía después de
+ * los imports. Depender de él aquí habría sido apoyarse dos veces en la
+ * misma pieza floja.
  *
  * Así que aquí los bytes se piden a `expo-crypto` directamente —el generador
  * del sistema— y no se depende del global para nada.
@@ -163,6 +163,10 @@ function llavePrivada() {
 
 // ── el par de llaves de ESTE aparato ───────────────────────────────────────
 const CAJON = 'p2c.candado.priv';
+/* Los nombres se exportan para que «eliminar mi cuenta» los pueda borrar sin
+   copiarlos a mano. Una lista copiada se queda vieja el día que alguien añada
+   un cajón, y nadie se entera hasta que ya pasó. */
+export const CAJONES = ['p2c.candado.priv', 'p2c.candado.firma'];
 /* Un SEGUNDO par, sólo para firmar. No se reutiliza el de acuerdo por la misma
    razón por la que la web tampoco lo hace: WebCrypto no deja que una llave de
    ECDH sirva también para ECDSA, y ese límite es sano — una llave, un uso. */

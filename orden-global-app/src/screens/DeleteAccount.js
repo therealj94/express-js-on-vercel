@@ -8,6 +8,9 @@ import { C } from '../theme';
 import { Header, Button3D, hap, useAccount, useToast } from '../ui';
 import { apiLogin, walletApi } from '../api';
 import { recordLogout } from '../sessionLog';
+// Los nombres de los cajones del chat, pedidos a quien los crea (ver wipeLocal).
+import { CAJONES as CAJONES_CANDADO } from '../og/candado';
+import { cajonDe as cajonDeChat } from '../og/mensajes';
 import { useT } from '../i18n';
 
 // Eliminar cuenta: 5 pasos con confirmaciones progresivas y verificación
@@ -41,9 +44,27 @@ async function borrarEnBackend(password) {
   }
 }
 
-// Claves del dispositivo que se borran al eliminar cuenta.
-async function wipeLocal() {
-  const secure = ['veta-api-token', 'veta-remember-creds', 'veta-refresh-token', 'veta-clave-biometrica', 'veta-clave-biometrica-on'];
+/* Claves del dispositivo que se borran al eliminar cuenta.
+ *
+ * ══ LO QUE FALTABA, Y POR QUÉ IMPORTA ═════════════════════════════════════
+ *
+ * Esta lista tenía lo de la billetera y NADA del chat. Después de «eliminar mi
+ * cuenta» seguían en el teléfono las DOS LLAVES PRIVADAS del cifrado de punta
+ * a punta (`p2c.candado.*`), la identidad ante el relevo (`og.llaveChat.…`) y
+ * la libreta del chat con nombres, correos y direcciones de cadena de otras
+ * personas — que ni siquiera son datos tuyos, son de ellas.
+ *
+ * Y no es sólo higiene. La llave del aparato es la misma para todo el
+ * teléfono, así que dejarla ahí es lo que hace que la persona siguiente que
+ * use ese teléfono pueda abrir lo que le manden a la cuenta anterior: su
+ * aparato sigue publicado en el relevo hasta seis meses.
+ *
+ * Los nombres del chat se piden a `mensajes.js` y `candado.js` en vez de
+ * copiarlos aquí: una lista copiada a mano se queda vieja el día que alguien
+ * añada un cajón, y nadie se entera hasta que ya pasó. */
+async function wipeLocal(correo) {
+  const secure = ['veta-api-token', 'veta-remember-creds', 'veta-refresh-token', 'veta-clave-biometrica', 'veta-clave-biometrica-on',
+    ...CAJONES_CANDADO, ...(correo ? [cajonDeChat(correo)] : []), 'og.llaveChat'];
   for (const k of secure) { try { await SecureStore.deleteItemAsync(k); } catch (e) {} }
   const keys = [
     'veta-accounts-cache-v2',
@@ -60,6 +81,11 @@ async function wipeLocal() {
     'veta-api-token', // por si quedó copia vieja
     'veta-remember-creds',
     'veta-refresh-token',
+    'og.contactos',      // la libreta del chat: nombres y correos de OTRA gente
+    'og.negocio',
+    'og.retiros',
+    'og.asistente',
+    'og.cambio.hnl',
   ];
   for (const k of keys) { try { await AsyncStorage.removeItem(k); } catch (e) {} }
 }
@@ -123,7 +149,8 @@ export default function DeleteAccount({ nav }) {
       // 3) Wipe local COMPLETO — se hace siempre, incluso si el endpoint
       // remoto no existe (el usuario ve la sesión cerrada aquí y contacta
       // a soporte para forzar el borrado en el servidor si aplica).
-      await wipeLocal();
+      // El correo hace falta: el cajón de la llave del chat va atado a él.
+      await wipeLocal(account?.email);
       recordLogout();
       logout();
       setBusy(false);

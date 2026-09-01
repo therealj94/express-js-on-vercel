@@ -116,6 +116,7 @@ const TXT = {
     rechazar: 'Rechazar',
     enviadas: 'Esperando respuesta',
     enviadaCorto: 'Enviada',
+    enClaro: 'Viajó sin cifrar',
     cancelar: 'Cancelar',
     sinRedT: 'Sin conexión',
     sinRedConvos: 'No pudimos traer tus conversaciones. Revisa tu conexión; tus chats siguen ahí.',
@@ -193,6 +194,7 @@ const TXT = {
     rechazar: 'Decline',
     enviadas: 'Waiting for an answer',
     enviadaCorto: 'Sent',
+    enClaro: 'Traveled unencrypted',
     cancelar: 'Cancel',
     sinRedT: 'No connection',
     sinRedConvos: 'We could not fetch your conversations. Check your connection; your chats are still there.',
@@ -1264,14 +1266,33 @@ export default function AuroChat({ nav, params }) {
                       <Text style={[st.selloTxt, mio && { color: 'rgba(58,44,8,0.6)' }]}>{t.cerrado}</Text>
                     </View>
                   )}
+                  {/* ESTE MENSAJE VIAJÓ EN CLARO, Y SE DICE PARA SIEMPRE.
+                      El único aviso que había era un toast de tres segundos
+                      que veía sólo quien lo mandaba: al recargar el hilo no
+                      quedaba rastro, y quien lo recibía no se enteraba nunca.
+                      El sello va en la burbuja porque es una propiedad DEL
+                      MENSAJE, no de un instante — y lo ven los dos lados,
+                      porque se calcula igual en las dos puntas. */}
+                  {item.e2e === false && !item.cerrado && (
+                    <View style={st.selloFila}>
+                      <Icon name="eye" size={11} color={mio ? 'rgba(58,44,8,0.6)' : C.txt3} />
+                      <Text style={[st.selloTxt, mio && { color: 'rgba(58,44,8,0.6)' }]}>{t.enClaro}</Text>
+                    </View>
+                  )}
                   {/* Y si la firma NO cuadró, se dice. Un mensaje cifrado cuya
                       firma falla puede ser el relevo poniendo palabras en boca
                       de alguien: taparlo sería justo lo que la firma vino a
                       impedir. `verificado === false` con motivo, no la simple
                       ausencia — los mensajes viejos de antes de la firma no
                       tienen por qué salir marcados. */}
+                  {/* «sin-llaves-del-remitente» NO es una firma mala: es que el
+                      relevo no nos quiso dar la llave de quien escribió —pasaba
+                      en cada mensaje de un grupo con alguien que no es tu
+                      amigo—. Pintar la alarma roja ahí es gritar lobo, y gasta
+                      la única señal que hay para cuando el lobo venga. */}
                   {item.e2e && item.verificado === false && item.motivoFirma
-                    && item.motivoFirma !== 'sin-firma' && !item.cerrado && (
+                    && item.motivoFirma !== 'sin-firma'
+                    && item.motivoFirma !== 'sin-llaves-del-remitente' && !item.cerrado && (
                     <View style={st.selloFila}>
                       <Icon name="alert-circle" size={11} color={C.down} />
                       <Text style={[st.selloTxt, { color: C.down }]}>{t.sinFirma}</Text>

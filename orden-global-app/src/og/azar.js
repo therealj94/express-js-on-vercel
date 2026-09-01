@@ -39,6 +39,28 @@
  * Los bytes salen de `expo-crypto`, que en Android va al generador del
  * sistema. No se inventa azar en JavaScript: un azar flojo aquí es una llave
  * privada adivinable, que es peor que no cifrar, porque parece que sí.
+ *
+ * ══ Y EL MOMENTO ES PARTE DEL ARREGLO ═════════════════════════════════════
+ *
+ * La primera versión llamaba a `ponerElAzar()` desde el CUERPO de
+ * `candado.js`, y llegaba tarde. `@noble/hashes/crypto` hace, al cargarse:
+ *
+ *     exports.crypto = 'crypto' in globalThis ? globalThis.crypto : undefined;
+ *
+ * Se lo queda AHÍ, una vez y para siempre. Y en un módulo ES todos los
+ * `import` se evalúan antes de la primera línea del cuerpo, así que @noble ya
+ * había mirado —y guardado `undefined`— cuando el suelo se ponía. Quedaba
+ * puesto para quien lo mirara después, y @noble no vuelve a mirar nunca.
+ *
+ * Eso no rompía nada todavía, porque el candado no le pide azar a @noble: las
+ * llaves se generan con `expo-crypto` directo y `p256.sign` no usa entropía
+ * extra por omisión. Pero era una trampa esperando —bastaba un
+ * `randomPrivateKey()`, un `sign` con `extraEntropy`, o subir de versión— y
+ * lo peor: con un comentario asegurando que estaba cubierto.
+ *
+ * Por eso ahora se ejecuta AL IMPORTAR ESTE ARCHIVO, en su cuerpo, aquí
+ * abajo. El orden entre `import` sí se respeta, y este archivo se importa
+ * antes que @noble en `candado.js` y el primero de todos en `index.js`.
  */
 import * as Crypto from 'expo-crypto';
 
@@ -68,5 +90,9 @@ export function ponerElAzar() {
     return false;
   }
 }
+
+/* AL IMPORTAR, no al llamar. Ver la nota de arriba: si esto espera a que
+   alguien lo invoque, @noble ya miró el global y ya guardó `undefined`. */
+ponerElAzar();
 
 export default ponerElAzar;

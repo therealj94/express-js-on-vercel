@@ -63,7 +63,7 @@ async function pedir(ruta, body, ms = 15000) {
  * el guion (`-` → `-2d`) es lo que hace que dos correos distintos no puedan
  * caer nunca en el mismo cajón: sin eso, el correo `a-40b` y el correo `a@b`
  * darían el mismo nombre, y una persona abriría el chat de la otra. */
-const cajonDe = (correo) =>
+export const cajonDe = (correo) =>
   'og.llaveChat.' + String(correo || '').replace(
     /[^\w.]/g, (c) => '-' + c.charCodeAt(0).toString(16).padStart(2, '0'));
 
@@ -236,10 +236,21 @@ const firmado = (b) => ({ ...b, correo: yo?.correo, llave });
  * `pruebas/probar-candado.cjs` carga las dos implementaciones de verdad y se
  * las cruza en los dos sentidos. Si esa prueba se pone roja, el fallo está aquí
  * o en el candado, nunca en la web: la web es la que ya tiene conversaciones. */
-let publicada = false;
+/* SE APUNTA PARA QUÉ CUENTA SE PUBLICÓ, no un simple «ya está».
+ *
+ * Era un pestillo de una sola vez que nunca se soltaba. Si cambiabas de cuenta
+ * sin cerrar la app —o si `rehacerAlta` corría por un 401— la llave de este
+ * aparato NO se publicaba bajo la cuenta nueva. El relevo te veía sin ningún
+ * aparato y TODO lo que te escribieran llegaba EN CLARO, mientras a quien te
+ * escribía le salía «esa persona todavía no abrió el chat en ningún aparato»,
+ * que es lo que el servidor creía y no lo que pasaba. Y vos no notabas nada:
+ * lo que mandabas seguía saliendo cifrado, porque para eso se usan las llaves
+ * del OTRO. Es la misma familia que el cerrojo de reparación de AuroChat: un
+ * pestillo que se echa y no se suelta. */
+let publicadaPara = null;
 
 async function publicarMiLlave() {
-  if (publicada) return;
+  if (publicadaPara && publicadaPara === yo?.correo) return;
   const mia = await CANDADO.miLlave();
   if (!mia) return;
   try {
@@ -251,7 +262,7 @@ async function publicarMiLlave() {
        vuelva a publicar», y este aparato volvía a publicar sin ella. */
     await pedir('/llaves/publicar',
       firmado({ id: mia.id, pub: mia.pub, fir: mia.fir || '' }));
-    publicada = true;
+    publicadaPara = yo?.correo || null;
   } catch { /* se reintenta en el siguiente envío */ }
 }
 
@@ -313,14 +324,57 @@ async function destinatarios(para) {
   return (info?.miembros || []).map((m) => m.correo).filter(Boolean);
 }
 
-/** Devuelve el bulto cerrado, o null si no hay a quién cerrárselo. */
+/* ══ NO ALCANZA CON «NO SE PUDO»: HAY QUE SABER POR QUÉ ═══════════════════
+ *
+ * Esto devolvía `null` y `enviar` mandaba en claro. Un `catch` de una línea
+ * juntaba CINCO situaciones muy distintas en el mismo `null`:
+ *
+ *   1. la persona no tiene ningún aparato publicado — la única en la que el
+ *      texto que se enseña («todavía no abrió el chat») es cierto;
+ *   2. `/llaves/de` se cayó: red, 401, 500;
+ *   3. `grupoInfo()` se cayó → la lista de destinatarios queda vacía → EL
+ *      GRUPO ENTERO en claro;
+ *   4. este teléfono no pudo con sus propias llaves;
+ *   5. el llavero tenía un vacío cacheado.
+ *
+ * En producción, de 54 mensajes en claro entre personas, 42 fueron a alguien
+ * que SÍ tenía aparato publicado. O sea que el texto que se les mostró era
+ * falso en la mayoría de los casos. Y uno de esos 54 es el último mensaje de
+ * toda la base, mandado ayer.
+ *
+ * Bajar a texto plano porque se cayó una petición es lo único que no se puede
+ * hacer en silencio: la persona cree que va cifrado, y va cifrado casi
+ * siempre. Así que ahora se devuelve el MOTIVO y quien llama decide: sólo el
+ * caso 1 manda en claro —con su aviso—; los demás fallan como falla la red,
+ * con la burbuja roja de «No se envió · Reintentar», que ya existe y es la
+ * respuesta honesta.
+ *
+ * Devuelve `{ cerrado }` o `{ motivo }`. */
 async function cerrarPara(para, texto) {
+  try { await publicarMiLlave(); } catch { return { motivo: 'sin-llave-propia' }; }
+  let quienes;
   try {
-    await publicarMiLlave();
-    const aparatos = await llavesDe(await destinatarios(para));
-    if (!aparatos.length) return null;
-    return await CANDADO.cerrar(texto, aparatos);
-  } catch { return null; }
+    quienes = await destinatarios(para);
+  } catch { return { motivo: 'sin-red' }; }
+  /* Una lista vacía en un grupo NO es «nadie tiene llaves»: es que no se pudo
+     saber quiénes son. Mandar en claro ahí es mandar el grupo entero al aire
+     por un fallo de red. */
+  if (!quienes.length) return { motivo: 'sin-red' };
+  let aparatos;
+  try {
+    aparatos = await llavesDe(quienes);
+  } catch { return { motivo: 'sin-red' }; }
+  /* EL SOBRE SÓLO PARA MÍ NO ES UN SOBRE. En un grupo donde el relevo no
+     entrega las llaves de los demás, lo único que volvía era la mía propia:
+     `aparatos.length` valía 1, pasaba el guardia de antes, y la app daba el
+     mensaje por cifrado. Nadie del grupo podía abrirlo. Es peor que el texto
+     plano con aviso — es un mensaje que no llega y se dice que salió bien. */
+  const mias = await CANDADO.miLlave().catch(() => null);
+  const ajenos = aparatos.filter((a) => !mias || a.id !== mias.id);
+  if (!ajenos.length) return { motivo: 'sin-aparatos' };
+  try {
+    return { cerrado: await CANDADO.cerrar(texto, aparatos) };
+  } catch { return { motivo: 'sin-llave-propia' }; }
 }
 
 /* `extra` lleva el adjunto opcional {tipo, archivo, nombre}: el binario ya
@@ -340,10 +394,18 @@ export async function enviarAdjunto(para, adj, texto) {
   const carga = adj.llave
     ? '{' + JSON.stringify({ t: texto || '', k: adj.llave, iv: adj.iv })
     : (texto || '');
-  const cerrado = adj.llave || carga ? await cerrarPara(para, carga) : null;
-  if (cerrado) {
-    await pedir('/enviar', firmado({ ...meta, cif: cerrado }));
+  const r = adj.llave || carga ? await cerrarPara(para, carga) : { motivo: 'sin-aparatos' };
+  if (r.cerrado) {
+    await pedir('/enviar', firmado({ ...meta, cif: r.cerrado }));
     return { ok: true, e2e: true };
+  }
+  /* Sólo «sin-aparatos» baja a texto plano. Un fallo de red NO: se levanta
+     como cualquier otro error de envío y la pantalla enseña la burbuja roja
+     con «Reintentar», que es la verdad. */
+  if (r.motivo !== 'sin-aparatos') {
+    const e = new Error('no se pudo cifrar: ' + r.motivo);
+    e.motivo = r.motivo;
+    throw e;
   }
   /* Sin poder cerrar, la llave del archivo NO se manda: iría en claro al lado
      de los bytes cifrados — lo mismo que no cifrar, con más pasos y aparentando
@@ -354,10 +416,23 @@ export async function enviarAdjunto(para, adj, texto) {
 
 export async function enviar(para, texto, extra) {
   const base = { para, ...(extra || {}) };
-  const cerrado = await cerrarPara(para, texto);
-  if (cerrado) {
-    await pedir('/enviar', firmado({ ...base, cif: cerrado }));
+  const r = await cerrarPara(para, texto);
+  if (r.cerrado) {
+    await pedir('/enviar', firmado({ ...base, cif: r.cerrado }));
     return { ok: true, e2e: true };
+  }
+  /* SÓLO «sin-aparatos» BAJA A TEXTO PLANO. Es la única causa en la que
+     mandar en claro es lo único que se puede hacer, y en la que el aviso que
+     se enseña es cierto.
+     Un fallo de red, una lista de miembros que no se pudo traer, o este
+     teléfono sin sus llaves, NO bajan a texto plano: se levantan como
+     cualquier error de envío y la pantalla enseña la burbuja roja con
+     «Reintentar». Degradar en silencio porque se cayó una petición es
+     justamente lo que hace falsa la promesa. */
+  if (r.motivo !== 'sin-aparatos') {
+    const e = new Error('no se pudo cifrar: ' + r.motivo);
+    e.motivo = r.motivo;
+    throw e;
   }
   await pedir('/enviar', firmado({ ...base, texto }));
   return { ok: true, e2e: false };
@@ -480,7 +555,14 @@ export async function bandeja(desde) {
   }
 
   const msgs = await Promise.all(crudos.map(async (m) => {
-    if (!m.cif) return m;
+    /* LA MARCA VIVE EN EL MENSAJE, no en un aviso de tres segundos.
+       Antes, un mensaje en claro volvía del relevo sin ningún campo y la única
+       señal de que había viajado sin cifrar era un toast que salía UNA vez, a
+       quien lo mandaba, y desaparecía. Al recargar el hilo no quedaba rastro;
+       mañana tampoco; y QUIEN LO RECIBÍA no se enteraba nunca.
+       `!m.cif` se calcula igual en las dos puntas, así que marcarlo aquí hace
+       que los dos lados vean lo mismo y que siga siendo verdad mañana. */
+    if (!m.cif) return { ...m, e2e: false };
     const r = await CANDADO.abrir(m.cif, llaves[m.de] || []);
     if (r == null) return { ...m, texto: '', cerrado: true, e2e: true };
     const claro = r.texto;

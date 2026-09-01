@@ -286,6 +286,51 @@ def main():
         assert [m['correo'] for m in r['miembros']] == ['carla@og.hn'], \
             'a Dora, con sus 200 grupos, no debían meterla: %s' % r['miembros']
 
+        # ── LAS LLAVES DE UN COMPANERO DE GRUPO QUE NO ES MI AMIGO ────
+        #
+        # Todo lo de arriba corre con las cuatro personas hechas amigas entre
+        # si, y ese montaje TAPABA el fallo: `/llaves/de` no tenia rama de
+        # grupo, aunque su propio comentario prometia «y los companeros de un
+        # grupo del que soy» desde el primer dia.
+        #
+        # Sin esa rama, en un grupo de gente que no se habia escrito antes
+        # —el caso normal de un grupo nuevo— pasaban dos cosas, las dos
+        # calladas: los miembros que no eran tus amigos veian «Cifrado para
+        # otro de tus aparatos» en CADA mensaje del grupo, y si no habia
+        # ningun amigo dentro, lo unico que devolvia era TU PROPIA llave — el
+        # cliente hacia el sobre para si mismo y daba el mensaje por cifrado.
+        # Un mensaje que no puede abrir nadie, dado por bueno.
+        #
+        # Por eso aqui se usan personas nuevas, SIN amistad ninguna.
+        for correo, nombre in (('eva@og.hn', 'Eva'), ('fito@og.hn', 'Fito')):
+            st, r = post(base, '/alta', {'correo': correo, 'nombre': nombre})
+            assert st == 200, 'alta de %s: %s %s' % (correo, st, r)
+            firmas[correo] = {'correo': correo, 'llave': r['llave']}
+        eva, fito = firmas['eva@og.hn'], firmas['fito@og.hn']
+        for quien, ident in ((eva, 'ap-eva'), (fito, 'ap-fito')):
+            st, r = post(base, '/llaves/publicar',
+                         dict(quien, id=ident, pub='B' + ident, fir='F' + ident))
+            assert st == 200, 'publicar de %s: %s %s' % (ident, st, r)
+        # No son amigos y nunca se escribieron: sin grupo, no hay llaves.
+        st, r = post(base, '/llaves/de', dict(eva, correos=['fito@og.hn']))
+        assert st == 200 and not r.get('llaves'), \
+            'sin grupo ni amistad NO se entregan llaves: %s' % r
+        st, r = post(base, '/grupo/crear', dict(eva, nombre='recien conocidos',
+                     miembros=['fito@og.hn']))
+        assert st == 200 and r.get('id'), 'grupo de Eva y Fito: %s %s' % (st, r)
+        st, r = post(base, '/llaves/de', dict(eva, correos=['fito@og.hn']))
+        assert st == 200 and r.get('llaves', {}).get('fito@og.hn'), \
+            'companero de grupo: SI se entregan sus llaves: %s' % r
+        # Y la vuelta: Fito tiene que poder cerrarle a Eva, o sus mensajes al
+        # grupo saldrian con el sobre hecho solo para el mismo.
+        st, r = post(base, '/llaves/de', dict(fito, correos=['eva@og.hn']))
+        assert st == 200 and r.get('llaves', {}).get('eva@og.hn'), \
+            'y en el otro sentido igual: %s' % r
+        # Lo que NO cambia: alguien de fuera del grupo sigue sin tocarlas.
+        st, r = post(base, '/llaves/de', dict(dora, correos=['fito@og.hn']))
+        assert st == 200 and not r.get('llaves'), \
+            'quien no comparte grupo ni amistad sigue sin llaves: %s' % r
+
         print('TODO BIEN: perfil con foto, grupo creado, invitación, hilo compartido, '
               '403 al de fuera, admin único que edita, invitación regenerada, salida, '
               'herencia de admin, tarjeta de pago y tope de 200 grupos.')

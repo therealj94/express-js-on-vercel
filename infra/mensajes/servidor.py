@@ -1750,13 +1750,39 @@ class Relevo(BaseHTTPRequestHandler):
                 ahora = int(time.time() * 1000)
                 pedidos = [str(x).lower() for x in (b.get('correos') or [])][:120]
                 viejos = con_quien_hablo(d, correo)
+                # ── LOS COMPANEROS DE GRUPO, QUE FALTABAN ─────────────────
+                # El comentario de abajo prometia «y los companeros de un
+                # grupo del que soy» desde el primer dia, y la condicion no lo
+                # hacia. `con_quien_hablo` tampoco lo suplia: en un mensaje de
+                # grupo el destino es `g:...`, asi que los companeros nunca
+                # entraban en `viejos`.
+                #
+                # Lo que provocaba, las dos cosas en silencio:
+                #   · con algun amigo dentro, el mensaje salia cifrado y los
+                #     miembros que no eran amigos tuyos veian «Cifrado para
+                #     otro de tus aparatos» en CADA mensaje del grupo, para
+                #     siempre — se lee como «se me rompio el chat»;
+                #   · sin ningun amigo dentro, la unica llave que devolvia era
+                #     la TUYA, el cliente hacia el sobre para vos mismo y la
+                #     app informaba que habia salido cifrado. Un mensaje que no
+                #     puede leer nadie, dado por bueno.
+                #
+                # En produccion zafaba de milagro: el unico grupo vivo tiene
+                # historial cruzado entre sus tres miembros, asi que `viejos`
+                # los cubria. El hueco se abre con el proximo grupo de gente
+                # que no se haya escrito antes, que es el caso normal.
+                companeros = set()
+                for g in d.get('grupos', {}).values():
+                    if miembro(g, correo):
+                        for m in g.get('miembros', []):
+                            companeros.add(m['correo'])
                 salida, faltan = {}, []
                 for c in pedidos:
                     otra = fichas.get(c)
                     # Se entregan las llaves de quien me puede leer: yo mismo,
                     # mi circulo, y los companeros de un grupo del que soy.
                     permitido = (c == correo or son_amigos(d, correo, c)
-                                 or c in viejos) and not hay_bloqueo(d, correo, c)
+                                 or c in viejos or c in companeros) and not hay_bloqueo(d, correo, c)
                     if not permitido or not otra:
                         continue
                     aps = aparatos_de(otra, ahora)

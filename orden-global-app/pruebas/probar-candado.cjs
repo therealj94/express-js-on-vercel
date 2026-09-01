@@ -133,6 +133,22 @@ let APP;
   console.log('\n── sin `crypto` global, como en Android ─────────────────────');
   ok('el candado carga sin `globalThis.crypto` de Node',
     globalThis.crypto !== cryptoDeNode);
+  /* EL MOMENTO, que es la mitad del arreglo. @noble se queda con
+     `globalThis.crypto` EN EL INSTANTE EN QUE SE CARGA, así que el suelo tiene
+     que estar puesto antes de que se evalúe su módulo. La primera versión lo
+     ponía en el cuerpo de `candado.js` —después de todos los `import`— y
+     llegaba tarde: quedaba puesto para quien mirara después, y @noble no
+     vuelve a mirar nunca.
+     Se comprueba sobre `azar.js` SOLO: importarlo tiene que bastar. Si alguien
+     mueve esa llamada a una función que hay que invocar, esto se pone rojo. */
+  {
+    const previo = globalThis.crypto;
+    delete globalThis.crypto;
+    await import(`file://${path.join(__dirname, '..', 'src', 'og', 'azar.js')}?solo=1`);
+    const puesto = typeof globalThis.crypto?.getRandomValues === 'function';
+    if (!puesto) globalThis.crypto = previo;
+    ok('y `azar.js` pone el suelo con SÓLO importarlo, antes que @noble', puesto);
+  }
   ok('y deja puesto un `getRandomValues` que da bytes de verdad',
     (() => {
       const f = globalThis.crypto?.getRandomValues;
