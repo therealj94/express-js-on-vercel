@@ -31,12 +31,16 @@ async function pedir(ruta, body, ms = 15000) {
     if (!res.ok) {
       const e = new Error(d.error || 'http ' + res.status);
       e.code = res.status;
-      /* EL MOTIVO VIAJA CON EL ERROR. El relevo distingue dos causas del 409
-         —«sesion-no-vale» y «sin-sesion»— porque llevan a sitios opuestos:
-         una se arregla volviendo a entrar, la otra buscando el teléfono
-         anterior. Sin esto se perdía en el camino y la pantalla enseñaba el
-         mismo texto para las dos. */
+      /* EL MOTIVO VIAJA CON EL ERROR. El relevo distingue TRES causas del 409
+         —«sesion-no-vale», «sin-sesion» y «otra-cuenta»— porque llevan a
+         sitios opuestos: una se arregla volviendo a entrar, otra buscando el
+         teléfono anterior, y la tercera no hay que arreglarla a mano en
+         absoluto. Sin esto se perdía en el camino y la pantalla enseñaba el
+         mismo texto para todas. */
       if (d.motivo) e.motivo = d.motivo;
+      /* Y con «otra-cuenta» viaja el correo que la sesión SÍ prueba, que es
+         lo que deja que el alta se corrija sola ahí abajo. */
+      if (d.correoReal) e.correoReal = String(d.correoReal).toLowerCase();
       throw e;
     }
     return d;
@@ -103,7 +107,37 @@ export async function alta(cuenta) {
   try { await ensureSession(); } catch (e) { /* se sigue con lo que haya */ }
   const sesion = cuenta.sesion || getToken();
   if (sesion) cuerpo.sesion = sesion;
-  const d = await pedir('/alta', cuerpo);
+  /* ══ QUIEN MANDA ES LA SESIÓN, NO EL CORREO GUARDADO ══════════════════════
+   *
+   * El correo sale de `cuenta.email`, que vive en un cajón (`SESSION_KEY`), y
+   * la sesión vive en otro. Nada los ataba, así que se podían desincronizar:
+   * la persona dentro como A, pidiendo el chat como B. Pasó de verdad.
+   *
+   * Lo que se veía no se parecía en nada a la causa. El alta daba 409, y como
+   * la llave del aparato se publica DESPUÉS del alta, no se publicaba: todo lo
+   * que le mandaban llegaba cerrado para aparatos que ya no eran suyos, y la
+   * pantalla —diciendo la verdad, cada mensaje por separado— repetía «cifrado
+   * para otro de tus aparatos» conversación por conversación. Se lee como «se
+   * me borró todo», y no se había borrado nada.
+   *
+   * De los dos datos, el que PRUEBA algo es la sesión: el relevo se la lleva
+   * al backend y el backend dice de quién es. El correo guardado no prueba
+   * nada. Así que cuando discrepan, gana la sesión y se rehace el alta con
+   * ese correo.
+   *
+   * No se puede repetir para siempre: al segundo intento `yo.correo` ya ES el
+   * correo probado, la condición no se cumple y el error sale como cualquier
+   * otro. */
+  let d;
+  try {
+    d = await pedir('/alta', cuerpo);
+  } catch (e) {
+    if (e && e.code === 409 && e.motivo === 'otra-cuenta'
+        && e.correoReal && e.correoReal !== yo.correo) {
+      return await alta({ ...cuenta, email: e.correoReal });
+    }
+    throw e;
+  }
   llave = (d && d.llave) || g;
   if (llave) await SecureStore.setItemAsync(donde, llave).catch(() => {});
   /* La pública de este teléfono se publica AL ENTRAR, no al mandar el primer
@@ -149,7 +183,14 @@ async function publicarMiLlave() {
   const mia = await CANDADO.miLlave();
   if (!mia) return;
   try {
-    await pedir('/llaves/publicar', firmado({ id: mia.id, pub: mia.pub }));
+    /* LA DE FIRMA VA TAMBIÉN. El relevo la guarda desde hace tiempo y la
+       reparte con la de acuerdo, y es CONTRA ESA LISTA —no contra lo que
+       venga dentro del sobre— que el otro lado comprueba quién escribió de
+       verdad. La app la tenía y no la mandaba, así que sus aparatos quedaban
+       con el hueco: el servidor dice que lo llena «en cuanto ese aparato
+       vuelva a publicar», y este aparato volvía a publicar sin ella. */
+    await pedir('/llaves/publicar',
+      firmado({ id: mia.id, pub: mia.pub, fir: mia.fir || '' }));
     publicada = true;
   } catch { /* se reintenta en el siguiente envío */ }
 }

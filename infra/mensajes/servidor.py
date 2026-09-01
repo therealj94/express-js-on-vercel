@@ -1187,6 +1187,30 @@ class Relevo(BaseHTTPRequestHandler):
                 # gente al sitio equivocado.
                 # No se filtra nada: decir si el token servia no dice de quien
                 # es la cuenta ni si existe.
+                #
+                # ── Y RESULTO QUE ERAN TRES, NO DOS ────────────────────────
+                # La tercera se encontro mirando este mismo sitio: la sesion
+                # valia PERFECTAMENTE, solo que probaba OTRA CUENTA. La app
+                # guarda el correo en un cajon y la sesion en otro, y cuando
+                # los dos se desincronizan la persona esta dentro como A y
+                # pide el chat como B. Se le contaba «tu chat quedo en tu
+                # instalacion anterior», asi que buscaba un telefono viejo que
+                # no tenia nada que ver; y si probaba a volver a entrar,
+                # tampoco, porque la sesion nunca estuvo mal.
+                #
+                # Mientras dura, esa persona no publica la llave de su aparato
+                # —eso pasa DESPUES del alta— y entonces ni siquiera puede
+                # RECIBIR: todo lo que le mandan viene cerrado para aparatos
+                # que ya no son suyos. Se ve como «se me perdieron las
+                # conversaciones» y no lo es.
+                #
+                # Se devuelve el correo que la sesion SI prueba. No es una
+                # fuga: es la cuenta de quien esta preguntando, demostrada
+                # con su propio token. Con eso la app se corrige sola.
+                if correo_probado and correo_probado != correo:
+                    return self._json(409, {'error': 'ese correo ya tiene llave',
+                                            'motivo': 'otra-cuenta',
+                                            'correoReal': correo_probado})
                 motivo = 'sesion-no-vale' if b.get('sesion') else 'sin-sesion'
                 return self._json(409, {'error': 'ese correo ya tiene llave',
                                         'motivo': motivo})

@@ -108,6 +108,12 @@ const TXT = {
     otraTxt: 'Tus conversaciones están a salvo en el servidor. Tu sesión venció —dura poco a propósito— y hace falta para abrir el chat en este teléfono. Entrá de nuevo desde Ajustes y volvé acá. Mientras tanto, el resto de la app funciona con normalidad.',
     otraTit2: 'Este chat quedó en tu instalación anterior',
     otraTxt2: 'Tus conversaciones están a salvo en el servidor. El chat sigue abierto en el teléfono donde lo usabas antes: abrilo ahí una vez y volvé acá. Mientras tanto, el resto de la app funciona con normalidad.',
+    /* La tercera causa: la sesión vale, pero es de OTRA cuenta. La app se
+       corrige sola (ver `alta` en mensajes.js) y esto casi nunca se ve; se
+       escribe igual porque antes este caso caía en el texto de arriba y
+       mandaba a la persona a buscar un teléfono que no tenía nada que ver. */
+    otraTit3: 'Estás dentro con otra cuenta',
+    otraTxt3: 'Tus conversaciones están a salvo. El chat que estás pidiendo es de otro correo, no del que tenés abierto ahora. Cerrá sesión y entrá con el correo de esas conversaciones. Mientras tanto, el resto de la app funciona con normalidad.',
   },
   en: {
     marca: 'PULSE CHAT', sub: 'People and groups, with Genesis ID',
@@ -159,6 +165,8 @@ const TXT = {
     otraTxt: 'Your conversations are safe on the server. Your session expired —it is short on purpose— and it is needed to open the chat on this phone. Sign in again from Settings and come back. Meanwhile the rest of the app works normally.',
     otraTit2: 'This chat stayed in your previous install',
     otraTxt2: 'Your conversations are safe on the server. The chat is still open on the phone you used before: open it there once and come back. Meanwhile the rest of the app works normally.',
+    otraTit3: 'You are signed in with another account',
+    otraTxt3: 'Your conversations are safe. The chat you are asking for belongs to a different email, not the one you have open now. Sign out and sign in with the email of those conversations. Meanwhile the rest of the app works normally.',
   },
 };
 
@@ -1275,9 +1283,11 @@ export default function AuroChat({ nav, params }) {
           <View style={st.redCaja}>
             <Icon name="key" size={22} color={C.gold} />
             <Text style={st.redTit}>
-              {motivoOtra === 'sesion-no-vale' ? t.otraTit : t.otraTit2}</Text>
+              {motivoOtra === 'sesion-no-vale' ? t.otraTit
+                : motivoOtra === 'otra-cuenta' ? t.otraTit3 : t.otraTit2}</Text>
             <Text style={st.redTxt}>
-              {motivoOtra === 'sesion-no-vale' ? t.otraTxt : t.otraTxt2}</Text>
+              {motivoOtra === 'sesion-no-vale' ? t.otraTxt
+                : motivoOtra === 'otra-cuenta' ? t.otraTxt3 : t.otraTxt2}</Text>
           </View>
         ) : sinRed ? (
           <View style={st.redCaja}>
