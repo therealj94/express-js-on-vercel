@@ -68,6 +68,14 @@ TRAMOS = ('admin', 'legal', 'tecnologico', 'mercadeo', 'contable', 'operacion')
 # El PRIMER tramo es el principal: es el que se nombra al saludar y el que
 # encabeza su parte. Los demas suman lo que puede pedir.
 #
+# ── Y EL NOMBRE, DELANTE, CON UN IGUAL ─────────────────────────────────────
+#
+#   Nicole=50433467760/andino.n@ordenglobal.org:mercadeo
+#
+# Es opcional. Sin el, AU-RA le escribe a un numero; con el, le escribe a
+# alguien. En un equipo de seis, «Hola Nicole» y «Hola» no son el mismo
+# mensaje — y esto es lo que mas barato cuesta y mas se nota.
+#
 # ── UNA PERSONA, VARIOS SITIOS DONDE ESCRIBE: LA BARRA ─────────────────────
 #
 # La barra junta las formas de escribirle a la MISMA persona. Jose escribe
@@ -105,6 +113,10 @@ def _leer(crudo):
         trozo = trozo.strip()
         if not trozo or ':' not in trozo:
             continue
+        nombre = ''
+        if '=' in trozo.split(':')[0]:
+            nombre, _, trozo = trozo.partition('=')
+            nombre = nombre.strip()
         quienes, _, tramos = trozo.rpartition(':')
         # Se quedan SOLO los tramos que existen. Uno mal escrito no tumba a la
         # persona entera si lleva otros buenos —seria castigar de mas— pero
@@ -113,7 +125,7 @@ def _leer(crudo):
                       if x.strip().lower() in TRAMOS)
         formas = [x.strip().lower() for x in quienes.split('/') if x.strip()]
         if formas and suyos:
-            gente[formas[0]] = (suyos, formas)
+            gente[formas[0]] = (suyos, formas, nombre)
     return gente
 
 
@@ -151,7 +163,8 @@ def persona_de(quien):
     q = normal(quien)
     if not q:
         return None
-    for persona, (_tramo, formas) in GENTE.items():
+    for persona, ficha in GENTE.items():
+        formas = ficha[1]
         if any(normal(f) == q for f in formas):
             return persona
     return None
@@ -161,6 +174,17 @@ def formas_de(persona):
     """Todas las formas de escribirle a esa persona."""
     ficha = GENTE.get(normal_persona(persona))
     return list(ficha[1]) if ficha else []
+
+
+def nombre_de(quien):
+    """Como se llama, o '' si no se puso en la lista."""
+    ficha = GENTE.get(normal_persona(quien))
+    return (ficha[2] if ficha and len(ficha) > 2 else '') or ''
+
+
+def telefono_de(quien):
+    """Por donde se le manda un WhatsApp. `None` si solo tiene correo."""
+    return next((f for f in formas_de(quien) if f.isdigit()), None)
 
 
 def normal_persona(quien):
@@ -195,7 +219,7 @@ def admins():
     Que devuelva personas y no formas es lo que hace que contarlas signifique
     algo: dos correos del mismo no son dos firmas.
     """
-    return [p for p, (ts, _f) in GENTE.items() if 'admin' in ts]
+    return [p for p, ficha in GENTE.items() if 'admin' in ficha[0]]
 
 
 def hay_con_quien_aprobar(sin_contar=None):

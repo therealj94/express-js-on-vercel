@@ -211,11 +211,47 @@ def para(tramo, registro=None, premio=None, clave_wa='', cuenta_wa='',
 
 
 def texto(tramo, datos):
-    """El parte de ese tramo, listo para mandar. `tramo` puede ser varios."""
+    """El parte de ese tramo, listo para mandar. `tramo` puede ser varios.
+
+    ── POR QUE SE PINTA AQUI Y NO SE USA `vistazo.texto` ──────────────────
+
+    El del vistazo esta hecho para caber en el hueco de una plantilla: tres
+    bloques pegados, sin aire, y se lee de corrido. Para el parte de las 7:30
+    en un telefono eso es un muro — y un muro se mira, no se lee.
+
+    Lo que cambia es poco y es todo: cuantas cosas necesitan a alguien va
+    ARRIBA y en numero, para saber en un segundo si hay que hacer algo hoy;
+    los tres bloques llevan titulo con su marca; y si no hay nada, lo dice en
+    una linea en vez de dejar un parte vacio que parece un error.
+    """
     if isinstance(tramo, str):
         titulo = TITULOS.get(tramo, 'Parte')
     else:
         suyos = list(dict.fromkeys(tramo or []))
         titulo = (TITULOS.get(suyos[0], 'Parte') if len(suyos) == 1
                   else 'Tu parte del día')
-    return f'{titulo} · {vistazo.cuando()}\n\n' + vistazo.texto(datos)
+
+    pend, rotas, lineas = (datos['pendientes'], datos['rotas'], datos['lineas'])
+    cabeza = f'*{titulo}* · {vistazo.cuando()}'
+    if pend:
+        # Sin el «(s)»: es la primera línea del parte y se lee todos los días.
+        # Un plural mal puesto ahí lo hace parecer generado, y lo que parece
+        # generado se lee con menos atención.
+        cabeza += ('\n1 cosa te necesita a vos.' if len(pend) == 1
+                   else f'\n{len(pend)} cosas te necesitan a vos.')
+    elif not rotas:
+        cabeza += '\nNada te necesita hoy.'
+
+    partes = [cabeza]
+    if pend:
+        partes.append('🔴 *NECESITA VOS*\n'
+                      + '\n'.join('• ' + p for p in pend))
+    if rotas:
+        partes.append('⚠️ *NO SE PUDO MIRAR*\n'
+                      + '\n'.join('• ' + r for r in rotas))
+    if lineas:
+        partes.append('📋 *COMO VA TODO*\n'
+                      + '\n'.join('• ' + x for x in lineas))
+    if not (pend or rotas or lineas):
+        partes.append('Todo en orden, y todo se pudo mirar.')
+    return '\n\n'.join(partes)

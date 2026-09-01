@@ -192,8 +192,9 @@ class ELPARTELLEVASUNOMBRE(_Base):
     def test_cada_tramo_dice_de_quien_es_el_parte(self):
         for tramo in miradas.TRAMOS:
             d = miradas.para(tramo, registro=self.registro, premio=self.premio)
-            self.assertTrue(miradas.texto(tramo, d).startswith(miradas.TITULOS[tramo]),
-                            tramo)
+            self.assertTrue(
+                miradas.texto(tramo, d).startswith('*' + miradas.TITULOS[tramo] + '*'),
+                tramo)
 
     def test_los_tramos_de_las_miradas_existen_en_el_escalafon(self):
         for tramo in miradas.TRAMOS:
@@ -240,12 +241,74 @@ class VARIOSSOMBREROSUNSOLOPARTE(_Base):
 
     def test_con_uno_solo_sigue_diciendo_de_quien_es(self):
         d = miradas.para(['contable'], registro=self.registro, premio=self.premio)
-        self.assertTrue(miradas.texto(['contable'], d).startswith('Parte contable'))
+        self.assertTrue(miradas.texto(['contable'], d).startswith('*Parte contable*'))
 
     def test_una_lista_vacia_no_revienta(self):
         d = miradas.para([], registro=self.registro, premio=self.premio)
         self.assertTrue(d['lineas'] or d['pendientes'] or d['rotas'])
 
+
+
+
+class ELPARTESELEEDEPIE(_Base):
+    """1-sep: «necesito mensajes puntuales y organizados».
+
+    El del vistazo está hecho para caber en el hueco de una plantilla: tres
+    bloques pegados y sin aire. En un teléfono a las 7:30 eso es un muro, y un
+    muro se mira, no se lee.
+    """
+
+    def _pinta(self, pend=(), rotas=(), lineas=()):
+        return miradas.texto('contable', {'pendientes': list(pend),
+                                          'rotas': list(rotas),
+                                          'lineas': list(lineas)})
+
+    def test_lo_PRIMERO_es_cuantas_cosas_te_necesitan(self):
+        """Para saber en un segundo si hay que hacer algo hoy."""
+        t = self._pinta(pend=['pagar 2 premios', 'firmar E-1234'])
+        self.assertIn('2 cosas te necesitan a vos', t.split('\n')[1])
+
+    def test_una_sola_se_dice_en_singular(self):
+        """Un plural mal puesto en la primera línea lo hace parecer generado,
+        y lo que parece generado se lee con menos atención."""
+        t = self._pinta(pend=['pagar 2 premios'])
+        self.assertIn('1 cosa te necesita a vos', t)
+        self.assertNotIn('cosa(s)', t)
+
+    def test_si_no_hay_nada_lo_DICE_en_vez_de_dejar_un_hueco(self):
+        """Un parte que llega sin nada parece un error del sistema."""
+        t = self._pinta(lineas=['cadena en el bloque 52.518'])
+        self.assertIn('Nada te necesita hoy', t)
+
+    def test_pero_NO_dice_que_no_hay_nada_si_algo_no_se_pudo_mirar(self):
+        """«Nada te necesita» con una fuente caída es la mentira que todo esto
+        existe para evitar."""
+        t = self._pinta(rotas=['la cadena no se pudo mirar'])
+        self.assertNotIn('Nada te necesita', t)
+
+    def test_los_tres_bloques_van_titulados_y_en_orden(self):
+        t = self._pinta(pend=['a'], rotas=['b'], lineas=['c'])
+        self.assertLess(t.index('NECESITA VOS'), t.index('NO SE PUDO MIRAR'))
+        self.assertLess(t.index('NO SE PUDO MIRAR'), t.index('COMO VA TODO'))
+
+    def test_un_bloque_vacio_no_deja_su_titulo_colgando(self):
+        t = self._pinta(lineas=['c'])
+        self.assertNotIn('NECESITA VOS', t)
+        self.assertNotIn('NO SE PUDO MIRAR', t)
+
+    def test_todo_vacio_de_verdad_lo_dice_y_no_sale_en_blanco(self):
+        self.assertIn('Todo en orden', self._pinta())
+
+    def test_cada_cosa_en_su_renglon(self):
+        """Tres pendientes en un párrafo son un pendiente que nadie ve."""
+        t = self._pinta(pend=['uno', 'dos', 'tres'])
+        for x in ('• uno', '• dos', '• tres'):
+            self.assertIn(x, t)
+
+    def test_el_titulo_va_en_negrita_de_WhatsApp_no_de_markdown(self):
+        t = self._pinta(lineas=['c'])
+        self.assertTrue(t.startswith('*Parte contable*'), t[:40])
+        self.assertNotIn('**', t)
 
 if __name__ == '__main__':
     unittest.main(verbosity=2)

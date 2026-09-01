@@ -97,6 +97,7 @@ import encargos
 import escalafon
 import espejo
 import oficios
+import presentacion
 import puerta
 import vistazo
 from oido import NoSePudoOir, oir_nota
@@ -1640,6 +1641,13 @@ def atender(rel, sistema, p, de, dicho, mensaje=None):
         hueco = catalogo.ENCARGOS[clave]['pide'][0]
         puerta.pedir(rel, de, clave, {hueco[0]: dicho},
                      hacer=_hacer_encargo(rel))
+        return
+
+    # «ayuda» ANTES que «encargos»: quien no sabe qué pedir necesita primero
+    # que le cuenten qué hay, no una lista de nombres sin contexto.
+    if presentacion.le_abre(dicho) and escalafon.tramo_de(de):
+        registro.anotar('encargo', que='ayuda')
+        rel.enviar(de, presentacion.para(de))
         return
 
     if puerta.le_abre(dicho) and escalafon.tramo_de(de):
