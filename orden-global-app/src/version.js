@@ -10,15 +10,32 @@
 //   BUILD sube de uno en uno en CADA entrega, sin excepción.
 // ============================================================
 
-export const VERSION = '1.33.0';
-export const BUILD = 70;
-export const RELEASED = '2026-08-11';
+export const VERSION = '1.33.1';
+export const BUILD = 71;
+export const RELEASED = '2026-09-01';
 
 export const versionLabel = () => `v${VERSION} · build ${BUILD}`;
 
 // Historial visible dentro de la app (Ajustes → Novedades).
 // El más reciente primero. `es`/`en` para que se lea en ambos idiomas.
 export const CHANGELOG = [
+  {
+    v: '1.33.1',
+    build: 71,
+    date: '2026-09-01',
+    es: [
+      'El chat vuelve solo. Antes, si tu sesión había vencido —dura poco a propósito— PULSE2CHAT decía que el chat se había quedado en tu instalación anterior y te mandaba a entrar de nuevo a mano. Ahora la app renueva la sesión sola y abre el chat con tus conversaciones de siempre.',
+      'Y cuando de verdad haga falta hacer algo, te dice QUÉ: si venció la sesión, que entres de nuevo; si el chat está abierto en otro teléfono, que lo abras ahí una vez. Antes las dos cosas se veían iguales y la mitad de la gente iba al sitio equivocado.',
+      'Lo mismo arreglado al abrir PULSE2CHAT, Ordenex y AuCorp desde el Núcleo: ya no te pide entrar otra vez dentro de la app.',
+      'Y al comprobar tu Genesis ID: una sesión vencida ya no se ve como si tu identidad hubiera fallado.',
+    ],
+    en: [
+      'The chat comes back on its own. Before, if your session had expired —it is short on purpose— PULSE2CHAT said the chat stayed in your previous install and sent you to sign in by hand. Now the app renews the session itself and opens the chat with your usual conversations.',
+      'And when something really is needed, it tells you WHAT: if the session expired, sign in again; if the chat is open on another phone, open it there once. Before both looked the same and half the people went to the wrong place.',
+      'Same fix when opening PULSE2CHAT, Ordenex and AuCorp from the Nucleus: it no longer asks you to sign in again inside the app.',
+      'And when checking your Genesis ID: an expired session no longer looks like your identity failed.',
+    ],
+  },
   {
     v: '1.33.0',
     build: 70,

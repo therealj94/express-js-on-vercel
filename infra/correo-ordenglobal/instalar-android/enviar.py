@@ -55,7 +55,7 @@ AQUI = pathlib.Path(__file__).resolve().parent
 DE = 'Orden Global <info@ordenglobal.org>'
 ASUNTO = 'Tu app de Orden Global ya está lista para instalar'
 ENLACE = ('https://expo.dev/artifacts/eas/'
-          'eE8qIGTdiLekFFopSMx4axF4z8TH8NhpjSLZv_U5MzI.apk')
+          'kEEJv7Dn4TfA06aMVWX-CpiZRPtUooi6DnGfyA-f69U.apk')
 BAJA_BASE = 'https://vetawallet-1a2e38ac52b1.herokuapp.com/avisos/baja'
 
 # Uno cada dos segundos. SES da 50.000 al dia y aguanta mucho mas por segundo;
