@@ -1,0 +1,111 @@
+{
+  "_nota": "Pelicula 2: el ecosistema, sin una sola persona. Se renderiza ENTERA en local con Pillow y ffmpeg (logos, tipografia y puntos), asi que no toca la GPU y no cuesta nada. Formato propio, consumido por montaje/ecosistema.py.",
+  "_hallazgo": "La prueba de publico frio la llamo 'un catalogo de servicios' y 'un anuncio de juego de celular', y los nombres inventados en ingles le dieron desconfianza. La conclusion importante NO es que la pelicula este mal, sino que NO ES UNA PELICULA DE CAPTACION: a un desconocido en Instagram hay que darle la pelicula 1. Esta sirve para quien ya llego -web, inversores, alguien que pregunto que es Orden Global- y ahi el recorrido completo es una virtud, no un defecto.",
+  "_correcciones": [
+    "Ya no entran seis iconos a la vez: contradecia el rotulo 'Una sola app'. Ahora entra Veta sola y las funciones aparecen DENTRO de ella. Las otras marcas se nombran pequenas, cuando aparece su funcion.",
+    "El verbo va primero y el nombre despues. El espectador frio se perdio entre Veta, Genesis, Pulse y AU-RA sin saber que hacia ninguno.",
+    "ordenscan ya no ensena un hash. Ensena un RECIBO legible con fecha, hora y monto. El hash largo se leyo como 'que pereza andar copiando ese chorro de letras' y hundia justo el clima de la pelicula.",
+    "Fuera toda mencion al oro, a la formula y al respaldo. El espectador concluyo solo 'la plata esta respaldada en oro', que es exactamente lo que el acta de Junta del 14/08/2026 prohibe afirmar."
+  ],
+  "salida": {"ancho": 1080, "alto": 1920, "fps": 30, "dur_s": 38.0},
+  "paleta": {
+    "fondo": "#0B0B0C",
+    "oro": "#E7C362",
+    "oro_tenue": "#8A7434",
+    "texto": "#F4EFE4",
+    "apagado": "#8A8378"
+  },
+  "tipos": {
+    "titular": {"familia": "Fraunces", "peso": 600},
+    "rotulo": {"familia": "Karla", "peso": 700},
+    "dato": {"familia": "JetBrains Mono", "peso": 700}
+  },
+  "_gesto": "Cada transicion es la misma y sale del logo: lo que hay en pantalla se deshace en puntos y los puntos se rehacen en lo siguiente. El logo de Orden Global son lineas que, donde se cruzan, se rompen en una reticula de puntos; ese es el unico truco de la pelicula y no se toma prestado de nadie.",
+  "bloques": [
+    {
+      "id": "01_nace",
+      "t": 0.0, "dur": 4.0,
+      "escena": "puntos_a_logo",
+      "detalle": "Un punto dorado en el centro. A los 0,6 s aparecen 400 mas, dispersos y en deriva lenta. Se ordenan en la reticula del centro del logo y desde ahi los arcos concentricos se dibujan hacia fuera hasta cerrar la marca.",
+      "activo": "orden-global/orden-global-logo.png",
+      "_pendiente": "redibujar el logo por codigo: el PNG es de 603 px y a 1080 pixela"
+    },
+    {
+      "id": "02_tesis",
+      "t": 4.0, "dur": 3.0,
+      "escena": "rotulos",
+      "rotulos": [
+        {"t": 4.2, "dur": 1.3, "texto": "Una sola app.", "tipo": "titular"},
+        {"t": 5.6, "dur": 1.3, "texto": "Todo adentro.", "tipo": "titular"}
+      ]
+    },
+    {
+      "id": "03_la_app",
+      "t": 7.0, "dur": 3.0,
+      "escena": "icono_unico",
+      "detalle": "Los puntos se rehacen en UN solo icono, grande y centrado: Veta Wallet. No entra un dock de seis. Debajo, pequeno, el nombre.",
+      "activo": "veta-wallet/veta-wallet-icono.png",
+      "rotulos": [{"t": 8.6, "dur": 1.2, "texto": "Veta Wallet", "tipo": "dato"}],
+      "_pendiente": "el icono es de 760x359; sirve justo. El logo de Veta (256 px) no sirve"
+    },
+    {
+      "id": "04_funciones",
+      "t": 10.0, "dur": 19.0,
+      "escena": "funciones_dentro",
+      "detalle": "El icono se abre y las funciones aparecen DENTRO de el, una cada 2,7 s, como pantallas que entran y salen. El verbo grande; la marca, si la tiene, pequena y debajo.",
+      "items": [
+        {"t": 10.0, "verbo": "Guardá. Mandá. Recibí.", "marca": null,
+         "visual": "una tarjeta de saldo gira sobre su eje y se asienta"},
+        {"t": 12.7, "verbo": "Verificate una vez.", "marca": "Genesis ID",
+         "visual": "un documento se sella y un candado se cierra"},
+        {"t": 15.4, "verbo": "Cobrá con un código.", "marca": "MyTokenPay",
+         "visual": "un QR se forma de puntos y una luz de lector lo barre"},
+        {"t": 18.1, "verbo": "Hablá sin salir de la app.", "marca": "PULSE2CHAT",
+         "visual": "burbujas de chat que entran una tras otra"},
+        {"t": 20.8, "verbo": "Preguntá lo que sea.", "marca": "AU-RA",
+         "visual": "una onda de voz responde y la respuesta se escribe sola"},
+        {"t": 23.5, "verbo": "De un país a otro.", "marca": null,
+         "visual": "seis siluetas de pais y una linea de puntos que las cose"},
+        {"t": 26.2, "verbo": "Cambiá entre monedas.", "marca": null,
+         "visual": "dos fichas que rotan e intercambian su sitio"}
+      ]
+    },
+    {
+      "id": "05_el_recibo",
+      "t": 29.0, "dur": 5.5,
+      "escena": "recibo",
+      "detalle": "EL CLIMAX, y es lo unico que ningun banco puede ensenar. NO es un hash: es un recibo legible que se arma de puntos, con fecha, hora, monto y el estado. Debajo, en pequeno, el numero de la transaccion. La linea 'lo puede ver cualquiera' es lo que lo separa de la pantalla de un banco.",
+      "recibo": {
+        "titulo": "Comprobante",
+        "campos": [
+          ["Fecha", "1 sep 2026"],
+          ["Hora", "14:32:07"],
+          ["Estado", "Confirmado"]
+        ],
+        "pie": "Y esto lo puede abrir cualquiera. Sin permiso nuestro."
+      },
+      "rotulos": [
+        {"t": 29.2, "dur": 1.6, "texto": "Todo queda escrito.", "tipo": "titular"},
+        {"t": 32.6, "dur": 1.8, "texto": "ordenscan.com", "tipo": "dato"}
+      ]
+    },
+    {
+      "id": "06_cierre",
+      "t": 34.5, "dur": 3.5,
+      "escena": "logo_a_puntos_a_logo",
+      "detalle": "Todo lo que hay en pantalla se deshace a la vez y los puntos regresan al centro rehaciendo la marca. La pelicula cierra el mismo circulo con el que abrio.",
+      "activo": "orden-global/orden-global-logo.png",
+      "rotulos": [
+        {"t": 36.0, "dur": 2.0,
+         "texto": "Orden Global. Un sistema financiero que se puede comprobar.",
+         "tipo": "rotulo"}
+      ]
+    }
+  ],
+  "_fuera": [
+    "Las monedas ORIGEN, AUKA, AGKA y ONDK. Doble motivo: los archivos son de 96 px y no llegan a video, y en la prueba los nombres inventados fueron literalmente lo que disparo la desconfianza ('me da miedo que me pidan meter a tres amigos'). Decision de Jose: si entran, entran sin precio, sin formula y sin la palabra oro.",
+    "El directorio de comercios: los treinta son de muestra y diez tienen dominios example.com.",
+    "Ordenex como mercado: nunca ha operado. Por eso 'Cambiá entre monedas' se queda en la funcion de la billetera y no ensena un libro de ordenes.",
+    "Cualquier cifra de adopcion, precio, proyeccion o rendimiento."
+  ]
+}

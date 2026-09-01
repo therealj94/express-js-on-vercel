@@ -1,0 +1,218 @@
+{
+  "_nota": "Pelicula 1 del lanzamiento. Sustituye al tratamiento 'al reves', que fallo la prueba de publico frio: sin haber visto los tres anuncios anteriores nadie entendia el contador 24/14 ni la rafaga de planos invertidos, y el dorado con el oro y los nombres de las monedas se leia literalmente como estafa piramidal. Aqui no hay oro, ni monedas, ni contadores, ni dorado: luz de dia, gente normal, y una sola cosa que pasa. Un espectador frio lo resumio en una linea: 'la hija esta fuera, le manda a la mama y le llega completo'.",
+  "defaults": {
+    "still_workflow": "workflows/flux2_api.json",
+    "video_workflow": "workflows/h3_i2v_api.json",
+    "duration_s": 4,
+    "fps": 24,
+    "negative": "cartoon, illustration, 3d render, cgi, plastic skin, airbrushed, beauty filter, oversaturated, gold tint, luxury, wealth, stock photo smile, teeth showing wide, crooked teeth, deformed teeth, extra fingers, deformed hands, watermark, text overlay, logo, subtitles, ui elements, phone screen content, blurry, low detail"
+  },
+  "shots": [
+    {
+      "id": "01_pulperia",
+      "still": "A 58 year old Central American woman behind the counter of a small neighbourhood corner shop, weathered face, no makeup, grey streaks in tied-back hair, worn cotton blouse, handing a bag of bread to a customer off frame. Shelves of everyday goods behind her, hand written price cards, a plastic curtain in the doorway, hard midday light coming in from the street. Documentary framing, medium shot, shot on 35mm",
+      "motion": "she sets the bag down on the counter and wipes her hands on a cloth, dust visible in the doorway light",
+      "move": "static",
+      "stills": 6,
+      "seeds": [
+        1101,
+        1102,
+        1103,
+        1104,
+        1105,
+        1106
+      ],
+      "pick": null
+    },
+    {
+      "id": "02_telefono_mostrador",
+      "still": "Close on a scratched budget smartphone lying face down on a worn wooden shop counter, beside a chipped coin tray, a roll of receipt paper and a jar of loose sweets. Behind it, out of focus, the shelves of a neighbourhood corner shop and a plastic strip curtain over the doorway. Hard midday light from the street rakes across the scratched counter. No screen visible. Documentary detail shot, shallow depth of field, shot on 35mm",
+      "motion": "the phone buzzes once against the wood and shifts a few millimetres",
+      "move": "static",
+      "stills": 6,
+      "seeds": [
+        1201,
+        1202,
+        1203,
+        1204,
+        1205,
+        1206
+      ],
+      "pick": null
+    },
+    {
+      "id": "03_hija_cocina",
+      "still": "A 31 year old Central American woman standing in the small kitchen of a cramped rented apartment in a colder country, still wearing a work uniform polo, tired face, hair pulled back, one cupboard door open behind her, late afternoon window light, a coat on a chair. Medium shot, documentary framing, shot on 35mm",
+      "motion": "she leans back against the counter and lets her shoulders drop, breathing out",
+      "move": "static",
+      "stills": 6,
+      "seeds": [
+        1301,
+        1302,
+        1303,
+        1304,
+        1305,
+        1306
+      ],
+      "pick": null
+    },
+    {
+      "id": "04_abre_app",
+      "still": "Over the shoulder close shot of the same young woman's hands holding a smartphone in a small kitchen, thumb resting on the dark screen, chipped nail polish, a cheap watch on her wrist, soft window light from the left. The phone screen is completely black and empty. Documentary detail shot",
+      "motion": "her thumb taps the dark screen once and stays there",
+      "move": "static",
+      "stills": 8,
+      "seeds": [
+        1401,
+        1402,
+        1403,
+        1404,
+        1405,
+        1406,
+        1407,
+        1408
+      ],
+      "pick": null
+    },
+    {
+      "id": "05_elige_contacto",
+      "still": "Tight top down shot of a young woman's hands holding a smartphone over a narrow kitchen counter, thumb mid scroll, chipped nail polish, a cheap watch on her wrist. The phone screen is completely black and empty. Below and out of focus, a chipped mug, a set of keys and a folded work schedule on the laminate counter. Soft late afternoon window light from the left. Documentary detail shot, shot on 35mm",
+      "motion": "her thumb scrolls down slowly and stops",
+      "move": "static",
+      "stills": 8,
+      "seeds": [
+        1501,
+        1502,
+        1503,
+        1504,
+        1505,
+        1506,
+        1507,
+        1508
+      ],
+      "pick": null
+    },
+    {
+      "id": "06_pone_dedo",
+      "still": "Very tight macro shot of a thumb pressing and holding on a completely black empty phone screen, the rest of the hand steady around the worn plastic case, a cheap watch strap at the edge of frame. Warm late afternoon daylight rakes across the glass, showing faint fingerprints and a hairline scratch. The kitchen behind is a soft wash of out of focus shapes. Documentary macro detail, shot on 35mm",
+      "motion": "the thumb presses down and holds, then lifts away",
+      "move": "static",
+      "stills": 8,
+      "seeds": [
+        1601,
+        1602,
+        1603,
+        1604,
+        1605,
+        1606,
+        1607,
+        1608
+      ],
+      "pick": null
+    },
+    {
+      "id": "07_suena_pulperia",
+      "still": "The same scratched phone lying face down on the worn wooden shop counter beside the coin tray, with the corner shop soft and out of focus behind it, shelves of everyday goods and hand written price cards. The older shopkeeper's hand, weathered and ringless, enters frame from the right. Hard midday light from the street doorway. Documentary detail shot, shallow depth of field, shot on 35mm",
+      "motion": "her hand reaches in and turns the phone over",
+      "move": "static",
+      "stills": 6,
+      "seeds": [
+        1701,
+        1702,
+        1703,
+        1704,
+        1705,
+        1706
+      ],
+      "pick": null
+    },
+    {
+      "id": "08_cara_senora",
+      "still": "Close up of the 58 year old shopkeeper looking down at a phone held just below frame, reading glasses low on her nose, the light of the screen faint on her face, mouth closed, the small movement of someone who has just understood something. Corner shop out of focus behind her. Documentary close up, shot on 35mm",
+      "motion": "she reads, and her eyebrows lift very slightly, mouth closed",
+      "move": "push",
+      "stills": 8,
+      "seeds": [
+        1801,
+        1802,
+        1803,
+        1804,
+        1805,
+        1806,
+        1807,
+        1808
+      ],
+      "pick": null
+    },
+    {
+      "id": "09_ensena_pantalla",
+      "still": "The shopkeeper turning a phone around to show its screen to a young man stacking crates on the other side of the counter, both mid gesture, the young man leaning in, a genuine unposed half smile on both faces, mouths closed. The phone screen is completely black and empty. Corner shop interior, midday light. Documentary medium shot",
+      "motion": "she turns the phone toward him and he leans in to look",
+      "move": "static",
+      "stills": 8,
+      "seeds": [
+        1901,
+        1902,
+        1903,
+        1904,
+        1905,
+        1906,
+        1907,
+        1908
+      ],
+      "pick": null
+    },
+    {
+      "id": "10_ve_detalle",
+      "still": "Over the shoulder shot of the 31 year old woman in the cramped rented kitchen, holding the phone closer to her face, screen completely black and empty, her expression settled and calm, still in her work uniform polo. Behind her the open cupboard, a coat over a chair and a window going blue with evening light. Medium close shot, documentary framing, shot on 35mm",
+      "motion": "her thumb taps once and she looks at the screen without moving",
+      "move": "static",
+      "stills": 6,
+      "seeds": [
+        2001,
+        2002,
+        2003,
+        2004,
+        2005,
+        2006
+      ],
+      "pick": null
+    },
+    {
+      "id": "11_caras_calle",
+      "still": "A 44 year old Central American market vendor standing still in a busy street market looking directly into the lens, apron on, no smile, absolutely ordinary, the market moving and out of focus behind him. Overcast daylight. Documentary portrait, shot on 35mm",
+      "motion": "he holds the look at the lens, blinking once, market moving behind him",
+      "move": "static",
+      "stills": 8,
+      "seeds": [
+        2101,
+        2102,
+        2103,
+        2104,
+        2105,
+        2106,
+        2107,
+        2108
+      ],
+      "pick": null
+    },
+    {
+      "id": "12_caras_calle_b",
+      "still": "A 26 year old Central American woman in a motorcycle delivery jacket standing still on a residential street looking directly into the lens, helmet under her arm, no smile, absolutely ordinary, low houses and power lines out of focus behind her. Overcast daylight. Documentary portrait, shot on 35mm",
+      "motion": "she holds the look at the lens, wind moving a strand of hair",
+      "move": "static",
+      "stills": 8,
+      "seeds": [
+        2201,
+        2202,
+        2203,
+        2204,
+        2205,
+        2206,
+        2207,
+        2208
+      ],
+      "pick": null
+    }
+  ]
+}
