@@ -41,7 +41,9 @@ un error de una linea manda una carta a todo el mundo.
 """
 
 import argparse
+import base64
 import csv
+import re
 import hashlib
 import hmac
 import os
@@ -56,7 +58,7 @@ DE = 'Orden Global <info@ordenglobal.org>'
 ASUNTO = 'Tu app de Orden Global ya está lista para instalar'
 ENLACE = ('https://expo.dev/artifacts/eas/'
           'kEEJv7Dn4TfA06aMVWX-CpiZRPtUooi6DnGfyA-f69U.apk')
-BAJA_BASE = 'https://vetawallet-1a2e38ac52b1.herokuapp.com/avisos/baja'
+BAJA_BASE = 'https://vetawallet-1a2e38ac52b1.herokuapp.com/baja'
 
 # Uno cada dos segundos. SES da 50.000 al dia y aguanta mucho mas por segundo;
 # el freno no es por SES, es por los filtros de Gmail y Outlook.
@@ -66,11 +68,27 @@ APUNTADOS = AQUI / 'ya-enviados.txt'
 
 
 def enlace_de_baja(correo, llave):
-    """El mismo formato que espera `routes/avisos.js`: prefijo distinto al de
-    las sesiones, para que una firma de baja jamas pase por una de sesion."""
-    firma = hmac.new(llave.encode(), ('baja:' + correo).encode(),
-                     hashlib.sha256).hexdigest()
-    return (f'{BAJA_BASE}?c={urllib.parse.quote(correo)}&f={firma}')
+    """La firma EXACTA que espera el servidor. Ver `lib/firmaBaja.js`.
+
+    Tres cosas tienen que coincidir o el enlace no sirve, y las tres me las
+    equivoque en la primera version:
+
+      · el prefijo `baja:` —distinto al de las sesiones, para que una firma de
+        baja jamas pueda pasar por una de sesion;
+      · BASE64URL, no hexadecimal;
+      · RECORTADA A 24 caracteres, porque el servidor compara en tiempo
+        constante y exige el mismo largo.
+
+    Se comprobo contra el servidor de verdad antes de mandar nada. Un enlace de
+    baja roto convierte la carta en algo indistinguible del correo basura, y lo
+    que se quema no es esta campana: es el dominio que manda TAMBIEN el correo
+    de recuperar la contrasena.
+    """
+    crudo = 'baja:' + correo.strip().lower()
+    firma = base64.urlsafe_b64encode(
+        hmac.new(llave.encode(), crudo.encode(), hashlib.sha256).digest()
+    ).decode().rstrip('=')[:24]
+    return f'{BAJA_BASE}?c={urllib.parse.quote(correo)}&f={urllib.parse.quote(firma)}"'.rstrip('"')
 
 
 def ya_enviados():
@@ -85,12 +103,44 @@ def apuntar(correo):
         f.write(correo + '\n')
 
 
+def como_le_digo(nombre, correo):
+    """El nombre de pila, o nada.
+
+    ── POR QUE ESTO NO ES UN DETALLE ────────────────────────────────────────
+
+    En la base, el campo del nombre trae MUCHAS VECES el correo: de 418
+    personas, solo 69 tienen un nombre de verdad. Sin esta comprobacion la
+    carta empezaba «Hola 0aldair0@gmail.com:», que es peor que no saludar —
+    dice a la cara que esto lo mando una maquina que no sabe quien sos.
+
+    Cuando no hay nombre usable se saluda sin el. «Hola:» es una carta; «Hola
+    0aldair0@gmail.com:» es un formulario.
+
+    Y del nombre completo se usa SOLO EL PRIMERO: «Hola Alberto» se lee como
+    una persona escribiendo; «Hola Alberto Jesus Morales Martinez» se lee como
+    una base de datos.
+    """
+    n = (nombre or '').strip()
+    if not n or '@' in n:
+        return ''
+    if n.lower() == correo.split('@')[0].lower():
+        return ''
+    if not re.search(r'[A-Za-zÁÉÍÓÚÑáéíóúñ]{2}', n):
+        return ''
+    primero = n.split()[0]
+    # TODO EN MAYUSCULAS se lee como un grito; se arregla, no se descarta.
+    return primero.capitalize() if primero.isupper() else primero
+
+
 def carta(nombre, correo, llave):
     t = (AQUI / 'carta.txt').read_text(encoding='utf8')
     # El asunto va en la primera linea del archivo; se quita del cuerpo.
     if t.startswith('Asunto:'):
         t = t.split('\n', 1)[1].lstrip('\n')
-    return (t.replace('{nombre}', (nombre or '').strip() or 'hola')
+    quien = como_le_digo(nombre, correo)
+    # Sin nombre, «Hola:» a secas — y se quita el espacio que dejaria el hueco.
+    return (t.replace('Hola {nombre}:', f'Hola {quien}:' if quien else 'Hola:')
+             .replace('{nombre}', quien)
              .replace('{enlace}', ENLACE)
              .replace('{baja}', enlace_de_baja(correo, llave)))
 
