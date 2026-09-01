@@ -228,5 +228,75 @@ class ELIDIOMASIGUEALAPERSONA(unittest.TestCase):
         self.assertIsNone(guion.en_que_habla('me no'))
         self.assertIsNone(guion.en_que_habla('the'))
 
+class MEDIRNOPUEDEROMPERLACONVERSACION(unittest.TestCase):
+    """`atender` apunta cuánto tardó. Eso NO puede costar una respuesta.
+
+    Se añadió porque no se medía en ningún sitio cuánto espera una persona —lo
+    primero que nota, antes que si la respuesta es buena—. Pero una medida es
+    lo menos importante que hay: si el sitio donde se apunta está lleno, o el
+    disco no deja escribir, quien preguntó tiene que recibir su respuesta
+    igual.
+    """
+
+    def _hablar(self):
+        rel = _Relevo()
+        aura.atender(rel, 'sistema', _perfil(), _quien(self), 'hola', {})
+        return rel
+
+    def test_si_apuntar_revienta_la_persona_recibe_su_respuesta(self):
+        # Revienta SOLO la medida del tiempo. La primera versión de esta prueba
+        # hacía fallar `anotar` entero, y entonces también reventaban los otros
+        # apuntes de `_atender` —el del guión, el del juego— que no tienen nada
+        # que ver con medir. Probaba de más y no probaba lo que decía.
+        def solo_el_tiempo(evento, **datos):
+            if evento == 'contesto':
+                raise OSError('disco lleno')
+
+        with mock.patch.object(aura.registro, 'anotar', solo_el_tiempo):
+            rel = self._hablar()
+        self.assertTrue(rel.dicho, 'una medida fallida se comió la respuesta')
+
+    def test_y_anotar_DE_VERDAD_no_lanza_pase_lo_que_pase(self):
+        """La promesa de la que cuelgan los veintiún sitios que lo llaman sin
+        `try`. Está escrita en su docstring; esto la sostiene."""
+        import registro as reg
+        anterior = reg.DATOS
+        try:
+            reg.DATOS = pathlib.Path('/no/existe/esta/carpeta')
+            reg.anotar('lo que sea', a=1)          # no debe lanzar
+        finally:
+            reg.DATOS = anterior
+
+    def test_se_apunta_el_tiempo_y_si_hubo_motor(self):
+        visto = {}
+        with mock.patch.object(aura.registro, 'anotar',
+                               lambda ev, **d: visto.update({ev: d})):
+            self._hablar()
+        self.assertIn('contesto', visto)
+        self.assertIsInstance(visto['contesto']['ms'], int)
+        self.assertIn('motor', visto['contesto'])
+
+    def test_lo_que_contesta_el_GUION_no_cuenta_como_motor(self):
+        """Es el reparto que manda en el gasto y en la espera: el guión sale en
+        centésimas y no toca la tarjeta."""
+        visto = {}
+        with mock.patch.object(aura.registro, 'anotar',
+                               lambda ev, **d: visto.update({ev: d})):
+            self._hablar()
+        self.assertFalse(visto['contesto']['motor'])
+
+    def test_se_apunta_TAMBIEN_cuando_la_respuesta_falla(self):
+        """Si solo se midieran las buenas, el número diría que todo va rápido
+        justo cuando se está cayendo."""
+        visto = {}
+        with mock.patch.object(aura.registro, 'anotar',
+                               lambda ev, **d: visto.update({ev: d})), \
+             mock.patch.object(aura, '_atender',
+                               mock.Mock(side_effect=ValueError('x'))):
+            with self.assertRaises(ValueError):
+                self._hablar()
+        self.assertIn('contesto', visto)
+
+
 if __name__ == '__main__':
     unittest.main(verbosity=2)

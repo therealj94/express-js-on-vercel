@@ -1533,6 +1533,33 @@ def _atender_juego(rel, p, de, dicho):
 
 
 
+DISCULPA = {
+    'es': ('Perdón — se me trabó al contestarte eso y no quiero dejarte '
+           'esperando en silencio.\n\n'
+           'Tu mensaje me llegó; el fallo es mío. Probá a escribírmelo otra '
+           'vez y si sigo igual te atiende una persona: wa.me/50432136457'),
+    'en': ('Sorry — something broke while I was answering that, and I do not '
+           'want to leave you waiting in silence.\n\n'
+           'Your message did reach me; the fault is mine. Try sending it '
+           'again, and if I am still stuck a person will help you: '
+           'wa.me/50432136457'),
+}
+
+
+def _avisar_del_salto(rel, p, correo):
+    """Le dice a la persona que su mensaje se cayo. Ver donde se llama.
+
+    Como mucho UNA vez por hora: si lo que falla es el motor entero, cada
+    mensaje que mande dispararia una disculpa y le llenariamos el telefono de
+    perdones. Pedir perdon en bucle es otra manera de estar rota.
+    """
+    ahora = time.time()
+    if ahora - (p.get('disculpa') or 0) < 3600:
+        return
+    p['disculpa'] = ahora
+    rel.enviar(correo, DISCULPA.get(p.get('idioma') or 'es', DISCULPA['es']))
+
+
 def _recordar(p, dicho, contestado):
     """Apunta un ida y vuelta en la memoria de esa persona.
 
@@ -1590,6 +1617,42 @@ def _hacer_encargo(rel):
 
 
 def atender(rel, sistema, p, de, dicho, mensaje=None):
+    """Atiende un mensaje y APUNTA CUANTO TARDO.
+
+    ── POR QUE ESTA ENVOLTURA EXISTE ──────────────────────────────────────
+
+    De una revision: no se medía en ningún sitio cuánto tarda AU-RA en
+    contestar. Es la primera cosa que nota quien le escribe —antes que si la
+    respuesta es buena— y era la unica que no estaba escrita en ninguna parte.
+    Se sabia que el modelo daba 44,6 fichas por segundo, que es un dato del
+    aparato; nadie sabia cuantos SEGUNDOS espera una persona.
+
+    Y sin eso no se puede mejorar: cualquier cambio para «que vaya mas rapido»
+    seria una opinion contra otra opinion.
+
+    Se apunta tambien SI HUBO MOTOR. Es el reparto que de verdad manda en el
+    gasto y en la espera: lo que contesta el guion sale en centesimas y no toca
+    la tarjeta; lo que llega al modelo tarda segundos. Cuando esa proporcion se
+    mueva, se va a ver aqui.
+
+    El cuerpo de siempre esta en `_atender`. Esta capa no decide nada: si
+    apuntar fallara, la conversacion NO se cae — medir no puede ser mas
+    importante que contestar.
+    """
+    arranco = time.monotonic()
+    antes = p.get('usadas') or 0
+    try:
+        return _atender(rel, sistema, p, de, dicho, mensaje)
+    finally:
+        try:
+            registro.anotar('contesto',
+                            ms=int((time.monotonic() - arranco) * 1000),
+                            motor=bool((p.get('usadas') or 0) > antes))
+        except Exception:
+            pass
+
+
+def _atender(rel, sistema, p, de, dicho, mensaje=None):
     """Atiende UN mensaje. Si lanza, el que llama decide reintentar o saltar;
     aqui no se avanza ningun tope.
 
@@ -2489,6 +2552,27 @@ def atender_charla(rel, sistema, perfiles, correo):
                     return   # sin avanzar el tope: se reintenta la vuelta que viene
                 log(f'MENSAJE SALTADO tras {REINTENTOS} fallos · {correo} ·',
                     type(e).__name__, str(e)[:100])
+                # ── Y SE LE DICE A LA PERSONA ─────────────────────────────
+                #
+                # «Con ruido» era ruido en NUESTRO registro. Del lado de
+                # quien escribió no pasaba nada: mandó su mensaje y AU-RA no
+                # contestó nunca. Es exactamente la forma del «escribí al
+                # WhatsApp hola y ni me contestó» del 31-ago, y volvía a
+                # pasar cada vez que algo fallaba tres veces seguidas.
+                #
+                # Un silencio no se distingue de estar rota. Esto al menos
+                # dice que su mensaje llegó, que el fallo es nuestro, y por
+                # dónde seguir si tiene prisa. Lo que no se cuenta nunca es
+                # QUÉ falló: eso es del registro, no de la persona.
+                #
+                # Va en su propio `try` porque si el relevo es justo lo que
+                # está caído, este aviso también falla — y no puede tumbar la
+                # vuelta de los demás por intentar disculparse.
+                try:
+                    _avisar_del_salto(rel, p, correo)
+                except Exception as e2:
+                    log('ni el aviso del salto salió:',
+                        type(e2).__name__, str(e2)[:80])
         with CANDADO_PERFILES:
             p['tope'] = m.get('cuando', 0)
             p.pop('falla', None)
@@ -2959,6 +3043,7 @@ def main():
     # que las otras dos —su ritmo, su `try`— para que una caida no cierre las
     # demas. Sin `AURA_BUZON` no existe, y eso no es un fallo.
     proximo_bz = [0.0]
+    _bz_igual = [None, 0]      # el último fallo del buzón y cuántas veces
     if recadero.encendido():
         log('Buzón encendido ·', recadero.DONDE)
     else:
@@ -3014,13 +3099,29 @@ def main():
                 try:
                     recadero.vuelta(sistema, perfiles, tanda, registrar=log)
                     proximo_bz[0] = time.time() + recadero.PASO
+                    if _bz_igual[1]:
+                        log(f'buzón: de vuelta, tras {_bz_igual[1]} fallos')
+                    _bz_igual[0], _bz_igual[1] = None, 0
                 except Exception as e:
                     # El buzón caído se espera más: si Render está reiniciando,
-                    # insistir cada dos segundos no lo levanta antes y llena el
-                    # registro de lo mismo.
+                    # insistir cada dos segundos no lo levanta antes.
                     proximo_bz[0] = time.time() + recadero.PASO * 8
-                    log('vuelta del buzón fallida:',
-                        type(e).__name__, str(e)[:140])
+                    # ── Y EL MISMO FALLO SE DICE UNA VEZ ───────────────────
+                    #
+                    # Sin esto son tres líneas por minuto para siempre. Con el
+                    # buzón sin crear todavía llevaba 22 líneas iguales en el
+                    # registro, y ahí dentro estaban los fallos de verdad de
+                    # WhatsApp y del motor, que ya no se veían.
+                    #
+                    # Un registro que repite lo mismo no informa de nada: lo
+                    # que importa es CUÁNDO EMPEZÓ, CUÁNTAS VECES y CUÁNDO
+                    # VOLVIÓ. Se dice el primero, uno cada cien, y el regreso.
+                    quees = f'{type(e).__name__} {str(e)[:100]}'
+                    _bz_igual[1] = _bz_igual[1] + 1 if _bz_igual[0] == quees else 1
+                    _bz_igual[0] = quees
+                    if _bz_igual[1] == 1 or _bz_igual[1] % 100 == 0:
+                        log('vuelta del buzón fallida:', quees,
+                            f'(×{_bz_igual[1]})' if _bz_igual[1] > 1 else '')
             time.sleep(PASO)
 
 

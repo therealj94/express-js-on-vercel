@@ -301,8 +301,14 @@ class ElAsistenteLoUsaANTESDelMotor(unittest.TestCase):
     GPU. La mitad del punto era no gastarla."""
 
     def test_el_guion_se_consulta_antes_de_preguntar_al_motor(self):
+        # Se mira `_atender`, que es donde está el cuerpo: `atender` pasó a ser
+        # una envoltura que apunta cuánto tardó. Si algún día el cuerpo cambia
+        # otra vez de nombre, esta prueba revienta al buscarlo — que es lo que
+        # tiene que pasar. Un `index` que no encuentra nada es ruidoso a
+        # propósito: una prueba que se «adapta» sola a cualquier nombre deja de
+        # comprobar el orden, y el orden es todo el punto.
         fuente = (AQUI / 'asistente.py').read_text(encoding='utf8')
-        i = fuente.index('def atender(rel, sistema, p, de, dicho, mensaje=None):')
+        i = fuente.index('def _atender(rel, sistema, p, de, dicho, mensaje=None):')
         cuerpo = fuente[i:fuente.index('\ndef ', i + 10)]
         pos_guion = cuerpo.index('guion.por_texto')
         pos_motor = cuerpo.index('preguntar_motor')
