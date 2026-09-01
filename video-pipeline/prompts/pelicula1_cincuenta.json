@@ -1,5 +1,5 @@
 {
-  "_nota": "Pelicula 1 del lanzamiento. Sustituye al tratamiento 'al reves', que fallo la prueba de publico frio: sin haber visto los tres anuncios anteriores nadie entendia el contador 24/14 ni la rafaga de planos invertidos, y el dorado con el oro y los nombres de las monedas se leia literalmente como estafa piramidal. Aqui no hay oro, ni monedas, ni contadores, ni dorado: luz de dia, gente normal, y una sola cosa que pasa. Un espectador frio lo resumio en una linea: 'la hija esta fuera, le manda a la mama y le llega completo'.",
+  "_nota": "Pelicula 1 del lanzamiento. Sustituye al tratamiento 'al reves', que fallo la prueba de publico frio: sin haber visto los tres anuncios anteriores nadie entendia el contador 24/14 ni la rafaga de planos invertidos, y el dorado con el oro y los nombres de las monedas se leia literalmente como estafa piramidal. Aqui no hay oro, ni monedas, ni contadores, ni dorado: luz de dia, gente normal, y una sola cosa que pasa. Un espectador frio lo resumio en una linea: 'la hija esta fuera, le manda a la mama y le llega completo'. SEGUNDA PRUEBA: el rotulo del coste (0,001 $) se leyo como mentira -'nadie regala nada'- y quedo ULTIMO en credibilidad, por detras de no decir nada. No se presume: va como una linea mas del comprobante. Y la moneda NO se explica: 'una sola moneda para Latinoamerica referenciada al oro' produjo 'no entendi ni un carajo' y, por segunda vez, la inferencia prohibida de que hay oro en una boveda nuestra. ORIGEN queda como infraestructura invisible, igual que en la parte 1 nunca se dijo 'dinero'. La salida a moneda local se ensena con TARJETA, nunca con Ordenex: 'la Visa mil veces; la casa de cambio de ellos me suena a un local que manana cierran'.",
   "defaults": {
     "still_workflow": "workflows/flux2_api.json",
     "video_workflow": "workflows/h3_i2v_api.json",
@@ -177,6 +177,25 @@
         2006
       ],
       "pick": null
+    },
+    {
+      "id": "11_tarjeta",
+      "still": "Close on the weathered hands of the 58 year old shopkeeper holding a plain unbranded payment card, sliding it into a small card terminal on the counter of a neighbourhood pharmacy, another customer waiting out of focus behind her. Shelves of boxed medicine, a handwritten sign taped to the glass, hard afternoon light from the street door. No visible logos or text on the card. Documentary detail shot, shallow depth of field, shot on 35mm",
+      "motion": "she pushes the card into the terminal and it settles, her other hand resting on the counter",
+      "move": "static",
+      "stills": 8,
+      "seeds": [
+        2301,
+        2302,
+        2303,
+        2304,
+        2305,
+        2306,
+        2307,
+        2308
+      ],
+      "pick": null,
+      "_nota": "La tarjeta va SIN marca. Es el elemento de confianza mas fuerte que hay -'la Visa mil veces, si me roban puedo ir a pelear al banco'- pero la auditoria dice que antes de grabarla hay que confirmar con el emisor que hoy se emite y se usa una tarjeta de verdad. Si Jose lo confirma, la marca se compone despues en local sobre la tarjeta lisa; si no, el plano se cae y no se insinua."
     },
     {
       "id": "11_caras_calle",
