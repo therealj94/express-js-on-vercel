@@ -14440,6 +14440,17 @@ const VETA = (() => {
        El teatro las dibuja como un objeto más, y las dos cámaras lo ven bien.
        Y mientras cuenta, la mirada queda BLINDADA: solo el botón de salir. */
     const enEscena = (txt, peso) => {
+      /* SOLO DENTRO DEL VISOR. En una pantalla normal la capa HTML ya escribe
+         la frase, así que llamar también al teatro la pintaba DOS VECES: la
+         de arriba en la capa, y la del teatro más abajo y en otro estilo.
+         Se veía en la primera pantalla que mira cualquiera — el título «EL
+         ORIGEN DE TODO» salía duplicado, y el versículo también.
+         Lo cazó `apertura.mjs`, que mide los píxeles encendidos fuera de la
+         banda del texto: encontró 255 de 255 donde no debía haber nada, que
+         era la segunda copia. La intención estaba escrita tres líneas más
+         arriba —«dentro del visor manda el teatro; en pantalla, la capa
+         HTML»— y a la llamada le faltaba la condición. */
+      if (!enVisor) return;
       try { window.__AE_DECIR?.(txt, peso || 'normal'); } catch { /* nada */ }
     };
     if (enVisor) {

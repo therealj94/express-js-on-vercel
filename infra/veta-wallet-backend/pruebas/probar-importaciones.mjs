@@ -15,10 +15,24 @@ import { builtinModules } from 'module'
 
 const RAIZ = new URL('..', import.meta.url).pathname.replace(/\/$/, '')
 const pkg = JSON.parse(readFileSync(RAIZ + '/package.json', 'utf8'))
+/* LOS QUE SOLO EXISTEN CON EL PREFIJO `node:`.
+ *
+ * `builtinModules` NO los trae, y no es un descuido de Node: los dejó fuera a
+ * propósito porque no se pueden importar sin el prefijo, así que ponerlos en
+ * esa lista haría creer que `import 'test'` funciona.
+ *
+ * Sin esto, esta prueba marcaba `node:test` como «no está en package.json» y
+ * pedía instalar como dependencia algo que viene dentro de Node. Un archivo
+ * que usa el corredor de pruebas de Node quedaba en rojo para siempre, y el
+ * arreglo obvio —agregarlo a package.json— habría instalado un paquete ajeno
+ * con ese nombre. */
+const SOLO_CON_PREFIJO = ['test', 'test/reporters', 'sea', 'sqlite']
+
 const tengo = new Set([
   ...Object.keys(pkg.dependencies || {}),
   ...Object.keys(pkg.devDependencies || {}),
   ...builtinModules, ...builtinModules.map(m => 'node:' + m),
+  ...SOLO_CON_PREFIJO.map(m => 'node:' + m),
 ])
 
 function archivos(dir) {
