@@ -26,9 +26,9 @@ de asteriscos sueltos es lo primero que hace que algo parezca a medio hacer.
 """
 
 import pathlib
-import re
 import sys
 import unittest
+from unittest import mock
 
 AQUI = pathlib.Path(__file__).resolve().parent
 sys.path.insert(0, str(AQUI))
@@ -47,23 +47,34 @@ LISTA = ('Jose=50432136457/j.ordonez@ordenglobal.org:admin,'
          'solocorreo@ordenglobal.org:legal')
 
 
+# Lo que «mira» AU-RA al escribir el mensaje. Se finge para que las pruebas
+# no salgan a la cadena ni a Meta: aquí se prueba EL MENSAJE, no las fuentes,
+# y una prueba que necesita internet es una prueba que un día no se corre.
+VIVO = {'pendientes': ['2 premios por pagar'],
+        'lineas': ['cadena en el bloque 52.717', 'quedan 200 de 205 premios'],
+        'rotas': []}
+
+
 class _Base(unittest.TestCase):
     def setUp(self):
         escalafon.recargar(LISTA)
+        self.p = mock.patch.object(miradas, 'para', return_value=dict(VIVO))
+        self.p.start()
 
     def tearDown(self):
+        self.p.stop()
         escalafon.recargar('')
 
 
 class LEHABLAAALGUIENNOAUNNUMERO(_Base):
 
     def test_lo_saluda_por_su_nombre(self):
-        self.assertTrue(presentacion.para('50433467760').startswith('Hola Nicole'))
+        self.assertTrue(presentacion.para('50433467760').startswith('Nicole 👋'))
 
     def test_y_sin_nombre_saluda_igual_sin_dejar_un_hueco(self):
         t = presentacion.para('solocorreo@ordenglobal.org')
         self.assertTrue(t.startswith('Hola 👋'), t[:30])
-        self.assertNotIn('Hola  ', t)
+        self.assertNotIn('  👋', t)
 
     def test_a_quien_no_esta_en_la_lista_no_le_dice_nada(self):
         self.assertIsNone(presentacion.para('50499999999'))
@@ -117,22 +128,22 @@ class NOPROMETELOQUENOPUEDE(_Base):
     def test_separa_lo_que_sale_solo_de_lo_que_necesita_firma(self):
         t = presentacion.para('50494716808')          # Carlos, tecnología
         self.assertIn('salen al momento', t)
-        self.assertIn('firmar un admin', t)
-        self.assertLess(t.index('salen al momento'), t.index('firmar un admin'))
+        self.assertIn('cuando los firme', t)
+        self.assertLess(t.index('salen al momento'), t.index('cuando los firme'))
 
     def test_y_explica_POR_QUE_hace_falta_la_firma(self):
         """Un límite que se descubre chocándose se lee como un fallo. Dicho
         antes, es una regla."""
         t = presentacion.para('50494716808')
-        self.assertIn('nadie ejecuta nada solo', t)
-        self.assertIn('José tampoco', t)
+        self.assertIn('Nadie ejecuta nada solo', t)
+        self.assertIn('no puede firmarse lo suyo', t)
 
     def test_a_quien_no_tiene_nada_que_firmar_no_le_habla_de_firmas(self):
         escalafon.recargar('Ana=50411112222:operacion')
         t = presentacion.para('50411112222')
         suyos = [k for k, _f in catalogo.para(('operacion',))]
         if not any(catalogo.necesita_permiso(k) for k in suyos):
-            self.assertNotIn('firmar un admin', t)
+            self.assertNotIn('cuando los firme', t)
 
 
 class DICELOQUENOVE(_Base):
@@ -188,13 +199,10 @@ class ESCRITOCOMOLOENTIENDEWHATSAPP(_Base):
     def test_y_no_es_tan_corto_que_no_diga_nada(self):
         self.assertGreater(len(presentacion.para('50433467760')), 700)
 
-    def test_lo_primero_que_se_ve_es_lo_que_puede_hacer_hoy(self):
-        """Nada de «me complace presentarme»."""
-        t = presentacion.para('50433467760')
-        cabeza = '\n'.join(t.split('\n')[:6]).lower()
-        self.assertIn('lo tuyo es', cabeza)
-        for relleno in ['me complace', 'es un placer', 'estoy emocionad']:
-            self.assertNotIn(relleno, t.lower())
+    def test_no_hay_relleno_de_bienvenida(self):
+        for relleno in ['me complace', 'es un placer', 'estoy emocionad',
+                        'no dudes en']:
+            self.assertNotIn(relleno, presentacion.para('50433467760').lower())
 
 
 class SEMANDAAQUIENSEPUEDE(_Base):
@@ -212,11 +220,52 @@ class SEMANDAAQUIENSEPUEDE(_Base):
     def test_cada_uno_recibe_EL_SUYO(self):
         for donde, texto, nombre in presentacion.para_todos():
             if nombre:
-                self.assertIn(f'Hola {nombre}', texto)
+                self.assertTrue(texto.startswith(f'{nombre} 👋'), texto[:30])
 
     def test_sin_escalafon_no_se_manda_nada(self):
         escalafon.recargar('')
         self.assertEqual(presentacion.para_todos(), [])
+
+
+class ABRESHOWANDONOCONTANDO(_Base):
+    """La diferencia entre otro mensaje de bienvenida y este.
+
+    «Puedo darte el estado de la cadena» es una promesa. «La cadena va en el
+    bloque 52.717» ya es el trabajo hecho, y se comprueba en ordenscan.com.
+    """
+
+    def test_lo_primero_es_un_dato_de_VERDAD(self):
+        t = presentacion.para('50433467760')
+        cabeza = t[:t.index('━')]
+        self.assertIn('52.717', cabeza, 'no abre con nada real')
+        self.assertIn('lo acabo de mirar', cabeza)
+
+    def test_y_lo_que_NECESITA_a_alguien_va_primero(self):
+        """Es lo que más impresiona y lo más útil a la vez."""
+        t = presentacion.para('50433467760')
+        self.assertLess(t.index('2 premios por pagar'), t.index('52.717'))
+
+    def test_si_las_fuentes_NO_contestan_no_se_inventa_nada(self):
+        """Un mensaje de presentación que abre con un dato falso arruina justo
+        lo que venía a demostrar."""
+        with mock.patch.object(miradas, 'para',
+                               side_effect=RuntimeError('sin red')):
+            t = presentacion.para('50433467760')
+        self.assertNotIn('▸', t, 'inventó datos con las fuentes caídas')
+        self.assertIn('ENCARGOS', t, 'se cayó el mensaje entero')
+        self.assertGreater(len(t), 700)
+
+    def test_no_promete_ganancia_ni_en_el_entusiasmo(self):
+        """El mensaje es para emocionar, y ahí es donde se cuela una promesa."""
+        for quien in ['50432136457', '50433467760', '50499080571']:
+            t = presentacion.para(quien).lower()
+            for mala in ['ganancia', 'rentabilidad', 'vas a ganar',
+                         'revaloriz', 'garantiz', 'invertí', 'te conviene']:
+                self.assertNotIn(mala, t, f'{quien}: «{mala}»')
+
+    def test_sigue_cabiendo_en_un_mensaje(self):
+        for quien in ['50432136457', '50499080571']:
+            self.assertLess(len(presentacion.para(quien)), 4000, quien)
 
 
 if __name__ == '__main__':
