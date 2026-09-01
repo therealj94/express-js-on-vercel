@@ -22,7 +22,9 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import numpy as np
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageDraw, ImageFilter, ImageFont
+
+from acabado import acabar, escalonar, salida, salida_rebote, sombra_larga
 
 W, H, FPS = 1080, 1920, 30
 NEGRO = (11, 11, 12)
@@ -45,9 +47,13 @@ def fuente(ruta, px):
 
 
 def suave(x):
-    """Aceleración y frenada. Un movimiento lineal se ve de ordenador."""
-    x = min(max(x, 0.0), 1.0)
-    return x * x * (3 - 2 * x)
+    """Ease-out exponencial: el 80 % del camino en el primer 20 % del tiempo.
+
+    Antes era smoothstep, que es simétrico y por tanto blando en los dos
+    extremos. "Si tu curva de velocidad parece un triángulo, es amateur: debe
+    tener entrada vertical y salida muy larga." Cambiar solo esta función
+    cambia el carácter de TODOS los movimientos de la película."""
+    return salida(x, 4.6)
 
 
 def centrar(d, texto, f, y, color, sep=0):
@@ -181,7 +187,7 @@ def bloque_sistema_solar(t, dur, icono, orbitas):
 
     # Primero las lineas: son lo que dice que el centro sostiene al resto.
     for k, o in enumerate(orbitas):
-        ap = suave(min(max((t - 0.5 - k * 0.14) / 0.6, 0), 1))
+        ap = suave(min(max((t - 0.55 - escalonar(k, 3.0)) / 0.55, 0), 1))
         if ap <= 0:
             continue
         rad = np.radians(o["ang"])
@@ -209,7 +215,9 @@ def bloque_sistema_solar(t, dur, icono, orbitas):
 
     # Y los mundos que orbitan, cada uno entrando con su retardo.
     for k, o in enumerate(orbitas):
-        ap = suave(min(max((t - 0.5 - k * 0.14) / 0.6, 0), 1))
+        # Con sobrepaso: el circulo se pasa un 5 % y vuelve, como algo que
+        # tiene masa y un buen amortiguador.
+        ap = salida_rebote(min(max((t - 0.55 - escalonar(k, 3.0)) / 0.55, 0), 1))
         if ap <= 0:
             continue
         rad = np.radians(o["ang"])
@@ -221,6 +229,12 @@ def bloque_sistema_solar(t, dur, icono, orbitas):
                   outline=(150, 132, 80, int(180 * ap)), width=2)
         # El icono real dentro del circulo. Ordenexchange y AuCorp no tienen
         # archivo en el paquete y se quedan solo con su marca.
+        # Sombra muy difusa y al 30 %: despega el elemento sin ensuciar.
+        if ap > 0.3:
+            disco = Image.new("RGBA", (int(rr * 2) + 4, int(rr * 2) + 4), (0, 0, 0, 0))
+            ImageDraw.Draw(disco).ellipse([2, 2, rr * 2, rr * 2], fill=(0, 0, 0, 255))
+            sombra_larga(im, disco, (int(x - rr), int(y - rr)),
+                         radio=int(rr * 1.1), opacidad=0.30, dy=int(rr * 0.42))
         arch = ICONOS.get(o["nombre"])
         if arch is not None and ap > 0.05:
             ic = arch.copy()
@@ -492,7 +506,7 @@ def main():
     n = int(dur_total * FPS)
 
     ff = subprocess.Popen(
-        ["ffmpeg", "-v", "error", "-y", "-f", "rawvideo", "-pix_fmt", "rgba",
+        ["ffmpeg", "-v", "error", "-y", "-f", "rawvideo", "-pix_fmt", "rgb24",
          "-s", f"{W}x{H}", "-r", str(FPS), "-i", "pipe:0",
          "-pix_fmt", "yuv420p", "-c:v", "libx264", "-crf", "17",
          "-preset", "medium", salida], stdin=subprocess.PIPE)
@@ -529,7 +543,10 @@ def main():
             else:
                 im = bloque_cierre(tl, b["dur"], destinos, logo_im,
                                    b["rotulos"], b["t"])
-        ff.stdin.write(im.tobytes())
+        # Aberración cromática, viñeta y 2 % de grano. "El diseño digital
+        # limpio se ve barato": esto es lo que rompe la perfección de render y
+        # de paso mata el bandeado de los degradados del halo.
+        ff.stdin.write(acabar(im, semilla=fr).tobytes())
         if fr % 150 == 0:
             print(f"  {t:5.1f}s / {dur_total:.0f}s", flush=True)
 

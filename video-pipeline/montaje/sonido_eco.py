@@ -31,64 +31,93 @@ def _t(dur):
     return np.arange(int(SR * dur)) / SR
 
 
-def polvo(dur=2.2):
-    """Siseo filtrado cuya altura sube: los puntos encontrando su sitio."""
-    t = _t(dur)
-    rng = np.random.default_rng(3)
-    x = rng.standard_normal(len(t))
-    # Un pasa-banda barato que se abre con el tiempo.
-    for k in range(3):
-        x = x - np.convolve(x, np.ones(40) / 40, mode="same")
-    env = np.clip(t / dur, 0, 1) ** 1.5 * np.exp(-((t - dur * 0.8) ** 2) / 0.6)
-    return x * env * 0.5
+def _rug(n, semilla, suav=1):
+    """Ruido rugoso: la base de todo lo que suena a materia y no a sintetizador."""
+    rng = np.random.default_rng(semilla)
+    x = rng.standard_normal(n)
+    if suav > 1:
+        x = np.convolve(x, np.ones(suav) / suav, mode="same")
+    return x
 
 
-def impacto(dur=2.6):
-    """El golpe de la marca al cerrarse. Barrido de altura hacia abajo."""
-    t = _t(dur)
-    f = 120 * np.exp(-t * 9) + 38
-    cuerpo = np.sin(2 * np.pi * np.cumsum(f) / SR) * np.exp(-t * 2.6)
-    rng = np.random.default_rng(11)
-    aire = rng.standard_normal(len(t))
-    aire = (aire - np.convolve(aire, np.ones(12) / 12, mode="same")) * np.exp(-t * 26)
-    return cuerpo * 0.85 + aire * 0.25
+def roce_metal(dur=2.6, semilla=5):
+    """Dos piezas de metal rozando. Sustituye al timbre de campana.
 
-
-def clic(dur=0.13):
-    """Entrada de una función. Corto, con cuerpo, sin llegar a ser un pitido."""
-    t = _t(dur)
-    return (np.sin(2 * np.pi * 880 * t) * 0.5 +
-            np.sin(2 * np.pi * 1320 * t) * 0.25) * np.exp(-t * 46)
-
-
-def barrido(dur=0.9):
-    """La luz del lector cruzando el código."""
-    t = _t(dur)
-    f = 400 + 2600 * (t / dur)
-    env = np.sin(np.pi * t / dur) ** 2
-    return np.sin(2 * np.pi * np.cumsum(f) / SR) * env * 0.32
-
-
-def moneda(dur=2.4):
-    """El oro. Parciales inarmónicos, que es lo que separa un metal de una nota."""
+    El anterior eran cuatro senos inarmónicos y sonaba "a sintetizador de los
+    80". Un metal real no es una nota: es fricción -ruido filtrado muy
+    estrecho- con resonancias que se mueven mientras la superficie raspa."""
     t = _t(dur)
     x = np.zeros(len(t))
-    for f, a, d in ((1180, 0.5, 2.2), (2630, 0.32, 3.0), (4310, 0.18, 4.4),
-                    (5870, 0.10, 6.0)):
-        x += a * np.sin(2 * np.pi * f * t) * np.exp(-t * d)
-    return x * 0.55
+    base = _rug(len(t), semilla)
+    # Tres resonancias que se deslizan: es el "raspado", no un acorde.
+    for f0, f1, a in ((1750, 1180, 0.5), (3300, 2450, 0.3), (5400, 4100, 0.16)):
+        f = f0 + (f1 - f0) * (t / dur)
+        # Filtro resonante barato: modular el ruido por una portadora que barre.
+        x += a * base * np.sin(2 * np.pi * np.cumsum(f) / SR)
+    return x * np.exp(-t * 1.7) * 0.9
 
 
-def sello(dur=1.6):
-    """El comprobante confirmado: dos notas que resuelven hacia arriba."""
+def pulso_pecho(dur=3.0, f=41.0):
+    """El golpe que se siente en el pecho, no el que se oye.
+
+    "Un pulso de baja frecuencia que vibre en el pecho, no ruiditos
+    electrónicos." A 41 Hz un altavoz de móvil casi no lo reproduce, pero unos
+    auriculares o un equipo sí, y es lo que da autoridad."""
     t = _t(dur)
-    x = np.zeros(len(t))
-    for f, ini in ((523.25, 0.0), (783.99, 0.16)):
-        m = t >= ini
-        tt = t - ini
-        x[m] += (np.sin(2 * np.pi * f * tt[m]) +
-                 0.3 * np.sin(2 * np.pi * f * 2 * tt[m])) * np.exp(-tt[m] * 3.4)
-    return x * 0.42
+    cuerpo = np.sin(2 * np.pi * f * t) * np.exp(-t * 1.5)
+    # Un armónico para que exista también en altavoces pequeños.
+    cuerpo += 0.35 * np.sin(2 * np.pi * f * 2.5 * t) * np.exp(-t * 3.2)
+    return cuerpo
+
+
+def polvo(dur=2.2, semilla=3):
+    """Aire, no siseo. Una masa de ruido grave que se abre y se cierra."""
+    t = _t(dur)
+    x = _rug(len(t), semilla, 6)
+    env = np.sin(np.pi * np.clip(t / dur, 0, 1)) ** 1.6
+    return x * env * 0.55
+
+
+def impacto(dur=3.0, semilla=11):
+    """Golpe: pulso de pecho + un chasquido de madera encima."""
+    t = _t(dur)
+    madera = _rug(len(t), semilla, 3) * np.exp(-t * 34)
+    return pulso_pecho(dur) * 0.9 + madera * 0.35
+
+
+def clic(dur=0.20, semilla=7):
+    """Toque seco de madera. El anterior eran dos senos y sonaba a notificación."""
+    t = _t(dur)
+    x = _rug(len(t), semilla, 2) * np.exp(-t * 60)
+    # Un par de modos de resonancia: la madera suena a algo, no a nada.
+    for f, a in ((420, 0.5), (930, 0.25)):
+        x += a * np.sin(2 * np.pi * f * t) * np.exp(-t * 40)
+    return x * 0.7
+
+
+def barrido(dur=1.0, semilla=13):
+    """Aire comprimido cruzando, no un pitido que sube."""
+    t = _t(dur)
+    x = _rug(len(t), semilla, 3)
+    centro = 700 + 3200 * (t / dur)
+    x = x * (0.5 + 0.5 * np.sin(2 * np.pi * np.cumsum(centro) / SR))
+    return x * np.sin(np.pi * t / dur) ** 2 * 0.45
+
+
+def moneda(dur=2.6, semilla=5):
+    """El oro: roce de metal, con un poco de cuerpo grave debajo."""
+    return roce_metal(dur, semilla) * 0.85 + pulso_pecho(dur, 55.0) * 0.30
+
+
+def sello(dur=1.8, semilla=17):
+    """El comprobante: un golpe de sello sobre papel y su resonancia."""
+    t = _t(dur)
+    papel = _rug(len(t), semilla, 2) * np.exp(-t * 46) * 0.8
+    cuerpo = pulso_pecho(dur, 68.0) * 0.5
+    # Una sola nota corta y seca, sin la resolucion de dos notas que sonaba
+    # a musiquita de aplicacion.
+    tono = np.sin(2 * np.pi * 660 * t) * np.exp(-t * 9) * 0.18
+    return papel + cuerpo + tono
 
 
 def pista(dur, eventos):
