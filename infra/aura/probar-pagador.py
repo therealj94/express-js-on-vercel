@@ -37,7 +37,31 @@ class _CuentaFalsa:
 
 
 _falso.Account = _CuentaFalsa
-sys.modules.setdefault('eth_account', _falso)
+
+# `eth_utils` igual: `_firmar` lo usa para poner la direccion en su forma con
+# mayusculas. El doble MARCA lo que convierte, para poder comprobar que la
+# conversion se hizo de verdad y no que alguien la borro sin querer.
+_falso_utils = types.ModuleType('eth_utils')
+_falso_utils.to_checksum_address = lambda d: 'CHECKSUM(' + d + ')'
+
+# SE INTENTA LA DE VERDAD PRIMERO, y esto no es un detalle.
+#
+# Antes esto era `sys.modules.setdefault('eth_account', _falso)`, que parece
+# «usa la de verdad si esta» y NO ES ESO: `setdefault` solo mira si la clave ya
+# esta en `sys.modules`, y no lo esta —nadie la habia importado todavia— asi
+# que metia el doble SIEMPRE, tambien en el nodo, donde la librería si existe.
+#
+# O sea que la prueba escrita para cazar el fallo del 31-ago se saltaba en las
+# dos maquinas y el `skipped=1` del final parecía normal. Una prueba que nunca
+# corre es peor que no tenerla: ocupa el lugar de la que hacía falta.
+try:
+    import eth_account            # noqa: F401
+    import eth_utils              # noqa: F401
+    HAY_ETH = True
+except ImportError:
+    sys.modules['eth_account'] = _falso
+    sys.modules['eth_utils'] = _falso_utils
+    HAY_ETH = False
 
 import pagador   # noqa: E402
 import premio    # noqa: E402
@@ -342,6 +366,92 @@ class LOQUEPAGAESLOQUESEVIGILA(unittest.TestCase):
                       '0xdb11c06794d779eaf8aac59f099ae32ef493bdd4']:
             self.assertIn(vieja, premio.BILLETERAS_INTERNAS, vieja)
             self.assertIsNotNone(premio.problema_con(vieja), vieja)
+
+
+class LAUNICAFUNCIONQUENADIEEJECUTABA(unittest.TestCase):
+    """`_firmar` estaba simulada en TODAS las pruebas de este archivo.
+
+    Del 31-ago 20:12 al 1-sep dio 438 vueltas seguidas reventando con
+    «Transaction had invalid fields: {'to': '0xd894…'}» —el pagador no pagó ni
+    una vez en veintidós horas, con el premio de una persona esperando— y la
+    batería entera seguía en verde.
+
+    `eth_account` exige la dirección en su forma con mayúsculas y minúsculas
+    (EIP-55). Nosotros la guardamos en minúsculas a propósito, porque es la
+    única manera de que `en_vuelo` y `problema_con` comparen bien: dos formas
+    de escribir la misma dirección son dos direcciones para un `set`, y ahí
+    empieza el doble pago.
+
+    O sea que las dos cosas son ciertas y las dos hacen falta. La conversión va
+    en el último instante, al firmar, y no antes.
+    """
+
+    def _firma(self, direccion):
+        visto = {}
+
+        class Cuenta:
+            address = '0xPAGADOR'
+            key = b'\x01' * 32
+
+        def sign_transaction(tx, _clave):
+            visto['tx'] = tx
+            class F:
+                hash = type('h', (), {'hex': staticmethod(lambda: '0xaa')})()
+                raw_transaction = type('r', (), {'hex': staticmethod(lambda: '0xbb')})()
+            return F()
+
+        # La marca se pone aqui, sobre la que este cargada —la de verdad o el
+        # doble—, para que esta prueba diga lo mismo en las dos maquinas.
+        # `_firmar` importa dentro de la funcion, asi que le llega la parcheada.
+        with mock.patch.object(sys.modules['eth_account'], 'Account',
+                               type('A', (), {'sign_transaction':
+                                              staticmethod(sign_transaction)})), \
+             mock.patch.object(sys.modules['eth_utils'], 'to_checksum_address',
+                               lambda d: 'CHECKSUM(' + d + ')'):
+            pagador._firmar(Cuenta(), direccion, 7, 1000)
+        return visto['tx']
+
+    def test_la_direccion_se_convierte_ANTES_de_firmar(self):
+        tx = self._firma('0xd894df2b1eedd017c7bb2b01d9a16391ccc4bda5')
+        self.assertEqual(tx['to'],
+                         'CHECKSUM(0xd894df2b1eedd017c7bb2b01d9a16391ccc4bda5)',
+                         'se firmó con la dirección tal cual: es el fallo del '
+                         '31-ago, 438 vueltas sin pagar')
+
+    def test_y_lo_demas_de_la_transaccion_sigue_igual(self):
+        """La conversión no puede llevarse por delante el monto grabado."""
+        tx = self._firma('0x' + 'ab' * 20)
+        self.assertEqual(tx['value'], pagador.MONTO_WEI)
+        self.assertEqual(tx['nonce'], 7)
+        self.assertEqual(tx['chainId'], pagador.CADENA_ID)
+
+    def test_lo_que_se_GUARDA_sigue_en_minusculas(self):
+        """Si lo guardado cambiara de forma, `en_vuelo` dejaría de reconocerlo
+        y el mismo premio se pagaría dos veces."""
+        self.assertEqual((' 0xAB' * 1).strip().lower(), '0xab')
+        # La minúscula se aplica al leer el reclamo, no al firmar: se comprueba
+        # sobre el código para que nadie la mueva a `_firmar` «para unificar».
+        fuente = (AQUI / 'pagador.py').read_text()
+        self.assertIn("para = (r.get('direccion') or '').lower()", fuente,
+                      'la dirección dejó de guardarse en minúsculas: '
+                      'ahí empieza el doble pago')
+
+
+@unittest.skipUnless(HAY_ETH, 'eth_account solo vive en el venv del nodo')
+class FIRMANDODEVERDAD(unittest.TestCase):
+    """Con la librería de verdad, que es la que rechazó la dirección.
+
+    Se salta en la máquina de desarrollo y corre en el nodo, que es donde el
+    pagador vive. Un doble nunca habría cazado esto: el doble aceptaba todo.
+    """
+
+    def test_una_direccion_en_minusculas_se_firma_sin_reventar(self):
+        from eth_account import Account
+        cuenta = Account.from_key('0x' + '11' * 32)
+        h, crudo = pagador._firmar(
+            cuenta, '0xd894df2b1eedd017c7bb2b01d9a16391ccc4bda5', 0, 1000)
+        self.assertTrue(h.startswith('0x'))
+        self.assertTrue(crudo.startswith('0x'))
 
 
 if __name__ == '__main__':

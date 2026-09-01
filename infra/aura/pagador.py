@@ -155,8 +155,26 @@ def _avisar(rel, quien, direccion, tx):
 # ── Pagar ───────────────────────────────────────────────────────────────────
 
 def _firmar(cuenta, para, nonce, gas_precio):
+    """Firma el pago. `para` llega en MINUSCULAS y aqui se pone en su forma
+    con mayusculas y minusculas (checksum), que es la unica que acepta
+    `eth_account`.
+
+    LA CONVERSION VA AQUI Y EN NINGUN OTRO LADO. En minusculas es como se
+    guarda y como se compara —el conjunto `en_vuelo`, `premio.problema_con`,
+    el archivo de reclamos— y esa uniformidad es lo que impide el doble pago:
+    dos formas de escribir la misma direccion son dos direcciones para un
+    `set`. Asi que se convierte en el ultimo instante, para firmar, y lo que
+    se guarda sigue en minusculas.
+
+    Se rompio del 31-ago 20:12 al 1-sep: 438 vueltas seguidas reventando con
+    «Transaction had invalid fields», con el premio de una persona esperando.
+    No lo vio ninguna prueba porque `_firmar` estaba simulada en TODAS —la
+    unica funcion que toca `eth_account` era justo la que nadie ejecutaba.
+    """
     from eth_account import Account
-    tx = {'chainId': CADENA_ID, 'nonce': nonce, 'to': para,
+    from eth_utils import to_checksum_address
+    tx = {'chainId': CADENA_ID, 'nonce': nonce,
+          'to': to_checksum_address(para),
           'value': MONTO_WEI, 'gas': GAS, 'gasPrice': gas_precio}
     f = Account.sign_transaction(tx, cuenta.key)
     return f.hash.hex() if f.hash.hex().startswith('0x') else '0x' + f.hash.hex(), \
