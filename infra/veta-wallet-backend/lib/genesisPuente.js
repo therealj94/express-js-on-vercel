@@ -19,7 +19,7 @@
 //
 //   import { routerGenesis, parserRostro } from './genesis.router.js'
 //
-//   app.use('/genesis/biometria', parserRostro)   // ANTES del parser general
+//   app.use(['/genesis/biometria', '/genesis/documento-fotos', '/genesis/documento/leer'], parserRostro)   // ANTES del parser general
 //   app.use(bodyParser.json({ limit: '100kb' }))  // el de siempre, sin tocar
 //   ...
 //   app.use('/genesis', routerGenesis({ exigirSesion: miMiddlewareDeAuth }))
@@ -203,6 +203,28 @@ export function routerGenesis({ exigirSesion } = {}) {
         motivo: 'genesis-sin-fotos',
       })
     }
+    responder(res)(r)
+  })
+
+  /**
+   * Lee el REVERSO desde su foto, sin adjuntar nada.
+   *
+   * Genesis ID saca el texto con Rekognition, rescata la zona mecánica con sus
+   * dígitos de control y descarta la imagen; devuelve la MRZ y lo que dice
+   * para que la web lo enseñe y la persona lo confirme. Sin lector en Genesis
+   * responde 503 con `motivo: 'sin-lector'` y la web ofrece teclear las
+   * líneas. Montar `parserRostro` también en esta ruta: la foto pesa más que
+   * el límite general.
+   */
+  router.post('/documento/leer', async (req, res) => {
+    const idn = await idDe(req.usuario.email)
+    if (!idn) return res.status(404).json({ error: 'Identidad no encontrada' })
+    const r = await llamar(`/api/v1/identidades/${idn}/documento/leer`, {
+      method: 'POST', body: JSON.stringify({ imagen: req.body?.imagen }),
+    })
+    // Un Genesis anterior sin la ruta: se traduce a «sin lector», que la web
+    // ya sabe explicar, en vez de un 404 que suena a «no existís».
+    if (r.estado === 404) return res.status(503).json({ error: 'Lector no disponible', motivo: 'sin-lector' })
     responder(res)(r)
   })
 
