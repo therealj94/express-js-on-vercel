@@ -252,6 +252,21 @@
     }
   ],
   "picks": {
-    "_nota": "plano -> numero de toma elegida (1-4). Se rellena al ver la hoja de contactos; sin entrada se usa la 1."
+    "_nota": "Elegidas viendo tres momentos de cada toma: que la accion ocurra entera, negro de verdad detras, y que no se lea a render 3D.",
+    "01_oro_superficie": 2,
+    "02_oro_moneda": 3,
+    "03_gotas_cuatro": 1,
+    "04_telefono_piedra": 2,
+    "05_dedo_cristal": 2,
+    "06_mano_recibe": 1,
+    "07_telefono_terminal": 4,
+    "08_tarjeta_terminal": 1,
+    "09_manos_intercambio": 2,
+    "10_dos_telefonos": 1,
+    "11_moneda_gira": 3,
+    "12_aucorp_moneda": 3,
+    "13_luz_viaja": 4,
+    "14_familia": 2,
+    "15_oro_cierre": 1
   }
 }
