@@ -86,14 +86,20 @@ LOGOS = Path(__file__).resolve().parent.parent.parent / "logos-orden-global"
 # OBJETO, el NOMBRE en su propia tipografía, y la marca pequeña, siempre del
 # mismo tamaño y en el mismo sitio. 'recorte' se queda con el símbolo y tira el
 # nombre y el lema, que ya van en tipografía nuestra.
+# El tercer valor dice si la marca necesita PLACA. Medido: el símbolo de Veta
+# solo tiene un 5,8% de trazo en su recuadro —Ordenex un 32,7%, Genesis un
+# 100%—, así que a 132 px en pantalla su línea baja de 2 px y se lee como un
+# garabato. José: "la vetawallet en pantalla se ve fatal". Metida en una placa
+# oscura con filo de oro gana campo propio y se lee; y de paso las ocho marcas
+# quedan como una familia en vez de siete tratamientos distintos.
 MARCAS = {
-    "og":         ("orden-global/orden-global-logo.png", None),
-    "veta":       ("veta-wallet/veta-wallet-icono.png", None),
-    "genesis":    ("genesis-id/genesis-id-icono.png", None),
-    "mytokenpay": ("mytokenpay/mytokenpay-icono.png", None),
-    "pulse":      ("pulse2chat/pulse2chat-logo.png", 0.57),   # solo la P
-    "ordenex":    ("ordenex/ordenex-logo.png", 0.84),         # sin la palabra
-    "aucorp":     ("aucorp/aucorp-logo.png", 0.80),           # sin la palabra
+    "og":         ("orden-global/orden-global-logo.png", None, False),
+    "veta":       ("veta-wallet/veta-wallet-icono.png", None, True),
+    "genesis":    ("genesis-id/genesis-id-icono.png", None, False),
+    "mytokenpay": ("mytokenpay/mytokenpay-icono.png", None, False),
+    "pulse":      ("pulse2chat/pulse2chat-logo.png", 0.57, True),   # solo la P
+    "ordenex":    ("ordenex/ordenex-logo.png", 0.84, True),         # sin la palabra
+    "aucorp":     ("aucorp/aucorp-logo.png", 0.80, True),           # sin la palabra
 }
 _marcas: dict = {}
 
@@ -103,7 +109,7 @@ def marca(clave: str, lado: int) -> Image.Image:
     redondeadas si es un cuadrado de app, encajada en un cuadro de `lado`."""
     if (clave, lado) in _marcas:
         return _marcas[(clave, lado)]
-    ruta, recorte = MARCAS[clave]
+    ruta, recorte, placa = MARCAS[clave]
     im = Image.open(LOGOS / ruta)
     cuadrado = im.mode != "RGBA"       # icono de app: fondo propio, sin alfa
     im = im.convert("RGBA")
@@ -128,8 +134,23 @@ def marca(clave: str, lado: int) -> Image.Image:
         x0, x1 = np.percentile(xs, [0.3, 99.7]).astype(int)
         y0, y1 = np.percentile(ys, [0.3, 99.7]).astype(int)
         im = Image.fromarray(a).crop((x0, y0, x1 + 1, y1 + 1))
-    esc = lado / max(im.size)
-    im = im.resize((max(1, int(im.width * esc)), max(1, int(im.height * esc))), Image.LANCZOS)
+    if placa:
+        # El símbolo, centrado y grande, dentro de una placa oscura con filo.
+        dentro = int(lado * 0.68)
+        esc = dentro / max(im.size)
+        sim = im.resize((max(1, int(im.width * esc)), max(1, int(im.height * esc))),
+                        Image.LANCZOS)
+        caja = Image.new("RGBA", (lado, lado), (0, 0, 0, 0))
+        dc = ImageDraw.Draw(caja, "RGBA")
+        r = int(lado * 0.24)
+        dc.rounded_rectangle([0, 0, lado - 1, lado - 1], r, fill=(13, 15, 19, 236),
+                             outline=(214, 173, 90, 120), width=2)
+        caja.alpha_composite(sim, ((lado - sim.width) // 2, (lado - sim.height) // 2))
+        im = caja
+    else:
+        esc = lado / max(im.size)
+        im = im.resize((max(1, int(im.width * esc)), max(1, int(im.height * esc))),
+                       Image.LANCZOS)
     _marcas[(clave, lado)] = im
     return im
 
@@ -167,6 +188,29 @@ def _velo(im: Image.Image, cx: int, cy: int, radio: int, fuerza: float):
     negro = Image.new("RGBA", capa.size, (0, 0, 0, 0))
     negro.putalpha(capa)
     im.alpha_composite(negro, (cx - radio, cy - radio))
+
+
+def sitio(im: Image.Image, texto: str, rel: float, dur: float):
+    """El cartel de dónde estamos, arriba, pequeño y en versalitas espaciadas.
+
+    Es el recurso más viejo del documental y sigue siendo el más eficaz: dos
+    palabras y el espectador ya sabe que las separan dos mil kilómetros, sin
+    que nadie se lo cuente. Entra por opacidad y se va igual: no compite."""
+    a = salida(float(np.clip(rel / 0.5, 0, 1)), 3.0) * \
+        salida(float(np.clip((dur - rel) / 0.45, 0, 1)), 3.0)
+    if a <= 0.02:
+        return
+    d = ImageDraw.Draw(im, "RGBA")
+    f = fuente(F_ROT, 30)
+    an = ancho_con_track(d, texto, f, 8.0)
+    x, y = (W - an) / 2, H * 0.128
+    texto_con_sombra(im, (x, y), texto, f, TEXTO + (int(238 * a),), 8.0,
+                     sombra=0.6, radio=22)
+    # Una línea fina debajo, del ancho del texto, que lo asienta.
+    capa = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+    ImageDraw.Draw(capa, "RGBA").line(
+        [(x, y + 50), (x + an, y + 50)], fill=(214, 173, 90, int(150 * a)), width=2)
+    im.alpha_composite(capa)
 
 
 def producto(im: Image.Image, nombre: str, clave: str, rel: float, dur: float):
@@ -312,51 +356,66 @@ def rotulo(im: Image.Image, texto: str, rel: float, dur: float, chico=False,
 
 
 def burbuja(im: Image.Image, texto: str, rel: float, dur: float, foto=None,
-            alto=0.30):
-    """El mensaje del final, con el aspecto de PULSE2CHAT.
+            alto=0.30, quien=None, mia=False):
+    """Una burbuja de PULSE2CHAT sobreimpresa, grande y legible.
 
-    La primera versión era un rectángulo gris con una foto recortada a la altura
-    del pecho de la madre —sin cabeza— y José la despachó en tres palabras: "se
-    mira super mal". Ahora es una burbuja de su app: azul marino, la etiqueta de
-    quién escribe en oro, y la foto con las esquinas redondeadas.
+    José: *"la conversación entre ambas debe aparecer como burbuja que la gente
+    pueda ver lo que hablan"*. Dentro del teléfono la conversación es textura —
+    dice que existe una mensajería—, pero no se lee. Aquí se lee: cuerpo 44,
+    ancho medio cuadro, y el mismo azul marino y filo de oro de su app para que
+    sea evidente que es la misma conversación que se ve en la pantalla.
 
-    Va sobreimpresa y no dentro de la pantalla porque en ese plano el teléfono
-    se ve de espaldas y desenfocado; texto nítido ahí dentro se vería pegado."""
+    `mia` la alinea a la derecha y la aclara, que es como habla el que escribe.
+    `quien` pone la etiqueta de quién manda; se omite en un mensaje seguido del
+    mismo, igual que en un chat de verdad."""
     e = salida(float(np.clip(rel / 0.45, 0, 1)), 4.0)
     fuera = salida(float(np.clip((dur - rel) / 0.4, 0, 1)), 3.0)
     a = e * fuera
     if a <= 0.02:
         return
     d = ImageDraw.Draw(im, "RGBA")
-    f = fuente(F_MED, 40)
+    f = fuente(F_MED, 44)
     pad = 30
-    # Más estrecha que antes: con la foto vertical la burbuja bajaba hasta la
-    # franja que tapan el pie de foto y los botones de la red social.
-    ancho = int(W * 0.54)
+    ancho = int(W * (0.54 if foto is not None else 0.74))
+
+    lineas, act = [], ""
+    for pal in texto.split():
+        if d.textlength((act + " " + pal).strip(), font=f) <= ancho - pad * 2:
+            act = (act + " " + pal).strip()
+        else:
+            lineas.append(act); act = pal
+    lineas.append(act)
+    if foto is None:
+        ancho = int(max(d.textlength(l, font=f) for l in lineas)) + pad * 2
+
     alto_foto = 0
     if foto is not None:
         af = ancho - pad * 2
         foto = foto.resize((af, int(foto.height * af / foto.width)), Image.LANCZOS)
         alto_foto = foto.height + 20
-    altura = alto_foto + 148
-    x, y = int(W * 0.10), int(H * alto)
+    cab = 42 if quien else 8
+    altura = alto_foto + cab + len(lineas) * 58 + 34
+    x = (W - int(W * 0.09) - ancho) if mia else int(W * 0.09)
+    y = int(H * alto)
 
     capa = Image.new("RGBA", (W, H), (0, 0, 0, 0))
     dc = ImageDraw.Draw(capa, "RGBA")
-    # Azul marino de Pulse2Chat, con un filo de oro a la izquierda.
-    dc.rounded_rectangle([x, y, x + ancho, y + altura], 30,
-                         fill=(16, 41, 72, int(240 * a)))
-    dc.rounded_rectangle([x, y + 22, x + 7, y + altura - 22], 4,
-                         fill=(214, 173, 90, int(230 * a)))
-    dc.text((x + pad, y + 20), "MAMÁ", font=fuente(F_ROT, 24),
-            fill=(214, 173, 90) + (int(235 * a),))
+    relleno = (32, 74, 132, int(240 * a)) if mia else (16, 41, 72, int(240 * a))
+    dc.rounded_rectangle([x, y, x + ancho, y + altura], 30, fill=relleno)
+    if not mia:
+        dc.rounded_rectangle([x, y + 22, x + 7, y + altura - 22], 4,
+                             fill=(214, 173, 90, int(230 * a)))
+    if quien:
+        dc.text((x + pad, y + 18), quien, font=fuente(F_ROT, 24),
+                fill=(214, 173, 90) + (int(235 * a),))
     if foto is not None:
         m = Image.new("L", foto.size, 0)
         ImageDraw.Draw(m).rounded_rectangle(
             [0, 0, foto.width - 1, foto.height - 1], 18, fill=int(255 * a))
-        capa.paste(foto.convert("RGB"), (x + pad, y + 62), m)
-    dc.text((x + pad, y + alto_foto + 74), texto, font=f,
-            fill=TEXTO + (int(255 * a),))
+        capa.paste(foto.convert("RGB"), (x + pad, y + cab + 12), m)
+    for i, ln in enumerate(lineas):
+        dc.text((x + pad, y + alto_foto + cab + 14 + i * 58), ln, font=f,
+                fill=TEXTO + (int(255 * a),))
 
     # Máscara: la burbuja crece desde su base, como los rótulos.
     mask = Image.new("L", (W, H), 0)
@@ -455,12 +514,17 @@ def main():
                 logo(im, t - b["t"] - 0.6)
             if b.get("familia"):
                 familia(im, t - b["t"] - 0.5)
+            for si in b.get("sitios", []):
+                rel = t - si["t"]
+                if 0 <= rel <= si["dur"]:
+                    sitio(im, si["texto"], rel, si["dur"])
             for bu in b.get("burbujas", []):
                 rel = t - bu["t"]
                 if 0 <= rel <= bu["dur"]:
                     foto = _foto(bu["foto"]) if bu.get("foto") else None
                     burbuja(im, bu["texto"], rel, bu["dur"], foto,
-                            bu.get("alto", 0.30))
+                            bu.get("alto", 0.30), bu.get("quien"),
+                            bu.get("mia", False))
             for r in b.get("rotulos", []):
                 rel = t - r["t"]
                 if 0 <= rel <= r["dur"]:

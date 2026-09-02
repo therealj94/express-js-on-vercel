@@ -31,29 +31,30 @@ SR = 48000
 
 # (segundo, pieza, nivel).  Los segundos salen de tools/picos.py.
 EVENTOS = [
-    (0.60, "s_mensaje",  0.55),   # 04 · llega el mensaje de la madre
-    (2.00, "s_toque",    0.40),   # 04 · ella contesta
-    (7.30, "s_bolsa",    0.55),   # 01 · le pasa la bolsa de pan (pico 7,41)
-    (10.15, "s_vibra",   0.55),   # 02 · el teléfono en el mostrador (10,22)
-    (12.02, "s_toque",   0.32),   # 05 · el pulgar baja por la lista (12,08)
-    (12.70, "s_toque",   0.38),   # 05 · y se detiene (12,75)
-    (13.57, "s_toque",   0.50),   # 06 · aprieta y mantiene (13,61)
-    (15.40, "s_vibra",   0.62),   # 07 · suena ALLÁ, antes de la mano (16,18)
-    (22.10, "s_risa",    0.95),   # 09 · el muchacho se ríe (22,37)
-    (30.00, "s_datafono", 0.55),  # 11 · el datáfono acepta (30,14)
-    (34.30, "s_bolsa",   0.45),   # 13 · saca el pan en la mesa (34,39)
-    (37.30, "s_mensaje", 0.55),   # 15 · le llega la foto de su madre
+    (1.30, "s_bolsa",    0.55),   # 01 · le pasa la bolsa de pan (pico 1,41)
+    (3.80, "s_mensaje",  0.55),   # 02 · le entra el mensaje de su madre
+    (5.30, "s_mensaje",  0.40),   # 02 · y el segundo
+    (11.30, "s_toque",   0.42),   # 04 · ella contesta (pico 11,75)
+    (14.82, "s_toque",   0.32),   # 05 · el pulgar baja por la lista (14,88)
+    (15.50, "s_toque",   0.38),   # 05 · y se detiene (15,55)
+    (16.37, "s_toque",   0.50),   # 06 · aprieta y mantiene (16,41)
+    (18.20, "s_vibra",   0.62),   # 07 · suena ALLÁ, antes de la mano (18,98)
+    (24.90, "s_risa",    0.95),   # 09 · el muchacho se ríe (25,17)
+    (32.80, "s_datafono", 0.55),  # 11 · el datáfono acepta (32,94)
+    (37.10, "s_bolsa",   0.45),   # 13 · saca el pan en la mesa (37,19)
+    (40.10, "s_mensaje", 0.55),   # 15 · le llega la foto de su madre
 ]
 
 # (desde, hasta, pieza, nivel).  Cada sitio suena distinto, y se solapan medio
 # segundo para que un corte de imagen no sea también un corte de aire.
 CAMAS = [
-    (0.0,  6.2,  "s_cocina", 1.15),   # abre en la cocina de ella, otro país
-    (5.8,  15.4, "s_tienda", 1.00),   # la pulpería
-    (15.0, 27.2, "s_tienda", 0.95),   # sigue allá
-    (26.8, 30.4, "s_tienda", 0.70),   # la farmacia
-    (30.0, 33.6, "s_calle",  0.90),   # se va a la casa con las bolsas
-    (33.2, 42.0, "s_cocina", 1.05),   # la mesa de su casa, y la hija leyendo
+    (0.0,  8.0,  "s_tienda", 1.00),   # abre en la pulpería, Santa Ana
+    (7.6,  14.4, "s_cocina", 1.15),   # su cocina, Pensilvania
+    (14.0, 18.4, "s_cocina", 1.00),   # sigue allá mientras manda
+    (18.0, 30.0, "s_tienda", 0.95),   # el aviso llega a la pulpería
+    (29.6, 33.2, "s_tienda", 0.70),   # la farmacia
+    (32.8, 36.4, "s_calle",  0.90),   # se va a la casa con las bolsas
+    (36.0, 44.8, "s_cocina", 1.05),   # la mesa de su casa, y la hija leyendo
 ]
 
 

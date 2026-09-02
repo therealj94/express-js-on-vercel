@@ -7,196 +7,238 @@
     "ancho": 1080,
     "alto": 1920,
     "fps": 30,
-    "dur_s": 47.4
+    "dur_s": 50.2
   },
   "fundido_s": 0.0,
   "voz": {
     "orden": [
       [
-        1,
-        6.4
-      ],
-      [
-        2,
-        11.6
-      ],
-      [
         3,
-        33.8
+        36.6
       ],
       [
         4,
-        42.0
+        44.8
       ]
     ],
-    "_nota": "v1 'Su hija vive en otro pais.' v2 'Y hoy le manda dinero.' v3 'Lo que ella mando, llego completo.' v4 el cierre. Las cuatro, Maico, el mismo narrador de los tres anuncios."
+    "_nota": "Solo dos lineas. Las del arranque sobraban: si la conversacion se lee en burbujas, narrarla encima es decir dos veces lo mismo."
   },
   "bloques": [
     {
-      "plano": "04_abre_app",
+      "plano": "01_pulperia",
       "t": 0.0,
       "dur": 3.4,
-      "desde": 0.8,
-      "rotulos": [],
-      "burbujas": []
-    },
-    {
-      "plano": "03_hija_cocina",
-      "t": 3.4,
-      "dur": 2.6,
-      "desde": 0.5,
-      "rotulos": [],
-      "burbujas": []
-    },
-    {
-      "plano": "01_pulperia",
-      "t": 6.0,
-      "dur": 3.2,
       "desde": 0.3,
       "rotulos": [],
-      "burbujas": []
+      "burbujas": [],
+      "sitios": [
+        {
+          "t": 0.5,
+          "dur": 2.3,
+          "texto": "SANTA ANA · EL SALVADOR"
+        }
+      ]
     },
     {
       "plano": "02_telefono_mostrador",
-      "t": 9.2,
-      "dur": 2.2,
+      "t": 3.4,
+      "dur": 4.4,
       "desde": 0.6,
       "rotulos": [],
-      "burbujas": []
+      "burbujas": [
+        {
+          "t": 3.9,
+          "dur": 3.6,
+          "alto": 0.36,
+          "quien": "MAMÁ",
+          "texto": "¿Cómo amaneciste, mi hija?"
+        },
+        {
+          "t": 5.4,
+          "dur": 2.1,
+          "alto": 0.5,
+          "texto": "Se me acabó lo de la comida y todavía falta semana."
+        }
+      ],
+      "sitios": []
+    },
+    {
+      "plano": "03_hija_cocina",
+      "t": 7.8,
+      "dur": 3.0,
+      "desde": 0.5,
+      "rotulos": [],
+      "burbujas": [],
+      "sitios": [
+        {
+          "t": 8.2,
+          "dur": 2.3,
+          "texto": "PENSILVANIA · ESTADOS UNIDOS"
+        }
+      ]
+    },
+    {
+      "plano": "04_abre_app",
+      "t": 10.8,
+      "dur": 3.4,
+      "desde": 0.8,
+      "rotulos": [],
+      "burbujas": [
+        {
+          "t": 11.4,
+          "dur": 2.4,
+          "alto": 0.46,
+          "mia": true,
+          "quien": "ELLA",
+          "texto": "No se preocupe, ma. Ahorita se lo mando."
+        }
+      ],
+      "sitios": []
     },
     {
       "plano": "05_elige_contacto",
-      "t": 11.4,
+      "t": 14.2,
       "dur": 2.2,
       "desde": 0.9,
       "rotulos": [
         {
-          "t": 12.2,
+          "t": 14.9,
           "dur": 1.4,
           "texto": "Mamá."
         }
       ],
-      "burbujas": []
+      "burbujas": [],
+      "sitios": []
     },
     {
       "plano": "06_pone_dedo",
-      "t": 13.6,
+      "t": 16.4,
       "dur": 1.6,
       "desde": 0.7,
       "rotulos": [
         {
-          "t": 13.8,
+          "t": 16.6,
           "dur": 1.0,
           "texto": "Enviar."
         }
       ],
-      "burbujas": []
+      "burbujas": [],
+      "sitios": []
     },
     {
       "plano": "07_suena_pulperia",
-      "t": 15.2,
+      "t": 18.0,
       "dur": 1.8,
       "desde": 0.4,
       "rotulos": [],
-      "burbujas": []
+      "burbujas": [],
+      "sitios": []
     },
     {
       "plano": "08_cara_senora",
-      "t": 17.0,
+      "t": 19.8,
       "dur": 3.2,
       "desde": 0.5,
       "rotulos": [
         {
-          "t": 17.2,
+          "t": 20.0,
           "dur": 2.0,
           "texto": "Cuatro segundos."
         }
       ],
-      "burbujas": []
+      "burbujas": [],
+      "sitios": []
     },
     {
       "plano": "09_ensena_pantalla",
-      "t": 20.2,
+      "t": 23.0,
       "dur": 3.6,
       "desde": 0.0,
       "rotulos": [],
-      "burbujas": []
+      "burbujas": [],
+      "sitios": []
     },
     {
       "plano": "10_ve_detalle",
-      "t": 23.8,
+      "t": 26.6,
       "dur": 3.2,
       "desde": 0.4,
       "rotulos": [
         {
-          "t": 24.4,
+          "t": 27.2,
           "dur": 2.4,
           "texto": "Y podés ver\nexactamente qué pasó."
         }
       ],
-      "burbujas": []
+      "burbujas": [],
+      "sitios": []
     },
     {
       "plano": "11_tarjeta",
-      "t": 27.0,
+      "t": 29.8,
       "dur": 3.2,
       "desde": 0.4,
       "rotulos": [
         {
-          "t": 28.2,
+          "t": 31.0,
           "dur": 1.9,
           "texto": "Pagado con ORIGEN."
         }
       ],
-      "burbujas": []
+      "burbujas": [],
+      "sitios": []
     },
     {
       "plano": "12_bolsas_calle",
-      "t": 30.2,
+      "t": 33.0,
       "dur": 3.2,
       "desde": 0.4,
       "rotulos": [],
-      "burbujas": []
+      "burbujas": [],
+      "sitios": []
     },
     {
       "plano": "13_mesa_casa",
-      "t": 33.4,
+      "t": 36.2,
       "dur": 3.4,
       "desde": 0.3,
       "rotulos": [],
-      "burbujas": []
+      "burbujas": [],
+      "sitios": []
     },
     {
       "plano": "15_hija_lee",
-      "t": 36.8,
+      "t": 39.6,
       "dur": 4.6,
       "desde": 0.4,
       "rotulos": [],
       "burbujas": [
         {
-          "t": 37.2,
+          "t": 40.2,
           "dur": 2.9,
-          "texto": "Ya compré todo, mi hija.",
+          "alto": 0.505,
+          "quien": "MAMÁ",
           "foto": "/tmp/claude-0/-home-user-express-js-on-vercel/ea1ee5d5-3bb0-5210-b62d-18fde5349b2f/scratchpad/foto_mesa.png",
-          "alto": 0.505
+          "texto": "Ya compré todo, mi hija."
         }
-      ]
+      ],
+      "sitios": []
     },
     {
       "plano": "negro",
       "negro": true,
-      "t": 41.4,
+      "t": 44.2,
       "dur": 6.0,
       "rotulos": [
         {
-          "t": 42.2,
+          "t": 45.0,
           "dur": 5.0,
           "texto": "Orden Global.",
           "alto": 0.545,
           "escala": 1.15
         },
         {
-          "t": 43.5,
+          "t": 46.3,
           "dur": 3.7,
           "texto": "Un sistema financiero\nque se puede comprobar.",
           "chico": true,
@@ -230,5 +272,6 @@
   "_cuarta_pasada": "Jose, que es el que manda: 'empieza de la nada, no se entiende que estan haciendo con el celular'. Un espectador normal, preguntado a ciegas, lo confirmo por otro lado: no distingue que botones aprieta y no entiende de que va hasta el segundo 15. Arreglo: dos frases al principio que dan los dos hechos que lo explican todo -de quien es hija y que esta pasando-, los rotulos 'Mama.' y 'Enviar.' sobre los gestos que no se leen en pantalla, el logo de Veta Wallet cuando abre la app -que es literalmente lo que el espectador pidio: 'pon el logo para saber que buscar en el telefono'-, y el cierre mas largo y con el nombre grande, que tambien lo pidio.",
   "_pantallas": "Jose: 'la pantalla no se mira Veta Wallet, no se puede ver que estan dentro y tocan ahi'. Las pantallas de los clips van encendidas pero VACIAS -el modelo no sabe dibujar una interfaz-, asi que se compone una encima siguiendo el telefono con flujo optico (montaje/pantalla.py, dibujada en montaje/interfaz.py). La toma 9 de un plano es la version con pantalla. Dos planos: al abrir la app se ve Veta Wallet, y en el comprobante se ve ENTREGADO con la hora, el numero y ordenscan.com. El comprobante va en CLARO y no en la paleta de la marca porque esa pantalla le ilumina la cara: con una pantalla oscura la luz de su cara se quedaba sin fuente. El plano de elegir contacto tiene el telefono casi de canto y ahi no cabe interfaz legible: ese lo resuelve el rotulo 'Mama.'.",
   "_quinta_pasada": "Jose pide: mejor inicio, mejor final, burbujas de mensaje entre madre e hija, 'Pagado con ORIGEN' cuando paga, que se vea que se lleva cosas a la casa, y mantener personajes. El arranque pasa a ser el CHAT: en cuanto se leen dos burbujas con 'Mama' arriba, el espectador ya sabe quienes son la una de la otra sin que nadie se lo diga, que es justo lo que faltaba. Los planos de la compra y el final nuevo estan generandose en la misma maquina.",
-  "_final": "El final que pidio Jose: la madre paga con la tarjeta, se va a la casa con las bolsas, saca las cosas en la mesa, y le manda a la hija una foto de lo que compro. La hija lo lee y se le va la cara. Cierra el circulo: mando dinero, llego, se convirtio en comida en la mesa, y ella lo ve. La burbuja del final va SOBREIMPRESA y no dentro de la pantalla porque en ese plano el telefono se ve de espaldas y desenfocado: texto nitido ahi dentro se veria pegado."
+  "_final": "El final que pidio Jose: la madre paga con la tarjeta, se va a la casa con las bolsas, saca las cosas en la mesa, y le manda a la hija una foto de lo que compro. La hija lo lee y se le va la cara. Cierra el circulo: mando dinero, llego, se convirtio en comida en la mesa, y ella lo ve. La burbuja del final va SOBREIMPRESA y no dentro de la pantalla porque en ese plano el telefono se ve de espaldas y desenfocado: texto nitido ahi dentro se veria pegado.",
+  "_sexta_pasada": "Jose: la conversacion tiene que verse en burbujas que se lean, que se sepa que la madre pide para la comida, y donde esta cada una. El arranque pasa a ser el dialogo: cartel de sitio sobre cada una y tres burbujas grandes. Con eso el espectador sabe quienes son, a que distancia y POR QUE se manda el dinero, antes del segundo 12 y sin que hable nadie. La voz se quita del arranque: si la conversacion se lee, narrarla encima sobra."
 }
