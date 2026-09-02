@@ -1,15 +1,15 @@
-/* La segunda carta: la app pesa la mitad, y ahora se puede instalar sin bajar nada.
+/* La segunda carta: la app pesa un tercio, y ahora se puede instalar sin bajar nada.
  *
  * POR QUE SE ESCRIBE OTRA VEZ
  *
  * La primera carta salió a 407 personas con un archivo de 138 MB. Ese peso no
  * era la app: eran librerías para arquitecturas de emulador que ningún
  * teléfono usa, y librerías sin comprimir. Corregido eso, el mismo archivo
- * pesa la mitad. Y mientras tanto la web quedó instalable, así que hay una
+ * pesa 45 MB, un tercio. Y mientras tanto la web quedó instalable, así que hay una
  * puerta que no pasa por ningún archivo ni por ningún permiso.
  *
  * Escribir de nuevo a quien ya recibió algo tiene que ganarse el derecho. Se
- * gana con esas dos cosas: pesa la mitad, y hay una forma más fácil. Sin eso
+ * gana con esas dos cosas: pesa un tercio, y hay una forma más fácil. Sin eso
  * esto sería un recordatorio, y un recordatorio a 407 personas es correo
  * basura escrito por nosotros mismos.
  *
@@ -40,12 +40,12 @@ import { saludo, H, paso, pantalla, toca, enlaceBaja, PAGINA } from "./cartaInst
 /* El APK NUEVO. Se cambia aquí y en `apps-web/veta-wallet/instalar.html` cada
    vez que se compila, igual que el de la primera carta. */
 export const APK =
-  "https://expo.dev/artifacts/eas/PENDIENTE-DEL-BUILD.apk";
+  "https://expo.dev/artifacts/eas/Ic0h-h9Q73j63q_21gka5i8HCKN-OlI-3RfRc5aDelI.apk";
 export const VERSION = "1.33.3";
-export const PESO = "70 MB";
+export const PESO = "45 MB";
 export const PESO_ANTES = "138 MB";
 
-export const ASUNTO = "Ahora pesa la mitad, y podés instalarla sin descargar nada";
+export const ASUNTO = "Ahora pesa un tercio, y podés instalarla sin descargar nada";
 
 export function cartaSegundaVuelta({ nombre, correo }) {
   const baja = enlaceBaja(correo);
@@ -63,7 +63,8 @@ export function cartaSegundaVuelta({ nombre, correo }) {
   </p>
   <p style="margin:0 0 16px;">
     Ya lo arreglamos. Ahora pesa
-    <strong style="color:#F3ECD9;">${esc(PESO)}</strong>, la mitad. Y hay una
+    <strong style="color:#F3ECD9;">${esc(PESO)}</strong>, un tercio de lo que pesaba.
+    Y hay una
     segunda forma de tenerla que no pasa por ningún archivo.
   </p>
 
@@ -173,7 +174,7 @@ Hace unos días te mandamos la app para el teléfono. A varios no les bajó, o e
 teléfono no los dejó instalarla. El archivo pesaba ${PESO_ANTES}, y para muchos
 teléfonos y muchas conexiones eso era demasiado.
 
-Ya lo arreglamos. Ahora pesa ${PESO}, la mitad. Y hay una segunda forma de
+Ya lo arreglamos. Ahora pesa ${PESO}, un tercio de lo que pesaba. Y hay una segunda forma de
 tenerla que no pasa por ningún archivo.
 
 Si ya la instalaste, no tenés que hacer nada: la app se pone al día sola.
