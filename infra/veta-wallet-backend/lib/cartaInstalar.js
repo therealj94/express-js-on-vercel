@@ -42,9 +42,9 @@ import { firmaBaja } from "./firmaBaja.js";
    encuentra exactamente lo mismo. Al compilar una versión nueva se cambian
    los dos. */
 export const APK =
-  "https://expo.dev/artifacts/eas/kEEJv7Dn4TfA06aMVWX-CpiZRPtUooi6DnGfyA-f69U.apk";
+  "https://expo.dev/artifacts/eas/lxUN7f_SoutSa68XE896XE33aQtHhVFeSFtNutQwiDs.apk";
 export const PAGINA = "https://app.vetawallet.com/instalar";
-export const VERSION = "1.33.1";
+export const VERSION = "1.33.2";
 
 const BAJA =
   (process.env.API_PUBLICA || "https://vetawallet-1a2e38ac52b1.herokuapp.com") +
@@ -130,7 +130,7 @@ export function cartaInstalar({ nombre, correo }) {
   ${botonCorreo("Descargar la app", APK)}
 
   <p style="margin:0 0 4px;font-size:13px;color:#9A8C76;">
-    137 MB · solo Android · versión ${esc(VERSION)}<br>
+    138 MB · solo Android · versión ${esc(VERSION)}<br>
     Abrí este correo <strong style="color:#D8CFBE;">desde el teléfono</strong>: el archivo
     tiene que quedar en el aparato donde vas a usar la app.
   </p>
@@ -210,7 +210,7 @@ comprobar en ordenscan.com cuando quieras, sin pedirle permiso a nadie.
 DESCARGAR LA APP
 ${APK}
 
-137 MB · solo Android · versión ${VERSION}
+138 MB · solo Android · versión ${VERSION}
 Abrí este enlace DESDE EL TELÉFONO: el archivo tiene que quedar en el aparato
 donde vas a usar la app.
 
