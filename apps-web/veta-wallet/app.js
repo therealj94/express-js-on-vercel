@@ -1567,6 +1567,86 @@ const VETA = (() => {
     if (!$('#app').classList.contains('oculto')) vista(vistaActual);
   }
 
+  /* ── OFRECER LOS AVISOS, UNA VEZ Y EN EL MOMENTO CORRECTO ────────────────
+   *
+   * EL FALLO QUE ESTO ARREGLA
+   *
+   * Los avisos estaban hechos y funcionando —el relevo firma con VAPID, el
+   * obrero los recibe, /suscribir los guarda— y no los tenía NADIE: cero
+   * dispositivos suscritos sobre treinta y siete cuentas. La razón no era
+   * técnica: la única forma de encenderlos era una campana sin rótulo en la
+   * cabecera del chat. Quien no la reconoce, nunca supo que existían.
+   *
+   * DE QUE AVISAN, EXACTAMENTE
+   *
+   * De mensajes y de llamadas. De nada más: el obrero solo entiende esos dos
+   * (ver `sw.js`), y el backend de la billetera no manda ni un push, así que
+   * un cobro recibido NO avisa. Prometerlo en el cartel sería vender algo que
+   * no existe, y el primer cobro que llegara en silencio lo desmentiría.
+   *
+   * POR ESO SE OFRECE DESDE EL CHAT
+   *
+   * Y no al entrar a la app. La suscripción se firma con la identidad de
+   * chat, que se crea al abrir el chat por primera vez: ofrecerlo antes sería
+   * pedir el permiso, gastarlo, y fallar al suscribir.
+   *
+   * POR QUE NO SE PIDE EL PERMISO Y YA
+   *
+   * Porque `Notification.requestPermission()` se gasta UNA vez. Si lo niegan,
+   * la página no puede volver a preguntar nunca —hay que ir a los ajustes del
+   * navegador, que en un teléfono casi nadie sabe hacer— y un diálogo del
+   * sistema que aparece solo, sin que nadie lo haya pedido y sin decir para
+   * qué, se niega casi siempre. Dispararlo al entrar sería quemar el permiso
+   * de toda la base en una tarde.
+   *
+   * Así que primero se pregunta con nuestras palabras, se dice qué se gana, y
+   * el diálogo del navegador solo se abre si tocan «Activar» — con el gesto de
+   * la persona detrás, que además es lo que exigen los navegadores.
+   *
+   * «Ahora no» no es «nunca»: se apunta la fecha y se vuelve a ofrecer a los
+   * treinta días. Insistir cada vez que entra es la forma más rápida de que
+   * toque «bloquear» para que lo dejen en paz.
+   */
+  const AVISOS_ESPERA = 30 * 86400000;
+
+  function avisosOfrecidos(cuando) {
+    try {
+      if (cuando === undefined) return Number(localStorage.getItem('og.avisos.ofrecido') || 0);
+      localStorage.setItem('og.avisos.ofrecido', String(cuando));
+    } catch { /* en privado no se guarda, y entonces se ofrece cada vez */ }
+    return 0;
+  }
+
+  function ofrecerAvisos() {
+    const caja = $('#ofrecer-avisos');
+    if (!caja || !sesion) return;
+    // Sin soporte no hay nada que ofrecer, y prometerlo sería mentir.
+    if (!('Notification' in window) || !('serviceWorker' in navigator)) return;
+    // Ya decidido —concedido o negado—: la pregunta ya no le toca a la página.
+    if (Notification.permission !== 'default') return;
+    if (Date.now() - avisosOfrecidos() < AVISOS_ESPERA) return;
+
+    caja.hidden = false;
+    tele('accion', 'avisos.ofrecidos');
+
+    const cerrar = () => { caja.hidden = true; };
+
+    $('#ofa-no').onclick = () => {
+      avisosOfrecidos(Date.now());
+      tele('accion', 'avisos.ahorano');
+      cerrar();
+    };
+
+    $('#ofa-si').onclick = async () => {
+      avisosOfrecidos(Date.now());
+      cerrar();
+      /* Se reusa el mismo camino que la campana del chat: pide la llave al
+         relevo, pide el permiso y se suscribe. Dos caminos distintos para lo
+         mismo acaban siendo dos comportamientos distintos. */
+      await chatAvisos();
+    };
+  }
+
   /* La tarjeta se pide aparte y solo cuando se entra a su pestaña: emitir y
      consultar pasa por el emisor y es lento, asi que no tiene por que retrasar
      la primera pintada de la billetera. Un 404 no es un fallo, es la respuesta
@@ -7965,6 +8045,10 @@ const VETA = (() => {
                           sesion: await chatSesionViva() });
       }
       chatSt.error = null;
+      /* Y acá, con la identidad de chat ya creada, es cuando se puede ofrecer
+         los avisos: antes de esto la suscripción falla y el permiso se gasta
+         igual. */
+      ofrecerAvisos();
       /* El buzón de señales se enciende con el chat, no con la vista: una
          llamada entrante tiene que llegar aunque la persona esté mirando su
          billetera, que es donde está casi siempre. */

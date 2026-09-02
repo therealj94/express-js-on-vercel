@@ -1183,6 +1183,20 @@ button:not(:disabled):active,[role=button]:active,summary:active,
   transition:transform .38s cubic-bezier(.2,.9,.3,1),opacity .3s,visibility .3s;
   max-width:90vw;text-align:center}
 #tostada.ver{transform:translate(-50%,0);opacity:1;visibility:visible}
+/* La oferta de avisos. Va abajo, encima de la barra de pestañas, porque ahí
+   está el pulgar y porque no tapa lo que la persona vino a ver. */
+#ofrecer-avisos{position:fixed;left:12px;right:12px;bottom:86px;z-index:480;
+  background:rgba(6,44,46,.97);border:1px solid var(--linea);border-radius:16px;
+  padding:15px 16px;box-shadow:0 22px 60px -20px rgba(0,0,0,.9);
+  display:flex;flex-direction:column;gap:12px;max-width:520px;margin:0 auto}
+#ofrecer-avisos[hidden]{display:none}
+#ofrecer-avisos b{display:block;font-size:15px;color:var(--crema);margin-bottom:3px}
+#ofrecer-avisos p{margin:0;font-size:13.5px;line-height:1.5;color:var(--bruma)}
+.ofa-botones{display:flex;gap:10px;justify-content:flex-end}
+.ofa-botones button{border-radius:100px;padding:10px 18px;font-size:14px;font-weight:700;
+  cursor:pointer;border:1px solid transparent}
+.ofa-flojo{background:transparent;color:var(--bruma);border-color:var(--linea)}
+.ofa-fuerte{background:var(--oro);color:#1A1206}
 
 /* ── AU-RA Y EL CEREBRO ───────────────────────────────────────────────────
    El Nucleo deja de ser un tablero con fichas: es una pantalla inmersiva en
@@ -4662,6 +4676,23 @@ body.en-ventana .lienzo::before{
 </main>
 
 <div id="tostada" role="status" aria-live="polite"></div>
+
+<!-- LA OFERTA DE AVISOS.
+     Se enseña una sola vez, después de entrar, y NUNCA dispara sola el
+     permiso del navegador: ese permiso, si lo niegan, no se puede volver a
+     pedir jamás desde la página, y quien lo ve aparecer sin contexto lo niega.
+     Así que primero se explica en una línea para qué sirve, y el diálogo del
+     sistema solo se abre si la persona toca «Activar». -->
+<div id="ofrecer-avisos" hidden role="dialog" aria-labelledby="ofa-t">
+  <div>
+    <b id="ofa-t">¿Te avisamos cuando te llegue algo?</b>
+    <p>Un aviso cuando te escriben o te llaman, aunque tengas la app cerrada.</p>
+  </div>
+  <div class="ofa-botones">
+    <button type="button" id="ofa-no" class="ofa-flojo">Ahora no</button>
+    <button type="button" id="ofa-si" class="ofa-fuerte">Activar</button>
+  </div>
+</div>
 
 <!-- ══════════════════════ AU-RA ═══════════════════════════════════════════
      El orbe flotante vive FUERA de #app a propósito: acompaña en todas las
