@@ -2086,6 +2086,36 @@ def _atender(rel, sistema, p, de, dicho, mensaje=None):
                  'motivo': 'equipo-pais', 'pais': 'equipo-listo'}
     actual = guion.nodo(p.get('nodo') or '', idi)
     espera = actual.get('espera') if actual else None
+    if espera in SIGUIENTE and not toco and dicho:
+        # ── UNA PREGUNTA NO ES EL DATO ──────────────────────────────────────
+        #
+        # 2-sep, probando el buzon de la web de punta a punta: en el turno del
+        # nombre la persona pregunto «cuanto vale un origen en dolares?» y
+        # recibio «¿que te trajo hasta aca?». La pregunta se habia guardado
+        # como su nombre. Ese es el precio de la regla «lo que escribe es el
+        # dato» cuando lo que escribe es una pregunta de verdad.
+        #
+        # Si parece pregunta —lleva el signo, o una palabra interrogativa— y
+        # el guion tiene a donde llevarla, se contesta ESO primero y se vuelve
+        # a pedir el dato. No se consume nada. Un nombre no lleva «?».
+        # Solo el signo. INTERROGA («que», «como»…) es demasiado ancho para
+        # esto: «soy contadora, trabajo con lo que sale» lo daba por pregunta
+        # y el oficio no se guardaba nunca — lo cazo probar-asistente. Quien
+        # pregunta de verdad pone el signo; quien contesta, no.
+        parece_pregunta = ('?' in dicho or '¿' in dicho)
+        salto = guion.por_texto(dicho, p.get('nodo'), idi) if parece_pregunta else None
+        if salto and salto != p.get('nodo') and salto not in SIGUIENTE.values() \
+                and salto not in SIGUIENTE:
+            registro.anotar('guion', nodo=salto)
+            _mandar_nodo(salto)
+            _mandar_nodo(p['nodo'])          # y se retoma donde estaba
+            p['visto'] = int(time.time())
+            return
+        if parece_pregunta:
+            # Pregunta sin nodo en el guion: la contesta el motor, mas abajo,
+            # y el dato NO se consume. `p['nodo']` se queda como esta, asi que
+            # la siguiente vuelta vuelve a esperar el nombre o el oficio.
+            espera = None
     if espera in SIGUIENTE:
         if espera == 'nombre':
             # UN BOTON DE OTRA PANTALLA NO ES UN NOMBRE.
