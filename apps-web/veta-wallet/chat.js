@@ -74,7 +74,20 @@ const CHAT = (() => {
     const cuerpo = { ...yo };
     if (g) cuerpo.llave = g;
     if (cuenta.sesion) cuerpo.sesion = cuenta.sesion;
-    const d = await pedir('/alta', cuerpo);
+    let d;
+    try {
+      d = await pedir('/alta', cuerpo);
+    } catch (e) {
+      /* QUIEN MANDA ES LA SESIÓN, NO EL CORREO GUARDADO. Si el relevo dice
+         «otra-cuenta» —la sesión vale, pero prueba otro correo— se rehace el
+         alta con ese correo. La app lo hace igual desde el 2-sep; aquí el
+         409 salía como «tu chat está en otro lado», que no era verdad. */
+      if (e && e.estado === 409 && e.motivo === 'otra-cuenta'
+          && e.correoReal && e.correoReal !== correo) {
+        return await alta({ ...cuenta, correo: e.correoReal });
+      }
+      throw e;
+    }
     llave = (d && d.llave) || g;
     if (llave) guardar(correo, llave);
     return llave;
@@ -117,15 +130,19 @@ const CHAT = (() => {
      largo para que una conversación normal no vuelva a preguntar. */
   const VIDA_LLAVES = 5 * 60 * 1000;
   const llavero = new Map();   // correo -> { aparatos, en }
-  let publicada = false;
+  /* Se apunta PARA QUÉ CUENTA se publicó, no un simple «ya está»: al
+     cambiar de cuenta sin recargar, la llave de este navegador no se
+     publicaba bajo la cuenta nueva y todo lo que le escribieran llegaba en
+     claro. La app lo arregló el 2-sep; aquí era el mismo pestillo. */
+  let publicadaPara = null;
 
   async function publicarMiLlave() {
-    if (publicada || !CANDADO?.hay()) return;
+    if ((publicadaPara && publicadaPara === yo?.correo) || !CANDADO?.hay()) return;
     const mia = await CANDADO.miLlave();
     if (!mia) return;
     try {
       await pedir('/llaves/publicar', firmado({ id: mia.id, pub: mia.pub, fir: mia.fir || '' }));
-      publicada = true;
+      publicadaPara = yo?.correo || null;
     } catch { /* se reintenta en el siguiente envío */ }
   }
 
@@ -138,7 +155,17 @@ const CHAT = (() => {
     });
     if (faltan.length) {
       const r = await pedir('/llaves/de', firmado({ correos: faltan }));
-      for (const c of faltan) llavero.set(c, { aparatos: r.llaves?.[c] || [], en: ahora });
+      for (const c of faltan) {
+        const aps = r.llaves?.[c] || [];
+        /* EL VACÍO NO SE GUARDA. El relevo no entrega las llaves de quien
+           todavía no te aceptó; si abriste su hilo antes, te llevabas una
+           lista vacía y se guardaba cinco minutos: te aceptaba, escribías, y
+           el primer mensaje salía EN CLARO. Guardar un vacío ahorra una
+           petición; no guardarlo evita mandar sin cifrar sin querer. La app
+           lo arregló el 2-sep y aquí faltaba. */
+        if (aps.length) llavero.set(c, { aparatos: aps, en: ahora });
+        else llavero.delete(c);
+      }
     }
     const mapa = {};
     for (const c of correos) mapa[c] = llavero.get(c)?.aparatos || [];
@@ -187,7 +214,12 @@ const CHAT = (() => {
    * el chat perdió mensajes, que es lo contrario de lo que pasa.
    */
   async function abrirTodos(msgs) {
-    if (!CANDADO?.hay()) return msgs;
+    /* Un mensaje sin sobre vuelve marcado `e2e:false`. La burbuja «Este
+       mensaje viajó sin cifrar» estaba escrita desde hacía tiempo (app.js,
+       `cha.fueEnClaro`) y era código muerto: ningún mensaje del historial
+       traía la marca, así que ni quien lo mandó la veía al recargar ni quien
+       lo recibió la vio nunca. Se calcula igual en las dos puntas. */
+    if (!CANDADO?.hay()) return msgs.map(m => (m.cif ? m : { ...m, e2e: false }));
 
     /* SE PIDEN LAS LLAVES DE TODOS LOS REMITENTES ANTES DE ABRIR NADA.
        No es una optimización: es lo que hace posible verificar la firma. Sin
@@ -202,7 +234,7 @@ const CHAT = (() => {
     }
 
     return Promise.all(msgs.map(async m => {
-      if (!m.cif) return m;
+      if (!m.cif) return { ...m, e2e: false };
       const r = await CANDADO.abrir(m.cif, llaves[m.de] || []);
       if (r == null) return { ...m, texto: '', cerrado: true, e2e: true };
       const claro = r.texto;
@@ -239,26 +271,45 @@ const CHAT = (() => {
    */
   async function enviar(para, texto, cita) {
     const base = { para, ...(cita ? { cita } : {}) };
-    const cerrado = await cerrarPara(para, texto);
-    if (cerrado) {
-      await pedir('/enviar', firmado({ ...base, cif: cerrado }));
+    const r = await cerrarPara(para, texto);
+    if (r.cerrado) {
+      await pedir('/enviar', firmado({ ...base, cif: r.cerrado }));
       return { ok: true, e2e: true };
+    }
+    /* SÓLO «sin-aparatos» BAJA A TEXTO PLANO: es la única causa en la que
+       mandar en claro es lo único que se puede hacer y el aviso es cierto.
+       Un fallo de red, o este navegador sin sus llaves, NO degradan: se
+       levantan como cualquier error de envío. Bajar a texto plano porque se
+       cayó una petición es justamente lo que hace falsa la promesa — y la
+       burbuja de «viajó sin cifrar» llegaba cuando el texto ya había viajado. */
+    if (r.motivo !== 'sin-aparatos') {
+      const e = new Error('no se pudo cifrar: ' + r.motivo);
+      e.motivo = r.motivo;
+      throw e;
     }
     await pedir('/enviar', firmado({ ...base, texto }));
     return { ok: true, e2e: false };
   }
 
-  /** Devuelve el bulto cerrado, o null si no hay a quién cerrárselo. */
+  /** `{ cerrado }` o `{ motivo }`: 'sin-candado' (navegación privada con el
+   *  cajón bloqueado — el único motivo en que se sigue mandando en claro,
+   *  igual que antes), 'sin-aparatos', 'sin-red' o 'sin-llave-propia'. */
   async function cerrarPara(para, texto) {
-    if (!CANDADO?.hay()) return null;
-    try {
-      await publicarMiLlave();
-      const aparatos = await llavesDe(await destinatarios(para));
-      if (!aparatos.length) return null;
-      return await CANDADO.cerrar(texto, aparatos);
-    } catch {
-      return null;
-    }
+    if (!CANDADO?.hay()) return { motivo: 'sin-aparatos' };
+    try { await publicarMiLlave(); } catch { return { motivo: 'sin-llave-propia' }; }
+    let quienes;
+    try { quienes = await destinatarios(para); } catch { return { motivo: 'sin-red' }; }
+    // Una lista vacía en un grupo no es «nadie tiene llaves»: es que no se
+    // pudo saber quiénes son. Mandar en claro ahí es mandar el grupo al aire.
+    if (!quienes.length) return { motivo: 'sin-red' };
+    let aparatos;
+    try { aparatos = await llavesDe(quienes); } catch { return { motivo: 'sin-red' }; }
+    // El sobre sólo para mí no es un sobre: en un grupo donde el relevo no
+    // entrega las llaves de los demás, lo único que volvía era la mía.
+    const mia = await CANDADO.miLlave().catch(() => null);
+    if (!aparatos.filter((a) => !mia || a.id !== mia.id).length) return { motivo: 'sin-aparatos' };
+    try { return { cerrado: await CANDADO.cerrar(texto, aparatos) }; }
+    catch { return { motivo: 'sin-llave-propia' }; }
   }
 
   /** Reaccionar. Tocar la misma reacción otra vez la quita. */
@@ -307,14 +358,24 @@ const CHAT = (() => {
    * conversaciones tiene que poder decir «📷 Imagen» sin abrir nada, y el
    * relevo necesita el tipo para servir el archivo. Es metadato, no contenido
    * — y los metadatos ya estaban declarados como lo que el servidor ve. */
-  async function subir(fichero) {
+  async function subir(fichero, { publico = false } = {}) {
     if (fichero.size > TOPE) { const e = new Error('más de 8MB'); e.code = 413; throw e; }
     const crudos = new Uint8Array(await fichero.arrayBuffer());
     const tipo = tipoDe(fichero.type);
     let datos;
     let llave = null;
     let iv = null;
-    if (CANDADO?.hay()) {
+    /* LO QUE ES PÚBLICO SE SUBE EN CLARO. La foto de perfil y la foto de un
+       estado NO son parte de una conversación: el relevo las reparte a quien
+       te vea en una lista. Cifrarlas no protegía nada —quien recibe la foto
+       no recibe la llave— y sí rompía: desde el 25-ago la foto de perfil se
+       subía cerrada y se tiraba la llave, y el relevo servía bytes cifrados
+       con etiqueta de imagen. Confirmado en producción: la foto de
+       nandino89 son bytes opacos. Lo de la conversación va cerrado; lo del
+       directorio va abierto, cada uno con su nombre. */
+    if (publico) {
+      datos = aB64Simple(crudos);
+    } else if (CANDADO?.hay()) {
       const c = await CANDADO.cerrarBytes(crudos);
       datos = aB64Simple(c.bytes);
       llave = c.llave;
@@ -665,7 +726,12 @@ const CHAT = (() => {
     const carga = adj.llave
       ? '{' + JSON.stringify({ t: texto || '', k: adj.llave, iv: adj.iv })
       : (texto || '');
-    const cerrado = adj.llave || carga ? await cerrarPara(para, carga) : null;
+    const r = adj.llave || carga ? await cerrarPara(para, carga) : { motivo: 'sin-aparatos' };
+    const cerrado = r.cerrado || null;
+    // Igual que en `enviar`: sólo «sin-aparatos» baja a texto plano.
+    if (!cerrado && r.motivo !== 'sin-aparatos') {
+      const e = new Error('no se pudo cifrar: ' + r.motivo); e.motivo = r.motivo; throw e;
+    }
     if (cerrado) {
       await pedir('/enviar', firmado({ ...meta, cif: cerrado }));
       return { ok: true, e2e: true };

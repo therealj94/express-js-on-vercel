@@ -178,6 +178,8 @@ const VETA = (() => {
         // Sin arrastrarlo hasta aqui, quien atrapa el error solo tiene la frase
         // y acaba adivinando con expresiones regulares sobre la traduccion.
         if (datos?.motivo) e.motivo = datos.motivo;
+        // Y con «otra-cuenta» viaja el correo que la sesión SÍ prueba.
+        if (datos?.correoReal) e.correoReal = String(datos.correoReal).toLowerCase();
         throw e;
       }
       return datos;
@@ -7749,7 +7751,14 @@ const VETA = (() => {
     /* El 409 con `sesion-no-vale` no es «otro aparato»: es esta sesion, que
        venció. Se arregla volviendo a entrar a la cuenta, y mandar a alguien a
        buscar su teléfono viejo por esto es hacerle perder la tarde. */
-    if (e?.code === 409) return e?.motivo === 'sesion-no-vale' ? 'vencida' : 'otra';
+    if (e?.code === 409) {
+      if (e?.motivo === 'sesion-no-vale') return 'vencida';
+      // La sesión vale, pero es de OTRA cuenta. El alta se corrige sola
+      // (chat.js) y esto casi nunca se ve; se escribe igual porque antes caía
+      // en «tu chat está en otro lado», que mandaba a buscar un teléfono viejo.
+      if (e?.motivo === 'otra-cuenta') return 'otraCuenta';
+      return 'otra';
+    }
     return 'red';
   }
 
@@ -9356,7 +9365,8 @@ const VETA = (() => {
     bcPreparar(btn); bcTrabajando(btn);
     try {
       let archivo = '';
-      if (s.adj) archivo = (await CHAT.subir(s.adj)).id;
+      // La foto de un estado es pública por definición: en claro. Ver `subir`.
+      if (s.adj) archivo = (await CHAT.subir(s.adj, { publico: true })).id;
       await CHAT.subirEstado({ texto, archivo, fondo: s.fondo });
       bcHecho(btn);
       setTimeout(async () => {
@@ -9840,7 +9850,8 @@ const VETA = (() => {
     if (!/^image\//.test(f.type)) return avisar(t('cha.soloImg'));
     chatSt.subiendoFoto = true; pintarChat();
     try {
-      const adj = await CHAT.subir(f);
+      // En claro a propósito: el relevo la reparte a quien te vea. Ver `subir`.
+      const adj = await CHAT.subir(f, { publico: true });
       await CHAT.perfil({ foto: adj.id });
       chatSt.yo = { ...(chatSt.yo || {}), foto: adj.id };
       await chatCargarConvs();
