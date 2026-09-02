@@ -28,7 +28,7 @@ import { verificarToken } from './middleware/auth.js'   // el de la propia app
 
 // ANTES del parser general de la app: los fotogramas del rostro no caben en su
 // límite, y el cuerpo lo parsea el primero que lo alcanza.
-app.use('/genesis/biometria', parserRostro)
+app.use(['/genesis/biometria', '/genesis/documento/leer'], parserRostro)
 
 // ... aquí va el bodyParser.json({ limit: '100kb' }) de siempre ...
 
@@ -57,9 +57,10 @@ mal.
 
 | Ruta | Para qué |
 | --- | --- |
-| `GET /genesis/estado` | Estado del trámite. Crea la identidad si no existe |
+| `GET /genesis/estado` (o `/status`) | Estado del trámite, con `hecho` y `documentoDatos`. Crea la identidad si no existe |
 | `POST /genesis/datos` | Nombre, fecha de nacimiento, país |
 | `POST /genesis/documento` | MRZ del documento, ya leída en el teléfono |
+| `POST /genesis/documento/leer` | La FOTO del documento, para la web: Genesis la lee y la descarta. Montar `parserRostro` también en esta ruta |
 | `POST /genesis/biometria` | Foto de rostro |
 | `POST /genesis/vincular` | Ata la cuenta de la app al GID |
 | `POST /genesis/sso/token` | Token para entrar en otra app del ecosistema |
@@ -100,4 +101,6 @@ ninguna ruta de aprobación y que la cuenta se tome de la sesión.
 `mrz-cliente.test.mjs` prueba los ayudantes de MRZ del cliente móvil, que son
 los que habilitan el botón de enviar.
 
-Ambas pasan: 20 y 10 comprobaciones.
+Ambas pasan: 26 y 10 comprobaciones. Si el entorno trae credenciales de AWS,
+quitalas antes (`unset AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY`): la prueba
+espera «sin lector» y no debe tocar Rekognition.
