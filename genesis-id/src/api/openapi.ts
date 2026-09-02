@@ -128,18 +128,39 @@ const TEXTOS: Record<string, Texto> = {
     resumen: 'Adjuntar el documento como dos fotos',
     descripcion:
       'Para quien se verifica desde un navegador, donde no hay lector de zona '
-      + 'mecánica. Las lee un operador.\n\n'
-      + '**Cuidado al leer la respuesta:** viene `aceptable: false` porque nadie lo ha '
-      + 'mirado todavía, no porque el documento se haya rechazado. Léalo junto a '
-      + '`via: "fotos"`, nunca solo.\n\n'
+      + 'mecánica. Las lee un operador — y, si el servidor tiene lector, también la '
+      + 'máquina: lee la zona mecánica del reverso, y si sus dígitos de control cuadran '
+      + 'el documento pasa las mismas comprobaciones que por el teléfono.\n\n'
+      + '**Cuidado al leer la respuesta:** con `pendienteDeLectura: true`, `aceptable` '
+      + 'viene en `false` porque nadie lo ha mirado todavía, no porque el documento se '
+      + 'haya rechazado. Con `pendienteDeLectura: false` la máquina ya lo leyó, '
+      + '`aceptable` dice la verdad y `datos` trae lo leído para que la persona lo '
+      + 'confirme. Léalo junto a `via: "fotos"`, nunca solo.\n\n'
       + 'Tope de 3 MB de base64 por cara (unos 2,2 MB de imagen).',
     cuerpo: {
       anverso: s('string', 'data:image/jpeg;base64,…'),
       reverso: s('string', 'data:image/jpeg;base64,…'),
     },
     obligatorios: ['anverso', 'reverso'],
-    devuelve: '`{ identidad, documento: { via: "fotos", aceptable: false } }`',
+    devuelve: '`{ identidad, documento: { via: "fotos", aceptable, pendienteDeLectura, problemas, lectura, datos } }`',
     errores: { '400': 'Falta alguna cara, o no es una imagen', '413': 'Alguna cara pesa de más' },
+  },
+  'POST /api/v1/identidades/:id/documento/leer': {
+    resumen: 'Leer la zona mecánica del reverso desde una foto, sin adjuntar nada',
+    descripcion:
+      'Para clientes sin lector propio (el navegador). La imagen se lee con el '
+      + 'proveedor del servidor, se rescata la zona mecánica con sus dígitos de control '
+      + 'y la imagen se descarta: no se guarda ni se anota. Devuelve la MRZ y lo que '
+      + 'dice, para enseñarla y que la persona la confirme. **Leer no es adjuntar:** '
+      + 'para adjuntar siga con `/documento` (el texto) o `/documento-fotos`.\n\n'
+      + 'Sin proveedor responde 503 con `motivo: "sin-lector"`; no hay lector de mentira.',
+    cuerpo: { imagen: s('string', 'data:image/jpeg;base64,… del reverso') },
+    obligatorios: ['imagen'],
+    devuelve: '`{ ok, mrz, formato, corregida, datos, motivo }`. Con `motivo: "digitos"` la MRZ viene para corregirla a mano.',
+    errores: {
+      '400': 'Falta la imagen', '422': 'No se pudo leer: `motivo` dice si fue «cortadas» o «no-encontrada»',
+      '503': 'Sin lector configurado (`motivo: "sin-lector"`)',
+    },
   },
   'POST /api/v1/identidades/:id/vivacidad': {
     resumen: 'Pedir un reto de prueba de vida',

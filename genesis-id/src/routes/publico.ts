@@ -40,6 +40,10 @@ import { construirOpenApi, rutasDe } from '../api/openapi.js'
 import { direccionDelEmisor } from '../credencial/credencial.js'
 import { appsRouter } from './apps.js'
 import { directorioAppsRouter } from './directorio.js'
+import { limite } from '../middleware/proteger.js'
+import * as ids from '../motor/identidades.js'
+import * as biz from '../motor/negocios.js'
+import { gidValido, normalizarGid } from '../lib/uid.js'
 
 export const publicoRouter = Router()
 
@@ -144,6 +148,56 @@ publicoRouter.get('/emisor', (_req, res) => {
     },
     pagina: '/credencial',
   })
+})
+
+/** Solo el día: la hora exacta de una aprobación no le hace falta a nadie. */
+const soloFecha = (iso: string | null | undefined): string | null =>
+  iso ? String(iso).slice(0, 10) : null
+
+/**
+ * ¿Está verificado este GID? Lo que abre el QR de la tarjeta de identidad.
+ *
+ * Dice lo MÍNIMO: verificada o no, desde qué día y si es persona o negocio.
+ * Ni nombre, ni nacionalidad, ni correo, ni riesgo. Es lo que necesita quien
+ * tiene delante una credencial —un comercio, un cajero— para saber si vale,
+ * sin que Genesis ID le cuente nada de la persona.
+ *
+ * «No existe» y «existe pero no está verificada» responden lo mismo, a
+ * propósito: distinguirlos permitiría barrer el espacio de GIDs buscando
+ * cuáles existen, y un GID en trámite no es un dato público. Solo un GID mal
+ * formado —el dígito verificador no cuadra— se rechaza con 400, porque eso se
+ * calcula sin mirar la base y no revela nada.
+ *
+ * La credencial firmada (`/emisor`, `/credencial`) es la comprobación FUERTE,
+ * sin confiar en este servicio. Esta es la rápida: un enlace en un QR que
+ * cualquier teléfono abre.
+ */
+publicoRouter.get('/gid/:gid', limite(60), (req, res) => {
+  const gid = normalizarGid(req.params.gid)
+  if (!gidValido(gid)) {
+    return res.status(400).json({ error: 'GID mal formado (falla el dígito verificador)', gid })
+  }
+  const consultadoEn = new Date().toISOString()
+
+  const identidad = ids.porGid(gid)
+  if (identidad) {
+    const verificada = identidad.estado === 'verificada'
+    return res.json({
+      gid, tipo: 'personal', verificada,
+      verificadaEn: verificada ? soloFecha(identidad.verificadaEn) : null,
+      consultadoEn,
+    })
+  }
+  const negocio = biz.porGidNegocio(gid)
+  if (negocio) {
+    const verificada = negocio.estado === 'verificado'
+    return res.json({
+      gid, tipo: 'negocio', verificada,
+      verificadaEn: verificada ? soloFecha(negocio.verificadoEn) : null,
+      consultadoEn,
+    })
+  }
+  res.json({ gid, tipo: null, verificada: false, verificadaEn: null, consultadoEn })
 })
 
 /**

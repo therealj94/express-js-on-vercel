@@ -17,6 +17,7 @@ import { registrar } from '../audit/bitacora.js'
 import { emitirReto, comprobarReto } from '../kyc/vivacidad.js'
 import { guardarRostroCotejo } from '../kyc/fotosDocumento.js'
 import { biometriaConfigurada } from '../kyc/biometria.js'
+import { lectorConfigurado, leerReverso } from '../kyc/lectura.js'
 import { emitir as emitirCredencial, ATRIBUTOS, type Atributo } from '../credencial/credencial.js'
 import type { Movimiento } from '../types.js'
 
@@ -84,16 +85,50 @@ appsRouter.post('/identidades/:id/documento', limite(30), pesada, exigeApp('iden
   // del tamizado de sanciones: eso es información de cumplimiento y avisar al
   // interesado de que saltó una coincidencia es justamente lo que no se debe
   // hacer.
+  const vista = await ids.estadoParaUsuarioConFoto(identidad)
   res.json({
-    identidad: await ids.estadoParaUsuarioConFoto(identidad),
+    identidad: vista,
     documento: {
       aceptable: identidad.documento?.aceptable ?? false,
       anverso: identidad.documento?.anverso ?? null,
       problemas: (identidad.documento?.hallazgos ?? [])
         .filter((h) => h.gravedad === 'grave')
         .map((h) => h.detalle),
+      // Lo leído, para que la app lo enseñe y la persona lo CONFIRME en vez
+      // de teclearlo.
+      datos: vista.documentoDatos,
     },
   })
+})
+
+/**
+ * Lee el REVERSO a partir de su foto, sin adjuntar nada.
+ *
+ * Es para la web, que no tiene ML Kit: la foto sube, Rekognition saca el
+ * texto, `kyc/lectura.ts` rescata la MRZ con sus dígitos de control y la
+ * imagen se descarta — no se guarda, no se anota. Devuelve la MRZ y lo que
+ * dice, no el estado de la identidad: leer no es adjuntar. Adjuntar sigue
+ * siendo `/documento` con el texto, igual que desde el teléfono, o
+ * `/documento-fotos` con las dos caras.
+ *
+ * Sin proveedor responde 503 con `motivo: 'sin-lector'` y la web ofrece
+ * teclear las líneas. No hay lector de mentira.
+ */
+appsRouter.post('/identidades/:id/documento/leer', limite(30), pesada, exigeApp('identidad.documento'), async (req, res) => {
+  const identidad = ids.porId(req.params.id)
+  if (!identidad) return res.status(404).json({ error: 'Identidad no encontrada' })
+  const { imagen } = req.body ?? {}
+  if (!imagen || typeof imagen !== 'string') {
+    return res.status(400).json({ error: 'Hace falta la imagen del reverso en base64' })
+  }
+  if (!lectorConfigurado()) {
+    return res.status(503).json({
+      error: 'No hay lector de documentos configurado en el servidor; escriba las líneas de la MRZ a mano',
+      motivo: 'sin-lector',
+    })
+  }
+  const lectura = await leerReverso(imagen)
+  res.status(lectura.ok || lectura.mrz ? 200 : 422).json(lectura)
 })
 
 /**
@@ -142,15 +177,30 @@ appsRouter.post('/identidades/:id/documento-fotos', limite(20), pesada, exigeApp
   // no avanzó, no es que el documento no sirva.
   if (!r.identidad) return res.status(404).json({ error: 'Identidad no encontrada' })
   if (!r.ok) return res.status(503).json({ error: r.motivo })
+  const vista = await ids.estadoParaUsuarioConFoto(r.identidad)
   res.json({
-    identidad: await ids.estadoParaUsuarioConFoto(r.identidad),
+    identidad: vista,
     /* `lectura` es lo que la máquina alcanzó a ver en el frente, para que la
        app se lo diga a la persona con la cámara todavía en la mano:
        «no se distingue la foto del titular — tomá el frente de nuevo» en el
        momento vale oro; un rechazo del operador tres días después no le sirve
        a nadie. null = no hay lector configurado, no se afirma nada. NUNCA
-       bloquea: la persona puede mandar igual y lo resuelve un operador. */
-    documento: { via: 'fotos', aceptable: false, pendienteDeLectura: true, problemas: [], lectura: r.lectura ?? null },
+       bloquea: la persona puede mandar igual y lo resuelve un operador.
+
+       Y si la máquina además leyó la MRZ del reverso y cuadra, `aceptable` ya
+       dice la verdad del documento —vencido, menor de edad, nombre que no
+       coincide— y `datos` trae lo leído para que la persona lo confirme. Sin
+       MRZ leída sigue `pendienteDeLectura`: nadie lo miró todavía. */
+    documento: {
+      via: 'fotos',
+      aceptable: r.mrzLeida ? (r.identidad.documento?.aceptable ?? false) : false,
+      pendienteDeLectura: !r.mrzLeida,
+      problemas: r.mrzLeida
+        ? (r.identidad.documento?.hallazgos ?? []).filter((h) => h.gravedad === 'grave').map((h) => h.detalle)
+        : [],
+      lectura: r.lectura ?? null,
+      datos: vista.documentoDatos,
+    },
   })
 })
 

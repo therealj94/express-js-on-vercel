@@ -30,6 +30,7 @@ import { parecidoNombres } from '../lib/texto.js'
 import { cotejar, sinProveedor, cotejoManual, biometriaConfigurada } from '../kyc/biometria.js'
 import { guardarFotos, archivarFotos, leerFotos } from '../kyc/fotosDocumento.js'
 import { leerAnverso } from '../kyc/textoDocumento.js'
+import { leerReverso } from '../kyc/lectura.js'
 import { guardarFoto, leerFoto, borrarFoto } from '../kyc/fotoCredencial.js'
 
 /* Una credencial necesita un cuadrado de 320 px. Aceptar más sería convertir el
@@ -276,7 +277,12 @@ export function adjuntarDocumento(
     }
   }
 
-  if (identidad.estado !== 'verificada') identidad.estado = 'documento'
+  // El estado solo avanza. Poner «documento» siempre hacía retroceder a
+  // quien ya había pasado el rostro: el registro cámara-primero lee el
+  // documento, hace la prueba de vida y DESPUÉS confirma sus datos, y al
+  // confirmarlos vuelve a mandar la misma MRZ para que el cotejo del nombre se
+  // haga con lo que declaró. Ese reenvío no puede borrar el rostro.
+  if (identidad.estado === 'iniciada' || identidad.estado === 'datos') identidad.estado = 'documento'
   recalcularRiesgo(identidad)
   identidad.actualizadaEn = ahora()
   store.guardar()
@@ -305,6 +311,12 @@ export interface ResultadoFotos {
     nombreConfirmado: boolean | null
     fechaConfirmada: boolean | null
   } | null
+  /**
+   * La máquina leyó la MRZ del reverso y cuadró: el documento pasó las mismas
+   * comprobaciones que por el teléfono y `datos` trae lo leído. Sin esto, el
+   * expediente sigue esperando a que un operador lo lea.
+   */
+  mrzLeida?: boolean
 }
 
 /**
@@ -401,42 +413,96 @@ export async function adjuntarDocumentoPorFotos(
           : { clave: 'anverso.texto', gravedad: 'aviso', detalle: 'La máquina leyó el frente pero ' + lectura.detalle })
   }
 
-  identidad.documento = {
-    // `aceptable` en falso NO significa aquí «el documento no sirve»: significa
-    // «todavía no lo ha mirado nadie». La diferencia la marca `via`, y el
-    // cliente tiene que leer las dos.
-    aceptable: false,
-    datos: null,
-    hallazgos,
-    edad: null,
-    anverso: {
-      aportado: true,
-      nombreConfirmado: lectura ? lectura.nombre : null,
-      fechaConfirmada: lectura ? lectura.fecha : null,
-    },
-    via: 'fotos',
-    // Las imágenes ya están guardadas aparte; en el expediente no van nunca.
-    imagenes: null,
-    textoAnverso: lectura?.texto || null,
+  /* Y LEE EL REVERSO: la zona mecánica, con sus dígitos de control.
+     Es lo que convierte la vía del navegador en una verificación de verdad y
+     no en una cola: si la MRZ se lee y cuadra, el documento pasa las MISMAS
+     comprobaciones que por el teléfono —vigencia, edad, nombre contra lo
+     declarado y contra el frente— y la persona ve al instante si sirve, con
+     sus datos leídos para confirmarlos. Las fotos se conservan igual para que
+     el operador las mire: leer no es aprobar. Si no se lee, todo queda como
+     estaba: esperando a un operador. */
+  const reversoLeido = await leerReverso(reverso)
+  const mrzLeida = reversoLeido.ok && Boolean(reversoLeido.mrz)
+
+  if (mrzLeida) {
+    const revision = revisarDocumento(reversoLeido.mrz!, {
+      nombreCompleto: identidad.nombreDeclarado,
+      fechaNacimiento: identidad.fechaNacimientoDeclarada,
+    }, lectura?.texto || null)
+    if (revision.datos) {
+      const declarado = identidad.nombreDeclarado
+      const recortado = revision.datos.nombreCompleto
+      const esRecorteDe = Boolean(
+        declarado && revision.anverso.nombreConfirmado &&
+        parecidoNombres(declarado, recortado) >= 0.95)
+      identidad.nombreLegal = esRecorteDe ? declarado! : recortado
+      identidad.fechaNacimiento = revision.datos.fechaNacimiento
+      identidad.nacionalidad = revision.datos.nacionalidad
+      identidad.numeroDocumento = revision.datos.numeroDocumento
+      identidad.tipoDocumento = `${revision.datos.formato}/${revision.datos.tipoDocumento}`
+      identidad.vencimientoDocumento = revision.datos.fechaVencimiento
+    }
+    identidad.documento = {
+      ...revision,
+      hallazgos: [
+        ...hallazgos.filter((h) => h.clave !== 'anverso.texto' && h.clave !== 'anverso.nombre'),
+        { clave: 'mrz.automatica', gravedad: 'ok',
+          detalle: 'La zona mecánica del reverso la leyó la máquina y cuadran sus dígitos de control' +
+            (reversoLeido.corregida ? ' (tras corregir confusiones de lectura)' : '') },
+        ...revision.hallazgos,
+      ],
+      via: 'fotos',
+      imagenes: null,
+      textoAnverso: lectura?.texto || null,
+    }
+  } else {
+    identidad.documento = {
+      // `aceptable` en falso NO significa aquí «el documento no sirve»: significa
+      // «todavía no lo ha mirado nadie». La diferencia la marca `via`, y el
+      // cliente tiene que leer las dos.
+      aceptable: false,
+      datos: null,
+      hallazgos,
+      edad: null,
+      anverso: {
+        aportado: true,
+        nombreConfirmado: lectura ? lectura.nombre : null,
+        fechaConfirmada: lectura ? lectura.fecha : null,
+      },
+      via: 'fotos',
+      // Las imágenes ya están guardadas aparte; en el expediente no van nunca.
+      imagenes: null,
+      textoAnverso: lectura?.texto || null,
+    }
   }
 
-  if (identidad.nombreDeclarado) {
-    identidad.tamiz = tamizarPersona(identidad.nombreDeclarado, {
-      fechaNacimiento: identidad.fechaNacimientoDeclarada,
-      nacionalidades: [],
+  // Con MRZ leída se tamiza con el nombre del documento, que es el que vale;
+  // sin ella, con el declarado: peor, pero mejor que dejar la puerta sin cerrar.
+  const nombreParaTamiz = mrzLeida ? identidad.nombreLegal : identidad.nombreDeclarado
+  if (nombreParaTamiz) {
+    identidad.tamiz = tamizarPersona(nombreParaTamiz, {
+      fechaNacimiento: mrzLeida ? identidad.fechaNacimiento : identidad.fechaNacimientoDeclarada,
+      nacionalidades: mrzLeida && identidad.nacionalidad ? [identidad.nacionalidad] : [],
     })
     if (identidad.tamiz.fuertes > 0 || identidad.tamiz.posibles > 0) {
       abrirCasoPorTamiz(identidad)
     }
   }
 
-  if (identidad.estado !== 'verificada') identidad.estado = 'documento'
+  // El estado solo avanza. Poner «documento» siempre hacía retroceder a
+  // quien ya había pasado el rostro: el registro cámara-primero lee el
+  // documento, hace la prueba de vida y DESPUÉS confirma sus datos, y al
+  // confirmarlos vuelve a mandar la misma MRZ para que el cotejo del nombre se
+  // haga con lo que declaró. Ese reenvío no puede borrar el rostro.
+  if (identidad.estado === 'iniciada' || identidad.estado === 'datos') identidad.estado = 'documento'
   recalcularRiesgo(identidad)
   identidad.actualizadaEn = ahora()
   store.guardar()
 
   registrar(origen, 'identidad.documentoPorFotos', identidad.id, {
     coincidenciasTamiz: identidad.tamiz?.coincidencias.length ?? 0,
+    mrzLeida,
+    aceptable: mrzLeida ? identidad.documento.aceptable : null,
     // Qué alcanzó a leer la máquina, para poder auditar después si el aviso
     // inmediato a la persona funcionó o estorbó.
     lectura: lectura
@@ -446,6 +512,7 @@ export async function adjuntarDocumentoPorFotos(
   return {
     ok: true,
     identidad,
+    mrzLeida,
     lectura: lectura
       ? {
           rostroEnFrente: lectura.rostros === null ? null : lectura.rostros >= 1,
@@ -930,6 +997,19 @@ export function estadoParaUsuario(identidad: Identidad) {
   // foto mal tomada — y al volver a entrar tampoco le dejaba reintentar.
   const rostroPendiente = identidad.biometria?.estado === 'fallida'
 
+  /* QUÉ ESTÁ HECHO, paso por paso, sin presuponer un orden.
+     La app y la web van cámara-primero (documento → rostro → confirmar) y
+     las versiones anteriores iban al revés; con esto cualquiera retoma donde
+     quedó, y quien cierra a mitad no pierde nada de lo que ya mandó. Un
+     documento por fotos cuenta como hecho aunque nadie lo haya leído aún: la
+     persona ya aportó lo suyo. */
+  const hecho = {
+    datos: Boolean(identidad.nombreDeclarado && identidad.fechaNacimientoDeclarada),
+    documento: Boolean(identidad.documento?.aceptable || identidad.documento?.via === 'fotos'),
+    rostro: Boolean(identidad.biometria) && !rostroPendiente,
+  }
+  const d = identidad.documento?.datos ?? null
+
   return {
     id: identidad.id,
     email: identidad.email,
@@ -937,6 +1017,21 @@ export function estadoParaUsuario(identidad: Identidad) {
     gid: identidad.gid,
     nombreLegal: identidad.nombreLegal,
     documentoAceptable: identidad.documento?.aceptable ?? null,
+    hecho,
+    // Lo que dice el documento, para que la persona lo CONFIRME en vez de
+    // teclearlo. Es suyo: lo acaba de leer con su cámara.
+    documentoDatos: d ? {
+      nombre: identidad.nombreLegal ?? d.nombreCompleto,
+      fechaNacimiento: d.fechaNacimiento,
+      nacionalidad: d.nacionalidad,
+      numeroDocumento: d.numeroDocumento,
+      tipoDocumento: `${d.formato}/${d.tipoDocumento}`,
+      vencimiento: d.fechaVencimiento,
+    } : null,
+    nombreDeclarado: identidad.nombreDeclarado,
+    fechaNacimientoDeclarada: identidad.fechaNacimientoDeclarada,
+    paisResidencia: identidad.paisResidencia,
+    verificadaEn: identidad.verificadaEn,
     /* POR DONDE ENTRO EL DOCUMENTO, y hace falta decirlo.
      *
      * En la via `fotos` —la del navegador— `aceptable` viene en falso porque
@@ -970,15 +1065,17 @@ export function estadoParaUsuario(identidad: Identidad) {
       identidad.volumenEsperadoUsd < UMBRAL_DILIGENCIA_USD) ? 'simplificada' as const : 'completa' as const,
     // Al usuario se le dice qué le falta, no el detalle del análisis interno.
     faltan: identidad.estado === 'verificada' ? 0 : pendientes,
+    // Se deduce de lo hecho, no del estado: el estado es una etiqueta de
+    // cumplimiento y el paso siguiente es una instrucción a la persona.
     siguientePaso:
-      identidad.estado === 'iniciada' ? 'Completar nombre y fecha de nacimiento'
-        : identidad.estado === 'datos' ? 'Escanear el documento de identidad'
-        : identidad.estado === 'documento' ? 'Tomarse la foto de rostro'
-        : rostroPendiente ? 'Repetir la comprobación del rostro'
-        : identidad.estado === 'biometria' || identidad.estado === 'en-revision' ? 'En revisión'
-        : identidad.estado === 'verificada' ? 'Listo'
+      identidad.estado === 'verificada' ? 'Listo'
         : identidad.estado === 'rechazada' ? 'Verificación rechazada'
-        : 'Identidad suspendida',
+        : identidad.estado === 'suspendida' ? 'Identidad suspendida'
+        : !hecho.documento ? 'Escanear el documento de identidad'
+        : rostroPendiente ? 'Repetir la comprobación del rostro'
+        : !hecho.rostro ? 'Hacer la prueba de vida con la cámara'
+        : !hecho.datos ? 'Confirmar los datos leídos del documento'
+        : 'En revisión',
     actualizadaEn: identidad.actualizadaEn,
   }
 }
