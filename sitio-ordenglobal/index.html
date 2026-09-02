@@ -24,7 +24,7 @@
 
 <header class="barra">
   <div class="env">
-    <a class="lock" href="/"><img src="/assets/og.png" alt="Orden Global"><b>ORDEN <span>GLOBAL</span></b></a>
+    <a class="lock" href="/"><img src="/assets/og.png" alt="Orden Global"><b class="marca">ORDEN <span>GLOBAL</span></b></a>
     <nav class="nav" aria-label="Secciones">
       <a href="#hace">Qué hacés</a><a href="#como">Cómo funciona</a><a href="#origen">ORIGEN</a><a href="#cadena">La cadena</a><a href="/historia/">La historia</a><a href="/en/" lang="en" hreflang="en">English</a>
     </nav>
@@ -32,6 +32,23 @@
   </div>
 </header>
 
+<div class="entrada">
+<div class="cielo" aria-hidden="true"><canvas id="galaxia"></canvas></div>
+<svg class="veta-svg" viewBox="0 0 1200 900" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+  <defs>
+    <linearGradient id="vetaGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#96793F" stop-opacity="0"/>
+      <stop offset=".25" stop-color="#C9A961"/>
+      <stop offset=".6" stop-color="#F8EFCF"/>
+      <stop offset="1" stop-color="#C9A961" stop-opacity=".55"/>
+    </linearGradient>
+  </defs>
+  <path style="--largo:1400" d="M905 -40 C 900 120, 830 200, 812 320 C 796 430, 856 500, 838 620 C 822 730, 742 790, 736 940"/>
+  <path class="b" style="--largo:900" d="M812 320 C 760 360, 690 372, 628 420 C 566 468, 540 540, 470 600"/>
+  <path class="c" style="--largo:700" d="M838 620 C 906 660, 968 654, 1030 700 C 1092 746, 1110 800, 1160 840"/>
+  <circle class="pepita" cx="470" cy="600" r="4.5"/>
+  <circle class="pepita" cx="736" cy="940" r="3"/>
+</svg>
 <main class="env">
 
 <div class="portada">
@@ -69,6 +86,10 @@
     <div class="s">Lo podés buscar vos en OrdenScan: es la prueba, no la promesa.</div>
   </div>
 </div>
+</main>
+</div>
+
+<main class="env">
 
 <section id="hace">
   <h2>Con una sola app</h2>
@@ -186,6 +207,7 @@
   </div>
 </footer>
 
+<script src="/assets/galaxia.js" defer></script>
 <script src="/assets/portada.js" defer></script>
 </body>
 </html>

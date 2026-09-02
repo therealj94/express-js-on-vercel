@@ -1,3 +1,14 @@
+/* ── EL CIELO DE LA CASA ────────────────────────────────────────────────────
+   El mismo `galaxia.js` que dibuja la puerta de app.vetawallet.com, del mismo
+   archivo y no una imitación: es la diferencia entre parecerse y ser la misma
+   casa. Se monta solo detrás de la ENTRADA —abajo vuelve la fotografía de
+   marca— y el propio módulo se queda quieto si el navegador pide menos
+   movimiento. Si por lo que sea no cargó, no pasa nada: detrás hay fondo. */
+(function(){
+  var el = document.getElementById('galaxia');
+  if (el && window.GALAXIA) { try { window.GALAXIA.montar(el); } catch (e) {} }
+})();
+
 /* ── SOLO LO REAL SE MUEVE ──────────────────────────────────────────────────
    Dos datos vivos, de las mismas fuentes que la billetera. Si una fuente no
    contesta, queda el guion: un numero inventado que se mueve es peor que

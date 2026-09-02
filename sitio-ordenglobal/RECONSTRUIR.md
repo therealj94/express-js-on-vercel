@@ -17,6 +17,42 @@ Desde el 2-sep son dos paginas, sin dependencias ni compilacion:
 Mas `robots.txt` y `sitemap.xml`. Todo lo demas son medios (216 fotogramas,
 el audio y las imagenes) que las paginas cargan a mano.
 
+## La misma casa que la billetera
+
+La portada nacio con fondo plano, tarjetas opacas y botones de esquina
+redondeada, y se veia de otra empresa. José, el 2-sep: «rompió patrón que
+teníamos para nuestra web os con vetawallet». El patrón sale de
+`apps-web/veta-wallet/index.html`, que es LA FUENTE, y aqui se repite:
+
+| Pieza | De donde sale |
+|---|---|
+| Paleta y radios | el `:root` de la billetera, valor por valor |
+| Fondo | `assets/fondo.jpg` con el velo de tres pasos, fijo |
+| Tarjetas | vidrio: translucido, desenfocado, con un pelo de oro |
+| Botones | pildoras de 100 px; el principal es el mismo metal con su destello |
+| Letras | Cinzel para la marca, Archivo para el texto, JetBrains Mono para cifras |
+| La veta | el hilo de mineral de la entrada, con su degradado |
+| La galaxia | `assets/galaxia.js` — **el mismo archivo**, copiado sin tocar |
+
+`galaxia.js` y `fondo.jpg` son copias de `apps-web/veta-wallet/`. Copias que
+nadie vigila se separan en un mes, asi que hay una prueba que las compara byte
+a byte y ademas exige que la paleta y los componentes sigan diciendo lo mismo:
+
+```sh
+node sitio-ordenglobal/probar-mismo-patron.mjs
+```
+
+Si allá cambia el oro o el radio de un boton, esa prueba se pone roja hasta que
+aqui cambie tambien. Para actualizar las copias:
+
+```sh
+cp apps-web/veta-wallet/galaxia.js sitio-ordenglobal/assets/galaxia.js
+cp apps-web/veta-wallet/assets/fondo.jpg sitio-ordenglobal/assets/fondo.jpg
+```
+
+`historia/` NO sigue este patrón y esta bien: es una pieza de cine con su
+propia direccion de arte, y entra por su propia puerta desde la portada.
+
 ## Donde vive
 
 | Cosa | Donde |
