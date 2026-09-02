@@ -1,0 +1,231 @@
+{
+  "_nota": "Pelicula 2: el ecosistema, sin una sola persona. Se renderiza ENTERA en local con Pillow y ffmpeg (logos, tipografia y puntos), asi que no toca la GPU y no cuesta nada. Formato propio, consumido por montaje/ecosistema.py.",
+  "_hallazgo": "La prueba de publico frio la llamo 'un catalogo de servicios' y 'un anuncio de juego de celular', y los nombres inventados en ingles le dieron desconfianza. La conclusion importante NO es que la pelicula este mal, sino que NO ES UNA PELICULA DE CAPTACION: a un desconocido en Instagram hay que darle la pelicula 1. Esta sirve para quien ya llego -web, inversores, alguien que pregunto que es Orden Global- y ahi el recorrido completo es una virtud, no un defecto.",
+  "_correcciones": [
+    "Ya no entran seis iconos a la vez: contradecia el rotulo 'Una sola app'. Ahora entra Veta sola y las funciones aparecen DENTRO de ella. Las otras marcas se nombran pequenas, cuando aparece su funcion.",
+    "El verbo va primero y el nombre despues. El espectador frio se perdio entre Veta, Genesis, Pulse y AU-RA sin saber que hacia ninguno.",
+    "ordenscan ya no ensena un hash. Ensena un RECIBO legible con fecha, hora y monto. El hash largo se leyo como 'que pereza andar copiando ese chorro de letras' y hundia justo el clima de la pelicula.",
+    "Fuera toda mencion al oro, a la formula y al respaldo. El espectador concluyo solo 'la plata esta respaldada en oro', que es exactamente lo que el acta de Junta del 14/08/2026 prohibe afirmar."
+  ],
+  "salida": {
+    "ancho": 1080,
+    "alto": 1920,
+    "fps": 30,
+    "dur_s": 46.5
+  },
+  "paleta": {
+    "fondo": "#0B0B0C",
+    "oro": "#E7C362",
+    "oro_tenue": "#8A7434",
+    "texto": "#F4EFE4",
+    "apagado": "#8A8378"
+  },
+  "tipos": {
+    "titular": {
+      "familia": "Fraunces",
+      "peso": 600
+    },
+    "rotulo": {
+      "familia": "Karla",
+      "peso": 700
+    },
+    "dato": {
+      "familia": "JetBrains Mono",
+      "peso": 700
+    }
+  },
+  "_gesto": "Cada transicion es la misma y sale del logo: lo que hay en pantalla se deshace en puntos y los puntos se rehacen en lo siguiente. El logo de Orden Global son lineas que, donde se cruzan, se rompen en una reticula de puntos; ese es el unico truco de la pelicula y no se toma prestado de nadie.",
+  "bloques": [
+    {
+      "id": "01_el_oro",
+      "t": 0.0,
+      "dur": 7.0,
+      "escena": "oro_apertura",
+      "detalle": "Negro absoluto. Entra una pepita de oro llenando el cuadro, con una luz cruzandola despacio. Nada mas. Es la apertura: el oro no aparece al final, ES el principio.",
+      "plano_real": "macro_pepita",
+      "rotulos": [
+        {
+          "t": 3.8,
+          "dur": 2.2,
+          "texto": "Un gramo de oro.",
+          "tipo": "titular"
+        }
+      ]
+    },
+    {
+      "id": "02_cincuenta_y_cinco",
+      "t": 7.0,
+      "dur": 5.0,
+      "escena": "origen",
+      "detalle": "La pepita se parte en 55 marcas de ORIGEN, en una reticula de 11x5 que se puede contar. Una crece y se queda.",
+      "rotulos": [
+        {
+          "t": 9.4,
+          "dur": 2.2,
+          "texto": "Cincuenta y cinco ORIGEN.",
+          "tipo": "titular"
+        }
+      ]
+    },
+    {
+      "id": "03_nace",
+      "t": 12.0,
+      "dur": 4.5,
+      "escena": "puntos_a_logo",
+      "detalle": "La marca de ORIGEN se deshace en polvo dorado y el polvo se rehace en el logo de Orden Global.",
+      "activo": "orden-global/orden-global-logo.png"
+    },
+    {
+      "id": "04_tesis",
+      "t": 16.5,
+      "dur": 3.2,
+      "escena": "rotulos",
+      "rotulos": [
+        {
+          "t": 16.7,
+          "dur": 1.4,
+          "texto": "Una identidad.",
+          "tipo": "titular"
+        },
+        {
+          "t": 18.2,
+          "dur": 1.4,
+          "texto": "Todo el ecosistema.",
+          "tipo": "titular"
+        }
+      ]
+    },
+    {
+      "id": "05_la_app",
+      "t": 19.7,
+      "dur": 4.3,
+      "escena": "sistema_solar",
+      "activo": "veta-wallet/veta-wallet-icono.png",
+      "rotulos": [
+        {
+          "t": 21.6,
+          "dur": 1.6,
+          "texto": "Veta Wallet",
+          "tipo": "dato"
+        }
+      ],
+      "orbitas": [
+        {
+          "nombre": "Chat",
+          "ang": 205,
+          "r": 430
+        },
+        {
+          "nombre": "MyTokenPay",
+          "ang": 335,
+          "r": 440
+        },
+        {
+          "nombre": "Genesis ID",
+          "ang": 160,
+          "r": 450
+        },
+        {
+          "nombre": "Ordenexchange",
+          "ang": 35,
+          "r": 440
+        },
+        {
+          "nombre": "AuCorp",
+          "ang": 268,
+          "r": 400
+        }
+      ]
+    },
+    {
+      "id": "06_funciones",
+      "t": 24.0,
+      "dur": 10.8,
+      "escena": "funciones_dentro",
+      "detalle": "Tres golpes de 3,6 s en vez de siete de 2,7. Cada uno con imagen real detras, no con fondo negro.",
+      "items": [
+        {
+          "t": 24.0,
+          "verbo": "Guardá. Mandá. Recibí.",
+          "marca": null,
+          "plano_real": "macro_manos_telefono"
+        },
+        {
+          "t": 27.6,
+          "verbo": "Cobrá con un código.",
+          "marca": "MyTokenPay",
+          "plano_real": "macro_qr_lector"
+        },
+        {
+          "t": 31.2,
+          "verbo": "De un país a otro.",
+          "marca": null,
+          "plano_real": "macro_mostrador"
+        }
+      ]
+    },
+    {
+      "id": "07_el_recibo",
+      "t": 34.8,
+      "dur": 6.0,
+      "escena": "recibo",
+      "detalle": "Un comprobante legible que se arma de puntos. Fecha, hora, estado.",
+      "recibo": {
+        "titulo": "Comprobante",
+        "campos": [
+          [
+            "Fecha",
+            "1 sep 2026"
+          ],
+          [
+            "Hora",
+            "14:32:07"
+          ],
+          [
+            "Estado",
+            "Confirmado"
+          ]
+        ],
+        "pie": "Y esto lo puede abrir cualquiera. Sin permiso nuestro."
+      },
+      "rotulos": [
+        {
+          "t": 35.0,
+          "dur": 1.8,
+          "texto": "Todo queda escrito.",
+          "tipo": "titular"
+        },
+        {
+          "t": 38.6,
+          "dur": 1.8,
+          "texto": "ordenscan.com",
+          "tipo": "dato"
+        }
+      ]
+    },
+    {
+      "id": "08_cierre",
+      "t": 40.8,
+      "dur": 5.7,
+      "escena": "logo_a_puntos_a_logo",
+      "activo": "orden-global/orden-global-logo.png",
+      "rotulos": [
+        {
+          "t": 42.0,
+          "dur": 3.4,
+          "texto": "Orden Global. Un sistema financiero que se puede comprobar.",
+          "tipo": "rotulo"
+        }
+      ]
+    }
+  ],
+  "_fuera": [
+    "AUKA, AGKA y ONDK: Jose decidio dejar solo ORIGEN. Menos nombres inventados es exactamente lo que pedia la prueba de publico ('tantos nombres, ocupo un diccionario'). ORIGEN se dibuja por codigo: el archivo es de 93 px.",
+    "El directorio de comercios: los treinta son de muestra y diez tienen dominios example.com.",
+    "Ordenex como mercado: nunca ha operado. Por eso 'Cambiá entre monedas' se queda en la funcion de la billetera y no ensena un libro de ordenes.",
+    "Cualquier cifra de adopcion, precio, proyeccion o rendimiento."
+  ],
+  "_reestructura": "El primer montaje abria con puntos, recitaba siete funciones seguidas y dejaba el oro para el minuto 30. Un espectador frio se perdio en el segundo 18 -'deja de proponer una vision y recita una lista de supermercado'- y le puso un 5 sobre 10 de presupuesto: 'particulas doradas, el recurso mas viejo del manual, para que algo parezca elegante SIN TENER QUE FILMAR NADA REAL'. Ahora el oro ABRE la pelicula, de el sale todo lo demas, y las siete funciones se comprimen en tres golpes.",
+  "_decision_jose": "El bloque del oro se queda por decision suya. Queda anotado que en TRES pruebas independientes el espectador concluyo solo 'respaldada por oro fisico', que es lo que el acta de Junta del 14/08/2026 prohibe afirmar, y que el propio critico pidio MAS oro. Riesgo asumido por el cliente.",
+  "_planos_reales": "Cuatro planos macro que faltan y que son los que dan peso: macro_pepita, macro_manos_telefono, macro_qr_lector y macro_mostrador. Van en la misma tanda que las repeticiones de la pelicula 1, para no pagar dos instalaciones."
+}

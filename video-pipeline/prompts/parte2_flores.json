@@ -1,0 +1,141 @@
+{
+  "proyecto": "Orden Global — Parte 2",
+  "titulo": "Las flores no viajaron",
+  "idea": {
+    "la_verdad_que_faltaba": "El primer anuncio no va de rosas robadas. Va de que ella recibe catorce flores muertas y cree que eso es lo que él le mandó. El robo no le quitó flores: le cambió lo que ella piensa de él.",
+    "la_frase_gancho": "Ella nunca supo que le mandaste veinticuatro.",
+    "el_giro": "Esperamos un camión. Lo que aparece es una pantalla encendiéndose en otra floristería, en otra ciudad, a once minutos de su casa. Las flores no viajan: viaja lo que valen.",
+    "por_que_es_la_solucion": "Si el objeto no viaja, no hay eslabones. Si no hay eslabones, nadie puede quedarse con nada. La parte 1 mostraba seis manos metiéndose en el ramo; aquí no hay ninguna porque no hay camino donde meterlas.",
+    "el_remate": "Que llegue lo que pagaste, no lo que sobrevivió al viaje.",
+    "la_objecion_que_hay_que_matar": "«Esto ya existe, es una red de floristerías». La respuesta está en pantalla: el valor sale blindado y exacto en menos de un segundo, y el único descuento es visible y minúsculo. No depende de la buena voluntad de nadie en el camino.",
+    "sin_efectos_magicos": "Nada de teletransportes ni estelas de luz. El salto entre ciudades se hace con un CORTE: el pulgar confirma aquí, la pantalla se enciende allí. El montaje es el efecto especial, y además es el único que este modelo hace bien."
+  },
+  "formato": {"aspect": "9:16 vertical", "gen_w": 720, "gen_h": 1280,
+    "final_w": 1080, "final_h": 1920, "fps": 24,
+    "duracion_total_s": 60,
+    "ritmo": "14 bloques, media de 4,3 s — el mismo ritmo medido en la parte 1 (13 planos, media 4,2 s)."},
+  "defaults": {
+    "video_workflow": "workflows/h3_calidad_api.json",
+    "duration_s": 4, "fps": 24, "steps": 20,
+    "negative": "text, letters, numbers, subtitles, captions, watermark, brand names, logos, embroidered logo, signage with readable words, screens with readable text, readable user interface, app interface, horizontal composition, letterboxing, black bars, cartoon, animation, 3D render, CGI flowers, artificial flowers, glitter, cellophane, hologram, sparkles, magic effects, teleport, light trails, particles, glowing lines, drone shot, gimbal glide, slow motion, orange and teal grading, glossy advertising lighting, beauty retouching, poreless skin, model looks, big smile, celebration, looking at camera, addressing the camera, talking, speaking, moving lips, plastic skin, waxy face, deformed hands, extra fingers, morphing, flicker, crooked teeth, deformed teeth, distorted mouth"
+  },
+  "look_base": "shot on full-frame cinema camera, vintage 35mm spherical prime, T2.8, locked off with the smallest organic drift, natural practical light only, real 35mm grain, muted desaturated colour, milky blacks, documentary realism, calm observational framing, no advertising gloss",
+  "casting": [
+    {"id": "ELLA", "rol": "quien recibe",
+     "retrato": "Vertical portrait of a 40 year old Latin American woman, dark shoulder-length hair loosely tied back with strands escaping at the temples, no makeup, faint freckles across the nose, a small mole under the left eye, cream knit sweater with sleeves pushed to the forearms, calm neutral expression, warm low sun from a window camera-left, visible pores and facial asymmetry, even natural teeth"},
+    {"id": "EL", "rol": "quien manda",
+     "retrato": "Vertical portrait of a 44 year old Latin American man, short dark hair going grey at the temples, a day of stubble, a plain dark blue shirt with the sleeves rolled to the forearms, a worn wedding ring, large ordinary hands with short clean nails, tired calm expression, lit only by the cool light of a phone screen in a dark kitchen at night, visible pores and facial asymmetry"},
+    {"id": "FLORISTA", "rol": "la de la otra ciudad",
+     "retrato": "Vertical portrait of a 34 year old Latin American woman in a dark green work apron over a plain t-shirt, hair tied back in a practical knot, forearms strong and bare, hands nicked from stems with short unpainted nails, calm working expression, bright flat morning light from a shop window, visible pores, ordinary and unglamorous"}
+  ],
+  "shots": [
+    {"id": "01_el_recuerdo", "titulo": "LO QUE LLEGÓ", "segundos": 4, "move": "static",
+     "reparto": [],
+     "hud": "ROSAS ENVIADAS 14", "voz": "Ella nunca supo que le mandaste veinticuatro.",
+     "still": "Looking straight down at a wooden entry table from directly above, a thin bouquet of fourteen dead red roses lying on its side in creased brown kraft paper far too wide for them, heads bent right over on limp stems, outer petals browned and curled, four loose dry petals scattered on the bare wood, a snapped rubber band where a ribbon should be, dry cut stems with no water sleeve, warm late afternoon light raking across the grain from camera-left, deep clean shadow in the lower part of the tall frame, no people, photographic realism, real petal texture",
+     "motion": "one dry petal detaches from a bent head and drops onto the wood, everything else completely still, the light shifting almost imperceptibly across the table",
+     "nota": "Es el mismo ramo con el que acaba la parte 1. Quien la vio lo reconoce en el primer segundo."},
+
+    {"id": "02_su_cara_entonces", "titulo": "LO QUE ELLA CREYÓ", "segundos": 4, "move": "static",
+     "reparto": ["ELLA"],
+     "hud": "14", "voz": "Creyó que eso era todo lo que diste.",
+     "still": "Medium close on a 40 year old woman standing at an entry table in warm late afternoon light, looking down at a thin bouquet of dead red roses she is holding at waist height, her expression polite and quietly disappointed rather than angry, the warm wall of a hallway soft behind her, the lower part of the tall frame dark and clean, natural skin texture with visible pores and fine hair, facial asymmetry, unstyled hair, no beauty retouching, no posing, documentary realism",
+     "motion": "she turns the sparse bouquet a few degrees looking for a better side and does not find one, her mouth closes into a thin line, she breathes out once through her nose and lowers the flowers out of the bottom of the frame"},
+
+    {"id": "03_el_hoy", "titulo": "ÉL, ESTA NOCHE", "segundos": 4, "move": "static",
+     "reparto": ["EL"],
+     "hud": "el contador se pone a 24 · reloj 21:04:00", "voz": "Hoy mandas veinticuatro otra vez.",
+     "still": "A 44 year old man sitting alone at a kitchen table late at night, the room dark around him, his face and chest lit only by the cool glow of a phone held low in both hands, a cold cup of coffee and keys on the table beside him, the window behind showing only black, natural skin texture with visible pores and stubble, facial asymmetry, tired eyes, no beauty retouching, documentary realism, the phone screen itself blown out and unreadable, no interface visible",
+     "motion": "he scrolls once with his thumb, stops, and looks at the screen without moving, his jaw tightening slightly as he decides"},
+
+    {"id": "04_el_pulgar", "titulo": "CONFIRMA", "segundos": 3, "move": "static",
+     "reparto": ["EL"],
+     "hud": "un click suave · −0.1 · 23.9", "voz": "",
+     "still": "Extreme close on a man's thumb pressing down on a phone screen held in his other hand, the screen a soft blown-out rectangle of cool white light with no readable interface, the skin of the thumb and the ridges of the fingerprint lit hard by that light, everything else falling away into black, razor-thin depth of field, visible skin texture and one short clean nail, photographic realism",
+     "motion": "the thumb presses down once, holds for a beat, and lifts away, and the light on the skin changes very slightly as the screen redraws",
+     "nota": "Aquí cae el único descuento de toda la pieza. Un click, 0.1, y ya no vuelve a moverse nada."},
+
+    {"id": "05_la_pantalla_de_alla", "titulo": "OTRA CIUDAD", "segundos": 3, "move": "static",
+     "reparto": [],
+     "hud": "VALOR ENTREGADO · 0.4 s", "voz": "Lo que valen llega en menos de un segundo.",
+     "still": "A phone lying face up on a worn wooden florist counter in bright flat morning light, its screen suddenly lit as a soft rectangle of white with no readable interface, surrounded by the working mess of a flower shop: cut stem ends, a coil of twine, a pair of steel shears, water rings on the wood, a bucket of green foliage just out of focus behind, no people in frame, photographic realism, visible wood grain and water",
+     "motion": "the screen lights up on its own and the phone vibrates once, shifting a millimetre on the wood, and a single cut leaf beside it trembles with the vibration",
+     "nota": "EL GIRO. Esperábamos un camión y lo que hay es una pantalla encendiéndose a mil kilómetros. El corte entre este plano y el anterior es el efecto especial de la pieza."},
+
+    {"id": "06_la_florista", "titulo": "A ONCE MINUTOS", "segundos": 4, "move": "static",
+     "reparto": ["FLORISTA"],
+     "hud": "A 11 MIN DE LA ENTREGA", "voz": "A once minutos de su casa.",
+     "still": "A 34 year old woman in a dark green apron behind a flower shop counter in bright flat morning light, glancing down at a phone lit on the wood in front of her, buckets of fresh roses and foliage filling the background out of focus, her hands already reaching for a pair of steel shears on the counter, natural skin texture with visible pores, strong bare forearms, hair tied back, no makeup, no beauty retouching, documentary realism",
+     "motion": "she reads the screen without picking the phone up, gives one small nod to herself, and takes the shears off the counter"},
+
+    {"id": "07_cortar", "titulo": "CORTAR", "segundos": 4, "move": "static",
+     "reparto": [],
+     "hud": "", "voz": "Las flores no viajan.",
+     "still": "Tight close on a pair of steel florist shears cutting through the thick green stem of a fresh deep red rose held over a wooden counter, water beading on the stem, a scatter of cut leaves and stem ends already on the wood, bright flat morning light from a shop window camera-right, no faces in frame, only two working hands with short unpainted nails and small healed cuts, photographic realism, macro detail on the cut and the sap",
+     "motion": "the shears close through the stem with a clean snap and the cut end drops onto the wood, then a second stem enters the frame and is cut the same way",
+     "nota": "Sin caras: el tipo de plano que este modelo hace mejor y el más barato de repetir."},
+
+    {"id": "08_contar", "titulo": "VEINTICUATRO", "segundos": 4, "move": "static",
+     "reparto": [],
+     "hud": "24", "voz": "Nunca debieron viajar.",
+     "still": "Looking down at a wooden florist counter in bright morning light, two working hands laying deep red roses one by one onto a sheet of brown kraft paper, a dozen already arranged in an even fan, water still beading on the outer petals, cut leaves and stem ends around the paper, no faces in frame, natural skin texture on the hands with short unpainted nails and small healed cuts, photographic realism, visible petal and paper texture",
+     "motion": "the hands lay three more roses into the fan, pause, and one finger touches each flower head in turn as they are counted"},
+
+    {"id": "09_envolver", "titulo": "ENVOLVER", "segundos": 4, "move": "static",
+     "reparto": [],
+     "hud": "24", "voz": "",
+     "still": "Tight close on two working hands folding brown kraft paper tight around a full bouquet of twenty-four deep red roses on a wooden counter, the paper creasing into a sharp cone, a spool of cream ribbon and a clear water sleeve on the wood beside it, bright flat morning light, no faces in frame, short unpainted nails and small healed cuts on the hands, photographic realism, crisp paper texture",
+     "motion": "the hands fold the paper closed along one edge, pull the cream ribbon tight into a firm knot, and slide the wrapped bouquet a few centimetres across the wood"},
+
+    {"id": "10_la_calle", "titulo": "ONCE MINUTOS", "segundos": 4, "move": "handheld",
+     "reparto": [],
+     "hud": "reloj 21:15", "voz": "",
+     "still": "A pair of hands carrying a full bouquet of twenty-four deep red roses upright against a plain dark jacket while walking along an ordinary residential pavement in warm low late afternoon sun, the taut kraft paper and full clear water sleeve clearly visible, long shadows and dust in the air, low houses and parked cars soft and out of focus behind, no face in frame, photographic realism",
+     "motion": "the bouquet stays upright and level as the walking rocks it gently, and the low sun sweeps across the paper as the walk passes a gap between buildings",
+     "nota": "Ni camión, ni almacén, ni cinta transportadora. Alguien andando por la calle. Esa pobreza visual es el argumento."},
+
+    {"id": "11_la_puerta", "titulo": "LA PUERTA", "segundos": 4, "move": "static",
+     "reparto": ["ELLA"],
+     "hud": "24", "voz": "Llegan veinticuatro.",
+     "still": "An apartment doorway in warm low late afternoon sun, a 40 year old woman in a cream knit sweater taking a full heavy bouquet of twenty-four deep red roses in taut kraft paper with both hands, water beading on the outer petals, her shoulders adjusting to the real weight of it, the warm wall of the hallway behind her, the lower quarter of the tall frame dark and clean, natural skin texture with visible pores and fine hair, facial asymmetry, unstyled hair, no beauty retouching, no posing, documentary realism",
+     "motion": "her arms drop slightly as she takes the full weight and she brings the bouquet in against her chest, her eyebrows lifting for half a second before her face settles"},
+
+    {"id": "12_su_cara_ahora", "titulo": "LO QUE ELLA VE", "segundos": 5, "move": "static",
+     "reparto": ["ELLA"],
+     "hud": "24 → 23.9", "voz": "Menos un pétalo.",
+     "still": "Medium close on the same 40 year old woman in the same cream knit sweater in the same warm hallway light, holding the full bouquet of twenty-four deep red roses against her chest, water still beading on the outer petals, the taut kraft paper cone filling the lower half of the tall frame, natural skin texture with visible pores and fine hair, facial asymmetry, unstyled hair, no makeup, no beauty retouching, documentary realism",
+     "motion": "she lowers her face into the roses and breathes in, her eyes closing for half a second, and a small real smile starts at the eyes before it reaches her mouth, and as she lifts her head one outer petal detaches and falls out of the bottom of the frame",
+     "nota": "El espejo del plano 02. Misma mujer, misma luz, mismo encuadre. Lo único que cambia es lo que tiene en las manos."},
+
+    {"id": "13_el_petalo", "titulo": "EL COSTO", "segundos": 4, "move": "static",
+     "reparto": [],
+     "hud": "23.9", "voz": "Ese fue el costo.",
+     "still": "Extreme close on a warm wooden floor in low late afternoon sun raking across the grain, a single deep red rose petal lying alone on the boards, one small bead of water on its surface, the fine down along its curled edge catching the light, razor-thin depth of field, dust drifting in the light above it, no people at all, photographic realism, macro detail on the petal surface",
+     "motion": "the petal settles and rocks once on the wood and comes to rest completely still, with dust drifting slowly through the light above it"}
+  ],
+  "cierre": {
+    "t": "51-60 s", "fuente": "montaje, no se genera",
+    "que_se_ve": "Fundido a negro. El monograma OG dorado solo, como en la parte 1. Debajo, las dos cifras.",
+    "hud": "ENVIADAS 24 · ENTREGADAS 23.9",
+    "voz": ["Orden Global.", "Que llegue lo que pagaste,", "no lo que sobrevivió al viaje."]
+  },
+  "sonido": {
+    "criterio": "El mismo planteamiento de la parte 1: foley muy presente sobre un colchón casi inaudible.",
+    "foley": [
+      {"t": 1.8, "que": "el pétalo seco tocando la mesa"},
+      {"t": 13.4, "que": "el click del pulgar en la pantalla — el único sonido de interfaz de la pieza"},
+      {"t": 15.6, "que": "el teléfono vibrando sobre la madera, a mil kilómetros"},
+      {"t": 22.8, "que": "las tijeras cortando el tallo, seco y limpio"},
+      {"t": 30.5, "que": "el papel kraft cerrándose"},
+      {"t": 32.8, "que": "la cinta apretando"},
+      {"t": 47.4, "que": "el pétalo tocando la madera"}
+    ],
+    "la_ausencia": "En la parte 1 el tic-tac del reloj marca la espera durante el time-lapse del almacén. Aquí ese sonido no existe: no hay almacén y no hay espera. Quien vio la primera lo echa de menos sin saber por qué.",
+    "el_corte_mudo": "Entre el plano 04 (el pulgar) y el 05 (la pantalla de allá) hay medio segundo de silencio absoluto. Es el salto entre ciudades, y el silencio lo hace más largo de lo que es."
+  },
+  "pendiente": [
+    "El porcentaje real de comisión, para poner un dato donde ahora hay un pétalo.",
+    "Los once minutos: ¿es un número real de vuestro servicio o hay que cambiarlo?",
+    "¿Aparece el repartidor de la parte 1? Ahora mismo no: en la calle solo se ven unas manos. Mi consejo es dejarlo así, porque su ausencia es el argumento."
+  ]
+}

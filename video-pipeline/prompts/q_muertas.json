@@ -1,0 +1,19 @@
+{
+  "defaults": {},
+  "jobs": [
+    {
+      "id": "01_las_muertas",
+      "workflow": "workflows/h3_calidad_api.json",
+      "prompt": "shot on full-frame cinema camera, vintage 35mm spherical prime, T2.8, locked off with the smallest organic drift, natural practical light only, real 35mm grain, muted true colour, milky blacks, documentary realism, calm observational framing, no advertising gloss. Looking straight down at a wooden entry table from directly above, a thin bouquet of fourteen dead red roses lying on its side in creased brown kraft paper that is far too wide for them, heads bent right over, outer petals browned and curled, four loose dry petals scattered on the bare wood around the paper, a snapped rubber band where a ribbon should be, no water sleeve on the dry cut stems, warm late afternoon light raking across the wood from camera-left, deep clean shadow filling the lower part of the tall frame, no people at all, photographic realism, real petal texture and visible wood grain.\n\nTimeline:\n[0s-6s] nothing moves except one dry petal that detaches from a bent head and drops onto the wood, and the light shifting almost imperceptibly across the table, the bouquet completely still and abandoned\n\nSingle continuous shot, one take, no cuts, vertical 9:16 framing.\n\nAudio: natural ambience of the location, no music, no voice.",
+      "negative": "text, letters, numbers, subtitles, captions, watermark, brand names, logos, embroidered logo, signage with readable words, horizontal composition, letterboxing, black bars, cartoon, animation, 3D render, CGI flowers, artificial flowers, plastic flowers, glitter, cellophane, hologram, sparkles, magic effects, drone shot, gimbal glide, slow motion, orange and teal grading, glossy advertising lighting, beauty retouching, poreless skin, model looks, big smile, celebration, looking at camera, addressing the camera, plastic skin, waxy face, deformed hands, extra fingers, morphing, flicker, crooked teeth, deformed teeth, distorted mouth",
+      "seed": 1007,
+      "steps": 20,
+      "cfg": 1.0,
+      "width": 720,
+      "height": 1280,
+      "duration_s": 6,
+      "fps": 24,
+      "post": null
+    }
+  ]
+}

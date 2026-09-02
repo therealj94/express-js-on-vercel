@@ -1,0 +1,14 @@
+.env
+.pod
+.instance_id
+.last_create.json
+logs_*.txt
+outputs/
+prompts/queue.json
+__pycache__/
+prompts/q_*.json
+prompts/cola.json
+prompts/workflows/*_api.json
+*.tar
+guardian.log
+pesos.log

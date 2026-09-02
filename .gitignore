@@ -3,3 +3,9 @@ node_modules
 .vercel
 dist
 *.zip
+
+# Rastros de ejecución del pipeline de vídeo. Son de una tanda concreta y de una
+# máquina que ya no existe: versionarlos ensucia el historial y no ayuda a nadie.
+*.log
+video-pipeline/outputs/
+video-pipeline/**/__pycache__/

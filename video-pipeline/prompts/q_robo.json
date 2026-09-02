@@ -1,0 +1,89 @@
+{
+  "defaults": {},
+  "jobs": [
+    {
+      "id": "01_floreria",
+      "workflow": "workflows/h3_calidad_api.json",
+      "prompt": "shot on full-frame cinema camera, vintage 35mm spherical prime, T2.8, locked off or slow handheld with small organic drift, natural practical light only, real 35mm grain, muted true colour, milky blacks, documentary realism, deadpan observational framing, no advertising gloss, nobody performing for the camera. A florist shop counter in warm afternoon light, a full bouquet of twenty-four deep red roses in taut brown kraft paper lying across the counter, a 55 year old woman in a grey apron behind it, the back of a customer's shoulder leaving frame on the right, a plain wall of flower buckets behind her, natural skin texture with visible pores and fine hair, facial asymmetry, unstyled hair, working hands with short nails, no beauty retouching, no posing, deadpan documentary realism. Vertical portrait of a 55 year old woman in a grey work apron behind a florist counter, hair tied back, reading glasses pushed up on her head, completely ordinary and unremarkable, neutral bored expression, not looking at camera, warm shop window light, visible pores and expression lines, no makeup.\n\nTimeline:\n[0s-10s] she watches the customer leave without moving her head, then calmly slides three roses out of the bouquet with one hand and lowers them below the counter out of sight, her face completely neutral throughout, she folds the paper back over the gap and pushes the bouquet aside, she does not look at the camera and does not react at all\n\nSingle continuous shot, one take, no cuts, vertical 9:16 framing.\n\nAudio: natural ambience of the location, no music, no voice.",
+      "negative": "text, letters, numbers, subtitles, captions, watermark, brand names, logos, signage with readable words, screens with readable text, horizontal composition, letterboxing, black bars, cartoon, animation, 3D render, CGI flowers, artificial flowers, glitter, cellophane, hologram, drone shot, gimbal glide, slow motion, orange and teal grading, glossy advertising lighting, beauty retouching, poreless skin, perfect teeth, model looks, winking at camera, comedic mugging, exaggerated expressions, guilty look, looking at camera, plastic skin, waxy face, deformed hands, extra fingers, morphing, flicker",
+      "seed": 1007,
+      "steps": 20,
+      "cfg": 1.0,
+      "width": 720,
+      "height": 1280,
+      "duration_s": 10,
+      "fps": 24,
+      "post": null
+    },
+    {
+      "id": "02_camioneta",
+      "workflow": "workflows/h3_calidad_api.json",
+      "prompt": "shot on full-frame cinema camera, vintage 35mm spherical prime, T2.8, locked off or slow handheld with small organic drift, natural practical light only, real 35mm grain, muted true colour, milky blacks, documentary realism, deadpan observational framing, no advertising gloss, nobody performing for the camera. The open back of a delivery van in flat overcast daylight, plastic crates stacked inside, the bouquet of red roses in creased kraft paper lying on top of a crate, a 45 year old man in a plain grey polo standing at the open doors with a lanyard around his neck, the street soft and out of focus behind him, natural skin texture with visible pores, facial asymmetry, working hands with short nails, no beauty retouching, deadpan documentary realism. Vertical portrait of a 45 year old man in a plain grey polo shirt, thinning hair, three days of stubble, a lanyard around his neck, neutral bored expression, not looking at camera, flat overcast daylight, visible pores and facial asymmetry.\n\nTimeline:\n[0s-10s] he lifts the crate to move it, pauses, pulls two roses out of the bouquet without looking at them and tucks them into the door pocket beside the seat, then closes the van doors, his expression completely flat and bored the whole time\n\nCamera: handheld, one single movement, no cuts.\n\nSingle continuous shot, one take, no cuts, vertical 9:16 framing.\n\nAudio: natural ambience of the location, no music, no voice.",
+      "negative": "text, letters, numbers, subtitles, captions, watermark, brand names, logos, signage with readable words, screens with readable text, horizontal composition, letterboxing, black bars, cartoon, animation, 3D render, CGI flowers, artificial flowers, glitter, cellophane, hologram, drone shot, gimbal glide, slow motion, orange and teal grading, glossy advertising lighting, beauty retouching, poreless skin, perfect teeth, model looks, winking at camera, comedic mugging, exaggerated expressions, guilty look, looking at camera, plastic skin, waxy face, deformed hands, extra fingers, morphing, flicker",
+      "seed": 1014,
+      "steps": 20,
+      "cfg": 1.0,
+      "width": 720,
+      "height": 1280,
+      "duration_s": 10,
+      "fps": 24,
+      "post": null
+    },
+    {
+      "id": "03_banda",
+      "workflow": "workflows/h3_calidad_api.json",
+      "prompt": "shot on full-frame cinema camera, vintage 35mm spherical prime, T2.8, locked off or slow handheld with small organic drift, natural practical light only, real 35mm grain, muted true colour, milky blacks, documentary realism, deadpan observational framing, no advertising gloss, nobody performing for the camera. A parcel sorting conveyor belt in a warehouse under cold even overhead light, the bouquet of red roses in kraft paper travelling along the belt among cardboard boxes, three pairs of gloved working hands visible at intervals along the belt, no faces in frame at all, only torsos in grey work vests, dust in the cold light, natural fabric and glove texture, documentary realism.\n\nTimeline:\n[0s-10s] the bouquet travels steadily along the belt, and as it passes each pair of hands a single rose is drawn out of it and disappears out of frame, three times, without the belt ever stopping, the paper cone visibly emptier each time\n\nSingle continuous shot, one take, no cuts, vertical 9:16 framing.\n\nAudio: natural ambience of the location, no music, no voice.",
+      "negative": "text, letters, numbers, subtitles, captions, watermark, brand names, logos, signage with readable words, screens with readable text, horizontal composition, letterboxing, black bars, cartoon, animation, 3D render, CGI flowers, artificial flowers, glitter, cellophane, hologram, drone shot, gimbal glide, slow motion, orange and teal grading, glossy advertising lighting, beauty retouching, poreless skin, perfect teeth, model looks, winking at camera, comedic mugging, exaggerated expressions, guilty look, looking at camera, plastic skin, waxy face, deformed hands, extra fingers, morphing, flicker",
+      "seed": 1021,
+      "steps": 20,
+      "cfg": 1.0,
+      "width": 720,
+      "height": 1280,
+      "duration_s": 10,
+      "fps": 24,
+      "post": null
+    },
+    {
+      "id": "04_la_noche",
+      "workflow": "workflows/h3_calidad_api.json",
+      "prompt": "shot on full-frame cinema camera, vintage 35mm spherical prime, T2.8, locked off or slow handheld with small organic drift, natural practical light only, real 35mm grain, muted true colour, milky blacks, documentary realism, deadpan observational framing, no advertising gloss, nobody performing for the camera. A metal warehouse shelf at night, the bouquet of red roses in creased kraft paper lying alone among cardboard boxes, no people, one cold overhead light, the roses still holding their shape at the start, dust in the air, deep shadow around the shelf, photographic realism, macro-adjacent detail on petals and paper.\n\nTimeline:\n[0s-10s] the light slowly shifts from cold night to pale grey morning across the shelf while the roses wilt in place, heads bending over one by one and outer petals curling and browning, then a gloved hand enters frame, pulls two dead roses out and drops them into a bin below, and the bouquet is left thinner and crooked\n\nSingle continuous shot, one take, no cuts, vertical 9:16 framing.\n\nAudio: natural ambience of the location, no music, no voice.",
+      "negative": "text, letters, numbers, subtitles, captions, watermark, brand names, logos, signage with readable words, screens with readable text, horizontal composition, letterboxing, black bars, cartoon, animation, 3D render, CGI flowers, artificial flowers, glitter, cellophane, hologram, drone shot, gimbal glide, slow motion, orange and teal grading, glossy advertising lighting, beauty retouching, poreless skin, perfect teeth, model looks, winking at camera, comedic mugging, exaggerated expressions, guilty look, looking at camera, plastic skin, waxy face, deformed hands, extra fingers, morphing, flicker",
+      "seed": 1028,
+      "steps": 20,
+      "cfg": 1.0,
+      "width": 720,
+      "height": 1280,
+      "duration_s": 10,
+      "fps": 24,
+      "post": null
+    },
+    {
+      "id": "05_la_entrega",
+      "workflow": "workflows/h3_calidad_api.json",
+      "prompt": "shot on full-frame cinema camera, vintage 35mm spherical prime, T2.8, locked off or slow handheld with small organic drift, natural practical light only, real 35mm grain, muted true colour, milky blacks, documentary realism, deadpan observational framing, no advertising gloss, nobody performing for the camera. An apartment doorway in warm low late afternoon sun, a 28 year old delivery man in a clean dark navy work shirt with a small gold embroidered monogram on the chest handing a thin bouquet of fourteen red roses in creased kraft paper to a 40 year old woman in a cream knit sweater standing inside the door, the roses visibly sparse with bending heads and browning outer petals, the lower quarter of the tall frame dark and clean, natural skin texture with visible pores and fine hair, facial asymmetry, ordinary teeth, unstyled hair, working hands with short nails, no beauty retouching, no posing, documentary realism. Vertical portrait of a 28 year old thin Latin American man with a tired but kind face, dark hair flattened and damp from a helmet, faint sweat at the temples, a small scar through one eyebrow, a clean dark navy work shirt with a small four centimetre embroidered gold monogram on the left chest, a handheld delivery scanner clipped at his hip, completely neutral tired expression, low warm late afternoon sun, visible pores. Vertical portrait of a 40 year old Latin American woman, dark shoulder-length hair loosely tied back with strands escaping at the temples, no makeup, faint freckles across the nose, a small mole under the left eye, cream knit sweater with sleeves pushed to the forearms, neutral expression, warm low sun from a window camera-left, visible pores and facial asymmetry.\n\nTimeline:\n[0s-10s] he holds the bouquet out with both hands and she takes it, she looks down at the sparse roses and turns them slightly, her expression polite and slightly puzzled but not angry, she says a short thank you, he gives a small tired nod, neither of them looks at the camera\n\nSingle continuous shot, one take, no cuts, vertical 9:16 framing.\n\nAudio: natural ambience of the location, no music, no voice.",
+      "negative": "text, letters, numbers, subtitles, captions, watermark, brand names, logos, signage with readable words, screens with readable text, horizontal composition, letterboxing, black bars, cartoon, animation, 3D render, CGI flowers, artificial flowers, glitter, cellophane, hologram, drone shot, gimbal glide, slow motion, orange and teal grading, glossy advertising lighting, beauty retouching, poreless skin, perfect teeth, model looks, winking at camera, comedic mugging, exaggerated expressions, guilty look, looking at camera, plastic skin, waxy face, deformed hands, extra fingers, morphing, flicker",
+      "seed": 1035,
+      "steps": 20,
+      "cfg": 1.0,
+      "width": 720,
+      "height": 1280,
+      "duration_s": 10,
+      "fps": 24,
+      "post": null
+    },
+    {
+      "id": "06_el_escaner",
+      "workflow": "workflows/h3_calidad_api.json",
+      "prompt": "shot on full-frame cinema camera, vintage 35mm spherical prime, T2.8, locked off or slow handheld with small organic drift, natural practical light only, real 35mm grain, muted true colour, milky blacks, documentary realism, deadpan observational framing, no advertising gloss, nobody performing for the camera. Medium close on the 28 year old delivery man standing in the apartment doorway in warm late afternoon light, warm light on one side of his face, a small gold embroidered monogram just visible on the chest of his dark navy work shirt, a handheld delivery scanner in his right hand held up at chest height, the woman soft and out of focus behind him holding the sparse roses, the lower quarter of the tall frame dark and clean, natural skin texture with visible pores and fine hair, facial asymmetry, ordinary teeth, unstyled hair, working hands with short nails, no beauty retouching, documentary realism. Vertical portrait of a 28 year old thin Latin American man with a tired but kind face, dark hair flattened and damp from a helmet, faint sweat at the temples, a small scar through one eyebrow, a clean dark navy work shirt with a small four centimetre embroidered gold monogram on the left chest, a handheld delivery scanner clipped at his hip, completely neutral tired expression, low warm late afternoon sun, visible pores.\n\nTimeline:\n[0s-10s] he holds the scanner up, his thumb hovers over it for a moment, then he lowers the scanner all the way down to his side without pressing it, and he turns his head and looks straight into the camera lens with a completely flat, tired, matter-of-fact expression and speaks three short sentences without smiling, he blinks once before speaking, his throat moves as he swallows, a tired exhale between the sentences, no smile at any point\n\nCamera: push, one single movement, no cuts.\n\nSingle continuous shot, one take, no cuts, vertical 9:16 framing.\n\nAudio: natural ambience of the location, no music, no voice.",
+      "negative": "text, letters, numbers, subtitles, captions, watermark, brand names, logos, signage with readable words, screens with readable text, horizontal composition, letterboxing, black bars, cartoon, animation, 3D render, CGI flowers, artificial flowers, glitter, cellophane, hologram, drone shot, gimbal glide, slow motion, orange and teal grading, glossy advertising lighting, beauty retouching, poreless skin, perfect teeth, model looks, winking at camera, comedic mugging, exaggerated expressions, guilty look, looking at camera, plastic skin, waxy face, deformed hands, extra fingers, morphing, flicker",
+      "seed": 1042,
+      "steps": 20,
+      "cfg": 1.0,
+      "width": 720,
+      "height": 1280,
+      "duration_s": 10,
+      "fps": 24,
+      "post": null
+    }
+  ]
+}

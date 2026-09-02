@@ -1,0 +1,289 @@
+{
+  "proyecto": "Orden Global — Parte 2",
+  "titulo": "La misma puerta",
+  "de_donde_sale": {
+    "referencia": "El anuncio de Coinbase «It's time to update the system» que mandó José.",
+    "lo_que_le_robamos": [
+      "EL BUCLE ROTO: repetir el mismo plano y la misma frase hasta que parezcan una ley natural, y entonces romperlos. El impacto no está en la imagen, está en el cambio de patrón.",
+      "LA ECONOMÍA DE ESCENARIO: todo pasa en la misma casa. Sale más barato de producir y, sobre todo, dice que el mundo cambia mientras la institución sigue igual.",
+      "VENDER EL PORQUÉ: Coinbase no nombra ni Bitcoin ni comisiones. Vende una causa. Nosotros tampoco nombramos nada."
+    ],
+    "lo_que_hacemos_distinto": "En Coinbase el bucle se rompe una vez, al final. Aquí el bucle se degrada tres veces —cada generación recibe menos— y luego se rompe hacia arriba. La caída se siente antes de que nadie la explique."
+  },
+  "regla_de_hierro": {
+    "enunciado": "Las rosas son el dinero. NO SE DICE NUNCA.",
+    "prohibido": [
+      "dinero",
+      "banco",
+      "comisión",
+      "transferencia",
+      "remesa",
+      "cripto",
+      "token",
+      "blockchain",
+      "pago",
+      "porcentaje",
+      "tarifa",
+      "inflación"
+    ],
+    "por_que": "En el instante en que se dice «dinero», deja de ser una idea que el espectador descubrió y pasa a ser un anuncio de banco. Coinbase aguanta treinta segundos sin nombrar su producto; nosotros también podemos."
+  },
+  "historia": {
+    "una_frase": "Tres generaciones mandan veinticuatro rosas a la misma puerta. A la abuela le llegaron veintidós. A la madre, diecinueve. A la hija, catorce y muertas.",
+    "el_bucle": "Tres bloques idénticos: el trabajo, la puerta, la cara. Mismo encuadre, misma frase, tres épocas. Lo único que cambia son los días que costó y el número que llega.",
+    "la_doble_perdida": "Cada época cuesta más días de trabajo y llega menos. Se pierde por los dos lados a la vez, y esa tijera es el argumento entero.",
+    "el_quiebre": "Cuando el espectador ya ha aceptado que esto es una ley, el cuarto bloque tarda cuatro segundos y llega entero.",
+    "el_cierre": "Una persona con camisa de Orden Global mira a cámara y dice lo mismo que en la parte 1: «Por eso hicimos esto. Por ti.»"
+  },
+  "formato": {
+    "aspect": "9:16 vertical",
+    "gen_w": 720,
+    "gen_h": 1280,
+    "final_w": 1080,
+    "final_h": 1920,
+    "fps": 24,
+    "duracion_total_s": 60,
+    "ritmo": "13 planos de 4,0 s de media. La parte 1 medida: 4,2 s."
+  },
+  "defaults": {
+    "video_workflow": "workflows/h3_calidad_api.json",
+    "duration_s": 4,
+    "fps": 24,
+    "steps": 20,
+    "negative": "text, letters, numbers, subtitles, captions, watermark, brand names, logos, embroidered logo, signage with readable words, screens with readable text, readable user interface, banking imagery, coins, banknotes, charts, horizontal composition, letterboxing, black bars, cartoon, animation, 3D render, CGI flowers, artificial flowers, glitter, cellophane, hologram, sparkles, magic effects, teleport, light trails, particles, drone shot, gimbal glide, slow motion, orange and teal grading, glossy advertising lighting, beauty retouching, poreless skin, model looks, big smile, celebration, crying, tears, looking at camera, addressing the camera, talking, speaking, moving lips, plastic skin, waxy face, deformed hands, extra fingers, morphing, flicker, crooked teeth, deformed teeth, distorted mouth"
+  },
+  "look_base": "shot on full-frame cinema camera, vintage 35mm spherical prime, T2.8, locked off with the smallest organic drift, natural practical light only, real 35mm grain, documentary realism, calm observational framing, no advertising gloss",
+  "el_encuadre_repetido": "Los planos 02, 05 y 08 son EL MISMO ENCUADRE: la misma puerta, la misma distancia, la misma altura de cámara, la misma luz de tarde. Solo cambian la mujer, la ropa y el ramo. Si esos tres no casan, el anuncio no funciona — y por eso van seguidos en la misma tanda con la misma semilla base.",
+  "casting": [
+    {
+      "id": "ABUELA_JOVEN",
+      "rol": "1985",
+      "retrato": "Vertical portrait of a 26 year old Latin American woman in 1985, dark hair set in soft waves, a simple floral house dress with a rounded collar, no makeup beyond a little lipstick, calm open face, warm late afternoon light, visible pores and facial asymmetry, even natural teeth, the mild film-stock warmth of a photograph from that decade"
+    },
+    {
+      "id": "MADRE_JOVEN",
+      "rol": "2005",
+      "retrato": "Vertical portrait of a 30 year old Latin American woman in 2005, dark hair straightened and parted in the middle, a plain long-sleeved knit top, small hoop earrings, no makeup, calm face, warm late afternoon light, visible pores and facial asymmetry, even natural teeth"
+    },
+    {
+      "id": "HIJA",
+      "rol": "hoy",
+      "retrato": "Vertical portrait of a 33 year old Latin American woman today, dark hair loosely tied back with strands escaping at the temples, no makeup, faint freckles across the nose, an oversized cream knit sweater with sleeves pushed to the forearms, calm tired face, warm low sun from a window camera-left, visible pores and facial asymmetry, even natural teeth"
+    },
+    {
+      "id": "PORTAVOZ",
+      "rol": "el cierre",
+      "retrato": "Vertical portrait of a 30 year old Latin American man with an ordinary open face, short dark hair, light stubble, a plain dark navy work shirt buttoned to the second button with a completely clean empty left chest area and no markings on it, calm level expression, warm low afternoon light from camera-left, visible pores and facial asymmetry, even natural teeth, credible rather than polished"
+    }
+  ],
+  "shots": [
+    {
+      "id": "01_trabajo_1985",
+      "titulo": "1985 · EL TRABAJO",
+      "segundos": 4,
+      "move": "static",
+      "reparto": [],
+      "hud": "TRES DÍAS DE TRABAJO",
+      "voz": "En 1985, tres días de trabajo.",
+      "still": "Tight close on a pair of man's hands working at a wooden carpentry bench in 1985, planing a length of pine, curls of shaving falling away, sawdust in the low light from a high window, old steel tools laid out on the bench, the sleeves of a rolled-up work shirt at the edge of frame, no face visible, warm dusty light with the slightly soft grain of that decade, photographic realism, visible skin texture and calluses",
+      "nota": "La misma composición se repite en los planos 04 y 07 con otro oficio y otra época. Sin caras: baratos y seguros.",
+      "motion": "the plane pushes along the pine and a long curl of shaving lifts and falls away, the hands reset to the far end and push again, sawdust drifting in the light"
+    },
+    {
+      "id": "02_puerta_1985",
+      "titulo": "1985 · LA PUERTA",
+      "segundos": 4,
+      "move": "static",
+      "reparto": [
+        "ABUELA_JOVEN"
+      ],
+      "hud": "ENVIADAS 24 · ENTREGADAS 22",
+      "voz": "Mandó veinticuatro. Llegaron veintidós.",
+      "still": "An apartment doorway in warm low late afternoon sun, a 26 year old woman in a 1985 floral house dress taking a generous bouquet of red roses wrapped in paper with both hands, the bouquet full but with two visible gaps in the dome, the warm painted wall of the hallway behind her, the lower quarter of the tall frame dark and clean, natural skin texture with visible pores and fine hair, facial asymmetry, no beauty retouching, no posing, documentary realism, the mild warmth and soft grain of 1985 film stock",
+      "motion": "she takes the bouquet with both hands and brings it in against her chest, glancing down at the flowers and then back up out of frame, her shoulders settling",
+      "nota": "EL ENCUADRE MADRE. Los planos 05 y 08 lo repiten exactamente. Es lo que convierte tres escenas en una ley."
+    },
+    {
+      "id": "03_cara_1985",
+      "titulo": "1985 · SU CARA",
+      "segundos": 3,
+      "move": "static",
+      "reparto": [
+        "ABUELA_JOVEN"
+      ],
+      "hud": "22",
+      "voz": "",
+      "still": "Medium close on the same 26 year old woman in the same 1985 house dress in the same warm hallway light, holding the bouquet of red roses against her chest, the paper cone filling the lower part of the tall frame, natural skin texture with visible pores and fine hair, facial asymmetry, no beauty retouching, documentary realism, the mild warmth and soft grain of that decade",
+      "motion": "she lowers her face into the roses and breathes in, and an easy unguarded smile arrives without her deciding to smile"
+    },
+    {
+      "id": "04_trabajo_2005",
+      "titulo": "2005 · EL TRABAJO",
+      "segundos": 4,
+      "move": "static",
+      "reparto": [],
+      "hud": "CINCO DÍAS DE TRABAJO",
+      "voz": "En 2005, cinco días.",
+      "still": "Tight close on a pair of man's hands working at a small repair bench in 2005, soldering a circuit board under a desk lamp, a coil of solder and a screwdriver on the worn surface, a bulky computer tower out of focus behind, the sleeves of a plain t-shirt at the edge of frame, no face visible, cooler flatter light than the previous decade, photographic realism, visible skin texture and short nails",
+      "nota": "Mismo encuadre que el 01, otro oficio, otra luz. El atrezo dice el año sin un solo rótulo.",
+      "motion": "the soldering iron touches a joint and a thin thread of smoke rises and bends away, the hand steadies the board with two fingers and moves to the next joint"
+    },
+    {
+      "id": "05_puerta_2005",
+      "titulo": "2005 · LA PUERTA",
+      "segundos": 4,
+      "move": "static",
+      "reparto": [
+        "MADRE_JOVEN"
+      ],
+      "hud": "ENVIADAS 24 · ENTREGADAS 19",
+      "voz": "Mandó veinticuatro. Llegaron diecinueve.",
+      "still": "The same apartment doorway in the same warm low late afternoon sun and the same camera position, a 30 year old woman in a plain 2005 knit top taking a thinner bouquet of red roses wrapped in paper with both hands, clear gaps between the flower heads and the paper slightly too wide for them, the same warm painted wall behind her, the lower quarter of the tall frame dark and clean, natural skin texture with visible pores and fine hair, facial asymmetry, no beauty retouching, no posing, documentary realism",
+      "motion": "she takes the bouquet with both hands and brings it in against her chest, glancing down at the flowers and then back up out of frame, her shoulders settling",
+      "nota": "Movimiento idéntico al plano 02, palabra por palabra. La repetición es el mensaje."
+    },
+    {
+      "id": "06_cara_2005",
+      "titulo": "2005 · SU CARA",
+      "segundos": 3,
+      "move": "static",
+      "reparto": [
+        "MADRE_JOVEN"
+      ],
+      "hud": "19",
+      "voz": "",
+      "still": "Medium close on the same 30 year old woman in the same 2005 knit top in the same warm hallway light, holding the thinner bouquet of red roses against her chest, the paper cone filling the lower part of the tall frame, natural skin texture with visible pores and fine hair, facial asymmetry, no beauty retouching, documentary realism",
+      "motion": "she lowers her face into the roses and breathes in, and smiles, but the smile arrives a beat late and stops at her mouth without reaching her eyes"
+    },
+    {
+      "id": "07_trabajo_hoy",
+      "titulo": "HOY · EL TRABAJO",
+      "segundos": 4,
+      "move": "static",
+      "reparto": [],
+      "hud": "OCHO DÍAS DE TRABAJO",
+      "voz": "Hoy, ocho días.",
+      "still": "Tight close on a pair of man's hands working at a desk late at night today, typing on a worn laptop keyboard, a phone face down beside it and a cold cup of coffee, the room dark and the only light the cold glow of the screen, the sleeves of a plain dark shirt at the edge of frame, no face visible and no readable screen content, photographic realism, visible skin texture and short nails",
+      "nota": "Mismo encuadre que el 01 y el 04. Cuarenta años después, el mismo hombre trabajando y el doble de días.",
+      "motion": "the hands type steadily, stop, one hand rubs the back of the neck and returns to the keys, the cold screen light unchanged on the skin"
+    },
+    {
+      "id": "08_puerta_hoy",
+      "titulo": "HOY · LA PUERTA",
+      "segundos": 4,
+      "move": "static",
+      "reparto": [
+        "HIJA"
+      ],
+      "hud": "ENVIADAS 24 · ENTREGADAS 14",
+      "voz": "Mandas veinticuatro. Llegan catorce.",
+      "still": "The same apartment doorway in the same warm low late afternoon sun and the same camera position, a 33 year old woman in an oversized cream knit sweater taking a thin bouquet of fourteen red roses with both hands, the heads already bending on limp stems and the outer petals browned and curled, the creased paper far too wide for the flowers, the same warm painted wall behind her, the lower quarter of the tall frame dark and clean, natural skin texture with visible pores and fine hair, facial asymmetry, no beauty retouching, no posing, documentary realism",
+      "motion": "she takes the bouquet with both hands and brings it in against her chest, glancing down at the flowers and then back up out of frame, her shoulders settling",
+      "nota": "Tercera repetición exacta. Aquí el espectador ya sabe lo que viene y por eso duele."
+    },
+    {
+      "id": "09_cara_hoy",
+      "titulo": "HOY · SU CARA",
+      "segundos": 4,
+      "move": "static",
+      "reparto": [
+        "HIJA"
+      ],
+      "hud": "14",
+      "voz": "Y le das las gracias.",
+      "still": "Medium close on the same 33 year old woman in the same oversized cream sweater in the same warm hallway light, holding the thin bouquet of fourteen dying red roses against her chest, the creased paper filling the lower part of the tall frame, natural skin texture with visible pores and fine hair, facial asymmetry, no makeup, no beauty retouching, documentary realism",
+      "motion": "she lowers her face towards the roses without quite reaching them, lifts her head, and a small polite smile arrives that never reaches her eyes and fades a beat too fast",
+      "nota": "El pago del bucle. La abuela sonrió sin pensarlo, la madre tarde, y ésta finge. Nadie lo explica."
+    },
+    {
+      "id": "10_el_pulgar",
+      "titulo": "EL QUIEBRE",
+      "segundos": 3,
+      "move": "static",
+      "reparto": [],
+      "hud": "un click suave · −0.1",
+      "voz": "",
+      "still": "Extreme close on a man's thumb pressing down on a phone screen held in his other hand in a dark room, the screen a soft blown-out rectangle of cool white light with no readable interface, the ridges of the fingerprint lit hard by that light, everything else falling away into black, razor-thin depth of field, one short clean nail, photographic realism",
+      "motion": "the thumb presses down once, holds for a beat and lifts away, and the light on the skin changes very slightly as the screen redraws",
+      "nota": "Después de tres bloques de trabajo y espera, el cuarto empieza con un pulgar. Ese contraste es el producto."
+    },
+    {
+      "id": "11_puerta_og",
+      "titulo": "LA MISMA PUERTA",
+      "segundos": 5,
+      "move": "static",
+      "reparto": [
+        "HIJA"
+      ],
+      "hud": "ENVIADAS 24 · ENTREGADAS 23.9 · 4 s",
+      "voz": "Y esta vez llegan veinticuatro.",
+      "still": "The same apartment doorway in the same warm low late afternoon sun and the same camera position, the same 33 year old woman in the same oversized cream sweater taking a full heavy bouquet of twenty-four deep red roses in taut kraft paper with both hands, water beading on the outer petals and the paper folded sharp, her shoulders adjusting to the real weight of it, the same warm painted wall behind her, natural skin texture with visible pores and fine hair, facial asymmetry, no beauty retouching, no posing, documentary realism",
+      "motion": "she takes the bouquet and her arms drop with the weight, she brings it in against her chest and lowers her face into the roses and breathes in, and a real unguarded smile arrives without her deciding to smile, and one outer petal detaches and falls out of frame",
+      "nota": "Cuarta vez el mismo encuadre. Su sonrisa vuelve a ser la de la abuela: eso es todo lo que hay que decir."
+    },
+    {
+      "id": "12_el_petalo",
+      "titulo": "LO ÚNICO",
+      "segundos": 4,
+      "move": "static",
+      "reparto": [],
+      "hud": "23.9",
+      "voz": "Menos un pétalo.",
+      "still": "Extreme close on a warm wooden floor in low late afternoon sun raking across the grain, a single deep red rose petal lying alone on the boards, one small bead of water on its surface, the fine down along its curled edge catching the light, razor-thin depth of field, dust drifting in the light above, no people at all, photographic realism, macro detail on the petal surface",
+      "motion": "the petal settles and rocks once on the wood and comes to rest completely still, dust drifting slowly through the light above it"
+    },
+    {
+      "id": "13_el_portavoz",
+      "titulo": "EL CIERRE",
+      "segundos": 6,
+      "move": "static",
+      "reparto": [
+        "PORTAVOZ"
+      ],
+      "hud": "",
+      "voz": "Por eso hicimos esto. Por ti.",
+      "negative_quitar": [
+        "looking at camera",
+        "addressing the camera"
+      ],
+      "still": "Medium close on a 30 year old man standing in the same warm hallway in low late afternoon light, wearing a plain dark navy work shirt with a completely clean empty left chest area and no markings of any kind on it, the same warm painted wall soft behind him, the lower quarter of the tall frame dark and clean, natural skin texture with visible pores and light stubble, facial asymmetry, unstyled hair, no beauty retouching, documentary realism",
+      "motion": "he looks straight into the camera lens with a calm level expression, his mouth closed and still throughout, he blinks once slowly, his chest rises and falls with quiet breathing, and he gives one small nod at the very end, no lip movement of any kind",
+      "negative_añadir": [
+        "open mouth",
+        "singing",
+        "mouthing words"
+      ],
+      "nota": "BOCA CERRADA. La frase se dobla después en español y el labial se rehace con LatentSync. En el intento anterior le pedí que hablara y H3 se inventó un idioma. El pecho va vacío: el monograma se compone en montaje."
+    }
+  ],
+  "cierre": {
+    "t": "52-60 s",
+    "fuente": "montaje, no se genera",
+    "que_se_ve": "Fundido a negro. El monograma OG dorado solo, sin eslogan escrito, como en la parte 1.",
+    "hud": "ENVIADAS 24 · ENTREGADAS 23.9"
+  },
+  "sobreimpresos": {
+    "estilo": "Copiado de la parte 1: cartela negra translúcida de esquinas redondeadas arriba al centro, sans-serif blanca en caja alta, y la cápsula de días a la izquierda.",
+    "la_tijera": "Dos números que se cruzan. Los días suben —3, 5, 8— y las rosas bajan —22, 19, 14—. Nunca se comentan en voz alta: están ahí y el espectador los ata solo.",
+    "el_cuarto_bloque": "Los días desaparecen y aparecen segundos. Ese cambio de unidad es el argumento sin decir una palabra."
+  },
+  "sonido": {
+    "el_bucle_sonoro": "Los tres bloques llevan el mismo diseño: el trabajo (madera, soldador, teclado), un golpe de puerta idéntico, y el papel. Cambian los materiales, no el ritmo.",
+    "la_degradacion": "El colchón grave sube un poco en cada época, sin que se note, hasta el bloque de hoy.",
+    "el_silencio": "El plano 10 (el pulgar) entra tras medio segundo de silencio absoluto. Después de tres bloques ruidosos, ese vacío es lo que hace el efecto.",
+    "el_click": "Uno solo y suave. En la parte 1 eran seis dings ásperos."
+  },
+  "riesgos": [
+    {
+      "que": "Que los planos 02, 05, 08 y 11 no casen de encuadre. El anuncio entero depende de eso.",
+      "mitigacion": "Van seguidos en la misma tanda. Si no casan, se generan el 05, 08 y 11 partiendo del último fotograma del 02, que fija la puerta y la distancia."
+    },
+    {
+      "que": "El plano 13 es una persona mirando a cámara, que es donde este modelo más falla.",
+      "mitigacion": "Se genera con la boca cerrada y la voz se dobla. Si el labial no convence, se corta al negro sobre la voz y no se pierde nada."
+    }
+  ],
+  "pendiente": [
+    "Los días de trabajo: 3, 5 y 8 son inventados para que la tijera se vea. Si tienes números reales de vuestro sector, mejor."
+  ]
+}

@@ -1,0 +1,89 @@
+{
+  "defaults": {},
+  "jobs": [
+    {
+      "id": "01_el_envio",
+      "workflow": "workflows/h3_calidad_api.json",
+      "prompt": "shot on full-frame cinema camera, vintage 35mm spherical prime, T2.8, locked off or slow handheld with small organic drift, natural practical light only, real 35mm grain, muted true colour, milky blacks, documentary realism, calm observational framing, nobody performing for the camera, no advertising gloss. A florist shop counter in warm afternoon light, exactly the same counter and the same wall of flower buckets as before, a full bouquet of twenty-four deep red roses in taut brown kraft paper lying across the counter, a 55 year old woman in a grey apron behind it with both hands flat on the paper, a 44 year old man in a dark blue shirt on the near side of the counter, natural skin texture with visible pores and fine hair, facial asymmetry, unstyled hair, working hands with short nails, no beauty retouching, no posing, calm documentary realism. Vertical portrait of a 44 year old Latin American man, short dark hair going grey at the temples, a day of stubble, a plain dark blue shirt with the sleeves rolled to the forearms, a worn wedding ring, large ordinary hands with short clean nails, calm neutral expression, not looking at camera, warm afternoon shop light, visible pores and facial asymmetry. Vertical portrait of a 55 year old woman in a grey work apron behind a florist counter, hair tied back, reading glasses pushed up on her head, completely ordinary and unremarkable, neutral working expression, not looking at camera, warm shop window light, visible pores and expression lines, no makeup.\n\nTimeline:\n[0s-10s] she folds the kraft paper closed over the full bouquet without taking anything out of it, tightens the cream ribbon into a knot and slides the whole bouquet across the counter to him, he lifts it with both hands and feels the weight settle, neither of them hurries and neither looks at the camera\n\nSingle continuous shot, one take, no cuts, vertical 9:16 framing.\n\nAudio: natural ambience of the location, no music, no voice.",
+      "negative": "text, letters, numbers, subtitles, captions, watermark, brand names, logos, embroidered logo, signage with readable words, screens with readable text, horizontal composition, letterboxing, black bars, cartoon, animation, 3D render, CGI flowers, artificial flowers, glitter, cellophane, hologram, sparkles, magic effects, teleport effects, light trails, particles, drone shot, gimbal glide, slow motion, orange and teal grading, glossy advertising lighting, beauty retouching, poreless skin, perfect teeth, model looks, big smile, celebration, cheering, looking at camera, addressing the camera, plastic skin, waxy face, deformed hands, extra fingers, morphing, flicker",
+      "seed": 1007,
+      "steps": 20,
+      "cfg": 1.0,
+      "width": 720,
+      "height": 1280,
+      "duration_s": 10,
+      "fps": 24,
+      "post": null
+    },
+    {
+      "id": "02_las_manos_que_envian",
+      "workflow": "workflows/h3_calidad_api.json",
+      "prompt": "shot on full-frame cinema camera, vintage 35mm spherical prime, T2.8, locked off or slow handheld with small organic drift, natural practical light only, real 35mm grain, muted true colour, milky blacks, documentary realism, calm observational framing, nobody performing for the camera, no advertising gloss. Tight close on a pair of large male hands with short clean nails and a worn wedding ring holding the full bouquet of twenty-four deep red roses in taut kraft paper, held upright at chest height and pushed slightly forward toward the lens, the paper cone and the packed dome of roses filling most of the tall frame, warm afternoon shop light from camera-left, a soft warm out of focus background, no face in frame, visible skin texture and hair on the forearms, photographic realism. Vertical portrait of a 44 year old Latin American man, short dark hair going grey at the temples, a day of stubble, a plain dark blue shirt with the sleeves rolled to the forearms, a worn wedding ring, large ordinary hands with short clean nails, calm neutral expression, not looking at camera, warm afternoon shop light, visible pores and facial asymmetry.\n\nTimeline:\n[0s-10s] his hands close firmly around the paper cone and push the bouquet forward toward the lens until it nearly fills the frame, and hold it there completely still, one single outer petal loosens at the edge of the dome and begins to tip away from the flower\n\nSingle continuous shot, one take, no cuts, vertical 9:16 framing.\n\nAudio: natural ambience of the location, no music, no voice.",
+      "negative": "text, letters, numbers, subtitles, captions, watermark, brand names, logos, embroidered logo, signage with readable words, screens with readable text, horizontal composition, letterboxing, black bars, cartoon, animation, 3D render, CGI flowers, artificial flowers, glitter, cellophane, hologram, sparkles, magic effects, teleport effects, light trails, particles, drone shot, gimbal glide, slow motion, orange and teal grading, glossy advertising lighting, beauty retouching, poreless skin, perfect teeth, model looks, big smile, celebration, cheering, looking at camera, addressing the camera, plastic skin, waxy face, deformed hands, extra fingers, morphing, flicker",
+      "seed": 1014,
+      "steps": 20,
+      "cfg": 1.0,
+      "width": 720,
+      "height": 1280,
+      "duration_s": 10,
+      "fps": 24,
+      "post": null
+    },
+    {
+      "id": "03_las_manos_que_reciben",
+      "workflow": "workflows/h3_calidad_api.json",
+      "prompt": "shot on full-frame cinema camera, vintage 35mm spherical prime, T2.8, locked off or slow handheld with small organic drift, natural practical light only, real 35mm grain, muted true colour, milky blacks, documentary realism, calm observational framing, nobody performing for the camera, no advertising gloss. Tight close on a pair of female hands with short nails and forearms in pushed-up cream knit sleeves taking the same full bouquet of twenty-four deep red roses in the same taut kraft paper, held at the same height and the same distance from the lens, the paper cone and the packed dome filling most of the tall frame, but the light is now cool low sun from camera-right and the out of focus background is a domestic hallway with a wooden door frame, no face in frame, visible skin texture, photographic realism. Vertical portrait of a 40 year old Latin American woman, dark shoulder-length hair loosely tied back with strands escaping at the temples, no makeup, faint freckles across the nose, a small mole under the left eye, cream knit sweater with sleeves pushed to the forearms, neutral expression, warm low sun from a window camera-left, visible pores and facial asymmetry.\n\nTimeline:\n[0s-10s] her hands close around the paper cone exactly where his were and take the weight, the bouquet dips a few centimetres as she accepts it, and the loosened outer petal detaches and falls out of the bottom of the frame\n\nSingle continuous shot, one take, no cuts, vertical 9:16 framing.\n\nAudio: natural ambience of the location, no music, no voice.",
+      "negative": "text, letters, numbers, subtitles, captions, watermark, brand names, logos, embroidered logo, signage with readable words, screens with readable text, horizontal composition, letterboxing, black bars, cartoon, animation, 3D render, CGI flowers, artificial flowers, glitter, cellophane, hologram, sparkles, magic effects, teleport effects, light trails, particles, drone shot, gimbal glide, slow motion, orange and teal grading, glossy advertising lighting, beauty retouching, poreless skin, perfect teeth, model looks, big smile, celebration, cheering, looking at camera, addressing the camera, plastic skin, waxy face, deformed hands, extra fingers, morphing, flicker",
+      "seed": 1021,
+      "steps": 20,
+      "cfg": 1.0,
+      "width": 720,
+      "height": 1280,
+      "duration_s": 10,
+      "fps": 24,
+      "post": null
+    },
+    {
+      "id": "04_el_petalo",
+      "workflow": "workflows/h3_calidad_api.json",
+      "prompt": "shot on full-frame cinema camera, vintage 35mm spherical prime, T2.8, locked off or slow handheld with small organic drift, natural practical light only, real 35mm grain, muted true colour, milky blacks, documentary realism, calm observational framing, nobody performing for the camera, no advertising gloss. Extreme close on a warm wooden floor in low late afternoon sun raking across the grain, a single deep red rose petal lying alone on the boards, one small bead of water on its surface, the fine down along its curled edge catching the light, razor-thin depth of field, dust motes drifting in the light above it, no people at all, photographic realism, macro detail on the petal surface.\n\nTimeline:\n[0s-10s] the petal settles and rocks once on the wood and comes to rest completely still, dust drifting slowly through the light above it, then a woman's hand enters the frame from above, picks the petal up between two fingertips and lifts it out of frame\n\nSingle continuous shot, one take, no cuts, vertical 9:16 framing.\n\nAudio: natural ambience of the location, no music, no voice.",
+      "negative": "text, letters, numbers, subtitles, captions, watermark, brand names, logos, embroidered logo, signage with readable words, screens with readable text, horizontal composition, letterboxing, black bars, cartoon, animation, 3D render, CGI flowers, artificial flowers, glitter, cellophane, hologram, sparkles, magic effects, teleport effects, light trails, particles, drone shot, gimbal glide, slow motion, orange and teal grading, glossy advertising lighting, beauty retouching, poreless skin, perfect teeth, model looks, big smile, celebration, cheering, looking at camera, addressing the camera, plastic skin, waxy face, deformed hands, extra fingers, morphing, flicker",
+      "seed": 1028,
+      "steps": 20,
+      "cfg": 1.0,
+      "width": 720,
+      "height": 1280,
+      "duration_s": 10,
+      "fps": 24,
+      "post": null
+    },
+    {
+      "id": "05_ella",
+      "workflow": "workflows/h3_calidad_api.json",
+      "prompt": "shot on full-frame cinema camera, vintage 35mm spherical prime, T2.8, locked off or slow handheld with small organic drift, natural practical light only, real 35mm grain, muted true colour, milky blacks, documentary realism, calm observational framing, nobody performing for the camera, no advertising gloss. Medium shot of a 40 year old woman in a cream knit sweater standing in a domestic hallway in warm low late afternoon sun from a window camera-left, holding the full heavy bouquet of twenty-four deep red roses in taut kraft paper against her chest, water still beading on the outer petals, the single loose petal held between two fingers of her free hand, the lower quarter of the tall frame dark and clean, natural skin texture with visible pores and fine hair, facial asymmetry, ordinary teeth, unstyled hair, no beauty retouching, no posing, documentary realism. Vertical portrait of a 40 year old Latin American woman, dark shoulder-length hair loosely tied back with strands escaping at the temples, no makeup, faint freckles across the nose, a small mole under the left eye, cream knit sweater with sleeves pushed to the forearms, neutral expression, warm low sun from a window camera-left, visible pores and facial asymmetry.\n\nTimeline:\n[0s-10s] she lowers her face into the roses and breathes in, her eyes close for half a second, and a small real smile starts at the eyes before it reaches her mouth, then she looks down at the single petal between her fingers and turns it over once, unbothered\n\nCamera: push, one single movement, no cuts.\n\nSingle continuous shot, one take, no cuts, vertical 9:16 framing.\n\nAudio: natural ambience of the location, no music, no voice.",
+      "negative": "text, letters, numbers, subtitles, captions, watermark, brand names, logos, embroidered logo, signage with readable words, screens with readable text, horizontal composition, letterboxing, black bars, cartoon, animation, 3D render, CGI flowers, artificial flowers, glitter, cellophane, hologram, sparkles, magic effects, teleport effects, light trails, particles, drone shot, gimbal glide, slow motion, orange and teal grading, glossy advertising lighting, beauty retouching, poreless skin, perfect teeth, model looks, big smile, celebration, cheering, looking at camera, addressing the camera, plastic skin, waxy face, deformed hands, extra fingers, morphing, flicker",
+      "seed": 1035,
+      "steps": 20,
+      "cfg": 1.0,
+      "width": 720,
+      "height": 1280,
+      "duration_s": 10,
+      "fps": 24,
+      "post": null
+    },
+    {
+      "id": "06_la_pregunta",
+      "workflow": "workflows/h3_calidad_api.json",
+      "prompt": "shot on full-frame cinema camera, vintage 35mm spherical prime, T2.8, locked off or slow handheld with small organic drift, natural practical light only, real 35mm grain, muted true colour, milky blacks, documentary realism, calm observational framing, nobody performing for the camera, no advertising gloss. Medium close on a 38 year old Latin American woman standing in the same warm domestic hallway in low late afternoon sun from a window camera-left, wearing a plain dark navy work shirt with a clean empty left chest area and no markings of any kind on it, the full bouquet of red roses soft and out of focus on a table behind her, the lower quarter of the tall frame dark and clean, natural skin texture with visible pores and fine hair, facial asymmetry, ordinary teeth, unstyled hair pulled back, no makeup, no beauty retouching, documentary realism. Vertical portrait of a 38 year old Latin American woman with an open direct face, dark hair pulled back plainly, no makeup, faint lines at the corners of the eyes, a small chip on one front tooth, a plain dark navy work shirt buttoned to the second button with a completely clean empty left chest area and no markings on it, calm level expression, warm low afternoon light from camera-left, visible pores and facial asymmetry, ordinary and credible rather than polished.\n\nTimeline:\n[0s-10s] she looks straight into the camera lens with a calm, level, matter-of-fact expression and speaks three short sentences without smiling, she blinks once before she starts, a small pause between the second and third sentence, and on the last sentence the corner of her mouth lifts very slightly, nothing more\n\nCamera: push, one single movement, no cuts.\n\nSingle continuous shot, one take, no cuts, vertical 9:16 framing.\n\nAudio: natural ambience of the location, no music, no voice.",
+      "negative": "text, letters, numbers, subtitles, captions, watermark, brand names, logos, embroidered logo, signage with readable words, screens with readable text, horizontal composition, letterboxing, black bars, cartoon, animation, 3D render, CGI flowers, artificial flowers, glitter, cellophane, hologram, sparkles, magic effects, teleport effects, light trails, particles, drone shot, gimbal glide, slow motion, orange and teal grading, glossy advertising lighting, beauty retouching, poreless skin, perfect teeth, model looks, big smile, celebration, cheering, plastic skin, waxy face, deformed hands, extra fingers, morphing, flicker",
+      "seed": 1042,
+      "steps": 20,
+      "cfg": 1.0,
+      "width": 720,
+      "height": 1280,
+      "duration_s": 10,
+      "fps": 24,
+      "post": null
+    }
+  ]
+}

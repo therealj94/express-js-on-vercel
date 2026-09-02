@@ -1,0 +1,759 @@
+#!/usr/bin/env python3
+"""Compositor de la película del ecosistema sobre material fotográfico.
+
+Lee prompts/pelicula2_montaje.json, coge los clips reales elegidos de cada
+plano, los encadena con fundidos, y compone encima la tipografía siguiendo las
+reglas técnicas de la pieza de Apple: mascara de recorte para que el texto
+aparezca desde la nada, desfase de dos fotogramas entre palabras, y ninguna
+palabra viva en pantalla más de lo que se tarda en leerla. Al final, la pasada
+de acabado de acabado.py.
+
+    python3 montaje/ecosistema_material.py prompts/pelicula2_montaje.json \\
+        /ruta/a/clips salida_muda.mp4 [desde_s hasta_s]
+
+Los dos últimos argumentos son opcionales y renderizan solo ese tramo. No es un
+lujo: el contenedor de esta sesión se reinicia cada pocos minutos y una pasada
+entera se pierde a medias. Con el tramo se rehace solo lo que cambió —y como
+`fundido_s` es 0 los cortes son secos, así que un tramo empalma con el resto sin
+costura—. El número de fotograma se conserva, que es la semilla del grano.
+"""
+from __future__ import annotations
+
+import json
+import subprocess
+import sys
+from pathlib import Path
+
+import numpy as np
+from PIL import Image, ImageDraw, ImageFilter, ImageFont
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from acabado import acabar, escalonar, salida, salida_rebote, sombra_larga  # noqa: E402
+
+W, H, FPS = 1080, 1920, 30
+TEXTO = (244, 239, 228)
+
+# La tipografía era DejaVu, que es la fuente POR DEFECTO de Linux. José lo vio
+# sin saber el nombre: "las letras se ven pobres". Una serif genérica de sistema
+# en un rótulo grande delata la pieza entera. Inter es la familia con la que se
+# rotula este tipo de cine de producto: neogrotesca, muchos pesos, y aguanta
+# tamaños grandes con interletraje negativo sin deshacerse.
+TIPO = Path("/usr/local/share/fonts/og")
+F_TIT = str(TIPO / "Inter-300.ttf")      # titulares: grandes y ligeros
+F_MED = str(TIPO / "Inter-400.ttf")      # frases de varias líneas
+F_ROT = str(TIPO / "Inter-500.ttf")      # nombres de producto, en versalitas
+F_FUE = str(TIPO / "Inter-600.ttf")      # el nombre de la casa en el cierre
+_fuentes: dict = {}
+
+
+def fuente(ruta: str, tam: int) -> ImageFont.FreeTypeFont:
+    if (ruta, tam) not in _fuentes:
+        _fuentes[(ruta, tam)] = ImageFont.truetype(ruta, tam)
+    return _fuentes[(ruta, tam)]
+
+
+def ancho_con_track(d, txt: str, f, track: float) -> float:
+    """Ancho de un texto con interletraje. Pillow no tiene tracking, así que se
+    dibuja carácter a carácter y hay que medir igual."""
+    return sum(d.textlength(c, font=f) for c in txt) + track * max(0, len(txt) - 1)
+
+
+def dibujar_track(d, xy, txt: str, f, fill, track: float):
+    x, y = xy
+    for c in txt:
+        d.text((x, y), c, font=f, fill=fill)
+        x += d.textlength(c, font=f) + track
+
+
+def texto_con_sombra(im: Image.Image, xy, txt: str, f, fill, track: float = 0.0,
+                     sombra: float = 0.55, radio: int = 26):
+    """Texto con una sombra difusa detrás.
+
+    Sin ella el rótulo se pierde en cuanto pasa por una zona clara del plano, y
+    subir el peso de la letra para compensar es lo que la hace parecer barata.
+    La sombra va muy difusa y baja: no se ve, se nota."""
+    capa = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+    dc = ImageDraw.Draw(capa, "RGBA")
+    dibujar_track(dc, xy, txt, f, fill, track)
+    if sombra > 0:
+        a = capa.split()[3]
+        sm = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+        sm.putalpha(a.filter(ImageFilter.GaussianBlur(radio)).point(
+            lambda v: int(v * sombra)))
+        im.alpha_composite(sm, (0, 3))
+    im.alpha_composite(capa)
+
+
+LOGOS = Path(__file__).resolve().parent.parent.parent / "logos-orden-global"
+
+# Las marcas tal como se usan en pantalla. Los logos vienen de ocho manos
+# distintas —dos son azules, uno lleva un lema en inglés, dos son cuadrados de
+# app—, y un trailer de Apple no enseña logos ajenos a media pieza: enseña el
+# OBJETO, el NOMBRE en su propia tipografía, y la marca pequeña, siempre del
+# mismo tamaño y en el mismo sitio. 'recorte' se queda con el símbolo y tira el
+# nombre y el lema, que ya van en tipografía nuestra.
+# El tercer valor dice si la marca necesita PLACA. Medido: el símbolo de Veta
+# solo tiene un 5,8% de trazo en su recuadro —Ordenex un 32,7%, Genesis un
+# 100%—, así que a 132 px en pantalla su línea baja de 2 px y se lee como un
+# garabato. José: "la vetawallet en pantalla se ve fatal". Metida en una placa
+# oscura con filo de oro gana campo propio y se lee; y de paso las ocho marcas
+# quedan como una familia en vez de siete tratamientos distintos.
+MARCAS = {
+    "og":         ("orden-global/orden-global-logo.png", None, False),
+    "veta":       ("veta-wallet/veta-wallet-icono.png", None, True),
+    "genesis":    ("genesis-id/genesis-id-icono.png", None, False),
+    "mytokenpay": ("mytokenpay/mytokenpay-icono.png", None, False),
+    "pulse":      ("pulse2chat/pulse2chat-logo.png", 0.57, True),   # solo la P
+    "ordenex":    ("ordenex/ordenex-logo.png", 0.84, True),         # sin la palabra
+    "aucorp":     ("aucorp/aucorp-logo.png", 0.80, True),           # sin la palabra
+}
+_marcas: dict = {}
+
+
+def marca(clave: str, lado: int) -> Image.Image:
+    """La marca lista para componer: recortada a su símbolo, con las esquinas
+    redondeadas si es un cuadrado de app, encajada en un cuadro de `lado`."""
+    if (clave, lado) in _marcas:
+        return _marcas[(clave, lado)]
+    ruta, recorte, placa = MARCAS[clave]
+    im = Image.open(LOGOS / ruta)
+    cuadrado = im.mode != "RGBA"       # icono de app: fondo propio, sin alfa
+    im = im.convert("RGBA")
+    if recorte:
+        im = im.crop((0, 0, im.width, int(im.height * recorte)))
+    if cuadrado:
+        m = Image.new("L", im.size, 0)
+        r = int(min(im.size) * 0.22)
+        ImageDraw.Draw(m).rounded_rectangle([0, 0, im.width - 1, im.height - 1], r, fill=255)
+        im.putalpha(m)
+    else:
+        a = np.array(im)
+        # Ordenex trae el fondo casi blanco como pixeles opacos —en la prueba
+        # salió metido en una caja gris—: si la esquina es clara y opaca, todo
+        # lo casi blanco pasa a transparente y queda solo el trazo dorado.
+        # Medido: Ordenex trae un velo gris a alfa 67 en todo el lienzo y AuCorp
+        # uno oscuro a 62. Se quita todo lo que no sea trazo firme.
+        a[a[..., 3] < 120, 3] = 0
+        # El recorte va por percentiles y no por extremos: Veta tiene píxeles
+        # sueltos en los bordes del lienzo y con min/max la marca salía diminuta.
+        ys, xs = np.where(a[..., 3] > 120)
+        x0, x1 = np.percentile(xs, [0.3, 99.7]).astype(int)
+        y0, y1 = np.percentile(ys, [0.3, 99.7]).astype(int)
+        im = Image.fromarray(a).crop((x0, y0, x1 + 1, y1 + 1))
+    if placa:
+        # El símbolo, centrado y grande, dentro de una placa oscura con filo.
+        dentro = int(lado * 0.68)
+        esc = dentro / max(im.size)
+        sim = im.resize((max(1, int(im.width * esc)), max(1, int(im.height * esc))),
+                        Image.LANCZOS)
+        caja = Image.new("RGBA", (lado, lado), (0, 0, 0, 0))
+        dc = ImageDraw.Draw(caja, "RGBA")
+        r = int(lado * 0.24)
+        dc.rounded_rectangle([0, 0, lado - 1, lado - 1], r, fill=(13, 15, 19, 236),
+                             outline=(214, 173, 90, 120), width=2)
+        caja.alpha_composite(sim, ((lado - sim.width) // 2, (lado - sim.height) // 2))
+        im = caja
+    else:
+        esc = lado / max(im.size)
+        im = im.resize((max(1, int(im.width * esc)), max(1, int(im.height * esc))),
+                       Image.LANCZOS)
+    _marcas[(clave, lado)] = im
+    return im
+
+
+def _pegar(im: Image.Image, capa: Image.Image, cx: int, cy: int, a: float,
+           escala: float = 1.0, sombra: bool = True):
+    if a <= 0.02:
+        return
+    if escala != 1.0:
+        capa = capa.resize((max(1, int(capa.width * escala)),
+                            max(1, int(capa.height * escala))), Image.LANCZOS)
+    capa = capa.copy()
+    capa.putalpha(capa.split()[3].point(lambda v: int(v * a)))
+    pos = (cx - capa.width // 2, cy - capa.height // 2)
+    if sombra:
+        sombra_larga(im, capa, pos, radio=60, opacidad=0.32 * a, dy=26)
+    im.alpha_composite(capa, pos)
+
+
+def _velo(im: Image.Image, cx: int, cy: int, radio: int, fuerza: float):
+    """Un velo oscuro y muy difuso detrás de un grupo de marcas.
+
+    Sin esto, AuCorp y Ordenex —que son líneas doradas finas— desaparecen dentro
+    de un plano claro, y engordarlas para compensar las afea. Es lo que hace un
+    grafista al poner tipografía sobre una foto clara, y no se ve como una
+    mancha porque cae en coseno hasta cero."""
+    if fuerza <= 0.01:
+        return
+    n = 220
+    y, x = np.mgrid[0:n, 0:n]
+    r = np.sqrt(((x - n / 2) / (n / 2)) ** 2 + ((y - n / 2) / (n / 2)) ** 2)
+    g = np.clip(1 - r, 0, 1) ** 1.6
+    capa = Image.fromarray((g * 255 * fuerza).astype(np.uint8)).resize(
+        (radio * 2, radio * 2), Image.BICUBIC)
+    negro = Image.new("RGBA", capa.size, (0, 0, 0, 0))
+    negro.putalpha(capa)
+    im.alpha_composite(negro, (cx - radio, cy - radio))
+
+
+def sitio(im: Image.Image, texto: str, rel: float, dur: float):
+    """El cartel de dónde estamos, arriba, pequeño y en versalitas espaciadas.
+
+    Es el recurso más viejo del documental y sigue siendo el más eficaz: dos
+    palabras y el espectador ya sabe que las separan dos mil kilómetros, sin
+    que nadie se lo cuente. Entra por opacidad y se va igual: no compite."""
+    a = salida(float(np.clip(rel / 0.5, 0, 1)), 3.0) * \
+        salida(float(np.clip((dur - rel) / 0.45, 0, 1)), 3.0)
+    if a <= 0.02:
+        return
+    d = ImageDraw.Draw(im, "RGBA")
+    f = fuente(F_ROT, 30)
+    an = ancho_con_track(d, texto, f, 8.0)
+    x, y = (W - an) / 2, H * 0.128
+    texto_con_sombra(im, (x, y), texto, f, TEXTO + (int(238 * a),), 8.0,
+                     sombra=0.6, radio=22)
+    # Una línea fina debajo, del ancho del texto, que lo asienta.
+    capa = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+    ImageDraw.Draw(capa, "RGBA").line(
+        [(x, y + 50), (x + an, y + 50)], fill=(214, 173, 90, int(150 * a)), width=2)
+    im.alpha_composite(capa)
+
+
+def producto(im: Image.Image, nombre: str, clave: str, rel: float, dur: float):
+    """La ficha de producto: la marca entra con sobrepaso —tiene masa—, y el
+    nombre debajo en versalitas. El interletraje es de VERDAD y no dos espacios
+    entre letras, que era lo que había y se notaba en las palabras con acento."""
+    e = salida_rebote(float(np.clip(rel / 0.55, 0, 1)))
+    fuera = salida(float(np.clip((dur - rel) / 0.35, 0, 1)), 3.0)
+    a = float(np.clip(rel / 0.25, 0, 1)) * fuera
+    # La ficha vive en el TERCIO INFERIOR. A media altura la marca caía encima
+    # del objeto —sobre la moneda de Ordenex parecía una pegatina— y ahí es
+    # donde está el sujeto en la mitad de los planos.
+    # Un velo detrás de la marca: a esta altura cae sobre el sujeto en la mitad
+    # de los planos, y sin él vuelve a parecer una pegatina.
+    _velo(im, W // 2, int(H * 0.617), 300, 0.34 * a)
+    _pegar(im, marca(clave, 132), W // 2, int(H * 0.617), a, escala=0.86 + 0.14 * e)
+    d = ImageDraw.Draw(im, "RGBA")
+    f = fuente(F_ROT, 27)
+    txt = nombre.upper()
+    track = 7.5
+    an = ancho_con_track(d, txt, f, track)
+    ta = salida(float(np.clip((rel - 0.18) / 0.35, 0, 1)), 4.0) * fuera
+    texto_con_sombra(im, ((W - an) / 2, H * 0.673), txt, f,
+                     TEXTO + (int(215 * ta),), track, sombra=0.5, radio=18)
+
+
+# Dónde se coloca cada marca alrededor de Orden Global en el retrato de
+# familia: ángulo en grados y orden de entrada. Es el sistema solar real de la
+# app —Veta arriba, el resto girando— y no dos entran a la vez.
+FAMILIA = [("veta", 270), ("genesis", 330), ("mytokenpay", 30),
+           ("pulse", 90), ("ordenex", 150), ("aucorp", 210)]
+
+
+def familia(im: Image.Image, rel: float):
+    """Todo el ecosistema en un cuadro: Orden Global en el centro y las seis
+    marcas entrando una a una en órbita, con sobrepaso y sombra larga."""
+    cx, cy, radio = W // 2, int(H * 0.42), 372
+    e0 = salida_rebote(float(np.clip(rel / 0.9, 0, 1)))
+    _velo(im, cx, cy, 640, 0.62 * float(np.clip(rel / 0.5, 0, 1)))
+    _pegar(im, marca("og", 330), cx, cy, float(np.clip(rel / 0.4, 0, 1)),
+           escala=0.9 + 0.1 * e0)
+    for k, (clave, ang) in enumerate(FAMILIA):
+        t0 = 0.7 + escalonar(k, 7.0)
+        e = salida_rebote(float(np.clip((rel - t0) / 0.6, 0, 1)))
+        a = float(np.clip((rel - t0) / 0.25, 0, 1))
+        x = cx + int(radio * np.cos(np.radians(ang)))
+        y = cy + int(radio * np.sin(np.radians(ang)))
+        _pegar(im, marca(clave, 134), x, y, a, escala=0.8 + 0.2 * e)
+
+
+def extraer(clip: Path, destino: Path) -> int:
+    """Convierte un clip en una carpeta de fotogramas a 30 fps y 1080x1920.
+
+    Se hace una vez por clip elegido. Leer PNG por índice es lo que permite
+    remapear el tiempo y fundir dos clips fotograma a fotograma."""
+    destino.mkdir(parents=True, exist_ok=True)
+    if not any(destino.glob("*.png")):
+        subprocess.run(["ffmpeg", "-v", "error", "-y", "-i", str(clip),
+                        "-vf", f"fps={FPS},scale={W}:{H}:flags=lanczos",
+                        str(destino / "%04d.png")], check=True)
+    return len(list(destino.glob("*.png")))
+
+
+class Plano:
+    def __init__(self, carpeta: Path, n: int):
+        self.carpeta, self.n = carpeta, n
+        self._cache = {}
+
+    def natural(self, segundos: float) -> Image.Image:
+        """Fotograma a velocidad real, `segundos` desde el inicio del clip.
+        Para gente: remapear 4 s de material a 2,4 s acelera los gestos y se
+        nota falso. Si el bloque pide más de lo que hay, se congela el último."""
+        return self.fotograma(segundos * FPS / max(1, self.n - 1))
+
+    def fotograma(self, frac: float) -> Image.Image:
+        """Fotograma en la fracción [0,1] del clip. El clip se remapea al hueco
+        que le toca en el montaje, así que 4 s de material pueden durar 4,2."""
+        i = int(np.clip(frac, 0, 1) * (self.n - 1)) + 1
+        if i not in self._cache:
+            # Solo se guarda el último fotograma: el montaje avanza en orden y
+            # cada uno se pide varias veces seguidas. Guardarlos todos eran
+            # 6 MB x 121 x 14 planos = 10 GB, y la prueba murió sin aviso a
+            # los 48,7 s, justo al entrar en el retrato de familia.
+            self._cache = {i: Image.open(self.carpeta / f"{i:04d}.png").convert("RGB")}
+        return self._cache[i]
+
+
+def rotulo(im: Image.Image, texto: str, rel: float, dur: float, chico=False,
+           alto=None, escala=1.0):
+    """Un rótulo a la manera de Apple.
+
+    Entra por MASCARA —cada palabra se revela desde una línea invisible— con
+    dos fotogramas de desfase entre palabras, se queda lo justo, y se va por
+    opacidad. Nada de deslizarse desde fuera del cuadro: eso es plantilla.
+
+    El tamaño y el interletraje son lo que separa un rótulo de cine de uno de
+    plantilla: los titulares van grandes y LIGEROS con el interletraje cerrado,
+    porque una letra gorda a ese cuerpo se lee como cartel de oferta."""
+    lineas = texto.split("\n")
+    if chico:
+        f, track, salto = fuente(F_MED, int(52 * escala)), 0.0, 1.40
+    else:
+        f, track, salto = fuente(F_TIT, int(86 * escala)), -1.8, 1.22
+    y = H * (alto if alto is not None else (0.725 if chico else 0.728))
+    fuera = salida(float(np.clip((dur - rel) / 0.35, 0, 1)), 3.0)
+    d = ImageDraw.Draw(im, "RGBA")
+    # Defensa: si una línea no cabe, se encoge la fuente hasta que quepa. Sin
+    # esto, subir el cuerpo de un rótulo lo saca del cuadro sin avisar —pasó con
+    # la línea de las cuatro monedas, que se cortaba en "ONDK"—.
+    tope = W * 0.90
+    while max(ancho_con_track(d, ln, f, track) for ln in lineas) > tope and f.size > 20:
+        f = fuente(F_MED if chico else F_TIT, f.size - 2)
+    k = 0
+    for ln in lineas:
+        palabras = ln.split(" ")
+        anchos = [ancho_con_track(d, p + " ", f, track) for p in palabras]
+        x = (W - sum(anchos)) / 2
+        for p, an in zip(palabras, anchos):
+            e = salida(float(np.clip((rel - escalonar(k, 2.5)) / 0.32, 0, 1)), 4.0)
+            k += 1
+            if e <= 0:
+                x += an
+                continue
+            capa = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+            dibujar_track(ImageDraw.Draw(capa, "RGBA"), (x, y), p, f,
+                          TEXTO + (int(255 * fuera),), track)
+            caja = capa.split()[3].getbbox()
+            if caja:
+                # Máscara: la palabra crece desde su línea base hacia arriba.
+                alto_p = caja[3] - caja[1]
+                mask = Image.new("L", (W, H), 0)
+                ImageDraw.Draw(mask).rectangle(
+                    [0, caja[3] - alto_p * e - 6, W, caja[3] + 6], fill=255)
+                capa.putalpha(Image.fromarray(
+                    np.minimum(np.array(capa.split()[3]), np.array(mask))))
+                sm = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+                sm.putalpha(capa.split()[3].filter(
+                    ImageFilter.GaussianBlur(26)).point(lambda v: int(v * 0.55)))
+                im.alpha_composite(sm, (0, 3))
+            im.alpha_composite(capa)
+            x += an
+        y += (52 if chico else 86) * escala * salto
+
+
+def burbuja(im: Image.Image, texto: str, rel: float, dur: float, foto=None,
+            alto=0.30, quien=None, mia=False):
+    """Una burbuja de PULSE2CHAT sobreimpresa, grande y legible.
+
+    José: *"la conversación entre ambas debe aparecer como burbuja que la gente
+    pueda ver lo que hablan"*. Dentro del teléfono la conversación es textura —
+    dice que existe una mensajería—, pero no se lee. Aquí se lee: cuerpo 44,
+    ancho medio cuadro, y el mismo azul marino y filo de oro de su app para que
+    sea evidente que es la misma conversación que se ve en la pantalla.
+
+    `mia` la alinea a la derecha y la aclara, que es como habla el que escribe.
+    `quien` pone la etiqueta de quién manda; se omite en un mensaje seguido del
+    mismo, igual que en un chat de verdad."""
+    e = salida(float(np.clip(rel / 0.45, 0, 1)), 4.0)
+    fuera = salida(float(np.clip((dur - rel) / 0.4, 0, 1)), 3.0)
+    a = e * fuera
+    if a <= 0.02:
+        return
+    d = ImageDraw.Draw(im, "RGBA")
+    f = fuente(F_MED, 44)
+    pad = 30
+    ancho = int(W * (0.54 if foto is not None else 0.74))
+
+    lineas, act = [], ""
+    for pal in texto.split():
+        if d.textlength((act + " " + pal).strip(), font=f) <= ancho - pad * 2:
+            act = (act + " " + pal).strip()
+        else:
+            lineas.append(act); act = pal
+    lineas.append(act)
+    if foto is None:
+        ancho = int(max(d.textlength(l, font=f) for l in lineas)) + pad * 2
+
+    alto_foto = 0
+    if foto is not None:
+        af = ancho - pad * 2
+        foto = foto.resize((af, int(foto.height * af / foto.width)), Image.LANCZOS)
+        alto_foto = foto.height + 20
+    cab = 42 if quien else 8
+    altura = alto_foto + cab + len(lineas) * 58 + 34
+    x = (W - int(W * 0.09) - ancho) if mia else int(W * 0.09)
+    y = int(H * alto)
+
+    capa = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+    dc = ImageDraw.Draw(capa, "RGBA")
+    relleno = (32, 74, 132, int(240 * a)) if mia else (16, 41, 72, int(240 * a))
+    dc.rounded_rectangle([x, y, x + ancho, y + altura], 30, fill=relleno)
+    if not mia:
+        dc.rounded_rectangle([x, y + 22, x + 7, y + altura - 22], 4,
+                             fill=(214, 173, 90, int(230 * a)))
+    if quien:
+        dc.text((x + pad, y + 18), quien, font=fuente(F_ROT, 24),
+                fill=(214, 173, 90) + (int(235 * a),))
+    if foto is not None:
+        m = Image.new("L", foto.size, 0)
+        ImageDraw.Draw(m).rounded_rectangle(
+            [0, 0, foto.width - 1, foto.height - 1], 18, fill=int(255 * a))
+        capa.paste(foto.convert("RGB"), (x + pad, y + cab + 12), m)
+    for i, ln in enumerate(lineas):
+        dc.text((x + pad, y + alto_foto + cab + 14 + i * 58), ln, font=f,
+                fill=TEXTO + (int(255 * a),))
+
+    # Máscara: la burbuja crece desde su base, como los rótulos.
+    mask = Image.new("L", (W, H), 0)
+    ImageDraw.Draw(mask).rectangle(
+        [0, y + altura - (altura + 24) * e, W, y + altura + 24], fill=255)
+    capa.putalpha(Image.fromarray(
+        np.minimum(np.array(capa.split()[3]), np.array(mask))))
+    sm = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+    sm.putalpha(capa.split()[3].filter(
+        ImageFilter.GaussianBlur(28)).point(lambda v: int(v * 0.45)))
+    im.alpha_composite(sm, (0, 6))
+    im.alpha_composite(capa)
+
+
+# Qué se puede hacer dentro de Pulse2Chat, en tarjetas de su propio diseño.
+# José: "podemos poner burbujas de chats text y llamando a mamá o videollamada
+# a esposa". Un rótulo que diga "Hablá" no enseña nada; tres tarjetas de la app
+# sí, y de paso dicen que la mensajería es del mismo ecosistema.
+CAPACIDADES = [("txt", "Mamá", "¿Ya llegaste, mi hija?"),
+               ("voz", "Llamando a Mamá", "01:12"),
+               ("video", "Videollamada", "Rosa")]
+
+
+def capacidades(im: Image.Image, rel: float, dur: float, alto=0.30):
+    """Tres tarjetas de Pulse2Chat entrando una detrás de otra."""
+    fuera = salida(float(np.clip((dur - rel) / 0.4, 0, 1)), 3.0)
+    if fuera <= 0.02:
+        return
+    ancho = int(W * 0.70)
+    x = (W - ancho) // 2
+    y = int(H * alto)
+    for k, (tipo, arriba, abajo) in enumerate(CAPACIDADES):
+        t0 = escalonar(k, 9.0)
+        e = salida(float(np.clip((rel - t0) / 0.42, 0, 1)), 4.0)
+        a = e * fuera
+        if a <= 0.02:
+            continue
+        h = 118
+        capa = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+        dc = ImageDraw.Draw(capa, "RGBA")
+        yy = y + k * (h + 20)
+        dc.rounded_rectangle([x, yy, x + ancho, yy + h], 26,
+                             fill=(16, 41, 72, int(238 * a)))
+        # El distintivo de la izquierda dice de qué es cada tarjeta.
+        dc.rounded_rectangle([x + 20, yy + 22, x + 94, yy + h - 22], 20,
+                             fill=(32, 74, 132, int(238 * a)))
+        cx, cy = x + 57, yy + h // 2
+        oro = (214, 173, 90, int(240 * a))
+        if tipo == "txt":
+            dc.rounded_rectangle([cx - 20, cy - 15, cx + 20, cy + 9], 8, fill=oro)
+            dc.polygon([(cx - 12, cy + 8), (cx - 2, cy + 8), (cx - 12, cy + 18)], fill=oro)
+        elif tipo == "voz":
+            # Auricular clásico: se dibuja recto y se gira, que es más limpio
+            # que intentar el diagonal a mano.
+            g = Image.new("RGBA", (56, 56), (0, 0, 0, 0))
+            dg = ImageDraw.Draw(g)
+            dg.rounded_rectangle([6, 22, 50, 34], 6, fill=oro)
+            dg.ellipse([2, 14, 22, 42], fill=oro)
+            dg.ellipse([34, 14, 54, 42], fill=oro)
+            dg.ellipse([9, 21, 15, 35], fill=(16, 41, 72, 255))
+            dg.ellipse([41, 21, 47, 35], fill=(16, 41, 72, 255))
+            g = g.rotate(-35, resample=Image.BICUBIC, expand=False)
+            capa.alpha_composite(g, (cx - 28, cy - 28))
+        else:
+            dc.rounded_rectangle([cx - 22, cy - 13, cx + 4, cy + 13], 6, fill=oro)
+            dc.polygon([(cx + 8, cy - 10), (cx + 22, cy - 17), (cx + 22, cy + 17),
+                        (cx + 8, cy + 10)], fill=oro)
+        dc.text((x + 122, yy + 24), arriba, font=fuente(F_ROT, 34),
+                fill=TEXTO + (int(255 * a),))
+        dc.text((x + 122, yy + 66), abajo, font=fuente(F_MED, 30),
+                fill=(150, 176, 208) + (int(240 * a),))
+        sm = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+        sm.putalpha(capa.split()[3].filter(
+            ImageFilter.GaussianBlur(24)).point(lambda v: int(v * 0.42)))
+        im.alpha_composite(sm, (0, 6))
+        im.alpha_composite(capa)
+
+
+_tarjeta_cache: dict = {}
+
+
+def tarjeta(im: Image.Image, ruta: str, rel: float, dur: float, alto=0.40,
+            ancho_frac=0.78, giro=-7.0):
+    """La tarjeta Visa de Orden Global, montada como pieza de producto.
+
+    Ninguna toma generada servía: las cuatro son macros del chip y ahí no cabe
+    el diseño. Pero la tarjeta existe y su arte es de alta resolución, así que
+    en vez de filmarla se compone —girada, con sombra propia y un brillo que la
+    recorre—, que es como se enseña un producto, y además es la tarjeta de
+    verdad y no una inventada por el modelo.
+
+    Del arte se quitó el nombre del titular y se cambiaron los cuatro últimos
+    dígitos: eran los de una tarjeta real."""
+    e = salida_rebote(float(np.clip(rel / 0.7, 0, 1)))
+    fuera = salida(float(np.clip((dur - rel) / 0.45, 0, 1)), 3.0)
+    a = float(np.clip(rel / 0.3, 0, 1)) * fuera
+    if a <= 0.02:
+        return
+    if ruta not in _tarjeta_cache:
+        _tarjeta_cache[ruta] = Image.open(ruta).convert("RGBA")
+    base = _tarjeta_cache[ruta]
+    an = int(W * ancho_frac * (0.9 + 0.1 * e))
+    t = base.resize((an, int(base.height * an / base.width)), Image.LANCZOS)
+
+    # Un brillo que cruza la tarjeta: es lo que le da materia a una superficie
+    # plana. Va con el tiempo, no fijo.
+    xx = np.arange(t.width)[None, :] + np.arange(t.height)[:, None] * 0.6
+    centro = (rel / max(dur, 0.01)) * (t.width * 1.9) - t.width * 0.35
+    g = np.exp(-((xx - centro) ** 2) / (2 * (t.width * 0.085) ** 2)) * 90 * a
+    bri = Image.fromarray(np.clip(g, 0, 255).astype(np.uint8))
+    cap = Image.new("RGBA", t.size, (255, 246, 224, 0))
+    cap.putalpha(Image.fromarray(
+        np.minimum(np.array(bri), np.array(t.split()[3]))))
+    t = Image.alpha_composite(t, cap)
+
+    t = t.rotate(giro, resample=Image.BICUBIC, expand=True)
+    t.putalpha(t.split()[3].point(lambda v: int(v * a)))
+    pos = ((W - t.width) // 2, int(H * alto) - t.height // 2)
+    sombra_larga(im, t, pos, radio=90, opacidad=0.46 * a, dy=34)
+    im.alpha_composite(t, pos)
+
+
+def transaccion(im: Image.Image, rel: float, dur: float, cantidad="10",
+                hora="07:57", alto=0.28):
+    """El comprobante del envío, SOBREIMPRESO y no dentro del teléfono.
+
+    Meterlo en la pantalla era forzarlo: a 200 píxeles de ancho no se lee y
+    parece un parche. José: *"quitemos el forzar poner en pantalla"*. Fuera de
+    la pantalla se lee entero, y sigue siendo la tarjeta de su app —el mismo
+    azul marino, el mismo filo de oro— así que dice lo mismo sin mentir sobre
+    dónde está."""
+    e = salida(float(np.clip(rel / 0.5, 0, 1)), 4.0)
+    fuera = salida(float(np.clip((dur - rel) / 0.4, 0, 1)), 3.0)
+    a = e * fuera
+    if a <= 0.02:
+        return
+    ancho, altura = int(W * 0.70), 356
+    x, y = (W - ancho) // 2, int(H * alto)
+    capa = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+    d = ImageDraw.Draw(capa, "RGBA")
+    d.rounded_rectangle([x, y, x + ancho, y + altura], 30,
+                        fill=(9, 28, 40, int(240 * a)),
+                        outline=(214, 173, 90, int(220 * a)), width=3)
+    dibujar_track(d, (x + 40, y + 32), "ENVIASTE", fuente(F_ROT, 28),
+                  (214, 173, 90) + (int(240 * a),), 5.0)
+    f = fuente(F_FUE, 96)
+    d.text((x + 40, y + 74), cantidad, font=f, fill=TEXTO + (int(255 * a),))
+    an = d.textlength(cantidad, font=f)
+    d.text((x + 54 + an, y + 122), "ORIGEN", font=fuente(F_ROT, 44),
+           fill=(214, 173, 90) + (int(245 * a),))
+    v = (58, 196, 122) + (int(245 * a),)
+    d.ellipse([x + 42, y + 196, x + 76, y + 230], outline=v, width=3)
+    d.line([(x + 50, y + 214), (x + 58, y + 222), (x + 69, y + 204)], fill=v, width=4)
+    d.text((x + 90, y + 194), f"confirmado · {hora}", font=fuente(F_MED, 36), fill=v)
+    d.line([(x + 40, y + 254), (x + ancho - 40, y + 254)],
+           fill=(46, 86, 96, int(220 * a)), width=2)
+    d.text((x + 40, y + 268), "Veta Wallet  →  Veta Wallet", font=fuente(F_MED, 30),
+           fill=(160, 186, 200) + (int(240 * a),))
+    d.text((x + 40, y + 308), "ordenscan.com", font=fuente(F_ROT, 30),
+           fill=(214, 173, 90) + (int(240 * a),))
+    # Máscara: crece desde la base, como todo lo demás de la pieza.
+    mask = Image.new("L", (W, H), 0)
+    ImageDraw.Draw(mask).rectangle(
+        [0, y + altura - (altura + 26) * e, W, y + altura + 26], fill=255)
+    capa.putalpha(Image.fromarray(
+        np.minimum(np.array(capa.split()[3]), np.array(mask))))
+    sm = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+    sm.putalpha(capa.split()[3].filter(
+        ImageFilter.GaussianBlur(30)).point(lambda v2: int(v2 * 0.45)))
+    im.alpha_composite(sm, (0, 8))
+    im.alpha_composite(capa)
+
+
+def logo(im: Image.Image, rel: float, alto=0.30, ancho_px=520, dur=None):
+    """El monograma de Orden Global, con sombra larga.
+
+    En el cierre de Cincuenta faltaba: la película acababa solo con el nombre
+    escrito y sin marca, que es lo que la dejaba coja. Aquí entra encima del
+    nombre, crece un punto al aparecer —tiene masa— y se queda."""
+    a = salida(float(np.clip(rel / 1.4, 0, 1)), 3.5)
+    if dur is not None:
+        a *= salida(float(np.clip((dur - rel) / 0.6, 0, 1)), 3.0)
+    if a <= 0.02:
+        return
+    lg = Image.open(LOGOS / "orden-global" / "orden-global-logo.png").convert("RGBA")
+    ancho = int(ancho_px * (0.85 + 0.15 * a))
+    lg = lg.resize((ancho, int(lg.height * ancho / lg.width)), Image.LANCZOS)
+    lg.putalpha(lg.split()[3].point(lambda v: int(v * a)))
+    pos = ((W - lg.width) // 2, int(H * alto) - lg.height // 2)
+    sombra_larga(im, lg, pos, radio=70, opacidad=0.35 * a, dy=30)
+    im.alpha_composite(lg, pos)
+
+
+_fotos: dict = {}
+
+
+def _foto(ruta: str) -> Image.Image:
+    if ruta not in _fotos:
+        _fotos[ruta] = Image.open(ruta).convert("RGB")
+    return _fotos[ruta]
+
+
+def main():
+    spec = json.loads(Path(sys.argv[1]).read_text())
+    clips = Path(sys.argv[2])
+    salida_mp4 = sys.argv[3]
+    picks = {k: v for k, v in spec.get("picks", {}).items() if not k.startswith("_")}
+    fund = spec.get("fundido_s", 0.45)
+    dur = spec["salida"]["dur_s"]
+    cache = clips / "_frames"
+
+    desde_s = float(sys.argv[4]) if len(sys.argv) > 4 else 0.0
+    hasta_s = float(sys.argv[5]) if len(sys.argv) > 5 else dur
+
+    planos = []
+    for b in spec["bloques"]:
+        if b.get("negro"):
+            planos.append((b, None))
+            continue
+        if b["t"] + b["dur"] <= desde_s or b["t"] >= hasta_s:
+            # Fuera del tramo: ni se extrae. Extraer los quince planos para
+            # rehacer seis segundos es la mayor parte del trabajo.
+            planos.append((b, None))
+            continue
+        toma = picks.get(b["plano"], 1)
+        # El runner nombra 'ID_tN_00001_.mp4'.
+        cand = sorted(clips.glob(f"{b['plano']}_t{toma}_*.mp4")) or \
+               sorted(clips.glob(f"{b['plano']}_t1_*.mp4"))
+        if not cand:
+            sys.exit(f"falta el clip del plano {b['plano']}")
+        n = extraer(cand[0], cache / cand[0].stem)
+        planos.append((b, Plano(cache / cand[0].stem, n)))
+        print(f"  {b['plano']:24} toma {toma} · {n} fotogramas", flush=True)
+
+    ff = subprocess.Popen(
+        ["ffmpeg", "-v", "error", "-y", "-f", "rawvideo", "-pix_fmt", "rgb24",
+         "-s", f"{W}x{H}", "-r", str(FPS), "-i", "pipe:0",
+         "-c:v", "libx264", "-crf", "24", "-preset", "slow", "-tune", "grain",
+         "-pix_fmt", "yuv420p", salida_mp4], stdin=subprocess.PIPE)
+
+    primero, total = int(desde_s * FPS), int(hasta_s * FPS)
+    for fr in range(primero, total):
+        t = fr / FPS
+        # Los bloques que cubren este instante (dos, durante un fundido).
+        activos = [(b, p) for b, p in planos if b["t"] <= t < b["t"] + b["dur"]]
+        def cuadro(b, p):
+            """El fotograma de un bloque: negro, a velocidad natural desde
+            `desde` segundos del clip, o remapeado al hueco (material)."""
+            if p is None:
+                return Image.new("RGB", (W, H), (0, 0, 0))
+            if spec.get("natural"):
+                im0 = p.natural(t - b["t"] + b.get("desde", 0.0))
+            else:
+                im0 = p.fotograma((t - b["t"]) / b["dur"])
+            z = b.get("zoom")
+            if z:
+                # Acercamiento: se recorta alrededor de un centro y se reescala.
+                # `centro` va en fracción de cuadro, por si lo interesante no
+                # está en medio.
+                cx, cy = b.get("centro", [0.5, 0.5])
+                aw, ah = int(W / z), int(H / z)
+                x0 = int(np.clip(cx * W - aw / 2, 0, W - aw))
+                y0 = int(np.clip(cy * H - ah / 2, 0, H - ah))
+                im0 = im0.crop((x0, y0, x0 + aw, y0 + ah)).resize((W, H), Image.LANCZOS)
+            return im0
+
+        if not activos:
+            base = Image.new("RGB", (W, H), (0, 0, 0))
+        else:
+            b0, p0 = activos[0]
+            base = cuadro(b0, p0).copy()
+            if len(activos) > 1:
+                b1, p1 = activos[1]
+                # Fundido: el segundo entra por opacidad durante fund segundos.
+                # Con fundido 0 es un corte seco: el bloque nuevo manda.
+                a = 1.0 if fund <= 0 else salida(np.clip((t - b1["t"]) / fund, 0, 1), 2.5)
+                base = Image.blend(base, cuadro(b1, p1), float(a))
+        im = base.convert("RGBA")
+        for b, _ in activos:
+            if b.get("logo"):
+                c = b["logo"] if isinstance(b["logo"], dict) else {}
+                logo(im, t - b["t"] - c.get("retardo", 0.6), c.get("alto", 0.30),
+                     c.get("ancho", 520), c.get("dur"))
+            if b.get("familia"):
+                familia(im, t - b["t"] - 0.5)
+            if b.get("transaccion"):
+                c = b["transaccion"]
+                rel = t - c["t"]
+                if 0 <= rel <= c["dur"]:
+                    transaccion(im, rel, c["dur"], c.get("cantidad", "10"),
+                                c.get("hora", "07:57"), c.get("alto", 0.28))
+            if b.get("tarjeta"):
+                c = b["tarjeta"]
+                rel = t - c["t"]
+                if 0 <= rel <= c["dur"]:
+                    tarjeta(im, c["ruta"], rel, c["dur"], c.get("alto", 0.40),
+                            c.get("ancho", 0.78), c.get("giro", -7.0))
+            if b.get("capacidades"):
+                c = b["capacidades"]
+                rel = t - c["t"]
+                if 0 <= rel <= c["dur"]:
+                    capacidades(im, rel, c["dur"], c.get("alto", 0.30))
+            for si in b.get("sitios", []):
+                rel = t - si["t"]
+                if 0 <= rel <= si["dur"]:
+                    sitio(im, si["texto"], rel, si["dur"])
+            for bu in b.get("burbujas", []):
+                rel = t - bu["t"]
+                if 0 <= rel <= bu["dur"]:
+                    foto = _foto(bu["foto"]) if bu.get("foto") else None
+                    burbuja(im, bu["texto"], rel, bu["dur"], foto,
+                            bu.get("alto", 0.30), bu.get("quien"),
+                            bu.get("mia", False))
+            for r in b.get("rotulos", []):
+                rel = t - r["t"]
+                if 0 <= rel <= r["dur"]:
+                    # La ficha de producto acompaña al primer rótulo del bloque.
+                    if b.get("producto") and r is b["rotulos"][0]:
+                        producto(im, b["producto"]["nombre"], b["producto"]["marca"],
+                                 rel, r["dur"])
+                    rotulo(im, r["texto"], rel, r["dur"], r.get("chico", False),
+                           r.get("alto"), r.get("escala", 1.0))
+        ff.stdin.write(acabar(im, semilla=fr).tobytes())
+        if fr % 150 == 0:
+            print(f"  {t:5.1f}s / {dur:.0f}s", flush=True)
+
+    ff.stdin.close()
+    if ff.wait() != 0:
+        sys.exit("ffmpeg falló")
+    print(f"listo: {salida_mp4} · {desde_s:.1f}-{hasta_s:.1f}s · "
+          f"{total - primero} fotogramas")
+
+
+if __name__ == "__main__":
+    main()
