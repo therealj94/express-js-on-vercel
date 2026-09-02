@@ -67,6 +67,7 @@ import { activarInmersivo, vigilarInmersivo } from './src/og/Inmersivo';
 import { cargarNombre } from './src/og/asistente';
 import Remesas from './src/screens/Remesas';
 import DeleteAccount from './src/screens/DeleteAccount';
+import ChangePassword from './src/screens/ChangePassword';
 import ErrorBoundary from './src/ErrorBoundary';
 import { arrancarTelemetria, fallo, identificar, olvidar, confirmarEnPadron, idDelToken } from './src/telemetria';
 
@@ -77,7 +78,7 @@ const SCREENS = {
   profile: Profile, mytokenpay: MyTokenPay, passport: Passport, blocked: Blocked, privatekey: PrivateKey,
   scan: Scan, contacts: Contacts, about: About,
   onboarding: Onboarding, watchOnly: WatchOnly, sessions: Sessions, help: Help,
-  remesas: Remesas, deleteAccount: DeleteAccount,
+  remesas: Remesas, deleteAccount: DeleteAccount, changePassword: ChangePassword,
   ecosistema: Nucleo, lista: Ecosistema, chat: AuroChat, cobrar: CobrarOG,
   casa: CasaWeb,
   reporte: ReporteOG, 'pay-panel': PanelPay, 'pay-actividad': ActividadPay,
@@ -115,7 +116,7 @@ const SECCION_DE = {
   ecosistema: 'og', chat: 'og', casa: 'og',
   // Ajustes es pestaña de la sección og: sin esta fila, entrar por el avatar
   // de Home dejaba la barra veta debajo con ninguna pestaña encendida.
-  settings: 'og',
+  settings: 'og', changePassword: 'og',
   home: 'veta', card: 'veta', swap: 'veta', activity: 'veta', token: 'veta',
   send: 'veta', receive: 'veta', buy: 'veta', deposit: 'veta', fundCard: 'veta',
   cardSettings: 'veta', remesas: 'veta', reporte: 'veta',

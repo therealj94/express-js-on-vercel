@@ -34,7 +34,7 @@ export const TOKEN_META = {
   POLITICAL:{ s: 'POLITICAL',n: 'Political', glyph: 'PO',  grad: ['#E9E0D6', '#A98E6E', '#6B5236'], fg: '#241A0C', publico: false },
 };
 
-// Las mismas 3 filas para las 5 monedas (Tipo · Respaldo · Red) para que
+// Las mismas 3 filas para las 5 monedas (Tipo · Referencia · Red) para que
 // la ficha de cada token se lea igual y compare fácil. El "Contrato" lo
 // añade TokenDetail al final: dirección real si es un token de contrato,
 // o "Token nativo" para ORIGEN. Se eliminó "Par" (era interno del feed
@@ -45,25 +45,25 @@ export const COIN_INFO = {
     desc: 'Cripto nativa de la blockchain de Orden Global, usada para pagos y transferencias dentro del ecosistema. Su valor se ancla a un gramín: 1/55 de un gramo de oro.',
     rows: [
       ['Tipo', 'Cripto nativa · pagos'],
-      ['Respaldo', '1 gramín = 1/55 g oro'],
+      ['Referencia', '1 gramín = 1/55 g oro'],
       ['Red', 'Orden Global · 5550 · Layer 1 · Besu QBFT · Shanghai'],
     ],
   },
   AUKA: {
     title: 'AUKA',
-    desc: 'Token respaldado en oro: sigue el precio de una onza de oro. Ofrece exposición al oro sin custodia física.',
+    desc: 'Token referenciado al oro: sigue el precio de una onza de oro. Da exposición al precio del oro sin tener que guardar el metal.',
     rows: [
       ['Tipo', 'Commodity token'],
-      ['Respaldo', 'Oro · 1 onza'],
+      ['Referencia', 'Oro · 1 onza'],
       ['Red', 'Orden Global · 5550 · Layer 1 · Besu QBFT · Shanghai'],
     ],
   },
   AGKA: {
     title: 'AGKA',
-    desc: 'Token respaldado en plata: sigue el precio de una onza de plata. Una forma descentralizada de invertir en el mercado de la plata.',
+    desc: 'Token referenciado a la plata: sigue el precio de una onza de plata. Una forma de seguir el mercado de la plata desde la billetera.',
     rows: [
       ['Tipo', 'Commodity token'],
-      ['Respaldo', 'Plata · 1 onza'],
+      ['Referencia', 'Plata · 1 onza'],
       ['Red', 'Orden Global · 5550 · Layer 1 · Besu QBFT · Shanghai'],
     ],
   },
@@ -72,7 +72,7 @@ export const COIN_INFO = {
     desc: 'Representación de Orden Global en token. Activo de gobernanza y utilidad que refleja el valor y la participación dentro del ecosistema.',
     rows: [
       ['Tipo', 'Token de Orden Global'],
-      ['Respaldo', 'Ecosistema · gobernanza y utilidad'],
+      ['Referencia', 'Ecosistema · gobernanza y utilidad'],
       ['Red', 'Orden Global · 5550 · Layer 1 · Besu QBFT · Shanghai'],
     ],
   },
@@ -81,62 +81,62 @@ export const COIN_INFO = {
     desc: 'Activo digital del ecosistema Orden Global, diseñado para impulsar el crecimiento y la innovación impulsados por la comunidad.',
     rows: [
       ['Tipo', 'Activo digital'],
-      ['Respaldo', 'Ecosistema · comunidad e innovación'],
+      ['Referencia', 'Ecosistema · comunidad e innovación'],
       ['Red', 'Orden Global · 5550 · Layer 1 · Besu QBFT · Shanghai'],
     ],
   },
   // Descripciones honestas: a diferencia de AUKA/AGKA, estos tokens no
   // tienen un respaldo en un commodity específico verificado, así que la
-  // fila "Respaldo" describe el sector del proyecto, no un activo físico.
+  // fila "Referencia" describe el sector del proyecto, no un activo físico.
   IBS: {
     title: 'IBS Energy',
     desc: 'Token del sector energético dentro del ecosistema Orden Global.',
-    rows: [['Tipo', 'Token de sector'], ['Respaldo', 'Energía'], ['Red', 'Orden Global · 5550 · Layer 1 · Besu QBFT · Shanghai']],
+    rows: [['Tipo', 'Token de sector'], ['Referencia', 'Energía'], ['Red', 'Orden Global · 5550 · Layer 1 · Besu QBFT · Shanghai']],
   },
   HARV: {
     title: 'Harvi',
     desc: 'Activo digital del ecosistema Orden Global.',
-    rows: [['Tipo', 'Activo digital'], ['Respaldo', 'Ecosistema Orden Global'], ['Red', 'Orden Global · 5550 · Layer 1 · Besu QBFT · Shanghai']],
+    rows: [['Tipo', 'Activo digital'], ['Referencia', 'Ecosistema Orden Global'], ['Red', 'Orden Global · 5550 · Layer 1 · Besu QBFT · Shanghai']],
   },
   AUBEX: {
     title: 'AUBEX',
     desc: 'Activo digital del ecosistema Orden Global.',
-    rows: [['Tipo', 'Activo digital'], ['Respaldo', 'Ecosistema Orden Global'], ['Red', 'Orden Global · 5550 · Layer 1 · Besu QBFT · Shanghai']],
+    rows: [['Tipo', 'Activo digital'], ['Referencia', 'Ecosistema Orden Global'], ['Red', 'Orden Global · 5550 · Layer 1 · Besu QBFT · Shanghai']],
   },
   ASL: {
     title: 'Athletic',
     desc: 'Token del sector deportivo dentro del ecosistema Orden Global.',
-    rows: [['Tipo', 'Token de sector'], ['Respaldo', 'Deporte'], ['Red', 'Orden Global · 5550 · Layer 1 · Besu QBFT · Shanghai']],
+    rows: [['Tipo', 'Token de sector'], ['Referencia', 'Deporte'], ['Red', 'Orden Global · 5550 · Layer 1 · Besu QBFT · Shanghai']],
   },
   LOVE: {
     title: 'Amor Global',
     desc: 'Activo digital del ecosistema Orden Global.',
-    rows: [['Tipo', 'Activo digital'], ['Respaldo', 'Ecosistema Orden Global'], ['Red', 'Orden Global · 5550 · Layer 1 · Besu QBFT · Shanghai']],
+    rows: [['Tipo', 'Activo digital'], ['Referencia', 'Ecosistema Orden Global'], ['Red', 'Orden Global · 5550 · Layer 1 · Besu QBFT · Shanghai']],
   },
   REST: {
     title: 'Real State',
     desc: 'Token del sector inmobiliario dentro del ecosistema Orden Global.',
-    rows: [['Tipo', 'Token de sector'], ['Respaldo', 'Bienes raíces'], ['Red', 'Orden Global · 5550 · Layer 1 · Besu QBFT · Shanghai']],
+    rows: [['Tipo', 'Token de sector'], ['Referencia', 'Bienes raíces'], ['Red', 'Orden Global · 5550 · Layer 1 · Besu QBFT · Shanghai']],
   },
   SOL: {
     title: 'Solar',
     desc: 'Token del sector de energía solar dentro del ecosistema Orden Global.',
-    rows: [['Tipo', 'Token de sector'], ['Respaldo', 'Energía solar'], ['Red', 'Orden Global · 5550 · Layer 1 · Besu QBFT · Shanghai']],
+    rows: [['Tipo', 'Token de sector'], ['Referencia', 'Energía solar'], ['Red', 'Orden Global · 5550 · Layer 1 · Besu QBFT · Shanghai']],
   },
   AIT: {
     title: 'Artificial Intelligence',
     desc: 'Token del sector de inteligencia artificial dentro del ecosistema Orden Global.',
-    rows: [['Tipo', 'Token de sector'], ['Respaldo', 'Inteligencia artificial'], ['Red', 'Orden Global · 5550 · Layer 1 · Besu QBFT · Shanghai']],
+    rows: [['Tipo', 'Token de sector'], ['Referencia', 'Inteligencia artificial'], ['Red', 'Orden Global · 5550 · Layer 1 · Besu QBFT · Shanghai']],
   },
   AGRO: {
     title: 'Agrotech',
     desc: 'Token del sector agrícola dentro del ecosistema Orden Global.',
-    rows: [['Tipo', 'Token de sector'], ['Respaldo', 'Agricultura'], ['Red', 'Orden Global · 5550 · Layer 1 · Besu QBFT · Shanghai']],
+    rows: [['Tipo', 'Token de sector'], ['Referencia', 'Agricultura'], ['Red', 'Orden Global · 5550 · Layer 1 · Besu QBFT · Shanghai']],
   },
   POLITICAL: {
     title: 'Political',
     desc: 'Activo digital del ecosistema Orden Global.',
-    rows: [['Tipo', 'Activo digital'], ['Respaldo', 'Ecosistema Orden Global'], ['Red', 'Orden Global · 5550 · Layer 1 · Besu QBFT · Shanghai']],
+    rows: [['Tipo', 'Activo digital'], ['Referencia', 'Ecosistema Orden Global'], ['Red', 'Orden Global · 5550 · Layer 1 · Besu QBFT · Shanghai']],
   },
 };
 
