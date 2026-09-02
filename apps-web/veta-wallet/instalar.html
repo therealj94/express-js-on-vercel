@@ -7,6 +7,8 @@
 <meta name="description" content="Instalá Orden Global en tu Android en cinco minutos. Tu plata, tus mensajes y tu identidad en una sola app.">
 <meta name="robots" content="noindex">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%2304191A'/%3E%3Cpath d='M16 6l8.5 5v10L16 26l-8.5-5V11z' fill='none' stroke='%23C9A961' stroke-width='2.2' stroke-linejoin='round'/%3E%3C/svg%3E">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="assets/veta-180.png">
 <style>
 :root{--oro:#C9A961;--fondo:#04191A;--panel:#072526;--linea:#123E3F;--txt:#EAF3F2;--txt2:#9FBDBA;--alerta:#E8B84B}
 *{box-sizing:border-box;margin:0;padding:0}
@@ -35,6 +37,14 @@ footer{border-top:1px solid var(--linea);padding:24px 0 40px;color:#6C918E;font-
   font-weight:800;font-size:18px;padding:17px 20px;border-radius:13px;
   text-decoration:none;margin:6px 0 10px}
 .bajar:active{transform:translateY(1px)}
+/* La segunda puerta se ve como puerta, no como enlace perdido: mismo tamaño
+   que la primera, sin relleno. Quien prefiere el archivo lo encuentra igual,
+   pero el ojo cae antes en la que no pide permisos. */
+.bajar.otra{background:transparent;color:var(--oro);border:1.5px solid var(--linea)}
+.puerta{background:var(--panel);border:1px solid var(--linea);border-radius:15px;padding:20px 20px 6px;margin:0 0 22px}
+.puerta h2{margin-top:0}
+.et{display:inline-block;font-size:12px;letter-spacing:.8px;text-transform:uppercase;
+  color:#04191A;background:var(--oro);border-radius:99px;padding:3px 10px;font-weight:800;margin-bottom:10px}
 .peso{text-align:center;color:var(--txt2);font-size:14px;margin-bottom:26px}
 .apunte{color:var(--txt2);font-size:14.5px;border-left:2px solid var(--linea);padding-left:14px;margin-top:18px}
 
@@ -79,8 +89,48 @@ dl.problemas dd{margin:4px 0 0;color:#DCE9E7}
 <p class="entrada">Tu plata, tus mensajes y tu identidad, en una sola app.
 Se instala en cinco minutos y entrás con el correo de siempre.</p>
 
-<a class="bajar" href="https://expo.dev/artifacts/eas/lxUN7f_SoutSa68XE896XE33aQtHhVFeSFtNutQwiDs.apk">Descargar la app</a>
-<p class="peso">138 MB &middot; solo Android &middot; versión 1.33.2</p>
+<!-- DOS PUERTAS, Y LA FACIL PRIMERO.
+     La de la web no baja ningún archivo, no pide el permiso de «orígenes
+     desconocidos» y no dispara el aviso de Play Protect: son los tres puntos
+     donde la gente se cayó con el APK. El archivo sigue estando, porque hay
+     quien lo prefiere y porque en un teléfono viejo puede ser la única forma,
+     pero deja de ser lo primero que se ve. -->
+<div class="puerta">
+  <span class="et">Lo más fácil</span>
+  <h2>Instalala desde acá</h2>
+  <p>Sin descargar nada y sin permisos. Te queda con su icono en la pantalla
+  de inicio, igual que cualquier otra app.</p>
+
+  <!-- El botón de verdad. Solo aparece cuando el navegador nos avisa que
+       puede instalar; si no llega ese aviso, no se enseña un botón que no
+       hace nada y quedan los pasos a mano, que funcionan siempre. -->
+  <a class="bajar" id="instalar-ya" href="#pasos-web" hidden>Instalar ahora</a>
+
+  <div id="pasos-web">
+    <ol class="pasos">
+      <li><h3>Tocá el menú del navegador</h3>
+        <p>Los tres puntos de arriba a la derecha, en Chrome.</p></li>
+      <li><h3>Tocá <span class="tocar">Instalar aplicación</span></h3>
+        <p>En algunos teléfonos dice <span class="tocar">Agregar a la pantalla
+        principal</span>. En iPhone, con Safari, es el botón de compartir y
+        después <span class="tocar">Agregar a inicio</span>.</p></li>
+      <li><h3>Entrá con tu correo de siempre</h3>
+        <p>Es la misma cuenta: lo que tenés ya está ahí.</p></li>
+    </ol>
+  </div>
+
+  <p class="apunte" id="ya-instalada" hidden>Ya la tenés instalada en este
+  teléfono. Abrila desde tu pantalla de inicio.</p>
+</div>
+
+<div class="puerta">
+  <h2>O bajá el archivo</h2>
+  <p>Si preferís instalarla de un archivo. Los pasos están más abajo, y el
+  teléfono te va a pedir un par de permisos porque todavía no estamos en la
+  Play Store.</p>
+  <a class="bajar otra" href="https://expo.dev/artifacts/eas/lxUN7f_SoutSa68XE896XE33aQtHhVFeSFtNutQwiDs.apk">Descargar la app</a>
+  <p class="peso">138 MB &middot; solo Android &middot; versión 1.33.2</p>
+</div>
 
 <h2>Qué vas a tener</h2>
 <p>La misma cuenta que ya usás en la web, con todo a mano: mandar y recibir,
@@ -192,5 +242,52 @@ se pasa sola, con tus datos y tu cuenta intactos.</p>
   <a href="/privacidad">Privacidad</a> &middot;
   <a href="/terminos">Términos</a>
 </div></footer>
+
+<script>
+/* EL BOTON DE INSTALAR, CUANDO EL NAVEGADOR LO PERMITE.
+ *
+ * Chrome avisa con `beforeinstallprompt` cuando la página cumple todo lo que
+ * hace falta para instalarse. Si llega ese aviso, se enseña un botón que abre
+ * el diálogo del sistema de un toque, y se esconden los pasos a mano: pedirle
+ * a alguien que busque un menú cuando hay un botón es trabajo regalado.
+ *
+ * Si NO llega —iPhone, un navegador que no lo trae, o la app ya instalada—
+ * no se enseña ningún botón. Un botón que no hace nada al tocarlo es peor
+ * que no tenerlo: quien lo toca dos veces y no ve nada concluye que la app
+ * está rota, no que su navegador no lo soporta.
+ */
+(function () {
+  var boton = document.getElementById('instalar-ya');
+  var pasos = document.getElementById('pasos-web');
+  var puesta = document.getElementById('ya-instalada');
+  var guardado = null;
+
+  window.addEventListener('beforeinstallprompt', function (e) {
+    e.preventDefault();
+    guardado = e;
+    boton.hidden = false;
+    pasos.hidden = true;
+  });
+
+  boton.addEventListener('click', function (e) {
+    if (!guardado) return;            // sin aviso guardado, el enlace baja a los pasos
+    e.preventDefault();
+    guardado.prompt();
+    guardado.userChoice.then(function () { guardado = null; });
+  });
+
+  /* Ya instalada: se dice, en vez de invitar a instalar lo que ya está. */
+  if (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) {
+    pasos.hidden = true;
+    puesta.hidden = false;
+  }
+
+  window.addEventListener('appinstalled', function () {
+    boton.hidden = true;
+    pasos.hidden = true;
+    puesta.hidden = false;
+  });
+})();
+</script>
 </body>
 </html>
