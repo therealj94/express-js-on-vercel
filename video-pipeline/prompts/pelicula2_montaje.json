@@ -244,9 +244,17 @@
       "rotulos": [
         {
           "t": 56.2,
-          "dur": 5.2,
-          "texto": "Orden Global.\nUn sistema financiero\nque se puede comprobar.",
-          "chico": true
+          "dur": 5.4,
+          "texto": "Orden Global.",
+          "alto": 0.71,
+          "escala": 1.15
+        },
+        {
+          "t": 57.5,
+          "dur": 4.1,
+          "texto": "Un sistema financiero\nque se puede comprobar.",
+          "chico": true,
+          "alto": 0.8
         }
       ]
     }
