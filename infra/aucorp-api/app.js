@@ -58,15 +58,27 @@ app.use(express.json({ limit: '100kb' }));
 // ── Mongo ───────────────────────────────────────────────────────────────────
 // La base se llama `aucorp` y se fija aquí, no en la URI: así el mismo clúster
 // puede prestar la URI sin que un descuido escriba en la base de otra app.
+const sanciones = require('./lib/sanciones');
+const barrido = require('./lib/barrido');
+
 (async () => {
   try {
     mongoose.set('strictQuery', true);
     await mongoose.connect(process.env.MONGODB_URI, { dbName: 'aucorp' });
     console.log(`[mongo] conectado a ${mongoose.connection.name}`);
+    // La lista de sanciones vive en Mongo: se carga en cuanto hay base. Si no
+    // hay nada cargado, lo canta y los retiros quedan cerrados hasta que
+    // operaciones la importe (POST /tesoreria/sanciones/importar).
+    await sanciones.iniciar();
   } catch (e) {
     console.error(`[mongo] no se pudo conectar: ${e.message}`);
   }
 })();
+
+// El barrido de solicitudes atascadas. SOLO escribe en el log; no resuelve
+// nada. AUCORP_BARRIDO_HORAS (24) y AUCORP_BARRIDO_CADA_MIN (60) lo afinan.
+// Con AUCORP_BARRIDO=no se apaga (las pruebas lo apagan para no ensuciar).
+if (process.env.AUCORP_BARRIDO !== 'no') barrido.vigilar();
 
 // ── Rutas ───────────────────────────────────────────────────────────────────
 app.use('/auth', require('./routes/auth'));
@@ -97,6 +109,9 @@ app.get('/salud', async (req, res) => {
     tasasCuando,
     genesis: !!(process.env.GENESIS_API_KEY || '').trim(),
     sesiones: !!(process.env.AUCORP_TOKEN || '').trim(),
+    // Sin lista de sanciones cargada no sale ningún retiro. Se dice aquí para
+    // que se vea sin entrar a operaciones.
+    sanciones: (() => { const s = sanciones.estado(); return { cargadas: s.cargadas, registros: s.registros, fechaDescarga: s.fechaDescarga, vencidas: s.vencidas }; })(),
     // Lo que esta casa ES, dicho por el propio servicio.
     naturaleza: 'FinTech bajo Regulación A de Próspera. No es un banco con licencia bancaria: no hay seguro de depósitos.',
   });
@@ -107,6 +122,14 @@ app.use((req, res) => res.status(404).json({ error: 'No existe esa ruta.', codig
 // El manejador de errores no filtra el mensaje interno al cliente: un stack
 // trace en la respuesta le dice a quien sondea exactamente por dónde seguir.
 app.use((err, req, res, next) => {   // eslint-disable-line no-unused-vars
+  // Un JSON mal formado o demasiado grande es un error DEL CLIENTE, y se le
+  // dice con claridad en vez de un 500 que parece nuestro.
+  if (err?.type === 'entity.parse.failed') {
+    return res.status(400).json({ error: 'El cuerpo de la petición no es JSON válido.', codigo: 'JSON_INVALIDO' });
+  }
+  if (err?.type === 'entity.too.large') {
+    return res.status(413).json({ error: 'La petición es demasiado grande.', codigo: 'DEMASIADO_GRANDE' });
+  }
   console.error(`[error] ${req.method} ${req.path}: ${err.message}`);
   res.status(500).json({ error: 'Algo salió mal.', codigo: 'ERROR' });
 });

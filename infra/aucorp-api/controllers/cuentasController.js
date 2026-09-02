@@ -18,11 +18,12 @@
 // sus papeles.
 
 const { CuentaFiat, Usuario } = require('../models');
-const { MONEDAS, moneda, aTexto, REFERENCIA } = require('../lib/monedas');
+const { MONEDAS, aTexto, REFERENCIA } = require('../lib/monedas');
 const { saldosDe, saldoDe } = require('../lib/asientos');
 const { cotizar, convertir } = require('../lib/cambio');
 const { limites } = require('../lib/tarifas');
 const { movidoPor } = require('../lib/consumo');
+const V = require('../lib/validar');
 
 /** El nombre de la cuenta de un cliente en el libro. Uno solo, en un sitio. */
 const cuentaDe = (gid) => `cliente:${gid}`;
@@ -91,12 +92,12 @@ async function listar(req, res) {
 }
 
 // ── POST /cuentas ───────────────────────────────────────────────────────────
-// { moneda } → abre la cuenta en esa moneda. Idempotente: abrir dos veces la
-// misma cuenta devuelve la que ya estaba, no un error ni una segunda cuenta.
-async function abrir(req, res) {
-  const cod = String(req.body?.moneda || '').toUpperCase();
-  const m = moneda(cod);
-  if (!m) return res.status(400).json({ error: 'Esa moneda no existe.', codigo: 'MONEDA_DESCONOCIDA' });
+// { moneda, alias? } → abre la cuenta en esa moneda. Idempotente: abrir dos
+// veces la misma cuenta devuelve la que ya estaba, no un error ni una segunda.
+const abrir = V.conEntrada(async (req, res) => {
+  const b = V.cuerpo(req);
+  const cod = V.moneda(b.moneda);
+  const alias = V.texto(b.alias, { campo: 'alias', max: 60, etiqueta: 'el alias' });
 
   try {
     const { gid } = req.usuario;
@@ -112,29 +113,28 @@ async function abrir(req, res) {
       });
     }
 
-    const alias = String(req.body?.alias || '').trim().slice(0, 60);
     const cuenta = await CuentaFiat.findOneAndUpdate(
-      { gid, moneda: m.c },
-      { $setOnInsert: { gid, moneda: m.c, alias, activa: true } },
+      { gid, moneda: cod },
+      { $setOnInsert: { gid, moneda: cod, alias, activa: true } },
       { upsert: true, new: true, setDefaultsOnInsert: true }
     );
     return res.json({
       cuenta: {
         moneda: cuenta.moneda, alias: cuenta.alias || '', activa: cuenta.activa !== false,
-        creada: cuenta.creada, saldo: pintar(await saldoDe(cuentaDe(gid), m.c), m.c),
+        creada: cuenta.creada, saldo: pintar(await saldoDe(cuentaDe(gid), cod), cod),
       },
     });
   } catch (e) {
     if (e?.code === 11000) {
       // Dos peticiones a la vez para la misma moneda. La cuenta existe: eso es
       // exactamente lo que se pedía.
-      const cuenta = await CuentaFiat.findOne({ gid: req.usuario.gid, moneda: m.c });
+      const cuenta = await CuentaFiat.findOne({ gid: req.usuario.gid, moneda: cod });
       if (cuenta) return res.json({ cuenta: { moneda: cuenta.moneda, alias: cuenta.alias || '', activa: true, creada: cuenta.creada } });
     }
     console.error(`[cuentas] no se pudo abrir ${cod}: ${e.message}`);
     return res.status(503).json({ error: 'No se pudo abrir la cuenta.', codigo: 'NO_SE_PUDO' });
   }
-}
+});
 
 // ── GET /limites ────────────────────────────────────────────────────────────
 // Cuánto puede mover esta persona y cuánto lleva movido. Son datos SUYOS, y
@@ -170,4 +170,35 @@ async function misLimites(req, res) {
   }
 }
 
-module.exports = { monedas, listar, abrir, misLimites, cuentaDe, pintar };
+// ── GET /perfil ─────────────────────────────────────────────────────────────
+// Quién es esta persona según la casa: lo que Genesis afirmó, su nivel, sus
+// cuentas y desde cuándo. Nada interno: ni tokenVersion ni ids sueltos.
+async function perfil(req, res) {
+  try {
+    const { gid } = req.usuario;
+    const usuario = await Usuario.findOne({ gid });
+    if (!usuario) return res.status(401).json({ error: 'La sesion no es valida.', codigo: 'SESION_INVALIDA' });
+    const cuentas = await CuentaFiat.find({ gid });
+    return res.json({
+      perfil: {
+        gid: usuario.gid,
+        nombre: usuario.nombre || '',
+        correo: usuario.correo || '',
+        pais: usuario.pais || '',
+        verificada: usuario.verificada === true,
+        direccionWallet: usuario.direccionWallet || null,
+        nivel: usuario.nivel || 1,
+        cliente_desde: usuario.creado,
+        cuentas: cuentas.map((c) => ({ moneda: c.moneda, alias: c.alias || '', creada: c.creada })),
+      },
+      // Lo que esta casa ES, para que la pantalla de perfil lo diga con las
+      // mismas palabras que /salud.
+      naturaleza: 'AuCorp es una institución de tecnología financiera bajo la Regulación FinTech A de Próspera ZEDE. No es un banco con licencia bancaria: los saldos no están cubiertos por un seguro de depósitos.',
+    });
+  } catch (e) {
+    console.error(`[cuentas] no se pudo leer el perfil: ${e.message}`);
+    return res.status(503).json({ error: 'No se pudo leer.', codigo: 'NO_SE_PUDO' });
+  }
+}
+
+module.exports = { monedas, listar, abrir, misLimites, perfil, cuentaDe, pintar };

@@ -152,9 +152,24 @@ beneficiarioSchema.index({ gid: 1, alias: 1 }, { unique: true });
 // —que sigue siendo un pasivo, la casa se lo sigue debiendo— y ahí espera. Si
 // se rechaza, otro asiento se lo devuelve. Sin ese paso, alguien podría pedir
 // tres retiros de todo su saldo y que los tres pasaran.
+//
+// Un DEPÓSITO también puede ser una solicitud: el cliente AVISA que mandó el
+// dinero («transferí 500 USD con la referencia tal») y esa solicitud queda
+// `avisada` hasta que operaciones la encuentra en el extracto del banco y la
+// acredita por /tesoreria/deposito. El aviso NO mueve un céntimo: sólo le da
+// al cliente un lugar donde ver en qué está su depósito, y al barrido una
+// forma de detectar el que lleva días sin que nadie lo mire.
+//
+// Estados por tipo:
+//   retiro    → pendiente | ejecutando | ejecutada | rechazando | rechazada
+//   deposito  → avisada | acreditada | rechazada
+//
+// `actualizada` es la fecha del último cambio de estado. Es lo que mira el
+// barrido de atascadas (lib/barrido.js): una solicitud cuya `actualizada` está
+// a más de N horas es una solicitud que nadie está atendiendo.
 const solicitudSchema = new mongoose.Schema({
   gid: { type: String, required: true, index: true },
-  tipo: { type: String, required: true },     // 'retiro'
+  tipo: { type: String, required: true },     // 'retiro' | 'deposito'
   moneda: { type: String, required: true },
   monto: { type: String, required: true },    // lo que se le descontó, con comisión dentro
   neto: { type: String, required: true },     // lo que va a recibir de verdad
@@ -164,6 +179,25 @@ const solicitudSchema = new mongoose.Schema({
   ref: { type: String, required: true, unique: true },
   nota: { type: String, default: '' },        // lo que escribe operaciones al resolver
   comprobante: { type: String, default: '' },
+  // Sólo depósitos: la referencia bancaria que el cliente dice haber usado.
+  referenciaBancaria: { type: String, default: '' },
+  creada: { type: Date, default: Date.now },
+  actualizada: { type: Date, default: Date.now, index: true },
+  resuelta: { type: Date, default: null },
+});
+
+// ── alertas de sanciones ────────────────────────────────────────────────────
+// Cuando un beneficiario o un retiro choca FUERTE con la lista de sanciones,
+// la operación no sale y aquí queda el motivo, con todas sus coincidencias,
+// para que una persona de cumplimiento lo mire. El usuario nunca ve esto:
+// avisarle contra qué chocó es justo lo prohibido.
+const alertaSancionSchema = new mongoose.Schema({
+  gid: { type: String, required: true, index: true },
+  contexto: { type: String, required: true },      // 'beneficiario' | 'retiro'
+  nombre: { type: String, required: true },        // lo que se tamizó
+  detalle: { type: Object, default: null },        // las coincidencias, tal cual
+  estado: { type: String, default: 'abierta', index: true },   // abierta | resuelta
+  nota: { type: String, default: '' },
   creada: { type: Date, default: Date.now },
   resuelta: { type: Date, default: null },
 });
@@ -172,8 +206,9 @@ const Usuario = mongoose.model('Usuario', usuarioSchema);
 const Corresponsal = mongoose.model('Corresponsal', corresponsalSchema);
 const Beneficiario = mongoose.model('Beneficiario', beneficiarioSchema);
 const Solicitud = mongoose.model('Solicitud', solicitudSchema);
+const AlertaSancion = mongoose.model('AlertaSancion', alertaSancionSchema);
 const CuentaFiat = mongoose.model('CuentaFiat', cuentaFiatSchema);
 const Asiento = mongoose.model('Asiento', asientoSchema);
 const Saldo = mongoose.model('Saldo', saldoSchema);
 
-module.exports = { Usuario, CuentaFiat, Asiento, Saldo, Corresponsal, Beneficiario, Solicitud };
+module.exports = { Usuario, CuentaFiat, Asiento, Saldo, Corresponsal, Beneficiario, Solicitud, AlertaSancion };

@@ -1,4 +1,5 @@
-// Los retiros: se PIDEN, no se ejecutan.
+// Las solicitudes: los retiros se PIDEN, no se ejecutan; los depósitos se
+// AVISAN, no se acreditan.
 //
 // ══ POR QUÉ EL DINERO SE APARTA AL PEDIRLO ═════════════════════════════════
 //
@@ -13,55 +14,84 @@
 // lo quedó— pero ya no está disponible para gastarlo otra vez. Se ve en el
 // extracto y se ve en las reservas.
 //
-// ══ LOS TRES FINALES ═══════════════════════════════════════════════════════
+// ══ LOS TRES FINALES DE UN RETIRO ══════════════════════════════════════════
 //
 //   ejecutada  → `retiro:` sale y el banco corresponsal paga. Fin.
 //   rechazada  → el dinero VUELVE entero a la cuenta, comisión incluida. Si no
 //                se pagó, no se cobra: cobrar por un servicio que no se prestó
 //                es quedarse con plata ajena por un trámite.
-//   pendiente  → sigue esperando, y el cliente lo ve esperando.
+//   pendiente  → sigue esperando, y el cliente lo ve esperando, con lo que
+//                le falta dicho con palabras.
 //
 // No hay un cuarto final donde el dinero se queda en `retiro:` para siempre.
-// Toda solicitud tiene que terminar en una de las dos primeras.
+// Toda solicitud tiene que terminar en una de las dos primeras. Y las que se
+// quedan a medias las canta lib/barrido.js — no las resuelve.
+//
+// ══ EL AVISO DE DEPÓSITO ═══════════════════════════════════════════════════
+//
+// Un cliente que transfirió a la cuenta de la casa no tiene dónde verlo hasta
+// que operaciones lo acredita. Ahora lo AVISA: «mandé 500 USD, referencia X».
+// Eso crea una solicitud `avisada` que NO mueve un céntimo —el crédito sigue
+// entrando sólo por /tesoreria/deposito con el comprobante del banco— pero le
+// da al cliente un lugar donde mirar y a operaciones una cola que atender.
+//
+// ══ EL TAMIZ ═══════════════════════════════════════════════════════════════
+//
+// Antes de apartar un retiro se tamiza al titular del destino contra la lista
+// de sanciones, aunque ya se tamizó al guardarlo: la lista de hoy no es la de
+// hace un mes. Sin lista no sale; con coincidencia fuerte tampoco.
 
 const { Usuario, Solicitud, Beneficiario, Corresponsal } = require('../models');
-const { moneda, aMinimas, aTexto } = require('../lib/monedas');
+const { aTexto } = require('../lib/monedas');
 const { asentar } = require('../lib/asientos');
 const { comision } = require('../lib/tarifas');
+const { queFalta } = require('../lib/barrido');
 const genesis = require('../lib/genesis');
+const V = require('../lib/validar');
 const { cuentaDe, pintar } = require('./cuentasController');
 const { refDe } = require('./movimientosController');
-const { pintarBeneficiario } = require('./beneficiariosController');
+const { pintarBeneficiario, pasaTamiz } = require('./beneficiariosController');
 const { custodiaDe } = require('./tesoreriaController');
 
 /** La cuenta donde espera el dinero ya pedido. Sigue siendo del cliente. */
 const enProcesoDe = (gid) => `retiro:${gid}`;
 
-function pintarSolicitud(s) {
+const ESTADOS_TEXTO = {
+  pendiente: 'Esperando pago', ejecutando: 'Pagándose', ejecutada: 'Pagado',
+  rechazando: 'Devolviéndose', rechazada: 'Rechazado',
+  avisada: 'Esperando acreditación', acreditada: 'Acreditado',
+};
+
+function pintarSolicitud(s, ahora = new Date()) {
+  const ultima = s.actualizada || s.creada;
   return {
-    id: String(s._id), ref: s.ref, tipo: s.tipo, estado: s.estado,
+    id: String(s._id), ref: s.ref,
+    numero: s.ref.split(':').slice(1).join(':') || s.ref,
+    tipo: s.tipo, estado: s.estado,
+    estadoTexto: ESTADOS_TEXTO[s.estado] || s.estado,
+    terminada: ['ejecutada', 'rechazada', 'acreditada'].includes(s.estado),
     moneda: s.moneda,
     monto: pintar(s.monto, s.moneda),
     neto: pintar(s.neto, s.moneda),
     comision: pintar(s.comision || '0', s.moneda),
     beneficiario: s.beneficiario || null,
+    referenciaBancaria: s.referenciaBancaria || '',
     nota: s.nota || '', comprobante: s.comprobante || '',
-    creada: s.creada, resuelta: s.resuelta,
+    // Lo que falta para que termine, dicho para una persona. Vacío si terminó.
+    queFalta: queFalta(s),
+    horasSinCambio: Math.floor((ahora.getTime() - new Date(ultima).getTime()) / 3600000),
+    creada: s.creada, actualizada: ultima, resuelta: s.resuelta,
   };
 }
 
 // ── POST /solicitudes/retiro ────────────────────────────────────────────────
 // { ref, moneda, monto, beneficiario (id) }
-async function pedirRetiro(req, res) {
-  const cod = String(req.body?.moneda || '').toUpperCase();
-  if (!moneda(cod)) return res.status(400).json({ error: 'Esa moneda no existe.', codigo: 'MONEDA_DESCONOCIDA' });
-
-  const neto = aMinimas(req.body?.monto, cod);
-  if (!neto || BigInt(neto) <= 0n) {
-    return res.status(400).json({ error: 'El monto no es válido.', codigo: 'MONTO_INVALIDO' });
-  }
-  const ref = refDe(req.usuario.gid, req.body?.ref);
-  if (!ref) return res.status(400).json({ error: 'Falta el sello de la operación.', codigo: 'REF_FALTA' });
+const pedirRetiro = V.conEntrada(async (req, res) => {
+  const b = V.cuerpo(req);
+  const cod = V.moneda(b.moneda);
+  const neto = V.monto(b.monto, cod);
+  const ref = refDe(req.usuario.gid, b.ref);
+  const benId = V.id(b.beneficiario, { campo: 'beneficiario', etiqueta: 'el destino' });
 
   try {
     const usuario = await Usuario.findOne({ gid: req.usuario.gid });
@@ -73,16 +103,22 @@ async function pedirRetiro(req, res) {
       });
     }
 
-    const ben = await Beneficiario.findOne({ _id: req.body?.beneficiario, gid: usuario.gid });
-    if (!ben) return res.status(400).json({ error: 'Elegí a dónde mandarlo.', codigo: 'BENEFICIARIO_FALTA' });
+    const ben = await Beneficiario.findOne({ _id: benId, gid: usuario.gid });
+    if (!ben) return res.status(400).json({ error: 'Elegí a dónde mandarlo.', codigo: 'BENEFICIARIO_FALTA', campo: 'beneficiario' });
+    if (ben.tipo !== 'bancario') {
+      return res.status(400).json({ error: 'Un retiro va a una cuenta bancaria. Para otra cuenta de AuCorp usá «transferir».', codigo: 'DESTINO_NO_BANCARIO', campo: 'beneficiario' });
+    }
     if (ben.moneda !== cod) {
       // Mandar lempiras a una cuenta de dólares es una transferencia que el
       // banco rebota o convierte a su antojo. Ni una ni la otra son lo que
       // pidió el cliente.
       return res.status(400).json({
-        error: 'Ese destino es de otra moneda.', codigo: 'MONEDA_DEL_DESTINO',
+        error: 'Ese destino es de otra moneda.', codigo: 'MONEDA_DEL_DESTINO', campo: 'beneficiario',
       });
     }
+
+    // El tamiz, antes de apartar un céntimo.
+    if (!await pasaTamiz(res, { gid: usuario.gid, nombre: ben.titular, contexto: 'retiro' })) return;
 
     /* El monto que se aparta es el neto MÁS la comisión: si alguien pide
        retirar 100 y la comisión es 2, se le apartan 102 y le llegan 100. La
@@ -127,7 +163,7 @@ async function pedirRetiro(req, res) {
     return res.json({ solicitud: pintarSolicitud(s) });
   } catch (e) {
     if (e?.codigo === 'SALDO_INSUFICIENTE') {
-      return res.status(400).json({ error: 'No hay saldo suficiente.', codigo: 'SALDO_INSUFICIENTE' });
+      return res.status(400).json({ error: 'No hay saldo suficiente.', codigo: 'SALDO_INSUFICIENTE', campo: 'monto' });
     }
     if (e?.code === 11000) {
       const ya = await Solicitud.findOne({ ref });
@@ -136,24 +172,85 @@ async function pedirRetiro(req, res) {
     console.error(`[solicitudes] no se pudo pedir el retiro: ${e.message}`);
     return res.status(503).json({ error: 'No se pudo pedir el retiro.', codigo: 'NO_SE_PUDO' });
   }
-}
+});
 
-// ── GET /solicitudes ────────────────────────────────────────────────────────
-async function mias(req, res) {
+// ── POST /solicitudes/deposito ──────────────────────────────────────────────
+// { ref, moneda, monto, referenciaBancaria } → «avisé que mandé el dinero».
+// NO acredita nada. Crea la solicitud `avisada` para que el cliente la vea y
+// operaciones la busque en el extracto.
+const avisarDeposito = V.conEntrada(async (req, res) => {
+  const b = V.cuerpo(req);
+  const cod = V.moneda(b.moneda);
+  const monto = V.monto(b.monto, cod);
+  const ref = refDe(req.usuario.gid, b.ref);
+  const referencia = V.texto(b.referenciaBancaria, { campo: 'referenciaBancaria', max: 120, obligatorio: true, etiqueta: 'la referencia de la transferencia' });
+  const nota = V.texto(b.nota, { campo: 'nota', max: 300, etiqueta: 'la nota' });
+
   try {
-    const docs = await Solicitud.find({ gid: req.usuario.gid }).sort({ creada: -1 }).limit(100);
-    return res.json({ solicitudes: docs.map(pintarSolicitud) });
+    const usuario = await Usuario.findOne({ gid: req.usuario.gid });
+    if (!usuario) return res.status(401).json({ error: 'La sesion no es valida.', codigo: 'SESION_INVALIDA' });
+    if (usuario.verificada !== true) {
+      return res.status(403).json({ error: 'Para depositar hace falta terminar la verificación de identidad.', codigo: 'IDENTIDAD_SIN_VERIFICAR' });
+    }
+    const c = await Corresponsal.findOne({ moneda: cod, activa: true });
+    if (!c) {
+      return res.status(404).json({ error: 'Todavía no hay cuenta para recibir esa moneda.', codigo: 'SIN_CORRESPONSAL', campo: 'moneda' });
+    }
+    const s = await Solicitud.create({
+      gid: usuario.gid, tipo: 'deposito', moneda: cod,
+      monto, neto: monto, comision: '0',
+      beneficiario: { banco: c.banco, titular: c.titular, moneda: c.moneda },
+      referenciaBancaria: referencia, nota,
+      estado: 'avisada', ref,
+    });
+    return res.json({ solicitud: pintarSolicitud(s) });
+  } catch (e) {
+    if (e?.code === 11000) {
+      const ya = await Solicitud.findOne({ ref });
+      if (ya) return res.json({ solicitud: pintarSolicitud(ya), repetido: true });
+    }
+    console.error(`[solicitudes] no se pudo avisar el depósito: ${e.message}`);
+    return res.status(503).json({ error: 'No se pudo registrar el aviso.', codigo: 'NO_SE_PUDO' });
+  }
+});
+
+// ── GET /solicitudes?estado=&tipo= ──────────────────────────────────────────
+const mias = V.conEntrada(async (req, res) => {
+  const q = req.query || {};
+  const filtro = { gid: req.usuario.gid };
+  if (q.estado) filtro.estado = V.opcion(q.estado, Object.keys(ESTADOS_TEXTO), { campo: 'estado' });
+  if (q.tipo) filtro.tipo = V.opcion(q.tipo, ['retiro', 'deposito'], { campo: 'tipo' });
+  try {
+    const docs = await Solicitud.find(filtro).sort({ creada: -1 }).limit(100);
+    return res.json({ solicitudes: docs.map((s) => pintarSolicitud(s)), estados: ESTADOS_TEXTO });
   } catch (e) {
     console.error(`[solicitudes] no se pudieron listar: ${e.message}`);
     return res.status(503).json({ error: 'No se pudo leer.', codigo: 'NO_SE_PUDO' });
   }
-}
+});
 
-// ── GET /tesoreria/solicitudes?estado=pendiente ─────────────────────────────
-async function cola(req, res) {
+// ── GET /solicitudes/:id ────────────────────────────────────────────────────
+// Una sola, con todo: es lo que la pantalla imprime como constancia.
+const una = V.conEntrada(async (req, res) => {
+  const id = V.id(req.params.id, { etiqueta: 'la solicitud' });
   try {
-    const estado = String(req.query?.estado || 'pendiente');
-    const docs = await Solicitud.find({ estado }).sort({ creada: 1 }).limit(200);
+    const s = await Solicitud.findOne({ _id: id, gid: req.usuario.gid });
+    if (!s) return res.status(404).json({ error: 'No hay una solicitud con ese número en tu cuenta.', codigo: 'NO_EXISTE' });
+    return res.json({ solicitud: pintarSolicitud(s) });
+  } catch (e) {
+    console.error(`[solicitudes] no se pudo leer: ${e.message}`);
+    return res.status(503).json({ error: 'No se pudo leer.', codigo: 'NO_SE_PUDO' });
+  }
+});
+
+// ── GET /tesoreria/solicitudes?estado=pendiente&tipo= ───────────────────────
+const cola = V.conEntrada(async (req, res) => {
+  const q = req.query || {};
+  const filtro = {};
+  filtro.estado = V.opcion(q.estado, Object.keys(ESTADOS_TEXTO), { campo: 'estado', porDefecto: 'pendiente' });
+  if (q.tipo) filtro.tipo = V.opcion(q.tipo, ['retiro', 'deposito'], { campo: 'tipo' });
+  try {
+    const docs = await Solicitud.find(filtro).sort({ creada: 1 }).limit(200);
     return res.json({
       solicitudes: docs.map((s) => ({ ...pintarSolicitud(s), gid: s.gid })),
     });
@@ -161,28 +258,53 @@ async function cola(req, res) {
     console.error(`[solicitudes] no se pudo leer la cola: ${e.message}`);
     return res.status(503).json({ error: 'No se pudo leer.', codigo: 'NO_SE_PUDO' });
   }
-}
+});
 
 /** Cierra una solicitud pendiente. El findOneAndUpdate con `estado:
  *  'pendiente'` en el filtro es la guarda: dos personas de operaciones
  *  resolviendo la misma solicitud a la vez, y solo una la agarra. */
-async function resolver(req, res, { ejecutar }) {
-  const nota = String(req.body?.nota || '').trim().slice(0, 300);
-  const comprobante = String(req.body?.comprobante || '').trim().slice(0, 200);
+const resolver = (modo) => V.conEntrada(async (req, res) => {
+  const ejecutar = modo === 'ejecutar';
+  const id = V.id(req.params.id, { etiqueta: 'la solicitud' });
+  const b = V.cuerpo(req);
+  const nota = V.texto(b.nota, { campo: 'nota', max: 300, etiqueta: 'el motivo' });
+  const comprobante = V.texto(b.comprobante, { campo: 'comprobante', max: 200, etiqueta: 'el comprobante' });
   if (ejecutar && !comprobante) {
     return res.status(400).json({
-      error: 'Falta el comprobante del pago.', codigo: 'COMPROBANTE_FALTA',
+      error: 'Falta el comprobante del pago.', codigo: 'COMPROBANTE_FALTA', campo: 'comprobante',
     });
   }
   if (!ejecutar && !nota) {
     // Un rechazo sin motivo es un rechazo que el cliente no puede corregir.
-    return res.status(400).json({ error: 'Poné el motivo del rechazo.', codigo: 'NOTA_FALTA' });
+    return res.status(400).json({ error: 'Poné el motivo del rechazo.', codigo: 'NOTA_FALTA', campo: 'nota' });
   }
 
   try {
+    const antes = await Solicitud.findById(id);
+    if (!antes) return res.status(404).json({ error: 'No existe esa solicitud.', codigo: 'NO_EXISTE' });
+
+    // Un DEPÓSITO no se «ejecuta» por aquí: se acredita por /tesoreria/deposito
+    // con el comprobante del banco, que es la única puerta por la que entra
+    // dinero. Rechazar el aviso sí se puede, y no mueve nada.
+    if (antes.tipo === 'deposito') {
+      if (ejecutar) {
+        return res.status(400).json({
+          error: 'Un aviso de depósito se acredita por POST /tesoreria/deposito con el comprobante del corresponsal, pasando el id de la solicitud.',
+          codigo: 'DEPOSITO_POR_TESORERIA',
+        });
+      }
+      const s = await Solicitud.findOneAndUpdate(
+        { _id: id, estado: 'avisada' },
+        { $set: { estado: 'rechazada', nota, resuelta: new Date(), actualizada: new Date() } },
+        { new: true }
+      );
+      if (!s) return res.status(409).json({ error: 'Ese aviso ya no está pendiente.', codigo: 'YA_RESUELTA' });
+      return res.json({ solicitud: pintarSolicitud(s) });
+    }
+
     const s = await Solicitud.findOneAndUpdate(
-      { _id: req.params.id, estado: 'pendiente' },
-      { $set: { estado: ejecutar ? 'ejecutando' : 'rechazando' } },
+      { _id: id, estado: 'pendiente' },
+      { $set: { estado: ejecutar ? 'ejecutando' : 'rechazando', actualizada: new Date() } },
       { new: true }
     );
     if (!s) {
@@ -226,7 +348,7 @@ async function resolver(req, res, { ejecutar }) {
     } catch (e) {
       // El asiento no entró: la solicitud vuelve a pendiente. Dejarla en
       // 'ejecutando' sería un retiro que nadie puede ni pagar ni devolver.
-      await Solicitud.updateOne({ _id: s._id }, { $set: { estado: 'pendiente' } });
+      await Solicitud.updateOne({ _id: s._id }, { $set: { estado: 'pendiente', actualizada: new Date() } });
       throw e;
     }
 
@@ -234,7 +356,7 @@ async function resolver(req, res, { ejecutar }) {
       { _id: s._id },
       { $set: {
         estado: ejecutar ? 'ejecutada' : 'rechazada',
-        nota, comprobante, resuelta: new Date(),
+        nota, comprobante, resuelta: new Date(), actualizada: new Date(),
       } },
       { new: true }
     );
@@ -250,17 +372,16 @@ async function resolver(req, res, { ejecutar }) {
     console.error(`[solicitudes] no se pudo resolver: ${e.message}`);
     return res.status(503).json({ error: 'No se pudo resolver.', codigo: 'NO_SE_PUDO' });
   }
-}
+});
 
-const ejecutar = (req, res) => resolver(req, res, { ejecutar: true });
-const rechazar = (req, res) => resolver(req, res, { ejecutar: false });
+const ejecutar = resolver('ejecutar');
+const rechazar = resolver('rechazar');
 
 // ── GET /deposito/instrucciones?moneda=USD ──────────────────────────────────
 // A dónde manda el dinero quien quiere depositar. Es la cuenta REAL de AuCorp
 // en esa plaza, y por eso NO vive en el código: la carga operaciones.
-async function instruccionesDeposito(req, res) {
-  const cod = String(req.query?.moneda || '').toUpperCase();
-  if (!moneda(cod)) return res.status(400).json({ error: 'Esa moneda no existe.', codigo: 'MONEDA_DESCONOCIDA' });
+const instruccionesDeposito = V.conEntrada(async (req, res) => {
+  const cod = V.moneda(req.query?.moneda);
   try {
     const c = await Corresponsal.findOne({ moneda: cod, activa: true });
     if (!c) {
@@ -288,6 +409,9 @@ async function instruccionesDeposito(req, res) {
     console.error(`[solicitudes] no se pudieron leer las instrucciones: ${e.message}`);
     return res.status(503).json({ error: 'No se pudo leer.', codigo: 'NO_SE_PUDO' });
   }
-}
+});
 
-module.exports = { pedirRetiro, mias, cola, ejecutar, rechazar, instruccionesDeposito, enProcesoDe };
+module.exports = {
+  pedirRetiro, avisarDeposito, mias, una, cola, ejecutar, rechazar, instruccionesDeposito,
+  enProcesoDe, pintarSolicitud, ESTADOS_TEXTO,
+};

@@ -19,6 +19,10 @@ try {
 }
 
 const http = await import('node:http');
+import { readFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+const AQUI = dirname(fileURLToPath(import.meta.url));
 
 // ── El Genesis fingido ──────────────────────────────────────────────────────
 // El token que llega ES el gid. Un token que empieza por `sinkyc` devuelve una
@@ -52,6 +56,7 @@ process.env.GENESIS_API_KEY = 'clave-de-prueba';
 process.env.AUCORP_TOKEN = 'secreto-largo-de-prueba-para-firmar-sesiones';
 process.env.AUCORP_ADMIN_KEY = 'clave-de-operaciones-de-prueba';
 process.env.CORS_ORIGENES = 'http://localhost';
+process.env.AUCORP_BARRIDO = 'no';
 process.env.PORT = '0';
 
 const { default: mongoose } = await import('mongoose');
@@ -68,13 +73,13 @@ const decir = (q) => console.log(`\n── ${q} ${'─'.repeat(Math.max(2, 62 - 
 
 const BASE = `http://127.0.0.1:${app.servidor.address().port}`;
 
-const pedir = async (ruta, { metodo = 'GET', token, admin, cuerpo } = {}) => {
+const pedir = async (ruta, { metodo = 'GET', token, admin, cuerpo, crudo } = {}) => {
   const cab = { 'Content-Type': 'application/json' };
   if (token) cab.Authorization = `Bearer ${token}`;
   if (admin) cab['X-Admin-Key'] = admin;
   const r = await fetch(BASE + ruta, {
     method: metodo, headers: cab,
-    body: cuerpo === undefined ? undefined : JSON.stringify(cuerpo),
+    body: crudo !== undefined ? crudo : (cuerpo === undefined ? undefined : JSON.stringify(cuerpo)),
   });
   return { estado: r.status, datos: await r.json().catch(() => ({})) };
 };
@@ -151,7 +156,7 @@ decir('LA FRONTERA: el dinero entra solo por operaciones');
   // la operación vieja creyendo que hizo una nueva.
   const refCorta = await pedir('/tesoreria/deposito', { metodo: 'POST', admin: ADMIN, cuerpo: {
     gid: 'gid-ana', moneda: 'USD', monto: '500', ref: 'a1', comprobante: 'x' } });
-  comprobar(refCorta.estado === 400 && refCorta.datos.codigo === 'REF_FALTA',
+  comprobar(refCorta.estado === 400 && refCorta.datos.codigo === 'REF_INVALIDA',
     'y un sello demasiado corto para ser único tampoco vale', JSON.stringify(refCorta.datos));
 
   const ok = await pedir('/tesoreria/deposito', { metodo: 'POST', admin: ADMIN, cuerpo: {
@@ -219,6 +224,65 @@ decir('cambiar de moneda, con la tasa REAL guardada en el asiento');
     JSON.stringify(chico.datos));
 }
 
+decir('LA VALIDACIÓN DE ENTRADA dice qué está mal y dónde');
+{
+  const gidMalo = await pedir('/movimientos/transferir', { metodo: 'POST', token: ana, cuerpo: {
+    ref: 'transferencia-gid-malo-0001', para: 'no es un gid', moneda: 'USD', monto: '1' } });
+  comprobar(gidMalo.estado === 400 && gidMalo.datos.codigo === 'GID_INVALIDO' && gidMalo.datos.campo === 'para',
+    'un gid sin forma se rechaza con su campo, antes de tocar la base', JSON.stringify(gidMalo.datos));
+  const montoMalo = await pedir('/movimientos/transferir', { metodo: 'POST', token: ana, cuerpo: {
+    ref: 'transferencia-monto-malo-0001', para: 'gid-beto', moneda: 'USD', monto: '1.2.3.4' } });
+  comprobar(montoMalo.estado === 400 && montoMalo.datos.codigo === 'MONTO_INVALIDO' && /decimales/.test(montoMalo.datos.error),
+    'un monto torcido dice cómo escribirlo', montoMalo.datos.error);
+  const idMalo = await pedir('/beneficiarios/abc', { metodo: 'DELETE', token: ana });
+  comprobar(idMalo.estado === 400 && idMalo.datos.codigo === 'ID_INVALIDO',
+    'un id que no tiene forma de id es un 400 claro, no un CastError disfrazado de «no se pudo»', JSON.stringify(idMalo.datos));
+  const jsonMalo = await pedir('/cuentas', { metodo: 'POST', token: ana, crudo: '{"moneda": USD}' });
+  comprobar(jsonMalo.estado === 400 && jsonMalo.datos.codigo === 'JSON_INVALIDO', 'un JSON roto es un 400, no un 500');
+  const arreglo = await pedir('/cuentas', { metodo: 'POST', token: ana, crudo: '["USD"]' });
+  comprobar(arreglo.estado === 400 && arreglo.datos.codigo === 'CUERPO_INVALIDO', 'y un array en vez de un objeto también');
+  const fechaMala = await pedir('/movimientos?desde=2026-02-30', { token: ana });
+  comprobar(fechaMala.estado === 400 && fechaMala.datos.codigo === 'FECHA_INVALIDA', 'una fecha que no existe se rechaza en el historial');
+}
+
+decir('EL TAMIZ DE SANCIONES: sin lista no sale nada, con coincidencia tampoco');
+{
+  const salud = await pedir('/salud');
+  comprobar(salud.datos.sanciones?.cargadas === false, '/salud dice que no hay lista cargada');
+  const sinLista = await pedir('/beneficiarios', { metodo: 'POST', token: ana, cuerpo: {
+    alias: 'Antes de la lista', tipo: 'bancario', moneda: 'USD',
+    banco: 'Banco Atlántida', titular: 'Ana Pérez', numero: '01234567890123' } });
+  comprobar(sinLista.estado === 503 && sinLista.datos.codigo === 'SIN_TAMIZ',
+    'sin lista de sanciones NO se guarda un destino bancario: no poder mirar es un no', JSON.stringify(sinLista.datos));
+
+  const sinClave = await pedir('/tesoreria/sanciones/importar', { metodo: 'POST', cuerpo: {} });
+  comprobar(sinClave.estado === 401, 'la lista no la importa cualquiera');
+  const importada = await pedir('/tesoreria/sanciones/importar', { metodo: 'POST', admin: ADMIN, cuerpo: {
+    texto: readFileSync(join(AQUI, 'listas', 'sdn-prueba.csv'), 'utf8'),
+    alt: readFileSync(join(AQUI, 'listas', 'alt-prueba.csv'), 'utf8'), fuente: 'OFAC-prueba' } });
+  comprobar(importada.estado === 200 && importada.datos.registros === 4, 'operaciones importa una lista en formato OFAC', JSON.stringify(importada.datos));
+  const estado = await pedir('/tesoreria/sanciones', { admin: ADMIN });
+  comprobar(estado.datos.listas?.cargadas === true && estado.datos.listas?.vencidas === false, 'y el estado dice cargada y fresca');
+
+  const choca = await pedir('/beneficiarios', { metodo: 'POST', token: ana, cuerpo: {
+    alias: 'Un destino raro', tipo: 'bancario', moneda: 'USD',
+    banco: 'Banco X', titular: 'Persona Sancionado de Prueba', numero: '55550000' } });
+  comprobar(choca.estado === 403 && choca.datos.codigo === 'DESTINO_EN_REVISION',
+    'un titular que coincide FUERTE con la lista queda en revisión, sin decirle contra qué chocó',
+    JSON.stringify(choca.datos));
+  comprobar(!/sancion|OFAC|lista/i.test(choca.datos.error), 'y el mensaje al usuario no menciona sanciones ni listas', choca.datos.error);
+  const alertas = await pedir('/tesoreria/sanciones/alertas', { admin: ADMIN });
+  const alerta = alertas.datos.alertas?.[0];
+  comprobar(alerta?.gid === 'gid-ana' && alerta?.contexto === 'beneficiario' && alerta?.detalle?.fuertes >= 1,
+    'queda una alerta para cumplimiento con las coincidencias', JSON.stringify(alerta?.detalle?.coincidencias?.[0]?.razones));
+  const resuelta = await pedir(`/tesoreria/sanciones/alertas/${alerta.id}/resolver`, { metodo: 'POST', admin: ADMIN, cuerpo: { nota: 'Homónimo, comprobado con documento.' } });
+  comprobar(resuelta.datos.alerta?.estado === 'resuelta', 'y una persona la cierra con su nota');
+  const otraVez = await pedir('/beneficiarios', { metodo: 'POST', token: ana, cuerpo: {
+    alias: 'Un destino raro', tipo: 'bancario', moneda: 'USD',
+    banco: 'Banco X', titular: 'Persona Sancionado de Prueba', numero: '55550000' } });
+  comprobar(otraVez.estado === 403, 'cerrar la alerta NO aprueba el destino: vuelve a quedar en revisión');
+}
+
 decir('la libreta de destinos');
 let benBanco;
 {
@@ -229,8 +293,11 @@ let benBanco;
   const r = await pedir('/beneficiarios', { metodo: 'POST', token: ana, cuerpo: {
     alias: 'Mi cuenta del banco', tipo: 'bancario', moneda: 'USD',
     banco: 'Banco Atlántida', titular: 'Ana Pérez', numero: '01234567890123', pais: 'Honduras' } });
-  comprobar(r.estado === 200, 'y su propia cuenta bancaria');
+  comprobar(r.estado === 200, 'y su propia cuenta bancaria (tamizada y limpia)', JSON.stringify(r.datos));
   benBanco = r.datos.beneficiario?.id;
+  const swiftMalo = await pedir('/beneficiarios', { metodo: 'POST', token: ana, cuerpo: {
+    alias: 'Otra', tipo: 'bancario', moneda: 'USD', banco: 'B', titular: 'Ana Pérez', numero: '01234567890123', swift: 'XX' } });
+  comprobar(swiftMalo.estado === 400 && swiftMalo.datos.codigo === 'SWIFT_INVALIDO', 'un SWIFT de dos letras se rechaza con su nombre', JSON.stringify(swiftMalo.datos));
   comprobar(r.datos.beneficiario?.numero === '···0123',
     'el número vuelve ENMASCARADO: alcanza para reconocerlo, no para copiarlo',
     r.datos.beneficiario?.numero);
@@ -267,6 +334,44 @@ decir('a dónde deposita la gente: la cuenta REAL de la casa');
   const otra = await pedir('/deposito/instrucciones?moneda=PYG', { token: ana });
   comprobar(otra.estado === 404,
     'que el sistema sepa contar guaraníes no quiere decir que haya dónde recibirlos');
+}
+
+decir('UN DEPÓSITO SE AVISA, NO SE ACREDITA');
+{
+  const antes = (await pedir('/cuentas', { token: ana })).datos.cuentas.find((c) => c.moneda === 'USD');
+  const aviso = await pedir('/solicitudes/deposito', { metodo: 'POST', token: ana, cuerpo: {
+    ref: 'aviso-deposito-0001', moneda: 'USD', monto: '300.00', referenciaBancaria: 'TRF-20260817-77' } });
+  comprobar(aviso.estado === 200 && aviso.datos.solicitud?.estado === 'avisada', 'Ana avisa que transfirió 300.00', JSON.stringify(aviso.datos));
+  comprobar(/extracto del banco/.test(aviso.datos.solicitud?.queFalta || ''), 'y se le dice qué falta: que operaciones lo encuentre en el extracto');
+  const despues = (await pedir('/cuentas', { token: ana })).datos.cuentas.find((c) => c.moneda === 'USD');
+  comprobar(antes.saldo.texto === despues.saldo.texto, 'el aviso NO mueve un céntimo', `${antes.saldo.texto} → ${despues.saldo.texto}`);
+  const sinRef = await pedir('/solicitudes/deposito', { metodo: 'POST', token: ana, cuerpo: {
+    ref: 'aviso-deposito-0002', moneda: 'USD', monto: '300.00' } });
+  comprobar(sinRef.estado === 400 && sinRef.datos.campo === 'referenciaBancaria', 'sin referencia bancaria no hay aviso: no habría cómo encontrarlo');
+  const sinCorresponsal = await pedir('/solicitudes/deposito', { metodo: 'POST', token: ana, cuerpo: {
+    ref: 'aviso-deposito-0003', moneda: 'PYG', monto: '1000', referenciaBancaria: 'x' } });
+  comprobar(sinCorresponsal.estado === 404 && sinCorresponsal.datos.codigo === 'SIN_CORRESPONSAL', 'ni en una moneda sin corresponsal');
+
+  const id = aviso.datos.solicitud.id;
+  const porEjecutar = await pedir(`/tesoreria/solicitudes/${id}/ejecutar`, { metodo: 'POST', admin: ADMIN, cuerpo: { comprobante: 'x' } });
+  comprobar(porEjecutar.estado === 400 && porEjecutar.datos.codigo === 'DEPOSITO_POR_TESORERIA',
+    'un aviso no se «ejecuta» por la cola: el dinero entra sólo por /tesoreria/deposito', JSON.stringify(porEjecutar.datos));
+  const cola = await pedir('/tesoreria/solicitudes?estado=avisada', { admin: ADMIN });
+  comprobar(cola.datos.solicitudes?.some((s) => s.id === id), 'operaciones lo ve en su cola de avisados');
+
+  const ajeno = await pedir('/tesoreria/deposito', { metodo: 'POST', admin: ADMIN, cuerpo: {
+    gid: 'gid-beto', moneda: 'USD', monto: '300.00', ref: 'deposito-beto-con-aviso-ajeno', comprobante: 'Extracto #9', solicitud: id } });
+  comprobar(ajeno.estado === 400 && ajeno.datos.codigo === 'SOLICITUD_NO_COINCIDE', 'un aviso de Ana no cierra un depósito de Beto');
+  const acredita = await pedir('/tesoreria/deposito', { metodo: 'POST', admin: ADMIN, cuerpo: {
+    gid: 'gid-ana', moneda: 'USD', monto: '300.00', ref: 'deposito-ana-20260817-0077', comprobante: 'Extracto corresponsal 2026-08-17 #77', solicitud: id } });
+  comprobar(acredita.estado === 200 && acredita.datos.solicitud === id, 'operaciones acredita con comprobante y cierra el aviso', JSON.stringify(acredita.datos));
+  const cerrado = await pedir(`/solicitudes/${id}`, { token: ana });
+  comprobar(cerrado.datos.solicitud?.estado === 'acreditada' && cerrado.datos.solicitud?.queFalta === '', 'y Ana lo ve acreditado, sin nada pendiente');
+  const otraVez = await pedir('/tesoreria/deposito', { metodo: 'POST', admin: ADMIN, cuerpo: {
+    gid: 'gid-ana', moneda: 'USD', monto: '300.00', ref: 'deposito-ana-20260817-0078', comprobante: 'x', solicitud: id } });
+  comprobar(otraVez.estado === 409, 'un aviso cerrado no se cierra dos veces');
+  const ajenoLee = await pedir(`/solicitudes/${id}`, { token: beto });
+  comprobar(ajenoLee.estado === 404, 'Beto no puede leer la solicitud de Ana');
 }
 
 decir('UN RETIRO SE PIDE, NO SE EJECUTA');
@@ -337,8 +442,8 @@ decir('un retiro rechazado devuelve TODO y libera el límite');
     'y el dinero vuelve ENTERO — si no se pagó, no se cobra',
     `${antes.saldo.texto} → ${despues.saldo.texto}`);
 
-  const mias = await pedir('/solicitudes', { token: ana });
-  comprobar(mias.datos.solicitudes?.length === 2, 'Ana ve las dos en su historial');
+  const mias = await pedir('/solicitudes?tipo=retiro', { token: ana });
+  comprobar(mias.datos.solicitudes?.length === 2, 'Ana ve los dos retiros en su historial (el aviso de depósito va aparte)', String(mias.datos.solicitudes?.length));
   comprobar(mias.datos.solicitudes.every((s) => s.beneficiario?.numero === '···0123'),
     'con el destino congelado tal como estaba al pedirlo');
 }
@@ -391,6 +496,10 @@ decir('/salud dice la verdad, incluido lo que esta casa NO es');
 {
   const r = await pedir('/salud');
   comprobar(r.estado === 200 && r.datos.mongo === true, 'la base está y se dice');
+  comprobar(r.datos.sanciones?.cargadas === true && r.datos.sanciones?.registros === 4, 'y dice qué lista de sanciones hay cargada');
+  const perfil = await pedir('/perfil', { token: ana });
+  comprobar(perfil.datos.perfil?.gid === 'gid-ana' && perfil.datos.perfil?.cuentas?.length === 3 && /No es un banco/.test(perfil.datos.naturaleza),
+    'el perfil dice quién es, qué cuentas tiene y qué es esta casa');
   comprobar(/No es un banco/.test(r.datos.naturaleza || ''),
     'y el propio servicio aclara que no es un banco con licencia', r.datos.naturaleza);
 }
