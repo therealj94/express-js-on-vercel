@@ -75,6 +75,16 @@ services:
       - key: GENESIS_SSO_MINUTOS
         value: "15"
 
+      # ─── Firma de la bitácora ──────────────────────────────────────────────
+      # Cada entrada de la bitácora se firma con esta llave (HMAC-SHA256 sobre
+      # una derivación scrypt). Sin ella el motor arranca y avisa, pero quien
+      # controle la base podría reescribir el registro y recalcular la cadena
+      # sin dejar rastro. 32 caracteres o más al azar; no cambiarla después:
+      # cambiarla marca como rotas todas las firmas anteriores. El motor acepta
+      # también el nombre GENESIS_BITACORA_LLAVE.
+      - key: GENESIS_BITACORA_CLAVE
+        sync: false
+
       # ─── Correo saliente (Amazon SES) ──────────────────────────────────────
       # Sin estas variables el correo queda APAGADO y el servicio funciona
       # igual: nadie recibe el aviso de su verificación, pero nada se rompe.
