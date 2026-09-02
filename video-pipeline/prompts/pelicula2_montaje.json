@@ -181,11 +181,28 @@
       "dur": 4.2,
       "rotulos": [
         {
-          "t": 29.2,
-          "dur": 1.6,
-          "texto": "Pagá."
+          "t": 29.6,
+          "dur": 2.1,
+          "texto": "Pagá.",
+          "alto": 0.645
+        },
+        {
+          "t": 30.6,
+          "dur": 1.3,
+          "texto": "Tarjeta débito Visa.",
+          "chico": true,
+          "alto": 0.742,
+          "escala": 0.92
         }
-      ]
+      ],
+      "tarjeta": {
+        "t": 28.5,
+        "dur": 3.7,
+        "alto": 0.415,
+        "ancho": 0.8,
+        "giro": -7.0,
+        "ruta": "/tmp/claude-0/-home-user-express-js-on-vercel/ea1ee5d5-3bb0-5210-b62d-18fde5349b2f/scratchpad/tarjeta_og.png"
+      }
     },
     {
       "plano": "09_manos_intercambio",
@@ -326,5 +343,6 @@
   },
   "_retomas": "Las dos retomas arreglaron lo que fallaba. En el dedo, pedir la piel por su nombre -poros, textura seca, crestas de la huella- y prohibir la de muneco quito el rosa de plastilina. En los dos telefonos, pedir el plano CENITAL quito la ambiguedad: de frente el modelo devolvia lingotes y discos.",
   "_pantalla_real": "Jose mando una captura de Veta Wallet enviando 5 ORIGEN y pidio acoplarla donde se dice que se manda a otro pais. Va compuesta DENTRO del telefono del plano de las manos, siguiendo el movimiento: es la interfaz de verdad, no una dibujada.",
-  "_septima_pasada": "Jose: el pago sin contacto no se oia -el efecto nacia a -24 dBFS-, el chip de la tarjeta se veia enorme y no parecia una tarjeta, el plano de las manos salia distorsionado, y Pulse2Chat tenia que ensenar lo que se puede hacer ahi. La toma 3 de la tarjeta ensena la tarjeta entrando en la ranura con el chip pequeno; el plano de las manos lleva un acercamiento que deja fuera los dedos deformes de la mano de arriba y de paso agranda la pantalla."
+  "_septima_pasada": "Jose: el pago sin contacto no se oia -el efecto nacia a -24 dBFS-, el chip de la tarjeta se veia enorme y no parecia una tarjeta, el plano de las manos salia distorsionado, y Pulse2Chat tenia que ensenar lo que se puede hacer ahi. La toma 3 de la tarjeta ensena la tarjeta entrando en la ranura con el chip pequeno; el plano de las manos lleva un acercamiento que deja fuera los dedos deformes de la mano de arriba y de paso agranda la pantalla.",
+  "_tarjeta": "Jose confirmo que la Visa funciona y mando el arte de la tarjeta real. Ninguna toma generada servia -las cuatro son macros del chip, ahi no cabe el diseno-, asi que la tarjeta se compone como pieza de producto: girada, con sombra y un brillo que la recorre. De paso tapa el chip gigante que era el reproche. Del arte se quito el nombre del titular y se cambiaron los cuatro ultimos digitos: eran los de una tarjeta real."
 }

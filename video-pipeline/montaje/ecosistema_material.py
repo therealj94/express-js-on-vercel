@@ -494,6 +494,50 @@ def capacidades(im: Image.Image, rel: float, dur: float, alto=0.30):
         im.alpha_composite(capa)
 
 
+_tarjeta_cache: dict = {}
+
+
+def tarjeta(im: Image.Image, ruta: str, rel: float, dur: float, alto=0.40,
+            ancho_frac=0.78, giro=-7.0):
+    """La tarjeta Visa de Orden Global, montada como pieza de producto.
+
+    Ninguna toma generada servía: las cuatro son macros del chip y ahí no cabe
+    el diseño. Pero la tarjeta existe y su arte es de alta resolución, así que
+    en vez de filmarla se compone —girada, con sombra propia y un brillo que la
+    recorre—, que es como se enseña un producto, y además es la tarjeta de
+    verdad y no una inventada por el modelo.
+
+    Del arte se quitó el nombre del titular y se cambiaron los cuatro últimos
+    dígitos: eran los de una tarjeta real."""
+    e = salida_rebote(float(np.clip(rel / 0.7, 0, 1)))
+    fuera = salida(float(np.clip((dur - rel) / 0.45, 0, 1)), 3.0)
+    a = float(np.clip(rel / 0.3, 0, 1)) * fuera
+    if a <= 0.02:
+        return
+    if ruta not in _tarjeta_cache:
+        _tarjeta_cache[ruta] = Image.open(ruta).convert("RGBA")
+    base = _tarjeta_cache[ruta]
+    an = int(W * ancho_frac * (0.9 + 0.1 * e))
+    t = base.resize((an, int(base.height * an / base.width)), Image.LANCZOS)
+
+    # Un brillo que cruza la tarjeta: es lo que le da materia a una superficie
+    # plana. Va con el tiempo, no fijo.
+    xx = np.arange(t.width)[None, :] + np.arange(t.height)[:, None] * 0.6
+    centro = (rel / max(dur, 0.01)) * (t.width * 1.9) - t.width * 0.35
+    g = np.exp(-((xx - centro) ** 2) / (2 * (t.width * 0.085) ** 2)) * 90 * a
+    bri = Image.fromarray(np.clip(g, 0, 255).astype(np.uint8))
+    cap = Image.new("RGBA", t.size, (255, 246, 224, 0))
+    cap.putalpha(Image.fromarray(
+        np.minimum(np.array(bri), np.array(t.split()[3]))))
+    t = Image.alpha_composite(t, cap)
+
+    t = t.rotate(giro, resample=Image.BICUBIC, expand=True)
+    t.putalpha(t.split()[3].point(lambda v: int(v * a)))
+    pos = ((W - t.width) // 2, int(H * alto) - t.height // 2)
+    sombra_larga(im, t, pos, radio=90, opacidad=0.46 * a, dy=34)
+    im.alpha_composite(t, pos)
+
+
 def logo(im: Image.Image, rel: float):
     """El logo de Orden Global formándose sobre la gota de oro, con sombra larga."""
     a = salida(np.clip(rel / 1.4, 0, 1), 3.5)
@@ -590,6 +634,12 @@ def main():
                 logo(im, t - b["t"] - 0.6)
             if b.get("familia"):
                 familia(im, t - b["t"] - 0.5)
+            if b.get("tarjeta"):
+                c = b["tarjeta"]
+                rel = t - c["t"]
+                if 0 <= rel <= c["dur"]:
+                    tarjeta(im, c["ruta"], rel, c["dur"], c.get("alto", 0.40),
+                            c.get("ancho", 0.78), c.get("giro", -7.0))
             if b.get("capacidades"):
                 c = b["capacidades"]
                 rel = t - c["t"]
