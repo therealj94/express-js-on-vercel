@@ -15988,6 +15988,19 @@ const VETA = (() => {
        arranque también se vea. Sin clave puesta esto no hace absolutamente
        nada — ni cola, ni peticiones. */
     tele('iniciar', {});
+
+    /* El obrero de fondo, desde el arranque y no solo al abrir el chat.
+       Registrarlo aquí es lo que hace que Android ofrezca «Instalar
+       aplicación»: sin obrero vivo en la primera visita, lo más que se
+       consigue es un acceso directo con la barra del navegador encima. Quien
+       no pudo con los 138 MB del APK entra por acá y le queda igual en la
+       pantalla de inicio.
+       Falla en silencio a propósito: sin HTTPS, en navegación privada o en un
+       navegador viejo no hay obrero, y una billetera no puede romperse porque
+       no se pueda instalar. */
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('sw.js').catch(() => {});
+    }
     /* La cuenta atras del sorteo corre desde el primer pintado y para todos:
        la portada la enseña antes de cualquier sesion. */
     arrancarSorteo();

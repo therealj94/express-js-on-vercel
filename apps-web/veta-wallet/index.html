@@ -47,7 +47,21 @@
     https://ordenexchange.link;
 ">
 <link rel="icon" href="assets/veta-logo.png">
-<link rel="apple-touch-icon" href="assets/veta-logo.png">
+<link rel="apple-touch-icon" href="assets/veta-180.png">
+<!-- INSTALABLE.
+     Sin manifiesto, Android nunca ofrece «Instalar aplicación»: deja un acceso
+     directo del navegador, con su barra de direcciones encima y sin icono
+     propio. Para quien no pudo con los 138 MB del APK, esta es la misma app
+     por otra puerta, y tiene que verse igual en la pantalla de inicio —por eso
+     los iconos salen del MISMO archivo que el icono del teléfono. -->
+<!-- .json y no .webmanifest: Amplify reescribe al index.html todo lo que
+     no tenga una extensión conocida, y .webmanifest no está en esa lista —el
+     navegador recibía la página entera donde esperaba el manifiesto. -->
+<link rel="manifest" href="manifest.json">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Orden Global">
 <meta property="og:title" content="Orden Global">
 <meta property="og:description" content="Un ecosistema entero, en una sola cuenta.">
 <meta property="og:image" content="https://app.vetawallet.com/assets/veta.png">

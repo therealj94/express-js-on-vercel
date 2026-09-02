@@ -29,6 +29,22 @@
 self.addEventListener('install', (e) => e.waitUntil(self.skipWaiting()));
 self.addEventListener('activate', (e) => e.waitUntil(self.clients.claim()));
 
+/* ESTE MANEJADOR ESTÁ VACÍO A PROPÓSITO, Y TIENE QUE SEGUIR ESTÁNDOLO.
+ *
+ * Android solo ofrece «Instalar aplicación» —la de verdad, con su icono y sin
+ * barra de direcciones— cuando la página trae manifiesto Y un obrero con
+ * manejador de `fetch`. Chrome comprueba que EXISTA; no le pide que haga nada.
+ *
+ * Y no debe hacer nada. Lo natural aquí sería guardar la página para que abra
+ * sin señal, pero esto es una billetera: un `index.html` viejo servido desde
+ * la caché es gente operando con una versión que ya arreglamos, viendo saldos
+ * con un formato que ya cambió, y sin forma de darse cuenta. Se prefiere que
+ * sin señal no abra —que se entiende solo— a que abra mintiendo.
+ *
+ * Si algún día se cachea algo, que sean los archivos con huella en el nombre
+ * (`app.js?v=…`), nunca el HTML. */
+self.addEventListener('fetch', () => {});
+
 /* El aviso que llega del servidor.
  *
  * El cuerpo trae de quién es y qué es: un mensaje o una llamada. Una llamada
