@@ -149,6 +149,26 @@ def _pegar(im: Image.Image, capa: Image.Image, cx: int, cy: int, a: float,
     im.alpha_composite(capa, pos)
 
 
+def _velo(im: Image.Image, cx: int, cy: int, radio: int, fuerza: float):
+    """Un velo oscuro y muy difuso detrás de un grupo de marcas.
+
+    Sin esto, AuCorp y Ordenex —que son líneas doradas finas— desaparecen dentro
+    de un plano claro, y engordarlas para compensar las afea. Es lo que hace un
+    grafista al poner tipografía sobre una foto clara, y no se ve como una
+    mancha porque cae en coseno hasta cero."""
+    if fuerza <= 0.01:
+        return
+    n = 220
+    y, x = np.mgrid[0:n, 0:n]
+    r = np.sqrt(((x - n / 2) / (n / 2)) ** 2 + ((y - n / 2) / (n / 2)) ** 2)
+    g = np.clip(1 - r, 0, 1) ** 1.6
+    capa = Image.fromarray((g * 255 * fuerza).astype(np.uint8)).resize(
+        (radio * 2, radio * 2), Image.BICUBIC)
+    negro = Image.new("RGBA", capa.size, (0, 0, 0, 0))
+    negro.putalpha(capa)
+    im.alpha_composite(negro, (cx - radio, cy - radio))
+
+
 def producto(im: Image.Image, nombre: str, clave: str, rel: float, dur: float):
     """La ficha de producto: la marca entra con sobrepaso —tiene masa—, y el
     nombre debajo en versalitas. El interletraje es de VERDAD y no dos espacios
@@ -159,14 +179,17 @@ def producto(im: Image.Image, nombre: str, clave: str, rel: float, dur: float):
     # La ficha vive en el TERCIO INFERIOR. A media altura la marca caía encima
     # del objeto —sobre la moneda de Ordenex parecía una pegatina— y ahí es
     # donde está el sujeto en la mitad de los planos.
-    _pegar(im, marca(clave, 132), W // 2, int(H * 0.672), a, escala=0.86 + 0.14 * e)
+    # Un velo detrás de la marca: a esta altura cae sobre el sujeto en la mitad
+    # de los planos, y sin él vuelve a parecer una pegatina.
+    _velo(im, W // 2, int(H * 0.617), 300, 0.34 * a)
+    _pegar(im, marca(clave, 132), W // 2, int(H * 0.617), a, escala=0.86 + 0.14 * e)
     d = ImageDraw.Draw(im, "RGBA")
     f = fuente(F_ROT, 27)
     txt = nombre.upper()
     track = 7.5
     an = ancho_con_track(d, txt, f, track)
     ta = salida(float(np.clip((rel - 0.18) / 0.35, 0, 1)), 4.0) * fuera
-    texto_con_sombra(im, ((W - an) / 2, H * 0.727), txt, f,
+    texto_con_sombra(im, ((W - an) / 2, H * 0.673), txt, f,
                      TEXTO + (int(215 * ta),), track, sombra=0.5, radio=18)
 
 
@@ -180,9 +203,10 @@ FAMILIA = [("veta", 270), ("genesis", 330), ("mytokenpay", 30),
 def familia(im: Image.Image, rel: float):
     """Todo el ecosistema en un cuadro: Orden Global en el centro y las seis
     marcas entrando una a una en órbita, con sobrepaso y sombra larga."""
-    cx, cy, radio = W // 2, int(H * 0.44), 360
+    cx, cy, radio = W // 2, int(H * 0.42), 372
     e0 = salida_rebote(float(np.clip(rel / 0.9, 0, 1)))
-    _pegar(im, marca("og", 300), cx, cy, float(np.clip(rel / 0.4, 0, 1)),
+    _velo(im, cx, cy, 640, 0.62 * float(np.clip(rel / 0.5, 0, 1)))
+    _pegar(im, marca("og", 330), cx, cy, float(np.clip(rel / 0.4, 0, 1)),
            escala=0.9 + 0.1 * e0)
     for k, (clave, ang) in enumerate(FAMILIA):
         t0 = 0.7 + escalonar(k, 7.0)
@@ -190,7 +214,7 @@ def familia(im: Image.Image, rel: float):
         a = float(np.clip((rel - t0) / 0.25, 0, 1))
         x = cx + int(radio * np.cos(np.radians(ang)))
         y = cy + int(radio * np.sin(np.radians(ang)))
-        _pegar(im, marca(clave, 118), x, y, a, escala=0.8 + 0.2 * e)
+        _pegar(im, marca(clave, 134), x, y, a, escala=0.8 + 0.2 * e)
 
 
 def extraer(clip: Path, destino: Path) -> int:
@@ -243,12 +267,18 @@ def rotulo(im: Image.Image, texto: str, rel: float, dur: float, chico=False,
     porque una letra gorda a ese cuerpo se lee como cartel de oferta."""
     lineas = texto.split("\n")
     if chico:
-        f, track, salto = fuente(F_MED, int(46 * escala)), 0.0, 1.42
+        f, track, salto = fuente(F_MED, int(52 * escala)), 0.0, 1.40
     else:
         f, track, salto = fuente(F_TIT, int(86 * escala)), -1.8, 1.22
-    y = H * (alto if alto is not None else (0.78 if chico else 0.79))
+    y = H * (alto if alto is not None else (0.725 if chico else 0.728))
     fuera = salida(float(np.clip((dur - rel) / 0.35, 0, 1)), 3.0)
     d = ImageDraw.Draw(im, "RGBA")
+    # Defensa: si una línea no cabe, se encoge la fuente hasta que quepa. Sin
+    # esto, subir el cuerpo de un rótulo lo saca del cuadro sin avisar —pasó con
+    # la línea de las cuatro monedas, que se cortaba en "ONDK"—.
+    tope = W * 0.90
+    while max(ancho_con_track(d, ln, f, track) for ln in lineas) > tope and f.size > 20:
+        f = fuente(F_MED if chico else F_TIT, f.size - 2)
     k = 0
     for ln in lineas:
         palabras = ln.split(" ")
@@ -278,7 +308,7 @@ def rotulo(im: Image.Image, texto: str, rel: float, dur: float, chico=False,
                 im.alpha_composite(sm, (0, 3))
             im.alpha_composite(capa)
             x += an
-        y += (46 if chico else 86) * escala * salto
+        y += (52 if chico else 86) * escala * salto
 
 
 def burbuja(im: Image.Image, texto: str, rel: float, dur: float, foto=None,

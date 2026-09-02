@@ -85,7 +85,8 @@
           "dur": 1.9,
           "texto": "Un gramo de oro."
         }
-      ]
+      ],
+      "desde": 0.8
     },
     {
       "plano": "02_oro_moneda",
@@ -106,9 +107,11 @@
       "rotulos": [
         {
           "t": 10.0,
-          "dur": 2.6,
-          "texto": "ORIGEN · AUKA · AGKA · ONDK",
-          "chico": true
+          "dur": 2.8,
+          "texto": "ORIGEN · AUKA\nAGKA · ONDK",
+          "chico": true,
+          "escala": 1.25,
+          "alto": 0.665
         }
       ]
     },
@@ -256,9 +259,10 @@
         },
         {
           "t": 49.9,
-          "dur": 2.2,
+          "dur": 2.8,
           "texto": "ordenscan.com",
-          "chico": true
+          "chico": true,
+          "escala": 1.15
         }
       ]
     },
@@ -278,7 +282,7 @@
           "t": 56.4,
           "dur": 5.8,
           "texto": "El futuro es Orden Global.",
-          "alto": 0.66,
+          "alto": 0.615,
           "escala": 0.92
         },
         {
@@ -286,7 +290,8 @@
           "dur": 4.4,
           "texto": "Un sistema financiero\nque se puede comprobar.",
           "chico": true,
-          "alto": 0.755
+          "alto": 0.705,
+          "escala": 1.12
         }
       ]
     }

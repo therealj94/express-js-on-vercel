@@ -178,7 +178,7 @@
           "dur": 2.9,
           "texto": "Ya compré todo, mi hija.",
           "foto": "/tmp/claude-0/-home-user-express-js-on-vercel/ea1ee5d5-3bb0-5210-b62d-18fde5349b2f/scratchpad/foto_mesa.png",
-          "alto": 0.58
+          "alto": 0.545
         }
       ]
     },
@@ -192,7 +192,7 @@
           "t": 42.2,
           "dur": 5.0,
           "texto": "Orden Global.",
-          "alto": 0.58,
+          "alto": 0.545,
           "escala": 1.15
         },
         {
@@ -200,7 +200,8 @@
           "dur": 3.7,
           "texto": "Un sistema financiero\nque se puede comprobar.",
           "chico": true,
-          "alto": 0.68
+          "alto": 0.645,
+          "escala": 1.12
         }
       ]
     }
