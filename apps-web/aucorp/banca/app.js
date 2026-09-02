@@ -1195,11 +1195,27 @@ const BANCA = (() => {
          la RESPUESTA, y esa sí se comprueba contra la lista. */
       esperandoLlave = true;
       cargando = true; pintar();
-      for (const casa of CASAS_MADRE) {
-        try { parent.postMessage({ og: 'sso-pedido', app: 'aucorp' }, casa); } catch { /* la que no sea, no recibe */ }
-      }
-      /* Si la casa madre no contesta en diez segundos, algo pasó del otro
-         lado: se dice, en vez de dejar a alguien mirando «Entrando…». */
+
+      const pedirLlave = () => {
+        for (const casa of CASAS_MADRE) {
+          try { parent.postMessage({ og: 'sso-pedido', app: 'aucorp' }, casa); } catch { /* la que no sea, no recibe */ }
+        }
+      };
+      pedirLlave();
+
+      /* SE PREGUNTA DOS VECES ANTES DE RENDIRSE.
+         La primera pregunta puede caer en un hueco —la casa madre repintando,
+         el WebView entregando el mensaje tarde— y una sola oportunidad
+         convierte un tropiezo de medio segundo en un error a pantalla
+         completa. La segunda va a los tres segundos y no cuesta nada: el
+         mensaje no lleva secreto ninguno. */
+      setTimeout(() => { if (esperandoLlave) pedirLlave(); }, 3000);
+
+      /* Si tras las dos preguntas sigue el silencio, se dice. Y se dice lo que
+         de verdad se sabe: que no hubo respuesta. Antes esto también saltaba
+         cuando la wallet SÍ contestaba «no tengo sesión» —ahora eso llega como
+         `sso-no` y tiene su propio mensaje—, así que este cartel ya solo
+         aparece por silencio de verdad. */
       setTimeout(() => {
         if (!esperandoLlave) return;
         esperandoLlave = false;
@@ -1221,8 +1237,12 @@ const BANCA = (() => {
     } else if (ev.data.og === 'sso-no') {
       esperandoLlave = false;
       cargando = false;
+      /* Cada «no» con su nombre: los tres se arreglan de forma distinta, y un
+         mensaje genérico manda a la persona a probar lo que no le sirve. */
       avisar(ev.data.motivo === 'sin-gid'
         ? 'Para entrar a AuCorp hace falta tener la identidad verificada en Genesis ID. Terminá la verificación en tu Veta Wallet y volvé.'
+        : ev.data.motivo === 'sin-sesion'
+        ? 'Tu sesión de Veta Wallet se cerró. Volvé a entrar en la wallet y abrí AuCorp de nuevo.'
         : 'No se pudo conseguir la llave de la wallet. Probá de nuevo en un momento.', true);
     }
   });

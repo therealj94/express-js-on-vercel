@@ -6634,17 +6634,45 @@ const VETA = (() => {
     const marco = $('.marco-hoja');
     const suyo = marco ? ORIGEN_DE(marco.src) : null;
     if (!suyo || ev.origin !== suyo) return;
-    if (!sesion?.token) { avisar(t('err.sesion')); return; }
+
+    /* SE LE CONTESTA AL MARCO, NO A `ev.source`.
+     *
+     * EL FALLO QUE ESTO ARREGLA: dentro de la app, abrir AuCorp desde el
+     * Núcleo terminaba en «Veta Wallet no contestó» a los diez segundos. En un
+     * navegador de escritorio el mismo camino funciona, y esa diferencia es la
+     * pista: `ev.source` es la ventana que mandó el mensaje, y el WebView de
+     * Android no siempre la entrega para un marco de otro origen. Cuando llega
+     * nula, `ev.source?.postMessage(...)` no hace NADA —el encadenamiento
+     * opcional se la traga sin error— y del otro lado solo se ve el silencio.
+     *
+     * El marco lo tenemos en la mano: es el iframe que acabamos de validar. Se
+     * le habla a él. Es igual de cerrado —el destino sigue siendo `suyo`, el
+     * origen que ya comprobamos— y no depende de que el WebView colabore.
+     * `ev.source` queda de respaldo por si algún día `contentWindow` es el que
+     * falta. */
+    const contestar = (msg) => {
+      const destino = marco?.contentWindow || ev.source;
+      if (!destino) return false;
+      try { destino.postMessage(msg, suyo); return true; } catch { return false; }
+    };
+
+    /* SIN SESIÓN TAMBIÉN SE CONTESTA. Antes se avisaba acá y se volvía sin
+       decirle nada a la casa de adentro, que se quedaba esperando hasta
+       rendirse con un mensaje que echaba la culpa al lado equivocado. */
+    if (!sesion?.token) {
+      contestar({ og: 'sso-no', motivo: 'sin-sesion' });
+      avisar(t('err.sesion'));
+      return;
+    }
     try {
       const d = await pedir('/genesis/sso/token', { metodo: 'POST' });
       if (!d?.token) throw new Error(t('err.sesion'));
-      ev.source?.postMessage({ og: 'sso-token', token: d.token }, suyo);
+      contestar({ og: 'sso-token', token: d.token });
     } catch (e) {
       /* El 403 es Genesis diciendo que sin identidad verificada no hay token:
          se dice y se abre la verificación, que es lo único que la desbloquea.
          Y se le avisa a la casa de adentro para que deje de esperar. */
-      try { ev.source?.postMessage({ og: 'sso-no', motivo: e.estado === 403 ? 'sin-gid' : 'error' }, suyo); }
-      catch { /* nada */ }
+      contestar({ og: 'sso-no', motivo: e.estado === 403 ? 'sin-gid' : 'error' });
       if (e.estado === 403) { avisar(t('nu.cerrado')); vista('verificar'); }
       else avisar(e.message);
     }
