@@ -482,7 +482,17 @@ async function traer(forzar) {
     const q = new URLSearchParams({ limite: '100' });
     if (app !== 'todas') q.set('app', app);
     if (conexPlataforma) q.set('plataforma', conexPlataforma);
-    Object.assign(r, await p('/sesiones?' + q.toString()));
+    /* El reparto va aparte de la lista a propósito: la lista son las cien más
+       recientes y el reparto es el total. Mezclarlos daría un porcentaje
+       calculado sobre una página, que es la clase de cifra que se cita en una
+       reunión y no significa nada. */
+    const qr = new URLSearchParams();
+    if (app !== 'todas') qr.set('app', app);
+    const [ses, rep] = await Promise.all([
+      p('/sesiones?' + q.toString()),
+      p('/reparto?' + qr.toString()).catch(() => null),
+    ]);
+    Object.assign(r, ses, { reparto: rep });
   } else if (pestana === 'seguridad') {
     Object.assign(r, await p('/seguridad'));
   } else if (pestana === 'salud') {
@@ -1417,8 +1427,32 @@ function vistaConexiones(d) {
     `<button class="g mini ${conexPlataforma === v ? 'sel' : ''}"
        onclick="ponPlataforma('${v}')">${t}</button>`).join('');
 
+  /* El reparto por dónde entra la gente. Es la primera pregunta que se hace
+     de este panel —«¿cuántos usan la app y cuántos la web?»— y hasta ahora
+     había que deducirla leyendo dos columnas de la tabla fila por fila. */
+  const R = d.reparto;
+  const repartoKpis = !R ? '' : `
+  <div class="kpis">
+    ${kpi('Personas en total', n(R.personas), 'g',
+      `<div class="d">todas las que han abierto Veta Wallet alguna vez</div>`)}
+    ${kpi('Solo por la app', n(R.soloApp), 'v',
+      `<div class="d">${R.personas ? Math.round(R.soloApp * 100 / R.personas) : 0}% del total</div>`)}
+    ${kpi('Solo por la web', n(R.soloWeb), 'c',
+      `<div class="d">${R.personas ? Math.round(R.soloWeb * 100 / R.personas) : 0}% del total</div>`)}
+    ${kpi('Por las dos', n(R.ambas), 'gold',
+      `<div class="d">entran por donde les queda mejor</div>`)}
+  </div>
+  <p style="color:var(--faint);font-size:11.5px;margin:-4px 0 14px">
+    <b>${n(R.estrenaronApp)}</b> estrenaron la app en los últimos ${R.dias} días
+    ${R.estrenaronWeb ? ` · <b>${n(R.estrenaronWeb)}</b> entraron por primera vez desde la web` : ''}${
+    R.sinDato ? ` · ${n(R.sinDato)} de antes del desglose por plataforma` : ''}.
+    Descargas no se pueden contar: el archivo lo sirve Expo y quien lo baja y no
+    lo abre nunca no deja rastro. Lo que se cuenta es quién <b>abrió</b> la app.
+  </p>`;
+
+
   if (!filas.length) {
-    return `<div class="tarjeta p" style="margin-bottom:14px">
+    return repartoKpis + `<div class="tarjeta p" style="margin-bottom:14px">
         <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
           ${botonera}
           <button class="g mini" onclick="pintar(true)">Actualizar</button>
@@ -1428,8 +1462,9 @@ function vistaConexiones(d) {
   }
 
   return `
+  ${repartoKpis}
   <div class="kpis">
-    ${kpi('Personas conectadas', n(filas.length), 'g',
+    ${kpi('Conexiones recientes', n(filas.length), 'g',
       `<div class="d">las ${filas.length} más recientes</div>`)}
     ${kpi('Con nombre', n(conNombre), 'v',
       `<div class="d">${n(filas.length - conNombre)} fuera del padrón</div>`)}

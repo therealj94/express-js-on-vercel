@@ -20,7 +20,7 @@ import {
   resumen, porApp, paises, retencion, errores, errorDetalle, marcarError,
   embudoKyc, tiemposDeVerificacion, saludEcosistema, serviciosVigilados,
 } from '../analitica/consultas.js'
-import { explorar, afectadosPorError, ultimasSesiones } from '../analitica/explorador.js'
+import { explorar, afectadosPorError, ultimasSesiones, repartoPorPlataforma } from '../analitica/explorador.js'
 import { almacen, leerCenso } from '../analitica/eventos.js'
 import { clavePublicaDe, rotarPublica } from '../auth/aplicaciones.js'
 import { consultar as bitacoraConsultar, registrar } from '../audit/bitacora.js'
@@ -109,6 +109,18 @@ analiticaRouter.get('/sesiones', exigePermiso('usuarios.ver'), async (req, res) 
   })
   registrar(req.operador!.email, 'analitica.sesiones', q.app || 'todas', { total: r.total })
   res.json(r)
+})
+
+/**
+ * Cuánta gente por app y cuánta por web, sobre el total y no sobre una página.
+ *
+ * Va con el permiso del padrón y no con el de analítica porque se lee junto a
+ * la lista de conexiones, que sí lleva nombres; separar los dos permisos aquí
+ * solo haría que la pantalla se cargara a medias para el mismo operador.
+ */
+analiticaRouter.get('/reparto', exigePermiso('usuarios.ver'), async (req, res) => {
+  const q = req.query as Record<string, string>
+  res.json(await repartoPorPlataforma({ app: app(q.app), dias: num(q.dias) }))
 })
 
 // ── Resumen ──────────────────────────────────────────────────────────────────

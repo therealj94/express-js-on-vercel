@@ -83,6 +83,7 @@
     },
     "android": {
       "package": "com.ordenglobal.app",
+      "googleServicesFile": "./google-services.json",
       "softwareKeyboardLayoutMode": "resize",
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
