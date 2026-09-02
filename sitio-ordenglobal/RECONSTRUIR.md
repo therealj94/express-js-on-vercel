@@ -1,8 +1,18 @@
 # El sitio de ordenglobal.org
 
-"El viaje del valor" es una sola pagina: `index.html`, sin dependencias ni
-compilacion. Todo lo demas son medios (216 fotogramas y 9 imagenes) que la
-pagina carga a mano.
+Desde el 2-sep son dos paginas, sin dependencias ni compilacion:
+
+- `index.html` — la **portada**: quienes somos, que se puede hacer hoy, como
+  funciona, ORIGEN dicho con las palabras de la Junta (referencia al oro, nunca
+  "respaldada"), la cadena con el bloque en vivo, las piezas con su estado real
+  y la mision. Capturas de la app de verdad, sin video generado. Antes de esto
+  la portada era la historia, y nadie entendia que se vendia.
+- `historia/index.html` — **"El viaje del valor"**, la pagina anterior tal cual,
+  ahora como seccion opcional. Sus rutas de medios pasaron a absolutas
+  (`/assets/`, `/seq/`, `/audio/`) porque vive un nivel mas adentro.
+
+Mas `robots.txt` y `sitemap.xml`. Todo lo demas son medios (216 fotogramas,
+el audio y las imagenes) que las paginas cargan a mano.
 
 ## Donde vive
 
@@ -20,29 +30,42 @@ media otra.
 
 ## Reconstruir la copia de trabajo
 
-Los medios no estan en el repositorio: son 11 MB de JPEG que ya viven en
-produccion y se bajan de ahi.
+Los fotogramas y el audio no estan en el repositorio: son 11 MB que ya viven
+en produccion y se bajan de ahi. Las imagenes que usa la portada (la captura de
+la billetera, los logos de PULSE2CHAT y Genesis, las cuatro monedas y la imagen
+social) si estan, en `assets/`.
 
 ```sh
-mkdir -p /tmp/ogsite/assets /tmp/ogsite/audio
-cd /tmp/ogsite
-cp <repo>/sitio-ordenglobal/index.html .
-for a in og veta veta-mark veta-icon origen origen-mark genesis-mark favicon-og; do
+R=/tmp/ogsite; mkdir -p $R/assets $R/audio $R/historia; cd $R
+cp <repo>/sitio-ordenglobal/index.html <repo>/sitio-ordenglobal/robots.txt <repo>/sitio-ordenglobal/sitemap.xml .
+cp <repo>/sitio-ordenglobal/historia/index.html historia/
+cp <repo>/sitio-ordenglobal/assets/* assets/
+for a in og favicon-og genesis-mark veta-icon; do
   curl -so assets/$a.png https://www.ordenglobal.org/assets/$a.png
 done
-curl -so assets/genesis.ico https://www.ordenglobal.org/assets/genesis.ico
 for s in hero gold blockchain origen; do
   mkdir -p seq/$s
   for i in $(seq -w 0 53); do
     curl -so seq/$s/$i.jpg https://www.ordenglobal.org/seq/$s/$i.jpg
   done
 done
-python3 <repo>/sitio-ordenglobal/musica/componer.py   # capas/*.wav y mezcla.wav
-python3 <repo>/sitio-ordenglobal/musica/efectos.py    # efectos/*.wav
-# a MP3: capas a 72k, efectos a 64k, la mezcla plana a 96k (ver "La musica")
+for a in ambiente capa-fondo capa-bajo capa-arpegio capa-pad capa-bateria capa-melodia fx-clic fx-suave; do
+  curl -so audio/$a.mp3 https://www.ordenglobal.org/audio/$a.mp3
+done
+python3 <repo>/sitio-ordenglobal/limpiar-fotogramas.py $R   # inocuo si ya estan limpios
 ```
 
-Al terminar tienen que ser 237 archivos y ~16 MB.
+Al terminar tienen que ser 241 archivos y ~15 MB. Si en vez de bajar el audio
+se regenera: `musica/componer.py` (capas y mezcla) y `musica/efectos.py`, a MP3
+con capas a 72k, efectos a 64k y la mezcla plana a 96k (ver "La musica").
+
+### La marca de Gemini
+
+Las secuencias `hero`, `gold` y `blockchain` salieron de un generador que firma
+cada cuadro con una estrellita en la esquina inferior derecha. José pidio que
+desapareciera. `limpiar-fotogramas.py` la tapa con el trozo vecino de la imagen,
+y los cuadros que hay en produccion desde el 2-sep ya estan limpios; el script
+queda para si alguna vez se vuelven a generar. `origen` nunca la tuvo.
 
 ## Publicar
 
@@ -53,8 +76,16 @@ node probar-bso.mjs                # comprueba la banda sonora en un navegador
 
 Amplify **reemplaza el manifiesto entero** en cada despliegue: lo que no va en
 la subida desaparece del sitio. Por eso el script recorre el arbol completo y
-sube los 237 archivos aunque solo haya cambiado uno. Nunca subir un archivo
-suelto.
+sube los 241 archivos aunque solo haya cambiado uno. Nunca subir un archivo
+suelto. Las llaves son las del usuario `jose` (`$SP/aws_llaves.json` en la
+sesion de trabajo); una sesion temporal vencida en el entorno da
+`UnrecognizedClientException` — hay que vaciar `AWS_SESSION_TOKEN`.
+
+Los dos datos vivos de la portada (precio del ORIGEN y ultimo bloque) salen de
+las mismas fuentes que la billetera: `api.gold-api.com/price/XAU` (onza ÷
+31,1035 ÷ 55) y el RPC publico `rpc.ordenglobal-rpc.com`. Los dos contestan con
+CORS para `www.ordenglobal.org`; si alguno cae, el numero queda en guion, nunca
+inventado.
 
 El espejo del servidor viejo ya **no recibe trafico**: `www` resuelve a
 CloudFront en todos los resolutores que se probaron, y el apex (`ordenglobal.org`
