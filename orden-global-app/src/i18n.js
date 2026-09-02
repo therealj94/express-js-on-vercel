@@ -792,7 +792,7 @@ const S = {
     'nav.exit': 'Toca atrás otra vez para salir',
     'notif.gotToast': '¡Recibiste tokens! Saldo actualizado',
     // notificaciones
-    'set.notifsSub': 'Avisos cuando recibes tokens y cuando llega un mensaje de PULSE CHAT, con la app abierta o cerrada',
+    'set.notifsSub': 'Avisos cuando recibes tokens y cuando llega un mensaje de PULSE2CHAT, con la app abierta o cerrada',
     // La vista previa no da NINGÚN aviso del teléfono: expo-notifications no
     // se puede cargar allí (ver la cabecera de notify.js), así que tampoco
     // los locales. La versión anterior de este texto prometía avisos «con la
@@ -1563,7 +1563,7 @@ const S = {
     'send.doneP': 'The transaction is recorded on the Orden Global blockchain. The recipient gets a notification in their app.',
     'nav.exit': 'Press back again to exit',
     'notif.gotToast': 'Tokens received! Balance updated',
-    'set.notifsSub': 'Alerts when you receive tokens and when a PULSE CHAT message arrives, with the app open or closed',
+    'set.notifsSub': 'Alerts when you receive tokens and when a PULSE2CHAT message arrives, with the app open or closed',
     'set.notifsGo': 'Preview (Expo Go): your phone will not alert you about anything — not money, not chat. With the app open you will see it inside the app. In the installed APK alerts do arrive.',
     'set.notifsOn': 'Alerts enabled', 'set.notifsOff': 'Alerts disabled',
     'set.notifsGoOn': 'Saved. In this preview your phone does not alert you; it will turn on in the APK.',

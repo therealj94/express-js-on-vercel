@@ -63,7 +63,7 @@ const TXT = {
     dinP: 'Guarda, envía y recibe en segundos. Tus tokens, tu tarjeta y tus remesas, en la billetera del ecosistema.',
     negK: 'TU NEGOCIO', negT: 'MyTokenPay',
     negP: 'Cobra con un QR, explora comercios y haz crecer lo tuyo. La caja registradora que cabe en el bolsillo.',
-    genK: 'TU GENTE', genT: 'PULSE CHAT',
+    genK: 'TU GENTE', genT: 'PULSE2CHAT',
     genP: 'Conversa con los tuyos y manda dinero sin salir del hilo. Tu gente del ecosistema, a un toque.',
     nexK: 'TU ASISTENTE', nexT: 'AU-RA',
     nexP: 'Pídeselo con la voz: «envía 15 a Juan», «abre mi tarjeta». AU-RA te lleva; firmar, siempre te toca a ti.',
@@ -83,7 +83,7 @@ const TXT = {
     dinP: 'Store, send and receive in seconds. Your tokens, your card and your remittances, in the ecosystem’s wallet.',
     negK: 'YOUR BUSINESS', negT: 'MyTokenPay',
     negP: 'Charge with a QR, explore merchants and grow what’s yours. The cash register that fits in your pocket.',
-    genK: 'YOUR PEOPLE', genT: 'PULSE CHAT',
+    genK: 'YOUR PEOPLE', genT: 'PULSE2CHAT',
     genP: 'Talk with your people and send money without leaving the thread. Your ecosystem contacts, one tap away.',
     nexK: 'YOUR ASSISTANT', nexT: 'AU-RA',
     nexP: 'Just say it: “send 15 to Juan”, “open my card”. AU-RA takes you there; signing is always yours.',
@@ -111,7 +111,7 @@ const TARJETAS = [
     grad: ['#D8F7FF', '#5FC6EA', '#453398'], halo: '#5FC6EA', lente: '#0A0812',
   },
   {
-    // PULSE CHAT aún no tiene PNG en assets/: lleva la misma lente con su
+    // PULSE2CHAT aún no tiene PNG en assets/: lleva la misma lente con su
     // icono dentro, igual que hace el Núcleo — un solo lenguaje visual.
     k: 'gen', vis: 'esfera', icono: 'chatbubbles', zoom: 0,
     grad: ['#FBE0D4', '#E0937A', '#8A4A38'], halo: '#E0937A', lente: '#20100A',

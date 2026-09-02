@@ -264,7 +264,7 @@ export function Send({ nav, params }) {
             .catch(() => {});
         }
 
-        // Si el envío nació de una conversación de PULSE CHAT, el comprobante
+        // Si el envío nació de una conversación de PULSE2CHAT, el comprobante
         // se publica ALLÍ, y solo ahora: cuando la cadena ya confirmó. Antes
         // sería prometer un pago que todavía puede fallar. Que no se pueda
         // avisar --sin red, por ejemplo-- no invalida el envío: el dinero ya
@@ -402,11 +402,11 @@ export function Send({ nav, params }) {
             style={[styles.input, { marginTop: 9, fontSize: 13.5 }]}
           />
         )}
-        {/* Cuando el envío nace de PULSE CHAT y el destino YA está guardado,
+        {/* Cuando el envío nace de PULSE2CHAT y el destino YA está guardado,
             se ofrece renombrarlo aquí mismo: es el momento en que uno nota
             que «pedro@…» merece llamarse Pedro. La hoja escribe en las DOS
             libretas (la del teléfono y la del chat) para que Enviar,
-            Actividad y PULSE CHAT digan siempre el mismo nombre. */}
+            Actividad y PULSE2CHAT digan siempre el mismo nombre. */}
         {params?.avisarChat && contactoDest ? (
           <Pressable onPress={() => { hap(); setNombreEd(contactoDest.name); setEditaNombre(true); }} style={styles.editNombre}>
             <Icon name="create" size={15} color={C.gold} />
@@ -468,7 +468,7 @@ export function Send({ nav, params }) {
         data={done}
         contacts={contacts}
         onClose={() => { setDone(null); nav.go('home'); }}
-        // El envío que nació en PULSE CHAT vuelve a su charla, no a la
+        // El envío que nació en PULSE2CHAT vuelve a su charla, no a la
         // billetera: el comprobante ya cayó en ese hilo y es ahí donde la
         // conversación sigue. AuroChat abre el hilo con params.con.
         onChat={done?.alChat ? () => { const c = done.alChat; setDone(null); nav.go('chat', { con: c }); } : null}
@@ -836,7 +836,7 @@ function SentReceipt({ data, contacts, onClose, onChat }) {
               style={{ alignSelf: 'stretch', marginTop: 18 }}
             />
           ) : null}
-          {/* El envío que nació en PULSE CHAT ofrece volver a la charla: el
+          {/* El envío que nació en PULSE2CHAT ofrece volver a la charla: el
               comprobante ya cayó en ese hilo, y dejar al usuario varado en
               la billetera era perder la conversación que lo trajo aquí. */}
           {data.alChat && onChat ? (

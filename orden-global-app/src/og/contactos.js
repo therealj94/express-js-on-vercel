@@ -1,4 +1,4 @@
-// ═══ LA LIBRETA DE PULSE CHAT ════════════════════════════════════════════
+// ═══ LA LIBRETA DE PULSE2CHAT ════════════════════════════════════════════
 // Vivía dentro de AuroChat.js y solo se ESCRIBÍA: ninguna pantalla la leía,
 // así que «Guardado en tus contactos» prometía una lista que no existía.
 // Ahora vive aquí para que la lean todos los que la necesitan: AuroChat
