@@ -39,6 +39,7 @@ EVENTOS = [
     (25.40, "e_pago",   1.45),   # 07 · el pago sin contacto. Lo pidió José:
                                  #      "que suene como cuando se paga con Apple"
     (29.30, "s_datafono", 0.50),  # 08 · la tarjeta entra y el terminal acepta
+    (32.45, "e_pago",   0.42),   # 09 · aparece el comprobante sobreimpreso
     (32.90, "e_roce",   0.42),   # 09 · el teléfono pasa de una mano a otra
     (36.70, "e_roce",   0.38),   # 10 · el hilo de luz cruza entre los dos
     (40.50, "e_moneda", 0.70),   # 11 · la moneda gira y se posa

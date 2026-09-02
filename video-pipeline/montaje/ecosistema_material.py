@@ -538,6 +538,57 @@ def tarjeta(im: Image.Image, ruta: str, rel: float, dur: float, alto=0.40,
     im.alpha_composite(t, pos)
 
 
+def transaccion(im: Image.Image, rel: float, dur: float, cantidad="10",
+                hora="07:57", alto=0.28):
+    """El comprobante del envío, SOBREIMPRESO y no dentro del teléfono.
+
+    Meterlo en la pantalla era forzarlo: a 200 píxeles de ancho no se lee y
+    parece un parche. José: *"quitemos el forzar poner en pantalla"*. Fuera de
+    la pantalla se lee entero, y sigue siendo la tarjeta de su app —el mismo
+    azul marino, el mismo filo de oro— así que dice lo mismo sin mentir sobre
+    dónde está."""
+    e = salida(float(np.clip(rel / 0.5, 0, 1)), 4.0)
+    fuera = salida(float(np.clip((dur - rel) / 0.4, 0, 1)), 3.0)
+    a = e * fuera
+    if a <= 0.02:
+        return
+    ancho, altura = int(W * 0.70), 356
+    x, y = (W - ancho) // 2, int(H * alto)
+    capa = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+    d = ImageDraw.Draw(capa, "RGBA")
+    d.rounded_rectangle([x, y, x + ancho, y + altura], 30,
+                        fill=(9, 28, 40, int(240 * a)),
+                        outline=(214, 173, 90, int(220 * a)), width=3)
+    dibujar_track(d, (x + 40, y + 32), "ENVIASTE", fuente(F_ROT, 28),
+                  (214, 173, 90) + (int(240 * a),), 5.0)
+    f = fuente(F_FUE, 96)
+    d.text((x + 40, y + 74), cantidad, font=f, fill=TEXTO + (int(255 * a),))
+    an = d.textlength(cantidad, font=f)
+    d.text((x + 54 + an, y + 122), "ORIGEN", font=fuente(F_ROT, 44),
+           fill=(214, 173, 90) + (int(245 * a),))
+    v = (58, 196, 122) + (int(245 * a),)
+    d.ellipse([x + 42, y + 196, x + 76, y + 230], outline=v, width=3)
+    d.line([(x + 50, y + 214), (x + 58, y + 222), (x + 69, y + 204)], fill=v, width=4)
+    d.text((x + 90, y + 194), f"confirmado · {hora}", font=fuente(F_MED, 36), fill=v)
+    d.line([(x + 40, y + 254), (x + ancho - 40, y + 254)],
+           fill=(46, 86, 96, int(220 * a)), width=2)
+    d.text((x + 40, y + 268), "Veta Wallet  →  Veta Wallet", font=fuente(F_MED, 30),
+           fill=(160, 186, 200) + (int(240 * a),))
+    d.text((x + 40, y + 308), "ordenscan.com", font=fuente(F_ROT, 30),
+           fill=(214, 173, 90) + (int(240 * a),))
+    # Máscara: crece desde la base, como todo lo demás de la pieza.
+    mask = Image.new("L", (W, H), 0)
+    ImageDraw.Draw(mask).rectangle(
+        [0, y + altura - (altura + 26) * e, W, y + altura + 26], fill=255)
+    capa.putalpha(Image.fromarray(
+        np.minimum(np.array(capa.split()[3]), np.array(mask))))
+    sm = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+    sm.putalpha(capa.split()[3].filter(
+        ImageFilter.GaussianBlur(30)).point(lambda v2: int(v2 * 0.45)))
+    im.alpha_composite(sm, (0, 8))
+    im.alpha_composite(capa)
+
+
 def logo(im: Image.Image, rel: float):
     """El logo de Orden Global formándose sobre la gota de oro, con sombra larga."""
     a = salida(np.clip(rel / 1.4, 0, 1), 3.5)
@@ -634,6 +685,12 @@ def main():
                 logo(im, t - b["t"] - 0.6)
             if b.get("familia"):
                 familia(im, t - b["t"] - 0.5)
+            if b.get("transaccion"):
+                c = b["transaccion"]
+                rel = t - c["t"]
+                if 0 <= rel <= c["dur"]:
+                    transaccion(im, rel, c["dur"], c.get("cantidad", "10"),
+                                c.get("hora", "07:57"), c.get("alto", 0.28))
             if b.get("tarjeta"):
                 c = b["tarjeta"]
                 rel = t - c["t"]

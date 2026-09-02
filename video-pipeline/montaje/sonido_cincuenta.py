@@ -41,6 +41,7 @@ EVENTOS = [
     (18.20, "s_vibra",   0.62),   # 07 · suena ALLÁ, antes de la mano (18,98)
     # La risa del muchacho fuera: Jose la oyo y distrae del momento en que
     # ella lee que le llego. El plano se sostiene solo con el ambiente.
+    (27.05, "e_pago",    0.34),   # 10 · aparece el comprobante sobreimpreso
     (32.80, "s_datafono", 0.55),  # 11 · el datáfono acepta (32,94)
     (37.10, "s_bolsa",   0.45),   # 13 · saca el pan en la mesa (37,19)
     (40.10, "s_mensaje", 0.55),   # 15 · le llega la foto de su madre
