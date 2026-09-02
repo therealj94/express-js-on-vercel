@@ -7,7 +7,9 @@
 // —datos, documento, rostro, revision— llega a Genesis ID como debe.
 
 import express from 'express'
-import { routerGenesis } from '/home/user/express-js-on-vercel/infra/genesis-proxy/genesis.router.js'
+// Ruta relativa: la absoluta que había apuntaba fuera de cualquier copia o
+// worktree del repositorio, y la prueba solo corría en una máquina.
+import { routerGenesis } from '../genesis.router.js'
 
 const USUARIO = { id: 'cuenta-42', email: 'prueba.puente@ejemplo.hn', address: '0xabc0000000000000000000000000000000000001' }
 
@@ -95,12 +97,24 @@ ok(v.estado === 200, 'POST /vincular -> 200')
 ok(JSON.stringify(v.cuerpo?.vinculos || []).includes('cuenta-42'), 'se ata a la cuenta de la SESION')
 ok(!JSON.stringify(v.cuerpo?.vinculos || []).includes('cuenta-de-otro'), 'ignora la cuenta que mando el cliente')
 
+console.log('\n9b. Lo leído del documento vuelve para confirmarlo, y el estado sabe qué está hecho')
+const est = await pedir('/estado')
+ok(est.cuerpo?.identidad?.hecho?.documento === true, 'hecho.documento = true tras el documento válido')
+ok(est.cuerpo?.identidad?.hecho?.rostro === true, 'hecho.rostro = true tras el selfie')
+ok(est.cuerpo?.identidad?.documentoDatos?.nombre === 'ANNA MARIA ERIKSSON', 'los datos del documento viajan para confirmarlos')
+ok((await pedir('/status')).estado === 200, 'GET /status responde igual que /estado')
+
+console.log('\n9c. Leer el documento desde la foto: sin lector en Genesis, se dice y no se inventa')
+const leido = await pedir('/documento/leer', { imagen: 'data:image/jpeg;base64,AAAA' })
+ok(leido.estado === 503 || leido.estado === 200, `POST /documento/leer -> ${leido.estado}`)
+ok(leido.estado !== 503 || leido.cuerpo?.motivo === 'sin-lector', 'sin proveedor: motivo "sin-lector"')
+
 console.log('\n10. Tamizado de direcciones')
 const limpia = await pedir('/tamiz/0x1111111111111111111111111111111111111111')
 ok(limpia.cuerpo?.tamizado === true && limpia.cuerpo?.sancionada === false, 'direccion normal -> no sancionada')
 const sucia = await pedir('/tamiz/0xDEADBEEF00000000000000000000000000000001')
 ok(sucia.cuerpo?.sancionada === true, 'direccion de la lista -> sancionada')
 
-console.log(fallos ? `\n${fallos} FALLOS` : '\nPUENTE OK — 20 comprobaciones')
+console.log(fallos ? `\n${fallos} FALLOS` : '\nPUENTE OK — 26 comprobaciones')
 servidor.close()
 process.exit(fallos ? 1 : 0)

@@ -199,7 +199,10 @@ let claveBitacora: Buffer | null | undefined
 
 function llaveBitacora(): Buffer | null {
   if (claveBitacora !== undefined) return claveBitacora
-  const secreto = process.env.GENESIS_BITACORA_CLAVE?.trim()
+  // `GENESIS_BITACORA_LLAVE` es el mismo secreto con el nombre que usa el
+  // resto de la documentación de despliegue; se aceptan los dos para que una
+  // variable mal nombrada en Render no deje la bitácora sin firmar en silencio.
+  const secreto = (process.env.GENESIS_BITACORA_CLAVE || process.env.GENESIS_BITACORA_LLAVE)?.trim()
   // Una llave corta no es una llave: da la sensacion de firmar sin firmar.
   claveBitacora = secreto && secreto.length >= 32
     ? scryptSync(secreto.normalize('NFKC'), 'genesis-bitacora-v1', 32,

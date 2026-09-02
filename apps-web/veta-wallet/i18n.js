@@ -1040,6 +1040,24 @@ es: {
   'perf.guardar': 'Guardar', 'perf.guardado': 'Nombre actualizado',
   'perf.eNombre': 'Escribí un nombre.',
 
+  // ── la tarjeta de identidad y la comprobación pública /gid/<GID> ────────
+  'gid.qrPie': 'Cualquiera puede escanear el código para saber si tu credencial es válida. Solo ve «verificada» y la fecha: nunca tu nombre ni tu documento.',
+  'gid.estado.verificada': 'Verificada', 'gid.estado.revision': 'En revisión', 'gid.estado.suspendida': 'Suspendida',
+  'gid.estado.rechazada': 'Rechazada', 'gid.estado.pendiente': 'Sin verificar',
+  'gid.tarjeta.titular': 'Titular', 'gid.tarjeta.sinGid': 'Se emite al aprobarse',
+  'gid.tarjeta.verificadaEl': 'Verificada el', 'gid.tarjeta.actualizada': 'Actualizada', 'gid.tarjeta.estado': 'Estado',
+  'gid.tarjeta.qrPie': 'Escaneá para comprobar: solo dice si es válida y desde cuándo. Nunca tus datos.',
+  'gid.tarjeta.qrSin': 'El código aparece cuando la identidad se apruebe.',
+  'comp.t': 'Comprobar una credencial', 'comp.p': 'Esta página solo dice si un Genesis ID está verificado y desde cuándo. No muestra ningún dato de la persona.',
+  'comp.buscando': 'Consultando a Genesis ID…',
+  'comp.ok': 'Credencial verificada', 'comp.okP': 'Genesis ID confirma esta identidad. Verificada el',
+  'comp.no': 'No verificada', 'comp.noP': 'Este GID no corresponde a una identidad verificada en Genesis ID.',
+  'comp.malFormado': 'El código no es válido', 'comp.malFormadoP': 'Este GID está mal escrito: falla su dígito de control. Revisalo carácter por carácter.',
+  'comp.noPude': 'No se pudo comprobar', 'comp.noPudeP': 'Genesis ID no respondió. Esto NO significa que la credencial sea falsa: volvé a intentarlo en un momento.',
+  'comp.negocio': 'negocio',
+  'comp.pie': 'La comprobación la responde Genesis ID, el servicio de identidad de Orden Global. Un GID se puede comprobar las veces que haga falta.',
+  'comp.irApp': 'Ir a Veta Wallet',
+
   /* ── el sorteo de 1 AUKA ──────────────────────────────────────────────────
      Tres semanas: cierra el 9 de septiembre de 2026, 23:59 de Honduras. La
      regla de cobre del copy: AUKA SIGUE el precio de la onza — jamás «es una
@@ -2018,6 +2036,24 @@ en: {
   'perf.nombreP': 'It is the name you see in the app and the one on the card. It is saved in this browser.',
   'perf.guardar': 'Save', 'perf.guardado': 'Name updated',
   'perf.eNombre': 'Type a name.',
+
+  // ── the identity card and the public check /gid/<GID> ───────────────────
+  'gid.qrPie': 'Anyone can scan the code to know whether your credential is valid. They only see "verified" and the date: never your name or your document.',
+  'gid.estado.verificada': 'Verified', 'gid.estado.revision': 'Under review', 'gid.estado.suspendida': 'Suspended',
+  'gid.estado.rechazada': 'Rejected', 'gid.estado.pendiente': 'Not verified',
+  'gid.tarjeta.titular': 'Holder', 'gid.tarjeta.sinGid': 'Issued on approval',
+  'gid.tarjeta.verificadaEl': 'Verified on', 'gid.tarjeta.actualizada': 'Updated', 'gid.tarjeta.estado': 'Status',
+  'gid.tarjeta.qrPie': 'Scan to check: it only says whether it is valid and since when. Never your details.',
+  'gid.tarjeta.qrSin': 'The code appears once the identity is approved.',
+  'comp.t': 'Check a credential', 'comp.p': 'This page only says whether a Genesis ID is verified and since when. It shows no personal data.',
+  'comp.buscando': 'Asking Genesis ID…',
+  'comp.ok': 'Verified credential', 'comp.okP': 'Genesis ID confirms this identity. Verified on',
+  'comp.no': 'Not verified', 'comp.noP': 'This GID does not correspond to a verified identity in Genesis ID.',
+  'comp.malFormado': 'The code is not valid', 'comp.malFormadoP': 'This GID is mistyped: its check digit fails. Check it character by character.',
+  'comp.noPude': 'Could not check', 'comp.noPudeP': 'Genesis ID did not answer. This does NOT mean the credential is fake: try again in a moment.',
+  'comp.negocio': 'business',
+  'comp.pie': 'The answer comes from Genesis ID, the identity service of Orden Global. A GID can be checked as many times as needed.',
+  'comp.irApp': 'Go to Veta Wallet',
 
   /* twin of the Spanish sorteo block — keep both in step */
   // ── Password recovery ────────────────────────────────────────────────────

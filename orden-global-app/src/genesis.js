@@ -161,6 +161,28 @@ const PASOS = {
   suspendida: 'suspendida',
 };
 
+/**
+ * Qué paso toca. Se deduce de lo que Genesis dice que está HECHO, no del
+ * estado: el estado es una etiqueta de cumplimiento, y con él solo quien
+ * cierra la app a mitad volvía a un paso que ya había pasado. Un Genesis
+ * anterior, sin `hecho`, cae en la tabla por estado.
+ */
+function pasoDe(identidad) {
+  if (identidad.estado === 'verificada') return 'listo';
+  if (identidad.estado === 'rechazada' || identidad.estado === 'suspendida') return identidad.estado;
+  // Un rostro que FALLO vuelve al paso del rostro, no a la sala de espera:
+  // repetirlo son veinte segundos y esperar una revision manual son dias.
+  if (identidad.rostroPendiente) return 'rostro';
+  const h = identidad.hecho;
+  if (h) {
+    if (!h.datos) return 'datos';
+    if (!h.documento) return 'documento';
+    if (!h.rostro) return 'rostro';
+    return 'revision';
+  }
+  return PASOS[identidad.estado] || 'datos';
+}
+
 /** Traduce la respuesta del servidor a lo que la pantalla necesita. */
 function aVista(identidad) {
   if (!identidad) return null;
@@ -168,20 +190,33 @@ function aVista(identidad) {
     id: identidad.id,
     email: identidad.email,
     estado: identidad.estado,
-    // Un rostro que FALLO vuelve al paso del rostro, no a la sala de espera:
-    // repetirlo son veinte segundos y esperar una revision manual son dias.
-    paso: identidad.rostroPendiente ? 'rostro' : (PASOS[identidad.estado] || 'datos'),
+    paso: pasoDe(identidad),
     rostroPendiente: Boolean(identidad.rostroPendiente),
+    hecho: identidad.hecho || null,
     genesisUid: identidad.gid || null,
     fullName: identidad.nombreLegal || null,
     documentoAceptable: identidad.documentoAceptable,
+    // Lo que dice el documento ya leído en el servidor, para precargar la
+    // confirmación cuando se retoma desde otro teléfono o tras cerrar la app.
+    documentoDatos: identidad.documentoDatos || null,
+    nombreDeclarado: identidad.nombreDeclarado || null,
+    fechaNacimientoDeclarada: identidad.fechaNacimientoDeclarada || null,
     fotoCredencial: identidad.fotoCredencial || null,
     faltanDatos: identidad.faltanDatos || [],
     siguientePaso: identidad.siguientePaso,
     verificada: identidad.estado === 'verificada',
+    verificadaEn: identidad.verificadaEn || null,
     actualizadaEn: identidad.actualizadaEn,
   };
 }
+
+/**
+ * La página pública de comprobación de un GID: lo que va en el QR de la
+ * tarjeta. Solo dice «verificada» o «no verificada» y la fecha; no lleva ni
+ * enseña ningún dato personal.
+ */
+export const enlaceComprobacion = (gid) =>
+  `https://app.vetawallet.com/gid/${encodeURIComponent(String(gid || '').toUpperCase())}`;
 
 /** Combina dos estados sin perder datos (el nuevo manda, el viejo rellena). */
 export function mergePassport(base, extra) {
