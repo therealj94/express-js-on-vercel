@@ -208,7 +208,7 @@ h2{font:700 11.5px var(--sans);letter-spacing:.24em;text-transform:uppercase;
 @media (max-width:820px){#vivo{grid-template-columns:1fr}}
 
 section{padding-top:clamp(44px,6vw,72px);padding-bottom:clamp(44px,6vw,72px)}
-#vivo+section,#hace,#como,#origen,#cadena,#mision{border-top:1px solid rgba(201,169,97,.12)}
+#vivo+section,#hace,#como,#origen,#cadena,#comprobar,#mision{border-top:1px solid rgba(201,169,97,.12)}
 
 /* ── los seis verbos: tipografía, no tarjetas ────────────────────────────── */
 .verbos{display:grid;grid-template-columns:repeat(3,1fr);gap:clamp(20px,3vw,38px) clamp(24px,4vw,46px)}
@@ -248,6 +248,21 @@ section{padding-top:clamp(44px,6vw,72px);padding-bottom:clamp(44px,6vw,72px)}
 .datos dd{font-size:22px;color:var(--crema);margin-top:3px}
 #cadena .btn{margin-top:clamp(24px,4vw,36px)}
 @media (max-width:820px){.dos{grid-template-columns:1fr}.monedas{grid-template-columns:1fr}}
+
+/* ── comprobalo por fuera ────────────────────────────────────────────────
+   El argumento más fuerte que tenemos y no estaba en la página: lo que
+   dice de nosotros gente que no controlamos. Las palabras son las que la
+   Junta ya aprobó para AU-RA (ficha `verificable-por-fuera`), y los dos LEI
+   se comprobaron contra el registro de GLEIF antes de escribirlos. */
+.pruebas{display:grid;grid-template-columns:repeat(3,1fr);gap:clamp(22px,4vw,40px)}
+.pruebas h3{font:700 17px var(--sans);color:var(--oroLt);margin-bottom:7px;
+  padding-top:13px;border-top:1px solid var(--linea2)}
+.pruebas p{color:var(--bruma);font-size:15px}
+.lei{margin-top:10px;font-size:13.5px;line-height:1.9}
+.lei .mono{color:var(--oroHi);font-size:12.5px;letter-spacing:.02em;
+  background:rgba(201,169,97,.10);border:1px solid var(--linea2);
+  border-radius:6px;padding:3px 7px;margin-right:7px}
+@media (max-width:820px){.pruebas{grid-template-columns:1fr}}
 
 /* ── la misión ───────────────────────────────────────────────────────────── */
 .mision{display:grid;grid-template-columns:repeat(3,1fr);gap:clamp(22px,4vw,40px)}
