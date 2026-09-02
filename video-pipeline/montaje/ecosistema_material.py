@@ -589,16 +589,22 @@ def transaccion(im: Image.Image, rel: float, dur: float, cantidad="10",
     im.alpha_composite(capa)
 
 
-def logo(im: Image.Image, rel: float):
-    """El logo de Orden Global formándose sobre la gota de oro, con sombra larga."""
-    a = salida(np.clip(rel / 1.4, 0, 1), 3.5)
+def logo(im: Image.Image, rel: float, alto=0.30, ancho_px=520, dur=None):
+    """El monograma de Orden Global, con sombra larga.
+
+    En el cierre de Cincuenta faltaba: la película acababa solo con el nombre
+    escrito y sin marca, que es lo que la dejaba coja. Aquí entra encima del
+    nombre, crece un punto al aparecer —tiene masa— y se queda."""
+    a = salida(float(np.clip(rel / 1.4, 0, 1)), 3.5)
+    if dur is not None:
+        a *= salida(float(np.clip((dur - rel) / 0.6, 0, 1)), 3.0)
     if a <= 0.02:
         return
     lg = Image.open(LOGOS / "orden-global" / "orden-global-logo.png").convert("RGBA")
-    ancho = int(520 * (0.85 + 0.15 * a))
+    ancho = int(ancho_px * (0.85 + 0.15 * a))
     lg = lg.resize((ancho, int(lg.height * ancho / lg.width)), Image.LANCZOS)
     lg.putalpha(lg.split()[3].point(lambda v: int(v * a)))
-    pos = ((W - lg.width) // 2, int(H * 0.30) - lg.height // 2)
+    pos = ((W - lg.width) // 2, int(H * alto) - lg.height // 2)
     sombra_larga(im, lg, pos, radio=70, opacidad=0.35 * a, dy=30)
     im.alpha_composite(lg, pos)
 
@@ -682,7 +688,9 @@ def main():
         im = base.convert("RGBA")
         for b, _ in activos:
             if b.get("logo"):
-                logo(im, t - b["t"] - 0.6)
+                c = b["logo"] if isinstance(b["logo"], dict) else {}
+                logo(im, t - b["t"] - c.get("retardo", 0.6), c.get("alto", 0.30),
+                     c.get("ancho", 520), c.get("dur"))
             if b.get("familia"):
                 familia(im, t - b["t"] - 0.5)
             if b.get("transaccion"):

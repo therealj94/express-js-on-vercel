@@ -261,7 +261,13 @@
           "alto": 0.645,
           "escala": 1.12
         }
-      ]
+      ],
+      "logo": {
+        "retardo": 0.5,
+        "alto": 0.375,
+        "ancho": 420,
+        "dur": 5.4
+      }
     }
   ],
   "picks": {
@@ -291,5 +297,6 @@
   "_final": "El final que pidio Jose: la madre paga con la tarjeta, se va a la casa con las bolsas, saca las cosas en la mesa, y le manda a la hija una foto de lo que compro. La hija lo lee y se le va la cara. Cierra el circulo: mando dinero, llego, se convirtio en comida en la mesa, y ella lo ve. La burbuja del final va SOBREIMPRESA y no dentro de la pantalla porque en ese plano el telefono se ve de espaldas y desenfocado: texto nitido ahi dentro se veria pegado.",
   "_sexta_pasada": "Jose: la conversacion tiene que verse en burbujas que se lean, que se sepa que la madre pide para la comida, y donde esta cada una. El arranque pasa a ser el dialogo: cartel de sitio sobre cada una y tres burbujas grandes. Con eso el espectador sabe quienes son, a que distancia y POR QUE se manda el dinero, antes del segundo 12 y sin que hable nadie. La voz se quita del arranque: si la conversacion se lee, narrarla encima sobra.",
   "_septima_pasada": "Jose: fuera la risa del muchacho cuando ella lee -distrae del momento-, la burbuja del final solo texto porque la foto se veia mal, y que se diga de donde a donde va el dinero: de Veta Wallet a Veta Wallet, y que se deposita en su tarjeta debito Visa. Las burbujas se etiquetan PULSE2CHAT para que se sepa que la mensajeria es del mismo ecosistema.",
-  "_octava_pasada": "Jose: 'quitemos el forzar poner en pantalla celular algo de nuestro ecosistema, no se ve bien'. Tenia razon y la regla queda mas limpia: los graficos viven SOBREIMPRESOS a tamano legible, y las pantallas de los telefonos se quedan como pantallas reales encendidas, que es lo que se ve en la vida. Lo que decian esas pantallas no se pierde: pasa a la tarjeta de transaccion, que sobreimpresa se lee entera."
+  "_octava_pasada": "Jose: 'quitemos el forzar poner en pantalla celular algo de nuestro ecosistema, no se ve bien'. Tenia razon y la regla queda mas limpia: los graficos viven SOBREIMPRESOS a tamano legible, y las pantallas de los telefonos se quedan como pantallas reales encendidas, que es lo que se ve en la vida. Lo que decian esas pantallas no se pierde: pasa a la tarjeta de transaccion, que sobreimpresa se lee entera.",
+  "_cierre": "Jose: 'no esta el logo de Orden Global, se mire mejor ese final'. La pelicula acababa solo con el nombre escrito y sin marca, que es lo que la dejaba coja. El monograma entra encima del nombre, crece un punto al aparecer y se queda hasta el final."
 }
