@@ -31,6 +31,27 @@ API = "https://api.elevenlabs.io/v1/sound-generation"
 # nombre -> (descripción, segundos). "no music, no voices" va en casi todas:
 # sin eso el generador añade una cama musical y el ambiente deja de ser ambiente.
 PIEZAS = {
+    # --- la película del ecosistema ---------------------------------------
+    # Se sintetizaban con osciladores y por eso el arranque sonaba a vacío:
+    # cuatro senos no llenan un plano de oro fundido en negro absoluto.
+    "e_sala": ("deep cinematic room tone for an empty black studio, very low "
+               "sub bass hum, air, no music, no voices", 22.0),
+    "e_colada": ("molten metal being poured into a stone mould, thick heavy "
+                 "liquid, close, dry, no music", 3.0),
+    "e_metal": ("a heavy solid gold ingot set down on a stone slab, deep "
+                "resonant thud with a metallic ring, close, dry, no music", 2.5),
+    "e_moneda": ("a gold coin spinning on a stone surface and settling flat, "
+                 "close, dry, no music", 3.0),
+    "e_pago": ("Apple Pay contactless payment confirmation, two quick soft "
+               "electronic tones rising, clean and short, dry, no music", 1.5),
+    "e_roce": ("a soft airy whoosh passing by, cinematic transition, short, "
+               "no music", 1.5),
+    "e_subida": ("a cinematic riser building tension for four seconds and "
+                 "stopping, orchestral and electronic, no music bed", 5.0),
+    "e_impacto": ("a deep cinematic trailer impact hit with a long low tail, "
+                  "no music", 4.0),
+    "e_sello": ("a short digital confirmation stamp, one clean low click with "
+                "a soft tail, dry, no music", 1.5),
     "s_bolsa": ("a paper bag of bread being handed across a wooden counter, "
                 "rustling paper, close, dry, no music", 2.0),
     "s_vibra": ("a phone vibrating twice on a wooden shop counter, buzzing "

@@ -6,7 +6,7 @@
     "ancho": 1080,
     "alto": 1920,
     "fps": 30,
-    "dur_s": 61.8
+    "dur_s": 62.6
   },
   "fundido_s": 0.45,
   "voz": {
@@ -69,7 +69,7 @@
       ],
       [
         15,
-        56.6
+        56.2
       ]
     ],
     "_nota": "Quince lineas, Maico -el mismo narrador de los tres anuncios y de Cincuenta-. Antes eran siete frases sueltas: quince palabras en un minuto, que es lo que Jose llamo 'apenas habla, no explica nada'. Ahora el ROTULO nombra y la VOZ explica: si dijeran lo mismo sobraria una de las dos."
@@ -272,18 +272,18 @@
     {
       "plano": "15_oro_cierre",
       "t": 55.8,
-      "dur": 6.0,
+      "dur": 6.8,
       "rotulos": [
         {
-          "t": 56.2,
-          "dur": 5.4,
-          "texto": "Orden Global.",
+          "t": 56.4,
+          "dur": 5.8,
+          "texto": "El futuro es Orden Global.",
           "alto": 0.66,
-          "escala": 1.15
+          "escala": 0.92
         },
         {
-          "t": 57.5,
-          "dur": 4.1,
+          "t": 57.8,
+          "dur": 4.4,
           "texto": "Un sistema financiero\nque se puede comprobar.",
           "chico": true,
           "alto": 0.755
@@ -301,7 +301,7 @@
     "06_mano_recibe": 1,
     "07_telefono_terminal": 4,
     "08_tarjeta_terminal": 1,
-    "09_manos_intercambio": 2,
+    "09_manos_intercambio": 9,
     "10_dos_telefonos": 5,
     "11_moneda_gira": 3,
     "12_aucorp_moneda": 3,
@@ -309,5 +309,6 @@
     "14_familia": 2,
     "15_oro_cierre": 1
   },
-  "_retomas": "Las dos retomas arreglaron lo que fallaba. En el dedo, pedir la piel por su nombre -poros, textura seca, crestas de la huella- y prohibir la de muneco quito el rosa de plastilina. En los dos telefonos, pedir el plano CENITAL quito la ambiguedad: de frente el modelo devolvia lingotes y discos."
+  "_retomas": "Las dos retomas arreglaron lo que fallaba. En el dedo, pedir la piel por su nombre -poros, textura seca, crestas de la huella- y prohibir la de muneco quito el rosa de plastilina. En los dos telefonos, pedir el plano CENITAL quito la ambiguedad: de frente el modelo devolvia lingotes y discos.",
+  "_pantalla_real": "Jose mando una captura de Veta Wallet enviando 5 ORIGEN y pidio acoplarla donde se dice que se manda a otro pais. Va compuesta DENTRO del telefono del plano de las manos, siguiendo el movimiento: es la interfaz de verdad, no una dibujada."
 }

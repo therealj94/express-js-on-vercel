@@ -1,181 +1,107 @@
 #!/usr/bin/env python3
-"""Diseño de sonido de la película del ecosistema. Sintetizado aquí.
+"""Sonido de la película del ecosistema, con efectos reales.
 
-La música sola deja la pieza plana: en un tráiler de producto lo que vende el
-movimiento es el sonido de cada cosa al pasar. Y como todo lo que se ve está
-dibujado por código, lo que suena también se calcula — sin bancos de sonido,
-sin licencias y con el golpe exactamente en el fotograma que toca.
+Se sintetizaba con osciladores y ruido, y José lo oyó exactamente donde estaba
+el problema: *"no tiene sonido al principio, hay vacío"*. Cuatro senos no llenan
+un plano de oro fundido sobre negro absoluto; y entre golpe y golpe no había
+nada debajo, así que la pieza respiraba a huecos.
 
-Cada efecto sale de lo que hace la imagen:
+Dos cosas lo arreglan:
 
-  polvo     los puntos del enjambre, un siseo con altura que sube al juntarse
-  impacto   cuando la marca se cierra: un golpe grave con cola
-  clic      la entrada de cada función, seco y corto
-  barrido   la luz del lector cruzando el QR
-  moneda    el timbre metálico del oro, dos parciales inarmónicos
-  sello     el comprobante confirmado: dos notas que resuelven
+1. **Una cama de sala que no para nunca.** Un tono de estudio vacío, muy grave y
+   muy bajo, de principio a fin. No se oye como sonido: se oye como que la pieza
+   *tiene* sonido. Quitarla es lo que hacía el vacío.
+2. **Efectos generados, no sintetizados** (`tools/sfx.py`): la colada del metal,
+   el lingote sobre la piedra, la moneda girando, el pago sin contacto, el
+   riser y el impacto del retrato de familia.
 
-    python3 montaje/sonido_eco.py salida.wav 46.5
+    python3 montaje/sonido_eco.py salida.wav 61.8 /carpeta/con/los/sfx
 """
 from __future__ import annotations
 
 import sys
+from pathlib import Path
 
 import numpy as np
 import soundfile as sf
 
 SR = 48000
 
+# (segundo, pieza, nivel). Cada uno cae en su acción, no "por ahí".
+EVENTOS = [
+    (0.40, "e_metal",   0.55),   # 01 · la pepita, presencia desde el fotograma 1
+    (4.55, "e_colada",  0.85),   # 02 · el metal cae en el molde
+    (8.20, "e_metal",   0.45),   # 02 · el disco asienta: ORIGEN
+    (9.40, "e_roce",    0.40),   # 03 · la luz barre las cuatro gotas
+    (13.30, "e_roce",   0.34),   # 04 · la pantalla se enciende
+    (17.10, "s_toque",  0.40),   # 05 · la yema toca el cristal
+    (20.90, "e_roce",   0.34),   # 06 · la mano sube a la luz
+    (25.40, "e_pago",   0.85),   # 07 · el pago sin contacto. Lo pidió José:
+                                 #      "que suene como cuando se paga con Apple"
+    (29.30, "s_datafono", 0.50),  # 08 · la tarjeta entra y el terminal acepta
+    (32.90, "e_roce",   0.42),   # 09 · el teléfono pasa de una mano a otra
+    (36.70, "e_roce",   0.38),   # 10 · el hilo de luz cruza entre los dos
+    (40.50, "e_moneda", 0.70),   # 11 · la moneda gira y se posa
+    (44.30, "e_metal",  0.50),   # 12 · el oro junto a la pila de monedas
+    (47.60, "e_roce",   0.45),   # 13 · la luz viaja
+    (50.30, "e_subida", 0.60),   # 14 · el riser que lleva al retrato de familia
+    (51.60, "e_impacto", 0.80),  # 14 · y el impacto donde entra Orden Global
+    (56.00, "e_metal",  0.45),   # 15 · el cierre
+]
 
-def _t(dur):
-    return np.arange(int(SR * dur)) / SR
-
-
-def _rug(n, semilla, suav=1):
-    """Ruido rugoso: la base de todo lo que suena a materia y no a sintetizador."""
-    rng = np.random.default_rng(semilla)
-    x = rng.standard_normal(n)
-    if suav > 1:
-        x = np.convolve(x, np.ones(suav) / suav, mode="same")
-    return x
-
-
-def roce_metal(dur=2.6, semilla=5):
-    """Dos piezas de metal rozando. Sustituye al timbre de campana.
-
-    El anterior eran cuatro senos inarmónicos y sonaba "a sintetizador de los
-    80". Un metal real no es una nota: es fricción -ruido filtrado muy
-    estrecho- con resonancias que se mueven mientras la superficie raspa."""
-    t = _t(dur)
-    x = np.zeros(len(t))
-    base = _rug(len(t), semilla)
-    # Tres resonancias que se deslizan: es el "raspado", no un acorde.
-    for f0, f1, a in ((1750, 1180, 0.5), (3300, 2450, 0.3), (5400, 4100, 0.16)):
-        f = f0 + (f1 - f0) * (t / dur)
-        # Filtro resonante barato: modular el ruido por una portadora que barre.
-        x += a * base * np.sin(2 * np.pi * np.cumsum(f) / SR)
-    return x * np.exp(-t * 1.7) * 0.9
+# La cama que nunca para. Es la diferencia entre una pieza con sonido y una
+# pieza con golpes sueltos sobre silencio.
+CAMAS = [(0.0, 999.0, "e_sala", 1.0)]
 
 
-def pulso_pecho(dur=3.0, f=41.0):
-    """El golpe que se siente en el pecho, no el que se oye.
-
-    "Un pulso de baja frecuencia que vibre en el pecho, no ruiditos
-    electrónicos." A 41 Hz un altavoz de móvil casi no lo reproduce, pero unos
-    auriculares o un equipo sí, y es lo que da autoridad."""
-    t = _t(dur)
-    cuerpo = np.sin(2 * np.pi * f * t) * np.exp(-t * 1.5)
-    # Un armónico para que exista también en altavoces pequeños.
-    cuerpo += 0.35 * np.sin(2 * np.pi * f * 2.5 * t) * np.exp(-t * 3.2)
-    return cuerpo
+def cargar(carpeta: Path, nombre: str) -> np.ndarray:
+    x, sr = sf.read(carpeta / f"{nombre}.wav")
+    if x.ndim > 1:
+        x = x.mean(axis=1)
+    if sr != SR:
+        idx = np.linspace(0, len(x) - 1, int(len(x) * SR / sr))
+        x = np.interp(idx, np.arange(len(x)), x)
+    return x / (np.abs(x).max() + 1e-9)
 
 
-def polvo(dur=2.2, semilla=3):
-    """Aire, no siseo. Una masa de ruido grave que se abre y se cierra."""
-    t = _t(dur)
-    x = _rug(len(t), semilla, 6)
-    env = np.sin(np.pi * np.clip(t / dur, 0, 1)) ** 1.6
-    return x * env * 0.55
+def cama(x: np.ndarray, n: int, subida=1.0, bajada=2.0) -> np.ndarray:
+    """Estira un ambiente hasta `n` muestras repitiéndolo con medio segundo de
+    solape, para que no se oiga el empalme en cada vuelta."""
+    solape = int(0.5 * SR)
+    y = x.copy()
+    while len(y) < n:
+        cola = y[-solape:] * np.linspace(1, 0, solape)
+        cabeza = x[:solape] * np.linspace(0, 1, solape)
+        y = np.concatenate([y[:-solape], cola + cabeza, x[solape:]])
+    y = y[:n]
+    t = np.arange(n) / SR
+    d = n / SR
+    return y * np.clip(t / subida, 0, 1) * np.clip((d - t) / bajada, 0, 1)
 
 
-def impacto(dur=3.0, semilla=11):
-    """Golpe: pulso de pecho + un chasquido de madera encima."""
-    t = _t(dur)
-    madera = _rug(len(t), semilla, 3) * np.exp(-t * 34)
-    return pulso_pecho(dur) * 0.9 + madera * 0.35
+def main() -> int:
+    salida = sys.argv[1]
+    dur = float(sys.argv[2]) if len(sys.argv) > 2 else 61.8
+    carpeta = Path(sys.argv[3] if len(sys.argv) > 3 else ".")
+    n = int(dur * SR)
+    y = np.zeros(n)
 
+    def poner(cuando: float, x: np.ndarray, nivel: float):
+        a = max(0, int(cuando * SR))
+        b = min(n, a + len(x))
+        if b > a:
+            y[a:b] += x[: b - a] * nivel
 
-def clic(dur=0.20, semilla=7):
-    """Toque seco de madera. El anterior eran dos senos y sonaba a notificación."""
-    t = _t(dur)
-    x = _rug(len(t), semilla, 2) * np.exp(-t * 60)
-    # Un par de modos de resonancia: la madera suena a algo, no a nada.
-    for f, a in ((420, 0.5), (930, 0.25)):
-        x += a * np.sin(2 * np.pi * f * t) * np.exp(-t * 40)
-    return x * 0.7
+    for a, b, pieza, nivel in CAMAS:
+        poner(a, cama(cargar(carpeta, pieza), int((min(b, dur) - a) * SR)), nivel * 0.62)
+    for t, pieza, nivel in EVENTOS:
+        poner(t, cargar(carpeta, pieza), nivel)
 
-
-def barrido(dur=1.0, semilla=13):
-    """Aire comprimido cruzando, no un pitido que sube."""
-    t = _t(dur)
-    x = _rug(len(t), semilla, 3)
-    centro = 700 + 3200 * (t / dur)
-    x = x * (0.5 + 0.5 * np.sin(2 * np.pi * np.cumsum(centro) / SR))
-    return x * np.sin(np.pi * t / dur) ** 2 * 0.45
-
-
-def moneda(dur=2.6, semilla=5):
-    """El oro: roce de metal, con un poco de cuerpo grave debajo."""
-    return roce_metal(dur, semilla) * 0.85 + pulso_pecho(dur, 55.0) * 0.30
-
-
-def sello(dur=1.8, semilla=17):
-    """El comprobante: un golpe de sello sobre papel y su resonancia."""
-    t = _t(dur)
-    papel = _rug(len(t), semilla, 2) * np.exp(-t * 46) * 0.8
-    cuerpo = pulso_pecho(dur, 68.0) * 0.5
-    # Una sola nota corta y seca, sin la resolucion de dos notas que sonaba
-    # a musiquita de aplicacion.
-    tono = np.sin(2 * np.pi * 660 * t) * np.exp(-t * 9) * 0.18
-    return papel + cuerpo + tono
-
-
-def pista(dur, eventos):
-    """Coloca cada efecto en su segundo exacto y los suma."""
-    x = np.zeros(int(SR * dur))
-    for t0, gen, gan in eventos:
-        s = gen() * gan
-        i = int(t0 * SR)
-        fin = min(len(x), i + len(s))
-        if fin > i:
-            x[i:fin] += s[:fin - i]
-    pico = np.max(np.abs(x))
-    return x / pico * 0.72 if pico > 0 else x
+    y = y / (np.abs(y).max() + 1e-9) * 0.72
+    sf.write(salida, y.astype(np.float32), SR)
+    print(f"{salida} · {dur:.1f}s · {len(EVENTOS)} efectos reales · cama continua")
+    return 0
 
 
 if __name__ == "__main__":
-    sal = sys.argv[1] if len(sys.argv) > 1 else "sonido_eco.wav"
-    dur = float(sys.argv[2]) if len(sys.argv) > 2 else 46.5
-
-    # Reordenado sobre la estructura nueva: el oro abre, las funciones son tres
-    # golpes y no siete, y el clímax es el comprobante.
-    # Colocados sobre pelicula2_montaje.json (material fotografico), no sobre
-    # la version dibujada: el oro abre, el polvo cae, el telefono se enciende,
-    # la yema aprieta, la mano recibe, la tarjeta entra, las manos se pasan el
-    # telefono, la cara lee, la luz viaja, la gota, el logo, el cierre.
-    # Sobre el montaje de material fotografico, segunda version: un producto
-    # por bloque. Cada marca que entra suena a metal; cada gesto de la mano,
-    # a clic; el comprobante, a sello.
-    # Montaje v2 con el plano de AuCorp (61,8 s): un producto por bloque.
-    ev = [
-        (0.9, moneda, 1.0),
-        (4.6, polvo, 0.8),
-        (8.6, impacto, 0.6),
-        (10.0, moneda, 0.45),
-        (10.5, moneda, 0.45),
-        (11.0, moneda, 0.45),
-        (11.5, moneda, 0.45),
-        (14.3, impacto, 0.5),
-        (17.7, clic, 0.9),
-        (21.5, polvo, 0.5),
-        (25.5, clic, 0.9),
-        (29.2, clic, 0.9),
-        (33.0, barrido, 0.8),
-        (36.9, barrido, 0.6),
-        (40.7, moneda, 0.9),
-        (44.5, moneda, 0.7),
-        (47.6, barrido, 1.0),
-        (49.9, sello, 1.0),
-        (51.7, impacto, 1.0),
-        (52.4, clic, 0.5),
-        (52.63, clic, 0.5),
-        (52.87, clic, 0.5),
-        (53.1, clic, 0.5),
-        (53.33, clic, 0.5),
-        (53.56, clic, 0.5),
-        (56.2, impacto, 0.85),
-    ]
-    y = pista(dur, ev)
-    sf.write(sal, np.column_stack([y, y]), SR)
-    print(f"{sal} · {dur}s · {len(ev)} efectos · "
-          f"pico {20*np.log10(np.max(np.abs(y))+1e-9):.1f} dBFS")
+    sys.exit(main())
