@@ -59,6 +59,28 @@ def _pedir(ruta, datos=None):
         return json.loads(r.read() or b'{}')
 
 
+def salud():
+    """Le pregunta al buzon si esta vivo. `/healthz` es publico: sin llave.
+
+    Existe porque el arranque decia «Buzon encendido» con solo tener la
+    direccion configurada, y el buzon de Render NO EXISTIA: el nodo dio 1.400
+    vueltas contra un 404 y en el registro solo quedo una linea cada cien
+    fallos. Decir «encendido» sin haber preguntado es la forma exacta de
+    «el servicio dice activo y no hace nada».
+
+    Devuelve el dict del buzon, o None si no contesta o contesta mal.
+    """
+    if not DONDE:
+        return None
+    try:
+        p = urllib.request.Request(DONDE + '/healthz', method='GET')
+        with urllib.request.urlopen(p, timeout=ESPERA_RED) as r:
+            d = json.loads(r.read() or b'{}')
+        return d if isinstance(d, dict) and d.get('ok') else None
+    except Exception:
+        return None
+
+
 def vuelta(sistema, perfiles, tanda=None, registrar=print):
     """Una visita al buzon. Devuelve cuantos recados se atendieron.
 

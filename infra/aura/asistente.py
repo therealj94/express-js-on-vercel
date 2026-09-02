@@ -3129,7 +3129,17 @@ def main():
     proximo_bz = [0.0]
     _bz_igual = [None, 0]      # el último fallo del buzón y cuántas veces
     if recadero.encendido():
-        log('Buzón encendido ·', recadero.DONDE)
+        # Se PREGUNTA, no se supone. La version anterior decia «encendido»
+        # con tener la direccion puesta, y el buzon no existia.
+        bz = recadero.salud()
+        if bz is None:
+            log('Buzón NO CONTESTA en', recadero.DONDE, '· se sigue intentando')
+        elif not bz.get('llaveConfigurada'):
+            log('Buzón contesta pero SIN LLAVE:', recadero.DONDE,
+                '· el nodo no va a poder recoger nada')
+        else:
+            log('Buzón encendido ·', recadero.DONDE,
+                f"· esperando {bz.get('esperando', 0)}")
     else:
         log('Buzón apagado (falta AURA_BUZON o AURA_BUZON_LLAVE)')
 
@@ -3215,7 +3225,8 @@ def main():
             #
             # Va aqui abajo del todo a proposito: si se escribiera arriba,
             # latiria igual aunque las tres puertas estuvieran reventando.
-            latido.latir(DATOS, saltados=saltados_recientes())
+            latido.latir(DATOS, saltados=saltados_recientes(),
+                         buzon_fallos=_bz_igual[1] if recadero.encendido() else 0)
             time.sleep(PASO)
 
 

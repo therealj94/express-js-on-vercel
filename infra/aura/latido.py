@@ -65,7 +65,13 @@ def _f(datos):
     return os.path.join(str(datos), NOMBRE)
 
 
-def latir(datos, saltados=0, contestados=0):
+# Vueltas seguidas del buzon fallando que ya son un aviso. A dos segundos por
+# vuelta son unos diez minutos: mas que un tropiezo de red, menos que una
+# noche entera sin que nadie se entere — que es lo que paso con Render.
+BUZON_FALLOS_QUE_AVISAN = 300
+
+
+def latir(datos, saltados=0, contestados=0, buzon_fallos=0):
     """Lo llama el asistente en cada vuelta. Nunca lanza.
 
     Escribe y ya. No mira, no decide y no avisa: si esta funcion pensara,
@@ -75,7 +81,8 @@ def latir(datos, saltados=0, contestados=0):
         tmp = _f(datos) + '.tmp'
         with open(tmp, 'w', encoding='utf8') as fh:
             json.dump({'cuando': int(time.time()), 'saltados': saltados,
-                       'contestados': contestados}, fh)
+                       'contestados': contestados,
+                       'buzon_fallos': buzon_fallos}, fh)
         os.replace(tmp, _f(datos))       # de una pieza: nunca medio archivo
     except Exception:
         pass
@@ -110,6 +117,17 @@ def revisar(datos, ahora=None):
         return 'colgada', (
             f'AU-RA lleva *{int(callada // 60)} minutos* sin dar una vuelta.\n\n'
             'El proceso puede estar vivo y colgado: systemd no distingue eso.')
+
+    # El buzon caido no es «saltar mensajes» —no hay mensajes que saltar,
+    # porque no llegan— y por eso el latido de antes no lo veia: con Render
+    # inexistente el nodo giraba perfecto, contaba cero saltados, y toda
+    # visita de la web recibia «no se» durante semanas.
+    buzon = d.get('buzon_fallos') or 0
+    if buzon >= BUZON_FALLOS_QUE_AVISAN:
+        return 'buzon-caido', (
+            f'El *buzón* de AU-RA lleva *{buzon} vueltas seguidas* sin contestar.\n\n'
+            'AU-RA gira, WhatsApp y el chat siguen, pero la burbuja de la web '
+            'no llega a ninguna parte: cada visita recibe «no sé».')
 
     saltados = d.get('saltados') or 0
     if saltados >= SALTADOS_QUE_AVISAN:
