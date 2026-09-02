@@ -1,19 +1,19 @@
-/* La web pública y la web OS tienen que ser la MISMA casa.
+/* La portada tiene que seguir siendo LA GALAXIA, y no la piel de una hija.
  *
  * ── POR QUE EXISTE ─────────────────────────────────────────────────────────
  *
- * La portada del 2-sep nació con fondo plano, tarjetas opacas y botones de
- * esquina redondeada, y se veía de otra empresa. José lo dijo así: «rompió
- * patrón que teníamos para nuestra web os con vetawallet».
+ * Dos veces se rompió el mismo sitio por el mismo motivo, y las dos las cazó
+ * José y no una prueba:
  *
- * Arreglarlo una vez es fácil. Lo difícil es que siga arreglado: son dos
- * carpetas distintas, y la paleta de una se puede tocar sin que nadie mire la
- * otra. En un mes son dos casas parecidas, que es peor que dos casas
- * distintas — parece un descuido, no una decisión.
+ *   1. La portada del 2-sep nació con fondo plano y tarjetas opacas: no era de
+ *      ninguna casa. «rompió patrón que teníamos para nuestra web os».
+ *   2. El arreglo se pasó de largo y la vistió del verde de Veta Wallet, que
+ *      es de UNA casa y no de la madre. «quitemos esos cuadros verdes, eso
+ *      solo es para veta wallet».
  *
- * Así que el patrón se comprueba, no se recuerda. Esta prueba lee la hoja de
- * la billetera (`apps-web/veta-wallet/index.html`), que es LA FUENTE, y exige
- * que la portada diga lo mismo.
+ * La regla que sale de las dos: el ecosistema es la galaxia —cielo, oro y las
+ * casas como planetas—; cada casa tiene su color y la madre no se pone el de
+ * ninguna. Aquí se comprueba, porque recordarlo ya falló dos veces.
  *
  *   node sitio-ordenglobal/probar-mismo-patron.mjs
  */
@@ -34,55 +34,72 @@ const ok = (bien, que, porque) => {
 };
 
 const casa = leer('apps-web/veta-wallet/index.html');
+const nucleo = leer('orden-global-app/src/og/Nucleo.js');
 const css = leer('sitio-ordenglobal/assets/portada.css');
-const portada = leer('sitio-ordenglobal/index.html');
-const ingles = leer('sitio-ordenglobal/en/index.html');
+const orbes = leer('sitio-ordenglobal/assets/constelacion.js');
+const paginas = [['portada', leer('sitio-ordenglobal/index.html')],
+                 ['/en', leer('sitio-ordenglobal/en/index.html')]];
 
-console.log('\nLos archivos que se comparten son EL MISMO archivo\n');
-for (const [aca, alla] of [
-  ['sitio-ordenglobal/assets/galaxia.js', 'apps-web/veta-wallet/galaxia.js'],
-  ['sitio-ordenglobal/assets/fondo.jpg', 'apps-web/veta-wallet/assets/fondo.jpg'],
-]) {
-  ok(huella(aca) === huella(alla), `${aca.split('/').pop()} es el de la billetera`,
-     'copialo otra vez: cp ' + alla + ' ' + aca);
-}
+console.log('\nEl cielo es EL MISMO archivo que el de la puerta de la billetera\n');
+ok(huella('sitio-ordenglobal/assets/galaxia.js')
+   === huella('apps-web/veta-wallet/galaxia.js'),
+   'galaxia.js no se ha separado de su fuente',
+   'copialo otra vez: cp apps-web/veta-wallet/galaxia.js sitio-ordenglobal/assets/');
 
-console.log('\nLa paleta sale de la billetera, no de aquí\n');
-// Los tokens que las dos casas comparten. Se lee el valor de allá y se exige
-// aquí: si en la billetera cambia el oro, esta prueba se pone roja hasta que
-// cambie también en la portada.
+console.log('\nEl oro y las letras, de la casa madre\n');
 const raiz = casa.slice(casa.indexOf(':root{'), casa.indexOf(':root{') + 1400);
-for (const nombre of ['--pozo', '--panel', '--linea', '--linea2', '--oro', '--oroLt',
-                      '--oroHi', '--crema', '--bruma', '--humo', '--jade', '--r', '--r2']) {
+for (const nombre of ['--oro', '--oroLt', '--oroHi', '--crema', '--r', '--r2']) {
   const m = raiz.match(new RegExp(`${nombre}:([^;}]+)`));
-  ok(!!m && css.includes(`${nombre}:${m[1]}`), `${nombre} vale lo mismo en las dos`,
+  ok(!!m && css.includes(`${nombre}:${m[1]}`), `${nombre} vale lo mismo que en la billetera`,
      m ? `la billetera dice ${nombre}:${m[1]}` : 'no está en la billetera');
 }
-
-console.log('\nLos componentes son los de la casa\n');
-ok(/\.btn\{[^}]*border-radius:100px/.test(css.replace(/\s+/g, ' ')),
-   'los botones son píldoras de 100 px, como en la billetera');
-ok(css.includes('linear-gradient(120deg,var(--oroLt),var(--oro) 52%,var(--oroLt))'),
-   'el botón principal es el mismo metal');
-ok(css.includes("url('/assets/fondo.jpg')") && css.includes('background-attachment:fixed'),
-   'el fondo es la fotografía de marca, fija — no un color plano');
-ok((css.match(/backdrop-filter:blur/g) || []).length >= 6,
-   'las tarjetas son de vidrio, no paneles opacos');
 ok(css.includes("--serif:'Cinzel'") && css.includes("--sans:'Archivo'")
    && css.includes("--mono:'JetBrains Mono'"),
    'la misma pila de letras: Cinzel, Archivo, JetBrains Mono');
+ok(/\.btn\{[^}]*border-radius:100px/.test(css.replace(/\s+/g, ' ')),
+   'los botones siguen siendo píldoras de 100 px');
 
-console.log('\nLa entrada lleva la veta y el cielo, en los dos idiomas\n');
-for (const [nombre, h] of [['portada', portada], ['/en', ingles]]) {
-  ok(h.includes('class="veta-svg"'), `${nombre}: la veta cruza la entrada`);
-  ok(h.includes('id="vetaGrad"'), `${nombre}: la veta lleva su degradado de oro`);
-  ok(h.includes('<canvas id="galaxia">'), `${nombre}: el cielo de la puerta está`);
-  ok(h.includes('/assets/galaxia.js'), `${nombre}: y se carga el módulo que lo dibuja`);
-  ok(h.includes('<b class="marca">'), `${nombre}: la marca se compone como en la casa`);
-  // La veta es de la PORTADA. Si algún día se cuela una segunda, es que
-  // alguien la puso también en otra sección — y ahí deja de ser una entrada.
-  ok((h.match(/veta-svg/g) || []).length === 1, `${nombre}: y solo hay UNA veta`);
+console.log('\nY NADA del verde de Veta Wallet: ese color es de una casa, no de la madre\n');
+for (const verde of ['#021B1C', '#063430', 'rgba(6,40,42', 'rgba(12,54,56', '#2E7477']) {
+  ok(!css.includes(verde), `sin ${verde}`,
+     'ese verde es de la billetera; la madre viste el espacio');
 }
 
-console.log(fallos ? `\n${fallos} fallo(s)\n` : '\nTodo en verde: la misma casa\n');
+console.log('\nLas casas son planetas, con los colores del mapa de la app\n');
+// Los degradados salen de Nucleo.js: si allá se repinta una casa, aquí se
+// pone rojo. Es lo que sostiene «se reconoce por sitio y por color».
+for (const [id, primera] of [['chat', '#FBE0D4'], ['pay', '#D8F7FF'],
+                             ['gid', '#D6EBE2'], ['aucorp', '#E8E0C8']]) {
+  ok(nucleo.includes(primera) && orbes.includes(primera),
+     `${id} lleva el color que tiene en la app`,
+     `Nucleo.js: ${nucleo.includes(primera) ? 'sí' : 'ya no'} · constelacion.js: ${orbes.includes(primera) ? 'sí' : 'no'}`);
+}
+ok((orbes.match(/\{ id: '/g) || []).length === 7, 'las siete casas están en el sistema');
+
+console.log('\nLo que se quitó, sigue quitado\n');
+for (const [nombre, h] of paginas) {
+  ok(!/FUNCIONA HOY|EN BETA|Works today|In beta|class="estado"/i.test(h),
+     `${nombre}: sin pastillas de estado`,
+     'un tablero de madurez no es una portada');
+  ok(!/no un dibujo|not a mock-up/i.test(h),
+     `${nombre}: sin el pie que se defendía solo`);
+  ok(!/billetera\.png/.test(h), `${nombre}: sin la captura de teléfono flotando`);
+}
+
+console.log('\nLa entrada y el sistema, en los dos idiomas\n');
+for (const [nombre, h] of paginas) {
+  ok(h.includes('class="veta-svg"') && h.includes('id="vetaGrad"'),
+     `${nombre}: la veta cruza la entrada`);
+  ok(h.includes('<canvas id="galaxia">') && h.includes('/assets/galaxia.js'),
+     `${nombre}: el cielo de la casa está y se dibuja`);
+  ok(h.includes('/assets/constelacion.js') && h.includes('id="constelacion"'),
+     `${nombre}: el sistema está`);
+  ok((h.match(/class="orbe"/g) || []).length === 7,
+     `${nombre}: los siete planetas son enlaces de verdad`);
+  ok(/<div class="sol">[\s\S]{0,80}<b>AU-RA<\/b>/.test(h),
+     `${nombre}: AU-RA es el sol`);
+  ok(h.includes('<b class="marca">'), `${nombre}: la marca se compone como en la casa`);
+}
+
+console.log(fallos ? `\n${fallos} fallo(s)\n` : '\nTodo en verde: la galaxia es la casa\n');
 process.exit(fallos ? 1 : 0);
