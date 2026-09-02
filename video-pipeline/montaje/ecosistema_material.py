@@ -174,7 +174,8 @@ class Plano:
         return self._cache[i]
 
 
-def rotulo(im: Image.Image, texto: str, rel: float, dur: float, chico=False):
+def rotulo(im: Image.Image, texto: str, rel: float, dur: float, chico=False,
+           alto=None, escala=1.0):
     """Un rótulo a la manera de Apple.
 
     Entra por MASCARA —cada palabra se revela desde una línea invisible— con
@@ -182,8 +183,11 @@ def rotulo(im: Image.Image, texto: str, rel: float, dur: float, chico=False):
     opacidad. Nada de deslizarse desde fuera del cuadro: eso es plantilla."""
     d = ImageDraw.Draw(im, "RGBA")
     lineas = texto.split("\n")
-    f = ImageFont.truetype(F_ROT if chico else F_TIT, 44 if chico else 74)
-    y = H * 0.72 if not chico else H * 0.70
+    cuerpo = int((44 if chico else 74) * escala)
+    f = ImageFont.truetype(F_ROT if chico else F_TIT, cuerpo)
+    # `alto` deja poner dos rótulos a la vez sin que se pisen: el cierre
+    # lleva el nombre grande arriba y la frase pequeña debajo.
+    y = H * (alto if alto is not None else (0.70 if chico else 0.72))
     fuera = salida(np.clip((dur - rel) / 0.35, 0, 1), 3.0)
     k = 0
     for ln in lineas:
@@ -209,7 +213,7 @@ def rotulo(im: Image.Image, texto: str, rel: float, dur: float, chico=False):
                 np.minimum(np.array(cap.split()[3]), np.array(mask))))
             im.alpha_composite(cap)
             x += an
-        y += (74 if not chico else 44) * 1.35
+        y += cuerpo * 1.35
 
 
 def logo(im: Image.Image, rel: float):
@@ -294,7 +298,8 @@ def main():
                     if b.get("producto") and r is b["rotulos"][0]:
                         producto(im, b["producto"]["nombre"], b["producto"]["marca"],
                                  rel, r["dur"])
-                    rotulo(im, r["texto"], rel, r["dur"], r.get("chico", False))
+                    rotulo(im, r["texto"], rel, r["dur"], r.get("chico", False),
+                           r.get("alto"), r.get("escala", 1.0))
         ff.stdin.write(acabar(im, semilla=fr).tobytes())
         if fr % 150 == 0:
             print(f"  {t:5.1f}s / {dur:.0f}s", flush=True)
