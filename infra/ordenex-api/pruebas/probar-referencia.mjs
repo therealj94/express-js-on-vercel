@@ -195,8 +195,11 @@ decir('quien tiene referencia y quien no');
 
 decir('la ruta: un activo sin referencia contesta SIN_REFERENCIA');
 {
-  const r = await pedir('MNKA-ORIGEN');
-  comprobar(r.estado === 404, 'MNKA-ORIGEN da 404', `dio ${r.estado}`);
+  // IBS esta PUBLICADO y no tiene referencia: es el caso «activo sin
+  // referencia». MNKA ya no sirve para esto — no tiene mesa, y contesta
+  // MERCADO_INVALIDO (ver mas abajo).
+  const r = await pedir('IBS-ORIGEN');
+  comprobar(r.estado === 404, 'IBS-ORIGEN da 404', `dio ${r.estado}`);
   comprobar(r.cuerpo?.codigo === 'SIN_REFERENCIA', 'con codigo SIN_REFERENCIA', JSON.stringify(r.cuerpo));
   comprobar(!('velas' in (r.cuerpo || {})), 'y sin velas de relleno en el cuerpo del error');
   comprobar(!r.seLlamoNext, 'sin caer al manejador de errores: es una respuesta, no un accidente');
