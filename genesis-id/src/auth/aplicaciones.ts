@@ -126,6 +126,64 @@ export function alinearAlcances(): string[] {
   return tocadas
 }
 
+/* ── Las claves públicas de ingesta, que tienen que sobrevivir al almacén ──────
+ *
+ * POR QUÉ ESTO EXISTE
+ *
+ * La clave pública se emitía al azar la primera vez que alguien la miraba en el
+ * panel. Eso está bien para una app que todavía no salió, y es una trampa para
+ * una que ya salió: la clave viaja DENTRO del APK que la gente tiene instalado,
+ * así que el día que el almacén cambia —de archivo a Mongo, o a una base
+ * nueva— las apps de la calle siguen mandando la clave vieja, el servidor ya no
+ * la reconoce, y todo lo que reportan se cae con un 401 que nadie ve. Desde
+ * dentro no se nota nada: el panel enseña «no hay datos», que es exactamente
+ * como se ve «no entra nadie». Fue lo que pasó, y estuvo así sin que se notara.
+ *
+ * Así que las claves ya publicadas se declaran aquí, junto al código, y se
+ * vuelven a poner en cada arranque si el almacén no las tiene. No es un secreto
+ * que se filtra: esta clave está impresa en cada teléfono que instaló la app y
+ * en el JavaScript de la web, y solo abre la ruta de telemetría —escribe
+ * métricas anónimas y no lee absolutamente nada.
+ *
+ * LO QUE ESTO NO PISA
+ *
+ * Solo se siembra la que FALTA. Si la clave de una app se rotó desde el panel,
+ * ahí está guardada y esta función no la toca: rotar tiene que seguir dejando
+ * muda a la versión vieja, que es para lo que sirve. Para forzar un valor
+ * concreto sin desplegar —volver a una clave que se rotó por error, o estrenar
+ * una— está la variable de entorno, que sí manda siempre.
+ */
+const CLAVES_PUBLICAS_PUBLICADAS: Record<string, string> = {
+  'veta-wallet': 'gidp_veta-wallet_98cwxS8AnbUIRAEr',
+  mytokenpay: 'gidp_mytokenpay__riQsWLOw5v2XQ_R',
+  ordenscan: 'gidp_ordenscan_RIo4I1gyxv6gewfq',
+}
+
+/** `GENESIS_CLAVES_PUBLICAS="veta-wallet=gidp_…,ordenscan=gidp_…"` */
+function clavesFijadasPorEntorno(): Record<string, string> {
+  const fijadas: Record<string, string> = {}
+  for (const trozo of (process.env.GENESIS_CLAVES_PUBLICAS || '').split(',')) {
+    const [app, clave] = trozo.split('=').map((s) => s.trim())
+    if (app && clave?.startsWith('gidp_')) fijadas[app] = clave
+  }
+  return fijadas
+}
+
+export function asegurarClavesPublicas(): string[] {
+  const fijadas = clavesFijadasPorEntorno()
+  const tocadas: string[] = []
+  for (const app of store.todo().aplicaciones) {
+    const debeSer = fijadas[app.clave] ?? (app.clavePublica ? null : CLAVES_PUBLICAS_PUBLICADAS[app.clave])
+    if (!debeSer || app.clavePublica === debeSer) continue
+    const habia = Boolean(app.clavePublica)
+    app.clavePublica = debeSer
+    tocadas.push(`${app.clave}: clave de ingesta ${habia ? 'fijada por entorno' : 'repuesta'}`)
+    registrar('sistema', 'aplicacion.clavePublicaRepuesta', app.clave, { porEntorno: Boolean(fijadas[app.clave]) })
+  }
+  if (tocadas.length) store.guardar()
+  return tocadas
+}
+
 export function crearAplicacion(clave: string, nombre: string, alcances: string[]): {
   aplicacion: Aplicacion; clave_secreta: string
 } {

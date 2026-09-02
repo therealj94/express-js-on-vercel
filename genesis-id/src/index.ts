@@ -5,8 +5,9 @@ import { dirname, join } from 'path'
 
 import { store, iniciar, motor, saludAlmacen, saludBitacora } from './store.js'
 import { asegurarAdministrador, limpiarSesiones } from './auth/operadores.js'
-import { asegurarAplicaciones, alinearAlcances } from './auth/aplicaciones.js'
+import { asegurarAplicaciones, alinearAlcances, asegurarClavesPublicas } from './auth/aplicaciones.js'
 import { prepararTelemetria, hayMongo as telemetriaEnMongo } from './analitica/eventos.js'
+import { silencioDeTelemetria } from './analitica/consultas.js'
 import { estadoListas, hayListas, iniciarListas } from './aml/listas.js'
 import { estadoTemporizador, iniciarTemporizadorListas } from './aml/temporizador.js'
 import { estadoAncla, iniciarAncla } from './audit/ancla.js'
@@ -299,7 +300,7 @@ const COMMIT = process.env.RENDER_GIT_COMMIT || process.env.GIT_COMMIT || 'desco
 const RAMA = process.env.RENDER_GIT_BRANCH || process.env.GIT_BRANCH || 'desconocida'
 const ARRANQUE = new Date().toISOString()
 
-app.get('/healthz', (_req, res) => {
+app.get('/healthz', async (_req, res) => {
   const cadena = verificarCadena()
   const listas = estadoListas()
   const almacen = saludAlmacen()
@@ -310,6 +311,9 @@ app.get('/healthz', (_req, res) => {
   const tempo = estadoTemporizador()
   const ancla = estadoAncla()
   const dosFactores = saludSegundoFactor()
+  /* Si la analítica no responde, la salud no se cae con ella: se dice que no se
+     pudo mirar, que es distinto de decir que todo está bien. */
+  const silencio = await silencioDeTelemetria().catch(() => ({ vigiladas: [], calladas: [] }))
   const listo = hayListas() && cadena.integra && motor === 'mongodb' && guardaBien
 
   /* CUMPLIMIENTO, APARTE DEL ESTADO DE SERVICIO.
@@ -455,6 +459,10 @@ app.get('/healthz', (_req, res) => {
       bitacoraSitiosEnChoque: saludBitacora().sitiosEnChoque,
       bitacoraRoturas: cadena.sellos.map((x) => x.rotaEn).filter((x) => x !== null),
       telemetriaPersistente: telemetriaEnMongo(),
+      /* Y si lo que llega es NADA. Un conducto de telemetría roto se ve desde
+         dentro igual que un producto que nadie usa; esto los separa. */
+      telemetriaVigiladas: silencio.vigiladas,
+      telemetriaCalladas: silencio.calladas,
       /* Los avisos a las aplicaciones. `enganchesFallidos` es el que importa:
          un aviso que se rindió es un integrador que se quedó sin enterarse, y
          eso no se nota desde dentro —aquí todo salió bien. */
@@ -645,6 +653,9 @@ export async function arrancar(): Promise<void> {
   const appsNuevas = asegurarAplicaciones()
   const alcancesNuevos = alinearAlcances()
   for (const t of alcancesNuevos) console.log(`[genesis-id] alcances al día — ${t}`)
+  /* Las claves de ingesta que ya viajan dentro de los APK publicados. Si el
+     almacén no las tiene, las apps de la calle reportan contra un 401 mudo. */
+  for (const t of asegurarClavesPublicas()) console.log(`[genesis-id] ${t}`)
   limpiarSesiones()
 
   // Índices y caducidad de la telemetría. Va después de abrir el almacén y no

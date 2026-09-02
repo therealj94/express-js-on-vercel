@@ -644,3 +644,42 @@ export async function saludEcosistema(forzar = false) {
   cacheSalud = { en: Date.now(), datos: await Promise.all(serviciosVigilados().map(medir)) }
   return cacheSalud.datos
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Silencio de telemetría
+//
+// El fallo que esto vigila ya ocurrió y no se notó: la clave de ingesta que
+// viaja dentro del APK dejó de valer contra el servidor, todas las apps de la
+// calle empezaron a chocar contra un 401, y el panel siguió enseñando «no hay
+// datos» — que es indistinguible de «no entra nadie». Un panel de uso no puede
+// tener ese punto ciego: si la app que TIENE gente lleva días sin decir ni una
+// palabra, lo más probable no es que nadie la abra, es que el conducto está
+// roto y hay que ir a mirarlo.
+//
+// Se vigilan solo las apps de las que se ESPERA reporte. Una app cuyo cliente
+// todavía no se ha puesto no está callada: está sin encender, y confundir las
+// dos cosas convierte el aviso en ruido que se acaba ignorando.
+// ─────────────────────────────────────────────────────────────────────────────
+
+const APPS_QUE_REPORTAN = (process.env.GENESIS_TELEMETRIA_ESPERA || 'veta-wallet')
+  .split(',').map((s) => s.trim()).filter(Boolean)
+
+const HORAS_DE_SILENCIO = Number(process.env.GENESIS_TELEMETRIA_SILENCIO_H || 48)
+
+export async function silencioDeTelemetria(): Promise<{
+  vigiladas: string[]
+  calladas: { app: string; ultimoDia: string | null; diasCallada: number }[]
+}> {
+  const v = ventana(14)
+  const calladas = []
+  for (const app of APPS_QUE_REPORTAN) {
+    const docs = await diasDe(v, app)
+    const conEventos = docs.filter((d) => (d.eventos ?? 0) > 0).map((d) => d.dia).sort()
+    const ultimoDia = conEventos.length ? conEventos[conEventos.length - 1] : null
+    const diasCallada = ultimoDia
+      ? Math.floor((Date.now() - new Date(ultimoDia + 'T23:59:59Z').getTime()) / DIA)
+      : v.length
+    if (diasCallada * 24 >= HORAS_DE_SILENCIO) calladas.push({ app, ultimoDia, diasCallada })
+  }
+  return { vigiladas: APPS_QUE_REPORTAN, calladas }
+}
