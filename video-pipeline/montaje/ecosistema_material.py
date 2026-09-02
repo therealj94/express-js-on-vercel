@@ -41,7 +41,7 @@ MARCAS = {
     "veta":       ("veta-wallet/veta-wallet-icono.png", None),
     "genesis":    ("genesis-id/genesis-id-icono.png", None),
     "mytokenpay": ("mytokenpay/mytokenpay-icono.png", None),
-    "pulse":      ("pulse2chat/pulse2chat-logo.png", 0.60),   # solo la P
+    "pulse":      ("pulse2chat/pulse2chat-logo.png", 0.57),   # solo la P
     "ordenex":    ("ordenex/ordenex-logo.png", 0.84),         # sin la palabra
     "aucorp":     ("aucorp/aucorp-logo.png", 0.80),           # sin la palabra
 }
@@ -65,7 +65,19 @@ def marca(clave: str, lado: int) -> Image.Image:
         ImageDraw.Draw(m).rounded_rectangle([0, 0, im.width - 1, im.height - 1], r, fill=255)
         im.putalpha(m)
     else:
-        im = im.crop(im.split()[3].getbbox())
+        a = np.array(im)
+        # Ordenex trae el fondo casi blanco como pixeles opacos —en la prueba
+        # salió metido en una caja gris—: si la esquina es clara y opaca, todo
+        # lo casi blanco pasa a transparente y queda solo el trazo dorado.
+        # Medido: Ordenex trae un velo gris a alfa 67 en todo el lienzo y AuCorp
+        # uno oscuro a 62. Se quita todo lo que no sea trazo firme.
+        a[a[..., 3] < 120, 3] = 0
+        # El recorte va por percentiles y no por extremos: Veta tiene píxeles
+        # sueltos en los bordes del lienzo y con min/max la marca salía diminuta.
+        ys, xs = np.where(a[..., 3] > 120)
+        x0, x1 = np.percentile(xs, [0.3, 99.7]).astype(int)
+        y0, y1 = np.percentile(ys, [0.3, 99.7]).astype(int)
+        im = Image.fromarray(a).crop((x0, y0, x1 + 1, y1 + 1))
     esc = lado / max(im.size)
     im = im.resize((max(1, int(im.width * esc)), max(1, int(im.height * esc))), Image.LANCZOS)
     _marcas[(clave, lado)] = im
@@ -148,7 +160,11 @@ class Plano:
         que le toca en el montaje, así que 4 s de material pueden durar 4,2."""
         i = int(np.clip(frac, 0, 1) * (self.n - 1)) + 1
         if i not in self._cache:
-            self._cache[i] = Image.open(self.carpeta / f"{i:04d}.png").convert("RGB")
+            # Solo se guarda el último fotograma: el montaje avanza en orden y
+            # cada uno se pide varias veces seguidas. Guardarlos todos eran
+            # 6 MB x 121 x 14 planos = 10 GB, y la prueba murió sin aviso a
+            # los 48,7 s, justo al entrar en el retrato de familia.
+            self._cache = {i: Image.open(self.carpeta / f"{i:04d}.png").convert("RGB")}
         return self._cache[i]
 
 
