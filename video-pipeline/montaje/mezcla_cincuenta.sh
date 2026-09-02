@@ -8,11 +8,11 @@ MUDA=$1; ESPEC=$2; SALIDA=$3; DUR=${4:-44.0}
 T_VOZ=$(python3 -c "import json;print(int(json.load(open('$ESPEC'))['voz']['orden'][0][1]*1000))")
 ffmpeg -v error -y -i "$MUDA" -i p1_cierre.wav -i son_cincuenta.wav -i cama_cincuenta.wav \
   -filter_complex "
-    [1:a]adelay=${T_VOZ}|${T_VOZ},acompressor=threshold=0.12:ratio=3:attack=8:release=180,volume=1.7[voz];
-    [2:a]volume=1.3[amb];
-    [3:a]volume=0.0:enable='lt(t,16.8)',volume='min(1,(t-16.8)/6)*0.62':eval=frame[cama0];
+    [1:a]adelay=${T_VOZ}|${T_VOZ},acompressor=threshold=0.12:ratio=3:attack=8:release=180,volume=2.6[voz];
+    [2:a]volume=2.2[amb];
+    [3:a]volume=0.0:enable='lt(t,16.8)',volume='min(1,(t-16.8)/6)*1.0':eval=frame[cama0];
     [voz]asplit=2[voz1][disp];
     [cama0][disp]sidechaincompress=threshold=0.03:ratio=8:attack=20:release=600:makeup=1[cama];
-    [voz1][amb][cama]amix=inputs=3:normalize=0,aresample=48000,alimiter=limit=0.58:attack=3:release=60,apad[a]" \
+    [voz1][amb][cama]amix=inputs=3:normalize=0,aresample=48000,alimiter=limit=0.70:attack=3:release=60:level=false,apad[a]" \
   -map 0:v -map "[a]" -c:v copy -c:a aac -b:a 192k -t "$DUR" "$SALIDA"
 echo "mezclada: $SALIDA"

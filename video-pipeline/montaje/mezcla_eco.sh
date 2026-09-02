@@ -12,7 +12,7 @@ done < <(python3 -c "import json;[print(i,t) for i,t in json.load(open('$ESPEC')
 FIL="${FIL}${MIX}amix=inputs=$n:normalize=0,acompressor=threshold=0.12:ratio=3:attack=8:release=180,volume=1.9[voz];"
 FIL="${FIL}[voz]asplit=2[voz1][disp];[$((n+1)):a]volume=0.46[sfx];[$((n+2)):a]volume=0.52[cama0];"
 FIL="${FIL}[cama0][disp]sidechaincompress=threshold=0.03:ratio=10:attack=15:release=550:makeup=1[cama];"
-FIL="${FIL}[voz1][sfx][cama]amix=inputs=3:normalize=0,aresample=48000,alimiter=limit=0.60,apad[a]"
+FIL="${FIL}[voz1][sfx][cama]amix=inputs=3:normalize=0,aresample=48000,alimiter=limit=0.60:level=false,apad[a]"
 ffmpeg -v error -y -i "$MUDA" $ENT -i sfx_eco.wav -i cama_lanzamiento.wav \
   -filter_complex "$FIL" -map 0:v -map "[a]" -c:v copy -c:a aac -b:a 192k -t "$DUR" "$SALIDA"
 echo "mezclada: $SALIDA"
