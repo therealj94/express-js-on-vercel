@@ -430,6 +430,70 @@ def burbuja(im: Image.Image, texto: str, rel: float, dur: float, foto=None,
     im.alpha_composite(capa)
 
 
+# Qué se puede hacer dentro de Pulse2Chat, en tarjetas de su propio diseño.
+# José: "podemos poner burbujas de chats text y llamando a mamá o videollamada
+# a esposa". Un rótulo que diga "Hablá" no enseña nada; tres tarjetas de la app
+# sí, y de paso dicen que la mensajería es del mismo ecosistema.
+CAPACIDADES = [("txt", "Mamá", "¿Ya llegaste, mi hija?"),
+               ("voz", "Llamando a Mamá", "01:12"),
+               ("video", "Videollamada", "Rosa")]
+
+
+def capacidades(im: Image.Image, rel: float, dur: float, alto=0.30):
+    """Tres tarjetas de Pulse2Chat entrando una detrás de otra."""
+    fuera = salida(float(np.clip((dur - rel) / 0.4, 0, 1)), 3.0)
+    if fuera <= 0.02:
+        return
+    ancho = int(W * 0.70)
+    x = (W - ancho) // 2
+    y = int(H * alto)
+    for k, (tipo, arriba, abajo) in enumerate(CAPACIDADES):
+        t0 = escalonar(k, 9.0)
+        e = salida(float(np.clip((rel - t0) / 0.42, 0, 1)), 4.0)
+        a = e * fuera
+        if a <= 0.02:
+            continue
+        h = 118
+        capa = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+        dc = ImageDraw.Draw(capa, "RGBA")
+        yy = y + k * (h + 20)
+        dc.rounded_rectangle([x, yy, x + ancho, yy + h], 26,
+                             fill=(16, 41, 72, int(238 * a)))
+        # El distintivo de la izquierda dice de qué es cada tarjeta.
+        dc.rounded_rectangle([x + 20, yy + 22, x + 94, yy + h - 22], 20,
+                             fill=(32, 74, 132, int(238 * a)))
+        cx, cy = x + 57, yy + h // 2
+        oro = (214, 173, 90, int(240 * a))
+        if tipo == "txt":
+            dc.rounded_rectangle([cx - 20, cy - 15, cx + 20, cy + 9], 8, fill=oro)
+            dc.polygon([(cx - 12, cy + 8), (cx - 2, cy + 8), (cx - 12, cy + 18)], fill=oro)
+        elif tipo == "voz":
+            # Auricular clásico: se dibuja recto y se gira, que es más limpio
+            # que intentar el diagonal a mano.
+            g = Image.new("RGBA", (56, 56), (0, 0, 0, 0))
+            dg = ImageDraw.Draw(g)
+            dg.rounded_rectangle([6, 22, 50, 34], 6, fill=oro)
+            dg.ellipse([2, 14, 22, 42], fill=oro)
+            dg.ellipse([34, 14, 54, 42], fill=oro)
+            dg.ellipse([9, 21, 15, 35], fill=(16, 41, 72, 255))
+            dg.ellipse([41, 21, 47, 35], fill=(16, 41, 72, 255))
+            g = g.rotate(-35, resample=Image.BICUBIC, expand=False)
+            capa.alpha_composite(g, (cx - 28, cy - 28))
+        else:
+            dc.rounded_rectangle([cx - 22, cy - 13, cx + 4, cy + 13], 6, fill=oro)
+            dc.polygon([(cx + 8, cy - 10), (cx + 22, cy - 17), (cx + 22, cy + 17),
+                        (cx + 8, cy + 10)], fill=oro)
+        dc.text((x + 122, yy + 24), arriba, font=fuente(F_ROT, 34),
+                fill=TEXTO + (int(255 * a),))
+        dc.text((x + 122, yy + 66), abajo, font=fuente(F_MED, 30),
+                fill=(150, 176, 208) + (int(240 * a),))
+        sm = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+        sm.putalpha(capa.split()[3].filter(
+            ImageFilter.GaussianBlur(24)).point(lambda v: int(v * 0.42)))
+        im.alpha_composite(sm, (0, 6))
+        im.alpha_composite(capa)
+
+
 def logo(im: Image.Image, rel: float):
     """El logo de Orden Global formándose sobre la gota de oro, con sombra larga."""
     a = salida(np.clip(rel / 1.4, 0, 1), 3.5)
@@ -494,8 +558,20 @@ def main():
             if p is None:
                 return Image.new("RGB", (W, H), (0, 0, 0))
             if spec.get("natural"):
-                return p.natural(t - b["t"] + b.get("desde", 0.0))
-            return p.fotograma((t - b["t"]) / b["dur"])
+                im0 = p.natural(t - b["t"] + b.get("desde", 0.0))
+            else:
+                im0 = p.fotograma((t - b["t"]) / b["dur"])
+            z = b.get("zoom")
+            if z:
+                # Acercamiento: se recorta alrededor de un centro y se reescala.
+                # `centro` va en fracción de cuadro, por si lo interesante no
+                # está en medio.
+                cx, cy = b.get("centro", [0.5, 0.5])
+                aw, ah = int(W / z), int(H / z)
+                x0 = int(np.clip(cx * W - aw / 2, 0, W - aw))
+                y0 = int(np.clip(cy * H - ah / 2, 0, H - ah))
+                im0 = im0.crop((x0, y0, x0 + aw, y0 + ah)).resize((W, H), Image.LANCZOS)
+            return im0
 
         if not activos:
             base = Image.new("RGB", (W, H), (0, 0, 0))
@@ -514,6 +590,11 @@ def main():
                 logo(im, t - b["t"] - 0.6)
             if b.get("familia"):
                 familia(im, t - b["t"] - 0.5)
+            if b.get("capacidades"):
+                c = b["capacidades"]
+                rel = t - c["t"]
+                if 0 <= rel <= c["dur"]:
+                    capacidades(im, rel, c["dur"], c.get("alto", 0.30))
             for si in b.get("sitios", []):
                 rel = t - si["t"]
                 if 0 <= rel <= si["dur"]:

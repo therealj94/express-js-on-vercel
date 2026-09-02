@@ -50,7 +50,7 @@
           "t": 3.9,
           "dur": 3.6,
           "alto": 0.36,
-          "quien": "MAMÁ",
+          "quien": "PULSE2CHAT · MAMÁ",
           "texto": "¿Cómo amaneciste, mi hija?"
         },
         {
@@ -89,7 +89,7 @@
           "dur": 2.4,
           "alto": 0.46,
           "mia": true,
-          "quien": "ELLA",
+          "quien": "PULSE2CHAT · ELLA",
           "texto": "No se preocupe, ma. Ahorita se lo mando."
         }
       ],
@@ -167,7 +167,16 @@
         {
           "t": 27.2,
           "dur": 2.4,
-          "texto": "Y podés ver\nexactamente qué pasó."
+          "texto": "Y podés ver\nexactamente qué pasó.",
+          "alto": 0.645
+        },
+        {
+          "t": 28.3,
+          "dur": 1.4,
+          "texto": "Enviado de Veta Wallet a Veta Wallet.",
+          "chico": true,
+          "alto": 0.742,
+          "escala": 0.92
         }
       ],
       "burbujas": [],
@@ -180,9 +189,18 @@
       "desde": 0.4,
       "rotulos": [
         {
-          "t": 31.0,
-          "dur": 1.9,
-          "texto": "Pagado con ORIGEN."
+          "t": 30.6,
+          "dur": 2.0,
+          "texto": "Pagado con ORIGEN.",
+          "alto": 0.645
+        },
+        {
+          "t": 31.7,
+          "dur": 1.3,
+          "texto": "En su tarjeta débito Visa.",
+          "chico": true,
+          "alto": 0.742,
+          "escala": 0.92
         }
       ],
       "burbujas": [],
@@ -216,9 +234,8 @@
         {
           "t": 40.2,
           "dur": 2.9,
-          "alto": 0.505,
-          "quien": "MAMÁ",
-          "foto": "/tmp/claude-0/-home-user-express-js-on-vercel/ea1ee5d5-3bb0-5210-b62d-18fde5349b2f/scratchpad/foto_mesa.png",
+          "alto": 0.6,
+          "quien": "PULSE2CHAT · MAMÁ",
           "texto": "Ya compré todo, mi hija."
         }
       ],
@@ -273,5 +290,6 @@
   "_pantallas": "Jose: 'la pantalla no se mira Veta Wallet, no se puede ver que estan dentro y tocan ahi'. Las pantallas de los clips van encendidas pero VACIAS -el modelo no sabe dibujar una interfaz-, asi que se compone una encima siguiendo el telefono con flujo optico (montaje/pantalla.py, dibujada en montaje/interfaz.py). La toma 9 de un plano es la version con pantalla. Dos planos: al abrir la app se ve Veta Wallet, y en el comprobante se ve ENTREGADO con la hora, el numero y ordenscan.com. El comprobante va en CLARO y no en la paleta de la marca porque esa pantalla le ilumina la cara: con una pantalla oscura la luz de su cara se quedaba sin fuente. El plano de elegir contacto tiene el telefono casi de canto y ahi no cabe interfaz legible: ese lo resuelve el rotulo 'Mama.'.",
   "_quinta_pasada": "Jose pide: mejor inicio, mejor final, burbujas de mensaje entre madre e hija, 'Pagado con ORIGEN' cuando paga, que se vea que se lleva cosas a la casa, y mantener personajes. El arranque pasa a ser el CHAT: en cuanto se leen dos burbujas con 'Mama' arriba, el espectador ya sabe quienes son la una de la otra sin que nadie se lo diga, que es justo lo que faltaba. Los planos de la compra y el final nuevo estan generandose en la misma maquina.",
   "_final": "El final que pidio Jose: la madre paga con la tarjeta, se va a la casa con las bolsas, saca las cosas en la mesa, y le manda a la hija una foto de lo que compro. La hija lo lee y se le va la cara. Cierra el circulo: mando dinero, llego, se convirtio en comida en la mesa, y ella lo ve. La burbuja del final va SOBREIMPRESA y no dentro de la pantalla porque en ese plano el telefono se ve de espaldas y desenfocado: texto nitido ahi dentro se veria pegado.",
-  "_sexta_pasada": "Jose: la conversacion tiene que verse en burbujas que se lean, que se sepa que la madre pide para la comida, y donde esta cada una. El arranque pasa a ser el dialogo: cartel de sitio sobre cada una y tres burbujas grandes. Con eso el espectador sabe quienes son, a que distancia y POR QUE se manda el dinero, antes del segundo 12 y sin que hable nadie. La voz se quita del arranque: si la conversacion se lee, narrarla encima sobra."
+  "_sexta_pasada": "Jose: la conversacion tiene que verse en burbujas que se lean, que se sepa que la madre pide para la comida, y donde esta cada una. El arranque pasa a ser el dialogo: cartel de sitio sobre cada una y tres burbujas grandes. Con eso el espectador sabe quienes son, a que distancia y POR QUE se manda el dinero, antes del segundo 12 y sin que hable nadie. La voz se quita del arranque: si la conversacion se lee, narrarla encima sobra.",
+  "_septima_pasada": "Jose: fuera la risa del muchacho cuando ella lee -distrae del momento-, la burbuja del final solo texto porque la foto se veia mal, y que se diga de donde a donde va el dinero: de Veta Wallet a Veta Wallet, y que se deposita en su tarjeta debito Visa. Las burbujas se etiquetan PULSE2CHAT para que se sepa que la mensajeria es del mismo ecosistema."
 }

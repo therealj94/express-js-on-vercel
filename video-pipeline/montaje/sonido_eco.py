@@ -36,7 +36,7 @@ EVENTOS = [
     (13.30, "e_roce",   0.34),   # 04 · la pantalla se enciende
     (17.10, "s_toque",  0.40),   # 05 · la yema toca el cristal
     (20.90, "e_roce",   0.34),   # 06 · la mano sube a la luz
-    (25.40, "e_pago",   0.85),   # 07 · el pago sin contacto. Lo pidió José:
+    (25.40, "e_pago",   1.45),   # 07 · el pago sin contacto. Lo pidió José:
                                  #      "que suene como cuando se paga con Apple"
     (29.30, "s_datafono", 0.50),  # 08 · la tarjeta entra y el terminal acepta
     (32.90, "e_roce",   0.42),   # 09 · el teléfono pasa de una mano a otra

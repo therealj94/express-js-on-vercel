@@ -42,8 +42,11 @@ PIEZAS = {
                 "resonant thud with a metallic ring, close, dry, no music", 2.5),
     "e_moneda": ("a gold coin spinning on a stone surface and settling flat, "
                  "close, dry, no music", 3.0),
-    "e_pago": ("Apple Pay contactless payment confirmation, two quick soft "
-               "electronic tones rising, clean and short, dry, no music", 1.5),
+    # La primera versión salía a -24 dBFS de media: un tintineo escaso, que por
+    # mucho que se normalice por pico no suena. Se pide fuerte y con cuerpo.
+    "e_pago": ("a loud clear contactless payment confirmation on a card "
+               "terminal, two bright electronic tones rising quickly, strong "
+               "and close, full body, dry, no music, no reverb", 1.5),
     "e_roce": ("a soft airy whoosh passing by, cinematic transition, short, "
                "no music", 1.5),
     "e_subida": ("a cinematic riser building tension for four seconds and "
@@ -86,7 +89,11 @@ def generar(nombre: str, texto: str, dur: float, destino: Path) -> None:
         return
     mp3 = destino / f"{nombre}.mp3"
     mp3.write_bytes(r.content)
+    # loudnorm iguala el nivel percibido: ElevenLabs devuelve unos efectos a
+    # pico 1,0 y otros a 0,28, y el que sale bajo desaparece en la mezcla por
+    # mucho que se le suba la pista entera.
     subprocess.run(["ffmpeg", "-v", "error", "-y", "-i", str(mp3),
+                    "-af", "loudnorm=I=-16:TP=-1.5:LRA=11",
                     "-ar", "48000", "-ac", "1", str(wav)], check=True)
     x, sr = sf.read(wav)
     print(f"{nombre}: {len(x)/sr:.2f}s · pico {abs(x).max():.2f}")

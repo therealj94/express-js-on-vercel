@@ -39,7 +39,8 @@ EVENTOS = [
     (15.50, "s_toque",   0.38),   # 05 · y se detiene (15,55)
     (16.37, "s_toque",   0.50),   # 06 · aprieta y mantiene (16,41)
     (18.20, "s_vibra",   0.62),   # 07 · suena ALLÁ, antes de la mano (18,98)
-    (24.90, "s_risa",    0.95),   # 09 · el muchacho se ríe (25,17)
+    # La risa del muchacho fuera: Jose la oyo y distrae del momento en que
+    # ella lee que le llego. El plano se sostiene solo con el ambiente.
     (32.80, "s_datafono", 0.55),  # 11 · el datáfono acepta (32,94)
     (37.10, "s_bolsa",   0.45),   # 13 · saca el pan en la mesa (37,19)
     (40.10, "s_mensaje", 0.55),   # 15 · le llega la foto de su madre
