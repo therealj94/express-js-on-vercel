@@ -9,7 +9,7 @@ import { LangProvider, useT, useLang } from './src/i18n';
 import * as Linking from 'expo-linking';
 import NetInfo from '@react-native-community/netinfo';
 import { loadSession, saveSession, clearSession, initAccounts, updateAccount } from './src/accounts';
-import { loadToken, setToken, setRefreshToken, ensureSession, clearCreds, apiPortfolio, getToken } from './src/api';
+import { loadToken, setToken, setRefreshToken, ensureSession, clearCreds, apiPortfolio, getToken, walletApi } from './src/api';
 import { desactivarDesbloqueo } from './src/unlock';
 import { buscarActualizacion, aplicarActualizacion, puedeActualizar } from './src/updates';
 import { recordLogout } from './src/sessionLog';
@@ -239,7 +239,15 @@ function Root() {
         confirmarEnPadron(jwt, { email: a.email, nombre: a.name, direccionWallet: a.addr });
       }
     },
-    logout: () => { olvidar(); recordLogout(); setAccount(null); clearSession(); setToken(null); setRefreshToken(null); clearCreds(); desactivarDesbloqueo(); limpiarAvisos(); },
+    logout: () => {
+      // Primero el servidor, con el token aún en memoria; sin esperar: lo
+      // local no depende de que la red conteste. Ver walletApi.logout.
+      try { walletApi.logout().catch(() => {}); } catch {}
+      // Y el teléfono deja de recibir avisos de esta cuenta: sin esto, el
+      // siguiente que entre en este aparato recibe los mensajes del anterior.
+      try { M.olvidarTelefono?.().catch?.(() => {}); } catch {}
+      olvidar(); recordLogout(); setAccount(null); clearSession(); setToken(null); setRefreshToken(null); clearCreds(); desactivarDesbloqueo(); limpiarAvisos();
+    },
   };
 
   // Actualizaciones por aire. Se consulta al arrancar y cada vez que la app

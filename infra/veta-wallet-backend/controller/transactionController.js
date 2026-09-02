@@ -16,6 +16,8 @@ import abi from "../ABI/abi.json";
 import { precioDeGas, limiteDeGas, LIMITE_POR_OMISION_TOKEN } from "../lib/gas";
 import { cobrarComision, comisionEnOrigen } from "../lib/comision";
 import { reportarEnvio } from "../lib/reporteAml";
+import { validarEnvio } from "../lib/validarEnvio";
+import { isAddress } from "ethers";
 import {
   reservar,
   completar,
@@ -88,6 +90,13 @@ export const send = async (req, res) => {
       { algorithms: ["HS256"] }
     );
     const address = decodedToken.address;
+
+    // Se valida ANTES de la contraseña y del sello: una dirección rota no
+    // tiene por qué quemar el sello de idempotencia de esta persona, ni
+    // llegar a ethers para que reviente con un texto de biblioteca. Ver
+    // lib/validarEnvio.js.
+    const malo = validarEnvio({ recipientAddress, amount, from: address });
+    if (malo) return res.status(400).json(malo);
 
     const chain = await ChainId.findOne({ chain_id: chain_id });
 
@@ -249,6 +258,13 @@ export const sendToken = async (req, res) => {
       { algorithms: ["HS256"] }
     );
     const address = decodedToken.address;
+
+    // Misma validación que en `send`, por la misma razón.
+    const malo = validarEnvio({ recipientAddress, amount, from: address });
+    if (malo) return res.status(400).json(malo);
+    if (!isAddress(String(tokenContractAddress || ""))) {
+      return res.status(400).json({ code: "INVALID_ADDRESS", message: "El contrato del token no es una dirección válida." });
+    }
 
     const chain = await ChainId.findOne({ chain_id: chain_id });
 

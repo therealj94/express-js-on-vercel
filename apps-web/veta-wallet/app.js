@@ -1508,6 +1508,17 @@ const VETA = (() => {
   }
 
   function salir() {
+    /* SE LE AVISA AL SERVIDOR. Esto sólo borraba lo local: el token seguía
+       valiendo 40 minutos y el refresco TREINTA DÍAS, guardados en
+       localStorage. Quien se llevara ese refresco —una extensión, un XSS,
+       una computadora compartida— entraba después del «salir». El backend
+       tiene /auth/logout desde hace tiempo y sube tokenVersion, que mata los
+       dos de golpe; nadie lo llamaba. Va antes de vaciar `sesion` porque
+       necesita el token para identificarse, y sin esperar ni reintentar: si
+       no llega, se sale igual — lo local no puede depender de la red. */
+    try {
+      if (sesion?.token) pedir('/auth/logout', { metodo: 'POST', sinReintento: true }).catch(() => {});
+    } catch {}
     tele('accion', 'sesion.salir');
     tele('vaciar');
     tele('identificar', null);

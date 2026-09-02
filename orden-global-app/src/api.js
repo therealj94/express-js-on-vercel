@@ -245,6 +245,11 @@ export function pickUser(d) {
 
 export const walletApi = {
   login: (email, password) => req(PATHS.login, { method: 'POST', body: { email, password } }),
+  /* Cerrar sesión EN EL SERVIDOR. `logout` de App.js sólo borraba el llavero:
+     el refresco de 30 días seguía vivo. /auth/logout sube tokenVersion y mata
+     token y refresco de golpe. Se llama con el token que todavía está en
+     memoria, antes de borrarlo. */
+  logout: () => req('/auth/logout', { method: 'POST' }),
   register: (payload) => req(PATHS.register, { method: 'POST', body: payload }),
   chain: (chainId) => req(`/chains/getChainsForId/${chainId}`),
   raw: req,
