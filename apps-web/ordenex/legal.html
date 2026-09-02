@@ -1,0 +1,330 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>ORDENEX · Términos y condiciones · Aviso de riesgo</title>
+<meta name="description" content="Términos y condiciones y aviso de riesgo de ORDENEX, la casa de cambio de AuCorp. ORIGEN está referenciado al oro; una referencia no es una promesa de valor.">
+<meta name="theme-color" content="#0A0E14">
+<!-- Esta página no habla con nadie: ni API, ni cadena. Solo texto. -->
+<meta http-equiv="Content-Security-Policy" content="
+  default-src 'self';
+  script-src 'self' 'unsafe-inline';
+  style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
+  font-src 'self' data: https://fonts.gstatic.com;
+  img-src 'self' data:;
+  connect-src 'none';
+  object-src 'none';
+  base-uri 'self';
+  form-action 'self';
+">
+<link rel="icon" href="assets/tokens/origen.jpg">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+/* ═══ LOS TÉRMINOS Y EL AVISO DE RIESGO ═════════════════════════════════════
+   La misma piel que index.html (grafito, oro, Cinzel para la marca) y NADA
+   más: esta página existe para leerse. Dos idiomas, uno visible a la vez,
+   elegidos con los mismos botones ES/EN de la casa y recordados en la misma
+   llave `ordenex.idioma`.
+
+   LAS PALABRAS. Este texto se escribe con el reparto de términos del
+   expediente de la Secretaría de la Junta (14/08/2026): ORIGEN, AUKA y AGKA
+   están REFERENCIADOS a un metal —siguen un precio—; la palabra que solo la
+   ficha de ONDK puede llevar no aparece aquí; ninguna frase promete valor,
+   liquidez ni rendimiento; y la casa NO se describe como supervisada por
+   nadie, porque no lo está. Una prueba (pruebas/probar-legal.mjs) lee este
+   archivo y falla si aparecen las palabras que no pueden aparecer. */
+@font-face{font-family:'Cinzel';src:url('assets/fonts/Cinzel-Bold.woff2') format('woff2');font-weight:700;font-style:normal;font-display:swap}
+:root{
+  --pozo:#0A0E14; --veta:#131A24; --panel:rgba(19,26,36,.86);
+  --linea:rgba(201,169,97,.32); --linea2:rgba(201,169,97,.22);
+  --oro:#C9A961; --oroLt:#EAD79C; --oroHi:#F8EFCF; --oroDp:#96793F;
+  --crema:#EEF1F5; --bruma:#A7B4C4; --humo:#6B7A8C; --coral:#F0776B; --acento:#8FB9E0;
+  --serif:'Cinzel','Bodoni Moda',Didot,'Times New Roman',serif;
+  --sans:'Archivo',system-ui,sans-serif; --mono:'JetBrains Mono',ui-monospace,monospace;
+  --r:10px; --r2:14px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{-webkit-text-size-adjust:100%;scroll-behavior:smooth}
+body{background:var(--pozo);color:var(--crema);font-family:var(--sans);min-height:100svh;
+  -webkit-font-smoothing:antialiased;line-height:1.65;
+  background-image:radial-gradient(120% 70% at 50% -10%, rgba(201,169,97,.10), transparent 62%),
+    linear-gradient(rgba(238,241,245,.030) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(238,241,245,.030) 1px, transparent 1px);
+  background-size:auto,44px 44px,44px 44px;background-attachment:fixed}
+a{color:var(--oroLt)}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
+:focus-visible{outline:2px solid var(--oro);outline-offset:3px;border-radius:6px}
+.techo{display:flex;align-items:center;justify-content:space-between;gap:14px;
+  padding:18px clamp(18px,4vw,42px);border-bottom:1px solid rgba(238,241,245,.07)}
+.marca{display:flex;align-items:center;gap:10px;letter-spacing:.04em;line-height:1;
+  font-family:var(--serif);font-weight:700;color:var(--crema);text-decoration:none;font-size:21px}
+.marca img{width:1.15em;height:1.15em;display:block}
+.marca em{font-style:normal;color:var(--acento)}
+.idiomas{display:flex;border:1px solid var(--linea2);border-radius:100px;overflow:hidden;background:rgba(19,26,36,.62)}
+.idiomas button{padding:7px 14px;min-height:40px;font-size:12px;font-weight:700;letter-spacing:.08em;color:var(--humo)}
+.idiomas button[aria-pressed=true]{background:rgba(201,169,97,.18);color:var(--oroHi)}
+main{max-width:820px;margin:0 auto;padding:clamp(24px,5vw,56px) clamp(16px,4vw,42px) 80px}
+.sello{font-size:11px;font-weight:700;letter-spacing:.34em;color:var(--oroDp);text-transform:uppercase;margin-bottom:14px}
+h1{font-size:clamp(26px,4vw,38px);font-weight:700;letter-spacing:-.02em;line-height:1.1;margin-bottom:10px}
+.version{font-family:var(--mono);font-size:11.5px;color:var(--humo);margin-bottom:26px}
+.indice{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:26px}
+.indice a{display:inline-flex;align-items:center;min-height:40px;padding:0 16px;border:1px solid var(--linea2);
+  border-radius:100px;font-size:13px;font-weight:700;color:var(--crema);text-decoration:none}
+.indice a:hover{border-color:var(--oro);color:var(--oroHi)}
+section{background:var(--panel);border:1px solid var(--linea2);border-radius:var(--r2);
+  padding:clamp(20px,3vw,30px);margin-top:22px;scroll-margin-top:20px}
+h2{font-size:20px;font-weight:800;margin-bottom:6px}
+h3{font-size:14.5px;font-weight:700;margin:20px 0 6px;color:var(--oroLt)}
+p,li{font-size:14.5px;color:var(--bruma)}
+p{margin-bottom:10px}
+ol,ul{padding-left:22px;margin-bottom:10px}
+li{margin-bottom:6px}
+b{color:var(--crema)}
+.clave{border-left:2px solid var(--oro);background:rgba(201,169,97,.06);padding:12px 16px;border-radius:0 var(--r) var(--r) 0;margin:14px 0}
+.riesgo .clave{border-left-color:var(--coral);background:rgba(240,119,107,.07)}
+.formula{font-family:var(--mono);font-size:13px;color:var(--crema);background:rgba(16,22,31,.9);
+  border:1px solid rgba(58,76,99,.8);border-radius:var(--r);padding:12px 14px;margin:10px 0;overflow-x:auto;white-space:nowrap}
+.pie{margin-top:30px;font-size:12px;color:var(--humo)}
+.pie a{color:var(--bruma)}
+[lang]:not(.activo){display:none}
+</style>
+
+<header class="techo">
+  <a class="marca" href="index.html"><img src="assets/ordenex.svg" alt="">ORDEN<em>EX</em></a>
+  <div class="idiomas" role="group" aria-label="Idioma">
+    <button data-lang="es" aria-pressed="true">ES</button>
+    <button data-lang="en" aria-pressed="false">EN</button>
+  </div>
+</header>
+
+<!-- ═══════════════════════════════ ESPAÑOL ═══════════════════════════════ -->
+<main lang="es" class="activo">
+  <div class="sello">Una casa de AuCorp · ecosistema Orden Global</div>
+  <h1>Términos y condiciones, y aviso de riesgo</h1>
+  <!-- La versión es la fecha de publicación y es LA MISMA que
+       infra/ordenex-api/lib/terminos.js (TERMINOS_VERSION). Cambiar el texto
+       de fondo es subir las dos. -->
+  <div class="version">versión 2026-09-02 · vigente desde su publicación</div>
+  <nav class="indice" aria-label="Secciones">
+    <a href="#terminos">Términos y condiciones</a>
+    <a href="#riesgo">Aviso de riesgo</a>
+  </nav>
+
+  <section id="terminos">
+    <h2>Términos y condiciones</h2>
+    <p>Esto es lo que aceptás al operar en ORDENEX (ordenexchange.link), la casa de cambio de AuCorp para los activos publicados de la cadena 5550 de Orden Global. Se leen antes de la primera orden y se aceptan una vez por versión: si el texto cambia, la casa te lo vuelve a pedir.</p>
+
+    <h3>1. Qué es ORDENEX y qué no es</h3>
+    <p>ORDENEX es un <b>libro de órdenes</b>: pone en contacto a quien quiere comprar con quien quiere vender un activo de la cadena contra ORIGEN, y calza las órdenes al precio de la orden que estaba esperando. La casa <b>no fija precios</b>, no compra ni vende por cuenta propia en el libro y no garantiza que haya contraparte.</p>
+    <p>ORDENEX <b>no toca dinero de curso legal</b>. La entrada y salida en lempiras o dólares es entre personas: agentes verificados que venden o compran su propio ORIGEN, con el ORIGEN en garantía en la casa hasta que la otra parte confirma. La casa custodia y arbitra; no recibe ni transfiere fiat.</p>
+    <p>ORDENEX no es un banco, ni una casa de bolsa, ni un asesor. No es una entidad supervisada por una autoridad financiera, y no dice serlo.</p>
+
+    <h3>2. Tu cuenta</h3>
+    <ul>
+      <li>Se entra con la cuenta de Veta Wallet y la identidad de Genesis ID. ORDENEX no guarda contraseñas.</li>
+      <li>Sos responsable de tu sesión y de lo que se ordena desde ella. Cerrá sesión en equipos ajenos.</li>
+      <li>Operar en efectivo y operar instrumentos declarados por la Junta (hoy, ONDK) exige identidad verificada.</li>
+      <li>La casa puede suspender una cuenta ante sospecha de fraude, uso de identidad ajena o coincidencia con listas de sanciones, y reporta las operaciones que la ley exige reportar.</li>
+    </ul>
+
+    <h3>3. Precios: tres clases, que no se mezclan</h3>
+    <p>En la casa hay tres clases de precio y cada una se enseña con su nombre:</p>
+    <ol>
+      <li><b>Trato</b>: lo que de verdad se pagó en el libro de esta casa. Es el único que dibuja velas.</li>
+      <li><b>Referencia</b>: el precio del metal en el mercado real, leído de un feed público y rotulado con su fuente y su hora. <b>Es información, no una oferta ni una promesa.</b></li>
+      <li><b>Declarado</b>: una cifra fijada por resolución de la Junta Directiva de Orden Global para un instrumento que todavía no cotiza (hoy, ONDK), con acta y firmante.</li>
+    </ol>
+    <div class="clave">
+      <p><b>ORIGEN está referenciado al oro.</b> Su precio de referencia es el de un gramín: una onza troy de oro dividida entre 31,1035 gramos y entre 55.</p>
+      <div class="formula">1 ORIGEN (ref.) = precio de la onza de oro ÷ 31,1035 ÷ 55</div>
+      <p>«Referenciado» quiere decir que sigue ese precio como referencia. No quiere decir que exista oro depositado a tu nombre, ni que alguien te deba oro, ni que ORIGEN se pueda cambiar por oro. <b>Una referencia no es una promesa de valor.</b></p>
+    </div>
+
+    <h3>4. Las órdenes</h3>
+    <ul>
+      <li>Una orden límite se coloca al precio que escribís, en <b>ORIGEN por unidad</b> del activo. Una orden a mercado toma lo que haya en el libro y lo que no calce se cancela.</li>
+      <li>Antes de colocar, la casa te enseña una <b>pantalla de confirmación</b>: qué das, qué recibís, el precio, la referencia del oro y cuánto se aleja tu precio de ella. Si se aleja más del umbral de aviso, tenés que marcarlo a propósito; si se aleja más del umbral de bloqueo, la casa no acepta la orden. Los dos umbrales están publicados en la propia pantalla.</li>
+      <li>Al colocar, el saldo que la orden necesita queda <b>reservado</b> hasta que se ejecuta o la cancelás.</li>
+      <li>Un trato ejecutado <b>no se deshace</b>. Verificá la unidad, el precio y la cantidad antes de confirmar: es tu orden.</li>
+      <li>La casa cobra una comisión sobre lo que cada parte recibe, publicada en el formulario antes de colocar.</li>
+    </ul>
+
+    <h3>5. Depósitos y retiros</h3>
+    <ul>
+      <li>Los depósitos se acreditan cuando la cadena los confirma en tu dirección de depósito. Solo los activos de la tabla de la casa se acreditan; cualquier otro token enviado a esa dirección no se reconoce.</li>
+      <li>Los retiros van a una dirección de la cadena 5550 que vos indicás. Una dirección equivocada es irreversible: ni la casa ni nadie puede recuperar lo enviado a una dirección que no controla.</li>
+      <li>Antes de cada retiro la dirección pasa por el tamiz de sanciones del ecosistema.</li>
+    </ul>
+
+    <h3>6. Efectivo con agentes</h3>
+    <ul>
+      <li>El precio de una operación en lempiras o dólares <b>lo pactan las partes</b>. La referencia se enseña al lado, rotulada, y no obliga a nadie.</li>
+      <li>La casa retiene el ORIGEN en garantía y lo libera cuando la parte que debía recibir el fiat confirma. Si no hay acuerdo, se abre una disputa y la casa arbitra con lo que las partes anotaron.</li>
+      <li>La transferencia bancaria es entre vos y el agente. La casa no es parte de esa transferencia.</li>
+    </ul>
+
+    <h3>7. Disponibilidad y errores</h3>
+    <p>La casa se esfuerza por estar disponible, y no lo promete. Si un dato no llega —un precio, un saldo, un libro— la casa enseña un guion y <b>no opera sobre lo que no leyó</b>. Un mantenimiento, una caída de la cadena o del feed de referencia pueden suspender temporalmente las órdenes.</p>
+
+    <h3>8. Lo que la casa no promete</h3>
+    <p>La casa no promete rendimiento, revalorización, liquidez, contraparte ni un precio determinado para ningún activo. Todo lo que dice de valor es una referencia o un trato pasado. No hay proyecciones en esta casa, y si alguien te da una en su nombre, no es de la casa.</p>
+
+    <h3>9. Cambios</h3>
+    <p>Estos términos pueden cambiar. La versión vigente es la fecha que está arriba y la que el sistema te pide aceptar; seguir operando después de aceptar la nueva versión es aceptarla.</p>
+  </section>
+
+  <section id="riesgo" class="riesgo">
+    <h2>Aviso de riesgo</h2>
+    <p>Leelo entero. Es corto y es lo que importa.</p>
+    <div class="clave">
+      <p><b>Podés perder todo lo que pongas.</b> Los activos de la cadena 5550 son activos digitales: su precio puede subir, bajar o quedar sin comprador. Operá solo con lo que podés permitirte perder.</p>
+    </div>
+    <h3>Los riesgos concretos</h3>
+    <ul>
+      <li><b>De precio.</b> El oro y la plata se mueven, y los tokens que los siguen se mueven con ellos. Un token de sector no sigue nada: su precio nace en el libro y puede no tener ninguno.</li>
+      <li><b>De referencia.</b> La referencia sale de un feed público de terceros. Puede retrasarse, fallar o dejar de existir. Cuando no llega, la casa lo dice y no coloca órdenes límite en los mercados que dependen de ella.</li>
+      <li><b>De liquidez.</b> El libro puede estar vacío. Que un activo tenga referencia no significa que haya quien lo compre. Podés no poder vender cuando quieras, sino cuando aparezca quien compre.</li>
+      <li><b>De tecleo.</b> Los precios van en ORIGEN por unidad, no en dólares. Un precio tecleado en la unidad equivocada es una orden legítima para el libro. La pantalla de confirmación y los umbrales de desvío existen para atajarlo, y no reemplazan tu lectura.</li>
+      <li><b>De cadena.</b> Una transacción confirmada en la cadena no se revierte. Una dirección equivocada es dinero perdido.</li>
+      <li><b>De contraparte en efectivo.</b> En una operación con un agente, la transferencia bancaria es entre personas. La garantía en ORIGEN reduce el riesgo; no lo elimina.</li>
+      <li><b>De instrumento declarado.</b> ONDK es un valor negociable cuyo precio declara la Junta por resolución. Ese número no es un precio de mercado y no dice a cuánto podrás venderlo.</li>
+      <li><b>Regulatorio.</b> La casa no está supervisada por una autoridad financiera. El marco legal aplicable puede cambiar y afectar la operación, incluso suspenderla.</li>
+      <li><b>Técnico.</b> Fallos de software, de red o de terceros pueden impedir operar o retrasar una acreditación.</li>
+    </ul>
+    <h3>Lo que este aviso no es</h3>
+    <p>No es asesoramiento financiero, legal ni fiscal. Nadie en la casa te va a decir qué comprar ni cuándo. Si tenés dudas, consultá a un profesional independiente antes de operar.</p>
+  </section>
+
+  <p class="pie">ORDENEX es una casa de <a href="https://www.aucorp.io" target="_blank" rel="noopener">AuCorp</a> dentro del ecosistema <a href="https://www.ordenglobal.org" target="_blank" rel="noopener">Orden Global</a>. <a href="index.html">Volver a la casa</a>.</p>
+</main>
+
+<!-- ═══════════════════════════════ ENGLISH ═══════════════════════════════ -->
+<main lang="en">
+  <div class="sello">A house of AuCorp · Orden Global ecosystem</div>
+  <h1>Terms and conditions, and risk notice</h1>
+  <div class="version">version 2026-09-02 · in force since publication</div>
+  <nav class="indice" aria-label="Sections">
+    <a href="#terminos">Terms and conditions</a>
+    <a href="#riesgo">Risk notice</a>
+  </nav>
+
+  <section id="terminos-en">
+    <h2>Terms and conditions</h2>
+    <p>This is what you accept when you trade on ORDENEX (ordenexchange.link), AuCorp’s exchange house for the published assets of Orden Global’s chain 5550. You read them before your first order and accept them once per version: if the text changes, the house asks you again.</p>
+
+    <h3>1. What ORDENEX is, and what it is not</h3>
+    <p>ORDENEX is an <b>order book</b>: it puts whoever wants to buy in touch with whoever wants to sell a chain asset against ORIGEN, and matches orders at the price of the order that was resting. The house <b>does not set prices</b>, does not buy or sell for its own account in the book, and does not guarantee a counterparty.</p>
+    <p>ORDENEX <b>does not touch legal tender</b>. Cash in and out in lempiras or dollars is between people: verified agents who sell or buy their own ORIGEN, with the ORIGEN held in escrow by the house until the other side confirms. The house custodies and arbitrates; it neither receives nor transfers fiat.</p>
+    <p>ORDENEX is not a bank, a broker-dealer or an adviser. It is not an entity supervised by a financial authority, and it does not claim to be.</p>
+
+    <h3>2. Your account</h3>
+    <ul>
+      <li>You sign in with your Veta Wallet account and your Genesis ID identity. ORDENEX stores no passwords.</li>
+      <li>You are responsible for your session and for what is ordered from it. Sign out on devices that are not yours.</li>
+      <li>Trading cash and trading instruments declared by the Board (today, ONDK) requires a verified identity.</li>
+      <li>The house may suspend an account on suspicion of fraud, use of someone else’s identity or a match in sanctions lists, and reports the operations the law requires it to report.</li>
+    </ul>
+
+    <h3>3. Prices: three kinds, never mixed</h3>
+    <p>There are three kinds of price in the house and each is shown with its name:</p>
+    <ol>
+      <li><b>Trade</b>: what was actually paid in this house’s book. The only one that draws candles.</li>
+      <li><b>Reference</b>: the metal’s price in the real market, read from a public feed and labelled with its source and time. <b>It is information, not an offer nor a promise.</b></li>
+      <li><b>Declared</b>: a figure set by resolution of Orden Global’s Board of Directors for an instrument that does not trade yet (today, ONDK), with minutes and signatory.</li>
+    </ol>
+    <div class="clave">
+      <p><b>ORIGEN is referenced to gold.</b> Its reference price is that of one gramin: a troy ounce of gold divided by 31.1035 grams and by 55.</p>
+      <div class="formula">1 ORIGEN (ref.) = gold ounce price ÷ 31.1035 ÷ 55</div>
+      <p>“Referenced” means it follows that price as a reference. It does not mean gold is deposited in your name, that anyone owes you gold, or that ORIGEN can be exchanged for gold. <b>A reference is not a promise of value.</b></p>
+    </div>
+
+    <h3>4. Orders</h3>
+    <ul>
+      <li>A limit order is placed at the price you type, in <b>ORIGEN per unit</b> of the asset. A market order takes what is in the book and whatever does not match is cancelled.</li>
+      <li>Before placing, the house shows you a <b>confirmation screen</b>: what you give, what you receive, the price, the gold reference and how far your price is from it. Beyond the warning threshold you must tick it on purpose; beyond the blocking threshold the house does not accept the order. Both thresholds are published on that screen.</li>
+      <li>When you place an order, the balance it needs is <b>reserved</b> until it executes or you cancel it.</li>
+      <li>An executed trade <b>cannot be undone</b>. Check the unit, the price and the amount before confirming: it is your order.</li>
+      <li>The house charges a fee on what each side receives, published in the form before you place.</li>
+    </ul>
+
+    <h3>5. Deposits and withdrawals</h3>
+    <ul>
+      <li>Deposits are credited when the chain confirms them at your deposit address. Only the assets in the house’s table are credited; any other token sent to that address is not recognised.</li>
+      <li>Withdrawals go to a chain 5550 address you provide. A wrong address is irreversible: neither the house nor anyone else can recover what was sent to an address it does not control.</li>
+      <li>Before each withdrawal the address goes through the ecosystem’s sanctions screening.</li>
+    </ul>
+
+    <h3>6. Cash with agents</h3>
+    <ul>
+      <li>The price of a lempira or dollar operation <b>is agreed by the parties</b>. The reference is shown next to it, labelled, and binds nobody.</li>
+      <li>The house holds the ORIGEN in escrow and releases it when the party that was to receive the fiat confirms. Without agreement a dispute opens and the house arbitrates with what the parties recorded.</li>
+      <li>The bank transfer is between you and the agent. The house is not a party to that transfer.</li>
+    </ul>
+
+    <h3>7. Availability and errors</h3>
+    <p>The house strives to be available, and does not promise it. If a piece of data does not arrive —a price, a balance, a book— the house shows a dash and <b>does not operate on what it did not read</b>. Maintenance, a chain outage or a reference feed outage may temporarily suspend orders.</p>
+
+    <h3>8. What the house does not promise</h3>
+    <p>The house does not promise returns, appreciation, liquidity, a counterparty or any given price for any asset. Everything it says about value is a reference or a past trade. There are no projections in this house, and if someone gives you one in its name, it is not from the house.</p>
+
+    <h3>9. Changes</h3>
+    <p>These terms may change. The version in force is the date shown above and the one the system asks you to accept; continuing to trade after accepting the new version is accepting it.</p>
+  </section>
+
+  <section id="riesgo-en" class="riesgo">
+    <h2>Risk notice</h2>
+    <p>Read all of it. It is short and it is what matters.</p>
+    <div class="clave">
+      <p><b>You can lose everything you put in.</b> The assets of chain 5550 are digital assets: their price can go up, go down or be left with no buyer. Trade only with what you can afford to lose.</p>
+    </div>
+    <h3>The concrete risks</h3>
+    <ul>
+      <li><b>Price.</b> Gold and silver move, and the tokens that follow them move with them. A sector token follows nothing: its price is born in the book and may have none.</li>
+      <li><b>Reference.</b> The reference comes from a third-party public feed. It can lag, fail or cease to exist. When it does not arrive, the house says so and does not place limit orders in the markets that depend on it.</li>
+      <li><b>Liquidity.</b> The book can be empty. That an asset has a reference does not mean anyone will buy it. You may be unable to sell when you want, only when a buyer shows up.</li>
+      <li><b>Typing.</b> Prices are in ORIGEN per unit, not in dollars. A price typed in the wrong unit is a legitimate order for the book. The confirmation screen and the deviation thresholds exist to catch it, and they do not replace your reading.</li>
+      <li><b>Chain.</b> A transaction confirmed on the chain is not reversed. A wrong address is lost money.</li>
+      <li><b>Cash counterparty.</b> In an operation with an agent, the bank transfer is between people. The ORIGEN escrow reduces the risk; it does not remove it.</li>
+      <li><b>Declared instrument.</b> ONDK is a security whose price the Board declares by resolution. That number is not a market price and does not say what you will be able to sell it for.</li>
+      <li><b>Regulatory.</b> The house is not supervised by a financial authority. The applicable legal framework may change and affect operation, including suspending it.</li>
+      <li><b>Technical.</b> Software, network or third-party failures may prevent trading or delay a credit.</li>
+    </ul>
+    <h3>What this notice is not</h3>
+    <p>It is not financial, legal or tax advice. Nobody in the house will tell you what to buy or when. If in doubt, consult an independent professional before trading.</p>
+  </section>
+
+  <p class="pie">ORDENEX is a house of <a href="https://www.aucorp.io" target="_blank" rel="noopener">AuCorp</a> within the <a href="https://www.ordenglobal.org" target="_blank" rel="noopener">Orden Global</a> ecosystem. <a href="index.html">Back to the house</a>.</p>
+</main>
+
+<script>
+/* El idioma: la misma llave que el resto de la casa (`ordenex.idioma`), así
+   que quien llega desde la app en inglés lee esto en inglés. Los anclajes
+   #terminos y #riesgo son los del español y se traducen al cambiar: el enlace
+   de la confirmación es uno solo para los dos idiomas. */
+(() => {
+  'use strict';
+  const mains = document.querySelectorAll('main[lang]');
+  const botones = document.querySelectorAll('[data-lang]');
+  let idioma = (() => {
+    try { const g = localStorage.getItem('ordenex.idioma'); if (g === 'es' || g === 'en') return g; } catch {}
+    return (navigator.language || 'es').toLowerCase().startsWith('es') ? 'es' : 'en';
+  })();
+  function pintar() {
+    document.documentElement.lang = idioma;
+    mains.forEach(m => m.classList.toggle('activo', m.getAttribute('lang') === idioma));
+    botones.forEach(b => b.setAttribute('aria-pressed', String(b.dataset.lang === idioma)));
+    // El anclaje pedido (#terminos / #riesgo) se lleva a la sección del idioma activo.
+    const h = String(location.hash || '').replace(/^#/, '').replace(/-en$/, '');
+    if (h === 'terminos' || h === 'riesgo') {
+      const el = document.getElementById(idioma === 'en' ? h + '-en' : h);
+      if (el) el.scrollIntoView({ block: 'start' });
+    }
+  }
+  botones.forEach(b => b.addEventListener('click', () => {
+    idioma = b.dataset.lang;
+    try { localStorage.setItem('ordenex.idioma', idioma); } catch {}
+    pintar();
+  }));
+  addEventListener('hashchange', pintar);
+  pintar();
+})();
+</script>

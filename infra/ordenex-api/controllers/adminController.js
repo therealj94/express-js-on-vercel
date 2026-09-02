@@ -11,6 +11,8 @@ const ledger = require('../lib/ledger');
 const cadena = require('../lib/cadena5550');
 const { PORSIMBOLO } = require('../lib/tokens');
 const { descifrarLlavePrivada } = require('../lib/cripto');
+const { cuadro: configuracionCuadro } = require('../lib/configuracion');
+const { TERMINOS_VERSION } = require('../lib/terminos');
 
 const MONEDAS = ['HNL', 'USD'];
 
@@ -315,7 +317,16 @@ async function estado(req, res) {
       : { ok: false, direccion, saldos: null, error: lectura.error };
   }
 
-  return res.json({ ...conteos, caliente });
+  // Que esta configurado y que no, sin un solo valor secreto (lib/configuracion.js).
+  // Va en la misma respuesta porque es la misma pregunta: «¿la casa esta
+  // entera?» — y un panel que enseña conteos con la ORDENEX_ADM sin poner
+  // esta enseñando una casa que no puede generar una direccion de deposito.
+  const configuracion = configuracionCuadro();
+  const faltan = Object.entries(configuracion)
+    .filter(([, c]) => c.puesta === false)
+    .map(([k]) => k);
+
+  return res.json({ ...conteos, caliente, configuracion, faltan, terminosVersion: TERMINOS_VERSION });
 }
 
 // ── POST /admin/precio-declarado ────────────────────────────────────────────

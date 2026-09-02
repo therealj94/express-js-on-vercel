@@ -198,7 +198,17 @@ GET  /mercados/:par/tratos            → últimos 50 [{ precio, cantidad, lado,
 GET  /mercados/:par/referencia?marco=30m → { activo, unidad:'USD', rotulo, fuente, actualizadoEn, velas }
 GET  /precio-declarado/:token         → { token, clase:'declarado', moneda, vigente, serie }
 
-POST /ordenes {mercado, lado, tipo, precio?, cantidad, ordenKey} 🔒
+GET  /limites                         → { desvio: { avisoPct, bloqueoPct }, terminos: { version, terminos, riesgo } }
+GET  /auth/terminos 🔒                → { version, terminos, riesgo, aceptada }
+POST /auth/terminos {version} 🔒      → idem, aceptada: true (solo la version vigente)
+
+POST /ordenes {mercado, lado, tipo, precio?, cantidad, ordenKey, aceptoDesvio?} 🔒
+     · 403 TERMINOS_NO_ACEPTADOS sin los terminos vigentes aceptados
+     · limite en AUKA/AGKA/ONDK: se mide contra la referencia del oro en ORIGEN
+       (lib/guardaPrecio.js). |desvio| > X → 400 DESVIO_SIN_ACEPTAR salvo
+       aceptoDesvio:true; |desvio| > Y → 400 PRECIO_DESVIADO siempre; sin
+       referencia → 503 SIN_REFERENCIA_AHORA. X e Y: ORDENEX_DESVIO_AVISO_PCT (5)
+       y ORDENEX_DESVIO_BLOQUEO_PCT (25).
 GET  /ordenes?estado=abierta 🔒
 DELETE /ordenes/:id 🔒
 
@@ -207,13 +217,14 @@ POST /retiros {activo, cantidad, direccion, retiroKey} 🔒
 GET  /movimientos 🔒                  → asientos + depósitos + retiros del usuario
 
 GET  /fiat/agentes?moneda=HNL         → agentes activos (sin números de cuenta)
-POST /fiat/solicitudes 🔒             GET /fiat/solicitudes 🔒
+POST /fiat/solicitudes 🔒 (403 TERMINOS_NO_ACEPTADOS sin terminos)   GET /fiat/solicitudes 🔒
 POST /fiat/solicitudes/:id/tomar 🔒(agente)  /avisar 🔒  /confirmar 🔒  /cancelar 🔒
 POST /fiat/solicitudes/:id/disputar 🔒
 
 POST /admin/agentes 🔑  DELETE /admin/agentes/:id 🔑
 POST /admin/solicitudes/:id/resolver 🔑
-POST /admin/barrer {activo} 🔑        GET /admin/estado 🔑
+POST /admin/barrer {activo} 🔑        GET /admin/estado 🔑 (conteos, caliente, y `configuracion`:
+                                        que variable esta puesta y si es valida — jamas su valor)
 POST /admin/precio-declarado {token, fecha, precio, acta, firmante, nota?} 🔑
 DELETE /admin/precio-declarado/:id 🔑  (solo para el error de tecleo; no es la
                                         forma de «bajar» un precio: para eso la
@@ -228,8 +239,30 @@ GET  /salud                           → { ok, cadena, mongo, bloque }
 ```
 MONGODB_URI, ORDENEX_TOKEN, ORDENEX_ADM, ORDENEX_HOT_KEY, ORDENEX_ADMIN_KEY,
 GENESIS_URL, GENESIS_API_KEY, OG_CHAIN_PROVIDER (rpc.ordenglobal-rpc.com),
-ORDENEX_COMISION_PPM (opcional), CORS_ORIGENES
+ORDENEX_COMISION_PPM (opcional), CORS_ORIGENES,
+ORDENEX_DESVIO_AVISO_PCT (X, 5), ORDENEX_DESVIO_BLOQUEO_PCT (Y, 25)
 ```
+
+## La guarda de precio y la confirmacion
+
+Un solo precio visible por par, con su fuente y su hora: el ultimo trato si
+lo hubo, y si no la referencia del oro convertida a ORIGEN, rotulada «ref» y
+con la hora en que se leyo el feed. Antes de colocar, la web enseña una
+pantalla de confirmacion: que das, que recibis, precio, referencia del oro
+(onza, gramin, fuente, hora), el desvio en % contra la referencia, la
+comision, y —la primera vez— la casilla de los terminos y el aviso de riesgo.
+
+El API repite la cuenta (`lib/guardaPrecio.js`): pasado X pide `aceptoDesvio`,
+pasado Y no entra, sin referencia no entra. La casilla de la pantalla es un
+cartel; la puerta es el API.
+
+## Terminos y aviso de riesgo
+
+`apps-web/ordenex/legal.html` (#terminos, #riesgo), enlazados desde la portada
+y el riel. Version vigente en `lib/terminos.js`; se acepta por
+`POST /auth/terminos` y se exige en `POST /ordenes` y `POST /fiat/solicitudes`.
+Palabras: ORIGEN esta **referenciado** al oro (onza / 31,1035 / 55), nunca
+«respaldado»; nada de «regulados»; sin proyecciones; referencia, no promesa.
 
 ## La web (apps-web/ordenex) — la casa hermana
 

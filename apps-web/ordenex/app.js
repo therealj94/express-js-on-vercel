@@ -349,13 +349,18 @@ const ONX = (() => {
          vacio — se enseña el usd rotulado, y si no vino, nada. */
       const ref = (m.referencia && m.referencia.usd != null)
         ? ('$' + Number(m.referencia.usd).toFixed(2)) : null;
+      /* La fuente y la hora de la referencia viajan en el título de la celda:
+         un precio marcado «ref» tiene que poder decir de dónde y de cuándo. */
+      const fuenteRef = pf.ref && m.referencia
+        ? `${m.referencia.rotulo || ''} · ${m.referencia.fuente || ''} · ${m.referencia.en ? new Date(m.referencia.en).toTimeString().slice(0, 5) : ''}`.trim()
+        : '';
       const chg = m.cambio24h == null ? null : Number(m.cambio24h);
       const pill = chg == null ? '<span class="mv-sin">—</span>'
         : `<span class="pastilla ${chg < 0 ? 'baja-p' : 'sube-p'}">${chg >= 0 ? '+' : ''}${chg.toFixed(2)}%</span>`;
       return `
         <tr onclick="ONX.abrirPar(${jsTxt(m.mercado)})">
           <td class="mv-par"><b>${esc(base)}</b><small>/ ORIGEN</small></td>
-          <td class="mono mv-num${pf.ref ? ' esRef' : ''}">${pf.txt == null ? '—' : esc(pf.txt)}
+          <td class="mono mv-num${pf.ref ? ' esRef' : ''}" title="${esc(fuenteRef)}">${pf.txt == null ? '—' : esc(pf.txt)}
             ${ref == null ? '' : `<small class="mv-ref">${esc(t('pt.mvRef'))} ${esc(ref)}</small>`}</td>
           <td class="mv-chg">${pill}</td>
           <td class="mono mv-num soloAncho">${esc(deWei(m.alto24h) ?? '—')}</td>
@@ -484,6 +489,61 @@ const ONX = (() => {
     avisar(t('tost.chau'));
   }
 
+  /* ── los términos y el aviso de riesgo, antes de la primera operación ─────
+     La sala de mercado los pide dentro de su confirmación (mercado.js); el
+     circuito fiat, y cualquier otra sala que un día abra una operación, los
+     pide por acá. Se acepta UNA vez por versión del texto: la versión vigente
+     la dice GET /limites y la aceptación la guarda POST /auth/terminos.
+     Fail-closed: sin versión leída no se acepta nada, y quien llamó no sigue.
+
+     `alAceptar` se llama SOLO después de que el servidor confirmó la
+     aceptación: es lo que deja reintentar la operación que el API frenó con
+     TERMINOS_NO_ACEPTADOS. */
+  async function pedirTerminos(alAceptar) {
+    let lim = null;
+    try { lim = await DATOS.limites(); } catch { lim = null; }
+    const version = lim?.terminos?.version;
+    if (!version) { avisar(t('term.no')); return; }
+    const rutas = lim.terminos || {};
+    const a = (ruta, txt) => `<a href="${esc(ruta || 'legal.html')}" target="_blank" rel="noopener">${esc(txt)}</a>`;
+    const casilla = esc(t('term.check'))
+      .replace('{terminos}', a(rutas.terminos, t('term.terminos')))
+      .replace('{riesgo}', a(rutas.riesgo, t('term.riesgo')));
+    document.getElementById('onx-terminos')?.remove();
+    document.body.insertAdjacentHTML('beforeend', `
+      <div class="cf-velo" id="onx-terminos" role="dialog" aria-modal="true" aria-labelledby="onx-term-t">
+        <div class="cf-caja vidrio">
+          <h3 id="onx-term-t">${esc(t('term.t'))}</h3>
+          <p>${esc(t('term.p'))}</p>
+          <label class="cf-check"><input type="checkbox" id="onx-term-check"><span>${casilla}</span></label>
+          <p class="cf-aviso" id="onx-term-aviso" aria-live="polite"></p>
+          <div class="cf-botones">
+            <button class="btn btn-linea btn-sm" id="onx-term-no">${esc(t('term.volver'))}</button>
+            <button class="btn btn-oro btn-sm" id="onx-term-ok" disabled>${esc(t('term.ok'))}</button>
+          </div>
+        </div>
+      </div>`);
+    const caja = document.getElementById('onx-terminos');
+    const check = document.getElementById('onx-term-check');
+    const ok = document.getElementById('onx-term-ok');
+    check.addEventListener('change', () => { ok.disabled = !check.checked; });
+    document.getElementById('onx-term-no').addEventListener('click', () => caja.remove());
+    ok.addEventListener('click', async () => {
+      if (!check.checked) return;      // la puerta no se abre desde la consola
+      ok.disabled = true;
+      try {
+        await DATOS.aceptarTerminos(version);
+        tele('accion', 'terminos.aceptados', { meta: { version } });
+        caja.remove();
+        if (typeof alAceptar === 'function') alAceptar();
+      } catch (e) {
+        document.getElementById('onx-term-aviso').textContent = e?.message || t('term.err');
+        ok.disabled = false;
+      }
+    });
+    tele('pantalla', 'terminos', location.hash || '#');
+  }
+
   // ── idioma ────────────────────────────────────────────────────────────────
 
   /* Las vistas se generan enteras al navegar, así que basta con repintar los
@@ -569,5 +629,5 @@ const ONX = (() => {
   /* La API pública. esc/jsTxt/deWei/aWei se exportan porque los módulos
      pintan con ellos; t() NO se exporta — los textos de cada vista viven en
      su módulo, y prestar t() sería invitar a mezclar los dos diccionarios. */
-  return { entrar, salir, idioma, ir, vista, abrirPar, avisar, esc, jsTxt, deWei, aWei };
+  return { entrar, salir, idioma, ir, vista, abrirPar, avisar, pedirTerminos, esc, jsTxt, deWei, aWei };
 })();

@@ -44,11 +44,29 @@ es: {
   // cero, y acá se dice la verdad aunque quede menos linda.
   'pt.mvSinFeed': 'No pudimos traer los mercados. Los precios van a aparecer en cuanto vuelva la conexión.',
 
+  /* Los enlaces legales. Las palabras son las del expediente de la Secretaría
+     (14/08/2026): ORIGEN está REFERENCIADO al oro —onza / 31,1035 / 55—, es
+     una referencia y no una promesa; nada de «regulados», nada de
+     «respaldado». Lo que la casa no puede decir con verdad no lo dice. */
+  'pt.legal': 'Antes de operar, leé los <a href="legal.html#terminos" target="_blank" rel="noopener">términos y condiciones</a> y el <a href="legal.html#riesgo" target="_blank" rel="noopener">aviso de riesgo</a>. ORIGEN está referenciado al oro; una referencia no es una promesa de valor.',
+
   'nav.mercados': 'Mercados', 'nav.portafolio': 'Portafolio',
   'nav.fiat': 'Fiat', 'nav.actividad': 'Actividad',
   'nav.salir': 'Salir',
   'pie.duena': 'Una casa de',
   'pie.og': 'Orden Global',
+  'pie.terminos': 'Términos', 'pie.riesgo': 'Aviso de riesgo',
+
+  /* La caja de los términos que abre ONX.pedirTerminos: la primera operación
+     desde el circuito fiat (la sala de mercado los pide dentro de su propia
+     confirmación). Se acepta una vez por versión del texto. */
+  'term.t': 'Antes de tu primera operación',
+  'term.p': 'Leé los términos y condiciones y el aviso de riesgo de la casa. En corto: ORIGEN está referenciado al oro y su precio de referencia sale de un feed público; el precio de cada trato lo ponen las dos puntas del libro, y el de una operación en efectivo lo pactan las partes. Nada de esto es una promesa de valor ni de liquidez.',
+  'term.check': 'Leí y acepto los {terminos} y el {riesgo}.',
+  'term.terminos': 'términos y condiciones', 'term.riesgo': 'aviso de riesgo',
+  'term.ok': 'Acepto y sigo', 'term.volver': 'Ahora no',
+  'term.no': 'No pudimos traer la versión vigente de los términos. Probá en un momento.',
+  'term.err': 'No se pudo guardar la aceptación. Probá de nuevo.',
 
   // El acceso es un solo gesto (el canje del token SSO), pero tiene tres
   // finales posibles y cada uno se dice distinto.
@@ -84,11 +102,22 @@ en: {
   'pt.mvCargando': 'Fetching the markets…',
   'pt.mvSinFeed': 'We couldn’t fetch the markets. Prices will appear as soon as the connection is back.',
 
+  'pt.legal': 'Before trading, read the <a href="legal.html#terminos" target="_blank" rel="noopener">terms and conditions</a> and the <a href="legal.html#riesgo" target="_blank" rel="noopener">risk notice</a>. ORIGEN is referenced to gold; a reference is not a promise of value.',
+
   'nav.mercados': 'Markets', 'nav.portafolio': 'Portfolio',
   'nav.fiat': 'Fiat', 'nav.actividad': 'Activity',
   'nav.salir': 'Sign out',
   'pie.duena': 'A house of',
   'pie.og': 'Orden Global',
+  'pie.terminos': 'Terms', 'pie.riesgo': 'Risk notice',
+
+  'term.t': 'Before your first operation',
+  'term.p': 'Read the house’s terms and conditions and risk notice. In short: ORIGEN is referenced to gold and its reference price comes from a public feed; the price of every trade is set by the two sides of the book, and the price of a cash operation is agreed by the parties. None of this is a promise of value or liquidity.',
+  'term.check': 'I have read and accept the {terminos} and the {riesgo}.',
+  'term.terminos': 'terms and conditions', 'term.riesgo': 'risk notice',
+  'term.ok': 'I accept, continue', 'term.volver': 'Not now',
+  'term.no': 'We couldn’t fetch the current version of the terms. Try again in a moment.',
+  'term.err': 'The acceptance could not be saved. Try again.',
 
   'acc.entrando': 'Signing in with your account…',
   'acc.err': 'Could not sign in. Try again in a moment.',

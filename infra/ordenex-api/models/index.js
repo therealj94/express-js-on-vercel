@@ -37,6 +37,10 @@ const usuarioSchema = new Schema(
     // La direccion de deposito que genera el vigia para este usuario.
     direccionDeposito: { type: String, default: null },
     llaveDepositoCifrada: { type: String, default: null },
+    // Los terminos y el aviso de riesgo que acepto, por version (lib/terminos.js)
+    // y cuando. null = nunca acepto ninguna: no coloca ordenes ni abre fiat.
+    terminosVersion: { type: String, default: null },
+    terminosEn: { type: Date, default: null },
   },
   { timestamps: true }
 );
