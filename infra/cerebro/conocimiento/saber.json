@@ -296,21 +296,33 @@
   },
   {
    "id": "seguridad-llaves",
-   "tema": "Quién guarda tus llaves",
+   "tema": "Quién guarda tus llaves y qué pasa si perdés el celular",
    "publico": true,
-   "revisadoPor": "jose@ordenglobal.org",
-   "revisadoEn": "2026-08-16",
+   "revisadoPor": "PENDIENTE DE REVISION DE JOSE — corregida 2-sep: la billetera no tiene frase de respaldo",
+   "revisadoEn": "2026-09-02",
    "palabras": [
     "llave",
+    "llaves",
     "seed",
     "frase",
+    "semilla",
+    "doce palabras",
     "respaldo",
     "recuperar",
+    "celular",
+    "telefono",
+    "perdi",
+    "robaron",
+    "otro aparato",
+    "contraseña",
     "key",
-    "recovery"
+    "recovery",
+    "phrase",
+    "lost my phone",
+    "stolen"
    ],
-   "es": "Tu frase de respaldo es tuya y solo tuya: no se la digas a nadie, ni a mí. Yo no la necesito para nada — yo preparo y vos firmás con tu contraseña. Guardala escrita en un sitio seguro: es lo único que abre tu dinero si perdés el teléfono.",
-   "en": "Your recovery phrase is yours and only yours: do not tell it to anyone, not even to me. I do not need it for anything — I prepare and you sign with your password. Keep it written somewhere safe: it is the only thing that opens your money if you lose your phone."
+   "es": "En Veta Wallet no hay frase de respaldo ni doce palabras: entrás con tu correo y tu contraseña, y Orden Global guarda las llaves de la cadena por vos. Si perdés o te roban el teléfono, tu plata no se va con él: entrás desde otro aparato con tu correo y, si querés, cerrás la sesión del teléfono viejo desde ahí. Lo único que tenés que cuidar es tu contraseña, y nadie de Orden Global —yo tampoco— te la va a pedir nunca, por ningún medio. Si alguien te pide la contraseña, doce palabras o una «frase maestra» diciendo que es de Orden Global, es un engaño: cortá y escribí a info@ordenglobal.org. El chat PULSE2CHAT sí usa llaves propias de cada aparato: en un teléfono nuevo ves los mensajes desde que lo abrís, no los de antes, y eso es normal.",
+   "en": "Veta Wallet has no recovery phrase and no twelve words: you sign in with your email and password, and Orden Global keeps the chain keys for you. If you lose your phone or it gets stolen, your money does not go with it: sign in from another device with your email and, if you want, sign the old phone out from there. The only thing to protect is your password, and nobody at Orden Global — me included — will ever ask for it, by any means. If someone asks for your password, twelve words or a \"master phrase\" claiming to be Orden Global, it is a scam: stop and write to info@ordenglobal.org. The PULSE2CHAT chat does use per-device keys: on a new phone you see messages from the moment you open it, not the older ones, and that is normal."
   },
   {
    "id": "interno-infra",
