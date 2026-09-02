@@ -14,7 +14,8 @@ import { desactivarDesbloqueo } from './src/unlock';
 import { buscarActualizacion, aplicarActualizacion, puedeActualizar } from './src/updates';
 import { recordLogout } from './src/sessionLog';
 import { primerArranque } from './src/backupNudge';
-import { activarAvisos, limpiarAvisos, watchIncoming, marcarVisto, stopWatch, alTocarNotificacion, avisosActivos, notificarMensaje } from './src/notify';
+import { activarAvisos, limpiarAvisos, watchIncoming, marcarVisto, stopWatch, alTocarNotificacion, avisosActivos, notificarMensaje, testigoDeEsteTelefono, soltarTestigo } from './src/notify';
+import * as M from './src/og/mensajes';
 import { vigilarMensajes } from './src/og/vigiaChat';
 import { reproducir } from './src/og/sonidos';
 import LockScreen, { useAppLock } from './src/LockScreen';
@@ -245,7 +246,12 @@ function Root() {
       try { walletApi.logout().catch(() => {}); } catch {}
       // Y el teléfono deja de recibir avisos de esta cuenta: sin esto, el
       // siguiente que entre en este aparato recibe los mensajes del anterior.
-      try { M.olvidarTelefono?.().catch?.(() => {}); } catch {}
+      // `testigoDeEsteTelefono` existía para esto y nadie lo llamaba.
+      try {
+        const testigo = testigoDeEsteTelefono();
+        if (testigo) M.olvidarTelefono(testigo).catch(() => {});
+        soltarTestigo();
+      } catch {}
       olvidar(); recordLogout(); setAccount(null); clearSession(); setToken(null); setRefreshToken(null); clearCreds(); desactivarDesbloqueo(); limpiarAvisos();
     },
   };

@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from 'react';
+import * as Linking from 'expo-linking';
+import Constants from 'expo-constants';
 import { View, Text, ScrollView, Pressable, StyleSheet } from 'react-native';
 import { Icon } from '../icons';
 import * as Clipboard from 'expo-clipboard';
@@ -10,6 +12,8 @@ import { CandleChart, TimeframeBar } from '../chart';
 import { useT, useLang } from '../i18n';
 
 const shortHash = (h) => (h && h.length > 14 ? `${h.slice(0, 8)}…${h.slice(-4)}` : h || '');
+
+const EXPLORADOR = ((Constants.expoConfig?.extra || {}).exploradorTx || 'https://ordenscan.com/tx/');
 
 export default function TokenDetail({ nav, params }) {
   const t = params.token || { s: 'ORIGEN', n: 'Origen', qty: 0, price: 0, logo: true };
@@ -132,7 +136,15 @@ export default function TokenDetail({ nav, params }) {
         {transfers.slice(0, 15).map((x, i) => {
           const inbound = isIn(x);
           return (
-            <Pressable key={x.hash || i} onPress={() => { hap(); toast('Tx ' + shortHash(x.hash)); }} style={styles.txn}>
+            <Pressable key={x.hash || i} onPress={() => {
+              hap();
+              /* Antes esto sólo mostraba un toast con el hash recortado — el
+                 movimiento no llevaba a ningún lado. La web enlaza cada fila a
+                 OrdenScan desde hace tiempo; la app no. Es lo que hace que
+                 «cada movimiento se puede comprobar» sea verdad también aquí. */
+              if (x.hash) Linking.openURL(EXPLORADOR + x.hash).catch(() => toast('Tx ' + shortHash(x.hash)));
+              else toast('Tx ' + shortHash(x.hash));
+            }} style={styles.txn}>
               <View style={styles.txnIc}><Icon name={inbound ? 'arrow-down' : 'arrow-up'} size={17} color={inbound ? C.up : C.gold} /></View>
               <View style={{ flex: 1 }}>
                 <Text style={styles.txnT}>{inbound ? tr('tok.received') : tr('tok.sent')}</Text>
