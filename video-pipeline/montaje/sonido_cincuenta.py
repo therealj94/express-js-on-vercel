@@ -118,7 +118,7 @@ def main():
     poner(10.3, toque())                       # 04: abre
     poner(12.7, toque(), 0.8)                  # 05: elige
     poner(15.0, toque(0.16), 1.2)              # 06: aprieta y mantiene
-    poner(17.5, vibrar(1.1), 1.1)              # 07: suena allá
+    poner(17.5, vibrar(1.1), 0.75)             # 07: suena allá (entra la música: más bajo)
     poner(31.7, pitido())                      # 11: el datáfono acepta
 
     y = y / (np.abs(y).max() + 1e-9) * 0.7
