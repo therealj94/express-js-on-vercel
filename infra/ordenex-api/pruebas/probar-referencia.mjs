@@ -201,13 +201,25 @@ decir('la ruta: un activo sin referencia contesta SIN_REFERENCIA');
   comprobar(!('velas' in (r.cuerpo || {})), 'y sin velas de relleno en el cuerpo del error');
   comprobar(!r.seLlamoNext, 'sin caer al manejador de errores: es una respuesta, no un accidente');
 
-  // Los doce, uno por uno: ni el mas raro se cuela con una grafica falsa.
-  const sector = ['MNKA', 'IBS', 'HARV', 'AUBEX', 'ASL', 'LOVE', 'REST', 'SOL', 'AIT', 'AGRO', 'POLITICAL', 'ONDK'];
-  const todos = await Promise.all(sector.map((s) => pedir(`${s}-ORIGEN`)));
+  // Los de sector, uno por uno: ni el mas raro se cuela con una grafica falsa.
+  // Desde que MERCADOS son solo los PUBLICADOS, hay dos respuestas y las dos
+  // son un 404 honesto: los publicados sin referencia (IBS, HARV, ONDK) dicen
+  // SIN_REFERENCIA; los nueve que no tienen mesa dicen MERCADO_INVALIDO —
+  // antes el API aceptaba ordenes en los catorce y aqui contestaban como si
+  // la mesa existiera.
+  const publicadosSinRef = ['IBS', 'HARV', 'ONDK'];
+  const sinMesa = ['MNKA', 'AUBEX', 'ASL', 'LOVE', 'REST', 'SOL', 'AIT', 'AGRO', 'POLITICAL'];
+  const conRef = await Promise.all(publicadosSinRef.map((s) => pedir(`${s}-ORIGEN`)));
   comprobar(
-    todos.every((x) => x.estado === 404 && x.cuerpo?.codigo === 'SIN_REFERENCIA'),
-    'y los doce contestan lo mismo',
-    todos.map((x, i) => `${sector[i]}:${x.estado}`).join(' ')
+    conRef.every((x) => x.estado === 404 && x.cuerpo?.codigo === 'SIN_REFERENCIA'),
+    'los publicados sin referencia contestan SIN_REFERENCIA',
+    conRef.map((x, i) => `${publicadosSinRef[i]}:${x.estado}/${x.cuerpo?.codigo}`).join(' ')
+  );
+  const sinMesaR = await Promise.all(sinMesa.map((s) => pedir(`${s}-ORIGEN`)));
+  comprobar(
+    sinMesaR.every((x) => x.estado === 404 && x.cuerpo?.codigo === 'MERCADO_INVALIDO'),
+    'y los nueve sin mesa contestan MERCADO_INVALIDO, no una grafica',
+    sinMesaR.map((x, i) => `${sinMesa[i]}:${x.estado}/${x.cuerpo?.codigo}`).join(' ')
   );
 }
 

@@ -334,7 +334,14 @@ const ONX = (() => {
     }
     feedCaido = false;
     nota.textContent = '';
-    cuerpo.innerHTML = (lista || []).map(m => {
+    /* SOLO LOS PARES PUBLICADOS. El API devuelve los catorce mercados y esto
+       los pintaba todos, con nueve filas de guiones y nombres rotos —«MNKA-
+       ORIGEN / ORIGEN»— debajo de un titulo que dice «los cinco mercados». La
+       vista de mercados si filtraba; la portada no. Un exchange que muestra
+       nueve mesas vacias que no existen parece muerto, que es peor que
+       parecer chico. */
+    const publicados = (lista || []).filter(m => CADENA.PARES.includes(m.mercado));
+    cuerpo.innerHTML = publicados.map(m => {
       const base = CADENA.baseDe(m.mercado) || m.mercado;
       const pf = precioFila(m);
       /* La referencia del API no es un wei: es un objeto { usd, rotulo, … }
@@ -371,7 +378,9 @@ const ONX = (() => {
   function pintarCinta(lista) {
     const pista = $('#cinta-pista');
     if (!pista || !Array.isArray(lista) || !lista.length) return;
-    const items = lista.map((m) => {
+    // Los mismos cinco que la portada: la cinta desfilaba catorce, nueve de
+    // ellos «— —» con nombre roto. Ver la nota en la tabla de mercados.
+    const items = lista.filter((m) => CADENA.PARES.includes(m.mercado)).map((m) => {
       const base = CADENA.baseDe(m.mercado) || m.mercado;
       const pf = precioFila(m);
       const chg = m.cambio24h == null ? null : Number(m.cambio24h);
