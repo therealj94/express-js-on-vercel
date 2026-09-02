@@ -455,6 +455,16 @@ DE_PLATA = _re.compile(
     _re.IGNORECASE)
 
 
+def _precio_dicho(idi):
+    """La frase del precio en vivo, o la de «no lo se» si la fuente no
+    contesta. Nunca una cifra del modelo."""
+    try:
+        return precio.como_se_dice(idi) or precio.NO_SE_SABE.get(idi, precio.NO_SE_SABE['es'])
+    except Exception as e:
+        log('no pude leer el precio:', type(e).__name__, str(e)[:80])
+        return precio.NO_SE_SABE.get(idi, precio.NO_SE_SABE['es'])
+
+
 def quien_es(rel, correo, perfil, dicho=''):
     """La linea de contexto de la persona: nombre, gid, y el saldo SOLO si
     viene al caso. Con cache de cinco minutos — el saldo no cambia tan rapido
@@ -2397,6 +2407,10 @@ def _atender(rel, sistema, p, de, dicho, mensaje=None):
             revisado, motivo = guardia.revisar(junto)
             if motivo == 'idioma':
                 revisado = guion.frase('respuesta-rota', _idi(p))
+            # El precio, solo de precio.py. Ver guardia.PREGUNTA_PRECIO.
+            if not motivo and guardia.precio_inventado(dicho, junto):
+                revisado = _precio_dicho(_idi(p))
+                motivo = 'precio'
             if motivo:
                 log(f'GUARDIA ({motivo}) cortó la respuesta a', de)
                 # Aqui SI se guarda el texto, y es la unica vez: es lo que
@@ -2522,6 +2536,10 @@ def _atender(rel, sistema, p, de, dicho, mensaje=None):
         entero_visto, motivo_cierre = guardia.revisar(entero_visto)
         if motivo_cierre == 'idioma':
             entero_visto = guion.frase('respuesta-rota', _idi(p))
+        if not motivo_cierre and not cortado['por'] \
+                and guardia.precio_inventado(dicho, entero_visto):
+            entero_visto = _precio_dicho(_idi(p))
+            motivo_cierre = 'precio'
         if motivo_cierre and not cortado['por']:
             log(f'GUARDIA ({motivo_cierre}) cortó el cierre para', de)
             registro.anotar('guardia', motivo=motivo_cierre,

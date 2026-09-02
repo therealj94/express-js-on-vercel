@@ -208,5 +208,44 @@ class NOSELLEVAPORDELANTELONORMAL(unittest.TestCase):
             'Ya quedó registrado tu reclamo, te aviso cuando lo revisemos.'))
 
 
+
+# ── EL PRECIO, COPIADO DE LA CHARLA DE JOSE DEL 1-SEP ───────────────────────
+#
+# Pregunto en ingles, el modelo contesto «$1.18» mientras la billetera decia
+# 2.56, y al corregirlo doblo la apuesta. Estas son las frases tal cual.
+PREGUNTO = 'Whats the price of one origen to USD ?'
+CONTESTO = ('Claro, para calcular el precio de 1 ORIGEN en USD, podés usar el '
+            'precio actual del oro. Actualmente, el precio de 1 ORIGEN es '
+            'aproximadamente $1.18 USD.')
+INSISTIO = 'Pero en mi veta wallet sale 2.56 USD 1 origen'
+DOBLO = ('El precio en tu billetera puede estar ajustado por factores como '
+         'tasas de cambio. Según el precio actual del oro, 1 ORIGEN debería '
+         'ser aproximadamente $1.18 USD.')
+
+
+class PrecioInventado(unittest.TestCase):
+    def test_la_cifra_del_modelo_no_sale(self):
+        self.assertTrue(g.precio_inventado(PREGUNTO, CONTESTO))
+
+    def test_tampoco_cuando_dobla_la_apuesta(self):
+        self.assertTrue(g.precio_inventado(INSISTIO, DOBLO))
+
+    def test_en_espanol_tambien(self):
+        self.assertTrue(g.precio_inventado('cuanto vale un origen en dolares',
+                                           'Un ORIGEN vale unos 1.20 dólares.'))
+        self.assertTrue(g.precio_inventado('precio de ORIGEN?', 'Está a $ 2.10.'))
+
+    def test_una_respuesta_sin_cifra_pasa(self):
+        # Si el modelo no pone numero no hay nada que tirar: la frase del
+        # precio real la agrega quien llama, no el guardia.
+        self.assertFalse(g.precio_inventado(
+            PREGUNTO, 'Sale del precio del oro, dividido entre 55.'))
+
+    def test_una_cifra_que_no_es_de_precio_pasa(self):
+        # «cuanto tengo» con un saldo no es una pregunta de precio.
+        self.assertFalse(g.precio_inventado('cuanto tengo en la billetera',
+                                            'Tenés 20.99 ORIGEN.'))
+        self.assertFalse(g.precio_inventado('hola', 'Mandaste $5 ayer.'))
+
 if __name__ == '__main__':
     unittest.main(verbosity=2)

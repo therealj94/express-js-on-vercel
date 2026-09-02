@@ -141,6 +141,43 @@ def se_fue_de_idioma(texto, tope=0.02):
     return raros / len(t) > tope
 
 
+# ── EL PRECIO NO LO INVENTA NADIE ─────────────────────────────────────────
+#
+# Lo que le paso a Jose el 1-sep, copiado de su charla: pregunto «Whats the
+# price of one origen to USD ?» y el modelo contesto «aproximadamente $1.18»
+# mientras la billetera marcaba 2.56. Cuando se lo dijo, el modelo doblo la
+# apuesta: «puede estar ajustado por tasas de cambio». Dos cifras distintas
+# para la misma moneda, y la equivocada dicha con seguridad.
+#
+# El PROMPT ya prohibe dar cifras (linea 257) y el modelo no obedece. Asi que
+# la regla vive aqui, donde no se puede desobedecer: si la pregunta es por el
+# precio de ORIGEN y la respuesta trae una cifra en dolares, la respuesta
+# entera se tira y sale la de `precio.py`, que lee la misma fuente que la
+# billetera. Una cifra de dinero dicha por un modelo de lenguaje es una
+# adivinanza con formato de dato.
+
+PREGUNTA_PRECIO = re.compile(
+    r'\b((precio|valor|cotizaci[oó]n|cu[aá]nto (vale|cuesta|est[aá]|es))\b.{0,40}'
+    r'\b(origen|auka|agka|gramin)\b'
+    r'|\b(origen|auka|agka|gramin)\b.{0,40}\b(precio|valor|d[oó]lar(es)?|usd|vale|cuesta)'
+    r'|\b(price|value|worth|cost)\b.{0,40}\b(origen|auka|agka|gramin)\b'
+    r'|\b(origen|auka|agka|gramin)\b.{0,40}\b(price|usd|dollars?|worth|cost)'
+    # Y al reves: «sale 2.56 USD 1 origen». La persona no siempre pone la
+    # moneda despues de ORIGEN, y el modelo contesta igual de seguro.
+    r'|\b(usd|d[oó]lar(es)?|dollars?|price|precio)\b.{0,40}\b(origen|auka|agka|gramin)\b)',
+    re.IGNORECASE | re.DOTALL)
+
+CIFRA_DOLAR = re.compile(r'(\$\s?\d|\d[\d.,]*\s?(usd|d[oó]lares?|dollars?)\b)', re.IGNORECASE)
+
+
+def precio_inventado(dicho, texto):
+    """True si la persona pregunto el precio de ORIGEN y el modelo puso una
+    cifra en dolares. La cifra no se comprueba contra el precio real a
+    proposito: aunque acertara hoy, seria un acierto y no un dato."""
+    return bool(PREGUNTA_PRECIO.search(dicho or '')
+                and CIFRA_DOLAR.search(texto or ''))
+
+
 def revisar(texto):
     """Mira lo que esta a punto de salir.
 
