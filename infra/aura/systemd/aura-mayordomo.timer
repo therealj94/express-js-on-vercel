@@ -13,8 +13,16 @@
 Description=AU-RA · vuelta del mayordomo cada 3 minutos
 
 [Timer]
-OnBootSec=4min
-OnUnitActiveSec=3min
+# POR HORA DE RELOJ, NO «DESDE QUE ARRANCO». La version anterior tenia
+# OnBootSec=4min + OnUnitActiveSec=3min, y eso tiene un hueco: OnUnitActiveSec
+# cuenta desde la ULTIMA VEZ QUE EL SERVICIO CORRIO, asi que si el timer se
+# habilita despues de que OnBootSec ya paso —paso el 1-sep: boot a las 05:07,
+# habilitado a las 05:53— no hay primera vuelta, y sin primera vuelta no hay
+# segunda. El timer decia «active» con «Trigger: n/a» durante 18 horas y nadie
+# lo noto porque no habia encargos. Es el mismo incidente del pagador —«el
+# servicio dice activo y no hace nada»— en otra pieza.
+# OnCalendar no depende de nada: cada minuto multiplo de 3, y ya.
+OnCalendar=*-*-* *:00/3:00
 # Sin esto, una maquina apagada un rato se despierta y no recupera la vuelta
 # perdida: lo firmado se quedaria esperando hasta la siguiente.
 Persistent=true

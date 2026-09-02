@@ -13595,7 +13595,11 @@ const VETA = (() => {
    * Sin red, con el servicio reiniciando o dormido, la respuesta de siempre
    * sale igual. Una AU-RA que enmudece cuando se cae un servicio es peor que
    * una que sabe menos. */
-  const BUZON = String(window.OG_BUZON || 'https://aura-buzon.onrender.com');
+  /* El buzón vive en el relay, detrás del mismo Caddy que sirve el chat. Iba a
+     ir en Render y nunca se creó: la web llevaba semanas mandando recados a un
+     404 y contestando «no sé» a toda visita sin cuenta. El nodo de la GPU sigue
+     sin aceptar entradas —recoge saliendo— que era el punto del buzón. */
+  const BUZON = String(window.OG_BUZON || 'https://cerebro.ordenscan.com/buzon');
   const BUZON_ESPERA_MS = 25000;   // lo que se aguanta antes de rendirse
   const BUZON_PASO_MS = 900;       // cada cuánto se pregunta si ya contestó
 

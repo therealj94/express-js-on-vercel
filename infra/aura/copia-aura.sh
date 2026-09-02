@@ -37,7 +37,12 @@ HOY=$(date -u +%Y-%m-%d)
 # El nodo escribe con el rol de la instancia, y ese rol SOLO puede poner
 # objetos bajo `copias/aura/`. Ni leer, ni borrar, ni listar: si alguien entra
 # a esta maquina, con esa llave no puede sacar las copias, solo agregar una.
-ARCHIVOS=(perfiles.json premios.json registro.jsonl candado.json probadores.txt)
+# `saber.json` es TODO lo que AU-RA aprendio —las fichas del ecosistema, 51 KB
+# el 2-sep— y no estaba en esta lista: la copia diaria pesaba 4 KB y nadie
+# lo miro. Perder perfiles.json es perder treinta dias de charlas; perder
+# saber.json es perder a AU-RA. `encargos.json` son ordenes firmadas por dos
+# admins a medio ejecutar: sin ellas, una orden firmada se pierde en silencio.
+ARCHIVOS=(perfiles.json premios.json registro.jsonl candado.json probadores.txt saber.json encargos.json)
 
 TMP=$(mktemp -d)
 trap 'rm -rf "$TMP"' EXIT
