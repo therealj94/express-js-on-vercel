@@ -9,7 +9,7 @@ import { sim } from './kernel/sim'
 import { useUiStore } from './state/uiStore'
 import './kernel/genesis'
 
-/* LA FUSIÓN CON LA WALLET. Aetherion no se monta solo: expone montar y
+/* LA FUSIÓN CON LA WALLET. AuGalaxy no se monta solo: expone montar y
    desmontar, y la wallet decide cuándo el Inicio es esta galaxia. El modo
    standalone (un #root en la página) sigue vivo para desarrollo. */
 let raiz: Root | null = null
@@ -116,7 +116,7 @@ function puerta() {
 
 /* Para que la casa pueda comprobar lo que ve: en qué punto está el acomodo
    (1 = suelto, 0 = en formación). Lo usa la prueba de la puerta. */
-;(window as any).AETHERION = {
+;(window as any).AUGALAXY = {
   montar, desmontar, exhalar, entrar, puerta,
   acomodo: () => sim.acomodo,
   /* Solo para diagnóstico: el estado del tránsito visto desde afuera. */

@@ -414,9 +414,9 @@ const VETA = (() => {
       if (destino === 'acceso' && aetPuertaViva()) {
         /* Salir de la sesión no corta la escena: la cámara se ALEJA de vuelta
            al umbral y la puerta recibe con la misma galaxia, en silencio. */
-        try { window.AETHERION.puerta(); } catch { /* nada */ }
+        try { window.AUGALAXY.puerta(); } catch { /* nada */ }
       } else {
-        try { window.AETHERION?.desmontar(); } catch { /* nada */ }
+        try { window.AUGALAXY?.desmontar(); } catch { /* nada */ }
         $('#ae-cielo') && ($('#ae-cielo').innerHTML = '');
         document.body.classList.remove('cielo-vivo');
       }
@@ -1194,7 +1194,7 @@ const VETA = (() => {
         if (!sesion) return;
         ir('app');
       };
-      if (aetPuertaViva()) { $('#acceso')?.classList.add('se-va'); AETHERION.entrar('directo', aterrizarLlave); }
+      if (aetPuertaViva()) { $('#acceso')?.classList.add('se-va'); AUGALAXY.entrar('directo', aterrizarLlave); }
       else if (window.GALAXIA) GALAXIA.saltar(aterrizarLlave); else aterrizarLlave();
     } catch (e) {
       const m = String(e?.mensaje || e?.message || '');
@@ -1492,7 +1492,7 @@ const VETA = (() => {
          quedaba en toda la entrada. */
       if (aetPuertaViva()) {
         $('#acceso')?.classList.add('se-va');
-        AETHERION.entrar(modo === 'crear' ? 'descubrir' : 'directo', aterrizar);
+        AUGALAXY.entrar(modo === 'crear' ? 'descubrir' : 'directo', aterrizar);
       } else if (window.GALAXIA) GALAXIA.saltar(aterrizar); else aterrizar();
     } catch (e) {
       // El servidor devuelve "credenciales inválidas" para un correo que no
@@ -2191,8 +2191,8 @@ const VETA = (() => {
        batería tirada a la basura. */
     if (cual !== 'nucleo') {
       document.getElementById('ae-saludo')?.remove();
-      if (window.AETHERION && document.getElementById('ae-casa')) {
-        window.AETHERION.desmontar();
+      if (window.AUGALAXY && document.getElementById('ae-casa')) {
+        window.AUGALAXY.desmontar();
         const cielo = document.getElementById('ae-cielo');
         if (cielo) cielo.innerHTML = '';
         document.body.classList.remove('cielo-vivo');
@@ -5806,7 +5806,7 @@ const VETA = (() => {
 
   document.addEventListener('pointercancel', () => { esferaApretada = null; }, true);
 
-  /* ── AETHERION · el web OS del Inicio ─────────────────────────────────────
+  /* ── AUGALAXY · el web OS del Inicio ─────────────────────────────────────
    *
    * La galaxia 3D que trajo José (React + Three, compilada a un bundle
    * propio, sin CDN) puede SER el Inicio: los pozos son las casas reales del
@@ -5816,7 +5816,7 @@ const VETA = (() => {
    * el Inicio jamás se queda en negro por una mejora. */
   let aetCarga = null;
 
-  /* LA VERSIÓN DEL MOTOR. La entrada de Aetherion tiene nombre fijo, y un
+  /* LA VERSIÓN DEL MOTOR. La entrada de AuGalaxy tiene nombre fijo, y un
      nombre fijo es una invitación a que un navegador se quede con la copia
      vieja: eso hizo que después de publicar el Inicio nuevo, el teléfono
      siguiera enseñando el de antes. Esta huella la sella publicar.py en cada
@@ -5838,12 +5838,12 @@ const VETA = (() => {
     aetCarga = new Promise((ok, mal) => {
       const css = document.createElement('link');
       css.rel = 'stylesheet';
-      css.href = `aetherion/assets/aetherion.css?v=${AET_V}`;
+      css.href = `augalaxy/assets/augalaxy.css?v=${AET_V}`;
       document.head.appendChild(css);
       const s = document.createElement('script');
       s.type = 'module';
-      s.src = `aetherion/assets/aetherion.js?v=${AET_V}`;
-      s.onload = () => (window.AETHERION ? ok() : mal(new Error('bundle sin AETHERION')));
+      s.src = `augalaxy/assets/augalaxy.js?v=${AET_V}`;
+      s.onload = () => (window.AUGALAXY ? ok() : mal(new Error('bundle sin AUGALAXY')));
       s.onerror = () => mal(new Error('no cargó el bundle'));
       document.head.appendChild(s);
     });
@@ -5957,7 +5957,7 @@ const VETA = (() => {
    * Se cierra con lo mismo que hizo que la historia se pudiera contar aquí
    * dentro: las palabras dejan de ser HTML y pasan a ser un objeto de la
    * escena, dibujado por las dos cámaras como cualquier planeta. Ver
-   * aetherion/src/kernel/Casa.tsx, que es el teatro con botones.
+   * augalaxy/src/kernel/Casa.tsx, que es el teatro con botones.
    *
    * QUÉ SE ENSEÑA. Lo que la casa ES y lo que TIENE ahora mismo: el saldo, los
    * mensajes sin leer, el estado de la identidad, la cadena. El dato vivo va
@@ -6073,12 +6073,12 @@ const VETA = (() => {
       vsCerrarCasa();
       /* Y de vuelta al cielo: el motor deshace el vuelo por donde vino, que es
          lo que hace que volver se sienta un sitio y no un botón de atrás. */
-      try { window.AETHERION?.exhalar?.(); } catch { /* nada */ }
+      try { window.AUGALAXY?.exhalar?.(); } catch { /* nada */ }
       return;
     }
     if (accion === 'historia') {
       vsCerrarCasa();
-      try { window.AETHERION?.exhalar?.(); } catch { /* nada */ }
+      try { window.AUGALAXY?.exhalar?.(); } catch { /* nada */ }
       /* La película necesita la galaxia entera y libre: se le da el tiempo del
          vuelo de vuelta antes de empezar, o arrancaría con la cámara todavía
          pegada a un planeta. */
@@ -6305,11 +6305,11 @@ const VETA = (() => {
       if (!cielo || !$('#app').classList.contains('oculto')) return;
       if ($('#acceso').classList.contains('oculto')) return;
       if (document.getElementById('ae-casa') && cielo.querySelector('canvas')) {
-        window.AETHERION.puerta();
+        window.AUGALAXY.puerta();
       } else {
         window.__AE_PUERTA = true;
         cielo.innerHTML = '<div class="ae-casa" id="ae-casa"></div>';
-        AETHERION.montar($('#ae-casa'));
+        AUGALAXY.montar($('#ae-casa'));
       }
       document.body.classList.add('cielo-vivo');
       /* el cielo 2D le pasa el turno al 3D: dos galaxias a la vez son humo */
@@ -6319,10 +6319,10 @@ const VETA = (() => {
 
   /* ¿La puerta 3D está viva y volando se entra? */
   const aetPuertaViva = () =>
-    !!(window.AETHERION?.entrar && document.getElementById('ae-casa')
+    !!(window.AUGALAXY?.entrar && document.getElementById('ae-casa')
        && $('#ae-cielo')?.querySelector('canvas'));
 
-  /* El Inicio decide su cuerpo: Aetherion si puede, el cerebro si no. */
+  /* El Inicio decide su cuerpo: AuGalaxy si puede, el cerebro si no. */
   function encenderInicio() {
     if (matchMedia('(prefers-reduced-motion: reduce)').matches) return encenderCerebro(false);
     /* LA IDENTIDAD VA PRIMERO. El motor arma el mapa de casas al EVALUARSE, no
@@ -6341,7 +6341,7 @@ const VETA = (() => {
           /* CON EL VISOR PUESTO LA CASA SE ABRE AQUÍ DENTRO. El vuelo ya
              terminó y la cámara está aparcada delante del planeta: el panel
              entra justo donde uno acabó de llegar, sin apagar la galaxia. Ver
-             vsAbrirCasa y aetherion/src/kernel/Casa.tsx.
+             vsAbrirCasa y augalaxy/src/kernel/Casa.tsx.
              Si por lo que sea no hay panel —el motor viejo en caché, un mundo
              sin ficha—, se sigue de largo por el camino de siempre: salir del
              visor y enseñar la casa en la pantalla. Peor sería quedarse
@@ -6353,9 +6353,9 @@ const VETA = (() => {
                vuelta al cielo: la persona no se queda mirando un «Entrando…»
                eterno en una pestaña que ya no es la protagonista. */
             nuAbrir(k);
-            setTimeout(() => window.AETHERION?.exhalar?.(), 600);
+            setTimeout(() => window.AUGALAXY?.exhalar?.(), 600);
           } else {
-            window.AETHERION.desmontar();
+            window.AUGALAXY.desmontar();
             nuAbrir(k);
           }
         };
@@ -6375,7 +6375,7 @@ const VETA = (() => {
            recarga con sesión viva, una carrera— el vuelo lo dispara la propia
            adopción: nadie se queda mirando el sistema desde lejos y sin
            mandos. */
-        if (yaVive && window.__AE_PUERTA) { try { AETHERION.entrar('directo'); } catch { /* nada */ } }
+        if (yaVive && window.__AE_PUERTA) { try { AUGALAXY.entrar('directo'); } catch { /* nada */ } }
         /* El saludo vive colgado del body, no del lienzo: la animación de
            entrada de vista le pone un transform al lienzo y eso secuestra el
            position:fixed (el saludo quedaba tapado por las tabs del teléfono).
@@ -6388,7 +6388,7 @@ const VETA = (() => {
             <b>${nombre ? `${t('nu.hola')}, ${esc(nombre)}` : 'Orden Global'}</b>
             <small>${t('nu.sub')}</small>`;
         document.body.appendChild(saludo);
-        if (!yaVive) AETHERION.montar($('#ae-casa'));
+        if (!yaVive) AUGALAXY.montar($('#ae-casa'));
         /* AQUÍ NO ARRANCA NADA SOLO. La película se pone cuando alguien la
            pide: el visor, AIR TOUCH o su fila en Ajustes. Llegar al Inicio no
            es pedirla — quien viene a mandar plata viene a eso. */

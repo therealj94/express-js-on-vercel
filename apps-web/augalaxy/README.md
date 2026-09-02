@@ -56,13 +56,13 @@ Draw calls < 30 en reposo. Escalera térmica automática: DPR → Bloom off → 
 ## La fusión con Veta Wallet
 
 Este árbol es LA FUENTE del Inicio de Veta Wallet. Lo que corre en la wallet
-es el bundle compilado que vive en `apps-web/veta-wallet/aetherion/assets/`
-(nombres fijos: `aetherion.js`, `aetherion.css`, `three.js`, `r3f.js`,
+es el bundle compilado que vive en `apps-web/veta-wallet/augalaxy/assets/`
+(nombres fijos: `augalaxy.js`, `augalaxy.css`, `three.js`, `r3f.js`,
 `ui.js`), cargado en diferido por `app.js` solo al pisar el Inicio.
 
 Contrato con la casa (`src/main.tsx`):
 
-- `window.AETHERION = { montar(el), desmontar(), exhalar() }` — la wallet
+- `window.AUGALAXY = { montar(el), desmontar(), exhalar() }` — la wallet
   decide cuándo el Inicio es esta galaxia. El modo standalone (`#root` en la
   página) sigue vivo para desarrollo y marca `html.ae-solo`, que es lo ÚNICO
   que activa los estilos globales de pantalla completa: fundida en la wallet
@@ -74,18 +74,18 @@ Contrato con la casa (`src/main.tsx`):
 Para reconstruir el bundle tras tocar la fuente:
 
 ```bash
-cd apps-web/aetherion
+cd apps-web/augalaxy
 npm install --legacy-peer-deps    # postprocessing pinneado pelea con npm a secas
 npx vite build
-cp dist/assets/{aetherion.js,aetherion.css,three.js,r3f.js,ui.js} \
-   ../veta-wallet/aetherion/assets/
-node ../veta-wallet/pruebas/aetherion-inicio.mjs   # la prueba de la fusión
+cp dist/assets/{augalaxy.js,augalaxy.css,three.js,r3f.js,ui.js} \
+   ../veta-wallet/augalaxy/assets/
+node ../veta-wallet/pruebas/augalaxy-inicio.mjs   # la prueba de la fusión
 ```
 
 ## Publicar (y por qué NO se copia a mano)
 
 ```bash
-cd apps-web/aetherion
+cd apps-web/augalaxy
 npm install --legacy-peer-deps    # solo la primera vez
 python3 publicar.py               # compila, copia y SELLA la versión
 ```

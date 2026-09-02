@@ -1,3 +1,24 @@
+/* ── EL MENÚ DEL TELÉFONO ───────────────────────────────────────────────────
+   La barra no tenía nada debajo de 860 px: los enlaces estaban escondidos con
+   `display:none` y no había con qué abrirlos. Esto es el botón que faltaba. */
+(function(){
+  var b = document.querySelector('.menuBtn'), n = document.getElementById('nav');
+  if (!b || !n) return;
+  // El botón de crear cuenta entra al menú en el teléfono: en la barra no cabe.
+  var cta = document.querySelector('.barra .btn');
+  if (cta) n.appendChild(cta);
+  function poner(abierto){
+    b.setAttribute('aria-expanded', String(abierto));
+    n.classList.toggle('abierto', abierto);
+  }
+  b.addEventListener('click', function(){
+    poner(b.getAttribute('aria-expanded') !== 'true');
+  });
+  // Tocar un enlace cierra: si no, el menú tapa aquello a lo que se acaba de ir.
+  n.addEventListener('click', function(e){ if (e.target.closest('a')) poner(false); });
+  document.addEventListener('keydown', function(e){ if (e.key === 'Escape') poner(false); });
+})();
+
 /* ── EL CIELO DE LA CASA ────────────────────────────────────────────────────
    El mismo `galaxia.js` que dibuja la puerta de app.vetawallet.com, del mismo
    archivo y no una imitación: es la diferencia entre parecerse y ser la misma

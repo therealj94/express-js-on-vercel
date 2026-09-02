@@ -107,5 +107,5 @@ export default function App() {
   )
 }
 
-export const AETHERION_VERSION = '0.1.0 · Semilla del Sistema Vivo'
+export const AUGALAXY_VERSION = '0.1.0 · Semilla del Sistema Vivo'
 export type { Marea } from './kernel/sim'

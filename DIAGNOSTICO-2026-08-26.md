@@ -51,12 +51,12 @@ distintas de que algo vuelva solo, y las tres han mordido.
 
 `apps-web/probar-nucleo-toques.mjs` recorría las esferas del Núcleo con un
 `forEach` y reportaba las que estaban tapadas. Cuando la lista quedó vacía
-—porque el Núcleo de esferas pasó a ser el respaldo de AETHERION— el `forEach`
+—porque el Núcleo de esferas pasó a ser el respaldo de AUGALAXY— el `forEach`
 no recorría nada, no encontraba nada tapado, y el archivo imprimía «todas
 libres» y salía en verde.
 
 Es la peor forma de fallar: en silencio y con buena cara. Ahora la prueba fuerza
-el respaldo (corta el bundle de Aetherion) y **falla si encuentra menos de seis
+el respaldo (corta el bundle de AuGalaxy) y **falla si encuentra menos de seis
 esferas**.
 
 ### 3 · Una prueba llevaba meses en rojo por un motivo equivocado
@@ -126,9 +126,9 @@ La animación de entrada se come la navegación. `entrarPorLaEsfera()` programa
 ponerse**, así que algo corta antes.
 
 **Cuánto importa, dicho con honestidad:** el Núcleo de esferas **ya no es la
-pantalla principal**. Desde que AETHERION monta la escena 3D del Inicio, esas
+pantalla principal**. Desde que AUGALAXY monta la escena 3D del Inicio, esas
 esferas sólo se pintan si el bundle no carga — y en producción carga
-(`aetherion.js`, 321.822 bytes, HTTP 200). O sea que era un bug **en la red de
+(`augalaxy.js`, 321.822 bytes, HTTP 200). O sea que era un bug **en la red de
 seguridad**, no en el camino que ve la gente. Pero es exactamente la red que
 tiene que funcionar el día que el bundle falle.
 

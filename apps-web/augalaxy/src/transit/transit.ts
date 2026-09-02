@@ -322,7 +322,7 @@ class Transit {
      *
      *   · `beginExitFrom` empieza con «si ya hay un viaje en curso, no» — así
      *     que pedir la salida (requestExit) no hacía absolutamente nada. Ni el
-     *     arrastre hacia abajo para salir de una casa, ni `AETHERION.exhalar()`.
+     *     arrastre hacia abajo para salir de una casa, ni `AUGALAXY.exhalar()`.
      *   · `insideOrbit` —la deriva lenta alrededor del mundo en el que uno
      *     está— cuelga de la rama `else` de ese mismo interruptor: nunca corría.
      *   · y `update()` se iba en la primera línea por falta de `mode`, así que

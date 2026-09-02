@@ -16,9 +16,9 @@ export default defineConfig({
            huella un navegador con la copia vieja seguía sirviendo el motor de
            antes por más que se publicara uno nuevo. Eso fue exactamente lo que
            le pasó a José: pantalla vieja después de publicar. */
-        entryFileNames: 'assets/aetherion.js',
+        entryFileNames: 'assets/augalaxy.js',
         chunkFileNames: 'assets/[name]-[hash].js',
-        assetFileNames: 'assets/aetherion.[ext]',
+        assetFileNames: 'assets/augalaxy.[ext]',
         manualChunks: {
           three: ['three'],
           r3f: ['@react-three/fiber', '@react-three/postprocessing', 'postprocessing'],
