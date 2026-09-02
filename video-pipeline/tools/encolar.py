@@ -65,9 +65,18 @@ def main() -> int:
         print("(quitado un FIN viejo que habría cortado la espera)")
 
     p = Path(a.cola)
-    n = len(json.loads(p.read_text()).get("jobs", []))
+    trabajos = json.loads(p.read_text()).get("jobs", [])
+    n = len(trabajos)
     if n == 0:
         sys.exit("la cola está vacía")
+    # El pod lleva un registro de lo ya generado que SOBREVIVE entre tandas: si
+    # un id se repite, se salta el trabajo en silencio y la cola parece haber
+    # corrido. Pasó con ocho retomas que llevaban el nombre del original.
+    hechos = {f.rsplit("_00001_", 1)[0] for f in hay if f.endswith(".mp4")}
+    chocan = [j["id"] for j in trabajos if j["id"] in hechos]
+    if chocan:
+        sys.exit(f"{len(chocan)} trabajos tienen un id que el pod YA generó y se "
+                 f"saltaría: {', '.join(chocan[:5])}. Renómbralos.")
     api.upload_file(path_or_fileobj=str(p), path_in_repo=DESTINO,
                     repo_id=a.repo, repo_type="dataset")
     print(f"{n} trabajos puestos en {a.repo}/{DESTINO}")
