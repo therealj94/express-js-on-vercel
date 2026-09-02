@@ -171,22 +171,37 @@ export function cartaInstalar({ nombre, correo }) {
     <a href="${PAGINA}" style="color:#C9A961;">${esc(PAGINA)}</a>
   </p>
 
-  ${H("Pronto, directo desde Play Store")}
+  ${H("Las mejoras te llegan solas")}
   <p style="margin:0 0 12px;">
-    Ya la estamos subiendo. Cuando salga se baja como cualquier otra app, de un
-    toque, y las actualizaciones te llegan solas. Y si la instalás hoy no
-    perdés nada: te avisamos y se pasa sola, con tus datos y tu cuenta
-    intactos.
+    No hace falta que vuelvas a bajar nada: la app se pone al día sola al
+    abrirla. Lo que arreglamos esta semana ya te va a estar esperando.
+  </p>
+  <p style="margin:0 0 12px;">
+    Todavía no está en la Play Store; cuando esté, te avisamos por acá.
   </p>
   <p style="margin:0 0 12px;font-size:14px;color:#9A8C76;">
     Por ahora solo Android. Si tenés iPhone, te avisamos cuando esté.
   </p>
 
-  ${H("Tus llaves son tuyas")}
+  ${H("Lo que hay que saber, dicho claro")}
   <p style="margin:0 0 12px;">
-    Tu contraseña y tus doce palabras <strong style="color:#F3ECD9;">no salen de tu
-    teléfono</strong> y nosotros no las tenemos. Por eso no te las vamos a pedir
-    nunca: ni por correo, ni por WhatsApp, ni por teléfono.
+    Veta Wallet es una <strong style="color:#F3ECD9;">billetera custodia</strong>:
+    guardamos tu llave cifrada por vos, igual que un banco guarda tu dinero. No
+    somos un banco y tus saldos no están cubiertos por ningún seguro de
+    depósitos. Está todo escrito, sin letra chica, en los
+    <a href="https://app.vetawallet.com/terminos" style="color:#C9A961;">términos</a>.
+  </p>
+  <p style="margin:0 0 12px;">
+    Lo único que tenés que cuidar es tu contraseña, y
+    <strong style="color:#F3ECD9;">no te la vamos a pedir nunca</strong>: ni por
+    correo, ni por WhatsApp, ni por teléfono. Si alguien te la pide a nombre
+    nuestro, es un engaño.
+  </p>
+  <p style="margin:0 0 12px;">
+    En el chat sí es al revés, y es a propósito: las llaves de PULSE2CHAT nacen
+    y viven en tu teléfono, así que lo que escribís no lo puede leer nadie,
+    tampoco nosotros. Por eso en un teléfono nuevo ves los mensajes desde que
+    lo abrís y no los de antes.
   </p>
   <p style="margin:0;">
     Si se te traba algo, escribinos y lo vemos con vos:
@@ -246,20 +261,31 @@ permisos por el camino. Acá está cada uno con lo que hay que tocar.
 Los mismos pasos, en una página: ${PAGINA}
 
 
-PRONTO, DIRECTO DESDE PLAY STORE
+LAS MEJORAS TE LLEGAN SOLAS
 
-Ya la estamos subiendo. Cuando salga se baja como cualquier otra app, de un
-toque, y las actualizaciones te llegan solas. Y si la instalás hoy no perdés
-nada: te avisamos y se pasa sola, con tus datos y tu cuenta intactos.
+No hace falta que vuelvas a bajar nada: la app se pone al día sola al abrirla.
+Lo que arreglamos esta semana ya te va a estar esperando.
+
+Todavía no está en la Play Store; cuando esté, te avisamos por acá.
 
 Por ahora solo Android. Si tenés iPhone, te avisamos cuando esté.
 
 
-TUS LLAVES SON TUYAS
+LO QUE HAY QUE SABER, DICHO CLARO
 
-Tu contraseña y tus doce palabras no salen de tu teléfono y nosotros no las
-tenemos. Por eso no te las vamos a pedir nunca: ni por correo, ni por
-WhatsApp, ni por teléfono.
+Veta Wallet es una billetera custodia: guardamos tu llave cifrada por vos,
+igual que un banco guarda tu dinero. No somos un banco y tus saldos no están
+cubiertos por ningún seguro de depósitos. Está todo escrito, sin letra chica:
+https://app.vetawallet.com/terminos
+
+Lo único que tenés que cuidar es tu contraseña, y no te la vamos a pedir
+nunca: ni por correo, ni por WhatsApp, ni por teléfono. Si alguien te la pide
+a nombre nuestro, es un engaño.
+
+En el chat sí es al revés, y es a propósito: las llaves de PULSE2CHAT nacen y
+viven en tu teléfono, así que lo que escribís no lo puede leer nadie, tampoco
+nosotros. Por eso en un teléfono nuevo ves los mensajes desde que lo abrís y
+no los de antes.
 
 Si se te traba algo, escribinos y lo vemos con vos: wa.me/50432136457
 
