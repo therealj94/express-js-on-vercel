@@ -145,7 +145,7 @@ const PATHS = {
   // botones se veían como un hueco. Dibujados sobre la misma rejilla de 24×24
   // y con el mismo trazo que el resto.
   home: ['M3.5 10.6L12 3.6l8.5 7', 'M5.5 9.4V20h13V9.4', 'M9.8 20v-5.6h4.4V20'],
-  // El clip y la cámara de video entraron cuando PULSE CHAT dejó los emojis
+  // El clip y la cámara de video entraron cuando PULSE2CHAT dejó los emojis
   // (📎🖼🎬📄⌖) como iconos de botón: en Android salen a color y rompen la
   // paleta oro/verde. Mismo trazo y rejilla 24×24 que el resto del set.
   attach: ['M21.2 11.2l-8.9 8.9a5.7 5.7 0 0 1-8.1-8.1l8.9-8.9a3.8 3.8 0 0 1 5.4 5.4l-8.9 8.9a1.9 1.9 0 0 1-2.7-2.7l8.2-8.2'],
@@ -164,6 +164,16 @@ PATHS['settings'] = PATHS['settings-sharp'];
 // desarrollo, así que en producción el botón habría salido sin nada dentro.
 PATHS.play = ['M8 5v14l11-7z'];
 PATHS.pause = ['M6 5h4v14H6z', 'M14 5h4v14h-4z'];
+// Los gestos sobre una burbuja de PULSE2CHAT —responder, reaccionar,
+// reenviar— y lo que se hace desde la ficha de un contacto —bloquear,
+// denunciar—. Emojis no: en Android salen a color y rompen la paleta.
+PATHS['arrow-undo'] = ['M9 14L4 9l5-5', 'M4 9h10a6 6 0 0 1 6 6v5'];
+PATHS['arrow-redo'] = ['M15 14l5-5-5-5', 'M20 9H10a6 6 0 0 0-6 6v5'];
+PATHS.happy = [circle(12, 12, 9), 'M8.5 14.5a4.5 4.5 0 0 0 7 0', circle(9, 9.5, 0.6), circle(15, 9.5, 0.6)];
+PATHS.ban = [circle(12, 12, 9), 'M5.6 5.6l12.8 12.8'];
+PATHS.flag = ['M5 21V4', 'M5 4h12l-2 4 2 4H5'];
+PATHS['checkmark-done'] = ['M2.5 12.5l4.5 4.5 8.5-9.5', 'M11 17l2 2 8.5-9.5'];
+PATHS.camera = ['M3.5 8.5A1.5 1.5 0 0 1 5 7h2.6l1.4-2.5h6L16.4 7H19a1.5 1.5 0 0 1 1.5 1.5V18A1.5 1.5 0 0 1 19 19.5H5A1.5 1.5 0 0 1 3.5 18z', circle(12, 13, 3.4)];
 
 // Iconos que se ven mejor rellenos (badges pequeños).
 const FILLED = new Set(['star']);

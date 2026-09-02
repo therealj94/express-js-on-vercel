@@ -1,4 +1,4 @@
-// ═══ PULSE CHAT ═════════════════════════════════════════════════════════
+// ═══ PULSE2CHAT ═════════════════════════════════════════════════════════
 // La mensajería de Orden Global. Lo que la define:
 //   · SOLO se abre con Genesis ID aprobado — es la red de gente real;
 //   · personas Y grupos en la MISMA lista: un grupo es otra conversación,
@@ -35,8 +35,12 @@ import * as DocumentPicker from 'expo-document-picker';
 import * as Linking from 'expo-linking';
 import { useAudioPlayer } from 'expo-audio';
 import Constants from 'expo-constants';
+import * as Clipboard from 'expo-clipboard';
 import { C, G } from '../theme';
-import { Header, Button3D, Avatar, useAccount, useToast, hap } from '../ui';
+import { Button3D, Avatar, useAccount, useToast, hap } from '../ui';
+/* La paleta propia del chat: azul, y sólo aquí. El resto de la app sigue
+   verde y oro; el comprobante de pago dentro del hilo también (es dinero). */
+import { P2C } from './paletaP2C';
 import { Icon } from '../icons';
 import { useLang } from '../i18n';
 import { PantallaConTeclado, useTeclado } from './Teclado';
@@ -48,7 +52,7 @@ import { reproducir } from './sonidos';
 
 const TXT = {
   es: {
-    marca: 'PULSE CHAT', sub: 'Personas y grupos, con Genesis ID',
+    marca: 'PULSE2CHAT', sub: 'Personas y grupos, con Genesis ID',
     buscar: 'Buscar por nombre, correo o GID…', dir: 'EN EL ECOSISTEMA',
     nadie: 'Nadie con ese nombre o GID todavía.',
     vacio: 'Aún no tienes conversaciones.',
@@ -58,7 +62,7 @@ const TXT = {
     gateTit: 'El chat es de gente verificada',
     gateTxt: 'Para chatear necesitas tu Genesis ID aprobado. Así todos saben que del otro lado hay una persona real.',
     gateBtn: 'COMPLETAR MI GENESIS ID', mirando: 'Comprobando tu Genesis ID…',
-    qrTuyo: 'Este es tu código. Quien lo escanee abre un chat contigo en PULSE CHAT.',
+    qrTuyo: 'Este es tu código. Quien lo escanee abre un chat con vos en PULSE2CHAT.',
     apunta: 'Apunta al código de la otra persona',
     adjImagen: 'Imagen', adjVideo: 'Video', adjArchivo: 'Archivo',
     ultImagen: 'Imagen', ultVideo: 'Video', ultArchivo: 'Archivo',
@@ -143,9 +147,41 @@ const TXT = {
        mandaba a la persona a buscar un teléfono que no tenía nada que ver. */
     otraTit3: 'Estás dentro con otra cuenta',
     otraTxt3: 'Tus conversaciones están a salvo. El chat que estás pidiendo es de otro correo, no del que tenés abierto ahora. Cerrá sesión y entrá con el correo de esas conversaciones. Mientras tanto, el resto de la app funciona con normalidad.',
+    /* ── lo que faltaba para estar a la par de la web ─────────────────── */
+    enLinea: 'En línea', escribiendo: 'está escribiendo…', escribiendoVarios: 'están escribiendo…',
+    leido: 'Leído', masViejos: 'Cargando mensajes anteriores…', principio: 'Este es el principio de la conversación',
+    responder: 'Responder', reaccionar: 'Reaccionar', reenviar: 'Reenviar', copiar: 'Copiar', copiado: 'Copiado.',
+    respondiendoA: 'Respondiendo a', citaIda: 'Mensaje', citaIdaP: 'ya no está',
+    errReaccion: 'No se pudo guardar tu reacción.',
+    reenviarNota: 'Se manda como un mensaje tuyo, sin decir de quién venía.',
+    reenviado: 'Reenviado.', aQuienReenviar: 'Todavía no tenés a nadie a quien reenviárselo.',
+    nadaQueReenviar: 'Solo se puede reenviar texto por ahora.',
+    borrarMsg: 'Borrar el mensaje',
+    borrarMsgP: 'Borrarlo para todos lo quita también de la pantalla de la otra persona, y queda dicho que había algo. Borrarlo para vos solo lo esconde de la tuya.',
+    borrarMsgSoloMio: 'Esto lo escribió la otra persona, así que solo podés esconderlo de tu pantalla. La suya no se toca.',
+    borrarTodos: 'Borrar para todos', borrarMio: 'Borrar solo para mí',
+    borrasteEsto: 'Borraste este mensaje',
+    bloquear: 'Bloquear', bloqueadoOk: 'Bloqueado.',
+    bloquearNota: '{n} no va a poder escribirte, llamarte ni ver tus estados, y vos tampoco los suyos. Se sale de tu círculo: si algún día lo desbloqueás, hay que volver a aceptarse.',
+    denunciar: 'Denunciar', denunciarA: 'Denunciar a {n}',
+    denNota: 'Esto lo lee alguien de Orden Global. Al denunciar también bloqueás a esta persona: deja de escribirte y sale de tu círculo.',
+    denMotivo: 'Qué pasó', denDetalle: 'Contanos qué pasó (opcional)', denElegir: 'Elegí qué pasó',
+    denOk: 'Gracias. Lo vamos a revisar, y esa persona ya no puede escribirte.',
+    den_estafa: 'Me quiso estafar', den_acoso: 'Me acosa o me amenaza', den_contenido: 'Manda cosas que no debería',
+    den_suplantacion: 'Se hace pasar por otro', den_spam: 'Spam', den_otro: 'Otra cosa',
+    verCodigo: 'Código de seguridad', codigoTit: 'Código de seguridad',
+    codigoQue: 'Comparalo con la otra persona en voz alta o en persona. Si los dos números coinciden, nadie se metió en medio de esta conversación.',
+    codigoAparato: 'La llave de este chat vive en este teléfono y no sale de acá — por eso nadie más puede leerlo, ni nosotros. La otra cara: si entrás desde un teléfono nuevo, los mensajes viejos ya no se van a poder abrir. Los nuevos sí, sin hacer nada.',
+    codigoNo: 'Todavía no hay código: falta que alguno de los dos abra el chat en esta versión.',
+    estados: 'Estados', miEstado: 'Tu estado', subirEstado: 'Subir un estado', estadoPh: 'Escribí algo…',
+    estadoVacio: 'Escribí algo o poné una foto.', estadoFoto: 'Foto', publicar: 'PUBLICAR',
+    estadoHonesto: 'Un estado lo ve todo tu círculo y dura 24 horas. A diferencia de tus mensajes, esto no va cifrado de punta a punta: se guarda en nuestro servidor hasta que vence.',
+    borrarEstadoP: 'Se va ahora mismo, y también el archivo. No se puede deshacer.',
+    vistas: 'vistas', sinEstados: 'Nadie de tu círculo subió un estado todavía.',
+    cerrar: 'Cerrar', listo: 'LISTO',
   },
   en: {
-    marca: 'PULSE CHAT', sub: 'People and groups, with Genesis ID',
+    marca: 'PULSE2CHAT', sub: 'People and groups, with Genesis ID',
     buscar: 'Search by name, email or GID…', dir: 'IN THE ECOSYSTEM',
     nadie: 'Nobody with that name or GID yet.',
     vacio: 'No conversations yet.',
@@ -155,7 +191,7 @@ const TXT = {
     gateTit: 'The chat is for verified people',
     gateTxt: 'You need your approved Genesis ID to chat. That way everyone knows there is a real person on the other side.',
     gateBtn: 'COMPLETE MY GENESIS ID', mirando: 'Checking your Genesis ID…',
-    qrTuyo: 'This is your code. Whoever scans it opens a chat with you on PULSE CHAT.',
+    qrTuyo: 'This is your code. Whoever scans it opens a chat with you on PULSE2CHAT.',
     apunta: 'Point at the other person’s code',
     adjImagen: 'Image', adjVideo: 'Video', adjArchivo: 'File',
     ultImagen: 'Image', ultVideo: 'Video', ultArchivo: 'File',
@@ -212,8 +248,64 @@ const TXT = {
     otraTxt2: 'Your conversations are safe on the server. The chat is still open on the phone you used before: open it there once and come back. Meanwhile the rest of the app works normally.',
     otraTit3: 'You are signed in with another account',
     otraTxt3: 'Your conversations are safe. The chat you are asking for belongs to a different email, not the one you have open now. Sign out and sign in with the email of those conversations. Meanwhile the rest of the app works normally.',
+    enLinea: 'Online', escribiendo: 'is typing…', escribiendoVarios: 'are typing…',
+    leido: 'Read', masViejos: 'Loading earlier messages…', principio: 'This is the beginning of the conversation',
+    responder: 'Reply', reaccionar: 'React', reenviar: 'Forward', copiar: 'Copy', copiado: 'Copied.',
+    respondiendoA: 'Replying to', citaIda: 'Message', citaIdaP: 'is gone',
+    errReaccion: 'Your reaction could not be saved.',
+    reenviarNota: 'It goes out as a message from you, without saying who it came from.',
+    reenviado: 'Forwarded.', aQuienReenviar: 'You do not have anyone to forward it to yet.',
+    nadaQueReenviar: 'Only text can be forwarded for now.',
+    borrarMsg: 'Delete the message',
+    borrarMsgP: 'Deleting for everyone removes it from the other person’s screen too, and leaves a note that something was there. Deleting for you only hides it from yours.',
+    borrarMsgSoloMio: 'The other person wrote this, so you can only hide it from your screen. Theirs stays untouched.',
+    borrarTodos: 'Delete for everyone', borrarMio: 'Delete for me only',
+    borrasteEsto: 'You deleted this message',
+    bloquear: 'Block', bloqueadoOk: 'Blocked.',
+    bloquearNota: '{n} will not be able to message you, call you or see your updates, and you will not see theirs. They leave your circle: if you ever unblock them, you both have to accept again.',
+    denunciar: 'Report', denunciarA: 'Report {n}',
+    denNota: 'Someone at Orden Global reads this. Reporting also blocks this person: they stop writing to you and leave your circle.',
+    denMotivo: 'What happened', denDetalle: 'Tell us what happened (optional)', denElegir: 'Pick what happened',
+    denOk: 'Thank you. We will look into it, and that person can no longer write to you.',
+    den_estafa: 'They tried to scam me', den_acoso: 'They harass or threaten me', den_contenido: 'They send things they should not',
+    den_suplantacion: 'They are impersonating someone', den_spam: 'Spam', den_otro: 'Something else',
+    verCodigo: 'Safety code', codigoTit: 'Safety code',
+    codigoQue: 'Compare it with the other person out loud or in person. If both numbers match, nobody got in the middle of this conversation.',
+    codigoAparato: 'This chat’s key lives on this phone and never leaves it — that is why nobody else can read it, not even us. The other side of that: if you sign in from a new phone, the old messages will no longer open. New ones will, with nothing to do.',
+    codigoNo: 'No code yet: one of you still has to open the chat on this version.',
+    estados: 'Updates', miEstado: 'Your update', subirEstado: 'Post an update', estadoPh: 'Say something…',
+    estadoVacio: 'Write something or add a photo.', estadoFoto: 'Photo', publicar: 'POST',
+    estadoHonesto: 'An update is seen by your whole circle and lasts 24 hours. Unlike your messages, this is not end-to-end encrypted: it sits on our server until it expires.',
+    borrarEstadoP: 'It goes now, file and all. This cannot be undone.',
+    vistas: 'views', sinEstados: 'Nobody in your circle has posted an update yet.',
+    cerrar: 'Close', listo: 'DONE',
   },
 };
+
+/* Los motivos de una denuncia: la MISMA lista cerrada que el relevo y la
+   web. Un campo libre suena más flexible y llega todo como «otro». */
+const MOTIVOS_DENUNCIA = ['estafa', 'acoso', 'contenido', 'suplantacion', 'spam', 'otro'];
+/* Las reacciones rápidas: las mismas seis que la web. */
+const REACCIONES = ['👍', '❤️', '😂', '😮', '🙏', '🔥'];
+
+/* La cabecera del chat, en su propio azul. La `Header` de la casa es de oro
+   y es de la billetera; PULSE2CHAT tiene la suya. */
+function CabeceraP2C({ titulo, sub, onBack, right }) {
+  return (
+    <LinearGradient colors={[P2C.fondo2, P2C.fondo]} start={{ x: 0, y: 0 }} end={{ x: 0, y: 1 }} style={st.cab}>
+      {onBack ? (
+        <Pressable onPress={onBack} hitSlop={10} style={st.cabAtras} accessibilityRole="button">
+          <Icon name="chevron-back" size={22} color={P2C.acentoLt} />
+        </Pressable>
+      ) : null}
+      <View style={{ flex: 1, minWidth: 0 }}>
+        <Text style={st.cabTit}>{titulo}</Text>
+        {sub ? <Text style={st.cabSub} numberOfLines={1}>{sub}</Text> : null}
+      </View>
+      {right}
+    </LinearGradient>
+  );
+}
 
 // El relevo rechaza adjuntos de más de 8MB — mismo número aquí para avisar
 // ANTES de gastar datos subiendo algo que va a rebotar.
@@ -321,7 +413,7 @@ function Adjunto({ m, t, alTocar }) {
   if (roto) {
     return (
       <View style={[st.foto, st.fotoHueco]}>
-        <Icon name="lock-closed" size={18} color={C.txt3} />
+        <Icon name="lock-closed" size={18} color={P2C.texto3} />
         <Text style={st.fotoHuecoTxt}>{t.adjNoAbre}</Text>
       </View>
     );
@@ -348,9 +440,9 @@ function NotaDeVoz({ m, mio, t }) {
     return () => { vivo = false; };
   }, [m.archivo, m.llaveArchivo, m.ivArchivo, m.mime]);
   const player = useAudioPlayer(uri ? { uri } : null);
-  const color = mio ? '#3A2C08' : C.goldLt;
+  const color = mio ? P2C.textoMia : P2C.acentoLt;
   if (roto) return (
-    <View style={st.vozFila}><Icon name="lock-closed" size={16} color={C.txt3} /><Text style={st.vozTxt}>{t.adjNoAbre}</Text></View>
+    <View style={st.vozFila}><Icon name="lock-closed" size={16} color={P2C.texto3} /><Text style={st.vozTxt}>{t.adjNoAbre}</Text></View>
   );
   return (
     <Pressable style={st.vozFila} disabled={!uri} onPress={() => { hap(); if (player.playing) player.pause(); else { if (player.duration && player.currentTime >= player.duration - 0.2) player.seekTo(0); player.play(); } }}>
@@ -382,7 +474,7 @@ function TarjetaPago({ m, mio, autor, t, toast }) {
         </View>
         {!!m.texto && <Text style={st.pagoNota}>{m.texto}</Text>}
         <View style={st.pagoPie}>
-          <Icon name="checkmark-circle" size={13} color={C.up} />
+          <Icon name="checkmark-circle" size={13} color={P2C.bien} />
           <Text style={st.pagoOk}>{t.confirmado}</Text>
           <Text style={st.pagoHora}>· {hora(m.cuando)}</Text>
         </View>
@@ -436,6 +528,23 @@ export default function AuroChat({ nav, params }) {
   const [menuContacto, setMenuContacto] = useState(null); // {correo, nombre, addr}: la hojita de mantener pulsado
   const [editar, setEditar] = useState(null);            // a quién se le edita el nombre
   const [nombreEd, setNombreEd] = useState('');          // el nombre en la hoja de editar
+  /* ══ LO QUE LA WEB YA TENÍA Y AQUÍ FALTABA ═══════════════════════════════ */
+  const [viejos, setViejos] = useState([]);              // páginas anteriores del hilo, cargadas al subir
+  const [hayMas, setHayMas] = useState(false);           // ¿queda historial detrás de lo cargado?
+  const [cargandoViejos, setCargandoViejos] = useState(false);
+  const [leidoHasta, setLeidoHasta] = useState(0);       // hasta cuándo leyó la otra persona (doble check)
+  const [enLinea, setEnLinea] = useState(false);         // la presencia, dicha por el relevo
+  const [escribiendo, setEscribiendo] = useState({});    // correo → cuándo llegó su último «escribe»
+  const [menuMsg, setMenuMsg] = useState(null);          // la burbuja mantenida pulsada
+  const [citando, setCitando] = useState(null);          // el mensaje al que se responde
+  const [reenviando, setReenviando] = useState(null);    // el mensaje que se reenvía (eligiendo a quién)
+  const [borrando, setBorrando] = useState(null);        // el mensaje a borrar (eligiendo cómo)
+  const [bloqueando, setBloqueando] = useState(null);    // {correo, nombre}: la pregunta antes de bloquear
+  const [denuncia, setDenuncia] = useState(null);        // {a, nombre, motivo, nota}
+  const [codigo, setCodigo] = useState(null);            // {cargando} | {texto} : el código de seguridad
+  const [estados, setEstados] = useState(null);          // los estados de 24 h del círculo
+  const [viendo, setViendo] = useState(null);            // {quien, i}: el estado abierto
+  const [subeEstado, setSubeEstado] = useState(null);    // {texto, fondo, foto:{base64,mime,uri}}
   const [permiso, pedirPermiso] = useCameraPermissions();
   const toast = useToast();
   const lista = useRef(null);
@@ -709,6 +818,12 @@ export default function AuroChat({ nav, params }) {
     try {
       const d = await M.bandeja(destino);
       setHilo(d.mensajes || []);
+      /* La primera página del relevo son los últimos 200: `hayMas` sólo
+         manda si todavía no se cargó nada hacia atrás; después lo dice la
+         última página vieja que llegó. */
+      setHayMas((antes) => (viejosRef.current.length ? antes : d.hayMas === true));
+      setLeidoHasta(d.leidoHasta || 0);
+      setEnLinea(d.enLinea === true);
       setSinRed(false);
       if (!leido.current) { leido.current = true; M.leido(destino).catch(() => {}); }
     } catch {
@@ -717,6 +832,8 @@ export default function AuroChat({ nav, params }) {
       setSinRed(true);
     }
   }, [destino]);
+  const viejosRef = useRef([]);
+  useEffect(() => { viejosRef.current = viejos; }, [viejos]);
   useEffect(() => {
     if (!destino) return;
     leido.current = false;
@@ -724,13 +841,218 @@ export default function AuroChat({ nav, params }) {
     alFondo.current = true;
     prevLargo.current = 0;
     setNuevos(false);
+    setViejos([]); viejosRef.current = [];
+    setHayMas(false); setLeidoHasta(0); setEnLinea(false);
+    setCitando(null); setMenuMsg(null); setEscribiendo({});
     traerHilo();
     const r = setInterval(traerHilo, 3000);
     return () => clearInterval(r);
   }, [destino, traerHilo]);
 
+  /* ══ EL HISTORIAL, HACIA ATRÁS ═══════════════════════════════════════════
+     El relevo manda los últimos 200 y ahí había un muro. Al llegar arriba se
+     pide la página anterior con `antes` (el `cuando` del más viejo que ya se
+     tiene) y se pega delante. Las páginas viejas viven en `viejos`, aparte
+     de `hilo`: el sondeo de 3 s reemplaza `hilo` entero y no puede llevarse
+     lo que se cargó hacia atrás. */
+  const cargarViejos = useCallback(async () => {
+    if (!destino || cargandoViejos || !hayMas) return;
+    const primero = (viejosRef.current[0] || hilo[0]);
+    if (!primero?.cuando) return;
+    setCargandoViejos(true);
+    try {
+      const d = await M.bandeja(destino, primero.cuando);
+      const ya = new Set([...viejosRef.current, ...hilo].map((m) => m.id));
+      const nuevos = (d.mensajes || []).filter((m) => !ya.has(m.id));
+      setViejos((v) => [...nuevos, ...v]);
+      setHayMas(d.hayMas === true);
+    } catch { /* el banner de red ya avisa; se vuelve a intentar al subir */ }
+    finally { setCargandoViejos(false); }
+  }, [destino, cargandoViejos, hayMas, hilo]);
+
+  /* ══ EL BUZÓN DE SEÑALES, MIENTRAS EL HILO ESTÁ ABIERTO ══════════════════
+     Por aquí llega el «está escribiendo…» —y es lo que el relevo toma como
+     estar EN LÍNEA de verdad—. Se apaga al salir del hilo: en un teléfono un
+     bucle abierto es batería. Quien escribe se olvida solo a los tres
+     segundos: nadie manda un «ya paré», se asume por silencio. */
+  useEffect(() => {
+    if (!destino) return undefined;
+    M.escuchar((s) => {
+      if (s?.tipo !== 'escribe') return;
+      const donde = String(s.datos?.donde || '').toLowerCase();
+      const de = String(s.de || '').toLowerCase();
+      if (donde !== destino && de !== destino) return;
+      setEscribiendo((e) => ({ ...e, [de]: Date.now() }));
+    });
+    const reloj = setInterval(() => {
+      setEscribiendo((e) => {
+        const ahora = Date.now();
+        const vivos = Object.fromEntries(Object.entries(e).filter(([, v]) => ahora - v < 3000));
+        return Object.keys(vivos).length === Object.keys(e).length ? e : vivos;
+      });
+    }, 700);
+    return () => { clearInterval(reloj); M.dejarDeEscuchar(); };
+  }, [destino]);
+
+  /* ══ LOS GESTOS SOBRE UNA BURBUJA ════════════════════════════════════════ */
+  const reaccionar = async (m, emoji) => {
+    setMenuMsg(null);
+    if (!m?.id) return;
+    hap();
+    /* Tocar la misma otra vez la quita — y como la reacción viaja cerrada,
+       eso se decide ACÁ, donde está abierta, no en el relevo. */
+    const mia = m.reacciones?.[String(account?.email || '').toLowerCase()] || null;
+    try {
+      await M.reaccionar(m.id, mia === emoji ? null : emoji, destino);
+      await traerHilo();
+    } catch { toast(t.errReaccion, 'error'); }
+  };
+
+  const copiar = async (m) => {
+    setMenuMsg(null);
+    if (!m?.texto) return;
+    try { await Clipboard.setStringAsync(m.texto); hap(); toast(t.copiado); } catch { /* sin portapapeles */ }
+  };
+
+  /* Reenviar manda un mensaje NUEVO con el mismo texto, sin decir de quién
+     venía: reenviar algo con el nombre de quien lo escribió es publicar a una
+     persona en una conversación en la que no entró. Igual que la web. */
+  const reenviarA = async (a) => {
+    const m = reenviando;
+    setReenviando(null);
+    if (!m?.texto || !a) return;
+    try {
+      const r = await M.enviar(a, m.texto);
+      if (r && r.e2e === false) toast(t.sinCifrar, 'info');
+      hap(); toast(t.reenviado);
+      traerConvos();
+    } catch { toast(t.noSePudo, 'error'); }
+  };
+
+  const borrarMensaje = async (paraTodos) => {
+    const m = borrando;
+    setBorrando(null);
+    if (!m?.id) return;
+    try {
+      await M.borrarMsg(m.id, paraTodos);
+      hap();
+      await traerHilo();
+      setViejos((v) => (paraTodos
+        ? v.map((x) => (x.id === m.id ? { ...x, borrado: true, texto: '', archivo: '', tipo: '' } : x))
+        : v.filter((x) => x.id !== m.id)));
+      traerConvos();
+    } catch { toast(t.noSePudo, 'error'); }
+  };
+
+  /* ══ DESDE LA FICHA DEL CONTACTO: BLOQUEAR, DENUNCIAR, EL CÓDIGO ═════════ */
+  const bloquear = async () => {
+    const b = bloqueando;
+    setBloqueando(null);
+    if (!b?.correo) return;
+    try {
+      await M.bloquear(b.correo, true);
+      hap(); toast(t.bloqueadoOk);
+      if (idDe(con) === b.correo) { setCon(null); setHilo([]); setPendientes([]); }
+      traerConvos(); traerCirculo(); traerEstados();
+    } catch { toast(t.noSePudo, 'error'); }
+  };
+
+  const denunciarHacer = async () => {
+    const d = denuncia;
+    if (!d?.motivo) { toast(t.denElegir, 'error'); return; }
+    setDenuncia(null);
+    try {
+      /* El TEXTO del mensaje no viaja: va cifrado y el relevo no puede
+         abrirlo. Va su id, que es lo que permite pedírselo a las partes. */
+      await M.denunciar(d.a, d.motivo, d.nota || '', d.mensaje || '');
+      hap(); toast(t.denOk);
+      if (idDe(con) === d.a) { setCon(null); setHilo([]); setPendientes([]); }
+      traerConvos(); traerCirculo(); traerEstados();
+    } catch { toast(t.noSePudo, 'error'); }
+  };
+
+  const verCodigo = async (correo) => {
+    setMenuContacto(null);
+    setCodigo({ cargando: true, correo });
+    try { setCodigo({ correo, texto: await M.codigoCon(correo) }); }
+    catch { setCodigo({ correo, texto: null }); }
+  };
+
+  /* ══ LOS ESTADOS DE 24 HORAS ═════════════════════════════════════════════
+     Se piden al entrar a la lista y cada medio minuto: no son un chat, no
+     hace falta el latido de cinco segundos. */
+  const traerEstados = useCallback(async () => {
+    try { setEstados(await M.estados()); } catch { /* sin red la tira no se pinta */ }
+  }, []);
+  useEffect(() => {
+    if (puerta !== 'abierta' || con) return undefined;
+    traerEstados();
+    const r = setInterval(traerEstados, 30000);
+    return () => clearInterval(r);
+  }, [puerta, con, traerEstados]);
+
+  const verEstado = (correo) => {
+    const g = (estados || []).find((x) => x.correo === correo);
+    if (!g?.estados?.length) return;
+    /* Se abre en el primero SIN VER, no en el primero de todos: quien ya vio
+       tres de cinco quiere el cuarto, no volver a empezar. */
+    const i = Math.max(0, g.estados.findIndex((e) => !e.visto));
+    hap();
+    setViendo({ quien: correo, i: g.estados[i] ? i : 0 });
+    marcarVisto(g, g.estados[i] ? i : 0);
+  };
+  const marcarVisto = (g, i) => {
+    const e = g?.estados?.[i];
+    if (!e || e.visto) return;
+    e.visto = true;
+    g.sinVer = g.estados.filter((x) => !x.visto).length;
+    M.estadoVisto(e.id);
+  };
+  /** Tocar pasa al siguiente; en el tercio izquierdo, al anterior. */
+  const estadoSiguiente = (ev) => {
+    const v = viendo;
+    if (!v) return;
+    const g = (estados || []).find((x) => x.correo === v.quien);
+    if (!g) { setViendo(null); return; }
+    const x = ev?.nativeEvent?.locationX;
+    const atras = typeof x === 'number' && x < 120;
+    const sig = v.i + (atras ? -1 : 1);
+    if (sig < 0 || sig >= g.estados.length) { setViendo(null); return; }
+    setViendo({ quien: v.quien, i: sig });
+    marcarVisto(g, sig);
+  };
+  const borrarEstado = async (id) => {
+    try { await M.borrarEstado(id); } catch { /* si no se pudo, sigue en la lista */ }
+    setViendo(null);
+    traerEstados();
+  };
+  const elegirFotoEstado = async () => {
+    const r = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], base64: true, quality: 0.8 }).catch(() => null);
+    const a = r?.assets?.[0];
+    if (!a) return;
+    const base64 = a.base64 || (await leerUri(a.uri).catch(() => null));
+    if (!base64) return;
+    setSubeEstado((s) => ({ ...(s || { texto: '', fondo: 0 }), foto: { base64, mime: a.mimeType || 'image/jpeg', uri: a.uri } }));
+  };
+  const publicarEstado = async () => {
+    const s = subeEstado;
+    if (!s) return;
+    const texto = (s.texto || '').trim();
+    if (!texto && !s.foto) { toast(t.estadoVacio, 'error'); return; }
+    setSubiendo(true);
+    try {
+      let archivo = '';
+      // La foto de un estado es pública por definición: sube en claro.
+      if (s.foto) archivo = (await M.subirPublico('estado.jpg', 'imagen', s.foto.mime, s.foto.base64)).id;
+      await M.subirEstado({ texto, archivo, fondo: s.fondo });
+      hap(); setSubeEstado(null);
+      traerEstados();
+    } catch { toast(t.noSubio, 'error'); }
+    finally { setSubiendo(false); }
+  };
+
   // El botón ATRÁS de Android dentro de una conversación vuelve a la LISTA,
-  // no afuera de PULSE CHAT: el hilo no es una ruta del router (vive en el
+  // no afuera de PULSE2CHAT: el hilo no es una ruta del router (vive en el
   // estado `con`), así que sin esto el handler global de App.js hacía pop de
   // 'chat' entero — en WhatsApp atrás = lista, y esa es la expectativa.
   // Misma convención de la casa que ExplorarPay y NegocioPanel: el listener
@@ -756,10 +1078,13 @@ export default function AuroChat({ nav, params }) {
     const mio = {
       idLocal: 'p' + Date.now() + Math.random().toString(36).slice(2, 6),
       de: account.email, texto: cuerpo, cuando: Date.now(), pendiente: true,
+      ...(citando?.id ? { cita: citando.id } : {}),
     };
     setPendientes((p) => [...p, mio]);
+    const cita = citando?.id || null;
     try {
-      const r = await M.enviar(destino, cuerpo);
+      const r = await M.enviar(destino, cuerpo, cita ? { cita } : undefined);
+      setCitando(null);
       /* SE DICE CUANDO NO SE PUDO CIFRAR. `enviar` devuelve `e2e:false` si la
          otra persona no tiene ninguna llave publicada, y hasta ahora ese dato
          se tiraba: el mensaje salía en claro y la pantalla no lo mencionaba.
@@ -796,7 +1121,7 @@ export default function AuroChat({ nav, params }) {
     hap();
     setPendientes((p) => p.map((x) => (x.idLocal === m.idLocal ? { ...x, pendiente: true, fallo: false } : x)));
     try {
-      await M.enviar(destino, m.texto);
+      await M.enviar(destino, m.texto, m.cita ? { cita: m.cita } : undefined);
       await traerHilo();
       setPendientes((p) => p.filter((x) => x.idLocal !== m.idLocal));
     } catch {
@@ -895,23 +1220,27 @@ export default function AuroChat({ nav, params }) {
   // Cómo se resume la última línea de una conversación. En un grupo lleva
   // SIEMPRE el prefijo de quién habló: sin eso, una lista de grupos es una
   // lista de frases sueltas sin dueño.
+  // El cuerpo de un mensaje dicho en una línea: sirve para la lista y para
+  // la vista previa de una cita, que no lleva el «✓ » ni el «quién:».
+  const cuerpoDe = (u) => {
+    if (u.borrado) return '🚫 ' + t.ultBorrado;
+    if (u.tipo === 'pago') return '💰 ' + montoBonito(u.monto) + ' ' + (u.moneda || 'ORIGEN');
+    if (u.tipo === 'voz') return '🎤 ' + t.ultVoz;
+    if (u.tipo === 'imagen') return '📷 ' + t.ultImagen;
+    if (u.tipo === 'video') return '🎬 ' + t.ultVideo;
+    if (u.tipo === 'archivo') return '📎 ' + (u.nombre || t.ultArchivo);
+    return u.texto;
+  };
   const resumen = (c) => {
     const u = c.ultimo;
     if (!u) return esGrupoDe(c) ? (c.miembros || 0) + ' ' + t.miembros : c.correo;
     const mio = u.de === account?.email;
-    let cuerpo;
-    if (u.borrado) cuerpo = '🚫 ' + t.ultBorrado;
-    else if (u.tipo === 'pago') cuerpo = '💰 ' + montoBonito(u.monto) + ' ' + (u.moneda || 'ORIGEN');
-    else if (u.tipo === 'voz') cuerpo = '🎤 ' + t.ultVoz;
-    else if (u.tipo === 'imagen') cuerpo = '📷 ' + t.ultImagen;
-    else if (u.tipo === 'video') cuerpo = '🎬 ' + t.ultVideo;
-    else if (u.tipo === 'archivo') cuerpo = '📎 ' + (u.nombre || t.ultArchivo);
-    else cuerpo = u.texto;
+    const cuerpo = cuerpoDe(u);
     if (esGrupoDe(c)) return (mio ? t.tu : nombreCorto(u.de)) + ': ' + cuerpo;
     return (mio ? '✓ ' : '') + cuerpo;
   };
 
-  /* Lee un código de PULSE CHAT venga de donde venga.
+  /* Lee un código de PULSE2CHAT venga de donde venga.
      Hay dos formatos vivos y son el mismo ecosistema: og://chat/… lo imprime
      el APK, y https://…/#chat?… lo imprime la web. La web ya entendía los dos;
      el teléfono solo el suyo, así que quien enseñaba su código desde la web y
@@ -1052,11 +1381,11 @@ export default function AuroChat({ nav, params }) {
             <Pressable style={st.hojaBtn} onPress={() => {
               hap(); setNombreEd(menuContacto?.nombre || ''); setEditar(menuContacto); setMenuContacto(null);
             }}>
-              <Icon name="create" size={19} color={C.gold} />
+              <Icon name="create" size={19} color={P2C.acento} />
               <Text style={st.hojaTxt}>{t.editarNombre}</Text>
             </Pressable>
             <Pressable style={st.hojaBtn} onPress={quitarDeLibreta}>
-              <Icon name="trash" size={19} color={C.txt2} />
+              <Icon name="trash" size={19} color={P2C.texto2} />
               <Text style={st.hojaTxt}>{t.quitarLibreta}</Text>
             </Pressable>
             <Pressable style={st.hojaBtn} onPress={() => {
@@ -1064,18 +1393,115 @@ export default function AuroChat({ nav, params }) {
               setOlvidando({ ...menuContacto, quitar: false });
               setMenuContacto(null);
             }}>
-              <Icon name="refresh" size={19} color={C.gold} />
+              <Icon name="refresh" size={19} color={P2C.acento} />
               <Text style={st.hojaTxt}>{t.vaciar}</Text>
             </Pressable>
-            <Pressable style={[st.hojaBtn, { borderBottomWidth: 0 }]} onPress={() => {
+            <Pressable style={st.hojaBtn} onPress={() => {
               hap();
               setOlvidando({ ...menuContacto, quitar: true });
               setMenuContacto(null);
             }}>
-              <Icon name="close-circle" size={19} color={C.down} />
-              <Text style={[st.hojaTxt, { color: C.down }]}>{t.borrarConv}</Text>
+              <Icon name="close-circle" size={19} color={P2C.mal} />
+              <Text style={[st.hojaTxt, { color: P2C.mal }]}>{t.borrarConv}</Text>
+            </Pressable>
+            {/* ══ LO QUE LA WEB YA OFRECÍA DESDE LA FICHA ═══════════════
+                El código de seguridad es lo único que impide que el servidor
+                cambie una llave por la suya y se meta en medio: un código
+                que nadie puede comparar no protege de nada. Bloquear y
+                denunciar existían en mensajes.js y no había dónde tocarlos. */}
+            <Pressable style={st.hojaBtn} onPress={() => verCodigo(menuContacto?.correo)}>
+              <Icon name="shield-checkmark" size={19} color={P2C.acento} />
+              <Text style={st.hojaTxt}>{t.verCodigo}</Text>
+            </Pressable>
+            <Pressable style={st.hojaBtn} onPress={() => { hap(); setBloqueando(menuContacto); setMenuContacto(null); }}>
+              <Icon name="ban" size={19} color={P2C.mal} />
+              <Text style={[st.hojaTxt, { color: P2C.mal }]}>{t.bloquear}</Text>
+            </Pressable>
+            <Pressable style={[st.hojaBtn, { borderBottomWidth: 0 }]} onPress={() => {
+              hap();
+              setDenuncia({ a: menuContacto?.correo, nombre: menuContacto?.nombre, motivo: '', nota: '' });
+              setMenuContacto(null);
+            }}>
+              <Icon name="flag" size={19} color={P2C.mal} />
+              <Text style={[st.hojaTxt, { color: P2C.mal }]}>{t.denunciar}</Text>
             </Pressable>
           </View>
+        </Pressable>
+      </Modal>
+
+      {/* Bloquear: se pregunta con las consecuencias enteras, antes. */}
+      <Modal visible={!!bloqueando} transparent animationType="fade" onRequestClose={() => setBloqueando(null)}>
+        <Pressable style={st.velo} onPress={() => setBloqueando(null)}>
+          <Pressable style={st.editCaja} onPress={() => {}}>
+            <Text style={st.editTit}>{t.bloquear}</Text>
+            <Text style={st.mini} numberOfLines={1}>{bloqueando?.nombre || bloqueando?.correo}</Text>
+            <Text style={[st.editNota, { marginTop: 12 }]}>
+              {t.bloquearNota.replace('{n}', bloqueando?.nombre || String(bloqueando?.correo || '').split('@')[0])}
+            </Text>
+            <Pressable style={st.btnMalo} onPress={bloquear}>
+              <Text style={st.btnMaloTxt}>{t.bloquear}</Text>
+            </Pressable>
+            <Pressable onPress={() => setBloqueando(null)} style={{ paddingVertical: 12, alignItems: 'center' }}>
+              <Text style={st.mini}>{t.cancelar}</Text>
+            </Pressable>
+          </Pressable>
+        </Pressable>
+      </Modal>
+
+      {/* Denunciar: motivos cerrados —los mismos que el relevo—, nota libre
+          aparte, y dicho con todas las letras que bloquear va incluido. */}
+      <Modal visible={!!denuncia} transparent animationType="fade" onRequestClose={() => setDenuncia(null)}>
+        <Pressable style={st.velo} onPress={() => setDenuncia(null)}>
+          <Pressable style={st.editCaja} onPress={() => {}}>
+            <Text style={st.editTit}>{t.denunciarA.replace('{n}', denuncia?.nombre || String(denuncia?.a || '').split('@')[0])}</Text>
+            <Text style={[st.editNota, { marginTop: 6 }]}>{t.denNota}</Text>
+            <Text style={st.denTit}>{t.denMotivo}</Text>
+            <View style={st.denMotivos}>
+              {MOTIVOS_DENUNCIA.map((m) => (
+                <Pressable key={m} onPress={() => { hap(); setDenuncia((d) => ({ ...d, motivo: m })); }}
+                  style={[st.denMotivo, denuncia?.motivo === m && st.denMotivoOn]}
+                  accessibilityRole="radio" accessibilityState={{ checked: denuncia?.motivo === m }}>
+                  <Text style={[st.denMotivoTxt, denuncia?.motivo === m && { color: P2C.textoBoton }]}>{t['den_' + m]}</Text>
+                </Pressable>
+              ))}
+            </View>
+            <TextInput value={denuncia?.nota || ''} onChangeText={(v) => setDenuncia((d) => ({ ...d, nota: v }))}
+              placeholder={t.denDetalle} placeholderTextColor={P2C.texto3} style={st.editInput} maxLength={500} />
+            <Pressable style={[st.btnMalo, { marginTop: 14 }]} onPress={denunciarHacer}>
+              <Text style={st.btnMaloTxt}>{t.denunciar}</Text>
+            </Pressable>
+            <Pressable onPress={() => setDenuncia(null)} style={{ paddingVertical: 12, alignItems: 'center' }}>
+              <Text style={st.mini}>{t.cancelar}</Text>
+            </Pressable>
+          </Pressable>
+        </Pressable>
+      </Modal>
+
+      {/* El código de seguridad: la huella de las llaves de los dos lados,
+          para comparar en persona. Y la nota de qué pasa al cambiar de
+          teléfono va SIEMPRE, con o sin código: quien abre esto ya se está
+          preguntando por el cifrado. */}
+      <Modal visible={!!codigo} transparent animationType="fade" onRequestClose={() => setCodigo(null)}>
+        <Pressable style={st.velo} onPress={() => setCodigo(null)}>
+          <Pressable style={st.editCaja} onPress={() => {}}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+              <Icon name="shield-checkmark" size={18} color={P2C.acento} />
+              <Text style={st.editTit}>{t.codigoTit}</Text>
+            </View>
+            <Text style={st.mini} numberOfLines={1}>{codigo?.correo}</Text>
+            {codigo?.cargando ? (
+              <ActivityIndicator color={P2C.acento} style={{ marginVertical: 18 }} />
+            ) : codigo?.texto ? (
+              <>
+                <Text style={st.codigoNums} selectable>{codigo.texto}</Text>
+                <Text style={st.editNota}>{t.codigoQue}</Text>
+              </>
+            ) : (
+              <Text style={[st.editNota, { marginTop: 12 }]}>{t.codigoNo}</Text>
+            )}
+            <Text style={[st.editNota, st.honesto]}>{t.codigoAparato}</Text>
+            <Button3D title={t.listo} onPress={() => setCodigo(null)} />
+          </Pressable>
         </Pressable>
       </Modal>
 
@@ -1086,7 +1512,7 @@ export default function AuroChat({ nav, params }) {
             <Text style={st.editTit}>{t.editarNombre}</Text>
             <Text style={st.mini} numberOfLines={1}>{editar?.correo}</Text>
             <TextInput value={nombreEd} onChangeText={setNombreEd} placeholder={t.nombrePh}
-              placeholderTextColor={C.txt3} style={st.editInput} autoFocus maxLength={60}
+              placeholderTextColor={P2C.texto3} style={st.editInput} autoFocus maxLength={60}
               onSubmitEditing={renombrar} returnKeyType="done" />
             <Text style={st.editNota}>{t.editarNota}</Text>
             <Button3D title={t.guardarNombre} onPress={renombrar} disabled={!nombreEd.trim()} />
@@ -1123,10 +1549,10 @@ export default function AuroChat({ nav, params }) {
   if (puerta !== 'abierta') {
     return (
       <View style={st.screen}>
-        <Header title={t.marca} onBack={nav.back} />
+        <CabeceraP2C titulo={t.marca} onBack={nav.back} />
         <View style={st.centro}>
           {puerta === 'mirando' ? (
-            <><ActivityIndicator color={C.gold} size="large" /><Text style={st.espera}>{t.mirando}</Text></>
+            <><ActivityIndicator color={P2C.acento} size="large" /><Text style={st.espera}>{t.mirando}</Text></>
           ) : (
             <View style={st.gate}>
               <Text style={st.gateTit}>{t.gateTit}</Text>
@@ -1146,7 +1572,11 @@ export default function AuroChat({ nav, params }) {
     // Los pendientes/fallidos se FUSIONAN al final del hilo del relevo: así
     // el sondeo puede reemplazar `hilo` completo sin llevarse ninguna burbuja
     // mía que todavía no entró (o que falló y espera su reintento).
-    const todos = hilo.concat(pendientes);
+    // ...y las páginas viejas van DELANTE: son historial, no novedad.
+    const todos = viejos.concat(hilo, pendientes);
+    const porId = new Map(todos.filter((m) => m.id).map((m) => [m.id, m]));
+    const mioCorreo = String(account?.email || '').toLowerCase();
+    const quienesEscriben = Object.keys(escribiendo);
     const conDias = []; let dPrev = '';
     for (const m of todos) {
       const d = new Date(m.cuando).toDateString();
@@ -1179,11 +1609,26 @@ export default function AuroChat({ nav, params }) {
               <Text style={st.nom} numberOfLines={1}>{enGrupo ? con.nombre : nombreDe(destino, con.nombre)}</Text>
               {/* la seña bajo el nombre: primero el GID (la identidad de la
                   casa), luego la cadena, y el correo solo si no hay más */}
-              <Text style={st.mini} numberOfLines={1}>
-                {enGrupo
-                  ? (con.miembros ? con.miembros + ' ' + t.miembros : t.grupo)
-                  : (con.gid || (con.addr ? '⛓ ' + con.addr.slice(0, 8) + '…' + con.addr.slice(-4) : con.correo))}
-              </Text>
+              {/* Y encima de todo eso, lo vivo: «está escribiendo…» manda
+                  sobre «En línea», que manda sobre la seña. Misma regla que
+                  la cabecera de la web. */}
+              {quienesEscriben.length ? (
+                <Text style={[st.mini, { color: P2C.acentoLt }]} numberOfLines={1}>
+                  {enGrupo ? quienesEscriben.map(nombreCorto).join(', ') + ' ' : ''}
+                  {quienesEscriben.length > 1 ? t.escribiendoVarios : t.escribiendo}
+                </Text>
+              ) : (!enGrupo && enLinea) ? (
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
+                  <View style={st.puntoVerde} />
+                  <Text style={[st.mini, { color: P2C.bien }]}>{t.enLinea}</Text>
+                </View>
+              ) : (
+                <Text style={st.mini} numberOfLines={1}>
+                  {enGrupo
+                    ? (con.miembros ? con.miembros + ' ' + t.miembros : t.grupo)
+                    : (con.gid || (con.addr ? '⛓ ' + con.addr.slice(0, 8) + '…' + con.addr.slice(-4) : con.correo))}
+                </Text>
+              )}
             </View>
           </Pressable>
           {/* El puente con la wallet: `avisarChat` es lo que hará que el
@@ -1191,7 +1636,7 @@ export default function AuroChat({ nav, params }) {
               —nunca antes—. En un grupo el destino de cadena lo elige la
               persona en la pantalla de envío; el aviso ya sabe a dónde ir. */}
           <Pressable onPress={() => { hap(); nav.go('send', { to: con.addr || '', amount: '', avisarChat: destino }); }}>
-            <LinearGradient colors={G.gold} style={st.btnOrigen} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
+            <LinearGradient colors={P2C.grad} style={st.btnOrigen} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
               <Text style={st.btnOrigenTxt}>{t.origen}</Text>
             </LinearGradient>
           </Pressable>
@@ -1205,12 +1650,12 @@ export default function AuroChat({ nav, params }) {
               <Text style={st.guardaTxt} numberOfLines={1}>{t.guardarTxt}</Text>
             </View>
             <Pressable onPress={guardarOfrecido}>
-              <LinearGradient colors={G.gold} style={st.guardaBtn} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
+              <LinearGradient colors={P2C.grad} style={st.guardaBtn} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
                 <Text style={st.guardaBtnTxt}>{t.guardarBtn}</Text>
               </LinearGradient>
             </Pressable>
             <Pressable onPress={() => setOfrecido(null)} hitSlop={10}>
-              <Icon name="close" size={17} color={C.txt3} />
+              <Icon name="close" size={17} color={P2C.texto3} />
             </Pressable>
           </Entrada>
         )}
@@ -1244,14 +1689,34 @@ export default function AuroChat({ nav, params }) {
           scrollEventThrottle={90}
           onContentSizeChange={() => {
             if (alFondo.current) lista.current?.scrollToEnd({ animated: true });
-            else if (conDias.length > prevLargo.current) setNuevos(true);
+            /* Una página vieja que se pegó delante también hace crecer la
+               lista, y eso NO son «mensajes nuevos»: el chip sólo sale si
+               creció por abajo. */
+            else if (conDias.length > prevLargo.current && !cargandoViejos) setNuevos(true);
             prevLargo.current = conDias.length;
           }}
+          /* ══ HACIA ATRÁS AL SUBIR ═══════════════════════════════════════
+             Al acercarse al principio se pide la página anterior, y
+             `maintainVisibleContentPosition` deja quieto lo que se estaba
+             leyendo mientras lo viejo entra por arriba. */
+          onStartReached={cargarViejos}
+          onStartReachedThreshold={0.4}
+          maintainVisibleContentPosition={{ minIndexForVisible: 1 }}
+          ListHeaderComponent={
+            cargandoViejos ? (
+              <View style={st.masViejos}>
+                <ActivityIndicator color={P2C.acento} size="small" />
+                <Text style={st.masViejosTxt}>{t.masViejos}</Text>
+              </View>
+            ) : (!hayMas && todos.length > 0) ? (
+              <Text style={[st.masViejosTxt, { textAlign: 'center', marginBottom: 10 }]}>{t.principio}</Text>
+            ) : null
+          }
           // Sin mensajes hay dos verdades distintas: conversación nueva
           // (nada que decir) o SIN RED (se dice y se ofrece reintentar).
           ListEmptyComponent={sinRed ? (
             <View style={st.redCaja}>
-              <Icon name="cloud-offline" size={22} color={C.down} />
+              <Icon name="cloud-offline" size={22} color={P2C.mal} />
               <Text style={st.redTit}>{t.sinRedT}</Text>
               <Text style={st.redTxt}>{t.sinRedHilo}</Text>
               <Pressable style={st.redBtn} onPress={() => { hap(); traerHilo(); }}>
@@ -1281,20 +1746,40 @@ export default function AuroChat({ nav, params }) {
               <Entrada style={[st.linea, mio ? st.der : st.izq]}>
                 <View style={[st.burbuja, mio ? st.mia : st.suya, { opacity: 0.7 }]}>
                   <View style={st.selloFila}>
-                    <Icon name="trash" size={12} color={mio ? 'rgba(58,44,8,0.6)' : C.txt3} />
-                    <Text style={[st.msg, { fontStyle: 'italic', fontSize: 13 }, mio && { color: '#3A2C08' }]}>{t.borrado}</Text>
+                    <Icon name="trash" size={12} color={mio ? P2C.textoMiaSuave : P2C.texto3} />
+                    <Text style={[st.msg, { fontStyle: 'italic', fontSize: 13 }, mio && { color: P2C.textoMia }]}>{t.borrado}</Text>
                   </View>
-                  <Text style={[st.msgHora, mio && { color: 'rgba(58,44,8,0.55)' }]}>{hora(item.cuando)}</Text>
+                  <Text style={[st.msgHora, mio && { color: P2C.textoMiaSuave }]}>{hora(item.cuando)}</Text>
                 </View>
               </Entrada>
             );
             const conAdj = !!item.archivo && ['imagen', 'video', 'archivo', 'voz'].includes(item.tipo);
+            /* La cita se lee del hilo por id, no se guarda copiada: si el
+               original se borra, la cita no queda contando algo viejo. */
+            const citado = item.cita ? porId.get(item.cita) : null;
+            const reacs = item.reacciones || {};
+            const cuenta = {};
+            for (const e of Object.values(reacs)) cuenta[e] = (cuenta[e] || 0) + 1;
+            const miReac = reacs[mioCorreo] || null;
             return (
               <Entrada style={[st.linea, mio ? st.der : st.izq]}>
                 {/* Un envío fallido NO se desvanece: burbuja marcada en rojo
-                    con «Reintentar» al toque — el texto nunca se pierde. */}
-                <View style={[st.burbuja, mio ? st.mia : st.suya, item.fallo && st.burbujaFallo]}>
+                    con «Reintentar» al toque — el texto nunca se pierde.
+                    Mantener pulsada la burbuja abre sus gestos: responder,
+                    reaccionar, reenviar, copiar, borrar. */}
+                <Pressable style={[st.burbuja, mio ? st.mia : st.suya, item.fallo && st.burbujaFallo]}
+                  onLongPress={item.id ? () => { hap(); setMenuMsg(item); } : undefined} delayLongPress={300}>
                   {!!autor && <Text style={st.autor}>{autor}</Text>}
+                  {!!item.cita && (
+                    <View style={[st.cita, mio && st.citaMia]}>
+                      <Text style={[st.citaDe, mio && { color: P2C.textoMia }]} numberOfLines={1}>
+                        {citado ? (citado.de === mioCorreo ? t.tu : nombreCorto(citado.de)) : t.citaIda}
+                      </Text>
+                      <Text style={[st.citaTxt, mio && { color: P2C.textoMiaSuave }]} numberOfLines={2}>
+                        {citado ? cuerpoDe(citado) : t.citaIdaP}
+                      </Text>
+                    </View>
+                  )}
                   {/* UN ADJUNTO CIFRADO NO SE PUEDE PINTAR DIRECTO: son bytes
                       que ninguna etiqueta sabe dibujar. `Adjunto` lo baja, lo
                       abre con la llave que venía dentro del mensaje y recién
@@ -1306,13 +1791,13 @@ export default function AuroChat({ nav, params }) {
                   {conAdj && item.tipo !== 'imagen' && item.tipo !== 'voz' && (
                     <Pressable style={st.adjCard} onPress={() => abrirAdjuntoCifrado(item)}>
                       <Icon name={item.tipo === 'video' ? 'videocam' : 'document-text'} size={24}
-                        color={mio ? '#3A2C08' : C.gold} />
-                      <Text style={[st.adjNom, mio && { color: '#3A2C08' }]} numberOfLines={2}>
+                        color={mio ? P2C.textoMia : P2C.acento} />
+                      <Text style={[st.adjNom, mio && { color: P2C.textoMia }]} numberOfLines={2}>
                         {item.nombre || (item.tipo === 'video' ? t.ultVideo : t.ultArchivo)}
                       </Text>
                     </Pressable>
                   )}
-                  {!!item.texto && <Text style={[st.msg, mio && { color: item.fallo ? C.txt : '#3A2C08' }]}>{item.texto}</Text>}
+                  {!!item.texto && <Text style={[st.msg, mio && { color: item.fallo ? P2C.texto : P2C.textoMia }]}>{item.texto}</Text>}
                   {/* CIFRADO PARA OTRO APARATO. Sin esto la burbuja sale
                       VACÍA con la hora al lado, y eso se lee como «el chat
                       perdió un mensaje» — cuando el mensaje está entero, sólo
@@ -1322,8 +1807,8 @@ export default function AuroChat({ nav, params }) {
                       conversación así. */}
                   {item.cerrado && (
                     <View style={st.selloFila}>
-                      <Icon name="lock-closed" size={11} color={mio ? 'rgba(58,44,8,0.6)' : C.txt3} />
-                      <Text style={[st.selloTxt, mio && { color: 'rgba(58,44,8,0.6)' }]}>{t.cerrado}</Text>
+                      <Icon name="lock-closed" size={11} color={mio ? P2C.textoMiaSuave : P2C.texto3} />
+                      <Text style={[st.selloTxt, mio && { color: P2C.textoMiaSuave }]}>{t.cerrado}</Text>
                     </View>
                   )}
                   {/* ESTE MENSAJE VIAJÓ EN CLARO, Y SE DICE PARA SIEMPRE.
@@ -1335,8 +1820,8 @@ export default function AuroChat({ nav, params }) {
                       porque se calcula igual en las dos puntas. */}
                   {item.e2e === false && !item.cerrado && (
                     <View style={st.selloFila}>
-                      <Icon name="eye" size={11} color={mio ? 'rgba(58,44,8,0.6)' : C.txt3} />
-                      <Text style={[st.selloTxt, mio && { color: 'rgba(58,44,8,0.6)' }]}>{t.enClaro}</Text>
+                      <Icon name="eye" size={11} color={mio ? P2C.textoMiaSuave : P2C.texto3} />
+                      <Text style={[st.selloTxt, mio && { color: P2C.textoMiaSuave }]}>{t.enClaro}</Text>
                     </View>
                   )}
                   {/* Y si la firma NO cuadró, se dice. Un mensaje cifrado cuya
@@ -1354,21 +1839,41 @@ export default function AuroChat({ nav, params }) {
                     && item.motivoFirma !== 'sin-firma'
                     && item.motivoFirma !== 'sin-llaves-del-remitente' && !item.cerrado && (
                     <View style={st.selloFila}>
-                      <Icon name="alert-circle" size={11} color={C.down} />
-                      <Text style={[st.selloTxt, { color: C.down }]}>{t.sinFirma}</Text>
+                      <Icon name="alert-circle" size={11} color={P2C.mal} />
+                      <Text style={[st.selloTxt, { color: P2C.mal }]}>{t.sinFirma}</Text>
                     </View>
                   )}
                   {item.fallo ? (
                     <Pressable onPress={() => reintentar(item)} hitSlop={8} style={st.reintentar}>
-                      <Icon name="refresh" size={12} color={C.down} />
+                      <Icon name="refresh" size={12} color={P2C.mal} />
                       <Text style={st.reintentarTxt}>{t.fallo} · {t.reintentar}</Text>
                     </Pressable>
                   ) : (
-                    <Text style={[st.msgHora, mio && { color: 'rgba(58,44,8,0.55)' }]}>
-                      {hora(item.cuando)}{mio ? (item.pendiente ? ' ·' : ' ✓') : ''}
-                    </Text>
+                    <View style={st.pieBurbuja}>
+                      <Text style={[st.msgHora, mio && { color: P2C.textoMiaSuave }]}>{hora(item.cuando)}</Text>
+                      {/* Un check: llegó al relevo. Dos: la otra persona
+                          abrió el hilo DESPUÉS de este mensaje (`leidoHasta`,
+                          una fecha sin contenido). Un punto: todavía en
+                          camino. */}
+                      {mio && (item.pendiente
+                        ? <Text style={[st.msgHora, { color: P2C.textoMiaSuave }]}>·</Text>
+                        : <Icon name={leidoHasta >= (item.cuando || 0) ? 'checkmark-done' : 'checkmark'} size={13}
+                            color={leidoHasta >= (item.cuando || 0) ? P2C.acentoHi : P2C.textoMiaSuave} />)}
+                    </View>
                   )}
-                </View>
+                </Pressable>
+                {/* La tira de reacciones, debajo de la burbuja. Tocar la
+                    propia la quita; tocar otra la pone. */}
+                {Object.keys(cuenta).length > 0 && (
+                  <View style={[st.reacs, mio && { alignSelf: 'flex-end' }]}>
+                    {Object.entries(cuenta).map(([e, n]) => (
+                      <Pressable key={e} onPress={() => reaccionar(item, e)} hitSlop={4}
+                        style={[st.reac, e === miReac && st.reacMia]}>
+                        <Text style={st.reacTxt}>{e}{n > 1 ? ' ' + n : ''}</Text>
+                      </Pressable>
+                    ))}
+                  </View>
+                )}
               </Entrada>
             );
           }}
@@ -1388,31 +1893,49 @@ export default function AuroChat({ nav, params }) {
             burbuja roja con «Reintentar» que iba a fallar para siempre. */}
         {faltaAceptar === destino && (
           <View style={st.faltaCaja}>
-            <Icon name="people" size={20} color={C.gold} />
+            <Icon name="people" size={20} color={P2C.acento} />
             <Text style={st.faltaTit}>{t.faltaTit}</Text>
             <Text style={st.faltaTxt}>{t.faltaTxt}</Text>
             <Pressable onPress={() => mandarSolicitud(destino)} disabled={pidiendo} style={st.faltaBtn}>
               {pidiendo
-                ? <ActivityIndicator color={C.darkText} size="small" />
+                ? <ActivityIndicator color={P2C.textoBoton} size="small" />
                 : <Text style={st.faltaBtnTxt}>{t.mandarSolicitud}</Text>}
             </Pressable>
           </View>
         )}
+        {/* Respondiendo a…: la vista previa encima de la caja, con su X. */}
+        {!!citando && (
+          <View style={st.citando}>
+            <View style={st.citandoBarra} />
+            <View style={{ flex: 1, minWidth: 0 }}>
+              <Text style={st.citaDe} numberOfLines={1}>
+                {t.respondiendoA} {citando.de === mioCorreo ? t.tu.toLowerCase() : nombreCorto(citando.de)}
+              </Text>
+              <Text style={st.citaTxt} numberOfLines={1}>{cuerpoDe(citando)}</Text>
+            </View>
+            <Pressable onPress={() => setCitando(null)} hitSlop={10}>
+              <Icon name="close" size={17} color={P2C.texto3} />
+            </Pressable>
+          </View>
+        )}
         <View style={st.emojis}>
-          {['👍', '🙏', '🎉', '💛', '😂', '🤝', '🔥', '✨', '💰', '🚀'].map((e) => (
+          {['👍', '🙏', '🎉', '💙', '😂', '🤝', '🔥', '✨', '💰', '🚀'].map((e) => (
             <Pressable key={e} onPress={() => setTexto((x) => x + e)} hitSlop={4}><Text style={st.emoji}>{e}</Text></Pressable>
           ))}
         </View>
         <View style={st.filaEscribe}>
           {/* el clip es del set de la casa: el emoji 📎 salía a color en
-              Android y desentonaba con la paleta oro/verde */}
+              Android y desentonaba con la paleta */}
           <Pressable onPress={() => { hap(); setHoja(true); }} disabled={subiendo} style={st.clip}>
-            {subiendo ? <ActivityIndicator color={C.gold} size="small" /> : <Icon name="attach" size={20} color={C.goldLt} />}
+            {subiendo ? <ActivityIndicator color={P2C.acento} size="small" /> : <Icon name="attach" size={20} color={P2C.acentoLt} />}
           </Pressable>
-          <TextInput value={texto} onChangeText={setTexto} placeholder={t.escribe}
-            placeholderTextColor={C.txt3} style={st.caja} onSubmitEditing={mandar} returnKeyType="send" multiline />
+          {/* Al teclear se avisa «está escribiendo…»; el módulo se encarga
+              de no inundar el relevo (una vez cada dos segundos). */}
+          <TextInput value={texto} onChangeText={(v) => { setTexto(v); if (v && destino) M.escribiendo(destino); }}
+            placeholder={t.escribe}
+            placeholderTextColor={P2C.texto3} style={st.caja} onSubmitEditing={mandar} returnKeyType="send" multiline />
           <Pressable onPress={mandar}>
-            <LinearGradient colors={G.gold} style={st.mandar} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
+            <LinearGradient colors={P2C.grad} style={st.mandar} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
               <Text style={st.mandarTxt}>↑</Text>
             </LinearGradient>
           </Pressable>
@@ -1425,13 +1948,13 @@ export default function AuroChat({ nav, params }) {
               {/* iconos de la casa, no emojis: en Android el emoji sale a
                   color y rompe la paleta oro/verde de toda la hojita */}
               <Pressable style={st.hojaBtn} onPress={elegirImagen}>
-                <Icon name="image" size={20} color={C.gold} /><Text style={st.hojaTxt}>{t.adjImagen}</Text>
+                <Icon name="image" size={20} color={P2C.acento} /><Text style={st.hojaTxt}>{t.adjImagen}</Text>
               </Pressable>
               <Pressable style={st.hojaBtn} onPress={elegirVideo}>
-                <Icon name="videocam" size={20} color={C.gold} /><Text style={st.hojaTxt}>{t.adjVideo}</Text>
+                <Icon name="videocam" size={20} color={P2C.acento} /><Text style={st.hojaTxt}>{t.adjVideo}</Text>
               </Pressable>
               <Pressable style={[st.hojaBtn, { borderBottomWidth: 0 }]} onPress={elegirArchivo}>
-                <Icon name="document-text" size={20} color={C.gold} /><Text style={st.hojaTxt}>{t.adjArchivo}</Text>
+                <Icon name="document-text" size={20} color={P2C.acento} /><Text style={st.hojaTxt}>{t.adjArchivo}</Text>
               </Pressable>
             </View>
           </Pressable>
@@ -1444,6 +1967,90 @@ export default function AuroChat({ nav, params }) {
           </Pressable>
         </Modal>
 
+        {/* ══ LOS GESTOS DE UNA BURBUJA ══════════════════════════════════
+            Las seis reacciones rápidas arriba (las mismas que la web) y
+            debajo responder, reenviar, copiar y borrar. Lo que no aplica no
+            sale: un mensaje sin texto no se reenvía ni se copia. */}
+        <Modal visible={!!menuMsg} transparent animationType="fade" onRequestClose={() => setMenuMsg(null)}>
+          <Pressable style={st.veloBajo} onPress={() => setMenuMsg(null)}>
+            <View style={st.hoja}>
+              <View style={st.reacFila}>
+                {REACCIONES.map((e) => (
+                  <Pressable key={e} onPress={() => reaccionar(menuMsg, e)} hitSlop={6}
+                    style={[st.reacBtn, menuMsg?.reacciones?.[mioCorreo] === e && st.reacBtnOn]}>
+                    <Text style={st.reacBtnTxt}>{e}</Text>
+                  </Pressable>
+                ))}
+              </View>
+              <Pressable style={st.hojaBtn} onPress={() => { hap(); setCitando(menuMsg); setMenuMsg(null); }}>
+                <Icon name="arrow-undo" size={19} color={P2C.acento} /><Text style={st.hojaTxt}>{t.responder}</Text>
+              </Pressable>
+              {!!menuMsg?.texto && (
+                <Pressable style={st.hojaBtn} onPress={() => { hap(); setReenviando(menuMsg); setMenuMsg(null); }}>
+                  <Icon name="arrow-redo" size={19} color={P2C.acento} /><Text style={st.hojaTxt}>{t.reenviar}</Text>
+                </Pressable>
+              )}
+              {!!menuMsg?.texto && (
+                <Pressable style={st.hojaBtn} onPress={() => copiar(menuMsg)}>
+                  <Icon name="copy" size={19} color={P2C.acento} /><Text style={st.hojaTxt}>{t.copiar}</Text>
+                </Pressable>
+              )}
+              <Pressable style={[st.hojaBtn, { borderBottomWidth: 0 }]} onPress={() => { hap(); setBorrando(menuMsg); setMenuMsg(null); }}>
+                <Icon name="trash" size={19} color={P2C.mal} /><Text style={[st.hojaTxt, { color: P2C.mal }]}>{t.borrarMsg}</Text>
+              </Pressable>
+            </View>
+          </Pressable>
+        </Modal>
+
+        {/* Reenviar: a quién. Personas y grupos de mi lista, menos este hilo. */}
+        <Modal visible={!!reenviando} transparent animationType="fade" onRequestClose={() => setReenviando(null)}>
+          <Pressable style={st.veloBajo} onPress={() => setReenviando(null)}>
+            <View style={[st.hoja, { maxHeight: '70%' }]}>
+              <View style={st.menuQuien}>
+                <Icon name="arrow-redo" size={20} color={P2C.acento} />
+                <View style={{ flex: 1, minWidth: 0 }}>
+                  <Text style={st.nom}>{t.reenviar}</Text>
+                  <Text style={st.mini} numberOfLines={2}>{t.reenviarNota}</Text>
+                </View>
+              </View>
+              <FlatList
+                data={(convos || []).filter((c) => idDe(c) !== destino)}
+                keyExtractor={(c) => idDe(c)}
+                ListEmptyComponent={<Text style={[st.vacio, { padding: 16 }]}>{t.aQuienReenviar}</Text>}
+                renderItem={({ item }) => (
+                  <Pressable style={st.hojaBtn} onPress={() => { hap(); reenviarA(idDe(item)); }}>
+                    <Avatar nombre={esGrupoDe(item) ? item.nombre : nombreDe(idDe(item), item.nombre)} correo={idDe(item)} foto={item.foto} grupo={esGrupoDe(item)} tam={32} />
+                    <Text style={st.hojaTxt} numberOfLines={1}>{esGrupoDe(item) ? item.nombre : nombreDe(idDe(item), item.nombre)}</Text>
+                  </Pressable>
+                )}
+              />
+            </View>
+          </Pressable>
+        </Modal>
+
+        {/* Borrar: se PREGUNTA cuál de las dos cosas, porque son distintas y
+            la gente las confunde: esconderlo de mi pantalla no se lo quita a
+            la otra persona. «Para todos» sólo lo puede quien lo escribió. */}
+        <Modal visible={!!borrando} transparent animationType="fade" onRequestClose={() => setBorrando(null)}>
+          <Pressable style={st.velo} onPress={() => setBorrando(null)}>
+            <Pressable style={st.editCaja} onPress={() => {}}>
+              <Text style={st.editTit}>{t.borrarMsg}</Text>
+              <Text style={[st.editNota, { marginTop: 8 }]}>
+                {borrando?.de === mioCorreo ? t.borrarMsgP : t.borrarMsgSoloMio}
+              </Text>
+              {borrando?.de === mioCorreo && (
+                <Pressable style={st.btnMalo} onPress={() => borrarMensaje(true)}>
+                  <Text style={st.btnMaloTxt}>{t.borrarTodos}</Text>
+                </Pressable>
+              )}
+              <Button3D title={t.borrarMio} onPress={() => borrarMensaje(false)} style={{ marginTop: 10 }} />
+              <Pressable onPress={() => setBorrando(null)} style={{ paddingVertical: 12, alignItems: 'center' }}>
+                <Text style={st.mini}>{t.cancelar}</Text>
+              </Pressable>
+            </Pressable>
+          </Pressable>
+        </Modal>
+
         {hojasContacto}
       </PantallaConTeclado>
     );
@@ -1451,27 +2058,30 @@ export default function AuroChat({ nav, params }) {
 
   // ════ lista + directorio + QR ════════════════════════════════════════
   const filas = gente !== null ? gente : (convos || []);
+  const mioLista = String(account?.email || '').toLowerCase();
+  const grupoViendo = viendo ? (estados || []).find((g) => g.correo === viendo.quien) : null;
+  const estadoAbierto = grupoViendo?.estados?.[viendo?.i] || null;
   return (
     <View style={st.screen}>
-      <Header title={t.marca} sub={t.sub} onBack={nav.back} right={(
+      <CabeceraP2C titulo={t.marca} sub={t.sub} onBack={nav.back} right={(
         <View style={st.accesos}>
           <Pressable style={st.acceso} accessibilityRole="button" accessibilityLabel={t.nuevoGrupo}
             onPress={() => { hap(); nav.go('auro-nuevo'); }}>
-            <Icon name="people" size={19} color={C.gold} />
+            <Icon name="people" size={19} color={P2C.acento} />
             <Text style={st.masChico}>+</Text>
           </Pressable>
           <Pressable style={st.acceso} accessibilityRole="button" accessibilityLabel={t.ajustes}
             onPress={() => { hap(); nav.go('auro-ajustes'); }}>
-            <Icon name="settings-sharp" size={19} color={C.gold} />
+            <Icon name="settings-sharp" size={19} color={P2C.acento} />
           </Pressable>
         </View>
       )} />
       <View style={{ paddingHorizontal: 16 }}>
         <TextInput value={busca} onChangeText={setBusca} placeholder={t.buscar}
-          placeholderTextColor={C.txt3} style={st.busca} autoCapitalize="none" />
+          placeholderTextColor={P2C.texto3} style={st.busca} autoCapitalize="none" />
         <View style={st.qrFila}>
           <Pressable style={st.qrBtn} onPress={() => { hap(); setQr('mio'); }}>
-            <Icon name="qr-code" size={14} color={C.goldLt} />
+            <Icon name="qr-code" size={14} color={P2C.acentoLt} />
             <Text style={st.qrBtnTxt}>{t.miqr}</Text>
           </Pressable>
           <Pressable style={st.qrBtn} onPress={async () => {
@@ -1481,7 +2091,7 @@ export default function AuroChat({ nav, params }) {
           }}>
             {/* 'scan' existe en el set desde 1.10 (la pestaña Pagar lo usa):
                 el glifo ⌖ salía con otra fuente y otro grosor que el resto */}
-            <Icon name="scan" size={14} color={C.goldLt} />
+            <Icon name="scan" size={14} color={P2C.acentoLt} />
             <Text style={st.qrBtnTxt}>{t.escanear}</Text>
           </Pressable>
         </View>
@@ -1505,7 +2115,7 @@ export default function AuroChat({ nav, params }) {
                 <Text style={st.solicSiTxt}>{t.aceptar}</Text>
               </Pressable>
               <Pressable onPress={() => responder(p.correo, false)} style={st.solicNo} hitSlop={6}>
-                <Icon name="close" size={16} color={C.txt3} />
+                <Icon name="close" size={16} color={P2C.texto3} />
               </Pressable>
             </View>
           ))}
@@ -1546,7 +2156,7 @@ export default function AuroChat({ nav, params }) {
           // El relevo contestó: no es la red. Se dice lo que pasa y —lo que
           // más importa— que los mensajes NO se perdieron.
           <View style={st.redCaja}>
-            <Icon name="key" size={22} color={C.gold} />
+            <Icon name="key" size={22} color={P2C.acento} />
             <Text style={st.redTit}>
               {motivoOtra === 'sesion-no-vale' ? t.otraTit
                 : motivoOtra === 'otra-cuenta' ? t.otraTit3 : t.otraTit2}</Text>
@@ -1556,19 +2166,55 @@ export default function AuroChat({ nav, params }) {
           </View>
         ) : sinRed ? (
           <View style={st.redCaja}>
-            <Icon name="cloud-offline" size={22} color={C.down} />
+            <Icon name="cloud-offline" size={22} color={P2C.mal} />
             <Text style={st.redTit}>{t.sinRedT}</Text>
             <Text style={st.redTxt}>{t.sinRedConvos}</Text>
             <Pressable style={st.redBtn} onPress={() => { hap(); traerConvos(); }}>
               <Text style={st.redBtnTxt}>{t.reint}</Text>
             </Pressable>
           </View>
-        ) : <ActivityIndicator color={C.gold} style={{ marginTop: 28 }} />
+        ) : <ActivityIndicator color={P2C.acento} style={{ marginTop: 28 }} />
       ) : (
         <FlatList
           data={filas} keyExtractor={(c) => idDe(c)}
           contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 16 }}
-          ListHeaderComponent={gente !== null ? <Text style={st.dir}>{t.dir}</Text> : null}
+          /* ══ LA TIRA DE ESTADOS ═════════════════════════════════════════
+             Arriba de las conversaciones, como se miran: mi círculo para
+             subir el mío, y uno por persona con anillo si tiene algo sin
+             ver. Sólo cuando no se está buscando. */
+          ListHeaderComponent={gente !== null ? <Text style={st.dir}>{t.dir}</Text> : (
+            <View style={st.estados}>
+              <Text style={st.dir}>{t.estados}</Text>
+              <FlatList horizontal showsHorizontalScrollIndicator={false}
+                data={[{ correo: '__mio' }, ...(estados || []).filter((g) => g.correo !== mioLista)]}
+                keyExtractor={(g) => g.correo}
+                contentContainerStyle={{ gap: 12, paddingVertical: 4 }}
+                renderItem={({ item }) => {
+                  if (item.correo === '__mio') {
+                    const mios = (estados || []).find((g) => g.correo === mioLista);
+                    return (
+                      <Pressable style={st.estado} onPress={() => { hap(); if (mios?.estados?.length) verEstado(mioLista); else setSubeEstado({ texto: '', fondo: 0, foto: null }); }}
+                        onLongPress={() => { hap(); setSubeEstado({ texto: '', fondo: 0, foto: null }); }}>
+                        <View style={[st.estadoAro, mios?.estados?.length ? st.estadoAroVisto : st.estadoAroNada]}>
+                          <Avatar nombre={account?.name || account?.email} correo={mioLista} tam={50} />
+                          <View style={st.estadoMas}><Icon name="add" size={12} color={P2C.textoBoton} /></View>
+                        </View>
+                        <Text style={st.estadoNom} numberOfLines={1}>{t.miEstado}</Text>
+                      </Pressable>
+                    );
+                  }
+                  return (
+                    <Pressable style={st.estado} onPress={() => verEstado(item.correo)}>
+                      <View style={[st.estadoAro, item.sinVer ? st.estadoAroNuevo : st.estadoAroVisto]}>
+                        <Avatar nombre={nombreDe(item.correo, item.nombre)} correo={item.correo} foto={item.foto} tam={50} />
+                      </View>
+                      <Text style={st.estadoNom} numberOfLines={1}>{nombreCorto(item.correo) || nombreDe(item.correo, item.nombre)}</Text>
+                    </Pressable>
+                  );
+                }}
+              />
+            </View>
+          )}
           ListEmptyComponent={<Text style={st.vacio}>{gente !== null ? (buscaMal ? t.sinRedBusca : t.nadie) : t.vacio}</Text>}
           renderItem={({ item, index }) => {
             const grupo = esGrupoDe(item);
@@ -1586,7 +2232,11 @@ export default function AuroChat({ nav, params }) {
                   // nombre con el que YO la veo, o quitarla de mi libreta
                   onLongPress={grupo ? undefined : () => abrirMenuContacto(idDe(item), item.nombre, item.addr)}
                   delayLongPress={350}>
-                  <Avatar nombre={grupo ? item.nombre : nombreDe(idDe(item), item.nombre)} correo={idDe(item)} foto={item.foto} grupo={grupo} />
+                  <View>
+                    <Avatar nombre={grupo ? item.nombre : nombreDe(idDe(item), item.nombre)} correo={idDe(item)} foto={item.foto} grupo={grupo} />
+                    {/* el punto verde: la lista ya trae `enLinea` del relevo */}
+                    {!enBusca && !grupo && item.enLinea === true && <View style={st.puntoLista} />}
+                  </View>
                   <View style={{ flex: 1, minWidth: 0 }}>
                     <View style={st.filaSup}>
                       <Text style={st.nom} numberOfLines={1}>{grupo ? item.nombre : nombreDe(idDe(item), item.nombre)}</Text>
@@ -1614,18 +2264,18 @@ export default function AuroChat({ nav, params }) {
                       escribirle. La libreta local no es el círculo. */}
                   {enBusca && (
                     item.lazo === 'amigos' ? (
-                      <Icon name="checkmark-circle" size={20} color={C.up} />
+                      <Icon name="checkmark-circle" size={20} color={P2C.bien} />
                     ) : item.lazo === 'enviada' ? (
                       <Text style={st.lazoTxt}>{t.enviadaCorto}</Text>
                     ) : item.lazo === 'recibida' ? (
                       <Pressable onPress={() => responder(item.correo, true)} hitSlop={6}>
-                        <LinearGradient colors={G.gold} style={st.guardaBtn} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
+                        <LinearGradient colors={P2C.grad} style={st.guardaBtn} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
                           <Text style={st.guardaBtnTxt}>{t.aceptar}</Text>
                         </LinearGradient>
                       </Pressable>
                     ) : (
                       <Pressable onPress={() => agregarBuscado(item)} hitSlop={6} disabled={pidiendo}>
-                        <LinearGradient colors={G.gold} style={st.guardaBtn} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
+                        <LinearGradient colors={P2C.grad} style={st.guardaBtn} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
                           <Text style={st.guardaBtnTxt}>{t.agregar}</Text>
                         </LinearGradient>
                       </Pressable>
@@ -1645,7 +2295,7 @@ export default function AuroChat({ nav, params }) {
             {qr === 'mio' ? (
               <>
                 <View style={st.qrBlanco}>
-                  <QRCode value={aUri('chat/abrir', { con: account?.email })} size={210} color="#04211d" backgroundColor="#ffffff" ecl="M" />
+                  <QRCode value={aUri('chat/abrir', { con: account?.email })} size={210} color={P2C.fondo} backgroundColor="#ffffff" ecl="M" />
                 </View>
                 <Text style={st.qrNota}>{t.qrTuyo}</Text>
               </>
@@ -1653,11 +2303,93 @@ export default function AuroChat({ nav, params }) {
               <>
                 {permiso?.granted ? (
                   <CameraView style={st.camara} barcodeScannerSettings={{ barcodeTypes: ['qr'] }} onBarcodeScanned={alEscanear} />
-                ) : <ActivityIndicator color={C.gold} />}
+                ) : <ActivityIndicator color={P2C.acento} />}
                 <Text style={st.qrNota}>{t.apunta}</Text>
               </>
             )}
           </View>
+        </Pressable>
+      </Modal>
+
+      {/* ══ VER UN ESTADO ═══════════════════════════════════════════════════
+          A pantalla completa. Tocar pasa al siguiente; en el borde izquierdo,
+          al anterior. Quien lo subió ve cuántos lo vieron y puede borrarlo. */}
+      <Modal visible={!!estadoAbierto} transparent animationType="fade" onRequestClose={() => setViendo(null)}>
+        <Pressable style={[st.estadoVelo, { backgroundColor: estadoAbierto?.archivo ? '#000' : P2C.fondosEstado[estadoAbierto?.fondo || 0] }]}
+          onPress={estadoSiguiente}>
+          {!!estadoAbierto && (
+            <>
+              <View style={st.estadoBarras}>
+                {grupoViendo.estados.map((e, i) => (
+                  <View key={e.id} style={[st.estadoBarra, i <= viendo.i && st.estadoBarraOn]} />
+                ))}
+              </View>
+              <View style={st.estadoCab}>
+                <Avatar nombre={nombreDe(grupoViendo.correo, grupoViendo.nombre)} correo={grupoViendo.correo} foto={grupoViendo.foto} tam={34} />
+                <View style={{ flex: 1, minWidth: 0 }}>
+                  <Text style={st.estadoQuien} numberOfLines={1}>{grupoViendo.correo === mioLista ? t.tu : nombreDe(grupoViendo.correo, grupoViendo.nombre)}</Text>
+                  <Text style={st.estadoCuando}>{cuandoHumano(estadoAbierto.cuando, lang, t.ayer)}</Text>
+                </View>
+                <Pressable onPress={() => setViendo(null)} hitSlop={12}><Icon name="close" size={22} color="#fff" /></Pressable>
+              </View>
+              {!!estadoAbierto.archivo && (
+                <Image source={{ uri: M.urlArchivo(estadoAbierto.archivo) }} style={st.estadoImg} resizeMode="contain" />
+              )}
+              {!!estadoAbierto.texto && (
+                <View style={[st.estadoTextoCaja, !!estadoAbierto.archivo && st.estadoTextoPie]}>
+                  <Text style={[st.estadoTexto, !estadoAbierto.archivo && { fontSize: 26, lineHeight: 34 }]}>{estadoAbierto.texto}</Text>
+                </View>
+              )}
+              {grupoViendo.correo === mioLista && (
+                <View style={st.estadoPie}>
+                  <Icon name="eye" size={14} color="#fff" />
+                  <Text style={st.estadoVistas}>{estadoAbierto.vistas || 0} {t.vistas}</Text>
+                  <Pressable onPress={() => { hap(); borrarEstado(estadoAbierto.id); }} hitSlop={10} style={{ marginLeft: 'auto' }}>
+                    <Icon name="trash" size={18} color="#fff" />
+                  </Pressable>
+                </View>
+              )}
+            </>
+          )}
+        </Pressable>
+      </Modal>
+
+      {/* ══ SUBIR UN ESTADO ═════════════════════════════════════════════════
+          Texto con un color de fondo, o una foto con texto encima. Y dicho
+          con todas las letras, en el sitio donde la persona decide: esto NO va
+          cifrado de punta a punta —lo ve todo el círculo y el servidor lo
+          guarda hasta que vence—. */}
+      <Modal visible={!!subeEstado} transparent animationType="fade" onRequestClose={() => setSubeEstado(null)}>
+        <Pressable style={st.velo} onPress={() => setSubeEstado(null)}>
+          <Pressable style={[st.editCaja, { backgroundColor: subeEstado?.foto ? P2C.hoja : P2C.fondosEstado[subeEstado?.fondo || 0] }]} onPress={() => {}}>
+            <Text style={[st.editTit, { color: '#fff' }]}>{t.subirEstado}</Text>
+            {!!subeEstado?.foto && (
+              <Image source={{ uri: subeEstado.foto.uri }} style={st.estadoPrevia} resizeMode="cover" />
+            )}
+            <TextInput value={subeEstado?.texto || ''} onChangeText={(v) => setSubeEstado((s) => ({ ...s, texto: v }))}
+              placeholder={t.estadoPh} placeholderTextColor="rgba(255,255,255,0.55)" multiline maxLength={300}
+              style={[st.editInput, st.estadoInput]} />
+            {!subeEstado?.foto && (
+              <View style={st.fondos}>
+                {P2C.fondosEstado.map((c, i) => (
+                  <Pressable key={c} onPress={() => setSubeEstado((s) => ({ ...s, fondo: i }))}
+                    style={[st.fondo, { backgroundColor: c }, subeEstado?.fondo === i && st.fondoOn]} />
+                ))}
+              </View>
+            )}
+            <View style={{ flexDirection: 'row', gap: 10, marginTop: 12 }}>
+              <Pressable style={st.btnLinea} onPress={elegirFotoEstado}>
+                <Icon name="camera" size={16} color="#fff" /><Text style={st.btnLineaTxt}>{t.estadoFoto}</Text>
+              </Pressable>
+              <Pressable style={[st.btnLinea, { flex: 1, backgroundColor: 'rgba(255,255,255,0.92)' }]} onPress={publicarEstado} disabled={subiendo}>
+                {subiendo ? <ActivityIndicator color={P2C.textoBoton} size="small" /> : <Text style={[st.btnLineaTxt, { color: P2C.textoBoton }]}>{t.publicar}</Text>}
+              </Pressable>
+            </View>
+            <Text style={[st.editNota, { color: 'rgba(255,255,255,0.8)', marginTop: 12, marginBottom: 0 }]}>{t.estadoHonesto}</Text>
+            <Pressable onPress={() => setSubeEstado(null)} style={{ paddingVertical: 12, alignItems: 'center' }}>
+              <Text style={[st.mini, { color: 'rgba(255,255,255,0.7)' }]}>{t.cancelar}</Text>
+            </Pressable>
+          </Pressable>
         </Pressable>
       </Modal>
 
@@ -1667,20 +2399,84 @@ export default function AuroChat({ nav, params }) {
 }
 
 const st = StyleSheet.create({
-  screen: { flex: 1 },
+  /* El suelo azul de PULSE2CHAT: la pantalla entera, no sólo las burbujas. */
+  screen: { flex: 1, backgroundColor: P2C.fondo },
+  cab: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 16, paddingTop: 6, paddingBottom: 14 },
+  cabAtras: { width: 36, height: 36, borderRadius: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: P2C.tinte },
+  cabTit: { fontSize: 19, fontWeight: '800', color: P2C.texto, letterSpacing: 1.2 },
+  cabSub: { fontSize: 11.5, color: P2C.texto2, marginTop: 1 },
+  puntoVerde: { width: 7, height: 7, borderRadius: 4, backgroundColor: P2C.bien },
+  puntoLista: { position: 'absolute', right: 0, bottom: 1, width: 11, height: 11, borderRadius: 6, backgroundColor: P2C.bien, borderWidth: 2, borderColor: P2C.fondo },
+  masViejos: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 8 },
+  masViejosTxt: { color: P2C.texto3, fontSize: 11 },
+  // la cita dentro de la burbuja: una barra al costado y dos renglones
+  cita: { borderLeftWidth: 3, borderLeftColor: P2C.acentoLt, backgroundColor: 'rgba(0,0,0,0.18)', borderRadius: 8, paddingHorizontal: 9, paddingVertical: 5, marginBottom: 6 },
+  citaMia: { borderLeftColor: '#fff', backgroundColor: 'rgba(0,0,0,0.16)' },
+  citaDe: { color: P2C.acentoLt, fontSize: 11, fontWeight: '800' },
+  citaTxt: { color: P2C.texto2, fontSize: 12.5, marginTop: 1 },
+  citando: { flexDirection: 'row', alignItems: 'center', gap: 10, marginHorizontal: 12, marginBottom: 4, padding: 10, borderRadius: 12, backgroundColor: P2C.panel2, borderWidth: 1, borderColor: P2C.linea2 },
+  citandoBarra: { width: 3, alignSelf: 'stretch', borderRadius: 2, backgroundColor: P2C.acento },
+  pieBurbuja: { flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', gap: 3, marginTop: 2 },
+  // la tira de reacciones, colgando del borde de la burbuja
+  reacs: { flexDirection: 'row', flexWrap: 'wrap', gap: 4, marginTop: -6, marginLeft: 8, marginBottom: 4 },
+  reac: { flexDirection: 'row', backgroundColor: P2C.hoja, borderWidth: 1, borderColor: P2C.linea2, borderRadius: 999, paddingHorizontal: 7, paddingVertical: 2 },
+  reacMia: { borderColor: P2C.acento, backgroundColor: P2C.tinte2 },
+  reacTxt: { color: P2C.texto, fontSize: 12 },
+  reacFila: { flexDirection: 'row', justifyContent: 'space-around', paddingVertical: 12, paddingHorizontal: 10, borderBottomWidth: 1, borderBottomColor: P2C.linea2 },
+  reacBtn: { width: 42, height: 42, borderRadius: 21, alignItems: 'center', justifyContent: 'center' },
+  reacBtnOn: { backgroundColor: P2C.tinte2, borderWidth: 1, borderColor: P2C.acento },
+  reacBtnTxt: { fontSize: 24 },
+  btnMalo: { marginTop: 14, paddingVertical: 12, borderRadius: 12, alignItems: 'center', borderWidth: 1.5, borderColor: P2C.mal, backgroundColor: 'rgba(240,119,107,0.12)' },
+  btnMaloTxt: { color: P2C.mal, fontSize: 13.5, fontWeight: '800', letterSpacing: 0.4 },
+  btnLinea: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7, paddingHorizontal: 14, paddingVertical: 11, borderRadius: 12, borderWidth: 1, borderColor: 'rgba(255,255,255,0.55)' },
+  btnLineaTxt: { color: '#fff', fontSize: 12.5, fontWeight: '800', letterSpacing: 0.5 },
+  denTit: { color: P2C.acentoLt, fontSize: 11, fontWeight: '800', letterSpacing: 1, textTransform: 'uppercase', marginTop: 10, marginBottom: 6 },
+  denMotivos: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
+  denMotivo: { borderWidth: 1, borderColor: P2C.linea, borderRadius: 999, paddingHorizontal: 11, paddingVertical: 6 },
+  denMotivoOn: { backgroundColor: P2C.acentoLt, borderColor: P2C.acentoLt },
+  denMotivoTxt: { color: P2C.texto2, fontSize: 12.5, fontWeight: '600' },
+  codigoNums: { color: P2C.texto, fontSize: 17, lineHeight: 26, fontWeight: '700', textAlign: 'center', marginVertical: 14, fontVariant: ['tabular-nums'], letterSpacing: 1 },
+  honesto: { borderTopWidth: 1, borderTopColor: P2C.linea2, paddingTop: 10 },
+  // la tira de estados
+  estados: { marginBottom: 4 },
+  estado: { width: 62, alignItems: 'center', gap: 4 },
+  estadoAro: { width: 58, height: 58, borderRadius: 29, alignItems: 'center', justifyContent: 'center', borderWidth: 2.5 },
+  estadoAroNuevo: { borderColor: P2C.acento },
+  estadoAroVisto: { borderColor: P2C.linea },
+  estadoAroNada: { borderColor: 'transparent' },
+  estadoMas: { position: 'absolute', right: -2, bottom: -2, width: 20, height: 20, borderRadius: 10, backgroundColor: P2C.acentoLt, alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: P2C.fondo },
+  estadoNom: { color: P2C.texto2, fontSize: 10.5, maxWidth: 62 },
+  estadoVelo: { flex: 1, justifyContent: 'center' },
+  estadoBarras: { position: 'absolute', top: 44, left: 10, right: 10, flexDirection: 'row', gap: 4, zIndex: 2 },
+  estadoBarra: { flex: 1, height: 3, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.3)' },
+  estadoBarraOn: { backgroundColor: '#fff' },
+  estadoCab: { position: 'absolute', top: 56, left: 12, right: 12, flexDirection: 'row', alignItems: 'center', gap: 10, zIndex: 2 },
+  estadoQuien: { color: '#fff', fontSize: 14, fontWeight: '700' },
+  estadoCuando: { color: 'rgba(255,255,255,0.7)', fontSize: 11 },
+  estadoImg: { width: '100%', height: '100%' },
+  estadoTextoCaja: { paddingHorizontal: 26 },
+  estadoTextoPie: { position: 'absolute', left: 0, right: 0, bottom: 90, backgroundColor: 'rgba(0,0,0,0.45)', paddingVertical: 12 },
+  estadoTexto: { color: '#fff', fontSize: 16, lineHeight: 23, textAlign: 'center', fontWeight: '600' },
+  estadoPie: { position: 'absolute', left: 16, right: 16, bottom: 34, flexDirection: 'row', alignItems: 'center', gap: 6 },
+  estadoVistas: { color: '#fff', fontSize: 12.5, fontWeight: '600' },
+  estadoPrevia: { width: '100%', height: 200, borderRadius: 12, marginTop: 10, backgroundColor: 'rgba(0,0,0,0.3)' },
+  estadoInput: { backgroundColor: 'rgba(0,0,0,0.22)', borderColor: 'rgba(255,255,255,0.35)', color: '#fff', minHeight: 70, textAlignVertical: 'top' },
+  fondos: { flexDirection: 'row', gap: 8, marginTop: 12, flexWrap: 'wrap' },
+  fondo: { width: 28, height: 28, borderRadius: 14, borderWidth: 2, borderColor: 'rgba(255,255,255,0.35)' },
+  fondoOn: { borderColor: '#fff', transform: [{ scale: 1.15 }] },
   centro: { flex: 1, justifyContent: 'center', padding: 24 },
-  espera: { color: C.txt3, textAlign: 'center', marginTop: 12 },
-  gate: { backgroundColor: C.panel, borderWidth: 1, borderColor: C.line2, borderRadius: 18, padding: 20 },
-  gateTit: { color: C.goldLt, fontSize: 17, fontWeight: '600', marginBottom: 8 },
-  gateTxt: { color: C.txt2, fontSize: 13.5, lineHeight: 20, marginBottom: 16 },
+  espera: { color: P2C.texto3, textAlign: 'center', marginTop: 12 },
+  gate: { backgroundColor: P2C.panel, borderWidth: 1, borderColor: P2C.linea2, borderRadius: 18, padding: 20 },
+  gateTit: { color: P2C.acentoLt, fontSize: 17, fontWeight: '600', marginBottom: 8 },
+  gateTxt: { color: P2C.texto2, fontSize: 13.5, lineHeight: 20, marginBottom: 16 },
   accesos: { flexDirection: 'row', gap: 8 },
-  acceso: { width: 38, height: 38, borderRadius: 13, borderWidth: 1, borderColor: C.line2, backgroundColor: 'rgba(201,169,97,0.07)', alignItems: 'center', justifyContent: 'center' },
-  masChico: { position: 'absolute', top: 4, right: 5, color: C.goldHi, fontSize: 12, fontWeight: '900' },
-  busca: { backgroundColor: C.input, borderWidth: 1, borderColor: C.inputBr, borderRadius: 14, paddingHorizontal: 14, paddingVertical: 11, color: C.txt, fontSize: 14 },
+  acceso: { width: 38, height: 38, borderRadius: 13, borderWidth: 1, borderColor: P2C.linea2, backgroundColor: P2C.tinte, alignItems: 'center', justifyContent: 'center' },
+  masChico: { position: 'absolute', top: 4, right: 5, color: P2C.acentoHi, fontSize: 12, fontWeight: '900' },
+  busca: { backgroundColor: P2C.input, borderWidth: 1, borderColor: P2C.inputBr, borderRadius: 14, paddingHorizontal: 14, paddingVertical: 11, color: P2C.texto, fontSize: 14 },
   qrFila: { flexDirection: 'row', gap: 8, marginTop: 8, marginBottom: 6 },
-  qrBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7, borderWidth: 1, borderColor: C.line, borderRadius: 12, paddingVertical: 9 },
-  qrBtnTxt: { color: C.goldLt, fontSize: 11, fontWeight: '700', letterSpacing: 1 },
-  dir: { color: C.txt3, fontSize: 10, fontWeight: '700', letterSpacing: 3, marginVertical: 8 },
+  qrBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7, borderWidth: 1, borderColor: P2C.linea, borderRadius: 12, paddingVertical: 9 },
+  qrBtnTxt: { color: P2C.acentoLt, fontSize: 11, fontWeight: '700', letterSpacing: 1 },
+  dir: { color: P2C.texto3, fontSize: 10, fontWeight: '700', letterSpacing: 3, marginVertical: 8 },
   // ── los estados de red honestos ──
   // El banner dice «sin conexión» ENCIMA de lo ya cargado (que sigue siendo
   // legible); la caja roja es para cuando no hay nada que enseñar y lo único
@@ -1688,34 +2484,34 @@ const st = StyleSheet.create({
   bannerRed: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7, backgroundColor: '#8A2A21', paddingVertical: 5 },
   bannerRedTxt: { color: '#fff', fontSize: 11, fontWeight: '700' },
   redCaja: { alignItems: 'center', gap: 6, marginTop: 30, marginHorizontal: 24, padding: 20, borderRadius: 18, borderWidth: 1, borderColor: 'rgba(240,119,107,0.35)', backgroundColor: 'rgba(52,20,18,0.35)' },
-  redTit: { color: C.txt, fontWeight: '800', fontSize: 14.5 },
-  redTxt: { color: C.txt2, fontSize: 12.5, lineHeight: 18, textAlign: 'center' },
-  redBtn: { marginTop: 8, borderWidth: 1, borderColor: C.line, borderRadius: 12, paddingHorizontal: 18, paddingVertical: 9 },
-  redBtnTxt: { color: C.goldLt, fontSize: 10.5, fontWeight: '800', letterSpacing: 1.2 },
-  vacio: { color: C.txt3, fontSize: 13, lineHeight: 20, marginTop: 16, textAlign: 'center' },
-  fila: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 11, borderBottomWidth: 1, borderBottomColor: 'rgba(201,169,97,0.08)' },
+  redTit: { color: P2C.texto, fontWeight: '800', fontSize: 14.5 },
+  redTxt: { color: P2C.texto2, fontSize: 12.5, lineHeight: 18, textAlign: 'center' },
+  redBtn: { marginTop: 8, borderWidth: 1, borderColor: P2C.linea, borderRadius: 12, paddingHorizontal: 18, paddingVertical: 9 },
+  redBtnTxt: { color: P2C.acentoLt, fontSize: 10.5, fontWeight: '800', letterSpacing: 1.2 },
+  vacio: { color: P2C.texto3, fontSize: 13, lineHeight: 20, marginTop: 16, textAlign: 'center' },
+  fila: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 11, borderBottomWidth: 1, borderBottomColor: P2C.tinte },
   filaSup: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
-  nom: { color: C.txt, fontSize: 15, fontWeight: '600', flexShrink: 1 },
-  hora: { color: C.txt3, fontSize: 10.5 },
-  ult: { color: C.txt3, fontSize: 12.5, flexShrink: 1, marginTop: 2 },
+  nom: { color: P2C.texto, fontSize: 15, fontWeight: '600', flexShrink: 1 },
+  hora: { color: P2C.texto3, fontSize: 10.5 },
+  ult: { color: P2C.texto3, fontSize: 12.5, flexShrink: 1, marginTop: 2 },
   // con mensajes sin leer la última línea sube de tono: el globo dorado dice
   // cuántos, y el texto dice que están vivos sin tener que contarlos
-  ultVivo: { color: C.txt2, fontWeight: '600' },
-  globo: { minWidth: 20, height: 20, borderRadius: 10, backgroundColor: C.gold, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 5 },
-  globoTxt: { color: '#3A2C08', fontSize: 11, fontWeight: '800' },
-  cabHilo: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 12, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: C.line2 },
+  ultVivo: { color: P2C.texto2, fontWeight: '600' },
+  globo: { minWidth: 20, height: 20, borderRadius: 10, backgroundColor: P2C.acento, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 5 },
+  globoTxt: { color: P2C.textoMia, fontSize: 11, fontWeight: '800' },
+  cabHilo: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 12, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: P2C.linea2 },
   cabQuien: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 10, minWidth: 0 },
-  volver: { color: C.gold, fontSize: 28, paddingHorizontal: 4, lineHeight: 30 },
-  mini: { color: C.txt3, fontSize: 10.5 },
+  volver: { color: P2C.acento, fontSize: 28, paddingHorizontal: 4, lineHeight: 30 },
+  mini: { color: P2C.texto3, fontSize: 10.5 },
   btnOrigen: { borderRadius: 11, paddingHorizontal: 11, paddingVertical: 8 },
-  btnOrigenTxt: { color: '#3A2C08', fontSize: 9.5, fontWeight: '800', letterSpacing: 0.5 },
-  guardaBar: { flexDirection: 'row', alignItems: 'center', gap: 10, marginHorizontal: 12, marginTop: 10, padding: 11, borderRadius: 15, borderWidth: 1, borderColor: C.line, backgroundColor: 'rgba(201,169,97,0.09)' },
-  guardaTit: { color: C.goldLt, fontSize: 13, fontWeight: '700' },
-  guardaTxt: { color: C.txt3, fontSize: 11.5, marginTop: 1 },
+  btnOrigenTxt: { color: P2C.textoMia, fontSize: 9.5, fontWeight: '800', letterSpacing: 0.5 },
+  guardaBar: { flexDirection: 'row', alignItems: 'center', gap: 10, marginHorizontal: 12, marginTop: 10, padding: 11, borderRadius: 15, borderWidth: 1, borderColor: P2C.linea, backgroundColor: P2C.tinte },
+  guardaTit: { color: P2C.acentoLt, fontSize: 13, fontWeight: '700' },
+  guardaTxt: { color: P2C.texto3, fontSize: 11.5, marginTop: 1 },
   guardaBtn: { borderRadius: 11, paddingHorizontal: 12, paddingVertical: 9 },
-  guardaBtnTxt: { color: '#3A2C08', fontSize: 9.5, fontWeight: '800', letterSpacing: 0.6 },
-  dia: { alignSelf: 'center', backgroundColor: 'rgba(110,147,143,0.14)', borderRadius: 10, paddingHorizontal: 10, paddingVertical: 3, marginVertical: 8 },
-  diaTxt: { color: C.txt3, fontSize: 10.5 },
+  guardaBtnTxt: { color: P2C.textoMia, fontSize: 9.5, fontWeight: '800', letterSpacing: 0.6 },
+  dia: { alignSelf: 'center', backgroundColor: P2C.tinte, borderRadius: 10, paddingHorizontal: 10, paddingVertical: 3, marginVertical: 8 },
+  diaTxt: { color: P2C.texto3, fontSize: 10.5 },
   // el lado lo pone la línea (la que se anima); la burbuja solo se ocupa de
   // su propia forma, así el comprobante puede ser más ancho que un texto
   linea: { maxWidth: '82%' },
@@ -1723,19 +2519,21 @@ const st = StyleSheet.create({
   izq: { alignSelf: 'flex-start' },
   der: { alignSelf: 'flex-end' },
   burbuja: { borderRadius: 16, paddingHorizontal: 13, paddingVertical: 8, marginVertical: 1.5 },
-  mia: { backgroundColor: C.goldLt, borderBottomRightRadius: 5 },
-  suya: { backgroundColor: C.panel2, borderBottomLeftRadius: 5 },
+  // la propia en el azul del acento con texto blanco; la ajena en un azul
+  // sordo con el texto claro — las dos se distinguen de un vistazo
+  mia: { backgroundColor: P2C.mia, borderBottomRightRadius: 5 },
+  suya: { backgroundColor: P2C.suya, borderBottomLeftRadius: 5 },
   // el envío fallido se marca, no se desvanece: borde y fondo rojizos con el
   // texto legible, y debajo su «Reintentar»
   burbujaFallo: { backgroundColor: 'rgba(52,20,18,0.55)', borderWidth: 1.5, borderColor: 'rgba(240,119,107,0.6)' },
   reintentar: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 6, alignSelf: 'flex-end' },
-  reintentarTxt: { color: C.down, fontSize: 11, fontWeight: '800', letterSpacing: 0.3 },
+  reintentarTxt: { color: P2C.mal, fontSize: 11, fontWeight: '800', letterSpacing: 0.3 },
   // el chip que baja al final sin robar el scroll mientras se lee historial
-  chipNuevos: { alignSelf: 'center', marginTop: 2, marginBottom: 4, backgroundColor: C.gold, borderRadius: 999, paddingHorizontal: 14, paddingVertical: 6, shadowColor: '#C9A961', shadowOpacity: 0.4, shadowRadius: 8, shadowOffset: { width: 0, height: 3 }, elevation: 4 },
-  chipNuevosTxt: { color: '#3A2C08', fontSize: 11.5, fontWeight: '800' },
-  autor: { color: C.gold, fontSize: 11, fontWeight: '700', marginBottom: 2 },
-  msg: { color: C.txt, fontSize: 14.5, lineHeight: 20 },
-  msgHora: { color: C.txt3, fontSize: 9.5, alignSelf: 'flex-end', marginTop: 2 },
+  chipNuevos: { alignSelf: 'center', marginTop: 2, marginBottom: 4, backgroundColor: P2C.acento, borderRadius: 999, paddingHorizontal: 14, paddingVertical: 6, shadowColor: P2C.acento, shadowOpacity: 0.4, shadowRadius: 8, shadowOffset: { width: 0, height: 3 }, elevation: 4 },
+  chipNuevosTxt: { color: P2C.textoMia, fontSize: 11.5, fontWeight: '800' },
+  autor: { color: P2C.acento, fontSize: 11, fontWeight: '700', marginBottom: 2 },
+  msg: { color: P2C.texto, fontSize: 14.5, lineHeight: 20 },
+  msgHora: { color: P2C.texto3, fontSize: 9.5, alignSelf: 'flex-end', marginTop: 2 },
   /* El sello del cifrado: en cursiva y con menos peso que el mensaje. Dice
      algo del SOBRE, no de lo que la persona escribió, y tiene que leerse como
      una nota al margen — no como parte de la conversación. */
@@ -1743,76 +2541,76 @@ const st = StyleSheet.create({
   /* El hueco de un adjunto que todavía se está abriendo: MISMO tamaño que la
      foto, para que la burbuja no salte cuando llegue. */
   fotoHueco: { alignItems: 'center', justifyContent: 'center', gap: 6,
-    backgroundColor: 'rgba(255,255,255,0.05)', borderWidth: 1, borderColor: C.line },
-  fotoHuecoTxt: { color: C.txt3, fontSize: 10.5, fontStyle: 'italic', textAlign: 'center',
+    backgroundColor: 'rgba(255,255,255,0.05)', borderWidth: 1, borderColor: P2C.linea },
+  fotoHuecoTxt: { color: P2C.texto3, fontSize: 10.5, fontStyle: 'italic', textAlign: 'center',
     paddingHorizontal: 12 },
-  selloTxt: { color: C.txt3, fontSize: 10.5, fontStyle: 'italic', flexShrink: 1 },
-  pago: { borderRadius: 18, borderWidth: 1, borderColor: C.line, backgroundColor: 'rgba(4,25,27,0.86)', overflow: 'hidden', marginVertical: 3, shadowColor: '#C9A961', shadowOpacity: 0.28, shadowRadius: 14, shadowOffset: { width: 0, height: 6 }, elevation: 5 },
+  selloTxt: { color: P2C.texto3, fontSize: 10.5, fontStyle: 'italic', flexShrink: 1 },
+  pago: { borderRadius: 18, borderWidth: 1, borderColor: C.line, backgroundColor: 'rgba(4,25,27,0.86)', overflow: 'hidden', marginVertical: 3, shadowColor: C.gold, shadowOpacity: 0.28, shadowRadius: 14, shadowOffset: { width: 0, height: 6 }, elevation: 5 },
   pagoFilo: { height: 3, width: '100%' },
   pagoDentro: { paddingHorizontal: 15, paddingVertical: 13 },
   pagoVerbo: { color: C.gold, fontSize: 9.5, fontWeight: '800', letterSpacing: 2.2 },
   pagoFila: { flexDirection: 'row', alignItems: 'flex-end', gap: 7, marginTop: 3 },
   pagoMonto: { color: C.goldHi, fontSize: 30, fontWeight: '800', letterSpacing: -0.4, fontVariant: ['tabular-nums'] },
   pagoMoneda: { color: C.gold, fontSize: 12.5, fontWeight: '700', letterSpacing: 1.4, marginBottom: 4 },
-  pagoNota: { color: C.txt2, fontSize: 13, lineHeight: 18, marginTop: 4 },
+  pagoNota: { color: P2C.texto2, fontSize: 13, lineHeight: 18, marginTop: 4 },
   pagoPie: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 6 },
   pagoOk: { color: C.up, fontSize: 11.5, fontWeight: '700' },
-  pagoHora: { color: C.txt3, fontSize: 10.5 },
+  pagoHora: { color: P2C.texto3, fontSize: 10.5 },
   pagoLink: { flexDirection: 'row', alignItems: 'center', gap: 7, marginTop: 10, paddingTop: 9, borderTopWidth: 1, borderTopColor: 'rgba(201,169,97,0.20)' },
   pagoLinkTxt: { color: C.gold, fontSize: 12, fontWeight: '700' },
-  pagoHash: { color: C.txt3, fontSize: 10.5, flexShrink: 1, fontVariant: ['tabular-nums'] },
-  emojis: { flexDirection: 'row', justifyContent: 'space-around', paddingVertical: 7, borderTopWidth: 1, borderTopColor: C.line2 },
+  pagoHash: { color: P2C.texto3, fontSize: 10.5, flexShrink: 1, fontVariant: ['tabular-nums'] },
+  emojis: { flexDirection: 'row', justifyContent: 'space-around', paddingVertical: 7, borderTopWidth: 1, borderTopColor: P2C.linea2 },
   emoji: { fontSize: 21 },
   /* El círculo. Las solicitudes recibidas llevan borde dorado —piden un gesto—
      y las enviadas se quedan calladas en gris: son un recordatorio, no una
      tarea. */
-  solicCaja: { marginHorizontal: 16, marginTop: 12, padding: 12, borderRadius: 16, borderWidth: 1, borderColor: C.line, backgroundColor: C.panel2, gap: 10 },
-  solicTit: { color: C.goldLt, fontSize: 11.5, fontWeight: '800', letterSpacing: 0.8, textTransform: 'uppercase' },
+  solicCaja: { marginHorizontal: 16, marginTop: 12, padding: 12, borderRadius: 16, borderWidth: 1, borderColor: P2C.linea, backgroundColor: P2C.panel2, gap: 10 },
+  solicTit: { color: P2C.acentoLt, fontSize: 11.5, fontWeight: '800', letterSpacing: 0.8, textTransform: 'uppercase' },
   solicFila: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  solicNom: { color: C.txt, fontSize: 14.5, fontWeight: '700' },
-  solicSub: { color: C.txt3, fontSize: 12.5, marginTop: 1 },
-  solicSi: { paddingHorizontal: 14, paddingVertical: 7, borderRadius: 9, backgroundColor: C.gold },
-  solicSiTxt: { color: C.darkText, fontSize: 13, fontWeight: '800' },
+  solicNom: { color: P2C.texto, fontSize: 14.5, fontWeight: '700' },
+  solicSub: { color: P2C.texto3, fontSize: 12.5, marginTop: 1 },
+  solicSi: { paddingHorizontal: 14, paddingVertical: 7, borderRadius: 9, backgroundColor: P2C.acento },
+  solicSiTxt: { color: P2C.textoBoton, fontSize: 13, fontWeight: '800' },
   solicNo: { padding: 6 },
-  solicCancel: { color: C.txt3, fontSize: 13, fontWeight: '700' },
+  solicCancel: { color: P2C.texto3, fontSize: 13, fontWeight: '700' },
 
   /* El aviso del 403, pegado a la caja de escribir. */
-  faltaCaja: { marginHorizontal: 12, marginBottom: 8, padding: 14, borderRadius: 14, borderWidth: 1, borderColor: C.line, backgroundColor: C.panel2, alignItems: 'center', gap: 5 },
-  faltaTit: { color: C.txt, fontSize: 15, fontWeight: '800' },
-  faltaTxt: { color: C.txt2, fontSize: 13, lineHeight: 18.5, textAlign: 'center' },
-  faltaBtn: { marginTop: 6, paddingHorizontal: 18, paddingVertical: 9, borderRadius: 10, backgroundColor: C.gold, minWidth: 150, alignItems: 'center' },
-  faltaBtnTxt: { color: C.darkText, fontSize: 13.5, fontWeight: '800' },
+  faltaCaja: { marginHorizontal: 12, marginBottom: 8, padding: 14, borderRadius: 14, borderWidth: 1, borderColor: P2C.linea, backgroundColor: P2C.panel2, alignItems: 'center', gap: 5 },
+  faltaTit: { color: P2C.texto, fontSize: 15, fontWeight: '800' },
+  faltaTxt: { color: P2C.texto2, fontSize: 13, lineHeight: 18.5, textAlign: 'center' },
+  faltaBtn: { marginTop: 6, paddingHorizontal: 18, paddingVertical: 9, borderRadius: 10, backgroundColor: P2C.acento, minWidth: 150, alignItems: 'center' },
+  faltaBtnTxt: { color: P2C.textoBoton, fontSize: 13.5, fontWeight: '800' },
 
-  lazoTxt: { color: C.txt3, fontSize: 12.5, fontWeight: '700' },
+  lazoTxt: { color: P2C.texto3, fontSize: 12.5, fontWeight: '700' },
   vozFila: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 4, minWidth: 160 },
   vozBtn: { width: 34, height: 34, borderRadius: 17, borderWidth: 1.5, alignItems: 'center', justifyContent: 'center' },
-  vozTxt: { color: C.txt2, fontSize: 13.5, fontWeight: '600' },
+  vozTxt: { color: P2C.texto2, fontSize: 13.5, fontWeight: '600' },
   filaEscribe: { flexDirection: 'row', gap: 8, paddingHorizontal: 12, paddingBottom: 10, alignItems: 'flex-end' },
-  clip: { width: 42, height: 42, borderRadius: 21, borderWidth: 1, borderColor: C.line, alignItems: 'center', justifyContent: 'center' },
+  clip: { width: 42, height: 42, borderRadius: 21, borderWidth: 1, borderColor: P2C.linea, alignItems: 'center', justifyContent: 'center' },
   // la imagen adentro de la burbuja: ancho fijo cómodo, el server no manda
   // dimensiones así que un rectángulo estable evita saltos en el scroll
   foto: { width: 210, height: 210, borderRadius: 12, backgroundColor: 'rgba(0,0,0,0.25)' },
   adjCard: { flexDirection: 'row', alignItems: 'center', gap: 9, paddingVertical: 4, maxWidth: 220 },
-  adjNom: { color: C.txt, fontSize: 13.5, fontWeight: '600', flexShrink: 1 },
-  veloBajo: { flex: 1, backgroundColor: 'rgba(1,10,11,0.55)', justifyContent: 'flex-end' },
-  hoja: { backgroundColor: '#0A3436', borderWidth: 1, borderColor: C.line2, borderRadius: 18, margin: 12, marginBottom: 26, overflow: 'hidden' },
-  hojaBtn: { flexDirection: 'row', alignItems: 'center', gap: 13, paddingHorizontal: 18, paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: 'rgba(201,169,97,0.12)' },
-  hojaTxt: { color: C.txt, fontSize: 14.5, fontWeight: '600' },
+  adjNom: { color: P2C.texto, fontSize: 13.5, fontWeight: '600', flexShrink: 1 },
+  veloBajo: { flex: 1, backgroundColor: 'rgba(3,12,28,0.62)', justifyContent: 'flex-end' },
+  hoja: { backgroundColor: P2C.hoja, borderWidth: 1, borderColor: P2C.linea2, borderRadius: 18, margin: 12, marginBottom: 26, overflow: 'hidden' },
+  hojaBtn: { flexDirection: 'row', alignItems: 'center', gap: 13, paddingHorizontal: 18, paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: P2C.tinte },
+  hojaTxt: { color: P2C.texto, fontSize: 14.5, fontWeight: '600' },
   // la hojita del contacto: quién es arriba, sus dos acciones debajo
-  menuQuien: { flexDirection: 'row', alignItems: 'center', gap: 11, paddingHorizontal: 18, paddingVertical: 13, borderBottomWidth: 1, borderBottomColor: 'rgba(201,169,97,0.18)', backgroundColor: 'rgba(201,169,97,0.06)' },
+  menuQuien: { flexDirection: 'row', alignItems: 'center', gap: 11, paddingHorizontal: 18, paddingVertical: 13, borderBottomWidth: 1, borderBottomColor: P2C.tinte2, backgroundColor: P2C.tinte },
   // la hoja pequeña de renombrar, centrada: es un solo campo y un botón
-  editCaja: { alignSelf: 'stretch', marginHorizontal: 26, backgroundColor: '#0A3436', borderWidth: 1, borderColor: C.line2, borderRadius: 18, padding: 18 },
-  editTit: { color: C.goldLt, fontSize: 15, fontWeight: '700', marginBottom: 2 },
-  editInput: { backgroundColor: C.input, borderWidth: 1, borderColor: C.inputBr, borderRadius: 13, paddingHorizontal: 14, paddingVertical: 11, color: C.txt, fontSize: 14.5, marginTop: 12 },
-  editNota: { color: C.txt3, fontSize: 11.5, lineHeight: 16, marginTop: 8, marginBottom: 12 },
+  editCaja: { alignSelf: 'stretch', marginHorizontal: 26, backgroundColor: P2C.hoja, borderWidth: 1, borderColor: P2C.linea2, borderRadius: 18, padding: 18 },
+  editTit: { color: P2C.acentoLt, fontSize: 15, fontWeight: '700', marginBottom: 2 },
+  editInput: { backgroundColor: P2C.input, borderWidth: 1, borderColor: P2C.inputBr, borderRadius: 13, paddingHorizontal: 14, paddingVertical: 11, color: P2C.texto, fontSize: 14.5, marginTop: 12 },
+  editNota: { color: P2C.texto3, fontSize: 11.5, lineHeight: 16, marginTop: 8, marginBottom: 12 },
   fotoVelo: { flex: 1, backgroundColor: 'rgba(0,0,0,0.96)', alignItems: 'center', justifyContent: 'center' },
   fotoLlena: { width: '100%', height: '100%' },
-  caja: { flex: 1, backgroundColor: C.input, borderWidth: 1, borderColor: C.inputBr, borderRadius: 20, paddingHorizontal: 15, paddingVertical: 10, color: C.txt, fontSize: 14.5, maxHeight: 110 },
+  caja: { flex: 1, backgroundColor: P2C.input, borderWidth: 1, borderColor: P2C.inputBr, borderRadius: 20, paddingHorizontal: 15, paddingVertical: 10, color: P2C.texto, fontSize: 14.5, maxHeight: 110 },
   mandar: { width: 42, height: 42, borderRadius: 21, alignItems: 'center', justifyContent: 'center' },
-  mandarTxt: { color: '#3A2C08', fontSize: 18, fontWeight: '800' },
-  velo: { flex: 1, backgroundColor: 'rgba(1,10,11,0.88)', alignItems: 'center', justifyContent: 'center' },
+  mandarTxt: { color: P2C.textoMia, fontSize: 18, fontWeight: '800' },
+  velo: { flex: 1, backgroundColor: 'rgba(3,12,28,0.9)', alignItems: 'center', justifyContent: 'center' },
   qrCaja: { alignItems: 'center', padding: 20 },
   qrBlanco: { backgroundColor: '#fff', padding: 16, borderRadius: 18 },
   camara: { width: 260, height: 260, borderRadius: 18, overflow: 'hidden' },
-  qrNota: { color: C.txt2, fontSize: 13, textAlign: 'center', marginTop: 14, maxWidth: 260 },
+  qrNota: { color: P2C.texto2, fontSize: 13, textAlign: 'center', marginTop: 14, maxWidth: 260 },
 });

@@ -25,7 +25,7 @@ export { enExpoGo };
 // EL PRECIO, QUE NO ES PEQUEÑO Y HAY QUE DECIRLO: este guard apaga
 // expo-notifications ENTERO, no solo el push remoto. En Expo Go las
 // notificaciones LOCALES sí funcionarían —las del dinero entrante y las de
-// PULSE CHAT lo son— pero aquí quedan apagadas junto con el resto, porque no
+// PULSE2CHAT lo son— pero aquí quedan apagadas junto con el resto, porque no
 // hay forma de cargar media librería. No hay arreglo barato: mientras el
 // índice lance al importarse, el guard se queda. Lo que NO se hace es
 // disimularlo: Ajustes dice, con todas sus letras, que en Expo Go no llega
@@ -322,7 +322,7 @@ export async function limpiarAvisos() {
 }
 
 // ============================================================
-// Mensajes de PULSE CHAT: la notificación local que lanza el vigía
+// Mensajes de PULSE2CHAT: la notificación local que lanza el vigía
 // (src/og/vigiaChat.js) cuando llegan sin leer con la app en segundo plano.
 // ============================================================
 
@@ -332,8 +332,8 @@ let canalChatListo = false;
 async function asegurarCanalChat(N) {
   if (Platform.OS !== 'android' || canalChatListo) return;
   await N.setNotificationChannelAsync(CANAL_CHAT, {
-    name: 'PULSE CHAT',
-    description: 'Mensajes nuevos en PULSE CHAT',
+    name: 'PULSE2CHAT',
+    description: 'Mensajes nuevos en PULSE2CHAT',
     importance: IMPORTANCIA_MAX,
     vibrationPattern: [0, 180, 80, 180],
     lightColor: '#C9A961',
@@ -346,7 +346,7 @@ async function asegurarCanalChat(N) {
 }
 
 /**
- * «PULSE CHAT · quien: texto corto». `con` viaja en data: al tocarla, App.js
+ * «PULSE2CHAT · quien: texto corto». `con` viaja en data: al tocarla, App.js
  * abre el hilo exacto de esa conversación, no la lista.
  */
 export async function notificarMensaje({ quien, texto, con }) {
@@ -356,7 +356,7 @@ export async function notificarMensaje({ quien, texto, con }) {
     await asegurarCanalChat(N);
     await N.scheduleNotificationAsync({
       content: {
-        title: `PULSE CHAT · ${quien}`,
+        title: `PULSE2CHAT · ${quien}`,
         body: texto || '',
         sound: 'default',
         priority: PRIORIDAD_MAX,

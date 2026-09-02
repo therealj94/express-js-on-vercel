@@ -31,7 +31,7 @@ let turno = 0; // habla nueva mata a la anterior, sin reportarlo como error
 const DICCION = {
   es: [
     [/AU-RA/g, 'Aura'], [/AuCorp/gi, 'Au Corp'], [/Ordenexchange/g, 'Orden Exchéinch'],
-    [/PULSE CHAT/g, 'Puls Chat'], [/MyTokenPay/g, 'Mai Token Péi'],
+    [/PULSE2CHAT/g, 'Puls tu Chat'], [/MyTokenPay/g, 'Mai Token Péi'],
     [/Veta Wallet/g, 'Veta Wálet'], [/ORDENSCAN/g, 'orden scan'], [/ordenscan/g, 'orden scan'],
     [/Genesis ID/g, 'Génesis Aidí'], [/Layer 1/g, 'Léyer Uan'],
     [/Hyperledger Besu/g, 'Jaiper Ledyer Besu'], [/QBFT/g, 'Cu Be Efe Te'],
@@ -39,7 +39,7 @@ const DICCION = {
   en: [
     [/AU-RA/g, 'Aura'], [/AuCorp/gi, 'Au Corp'], [/Ordenexchange/g, 'Orden Exchange'],
     [/ORIGEN/g, 'oh REE hen'],
-    [/PULSE CHAT/g, 'Pulse Chat'], [/MyTokenPay/g, 'My Token Pay'],
+    [/PULSE2CHAT/g, 'Pulse two Chat'], [/MyTokenPay/g, 'My Token Pay'],
     [/Genesis ID/g, 'Genesis I D'], [/Layer 1/g, 'Layer One'],
     [/Hyperledger Besu/g, 'Hyperledger Bessoo'], [/QBFT/g, 'Q B F T'],
     [/ORDENSCAN/g, 'Orden Scan'], [/ordenscan/g, 'Orden Scan'],

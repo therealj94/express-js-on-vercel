@@ -377,13 +377,21 @@ export async function enviarAdjunto(para, adj, texto) {
   return { ok: true, e2e: false };
 }
 
+/* `extra.cita` es el id del mensaje al que se responde. Va DENTRO del sobre,
+   igual que en la web: el relevo no la necesita para nada —la app la lee del
+   hilo que ya tiene— y con quién se dialoga dentro de un hilo dibuja la
+   conversación. Sólo si el mensaje sale en claro (abajo) la cita también,
+   porque ahí ya no queda nada que proteger. */
 export async function enviar(para, texto, extra) {
-  const base = { para, ...(extra || {}) };
-  const r = await cerrarPara(para, texto);
+  const { cita, ...resto } = extra || {};
+  const base = { para, ...resto };
+  const carga = cita ? '{' + JSON.stringify({ t: texto, c: cita }) : texto;
+  const r = await cerrarPara(para, carga);
   if (r.cerrado) {
     await pedir('/enviar', firmado({ ...base, cif: r.cerrado }));
     return { ok: true, e2e: true };
   }
+  if (cita) base.cita = cita;
   /* SÓLO «sin-aparatos» BAJA A TEXTO PLANO. Es la única causa en la que
      mandar en claro es lo único que se puede hacer, y en la que el aviso que
      se enseña es cierto.
@@ -533,22 +541,53 @@ export const urlArchivo = (id) => BASE + '/archivo/' + id;
    un renglón vacío: se marca `cerrado` y la pantalla lo dice —«llegó cifrado
    para otro de tus aparatos»—. Un hueco mudo haría pensar que el chat perdió
    mensajes, que es lo contrario de lo que pasa. */
-export async function bandeja(desde) {
-  const d = await pedir('/bandeja', firmado({ desde }));
+/* ══ LAS REACCIONES TAMBIÉN SE ABREN ═══════════════════════════════════════
+ *
+ * Una reacción es contenido: dice qué sintió alguien sobre lo que otro
+ * escribió. El relevo guarda, por persona, o un emoji en claro —clientes
+ * viejos, o cuando no había a quién cerrarle— o `{cif}` con el MISMO bulto que
+ * un mensaje. Aquí se devuelve SIEMPRE un mapa correo → emoji: la pantalla no
+ * tiene por qué saber cuál de las dos formas llegó. Lo que este teléfono no
+ * puede abrir se enseña como un candado, no se esconde. */
+const reactoresCerrados = (msgs) => [...new Set(msgs.flatMap((m) =>
+  Object.entries(m.reacciones || {}).filter(([, v]) => v && v.cif).map(([c]) => c)))];
+
+async function abrirReacciones(reacs, llaves) {
+  const salida = {};
+  for (const [c, v] of Object.entries(reacs || {})) {
+    if (typeof v === 'string') { salida[c] = v; continue; }
+    if (!v || !v.cif) continue;
+    const r = await CANDADO.abrir(v.cif, llaves[c] || []).catch(() => null);
+    salida[c] = r ? r.texto.slice(0, 8) : '🔒';
+  }
+  return salida;
+}
+
+/* `antes` pide la página anterior: el `cuando` del mensaje más viejo que ya se
+   tiene. Sin él, la bandeja es la de siempre —lo último—. `hayMas` dice si
+   queda algo detrás, y `leidoHasta` hasta cuándo vio el hilo la otra persona:
+   una fecha, sin contenido, que es lo que pinta el doble check. */
+export async function bandeja(desde, antes) {
+  const d = await pedir('/bandeja', firmado(antes ? { desde, antes } : { desde }));
   const crudos = d.mensajes || [];
 
   /* SE PIDEN LAS LLAVES DE TODOS LOS REMITENTES ANTES DE ABRIR NADA. No es una
      optimización: es lo que hace POSIBLE verificar la firma. Sin las llaves
      publicadas de quien escribió, lo único que se puede hacer es creerle al
      bulto — que es exactamente el agujero que la firma cierra. Va en una sola
-     petición para todos, con la caché de cinco minutos. */
-  const deQuienes = [...new Set(crudos.filter((m) => m.cif && m.de).map((m) => m.de))];
+     petición para todos, con la caché de cinco minutos. Y con quienes
+     reaccionaron: una reacción cerrada también va firmada. */
+  const deQuienes = [...new Set([
+    ...crudos.filter((m) => m.cif && m.de).map((m) => m.de),
+    ...reactoresCerrados(crudos),
+  ])];
   let llaves = {};
   if (deQuienes.length) {
     try { llaves = (await llaveroDe(deQuienes)) || {}; } catch { llaves = {}; }
   }
 
-  const msgs = await Promise.all(crudos.map(async (m) => {
+  const msgs = await Promise.all(crudos.map(async (m0) => {
+    const m = m0.reacciones ? { ...m0, reacciones: await abrirReacciones(m0.reacciones, llaves) } : m0;
     /* LA MARCA VIVE EN EL MENSAJE, no en un aviso de tres segundos.
        Antes, un mensaje en claro volvía del relevo sin ningún campo y la única
        señal de que había viajado sin cifrar era un toast que salía UNA vez, a
@@ -569,13 +608,16 @@ export async function bandeja(desde) {
     /* El texto puede traer pegada la llave de un adjunto: viaja DENTRO del
        cifrado, nunca al lado, que es lo que hace que el relevo guarde un
        archivo que no puede abrir. */
+    /* Y la CITA va por el mismo camino (`c`). Los mensajes viejos la traen
+       en claro (`m.cita`) y se siguen leyendo. */
     let texto = claro;
     let extra = null;
     if (claro.startsWith('{')) {
       try {
         const j = JSON.parse(claro.slice(1));
         texto = j.t || '';
-        extra = { llaveArchivo: j.k, ivArchivo: j.iv };
+        extra = { ...(j.k ? { llaveArchivo: j.k, ivArchivo: j.iv } : {}),
+                  ...(j.c ? { cita: String(j.c).slice(0, 16) } : {}) };
       } catch { /* si no parsea es texto normal que empieza raro */ }
     }
     /* `verificado` viaja hasta la burbuja. Un mensaje que no se pudo verificar
@@ -584,8 +626,114 @@ export async function bandeja(desde) {
     return { ...m, texto, e2e: true, verificado: r.verificado, motivoFirma: r.motivo,
              ...(extra || {}) };
   }));
-  return { ...d, mensajes: msgs };
+  return { ...d, mensajes: msgs, hayMas: d.hayMas === true, leidoHasta: Number(d.leidoHasta) || 0 };
 }
+
+/* ══ REACCIONAR, CERRADO ═══════════════════════════════════════════════════
+ *
+ * `para` es el hilo (correo o grupo): hace falta para saber a qué aparatos
+ * cerrarle el sobre, igual que en `enviar`. Sin `emoji` se quita la propia —un
+ * bulto no se puede comparar del lado del relevo, así que quitar es un gesto
+ * explícito y no «la misma otra vez»—. Sólo «sin-aparatos» baja al emoji en
+ * claro: es el único caso en que el mensaje tampoco pudo cerrarse. */
+export async function reaccionar(id, emoji, para) {
+  if (!emoji) return pedir('/reaccion', firmado({ id, quitar: true }));
+  const r = para ? await cerrarPara(para, emoji) : { motivo: 'sin-aparatos' };
+  if (r.cerrado) return pedir('/reaccion', firmado({ id, cif: r.cerrado }));
+  if (r.motivo !== 'sin-aparatos') {
+    const e = new Error('no se pudo cifrar: ' + r.motivo); e.motivo = r.motivo; throw e;
+  }
+  return pedir('/reaccion', firmado({ id, emoji }));
+}
+
+/* Borrar un mensaje. `paraTodos` solo lo puede hacer quien lo escribió, y el
+   relevo lo comprueba: aquí no se decide nada, solo se pide. */
+export const borrarMsg = (id, paraTodos = false) => pedir('/borrar', firmado({ id, paraTodos }));
+
+/* ── LOS ESTADOS DE 24 HORAS ───────────────────────────────────────────────
+   Se piden agrupados por persona, que es como se miran. Al pedirlos, el
+   llavero se vacía de esa gente: alguien a quien se acaba de aceptar tiene que
+   poder recibir cifrado sin esperar cinco minutos (igual que en la web). La
+   foto de un estado es pública por definición y sube en claro: ver
+   `subirPublico`. */
+export const estados = () => pedir('/estados', firmado({})).then((d) => {
+  for (const g of d.gente || []) llavero.delete(g.correo);
+  return d.gente || [];
+});
+export const subirEstado = ({ texto, archivo, fondo }) =>
+  pedir('/estado/subir', firmado({ texto: texto || '', archivo: archivo || '', fondo }));
+export const borrarEstado = (id) => pedir('/estado/borrar', firmado({ id }));
+export const estadoVisto = (id) => pedir('/estado/visto', firmado({ id })).catch(() => null);
+
+/* ── EL CÓDIGO DE SEGURIDAD ────────────────────────────────────────────────
+   Se piden los aparatos de LOS DOS lados y se resume el conjunto entero: así
+   las dos personas calculan sobre lo mismo y el número coincide aunque cada
+   una tenga teléfono y computadora. Es el mismo cálculo que la web, letra por
+   letra (candado.codigoDeSeguridad). Null si a alguno le faltan llaves. */
+export async function codigoCon(correo) {
+  const mio = yo?.correo;
+  if (!mio || !correo) return null;
+  const r = await pedir('/llaves/de', firmado({ correos: [mio, correo] }));
+  const mias = (r.llaves?.[mio] || []).map((a) => a.pub);
+  const suyas = (r.llaves?.[correo] || []).map((a) => a.pub);
+  if (!mias.length || !suyas.length) return null;
+  return CANDADO.codigoDeSeguridad(mias, suyas);
+}
+
+/* ── EL BUZÓN DE SEÑALES ───────────────────────────────────────────────────
+ *
+ * Aparte del sondeo de mensajes. `escuchar()` deja una petición abierta hasta
+ * veinticinco segundos y el relevo contesta EN CUANTO hay algo: por aquí
+ * llega el «está escribiendo…» —y el día que la app llame, las señales de la
+ * llamada—. Escuchar el buzón es además lo que el relevo toma como «en línea»
+ * de verdad. Se enciende con el hilo abierto y se apaga al salir: en un
+ * teléfono un bucle abierto es batería. */
+let escuchando = false;
+let cortar = null;
+/* Cada `escuchar` es una generación. Sin esto, cerrar un hilo y abrir otro
+   antes de que vuelva la petición larga dejaba DOS bucles vivos: el viejo
+   volvía de su espera, veía `escuchando` otra vez en true y seguía. */
+let generacion = 0;
+
+export async function escuchar(alLlegar) {
+  if (escuchando) return;
+  escuchando = true;
+  const mia = ++generacion;
+  while (escuchando && mia === generacion) {
+    try {
+      const d = await pedir('/senales', firmado({}), 40000);
+      if (mia !== generacion) break;
+      for (const s of (d.senales || [])) {
+        try { alLlegar(s); } catch { /* una señal mal formada no tumba el bucle */ }
+      }
+    } catch {
+      /* Un fallo de red no puede convertir esto en un bucle que machaca al
+         relevo: se espera dos segundos antes de volver a abrir. */
+      if (!escuchando || mia !== generacion) break;
+      await new Promise((r) => { cortar = setTimeout(r, 2000); });
+    }
+  }
+}
+
+export function dejarDeEscuchar() {
+  escuchando = false;
+  if (cortar) { clearTimeout(cortar); cortar = null; }
+}
+
+/* «Está escribiendo…». No se guarda en ningún sitio: viaja por el buzón de
+   señales. Se avisa como mucho una vez cada dos segundos — una petición por
+   tecla sería ruido para el relevo y no cambiaría nada en pantalla. */
+let ultimoAviso = 0;
+export function escribiendo(para) {
+  const ahora = Date.now();
+  if (ahora - ultimoAviso < 2000) return;
+  ultimoAviso = ahora;
+  pedir('/escribiendo', firmado({ para })).catch(() => null);
+}
+
+/** Deja una señal para el otro lado. Nunca lanza. */
+export const senalar = (para, tipo, datos) =>
+  pedir('/senal', firmado({ para, tipo, datos: datos || {} })).catch(() => null);
 // /buscar encuentra por nombre, correo o GID (empieza-por, sin distinguir
 // mayúsculas) y cada persona del resultado ya trae su gid — se pasa tal cual.
 export const buscar = (q) => pedir('/buscar', firmado({ q }));
