@@ -5,7 +5,7 @@ import { descifrarLlavePrivada, descifrarFraseSemilla } from "../lib/cripto";
 // Las sesiones se firman y se verifican a traves de lib/sesion.js, que
 // entiende el secreto nuevo y el anterior mientras dura la rotacion de
 // PASS_TOKEN. Las llamadas jwt.verify(...) y jwt.sign(...) no cambian.
-import jwt from "../lib/sesion";
+import jwt, { cifrarConToken } from "../lib/sesion";
 import crypto from "crypto";
 import { saldosDe, decidirBorrado } from "../lib/saldos";
 
@@ -90,6 +90,33 @@ export const getDateUser = async (req, res) => {
   }
 };
 
+// ─────────────────────────────────────────────────────────────────────────────
+// CAMBIAR LA CONTRASEÑA DESDE AJUSTES
+//
+// La ruta existia desde el principio y ninguna pantalla la llamaba: ni la app
+// ni la web tenian «cambiar contraseña», asi que quien sospechaba que le
+// habian entrado solo podia pasar por «olvide mi contraseña» y esperar el
+// correo. Al conectarla salieron tres huecos que aqui se cierran:
+//
+//   · No comprobaba TIPOS. `currentPassword` viajaba tal cual a bcrypt, que con
+//     un objeto revienta con un texto de biblioteca y con un numero lo compara
+//     como "123". La misma clase de agujero que se tapo en resetPassword.
+//   · No tenia POLITICA. El alta y el reseteo exigen ocho caracteres; por esta
+//     puerta se podia dejar la cuenta con una contraseña de una letra.
+//   · Echaba tambien a quien pedia el cambio. Subir `tokenVersion` mata TODAS
+//     las sesiones —que es lo que se busca: la del ladron incluida—, pero sin
+//     emitir una nueva para la sesion que hizo el cambio, la persona veia
+//     «contraseña cambiada» y en la siguiente pantalla «sesion vencida». Un
+//     banco no te saca de tu propia cuenta por haberla asegurado.
+//
+// Asi que: se comprueban tipos y largo antes de tocar nada, la actual se
+// verifica con bcrypt, se sube la version —que revoca las demas— y se firma
+// un par nuevo (acceso y refresco) con la version nueva para la sesion que
+// llamo. El resultado es exactamente el de un cambio de contraseña serio:
+// todos los demas afuera, vos adentro.
+// ─────────────────────────────────────────────────────────────────────────────
+const CLAVE_MINIMO = 8;
+
 export const changePassword = async (req, res) => {
   try {
     const { currentPassword, newPassword } = req.body;
@@ -101,6 +128,35 @@ export const changePassword = async (req, res) => {
     );
     const address = decodedToken.address;
 
+    // Tipos primero, antes de la base y antes de bcrypt. Un cuerpo malformado
+    // no tiene por que costar una consulta ni gastar un intento del limitador
+    // de esta ruta a una persona de verdad.
+    if (
+      typeof currentPassword !== "string" || !currentPassword ||
+      typeof newPassword !== "string" || !newPassword
+    ) {
+      return res.status(400).json({
+        code: "FALTAN_CAMPOS",
+        message: "Hacen falta la contraseña actual y la nueva.",
+      });
+    }
+    // La misma politica que el alta y el reseteo: ocho o mas. Sin esto, esta
+    // era la unica puerta por la que se podia debilitar una cuenta.
+    if (newPassword.length < CLAVE_MINIMO) {
+      return res.status(400).json({
+        code: "CLAVE_CORTA",
+        message: `La contraseña nueva tiene que tener al menos ${CLAVE_MINIMO} caracteres.`,
+      });
+    }
+    // Cambiarla por la misma no asegura nada y si cierra las demas sesiones:
+    // se le dice, en vez de dejar que crea que hizo algo.
+    if (newPassword === currentPassword) {
+      return res.status(400).json({
+        code: "MISMA_CLAVE",
+        message: "La contraseña nueva tiene que ser distinta de la actual.",
+      });
+    }
+
     const user = await Users.findOne({ address: address });
     if (!user) {
       return res.status(400).json({ message: "User does not exist" });
@@ -111,9 +167,10 @@ export const changePassword = async (req, res) => {
       user.password
     );
     if (!isPasswordValid) {
-      return res
-        .status(401)
-        .json({ message: "The current password is incorrect" });
+      return res.status(401).json({
+        code: "CLAVE_ACTUAL",
+        message: "La contraseña actual no es correcta.",
+      });
     }
 
     user.password = await bcrypt.hash(newPassword, 10);
@@ -122,9 +179,38 @@ export const changePassword = async (req, res) => {
     // refresh tokens viejos hace que el cambio no sirva de nada.
     user.tokenVersion = (user.tokenVersion || 0) + 1;
 
+    // La sesion que pidio el cambio sigue viva: se le firma un par nuevo con
+    // la version recien subida, con el mismo sobre que emite el login. Todo
+    // lo emitido antes lleva la version anterior y `middleware/verifyToken.js`
+    // lo rechaza desde la siguiente peticion.
+    const tokenNuevo = jwt.sign(
+      {
+        userId: user._id,
+        address: user.address,
+        role: user.role,
+        verify: user.isVerified,
+        tv: user.tokenVersion,
+      },
+      process.env.PASS_TOKEN,
+      { expiresIn: "40m" },
+      { algorithm: "HS256" }
+    );
+    const refreshNuevo = jwt.sign(
+      { userId: user._id, type: "refresh", tv: user.tokenVersion },
+      process.env.PASS_TOKEN,
+      { expiresIn: "30d" }
+    );
+    // La sesion guardada que compara `middleware/isAdmin.js` pasa a ser la
+    // nueva: la anterior queda tan revocada como las de los demas telefonos.
+    user.token = cifrarConToken(tokenNuevo);
+
     await user.save();
 
-    res.send("contraseña cambiada exitosamente");
+    return res.json({
+      message: "Contraseña cambiada. Las demás sesiones quedaron cerradas.",
+      token: tokenNuevo,
+      refreshToken: refreshNuevo,
+    });
   } catch (error) {
     console.log(error);
     res.status(500).json({ message: "Server error" });
