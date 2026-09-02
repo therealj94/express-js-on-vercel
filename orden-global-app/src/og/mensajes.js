@@ -686,7 +686,11 @@ export const grupoUnirse = (invitacion) => pedir('/grupo/unirse', firmado({ invi
 export const grupoSalir = (id) => pedir('/grupo/salir', firmado({ id }));
 // El comprobante se manda DESPUÉS de que la cadena confirmó: AU-RA no
 // transmite y el hilo no debe enseñar un pago que todavía puede fallar.
-export const pago = (para, monto, extra) => pedir('/pago', firmado({ para, monto, ...(extra || {}) }));
+/* Con 45 s de espera y no los 15 de siempre: el relevo ya no se cree el
+   comprobante, le pregunta a la cadena y espera el recibo hasta 40 s (uno o
+   dos bloques). Cortarle a los 15 dejaría la tarjeta puesta del lado del
+   relevo y un error del lado de la app. */
+export const pago = (para, monto, extra) => pedir('/pago', firmado({ para, monto, ...(extra || {}) }), 45000);
 // Un id de grupo se distingue de un correo por la forma, sin preguntar nada.
 export const esGrupo = (x) => /^g:[0-9a-f]{16}$/.test(String(x || ''));
 export const quien = () => yo;

@@ -79,6 +79,94 @@ candado = threading.Lock()
 WALLET_URL = os.environ.get(
     'MENSAJES_WALLET_URL', 'https://vetawallet-1a2e38ac52b1.herokuapp.com').rstrip('/')
 
+# ── EL COMPROBANTE DE PAGO SE COMPRUEBA CONTRA LA CADENA ──────────────────────
+#
+# `/pago` deja en el hilo una tarjeta con «te mandé 1 ORIGEN» y un hash. Hasta
+# hoy el relevo solo miraba que el hash TUVIERA FORMA de hash: cualquiera con
+# llave de chat podia plantar en tu hilo un comprobante confirmado de un pago
+# que nunca existio, o de uno ajeno. Y para 1 a 1 ni siquiera exigia el
+# circulo. Un comprobante que nadie comprueba es una tarjeta bonita.
+#
+# Ahora se le pregunta a la cadena: la transaccion tiene que existir, estar
+# confirmada (status 1), salir de la direccion de quien firma la peticion,
+# llegar a la direccion de quien recibe (o a la de un miembro del grupo), y
+# mover EXACTAMENTE el monto declarado. Con ORIGEN es el `value`; con un token
+# es el evento Transfer de su contrato.
+#
+# La wallet manda el comprobante apenas emite, y el recibo puede tardar uno o
+# dos bloques (10 s cada uno): se espera, sondeando, hasta PAGO_ESPERA segundos
+# — FUERA del candado del relevo, que es de todos.
+RPC_URL = os.environ.get('MENSAJES_RPC', 'https://rpc.ordenglobal-rpc.com/')
+PAGO_ESPERA = int(os.environ.get('MENSAJES_PAGO_ESPERA', '40'))
+TRANSFER = '0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef'
+
+
+def _rpc(metodo, params):
+    import urllib.request
+    pet = urllib.request.Request(
+        RPC_URL, data=json.dumps({'jsonrpc': '2.0', 'id': 1, 'method': metodo,
+                                  'params': params}).encode(),
+        headers={'Content-Type': 'application/json'})
+    with urllib.request.urlopen(pet, timeout=8) as r:
+        return json.loads(r.read() or b'{}').get('result')
+
+
+def _wei(monto):
+    from decimal import Decimal
+    return int(Decimal(monto) * (10 ** 18))
+
+
+def _mismo(a, b):
+    return bool(a) and bool(b) and str(a).lower() == str(b).lower()
+
+
+def verificar_pago(hh, monto, moneda, addr_de, addrs_para, espera=None):
+    """`('ok', None)`, `('pendiente', None)`, `('no', por_que)` o `('sin-rpc', None)`.
+
+    `addrs_para` es la lista de direcciones que pueden recibir: una en 1 a 1,
+    las de todos los miembros en un grupo. Se sondea hasta `espera` segundos
+    mientras la transaccion exista y no tenga recibo todavia.
+    """
+    espera = PAGO_ESPERA if espera is None else espera
+    fin = time.time() + espera
+    while True:
+        try:
+            tx = _rpc('eth_getTransactionByHash', [hh])
+            rc = _rpc('eth_getTransactionReceipt', [hh]) if tx else None
+        except Exception:
+            return 'sin-rpc', None
+        if tx and rc:
+            break
+        if time.time() >= fin:
+            return 'pendiente', None
+        time.sleep(5)
+    if str(rc.get('status', '')).lower() not in ('0x1', '1'):
+        return 'no', 'la transacción falló en la cadena'
+    if not _mismo(tx.get('from'), addr_de):
+        return 'no', 'no salió de tu dirección'
+    quiere = _wei(monto)
+    if moneda == 'ORIGEN':
+        if not any(_mismo(tx.get('to'), a) for a in addrs_para):
+            return 'no', 'no llegó a la dirección de quien recibe'
+        if int(str(tx.get('value', '0x0')), 16) != quiere:
+            return 'no', 'el monto no es el de la transacción'
+        return 'ok', None
+    # un token: el evento Transfer(from, to, value) de su contrato
+    for lg in rc.get('logs') or []:
+        tp = lg.get('topics') or []
+        if len(tp) < 3 or str(tp[0]).lower() != TRANSFER:
+            continue
+        de_ev = '0x' + str(tp[1])[-40:]
+        a_ev = '0x' + str(tp[2])[-40:]
+        try:
+            valor = int(str(lg.get('data', '0x0')), 16)
+        except ValueError:
+            continue
+        if _mismo(de_ev, addr_de) and any(_mismo(a_ev, a) for a in addrs_para) and valor == quiere:
+            return 'ok', None
+    return 'no', 'la transacción no mueve ese monto de ese token a quien recibe'
+
+
 # ─────────────────────────────────────────────────────────────────────────────
 # LOS AVISOS PUSH: la mitad que faltaba.
 #
@@ -1188,6 +1276,33 @@ class Relevo(BaseHTTPRequestHandler):
         if ruta == '/alta' and b.get('sesion'):
             correo_probado, gid_probado = quien_es_la_sesion(b.get('sesion'))
 
+        # El comprobante de pago se comprueba contra la cadena AQUI, fuera del
+        # candado: puede sondear hasta PAGO_ESPERA segundos y el candado es de
+        # todo el relevo. Antes de gastar red se mira que la llave valga, para
+        # que un desconocido no pueda tenernos sondeando por deporte.
+        pago_veredicto = None
+        if ruta == '/pago':
+            with candado:
+                d0 = cargar()
+                f0 = d0['fichas'].get(str(b.get('correo', '')).lower())
+                if not f0 or b.get('llave') != f0['llave']:
+                    return self._json(401, {'error': 'llave incorrecta'})
+                para0 = str(b.get('para', '')).lower()
+                addr_de0 = f0.get('addr', '')
+                if ID_GRUPO.fullmatch(para0):
+                    g0 = grupo_de(d0, para0, str(b.get('correo', '')).lower())
+                    addrs0 = [d0['fichas'].get(m['correo'], {}).get('addr', '')
+                              for m in (g0 or {}).get('miembros', [])] if g0 else []
+                else:
+                    addrs0 = [d0['fichas'].get(para0, {}).get('addr', '')]
+            hh0 = str(b.get('hash', '')).strip()[:80]
+            monto0 = str(b.get('monto', '')).strip()[:32]
+            moneda0 = str(b.get('moneda', '') or 'ORIGEN').upper()[:12]
+            if (re.fullmatch(r'0x[0-9a-fA-F]{64}', hh0)
+                    and re.fullmatch(r'\d{1,20}(\.\d{1,18})?', monto0)
+                    and addr_de0 and any(addrs0)):
+                pago_veredicto = verificar_pago(hh0, monto0, moneda0, addr_de0, [a for a in addrs0 if a])
+
         # Se rellena dentro del candado y se usa FUERA: ver la nota en /senales.
         esperar_para = None
 
@@ -1633,22 +1748,39 @@ class Relevo(BaseHTTPRequestHandler):
                 # el hash acaba dentro de una URL del explorador: si no parece
                 # un hash no entra — mejor tarjeta sin enlace que enlace roto
                 hh = str(b.get('hash', '')).strip()[:80]
-                if hh and not re.fullmatch(r'(0x)?[0-9a-fA-F]{16,78}', hh):
+                # SIN HASH NO HAY COMPROBANTE. Antes el hash era opcional y con
+                # forma bastaba; un comprobante que no apunta a nada no se
+                # puede comprobar, y entonces no es un comprobante.
+                if not re.fullmatch(r'0x[0-9a-fA-F]{64}', hh):
                     return self._json(400, {'error': 'hash inválido'})
                 if ID_GRUPO.fullmatch(para):
                     if not grupo_de(d, para, correo):
                         return self._json(403, {'error': 'no eres del grupo'})
                 elif not correo_valido(para):
                     return self._json(400, {'error': 'destino inválido'})
+                elif not puede_escribir(d, correo, para):
+                    # Misma regla que /enviar: sin circulo no se le planta nada
+                    # a nadie en su hilo, ni siquiera un comprobante.
+                    return self._json(403, {'error': 'hace falta que te acepte'})
+                if pago_veredicto is None:
+                    return self._json(400, {'error': 'no se pudo comprobar el pago: faltan direcciones'})
+                estado_pago, por_que = pago_veredicto
+                if estado_pago == 'sin-rpc':
+                    return self._json(503, {'error': 'no pude preguntarle a la cadena; probá en un momento'})
+                if estado_pago == 'pendiente':
+                    return self._json(409, {'error': 'la cadena todavía no confirmó ese pago', 'motivo': 'sin-confirmar'})
+                if estado_pago != 'ok':
+                    return self._json(400, {'error': 'el comprobante no cuadra con la cadena: ' + (por_que or ''), 'motivo': 'no-cuadra'})
                 # tipo 'pago' solo puede nacer aquí: /enviar únicamente acepta
                 # los tipos de adjunto, así que nadie fabrica un comprobante
                 # falso mandando un mensaje normal con tipo:'pago'
-                m = {'de': correo, 'para': para, 'tipo': 'pago',
+                # Con `id`, como cualquier mensaje: sin el no se podia citar,
+                # reaccionar ni borrar una tarjeta de pago. Y `verificado`:
+                # la cadena lo confirmo, no lo dijo el cliente.
+                m = {'id': secrets.token_hex(8), 'de': correo, 'para': para, 'tipo': 'pago',
                      'monto': monto, 'moneda': moneda,
                      'texto': str(b.get('nota', ''))[:TOPE_TEXTO].strip(),
-                     'cuando': int(time.time() * 1000)}
-                if hh:
-                    m['hash'] = hh
+                     'cuando': int(time.time() * 1000), 'hash': hh, 'verificado': True}
                 d['mensajes'].append(m)
                 if len(d['mensajes']) > 20_000:
                     d['mensajes'] = d['mensajes'][-20_000:]

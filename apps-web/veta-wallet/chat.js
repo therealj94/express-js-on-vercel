@@ -761,8 +761,10 @@ const CHAT = (() => {
      el explorador. Se llama DESPUES de la confirmacion, nunca antes — un
      comprobante de algo que aun no paso seria una mentira firmada por
      nosotros. */
+  /* 45 s de espera: el relevo comprueba el comprobante contra la cadena y
+     espera el recibo hasta 40 s. Ver el mismo comentario en la app. */
   const pago = ({ para, monto, moneda, hash, nota }) =>
-    pedir('/pago', firmado({ para, monto, moneda, hash, nota: nota || '' }))
+    pedir('/pago', firmado({ para, monto, moneda, hash, nota: nota || '' }), 45000)
       .then(d => d.mensaje || null);
 
   /* ── grupos ────────────────────────────────────────────────────────────

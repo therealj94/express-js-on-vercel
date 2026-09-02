@@ -55,12 +55,59 @@ def hex_de(x, n):
     return len(x) == n and all(c in '0123456789abcdef' for c in x)
 
 
+# ── LA CADENA, DE MENTIRA ────────────────────────────────────────────────────
+# /pago ya no se cree el hash: le pregunta a la cadena. Aqui la cadena es un
+# servidor que conoce cuatro transacciones: la del grupo, la del token 1 a 1,
+# una que fue a OTRA direccion, y una que no existe.
+from http.server import BaseHTTPRequestHandler, HTTPServer
+import threading
+
+ADDR = {'ana@og.hn': '0x' + 'a1' * 20, 'beto@og.hn': '0x' + 'b2' * 20,
+        'carla@og.hn': '0x' + 'c3' * 20, 'dora@og.hn': '0x' + 'd4' * 20}
+H_GRUPO = '0x' + 'ab' * 32       # Ana -> Carla, 125.5 ORIGEN
+H_TOKEN = '0x' + 'cd' * 32       # Ana -> Beto, 0.000001 USDT (evento Transfer)
+H_AJENO = '0x' + 'ef' * 32       # Ana -> Dora: NO es para Beto
+H_NADIE = '0x' + '01' * 32       # no existe
+TRANSFER = '0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef'
+def _topic(addr): return '0x' + '0' * 24 + addr[2:]
+CADENA = {
+    H_GRUPO: ({'from': ADDR['ana@og.hn'], 'to': ADDR['carla@og.hn'], 'value': hex(int(125.5 * 10**18))},
+              {'status': '0x1', 'from': ADDR['ana@og.hn'], 'to': ADDR['carla@og.hn'], 'logs': []}),
+    H_TOKEN: ({'from': ADDR['ana@og.hn'], 'to': '0x' + '77' * 20, 'value': '0x0'},
+              {'status': '0x1', 'from': ADDR['ana@og.hn'], 'to': '0x' + '77' * 20,
+               'logs': [{'topics': [TRANSFER, _topic(ADDR['ana@og.hn']), _topic(ADDR['beto@og.hn'])],
+                         'data': hex(10**12)}]}),
+    H_AJENO: ({'from': ADDR['ana@og.hn'], 'to': ADDR['dora@og.hn'], 'value': hex(10**18)},
+              {'status': '0x1', 'from': ADDR['ana@og.hn'], 'to': ADDR['dora@og.hn'], 'logs': []}),
+}
+
+
+class CadenaFalsa(BaseHTTPRequestHandler):
+    def log_message(self, *a): pass
+    def do_POST(self):
+        n = int(self.headers.get('Content-Length') or 0)
+        q = json.loads(self.rfile.read(n) or b'{}')
+        h = (q.get('params') or [''])[0]
+        par = CADENA.get(h)
+        res = None
+        if q.get('method') == 'eth_getTransactionByHash' and par: res = par[0]
+        if q.get('method') == 'eth_getTransactionReceipt' and par: res = par[1]
+        cuerpo = json.dumps({'jsonrpc': '2.0', 'id': q.get('id'), 'result': res}).encode()
+        self.send_response(200); self.send_header('Content-Type', 'application/json')
+        self.send_header('Content-Length', str(len(cuerpo))); self.end_headers(); self.wfile.write(cuerpo)
+
+
 def main():
     tmp = tempfile.mkdtemp(prefix='mensajes-grupos-')
     puerto = puerto_libre()
     base = 'http://127.0.0.1:%d' % puerto
+    p_cadena = puerto_libre()
+    cadena = HTTPServer(('127.0.0.1', p_cadena), CadenaFalsa)
+    threading.Thread(target=cadena.serve_forever, daemon=True).start()
     env = dict(os.environ, MENSAJES_DATOS=os.path.join(tmp, 'datos.json'),
-               MENSAJES_PUERTO=str(puerto))
+               MENSAJES_PUERTO=str(puerto),
+               MENSAJES_RPC='http://127.0.0.1:%d' % p_cadena,
+               MENSAJES_PAGO_ESPERA='1')
     proc = subprocess.Popen([sys.executable, SERVIDOR], env=env,
                             stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT)
     try:
@@ -79,7 +126,7 @@ def main():
         firmas = {}
         for correo, nombre in (('ana@og.hn', 'Ana'), ('beto@og.hn', 'Beto'),
                                ('carla@og.hn', 'Carla'), ('dora@og.hn', 'Dora')):
-            st, r = post(base, '/alta', {'correo': correo, 'nombre': nombre})
+            st, r = post(base, '/alta', {'correo': correo, 'nombre': nombre, 'addr': ADDR[correo]})
             assert st == 200 and r.get('llave'), 'alta de %s: %s %s' % (correo, st, r)
             firmas[correo] = {'correo': correo, 'llave': r['llave']}
         ana, beto = firmas['ana@og.hn'], firmas['beto@og.hn']
@@ -178,7 +225,7 @@ def main():
                              ('/enviar', dict(dora, para=gid, texto='me cuelo')),
                              ('/grupo/info', dict(dora, id=gid)),
                              ('/leido', dict(dora, de=gid)),
-                             ('/pago', dict(dora, para=gid, monto='5'))):
+                             ('/pago', dict(dora, para=gid, monto='5', hash=H_GRUPO))):
             st, r = post(base, ruta, cuerpo)
             assert st == 403, '%s de un extraño debía dar 403, dio %s %s' % (ruta, st, r)
         # y un grupo que no existe se responde igual, para no delatar cuáles sí
@@ -227,27 +274,40 @@ def main():
 
         # 7) el pago en la conversación
         st, r = post(base, '/pago', dict(ana, para=gid, monto='125.5',
-                     hash='0x' + 'ab' * 32, nota='el aporte'))
+                     hash=H_GRUPO, nota='el aporte'))
         assert st == 200 and r.get('ok'), '/pago: %s %s' % (st, r)
         m = r['mensaje']
         assert m['tipo'] == 'pago' and m['monto'] == '125.5' and m['moneda'] == 'ORIGEN' \
-            and m['hash'] == '0x' + 'ab' * 32 and m['texto'] == 'el aporte' \
+            and m['hash'] == H_GRUPO and m['texto'] == 'el aporte' \
             and m['de'] == 'ana@og.hn' and m['para'] == gid and m['cuando'] > 0, \
             'la tarjeta de pago no tiene su forma: %s' % m
+        # con id (para citar, reaccionar, borrar) y verificado por la cadena
+        assert m.get('id') and m.get('verificado') is True, 'sin id o sin verificar: %s' % m
         st, r = post(base, '/bandeja', dict(carla, desde=gid))
         assert r['mensajes'][-1]['tipo'] == 'pago', 'el pago no está en el hilo: %s' % r['mensajes'][-1]
         # el pago de persona a persona también, y con su moneda
         st, r = post(base, '/pago', dict(ana, para='beto@og.hn', monto='0.000001',
-                     moneda='usdt'))
+                     moneda='usdt', hash=H_TOKEN))
         assert st == 200 and r['mensaje']['moneda'] == 'USDT', '/pago 1 a 1: %s %s' % (st, r)
         st, r = post(base, '/bandeja', dict(beto, desde='ana@og.hn'))
         assert len(r['mensajes']) == 1 and r['mensajes'][0]['monto'] == '0.000001', \
             'el pago 1 a 1 no llegó: %s' % r['mensajes']
-        for malo, por in (({'monto': '0'}, 'cero'), ({'monto': 'mucho'}, 'texto'),
-                          ({'monto': '-3'}, 'negativo'),
-                          ({'monto': '1', 'hash': 'no-es-un-hash'}, 'hash roto')):
+        for malo, por in (({'monto': '0', 'hash': H_TOKEN}, 'cero'), ({'monto': 'mucho', 'hash': H_TOKEN}, 'texto'),
+                          ({'monto': '-3', 'hash': H_TOKEN}, 'negativo'),
+                          ({'monto': '1', 'hash': 'no-es-un-hash'}, 'hash roto'),
+                          ({'monto': '1'}, 'sin hash: un comprobante que no apunta a nada'),
+                          ({'monto': '1', 'hash': H_AJENO}, 'un pago que fue a OTRA direccion'),
+                          ({'monto': '2', 'hash': H_GRUPO}, 'un monto que no es el de la transaccion')):
             st, r = post(base, '/pago', dict(ana, para='beto@og.hn', **malo))
             assert st == 400, 'un pago con %s debía dar 400, dio %s %s' % (por, st, r)
+        # y uno que la cadena todavia no conoce: 409, para que el cliente reintente
+        st, r = post(base, '/pago', dict(ana, para='beto@og.hn', monto='1', hash=H_NADIE))
+        assert st == 409 and r.get('motivo') == 'sin-confirmar', 'sin recibo debía dar 409: %s %s' % (st, r)
+        # y sin circulo no se planta un comprobante en el hilo de nadie
+        st, r = post(base, '/alta', {'correo': 'eli@og.hn', 'nombre': 'Eli', 'addr': '0x' + 'e5' * 20})
+        eli = {'correo': 'eli@og.hn', 'llave': r['llave']}
+        st, r = post(base, '/pago', dict(eli, para='beto@og.hn', monto='1', hash=H_TOKEN))
+        assert st == 403, 'un desconocido plantó un comprobante: %s %s' % (st, r)
 
         # 8) herencia de admin: sale Ana (la creadora) y hereda Beto, que entró
         # antes que Carla
@@ -337,6 +397,7 @@ def main():
     finally:
         proc.terminate()
         proc.wait(timeout=5)
+        cadena.shutdown()
 
 
 if __name__ == '__main__':
