@@ -1,0 +1,37 @@
+{
+  "_nota": "Montaje de Cincuenta sobre los 56 clips reales. Corte seco -es documental, no producto- y velocidad natural con punto de entrada por bloque, nunca remapeo. Los bloques no duran lo mismo: el planteamiento respira, la accion de la hija va rapida (2,2-2,8 s), y el plano de la senora ensenandole el telefono al muchacho -ES EL PLANO- va entero.",
+  "_tomas": "01 t3: entrega la bolsa de pan de verdad. 02 t3: telefono boca abajo junto a la bandeja de monedas, madera rayada. 03 t3: la hija de perfil-frente, cansada, misma cara que en el 10. 04 t3: pulgar en la pantalla oscura, reloj barato, ventana de cocina. 05 t2: el pulgar baja por la lista, reloj. 06 t1: macro limpio del pulgar apretando, cristal rayado. 07 t3: la mano de la senora entra y toca el telefono. 08 t3: cara iluminada, misma senora que en el 09. 09 t3: le da vuelta al telefono y el muchacho se rie. 10 t2: perfil con la pantalla encendida y la ventana azul. 11_tarjeta t1: la tarjeta entra y el datafono da luz verde. caras: t2 y t2, quietos, sin sonreir de mas.",
+  "_pendiente": "10b_comprobante no salio en la tanda. Esta pedido al pod que esta encendido (colas/siguiente.json). Cuando llegue entra a los 30,6 s, 3,4 s, con el comprobante compuesto encima, y todo lo posterior se corre 3,4 s.",
+  "natural": true,
+  "salida": {"ancho": 1080, "alto": 1920, "fps": 30, "dur_s": 44.0},
+  "fundido_s": 0.0,
+  "voz": {
+    "orden": [[1, 39.0]],
+    "_nota": "Una sola linea, Maico (narrador de los anuncios), estilo 0.10: p1_cierre.wav a los 39,0 s. Antes de eso la pelicula no habla: se mira."
+  },
+  "bloques": [
+    {"plano": "01_pulperia",           "t": 0.0,  "dur": 3.6, "desde": 0.3, "rotulos": []},
+    {"plano": "02_telefono_mostrador", "t": 3.6,  "dur": 2.6, "desde": 0.6, "rotulos": []},
+    {"plano": "03_hija_cocina",        "t": 6.2,  "dur": 3.4, "desde": 0.3, "rotulos": []},
+    {"plano": "04_abre_app",           "t": 9.6,  "dur": 2.4, "desde": 0.8, "rotulos": []},
+    {"plano": "05_elige_contacto",     "t": 12.0, "dur": 2.2, "desde": 0.9, "rotulos": []},
+    {"plano": "06_pone_dedo",          "t": 14.2, "dur": 2.8, "desde": 0.5, "rotulos": []},
+    {"plano": "07_suena_pulperia",     "t": 17.0, "dur": 3.4, "desde": 0.4,
+     "rotulos": [{"t": 17.7, "dur": 2.0, "texto": "Cuatro segundos."}]},
+    {"plano": "08_cara_senora",        "t": 20.4, "dur": 3.0, "desde": 0.5, "rotulos": []},
+    {"plano": "09_ensena_pantalla",    "t": 23.4, "dur": 4.0, "desde": 0.0, "rotulos": []},
+    {"plano": "10_ve_detalle",         "t": 27.4, "dur": 3.2, "desde": 0.4,
+     "rotulos": [{"t": 28.0, "dur": 2.4, "texto": "Y podés ver\nexactamente qué pasó."}]},
+    {"plano": "11_tarjeta",            "t": 30.6, "dur": 3.2, "desde": 0.4, "rotulos": []},
+    {"plano": "11_caras_calle",        "t": 33.8, "dur": 2.4, "desde": 0.8, "rotulos": []},
+    {"plano": "12_caras_calle_b",      "t": 36.2, "dur": 2.4, "desde": 0.8, "rotulos": []},
+    {"plano": "negro", "negro": true,  "t": 38.6, "dur": 5.4,
+     "rotulos": [{"t": 39.2, "dur": 4.6, "texto": "Orden Global.\nUn sistema financiero\nque se puede comprobar.", "chico": true}]}
+  ],
+  "picks": {
+    "01_pulperia": 3, "02_telefono_mostrador": 3, "03_hija_cocina": 3, "04_abre_app": 3,
+    "05_elige_contacto": 2, "06_pone_dedo": 1, "07_suena_pulperia": 3, "08_cara_senora": 3,
+    "09_ensena_pantalla": 3, "10_ve_detalle": 2, "11_tarjeta": 1, "11_caras_calle": 2,
+    "12_caras_calle_b": 2
+  }
+}

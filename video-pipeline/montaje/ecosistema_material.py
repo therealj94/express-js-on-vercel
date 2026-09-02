@@ -155,6 +155,12 @@ class Plano:
         self.carpeta, self.n = carpeta, n
         self._cache = {}
 
+    def natural(self, segundos: float) -> Image.Image:
+        """Fotograma a velocidad real, `segundos` desde el inicio del clip.
+        Para gente: remapear 4 s de material a 2,4 s acelera los gestos y se
+        nota falso. Si el bloque pide más de lo que hay, se congela el último."""
+        return self.fotograma(segundos * FPS / max(1, self.n - 1))
+
     def fotograma(self, frac: float) -> Image.Image:
         """Fotograma en la fracción [0,1] del clip. El clip se remapea al hueco
         que le toca en el montaje, así que 4 s de material pueden durar 4,2."""
@@ -231,6 +237,9 @@ def main():
 
     planos = []
     for b in spec["bloques"]:
+        if b.get("negro"):
+            planos.append((b, None))
+            continue
         toma = picks.get(b["plano"], 1)
         # El runner nombra 'ID_tN_00001_.mp4'.
         cand = sorted(clips.glob(f"{b['plano']}_t{toma}_*.mp4")) or \
@@ -252,17 +261,26 @@ def main():
         t = fr / FPS
         # Los bloques que cubren este instante (dos, durante un fundido).
         activos = [(b, p) for b, p in planos if b["t"] <= t < b["t"] + b["dur"]]
+        def cuadro(b, p):
+            """El fotograma de un bloque: negro, a velocidad natural desde
+            `desde` segundos del clip, o remapeado al hueco (material)."""
+            if p is None:
+                return Image.new("RGB", (W, H), (0, 0, 0))
+            if spec.get("natural"):
+                return p.natural(t - b["t"] + b.get("desde", 0.0))
+            return p.fotograma((t - b["t"]) / b["dur"])
+
         if not activos:
             base = Image.new("RGB", (W, H), (0, 0, 0))
         else:
             b0, p0 = activos[0]
-            base = p0.fotograma((t - b0["t"]) / b0["dur"]).copy()
+            base = cuadro(b0, p0).copy()
             if len(activos) > 1:
                 b1, p1 = activos[1]
                 # Fundido: el segundo entra por opacidad durante fund segundos.
-                a = salida(np.clip((t - b1["t"]) / fund, 0, 1), 2.5)
-                base = Image.blend(base, p1.fotograma((t - b1["t"]) / b1["dur"]),
-                                   float(a))
+                # Con fundido 0 es un corte seco: el bloque nuevo manda.
+                a = 1.0 if fund <= 0 else salida(np.clip((t - b1["t"]) / fund, 0, 1), 2.5)
+                base = Image.blend(base, cuadro(b1, p1), float(a))
         im = base.convert("RGBA")
         for b, _ in activos:
             if b.get("logo"):
