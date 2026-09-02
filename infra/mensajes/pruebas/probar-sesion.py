@@ -48,10 +48,22 @@ class WalletFalsa(BaseHTTPRequestHandler):
         pass
 
     def do_GET(self):
-        if not self.path.endswith('/users/userDate'):
-            self.send_response(404); self.end_headers(); return
         token = (self.headers.get('Authorization') or '').replace('Bearer ', '')
         correo = SESIONES.get(token)
+        # El puente de Genesis, de mentira: Ana esta verificada, Beto no tiene
+        # identidad. Es lo que decide el GID del chat — no lo que mande nadie.
+        if self.path.endswith('/genesis/gid'):
+            if correo == 'ana@prueba.local':
+                cuerpo = json.dumps({'estado': 'verificada', 'gid': 'GEN-TEST-ANA1-X'}).encode()
+                self.send_response(200)
+            else:
+                cuerpo = b'{"error":"sin identidad"}'
+                self.send_response(404 if correo else 401)
+            self.send_header('Content-Type', 'application/json')
+            self.send_header('Content-Length', str(len(cuerpo)))
+            self.end_headers(); self.wfile.write(cuerpo); return
+        if not self.path.endswith('/users/userDate'):
+            self.send_response(404); self.end_headers(); return
         cuerpo = json.dumps({'email': correo} if correo else {'message': 'invalid token'}).encode()
         self.send_response(200 if correo else 401)
         self.send_header('Content-Type', 'application/json')
@@ -113,6 +125,41 @@ def main():
         e, d = pedir(base, '/alta', {'correo': 'ana@prueba.local', 'sesion': 'inventada'})
         assert e == 409, 'una sesion invalida abrio el buzon: %s' % e
 
+        # ── EL GID LO DICE GENESIS, NO EL CLIENTE ──────────────────────
+        # Antes `/alta` y `/perfil` guardaban `gid` como texto libre y la
+        # busqueda por GID buscaba sobre eso: cualquiera se ponia el GID de
+        # otro y salia «verificado». Ahora se le pregunta a Genesis por la
+        # sesion, y lo que venga en el cuerpo se ignora.
+        e, d = pedir(base, '/alta', {'correo': 'ana@prueba.local', 'sesion': 'sesion-de-ana',
+                                     'gid': 'GEN-FAKE-FAKE-X'})
+        assert e == 200, 'alta de Ana con sesion: %s %s' % (e, d)
+        llave_ana = d['llave']
+        e, f = pedir(base, '/ficha', {'correo': 'ana@prueba.local', 'llave': llave_ana,
+                                      'de': 'ana@prueba.local'})
+        assert e == 200 and f.get('gid') == 'GEN-TEST-ANA1-X', \
+            'el GID tiene que ser el de Genesis, no el declarado: %s %s' % (e, f)
+        # /perfil ya no acepta gid: se ignora
+        e, _ = pedir(base, '/perfil', {'correo': 'ana@prueba.local', 'llave': llave_ana,
+                                       'gid': 'GEN-OTRO-OTRO-X'})
+        assert e == 200
+        e, f = pedir(base, '/ficha', {'correo': 'ana@prueba.local', 'llave': llave_ana,
+                                      'de': 'ana@prueba.local'})
+        assert f.get('gid') == 'GEN-TEST-ANA1-X', '/perfil dejo cambiar el GID: %s' % f
+        # Beto no tiene identidad: aunque declare uno, queda sin GID
+        e, d = pedir(base, '/alta', {'correo': 'beto@prueba.local', 'sesion': 'sesion-de-beto',
+                                     'gid': 'GEN-TEST-ANA1-X'})
+        assert e == 200, 'alta de Beto: %s %s' % (e, d)
+        e, f = pedir(base, '/ficha', {'correo': 'beto@prueba.local', 'llave': d['llave'],
+                                      'de': 'beto@prueba.local'})
+        assert e == 200 and not f.get('gid'), \
+            'Beto se puso el GID de Ana y el relevo se lo creyo: %s' % f
+        # Y sin sesion, lo que ya tenia la ficha no se toca
+        e, d = pedir(base, '/alta', {'correo': 'ana@prueba.local', 'llave': llave_ana, 'gid': ''})
+        assert e == 200
+        e, f = pedir(base, '/ficha', {'correo': 'ana@prueba.local', 'llave': llave_ana,
+                                      'de': 'ana@prueba.local'})
+        assert f.get('gid') == 'GEN-TEST-ANA1-X', 'sin sesion no se debe tocar el GID: %s' % f
+
         # 5 · backend caido: 409 limpio, nada de errores raros
         wallet.shutdown()
         e, d = pedir(base, '/alta', {'correo': 'ana@prueba.local', 'sesion': 'sesion-de-ana'})
@@ -124,7 +171,7 @@ def main():
 
         print('TODO BIEN: el alta clasica intacta, la sesion valida rescata la MISMA llave, '
               'la ajena y la invalida no, el backend caido degrada al 409 de siempre, '
-              'y la llave original sigue viva.')
+              'y la llave original sigue viva. Y el GID lo pone Genesis, no el cliente.')
         return 0
     finally:
         relevo.terminate()

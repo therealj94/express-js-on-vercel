@@ -115,6 +115,21 @@ export function routerGenesis({ exigirSesion } = {}) {
     responder(res)(creada)
   })
 
+  /** El GID de esta sesion, SIN crear nada.
+   *
+   * `/estado` crea la identidad si no existe —es lo que quiere la app al abrir
+   * el registro—. El relevo del chat necesita lo contrario: preguntar si esta
+   * persona esta verificada y cual es su GID, y si no hay identidad, que no
+   * aparezca una «iniciada» por haber preguntado. Sin esta ruta, cada alta
+   * del chat de alguien sin Genesis dejaba una identidad vacia en el motor.
+   * Devuelve {estado, gid} o 404. Nada mas: el chat no necesita el expediente. */
+  router.get('/gid', async (req, res) => {
+    const r = await llamar(`/api/v1/identidades/por-email/${encodeURIComponent(req.usuario.email)}`)
+    if (!r.ok || !r.cuerpo) return res.status(404).json({ error: 'sin identidad' })
+    const idn = r.cuerpo.identidad || r.cuerpo
+    return res.json({ estado: idn.estado || null, gid: idn.gid || null })
+  })
+
   /** Foto de la credencial: la unica imagen que Genesis ID conserva. */
   router.post('/foto', async (req, res) => {
     const idn = await idDe(req.usuario.email)

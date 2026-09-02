@@ -417,19 +417,69 @@ def correo_de_sesion(token):
     backend no contesta. None NUNCA se distingue de una sesion mala hacia
     fuera: en ambos casos queda el 409 de siempre.
     """
+    return quien_es_la_sesion(token)[0]
+
+
+def quien_es_la_sesion(token):
+    """`(correo, gid)` de esta sesion, preguntandole al backend de la wallet.
+
+    El GID no se le cree al cliente. Antes `/alta` y `/perfil` guardaban el
+    `gid` como texto libre, y la busqueda por GID buscaba sobre eso: cualquiera
+    podia ponerse el GID de otra persona y salir «verificado» en el chat —lo
+    unico que se comprobaba era que el texto tuviera 64 caracteres o menos.
+    Genesis ID tiene motor de verdad (documento, cara, prueba de vida, OFAC) y
+    el chat lo tiraba a la basura en la puerta.
+
+    Se pregunta por el puente que ya existe en el backend de la wallet
+    (`/genesis/estado`, con la misma sesion): si la identidad esta `verificada`
+    devuelve su GID; si no, None. Y el GID que venga en el cuerpo de la
+    peticion se ignora SIEMPRE.
+    """
     if not token or not isinstance(token, str) or len(token) > 4096:
-        return None
+        return None, None
+    import urllib.request
+    cab = {'Authorization': 'Bearer ' + token}
     try:
-        import urllib.request
-        pet = urllib.request.Request(
-            WALLET_URL + '/users/userDate',
-            headers={'Authorization': 'Bearer ' + token})
-        with urllib.request.urlopen(pet, timeout=6) as r:
+        with urllib.request.urlopen(urllib.request.Request(
+                WALLET_URL + '/users/userDate', headers=cab), timeout=6) as r:
             datos = json.loads(r.read() or b'{}')
         correo = str(datos.get('email', '')).strip().lower()
-        return correo if correo_valido(correo) else None
+        if not correo_valido(correo):
+            return None, None
     except Exception:
-        return None
+        return None, None
+    # TRES respuestas posibles, y la diferencia importa:
+    #   · un GID       → Genesis dice que esta persona esta verificada;
+    #   · ''           → Genesis CONTESTO y dice que no hay identidad (o que
+    #                    no esta verificada): el sello se quita;
+    #   · None         → no se pudo saber (red, ruta que aun no existe en el
+    #                    backend, error). Con None NO SE TOCA lo que la ficha
+    #                    ya tenia: si el puente esta caido un rato, nadie
+    #                    pierde su sello por eso.
+    gid = None
+    try:
+        # `/genesis/gid` es de SOLO LECTURA. `/genesis/estado` crea la
+        # identidad si no existe, y preguntar no puede crear nada.
+        with urllib.request.urlopen(urllib.request.Request(
+                WALLET_URL + '/genesis/gid', headers=cab), timeout=6) as r:
+            idn = json.loads(r.read() or b'{}')
+        gid = ''
+        if isinstance(idn, dict) and idn.get('estado') == 'verificada':
+            g = str(idn.get('gid') or '').strip().upper()
+            if re.fullmatch(r'GEN-[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]', g):
+                gid = g
+    except urllib.error.HTTPError as e:
+        # 404 con «sin identidad» es una respuesta de verdad del puente.
+        # Cualquier otro 404 (la ruta todavia no desplegada) o error, no.
+        try:
+            cuerpo = json.loads(e.read() or b'{}')
+        except Exception:
+            cuerpo = {}
+        if e.code == 404 and isinstance(cuerpo, dict) and cuerpo.get('error') == 'sin identidad':
+            gid = ''
+    except Exception:
+        gid = None
+    return correo, gid
 
 
 ORIGENES = {
@@ -1134,9 +1184,9 @@ class Relevo(BaseHTTPRequestHandler):
         # llamada de red y el candado es de todo el relevo — con ella dentro,
         # seis segundos de Heroku lento serian seis segundos de chat parado
         # para todo el mundo.
-        correo_probado = None
+        correo_probado, gid_probado = None, None
         if ruta == '/alta' and b.get('sesion'):
-            correo_probado = correo_de_sesion(b.get('sesion'))
+            correo_probado, gid_probado = quien_es_la_sesion(b.get('sesion'))
 
         # Se rellena dentro del candado y se usa FUERA: ver la nota en /senales.
         esperar_para = None
@@ -1151,14 +1201,15 @@ class Relevo(BaseHTTPRequestHandler):
                     return self._json(400, {'error': 'correo inválido'})
                 f = fichas.get(correo)
                 if f is None:
-                    # el gid (Genesis ID) es un identificador PÚBLICO que la
-                    # persona declara, como el nombre: texto recortado y punto.
-                    # Las fichas de antes de este campo no lo tienen — por eso
-                    # todas las lecturas usan .get('gid', '') y nada se migra.
+                    # El gid (Genesis ID) NO lo declara la persona: lo dice
+                    # Genesis, a traves de la sesion. Sin sesion no hay gid.
+                    # Ver `quien_es_la_sesion`. Las fichas de antes de este
+                    # campo no lo tienen — por eso todas las lecturas usan
+                    # .get('gid', '') y nada se migra.
                     f = {'llave': secrets.token_hex(24),
                          'nombre': str(b.get('nombre', ''))[:80],
                          'addr': str(b.get('addr', ''))[:64],
-                         'gid': str(b.get('gid', '')).strip()[:64],
+                         'gid': (gid_probado or '') if correo_probado == correo else '',
                          'foto': foto_valida(d, b.get('foto')),
                          'desde': int(time.time())}
                     fichas[correo] = f
@@ -1173,7 +1224,12 @@ class Relevo(BaseHTTPRequestHandler):
                 if b.get('llave') == f['llave'] or correo_probado == correo:
                     f['nombre'] = str(b.get('nombre', f['nombre']))[:80]
                     f['addr'] = str(b.get('addr', f['addr']))[:64]
-                    f['gid'] = str(b.get('gid', f.get('gid', ''))).strip()[:64]
+                    # El gid solo se toca cuando hay sesion que lo pruebe: con
+                    # sesion, es lo que diga Genesis (o nada); sin sesion —solo
+                    # la llave del relevo— se deja como estaba. Lo que mande el
+                    # cliente en `gid` no se mira.
+                    if correo_probado == correo and gid_probado is not None:
+                        f['gid'] = gid_probado
                     f['foto'] = foto_valida(d, b.get('foto', f.get('foto', '')))
                     guardar(d)
                     return self._json(200, {'llave': f['llave']})
@@ -1294,10 +1350,9 @@ class Relevo(BaseHTTPRequestHandler):
                     f['nombre'] = str(b.get('nombre', ''))[:80]
                 if 'foto' in b:
                     f['foto'] = foto_valida(d, b.get('foto'))
-                if 'gid' in b:
-                    # misma regla que la foto: mandar {gid:''} lo quita, y no
-                    # mandar la clave lo deja en paz
-                    f['gid'] = str(b.get('gid', '')).strip()[:64]
+                # `gid` ya no se acepta aqui: era la puerta por la que cualquiera
+                # se ponia el GID de otro. Lo pone Genesis en el alta, via la
+                # sesion (ver `quien_es_la_sesion`). Si viene, se ignora.
                 guardar(d)
                 return self._json(200, {'ok': True})
 

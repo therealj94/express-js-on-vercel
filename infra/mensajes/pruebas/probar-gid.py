@@ -1,25 +1,43 @@
 #!/usr/bin/env python3
 """Prueba de punta a punta del GID (Genesis ID) en infra/mensajes/servidor.py.
 
-Levanta el relevo REAL en un puerto libre con datos en un directorio temporal
-y comprueba lo que el directorio del ecosistema necesita que sea verdad:
-  1. /alta acepta un gid opcional (texto recortado, tope 64) y /ficha lo
-     devuelve tal cual lo declaró su dueño;
-  2. /buscar encuentra a la persona tecleando el PRINCIPIO de su gid en
-     minúsculas (empieza-por, insensible a mayúsculas), y los resultados
-     traen nombre y gid;
-  3. /perfil cambia el gid — y el gid viejo deja de encontrar a la persona,
-     porque un identificador retirado no puede seguir apuntándole;
-  4. el dueño con su llave también actualiza el gid repitiendo /alta, igual
-     que hace con nombre y foto;
-  5. una cuenta SIN gid sigue funcionando igual en /alta, /buscar y /ficha:
-     el campo llega como '' y nada revienta — las fichas de antes de este
-     campo no se migran, se leen con .get y ya.
+── LO QUE CAMBIÓ, Y POR QUÉ ESTA PRUEBA SE REESCRIBIÓ ENTERA ────────────────
 
-Sin dependencias fuera de la stdlib.
+La versión anterior comprobaba que «/alta acepta un gid opcional y /ficha lo
+devuelve tal cual lo declaró su dueño» y que «/perfil cambia el gid». Eso era
+el contrato — y era el agujero: el GID es lo que en el chat dice «esta persona
+está verificada», y lo escribía el propio cliente como texto libre. Cualquiera
+podía ponerse el GID de otro y salir verificado. Genesis ID tiene motor de
+verdad (documento, cara, prueba de vida, OFAC) y el chat lo tiraba en la
+puerta.
+
+Ahora el relevo le pregunta a Genesis por la sesión de la wallet
+(`/genesis/gid` en el backend, de solo lectura, con el mismo token) y lo que venga en el
+cuerpo se ignora SIEMPRE. Lo que esta prueba necesita que sea verdad:
+
+  1. con sesión de una identidad VERIFICADA, /alta pone el GID que dice
+     Genesis, aunque el cliente declare otro;
+  2. /buscar encuentra a la persona por el PRINCIPIO de ese GID, en
+     minúsculas, y trae nombre y gid;
+  3. /perfil ya no puede cambiarlo;
+  4. repetir /alta sólo con la llave del relevo (sin sesión) no lo toca;
+  5. una cuenta SIN identidad queda sin GID aunque declare uno, y sigue
+     funcionando en /alta, /buscar y /ficha.
+
+Se levanta el relevo REAL y un backend de wallet DE MENTIRA que conoce dos
+sesiones: Ana (verificada, GEN-TEST-ANA1-X) y Beto (sin identidad).
 """
-import json, os, socket, subprocess, sys, tempfile, time
-import urllib.error, urllib.request
+import json
+import os
+import socket
+import subprocess
+import sys
+import tempfile
+import threading
+import time
+import urllib.error
+import urllib.request
+from http.server import BaseHTTPRequestHandler, HTTPServer
 
 AQUI = os.path.dirname(os.path.abspath(__file__))
 SERVIDOR = os.path.join(AQUI, '..', 'servidor.py')
@@ -27,6 +45,34 @@ SERVIDOR = os.path.join(AQUI, '..', 'servidor.py')
 # opener sin proxy: la máquina de pruebas puede tener HTTPS_PROXY global y
 # esto habla con 127.0.0.1 directamente
 ABRIR = urllib.request.build_opener(urllib.request.ProxyHandler({})).open
+
+SESIONES = {'sesion-de-ana': 'ana@og.hn', 'sesion-de-beto': 'beto@og.hn'}
+GID_ANA = 'GEN-TEST-ANA1-X'
+
+
+class WalletFalsa(BaseHTTPRequestHandler):
+    def log_message(self, *a):
+        pass
+
+    def _json(self, codigo, obj):
+        cuerpo = json.dumps(obj).encode()
+        self.send_response(codigo)
+        self.send_header('Content-Type', 'application/json')
+        self.send_header('Content-Length', str(len(cuerpo)))
+        self.end_headers()
+        self.wfile.write(cuerpo)
+
+    def do_GET(self):
+        token = (self.headers.get('Authorization') or '').replace('Bearer ', '')
+        correo = SESIONES.get(token)
+        if self.path.endswith('/users/userDate'):
+            return self._json(200 if correo else 401,
+                              {'email': correo} if correo else {'message': 'invalid token'})
+        if self.path.endswith('/genesis/gid'):
+            if correo == 'ana@og.hn':
+                return self._json(200, {'estado': 'verificada', 'gid': GID_ANA})
+            return self._json(404 if correo else 401, {'error': 'sin identidad'})
+        self.send_response(404); self.end_headers()
 
 
 def puerto_libre():
@@ -49,13 +95,18 @@ def post(base, ruta, cuerpo):
 def main():
     tmp = tempfile.mkdtemp(prefix='mensajes-gid-')
     puerto = puerto_libre()
+    p_wallet = puerto_libre()
     base = 'http://127.0.0.1:%d' % puerto
+
+    wallet = HTTPServer(('127.0.0.1', p_wallet), WalletFalsa)
+    threading.Thread(target=wallet.serve_forever, daemon=True).start()
+
     env = dict(os.environ, MENSAJES_DATOS=os.path.join(tmp, 'datos.json'),
-               MENSAJES_PUERTO=str(puerto))
+               MENSAJES_PUERTO=str(puerto),
+               MENSAJES_WALLET_URL='http://127.0.0.1:%d' % p_wallet)
     proc = subprocess.Popen([sys.executable, SERVIDOR], env=env,
                             stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT)
     try:
-        # esperar a que el relevo respire
         for _ in range(50):
             try:
                 with ABRIR(base + '/salud', timeout=2) as r:
@@ -66,92 +117,73 @@ def main():
         else:
             raise SystemExit('el servidor nunca contestó /salud')
 
-        # 1) alta CON gid (con espacios alrededor: deben recortarse) y alta SIN
-        gid1 = 'GID-7QK4X9RTLM'
+        # 1) Ana, verificada: el GID es el de Genesis, no el declarado
         st, r = post(base, '/alta', {'correo': 'ana@og.hn', 'nombre': 'Ana',
-                                     'gid': '  %s  ' % gid1})
-        assert st == 200 and r.get('llave'), '/alta con gid: %s %s' % (st, r)
+                                     'sesion': 'sesion-de-ana', 'gid': 'GEN-FAKE-FAKE-X'})
+        assert st == 200 and r.get('llave'), '/alta de Ana: %s %s' % (st, r)
         ana = {'correo': 'ana@og.hn', 'llave': r['llave']}
-        st, r = post(base, '/alta', {'correo': 'beto@og.hn', 'nombre': 'Beto'})
-        assert st == 200 and r.get('llave'), '/alta sin gid: %s %s' % (st, r)
+        st, r = post(base, '/ficha', dict(ana, de='ana@og.hn'))
+        assert st == 200 and r.get('gid') == GID_ANA and r.get('nombre') == 'Ana', \
+            'la ficha tiene que traer el GID de Genesis: %s %s' % (st, r)
+
+        # 5a) Beto, sin identidad: aunque declare el GID de Ana, queda sin GID
+        st, r = post(base, '/alta', {'correo': 'beto@og.hn', 'nombre': 'Beto',
+                                     'sesion': 'sesion-de-beto', 'gid': GID_ANA})
+        assert st == 200 and r.get('llave'), '/alta de Beto: %s %s' % (st, r)
         beto = {'correo': 'beto@og.hn', 'llave': r['llave']}
-        # Desde que existe el circulo hay que aceptarse para poder
-        # escribirse. No es ruido de la prueba: es el mismo paso que
-        # da una persona en la app antes de su primer mensaje.
+        st, r = post(base, '/ficha', dict(beto, de='beto@og.hn'))
+        assert st == 200 and not r.get('gid'), \
+            'Beto se puso el GID de Ana y el relevo se lo creyó: %s' % r
+
+        # se hacen amigos para poder buscarse y verse la ficha
         post(base, '/amistad/pedir', dict(ana, para='beto@og.hn'))
         post(base, '/amistad/responder', dict(beto, de='ana@og.hn', aceptar=True))
 
-        # 2) buscar por el PRINCIPIO del gid en minúsculas lo encuentra
-        st, r = post(base, '/buscar', dict(beto, q='gid-7qk4'))
+        # 2) buscar por el PRINCIPIO del GID en minúsculas encuentra a Ana
+        st, r = post(base, '/buscar', dict(beto, q='gen-test'))
         assert st == 200, '/buscar por gid: %s %s' % (st, r)
         assert [x['correo'] for x in r['gente']] == ['ana@og.hn'], \
             'el prefijo del gid debía dar con Ana: %s' % r['gente']
-        assert r['gente'][0]['nombre'] == 'Ana' and r['gente'][0]['gid'] == gid1, \
+        assert r['gente'][0]['nombre'] == 'Ana' and r['gente'][0]['gid'] == GID_ANA, \
             'el resultado debe traer nombre y gid: %s' % r['gente'][0]
-        # el trozo del MEDIO del gid no encuentra: un identificador se teclea
-        # desde el principio, no se pesca por dentro como la prosa de un nombre
-        st, r = post(base, '/buscar', dict(beto, q='x9rtlm'))
+        st, r = post(base, '/buscar', dict(beto, q='ana1'))
         assert r['gente'] == [], 'el gid es empieza-por, no contiene: %s' % r['gente']
+        # y por el GID que Beto intentó apropiarse no aparece Beto
+        st, r = post(base, '/buscar', dict(ana, q='gen-test'))
+        assert 'beto@og.hn' not in [x['correo'] for x in r['gente']], \
+            'Beto aparece con el GID de Ana: %s' % r['gente']
 
-        # 3) la ficha trae el gid, ya sin los espacios del alta
-        st, r = post(base, '/ficha', dict(beto, de='ana@og.hn'))
-        assert st == 200 and r.get('gid') == gid1 and r.get('nombre') == 'Ana', \
-            '/ficha sin el gid recortado: %s %s' % (st, r)
+        # 3) /perfil ya no cambia el GID
+        st, r = post(base, '/perfil', dict(ana, gid='GEN-OTRO-OTRO-X'))
+        assert st == 200 and r.get('ok'), '/perfil: %s %s' % (st, r)
+        st, r = post(base, '/ficha', dict(ana, de='ana@og.hn'))
+        assert r.get('gid') == GID_ANA, '/perfil dejó cambiar el GID: %s' % r
 
-        # 4) /perfil cambia el gid, y el viejo deja de encontrar
-        gid2 = 'GID-ZW8MB2PDQN'
-        st, r = post(base, '/perfil', dict(ana, gid=gid2))
-        assert st == 200 and r.get('ok'), '/perfil con gid: %s %s' % (st, r)
-        st, r = post(base, '/ficha', dict(beto, de='ana@og.hn'))
-        assert r.get('gid') == gid2, 'la ficha no trae el gid nuevo: %s' % r
-        st, r = post(base, '/buscar', dict(beto, q='gid-7qk4'))
-        assert r['gente'] == [], 'el gid viejo debía estar muerto: %s' % r['gente']
-        st, r = post(base, '/buscar', dict(beto, q='gid-zw8m'))
-        assert [x['gid'] for x in r['gente']] == [gid2], \
-            'el gid nuevo debía encontrar: %s' % r['gente']
-        # tocar el nombre sin mandar gid NO lo borra (misma regla que la foto)
-        st, r = post(base, '/perfil', dict(ana, nombre='Ana G.'))
-        st, r = post(base, '/ficha', dict(beto, de='ana@og.hn'))
-        assert r.get('gid') == gid2 and r.get('nombre') == 'Ana G.', \
-            'perfil sin gid no debía tocarlo: %s' % r
+        # 4) repetir /alta sólo con la llave (sin sesión) no lo toca
+        st, r = post(base, '/alta', dict(ana, nombre='Ana G.', gid=''))
+        assert st == 200, '/alta con llave: %s %s' % (st, r)
+        st, r = post(base, '/ficha', dict(ana, de='ana@og.hn'))
+        assert r.get('gid') == GID_ANA and r.get('nombre') == 'Ana G.', \
+            'sin sesión el GID no se toca (y el nombre sí): %s' % r
 
-        # 5) repetir /alta con la llave también actualiza el gid, y un gid
-        # kilométrico se recorta a 64 en vez de reventar
-        gid3 = 'GID-' + 'A' * 100
-        st, r = post(base, '/alta', dict(ana, gid=gid3))
-        assert st == 200 and r.get('llave') == ana['llave'], \
-            '/alta del dueño: %s %s' % (st, r)
-        st, r = post(base, '/ficha', dict(beto, de='ana@og.hn'))
-        assert r.get('gid') == gid3[:64], 'el gid no se recortó a 64: %r' % r.get('gid')
-        post(base, '/perfil', dict(ana, gid=gid2))
-
-        # 6) la cuenta sin gid sigue entera: se busca por nombre, su ficha
-        # contesta y el gid llega como '' sin romper a nadie
+        # 5b) una cuenta sin GID sigue entera: buscar por nombre y ficha
         st, r = post(base, '/buscar', dict(ana, q='beto'))
         assert st == 200 and [x['correo'] for x in r['gente']] == ['beto@og.hn'], \
-            'a Beto se le encuentra por nombre como siempre: %s %s' % (st, r)
-        assert r['gente'][0]['gid'] == '', 'sin gid el campo es vacío: %s' % r['gente'][0]
+            'buscar a Beto por nombre: %s %s' % (st, r)
+        assert r['gente'][0].get('gid', '') == '', 'Beto no tiene GID: %s' % r['gente'][0]
         st, r = post(base, '/ficha', dict(ana, de='beto@og.hn'))
-        assert st == 200 and r.get('gid') == '' and r.get('nombre') == 'Beto', \
-            'la ficha sin gid debe seguir contestando: %s %s' % (st, r)
+        assert st == 200 and r.get('nombre') == 'Beto' and r.get('gid', '') == '', \
+            'ficha de Beto sin gid: %s %s' % (st, r)
 
-        # y en /conversaciones cada persona viaja con su gid (o '' si no hay)
-        st, r = post(base, '/enviar', dict(ana, para='beto@og.hn', texto='hola'))
-        assert st == 200, '/enviar: %s %s' % (st, r)
-        st, r = post(base, '/conversaciones', dict(beto))
-        c = [x for x in r['conversaciones'] if x['correo'] == 'ana@og.hn'][0]
-        assert c.get('gid') == gid2, 'la conversación no trae el gid de Ana: %s' % c
-        st, r = post(base, '/conversaciones', dict(ana))
-        c = [x for x in r['conversaciones'] if x['correo'] == 'beto@og.hn'][0]
-        assert c.get('gid') == '', 'sin gid la conversación lleva vacío: %s' % c
-
-        print('TODO BIEN: alta con gid recortado, búsqueda por empieza-por en '
-              'minúsculas, ficha con gid, perfil que lo cambia y mata el viejo, '
-              'alta del dueño que lo actualiza, y la cuenta sin gid intacta.')
+        print('TODO BIEN: el GID lo pone Genesis por la sesión, el cliente no puede '
+              'declararlo ni cambiarlo, se busca por prefijo, y una cuenta sin '
+              'identidad sigue funcionando sin GID.')
+        return 0
     finally:
         proc.terminate()
         proc.wait(timeout=5)
+        wallet.shutdown()
 
 
 if __name__ == '__main__':
-    main()
+    sys.exit(main())
