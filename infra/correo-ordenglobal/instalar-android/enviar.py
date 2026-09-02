@@ -91,6 +91,32 @@ def enlace_de_baja(correo, llave):
     return f'{BAJA_BASE}?c={urllib.parse.quote(correo)}&f={urllib.parse.quote(firma)}"'.rstrip('"')
 
 
+NO_MANDAR = AQUI / 'no-mandar.txt'
+
+
+def no_mandar():
+    """Quien pidio que no le escribamos. Se PLANTA si el archivo no esta.
+
+    Estas personas abrieron el enlace de baja de un correo nuestro. En la base
+    quedan con `sinAvisos`, y este archivo no consulta la base a proposito
+    (ver la cabecera). Asi que la lista vive al lado, en el repo.
+
+    Falta el archivo -> NO SE MANDA NADA. Podria hacerse lo contrario y seguir
+    con la lista vacia, y seria peor de la unica forma que importa: el fallo
+    saldria como un envio normal, y nadie se enteraria hasta que alguien que
+    ya habia dicho que no volviera a recibir la carta.
+
+    Se descubrio tarde: las diez direcciones dadas de baja estaban en la lista
+    de 418, y solo aparecieron porque se comprobo la base a mano.
+    """
+    try:
+        crudo = NO_MANDAR.read_text(encoding='utf8')
+    except Exception:
+        return None
+    return {l.strip().lower() for l in crudo.splitlines()
+            if l.strip() and not l.startswith('#')}
+
+
 def ya_enviados():
     try:
         return {l.strip() for l in APUNTADOS.read_text().splitlines() if l.strip()}
@@ -193,7 +219,18 @@ def main():
         gente = [(r.get('correo', '').strip(), r.get('nombre', '').strip())
                  for r in csv.DictReader(f) if r.get('correo', '').strip()]
 
+    nunca = no_mandar()
+    if nunca is None:
+        print('Falta %s: es la lista de quien pidio que no le escribamos.\n'
+              'Sin ella no se puede saber a quien NO mandarle. No mando nada.'
+              % NO_MANDAR.name, file=sys.stderr)
+        return 2
     fuera = ya_enviados()
+    antes = len(gente)
+    gente = [(c, n) for c, n in gente if c.strip().lower() not in nunca]
+    quitados = antes - len(gente)
+    if quitados:
+        print('%d direccion(es) fuera: pidieron no recibir mas correos.' % quitados)
     gente = [(c, n) for c, n in gente if c not in fuera]
     if a.cuantos:
         gente = gente[:a.cuantos]

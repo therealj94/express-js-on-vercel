@@ -1,0 +1,27 @@
+# QUIEN PIDIÓ QUE NO LE ESCRIBAMOS. Una dirección por línea.
+#
+# Estas personas abrieron el enlace de baja de un correo nuestro. En la base
+# quedan con `sinAvisos`, y `enviar.py` NO puede consultar la base a propósito
+# —ver su cabecera: el día que pueda leerla sola, un error de una línea le
+# manda una carta a todo el mundo—. Así que la lista vive aquí, en el repo,
+# donde se ve en un diff.
+#
+# Se descubrió tarde y por casualidad: las diez estaban en la lista de 418.
+# Mandarles habría sido escribirle a quien pulsó «no quiero más correos», y
+# eso no se arregla pidiendo perdón: el dominio que manda esta carta es el
+# mismo que manda el correo de recuperar la contraseña.
+#
+# Al preparar un envío nuevo hay que volver a sacar de la base quién tiene
+# `sinAvisos` y añadirlo aquí. Si esto se queda viejo, se queda MENOS
+# restrictivo, que es la dirección peligrosa — por eso `enviar.py` exige que
+# el archivo exista y se planta si falta.
+omar.salinas@banasupro.hn
+morelstefania@gmail.com
+jorge.lanza@harvverse.com
+wa.community@harvverse.com
+wa.development@harvverse.com
+wa.liquidity@harvverse.com
+wa.reserves@harvverse.com
+wa.foundation@harvverse.com
+wa.market@harvverse.com
+wa.ico@harvverse.com
