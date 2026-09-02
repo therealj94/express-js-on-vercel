@@ -56,7 +56,10 @@ CAMAS = [
     (18.0, 30.0, "s_tienda", 0.95),   # el aviso llega a la pulpería
     (29.6, 33.2, "s_tienda", 0.70),   # la farmacia
     (32.8, 36.4, "s_calle",  0.90),   # se va a la casa con las bolsas
-    (36.0, 44.8, "s_cocina", 1.05),   # la mesa de su casa, y la hija leyendo
+    # Llega hasta el final: terminaba en 44,8 y el ultimo segundo quedaba en
+    # silencio DIGITAL -240 dBFS medidos-, porque la musica tambien cae a cero
+    # justo ahi. Una pieza no acaba en cero: acaba en su suelo.
+    (36.0, 50.2, "s_cocina", 1.05),   # la mesa de su casa, y la hija leyendo
 ]
 
 

@@ -19,6 +19,10 @@
 set -e
 MUDA=$1; ESPEC=$2; SALIDA=$3; DUR=${4:-61.8}
 
+# El apad de la voz NO es decorativo: sidechaincompress deja de producir
+# salida en cuanto se acaba su entrada de control. La voz termina antes que
+# la pieza, y con ella se cortaban el ambiente y la música: el último
+# segundo de Cincuenta salía en silencio DIGITAL, -240 dBFS medidos.
 ENT=""; FIL=""; MIX=""; n=0
 while read -r i seg; do
   # 150 ms de aire delante: la voz empieza en el fotograma 0 y el compresor se
@@ -29,7 +33,7 @@ while read -r i seg; do
   FIL="${FIL}[p$n]adelay=${ms}|${ms}[l$n];"; MIX="${MIX}[l$n]"
 done < <(python3 -c "import json;[print(i,t) for i,t in json.load(open('$ESPEC'))['voz']['orden']]")
 
-FIL="${FIL}${MIX}amix=inputs=$n:normalize=0,acompressor=threshold=0.12:ratio=3:attack=8:release=180,volume=2.9,aecho=0.9:0.85:14:0.10[voz];"
+FIL="${FIL}${MIX}amix=inputs=$n:normalize=0,acompressor=threshold=0.12:ratio=3:attack=8:release=180,volume=2.9,aecho=0.9:0.85:14:0.10,apad[voz];"
 FIL="${FIL}[voz]asplit=3[voz1][disp][disp2];"
 # Los efectos bajan: antes cargaban el peso que ahora lleva la música.
 FIL="${FIL}[$((n+1)):a]volume=0.46[sfx0];"
