@@ -54,8 +54,9 @@
       var b = j && j.result; if(!b) return;
       var n = parseInt(b.number, 16); if(!isFinite(n)) return;
       var txt = n.toLocaleString('es-ES').replace(/\./g, ' ');
-      $('bloque').textContent = txt; $('bloque2').textContent = txt;
-      if(b.hash){ $('hash').textContent = b.hash; $('hash2').textContent = b.hash; }
+      $('bloque').textContent = txt;
+      var b2 = $('bloque2'); if (b2) b2.textContent = txt;
+      if(b.hash) $('hash').textContent = b.hash;
     }).catch(function(){}).finally(function(){ pidiendo = false; });
   }
   precio(); cadena();

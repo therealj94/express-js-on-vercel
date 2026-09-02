@@ -65,7 +65,8 @@
 
   var APLASTE = 0.30;      // la órbita vista de tres cuartos: eso es lo que da el volumen
   var lienzo, ctx, ancho, alto, escala, rafId = 0, t0 = 0;
-  var bolas = {};          // cada esfera pintada UNA vez y luego solo estampada
+  var SECTORES = 8;        // ocho ángulos de luz por casa, elegidos por posición
+  var bolas = {};          // cada esfera pintada UNA vez por sector y luego estampada
   var corona = null;
   var raton = { x: 0, y: 0, ax: 0, ay: 0 };
   var etiquetas = [];      // los rótulos del documento, uno por casa
@@ -90,7 +91,7 @@
 
   /* Una esfera de verdad: la luz no viene de frente sino de arriba a la
      izquierda, que es lo que separa una pelota de un círculo de color. */
-  function pintarBola(casa, lado) {
+  function pintarBola(casa, lado, luzX, luzY) {
     var c = document.createElement('canvas');
     c.width = c.height = lado;
     var x = c.getContext('2d');
@@ -103,7 +104,10 @@
     x.fillStyle = halo;
     x.fillRect(0, 0, lado, lado);
 
-    var g = x.createRadialGradient(m - rad * 0.42, m - rad * 0.46, rad * 0.06,
+    /* El foco del degradado se corre hacia el sol: eso es lo que hace que la
+       bola parezca iluminada POR AU-RA y no por una lámpara de estudio. */
+    var g = x.createRadialGradient(m + rad * 0.46 * (luzX || 0),
+                                   m + rad * 0.46 * (luzY || -1), rad * 0.06,
                                    m, m, rad);
     g.addColorStop(0, casa.grad[0]);
     g.addColorStop(0.42, casa.grad[1]);
@@ -113,12 +117,24 @@
     x.fillStyle = g;
     x.fill();
 
-    // El filo iluminado: un pelo de luz en el borde de arriba.
+    /* El filo iluminado, del lado del sol. Antes era un arco blanco opaco a
+       0,5 que no se fundía con el degradado y quedaba como una ceja despegada
+       flotando sobre cada bola; ahora se suma a la luz y muere en los
+       extremos. */
+    var ang = Math.atan2(luzY || -1, luzX || 0);
+    x.save();
+    x.globalCompositeOperation = 'lighter';
+    var filo = x.createLinearGradient(m + Math.cos(ang) * rad, m + Math.sin(ang) * rad,
+                                      m - Math.cos(ang) * rad, m - Math.sin(ang) * rad);
+    filo.addColorStop(0, 'rgba(255,255,255,.34)');
+    filo.addColorStop(0.55, 'rgba(255,255,255,.05)');
+    filo.addColorStop(1, 'rgba(255,255,255,0)');
     x.beginPath();
-    x.arc(m, m, rad * 0.985, Math.PI * 1.08, Math.PI * 1.86);
-    x.strokeStyle = 'rgba(255,255,255,.5)';
-    x.lineWidth = Math.max(1, rad * 0.045);
+    x.arc(m, m, rad * 0.985, ang - Math.PI * 0.42, ang + Math.PI * 0.42);
+    x.strokeStyle = filo;
+    x.lineWidth = Math.max(1, rad * 0.05);
     x.stroke();
+    x.restore();
     return c;
   }
 
@@ -162,8 +178,15 @@
        Wallet se comía al sol y el sistema parecía un racimo. */
     var lado = Math.round(escala * 0.30);
     bolas = {};
-    CASAS.forEach(function (casa) { bolas[casa.id] = pintarBola(casa, lado); });
-    corona = pintarCorona(Math.round(escala * 2.4));
+    CASAS.forEach(function (casa) {
+      bolas[casa.id] = [];
+      for (var i = 0; i < SECTORES; i++) {
+        var a = (i / SECTORES) * Math.PI * 2;
+        bolas[casa.id].push(pintarBola(casa, lado, Math.cos(a), Math.sin(a)));
+      }
+    });
+    corona = pintarCorona(Math.round(
+      Math.min(escala * 2.4, Math.min(ancho, alto) * 1.02)));
   }
 
   function sitio(casa, t) {
@@ -248,7 +271,11 @@
     var delante = puestos.filter(function (p) { return p.z >= 0; });
 
     function estampar(p) {
-      var b = bolas[p.casa.id];
+      var lote = bolas[p.casa.id];
+      if (!lote) return;
+      // Hacia dónde le da el sol a ESTE planeta, desde donde está ahora.
+      var ax = Math.atan2(alto / 2 - p.y, ancho / 2 - p.x);
+      var b = lote[((Math.round(ax / (Math.PI * 2) * SECTORES) % SECTORES) + SECTORES) % SECTORES];
       if (!b) return;
       var l = b.width * p.esc;
       ctx.globalAlpha = p.luz;
@@ -275,14 +302,19 @@
     // El sol también se aparta como rótulo.
     if (solTexto) solTexto.style.opacity = (1 - f).toFixed(2);
 
-    // Y los rótulos se van con su planeta.
-    if (enLista()) return;
-    puestos.forEach(function (p) {
+    // Y los rótulos se van con su planeta. En modo lista no se mueven —están
+    // en el flujo, debajo— pero el bucle NO se corta aquí: cortarlo mataba la
+    // animación entera en el teléfono.
+    if (!enLista()) puestos.forEach(function (p) {
       var e = etiquetas[CASAS.indexOf(p.casa)];
       if (!e) return;
       var suya = p.casa.id === abierta || (p.casa.id === ultima && focoVa === 0);
-      e.style.transform = 'translate(-50%,-50%) translate('
-        + (p.x + raton.ax * 14) + 'px,' + (p.y + raton.ay * 9) + 'px)';
+      /* Colgado del borde de la esfera y no de su centro: el radio cambia con
+         la pantalla y con la profundidad, así que un desplazamiento fijo deja
+         el nombre escrito dentro de la bola en cuanto la bola crece. */
+      var radio = (bolas[p.casa.id] ? bolas[p.casa.id][0].width : 0) * p.esc * 0.34;
+      e.style.transform = 'translate(-50%,0) translate('
+        + (p.x + raton.ax * 14) + 'px,' + (p.y + raton.ay * 9 + radio + 10) + 'px)';
       // La abierta se lleva su rótulo debajo, más grande; las otras se apagan.
       e.style.opacity = suya ? '1' : (( 0.5 + (p.z + 1) * 0.25) * (1 - f)).toFixed(2);
       e.style.zIndex = suya ? 4 : (p.z >= 0 ? 3 : 1);
