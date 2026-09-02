@@ -195,11 +195,12 @@ h2{font:600 12px var(--sans);letter-spacing:.16em;text-transform:uppercase;
 #constelacion .campo{position:absolute;inset:0}
 #constelacion canvas{z-index:1}
 #constelacion canvas{position:absolute;inset:0;width:100%;height:100%}
-/* El nombre del sol va DEBAJO del resplandor, no encima: escrito sobre el
-   núcleo blanco no se leía, y tapaba lo único que tiene que verse entero. */
-.sol{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);
-  width:min(280px,64vw);text-align:center;pointer-events:none;z-index:0;
-  display:flex;flex-direction:column;align-items:center;padding-top:min(150px,22vh)}
+/* El nombre del sol, anclado al pie del campo y no a una distancia del centro.
+   Colgado del centro caía justo por donde pasan las órbitas, y cada vez que un
+   planeta cruzaba se leía «AU...A», partido por una bola. Abajo del todo no lo
+   cruza nadie a ningún ancho, y funciona como el pie de la estrella. */
+.sol{position:absolute;left:50%;bottom:10px;transform:translateX(-50%);
+  width:auto;max-width:min(280px,64vw);text-align:center;pointer-events:none;z-index:0}
 /* Sin placa: la placa era un globito aparcado en medio del dibujo. Debajo
    del lienzo, el nombre se lee a través del resplandor y no compite. */
 .sol b{font:600 12px var(--sans);letter-spacing:.26em;color:var(--oroHi);
@@ -261,17 +262,27 @@ h2{font:600 12px var(--sans);letter-spacing:.16em;text-transform:uppercase;
 /* En el teléfono el sistema es más chico y las etiquetas se apretarían unas
    con otras: se deja el dibujo y los nombres, y la línea de cada casa vive en
    el pie. Un rótulo ilegible es peor que ninguno. */
+/* ══════════════════════════════════════════════════════════════════════════
+   EL TELÉFONO
+
+   Aquí llega casi todo el tráfico de Latinoamérica, así que esto no es «la
+   versión chica»: es la versión. Lo que cambia no es el tamaño de las cosas,
+   es qué se enseña y en qué orden.
+   ══════════════════════════════════════════════════════════════════════════ */
 @media (max-width:700px){
-  /* MODO LISTA. El sistema se queda de dibujo —gira igual— y los nombres bajan
-     a una lista de verdad, con lo que hace cada casa. `constelacion.js` lee
-     este --modo y deja de mover los rótulos. */
+  /* MODO LISTA. El sistema se queda de dibujo, girando igual, y los nombres
+     bajan a una lista de verdad con lo que hace cada uno. `constelacion.js`
+     lee este --modo y deja de mover los rótulos. */
   #constelacion{--modo:lista;height:auto;display:grid;
     grid-template-columns:1fr 1fr;gap:14px 18px;
     padding-left:clamp(18px,4vw,42px);padding-right:clamp(18px,4vw,42px)}
   /* El lienzo se sale del margen a los dos lados: el cielo es fondo, y un
      fondo con margen parece una estampilla pegada. */
+  /* El dibujo, más alto y a sangre: en el teléfono es lo primero que se ve
+     después del titular y tiene que verse ENTERO, no una franja recortada
+     entre la barra y la lista. */
   #constelacion .campo{position:relative;grid-column:1/-1;
-    height:clamp(280px,40vh,340px);
+    height:clamp(280px,40vh,340px);margin-bottom:2px;
     margin-left:calc(clamp(18px,4vw,42px) * -1);
     margin-right:calc(clamp(18px,4vw,42px) * -1)}
   .orbe{position:static;transform:none!important;opacity:1!important;
@@ -279,9 +290,12 @@ h2{font:600 12px var(--sans);letter-spacing:.16em;text-transform:uppercase;
     padding-top:11px;border-top:1px solid var(--linea2)}
   .orbe b{font-size:13px}
   .orbe span{display:block;opacity:1;transform:none;color:var(--humo)}
-  .sol{padding-top:min(126px,20vh)}
-  .sol span{font-size:11.5px}
-  .pieDelSistema{text-align:left;margin-top:18px}
+  .sol{bottom:6px}
+  .sol b{font-size:11px;letter-spacing:.22em}
+  /* El pie no repite la lista que tiene encima: en el teléfono se queda con
+     la única frase que la lista no dice. */
+  .pieDelSistema{text-align:left;margin-top:20px;font-size:14px;
+    padding-top:16px;border-top:1px solid var(--linea2)}
   /* La ficha entra en el flujo: en el teléfono no hay «al lado». */
   .ficha{position:static;grid-column:1/-1;width:auto;transform:none;
     margin-top:4px;padding:22px}
@@ -399,3 +413,76 @@ footer{position:relative;z-index:2;border-top:1px solid var(--linea2);
   padding-top:18px;border-top:1px solid var(--linea2)}
 .claro b{color:var(--bruma);font-weight:600}
 .cierre .claro{text-align:left}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   EL TELÉFONO, EN SERIO
+
+   Casi todo el tráfico de Latinoamérica entra por aquí, así que esto no es
+   la versión reducida: es la versión. Lo que se ajusta abajo salió de mirar
+   la página en un teléfono de verdad, pantalla por pantalla.
+   ══════════════════════════════════════════════════════════════════════════ */
+@media (max-width:700px){
+  /* Los botones, del ancho de la pantalla y en el orden en que se decide.
+     Apilados y de anchos distintos parecían dos piezas sueltas. */
+  .botones{flex-direction:column;align-items:stretch;gap:10px}
+  .botones .btn{width:100%;padding:16px 24px;font-size:16px}
+
+  /* El titular respira menos y la bajada se acorta: siete líneas de entrada
+     en una pantalla de 844 px se leen como un muro. */
+  .portada{padding-top:clamp(38px,11vw,64px);padding-bottom:26px}
+  .h1{font-size:clamp(36px,10.5vw,46px);line-height:1.04;margin-bottom:18px}
+  .bajada{font-size:16.5px;line-height:1.55;margin-bottom:26px}
+  .eti{font-size:11px;letter-spacing:.14em;margin-bottom:16px}
+
+  /* Las secciones, más juntas. En el teléfono el aire cuesta pantallas. */
+  section{padding-top:44px;padding-bottom:44px}
+  .tit{font-size:24px;line-height:1.2;margin-bottom:20px;max-width:none}
+
+  /* Las cifras vivas, que son la prueba: siguen siendo lo más grande, pero
+     dejan de partirse en dos columnas mal repartidas. */
+  #vivo{padding-top:40px;padding-bottom:40px;gap:34px}
+  .numero{font-size:clamp(46px,13vw,58px)}
+  .numero.mono{font-size:clamp(34px,10vw,44px)}
+  .cifra .s{font-size:14.5px;max-width:none}
+  .cifra .s .mono{font-size:11.5px}
+
+  /* El paso, con su número al lado del título y no colgando solo encima de
+     una raya: suelto parecía un resto de la sección anterior. */
+  .pasos{gap:26px}
+  .pasos li{display:grid;grid-template-columns:auto 1fr;column-gap:14px;
+    padding-top:14px;border-top:1px solid var(--linea2)}
+  .pasos li::before{padding-bottom:0;margin-bottom:0;border-bottom:0;
+    font-size:12px;line-height:1.7}
+  .pasos h3{grid-column:2;font-size:17px}
+  .pasos p{grid-column:2}
+
+  .verbos{gap:22px}
+  .verbos h3{font-size:18px;padding-top:14px}
+  .pruebas{gap:22px}
+
+  /* La fórmula, que es una cifra y no un párrafo: que no se parta nunca. */
+  .formula{font-size:clamp(15px,4.4vw,19px);padding:16px 12px;white-space:nowrap}
+
+  .historia{padding:22px;border-radius:var(--r)}
+  .historia .btn{width:100%}
+  .cierre{padding-top:56px;padding-bottom:56px}
+  .cierre .botones{align-items:stretch}
+  .claro{margin-top:26px;font-size:13px}
+
+  /* Nada que se toque baja de 44 px, que es lo que mide un pulgar. */
+  .nav a,.pie a,.orbe,.ficha .cerrar{min-height:44px}
+  /* El lockup medía 26 px de alto: es el enlace de vuelta a la portada y hay
+     que poder acertarle con el pulgar. Los enlaces dentro de un párrafo se
+     quedan como están, que ahí la regla del blanco de toque no aplica. */
+  .lock{padding-top:9px;padding-bottom:9px}
+  .pie a{display:flex;align-items:center}
+  .legal{gap:6px;font-size:12.5px}
+}
+
+/* Pantallas muy angostas: que la lista de casas no se apriete a dos columnas
+   de 140 px, donde cada línea entra en tres renglones. */
+@media (max-width:430px){
+  #constelacion{grid-template-columns:1fr;gap:0}
+  .orbe{padding-top:13px;padding-bottom:13px}
+  .orbe span{font-size:13px}
+}

@@ -84,7 +84,12 @@
   CASAS.forEach(function (casa, i) { casa.v = VUELTA; casa.f = i / CASAS.length; });
 
 
-  var APLASTE = 0.30;      // la órbita vista de tres cuartos: eso es lo que da el volumen
+  /* Cuánto se aplasta la órbita. En una pantalla ancha, 0,30 es una vista de
+     tres cuartos y de ahí sale el volumen. En uno de 390 px eso deja el
+     sistema en una franja de cien píxeles con un descampado debajo: en
+     vertical sobra sitio y en horizontal no hay. Así que en el teléfono la
+     elipse se abre y el sistema se mira más de frente. */
+  var APLASTE = 0.30;
   var lienzo, ctx, ancho, alto, escala, rafId = 0, t0 = 0;
   var SECTORES = 8;        // ocho ángulos de luz por casa, elegidos por posición
   var bolas = {};          // cada esfera pintada UNA vez por sector y luego estampada
@@ -193,8 +198,9 @@
        una pantalla ancha, apelotonado en el centro y con los rótulos unos
        encima de otros. Se mide por los dos ejes, cada uno con lo que de
        verdad ocupa, y manda el que se quede corto. */
+    APLASTE = ancho < 560 ? 0.58 : (ancho < 900 ? 0.42 : 0.30);
     var FUERA = CASAS[CASAS.length - 1].r;
-    escala = Math.min(ancho * 0.40 / FUERA, (alto * 0.42) / (FUERA * APLASTE));
+    escala = Math.min(ancho * 0.42 / FUERA, (alto * 0.44) / (FUERA * APLASTE));
     /* Las esferas, más chicas que la primera versión: a 0,44 la de Veta
        Wallet se comía al sol y el sistema parecía un racimo. */
     var lado = Math.round(escala * 0.30);
