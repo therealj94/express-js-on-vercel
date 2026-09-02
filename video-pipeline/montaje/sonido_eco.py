@@ -139,21 +139,26 @@ if __name__ == "__main__":
 
     # Reordenado sobre la estructura nueva: el oro abre, las funciones son tres
     # golpes y no siete, y el clímax es el comprobante.
+    # Colocados sobre pelicula2_montaje.json (material fotografico), no sobre
+    # la version dibujada: el oro abre, el polvo cae, el telefono se enciende,
+    # la yema aprieta, la mano recibe, la tarjeta entra, las manos se pasan el
+    # telefono, la cara lee, la luz viaja, la gota, el logo, el cierre.
     ev = [
-        (0.9, moneda, 1.0),          # el oro entra
-        (3.6, moneda, 0.45),         # la luz lo cruza
-        (7.2, impacto, 0.7),         # se parte
-        (8.0, polvo, 0.8),           # las 55 marcas
-        (12.2, polvo, 1.0),          # el polvo busca la marca
-        (14.8, impacto, 1.0),        # el logo se cierra
-        (19.9, polvo, 0.5),          # se rehace en la app
-        (20.7, impacto, 0.45),       # el halo asienta
-        (24.1, clic, 0.9),
-        (27.7, clic, 0.9),
-        (31.3, clic, 0.9),
-        (28.4, barrido, 1.0),        # el lector sobre el QR
-        (35.0, sello, 1.0),          # el comprobante confirma
-        (41.0, impacto, 0.85),       # el cierre
+        (0.6,  moneda, 1.0),         # 01 el oro entra en la luz
+        (2.4,  moneda, 0.4),         # la luz cruza la superficie
+        (4.4,  polvo, 0.9),          # 02 el polvo de oro cae por el haz
+        (8.4,  moneda, 0.7),         # 03 el oro liquido ondula
+        (12.3, impacto, 0.55),       # 04 la pantalla se enciende sobre la pizarra
+        (16.2, clic, 1.0),           # 05 la yema toca el cristal
+        (19.9, polvo, 0.5),          # 06 la mano entra en la luz
+        (23.8, clic, 0.9),           # 07 la tarjeta entra en el datafono
+        (24.6, impacto, 0.35),       # ...y asienta
+        (27.6, polvo, 0.45),         # 08 las manos se encuentran
+        (31.4, impacto, 0.5),        # 09 la cara: algo aparece en la pantalla
+        (35.0, barrido, 1.0),        # 10 la luz viaja
+        (38.9, moneda, 0.6),         # 11 la gota de oro
+        (39.4, impacto, 0.8),        # el logo se forma
+        (42.6, impacto, 1.0),        # 12 el cierre
     ]
     y = pista(dur, ev)
     sf.write(sal, np.column_stack([y, y]), SR)
