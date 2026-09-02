@@ -197,7 +197,15 @@ class Recado:
     def con_lista(self, _para, texto, _boton, filas):
         if texto:
             self.textos.append(texto)
-        self.botones = [{'texto': t, 'id': i} for i, t, _d in (filas or [])]
+        # Las filas del guion son `(id, titulo)` y a veces `(id, titulo,
+        # descripcion)` —WhatsApp usa las tres—. Esto exigia tres siempre y
+        # reventaba con dos: ValueError, «Se me trabo algo», en el PRIMER
+        # recado de verdad que llego por el buzon (2-sep, la pregunta del
+        # precio). Nunca se vio antes porque el buzon no existia y ningun
+        # recado llego nunca al nodo: la prueba de esta clase mockeaba
+        # `atender` y jamas paso por aqui con una lista real.
+        self.botones = [{'texto': f[1], 'id': f[0]}
+                        for f in (filas or []) if len(f) >= 2]
 
     def escribiendo(self, _para):
         pass

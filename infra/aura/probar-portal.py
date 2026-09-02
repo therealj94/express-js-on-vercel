@@ -226,5 +226,37 @@ class HABLANDODEVERDAD(unittest.TestCase):
         self.assertFalse(llamado, 'gastó la GPU para decir que no')
 
 
+class RecadoConLista(unittest.TestCase):
+    """El relevo falso de la web tiene que aguantar las MISMAS filas que le
+    manda el guion a WhatsApp: `(id, titulo)` y `(id, titulo, descripcion)`.
+    Exigia tres y revento con dos en el primer recado real del buzon."""
+
+    def test_filas_de_dos_como_las_del_guion(self):
+        r = portal.Recado()
+        r.con_lista('x', 'Ver opciones', 'Ver', [('of:negocio', 'Tengo un negocio'),
+                                                ('of:otro', 'Otra cosa')])
+        self.assertEqual(r.botones, [{'texto': 'Tengo un negocio', 'id': 'of:negocio'},
+                                     {'texto': 'Otra cosa', 'id': 'of:otro'}])
+        self.assertEqual(r.como_json()['texto'], 'Ver opciones')
+
+    def test_filas_de_tres_como_las_de_whatsapp(self):
+        r = portal.Recado()
+        r.con_lista('x', 't', 'b', [('empezar', 'Abrir mi billetera', 'en un minuto')])
+        self.assertEqual(r.botones, [{'texto': 'Abrir mi billetera', 'id': 'empezar'}])
+
+    def test_el_nodo_del_precio_de_verdad_no_revienta(self):
+        """Con el guion REAL: la respuesta del precio trae lista. Antes esto
+        daba ValueError y la persona leia «Se me trabo algo»."""
+        import guion
+        n = guion.nodo('precio', 'es', 'Ana', 'HN', 'Un ORIGEN esta en $2.56.')
+        if not n.get('lista'):
+            self.skipTest('el nodo precio ya no trae lista')
+        boton, filas = n['lista']
+        r = portal.Recado()
+        r.con_lista('x', n['texto'], boton, filas)
+        self.assertTrue(r.botones)
+        self.assertIn('2.56', r.como_json()['texto'])
+
+
 if __name__ == '__main__':
     unittest.main(verbosity=2)
