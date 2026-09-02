@@ -216,6 +216,55 @@ def rotulo(im: Image.Image, texto: str, rel: float, dur: float, chico=False,
         y += cuerpo * 1.35
 
 
+def burbuja(im: Image.Image, texto: str, rel: float, dur: float, foto=None,
+            alto=0.30):
+    """Una burbuja de mensaje sobreimpresa, no dentro de la pantalla.
+
+    En el plano final el teléfono se ve de espaldas y muy desenfocado: pegarle
+    texto nítido dentro se vería pegado. Sobreimpresa se lee, respeta el idioma
+    del resto de rótulos, y sigue diciendo lo que dice una burbuja: que ella
+    está leyendo un mensaje de su madre.
+
+    Entra como los rótulos —por máscara, desde la línea base— y se va por
+    opacidad. Si lleva `foto`, va encima del texto, con las esquinas redondeadas."""
+    e = salida(float(np.clip(rel / 0.45, 0, 1)), 4.0)
+    fuera = salida(float(np.clip((dur - rel) / 0.4, 0, 1)), 3.0)
+    a = e * fuera
+    if a <= 0.02:
+        return
+    d = ImageDraw.Draw(im, "RGBA")
+    f = ImageFont.truetype(F_ROT, 42)
+    pad = 34
+    an = int(d.textlength(texto, font=f))
+    ancho = min(an + pad * 2, int(W * 0.80))
+    alto_foto = 0
+    if foto is not None:
+        af = int(ancho - pad * 1.2)
+        foto = foto.resize((af, int(foto.height * af / foto.width)), Image.LANCZOS)
+        alto_foto = foto.height + 22
+    altura = alto_foto + 92
+    x = int(W * 0.09)
+    y = int(H * alto)
+    capa = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+    dc = ImageDraw.Draw(capa, "RGBA")
+    dc.rounded_rectangle([x, y, x + ancho, y + altura], 30,
+                         fill=(38, 40, 45, int(238 * a)))
+    if foto is not None:
+        m = Image.new("L", foto.size, 0)
+        ImageDraw.Draw(m).rounded_rectangle([0, 0, foto.width - 1, foto.height - 1],
+                                            18, fill=int(255 * a))
+        capa.paste(foto.convert("RGB"), (x + int(pad * 0.6), y + 16), m)
+    dc.text((x + pad, y + alto_foto + 26), texto, font=f,
+            fill=TEXTO + (int(255 * a),))
+    # Máscara: la burbuja crece desde su base, como los rótulos.
+    mask = Image.new("L", (W, H), 0)
+    ImageDraw.Draw(mask).rectangle([0, y + altura - (altura + 20) * e, W, y + altura + 20],
+                                   fill=255)
+    capa.putalpha(Image.fromarray(
+        np.minimum(np.array(capa.split()[3]), np.array(mask))))
+    im.alpha_composite(capa)
+
+
 def logo(im: Image.Image, rel: float):
     """El logo de Orden Global formándose sobre la gota de oro, con sombra larga."""
     a = salida(np.clip(rel / 1.4, 0, 1), 3.5)
@@ -228,6 +277,15 @@ def logo(im: Image.Image, rel: float):
     pos = ((W - lg.width) // 2, int(H * 0.30) - lg.height // 2)
     sombra_larga(im, lg, pos, radio=70, opacidad=0.35 * a, dy=30)
     im.alpha_composite(lg, pos)
+
+
+_fotos: dict = {}
+
+
+def _foto(ruta: str) -> Image.Image:
+    if ruta not in _fotos:
+        _fotos[ruta] = Image.open(ruta).convert("RGB")
+    return _fotos[ruta]
 
 
 def main():
@@ -291,6 +349,12 @@ def main():
                 logo(im, t - b["t"] - 0.6)
             if b.get("familia"):
                 familia(im, t - b["t"] - 0.5)
+            for bu in b.get("burbujas", []):
+                rel = t - bu["t"]
+                if 0 <= rel <= bu["dur"]:
+                    foto = _foto(bu["foto"]) if bu.get("foto") else None
+                    burbuja(im, bu["texto"], rel, bu["dur"], foto,
+                            bu.get("alto", 0.30))
             for r in b.get("rotulos", []):
                 rel = t - r["t"]
                 if 0 <= rel <= r["dur"]:
