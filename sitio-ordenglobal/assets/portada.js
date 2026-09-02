@@ -4,9 +4,21 @@
 (function(){
   var b = document.querySelector('.menuBtn'), n = document.getElementById('nav');
   if (!b || !n) return;
-  // El botón de crear cuenta entra al menú en el teléfono: en la barra no cabe.
+  /* El botón de crear cuenta entra al menú SOLO en el teléfono: en la barra
+     no cabe. Moviéndolo siempre, en escritorio quedaba dentro de `.nav` y la
+     regla `.nav a{color:var(--bruma)}` le ganaba por especificidad al oro del
+     botón: se veía el texto en celeste sobre el dorado. Ahora va y vuelve con
+     el ancho de la pantalla. */
   var cta = document.querySelector('.barra .btn');
-  if (cta) n.appendChild(cta);
+  var barra = document.querySelector('.barra .env');
+  var angosto = matchMedia('(max-width:860px)');
+  function acomodar() {
+    if (!cta) return;
+    if (angosto.matches) { if (cta.parentNode !== n) n.appendChild(cta); }
+    else if (cta.parentNode !== barra) barra.appendChild(cta);
+  }
+  acomodar();
+  angosto.addEventListener('change', acomodar);
   function poner(abierto){
     b.setAttribute('aria-expanded', String(abierto));
     n.classList.toggle('abierto', abierto);

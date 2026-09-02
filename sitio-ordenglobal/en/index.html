@@ -3,14 +3,14 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Orden Global · Your money, measured in gold</title>
+<title>Orden Global, Your money, measured in gold</title>
 <meta name="description" content="A financial ecosystem of its own: a chain, a currency that follows the price of gold, and seven products that work as one. Every movement is written down and anyone can check it.">
 <link rel="canonical" href="https://www.ordenglobal.org/en/">
 <link rel="alternate" hreflang="es" href="https://www.ordenglobal.org/">
 <link rel="alternate" hreflang="en" href="https://www.ordenglobal.org/en/">
 <link rel="alternate" hreflang="x-default" href="https://www.ordenglobal.org/">
 <meta property="og:type" content="website">
-<meta property="og:title" content="Orden Global · Your money, measured in gold">
+<meta property="og:title" content="Orden Global, Your money, measured in gold">
 <meta property="og:description" content="A chain of our own, a currency that follows gold and seven products that work as one. Every movement can be checked.">
 <meta property="og:image" content="https://www.ordenglobal.org/assets/social-en.png">
 <meta property="og:url" content="https://www.ordenglobal.org/en/">
@@ -21,7 +21,7 @@
 <meta name="theme-color" content="#07091A">
 <link rel="icon" href="/assets/favicon-og.png">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700&family=Archivo:wght@400;600;700&family=JetBrains+Mono:wght@400;600&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,200;0,9..144,300;0,9..144,400;0,9..144,600;1,9..144,300&family=Manrope:wght@400;500;600;700&family=Cinzel:wght@700&family=JetBrains+Mono:wght@400;500&display=swap">
 <link rel="stylesheet" href="/assets/portada.css">
 </head>
 <body>
@@ -59,8 +59,8 @@
 <main>
 
 <section class="portada env">
-  <p class="eti">Honduras · Central America · since 2026</p>
-  <h1 class="h1">Your money, measured in <em>gold</em>.</h1>
+  <p class="eti">Born in Latin America, built for anywhere</p>
+  <h1 class="h1">Your money, measured in gold.</h1>
   <p class="bajada">Not an app: a complete financial system, built by us. A chain of our own, a currency that follows gold, and seven products that work as one so that saving, sending and getting paid costs what a message costs.</p>
   <div class="botones">
     <a class="btn btn-oro" href="https://app.vetawallet.com">Open your account</a>
@@ -75,23 +75,108 @@
       <canvas aria-hidden="true"></canvas>
       <div class="sol">
         <b>AU-RA</b>
-        <span>The intelligence of the house. Answers in English or Spanish, with the live price.</span>
-      </div>
+            </div>
     </div>
-    <a class="orbe" data-casa="wallet" href="https://app.vetawallet.com">
-      <b>Veta Wallet</b><span>Save, send, get paid</span></a>
-    <a class="orbe" data-casa="chat" href="https://app.vetawallet.com">
-      <b>PULSE2CHAT</b><span>Encrypted chat, with money inside</span></a>
-    <a class="orbe" data-casa="gid" href="https://app.vetawallet.com">
-      <b>Genesis ID</b><span>Your identity, once</span></a>
-    <a class="orbe" data-casa="pay" href="https://app.vetawallet.com">
-      <b>MyTokenPay</b><span>Get paid in your shop</span></a>
-    <a class="orbe" data-casa="scan" href="https://ordenscan.com" target="_blank" rel="noopener">
-      <b>OrdenScan</b><span>Look at the chain</span></a>
-    <a class="orbe" data-casa="ordenex" href="https://ordenexchange.link" target="_blank" rel="noopener">
-      <b>Ordenex</b><span>Swap between currencies</span></a>
-    <a class="orbe" data-casa="aucorp" href="https://main.d2e55u6ls6v9xt.amplifyapp.com/banca/">
-      <b>AuCorp</b><span>Accounts in local currency</span></a>
+    <button class="orbe" data-casa="wallet" aria-expanded="false" aria-controls="ficha-wallet"><b>Veta Wallet</b><span>Your account: save, send and get paid from your phone</span></button>
+    <button class="orbe" data-casa="chat" aria-expanded="false" aria-controls="ficha-chat"><b>PULSE2CHAT</b><span>Talk and pay in the same place</span></button>
+    <button class="orbe" data-casa="gid" aria-expanded="false" aria-controls="ficha-gid"><b>Genesis ID</b><span>Verify once, and never again in any app</span></button>
+    <button class="orbe" data-casa="pay" aria-expanded="false" aria-controls="ficha-pay"><b>MyTokenPay</b><span>Your shop takes payments with a QR, no card reader</span></button>
+    <button class="orbe" data-casa="scan" aria-expanded="false" aria-controls="ficha-scan"><b>OrdenScan</b><span>Look up any transaction and check that it happened</span></button>
+    <button class="orbe" data-casa="ordenex" aria-expanded="false" aria-controls="ficha-ordenex"><b>Ordenex</b><span>Move from ORIGEN to AUKA or AGKA, with no middleman</span></button>
+    <button class="orbe" data-casa="aucorp" aria-expanded="false" aria-controls="ficha-aucorp"><b>AuCorp</b><span>The way in and out of the currency you already use</span></button>
+      <article class="ficha" id="ficha-wallet" data-casa="wallet" hidden>
+        <button class="cerrar" type="button" aria-label="Close">×</button>
+        <p class="deQuien">Part of Orden Global</p>
+        <h3 tabindex="-1">Veta Wallet</h3>
+        <p class="quees">The account where your money lives. You open it with your email, and what you hold is measured in ORIGEN, which follows the gold price instead of your country’s currency.</p>
+        <p class="comoRotulo">How you use it</p>
+        <ul class="usos">
+          <li>You save without your country’s inflation eating it.</li>
+          <li>You send to a contact or to another country in three taps, and it lands in seconds.</li>
+          <li>You get paid with a code that already carries the amount.</li>
+          <li>Every transaction leaves you a receipt with its number on the chain.</li>
+        </ul>
+        <a class="btn btn-oro" href="https://app.vetawallet.com">Open Veta Wallet</a>
+      </article>
+      <article class="ficha" id="ficha-chat" data-casa="chat" hidden>
+        <button class="cerrar" type="button" aria-label="Close">×</button>
+        <p class="deQuien">Part of Orden Global</p>
+        <h3 tabindex="-1">PULSE2CHAT</h3>
+        <p class="quees">End-to-end encrypted chat, only with verified people, where money travels inside the conversation.</p>
+        <p class="comoRotulo">How you use it</p>
+        <ul class="usos">
+          <li>You ask someone for what they owe you and they send it right there.</li>
+          <li>The receipt stays in the conversation, checked against the chain, so nobody can invent a payment.</li>
+          <li>Nobody can read what you write, not even us: the key lives on your phone.</li>
+          <li>Groups, voice notes, photos and files, all encrypted the same way.</li>
+        </ul>
+        <a class="btn btn-oro" href="https://app.vetawallet.com">Open the chat</a>
+      </article>
+      <article class="ficha" id="ficha-gid" data-casa="gid" hidden>
+        <button class="cerrar" type="button" aria-label="Close">×</button>
+        <p class="deQuien">Part of Orden Global</p>
+        <h3 tabindex="-1">Genesis ID</h3>
+        <p class="quees">Your verified identity across the ecosystem. Document and face, properly checked: the document is read, liveness is proven, and names are matched against international sanctions lists.</p>
+        <p class="comoRotulo">How you use it</p>
+        <ul class="usos">
+          <li>You do it once and it works everywhere: no paperwork twice.</li>
+          <li>It is what opens the chat, the local-currency accounts and the exchange.</li>
+          <li>You end up with a credential and a code that anyone can check without seeing your data.</li>
+        </ul>
+        <a class="btn btn-oro" href="https://app.vetawallet.com">Verify yourself</a>
+      </article>
+      <article class="ficha" id="ficha-pay" data-casa="pay" hidden>
+        <button class="cerrar" type="button" aria-label="Close">×</button>
+        <p class="deQuien">Part of Orden Global</p>
+        <h3 tabindex="-1">MyTokenPay</h3>
+        <p class="quees">Payments for whoever sells: a corner shop, a workshop, someone working for themselves.</p>
+        <p class="comoRotulo">How you use it</p>
+        <ul class="usos">
+          <li>You generate a code with the amount and the customer scans it.</li>
+          <li>It arrives instantly: no card reader to rent, no two-day wait.</li>
+          <li>Every payment leaves a receipt, so you keep the books without keeping a notebook.</li>
+        </ul>
+        <a class="btn btn-oro" href="https://app.vetawallet.com">See how it works</a>
+      </article>
+      <article class="ficha" id="ficha-scan" data-casa="scan" hidden>
+        <button class="cerrar" type="button" aria-label="Close">×</button>
+        <p class="deQuien">Part of Orden Global</p>
+        <h3 tabindex="-1">OrdenScan</h3>
+        <p class="quees">The public explorer of the chain. No account and no permission: anyone in the world can read it.</p>
+        <p class="comoRotulo">How you use it</p>
+        <ul class="usos">
+          <li>You paste your transaction number and see when it landed, in which block and where it went.</li>
+          <li>It proves to someone that you paid, without depending on our word.</li>
+          <li>The contract of every currency and who signs the blocks are both in plain sight.</li>
+        </ul>
+        <a class="btn btn-oro" href="https://ordenscan.com" target="_blank" rel="noopener">Open the explorer</a>
+      </article>
+      <article class="ficha" id="ficha-ordenex" data-casa="ordenex" hidden>
+        <button class="cerrar" type="button" aria-label="Close">×</button>
+        <p class="deQuien">Part of Orden Global</p>
+        <h3 tabindex="-1">Ordenex</h3>
+        <p class="quees">The exchange of the ecosystem: from ORIGEN to AUKA, to AGKA, or back.</p>
+        <p class="comoRotulo">How you use it</p>
+        <ul class="usos">
+          <li>You see one price, with its source and the time it was read.</li>
+          <li>Before you confirm we tell you how far your order sits from the gold reference, and if it sits too far it does not go through.</li>
+          <li>AUKA follows the ounce of gold and AGKA the ounce of silver.</li>
+        </ul>
+        <a class="btn btn-oro" href="https://ordenexchange.link" target="_blank" rel="noopener">Open Ordenex</a>
+      </article>
+      <article class="ficha" id="ficha-aucorp" data-casa="aucorp" hidden>
+        <button class="cerrar" type="button" aria-label="Close">×</button>
+        <p class="deQuien">Part of Orden Global</p>
+        <h3 tabindex="-1">AuCorp</h3>
+        <p class="quees">The bridge to everyday money: accounts in local currencies, with double-entry bookkeeping behind them.</p>
+        <p class="comoRotulo">How you use it</p>
+        <ul class="usos">
+          <li>A receipt for every movement, to print or to keep.</li>
+          <li>A monthly statement that balances, for your accountant or your bank.</li>
+          <li>You get in with the same Genesis ID: no other password to remember.</li>
+        </ul>
+        <a class="btn btn-oro" href="https://app.vetawallet.com">Open from your account</a>
+      </article>
   </div>
   <p class="pieDelSistema env">Seven products and one assistant, with one account and one identity check. Tap any of them to see what it does and how it is used. At the centre, AU-RA: the assistant that explains how things work and leaves the payment ready for you to sign.</p>
 </section>
@@ -99,14 +184,14 @@
 <section class="env" id="vivo">
   <div class="cifra">
     <p class="k">1 ORIGEN, right now</p>
-    <p class="numero" id="precio">—</p>
+    <p class="numero" id="precio">, </p>
     <p class="s">One gram of gold divided by 55. The formula is public: with today’s gold price and a calculator, anyone reaches the same number. <span id="oro" class="mono"></span></p>
   </div>
   <div class="cifra">
     <p class="k">The chain, right now</p>
-    <p class="numero mono" id="bloque">—</p>
-    <p class="s">Block <span id="bloque2" class="mono">—</span>, one every ten seconds, signed like this:</p>
-    <p class="s"><span id="hash" class="mono">—</span></p>
+    <p class="numero mono" id="bloque">, </p>
+    <p class="s">Block <span id="bloque2" class="mono">, </span>, one every ten seconds, signed like this:</p>
+    <p class="s"><span id="hash" class="mono">, </span></p>
     <p class="s">Look it up yourself at <a href="https://ordenscan.com" target="_blank" rel="noopener">ordenscan.com</a>. It is the proof, not the promise.</p>
   </div>
 </section>
@@ -144,7 +229,7 @@
       <p class="honesto"><b>Said plainly:</b> ORIGEN follows the price of gold. It is not a receipt for stored metal: it is a reference anyone can recompute with a calculator. We promise no future prices and no returns.</p>
     </div>
     <ul class="monedas">
-      <li><img src="/assets/origen.jpg" alt=""><div><b>ORIGEN</b><span>the chain’s currency · follows gold</span></div></li>
+      <li><img src="/assets/origen.jpg" alt=""><div><b>ORIGEN</b><span>the chain’s currency, follows gold</span></div></li>
       <li><img src="/assets/auka.jpg" alt=""><div><b>AUKA</b><span>referenced to the ounce of gold</span></div></li>
       <li><img src="/assets/agka.jpg" alt=""><div><b>AGKA</b><span>referenced to the ounce of silver</span></div></li>
       <li><img src="/assets/ondk.jpg" alt=""><div><b>ONDK</b><span>the Board’s currency</span></div></li>
@@ -210,7 +295,7 @@
     <a class="btn btn-oro" href="https://app.vetawallet.com">Open your account</a>
     <a class="btn btn-linea" href="https://app.vetawallet.com/instalar">Download for Android</a>
   </div>
-  <p class="claro">What to know before you open an account: Veta Wallet is a <b>custodial wallet</b> —we hold your key, encrypted, for you—, <b>we are not a bank</b>, and your balances are <b>not covered by any deposit insurance</b>. Gold goes up, but it also goes down: ORIGEN goes down with it. It is all in the <a href="https://app.vetawallet.com/terminos" target="_blank" rel="noopener">terms</a>, written to be understood.</p>
+  <p class="claro">What to know before you open an account: Veta Wallet is a <b>custodial wallet</b>, which means we hold your key, encrypted, for you. <b>We are not a bank</b>, and your balances are <b>not covered by any deposit insurance</b>. Gold goes up, but it also goes down: ORIGEN goes down with it. It is all in the <a href="https://app.vetawallet.com/terminos" target="_blank" rel="noopener">terms</a>, written to be understood.</p>
 </section>
 
 </main>
@@ -222,7 +307,7 @@
       <div><h4>The products</h4><a href="https://app.vetawallet.com">Veta Wallet</a><a href="https://app.vetawallet.com/instalar">The Android app</a><a href="https://ordenscan.com" target="_blank" rel="noopener">OrdenScan</a><a href="https://ordenexchange.link" target="_blank" rel="noopener">Ordenex</a><a href="https://wa.me/50432136457" target="_blank" rel="noopener">AU-RA on WhatsApp</a></div>
       <div><h4>Company</h4><a href="/historia/">The story</a><a href="mailto:info@ordenglobal.org">info@ordenglobal.org</a><a href="https://app.vetawallet.com/privacidad">Privacy</a><a href="https://app.vetawallet.com/terminos">Terms</a></div>
     </div>
-    <div class="legal"><span>© 2026 Orden Global Corp · Roatán, Honduras</span><span>We never ask for your password, backup phrase or twelve words.</span></div>
+    <div class="legal"><span>© 2026 Orden Global Corp, Roatán, Honduras</span><span>We never ask for your password, backup phrase or twelve words.</span></div>
   </div>
 </footer>
 

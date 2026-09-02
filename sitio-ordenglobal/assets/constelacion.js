@@ -46,22 +46,43 @@
      las órbitas: de dentro hacia fuera. `r` es el radio en tanto por uno del
      lado corto, `v` la vuelta en segundos y `f` la fase de arranque, para que
      no salgan todas alineadas como un desfile. */
+  /* ── POR QUÉ GIRAN TODAS AL MISMO PASO ────────────────────────────────────
+     La primera versión le dio a cada casa su propia vuelta (42 s, 58, 72…) y
+     su propia fase, buscando que no salieran «alineadas como un desfile». El
+     resultado en pantalla fue el contrario del que se buscaba: con periodos
+     distintos las casas se alcanzan unas a otras, y cada pocos segundos tres
+     o cuatro se amontonan en el mismo rincón con los rótulos encima. José lo
+     vio en el teléfono: «los planetas organiza, se vean mejor ordenados
+     orbitando».
+
+     Ahora el sistema gira RÍGIDO: una sola vuelta para todas y las fases
+     repartidas en séptimos exactos. Nunca se juntan, la separación entre dos
+     vecinas es siempre la misma, y aun así el conjunto se mueve —y la
+     inclinación sigue metiendo a unas por detrás del sol y trayendo a otras
+     al frente, que es de donde sale el volumen.
+
+     Esto es un mapa antes que una simulación. Un mapa que se lee es mejor
+     que una física que se amontona. */
+  var VUELTA = 168;        // segundos que tarda el sistema en dar la vuelta
   var CASAS = [
-    { id: 'wallet',  r: 0.36, v: 42, f: 0.000, tam: 1.00,
+    { id: 'wallet',  r: 0.40, tam: 0.94,
       grad: ['#F8EFCF', '#DFC078', '#96793F'], halo: '#EAD79C' },
-    { id: 'chat',    r: 0.42, v: 58, f: 0.382, tam: 0.74,
+    { id: 'chat',    r: 0.50, tam: 0.76,
       grad: ['#FBE0D4', '#E0937A', '#8A4A38'], halo: '#E0937A' },
-    { id: 'gid',     r: 0.53, v: 72, f: 0.764, tam: 0.72,
+    { id: 'gid',     r: 0.60, tam: 0.74,
       grad: ['#D6EBE2', '#63A493', '#123B39'], halo: '#7FD8C4' },
-    { id: 'pay',     r: 0.64, v: 88, f: 0.146, tam: 0.70,
+    { id: 'pay',     r: 0.70, tam: 0.72,
       grad: ['#D8F7FF', '#5FC6EA', '#453398'], halo: '#5FC6EA' },
-    { id: 'scan',    r: 0.75, v: 104, f: 0.528, tam: 0.62,
+    { id: 'scan',    r: 0.80, tam: 0.66,
       grad: ['#D6F3EC', '#74E6C8', '#1B5A50'], halo: '#74E6C8' },
-    { id: 'ordenex', r: 0.86, v: 122, f: 0.910, tam: 0.60,
+    { id: 'ordenex', r: 0.90, tam: 0.64,
       grad: ['#DCD4F2', '#8D7EC9', '#372B63'], halo: '#A99CDE' },
-    { id: 'aucorp',  r: 0.97, v: 142, f: 0.292, tam: 0.58,
+    { id: 'aucorp',  r: 1.00, tam: 0.62,
       grad: ['#E8E0C8', '#A5936A', '#463B24'], halo: '#CBBB8C' },
   ];
+  // Las fases, en séptimos exactos y sin tocar a mano.
+  CASAS.forEach(function (casa, i) { casa.v = VUELTA; casa.f = i / CASAS.length; });
+
 
   var APLASTE = 0.30;      // la órbita vista de tres cuartos: eso es lo que da el volumen
   var lienzo, ctx, ancho, alto, escala, rafId = 0, t0 = 0;

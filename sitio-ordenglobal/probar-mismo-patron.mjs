@@ -53,9 +53,18 @@ for (const nombre of ['--oro', '--oroLt', '--oroHi', '--crema', '--r', '--r2']) 
   ok(!!m && css.includes(`${nombre}:${m[1]}`), `${nombre} vale lo mismo que en la billetera`,
      m ? `la billetera dice ${nombre}:${m[1]}` : 'no está en la billetera');
 }
-ok(css.includes("--serif:'Cinzel'") && css.includes("--sans:'Archivo'")
-   && css.includes("--mono:'JetBrains Mono'"),
-   'la misma pila de letras: Cinzel, Archivo, JetBrains Mono');
+/* Cinzel es una capital lapidaria: sirve para el lockup y para nada más. De
+   texto se leía como el serif dorado sobre negro que usa todo el mundo para
+   aparentar lujo, y José lo cazó mirando el teléfono. La letra editorial de
+   la casa es la de /historia/, así que portada e historia comparten cara. */
+const historia = leer('sitio-ordenglobal/historia/index.html');
+ok(css.includes("--marca:'Cinzel'"), 'Cinzel se queda SOLO en el lockup');
+ok(css.includes("--serif:'Fraunces'") && historia.includes("--serif:'Fraunces'"),
+   'la portada y la historia usan la misma cara editorial');
+ok(css.includes("--sans:'Manrope'") && historia.includes("--sans:'Manrope'"),
+   'y el mismo texto');
+ok(!/\.h1[^}]*em\{[^}]*color/.test(css),
+   'el titular va de un solo color, sin una palabra pintada aparte');
 ok(/\.btn\{[^}]*border-radius:100px/.test(css.replace(/\s+/g, ' ')),
    'los botones siguen siendo píldoras de 100 px');
 
