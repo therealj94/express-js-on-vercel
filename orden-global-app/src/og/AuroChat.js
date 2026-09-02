@@ -33,6 +33,7 @@ import { CameraView, useCameraPermissions } from 'expo-camera';
 import * as ImagePicker from 'expo-image-picker';
 import * as DocumentPicker from 'expo-document-picker';
 import * as Linking from 'expo-linking';
+import { useAudioPlayer } from 'expo-audio';
 import Constants from 'expo-constants';
 import { C, G } from '../theme';
 import { Header, Button3D, Avatar, useAccount, useToast, hap } from '../ui';
@@ -117,6 +118,8 @@ const TXT = {
     enviadas: 'Esperando respuesta',
     enviadaCorto: 'Enviada',
     enClaro: 'Viajó sin cifrar',
+    ultVoz: 'Nota de voz', ultBorrado: 'Se borró este mensaje', borrado: 'Este mensaje se borró',
+    noAbreAdj: 'No se pudo abrir el archivo en este teléfono.',
     cancelar: 'Cancelar',
     sinRedT: 'Sin conexión',
     sinRedConvos: 'No pudimos traer tus conversaciones. Revisa tu conexión; tus chats siguen ahí.',
@@ -195,6 +198,8 @@ const TXT = {
     enviadas: 'Waiting for an answer',
     enviadaCorto: 'Sent',
     enClaro: 'Traveled unencrypted',
+    ultVoz: 'Voice note', ultBorrado: 'This message was deleted', borrado: 'This message was deleted',
+    noAbreAdj: 'Could not open the file on this phone.',
     cancelar: 'Cancel',
     sinRedT: 'No connection',
     sinRedConvos: 'We could not fetch your conversations. Check your connection; your chats are still there.',
@@ -325,6 +330,34 @@ function Adjunto({ m, t, alTocar }) {
   return (
     <Pressable onPress={() => alTocar(uri)}>
       <Image source={{ uri }} style={st.foto} resizeMode="cover" />
+    </Pressable>
+  );
+}
+
+/* LA NOTA DE VOZ, DESCIFRADA Y CON REPRODUCTOR. Llegaba como burbuja vacía con
+   el sello «viajó sin cifrar»: el tipo `voz` no entraba en la lista de
+   adjuntos y el mensaje no traía texto. `expo-audio` ya estaba en la app. */
+function NotaDeVoz({ m, mio, t }) {
+  const [uri, setUri] = useState(null);
+  const [roto, setRoto] = useState(false);
+  useEffect(() => {
+    let vivo = true;
+    M.archivoAbierto(m.archivo, m.llaveArchivo, m.ivArchivo, m.mime || 'audio/m4a')
+      .then((u) => { if (!vivo) return; if (u) setUri(u); else setRoto(true); })
+      .catch(() => { if (vivo) setRoto(true); });
+    return () => { vivo = false; };
+  }, [m.archivo, m.llaveArchivo, m.ivArchivo, m.mime]);
+  const player = useAudioPlayer(uri ? { uri } : null);
+  const color = mio ? '#3A2C08' : C.goldLt;
+  if (roto) return (
+    <View style={st.vozFila}><Icon name="lock-closed" size={16} color={C.txt3} /><Text style={st.vozTxt}>{t.adjNoAbre}</Text></View>
+  );
+  return (
+    <Pressable style={st.vozFila} disabled={!uri} onPress={() => { hap(); if (player.playing) player.pause(); else { if (player.duration && player.currentTime >= player.duration - 0.2) player.seekTo(0); player.play(); } }}>
+      <View style={[st.vozBtn, { borderColor: color }]}>
+        {uri ? <Icon name={player.playing ? 'pause' : 'play'} size={16} color={color} /> : <ActivityIndicator size="small" color={color} />}
+      </View>
+      <Text style={[st.vozTxt, { color }]}>{t.ultVoz}{player.duration ? ' · ' + Math.round(player.duration) + 's' : ''}</Text>
     </Pressable>
   );
 }
@@ -838,6 +871,16 @@ export default function AuroChat({ nav, params }) {
     hap();
     Linking.openURL(M.urlArchivo(id)).catch(() => toast(t.noAbre, 'error'));
   };
+  /* Video y archivo: se descifran a la caché y se abren con el visor del
+     sistema. Antes iban a `abrirAdjunto` con la URL cruda: bytes cifrados. */
+  const abrirAdjuntoCifrado = async (m) => {
+    hap();
+    if (!m.llaveArchivo) return abrirAdjunto(m.archivo);
+    try {
+      const uri = await M.archivoACache(m.archivo, m.llaveArchivo, m.ivArchivo, m.mime, m.nombre);
+      await Linking.openURL(uri);
+    } catch { toast(t.noAbreAdj, 'error'); }
+  };
 
   // Quién habla, en corto. Primero MI libreta (el nombre que yo le puse),
   // luego los nombres aprendidos de las charlas y de la ficha del grupo;
@@ -857,7 +900,9 @@ export default function AuroChat({ nav, params }) {
     if (!u) return esGrupoDe(c) ? (c.miembros || 0) + ' ' + t.miembros : c.correo;
     const mio = u.de === account?.email;
     let cuerpo;
-    if (u.tipo === 'pago') cuerpo = '💰 ' + montoBonito(u.monto) + ' ' + (u.moneda || 'ORIGEN');
+    if (u.borrado) cuerpo = '🚫 ' + t.ultBorrado;
+    else if (u.tipo === 'pago') cuerpo = '💰 ' + montoBonito(u.monto) + ' ' + (u.moneda || 'ORIGEN');
+    else if (u.tipo === 'voz') cuerpo = '🎤 ' + t.ultVoz;
     else if (u.tipo === 'imagen') cuerpo = '📷 ' + t.ultImagen;
     else if (u.tipo === 'video') cuerpo = '🎬 ' + t.ultVideo;
     else if (u.tipo === 'archivo') cuerpo = '📎 ' + (u.nombre || t.ultArchivo);
@@ -1229,7 +1274,21 @@ export default function AuroChat({ nav, params }) {
                 <TarjetaPago m={item} mio={mio} autor={autor} t={t} toast={toast} />
               </Entrada>
             );
-            const conAdj = !!item.archivo && ['imagen', 'video', 'archivo'].includes(item.tipo);
+            /* UN MENSAJE BORRADO SE DICE, no se deja como un hueco con sello.
+               El relevo conserva el sitio (de, para, cuando) y quita el
+               contenido: aquí se pinta en gris, sin adjunto, sin sellos. */
+            if (item.borrado) return (
+              <Entrada style={[st.linea, mio ? st.der : st.izq]}>
+                <View style={[st.burbuja, mio ? st.mia : st.suya, { opacity: 0.7 }]}>
+                  <View style={st.selloFila}>
+                    <Icon name="trash" size={12} color={mio ? 'rgba(58,44,8,0.6)' : C.txt3} />
+                    <Text style={[st.msg, { fontStyle: 'italic', fontSize: 13 }, mio && { color: '#3A2C08' }]}>{t.borrado}</Text>
+                  </View>
+                  <Text style={[st.msgHora, mio && { color: 'rgba(58,44,8,0.55)' }]}>{hora(item.cuando)}</Text>
+                </View>
+              </Entrada>
+            );
+            const conAdj = !!item.archivo && ['imagen', 'video', 'archivo', 'voz'].includes(item.tipo);
             return (
               <Entrada style={[st.linea, mio ? st.der : st.izq]}>
                 {/* Un envío fallido NO se desvanece: burbuja marcada en rojo
@@ -1243,8 +1302,9 @@ export default function AuroChat({ nav, params }) {
                   {conAdj && item.tipo === 'imagen' && (
                     <Adjunto m={item} t={t} alTocar={(uri) => { hap(); setFoto(uri); }} />
                   )}
-                  {conAdj && item.tipo !== 'imagen' && (
-                    <Pressable style={st.adjCard} onPress={() => abrirAdjunto(item.archivo)}>
+                  {conAdj && item.tipo === 'voz' && <NotaDeVoz m={item} mio={mio} t={t} />}
+                  {conAdj && item.tipo !== 'imagen' && item.tipo !== 'voz' && (
+                    <Pressable style={st.adjCard} onPress={() => abrirAdjuntoCifrado(item)}>
                       <Icon name={item.tipo === 'video' ? 'videocam' : 'document-text'} size={24}
                         color={mio ? '#3A2C08' : C.gold} />
                       <Text style={[st.adjNom, mio && { color: '#3A2C08' }]} numberOfLines={2}>
@@ -1724,6 +1784,9 @@ const st = StyleSheet.create({
   faltaBtnTxt: { color: C.darkText, fontSize: 13.5, fontWeight: '800' },
 
   lazoTxt: { color: C.txt3, fontSize: 12.5, fontWeight: '700' },
+  vozFila: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 4, minWidth: 160 },
+  vozBtn: { width: 34, height: 34, borderRadius: 17, borderWidth: 1.5, alignItems: 'center', justifyContent: 'center' },
+  vozTxt: { color: C.txt2, fontSize: 13.5, fontWeight: '600' },
   filaEscribe: { flexDirection: 'row', gap: 8, paddingHorizontal: 12, paddingBottom: 10, alignItems: 'flex-end' },
   clip: { width: 42, height: 42, borderRadius: 21, borderWidth: 1, borderColor: C.line, alignItems: 'center', justifyContent: 'center' },
   // la imagen adentro de la burbuja: ancho fijo cómodo, el server no manda

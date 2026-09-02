@@ -159,6 +159,11 @@ const PATHS = {
 // Alias: mismos nombres que usábamos antes.
 PATHS['time-outline'] = PATHS.time;
 PATHS['settings'] = PATHS['settings-sharp'];
+// Reproducir y pausar, para las notas de voz del chat. No estaban en el set y
+// <Icon> pinta un hueco vacío cuando el nombre no existe — lo avisa sólo en
+// desarrollo, así que en producción el botón habría salido sin nada dentro.
+PATHS.play = ['M8 5v14l11-7z'];
+PATHS.pause = ['M6 5h4v14H6z', 'M14 5h4v14h-4z'];
 
 // Iconos que se ven mejor rellenos (badges pequeños).
 const FILLED = new Set(['star']);

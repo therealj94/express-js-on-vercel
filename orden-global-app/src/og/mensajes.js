@@ -8,6 +8,7 @@
 // no recibe avisos ni suena con la app cerrada.
 import * as SecureStore from 'expo-secure-store';
 import Constants from 'expo-constants';
+import * as FS from 'expo-file-system/legacy';
 // El JWT de la wallet. Es la ÚNICA prueba de identidad que el relevo sabe
 // comprobar por su cuenta, y con ella devuelve la llave de un correo que ya
 // tiene dueño en vez de dar el portazo del 409.
@@ -491,6 +492,37 @@ export async function archivoAbierto(id, llaveB64, ivB64, mime) {
     return null;
   }
 }
+/* UN VIDEO O UN ARCHIVO CIFRADO NO SE PUEDE ABRIR CON SU URL.
+ *
+ * `abrirAdjunto` mandaba el id a `Linking.openURL(urlArchivo(id))`: el
+ * navegador recibía bytes cifrados con etiqueta de video y no reproducía
+ * nada. Sólo la imagen pasaba por `archivoAbierto` y se descifraba. La web
+ * abre los tres; la app, uno.
+ *
+ * Aquí se baja, se abre con la llave que venía dentro del mensaje, se escribe
+ * en la caché de la app y se devuelve una dirección `content://` que Android
+ * sabe entregarle al reproductor o al visor que corresponda. No hay módulo
+ * nativo nuevo: `expo-file-system` ya estaba. Cuando haya APK nuevo conviene
+ * sumar `expo-sharing` y usar la hoja del sistema, que es más fiable que
+ * `Linking` para archivos; por aire, esto es lo que se puede. */
+const adjEnCache = new Map();
+export async function archivoACache(id, llaveB64, ivB64, mime, nombre) {
+  const ya = adjEnCache.get(id);
+  if (ya) return ya;
+  const r = await fetch(urlArchivo(id));
+  if (!r.ok) throw new Error('no está');
+  const buf = new Uint8Array(await r.arrayBuffer());
+  const claros = (llaveB64 && ivB64) ? CANDADO.abrirBytes(buf, llaveB64, ivB64) : buf;
+  const ext = (String(nombre || '').match(/\.[A-Za-z0-9]{1,5}$/) || [''])[0]
+    || ({ 'video/mp4': '.mp4', 'audio/m4a': '.m4a', 'audio/mp4': '.m4a', 'audio/webm': '.webm',
+          'application/pdf': '.pdf', 'image/jpeg': '.jpg', 'image/png': '.png' }[mime] || '');
+  const uri = (FS.cacheDirectory || '') + 'adj-' + String(id).slice(0, 16) + ext;
+  await FS.writeAsStringAsync(uri, aB64Simple(claros), { encoding: 'base64' });
+  const contenido = await FS.getContentUriAsync(uri).catch(() => uri);
+  adjEnCache.set(id, contenido);
+  return contenido;
+}
+
 // La URL pública de un adjunto: el id largo ES el permiso (capability URL),
 // por eso sirve tal cual para <Image> o para abrir en el navegador.
 export const urlArchivo = (id) => BASE + '/archivo/' + id;
@@ -524,6 +556,12 @@ export async function bandeja(desde) {
        mañana tampoco; y QUIEN LO RECIBÍA no se enteraba nunca.
        `!m.cif` se calcula igual en las dos puntas, así que marcarlo aquí hace
        que los dos lados vean lo mismo y que siga siendo verdad mañana. */
+    /* UN MENSAJE BORRADO NO ES UN MENSAJE EN CLARO. El relevo lo deja sin
+       contenido —`borrado:true`, sólo id/de/para/cuando— y aquí caía en la
+       marca «viajó sin cifrar» y se pintaba como burbuja vacía con ese
+       sello. Se devuelve tal cual, marcado, para que la pantalla diga que se
+       borró. */
+    if (m.borrado) return { ...m, texto: '' };
     if (!m.cif) return { ...m, e2e: false };
     const r = await CANDADO.abrir(m.cif, llaves[m.de] || []);
     if (r == null) return { ...m, texto: '', cerrado: true, e2e: true };
