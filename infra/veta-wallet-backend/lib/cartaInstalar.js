@@ -66,7 +66,7 @@ export const ASUNTO = "Ya podés llevarte Orden Global en el teléfono";
  * una persona escribiendo; «Hola, Alberto Jesús Morales Martínez» se lee como
  * una base de datos.
  */
-const saludo = (nombre, correo) => {
+export const saludo = (nombre, correo) => {
   const n = String(nombre || "").trim();
   if (!n || n.includes("@")) return "Hola.";
   if (n.toLowerCase() === String(correo || "").split("@")[0].toLowerCase())
@@ -78,13 +78,13 @@ const saludo = (nombre, correo) => {
     : primero}.`;
 };
 
-const H = (t) =>
+export const H = (t) =>
   `<div style="margin:26px 0 10px;font:700 17px/1.35 Georgia,serif;color:#F3ECD9;">${esc(t)}</div>`;
 
 /* Un paso, con su número. El número va en un círculo a la izquierda porque la
    vista lo sigue sin leer, y quien instala con el teléfono en una mano
    necesita saber por dónde iba sin releer. */
-const paso = (n, titulo, dentro) =>
+export const paso = (n, titulo, dentro) =>
   `<table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;margin:0 0 16px;">
     <tr>
       <td width="34" valign="top" style="padding-top:2px;">
@@ -100,13 +100,13 @@ const paso = (n, titulo, dentro) =>
 /* Lo que va a decir la pantalla del teléfono, TAL CUAL. Se cita con su marca
    para que se vea que es el aparato hablando y no nosotros: el aviso lo va a
    ver igual, y suavizarlo sería prepararle una sorpresa. */
-const pantalla = (quien, dice) =>
+export const pantalla = (quien, dice) =>
   `<div style="margin:8px 0 10px;padding:11px 13px;border-left:3px solid #E8B84B;background:rgba(232,184,75,.07);border-radius:0 8px 8px 0;">
     <div style="font:700 11px/1 -apple-system,'Segoe UI',Helvetica,Arial,sans-serif;letter-spacing:.7px;text-transform:uppercase;color:#E8B84B;margin-bottom:5px;">${esc(quien)}</div>
     <div style="color:#EFE3C6;font-size:14px;">${esc(dice)}</div>
   </div>`;
 
-const toca = (t) => `<strong style="color:#C9A961;">${esc(t)}</strong>`;
+export const toca = (t) => `<strong style="color:#C9A961;">${esc(t)}</strong>`;
 
 export function cartaInstalar({ nombre, correo }) {
   const baja = enlaceBaja(correo);
