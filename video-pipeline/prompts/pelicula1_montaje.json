@@ -58,17 +58,7 @@
       "t": 8.8,
       "dur": 2.4,
       "desde": 0.8,
-      "rotulos": [
-        {
-          "t": 9.3,
-          "dur": 1.7,
-          "texto": " "
-        }
-      ],
-      "producto": {
-        "nombre": "Veta Wallet",
-        "marca": "veta"
-      }
+      "rotulos": []
     },
     {
       "plano": "05_elige_contacto",
@@ -184,13 +174,13 @@
     "01_pulperia": 3,
     "02_telefono_mostrador": 3,
     "03_hija_cocina": 3,
-    "04_abre_app": 3,
+    "04_abre_app": 9,
     "05_elige_contacto": 3,
     "06_pone_dedo": 2,
     "07_suena_pulperia": 3,
     "08_cara_senora": 3,
     "09_ensena_pantalla": 3,
-    "10_ve_detalle": 2,
+    "10_ve_detalle": 9,
     "11_tarjeta": 3,
     "11_caras_calle": 2,
     "12_caras_calle_b": 1
@@ -198,5 +188,6 @@
   "_cambios": "Segunda pasada. Gemini vio artefactos que yo no: dedos fundidos en 05, 06 y 07, el dedo vendado deformandose con la tarjeta en 11, y el pelo parpadeando en la ultima cara. Cinco tomas cambiadas por otras limpias del mismo plano. No cuesta nada: ya estaban generadas.",
   "_segunda_pasada": "Un montador a ciegas: se aburrio en el segundo 8 (el plano de la hija se hacia largo), no vio el enlace entre firmar y que suene alla, y la voz del cierre entraba 3 dB alta y sonaba a eslogan pegado. Arreglado: el plano de la hija baja de 3,4 a 2,6 s; el de firmar se corta 0,5 s DESPUES de que el pulgar aprieta, para que el corte sea la causa del aviso; y antes del cierre entra una linea calida sobre la madre pagando, que es la historia entera dicha en cinco palabras.",
   "_tercera_pasada": "El plano de la mano cogiendo el telefono se rompe en TODAS las tomas cuando los dedos llegan al cristal: es lo mas dificil que hay para el modelo. La toma 3 aguanta limpia hasta el segundo 2,2 del clip, asi que se corta ahi, justo cuando la mano toca. Sale ganando: el aviso suena, la mano llega, y CORTA a su cara. Los 1,6 s que sobran van al plano de la cara, que el montador dijo que se quedaba corto. Y la voz lleva ahora una sala minima: sonaba grabada en otro sitio que el resto.",
-  "_cuarta_pasada": "Jose, que es el que manda: 'empieza de la nada, no se entiende que estan haciendo con el celular'. Un espectador normal, preguntado a ciegas, lo confirmo por otro lado: no distingue que botones aprieta y no entiende de que va hasta el segundo 15. Arreglo: dos frases al principio que dan los dos hechos que lo explican todo -de quien es hija y que esta pasando-, los rotulos 'Mama.' y 'Enviar.' sobre los gestos que no se leen en pantalla, el logo de Veta Wallet cuando abre la app -que es literalmente lo que el espectador pidio: 'pon el logo para saber que buscar en el telefono'-, y el cierre mas largo y con el nombre grande, que tambien lo pidio."
+  "_cuarta_pasada": "Jose, que es el que manda: 'empieza de la nada, no se entiende que estan haciendo con el celular'. Un espectador normal, preguntado a ciegas, lo confirmo por otro lado: no distingue que botones aprieta y no entiende de que va hasta el segundo 15. Arreglo: dos frases al principio que dan los dos hechos que lo explican todo -de quien es hija y que esta pasando-, los rotulos 'Mama.' y 'Enviar.' sobre los gestos que no se leen en pantalla, el logo de Veta Wallet cuando abre la app -que es literalmente lo que el espectador pidio: 'pon el logo para saber que buscar en el telefono'-, y el cierre mas largo y con el nombre grande, que tambien lo pidio.",
+  "_pantallas": "Jose: 'la pantalla no se mira Veta Wallet, no se puede ver que estan dentro y tocan ahi'. Las pantallas de los clips van encendidas pero VACIAS -el modelo no sabe dibujar una interfaz-, asi que se compone una encima siguiendo el telefono con flujo optico (montaje/pantalla.py, dibujada en montaje/interfaz.py). La toma 9 de un plano es la version con pantalla. Dos planos: al abrir la app se ve Veta Wallet, y en el comprobante se ve ENTREGADO con la hora, el numero y ordenscan.com. El comprobante va en CLARO y no en la paleta de la marca porque esa pantalla le ilumina la cara: con una pantalla oscura la luz de su cara se quedaba sin fuente. El plano de elegir contacto tiene el telefono casi de canto y ahi no cabe interfaz legible: ese lo resuelve el rotulo 'Mama.'."
 }
