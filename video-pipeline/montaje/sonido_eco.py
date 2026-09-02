@@ -143,22 +143,35 @@ if __name__ == "__main__":
     # la version dibujada: el oro abre, el polvo cae, el telefono se enciende,
     # la yema aprieta, la mano recibe, la tarjeta entra, las manos se pasan el
     # telefono, la cara lee, la luz viaja, la gota, el logo, el cierre.
+    # Sobre el montaje de material fotografico, segunda version: un producto
+    # por bloque. Cada marca que entra suena a metal; cada gesto de la mano,
+    # a clic; el comprobante, a sello.
     ev = [
-        (0.6,  moneda, 1.0),         # 01 el oro entra en la luz
-        (2.4,  moneda, 0.4),         # la luz cruza la superficie
-        (4.4,  polvo, 0.9),          # 02 el polvo de oro cae por el haz
-        (8.4,  moneda, 0.7),         # 03 el oro liquido ondula
-        (12.3, impacto, 0.55),       # 04 la pantalla se enciende sobre la pizarra
-        (16.2, clic, 1.0),           # 05 la yema toca el cristal
-        (19.9, polvo, 0.5),          # 06 la mano entra en la luz
-        (23.8, clic, 0.9),           # 07 la tarjeta entra en el datafono
-        (24.6, impacto, 0.35),       # ...y asienta
-        (27.6, polvo, 0.45),         # 08 las manos se encuentran
-        (31.4, impacto, 0.5),        # 09 la cara: algo aparece en la pantalla
-        (35.0, barrido, 1.0),        # 10 la luz viaja
-        (38.9, moneda, 0.6),         # 11 la gota de oro
-        (39.4, impacto, 0.8),        # el logo se forma
-        (42.6, impacto, 1.0),        # 12 el cierre
+        (0.9, moneda, 1.0),          # el oro entra
+        (4.6, polvo, 0.8),           # la colada
+        (8.6, impacto, 0.6),         # el disco asienta: ORIGEN
+        (10.0, moneda, 0.45),        # las cuatro gotas, una a una
+        (10.5, moneda, 0.45),
+        (11.0, moneda, 0.45),
+        (11.5, moneda, 0.45),
+        (14.3, impacto, 0.5),        # Veta Wallet
+        (17.7, clic, 0.9),           # la huella
+        (21.5, polvo, 0.5),          # recibi
+        (25.5, clic, 0.9),           # el telefono toca el terminal
+        (29.2, clic, 0.9),           # la tarjeta entra
+        (33.0, barrido, 0.8),        # de mano en mano
+        (36.9, barrido, 0.6),        # el hilo entre telefonos
+        (40.7, moneda, 0.9),         # la moneda gira
+        (43.8, barrido, 1.0),        # la luz viaja
+        (46.1, sello, 1.0),          # ordenscan: el comprobante
+        (47.9, impacto, 1.0),        # Orden Global en el centro
+        (48.6, clic, 0.5),           # las seis marcas, una a una
+        (48.83, clic, 0.5),
+        (49.07, clic, 0.5),
+        (49.3, clic, 0.5),
+        (49.53, clic, 0.5),
+        (49.77, clic, 0.5),
+        (52.4, impacto, 0.85),       # el cierre
     ]
     y = pista(dur, ev)
     sf.write(sal, np.column_stack([y, y]), SR)

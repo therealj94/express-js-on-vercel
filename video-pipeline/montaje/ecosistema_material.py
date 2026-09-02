@@ -22,13 +22,107 @@ import numpy as np
 from PIL import Image, ImageDraw, ImageFont
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from acabado import acabar, escalonar, salida, sombra_larga  # noqa: E402
+from acabado import acabar, escalonar, salida, salida_rebote, sombra_larga  # noqa: E402
 
 W, H, FPS = 1080, 1920, 30
 TEXTO = (244, 239, 228)
 F_TIT = "/usr/share/fonts/truetype/dejavu/DejaVuSerif-Bold.ttf"
 F_ROT = "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"
 LOGOS = Path(__file__).resolve().parent.parent.parent / "logos-orden-global"
+
+# Las marcas tal como se usan en pantalla. Los logos vienen de ocho manos
+# distintas —dos son azules, uno lleva un lema en inglés, dos son cuadrados de
+# app—, y un trailer de Apple no enseña logos ajenos a media pieza: enseña el
+# OBJETO, el NOMBRE en su propia tipografía, y la marca pequeña, siempre del
+# mismo tamaño y en el mismo sitio. 'recorte' se queda con el símbolo y tira el
+# nombre y el lema, que ya van en tipografía nuestra.
+MARCAS = {
+    "og":         ("orden-global/orden-global-logo.png", None),
+    "veta":       ("veta-wallet/veta-wallet-icono.png", None),
+    "genesis":    ("genesis-id/genesis-id-icono.png", None),
+    "mytokenpay": ("mytokenpay/mytokenpay-icono.png", None),
+    "pulse":      ("pulse2chat/pulse2chat-logo.png", 0.60),   # solo la P
+    "ordenex":    ("ordenex/ordenex-logo.png", 0.84),         # sin la palabra
+    "aucorp":     ("aucorp/aucorp-logo.png", 0.80),           # sin la palabra
+}
+_marcas: dict = {}
+
+
+def marca(clave: str, lado: int) -> Image.Image:
+    """La marca lista para componer: recortada a su símbolo, con las esquinas
+    redondeadas si es un cuadrado de app, encajada en un cuadro de `lado`."""
+    if (clave, lado) in _marcas:
+        return _marcas[(clave, lado)]
+    ruta, recorte = MARCAS[clave]
+    im = Image.open(LOGOS / ruta)
+    cuadrado = im.mode != "RGBA"       # icono de app: fondo propio, sin alfa
+    im = im.convert("RGBA")
+    if recorte:
+        im = im.crop((0, 0, im.width, int(im.height * recorte)))
+    if cuadrado:
+        m = Image.new("L", im.size, 0)
+        r = int(min(im.size) * 0.22)
+        ImageDraw.Draw(m).rounded_rectangle([0, 0, im.width - 1, im.height - 1], r, fill=255)
+        im.putalpha(m)
+    else:
+        im = im.crop(im.split()[3].getbbox())
+    esc = lado / max(im.size)
+    im = im.resize((max(1, int(im.width * esc)), max(1, int(im.height * esc))), Image.LANCZOS)
+    _marcas[(clave, lado)] = im
+    return im
+
+
+def _pegar(im: Image.Image, capa: Image.Image, cx: int, cy: int, a: float,
+           escala: float = 1.0, sombra: bool = True):
+    if a <= 0.02:
+        return
+    if escala != 1.0:
+        capa = capa.resize((max(1, int(capa.width * escala)),
+                            max(1, int(capa.height * escala))), Image.LANCZOS)
+    capa = capa.copy()
+    capa.putalpha(capa.split()[3].point(lambda v: int(v * a)))
+    pos = (cx - capa.width // 2, cy - capa.height // 2)
+    if sombra:
+        sombra_larga(im, capa, pos, radio=60, opacidad=0.32 * a, dy=26)
+    im.alpha_composite(capa, pos)
+
+
+def producto(im: Image.Image, nombre: str, clave: str, rel: float, dur: float):
+    """La ficha de producto: la marca entra con sobrepaso —tiene masa—, y el
+    nombre debajo en versalitas espaciadas. Vive lo que el rótulo y se va con él."""
+    e = salida_rebote(float(np.clip(rel / 0.55, 0, 1)))
+    fuera = salida(float(np.clip((dur - rel) / 0.35, 0, 1)), 3.0)
+    a = float(np.clip(rel / 0.25, 0, 1)) * fuera
+    _pegar(im, marca(clave, 150), W // 2, int(H * 0.585), a, escala=0.86 + 0.14 * e)
+    d = ImageDraw.Draw(im, "RGBA")
+    f = ImageFont.truetype(F_ROT, 30)
+    txt = "  ".join(nombre.upper())          # versalitas espaciadas a mano
+    an = d.textlength(txt, font=f)
+    ta = salida(float(np.clip((rel - 0.18) / 0.35, 0, 1)), 4.0) * fuera
+    d.text(((W - an) / 2, H * 0.648), txt, font=f, fill=TEXTO + (int(200 * ta),))
+
+
+# Dónde se coloca cada marca alrededor de Orden Global en el retrato de
+# familia: ángulo en grados y orden de entrada. Es el sistema solar real de la
+# app —Veta arriba, el resto girando— y no dos entran a la vez.
+FAMILIA = [("veta", 270), ("genesis", 330), ("mytokenpay", 30),
+           ("pulse", 90), ("ordenex", 150), ("aucorp", 210)]
+
+
+def familia(im: Image.Image, rel: float):
+    """Todo el ecosistema en un cuadro: Orden Global en el centro y las seis
+    marcas entrando una a una en órbita, con sobrepaso y sombra larga."""
+    cx, cy, radio = W // 2, int(H * 0.44), 360
+    e0 = salida_rebote(float(np.clip(rel / 0.9, 0, 1)))
+    _pegar(im, marca("og", 300), cx, cy, float(np.clip(rel / 0.4, 0, 1)),
+           escala=0.9 + 0.1 * e0)
+    for k, (clave, ang) in enumerate(FAMILIA):
+        t0 = 0.7 + escalonar(k, 7.0)
+        e = salida_rebote(float(np.clip((rel - t0) / 0.6, 0, 1)))
+        a = float(np.clip((rel - t0) / 0.25, 0, 1))
+        x = cx + int(radio * np.cos(np.radians(ang)))
+        y = cy + int(radio * np.sin(np.radians(ang)))
+        _pegar(im, marca(clave, 118), x, y, a, escala=0.8 + 0.2 * e)
 
 
 def extraer(clip: Path, destino: Path) -> int:
@@ -157,9 +251,15 @@ def main():
         for b, _ in activos:
             if b.get("logo"):
                 logo(im, t - b["t"] - 0.6)
+            if b.get("familia"):
+                familia(im, t - b["t"] - 0.5)
             for r in b.get("rotulos", []):
                 rel = t - r["t"]
                 if 0 <= rel <= r["dur"]:
+                    # La ficha de producto acompaña al primer rótulo del bloque.
+                    if b.get("producto") and r is b["rotulos"][0]:
+                        producto(im, b["producto"]["nombre"], b["producto"]["marca"],
+                                 rel, r["dur"])
                     rotulo(im, r["texto"], rel, r["dur"], r.get("chico", False))
         ff.stdin.write(acabar(im, semilla=fr).tobytes())
         if fr % 150 == 0:

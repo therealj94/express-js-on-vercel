@@ -123,6 +123,31 @@ def cmd_video(sl: dict, outdir: str) -> dict:
     return {"version": 1, "defaults": {}, "jobs": jobs}
 
 
+def cmd_t2v(sl: dict) -> dict:
+    """Cola texto-a-vídeo: sin still elegido, una toma por semilla.
+
+    Es como se hizo la película 1 y como va la del ecosistema: el prompt lleva
+    la composición (still) Y el movimiento (motion) porque no hay imagen que
+    fije la composición. Cuatro semillas por plano dan cuatro tomas que se
+    eligen en la hoja de contactos de vídeo."""
+    dflt = sl.get("defaults", {})
+    jobs = []
+    for shot in sl["shots"]:
+        motion = shot.get("motion", "")
+        prompt = shot["still"].rstrip(". ") + ". " + motion if motion else shot["still"]
+        for k, seed in enumerate(shot.get("seeds", [1, 2, 3, 4]), 1):
+            jobs.append({
+                "id": f'{shot["id"]}_t{k}',
+                "prompt": prompt,
+                "negative": shot.get("negative", dflt.get("negative", "")),
+                "seed": int(seed),
+                "workflow": shot.get("video_workflow",
+                                     dflt.get("video_workflow", "workflows/h3_calidad_api.json")),
+                **{k2: shot.get(k2, dflt.get(k2, v)) for k2, v in VIDEO_DEFAULTS.items()},
+            })
+    return {"version": 1, "defaults": {}, "jobs": jobs}
+
+
 def cmd_sheet(sl: dict, outdir: str, cols: int) -> None:
     try:
         from PIL import Image, ImageDraw
@@ -156,7 +181,7 @@ def cmd_sheet(sl: dict, outdir: str, cols: int) -> None:
 
 def main() -> int:
     ap = argparse.ArgumentParser()
-    ap.add_argument("cmd", choices=["stills", "video", "sheet"])
+    ap.add_argument("cmd", choices=["stills", "video", "t2v", "sheet"])
     ap.add_argument("-s", "--shotlist", required=True)
     ap.add_argument("-o", "--output")
     ap.add_argument("--out", default="/workspace/outputs", help="carpeta de resultados")
@@ -168,7 +193,9 @@ def main() -> int:
         cmd_sheet(sl, a.out, a.cols)
         return 0
 
-    queue = cmd_stills(sl) if a.cmd == "stills" else cmd_video(sl, a.out)
+    queue = {"stills": lambda: cmd_stills(sl),
+             "video": lambda: cmd_video(sl, a.out),
+             "t2v": lambda: cmd_t2v(sl)}[a.cmd]()
     dst = Path(a.output or f"prompts/q_{a.cmd}.json")
     dst.parent.mkdir(parents=True, exist_ok=True)
     dst.write_text(json.dumps(queue, indent=2, ensure_ascii=False))

@@ -33,7 +33,10 @@ LOOKS: dict[str, dict] = {
                  "highlights, pure black background, subtle rim separation",
         "palette": "monochrome with one accent colour, crushed blacks, "
                    "clean neutral whites",
-        "texture": "immaculate surfaces, macro-level detail, no dust, no grain",
+        # Sin 'no dust': los planos piden motas en el haz para que la luz se
+        # vea, y un prompt que pide y prohibe lo mismo deja al modelo eligiendo
+        # al azar. El grano se pone en el acabado, no se pide ni se prohibe.
+        "texture": "immaculate surfaces, macro-level detail",
         "grade": "high contrast, lifted nothing, HDR-ready",
     },
     "apple_human": {
