@@ -330,7 +330,9 @@ def burbuja(im: Image.Image, texto: str, rel: float, dur: float, foto=None,
     d = ImageDraw.Draw(im, "RGBA")
     f = fuente(F_MED, 40)
     pad = 30
-    ancho = int(W * 0.62)
+    # Más estrecha que antes: con la foto vertical la burbuja bajaba hasta la
+    # franja que tapan el pie de foto y los botones de la red social.
+    ancho = int(W * 0.54)
     alto_foto = 0
     if foto is not None:
         af = ancho - pad * 2
