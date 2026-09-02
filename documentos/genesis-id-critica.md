@@ -1,7 +1,7 @@
 # Genesis ID — crítica total
 
 Fecha: 2026-09-02. Ámbito: el motor (`genesis-id/`), el puente
-(`infra/genesis-proxy/`), la app (`veta-wallet-app/`) y la web
+(`infra/veta-wallet-backend/lib/genesisPuente.js` e `infra/genesis-proxy/`), la app (`orden-global-app/`) y la web
 (`apps-web/veta-wallet/`). Concreta, con rutas de archivo. Lo que se arregló en
 esta misma entrega va marcado con **[hecho]**; lo demás es propuesta.
 
@@ -11,26 +11,46 @@ esta misma entrega va marcado con **[hecho]**; lo demás es propuesta.
 
 | Carpeta | Qué es | Estado |
 | --- | --- | --- |
-| **`genesis-id/`** | **El motor que corre en Render** (`genesis-id.onrender.com`). Lo prueba `render.yaml` (`rootDir: genesis-id`, `npm start` → `tsx src/index.ts`, `healthCheckPath: /healthz`). TypeScript, 4 dependencias, 181 pruebas. | **Producción. La única fuente de verdad.** |
-| `infra/genesis-proxy/` | El puente Express que monta cada backend (Heroku de Veta Wallet) para hablar con Genesis con la clave de API sin que salga del servidor. Es lo que en el encargo se llamaba `infra/veta-wallet-backend/lib/genesisPuente.js` — ese archivo no existe en este repositorio; el puente real es `genesis.router.js`. | Producción (se copia al backend). |
+| **`genesis-id/`** | **El motor que corre en Render** (`genesis-id.onrender.com`). Lo prueba `render.yaml` (`rootDir: genesis-id`, `npm start` → `tsx src/index.ts`, `healthCheckPath: /healthz`). TypeScript, 6 dependencias, ~500 pruebas. | **Producción. La única fuente de verdad.** |
+| **`infra/veta-wallet-backend/`** | El backend de Veta Wallet (Heroku). Su puente con Genesis es **`lib/genesisPuente.js`**: la clave de API vive ahí. | Producción. |
+| `infra/genesis-proxy/` | El mismo puente como router suelto con su prueba (`puente.test.mjs`). Referencia; `genesisPuente.js` es la copia montada, y hoy nada garantiza que las dos estén a la par. | Referencia. |
+| **`orden-global-app/`** | **La app que se distribuye** (`com.ordenglobal.app`, 1.33.x). Registro: `src/screens/Onboard.js` + `src/genesis.js`; pasaporte: `src/screens/More.js`; tarjeta con QR: `src/TarjetaGid.js`. | **Producción.** |
+| `veta-wallet-app/` | La app **vieja** (`com.ordenglobal.vetawallet`, 1.33.0). | Vieja. No se toca. |
+| `apps-web/veta-wallet/app.js` | Cliente web (Amplify): registro con fotos (`verificar()`), tarjeta con QR y página pública `/gid/<GID>`. | Producción. |
 | `genesis-id-app/` | App Expo del **panel de cumplimiento** (operadores), no del usuario final. Se compila con `.github/workflows/genesis-build.yml`. | Producción, distinta cosa. |
 | `genesis-admin.html` (raíz) | Panel de administración de la **versión anterior** del motor (la que estaba abierta sin credenciales). Llama a `/api/admin/*`, rutas que hoy devuelven 404 a propósito. | **Vieja. No usar.** |
 | `GENESIS_ID_INTEGRACION.md` (raíz) | Describe el puente con el portal `genesisid.online` (`/api/portal/*`) que se retiró. Nada de eso existe ya en el código. | **Obsoleto.** |
 | `ogscan-backend/src/lib/genesis.js` | Cliente del explorador: solo `gid.verificar` y `tamiz.direccion`. | Producción (ordenscan). |
-| `veta-wallet-app/src/genesis.js` + `screens/Onboard.js` | Cliente del usuario final en el teléfono. Es lo que el encargo llamaba `orden-global-app/src/screens/` — esa carpeta no existe; la app se llama `veta-wallet-app`. | Producción. |
-| `apps-web/veta-wallet/app.js` | Cliente web. Hasta hoy solo enlazaba a `genesis-id.onrender.com`; no registraba a nadie. | Producción (Amplify). |
 
 Plan de consolidación (sin borrar nada todavía):
 
 1. **[hecho]** `LEEME.md` en la raíz diciendo cuál es la real y qué es cada copia.
 2. **[hecho]** Nota de obsoleto al principio de `GENESIS_ID_INTEGRACION.md`.
 3. Mover `genesis-admin.html` y `GENESIS_ID_INTEGRACION.md` a `documentos/archivo/` en un commit propio, cuando José confirme que nadie los abre desde un marcador.
-4. Que el puente viva en el repositorio del backend de Heroku como dependencia
-   copiada con su prueba, y que `infra/genesis-proxy/README.md` diga en qué
-   commit del backend se copió por última vez. Hoy no hay forma de saber si el
-   backend desplegado tiene la misma versión del router que este repositorio.
+4. Un solo puente: `infra/genesis-proxy/genesis.router.js` y
+   `infra/veta-wallet-backend/lib/genesisPuente.js` son el mismo código
+   divergiendo (el segundo tiene `/gid` y `/documento-fotos`; el primero tiene
+   `/status`). Que el backend importe el router de `genesis-proxy` (o al revés)
+   y que la prueba `puente.test.mjs` corra contra el que se despliega.
+5. Retirar `veta-wallet-app/` a `documentos/archivo/` cuando la 1.33.2 esté en
+   todos los teléfonos: dos apps con el mismo código a medias es el error de
+   mapa que ya pasó una vez.
 
 ---
+
+### Nota sobre esta entrega
+
+La rama real (`claude/veta-wallet-phantom-design-7syah8`) ya traía mucho de lo
+que este documento pide: bitácora firmada (HMAC con `GENESIS_BITACORA_CLAVE`,
+detección de firmas quitadas, sellos), **ancla diaria en la cadena** con lista
+pública, credenciales firmadas con secp256k1 y página de comprobación,
+segundo factor TOTP para operadores, `documento-fotos` para la web con lectura
+del frente por Rekognition, y un `verificar()` web de tres pasos. Lo hecho aquí
+se sumó encima sin duplicar nada: lectura automática de la MRZ del reverso
+(`kyc/lectura.ts`), `hecho`/`documentoDatos`, `GET /api/publico/gid/:gid`, la
+tarjeta con QR en app y web, la página `/gid/<GID>`, y el alias
+`GENESIS_BITACORA_LLAVE`. Donde el texto de abajo dice «[hecho]» se refiere a
+esta entrega; donde dice «ya en la rama», a lo que había.
 
 ## 2. Qué está bien del motor
 
@@ -46,7 +66,7 @@ Hay que decirlo con la misma claridad que lo que falta: el núcleo es serio.
   valiosa del sistema.
 - **MRZ con aritmética real** (`src/kyc/mrz.ts`): todos los dígitos de control,
   contra los ejemplos del estándar. La corrección OCR del cliente
-  (`veta-wallet-app/src/mrzOcr.js`) solo cambia letra→cifra donde la norma no
+  (`orden-global-app/src/mrzOcr.js`, y ahora también `genesis-id/src/kyc/lectura.ts`) solo cambia letra→cifra donde la norma no
   admite letras y se rinde ante la ambigüedad: no inventa documentos.
 - **Prueba de vida por reto sorteado en el servidor** (`src/kyc/vivacidad.ts`):
   secuencia al azar, dos minutos, un solo uso, gesto a gesto, fotograma
@@ -56,7 +76,7 @@ Hay que decirlo con la misma claridad que lo que falta: el núcleo es serio.
   sesión, app con clave y alcances mínimos. Ordenscan no puede leer nombres.
 - **Tokens sin `alg` del cliente** (`src/lib/cripto.ts`): la firma la decide el
   servidor. Contraseñas con scrypt y comparación en tiempo constante.
-- **La cuenta la fija el servidor** en el puente (`genesis.router.js:
+- **La cuenta la fija el servidor** en el puente (`genesisPuente.js` y `genesis.router.js:
   /vincular`), nunca el cuerpo. La prueba `puente.test.mjs` lo comprueba.
 - **Bitácora encadenada** y, desde hoy, **firmada** (ver §5).
 - **Cuatro dependencias.** Cada línea que decide se puede leer.
@@ -69,12 +89,12 @@ Lo que hace bien un proveedor de primera línea y dónde estaba Genesis:
 
 | Lo mejor del sector | Genesis antes | Ahora |
 | --- | --- | --- |
-| Cámara primero: el documento se lee y la persona **confirma**, no teclea | Nombre y fecha tecleados ANTES del documento; luego el documento fallaba por «no coincide» y había que volver | **[hecho]** documento → rostro → confirmar (prellenado con `documentoDatos`) → perfil → revisión, en app y web (`veta-wallet-app/src/screens/Onboard.js`, `apps-web/veta-wallet/app.js: verificar()`) |
-| Progreso visible con nombre de cada tramo | Barra de cinco tramos sin nombres | **[hecho]** tramos con nombre (`Pasos`, `verPasos()`) |
-| Errores que dicen qué hacer (acercá, alejá, luz) | Ya existía en la app (`gen.scanCut`, `autoHints`) | **[hecho]** también en la web (`ver.cortadas`, `ver.noSeVe`, `ver.leidoParcial`) y para el lector del servidor |
-| Retomar sin perder nada | `siguientePaso` presuponía el orden viejo | **[hecho]** `hecho: {datos, documento, rostro}` en `estadoParaUsuario()`; el cliente deduce el paso de lo hecho, no del estado |
-| Registro en la web con cámara | La web solo enlazaba a Render | **[hecho]** flujo completo con `getUserMedia`, `<input capture>` de respaldo, y lectura de la MRZ en el servidor (`src/kyc/lectura.ts`, `POST /identidades/:id/documento/leer`) |
-| Credencial final con QR verificable por terceros | Pasaporte con filas de texto, «Compartir» que no hacía nada | **[hecho]** `TarjetaGid` (app) y `tarjetaGid()` (web) con QR → `/gid/<GID>`; página pública `apps-web/veta-wallet` + `GET /api/publico/gid/:gid` |
+| Cámara primero: el documento se lee y la persona **confirma**, no teclea | En la app (`orden-global-app/src/screens/Onboard.js`) el paso «datos» ya abre la cámara sobre el frente y precarga nombre y fecha (`nombreDeAnverso`, `datosDeMrz`); teclear es la salida. En la web, `verificar()` pide datos y luego las dos fotos. | **[hecho]** el servidor devuelve `documentoDatos` y la app precarga con ello al retomar; lo leído por fotos vuelve en `documento.datos`. **Pendiente**: invertir el orden en la web (fotos → cara → confirmar) — el estado y `hecho` ya lo permiten. |
+| Progreso visible con nombre de cada tramo | App: barra de cinco tramos; web: riel «Paso n de 3» con nombre | Ya en la rama. |
+| Errores que dicen qué hacer (acercá, alejá, luz) | App: `gen.scanCut`, `autoHints`, `lowLight`, `frontFallback`; web: `lectura` inmediata del frente | **[hecho]** el lector del reverso devuelve `cortadas` / `no-encontrada` / `digitos` para decirlo con palabras |
+| Retomar sin perder nada | `siguientePaso` presuponía un orden fijo | **[hecho]** `hecho: {datos, documento, rostro}` en `estadoParaUsuario()`; app (`pasoDe`) deduce el paso de lo hecho; el estado no retrocede al reenviar el documento |
+| Registro en la web con cámara | `verificar()` con `<input capture>` y `documento-fotos`, leído por un operador | **[hecho]** la MRZ del reverso se lee sola (`kyc/lectura.ts`) dentro de `documento-fotos` y en `POST /identidades/:id/documento/leer`: si cuadra, el documento se comprueba al instante en vez de esperar días |
+| Credencial final con QR verificable por terceros | Credencial firmada (secp256k1) y página `/credencial` en Genesis — fuerte, pero exige entender firmas; en la app, pasaporte de texto | **[hecho]** `TarjetaGid` (app) y `tarjetaGid()` (web) con QR → `app.vetawallet.com/gid/<GID>`, que consulta `GET /api/publico/gid/:gid`: sí/no y fecha, sin datos |
 | **Autenticidad del documento** (NFC / chip, hologramas, plantillas por país) | No (lo dice el README) | **Falta.** Es la brecha más grande frente a Veriff/Onfido. Camino: `react-native-nfc-manager` en la app para leer el chip ICAO (DG1/DG2/SOD) y validar la firma contra el CSCA del país; sin chip, al menos plantillas de las cédulas de HND/GTM/SLV (posición de campos, tipografías) para detectar documentos impresos en casa. |
 | **Vivacidad pasiva + señales del dispositivo** (profundidad, integridad de la app) | Solo reto activo con Rekognition `DetectFaces` | **Falta.** Rekognition Face Liveness (sesión con SDK) o `expo-face-detector` + Play Integrity / App Attest para saber que la cámara es real. Sin eso la inyección de vídeo pasa. |
 | **Detección de reintentos y fraude cruzado** (misma cara en dos correos, mismo documento en dos cuentas) | `numeroDocumento` se guarda pero no se indexa ni se cruza | **Falta.** Índice único por `numeroDocumento+paisEmisor` con caso automático al chocar; `IndexFaces` de Rekognition para buscar la misma cara en identidades anteriores (con retención justificada). |
@@ -91,20 +111,16 @@ Ordenados por gravedad, con la ruta donde está cada uno.
 
 ### Graves
 
-1. **Bitácora sin firmar** (`src/audit/bitacora.ts`). Quien controle Mongo podía
-   borrar una entrada y recalcular todos los hashes siguientes: la cadena
-   volvía a cuadrar. **[hecho]** HMAC-SHA256 por eslabón con
-   `GENESIS_BITACORA_LLAVE`, verificación en `verificarCadena()`, anclaje
-   firmado, prueba `bitacora.test.ts` que reproduce exactamente ese ataque.
-   Pendiente: **poner la llave en Render** y **anclar** el hash en la cadena
-   8532 (el anclaje ya sale firmado y listo).
-2. **Sin 2FA para operadores** (`src/auth/operadores.ts`). Una contraseña
-   filtrada del rol `cumplimiento` fabrica identidades verificadas con GID
-   real. Hay bloqueo por intentos y scrypt, pero no hay segundo factor.
-   Propuesta: TOTP (RFC 6238, `node:crypto` alcanza, sin dependencias) con
-   secreto por operador guardado cifrado, obligatorio para `identidad.aprobar`
-   y `*`; códigos de respaldo; registro en bitácora del alta del segundo
-   factor. Mientras tanto: sesiones de 8 h → 2 h para `admin`.
+1. **Bitácora firmada, pero solo si la llave está puesta** (`src/audit/bitacora.ts`,
+   `src/lib/cripto.ts`). Ya en la rama: HMAC por eslabón con
+   `GENESIS_BITACORA_CLAVE` (derivada con scrypt), detección de firmas
+   quitadas (`degradadaEn`), sellos, ancla diaria en la cadena y lista pública
+   de anclas. **[hecho]** el motor acepta también `GENESIS_BITACORA_LLAVE`, con
+   prueba. Pendiente y urgente: **confirmar que la variable está en Render**
+   (`/healthz → bitacoraFirmada`); sin ella todo lo anterior es decorado.
+2. **2FA de operadores**: ya en la rama (`segundo-factor.test.ts`, `totp.test.ts`).
+   Verificar que sea **obligatorio** para `identidad.aprobar` y `*`, no
+   opcional por operador.
 3. **GID declarado por el cliente en algunos sitios.**
    - `POST /api/v1/negocios/:id/beneficiarios` acepta `gid` del cuerpo
      (`src/routes/apps.ts`): una app puede atar a un beneficiario el GID de
@@ -114,10 +130,9 @@ Ordenados por gravedad, con la ruta donde está cada uno.
      la sesión, pero cualquier app con `movimiento.enviar` podría atribuir
      movimientos a un GID ajeno. Resolver por vínculo `app+cuenta` → GID en
      el servidor.
-   - En `veta-wallet-app/src/accounts.js` el `genesisUid` vive en la caché
-     local; la pantalla `Passport` ya lo reconsulta al abrir **[hecho: la
-     tarjeta se pinta con el estado del servidor]**, pero `Home.js`/`More.js`
-     siguen leyendo `acc.genesisUid` sin fecha de frescura.
+   - En `orden-global-app/src/accounts.js` el `genesisUid` vive en la caché
+     local; la pantalla `Passport` lo reconsulta al abrir, pero `Home.js`
+     sigue leyendo `acc.genesisUid` sin fecha de frescura.
 4. **Retos de vivacidad en memoria** (`src/kyc/vivacidad.ts`): con dos
    instancias en Render, la mitad de los retos «no existe». Hoy hay una sola;
    anotado. Mover a Mongo con TTL cuando se escale.
@@ -171,26 +186,23 @@ Ordenados por gravedad, con la ruta donde está cada uno.
 
 ---
 
-## 5. La firma de la bitácora, en detalle
+## 5. La firma de la bitácora, tal como está en la rama
 
-`src/audit/bitacora.ts`:
+`src/lib/cripto.ts` + `src/audit/bitacora.ts`:
 
-- `registrar()` calcula el hash como antes y añade `firma = HMAC-SHA256(llave, hash)`.
-  Se firma el hash y no el contenido porque el hash ya ata contenido + eslabón anterior.
-- `verificarCadena()` devuelve además `firmada`, `firmadas`, `sinFirma`,
-  `firmaRotaEn` y `confiable` (= cadena íntegra y ninguna firma rota). Las
-  entradas anteriores a la llave cuentan como `sinFirma`, no rompen nada.
-- `anclaje()` firma `hash|entradas|fecha`, y `anclajeValido()` lo comprueba.
-- Sin `GENESIS_BITACORA_LLAVE` el servicio arranca, avisa en consola y en
-  `/healthz` (`bitacoraFirmada:false`), y el panel enseña «Bitácora sin firmar».
-- Llave corta (< 32) firma igual y avisa.
-- La llave nunca entra al detalle de una entrada (`PROHIBIDOS` incluye `llave`).
+- `registrar()` añade `firma = HMAC-SHA256(k, hash)` con `k` derivada por
+  scrypt de `GENESIS_BITACORA_CLAVE` (**o `GENESIS_BITACORA_LLAVE`, [hecho]**).
+  Menos de 32 caracteres no cuenta como llave.
+- `verificarCadena()` devuelve `firmas: { hayLlave, firmadas, sinFirmar,
+  firmaRotaEn, degradadaEn }`; una firma rota o una entrada sin firma detrás
+  de una firmada dejan `integra: false`.
+- El ancla diaria (`src/audit/ancla.ts`) publica hash y recuento en la cadena
+  5550 y `GET /api/publico/anclas` los lista para que cualquiera los compare.
+- Sin llave el servicio arranca y `/healthz` dice `bitacoraFirmada: false`.
 
-Por qué HMAC y no Ed25519: la verificación la hace el propio servidor y la
-llave vive en el entorno; HMAC es una línea de `node:crypto` y no exige
-manejar PEM en variables de entorno. El día que un auditor externo tenga que
-verificar sin la llave, se cambia `firmarEslabon()` por `crypto.sign(null, …)`
-con Ed25519 y se publica la clave pública: la interfaz ya lo permite.
+Por qué HMAC y no Ed25519: la verificación la hace el propio servidor. Para
+verificación por terceros sin la llave ya existe el ancla en cadena, que es
+mejor que publicar una clave pública.
 
 ---
 
@@ -198,7 +210,7 @@ con Ed25519 y se publica la clave pública: la interfaz ya lo permite.
 
 | Dónde | Qué |
 | --- | --- |
-| **Render (Genesis)** | Desplegar este commit. Variable nueva **`GENESIS_BITACORA_LLAVE`** (32+ caracteres al azar; no cambiarla después). Para el lector de documentos de la web: las mismas credenciales de Rekognition **más el permiso IAM `rekognition:DetectText`**. |
-| **Heroku (backend Veta Wallet)** | Copiar `infra/genesis-proxy/genesis.router.js` y montar `parserRostro` también en `/genesis/documento/leer` (ver README del puente). |
+| **Render (Genesis)** | Desplegar este commit. Confirmar que existe **`GENESIS_BITACORA_CLAVE`** (o `_LLAVE`; 32+ caracteres al azar; no cambiarla después). El lector de la MRZ usa las credenciales de Rekognition ya puestas; el usuario IAM necesita **`rekognition:DetectText`** (ya lo usa la lectura del frente). |
+| **Heroku (backend Veta Wallet)** | Desplegar `infra/veta-wallet-backend/lib/genesisPuente.js` (ruta nueva `/genesis/documento/leer`) y montar `parserRostro` también en esa ruta en `app.js`. |
 | **Amplify (web)** | Subir la carpeta entera (`subir.py`) y la versión de un archivo para `www` (`unificar.py`). La ruta `/gid/<GID>` cae en el index por la regla comodín: no hace falta configurar nada más. |
-| **OTA (app)** | Cambios solo de JavaScript: llegan por aire. No hay dependencia nativa nueva (`react-native-qrcode-svg` ya estaba). |
+| **OTA (app `orden-global-app`)** | Cambios solo de JavaScript: llegan por aire. No hay dependencia nativa nueva (`react-native-qrcode-svg` ya estaba). |
