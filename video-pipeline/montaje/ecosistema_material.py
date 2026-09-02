@@ -9,7 +9,13 @@ palabra viva en pantalla más de lo que se tarda en leerla. Al final, la pasada
 de acabado de acabado.py.
 
     python3 montaje/ecosistema_material.py prompts/pelicula2_montaje.json \\
-        /ruta/a/clips salida_muda.mp4
+        /ruta/a/clips salida_muda.mp4 [desde_s hasta_s]
+
+Los dos últimos argumentos son opcionales y renderizan solo ese tramo. No es un
+lujo: el contenedor de esta sesión se reinicia cada pocos minutos y una pasada
+entera se pierde a medias. Con el tramo se rehace solo lo que cambió —y como
+`fundido_s` es 0 los cortes son secos, así que un tramo empalma con el resto sin
+costura—. El número de fotograma se conserva, que es la semilla del grano.
 """
 from __future__ import annotations
 
@@ -627,9 +633,17 @@ def main():
     dur = spec["salida"]["dur_s"]
     cache = clips / "_frames"
 
+    desde_s = float(sys.argv[4]) if len(sys.argv) > 4 else 0.0
+    hasta_s = float(sys.argv[5]) if len(sys.argv) > 5 else dur
+
     planos = []
     for b in spec["bloques"]:
         if b.get("negro"):
+            planos.append((b, None))
+            continue
+        if b["t"] + b["dur"] <= desde_s or b["t"] >= hasta_s:
+            # Fuera del tramo: ni se extrae. Extraer los quince planos para
+            # rehacer seis segundos es la mayor parte del trabajo.
             planos.append((b, None))
             continue
         toma = picks.get(b["plano"], 1)
@@ -648,8 +662,8 @@ def main():
          "-c:v", "libx264", "-crf", "24", "-preset", "slow", "-tune", "grain",
          "-pix_fmt", "yuv420p", salida_mp4], stdin=subprocess.PIPE)
 
-    total = int(dur * FPS)
-    for fr in range(total):
+    primero, total = int(desde_s * FPS), int(hasta_s * FPS)
+    for fr in range(primero, total):
         t = fr / FPS
         # Los bloques que cubren este instante (dos, durante un fundido).
         activos = [(b, p) for b, p in planos if b["t"] <= t < b["t"] + b["dur"]]
@@ -737,7 +751,8 @@ def main():
     ff.stdin.close()
     if ff.wait() != 0:
         sys.exit("ffmpeg falló")
-    print(f"listo: {salida_mp4} · {dur}s · {total} fotogramas")
+    print(f"listo: {salida_mp4} · {desde_s:.1f}-{hasta_s:.1f}s · "
+          f"{total - primero} fotogramas")
 
 
 if __name__ == "__main__":
