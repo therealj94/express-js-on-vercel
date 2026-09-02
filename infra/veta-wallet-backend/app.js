@@ -296,6 +296,9 @@ app.use("/genesis/foto", parserRostro);
 // Las dos caras del documento, para quien se verifica desde el navegador: son
 // dos fotografias de telefono y tampoco caben en el limite general.
 app.use("/genesis/documento-fotos", parserRostro);
+// La foto del documento para leer la MRZ pesa como las de biometría: mismo
+// parser ancho, antes del general, o el cuerpo se rechaza por tamaño.
+app.use("/genesis/documento/leer", parserRostro);
 
 /* Reducido de 5mb — no hay razón para aceptar más.
  *
