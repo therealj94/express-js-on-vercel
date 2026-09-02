@@ -34,18 +34,22 @@
  * solo se encarga de la llamada en sí.
  *
  * ══════════════════════════════════════════════════════════════════════════
- * SIN TURN, ENTRE EL 15 Y EL 20 % NO CONECTA
+ * EL RELEVO ESTA PUESTO, Y AUN ASI SE SIGUE DICIENDO CUANDO FALLA
  *
- * Con STUN a secas conectan casi todas. Cuando los dos están detrás de un NAT
- * cerrado —dos redes móviles, por ejemplo— no hay camino directo posible y
- * hace falta un relevo TURN, que cuesta al mes. Este archivo NO lo disimula:
- * cuando pasa, cuelga con motivo `sin-camino` y apunta qué clases de camino
- * llegó a ver. Una llamada que se queda en «conectando…» para siempre es peor
- * que una que avisa, porque la persona lo intenta diez veces creyendo que es
- * su internet.
+ * Con STUN a secas, entre el 15 y el 20 % de las llamadas no conecta: cuando
+ * los dos están detrás de un NAT cerrado no hay camino directo posible. El
+ * relevo TURN de Cloudflare está configurado en el servidor y `/turno`
+ * devuelve credenciales de verdad, así que ese hueco está tapado.
+ *
+ * Pero se pide en cada llamada y puede no llegar —el servidor caído, la cuota
+ * agotada—, así que el diagnóstico se mantiene: cuando no hay camino, se
+ * cuelga con motivo `sin-camino` y se apunta qué clases de camino llegó a
+ * ver. Sin ningún `relay` entre ellas, el relevo no entró y eso se sabe con
+ * pruebas en vez de con una corazonada.
  */
 
 import { PermissionsAndroid, Platform } from 'react-native';
+import AudioSala from 'react-native-incall-manager';
 import {
   RTCPeerConnection,
   RTCIceCandidate,
@@ -77,6 +81,14 @@ let entrante = null;             // lo que llegó con `llamo`, mientras se pregu
 let iceEnCola = [];
 let relojConexion = null;
 let tiposVistos = new Set();
+/* Por dónde sale la voz. `auricular` es el de la oreja, `altavoz` es manos
+   libres. El bluetooth no es un tercer estado: cuando hay unos audífonos
+   conectados, Android manda la voz ahí y esto no se pelea con el sistema. */
+let porAltavoz = false;
+/* La pantalla compartida, si la hay. Se guarda aparte de `miFlujo` porque al
+   dejar de compartir hay que devolver la cámara, y para eso hace falta seguir
+   teniéndola. */
+let flujoPantalla = null;
 
 let mandarSenal = () => {};
 let avisar = () => {};
@@ -114,6 +126,12 @@ export const cuento = () => ({
   hayVideo: !!miFlujo?.getVideoTracks?.().length,
   micAbierto: !!miFlujo?.getAudioTracks?.()[0]?.enabled,
   camAbierta: !!miFlujo?.getVideoTracks?.()[0]?.enabled,
+  porAltavoz,
+  compartiendo: !!flujoPantalla,
+  /* Lo que va en el recuadro chico: la pantalla si la estoy compartiendo, y
+     si no, mi cámara. Lo decide el motor y no la pantalla, porque es él quien
+     sabe cuál de los dos está de verdad viajando al otro lado. */
+  flujoChico: flujoPantalla || miFlujo,
 });
 
 const anunciar = (extra) => { try { avisar({ ...cuento(), ...(extra || {}) }); } catch {} };
@@ -202,6 +220,37 @@ async function permisos(conVideo) {
   }
 }
 
+/* EL AUDIO DE UNA LLAMADA NO ES EL AUDIO DE UN VIDEO.
+ *
+ * Sin esto, la voz sale por el altavoz de multimedia al volumen de la música,
+ * el teléfono no apaga la pantalla cuando te lo acercás a la oreja, y unos
+ * audífonos bluetooth conectados quedan ignorados. `InCallManager` le dice a
+ * Android que esto es una llamada: pone el modo de comunicación, enciende el
+ * sensor de proximidad, y enruta a los audífonos si los hay.
+ *
+ * En una VIDEOllamada se arranca en altavoz, porque nadie mira una pantalla
+ * con el teléfono pegado a la oreja. En una de voz, en el auricular.
+ */
+function audioArranca(conVideo) {
+  try {
+    AudioSala.start({ media: conVideo ? 'video' : 'audio', auto: true });
+    porAltavoz = !!conVideo;
+    AudioSala.setForceSpeakerphoneOn(porAltavoz);
+  } catch { /* sin el módulo la llamada igual se escucha, solo que peor */ }
+}
+
+function audioTermina() {
+  try { AudioSala.stop(); } catch {}
+  porAltavoz = false;
+}
+
+/** El manos libres. `undefined` alterna. */
+export function altavoz(encender) {
+  porAltavoz = encender === undefined ? !porAltavoz : !!encender;
+  try { AudioSala.setForceSpeakerphoneOn(porAltavoz); } catch {}
+  anunciar();
+}
+
 /** Abre micrófono, y cámara si es una llamada de video. */
 async function abrirMedios(conVideo) {
   if (!(await permisos(conVideo))) throw new Error('sin-permiso');
@@ -235,6 +284,7 @@ export async function llamar(correo, conVideo) {
     // cambiar después, y añadirlo tarde no sirve de nada.
     await refrescarTurno();
     miFlujo = await abrirMedios(conVideo);
+    audioArranca(conVideo);
     pc = nuevaConexion();
     miFlujo.getTracks().forEach((t) => pc.addTrack(t, miFlujo));
     armarPlazo();
@@ -263,6 +313,7 @@ export async function contestar(conVideo) {
   try {
     await refrescarTurno();
     miFlujo = await abrirMedios(conVideo);
+    audioArranca(conVideo);
     pc = nuevaConexion();
     miFlujo.getTracks().forEach((t) => pc.addTrack(t, miFlujo));
     armarPlazo();
@@ -291,6 +342,9 @@ export function rechazar() {
 /* ── COLGAR ──────────────────────────────────────────────────────────────── */
 
 function soltarTodo() {
+  audioTermina();
+  try { flujoPantalla?.getTracks?.().forEach((t) => t.stop()); } catch {}
+  flujoPantalla = null;
   try { miFlujo?.getTracks?.().forEach((t) => t.stop()); } catch {}
   try { pc?.close?.(); } catch {}
   miFlujo = null;
@@ -337,6 +391,53 @@ export function camara(encender) {
   const t = miFlujo?.getVideoTracks?.()[0];
   if (!t) return;
   t.enabled = encender === undefined ? !t.enabled : !!encender;
+  anunciar();
+}
+
+/* ── COMPARTIR LA PANTALLA ───────────────────────────────────────────────
+ *
+ * Se REEMPLAZA la pista de video que ya viaja (`replaceTrack`) en vez de
+ * renegociar la llamada entera. Renegociar corta el audio un instante y a
+ * veces no vuelve; esto es un cambio limpio que el otro lado ni nota.
+ *
+ * En Android, capturar la pantalla obliga a un servicio en primer plano —el
+ * módulo lo trae declarado— y a que la persona acepte el aviso del sistema.
+ * Si lo cancela, `getDisplayMedia` lanza y acá no pasa nada más: no se toca
+ * la llamada, que sigue como estaba.
+ *
+ * Y SOLO DENTRO DE UNA LLAMADA DE VIDEO. Compartir en una de voz obligaría a
+ * agregar una pista nueva y renegociar, que es justo lo que este camino
+ * evita. El botón no aparece ahí, en vez de aparecer y fallar.
+ */
+export async function pantalla() {
+  if (!pc) return;
+  if (flujoPantalla) return dejarPantalla();
+  try {
+    const p = await mediaDevices.getDisplayMedia({ video: true, audio: false });
+    flujoPantalla = p;
+    const nueva = p.getVideoTracks()[0];
+    const emisor = pc.getSenders().find((x) => x.track?.kind === 'video');
+    if (emisor) await emisor.replaceTrack(nueva);
+    else pc.addTrack(nueva, p);
+    /* Si se corta desde el aviso del sistema —«dejar de compartir»— hay que
+       enterarse: sin esto la app seguiría creyendo que comparte y el otro
+       lado vería una imagen congelada. */
+    nueva.addEventListener?.('ended', () => { dejarPantalla(); });
+    anunciar();
+  } catch {
+    flujoPantalla = null;
+    anunciar();
+  }
+}
+
+export async function dejarPantalla() {
+  if (!flujoPantalla) return;
+  try { flujoPantalla.getTracks().forEach((t) => t.stop()); } catch {}
+  flujoPantalla = null;
+  // Vuelve la cámara a la conexión que ya está en pie.
+  const dela = miFlujo?.getVideoTracks?.()[0] || null;
+  const emisor = pc?.getSenders?.().find((x) => x.track?.kind === 'video');
+  if (emisor) { try { await emisor.replaceTrack(dela); } catch {} }
   anunciar();
 }
 
@@ -404,5 +505,6 @@ export const enLlamada = () => estado !== 'libre';
 
 export default {
   arrancar, recibir, llamar, contestar, rechazar, colgar,
-  micro, camara, voltear, cuento, hayTurno, enLlamada,
+  micro, camara, voltear, altavoz, pantalla, dejarPantalla,
+  cuento, hayTurno, enLlamada,
 };

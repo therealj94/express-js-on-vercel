@@ -2,7 +2,7 @@
   "expo": {
     "name": "Orden Global",
     "slug": "orden-global",
-    "version": "1.33.4",
+    "version": "1.33.5",
     "owner": "ordenglobal",
     "runtimeVersion": {
       "policy": "fingerprint"
@@ -96,9 +96,11 @@
         "WAKE_LOCK",
         "RECORD_AUDIO",
         "BLUETOOTH_CONNECT",
+        "FOREGROUND_SERVICE",
+        "FOREGROUND_SERVICE_MEDIA_PROJECTION",
         "MODIFY_AUDIO_SETTINGS"
       ],
-      "versionCode": 74,
+      "versionCode": 75,
       "blockedPermissions": [
         "android.permission.READ_EXTERNAL_STORAGE",
         "android.permission.WRITE_EXTERNAL_STORAGE"

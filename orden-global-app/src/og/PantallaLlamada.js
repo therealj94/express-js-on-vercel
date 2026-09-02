@@ -37,7 +37,7 @@ import LLAMADA from './llamada';
 
 /* Por qué no se pudo, dicho para quien lo lee y no para quien lo programó. */
 const MOTIVOS = {
-  'sin-camino': 'No se encontró camino entre los dos teléfonos. Suele pasar cuando los dos están en redes móviles. Probá con wifi.',
+  'sin-camino': 'No se pudo conectar. Revisá que los dos tengan internet y probá otra vez.',
   'no-se-pudo': 'No se pudo abrir el micrófono o la cámara.',
   'sin-permiso': 'Hace falta permiso de micrófono para llamar, y de cámara para videollamar. Se piden desde los ajustes del teléfono.',
   rechazada: 'No contestaron.',
@@ -54,7 +54,8 @@ const reloj = (seg) => {
 };
 
 export default function PantallaLlamada({ estado, quien, onCerrar }) {
-  const { estado: fase, flujoLocal, flujoRemoto, hayVideo, micAbierto, camAbierta, entrante } = estado;
+  const { estado: fase, flujoLocal, flujoRemoto, hayVideo, micAbierto, camAbierta,
+          porAltavoz, compartiendo, flujoChico, entrante } = estado;
   const [segundos, setSegundos] = useState(0);
   const arranque = useRef(null);
 
@@ -77,7 +78,7 @@ export default function PantallaLlamada({ estado, quien, onCerrar }) {
     ? (esVideo ? 'Videollamada entrante' : 'Llamada entrante')
     : fase === 'llamando' ? 'Llamando…'
     : fase === 'conectando' ? 'Conectando…'
-    : fase === 'hablando' ? reloj(segundos)
+    : fase === 'hablando' ? (compartiendo ? 'Compartiendo pantalla · ' + reloj(segundos) : reloj(segundos))
     : '';
 
   return (
@@ -100,8 +101,9 @@ export default function PantallaLlamada({ estado, quien, onCerrar }) {
 
       {/* MI CÁMARA, EN CHICO. Se esconde si la apagué: dejar el recuadro con
           la última imagen congelada hace creer que se sigue viendo. */}
-      {flujoLocal && esVideo && camAbierta ? (
-        <RTCView streamURL={flujoLocal.toURL()} objectFit="cover" mirror style={st.local} />
+      {flujoChico && esVideo && (camAbierta || compartiendo) ? (
+        <RTCView streamURL={flujoChico.toURL()} objectFit="cover"
+                 mirror={!compartiendo} style={st.local} />
       ) : null}
 
       <View style={st.arriba}>
@@ -126,14 +128,26 @@ export default function PantallaLlamada({ estado, quien, onCerrar }) {
             <Boton icono={micAbierto ? 'mic' : 'mic-off'} apagado={!micAbierto}
                    etiqueta={micAbierto ? 'Silenciar' : 'Activar micrófono'}
                    onPress={() => LLAMADA.micro()} />
+            {/* El manos libres. En videollamada arranca encendido: nadie mira
+                una pantalla con el teléfono pegado a la oreja. */}
+            <Boton icono={porAltavoz ? 'altavoz' : 'auricular'} apagado={!porAltavoz}
+                   etiqueta={porAltavoz ? 'Quitar el altavoz' : 'Altavoz'}
+                   onPress={() => LLAMADA.altavoz()} />
             {esVideo ? (
               <Boton icono={camAbierta ? 'videocam' : 'videocam-off'} apagado={!camAbierta}
                      etiqueta={camAbierta ? 'Apagar cámara' : 'Encender cámara'}
                      onPress={() => LLAMADA.camara()} />
             ) : null}
-            {esVideo && camAbierta ? (
+            {esVideo && camAbierta && !compartiendo ? (
               <Boton icono="camera-reverse" etiqueta="Cambiar de cámara"
                      onPress={() => LLAMADA.voltear()} />
+            ) : null}
+            {/* Compartir pantalla solo en videollamada: en una de voz habría
+                que renegociar la conexión, y eso corta el audio. */}
+            {esVideo ? (
+              <Boton icono={compartiendo ? 'pantalla-off' : 'pantalla'} apagado={!compartiendo}
+                     etiqueta={compartiendo ? 'Dejar de compartir' : 'Compartir pantalla'}
+                     onPress={() => LLAMADA.pantalla()} />
             ) : null}
             <Boton icono="call-off" color="#E5484D" grande etiqueta="Colgar"
                    onPress={() => { LLAMADA.colgar('yo'); onCerrar?.(); }} />

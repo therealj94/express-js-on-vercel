@@ -81,8 +81,7 @@ export function cartaSegundaVuelta({ nombre, correo }) {
     Global. Sin costo de minutos: viaja por internet, como todo lo demás.
   </p>
   <p style="margin:0 0 20px;font-size:14px;color:#9A8C76;">
-    Si están los dos en datos móviles, a veces no encuentra camino y lo dice.
-    Con wifi entra siempre.
+    Y si son varios, la llamada de grupo también, hasta cinco personas.
   </p>
 
   ${H("La forma fácil: instalarla desde la web")}
@@ -198,8 +197,7 @@ Y AHORA LA APP LLAMA
 Podés llamar y hacer videollamada desde el chat, con quien tenga Orden Global.
 Sin costo de minutos: viaja por internet, como todo lo demás.
 
-Si están los dos en datos móviles, a veces no encuentra camino y lo dice. Con
-wifi entra siempre.
+Y si son varios, la llamada de grupo también, hasta cinco personas.
 
 
 LA FORMA FÁCIL: INSTALARLA DESDE LA WEB

@@ -48,12 +48,18 @@ import { genesis } from '../genesis';
 import * as M from './mensajes';
 import LLAMADA from './llamada';
 import PantallaLlamada, { razonDeCorte } from './PantallaLlamada';
+import GRUPO from './llamadaGrupo';
+import PantallaGrupo from './PantallaGrupo';
 
 /* Las señales que son de una llamada y no del chat. Los nombres son los
    MISMOS que usa `apps-web/veta-wallet/llamada.js`: cambiar uno acá sin
    cambiarlo allá rompe las llamadas entre el teléfono y el navegador sin que
    ninguna prueba lo note. */
 const SENALES_LLAMADA = ['llamo', 'respuesta', 'ice', 'cuelgo', 'rechazo', 'ocupado'];
+/* Las de grupo van aparte y todas empiezan por «g». Se comprueban ANTES que
+   las de uno a uno: `ice` y `gice` son distintas, y confundirlas metería un
+   candidato de una llamada de grupo dentro de una conexión cara a cara. */
+const ES_DE_GRUPO = (t) => typeof t === 'string' && t.startsWith('g');
 import { aUri } from './rutas';
 import { guardarContacto, renombrarContacto, eliminarContacto, leerLibreta, comoMapa } from './contactos';
 import { reproducir } from './sonidos';
@@ -513,6 +519,7 @@ export default function AuroChat({ nav, params }) {
      qué: él solo maneja audio, video y señales. */
   const [llam, setLlam] = useState(() => LLAMADA.cuento());
   const [quienLlama, setQuienLlama] = useState(null);
+  const [gru, setGru] = useState(() => GRUPO.cuento());
   const [puerta, setPuerta] = useState('mirando');       // mirando | falta | abierta
   const [convos, setConvos] = useState(null);
   const [busca, setBusca] = useState('');
@@ -793,8 +800,13 @@ export default function AuroChat({ nav, params }) {
     M.grupoInfo(destino).then((g) => {
       if (!vivo || !g) return;
       const gente = Array.isArray(g.miembros) ? g.miembros : [];
+      /* Se guarda la LISTA, no solo cuántos son. El número basta para la
+         seña bajo el nombre; para llamar al grupo hacen falta los correos, y
+         volver a pedirlos en el momento de llamar sería una espera justo
+         cuando la persona ya tocó el botón. */
       setCon((x) => (idDe(x) === destino
-        ? { ...x, nombre: g.nombre || x.nombre, foto: g.foto || x.foto, admin: g.admin, miembros: gente.length || x.miembros }
+        ? { ...x, nombre: g.nombre || x.nombre, foto: g.foto || x.foto, admin: g.admin,
+            miembros: gente.length || x.miembros, gente }
         : x));
       aprenderNombres(gente.map((m) => [m.correo, m.nombre]));
     }).catch(() => {});
@@ -921,8 +933,32 @@ export default function AuroChat({ nav, params }) {
         if (c?.estado === 'libre') setQuienLlama(null);
       },
     });
-    return () => { if (LLAMADA.enLlamada()) LLAMADA.colgar('yo'); };
-  }, [toast]);
+    GRUPO.arrancar({
+      correo: String(account?.email || '').toLowerCase(),
+      mandar: M.senalar,
+      turno: M.turno,
+      alCambiar: setGru,
+    });
+    return () => {
+      if (LLAMADA.enLlamada()) LLAMADA.colgar('yo');
+      if (GRUPO.enLlamada()) GRUPO.colgar('yo');
+    };
+  }, [toast, account?.email]);
+
+  /** Llamar al grupo que está abierto. */
+  const llamarGrupo = useCallback(async (conVideo) => {
+    const miembros = (con?.gente || con?.miembrosCorreos || [])
+      .map((x) => String(x?.correo || x || '').toLowerCase())
+      .filter((x) => x && x !== String(account?.email || '').toLowerCase());
+    if (!miembros.length) return toast('Este grupo todavía no tiene a nadie más.', 'error');
+    try {
+      await GRUPO.llamar(destinoRef.current, miembros, conVideo);
+    } catch (e) {
+      toast(e?.code === 'lleno'
+        ? `En una llamada de grupo caben ${GRUPO.TOPE}. Con más, se degrada para todos.`
+        : 'No se pudo empezar la llamada.', 'error');
+    }
+  }, [con, account?.email, toast]);
 
   /** Llamar a quien está abierto en el hilo. */
   const llamarA = useCallback(async (conVideo) => {
@@ -953,6 +989,8 @@ export default function AuroChat({ nav, params }) {
       /* Las señales de la llamada van tal cual al motor: los nombres son los
          mismos que usa la web, y por eso un teléfono puede llamar a una
          pestaña. */
+      if (ES_DE_GRUPO(s?.tipo)) { GRUPO.recibir(s); return; }
+
       if (SENALES_LLAMADA.includes(s?.tipo)) {
         if (s.tipo === 'llamo') setQuienLlama({ correo: de, nombre: nombreDe(de) || de });
         LLAMADA.recibir(s);
@@ -1646,6 +1684,16 @@ export default function AuroChat({ nav, params }) {
      Va con `return` propio y no como una capa dentro de la lista: durante una
      llamada no hay nada más que mirar, y dejar la lista montada debajo
      significa que un repintado suyo puede tirar el video. */
+  if (gru.estado !== 'libre') {
+    return (
+      <PantallaGrupo
+        estado={gru}
+        nombreDe={(c) => nombreDe(c)}
+        onCerrar={() => {}}
+      />
+    );
+  }
+
   if (llam.estado !== 'libre') {
     return (
       <PantallaLlamada
@@ -1719,23 +1767,23 @@ export default function AuroChat({ nav, params }) {
               )}
             </View>
           </Pressable>
-          {/* LLAMAR Y VIDEOLLAMAR. Solo en un cara a cara: la llamada de
-              grupo existe en la web y todavía no acá, y un botón que a veces
-              funciona es peor que uno que no está. */}
-          {!enGrupo && (
-            <>
-              <Pressable style={st.btnLlamar} hitSlop={8} accessibilityRole="button"
-                accessibilityLabel={t.llamar}
-                onPress={() => { hap(); llamarA(false); }}>
-                <Icon name="call" size={20} color={P2C.acentoLt} />
-              </Pressable>
-              <Pressable style={st.btnLlamar} hitSlop={8} accessibilityRole="button"
-                accessibilityLabel={t.videollamar}
-                onPress={() => { hap(); llamarA(true); }}>
-                <Icon name="videocam" size={20} color={P2C.acentoLt} />
-              </Pressable>
-            </>
-          )}
+          {/* LLAMAR Y VIDEOLLAMAR. Los mismos dos botones para los dos casos:
+              en un cara a cara llaman a la persona, en un grupo abren la
+              llamada en malla con todos. Que el botón sea el mismo es la
+              idea — quien lo toca no tiene por qué saber que por dentro son
+              dos motores distintos. */}
+          <>
+            <Pressable style={st.btnLlamar} hitSlop={8} accessibilityRole="button"
+              accessibilityLabel={t.llamar}
+              onPress={() => { hap(); enGrupo ? llamarGrupo(false) : llamarA(false); }}>
+              <Icon name="call" size={20} color={P2C.acentoLt} />
+            </Pressable>
+            <Pressable style={st.btnLlamar} hitSlop={8} accessibilityRole="button"
+              accessibilityLabel={t.videollamar}
+              onPress={() => { hap(); enGrupo ? llamarGrupo(true) : llamarA(true); }}>
+              <Icon name="videocam" size={20} color={P2C.acentoLt} />
+            </Pressable>
+          </>
           {/* El puente con la wallet: `avisarChat` es lo que hará que el
               comprobante caiga en ESTA conversación cuando la cadena confirme
               —nunca antes—. En un grupo el destino de cadena lo elige la

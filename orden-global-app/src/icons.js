@@ -157,6 +157,12 @@ const PATHS = {
      traído de otro set se nota enseguida porque su grosor no coincide.
      `call-off` es el mismo auricular girado, que es como lo dibuja todo el
      mundo y por eso se entiende sin leer nada. */
+  /* El altavoz y el auricular. Mismo cono con ondas, y sin ondas cuando la
+     voz sale por la oreja: la diferencia se lee de un vistazo sin leer nada. */
+  altavoz: ['M4 9.4h3.4L12 5.6v12.8l-4.6-3.8H4z', 'M15.6 9.4a3.6 3.6 0 0 1 0 5.2', 'M18.2 7a7.2 7.2 0 0 1 0 10'],
+  auricular: ['M4 9.4h3.4L12 5.6v12.8l-4.6-3.8H4z', 'M15.6 9.4a3.6 3.6 0 0 1 0 5.2'],
+  pantalla: ['M3 5.4h18v10.2H3z', 'M8.5 19.4h7', 'M12 15.6v3.8', 'M12 8v5', 'M9.6 10.4L12 8l2.4 2.4'],
+  'pantalla-off': ['M3 5.4h18v10.2H3z', 'M8.5 19.4h7', 'M12 15.6v3.8', 'M3 3l18 18'],
   call: ['M6.2 3.6h3l1.5 3.8-1.9 1.4a12.5 12.5 0 0 0 5.4 5.4l1.4-1.9 3.8 1.5v3a1.8 1.8 0 0 1-2 1.8A15.8 15.8 0 0 1 4.4 5.6a1.8 1.8 0 0 1 1.8-2z'],
   'call-off': ['M6.2 3.6h3l1.5 3.8-1.9 1.4a12.5 12.5 0 0 0 5.4 5.4l1.4-1.9 3.8 1.5v3a1.8 1.8 0 0 1-2 1.8A15.8 15.8 0 0 1 4.4 5.6a1.8 1.8 0 0 1 1.8-2z', 'M3 3l18 18'],
   mic: ['M12 3.2a2.6 2.6 0 0 1 2.6 2.6v5.4a2.6 2.6 0 0 1-5.2 0V5.8A2.6 2.6 0 0 1 12 3.2z', 'M5.8 11.2a6.2 6.2 0 0 0 12.4 0', 'M12 17.4V21'],
