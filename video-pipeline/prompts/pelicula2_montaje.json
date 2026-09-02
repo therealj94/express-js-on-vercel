@@ -265,16 +265,17 @@
     "02_oro_moneda": 3,
     "03_gotas_cuatro": 1,
     "04_telefono_piedra": 2,
-    "05_dedo_cristal": 2,
+    "05_dedo_cristal": 8,
     "06_mano_recibe": 1,
     "07_telefono_terminal": 4,
     "08_tarjeta_terminal": 1,
     "09_manos_intercambio": 2,
-    "10_dos_telefonos": 1,
+    "10_dos_telefonos": 5,
     "11_moneda_gira": 3,
     "12_aucorp_moneda": 3,
     "13_luz_viaja": 4,
     "14_familia": 2,
     "15_oro_cierre": 1
-  }
+  },
+  "_retomas": "Las dos retomas arreglaron lo que fallaba. En el dedo, pedir la piel por su nombre -poros, textura seca, crestas de la huella- y prohibir la de muneco quito el rosa de plastilina. En los dos telefonos, pedir el plano CENITAL quito la ambiguedad: de frente el modelo devolvia lingotes y discos."
 }
