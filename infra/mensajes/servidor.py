@@ -223,6 +223,20 @@ def presente(c):
     ahora = time.time()
     return (ahora - OIDO.get(c, 0) < PRESENTE_FRESCO
             or ahora - PULSO.get(c, 0) < PRESENTE_FRESCO)
+
+
+def escuchando(c):
+    """¿Le puede ENTRAR una llamada ahora mismo? Solo si escucha el buzón.
+
+    `presente` mezcla dos cosas a propósito —el punto verde se enciende
+    también con el sondeo de la bandeja—, pero para decidir si el timbre de
+    una llamada se EMPUJA o no, esa mezcla era un fallo: la app del teléfono
+    sondea la bandeja cada tres segundos y no escuchaba señales, así que
+    contaba como «presente», el push del «llamo» se ahorraba, y la llamada no
+    le sonaba nunca a quien tenía el chat abierto. Aquí solo cuenta el buzón:
+    quien lo escucha recibe el timbre por la señal, y al resto se le empuja.
+    """
+    return time.time() - OIDO.get(c, 0) < PRESENTE_FRESCO
 _vapid_pub = None
 _jwt_cache = {}                  # audiencia -> (vence, token)
 
@@ -385,9 +399,13 @@ def _empujar_uno(sus, urgencia):
         return True                          # un fallo de red no es una baja
 
 
-def empujar(d, correos, urgencia='normal'):
+def empujar(d, correos, urgencia='normal', aunque_mire=False):
     """Avisa a esas cuentas, en un hilo aparte: el POST que origino el aviso no
     espera a la red de Google.
+
+    `aunque_mire` es para el timbre de una llamada: a quien esta mirando el
+    chat un MENSAJE no hace falta empujarselo (ya lo ve), pero una llamada
+    tiene que sonar igual — la pantalla del hilo no timbra sola.
 
     SE LLAMA CON EL CANDADO YA TOMADO —todas las rutas POST viven dentro de
     `with candado:`— y por eso NO lo toma: threading.Lock no es reentrante y
@@ -399,7 +417,7 @@ def empujar(d, correos, urgencia='normal'):
     ahora = time.time()
     tandas = []
     for c in correos:
-        if ahora - PULSO.get(c, 0) < PULSO_FRESCO:
+        if not aunque_mire and ahora - PULSO.get(c, 0) < PULSO_FRESCO:
             continue                         # esta mirando el chat ahora mismo
         f = (d.get('fichas') or {}).get(c) or {}
         for sus in f.get('push', []):
@@ -1437,8 +1455,10 @@ class Relevo(BaseHTTPRequestHandler):
                 # segundo aviso por la misma llamada. (Para los mensajes esa
                 # regla no vale: el buzón de señales sigue vivo mientras se
                 # mira la billetera, y ahí un mensaje sin push no se ve.)
-                if tipo in ('llamo', 'gllamo') and not presente(para):
-                    empujar(d, [para], urgencia='high')
+                # Y «escuchando», no «presente»: ver `escuchando`. Sondear la
+                # bandeja no es poder recibir una llamada.
+                if tipo in ('llamo', 'gllamo') and not escuchando(para):
+                    empujar(d, [para], urgencia='high', aunque_mire=True)
                 return self._json(200, {'ok': True})
 
             if ruta == '/senales':
@@ -1689,8 +1709,26 @@ class Relevo(BaseHTTPRequestHandler):
                 # Una reaccion a un mensaje. Se guarda POR PERSONA y no como
                 # un contador: sin saber quien puso que, no se puede quitar la
                 # propia ni impedir que alguien sume diez veces la misma.
+                #
+                # ── Y CERRADA, COMO EL MENSAJE ────────────────────────────
+                # El emoji es contenido: dice que sintio alguien sobre lo que
+                # otro escribio. Viajaba en claro (`emoji`) mientras el texto
+                # iba en sobre, y eso era una rendija: el relevo no lee la
+                # frase pero si el corazon que le pusieron. Ahora la app manda
+                # `cif` —el MISMO bulto que /enviar, un sobre por aparato— y
+                # aqui se guarda opaco. `emoji` en claro se sigue aceptando
+                # para los clientes viejos y para cuando el otro no tiene
+                # ninguna llave publicada (el mensaje tampoco pudo cerrarse).
+                # Como un bulto no se puede comparar, quitar la propia es un
+                # gesto explicito: `quitar: true`.
                 mid = str(b.get('id', ''))[:16]
                 emo = str(b.get('emoji', ''))[:8]
+                cif = b.get('cif')
+                if cif is not None:
+                    if (not isinstance(cif, dict) or not cif.get('ct')
+                            or not isinstance(cif.get('s'), list)
+                            or len(json.dumps(cif)) > 60_000):
+                        return self._json(400, {'error': 'bulto inválido'})
                 msg = next((x for x in d['mensajes'] if x.get('id') == mid), None)
                 if not msg:
                     return self._json(404, {'error': 'ese mensaje no existe'})
@@ -1699,8 +1737,10 @@ class Relevo(BaseHTTPRequestHandler):
                 if not suyo and not (ID_GRUPO.fullmatch(msg['para']) and grupo_de(d, msg['para'], correo)):
                     return self._json(403, {'error': 'ese hilo no es tuyo'})
                 r = msg.setdefault('reacciones', {})
-                if not emo or r.get(correo) == emo:
+                if b.get('quitar') or (cif is None and (not emo or r.get(correo) == emo)):
                     r.pop(correo, None)      # tocar la misma la quita
+                elif cif is not None:
+                    r[correo] = {'cif': cif}
                 else:
                     r[correo] = emo
                 if not r:
@@ -1812,10 +1852,38 @@ class Relevo(BaseHTTPRequestHandler):
                 ocultos = set(d.get('ocultos', {}).get(correo, []))
                 if ocultos:
                     hilo = [m for m in hilo if m.get('id') not in ocultos]
+                # ── HACIA ATRÁS, DE A PÁGINAS ─────────────────────────────
+                # El tope de 200 era un muro: lo de antes no se podía ver
+                # desde ningún sitio. Con `antes` (el `cuando` del mensaje
+                # más viejo que ya se tiene) se devuelve la página anterior,
+                # y `hayMas` dice si queda algo detrás. Sin `antes`, la
+                # bandeja es la de siempre: lo último.
+                try:
+                    antes = int(b.get('antes') or 0)
+                except (TypeError, ValueError):
+                    antes = 0
+                if antes > 0:
+                    hilo = [m for m in hilo if m['cuando'] < antes]
+                pagina = hilo[-TOPE_BANDEJA:]
+                # ── HASTA DÓNDE LEYÓ LA OTRA PERSONA ───────────────────────
+                # `/leido` ya guardaba «esta cuenta vio el hilo con fulano
+                # hasta ahora» para contar los sin leer; se devuelve al revés
+                # —hasta cuándo vio EL OTRO mi hilo— y con eso la burbuja
+                # pinta el doble check. Es una fecha, sin contenido. En un
+                # grupo es la menor de todos los demás: leído por todos.
+                vistos = d.get('vistos', {})
+                if ID_GRUPO.fullmatch(desde):
+                    otros = [x['correo'] for x in
+                             d['grupos'][desde].get('miembros', []) if x['correo'] != correo]
+                    leido_hasta = min((vistos.get(o, {}).get(desde, 0) for o in otros), default=0)
+                else:
+                    leido_hasta = vistos.get(desde, {}).get(correo, 0)
                 # `enLinea` viaja con la bandeja porque la app ya la pide cada
                 # cinco segundos con el hilo abierto: la presencia va gratis en
                 # un viaje que ya existe, sin una ruta ni un sondeo más.
-                return self._json(200, {'mensajes': hilo[-TOPE_BANDEJA:],
+                return self._json(200, {'mensajes': pagina,
+                                        'hayMas': len(hilo) > len(pagina),
+                                        'leidoHasta': leido_hasta,
                                         'enLinea': (not ID_GRUPO.fullmatch(desde))
                                                    and presente(desde)})
 
