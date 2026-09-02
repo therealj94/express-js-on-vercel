@@ -263,6 +263,72 @@ PY
       echo "!! SIN ENTREGA: falta HF_REPO o HF_TOKEN. Los clips se quedan"
       echo "   dentro del pod y MUEREN al destruirlo."
     fi
+    # --- Turno de espera: el pod pide más trabajo en vez de morirse ---------
+    # Una instalación son 40 minutos y $1.30. Apagar al acabar una cola y
+    # encender otra para la siguiente tira eso cada vez, y es lo que veníamos
+    # haciendo. El pod NO se puede alcanzar desde fuera —el contenedor que lo
+    # dirige solo tiene salida por 80 y 443, y el puerto publicado no es
+    # ninguno—, pero el pod SÍ alcanza Hugging Face, que es de donde baja los
+    # pesos. Así que la cola siguiente viaja por ahí.
+    #
+    # Se deja colas/siguiente.json en el repo y el pod la recoge; se deja
+    # colas/FIN y termina. Sin nada, se rinde pasado el plazo para no quedarse
+    # facturando en silencio.
+    export ESPERA="${ESPERA_MIN:-45}"
+    if [ -n "${HF_REPO:-}" ] && [ -n "${HF_TOKEN:-}" ]; then
+      echo "==> COLA VACIA. Esperando trabajo nuevo en ${HF_REPO}/colas/"
+      "$WORK/venv/bin/python" - <<'ESPERAPY' 2>&1
+import os, subprocess, time, pathlib
+from huggingface_hub import HfApi, hf_hub_download
+api = HfApi(token=os.environ["HF_TOKEN"])
+repo = os.environ["HF_REPO"]
+work = os.environ.get("WORK", "/workspace")
+espera = float(os.environ.get("ESPERA", "45")) * 60
+limite = time.time() + espera
+tanda = 1
+while time.time() < limite:
+    try:
+        ficheros = set(api.list_repo_files(repo, repo_type="dataset"))
+    except Exception as e:
+        print("    (no se pudo mirar el repo: %s)" % str(e)[:80], flush=True)
+        time.sleep(30)
+        continue
+    if "colas/FIN" in ficheros:
+        print("==> FIN pedido desde el repo", flush=True)
+        break
+    if "colas/siguiente.json" not in ficheros:
+        time.sleep(45)
+        continue
+    tanda += 1
+    print("==> TANDA %d: cola nueva encontrada" % tanda, flush=True)
+    ruta = hf_hub_download(repo, "colas/siguiente.json", repo_type="dataset",
+                           local_dir=work + "/prompts",
+                           token=os.environ["HF_TOKEN"])
+    # Se borra ANTES de ejecutarla: si no, al terminar se vuelve a encontrar
+    # la misma y la tanda entra en bucle.
+    try:
+        api.delete_file("colas/siguiente.json", repo_id=repo, repo_type="dataset")
+    except Exception as e:
+        print("    !! no se pudo borrar la cola: %s" % str(e)[:80], flush=True)
+        break
+    subprocess.run([work + "/venv/bin/python", "-u", work + "/03_run_queue.py",
+                    "--queue", ruta, "--out", work + "/outputs"],
+                   env=dict(os.environ, COMFY_URL="http://127.0.0.1:9000"))
+    for f in sorted(pathlib.Path(work + "/outputs").glob("*")):
+        if f.suffix.lower() not in (".mp4", ".png", ".jpg", ".json"):
+            continue
+        try:
+            api.upload_file(path_or_fileobj=str(f), path_in_repo=f.name,
+                            repo_id=repo, repo_type="dataset")
+        except Exception:
+            pass
+    print("==> TANDA %d ENTREGADA" % tanda, flush=True)
+    limite = time.time() + espera
+else:
+    print("==> nadie mando trabajo en el plazo; me rindo", flush=True)
+ESPERAPY
+    fi
+
     echo "==> TRABAJO COMPLETO"   # el guardián ve esto y destruye la instancia
 
     # Sin autodestrucción: la clave de instancia llega DESPUÉS de crear, y

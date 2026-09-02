@@ -166,6 +166,14 @@ def tamano_onstart():
         ok(f"onstart comprimido: {total} caracteres de 16.384")
     ok(f"autoprueba presente ({len(st)} bytes)")
 
+    # Sin el turno de espera, el pod muere al acabar su cola y la siguiente
+    # tanda paga otra instalación entera: 40 minutos y $1.30 cada vez.
+    if "colas/siguiente.json" in (RAIZ / "cloud" / "onstart.sh").read_text():
+        ok("el pod esperará más colas por Hugging Face al acabar")
+    else:
+        avisa("el onstart no espera trabajo nuevo: al acabar la cola habrá que "
+              "reinstalar desde cero para la siguiente tanda")
+
     g = RAIZ / "guardian.sh"
     if not g.exists():
         mal("no está guardian.sh: una máquina olvidada factura sola")
