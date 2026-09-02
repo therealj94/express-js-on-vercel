@@ -7869,6 +7869,7 @@ const VETA = (() => {
     // Lo que la lista ya sabía de su presencia vale como primer trazo; la
     // bandeja lo confirma en el primer latido.
     chatSt.enLinea = c && !c.esGrupo ? c.enLinea === true : null;
+    chatSt.leidoHasta = 0;
     chatSt.msgs = null;
     chatSt.gente = null;
     chatSt.busca = '';
@@ -7890,10 +7891,14 @@ const VETA = (() => {
     const quien = chatSt.con?.id;
     if (!quien) return;
     try {
-      const { mensajes: m, enLinea } = await CHAT.bandeja(quien);
+      const { mensajes: m, enLinea, leidoHasta } = await CHAT.bandeja(quien);
       // Si mientras llegaba la respuesta se cambio de hilo, se descarta: pintar
       // los mensajes de otra conversacion es peor que no pintar nada.
       if (chatSt.con?.id !== quien) return;
+      // Hasta dónde leyó la otra persona: cambia el doble check de las
+      // burbujas mías, así que cuenta como novedad para repintar.
+      const leidoCambio = (chatSt.leidoHasta || 0) !== (leidoHasta || 0);
+      chatSt.leidoHasta = leidoHasta || 0;
       /* La presencia se pinta DIRECTO en la cabecera, sin repintar el chat:
          repintar roba el foco del campo de texto, y el punto verde cambia
          mucho más seguido que los mensajes. */
@@ -7923,7 +7928,7 @@ const VETA = (() => {
         x.id, x.cuando, x.texto, x.borrado ? 1 : 0, x.tipo, x.archivo, x.cita,
         x.reacciones ? Object.entries(x.reacciones).sort().join(',') : '',
       ].join('~')).join('|');
-      const igual = callado && chatSt.msgs && huella(chatSt.msgs) === huella(m);
+      const igual = callado && chatSt.msgs && !leidoCambio && huella(chatSt.msgs) === huella(m);
       // Contestó: se cierra la ventana rápida y se vuelve al ritmo tranquilo.
       // Se mira si el ÚLTIMO es suyo, no si hay alguno: en un hilo con AU-RA
       // siempre hay mensajes suyos, y con eso la ventana no se abriría nunca.
@@ -7972,10 +7977,13 @@ const VETA = (() => {
   }
   function chatDejarCita() { chatSt.citando = null; pintarChat(); }
 
-  /** Reaccionar. Tocar la misma otra vez la quita — eso lo decide el relevo. */
+  /** Reaccionar. Tocar la misma otra vez la quita — y como la reacción
+      viaja cerrada, eso se decide ACÁ, donde está abierta, no en el relevo. */
   async function chatReaccion(id, emoji) {
     try {
-      await CHAT.reaccionar(id, emoji);
+      const m = (chatSt.msgs || []).find((x) => x.id === id);
+      const mia = m?.reacciones?.[(sesion?.correo || '').toLowerCase()] || null;
+      await CHAT.reaccionar(id, mia === emoji ? null : emoji, chatSt.con?.id);
       await chatCargarMsgs(true);
     } catch { avisar(t('cha.errReaccion')); }
     chatSt.reaccionando = null;
@@ -12297,7 +12305,15 @@ const VETA = (() => {
                  ${t('cha.e2eCerrado')}</p>`
             : (m.texto ? `<p>${esc(m.texto)}</p>` : '')}${chatMarcaFirma(m, mio)}</div>
         ${tira}
-        <time>${hora}</time>
+        <time>${hora}${
+          /* El doble check: la otra persona abrió el hilo DESPUÉS de este
+             mensaje. Un check solo es «llegó al relevo». La fecha viene con
+             la bandeja y no lleva contenido. */
+          mio && !m.borrado
+            ? (chatSt.leidoHasta >= (m.cuando || 0)
+              ? ` <span class="cha-vv" title="${t('cha.leido')}">✓✓</span>`
+              : ' <span class="cha-v">✓</span>')
+            : ''}</time>
       </div>`;
   }
 

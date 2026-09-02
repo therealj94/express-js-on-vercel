@@ -201,9 +201,38 @@ const CHAT = (() => {
   /* Devuelve también `enLinea`: el relevo sabe si la otra persona está con el
      chat de pie —escuchando su buzón de señales— y esa es exactamente la
      diferencia entre «llamala» y «esperá». */
-  const bandeja = desde => pedir('/bandeja', firmado({ desde }))
+  /* `antes` pide la página anterior (el `cuando` del más viejo que ya se
+     tiene); `hayMas` dice si queda algo detrás. `leidoHasta` es hasta cuándo
+     vio el hilo la otra persona: una fecha, sin contenido, que es lo que pinta
+     el doble check. */
+  const bandeja = (desde, antes) => pedir('/bandeja', firmado(antes ? { desde, antes } : { desde }))
     .then(async d => ({ mensajes: await abrirTodos(d.mensajes || []),
-                        enLinea: d.enLinea === true }));
+                        enLinea: d.enLinea === true,
+                        hayMas: d.hayMas === true,
+                        leidoHasta: Number(d.leidoHasta) || 0 }));
+
+  /* ══ LAS REACCIONES TAMBIÉN SE ABREN ═══════════════════════════════════
+   *
+   * Una reacción es contenido: dice qué sintió alguien sobre lo que otro
+   * escribió. Viajaba en claro mientras el texto iba en sobre. Ahora el
+   * relevo guarda, por persona, o un emoji en claro (clientes viejos, o
+   * cuando no había a quién cerrarle) o `{cif}` con el mismo bulto que un
+   * mensaje. Aquí se devuelve SIEMPRE un mapa correo → emoji: la pantalla no
+   * tiene por qué saber cuál de las dos formas llegó. Lo que este aparato no
+   * puede abrir se enseña como un candado, no se esconde. */
+  const reactoresCerrados = msgs => [...new Set(msgs.flatMap(m =>
+    Object.entries(m.reacciones || {}).filter(([, v]) => v && v.cif).map(([c]) => c)))];
+
+  async function abrirReacciones(reacs, llaves) {
+    const salida = {};
+    for (const [c, v] of Object.entries(reacs || {})) {
+      if (typeof v === 'string') { salida[c] = v; continue; }
+      if (!v || !v.cif) continue;
+      const r = CANDADO?.hay() ? await CANDADO.abrir(v.cif, llaves[c] || []) : null;
+      salida[c] = r ? r.texto.slice(0, 8) : '🔒';
+    }
+    return salida;
+  }
 
   /**
    * Abre lo que venga cerrado y deja lo demás como está.
@@ -219,34 +248,52 @@ const CHAT = (() => {
        `cha.fueEnClaro`) y era código muerto: ningún mensaje del historial
        traía la marca, así que ni quien lo mandó la veía al recargar ni quien
        lo recibió la vio nunca. Se calcula igual en las dos puntas. */
-    if (!CANDADO?.hay()) return msgs.map(m => (m.cif ? m : { ...m, e2e: false }));
+    if (!CANDADO?.hay()) {
+      return Promise.all(msgs.map(async m => ({
+        ...(m.cif ? m : { ...m, e2e: false }),
+        ...(m.reacciones ? { reacciones: await abrirReacciones(m.reacciones, {}) } : {}),
+      })));
+    }
 
     /* SE PIDEN LAS LLAVES DE TODOS LOS REMITENTES ANTES DE ABRIR NADA.
        No es una optimización: es lo que hace posible verificar la firma. Sin
        las llaves PUBLICADAS de quien escribió, lo único que se puede hacer es
        creerle al bulto, que es exactamente el agujero que la firma cierra.
        Va en una sola petición para todos, con la caché de cinco minutos que ya
-       existía. */
-    const deQuienes = [...new Set(msgs.filter(m => m.cif && m.de).map(m => m.de))];
+       existía. Y con quienes reaccionaron: una reacción cerrada también va
+       firmada. */
+    const deQuienes = [...new Set([
+      ...msgs.filter(m => m.cif && m.de).map(m => m.de),
+      ...reactoresCerrados(msgs),
+    ])];
     let llaves = {};
     if (deQuienes.length) {
       try { llaves = (await llaveroDe(deQuienes)) || {}; } catch { llaves = {}; }
     }
 
     return Promise.all(msgs.map(async m => {
-      if (!m.cif) return { ...m, e2e: false };
+      const reacciones = m.reacciones ? { reacciones: await abrirReacciones(m.reacciones, llaves) } : {};
+      if (!m.cif) return { ...m, e2e: false, ...reacciones };
       const r = await CANDADO.abrir(m.cif, llaves[m.de] || []);
-      if (r == null) return { ...m, texto: '', cerrado: true, e2e: true };
-      const claro = r.texto;
+      if (r == null) return { ...m, texto: '', cerrado: true, e2e: true, ...reacciones };
+      /* Aquí había un byte de control invisible delante de la llave —se
+         comparaba con «\x01{»— y nadie lo manda: ni esta misma web (ver
+         `enviarAdjunto`) ni la app. Un adjunto cerrado se pintaba como el
+         JSON crudo con la llave del archivo a la vista, en vez de abrirse.
+         Se admite con y sin él. */
+      const claro = r.texto.charCodeAt(0) === 1 ? r.texto.slice(1) : r.texto;
       /* El texto puede traer pegada la llave de un adjunto: viaja DENTRO del
          cifrado, nunca al lado, que es lo que hace que el relevo guarde un
-         archivo que no puede abrir. */
+         archivo que no puede abrir. Y la CITA —a qué mensaje responde— va por
+         el mismo camino (`c`): el relevo no la necesita para nada. Los
+         mensajes viejos la traen en claro (`m.cita`) y se siguen leyendo. */
       let texto = claro, extra = null;
-      if (claro.startsWith('{')) {
+      if (claro.startsWith('{')) {
         try {
           const j = JSON.parse(claro.slice(1));
           texto = j.t || '';
-          extra = { llaveArchivo: j.k, ivArchivo: j.iv };
+          extra = { ...(j.k ? { llaveArchivo: j.k, ivArchivo: j.iv } : {}),
+                    ...(j.c ? { cita: String(j.c).slice(0, 16) } : {}) };
         } catch { /* si no parsea es texto normal que empieza raro */ }
       }
       /* `verificado` viaja hasta la burbuja. Un mensaje que no se pudo
@@ -255,7 +302,7 @@ const CHAT = (() => {
       return {
         ...m, texto, e2e: true,
         verificado: r.verificado, motivoFirma: r.motivo,
-        ...(extra || {}),
+        ...(extra || {}), ...reacciones,
       };
     }));
   }
@@ -270,12 +317,17 @@ const CHAT = (() => {
    * este trabajo vino a quitar.
    */
   async function enviar(para, texto, cita) {
-    const base = { para, ...(cita ? { cita } : {}) };
-    const r = await cerrarPara(para, texto);
+    /* LA CITA VA DENTRO DEL SOBRE. Iba en claro al lado del bulto —`cita:
+       id`— y el relevo no la necesita: la lee la app del hilo que ya tiene.
+       Sólo si el mensaje sale en claro (abajo) la cita también, porque ahí
+       ya no hay nada que proteger. */
+    const carga = cita ? '{' + JSON.stringify({ t: texto, c: cita }) : texto;
+    const r = await cerrarPara(para, carga);
     if (r.cerrado) {
-      await pedir('/enviar', firmado({ ...base, cif: r.cerrado }));
+      await pedir('/enviar', firmado({ para, cif: r.cerrado }));
       return { ok: true, e2e: true };
     }
+    const base = { para, ...(cita ? { cita } : {}) };
     /* SÓLO «sin-aparatos» BAJA A TEXTO PLANO: es la única causa en la que
        mandar en claro es lo único que se puede hacer y el aviso es cierto.
        Un fallo de red, o este navegador sin sus llaves, NO degradan: se
@@ -312,8 +364,23 @@ const CHAT = (() => {
     catch { return { motivo: 'sin-llave-propia' }; }
   }
 
-  /** Reaccionar. Tocar la misma reacción otra vez la quita. */
-  const reaccionar = (id, emoji) => pedir('/reaccion', firmado({ id, emoji }));
+  /**
+   * Reaccionar, CERRADO. `para` es el hilo (correo o grupo): hace falta para
+   * saber a qué aparatos cerrarle el sobre, igual que en `enviar`. Sin
+   * `emoji` se quita la propia — un bulto no se puede comparar del lado del
+   * relevo, así que quitar es un gesto explícito y no «la misma otra vez».
+   * Sólo «sin-aparatos» baja al emoji en claro: es el único caso en que el
+   * mensaje tampoco pudo cerrarse.
+   */
+  async function reaccionar(id, emoji, para) {
+    if (!emoji) return pedir('/reaccion', firmado({ id, quitar: true }));
+    const r = para ? await cerrarPara(para, emoji) : { motivo: 'sin-aparatos' };
+    if (r.cerrado) return pedir('/reaccion', firmado({ id, cif: r.cerrado }));
+    if (r.motivo !== 'sin-aparatos') {
+      const e = new Error('no se pudo cifrar: ' + r.motivo); e.motivo = r.motivo; throw e;
+    }
+    return pedir('/reaccion', firmado({ id, emoji }));
+  }
 
   /* «Está escribiendo…». No se guarda en ningún sitio: viaja por el buzón de
      señales, que vive en memoria y se vacía solo. Se avisa como mucho una vez
