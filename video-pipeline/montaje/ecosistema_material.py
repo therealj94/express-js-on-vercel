@@ -19,15 +19,65 @@ import sys
 from pathlib import Path
 
 import numpy as np
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageDraw, ImageFilter, ImageFont
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from acabado import acabar, escalonar, salida, salida_rebote, sombra_larga  # noqa: E402
 
 W, H, FPS = 1080, 1920, 30
 TEXTO = (244, 239, 228)
-F_TIT = "/usr/share/fonts/truetype/dejavu/DejaVuSerif-Bold.ttf"
-F_ROT = "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"
+
+# La tipografía era DejaVu, que es la fuente POR DEFECTO de Linux. José lo vio
+# sin saber el nombre: "las letras se ven pobres". Una serif genérica de sistema
+# en un rótulo grande delata la pieza entera. Inter es la familia con la que se
+# rotula este tipo de cine de producto: neogrotesca, muchos pesos, y aguanta
+# tamaños grandes con interletraje negativo sin deshacerse.
+TIPO = Path("/usr/local/share/fonts/og")
+F_TIT = str(TIPO / "Inter-300.ttf")      # titulares: grandes y ligeros
+F_MED = str(TIPO / "Inter-400.ttf")      # frases de varias líneas
+F_ROT = str(TIPO / "Inter-500.ttf")      # nombres de producto, en versalitas
+F_FUE = str(TIPO / "Inter-600.ttf")      # el nombre de la casa en el cierre
+_fuentes: dict = {}
+
+
+def fuente(ruta: str, tam: int) -> ImageFont.FreeTypeFont:
+    if (ruta, tam) not in _fuentes:
+        _fuentes[(ruta, tam)] = ImageFont.truetype(ruta, tam)
+    return _fuentes[(ruta, tam)]
+
+
+def ancho_con_track(d, txt: str, f, track: float) -> float:
+    """Ancho de un texto con interletraje. Pillow no tiene tracking, así que se
+    dibuja carácter a carácter y hay que medir igual."""
+    return sum(d.textlength(c, font=f) for c in txt) + track * max(0, len(txt) - 1)
+
+
+def dibujar_track(d, xy, txt: str, f, fill, track: float):
+    x, y = xy
+    for c in txt:
+        d.text((x, y), c, font=f, fill=fill)
+        x += d.textlength(c, font=f) + track
+
+
+def texto_con_sombra(im: Image.Image, xy, txt: str, f, fill, track: float = 0.0,
+                     sombra: float = 0.55, radio: int = 26):
+    """Texto con una sombra difusa detrás.
+
+    Sin ella el rótulo se pierde en cuanto pasa por una zona clara del plano, y
+    subir el peso de la letra para compensar es lo que la hace parecer barata.
+    La sombra va muy difusa y baja: no se ve, se nota."""
+    capa = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+    dc = ImageDraw.Draw(capa, "RGBA")
+    dibujar_track(dc, xy, txt, f, fill, track)
+    if sombra > 0:
+        a = capa.split()[3]
+        sm = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+        sm.putalpha(a.filter(ImageFilter.GaussianBlur(radio)).point(
+            lambda v: int(v * sombra)))
+        im.alpha_composite(sm, (0, 3))
+    im.alpha_composite(capa)
+
+
 LOGOS = Path(__file__).resolve().parent.parent.parent / "logos-orden-global"
 
 # Las marcas tal como se usan en pantalla. Los logos vienen de ocho manos
@@ -101,17 +151,20 @@ def _pegar(im: Image.Image, capa: Image.Image, cx: int, cy: int, a: float,
 
 def producto(im: Image.Image, nombre: str, clave: str, rel: float, dur: float):
     """La ficha de producto: la marca entra con sobrepaso —tiene masa—, y el
-    nombre debajo en versalitas espaciadas. Vive lo que el rótulo y se va con él."""
+    nombre debajo en versalitas. El interletraje es de VERDAD y no dos espacios
+    entre letras, que era lo que había y se notaba en las palabras con acento."""
     e = salida_rebote(float(np.clip(rel / 0.55, 0, 1)))
     fuera = salida(float(np.clip((dur - rel) / 0.35, 0, 1)), 3.0)
     a = float(np.clip(rel / 0.25, 0, 1)) * fuera
     _pegar(im, marca(clave, 150), W // 2, int(H * 0.585), a, escala=0.86 + 0.14 * e)
     d = ImageDraw.Draw(im, "RGBA")
-    f = ImageFont.truetype(F_ROT, 30)
-    txt = "  ".join(nombre.upper())          # versalitas espaciadas a mano
-    an = d.textlength(txt, font=f)
+    f = fuente(F_ROT, 27)
+    txt = nombre.upper()
+    track = 7.5
+    an = ancho_con_track(d, txt, f, track)
     ta = salida(float(np.clip((rel - 0.18) / 0.35, 0, 1)), 4.0) * fuera
-    d.text(((W - an) / 2, H * 0.648), txt, font=f, fill=TEXTO + (int(200 * ta),))
+    texto_con_sombra(im, ((W - an) / 2, H * 0.648), txt, f,
+                     TEXTO + (int(215 * ta),), track, sombra=0.5, radio=18)
 
 
 # Dónde se coloca cada marca alrededor de Orden Global en el retrato de
@@ -180,40 +233,49 @@ def rotulo(im: Image.Image, texto: str, rel: float, dur: float, chico=False,
 
     Entra por MASCARA —cada palabra se revela desde una línea invisible— con
     dos fotogramas de desfase entre palabras, se queda lo justo, y se va por
-    opacidad. Nada de deslizarse desde fuera del cuadro: eso es plantilla."""
-    d = ImageDraw.Draw(im, "RGBA")
+    opacidad. Nada de deslizarse desde fuera del cuadro: eso es plantilla.
+
+    El tamaño y el interletraje son lo que separa un rótulo de cine de uno de
+    plantilla: los titulares van grandes y LIGEROS con el interletraje cerrado,
+    porque una letra gorda a ese cuerpo se lee como cartel de oferta."""
     lineas = texto.split("\n")
-    cuerpo = int((44 if chico else 74) * escala)
-    f = ImageFont.truetype(F_ROT if chico else F_TIT, cuerpo)
-    # `alto` deja poner dos rótulos a la vez sin que se pisen: el cierre
-    # lleva el nombre grande arriba y la frase pequeña debajo.
+    if chico:
+        f, track, salto = fuente(F_MED, int(46 * escala)), 0.0, 1.42
+    else:
+        f, track, salto = fuente(F_TIT, int(86 * escala)), -1.8, 1.22
     y = H * (alto if alto is not None else (0.70 if chico else 0.72))
-    fuera = salida(np.clip((dur - rel) / 0.35, 0, 1), 3.0)
+    fuera = salida(float(np.clip((dur - rel) / 0.35, 0, 1)), 3.0)
+    d = ImageDraw.Draw(im, "RGBA")
     k = 0
     for ln in lineas:
         palabras = ln.split(" ")
-        anchos = [d.textlength(p + " ", font=f) for p in palabras]
+        anchos = [ancho_con_track(d, p + " ", f, track) for p in palabras]
         x = (W - sum(anchos)) / 2
         for p, an in zip(palabras, anchos):
-            e = salida(np.clip((rel - escalonar(k, 2.5)) / 0.32, 0, 1), 4.0)
+            e = salida(float(np.clip((rel - escalonar(k, 2.5)) / 0.32, 0, 1)), 4.0)
             k += 1
             if e <= 0:
                 x += an
                 continue
-            # Máscara: la palabra crece desde su línea base hacia arriba.
-            box = d.textbbox((x, y), p, font=f)
-            alto = box[3] - box[1]
-            cap = Image.new("RGBA", (W, H), (0, 0, 0, 0))
-            ImageDraw.Draw(cap, "RGBA").text((x, y), p, font=f,
-                                             fill=TEXTO + (int(255 * fuera),))
-            mask = Image.new("L", (W, H), 0)
-            ImageDraw.Draw(mask).rectangle(
-                [0, box[3] - alto * e - 6, W, box[3] + 6], fill=255)
-            cap.putalpha(Image.fromarray(
-                np.minimum(np.array(cap.split()[3]), np.array(mask))))
-            im.alpha_composite(cap)
+            capa = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+            dibujar_track(ImageDraw.Draw(capa, "RGBA"), (x, y), p, f,
+                          TEXTO + (int(255 * fuera),), track)
+            caja = capa.split()[3].getbbox()
+            if caja:
+                # Máscara: la palabra crece desde su línea base hacia arriba.
+                alto_p = caja[3] - caja[1]
+                mask = Image.new("L", (W, H), 0)
+                ImageDraw.Draw(mask).rectangle(
+                    [0, caja[3] - alto_p * e - 6, W, caja[3] + 6], fill=255)
+                capa.putalpha(Image.fromarray(
+                    np.minimum(np.array(capa.split()[3]), np.array(mask))))
+                sm = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+                sm.putalpha(capa.split()[3].filter(
+                    ImageFilter.GaussianBlur(26)).point(lambda v: int(v * 0.55)))
+                im.alpha_composite(sm, (0, 3))
+            im.alpha_composite(capa)
             x += an
-        y += cuerpo * 1.35
+        y += (46 if chico else 86) * escala * salto
 
 
 def burbuja(im: Image.Image, texto: str, rel: float, dur: float, foto=None,

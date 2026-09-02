@@ -1,9 +1,14 @@
 #!/bin/bash
 # Mezcla de Cincuenta: ambiente real + música + las líneas de voz del guion.
 #
-# La música NO entra hasta que el teléfono suena en la pulpería: antes la
-# película es documental y solo se oye el sitio. Los tiempos de la voz salen
-# del propio guion de montaje para que no puedan divergir de la imagen.
+# La música ya no espera al segundo 15. La cama se sintetizaba con osciladores
+# y por eso había que esconderla; ahora está compuesta (tools/musica_el.py) y
+# empieza casi en silencio ella sola, así que entra desde el primer fotograma
+# con un fundido de seis segundos y hace el trabajo que hacía el hueco.
+#
+# El ducking baja de ratio 8 a ratio 4: a ratio 8 la música no se apartaba, se
+# borraba cada vez que alguien hablaba. Los tiempos de la voz salen del propio
+# guion de montaje para que no puedan divergir de la imagen.
 #
 # El limitador lleva level=false a propósito: por defecto ffmpeg RE-NORMALIZA
 # la salida a 0 dBFS después de limitar, así que el techo no servía de nada y
@@ -12,7 +17,7 @@
 #   bash montaje/mezcla_cincuenta.sh muda.mp4 prompts/pelicula1_montaje.json salida.mp4 42.4
 set -e
 MUDA=$1; ESPEC=$2; SALIDA=$3; DUR=${4:-42.4}
-T_MUSICA=${T_MUSICA:-15.0}
+T_MUSICA=${T_MUSICA:-0.0}
 
 ENT=""; FIL=""; MIX=""; n=0
 while read -r i seg; do
@@ -29,9 +34,9 @@ done < <(python3 -c "import json;[print(i,t) for i,t in json.load(open('$ESPEC')
 FIL="${FIL}${MIX}amix=inputs=$n:normalize=0,acompressor=threshold=0.12:ratio=3:attack=8:release=180,volume=3.0,aecho=0.9:0.85:14:0.12[voz];"
 FIL="${FIL}[voz]asplit=3[voz1][disp][disp2];"
 FIL="${FIL}[$((n+1)):a]volume=2.2[amb0];"
-FIL="${FIL}[amb0][disp2]sidechaincompress=threshold=0.05:ratio=6:attack=5:release=500:makeup=1[amb];"
-FIL="${FIL}[$((n+2)):a]volume=0.0:enable='lt(t,${T_MUSICA})',volume='min(1,(t-${T_MUSICA})/6)':eval=frame[cama0];"
-FIL="${FIL}[cama0][disp]sidechaincompress=threshold=0.03:ratio=8:attack=5:release=600:makeup=1[cama];"
+FIL="${FIL}[amb0][disp2]sidechaincompress=threshold=0.06:ratio=4:attack=8:release=420:makeup=1[amb];"
+FIL="${FIL}[$((n+2)):a]volume='min(1,max(0,(t-${T_MUSICA})/6))*0.78':eval=frame[cama0];"
+FIL="${FIL}[cama0][disp]sidechaincompress=threshold=0.06:ratio=4:attack=12:release=420:makeup=1[cama];"
 FIL="${FIL}[voz1][amb][cama]amix=inputs=3:normalize=0,aresample=48000,alimiter=limit=0.70:attack=3:release=60:level=false,apad[a]"
 
 ffmpeg -v error -y -i "$MUDA" $ENT -i son_cincuenta.wav -i cama_cincuenta.wav \
