@@ -17,6 +17,8 @@
 const express = require('express');
 const cors = require('cors');
 const mongoose = require('mongoose');
+const helmet = require('helmet');
+const rateLimit = require('express-rate-limit');
 
 const app = express();
 
@@ -34,6 +36,21 @@ app.use(cors({
 }));
 
 app.set('trust proxy', 1);
+
+// ── LO QUE ORDENEX YA TENÍA Y ESTO NO ─────────────────────────────────────
+// Este API contestaba con `X-Powered-By: Express`, sin nosniff ni frameguard,
+// y aceptaba veinte POST /auth/sso seguidos sin parpadear: la auditoría los
+// mandó y los veinte pasaron. Para una plataforma de banca eso no es un
+// detalle. Es lo mismo que infra/ordenex-api/app.js, y por la misma razón.
+app.use(helmet({ crossOriginResourcePolicy: false }));
+// Cien peticiones por minuto por IP, para todo. `trust proxy` va arriba a
+// propósito: detrás del router de Heroku, sin él todas las IP son la misma y
+// el límite sería un interruptor general.
+app.use(rateLimit({ windowMs: 60 * 1000, max: 100, standardHeaders: true, legacyHeaders: false }));
+// Y la entrada, más corta: veinte intentos por cuarto de hora. Un pase de
+// Genesis robado no se prueba a fuerza bruta contra esto.
+app.use('/auth', rateLimit({ windowMs: 15 * 60 * 1000, max: 20, standardHeaders: true, legacyHeaders: false }));
+
 // 100kb alcanzan de sobra: la petición más gorda de esta casa es una
 // transferencia con cinco campos.
 app.use(express.json({ limit: '100kb' }));
