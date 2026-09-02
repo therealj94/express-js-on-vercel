@@ -5,7 +5,7 @@ import { BlurView } from 'expo-blur';
 import { Icon } from './icons';
 import Svg, { Rect, Line, Path, Defs, LinearGradient as SvgGrad, Stop } from 'react-native-svg';
 import * as Haptics from 'expo-haptics';
-import { C, G } from './theme';
+import { C, G, T, BOTON } from './theme';
 import { useCampoAuto } from './og/Teclado';
 import { urlArchivo } from './og/mensajes';
 
@@ -121,16 +121,22 @@ export function Avatar({ nombre, correo, foto, grupo, tam = 42 }) {
   );
 }
 
-// ---- 3D Button (press depresses + shadow) ----
-export function Button3D({ title, onPress, variant = 'gold', icon, style, disabled }) {
+// ---- El botón de la app (se hunde al tocar, con sombra) ----
+//
+// Dos variantes y nada más, definidas en theme.js: `primario` y
+// `secundario`. Los nombres que ya estaban por las pantallas —gold, teal,
+// dark, ghost— siguen funcionando y caen en una de las dos: `gold` era el
+// primario, y los otros tres eran tres formas de decir «el otro botón».
+const VARIANTE = { primario: 'primario', gold: 'primario', secundario: 'secundario', teal: 'secundario', dark: 'secundario', ghost: 'secundario' };
+
+export function Button3D({ title, onPress, variant = 'primario', icon, style, disabled }) {
   const y = useRef(new Animated.Value(0)).current;
   const press = (to) => Animated.spring(y, { toValue: to, useNativeDriver: true, speed: 40, bounciness: 6 }).start();
-  const isGold = variant === 'gold';
-  const colors = isGold ? G.gold : variant === 'teal' ? ['#177A72', '#0D4F4C'] : ['#123F41', '#0A3436'];
-  const txtColor = isGold ? C.darkText : C.txt;
+  const esPrimario = (VARIANTE[variant] || 'primario') === 'primario';
+  const spec = esPrimario ? BOTON.primario : BOTON.secundario;
   return (
     <Animated.View style={[{ transform: [{ translateY: y }] }, style]}>
-      <View style={[styles.btnShadow, isGold ? styles.btnShadowGold : styles.btnShadowDark, disabled && { opacity: 0.4 }]}>
+      <View style={[styles.btnShadow, esPrimario ? styles.btnShadowGold : styles.btnShadowDark, disabled && { opacity: 0.4 }]}>
         <Pressable
           disabled={disabled}
           onPressIn={() => { press(3); hap(); }}
@@ -139,16 +145,19 @@ export function Button3D({ title, onPress, variant = 'gold', icon, style, disabl
           accessibilityRole="button"
           accessibilityLabel={title}
           accessibilityState={{ disabled: !!disabled }}
-          style={{ borderRadius: 17, overflow: 'hidden' }}>
-          <LinearGradient colors={colors} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.btnInner}>
-            {icon ? <Icon name={icon} size={18} color={txtColor} style={{ marginRight: 8 }} /> : null}
-            <Text style={[styles.btnText, { color: txtColor }]}>{title}</Text>
+          style={{ borderRadius: BOTON.radio, overflow: 'hidden', borderWidth: 1, borderColor: spec.borde }}>
+          <LinearGradient colors={spec.colores} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.btnInner}>
+            {icon ? <Icon name={icon} size={18} color={spec.texto} style={{ marginRight: 8 }} /> : null}
+            <Text style={[styles.btnText, { color: spec.texto }]}>{title}</Text>
           </LinearGradient>
         </Pressable>
       </View>
     </Animated.View>
   );
 }
+// Los dos nombres por los que conviene llamarlos de aquí en adelante.
+export const BotonPrimario = (props) => <Button3D {...props} variant="primario" />;
+export const BotonSecundario = (props) => <Button3D {...props} variant="secundario" />;
 
 // ---- Circular 3D action (Send/Receive/Buy/Swap) ----
 export function ActionBtn({ icon, label, onPress, size = 54 }) {
@@ -351,11 +360,11 @@ export function Skeleton({ width, height = 14, radius = 6, style }) {
 }
 
 export const styles = StyleSheet.create({
-  btnShadow: { borderRadius: 17 },
+  btnShadow: { borderRadius: BOTON.radio },
   btnShadowGold: { shadowColor: '#C9A961', shadowOpacity: 0.5, shadowRadius: 16, shadowOffset: { width: 0, height: 10 }, elevation: 8 },
   btnShadowDark: { shadowColor: '#000', shadowOpacity: 0.4, shadowRadius: 12, shadowOffset: { width: 0, height: 6 }, elevation: 4 },
-  btnInner: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 16, borderRadius: 17 },
-  btnText: { fontSize: 15.5, fontWeight: '800' },
+  btnInner: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: BOTON.alto, borderRadius: BOTON.radio },
+  btnText: T.boton,
   circle: { alignItems: 'center', justifyContent: 'center', shadowColor: '#C9A961', shadowOpacity: 0.5, shadowRadius: 12, shadowOffset: { width: 0, height: 6 }, elevation: 6 },
   actLabel: { fontSize: 11.5, fontWeight: '600', color: C.txt },
   iconBtn: { width: 42, height: 42, borderRadius: 14, backgroundColor: 'rgba(255,255,255,0.05)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)', alignItems: 'center', justifyContent: 'center' },

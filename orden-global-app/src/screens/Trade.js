@@ -7,10 +7,11 @@ import { Icon } from '../icons';
 import { useTeclado } from '../og/Teclado';
 import QRCode from 'react-native-qrcode-svg';
 import * as Clipboard from 'expo-clipboard';
-import { C } from '../theme';
+import { C, T } from '../theme';
 import { Header, TokenIcon, Button3D, Card, useToast, useAccount, hap } from '../ui';
 import { money, qtyFmt, qtyExacto, tokensFromBalances, parseAmt, normalizeAmtInput } from '../data';
-import { apiSend, apiSendToken, apiPortfolio, estimateNetworkFee, NETWORK_FEE_ORIGEN, CHAIN_ID } from '../api';
+import { apiSend, apiSendToken, apiPortfolio, estimateNetworkFee, NETWORK_FEE_ORIGEN, CHAIN_ID, esperarRecibo, RED_NOMBRE, EXPLORADOR_TX } from '../api';
+import { enlaceExplorador, textoComprobante } from '../comprobante';
 import { updateAccount } from '../accounts';
 import { listContacts, touchContact, addContact, parseAddress } from '../addressBook';
 // El sonido del dinero y la libreta del chat: los dos con camino alternativo
@@ -19,7 +20,7 @@ import { listContacts, touchContact, addContact, parseAddress } from '../address
 import { reproducir } from '../og/sonidos';
 import { renombrarContacto } from '../og/contactos';
 import { ScanModal } from './Scan';
-import { useT } from '../i18n';
+import { useT, useLang } from '../i18n';
 // Solo para saber DÓNDE corre la app. entorno.js no importa nada nativo
 // aparte de expo-constants, así que pedirlo aquí no cambia el arranque.
 import { enExpoGo } from '../entorno';
@@ -106,6 +107,7 @@ export function Send({ nav, params }) {
   const [scan, setScan] = useState(false);    // cámara abierta
   const [book, setBook] = useState(false);    // libreta de contactos abierta
   const [done, setDone] = useState(null);     // comprobante del envío
+  const [refrescando, setRefrescando] = useState(false); // el comprobante volviendo a preguntar a la cadena
   const [editaNombre, setEditaNombre] = useState(false); // la hoja de renombrar al contacto
   const [nombreEd, setNombreEd] = useState('');
   const toast = useToast();
@@ -207,7 +209,16 @@ export function Send({ nav, params }) {
   // estaba abierta — un deep link vetawallet://pay entrante, el resultado del
   // escáner (que sigue montado detrás), un remontaje por cambio de idioma —
   // hacía que saliera un envío distinto del que el usuario aprobó.
-  async function confirmar(password) {
+  //
+  // LAS FASES SON REALES. `onFase` le cuenta a la ficha en qué punto va:
+  //   1 firmando y enviando  → esperando al backend
+  //   2 enviada a la red     → el backend devolvió el hash
+  //   3 confirmada           → la cadena la incluyó en un bloque
+  // Antes las fases avanzaban con un reloj (1,8 s, 6 s) sin mirar la red, y el
+  // comprobante verde salía con la transacción todavía en el aire: el backend
+  // devuelve el hash SIN esperar el bloque. Ahora la tercera fase la marca el
+  // recibo de la cadena, leído con eth_getTransactionReceipt.
+  async function confirmar(password, { onFase } = {}) {
     const tx = review;
     if (!tx) return { ok: false, msg: t('send.notConfirmed') };
     // Candado de reentrada: `sending` es estado de React y no se ve hasta el
@@ -216,6 +227,7 @@ export function Send({ nav, params }) {
     if (enviando.current) return { ok: false, msg: t('send.enCurso') };
     enviando.current = true;
     setSending(true);
+    const fase = (n) => { try { onFase && onFase(n); } catch (e) {} };
     try {
       // El camino depende del activo: la moneda nativa va por /transaction/send
       // y un token por /transaction/sendToken, que además necesita el contrato.
@@ -224,75 +236,95 @@ export function Send({ nav, params }) {
       const r = tx.contract
         ? await apiSendToken({ to: tx.to, amount: tx.amount, password, contract: tx.contract, idem: tx.idem })
         : await apiSend({ to: tx.to, amount: tx.amount, password, idem: tx.idem });
-      if (r.ok) {
-        touchContact(account?.email, tx.to);
-        if (saveAs.trim()) addContact(account?.email, { name: saveAs.trim(), address: tx.to }).catch(() => {});
-        hap();
-        // El sonido de la casa: el envío confirmado se OYE, no solo se lee.
-        // Suena aquí, junto al comprobante, y nunca antes: sonar sobre una
-        // transacción que todavía puede fallar sería mentir con música.
-        reproducir('enviado');
-        setReview(null);
+      if (!r.ok) return { ok: false, msg: t('send.notConfirmed') };
 
-        // Añade el envío al historial LOCAL al instante para que aparezca en
-        // Actividad ya, sin esperar a que la red lo indexe. Después el
-        // portafolio real lo reemplaza — usamos el hash como identificador.
-        if (account?.email) {
-          const nueva = {
-            hash: r.hash || `local_${Date.now()}`,
-            timeStamp: Math.floor(Date.now() / 1000),
-            value: String(tx.amount),
-            symbol: tx.symbol,
-            type: 'send',
-            from: account.addr,
-            to: tx.to,
-            gasUsed: r.receipt?.gasUsed ?? null,
-            blockNumber: r.receipt?.blockNumber ?? null,
-            fee: tx.fee,
-            localPending: !r.hash,
-          };
-          const yaEsta = (account.transfers || []).some((x) => x.hash === nueva.hash);
-          const transfers = yaEsta ? account.transfers : [nueva, ...(account.transfers || [])];
-          const upd = await updateAccount(account.email, { transfers });
-          if (upd) login(upd);
-          // Y en segundo plano refresca de la red, para traer saldo y hash reales.
-          apiPortfolio()
-            .then(async (p) => {
-              const u2 = await updateAccount(account.email, { balances: p.balances, transfers: p.transfers });
-              if (u2) login(u2);
-            })
-            .catch(() => {});
-        }
+      // Ya está emitida: hay hash. Todavía no está en un bloque.
+      fase(2);
+      touchContact(account?.email, tx.to);
+      if (saveAs.trim()) addContact(account?.email, { name: saveAs.trim(), address: tx.to }).catch(() => {});
 
-        // Si el envío nació de una conversación de PULSE CHAT, el comprobante
-        // se publica ALLÍ, y solo ahora: cuando la cadena ya confirmó. Antes
-        // sería prometer un pago que todavía puede fallar. Que no se pueda
-        // avisar --sin red, por ejemplo-- no invalida el envío: el dinero ya
-        // se movió, así que el fallo se traga en silencio y el comprobante
-        // de esta pantalla sigue siendo la verdad.
-        if (params?.avisarChat) {
-          import('../og/mensajes')
-            .then((M) => M.pago(params.avisarChat, String(tx.amount), {
-              moneda: tx.symbol || 'ORIGEN', hash: r.hash || null,
-            }))
-            .catch(() => {});
-        }
-
-        setDone({
-          ...tx,
-          hash: r.hash || null,
-          bloque: r.receipt?.blockNumber ?? null,
-          gas: r.receipt?.gasUsed ?? null,
-          fecha: Date.now(),
-          // Si el pago lo pidió MyTokenPay, el comprobante ofrece volver con
-          // el hash para que el cobro se confirme allá.
-          volver: params?.volver || null,
-          // …y si nació de un chat, el comprobante ofrece volver a la charla.
-          alChat: params?.avisarChat || null,
-        });
-        return { ok: true };
+      // Añade el envío al historial LOCAL al instante para que aparezca en
+      // Actividad ya, sin esperar a que la red lo indexe. Después el
+      // portafolio real lo reemplaza — usamos el hash como identificador.
+      if (account?.email) {
+        const nueva = {
+          hash: r.hash || `local_${Date.now()}`,
+          timeStamp: Math.floor(Date.now() / 1000),
+          value: String(tx.amount),
+          symbol: tx.symbol,
+          type: 'send',
+          from: account.addr,
+          to: tx.to,
+          gasUsed: null,
+          blockNumber: null,
+          fee: tx.fee,
+          localPending: true,
+        };
+        const yaEsta = (account.transfers || []).some((x) => x.hash === nueva.hash);
+        const transfers = yaEsta ? account.transfers : [nueva, ...(account.transfers || [])];
+        const upd = await updateAccount(account.email, { transfers });
+        if (upd) login(upd);
       }
-      return { ok: false, msg: t('send.notConfirmed') };
+
+      // La confirmación de verdad: el recibo de la cadena, con bloque y
+      // estado. Hasta un minuto de espera (un bloque cada ~10 s). Si en ese
+      // plazo la red no la incluyó, NO está perdida: el comprobante sale como
+      // «esperando confirmación» y ofrece volver a mirar.
+      const recibo = r.hash ? await esperarRecibo(r.hash, { intentos: 20, cada: 3000 }) : null;
+
+      // El refresco de saldo y del historial real va en segundo plano y
+      // después del recibo: antes del bloque el saldo del RPC aún no cambió.
+      if (account?.email) {
+        apiPortfolio()
+          .then(async (p) => {
+            const u2 = await updateAccount(account.email, { balances: p.balances, transfers: p.transfers });
+            if (u2) login(u2);
+          })
+          .catch(() => {});
+      }
+
+      // La cadena la incluyó y la RECHAZÓ: el monto no se movió (el gas sí).
+      // Es un error de verdad y se dice como tal; no se abre comprobante.
+      if (recibo && recibo.exito === false) {
+        return { ok: false, msg: t('send.errRevertida'), hash: r.hash };
+      }
+      if (recibo) fase(3);
+
+      hap();
+      // El sonido de la casa: el envío confirmado se OYE, no solo se lee.
+      // Suena aquí, junto al comprobante, y nunca antes: sonar sobre una
+      // transacción que todavía puede fallar sería mentir con música.
+      reproducir('enviado');
+      setReview(null);
+
+      // Si el envío nació de una conversación de PULSE CHAT, el comprobante
+      // se publica ALLÍ, y solo ahora: cuando la cadena ya confirmó. Antes
+      // sería prometer un pago que todavía puede fallar. Que no se pueda
+      // avisar --sin red, por ejemplo-- no invalida el envío: el dinero ya
+      // se movió, así que el fallo se traga en silencio y el comprobante
+      // de esta pantalla sigue siendo la verdad.
+      if (params?.avisarChat) {
+        import('../og/mensajes')
+          .then((M) => M.pago(params.avisarChat, String(tx.amount), {
+            moneda: tx.symbol || 'ORIGEN', hash: r.hash || null,
+          }))
+          .catch(() => {});
+      }
+
+      setDone({
+        ...tx,
+        hash: r.hash || null,
+        bloque: recibo?.bloque ?? null,
+        gas: recibo?.gasUsado ?? null,
+        confirmada: !!recibo,
+        fecha: Date.now(),
+        // Si el pago lo pidió MyTokenPay, el comprobante ofrece volver con
+        // el hash para que el cobro se confirme allá.
+        volver: params?.volver || null,
+        // …y si nació de un chat, el comprobante ofrece volver a la charla.
+        alChat: params?.avisarChat || null,
+      });
+      return { ok: true };
     } catch (e) {
       // Antes se mostraba e.message tal cual y salía un "Aborted" que no
       // explicaba nada. Ahora cada fallo tiene su propio mensaje, y el de
@@ -323,6 +355,23 @@ export function Send({ nav, params }) {
     } finally {
       enviando.current = false;
       setSending(false);
+    }
+  }
+
+  // El comprobante salió «esperando confirmación» porque la red tardó más de
+  // un minuto. Se vuelve a preguntar unas pocas veces; si sigue sin bloque se
+  // dice, sin inventar un estado.
+  async function refrescarComprobante() {
+    if (!done?.hash || refrescando) return;
+    hap();
+    setRefrescando(true);
+    try {
+      const recibo = await esperarRecibo(done.hash, { intentos: 4, cada: 2500 });
+      if (!recibo) { toast(t('send.aunPendiente'), 'info'); return; }
+      if (recibo.exito === false) { toast(t('send.errRevertida'), 'error'); }
+      setDone((d) => (d ? { ...d, confirmada: true, bloque: recibo.bloque, gas: recibo.gasUsado, exito: recibo.exito } : d));
+    } finally {
+      setRefrescando(false);
     }
   }
 
@@ -417,7 +466,7 @@ export function Send({ nav, params }) {
         <View style={{ height: 14 }} />
         <Card style={{ padding: 14, marginBottom: 16 }}>
           <Row k={t('send.fee')} v={`${fee.toFixed(6)} ORIGEN`} />
-          <Row k={t('send.network')} v="Orden Global · 5550" />
+          <Row k={t('send.network')} v={RED_NOMBRE} />
           <Row k={t('send.total')} v={`${amount ? (amount + (isNative ? fee : 0)).toFixed(4) : '—'} ${tok.s}`} />
           <Row k={t('send.after')} v={`${amount ? Math.max(0, tok.qty - amount - (isNative ? fee : 0)).toFixed(4) : qtyFmt(tok.qty)} ${tok.s}`} />
         </Card>
@@ -467,6 +516,8 @@ export function Send({ nav, params }) {
       <SentReceipt
         data={done}
         contacts={contacts}
+        onRefrescar={refrescarComprobante}
+        refrescando={refrescando}
         onClose={() => { setDone(null); nav.go('home'); }}
         // El envío que nació en PULSE CHAT vuelve a su charla, no a la
         // billetera: el comprobante ya cayó en ese hilo y es ahí donde la
@@ -545,14 +596,13 @@ function ReviewSheet({ data, token, onCancel, onConfirm }) {
     return () => { vivo = false; };
   }, [data]);
 
-  // Las fases avanzan solas mientras la red trabaja: no podemos saber el
-  // progreso real de un bloque, pero sí reflejar en qué punto va el proceso.
+  // La barra sigue a la fase, y la fase la marca `confirmar()` con lo que de
+  // verdad pasa: el backend contestó, la cadena incluyó el bloque. Antes
+  // avanzaba con un reloj (1,8 s y 6 s) sin mirar la red, y «esperando
+  // confirmación» se tachaba solo aunque la transacción siguiera en el aire.
   useEffect(() => {
     if (fase < 1) return;
     Animated.timing(prog, { toValue: fase / 3, duration: 600, useNativeDriver: false }).start();
-    if (fase >= 3) return;
-    const id = setTimeout(() => setFase((f) => (f > 0 && f < 3 ? f + 1 : f)), fase === 1 ? 1800 : 6000);
-    return () => clearTimeout(id);
   }, [fase]);
 
   // Sacudida horizontal cuando el envío falla o la contraseña queda vacía.
@@ -585,7 +635,7 @@ function ReviewSheet({ data, token, onCancel, onConfirm }) {
     setEnDuda(false);
     setFase(1);
     try {
-      const r = await onConfirm(password);
+      const r = await onConfirm(password, { onFase: setFase });
       if (!r.ok) {
         setFase(-1); setError(r.msg); setEnDuda(!!r.enDuda); prog.setValue(0); shakeAnim();
         // Si la clave guardada dejó de servir, se vuelve al teclado.
@@ -641,7 +691,7 @@ function ReviewSheet({ data, token, onCancel, onConfirm }) {
             <Row k={t('send.fee')} v={`${qtyExacto(data.fee)} ORIGEN`} />
             <Row k={t('send.total')} v={`${data.total.toFixed(4)} ${data.symbol}`} />
             <Row k={t('send.after')} v={`${Math.max(0, data.saldoAntes - data.total).toFixed(4)} ${data.symbol}`} />
-            <Row k={t('send.network')} v="Orden Global · 5550" />
+            <Row k={t('send.network')} v={RED_NOMBRE} />
           </View>
 
           {fase === 0 ? (
@@ -776,10 +826,14 @@ function ReviewSheet({ data, token, onCancel, onConfirm }) {
 }
 
 // -------- comprobante de envío --------
-// Aparece al confirmarse la transacción: monto, destino, comisión y hash.
-// No se cierra solo — el usuario lee y da OK.
-function SentReceipt({ data, contacts, onClose, onChat }) {
+// Aparece cuando el envío ya tiene hash: monto, destinatario, fecha, red,
+// bloque y el estado LEÍDO DE LA CADENA (confirmada · esperando). No se
+// cierra solo — la persona lee, lo comparte o lo abre en OrdenScan, y da OK.
+// Es un recibo, no una pantalla de éxito: si la red todavía no incluyó la
+// transacción se dice «esperando confirmación» y se ofrece volver a mirar.
+function SentReceipt({ data, contacts, onClose, onChat, onRefrescar, refrescando }) {
   const t = useT();
+  const { lang } = useLang();
   const toast = useToast();
   const check = useRef(new Animated.Value(0)).current;
 
@@ -790,44 +844,100 @@ function SentReceipt({ data, contacts, onClose, onChat }) {
 
   if (!data) return null;
   const guardado = contacts.find((c) => c.address.toLowerCase() === data.to.toLowerCase());
-  const destino = guardado ? guardado.name : `${data.to.slice(0, 10)}…${data.to.slice(-8)}`;
+  const dirCorta = `${data.to.slice(0, 10)}…${data.to.slice(-8)}`;
+  const destino = guardado ? guardado.name : dirCorta;
+  const confirmada = !!data.confirmada;
+  const enlace = enlaceExplorador(data.hash, EXPLORADOR_TX);
+  const fecha = new Date(data.fecha || Date.now()).toLocaleString(lang === 'en' ? 'en-US' : 'es-HN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
 
   // Si copiar falla, se dice: un catch mudo deja creyendo que se copió.
   const copiar = async (v) => { hap(); try { await Clipboard.setStringAsync(String(v || '')); toast(t('recv.copied')); } catch { toast(t('recv.copyErr'), 'error'); } };
 
+  // «Ver en OrdenScan» abre la misma ruta /tx/<hash> que la actividad y el
+  // chat. Sin navegador —o sin hash— se dice, en vez de no hacer nada.
+  const verEnScan = () => {
+    hap();
+    if (!enlace) return;
+    Linking.openURL(enlace).catch(() => toast(t('send.noAbre'), 'error'));
+  };
+
+  // Compartir usa la hoja del sistema de React Native: no hace falta
+  // expo-sharing (que no está instalado y sería un módulo nativo más).
+  const compartir = async () => {
+    hap();
+    const message = textoComprobante({
+      monto: qtyExacto(data.amount), simbolo: data.symbol,
+      usd: data.usd ? `${money(data.usd)} USD` : null,
+      para: data.to, paraNombre: guardado ? guardado.name : null,
+      fecha, red: RED_NOMBRE, bloque: data.bloque, confirmada, enlace,
+    }, {
+      titulo: t('send.compTitulo'), enviado: t('send.compEnviado'), para: t('send.to'),
+      fecha: t('send.date'), red: t('send.network'), bloque: t('send.block'),
+      estado: t('send.estado'), confirmada: t('send.confirmada'), pendiente: t('send.pendiente'),
+      comprobante: t('send.compComprobante'),
+    });
+    try { await Share.share({ message, title: t('send.compTitulo') }); } catch (e) {}
+  };
+
   return (
     <Modal visible transparent animationType="fade" onRequestClose={onClose}>
       <View style={styles.doneBg}>
+        <ScrollView contentContainerStyle={{ flexGrow: 1, justifyContent: 'center' }} showsVerticalScrollIndicator={false}>
         <View style={styles.doneCard}>
-          <Animated.View style={[styles.doneIc, { transform: [{ scale: check }] }]}>
-            <Icon name="checkmark" size={38} color={C.darkText} />
+          <Animated.View style={[styles.doneIc, !confirmada && styles.doneIcPend, { transform: [{ scale: check }] }]}>
+            <Icon name={confirmada ? 'checkmark' : 'time'} size={38} color={C.darkText} />
           </Animated.View>
-          <Text style={styles.doneT}>{t('send.doneT')}</Text>
+          <Text style={styles.doneT}>{confirmada ? t('send.doneT') : t('send.doneTPend')}</Text>
           <Text style={styles.doneAmt}>{qtyExacto(data.amount)} {data.symbol}</Text>
-          <Text style={styles.doneP}>{t('send.doneP')}</Text>
-
           {data.usd ? <Text style={styles.doneUsd}>≈ {money(data.usd)} USD</Text> : null}
 
+          {/* El estado, leído de la cadena y no supuesto. */}
+          <View style={[styles.estadoPill, confirmada ? styles.estadoOk : styles.estadoPend]}>
+            <Icon name={confirmada ? 'shield-checkmark' : 'time'} size={13} color={confirmada ? C.up : '#FBBF24'} />
+            <Text style={[styles.estadoTxt, { color: confirmada ? C.up : '#FBBF24' }]}>
+              {confirmada ? t('send.confirmada') : t('send.pendiente')}{confirmada && data.bloque != null ? ` · #${data.bloque}` : ''}
+            </Text>
+          </View>
+          <Text style={styles.doneP}>{confirmada ? t('send.doneP') : t('send.donePPend')}</Text>
+
           <View style={styles.doneRows}>
-            <DoneRow first k={t('send.to')} v={destino} onPress={() => copiar(data.to)} />
+            <DoneRow first k={t('send.to')} v={destino} sub={guardado ? dirCorta : null} onPress={() => copiar(data.to)} />
             {data.fee ? <DoneRow k={t('send.fee')} v={`${qtyExacto(data.fee)} ORIGEN`} /> : null}
             {data.total ? <DoneRow k={t('send.total')} v={`${data.total.toFixed(4)} ${data.symbol}`} /> : null}
             {data.saldoAntes != null ? (
               <DoneRow k={t('send.after')} v={`${Math.max(0, data.saldoAntes - (data.total || 0)).toFixed(4)} ${data.symbol}`} />
             ) : null}
-            <DoneRow k={t('send.network')} v="Orden Global · 5550" />
-            {data.bloque != null ? <DoneRow k={t('send.block')} v={`#${data.bloque}`} /> : null}
-            {data.gas != null ? <DoneRow k={t('send.gas')} v={String(data.gas)} /> : null}
-            <DoneRow k={t('send.date')} v={new Date(data.fecha || Date.now()).toLocaleString()} />
+            <DoneRow k={t('send.network')} v={RED_NOMBRE} />
+            <DoneRow k={t('send.date')} v={fecha} />
+            <DoneRow k={t('send.block')} v={data.bloque != null ? `#${data.bloque}` : '—'} />
             {data.hash ? (
               <DoneRow k={t('send.hash')} v={`${String(data.hash).slice(0, 10)}…${String(data.hash).slice(-8)}`} onPress={() => copiar(data.hash)} />
             ) : null}
           </View>
 
+          {/* Ver en OrdenScan y Compartir, lado a lado: lo que uno hace con
+              un recibo. Sin hash no hay nada que abrir ni que probar. */}
+          {data.hash ? (
+            <View style={styles.doneBtns}>
+              <Button3D title={t('send.verScan')} icon="open-outline" variant="secundario" onPress={verEnScan} style={{ flex: 1 }} />
+              <Button3D title={t('send.compartir')} icon="share-social" variant="secundario" onPress={compartir} style={{ flex: 1 }} />
+            </View>
+          ) : null}
+          {!confirmada && data.hash && onRefrescar ? (
+            <Button3D
+              title={refrescando ? t('send.actualizando') : t('send.actualizar')}
+              icon="refresh"
+              variant="secundario"
+              disabled={refrescando}
+              onPress={onRefrescar}
+              style={{ alignSelf: 'stretch', marginTop: 10 }}
+            />
+          ) : null}
+
           {data.volver && data.hash ? (
             <Button3D
               title={t('send.volverMtp')}
-              icon="arrow-redo"
+              icon="arrow-forward"
               onPress={() => {
                 const enlace = `${data.volver}${data.volver.includes('?') ? '&' : '?'}tx=${data.hash}`;
                 Linking.openURL(enlace).catch(() => {});
@@ -847,19 +957,23 @@ function SentReceipt({ data, contacts, onClose, onChat }) {
               style={{ alignSelf: 'stretch', marginTop: data.volver && data.hash ? 10 : 18 }}
             />
           ) : null}
-          <Button3D title={t('send.ok')} icon="checkmark" onPress={onClose} style={{ alignSelf: 'stretch', marginTop: (data.volver && data.hash) || (data.alChat && onChat) ? 10 : 18 }} />
+          <Button3D title={t('send.listo')} icon="checkmark" onPress={onClose} style={{ alignSelf: 'stretch', marginTop: 10 }} />
         </View>
+        </ScrollView>
       </View>
     </Modal>
   );
 }
 
-function DoneRow({ k, v, onPress, first }) {
+function DoneRow({ k, v, sub, onPress, first }) {
   return (
     <Pressable onPress={onPress} disabled={!onPress} style={[styles.doneRow, first && { borderTopWidth: 0 }]}>
       <Text style={styles.doneK}>{k}</Text>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flexShrink: 1 }}>
-        <Text style={styles.doneV} numberOfLines={1}>{v}</Text>
+        <View style={{ flexShrink: 1, alignItems: 'flex-end' }}>
+          <Text style={styles.doneV} numberOfLines={1}>{v}</Text>
+          {sub ? <Text style={styles.doneSub} numberOfLines={1}>{sub}</Text> : null}
+        </View>
         {onPress ? <Icon name="copy" size={13} color={C.gold} /> : null}
       </View>
     </Pressable>
@@ -1445,6 +1559,14 @@ const styles = StyleSheet.create({
   doneRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12, paddingVertical: 11, borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.05)' },
   doneK: { color: C.txt3, fontSize: 12 },
   doneV: { color: C.txt, fontSize: 12.5, fontWeight: '600', flexShrink: 1 },
+  doneSub: { color: C.txt3, fontSize: 10.5, marginTop: 1 },
+  // El comprobante todavía sin bloque: el mismo disco, en ámbar y con reloj.
+  doneIcPend: { backgroundColor: '#FBBF24', shadowColor: '#FBBF24' },
+  estadoPill: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 10, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, borderWidth: 1 },
+  estadoOk: { backgroundColor: 'rgba(62,217,160,0.13)', borderColor: 'rgba(62,217,160,0.3)' },
+  estadoPend: { backgroundColor: 'rgba(251,191,36,0.12)', borderColor: 'rgba(251,191,36,0.32)' },
+  estadoTxt: { fontSize: 11.5, fontWeight: '700' },
+  doneBtns: { flexDirection: 'row', gap: 10, alignSelf: 'stretch', marginTop: 18 },
   contactItem: { alignItems: 'center', gap: 6, width: 58 },
   contactAv: { width: 50, height: 50, borderRadius: 25, backgroundColor: C.panel2, borderWidth: 1, borderColor: C.line, alignItems: 'center', justifyContent: 'center' },
   contactScan: { backgroundColor: C.gold, borderColor: 'transparent' },

@@ -9,7 +9,8 @@ import * as Clipboard from 'expo-clipboard';
 import { C, G } from '../theme';
 import { Header, Button3D, ListRow, Toggle, Glass, useToast, useAccount, hap } from '../ui';
 import { money, qtyFmt } from '../data';
-import { getPrivateKey } from '../api';
+import { getPrivateKey, RED_NOMBRE, EXPLORADOR_TX } from '../api';
+import { enlaceExplorador } from '../comprobante';
 import PedirClave from '../PedirClave';
 import { genesis } from '../genesis';
 import { setPassport } from '../accounts';
@@ -100,10 +101,13 @@ function TxDetail({ data, etiqueta, onClose, onToast }) {
   const inbound = data.inbound;
   const otra = inbound ? data.from : data.to;
   const copiar = async (v) => { if (!v) return; hap(); try { await Clipboard.setStringAsync(String(v)); onToast(t('recv.copied')); } catch { onToast(t('recv.copyErr'), 'error'); } };
+  // Solo lo que pasó por la cadena se puede abrir en OrdenScan: un envío que
+  // todavía es local (sin hash real) llevaría a un «no encontrado».
+  const enlace = data.hash && !data.localPending ? enlaceExplorador(data.hash, EXPLORADOR_TX) : null;
   const filas = [
     [inbound ? t('act.from') : t('act.to'), etiqueta(otra), otra],
     [t('send.date'), fmtDate(data.timeStamp, localeDe(lang))],
-    [t('send.network'), 'Orden Global · 5550'],
+    [t('send.network'), RED_NOMBRE],
     data.blockNumber != null ? [t('send.block'), `#${data.blockNumber}`] : null,
     data.gasUsed != null ? [t('send.gas'), String(data.gasUsed)] : null,
     data.fee ? [t('send.fee'), `${data.fee} ORIGEN`] : null,
@@ -136,7 +140,16 @@ function TxDetail({ data, etiqueta, onClose, onToast }) {
               </Pressable>
             ))}
           </View>
-          <Button3D title={t('send.ok')} icon="checkmark" onPress={onClose} style={{ marginTop: 16 }} />
+          {enlace ? (
+            <Button3D
+              title={t('send.verScan')}
+              icon="open-outline"
+              variant="secundario"
+              onPress={() => { hap(); Linking.openURL(enlace).catch(() => onToast(t('send.noAbre'), 'error')); }}
+              style={{ marginTop: 16 }}
+            />
+          ) : null}
+          <Button3D title={t('send.ok')} icon="checkmark" onPress={onClose} style={{ marginTop: enlace ? 10 : 16 }} />
         </Pressable>
       </Pressable>
     </Modal>
@@ -237,7 +250,12 @@ export function Settings({ nav }) {
 
         <Text style={styles.grpTitle}>{t('set.security')}</Text>
         <Glass style={styles.group}>
-          <ListRow first icon="key" title={t('set.seed')} onPress={() => nav.go('seedview')} />
+          {/* Cambiar la contraseña va PRIMERO en Seguridad: es lo que hace
+              alguien que sospecha que le entraron, y cierra las demás
+              sesiones. La frase y la llave son la copia de seguridad, no la
+              puerta de cada día. */}
+          <ListRow first icon="lock-closed" title={t('set.changePw')} sub={t('set.changePwSub')} onPress={() => nav.go('changePassword')} />
+          <ListRow icon="key" title={t('set.seed')} onPress={() => nav.go('seedview')} />
           <ListRow icon="finger-print" title={t('set.pk')} onPress={() => nav.go('privatekey')} />
           <ListRow icon="time" title={t('sess.title')} sub={t('sess.subtitle')} onPress={() => nav.go('sessions')} />
           {/* El interruptor enciende de verdad los avisos: pide permiso y
@@ -280,6 +298,12 @@ export function Settings({ nav }) {
             }
           />
         </Glass>
+        {/* Quién guarda las llaves, dicho con todas sus letras. La app llegó a
+            decir «tus reglas, tus llaves» y no es verdad: el backend firma
+            cada envío con la llave cifrada que guarda Orden Global. Decirlo
+            aquí, debajo de la frase y la llave, es lo que evita que alguien
+            crea que sin la frase no puede volver a entrar. */}
+        <Text style={styles.custodiaNota}>{t('set.custodiaNota')}</Text>
 
         <Text style={styles.grpTitle}>{t('set.general')}</Text>
         <Glass style={styles.group}>
@@ -972,6 +996,7 @@ const styles = StyleSheet.create({
   kycTxt: { color: C.up, fontSize: 11, fontWeight: '700' },
 
   grpTitle: { fontSize: 11, letterSpacing: 2, color: C.txt3, fontWeight: '700', marginTop: 20, marginBottom: 9, paddingHorizontal: 2 },
+  custodiaNota: { color: C.txt3, fontSize: 11.5, lineHeight: 16, marginTop: 9, paddingHorizontal: 4 },
   group: { backgroundColor: C.panel, borderWidth: 1, borderColor: C.line, borderRadius: 18, overflow: 'hidden' },
 
   logout: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, backgroundColor: '#8E1F2F', borderRadius: 16, paddingVertical: 15, marginTop: 8 },

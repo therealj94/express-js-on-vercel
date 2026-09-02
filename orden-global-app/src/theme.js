@@ -45,3 +45,33 @@ export const F = {
   // hay que poner fontWeight 'normal' y fontStyle 'normal' explícitos.
   h: 'Cinzel-Bold',
 };
+
+// La escala tipográfica. Cada pantalla traía sus propios tamaños sueltos
+// —14, 14.5, 15.5, 12.5— y dos pantallas vecinas se leían como de apps
+// distintas. Una sola escala, con nombre por lo que ES cada texto y no por
+// su tamaño, para que un título sea un título en Enviar, en Ajustes y en el
+// comprobante. Las pantallas nuevas la usan; las viejas se van pasando.
+export const T = {
+  h1: { fontSize: 26, fontWeight: '800', color: C.txt, lineHeight: 32 },
+  h2: { fontSize: 19, fontWeight: '800', color: C.txt },
+  h3: { fontSize: 16.5, fontWeight: '700', color: C.txt },
+  // La cifra grande de un monto: tabular para que los dígitos no bailen.
+  cifra: { fontSize: 28, fontWeight: '800', color: C.gold, fontVariant: ['tabular-nums'] },
+  cuerpo: { fontSize: 14, color: C.txt, lineHeight: 20 },
+  cuerpo2: { fontSize: 12.5, color: C.txt2, lineHeight: 18 },
+  nota: { fontSize: 11.5, color: C.txt3, lineHeight: 16 },
+  etiqueta: { fontSize: 11, letterSpacing: 2, color: C.txt3, fontWeight: '700' },
+  boton: { fontSize: 15.5, fontWeight: '800' },
+};
+
+// Los botones de la app son DOS, y viven aquí y no en cada pantalla.
+//   primario   → lo que se quiere que la persona haga: dorado, con sombra.
+//   secundario → la alternativa: vidrio oscuro con filo dorado.
+// Los nombres viejos de Button3D (gold, teal, dark, ghost) siguen aceptándose
+// y caen en uno de estos dos: había cuatro degradados para lo mismo.
+export const BOTON = {
+  radio: 17,
+  alto: 16,          // relleno vertical
+  primario: { colores: G.gold, texto: C.darkText, borde: 'transparent', sombra: 'oro' },
+  secundario: { colores: ['#123F41', '#0A3436'], texto: C.txt, borde: 'rgba(201,169,97,0.34)', sombra: 'negra' },
+};
