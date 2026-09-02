@@ -1,52 +1,255 @@
 {
-  "_nota": "Montaje de la pelicula del ecosistema sobre MATERIAL FOTOGRAFICO, segunda version. Un producto por bloque: su marca, su nombre y un verbo, a la manera de Apple. Los ocho logos salen: seis con su bloque, AuCorp en el retrato de familia, y las cuatro monedas por su nombre. La voz de Diego son las mismas siete tomas ya grabadas, recolocadas; no cuesta nada nuevo.",
+  "_nota": "Montaje de la pelicula del ecosistema sobre MATERIAL FOTOGRAFICO, segunda version. Un producto por bloque: su marca, su nombre y un verbo, a la manera de Apple. Los ocho logos salen: siete con su bloque y todos en el retrato de familia; las cuatro monedas por su nombre. La voz de Diego son las mismas siete tomas ya grabadas, recolocadas; no cuesta nada nuevo.",
   "_proporcion": "80% imagen, 20% grafico. Los logos entran con sobrepaso y sombra larga, nunca dos a la vez.",
-  "_aucorp": "AuCorp no aparece en el documento ECOSISTEMA y no se le puede poner un verbo sin inventar. Va solo en el retrato de familia hasta que Jose diga que hace.",
+  "_aucorp": "AuCorp: la fintech que une lo fiat con el ecosistema (Jose, 2-sep). Plano propio, 'Deposita.'",
   "salida": {
     "ancho": 1080,
     "alto": 1920,
     "fps": 30,
-    "dur_s": 58.0
+    "dur_s": 61.8
   },
   "fundido_s": 0.45,
   "voz": {
-    "orden": [[3, 2.3], [4, 6.0], [1, 17.4], [5, 43.8], [6, 46.2], [2, 49.2], [7, 52.4]],
+    "orden": [
+      [
+        3,
+        2.3
+      ],
+      [
+        4,
+        6.0
+      ],
+      [
+        1,
+        17.4
+      ],
+      [
+        5,
+        47.6
+      ],
+      [
+        6,
+        50.0
+      ],
+      [
+        2,
+        53.0
+      ],
+      [
+        7,
+        56.2
+      ]
+    ],
     "_nota": "tv_3 Un gramo de oro · tv_4 Cincuenta y cinco ORIGEN · tv_1 Una identidad · tv_5 Todo queda escrito · tv_6 Y cualquiera lo puede ver · tv_2 Todo el ecosistema (sobre la familia) · tv_7 cierre."
   },
   "bloques": [
-    {"plano": "01_oro_superficie", "t": 0.0, "dur": 4.6,
-     "rotulos": [{"t": 2.1, "dur": 1.9, "texto": "Un gramo de oro."}]},
-    {"plano": "02_oro_moneda", "t": 4.2, "dur": 5.2,
-     "rotulos": [{"t": 6.3, "dur": 2.4, "texto": "ORIGEN."}]},
-    {"plano": "03_gotas_cuatro", "t": 9.0, "dur": 4.4,
-     "rotulos": [{"t": 10.0, "dur": 2.6, "texto": "ORIGEN · AUKA · AGKA · ONDK", "chico": true}]},
-    {"plano": "04_telefono_piedra", "t": 13.0, "dur": 4.2,
-     "producto": {"nombre": "Veta Wallet", "marca": "veta"},
-     "rotulos": [{"t": 14.3, "dur": 1.9, "texto": "Una app."}]},
-    {"plano": "05_dedo_cristal", "t": 16.8, "dur": 4.2,
-     "producto": {"nombre": "Genesis ID", "marca": "genesis"},
-     "rotulos": [{"t": 17.7, "dur": 1.9, "texto": "Tu identidad."}]},
-    {"plano": "06_mano_recibe", "t": 20.6, "dur": 4.2,
-     "rotulos": [{"t": 21.5, "dur": 1.6, "texto": "Recibí."}]},
-    {"plano": "07_telefono_terminal", "t": 24.4, "dur": 4.2,
-     "producto": {"nombre": "MyTokenPay", "marca": "mytokenpay"},
-     "rotulos": [{"t": 25.5, "dur": 1.6, "texto": "Cobrá."}]},
-    {"plano": "08_tarjeta_terminal", "t": 28.2, "dur": 4.2,
-     "rotulos": [{"t": 29.2, "dur": 1.6, "texto": "Pagá."}]},
-    {"plano": "09_manos_intercambio", "t": 32.0, "dur": 4.2,
-     "rotulos": [{"t": 33.0, "dur": 1.9, "texto": "De un país a otro."}]},
-    {"plano": "10_dos_telefonos", "t": 35.8, "dur": 4.2,
-     "producto": {"nombre": "Pulse2Chat", "marca": "pulse"},
-     "rotulos": [{"t": 36.9, "dur": 1.6, "texto": "Hablá."}]},
-    {"plano": "11_moneda_gira", "t": 39.6, "dur": 4.2,
-     "producto": {"nombre": "Ordenex", "marca": "ordenex"},
-     "rotulos": [{"t": 40.7, "dur": 1.6, "texto": "Cambiá."}]},
-    {"plano": "12_luz_viaja", "t": 43.4, "dur": 4.4,
-     "rotulos": [{"t": 43.8, "dur": 2.0, "texto": "Todo queda escrito."},
-                 {"t": 46.1, "dur": 2.2, "texto": "ordenscan.com", "chico": true}]},
-    {"plano": "13_familia", "t": 47.4, "dur": 5.0, "familia": true, "rotulos": []},
-    {"plano": "14_oro_cierre", "t": 52.0, "dur": 6.0,
-     "rotulos": [{"t": 52.4, "dur": 5.2, "texto": "Orden Global.\nUn sistema financiero\nque se puede comprobar.", "chico": true}]}
+    {
+      "plano": "01_oro_superficie",
+      "t": 0.0,
+      "dur": 4.6,
+      "rotulos": [
+        {
+          "t": 2.1,
+          "dur": 1.9,
+          "texto": "Un gramo de oro."
+        }
+      ]
+    },
+    {
+      "plano": "02_oro_moneda",
+      "t": 4.2,
+      "dur": 5.2,
+      "rotulos": [
+        {
+          "t": 6.3,
+          "dur": 2.4,
+          "texto": "ORIGEN."
+        }
+      ]
+    },
+    {
+      "plano": "03_gotas_cuatro",
+      "t": 9.0,
+      "dur": 4.4,
+      "rotulos": [
+        {
+          "t": 10.0,
+          "dur": 2.6,
+          "texto": "ORIGEN · AUKA · AGKA · ONDK",
+          "chico": true
+        }
+      ]
+    },
+    {
+      "plano": "04_telefono_piedra",
+      "t": 13.0,
+      "dur": 4.2,
+      "producto": {
+        "nombre": "Veta Wallet",
+        "marca": "veta"
+      },
+      "rotulos": [
+        {
+          "t": 14.3,
+          "dur": 1.9,
+          "texto": "Una app."
+        }
+      ]
+    },
+    {
+      "plano": "05_dedo_cristal",
+      "t": 16.8,
+      "dur": 4.2,
+      "producto": {
+        "nombre": "Genesis ID",
+        "marca": "genesis"
+      },
+      "rotulos": [
+        {
+          "t": 17.7,
+          "dur": 1.9,
+          "texto": "Tu identidad."
+        }
+      ]
+    },
+    {
+      "plano": "06_mano_recibe",
+      "t": 20.6,
+      "dur": 4.2,
+      "rotulos": [
+        {
+          "t": 21.5,
+          "dur": 1.6,
+          "texto": "Recibí."
+        }
+      ]
+    },
+    {
+      "plano": "07_telefono_terminal",
+      "t": 24.4,
+      "dur": 4.2,
+      "producto": {
+        "nombre": "MyTokenPay",
+        "marca": "mytokenpay"
+      },
+      "rotulos": [
+        {
+          "t": 25.5,
+          "dur": 1.6,
+          "texto": "Cobrá."
+        }
+      ]
+    },
+    {
+      "plano": "08_tarjeta_terminal",
+      "t": 28.2,
+      "dur": 4.2,
+      "rotulos": [
+        {
+          "t": 29.2,
+          "dur": 1.6,
+          "texto": "Pagá."
+        }
+      ]
+    },
+    {
+      "plano": "09_manos_intercambio",
+      "t": 32.0,
+      "dur": 4.2,
+      "rotulos": [
+        {
+          "t": 33.0,
+          "dur": 1.9,
+          "texto": "De un país a otro."
+        }
+      ]
+    },
+    {
+      "plano": "10_dos_telefonos",
+      "t": 35.8,
+      "dur": 4.2,
+      "producto": {
+        "nombre": "Pulse2Chat",
+        "marca": "pulse"
+      },
+      "rotulos": [
+        {
+          "t": 36.9,
+          "dur": 1.6,
+          "texto": "Hablá."
+        }
+      ]
+    },
+    {
+      "plano": "11_moneda_gira",
+      "t": 39.6,
+      "dur": 4.2,
+      "producto": {
+        "nombre": "Ordenex",
+        "marca": "ordenex"
+      },
+      "rotulos": [
+        {
+          "t": 40.7,
+          "dur": 1.6,
+          "texto": "Cambiá."
+        }
+      ]
+    },
+    {
+      "plano": "12_aucorp_moneda",
+      "t": 43.4,
+      "dur": 4.2,
+      "producto": {
+        "nombre": "AuCorp",
+        "marca": "aucorp"
+      },
+      "rotulos": [
+        {
+          "t": 44.5,
+          "dur": 1.7,
+          "texto": "Depositá."
+        }
+      ]
+    },
+    {
+      "plano": "13_luz_viaja",
+      "t": 47.2,
+      "dur": 4.4,
+      "rotulos": [
+        {
+          "t": 47.6,
+          "dur": 2.0,
+          "texto": "Todo queda escrito."
+        },
+        {
+          "t": 49.9,
+          "dur": 2.2,
+          "texto": "ordenscan.com",
+          "chico": true
+        }
+      ]
+    },
+    {
+      "plano": "14_familia",
+      "t": 51.2,
+      "dur": 5.0,
+      "familia": true,
+      "rotulos": []
+    },
+    {
+      "plano": "15_oro_cierre",
+      "t": 55.8,
+      "dur": 6.0,
+      "rotulos": [
+        {
+          "t": 56.2,
+          "dur": 5.2,
+          "texto": "Orden Global.\nUn sistema financiero\nque se puede comprobar.",
+          "chico": true
+        }
+      ]
+    }
   ],
   "picks": {
     "_nota": "plano -> numero de toma elegida (1-4). Se rellena al ver la hoja de contactos; sin entrada se usa la 1."

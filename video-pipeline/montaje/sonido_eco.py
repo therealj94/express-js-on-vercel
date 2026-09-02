@@ -146,32 +146,34 @@ if __name__ == "__main__":
     # Sobre el montaje de material fotografico, segunda version: un producto
     # por bloque. Cada marca que entra suena a metal; cada gesto de la mano,
     # a clic; el comprobante, a sello.
+    # Montaje v2 con el plano de AuCorp (61,8 s): un producto por bloque.
     ev = [
-        (0.9, moneda, 1.0),          # el oro entra
-        (4.6, polvo, 0.8),           # la colada
-        (8.6, impacto, 0.6),         # el disco asienta: ORIGEN
-        (10.0, moneda, 0.45),        # las cuatro gotas, una a una
+        (0.9, moneda, 1.0),
+        (4.6, polvo, 0.8),
+        (8.6, impacto, 0.6),
+        (10.0, moneda, 0.45),
         (10.5, moneda, 0.45),
         (11.0, moneda, 0.45),
         (11.5, moneda, 0.45),
-        (14.3, impacto, 0.5),        # Veta Wallet
-        (17.7, clic, 0.9),           # la huella
-        (21.5, polvo, 0.5),          # recibi
-        (25.5, clic, 0.9),           # el telefono toca el terminal
-        (29.2, clic, 0.9),           # la tarjeta entra
-        (33.0, barrido, 0.8),        # de mano en mano
-        (36.9, barrido, 0.6),        # el hilo entre telefonos
-        (40.7, moneda, 0.9),         # la moneda gira
-        (43.8, barrido, 1.0),        # la luz viaja
-        (46.1, sello, 1.0),          # ordenscan: el comprobante
-        (47.9, impacto, 1.0),        # Orden Global en el centro
-        (48.6, clic, 0.5),           # las seis marcas, una a una
-        (48.83, clic, 0.5),
-        (49.07, clic, 0.5),
-        (49.3, clic, 0.5),
-        (49.53, clic, 0.5),
-        (49.77, clic, 0.5),
-        (52.4, impacto, 0.85),       # el cierre
+        (14.3, impacto, 0.5),
+        (17.7, clic, 0.9),
+        (21.5, polvo, 0.5),
+        (25.5, clic, 0.9),
+        (29.2, clic, 0.9),
+        (33.0, barrido, 0.8),
+        (36.9, barrido, 0.6),
+        (40.7, moneda, 0.9),
+        (44.5, moneda, 0.7),
+        (47.6, barrido, 1.0),
+        (49.9, sello, 1.0),
+        (51.7, impacto, 1.0),
+        (52.4, clic, 0.5),
+        (52.63, clic, 0.5),
+        (52.87, clic, 0.5),
+        (53.1, clic, 0.5),
+        (53.33, clic, 0.5),
+        (53.56, clic, 0.5),
+        (56.2, impacto, 0.85),
     ]
     y = pista(dur, ev)
     sf.write(sal, np.column_stack([y, y]), SR)

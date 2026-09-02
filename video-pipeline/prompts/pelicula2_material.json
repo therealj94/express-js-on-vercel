@@ -168,7 +168,21 @@
       "pick": null
     },
     {
-      "id": "12_luz_viaja",
+      "id": "12_aucorp_moneda",
+      "still": "Extreme macro of a short neat stack of ordinary dull grey nickel coins, plain and worn with no readable markings, standing on a slab of dark polished slate beside a single plain smooth gold disc with no engraving, the two a finger's width apart, a single hard light from the upper left drawing a cold highlight on the grey stack and a warm one on the gold, both reflected softly in the slate, everything else in pure black. Faint haze in the air. Studio product macro at slate level, shallow depth of field on the gap between them.",
+      "motion": "the light slowly shifts from the grey stack to the gold disc, the cold highlight fading as the warm one brightens, and the gold disc gives one slow gleam while the grey coins fall into shadow",
+      "move": "static",
+      "stills": 4,
+      "seeds": [
+        4251,
+        4252,
+        4253,
+        4254
+      ],
+      "pick": null
+    },
+    {
+      "id": "13_luz_viaja",
       "still": "A single thin thread of warm golden light travelling through a pure black void thick with faint haze, the thread sharp at its leading point with a soft anamorphic lens flare, the light interacting with microscopic dust suspended in the air so its path is visible as a glowing corridor, a faint reflection on an unseen dark glass surface below. Abstract, no objects, no text. Studio macro, black background, the thread the only thing in frame.",
       "motion": "the leading point of light travels steadily from the bottom left to the upper right of the frame, leaving the softening trail behind it",
       "move": "static",
@@ -182,7 +196,7 @@
       "pick": null
     },
     {
-      "id": "13_familia",
+      "id": "14_familia",
       "still": "A pure black studio void filled with faint haze, a single wide beam of hard warm light from the upper left cutting through it so the beam itself is visible as a soft volume, thousands of microscopic dust motes drifting slowly inside the beam and invisible outside it, a faint warm reflection on an unseen slab of dark polished slate at the bottom of the frame. No objects, no text, nothing else. Studio macro, black background, the light the only subject.",
       "motion": "the camera pushes in very slowly into the beam while the haze drifts gently from right to left and the motes turn in the light, the beam brightening a little toward the end",
       "move": "push",
@@ -197,7 +211,7 @@
       "pick": null
     },
     {
-      "id": "14_oro_cierre",
+      "id": "15_oro_cierre",
       "still": "A raw gold nugget resting alone on a slab of dark polished slate in a pure black studio, photographed from slightly above, a single hard light from the upper left drawing a hot highlight along its top ridge and a soft warm reflection in the slate, the far side of the nugget falling into black. Faint haze in the air and a few motes of dust drifting through the light beam. Nothing else in frame. Studio product shot, shallow depth of field on the nugget.",
       "motion": "the light source settles and holds, the highlight on the ridge steadying, the nugget perfectly still while the motes keep drifting",
       "move": "static",
@@ -211,5 +225,6 @@
       ],
       "pick": null
     }
-  ]
+  ],
+  "_aucorp": "AuCorp, segun Jose: la fintech que une lo fiat con el ecosistema. Su plano: las monedas grises de siempre junto al disco de oro, y la luz pasa de unas al otro. Rotulo 'Deposita.'; nunca 'banco', que suena a licenciado."
 }
