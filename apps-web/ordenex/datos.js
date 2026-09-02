@@ -179,10 +179,41 @@ const DATOS = (() => {
    * pudo traerla. */
   const tarifas = () => pedir('/tarifas', { conSesion: false });
 
+  /* LOS UMBRALES DE LA GUARDA DE PRECIO Y LA VERSIÓN DE LOS TÉRMINOS.
+   *
+   *   { desvio: { avisoPct, bloqueoPct }, terminos: { version, terminos, riesgo } }
+   *
+   * Del mismo sitio que los aplica (lib/guardaPrecio.js, lib/terminos.js):
+   * la pantalla de confirmación enseña «se aleja más del X %» con el X que de
+   * verdad frena, y compara la versión de los términos que la persona aceptó
+   * con la que hoy está publicada. Una copia escrita acá sería un umbral
+   * anunciado que no es el que corta. */
+  const limites = () => pedir('/limites', { conSesion: false });
+
+  // ── los términos y el aviso de riesgo 🔒 ─────────────────────────────────
+  // { version, terminos, riesgo, aceptada } — si ESTA cuenta aceptó la versión
+  // vigente. Se acepta una vez por versión, no una vez por orden.
+  const terminos = () => pedir('/auth/terminos');
+  async function aceptarTerminos(version) {
+    const d = await pedir('/auth/terminos', { metodo: 'POST', cuerpo: { version } });
+    // La sesión guardada se actualiza para que la próxima orden no vuelva a
+    // pedir la casilla: el servidor ya lo sabe, y el navegador también.
+    if (sesion && d?.aceptada === true) {
+      sesion = { ...sesion, usuario: { ...(sesion.usuario || {}), terminos: d } };
+      guardar();
+    }
+    return d;
+  }
+  // ¿Esta sesión ya aceptó la versión que le pasan? Fail-closed: sin dato, no.
+  const terminosAceptados = version =>
+    Boolean(sesion?.usuario?.terminos?.aceptada === true && sesion.usuario.terminos.version === version);
+
   // ── órdenes 🔒 ────────────────────────────────────────────────────────────
-  // o = { mercado, lado, tipo, precio?, cantidad, ordenKey } — precio y
-  // cantidad en strings de wei; la ordenKey la pone quien coloca, para que un
-  // reintento de red no meta la misma orden dos veces.
+  // o = { mercado, lado, tipo, precio?, cantidad, ordenKey, aceptoDesvio? } —
+  // precio y cantidad en strings de wei; la ordenKey la pone quien coloca,
+  // para que un reintento de red no meta la misma orden dos veces;
+  // aceptoDesvio es la casilla de la confirmación cuando el precio se aleja
+  // más del aviso de la referencia (el API la exige: DESVIO_SIN_ACEPTAR).
   const colocar = o => pedir('/ordenes', { metodo: 'POST', cuerpo: o });
   const cancelar = id => pedir(`/ordenes/${encodeURIComponent(id)}`, { metodo: 'DELETE' });
   const misOrdenes = () => pedir('/ordenes?estado=abierta');
@@ -234,7 +265,8 @@ const DATOS = (() => {
 
   return {
     API, sondeo,
-    mercados, libro, velas, tratos, referencia, declarado, tarifas,
+    mercados, libro, velas, tratos, referencia, declarado, tarifas, limites,
+    terminos, aceptarTerminos, terminosAceptados,
     colocar, cancelar, misOrdenes,
     portafolio, retirar, movimientos,
     agentes, solicitudes, crearSolicitud, accionSolicitud,

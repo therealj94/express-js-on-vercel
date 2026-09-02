@@ -1,0 +1,200 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>ORDENEX · Panel de operación</title>
+<meta name="robots" content="noindex,nofollow">
+<meta name="theme-color" content="#0A0E14">
+<!-- El panel habla SOLO con el API de la casa. La clave de admin se teclea
+     acá y vive en la memoria de la pestaña: no se guarda en localStorage ni
+     viaja en la URL. Cerrar la pestaña es cerrar el panel. -->
+<meta http-equiv="Content-Security-Policy" content="
+  default-src 'self';
+  script-src 'self' 'unsafe-inline';
+  style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
+  font-src 'self' data: https://fonts.gstatic.com;
+  img-src 'self' data:;
+  connect-src 'self' https://ordenex-api-ba4b27b8b51a.herokuapp.com;
+  object-src 'none';
+  base-uri 'self';
+  form-action 'self';
+  frame-ancestors 'none';
+">
+<link rel="icon" href="assets/tokens/origen.jpg">
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+/* ═══ EL PANEL DE OPERACIÓN ══════════════════════════════════════════════════
+   Una sola pantalla: la clave, un botón, y lo que contesta GET /admin/estado.
+   Existe porque ese endpoint devolvía los conteos de la casa y el saldo de la
+   caliente, y nadie los miraba: un JSON que solo se lee con curl no lo lee
+   nadie. Y ahora además dice QUÉ variables están puestas (ORDENEX_ADM,
+   ORDENEX_HOT_KEY, …) sin enseñar ningún valor, que es la pregunta que hay que
+   poder contestar de un vistazo antes del primer fallo.
+
+   No sondea: /admin lleva un freno de cinco intentos por cuarto de hora
+   —donde está la llave maestra, el freno es duro a propósito— y un reloj
+   que refrescara solo se comería el cupo. Se refresca a mano. */
+:root{
+  --pozo:#0A0E14; --panel:rgba(19,26,36,.86); --campo:rgba(16,22,31,.90); --campoBr:#3A4C63;
+  --linea2:rgba(201,169,97,.22); --oro:#C9A961; --oroLt:#EAD79C; --oroHi:#F8EFCF;
+  --crema:#EEF1F5; --bruma:#A7B4C4; --humo:#6B7A8C; --jade:#3ED9A0; --coral:#F0776B;
+  --sans:'Archivo',system-ui,sans-serif; --mono:'JetBrains Mono',ui-monospace,monospace; --r:10px; --r2:14px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--pozo);color:var(--crema);font-family:var(--sans);min-height:100svh;-webkit-font-smoothing:antialiased;
+  background-image:radial-gradient(120% 70% at 50% -10%, rgba(201,169,97,.10), transparent 62%);background-attachment:fixed}
+button,input{font:inherit;color:inherit}
+button{background:none;border:0;cursor:pointer}
+:focus-visible{outline:2px solid var(--oro);outline-offset:3px;border-radius:6px}
+main{max-width:920px;margin:0 auto;padding:clamp(20px,4vw,40px) clamp(14px,4vw,32px) 60px}
+h1{font-size:22px;font-weight:800;letter-spacing:-.01em}
+.sub{font-size:12.5px;color:var(--bruma);margin:4px 0 18px}
+.vidrio{background:var(--panel);border:1px solid var(--linea2);border-radius:var(--r2);padding:18px 20px;margin-top:16px;
+  backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px)}
+.vidrio h2{font-size:14.5px;font-weight:700;margin-bottom:10px}
+.fila-clave{display:flex;gap:10px;flex-wrap:wrap}
+.fila-clave input{flex:1;min-width:220px;padding:12px 14px;background:var(--campo);border:1px solid var(--campoBr);
+  border-radius:var(--r);font-size:14px;color:var(--crema);font-family:var(--mono)}
+.fila-clave input:focus{outline:none;border-color:var(--oro)}
+.btn{display:inline-flex;align-items:center;justify-content:center;min-height:44px;padding:0 22px;border-radius:100px;
+  font-weight:700;font-size:14px;color:#2A2007;background:linear-gradient(120deg,var(--oroLt),var(--oro) 52%,var(--oroLt))}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.ayuda{font-size:11.5px;color:var(--humo);margin-top:8px;line-height:1.55}
+.aviso{font-size:13px;color:var(--coral);margin-top:10px;min-height:18px}
+.rejilla{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
+.cifra{background:rgba(16,22,31,.6);border:1px solid rgba(255,255,255,.06);border-radius:var(--r);padding:12px 14px}
+.cifra .et{font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--humo);font-family:var(--mono)}
+.cifra b{display:block;font-size:20px;font-family:var(--mono);margin-top:4px;font-variant-numeric:tabular-nums}
+.cifra.mal b{color:var(--coral)}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--humo);text-align:left;padding:0 8px 8px 0;border-bottom:1px solid var(--linea2)}
+td{padding:9px 8px 9px 0;border-bottom:1px solid rgba(255,255,255,.05);vertical-align:top}
+td.mono,.mono{font-family:var(--mono);font-size:12.5px;overflow-wrap:anywhere}
+.si{color:var(--jade);font-weight:700} .no{color:var(--coral);font-weight:700} .medio{color:var(--oroLt);font-weight:700}
+.nota{color:var(--humo);font-size:11.5px}
+.oculto{display:none!important}
+@media (max-width:640px){ th:nth-child(3),td:nth-child(3){display:none} }
+</style>
+
+<main>
+  <h1>ORDENEX · panel de operación</h1>
+  <p class="sub">Lo que contesta <span class="mono">GET /admin/estado</span>: conteos, caliente y configuración. Sin sondeo: el freno de /admin es de cinco intentos por cuarto de hora.</p>
+
+  <section class="vidrio">
+    <h2>La clave del panel</h2>
+    <div class="fila-clave">
+      <input id="clave" type="password" autocomplete="off" spellcheck="false" placeholder="X-Admin-Key" aria-label="Clave de admin">
+      <button class="btn" id="ver" onclick="PANEL.ver()">Ver el estado</button>
+    </div>
+    <p class="ayuda">La clave se queda en esta pestaña y en ningún otro lado. Con la clave equivocada el API contesta 401 y cuenta un intento.</p>
+    <p class="aviso" id="aviso" aria-live="polite"></p>
+  </section>
+
+  <div id="salida" class="oculto">
+    <section class="vidrio">
+      <h2>La casa, en cifras</h2>
+      <div class="rejilla" id="conteos"></div>
+      <p class="ayuda" id="solicitudes"></p>
+    </section>
+
+    <section class="vidrio">
+      <h2>Configuración</h2>
+      <p class="ayuda">Qué variable está puesta y si tiene forma válida. <b>Ningún valor secreto sale del API</b>; lo que se ve es lo que se puede ver desde fuera.</p>
+      <div style="overflow-x:auto;margin-top:10px">
+      <table>
+        <thead><tr><th>Variable</th><th>Estado</th><th>Nota</th><th>Valor / detalle</th></tr></thead>
+        <tbody id="config"></tbody>
+      </table>
+      </div>
+      <p class="aviso" id="faltan"></p>
+    </section>
+
+    <section class="vidrio">
+      <h2>La billetera caliente</h2>
+      <div id="caliente"></div>
+    </section>
+
+    <p class="ayuda" id="version"></p>
+  </div>
+</main>
+
+<script>
+const PANEL = (() => {
+  'use strict';
+  const API = String(window.ONX_API || 'https://ordenex-api-ba4b27b8b51a.herokuapp.com').replace(/\/$/, '');
+  const $ = id => document.getElementById(id);
+  const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const num = n => (n == null ? '—' : Number(n).toLocaleString('es'));
+
+  // De wei a texto, cortando, como en la casa.
+  function deWei(s, dec = 4) {
+    if (s == null || s === '') return '—';
+    let n; try { n = BigInt(s); } catch { return '—'; }
+    const ent = (n / 10n ** 18n).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+    const cola = (n % 10n ** 18n).toString().padStart(18, '0').slice(0, dec).replace(/0+$/, '');
+    return ent + (cola ? '.' + cola : '');
+  }
+
+  function estadoDe(c) {
+    if (c.puesta === false) return '<span class="no">✕ falta</span>';
+    if (c.valida === false) return '<span class="medio">◐ puesta, sin forma válida</span>';
+    return '<span class="si">✓ puesta</span>';
+  }
+
+  function pintar(d) {
+    $('salida').classList.remove('oculto');
+    const s = d.solicitudes || {};
+    $('conteos').innerHTML = [
+      ['Usuarios', d.usuarios], ['Agentes activos', d.agentes], ['Órdenes abiertas', d.ordenesAbiertas],
+      ['Retiros pendientes', d.retirosPendientes], ['Retiros en revisión', d.retirosEnRevision],
+    ].map(([et, v]) => `<div class="cifra${et === 'Retiros en revisión' && v > 0 ? ' mal' : ''}"><span class="et">${esc(et)}</span><b>${esc(num(v))}</b></div>`).join('');
+    $('solicitudes').textContent = 'Solicitudes fiat por estado: ' +
+      (Object.keys(s).length ? Object.entries(s).map(([k, v]) => `${k} ${v}`).join(' · ') : 'ninguna');
+
+    const cfg = d.configuracion || {};
+    $('config').innerHTML = Object.entries(cfg).map(([k, c]) => {
+      let detalle = '';
+      if (Array.isArray(c.valor)) detalle = c.valor.length ? c.valor.join(', ') : '(vacía)';
+      else if (c.valor != null) detalle = String(c.valor);
+      if (c.direccion) detalle = 'dirección ' + c.direccion;
+      return `<tr><td class="mono">${esc(k)}</td><td>${estadoDe(c)}</td><td class="nota">${esc(c.nota || '')}</td><td class="mono">${esc(detalle)}</td></tr>`;
+    }).join('') || '<tr><td colspan="4" class="nota">El API no devolvió el cuadro de configuración: ¿está desplegada esta versión?</td></tr>';
+    const faltan = Array.isArray(d.faltan) ? d.faltan : [];
+    $('faltan').textContent = faltan.length ? `Faltan: ${faltan.join(', ')}` : '';
+
+    const cal = d.caliente || {};
+    if (!cal.direccion) {
+      $('caliente').innerHTML = `<p class="aviso">${esc(cal.error || 'No configurada')}</p>`;
+    } else {
+      const saldos = cal.saldos || {};
+      const filas = Object.entries(saldos).map(([a, w]) => `<tr><td>${esc(a)}</td><td class="mono">${esc(deWei(w))}</td></tr>`).join('');
+      $('caliente').innerHTML = `<p class="mono">${esc(cal.direccion)}</p>` +
+        (cal.ok ? `<table style="margin-top:10px"><thead><tr><th>Activo</th><th>Saldo</th></tr></thead><tbody>${filas || '<tr><td colspan=2 class="nota">sin saldos con valor</td></tr>'}</tbody></table>`
+                : `<p class="aviso">No se pudo leer la cadena: ${esc(cal.error || '')}</p>`);
+    }
+    $('version').textContent = d.terminosVersion ? `Términos vigentes: versión ${d.terminosVersion} · leído ${new Date().toLocaleTimeString('es')}` : `leído ${new Date().toLocaleTimeString('es')}`;
+  }
+
+  async function ver() {
+    const clave = $('clave').value.trim();
+    const aviso = $('aviso'), btn = $('ver');
+    aviso.textContent = '';
+    if (!clave) { aviso.textContent = 'Escribí la clave.'; return; }
+    btn.disabled = true;
+    try {
+      const r = await fetch(API + '/admin/estado', { headers: { 'X-Admin-Key': clave } });
+      const d = await r.json().catch(() => null);
+      if (!r.ok) {
+        aviso.textContent = d?.error ? `${d.error} (${d.codigo || r.status})` : `El API contestó ${r.status}.`;
+        return;
+      }
+      pintar(d);
+    } catch (e) {
+      aviso.textContent = 'No pudimos hablar con el API. Revisá la conexión.';
+    } finally {
+      btn.disabled = false;
+    }
+  }
+
+  $('clave').addEventListener('keydown', e => { if (e.key === 'Enter') ver(); });
+  return { ver };
+})();
+</script>

@@ -263,6 +263,55 @@ const VMERCADO = (() => {
       'sinOrdenes': 'No tenés órdenes abiertas en este mercado.',
       'ordenesNo': 'No pudimos traer tus órdenes. Se reintenta solo.',
       'lado': 'Lado', 'tipo': 'Tipo', 'resta': 'Resta', 'cancelar': 'Cancelar',
+
+      /* ═══ UN SOLO PRECIO POR PAR, CON SU FUENTE Y SU HORA ══════════════
+         La cabecera enseñaba «Último —» y al lado «Referencia: $4.374», dos
+         números de dos unidades distintas para la misma pregunta. Ahora hay
+         UN precio en ORIGEN —el último trato si lo hubo, y si no la
+         referencia del oro convertida— y debajo, en una línea, de dónde sale
+         y de cuándo es. Un precio sin fuente ni hora es un número suelto. */
+      'fuenteTrato': 'Último trato de esta casa · {hora}',
+      'fuenteRef': 'Referencia: {rotulo} ÷ gramín · fuente {fuente} · leída {hora}',
+      'fuenteNada': 'Sin precio: todavía no hubo tratos y no hay referencia.',
+      'refDetalle': '{rotulo} = ${usd} · 1 ORIGEN = ${gramin}',
+      'leida': 'leída {hora}',
+
+      /* ═══ LA CONFIRMACIÓN ══════════════════════════════════════════════
+         Lo que habría parado la orden de 4365,3 AUKA tecleada en dólares: antes
+         de mandar nada, la casa te enseña qué das, qué recibís, a qué precio,
+         cuál es la referencia del oro y cuánto te alejás de ella. Si te alejás
+         más del aviso, lo dice en rojo y te hace marcar una casilla; más del
+         bloqueo, no deja seguir. El servidor repite la cuenta: esto es el
+         cartel, la puerta es el API. */
+      'cf.t': 'Confirmá tu orden',
+      'cf.das': 'Das',
+      'cf.recibis': 'Recibís',
+      'cf.precio': 'Precio',
+      'cf.precioMercado': 'a mercado · estimado con el libro de ahora',
+      'cf.refOro': 'Referencia del oro',
+      'cf.refPar': 'Referencia de {sim} en ORIGEN',
+      'cf.desvio': 'Diferencia contra la referencia',
+      'cf.desvioOk': 'dentro del margen normal (hasta {x} %)',
+      'cf.desvioAviso': 'Tu precio se aleja más del {x} % de la referencia del oro. Revisá la unidad: el precio va en ORIGEN por {sim}, no en dólares. Si es lo que querés, marcá la casilla.',
+      'cf.desvioBloqueo': 'Tu precio se aleja más del {y} % de la referencia del oro y la casa no acepta esta orden. Revisá el precio: va en ORIGEN por {sim}, no en dólares.',
+      'cf.desvioCheck': 'Vi la diferencia contra la referencia y quiero colocar la orden igual.',
+      'cf.sinRef': 'Ahora mismo no tenemos la referencia del oro. Sin referencia la casa no acepta órdenes límite en este mercado: probá en unos minutos.',
+      'cf.sinRefLibre': 'Este mercado no tiene referencia: el precio nace en el libro.',
+      'cf.comision': 'Comisión de la casa',
+      'cf.terminosCheck': 'Leí y acepto los {terminos} y el {riesgo}.',
+      'cf.terminosLink': 'términos y condiciones',
+      'cf.riesgoLink': 'aviso de riesgo',
+      'cf.limitesNo': 'No pudimos traer los umbrales de la casa; el servidor igual los aplica.',
+      'cf.confirmar': 'Confirmar y colocar',
+      'cf.volver': 'Volver',
+      'cf.enviando': 'Colocando…',
+      'cf.aprox': 'estimado',
+
+      // Lo que contesta el API cuando la guarda o los términos frenan.
+      'ePrecioDesviado': 'La casa no aceptó el precio: se aleja demasiado de la referencia del oro. Revisá la unidad (ORIGEN por unidad, no dólares).',
+      'eDesvioSinAceptar': 'El precio se aleja de la referencia y hay que confirmarlo: volvé a colocar la orden y marcá la casilla.',
+      'eTerminos': 'Antes de operar hay que aceptar los términos y condiciones y el aviso de riesgo.',
+      'eSinRefAhora': 'Ahora mismo no tenemos la referencia del oro y sin ella no se coloca una orden límite. Probá en unos minutos.',
     },
     en: {
       't': 'Markets',
@@ -374,6 +423,41 @@ const VMERCADO = (() => {
       'sinOrdenes': 'You have no open orders in this market.',
       'ordenesNo': 'We couldn’t fetch your orders. It retries on its own.',
       'lado': 'Side', 'tipo': 'Type', 'resta': 'Left', 'cancelar': 'Cancel',
+
+      'fuenteTrato': 'Last trade of this house · {hora}',
+      'fuenteRef': 'Reference: {rotulo} ÷ gramin · source {fuente} · read at {hora}',
+      'fuenteNada': 'No price: no trades yet and no reference.',
+      'refDetalle': '{rotulo} = ${usd} · 1 ORIGEN = ${gramin}',
+      'leida': 'read at {hora}',
+
+      'cf.t': 'Confirm your order',
+      'cf.das': 'You give',
+      'cf.recibis': 'You receive',
+      'cf.precio': 'Price',
+      'cf.precioMercado': 'at market · estimated with the current book',
+      'cf.refOro': 'Gold reference',
+      'cf.refPar': '{sim} reference in ORIGEN',
+      'cf.desvio': 'Difference against the reference',
+      'cf.desvioOk': 'within the normal margin (up to {x} %)',
+      'cf.desvioAviso': 'Your price is more than {x} % away from the gold reference. Check the unit: the price is in ORIGEN per {sim}, not in dollars. If that is what you want, tick the box.',
+      'cf.desvioBloqueo': 'Your price is more than {y} % away from the gold reference and the house does not accept this order. Check the price: it is in ORIGEN per {sim}, not in dollars.',
+      'cf.desvioCheck': 'I saw the difference against the reference and I want to place the order anyway.',
+      'cf.sinRef': 'We have no gold reference right now. Without a reference the house does not accept limit orders in this market: try again in a few minutes.',
+      'cf.sinRefLibre': 'This market has no reference: the price is born in the book.',
+      'cf.comision': 'House fee',
+      'cf.terminosCheck': 'I have read and accept the {terminos} and the {riesgo}.',
+      'cf.terminosLink': 'terms and conditions',
+      'cf.riesgoLink': 'risk notice',
+      'cf.limitesNo': 'We couldn’t fetch the house thresholds; the server applies them anyway.',
+      'cf.confirmar': 'Confirm and place',
+      'cf.volver': 'Back',
+      'cf.enviando': 'Placing…',
+      'cf.aprox': 'estimated',
+
+      'ePrecioDesviado': 'The house rejected the price: it is too far from the gold reference. Check the unit (ORIGEN per unit, not dollars).',
+      'eDesvioSinAceptar': 'The price is away from the reference and must be confirmed: place the order again and tick the box.',
+      'eTerminos': 'Before trading you must accept the terms and conditions and the risk notice.',
+      'eSinRefAhora': 'We have no gold reference right now and without it a limit order is not placed. Try again in a few minutes.',
     },
   };
 
@@ -875,6 +959,19 @@ const VMERCADO = (() => {
     .vm-descargo-check input{flex:none;width:17px;height:17px;margin-top:1px;accent-color:var(--oro)}
     .vm-aviso{min-height:18px;margin:8px 2px 10px;font-size:12.5px;line-height:1.55;color:var(--coral)}
     .vm-aviso.suave{color:var(--humo)}
+
+    /* La línea de fuente del precio único: de dónde sale y de cuándo es. En
+       mono y gris porque es un dato de diagnóstico del número de arriba, no
+       un segundo número. */
+    .vm-fuente{margin-top:6px;font-family:var(--mono);font-size:11px;color:var(--humo);
+      letter-spacing:.02em;line-height:1.5}
+    .vm-ultimo.ms-esref::before{font-size:11px}
+
+    /* La hoja de la CONFIRMACIÓN (.cf-*) vive en index.html y no acá: el
+       velo se cuelga del body, fuera del lienzo, y la casilla de los términos
+       la usa también el circuito fiat (ONX.pedirTerminos). Una hoja que solo
+       existe mientras la sala está pintada no le sirve a una caja que se abre
+       desde otra vista. */
     .vm-max{font-weight:700;color:var(--oroLt);padding:0;font-size:11.5px}
     .vm-max:hover{color:var(--oroHi)}
     /* El botón de operar habla el idioma de la casa: jade compra, coral
@@ -1087,7 +1184,7 @@ const VMERCADO = (() => {
         <td><span class="ms-par">${icono(sim)}<span><b>${esc(sim)}</b> <small>/ ORIGEN</small>
           <span class="ms-nom">${esc(CADENA.meta(sim).n || '')}</span></span></span></td>
         <td class="mono">${pf.txt == null ? '<span class="vm-sin">—</span>'
-          : `<span class="${pf.ref ? 'ms-esref' : ''}" title="${pf.ref ? esc(tx('ls.esRef')) : ''}">${esc(pf.txt)}</span>`}
+          : `<span class="${pf.ref ? 'ms-esref' : ''}" title="${pf.ref ? esc(tx('ls.esRef') + (m.referencia?.en ? ' · ' + rell(tx('leida'), { hora: hora(m.referencia.en) }) + ' · ' + String(m.referencia.fuente || '') : '')) : ''}">${esc(pf.txt)}</span>`}
           ${ref == null ? '' : `<small class="ms-ref">${esc(tx('ref'))} ${esc(ref)}</small>`}</td>
         <td>${pastillaCambio(m.cambio24h)}</td>
         <td class="mono">${vol == null ? '<span class="vm-sin">—</span>' : esc(vol) + ' ' + esc(sim)}</td>
@@ -1122,15 +1219,20 @@ const VMERCADO = (() => {
          linea. Antes el precio vivia arriba a la derecha, a media pantalla de
          distancia de su maximo y su minimo — dos datos de la misma cosa
          separados por todo el ancho de la pagina. -->
+    <!-- UN SOLO PRECIO POR PAR. El número grande es el último trato si lo
+         hubo y, si no, la referencia del oro en ORIGEN (marcada «ref»); la
+         línea de abajo dice de dónde sale y de cuándo es. Antes había dos
+         números en dos unidades para la misma pregunta. -->
     <div class="vm-stats">
       <div class="vm-stat vm-stat-precio">
-        <span class="et">${esc(tx('ultimo'))}</span>
+        <span class="et" id="vm-ultimo-et">${esc(tx('ultimo'))}</span>
         <span class="vm-ultimo mono" id="vm-ultimo">—</span>
       </div>
       <div class="vm-stat"><span class="et">24 h</span><span id="vm-cambio">—</span></div>
       <div id="vm-stats"></div>
       <div class="vm-refchica" id="vm-ref"></div>
     </div>
+    <div class="vm-fuente" id="vm-fuente" aria-live="polite">${esc(tx('fuenteNada'))}</div>
     <div class="vm-rejilla">
       <aside class="vidrio bloque vm-lista">
         <div class="vm-buscar">
@@ -1217,16 +1319,15 @@ const VMERCADO = (() => {
     const m = (mercadosCache || []).find(x => x.mercado === parActual);
     const ultimo = $('vm-ultimo'), cambio = $('vm-cambio'), ref = $('vm-ref'), medio = $('vm-medio');
     if (!ultimo || !m) return;
-    const u = deWei(m.ultimo, 4);
-    ultimo.textContent = u == null ? '—' : u;
+    pintarPrecioUnico(m);
     if (cambio) cambio.innerHTML = pastillaCambio(m.cambio24h);
-    const r = refUsd(m);
-    /* La referencia SIEMPRE con su rótulo y con su unidad: es el cartel del
-       metal en dólares, no la última operación. Debajo va el precio de la casa
-       en ORIGEN; que cada número diga en qué está medido es lo que impide
-       leerlos como si fueran el mismo. */
-    if (ref) ref.textContent = r == null ? '' : `${tx('refRot')}: ${r}`;
-    if (medio) medio.innerHTML = `${u == null ? '—' : esc(u)} <small>ORIGEN</small>`;
+    /* Debajo del precio, el detalle de la referencia EN DÓLARES con su rótulo:
+       la onza (o la plata, o el acta) y el gramín. Es el cartel del metal, no
+       la última operación; que cada número diga en qué está medido es lo que
+       impide leerlos como si fueran el mismo. */
+    if (ref) ref.textContent = detalleRef(m) || '';
+    const pf = precioFila(m);
+    if (medio) medio.innerHTML = `${pf.txt == null ? '—' : `<span class="${pf.ref ? 'ms-esref' : ''}">${esc(pf.txt)}</span>`} <small>ORIGEN</small>`;
     pintarStats(m);
     pintarLista();   // la lista de la izquierda vive del mismo dato
 
@@ -1244,6 +1345,44 @@ const VMERCADO = (() => {
       }
     }
     pintarVelas(); // la línea de referencia de la gráfica sale de este dato
+  }
+
+  /* ── EL PRECIO ÚNICO Y SU FUENTE ──────────────────────────────────────────
+     Devuelve { txt, ref, fuente, detalle } para un mercado: el número que se
+     enseña, si es referencia, la línea «de dónde y de cuándo» y el detalle en
+     dólares. Es pura (recibe el mercado y los tratos) para poder probarla sin
+     navegador: la promesa de esta casa es que un precio nunca viaja sin su
+     fuente ni su hora. */
+  function precioUnico(m, tratos) {
+    const pf = precioFila(m);
+    if (pf.txt == null) return { txt: null, ref: false, fuente: tx('fuenteNada'), detalle: null };
+    if (!pf.ref) {
+      const ultimoTrato = Array.isArray(tratos) && tratos.length ? tratos[0].en : null;
+      return { txt: pf.txt, ref: false, fuente: rell(tx('fuenteTrato'), { hora: ultimoTrato ? hora(ultimoTrato) : '—' }), detalle: detalleRef(m) };
+    }
+    const r = m.referencia || {};
+    return {
+      txt: pf.txt, ref: true,
+      fuente: rell(tx('fuenteRef'), { rotulo: r.rotulo || '', fuente: r.fuente || '—', hora: r.en ? hora(r.en) : '—' }),
+      detalle: detalleRef(m),
+    };
+  }
+
+  function detalleRef(m) {
+    const r = m?.referencia;
+    const usd = Number(r?.usd), gramin = Number(r?.origenUsd);
+    if (!r || !Number.isFinite(usd) || usd <= 0 || !Number.isFinite(gramin) || gramin <= 0) return null;
+    return rell(tx('refDetalle'), { rotulo: r.rotulo || '', usd: usd.toFixed(2), gramin: gramin.toFixed(4) });
+  }
+
+  function pintarPrecioUnico(m) {
+    const el = $('vm-ultimo'), et = $('vm-ultimo-et'), fuente = $('vm-fuente');
+    if (!el) return;
+    const p = precioUnico(m, tratosCache);
+    el.textContent = p.txt == null ? '—' : p.txt;
+    el.classList.toggle('ms-esref', p.ref);
+    if (et) et.textContent = p.ref ? tx('refRot') : tx('ultimo');
+    if (fuente) fuente.textContent = p.fuente;
   }
 
   /* ── la barra de estadísticas ──────────────────────────────────────────────
@@ -1872,6 +2011,9 @@ const VMERCADO = (() => {
       if (!tratosCache) caja.innerHTML = `<div class="vm-vacio">${esc(tx('tratosNo'))}</div>`;
       return;
     }
+    // La hora del último trato vive en la línea de fuente del precio.
+    const mm = (mercadosCache || []).find(x => x.mercado === parActual);
+    if (mm) pintarPrecioUnico(mm);
     if (!Array.isArray(tratosCache) || !tratosCache.length) {
       caja.innerHTML = `<div class="vm-vacio">${esc(tx('sinTratos'))}</div>`;
       return;
@@ -2331,6 +2473,223 @@ const VMERCADO = (() => {
   const nombreOrden = (orden, sufijo) =>
     'orden.' + orden.lado + '.' + orden.mercado + (sufijo || '');
 
+  /* ═══ LA CONFIRMACIÓN ANTES DE COLOCAR ═══════════════════════════════════
+   *
+   * Hubo una orden de 4365,3 AUKA con el precio de la onza EN DÓLARES tecleado
+   * en un campo que pide ORIGEN por AUKA. Nadie la vio antes de mandarla
+   * porque no había nada que ver: el botón mandaba. Ahora el botón abre esta
+   * pantalla, que dice en una sola caja qué das, qué recibís, a qué precio,
+   * cuál es la referencia del oro (onza, gramín, fuente y hora) y cuánto te
+   * alejás de ella en por ciento. Pasado el aviso (X) lo dice en rojo y hace
+   * marcar una casilla; pasado el bloqueo (Y) no deja seguir. X e Y vienen de
+   * GET /limites, del mismo sitio que los aplica.
+   *
+   * La cuenta se hace igual que en el servidor (lib/guardaPrecio.js): en
+   * BigInt sobre wei, en partes por millón, con la referencia pasada a wei por
+   * texto. Y el servidor la repite: esto es el cartel; la puerta es el API.
+   */
+  let limitesCache = null;    // { desvio: { avisoPct, bloqueoPct }, terminos: { version, … } } — null = no leído
+  let confirmando = null;     // la orden en la pantalla de confirmación, o null
+
+  async function cargarLimites() {
+    if (limitesCache) return;
+    try { limitesCache = await DATOS.limites(); } catch { limitesCache = null; }
+  }
+
+  // La referencia del par en wei: la misma división que pinta la lista.
+  const refWeiDe = m => { const r = refEnOrigen(m); return r == null ? null : entero(r); };
+
+  /* El desvío de un precio contra su referencia, en % con signo. En BigInt y
+     truncando, como el servidor: un desvío redondeado hacia arriba avisaría
+     donde el servidor no avisa, y al revés sería peor. */
+  function desvioPct(precioWei, refWei) {
+    if (precioWei == null || refWei == null || refWei <= 0n || precioWei <= 0n) return null;
+    return Number(((precioWei - refWei) * 1000000n) / refWei) / 10000;
+  }
+
+  /* El nivel que le toca a un desvío con los umbrales dados:
+       'libre'  el mercado no tiene referencia (IBS, HARV): nada que comparar
+       'sinRef' debería tenerla y no llegó: no se coloca (fail-closed)
+       'sinLimites' hay desvío pero /limites no contestó: se enseña el número,
+                se pide la casilla y decide el servidor
+       'ok' | 'aviso' | 'bloqueo' */
+  function nivelDesvio(desvio, conRef, limites) {
+    if (!conRef) return 'libre';
+    if (desvio == null) return 'sinRef';
+    const x = Number(limites?.desvio?.avisoPct), y = Number(limites?.desvio?.bloqueoPct);
+    if (!Number.isFinite(x) || !Number.isFinite(y)) return 'sinLimites';
+    const abs = Math.abs(desvio);
+    if (abs > y) return 'bloqueo';
+    if (abs > x) return 'aviso';
+    return 'ok';
+  }
+
+  /* El resumen de una orden validada, con todo lo que la pantalla enseña. Es
+     pura: recibe la orden, el mercado, el libro, la tarifa y los umbrales, y
+     devuelve números y niveles — nada de DOM. Así se prueba sin navegador que
+     4365,3 sale 'bloqueo' y que 1700 sale 'ok'. */
+  function resumenDe(orden, m, libro, tarifa, limites) {
+    const sim = String(orden.mercado || '').split('-')[0];
+    const cant = entero(orden.cantidad);
+    const compra = orden.lado === 'compra';
+    const aprox = orden.tipo === 'mercado';
+
+    // El total: exacto a límite, caminata del libro a mercado.
+    let total = null, cubre = true;
+    if (!aprox) {
+      const p = entero(orden.precio);
+      total = p == null || cant == null ? null : notionalDe(cant, p);
+    } else {
+      const ventas = libro?.ventas, compras = libro?.compras;
+      const lado = compra ? ventas : compras;
+      if (Array.isArray(lado)) {
+        let falta = cant, suma = 0n;
+        for (const [p, c] of lado) {
+          const pp = entero(p), cc = entero(c);
+          if (pp == null || cc == null) { suma = null; break; }
+          const toma = cc < falta ? cc : falta;
+          suma += notionalDe(toma, pp);
+          falta -= toma;
+          if (falta === 0n) break;
+        }
+        total = suma;
+        cubre = falta === 0n;
+      }
+    }
+
+    // El precio que se compara: el tecleado a límite, el promedio del libro a mercado.
+    const precioWei = !aprox ? entero(orden.precio)
+      : (total != null && cant > 0n ? (total * WEI) / cant : null);
+
+    const refWei = refWeiDe(m);
+    const conRef = CON_REFERENCIA.includes(sim) || CON_DECLARADO.includes(sim);
+    const desvio = desvioPct(precioWei, refWei);
+    const nivel = nivelDesvio(desvio, conRef, limites);
+
+    // Lo que se da y lo que se recibe, con la comisión sobre lo recibido.
+    const ppm = tarifa && Number.isInteger(tarifa.comisionPpm) && tarifa.comisionPpm >= 0 ? BigInt(tarifa.comisionPpm) : null;
+    const recibidoBruto = compra ? cant : total;
+    const comision = ppm != null && recibidoBruto != null ? (recibidoBruto * ppm) / 1000000n : null;
+    const recibido = recibidoBruto != null && comision != null ? recibidoBruto - comision : recibidoBruto;
+
+    return {
+      sim, aprox, cubre,
+      das: { wei: compra ? total : cant, sim: compra ? 'ORIGEN' : sim },
+      recibis: { wei: recibido, sim: compra ? sim : 'ORIGEN', comisionWei: comision, ppm: ppm == null ? null : Number(ppm) },
+      precioWei, refWei, desvio, nivel, conRef,
+      referencia: m?.referencia || null,
+      limites: limites?.desvio || null,
+      terminosVersion: limites?.terminos?.version || null,
+    };
+  }
+
+  const pct = n => (n == null ? '—' : `${n > 0 ? '+' : ''}${n.toFixed(2)} %`);
+
+  function abrirConfirmacion(orden) {
+    const m = (mercadosCache || []).find(x => x.mercado === orden.mercado) || null;
+    const r = resumenDe(orden, m, libroCache, tarifaCache, limitesCache);
+    confirmando = { orden, resumen: r };
+    const x = r.limites?.avisoPct, y = r.limites?.bloqueoPct;
+    const w = (wei, sim, dec = 6) => wei == null ? '—' : `${r.aprox ? '≈ ' : ''}${deWei(wei.toString(), dec)} ${sim}`;
+    const necesitaTerminos = !(r.terminosVersion && DATOS.terminosAceptados(r.terminosVersion));
+    const puede = r.nivel !== 'bloqueo' && r.nivel !== 'sinRef' && (r.das.wei != null);
+
+    const ref = r.referencia;
+    const filaRefOro = ref && ref.usd != null && ref.origenUsd != null
+      ? `<div class="cf-fila"><span>${esc(tx('cf.refOro'))}</span><b class="mono">${esc(detalleRef(m) || '—')}</b>
+           <small>${esc(rell(tx('fuenteRef'), { rotulo: ref.rotulo || '', fuente: ref.fuente || '—', hora: ref.en ? hora(ref.en) : '—' }))}</small></div>
+         <div class="cf-fila"><span>${esc(rell(tx('cf.refPar'), { sim: r.sim }))}</span><b class="mono">${esc(deWei(r.refWei.toString(), 4))} ORIGEN</b></div>`
+      : '';
+
+    let desvioHtml;
+    if (r.nivel === 'libre') desvioHtml = `<div class="cf-desvio ok">${esc(tx('cf.sinRefLibre'))}</div>`;
+    else if (r.nivel === 'sinRef') desvioHtml = `<div class="cf-desvio bloqueo">${esc(tx('cf.sinRef'))}</div>`;
+    else if (r.nivel === 'bloqueo') desvioHtml = `<div class="cf-desvio bloqueo"><b>${esc(pct(r.desvio))}</b> ${esc(rell(tx('cf.desvioBloqueo'), { y: String(y), sim: r.sim }))}</div>`;
+    else if (r.nivel === 'aviso' || r.nivel === 'sinLimites') desvioHtml = `<div class="cf-desvio aviso"><b>${esc(pct(r.desvio))}</b> ${esc(r.nivel === 'aviso' ? rell(tx('cf.desvioAviso'), { x: String(x), sim: r.sim }) : tx('cf.limitesNo'))}
+        <label class="vm-descargo-check"><input type="checkbox" id="cf-desvio-check" onchange="VMERCADO.marcarConfirmacion()"><span>${esc(tx('cf.desvioCheck'))}</span></label></div>`;
+    else desvioHtml = `<div class="cf-desvio ok"><b>${esc(pct(r.desvio))}</b> ${esc(rell(tx('cf.desvioOk'), { x: String(x) }))}</div>`;
+
+    const enlaces = () => {
+      const base = limitesCache?.terminos || {};
+      const a = (ruta, txt) => `<a href="${esc(ruta || 'legal.html')}" target="_blank" rel="noopener">${esc(txt)}</a>`;
+      return rell(esc(tx('cf.terminosCheck')), { terminos: a(base.terminos, tx('cf.terminosLink')), riesgo: a(base.riesgo, tx('cf.riesgoLink')) });
+    };
+
+    const html = `
+    <div class="cf-velo" id="vm-confirmar" role="dialog" aria-modal="true" aria-labelledby="cf-titulo">
+      <div class="cf-caja vidrio">
+        <h3 id="cf-titulo">${esc(tx('cf.t'))}</h3>
+        <div class="cf-fila"><span>${esc(tx('cf.das'))}</span><b class="mono cf-grande">${esc(w(r.das.wei, r.das.sim))}</b></div>
+        <div class="cf-fila"><span>${esc(tx('cf.recibis'))}</span><b class="mono cf-grande">${esc(w(r.recibis.wei, r.recibis.sim))}</b>
+          ${r.recibis.comisionWei != null ? `<small>${esc(tx('cf.comision'))} (${esc(String(r.recibis.ppm / 10000))} %): ${esc(w(r.recibis.comisionWei, r.recibis.sim))}</small>` : `<small>${esc(tx('comisionNo'))}</small>`}</div>
+        <div class="cf-fila"><span>${esc(tx('cf.precio'))}</span><b class="mono">${r.precioWei == null ? '—' : esc(`${r.aprox ? '≈ ' : ''}${deWei(r.precioWei.toString(), 4)} ORIGEN / ${r.sim}`)}</b>
+          ${r.aprox ? `<small>${esc(tx('cf.precioMercado'))}${r.cubre ? '' : ' · ' + esc(tx('noCubre'))}</small>` : ''}</div>
+        ${filaRefOro}
+        <div class="cf-fila"><span>${esc(tx('cf.desvio'))}</span>${desvioHtml}</div>
+        ${!limitesCache && r.nivel === 'libre' ? `<p class="ayuda">${esc(tx('cf.limitesNo'))}</p>` : ''}
+        ${necesitaTerminos ? `<label class="vm-descargo-check cf-terminos"><input type="checkbox" id="cf-terminos-check" onchange="VMERCADO.marcarConfirmacion()"><span>${enlaces()}</span></label>` : ''}
+        <p class="vm-aviso" id="cf-aviso" aria-live="polite"></p>
+        <div class="cf-botones">
+          <button class="btn btn-linea btn-sm" onclick="VMERCADO.cerrarConfirmacion()">${esc(tx('cf.volver'))}</button>
+          <button class="btn btn-sm vm-btn ${orden.lado}" id="cf-ok" ${puede ? '' : 'disabled'} onclick="VMERCADO.confirmar()">${esc(tx('cf.confirmar'))}</button>
+        </div>
+      </div>
+    </div>`;
+    document.getElementById('vm-confirmar')?.remove();
+    document.body.insertAdjacentHTML('beforeend', html);
+    marcarConfirmacion();
+    tele('pantalla', 'orden.confirmacion.' + String(orden.mercado), '#mercado/' + String(orden.mercado));
+    setTimeout(() => document.getElementById('cf-ok')?.focus(), 30);
+  }
+
+  function cerrarConfirmacion() {
+    confirmando = null;
+    document.getElementById('vm-confirmar')?.remove();
+  }
+
+  /* El botón de confirmar se enciende solo cuando están marcadas TODAS las
+     casillas que la pantalla pidió: la del desvío si lo hubo y la de los
+     términos si es la primera orden. Bloqueo y sin referencia no se encienden
+     nunca — no hay casilla que abra esa puerta. */
+  function marcarConfirmacion() {
+    const ok = document.getElementById('cf-ok');
+    if (!ok || !confirmando) return;
+    const r = confirmando.resumen;
+    if (r.nivel === 'bloqueo' || r.nivel === 'sinRef' || r.das.wei == null) { ok.disabled = true; return; }
+    const d = document.getElementById('cf-desvio-check');
+    const t = document.getElementById('cf-terminos-check');
+    ok.disabled = (d && !d.checked) || (t && !t.checked);
+  }
+
+  async function confirmar() {
+    if (!confirmando) return;
+    const { orden, resumen: r } = confirmando;
+    const ok = document.getElementById('cf-ok'), aviso = document.getElementById('cf-aviso');
+    if (r.nivel === 'bloqueo' || r.nivel === 'sinRef') return; // la puerta no se abre desde la consola
+    const d = document.getElementById('cf-desvio-check');
+    if (d && !d.checked) return;
+    const t = document.getElementById('cf-terminos-check');
+    if (t && !t.checked) return;
+    if (ok) { ok.disabled = true; ok.textContent = tx('cf.enviando'); }
+    try {
+      // Los términos primero, una vez por versión: sin esto el API contesta
+      // TERMINOS_NO_ACEPTADOS y la orden no entra.
+      if (t && r.terminosVersion) {
+        await DATOS.aceptarTerminos(r.terminosVersion);
+        tele('accion', 'terminos.aceptados', { meta: { version: r.terminosVersion } });
+      }
+    } catch (e) {
+      if (aviso) aviso.textContent = e?.message || tx('eTerminos');
+      if (ok) { ok.disabled = false; ok.textContent = tx('cf.confirmar'); }
+      return;
+    }
+    const final = { ...orden };
+    if (r.nivel === 'aviso' || r.nivel === 'sinLimites') final.aceptoDesvio = true;
+    tele('accion', 'orden.confirmada.' + String(orden.mercado), { meta: { desvioPct: r.desvio, nivel: r.nivel } });
+    cerrarConfirmacion();
+    await enviar(final);
+  }
+
   async function colocar() {
     if (!DATOS.haySesion()) {
       /* Intentar operar sin sesión es el momento exacto en que Ordenex manda a
@@ -2352,12 +2711,24 @@ const VMERCADO = (() => {
       sincronizarPuerta();
       return;
     }
-    const aviso = $('vm-aviso'), btn = $('vm-enviar');
+    const aviso = $('vm-aviso');
     const v = validar();
     if (!v.ok) {
       if (aviso) { aviso.classList.remove('suave'); aviso.textContent = v.msg; }
       return;
     }
+    // Los umbrales y la versión de los términos, si todavía no llegaron: la
+    // confirmación los enseña. Si el API no contesta, la pantalla lo dice y
+    // el servidor los aplica igual.
+    await cargarLimites();
+    abrirConfirmacion(v.orden);
+  }
+
+  /* El envío de verdad, DESPUÉS de la confirmación. Es lo que antes hacía
+     colocar() de un tirón. */
+  async function enviar(orden) {
+    const aviso = $('vm-aviso'), btn = $('vm-enviar');
+    const v = { orden };
     // La llave sobrevive a recalcular() solo dentro de este envío: se toma
     // DESPUÉS de validar para que un reintento de red repita la misma orden.
     if (!ordenKeyViva) ordenKeyViva = llaveNueva();
@@ -2408,7 +2779,20 @@ const VMERCADO = (() => {
         ONX.avisar(tx('eSesion'));
       } else if (aviso) {
         aviso.classList.remove('suave');
-        aviso.textContent = e?.message || tx('eColocar');
+        /* Los frenos de la casa tienen su frase propia: decir «no se pudo
+           colocar» cuando el API acaba de explicar que el precio se aleja un
+           155 % de la referencia sería tirar la explicación. */
+        const propio = {
+          PRECIO_DESVIADO: 'ePrecioDesviado', DESVIO_SIN_ACEPTAR: 'eDesvioSinAceptar',
+          TERMINOS_NO_ACEPTADOS: 'eTerminos', SIN_REFERENCIA_AHORA: 'eSinRefAhora',
+        }[e?.codigo];
+        aviso.textContent = propio ? tx(propio) : (e?.message || tx('eColocar'));
+        if (e?.codigo === 'TERMINOS_NO_ACEPTADOS') {
+          // La sesión guardada creía que estaban aceptados y el API dice que
+          // no (otra versión, otra cuenta): se limpia para que la próxima
+          // confirmación vuelva a pedir la casilla.
+          limitesCache = null;
+        }
       }
     } finally {
       const b = $('vm-enviar');
@@ -2578,6 +2962,9 @@ const VMERCADO = (() => {
   }
 
   function apagar() {
+    // Una confirmación abierta muere con la sala: confirmar una orden de un
+    // mercado que ya no está en pantalla es colocar a ciegas.
+    cerrarConfirmacion();
     paradores.forEach(p => { try { p(); } catch {} });
     paradores = [];
     pararGrafica = null;
@@ -2599,10 +2986,14 @@ const VMERCADO = (() => {
     vistaMercados, vistaMercado, alPintar, apagar, zoom, favorito, filtrar, pestana,
     marco, fuente, lado, tipo, usarPrecio, recalcular, maximo, colocar, quitar,
     marcarDescargo, aceptarDescargo,
+    cerrarConfirmacion, marcarConfirmacion, confirmar,
     // Para las pruebas, como _piezas en qr.js: los textos y las cuentas puras.
     _txt: () => TXT,
     _puros: {
       texto, notionalDe, costoDeMercado: c => costoDeMercado(c), validar: () => validar(),
+      // La confirmación y el precio único, sin DOM: lo que habría parado la
+      // orden de 4365,3 AUKA se prueba con números, no con capturas.
+      desvioPct, nivelDesvio, resumenDe, precioUnico, detalleRef,
       // Las decisiones de fuente son puras y se prueban sin navegador: qué
       // mercado tiene cartel del metal, con qué pestaña abre y qué marcos le
       // tocan a cada una.

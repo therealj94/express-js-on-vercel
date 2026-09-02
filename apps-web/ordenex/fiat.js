@@ -517,10 +517,19 @@ const VFIAT = (() => {
       enviando = false;
       if (mia !== carga) return;
       if (e?.codigo === 'SESION_VENCIDA') { ONX.avisar(e.message); ONX.vista('fiat'); return; }
+      if (boton) { boton.disabled = false; boton.textContent = t.fAbrir; }
+      /* La primera operación de una cuenta: el API exige los términos y el
+         aviso de riesgo aceptados (lib/terminos.js). Se piden acá mismo y, al
+         aceptar, se vuelve a abrir la solicitud con lo que ya estaba tecleado
+         — no se le hace escribir todo de nuevo a quien solo le faltaba una
+         casilla. */
+      if (e?.codigo === 'TERMINOS_NO_ACEPTADOS' && typeof ONX.pedirTerminos === 'function') {
+        ONX.pedirTerminos(() => enviarSolicitud());
+        return;
+      }
       // El error del API en claro: sus mensajes ya explican qué pasó (el tope
       // de diligencia, la garantía del agente que no alcanza, la identidad
       // sin verificar) mejor que cualquier traducción nuestra.
-      if (boton) { boton.disabled = false; boton.textContent = t.fAbrir; }
       errorForm(e?.message || String(e));
     }
   }

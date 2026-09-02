@@ -469,6 +469,56 @@ body.en-mercado::before{content:'';position:fixed;inset:0;z-index:-1;
 .vacio b{display:block;color:var(--bruma);font-size:15px;margin-bottom:6px;font-weight:600}
 .tabs{display:none}
 
+/* ═══ LA CONFIRMACIÓN Y LOS TÉRMINOS ═══════════════════════════════════════
+   Un velo sobre la casa y una caja en el medio. La usa la sala de mercado para
+   la confirmación de una orden (mercado.js: das, recibís, precio, referencia
+   del oro, diferencia) y el cascarón para pedir los términos y el aviso de
+   riesgo antes de la primera operación (ONX.pedirTerminos, también desde el
+   circuito fiat). Vive acá y no en un módulo porque se cuelga del body, fuera
+   del lienzo, y la abren dos vistas distintas. El desvío va en tres colores:
+   jade (dentro del margen), oro (aviso: hay que marcar la casilla), coral
+   (bloqueo: no hay casilla que valga). */
+.cf-velo{position:fixed;inset:0;z-index:70;display:grid;place-items:center;padding:16px;
+  background:rgba(10,14,20,.72);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}
+.cf-caja{width:min(560px,100%);max-height:calc(100svh - 32px);overflow:auto;padding:22px 22px 18px}
+.cf-caja h3{font-size:17px;font-weight:800;margin-bottom:14px;color:var(--crema)}
+.cf-caja p{font-size:13px;color:var(--bruma);line-height:1.6;margin-bottom:12px}
+.cf-fila{display:grid;grid-template-columns:150px minmax(0,1fr);gap:4px 14px;align-items:baseline;
+  padding:9px 0;border-top:1px solid rgba(255,255,255,.06);font-size:13px}
+.cf-fila>span{color:var(--humo);font-size:11px;letter-spacing:.08em;text-transform:uppercase;
+  font-family:var(--mono)}
+.cf-fila>b{color:var(--crema);font-weight:600;overflow-wrap:anywhere}
+.cf-fila>small{grid-column:2;color:var(--humo);font-size:11.5px;line-height:1.5}
+.cf-grande{font-size:15.5px;font-weight:700}
+.cf-desvio{font-size:12.5px;line-height:1.55;color:var(--bruma)}
+.cf-desvio b{display:inline-block;margin-right:6px;font-family:var(--mono);font-weight:700}
+.cf-desvio.ok b{color:var(--jade)}
+.cf-desvio.aviso{color:var(--oroLt)} .cf-desvio.aviso b{color:var(--oroHi)}
+.cf-desvio.bloqueo{color:var(--coral)} .cf-desvio.bloqueo b{color:var(--coral)}
+.cf-check,.vm-descargo-check{display:flex;gap:9px;align-items:flex-start;margin-bottom:12px;
+  cursor:pointer;color:var(--crema);font-size:12.5px;line-height:1.5}
+.cf-check input,.vm-descargo-check input{flex:none;width:17px;height:17px;margin-top:1px;accent-color:var(--oro)}
+.cf-desvio .vm-descargo-check{margin:10px 0 0}
+.cf-terminos{margin-top:12px;padding-top:12px;border-top:1px solid rgba(255,255,255,.06)}
+.cf-caja a{color:var(--oroLt);text-decoration:underline}
+.cf-botones{display:flex;gap:10px;justify-content:flex-end;margin-top:8px;flex-wrap:wrap}
+.cf-botones .btn{min-height:42px}
+.cf-aviso{min-height:18px;margin:8px 2px 10px;font-size:12.5px;line-height:1.55;color:var(--coral)}
+@media (max-width:640px){
+  .cf-fila{grid-template-columns:1fr}
+  .cf-fila>small{grid-column:1}
+  .cf-botones .btn{flex:1}
+}
+/* Los enlaces legales: en la portada bajo la nota del SSO y en el pie del
+   riel. Van a la vista, no a un «acerca de»: lo que se acepta antes de operar
+   tiene que poder leerse antes de entrar. */
+.bv-legal{margin-top:8px;font-size:12px;color:var(--humo);line-height:1.55;max-width:52ch;
+  opacity:0;animation:aparece .6s .7s ease forwards}
+.bv-legal a{color:var(--bruma);text-decoration:underline}
+.bv-legal a:hover{color:var(--oroLt)}
+.riel-pie .legal{display:block;margin-top:6px}
+.riel-pie .legal a{text-decoration:underline}
+
 /* ── la tostada ──────────────────────────────────────────────────────────── */
 #tostada{position:fixed;left:50%;bottom:26px;transform:translate(-50%,140%);z-index:60;
   opacity:0;visibility:hidden;
@@ -656,6 +706,10 @@ body.en-mercado::before{content:'';position:fixed;inset:0;z-index:-1;
         <button class="btn btn-linea" data-t="pt.ver" onclick="ONX.ir('app')"></button>
       </div>
       <p class="bv-nota" data-t="pt.nota"></p>
+      <!-- Los términos y el aviso de riesgo, desde la portada. Se aceptan
+           antes de la primera orden (la confirmación los pide), pero se
+           leen desde acá, antes de entrar a nada. -->
+      <p class="bv-legal" data-t="pt.legal"></p>
     </div>
   </div>
   <aside class="mv vidrio">
@@ -701,6 +755,8 @@ body.en-mercado::before{content:'';position:fixed;inset:0;z-index:-1;
           <img src="assets/aucorp.svg" alt="">AuCorp</a></div>
       <a href="https://www.ordenglobal.org" target="_blank" rel="noopener" data-t="pie.og"></a> ·
       <button data-t="nav.salir" onclick="ONX.salir()"></button>
+      <span class="legal"><a href="legal.html#terminos" target="_blank" rel="noopener" data-t="pie.terminos"></a> ·
+        <a href="legal.html#riesgo" target="_blank" rel="noopener" data-t="pie.riesgo"></a></span>
       <div class="idiomas" role="group" aria-label="Idioma">
         <button data-lang="es" id="lang-es-r" aria-pressed="true" onclick="ONX.idioma('es')">ES</button>
         <button data-lang="en" id="lang-en-r" aria-pressed="false" onclick="ONX.idioma('en')">EN</button>
