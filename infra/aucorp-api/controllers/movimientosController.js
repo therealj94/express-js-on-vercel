@@ -1,8 +1,10 @@
 // Mover dinero: transferir a otro cliente, cambiar de moneda, y ver el
-// historial de la cuenta.
+// historial de la cuenta — con filtros, comprobante por movimiento y extracto
+// mensual.
 //
-// Todo lo que hay aquí termina en un `asentar()`. Este archivo no sabe restar:
-// arma el asiento, lo manda por la única puerta, y traduce el error a HTTP.
+// Todo lo que mueve dinero termina en un `asentar()`. Este archivo no sabe
+// restar: arma el asiento, lo manda por la única puerta, y traduce el error a
+// HTTP.
 //
 // ══ EL SELLO DE IDEMPOTENCIA ═══════════════════════════════════════════════
 //
@@ -10,14 +12,22 @@
 // justo después de mandar la transferencia y reintenta, la segunda llega con
 // la misma ref y no manda el dinero dos veces. Es obligatoria a propósito:
 // generarla aquí serviría de nada, porque el reintento traería otra.
+//
+// ══ LA VALIDACIÓN ══════════════════════════════════════════════════════════
+//
+// Cada dato de entrada pasa por lib/validar.js ANTES de tocar la base. Lo que
+// no tiene forma se rechaza con 400 y con el nombre del campo: un monto con
+// tres decimales en dólares, un gid mal tecleado, una fecha que no existe.
 
 const { Usuario, Asiento } = require('../models');
-const { moneda, aMinimas, aTexto, REFERENCIA } = require('../lib/monedas');
+const { aTexto, REFERENCIA } = require('../lib/monedas');
 const { asentar } = require('../lib/asientos');
 const { cotizar, convertir } = require('../lib/cambio');
 const { comision, cabeEnLimites } = require('../lib/tarifas');
 const { movidoPor } = require('../lib/consumo');
+const { armarComprobante, armarExtracto, extractoCsv, CLASES } = require('../lib/comprobante');
 const genesis = require('../lib/genesis');
+const V = require('../lib/validar');
 const { cuentaDe, pintar } = require('./cuentasController');
 
 // La cuenta donde queda la posición que la casa toma al cambiar divisas. No es
@@ -25,11 +35,10 @@ const { cuentaDe, pintar } = require('./cuentasController');
 const POSICION = 'posicion.cambio';
 
 /** Una ref limpia: del cliente, acotada, y con el gid dentro para que la ref
- *  de un usuario no pueda chocar con la de otro y bloquearle una operación. */
+ *  de un usuario no pueda chocar con la de otro y bloquearle una operación.
+ *  Lanza ErrorDeEntrada si no tiene forma. */
 function refDe(gid, cruda) {
-  const s = String(cruda || '').trim();
-  if (!/^[A-Za-z0-9._:-]{8,80}$/.test(s)) return null;
-  return `${gid}:${s}`;
+  return `${gid}:${V.ref(cruda)}`;
 }
 
 /** El usuario de la sesión, ya comprobado que puede mover dinero. */
@@ -52,9 +61,6 @@ async function quienMueve(req, res) {
 /**
  * ¿Cabe esta salida en los límites de esta persona? Devuelve true si sí, y si
  * no, YA contestó al cliente.
- *
- * Se le dice al usuario cuánto lleva usado y cuál es su tope. Es un dato suyo
- * y ocultárselo solo consigue que reintente sin entender por qué no pasa.
  */
 async function pasaLimites(res, usuario, montoMin, cod) {
   const movido = await movidoPor(cuentaDe(usuario.gid));
@@ -109,25 +115,15 @@ function alFallar(res, e, que) {
 
 // ── POST /movimientos/transferir ────────────────────────────────────────────
 // { ref, para (gid), moneda, monto } → mueve saldo entre dos clientes.
-async function transferir(req, res) {
-  const cod = String(req.body?.moneda || '').toUpperCase();
-  const m = moneda(cod);
-  if (!m) return res.status(400).json({ error: 'Esa moneda no existe.', codigo: 'MONEDA_DESCONOCIDA' });
-
-  const monto = aMinimas(req.body?.monto, cod);
-  if (!monto || BigInt(monto) <= 0n) {
-    // aMinimas ya rechaza lo que no se entiende; aquí solo falta el cero.
-    return res.status(400).json({ error: 'El monto no es válido.', codigo: 'MONTO_INVALIDO' });
-  }
-
-  const destino = String(req.body?.para || '').trim();
-  if (!destino) return res.status(400).json({ error: 'Falta a quién.', codigo: 'DESTINO_FALTA' });
+const transferir = V.conEntrada(async (req, res) => {
+  const b = V.cuerpo(req);
+  const cod = V.moneda(b.moneda);
+  const monto = V.monto(b.monto, cod);
+  const destino = V.gid(b.para, { campo: 'para', etiqueta: 'el Genesis ID del destinatario' });
   if (destino === req.usuario.gid) {
-    return res.status(400).json({ error: 'No podés transferirte a vos mismo.', codigo: 'DESTINO_ES_ORIGEN' });
+    return res.status(400).json({ error: 'No podés transferirte a vos mismo.', codigo: 'DESTINO_ES_ORIGEN', campo: 'para' });
   }
-
-  const ref = refDe(req.usuario.gid, req.body?.ref);
-  if (!ref) return res.status(400).json({ error: 'Falta el sello de la operación.', codigo: 'REF_FALTA' });
+  const ref = refDe(req.usuario.gid, b.ref);
 
   try {
     const usuario = await quienMueve(req, res);
@@ -138,7 +134,7 @@ async function transferir(req, res) {
     const otro = await Usuario.findOne({ gid: destino });
     if (!otro || otro.verificada !== true) {
       return res.status(400).json({
-        error: 'Esa cuenta no puede recibir transferencias.', codigo: 'DESTINO_NO_APTO',
+        error: 'Esa cuenta no puede recibir transferencias.', codigo: 'DESTINO_NO_APTO', campo: 'para',
       });
     }
 
@@ -179,14 +175,15 @@ async function transferir(req, res) {
   } catch (e) {
     return alFallar(res, e, 'transferencia');
   }
-}
+});
 
 // ── GET /movimientos/cotizar?de=USD&a=HNL&monto=100 ─────────────────────────
 // La cotización ANTES de cambiar. Sin tasa real devuelve 503 y la pantalla
 // pinta un guion: nunca una tasa inventada.
-async function cotizacion(req, res) {
-  const de = String(req.query?.de || '').toUpperCase();
-  const a = String(req.query?.a || '').toUpperCase();
+const cotizacion = V.conEntrada(async (req, res) => {
+  const de = V.moneda(req.query?.de, { campo: 'de' });
+  const a = V.moneda(req.query?.a, { campo: 'a' });
+  if (de === a) return res.status(400).json({ error: 'Son la misma moneda.', codigo: 'MISMO_PAR', campo: 'a' });
   const c = await cotizar(de, a);
   if (!c) {
     return res.status(503).json({
@@ -195,31 +192,22 @@ async function cotizacion(req, res) {
   }
   const salida = { cotizacion: c };
   if (req.query?.monto) {
-    const min = aMinimas(req.query.monto, de);
-    if (min) {
-      const destino = convertir(min, de, a, c.aplicada);
-      salida.simulacion = { entrega: pintar(min, de), recibe: pintar(destino, a) };
-    }
+    const min = V.monto(req.query.monto, de);
+    const destino = convertir(min, de, a, c.aplicada);
+    salida.simulacion = { entrega: pintar(min, de), recibe: pintar(destino, a) };
   }
   return res.json(salida);
-}
+});
 
 // ── POST /movimientos/cambiar ───────────────────────────────────────────────
 // { ref, de, a, monto } → cambia de una moneda propia a otra propia.
-async function cambiar(req, res) {
-  const de = String(req.body?.de || '').toUpperCase();
-  const a = String(req.body?.a || '').toUpperCase();
-  if (!moneda(de) || !moneda(a)) {
-    return res.status(400).json({ error: 'Esa moneda no existe.', codigo: 'MONEDA_DESCONOCIDA' });
-  }
-  if (de === a) return res.status(400).json({ error: 'Son la misma moneda.', codigo: 'MISMO_PAR' });
-
-  const monto = aMinimas(req.body?.monto, de);
-  if (!monto || BigInt(monto) <= 0n) {
-    return res.status(400).json({ error: 'El monto no es válido.', codigo: 'MONTO_INVALIDO' });
-  }
-  const ref = refDe(req.usuario.gid, req.body?.ref);
-  if (!ref) return res.status(400).json({ error: 'Falta el sello de la operación.', codigo: 'REF_FALTA' });
+const cambiar = V.conEntrada(async (req, res) => {
+  const b = V.cuerpo(req);
+  const de = V.moneda(b.de, { campo: 'de' });
+  const a = V.moneda(b.a, { campo: 'a' });
+  if (de === a) return res.status(400).json({ error: 'Son la misma moneda.', codigo: 'MISMO_PAR', campo: 'a' });
+  const monto = V.monto(b.monto, de);
+  const ref = refDe(req.usuario.gid, b.ref);
 
   try {
     const usuario = await quienMueve(req, res);
@@ -237,7 +225,7 @@ async function cambiar(req, res) {
       // El monto es tan chico que a la otra moneda no llega ni a una unidad.
       // Aceptarlo sería quedarse con el dinero a cambio de nada.
       return res.status(400).json({
-        error: 'El monto es demasiado chico para ese cambio.', codigo: 'MONTO_MINIMO',
+        error: 'El monto es demasiado chico para ese cambio.', codigo: 'MONTO_MINIMO', campo: 'monto',
       });
     }
 
@@ -266,28 +254,52 @@ async function cambiar(req, res) {
   } catch (e) {
     return alFallar(res, e, 'cambio de divisa');
   }
-}
+});
 
-// ── GET /movimientos?moneda=USD&pagina=0 ────────────────────────────────────
-// El extracto. Se devuelve el asiento ENTERO —las dos patas— porque un
-// extracto que solo enseña tu lado es un extracto en el que no se puede
-// comprobar nada.
-async function historial(req, res) {
+// ── GET /movimientos?moneda=USD&clase=deposito&desde=2026-08-01&hasta=2026-08-31&q=texto&pagina=0
+// El historial, con filtros. Se devuelve el asiento ENTERO —las dos patas—
+// porque un extracto que solo enseña tu lado es un extracto en el que no se
+// puede comprobar nada. Cada filtro se valida: una fecha que no existe se
+// rechaza en vez de convertirse en un historial vacío que parece verdad.
+const historial = V.conEntrada(async (req, res) => {
+  const cuenta = cuentaDe(req.usuario.gid);
+  const q = req.query || {};
+  const filtro = { 'lineas.cuenta': cuenta };
+  if (q.moneda) filtro['lineas.moneda'] = V.moneda(q.moneda);
+  if (q.clase) filtro.clase = V.opcion(q.clase, Object.keys(CLASES), { campo: 'clase', etiqueta: 'el tipo de movimiento' });
+  const desde = q.desde ? V.fecha(q.desde, { campo: 'desde' }) : null;
+  const hasta = q.hasta ? V.fecha(q.hasta, { campo: 'hasta', fin: true }) : null;
+  if (desde && hasta && desde > hasta) {
+    return res.status(400).json({ error: '«Desde» no puede ser posterior a «hasta».', codigo: 'RANGO_INVALIDO', campo: 'desde' });
+  }
+  if (desde || hasta) {
+    filtro.fecha = {};
+    if (desde) filtro.fecha.$gte = desde;
+    if (hasta) filtro.fecha.$lte = hasta;
+  }
+  const texto = V.texto(q.q, { campo: 'q', max: 80, etiqueta: 'la búsqueda' });
+  if (texto) {
+    // Búsqueda literal en la glosa o en la ref, con los metacaracteres
+    // escapados: lo que escribe una persona no es una expresión regular.
+    const re = new RegExp(texto.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
+    filtro.$or = [{ glosa: re }, { ref: re }];
+  }
+  const pagina = V.entero(q.pagina, { campo: 'pagina', min: 0, max: 500, porDefecto: 0, etiqueta: 'la página' });
+  const porPagina = 50;
+
   try {
-    const cuenta = cuentaDe(req.usuario.gid);
-    const cod = String(req.query?.moneda || '').toUpperCase();
-    const filtro = { 'lineas.cuenta': cuenta };
-    if (moneda(cod)) filtro['lineas.moneda'] = cod;
-
-    const pagina = Math.max(0, Math.min(500, parseInt(req.query?.pagina || '0', 10) || 0));
-    const porPagina = 50;
-    const docs = await Asiento.find(filtro).sort({ fecha: -1 })
+    const total = await Asiento.countDocuments(filtro);
+    const docs = await Asiento.find(filtro).sort({ fecha: -1, _id: -1 })
       .skip(pagina * porPagina).limit(porPagina);
 
     return res.json({
-      pagina, porPagina,
+      pagina, porPagina, total,
+      clases: CLASES,
       movimientos: docs.map((d) => ({
-        ref: d.ref, glosa: d.glosa, fecha: d.fecha, clase: d.clase,
+        ref: d.ref,
+        numero: d.ref.split(':').slice(1).join(':') || d.ref,
+        glosa: d.glosa, fecha: d.fecha, clase: d.clase,
+        claseTexto: CLASES[d.clase] || d.clase,
         // Solo las líneas del usuario llevan monto legible; las de la casa se
         // enseñan por nombre de cuenta para que el asiento se pueda cuadrar
         // sin exponer el saldo del banco corresponsal.
@@ -303,6 +315,47 @@ async function historial(req, res) {
     console.error(`[movimientos] no se pudo leer el historial: ${e.message}`);
     return res.status(503).json({ error: 'No se pudo leer el historial.', codigo: 'NO_SE_PUDO' });
   }
-}
+});
 
-module.exports = { transferir, cotizacion, cambiar, historial, POSICION, refDe };
+// ── GET /movimientos/:numero/comprobante ────────────────────────────────────
+// El comprobante de UN movimiento. `numero` es la ref sin el gid delante (lo
+// que ve el cliente); se busca con SU gid, así que un número ajeno no
+// devuelve nada aunque exista.
+const comprobante = V.conEntrada(async (req, res) => {
+  const numero = V.ref(req.params.numero, { campo: 'numero' });
+  const ref = `${req.usuario.gid}:${numero}`;
+  try {
+    const a = await Asiento.findOne({ ref, 'lineas.cuenta': cuentaDe(req.usuario.gid) });
+    if (!a) return res.status(404).json({ error: 'No hay un movimiento con ese número en tu cuenta.', codigo: 'NO_EXISTE' });
+    const c = await armarComprobante(a, req.usuario.gid);
+    if (!c) return res.status(404).json({ error: 'No hay un movimiento con ese número en tu cuenta.', codigo: 'NO_EXISTE' });
+    return res.json({ comprobante: c });
+  } catch (e) {
+    console.error(`[movimientos] no se pudo armar el comprobante: ${e.message}`);
+    return res.status(503).json({ error: 'No se pudo armar el comprobante.', codigo: 'NO_SE_PUDO' });
+  }
+});
+
+// ── GET /extracto?moneda=USD&mes=2026-08&formato=json|csv ───────────────────
+// El extracto de un mes. En JSON para la pantalla (que lo imprime a PDF con
+// el navegador) y en CSV para descargar.
+const extracto = V.conEntrada(async (req, res) => {
+  const q = req.query || {};
+  const cod = V.moneda(q.moneda);
+  const mes = V.mes(q.mes);
+  const formato = V.opcion(q.formato, ['json', 'csv'], { campo: 'formato', porDefecto: 'json' });
+  try {
+    const e = await armarExtracto(req.usuario.gid, cod, mes);
+    if (formato === 'csv') {
+      res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+      res.setHeader('Content-Disposition', `attachment; filename="aucorp-extracto-${cod}-${mes.etiqueta}.csv"`);
+      return res.send(extractoCsv(e));
+    }
+    return res.json({ extracto: e });
+  } catch (e) {
+    console.error(`[movimientos] no se pudo armar el extracto: ${e.message}`);
+    return res.status(503).json({ error: 'No se pudo armar el extracto.', codigo: 'NO_SE_PUDO' });
+  }
+});
+
+module.exports = { transferir, cotizacion, cambiar, historial, comprobante, extracto, POSICION, refDe };

@@ -59,7 +59,12 @@ async function sso(req, res) {
 
   const token = req.body?.token;
   if (typeof token !== 'string' || !token.trim()) {
-    return res.status(400).json({ error: 'Falta el token del SSO.', codigo: 'TOKEN_FALTA' });
+    return res.status(400).json({ error: 'Falta el token del SSO.', codigo: 'TOKEN_FALTA', campo: 'token' });
+  }
+  // Un token de paso de Genesis es un JWT corto. Cuatro mil caracteres es
+  // más de lo que mide cualquiera; lo que pase de ahí no es un token.
+  if (token.length > 4096) {
+    return res.status(400).json({ error: 'El token del SSO no tiene la forma esperada.', codigo: 'TOKEN_INVALIDO', campo: 'token' });
   }
 
   // 1. Genesis decide. Si no contesta, no se adivina: sin comprobacion no hay
@@ -155,8 +160,8 @@ async function refresh(req, res) {
   }
 
   const refreshToken = req.body?.refreshToken;
-  if (typeof refreshToken !== 'string' || !refreshToken) {
-    return res.status(400).json({ error: 'Falta refreshToken.', codigo: 'REFRESH_FALTA' });
+  if (typeof refreshToken !== 'string' || !refreshToken || refreshToken.length > 4096) {
+    return res.status(400).json({ error: 'Falta refreshToken.', codigo: 'REFRESH_FALTA', campo: 'refreshToken' });
   }
 
   let datos;
