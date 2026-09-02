@@ -37,9 +37,9 @@ EVENTOS = [
     (11.82, "s_toque",    0.32),   # 05 · el pulgar baja por la lista (11,88)
     (12.50, "s_toque",    0.38),   # 05 · y se detiene (12,55)
     (14.45, "s_toque",    0.50),   # 06 · aprieta y mantiene (14,49)
-    (15.40, "s_vibra",    0.62),   # 07 · suena ALLÁ, antes de la mano (16,18)
-    (23.30, "s_risa",     0.95),   # 09 · el muchacho se ríe (23,57)
-    (31.60, "s_datafono", 0.55),   # 11 · el datáfono acepta (31,74)
+    (15.30, "s_vibra",    0.62),   # 07 · suena ALLÁ, antes de la mano (16,10)
+    (22.30, "s_risa",     0.95),   # 09 · el muchacho se ríe (22,57)
+    (30.60, "s_datafono", 0.55),   # 11 · el datáfono acepta (30,74)
 ]
 
 # (desde, hasta, pieza, nivel).  Cada sitio suena distinto, y se solapan medio
@@ -47,9 +47,9 @@ EVENTOS = [
 CAMAS = [
     (0.0,  6.4,  "s_tienda", 1.00),   # la pulpería
     (5.8,  15.6, "s_cocina", 1.15),   # la cocina alquilada, otro país
-    (15.0, 28.8, "s_tienda", 0.95),   # de vuelta a la pulpería
-    (28.4, 32.2, "s_tienda", 0.70),   # la farmacia: mismo tipo de sitio, más bajo
-    (31.6, 37.6, "s_calle",  0.85),   # las caras, en la calle
+    (15.0, 27.8, "s_tienda", 0.95),   # de vuelta a la pulpería
+    (27.4, 31.2, "s_tienda", 0.70),   # la farmacia: mismo tipo de sitio, más bajo
+    (30.6, 36.6, "s_calle",  0.85),   # las caras, en la calle
 ]
 
 

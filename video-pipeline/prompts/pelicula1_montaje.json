@@ -7,18 +7,18 @@
     "ancho": 1080,
     "alto": 1920,
     "fps": 30,
-    "dur_s": 42.4
+    "dur_s": 41.4
   },
   "fundido_s": 0.0,
   "voz": {
     "orden": [
       [
         1,
-        29.4
+        28.4
       ],
       [
         2,
-        37.2
+        36.4
       ]
     ],
     "_nota": "p1_v1 'Lo que ella mando, llego completo.' sobre la tarjeta. p1_v2 el cierre. Las dos, Maico."
@@ -69,11 +69,11 @@
     {
       "plano": "07_suena_pulperia",
       "t": 15.0,
-      "dur": 3.4,
+      "dur": 1.8,
       "desde": 0.4,
       "rotulos": [
         {
-          "t": 15.7,
+          "t": 15.6,
           "dur": 2.0,
           "texto": "Cuatro segundos."
         }
@@ -81,26 +81,26 @@
     },
     {
       "plano": "08_cara_senora",
-      "t": 18.4,
-      "dur": 3.0,
+      "t": 16.8,
+      "dur": 3.6,
       "desde": 0.5,
       "rotulos": []
     },
     {
       "plano": "09_ensena_pantalla",
-      "t": 21.4,
+      "t": 20.4,
       "dur": 4.0,
       "desde": 0.0,
       "rotulos": []
     },
     {
       "plano": "10_ve_detalle",
-      "t": 25.4,
+      "t": 24.4,
       "dur": 3.2,
       "desde": 0.4,
       "rotulos": [
         {
-          "t": 26.0,
+          "t": 25.0,
           "dur": 2.4,
           "texto": "Y podés ver\nexactamente qué pasó."
         }
@@ -108,21 +108,21 @@
     },
     {
       "plano": "11_tarjeta",
-      "t": 28.6,
+      "t": 27.6,
       "dur": 3.2,
       "desde": 0.4,
       "rotulos": []
     },
     {
       "plano": "11_caras_calle",
-      "t": 31.8,
+      "t": 30.8,
       "dur": 2.4,
       "desde": 0.8,
       "rotulos": []
     },
     {
       "plano": "12_caras_calle_b",
-      "t": 34.2,
+      "t": 33.2,
       "dur": 2.4,
       "desde": 0.8,
       "rotulos": []
@@ -130,11 +130,11 @@
     {
       "plano": "negro",
       "negro": true,
-      "t": 36.6,
+      "t": 35.6,
       "dur": 5.8,
       "rotulos": [
         {
-          "t": 37.4,
+          "t": 36.6,
           "dur": 4.6,
           "texto": "Orden Global.\nUn sistema financiero\nque se puede comprobar.",
           "chico": true
@@ -149,7 +149,7 @@
     "04_abre_app": 3,
     "05_elige_contacto": 3,
     "06_pone_dedo": 2,
-    "07_suena_pulperia": 1,
+    "07_suena_pulperia": 3,
     "08_cara_senora": 3,
     "09_ensena_pantalla": 3,
     "10_ve_detalle": 2,
@@ -158,5 +158,6 @@
     "12_caras_calle_b": 1
   },
   "_cambios": "Segunda pasada. Gemini vio artefactos que yo no: dedos fundidos en 05, 06 y 07, el dedo vendado deformandose con la tarjeta en 11, y el pelo parpadeando en la ultima cara. Cinco tomas cambiadas por otras limpias del mismo plano. No cuesta nada: ya estaban generadas.",
-  "_segunda_pasada": "Un montador a ciegas: se aburrio en el segundo 8 (el plano de la hija se hacia largo), no vio el enlace entre firmar y que suene alla, y la voz del cierre entraba 3 dB alta y sonaba a eslogan pegado. Arreglado: el plano de la hija baja de 3,4 a 2,6 s; el de firmar se corta 0,5 s DESPUES de que el pulgar aprieta, para que el corte sea la causa del aviso; y antes del cierre entra una linea calida sobre la madre pagando, que es la historia entera dicha en cinco palabras."
+  "_segunda_pasada": "Un montador a ciegas: se aburrio en el segundo 8 (el plano de la hija se hacia largo), no vio el enlace entre firmar y que suene alla, y la voz del cierre entraba 3 dB alta y sonaba a eslogan pegado. Arreglado: el plano de la hija baja de 3,4 a 2,6 s; el de firmar se corta 0,5 s DESPUES de que el pulgar aprieta, para que el corte sea la causa del aviso; y antes del cierre entra una linea calida sobre la madre pagando, que es la historia entera dicha en cinco palabras.",
+  "_tercera_pasada": "El plano de la mano cogiendo el telefono se rompe en TODAS las tomas cuando los dedos llegan al cristal: es lo mas dificil que hay para el modelo. La toma 3 aguanta limpia hasta el segundo 2,2 del clip, asi que se corta ahi, justo cuando la mano toca. Sale ganando: el aviso suena, la mano llega, y CORTA a su cara. Los 1,6 s que sobran van al plano de la cara, que el montador dijo que se quedaba corto. Y la voz lleva ahora una sala minima: sonaba grabada en otro sitio que el resto."
 }

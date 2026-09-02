@@ -26,7 +26,7 @@ done < <(python3 -c "import json;[print(i,t) for i,t in json.load(open('$ESPEC')
 
 # La voz baja 3 dB respecto de la primera mezcla: entraba como un martillazo
 # después de tanto ambiente.
-FIL="${FIL}${MIX}amix=inputs=$n:normalize=0,acompressor=threshold=0.12:ratio=3:attack=8:release=180,volume=3.0[voz];"
+FIL="${FIL}${MIX}amix=inputs=$n:normalize=0,acompressor=threshold=0.12:ratio=3:attack=8:release=180,volume=3.0,aecho=0.9:0.85:14:0.12[voz];"
 FIL="${FIL}[voz]asplit=3[voz1][disp][disp2];"
 FIL="${FIL}[$((n+1)):a]volume=2.2[amb0];"
 FIL="${FIL}[amb0][disp2]sidechaincompress=threshold=0.05:ratio=6:attack=5:release=500:makeup=1[amb];"
