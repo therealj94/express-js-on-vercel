@@ -6,6 +6,9 @@
 <title>Orden Global · Tu plata, medida en oro</title>
 <meta name="description" content="Orden Global es un ecosistema financiero propio: una cadena, una moneda que sigue el precio del oro y una app para guardar, mandar, cobrar y hablar. Cada movimiento se puede comprobar.">
 <link rel="canonical" href="https://www.ordenglobal.org/">
+<link rel="alternate" hreflang="es" href="https://www.ordenglobal.org/">
+<link rel="alternate" hreflang="en" href="https://www.ordenglobal.org/en/">
+<link rel="alternate" hreflang="x-default" href="https://www.ordenglobal.org/">
 <meta property="og:type" content="website">
 <meta property="og:title" content="Orden Global · Tu plata, medida en oro">
 <meta property="og:description" content="Una cadena propia, una moneda que sigue el oro y una app para guardar, mandar, cobrar y hablar. Cada movimiento se puede comprobar.">
@@ -15,160 +18,7 @@
 <link rel="icon" href="/assets/favicon-og.png">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700&family=Archivo:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap">
-<style>
-/* ── LA MISMA CASA QUE LA BILLETERA ─────────────────────────────────────────
-   El sitio era la única pieza del ecosistema con otra paleta (negro azulado y
-   un dorado más amarillo): quien entraba por aquí y abría la app cambiaba de
-   marca en el camino. Estos son los valores de orden-global-app/src/theme.js y
-   de app.vetawallet.com, tal cual. Oscuro a propósito y siempre: es la marca,
-   no un tema. */
-:root{
-  --fondo:#04191A; --fondo2:#021B1C; --panel:#072526; --panel2:#0B3133; --linea:#164244; --linea2:#1F5557;
-  --oro:#C9A961; --oroClaro:#EAD79C; --oroAlto:#F8EFCF; --oroOscuro:#96793F;
-  --crema:#F3ECD9; --bruma:#C4D9D5; --humo:#7EA09B; --jade:#3ED9A0; --coral:#F0776B;
-  --sans:'Archivo',system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
-  --marca:'Cinzel',Georgia,"Times New Roman",serif;
-  --mono:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,monospace;
-}
-*{box-sizing:border-box;margin:0;padding:0}
-html{scroll-behavior:smooth}
-@media (prefers-reduced-motion:reduce){html{scroll-behavior:auto} *{animation:none!important;transition:none!important}}
-body{background:var(--fondo);color:var(--crema);font:16px/1.65 var(--sans);-webkit-font-smoothing:antialiased;overflow-x:hidden}
-a{color:var(--oroClaro)}
-:focus-visible{outline:2px solid var(--oro);outline-offset:3px;border-radius:6px}
-.env{max-width:1120px;margin:0 auto;padding:0 22px}
-h1,h2,h3{text-wrap:balance}
-h2{font:700 12.5px var(--sans);letter-spacing:.18em;text-transform:uppercase;color:var(--oro);margin-bottom:14px}
-.tit{font:700 30px/1.2 var(--sans);letter-spacing:-.4px;margin-bottom:12px}
-p{max-width:64ch}
-.mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
-.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:50px;padding:0 22px;border-radius:14px;font:600 15.5px var(--sans);text-decoration:none;border:1px solid transparent;transition:transform .12s,background .12s}
-.btn:active{transform:translateY(1px)}
-.btn-oro{background:var(--oro);color:#2A2007}
-.btn-oro:hover{background:var(--oroClaro)}
-.btn-linea{border-color:var(--linea2);color:var(--crema);background:rgba(7,37,38,.6)}
-.btn-linea:hover{border-color:var(--oro)}
-
-/* barra */
-.barra{position:sticky;top:0;z-index:20;background:rgba(4,25,26,.88);backdrop-filter:blur(10px);border-bottom:1px solid var(--linea)}
-.barra .env{display:flex;align-items:center;gap:18px;min-height:64px}
-.lock{display:flex;align-items:center;gap:10px;text-decoration:none;color:var(--crema)}
-.lock img{height:26px;width:auto}
-.lock b{font:700 15px var(--marca);letter-spacing:.14em}
-.lock b span{color:var(--oro)}
-.nav{display:flex;gap:18px;margin-left:auto;font-size:14.5px}
-.nav a{color:var(--bruma);text-decoration:none}
-.nav a:hover{color:var(--oro)}
-.barra .btn{min-height:40px;padding:0 16px;font-size:14px}
-@media (max-width:760px){.nav{display:none}}
-
-/* portada */
-.portada{padding:56px 0 30px;display:grid;grid-template-columns:1.15fr .85fr;gap:40px;align-items:center}
-.eti{font:600 12px var(--sans);letter-spacing:.18em;text-transform:uppercase;color:var(--humo);margin-bottom:16px}
-.h1{font:700 44px/1.1 var(--marca);letter-spacing:.01em;color:var(--oroAlto);margin-bottom:18px}
-.h1 em{font-style:normal;color:var(--oro)}
-.bajada{font-size:18px;color:var(--bruma);margin-bottom:26px;max-width:56ch}
-.botones{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:22px}
-.chico{font-size:13.5px;color:var(--humo)}
-.tel{justify-self:center;position:relative;width:min(300px,80vw)}
-.tel img{width:100%;height:auto;display:block;border-radius:26px;border:1px solid var(--linea2);box-shadow:0 30px 80px rgba(0,0,0,.55)}
-.tel .pie{margin-top:12px;background:var(--panel);border:1px solid var(--linea2);border-radius:12px;padding:8px 12px;font-size:12.5px;color:var(--bruma);text-align:center}
-@media (max-width:860px){.portada{grid-template-columns:1fr;padding-top:36px}.h1{font-size:34px}.tel{margin-top:14px}}
-
-/* datos vivos */
-.vivo{margin:44px 0 0;border:1px solid var(--linea);border-radius:18px;background:linear-gradient(180deg,var(--panel),var(--fondo2));display:grid;grid-template-columns:repeat(3,1fr)}
-.vivo>div{padding:18px 20px;border-right:1px solid var(--linea)}
-.vivo>div:last-child{border-right:0}
-.vivo .k{font:600 11.5px var(--sans);letter-spacing:.14em;text-transform:uppercase;color:var(--humo);margin-bottom:6px}
-.vivo .v{font:700 26px/1.1 var(--marca);color:var(--oroAlto)}
-.vivo .v.mono{font:600 24px/1.1 var(--mono)}
-.vivo .s{font-size:12.5px;color:var(--bruma);margin-top:6px}
-.vivo .s .mono{font-size:11.5px;color:var(--humo);word-break:break-all}
-.punto{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--jade);margin-right:7px;box-shadow:0 0 0 0 rgba(62,217,160,.6);animation:late 2.4s infinite}
-@keyframes late{0%{box-shadow:0 0 0 0 rgba(62,217,160,.55)}70%{box-shadow:0 0 0 10px rgba(62,217,160,0)}100%{box-shadow:0 0 0 0 rgba(62,217,160,0)}}
-@media (max-width:760px){.vivo{grid-template-columns:1fr}.vivo>div{border-right:0;border-bottom:1px solid var(--linea)}.vivo>div:last-child{border-bottom:0}}
-
-section{padding:64px 0}
-section+section{border-top:1px solid var(--linea)}
-
-/* verbos */
-.verbos{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
-.verbo{background:var(--panel);border:1px solid var(--linea);border-radius:16px;padding:20px 20px 18px;display:flex;flex-direction:column;gap:8px}
-.verbo h3{font:700 20px var(--sans);letter-spacing:-.2px}
-.verbo p{color:var(--bruma);font-size:15px;max-width:none}
-.verbo .quien{display:flex;align-items:center;gap:8px;margin-top:auto;padding-top:10px;font:600 12px var(--sans);letter-spacing:.1em;text-transform:uppercase;color:var(--humo)}
-.verbo .quien img{height:18px;width:auto;border-radius:4px}
-@media (max-width:900px){.verbos{grid-template-columns:repeat(2,1fr)}}
-@media (max-width:560px){.verbos{grid-template-columns:1fr}}
-
-/* pasos */
-.pasos{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;counter-reset:p}
-.paso{position:relative;padding:22px 20px 20px 20px;border:1px solid var(--linea);border-radius:16px;background:var(--fondo2)}
-.paso::before{counter-increment:p;content:counter(p);display:inline-flex;width:30px;height:30px;border-radius:50%;background:var(--oro);color:#2A2007;font:700 14px var(--sans);align-items:center;justify-content:center;margin-bottom:12px}
-.paso p{color:var(--bruma);max-width:none}
-.remate{margin-top:22px;font:700 20px var(--marca);color:var(--oroClaro);letter-spacing:.02em}
-@media (max-width:760px){.pasos{grid-template-columns:1fr}}
-
-/* origen */
-.dos{display:grid;grid-template-columns:1fr 1fr;gap:28px;align-items:start}
-.formula{font:600 22px var(--mono);color:var(--oroAlto);background:var(--panel);border:1px solid var(--linea2);border-radius:14px;padding:16px 18px;margin:12px 0 16px}
-.honesto{border-left:3px solid var(--oro);background:rgba(201,169,97,.08);padding:14px 16px;border-radius:0 12px 12px 0;color:var(--crema)}
-.honesto b{color:var(--oroClaro)}
-.monedas{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
-.moneda{display:flex;align-items:center;gap:12px;background:var(--panel);border:1px solid var(--linea);border-radius:12px;padding:10px 12px}
-.moneda img{width:38px;height:38px;border-radius:50%;object-fit:cover;border:1px solid var(--linea2)}
-.moneda b{display:block;font-size:15px}
-.moneda span{font-size:12.5px;color:var(--humo)}
-@media (max-width:820px){.dos{grid-template-columns:1fr}}
-
-/* cadena */
-.cadena{display:grid;grid-template-columns:1fr 1fr;gap:28px;align-items:center}
-.cadena .cita{font:700 28px/1.25 var(--marca);color:var(--oroAlto);margin-bottom:14px}
-.datos{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
-.dato{background:var(--panel);border:1px solid var(--linea);border-radius:12px;padding:12px 14px}
-.dato .k{font:600 11px var(--sans);letter-spacing:.14em;text-transform:uppercase;color:var(--humo)}
-.dato .v{font:600 18px var(--mono);color:var(--crema);margin-top:4px}
-.hash{grid-column:1/-1;font:400 12px var(--mono);color:var(--humo);word-break:break-all;line-height:1.5}
-@media (max-width:820px){.cadena{grid-template-columns:1fr}}
-
-/* piezas */
-.piezas{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
-.pieza{background:var(--panel);border:1px solid var(--linea);border-radius:14px;padding:16px;display:flex;flex-direction:column;gap:8px;text-decoration:none;color:var(--crema)}
-.pieza:hover{border-color:var(--oro)}
-.pieza .logo{height:34px;display:flex;align-items:center}
-.pieza .logo img{max-height:34px;max-width:100%;width:auto}
-.pieza b{font-size:15.5px}
-.pieza span{font-size:13px;color:var(--bruma)}
-.estado{display:inline-flex;align-items:center;gap:6px;font:600 11.5px var(--sans);letter-spacing:.08em;text-transform:uppercase;margin-top:auto;padding-top:6px}
-.estado::before{content:"";width:7px;height:7px;border-radius:50%;background:currentColor}
-.hoy{color:var(--jade)} .beta{color:var(--oroClaro)} .muestra{color:var(--humo)}
-@media (max-width:900px){.piezas{grid-template-columns:repeat(2,1fr)}}
-
-/* mision */
-.mision{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}
-.mision p{font:700 21px/1.35 var(--sans);letter-spacing:-.2px;color:var(--crema);max-width:none}
-.mision p::before{content:"";display:block;width:36px;height:3px;background:var(--oro);margin-bottom:12px;border-radius:2px}
-@media (max-width:760px){.mision{grid-template-columns:1fr}}
-
-/* historia */
-.historia{display:flex;align-items:center;justify-content:space-between;gap:20px;flex-wrap:wrap;background:var(--panel);border:1px solid var(--linea2);border-radius:18px;padding:24px 26px}
-.historia h3{font:700 24px var(--marca);color:var(--oroAlto)}
-.historia p{color:var(--bruma)}
-
-/* cierre */
-.cierre{text-align:center;padding:72px 0 64px}
-.cierre h3{font:700 32px var(--marca);color:var(--oroAlto);margin-bottom:10px}
-.cierre p{margin:0 auto 22px;color:var(--bruma)}
-.cierre .botones{justify-content:center}
-
-footer{border-top:1px solid var(--linea);padding:34px 0 46px;color:var(--humo);font-size:13.5px}
-.pie{display:grid;grid-template-columns:2fr 1fr 1fr;gap:24px;margin-bottom:22px}
-.pie h4{font:600 11.5px var(--sans);letter-spacing:.14em;text-transform:uppercase;color:var(--humo);margin-bottom:10px}
-.pie a{display:block;color:var(--bruma);text-decoration:none;margin-bottom:6px}
-.pie a:hover{color:var(--oro)}
-.legal{border-top:1px solid var(--linea);padding-top:16px;display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px}
-@media (max-width:760px){.pie{grid-template-columns:1fr}}
-</style>
+<link rel="stylesheet" href="/assets/portada.css">
 </head>
 <body>
 
@@ -176,7 +26,7 @@ footer{border-top:1px solid var(--linea);padding:34px 0 46px;color:var(--humo);f
   <div class="env">
     <a class="lock" href="/"><img src="/assets/og.png" alt="Orden Global"><b>ORDEN <span>GLOBAL</span></b></a>
     <nav class="nav" aria-label="Secciones">
-      <a href="#hace">Qué hacés</a><a href="#como">Cómo funciona</a><a href="#origen">ORIGEN</a><a href="#cadena">La cadena</a><a href="/historia/">La historia</a>
+      <a href="#hace">Qué hacés</a><a href="#como">Cómo funciona</a><a href="#origen">ORIGEN</a><a href="#cadena">La cadena</a><a href="/historia/">La historia</a><a href="/en/" lang="en" hreflang="en">English</a>
     </nav>
     <a class="btn btn-oro" href="https://app.vetawallet.com">Abrir Veta Wallet</a>
   </div>
@@ -336,40 +186,6 @@ footer{border-top:1px solid var(--linea);padding:34px 0 46px;color:var(--humo);f
   </div>
 </footer>
 
-<script>
-/* ── SOLO LO REAL SE MUEVE ──────────────────────────────────────────────────
-   Dos datos vivos, de las mismas fuentes que la billetera. Si una fuente no
-   contesta, queda el guion: un numero inventado que se mueve es peor que
-   ninguno, porque parece comprobado. */
-(function(){
-  var OZ = 31.1035, GRAMIN = 55;
-  var $ = function(id){ return document.getElementById(id); };
-  function precio(){
-    fetch('https://api.gold-api.com/price/XAU').then(function(r){ return r.json(); }).then(function(j){
-      var onza = Number(j && j.price); if(!isFinite(onza) || onza <= 0) return;
-      var gramo = onza / OZ, origen = gramo / GRAMIN;
-      $('precio').textContent = '$' + origen.toFixed(2);
-      $('oro').textContent = 'gramo $' + gramo.toFixed(2);
-    }).catch(function(){});
-  }
-  var pidiendo = false;
-  function cadena(){
-    if(pidiendo) return; pidiendo = true;
-    fetch('https://rpc.ordenglobal-rpc.com/', { method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({ jsonrpc:'2.0', id:1, method:'eth_getBlockByNumber', params:['latest', false] }) })
-    .then(function(r){ return r.json(); }).then(function(j){
-      var b = j && j.result; if(!b) return;
-      var n = parseInt(b.number, 16); if(!isFinite(n)) return;
-      var txt = n.toLocaleString('es-ES').replace(/\./g, ' ');
-      $('bloque').textContent = txt; $('bloque2').textContent = txt;
-      if(b.hash){ $('hash').textContent = b.hash; $('hash2').textContent = b.hash; }
-    }).catch(function(){}).finally(function(){ pidiendo = false; });
-  }
-  precio(); cadena();
-  setInterval(function(){ if(!document.hidden) precio(); }, 600000);
-  setInterval(function(){ if(!document.hidden) cadena(); }, 20000);
-  document.addEventListener('visibilitychange', function(){ if(!document.hidden) cadena(); });
-})();
-</script>
+<script src="/assets/portada.js" defer></script>
 </body>
 </html>

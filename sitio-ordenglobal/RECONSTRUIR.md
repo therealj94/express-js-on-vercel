@@ -7,6 +7,9 @@ Desde el 2-sep son dos paginas, sin dependencias ni compilacion:
   "respaldada"), la cadena con el bloque en vivo, las piezas con su estado real
   y la mision. Capturas de la app de verdad, sin video generado. Antes de esto
   la portada era la historia, y nadie entendia que se vendia.
+- `en/index.html` — la misma portada en ingles, con `hreflang` cruzado. El
+  estilo y los datos vivos estan compartidos en `assets/portada.css` y
+  `assets/portada.js`: un cambio de diseño se hace una vez para los dos idiomas.
 - `historia/index.html` — **"El viaje del valor"**, la pagina anterior tal cual,
   ahora como seccion opcional. Sus rutas de medios pasaron a absolutas
   (`/assets/`, `/seq/`, `/audio/`) porque vive un nivel mas adentro.
@@ -36,9 +39,10 @@ la billetera, los logos de PULSE2CHAT y Genesis, las cuatro monedas y la imagen
 social) si estan, en `assets/`.
 
 ```sh
-R=/tmp/ogsite; mkdir -p $R/assets $R/audio $R/historia; cd $R
+R=/tmp/ogsite; mkdir -p $R/assets $R/audio $R/historia $R/en; cd $R
 cp <repo>/sitio-ordenglobal/index.html <repo>/sitio-ordenglobal/robots.txt <repo>/sitio-ordenglobal/sitemap.xml .
 cp <repo>/sitio-ordenglobal/historia/index.html historia/
+cp <repo>/sitio-ordenglobal/en/index.html en/
 cp <repo>/sitio-ordenglobal/assets/* assets/
 for a in og favicon-og genesis-mark veta-icon; do
   curl -so assets/$a.png https://www.ordenglobal.org/assets/$a.png
