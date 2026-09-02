@@ -12,6 +12,8 @@ const { MERCADOS } = require('../lib/tokens');
 const motor = require('../lib/motor');
 const { Orden, Usuario } = require('../models');
 const { esDeclarable } = require('../lib/preciosDeclarados');
+const { referenciaDe } = require('../lib/referencia');
+const guardaPrecio = require('../lib/guardaPrecio');
 
 // Los minimos. Una orden de polvo no le sirve a nadie y si estorba: llena el
 // libro de escalones que no mueven un wei, pinta velas de mentira jugando con
@@ -55,10 +57,63 @@ function tratoJson(t) {
   return { precio: t.precio, cantidad: t.cantidad, lado: t.lado, en: t.en };
 }
 
-/** POST /ordenes {mercado, lado, tipo, precio?, cantidad, ordenKey} */
+/* ── LA GUARDA DE PRECIO ──────────────────────────────────────────────────
+   Una orden limite se mide contra la referencia del oro ANTES de tocar el
+   motor (lib/guardaPrecio.js): pasado el aviso entra solo con `aceptoDesvio`,
+   pasado el bloqueo no entra, y sin referencia en un mercado que la tiene
+   tampoco. Es lo que habria parado la orden de 4365,3 AUKA tecleada en
+   dolares. Devuelve la respuesta ya mandada (true) o false si la orden pasa.
+
+   Se separa de `colocar` para poder probarla con una referencia fingida:
+   `traerReferencia` es inyectable y por omision es la de referencia.js. */
+async function guardar(res, { mercado, precio, aceptoDesvio }, traerReferencia = referenciaDe) {
+  const conReferencia = guardaPrecio.mercadoConReferencia(mercado);
+  let referenciaEnOrigen = null;
+  let fuente = null;
+  if (conReferencia) {
+    let r = null;
+    try { r = await traerReferencia(mercado); } catch { r = null; }
+    referenciaEnOrigen = r && typeof r.enOrigen === 'number' ? r.enOrigen : null;
+    fuente = r ? { fuente: r.fuente, en: r.en, rotulo: r.rotulo, usd: r.usd, origenUsd: r.origenUsd } : null;
+  }
+  const j = guardaPrecio.juzgar({ precio, referenciaEnOrigen, conReferencia, aceptoDesvio });
+  const detalle = {
+    desvioPct: j.desvioPct, referencia: j.referencia, referenciaFuente: fuente,
+    avisoPct: j.avisoPct, bloqueoPct: j.bloqueoPct,
+  };
+  if (j.nivel === 'sinReferencia') {
+    res.status(503).json({
+      error: 'Ahora mismo no tenemos la referencia del oro para este mercado, y sin ella no se coloca una orden limite. Proba en unos minutos.',
+      codigo: 'SIN_REFERENCIA_AHORA',
+      ...detalle,
+    });
+    return true;
+  }
+  if (j.nivel === 'bloqueo') {
+    const lado = j.desvioPct > 0 ? 'por encima' : 'por debajo';
+    res.status(400).json({
+      error: `El precio se aleja un ${Math.abs(j.desvioPct).toFixed(2)} % ${lado} de la referencia del oro, y la casa no acepta ordenes a mas de ${j.bloqueoPct} %. Revisa la unidad: el precio va en ORIGEN por unidad, no en dolares.`,
+      codigo: 'PRECIO_DESVIADO',
+      ...detalle,
+    });
+    return true;
+  }
+  if (j.nivel === 'aviso') {
+    const lado = j.desvioPct > 0 ? 'por encima' : 'por debajo';
+    res.status(400).json({
+      error: `El precio se aleja un ${Math.abs(j.desvioPct).toFixed(2)} % ${lado} de la referencia del oro (mas del ${j.avisoPct} %). Si es lo que queres, confirmalo con aceptoDesvio: true.`,
+      codigo: 'DESVIO_SIN_ACEPTAR',
+      ...detalle,
+    });
+    return true;
+  }
+  return false;
+}
+
+/** POST /ordenes {mercado, lado, tipo, precio?, cantidad, ordenKey, aceptoDesvio?} */
 async function colocar(req, res, next) {
   try {
-    const { mercado, lado, tipo, precio, cantidad, ordenKey } = req.body || {};
+    const { mercado, lado, tipo, precio, cantidad, ordenKey, aceptoDesvio } = req.body || {};
 
     if (!MERCADOS.includes(mercado)) {
       return malo(res, 'MERCADO_INVALIDO', 'Ese mercado no existe en esta casa.');
@@ -114,6 +169,10 @@ async function colocar(req, res, next) {
       if (notional < NOTIONAL_MINIMO) {
         return malo(res, 'ORDEN_MUY_CHICA', 'El total de la orden es demasiado chico (minimo 0,000001 ORIGEN).');
       }
+      // La guarda de precio, DESPUES de saber que el precio esta bien formado
+      // y ANTES de la idempotencia y del motor: una orden desviada no se
+      // guarda ni «repetida».
+      if (await guardar(res, { mercado, precio, aceptoDesvio }, colocar.traerReferencia)) return;
     } else if (precio != null) {
       // Una orden de mercado con precio es un cliente confundido; aceptarla
       // ignorando el precio seria ejecutarle algo distinto de lo que cree
@@ -177,4 +236,9 @@ async function cancelar(req, res, next) {
   }
 }
 
-module.exports = { colocar, listar, cancelar };
+// `colocar.traerReferencia` es el punto de inyeccion de las pruebas: por
+// omision es null y `guardar` usa referencia.js. Una prueba le cuelga una
+// funcion que devuelve la referencia que quiera, sin red.
+colocar.traerReferencia = undefined;
+
+module.exports = { colocar, listar, cancelar, guardar };

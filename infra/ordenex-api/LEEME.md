@@ -30,6 +30,11 @@ Ninguna vive en el repo, jamas. Todas se ponen en Heroku (`heroku config:set`).
 | `OG_CHAIN_PROVIDER` | RPC de la 5550 (`https://rpc.ordenglobal-rpc.com`). |
 | `ORDENEX_COMISION_PPM` | Comision de la casa en partes por millon (2500 = 0,25 %). Sin ella: 0, deliberado. |
 | `CORS_ORIGENES` | Origenes permitidos, separados por comas. Sin ella ningun navegador entra. |
+| `ORDENEX_DESVIO_AVISO_PCT` | **X** de la guarda de precio (`lib/guardaPrecio.js`): desde este % de desvio contra la referencia del oro, una orden limite solo entra con `aceptoDesvio: true`. Por omision **5**. |
+| `ORDENEX_DESVIO_BLOQUEO_PCT` | **Y** de la guarda de precio: desde este % la orden **no entra**. Por omision **25**. Es lo que habria parado la orden de 4365,3 AUKA tecleada en dolares. |
+
+`GET /admin/estado` dice cuales de estas estan puestas (y si tienen forma
+valida) **sin enseñar ningun valor**; `apps-web/ordenex/admin.html` lo pinta.
 
 ## Desplegar
 
@@ -52,5 +57,8 @@ lib/                ledger, motor, velas, vigia, genesis, cadena5550, cripto
 models/index.js     todos los esquemas (dinero SIEMPRE string de wei)
 middleware/sesion.js  la sesion Bearer propia
 routes/ + controllers/  las rutas del contrato y su logica
-pruebas/            probar-motor, probar-ledger, probar-api (CI de mano)
+lib/guardaPrecio.js la guarda de precio contra la referencia del oro (X aviso, Y bloqueo)
+lib/terminos.js     la version vigente de los terminos y la puerta que exige aceptarlos
+lib/configuracion.js  que variables estan puestas, sin valores (para /admin/estado)
+pruebas/            probar-motor, probar-ledger, … (`npm run probar`: todo en verde)
 ```

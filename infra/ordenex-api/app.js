@@ -238,6 +238,24 @@ app.get('/tarifas', (req, res) => {
   res.json({ comisionPpm: ppm, sobre: 'recibido' });
 });
 
+// ── Limites ─────────────────────────────────────────────────────────────────
+// GET /limites → { desvio: { avisoPct, bloqueoPct }, terminos: { version, … } }
+// Publica y sin sesion, por la misma razon que /tarifas: los umbrales de la
+// guarda de precio (lib/guardaPrecio.js) son parte de lo que la pantalla de
+// confirmacion tiene que ENSEÑAR antes de que alguien coloque nada, y la
+// version vigente de los terminos es lo que la web compara para saber si la
+// primera orden lleva la casilla. Salen del MISMO sitio que los aplica: una
+// copia en el navegador seria un umbral anunciado que no es el que frena.
+app.get('/limites', (req, res) => {
+  const { umbrales } = require('./lib/guardaPrecio');
+  const terminos = require('./lib/terminos');
+  const { avisoPct, bloqueoPct } = umbrales();
+  res.json({
+    desvio: { avisoPct, bloqueoPct, contra: 'referencia del oro (onza / 31,1035 / 55) en ORIGEN' },
+    terminos: { version: terminos.TERMINOS_VERSION, terminos: terminos.TERMINOS_RUTA, riesgo: terminos.RIESGO_RUTA },
+  });
+});
+
 // ── Rutas ───────────────────────────────────────────────────────────────────
 // Todas cuelgan de la raiz, como en el contrato. portafolio.js se monta en '/'
 // porque sirve tres rutas de primer nivel (/portafolio, /retiros,

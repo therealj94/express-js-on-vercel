@@ -17,6 +17,7 @@
 const jwt = require('jsonwebtoken');
 const { Usuario } = require('../models');
 const genesis = require('../lib/genesis');
+const terminos = require('../lib/terminos');
 
 // La misma respuesta opaca que middleware/sesion.js: a un token invalido no se
 // le explica QUE le fallo.
@@ -141,6 +142,10 @@ async function sso(req, res) {
       verificada: usuario.verificada === true,
       direccionWallet: usuario.direccionWallet || null,
       esAgente: usuario.esAgente === true,
+      // Si tiene aceptados los terminos VIGENTES: la web lo usa para saber si
+      // la primera orden lleva la casilla. La verdad la sigue teniendo el
+      // middleware de lib/terminos.js en cada POST.
+      terminos: terminos.publico(terminos.aceptoVigente(usuario)),
     },
   });
 }

@@ -14,6 +14,11 @@
 const express = require('express');
 const router = express.Router();
 const { sesion } = require('../middleware/sesion');
+// La misma puerta de los terminos que en /ordenes: abrir una solicitud es
+// abrir una operacion. Tomar, avisar, confirmar y cancelar siguen sin ella —
+// son pasos de una solicitud que ya existe, y frenar una confirmacion o una
+// cancelacion es dejar ORIGEN en garantia sin salida.
+const { exigirTerminos } = require('../lib/terminos');
 const {
   agentes,
   crearSolicitud,
@@ -27,7 +32,7 @@ const {
 
 router.get('/agentes', agentes);
 
-router.post('/solicitudes', sesion, crearSolicitud);
+router.post('/solicitudes', sesion, exigirTerminos, crearSolicitud);
 router.get('/solicitudes', sesion, listarSolicitudes);
 
 router.post('/solicitudes/:id/tomar', sesion, tomar);
