@@ -40,10 +40,19 @@ if not S:
 
 AQUI = os.path.dirname(os.path.abspath(__file__))
 CUBO = 'og-5550-arranque-548380372606'
-NODO = 'i-02653feadc919d3a4'          # aura-gpu, us-east-1
-ARCHIVOS = ['asistente.py', 'candado.py', 'oido.py', 'whatsapp.py',
-            'guardia.py', 'registro.py', 'guion.py', 'premio.py',
-            'vistazo.py', 'parte-diario.py', 'pagador.py', 'espejo.py']
+# La A10G que corre desde el 1-sep. La T4 (i-02653feadc919d3a4) quedó apagada
+# de respaldo; este guion apuntaba a ella y por eso el nodo real recibió
+# archivos por otra vía y quedó con dos desfasados (lo vio el Cirujano el 2-sep).
+NODO = 'i-06530893af0dd0638'          # aura-gpu-a10g, us-east-1
+# TODOS los modulos, no una lista escrita a mano. La lista de doce nombres se
+# quedo corta sin que nadie lo notara: la A10G arranco el 1-sep sin voz.py,
+# decir.py, vozmemoria.py ni plantillas-whatsapp.py, porque nunca estuvieron
+# aqui. Lo que no se sube son las pruebas (probar-*) y las herramientas de
+# escritorio (este guion, el comparador de modelos y el templador de voz).
+_NO_VAN = {'desplegar-aura.py', 'comparar-modelos.py', 'templar-voz.py'}
+ARCHIVOS = sorted(
+    n for n in os.listdir(os.path.dirname(os.path.abspath(__file__)))
+    if n.endswith('.py') and not n.startswith('probar-') and n not in _NO_VAN)
 
 # El prompt y las fichas viajan con el codigo, y no es un detalle: la voz de
 # AU-RA y lo que SABE se cambian ahi, no en el codigo. Subir solo los .py
