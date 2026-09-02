@@ -278,7 +278,7 @@
           "t": 56.2,
           "dur": 5.4,
           "texto": "Orden Global.",
-          "alto": 0.71,
+          "alto": 0.66,
           "escala": 1.15
         },
         {
@@ -286,7 +286,7 @@
           "dur": 4.1,
           "texto": "Un sistema financiero\nque se puede comprobar.",
           "chico": true,
-          "alto": 0.8
+          "alto": 0.755
         }
       ]
     }

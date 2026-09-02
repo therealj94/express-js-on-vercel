@@ -156,14 +156,17 @@ def producto(im: Image.Image, nombre: str, clave: str, rel: float, dur: float):
     e = salida_rebote(float(np.clip(rel / 0.55, 0, 1)))
     fuera = salida(float(np.clip((dur - rel) / 0.35, 0, 1)), 3.0)
     a = float(np.clip(rel / 0.25, 0, 1)) * fuera
-    _pegar(im, marca(clave, 150), W // 2, int(H * 0.585), a, escala=0.86 + 0.14 * e)
+    # La ficha vive en el TERCIO INFERIOR. A media altura la marca caía encima
+    # del objeto —sobre la moneda de Ordenex parecía una pegatina— y ahí es
+    # donde está el sujeto en la mitad de los planos.
+    _pegar(im, marca(clave, 132), W // 2, int(H * 0.672), a, escala=0.86 + 0.14 * e)
     d = ImageDraw.Draw(im, "RGBA")
     f = fuente(F_ROT, 27)
     txt = nombre.upper()
     track = 7.5
     an = ancho_con_track(d, txt, f, track)
     ta = salida(float(np.clip((rel - 0.18) / 0.35, 0, 1)), 4.0) * fuera
-    texto_con_sombra(im, ((W - an) / 2, H * 0.648), txt, f,
+    texto_con_sombra(im, ((W - an) / 2, H * 0.727), txt, f,
                      TEXTO + (int(215 * ta),), track, sombra=0.5, radio=18)
 
 
@@ -243,7 +246,7 @@ def rotulo(im: Image.Image, texto: str, rel: float, dur: float, chico=False,
         f, track, salto = fuente(F_MED, int(46 * escala)), 0.0, 1.42
     else:
         f, track, salto = fuente(F_TIT, int(86 * escala)), -1.8, 1.22
-    y = H * (alto if alto is not None else (0.70 if chico else 0.72))
+    y = H * (alto if alto is not None else (0.78 if chico else 0.79))
     fuera = salida(float(np.clip((dur - rel) / 0.35, 0, 1)), 3.0)
     d = ImageDraw.Draw(im, "RGBA")
     k = 0
