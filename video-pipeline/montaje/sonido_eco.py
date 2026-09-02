@@ -92,14 +92,26 @@ def main() -> int:
         if b > a:
             y[a:b] += x[: b - a] * nivel
 
-    for a, b, pieza, nivel in CAMAS:
-        poner(a, cama(cargar(carpeta, pieza), int((min(b, dur) - a) * SR)), nivel * 0.62)
     for t, pieza, nivel in EVENTOS:
         poner(t, cargar(carpeta, pieza), nivel)
-
     y = y / (np.abs(y).max() + 1e-9) * 0.72
     sf.write(salida, y.astype(np.float32), SR)
-    print(f"{salida} · {dur:.1f}s · {len(EVENTOS)} efectos reales · cama continua")
+
+    # La cama va en su PROPIO fichero y no mezclada con los golpes. Compartiendo
+    # pista, normalizar por pico la aplastaba: el impacto del retrato de familia
+    # marcaba el pico y la sala se quedaba treinta decibelios por debajo, que es
+    # justamente el vacío que se oía. Aparte, se le puede fijar el suelo.
+    b = np.zeros(n)
+    for a, fin, pieza, nivel in CAMAS:
+        x = cama(cargar(carpeta, pieza), int((min(fin, dur) - a) * SR))
+        i, j = int(a * SR), min(n, int(a * SR) + len(x))
+        b[i:j] += x[: j - i] * nivel
+    rms = np.sqrt((b ** 2).mean()) + 1e-12
+    b = b / rms * 10 ** (-18.5 / 20)          # suelo a -18,5 dBFS, medido en la mezcla
+    sala = str(Path(salida).with_name("sala_eco.wav"))
+    sf.write(sala, np.clip(b, -1, 1).astype(np.float32), SR)
+    print(f"{salida} · {dur:.1f}s · {len(EVENTOS)} efectos reales")
+    print(f"{sala} · cama de sala continua")
     return 0
 
 

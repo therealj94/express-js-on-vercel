@@ -32,12 +32,15 @@ done < <(python3 -c "import json;[print(i,t) for i,t in json.load(open('$ESPEC')
 FIL="${FIL}${MIX}amix=inputs=$n:normalize=0,acompressor=threshold=0.12:ratio=3:attack=8:release=180,volume=2.9,aecho=0.9:0.85:14:0.10[voz];"
 FIL="${FIL}[voz]asplit=3[voz1][disp][disp2];"
 # Los efectos bajan: antes cargaban el peso que ahora lleva la música.
-FIL="${FIL}[$((n+1)):a]volume=0.34[sfx0];"
+FIL="${FIL}[$((n+1)):a]volume=0.46[sfx0];"
 FIL="${FIL}[sfx0][disp2]sidechaincompress=threshold=0.06:ratio=3:attack=8:release=400:makeup=1[sfx];"
 FIL="${FIL}[$((n+2)):a]volume=0.90[cama0];"
+# La sala entra por su propia pista y NO se aparta bajo la voz: es el suelo de
+# la pieza, y si se aparta vuelve el vacío.
+FIL="${FIL}[$((n+3)):a]volume=1.0[sala];"
 FIL="${FIL}[cama0][disp]sidechaincompress=threshold=0.06:ratio=4:attack=12:release=420:makeup=1[cama];"
-FIL="${FIL}[voz1][sfx][cama]amix=inputs=3:normalize=0,aresample=48000,alimiter=limit=0.74:attack=3:release=60:level=false,apad[a]"
+FIL="${FIL}[voz1][sfx][cama][sala]amix=inputs=4:normalize=0,aresample=48000,alimiter=limit=0.74:attack=3:release=60:level=false,apad[a]"
 
-ffmpeg -v error -y -i "$MUDA" $ENT -i sfx_eco.wav -i cama_ecosistema.wav \
+ffmpeg -v error -y -i "$MUDA" $ENT -i sfx_eco.wav -i cama_ecosistema.wav -i sala_eco.wav \
   -filter_complex "$FIL" -map 0:v -map "[a]" -c:v copy -c:a aac -b:a 192k -t "$DUR" "$SALIDA"
 echo "mezclada: $SALIDA ($n líneas de voz)"
