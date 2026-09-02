@@ -304,6 +304,10 @@ while time.time() < limite:
     ruta = hf_hub_download(repo, "colas/siguiente.json", repo_type="dataset",
                            local_dir=work + "/prompts",
                            token=os.environ["HF_TOKEN"])
+    # hf_hub_download conserva la ruta del repo: queda en prompts/colas/, y el
+    # runner busca los workflows junto a la cola. Se sube un nivel.
+    destino = "%s/prompts/tanda_%d.json" % (work, tanda)
+    os.replace(ruta, destino); ruta = destino
     # Se borra ANTES de ejecutarla: si no, al terminar se vuelve a encontrar
     # la misma y la tanda entra en bucle.
     try:
