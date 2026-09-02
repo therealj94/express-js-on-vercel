@@ -12,6 +12,7 @@ import { money, qtyFmt } from '../data';
 import { getPrivateKey } from '../api';
 import PedirClave from '../PedirClave';
 import { genesis } from '../genesis';
+import { QrComprobacion } from '../TarjetaGid';
 import { setPassport } from '../accounts';
 import { updateAccount } from '../accounts';
 import { activarAvisos, desactivarAvisos, avisosActivos, enExpoGo } from '../notify';
@@ -560,6 +561,10 @@ export function Passport({ nav }) {
             ))}
           </View>
         </LinearGradient>
+
+        {/* El QR de comprobación: apunta a la página pública, que solo dice
+            «verificada» y la fecha. Nunca el nombre ni el documento. */}
+        {verified ? <QrComprobacion gid={gid} /> : null}
 
         {/* Billetera emparejada */}
         <View style={styles.pairCard}>

@@ -13,6 +13,7 @@ import { leerDeFoto, leerTexto, puedeEscanear, nombreDeAnverso, datosDeMrz, mism
 import { enExpoGo } from '../og/entorno';
 import { FRECUENTES, buscarPaises, nombrePais } from '../paises';
 import { SenaGesto, OvaloRostro } from '../RostroGuia';
+import { TarjetaGid } from '../TarjetaGid';
 import { setPassport } from '../accounts';
 import { getSeed } from '../api';
 import PedirClave from '../PedirClave';
@@ -185,6 +186,14 @@ export function Kyc({ nav }) {
     }
     setFallo(null);
     setEstado(e);
+    // Lo que el servidor ya leyó del documento —en otro teléfono, o antes de
+    // cerrar la app— precarga la confirmación. Nunca pisa lo tecleado.
+    const d = e.documentoDatos;
+    if (d?.nombre && !nombre.trim()) setNombre(d.nombre);
+    if (/^\d{4}-\d{2}-\d{2}$/.test(d?.fechaNacimiento || '') && !dia && !mes && !anio) {
+      const [a, m, dd] = d.fechaNacimiento.split('-');
+      setAnio(a); setMes(m); setDia(dd);
+    }
     if (e.verificada) {
       await guardarEnCuenta(e);
       // Ata esta cuenta al GID para que valga en el resto del ecosistema.
@@ -1255,14 +1264,16 @@ export function Kyc({ nav }) {
             <View style={st.doneBadge}><Icon name="checkmark" size={46} color={C.up} /></View>
             <Text style={[st.h1, { textAlign: 'center' }]}>{t('gen.doneT')}</Text>
             <Text style={[st.body, { textAlign: 'center' }]}>{t('gen.doneP')}</Text>
-            {estado?.genesisUid && (
-              <View style={st.uidChip}>
-                <Icon name="finger-print" size={14} color={C.gold} />
-                <Text style={st.uidTxt}>{estado.genesisUid}</Text>
-              </View>
-            )}
+            {/* La tarjeta de identidad, con su QR de comprobación: es lo que
+                la persona se lleva y enseña. */}
+            <View style={{ alignSelf: 'stretch' }}>
+              <TarjetaGid nombre={estado?.fullName || account?.name} gid={estado?.genesisUid}
+                estado="verificada" fechaIso={estado?.verificadaEn || estado?.actualizadaEn}
+                foto={estado?.fotoCredencial || account?.passport?.photoUrl} iniciales={account?.initials} />
+            </View>
+            <Text style={[st.foot, { marginTop: 14 }]}>{t('gen.doneCard')}</Text>
             <Button3D title={t('gen.seePass')} icon="arrow-forward" onPress={() => nav.go('passport')}
-              style={{ alignSelf: 'stretch', marginTop: 20 }} />
+              style={{ alignSelf: 'stretch', marginTop: 14 }} />
           </View>
         )}
       </CuerpoDesplazable>
