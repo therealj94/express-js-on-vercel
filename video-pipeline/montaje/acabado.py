@@ -60,9 +60,15 @@ def escalonar(indice: int, retardo_fotogramas: float = 2.0, fps: int = 30) -> fl
 #    textura profesional instantáneamente" — y además mata el bandeado de los
 #    degradados, que es lo que delata un halo hecho por código.
 # --------------------------------------------------------------------------
-def grano(arr: np.ndarray, fuerza: float = 0.022, semilla: int = 0) -> np.ndarray:
+def grano(arr: np.ndarray, fuerza: float = 0.010, semilla: int = 0) -> np.ndarray:
     """Grano de película, monocromo. Sobre las zonas oscuras se nota más, igual
-    que en película real, donde la sombra es la que tiene el grano."""
+    que en película real, donde la sombra es la que tiene el grano.
+
+    El 1 % no es un capricho: a 2,2 % la pieza pesaba 408 MB porque cada
+    fotograma lleva ruido distinto y el compresor no puede predecir nada. Al
+    apretarlo, o pesaba 62 MB o el codec se comía el grano entero. Al 1 %
+    sobrevive a un CRF razonable y sigue rompiendo la perfección de render, que
+    es para lo que está."""
     rng = np.random.default_rng(semilla)
     h, w = arr.shape[:2]
     ruido = rng.standard_normal((h, w, 1)).astype(np.float32) * 255 * fuerza
