@@ -1860,7 +1860,7 @@ const VETA = (() => {
     pay, payex, payneg, paycobro, paymio,
     enviar, recibir, comprar, deposito, token: vToken, identidad: vIdentidad,
     remesas, contactos, sesiones, lector, seguridad, perfil, verificar, cobrar,
-    aucorp: vAucorp, ordenex: vOrdenex,
+    aucorp: vAucorp, ordenex: vOrdenex, clave,
   };
   const PESTANAS = ['nucleo', 'billetera', 'tarjeta', 'cambiar', 'actividad', 'chat', 'ajustes'];
   // A que pestaña se le enciende la luz cuando estas en una vista que no es una.
@@ -1872,6 +1872,7 @@ const VETA = (() => {
     aucorp: 'nucleo', ordenex: 'nucleo',
     genesis: 'nucleo',
     contactos: 'ajustes', sesiones: 'ajustes', seguridad: 'ajustes', perfil: 'ajustes',
+    clave: 'ajustes',
   };
 
   /* ═══ EL BOTON ATRAS DEL NAVEGADOR ═══════════════════════════════════════
@@ -2894,6 +2895,11 @@ const VETA = (() => {
      paso tampoco se pierde lo que alguien estaba tecleando. */
   let envDir = '';
   let envCant = '';
+  /* El comprobante del ultimo envio. Mientras esta puesto, la pantalla de
+     enviar pinta el recibo en vez del formulario: monto, destinatario, fecha,
+     red, bloque y el estado LEIDO de la cadena. Se vacia con «hacer otro
+     envio» o al elegir otra moneda. */
+  let envComprobante = null;
   const envActivo = () => (cartera || []).find(x => x.s === envSim) || origen();
 
   /* Hasta hoy esta pantalla solo movía ORIGEN: quien tenía ONDK, AUKA o
@@ -2904,6 +2910,8 @@ const VETA = (() => {
      La comisión se paga SIEMPRE en ORIGEN, tambien cuando lo que viaja es un
      token. Por eso se avisa antes, y no despues de un envio que se cae. */
   function enviar() {
+    // Recien enviado: se enseña el recibo, no otro formulario en blanco.
+    if (envComprobante) return comprobanteEnvio();
     if (!cartera) return `
       <div class="cab"><div><h2>${t('env.tX')}</h2></div></div>
       <div class="bloque vidrio"><div class="vacio">
@@ -2981,6 +2989,7 @@ const VETA = (() => {
     if (!(cartera || []).some(m => m.s === sim)) return;
     envSim = sim;
     pendiente = null;
+    envComprobante = null;
     vista('enviar');
   }
 
@@ -3046,8 +3055,19 @@ const VETA = (() => {
       // Sin precio real no se muestra un equivalente en dolares: mas vale no
       // decir nada que decir un numero que nadie puede sostener.
       const pu = x.precio;
-      const enUsd = pu != null ? ` (${esc(usd(monto * pu))})` : '';
-      a.innerHTML = `${t('env.vas')} <b>${oro(monto)} ${esc(x.s)}</b>${enUsd} ${t('env.a')} <span class="mono">${esc(cortaDir(dir))}</span>. ${t('env.toca')}`;
+      const enUsd = pu != null ? ` <small class="mono">≈ ${esc(usd(monto * pu))}</small>` : '';
+      /* La revision es una ficha, no una frase: a quien, cuanto, la comision
+         y la red, cada dato en su renglon y la direccion ENTERA. Una direccion
+         cortada no se puede comparar con la que te mandaron. La comision es
+         la de referencia (400 gwei x 21000): la exacta la pone la cadena. */
+      a.innerHTML = `<b>${t('env.revT')}</b>
+        <dl class="datos env-rev" id="env-revision">
+          <div><dt>${t('env.revPara')}</dt><dd class="mono">${esc(dir)}</dd></div>
+          <div><dt>${t('env.revCuanto')}</dt><dd><b>${oro(monto)} ${esc(x.s)}</b>${enUsd}</dd></div>
+          <div><dt>${t('env.revComision')}</dt><dd>≈ ${oro(COMISION_RED)} ORIGEN</dd></div>
+          <div><dt>${t('env.revRed')}</dt><dd>Orden Global · ${esc(CHAIN)}</dd></div>
+        </dl>
+        <p class="pie" style="margin-top:10px">${t('env.toca')}</p>`;
       a.classList.remove('oculto');
       bcTexto(b, t('env.confirmar'));
       return;
@@ -3094,16 +3114,23 @@ const VETA = (() => {
         avisarChat = null;
       }
       a.className = 'aviso aviso-ok';
-      /* El palomeo se dibuja AQUI y en ningun sitio antes: la cadena ya
-         confirmo y el hash esta en la mano. Un palomeo un segundo antes le
-         diria a alguien que su dinero salio cuando todavia no se sabe. */
+      /* El palomeo se dibuja AQUI y en ningun sitio antes: el backend ya
+         contesto con el hash, o sea que la transaccion SALIO a la red. Lo que
+         todavia no se sabe es si un bloque la incluyo — el backend no espera
+         el minado, por el corte de 30 s de Heroku — y eso lo dice el
+         comprobante de abajo leyendo el recibo de la cadena, no este palomeo. */
       await bcHecho(b);
-      a.innerHTML = `${t('env.hecho')} ${oro(monto)} ${esc(sim)}.${hash ? ` <span class="mono">${esc(cortaDir(hash))}</span>` : ''}`;
+      envComprobante = {
+        hash, monto, sim: sim || 'ORIGEN', dir,
+        usd: x.precio != null ? monto * x.precio : null,
+        fecha: Date.now(), bloque: null, confirmada: false, exito: null,
+      };
       envDir = ''; envCant = '';
-      $('#env-dir').value = ''; $('#env-monto').value = ''; $('#env-clave').value = '';
-      envMonto();
-      bcTexto(b, t('env.revisar'));
       avisar(t('env.avHecho'));
+      // El recibo ocupa el lugar del formulario, y se le pregunta a la cadena
+      // por el bloque hasta que conteste.
+      vista('enviar');
+      if (hash) vigilarRecibo(hash);
       /* Si esto es una emergente de Ordenex, se le avisa y la ventana se va.
          Con `sim`, que se guardo ANTES de vaciar `pendiente` — leerlo de
          `pendiente` aqui reventaba con «null is not an object», y reventaba
@@ -3111,9 +3138,11 @@ const VETA = (() => {
          pantalla decia error. La peor forma de fallar que hay. */
       avisarAlQueAbrio({ ok: true, hash, monto: String(monto), activo: sim || 'ORIGEN' });
       cargarCartera().then(() => {
-        if (vistaActual !== 'enviar') return;
+        // Con el recibo a la vista no hay «tenés X disponibles» que refrescar.
+        if (vistaActual !== 'enviar' || envComprobante) return;
         const y = envActivo();
-        $('.cab .sub').textContent = `${t('env.tenes')} ${tapa(oro(y?.cant ?? 0))} ${y?.s || ''} ${t('env.dispX')}`;
+        const sub = $('.cab .sub');
+        if (sub) sub.textContent = `${t('env.tenes')} ${tapa(oro(y?.cant ?? 0))} ${y?.s || ''} ${t('env.dispX')}`;
       });
       cargarMovimientos();
     } catch (e) {
@@ -3125,6 +3154,117 @@ const VETA = (() => {
       bcTexto(b, t('env.revisar'));
       pendiente = null;
     } finally { enviando = false; b.disabled = false; }
+  }
+
+  /* ── EL COMPROBANTE ─────────────────────────────────────────────────────
+   *
+   * Antes el envio terminaba en una frase dentro del aviso verde: «Enviaste
+   * 1,5 ORIGEN. 0x1234…abcd». Ni fecha, ni bloque, ni forma de compartirlo, y
+   * el hash cortado no se puede comprobar en ningun sitio. Un banco entrega
+   * un recibo; esto es el recibo.
+   *
+   * El estado NO se supone: se lee de la cadena. El backend devuelve el hash
+   * sin esperar el bloque, asi que «enviada» y «confirmada» son dos momentos
+   * distintos y el recibo los distingue. Con status 0 la red la incluyo y la
+   * rechazo —el monto no se movio— y tambien se dice. */
+  const ICO_COMP = {
+    confirmada: '<path d="M5 12.5l4.5 4.5 9-10"/>',
+    pendiente: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5.5l3.5 2"/>',
+    rechazada: '<path d="M12 3.2L22 20H2z"/><path d="M12 9.5v4.6"/>',
+  };
+  const estadoComp = c => (c.exito === false ? 'rechazada' : c.confirmada ? 'confirmada' : 'pendiente');
+  const textoEstadoComp = (estado, bloque) =>
+    estado === 'confirmada' ? `${t('env.compOk')}${bloque != null ? ' · #' + bloque : ''}`
+      : estado === 'rechazada' ? t('env.compMal') : t('env.compPend');
+
+  function comprobanteEnvio() {
+    const c = envComprobante;
+    const estado = estadoComp(c);
+    const enlace = c.hash ? `${EXPLORADOR}/tx/${c.hash}` : null;
+    return `
+    <div class="cab"><div><h2>${t('env.compT')}</h2><div class="sub">${t('env.compSub')}</div></div></div>
+    <div class="bloque vidrio comp" id="env-comprobante" data-estado="${estado}">
+      <div class="comp-cab">
+        <span class="comp-ic ${estado}"><svg viewBox="0 0 24 24">${ICO_COMP[estado]}</svg></span>
+        <div>
+          <div class="comp-monto">${esc(oro(c.monto))} <em>${esc(c.sim)}</em></div>
+          ${c.usd != null ? `<div class="comp-usd">≈ ${esc(usd(c.usd))}</div>` : ''}
+        </div>
+      </div>
+      <div class="comp-estado" id="comp-estado" data-estado="${estado}">${textoEstadoComp(estado, c.bloque)}</div>
+      <p class="pie">${estado === 'confirmada' ? t('env.compP') : estado === 'rechazada' ? t('env.compMalP') : t('env.compPendP')}</p>
+      <dl class="datos">
+        <div><dt>${t('env.compPara')}</dt><dd class="mono">${esc(c.dir)}</dd></div>
+        <div><dt>${t('env.compFecha')}</dt><dd>${esc(fechaLarga(new Date(c.fecha).toISOString()))}</dd></div>
+        <div><dt>${t('tok.red')}</dt><dd>Orden Global · ${esc(CHAIN)}</dd></div>
+        <div><dt>${t('env.compBloque')}</dt><dd id="comp-bloque">${c.bloque != null ? '#' + c.bloque : '—'}</dd></div>
+        ${c.hash ? `<div><dt>${t('env.compHash')}</dt><dd class="mono" id="comp-hash">${esc(c.hash)}</dd></div>` : ''}
+      </dl>
+      <div class="dir-btns comp-btns">
+        ${enlace ? `<a class="btn btn-oro btn-sm" id="comp-scan" href="${esc(enlace)}" target="_blank" rel="noopener">${t('env.compScan')}</a>` : ''}
+        ${c.hash ? `<button class="btn btn-linea btn-sm" id="comp-compartir" onclick="VETA.compartirComprobante()">${t('env.compCompartir')}</button>` : ''}
+        ${estado === 'pendiente' && c.hash ? `<button class="btn btn-linea btn-sm" id="comp-actualizar" onclick="VETA.vigilarRecibo()">${t('env.compActualizar')}</button>` : ''}
+        <button class="btn btn-linea btn-sm" id="comp-nuevo" onclick="VETA.envNuevo()">${t('env.compNuevo')}</button>
+      </div>
+    </div>`;
+  }
+
+  /* Se le pregunta a la cadena por el recibo cada tres segundos, hasta veinte
+     veces (un bloque cada ~10 s: de sobra). Si el envio ya no es el que se
+     esta mirando —se hizo otro, se cerro— se deja de preguntar. Un RPC que no
+     contesta una vez no es una transaccion perdida: se vuelve a preguntar. */
+  let vigilando = null;
+  async function vigilarRecibo(hash) {
+    const h = hash || envComprobante?.hash;
+    if (!h || vigilando === h) return;
+    vigilando = h;
+    try {
+      for (let i = 0; i < 20; i++) {
+        if (envComprobante?.hash !== h) return;
+        let r = null;
+        try { r = await CADENA.rpc('eth_getTransactionReceipt', [h]); } catch { /* se vuelve a preguntar */ }
+        if (r && r.blockNumber) {
+          const bloque = parseInt(r.blockNumber, 16);
+          const exito = r.status == null ? null : parseInt(r.status, 16) === 1;
+          envComprobante = { ...envComprobante, bloque, confirmada: true, exito };
+          if (vistaActual === 'enviar') vista('enviar');
+          return;
+        }
+        await new Promise(ok => setTimeout(ok, 3000));
+      }
+      if (envComprobante?.hash === h) avisar(t('env.compAun'));
+    } finally { vigilando = null; }
+  }
+
+  /* Compartir usa la hoja del sistema donde la hay (telefono) y, donde no,
+     copia el texto: en un escritorio «compartir» es pegar en un correo. */
+  async function compartirComprobante() {
+    const c = envComprobante;
+    if (!c) return;
+    const enlace = c.hash ? `${EXPLORADOR}/tx/${c.hash}` : '';
+    const estado = textoEstadoComp(estadoComp(c), c.bloque);
+    const texto = [
+      t('env.compTxt'),
+      `${t('env.hecho')}: ${oro(c.monto)} ${c.sim}${c.usd != null ? ` (≈ ${usd(c.usd)})` : ''}`,
+      `${t('env.compPara')}: ${c.dir}`,
+      `${t('env.compFecha')}: ${fechaLarga(new Date(c.fecha).toISOString())}`,
+      `${t('tok.red')}: Orden Global · ${CHAIN}`,
+      ...(c.bloque != null ? [`${t('env.compBloque')}: #${c.bloque}`] : []),
+      `${t('env.compEstado')}: ${estado}`,
+      ...(enlace ? [`${t('env.compHash')}: ${enlace}`] : []),
+    ].join('\n');
+    if (navigator.share) {
+      try { await navigator.share({ title: t('env.compTxt'), text: texto }); return; }
+      catch { /* cancelo, o el navegador no pudo: se copia */ }
+    }
+    try { await navigator.clipboard.writeText(texto); avisar(t('env.compCopiado')); }
+    catch { avisar(t('rec.noCopia')); }
+  }
+
+  function envNuevo() {
+    envComprobante = null;
+    pendiente = null;
+    vista('enviar');
   }
 
   function recibir() {
@@ -4662,6 +4802,7 @@ const VETA = (() => {
     <div class="bloque vidrio">
       <h3>${t('aj.seguridad')}</h3>
       <div class="ajustes">
+        ${fila(ICO.escudo, t('cl.t'), t('cl.sub'), "VETA.vista('clave')")}
         ${fila(ICO.llave, t('seg.frase'), t('seg.fraseP').slice(0, 58) + '…', "VETA.vista('seguridad')")}
         ${fila(ICO.reloj, t('ses.t'), t('ses.sub'), "VETA.vista('sesiones')")}
       </div>
@@ -14289,7 +14430,7 @@ const VETA = (() => {
          qué ES la pieza. La prueba `cine-reloj` no deja que esto se afloje. */
       casas: {
         gid: ['GENESIS ID', 'Una identidad, verificada una vez.'],
-        wallet: ['VETA WALLET', 'Custodia propia. Las llaves son tuyas.'],
+        wallet: ['VETA WALLET', 'Orden Global guarda las llaves. Entrás con tu correo.'],
         pay: ['MYTOKENPAY', 'Aceptación en comercios, del ecosistema al mostrador.'],
         oxch: ['ORDENEXCHANGE', 'Casa de cambio del ecosistema.'],
         aucorp: ['AUCORP', 'Cuentas en moneda local, en veintiún monedas.'],
@@ -14338,7 +14479,7 @@ const VETA = (() => {
       lumbreras: 'And God said, Let there be lights\nin the firmament of the heaven.',
       casas: {
         gid: ['GENESIS ID', 'Identity infrastructure. Verified once, it opens everything.'],
-        wallet: ['VETA WALLET', 'Self-custody. Keys are encrypted on your own device.'],
+        wallet: ['VETA WALLET', 'Orden Global keeps the keys. You sign in with your email.'],
         pay: ['MYTOKENPAY', 'Merchant acceptance. From the ecosystem to the counter.'],
         oxch: ['ORDENEXCHANGE', 'The exchange. One currency becomes another.'],
         aucorp: ['AUCORP', 'Local-currency accounts, in twenty-one currencies.'],
@@ -15247,8 +15388,91 @@ const VETA = (() => {
       </div>
     </div>
     <div class="bloque vidrio">
-      <div class="nota nota-cuidado">${t('seg.aviso')}</div>
+      <p class="pie">${t('seg.custodia')}</p>
+      <div class="nota nota-cuidado" style="margin-top:12px">${t('seg.aviso')}</div>
     </div>`;
+  }
+
+  /* ── CAMBIAR LA CONTRASEÑA ──────────────────────────────────────────────
+   *
+   * No existia. La ruta del backend (POST /users/changePassword) estaba desde
+   * el primer dia y ninguna pantalla la llamaba: quien sospechaba que le
+   * habian entrado solo tenia «olvide mi contraseña» y el correo.
+   *
+   * El backend verifica la actual, exige ocho o mas, cierra las demas sesiones
+   * abiertas con la cuenta y devuelve un par nuevo (token y refresco) para que
+   * ESTA siga viva. Si el servidor todavia es el anterior y no devuelve token,
+   * la sesion de aqui tambien murio: se dice y se sale, en vez de dejar que la
+   * siguiente pantalla falle con «sesion vencida». */
+  function clave() {
+    return `
+    <div class="cab"><div><h2>${t('cl.t')}</h2><div class="sub">${t('cl.sub')}</div></div></div>
+    <div class="bloque vidrio">
+      <p class="pie">${t('cl.p')}</p>
+      <form onsubmit="return VETA.cambiarClave(event)" style="margin-top:16px" autocomplete="on">
+        <div class="campo">
+          <label for="cl-actual">${t('cl.actual')}</label>
+          <input id="cl-actual" type="password" autocomplete="current-password" placeholder="••••••••" required>
+        </div>
+        <div class="campo">
+          <label for="cl-nueva">${t('cl.nueva')}</label>
+          <input id="cl-nueva" type="password" autocomplete="new-password" placeholder="••••••••" required>
+        </div>
+        <div class="campo">
+          <label for="cl-repetir">${t('cl.repetir')}</label>
+          <input id="cl-repetir" type="password" autocomplete="new-password" placeholder="••••••••" required>
+        </div>
+        <div id="cl-aviso" class="aviso oculto" role="alert"></div>
+        <button class="btn btn-oro btn-full" id="cl-btn" type="submit">${t('cl.cta')}</button>
+      </form>
+    </div>
+    <div class="bloque vidrio"><div class="nota nota-cuidado">${t('aj.clave')}</div></div>`;
+  }
+
+  let cambiandoClave = false;
+  async function cambiarClave(ev) {
+    ev.preventDefault();
+    const actual = $('#cl-actual').value, nueva = $('#cl-nueva').value, repetir = $('#cl-repetir').value;
+    const a = $('#cl-aviso'), b = $('#cl-btn');
+    const decir = m => { a.textContent = m; a.className = 'aviso aviso-mal'; a.classList.remove('oculto'); };
+    // Lo que se le puede decir sin gastar un intento del limitador (cinco
+    // cada quince minutos): largo, coincidencia, y que sea distinta.
+    if (!actual) return decir(t('cl.errFalta')), false;
+    if (nueva.length < 8) return decir(t('cl.errCorta')), false;
+    if (nueva !== repetir) return decir(t('cl.errNoCoincide')), false;
+    if (nueva === actual) return decir(t('cl.errMisma')), false;
+    if (cambiandoClave) return false;
+    cambiandoClave = true;
+    a.classList.add('oculto');
+    bcTrabajando(b);
+    bcTexto(b, t('cl.enviando'));
+    try {
+      /* Se llama a `crudo` y no a `pedir`: aqui un 401 es «la actual no es
+         correcta», y `pedir` lo leeria como sesion vencida —y sin refresco
+         cerraria la sesion por una contraseña mal tecleada—. La renovacion
+         se hace a mano antes, si hace falta. */
+      if (!vive() && sesion?.refresco) await renovar();
+      const d = await crudo('/users/changePassword', {
+        metodo: 'POST', espera: 30000,
+        cuerpo: { currentPassword: actual, newPassword: nueva },
+      });
+      const tk = d?.token || d?.accessToken || d?.data?.token || null;
+      await bcHecho(b);
+      if (tk) {
+        sesion.token = tk;
+        sesion.refresco = d?.refreshToken || d?.refresh_token || sesion.refresco;
+        guardar();
+        avisar(t('cl.listo'));
+        vista('ajustes');
+      } else {
+        avisar(t('cl.listoEntrar'));
+        salir();
+      }
+    } catch (e) {
+      decir(e.estado === 401 ? t('cl.errActual') : e.estado === 429 ? t('cl.errMuchos') : e.message);
+      bcSoltar(b, t('cl.cta'));
+    } finally { cambiandoClave = false; }
+    return false;
   }
 
   /* La contraseña se pide cada vez y lo que llega no se guarda: se pinta y se
@@ -15759,6 +15983,7 @@ const VETA = (() => {
   document.addEventListener('DOMContentLoaded', arrancar);
 
   return { ir, pestana, ojo, vista, mandar, copiar, compartir, salir, reintentar, avisar, idioma,
+           cambiarClave, compartirComprobante, vigilarRecibo, envNuevo,
            velasCambiar, velasAmpliar, chatAvisos,
            chatDenunciar, chatDenunciarCerrar, chatDenunciarMotivo, chatDenunciarHacer,
            reclavePedir, reclaveSalir, ojoReclave,

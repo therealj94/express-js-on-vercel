@@ -20,7 +20,9 @@ import { seenOnboarding } from './Onboarding';
 // Fuerza de contraseña sin depender de zxcvbn (agregaría un paquete pesado
 // para muy poco). Puntúa por longitud, mezcla de tipos y ausencia de patrones
 // triviales. Devuelve { score: 0..4, label, color }.
-function passwordStrength(pw, t) {
+// Se exporta porque «Cambiar contraseña» pinta el mismo medidor: dos
+// medidores distintos dirían cosas distintas de la misma contraseña.
+export function passwordStrength(pw, t) {
   const s = String(pw || '');
   if (!s) return { score: 0, label: '', color: 'transparent' };
   let score = 0;

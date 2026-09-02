@@ -10,15 +10,34 @@
 //   BUILD sube de uno en uno en CADA entrega, sin excepción.
 // ============================================================
 
-export const VERSION = '1.33.1';
-export const BUILD = 71;
-export const RELEASED = '2026-09-01';
+export const VERSION = '1.33.2';
+export const BUILD = 72;
+export const RELEASED = '2026-09-02';
 
 export const versionLabel = () => `v${VERSION} · build ${BUILD}`;
 
 // Historial visible dentro de la app (Ajustes → Novedades).
 // El más reciente primero. `es`/`en` para que se lea en ambos idiomas.
 export const CHANGELOG = [
+  {
+    v: '1.33.2',
+    build: 72,
+    date: '2026-09-02',
+    es: [
+      'El comprobante de un envío ahora dice la verdad de la cadena: «Confirmada en cadena · bloque #N» solo cuando la red la incluyó de verdad, y «Enviada · esperando confirmación» mientras tanto, con un botón para volver a mirar. Antes la pantalla verde salía con la transacción todavía en el aire.',
+      'El comprobante se puede abrir en OrdenScan y compartir como texto: monto, destinatario, fecha, red, bloque y número de comprobante. Como el recibo de un banco.',
+      'Nueva pantalla «Cambiar contraseña» en Ajustes → Seguridad. Pide la actual, exige ocho caracteres y cierra las demás sesiones abiertas con tu cuenta; en este teléfono seguís adentro.',
+      'La app ya no dice que «vos tenés las llaves»: Orden Global guarda las llaves por vos y entrás con tu correo. Tu frase de recuperación es tu copia de seguridad, no la única puerta.',
+      'Menos jerga: «Cambiar» en vez de «Swap», «Tu plata» en vez de «Mis activos», «tu dirección» en vez de «wallet address», y «referenciado» al oro o a la plata en vez de «respaldado».',
+    ],
+    en: [
+      'The receipt of a transfer now tells the truth of the chain: "Confirmed on chain · block #N" only once the network really included it, and "Sent · awaiting confirmation" in the meantime, with a button to check again. Before, the green screen came up with the transaction still in the air.',
+      'The receipt can be opened on OrdenScan and shared as text: amount, recipient, date, network, block and receipt number. Like a bank receipt.',
+      'New "Change password" screen in Settings → Security. It asks for the current one, requires eight characters and closes the other sessions open with your account; on this phone you stay signed in.',
+      'The app no longer says "you hold the keys": Orden Global keeps the keys for you and you sign in with your email. Your recovery phrase is your backup copy, not the only door.',
+      'Less jargon: "Exchange" instead of "Swap", "Your money" instead of "My assets", "your address" instead of "wallet address", and "referenced" to gold or silver instead of "backed".',
+    ],
+  },
   {
     v: '1.33.1',
     build: 71,

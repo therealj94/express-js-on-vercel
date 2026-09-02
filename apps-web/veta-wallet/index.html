@@ -3503,6 +3503,34 @@ body.en-p2c .cha-puerta p{color:var(--p2c-bruma)}
   background:rgba(201,169,97,.08)}
 .env-max:hover{background:rgba(201,169,97,.18)}
 .env-usd{margin-top:7px;min-height:18px;font-family:var(--mono);font-size:12.5px;color:var(--humo)}
+/* La revision antes de confirmar: una ficha con la direccion ENTERA, no una
+   frase con la direccion cortada. Se comprueba, no se lee de pasada. */
+.env-rev{margin:12px 0 0}
+.env-rev dd.mono{font-size:12px;word-break:break-all}
+/* ── el comprobante del envio ────────────────────────────────────────────────
+   Un recibo: el monto en didona como el saldo, el estado leido de la cadena
+   como pastilla, y los datos en la misma lista que usa la ficha de una moneda.
+   Tres estados, tres colores: confirmada (jade), pendiente (ambar) y
+   rechazada (coral). Que se distingan sin leer es el punto. */
+.comp-cab{display:flex;align-items:center;gap:14px}
+.comp-ic{width:52px;height:52px;border-radius:50%;flex:none;display:grid;place-items:center;
+  background:rgba(62,217,160,.14);border:1px solid rgba(62,217,160,.35)}
+.comp-ic svg{width:26px;height:26px;fill:none;stroke:var(--jade);stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.comp-ic.pendiente{background:rgba(251,191,36,.12);border-color:rgba(251,191,36,.35)}
+.comp-ic.pendiente svg{stroke:#FBBF24}
+.comp-ic.rechazada{background:rgba(240,119,107,.12);border-color:rgba(240,119,107,.35)}
+.comp-ic.rechazada svg{stroke:var(--coral)}
+.comp-monto{font-family:var(--serif);font-weight:500;font-size:clamp(30px,5vw,40px);line-height:1;color:var(--oroHi);font-variant-numeric:lining-nums}
+.comp-monto em{font-style:normal;font-size:.42em;color:var(--oroDp);letter-spacing:.08em}
+.comp-usd{margin-top:6px;font-family:var(--mono);font-size:13px;color:var(--humo)}
+.comp-estado{display:inline-flex;align-items:center;gap:7px;margin-top:16px;padding:6px 12px;border-radius:100px;font-size:12.5px;font-weight:700}
+.comp-estado::before{content:"";width:7px;height:7px;border-radius:50%;background:currentColor}
+.comp-estado[data-estado=confirmada]{background:rgba(62,217,160,.13);color:var(--jade)}
+.comp-estado[data-estado=pendiente]{background:rgba(251,191,36,.12);color:#FBBF24}
+.comp-estado[data-estado=rechazada]{background:rgba(240,119,107,.12);color:var(--coral)}
+.comp .pie{margin-top:12px}
+.comp .datos dd.mono{font-size:12px;word-break:break-all}
+.comp-btns{justify-content:flex-start;margin-top:18px}
 /* Ancho fijo: un <select> dentro de un flex se estira con su contenido y
    deja el campo de la cantidad reducido a un boton redondo. */
 .cob-sim{flex:0 0 104px;width:104px;padding:11px 10px;border-radius:12px;

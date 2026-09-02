@@ -43,7 +43,7 @@ const APPS = [
     nombre: 'Veta Wallet', raiz: join(AQUI, 'veta-wallet'), api: 'VETA',
     vistas: ['billetera', 'tarjeta', 'cambiar', 'actividad', 'ajustes',
              'enviar', 'recibir', 'comprar', 'deposito', 'token', 'identidad',
-             'remesas', 'contactos', 'sesiones', 'lector', 'seguridad', 'perfil'],
+             'remesas', 'contactos', 'sesiones', 'lector', 'seguridad', 'perfil', 'clave'],
     tramos: ['que-es', 'boveda', 'ecosistema', 'empezar'],
     sesion: () => localStorage.setItem('veta.sesion', JSON.stringify({
       token: 'x.' + btoa(JSON.stringify({ address: '0x8f2a3b4c5d6e7f8091a2b3c4d5e6f7a8b9c0d1e2', exp: Math.floor(Date.now() / 1e3) + 9999 })) + '.y',

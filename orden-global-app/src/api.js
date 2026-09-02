@@ -1,5 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as SecureStore from 'expo-secure-store';
+import Constants from 'expo-constants';
+import { leerRecibo, EXPLORADOR_TX_POR_OMISION } from './comprobante';
 
 // ============================================================
 // Veta Wallet — capa de conexión con el backend oficial de
@@ -724,6 +726,13 @@ export async function livePrices() {
 // Layer 1 propia sobre Hyperledger Besu con consenso QBFT y EVM Shanghai.
 // La variable sigue existiendo para poder apuntar a otra red sin recompilar.
 export const CHAIN_ID = process.env.EXPO_PUBLIC_WALLET_CHAIN_ID || '5550';
+// Cómo se nombra la red en las pantallas de la persona. Sale de CHAIN_ID y no
+// de un texto escrito a mano en cada pantalla: en la migración a la 5550
+// hubo que cazar el «8532» en siete archivos.
+export const RED_NOMBRE = `Orden Global · ${CHAIN_ID}`;
+// A dónde lleva «Ver en OrdenScan»: /tx/<hash>. Configurable desde app.json
+// (extra.exploradorTx), igual que en la ficha de cada moneda y en el chat.
+export const EXPLORADOR_TX = ((Constants.expoConfig?.extra || {}).exploradorTx || EXPLORADOR_TX_POR_OMISION);
 // Ya no hay `fallbackPrice`: si CoinGecko y gold-api caen, es preferible
 // mostrar "—" que un número congelado que un usuario podría confundir con
 // precio de mercado y usar para vender/comprar mal. La app pinta el estado
@@ -903,6 +912,66 @@ export async function apiSendToken({ to, amount, password, contract, idem }) {
   const hash = r?.hash || r?.transactionHash || r?.txId || null;
   const ok = r?.status === 1 || r?.status === '1' || r?.status === true || !!hash;
   return { hash, ok, receipt: r };
+}
+
+// ---------- la confirmación real, leída de la cadena ----------
+//
+// El backend devuelve el hash SIN esperar el bloque (esperar el minado pasaba
+// el corte de 30 s de Heroku), así que «ok» del backend significa «emitida»,
+// no «asentada». La confirmación de verdad es el recibo de la cadena:
+// `eth_getTransactionReceipt` trae el número de bloque y el estado. Se le
+// pregunta al mismo RPC del que se leen los saldos, cada `cada` ms, hasta
+// `intentos` veces. Devuelve lo que interpreta `leerRecibo`, o null si en ese
+// plazo la red no la incluyó (la transacción NO está perdida: sigue pendiente
+// y el comprobante ofrece volver a mirar).
+export async function esperarRecibo(hash, { intentos = 20, cada = 3000, provider } = {}) {
+  if (!/^0x[a-fA-F0-9]{64}$/.test(String(hash || ''))) return null;
+  let prov = provider;
+  if (!prov) {
+    try {
+      const raw = await walletApi.chain(CHAIN_ID);
+      const chain = Array.isArray(raw) ? raw[0] : raw?.chain || raw?.data || raw;
+      prov = chain?.provider || RPC_FALLBACK;
+    } catch (e) { prov = RPC_FALLBACK; }
+  }
+  for (let i = 0; i < intentos; i++) {
+    try {
+      const recibo = leerRecibo(await rpcCall(prov, 'eth_getTransactionReceipt', [hash]));
+      if (recibo) return recibo;
+    } catch (e) {
+      // Un RPC que no contesta una vez no es una transacción perdida: se
+      // vuelve a preguntar en la siguiente vuelta.
+    }
+    if (i < intentos - 1) await new Promise((ok) => setTimeout(ok, cada));
+  }
+  return null;
+}
+
+// ---------- cambiar la contraseña ----------
+//
+// El backend verifica la actual, exige ocho o más, sube la versión de sesión
+// —lo que cierra las demás sesiones abiertas— y devuelve un par nuevo (token
+// y refresco) para que ESTA sesión siga viva. Si el servidor todavía es el
+// anterior y no devuelve token, quien llama tiene que saberlo: la sesión de
+// este teléfono también quedó revocada y hay que volver a entrar.
+//
+// `noRetry`: un 401 aquí es «la contraseña actual no es correcta», no una
+// sesión vencida. Reintentar con la sesión renovada repetiría la misma
+// pregunta contra un limitador de cinco intentos cada quince minutos.
+export async function apiChangePassword({ actual, nueva }) {
+  const r = await req('/users/changePassword', {
+    method: 'POST',
+    body: { currentPassword: actual, newPassword: nueva },
+    timeout: 30000,
+    noRetry: true,
+  });
+  const tk = pickToken(r);
+  if (tk) {
+    await setToken(tk);
+    const rt = pickRefreshToken(r);
+    if (rt) await setRefreshToken(rt);
+  }
+  return { token: tk || null };
 }
 
 export const NETWORK_FEE_ORIGEN = 0.0084;
