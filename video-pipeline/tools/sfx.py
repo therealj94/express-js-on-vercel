@@ -39,6 +39,8 @@ PIEZAS = {
                 "close, dry, no music", 1.0),
     "s_risa": ("a young man laughs once, short and warm, more breath than "
                "voice, in a small shop, no music", 2.0),
+    "s_mensaje": ("a single soft phone message notification chime, short, warm, "
+                  "close, dry, no music", 1.5),
     "s_datafono": ("a card payment terminal beeps once to confirm, single clean "
                    "electronic tone, dry, no music", 1.5),
     "s_tienda": ("quiet ambience inside a small latin american corner shop at "

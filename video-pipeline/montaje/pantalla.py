@@ -135,9 +135,19 @@ def main() -> int:
             sys.exit("no encontré la pantalla; pasa --esquinas")
     print("pantalla en el fotograma %d: %s" % (n0, np.round(q).astype(int).tolist()))
 
-    ui = cv2.imread(a.ui, cv2.IMREAD_COLOR)
-    if ui is None:
-        sys.exit("no pude leer la interfaz")
+    # La interfaz puede ser una imagen fija o una CARPETA de fotogramas: las
+    # burbujas del chat van apareciendo, y una pantalla quieta no serviría.
+    ruta_ui = Path(a.ui)
+    if ruta_ui.is_dir():
+        uis = [cv2.imread(str(f), cv2.IMREAD_COLOR) for f in sorted(ruta_ui.glob("*.png"))]
+        if not uis:
+            sys.exit("la carpeta de interfaz está vacía")
+    else:
+        una = cv2.imread(a.ui, cv2.IMREAD_COLOR)
+        if una is None:
+            sys.exit("no pude leer la interfaz")
+        uis = [una]
+    ui = uis[0]
 
     # Puntos a seguir: dentro del cristal, que es donde el movimiento es el del
     # teléfono y no el de la mano ni el del fondo.
@@ -177,7 +187,8 @@ def main() -> int:
 
     tmp = Path(tempfile.mkdtemp())
     for i, f in enumerate(fotos):
-        cv2.imwrite(str(tmp / f"{i:05d}.png"), componer(f, ui, quads[i], a.fuerza, a.opaco))
+        cv2.imwrite(str(tmp / f"{i:05d}.png"),
+                    componer(f, uis[min(i, len(uis) - 1)], quads[i], a.fuerza, a.opaco))
     subprocess.run(["ffmpeg", "-v", "error", "-y", "-framerate", str(fps),
                     "-i", str(tmp / "%05d.png"), "-c:v", "libx264", "-crf", "17",
                     "-preset", "slow", "-pix_fmt", "yuv420p", a.salida], check=True)

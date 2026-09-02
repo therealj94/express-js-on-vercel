@@ -7,75 +7,75 @@
     "ancho": 1080,
     "alto": 1920,
     "fps": 30,
-    "dur_s": 42.6
+    "dur_s": 43.2
   },
   "fundido_s": 0.0,
   "voz": {
     "orden": [
       [
         1,
-        1.0
+        6.4
       ],
       [
         2,
-        8.6
+        12.0
       ],
       [
         3,
-        28.4
+        29.0
       ],
       [
         4,
-        36.4
+        37.0
       ]
     ],
     "_nota": "v1 'Su hija vive en otro pais.' v2 'Y hoy le manda dinero.' v3 'Lo que ella mando, llego completo.' v4 el cierre. Las cuatro, Maico, el mismo narrador de los tres anuncios."
   },
   "bloques": [
     {
-      "plano": "01_pulperia",
+      "plano": "04_abre_app",
       "t": 0.0,
-      "dur": 3.6,
-      "desde": 0.3,
-      "rotulos": []
-    },
-    {
-      "plano": "02_telefono_mostrador",
-      "t": 3.6,
-      "dur": 2.6,
-      "desde": 0.6,
+      "dur": 3.4,
+      "desde": 0.8,
       "rotulos": []
     },
     {
       "plano": "03_hija_cocina",
-      "t": 6.2,
+      "t": 3.4,
       "dur": 2.6,
       "desde": 0.5,
       "rotulos": []
     },
     {
-      "plano": "04_abre_app",
-      "t": 8.8,
+      "plano": "01_pulperia",
+      "t": 6.0,
+      "dur": 3.4,
+      "desde": 0.3,
+      "rotulos": []
+    },
+    {
+      "plano": "02_telefono_mostrador",
+      "t": 9.4,
       "dur": 2.4,
-      "desde": 0.8,
+      "desde": 0.6,
       "rotulos": []
     },
     {
       "plano": "05_elige_contacto",
-      "t": 11.2,
+      "t": 11.8,
       "dur": 2.2,
       "desde": 0.9,
       "rotulos": [
         {
-          "t": 12.2,
-          "dur": 1.5,
+          "t": 12.6,
+          "dur": 1.4,
           "texto": "Mamá."
         }
       ]
     },
     {
       "plano": "06_pone_dedo",
-      "t": 13.4,
+      "t": 14.0,
       "dur": 1.6,
       "desde": 0.7,
       "rotulos": [
@@ -88,39 +88,39 @@
     },
     {
       "plano": "07_suena_pulperia",
-      "t": 15.0,
+      "t": 15.6,
       "dur": 1.8,
       "desde": 0.4,
+      "rotulos": []
+    },
+    {
+      "plano": "08_cara_senora",
+      "t": 17.4,
+      "dur": 3.6,
+      "desde": 0.5,
       "rotulos": [
         {
-          "t": 15.6,
+          "t": 17.6,
           "dur": 2.0,
           "texto": "Cuatro segundos."
         }
       ]
     },
     {
-      "plano": "08_cara_senora",
-      "t": 16.8,
-      "dur": 3.6,
-      "desde": 0.5,
-      "rotulos": []
-    },
-    {
       "plano": "09_ensena_pantalla",
-      "t": 20.4,
+      "t": 21.0,
       "dur": 4.0,
       "desde": 0.0,
       "rotulos": []
     },
     {
       "plano": "10_ve_detalle",
-      "t": 24.4,
+      "t": 25.0,
       "dur": 3.2,
       "desde": 0.4,
       "rotulos": [
         {
-          "t": 25.0,
+          "t": 25.6,
           "dur": 2.4,
           "texto": "Y podés ver\nexactamente qué pasó."
         }
@@ -128,21 +128,27 @@
     },
     {
       "plano": "11_tarjeta",
-      "t": 27.6,
+      "t": 28.2,
       "dur": 3.2,
       "desde": 0.4,
-      "rotulos": []
+      "rotulos": [
+        {
+          "t": 29.4,
+          "dur": 1.9,
+          "texto": "Pagado con ORIGEN."
+        }
+      ]
     },
     {
       "plano": "11_caras_calle",
-      "t": 30.8,
+      "t": 31.4,
       "dur": 2.4,
       "desde": 0.8,
       "rotulos": []
     },
     {
       "plano": "12_caras_calle_b",
-      "t": 33.2,
+      "t": 33.8,
       "dur": 2.4,
       "desde": 0.8,
       "rotulos": []
@@ -150,18 +156,18 @@
     {
       "plano": "negro",
       "negro": true,
-      "t": 35.6,
+      "t": 36.2,
       "dur": 7.0,
       "rotulos": [
         {
-          "t": 36.6,
+          "t": 37.2,
           "dur": 5.6,
           "texto": "Orden Global.",
           "alto": 0.58,
           "escala": 1.15
         },
         {
-          "t": 37.9,
+          "t": 38.5,
           "dur": 4.3,
           "texto": "Un sistema financiero\nque se puede comprobar.",
           "chico": true,
@@ -174,7 +180,7 @@
     "01_pulperia": 3,
     "02_telefono_mostrador": 3,
     "03_hija_cocina": 3,
-    "04_abre_app": 9,
+    "04_abre_app": 8,
     "05_elige_contacto": 3,
     "06_pone_dedo": 2,
     "07_suena_pulperia": 3,
@@ -189,5 +195,6 @@
   "_segunda_pasada": "Un montador a ciegas: se aburrio en el segundo 8 (el plano de la hija se hacia largo), no vio el enlace entre firmar y que suene alla, y la voz del cierre entraba 3 dB alta y sonaba a eslogan pegado. Arreglado: el plano de la hija baja de 3,4 a 2,6 s; el de firmar se corta 0,5 s DESPUES de que el pulgar aprieta, para que el corte sea la causa del aviso; y antes del cierre entra una linea calida sobre la madre pagando, que es la historia entera dicha en cinco palabras.",
   "_tercera_pasada": "El plano de la mano cogiendo el telefono se rompe en TODAS las tomas cuando los dedos llegan al cristal: es lo mas dificil que hay para el modelo. La toma 3 aguanta limpia hasta el segundo 2,2 del clip, asi que se corta ahi, justo cuando la mano toca. Sale ganando: el aviso suena, la mano llega, y CORTA a su cara. Los 1,6 s que sobran van al plano de la cara, que el montador dijo que se quedaba corto. Y la voz lleva ahora una sala minima: sonaba grabada en otro sitio que el resto.",
   "_cuarta_pasada": "Jose, que es el que manda: 'empieza de la nada, no se entiende que estan haciendo con el celular'. Un espectador normal, preguntado a ciegas, lo confirmo por otro lado: no distingue que botones aprieta y no entiende de que va hasta el segundo 15. Arreglo: dos frases al principio que dan los dos hechos que lo explican todo -de quien es hija y que esta pasando-, los rotulos 'Mama.' y 'Enviar.' sobre los gestos que no se leen en pantalla, el logo de Veta Wallet cuando abre la app -que es literalmente lo que el espectador pidio: 'pon el logo para saber que buscar en el telefono'-, y el cierre mas largo y con el nombre grande, que tambien lo pidio.",
-  "_pantallas": "Jose: 'la pantalla no se mira Veta Wallet, no se puede ver que estan dentro y tocan ahi'. Las pantallas de los clips van encendidas pero VACIAS -el modelo no sabe dibujar una interfaz-, asi que se compone una encima siguiendo el telefono con flujo optico (montaje/pantalla.py, dibujada en montaje/interfaz.py). La toma 9 de un plano es la version con pantalla. Dos planos: al abrir la app se ve Veta Wallet, y en el comprobante se ve ENTREGADO con la hora, el numero y ordenscan.com. El comprobante va en CLARO y no en la paleta de la marca porque esa pantalla le ilumina la cara: con una pantalla oscura la luz de su cara se quedaba sin fuente. El plano de elegir contacto tiene el telefono casi de canto y ahi no cabe interfaz legible: ese lo resuelve el rotulo 'Mama.'."
+  "_pantallas": "Jose: 'la pantalla no se mira Veta Wallet, no se puede ver que estan dentro y tocan ahi'. Las pantallas de los clips van encendidas pero VACIAS -el modelo no sabe dibujar una interfaz-, asi que se compone una encima siguiendo el telefono con flujo optico (montaje/pantalla.py, dibujada en montaje/interfaz.py). La toma 9 de un plano es la version con pantalla. Dos planos: al abrir la app se ve Veta Wallet, y en el comprobante se ve ENTREGADO con la hora, el numero y ordenscan.com. El comprobante va en CLARO y no en la paleta de la marca porque esa pantalla le ilumina la cara: con una pantalla oscura la luz de su cara se quedaba sin fuente. El plano de elegir contacto tiene el telefono casi de canto y ahi no cabe interfaz legible: ese lo resuelve el rotulo 'Mama.'.",
+  "_quinta_pasada": "Jose pide: mejor inicio, mejor final, burbujas de mensaje entre madre e hija, 'Pagado con ORIGEN' cuando paga, que se vea que se lleva cosas a la casa, y mantener personajes. El arranque pasa a ser el CHAT: en cuanto se leen dos burbujas con 'Mama' arriba, el espectador ya sabe quienes son la una de la otra sin que nadie se lo diga, que es justo lo que faltaba. Los planos de la compra y el final nuevo estan generandose en la misma maquina."
 }

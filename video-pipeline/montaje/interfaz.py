@@ -60,7 +60,9 @@ def comprobante(W=560, H=1200) -> Image.Image:
     cifra y solo enseña que llegó"— y además el acta prohíbe cifras."""
     im = Image.new("RGB", (W, H), CLARO)
     d = ImageDraw.Draw(im)
-    y = int(H * 0.11)
+    centrar(d, "  ".join("VETA WALLET"), ImageFont.truetype(F_ROT, 21),
+            int(H * 0.045), GRIS, W)
+    y = int(H * 0.13)
     # La marca de verificación, dibujada: un círculo y su palomita.
     r = 34
     cx, cy = W // 2, y + r
@@ -76,6 +78,68 @@ def comprobante(W=560, H=1200) -> Image.Image:
     d.line([(W * 0.16, y + 244), (W * 0.84, y + 244)], fill=(206, 203, 196), width=2)
     centrar(d, "ordenscan.com", ImageFont.truetype(F_ROT, 25), y + 270, ORO_OSCURO, W)
     return im
+
+
+
+# ---------------------------------------------------------------- el chat ---
+# José: "burbujas de mensaje texto entre mamá y hija". Es lo que arregla el
+# arranque: en cuanto se ven dos burbujas con "Mamá" arriba, el espectador ya
+# sabe quiénes son la una de la otra, sin que nadie se lo diga.
+BURBUJA_ELLA = (38, 40, 45)      # lo que escribe la madre, gris
+BURBUJA_HIJA = (150, 116, 30)    # lo que escribe la hija, oro apagado
+CHAT_FONDO = (12, 13, 15)
+
+
+def _burbuja(d, txt, y, mia, W, f, radio=22):
+    """Una burbuja de chat. Devuelve su alto."""
+    pad = 22
+    an = d.textlength(txt, font=f)
+    ancho = min(int(an) + pad * 2, int(W * 0.78))
+    x = W - ancho - int(W * 0.06) if mia else int(W * 0.06)
+    alto = 44 + 26
+    d.rounded_rectangle([x, y, x + ancho, y + alto], radio,
+                        fill=BURBUJA_HIJA if mia else BURBUJA_ELLA)
+    d.text((x + pad, y + 24), txt, font=f, fill=TEXTO)
+    return alto + 16
+
+
+def _cabecera(d, W, f):
+    d.text((int(W * 0.06), 40), "Mamá", font=f, fill=TEXTO)
+    d.line([(0, 108), (W, 108)], fill=(44, 46, 52), width=2)
+
+
+def chat(mensajes, W=560, H=1200, foto=None):
+    """Una pantalla de chat con las burbujas que ya han aparecido."""
+    im = Image.new("RGB", (W, H), CHAT_FONDO)
+    d = ImageDraw.Draw(im)
+    _cabecera(d, W, ImageFont.truetype(F_ROT, 34))
+    y = 150
+    for txt, mia in mensajes:
+        if txt == "@foto" and foto is not None:
+            ancho = int(W * 0.62)
+            ft = foto.resize((ancho, int(foto.height * ancho / foto.width)), Image.LANCZOS)
+            im.paste(ft, (int(W * 0.06), y))
+            y += ft.height + 16
+            continue
+        y += _burbuja(d, txt, y, mia, W, ImageFont.truetype(F_ROT, 27))
+    return im
+
+
+def secuencia(destino: Path, nombre: str, guion, fps=24, foto=None,
+              W=560, H=1200):
+    """Los fotogramas del chat: cada mensaje aparece en su segundo.
+
+    `guion` es [(segundo, texto, es_de_la_hija)]. Se escribe una carpeta de PNG
+    numerados que `montaje/pantalla.py` pega dentro del teléfono."""
+    carpeta = destino / nombre
+    carpeta.mkdir(parents=True, exist_ok=True)
+    dur = max(t for t, _, _ in guion) + 2.0
+    for n in range(int(dur * fps)):
+        t = n / fps
+        vistos = [(txt, mia) for s, txt, mia in guion if s <= t]
+        chat(vistos, W, H, foto).save(carpeta / f"{n:04d}.png")
+    print(f"{nombre}/  {int(dur*fps)} fotogramas")
+    return carpeta
 
 
 PANTALLAS = {"ui_splash": splash, "ui_comprobante": comprobante}
