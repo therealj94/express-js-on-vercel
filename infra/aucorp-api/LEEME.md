@@ -35,7 +35,31 @@ mismo `gid` de Genesis ID.
 | `lib/asientos.js` | La única puerta: persiste, guarda contra el doble gasto, y reconcilia. |
 | `lib/cambio.js` | Tasas reales con su fecha y su origen dicho. |
 | `lib/genesis.js` | El cliente de Genesis ID. Fail-closed. |
-| `controllers/tesoreria*` | La frontera: por dónde entra y sale el dinero. Detrás de `X-Admin-Key`. |
+| `lib/validar.js` | La frontera de entrada: cada forma (monto, moneda, gid con dígito verificador, id, ref, fecha, mes, SWIFT) una sola vez, con su mensaje y su campo. Lo que no tiene forma es 400 antes de tocar la base. |
+| `lib/sanciones.js` | El tamiz OFAC, el mismo de Genesis (`aml/listas`, `tamiz`, `lib/texto`) en CommonJS. Lee SDN.CSV y ALT.CSV, vive en Mongo, se importa por `/tesoreria/sanciones/importar`. Sin lista no se tamiza, y no tamizar es un no. |
+| `lib/comprobante.js` | El comprobante de un asiento visto por su dueño (saldo antes y después derivados del libro, huella SHA-256) y el extracto de un mes (JSON y CSV). |
+| `lib/barrido.js` | Las solicitudes con más de N horas sin cambio. **Sólo avisa** (log y `/tesoreria/solicitudes/atascadas`); nunca resuelve. |
+| `controllers/tesoreria*` | La frontera: por dónde entra y sale el dinero. Detrás de `X-Admin-Key`. También la lista de sanciones y el barrido. |
+
+## Las rutas que se sumaron
+
+| Ruta | Quién | Qué |
+|---|---|---|
+| `GET /perfil` | sesión | Quién es, sus cuentas, su nivel y qué es esta casa |
+| `GET /movimientos?moneda&clase&desde&hasta&q&pagina` | sesión | El historial con filtros (búsqueda literal, nunca regex) |
+| `GET /movimientos/:numero/comprobante` | sesión | El comprobante de UN movimiento, por su número (la ref sin el gid) |
+| `GET /extracto?moneda&mes&formato=json\|csv` | sesión | El extracto de un mes; cuadra inicial + entradas − salidas = final |
+| `POST /solicitudes/deposito` | sesión | **Avisar** un depósito ya transferido. No acredita nada |
+| `GET /solicitudes/:id` | sesión | Una solicitud con su estado, qué le falta y cuántas horas lleva |
+| `GET /tesoreria/solicitudes/atascadas?horas` | admin | El barrido a pedido. Sólo enseña |
+| `POST /tesoreria/deposito { …, solicitud? }` | admin | Igual que antes; con `solicitud` cierra el aviso que atiende |
+| `GET /tesoreria/sanciones` · `POST …/importar` | admin | Estado de la lista; importar de la OFAC (sin cuerpo) o pegada (`{ texto, alt?, fuente }`) |
+| `GET /tesoreria/sanciones/alertas` · `POST …/:id/resolver` | admin | Las coincidencias fuertes que cerraron una puerta, para cumplimiento |
+
+**El tamiz es fail-closed y eso se nota el primer día:** hasta que operaciones
+importe la lista, ningún destino bancario nuevo se guarda y ningún retiro se
+pide (503 `SIN_TAMIZ`). Es a propósito. Una coincidencia fuerte devuelve 403
+`DESTINO_EN_REVISION` sin decir contra qué chocó, y deja una alerta.
 
 ## Las variables de entorno
 
@@ -48,6 +72,9 @@ mismo `gid` de Genesis ID.
 | `GENESIS_URL` | Dónde vive Genesis | Por defecto el de producción |
 | `CORS_ORIGENES` | Los orígenes permitidos, separados por comas | Ningún navegador puede llamar |
 | `AUCORP_MARGEN_BPS` | El margen del cambio, en puntos base | **Cero.** Un margen que nadie configuró es un cobro que nadie decidió |
+| `AUCORP_BARRIDO_HORAS` | Cuántas horas sin cambio hacen «atascada» una solicitud | 24 |
+| `AUCORP_BARRIDO_CADA_MIN` | Cada cuánto corre el barrido y escribe en el log | 60. `AUCORP_BARRIDO=no` lo apaga |
+| `AUCORP_OFAC_SDN` · `AUCORP_OFAC_ALT` | De dónde bajar la lista | Las direcciones oficiales del Tesoro de EE. UU. |
 
 ## Las pruebas
 
@@ -56,12 +83,14 @@ npm install
 npm run probar
 ```
 
-Cuatro suites. `probar-monedas` y `probar-libro` son puro cálculo;
-`probar-asientos` y `probar-api` levantan un Mongo en memoria (y `probar-api`
-además finge a Genesis, que es de otra casa — todo lo de AuCorp corre de
-verdad, incluida la tasa de cambio real). `probar-cambio` llama a la fuente de
-tasas de verdad a propósito: un fingido diría que todo funciona el día que la
-fuente cambie de formato, y eso se descubriría con un cliente delante.
+Nueve suites. `probar-monedas`, `probar-libro`, `probar-validar` y
+`probar-sanciones` son puro cálculo (la de sanciones lee una lista en el
+formato real de la OFAC, `pruebas/listas/`, con fichas inventadas).
+`probar-asientos`, `probar-comprobante`, `probar-barrido` y `probar-api`
+levantan un Mongo en memoria y el app real, con Genesis fingido —fingido SOLO
+Genesis, que es de otra casa, y ni un poco más permisivo que el real—.
+`probar-cambio` llama a la fuente de tasas de verdad a propósito: un fingido
+diría que todo funciona el día que la fuente cambie de formato.
 
 Si `mongodb-memory-server` no puede descargar su binario (red cortada), las dos
 suites de Mongo lo dicen y se salen sin fingir un verde. Se le puede pasar uno
