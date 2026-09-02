@@ -389,7 +389,7 @@ const VETA = (() => {
 
   function ir(destino, cual) {
     tele('pantalla', destino === 'app' ? 'app.' + (vistaActual || 'inicio') : destino);
-    for (const id of ['portada', 'acceso', 'app', 'reclave']) $('#' + id).classList.toggle('oculto', id !== (destino === 'bienvenida' ? 'portada' : destino));
+    for (const id of ['portada', 'acceso', 'app', 'reclave', 'comprobar']) $('#' + id).classList.toggle('oculto', id !== (destino === 'bienvenida' ? 'portada' : destino));
     $('#techo').classList.toggle('oculto', destino === 'app');
     /* El marco del navegador (la barra del teléfono) acompaña: azul espacio
        en la entrada, el verde del pozo adentro — un solo meta estático
@@ -2335,6 +2335,107 @@ const VETA = (() => {
     }).join('');
   }
 
+  // ── la tarjeta de identidad y su comprobación pública ─────────────────────
+  //
+  // Nombre, GID, fecha, estado y un QR con el enlace público de comprobación.
+  // El QR NO lleva datos personales: quien lo escanea ve «verificada» o «no
+  // verificada» y la fecha, nada más. La veta dorada y el GID en monoespaciada
+  // —lo que se dicta por teléfono— son la firma del diseño.
+
+  const ENLACE_COMPROBACION = 'https://app.vetawallet.com/gid/';
+  const GENESIS_PUBLICO = 'https://genesis-id.onrender.com/api/publico/gid/';
+
+  // La fecha con el año entero sale de `fechaCorta`, la misma de las actas.
+
+  function tarjetaGid({ nombre, gid, estado, fecha, foto, iniciales }) {
+    const E = {
+      verificada: ['ok', 'var(--jade)', 'rgba(62,217,160,.14)'], revision: ['rev', '#FBBF24', 'rgba(251,191,36,.14)'],
+      suspendida: ['mal', 'var(--coral)', 'rgba(240,119,107,.14)'], rechazada: ['mal', 'var(--coral)', 'rgba(240,119,107,.14)'],
+      pendiente: ['no', 'var(--humo)', 'rgba(255,255,255,.08)'],
+    };
+    const [clase, color, fondo] = E[estado] || E.pendiente;
+    const etiqueta = t('gid.estado.' + (E[estado] ? estado : 'pendiente'));
+    const cuando = fecha ? fechaCorta(fecha) : '—';
+    const ini = (iniciales || (nombre || 'OG').split(/\s+/).map(p => p[0]).join('').slice(0, 2)).toUpperCase();
+    let qr = '';
+    if (gid) { try { qr = QR.svg(ENLACE_COMPROBACION + encodeURIComponent(gid), { claro: '#F3ECD9', oscuro: '#021B1C', margen: 1 }); } catch {} }
+    return `
+    <div class="gid-tarjeta ${clase}">
+      <div class="gid-arriba">
+        <div class="gid-marca">GENESIS ID<small>· ORDEN GLOBAL</small></div>
+        <span class="estado" style="color:${color};background:${fondo}">${etiqueta}</span>
+      </div>
+      <div class="gid-cuerpo">
+        <div class="gid-foto">${foto ? `<img src="${esc(foto)}" alt="">` : esc(ini)}</div>
+        <div style="flex:1;min-width:0">
+          <div class="gid-etq">${t('gid.tarjeta.titular')}</div>
+          <div class="gid-nombre">${esc(nombre || '—')}</div>
+          <div class="gid-etq" style="margin-top:8px">GID</div>
+          <div class="gid-num">${gid ? esc(gid) : t('gid.tarjeta.sinGid')}</div>
+        </div>
+      </div>
+      <div class="gid-abajo">
+        <div>
+          <div class="gid-etq">${estado === 'verificada' ? t('gid.tarjeta.verificadaEl') : t('gid.tarjeta.actualizada')}</div>
+          <div class="gid-dato">${esc(cuando)}</div>
+          <div class="gid-etq" style="margin-top:8px">${t('gid.tarjeta.estado')}</div>
+          <div class="gid-dato" style="color:${color}">${etiqueta}</div>
+          <div class="gid-pie">${gid ? t('gid.tarjeta.qrPie') : t('gid.tarjeta.qrSin')}</div>
+        </div>
+        <div class="gid-qr">${qr || `<svg viewBox="0 0 24 24" style="stroke:#6E938F;fill:none;stroke-width:1.5;padding:26px"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><path d="M14 14h3v3h-3zM18 18h3v3h-3z"/></svg>`}</div>
+      </div>
+    </div>`;
+  }
+
+  /* La tarjeta de la persona que tiene la sesion, con lo que dijo el servidor. */
+  function tarjetaGidPropia() {
+    const e = String(identidad?.estado || '').toLowerCase();
+    const estado = e === 'verificada' ? 'verificada'
+      : e === 'suspendida' || e === 'rechazada' ? e
+        : e === 'en-revision' || e === 'biometria' ? 'revision' : 'pendiente';
+    return tarjetaGid({
+      nombre: identidad?.nombreLegal || sesion?.nombre, gid: estado === 'verificada' ? identidad?.gid : null,
+      estado, fecha: identidad?.verificadaEn || identidad?.actualizadaEn, foto: identidad?.fotoCredencial,
+    });
+  }
+
+  /* /gid/<GID>: no pide sesion y habla directamente con Genesis ID, que solo
+     responde «verificada» o «no verificada» y la fecha. Un fallo de red NO es
+     «no verificada»: se dice que no se pudo comprobar, que es otra cosa. */
+  function gidDeLaRuta() {
+    const m = location.pathname.match(/^\/gid\/([A-Za-z0-9-]{8,20})\/?$/i);
+    if (m) return m[1].toUpperCase();
+    const q = new URLSearchParams(location.search).get('gid');
+    return q ? q.toUpperCase() : null;
+  }
+
+  async function comprobarGid(gid) {
+    const caja = $('#comp-caja');
+    if (!caja) return;
+    caja.innerHTML = `<div class="comp-res"><span class="girando"></span><div><b>${t('comp.buscando')}</b><small class="mono">${esc(gid)}</small></div></div>`;
+    let d = null, estado = 0;
+    try {
+      const ctl = new AbortController();
+      const reloj = setTimeout(() => ctl.abort(), 20000);
+      const r = await fetch(GENESIS_PUBLICO + encodeURIComponent(gid), { signal: ctl.signal, headers: { Accept: 'application/json' } });
+      clearTimeout(reloj);
+      estado = r.status;
+      d = await r.json().catch(() => null);
+    } catch { estado = 0; }
+    const res = (clase, ico, titulo, texto) => `
+      <div class="comp-res ${clase}">
+        <div class="comp-ic"><svg viewBox="0 0 24 24">${ico}</svg></div>
+        <div><b>${titulo}</b><small>${texto}</small><small class="mono" style="margin-top:6px;color:var(--oroLt)">${esc(gid)}</small></div>
+      </div>`;
+    if (estado === 400) { caja.innerHTML = res('mal', '<path d="M12 9v4M12 17h.01"/><circle cx="12" cy="12" r="9"/>', t('comp.malFormado'), t('comp.malFormadoP')); return; }
+    if (estado !== 200 || !d) { caja.innerHTML = res('duda', '<circle cx="12" cy="12" r="9"/><path d="M12 8v4M12 16h.01"/>', t('comp.noPude'), t('comp.noPudeP')); return; }
+    if (d.verificada) {
+      caja.innerHTML = res('ok', ICO.id, t('comp.ok'), `${t('comp.okP')} ${esc(fechaCorta(d.verificadaEn))}${d.tipo === 'negocio' ? ` · ${t('comp.negocio')}` : ''}`);
+      return;
+    }
+    caja.innerHTML = res('no', '<circle cx="12" cy="12" r="9"/><path d="M9 9l6 6M15 9l-6 6"/>', t('comp.no'), t('comp.noP'));
+  }
+
   function tarjetaIdentidad(compacta) {
     const e = (identidad?.estado || identidad?.status || (identidad?.verified ? 'verificada' : 'sin-iniciar') || '').toLowerCase();
     /* Los OCHO estados del servidor, no cuatro. `biometria` es la sala de
@@ -2386,7 +2487,9 @@ const VETA = (() => {
        le pedia correo y contraseña de operador a quien solo queria verificarse,
        y ahi no hay forma de registrarse. Ahora se queda en casa, con la sesion
        que ya tiene puesta. */
-    return `
+    /* Verificada y a pantalla completa: la TARJETA, con su QR de comprobacion,
+       va delante del resumen. Es lo que la persona enseña. */
+    return (listo && !compacta ? `<div class="bloque vidrio">${tarjetaGidPropia()}<p class="pie" style="margin-top:14px">${t('gid.qrPie')}</p></div>` : '') + `
     <div class="bloque vidrio">
       <div class="gid">
         <div class="gid-ic"><svg viewBox="0 0 24 24">${ICO.id}</svg></div>
@@ -4279,6 +4382,7 @@ const VETA = (() => {
       </div>` : ''}
 
     <div class="bloque-cab" style="margin:26px 0 0"><h3 class="cab-mini">${t('ver.listoEst')}</h3></div>
+    ${!problemas.length && !rechazado && !rostroMal ? `<div class="bloque vidrio" style="margin-top:12px">${tarjetaGidPropia()}<p class="pie" style="margin-top:14px">${t('gid.tarjeta.qrSin')}</p></div>` : ''}
     ${tarjetaIdentidad(true)}
 
     <div class="ver-botones">
@@ -15684,6 +15788,12 @@ const VETA = (() => {
        que pinta vistaActual. Si la vista todavia no existe, vista() cae sola en
        la billetera, asi que esto nunca deja una pantalla en blanco. */
     mirarSiEsVentana();
+    /* /gid/<GID>: la pagina publica que abre el QR de una tarjeta de identidad.
+       No pide sesion y no entra a la billetera: quien escanea quiere saber si
+       la credencial vale, nada mas. Amplify devuelve el index para cualquier
+       ruta, asi que la ruta se lee aqui. */
+    const gidPedido = gidDeLaRuta();
+    if (gidPedido) { veloFuera(true); ir('comprobar'); comprobarGid(gidPedido); return; }
     const pideVerificar = location.hash === '#verificar';
     if (pideVerificar) vistaActual = 'verificar';
 
@@ -15897,5 +16007,6 @@ const VETA = (() => {
               es el síntoma y nunca la causa. */
            _chatEstado: () => ({ puerta: chatSt.puerta, error: chatSt.error,
                                  tab: chatSt.tab, hayCon: !!chatSt.con }),
+           comprobarGid,
            _estado: () => ({ sesion, cartera, identidad, movimientos, tarjeta, vistaActual, modo, ocultos }) };
 })();
