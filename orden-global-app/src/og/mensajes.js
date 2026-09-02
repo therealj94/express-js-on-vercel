@@ -734,6 +734,18 @@ export function escribiendo(para) {
 /** Deja una señal para el otro lado. Nunca lanza. */
 export const senalar = (para, tipo, datos) =>
   pedir('/senal', firmado({ para, tipo, datos: datos || {} })).catch(() => null);
+
+/* Las credenciales del relevo de video (TURN).
+ *
+ * Las pide NUESTRO servidor a Cloudflare y las devuelve ya cortas: el token
+ * que vale para toda la cuenta no baja nunca al teléfono. Si no está
+ * configurado, esto devuelve una lista vacía y las llamadas siguen andando
+ * con STUN a secas, que es lo que resuelve la mayoría.
+ *
+ * Nunca lanza: quedarse sin relevo empeora las llamadas difíciles, pero no
+ * puede impedir las fáciles. */
+export const turno = () =>
+  pedir('/turno', firmado({})).then((d) => d.iceServers || []).catch(() => []);
 // /buscar encuentra por nombre, correo o GID (empieza-por, sin distinguir
 // mayúsculas) y cada persona del resultado ya trae su gid — se pasa tal cual.
 export const buscar = (q) => pedir('/buscar', firmado({ q }));

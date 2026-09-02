@@ -2,7 +2,7 @@
   "expo": {
     "name": "Orden Global",
     "slug": "orden-global",
-    "version": "1.33.3",
+    "version": "1.33.4",
     "owner": "ordenglobal",
     "runtimeVersion": {
       "policy": "fingerprint"
@@ -97,7 +97,7 @@
         "RECORD_AUDIO",
         "MODIFY_AUDIO_SETTINGS"
       ],
-      "versionCode": 73,
+      "versionCode": 74,
       "blockedPermissions": [
         "android.permission.READ_EXTERNAL_STORAGE",
         "android.permission.WRITE_EXTERNAL_STORAGE"
@@ -122,6 +122,7 @@
           }
         }
       ],
+      "@config-plugins/react-native-webrtc",
       [
         "expo-camera",
         {

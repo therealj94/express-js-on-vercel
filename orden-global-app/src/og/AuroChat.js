@@ -46,6 +46,14 @@ import { useLang } from '../i18n';
 import { PantallaConTeclado, useTeclado } from './Teclado';
 import { genesis } from '../genesis';
 import * as M from './mensajes';
+import LLAMADA from './llamada';
+import PantallaLlamada, { razonDeCorte } from './PantallaLlamada';
+
+/* Las señales que son de una llamada y no del chat. Los nombres son los
+   MISMOS que usa `apps-web/veta-wallet/llamada.js`: cambiar uno acá sin
+   cambiarlo allá rompe las llamadas entre el teléfono y el navegador sin que
+   ninguna prueba lo note. */
+const SENALES_LLAMADA = ['llamo', 'respuesta', 'ice', 'cuelgo', 'rechazo', 'ocupado'];
 import { aUri } from './rutas';
 import { guardarContacto, renombrarContacto, eliminarContacto, leerLibreta, comoMapa } from './contactos';
 import { reproducir } from './sonidos';
@@ -57,6 +65,7 @@ const TXT = {
     nadie: 'Nadie con ese nombre o GID todavía.',
     vacio: 'Aún no tienes conversaciones.',
     escribe: 'Escribe…', origen: 'ENVIAR ORIGEN', miqr: 'MI CÓDIGO', escanear: 'ESCANEAR',
+    llamar: 'Llamar', videollamar: 'Videollamada',
     agregar: 'AGREGAR', ayer: 'ayer',
     ajustes: 'Mi perfil y ajustes', nuevoGrupo: 'Nuevo grupo',
     gateTit: 'El chat es de gente verificada',
@@ -186,6 +195,7 @@ const TXT = {
     nadie: 'Nobody with that name or GID yet.',
     vacio: 'No conversations yet.',
     escribe: 'Type…', origen: 'SEND ORIGEN', miqr: 'MY CODE', escanear: 'SCAN',
+    llamar: 'Call', videollamar: 'Video call',
     agregar: 'ADD', ayer: 'yesterday',
     ajustes: 'My profile and settings', nuevoGrupo: 'New group',
     gateTit: 'The chat is for verified people',
@@ -497,6 +507,12 @@ export default function AuroChat({ nav, params }) {
   /* Por qué el relevo dijo que no: «sesion-no-vale» (se arregla entrando de
      nuevo) o «sin-sesion» / otro dueño (se arregla con el teléfono anterior). */
   const [motivoOtra, setMotivoOtra] = React.useState(null);
+
+  /* La llamada. `llam` es lo que dice el motor; `quienLlama` es a quién se le
+     pone cara y nombre en la pantalla —eso el motor no lo sabe ni tiene por
+     qué: él solo maneja audio, video y señales. */
+  const [llam, setLlam] = useState(() => LLAMADA.cuento());
+  const [quienLlama, setQuienLlama] = useState(null);
   const [puerta, setPuerta] = useState('mirando');       // mirando | falta | abierta
   const [convos, setConvos] = useState(null);
   const [busca, setBusca] = useState('');
@@ -875,14 +891,72 @@ export default function AuroChat({ nav, params }) {
      estar EN LÍNEA de verdad—. Se apaga al salir del hilo: en un teléfono un
      bucle abierto es batería. Quien escribe se olvida solo a los tres
      segundos: nadie manda un «ya paré», se asume por silencio. */
+  /* EL BUZÓN YA NO CUELGA DEL HILO ABIERTO.
+     Antes se encendía con `destino` y se apagaba al salir, porque lo único
+     que traía era el «está escribiendo…». Ahora también trae las llamadas, y
+     una llamada que solo entra si ya estabas mirando esa conversación no es
+     una llamada: es una casualidad. Se enciende con la pantalla del chat.
+     El hilo abierto se lee de una referencia y no de la dependencia del
+     efecto: si fuera dependencia, cambiar de conversación cortaría el bucle y
+     una llamada entrante se perdería justo en ese hueco. */
+  const destinoRef = useRef(destino);
+  useEffect(() => { destinoRef.current = destino; }, [destino]);
+
+  /* EL MOTOR DE LLAMADAS, ENCHUFADO UNA VEZ.
+     Se le dice por dónde manda señales (el mismo buzón del chat), a quién
+     avisar cuando algo cambia, y de dónde saca el relevo de video. Si el
+     relevo no está configurado, `turno()` devuelve una lista vacía y las
+     llamadas siguen andando con STUN, que resuelve la mayoría. */
   useEffect(() => {
-    if (!destino) return undefined;
+    LLAMADA.arrancar({
+      mandar: M.senalar,
+      traerTurno: M.turno,
+      alCambiar: (c) => {
+        setLlam(c);
+        /* Cuando se cortó por algo que no fue colgar, se dice por qué. Un «no
+           se pudo» a secas invita a intentarlo diez veces, y `sin-camino` no
+           se arregla intentándolo: se arregla cambiando de red. */
+        const razon = c?.motivo ? razonDeCorte(c.motivo) : null;
+        if (razon) toast(razon, 'error');
+        if (c?.estado === 'libre') setQuienLlama(null);
+      },
+    });
+    return () => { if (LLAMADA.enLlamada()) LLAMADA.colgar('yo'); };
+  }, [toast]);
+
+  /** Llamar a quien está abierto en el hilo. */
+  const llamarA = useCallback(async (conVideo) => {
+    if (!destinoRef.current) return;
+    const a = destinoRef.current;
+    setQuienLlama({ correo: a, nombre: nombreDe(a) || a });
+    try {
+      await LLAMADA.llamar(a, conVideo);
+    } catch {
+      /* El motor ya colgó y ya dijo el motivo por `alCambiar`; acá no se
+         repite el aviso para no dar dos carteles por un solo fallo. */
+    }
+  }, [nombreDe]);
+
+  useEffect(() => {
     M.escuchar((s) => {
-      if (s?.tipo !== 'escribe') return;
-      const donde = String(s.datos?.donde || '').toLowerCase();
-      const de = String(s.de || '').toLowerCase();
-      if (donde !== destino && de !== destino) return;
-      setEscribiendo((e) => ({ ...e, [de]: Date.now() }));
+      const de = String(s?.de || '').toLowerCase();
+
+      if (s?.tipo === 'escribe') {
+        const aqui = destinoRef.current;
+        if (!aqui) return;
+        const donde = String(s.datos?.donde || '').toLowerCase();
+        if (donde !== aqui && de !== aqui) return;
+        setEscribiendo((e) => ({ ...e, [de]: Date.now() }));
+        return;
+      }
+
+      /* Las señales de la llamada van tal cual al motor: los nombres son los
+         mismos que usa la web, y por eso un teléfono puede llamar a una
+         pestaña. */
+      if (SENALES_LLAMADA.includes(s?.tipo)) {
+        if (s.tipo === 'llamo') setQuienLlama({ correo: de, nombre: nombreDe(de) || de });
+        LLAMADA.recibir(s);
+      }
     });
     const reloj = setInterval(() => {
       setEscribiendo((e) => {
@@ -892,7 +966,7 @@ export default function AuroChat({ nav, params }) {
       });
     }, 700);
     return () => { clearInterval(reloj); M.dejarDeEscuchar(); };
-  }, [destino]);
+  }, []);
 
   /* ══ LOS GESTOS SOBRE UNA BURBUJA ════════════════════════════════════════ */
   const reaccionar = async (m, emoji) => {
@@ -1568,6 +1642,20 @@ export default function AuroChat({ nav, params }) {
   }
 
   // ════ hilo abierto ═══════════════════════════════════════════════════
+  /* LA LLAMADA SE PINTA ENCIMA DE TODO Y ANTES QUE NADA.
+     Va con `return` propio y no como una capa dentro de la lista: durante una
+     llamada no hay nada más que mirar, y dejar la lista montada debajo
+     significa que un repintado suyo puede tirar el video. */
+  if (llam.estado !== 'libre') {
+    return (
+      <PantallaLlamada
+        estado={llam}
+        quien={quienLlama}
+        onCerrar={() => setQuienLlama(null)}
+      />
+    );
+  }
+
   if (con) {
     // Los pendientes/fallidos se FUSIONAN al final del hilo del relevo: así
     // el sondeo puede reemplazar `hilo` completo sin llevarse ninguna burbuja
@@ -1631,6 +1719,23 @@ export default function AuroChat({ nav, params }) {
               )}
             </View>
           </Pressable>
+          {/* LLAMAR Y VIDEOLLAMAR. Solo en un cara a cara: la llamada de
+              grupo existe en la web y todavía no acá, y un botón que a veces
+              funciona es peor que uno que no está. */}
+          {!enGrupo && (
+            <>
+              <Pressable style={st.btnLlamar} hitSlop={8} accessibilityRole="button"
+                accessibilityLabel={t.llamar}
+                onPress={() => { hap(); llamarA(false); }}>
+                <Icon name="call" size={20} color={P2C.acentoLt} />
+              </Pressable>
+              <Pressable style={st.btnLlamar} hitSlop={8} accessibilityRole="button"
+                accessibilityLabel={t.videollamar}
+                onPress={() => { hap(); llamarA(true); }}>
+                <Icon name="videocam" size={20} color={P2C.acentoLt} />
+              </Pressable>
+            </>
+          )}
           {/* El puente con la wallet: `avisarChat` es lo que hará que el
               comprobante caiga en ESTA conversación cuando la cadena confirme
               —nunca antes—. En un grupo el destino de cadena lo elige la
@@ -2503,6 +2608,12 @@ const st = StyleSheet.create({
   cabQuien: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 10, minWidth: 0 },
   volver: { color: P2C.acento, fontSize: 28, paddingHorizontal: 4, lineHeight: 30 },
   mini: { color: P2C.texto3, fontSize: 10.5 },
+  /* Redondo y del tamaño del pulgar: la cabecera es estrecha y estos dos
+     botones tienen que poder tocarse sin abrir la ficha del contacto. */
+  btnLlamar: {
+    width: 36, height: 36, borderRadius: 18, alignItems: 'center',
+    justifyContent: 'center', backgroundColor: P2C.tinte,
+  },
   btnOrigen: { borderRadius: 11, paddingHorizontal: 11, paddingVertical: 8 },
   btnOrigenTxt: { color: P2C.textoMia, fontSize: 9.5, fontWeight: '800', letterSpacing: 0.5 },
   guardaBar: { flexDirection: 'row', alignItems: 'center', gap: 10, marginHorizontal: 12, marginTop: 10, padding: 11, borderRadius: 15, borderWidth: 1, borderColor: P2C.linea, backgroundColor: P2C.tinte },
