@@ -283,50 +283,59 @@ def rotulo(im: Image.Image, texto: str, rel: float, dur: float, chico=False,
 
 def burbuja(im: Image.Image, texto: str, rel: float, dur: float, foto=None,
             alto=0.30):
-    """Una burbuja de mensaje sobreimpresa, no dentro de la pantalla.
+    """El mensaje del final, con el aspecto de PULSE2CHAT.
 
-    En el plano final el teléfono se ve de espaldas y muy desenfocado: pegarle
-    texto nítido dentro se vería pegado. Sobreimpresa se lee, respeta el idioma
-    del resto de rótulos, y sigue diciendo lo que dice una burbuja: que ella
-    está leyendo un mensaje de su madre.
+    La primera versión era un rectángulo gris con una foto recortada a la altura
+    del pecho de la madre —sin cabeza— y José la despachó en tres palabras: "se
+    mira super mal". Ahora es una burbuja de su app: azul marino, la etiqueta de
+    quién escribe en oro, y la foto con las esquinas redondeadas.
 
-    Entra como los rótulos —por máscara, desde la línea base— y se va por
-    opacidad. Si lleva `foto`, va encima del texto, con las esquinas redondeadas."""
+    Va sobreimpresa y no dentro de la pantalla porque en ese plano el teléfono
+    se ve de espaldas y desenfocado; texto nítido ahí dentro se vería pegado."""
     e = salida(float(np.clip(rel / 0.45, 0, 1)), 4.0)
     fuera = salida(float(np.clip((dur - rel) / 0.4, 0, 1)), 3.0)
     a = e * fuera
     if a <= 0.02:
         return
     d = ImageDraw.Draw(im, "RGBA")
-    f = ImageFont.truetype(F_ROT, 42)
-    pad = 34
-    an = int(d.textlength(texto, font=f))
-    ancho = min(an + pad * 2, int(W * 0.80))
+    f = fuente(F_MED, 40)
+    pad = 30
+    ancho = int(W * 0.62)
     alto_foto = 0
     if foto is not None:
-        af = int(ancho - pad * 1.2)
+        af = ancho - pad * 2
         foto = foto.resize((af, int(foto.height * af / foto.width)), Image.LANCZOS)
-        alto_foto = foto.height + 22
-    altura = alto_foto + 92
-    x = int(W * 0.09)
-    y = int(H * alto)
+        alto_foto = foto.height + 20
+    altura = alto_foto + 148
+    x, y = int(W * 0.10), int(H * alto)
+
     capa = Image.new("RGBA", (W, H), (0, 0, 0, 0))
     dc = ImageDraw.Draw(capa, "RGBA")
+    # Azul marino de Pulse2Chat, con un filo de oro a la izquierda.
     dc.rounded_rectangle([x, y, x + ancho, y + altura], 30,
-                         fill=(38, 40, 45, int(238 * a)))
+                         fill=(16, 41, 72, int(240 * a)))
+    dc.rounded_rectangle([x, y + 22, x + 7, y + altura - 22], 4,
+                         fill=(214, 173, 90, int(230 * a)))
+    dc.text((x + pad, y + 20), "MAMÁ", font=fuente(F_ROT, 24),
+            fill=(214, 173, 90) + (int(235 * a),))
     if foto is not None:
         m = Image.new("L", foto.size, 0)
-        ImageDraw.Draw(m).rounded_rectangle([0, 0, foto.width - 1, foto.height - 1],
-                                            18, fill=int(255 * a))
-        capa.paste(foto.convert("RGB"), (x + int(pad * 0.6), y + 16), m)
-    dc.text((x + pad, y + alto_foto + 26), texto, font=f,
+        ImageDraw.Draw(m).rounded_rectangle(
+            [0, 0, foto.width - 1, foto.height - 1], 18, fill=int(255 * a))
+        capa.paste(foto.convert("RGB"), (x + pad, y + 62), m)
+    dc.text((x + pad, y + alto_foto + 74), texto, font=f,
             fill=TEXTO + (int(255 * a),))
+
     # Máscara: la burbuja crece desde su base, como los rótulos.
     mask = Image.new("L", (W, H), 0)
-    ImageDraw.Draw(mask).rectangle([0, y + altura - (altura + 20) * e, W, y + altura + 20],
-                                   fill=255)
+    ImageDraw.Draw(mask).rectangle(
+        [0, y + altura - (altura + 24) * e, W, y + altura + 24], fill=255)
     capa.putalpha(Image.fromarray(
         np.minimum(np.array(capa.split()[3]), np.array(mask))))
+    sm = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+    sm.putalpha(capa.split()[3].filter(
+        ImageFilter.GaussianBlur(28)).point(lambda v: int(v * 0.45)))
+    im.alpha_composite(sm, (0, 6))
     im.alpha_composite(capa)
 
 
