@@ -27,6 +27,9 @@
 # por que ser lo que la persona leyo. Con la huella pegada, el «si» solo vale
 # para el texto exacto que estaba en la pantalla.
 
+import re
+import unicodedata
+
 import escalafon
 import catalogo
 import encargos
@@ -53,6 +56,92 @@ RIESGO = {'mira': '👁', 'toca': '⚠️', 'ejecuta': '🔧'}
 def le_abre(dicho):
     """¿Este mensaje abre la puerta? Anclado, no «contiene»."""
     return (dicho or '').strip().strip('.!¡¿?').lower() in PALABRAS
+
+
+# ── ADIVINAR, PERO SOLO PARA MIRAR ──────────────────────────────────────────
+#
+# El menu resuelve el problema de quien SE SABE la palabra magica. Nadie mas.
+# Jose, 1-sep: «queria saber a quien se le envio 1 ORIGEN... pregunte y no supo
+# contestar». Y era verdad: escribio la pregunta como la escribiria cualquiera
+# y eso no abria ninguna puerta, asi que caia en el motor —que no tiene ese
+# dato y contesta lo que puede—. El dato estaba a un toque de distancia, en un
+# menu que hay que saber pedir.
+#
+# Tres reglas, y las tres son la misma idea: adivinar esta bien para LEER.
+#
+#   1 · Solo encargos de `riesgo: 'mira'`, y solo los que la persona ya podia
+#       pedir por el menu. Nada que toque o ejecute sale de una frase.
+#   2 · Solo los que no piden nada mas (`pide` vacio): adivinar el encargo es
+#       una cosa, adivinar lo que va DENTRO es otra.
+#   3 · Si dos encargos encajan, no se elige ninguno. Ensenarle a un admin lo
+#       que no pidio es peor que preguntarle: sigue de largo y contesta el
+#       motor, que es lo que pasaba antes.
+# Lo que puede salir de una frase adivinada. Es el mismo 'mira' de
+# `catalogo.SALEN_SOLOS`, con nombre propio para que cambiar uno no cambie el
+# otro sin querer: que algo salga sin firma no quiere decir que se pueda
+# adivinar.
+SALEN_SOLOS_ADIVINANDO = ('mira',)
+
+# Se mira sobre el texto YA LLANO, no sobre el crudo: con tildes, «quién es
+# quién en el equipo» no arrancaba con ninguna de estas palabras y la puerta
+# se quedaba cerrada justo para la forma mas natural de preguntar. Los signos
+# de pregunta se miran aparte, porque `_llano` se los come.
+_ARRANQUE_PIDE = re.compile(
+    r'^(ver|vemos|dame|damelo|mostra|mostrame|muestrame|decime|dime|'
+    r'cuanto|cuantos|cuanta|cuantas|quien|quienes|como|cual|cuales|que|'
+    r'necesito|quiero|pasame|mandame|revisa|revisemos|chequea|a quien)\b')
+
+
+def _llano(t):
+    """Sin tildes, en minusculas y con un solo espacio entre palabras."""
+    t = unicodedata.normalize('NFD', (t or '').lower())
+    t = ''.join(c for c in t if unicodedata.category(c) != 'Mn')
+    return re.sub(r'\s+', ' ', re.sub(r'[^a-z0-9ñ ]+', ' ', t)).strip()
+
+
+def adivina(dicho, tramos):
+    """La clave del encargo que pide esta frase, o `None`.
+
+    `None` no es un fallo: es lo normal. Casi todo lo que escribe una persona
+    no es un encargo, y la puerta que adivina tiene que dejar pasar de largo
+    sin hacer ruido.
+    """
+    t = _llano(dicho)
+    pregunta = '?' in (dicho or '') or '¿' in (dicho or '')
+    if not t or not (pregunta or _ARRANQUE_PIDE.match(t)):
+        return None
+    encajan = []
+    for clave, ficha in catalogo.para(tramos):
+        if ficha['riesgo'] not in SALEN_SOLOS_ADIVINANDO or ficha['pide']:
+            continue
+        for frase in ficha.get('palabras', ()):
+            # Una tupla son varias piezas que tienen que estar TODAS. Hace
+            # falta porque «quién ganó» solo no dice de qué se habla: con esa
+            # frase suelta, «¿quién ganó el mundial?» abria la lista de
+            # premios de gente real. Pidiendo tambien el tema, no.
+            piezas = [frase] if isinstance(frase, str) else list(frase)
+            largo = 0
+            for pieza in piezas:
+                f = _llano(pieza)
+                # Una palabra suelta se busca entera —«gas» no puede saltar
+                # dentro de «gasté»— y con su plural: nadie escribe «cuántos
+                # premio quedan». Una frase se busca tal cual.
+                cabe = (re.search(rf'\b{re.escape(f)}s?\b', t) if ' ' not in f
+                        else f in t)
+                if not cabe:
+                    largo = 0
+                    break
+                largo += len(f)
+            if largo:
+                encajan.append((largo, clave))
+                break
+    if not encajan:
+        return None
+    encajan.sort(reverse=True)
+    # Empate de longitud entre dos encargos distintos: no se adivina.
+    if len(encajan) > 1 and encajan[0][0] == encajan[1][0]:
+        return None
+    return encajan[0][1]
 
 
 # ── 1 · Pedir ───────────────────────────────────────────────────────────────

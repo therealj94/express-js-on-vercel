@@ -184,18 +184,42 @@ class ENCHUFADAALAVOZ(unittest.TestCase):
         # Hay DOS `cargar`: el del oído (Whisper) y el de la voz. Se ancla en
         # el de Chatterbox, que es el que importa aquí — la primera versión de
         # esta prueba encontraba el otro y reventaba sin decir por qué.
+        #
+        # Y se ancla en NOMBRES, no en una línea escrita a mano. Buscaba
+        # literalmente `self.modelo.generate('Hola.'` y el día que el templado
+        # pasó a hacer las dos lenguas —`for lengua, hola in TEMPLADO`— la
+        # prueba se puso roja sin que hubiera nada roto: la conducta seguía
+        # ahí, escrita de otra forma. Una prueba que se rompe al reescribir la
+        # línea que vigila enseña a ignorarla, que es lo peor que puede hacer.
         fuente = (AQUI / 'voz.py').read_text()
         i = fuente.index('ChatterboxMultilingualTTS.from_pretrained')
         cuerpo = fuente[i:i + 2500]
-        self.assertLess(cuerpo.index("self.modelo.generate('Hola.'"),
+        self.assertLess(cuerpo.index('for lengua, hola in TEMPLADO'),
                         cuerpo.index('self.listo.set()'),
                         'se declara lista antes de estar templada')
+        self.assertLess(cuerpo.index('self.modelo.generate('),
+                        cuerpo.index('self.listo.set()'),
+                        'el templado no fabrica ninguna frase')
+
+    def test_se_templa_en_LOS_DOS_IDIOMAS(self):
+        """Templar solo en español dejaba al primero que escribiera en inglés
+        pagando el peaje entero. La tabla es la que manda."""
+        fuente = (AQUI / 'voz.py').read_text()
+        i = fuente.index('TEMPLADO = ')
+        tabla = fuente[i:fuente.index('\n', i)]
+        self.assertIn("'es'", tabla)
+        self.assertIn("'en'", tabla)
 
     def test_y_si_el_templado_falla_la_voz_ARRANCA_IGUAL(self):
         """Peor lenta que muda."""
         fuente = (AQUI / 'voz.py').read_text()
-        i = fuente.index("self.modelo.generate('Hola.'")
-        self.assertIn('except Exception', fuente[i:i + 900])
+        i = fuente.index('for lengua, hola in TEMPLADO')
+        cuerpo = fuente[i:i + 900]
+        self.assertIn('except Exception', cuerpo)
+        # Y el `except` tiene que estar ANTES de declararla lista: uno puesto
+        # después dejaría la voz muda si el templado revienta.
+        self.assertLess(cuerpo.index('except Exception'),
+                        cuerpo.index('self.listo.set()'))
 
 
 if __name__ == '__main__':

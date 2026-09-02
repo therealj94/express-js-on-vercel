@@ -1900,6 +1900,24 @@ def _atender(rel, sistema, p, de, dicho, mensaje=None):
         puerta.menu(rel, de)
         return
 
+    # ── Y LA PREGUNTA DE SIEMPRE, SIN SABERSE EL MENU ─────────────────────
+    #
+    # «¿a quién se le mandó el premio?» es la frase de Jose del 1-sep, y no
+    # abria nada: el dato estaba en el menu, detras de una palabra que hay que
+    # saber. Ahora una frase asi corre el encargo que le corresponde — solo si
+    # es de MIRAR, solo si esa persona ya podia pedirlo, y solo si no hay
+    # duda. Ver `puerta.adivina`.
+    #
+    # Va DESPUES del menu (que es exacto) y ANTES del juego, para que un admin
+    # que esta jugando siga jugando: la condicion mira `p['juego']` a proposito.
+    if not p.get('juego'):
+        suyos = escalafon.tramos_de(de)
+        clave = puerta.adivina(dicho, suyos) if suyos else None
+        if clave:
+            registro.anotar('encargo', que='adivinado:' + clave)
+            puerta.pedir(rel, de, clave, hacer=_hacer_encargo(rel))
+            return
+
     # ── EL JUEGO VA ANTES QUE TODO ────────────────────────────────────────
     #
     # Quien esta jugando esta contestando una pregunta, no navegando. Si el

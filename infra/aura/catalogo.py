@@ -44,6 +44,19 @@ def _una_de(opciones):
 # `quien`  qué tramos pueden pedirlo. 'admin' está en todos: quien aprueba
 #          también puede pedir, y lo suyo lo aprueba OTRO admin.
 # `pide`   los huecos, en orden. Vacío = no se pide nada más.
+# `palabras`  cómo lo pide alguien que NO se sabe el menú. Ver `puerta.adivina`.
+#
+# ── POR QUE HACEN FALTA LAS PALABRAS ────────────────────────────────────────
+#
+# Todo esto se pedía tocando una fila de un menú que hay que saber abrir
+# («encargos», «menú»). Quien no se sabe la palabra mágica escribe lo que
+# escribiría cualquiera —«¿a quién se le mandó el premio?»— y eso caía en el
+# motor, que no tiene los datos y contesta con humo. Le pasó a José el 1-sep y
+# es exactamente la queja: preguntó y no supo contestar.
+#
+# Solo llevan palabras los de MIRAR. Adivinar por una frase qué quiso decir
+# alguien está bien para leer un número; para tocar o ejecutar algo nunca —eso
+# sigue saliendo del menú y con su firma.
 
 ENCARGOS = {
     # ── Mirar ───────────────────────────────────────────────────────────────
@@ -54,6 +67,11 @@ ENCARGOS = {
         'quien': ('admin', 'legal', 'tecnologico', 'mercadeo', 'contable',
                   'operacion'),
         'pide': [],
+        # «parte» y «resumen» a secas ya tienen su propio atajo anclado en el
+        # asistente (`_pide_el_parte`); aquí van las formas de pedirlo dentro
+        # de una frase.
+        'palabras': ('el parte', 'parte del dia', 'como vamos',
+                     'como va todo', 'ponme al dia', 'poneme al dia'),
     },
     'cadena': {
         'titulo': 'Cómo va la cadena',
@@ -61,6 +79,8 @@ ENCARGOS = {
         'riesgo': 'mira',
         'quien': ('admin', 'tecnologico'),
         'pide': [],
+        'palabras': ('la cadena', 'los nodos', 'validadores', 'altura',
+                     'bloques', 'el gas', 'como va la cadena'),
     },
     'saldos': {
         'titulo': 'Saldos de la campaña',
@@ -68,6 +88,8 @@ ENCARGOS = {
         'riesgo': 'mira',
         'quien': ('admin', 'contable', 'operacion'),
         'pide': [],
+        'palabras': ('saldo', 'saldos', 'cuanto queda', 'cuanto hay',
+                     'billetera de premios', 'la caja'),
     },
     # ── QUIEN ES QUIEN ─────────────────────────────────────────────────────
     #
@@ -80,6 +102,8 @@ ENCARGOS = {
         'riesgo': 'mira',
         'quien': ('admin',),
         'pide': [],
+        'palabras': ('quien es quien', 'el equipo', 'los roles', 'el rol de',
+                     'escalafon', 'quienes son admin'),
     },
 
     # ── A QUIEN SE LE PAGO ─────────────────────────────────────────────────
@@ -100,6 +124,23 @@ ENCARGOS = {
         'riesgo': 'mira',
         'quien': ('admin', 'contable'),
         'pide': [],
+        # La frase de José, tal cual la escribió, y las maneras vecinas de
+        # preguntar lo mismo. «premio» a secas NO está: alguien puede estar
+        # hablando del juego, y para eso ya hay otra puerta.
+        #
+        # Las tuplas piden las dos piezas. «quién ganó» solo no dice de qué se
+        # habla —«¿quién ganó el mundial?» abría la lista de premios de gente
+        # real—, así que va pegado a su tema.
+        'palabras': ('a quien se le pago', 'los premios', 'premios pagados',
+                     ('a quien se le mando', 'premio'),
+                     ('a quien se le mando', 'origen'),
+                     ('a quien se le envio', 'premio'),
+                     ('a quien se le envio', 'origen'),
+                     ('quien gano', 'premio'),
+                     ('quien cobro', 'premio'),
+                     ('quien reclamo', 'premio'),
+                     ('sin pagar', 'premio'),
+                     ('por pagar', 'premio')),
     },
 
     'gente': {
@@ -109,6 +150,8 @@ ENCARGOS = {
         'riesgo': 'mira',
         'quien': ('admin', 'mercadeo'),
         'pide': [],
+        'palabras': ('cuanta gente', 'gente nueva', 'cuantos escribieron',
+                     'cuantos jugaron', 'como viene la gente', 'la campana'),
     },
     'apunte': {
         'titulo': 'Anotar lo que vamos a hacer',
@@ -129,6 +172,8 @@ ENCARGOS = {
         'riesgo': 'mira',
         'quien': ('admin', 'legal'),
         'pide': [],
+        'palabras': ('papeles', 'que vence', 'sin firmar', 'plazos',
+                     'que falta presentar'),
     },
 
     # ── Tocar ───────────────────────────────────────────────────────────────
