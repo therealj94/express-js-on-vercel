@@ -1,0 +1,183 @@
+{
+  "_nota": "Montaje de la pelicula del ecosistema sobre MATERIAL FOTOGRAFICO. Cada bloque es un clip real generado en la GPU (prompts/pelicula2_material.json) con la tipografia compuesta encima, minima, siguiendo las reglas tecnicas sacadas de la pieza de Apple: una palabra no vive mas de 15-20 fotogramas de mas, entra por mascara con desfase entre palabras, y nada se anima a la vez.",
+  "_proporcion": "80% imagen, 20% grafico. Antes era al reves y por eso se sentia dibujado.",
+  "salida": {
+    "ancho": 1080,
+    "alto": 1920,
+    "fps": 30,
+    "dur_s": 46.5
+  },
+  "fundido_s": 0.45,
+  "voz": {
+    "orden": [
+      [
+        3,
+        2.3
+      ],
+      [
+        4,
+        5.6
+      ],
+      [
+        1,
+        13.2
+      ],
+      [
+        2,
+        16.9
+      ],
+      [
+        5,
+        31.6
+      ],
+      [
+        6,
+        35.6
+      ],
+      [
+        7,
+        42.7
+      ]
+    ],
+    "_nota": "Las siete tomas de Diego ya grabadas (tv_N.wav), recolocadas."
+  },
+  "bloques": [
+    {
+      "plano": "01_oro_superficie",
+      "t": 0.0,
+      "dur": 4.6,
+      "rotulos": [
+        {
+          "t": 2.1,
+          "dur": 1.9,
+          "texto": "Un gramo de oro."
+        }
+      ]
+    },
+    {
+      "plano": "02_oro_polvo",
+      "t": 4.2,
+      "dur": 4.4,
+      "rotulos": [
+        {
+          "t": 5.4,
+          "dur": 2.2,
+          "texto": "Cincuenta y cinco ORIGEN."
+        }
+      ]
+    },
+    {
+      "plano": "03_oro_liquido",
+      "t": 8.2,
+      "dur": 4.2,
+      "rotulos": []
+    },
+    {
+      "plano": "04_telefono_piedra",
+      "t": 12.0,
+      "dur": 4.2,
+      "rotulos": [
+        {
+          "t": 13.1,
+          "dur": 1.8,
+          "texto": "Una identidad."
+        }
+      ]
+    },
+    {
+      "plano": "05_dedo_cristal",
+      "t": 15.8,
+      "dur": 4.2,
+      "rotulos": [
+        {
+          "t": 16.8,
+          "dur": 2.0,
+          "texto": "Todo el ecosistema."
+        }
+      ]
+    },
+    {
+      "plano": "06_mano_recibe",
+      "t": 19.6,
+      "dur": 4.2,
+      "rotulos": [
+        {
+          "t": 20.6,
+          "dur": 1.6,
+          "texto": "Recibí."
+        }
+      ]
+    },
+    {
+      "plano": "07_tarjeta_terminal",
+      "t": 23.4,
+      "dur": 4.2,
+      "rotulos": [
+        {
+          "t": 24.4,
+          "dur": 1.6,
+          "texto": "Pagá."
+        }
+      ]
+    },
+    {
+      "plano": "08_manos_intercambio",
+      "t": 27.2,
+      "dur": 4.2,
+      "rotulos": [
+        {
+          "t": 28.2,
+          "dur": 1.9,
+          "texto": "De un país a otro."
+        }
+      ]
+    },
+    {
+      "plano": "09_cara_pantalla",
+      "t": 31.0,
+      "dur": 4.2,
+      "rotulos": [
+        {
+          "t": 31.5,
+          "dur": 2.0,
+          "texto": "Todo queda escrito."
+        }
+      ]
+    },
+    {
+      "plano": "10_luz_viaja",
+      "t": 34.8,
+      "dur": 4.2,
+      "rotulos": [
+        {
+          "t": 35.5,
+          "dur": 2.2,
+          "texto": "Y cualquiera lo puede ver."
+        }
+      ]
+    },
+    {
+      "plano": "11_cristal_oro",
+      "t": 38.6,
+      "dur": 4.2,
+      "logo": true,
+      "rotulos": []
+    },
+    {
+      "plano": "12_oro_cierre",
+      "t": 42.4,
+      "dur": 4.1,
+      "rotulos": [
+        {
+          "t": 42.6,
+          "dur": 3.6,
+          "texto": "Orden Global.\nUn sistema financiero\nque se puede comprobar.",
+          "chico": true
+        }
+      ]
+    }
+  ],
+  "picks": {
+    "_nota": "plano -> numero de toma elegida (1-4). Se rellena al ver la hoja de contactos; sin entrada se usa la 1."
+  }
+}
