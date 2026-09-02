@@ -95,6 +95,7 @@
         "RECEIVE_BOOT_COMPLETED",
         "WAKE_LOCK",
         "RECORD_AUDIO",
+        "BLUETOOTH_CONNECT",
         "MODIFY_AUDIO_SETTINGS"
       ],
       "versionCode": 74,

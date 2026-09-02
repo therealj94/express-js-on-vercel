@@ -1,15 +1,17 @@
-/* La segunda carta: la app pesa un tercio, y ahora se puede instalar sin bajar nada.
+/* La segunda carta: la app pesa menos de la mitad, se puede instalar sin bajar
+ * nada, y ya llama.
  *
  * POR QUE SE ESCRIBE OTRA VEZ
  *
  * La primera carta salió a 407 personas con un archivo de 138 MB. Ese peso no
  * era la app: eran librerías para arquitecturas de emulador que ningún
  * teléfono usa, y librerías sin comprimir. Corregido eso, el mismo archivo
- * pesa 45 MB, un tercio. Y mientras tanto la web quedó instalable, así que hay una
+ * pesa 55 MB, menos de la mitad. Y mientras tanto la web quedó instalable, así que hay una
  * puerta que no pasa por ningún archivo ni por ningún permiso.
  *
  * Escribir de nuevo a quien ya recibió algo tiene que ganarse el derecho. Se
- * gana con esas dos cosas: pesa un tercio, y hay una forma más fácil. Sin eso
+ * gana con tres cosas: pesa menos de la mitad, hay una forma más fácil, y ya
+ * se puede llamar y videollamar desde la app. Sin eso
  * esto sería un recordatorio, y un recordatorio a 407 personas es correo
  * basura escrito por nosotros mismos.
  *
@@ -40,12 +42,12 @@ import { saludo, H, paso, pantalla, toca, enlaceBaja, PAGINA } from "./cartaInst
 /* El APK NUEVO. Se cambia aquí y en `apps-web/veta-wallet/instalar.html` cada
    vez que se compila, igual que el de la primera carta. */
 export const APK =
-  "https://expo.dev/artifacts/eas/Ic0h-h9Q73j63q_21gka5i8HCKN-OlI-3RfRc5aDelI.apk";
-export const VERSION = "1.33.3";
-export const PESO = "45 MB";
+  "https://expo.dev/artifacts/eas/tsuFMvq4k_YgimwTTiMlJodtUM8b8wk1sFCkI6kDlF4.apk";
+export const VERSION = "1.33.4";
+export const PESO = "55 MB";
 export const PESO_ANTES = "138 MB";
 
-export const ASUNTO = "Ahora pesa un tercio, y podés instalarla sin descargar nada";
+export const ASUNTO = "Pesa menos de la mitad, y ahora también podés llamar";
 
 export function cartaSegundaVuelta({ nombre, correo }) {
   const baja = enlaceBaja(correo);
@@ -63,13 +65,24 @@ export function cartaSegundaVuelta({ nombre, correo }) {
   </p>
   <p style="margin:0 0 16px;">
     Ya lo arreglamos. Ahora pesa
-    <strong style="color:#F3ECD9;">${esc(PESO)}</strong>, un tercio de lo que pesaba.
+    <strong style="color:#F3ECD9;">${esc(PESO)}</strong>, menos de la mitad.
     Y hay una
     segunda forma de tenerla que no pasa por ningún archivo.
   </p>
 
   <p style="margin:0 0 20px;padding:11px 13px;border-left:3px solid #C9A961;background:rgba(201,169,97,.07);border-radius:0 8px 8px 0;font-size:14px;color:#EFE3C6;">
     Si ya la instalaste, no tenés que hacer nada: la app se pone al día sola.
+  </p>
+
+  ${H("Y ahora la app llama")}
+
+  <p style="margin:0 0 16px;">
+    Podés llamar y hacer videollamada desde el chat, con quien tenga Orden
+    Global. Sin costo de minutos: viaja por internet, como todo lo demás.
+  </p>
+  <p style="margin:0 0 20px;font-size:14px;color:#9A8C76;">
+    Si están los dos en datos móviles, a veces no encuentra camino y lo dice.
+    Con wifi entra siempre.
   </p>
 
   ${H("La forma fácil: instalarla desde la web")}
@@ -174,10 +187,19 @@ Hace unos días te mandamos la app para el teléfono. A varios no les bajó, o e
 teléfono no los dejó instalarla. El archivo pesaba ${PESO_ANTES}, y para muchos
 teléfonos y muchas conexiones eso era demasiado.
 
-Ya lo arreglamos. Ahora pesa ${PESO}, un tercio de lo que pesaba. Y hay una segunda forma de
+Ya lo arreglamos. Ahora pesa ${PESO}, menos de la mitad. Y hay una segunda forma de
 tenerla que no pasa por ningún archivo.
 
 Si ya la instalaste, no tenés que hacer nada: la app se pone al día sola.
+
+
+Y AHORA LA APP LLAMA
+
+Podés llamar y hacer videollamada desde el chat, con quien tenga Orden Global.
+Sin costo de minutos: viaja por internet, como todo lo demás.
+
+Si están los dos en datos móviles, a veces no encuentra camino y lo dice. Con
+wifi entra siempre.
 
 
 LA FORMA FÁCIL: INSTALARLA DESDE LA WEB
