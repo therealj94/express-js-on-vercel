@@ -42,8 +42,8 @@ import { saludo, H, paso, pantalla, toca, enlaceBaja, PAGINA } from "./cartaInst
 /* El APK NUEVO. Se cambia aquí y en `apps-web/veta-wallet/instalar.html` cada
    vez que se compila, igual que el de la primera carta. */
 export const APK =
-  "https://expo.dev/artifacts/eas/tsuFMvq4k_YgimwTTiMlJodtUM8b8wk1sFCkI6kDlF4.apk";
-export const VERSION = "1.33.4";
+  "https://expo.dev/artifacts/eas/TUIRM2GuaWiLcf9rvdRzI6GZuSVVJ2HJBNvB7VYhKiA.apk";
+export const VERSION = "1.34.0";
 export const PESO = "55 MB";
 export const PESO_ANTES = "138 MB";
 
@@ -81,7 +81,8 @@ export function cartaSegundaVuelta({ nombre, correo }) {
     Global. Sin costo de minutos: viaja por internet, como todo lo demás.
   </p>
   <p style="margin:0 0 20px;font-size:14px;color:#9A8C76;">
-    Y si son varios, la llamada de grupo también, hasta cinco personas.
+    Si son varios, la llamada de grupo también, hasta cinco. Y podés compartir
+    tu pantalla mientras hablan.
   </p>
 
   ${H("La forma fácil: instalarla desde la web")}
@@ -197,7 +198,8 @@ Y AHORA LA APP LLAMA
 Podés llamar y hacer videollamada desde el chat, con quien tenga Orden Global.
 Sin costo de minutos: viaja por internet, como todo lo demás.
 
-Y si son varios, la llamada de grupo también, hasta cinco personas.
+Si son varios, la llamada de grupo también, hasta cinco. Y podés compartir tu
+pantalla mientras hablan.
 
 
 LA FORMA FÁCIL: INSTALARLA DESDE LA WEB
