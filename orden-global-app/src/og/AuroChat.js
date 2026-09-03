@@ -47,19 +47,9 @@ import { PantallaConTeclado, useTeclado } from './Teclado';
 import { genesis } from '../genesis';
 import * as M from './mensajes';
 import LLAMADA from './llamada';
-import PantallaLlamada, { razonDeCorte } from './PantallaLlamada';
 import GRUPO from './llamadaGrupo';
-import PantallaGrupo from './PantallaGrupo';
+import { alLlegarSenal } from './Timbre';
 
-/* Las señales que son de una llamada y no del chat. Los nombres son los
-   MISMOS que usa `apps-web/veta-wallet/llamada.js`: cambiar uno acá sin
-   cambiarlo allá rompe las llamadas entre el teléfono y el navegador sin que
-   ninguna prueba lo note. */
-const SENALES_LLAMADA = ['llamo', 'respuesta', 'ice', 'cuelgo', 'rechazo', 'ocupado'];
-/* Las de grupo van aparte y todas empiezan por «g». Se comprueban ANTES que
-   las de uno a uno: `ice` y `gice` son distintas, y confundirlas metería un
-   candidato de una llamada de grupo dentro de una conexión cara a cara. */
-const ES_DE_GRUPO = (t) => typeof t === 'string' && t.startsWith('g');
 import { aUri } from './rutas';
 import { guardarContacto, renombrarContacto, eliminarContacto, leerLibreta, comoMapa } from './contactos';
 import { reproducir } from './sonidos';
@@ -517,9 +507,6 @@ export default function AuroChat({ nav, params }) {
   /* La llamada. `llam` es lo que dice el motor; `quienLlama` es a quién se le
      pone cara y nombre en la pantalla —eso el motor no lo sabe ni tiene por
      qué: él solo maneja audio, video y señales. */
-  const [llam, setLlam] = useState(() => LLAMADA.cuento());
-  const [quienLlama, setQuienLlama] = useState(null);
-  const [gru, setGru] = useState(() => GRUPO.cuento());
   const [puerta, setPuerta] = useState('mirando');       // mirando | falta | abierta
   const [convos, setConvos] = useState(null);
   const [busca, setBusca] = useState('');
@@ -914,87 +901,30 @@ export default function AuroChat({ nav, params }) {
   const destinoRef = useRef(destino);
   useEffect(() => { destinoRef.current = destino; }, [destino]);
 
-  /* EL MOTOR DE LLAMADAS, ENCHUFADO UNA VEZ.
-     Se le dice por dónde manda señales (el mismo buzón del chat), a quién
-     avisar cuando algo cambia, y de dónde saca el relevo de video. Si el
-     relevo no está configurado, `turno()` devuelve una lista vacía y las
-     llamadas siguen andando con STUN, que resuelve la mayoría. */
-  useEffect(() => {
-    LLAMADA.arrancar({
-      mandar: M.senalar,
-      traerTurno: M.turno,
-      alCambiar: (c) => {
-        setLlam(c);
-        /* Cuando se cortó por algo que no fue colgar, se dice por qué. Un «no
-           se pudo» a secas invita a intentarlo diez veces, y `sin-camino` no
-           se arregla intentándolo: se arregla cambiando de red. */
-        const razon = c?.motivo ? razonDeCorte(c.motivo) : null;
-        if (razon) toast(razon, 'error');
-        if (c?.estado === 'libre') setQuienLlama(null);
-      },
-    });
-    GRUPO.arrancar({
-      correo: String(account?.email || '').toLowerCase(),
-      mandar: M.senalar,
-      turno: M.turno,
-      alCambiar: setGru,
-    });
-    return () => {
-      if (LLAMADA.enLlamada()) LLAMADA.colgar('yo');
-      if (GRUPO.enLlamada()) GRUPO.colgar('yo');
-    };
-  }, [toast, account?.email]);
-
-  /** Llamar al grupo que está abierto. */
-  const llamarGrupo = useCallback(async (conVideo) => {
-    const miembros = (con?.gente || con?.miembrosCorreos || [])
-      .map((x) => String(x?.correo || x || '').toLowerCase())
-      .filter((x) => x && x !== String(account?.email || '').toLowerCase());
-    if (!miembros.length) return toast('Este grupo todavía no tiene a nadie más.', 'error');
-    try {
-      await GRUPO.llamar(destinoRef.current, miembros, conVideo);
-    } catch (e) {
-      toast(e?.code === 'lleno'
-        ? `En una llamada de grupo caben ${GRUPO.TOPE}. Con más, se degrada para todos.`
-        : 'No se pudo empezar la llamada.', 'error');
-    }
-  }, [con, account?.email, toast]);
-
   /** Llamar a quien está abierto en el hilo. */
   const llamarA = useCallback(async (conVideo) => {
     if (!destinoRef.current) return;
     const a = destinoRef.current;
-    setQuienLlama({ correo: a, nombre: nombreDe(a) || a });
     try {
       await LLAMADA.llamar(a, conVideo);
     } catch {
       /* El motor ya colgó y ya dijo el motivo por `alCambiar`; acá no se
          repite el aviso para no dar dos carteles por un solo fallo. */
     }
-  }, [nombreDe]);
+  }, []);
 
   useEffect(() => {
-    M.escuchar((s) => {
-      const de = String(s?.de || '').toLowerCase();
-
-      if (s?.tipo === 'escribe') {
-        const aqui = destinoRef.current;
-        if (!aqui) return;
-        const donde = String(s.datos?.donde || '').toLowerCase();
-        if (donde !== aqui && de !== aqui) return;
-        setEscribiendo((e) => ({ ...e, [de]: Date.now() }));
-        return;
-      }
-
-      /* Las señales de la llamada van tal cual al motor: los nombres son los
-         mismos que usa la web, y por eso un teléfono puede llamar a una
-         pestaña. */
-      if (ES_DE_GRUPO(s?.tipo)) { GRUPO.recibir(s); return; }
-
-      if (SENALES_LLAMADA.includes(s?.tipo)) {
-        if (s.tipo === 'llamo') setQuienLlama({ correo: de, nombre: nombreDe(de) || de });
-        LLAMADA.recibir(s);
-      }
+    /* El buzón lo abre `Timbre`, que vive en toda la app: una llamada tiene
+       que entrar aunque estés mirando la billetera. Acá solo se escucha lo que
+       es del chat. */
+    const suelta = alLlegarSenal((s) => {
+      if (s?.tipo !== 'escribe') return;
+      const aqui = destinoRef.current;
+      if (!aqui) return;
+      const de = String(s.de || '').toLowerCase();
+      const donde = String(s.datos?.donde || '').toLowerCase();
+      if (donde !== aqui && de !== aqui) return;
+      setEscribiendo((e) => ({ ...e, [de]: Date.now() }));
     });
     const reloj = setInterval(() => {
       setEscribiendo((e) => {
@@ -1003,7 +933,7 @@ export default function AuroChat({ nav, params }) {
         return Object.keys(vivos).length === Object.keys(e).length ? e : vivos;
       });
     }, 700);
-    return () => { clearInterval(reloj); M.dejarDeEscuchar(); };
+    return () => { clearInterval(reloj); suelta(); };
   }, []);
 
   /* ══ LOS GESTOS SOBRE UNA BURBUJA ════════════════════════════════════════ */
@@ -1684,26 +1614,6 @@ export default function AuroChat({ nav, params }) {
      Va con `return` propio y no como una capa dentro de la lista: durante una
      llamada no hay nada más que mirar, y dejar la lista montada debajo
      significa que un repintado suyo puede tirar el video. */
-  if (gru.estado !== 'libre') {
-    return (
-      <PantallaGrupo
-        estado={gru}
-        nombreDe={(c) => nombreDe(c)}
-        onCerrar={() => {}}
-      />
-    );
-  }
-
-  if (llam.estado !== 'libre') {
-    return (
-      <PantallaLlamada
-        estado={llam}
-        quien={quienLlama}
-        onCerrar={() => setQuienLlama(null)}
-      />
-    );
-  }
-
   if (con) {
     // Los pendientes/fallidos se FUSIONAN al final del hilo del relevo: así
     // el sondeo puede reemplazar `hilo` completo sin llevarse ninguna burbuja

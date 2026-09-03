@@ -41,6 +41,7 @@ import Help from './src/screens/Help';
 // ── La fusión Orden Global: hub, chat, cobrar y el asistente ──
 import Ecosistema from './src/og/Ecosistema';
 import AuroChat from './src/og/AuroChat';
+import Timbre from './src/og/Timbre';
 import GruposAuro from './src/og/GruposAuro';
 import AjustesAuro from './src/og/AjustesAuro';
 import CobrarOG from './src/og/CobrarOG';
@@ -739,6 +740,16 @@ function Root() {
           )}
         </SafeAreaView>
       )}
+
+      {/* EL TIMBRE, POR ENCIMA DE TODO Y FUERA DE LAS PESTAÑAS.
+          Una llamada entrante no es una pantalla más del chat: tapa lo que
+          estuvieras haciendo, igual que en cualquier teléfono. Y vive acá
+          porque el buzón de señales tiene que estar abierto mires lo que
+          mires — con él dentro del chat, una llamada que llegaba mientras
+          alguien miraba su billetera se perdía sin sonar.
+          Va casi de últimas a propósito: el último hermano pinta encima, y
+          una llamada no puede depender de que el zIndex gane la discusión. */}
+      {account?.email ? <Timbre correo={account.email} toast={showToast} /> : null}
 
       {toast && (
         <Animated.View style={[
