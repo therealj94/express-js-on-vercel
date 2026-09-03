@@ -81,7 +81,11 @@ export function Activity({ nav }) {
               <View style={{ flex: 1 }}>
                 <Text style={styles.txnT}>{inbound ? t('act.in') : t('act.out')} {x.symbol || 'ORIGEN'}</Text>
                 <Text style={styles.txnD}>{fmtDate(x.timeStamp, loc)}</Text>
-                <Text style={styles.txnD}>{inbound ? t('act.from') : t('act.to')}: {etiqueta(otra)}</Text>
+                {/* Un depósito no tiene contraparte: enseñar «De: » vacío se
+                    lee como un dato que se perdió. */}
+                <Text style={styles.txnD}>{x.deposito
+                  ? t('act.deposito') + (x.network ? ' · ' + x.network : '')
+                  : `${inbound ? t('act.from') : t('act.to')}: ${etiqueta(otra)}`}</Text>
               </View>
               <Text style={[styles.txnV, inbound && { color: C.up }]}>{inbound ? '+' : '-'}{qtyFmt(Number(x.value) || 0)}</Text>
             </Pressable>
@@ -106,7 +110,9 @@ function TxDetail({ data, etiqueta, onClose, onToast }) {
   // todavía es local (sin hash real) llevaría a un «no encontrado».
   const enlace = data.hash && !data.localPending ? enlaceExplorador(data.hash, EXPLORADOR_TX) : null;
   const filas = [
-    [inbound ? t('act.from') : t('act.to'), etiqueta(otra), otra],
+    data.deposito
+      ? [t('act.deposito'), data.network || '—']
+      : [inbound ? t('act.from') : t('act.to'), etiqueta(otra), otra],
     [t('send.date'), fmtDate(data.timeStamp, localeDe(lang))],
     [t('send.network'), RED_NOMBRE],
     data.blockNumber != null ? [t('send.block'), `#${data.blockNumber}`] : null,

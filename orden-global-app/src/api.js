@@ -807,7 +807,55 @@ export async function apiPortfolio() {
     chain = Array.isArray(raw) ? raw[0] : raw?.chain || raw?.data || raw;
   } catch (e) {}
   const provider = chain?.provider || RPC_FALLBACK;
-  const transfers = Array.isArray(chain?.allTransfers) ? chain.allTransfers : [];
+  const deCadena = Array.isArray(chain?.allTransfers) ? chain.allTransfers : [];
+
+  /* ── LOS DEPOSITOS TAMBIEN SON ACTIVIDAD ──────────────────────────────────
+   *
+   * EL FALLO: la app enseñaba SOLO lo que pasó por la cadena. Un depósito
+   * —comprar ORIGEN con USDT— se acredita en la contabilidad interna de la
+   * billetera y no deja transacción en la 5550, así que en el teléfono no
+   * aparecía por ningún lado. En la web sí, porque allá se juntan las dos
+   * fuentes. O sea: la misma persona, el mismo dinero, dos historiales
+   * distintos según por dónde entrara. La web ya arregló esto en su día; el
+   * teléfono se quedó atrás.
+   *
+   * Se normaliza a la forma que la pantalla ya sabe pintar. Sin esto la fila
+   * saldría con importe cero y sin fecha: un depósito guarda el monto en
+   * `origenAmount` y la fecha en `at`, no en `value` ni `timeStamp`.
+   *
+   * Y si la petición falla, se sigue con lo de la cadena: media actividad es
+   * mejor que un error a pantalla completa.
+   */
+  let deDepositos = [];
+  try {
+    const dep = await depositApi.list(25);
+    const filas = Array.isArray(dep) ? dep : (dep?.items || dep?.deposits || dep?.data || []);
+    deDepositos = filas.map((d) => ({
+      hash: null,
+      type: 'recive',                       // un depósito es dinero que llega
+      symbol: 'ORIGEN',
+      value: Number(d.origenAmount ?? d.amount ?? 0) || 0,
+      // La pantalla lee `timeStamp` en segundos, igual que la cadena.
+      timeStamp: Math.floor(new Date(d.at || d.createdAt || 0).getTime() / 1000) || 0,
+      from: null,
+      to: address,
+      deposito: true,                       // para poder distinguirlo si hace falta
+      usdtAmount: d.usdtAmount ?? null,
+      network: d.network || null,
+    }));
+  } catch { /* sin depósitos se enseña la cadena, que es lo que ya había */ }
+
+  /* Se juntan y se ordenan por fecha, con la misma clave de duplicados que usa
+     la web: el hash cuando lo hay, y si no, la terna de las partes. */
+  const vistos = new Set();
+  const transfers = [...deDepositos, ...deCadena]
+    .filter((m) => {
+      const llave = m.hash || `${m.from}-${m.to}-${m.value}-${m.timeStamp}`;
+      if (vistos.has(llave)) return false;
+      vistos.add(llave);
+      return true;
+    })
+    .sort((a, b) => (Number(b.timeStamp) || 0) - (Number(a.timeStamp) || 0));
 
   // Precio de ONDK: primero lo intentamos del endpoint del chain. Si no
   // vino, usamos el último cacheado (mientras siga dentro del TTL). Si

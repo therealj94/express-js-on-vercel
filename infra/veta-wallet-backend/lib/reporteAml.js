@@ -14,8 +14,12 @@
 //
 // 1. Se reporta DESPUES de que la transacción ya salió, y nunca antes. Un
 //    reporte que bloqueara o retrasara un envío convertiría una caída de
-//    Genesis en una caída de la billetera. El tamizado de la dirección de
-//    destino —eso sí es un control preventivo— ya se hace aparte y antes.
+//    Genesis en una caída de la billetera. El control PREVENTIVO es otro y va
+//    antes: el tamizado de la dirección de destino, en `lib/tamizDestino.js`.
+//    Esta línea decía que ese tamizado «ya se hace», y durante meses no se
+//    hacía en ningún sitio — ni en la web, ni en la app, ni acá. Un comentario
+//    que asegura un control inexistente es peor que no tenerlo: el siguiente
+//    que pase lo da por hecho y no lo busca.
 //
 // 2. No se espera la respuesta ni se reintenta con insistencia. Si el reporte
 //    falla queda un `console.error` y sigue la vida: llegar tarde al monitoreo

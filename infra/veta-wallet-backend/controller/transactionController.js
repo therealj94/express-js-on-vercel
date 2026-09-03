@@ -16,6 +16,7 @@ import abi from "../ABI/abi.json";
 import { precioDeGas, limiteDeGas, LIMITE_POR_OMISION_TOKEN } from "../lib/gas";
 import { cobrarComision, comisionEnOrigen } from "../lib/comision";
 import { reportarEnvio } from "../lib/reporteAml";
+import { tamizarDestino, negativaPorSancion } from "../lib/tamizDestino";
 import { validarEnvio } from "../lib/validarEnvio";
 import { isAddress } from "ethers";
 import {
@@ -97,6 +98,21 @@ export const send = async (req, res) => {
     // lib/validarEnvio.js.
     const malo = validarEnvio({ recipientAddress, amount, from: address });
     if (malo) return res.status(400).json(malo);
+
+    /* EL TAMIZADO DE SANCIONES, ANTES DE MOVER NADA.
+       Va aquí y no en la pantalla porque la web y la app envían por esta misma
+       ruta: puesto acá cubre las dos y no lo puede saltar un cliente
+       modificado. Si Genesis no contesta se deja pasar —bloquear todo cuando
+       un servicio tiene un hipo es un daño peor— pero queda escrito, y
+       `tamizado:false` nunca se confunde con `sancionada:false`. */
+    const tamiz = await tamizarDestino(recipientAddress);
+    if (tamiz.sancionada) {
+      console.error('[tamiz] envío bloqueado hacia', recipientAddress);
+      return res.status(403).json(negativaPorSancion());
+    }
+    if (!tamiz.tamizado) {
+      console.error('[tamiz] SIN COMPROBAR, el envío sigue:', recipientAddress);
+    }
 
     const chain = await ChainId.findOne({ chain_id: chain_id });
 
@@ -262,6 +278,21 @@ export const sendToken = async (req, res) => {
     // Misma validación que en `send`, por la misma razón.
     const malo = validarEnvio({ recipientAddress, amount, from: address });
     if (malo) return res.status(400).json(malo);
+
+    /* EL TAMIZADO DE SANCIONES, ANTES DE MOVER NADA.
+       Va aquí y no en la pantalla porque la web y la app envían por esta misma
+       ruta: puesto acá cubre las dos y no lo puede saltar un cliente
+       modificado. Si Genesis no contesta se deja pasar —bloquear todo cuando
+       un servicio tiene un hipo es un daño peor— pero queda escrito, y
+       `tamizado:false` nunca se confunde con `sancionada:false`. */
+    const tamiz = await tamizarDestino(recipientAddress);
+    if (tamiz.sancionada) {
+      console.error('[tamiz] envío bloqueado hacia', recipientAddress);
+      return res.status(403).json(negativaPorSancion());
+    }
+    if (!tamiz.tamizado) {
+      console.error('[tamiz] SIN COMPROBAR, el envío sigue:', recipientAddress);
+    }
     if (!isAddress(String(tokenContractAddress || ""))) {
       return res.status(400).json({ code: "INVALID_ADDRESS", message: "El contrato del token no es una dirección válida." });
     }
