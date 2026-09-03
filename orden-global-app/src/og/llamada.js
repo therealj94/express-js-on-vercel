@@ -50,6 +50,16 @@
 
 import { PermissionsAndroid, Platform } from 'react-native';
 import AudioSala from 'react-native-incall-manager';
+
+/* ¿ESTÁ EL MÓDULO DE AUDIO?
+ *
+ * `react-native-incall-manager` es un módulo nativo: en Expo Go no existe, y
+ * si algún día el enlazado cambia podría no existir tampoco en el APK. Todas
+ * las llamadas acá van envueltas, así que su ausencia no rompe la llamada —
+ * pero SÍ deja el altavoz sin efecto, y un botón que no hace nada es peor que
+ * uno que no está. Por eso se comprueba y se dice: la pantalla esconde el
+ * botón cuando esto es falso, en vez de ofrecer algo que no responde. */
+const HAY_AUDIO = !!AudioSala && typeof AudioSala.start === 'function';
 import {
   RTCPeerConnection,
   RTCIceCandidate,
@@ -127,6 +137,7 @@ export const cuento = () => ({
   micAbierto: !!miFlujo?.getAudioTracks?.()[0]?.enabled,
   camAbierta: !!miFlujo?.getVideoTracks?.()[0]?.enabled,
   porAltavoz,
+  audioListo: HAY_AUDIO,
   compartiendo: !!flujoPantalla,
   /* Lo que va en el recuadro chico: la pantalla si la estoy compartiendo, y
      si no, mi cámara. Lo decide el motor y no la pantalla, porque es él quien
@@ -189,6 +200,11 @@ function nuevaConexion() {
        llamada» sobre un negro que no llega nunca. */
     if (c.connectionState === 'connected') {
       clearTimeout(relojConexion); relojConexion = null;
+      try { AudioSala.stopRingback(); } catch {}
+      /* La pantalla no se apaga durante la llamada. Sin esto, a los treinta
+         segundos se apaga sola y el botón de colgar queda detrás del
+         desbloqueo — que es donde nadie lo encuentra con prisa. */
+      try { AudioSala.setKeepScreenOn(true); } catch {}
       if (estado !== 'hablando') { estado = 'hablando'; anunciar(); }
     }
     if (c.connectionState === 'failed') colgar('sin-camino');
@@ -240,8 +256,38 @@ function audioArranca(conVideo) {
 }
 
 function audioTermina() {
+  try { AudioSala.stopRingtone(); } catch {}
+  try { AudioSala.stopRingback(); } catch {}
+  try { AudioSala.setKeepScreenOn(false); } catch {}
   try { AudioSala.stop(); } catch {}
   porAltavoz = false;
+}
+
+/* EL TIMBRE DENTRO DE LA APP.
+ *
+ * El relevo NO manda push cuando la persona está escuchando el buzón, y hace
+ * bien: quien escucha recibe la llamada directa y el push sería un segundo
+ * aviso por lo mismo. Pero eso dejaba un agujero grande: con la app abierta,
+ * la llamada entrante aparecía EN SILENCIO. En un bolsillo, o con el teléfono
+ * boca abajo en la mesa, eso es una llamada perdida con la app funcionando.
+ *
+ * Así que si el aviso no lo da el sistema, lo damos nosotros: timbre y
+ * vibración mientras dure la pregunta.
+ */
+function timbreArranca() {
+  try { AudioSala.startRingtone('_DEFAULT_', [0, 900, 600], null, 30); } catch {}
+}
+
+function timbreCalla() {
+  try { AudioSala.stopRingtone(); } catch {}
+}
+
+/* Y el tono de ida: los dos o tres tonos que dicen «está sonando del otro
+   lado». Sin él, quien llama mira una pantalla muda sin saber si salió. */
+function tonoArranca() {
+  // Solo el tono: `audioArranca` ya puso el modo de llamada unas líneas antes,
+  // y volver a arrancarlo acá lo reiniciaría en mitad de la salida.
+  try { AudioSala.startRingback('_DTMF_'); } catch {}
 }
 
 /** El manos libres. `undefined` alterna. */
@@ -293,6 +339,7 @@ export async function llamar(correo, conVideo) {
     /* `llamo` va con la oferta dentro: una ida y vuelta menos, y quien recibe
        ya sabe si es video ANTES de decidir si contesta. */
     mandarSenal(conQuien, 'llamo', { video: !!conVideo, sdp: pc.localDescription.toJSON() });
+    tonoArranca();
     anunciar();
   } catch (e) {
     colgar('no-se-pudo');
@@ -305,6 +352,7 @@ export async function llamar(correo, conVideo) {
 export async function contestar(conVideo) {
   if (!entrante) return;
   const { de, sdp } = entrante;
+  timbreCalla();
   conQuien = de;
   soyQuienLlama = false;
   // CONECTANDO, no «hablando»: todavía no llegó ni un pixel del otro lado.
@@ -332,6 +380,8 @@ export async function contestar(conVideo) {
 
 export function rechazar() {
   if (!entrante) return;
+  timbreCalla();
+  audioTermina();
   mandarSenal(entrante.de, 'rechazo', {});
   entrante = null;
   estado = 'libre';
@@ -461,6 +511,7 @@ export async function recibir(s) {
       entrante = { de, video: !!d.video, sdp: d.sdp };
       conQuien = de;
       estado = 'entrando';
+      timbreArranca();
       anunciar();
       return;
     }

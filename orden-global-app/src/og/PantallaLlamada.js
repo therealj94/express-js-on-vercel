@@ -54,8 +54,8 @@ const reloj = (seg) => {
 };
 
 export default function PantallaLlamada({ estado, quien, onCerrar }) {
-  const { estado: fase, flujoLocal, flujoRemoto, hayVideo, micAbierto, camAbierta,
-          porAltavoz, compartiendo, flujoChico, entrante } = estado;
+  const { estado: fase, flujoRemoto, hayVideo, micAbierto, camAbierta,
+          porAltavoz, audioListo, compartiendo, flujoChico, entrante } = estado;
   const [segundos, setSegundos] = useState(0);
   const arranque = useRef(null);
 
@@ -129,10 +129,14 @@ export default function PantallaLlamada({ estado, quien, onCerrar }) {
                    etiqueta={micAbierto ? 'Silenciar' : 'Activar micrófono'}
                    onPress={() => LLAMADA.micro()} />
             {/* El manos libres. En videollamada arranca encendido: nadie mira
-                una pantalla con el teléfono pegado a la oreja. */}
-            <Boton icono={porAltavoz ? 'altavoz' : 'auricular'} apagado={!porAltavoz}
-                   etiqueta={porAltavoz ? 'Quitar el altavoz' : 'Altavoz'}
-                   onPress={() => LLAMADA.altavoz()} />
+                una pantalla con el teléfono pegado a la oreja. Y solo si el
+                módulo de audio está: un botón que no responde confunde más
+                que su ausencia. */}
+            {audioListo ? (
+              <Boton icono={porAltavoz ? 'altavoz' : 'auricular'} apagado={!porAltavoz}
+                     etiqueta={porAltavoz ? 'Quitar el altavoz' : 'Altavoz'}
+                     onPress={() => LLAMADA.altavoz()} />
+            ) : null}
             {esVideo ? (
               <Boton icono={camAbierta ? 'videocam' : 'videocam-off'} apagado={!camAbierta}
                      etiqueta={camAbierta ? 'Apagar cámara' : 'Encender cámara'}

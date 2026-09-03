@@ -29,7 +29,7 @@ const inicialDe = (s) => String(s || '?').trim().charAt(0).toUpperCase();
 
 export default function PantallaGrupo({ estado, nombreDe, onCerrar }) {
   const { estado: fase, gente, cuantos, micAbierto, camAbierta, conVideo,
-          porAltavoz, flujoLocal, entrante, lleno, TOPE } = estado;
+          porAltavoz, audioListo, flujoLocal, entrante, lleno, compartiendo, TOPE } = estado;
   const [segundos, setSegundos] = useState(0);
   const arranque = useRef(null);
 
@@ -99,7 +99,8 @@ export default function PantallaGrupo({ estado, nombreDe, onCerrar }) {
 
       <View style={st.arriba}>
         <Text style={st.rotulo}>
-          {fase === 'llamando' ? 'Llamando al grupo…' : `${cuantos} en la llamada · ${reloj(segundos)}`}
+          {fase === 'llamando' ? 'Llamando al grupo…'
+            : `${compartiendo ? 'Compartiendo pantalla · ' : ''}${cuantos} en la llamada · ${reloj(segundos)}`}
           {lleno ? `  ·  lleno (${TOPE})` : ''}
         </Text>
       </View>
@@ -109,16 +110,19 @@ export default function PantallaGrupo({ estado, nombreDe, onCerrar }) {
           <Boton icono={micAbierto ? 'mic' : 'mic-off'} apagado={!micAbierto}
                  etiqueta={micAbierto ? 'Silenciar' : 'Activar micrófono'}
                  onPress={() => GRUPO.micro()} />
-          <Boton icono={porAltavoz ? 'altavoz' : 'auricular'} apagado={!porAltavoz}
-                 etiqueta={porAltavoz ? 'Quitar el altavoz' : 'Altavoz'}
-                 onPress={() => GRUPO.altavoz()} />
+          {audioListo ? (
+            <Boton icono={porAltavoz ? 'altavoz' : 'auricular'} apagado={!porAltavoz}
+                   etiqueta={porAltavoz ? 'Quitar el altavoz' : 'Altavoz'}
+                   onPress={() => GRUPO.altavoz()} />
+          ) : null}
           {conVideo ? (
             <Boton icono={camAbierta ? 'videocam' : 'videocam-off'} apagado={!camAbierta}
                    etiqueta={camAbierta ? 'Apagar cámara' : 'Encender cámara'}
                    onPress={() => GRUPO.camara()} />
           ) : null}
           {conVideo ? (
-            <Boton icono="pantalla" etiqueta="Compartir pantalla"
+            <Boton icono={compartiendo ? 'pantalla-off' : 'pantalla'} apagado={!compartiendo}
+                   etiqueta={compartiendo ? 'Dejar de compartir' : 'Compartir pantalla'}
                    onPress={() => GRUPO.pantalla()} />
           ) : null}
           <Boton icono="call-off" color="#E5484D" grande etiqueta="Salir de la llamada"

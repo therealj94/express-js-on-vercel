@@ -37,6 +37,10 @@
 
 import { PermissionsAndroid, Platform } from 'react-native';
 import AudioSala from 'react-native-incall-manager';
+
+/* Igual que en el cara a cara: si el módulo nativo no está, el altavoz no
+   responde y la pantalla esconde su botón en vez de ofrecerlo muerto. */
+const HAY_AUDIO = !!AudioSala && typeof AudioSala.start === 'function';
 import {
   RTCPeerConnection,
   RTCIceCandidate,
@@ -71,6 +75,10 @@ let entrante = null;
  * conexión figurara como conectada. Se anotan y se atienden al contestar. */
 const porConectar = new Set();
 
+/* La pantalla compartida, si la hay. Se declara acá arriba —y no junto a su
+   función— porque `cuento()` la lee, y `cuento()` corre antes. */
+let flujoPantalla = null;
+
 let mandarSenal = null;
 let traerTurno = null;
 let avisar = () => {};
@@ -95,8 +103,10 @@ export const cuento = () => ({
   camAbierta: !!miFlujo?.getVideoTracks?.()[0]?.enabled,
   conVideo,
   porAltavoz,
+  audioListo: HAY_AUDIO,
   flujoLocal: miFlujo,
   lleno: pares.size + 1 >= TOPE,
+  compartiendo: !!flujoPantalla,
   TOPE,
 });
 
@@ -132,11 +142,27 @@ function audioArranca() {
     AudioSala.start({ media: 'video', auto: true });
     porAltavoz = true;
     AudioSala.setForceSpeakerphoneOn(true);
+    // La pantalla no se apaga mientras dure: el botón de salir no puede
+    // quedar detrás del desbloqueo.
+    AudioSala.setKeepScreenOn(true);
   } catch {}
 }
 
 function audioTermina() {
+  try { AudioSala.stopRingtone(); } catch {}
+  try { AudioSala.setKeepScreenOn(false); } catch {}
   try { AudioSala.stop(); } catch {}
+}
+
+/* El mismo timbre que en el cara a cara, y por la misma razón: con la app
+   abierta el relevo no manda push, así que si no sonamos nosotros la llamada
+   de grupo aparece muda. */
+function timbreArranca() {
+  try { AudioSala.startRingtone('_DEFAULT_', [0, 900, 600], null, 30); } catch {}
+}
+
+function timbreCalla() {
+  try { AudioSala.stopRingtone(); } catch {}
 }
 
 export function altavoz(encender) {
@@ -234,6 +260,7 @@ export async function llamar(gid, miembros, video = true) {
 export async function contestar(video = true) {
   if (!entrante) return;
   const dentro = entrante;
+  timbreCalla();
   grupo = dentro.grupo; conVideo = !!video;
   estado = 'hablando';
   anunciar();
@@ -270,6 +297,8 @@ async function atenderPendientes() {
 
 export function rechazar() {
   if (!entrante) return;
+  timbreCalla();
+  audioTermina();
   mandarSenal(entrante.de, 'grechazo', { grupo: entrante.grupo });
   entrante = null; grupo = null; estado = 'libre';
   anunciar();
@@ -307,6 +336,7 @@ export async function recibir(s) {
         miembros: (d.miembros && d.miembros.length) ? d.miembros : [de],
       };
       grupo = d.grupo; estado = 'entrando';
+      timbreArranca();
       anunciar();
       return true;
     }
@@ -381,8 +411,6 @@ export function voltear() {
 }
 
 /** Compartir pantalla: se reemplaza la pista en TODAS las conexiones. */
-let flujoPantalla = null;
-
 export async function pantalla() {
   if (!pares.size) return;
   if (flujoPantalla) return dejarPantalla();

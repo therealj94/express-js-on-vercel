@@ -349,6 +349,42 @@ async function asegurarCanalChat(N) {
  * «PULSE2CHAT · quien: texto corto». `con` viaja en data: al tocarla, App.js
  * abre el hilo exacto de esa conversación, no la lista.
  */
+/**
+ * «Te llamó Fulano y no contestaste».
+ *
+ * POR QUE HACE FALTA, SI YA HAY UN TIMBRE
+ *
+ * El timbre suena mientras la llamada está entrando. Si el teléfono estaba en
+ * el bolsillo, o boca abajo, o simplemente no se llegó, la pantalla de llamada
+ * desaparece cuando el otro se cansa y NO QUEDA NADA: ni una marca, ni un
+ * número, nada que diga que alguien intentó. Eso se lee como «esta app no
+ * avisa», que es peor que no tener llamadas.
+ *
+ * Va por el canal de las llamadas, no por el de los mensajes: quien silenció
+ * los mensajes no tiene por qué perderse esto, y al revés.
+ */
+export async function notificarPerdida({ quien, con, video }) {
+  const N = notif();
+  if (!N) return false;
+  try {
+    await asegurarCanalesPush(N);
+    await N.scheduleNotificationAsync({
+      content: {
+        title: video ? 'Videollamada perdida' : 'Llamada perdida',
+        body: quien || '',
+        sound: 'default',
+        priority: PRIORIDAD_MAX,
+        color: '#C9A961',
+        data: { screen: 'chat', con },
+      },
+      trigger: Platform.OS === 'android' ? { channelId: CANAL_LLAMADAS } : null,
+    });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export async function notificarMensaje({ quien, texto, con }) {
   const N = notif();
   if (!N) return false;

@@ -48,6 +48,7 @@ import GRUPO from './llamadaGrupo';
 import PantallaLlamada, { razonDeCorte } from './PantallaLlamada';
 import PantallaGrupo from './PantallaGrupo';
 import { leerLibreta, comoMapa } from './contactos';
+import { notificarPerdida } from '../notify';
 
 /* Las señales de una llamada cara a cara. Las de grupo empiezan todas por «g»
    y se comprueban ANTES: `ice` y `gice` son distintas, y confundirlas metería
@@ -85,6 +86,33 @@ export default function Timbre({ correo, toast }) {
     return (libreta[k] && libreta[k].nombre) || k.split('@')[0] || '?';
   }, [libreta]);
 
+  /* LA LLAMADA QUE SONÓ Y NADIE ATENDIÓ.
+   *
+   * Se mira la transición, no el estado: pasar de «entrando» a «libre» porque
+   * el otro se cansó (`el-otro`) es una llamada perdida. Si fui yo quien
+   * rechazó, no lo es —eso fue una decisión— y avisar de ella sería ruido.
+   *
+   * Hace falta porque cuando la app está abierta el relevo no manda push: la
+   * pantalla de llamada aparece, suena, y si nadie llega desaparece sin dejar
+   * NADA. Sin este aviso, la única señal de que alguien te llamó es que no hay
+   * ninguna.
+   */
+  const fasePrevia = useRef({ fase: 'libre', con: null, video: false });
+  const mirarPerdida = useCallback((c) => {
+    const antes = fasePrevia.current;
+    const ahora = c?.estado || 'libre';
+    if (antes.fase === 'entrando' && ahora === 'libre' && c?.motivo === 'el-otro' && antes.con) {
+      notificarPerdida({
+        quien: nombreDe(antes.con), con: antes.con, video: antes.video,
+      }).catch(() => {});
+    }
+    fasePrevia.current = {
+      fase: ahora,
+      con: c?.conQuien || c?.entrante?.de || (ahora === 'libre' ? null : antes.con),
+      video: ahora === 'entrando' ? !!c?.entrante?.video : antes.video,
+    };
+  }, [nombreDe]);
+
   /* Los dos motores, enchufados una vez. Mandan por el mismo buzón del chat y
      sacan el relevo de video del mismo sitio. */
   useEffect(() => {
@@ -94,6 +122,7 @@ export default function Timbre({ correo, toast }) {
       mandar: M.senalar,
       traerTurno: M.turno,
       alCambiar: (c) => {
+        mirarPerdida(c);
         setLlam(c);
         const razon = c?.motivo ? razonDeCorte(c.motivo) : null;
         if (razon) toast?.(razon, 'error');
@@ -111,7 +140,7 @@ export default function Timbre({ correo, toast }) {
       if (LLAMADA.enLlamada()) LLAMADA.colgar('yo');
       if (GRUPO.enLlamada()) GRUPO.colgar('yo');
     };
-  }, [correo, toast]);
+  }, [correo, toast, mirarPerdida]);
 
   /* EL BUZÓN. Se enciende con la app en primer plano y se apaga al irse. */
   const enPie = useRef(false);
@@ -119,6 +148,23 @@ export default function Timbre({ correo, toast }) {
     if (!correo) return undefined;
 
     const repartir = (s) => {
+      const de = String(s?.de || '').toLowerCase();
+
+      /* OCUPADO ENTRE LOS DOS MOTORES.
+         Son independientes: el de dos no sabe del de grupo ni al revés. Sin
+         esto, una llamada de una persona entrando mientras estás en una de
+         grupo pintaba su pantalla ENCIMA de la del grupo — y quien llamaba se
+         quedaba esperando a alguien que ni la vio. Se contesta que no y no se
+         pasa al motor. */
+      if (s?.tipo === 'llamo' && GRUPO.enLlamada()) {
+        M.senalar(de, 'ocupado', {});
+        return;
+      }
+      if (s?.tipo === 'gllamo' && LLAMADA.enLlamada()) {
+        M.senalar(de, 'grechazo', { grupo: s?.datos?.grupo });
+        return;
+      }
+
       if (ES_DE_GRUPO(s?.tipo)) { GRUPO.recibir(s); return; }
       if (SENALES_LLAMADA.includes(s?.tipo)) {
         LLAMADA.recibir(s);

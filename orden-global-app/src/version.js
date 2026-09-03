@@ -10,7 +10,7 @@
 //   BUILD sube de uno en uno en CADA entrega, sin excepción.
 // ============================================================
 
-export const VERSION = '1.33.6';
+export const VERSION = '1.34.0';
 export const BUILD = 72;
 export const RELEASED = '2026-09-02';
 
@@ -20,7 +20,7 @@ export const versionLabel = () => `v${VERSION} · build ${BUILD}`;
 // El más reciente primero. `es`/`en` para que se lea en ambos idiomas.
 export const CHANGELOG = [
   {
-    v: '1.33.6',
+    v: '1.34.0',
     build: 72,
     date: '2026-09-02',
     es: [
