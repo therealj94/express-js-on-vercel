@@ -127,6 +127,85 @@ def paso(n, titulo, texto):
     ]))
     return t
 
+def pantalla(titulo, filas, ancho=None):
+    """Una maqueta de pantalla, para los documentos que proponen diseño.
+
+    No es un dibujo bonito: es la pantalla escrita con la jerarquía que va a
+    tener. Un documento que dice «se le enseña el monto» deja la decisión sin
+    tomar; uno que enseña QUÉ dice y en qué orden ya la tomó, y se puede
+    discutir antes de que exista el código.
+
+    Cada fila es (tipo, texto) y el tipo dice el papel, no el color:
+      'rotulo'  la etiqueta chica de arriba de un dato
+      'dato'    el dato en grande — lo que la persona vino a leer
+      'texto'   una línea normal
+      'boton'   la acción, en su barra
+      'nota'    la letra chica, lo que se lee después
+      'sep'     un respiro con línea
+    """
+    a = ancho or (ANCHO - 2 * MARGEN) * 0.62
+    dentro = []
+    dentro.append(Paragraph(f'<b>{titulo}</b>', ParagraphStyle(
+        'pt', fontName='Helvetica-Bold', fontSize=8.4, leading=11,
+        textColor=GRIS, spaceAfter=7)))
+    for tipo, txt in filas:
+        if tipo == 'sep':
+            dentro.append(Spacer(1, 5))
+            dentro.append(HRFlowable(width='100%', thickness=0.5, color=LINEA,
+                                     spaceBefore=0, spaceAfter=5))
+        elif tipo == 'rotulo':
+            dentro.append(Paragraph(txt.upper(), ParagraphStyle(
+                'pr', fontName='Helvetica-Bold', fontSize=6.8, leading=9,
+                textColor=GRIS, spaceAfter=1)))
+        elif tipo == 'dato':
+            dentro.append(Paragraph(txt, ParagraphStyle(
+                'pd', fontName='Helvetica-Bold', fontSize=14, leading=17,
+                textColor=TINTA, spaceAfter=5)))
+        elif tipo == 'boton':
+            b = Table([[Paragraph(txt, ParagraphStyle(
+                'pb', fontName='Helvetica-Bold', fontSize=9, leading=12,
+                textColor=colors.white, alignment=TA_CENTER))]], colWidths=[a - 24])
+            b.setStyle(TableStyle([
+                ('BACKGROUND', (0, 0), (-1, -1), TINTA),
+                ('TOPPADDING', (0, 0), (-1, -1), 7),
+                ('BOTTOMPADDING', (0, 0), (-1, -1), 7),
+            ]))
+            dentro.append(Spacer(1, 3))
+            dentro.append(b)
+            dentro.append(Spacer(1, 3))
+        elif tipo == 'nota':
+            dentro.append(Paragraph(txt, ParagraphStyle(
+                'pn', fontSize=7.6, leading=10.5, textColor=GRIS, spaceAfter=3)))
+        else:
+            dentro.append(Paragraph(txt, ParagraphStyle(
+                'px', fontSize=9, leading=12.5, textColor=TINTA, spaceAfter=3)))
+    t = Table([[dentro]], colWidths=[a], hAlign='LEFT')
+    t.setStyle(TableStyle([
+        ('BOX', (0, 0), (-1, -1), 0.8, LINEA),
+        ('BACKGROUND', (0, 0), (-1, -1), colors.white),
+        ('LEFTPADDING', (0, 0), (-1, -1), 12),
+        ('RIGHTPADDING', (0, 0), (-1, -1), 12),
+        ('TOPPADDING', (0, 0), (-1, -1), 11),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 12),
+    ]))
+    return t
+
+def lado_a_lado(izq, der, reparto=(0.5, 0.5)):
+    """Dos cosas en paralelo — para «antes y después», o dos estados seguidos."""
+    au = ANCHO - 2 * MARGEN
+    t = Table([[izq, der]],
+              colWidths=[au * reparto[0] - 4, au * reparto[1] - 4], hAlign='LEFT')
+    t.setStyle(TableStyle([
+        ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+        ('LEFTPADDING', (0, 0), (0, -1), 0),
+        ('RIGHTPADDING', (0, 0), (0, -1), 8),
+        ('LEFTPADDING', (1, 0), (1, -1), 8),
+        ('RIGHTPADDING', (1, 0), (-1, -1), 0),
+        ('TOPPADDING', (0, 0), (-1, -1), 0),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 0),
+    ]))
+    return t
+
 # ── El marco de cada página ──────────────────────────────────────────────────
 
 # Cada documento pone su rótulo y su fecha antes de construir.
