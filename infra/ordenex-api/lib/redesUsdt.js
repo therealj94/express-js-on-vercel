@@ -39,6 +39,7 @@ const REDES = {
     // se deshizo— y por tanto mismo número.
     espera: 120,
     pisoBloques: 60,
+    explorador: 'https://polygonscan.com/tx/',
     bloqueSegundos: 2, // punto de partida; se mide al arrancar
   },
   56: {
@@ -47,6 +48,7 @@ const REDES = {
     usdt: '0x55d398326f99059fF775485246999027B3197955',
     espera: 90,
     pisoBloques: 30,
+    explorador: 'https://bscscan.com/tx/',
     bloqueSegundos: 0.75,
   },
   1: {
@@ -59,9 +61,15 @@ const REDES = {
     // slots quedan solo de piso por si el RPC no la sirve.
     espera: 900,
     pisoBloques: 64,
+    explorador: 'https://etherscan.io/tx/',
     bloqueSegundos: 12,
   },
 };
+
+/* El explorador de cada red. Va aquí, con el contrato y la espera, porque es
+   parte de lo que la casa le debe a quien deposita: un recibo que se pueda
+   comprobar en un sitio que no seamos nosotros. Una pantalla que dice «llegó»
+   sin enlace pide un acto de fe. */
 
 /** El evento que se busca. Es el único de todo este circuito. */
 const TEMA_TRANSFER = '0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef';

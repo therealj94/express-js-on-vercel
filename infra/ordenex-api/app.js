@@ -125,6 +125,8 @@ const limiteDinero = rateLimit({
   message: { error: 'Demasiadas operaciones seguidas. Esperá unos minutos.', codigo: 'DEMASIADAS' },
 });
 app.use('/ordenes', soloEscritura(limiteDinero));
+// Comprar mueve dinero de verdad: el mismo limite que una orden.
+app.use('/compras', soloEscritura(limiteDinero));
 app.use('/fiat', soloEscritura(limiteDinero));
 
 // El retiro firma una transaccion en la cadena y saca el dinero de la casa:
@@ -267,6 +269,7 @@ app.use('/mercados', require('./routes/mercados'));
 // colgarlo de /mercados/:par lo habria disfrazado de uno.
 app.use('/precio-declarado', require('./routes/precios'));
 app.use('/ordenes', require('./routes/ordenes'));
+app.use('/compras', require('./routes/compras'));
 app.use('/', require('./routes/portafolio'));
 app.use('/fiat', require('./routes/fiat'));
 app.use('/admin', require('./routes/admin'));
@@ -392,6 +395,18 @@ app.listen(puerto, () => {
     // sabiendo lo que se hace.
     //
     // Tampoco acredita: mueve custodia y nada mas. Ver lib/barridoExterno.js.
+    // El atendedor de compras: le busca orden a cada deposito, decide el
+    // precio y entrega el ORIGEN. Como el barrido, FIRMA — desde la caliente —
+    // asi que tambien se enciende a mano.
+    if (process.env.COMPRAS === '1') {
+      const compra = require('./lib/compra');
+      Promise.resolve(compra.arrancar()).catch((e) =>
+        console.error(`[compra] no arranco: ${e.message}`)
+      );
+    } else {
+      console.log('[compra] apagado (COMPRAS != 1): los depositos se ven pero no se entrega ORIGEN');
+    }
+
     if (process.env.BARRIDO === '1') {
       const barrido = require('./lib/barridoExterno');
       Promise.resolve(barrido.arrancar()).catch((e) =>
