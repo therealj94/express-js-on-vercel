@@ -38,14 +38,12 @@
 
 import { marco, botonCorreo, escaparCorreo as esc } from "./correo.js";
 import { saludo, H, paso, pantalla, toca, enlaceBaja, PAGINA } from "./cartaInstalar.js";
+import { APK, VERSION, PESO, PESO_ANTES } from "./apk.js";
 
-/* El APK NUEVO. Se cambia aquí y en `apps-web/veta-wallet/instalar.html` cada
-   vez que se compila, igual que el de la primera carta. */
-export const APK =
-  "https://expo.dev/artifacts/eas/TUIRM2GuaWiLcf9rvdRzI6GZuSVVJ2HJBNvB7VYhKiA.apk";
-export const VERSION = "1.34.0";
-export const PESO = "55 MB";
-export const PESO_ANTES = "138 MB";
+/* El APK sale de lib/apk.js, que es el único sitio donde se escribe. Antes
+   estaba aquí Y en la primera carta Y en la página Y en el guion que manda:
+   cuatro copias que solo se mantenían juntas por un comentario. */
+export { APK, VERSION, PESO, PESO_ANTES } from "./apk.js";
 
 export const ASUNTO = "Pesa menos de la mitad, y ahora también podés llamar";
 

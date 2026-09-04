@@ -36,15 +36,14 @@
 
 import { marco, botonCorreo, escaparCorreo as esc } from "./correo.js";
 import { firmaBaja } from "./firmaBaja.js";
+import { APK, VERSION, PAGINA } from "./apk.js";
 
-/* El APK. Vive aquí y en `apps-web/veta-wallet/instalar.html`, que es la
-   página con los mismos pasos: quien prefiera leerlos en el navegador
-   encuentra exactamente lo mismo. Al compilar una versión nueva se cambian
-   los dos. */
-export const APK =
-  "https://expo.dev/artifacts/eas/lxUN7f_SoutSa68XE896XE33aQtHhVFeSFtNutQwiDs.apk";
-export const PAGINA = "https://app.vetawallet.com/instalar";
-export const VERSION = "1.33.2";
+/* El APK ya NO vive aquí. Esta carta se quedó en la 1.33.2 mientras la
+   página y la segunda carta pasaban a la 1.34.0, porque el enlace estaba
+   escrito en cuatro sitios y solo se acordaba de todos quien los cambiaba.
+   Ahora hay uno: lib/apk.js. Se re-exporta para no romper a quien importe de
+   aquí. */
+export { APK, VERSION, PAGINA } from "./apk.js";
 
 const BAJA =
   (process.env.API_PUBLICA || "https://vetawallet-1a2e38ac52b1.herokuapp.com") +

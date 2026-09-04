@@ -56,8 +56,19 @@ AQUI = pathlib.Path(__file__).resolve().parent
 
 DE = 'Orden Global <info@ordenglobal.org>'
 ASUNTO = 'Tu app de Orden Global ya está lista para instalar'
+# EL ENLACE DEL APK. La copia buena vive en
+# `infra/veta-wallet-backend/lib/apk.js`, y `probar-apk-al-dia.mjs` se pone
+# rojo si este no coincide con aquel. Python no puede importar aquel archivo,
+# asi que la prueba es lo unico que los mantiene juntos: al compilar un APK
+# nuevo se cambia alli y la prueba dice que hay que tocar tambien aqui.
+#
+# Este apuntaba a kEEJv7Dn (1.33.1, 144 MB), que es el que recibieron las 409
+# personas del 2 de septiembre. Se deja anotado en apk.js (ENVIADOS) para no
+# tener que reconstruirlo del historial: quien lo recibio no se queda tirado
+# —los artefactos de EAS no caducan— pero instala una version anterior, y a
+# eso viene la segunda carta.
 ENLACE = ('https://expo.dev/artifacts/eas/'
-          'kEEJv7Dn4TfA06aMVWX-CpiZRPtUooi6DnGfyA-f69U.apk')
+          'TUIRM2GuaWiLcf9rvdRzI6GZuSVVJ2HJBNvB7VYhKiA.apk')
 BAJA_BASE = 'https://vetawallet-1a2e38ac52b1.herokuapp.com/baja'
 
 # Uno cada dos segundos. SES da 50.000 al dia y aguanta mucho mas por segundo;
