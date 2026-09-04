@@ -479,6 +479,7 @@ es: {
   'aj.gid': 'Genesis ID', 'aj.gidP': 'Tu identidad verificada',
   'aj.tarjeta': 'Tarjeta', 'aj.tarjetaP': 'Estado, PIN y movimientos',
   'aj.deposito': 'Depositar', 'aj.depositoP': 'Recibí desde otra billetera',
+  'aj.onx': 'Ordenex', 'aj.onxP': 'La casa de cambio: ORIGEN, oro y plata',
   'aj.mtp': 'MyTokenPay', 'aj.mtpP': 'Pagá en comercios con tu saldo',
   'aj.bien': 'La bienvenida', 'aj.bienP': 'Qué es Orden Global y en qué cadena corre',
   // PULSE2CHAT
@@ -1535,6 +1536,7 @@ en: {
   'aj.gid': 'Genesis ID', 'aj.gidP': 'Your verified identity',
   'aj.tarjeta': 'Card', 'aj.tarjetaP': 'Status, PIN and activity',
   'aj.deposito': 'Deposit', 'aj.depositoP': 'Receive from another wallet',
+  'aj.onx': 'Ordenex', 'aj.onxP': 'The exchange: ORIGEN, gold and silver',
   'aj.mtp': 'MyTokenPay', 'aj.mtpP': 'Pay at shops with your balance',
   'aj.bien': 'The welcome', 'aj.bienP': 'What Orden Global is and which chain it runs on',
   'nav.chat': 'Chat', 'nav.nucleo': 'Home',

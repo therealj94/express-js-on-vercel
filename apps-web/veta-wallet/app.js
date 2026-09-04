@@ -4970,6 +4970,11 @@ const VETA = (() => {
         ${fila(ICO.chispa || ICO.obra, t('gen.aj'), t('gen.ajP'), "VETA.tourGenesis('boton')")}
         ${fila(ICO.nota || ICO.obra, t('mus.aj'), t('mus.ajP'), "VETA.musicaAlterna()")}
         ${fila(ICO.chispa || ICO.obra, t('ver.aj'), `${VETA_V} · ${VETA_FECHA}`, "VETA.versionMirar()")}
+        ${/* Las dos casas del ecosistema, a un toque desde Ajustes. Hasta hoy
+              solo se llegaba a ellas por su esfera del Nucleo: bonito, y
+              escondido. MyTokenPay ya tenia su fila; Ordenex y AuCorp no, y
+              son justo donde se cambia y donde se saca el dinero. */ ''}
+        ${fila(ICO.cambiar, t('aj.onx'), t('aj.onxP'), "VETA.vista('ordenex')")}
         ${fila(ICO.tienda, t('aj.mtp'), t('aj.mtpP'), "VETA.vista('pay')")}
         ${fila(ICO.globo, t('aj.idioma'), t('aj.idiomaP'), "VETA.idioma('" + (idiomaActivo() === 'es' ? 'en' : 'es') + "')")}
         ${fila(ICO.doc, t('aj.legal'), t('aj.legalP'), "window.open('/terminos','_blank','noopener')")}
@@ -5908,8 +5913,8 @@ const VETA = (() => {
      se puede contestar: «¿esto que estoy viendo es lo último que subimos, o
      mi navegador se quedó con una copia vieja?». La ficha de Ajustes lo
      enseña, y con eso se sabe. */
-  const VETA_V = 'b930e12523';
-  const VETA_FECHA = '2026-09-03';
+  const VETA_V = 'd252d39c83';
+  const VETA_FECHA = '2026-09-04';
 
   const AET_V = '94968b8cba';
 
