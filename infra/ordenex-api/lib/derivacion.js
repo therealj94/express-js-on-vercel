@@ -108,8 +108,29 @@ function cargar() {
   const xEnv = xpubDelEntorno();
   const c = { frase: f, xpub: xEnv, base: null, neutro: null, huella: null, motivo: null };
 
-  // Sin xpub no hay ni forma de calcular direcciones: es el mínimo que
-  // necesita hasta el proceso web, que no firma nada.
+  // ══════════════════════════════════════════════════════════════════════
+  // LA XPUB ES OPCIONAL, Y ESO ES DELIBERADO
+  //
+  // Con la frase sola alcanza: la xpub se calcula de ella. Pedir las dos
+  // convertía la puesta en marcha en dos pasos, uno de ellos con un dato de
+  // 111 caracteres que hay que copiar sin equivocarse — y un paso de más en
+  // una tarea que se hace una vez es un paso donde alguien se equivoca.
+  //
+  // La xpub sigue valiendo la pena DESPUÉS, y para dos cosas distintas:
+  //
+  //   · Es lo único que puede llevar el proceso web para calcular direcciones
+  //     SIN poder firmarlas. Ese es el reparto que hace que una intrusión en
+  //     la web no se lleve la semilla.
+  //   · Puesta junto a la frase, delata una frase EQUIVOCADA al arrancar —
+  //     la de pruebas en producción, la de otro entorno, una rotación a
+  //     medias— que de otro modo derivaría direcciones impecables de otro
+  //     universo.
+  //
+  // Sin ella el dinero NO queda desprotegido: la comprobación que de verdad
+  // impide firmar desde la dirección de otro es la de lib/deposito.js, que
+  // compara la dirección derivada contra la que se le publicó a la persona, y
+  // esa funciona igual. Lo que se pierde es enterarse ANTES, al arrancar, en
+  // vez de en el primer barrido.
   if (xEnv) {
     try {
       c.neutro = HDNodeWallet.fromExtendedKey(xEnv);
@@ -118,15 +139,15 @@ function cargar() {
       c.motivo = 'la ORDENEX_SEMILLA_XPUB no tiene forma de xpub';
       c.neutro = null;
     }
-  } else {
-    c.motivo = 'falta ORDENEX_SEMILLA_XPUB';
+  } else if (!f) {
+    c.motivo = 'falta ORDENEX_SEMILLA_DEPOSITOS (o al menos ORDENEX_SEMILLA_XPUB)';
   }
 
   // Si la xpub no cargó, ESE es el problema y no se pisa con otro. Comparar la
   // frase contra una xpub que ni siquiera tiene forma daría el motivo «la
   // frase no corresponde», que manda a revisar la frase —que puede estar
   // perfecta— en vez de la variable que está mal escrita.
-  if (f && c.neutro) {
+  if (f) {
     try {
       // Mnemonic valida el checksum aquí: una palabra mal copiada muere en
       // esta línea y no dentro de tres semanas, con el dinero de alguien en
@@ -135,7 +156,21 @@ function cargar() {
       const base = HDNodeWallet.fromPhrase(f, '', RUTA_BASE);
       const xpubDeLaFrase = base.neuter().extendedKey;
 
-      if (xpubDeLaFrase !== xEnv) {
+      if (xEnv && !c.neutro) {
+        // La xpub está puesta pero mal escrita. ESE es el problema y no se pisa
+        // con «la frase no corresponde», que mandaría a revisar una frase que
+        // puede estar perfecta en vez de la variable que está mal copiada.
+        // El motivo ya quedó puesto arriba.
+      } else if (!xEnv) {
+        // Solo frase: ella misma es la fuente. Se calcula su xpub y se sigue.
+        // No hay nada contra qué comprobarla, y eso se dice en el panel en vez
+        // de fingir que está verificada.
+        c.neutro = base.neuter();
+        c.huella = c.neutro.fingerprint;
+        c.base = base;
+        c.soloFrase = true;
+        c.motivo = null;
+      } else if (xpubDeLaFrase !== xEnv) {
         // LA GUARDA QUE VALE POR TODAS. Una frase con checksum VÁLIDO pero
         // EQUIVOCADA —la de pruebas en producción, la de otro entorno, una
         // rotación a medias— pasa todos los demás controles y deriva
@@ -252,6 +287,10 @@ function estado() {
     puedeCalcular: Boolean(c.neutro),
     puedeFirmar: Boolean(c.base),
     huella: c.huella,
+    // `comprobada` es distinto de `puedeFirmar`: con la xpub puesta, la frase
+    // se comprobó contra ella; sin xpub, la frase se cree. Las dos firman, pero
+    // solo una avisaría si fuera la frase equivocada.
+    comprobada: Boolean(c.base) && !c.soloFrase,
     motivo: c.motivo,
   };
 }

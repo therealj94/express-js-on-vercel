@@ -152,6 +152,22 @@ conEntorno({ frase: FRASE, xpub: 'xpub-de-mentira' }, () => {
   comprobar(String(der.motivo()).includes('forma de xpub'), 'y se dice por qué');
 });
 
+decir('CON LA FRASE SOLA alcanza: la xpub se calcula de ella');
+conEntorno({ frase: FRASE, xpub: undefined }, () => {
+  comprobar(der.hayDerivacion() === true && der.puedeFirmar() === true,
+    'sin xpub puesta, la frase sola calcula Y firma');
+  comprobar(der.direccionDe(1) === DIR_1,
+    'y da exactamente las mismas direcciones que con la xpub puesta');
+  comprobar(der.huella() !== null, 'la huella sale igual, calculada de la frase');
+  comprobar(der.estado().comprobada === false,
+    'pero el panel dice que NO está comprobada: no hay contra qué comprobarla');
+  comprobar(der.motivo() === null, 'y no es un error — es una puesta en marcha de un solo paso');
+});
+conEntorno({ frase: FRASE, xpub: XPUB }, () => {
+  comprobar(der.estado().comprobada === true,
+    'con la xpub puesta al lado, la frase sí queda comprobada');
+});
+
 decir('la huella, para que dos procesos se puedan comparar');
 {
   const h1 = conEntorno({ frase: FRASE, xpub: XPUB }, () => der.huella());

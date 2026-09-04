@@ -23,10 +23,11 @@
  *    ORDENEX_SEMILLA_DEPOSITOS SOLO en el proceso que barre — nunca en el que
  *    atiende la web.
  *
- * 2. LA XPUB. Va como ORDENEX_SEMILLA_XPUB en LOS DOS procesos. No permite
- *    firmar nada: solo calcular direcciones. Es la que se puede compartir para
- *    revisar el codigo, y es la que comprueba que la frase puesta es la
- *    correcta y no la de otro entorno.
+ * 2. LA XPUB. ES OPCIONAL — con la frase sola el sistema funciona, porque la
+ *    xpub se calcula de ella. Sirve para dos cosas, las dos para mas adelante:
+ *    es lo unico que puede llevar el proceso web para calcular direcciones SIN
+ *    poder firmarlas, y puesta junto a la frase avisa al arrancar si la frase
+ *    es la equivocada. No permite firmar nada, asi que se puede compartir.
  *
  * 3. LAS TRES DIRECCIONES DE MUESTRA. Guardalas. El dia que haya que comprobar
  *    que un servidor lleva la semilla correcta, se compara su /admin/estado
@@ -66,9 +67,12 @@ console.log(`   huella   ${base.neuter().fingerprint}`);
 for (let i = 1; i <= 3; i++) console.log(`   indice ${i}  ${base.deriveChild(i).address}`);
 
 raya('4 · DONDE VA CADA COSA');
-console.log(`   proceso que barre   ORDENEX_SEMILLA_DEPOSITOS  (las 24 palabras)
-                       ORDENEX_SEMILLA_XPUB       (la xpub)
-   proceso web         ORDENEX_SEMILLA_XPUB       (la xpub, y NADA mas)
+console.log(`   AHORA, y alcanza:
+     ORDENEX_SEMILLA_DEPOSITOS   las 24 palabras
+
+   MAS ADELANTE, cuando el que barre sea un proceso aparte:
+     proceso que barre   ORDENEX_SEMILLA_DEPOSITOS  +  ORDENEX_SEMILLA_XPUB
+     proceso web         ORDENEX_SEMILLA_XPUB          y NADA mas
 
    El proceso web no puede firmar aunque quiera: con la xpub sola, el objeto
    que calcula direcciones NO TIENE llave privada. No es una promesa, es
