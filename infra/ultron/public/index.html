@@ -1,0 +1,746 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="color-scheme" content="dark">
+<title>ULTRON FP</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* ══ ULTRON FP · Conocimiento Full ═══════════════════════════════════════════
+   Un solo acento —el cian filamento— sobre abismo. El oro de la casa aparece
+   en un solo sitio: el precio del ORIGEN. Todo lo demás calla para que la
+   presencia y la conversación sean lo único que se mueve. */
+:root{
+  --abismo:#030814; --noche:#071228; --vidrio:rgba(9,22,48,.66); --vidrio2:rgba(12,30,62,.78);
+  --linea:rgba(93,214,255,.14); --linea2:rgba(93,214,255,.26);
+  --fila:#5DD6FF; --fila2:#9BE7FF; --electrico:#1B6BFF; --profundo:#0A2F7A;
+  --hielo:#EAF2FF; --bruma:#8FA6CC; --humo:#56698F;
+  --oro:#C9A961; --oroLt:#EAD79C;
+  --alerta:#FF6B6B; --vivo:#3ED9A0; --aviso:#F5B32B;
+  --sans:'Manrope',system-ui,-apple-system,'Segoe UI',sans-serif;
+  --mono:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,monospace;
+  --marca:'Cinzel',Georgia,serif;
+  --r:16px; --r2:22px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{background:var(--abismo);color:var(--hielo);font:15px/1.6 var(--sans);-webkit-font-smoothing:antialiased;overflow:hidden}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
+input,textarea{font:inherit;color:inherit}
+a{color:var(--fila)}
+::selection{background:rgba(93,214,255,.28)}
+[hidden]{display:none!important}
+
+/* el fondo: una lluvia de datos muy tenue, como en la imagen, sin competir */
+#lluvia{position:fixed;inset:0;z-index:0;opacity:.55;pointer-events:none}
+.velo{position:fixed;inset:0;z-index:0;background:
+  radial-gradient(900px 600px at 50% 0%,rgba(27,107,255,.16),transparent 60%),
+  radial-gradient(700px 500px at 50% 100%,rgba(93,214,255,.08),transparent 60%);pointer-events:none}
+
+/* ── la puerta ─────────────────────────────────────────────────────────────── */
+#puerta{position:relative;z-index:2;height:100%;display:grid;place-items:center;padding:24px}
+.puerta-caja{width:min(420px,100%);text-align:center}
+.puerta-caja canvas{width:220px;height:220px;margin:0 auto 8px;display:block}
+.marca{font-family:var(--marca);font-weight:700;letter-spacing:.32em;font-size:26px;color:var(--hielo);text-shadow:0 0 24px rgba(93,214,255,.35)}
+.marca small{display:block;font-family:var(--sans);font-weight:500;letter-spacing:.34em;font-size:10.5px;color:var(--fila);margin-top:6px;text-transform:uppercase}
+.puerta-caja form{margin-top:26px;display:grid;gap:10px;text-align:left}
+.campo{background:var(--vidrio);border:1px solid var(--linea);border-radius:12px;padding:12px 14px;outline:0;color:var(--hielo);width:100%;transition:border-color .2s,box-shadow .2s}
+.campo::placeholder{color:var(--humo)}
+.campo:focus{border-color:var(--linea2);box-shadow:0 0 0 3px rgba(93,214,255,.10)}
+.btn{background:linear-gradient(180deg,rgba(93,214,255,.22),rgba(27,107,255,.22));border:1px solid var(--linea2);border-radius:12px;padding:12px 16px;font-weight:600;color:var(--hielo);transition:transform .12s,box-shadow .2s,background .2s}
+.btn:hover{box-shadow:0 0 28px rgba(93,214,255,.18);background:linear-gradient(180deg,rgba(93,214,255,.3),rgba(27,107,255,.26))}
+.btn:active{transform:translateY(1px)}
+.btn:disabled{opacity:.5;cursor:default;box-shadow:none}
+.btn.oro{background:linear-gradient(180deg,rgba(201,169,97,.26),rgba(150,121,63,.22));border-color:rgba(201,169,97,.4)}
+.btn.linea{background:transparent}
+.btn.chico{padding:7px 11px;font-size:12.5px;border-radius:9px}
+.puerta-error{color:var(--alerta);font-size:13px;min-height:18px;text-align:center}
+.puerta-pie{margin-top:22px;color:var(--humo);font-size:12px;line-height:1.5}
+
+/* ── el panel ─────────────────────────────────────────────────────────────── */
+#panel{position:relative;z-index:1;height:100%;display:grid;grid-template-rows:56px 1fr;grid-template-columns:300px 1fr 330px;grid-template-areas:"cab cab cab" "izq centro der"}
+.cab{grid-area:cab;display:flex;align-items:center;gap:16px;padding:0 18px;border-bottom:1px solid var(--linea);background:rgba(3,8,20,.55);backdrop-filter:blur(14px)}
+.cab .marca{font-size:15px;letter-spacing:.28em}
+.cab .marca small{display:inline;margin:0 0 0 12px;font-size:9.5px;letter-spacing:.3em;color:var(--fila)}
+.cab .quien{margin-left:auto;display:flex;align-items:center;gap:14px;font-size:12.5px;color:var(--bruma)}
+.puntos{display:flex;gap:10px;align-items:center}
+.punto{display:inline-flex;align-items:center;gap:6px;font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--humo)}
+.punto i{width:7px;height:7px;border-radius:50%;background:var(--humo);box-shadow:0 0 0 0 transparent;transition:background .3s,box-shadow .3s}
+.punto.ok i{background:var(--vivo);box-shadow:0 0 10px rgba(62,217,160,.6)}
+.punto.mal i{background:var(--alerta);box-shadow:0 0 10px rgba(255,107,107,.6)}
+.punto.medio i{background:var(--aviso);box-shadow:0 0 10px rgba(245,179,43,.5)}
+.interruptor{display:inline-flex;align-items:center;gap:8px;padding:6px 10px;border-radius:999px;border:1px solid var(--linea);color:var(--bruma);font-size:12px}
+.interruptor.on{border-color:var(--linea2);color:var(--fila)}
+.interruptor svg{width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+
+.izq,.der{overflow:auto;padding:18px;scrollbar-width:thin;scrollbar-color:rgba(93,214,255,.18) transparent}
+.izq{grid-area:izq;border-right:1px solid var(--linea)}
+.der{grid-area:der;border-left:1px solid var(--linea)}
+.centro{grid-area:centro;display:grid;grid-template-rows:1fr auto;min-height:0}
+
+/* la presencia */
+.presencia{position:relative;aspect-ratio:1/1.15;border-radius:var(--r2);overflow:hidden;background:radial-gradient(60% 50% at 50% 55%,rgba(27,107,255,.12),transparent 70%);border:1px solid var(--linea)}
+.presencia canvas{width:100%;height:100%;display:block}
+.presencia .estado{position:absolute;left:14px;bottom:12px;font-family:var(--mono);font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--fila);opacity:.85}
+.presencia .estado::before{content:'';display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--fila);margin-right:8px;box-shadow:0 0 10px var(--fila);animation:latir 2.4s ease-in-out infinite}
+@keyframes latir{0%,100%{opacity:.5}50%{opacity:1}}
+
+.bloque{margin-top:16px}
+.bloque h3{font-size:10.5px;letter-spacing:.2em;text-transform:uppercase;color:var(--humo);font-weight:600;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between}
+.bloque h3 button{color:var(--fila);font-size:11px;letter-spacing:.04em;text-transform:none}
+.vital{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 0;border-top:1px solid var(--linea);font-size:13px}
+.vital:first-of-type{border-top:0}
+.vital .n{color:var(--bruma)}
+.vital .v{font-family:var(--mono);font-size:12.5px;color:var(--hielo);font-variant-numeric:tabular-nums}
+.vital .v.oro{color:var(--oroLt);text-shadow:0 0 14px rgba(201,169,97,.35);font-size:15px;font-weight:500}
+.vital .v.mal{color:var(--alerta)}.vital .v.ok{color:var(--vivo)}.vital .v.aviso{color:var(--aviso)}
+.vital small{display:block;color:var(--humo);font-size:11px;font-family:var(--sans)}
+
+/* el hilo */
+.hilo{overflow:auto;padding:26px 8% 18px;scrollbar-width:thin;scrollbar-color:rgba(93,214,255,.18) transparent;scroll-behavior:smooth}
+.vacio{max-width:560px;margin:8vh auto 0;text-align:center;color:var(--bruma)}
+.vacio h2{font-family:var(--marca);font-weight:600;letter-spacing:.18em;font-size:18px;color:var(--hielo);margin-bottom:10px}
+.vacio p{font-size:14px;line-height:1.7}
+.sugerencias{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:22px;text-align:left}
+.sug{background:var(--vidrio);border:1px solid var(--linea);border-radius:14px;padding:12px 14px;font-size:13px;color:var(--bruma);transition:border-color .2s,color .2s,transform .12s}
+.sug:hover{border-color:var(--linea2);color:var(--hielo);transform:translateY(-1px)}
+.sug b{display:block;color:var(--hielo);font-weight:600;margin-bottom:2px;font-size:13px}
+
+.msg{max-width:800px;margin:0 auto 22px;animation:entra .28s ease-out}
+@keyframes entra{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+.msg.mio{display:flex;justify-content:flex-end}
+.msg.mio .burbuja{background:linear-gradient(180deg,rgba(27,107,255,.22),rgba(10,47,122,.28));border:1px solid rgba(93,214,255,.22);border-radius:18px 18px 4px 18px;padding:12px 16px;max-width:80%;white-space:pre-wrap;word-break:break-word}
+.msg.ultron .quien{font-family:var(--mono);font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--fila);margin-bottom:8px;display:flex;align-items:center;gap:10px}
+.msg.ultron .quien .pensando{color:var(--humo);letter-spacing:.02em;text-transform:none;font-family:var(--sans);font-size:12px}
+.cuerpo{font-size:15px;line-height:1.7;color:var(--hielo)}
+.cuerpo>*+*{margin-top:10px}
+.cuerpo h1,.cuerpo h2,.cuerpo h3{font-weight:700;line-height:1.3;color:#fff}
+.cuerpo h1{font-size:19px}.cuerpo h2{font-size:17px;margin-top:18px}.cuerpo h3{font-size:15px;margin-top:14px}
+.cuerpo ul,.cuerpo ol{padding-left:22px}.cuerpo li{margin:3px 0}
+.cuerpo code{font-family:var(--mono);font-size:12.5px;background:rgba(93,214,255,.10);padding:1px 5px;border-radius:5px}
+.cuerpo pre{background:rgba(3,8,20,.7);border:1px solid var(--linea);border-radius:12px;padding:12px 14px;overflow:auto}
+.cuerpo pre code{background:none;padding:0}
+.cuerpo blockquote{border-left:2px solid var(--oro);padding:2px 14px;color:var(--bruma)}
+.cuerpo .tabla{overflow-x:auto}
+.cuerpo table{border-collapse:collapse;width:100%;font-size:13.5px}
+.cuerpo th,.cuerpo td{border:1px solid var(--linea);padding:7px 10px;text-align:left;vertical-align:top}
+.cuerpo th{color:var(--bruma);font-weight:600;font-size:12px;letter-spacing:.04em}
+.cuerpo td{font-variant-numeric:tabular-nums}
+.cuerpo hr{border:0;border-top:1px solid var(--linea);margin:16px 0}
+.cursor::after{content:'▍';color:var(--fila);animation:latir 1s infinite}
+
+.actividad{display:flex;flex-wrap:wrap;gap:6px;margin-top:12px}
+.chip{display:inline-flex;align-items:center;gap:6px;font-size:11.5px;color:var(--bruma);border:1px solid var(--linea);border-radius:999px;padding:4px 10px;background:rgba(3,8,20,.4);max-width:100%}
+.chip.fuente{cursor:pointer}.chip.fuente:hover{color:var(--hielo);border-color:var(--linea2)}
+.chip.herr{color:var(--fila)}.chip.herr::before{content:'';width:6px;height:6px;border-radius:50%;background:var(--fila);box-shadow:0 0 8px var(--fila)}
+.chip.corriendo::before{animation:latir .8s infinite}
+.chip .t{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+.tarjeta{margin-top:12px;background:var(--vidrio2);border:1px solid var(--linea2);border-radius:14px;padding:12px 14px;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.tarjeta .ic{width:36px;height:36px;border-radius:10px;display:grid;place-items:center;background:rgba(93,214,255,.10);flex:none}
+.tarjeta .ic svg{width:18px;height:18px;fill:none;stroke:var(--fila);stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.tarjeta .tx{flex:1;min-width:160px}
+.tarjeta .tx b{display:block;font-weight:600}
+.tarjeta .tx small{color:var(--bruma);font-size:12px}
+.tarjeta .acciones{display:flex;gap:6px}
+.tarjeta.envio{border-color:rgba(201,169,97,.35)}
+.tarjeta.envio .ic{background:rgba(201,169,97,.12)}
+.tarjeta.envio .ic svg{stroke:var(--oroLt)}
+.tarjeta.envio pre{flex-basis:100%;white-space:pre-wrap;font:13px/1.55 var(--sans);color:var(--bruma);background:rgba(3,8,20,.45);border-radius:10px;padding:10px 12px;max-height:180px;overflow:auto}
+.tarjeta.hecho{opacity:.6}
+
+/* el compositor */
+.compositor{padding:12px 8% 18px;border-top:1px solid var(--linea);background:linear-gradient(180deg,transparent,rgba(3,8,20,.6))}
+.caja-escribir{max-width:800px;margin:0 auto;background:var(--vidrio2);border:1px solid var(--linea2);border-radius:18px;padding:10px 10px 8px 16px;display:grid;grid-template-columns:1fr auto;gap:8px;align-items:end;box-shadow:0 0 0 0 rgba(93,214,255,0);transition:box-shadow .25s}
+.caja-escribir:focus-within{box-shadow:0 0 0 4px rgba(93,214,255,.08),0 0 40px rgba(27,107,255,.12)}
+.caja-escribir textarea{background:none;border:0;outline:0;resize:none;width:100%;max-height:200px;line-height:1.55;padding:6px 0;color:var(--hielo)}
+.caja-escribir textarea::placeholder{color:var(--humo)}
+.mandos{display:flex;gap:6px;align-items:center}
+.redondo{width:40px;height:40px;border-radius:50%;display:grid;place-items:center;border:1px solid var(--linea);color:var(--bruma);transition:all .2s}
+.redondo svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.redondo:hover{color:var(--hielo);border-color:var(--linea2)}
+.redondo.mandar{background:linear-gradient(180deg,var(--fila),var(--electrico));color:#04101f;border:0;box-shadow:0 0 22px rgba(93,214,255,.35)}
+.redondo.mandar:disabled{opacity:.35;box-shadow:none}
+.redondo.oyendo{color:var(--alerta);border-color:rgba(255,107,107,.5);box-shadow:0 0 0 6px rgba(255,107,107,.10);animation:latir 1.2s infinite}
+.pie-caja{max-width:800px;margin:8px auto 0;display:flex;justify-content:space-between;font-size:11.5px;color:var(--humo)}
+.pie-caja b{color:var(--bruma);font-weight:500}
+
+/* derecha */
+.pestanas{display:flex;gap:4px;background:rgba(3,8,20,.5);border:1px solid var(--linea);border-radius:12px;padding:4px}
+.pestanas button{flex:1;padding:7px 4px;border-radius:9px;font-size:11.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--humo);font-weight:600}
+.pestanas button.on{background:rgba(93,214,255,.12);color:var(--fila)}
+.lista{margin-top:14px;display:grid;gap:8px}
+.item{background:var(--vidrio);border:1px solid var(--linea);border-radius:12px;padding:10px 12px;font-size:13px;transition:border-color .2s}
+.item:hover{border-color:var(--linea2)}
+.item b{display:block;font-weight:600;font-size:13px;line-height:1.4;color:var(--hielo)}
+.item small{display:block;color:var(--humo);font-size:11.5px;margin-top:3px}
+.item .fila{display:flex;justify-content:space-between;align-items:flex-start;gap:8px}
+.item .x{color:var(--humo);font-size:14px;line-height:1;padding:2px 4px;border-radius:6px}
+.item .x:hover{color:var(--alerta);background:rgba(255,107,107,.1)}
+.item.junta{border-left:2px solid var(--oro)}
+.item.clic{cursor:pointer}
+.item.actual{border-color:var(--linea2);background:var(--vidrio2)}
+.etq{display:inline-block;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--oroLt);border:1px solid rgba(201,169,97,.35);border-radius:999px;padding:1px 7px;margin-right:6px;vertical-align:middle}
+.etq.azul{color:var(--fila);border-color:var(--linea2)}
+.nada{color:var(--humo);font-size:12.5px;text-align:center;padding:26px 10px;line-height:1.6}
+.añadir{display:flex;gap:6px;margin-top:12px}
+.añadir input{flex:1;padding:8px 11px;font-size:13px;border-radius:10px}
+
+/* la ficha de una fuente */
+.velo-ficha{position:fixed;inset:0;z-index:20;background:rgba(3,8,20,.72);backdrop-filter:blur(8px);display:grid;place-items:center;padding:20px}
+.ficha{width:min(760px,100%);max-height:86vh;overflow:auto;background:var(--noche);border:1px solid var(--linea2);border-radius:var(--r2);padding:22px 26px;box-shadow:0 30px 80px rgba(0,0,0,.6)}
+.ficha h2{font-size:16px;font-weight:700;margin-bottom:4px}
+.ficha .ruta{font-family:var(--mono);font-size:11.5px;color:var(--fila);margin-bottom:14px;word-break:break-all}
+.ficha pre{white-space:pre-wrap;font:13.5px/1.65 var(--sans);color:var(--bruma)}
+.ficha .cerrar{float:right;color:var(--humo);font-size:20px;line-height:1}
+
+.aviso-flotante{position:fixed;left:50%;bottom:26px;transform:translateX(-50%);z-index:30;background:var(--noche);border:1px solid var(--linea2);border-radius:12px;padding:10px 16px;font-size:13px;box-shadow:0 10px 40px rgba(0,0,0,.5);animation:entra .25s}
+.aviso-flotante.mal{border-color:rgba(255,107,107,.5);color:#ffd2d2}
+
+/* el botón del lateral solo existe en el teléfono. Va ANTES del @media: una
+   regla con la misma especificidad declarada después la pisaría — y así fue,
+   la primera versión lo dejaba invisible a 360 px. */
+#abrirDer{display:none}
+@media (max-width:1100px){
+  #panel{grid-template-columns:1fr;grid-template-rows:56px auto 1fr;grid-template-areas:"cab" "izq" "centro"}
+  .izq{border-right:0;border-bottom:1px solid var(--linea);padding:12px 16px;display:grid;grid-template-columns:110px 1fr;gap:14px;align-items:center}
+  .presencia{aspect-ratio:1;border-radius:14px}
+  .presencia .estado{display:none}
+  .izq .bloque{margin:0}.izq .bloque h3{display:none}
+  .izq .bloque:not(:first-of-type){display:none}
+  .vital{padding:5px 0}
+  .der{display:none}
+  .der.abierta{display:block;position:fixed;inset:56px 0 0 0;z-index:15;background:var(--abismo)}
+  .hilo{padding:18px 16px}.compositor{padding:10px 12px 14px}
+  .cab .quien span.nombre{display:none}
+  .sugerencias{grid-template-columns:1fr}
+  #abrirDer{display:inline-flex}
+  /* La cabecera en un teléfono: cinco puntos con rótulo, el interruptor de
+     voz con su palabra, el nombre y «Salir» medían 826 px en 360. Se quedan
+     los PUNTOS —el color dice el estado y el título dice el nombre— y se van
+     las palabras. La marca se acorta a la palabra sola. */
+  .cab{gap:10px;padding:0 12px}
+  .cab .marca small{display:none}
+  .cab .quien{gap:8px}
+  .puntos{gap:6px}
+  .punto{font-size:0;gap:0}
+  .punto i{width:8px;height:8px}
+  .interruptor span{display:none}
+  .interruptor{padding:6px 8px}
+}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<canvas id="lluvia" aria-hidden="true"></canvas>
+<div class="velo" aria-hidden="true"></div>
+
+<!-- ══ LA PUERTA ═══════════════════════════════════════════════════════════ -->
+<section id="puerta">
+  <div class="puerta-caja">
+    <canvas id="presenciaPuerta" width="440" height="440" aria-hidden="true"></canvas>
+    <div class="marca">ULTRON<small>Conocimiento Full · Junta Directiva</small></div>
+    <form id="formPuerta" autocomplete="on">
+      <input class="campo" name="correo" type="email" placeholder="Tu correo" autocomplete="username" required>
+      <input class="campo" name="clave" type="password" placeholder="Tu clave" autocomplete="current-password" required>
+      <button class="btn" type="submit">Entrar</button>
+      <div class="puerta-error" id="puertaError" aria-live="polite"></div>
+    </form>
+    <p class="puerta-pie">Solo la junta. Cada sesión vence en doce horas.<br>Nada de lo que se hable aquí sale de la junta sin que una persona lo confirme.</p>
+  </div>
+</section>
+
+<!-- ══ EL PANEL ════════════════════════════════════════════════════════════ -->
+<section id="panel" hidden>
+  <header class="cab">
+    <div class="marca">ULTRON<small>Conocimiento Full</small></div>
+    <div class="quien">
+      <div class="puntos" id="puntos"></div>
+      <button class="interruptor" id="vozBtn" title="Que ULTRON lea en voz alta sus respuestas">
+        <svg viewBox="0 0 24 24"><path d="M11 5L6 9H2v6h4l5 4V5z"/><path d="M15.5 8.5a5 5 0 010 7"/><path d="M18.5 5.5a9 9 0 010 13"/></svg><span>Voz</span>
+      </button>
+      <button class="interruptor" id="abrirDer" title="Memoria y biblioteca"><svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h10"/></svg></button>
+      <span class="nombre" id="nombre"></span>
+      <button class="btn chico linea" id="salir">Salir</button>
+    </div>
+  </header>
+
+  <aside class="izq">
+    <div class="presencia"><canvas id="presencia" width="600" height="690"></canvas><div class="estado" id="estadoPresencia">en reposo</div></div>
+    <div class="bloque">
+      <h3>El pulso de la casa <button id="refrescarVivo" title="Volver a leer">actualizar</button></h3>
+      <div id="vitales"></div>
+    </div>
+    <div class="bloque">
+      <h3>Lo que sabe</h3>
+      <div id="saberResumen" style="font-size:12.5px;color:var(--bruma);line-height:1.6"></div>
+    </div>
+  </aside>
+
+  <main class="centro">
+    <div class="hilo" id="hilo"></div>
+    <div class="compositor">
+      <div class="caja-escribir">
+        <textarea id="entrada" rows="1" placeholder="Preguntale a ULTRON, pedile un memo, o decile algo que tenga que recordar…"></textarea>
+        <div class="mandos">
+          <button class="redondo" id="micBtn" title="Hablar"><svg viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0014 0M12 18v3"/></svg></button>
+          <button class="redondo mandar" id="mandar" title="Enviar" disabled><svg viewBox="0 0 24 24"><path d="M5 12h13M13 6l6 6-6 6"/></svg></button>
+        </div>
+      </div>
+      <div class="pie-caja"><span id="pieIzq">Enter envía · Shift+Enter salto de línea</span><span id="pieDer"></span></div>
+    </div>
+  </main>
+
+  <aside class="der" id="der">
+    <div class="pestanas">
+      <button class="on" data-p="memoria">Memoria</button>
+      <button data-p="biblioteca">Biblioteca</button>
+      <button data-p="hilos">Hilos</button>
+    </div>
+    <div id="pMemoria">
+      <div class="añadir"><input class="campo" id="nuevaMemoria" placeholder="Algo que ULTRON tenga que recordar…"><button class="btn chico" id="guardarMemoria">Guardar</button></div>
+      <div class="lista" id="memorias"></div>
+    </div>
+    <div id="pBiblioteca" hidden><div class="lista" id="documentos"></div></div>
+    <div id="pHilos" hidden>
+      <button class="btn chico" id="nuevoHilo" style="width:100%;margin-top:12px">Empezar un hilo nuevo</button>
+      <div class="lista" id="hilos"></div>
+    </div>
+  </aside>
+</section>
+
+<script src="/markdown.js"></script>
+<script>
+/* ═══════════════════════════════════════════════════════════════════════════
+   EL ESTADO Y EL API
+   ═══════════════════════════════════════════════════════════════════════════ */
+const $ = (s) => document.querySelector(s);
+const esc = MARKDOWN.esc;
+const E = {           // el estado del panel
+  yo: null, conversacionId: null, hablando: false, vozOn: false, oyendo: false,
+  vivo: null, memorias: [], documentos: [], hilos: [], enviosPendientes: new Map(),
+};
+try { E.vozOn = localStorage.getItem('ultron.voz') === '1'; } catch {}
+
+async function api(ruta, opciones = {}) {
+  const r = await fetch(ruta, { headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', ...opciones,
+    body: opciones.body && typeof opciones.body !== 'string' ? JSON.stringify(opciones.body) : opciones.body });
+  const d = await r.json().catch(() => null);
+  if (r.status === 401 && ruta !== '/entrar') { mostrarPuerta(); }
+  if (!r.ok) { const e = new Error(d?.error || `El servidor contestó ${r.status}.`); e.codigo = d?.codigo; e.http = r.status; throw e; }
+  return d;
+}
+function avisar(texto, mal = false) {
+  const a = document.createElement('div'); a.className = 'aviso-flotante' + (mal ? ' mal' : ''); a.textContent = texto;
+  document.body.appendChild(a); setTimeout(() => a.remove(), 3800);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   LA PRESENCIA · un campo de partículas que está vivo
+   ───────────────────────────────────────────────────────────────────────────
+   No es un adorno: es el único indicador de estado. En reposo deriva; cuando
+   ULTRON piensa se contrae y acelera; cuando habla, pulsa con el audio; cuando
+   escucha, ondula desde abajo. Todo con el mismo campo — cambia la fuerza, no
+   el dibujo. Canvas y no SVG porque son mil quinientas partículas a sesenta
+   cuadros y el DOM no está para eso. */
+function Presencia(canvas, { n = 1400, chica = false } = {}) {
+  const ctx = canvas.getContext('2d');
+  let W = canvas.width, H = canvas.height;
+  const cx = () => W / 2, cy = () => H * 0.55;
+  const R = () => Math.min(W, H) * (chica ? 0.36 : 0.34);
+  const parts = Array.from({ length: n }, (_, i) => nueva(i, true));
+  let modo = 'reposo', energia = 0, objetivoEnergia = 0, t = 0, amplitud = 0;
+
+  function nueva(i, primera) {
+    const a = Math.random() * Math.PI * 2;
+    const r = R() * (0.15 + Math.pow(Math.random(), 0.6) * 1.15);
+    return { a, r, y: (Math.random() - 0.5) * H * (primera ? 1.1 : 0.2), v: 0.002 + Math.random() * 0.004,
+      s: 0.6 + Math.random() * 1.4, f: Math.random() * Math.PI * 2, brillo: Math.random() };
+  }
+  function setModo(m) { modo = m; objetivoEnergia = { reposo: 0, pensando: 1, hablando: 0.7, oyendo: 0.45 }[m] ?? 0; }
+  function setAmplitud(a) { amplitud = a; }
+
+  function cuadro() {
+    t += 0.016;
+    energia += (objetivoEnergia - energia) * 0.04;
+    ctx.clearRect(0, 0, W, H);
+    // la columna: un halo vertical que respira
+    const g = ctx.createRadialGradient(cx(), cy(), 0, cx(), cy(), R() * 1.5);
+    const resp = 0.08 + 0.05 * Math.sin(t * 1.2) + energia * 0.12 + amplitud * 0.25;
+    g.addColorStop(0, `rgba(93,214,255,${resp})`); g.addColorStop(0.5, `rgba(27,107,255,${resp * 0.4})`); g.addColorStop(1, 'rgba(27,107,255,0)');
+    ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+
+    ctx.globalCompositeOperation = 'lighter';
+    for (const p of parts) {
+      // el flujo: gira alrededor de un eje vertical y sube despacio
+      const contr = 1 - energia * 0.35 - amplitud * 0.15;        // pensar = contraer
+      p.a += p.v * (1 + energia * 2.2 + amplitud * 2);
+      p.y -= (0.15 + energia * 0.5) * p.s;
+      if (modo === 'oyendo') p.y -= 0.6 * Math.sin(t * 3 + p.f) * p.s;
+      if (p.y < -H * 0.6) { const q = nueva(0, false); p.a = q.a; p.r = q.r; p.y = H * 0.55; }
+      const ondula = Math.sin(t * 0.9 + p.f + p.y * 0.01) * R() * 0.12;
+      const rr = (p.r * contr + ondula) * (0.55 + 0.45 * Math.abs(Math.cos(p.y * 0.006)));
+      const x = cx() + Math.cos(p.a) * rr;
+      const y = cy() + p.y * 0.62 + Math.sin(p.a) * rr * 0.28;
+      const prof = (Math.sin(p.a) + 1) / 2;                       // delante/detrás
+      const alfa = (0.18 + prof * 0.5) * (0.5 + p.brillo * 0.5) * (0.7 + energia * 0.5 + amplitud * 0.8);
+      const tam = p.s * (0.6 + prof * 0.9) * (1 + amplitud * 0.6);
+      ctx.fillStyle = prof > 0.85 && p.brillo > 0.6 ? `rgba(234,242,255,${alfa})` : `rgba(93,214,255,${alfa})`;
+      ctx.beginPath(); ctx.arc(x, y, tam, 0, Math.PI * 2); ctx.fill();
+    }
+    // el núcleo
+    const nucleo = ctx.createRadialGradient(cx(), cy() - H * 0.02, 0, cx(), cy() - H * 0.02, R() * (0.22 + energia * 0.1 + amplitud * 0.2));
+    nucleo.addColorStop(0, `rgba(234,242,255,${0.55 + energia * 0.3 + amplitud * 0.4})`);
+    nucleo.addColorStop(0.35, `rgba(93,214,255,${0.25 + energia * 0.2})`); nucleo.addColorStop(1, 'rgba(93,214,255,0)');
+    ctx.fillStyle = nucleo; ctx.beginPath(); ctx.arc(cx(), cy() - H * 0.02, R() * 0.5, 0, Math.PI * 2); ctx.fill();
+    ctx.globalCompositeOperation = 'source-over';
+    requestAnimationFrame(cuadro);
+  }
+  /* Con «reducir movimiento» puesto, la presencia se pinta UNA vez y se queda
+     quieta: sigue siendo la imagen, deja de ser la animación. */
+  if (matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    const ctxCuadro = cuadro; const unaVez = () => { const raf = requestAnimationFrame; window.requestAnimationFrame = () => 0; try { ctxCuadro(); } finally { window.requestAnimationFrame = raf; } };
+    unaVez();
+    return { setModo: () => {}, setAmplitud: () => {} };
+  }
+  requestAnimationFrame(cuadro);
+  return { setModo, setAmplitud };
+}
+
+/* la lluvia de fondo: columnas de dígitos muy tenues, como en la imagen */
+(function lluvia() {
+  const c = $('#lluvia'), ctx = c.getContext('2d');
+  let cols = [];
+  const medir = () => { c.width = innerWidth; c.height = innerHeight; cols = Array.from({ length: Math.floor(c.width / 26) }, () => ({ y: Math.random() * c.height, v: 0.3 + Math.random() * 0.9 })); };
+  addEventListener('resize', medir); medir();
+  if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  ctx.font = '11px JetBrains Mono, monospace';
+  (function cuadro() {
+    ctx.fillStyle = 'rgba(3,8,20,.18)'; ctx.fillRect(0, 0, c.width, c.height);
+    cols.forEach((col, i) => {
+      const ch = String.fromCharCode(0x30A0 + Math.random() * 60 | 0);
+      ctx.fillStyle = Math.random() > 0.97 ? 'rgba(155,231,255,.35)' : 'rgba(93,214,255,.10)';
+      ctx.fillText(Math.random() > .5 ? ch : (Math.random() * 10 | 0), i * 26, col.y);
+      col.y += col.v * 14; if (col.y > c.height + 20) col.y = -20;
+    });
+    setTimeout(() => requestAnimationFrame(cuadro), 70);
+  })();
+})();
+
+const presenciaPuerta = Presencia($('#presenciaPuerta'), { n: 700, chica: true });
+let presencia = null;
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   LA PUERTA
+   ═══════════════════════════════════════════════════════════════════════════ */
+function mostrarPuerta() { $('#panel').hidden = true; $('#puerta').hidden = false; }
+$('#formPuerta').addEventListener('submit', async (ev) => {
+  ev.preventDefault();
+  const f = new FormData(ev.target);
+  $('#puertaError').textContent = '';
+  presenciaPuerta.setModo('pensando');
+  try {
+    await api('/entrar', { method: 'POST', body: { correo: f.get('correo'), clave: f.get('clave') } });
+    await entrarAlPanel();
+  } catch (e) {
+    $('#puertaError').textContent = e.message;
+    presenciaPuerta.setModo('reposo');
+  }
+});
+$('#salir').addEventListener('click', async () => { await api('/salir', { method: 'POST' }).catch(() => {}); location.reload(); });
+
+async function entrarAlPanel() {
+  E.yo = await api('/yo');
+  $('#puerta').hidden = true; $('#panel').hidden = false;
+  $('#nombre').textContent = E.yo.miembro.nombre;
+  if (!presencia) presencia = Presencia($('#presencia'));
+  pintarPuntos(); pintarSaber(); pintarVozBtn();
+  await Promise.all([cargarVivo(), cargarMemorias(), cargarDocumentos(), cargarHilos()]);
+  pintarVacio();
+  setInterval(cargarVivo, 45_000);
+}
+
+function pintarPuntos() {
+  const y = E.yo;
+  const p = [
+    ['cerebro', y.cerebro ? 'ok' : 'mal', y.cerebro ? y.modelo : 'sin llave'],
+    ['memoria', y.memoria === 'mongo' ? 'ok' : 'medio', y.memoria === 'mongo' ? 'guardando' : 'provisional'],
+    ['voz', y.voz ? 'ok' : 'medio', y.voz ? 'ElevenLabs' : 'del navegador'],
+    ['whatsapp', y.canales.whatsapp ? 'ok' : 'medio', y.canales.whatsapp ? 'lista' : 'sin configurar'],
+    ['correo', y.canales.correo ? 'ok' : 'medio', y.canales.correo ? 'listo' : 'sin configurar'],
+  ];
+  $('#puntos').innerHTML = p.map(([n, c, t]) => `<span class="punto ${c}" title="${esc(n)}: ${esc(t)}"><i></i>${esc(n)}</span>`).join('');
+}
+function pintarSaber() {
+  const s = E.yo.saber;
+  const cuando = s.armadoEn ? new Date(s.armadoEn).toLocaleDateString('es-HN', { day: 'numeric', month: 'short' }) : '—';
+  $('#saberResumen').innerHTML = `<b style="color:var(--hielo)">${s.total}</b> secciones de <b style="color:var(--hielo)">${s.fuentes.length}</b> fuentes · armado el ${esc(cuando)}<br>${s.temas.slice(0, 8).map((t) => `<span class="etq azul" style="margin:3px 4px 0 0">${esc(t)}</span>`).join('')}${s.temas.length > 8 ? ` <span style="color:var(--humo)">+${s.temas.length - 8}</span>` : ''}`;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   EL PULSO DE LA CASA
+   ═══════════════════════════════════════════════════════════════════════════ */
+const dolares = (n, d = 2) => n == null ? '—' : '$' + Number(n).toLocaleString('es-HN', { minimumFractionDigits: d, maximumFractionDigits: d });
+async function cargarVivo() {
+  try { E.vivo = await api('/vivo'); } catch { return; }
+  const v = E.vivo;
+  const fila = (n, val, clase = '', sub = '') => `<div class="vital"><span class="n">${n}${sub ? `<small>${sub}</small>` : ''}</span><span class="v ${clase}">${val}</span></div>`;
+  const casa = (c, extra = '') => fila(esc(c.nombre.split(' · ')[0]), c.vivo ? 'viva' : (c.http ? 'HTTP ' + c.http : 'no contesta'), c.vivo ? 'ok' : 'mal', extra);
+  $('#vitales').innerHTML =
+    fila('ORIGEN', v.origen ? dolares(v.origen.origenUsd, 6) : '—', 'oro', v.origen ? `oro ${dolares(v.origen.oroOnzaUsd)} la onza` : 'sin precio ahora') +
+    fila('Compra con USDT', v.ordenex.compraUsdt === 'abierta' ? 'abierta' : v.ordenex.compraUsdt === 'cerrada' ? 'cerrada' : '—', v.ordenex.compraUsdt === 'abierta' ? 'ok' : 'aviso') +
+    casa(v.ordenex, `bloque 5550 · ${v.ordenex.bloque5550 ?? '—'}`) +
+    casa(v.aucorp, v.aucorp.tasas ? `tasas ${v.aucorp.tasasCuando ? new Date(v.aucorp.tasasCuando).toLocaleDateString('es-HN', { day: 'numeric', month: 'short' }) : 'al día'}` : 'sin tasas') +
+    casa(v.wallet) + casa(v.genesis) +
+    casa(v.ordenscan, `bloque 8532 · ${v.ordenscan.bloque8532 ?? '—'}`);
+}
+$('#refrescarVivo').addEventListener('click', cargarVivo);
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   EL HILO
+   ═══════════════════════════════════════════════════════════════════════════ */
+const hilo = $('#hilo');
+function pintarVacio() {
+  if (hilo.children.length) return;
+  const sug = [
+    ['¿Cómo está la casa ahora?', 'Estado vivo de Ordenex, AuCorp, la billetera y las cadenas, con lo que necesita ojos.'],
+    ['Preparame el memo de la próxima junta', 'Con los pendientes, los riesgos y una recomendación por punto.'],
+    ['¿A cuánto cerró el oro hoy y qué implica para el ORIGEN?', 'Busca en internet y hace la cuenta con la fórmula de la casa.'],
+    ['¿Qué dice el estado legal de la minería?', 'Lo que hay escrito, las contradicciones y lo que falta.'],
+  ];
+  hilo.innerHTML = `<div class="vacio"><h2>CONOCIMIENTO FULL</h2><p>Tengo delante todo lo que la casa tiene escrito, el estado vivo de cada sistema, lo que la junta me ha dicho, e internet. Preguntá, pedime un documento, o contame algo que tenga que recordar.</p>
+    <div class="sugerencias">${sug.map(([t, s]) => `<button class="sug" data-t="${esc(t)}"><b>${esc(t)}</b>${esc(s)}</button>`).join('')}</div></div>`;
+  hilo.querySelectorAll('.sug').forEach((b) => b.addEventListener('click', () => { $('#entrada').value = b.dataset.t; mandar(); }));
+}
+
+function burbujaMia(texto) {
+  const d = document.createElement('div'); d.className = 'msg mio'; d.innerHTML = `<div class="burbuja">${esc(texto)}</div>`;
+  hilo.appendChild(d); hilo.scrollTop = hilo.scrollHeight;
+}
+function burbujaUltron() {
+  const d = document.createElement('div'); d.className = 'msg ultron';
+  d.innerHTML = `<div class="quien">ULTRON <span class="pensando"></span></div><div class="cuerpo cursor"></div><div class="actividad"></div><div class="extras"></div>`;
+  hilo.appendChild(d); hilo.scrollTop = hilo.scrollHeight;
+  return d;
+}
+
+const NOMBRE_HERR = { web_search: 'buscando en internet', buscar_saber: 'leyendo el saber de la casa', estado_vivo: 'mirando el estado vivo', recordar: 'guardando en la memoria', crear_documento: 'escribiendo el documento', proponer_envio: 'preparando el envío' };
+
+async function mandar() {
+  const ta = $('#entrada'); const texto = ta.value.trim();
+  if (!texto || E.hablando) return;
+  if (!hilo.querySelector('.msg')) hilo.innerHTML = '';
+  ta.value = ''; ajustarAlto(); $('#mandar').disabled = true; E.hablando = true;
+  burbujaMia(texto);
+  const b = burbujaUltron(); const cuerpo = b.querySelector('.cuerpo'), act = b.querySelector('.actividad'), pens = b.querySelector('.pensando');
+  presencia.setModo('pensando'); $('#estadoPresencia').textContent = 'pensando';
+  let md = '', pintarPendiente = null;
+  const repintar = () => { cuerpo.innerHTML = MARKDOWN.aHtml(md); hilo.scrollTop = hilo.scrollHeight; };
+  try {
+    const r = await fetch('/pensar', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin',
+      body: JSON.stringify({ texto, conversacionId: E.conversacionId }) });
+    if (!r.ok) { const d = await r.json().catch(() => ({})); throw new Error(d.error || `El servidor contestó ${r.status}.`); }
+    const lector = r.body.getReader(); const dec = new TextDecoder(); let buf = '';
+    while (true) {
+      const { value, done } = await lector.read(); if (done) break;
+      buf += dec.decode(value, { stream: true });
+      let i;
+      while ((i = buf.indexOf('\n\n')) >= 0) {
+        const bloque = buf.slice(0, i); buf = buf.slice(i + 2);
+        const ev = (bloque.match(/^event: (.+)$/m) || [])[1]; const dl = (bloque.match(/^data: (.+)$/m) || [])[1];
+        if (!ev || !dl) continue;
+        const d = JSON.parse(dl);
+        if (ev === 'inicio') { E.conversacionId = d.conversacionId; if (d.nueva) cargarHilos(); }
+        else if (ev === 'texto') { md += d.t; if (!pintarPendiente) pintarPendiente = requestAnimationFrame(() => { pintarPendiente = null; repintar(); }); }
+        else if (ev === 'herramienta') { pens.textContent = NOMBRE_HERR[d.nombre] || d.nombre; const c = document.createElement('span'); c.className = 'chip herr corriendo'; c.dataset.h = d.nombre; c.innerHTML = `<span class="t">${esc(NOMBRE_HERR[d.nombre] || d.nombre)}${d.entrada?.query || d.entrada?.pregunta ? ': ' + esc(d.entrada.query || d.entrada.pregunta) : ''}</span>`; act.appendChild(c); }
+        else if (ev === 'herramienta-lista') { const c = [...act.querySelectorAll('.chip.corriendo')].find((x) => x.dataset.h === d.nombre); if (c) c.classList.remove('corriendo'); pens.textContent = ''; }
+        else if (ev === 'titulo') { cargarHilos(); }
+        else if (ev === 'fin') { terminar(b, d, md); }
+        else if (ev === 'error') { md += `\n\n> ${d.mensaje}`; repintar(); }
+      }
+    }
+    repintar();
+  } catch (e) {
+    md += `\n\n> ${e.message}`; repintar();
+  } finally {
+    cuerpo.classList.remove('cursor'); pens.textContent = '';
+    E.hablando = false; $('#mandar').disabled = !$('#entrada').value.trim();
+    presencia.setModo('reposo'); $('#estadoPresencia').textContent = 'en reposo';
+  }
+}
+
+function terminar(b, d, md) {
+  const extras = b.querySelector('.extras'), act = b.querySelector('.actividad');
+  // las fuentes
+  for (const f of (d.fuentes || []).slice(0, 8)) {
+    const c = document.createElement('span'); c.className = 'chip fuente'; c.title = f.fuente;
+    c.innerHTML = `<span class="t">${esc(f.titulo.split(' › ').pop())}</span>`;
+    c.addEventListener('click', () => abrirFicha(f)); act.appendChild(c);
+  }
+  // documentos creados
+  for (const doc of d.documentos || []) {
+    extras.insertAdjacentHTML('beforeend', `<div class="tarjeta"><div class="ic"><svg viewBox="0 0 24 24"><path d="M14 3H7a2 2 0 00-2 2v14a2 2 0 002 2h10a2 2 0 002-2V8z"/><path d="M14 3v5h5M9 13h6M9 17h6"/></svg></div>
+      <div class="tx"><b>${esc(doc.titulo)}</b><small>${esc(doc.tipo)} · guardado en la biblioteca</small></div>
+      <div class="acciones"><a class="btn chico linea" href="/documentos/${esc(doc._id)}/descargar?formato=md">.md</a><a class="btn chico" href="/documentos/${esc(doc._id)}/descargar?formato=html">.html</a></div></div>`);
+    cargarDocumentos();
+  }
+  // memorias guardadas
+  if ((d.memorias || []).length) { cargarMemorias(); }
+  // envíos propuestos: se confirman ACÁ
+  for (const env of d.envios || []) {
+    E.enviosPendientes.set(env.id, env);
+    extras.insertAdjacentHTML('beforeend', `<div class="tarjeta envio" data-env="${esc(env.id)}"><div class="ic"><svg viewBox="0 0 24 24"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4z"/></svg></div>
+      <div class="tx"><b>${env.canal === 'whatsapp' ? 'WhatsApp' : 'Correo'} para ${esc(env.a.nombre)}</b><small>${env.asunto ? esc(env.asunto) + ' · ' : ''}no se ha mandado: lo confirmás vos</small></div>
+      <div class="acciones"><button class="btn chico linea" data-desc>Descartar</button><button class="btn chico oro" data-env-ok>Enviar</button></div>
+      <pre>${esc(env.texto)}</pre></div>`);
+  }
+  extras.querySelectorAll('[data-env-ok]').forEach((btn) => btn.addEventListener('click', () => confirmarEnvio(btn.closest('.tarjeta'))));
+  extras.querySelectorAll('[data-desc]').forEach((btn) => btn.addEventListener('click', () => { const t = btn.closest('.tarjeta'); E.enviosPendientes.delete(t.dataset.env); t.remove(); }));
+  $('#pieDer').textContent = d.modelo ? `${d.modelo}` : '';
+  if (E.vozOn && md.trim()) hablar(md);
+}
+
+async function confirmarEnvio(t) {
+  const env = E.enviosPendientes.get(t.dataset.env); if (!env) return;
+  const b = t.querySelector('[data-env-ok]'); b.disabled = true; b.textContent = 'Enviando…';
+  try {
+    const r = await api('/enviar', { method: 'POST', body: { envio: env } });
+    t.classList.add('hecho'); t.querySelector('.tx small').textContent = `enviado por ${r.canal} a ${r.a}`; t.querySelector('.acciones').remove();
+    E.enviosPendientes.delete(env.id); avisar(`Enviado a ${r.a}.`);
+  } catch (e) { b.disabled = false; b.textContent = 'Enviar'; avisar(e.message, true); }
+}
+
+async function abrirFicha(f) {
+  try {
+    const l = await api('/saber/buscar?q=' + encodeURIComponent(f.titulo.split(' › ').pop()));
+    const s = l.find((x) => x.id === f.id) || l[0]; if (!s) return;
+    const v = document.createElement('div'); v.className = 'velo-ficha';
+    v.innerHTML = `<div class="ficha"><button class="cerrar" aria-label="Cerrar">×</button><h2>${esc(s.titulo)}</h2><div class="ruta">${esc(s.fuente)}</div><pre>${esc(s.texto)}</pre></div>`;
+    v.addEventListener('click', (e) => { if (e.target === v || e.target.classList.contains('cerrar')) v.remove(); });
+    document.body.appendChild(v);
+  } catch {}
+}
+
+/* el compositor */
+const entrada = $('#entrada');
+function ajustarAlto() { entrada.style.height = 'auto'; entrada.style.height = Math.min(200, entrada.scrollHeight) + 'px'; }
+entrada.addEventListener('input', () => { ajustarAlto(); $('#mandar').disabled = !entrada.value.trim() || E.hablando; });
+entrada.addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); mandar(); } });
+$('#mandar').addEventListener('click', mandar);
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   LA VOZ · escuchar con el navegador, hablar con ElevenLabs (o el navegador)
+   ═══════════════════════════════════════════════════════════════════════════ */
+const Reconocedor = window.SpeechRecognition || window.webkitSpeechRecognition;
+let rec = null;
+if (!Reconocedor) { $('#micBtn').title = 'Este navegador no escucha'; $('#micBtn').style.opacity = .4; }
+$('#micBtn').addEventListener('click', () => {
+  if (!Reconocedor) return;
+  if (E.oyendo) { rec?.stop(); return; }
+  rec = new Reconocedor(); rec.lang = 'es-HN'; rec.interimResults = true; rec.continuous = false;
+  let final = '';
+  rec.onstart = () => { E.oyendo = true; $('#micBtn').classList.add('oyendo'); presencia.setModo('oyendo'); $('#estadoPresencia').textContent = 'escuchando'; };
+  rec.onresult = (ev) => { let inter = ''; for (const r of ev.results) { if (r.isFinal) final += r[0].transcript; else inter += r[0].transcript; } entrada.value = (final + ' ' + inter).trim(); ajustarAlto(); $('#mandar').disabled = !entrada.value.trim(); };
+  rec.onerror = () => avisar('No se pudo escuchar. Revisá el permiso del micrófono.', true);
+  rec.onend = () => { E.oyendo = false; $('#micBtn').classList.remove('oyendo'); presencia.setModo('reposo'); $('#estadoPresencia').textContent = 'en reposo'; if (entrada.value.trim()) mandar(); };
+  rec.start();
+});
+
+function pintarVozBtn() { $('#vozBtn').classList.toggle('on', E.vozOn); }
+$('#vozBtn').addEventListener('click', () => { E.vozOn = !E.vozOn; try { localStorage.setItem('ultron.voz', E.vozOn ? '1' : '0'); } catch {} pintarVozBtn(); if (!E.vozOn) { audioActual?.pause(); speechSynthesis?.cancel(); } });
+
+let audioActual = null, audioCtx = null;
+function paraDecir(md) { return md.replace(/```[\s\S]*?```/g, ' ').replace(/https?:\/\/\S+/g, ' ').replace(/[#*_>`|]/g, '').replace(/\[(.*?)\]\(.*?\)/g, '$1').replace(/\s+/g, ' ').trim(); }
+async function hablar(md) {
+  const texto = paraDecir(md); if (!texto) return;
+  presencia.setModo('hablando'); $('#estadoPresencia').textContent = 'hablando';
+  const fin = () => { presencia.setModo('reposo'); presencia.setAmplitud(0); $('#estadoPresencia').textContent = 'en reposo'; };
+  if (E.yo?.voz) {
+    try {
+      const r = await fetch('/voz', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify({ texto: texto.slice(0, 2500) }) });
+      if (r.ok) {
+        const blob = await r.blob(); const url = URL.createObjectURL(blob);
+        audioActual?.pause(); audioActual = new Audio(url);
+        // la amplitud, para que la presencia pulse con la voz
+        try {
+          audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+          const src = audioCtx.createMediaElementSource(audioActual); const an = audioCtx.createAnalyser(); an.fftSize = 256;
+          src.connect(an); an.connect(audioCtx.destination);
+          const datos = new Uint8Array(an.frequencyBinCount);
+          (function medir() { if (audioActual.paused || audioActual.ended) return; an.getByteFrequencyData(datos); let s = 0; for (let i = 0; i < 40; i++) s += datos[i]; presencia.setAmplitud(Math.min(1, s / 40 / 160)); requestAnimationFrame(medir); })();
+        } catch {}
+        audioActual.onended = () => { URL.revokeObjectURL(url); fin(); }; audioActual.onerror = fin;
+        await audioActual.play(); return;
+      }
+    } catch {}
+  }
+  // el navegador, como red
+  if (!('speechSynthesis' in window)) return fin();
+  speechSynthesis.cancel();
+  const u = new SpeechSynthesisUtterance(texto.slice(0, 2500)); u.lang = 'es-HN'; u.rate = 1.02;
+  const voces = speechSynthesis.getVoices(); u.voice = voces.find((v) => /es-(HN|MX|US|419)/i.test(v.lang)) || voces.find((v) => /^es/i.test(v.lang)) || null;
+  u.onend = fin; u.onerror = fin; speechSynthesis.speak(u);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   LA DERECHA · memoria, biblioteca, hilos
+   ═══════════════════════════════════════════════════════════════════════════ */
+document.querySelectorAll('.pestanas button').forEach((b) => b.addEventListener('click', () => {
+  document.querySelectorAll('.pestanas button').forEach((x) => x.classList.toggle('on', x === b));
+  for (const p of ['Memoria', 'Biblioteca', 'Hilos']) $('#p' + p).hidden = b.dataset.p !== p.toLowerCase();
+}));
+$('#abrirDer').addEventListener('click', () => $('#der').classList.toggle('abierta'));
+
+const cuando = (d) => new Date(d).toLocaleDateString('es-HN', { day: 'numeric', month: 'short' });
+async function cargarMemorias() {
+  try { E.memorias = await api('/memorias'); } catch { return; }
+  const l = $('#memorias');
+  if (!E.memorias.length) { l.innerHTML = '<div class="nada">Todavía no recuerdo nada.<br>Contame algo, o escribilo arriba.</div>'; return; }
+  l.innerHTML = E.memorias.map((m) => `<div class="item ${m.alcance === 'junta' ? 'junta' : ''}"><div class="fila"><div>${m.alcance === 'junta' ? '<span class="etq">junta</span>' : ''}${esc(m.texto)}<small>${esc(m.dichoPor || '')} · ${cuando(m.en)}${m.origen === 'deducido' ? ' · lo guardé yo' : ''}</small></div><button class="x" data-id="${esc(m._id)}" title="Olvidar">×</button></div></div>`).join('');
+  l.querySelectorAll('.x').forEach((b) => b.addEventListener('click', async () => { await api('/memorias/' + b.dataset.id, { method: 'DELETE' }); cargarMemorias(); }));
+}
+$('#guardarMemoria').addEventListener('click', async () => {
+  const i = $('#nuevaMemoria'); const t = i.value.trim(); if (!t) return;
+  const junta = /\b(junta|todos|nosotros)\b/i.test(t);
+  await api('/memorias', { method: 'POST', body: { texto: t, alcance: junta ? 'junta' : 'miembro' } }); i.value = ''; cargarMemorias();
+  avisar(junta ? 'Guardado para toda la junta.' : 'Guardado.');
+});
+$('#nuevaMemoria').addEventListener('keydown', (e) => { if (e.key === 'Enter') $('#guardarMemoria').click(); });
+
+async function cargarDocumentos() {
+  try { E.documentos = await api('/documentos'); } catch { return; }
+  const l = $('#documentos');
+  if (!E.documentos.length) { l.innerHTML = '<div class="nada">La biblioteca está vacía.<br>Pedime un memo, un acta o un análisis.</div>'; return; }
+  l.innerHTML = E.documentos.map((d) => `<div class="item"><b>${esc(d.titulo)}</b><small><span class="etq azul">${esc(d.tipo)}</span>${d.para === 'fuera' ? '<span class="etq">para fuera</span>' : ''}${cuando(d.en)} · ${esc((d.miembro || '').split('@')[0])}</small>
+    <div style="display:flex;gap:6px;margin-top:8px"><a class="btn chico linea" href="/documentos/${esc(d._id)}/descargar?formato=md">.md</a><a class="btn chico" href="/documentos/${esc(d._id)}/descargar?formato=html">.html</a></div></div>`).join('');
+}
+
+async function cargarHilos() {
+  try { E.hilos = await api('/conversaciones'); } catch { return; }
+  const l = $('#hilos');
+  if (!E.hilos.length) { l.innerHTML = '<div class="nada">Ningún hilo todavía.</div>'; return; }
+  l.innerHTML = E.hilos.map((h) => `<div class="item clic ${h._id === E.conversacionId ? 'actual' : ''}" data-id="${esc(h._id)}"><b>${esc(h.titulo || 'Sin título')}</b><small>${h.canal !== 'panel' ? `<span class="etq azul">${esc(h.canal)}</span>` : ''}${h.turnos} turnos · ${cuando(h.tocado)}</small></div>`).join('');
+  l.querySelectorAll('.item').forEach((it) => it.addEventListener('click', () => abrirHilo(it.dataset.id)));
+}
+async function abrirHilo(id) {
+  const c = await api('/conversaciones/' + id); E.conversacionId = id;
+  hilo.innerHTML = '';
+  for (const t of c.turnos) {
+    if (t.rol === 'miembro') burbujaMia(t.texto);
+    else { const b = burbujaUltron(); b.querySelector('.cuerpo').classList.remove('cursor'); b.querySelector('.cuerpo').innerHTML = MARKDOWN.aHtml(t.texto);
+      const act = b.querySelector('.actividad'); for (const f of (t.fuentes || []).slice(0, 6)) { const ch = document.createElement('span'); ch.className = 'chip fuente'; ch.innerHTML = `<span class="t">${esc(f.titulo.split(' › ').pop())}</span>`; ch.addEventListener('click', () => abrirFicha(f)); act.appendChild(ch); } }
+  }
+  hilo.scrollTop = hilo.scrollHeight; cargarHilos(); $('#der').classList.remove('abierta');
+}
+$('#nuevoHilo').addEventListener('click', () => { E.conversacionId = null; hilo.innerHTML = ''; pintarVacio(); cargarHilos(); $('#der').classList.remove('abierta'); });
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   ARRANQUE: si hay sesión, adentro; si no, la puerta.
+   ═══════════════════════════════════════════════════════════════════════════ */
+(async () => { try { await entrarAlPanel(); } catch { mostrarPuerta(); } })();
+</script>
+</body>
+</html>
