@@ -18,6 +18,7 @@ const jwt = require('jsonwebtoken');
 const { Usuario } = require('../models');
 const genesis = require('../lib/genesis');
 const terminos = require('../lib/terminos');
+const bloqueo = require('../lib/bloqueo');
 
 // La misma respuesta opaca que middleware/sesion.js: a un token invalido no se
 // le explica QUE le fallo.
@@ -182,6 +183,17 @@ async function refresh(req, res) {
     if (typeof datos.tv !== 'number' || datos.tv !== (usuario.tokenVersion || 0)) {
       return res.status(401).json(NO);
     }
+    /* EL BLOQUEO DEL ECOSISTEMA, PREGUNTADO SIN MEMORIA.
+     *
+     * Aqui es donde esta casa decide ALARGARLE la sesion a alguien treinta
+     * dias mas, asi que aqui se pregunta de verdad, no con la respuesta
+     * guardada de hace un minuto. Es lo que convierte «bloqueado en Genesis y
+     * dentro de Ordenex durante un mes» en «bloqueado y fuera en cuarenta
+     * minutos como mucho». Pasa una vez cada cuarenta minutos por persona: no
+     * es una llamada cara.
+     */
+    const permiso = await bloqueo.puedeOperarAhora(usuario.gid);
+    if (!permiso.puede) return res.status(403).json(permiso.respuesta);
     return res.json(emitirPar(usuario, secreto));
   } catch (e) {
     // Mongo caido: no se pudo comprobar, asi que no se canjea. El cliente

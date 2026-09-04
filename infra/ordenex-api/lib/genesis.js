@@ -98,6 +98,20 @@ async function verificarSso(token) {
  * cuando se reintenta; un envio a una direccion de una lista no se deshace
  * jamas.
  */
+/**
+ * GET /api/v1/gid/:gid — la ficha publica de un GID.
+ *
+ * Devuelve { verificada, bloqueada, ... } y TRUENA si no se pudo preguntar.
+ * La diferencia importa: «Genesis dice que no esta verificada» y «Genesis no
+ * contesto» son dos cosas distintas y quien llama decide que hacer con cada
+ * una (ver lib/bloqueo.js, que aguanta la segunda un rato y no la primera).
+ */
+async function gid(g) {
+  const r = await llamar(`/api/v1/gid/${encodeURIComponent(String(g))}`);
+  if (!r.ok) throw new Error(`Genesis respondio ${r.estado} al consultar el GID`);
+  return r.cuerpo || {};
+}
+
 async function tamizDireccion(direccion) {
   const r = await llamar(`/api/v1/tamiz/direccion/${encodeURIComponent(String(direccion))}`);
   if (!r.ok) throw new Error(`Genesis respondio ${r.estado} al tamizar la direccion`);
@@ -158,6 +172,7 @@ async function reportarMovimiento(gid, movs) {
 // desacuerdo de nombres que nadie eligio tener.
 module.exports = {
   verificarSso,
+  gid,
   tamizDireccion,
   tamiz: tamizDireccion,
   reportarMovimiento,
