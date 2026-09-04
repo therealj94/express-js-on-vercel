@@ -111,6 +111,48 @@ ordenCompraSchema.index({ direccion: 1, cadena: 1, createdAt: -1 });
 const OrdenCompra = mongoose.models.OrdenCompra
   || mongoose.model('OrdenCompra', ordenCompraSchema, 'ordenesCompra');
 
+// ── La cuenta por pagar a Orden Global ──────────────────────────────────────
+//
+// DE DÓNDE SALE EL ORIGEN QUE SE ENTREGA. No de un inventario que Ordenex
+// tenga comprado de antemano: Ordenex se lo compra a Orden Global, y cada
+// entrega deja una CUENTA POR PAGAR entre las dos empresas.
+//
+// Por qué esto es una colección y no un comentario en un acta: porque si no
+// se anota en el momento de la entrega, no se anota nunca. La entrega es un
+// envío en la cadena 5550 y se ve en el explorador, pero el explorador no
+// sabe que ese ORIGEN se le debe a nadie. Reconstruir la deuda después, a
+// mano, cruzando transacciones con órdenes, es el trabajo que nadie hace y
+// que termina en «más o menos tanto».
+//
+// UNA FILA POR ENTREGA, no un total que se va sumando. Un saldo acumulado que
+// se actualiza con `$inc` no se puede auditar: si un día no cuadra, no hay
+// forma de saber qué entrega lo descuadró. Con una fila por entrega, el total
+// es una suma y cada sumando tiene su hash.
+const porPagarSchema = new mongoose.Schema({
+  a: { type: String, required: true, default: 'orden-global' },
+  ordenId: { type: mongoose.Schema.Types.ObjectId, required: true },
+  userId: { type: String, required: true },
+  // Lo que se entregó y a qué precio se valoró. Los dos, porque la deuda es en
+  // ORIGEN pero se va a conversar en dólares, y el precio de hoy no sirve para
+  // valorar una entrega de hace tres meses.
+  origenWei: { type: String, required: true },
+  precioWei: { type: String, required: true },
+  usdMicro: { type: String, required: true },
+  hash: { type: String, default: null },      // la entrega en la 5550
+  cadenaPago: { type: Number, default: null }, // la red por la que entró el USDT
+  liquidada: { type: Boolean, required: true, default: false },
+  liquidadaEn: { type: Date, default: null },
+  nota: { type: String, default: null },
+}, { timestamps: true });
+
+// Una entrega no puede generar dos deudas. El índice lo garantiza aunque dos
+// procesos intenten anotarla a la vez.
+porPagarSchema.index({ ordenId: 1 }, { unique: true });
+porPagarSchema.index({ liquidada: 1, createdAt: 1 });
+
+const PorPagar = mongoose.models.PorPagarOG
+  || mongoose.model('PorPagarOG', porPagarSchema, 'porPagarOrdenGlobal');
+
 // ── La cuenta ───────────────────────────────────────────────────────────────
 
 /**
@@ -457,6 +499,7 @@ async function entregar(ordenId) {
     });
     await OrdenCompra.updateOne({ _id: o._id }, { estado: 'entregada', hash: envio.hash, motivo: null });
     await DepositoExterno.updateOne({ _id: o.depositoId }, { estado: 'acreditado' });
+    await anotarPorPagar(o, envio.hash);
     console.log(`[compra] entregados ${o.origenWei} wei de ORIGEN a ${o.aWallet} · ${envio.hash}`);
     return { ok: true, estado: 'entregada', hash: envio.hash };
   } catch (e) {
@@ -469,6 +512,59 @@ async function entregar(ordenId) {
     console.error(`[compra] EN DUDA: la orden ${o._id} pudo haber emitido ${o.origenWei} wei a ${o.aWallet} — ${e.message}`);
     return soltar('en-duda', `${e.codigo || ''} ${e.message}`.trim());
   }
+}
+
+/**
+ * Anota lo que esta entrega le debe a Orden Global.
+ *
+ * NUNCA tumba una entrega. La transacción ya salió y el ORIGEN ya está en la
+ * billetera de la persona: negarle su compra porque no se pudo escribir un
+ * apunte contable sería el orden de prioridades al revés. Si esto falla, se
+ * canta con todo para que se pueda anotar a mano — y el índice único deja
+ * volver a intentarlo sin duplicar.
+ */
+async function anotarPorPagar(orden, hash) {
+  try {
+    const precio = orden.precioAplicadoWei || orden.precioWei;
+    // El valor en dólares de lo entregado, en micro-dólares y con enteros:
+    // origen * precio / 10^18, y otra vez / 10^12 para bajar de wei a micro.
+    const usdMicro = ((BigInt(orden.origenWei) * BigInt(precio)) / WEI / (10n ** 12n)).toString();
+    await PorPagar.create({
+      ordenId: orden._id,
+      userId: orden.userId,
+      origenWei: orden.origenWei,
+      precioWei: precio,
+      usdMicro,
+      hash,
+      cadenaPago: orden.cadena,
+    });
+  } catch (e) {
+    if (e && e.code === 11000) return; // ya estaba anotada
+    console.error(
+      `[compra] CUENTA POR PAGAR SIN ANOTAR: la orden ${orden._id} entregó ${orden.origenWei} wei de ORIGEN (${hash}) y la deuda con Orden Global no se pudo escribir: ${e.message}`
+    );
+  }
+}
+
+/** Lo que Ordenex le debe a Orden Global, sin liquidar. Para el panel. */
+async function deuda() {
+  const filas = await PorPagar.aggregate([
+    { $match: { liquidada: false } },
+    { $group: { _id: null, n: { $sum: 1 } } },
+  ]);
+  // La suma se hace en BigInt y no en Mongo: $sum sobre strings no suma, y
+  // sobre números perdería enteros pasado 2^53 — que son 0,009 ORIGEN.
+  const todas = await PorPagar.find({ liquidada: false }).select('origenWei usdMicro').lean();
+  let origen = 0n;
+  let usd = 0n;
+  for (const f of todas) { origen += BigInt(f.origenWei); usd += BigInt(f.usdMicro); }
+  return {
+    a: 'Orden Global',
+    porQue: 'el ORIGEN que Ordenex le compró para entregar',
+    entregas: filas[0]?.n || 0,
+    origenWei: origen.toString(),
+    usdMicro: usd.toString(),
+  };
 }
 
 // ── La vuelta ───────────────────────────────────────────────────────────────
@@ -532,6 +628,7 @@ async function ciclo() {
 
 async function arrancar() {
   await OrdenCompra.syncIndexes().catch((e) => console.error(`[compra] indices: ${e.message}`));
+  await PorPagar.syncIndexes().catch((e) => console.error(`[compra] indices por pagar: ${e.message}`));
   console.log(`[compra] atendiendo depósitos cada ${CADA_MS / 1000}s · plazo de ${PLAZO_SEG}s`);
   // EL RELOJ SE PONE PASE LO QUE PASE EN LA PRIMERA VUELTA.
   //
@@ -555,8 +652,11 @@ async function resumen() {
       .sort({ updatedAt: -1 }).limit(20)
       .select('userId cadena aWallet origenWei estado motivo txDeposito hash updatedAt').lean();
     const p = await precioAhora();
+    let porPagar = null;
+    try { porPagar = await deuda(); } catch (e) { porPagar = { error: e.message }; }
     return {
       plazoSeg: PLAZO_SEG,
+      porPagar,
       reglaRecalculo: REGLA_RECALCULO,
       precio: p ? { usd: p.usd, wei: p.wei, oroUsd: p.oroUsd } : null,
       por: Object.fromEntries(por.map((x) => [x._id, x.n])),
@@ -568,8 +668,8 @@ async function resumen() {
 }
 
 module.exports = {
-  OrdenCompra, PLAZO_SEG, REGLA_RECALCULO,
+  OrdenCompra, PorPagar, PLAZO_SEG, REGLA_RECALCULO,
   abrir, ver, mias, cancelar, atender, confirmarRecalculo, entregar,
-  ciclo, arrancar, resumen, precioAhora,
-  _adentro: { origenWeiDe, microACanonico, paraPantalla, pasoDe },
+  ciclo, arrancar, resumen, precioAhora, deuda,
+  _adentro: { origenWeiDe, microACanonico, paraPantalla, pasoDe, anotarPorPagar },
 };

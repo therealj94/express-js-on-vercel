@@ -374,6 +374,54 @@ decir('el tamiz de sanciones');
   process.env.GENESIS_URL = antes;
 }
 
+decir('la cuenta por pagar a Orden Global');
+{
+  // DE DONDE SALE EL ORIGEN. No de un inventario comprado de antemano:
+  // Ordenex se lo compra a Orden Global y cada entrega deja una deuda entre
+  // las dos empresas. Si no se anota en el momento, no se anota nunca — el
+  // explorador ve el envío pero no sabe que ese ORIGEN se le debe a nadie.
+  const u = await persona();
+  const orden = await compra.OrdenCompra.create({
+    userId: String(u._id), cadena: POLYGON, direccion: u.direccionDeposito,
+    aWallet: u.direccionWallet, montoMicro: '100000000', precioWei: PRECIO_WEI,
+    origenWeiCotizado: o((100n * 10n ** 18n).toString(), PRECIO_WEI),
+    plazoSeg: 900, venceEn: new Date(Date.now() + 900_000),
+    reglaRecalculo: compra.REGLA_RECALCULO,
+    depositoId: new mongoose.Types.ObjectId(),
+    origenWei: o((100n * 10n ** 18n).toString(), PRECIO_WEI),
+    precioAplicadoWei: PRECIO_WEI, cantidadUsdt: (100n * 10n ** 18n).toString(),
+  });
+  await compra._adentro.anotarPorPagar(orden, '0xhash1');
+
+  const fila = await compra.PorPagar.findOne({ ordenId: orden._id }).lean();
+  comprobar(Boolean(fila), 'la entrega deja su fila de deuda');
+  comprobar(fila.a === 'orden-global', 'a nombre de Orden Global', fila.a);
+  comprobar(fila.origenWei === orden.origenWei, 'por el ORIGEN que se entregó');
+  comprobar(fila.precioWei === PRECIO_WEI, 'con el precio al que se valoró: el de hoy no sirve mañana');
+  comprobar(fila.hash === '0xhash1', 'y con el hash de la entrega, para poder mirarla');
+  // 38,0746 ORIGEN a 2,626422 son ~100 dólares: lo que entró.
+  const usd = Number(fila.usdMicro) / 1e6;
+  comprobar(usd > 99.9 && usd <= 100, 'valorada en ~100 USD, que es lo que entró', usd);
+  comprobar(fila.liquidada === false, 'y nace sin liquidar');
+
+  // UNA FILA POR ENTREGA. Anotarla dos veces no puede duplicar la deuda: el
+  // ciclo puede reintentar, y una deuda duplicada no se descubre nunca.
+  await compra._adentro.anotarPorPagar(orden, '0xhash1');
+  comprobar(await compra.PorPagar.countDocuments({ ordenId: orden._id }) === 1,
+    'anotarla dos veces no duplica la deuda');
+
+  const d = await compra.deuda();
+  comprobar(d.entregas >= 1, 'la deuda cuenta las entregas', d.entregas);
+  comprobar(BigInt(d.origenWei) >= BigInt(orden.origenWei), 'y suma el ORIGEN');
+  comprobar(/Orden Global/.test(d.a), 'diciendo a quién se le debe', d.a);
+  comprobar(/compró/.test(d.porQue || ''), 'y por qué', d.porQue);
+
+  // La suma va en BigInt: $sum de Mongo sobre strings no suma, y sobre
+  // números perdería enteros pasado 2^53 — que son 0,009 ORIGEN.
+  const fuente = (await import('node:fs')).readFileSync(new URL('../lib/compra.js', import.meta.url), 'utf8');
+  comprobar(/origen \+= BigInt\(f\.origenWei\)/.test(fuente), 'y se suma en BigInt, no en Mongo');
+}
+
 decir('el reloj se pone aunque la primera vuelta truene');
 {
   // EL FALLO QUE SOLO SE VE ARRANCANDO DE VERDAD. Si Mongo tarda en contestar

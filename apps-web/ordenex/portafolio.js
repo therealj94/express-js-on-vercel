@@ -100,6 +100,8 @@ const VPORTA = (() => {
 
       retT: 'Retirar', retP: 'A cualquier dirección de la cadena 5550. Antes de firmarse pasa el tamiz de la casa.',
       retActivo: 'Activo', retCantidad: 'Cantidad', retDireccion: 'Dirección de destino',
+      retComision: 'Comisión de salida', retRecibe: 'Vas a recibir',
+      retSalio: 'Salió a la cadena',
       retDisp: 'Disponible:', retTodo: 'Todo',
       retDirAyuda: 'Una dirección de la cadena 5550: 0x y 40 caracteres hexadecimales.',
       continuar: 'Continuar', volver: 'Volver',
@@ -163,6 +165,8 @@ const VPORTA = (() => {
 
       retT: 'Withdraw', retP: 'To any chain 5550 address. It goes through the house screening before it gets signed.',
       retActivo: 'Asset', retCantidad: 'Amount', retDireccion: 'Destination address',
+      retComision: 'Withdrawal fee', retRecibe: "You'll receive",
+      retSalio: 'Sent to the chain',
       retDisp: 'Available:', retTodo: 'All',
       retDirAyuda: 'A chain 5550 address: 0x plus 40 hexadecimal characters.',
       continuar: 'Continue', volver: 'Back',
@@ -238,6 +242,12 @@ const VPORTA = (() => {
     .po-res .fila{display:flex;justify-content:space-between;gap:14px;padding:9px 0;
       border-bottom:1px solid rgba(255,255,255,.05);font-size:14px}
     .po-res .fila:last-child{border-bottom:0}
+    /* El desglose de la comision. La resta en coral y lo que se recibe en oro:
+       son los dos numeros que la persona compara antes de firmar, y tienen que
+       poder leerse sin buscarlos entre los otros tres renglones. */
+    .po-res .po-comi span{color:var(--coral)}
+    .po-res .po-neto b{color:var(--crema);font-weight:600}
+    .po-res .po-neto span{color:var(--oroLt);font-size:15px}
     .po-res .fila b{color:var(--bruma);font-weight:500}
     .po-res .fila span{font-family:var(--mono);font-variant-numeric:lining-nums tabular-nums;text-align:right;word-break:break-all}
     .po-tx{color:var(--acento);text-decoration:none;border-bottom:1px solid rgba(116,230,200,.4)}
@@ -652,6 +662,28 @@ const VPORTA = (() => {
       <button class="btn btn-oro btn-full" onclick="VPORTA.continuar()">${esc(t.continuar)}</button>`;
   }
 
+  /* LA COMISION DE SALIDA, del lado de la pantalla.
+     Es la misma cuenta entera que lib/comisionSalida.js: partes por millon,
+     BigInt y truncado hacia abajo —o sea a favor de quien saca su dinero—.
+     Se hace con BigInt y no con Number a proposito: 1 % de un saldo grande en
+     coma flotante pierde enteros, y un desglose que no cuadra con el recibo
+     del servidor es peor que no enseñar desglose.
+     El servidor manda `comisionPpm` con cada retiro; mientras no haya habido
+     ninguno se usa el 1 %, que es la tasa vigente. */
+  const PPM_SALIDA = 10000;
+  let ppmSalida = PPM_SALIDA;
+  const pctComision = () => `${(ppmSalida / 10000).toString()} %`;
+
+  function corteDe(bruto) {
+    try {
+      const b = BigInt(bruto);
+      if (b <= 0n) return null;
+      const comision = (b * BigInt(ppmSalida)) / 1000000n;
+      if (comision <= 0n) return null; // tan chico que no paga: no se pinta un cero
+      return { comision: comision.toString(), neto: (b - comision).toString() };
+    } catch { return null; }
+  }
+
   function confirmacionHTML() {
     const t = tx();
     const c = confirmando;
@@ -661,6 +693,13 @@ const VPORTA = (() => {
       <div class="po-res">
         <div class="fila"><b>${esc(t.retActivo)}</b><span>${esc(c.activo)}</span></div>
         <div class="fila"><b>${esc(t.retCantidad)}</b><span>${esc(dinero(c.cantidad, 18))} ${esc(c.activo)}</span></div>
+        <!-- EL DESGLOSE VA AQUI, ANTES DE FIRMAR. Una comision que la persona
+             descubre despues es una comision cobrada a escondidas, aunque este
+             en los terminos. La cuenta es la MISMA que hace el servidor
+             (lib/comisionSalida.js) para que los dos numeros no discrepen. -->
+        ${(() => { const d = corteDe(c.cantidad); return !d ? '' : `
+        <div class="fila po-comi"><b>${esc(t.retComision)} · ${esc(pctComision())}</b><span>&minus;${esc(dinero(d.comision, 18))} ${esc(c.activo)}</span></div>
+        <div class="fila po-neto"><b>${esc(t.retRecibe)}</b><span>${esc(dinero(d.neto, 18))} ${esc(c.activo)}</span></div>`; })()}
         <div class="fila"><b>${esc(t.retDireccion)}</b><span>${esc(c.direccion)}</span></div>
       </div>
       ${c.error ? `<p class="po-error">${esc(c.error)}</p>` : ''}
@@ -678,6 +717,11 @@ const VPORTA = (() => {
       <p class="pie">${esc(t.listoP)}</p>
       <div class="po-res">
         <div class="fila"><b>${esc(t.retCantidad)}</b><span>${esc(dinero(r.cantidad, 18))} ${esc(r.activo)}</span></div>
+        <!-- Del SERVIDOR, no recalculado acá: es lo que se cobro de verdad, y
+             para un retiro viejo (de antes de la comision) sencillamente no
+             viene y no se pinta. -->
+        ${r.comision && r.comision !== '0' ? `<div class="fila po-comi"><b>${esc(t.retComision)}</b><span>&minus;${esc(dinero(r.comision, 18))} ${esc(r.activo)}</span></div>` : ''}
+        ${r.neto ? `<div class="fila po-neto"><b>${esc(t.retSalio)}</b><span>${esc(dinero(r.neto, 18))} ${esc(r.activo)}</span></div>` : ''}
         <div class="fila"><b>${esc(t.retDireccion)}</b><span>${esc(r.direccion)}</span></div>
         ${r.hash ? `<div class="fila"><b>Hash</b><span><a class="po-tx" target="_blank" rel="noopener"
           href="${esc(EXPLORADOR + '/tx/' + encodeURIComponent(r.hash))}">${esc(dirCorta(r.hash))} · ${esc(t.verTx)}</a></span></div>` : ''}
@@ -763,6 +807,10 @@ const VPORTA = (() => {
       enviando = false;
       if (mia !== carga) return; // la vista ya no es esta; el retiro igual salió
       resultado = r;
+      // La tasa que aplico el servidor manda sobre la nuestra: si un dia
+      // cambia en Heroku, la pantalla se entera al primer retiro en vez de
+      // seguir pintando un 1 % que ya no es cierto.
+      if (Number.isInteger(r?.comisionPpm)) ppmSalida = r.comisionPpm;
       confirmando = null;
       borrador = null;
       pintarRetiro();

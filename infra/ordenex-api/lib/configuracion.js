@@ -144,7 +144,15 @@ function cuadro() {
     GENESIS_URL: { puesta: puesta('GENESIS_URL'), valor: process.env.GENESIS_URL || null },
     OG_CHAIN_PROVIDER: { puesta: puesta('OG_CHAIN_PROVIDER'), valor: process.env.OG_CHAIN_PROVIDER || 'https://rpc.ordenglobal-rpc.com (por omision)' },
     CORS_ORIGENES: { puesta: puesta('CORS_ORIGENES'), valor: cors.split(',').map((s) => s.trim()).filter(Boolean) },
-    ORDENEX_COMISION_PPM: { puesta: puesta('ORDENEX_COMISION_PPM'), valor: process.env.ORDENEX_COMISION_PPM || '0 (sin variable: no se cobra, deliberado)' },
+    ORDENEX_COMISION_PPM: { puesta: puesta('ORDENEX_COMISION_PPM'), valor: process.env.ORDENEX_COMISION_PPM || '0 (sin variable: no se cobra, deliberado)', nota: 'el LIBRO de ordenes; sigue en cero por decision' },
+    // La de salida es otra cosa y por eso es otra variable: se cobra sobre el
+    // retiro y hoy es el 1 %. Va con su valor porque no es secreto y porque es
+    // el numero que la gente quiere poder comprobar.
+    ORDENEX_COMISION_SALIDA_PPM: {
+      puesta: puesta('ORDENEX_COMISION_SALIDA_PPM'),
+      valor: (() => { try { const c = require('./comisionSalida'); return `${c.ppm()} ppm (${c.porciento()} %)`; } catch { return null; } })(),
+      nota: 'la comision del retiro. Sin variable: 1 %. Una mal escrita se ignora y queda el 1 %',
+    },
     ORDENEX_DESVIO_AVISO_PCT: { puesta: puesta('ORDENEX_DESVIO_AVISO_PCT'), valor: umbrales ? umbrales.avisoPct : null, nota: 'X: desde aqui la orden pide confirmar el desvio' },
     ORDENEX_DESVIO_BLOQUEO_PCT: { puesta: puesta('ORDENEX_DESVIO_BLOQUEO_PCT'), valor: umbrales ? umbrales.bloqueoPct : null, nota: 'Y: desde aqui la orden no entra' },
   };

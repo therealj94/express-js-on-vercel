@@ -13,6 +13,7 @@ const cadena = require('../lib/cadena5550');
 const { asegurarDireccion } = require('../lib/deposito');
 const { TOKENS, PORSIMBOLO } = require('../lib/tokens');
 const billeteras = require('../lib/billeteras');
+const comisionSalida = require('../lib/comisionSalida');
 
 // lib/genesis.js se carga PEREZOSO y a demanda: si el modulo falta o truena
 // al cargar, tiene que caerse SOLO el retiro (fail-closed, con su 503) y no
@@ -143,6 +144,25 @@ async function retirar(req, res) {
     return res.status(503).json({ error: 'Los retiros no estan configurados.', codigo: 'SIN_CONFIGURAR' });
   }
 
+  // LA COMISION DE SALIDA, calculada ANTES de reservar la clave: si la
+  // cantidad no da ni para que salga algo, no se quema una retiroKey por una
+  // operacion que no puede existir. Ver lib/comisionSalida.js — se debita lo
+  // que la persona escribio y sale eso menos el 1 %.
+  let corte;
+  try {
+    corte = comisionSalida.partir(cantidad);
+  } catch (e) {
+    return res.status(400).json({ error: 'La cantidad no es valida.', codigo: 'CANTIDAD_INVALIDA' });
+  }
+  if (BigInt(corte.neto) <= 0n) {
+    // Emitir una transaccion de cero cuesta gas y no mueve nada.
+    return res.status(400).json({
+      error: 'Esa cantidad no alcanza para cubrir la comision de salida.',
+      codigo: 'NO_CUBRE_COMISION',
+      comision: corte.comision,
+    });
+  }
+
   // 2. ¿Ya se vio esta clave? El reintento recibe lo que paso la primera vez.
   try {
     const visto = await Retiro.findOne({ retiroKey }).lean();
@@ -177,7 +197,8 @@ async function retirar(req, res) {
   // se responde lo que hizo ella.
   let retiro;
   try {
-    retiro = await Retiro.create({ userId, activo, cantidad, direccion, retiroKey });
+    retiro = await Retiro.create({ userId, activo, cantidad, direccion, retiroKey,
+                                  comision: corte.comision, neto: corte.neto, comisionPpm: corte.ppm });
   } catch (e) {
     if (e && e.code === 11000) {
       const visto = await Retiro.findOne({ retiroKey }).lean().catch(() => null);
@@ -219,7 +240,9 @@ async function retirar(req, res) {
   // recupera su saldo tras la revision, tarde pero entero.
   let envio;
   try {
-    envio = await cadena.enviarDesdeCaliente({ a: direccion, activo, cantidadWei: cantidad });
+    // Sale el NETO. Se debito el bruto arriba; la diferencia se le abona a la
+    // casa mas abajo, DESPUES de saber que la transaccion salio.
+    envio = await cadena.enviarDesdeCaliente({ a: direccion, activo, cantidadWei: corte.neto });
   } catch (e) {
     const detalle = `${e.codigo || e.code || ''} ${e.message}`.trim();
 
@@ -263,6 +286,27 @@ async function retirar(req, res) {
     console.error(`[retiros] el retiro ${retiro._id} salio con hash ${envio.hash} pero no se pudo anotar: ${e.message}`);
   }
 
+  // 7b. La comision a la cuenta 'casa', y RECIEN AHORA.
+  //
+  // Va despues del envio a proposito: si se abonara antes y la firma fallara,
+  // habria que revertir dos movimientos en vez de uno, y el camino de reverso
+  // es justo el que menos se ejecuta y menos se prueba. Con este orden, el
+  // reverso devuelve el BRUTO al usuario y no hay nada mas que deshacer.
+  //
+  // Si el abono falla, la transaccion YA salio: no se toca el retiro, se canta
+  // el incidente con todo, y lo cuadra una persona. Un usuario al que le
+  // salio su dinero no puede recibir un error porque a la casa no se le pudo
+  // anotar su comision.
+  if (BigInt(corte.comision) > 0n) {
+    try {
+      await ledger.acreditar('casa', activo, corte.comision, `${ref}:comision`);
+    } catch (e) {
+      console.error(
+        `[retiros] INCIDENTE: el retiro ${retiro._id} salio (${envio.hash}) y la comision de ${corte.comision} wei de ${activo} NO se pudo abonar a la casa: ${e.message}`
+      );
+    }
+  }
+
   // 8. AML, el ultimo y en silencio: la respuesta al usuario JAMAS carga el
   // resultado del reporte (regla del ecosistema — no se avisa a nadie de si
   // salto una alerta), y un fallo aqui no deshace un retiro que ya salio.
@@ -271,7 +315,11 @@ async function retirar(req, res) {
       await genesis.reportarMovimiento(req.usuario.gid, {
         tipo: 'retiro',
         activo,
-        cantidad,
+        // Lo que SALIO de la casa, que es lo que importa para un reporte de
+        // movimiento. El bruto y la comision van al lado para que cuadre.
+        cantidad: corte.neto,
+        bruto: cantidad,
+        comision: corte.comision,
         direccion,
         hash: envio.hash,
         en: new Date().toISOString(),
@@ -288,7 +336,13 @@ async function retirar(req, res) {
     estado: 'enviado',
     hash: envio.hash,
     activo,
+    // Los tres numeros, siempre. Que la respuesta traiga solo `cantidad`
+    // obligaria a la pantalla a rehacer la cuenta de la comision por su lado,
+    // y dos cuentas separadas del mismo numero terminan discrepando.
     cantidad,
+    comision: corte.comision,
+    neto: corte.neto,
+    comisionPpm: corte.ppm,
     direccion,
   });
 }
@@ -358,13 +412,21 @@ function responderRepetido(res, visto, userId) {
       id: String(visto._id),
     });
   }
-  // Salio: se repite EXACTAMENTE la respuesta buena, con su hash.
+  // Salio: se repite EXACTAMENTE la respuesta buena, con su hash — y con el
+  // desglose GUARDADO, no recalculado. Si la tasa cambiara entre el retiro y
+  // el reintento, recalcular haria que la misma operacion contestara dos
+  // numeros distintos, que es justo lo que una clave de idempotencia existe
+  // para impedir. Los retiros de antes de la comision no lo tienen: van en
+  // null y la pantalla no pinta desglose, que es la verdad de aquel dia.
   return res.json({
     id: String(visto._id),
     estado: visto.estado,
     hash: visto.hash,
     activo: visto.activo,
     cantidad: visto.cantidad,
+    comision: visto.comision ?? null,
+    neto: visto.neto ?? null,
+    comisionPpm: visto.comisionPpm ?? null,
     direccion: visto.direccion,
   });
 }

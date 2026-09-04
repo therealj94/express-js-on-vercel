@@ -304,6 +304,14 @@ const retiroSchema = new Schema(
     activo: { type: String, required: true },
     cantidad: { type: String, required: true },
     direccion: { type: String, required: true },
+    // El desglose de la comision de salida, guardado con la operacion y no
+    // recalculado despues. La tasa puede cambiar; lo que se le cobro a esta
+    // persona ese dia no puede cambiar con ella, y un recibo que se recalcula
+    // no es un recibo. `cantidad` es el BRUTO (lo que se debito) y `neto` es
+    // lo que salio a la cadena. Ver lib/comisionSalida.js.
+    comision: { type: String, default: '0' },
+    neto: { type: String, default: null },
+    comisionPpm: { type: Number, default: null },
     retiroKey: { type: String, required: true, unique: true },
     hash: { type: String, default: null },
     estado: { type: String, required: true, default: 'pendiente' },
