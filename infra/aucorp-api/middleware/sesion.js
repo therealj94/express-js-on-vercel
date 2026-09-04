@@ -17,12 +17,18 @@
 //  3. Que no sea un refresh token: el refresh solo sirve en /auth/refresh.
 //     Un refresh robado no debe poder operar; solo pedir un par nuevo, y ese
 //     pedido ya pasa por tokenVersion.
+//  4. Que a esa persona no le hayan cerrado el acceso en Genesis ID. Esta es
+//     de OTRA casa: el interruptor lo aprieta cumplimiento en el panel de
+//     Genesis, no nadie de aqui. Sin ella, un bloqueo del ecosistema no
+//     tocaba nada de AuCorp hasta que caducara la sesion — y el refresh la
+//     alargaba treinta dias sin volver a preguntar. Ver lib/bloqueo.js.
 //
 // Cualquier duda es un 401 con el mismo mensaje: a un token invalido no se le
 // explica QUE le fallo.
 
 const jwt = require('jsonwebtoken');
 const { Usuario } = require('../models');
+const bloqueo = require('../lib/bloqueo');
 
 const NO = { error: 'La sesion no es valida.', codigo: 'SESION_INVALIDA' };
 
@@ -55,6 +61,13 @@ async function sesion(req, res, next) {
     if (typeof datos.tv !== 'number' || datos.tv !== usuario.tokenVersion) {
       return res.status(401).json(NO);
     }
+
+    // El bloqueo del ecosistema, con memoria corta. Va DESPUES de comprobar
+    // la sesion —no se le pregunta a Genesis por un token que ya es invalido—
+    // y ANTES de dejar entrar. Ver lib/bloqueo.js para que pasa si Genesis no
+    // contesta: ni se cae esta casa con el, ni se entra indefinidamente.
+    const permiso = await bloqueo.puedeOperar(usuario.gid);
+    if (!permiso.puede) return res.status(403).json(permiso.respuesta);
 
     // Solo id y gid: lo que las rutas necesitan para saber DE QUIEN hablan.
     // Que el usuario salga de aqui y no del cuerpo de la peticion es lo que

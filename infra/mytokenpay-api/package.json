@@ -9,7 +9,8 @@
   "scripts": {
     "dev": "tsx watch src/index.ts",
     "start": "tsx src/index.ts",
-    "typecheck": "tsc --noEmit -p tsconfig.json"
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "probar": "node --import tsx --test --test-force-exit pruebas/bloqueo.test.mjs pruebas/caja.test.mjs"
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",
