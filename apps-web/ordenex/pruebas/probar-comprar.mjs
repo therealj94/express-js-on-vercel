@@ -33,11 +33,16 @@
 import { chromium } from 'playwright';
 import { createServer } from 'node:http';
 import { readFile } from 'node:fs/promises';
-import { join, extname, dirname } from 'node:path';
+import { join, extname, dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const AQUI = dirname(fileURLToPath(import.meta.url));
-const RAIZ = join(AQUI, '..');
+/* ONX_RAIZ apunta a otra copia de la web —por ejemplo la DESCARGADA DEL SITIO
+   PUBLICADO— para poder correr esta misma prueba contra los bytes que de
+   verdad recibe la gente. Es la misma convención que probar-movil.mjs, y sirve
+   para lo mismo: comprobar que lo desplegado se comporta como lo probado, sin
+   tener que creerselo. */
+const RAIZ = process.env.ONX_RAIZ ? resolve(process.env.ONX_RAIZ) : join(AQUI, '..');
 const TIPOS = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8',
                 '.png': 'image/png', '.jpg': 'image/jpeg', '.svg': 'image/svg+xml',
                 '.woff2': 'font/woff2' };
