@@ -85,15 +85,46 @@ const JWT = 'jwt-fingido-111';
    dígitos no es un caso raro: ORIGEN es el gramo de oro y la gente tiene
    millones de graminos. */
 const GRANDE = 123456789.12;
+
+/* LA REFERENCIA DEL ORO, con los números de verdad del 4 de septiembre. No es
+   decoración del decorado: desde que colocar pasa por la confirmación, un
+   mercado referenciado SIN referencia es 'sinRef' y no se coloca — fail-closed
+   a propósito. Con la referencia inventada a ojo, o el precio quedaba a un
+   93 % de distancia y salía 'bloqueo', o había que fingir una onza de oro a
+   282 dólares. Un decorado que miente se copia.
+
+     onza de oro   $4.389,89
+     ORIGEN        $2,566148   = (onza / 31,1035) / 55
+     AUKA/ORIGEN   = onza / gramín = 1.710,69 — y es fijo, porque los dos son
+                     oro: lo que se mueve es el par de la plata. */
+const ORO_USD = 4389.89;
+const ORIGEN_USD = 2.566148;
+const AUKA_ORIGEN = ORO_USD / ORIGEN_USD;   // 1710,69
+const REF_ORO = { usd: ORO_USD, origenUsd: ORIGEN_USD, rotulo: 'onza de oro',
+                  fuente: 'metals.dev', en: new Date().toISOString() };
+
 const MERCADOS = [
-  { mercado: 'AUKA-ORIGEN', ultimo: wei(111), cambio24h: 1.11, vol24h: wei(222) },
+  { mercado: 'AUKA-ORIGEN', ultimo: weiF(AUKA_ORIGEN), cambio24h: 1.11,
+    vol24h: wei(222), referencia: REF_ORO },
   { mercado: 'AGKA-ORIGEN', ultimo: weiF(GRANDE), cambio24h: -12.34, vol24h: weiF(987654321.5),
     alto24h: weiF(123456999), bajo24h: weiF(111111111) },
 ];
 const LIBRO = {
-  compras: [[wei(110), wei(222)], [wei(109), wei(111)]],
-  ventas: [[wei(112), wei(111)], [wei(113), wei(222)]],
+  compras: [[weiF(AUKA_ORIGEN - 1), wei(222)], [weiF(AUKA_ORIGEN - 2), wei(111)]],
+  ventas: [[weiF(AUKA_ORIGEN + 1), wei(111)], [weiF(AUKA_ORIGEN + 2), wei(222)]],
 };
+
+/* Los umbrales y la versión de los términos, como los sirve el API de verdad.
+   Sin `/limites` el nivel es 'sinLimites', que pinta una casilla más; y sin
+   versión de términos no aparece la casilla de aceptarlos. Los dos se sirven
+   porque la primera orden de cualquiera —la que se coloca desde un teléfono
+   que estrena la app— es justo la que trae el cuadro MÁS ALTO, y ese es el
+   caso que hay que medir a 360 px, no el corto. */
+const LIMITES = {
+  desvio: { avisoPct: 5, bloqueoPct: 20 },
+  terminos: { version: '2026-09-01', terminos: 'legal.html#terminos', riesgo: 'legal.html#riesgo' },
+};
+const VERSION_TERMINOS = LIMITES.terminos.version;
 
 /* 120 velas de nueve dígitos para AGKA. Son las que hacen ancha la leyenda: el
    renglón «O … H … L … C … %» con precios así mide más de 500 px, y el lienzo
@@ -129,11 +160,13 @@ const cuerpoDe = q => new Promise(res => {
 });
 
 const ordenes = [];
+let terminosAceptados = false;
 
 async function api(q, r, ruta) {
   const un = ruta.match(/^\/mercados\/([^/]+)\/(libro|velas|tratos)$/);
   if (q.method === 'GET' && ruta === '/mercados') return json(r, 200, MERCADOS);
   if (q.method === 'GET' && ruta === '/tarifas') return json(r, 200, { comisionPpm: 2500, sobre: 'recibido' });
+  if (q.method === 'GET' && ruta === '/limites') return json(r, 200, LIMITES);
   if (q.method === 'GET' && un) {
     const vivo = MERCADOS.some(m => m.mercado === un[1] && m.ultimo != null);
     if (un[2] === 'libro') return json(r, 200, vivo ? LIBRO : { compras: [], ventas: [] });
@@ -159,21 +192,43 @@ async function api(q, r, ruta) {
       usuario: { gid: 'GID-FINGIDO-111', nombre: 'Fingido', verificada: true } });
   }
   const borra = ruta.match(/^\/ordenes\/([^/]+)$/);
-  const guardada = ['/portafolio', '/movimientos', '/ordenes', '/fiat/solicitudes'].includes(ruta) || !!borra;
+  const guardada = ['/portafolio', '/movimientos', '/ordenes', '/fiat/solicitudes', '/auth/terminos'].includes(ruta) || !!borra;
   if (!guardada) return null;
   if ((q.headers.authorization || '') !== 'Bearer ' + JWT) {
     return json(r, 401, { error: 'Sin sesión.', codigo: 'SIN_SESION' });
   }
   if (q.method === 'GET' && ruta === '/portafolio') {
     return json(r, 200, {
-      cuentas: [{ activo: 'ORIGEN', disponible: wei(999), reservado: '0' },
+      /* El saldo de ORIGEN da para la orden que se coloca abajo: 2 AUKA a
+         1700 son 3400 ORIGEN, y con los 999 de antes —de cuando el par valía
+         110— la orden ni llegaba al cuadro de confirmación. AUKA se queda en
+         cifras chicas a propósito: el par de los números largos es AGKA. */
+      cuentas: [{ activo: 'ORIGEN', disponible: wei(9999), reservado: '0' },
                 { activo: 'AUKA', disponible: wei(222), reservado: '0' }],
       direccionDeposito: '0x' + 'a111'.repeat(10),
     });
   }
   if (q.method === 'GET' && ruta === '/ordenes') return json(r, 200, ordenes);
   if (q.method === 'GET' && (ruta === '/movimientos' || ruta === '/fiat/solicitudes')) return json(r, 200, []);
+  if (ruta === '/auth/terminos') {
+    if (q.method === 'POST') {
+      const { version } = await cuerpoDe(q);
+      if (version !== VERSION_TERMINOS) {
+        return json(r, 409, { error: 'Otra versión.', codigo: 'TERMINOS_VERSION' });
+      }
+      terminosAceptados = true;
+      return json(r, 200, { ...LIMITES.terminos, aceptada: true });
+    }
+    return json(r, 200, { ...LIMITES.terminos, aceptada: terminosAceptados });
+  }
   if (q.method === 'POST' && ruta === '/ordenes') {
+    /* El API de verdad NO coloca sin términos aceptados, y acá se hace igual:
+       si el decorado los diera por buenos, la casilla de la confirmación
+       podría dejar de mandar la aceptación y esta prueba seguiría en verde
+       mientras en producción no se coloca ni una orden. */
+    if (!terminosAceptados) {
+      return json(r, 409, { error: 'Faltan los términos.', codigo: 'TERMINOS_NO_ACEPTADOS' });
+    }
     const o = await cuerpoDe(q);
     const orden = { id: 'orden-111', mercado: o.mercado, lado: o.lado, tipo: o.tipo,
       precio: o.precio ?? null, cantidad: o.cantidad, resta: o.cantidad,
@@ -323,10 +378,103 @@ console.log('\n── cancelar una orden, con el dedo ────────�
   await p.evaluate(() => ONX.vista('mercado', 'AUKA-ORIGEN'));
   await p.waitForTimeout(1500);
 
-  await p.fill('#vm-precio', '110');
+  // 1700 contra una referencia de 1710,69: medio punto por ciento de desvío,
+  // o sea 'ok'. Es el mismo par de números que el comentario de mercado.js usa
+  // de ejemplo — 4365,3 bloquea, 1700 pasa.
+  await p.fill('#vm-precio', '1700');
   await p.fill('#vm-cant', '2');
   await p.click('#vm-enviar');
   await p.waitForTimeout(1200);
+
+  /* ── EL CUADRO DE CONFIRMACIÓN ────────────────────────────────────────────
+     «Enviar» ya no coloca nada: abre este cuadro, que dice cuánto das, cuánto
+     recibís y cuánto se aleja tu precio de la referencia del oro. Se puso
+     después de que esta prueba se escribiera, y por eso la prueba llevaba en
+     rojo — buscaba la orden en la lista y la orden seguía esperando detrás de
+     un botón que nadie había pulsado.
+
+     Pero lo interesante no es arreglar el paso. Es que este cuadro se cuelga
+     del `body` con `position:fixed`, o sea FUERA del lienzo de la aplicación,
+     y hoy está en el camino de TODAS las órdenes. Si en un teléfono su botón
+     de confirmar cae fuera de la pantalla, no es que se vea mal: es que no se
+     puede colocar una orden desde un teléfono, y nada más lo diría. Es el
+     mismo agujero número 1 de este archivo —el «Cancelar» recortado por el
+     `overflow-x:hidden` del body— una pantalla más adelante. */
+  const cuadro = await p.evaluate(() => {
+    const velo = document.getElementById('vm-confirmar');
+    if (!velo) return null;
+    const caja = el => { const r = el.getBoundingClientRect();
+      return { x: Math.round(r.x), y: Math.round(r.y), w: Math.round(r.width),
+               d: Math.round(r.right), ab: Math.round(r.bottom) }; };
+    const ok = velo.querySelector('#cf-ok');
+    const volver = velo.querySelector('.cf-botones .btn-linea');
+    const terminos = velo.querySelector('#cf-terminos-check');
+    const refOro = [...velo.querySelectorAll('.cf-fila')]
+      .some(f => /onza de oro|metals\.dev/.test(f.textContent || ''));
+    // Lo que se sale del ancho DENTRO del cuadro: las filas llevan números en
+    // ORIGEN con cuatro decimales y la del oro trae fuente y hora.
+    const fuera = [...velo.querySelectorAll('*')]
+      .filter(el => { const r = el.getBoundingClientRect();
+        return r.width && r.height && r.right > window.innerWidth + 1; })
+      .map(el => el.className || el.tagName).slice(0, 4);
+    return {
+      ok: ok ? caja(ok) : null, volver: volver ? caja(volver) : null,
+      deshabilitado: ok ? ok.disabled : null,
+      terminos: terminos ? caja(terminos) : null, refOro,
+      alto: Math.round(velo.querySelector('.cf-caja')?.getBoundingClientRect().height || 0),
+      ventana: window.innerHeight, fuera,
+    };
+  });
+  decir(!!cuadro, 'antes de colocar se abre el cuadro de confirmación', JSON.stringify(cuadro));
+
+  if (cuadro) {
+    decir(!!cuadro.ok && cuadro.ok.d <= ANCHO + 1 && cuadro.ok.x >= 0,
+      'y el botón de confirmar entra entero en los 360 px',
+      JSON.stringify(cuadro.ok));
+    decir(!!cuadro.volver && cuadro.volver.x >= 0,
+      'y el de volver también: se puede salir sin colocar', JSON.stringify(cuadro.volver));
+    decir(cuadro.fuera.length === 0, 'y ninguna fila del cuadro se sale del ancho',
+      cuadro.fuera.length ? JSON.stringify(cuadro.fuera) : 'nada fuera');
+    /* Que el botón esté A LA VISTA, no solo dentro del ancho. La caja crece
+       con las filas del oro y del desvío; si se pasa del alto de la ventana,
+       el confirmar queda por debajo del borde y hay que poder desplazarse
+       hasta él. */
+    decir(cuadro.ok != null && cuadro.ok.ab <= cuadro.ventana,
+      'y no queda por debajo del borde de la pantalla',
+      `botón termina en ${cuadro.ok?.ab}px · ventana ${cuadro.ventana}px · caja ${cuadro.alto}px`);
+    decir(cuadro.refOro, 'el cuadro enseña la referencia del oro con su fuente y su hora',
+      cuadro.refOro ? 'onza y gramín, con fuente' : 'no aparece la fila del oro');
+
+    /* LA CASILLA DE LOS TÉRMINOS. Sale en la PRIMERA orden de cada persona, y
+       la primera orden de casi todos va a ser desde el teléfono. Es una
+       etiqueta con dos enlaces dentro de una frase, o sea lo que peor envuelve
+       en 360 px, y hasta que no se marca el confirmar está apagado: si la
+       casilla cayera fuera de la pantalla, el botón se vería y no se
+       encendería nunca. Ese fallo se lee como «la app no deja operar». */
+    decir(!!cuadro.terminos, 'en la primera orden pide aceptar los términos',
+      JSON.stringify(cuadro.terminos));
+    if (cuadro.terminos) {
+      decir(cuadro.terminos.x >= 0 && cuadro.terminos.d <= ANCHO + 1
+            && cuadro.terminos.ab <= cuadro.ventana,
+        'y se llega a la casilla con el dedo, dentro de la pantalla',
+        JSON.stringify(cuadro.terminos));
+      decir(cuadro.deshabilitado === true,
+        'y hasta marcarla el confirmar está apagado', `disabled=${cuadro.deshabilitado}`);
+      // Se marca TOCANDO. `check()` de Playwright toca de verdad y falla si
+      // algo se pone encima, que es la mitad de lo que se busca acá.
+      try { await p.locator('#cf-terminos-check').check({ timeout: 8000 }); }
+      catch { decir(false, 'y se puede marcar con el dedo', 'el toque no llegó a la casilla'); }
+      await p.waitForTimeout(300);
+      const tras = await p.evaluate(() => document.getElementById('cf-ok')?.disabled);
+      decir(tras === false, 'y al marcarla se enciende el confirmar', `disabled=${tras}`);
+    }
+
+    // Y se confirma TOCANDO, no llamando a la función: si algo se pone encima
+    // del botón, llamarla lo taparía.
+    try { await p.locator('#cf-ok').click({ timeout: 8000 }); }
+    catch { decir(false, 'y se puede tocar el confirmar', 'el toque no llegó'); }
+    await p.waitForTimeout(1500);
+  }
 
   const antes = await p.evaluate(() => {
     const b = document.querySelector('#vm-ordenes button');
