@@ -25,8 +25,48 @@
  *   node probar-movil-todo.mjs [nombre-de-la-app]
  */
 import { chromium } from 'playwright';
+import { createServer } from 'node:http';
+import { readFile } from 'node:fs/promises';
+import { join, extname, dirname, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 const BASE = 'http://127.0.0.1:8791';
+
+/* ── UN SEGUNDO SERVIDOR, PARA EL SITIO QUE PIDE DESDE LA RAIZ ─────────────
+ *
+ * `sitio-ordenglobal` escribe sus recursos con ruta absoluta —
+ * `/assets/portada.css`, `/assets/galaxia.js`— porque en produccion ES la raiz
+ * del dominio. El servidor de esta prueba sirve la raiz del REPOSITORIO, asi
+ * que esas rutas caian en `/assets/…` (que no existe) y la pagina se pintaba
+ * SIN UNA SOLA LINEA DE CSS.
+ *
+ * Y no se notaba: se medía igual, y una pagina sin estilos desborda por donde
+ * sea. Llevaba tiempo en rojo por un enlace «Términos» que se salia 8 px — un
+ * defecto que no existe en la web de verdad. Medir una pagina cuyo CSS no
+ * cargo no es medir mal: es no medir nada, y reportarlo como fallo enseña a
+ * ignorar el informe.
+ *
+ * Se le levanta su propio servidor con la raiz donde el sitio la espera. */
+const AQUI = dirname(fileURLToPath(import.meta.url));
+const RAIZ_OG = resolve(AQUI, '..', 'sitio-ordenglobal');
+const TIPOS = { '.html': 'text/html; charset=utf-8', '.css': 'text/css; charset=utf-8',
+                '.js': 'text/javascript; charset=utf-8', '.png': 'image/png',
+                '.jpg': 'image/jpeg', '.svg': 'image/svg+xml', '.webp': 'image/webp',
+                '.woff2': 'font/woff2', '.ico': 'image/x-icon' };
+const svOG = createServer(async (q, r) => {
+  const ruta = decodeURIComponent(q.url.split('?')[0]);
+  // Sin `..`: este servidor sirve una carpeta, no el disco.
+  if (ruta.includes('..')) { r.writeHead(400); return r.end('no'); }
+  const dentro = ruta.endsWith('/') ? ruta + 'index.html' : ruta;
+  try {
+    const f = join(RAIZ_OG, dentro);
+    const d = await readFile(f);
+    r.writeHead(200, { 'Content-Type': TIPOS[extname(f)] || 'application/octet-stream' });
+    r.end(d);
+  } catch { r.writeHead(404); r.end('no'); }
+});
+await new Promise((ok) => svOG.listen(0, '127.0.0.1', ok));
+const BASE_OG = `http://127.0.0.1:${svOG.address().port}`;
 
 /* Los anchos que hay que cubrir, con el motivo:
      320 · el iPhone SE y los Android baratos que todavía se venden acá
@@ -47,7 +87,8 @@ const APPS = {
      admin.html dejaba sin mirar la mitad cara del trabajo. */
   'genesis-revision': `${BASE}/genesis-id/public/revision.html`,
   'nexuscoder': `${BASE}/apps-web/nexuscoder/index.html`,
-  'ordenglobal': `${BASE}/sitio-ordenglobal/index.html`,
+  // Desde SU raíz, no la del repositorio: ver el comentario de arriba.
+  'ordenglobal': `${BASE_OG}/index.html`,
 };
 
 /* `social` estaba en esta lista y se quitó a propósito. No es una web: es la
@@ -205,7 +246,8 @@ try {
       const pag = await nav.newPage();
       await pag.setViewportSize({ width: ancho, height: 780 });
       // Todo lo de fuera se corta: se prueba la caja, no la red.
-      await pag.route('**/*', r => r.request().url().startsWith(BASE)
+      const local = (u) => u.startsWith(BASE) || u.startsWith(BASE_OG);
+      await pag.route('**/*', r => local(r.request().url())
         ? r.continue() : r.fulfill({ status: 200, contentType: 'text/plain', body: '{}' }));
 
       let existe = true;
@@ -216,9 +258,41 @@ try {
       if (!existe) { console.log(`\n  ── ${ancho} px · no se pudo abrir`); await pag.close(); continue; }
 
       await pag.waitForTimeout(900);
-      const m = await pag.evaluate(medir, ancho);
+
+      /* ── ¿LLEGO EL CSS? ───────────────────────────────────────────────────
+         Antes de medir nada. Una página cuyo <link rel=stylesheet> dio 404 se
+         pinta igual —con los estilos del navegador— y desborda por donde sea:
+         los anchos que salen de ahí no son los de la web, son los de un
+         documento sin diseño. Eso es lo que le pasaba a `ordenglobal`, que
+         pedía `/assets/portada.css` a la raíz del repositorio.
+
+         El síntoma no era un error: era un FALLO CREÍBLE —«el enlace Términos
+         se sale 8 px»— sobre un defecto que no existe. Un informe que reporta
+         defectos inventados se deja de leer entero, y entonces también se
+         dejan de leer los de verdad.
+
+         `sheet` es null cuando la hoja no cargó (404, otro origen, MIME que el
+         navegador rechazó); con la hoja puesta trae sus reglas. */
+      const css = await pag.evaluate(() => {
+        const links = [...document.querySelectorAll('link[rel~="stylesheet" i]')];
+        const rotos = links.filter((l) => {
+          try { return !l.sheet || l.sheet.cssRules.length === 0; } catch { return false; }
+        }).map((l) => l.getAttribute('href'));
+        // Una página que lleva TODO su estilo en <style> es legítima y no tiene
+        // links: solo se exige que los que declara hayan cargado.
+        return { links: links.length, rotos, hojas: document.styleSheets.length };
+      });
 
       console.log(`\n  ── ${ancho} px`);
+
+      if (css.rotos.length) {
+        malo(`${css.rotos.length} hoja(s) de estilo NO cargaron: lo de abajo no mide esta web`,
+          css.rotos.join(' · '));
+        await pag.close();
+        continue;   // medir sin CSS solo produce fallos inventados
+      }
+
+      const m = await pag.evaluate(medir, ancho);
 
       /* Aca hubo una comprobacion de los huecos «[COMPLETAR: …]». Se movio a
          apps-web/subir.py, que es la puerta de produccion: es donde de verdad
