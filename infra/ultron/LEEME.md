@@ -33,7 +33,7 @@ que piensan a fondo. Comparten **lo demás**:
 
 - **el saber**: ULTRON lee las mismas 40 fichas de `infra/cerebro/conocimiento/saber.json`, y sabe cuáles son públicas;
 - **la voz de la casa**: las fichas públicas van en cada prompt — «referenciado», nunca «respaldado»; no «regulada»;
-- **la línea de WhatsApp**: ULTRON manda por Zernio con las mismas variables. La ENTRADA la trae AU-RA, que es la única que sondea la bandeja: cuando ve un mensaje de un número de la junta, lo reenvía a `POST /whatsapp/entrada` con el secreto `ULTRON_SECRETO_AURA` y devuelve la respuesta por su boca (ver `infra/aura/whatsapp.py`).
+- **la línea de WhatsApp**: ULTRON manda por Zernio con las mismas variables. La ENTRADA la trae AU-RA, que es la única que sondea la bandeja: antes de pensar, le pregunta a ULTRON por cada mensaje (`POST /whatsapp/entrada` con `ULTRON_SECRETO_AURA`); si el número es de la junta ULTRON contesta y AU-RA solo pone la boca, si no (403) AU-RA sigue como siempre y no vuelve a preguntar por ese número en diez minutos. Ver `infra/aura/ultron.py`. En el nodo hacen falta `ULTRON_URL` y `ULTRON_SECRETO_AURA` en `/etc/aura-whatsapp.env`.
 
 ## Las reglas que no se negocian
 

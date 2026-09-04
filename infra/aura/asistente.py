@@ -88,6 +88,7 @@ import urllib.request
 
 from candado import Candado
 import whatsapp as wa
+import ultron
 import guardia
 import registro
 import guion
@@ -2685,7 +2686,23 @@ def atender_charla(rel, sistema, perfiles, correo):
     nuevos.sort(key=lambda m: m.get('cuando', 0))
     for m in nuevos[:POR_VUELTA]:
         try:
-            atender(rel, sistema, p, correo, (m.get('texto') or '').strip(), m)
+            dicho = (m.get('texto') or '').strip()
+            # ── LA JUNTA HABLA CON ULTRON, NO CON AU-RA ───────────────────
+            #
+            # Solo por WhatsApp, que es la linea que comparten. ULTRON decide
+            # si el numero es de la junta (la lista vive alli); si lo es,
+            # contesta el y AU-RA pone la boca. Si no, `None`, y AU-RA
+            # atiende como a cualquiera. Un ULTRON caido lanza y se reintenta
+            # como cualquier fallo — ver `ultron.py`.
+            de_ultron = None
+            if dicho and isinstance(rel, wa.RelevoWhatsApp) and ultron.encendido():
+                rel.escribiendo(correo)
+                de_ultron = ultron.atender(correo, dicho)
+            if de_ultron:
+                rel.enviar(correo, de_ultron)
+                log(f'ULTRON contesto a {correo[:6]}… · {len(de_ultron)} letras')
+            else:
+                atender(rel, sistema, p, correo, dicho, m)
         except Exception as e:
             with CANDADO_PERFILES:
                 f = p.setdefault('falla', {'id': None, 'n': 0})
