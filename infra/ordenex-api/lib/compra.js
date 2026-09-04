@@ -241,6 +241,10 @@ function paraPantalla(o) {
     id: String(o._id),
     cadena: o.cadena,
     montoMicro: o.montoMicro,
+    // Lo que LLEGO de verdad, en canonico de 18. Va siempre y no solo en el
+    // recalculo: la pantalla tiene que poder dejar de pedir un deposito que
+    // ya se hizo. Null mientras no haya llegado nada.
+    recibidoUsdt: o.cantidadUsdt || null,
     origenWei: o.origenWei || o.origenWeiCotizado,
     direccion: o.direccion,
     aWallet: o.aWallet,

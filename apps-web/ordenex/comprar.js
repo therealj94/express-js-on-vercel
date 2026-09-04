@@ -74,10 +74,11 @@ const VCOMPRA = (() => {
       cargando: 'Buscando el precio del oro…',
       escribi: 'Escribí cuánto querés depositar',
       oroA: 'Oro a', laOnza: 'la onza', hace: 'leído hace',
-      plazo: 'El precio te queda fijo 60 minutos.',
+      plazo: 'El precio te queda fijo {min} minutos.',
       minimo: 'Mínimo en esta red', tiempoRed: 'La red tarda',
       // la pantalla de la dirección
       manda: 'Mandá exactamente', soloPor: 'Solo por', dir: 'Tu dirección para esta compra',
+      llego: 'Ya recibimos', noMandesMas: 'No mandes más: este depósito ya está en curso.',
       copiar: 'Copiar dirección', copiado: 'Copiada', quedan: 'Te quedan',
       vencido: 'El precio venció', tron: 'No mandes por TRON (TRC20). Esa red no existe acá y ese dinero no se recupera.',
       alVencer: 'Si el tiempo se acaba antes de que llegue, se recalcula al precio de ese momento y te avisamos antes de entregarte nada.',
@@ -85,8 +86,17 @@ const VCOMPRA = (() => {
       rEsperando: 'Esperando tu depósito', rEsperandoD: 'Mandá el USDT a la dirección de arriba.',
       rVisto: 'Lo vimos llegar', rVistoD: 'Está en la cadena. Esperando las confirmaciones de la red.',
       rConfirmado: 'Confirmado', rConfirmadoD: 'Ya no se puede deshacer. Entregando tu ORIGEN.',
+      rEsperandoVos: 'Esperando que decidas', rEsperandoVosD: 'Llegó tu depósito y el precio cambió. Mirá el aviso de arriba: nada se entrega hasta que digas que sí.',
+      rRevision: 'Lo está mirando alguien', rRevisionD: 'Tu depósito llegó y está seguro. Te escribimos apenas se resuelva.',
       rAcreditado: 'Listo', rAcreditadoD: 'Está en tu Veta Wallet.',
       verEn: 'Ver en el explorador', otra: 'Hacer otra compra', cancelar: 'Cancelar',
+      // el recálculo
+      recalT: 'El precio cambió mientras llegaba tu depósito',
+      recalD: 'Llegó después de que se acabara el plazo, así que lo recalculamos al precio de ese momento. Nada se entrega hasta que vos digas que sí.',
+      recalSinOrden: 'Tu depósito llegó sin una orden abierta, así que lo calculamos al precio de ahora. Nada se entrega hasta que vos digas que sí.',
+      recalLlego: 'Llegaron', recalAntes: 'Ibas a recibir', recalAhora: 'Ahora recibirías',
+      recalSi: 'Sí, entregame ese ORIGEN', recalNo: 'Ahora no',
+      entregado: 'Ver la entrega en OrdenScan',
       sinWallet: 'Para recibir tu ORIGEN necesitamos tu billetera de Veta Wallet.',
       sinWalletD: 'Abrila una vez y volvé — se vincula sola, no hay nada que copiar.',
       abrirWallet: 'Abrir Veta Wallet',
@@ -103,17 +113,26 @@ const VCOMPRA = (() => {
       cargando: 'Fetching the gold price…',
       escribi: 'Enter how much you want to deposit',
       oroA: 'Gold at', laOnza: 'per ounce', hace: 'read',
-      plazo: 'Your price stays fixed for 60 minutes.',
+      plazo: 'Your price stays fixed for {min} minutes.',
       minimo: 'Minimum on this network', tiempoRed: 'Network takes',
       manda: 'Send exactly', soloPor: 'Only on', dir: 'Your address for this purchase',
+      llego: 'We received', noMandesMas: 'Don\'t send more: this deposit is already in progress.',
       copiar: 'Copy address', copiado: 'Copied', quedan: 'Time left',
       vencido: 'Price expired', tron: "Don't send on TRON (TRC20). That network doesn't exist here and those funds are not recoverable.",
       alVencer: "If time runs out before it arrives, we recalculate at that moment's price and tell you before delivering anything.",
       rEsperando: 'Waiting for your deposit', rEsperandoD: 'Send the USDT to the address above.',
       rVisto: 'We saw it arrive', rVistoD: "It's on chain. Waiting for network confirmations.",
       rConfirmado: 'Confirmed', rConfirmadoD: "It can't be reversed now. Delivering your ORIGEN.",
+      rEsperandoVos: 'Waiting on you', rEsperandoVosD: 'Your deposit arrived and the price changed. See the notice above: nothing is delivered until you say yes.',
+      rRevision: 'A person is looking at it', rRevisionD: 'Your deposit arrived and is safe. We write to you as soon as it is resolved.',
       rAcreditado: 'Done', rAcreditadoD: "It's in your Veta Wallet.",
       verEn: 'View on explorer', otra: 'Buy again', cancelar: 'Cancel',
+      recalT: 'The price moved while your deposit was arriving',
+      recalD: "It arrived after the window closed, so we recalculated at that moment's price. Nothing is delivered until you say yes.",
+      recalSinOrden: 'Your deposit arrived without an open order, so we priced it at the current rate. Nothing is delivered until you say yes.',
+      recalLlego: 'Arrived', recalAntes: 'You were getting', recalAhora: "You'd get now",
+      recalSi: 'Yes, deliver that ORIGEN', recalNo: 'Not now',
+      entregado: 'See the delivery on OrdenScan',
       sinWallet: 'To receive your ORIGEN we need your Veta Wallet address.',
       sinWalletD: 'Open it once and come back — it links itself, nothing to copy.',
       abrirWallet: 'Open Veta Wallet',
@@ -191,8 +210,14 @@ const VCOMPRA = (() => {
   let precioIntentado = false;
 
   /** ¿El servidor de compras ya existe? Mientras no, la vista se rotula como
-   *  vista previa. Nunca se finge que una compra es real. */
-  let hayServidor = false;
+   *  vista previa. Nunca se finge que una compra es real.
+   *
+   *  Desde el 4 de septiembre existe: POST /compras congela un precio de
+   *  verdad y lib/compra.js entrega el ORIGEN. Se deja la bandera, y no se
+   *  borra el camino de la vista previa, porque es lo que permite abrir esta
+   *  pantalla en un entorno sin backend sin fingir que hay dinero de por
+   *  medio. */
+  let hayServidor = true;
 
   // ── la referencia del oro ─────────────────────────────────────────────────
   //
@@ -251,6 +276,7 @@ const VCOMPRA = (() => {
       </div>
     </div>
     ${hayServidor ? '' : `<div class="cp-previa">${esc(t('previa'))}</div>`}
+    ${orden?.recalculo ? panelRecalculo() : ''}
     <div class="cp-grid">
       <div class="cp-col" id="cp-izq">${orden ? panelDireccion() : panelCalculadora()}</div>
       <div class="cp-col" id="cp-der">${panelRiel()}</div>
@@ -318,7 +344,48 @@ const VCOMPRA = (() => {
 
       <button class="btn btn-oro btn-full" ${(!recibe || bajo || !precio) ? 'disabled' : ''}
               onclick="VCOMPRA.congelar()">${esc(t('congelar'))}</button>
-      <p class="cp-pie">${esc(t('plazo'))}</p>
+      <p class="cp-pie">${esc(t('plazo').replace('{min}', String(Math.round(PLAZO / 60))))}</p>
+    </div>`;
+  }
+
+  // ── 1b · el recálculo ─────────────────────────────────────────────────────
+  //
+  // El único panel de esta pantalla que PIDE UNA DECISION, y por eso va arriba
+  // de todo y ancho: si fuera una nota al pie dentro del riel, alguien con el
+  // dinero ya depositado se quedaría esperando una entrega que no llega porque
+  // no vio que le estaban preguntando algo.
+  //
+  // Enseña los dos números —el que iba a recibir y el que recibiría ahora— y
+  // no dice cuál es mejor. A veces el nuevo es mayor. Empujar en cualquiera de
+  // las dos direcciones sería vender, y acá no se vende: se informa.
+
+  function panelRecalculo() {
+    const rc = orden.recalculo;
+    const sinOrden = /sin una orden|without an open order/i.test(orden.motivo || '');
+    return `
+    <div class="vidrio cp-recal">
+      <div class="cp-recal-cab">
+        <strong>${esc(t('recalT'))}</strong>
+        <span>${esc(sinOrden ? t('recalSinOrden') : t('recalD'))}</span>
+      </div>
+      <div class="cp-recal-nums">
+        <div class="cp-recal-n">
+          <span class="cp-lbl">${esc(t('recalLlego'))}</span>
+          <b class="mono">${esc(deWei(rc.cantidadUsdt, 2))} <em>USDT</em></b>
+        </div>
+        <div class="cp-recal-n vieja">
+          <span class="cp-lbl">${esc(t('recalAntes'))}</span>
+          <b class="mono">${esc(deWei(rc.cotizado, 4))}</b>
+        </div>
+        <div class="cp-recal-n nueva">
+          <span class="cp-lbl">${esc(t('recalAhora'))}</span>
+          <b class="mono">${partido(rc.origenWei)} <em>ORIGEN</em></b>
+        </div>
+      </div>
+      <div class="cp-recal-btn">
+        <button class="btn btn-oro" onclick="VCOMPRA.confirmar()">${esc(t('recalSi'))}</button>
+        <button class="btn btn-linea" onclick="VCOMPRA.cancelar()">${esc(t('recalNo'))}</button>
+      </div>
     </div>`;
   }
 
@@ -327,8 +394,26 @@ const VCOMPRA = (() => {
   function panelDireccion() {
     const r = redDe(orden.cadena);
     const vencida = orden.restanSeg <= 0;
+    /* ¿Ya llegó el dinero? Es lo que decide si esta pantalla PIDE o ACUSA
+       RECIBO. Las dos cosas a la vez no pueden estar. */
+    const llego = Boolean(orden.recibidoUsdt) || orden.paso >= 2;
     return `
     <div class="vidrio cp-caja">
+      <!-- PEDIR O ACUSAR RECIBO, NUNCA LAS DOS. Mientras no llega, el heroe es
+           la cantidad que hay que mandar. En cuanto llegó, es la que llegó — y
+           el aviso de la red se cambia por uno que dice que no mande mas.
+           Dejar «Manda exactamente 100,00» arriba de un deposito que ya entro
+           es como se consiguen dos depositos por una sola compra. -->
+      ${llego ? `
+      <div class="cp-manda llego">
+        <span class="cp-lbl">${esc(t('llego'))}</span>
+        <div class="cp-hero">${esc(deWei(orden.recibidoUsdt, 2))} <em>USDT</em></div>
+      </div>
+      <div class="cp-red-aviso quieto">
+        <strong>${esc(r.nombre)}</strong>
+        <span>${esc(t('noMandesMas'))}</span>
+      </div>
+      ` : `
       <div class="cp-manda">
         <span class="cp-lbl">${esc(t('manda'))}</span>
         <div class="cp-hero">${esc(deMicro(orden.montoMicro))} <em>USDT</em></div>
@@ -340,15 +425,19 @@ const VCOMPRA = (() => {
       <div class="cp-red-aviso">
         <strong>${esc(t('soloPor'))} ${esc(r.nombre)}</strong>
         <span>${esc(t('tron'))}</span>
-      </div>
+      </div>`}
 
       <div class="campo">
         <label>${esc(t('dir'))} · ${esc(r.nombre)}</label>
-        <div class="cp-dir${copiada ? ' ok' : ''}">
+        <!-- El boton de copiar desaparece en cuanto llegó el dinero. La
+             direccion se queda —es parte del recibo y hay que poder mirarla en
+             el explorador— pero un boton que dice «copiar direccion» al lado
+             de un deposito ya hecho es una invitacion a hacer otro. -->
+        <div class="cp-dir${copiada ? ' ok' : ''}${llego ? ' quieta' : ''}">
           <code class="mono">${esc(orden.direccion)}</code>
-          <button class="btn btn-linea btn-sm" onclick="VCOMPRA.copiar()">
+          ${llego ? '' : `<button class="btn btn-linea btn-sm" onclick="VCOMPRA.copiar()">
             ${esc(copiada ? t('copiado') : t('copiar'))}
-          </button>
+          </button>`}
         </div>
         <div class="cp-qr-caja">
           <div class="cp-qr" id="cp-qr" aria-hidden="true"></div>
@@ -356,6 +445,7 @@ const VCOMPRA = (() => {
         </div>
       </div>
 
+      ${llego ? '' : `
       <div class="cp-reloj ${claseReloj()}" id="cp-reloj">
         <span class="cp-lbl">${esc(vencida ? t('vencido') : t('quedan'))}</span>
         <div class="cp-cuenta">
@@ -370,16 +460,21 @@ const VCOMPRA = (() => {
           <div class="cp-tiempo" id="cp-cuenta">${reloj_txt(orden.restanSeg)}</div>
         </div>
         <p class="cp-pie">${esc(t('alVencer'))}</p>
-      </div>
+      </div>`}
 
-      <button class="btn btn-linea btn-full btn-sm" onclick="VCOMPRA.cancelar()">${esc(t('cancelar'))}</button>
+      ${llego ? '' : `<button class="btn btn-linea btn-full btn-sm" onclick="VCOMPRA.cancelar()">${esc(t('cancelar'))}</button>`}
     </div>`;
   }
 
   /* El perimetro del anillo (r=32). Se reparte entre lo que queda y lo que se
      fue: el anillo da la magnitud de un vistazo y los digitos la precision. */
   const VUELTA = (2 * Math.PI * 32).toFixed(1);
-  const PLAZO = 3600;
+  /* El plazo por omisión, en segundos. Lo MANDA el servidor (`plazoSeg` de la
+     orden) y esto es solo lo que se rotula antes de que exista una: tiene que
+     ser el mismo número que ORDENEX_COMPRA_PLAZO_SEG en lib/compra.js. Decir
+     una hora y congelar quince minutos es la clase de mentira pequeña que
+     destruye la confianza en la pantalla entera. */
+  const PLAZO = 900;
 
   const fraccion = () => (orden ? Math.max(0, Math.min(1, orden.restanSeg / (orden.plazoSeg || PLAZO))) : 0);
   const desfase = () => (Number(VUELTA) * (1 - fraccion())).toFixed(1);
@@ -415,7 +510,16 @@ const VCOMPRA = (() => {
     const pasos = [
       { n: 1, t: t('rEsperando'), d: t('rEsperandoD') },
       { n: 2, t: t('rVisto'), d: t('rVistoD') },
-      { n: 3, t: t('rConfirmado'), d: t('rConfirmadoD'), chip: r.tiempo },
+      /* EL RENGLON 3 CAMBIA CON EL ESTADO, y no es un adorno: con la orden
+         recalculada este renglon decia «entregando tu ORIGEN» justo al lado de
+         un aviso que dice que nada se entrega hasta que la persona confirme.
+         Una pantalla que se contradice a si misma no se lee dos veces: se
+         cree la mitad que tranquiliza, que es justo la falsa. */
+      orden?.estado === 'recalculada'
+        ? { n: 3, t: t('rEsperandoVos'), d: t('rEsperandoVosD') }
+        : orden?.estado === 'en-revision' || orden?.estado === 'en-duda'
+        ? { n: 3, t: t('rRevision'), d: t('rRevisionD') }
+        : { n: 3, t: t('rConfirmado'), d: t('rConfirmadoD'), chip: r.tiempo },
       { n: 4, t: t('rAcreditado'), d: t('rAcreditadoD') },
     ];
     return `
@@ -432,6 +536,7 @@ const VCOMPRA = (() => {
           </div>
         </div>`;
       }).join('')}
+      ${orden?.hashEntrega ? `<a class="cp-link cp-link-entrega" href="${esc(ORDENSCAN + encodeURIComponent(orden.hashEntrega))}" target="_blank" rel="noopener">${esc(t('entregado'))}</a>` : ''}
       ${paso >= 4 ? `<button class="btn btn-oro btn-full btn-sm" onclick="VCOMPRA.cancelar()">${esc(t('otra'))}</button>` : ''}
     </div>`;
   }
@@ -488,8 +593,8 @@ const VCOMPRA = (() => {
         montoMicro: micro,
         origenWei: origenDe(micro, pw),
         direccion: '0x' + '0'.repeat(40),
-        restanSeg: 3600,
-        plazoSeg: 3600,
+        restanSeg: PLAZO,
+        plazoSeg: PLAZO,
         paso: 1,
         hash: null,
         explorador: '#',
@@ -535,9 +640,33 @@ const VCOMPRA = (() => {
     }).catch(() => ONX.avisar('No se pudo copiar.', 'mal'));
   }
 
+  /* El ORIGEN se entrega en la 5550, no en la red del depósito: son dos hashes
+     en dos cadenas distintas y mezclarlos manda a la gente a buscar al
+     explorador equivocado. */
+  const ORDENSCAN = 'https://ordenscan.com/tx/'; // el mismo que portafolio.js:33
+
+  async function confirmar() {
+    if (!orden?.id || !hayServidor) return;
+    try {
+      orden = { ...orden, ...(await DATOS.post(`/compras/${orden.id}/confirmar`, {})) };
+      repintar();
+      arrancarSondeo();
+    } catch (e) {
+      ONX.avisar(e?.message || 'No se pudo confirmar.', 'mal');
+    }
+  }
+
+  /* Cancelar limpia la pantalla, y ADEMÁS avisa al servidor cuando hay una
+     orden que todavía no tiene dinero encima. Sin eso, cada vez que alguien
+     cambia de idea quedaría una cotización abierta esperando un depósito que
+     no va a llegar. El servidor rechaza cancelar una orden con depósito —ese
+     dinero ya llegó y hay que resolverlo— y ese rechazo se traga a propósito:
+     acá la persona solo pidió volver a la calculadora. */
   function cancelar() {
+    const id = hayServidor && orden?.id && !orden.previa ? orden.id : null;
     orden = null; monto = ''; copiada = false;
     pararReloj(); pararSondeo(); repintar();
+    if (id) DATOS.post(`/compras/${id}/cancelar`, {}).catch(() => {});
   }
 
   // ── los relojes ───────────────────────────────────────────────────────────
@@ -600,9 +729,13 @@ const VCOMPRA = (() => {
 
   return {
     vista, alPintar, apagar,
-    monto: setMonto, red: setRed, congelar, copiar, cancelar, qr: dibujarQr,
-    _adentro: { aMicro, origenDe, REDES, TXT,
+    monto: setMonto, red: setRed, congelar, copiar, cancelar, confirmar, qr: dibujarQr,
+    _adentro: { aMicro, origenDe, REDES, TXT, PLAZO,
       // Solo para mirar el contador en sus tres niveles sin esperar una hora.
-      forzarSegundos: (n) => { if (orden) orden.restanSeg = n; } },
+      forzarSegundos: (n) => { if (orden) orden.restanSeg = n; },
+      // Y para poder VER el panel del recálculo sin depositar de verdad y
+      // esperar a que venza un plazo. Se mira, se critica y se arregla; un
+      // panel que solo aparece en un caso raro es un panel que nadie revisa.
+      forzarOrden: (o) => { orden = o; } },
   };
 })();

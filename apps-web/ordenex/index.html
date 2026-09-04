@@ -804,6 +804,48 @@ body.en-mercado::before{content:'';position:fixed;inset:0;z-index:-1;
 .cp-link{display:inline-block;margin-top:6px;font-size:11.5px;color:var(--acento);
   text-decoration:none;border-bottom:1px solid rgba(143,185,224,.4)}
 .cp-link:hover{color:var(--oroLt);border-bottom-color:var(--oro)}
+/* El enlace de la ENTREGA es de otra cadena que el del deposito, asi que se
+   distingue: jade, que es el color de lo que ya esta hecho. */
+.cp-link-entrega{display:block;margin-top:12px;color:var(--jade);
+  border-bottom-color:rgba(62,217,160,.4);text-align:center}
+.cp-link-entrega:hover{color:var(--jade);border-bottom-color:var(--jade)}
+
+/* ── EL RECALCULO ──────────────────────────────────────────────────────────
+   El unico panel de esta pantalla que PIDE UNA DECISION. Va ancho y arriba de
+   todo, con borde coral, porque el riesgo aqui no es asustar: es que alguien
+   con el dinero ya depositado no vea que le estan preguntando algo y se quede
+   esperando una entrega que nadie va a hacer. */
+/* ACUSAR RECIBO NO ES PEDIR. Cuando el dinero ya llegó, el heroe deja de ser
+   la cantidad que hay que mandar y pasa a ser la que llegó, en jade, y el
+   aviso rojo de la red se apaga: ya no hay nada que se pueda mandar mal. */
+.cp-manda.llego .cp-hero{color:var(--jade)}
+.cp-dir.quieta{opacity:.72}
+.cp-red-aviso.quieto{border-color:var(--linea);background:rgba(255,255,255,.02)}
+.cp-red-aviso.quieto strong{color:var(--bruma)}
+
+.cp-recal{margin:0 0 18px;padding:18px 20px;border:1px solid rgba(240,119,107,.42);
+  background:linear-gradient(180deg,rgba(240,119,107,.09),rgba(240,119,107,.03))}
+.cp-recal-cab strong{display:block;font-size:15px;color:var(--crema);letter-spacing:.1px}
+.cp-recal-cab span{display:block;margin-top:6px;font-size:12.5px;color:var(--bruma);
+  line-height:1.65;max-width:64ch}
+.cp-recal-nums{display:flex;flex-wrap:wrap;gap:10px;margin:16px 0 4px}
+.cp-recal-n{flex:1 1 150px;padding:10px 12px;border:1px solid var(--linea);
+  border-radius:10px;background:rgba(255,255,255,.02)}
+.cp-recal-n b{display:block;margin-top:5px;font-size:19px;color:var(--crema);
+  font-variant-numeric:tabular-nums}
+.cp-recal-n b em{font-style:normal;font-size:11px;color:var(--bruma);
+  letter-spacing:.6px;margin-left:3px}
+.cp-recal-n .dec{color:var(--bruma)}
+/* El viejo tachado y apagado; el nuevo en oro. Los dos se enseñan y ninguno se
+   recomienda: a veces el nuevo es mayor, y empujar en cualquiera de las dos
+   direcciones seria vender. */
+.cp-recal-n.vieja b{color:var(--bruma);text-decoration:line-through;
+  text-decoration-color:rgba(240,119,107,.6)}
+.cp-recal-n.nueva{border-color:rgba(201,169,97,.45);background:rgba(201,169,97,.07)}
+.cp-recal-n.nueva b{color:var(--oroLt)}
+.cp-recal-btn{display:flex;gap:10px;margin-top:14px}
+.cp-recal-btn .btn{flex:1 1 auto}
+@media (max-width:560px){.cp-recal-btn{flex-direction:column}}
 
 .cp-falta{text-align:center}
 .cp-falta-t{margin:6px 0 0;font-size:15px;color:var(--crema);line-height:1.6}
