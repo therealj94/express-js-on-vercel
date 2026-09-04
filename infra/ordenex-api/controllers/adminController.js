@@ -342,7 +342,34 @@ async function estado(req, res) {
     .filter(([, c]) => c.puesta === false)
     .map(([k]) => k);
 
-  return res.json({ ...conteos, caliente, configuracion, faltan, terminosVersion: TERMINOS_VERSION });
+  // EL CIRCUITO DE ENTRADA, en la misma respuesta. Son tres piezas que se
+  // pueden romper por separado y en silencio: el vigia deja de ver depositos,
+  // el barrido se queda sin gas, o una entrega queda en duda. Ninguna de las
+  // tres da un error visible en ningun sitio — el sintoma es que alguien
+  // deposito y no recibio nada, y para cuando eso se sabe ya escribio.
+  //
+  // Cada una trae su resumen con su propio try: que el vigia externo no este
+  // encendido no puede tumbar el panel entero.
+  const entrada = {};
+  const piezas = {
+    vigia: () => require('../lib/vigiaDepositosExternos').resumen(),
+    barrido: () => require('../lib/barridoExterno').resumen(),
+    compras: () => require('../lib/compra').resumen(),
+  };
+  for (const [nombre, traer] of Object.entries(piezas)) {
+    try {
+      entrada[nombre] = await traer();
+    } catch (e) {
+      entrada[nombre] = { error: e.message };
+    }
+  }
+  // Y si la billetera de gas se quedo seca, el barrido para y los depositos se
+  // quedan en las direcciones provisionales sin que nada se rompa a la vista.
+  let gasPorRed = null;
+  try { gasPorRed = await require('../lib/gas').alarma(); } catch (e) { gasPorRed = { error: e.message }; }
+
+  return res.json({ ...conteos, caliente, entrada, gasPorRed,
+                    configuracion, faltan, terminosVersion: TERMINOS_VERSION });
 }
 
 // ── POST /admin/precio-declarado ────────────────────────────────────────────
