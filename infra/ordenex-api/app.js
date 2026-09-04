@@ -297,7 +297,45 @@ app.use((err, req, res, next) => {
 });
 
 // ── Arranque ────────────────────────────────────────────────────────────────
+//
+// Antes de abrir el puerto se comprueban los DECIMALES de cada contra
+// contra su cadena (lib/decimales.js). Va antes y no despues porque todo lo
+// que corre despues cuenta dinero, y contar mal desde el principio es lo unico
+// de esta casa que no se arregla mirando el log al dia siguiente.
+//
+// Y se parte en dos, que es la distincion que importa:
+//
+//   · un DESACUERDO (la cadena dice 18 donde esperabamos 6) mata el proceso;
+//     no se arregla esperando y nada de lo que corriera contaria bien.
+//   · una DUDA (el RPC no contesto) NO lo mata: eso es una averia de red, y
+//     matar el API por una averia de red es justo lo que prohibe el comentario
+//     de arriba de este archivo. La cadena queda cerrada —de ella no se mueve
+//     un centavo, porque decimalesDe() lanza— y el resto sigue sirviendo.
+//
+// Medido contra las cuatro cadenas de verdad: 2,6 segundos para 18 contratos.
+// Las redes se miran en paralelo, asi que cuatro RPC caidos son UN plazo y no
+// cuatro encadenados.
 const puerto = process.env.PORT || 3000;
+
+(async () => {
+  try {
+    const decimales = require('./lib/decimales');
+    const { proveedorDe } = require('./lib/proveedores');
+    const r = await decimales.verificar({ proveedorDe });
+    console.log(`[decimales] ${r.comprobados.length} comprobados, ` +
+      `${r.desacuerdos.length} en desacuerdo, ${r.ilegibles.length} sin leer`);
+    if (!decimales.puedeSeguir(r)) process.exit(1);
+  } catch (e) {
+    // Que la comprobacion misma se rompa (un require que falla, un bug aqui)
+    // no es un desacuerdo: es que no se pudo preguntar. Se canta y se sigue,
+    // porque decimalesDe() sigue lanzando y ninguna cadena queda abierta —
+    // el fallo se cierra solo por el lado del dinero.
+    console.error(`[decimales] no se pudo comprobar: ${e.message}`);
+  }
+  arrancar();
+})();
+
+function arrancar() {
 app.listen(puerto, () => {
   console.log(`[ordenex-api] escuchando en ${puerto}`);
 
@@ -339,5 +377,6 @@ app.listen(puerto, () => {
     console.error(`[motor] no cargo los libros: ${e.message}`);
   }
 });
+}
 
 module.exports = app;

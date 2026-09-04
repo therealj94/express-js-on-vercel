@@ -38,7 +38,20 @@ function cuadro() {
   let umbrales = null;
   try { umbrales = require('./guardaPrecio').umbrales(); } catch { umbrales = null; }
 
+  // Las unidades. Va en el cuadro porque la pregunta «¿los decimales estan
+  // comprobados contra la cadena?» hay que poder contestarla ANTES del primer
+  // deposito raro, no despues de que alguien note que le acreditaron una
+  // millonesima. Nada de esto es secreto: son contratos publicos y un si o un
+  // no.
+  let decimales = null;
+  try { decimales = require('./decimales').estado(); } catch { decimales = null; }
+
+  let rpcs = null;
+  try { rpcs = require('./proveedores').enUso(); } catch { rpcs = null; }
+
   return {
+    decimales,
+    rpcs,
     // Los secretos: solo si estan y si tienen forma.
     ORDENEX_ADM: {
       puesta: puesta('ORDENEX_ADM'),
