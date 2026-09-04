@@ -255,6 +255,22 @@ async function leerRango(pv, red, a, b, listaTrozos) {
   try {
     return await leerPagina(pv, red, a, b, listaTrozos);
   } catch (e) {
+    /* UN ERROR DE RANGO QUE SOBREVIVE A PARTIR LA CONSULTA NO ES UN ERROR DE
+       RANGO. Se marca al llegar al bloque suelto, que es donde ya no queda
+       nada que partir.
+
+       Vino de BSC: `bsc-dataseed.bnbchain.org` contesta -32005 «limit
+       exceeded», que suena a «pediste demasiados resultados» y es en realidad
+       «pediste demasiadas veces». Partir la consulta lo empeora —el doble de
+       peticiones— y como el molde del rango encaja, nunca se descartaba el
+       nodo: bajaba hasta el bloque suelto, fallaba igual, y a la vuelta
+       siguiente volvía a empezar contra el mismo nodo. Media hora mirando el
+       registro para entender por qué un respaldo recién puesto tampoco veía
+       nada.
+
+       Con la marca puesta, `vuelta` lo trata como lo que es: este nodo no
+       sirve, se cambia. */
+    if (esDeRango(e) && a >= b) { e.agotado = true; throw e; }
     if (!esDeRango(e) || a >= b) throw e;
     // Se parte y se reintenta cada mitad. Es la única forma de no tener que
     // adivinar el tope de cada proveedor, y de sobrevivir a que lo cambien.
@@ -379,7 +395,9 @@ async function vuelta(red, intentos = 2, horas = VENTANA_INICIAL_HORAS) {
          vuelta con otro. Lo que ya se leyó de esta vuelta se tira: la marca no
          avanzó, así que el proveedor nuevo relee esos bloques y no se pierde
          nada. Releer es barato; saltarse un depósito no. */
-      if (esDeProveedor(e) && !esDeRango(e)) {
+      // `agotado` es el rango que ya no se puede partir más: cuenta como «este
+      // nodo no sirve», aunque su mensaje sea de rango.
+      if ((esDeProveedor(e) && !esDeRango(e)) || e?.agotado === true) {
         if (intentos > 0) {
           proveedores.descartar(id, `no sirve getLogs: ${String(e.message || e).slice(0, 90)}`);
           return vuelta(id, intentos - 1, horas);

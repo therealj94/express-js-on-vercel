@@ -377,6 +377,34 @@ await limpiar();
     'diciendo con qué variable se arregla, sin que haya que buscarlo', aviso || '');
 }
 
+decir('un error de rango que sobrevive a partir la consulta SÍ gasta el nodo');
+await limpiar();
+{
+  const w = Wallet.createRandom();
+  await usuarioCon(w.address);
+  /* Es el caso de BSC: `bsc-dataseed.bnbchain.org` contesta -32005 «limit
+     exceeded», que suena a «pediste demasiados resultados» y es en realidad
+     «pediste demasiadas veces». Partir lo empeora —el doble de peticiones— y
+     como el molde del rango encajaba, el nodo no se descartaba nunca: bajaba
+     hasta el bloque suelto, fallaba igual, y a la vuelta siguiente volvía a
+     empezar contra el mismo. Un respaldo recién puesto que tampoco veía nada. */
+  const porRitmo = {
+    getBlockNumber: async () => 1000,
+    getBlock: async (x) => (x === 'finalized' ? null : { number: x, timestamp: 1_750_000_000 + Number(x) }),
+    getLogs: async () => {
+      const e = new Error('limit exceeded');
+      e.code = -32005;
+      throw e;                       // falla SIEMPRE, aunque sea un solo bloque
+    },
+  };
+  const bueno = cadenaFingida({ punta: 1000, logs: [log({ a: w.address, monto: 9_000000n, bloque: 900, hash: '0xe3' })] });
+  const { r, usados } = await conCadenas([porRitmo, bueno], () => vig.vuelta(137));
+  comprobar(r.ok === true, 'la vuelta sale bien con el siguiente nodo', JSON.stringify(r));
+  comprobar(usados.length >= 2, 'o sea: se cambió de nodo', `pedidos: ${usados.length}`);
+  comprobar(!!(await vig.DepositoExterno.findOne({ txHash: '0xe3' }).lean()),
+    'y el depósito se anotó');
+}
+
 decir('esDeProveedor separa «este nodo no me sirve» de «pedí demasiado»');
 {
   const { esDeProveedor, esDeRango } = vig._adentro;

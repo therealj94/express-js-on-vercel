@@ -38,20 +38,46 @@ const REDES = {
     nombre: 'Orden Global',
     rpcs: [process.env.OG_CHAIN_PROVIDER, 'https://rpc.ordenglobal-rpc.com'].filter(Boolean),
   },
+  /* ── EL ORDEN DE ESTAS LISTAS SE MIDIO, NO SE COPIO ──────────────────────
+   *
+   * El 4 de septiembre se probaron veinticinco RPC publicos con LA CONSULTA
+   * QUE DE VERDAD HACE EL VIGIA —getLogs de Transfer de USDT filtrando por
+   * destinatario, 500 bloques, dos horas hacia atras— y casi todos fallaron.
+   * No por estar caidos: contestaban `eth_chainId` al instante y rechazaban
+   * el getLogs, unos por pedir cuenta de pago para leer archivo y otros por
+   * limite de peticiones. De veinticinco pasaron TRES, uno por cadena.
+   *
+   * Los que pasaron van primero. Los que no, quedan detras como ultimo
+   * recurso: un nodo que hoy limita puede servir mañana, y la alternativa a
+   * intentarlo es quedarse sin cadena.
+   *
+   * OJO CON EL PARECIDO: en BSC `bsc.publicnode.com` sirvio y
+   * `bsc-rpc.publicnode.com` no. Se parecen y no son lo mismo.
+   *
+   * Y LO QUE HAY QUE ENTENDER: esto es una lista de nodos gratuitos, y ser
+   * gratis es justamente el motivo por el que rechazan. Sirven para mirar,
+   * no para depender. Cuando el circuito mueva dinero de verdad, la respuesta
+   * es RPC_POLYGON / RPC_BSC / RPC_ETHEREUM con un nodo pagado — van primero
+   * en la lista y todo esto pasa a ser el respaldo. */
   137: {
     nombre: 'Polygon',
-    rpcs: [process.env.RPC_POLYGON, 'https://polygon-bor-rpc.publicnode.com',
+    rpcs: [process.env.RPC_POLYGON,
+           'https://polygon-bor-rpc.publicnode.com',   // sirvio
+           'https://polygon.gateway.tenderly.co',      // sirvio
            'https://polygon.drpc.org', 'https://polygon-rpc.com'].filter(Boolean),
   },
   56: {
     nombre: 'BNB Smart Chain',
-    rpcs: [process.env.RPC_BSC, 'https://bsc-rpc.publicnode.com',
-           'https://bsc-dataseed.bnbchain.org'].filter(Boolean),
+    rpcs: [process.env.RPC_BSC,
+           'https://bsc.publicnode.com',               // sirvio
+           'https://bsc-rpc.publicnode.com', 'https://bsc-dataseed.bnbchain.org',
+           'https://bsc-dataseed1.defibit.io'].filter(Boolean),
   },
   1: {
     nombre: 'Ethereum',
-    rpcs: [process.env.RPC_ETHEREUM, 'https://ethereum-rpc.publicnode.com',
-           'https://eth.drpc.org'].filter(Boolean),
+    rpcs: [process.env.RPC_ETHEREUM,
+           'https://rpc.mevblocker.io',                // sirvio
+           'https://ethereum-rpc.publicnode.com', 'https://eth.drpc.org'].filter(Boolean),
   },
 };
 
