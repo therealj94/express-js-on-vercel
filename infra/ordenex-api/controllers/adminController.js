@@ -5,7 +5,7 @@
 // ledger ni escribe un saldo a mano: el admin tiene mas botones, no otra
 // contabilidad.
 
-const { Usuario, Cuenta, Orden, Retiro, Agente, Solicitud, PrecioDeclarado } = require('../models');
+const { Usuario, Cuenta, Asiento, Orden, Retiro, Agente, Solicitud, PrecioDeclarado } = require('../models');
 const { esDeclarable, DECLARABLES, publico, olvidar } = require('../lib/preciosDeclarados');
 const ledger = require('../lib/ledger');
 const cadena = require('../lib/cadena5550');
@@ -368,7 +368,29 @@ async function estado(req, res) {
   let gasPorRed = null;
   try { gasPorRed = await require('../lib/gas').alarma(); } catch (e) { gasPorRed = { error: e.message }; }
 
-  return res.json({ ...conteos, caliente, entrada, gasPorRed,
+  // LO QUE HA GANADO LA CASA. La comision de salida es de Ordenex y no se
+  // mueve: se le debita el bruto al usuario, sale el neto a la cadena, y la
+  // diferencia se queda en la billetera y se le abona a la cuenta interna
+  // `casa`. Ese ingreso vive solo en el libro, asi que si no sale en el panel
+  // no lo mira nadie — y un ingreso del que nadie se acuerda termina siendo un
+  // descuadre que alguien encuentra dentro de un año.
+  let casa = null;
+  try {
+    const cuentas = await Cuenta.find({ userId: 'casa' }, { activo: 1, disponible: 1 }).lean();
+    // De cuantos retiros salio. La `ref` de cada abono termina en ':comision'
+    // (portafolioController), asi que se cuentan sin tocar los retiros.
+    const deRetiros = await Asiento.countDocuments({ userId: 'casa', ref: /:comision$/ });
+    casa = {
+      porQue: 'la comision de salida; no se mueve de la billetera, solo se anota',
+      saldos: cuentas.map((c) => ({ activo: c.activo, disponible: c.disponible })),
+      deRetiros,
+      ppm: (() => { try { return require('../lib/comisionSalida').ppm(); } catch { return null; } })(),
+    };
+  } catch (e) {
+    casa = { error: e.message };
+  }
+
+  return res.json({ ...conteos, caliente, casa, entrada, gasPorRed,
                     configuracion, faltan, terminosVersion: TERMINOS_VERSION });
 }
 

@@ -155,5 +155,27 @@ decir('el recibo se guarda, no se recalcula');
     'y el reintento repite lo guardado: si la tasa cambia, el recibo no');
 }
 
+decir('la comisión no se mueve: se queda en la billetera');
+{
+  const ctrl = readFileSync(new URL('../controllers/portafolioController.js', import.meta.url), 'utf8');
+  // NO hay una transferencia de comision. Esa ausencia es la prueba: mandarla
+  // a otra direccion costaria gas en cada retiro, ensuciaria el nonce de la
+  // caliente y podria fallar sola dejando un descuadre — todo para mover
+  // dinero de un bolsillo de Ordenex a otro bolsillo de Ordenex.
+  const envios = (ctrl.match(/enviarDesdeCaliente\(/g) || []).length;
+  comprobar(envios === 1, 'el retiro firma UNA sola transaccion, no dos', envios);
+  comprobar(/cantidadWei: corte\.neto/.test(ctrl), 'y esa transaccion lleva el neto');
+  comprobar(!/enviarDesdeCaliente[^)]*comision/s.test(ctrl), 'no hay ningun envio de la comision');
+  // Solo un apunte en el libro.
+  comprobar(/acreditar\('casa', activo, corte\.comision/.test(ctrl),
+    "y la comision se anota a la cuenta 'casa', que es donde vive el ingreso");
+
+  // Y se VE. Un ingreso que no se puede mirar es un ingreso del que nadie se
+  // acuerda, y termina siendo un descuadre que alguien encuentra dentro de un año.
+  const admin = readFileSync(new URL('../controllers/adminController.js', import.meta.url), 'utf8');
+  comprobar(/userId: 'casa'/.test(admin), 'el panel enseña el saldo de la casa');
+  comprobar(/ref: \/:comision\$\//.test(admin), 'y de cuantos retiros salio');
+}
+
 console.log(`\n${malos.length ? `FALLARON ${malos.length} de ${bien + malos.length}` : 'Todo en verde'}`);
 if (malos.length) process.exit(1);

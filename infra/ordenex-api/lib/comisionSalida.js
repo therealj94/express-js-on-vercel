@@ -25,6 +25,27 @@
 // alcanza es de los que hacen escribir a la gente. Además es lo que hace
 // cualquier exchange, así que es lo que se espera.
 //
+// ══════════════════════════════════════════════════════════════════════════
+// LA COMISIÓN NO SE MUEVE: SE QUEDA
+//
+// Es de Ordenex, y vuelve a su billetera — o más exactamente, NUNCA SALE de
+// ella. No hay una transferencia de comisión, y esa ausencia es deliberada:
+//
+//   · Se debita al usuario el BRUTO en el libro.
+//   · Sale a la cadena el NETO, desde la billetera de Ordenex.
+//   · La diferencia se queda ahí, físicamente, y se le abona a la cuenta
+//     interna `casa` en el libro.
+//
+// O sea: el saldo en cadena baja el neto, el libro baja el bruto y sube la
+// comisión, y las dos cosas cuadran solas. Mandar la comisión a otra dirección
+// costaría gas por cada retiro, ensuciaría el nonce de la caliente y podría
+// fallar sola dejando un descuadre — todo para mover dinero de un bolsillo de
+// Ordenex a otro bolsillo de Ordenex.
+//
+// Lo que sí hace falta es que se VEA: la cuenta `casa` sale en /admin/estado
+// con su saldo por activo y de cuántos retiros salió. Un ingreso que no se
+// puede mirar es un ingreso del que nadie se acuerda.
+//
 // LA PANTALLA TIENE QUE ENSEÑARLO ANTES. Cobrar un 1 % que la persona
 // descubre después es un 1 % que se cobró a escondidas, aunque esté en los
 // términos. Por eso `partir` existe suelta y sin tocar nada: la pantalla la
