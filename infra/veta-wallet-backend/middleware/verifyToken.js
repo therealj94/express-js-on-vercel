@@ -4,6 +4,7 @@
 import jwt from "../lib/sesion";
 import Users from "../models/Users";
 import CryptoJS from "crypto-js";
+import { puedeOperar } from "../lib/bloqueo";
 require("dotenv").config();
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -33,6 +34,21 @@ require("dotenv").config();
 //      semilla. Por eso `deletedAt` hay que MIRARLO — la cuenta borrada no
 //      desaparece de la base y sin esta linea su sesion seguiria entrando.
 //   3. Que la version del token sea la de la cuenta. Es la revocacion.
+//   4. Que a esa persona no le hayan cerrado el acceso en Genesis ID. Esta es
+//      de OTRA casa: el interruptor lo aprieta cumplimiento en el panel de
+//      Genesis. Aqui esta el dinero de la gente y casi todo el padron, asi que
+//      si el bloqueo no llega hasta aca no llega a ninguna parte — «bloqueado»
+//      querria decir «no puede entrar a la casa de cambio», que no es lo que
+//      nadie entiende al apretar ese boton.
+//
+//      Se pregunta por el CORREO porque esta casa no guarda el GID: se lo pide
+//      a Genesis por correo cada vez que lo necesita (lib/genesisPuente.js).
+//      Y con memoria de un minuto: sin ella, cada peticion de cada persona
+//      seria una llamada a Genesis. Ver lib/bloqueo.js.
+//
+//      LO QUE NO SE TOCA: la semilla. La billetera es custodia de la persona y
+//      su material cifrado sigue donde estaba. Un bloqueo es de la empresa y
+//      de sus servicios, no una confiscacion.
 //
 // SOBRE LA TRANSICION
 //
@@ -84,6 +100,14 @@ const verifyTokenUser = async (req, res, next) => {
 
     if (decodedToken.address !== user.address) {
       return res.status(401).json({ message: "invalid user" });
+    }
+
+    // El bloqueo del ecosistema. Va el ultimo de las comprobaciones: no se le
+    // pregunta a Genesis por una sesion que ya es invalida por cualquier otro
+    // motivo, y asi la llamada solo ocurre para quien de verdad iba a entrar.
+    const permiso = await puedeOperar(user.email);
+    if (!permiso.puede) {
+      return res.status(403).json(permiso.respuesta);
     }
 
     next();

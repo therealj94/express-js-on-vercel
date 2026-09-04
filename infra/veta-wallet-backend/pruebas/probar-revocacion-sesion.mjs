@@ -79,16 +79,30 @@ function guardia() {
 
 const TEXTO_GUARDIA = guardia();
 
-function ejecutarGuardia({ ficha, cuenta }) {
+function ejecutarGuardia({ ficha, cuenta, bloqueada = false }) {
   const jwt = { verify: () => ficha };
   const Users = { findOne: async () => cuenta };
   const entorno = { env: { PASS_TOKEN: "da-igual" } };
   const consola = { log: () => undefined };
 
+  /* El bloqueo del ecosistema (lib/bloqueo.js) también se le entrega fingido.
+   * Este arné ejecuta la función SUELTA, así que todo lo que la guardia use
+   * de fuera hay que pasárselo: cuando se añadió el bloqueo y no se pasó,
+   * la guardia reventaba con un ReferenceError que caía en su propio catch y
+   * salía como «invalid token» — o sea que la prueba se ponía roja por el
+   * motivo equivocado y ninguna sesión buena entraba.
+   *
+   * Su lógica de verdad —memoria, caídas de Genesis, correo— se prueba
+   * aparte, en probar-bloqueo.mjs. Acá solo importa que la guardia lo
+   * consulte y respete lo que diga. */
+  const puedeOperar = async () => (bloqueada
+    ? { puede: false, respuesta: { message: "Tu acceso está bloqueado.", code: "acceso-bloqueado" } }
+    : { puede: true });
+
   const fn = new Function(
-    "jwt", "Users", "process", "console",
+    "jwt", "Users", "process", "console", "puedeOperar",
     `${TEXTO_GUARDIA}\nreturn verifyTokenUser;`
-  )(jwt, Users, entorno, consola);
+  )(jwt, Users, entorno, consola, puedeOperar);
 
   return new Promise((resolve) => {
     const req = { headers: { authorization: "Bearer loquesea" } };
@@ -116,6 +130,17 @@ console.log("\n── la guardia de cada petición ─────────�
 {
   const r = await ejecutarGuardia({ ficha: fichaDe(), cuenta: cuentaViva() });
   comprobar(r.paso === true, "una sesión buena entra");
+}
+{
+  /* EL BLOQUEO DEL ECOSISTEMA. Una sesión perfectamente válida —firma buena,
+   * versión al día, cuenta viva— no entra si a esa persona le cerraron el
+   * acceso en Genesis ID. Es la única de las comprobaciones de esta guardia
+   * que la decide OTRA casa. */
+  const r = await ejecutarGuardia({ ficha: fichaDe(), cuenta: cuentaViva(), bloqueada: true });
+  comprobar(r.paso === false, "una sesión buena de alguien BLOQUEADO no entra");
+  comprobar(r.codigo === 403, "y contesta 403, que no es lo mismo que un 401", `contestó ${r.codigo}`);
+  comprobar(r.cuerpo?.code === "acceso-bloqueado",
+    "diciendo que es un bloqueo y no una sesión vencida", r.cuerpo?.code);
 }
 {
   // El caso del enunciado: cambió la contraseña, la cuenta va por la versión 1,
