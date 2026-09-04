@@ -77,7 +77,7 @@ const VCOMPRA = (() => {
       plazo: 'El precio te queda fijo 60 minutos.',
       minimo: 'Mínimo en esta red', tiempoRed: 'La red tarda',
       // la pantalla de la dirección
-      manda: 'Mandá exactamente', soloPor: 'y SOLO por', dir: 'Tu dirección para esta compra',
+      manda: 'Mandá exactamente', soloPor: 'Solo por', dir: 'Tu dirección para esta compra',
       copiar: 'Copiar dirección', copiado: 'Copiada', quedan: 'Te quedan',
       vencido: 'El precio venció', tron: 'No mandes por TRON (TRC20). Esa red no existe acá y ese dinero no se recupera.',
       alVencer: 'Si el tiempo se acaba antes de que llegue, se recalcula al precio de ese momento y te avisamos antes de entregarte nada.',
@@ -105,7 +105,7 @@ const VCOMPRA = (() => {
       oroA: 'Gold at', laOnza: 'per ounce', hace: 'read',
       plazo: 'Your price stays fixed for 60 minutes.',
       minimo: 'Minimum on this network', tiempoRed: 'Network takes',
-      manda: 'Send exactly', soloPor: 'and ONLY on', dir: 'Your address for this purchase',
+      manda: 'Send exactly', soloPor: 'Only on', dir: 'Your address for this purchase',
       copiar: 'Copy address', copiado: 'Copied', quedan: 'Time left',
       vencido: 'Price expired', tron: "Don't send on TRON (TRC20). That network doesn't exist here and those funds are not recoverable.",
       alVencer: "If time runs out before it arrives, we recalculate at that moment's price and tell you before delivering anything.",
@@ -158,6 +158,24 @@ const VCOMPRA = (() => {
       { minimumFractionDigits: dec, maximumFractionDigits: dec });
   };
 
+  /** El numero partido en magnitud y precision. Se lee primero cuanto y despues
+   *  con que exactitud, que es el orden en que lo lee un ojo — y es como lo
+   *  parten los exchanges por el mismo motivo. */
+  /* El separador NO se adivina: se le pregunta al idioma. Suponer coma para
+     español costo que el numero no se partiera — es-HN usa PUNTO, igual que
+     en-US, y el `lastIndexOf(',')` no encontraba nada. Se ve en la captura. */
+  function separador() {
+    const loc = idioma() === 'en' ? 'en-US' : 'es-HN';
+    return (1.1).toLocaleString(loc).replace(/[0-9]/g, '');
+  }
+
+  function partido(w, dec = 4) {
+    const txt = deWei(w, dec);
+    const i = txt.lastIndexOf(separador());
+    if (i < 0) return `<span class="ent">${esc(txt)}</span>`;
+    return `<span class="ent">${esc(txt.slice(0, i))}</span><span class="dec">${esc(txt.slice(i))}</span>`;
+  }
+
   // ── el estado de la pantalla ──────────────────────────────────────────────
   let redElegida = 137;
   let monto = '';
@@ -191,7 +209,10 @@ const VCOMPRA = (() => {
       const usd = Number(m?.referencia?.origenUsd);
       const oro = Number(m?.referencia?.usd);
       if (Number.isFinite(usd) && usd > 0) {
+        const antes = precio?.usd;
         precio = { usd, oro: Number.isFinite(oro) ? oro : null, en: new Date() };
+        // Un numero que cambia sin avisar parece un numero que nunca cambio.
+        if (antes != null && antes !== usd) destellar();
       }
     } catch { /* se queda el ultimo bueno, o null */ }
     precioIntentado = true;
@@ -207,6 +228,14 @@ const VCOMPRA = (() => {
     const s = Math.max(0, Math.round((Date.now() - precio.en.getTime()) / 1000));
     if (s < 60) return `${t('hace')} ${s} s`;
     return `${t('hace')} ${Math.round(s / 60)} min`;
+  }
+
+  function destellar() {
+    const h = document.querySelector('#cp-izq .cp-hero');
+    if (!h) return;
+    h.classList.remove('tic');
+    void h.offsetWidth; // reinicia la animacion aunque el destello anterior siga
+    h.classList.add('tic');
   }
 
   const redDe = (id) => REDES.find((r) => r.id === Number(id)) || REDES[0];
@@ -246,6 +275,11 @@ const VCOMPRA = (() => {
                  value="${esc(monto)}" oninput="VCOMPRA.monto(this.value)">
           <span class="cp-mon">USDT</span>
         </div>
+        <div class="cp-rapidos">
+          ${[50, 100, 500, 1000].map((v) => `
+            <button type="button" class="cp-rap${String(monto).trim() === String(v) ? ' es' : ''}"
+                    onclick="VCOMPRA.monto('${v}')">${v}</button>`).join('')}
+        </div>
       </div>
 
       <div class="campo">
@@ -265,7 +299,7 @@ const VCOMPRA = (() => {
       <div class="cp-recibe">
         <span class="cp-lbl">${esc(t('recibis'))}</span>
         <div class="cp-hero${recibe ? '' : ' vacio'}">
-          ${recibe ? `${esc(deWei(recibe))} <em>ORIGEN</em>` : `<span>${esc(t('escribi'))}</span>`}
+          ${recibe ? `${partido(recibe)} <em>ORIGEN</em>` : `<span>${esc(t('escribi'))}</span>`}
         </div>
         <div class="cp-precio">
           ${precio
@@ -310,23 +344,56 @@ const VCOMPRA = (() => {
 
       <div class="campo">
         <label>${esc(t('dir'))} · ${esc(r.nombre)}</label>
-        <div class="cp-dir">
+        <div class="cp-dir${copiada ? ' ok' : ''}">
           <code class="mono">${esc(orden.direccion)}</code>
           <button class="btn btn-linea btn-sm" onclick="VCOMPRA.copiar()">
             ${esc(copiada ? t('copiado') : t('copiar'))}
           </button>
         </div>
-        <div class="cp-qr" id="cp-qr" aria-hidden="true"></div>
+        <div class="cp-qr-caja">
+          <div class="cp-qr" id="cp-qr" aria-hidden="true"></div>
+          <span class="cp-qr-red">${esc(r.nombre)}</span>
+        </div>
       </div>
 
-      <div class="cp-reloj ${vencida ? 'mal' : ''}">
+      <div class="cp-reloj ${claseReloj()}" id="cp-reloj">
         <span class="cp-lbl">${esc(vencida ? t('vencido') : t('quedan'))}</span>
-        <div class="cp-tiempo mono" id="cp-cuenta">${reloj_txt(orden.restanSeg)}</div>
+        <div class="cp-cuenta">
+          <div class="cp-anillo">
+            <svg viewBox="0 0 72 72" aria-hidden="true">
+              <circle class="pista" cx="36" cy="36" r="32"/>
+              <circle class="arco" cx="36" cy="36" r="32" id="cp-arco"
+                      stroke-dasharray="${VUELTA}" stroke-dashoffset="${desfase()}"/>
+            </svg>
+            <b id="cp-pct">${pctTxt()}</b>
+          </div>
+          <div class="cp-tiempo" id="cp-cuenta">${reloj_txt(orden.restanSeg)}</div>
+        </div>
         <p class="cp-pie">${esc(t('alVencer'))}</p>
       </div>
 
       <button class="btn btn-linea btn-full btn-sm" onclick="VCOMPRA.cancelar()">${esc(t('cancelar'))}</button>
     </div>`;
+  }
+
+  /* El perimetro del anillo (r=32). Se reparte entre lo que queda y lo que se
+     fue: el anillo da la magnitud de un vistazo y los digitos la precision. */
+  const VUELTA = (2 * Math.PI * 32).toFixed(1);
+  const PLAZO = 3600;
+
+  const fraccion = () => (orden ? Math.max(0, Math.min(1, orden.restanSeg / (orden.plazoSeg || PLAZO))) : 0);
+  const desfase = () => (Number(VUELTA) * (1 - fraccion())).toFixed(1);
+  const pctTxt = () => `${Math.round(fraccion() * 100)}%`;
+
+  /* La urgencia ESCALA: oro mientras sobra, ambar bajo diez minutos, coral bajo
+     dos y con latido. Un contador que se ve igual a los 59 minutos que a los 30
+     segundos no esta contando nada. */
+  function claseReloj() {
+    if (!orden) return '';
+    if (orden.restanSeg <= 0) return 'mal';
+    if (orden.restanSeg <= 120) return 'urge';
+    if (orden.restanSeg <= 600) return 'aviso';
+    return '';
   }
 
   const reloj_txt = (s) => {
@@ -422,6 +489,7 @@ const VCOMPRA = (() => {
         origenWei: origenDe(micro, pw),
         direccion: '0x' + '0'.repeat(40),
         restanSeg: 3600,
+        plazoSeg: 3600,
         paso: 1,
         hash: null,
         explorador: '#',
@@ -481,6 +549,12 @@ const VCOMPRA = (() => {
       orden.restanSeg = Math.max(0, orden.restanSeg - 1);
       const c = document.getElementById('cp-cuenta');
       if (c) c.textContent = reloj_txt(orden.restanSeg);
+      const arco = document.getElementById('cp-arco');
+      if (arco) arco.setAttribute('stroke-dashoffset', desfase());
+      const pct = document.getElementById('cp-pct');
+      if (pct) pct.textContent = pctTxt();
+      const caja = document.getElementById('cp-reloj');
+      if (caja) caja.className = `cp-reloj ${claseReloj()}`;
       // Al llegar a cero NO se borra la orden ni se esconde la dirección: el
       // dinero que llegue tarde entra igual y el precio se decide entonces.
       // Vaciar la pantalla al vencer sería tirar el depósito de alguien.
@@ -526,7 +600,9 @@ const VCOMPRA = (() => {
 
   return {
     vista, alPintar, apagar,
-    monto: setMonto, red: setRed, congelar, copiar, cancelar,
-    _adentro: { aMicro, origenDe, REDES, TXT },
+    monto: setMonto, red: setRed, congelar, copiar, cancelar, qr: dibujarQr,
+    _adentro: { aMicro, origenDe, REDES, TXT,
+      // Solo para mirar el contador en sus tres niveles sin esperar una hora.
+      forzarSegundos: (n) => { if (orden) orden.restanSeg = n; } },
   };
 })();

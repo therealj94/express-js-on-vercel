@@ -309,16 +309,37 @@ body.en-app .lienzo{padding-top:calc(34px + 22px)}
   padding:15px 30px;border-radius:100px;font-weight:700;font-size:15px;letter-spacing:.01em;
   transition:transform .22s cubic-bezier(.2,.8,.3,1),box-shadow .22s,background .22s,border-color .22s;
   white-space:nowrap;position:relative;overflow:hidden}
-.btn:active{transform:scale(.975)}
+/* PROFUNDIDAD DE VERDAD, NO UN ENCOGIMIENTO. `scale(.975)` se lee como
+   «se achico», no como «lo apreté». Un boton con cuerpo tiene tres cosas: un
+   filo claro arriba (la luz que le pega), un canto oscuro abajo (su grosor), y
+   al presionarlo BAJA y pierde ese canto — que es exactamente lo que hace un
+   boton fisico. */
+.btn{position:relative;transition:transform .12s cubic-bezier(.2,.8,.3,1),
+  box-shadow .16s,filter .16s,border-color .16s,background .16s}
+.btn:active{transform:translateY(2px)}
+.btn:focus-visible{outline:2px solid var(--oroLt);outline-offset:3px}
 .btn-oro{color:#2A2007;background:linear-gradient(120deg,var(--oroLt),var(--oro) 52%,var(--oroLt));
   background-size:210% 100%;box-shadow:0 14px 40px -16px rgba(201,169,97,.7)}
-.btn-oro:hover{transform:translateY(-2px);box-shadow:0 20px 52px -16px rgba(201,169,97,.85)}
+.btn-oro{box-shadow:
+  inset 0 1px 0 rgba(255,255,255,.55),
+  inset 0 -1px 0 rgba(90,70,20,.35),
+  0 3px 0 var(--oroDp),
+  0 10px 26px -10px rgba(201,169,97,.55)}
+.btn-oro:hover{transform:translateY(-1px);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.6),inset 0 -1px 0 rgba(90,70,20,.35),
+  0 4px 0 var(--oroDp),0 20px 44px -14px rgba(201,169,97,.8)}
+.btn-oro:active{transform:translateY(3px);
+  box-shadow:inset 0 2px 5px rgba(90,70,20,.45),0 0 0 var(--oroDp),
+  0 4px 14px -8px rgba(201,169,97,.5)}
 .btn-oro::after{content:"";position:absolute;inset:0;
   background:linear-gradient(105deg,transparent 40%,rgba(255,255,255,.55) 50%,transparent 60%);
   background-size:250% 100%;background-position:160% 0;transition:background-position .7s ease}
 .btn-oro:hover::after{background-position:-60% 0}
 .btn-linea{border:1px solid var(--linea);color:var(--crema);background:rgba(255,255,255,.03)}
-.btn-linea:hover{border-color:var(--oro);background:rgba(201,169,97,.09);transform:translateY(-2px)}
+.btn-linea{box-shadow:inset 0 1px 0 rgba(255,255,255,.06),0 2px 0 rgba(0,0,0,.45)}
+.btn-linea:hover{border-color:var(--oro);background:rgba(201,169,97,.09);transform:translateY(-1px);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.09),0 3px 0 rgba(0,0,0,.5)}
+.btn-linea:active{transform:translateY(2px);box-shadow:inset 0 2px 4px rgba(0,0,0,.4)}
 .btn:disabled{opacity:.5;cursor:not-allowed;transform:none!important}
 .btn-full{width:100%}
 .btn-sm{padding:11px 20px;font-size:13.5px}
@@ -687,8 +708,7 @@ body.en-mercado::before{content:'';position:fixed;inset:0;z-index:-1;
 .cp-monto{position:relative}
 .cp-monto input{padding-right:74px;font-family:var(--mono);font-size:20px;
   font-variant-numeric:tabular-nums;letter-spacing:-.01em}
-.cp-mon{position:absolute;right:15px;top:50%;transform:translateY(-50%);
-  color:var(--humo);font-size:12.5px;font-weight:600;letter-spacing:.04em;pointer-events:none}
+.cp-mon{position:absolute;right:11px;top:50%;transform:translateY(-50%);pointer-events:none}
 
 /* EL SELECTOR DE RED. Lleva el tiempo y el minimo DENTRO, porque esa es la
    decision de verdad: entre Polygon y Ethereum no se elige un nombre, se
@@ -713,11 +733,26 @@ body.en-mercado::before{content:'';position:fixed;inset:0;z-index:-1;
 .cp-recibe{margin:20px 0 16px;padding:18px 0 0;border-top:1px solid var(--linea2)}
 .cp-lbl{display:block;font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;
   color:var(--humo);font-weight:600;margin-bottom:8px}
-.cp-hero{font-family:var(--serif);font-weight:700;color:var(--oroHi);
-  font-size:clamp(28px,4.4vw,40px);line-height:1.08;letter-spacing:-.01em;
-  font-variant-numeric:tabular-nums}
-.cp-hero em{font-style:normal;font-family:var(--sans);font-size:.42em;
-  font-weight:700;color:var(--oro);letter-spacing:.06em;margin-left:6px}
+/* EL NUMERO NO PUEDE BAILAR. Medido: en Cinzel un «1» ocupa 144,6px donde un
+   «8» ocupa 160 — y `tabular-nums` NO lo corrige, la fuente no trae esa
+   caracteristica. Archivo tampoco. La unica de la casa con cifras de ancho
+   fijo es JetBrains Mono, y este numero se repinta en cada tecla: con una
+   proporcional, el heroe se corre quince pixeles mientras alguien escribe.
+   La serif se queda para los titulos, donde nada cambia. */
+.cp-hero{font-family:var(--mono);font-weight:700;color:var(--oroHi);
+  font-size:clamp(30px,4.6vw,44px);line-height:1.05;letter-spacing:-.025em;
+  font-variant-numeric:tabular-nums;display:flex;align-items:baseline;gap:2px}
+/* Los decimales, mas chicos y mas apagados: es como los lee un exchange y es
+   como los lee un ojo — primero la magnitud, despues la precision. */
+.cp-hero .dec{font-size:.62em;color:var(--oro);opacity:.92;letter-spacing:-.01em}
+.cp-hero em{font-style:normal;font-family:var(--sans);font-size:.36em;
+  font-weight:700;color:var(--oro);letter-spacing:.08em;margin-left:10px;
+  align-self:center}
+/* El destello cuando el precio se mueve. Sin esto un numero que cambia solo
+   parece un numero que nunca cambio. */
+@keyframes cp-tic{0%{color:var(--jade)}100%{color:var(--oroHi)}}
+.cp-hero.tic{animation:cp-tic .55s ease-out}
+@media(prefers-reduced-motion:reduce){.cp-hero.tic{animation:none}}
 .cp-hero.vacio{color:var(--humo);padding:0}
 .cp-precio{margin-top:9px;font-size:12px;color:var(--bruma);font-variant-numeric:tabular-nums}
 .cp-com{color:var(--jade)}
@@ -739,7 +774,8 @@ body.en-mercado::before{content:'';position:fixed;inset:0;z-index:-1;
 .cp-dir{display:flex;gap:9px;align-items:stretch}
 .cp-dir code{flex:1;min-width:0;padding:13px 14px;border-radius:var(--r);
   background:var(--campo);border:1px solid var(--campoBr);color:var(--crema);
-  font-size:12.5px;line-height:1.5;word-break:break-all}
+  font-size:11.5px;letter-spacing:-.01em;line-height:1.6;word-break:break-all;
+  display:flex;align-items:center}
 .cp-qr{margin-top:12px;display:flex;justify-content:center}
 .cp-qr svg{background:#fff;padding:9px;border-radius:var(--r)}
 
@@ -805,6 +841,80 @@ body.en-mercado::before{content:'';position:fixed;inset:0;z-index:-1;
   margin-top:7px;font-size:11px;color:var(--humo);font-variant-numeric:tabular-nums}
 .cp-fuente b{color:var(--bruma);font-weight:600}
 .cp-fresco{color:var(--jade);opacity:.8}
+
+/* ── El contador ────────────────────────────────────────────────────────────
+   Un reloj de dinero no es un texto que cambia: es una cantidad que se agota, y
+   eso se ve mejor drenando que contando. El anillo da la magnitud de un
+   vistazo —«voy por la mitad»— y los digitos dan la precision. Y la urgencia
+   ESCALA en color: oro mientras sobra, ambar bajo diez minutos, coral bajo dos
+   y con latido. Un contador que se ve igual a los 59 minutos que a los 30
+   segundos no esta contando nada. */
+.cp-cuenta{display:flex;align-items:center;gap:16px}
+.cp-anillo{position:relative;flex:none;width:72px;height:72px}
+.cp-anillo svg{width:72px;height:72px;transform:rotate(-90deg)}
+.cp-anillo circle{fill:none;stroke-width:5;stroke-linecap:round}
+.cp-anillo .pista{stroke:rgba(255,255,255,.07)}
+.cp-anillo .arco{stroke:var(--oro);transition:stroke-dashoffset 1s linear,stroke .4s}
+.cp-reloj.aviso .cp-anillo .arco{stroke:#E0A93C}
+.cp-reloj.urge .cp-anillo .arco{stroke:var(--coral)}
+.cp-anillo b{position:absolute;inset:0;display:grid;place-items:center;
+  font-family:var(--mono);font-size:11px;font-weight:700;color:var(--humo)}
+.cp-tiempo{font-family:var(--mono);font-size:clamp(28px,4vw,36px);font-weight:700;
+  color:var(--crema);font-variant-numeric:tabular-nums;letter-spacing:.01em;line-height:1}
+.cp-reloj.aviso .cp-tiempo{color:#E8C56A}
+.cp-reloj.urge .cp-tiempo{color:var(--coral);animation:cp-lat 1.1s ease-in-out infinite}
+@keyframes cp-lat{0%,100%{opacity:1}50%{opacity:.55}}
+@media(prefers-reduced-motion:reduce){.cp-reloj.urge .cp-tiempo{animation:none}}
+.cp-reloj.mal .cp-tiempo{color:var(--coral);animation:none}
+
+/* ── Montos rapidos ─────────────────────────────────────────────────────────
+   Los tiene cualquier exchange y no es por moda: la mayoria de la gente
+   deposita cifras redondas, y teclear «100» en un telefono es tres toques mas
+   que apretar 100. */
+.cp-rapidos{display:flex;gap:7px;margin-top:9px;flex-wrap:wrap}
+.cp-rap{padding:6px 13px;border-radius:99px;cursor:pointer;font-family:var(--mono);
+  font-size:12px;font-weight:600;color:var(--bruma);background:var(--campo);
+  border:1px solid var(--campoBr);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.05),0 2px 0 rgba(0,0,0,.4);
+  transition:transform .12s,border-color .16s,color .16s,box-shadow .16s}
+.cp-rap:hover{border-color:var(--oro);color:var(--oroLt);transform:translateY(-1px)}
+.cp-rap.es{border-color:var(--oro);color:var(--tinta);
+  background:linear-gradient(120deg,var(--oroLt),var(--oro));
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.5),0 2px 0 var(--oroDp)}
+.cp-rap:active{transform:translateY(2px);box-shadow:inset 0 2px 4px rgba(0,0,0,.4)}
+.cp-rap:focus-visible{outline:2px solid var(--oroLt);outline-offset:2px}
+
+/* La moneda del campo, como ficha y no como texto suelto. */
+.cp-mon{padding:4px 9px;border-radius:7px;background:rgba(201,169,97,.12);
+  border:1px solid var(--linea2);color:var(--oroLt);font-family:var(--mono);
+  font-size:11.5px;font-weight:700;letter-spacing:.04em}
+
+/* El QR con marco y la red encima: el codigo es lo que la gente escanea sin
+   leer, asi que la red tiene que viajar CON el. */
+.cp-qr-caja{margin-top:14px;display:flex;flex-direction:column;align-items:center;gap:9px}
+.cp-qr:empty{display:none}
+.cp-qr{background:#fff;padding:11px;border-radius:12px;line-height:0;
+  box-shadow:0 10px 30px -12px rgba(0,0,0,.9),inset 0 0 0 1px rgba(0,0,0,.08)}
+.cp-qr-red{padding:4px 12px;border-radius:99px;background:rgba(143,185,224,.13);
+  border:1px solid rgba(143,185,224,.3);color:var(--acento);
+  font-size:11px;font-weight:700;letter-spacing:.05em}
+
+/* La direccion: al copiar, el bloque entero confirma — un cambio de texto en
+   el boton es facil de perderse si el dedo lo tapa. */
+.cp-dir code{transition:border-color .2s,background .2s}
+/* En telefono la direccion y el boton no caben uno al lado del otro: la
+   direccion quedaba estrangulada en seis renglones de siete caracteres y el
+   boton se estiraba en un ovalo enorme. Se apilan, y la direccion se queda con
+   todo el ancho — que es lo que la gente va a mirar para comprobarla. */
+@media(max-width:560px){
+  .cp-dir{flex-direction:column}
+  .cp-dir code{font-size:12.5px;line-height:1.7;justify-content:center;text-align:center}
+  .cp-dir .btn{width:100%}
+}
+.cp-dir.ok code{border-color:var(--jade);background:rgba(62,217,160,.07)}
+
+.cp-red:focus-visible,.cp-dir code:focus-visible{outline:2px solid var(--acento);outline-offset:2px}
+.campo input:focus-visible{outline:none}
 
 </style>
 
