@@ -60,6 +60,41 @@ const REDES = {
 const VIDA_MS = 5 * 60 * 1000;
 const recordado = new Map(); // red -> { pv, en, url }
 
+/* ── EL CASTIGO, Y POR QUE HACIA FALTA ──────────────────────────────────────
+ *
+ * getNetwork() es la pregunta equivocada para saber si un nodo sirve.
+ *
+ * El 4 de septiembre, con el vigia externo recien desplegado, Ethereum y BSC
+ * llevaban horas sin ver un solo bloque. Los nodos no estaban caidos: a
+ * `eth_chainId` contestaban al instante y por la cadena correcta, asi que
+ * pasaban esta puerta y se quedaban elegidos. Lo que rechazaban era el
+ * `eth_getLogs`:
+ *
+ *   {"code":-32602,"message":"Archive requests require a personal token"}
+ *
+ * O sea: sirvo la punta, no sirvo historia. Y como el unico criterio para
+ * cambiar de nodo era «no contesta», el vigia se quedaba pegado al que lo
+ * rechazaba y fallaba cada treinta segundos, en silencio, para siempre.
+ *
+ * De ahi `descartar`: quien USA el proveedor es el unico que sabe si de verdad
+ * le sirvio, y ahora puede decirlo. El nodo descartado queda castigado un rato
+ * para que el reintento inmediato no vuelva a elegirlo — sin el castigo,
+ * `descartar` solo borra la memoria y la linea siguiente elige otra vez al
+ * mismo, que es un bucle y no un respaldo.
+ *
+ * El castigo es CORTO a proposito: casi todos estos rechazos son limites por
+ * minuto, no politicas. Un castigo largo regalaria el mejor nodo de una cadena
+ * por un tropiezo. */
+const CASTIGO_MS = Number(process.env.RPC_CASTIGO_MS || 90_000);
+const castigados = new Map(); // url -> hasta cuando (ms)
+
+function castigado(url) {
+  const hasta = castigados.get(url);
+  if (!hasta) return false;
+  if (Date.now() >= hasta) { castigados.delete(url); return false; }
+  return true;
+}
+
 /** Cuanto se espera a que un nodo diga por que cadena habla. */
 const PLAZO_MS = Number(process.env.RPC_PLAZO_MS || 6000);
 
@@ -87,7 +122,12 @@ async function proveedorDe(red) {
   if (antes && Date.now() - antes.en < VIDA_MS) return antes.pv;
 
   const fallos = [];
-  for (const url of cfg.rpcs) {
+  /* Los castigados van al FINAL, no fuera. Si todos lo estan —una caida de
+     medio internet, o un limite que pegó a los tres a la vez— es mejor
+     reintentar con uno castigado que quedarse sin cadena: el castigo ordena,
+     no excluye. */
+  const orden = [...cfg.rpcs.filter((u) => !castigado(u)), ...cfg.rpcs.filter(castigado)];
+  for (const url of orden) {
     try {
       const pv = new JsonRpcProvider(url, undefined, { staticNetwork: true });
       const n = await conPlazo(pv.getNetwork(), PLAZO_MS, url);
@@ -108,14 +148,41 @@ async function proveedorDe(red) {
   throw new Error(`ningún RPC de ${cfg.nombre} contestó — ${fallos.join(' · ')}`);
 }
 
+/**
+ * «Este proveedor no me sirvio»: lo olvida y lo castiga un rato, para que la
+ * llamada siguiente elija otro. Devuelve la URL descartada, o null si no habia
+ * ninguno elegido para esa cadena.
+ *
+ * Lo llama quien USA el proveedor, que es el unico que sabe si de verdad le
+ * sirvio. Nunca lanza: descartar es lo que se hace cuando algo ya salio mal, y
+ * una excepcion aqui taparia el error de verdad con uno peor.
+ */
+function descartar(red, motivo) {
+  const id = Number(red);
+  const r = recordado.get(id);
+  if (!r) return null;
+  recordado.delete(id);
+  castigados.set(r.url, Date.now() + CASTIGO_MS);
+  if (motivo) console.warn(`[rpc] ${REDES[id]?.nombre || id}: descarto ${r.url} — ${motivo}`);
+  return r.url;
+}
+
 /** Cual se esta usando ahora mismo, para el panel. Nunca lanza. */
 function enUso() {
   const salida = {};
   for (const id of Object.keys(REDES).map(Number)) {
     const r = recordado.get(id);
-    salida[id] = { nombre: REDES[id].nombre, url: r ? r.url : null, desde: r ? new Date(r.en) : null };
+    salida[id] = {
+      nombre: REDES[id].nombre, url: r ? r.url : null, desde: r ? new Date(r.en) : null,
+      // Los castigados, para que el panel explique por qué se está usando el
+      // segundo de la lista en vez del primero.
+      castigados: REDES[id].rpcs.filter(castigado),
+    };
   }
   return salida;
 }
 
-module.exports = { REDES, proveedorDe, enUso, _adentro: { recordado, conPlazo } };
+module.exports = {
+  REDES, proveedorDe, descartar, enUso,
+  _adentro: { recordado, castigados, castigado, conPlazo, CASTIGO_MS },
+};

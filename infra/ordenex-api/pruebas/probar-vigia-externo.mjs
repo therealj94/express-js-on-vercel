@@ -43,16 +43,24 @@ const PORCONTRATO = new Map();
 for (const [red, acts] of Object.entries(decimales.ESPERADOS)) {
   for (const [s, f] of Object.entries(acts)) if (f.contrato) PORCONTRATO.set(f.contrato.toLowerCase(), { red: Number(red), s });
 }
-await decimales.verificar({
-  proveedorDe: async () => ({
-    call: async (tx) => {
-      const q = PORCONTRATO.get(String(tx.to).toLowerCase());
-      const d = q.red === 137 || q.red === 1 ? (q.s === 'USDT' ? 6 : 18) : 18;
-      return '0x' + BigInt(d).toString(16).padStart(64, '0');
-    },
-  }),
-  plazoMs: 2000,
-});
+/* En una funcion porque hay pruebas mas abajo que OLVIDAN los decimales a
+   proposito —para comprobar que sin ellos no se mira esa cadena— y las que
+   vienen despues los necesitan otra vez. Repetir el bloque a mano fue lo que
+   dejo tres pruebas nuevas en rojo por un motivo que no tenia nada que ver con
+   lo que probaban. */
+async function fingirDecimales() {
+  await decimales.verificar({
+    proveedorDe: async () => ({
+      call: async (tx) => {
+        const q = PORCONTRATO.get(String(tx.to).toLowerCase());
+        const d = q.red === 137 || q.red === 1 ? (q.s === 'USDT' ? 6 : 18) : 18;
+        return '0x' + BigInt(d).toString(16).padStart(64, '0');
+      },
+    }),
+    plazoMs: 2000,
+  });
+}
+await fingirDecimales();
 comprobar(decimales.listo(137) && decimales.listo(56), 'los decimales quedaron comprobados para la prueba');
 
 // ── La cadena fingida ───────────────────────────────────────────────────────
@@ -258,6 +266,127 @@ decir('el techo respeta el piso aunque el nodo mienta sobre `finalized`');
   const t = await redes.techo(pv, 137);
   comprobar(t <= 100000 - redes.bloquesDe(137),
     'un nodo que jura que finalized es la punta no nos hace leer la punta', String(t));
+}
+
+/* ══ UN NODO QUE CONTESTA Y NO SIRVE ═══════════════════════════════════════
+ *
+ * El 4 de septiembre, con esto recién desplegado, Ethereum y BSC llevaban
+ * horas sin ver un bloque. Los nodos no estaban caídos: a `eth_chainId`
+ * contestaban al instante y por la cadena correcta, así que pasaban la puerta
+ * de proveedores.js y se quedaban elegidos. Lo que rechazaban era el getLogs:
+ *
+ *   403 · {"code":-32602,"message":"Archive requests require a personal token"}
+ *
+ * Sirvo la punta, no sirvo historia. Y el único criterio para cambiar de nodo
+ * era «no contesta», así que el vigía se quedaba pegado al que lo rechazaba y
+ * fallaba cada treinta segundos, en silencio, para siempre. La lista de
+ * respaldo estaba escrita y era inalcanzable.
+ *
+ * Se prueban las dos mitades del arreglo: que se cambie de nodo, y que un
+ * error de RANGO siga partiéndose en vez de gastar un nodo que sí sirve. */
+
+/** Da un proveedor distinto en cada llamada, como haría la lista de respaldo. */
+async function conCadenas(lista, cuerpo) {
+  let i = 0;
+  const usados = [];
+  proveedores.proveedorDe = async () => {
+    const pv = lista[Math.min(i, lista.length - 1)];
+    usados.push(i); i += 1;
+    return pv;
+  };
+  try { return { r: await cuerpo(), usados }; } finally { proveedores.proveedorDe = proveedorReal; }
+}
+
+/** Un nodo que sirve la punta y se niega a dar historia, como publicnode. */
+function nodoSinArchivo({ punta = 1000, desdeBloque = 0 }) {
+  return {
+    getBlockNumber: async () => punta,
+    getBlock: async (x) => (x === 'finalized' ? null : { number: x, timestamp: 1_750_000_000 + Number(x) }),
+    getLogs: async ({ fromBlock }) => {
+      if (fromBlock < desdeBloque) {
+        const e = new Error('server response 403 Forbidden: Archive requests require a personal token');
+        e.code = -32602;
+        throw e;
+      }
+      return [];
+    },
+  };
+}
+
+await fingirDecimales();   // una prueba de mas arriba los olvido a proposito
+decir('un nodo que sirve la punta y no la historia se descarta, y se usa el siguiente');
+await limpiar();
+{
+  const w = Wallet.createRandom();
+  const u = await usuarioCon(w.address);
+  const malo = nodoSinArchivo({ punta: 1000, desdeBloque: 999 });   // solo la punta
+  const bueno = cadenaFingida({ punta: 1000, logs: [log({ a: w.address, monto: 7_000000n, bloque: 800, hash: '0xe1' })] });
+  const { r, usados } = await conCadenas([malo, bueno], () => vig.vuelta(137));
+
+  comprobar(r.ok === true, 'la vuelta termina bien con el segundo nodo', JSON.stringify(r));
+  comprobar(usados.length >= 2, 'se pidió proveedor más de una vez: hubo cambio', `pedidos: ${usados.length}`);
+  const d = await vig.DepositoExterno.findOne({ txHash: '0xe1' }).lean();
+  comprobar(!!d && d.userId === String(u._id),
+    'y el depósito que el primer nodo escondía SÍ se anotó', d ? d.txHash : 'no se anotó');
+}
+
+decir('un error de RANGO no gasta un nodo: se parte la consulta, como antes');
+await limpiar();
+{
+  const w = Wallet.createRandom();
+  await usuarioCon(w.address);
+  const logs = [log({ a: w.address, monto: 3_000000n, bloque: 850, hash: '0xe2' })];
+  const pv = cadenaFingida({ punta: 1000, logs, topeRango: 120 });
+  const { r, usados } = await conCadenas([pv], () => vig.vuelta(137));
+  comprobar(r.ok === true, 'la vuelta sale bien partiendo el rango', JSON.stringify(r));
+  /* Es la distinción que importa: «pediste demasiado» se arregla pidiendo
+     menos, y descartar el nodo por eso tiraría uno que funciona. Un mismo
+     mensaje puede encajar en los dos moldes —«limit exceeded» de un plan
+     gratis— y por eso el de rango manda. */
+  comprobar(usados.length === 1, 'y NO se cambió de nodo', `pedidos: ${usados.length}`);
+  comprobar(!!(await vig.DepositoExterno.findOne({ txHash: '0xe2' }).lean()), 'el depósito se anotó');
+}
+
+decir('si NINGÚN nodo da historia, arranca mirando menos y lo dice');
+await limpiar();
+{
+  const w = Wallet.createRandom();
+  await usuarioCon(w.address);
+  /* Ethereum el 4 de septiembre: no había un solo RPC público gratis que
+     sirviera logs de hace dos horas. El vigía puede funcionar igual a partir
+     de AHORA —la punta sí la dan—, y lo que no puede es recuperar el rato
+     anterior al arranque. Antes se quedaba muerto; ahora acorta y AVISA. */
+  const punta = 100000;
+  const soloPunta = nodoSinArchivo({ punta, desdeBloque: punta - 200 });
+  const avisos = [];
+  const warnReal = console.warn;
+  console.warn = (...a) => avisos.push(a.join(' '));
+  let r;
+  try { ({ r } = await conCadenas([soloPunta, soloPunta, soloPunta, soloPunta], () => vig.vuelta(1))); }
+  finally { console.warn = warnReal; }
+
+  comprobar(r.ok === true, 'la vuelta termina bien en vez de quedarse trabada', JSON.stringify(r));
+  const marca = await vig.Marca.findOne({ clave: vig.claveMarca(1) }).lean();
+  comprobar(!!marca, 'y deja marca, que es lo que hace que la vuelta siguiente ya sea barata');
+  /* Callar esto sería lo peligroso: el síntoma de un arranque que se comió una
+     hora de historia es alguien que depositó justo antes del despliegue y a
+     quien nunca se le acreditó. */
+  const aviso = avisos.find((t) => /ningún RPC sirve historia/i.test(t));
+  comprobar(!!aviso, 'y AVISA de qué trozo de historia se quedó sin mirar', aviso || 'no avisó');
+  comprobar(!!aviso && /RPC_ETHEREUM/.test(aviso),
+    'diciendo con qué variable se arregla, sin que haya que buscarlo', aviso || '');
+}
+
+decir('esDeProveedor separa «este nodo no me sirve» de «pedí demasiado»');
+{
+  const { esDeProveedor, esDeRango } = vig._adentro;
+  const archivo = Object.assign(new Error('403 Forbidden: Archive requests require a personal token'), { code: -32602 });
+  comprobar(esDeProveedor(archivo) && !esDeRango(archivo), 'el 403 de archivo: cambiar de nodo');
+  const rango = Object.assign(new Error('query returned more than 10000 results'), { code: -32005 });
+  comprobar(esDeRango(rango), 'el de resultados: partir la consulta');
+  const caido = new Error('el nodo se cayó');
+  comprobar(!esDeProveedor(caido) && !esDeRango(caido),
+    'y una caída no es ninguno de los dos: se reintenta la vuelta siguiente');
 }
 
 await mongoose.disconnect();

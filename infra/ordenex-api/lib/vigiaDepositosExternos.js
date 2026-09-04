@@ -153,6 +153,14 @@ const PAGINAS_POR_VUELTA = Number(process.env.VIGIA_EXTERNO_PAGINAS || 40);
 /** El primer arranque, sin marca: ~2 horas de bloques. Ni el génesis ni la
  *  punta — cubre el hueco de un despliegue sin releer historia que no existía. */
 const VENTANA_INICIAL_HORAS = 2;
+/** El suelo al que puede bajar esa ventana cuando ningún RPC da historia: diez
+ *  minutos. Por debajo de eso no vale la pena seguir bajando — si un nodo no
+ *  sirve diez minutos hacia atrás, no es un límite de archivo, está roto. */
+const MINIMO_HORAS = 1 / 6;
+
+/** El nombre de la variable con la que se le pone un RPC propio a esa cadena,
+ *  para poder decirlo en el aviso en vez de que haya que buscarlo. */
+const claveEnv = (id) => ({ 137: 'POLYGON', 56: 'BSC', 1: 'ETHEREUM' }[Number(id)] || String(id));
 
 const rangoDe = new Map(); // red -> bloques por consulta, adaptativo
 
@@ -165,6 +173,30 @@ function rango(red) {
 function esDeRango(e) {
   const m = `${e?.code || ''} ${e?.message || e}`.toLowerCase();
   return /-32005|limit exceeded|more than|range|too large|response size|query timeout|too many/.test(m);
+}
+
+/**
+ * Los errores que significan «ESTE NODO no me va a servir», que es distinto de
+ * «pedí demasiado» y de «el nodo se cayó».
+ *
+ * El caso que los trajo: publicnode contesta `eth_chainId` al instante y por la
+ * cadena correcta —así que pasa la puerta de proveedores.js— y luego rechaza
+ * el getLogs con
+ *
+ *   403 · {"code":-32602,"message":"Archive requests require a personal token"}
+ *
+ * Sirve la punta, no sirve historia. Partir el rango no arregla eso: la mitad
+ * de un rango viejo sigue siendo vieja, así que `esDeRango` lo parte hasta el
+ * bloque suelto y falla igual, solo que más despacio. Lo único que sirve es
+ * CAMBIAR DE NODO, y para eso hay que saber distinguir este error del resto.
+ *
+ * Ojo con el orden en quien llama: un mismo error puede encajar en los dos
+ * moldes (un «limit exceeded» de un plan gratis), y ahí manda el de rango —
+ * partir es más barato que descartar un nodo que sí sirve.
+ */
+function esDeProveedor(e) {
+  const m = `${e?.code || ''} ${e?.status || ''} ${e?.message || e}`.toLowerCase();
+  return /403|401|-32001|unauthorized|forbidden|archive|personal token|api key|usage limit|quota|rate limit|payment/.test(m);
 }
 
 // ── Las direcciones que se vigilan ──────────────────────────────────────────
@@ -283,7 +315,16 @@ async function anotar(red, log, dueno, pv) {
 
 let sondeando = false;
 
-async function vuelta(red) {
+/**
+ * Una vuelta de una red.
+ *
+ * `intentos` es cuántos proveedores más se pueden probar si el que tocó
+ * resulta no servir. No es un reintento de red —eso ya lo hace ethers—: es
+ * «este nodo dijo que no me deja leer historia, probá con otro», y sin él el
+ * vigía se queda pegado al mismo nodo que lo rechaza durante los cinco minutos
+ * que dura la memoria del proveedor, y luego vuelve a elegirlo.
+ */
+async function vuelta(red, intentos = 2, horas = VENTANA_INICIAL_HORAS) {
   const id = Number(red);
   const cfg = redes.REDES[id];
   if (!cfg) return { ok: false, error: `la red ${red} no recibe USDT` };
@@ -320,7 +361,7 @@ async function vuelta(red) {
   }
 
   const porHora = Math.ceil(3600 / (redes._adentro.medido.get(id)?.segundos || cfg.bloqueSegundos));
-  const desde = marca ? marca.bloque + 1 : Math.max(0, hasta - porHora * VENTANA_INICIAL_HORAS);
+  const desde = marca ? marca.bloque + 1 : Math.max(0, hasta - Math.round(porHora * horas));
   if (desde > hasta) return { ok: true, vistos: 0, paginas: 0 };
 
   const listaTrozos = trozos([...porDireccion.keys()], POR_TROZO);
@@ -333,6 +374,40 @@ async function vuelta(red) {
     try {
       logs = await leerRango(pv, id, a, b, listaTrozos);
     } catch (e) {
+      /* Si el nodo no va a servir NUNCA esta consulta —no es que el rango sea
+         grande, es que no da historia— se descarta y se vuelve a empezar la
+         vuelta con otro. Lo que ya se leyó de esta vuelta se tira: la marca no
+         avanzó, así que el proveedor nuevo relee esos bloques y no se pierde
+         nada. Releer es barato; saltarse un depósito no. */
+      if (esDeProveedor(e) && !esDeRango(e)) {
+        if (intentos > 0) {
+          proveedores.descartar(id, `no sirve getLogs: ${String(e.message || e).slice(0, 90)}`);
+          return vuelta(id, intentos - 1, horas);
+        }
+        /* NINGUN proveedor de esta cadena da historia. En Ethereum eso no es
+           una avería pasajera: el 4 de septiembre no había un solo RPC público
+           gratuito que sirviera logs de hace dos horas — todos piden cuenta de
+           pago para leer archivo. Y como sí sirven la punta, el vigía puede
+           funcionar perfectamente a partir de AHORA; lo único que no puede es
+           recuperar el rato anterior al primer arranque.
+
+           Así que se acorta la ventana inicial en vez de quedarse muerto. Pero
+           NO en silencio: se dice en el registro qué trozo de historia queda
+           sin mirar, porque el síntoma de callarlo es alguien que depositó
+           justo antes del despliegue y a quien nunca se le acreditó.
+
+           Con marca ya puesta esto no se toca: a partir de la primera vuelta
+           buena solo se piden bloques recientes, que estos nodos sí dan. */
+        if (!marca && horas > MINIMO_HORAS) {
+          const menos = Math.max(MINIMO_HORAS, horas / 8);
+          console.warn(
+            `[vigia-ext] ${cfg.nombre}: ningún RPC sirve historia de ${horas} h. ` +
+            `Arranco mirando ${(menos * 60).toFixed(0)} min hacia atrás (bloques ${a}-${hasta}). ` +
+            `Los depósitos anteriores a eso NO se van a ver: ponéle RPC_${claveEnv(id)} ` +
+            `con un nodo de archivo si necesitás recuperarlos.`);
+          return vuelta(id, 2, menos);
+        }
+      }
       // La marca NO avanza sobre una página que no se leyó entera. Es la regla
       // que impide el fallo irreversible descrito en la cabecera.
       return { ok: false, error: `getLogs ${a}-${b}: ${e.message}`, vistos, paginas };
@@ -429,6 +504,6 @@ async function resumen() {
 module.exports = {
   DepositoExterno, Marca, claveMarca,
   arrancar, ciclo, vuelta, resumen, direcciones,
-  _adentro: { leerPagina, leerRango, anotar, esDeRango, trozos, rango, rangoDe,
-              RANGO_INICIAL, RANGO_MAXIMO, POR_TROZO },
+  _adentro: { leerPagina, leerRango, anotar, esDeRango, esDeProveedor, trozos, rango, rangoDe,
+              RANGO_INICIAL, RANGO_MAXIMO, POR_TROZO, VENTANA_INICIAL_HORAS, MINIMO_HORAS },
 };
