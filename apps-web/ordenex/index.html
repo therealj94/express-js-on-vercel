@@ -668,6 +668,144 @@ body.en-mercado::before{content:'';position:fixed;inset:0;z-index:-1;
   .bv p,.bv-btns,.bv-nota,.mv{opacity:1}
   .lz-dentro,.lz-fuera{animation:none}
 }
+/* ── Comprar ORIGEN ─────────────────────────────────────────────────────────
+   Se construye DENTRO del sistema de la casa, no al lado: pozo de fondo, oro
+   solo para el dinero, jade para lo confirmado, coral para lo que no se puede
+   deshacer. El azul --acento, que casi no se usaba, se reserva aqui para «la
+   red que elegiste» — asi el oro nunca compite consigo mismo y el numero que
+   importa sigue siendo el unico dorado de la pantalla. */
+.cab-sub{margin:5px 0 0;font-size:13px;color:var(--humo);line-height:1.6}
+.cp-previa{margin:0 0 16px;padding:11px 14px;border-radius:var(--r);
+  border:1px dashed var(--linea);background:rgba(201,169,97,.05);
+  color:var(--bruma);font-size:12.5px;line-height:1.6}
+.cp-grid{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,.85fr);gap:18px;align-items:start}
+@media(max-width:860px){.cp-grid{grid-template-columns:1fr}}
+.cp-caja{padding:22px}
+.cp-riel{padding:22px}
+
+/* el monto, con su moneda pegada al campo para que no parezca otro dato */
+.cp-monto{position:relative}
+.cp-monto input{padding-right:74px;font-family:var(--mono);font-size:20px;
+  font-variant-numeric:tabular-nums;letter-spacing:-.01em}
+.cp-mon{position:absolute;right:15px;top:50%;transform:translateY(-50%);
+  color:var(--humo);font-size:12.5px;font-weight:600;letter-spacing:.04em;pointer-events:none}
+
+/* EL SELECTOR DE RED. Lleva el tiempo y el minimo DENTRO, porque esa es la
+   decision de verdad: entre Polygon y Ethereum no se elige un nombre, se
+   elige entre dos minutos y veinticinco. Esconderlo en un aviso posterior es
+   dejar que alguien elija a ciegas la opcion cara. */
+.cp-redes{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+@media(max-width:520px){.cp-redes{grid-template-columns:1fr}}
+.cp-red{display:flex;flex-direction:column;align-items:flex-start;gap:2px;
+  padding:12px 13px;border-radius:var(--r);cursor:pointer;text-align:left;
+  border:1px solid var(--campoBr);background:var(--campo);color:var(--bruma);
+  transition:border-color .16s,background .16s,transform .16s}
+.cp-red:hover{border-color:var(--acento);transform:translateY(-1px)}
+.cp-red.es{border-color:var(--acento);background:rgba(143,185,224,.10);color:var(--crema)}
+.cp-red-n{font-size:13.5px;font-weight:600}
+.cp-red-t{font-size:11.5px;color:var(--acento);font-variant-numeric:tabular-nums}
+.cp-red.lenta .cp-red-t{color:var(--oroDp)}
+.cp-red-m{font-size:10.5px;color:var(--humo)}
+
+/* EL NUMERO QUE RECIBE. Es el heroe de la pantalla y por eso lleva la serif de
+   la casa: es lo unico que la persona vino a saber, y lleva la comision ya
+   descontada — no hay letra chica que reste despues. */
+.cp-recibe{margin:20px 0 16px;padding:18px 0 0;border-top:1px solid var(--linea2)}
+.cp-lbl{display:block;font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;
+  color:var(--humo);font-weight:600;margin-bottom:8px}
+.cp-hero{font-family:var(--serif);font-weight:700;color:var(--oroHi);
+  font-size:clamp(28px,4.4vw,40px);line-height:1.08;letter-spacing:-.01em;
+  font-variant-numeric:tabular-nums}
+.cp-hero em{font-style:normal;font-family:var(--sans);font-size:.42em;
+  font-weight:700;color:var(--oro);letter-spacing:.06em;margin-left:6px}
+.cp-hero.vacio{color:var(--humo);padding:0}
+.cp-precio{margin-top:9px;font-size:12px;color:var(--bruma);font-variant-numeric:tabular-nums}
+.cp-com{color:var(--jade)}
+.cp-pie{margin:10px 0 0;font-size:11.5px;color:var(--humo);line-height:1.6}
+.cp-alerta{margin:0 0 13px;padding:10px 13px;border-radius:var(--r);
+  border-left:3px solid var(--coral);background:rgba(240,119,107,.08);
+  color:var(--crema);font-size:12.5px}
+
+/* EL AVISO DE RED. Va ARRIBA de la direccion y en coral porque es el unico
+   error de esta pantalla que no se puede reparar: lo que se manda por TRON no
+   vuelve. Una advertencia al pie aqui seria una advertencia que nadie lee. */
+.cp-red-aviso{margin:16px 0;padding:13px 15px;border-radius:var(--r);
+  border:1px solid rgba(240,119,107,.45);background:rgba(240,119,107,.09)}
+.cp-red-aviso strong{display:block;color:var(--coral);font-size:14px;
+  letter-spacing:.02em;margin-bottom:4px}
+.cp-red-aviso span{display:block;color:var(--bruma);font-size:12px;line-height:1.6}
+
+.cp-manda{margin-bottom:4px}
+.cp-dir{display:flex;gap:9px;align-items:stretch}
+.cp-dir code{flex:1;min-width:0;padding:13px 14px;border-radius:var(--r);
+  background:var(--campo);border:1px solid var(--campoBr);color:var(--crema);
+  font-size:12.5px;line-height:1.5;word-break:break-all}
+.cp-qr{margin-top:12px;display:flex;justify-content:center}
+.cp-qr svg{background:#fff;padding:9px;border-radius:var(--r)}
+
+.cp-reloj{margin:18px 0 14px;padding-top:16px;border-top:1px solid var(--linea2)}
+.cp-tiempo{font-size:30px;font-weight:700;color:var(--crema);
+  font-variant-numeric:tabular-nums;letter-spacing:.02em}
+.cp-reloj.mal .cp-tiempo{color:var(--coral)}
+
+/* EL RIEL. Cuatro renglones, no una rueda girando: entre que manda el dinero y
+   ve su ORIGEN pasan minutos, y cada uno tiene que decir algo distinto y
+   verdadero. Una rueda sin texto es donde se pierde la confianza. */
+.cp-paso{display:flex;gap:13px;padding:13px 0;border-bottom:1px solid var(--linea2)}
+.cp-paso:last-of-type{border-bottom:0}
+.cp-punto{flex:none;width:28px;height:28px;border-radius:50%;display:grid;place-items:center;
+  font-family:var(--mono);font-size:12px;font-weight:700;
+  border:1px solid var(--campoBr);color:var(--humo);background:var(--campo)}
+.cp-txt b{display:block;font-size:13.5px;color:var(--bruma);font-weight:600;margin-bottom:3px}
+.cp-txt span{display:block;font-size:12px;color:var(--humo);line-height:1.6}
+.cp-paso.ahora .cp-punto{border-color:var(--oro);color:var(--tinta);
+  background:linear-gradient(120deg,var(--oroLt),var(--oro));
+  box-shadow:0 0 0 4px rgba(201,169,97,.14)}
+.cp-paso.ahora .cp-txt b{color:var(--crema)}
+.cp-paso.hecho .cp-punto{border-color:var(--jade);color:var(--jade);background:rgba(62,217,160,.10)}
+.cp-paso.hecho .cp-txt b{color:var(--bruma)}
+.cp-paso.porvenir{opacity:.5}
+.cp-link{display:inline-block;margin-top:6px;font-size:11.5px;color:var(--acento);
+  text-decoration:none;border-bottom:1px solid rgba(143,185,224,.4)}
+.cp-link:hover{color:var(--oroLt);border-bottom-color:var(--oro)}
+
+.cp-falta{text-align:center}
+.cp-falta-t{margin:6px 0 0;font-size:15px;color:var(--crema);line-height:1.6}
+.cp-falta .btn{margin-top:16px}
+
+/* CARGANDO NO ES FALLAR. Se veian igual y la que se enseñaba era la alarma:
+   al abrir la pantalla salia un error rojo que todavia no era cierto. */
+.cp-cargando{color:var(--humo)}
+.cp-sinref{display:block;padding:9px 12px;border-radius:var(--r);
+  border-left:3px solid var(--coral);background:rgba(240,119,107,.08);
+  color:var(--bruma);font-size:12px;line-height:1.6}
+.cp-precio b{color:var(--crema);font-weight:600}
+.cp-hero.vacio span{font-family:var(--sans);font-size:15px;font-weight:400;color:var(--humo)}
+/* Un boton dorado a medio brillo sigue leyendose como la accion principal. El
+   deshabilitado tiene que dejar de ser oro, no solo bajar de opacidad. */
+.btn-oro:disabled{background:var(--campo);color:var(--humo);
+  border:1px solid var(--campoBr);box-shadow:none;opacity:1}
+.btn-oro:disabled::after{display:none}
+.cp-chip{display:inline-block;margin-left:8px;padding:1px 7px;border-radius:99px;
+  font-style:normal;font-size:10.5px;font-weight:600;letter-spacing:.02em;
+  color:var(--acento);background:rgba(143,185,224,.12);border:1px solid rgba(143,185,224,.28)}
+/* Sin orden en curso el riel es una promesa, no un estado: se aparta. */
+/* En telefono el riel ocupa media pantalla, y a .62 sobre un fondo ya oscuro
+   se leia como algo roto en vez de como una promesa. .74 lo aparta sin
+   apagarlo. */
+.cp-riel.quieto{opacity:.74}
+.cp-riel.quieto .cp-paso.ahora .cp-punto{background:var(--campo);color:var(--humo);
+  border-color:var(--campoBr);box-shadow:none}
+.cp-riel.quieto .cp-paso.ahora .cp-txt b{color:var(--bruma)}
+
+/* De donde sale el precio y hace cuanto se leyo. Un numero sin hora es un
+   numero que nadie puede discutir despues — y en la pantalla donde alguien
+   decide, eso es la diferencia entre cotizar y afirmar. */
+.cp-fuente{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;
+  margin-top:7px;font-size:11px;color:var(--humo);font-variant-numeric:tabular-nums}
+.cp-fuente b{color:var(--bruma);font-weight:600}
+.cp-fresco{color:var(--jade);opacity:.8}
+
 </style>
 
 <!-- La cinta. La pista se pinta dos veces (app.js) y la animacion corre el
@@ -744,6 +882,7 @@ body.en-mercado::before{content:'';position:fixed;inset:0;z-index:-1;
     <button class="nav" aria-current="page" data-vista="mercados" onclick="ONX.vista('mercados')"><svg viewBox="0 0 24 24"><path d="M7 3.5v3M7 16.5v4M5 6.5h4v10H5zM17 6v3M17 19v1.5M15 9h4v10h-4z"/></svg><span data-t="nav.mercados"></span></button>
     <button class="nav" data-vista="portafolio" onclick="ONX.vista('portafolio')"><svg viewBox="0 0 24 24"><path d="M3 7.5A2.5 2.5 0 0 1 5.5 5H18a2 2 0 0 1 2 2v1"/><rect x="3" y="8" width="18" height="11" rx="2.5"/><circle cx="16.5" cy="13.5" r="1.3"/></svg><span data-t="nav.portafolio"></span></button>
     <button class="nav" data-vista="fiat" onclick="ONX.vista('fiat')"><svg viewBox="0 0 24 24"><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="2.6"/><path d="M5.5 9.5h.01M18.5 14.5h.01"/></svg><span data-t="nav.fiat"></span></button>
+    <button class="nav" data-vista="comprar" onclick="ONX.vista('comprar')"><svg viewBox="0 0 24 24"><path d="M12 4v16M12 4l-4 4M12 4l4 4"/><path d="M4 20h16"/></svg><span data-t="nav.comprar"></span></button>
     <button class="nav" data-vista="actividad" onclick="ONX.vista('actividad')"><svg viewBox="0 0 24 24"><path d="M3 12h4l3 8 4-16 3 8h4"/></svg><span data-t="nav.actividad"></span></button>
 
     <div class="riel-pie">
@@ -773,6 +912,7 @@ body.en-mercado::before{content:'';position:fixed;inset:0;z-index:-1;
     <button class="nav" aria-current="page" data-vista="mercados" onclick="ONX.vista('mercados')"><svg viewBox="0 0 24 24"><path d="M7 3.5v3M7 16.5v4M5 6.5h4v10H5zM17 6v3M17 19v1.5M15 9h4v10h-4z"/></svg><span data-t="nav.mercados"></span></button>
     <button class="nav" data-vista="portafolio" onclick="ONX.vista('portafolio')"><svg viewBox="0 0 24 24"><path d="M3 7.5A2.5 2.5 0 0 1 5.5 5H18a2 2 0 0 1 2 2v1"/><rect x="3" y="8" width="18" height="11" rx="2.5"/><circle cx="16.5" cy="13.5" r="1.3"/></svg><span data-t="nav.portafolio"></span></button>
     <button class="nav" data-vista="fiat" onclick="ONX.vista('fiat')"><svg viewBox="0 0 24 24"><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="2.6"/><path d="M5.5 9.5h.01M18.5 14.5h.01"/></svg><span data-t="nav.fiat"></span></button>
+    <button class="nav" data-vista="comprar" onclick="ONX.vista('comprar')"><svg viewBox="0 0 24 24"><path d="M12 4v16M12 4l-4 4M12 4l4 4"/><path d="M4 20h16"/></svg><span data-t="nav.comprar"></span></button>
     <button class="nav" data-vista="actividad" onclick="ONX.vista('actividad')"><svg viewBox="0 0 24 24"><path d="M3 12h4l3 8 4-16 3 8h4"/></svg><span data-t="nav.actividad"></span></button>
   </nav>
 </main>
@@ -795,5 +935,6 @@ body.en-mercado::before{content:'';position:fixed;inset:0;z-index:-1;
 <script src="mercado.js?v=16bc7589de"></script>
 <script src="portafolio.js?v=16bc7589de"></script>
 <script src="fiat.js?v=16bc7589de"></script>
+<script src="comprar.js?v=16bc7589de"></script>
 <script src="i18n.js?v=16bc7589de"></script>
 <script src="app.js?v=16bc7589de"></script>
