@@ -12,6 +12,7 @@ const ledger = require('../lib/ledger');
 const cadena = require('../lib/cadena5550');
 const { asegurarDireccion } = require('../lib/deposito');
 const { TOKENS, PORSIMBOLO } = require('../lib/tokens');
+const billeteras = require('../lib/billeteras');
 
 // lib/genesis.js se carga PEREZOSO y a demanda: si el modulo falta o truena
 // al cargar, tiene que caerse SOLO el retiro (fail-closed, con su 503) y no
@@ -122,6 +123,16 @@ async function retirar(req, res) {
     direccion = getAddress(String(cuerpo.direccion || ''));
   } catch {
     return res.status(400).json({ error: 'La direccion de destino no es valida.', codigo: 'DIRECCION_INVALIDA' });
+  }
+  // Ninguna billetera de la casa puede ser destino de un retiro. Mandarse
+  // dinero a uno mismo y anotarlo como salido es un descuadre que despues no
+  // encuentra nadie; y una de las retiradas —la de gas anterior— esta
+  // COMPROMETIDA: lo que le llegue se lo lleva un bot en el bloque siguiente.
+  // Por eso la comprobacion incluye las viejas y no solo las tres de ahora.
+  if (billeteras.esDeLaCasa(direccion)) {
+    const porQue = billeteras.porQueRetirada(direccion);
+    console.error(`[retiros] ${userId} intento retirar a una billetera de la casa: ${direccion}${porQue ? ` (${porQue})` : ''}`);
+    return res.status(400).json({ error: 'Esa direccion es de la casa: no se puede retirar hacia ella.', codigo: 'DIRECCION_DE_LA_CASA' });
   }
   if (typeof retiroKey !== 'string' || retiroKey.length < 8 || retiroKey.length > 100) {
     // Se exige una clave con cuerpo: sin ella un doble clic son dos retiros,

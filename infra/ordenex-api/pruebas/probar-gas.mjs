@@ -21,7 +21,7 @@ const ver = (o) => JSON.stringify(o, (k, v) => (typeof v === 'bigint' ? String(v
 const decir = (que) => console.log(`\n── ${que} ${'─'.repeat(Math.max(2, 62 - que.length))}`);
 
 const PROVISIONAL = '0x70997970C51812dc3A010C7d01b50e0d17dc79C8';
-const UNICA = '0x3E531Ce4fd73b5a3EA86E37fbcd92e2c36490909';
+const UNICA = '0x8832E2D5cCc707bC5fef5780739f6a2F1C3eCAb3';
 const USDT_POLYGON = '0xc2132D05D31c914a87C6611C10748AEb04B58e8F';
 const PLAN = { a: UNICA, contrato: USDT_POLYGON, cantidad: 100000000n };
 
@@ -107,9 +107,14 @@ await conLlave('no-es-una-llave', () => {
   let m = String(gas.motivo());
   comprobar(!m.includes('no-es-una-llave'), 'y el motivo NO lleva la llave dentro', m);
 });
-comprobar(gas.DIRECCION_GAS === '0x8E839Af7A405f49bf72B239929b8ee3c07Ee7ba0',
-  'la dirección de gas es la que José dio, literal en el código');
+comprobar(gas.DIRECCION_GAS === '0x8861427c430814a1D58999D833382Dc7f4a362e8',
+  'la dirección de gas es la nueva, literal en el código', gas.DIRECCION_GAS);
 comprobar(gas.DIRECCION_GAS !== UNICA, 'y no es la billetera única');
+// LA QUE NO PUEDE VOLVER. La anterior se quedo comprometida —un bot se llevo
+// 15 USDT un bloque despues de que llegaran— y esta prueba existe para que
+// nadie la reponga por costumbre o copiando un comentario viejo.
+comprobar(gas.DIRECCION_GAS.toLowerCase() !== '0x8e839af7a405f49bf72b239929b8ee3c07ee7ba0',
+  'y NO es la comprometida del 4 de septiembre');
 
 // A partir de aquí hace falta una llave que SÍ derive la dirección de gas.
 // No existe: es de José. Se comprueba lo que no depende de firmar.

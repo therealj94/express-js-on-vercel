@@ -13,6 +13,8 @@
 // valor, porque son las que uno quiere leer en el panel y no dicen nada que
 // no se pueda ver desde fuera.
 
+const billeteras = require('./billeteras');
+
 const LARGO_MINIMO_SECRETO = 32;
 
 const esLlavePrivada = (t) => /^0x[0-9a-fA-F]{64}$/.test(String(t || ''));
@@ -90,7 +92,14 @@ function cuadro() {
       // La direccion publica de la caliente NO es secreto: es la que recibe los
       // barridos y ya sale en el mismo panel.
       direccion: caliente || null,
-      nota: 'llave de la billetera caliente que firma los retiros',
+      // ¿Es la billetera de ORIGEN de AHORA? Se informa, no se bloquea: la
+      // anterior no esta comprometida (la que si lo esta es la de gas) y
+      // cortar los retiros por una llave vieja seria peor que el descuadre.
+      // Pero tiene que VERSE, porque desde fuera las dos firman igual.
+      esLaDeAhora: caliente ? caliente === billeteras.ORIGEN : null,
+      seEsperaba: billeteras.ORIGEN,
+      viejaConocida: caliente ? billeteras.porQueRetirada(caliente) : null,
+      nota: 'llave de la billetera caliente que firma los retiros y entrega el ORIGEN',
     },
     ORDENEX_ADMIN_KEY: {
       // Si esta respuesta salio, la clave estaba puesta: la ruta no abre sin ella.

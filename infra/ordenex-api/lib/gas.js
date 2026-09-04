@@ -52,15 +52,21 @@ const proveedores = require('./proveedores');
 const { REDES } = proveedores;
 
 /**
- * La dirección de la billetera de gas, literal y no en una variable.
+ * La dirección de la billetera de gas. Vive en lib/billeteras.js, con las
+ * otras dos y con las retiradas, para que haya UN solo sitio donde mirar
+ * cuál es cada una.
  *
- * Es pública y no cambia, y tenerla aquí es lo que permite comprobar que la
- * LLAVE que nos dieron es la de ESTA billetera. Sin esa comprobación, una
- * ORDENEX_GAS_KEY del entorno equivocado fondearía direcciones con el dinero
- * de otra billetera — y el fallo se vería semanas después, en un saldo que no
- * cuadra. Mismo espíritu que cadena5550.js:196-200.
+ * Se comprueba contra la llave del entorno al cargar: una ORDENEX_GAS_KEY
+ * perfectamente válida pero de otra billetera fondearía direcciones con el
+ * dinero de otro entorno, y ese fallo no se ve hasta que alguien cuadra
+ * saldos semanas después. Mismo espíritu que cadena5550.js:196-200.
+ *
+ * OJO CON LA ANTERIOR. La de antes del 4 de septiembre está COMPROMETIDA: un
+ * bot se llevó 15 USDT un bloque después de que llegaran. Si alguien vuelve a
+ * poner aquella llave, esta comprobación la rechaza — que es exactamente para
+ * lo que existe.
  */
-const DIRECCION_GAS = '0x8E839Af7A405f49bf72B239929b8ee3c07Ee7ba0';
+const { GAS: DIRECCION_GAS } = require('./billeteras');
 
 /**
  * Cuánto se multiplica el precio del gas del momento al calcular el fondeo.
