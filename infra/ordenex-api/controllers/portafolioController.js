@@ -468,7 +468,12 @@ async function movimientos(req, res) {
       Retiro.find(filtro)
         .sort({ en: -1 })
         .limit(limite)
-        .select('activo cantidad direccion hash estado fallo en')
+        // La comision va en el historial y no solo en el recibo del momento:
+        // un movimiento que dice 123,4 cuando salieron 122,166 obliga a la
+        // persona a buscar la diferencia en el explorador. Los retiros de
+        // antes de la comision no lo tienen y van en null, que es la verdad
+        // de aquel dia — no un cero que parezca que no se cobro.
+        .select('activo cantidad comision neto direccion hash estado fallo en')
         .lean(),
     ]);
 

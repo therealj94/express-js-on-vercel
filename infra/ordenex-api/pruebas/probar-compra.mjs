@@ -235,7 +235,7 @@ decir('entregar es de una sola vez');
   const u = await persona();
   const orden = await compra.OrdenCompra.create({
     userId: String(u._id), cadena: POLYGON, direccion: u.direccionDeposito,
-    aWallet: u.direccionWallet, montoMicro: '1000000', precioWei: PRECIO_WEI,
+    aWallet: u.direccionWallet, montoMicro: '2000000', precioWei: PRECIO_WEI,
     origenWeiCotizado: '1', plazoSeg: 900, venceEn: new Date(Date.now() + 900_000),
     reglaRecalculo: compra.REGLA_RECALCULO,
     depositoId: new mongoose.Types.ObjectId(), origenWei: '1000000000000000000',
@@ -257,7 +257,7 @@ decir('las guardas de abrir');
   const sinWallet = await persona({ conWallet: false });
   let codigo = null;
   try {
-    await compra.abrir(sinWallet, { montoMicro: '1000000', cadena: POLYGON,
+    await compra.abrir(sinWallet, { montoMicro: '2000000', cadena: POLYGON,
       aceptoRecalculo: true, reglaRecalculoVersion: compra.REGLA_RECALCULO });
   } catch (e) { codigo = e.codigo; }
   comprobar(codigo === 'SIN_DIRECCION_WALLET',
@@ -275,7 +275,7 @@ decir('las guardas de abrir');
   for (const [cambio, esperado, que] of casos) {
     let c = null;
     try {
-      await compra.abrir(u, { montoMicro: '1000000', cadena: POLYGON, aceptoRecalculo: true,
+      await compra.abrir(u, { montoMicro: '2000000', cadena: POLYGON, aceptoRecalculo: true,
         reglaRecalculoVersion: compra.REGLA_RECALCULO, ...cambio });
     } catch (e) { c = e.codigo; }
     comprobar(c === esperado, `${que} → ${esperado}`, c);
@@ -288,7 +288,7 @@ decir('las guardas de abrir');
   await dep.asegurarDireccion(dela);
   let cc = null;
   try {
-    await compra.abrir(await Usuario.findById(dela._id).lean(), { montoMicro: '1000000', cadena: POLYGON,
+    await compra.abrir(await Usuario.findById(dela._id).lean(), { montoMicro: '2000000', cadena: POLYGON,
       aceptoRecalculo: true, reglaRecalculoVersion: compra.REGLA_RECALCULO });
   } catch (e) { cc = e.codigo; }
   comprobar(cc === 'WALLET_DE_LA_CASA', 'una billetera de la casa no puede comprar', cc);
@@ -298,7 +298,7 @@ decir('una orden es de quien la pidió');
 {
   const a = await persona();
   const b = await persona();
-  const orden = await compra.abrir(a, { montoMicro: '1000000', cadena: POLYGON,
+  const orden = await compra.abrir(a, { montoMicro: '2000000', cadena: POLYGON,
     aceptoRecalculo: true, reglaRecalculoVersion: compra.REGLA_RECALCULO });
   let codigo = null;
   try { await compra.ver(String(b._id), orden.id); } catch (e) { codigo = e.codigo; }
@@ -313,7 +313,7 @@ decir('una orden es de quien la pidió');
 decir('cancelar solo lo que no tiene dinero encima');
 {
   const u = await persona();
-  const orden = await compra.abrir(u, { montoMicro: '1000000', cadena: POLYGON,
+  const orden = await compra.abrir(u, { montoMicro: '2000000', cadena: POLYGON,
     aceptoRecalculo: true, reglaRecalculoVersion: compra.REGLA_RECALCULO });
   await compra.OrdenCompra.updateOne({ _id: orden.id }, { depositoId: new mongoose.Types.ObjectId() });
   let codigo = null;
@@ -372,6 +372,79 @@ decir('el tamiz de sanciones');
   const d2Leido = await DepositoExterno.findById(d2._id).lean();
   comprobar(d2Leido.estado === 'visto', 'y el depósito NO se anula: se vuelve a intentar', d2Leido.estado);
   process.env.GENESIS_URL = antes;
+}
+
+decir('el mínimo por red lo pone el servidor');
+{
+  const u = await persona();
+  const redesUsdt = (await import('../lib/redesUsdt.js')).default;
+  // Ethereum pide 25 y no 2: el mínimo no es capricho, es que barrer cuatro
+  // dólares ahí cuesta más que los cuatro dólares.
+  let codigo = null;
+  try {
+    await compra.abrir(u, { montoMicro: '2000000', cadena: 1,
+      aceptoRecalculo: true, reglaRecalculoVersion: compra.REGLA_RECALCULO });
+  } catch (e) { codigo = e.codigo; }
+  comprobar(codigo === 'BAJO_MINIMO', '2 USDT en Ethereum se rechazan', codigo);
+  let c2 = null;
+  try {
+    await compra.abrir(u, { montoMicro: '1000000', cadena: POLYGON,
+      aceptoRecalculo: true, reglaRecalculoVersion: compra.REGLA_RECALCULO });
+  } catch (e) { c2 = e.codigo; }
+  comprobar(c2 === 'BAJO_MINIMO', 'y 1 USDT en Polygon también', c2);
+  const ok = await compra.abrir(u, { montoMicro: '2000000', cadena: POLYGON,
+    aceptoRecalculo: true, reglaRecalculoVersion: compra.REGLA_RECALCULO });
+  comprobar(Boolean(ok.id), 'pero 2 USDT en Polygon sí entran');
+
+  // LA PANTALLA Y EL SERVIDOR DICEN EL MISMO NÚMERO. La pantalla lo enseña en
+  // el selector de red; si los dos se separan, alguien lee «mínimo 2» y recibe
+  // un rechazo por bajo mínimo. Esta prueba falla el día que se cambie uno solo.
+  const pantalla = (await import('node:fs'))
+    .readFileSync(new URL('../../../apps-web/ordenex/comprar.js', import.meta.url), 'utf8');
+  for (const [id, cfg] of Object.entries(redesUsdt.REDES)) {
+    const m = new RegExp(`\\{ id: ${id},[^}]*minimo: (\\d+)`).exec(pantalla);
+    comprobar(m && Number(m[1]) * 1e6 === cfg.minimoMicro,
+      `${cfg.nombre}: la pantalla dice lo mismo que el servidor`,
+      `pantalla ${m ? m[1] : '?'} vs servidor ${cfg.minimoMicro / 1e6}`);
+  }
+}
+
+decir('la holgura de reloj');
+{
+  // `createdAt` lo pone el reloj de este servidor y `enCadena` el del
+  // validador que minó el bloque. Sin holgura, un servidor unos segundos
+  // adelantado haría que un depósito hecho JUSTO después de congelar no
+  // encontrara su orden, y esa persona vería un recálculo que no le tocaba.
+  const u = await persona();
+  const orden = await compra.abrir(u, { montoMicro: '100000000', cadena: POLYGON,
+    aceptoRecalculo: true, reglaRecalculoVersion: compra.REGLA_RECALCULO });
+  const crudo = '100000000';
+  const d = await DepositoExterno.create({
+    cadena: POLYGON, txHash: keccakId(`h${n}`), logIndex: 0, bloque: 9,
+    // El bloque dice que fue treinta segundos ANTES de que naciera la orden.
+    enCadena: new Date(Date.now() - 30_000),
+    de: Wallet.createRandom().address, direccion: u.direccionDeposito, userId: String(u._id),
+    crudo, decimales: 6, cantidad: decimales.aCanonico(crudo, POLYGON, 'USDT'),
+  });
+  const r = await compra.atender(d);
+  comprobar(r.estado === 'lista',
+    'un desfase de segundos no le cuesta a nadie un recálculo de gusto', r.estado);
+  const leida = await compra.OrdenCompra.findById(orden.id).lean();
+  comprobar(leida.porQuePrecio === 'congelado', 'y conserva su precio congelado', leida.porQuePrecio);
+
+  // Pero un depósito de hace una hora NO casa con una orden de ahora: eso ya
+  // no es desfase de reloj, es otra cosa que hay que preguntar.
+  const u2 = await persona();
+  await compra.abrir(u2, { montoMicro: '100000000', cadena: POLYGON,
+    aceptoRecalculo: true, reglaRecalculoVersion: compra.REGLA_RECALCULO });
+  const d2 = await DepositoExterno.create({
+    cadena: POLYGON, txHash: keccakId(`h2${n}`), logIndex: 0, bloque: 10,
+    enCadena: new Date(Date.now() - 3600_000),
+    de: Wallet.createRandom().address, direccion: u2.direccionDeposito, userId: String(u2._id),
+    crudo, decimales: 6, cantidad: decimales.aCanonico(crudo, POLYGON, 'USDT'),
+  });
+  const r2 = await compra.atender(d2);
+  comprobar(r2.estado === 'recalculada', 'y una hora de diferencia sí se pregunta', r2.estado);
 }
 
 decir('la cuenta por pagar a Orden Global');

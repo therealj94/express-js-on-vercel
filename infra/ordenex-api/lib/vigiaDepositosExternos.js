@@ -45,14 +45,21 @@
 // opcional.
 //
 // ══════════════════════════════════════════════════════════════════════════
-// LO QUE ESTE ARCHIVO NO HACE TODAVÍA, A PROPÓSITO
+// LO QUE ESTE ARCHIVO NO HACE, Y NO VA A HACER
 //
-// NO ACREDITA. Ve, identifica, confirma y anota — y ahí para. Acreditar exige
-// el tamiz de sanciones, la atribución a una orden con su precio congelado y el
-// libro, y esas tres piezas vienen después. Encenderlas es un paso aparte y
-// deliberado, porque una semana MIRANDO sin tocar el libro enseña lo que
-// ninguna prueba puede: qué RPC falla de verdad, cuánto tarda cada red de
-// verdad, y qué hace la gente que no se puede predecir.
+// NO ACREDITA. Ve, identifica y anota — y ahí para. Quien decide qué pasa con
+// un depósito es lib/compra.js: le busca su orden, le aplica el precio
+// congelado, pasa el tamiz de sanciones y entrega el ORIGEN. Y quien mueve el
+// dinero de sitio es lib/barridoExterno.js.
+//
+// La separación no es de orden de construcción: es permanente, y es lo que
+// permite tener este archivo encendido MIRANDO mientras los otros dos están
+// apagados. Una semana así enseña lo que ninguna prueba puede — qué RPC falla
+// de verdad, cuánto tarda cada red de verdad, y qué hace la gente que no se
+// puede predecir— sin que un fallo cueste un centavo.
+//
+// Por eso `estado` y `custodia` son dos campos distintos en el depósito: este
+// archivo escribe el primero al nacer y no vuelve a tocar ninguno.
 
 const mongoose = require('mongoose');
 const { Contract, zeroPadValue, getAddress } = require('ethers');
@@ -384,8 +391,15 @@ async function arrancar() {
     }
   }
   await DepositoExterno.syncIndexes().catch(() => {});
+  // Se dice si los OTROS dos están encendidos, porque es la pregunta que se
+  // hace quien lee este log: «¿esto ya mueve dinero?». Decir solo «mirando»
+  // era cierto de este archivo y engañoso del sistema.
+  const mueve = [
+    process.env.BARRIDO === '1' ? 'barrido ON' : 'barrido OFF',
+    process.env.COMPRAS === '1' ? 'entrega ON' : 'entrega OFF',
+  ].join(', ');
   console.log(`[vigia-ext] mirando ${Object.keys(redes.REDES).length} redes cada ${CADA_MS / 1000}s` +
-    ` — SIN acreditar: solo se anota lo que se ve`);
+    ` — este vigía solo anota (${mueve})`);
   // Igual que el barrido y las compras: el reloj se pone aunque la primera
   // vuelta truene. Una excepción aquí dejaría al vigía sin latir para siempre.
   await ciclo().catch((e) => console.error(`[vigia-ext] la primera vuelta falló: ${e.message}`));

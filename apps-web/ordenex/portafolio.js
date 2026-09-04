@@ -1035,5 +1035,11 @@ const VPORTA = (() => {
     vista, vistaActividad, alPintar, apagar,
     eligeActivo, todo, continuar, volver, confirmarRetiro, otro, copiar,
     recargar: cargar, recargarActividad: cargarActividad, recargarWallet, depositar, cerrarPanel,
+    // Para poder MIRAR el desglose de la comisión sin tener que hacer un
+    // retiro de verdad. Un panel que solo aparece con dinero de por medio es
+    // un panel que nadie revisa hasta que ya está en producción.
+    _adentro: { corteDe, pctComision,
+      verConfirmacion: (c) => { cuentas = cuentas || []; confirmando = c; resultado = null; pintarRetiro(); },
+      verResultado: (r) => { cuentas = cuentas || []; resultado = r; confirmando = null; pintarRetiro(); } },
   };
 })();

@@ -219,6 +219,15 @@ async function abrir(usuario, { montoMicro, cadena: red, aceptoRecalculo, reglaR
   if (!/^[0-9]{1,30}$/.test(String(montoMicro)) || BigInt(montoMicro) <= 0n) {
     throw fallo('MONTO_INVALIDO', 'El monto tiene que ser un entero de micro-dólares positivo.');
   }
+  // El mínimo de la red, comprobado AQUÍ y no solo en la pantalla. Quien tiene
+  // que negarse es el servidor: una pantalla puede estar vieja o puede no ser
+  // la nuestra. En Ethereum el mínimo no es capricho — barrer cuatro dólares
+  // cuesta más que los cuatro dólares.
+  const minimo = BigInt(redes.REDES[id].minimoMicro || 0);
+  if (BigInt(montoMicro) < minimo) {
+    throw fallo('BAJO_MINIMO',
+      `En ${redes.REDES[id].nombre} el mínimo es ${Number(minimo) / 1e6} USDT.`);
+  }
   if (aceptoRecalculo !== true || reglaRecalculoVersion !== REGLA_RECALCULO) {
     // No es burocracia: si el plazo vence, el precio cambia, y eso hay que
     // haberlo dicho ANTES. Una aceptación guardada sin versión no sirve de
@@ -380,12 +389,27 @@ async function atender(dep) {
   // El instante que manda es el del BLOQUE, no el de cuando lo vimos: si el
   // vigía estuvo caído veinte minutos, esa avería NUESTRA no puede vencerle el
   // precio a quien pagó a tiempo.
+  //
+  // LA TOLERANCIA DE RELOJ, y por qué existe. `createdAt` lo pone el reloj de
+  // este servidor; `enCadena` lo pone el validador que minó el bloque. Los dos
+  // relojes no son el mismo y no tienen por qué coincidir al segundo. Sin
+  // holgura, un servidor unos segundos adelantado haría que un depósito hecho
+  // JUSTO después de congelar el precio no encontrara su orden, y esa persona
+  // vería un recálculo que no le tocaba — con un precio, encima, igual al que
+  // ya tenía.
+  //
+  // Noventa segundos no se pueden aprovechar: el recálculo usa el precio del
+  // momento en que se procesa, así que casar con una orden abierta un poco
+  // después da exactamente el mismo número. Lo único que cambia es que no se
+  // le pregunta de gusto.
+  const HOLGURA_RELOJ_MS = 90_000;
+  const limite = new Date(new Date(dep.enCadena).getTime() + HOLGURA_RELOJ_MS);
   const orden = await OrdenCompra.findOne({
     direccion: dep.direccion,
     cadena: dep.cadena,
     estado: 'esperando',
     depositoId: null,
-    createdAt: { $lte: dep.enCadena },
+    createdAt: { $lte: limite },
   }).sort({ createdAt: -1 });
 
   const aTiempo = orden && new Date(dep.enCadena) <= new Date(orden.venceEn);

@@ -40,6 +40,7 @@ const REDES = {
     espera: 120,
     pisoBloques: 60,
     explorador: 'https://polygonscan.com/tx/',
+    minimoMicro: 2_000_000, // 2 USDT
     bloqueSegundos: 2, // punto de partida; se mide al arrancar
   },
   56: {
@@ -49,6 +50,7 @@ const REDES = {
     espera: 90,
     pisoBloques: 30,
     explorador: 'https://bscscan.com/tx/',
+    minimoMicro: 2_000_000, // 2 USDT
     bloqueSegundos: 0.75,
   },
   1: {
@@ -62,11 +64,19 @@ const REDES = {
     espera: 900,
     pisoBloques: 64,
     explorador: 'https://etherscan.io/tx/',
+    // Veinticinco, y no dos. El mínimo de Ethereum no lo pone el capricho sino
+    // el gas: barrer cuatro dólares ahí cuesta más que los cuatro dólares.
+    minimoMicro: 25_000_000, // 25 USDT
     bloqueSegundos: 12,
   },
 };
 
-/* El explorador de cada red. Va aquí, con el contrato y la espera, porque es
+/* El MÍNIMO por red, en micro-dólares. Vive aquí y no en la pantalla porque
+   quien tiene que negarse es el servidor: una pantalla puede estar vieja, o
+   puede no ser la nuestra. La pantalla enseña el mismo número y hay una prueba
+   que falla si los dos se separan.
+
+   El explorador de cada red. Va aquí, con el contrato y la espera, porque es
    parte de lo que la casa le debe a quien deposita: un recibo que se pueda
    comprobar en un sitio que no seamos nosotros. Una pantalla que dice «llegó»
    sin enlace pide un acto de fe. */
