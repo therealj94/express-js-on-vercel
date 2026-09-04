@@ -702,10 +702,13 @@ def construir():
              'recálculo. Conectada al servidor.'],
             ['Avisos al teléfono', '<b>Falta</b>',
              'La tubería ya existe en la app. Es lo único de esta lista que es código.'],
-            ['Las respuestas de la Junta', '<b>Falta</b>',
-             'Las seis preguntas de la página 8 del documento anterior. Tres cambian el código.'],
-            ['La comisión', '<b>Falta</b>',
-             'Hoy es cero, y eso es una decisión tomada por omisión.'],
+            ['De dónde sale el ORIGEN', '<b>Decidido</b>',
+             'Ordenex se lo compra a Orden Global: cada entrega deja una cuenta por pagar entre '
+             'las dos empresas. Anotada en el momento, con su hash.'],
+            ['La comisión', '<b>Decidido</b>',
+             '1 % y solo al salir. Entrar no cobra; el libro de órdenes tampoco.'],
+            ['Las otras respuestas de la Junta', '<b>Falta</b>',
+             'De quién es la comisión y en qué está el tesoro — página 8 del documento anterior.'],
             ['El permiso para prestar el servicio', '<b>Falta</b>',
              'Ver la advertencia del final. No la contesta un documento técnico.'],
         ],
@@ -751,29 +754,42 @@ def construir():
     h.append(PageBreak())
     h.append(P('Lo que sigue haciendo falta de vos', 'h1'))
     h.append(P(
-        'La billetera única, el gas y las frases ya están. Queda lo que no se construye: cuatro '
-        'decisiones, y ninguna la puede tomar el código.', 'pg'))
-    h.append(Spacer(1, 4))
+        'La billetera única, el gas, las frases y las dos decisiones grandes ya están. Queda '
+        'poco, y nada de eso lo puede decidir el código.', 'pg'))
+    h.append(Spacer(1, 6))
+    h.append(recuadro(
+        'Lo que ya se decidió, y cómo quedó escrito',
+        '<b>De dónde sale el ORIGEN.</b> Ordenex no vende de un inventario comprado de antemano: '
+        'se lo compra a Orden Global, y cada entrega deja una CUENTA POR PAGAR entre las dos '
+        'empresas. Se anota en el momento de entregar, con el ORIGEN, el precio al que se valoró '
+        'y el hash — una fila por entrega, nunca un total que se va sumando. Un saldo acumulado '
+        'que un día no cuadra no se puede auditar; una suma de filas con hash, sí.<br/><br/>'
+        '<b>La comisión.</b> 1 %, y solo al salir. Entrar no cobra nada y el libro de órdenes '
+        'tampoco. Se debita lo que la persona escribe y sale eso menos el 1 % —pide 100, recibe '
+        '99— y la pantalla lo enseña ANTES de firmar, con la misma cuenta que hace el servidor. '
+        'Una comisión que se descubre después es una comisión cobrada a escondidas, aunque esté '
+        'en los términos.',
+        VERDE))
+    h.append(Spacer(1, 8))
     h.append(tabla(
-        ['Qué', 'Para qué', 'Cuándo'],
+        ['Qué falta', 'Para qué', 'Cuándo'],
         [
-            ['<b>Las respuestas de la página 8 del documento anterior</b>',
-             'De dónde sale el ORIGEN —si Ordenex vende de su propio inventario o se lo compra a '
-             'Orden Global cada vez—, de quién es la comisión, y en qué está el tesoro. Tres de '
-             'esas seis cambian el código.',
+            ['De quién es la comisión',
+             'El 1 % ya se cobra y se abona a una cuenta interna de la casa. A qué empresa le '
+             'toca ese ingreso es una decisión contable que no cambia el código, pero que hay '
+             'que tomar antes de que se acumule.',
              '<b>Antes de abrir</b>'],
-            ['La comisión',
-             'Hoy es cero. No está sin decidir: está decidida en cero por omisión, que es peor, '
-             'porque nadie eligió eso.', 'Antes de abrir'],
+            ['En qué está el tesoro',
+             'La otra pregunta de la página 8 que sigue en pie.', 'Antes de abrir'],
             ['El plazo del precio congelado',
-             'Hoy son quince minutos. Es lo que la pantalla dice y lo que el servidor hace; '
-             'cambiarlo es una variable, pero es tu número, no mío.', 'Cuando quieras'],
+             'Hoy son quince minutos, y es lo que la pantalla dice y lo que el servidor hace. '
+             'Cambiarlo es una variable, pero es tu número, no mío.', 'Cuando quieras'],
             ['El umbral de Ethereum',
-             'Cuánto tiene que juntar una dirección antes de que valga la pena barrerla ahí. '
-             'Barrer cuatro dólares en Ethereum cuesta más que la comisión entera.', 'Antes de '
-             'encender Ethereum'],
+             'Hoy el mínimo son 25 dólares, puesto para que barrer no cueste más que lo barrido. '
+             'Si querés otro, se cambia en un sitio y la pantalla lo sigue.', 'Antes de encender '
+             'Ethereum'],
         ],
-        [58 * mm, au - 96 * mm, 26 * mm]))
+        [50 * mm, au - 88 * mm, 26 * mm]))
     h.append(Spacer(1, 8))
     h.append(recuadro(
         'Y una advertencia que prefiero dar ahora',
