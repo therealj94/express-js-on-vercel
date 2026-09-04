@@ -49,9 +49,19 @@ function cuadro() {
   let rpcs = null;
   try { rpcs = require('./proveedores').enUso(); } catch { rpcs = null; }
 
+  // La derivacion: si este proceso puede calcular direcciones, si puede firmar,
+  // y la HUELLA de su semilla. La huella es lo que permite ver de un vistazo
+  // que el proceso web y el que barre van con la MISMA semilla — dos huellas
+  // distintas significan que uno esta publicando direcciones que el otro no
+  // puede barrer, y eso no se nota de ninguna otra forma hasta que hay dinero
+  // atrapado. Ni la frase ni la xpub salen de aqui (ver lib/derivacion.js).
+  let derivacion = null;
+  try { derivacion = require('./derivacion').estado(); } catch { derivacion = null; }
+
   return {
     decimales,
     rpcs,
+    derivacion,
     // Los secretos: solo si estan y si tienen forma.
     ORDENEX_ADM: {
       puesta: puesta('ORDENEX_ADM'),
@@ -77,6 +87,23 @@ function cuadro() {
       valida: (process.env.ORDENEX_TOKEN || '').length >= LARGO_MINIMO_SECRETO,
       nota: 'secreto HS256 de las sesiones',
     },
+    // La semilla y su xpub. NUNCA su valor, ni su largo, ni sus ultimas letras.
+    // `valida` sale de la comprobacion de huella de lib/derivacion.js: es la
+    // que distingue «hay una frase» de «hay LA frase de este entorno», y esa
+    // distincion es la unica que impide publicar direcciones de otro universo.
+    ORDENEX_SEMILLA_DEPOSITOS: {
+      puesta: puesta('ORDENEX_SEMILLA_DEPOSITOS'),
+      valida: Boolean(derivacion && derivacion.puedeFirmar),
+      nota: 'frase BIP-39 de las direcciones de deposito; solo en el proceso que barre',
+    },
+    ORDENEX_SEMILLA_XPUB: {
+      puesta: puesta('ORDENEX_SEMILLA_XPUB'),
+      valida: Boolean(derivacion && derivacion.puedeCalcular),
+      // La huella NO es secreto y no deriva nada; la xpub si se calla, porque
+      // con ella se enumeran todas las direcciones de la casa sin tocar Mongo.
+      huella: derivacion ? derivacion.huella : null,
+      nota: 'xpub neutra con la que se calculan las direcciones sin poder firmarlas',
+    },
     GENESIS_API_KEY: { puesta: puesta('GENESIS_API_KEY'), nota: 'clave de la app ordenex en Genesis (SSO, tamiz, AML)' },
     MONGODB_URI: { puesta: puesta('MONGODB_URI'), nota: 'la base; el nombre ordenex lo fija el codigo' },
     // Lo que no es secreto va con su valor.
@@ -91,6 +118,6 @@ function cuadro() {
 
 /** Los nombres de lo que NO puede aparecer en ninguna respuesta: para que una
  *  prueba lo compruebe contra el JSON serializado. */
-const SECRETOS = ['ORDENEX_ADM', 'ORDENEX_HOT_KEY', 'ORDENEX_ADMIN_KEY', 'ORDENEX_TOKEN', 'GENESIS_API_KEY', 'MONGODB_URI'];
+const SECRETOS = ['ORDENEX_ADM', 'ORDENEX_HOT_KEY', 'ORDENEX_ADMIN_KEY', 'ORDENEX_TOKEN', 'GENESIS_API_KEY', 'MONGODB_URI', 'ORDENEX_SEMILLA_DEPOSITOS', 'ORDENEX_SEMILLA_XPUB'];
 
 module.exports = { cuadro, SECRETOS, LARGO_MINIMO_SECRETO };

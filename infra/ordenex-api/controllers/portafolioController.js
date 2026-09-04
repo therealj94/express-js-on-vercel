@@ -6,11 +6,11 @@
 // reserva de idempotencia (retiroKey) puesta ANTES de debitar, que es donde
 // un reintento doble empezaria a costar plata.
 
-const { Wallet, getAddress } = require('ethers');
+const { getAddress } = require('ethers');
 const { Usuario, Cuenta, Asiento, Deposito, Retiro } = require('../models');
 const ledger = require('../lib/ledger');
-const { cifrar } = require('../lib/cripto');
 const cadena = require('../lib/cadena5550');
+const { asegurarDireccion } = require('../lib/deposito');
 const { TOKENS, PORSIMBOLO } = require('../lib/tokens');
 
 // lib/genesis.js se carga PEREZOSO y a demanda: si el modulo falta o truena
@@ -70,28 +70,16 @@ async function portafolio(req, res) {
     // direccion: una direccion publicada cuya llave se perdio es un buzon
     // sin fondo, y el usuario mandaria dinero a un sitio que no podemos
     // barrer.
-    let direccionDeposito = usuario.direccionDeposito;
-    if (!direccionDeposito) {
-      try {
-        const nueva = Wallet.createRandom();
-        const blob = cifrar(nueva.privateKey);
-        const guardado = await Usuario.findOneAndUpdate(
-          // La guarda `direccionDeposito: null` hace atomica la creacion:
-          // dos peticiones a la vez solo dejan pasar a una, y la otra relee.
-          { _id: usuario._id, direccionDeposito: null },
-          { $set: { direccionDeposito: nueva.address, llaveDepositoCifrada: blob } },
-          { new: true }
-        );
-        direccionDeposito = guardado
-          ? guardado.direccionDeposito
-          : (await Usuario.findById(userId)).direccionDeposito;
-      } catch (e) {
-        // Sin ORDENEX_ADM (o Mongo a medias) no hay direccion — se dice con
-        // null y se canta en el log; el resto del portafolio sigue sirviendo.
-        console.error(`[portafolio] no se pudo crear la direccion de deposito de ${userId}: ${e.message}`);
-        direccionDeposito = null;
-      }
-    }
+    // Como nace la direccion y de donde sale su llave lo decide lib/deposito.js:
+    // dos sitios con ese criterio se separan, y separarse aqui significa una
+    // direccion publicada que nadie puede barrer. Sigue siendo perezosa y
+    // atomica, y sigue devolviendose EN ESTA MISMA RESPUESTA — que es la razon
+    // por la que a un usuario con direccion ya creada no se le cambia nunca:
+    // no existe una direccion creada que no haya salido ya por el cable.
+    //
+    // Sin direccion se contesta null y se canta en el log; el resto del
+    // portafolio sigue sirviendo.
+    const { direccion: direccionDeposito } = await asegurarDireccion(usuario);
 
     /* Y la direccion de la Veta Wallet de esta persona, que viene del SSO de
        Genesis. NO es un saldo ni una cuenta de esta casa: es el dato que le

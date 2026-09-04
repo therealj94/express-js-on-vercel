@@ -29,6 +29,12 @@ const SECRETOS = {
   ORDENEX_TOKEN: 'SECRETO-TOKEN-0123456789abcdefghijklmnopqrstuv',
   GENESIS_API_KEY: 'SECRETO-GENESIS-KEY',
   MONGODB_URI: 'mongodb+srv://usuario:SECRETO-PASS@cluster.ejemplo/SECRETO-BASE',
+  // La frase de las direcciones de deposito y su xpub. Van aqui para que la
+  // comprobacion de fugas de abajo —que busca el valor entero Y sus ultimos
+  // ocho caracteres en el JSON— las cubra igual que a las demas. Una frase
+  // filtrada en una respuesta del panel es todas las direcciones de la casa.
+  ORDENEX_SEMILLA_DEPOSITOS: 'SECRETO-FRASE-uno dos tres cuatro cinco seis siete ocho',
+  ORDENEX_SEMILLA_XPUB: 'SECRETO-XPUB-0123456789abcdefghijklmnopqrstuvwxyz',
 };
 
 decir('el cuadro, con todo puesto');
@@ -41,7 +47,7 @@ decir('el cuadro, con todo puesto');
     comprobar(!json.includes(v), `${k}: el valor NO sale en el cuadro`);
     comprobar(!json.includes(v.slice(-8)), `${k}: ni sus ultimos caracteres`);
   }
-  comprobar(NOMBRES.every((n) => c[n] && c[n].puesta === true), 'los seis secretos figuran como puestos', JSON.stringify(Object.fromEntries(NOMBRES.map((n) => [n, c[n]?.puesta]))));
+  comprobar(NOMBRES.every((n) => c[n] && c[n].puesta === true), 'todos los secretos declarados figuran como puestos', JSON.stringify(Object.fromEntries(NOMBRES.map((n) => [n, c[n]?.puesta]))));
   comprobar(c.ORDENEX_ADM.valida === true, 'ORDENEX_ADM larga: valida');
   comprobar(c.ORDENEX_HOT_KEY.valida === true && /^0x[0-9a-fA-F]{40}$/.test(c.ORDENEX_HOT_KEY.direccion || ''),
     'ORDENEX_HOT_KEY con forma de llave: valida, y sale la DIRECCION publica (no la llave)', JSON.stringify(c.ORDENEX_HOT_KEY));

@@ -37,10 +37,60 @@ const usuarioSchema = new Schema(
     // La direccion de deposito que genera el vigia para este usuario.
     direccionDeposito: { type: String, default: null },
     llaveDepositoCifrada: { type: String, default: null },
+    // DE DONDE SALE la llave que controla `direccionDeposito`. Se escribe UNA
+    // vez, en la misma actualizacion atomica que la direccion, y no se cambia.
+    //
+    // Existe porque el barrido NO PUEDE DEDUCIR el origen. Deducirlo por la
+    // presencia de `llaveDepositoCifrada` se rompe el dia que alguien limpie
+    // ese campo, y una deduccion equivocada es una direccion que se publico y
+    // que no se puede barrer — o sea dinero de alguien atrapado para siempre.
+    //
+    //   'guardada' — Wallet.createRandom() con su llave cifrada (lo de antes)
+    //   'derivada' — se calcula de la semilla mas `indiceDeposito`
+    //   null       — todavia no tiene direccion
+    origenDeLlave: { type: String, enum: ['guardada', 'derivada', null], default: null },
+    indiceDeposito: { type: Number, default: null },
+    // Que semilla la derivo. Hoy vale siempre 1 y aun asi va desde el primer
+    // dia: la semilla NO SE PUEDE ROTAR (ver lib/derivacion.js), asi que el dia
+    // que haya que emitir una generacion nueva hay que saber de cual es cada
+    // fila — y añadir el campo entonces obligaria a adivinarlo en miles.
+    generacionDeposito: { type: Number, default: null },
     // Los terminos y el aviso de riesgo que acepto, por version (lib/terminos.js)
     // y cuando. null = nunca acepto ninguna: no coloca ordenes ni abre fiat.
     terminosVersion: { type: String, default: null },
     terminosEn: { type: Date, default: null },
+  },
+  { timestamps: true }
+);
+
+// Dos personas con el mismo indice serian dos personas en la MISMA direccion,
+// y en la cadena eso es indistinguible: el vigia no sabria de quien es cada
+// deposito.
+//
+// PARCIAL Y NO `sparse`, y la diferencia no es de estilo: un indice sparse solo
+// deja fuera los documentos donde el campo NO EXISTE. Aqui el campo tiene
+// `default: null`, asi que todo usuario nuevo lo lleva puesto en null — presente
+// — y el sparse lo indexa: el SEGUNDO usuario sin direccion chocaria con el
+// primero por `null` y NO SE PODRIA CREAR NADIE MAS. Con partialFilterExpression
+// sobre `$type: 'number'` solo entran los que de verdad tienen indice. Es el
+// mismo motivo por el que ordenSchema:152-155 usa parcial para `ordenKey`.
+usuarioSchema.index(
+  { indiceDeposito: 1 },
+  { unique: true, partialFilterExpression: { indiceDeposito: { $type: 'number' } } }
+);
+
+// ── Contador ────────────────────────────────────────────────────────────────
+// Un numero que solo sube, para repartir indices de deposito.
+//
+// POR QUE NO SE CUENTA LOS USUARIOS. countDocuments() da el mismo numero a dos
+// peticiones simultaneas; el ObjectId no es un entero; y la posicion en una
+// lista cambia cuando alguien se borra. Cualquiera de las tres reparte un
+// indice que ya se dio, o sea DOS PERSONAS EN UN BUZON. $inc en un documento
+// es atomico de verdad y sobrevive a los borrados.
+const contadorSchema = new Schema(
+  {
+    clave: { type: String, required: true, unique: true },
+    valor: { type: Number, required: true, default: 0 },
   },
   { timestamps: true }
 );
@@ -346,4 +396,5 @@ module.exports = {
   Retiro: mongoose.model('Retiro', retiroSchema, 'retiros'),
   Agente: mongoose.model('Agente', agenteSchema, 'agentes'),
   Solicitud: mongoose.model('Solicitud', solicitudSchema, 'solicitudes'),
+  Contador: mongoose.model('Contador', contadorSchema, 'contadores'),
 };

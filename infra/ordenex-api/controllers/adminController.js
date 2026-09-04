@@ -10,7 +10,7 @@ const { esDeclarable, DECLARABLES, publico, olvidar } = require('../lib/preciosD
 const ledger = require('../lib/ledger');
 const cadena = require('../lib/cadena5550');
 const { PORSIMBOLO } = require('../lib/tokens');
-const { descifrarLlavePrivada } = require('../lib/cripto');
+const { llaveDeUsuario, MOTIVOS, cuantosConLlaveGuardada } = require('../lib/deposito');
 const { cuadro: configuracionCuadro } = require('../lib/configuracion');
 const { TERMINOS_VERSION } = require('../lib/terminos');
 
@@ -230,9 +230,15 @@ async function barrer(req, res) {
 
   let usuarios;
   try {
+    // La consulta pide SOLO que haya direccion. Antes exigia tambien
+    // `llaveDepositoCifrada: {$ne:null}`, y eso dejaba fuera a todo usuario con
+    // direccion DERIVADA —que no tiene blob— sin decir nada: no salia en
+    // `barridos` ni en `fallos`, asi que el panel diria «todo barrido» sobre un
+    // conjunto del que faltaba la mitad. Quien filtra por origen es
+    // lib/deposito.js, que si anota el fallo.
     usuarios = await Usuario.find(
-      { direccionDeposito: { $ne: null }, llaveDepositoCifrada: { $ne: null } },
-      { direccionDeposito: 1, llaveDepositoCifrada: 1 }
+      { direccionDeposito: { $ne: null } },
+      { direccionDeposito: 1, llaveDepositoCifrada: 1, origenDeLlave: 1, indiceDeposito: 1 }
     ).lean();
   } catch (e) {
     return res.status(503).json({ error: 'No se pudieron leer las direcciones.', codigo: 'NO_SE_PUDO_LEER' });
@@ -251,13 +257,17 @@ async function barrer(req, res) {
     }
     if (BigInt(saldo.wei) === 0n) continue; // nada que barrer, ni es un fallo
 
-    const llave = descifrarLlavePrivada(u.llaveDepositoCifrada);
-    if (!llave) {
-      // Clave del cifrado ausente/equivocada o blob corrupto. Jamas se
-      // adivina: se anota y que lo mire un humano.
-      fallos.push({ direccion, error: 'la llave no se pudo descifrar' });
+    // De donde sale la llave lo decide lib/deposito.js, que ademas COMPRUEBA
+    // que la llave controle exactamente esta direccion antes de devolverla.
+    // Antes aqui se descifraba y se firmaba con lo que saliera; no mordia
+    // porque el blob siempre fue el correcto, pero con dos origenes
+    // conviviendo firmar sin comprobar es firmar desde la direccion de otro.
+    const r = llaveDeUsuario(u);
+    if (!r.ok) {
+      fallos.push({ direccion, error: MOTIVOS[r.motivo] || r.motivo });
       continue;
     }
+    const llave = r.llave;
 
     try {
       const envio = await cadena.enviarDesde(llave, {
@@ -300,7 +310,13 @@ async function estado(req, res) {
     ]);
     const solicitudes = {};
     for (const s of porEstado) solicitudes[s._id] = s.n;
-    conteos = { usuarios, agentes, ordenesAbiertas, retirosPendientes, retirosEnRevision, solicitudes };
+    // Cuantos usuarios quedan con la llave GUARDADA en la base, en vez de
+    // derivada. Es un numero que solo baja y que un dia es cero: ese dia
+    // ORDENEX_ADM deja de proteger llaves de deposito. Sin enseñarlo, la
+    // migracion no termina nunca porque nadie sabe cuanto falta.
+    const depositosConLlaveGuardada = await cuantosConLlaveGuardada();
+    conteos = { usuarios, agentes, ordenesAbiertas, retirosPendientes, retirosEnRevision,
+                solicitudes, depositosConLlaveGuardada };
   } catch (e) {
     console.error(`[admin] estado: mongo no contesto: ${e.message}`);
     return res.status(503).json({ error: 'No se pudo leer el estado.', codigo: 'NO_SE_PUDO_LEER' });
