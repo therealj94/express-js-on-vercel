@@ -42,6 +42,7 @@ import type { ResultadoVivacidad } from '../kyc/vivacidad.js'
 import { tamizarPersona } from '../aml/tamiz.js'
 import { evaluarRiesgo, UMBRAL_DILIGENCIA_USD } from '../aml/riesgo.js'
 import { abrirCasoPorTamiz } from '../aml/casos.js'
+import { bloqueada } from './bloqueo.js'
 import type { Identidad, EstadoIdentidad, Operador, VinculoApp } from '../types.js'
 
 const ahora = () => new Date().toISOString()
@@ -975,9 +976,20 @@ export const porDireccion = (direccion: string): Identidad | undefined => {
 
 /** Lo que se le puede contar a una app: nunca el documento ni la biometría. */
 export function perfilPublico(identidad: Identidad) {
+  const bloq = bloqueada(identidad)
   return {
     gid: identidad.gid,
-    verificada: identidad.estado === 'verificada',
+    /* `verificada` ES LA PUERTA, y por eso el bloqueo la cierra aquí y no solo
+       en las rutas. Cualquier app del ecosistema —y cualquier ruta futura de
+       esta casa— pregunta por este campo para decidir si alguien entra; si el
+       bloqueo viviera únicamente en un `if` de cada ruta, la primera ruta que
+       se escriba sin acordarse dejaría pasar a alguien bloqueado.
+       El MOTIVO no viaja: a una app le basta con que no entra. */
+    verificada: identidad.estado === 'verificada' && !bloq,
+    bloqueada: bloq,
+    /* El estado del trámite se dice tal cual y sin maquillar: bloquear no
+       cambia el KYC de nadie. Una app que quiera distinguir «no terminó su
+       verificación» de «la casa le cerró la puerta» tiene los dos campos. */
     estado: identidad.estado,
     nombre: identidad.estado === 'verificada' ? identidad.nombreLegal : null,
     nacionalidad: identidad.estado === 'verificada' ? identidad.nacionalidad : null,
@@ -1014,6 +1026,12 @@ export function estadoParaUsuario(identidad: Identidad) {
     id: identidad.id,
     email: identidad.email,
     estado: identidad.estado,
+    /* El bloqueo también se le dice a la propia persona, y no como un detalle
+       técnico: es la única forma de que su app le enseñe algo distinto de una
+       pantalla en blanco o un «error». Que no entienda por qué no entra es
+       peor que saber que se le cerró el acceso. El MOTIVO no va acá — se lo
+       explica quien tomó la decisión, no una pantalla. */
+    bloqueada: bloqueada(identidad),
     gid: identidad.gid,
     nombreLegal: identidad.nombreLegal,
     documentoAceptable: identidad.documento?.aceptable ?? null,

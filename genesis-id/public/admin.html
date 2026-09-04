@@ -44,6 +44,14 @@ button:disabled{opacity:.45;cursor:not-allowed}
 button.p{background:var(--gold);color:#10161F;font-weight:700}
 button.ok{background:var(--ok);color:#04140D;font-weight:700}
 button.bad{background:var(--bad);color:#230704;font-weight:700}
+/* EL CARTEL DEL BLOQUEO. Va arriba del expediente y ocupa sitio a proposito:
+   quien abre la ficha de alguien bloqueado tiene que verlo antes que nada, no
+   descubrirlo al llegar a los botones y preguntarse por que dice
+   «Desbloquear». */
+.bloqueo-cartel{border:1px solid var(--bad);border-left:4px solid var(--bad);
+  background:rgba(224,104,93,.10);border-radius:10px;padding:14px 16px;margin:0 0 16px}
+.bloqueo-cartel b{color:var(--bad);letter-spacing:.6px;font-size:13px}
+.bloqueo-cartel .d{margin-top:5px;font-size:12.5px;line-height:1.6}
 button.g{background:transparent;border:1px solid var(--line)}
 input,select,textarea{font:inherit;background:#0F1927;color:var(--txt);border:1px solid var(--line);
  border-radius:9px;padding:9px 11px;width:100%}
@@ -1219,6 +1227,20 @@ async function verIdentidad(id) {
   const hayFoto = fotos.some(([, d]) => d)
 
   abrirFicha(esc(i.nombreLegal || i.nombreDeclarado || i.email), `
+    ${/* EL CARTEL DEL BLOQUEO VA PRIMERO, antes de la foto y antes del riesgo.
+          La primera version quedo abajo, junto a los botones, y ahi no sirve:
+          esta ficha es larga y quien la abre se forma su opinion leyendo lo de
+          arriba. Alguien puede aprobar, marcar PEP o mandar a revision a una
+          persona bloqueada sin haberse enterado nunca de que estaba bloqueada. */''}
+    ${(() => { const b = bloqueoVigente(i); return !b ? '' : `
+    <div class="bloqueo-cartel">
+      <b>ACCESO BLOQUEADO</b>
+      <div class="d">${esc(b.motivo)}</div>
+      ${b.politica ? `<div class="d">Política: ${esc(b.politica)}</div>` : ''}
+      <div class="d">Lo bloqueó ${esc(b.operador)} · ${fecha(b.desde)}</div>
+      <div class="d">No entra a ninguna app del ecosistema. Su verificación sigue intacta: al desbloquear vuelve a donde estaba, sin repetir nada.</div>
+    </div>`; })()}
+
     ${/* La ficha lateral sirve para hojear; para RESOLVER hace falta la ventana
           entera. En este cajón una credencial se ve del tamaño de un sello y
           dos rostros no se comparan uno encima del otro. */''}
@@ -1337,6 +1359,12 @@ async function verIdentidad(id) {
         `<div class="item"><div class="t">${esc(d.estado)} — ${esc(d.operador)}</div>
          <div class="d">${esc(d.motivo)}</div><div class="d">${fecha(d.fecha)}</div></div>`).join('')}</div>` : ''}
 
+    ${(i.bloqueos || []).filter((b) => b.levantadoEn).length ? `<h3>Bloqueos anteriores</h3>
+      <div class="lista">${i.bloqueos.filter((b) => b.levantadoEn).slice().reverse().map((b) =>
+        `<div class="item"><div class="t">${esc(b.motivo)}</div>
+         <div class="d">Bloqueó ${esc(b.operador)} · ${fecha(b.desde)}</div>
+         <div class="d">Levantó ${esc(b.levantadoPor)} · ${fecha(b.levantadoEn)} — ${esc(b.levantadoMotivo || '')}</div></div>`).join('')}</div>` : ''}
+
     <div class="acciones">
       ${puede('identidad.revisar') && i.estado !== 'verificada' ? `
         <button class="g" onclick="reiniciarVerificacion('${i.id}')">Reiniciar verificación</button>
@@ -1353,15 +1381,70 @@ async function verIdentidad(id) {
             quien acaba de saltar en una lista. Ahora sale siempre que no este
             ya suspendida. */''}
       ${puede('identidad.suspender') && i.estado !== 'suspendida'
-        ? `<button class="bad" onclick="decidir('/panel/identidades/${i.id}/suspender','Motivo de la suspensión — bloquea el GID en todo el ecosistema')">Suspender / bloquear</button>` : ''}
+        ? `<button class="bad" onclick="decidir('/panel/identidades/${i.id}/suspender','Motivo de la suspensión — el KYC deja de valer y para volver hay que rehacerlo entero')">Suspender KYC</button>` : ''}
+      ${/* BLOQUEAR ES OTRA COSA QUE SUSPENDER, y la diferencia esta en como se
+            deshace: suspender obliga a rehacer la verificacion entera,
+            bloquear se levanta con un clic y la persona vuelve a donde
+            estaba. Por eso son dos botones y no uno con dos nombres. */''}
+      ${puede('identidad.bloquear') ? (bloqueoVigente(i)
+        ? `<button class="ok" onclick="desbloquearIdentidad('${i.id}')">Desbloquear acceso</button>`
+        : `<button class="bad" onclick="bloquearIdentidad('${i.id}')">Bloquear acceso</button>`) : ''}
       ${i.estado === 'suspendida' && puede('identidad.aprobar')
         ? `<button class="g" onclick="reiniciarVerificacion('${i.id}')">Reactivar (rehacer verificación)</button>` : ''}
     </div>
     <p style="color:var(--faint);font-size:12px;margin-top:10px">
-      Los expedientes no se borran: en cumplimiento, el registro de que alguien intentó
-      verificarse —y qué se encontró— es justamente lo que hay que conservar. Suspender
-      retira el GID de todas las apps del ecosistema, que es el efecto que se busca al
-      «borrar» a alguien.</p>`)
+      <b>Bloquear</b> le cierra el acceso a todo el ecosistema y se levanta con un clic:
+      su verificación queda intacta y al desbloquear vuelve exactamente a donde estaba.
+      Es lo que se usa cuando alguien infringe una política.<br>
+      <b>Suspender</b> es otra cosa: dice que el KYC ya no vale —documento vencido, una
+      lista de sanciones— y para volver hay que rehacer la verificación entera.<br>
+      Los expedientes no se borran nunca: en cumplimiento, el registro de que alguien
+      intentó verificarse —y qué se encontró— es justamente lo que hay que conservar.</p>`)
+}
+
+/* EL BLOQUEO POR INFRACCION DE POLITICAS.
+   Vigente = el ultimo de la lista al que nadie le puso fecha de levantamiento.
+   Se calcula aqui igual que en el servidor (src/motor/bloqueo.ts) en vez de
+   guardarse un booleano: dos sitios donde vive la misma verdad son un sitio
+   donde un dia dicen cosas distintas. */
+function bloqueoVigente(i) {
+  const lista = (i && i.bloqueos) || []
+  for (let k = lista.length - 1; k >= 0; k--) if (!lista[k].levantadoEn) return lista[k]
+  return null
+}
+
+async function bloquearIdentidad(id) {
+  const motivo = prompt(
+    'BLOQUEAR EL ACCESO\n\n' +
+    'La persona deja de entrar a todas las apps del ecosistema, ahora mismo:\n' +
+    'sus sesiones abiertas se caen y no puede volver a entrar en ninguna.\n\n' +
+    'Su verificacion NO se toca. Al desbloquear vuelve exactamente a donde\n' +
+    'estaba, sin repetir el documento ni el rostro.\n\n' +
+    'Motivo (queda en el expediente y en la bitacora):')
+  if (!motivo) return
+  // La politica es opcional a proposito: obligar a elegir una de una lista
+  // hace que se elija la primera que suene parecido, y despues nadie sabe que
+  // paso de verdad. El motivo escrito es lo que vale.
+  const politica = prompt('Que politica se infringio (opcional, se puede dejar vacio):') || null
+  try {
+    await api(`/panel/identidades/${id}/bloquear`, { method: 'POST', body: JSON.stringify({ motivo, politica }) })
+    avisar('Acceso bloqueado')
+    verIdentidad(id)
+  } catch (e) { alert(e.message) }
+}
+
+async function desbloquearIdentidad(id) {
+  const motivo = prompt(
+    'DESBLOQUEAR EL ACCESO\n\n' +
+    'Vuelve a entrar a todo el ecosistema con su verificacion de siempre.\n' +
+    'El bloqueo no se borra: queda con fecha de levantamiento en el expediente.\n\n' +
+    'Motivo del levantamiento:')
+  if (!motivo) return
+  try {
+    await api(`/panel/identidades/${id}/desbloquear`, { method: 'POST', body: JSON.stringify({ motivo }) })
+    avisar('Acceso restablecido')
+    verIdentidad(id)
+  } catch (e) { alert(e.message) }
 }
 
 async function aprobarIdentidad(id, bloqueos) {

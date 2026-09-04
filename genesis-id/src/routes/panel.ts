@@ -5,6 +5,7 @@ import { Router } from 'express'
 import { exigeOperador, exigePermiso } from '../middleware/proteger.js'
 import { store } from '../store.js'
 import * as ids from '../motor/identidades.js'
+import * as bloqueo from '../motor/bloqueo.js'
 import * as biz from '../motor/negocios.js'
 import * as casos from '../aml/casos.js'
 import {
@@ -317,6 +318,27 @@ panelRouter.post('/identidades/:id/suspender', exigePermiso('identidad.suspender
   const r = await ids.suspender(req.params.id, req.operador!, String(req.body?.motivo || 'Sin motivo'))
   if (!r.ok) return res.status(400).json({ error: r.motivo })
   res.json({ ok: true, identidad: r.identidad })
+})
+
+/* ── BLOQUEAR Y DESBLOQUEAR ─────────────────────────────────────────────────
+   Es OTRA COSA que suspender, y la diferencia está en cómo se deshace:
+   suspender obliga a rehacer la verificación entera, bloquear se levanta con
+   un clic y la persona vuelve a donde estaba. Ver src/motor/bloqueo.ts. */
+panelRouter.post('/identidades/:id/bloquear', exigePermiso('identidad.bloquear'), async (req, res) => {
+  const identidad = ids.porId(req.params.id)
+  if (!identidad) return res.status(404).json({ error: 'Identidad no encontrada' })
+  const { motivo, politica } = req.body ?? {}
+  const r = await bloqueo.bloquear(identidad, req.operador!, String(motivo ?? ''), politica ? String(politica) : null)
+  if (!r.ok) return res.status(400).json({ error: r.motivo })
+  res.json({ ok: true, identidad: r.identidad, bloqueo: bloqueo.paraPanel(r.identidad!) })
+})
+
+panelRouter.post('/identidades/:id/desbloquear', exigePermiso('identidad.bloquear'), async (req, res) => {
+  const identidad = ids.porId(req.params.id)
+  if (!identidad) return res.status(404).json({ error: 'Identidad no encontrada' })
+  const r = await bloqueo.desbloquear(identidad, req.operador!, String(req.body?.motivo ?? ''))
+  if (!r.ok) return res.status(400).json({ error: r.motivo })
+  res.json({ ok: true, identidad: r.identidad, bloqueo: bloqueo.paraPanel(r.identidad!) })
 })
 
 panelRouter.post('/identidades/:id/revision', exigePermiso('identidad.revisar'), (req, res) => {

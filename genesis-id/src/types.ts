@@ -28,6 +28,28 @@ export type EstadoIdentidad =
   | 'rechazada'
   | 'suspendida'      // estaba verificada y se le retiró
 
+/**
+ * Un bloqueo por infracción de políticas de la empresa.
+ *
+ * ES OTRA COSA QUE `estado: 'suspendida'`, y la diferencia está en cómo se
+ * deshace. Suspender dice «este KYC ya no vale» y para volver hay que rehacer
+ * la verificación entera. Bloquear dice «esta persona no entra»: su identidad
+ * sigue siendo la que es, y levantarlo la devuelve exactamente a donde estaba.
+ *
+ * `levantadoEn` es lo que distingue un bloqueo vigente de uno histórico. Los
+ * bloqueos no se borran nunca: se les pone fecha. Ver src/motor/bloqueo.ts.
+ */
+export interface Bloqueo {
+  motivo: string
+  /** Qué política se infringió, si se quiere dejar dicho. */
+  politica: string | null
+  operador: string
+  desde: string
+  levantadoPor: string | null
+  levantadoEn: string | null
+  levantadoMotivo: string | null
+}
+
 export interface Decision {
   estado: EstadoIdentidad
   operador: string
@@ -105,6 +127,19 @@ export interface Identidad {
   vinculos: VinculoApp[]
 
   decisiones: Decision[]
+
+  /**
+   * Los bloqueos por políticas, en orden. Lista de solo añadir.
+   *
+   * El bloqueo VIGENTE es el último sin `levantadoEn`. No hay un booleano
+   * `bloqueada` guardado aparte a propósito: dos sitios donde vive la misma
+   * verdad son un sitio donde un día dicen cosas distintas.
+   *
+   * Opcional porque los expedientes de antes de esto no lo traen; se lee
+   * siempre con `?? []`.
+   */
+  bloqueos?: Bloqueo[]
+
   creadaEn: string
   actualizadaEn: string
   verificadaEn: string | null

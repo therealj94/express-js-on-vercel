@@ -28,6 +28,11 @@ export const PERMISOS: Record<Rol, string[]> = {
   // Cumplimiento: decide sobre identidades y casos, pero no crea operadores.
   cumplimiento: [
     'identidad.ver', 'identidad.revisar', 'identidad.aprobar', 'identidad.rechazar', 'identidad.suspender',
+    // Bloquear no es suspender. Suspender dice «este KYC ya no vale» y deshacerlo
+    // obliga a rehacer la verificación; bloquear dice «esta persona no entra» y
+    // se levanta con un clic. Cumplimiento tiene las dos porque es quien mira
+    // los expedientes; el admin las tiene por el comodín.
+    'identidad.bloquear',
     'negocio.ver', 'negocio.revisar', 'negocio.aprobar', 'negocio.rechazar',
     'caso.ver', 'caso.gestionar', 'caso.reportar',
     'listas.ver', 'listas.recargar', 'bitacora.ver',

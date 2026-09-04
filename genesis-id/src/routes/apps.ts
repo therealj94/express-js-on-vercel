@@ -8,6 +8,7 @@
 import { Router } from 'express'
 import { exigeApp, limite, pesada } from '../middleware/proteger.js'
 import * as ids from '../motor/identidades.js'
+import { bloqueada, RESPUESTA as BLOQUEADA } from '../motor/bloqueo.js'
 import * as biz from '../motor/negocios.js'
 import { registrarMovimientos } from '../aml/casos.js'
 import { tamizarDireccion } from '../aml/tamiz.js'
@@ -415,6 +416,11 @@ appsRouter.post('/vinculos', limite(60), exigeApp('vinculo.crear'), async (req, 
   }
   const objetivo = ids.porId(String(identidadId))
   if (!objetivo) return res.status(404).json({ error: 'Identidad no encontrada' })
+  /* EL VÍNCULO ES LA LLAVE DEL SSO —lo dice el comentario de arriba— así que a
+     alguien bloqueado no se le ata ninguna cuenta nueva. Sin esto, bastaría
+     con crearse una cuenta nueva en cualquier app del ecosistema y atarla para
+     volver a entrar por la puerta de al lado. */
+  if (bloqueada(objetivo)) return res.status(403).json(BLOQUEADA)
 
   if (email) {
     if (String(email).trim().toLowerCase() !== String(objetivo.email || '').trim().toLowerCase()) {
@@ -458,9 +464,14 @@ appsRouter.get('/gid/:gid', limite(300), exigeApp('gid.verificar'), async (req, 
 
   const puedeVerPerfil = req.app_ecosistema!.alcances.includes('gid.perfil')
   if (identidad) {
+    /* La rama corta —la de las apps sin `gid.perfil`— tenía su PROPIA cuenta de
+       si alguien está verificado, en vez de usar `perfilPublico`. Dos cuentas
+       del mismo hecho es como una se queda vieja: sin esto, ordenscan seguiría
+       diciendo que una persona bloqueada está verificada. */
+    const bloq = bloqueada(identidad)
     return res.json(puedeVerPerfil
       ? { tipo: 'personal', ...ids.perfilPublico(identidad) }
-      : { tipo: 'personal', gid, verificada: identidad.estado === 'verificada' })
+      : { tipo: 'personal', gid, verificada: identidad.estado === 'verificada' && !bloq, bloqueada: bloq })
   }
   res.json({ tipo: 'negocio', ...biz.perfilNegocio(negocio!) })
 })
@@ -469,7 +480,8 @@ appsRouter.get('/gid/:gid', limite(300), exigeApp('gid.verificar'), async (req, 
 appsRouter.get('/direccion/:direccion', limite(300), exigeApp('gid.verificar'), async (req, res) => {
   const identidad = ids.porDireccion(req.params.direccion)
   if (!identidad) return res.json({ verificada: false, gid: null })
-  res.json({ verificada: identidad.estado === 'verificada', gid: identidad.gid })
+  const bloq = bloqueada(identidad)
+  res.json({ verificada: identidad.estado === 'verificada' && !bloq, bloqueada: bloq, gid: identidad.gid })
 })
 
 /** Tamizado de una dirección contra listas de sanciones. */
@@ -513,6 +525,12 @@ appsRouter.post('/sso/token', limite(60), exigeApp('gid.verificar'), async (req,
   if (!identidad || identidad.estado !== 'verificada') {
     return res.status(403).json({ error: 'El GID no corresponde a una identidad verificada' })
   }
+  // El bloqueo se comprueba aparte del estado a propósito: son dos cosas
+  // distintas y una app tiene derecho a saber cuál de las dos la paró.
+  if (bloqueada(identidad)) {
+    registrar(`app:${req.app_ecosistema!.clave}`, 'sso.token.bloqueado', g, { cuenta: String(cuenta) })
+    return res.status(403).json(BLOQUEADA)
+  }
   const atada = identidad.vinculos.some(
     (v) => v.app === req.app_ecosistema!.clave && v.cuenta === String(cuenta))
   if (!atada) {
@@ -543,6 +561,13 @@ appsRouter.post('/sso/verificar', limite(300), exigeApp('gid.verificar'), async 
     // La identidad puede haberse suspendido después de emitir el token.
     return res.status(403).json({ valido: false, error: 'La identidad ya no está verificada' })
   }
+  /* AQUÍ ES DONDE MUERE UN PASE YA EMITIDO. Un bloqueo llega siempre después
+     de que se repartieran pases, así que si esta comprobación no estuviera,
+     bloquear no haría nada hasta que caducara el último — y el operador
+     creería que sacó a alguien que sigue dentro. */
+  if (bloqueada(identidad)) {
+    return res.status(403).json({ valido: false, ...BLOQUEADA })
+  }
   res.json({
     valido: true,
     gid: reclamos.sub,
@@ -570,6 +595,9 @@ appsRouter.post('/sso/verificar', limite(300), exigeApp('gid.verificar'), async 
  * documento que la persona enseña sin saber qué está enseñando.
  */
 appsRouter.post('/credenciales', limite(30), exigeApp('credencial.emitir'), async (req, res) => {
+  // Una credencial NO se puede retirar una vez emitida (lo dice el comentario
+  // de arriba), así que a alguien bloqueado no se le emite ninguna: sería la
+  // única puerta que quedaría abierta para siempre.
   const { gid, cuenta, atributos, dias } = req.body ?? {}
   const g = normalizarGid(String(gid || ''))
   if (!gidValido(g) || !cuenta) {
@@ -577,6 +605,7 @@ appsRouter.post('/credenciales', limite(30), exigeApp('credencial.emitir'), asyn
   }
   const identidad = ids.porGid(g)
   if (!identidad) return res.status(404).json({ error: 'GID no encontrado' })
+  if (bloqueada(identidad)) return res.status(403).json(BLOQUEADA)
 
   const atada = identidad.vinculos.some(
     (v) => v.app === req.app_ecosistema!.clave && v.cuenta === String(cuenta))
