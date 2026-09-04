@@ -58,10 +58,18 @@ function cuadro() {
   let derivacion = null;
   try { derivacion = require('./derivacion').estado(); } catch { derivacion = null; }
 
+  // La billetera de gas. Su direccion es publica y va con nombre propio en el
+  // panel porque es la que se queda seca sin romper nada visible: los depositos
+  // se siguen acreditando y lo unico que pasa es que el dinero deja de juntarse.
+  // Si no esta en el panel, se descubre tarde.
+  let gasBilletera = null;
+  try { gasBilletera = require('./gas').estado(); } catch { gasBilletera = null; }
+
   return {
     decimales,
     rpcs,
     derivacion,
+    gas: gasBilletera,
     // Los secretos: solo si estan y si tienen forma.
     ORDENEX_ADM: {
       puesta: puesta('ORDENEX_ADM'),
@@ -104,6 +112,15 @@ function cuadro() {
       huella: derivacion ? derivacion.huella : null,
       nota: 'xpub neutra con la que se calculan las direcciones sin poder firmarlas',
     },
+    ORDENEX_GAS_KEY: {
+      puesta: puesta('ORDENEX_GAS_KEY'),
+      // `valida` no es «tiene forma de llave»: es «es la llave DE ESA
+      // billetera». Una llave perfecta de otro entorno pasaria la primera
+      // prueba y fondearia con el dinero de otra casa.
+      valida: Boolean(gasBilletera && gasBilletera.configurada),
+      direccion: gasBilletera ? gasBilletera.direccion : null,
+      nota: 'llave que fondea de gas las direcciones de deposito antes de barrerlas',
+    },
     GENESIS_API_KEY: { puesta: puesta('GENESIS_API_KEY'), nota: 'clave de la app ordenex en Genesis (SSO, tamiz, AML)' },
     MONGODB_URI: { puesta: puesta('MONGODB_URI'), nota: 'la base; el nombre ordenex lo fija el codigo' },
     // Lo que no es secreto va con su valor.
@@ -118,6 +135,6 @@ function cuadro() {
 
 /** Los nombres de lo que NO puede aparecer en ninguna respuesta: para que una
  *  prueba lo compruebe contra el JSON serializado. */
-const SECRETOS = ['ORDENEX_ADM', 'ORDENEX_HOT_KEY', 'ORDENEX_ADMIN_KEY', 'ORDENEX_TOKEN', 'GENESIS_API_KEY', 'MONGODB_URI', 'ORDENEX_SEMILLA_DEPOSITOS', 'ORDENEX_SEMILLA_XPUB'];
+const SECRETOS = ['ORDENEX_ADM', 'ORDENEX_HOT_KEY', 'ORDENEX_ADMIN_KEY', 'ORDENEX_TOKEN', 'GENESIS_API_KEY', 'MONGODB_URI', 'ORDENEX_SEMILLA_DEPOSITOS', 'ORDENEX_SEMILLA_XPUB', 'ORDENEX_GAS_KEY'];
 
 module.exports = { cuadro, SECRETOS, LARGO_MINIMO_SECRETO };

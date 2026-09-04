@@ -35,6 +35,7 @@ const SECRETOS = {
   // filtrada en una respuesta del panel es todas las direcciones de la casa.
   ORDENEX_SEMILLA_DEPOSITOS: 'SECRETO-FRASE-uno dos tres cuatro cinco seis siete ocho',
   ORDENEX_SEMILLA_XPUB: 'SECRETO-XPUB-0123456789abcdefghijklmnopqrstuvwxyz',
+  ORDENEX_GAS_KEY: '0x' + 'ef'.repeat(32),
 };
 
 decir('el cuadro, con todo puesto');
