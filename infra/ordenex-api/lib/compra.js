@@ -480,7 +480,15 @@ async function ciclo() {
   corriendo = true;
   try {
     // 1. Los depósitos que nadie atendió todavía.
-    const nuevos = await DepositoExterno.find({ estado: 'visto' }).sort({ enCadena: 1 }).limit(50).lean();
+    let nuevos = [];
+    try {
+      nuevos = await DepositoExterno.find({ estado: 'visto' }).sort({ enCadena: 1 }).limit(50).lean();
+    } catch (e) {
+      // Mongo no contestó. Se dice y se sigue: la vuelta que viene lo intenta
+      // otra vez. Lo que NO puede pasar es que esto salga de `ciclo` — ver
+      // `arrancar`, más abajo.
+      console.error(`[compra] no se pudieron leer los depósitos: ${e.message}`);
+    }
     for (const d of nuevos) {
       try {
         const r = await atender(d);
@@ -490,9 +498,14 @@ async function ciclo() {
       }
     }
     // 2. Las órdenes listas para entregar.
-    const listas = await OrdenCompra.find({
-      estado: 'esperando', depositoId: { $ne: null }, origenWei: { $ne: null },
-    }).limit(25).lean();
+    let listas = [];
+    try {
+      listas = await OrdenCompra.find({
+        estado: 'esperando', depositoId: { $ne: null }, origenWei: { $ne: null },
+      }).limit(25).lean();
+    } catch (e) {
+      console.error(`[compra] no se pudieron leer las órdenes listas: ${e.message}`);
+    }
     for (const o of listas) {
       try {
         const r = await entregar(o._id);
@@ -504,10 +517,14 @@ async function ciclo() {
     // 3. Las que se quedaron sin dinero encima y ya vencieron: se cierran para
     //    que no se acumulen abiertas para siempre. No es una pérdida de nada:
     //    una orden sin depósito es una cotización que caducó.
-    await OrdenCompra.updateMany(
-      { estado: 'esperando', depositoId: null, venceEn: { $lt: new Date(Date.now() - 3600_000) } },
-      { estado: 'vencida', motivo: 'caducó sin que llegara nada' }
-    );
+    try {
+      await OrdenCompra.updateMany(
+        { estado: 'esperando', depositoId: null, venceEn: { $lt: new Date(Date.now() - 3600_000) } },
+        { estado: 'vencida', motivo: 'caducó sin que llegara nada' }
+      );
+    } catch (e) {
+      console.error(`[compra] no se pudieron cerrar las caducadas: ${e.message}`);
+    }
   } finally {
     corriendo = false;
   }
@@ -516,8 +533,16 @@ async function ciclo() {
 async function arrancar() {
   await OrdenCompra.syncIndexes().catch((e) => console.error(`[compra] indices: ${e.message}`));
   console.log(`[compra] atendiendo depósitos cada ${CADA_MS / 1000}s · plazo de ${PLAZO_SEG}s`);
-  await ciclo();
-  const reloj = setInterval(() => { ciclo().catch(() => {}); }, CADA_MS);
+  // EL RELOJ SE PONE PASE LO QUE PASE EN LA PRIMERA VUELTA.
+  //
+  // Antes se hacía `await ciclo()` a pelo, y eso tenía un fallo que solo se ve
+  // arrancando de verdad: si Mongo tarda en contestar en el arranque —cosa
+  // normal en Heroku— la primera vuelta truena, la excepción sale de aquí, el
+  // `setInterval` NUNCA se crea, y el bucle de entrega queda muerto para
+  // siempre. Sin ruido: el proceso sirve peticiones tan campante y nadie
+  // recibe su ORIGEN hasta que alguien reinicia el dyno.
+  await ciclo().catch((e) => console.error(`[compra] la primera vuelta falló: ${e.message}`));
+  const reloj = setInterval(() => { ciclo().catch((e) => console.error(`[compra] ${e.message}`)); }, CADA_MS);
   reloj.unref?.();
   return reloj;
 }

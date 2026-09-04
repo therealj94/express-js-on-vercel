@@ -374,6 +374,30 @@ decir('el tamiz de sanciones');
   process.env.GENESIS_URL = antes;
 }
 
+decir('el reloj se pone aunque la primera vuelta truene');
+{
+  // EL FALLO QUE SOLO SE VE ARRANCANDO DE VERDAD. Si Mongo tarda en contestar
+  // en el arranque —cosa normal en Heroku— la primera vuelta truena. Antes esa
+  // excepción salía de `arrancar`, el setInterval NUNCA se creaba, y el bucle
+  // de entrega quedaba muerto para siempre: el proceso sirve peticiones tan
+  // campante y nadie recibe su ORIGEN hasta que alguien reinicia el dyno.
+  const fuente = (await import('node:fs')).readFileSync(new URL('../lib/compra.js', import.meta.url), 'utf8');
+  comprobar(/await ciclo\(\)\.catch\(/.test(fuente), 'la primera vuelta va con su catch');
+  const iCiclo = fuente.indexOf('await ciclo().catch(');
+  const iReloj = fuente.indexOf('const reloj = setInterval(');
+  comprobar(iCiclo > 0 && iReloj > iCiclo, 'y el reloj se pone después, no antes');
+  comprobar(!/const reloj = setInterval\(\(\) => \{ ciclo\(\)\.catch\(\(\) => \{\}\)/.test(fuente),
+    'y un fallo de una vuelta no se traga en silencio: se dice');
+
+  // Y se comprueba de verdad: con Mongo desconectado, arrancar tiene que
+  // devolver un reloj igual.
+  await mongoose.disconnect();
+  const reloj = await compra.arrancar();
+  comprobar(Boolean(reloj), 'con Mongo caído, arrancar DEVUELVE el reloj igual');
+  clearInterval(reloj);
+  await mongoose.connect(servidor.getUri(), { dbName: 'ordenex_compra' });
+}
+
 console.log(`\n${fallos ? `FALLARON ${fallos}` : 'Todo en verde'}`);
 genesisFingido.close();
 await mongoose.disconnect();

@@ -386,8 +386,10 @@ async function arrancar() {
   await DepositoExterno.syncIndexes().catch(() => {});
   console.log(`[vigia-ext] mirando ${Object.keys(redes.REDES).length} redes cada ${CADA_MS / 1000}s` +
     ` — SIN acreditar: solo se anota lo que se ve`);
-  await ciclo();
-  const reloj = setInterval(() => { ciclo().catch(() => {}); }, CADA_MS);
+  // Igual que el barrido y las compras: el reloj se pone aunque la primera
+  // vuelta truene. Una excepción aquí dejaría al vigía sin latir para siempre.
+  await ciclo().catch((e) => console.error(`[vigia-ext] la primera vuelta falló: ${e.message}`));
+  const reloj = setInterval(() => { ciclo().catch((e) => console.error(`[vigia-ext] ${e.message}`)); }, CADA_MS);
   reloj.unref?.();
   return reloj;
 }

@@ -346,8 +346,11 @@ async function ciclo() {
 async function arrancar() {
   await Barrido.syncIndexes().catch((e) => console.error(`[barrido] indices: ${e.message}`));
   console.log(`[barrido] cada ${CADA_MS / 1000}s → todo a ${billeteras.UNICA}`);
-  await ciclo();
-  const reloj = setInterval(() => { ciclo().catch(() => {}); }, CADA_MS);
+  // El reloj se pone pase lo que pase en la primera vuelta: si Mongo tarda en
+  // el arranque y esto trueña, el setInterval no se crearía nunca y el barrido
+  // quedaría muerto en silencio. Mismo motivo que en lib/compra.js.
+  await ciclo().catch((e) => console.error(`[barrido] la primera vuelta falló: ${e.message}`));
+  const reloj = setInterval(() => { ciclo().catch((e) => console.error(`[barrido] ${e.message}`)); }, CADA_MS);
   reloj.unref?.();
   return reloj;
 }
