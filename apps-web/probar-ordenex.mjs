@@ -36,6 +36,8 @@ const TIPOS = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; ch
 const U = 10n ** 18n;
 const wei = n => (BigInt(n) * U).toString();
 
+const VERSION_TERMINOS = '2026-09-01';
+let terminosAceptados = false;
 const TOKEN_SSO = 'token-sso-fingido-111';
 const JWT = 'jwt-fingido-111';
 const REFRESH = 'refresco-fingido-222';
@@ -46,8 +48,22 @@ const DIRECCION_DEP = '0x' + 'a111'.repeat(10);
 const CUENTA_TRAMPA = '9998887766';
 
 const MERCADOS = [
-  { mercado: 'AUKA-ORIGEN', ultimo: wei(111), cambio24h: 1.11, vol24h: wei(222), referencia: { usd: 222, rotulo: 'onza oro', origenUsd: 2.56, fuente: 'fingido', en: Date.now() } },
-  { mercado: 'AGKA-ORIGEN', ultimo: wei(222), cambio24h: -2.22, vol24h: wei(111), referencia: { usd: 111, rotulo: 'onza plata', origenUsd: 2.56, fuente: 'fingido', en: Date.now() } },
+  /* EL GRAMIN VALE 2 DOLARES EN ESTE DECORADO, y de ahi salen las dos
+     referencias. Antes valia 2,56 y la onza 222, o sea que el par de AUKA
+     estaba en 86,7 mientras el libro cotizaba a 111 y las ordenes se
+     escribian a 110: un mercado fingido operando un 27 % por encima de su
+     propia referencia del oro.
+
+     Eso no molestaba mientras colocar una orden fuera mandar un POST. Desde
+     que pasa por la pantalla de confirmacion, el desvio se mide contra esta
+     referencia y una orden asi se frena — y toda esta parte de la prueba se
+     puso roja por un decorado incoherente, no por un fallo de la web.
+
+     Con el gramin a 2: AUKA = 222/2 = 111 y AGKA = 444/2 = 222, que son
+     exactamente los «ultimo» que el resto del archivo ya usaba. La referencia
+     y el libro por fin cuentan la misma historia. */
+  { mercado: 'AUKA-ORIGEN', ultimo: wei(111), cambio24h: 1.11, vol24h: wei(222), referencia: { usd: 222, rotulo: 'onza oro', origenUsd: 2, fuente: 'fingido', en: Date.now() } },
+  { mercado: 'AGKA-ORIGEN', ultimo: wei(222), cambio24h: -2.22, vol24h: wei(111), referencia: { usd: 444, rotulo: 'onza plata', origenUsd: 2, fuente: 'fingido', en: Date.now() } },
 ];
 
 // Mejor compra primero y mejor venta primero, como promete el contrato.
@@ -140,6 +156,33 @@ async function api(q, r, ruta, busca) {
   }
 
   if (q.method === 'GET' && ruta === '/mercados') return json(r, 200, MERCADOS);
+
+  /* LOS UMBRALES DEL DESVIO. Otro hueco del fingido, y del mismo tipo que el
+     de la referencia: sin `/limites` el nivel sale 'sinLimites', que pinta una
+     casilla de mas y deja el confirmar apagado hasta marcarla. Sirviendolo se
+     ejerce el camino normal, que es el que recorren todas las ordenes. */
+  if (q.method === 'GET' && ruta === '/limites') {
+    llamadas.push({ ruta, metodo: 'GET' });
+    return json(r, 200, {
+      desvio: { avisoPct: 5, bloqueoPct: 20 },
+      terminos: { version: VERSION_TERMINOS, terminos: 'legal.html#terminos', riesgo: 'legal.html#riesgo' },
+    });
+  }
+
+  /* LOS TERMINOS. Van con los limites porque la confirmacion los pide juntos,
+     y hacen falta los dos: sin version, `necesitaTerminos` sale true —sin
+     saber cual es la vigente, se pregunta, que es lo correcto— y el confirmar
+     se queda apagado esperando una casilla que el decorado nunca explico. */
+  if (ruta === '/auth/terminos') {
+    if (q.method === 'POST') {
+      const { version } = await cuerpoDe(q);
+      llamadas.push({ ruta, metodo: 'POST', cuerpo: { version } });
+      if (version !== VERSION_TERMINOS) return json(r, 409, { error: 'Otra versión.', codigo: 'TERMINOS_VERSION' });
+      terminosAceptados = true;
+      return json(r, 200, { version: VERSION_TERMINOS, aceptada: true });
+    }
+    return json(r, 200, { version: VERSION_TERMINOS, aceptada: terminosAceptados });
+  }
 
   /* LA TARIFA DE LA CASA. Es publica y sin sesion, como /salud. 2500 ppm =
      0,25%, el mismo valor que trae el ejemplo del motor, y con la moneda de
@@ -443,6 +486,34 @@ console.log('\n── el canje SSO bueno ─────────────
   await p.fill('#vm-cant', '1');
   await p.click('#vm-enviar');
   await p.waitForTimeout(900);
+
+  /* «Enviar» ya no coloca: abre la pantalla de confirmacion, que dice cuanto
+     das, cuanto recibis y cuanto te alejas de la referencia del oro. Este
+     bloque mide el CONTRATO —que la orden llegue al API en wei y con su
+     ordenKey—, asi que aqui solo hay que atravesarla; la pantalla en si tiene
+     su propia suite en pruebas/probar-confirmacion.mjs y su medida a 360 px en
+     pruebas/probar-movil.mjs.
+
+     Se comprueba que el cuadro APAREZCA antes de darle: si un dia dejara de
+     salir, atravesarlo a ciegas dejaria pasar la regresion en verde. */
+  const hayCuadro = await p.evaluate(() => !!document.getElementById('vm-confirmar'));
+  decir(hayCuadro, 'antes de colocar se abre la pantalla de confirmación');
+  if (hayCuadro) {
+    /* La casilla de los terminos sale en la PRIMERA orden de cada persona, y
+       hasta marcarla el confirmar esta apagado. Se marca tocando. */
+    if (await p.evaluate(() => !!document.getElementById('cf-terminos-check'))) {
+      await p.check('#cf-terminos-check');
+      await p.waitForTimeout(200);
+    }
+    await p.click('#cf-ok');
+    await p.waitForTimeout(900);
+  }
+  /* Y que se cierre. El velo se cuelga del <body> con position:fixed, o sea
+     FUERA del lienzo: si queda abierto, sigue ahi al cambiar de vista y se
+     mete en lo que midan las comprobaciones de mas abajo. */
+  decir(await p.evaluate(() => !document.getElementById('vm-confirmar')),
+    'y al confirmar el cuadro se cierra: no queda un velo colgado del body');
+
   const orden = llamadas.find(l => l.ruta === '/ordenes' && l.metodo === 'POST')?.cuerpo;
   decir(!!orden && orden.mercado === 'AUKA-ORIGEN' && orden.lado === 'compra' && orden.tipo === 'limite',
         'la orden llegó al API como la escribió el cliente', JSON.stringify(orden || {}));
@@ -530,7 +601,32 @@ console.log('\n── un token de sector no inventa nada ───────�
      Buscar «referencia» ahí daba un falso positivo por un comentario del
      código. Lo que importa es lo que la persona LEE. */
   const t = await p.evaluate(() => document.querySelector('#lienzo').innerText);
-  decir(!/REFERENCIA/i.test(t), 'IBS no enseña ninguna pestaña ni rótulo de referencia');
+  /* ESTO SE PREGUNTA AL DOM, NO AL TEXTO.
+     La versión anterior buscaba la palabra «referencia» sin distinguir
+     mayúsculas y se ponía roja por esta frase:
+
+       «Sin precio: todavía no hubo tratos y no hay referencia.»
+
+     que es la web diciendo que NO hay referencia — o sea, exactamente lo
+     contrario del fallo que se buscaba. Es el tercer caso igual en este
+     repositorio: una comprobación que falla por un texto que dice que la cosa
+     NO pasa enseña a ignorar la comprobación, y una prueba que se ignora es
+     peor que no tenerla.
+
+     Lo que de verdad significa «no inventa nada» son estas tres piezas, que
+     tienen selector propio: la pestaña de fuente, el precio chico de al lado
+     del último, y el sello del cartel del metal. */
+  const piezas = await p.evaluate(() => ({
+    pestana: !!document.querySelector('#lienzo button[data-fuente="referencia"]'),
+    precioChico: (document.querySelector('#vm-ref')?.innerText || '').trim(),
+    sello: [...document.querySelectorAll('#lienzo b')].some(b => /^REFEREN/i.test(b.innerText || '')),
+  }));
+  decir(!piezas.pestana && !piezas.precioChico && !piezas.sello,
+    'IBS no enseña ninguna pestaña ni rótulo de referencia', JSON.stringify(piezas));
+  // Y que tampoco se cuele el renglón de la fuente («Referencia: … ÷ gramín»),
+  // que es por donde entraría un precio prestado con aire de dato propio.
+  decir(!/÷\s*gram|Referencia:/.test(t), 'ni el renglón de la fuente del metal');
+
   decir(!/\$/.test(t), 'ni un solo signo de dólar en toda la pantalla');
   // Ni un precio prestado de los que sí existen.
   decir(!/4[.,]?3\d\d/.test(t) && !/1[.,]?710/.test(t) && !/2[.,]5\d/.test(t),
@@ -559,6 +655,26 @@ console.log('\n── un token de sector no inventa nada ───────�
   decir(tinta < llena / 100,
     'y no hay ni una vela escondida en el lienzo',
     `vacío ${tinta} px vs llena ${llena} px`);
+
+  /* EL CONTROL POSITIVO. Sin esto, la comprobación de arriba pasaría en verde
+     aunque los tres selectores estuvieran mal escritos: no encontrar nada es
+     el resultado que se espera, así que un selector roto se ve igual que un
+     acierto. Se repite la misma consulta en AUKA, que SÍ tiene referencia, y
+     tiene que encontrarlas.
+
+     Se intentó comprobarlo mutando —dándole referencia a IBS en la lista de la
+     web— y no sirvió: el API fingido contesta 404 para IBS y la web le hace
+     caso, que es el fail-closed correcto. La mutación quedaba neutralizada por
+     el acierto de otra pieza, y una mutación que no pone rojo no prueba nada. */
+  await p.evaluate(() => ONX.vista('mercado', 'AUKA-ORIGEN'));
+  await p.waitForTimeout(1600);
+  const enAuka = await p.evaluate(() => ({
+    pestana: !!document.querySelector('#lienzo button[data-fuente="referencia"]'),
+    precioChico: (document.querySelector('#vm-ref')?.innerText || '').trim(),
+  }));
+  decir(enAuka.pestana || !!enAuka.precioChico,
+    'y los mismos selectores SÍ encuentran la referencia en AUKA: la comprobación de arriba puede fallar',
+    JSON.stringify(enAuka));
 }
 
 console.log('\n── el circuito fiat ──────────────────────────────────────────');
