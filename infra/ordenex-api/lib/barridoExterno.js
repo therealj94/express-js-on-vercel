@@ -366,6 +366,10 @@ async function resumen() {
       .select('cadena direccion cantidad estado motivo hash updatedAt').lean();
     const sinBarrer = await DepositoExterno.countDocuments({ custodia: 'provisional', estado: { $ne: 'anulado' } });
     return {
+      // La primera pregunta de quien abre el panel, y hasta ahora no se podía
+      // contestar: un cero de barridas significa cosas muy distintas según si
+      // esto está apagado o encendido y sin nada que hacer.
+      encendido: process.env.BARRIDO === '1',
       caja: billeteras.UNICA,
       por: por.map((x) => ({ cadena: x._id.cadena, estado: x._id.estado, n: x.n })),
       pendientesDeBarrer: sinBarrer,

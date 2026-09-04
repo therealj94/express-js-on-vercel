@@ -679,6 +679,9 @@ async function resumen() {
     let porPagar = null;
     try { porPagar = await deuda(); } catch (e) { porPagar = { error: e.message }; }
     return {
+      // Igual que en el barrido: sin esto, «cero entregas» no distingue
+      // «apagado» de «encendido y sin nada que entregar».
+      encendido: process.env.COMPRAS === '1',
       plazoSeg: PLAZO_SEG,
       porPagar,
       reglaRecalculo: REGLA_RECALCULO,

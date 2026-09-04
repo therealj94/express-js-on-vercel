@@ -70,6 +70,24 @@ td{padding:9px 8px 9px 0;border-bottom:1px solid rgba(255,255,255,.05);vertical-
 td.mono,.mono{font-family:var(--mono);font-size:12.5px;overflow-wrap:anywhere}
 .si{color:var(--jade);font-weight:700} .no{color:var(--coral);font-weight:700} .medio{color:var(--oroLt);font-weight:700}
 .nota{color:var(--humo);font-size:11.5px}
+/* LO QUE NECESITA OJOS. Borde coral y arriba de todo: no es para asustar, es
+   que esta pagina es larga y quien la abre se forma su opinion con lo primero
+   que lee. Una entrega en duda enterrada bajo los conteos no la ve nadie. */
+.vidrio.urgente{border-color:var(--coral);background:linear-gradient(180deg,rgba(240,119,107,.09),rgba(240,119,107,.02))}
+.vidrio.urgente h2{color:var(--coral)}
+/* El interruptor de cada pieza: encendido en jade, apagado en gris y dicho
+   con todas las letras. «Apagado» no es un fallo —el barrido y la entrega
+   arrancan a mano a proposito— pero tiene que verse. */
+.pieza{background:rgba(16,22,31,.6);border:1px solid rgba(255,255,255,.06);border-radius:var(--r);padding:12px 14px}
+.pieza .et{font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--humo);font-family:var(--mono)}
+.pieza b{display:block;font-size:15px;margin-top:5px}
+.pieza.on b{color:var(--jade)} .pieza.off b{color:var(--humo)}
+.pieza .d{display:block;margin-top:5px;font-size:11.5px;color:var(--bruma);line-height:1.5}
+.barra{display:inline-block;padding:2px 8px;border-radius:100px;font-size:10.5px;font-weight:700;
+  font-family:var(--mono);letter-spacing:.04em}
+.barra.bien{background:rgba(62,217,160,.14);color:var(--jade)}
+.barra.aviso2{background:rgba(234,215,156,.14);color:var(--oroLt)}
+.barra.mal2{background:rgba(240,119,107,.14);color:var(--coral)}
 .oculto{display:none!important}
 @media (max-width:640px){ th:nth-child(3),td:nth-child(3){display:none} }
 </style>
@@ -89,6 +107,29 @@ td.mono,.mono{font-family:var(--mono);font-size:12.5px;overflow-wrap:anywhere}
   </section>
 
   <div id="salida" class="oculto">
+    <!-- LO QUE NECESITA OJOS VA PRIMERO, y solo aparece si hay algo.
+         Son las entregas en duda y los barridos atascados: dinero parado o
+         una transaccion de la que no se sabe si salio. Si esto queda al final
+         de una pagina larga, alguien abre el panel, ve los conteos en verde y
+         cierra — que es exactamente como se pierde una semana. -->
+    <section class="vidrio urgente oculto" id="ojosCaja">
+      <h2>Esto necesita que alguien mire</h2>
+      <div id="ojos"></div>
+    </section>
+
+    <section class="vidrio">
+      <h2>El circuito de entrada</h2>
+      <p class="ayuda">Las tres piezas por las que entra el dinero. Se rompen por separado y <b>en silencio</b>: el sintoma es alguien que deposito y no recibio nada, y para cuando eso se sabe ya escribio.</p>
+      <div class="rejilla" id="circuito" style="margin-top:10px"></div>
+      <div id="entrada"></div>
+    </section>
+
+    <section class="vidrio">
+      <h2>El gas, por red</h2>
+      <p class="ayuda">La billetera que fondea las direcciones antes de barrerlas. Es la que se queda seca sin romper nada visible: los depositos se siguen viendo y lo unico que pasa es que el dinero deja de juntarse.</p>
+      <div id="gas"></div>
+    </section>
+
     <section class="vidrio">
       <h2>La casa, en cifras</h2>
       <div class="rejilla" id="conteos"></div>
@@ -112,6 +153,18 @@ td.mono,.mono{font-family:var(--mono);font-size:12.5px;overflow-wrap:anywhere}
       <div id="caliente"></div>
     </section>
 
+    <section class="vidrio">
+      <h2>Lo que ha ganado la casa</h2>
+      <p class="ayuda">La comision de salida del 1 %. No se mueve de la billetera: se le debita el bruto a la persona, sale el neto a la cadena, y la diferencia se queda y se anota. Ese ingreso vive solo en el libro, asi que si no sale aca no lo mira nadie.</p>
+      <div id="casa"></div>
+    </section>
+
+    <section class="vidrio">
+      <h2>Lo que se le debe a Orden Global</h2>
+      <p class="ayuda">Ordenex no vende de un inventario propio: le compra el ORIGEN a Orden Global y cada entrega deja una cuenta por pagar. Una fila por entrega, con su hash.</p>
+      <div id="porPagar"></div>
+    </section>
+
     <p class="ayuda" id="version"></p>
   </div>
 </main>
@@ -122,9 +175,17 @@ const PANEL = (() => {
   const API = String(window.ONX_API || 'https://ordenex-api-ba4b27b8b51a.herokuapp.com').replace(/\/$/, '');
   const $ = id => document.getElementById(id);
   const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-  const num = n => (n == null ? '—' : Number(n).toLocaleString('es'));
+  /* es-HN Y NO 'es' A SECAS, y no es un detalle.
+     'es' cae en el español de España: punto de miles y COMA decimal, o sea
+     93.192.900 y 3029,00. Honduras usa coma de miles y PUNTO decimal. El
+     panel mezclaba los dos —deWei pinta 1,180.42 y esto pintaba 3029,00 en la
+     tabla de al lado— y un panel donde el mismo número se escribe de dos
+     formas es un panel donde uno duda de las dos. Se vio pintándolo. */
+  const LOCAL = 'es-HN';
+  const num = n => (n == null ? '—' : Number(n).toLocaleString(LOCAL));
 
-  // De wei a texto, cortando, como en la casa.
+  /* De wei a texto, cortando, como en la casa. La coma de miles y el punto
+     decimal que escribe a mano son los de es-HN, los mismos que usa `num`. */
   function deWei(s, dec = 4) {
     if (s == null || s === '') return '—';
     let n; try { n = BigInt(s); } catch { return '—'; }
@@ -170,7 +231,119 @@ const PANEL = (() => {
         (cal.ok ? `<table style="margin-top:10px"><thead><tr><th>Activo</th><th>Saldo</th></tr></thead><tbody>${filas || '<tr><td colspan=2 class="nota">sin saldos con valor</td></tr>'}</tbody></table>`
                 : `<p class="aviso">No se pudo leer la cadena: ${esc(cal.error || '')}</p>`);
     }
-    $('version').textContent = d.terminosVersion ? `Términos vigentes: versión ${d.terminosVersion} · leído ${new Date().toLocaleTimeString('es')}` : `leído ${new Date().toLocaleTimeString('es')}`;
+    pintarCircuito(d);
+    $('version').textContent = d.terminosVersion ? `Términos vigentes: versión ${d.terminosVersion} · leído ${new Date().toLocaleTimeString(LOCAL)}` : `leído ${new Date().toLocaleTimeString(LOCAL)}`;
+  }
+
+  const RED = { 137: 'Polygon', 56: 'BNB Chain', 1: 'Ethereum', 5550: 'Orden Global' };
+  const red = (n) => RED[Number(n)] || `red ${n}`;
+  /* La marca del vigía viene con clave de TEXTO (`dep:polygon`) y los
+     depósitos con número de red (137). Sin esta tabla las dos mitades no se
+     juntan y la tabla sale partida: dos filas con los conteos y sin bloque, y
+     dos con el bloque y sin conteos. Se vio pintándola. */
+  const POR_CLAVE = { polygon: 137, bsc: 56, ethereum: 1 };
+  /* El mismo orden que el selector de la pantalla de comprar: de la más
+     barata y rápida a la más cara. Sin orden, las filas salen como las
+     devuelva Mongo y cambian de sitio entre una lectura y otra. */
+  const ORDEN = [137, 56, 1];
+  const usd = (micro) => (micro == null ? '—' : '$' + (Number(micro) / 1e6).toLocaleString(LOCAL, { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
+
+  /* EL CIRCUITO DE ENTRADA.
+     Tres piezas que se rompen por separado y en silencio. Lo primero que hay
+     que poder contestar es «¿esto esta encendido?» — un cero de entregas no
+     distingue «apagado» de «encendido y sin nada que hacer», y esa confusion
+     cuesta una tarde. */
+  function pintarCircuito(d) {
+    const e = d.entrada || {};
+    const v = e.vigia || {}, b = e.barrido || {}, c = e.compras || {};
+
+    const pieza = (et, on, detalle) => `<div class="pieza ${on ? 'on' : 'off'}">
+      <span class="et">${esc(et)}</span><b>${on ? 'encendido' : 'apagado'}</b>
+      <span class="d">${detalle}</span></div>`;
+    $('circuito').innerHTML = [
+      pieza('Vigía · ve los depósitos', v.encendido !== false,
+        v.error ? esc(v.error) : `${num((v.vistos || []).reduce((t, x) => t + x.n, 0))} anotados`),
+      pieza('Barrido · junta el USDT', b.encendido === true,
+        b.error ? esc(b.error) : `${num(b.pendientesDeBarrer)} depósitos sin barrer · <span class="mono">BARRIDO=1</span>`),
+      pieza('Entrega · manda el ORIGEN', c.encendido === true,
+        c.error ? esc(c.error) : `${num((c.por || {}).entregada || 0)} entregadas · <span class="mono">COMPRAS=1</span>`),
+    ].join('');
+
+    // Los depósitos vistos, por red y por estado. Es el único sitio donde se
+    // ve si una red dejó de mirar: un cero en Polygon con las otras dos
+    // subiendo es un RPC caído, no un día tranquilo.
+    const vistos = v.vistos || [];
+    const marcas = v.marcas || [];
+    let html = '';
+    if (vistos.length || marcas.length) {
+      const porRed = {};
+      for (const x of vistos) { (porRed[Number(x.cadena)] ||= {})[x.estado] = x.n; }
+      for (const m of marcas) {
+        const id = POR_CLAVE[String(m.clave).replace('dep:', '')];
+        if (id) { porRed[id] ||= {}; porRed[id].bloque = m.bloque; }
+      }
+      const filas = Object.keys(porRed).map(Number)
+        .sort((a, b) => (ORDEN.indexOf(a) + 1 || 99) - (ORDEN.indexOf(b) + 1 || 99));
+      html += `<table style="margin-top:12px"><thead><tr><th>Red</th><th>Vistos</th><th>Acreditados</th><th>Anulados</th><th>Último bloque</th></tr></thead><tbody>` +
+        filas.map((k) => [k, porRed[k]]).map(([k, x]) => `<tr><td>${esc(red(k))}</td>` +
+          `<td class="mono">${num(x.visto || 0)}</td><td class="mono">${num(x.acreditado || 0)}</td>` +
+          `<td class="mono">${x.anulado ? `<span class="barra mal2">${num(x.anulado)}</span>` : '—'}</td>` +
+          `<td class="mono">${x.bloque ? num(x.bloque) : '—'}</td></tr>`).join('') + '</tbody></table>';
+    }
+    const comp = c.por || {};
+    if (Object.keys(comp).length) {
+      html += `<p class="ayuda" style="margin-top:12px"><b>Órdenes de compra:</b> ` +
+        Object.entries(comp).map(([k, n]) => `${esc(k)} ${num(n)}`).join(' · ') +
+        (c.precio ? ` · ORIGEN a $${c.precio.usd.toFixed(6)}` : ' · sin precio de referencia ahora mismo') + '</p>';
+    }
+    $('entrada').innerHTML = html || '<p class="nota">Todavía no hay nada anotado.</p>';
+
+    // ── el gas
+    const g = Array.isArray(d.gasPorRed) ? d.gasPorRed : [];
+    $('gas').innerHTML = g.length ? `<table><thead><tr><th>Red</th><th>Saldo</th><th>Barridos que quedan</th><th>Delegación</th></tr></thead><tbody>` +
+      g.map((f) => {
+        const clase = f.nivel === 'critico' ? 'mal2' : f.nivel === 'aviso' ? 'aviso2' : 'bien';
+        return `<tr><td>${esc(f.nombre || red(f.red))}</td>` +
+          `<td class="mono">${f.ok ? esc(f.saldo) : `<span class="no">${esc(f.error || 'no se pudo leer')}</span>`}</td>` +
+          `<td class="mono">${f.barridosQueQuedan == null ? '—' : `<span class="barra ${clase}">${num(f.barridosQueQuedan)}</span>`}</td>` +
+          /* Una delegación EIP-7702 sobre la billetera de gas no impide firmar,
+             pero tiene que VERSE: desde fuera una cuenta delegada y una normal
+             son idénticas, y así se fueron los 15 USDT del 4 de septiembre. */
+          `<td class="mono">${f.delegada === true ? `<span class="barra aviso2">sí → ${esc(String(f.delegadaHacia || '').slice(0, 12))}…</span>` : f.delegada === false ? 'no' : '—'}</td></tr>`;
+      }).join('') + '</tbody></table>' : '<p class="nota">El API no devolvió el gas por red.</p>';
+
+    // ── la casa
+    const casa = d.casa || {};
+    $('casa').innerHTML = casa.error ? `<p class="aviso">${esc(casa.error)}</p>`
+      : `<p class="ayuda">De ${num(casa.deRetiros)} retiro(s), al ${casa.ppm != null ? (casa.ppm / 10000) : 1} %.</p>` +
+        ((casa.saldos || []).length
+          ? `<table style="margin-top:8px"><thead><tr><th>Activo</th><th>Acumulado</th></tr></thead><tbody>` +
+            casa.saldos.map((x) => `<tr><td>${esc(x.activo)}</td><td class="mono">${esc(deWei(x.disponible))}</td></tr>`).join('') + '</tbody></table>'
+          : '<p class="nota">Todavía no se ha cobrado ninguna comisión.</p>');
+
+    // ── la deuda
+    const pp = (c.porPagar) || {};
+    $('porPagar').innerHTML = pp.error ? `<p class="aviso">${esc(pp.error)}</p>`
+      : `<div class="rejilla">
+          <div class="cifra"><span class="et">Entregas sin liquidar</span><b>${esc(num(pp.entregas))}</b></div>
+          <div class="cifra"><span class="et">ORIGEN</span><b>${esc(deWei(pp.origenWei))}</b></div>
+          <div class="cifra"><span class="et">Valorado en</span><b>${esc(usd(pp.usdMicro))}</b></div>
+         </div>`;
+
+    // ── lo que necesita ojos
+    const ojos = [
+      ...((c.quierenOjos || []).map((x) => ({ ...x, de: 'entrega' }))),
+      ...((b.quierenOjos || []).map((x) => ({ ...x, de: 'barrido' }))),
+    ];
+    $('ojosCaja').classList.toggle('oculto', ojos.length === 0);
+    if (ojos.length) {
+      $('ojos').innerHTML = `<table><thead><tr><th>Qué</th><th>Estado</th><th>Por qué</th><th>Cuándo</th></tr></thead><tbody>` +
+        ojos.map((x) => `<tr><td>${esc(x.de)} · ${esc(red(x.cadena))}</td>` +
+          `<td><span class="barra mal2">${esc(x.estado)}</span></td>` +
+          `<td class="nota">${esc(x.motivo || '')}</td>` +
+          `<td class="mono">${esc(x.updatedAt ? new Date(x.updatedAt).toLocaleString(LOCAL) : '')}</td></tr>`).join('') +
+        '</tbody></table>';
+    }
   }
 
   async function ver() {

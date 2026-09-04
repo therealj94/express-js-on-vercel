@@ -416,6 +416,7 @@ async function resumen() {
     ]);
     const marcas = await Marca.find({ clave: /^dep:/ }).lean();
     return {
+      encendido: process.env.VIGIA_EXTERNO !== '0',
       vistos: por.map((x) => ({ cadena: x._id.cadena, estado: x._id.estado, n: x.n })),
       marcas: marcas.map((m) => ({ clave: m.clave, bloque: m.bloque })),
       redes: redes.estado(),
