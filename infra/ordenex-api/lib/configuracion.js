@@ -65,11 +65,19 @@ function cuadro() {
   let gasBilletera = null;
   try { gasBilletera = require('./gas').estado(); } catch { gasBilletera = null; }
 
+  // Las redes de fuera: cuantas confirmaciones pide cada una AHORA, y si el
+  // tiempo de bloque se midio de verdad o salio de la tabla. Es lo que evita
+  // repetir el fallo de los 30 bloques de BSC: un numero que fue correcto y se
+  // quedo viejo sin que nadie lo viera.
+  let redesUsdt = null;
+  try { redesUsdt = require('./redesUsdt').estado(); } catch { redesUsdt = null; }
+
   return {
     decimales,
     rpcs,
     derivacion,
     gas: gasBilletera,
+    redesUsdt,
     // Los secretos: solo si estan y si tienen forma.
     ORDENEX_ADM: {
       puesta: puesta('ORDENEX_ADM'),

@@ -364,6 +364,24 @@ app.listen(puerto, () => {
     Promise.resolve(referenciaVelas.arrancar()).catch((e) =>
       console.error(`[referenciaVelas] no arranco: ${e.message}`)
     );
+
+    // El vigia de los depositos de USDT en Polygon, BSC y Ethereum.
+    //
+    // Arranca en modo SOLO MIRAR: ve, identifica y anota, y no toca el libro.
+    // Acreditar exige el tamiz de sanciones, la atribucion a una orden con su
+    // precio congelado y el ledger, y esas tres piezas todavia no estan. Se
+    // enciende asi a proposito: una semana mirando enseña lo que ninguna prueba
+    // puede — que RPC falla de verdad, cuanto tarda cada red de verdad, y que
+    // hace la gente que no se puede predecir.
+    //
+    // Va en ESTE bloque, con su propio .catch, por lo mismo que los otros: un
+    // tropiezo suyo no puede tumbar al vigia de la 5550 ni a las velas.
+    if (process.env.VIGIA_EXTERNO !== '0') {
+      const vigiaExterno = require('./lib/vigiaDepositosExternos');
+      Promise.resolve(vigiaExterno.arrancar()).catch((e) =>
+        console.error(`[vigia-ext] no arranco: ${e.message}`)
+      );
+    }
   } catch (e) {
     console.error(`[fondos] no arrancaron: ${e.message}`);
   }
