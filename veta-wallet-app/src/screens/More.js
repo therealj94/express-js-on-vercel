@@ -210,6 +210,10 @@ export function Settings({ nav }) {
           <ListRow icon="eye" title={t('set.watchLbl')} onPress={() => nav.go('watchOnly')} />
           <ListRow icon="card" title={t('set.card')} onPress={() => nav.go('card')} />
           <ListRow icon="qr-code" title={t('set.addr')} sub={shortAddr(acc.addr)} onPress={() => nav.go('receive')} />
+          {/* Las dos casas del ecosistema, juntas: a las dos se entra con el
+              mismo Genesis ID y sin repetir el KYC. Ordenex va primero porque
+              es donde se cambia dinero; MyTokenPay, donde se gasta. */}
+          <ListRow icon="swap-horizontal" title={t('set.onx')} sub={t('set.onxSub')} onPress={() => nav.go('ordenex')} />
           <ListRow icon="storefront" title={t('set.mtp')} sub={t('set.mtpSub')} onPress={() => nav.go('mytokenpay')} />
         </Glass>
 

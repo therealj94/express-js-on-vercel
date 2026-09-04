@@ -36,6 +36,7 @@ import WatchOnly from './src/screens/WatchOnly';
 import Sessions from './src/screens/Sessions';
 import Help from './src/screens/Help';
 import Remesas from './src/screens/Remesas';
+import Ordenex from './src/screens/Ordenex';
 import DeleteAccount from './src/screens/DeleteAccount';
 import ErrorBoundary from './src/ErrorBoundary';
 import { arrancarTelemetria, fallo, identificar, olvidar, confirmarEnPadron, idDelToken } from './src/telemetria';
@@ -44,7 +45,7 @@ const SCREENS = {
   splash: Splash, auth: Auth, kyc: Kyc, seedview: SeedView, genesisOffer: GenesisOffer,
   home: Home, token: TokenDetail, send: Send, receive: Receive, buy: Buy, swap: Swap,
   card: CardScreen, cardSettings: CardSettings, fundCard: FundCard, deposit: Deposit, activity: Activity, notifs: Notifications, settings: Settings,
-  profile: Profile, mytokenpay: MyTokenPay, passport: Passport, blocked: Blocked, privatekey: PrivateKey,
+  profile: Profile, mytokenpay: MyTokenPay, ordenex: Ordenex, passport: Passport, blocked: Blocked, privatekey: PrivateKey,
   scan: Scan, contacts: Contacts, about: About,
   onboarding: Onboarding, watchOnly: WatchOnly, sessions: Sessions, help: Help,
   remesas: Remesas, deleteAccount: DeleteAccount,
