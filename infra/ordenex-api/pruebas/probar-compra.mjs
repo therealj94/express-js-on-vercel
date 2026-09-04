@@ -34,6 +34,13 @@ process.env.ORDENEX_ADM = 'una-clave-de-pruebas-suficientemente-larga-1234';
 // CADA llamada justamente para esto (genesis.js:21-24), así que el tamiz de
 // sanciones se prueba por el mismo camino que en producción y no por un
 // atajo. Un tamiz que en las pruebas no existe es un tamiz que nadie prueba.
+/* El atendedor encendido: sin esto `abrir` se niega, y con razón — las rutas
+   de /compras viven siempre pero quien ENTREGA solo corre con COMPRAS=1, y
+   abrir una orden que nadie va a atender es cobrar sin entregar. Acá se
+   enciende porque lo que se está probando son las cuentas; que se niegue
+   apagado tiene su propia comprobación al final. */
+process.env.COMPRAS = '1';
+
 const { createServer } = await import('node:http');
 const sancionadas = new Set();
 const genesisFingido = createServer((req, res) => {
@@ -517,6 +524,31 @@ decir('el reloj se pone aunque la primera vuelta truene');
   comprobar(Boolean(reloj), 'con Mongo caído, arrancar DEVUELVE el reloj igual');
   clearInterval(reloj);
   await mongoose.connect(servidor.getUri(), { dbName: 'ordenex_compra' });
+}
+
+decir('con el atendedor apagado no se abre ninguna orden');
+{
+  /* Es la regla que ya estaba escrita para la dirección de Veta Wallet —
+     «cobrarle a alguien por una entrega que no se le puede hacer es el peor
+     orden posible»— aplicada al caso más gordo: que no haya nadie entregando.
+
+     Las rutas de /compras se montan siempre (app.js), así que sin esto el
+     circuito quedaba en congelar precio ✓, dar dirección ✓, recibir el USDT ✓,
+     entregar ✗. Se cierra en el servidor y no en la pantalla porque la
+     pantalla puede estar vieja, o puede no ser la nuestra. */
+  process.env.COMPRAS = '0';
+  const quien = await persona({ conWallet: true });
+  let e = null;
+  try {
+    await compra.abrir(quien, { montoMicro: '2000000', cadena: POLYGON,
+      aceptoRecalculo: true, reglaRecalculoVersion: compra.REGLA_RECALCULO });
+  } catch (x) { e = x; }
+  comprobar(!!e && e.codigo === 'ENTREGA_APAGADA',
+    'se niega con ENTREGA_APAGADA', e ? `${e.codigo} · ${e.message}` : 'NO se negó');
+  comprobar(e?.status === 503, 'y con 503: no es culpa de quien pide, es que la casa no está', String(e?.status));
+  comprobar(/no mandes nada/i.test(e?.message || ''),
+    'y el mensaje dice lo único que importa: que no mande nada todavía', e?.message);
+  process.env.COMPRAS = '1';
 }
 
 console.log(`\n${fallos ? `FALLARON ${fallos}` : 'Todo en verde'}`);

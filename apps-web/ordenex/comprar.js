@@ -68,6 +68,7 @@ const VCOMPRA = (() => {
     es: {
       t: 'Comprar ORIGEN', sub: 'Con USDT, desde tu exchange o tu billetera.',
       previa: 'Vista previa del diseño. El servidor de compras se está construyendo: acá no se mueve dinero todavía.',
+      cerrada: 'La compra de ORIGEN con USDT está cerrada en este momento. No mandes nada todavía: no habría quién te lo entregue.',
       cuanto: 'Quiero depositar', red: 'Por la red', recibis: 'Vas a recibir',
       precioA: 'a', porOrigen: 'por ORIGEN', comision: 'comisión ya descontada',
       congelar: 'Congelar este precio', congelando: 'Congelando…',
@@ -107,6 +108,7 @@ const VCOMPRA = (() => {
     en: {
       t: 'Buy ORIGEN', sub: 'With USDT, from your exchange or wallet.',
       previa: 'Design preview. The purchase backend is being built: no money moves here yet.',
+      cerrada: 'Buying ORIGEN with USDT is closed right now. Do not send anything yet: there would be nobody to deliver it.',
       cuanto: 'I want to deposit', red: 'On network', recibis: "You'll receive",
       precioA: 'at', porOrigen: 'per ORIGEN', comision: 'fee already deducted',
       congelar: 'Lock this price', congelando: 'Locking…',
@@ -219,6 +221,34 @@ const VCOMPRA = (() => {
    *  medio. */
   let hayServidor = true;
 
+  /* ── ¿HAY QUIEN ENTREGUE? ──────────────────────────────────────────────────
+   *
+   * Las rutas de compra del API viven siempre, pero quien entrega el ORIGEN
+   * solo corre con COMPRAS=1. Con eso apagado se podía congelar un precio,
+   * recibir una dirección y mandar el USDT — y no había nadie del otro lado
+   * para entregar nada.
+   *
+   * El servidor ya se niega (lib/compra.js contesta ENTREGA_APAGADA), que es
+   * la puerta de verdad. Esto es para DECIRLO A TIEMPO: enterarse después de
+   * escribir el monto y elegir la red es enterarse tarde.
+   *
+   * `null` mientras no se sabe. Se arranca sin bloquear nada: si /salud no
+   * contesta, la pantalla se comporta como siempre y el que dice que no es el
+   * servidor cuando toque. Fingir aquí una puerta cerrada por no poder
+   * preguntar sería tan malo como fingirla abierta. */
+  let entregaAbierta = null;
+
+  async function mirarEntrega() {
+    if (!hayServidor) return;
+    try {
+      const r = await fetch(DATOS.API + '/salud', { signal: AbortSignal.timeout(8000) });
+      const d = await r.json();
+      const antes = entregaAbierta;
+      entregaAbierta = d?.entrega === true;
+      if (antes !== entregaAbierta) repintar();
+    } catch { /* sin respuesta no se cambia nada: manda el servidor, no el silencio */ }
+  }
+
   // ── la referencia del oro ─────────────────────────────────────────────────
   //
   // Sale del MISMO sitio que la de los mercados (DATOS.mercados → referencia),
@@ -294,6 +324,11 @@ const VCOMPRA = (() => {
 
     return `
     <div class="vidrio cp-caja">
+      ${/* Va DENTRO de la calculadora y no en el marco de la vista: `repintar()`
+            solo cambia #cp-izq, así que un cartel colgado fuera se pintaba una
+            vez —con `entregaAbierta` todavía en null— y ya no cambiaba nunca.
+            Aquí se repinta con el resto en cuanto /salud contesta. */ ''}
+      ${entregaAbierta === false ? `<div class="cp-previa">${esc(t('cerrada'))}</div>` : ''}
       <div class="campo">
         <label for="cp-monto">${esc(t('cuanto'))}</label>
         <div class="cp-monto">
@@ -342,7 +377,7 @@ const VCOMPRA = (() => {
 
       ${bajo ? `<div class="cp-alerta">${esc(t('bajoMinimo'))} $${r.minimo} ${esc(idioma() === 'en' ? 'USDT' : 'USDT')}.</div>` : ''}
 
-      <button class="btn btn-oro btn-full" ${(!recibe || bajo || !precio) ? 'disabled' : ''}
+      <button class="btn btn-oro btn-full" ${(!recibe || bajo || !precio || entregaAbierta === false) ? 'disabled' : ''}
               onclick="VCOMPRA.congelar()">${esc(t('congelar'))}</button>
       <p class="cp-pie">${esc(t('plazo').replace('{min}', String(Math.round(PLAZO / 60))))}</p>
     </div>`;
@@ -712,6 +747,9 @@ const VCOMPRA = (() => {
 
   function alPintar() {
     traerPrecio();
+    // Antes que nada: si no hay quien entregue, que se vea al abrir y no
+    // después de llenar el formulario.
+    mirarEntrega();
     /* La referencia se vuelve a pedir cada minuto y el rotulo de frescura cada
        diez segundos. Una cotizacion quieta cinco minutos es una cotizacion
        vieja que parece viva, y esa es la clase de mentira que una casa de
@@ -721,6 +759,9 @@ const VCOMPRA = (() => {
       const f = document.getElementById('cp-fresco');
       if (f) f.textContent = frescura();
       if (precio && Date.now() - precio.en.getTime() > 60_000) traerPrecio();
+      // Barato y en el mismo reloj: así encender COMPRAS=1 se nota sola en la
+      // pantalla de quien ya la tenía abierta, sin decirle que recargue.
+      mirarEntrega();
     }, 10_000);
     if (orden) { dibujarQr(); arrancarReloj(); if (hayServidor) arrancarSondeo(); }
   }

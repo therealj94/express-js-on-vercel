@@ -206,7 +206,17 @@ app.get('/salud', async (req, res) => {
   }
 
   const ok = mongoOk && cadenaOk;
-  res.status(ok ? 200 : 503).json({ ok, cadena: cadenaOk, mongo: mongoOk, bloque });
+  /* `entrega` sale acá porque la pantalla de comprar necesita saberlo ANTES de
+     que nadie escriba un monto. La puerta de verdad es lib/compra.js, que se
+     niega a abrir una orden con el atendedor apagado; esto es solo para poder
+     decirlo a tiempo en vez de después de rellenar el formulario.
+     Es una sola variable de entorno y no cuenta nada de nadie: va en la ruta
+     pública, como la tarifa, y por el mismo motivo — lo que afecta a quien va
+     a pagar es suyo antes de pagar. */
+  res.status(ok ? 200 : 503).json({
+    ok, cadena: cadenaOk, mongo: mongoOk, bloque,
+    entrega: process.env.COMPRAS === '1',
+  });
 });
 
 // ── Tarifas ─────────────────────────────────────────────────────────────────

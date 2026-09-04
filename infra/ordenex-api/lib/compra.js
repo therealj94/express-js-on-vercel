@@ -211,6 +211,36 @@ const fallo = (codigo, mensaje, status = 400) =>
  * rato; mientras no llegue dinero no hay nada que respaldar.
  */
 async function abrir(usuario, { montoMicro, cadena: red, aceptoRecalculo, reglaRecalculoVersion }) {
+  /* ── LA PUERTA NO SE ABRE SI NADIE VA A ENTREGAR ──────────────────────────
+   *
+   * Es la misma regla que está escrita treinta líneas más abajo para la
+   * dirección de Veta Wallet —«cobrarle a alguien por una entrega que no se le
+   * puede hacer es el peor orden posible»— y faltaba aplicarla al caso más
+   * gordo de todos: que el atendedor esté APAGADO.
+   *
+   * Las rutas de /compras se montan siempre (app.js:272), pero quien entrega
+   * el ORIGEN solo corre con COMPRAS=1 (app.js:401). Con la variable sin
+   * poner, el circuito quedaba así:
+   *
+   *   alguien congela un precio  ✓
+   *   recibe una dirección       ✓
+   *   manda su USDT              ✓
+   *   el vigía lo anota          ✓
+   *   alguien le entrega ORIGEN  ✗   ← nadie
+   *
+   * O sea: la casa cobra y no entrega, y el síntoma llega días después en
+   * forma de persona preguntando por su dinero. Se cierra ACÁ y no en la
+   * pantalla porque la pantalla puede estar vieja, o puede no ser la nuestra:
+   * la puerta es el servidor.
+   *
+   * Se lee en cada petición y no al arrancar a propósito — así encender la
+   * variable no exige acordarse de nada más. */
+  if (process.env.COMPRAS !== '1') {
+    throw fallo('ENTREGA_APAGADA',
+      'La compra de ORIGEN con USDT está cerrada en este momento. No mandes nada todavía.',
+      503);
+  }
+
   const id = Number(red);
   if (!redes.REDES[id]) throw fallo('RED_INVALIDA', 'Esa red no recibe USDT en esta casa.');
   if (!decimales.listo(id)) {

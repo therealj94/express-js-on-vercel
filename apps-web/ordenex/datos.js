@@ -263,6 +263,38 @@ const DATOS = (() => {
   const haySesion = () => Boolean(sesion?.token);
   const usuario = () => sesion?.usuario || null;
 
+  /* ── LA PUERTA GENÉRICA 🔒 ─────────────────────────────────────────────────
+   *
+   * Todo lo de arriba es una función con nombre por ruta, que es lo correcto:
+   * el nombre dice qué se pide y el contrato queda escrito en un solo sitio.
+   * Estas dos son la excepción, y existen por `comprar.js`.
+   *
+   * El circuito de compra son CUATRO rutas —congelar el precio, mirar cómo va,
+   * confirmar un recálculo, cancelar— que solo usa esa pantalla y que se
+   * llaman con el id de la orden por delante. Envolverlas una por una aquí
+   * dejaría cuatro funciones que nadie más llama, y `comprar.js` ya escribe la
+   * ruta al lado de la petición, donde se lee.
+   *
+   * PERO ESTABAN SIN ESCRIBIR, y eso mató la compra entera. `comprar.js`
+   * llamaba a `DATOS.post(...)` y `DATOS.get(...)` desde el 4 de septiembre y
+   * este módulo no exportaba ninguno de los dos. El primer clic en «congelar»
+   * lanzaba un TypeError que moría en el `catch` de la propia pantalla, así
+   * que el síntoma no era un error: era un botón que no hacía nada. Ninguna
+   * prueba lo vio porque ninguna llegaba a pulsarlo — `comprar.js` estaba
+   * bien, `datos.js` estaba bien, y el hueco estaba ENTRE los dos.
+   *
+   * Ahora lo cubre `pruebas/probar-comprar.mjs`, que recorre el camino con un
+   * navegador y un servidor al otro lado, y que empieza preguntando si estos
+   * dos métodos existen.
+   *
+   * Van por `pedir` y no por `crudo` a propósito: así heredan el refresco del
+   * token al primer 401 y la forma { error, codigo } de los fallos, que es de
+   * lo que vive la pantalla (distingue SIN_DIRECCION_WALLET para pedir la
+   * dirección en vez de enseñar un error).
+   */
+  const get = (ruta) => pedir(ruta);
+  const post = (ruta, cuerpo = {}) => pedir(ruta, { metodo: 'POST', cuerpo });
+
   return {
     API, sondeo,
     mercados, libro, velas, tratos, referencia, declarado, tarifas, limites,
@@ -271,5 +303,6 @@ const DATOS = (() => {
     portafolio, retirar, movimientos,
     agentes, solicitudes, crearSolicitud, accionSolicitud,
     sso, salir, haySesion, usuario,
+    get, post,
   };
 })();
