@@ -382,6 +382,24 @@ app.listen(puerto, () => {
         console.error(`[vigia-ext] no arranco: ${e.message}`)
       );
     }
+
+    // El barrido: mueve el USDT de la direccion provisional a la caja unica.
+    //
+    // Apagado POR OMISION, y esa es la diferencia con el vigia. El vigia solo
+    // mira; esto FIRMA con la llave de cada direccion de deposito y gasta gas.
+    // Un arranque accidental en un entorno de pruebas apuntando a la base de
+    // produccion barreria de verdad. Se enciende poniendo BARRIDO=1, a mano y
+    // sabiendo lo que se hace.
+    //
+    // Tampoco acredita: mueve custodia y nada mas. Ver lib/barridoExterno.js.
+    if (process.env.BARRIDO === '1') {
+      const barrido = require('./lib/barridoExterno');
+      Promise.resolve(barrido.arrancar()).catch((e) =>
+        console.error(`[barrido] no arranco: ${e.message}`)
+      );
+    } else {
+      console.log('[barrido] apagado (BARRIDO != 1): el USDT se queda en las direcciones provisionales');
+    }
   } catch (e) {
     console.error(`[fondos] no arrancaron: ${e.message}`);
   }

@@ -81,12 +81,27 @@ const depositoExternoSchema = new mongoose.Schema({
   crudo: { type: String, required: true },
   decimales: { type: Number, required: true },
   cantidad: { type: String, required: true },
+  // DOS EJES, Y NO UNO. `estado` cuenta la vida del depósito frente a la
+  // persona; `custodia` cuenta dónde está el dinero. Son independientes de
+  // verdad: un depósito puede estar acreditado y todavía sin barrer (normal:
+  // el barrido va detrás), o barrido y sin acreditar (el tamiz lo retuvo).
+  //
+  // Meterlos en un solo campo es lo que hace que un día barrer PAREZCA
+  // acreditar. Ese error no da ningún síntoma: la persona simplemente no
+  // recibe lo suyo, y el descuadre aparece semanas después en un arqueo.
   estado: {
     type: String,
-    enum: ['visto', 'confirmado', 'anulado'],
+    enum: ['visto', 'confirmado', 'acreditado', 'anulado'],
     required: true,
     default: 'visto',
   },
+  custodia: {
+    type: String,
+    enum: ['provisional', 'barrido'],
+    required: true,
+    default: 'provisional',
+  },
+  barridoHash: { type: String, default: null },
   error: { type: String, default: null },
 }, { timestamps: true });
 
@@ -96,6 +111,9 @@ const depositoExternoSchema = new mongoose.Schema({
    en memoria — un `if` no sobrevive a dos dynos. (vigiaCompras.js:109-111.) */
 depositoExternoSchema.index({ cadena: 1, txHash: 1, logIndex: 1 }, { unique: true });
 depositoExternoSchema.index({ estado: 1, cadena: 1 });
+// El índice del barrido: pregunta por «lo que sigue en la provisional» en
+// cada vuelta, y sin esto sería un recorrido de toda la colección cada minuto.
+depositoExternoSchema.index({ custodia: 1, cadena: 1 });
 depositoExternoSchema.index({ userId: 1, createdAt: -1 });
 
 const marcaSchema = new mongoose.Schema({
