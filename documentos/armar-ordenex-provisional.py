@@ -15,8 +15,13 @@ y no se pueden construir:
   · FUNCIONAMIENTO — el vigía, el barrido, el gas y los fallos.
 
 Lo que dice sobre el código de Ordenex está comprobado contra el repositorio, no
-recordado: qué existe ya (la dirección por usuario, el vigía de la 5550, el
-barrido manual del panel, el vigía de compras de Polygon y BSC) y qué falta.
+recordado.
+
+Se revisó cuando el plan pasó a estar construido: los cinco pasos están hechos y
+la sección 13 lo dice pieza por pieza. Y se le agregó la sección 12, que no
+estaba en el plan original y que ojalá no hubiera hecho falta: cómo se robaron
+15 USDT de la billetera de gas sin que se filtrara ninguna llave, y qué guarda
+lleva el código ahora por eso.
 """
 
 import os
@@ -70,7 +75,7 @@ def construir():
         'construirla, en sus dos mitades: <b>el diseño</b> — lo que la persona ve, con las '
         'palabras que va a leer, pantalla por pantalla — y <b>el funcionamiento</b> — el '
         'vigía, el barrido, el gas y qué pasa cuando algo falla.<br/><br/>'
-        'Buena parte ya está construida. La página 13 dice exactamente qué existe y qué '
+        'Buena parte ya está construida. La página 14 dice exactamente qué existe y qué '
         'falta, comprobado contra el repositorio y no de memoria.'))
     h.append(Spacer(1, 6 * mm))
     h.append(P('Costos de red y precio del oro medidos contra Ethereum, Polygon y BNB Smart '
@@ -593,92 +598,182 @@ def construir():
         [40 * mm, 52 * mm, au - 92 * mm]))
     h.append(PageBreak())
 
-    # ── 11 · Qué existe y qué falta ──────────────────────────────────────────
-    h.append(P('12 · Qué está construido y qué falta', 'h1'))
+    # ── El robo del 4 de septiembre ──────────────────────────────────────────
+    h.append(P('12 · Cómo nos robaron, y por qué no fue una llave filtrada', 'h1'))
     h.append(P(
-        'Comprobado contra el repositorio el 4 de septiembre, archivo por archivo. Es más de '
-        'lo que parece.', 'pg'))
+        'Esto pasó mientras se construía lo de este documento, con dinero de prueba, y por eso '
+        'está acá: es la explicación de una guarda que el código lleva ahora y que no estaba en '
+        'el plan original.', 'pg'))
+    h.append(Spacer(1, 5))
+    h.append(P(
+        'Se mandaron 15 USDT a la billetera de gas y desaparecieron <b>un bloque después de '
+        'llegar</b> — medio segundo. Se buscó durante horas la llave filtrada: se derivaron las '
+        '1.343 cadenas de 64 caracteres hexadecimales de todo el historial del repositorio y '
+        'ninguna daba esa dirección. <b>No había ninguna filtración.</b>', 'pg'))
+    h.append(Spacer(1, 5))
+    h.append(recuadro(
+        'Lo que había: una delegación EIP-7702',
+        'Desde el fork de Praga, una cuenta normal puede firmar una autorización —<b>una firma, '
+        'sin transacción, sin gas</b>— que le pone encima el código de un contrato. La cuenta '
+        'sigue siendo suya y su llave sigue funcionando, pero además ejecuta código ajeno. Esa '
+        'firma es la que piden las páginas de «reclamá tu airdrop» y los falsos permisos de '
+        'billetera. <b>No parece una transferencia</b> — por eso se firma.',
+        ALERTA))
+    h.append(Spacer(1, 7))
+    h.append(P('Lo que se leyó de la cadena, en esa dirección:', 'pg'))
+    h.append(Spacer(1, 4))
+    h.append(tabla(
+        ['Red', 'Código puesto encima', 'A dónde manda el dinero'],
+        [
+            ['Polygon',
+             'Un contrato «Forwarder» de 550 caracteres. Su <font face="Courier" size="7">'
+             'receive()</font> reenvía todo lo que entre.',
+             '<font face="Courier" size="7">0xEc0Bcf45…74Dc9</font> — un cobrador con más de '
+             '208.000 transacciones.'],
+            ['BNB Chain',
+             'Otro drenador, de 1.524 bytes.',
+             '<font face="Courier" size="7">0x40211616…9E2C</font> — <b>exactamente</b> la '
+             'dirección que se llevó los 15 USDT.'],
+        ],
+        [24 * mm, (au - 24 * mm) * 0.44, (au - 24 * mm) * 0.56]))
+    h.append(Spacer(1, 8))
+    h.append(P(
+        'Por eso el barrido fue instantáneo: <b>no hubo un bot compitiendo por llegar primero</b>. '
+        'El desvío ocurre dentro de la misma transacción del depósito. No hay ventana para '
+        'reaccionar, no hay reintento y no hay forma de ganarle. Y no fue algo dirigido a esta '
+        'casa: el cobrador de Polygon lleva doscientas mil operaciones.', 'pg'))
+    h.append(Spacer(1, 6))
+    h.append(recuadro(
+        'Las tres cosas que cambiaron por esto',
+        '<b>1.</b> Las direcciones de la casa viven en un solo archivo, con las retiradas al '
+        'lado y con nombre. Ninguna puede ser destino de un retiro, y a la comprometida no se le '
+        'manda nada nunca.<br/>'
+        '<b>2.</b> Antes de mandarle gas a una dirección provisional se comprueba que siga '
+        'siendo una cuenta normal. Si tiene código encima, el gas se iría por el mismo agujero. '
+        'Y si el nodo no contesta, tampoco se manda: una lectura que falla no es un permiso.<br/>'
+        '<b>3.</b> El panel dice, por red, si la billetera de gas tiene una delegación y hacia '
+        'dónde. Ahí no se bloquea —una delegación puesta a propósito no impide firmar— pero '
+        'tiene que <b>verse</b>: desde fuera una cuenta delegada y una normal son idénticas.',
+        VERDE))
+    h.append(Spacer(1, 7))
+    h.append(P(
+        'Para vos y para cualquiera del ecosistema, la lección práctica es una sola: <b>una firma '
+        'que no es una transferencia igual puede vaciarte la billetera</b>. Si una página pide '
+        'firmar algo para «activar», «reclamar» o «verificar», y no es tu billetera pidiéndotelo, '
+        'no se firma.', 'pg'))
+    h.append(PageBreak())
+
+    # ── 11 · Qué existe y qué falta ──────────────────────────────────────────
+    h.append(P('13 · Qué está construido y qué falta', 'h1'))
+    h.append(P(
+        'Comprobado contra el repositorio, archivo por archivo, con las veintidós baterías de '
+        'pruebas en verde. Todo lo que este documento describía está construido; lo que queda '
+        'no es código.', 'pg'))
     h.append(Spacer(1, 6))
     h.append(tabla(
         ['Pieza', 'Estado', 'Dónde vive / qué falta'],
         [
-            ['Dirección de depósito por persona', '<b>Existe</b>',
-             '<font face="Courier" size="7">portafolioController.js</font> — creación '
-             'perezosa y atómica, llave cifrada.'],
-            ['Cifrado de llaves', '<b>Existe</b>',
-             '<font face="Courier" size="7">lib/cripto.js</font> — AES-256 y verificación '
-             'por formato estricto.'],
-            ['Vigía de depósitos', '<b>Existe</b>, solo 5550',
-             '<font face="Courier" size="7">lib/vigia.js</font> — falta que mire Polygon, BSC '
-             'y Ethereum, y por eventos.'],
-            ['Barrido', '<b>Existe</b>, manual',
-             '<font face="Courier" size="7">POST /admin/barrer</font> — falta el automático '
-             'con gas y umbral.'],
-            ['Lectura de Polygon y BSC', '<b>Existe</b>',
-             '<font face="Courier" size="7">lib/vigiaCompras.js</font> — RPCs, confirmaciones '
-             'e idempotencia ya resueltos.'],
-            ['Libro y cuentas', '<b>Existe</b>',
-             '<font face="Courier" size="7">lib/ledger.js</font> y los esquemas de cuenta y '
-             'asiento.'],
-            ['Tamiz de sanciones', '<b>Existe</b>',
-             'Genesis ID, con 19.321 registros. Falta llamarlo desde el depósito.'],
-            ['Derivación por índice', '<b>Falta</b>', 'Es el cambio de la página 4.'],
-            ['Billetera de gas', '<b>Falta</b>', 'Llave nueva, fondeo y alarma de saldo.'],
-            ['Dirección de Veta Wallet', '<b>Existe</b>',
-             'Viene del perfil de Genesis en cada login. Falta congelarla con la orden '
-             'y exigirla antes de cobrar — página 7.'],
-            ['Decimales por red', '<b>Falta</b>', 'Y es lo que más urge: página 11.'],
-            ['Pantallas de depósito', '<b>Falta</b>', 'Las de las páginas 5, 6, 7 y 8.'],
-            ['Avisos al teléfono', '<b>Falta</b>', 'La tubería ya existe en la app.'],
+            ['Decimales por red', '<b>Hecho</b>',
+             '<font face="Courier" size="7">lib/decimales.js</font> — se leen del contrato al '
+             'arrancar; si no cuadran, el servicio no arranca. Nunca supone 18.'],
+            ['Derivación por índice', '<b>Hecho</b>',
+             '<font face="Courier" size="7">lib/derivacion.js</font> — <font face="Courier" '
+             'size="7">m/44\'/60\'/0\'/0</font>, índice desde 1, y ninguna llave nueva en la '
+             'base. Conviven con las guardadas de antes.'],
+            ['Billetera de gas', '<b>Hecho</b>',
+             '<font face="Courier" size="7">lib/gas.js</font> — con tope por envío, alarma de '
+             'saldo y la llave comprobada contra su dirección. Fondeada en Polygon y BSC.'],
+            ['Vigía multicadena', '<b>Hecho</b>',
+             '<font face="Courier" size="7">lib/vigiaDepositosExternos.js</font> — por eventos, '
+             'con la marca de agua de auditoría y los tiempos de bloque medidos, no supuestos.'],
+            ['Barrido automático', '<b>Hecho</b>',
+             '<font face="Courier" size="7">lib/barridoExterno.js</font> — candado en base de '
+             'datos, enfriamiento de las dudas, y todo a la caja única.'],
+            ['Precio congelado y entrega', '<b>Hecho</b>',
+             '<font face="Courier" size="7">lib/compra.js</font> — la cantidad sale de la '
+             'cadena, el precio de la orden, y la entrega se hace una sola vez.'],
+            ['Tamiz de sanciones en el depósito', '<b>Hecho</b>',
+             'Sobre quien mandó, antes de decidir nada, y fail-closed: si Genesis no contesta, '
+             'no se atiende.'],
+            ['Guarda de delegaciones', '<b>Hecho</b>',
+             '<font face="Courier" size="7">lib/delegacion.js</font> — la de la página anterior.'],
+            ['Pantalla de comprar', '<b>Hecho</b>',
+             'Calculadora, dirección con QR, contador, los cuatro estados y el panel del '
+             'recálculo. Conectada al servidor.'],
+            ['Avisos al teléfono', '<b>Falta</b>',
+             'La tubería ya existe en la app. Es lo único de esta lista que es código.'],
+            ['Las respuestas de la Junta', '<b>Falta</b>',
+             'Las seis preguntas de la página 8 del documento anterior. Tres cambian el código.'],
+            ['La comisión', '<b>Falta</b>',
+             'Hoy es cero, y eso es una decisión tomada por omisión.'],
+            ['El permiso para prestar el servicio', '<b>Falta</b>',
+             'Ver la advertencia del final. No la contesta un documento técnico.'],
         ],
-        [52 * mm, 28 * mm, au - 80 * mm]))
+        [52 * mm, 24 * mm, au - 76 * mm]))
     h.append(PageBreak())
 
     # ── 12 · El orden y lo que hace falta de vos ─────────────────────────────
-    h.append(P('13 · El orden de construcción', 'h1'))
+    h.append(P('14 · Cómo se enciende', 'h1'))
     h.append(P(
-        'En este orden, y no en otro: cada paso deja algo que se puede probar de verdad antes '
-        'de que el siguiente dependa de él. Ninguno mueve dinero real hasta el último.', 'pg'))
+        'Los cinco pasos de construcción están hechos. Lo que queda es el encendido, y va en '
+        'este orden por el mismo motivo por el que iba el otro: cada escalón se puede mirar '
+        'antes de que el siguiente dependa de él.', 'pg'))
     h.append(Spacer(1, 5))
-    h.append(paso(1, 'Los decimales, primero que nada',
-        'Leerlos del contrato, comprobarlos al arrancar, y que el servicio se niegue a '
-        'arrancar si no cuadran. Va primero porque todo lo demás cuenta dinero, y contar mal '
-        'desde el principio es lo único de esta lista que no se puede arreglar después.'))
-    h.append(paso(2, 'La derivación y la billetera de gas',
-        'Las dos llaves nuevas, con sus direcciones ya fondeadas y probadas en cada red. Sin '
-        'usuarios todavía: solo comprobar que se deriva, que se fondea y que se puede barrer.'))
-    h.append(paso(3, 'El vigía multicadena, mirando y sin acreditar',
-        'Que vea depósitos de verdad en las tres redes y los anote, pero <b>sin tocar el '
-        'libro</b>. Una semana así enseña más que cualquier prueba: se ve qué RPC falla, cuánto '
-        'tarda de verdad cada red, y qué hace la gente que no se puede predecir.'))
-    h.append(paso(4, 'El barrido automático, con topes',
-        'Primero con un tope bajo por vuelta. Si algo está mal, está mal por poco dinero.'))
-    h.append(paso(5, 'Las pantallas, y recién ahí abrir',
-        'La calculadora, el precio congelado, los cuatro estados y los avisos. Y se abre con '
-        'un puñado de personas conocidas antes que con los 407.'))
+    h.append(recuadro(
+        'Nada de esto arranca solo, y es a propósito',
+        'El vigía se enciende con <font face="Courier" size="8">VIGIA_EXTERNO</font>, el barrido '
+        'con <font face="Courier" size="8">BARRIDO=1</font> y la entrega con <font '
+        'face="Courier" size="8">COMPRAS=1</font>. El vigía solo mira; los otros dos <b>firman '
+        'con llaves y gastan gas</b>. Un arranque accidental de un entorno de pruebas apuntando '
+        'a la base de producción barrería de verdad y entregaría de verdad.',
+        ALERTA))
+    h.append(Spacer(1, 7))
+    h.append(paso(1, 'El vigía, una semana mirando y sin acreditar',
+        'Ya está encendido y ya midió los tiempos de bloque de las tres redes. Se le deja ver '
+        'depósitos de verdad y anotarlos, <b>sin tocar el libro</b>. Es lo que enseña qué RPC '
+        'falla de verdad y qué hace la gente, que ninguna prueba puede enseñar.'))
+    h.append(paso(2, 'El barrido, con poco dinero',
+        'Encender <font face="Courier" size="8">BARRIDO=1</font> con la billetera de gas '
+        'fondeada y depositar vos mismo cantidades chicas en las tres redes. Si algo está mal, '
+        'está mal por poco dinero y se ve en el panel.'))
+    h.append(paso(3, 'La entrega, con vos de conejillo',
+        'Encender <font face="Courier" size="8">COMPRAS=1</font> y hacer la compra entera desde '
+        'la pantalla: congelar, depositar, ver el riel moverse y recibir el ORIGEN en tu Veta '
+        'Wallet. Y una a propósito con el plazo vencido, para ver el panel del recálculo.'))
+    h.append(paso(4, 'Un puñado de personas conocidas',
+        'Cinco o seis que puedan escribir por WhatsApp si algo se ve raro. Antes de los 407, y '
+        'no después: el primer error de esta clase de servicio se cuenta, y se cuenta rápido.'))
+    h.append(paso(5, 'Recién ahí, abrir',
+        'Con la comisión decidida, con las respuestas de la Junta en la mano, y con la pregunta '
+        'del permiso contestada. Las tres van antes.'))
     h.append(Spacer(1, 6))
 
     h.append(PageBreak())
-    h.append(P('Lo que necesito de vos', 'h1'))
+    h.append(P('Lo que sigue haciendo falta de vos', 'h1'))
     h.append(P(
-        'Tres cosas para empezar, y una que va antes que las tres.', 'pg'))
+        'La billetera única, el gas y las frases ya están. Queda lo que no se construye: cuatro '
+        'decisiones, y ninguna la puede tomar el código.', 'pg'))
     h.append(Spacer(1, 4))
     h.append(tabla(
         ['Qué', 'Para qué', 'Cuándo'],
         [
             ['<b>Las respuestas de la página 8 del documento anterior</b>',
-             'De dónde sale el ORIGEN, de quién es la comisión, y en qué está el tesoro. Tres '
-             'de esas seis cambian el código.',
-             '<b>Antes de escribir nada</b>'],
-            ['La billetera única de Ordenex',
-             'Dónde se junta todo. La creás vos y la llave no pasa por acá.', 'Paso 2'],
-            ['El umbral de Ethereum y el plazo del precio',
-             'Cuánto tiene que juntar antes de barrer en Ethereum, y si el congelado son 30 '
-             'minutos o menos.', 'Paso 4'],
+             'De dónde sale el ORIGEN —si Ordenex vende de su propio inventario o se lo compra a '
+             'Orden Global cada vez—, de quién es la comisión, y en qué está el tesoro. Tres de '
+             'esas seis cambian el código.',
+             '<b>Antes de abrir</b>'],
             ['La comisión',
-             'El número que va en la calculadora. Hoy no está decidido.', 'Paso 5'],
+             'Hoy es cero. No está sin decidir: está decidida en cero por omisión, que es peor, '
+             'porque nadie eligió eso.', 'Antes de abrir'],
+            ['El plazo del precio congelado',
+             'Hoy son quince minutos. Es lo que la pantalla dice y lo que el servidor hace; '
+             'cambiarlo es una variable, pero es tu número, no mío.', 'Cuando quieras'],
+            ['El umbral de Ethereum',
+             'Cuánto tiene que juntar una dirección antes de que valga la pena barrerla ahí. '
+             'Barrer cuatro dólares en Ethereum cuesta más que la comisión entera.', 'Antes de '
+             'encender Ethereum'],
         ],
-        [60 * mm, au - 100 * mm, 28 * mm]))
+        [58 * mm, au - 96 * mm, 26 * mm]))
     h.append(Spacer(1, 8))
     h.append(recuadro(
         'Y una advertencia que prefiero dar ahora',
