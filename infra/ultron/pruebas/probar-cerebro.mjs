@@ -188,5 +188,29 @@ titulo('el hilo se retoma');
   decir(!JSON.stringify(c.llamadas[0].messages).includes('secreto de Mayra'), 'un hilo de OTRO miembro no se le muestra aunque pase el id');
 }
 
+titulo('cuando Anthropic dice que no, se dice POR QUÉ');
+{
+  // El 4-sep la cuenta se quedó sin saldo y el panel decía «probá de nuevo»,
+  // que era exactamente lo único que NO iba a funcionar. Los motivos con
+  // arreglo conocido se llaman por su nombre; el resto sigue genérico.
+  const err = (status, tipo, dice) => Object.assign(new Error(dice), { status, error: { error: { type: tipo, message: dice } } });
+  const { cer } = conClaude([]);
+  const casos = [
+    ['sin saldo', err(400, 'invalid_request_error', 'Your credit balance is too low to access the Anthropic API.'), 'SIN_SALDO', /saldo/i],
+    ['llave mala', err(401, 'authentication_error', 'invalid x-api-key'), 'LLAVE_MALA', /ANTHROPIC_API_KEY/],
+    ['modelo que no ve', err(404, 'not_found_error', 'model: no-existe'), 'MODELO', /ULTRON_MODELO/],
+    ['mucho ritmo', err(429, 'rate_limit_error', 'rate'), 'MUCHO_RITMO', /minuto/i],
+    ['saturado', err(529, 'overloaded_error', 'overloaded'), 'SATURADO', /satur/i],
+  ];
+  for (const [que, e, codigo, dice] of casos) {
+    const m = cer.motivo(e);
+    decir(m.codigo === codigo && dice.test(m.mensaje), `${que} → ${codigo}, y el mensaje dice dónde se arregla`, m.codigo + ' · ' + m.mensaje);
+  }
+  const raro = cer.motivo(err(500, 'api_error', 'boom'));
+  decir(raro.codigo === 'ERROR' && !/boom/.test(raro.mensaje), 'un fallo que no se conoce NO se explica inventando');
+  const apagado = Object.assign(new Error('Falta ANTHROPIC_API_KEY.'), { codigo: 'CEREBRO_APAGADO' });
+  decir(cer.motivo(apagado).codigo === 'CEREBRO_APAGADO', 'y el cerebro apagado sigue diciendo lo suyo');
+}
+
 console.log(fallos ? `\n${fallos} comprobación(es) fallaron` : '\nTodo en verde');
 process.exit(fallos ? 1 : 0);

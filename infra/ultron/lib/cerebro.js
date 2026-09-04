@@ -59,6 +59,47 @@ function clienteAnthropic() {
 }
 function encendido() { return !!(process.env.ANTHROPIC_API_KEY || '').trim(); }
 
+/* POR QUE ESTO EXISTE, Y NO UN «probá de nuevo»
+ *
+ * 4-sep, primera pregunta de verdad del panel: el cerebro estaba encendido, la
+ * llave era buena, y ULTRON contestaba «no pudo contestar, probá de nuevo».
+ * Probar de nuevo no iba a arreglar nada nunca: la cuenta de Anthropic no
+ * tenía saldo. Eso estaba escrito con todas las letras en el registro de
+ * Heroku, o sea en el único sitio donde la junta no va a mirar.
+ *
+ * Un error que se puede arreglar en dos minutos y se presenta como una
+ * avería es peor que la avería: manda a la persona a buscar donde no es. Así
+ * que los pocos motivos que tienen ARREGLO CONOCIDO se dicen con su nombre y
+ * con dónde se arregla. El resto sigue siendo genérico a propósito: inventar
+ * una causa es peor que decir que no se sabe.
+ */
+function motivo(e) {
+  const estado = e?.status || e?.statusCode;
+  const dentro = e?.error?.error || e?.error || {};
+  const dice = String(dentro.message || e?.message || '');
+  if (e?.codigo) return { codigo: e.codigo, mensaje: e.message };
+  if (/credit balance is too low/i.test(dice)) {
+    return { codigo: 'SIN_SALDO',
+      mensaje: 'La cuenta de Anthropic se quedó sin saldo. En console.anthropic.com → Plans & Billing se carga crédito, y ULTRON vuelve solo.' };
+  }
+  if (estado === 401 || /authentication/i.test(dentro.type || '')) {
+    return { codigo: 'LLAVE_MALA', mensaje: 'Anthropic no acepta la llave. Hay que revisar ANTHROPIC_API_KEY en Heroku.' };
+  }
+  if (estado === 403 || /permission/i.test(dentro.type || '')) {
+    return { codigo: 'SIN_PERMISO', mensaje: 'La llave de Anthropic no tiene permiso para este modelo.' };
+  }
+  if (estado === 404 && /model/i.test(dice)) {
+    return { codigo: 'MODELO', mensaje: `Esta cuenta no ve el modelo «${MODELO}». Se cambia con ULTRON_MODELO.` };
+  }
+  if (estado === 429) {
+    return { codigo: 'MUCHO_RITMO', mensaje: 'Anthropic está limitando el ritmo. En un minuto vuelve a andar.' };
+  }
+  if (estado === 529 || /overloaded/i.test(dentro.type || '')) {
+    return { codigo: 'SATURADO', mensaje: 'Anthropic está saturado en este momento. Probá de nuevo en un rato.' };
+  }
+  return { codigo: 'ERROR', mensaje: 'ULTRON no pudo contestar. Probá de nuevo.' };
+}
+
 // ── El prompt ───────────────────────────────────────────────────────────────
 
 function fecha() {
@@ -296,4 +337,4 @@ async function titular(texto) {
   } catch { return null; }
 }
 
-module.exports = { pensar, titular, encendido, MODELO, HERRAMIENTAS, _adentro: { sistema, correr, clienteAnthropic } };
+module.exports = { pensar, titular, encendido, motivo, MODELO, HERRAMIENTAS, _adentro: { sistema, correr, clienteAnthropic } };

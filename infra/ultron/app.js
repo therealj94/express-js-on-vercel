@@ -207,8 +207,9 @@ app.post('/pensar', puerta, frenoPensar, async (req, res) => {
     if (nueva) { const t = await cerebro.titular(texto); if (t) await memoria.titular(convId, req.miembro.correo, t); emitir('titulo', { titulo: t }); }
     emitir('fin', { ...r, conversacionId: convId });
   } catch (e) {
-    console.error(`[pensar] ${e?.codigo || ''} ${e?.message || e}`);
-    emitir('error', { mensaje: e?.codigo === 'CEREBRO_APAGADO' ? e.message : 'ULTRON no pudo contestar. Probá de nuevo.', codigo: e?.codigo || 'ERROR' });
+    const m = cerebro.motivo(e);
+    console.error(`[pensar] ${m.codigo} · ${e?.status || ''} ${e?.message || e}`);
+    emitir('error', { mensaje: m.mensaje, codigo: m.codigo });
   } finally {
     clearInterval(latido);
     res.end();
@@ -323,8 +324,11 @@ app.post('/whatsapp/entrada', async (req, res) => {
     const plano = r.texto.replace(/^#{1,6}\s*/gm, '').replace(/\*\*(.+?)\*\*/g, '*$1*').replace(/`/g, '');
     res.json({ respuesta: plano.slice(0, 4000), documentos: r.documentos, envios: r.envios.length });
   } catch (e) {
-    console.error(`[whatsapp] ${e?.message || e}`);
-    res.status(500).json({ error: 'No se pudo contestar.', codigo: 'ERROR' });
+    // Por WhatsApp no se cuenta el detalle de una avería nuestra: quien
+    // escribe no puede hacer nada con eso. Va al registro, con su nombre.
+    const m = cerebro.motivo(e);
+    console.error(`[whatsapp] ${m.codigo} · ${e?.message || e}`);
+    res.status(500).json({ error: 'No se pudo contestar.', codigo: m.codigo });
   }
 });
 
