@@ -4975,6 +4975,7 @@ const VETA = (() => {
               escondido. MyTokenPay ya tenia su fila; Ordenex y AuCorp no, y
               son justo donde se cambia y donde se saca el dinero. */ ''}
         ${fila(ICO.cambiar, t('aj.onx'), t('aj.onxP'), "VETA.vista('ordenex')")}
+        ${fila(ICO.remesa, t('aj.auc'), t('aj.aucP'), "VETA.vista('aucorp')")}
         ${fila(ICO.tienda, t('aj.mtp'), t('aj.mtpP'), "VETA.vista('pay')")}
         ${fila(ICO.globo, t('aj.idioma'), t('aj.idiomaP'), "VETA.idioma('" + (idiomaActivo() === 'es' ? 'en' : 'es') + "')")}
         ${fila(ICO.doc, t('aj.legal'), t('aj.legalP'), "window.open('/terminos','_blank','noopener')")}
@@ -5913,7 +5914,7 @@ const VETA = (() => {
      se puede contestar: «¿esto que estoy viendo es lo último que subimos, o
      mi navegador se quedó con una copia vieja?». La ficha de Ajustes lo
      enseña, y con eso se sabe. */
-  const VETA_V = 'd252d39c83';
+  const VETA_V = 'd48577fc0d';
   const VETA_FECHA = '2026-09-04';
 
   const AET_V = '94968b8cba';

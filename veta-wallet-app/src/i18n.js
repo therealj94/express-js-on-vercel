@@ -7,6 +7,26 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const S = {
   es: {
+    // ── AUCORP · el lado fiat ──────────────────────────────────────────────
+    'auc.title': 'AuCorp', 'auc.h': 'Tu dinero en moneda local',
+    'auc.p': 'AuCorp es el lado fiat del ecosistema: cuentas en moneda local, cambio entre monedas y envíos. Entrás con tu misma identidad.',
+    'auc.noBancoT': 'No es un banco',
+    'auc.noBancoP': 'FinTech bajo Regulación A de Próspera. No es un banco con licencia bancaria: no hay seguro de depósitos.',
+    'auc.leyendo': 'Mirando cómo está la plataforma…',
+    'auc.monedas': 'Monedas', 'auc.monedasS': 'Las que maneja la plataforma',
+    'auc.tasas': 'Tasas de cambio', 'auc.tasasSi': 'Al día',
+    'auc.tasasNo': 'No se pudieron leer: hoy no se puede cambiar entre monedas',
+    'auc.sinDatos': 'No pudimos leer el estado ahora',
+    'auc.sinDatosS': 'Podés entrar igual: lo vas a ver adentro.',
+    'auc.f1': 'Cuentas en moneda local', 'auc.f1s': 'Lempiras, dólares y las demás de la región',
+    'auc.f2': 'Cambio entre monedas', 'auc.f2s': 'Con la tasa del día, dicha antes de aceptar',
+    'auc.f3': 'Sin repetir el KYC', 'auc.f3s': 'Tu Genesis ID vale igual en las dos casas',
+    'auc.abrir': 'Entrar a AuCorp con mi Genesis ID',
+    'auc.abriendo': 'Pidiendo tu pase…',
+    'auc.nota': 'Se abre en el navegador. Genesis ID firma un pase de un solo uso que vence en minutos: entrás con la sesión ya iniciada y sin teclear ninguna contraseña.',
+    'auc.sinGid': 'Primero completá tu verificación de identidad',
+    'auc.noAbrio': 'No se pudo abrir AuCorp. Probá de nuevo.',
+
     // tabs
     'tab.home': 'Inicio', 'tab.card': 'Tarjeta', 'tab.swap': 'Swap', 'tab.activity': 'Actividad', 'tab.settings': 'Ajustes',
     // auth
@@ -442,6 +462,7 @@ const S = {
     'set.privateOn': 'Cuenta privada activada', 'set.privateOff': 'Cuenta pública',
     'set.profile': 'Configurar perfil', 'set.profileSub': 'Nombre y datos de contacto', 'set.blocked': 'Cuentas bloqueadas',
     'set.card': 'Mi tarjeta', 'set.addr': 'Mi dirección (recibir)', 'set.onx': 'Ordenex', 'set.onxSub': 'La casa de cambio: ORIGEN, oro y plata',
+    'set.auc': 'AuCorp', 'set.aucSub': 'Cuentas en moneda local y cambio',
     'set.mtp': 'MyTokenPay', 'set.mtpSub': 'Pagos en comercios con ORIGEN',
     'set.seed': 'Frase de recuperación (Seed)', 'set.pk': 'Llave privada', 'set.notifs': 'Notificaciones',
     'set.lang': 'Idioma / Language', 'set.logout': 'Cerrar sesión',
@@ -782,6 +803,26 @@ const S = {
     'chart.noMarket': '{s} todavía no cotiza en un mercado público, así que no hay velas que mostrar. Su precio dentro del ecosistema sí es real.',
   },
   en: {
+    // ── AUCORP · the fiat side ─────────────────────────────────────────────
+    'auc.title': 'AuCorp', 'auc.h': 'Your money in local currency',
+    'auc.p': 'AuCorp is the fiat side of the ecosystem: local-currency accounts, currency exchange and transfers. You enter with the same identity.',
+    'auc.noBancoT': 'Not a bank',
+    'auc.noBancoP': 'FinTech under Próspera Regulation A. Not a licensed bank: there is no deposit insurance.',
+    'auc.leyendo': 'Checking how the platform is doing…',
+    'auc.monedas': 'Currencies', 'auc.monedasS': 'The ones the platform handles',
+    'auc.tasas': 'Exchange rates', 'auc.tasasSi': 'Up to date',
+    'auc.tasasNo': "Couldn't be read: currency exchange is unavailable today",
+    'auc.sinDatos': "We couldn't read the status right now",
+    'auc.sinDatosS': "You can still go in: you'll see it there.",
+    'auc.f1': 'Local-currency accounts', 'auc.f1s': 'Lempiras, dollars and the rest of the region',
+    'auc.f2': 'Currency exchange', 'auc.f2s': "With today's rate, told before you accept",
+    'auc.f3': 'No repeat KYC', 'auc.f3s': 'Your Genesis ID works the same in both houses',
+    'auc.abrir': 'Open AuCorp with my Genesis ID',
+    'auc.abriendo': 'Getting your pass…',
+    'auc.nota': 'Opens in your browser. Genesis ID signs a single-use pass that expires in minutes: you arrive already signed in, without typing any password.',
+    'auc.sinGid': 'Complete your identity verification first',
+    'auc.noAbrio': "Couldn't open AuCorp. Try again.",
+
     'tab.home': 'Home', 'tab.card': 'Card', 'tab.swap': 'Swap', 'tab.activity': 'Activity', 'tab.settings': 'Settings',
     'auth.login': 'Sign in', 'auth.register': 'Create account', 'auth.name': 'Full name', 'auth.namePh': 'Your name',
     'auth.email': 'Email', 'auth.password': 'Password', 'auth.remember': 'Keep me signed in',
@@ -1205,6 +1246,7 @@ const S = {
     'set.privateOn': 'Private account enabled', 'set.privateOff': 'Public account',
     'set.profile': 'Configure profile', 'set.profileSub': 'Name and contact info', 'set.blocked': 'Blocked accounts',
     'set.card': 'My card', 'set.addr': 'My address (receive)', 'set.onx': 'Ordenex', 'set.onxSub': 'The exchange: ORIGEN, gold and silver',
+    'set.auc': 'AuCorp', 'set.aucSub': 'Local-currency accounts and exchange',
     'set.mtp': 'MyTokenPay', 'set.mtpSub': 'Pay merchants with ORIGEN',
     'set.seed': 'Recovery phrase (Seed)', 'set.pk': 'Private key', 'set.notifs': 'Notifications',
     'set.lang': 'Idioma / Language', 'set.logout': 'Log out',

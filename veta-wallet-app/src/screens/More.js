@@ -214,6 +214,7 @@ export function Settings({ nav }) {
               mismo Genesis ID y sin repetir el KYC. Ordenex va primero porque
               es donde se cambia dinero; MyTokenPay, donde se gasta. */}
           <ListRow icon="swap-horizontal" title={t('set.onx')} sub={t('set.onxSub')} onPress={() => nav.go('ordenex')} />
+          <ListRow icon="cash" title={t('set.auc')} sub={t('set.aucSub')} onPress={() => nav.go('aucorp')} />
           <ListRow icon="storefront" title={t('set.mtp')} sub={t('set.mtpSub')} onPress={() => nav.go('mytokenpay')} />
         </Glass>
 

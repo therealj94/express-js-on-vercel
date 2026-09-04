@@ -1,6 +1,12 @@
-/* LA PANTALLA DE ORDENEX EN LA APP, y los huecos que no dan error.
+/* LAS PUERTAS AL ECOSISTEMA EN LA APP, y los huecos que no dan error.
  *
- *   node veta-wallet-app/pruebas/probar-pantalla-ordenex.mjs
+ *   node veta-wallet-app/pruebas/probar-puertas.mjs
+ *
+ * Dos pantallas iguales por dentro: Ordenex (la casa de cambio) y AuCorp (el
+ * lado fiat). Las dos piden un pase a Genesis ID y abren la otra casa con la
+ * sesión ya iniciada. Se prueban JUNTAS y con la misma lista: duplicar el
+ * archivo habría dejado que la segunda se quedara sin la mitad de las
+ * comprobaciones el día que se añadiera una a la primera.
  *
  * ══ POR QUÉ EXISTE ═════════════════════════════════════════════════════════
  *
@@ -62,8 +68,16 @@ const ARCHIVOS = ['App.js', ...fuentes()];
 const sinComentarios = (s) =>
   s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/[^\n]*/gm, '');
 
-const PANTALLA = leer('src/screens/Ordenex.js');
-const CODIGO = sinComentarios(PANTALLA);
+/* Cada puerta con lo suyo: el archivo, la clave de navegación, el prefijo de
+   sus textos y el dominio al que manda. Añadir una tercera casa es una línea
+   más aquí y nada más. */
+const PUERTAS = [
+  { nombre: 'Ordenex', archivo: 'src/screens/Ordenex.js', ruta: 'ordenex',
+    px: 'onx', menu: ['set.onx', 'set.onxSub'], destino: 'ordenexchange.link' },
+  { nombre: 'AuCorp', archivo: 'src/screens/AuCorp.js', ruta: 'aucorp',
+    px: 'auc', menu: ['set.auc', 'set.aucSub'], destino: 'amplifyapp.com/banca' },
+];
+for (const p of PUERTAS) { p.fuente = leer(p.archivo); p.codigo = sinComentarios(p.fuente); }
 
 // ── 1 · LOS ICONOS ──────────────────────────────────────────────────────────
 titulo('todo icono nombrado existe en el set');
@@ -105,11 +119,12 @@ titulo('todo icono nombrado existe en el set');
     }
   }
 
-  const dePantalla = [...usados].filter(([, fs]) => fs.has('src/screens/Ordenex.js')).map(([n]) => n);
-  const faltanAqui = dePantalla.filter((n) => !hay.has(n));
-  decir(faltanAqui.length === 0,
-    `los ${dePantalla.length} iconos de la pantalla de Ordenex están dibujados`,
-    faltanAqui.join(', '));
+  for (const puerta of PUERTAS) {
+    const suyos = [...usados].filter(([, fs]) => fs.has(puerta.archivo)).map(([n]) => n);
+    const faltan = suyos.filter((n) => !hay.has(n));
+    decir(faltan.length === 0,
+      `los ${suyos.length} iconos de ${puerta.nombre} están dibujados`, faltan.join(', '));
+  }
 
   /* Y el barrido de toda la app. Va como AVISO y no como fallo: son de antes
      de esta pantalla y arreglarlos es dibujar iconos, no un cambio de una
@@ -149,76 +164,107 @@ titulo('cada texto existe en español Y en inglés');
   }
   const es = i18n.slice(iEs, iEn);
   const en = i18n.slice(iEn);
-  const claves = [...new Set([...CODIGO.matchAll(/\bt\(['"]([\w.]+)['"]\)/g)].map((m) => m[1]))];
+  const hayClave = (mitad, k) => new RegExp(`'${k.replace(/\./g, '\\.')}':`).test(mitad);
+  for (const puerta of PUERTAS) {
+    const claves = [...new Set([...puerta.codigo.matchAll(/\bt\(['"]([\w.]+)['"]\)/g)].map((m) => m[1]))];
+    const sinEs = claves.filter((k) => !hayClave(es, k));
+    const sinEn = claves.filter((k) => !hayClave(en, k));
+    decir(sinEs.length === 0, `${puerta.nombre}: sus ${claves.length} claves están en español`, sinEs.join(', '));
+    decir(sinEn.length === 0, `${puerta.nombre}: y las mismas en inglés`, sinEn.join(', '));
 
-  const sinEs = claves.filter((k) => !new RegExp(`'${k.replace('.', '\\.')}':`).test(es));
-  const sinEn = claves.filter((k) => !new RegExp(`'${k.replace('.', '\\.')}':`).test(en));
-  decir(sinEs.length === 0, `las ${claves.length} claves de la pantalla están en español`, sinEs.join(', '));
-  decir(sinEn.length === 0, 'y las mismas están en inglés', sinEn.join(', '));
-
-  // Y la fila del menú, que vive en otro archivo.
-  for (const k of ['set.onx', 'set.onxSub']) {
-    decir(new RegExp(`'${k.replace('.', '\\.')}':`).test(es) && new RegExp(`'${k.replace('.', '\\.')}':`).test(en),
-      `la fila del menú tiene su texto en los dos idiomas (${k})`);
+    // La fila del menú vive en otro archivo y se olvida con facilidad.
+    for (const k of puerta.menu) {
+      decir(hayClave(es, k) && hayClave(en, k), `${puerta.nombre}: la fila del menú tiene texto en los dos idiomas (${k})`);
+    }
+    // Duplicadas dentro de una misma mitad: la segunda gana en silencio.
+    const dobles = claves.filter((k) =>
+      (es.match(new RegExp(`'${k.replace(/\./g, '\\.')}':`, 'g')) || []).length > 1);
+    decir(dobles.length === 0, `${puerta.nombre}: ninguna clave repetida en el mismo idioma`, dobles.join(', '));
   }
-  // Duplicadas dentro de una misma mitad: la segunda gana en silencio.
-  const dobles = claves.filter((k) =>
-    (es.match(new RegExp(`'${k.replace('.', '\\.')}':`, 'g')) || []).length > 1);
-  decir(dobles.length === 0, 'y ninguna está escrita dos veces en el mismo idioma', dobles.join(', '));
 }
 
 // ── 3 · LA PANTALLA ESTÁ ENCHUFADA ──────────────────────────────────────────
 titulo('la pantalla existe en el mapa y se llega a ella');
 {
   const app = sinComentarios(leer('App.js'));
-  decir(/import\s+Ordenex\s+from\s+'\.\/src\/screens\/Ordenex'/.test(app), 'App.js la importa');
-  decir(/\bordenex:\s*Ordenex\b/.test(app), 'y la registra con la clave `ordenex`');
   const more = sinComentarios(leer('src/screens/More.js'));
-  decir(/nav\.go\('ordenex'\)/.test(more), 'y hay una fila del menú que navega ahí');
-  /* Que la clave del mapa y la del `nav.go` sean LA MISMA. Si no coinciden, el
-     dedo toca y no pasa nada: `nav.go` con una ruta desconocida no lanza. */
-  const enMapa = /\bordenex:\s*Ordenex\b/.test(app);
-  const enMenu = /nav\.go\('ordenex'\)/.test(more);
-  decir(enMapa && enMenu, 'y las dos usan la misma clave — si no, el toque no hace nada');
+  for (const puerta of PUERTAS) {
+    const comp = puerta.archivo.split('/').pop().replace('.js', '');
+    const enMapa = new RegExp(`\\b${puerta.ruta}:\\s*${comp}\\b`).test(app);
+    decir(new RegExp(`import\\s+${comp}\\s+from`).test(app), `${puerta.nombre}: App.js la importa`);
+    decir(enMapa, `${puerta.nombre}: y la registra con la clave \`${puerta.ruta}\``);
+    /* Que la clave del mapa y la del `nav.go` sean LA MISMA. Si no coinciden,
+       el dedo toca y no pasa nada: `nav.go` con una ruta desconocida no lanza
+       ni avisa — cae en Home y parece que el botón está muerto. */
+    const enMenu = new RegExp(`nav\\.go\\('${puerta.ruta}'\\)`).test(more);
+    decir(enMenu, `${puerta.nombre}: hay una fila del menú que navega ahí`);
+    decir(enMapa && enMenu, `${puerta.nombre}: y las dos usan la misma clave`);
+  }
 }
 
 // ── 4 · LO QUE LA PANTALLA LLAMA, EXISTE ────────────────────────────────────
 titulo('lo que llama del resto de la app existe');
 {
   const gen = leer('src/genesis.js');
-  const llamadas = [...new Set([...CODIGO.matchAll(/\bgenesis\.(\w+)\s*\(/g)].map((m) => m[1]))];
-  const faltan = llamadas.filter((n) => !new RegExp(`\\b${n}\\s*[:(]`).test(gen));
-  decir(faltan.length === 0, `genesis.js tiene los ${llamadas.length} métodos que se le piden`,
-    faltan.map((n) => 'genesis.' + n).join(', '));
-  decir(llamadas.includes('tokenEcosistema'),
-    'y se usa `tokenEcosistema`, que llevaba escrito y sin llamar por nadie');
-
   const ui = leer('src/ui.js');
-  const deUi = (CODIGO.match(/import \{([^}]+)\} from '\.\.\/ui'/) || [, ''])[1]
-    .split(',').map((x) => x.trim()).filter(Boolean);
-  const uiFaltan = deUi.filter((n) => !new RegExp(`export (function|const) ${n}\\b`).test(ui));
-  decir(uiFaltan.length === 0, `ui.js exporta los ${deUi.length} componentes que se importan`, uiFaltan.join(', '));
+  for (const puerta of PUERTAS) {
+    const llamadas = [...new Set([...puerta.codigo.matchAll(/\bgenesis\.(\w+)\s*\(/g)].map((m) => m[1]))];
+    const faltan = llamadas.filter((n) => !new RegExp(`\\b${n}\\s*[:(]`).test(gen));
+    decir(faltan.length === 0, `${puerta.nombre}: genesis.js tiene los ${llamadas.length} métodos que le pide`,
+      faltan.map((n) => 'genesis.' + n).join(', '));
+    decir(llamadas.includes('tokenEcosistema'),
+      `${puerta.nombre}: usa \`tokenEcosistema\`, que llevaba escrito y sin llamar por nadie`);
+
+    const deUi = (puerta.codigo.match(/import \{([^}]+)\} from '\.\.\/ui'/) || [, ''])[1]
+      .split(',').map((x) => x.trim()).filter(Boolean);
+    const uiFaltan = deUi.filter((n) => !new RegExp(`export (function|const) ${n}\\b`).test(ui));
+    decir(uiFaltan.length === 0, `${puerta.nombre}: ui.js exporta sus ${deUi.length} componentes`, uiFaltan.join(', '));
+  }
 }
 
 // ── 5 · LO QUE LA PANTALLA PROMETE ──────────────────────────────────────────
 titulo('el circuito de entrada es el que dice el texto');
 {
-  decir(/ordenexchange\.link/.test(PANTALLA), 'apunta a ordenexchange.link');
-  decir(/#sso=/.test(CODIGO) && /encodeURIComponent/.test(CODIGO),
-    'y entra con el pase en el hash, escapado');
-  /* En el HASH y no en la ruta ni en un parámetro: lo que va después de `#` no
-     viaja al servidor ni queda en el registro del proxy. Es la misma regla que
-     ya cumple la Veta Wallet del navegador. */
-  decir(!/\?sso=|\?token=/.test(CODIGO), 'y NO en la parte que viaja al servidor');
-  decir(/nav\.go\('kyc'\)/.test(CODIGO),
-    'sin identidad verificada manda al KYC, que es lo único que abre esa puerta');
-  decir(/\/salud/.test(CODIGO) && /entrega/.test(CODIGO),
-    'pregunta si la compra con USDT está abierta antes de que nadie salga de la app');
+  for (const puerta of PUERTAS) {
+    decir(puerta.codigo.includes(puerta.destino), `${puerta.nombre}: apunta a ${puerta.destino}`);
+    decir(/#sso=/.test(puerta.codigo) && /encodeURIComponent/.test(puerta.codigo),
+      `${puerta.nombre}: entra con el pase en el hash, escapado`);
+    /* En el HASH y no en la ruta ni en un parámetro: lo que va después de `#`
+       no viaja al servidor ni queda en el registro de ningún intermediario. Es
+       la misma regla que ya cumple la Veta Wallet del navegador. */
+    decir(!/\?sso=|\?token=/.test(puerta.codigo), `${puerta.nombre}: y NO en la parte que viaja al servidor`);
+    decir(/nav\.go\('kyc'\)/.test(puerta.codigo),
+      `${puerta.nombre}: sin identidad verificada manda al KYC`);
+    decir(/\/salud/.test(puerta.codigo),
+      `${puerta.nombre}: mira el estado del servidor antes de que nadie salga de la app`);
+  }
+
+  // ── Y lo propio de cada una ─────────────────────────────────────────────
+  const onx = PUERTAS.find((p) => p.px === 'onx').codigo;
   /* `=== true` y no truthy: un API viejo que no manda el campo tiene que
      contar como «no sé» y no como «sí». */
-  decir(/entrega === true/.test(CODIGO), 'y trata «no sé» distinto de «sí»');
-  decir(/sabeEntrega/.test(CODIGO),
-    'el aviso de cerrado solo sale si el servidor lo dijo, no por no poder preguntar');
+  decir(/entrega === true/.test(onx), 'Ordenex: trata «no sé» distinto de «sí»');
+  decir(/sabeEntrega/.test(onx),
+    'Ordenex: el aviso de cerrado solo sale si el servidor lo dijo, no por no poder preguntar');
+
+  const auc = PUERTAS.find((p) => p.px === 'auc');
+  /* LO QUE NO PUEDE FALTAR. AuCorp no es un banco, y esa frase no puede
+     desaparecer porque el API no conteste: se lee de `/salud` y hay una de
+     respaldo escrita en los textos. Si un día alguien quita el respaldo, un
+     corte de red deja la pantalla sin la advertencia. */
+  decir(/naturaleza/.test(auc.codigo), 'AuCorp: lee del API lo que la casa ES');
+  decir(/auc\.noBancoP/.test(auc.codigo),
+    'AuCorp: y tiene una frase de respaldo por si el API no contesta');
+  const i18nTxt = leer('src/i18n.js');
+  decir(/no es un banco con licencia bancaria/i.test(i18nTxt),
+    'AuCorp: el respaldo dice que NO es un banco, con esas palabras');
+  /* Las palabras están fijadas en AUCORP.md: «cuenta en moneda local», nunca
+     «cuenta bancaria» ni «depósito asegurado». Un texto que se relaje aquí es
+     lo primero que mira un regulador. */
+  const textosAuc = [...i18nTxt.matchAll(/'auc\.[\w.]+':\s*(['"])((?:\\.|(?!\1).)*)\1/g)].map((m) => m[2]);
+  const prohibidas = textosAuc.filter((x) => /cuenta bancaria|dep[óo]sito asegurado|licensed bank account|insured deposit/i.test(x));
+  decir(prohibidas.length === 0,
+    'AuCorp: ningún texto dice «cuenta bancaria» ni «depósito asegurado»', prohibidas.join(' · '));
 }
 
 // ── 6 · QUE COMPILE ─────────────────────────────────────────────────────────
@@ -237,8 +283,8 @@ titulo('los archivos tocados compilan');
     console.log('  ojo   @babel/parser no está instalado: la sintaxis NO se comprobó.');
     console.log('           npm install  en veta-wallet-app, y volver a correr esto.');
   } else {
-    for (const f of ['src/screens/Ordenex.js', 'src/i18n.js', 'src/icons.js',
-                     'App.js', 'src/screens/More.js']) {
+    for (const f of ['src/screens/Ordenex.js', 'src/screens/AuCorp.js', 'src/i18n.js',
+                     'src/icons.js', 'App.js', 'src/screens/More.js']) {
       let e = null;
       try { parse(leer(f), { sourceType: 'module', plugins: ['jsx'] }); }
       catch (x) { e = x; }

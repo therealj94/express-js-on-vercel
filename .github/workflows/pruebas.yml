@@ -70,14 +70,14 @@ jobs:
             node "$f"
           done
 
-      # La pantalla de Ordenex en la app del telefono. No monta React Native
+      # Las puertas al ecosistema (Ordenex y AuCorp) en la app del telefono. No monta React Native
       # —no hay forma barata— pero comprueba lo que ahi falla EN SILENCIO: un
       # icono que no existe (se dibuja un SVG vacio), un texto que falta en un
       # idioma, una pantalla sin registrar en el mapa de App.js. Solo necesita
       # node, asi que corre en el trabajo rapido.
-      - name: La pantalla de Ordenex en la app
+      - name: Las puertas al ecosistema en la app
         working-directory: veta-wallet-app
-        run: node pruebas/probar-pantalla-ordenex.mjs
+        run: node pruebas/probar-puertas.mjs
 
       # Las tres pruebas que NO corrian en ningun sitio. Dos leian de
       # /tmp/mtest y /tmp/vw-deploy —andamios montados a mano en una maquina—
