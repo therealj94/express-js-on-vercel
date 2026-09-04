@@ -70,7 +70,7 @@ def construir():
         'construirla, en sus dos mitades: <b>el diseño</b> — lo que la persona ve, con las '
         'palabras que va a leer, pantalla por pantalla — y <b>el funcionamiento</b> — el '
         'vigía, el barrido, el gas y qué pasa cuando algo falla.<br/><br/>'
-        'Buena parte ya está construida. La página 12 dice exactamente qué existe y qué '
+        'Buena parte ya está construida. La página 13 dice exactamente qué existe y qué '
         'falta, comprobado contra el repositorio y no de memoria.'))
     h.append(Spacer(1, 6 * mm))
     h.append(P('Costos de red y precio del oro medidos contra Ethereum, Polygon y BNB Smart '
@@ -307,8 +307,56 @@ def construir():
         'no haya nadie mirando.', 'pg'))
     h.append(PageBreak())
 
+    # ── 6 · DISEÑO · a qué dirección se entrega ──────────────────────────────
+    h.append(P('6 · Diseño · A qué dirección se entrega, y cuándo se decide', 'h1'))
+    h.append(P(
+        'La pregunta se ve chica y no lo es: al final del circuito hay que mandarle el ORIGEN '
+        'a una dirección concreta, y equivocarse ahí es mandarle el dinero de alguien a otro '
+        'lado. La buena noticia es que <b>la persona nunca la escribe</b>, y eso ya está '
+        'construido.'))
+    h.append(Spacer(1, 4))
+    h.append(P('De dónde sale', 'h2'))
+    h.append(P(
+        'Del SSO de Genesis, en el momento de entrar. Ordenex verifica el token contra '
+        '<font face="Courier">/api/v1/sso/verificar</font> con su propia clave, y Genesis le '
+        'devuelve el perfil de esa persona; dentro viene <font face="Courier">perfil.apps[]</font>, '
+        'que son sus vínculos con cada app del ecosistema. Ordenex busca el de '
+        '<font face="Courier">veta-wallet</font> y se queda con su dirección '
+        '(<font face="Courier" size="8">authController.js:95</font>). Se guarda en '
+        '<font face="Courier">direccionWallet</font> y se refresca en cada login.'))
+    h.append(P(
+        'O sea que la dirección de destino <b>la afirma Genesis</b>, no el usuario. No se '
+        'teclea, no se pega, y nadie puede poner la de otro. Y ya tiene un cuidado bien '
+        'puesto: si un login trae el perfil sin dirección, <b>no borra la que ya se sabía</b> '
+        '— un vínculo a medias no deja a nadie sin su destino.', 'pg'))
+    h.append(Spacer(1, 6))
+    h.append(P('Las tres reglas que hay que agregar', 'h2'))
+    h.append(Spacer(1, 2))
+    h.append(paso(1, 'Se comprueba antes de congelar el precio, no después de cobrar',
+        'La dirección puede faltar — un vínculo viejo que no la trae. Hoy eso no cierra la '
+        'puerta al login, y está bien, pero para entregar sí hace falta. Si no hay dirección, '
+        '<b>la orden no nace</b> y se le dice que abra su Veta Wallet primero. Cobrarle a '
+        'alguien por una entrega que no se le puede hacer es el peor orden posible.'))
+    h.append(paso(2, 'Se congela con la orden, igual que el precio',
+        'Se entrega a la dirección que quedó anotada <b>cuando nació la orden</b>, no a la que '
+        'diga el perfil diez minutos después. Si al momento de entregar las dos no coinciden, '
+        'la orden se retiene y la mira una persona. Sin esta regla, quien lograra cambiar el '
+        'vínculo en Genesis entre el depósito y la entrega redirigiría el ORIGEN de otro.'))
+    h.append(paso(3, 'Tres comprobaciones baratas antes de firmar',
+        'Que sea una dirección válida, que no sea la dirección cero, y que <b>no sea una '
+        'billetera de la propia Ordenex</b>. Mandarse ORIGEN a sí misma y anotarlo como '
+        'entregado es un descuadre que después no encuentra nadie.'))
+    h.append(Spacer(1, 4))
+    h.append(pantalla('CUANDO NO HAY DIRECCIÓN · antes de dejar congelar', [
+        ('rotulo', 'falta un paso'),
+        ('texto', 'Para recibir tu ORIGEN necesitamos tu billetera de Veta Wallet.'),
+        ('nota', 'Abrila una vez y volvé — se vincula sola, no hay nada que copiar.'),
+        ('boton', 'Abrir Veta Wallet'),
+    ], ancho=au * 0.62))
+    h.append(PageBreak())
+
     # ── 6 · DISEÑO · los errores caros ───────────────────────────────────────
-    h.append(P('6 · Diseño · Los tres errores caros, y cómo se evitan', 'h1'))
+    h.append(P('7 · Diseño · Los tres errores caros, y cómo se evitan', 'h1'))
     h.append(P(
         'No son fallos del sistema: son cosas que la persona puede hacer y que cuestan '
         'dinero. El diseño existe sobre todo para estos tres.', 'pg'))
@@ -365,7 +413,7 @@ def construir():
     h.append(PageBreak())
 
     # ── 7 · FUNCIONAMIENTO · el vigía ────────────────────────────────────────
-    h.append(P('7 · Funcionamiento · El vigía multicadena', 'h1'))
+    h.append(P('8 · Funcionamiento · El vigía multicadena', 'h1'))
     h.append(P(
         'Ordenex ya tiene un vigía de depósitos: <font face="Courier">lib/vigia.js</font>, que '
         'cada 30 segundos compara el saldo real de cada dirección con la última marca que '
@@ -418,7 +466,7 @@ def construir():
     h.append(PageBreak())
 
     # ── 8 · FUNCIONAMIENTO · el barrido ──────────────────────────────────────
-    h.append(P('8 · Funcionamiento · El barrido automático', 'h1'))
+    h.append(P('9 · Funcionamiento · El barrido automático', 'h1'))
     h.append(P(
         'Ordenex ya tiene <font face="Courier">POST /admin/barrer</font>, y el comentario del '
         'código dice que es manual y de admin <b>a propósito</b> en la primera versión. Fue la '
@@ -464,7 +512,7 @@ def construir():
     h.append(PageBreak())
 
     # ── 9 · Los decimales ────────────────────────────────────────────────────
-    h.append(P('9 · La trampa de los decimales', 'h1'))
+    h.append(P('10 · La trampa de los decimales', 'h1'))
     h.append(P(
         'Esta es la clase de cosa que no se ve en una prueba y aparece en producción con el '
         'dinero de alguien. USDT <b>no usa los mismos decimales en todas las cadenas</b>, y '
@@ -505,7 +553,7 @@ def construir():
     h.append(PageBreak())
 
     # ── 10 · Lo que puede salir mal ──────────────────────────────────────────
-    h.append(P('10 · Lo que puede salir mal, y qué pasa entonces', 'h1'))
+    h.append(P('11 · Lo que puede salir mal, y qué pasa entonces', 'h1'))
     h.append(P(
         'Un plan que solo describe el camino bueno no es un plan. Estos son los fallos que '
         'este diseño puede tener, con lo que hace el sistema en cada uno.', 'pg'))
@@ -546,7 +594,7 @@ def construir():
     h.append(PageBreak())
 
     # ── 11 · Qué existe y qué falta ──────────────────────────────────────────
-    h.append(P('11 · Qué está construido y qué falta', 'h1'))
+    h.append(P('12 · Qué está construido y qué falta', 'h1'))
     h.append(P(
         'Comprobado contra el repositorio el 4 de septiembre, archivo por archivo. Es más de '
         'lo que parece.', 'pg'))
@@ -576,15 +624,18 @@ def construir():
              'Genesis ID, con 19.321 registros. Falta llamarlo desde el depósito.'],
             ['Derivación por índice', '<b>Falta</b>', 'Es el cambio de la página 4.'],
             ['Billetera de gas', '<b>Falta</b>', 'Llave nueva, fondeo y alarma de saldo.'],
-            ['Decimales por red', '<b>Falta</b>', 'Y es lo que más urge: página 10.'],
-            ['Pantallas de depósito', '<b>Falta</b>', 'Las de las páginas 5, 6 y 7.'],
+            ['Dirección de Veta Wallet', '<b>Existe</b>',
+             'Viene del perfil de Genesis en cada login. Falta congelarla con la orden '
+             'y exigirla antes de cobrar — página 7.'],
+            ['Decimales por red', '<b>Falta</b>', 'Y es lo que más urge: página 11.'],
+            ['Pantallas de depósito', '<b>Falta</b>', 'Las de las páginas 5, 6, 7 y 8.'],
             ['Avisos al teléfono', '<b>Falta</b>', 'La tubería ya existe en la app.'],
         ],
         [52 * mm, 28 * mm, au - 80 * mm]))
     h.append(PageBreak())
 
     # ── 12 · El orden y lo que hace falta de vos ─────────────────────────────
-    h.append(P('12 · El orden de construcción', 'h1'))
+    h.append(P('13 · El orden de construcción', 'h1'))
     h.append(P(
         'En este orden, y no en otro: cada paso deja algo que se puede probar de verdad antes '
         'de que el siguiente dependa de él. Ninguno mueve dinero real hasta el último.', 'pg'))
