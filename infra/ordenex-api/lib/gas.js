@@ -67,6 +67,7 @@ const { REDES } = proveedores;
  * lo que existe.
  */
 const { GAS: DIRECCION_GAS } = require('./billeteras');
+const delegacion = require('./delegacion');
 
 /**
  * Cuánto se multiplica el precio del gas del momento al calcular el fondeo.
@@ -242,7 +243,7 @@ async function cuantoHaceFalta(red, provisional, plan) {
  * no-op — que es una defensa mucho más barata que coordinarse.
  *
  * @returns {{ok, estado, hash?, faltante?, motivo?}}
- *   estado ∈ 'ya-tenia' | 'enviado' | 'pospuesto' | 'sin-fondos' | 'en-duda' | 'no-se-pudo'
+ *   estado ∈ 'ya-tenia' | 'enviado' | 'pospuesto' | 'sin-fondos' | 'delegada' | 'en-duda' | 'no-se-pudo'
  */
 async function asegurarGas(red, provisional, plan) {
   const id = Number(red);
@@ -266,6 +267,27 @@ async function asegurarGas(red, provisional, plan) {
     let pv;
     try { pv = await proveedores.proveedorDe(id); } catch (e) {
       return { ok: false, estado: 'no-se-pudo', motivo: e.message };
+    }
+
+    // ¿La dirección de destino sigue siendo una cuenta normal? Se pregunta
+    // JUSTO antes de firmar, no antes de hacer cola.
+    //
+    // Una dirección con una delegación EIP-7702 encima reenvía lo que le
+    // entra dentro de la misma transacción. Así se robaron los 15 USDT del 4
+    // de septiembre: no hubo bot ni llave filtrada, había código puesto sobre
+    // la cuenta. Ver lib/delegacion.js.
+    //
+    // Estas direcciones las deriva este sistema de su propia semilla y nadie
+    // firma nunca con ellas fuera de aquí, así que si una tiene código, algo
+    // pasó que no puede pasar. Y si el nodo no contesta, tampoco se manda:
+    // una lectura que falla no es un permiso.
+    const forma = await delegacion.de(pv, provisional);
+    if (!forma.ok) {
+      return { ok: false, estado: 'no-se-pudo', motivo: `no se pudo comprobar si ${provisional} está delegada: ${forma.error}` };
+    }
+    if (!forma.limpia) {
+      console.error(`[gas] NO SE FONDEA: ${delegacion.motivo(forma, provisional)}`);
+      return { ok: false, estado: 'delegada', motivo: delegacion.motivo(forma, provisional) };
     }
 
     // El saldo de la propia billetera de gas, JUSTO antes de firmar. Si no
@@ -316,9 +338,19 @@ async function alarma() {
                    barridosQueQuedan: null, nivel: 'no-se-sabe' };
     try {
       const pv = await proveedores.proveedorDe(id);
-      const [saldo, precio] = await Promise.all([pv.getBalance(DIRECCION_GAS), precioDe(pv)]);
+      const [saldo, precio, forma] = await Promise.all([
+        pv.getBalance(DIRECCION_GAS), precioDe(pv), delegacion.de(pv, DIRECCION_GAS),
+      ]);
       fila.ok = true;
       fila.saldo = formatEther(saldo);
+      // La propia billetera de gas, mirada de la misma forma que se miran las
+      // de depósito. Aquí NO se bloquea: una delegación puesta a propósito —
+      // la «cuenta inteligente» que ofrece MetaMask lo es— no impide firmar, y
+      // cortar el fondeo por eso pararía el barrido entero. Pero tiene que
+      // verse en el panel, porque desde fuera una cuenta delegada y una normal
+      // son idénticas, y la vieja se vació justo por una de éstas.
+      fila.delegada = forma.ok ? forma.tipo !== 'cuenta' : null;
+      fila.delegadaHacia = forma.ok ? forma.delegado : null;
       if (precio) {
         const porBarrido = TECHO_GAS * ((precio * (MARGEN_PRECIO[id] ?? 2n)) / (MARGEN_DIVISOR[id] ?? 1n));
         const quedan = porBarrido > 0n ? Number(saldo / porBarrido) : null;
@@ -335,6 +367,17 @@ async function alarma() {
   return salida;
 }
 
+/**
+ * ¿Le pusieron código encima a la billetera de gas en esta red?
+ *
+ * Se pregunta suelto para poder revisarla sin fondear nada. Ver lib/delegacion.js
+ * y el robo del 4 de septiembre.
+ */
+async function formaPropia(red) {
+  const pv = await proveedores.proveedorDe(Number(red));
+  return delegacion.de(pv, DIRECCION_GAS);
+}
+
 /** El cuadro del panel. Nunca la llave; la dirección sí, que es pública. */
 function estado() {
   const c = cargar();
@@ -344,6 +387,6 @@ function estado() {
 module.exports = {
   DIRECCION_GAS, TECHO_GAS, MARGEN_PRECIO, TOPE_POR_ENVIO,
   BARRIDOS_AVISO, BARRIDOS_CRITICO,
-  hayGas, motivo, cuantoHaceFalta, asegurarGas, alarma, estado,
+  hayGas, motivo, cuantoHaceFalta, asegurarGas, alarma, estado, formaPropia,
   _adentro: { cargar, precioDe, enFila, olvidar: () => { cargado = null; colas.clear(); } },
 };
