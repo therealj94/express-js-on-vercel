@@ -46,6 +46,31 @@ function mercadoInvalido(res) {
 const CACHE_MS = 3_000;
 let cacheLista = { en: 0, promesa: null };
 
+/* LAS DOS PUNTAS DEL LIBRO, EN LA LISTA. Por que estan aca y no solo en
+ * /libro:
+ *
+ * 4-sep. Un mercado con una venta descansando —la unica orden viva de toda la
+ * casa— se veia en la lista EXACTAMENTE igual que los otros cuatro vacios:
+ * «— » en ultimo y «0» de volumen. Ultimo es lo que se PAGO, y no se habia
+ * pagado nada, asi que el guion era correcto y la pantalla mentia por
+ * omision: para descubrir que habia con quien operar habia que entrar par por
+ * par. «Las ventas no las miro en web» era eso, y era verdad.
+ *
+ * Una orden descansando es la diferencia entre un mercado donde se puede
+ * operar y uno donde no. Va en la lista.
+ *
+ * Salen del motor en memoria, que es de donde sale /libro — la base tiene las
+ * ordenes pero no las restas al segundo. Motor frio: `null`, que la web pinta
+ * distinto de «no hay» (fail-closed, igual que /libro con MOTOR_FRIO).
+ */
+function puntasDe(par) {
+  const libros = typeof motor.librosEnMemoria === 'function' ? motor.librosEnMemoria() : null;
+  if (!libros) return { mejorCompra: null, mejorVenta: null };
+  const l = libros.get(par) ?? { compras: [], ventas: [] };
+  const punta = (lado) => (lado.length ? BigInt(lado[0].precio).toString() : null);
+  return { mejorCompra: punta(l.compras), mejorVenta: punta(l.ventas) };
+}
+
 function armarLista() {
   return Promise.all(
     MERCADOS.map(async (mercado) => {
@@ -55,6 +80,8 @@ function armarLista() {
         ultimo: r.ultimo,
         cambio24h: r.cambio24h,
         vol24h: r.vol24h,
+        // Lo que hay descansando AHORA, que es lo que dice si se puede operar.
+        ...puntasDe(mercado),
         // El rango del dia. Van en null cuando no hubo tratos: un mercado sin
         // operar no tiene maximo, y repetir el ultimo precio ahi seria dibujar
         // un rango que nadie opero.

@@ -62,8 +62,14 @@ const MERCADOS = [
      Con el gramin a 2: AUKA = 222/2 = 111 y AGKA = 444/2 = 222, que son
      exactamente los «ultimo» que el resto del archivo ya usaba. La referencia
      y el libro por fin cuentan la misma historia. */
-  { mercado: 'AUKA-ORIGEN', ultimo: wei(111), cambio24h: 1.11, vol24h: wei(222), referencia: { usd: 222, rotulo: 'onza oro', origenUsd: 2, fuente: 'fingido', en: Date.now() } },
-  { mercado: 'AGKA-ORIGEN', ultimo: wei(222), cambio24h: -2.22, vol24h: wei(111), referencia: { usd: 444, rotulo: 'onza plata', origenUsd: 2, fuente: 'fingido', en: Date.now() } },
+  /* `mejorCompra`/`mejorVenta` son las dos puntas del libro, y viajan en la
+     LISTA a proposito: «ultimo» es lo que se pago y en un mercado recien
+     abierto no se pago nada, asi que sin esto una orden esperando contraparte
+     es invisible hasta entrar al par. AUKA las trae; AGKA las trae en null
+     —libro vacio, que es un hecho— y los demas pares NO las traen, que es el
+     tercer estado: no se sabe. Los tres se pintan distinto. */
+  { mercado: 'AUKA-ORIGEN', ultimo: wei(111), cambio24h: 1.11, vol24h: wei(222), mejorCompra: wei(110), mejorVenta: wei(112), referencia: { usd: 222, rotulo: 'onza oro', origenUsd: 2, fuente: 'fingido', en: Date.now() } },
+  { mercado: 'AGKA-ORIGEN', ultimo: wei(222), cambio24h: -2.22, vol24h: wei(111), mejorCompra: null, mejorVenta: null, referencia: { usd: 444, rotulo: 'onza plata', origenUsd: 2, fuente: 'fingido', en: Date.now() } },
 ];
 
 // Mejor compra primero y mejor venta primero, como promete el contrato.
@@ -379,6 +385,25 @@ console.log('\n── mercados, sin sesión ────────────
     `filas: ${filas} de ${pares} pares`);
   const auka = await p.evaluate(() => document.querySelector('#ms-cuerpo tr')?.textContent || '');
   decir(/AUKA/.test(auka) && /\b111\b/.test(auka) && /222 AUKA/.test(auka), 'la fila de AUKA trae último 111 y volumen 222', auka);
+
+  /* LAS DOS PUNTAS EN LA LISTA, y los TRES estados distintos.
+
+     El 4-sep la casa tenia UNA sola orden viva —una venta de AUKA— y en la
+     lista ese mercado se veia igual que los cuatro vacios: guion en ultimo y
+     cero de volumen. El guion era correcto (nadie habia pagado nada) y la
+     pantalla mentia por omision: para enterarse de que habia con quien operar
+     habia que entrar par por par. Esta prueba existe para que no vuelva a
+     pasar, y exige que los tres estados se distingan — porque «vacio» donde
+     en realidad es «no lo se» es la misma mentira con otra letra. */
+  const puntas = await p.evaluate(() => {
+    const fila = (i) => document.querySelectorAll('#ms-cuerpo tr')[i];
+    const celda = (i) => fila(i)?.children[2]?.innerText.replace(/\s+/g, ' ').trim() ?? null;
+    return { auka: celda(0), agka: celda(1), otro: celda(2) };
+  });
+  decir(/venta/i.test(puntas.auka) && /112/.test(puntas.auka) && /compra/i.test(puntas.auka) && /110/.test(puntas.auka),
+    'con libro, la lista dice las dos puntas: venta 112 y compra 110', puntas.auka);
+  decir(/vac[ií]o/i.test(puntas.agka), 'con las puntas en null, dice «vacío»: es un hecho, no una falla', puntas.agka);
+  decir(puntas.otro === '—', 'y cuando el API no manda las puntas dice «—», no «vacío»', puntas.otro);
 }
 
 // ── 3 · un mercado abierto: velas pintadas, libro con filas, invitación ────

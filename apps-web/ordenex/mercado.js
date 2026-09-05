@@ -112,6 +112,8 @@ const VMERCADO = (() => {
          desmentir contando lo que tiene debajo. */
       'sub': 'Los {mercados} mercados de la cadena, cada uno contra ORIGEN.',
       'cMercado': 'Mercado', 'cUltimo': 'Último (ORIGEN)', 'cCambio': '24 h', 'cVol': 'Volumen 24 h',
+      'cLibro': 'En el libro', 'pCompra': 'compra', 'pVenta': 'venta', 'libroVacio': 'vacío',
+      'libroTit': 'Lo mejor que hay descansando ahora en este libro. Es lo que dice si hay con quién operar: el último es lo que ya se pagó, esto es lo que se ofrece.',
       'ref': 'ref.',
       'cargando': 'Trayendo los mercados…',
       'sinFeed': 'No pudimos traer los mercados. Se reintenta solo; los datos aparecen en cuanto vuelva la conexión.',
@@ -317,6 +319,8 @@ const VMERCADO = (() => {
       't': 'Markets',
       'sub': 'The {mercados} markets of the chain, each against ORIGEN.',
       'cMercado': 'Market', 'cUltimo': 'Last (ORIGEN)', 'cCambio': '24 h', 'cVol': '24 h volume',
+      'cLibro': 'On the book', 'pCompra': 'bid', 'pVenta': 'ask', 'libroVacio': 'empty',
+      'libroTit': 'The best resting orders on this book right now. This is what tells you whether there is anyone to trade with: last is what was already paid, this is what is on offer.',
       'ref': 'ref.',
       'cargando': 'Fetching the markets…',
       'sinFeed': 'We couldn’t fetch the markets. It retries on its own; data appears as soon as the connection is back.',
@@ -672,6 +676,12 @@ const VMERCADO = (() => {
       background:rgba(201,169,97,.11);border:1px solid var(--linea2);overflow:hidden;
       font-size:15px;font-weight:700;vertical-align:middle}
     .vm-ic img{width:100%;height:100%;object-fit:cover}
+    /* Las dos puntas, una debajo de la otra y con el color de su lado: la
+       venta arriba y la compra abajo, igual que en el libro del mercado. */
+    .ms-puntas{display:flex;flex-direction:column;gap:2px;font-size:11.5px;line-height:1.35}
+    .ms-puntas .lado{color:var(--humo);white-space:nowrap}
+    .ms-puntas .lado b{font-weight:600}
+    .ms-puntas .venta b{color:var(--coral)} .ms-puntas .compra b{color:var(--jade)}
     .ms-fila{cursor:pointer;transition:background .15s}
     .ms-fila:hover{background:rgba(116,230,200,.05)}
     .ms-par{display:flex;align-items:center;gap:11px}
@@ -1107,6 +1117,26 @@ const VMERCADO = (() => {
      de referencia pintado igual que un precio de trato es exactamente la
      mentira que esta casa no dice — la diferencia entre «esto valdría» y
      «esto se pagó». */
+  /* LO QUE HAY DESCANSANDO, EN LA LISTA.
+     «Último» es lo que se PAGÓ, y en un mercado recién abierto no se pagó
+     nada: cinco guiones seguidos parecen cinco mercados muertos aunque en uno
+     de ellos haya una orden esperando contraparte. Esa era la pantalla el
+     4-sep, con la única orden viva de la casa invisible hasta entrar al par.
+     Acá se distinguen los TRES estados, que es todo el asunto:
+       · el API no manda las puntas (servidor viejo o motor frío) → «—»
+       · las manda en null → «vacío», que es un hecho, no una falla
+       · hay algo → el precio, del color de su lado */
+  function puntasFila(m) {
+    if (!m || (m.mejorCompra === undefined && m.mejorVenta === undefined)) {
+      return '<span class="vm-sin">—</span>';
+    }
+    const c = deWei(m.mejorCompra, 4), v = deWei(m.mejorVenta, 4);
+    if (c == null && v == null) return `<span class="vm-sin">${esc(tx('libroVacio'))}</span>`;
+    return `<span class="ms-puntas">${
+      v == null ? '' : `<span class="lado venta">${esc(tx('pVenta'))} <b class="mono">${esc(v)}</b></span>`}${
+      c == null ? '' : `<span class="lado compra">${esc(tx('pCompra'))} <b class="mono">${esc(c)}</b></span>`}</span>`;
+  }
+
   function precioFila(m) {
     const u = deWei(m?.ultimo, 4);
     if (u != null) return { txt: u, ref: false };
@@ -1132,6 +1162,7 @@ const VMERCADO = (() => {
           <thead><tr>
             <th>${esc(tx('cMercado'))}</th>
             <th>${esc(tx('cUltimo'))}</th>
+            <th title="${esc(tx('libroTit'))}">${esc(tx('cLibro'))}</th>
             <th>${esc(tx('cCambio'))}</th>
             <th>${esc(tx('cVol'))}</th>
           </tr></thead>
@@ -1186,6 +1217,7 @@ const VMERCADO = (() => {
         <td class="mono">${pf.txt == null ? '<span class="vm-sin">—</span>'
           : `<span class="${pf.ref ? 'ms-esref' : ''}" title="${pf.ref ? esc(tx('ls.esRef') + (m.referencia?.en ? ' · ' + rell(tx('leida'), { hora: hora(m.referencia.en) }) + ' · ' + String(m.referencia.fuente || '') : '')) : ''}">${esc(pf.txt)}</span>`}
           ${ref == null ? '' : `<small class="ms-ref">${esc(tx('ref'))} ${esc(ref)}</small>`}</td>
+        <td>${puntasFila(m)}</td>
         <td>${pastillaCambio(m.cambio24h)}</td>
         <td class="mono">${vol == null ? '<span class="vm-sin">—</span>' : esc(vol) + ' ' + esc(sim)}</td>
       </tr>`;
