@@ -64,12 +64,43 @@ const documentoSchema = new Schema({
   para: { type: String, enum: ['junta', 'fuera'], default: 'junta' },
 }, { timestamps: { createdAt: 'en', updatedAt: 'tocado' } });
 
+/* LOS PENDIENTES. Una memoria dice cómo son las cosas; un pendiente dice qué
+   falta hacer y se puede cerrar. Mezclarlos en la misma lista fue lo primero
+   que se hizo, y la lista se volvió ilegible en diez líneas: lo que hay que
+   hacer se perdía entre lo que hay que saber. */
+const pendienteSchema = new Schema({
+  texto: { type: String, required: true, maxlength: 400 },
+  estado: { type: String, enum: ['abierto', 'hecho'], default: 'abierto', index: true },
+  quien: { type: String, maxlength: 80 },        // a quién le toca; vacío = a la junta
+  tema: { type: String, maxlength: 60 },
+  creadoPor: { type: String },                   // correo de quien lo anotó
+  cerradoPor: { type: String },
+  cerradoEn: { type: Date },
+}, { timestamps: { createdAt: 'en', updatedAt: 'tocado' } });
+
+/* EL GASTO. Cada turno cuesta fichas, y las fichas cuestan dinero. El 5-sep la
+   cuenta se quedó sin saldo y nadie lo supo hasta que ULTRON dejó de contestar:
+   el gasto era invisible, así que no se podía ni prever ni discutir. Se anota
+   por turno, con el modelo que lo cobró. */
+const gastoSchema = new Schema({
+  miembro: { type: String, index: true },
+  modelo: { type: String },
+  entrada: { type: Number, default: 0 },
+  salida: { type: Number, default: 0 },
+  lecturaCache: { type: Number, default: 0 },
+  escrituraCache: { type: Number, default: 0 },
+  dolares: { type: Number, default: null },      // null = no hay precio para ese modelo
+  canal: { type: String, default: 'panel' },
+}, { timestamps: { createdAt: 'en', updatedAt: 'tocado' } });
+
 const Memoria = mongoose.models.Memoria || mongoose.model('Memoria', memoriaSchema);
+const Pendiente = mongoose.models.Pendiente || mongoose.model('Pendiente', pendienteSchema);
+const Gasto = mongoose.models.Gasto || mongoose.model('Gasto', gastoSchema);
 const Conversacion = mongoose.models.Conversacion || mongoose.model('Conversacion', conversacionSchema);
 const Documento = mongoose.models.Documento || mongoose.model('Documento', documentoSchema);
 
 // ── El respaldo en memoria, para cuando no hay Mongo ────────────────────────
-const provisional = { memorias: [], conversaciones: new Map(), documentos: [] };
+const provisional = { memorias: [], conversaciones: new Map(), documentos: [], pendientes: [], gastos: [] };
 let conMongo = false;
 const idNuevo = () => new mongoose.Types.ObjectId().toString();
 
@@ -186,11 +217,86 @@ async function documento(id) {
   return provisional.documentos.find((d) => d._id === String(id)) || null;
 }
 
+// ── Pendientes ──────────────────────────────────────────────────────────────
+
+async function anotarPendiente({ texto, quien, tema, creadoPor }) {
+  const t = String(texto || '').trim().slice(0, 400);
+  if (!t) return null;
+  const doc = { texto: t, estado: 'abierto', quien: quien ? String(quien).slice(0, 80) : null,
+    tema: tema ? String(tema).slice(0, 60) : null, creadoPor: creadoPor || null };
+  if (conMongo) return (await Pendiente.create(doc)).toObject();
+  const p = { _id: idNuevo(), ...doc, en: new Date() };
+  provisional.pendientes.unshift(p);
+  return p;
+}
+
+/** Los abiertos primero y por fecha; los hechos solo si se piden. */
+async function pendientes({ conHechos = false, limite = 60 } = {}) {
+  if (conMongo) {
+    const q = conHechos ? {} : { estado: 'abierto' };
+    return Pendiente.find(q).sort({ estado: 1, en: -1 }).limit(limite).lean();
+  }
+  return provisional.pendientes
+    .filter((p) => conHechos || p.estado === 'abierto')
+    .slice(0, limite);
+}
+
+async function cerrarPendiente(id, quien, { reabrir = false } = {}) {
+  const cambio = reabrir
+    ? { estado: 'abierto', cerradoPor: null, cerradoEn: null }
+    : { estado: 'hecho', cerradoPor: quien || null, cerradoEn: new Date() };
+  if (conMongo) return Pendiente.findByIdAndUpdate(id, cambio, { new: true }).lean();
+  const p = provisional.pendientes.find((x) => x._id === id);
+  if (p) Object.assign(p, cambio);
+  return p || null;
+}
+
+async function borrarPendiente(id) {
+  if (conMongo) return !!(await Pendiente.findByIdAndDelete(id));
+  const i = provisional.pendientes.findIndex((x) => x._id === id);
+  if (i < 0) return false;
+  provisional.pendientes.splice(i, 1);
+  return true;
+}
+
+// ── Gasto ───────────────────────────────────────────────────────────────────
+
+async function anotarGasto(g) {
+  if (!g || (!g.entrada && !g.salida)) return null;
+  if (conMongo) return (await Gasto.create(g)).toObject();
+  const x = { _id: idNuevo(), ...g, en: new Date() };
+  provisional.gastos.unshift(x);
+  return x;
+}
+
+/** Lo gastado hoy y en los últimos treinta días, en fichas y en dólares. */
+async function gasto() {
+  const arranqueHoy = new Date(); arranqueHoy.setHours(0, 0, 0, 0);
+  const hace30 = new Date(Date.now() - 30 * 24 * 3600 * 1000);
+  const filas = conMongo
+    ? await Gasto.find({ en: { $gte: hace30 } }).lean()
+    : provisional.gastos.filter((g) => new Date(g.en) >= hace30);
+  const cero = () => ({ turnos: 0, entrada: 0, salida: 0, dolares: 0, conPrecio: true });
+  const hoy = cero(); const mes = cero();
+  for (const f of filas) {
+    for (const c of [mes, ...(new Date(f.en) >= arranqueHoy ? [hoy] : [])]) {
+      c.turnos += 1; c.entrada += f.entrada || 0; c.salida += f.salida || 0;
+      // Un modelo sin precio conocido NO se cuenta como cero dólares: se dice
+      // que el total está incompleto. Un total que miente por lo bajo es peor
+      // que no tener total.
+      if (f.dolares == null) c.conPrecio = false; else c.dolares += f.dolares;
+    }
+  }
+  return { hoy, mes };
+}
+
 module.exports = {
   conectar, estado,
+  anotarPendiente, pendientes, cerrarPendiente, borrarPendiente,
+  anotarGasto, gasto,
   recordar, olvidar, memoriasDe,
   abrirConversacion, conversacion, conversacionesDe, anotarTurno, titular,
   guardarDocumento, documentos, documento,
-  Memoria, Conversacion, Documento,
+  Memoria, Conversacion, Documento, Pendiente, Gasto,
   _adentro: { provisional },
 };

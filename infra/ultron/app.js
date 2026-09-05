@@ -169,6 +169,32 @@ app.delete('/memorias/:id', puerta, async (req, res) => {
   res.json({ ok: await memoria.olvidar(req.params.id, req.miembro.correo) });
 });
 
+/* ── LOS PENDIENTES ──────────────────────────────────────────────────────────
+   Son de la JUNTA, no de cada quien: cualquiera de los seis los ve, los anota
+   y los cierra. Una lista de tareas que cada miembro ve distinta no es una
+   lista de la junta, son seis listas que se contradicen. */
+app.get('/pendientes', puerta, async (req, res) => {
+  res.json(await memoria.pendientes({ conHechos: req.query.hechos === '1' }));
+});
+app.post('/pendientes', puerta, async (req, res) => {
+  const p = await memoria.anotarPendiente({
+    texto: req.body?.texto, quien: req.body?.quien, tema: req.body?.tema, creadoPor: req.miembro.correo });
+  if (!p) return res.status(400).json({ error: 'Texto vacío.', codigo: 'VACIO' });
+  res.json(p);
+});
+app.patch('/pendientes/:id', puerta, async (req, res) => {
+  const p = await memoria.cerrarPendiente(req.params.id, req.miembro.correo, { reabrir: req.body?.estado === 'abierto' });
+  if (!p) return res.status(404).json({ error: 'No existe.', codigo: 'NO_EXISTE' });
+  res.json(p);
+});
+app.delete('/pendientes/:id', puerta, async (req, res) => {
+  res.json({ ok: await memoria.borrarPendiente(req.params.id) });
+});
+
+/* Lo que cuesta pensar. Va detrás de la puerta como todo lo demás: cuánto
+   gasta la junta no es asunto de nadie más. */
+app.get('/gasto', puerta, async (req, res) => res.json(await memoria.gasto()));
+
 app.get('/conversaciones', puerta, async (req, res) => res.json(await memoria.conversacionesDe(req.miembro.correo)));
 app.get('/conversaciones/:id', puerta, async (req, res) => {
   const c = await memoria.conversacion(req.params.id, req.miembro.correo);

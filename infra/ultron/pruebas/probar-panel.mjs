@@ -73,6 +73,26 @@ titulo('pensar con el cerebro apagado lo dice, no se cuelga');
   decir(await p.evaluate(() => !document.getElementById('mandar').disabled || !document.getElementById('entrada').value), 'y el compositor vuelve a quedar usable');
 }
 
+titulo('los pendientes desde el panel');
+{
+  // Abre en pendientes: lo primero que la junta quiere ver es qué falta.
+  decir(await p.evaluate(() => !document.getElementById('pPendientes').hidden && document.getElementById('pMemoria').hidden),
+    'el lateral abre en pendientes, no en memoria');
+  await p.fill('#nuevoPendiente', 'Fondear la caliente con ORIGEN'); await p.click('#guardarPendiente');
+  await p.waitForTimeout(700);
+  decir(/Fondear la caliente/.test(await p.textContent('#pendientes')), 'se anota y aparece');
+  await p.click('#pendientes .caja'); await p.waitForTimeout(700);
+  decir(await p.evaluate(() => !/Fondear/.test(document.getElementById('pendientes').innerText)),
+    'al marcarlo hecho sale de la lista de lo que falta');
+  await p.check('#verHechos'); await p.waitForTimeout(700);
+  decir(await p.evaluate(() => {
+    const it = [...document.querySelectorAll('#pendientes .item')].find((x) => /Fondear/.test(x.innerText));
+    return !!it && it.classList.contains('hecho') && /line-through/.test(getComputedStyle(it.querySelector('.tx')).textDecorationLine + getComputedStyle(it.querySelector('.tx')).textDecoration);
+  }), 'y con «ver lo ya hecho» vuelve, tachado');
+  await p.uncheck('#verHechos'); await p.waitForTimeout(500);
+  await p.click('.pestanas button[data-p=memoria]'); await p.waitForTimeout(300);
+}
+
 titulo('la memoria desde el panel');
 {
   await p.fill('#nuevaMemoria', 'La junta se reúne los martes'); await p.click('#guardarMemoria');

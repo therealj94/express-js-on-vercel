@@ -48,7 +48,10 @@ function claudeFingido(guion) {
             const content = [];
             if (paso.texto) content.push({ type: 'text', text: paso.texto });
             for (const h of paso.herramientas || []) content.push({ type: 'tool_use', id: 'tu_' + Math.random().toString(36).slice(2), name: h.nombre, input: h.entrada });
-            return { content, stop_reason: (paso.herramientas || []).length ? 'tool_use' : 'end_turn' };
+            // El API de verdad devuelve SIEMPRE `usage`, y de ahí sale el gasto.
+            // Un fingido sin usage haría pasar una prueba de gasto con ceros.
+            return { content, stop_reason: (paso.herramientas || []).length ? 'tool_use' : 'end_turn',
+              usage: paso.uso || { input_tokens: 1200, output_tokens: 300, cache_read_input_tokens: 0, cache_creation_input_tokens: 0 } };
           },
         };
         return s;
@@ -84,7 +87,15 @@ titulo('el prompt lleva lo que tiene que llevar');
   // Se vuelve a correr con uno que guarde el pedido para leer el system.
   const { cer: cer2, c: c2 } = conClaude([{ texto: 'El gramin es…' }]);
   await cer2.pensar({ miembro: JOSE, junta: JUNTA, texto: '¿qué es el gramin y a cuánto está el ORIGEN?' });
-  const sys = c2.llamadas[0].system;
+  /* El system son DOS bloques: el estable (identidad, reglas, voz de la casa)
+     con cache_control, y el del momento (fecha, memoria, pendientes, estado
+     vivo, saber). Se juntan para leerlos, y aparte se comprueba el corte. */
+  const bloques = c2.llamadas[0].system;
+  const sys = Array.isArray(bloques) ? bloques.map((b) => b.text).join('\n') : bloques;
+  decir(Array.isArray(bloques) && bloques.length === 2 && bloques[0].cache_control?.type === 'ephemeral',
+    'el prompt va partido en dos y el bloque estable pide caché', JSON.stringify(bloques?.[0]?.cache_control));
+  decir(Array.isArray(bloques) && !/Hoy es/.test(bloques[0].text) && /Hoy es/.test(bloques[1].text),
+    'y la fecha va en el bloque del momento: en el estable rompería la caché en cada turno');
   decir(/Sos ULTRON FP/.test(sys), 'se presenta como ULTRON FP');
   decir(/José \(presidente\)/.test(sys), 'sabe con quién habla');
   decir(/La junta se reúne los martes/.test(sys), 'lleva la memoria de la junta');
@@ -210,6 +221,47 @@ titulo('cuando Anthropic dice que no, se dice POR QUÉ');
   decir(raro.codigo === 'ERROR' && !/boom/.test(raro.mensaje), 'un fallo que no se conoce NO se explica inventando');
   const apagado = Object.assign(new Error('Falta ANTHROPIC_API_KEY.'), { codigo: 'CEREBRO_APAGADO' });
   decir(cer.motivo(apagado).codigo === 'CEREBRO_APAGADO', 'y el cerebro apagado sigue diciendo lo suyo');
+}
+
+titulo('los pendientes: lo que hay que HACER, aparte de lo que hay que saber');
+{
+  const { cer, c } = conClaude([
+    { herramientas: [{ nombre: 'anotar_pendiente', entrada: { texto: 'Fondear la caliente con ORIGEN', quien: 'José', tema: 'ordenex' } }] },
+    { texto: 'Anotado.' },
+  ]);
+  const r = await cer.pensar({ miembro: JOSE, junta: JUNTA, texto: 'hay que fondear la caliente' });
+  const abiertos = await memoria.pendientes();
+  decir(abiertos.some((p) => /Fondear la caliente/.test(p.texto)), 'se anota y queda abierto', abiertos.map((p) => p.texto).join(' · '));
+  decir(r.pendientes.length === 1, 'y el turno lo devuelve para que el panel lo pinte');
+
+  // Y en el turno siguiente el modelo los ve CON su id: sin id, «cerrá el del
+  // gas» obliga a adivinar, y cerrar el equivocado es peor que no cerrar.
+  const { cer: cer2, c: c2 } = conClaude([{ texto: 'ok' }]);
+  await cer2.pensar({ miembro: JOSE, junta: JUNTA, texto: 'qué falta' });
+  const sys2 = c2.llamadas[0].system.map((b) => b.text).join('\n');
+  const id = abiertos.find((p) => /Fondear/.test(p.texto))._id;
+  decir(/LO QUE ESTÁ PENDIENTE/.test(sys2) && sys2.includes(String(id)),
+    'los pendientes abiertos van en el prompt, con su id');
+
+  const cerrado = await memoria.cerrarPendiente(String(id), JOSE.correo);
+  decir(cerrado.estado === 'hecho', 'se puede cerrar');
+  decir(!(await memoria.pendientes()).some((p) => String(p._id) === String(id)), 'y deja de aparecer entre los abiertos');
+}
+
+titulo('lo que cuesta pensar, contado y no estimado');
+{
+  const { cer } = conClaude([{ texto: 'listo' }]);
+  const r = await cer.pensar({ miembro: JOSE, junta: JUNTA, texto: 'hola' });
+  decir(r.uso && typeof r.uso.entrada === 'number' && typeof r.uso.salida === 'number',
+    'cada turno devuelve las fichas que gastó', JSON.stringify(r.uso));
+  const d = cer.dolaresDe('claude-fable-5-1', { entrada: 1e6, salida: 0, lecturaCache: 0, escrituraCache: 0 });
+  decir(Math.abs(d - 10) < 1e-9, 'un millón de fichas de entrada de Fable 5.1 son 10 dólares', String(d));
+  const d2 = cer.dolaresDe('claude-fable-5-1', { entrada: 0, salida: 1e6, lecturaCache: 0, escrituraCache: 0 });
+  decir(Math.abs(d2 - 50) < 1e-9, 'y un millón de salida, 50', String(d2));
+  decir(cer.dolaresDe('modelo-que-no-conozco', { entrada: 1e6, salida: 1e6, lecturaCache: 0, escrituraCache: 0 }) === null,
+    'un modelo sin precio conocido devuelve null, NO cero: un total que miente por lo bajo es peor que no tenerlo');
+  const g = await memoria.gasto();
+  decir(g.hoy.turnos > 0 && g.hoy.entrada > 0, 'y el gasto queda anotado para sumarlo por día', JSON.stringify(g.hoy));
 }
 
 console.log(fallos ? `\n${fallos} comprobación(es) fallaron` : '\nTodo en verde');

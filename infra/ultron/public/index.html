@@ -169,9 +169,31 @@ a{color:var(--fila)}
 .pie-caja b{color:var(--bruma);font-weight:500}
 
 /* derecha */
-.pestanas{display:flex;gap:4px;background:rgba(3,8,20,.5);border:1px solid var(--linea);border-radius:12px;padding:4px}
-.pestanas button{flex:1;padding:7px 4px;border-radius:9px;font-size:11.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--humo);font-weight:600}
+/* Cuatro pestañas en 300 px: con el tamaño de tres, la última se cortaba
+   contra el borde. Se aprieta la letra y el espaciado, y si algún día son
+   cinco el riel las deja deslizarse en vez de recortarlas. */
+.pestanas{display:flex;gap:3px;background:rgba(3,8,20,.5);border:1px solid var(--linea);border-radius:12px;padding:4px;
+  overflow-x:auto;scrollbar-width:none}
+.pestanas::-webkit-scrollbar{display:none}
+.pestanas button{flex:1 1 auto;white-space:nowrap;padding:7px 6px;border-radius:9px;font-size:10.5px;letter-spacing:.03em;text-transform:uppercase;color:var(--humo);font-weight:600}
 .pestanas button.on{background:rgba(93,214,255,.12);color:var(--fila)}
+/* Un pendiente se toca para cerrarlo, así que el objetivo es toda la fila y no
+   una casilla de 13 px: en el teléfono una casilla chica se falla, y fallar
+   acá marca hecho lo que no lo está. */
+.tarea{display:flex;gap:10px;align-items:flex-start}
+.tarea .caja{flex:0 0 auto;width:17px;height:17px;margin-top:1px;border:1.5px solid var(--linea2);border-radius:5px;
+  display:grid;place-items:center;cursor:pointer;transition:.15s}
+.tarea .caja:hover{border-color:var(--fila)}
+.tarea .caja svg{width:11px;height:11px;stroke:var(--abismo);stroke-width:3.2;fill:none;opacity:0}
+.item.hecho .tarea .caja{background:var(--fila);border-color:var(--fila)}
+.item.hecho .tarea .caja svg{opacity:1}
+.item.hecho .tarea .tx{color:var(--humo);text-decoration:line-through;text-decoration-color:rgba(255,255,255,.25)}
+.tarea .tx{flex:1;min-width:0;cursor:pointer}
+.verHechos{display:flex;align-items:center;gap:7px;margin-top:12px;font-size:11.5px;color:var(--humo);cursor:pointer}
+.verHechos input{accent-color:var(--fila)}
+/* El gasto vive en el pie, al lado del modelo: es el mismo dato —qué cerebro
+   contestó y qué costó— y separarlos los volvía dos adornos sueltos. */
+#pieDer b{color:var(--bruma);font-weight:600}
 .lista{margin-top:14px;display:grid;gap:8px}
 .item{background:var(--vidrio);border:1px solid var(--linea);border-radius:12px;padding:10px 12px;font-size:13px;transition:border-color .2s}
 .item:hover{border-color:var(--linea2)}
@@ -296,11 +318,17 @@ a{color:var(--fila)}
 
   <aside class="der" id="der">
     <div class="pestanas">
-      <button class="on" data-p="memoria">Memoria</button>
+      <button class="on" data-p="pendientes">Pendientes</button>
+      <button data-p="memoria">Memoria</button>
       <button data-p="biblioteca">Biblioteca</button>
       <button data-p="hilos">Hilos</button>
     </div>
-    <div id="pMemoria">
+    <div id="pPendientes">
+      <div class="añadir"><input class="campo" id="nuevoPendiente" placeholder="Algo que hay que hacer…"><button class="btn chico" id="guardarPendiente">Anotar</button></div>
+      <div class="lista" id="pendientes"></div>
+      <label class="verHechos"><input type="checkbox" id="verHechos"> ver lo ya hecho</label>
+    </div>
+    <div id="pMemoria" hidden>
       <div class="añadir"><input class="campo" id="nuevaMemoria" placeholder="Algo que ULTRON tenga que recordar…"><button class="btn chico" id="guardarMemoria">Guardar</button></div>
       <div class="lista" id="memorias"></div>
     </div>
@@ -321,7 +349,7 @@ const $ = (s) => document.querySelector(s);
 const esc = MARKDOWN.esc;
 const E = {           // el estado del panel
   yo: null, conversacionId: null, hablando: false, vozOn: false, oyendo: false,
-  vivo: null, memorias: [], documentos: [], hilos: [], enviosPendientes: new Map(),
+  vivo: null, memorias: [], documentos: [], hilos: [], pendientes: [], gasto: null, enviosPendientes: new Map(),
 };
 try { E.vozOn = localStorage.getItem('ultron.voz') === '1'; } catch {}
 
@@ -458,7 +486,7 @@ async function entrarAlPanel() {
   $('#nombre').textContent = E.yo.miembro.nombre;
   if (!presencia) presencia = Presencia($('#presencia'));
   pintarPuntos(); pintarSaber(); pintarVozBtn();
-  await Promise.all([cargarVivo(), cargarMemorias(), cargarDocumentos(), cargarHilos()]);
+  await Promise.all([cargarVivo(), cargarPendientes(), cargarMemorias(), cargarDocumentos(), cargarHilos(), cargarGasto()]);
   pintarVacio();
   setInterval(cargarVivo, 45_000);
 }
@@ -599,7 +627,8 @@ function terminar(b, d, md) {
   }
   extras.querySelectorAll('[data-env-ok]').forEach((btn) => btn.addEventListener('click', () => confirmarEnvio(btn.closest('.tarjeta'))));
   extras.querySelectorAll('[data-desc]').forEach((btn) => btn.addEventListener('click', () => { const t = btn.closest('.tarjeta'); E.enviosPendientes.delete(t.dataset.env); t.remove(); }));
-  $('#pieDer').textContent = d.modelo ? `${d.modelo}` : '';
+  if ((d.pendientes || []).length) cargarPendientes();
+  cargarGasto();
   if (E.vozOn && md.trim()) hablar(md);
 }
 
@@ -690,11 +719,65 @@ async function hablar(md) {
    ═══════════════════════════════════════════════════════════════════════════ */
 document.querySelectorAll('.pestanas button').forEach((b) => b.addEventListener('click', () => {
   document.querySelectorAll('.pestanas button').forEach((x) => x.classList.toggle('on', x === b));
-  for (const p of ['Memoria', 'Biblioteca', 'Hilos']) $('#p' + p).hidden = b.dataset.p !== p.toLowerCase();
+  for (const p of ['Pendientes', 'Memoria', 'Biblioteca', 'Hilos']) $('#p' + p).hidden = b.dataset.p !== p.toLowerCase();
 }));
 $('#abrirDer').addEventListener('click', () => $('#der').classList.toggle('abierta'));
 
 const cuando = (d) => new Date(d).toLocaleDateString('es-HN', { day: 'numeric', month: 'short' });
+
+/* LOS PENDIENTES. Son de la junta: los ve, los anota y los cierra cualquiera
+   de los seis. Se pinta el abierto arriba y el hecho tachado, solo si se pide
+   verlo — una lista donde lo hecho y lo pendiente pesan igual deja de servir
+   para saber qué falta. */
+async function cargarPendientes() {
+  const hechos = $('#verHechos')?.checked ? '?hechos=1' : '';
+  try { E.pendientes = await api('/pendientes' + hechos); } catch { return; }
+  const l = $('#pendientes');
+  if (!E.pendientes.length) {
+    l.innerHTML = '<div class="nada">Nada pendiente.<br>Anotá algo arriba, o decímelo y lo apunto yo.</div>';
+    return;
+  }
+  l.innerHTML = E.pendientes.map((p) => `<div class="item ${p.estado === 'hecho' ? 'hecho' : ''}">
+    <div class="tarea">
+      <span class="caja" data-id="${esc(p._id)}"><svg viewBox="0 0 24 24"><path d="M4 12l6 6L20 6"/></svg></span>
+      <div class="tx" data-id="${esc(p._id)}">${esc(p.texto)}<small>${p.tema ? `<span class="etq azul">${esc(p.tema)}</span>` : ''}${p.quien ? `<span class="etq">${esc(p.quien)}</span>` : ''}${cuando(p.en)}${p.cerradoPor ? ' · cerrado por ' + esc(p.cerradoPor.split('@')[0]) : ''}</small></div>
+      <button class="x" data-borrar="${esc(p._id)}" title="Borrar">×</button>
+    </div></div>`).join('');
+  const alternar = async (id) => {
+    const p = E.pendientes.find((x) => String(x._id) === String(id)); if (!p) return;
+    await api('/pendientes/' + id, { method: 'PATCH', body: { estado: p.estado === 'hecho' ? 'abierto' : 'hecho' } });
+    cargarPendientes();
+  };
+  l.querySelectorAll('.caja, .tx').forEach((e) => e.addEventListener('click', () => alternar(e.dataset.id)));
+  l.querySelectorAll('[data-borrar]').forEach((b) => b.addEventListener('click', async () => {
+    await api('/pendientes/' + b.dataset.borrar, { method: 'DELETE' }); cargarPendientes();
+  }));
+}
+$('#guardarPendiente').addEventListener('click', async () => {
+  const i = $('#nuevoPendiente'); const t = i.value.trim(); if (!t) return;
+  await api('/pendientes', { method: 'POST', body: { texto: t } }); i.value = ''; cargarPendientes();
+  avisar('Anotado.');
+});
+$('#nuevoPendiente').addEventListener('keydown', (e) => { if (e.key === 'Enter') $('#guardarPendiente').click(); });
+$('#verHechos').addEventListener('change', cargarPendientes);
+
+/* LO QUE CUESTA. Se enseña en fichas Y en dólares, y si algún turno salió de
+   un modelo sin precio conocido se dice que el total va incompleto: un total
+   que miente por lo bajo es peor que no tener total. */
+async function cargarGasto() {
+  try { E.gasto = await api('/gasto'); } catch { return; }
+  pintarPie();
+}
+function pintarPie() {
+  const g = E.gasto; const m = E.yo?.modelo || '';
+  if (!g) { $('#pieDer').textContent = m; return; }
+  const plata = (n) => '$' + n.toFixed(n < 1 ? 3 : 2);
+  const hoy = g.hoy.turnos
+    ? `<b>${plata(g.hoy.dolares)}</b> hoy${g.hoy.conPrecio ? '' : '+'} · ${g.hoy.turnos} ${g.hoy.turnos === 1 ? 'pregunta' : 'preguntas'}`
+    : 'sin gasto hoy';
+  const mes = g.mes.turnos ? ` · ${plata(g.mes.dolares)} en 30 días` : '';
+  $('#pieDer').innerHTML = `<span title="Lo que la junta lleva gastado en pensar${g.hoy.conPrecio ? '' : '. El «+» es porque algún turno salió de un modelo sin precio conocido y no está sumado'}">${hoy}${mes}</span> · ${esc(m)}`;
+}
 async function cargarMemorias() {
   try { E.memorias = await api('/memorias'); } catch { return; }
   const l = $('#memorias');
