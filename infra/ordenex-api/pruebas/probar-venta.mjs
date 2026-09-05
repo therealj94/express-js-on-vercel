@@ -105,6 +105,12 @@ pagoUsdt.saldo = async (red) => {
   return { crudo, canonico: decimales.aCanonico(crudo, red, 'USDT') };
 };
 pagoUsdt.configurada = () => ({ ok: true, motivo: null, direccion: billeteras.UNICA });
+let GAS_NATIVO = 10n ** 17n;          // 0,1 BNB: de sobra
+pagoUsdt.gas = async () => {
+  const porPago = 10n ** 13n;          // ~0,00001 por transferencia
+  return { nativo: GAS_NATIVO.toString(), porPago: porPago.toString(),
+           alcanza: GAS_NATIVO >= porPago, ventasQueQuedan: Number(GAS_NATIVO / porPago) };
+};
 pagoUsdt.pagar = async (red, { a, crudo }) => {
   if (SIGUIENTE) { const e = SIGUIENTE; SIGUIENTE = null; throw e; }
   pagos.push({ red, a, crudo });
@@ -254,6 +260,25 @@ decir('no se paga más de lo que hay en la caja');
   } catch (e) { c2 = e.codigo; }
   comprobar(c2 === 'SIN_CAJA', 'y lo que está en duda sigue comprometiendo la caja', c2);
   CAJA = guardada;
+}
+
+decir('sin gas en la pagadora no se acepta la venta');
+{
+  /* La pagadora paga desde si misma y su moneda nativa la pone una persona:
+     nadie la fondea sola. Sin gas, la firma revienta DESPUES de confirmar, y
+     aunque el ORIGEN vuelva, quien vendio ya se llevo el rechazo. */
+  const u = await persona();
+  const guardado = GAS_NATIVO;
+  GAS_NATIVO = 0n;
+  const antes = pagos.length;
+  let c = null;
+  try {
+    await venta.vender(u, { origenWei: (10n * 10n ** 18n).toString(), red: BSC, direccion: afuera(), ventaKey: clave() });
+  } catch (e) { c = e.codigo; }
+  comprobar(c === 'SIN_GAS', 'sin gas, la venta se niega antes de tocar el saldo', c);
+  comprobar(pagos.length === antes, 'y no se intenta firmar');
+  comprobar(await saldoDe(u._id) === 1000n * 10n ** 18n, 'el ORIGEN ni se toca', String(await saldoDe(u._id)));
+  GAS_NATIVO = guardado;
 }
 
 decir('cuando el pago no sale, el ORIGEN se devuelve');

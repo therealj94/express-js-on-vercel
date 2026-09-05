@@ -57,6 +57,43 @@ async function saldo(red) {
   return { crudo, canonico: decimales.aCanonico(crudo, red, 'USDT') };
 }
 
+/* Cuanto gas cuesta UNA transferencia de USDT, con margen. Una transferencia
+   ERC-20 ronda las 45.000 unidades; se cuentan 70.000 para no quedarse corto
+   el dia que el contrato haga algo mas (un token con lista de comisiones, por
+   ejemplo). Estimar de menos aqui es peor que estimar de mas: de mas solo
+   pospone una venta, de menos la deja fallar despues de confirmada. */
+const GAS_POR_PAGO = 70000n;
+
+/**
+ * ¿Tiene la pagadora con qué firmar?
+ *
+ * NADIE LA FONDEA. La billetera de gas (lib/gas.js) le da moneda nativa a las
+ * direcciones de deposito para poder barrerlas, pero la pagadora paga desde si
+ * misma y su gas lo pone una persona. Si se queda seca, la firma revienta con
+ * INSUFFICIENT_FUNDS: el ORIGEN se devuelve y no se pierde nada, pero quien
+ * vendio ya habia confirmado y se lleva un rechazo en la cara.
+ *
+ * Asi que se mira ANTES, y se dice en cuantas ventas queda seca — igual que la
+ * alarma de lib/gas.js, y por el mismo motivo: «0,0004 BNB» no le dice nada a
+ * nadie y «quedan tres ventas» si.
+ */
+async function gas(red) {
+  const pv = await proveedores.proveedorDe(red);
+  const [saldoNativo, tarifa] = await Promise.all([
+    pv.getBalance(ESPERADA),
+    pv.getFeeData(),
+  ]);
+  const precio = BigInt(tarifa.maxFeePerGas || tarifa.gasPrice || 0n);
+  const porPago = precio * GAS_POR_PAGO;
+  const nativo = BigInt(saldoNativo);
+  return {
+    nativo: nativo.toString(),
+    porPago: porPago.toString(),
+    alcanza: porPago > 0n ? nativo >= porPago : nativo > 0n,
+    ventasQueQuedan: porPago > 0n ? Number(nativo / porPago) : null,
+  };
+}
+
 /**
  * Firmar la transferencia. Devuelve `{ hash }`.
  *
@@ -84,4 +121,4 @@ async function pagar(red, { a, crudo }) {
   return { hash: tx.hash };
 }
 
-module.exports = { saldo, pagar, pagadora, configurada, ESPERADA, ABI };
+module.exports = { saldo, gas, pagar, pagadora, configurada, ESPERADA, ABI, GAS_POR_PAGO };

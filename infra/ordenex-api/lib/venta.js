@@ -233,6 +233,18 @@ async function vender(usuario, { origenWei, red, direccion, ventaKey }) {
   try { caja = await pagoUsdt.saldo(id); } catch (e) {
     throw fallo('CAJA_ILEGIBLE', 'No puedo confirmar el USDT disponible ahora mismo. Probá en un rato.', 503);
   }
+  /* Y el gas de la pagadora, que NADIE le pone: sin moneda nativa la firma
+     revienta DESPUÉS de haber confirmado, y aunque el ORIGEN se devuelva, quien
+     vendió ya se llevó el rechazo. Mirarlo antes cuesta una lectura. */
+  let combustible;
+  try { combustible = await pagoUsdt.gas(id); } catch (e) {
+    throw fallo('CAJA_ILEGIBLE', 'No puedo confirmar si puedo pagar ahora mismo. Probá en un rato.', 503);
+  }
+  if (!combustible.alcanza) {
+    console.error(`[venta] SIN GAS en ${redes.REDES[id].nombre}: la pagadora tiene ${combustible.nativo} y una transferencia cuesta ${combustible.porPago}`);
+    throw fallo('SIN_GAS',
+      'No puedo pagar en esa red en este momento. Probá en un rato o elegí otra red.', 503);
+  }
   const enVuelo = await comprometido(id);
   const libre = BigInt(caja.canonico) - enVuelo - APARTADO_CANONICO;
   if (libre < BigInt(c.netoCanonico)) {
@@ -350,12 +362,15 @@ async function estado() {
   salida.llave.valida = q.ok; salida.llave.motivo = q.motivo;
   for (const id of redes.abiertas()) {
     try {
-      const c = await pagoUsdt.saldo(id);
+      const [c, g] = await Promise.all([pagoUsdt.saldo(id), pagoUsdt.gas(id)]);
       const enVuelo = await comprometido(id);
       salida.caja[id] = {
         red: redes.REDES[id].nombre,
         usdt: formatUnits(c.canonico, 18),
         enVuelo: formatUnits(enVuelo.toString(), 18),
+        // El gas de la pagadora se mide en VENTAS que quedan y no en monedas:
+        // «0,0004 BNB» no le dice nada a nadie. Mismo criterio que lib/gas.js.
+        gas: { nativo: formatUnits(g.nativo, 18), ventasQueQuedan: g.ventasQueQuedan, alcanza: g.alcanza },
       };
     } catch (e) {
       salida.caja[id] = { red: redes.REDES[id]?.nombre || String(id), error: String(e.message).slice(0, 120) };
