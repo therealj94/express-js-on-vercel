@@ -331,6 +331,28 @@ decir('la doble entrada cuadra despues de todo el trajin');
   }
 }
 
+
+decir('GET /tratos: cada trato se enseña desde el lado de quien pregunta');
+{
+  const { misTratos } = (await import('../controllers/ordenesController.js')).default;
+  const t = await Trato.findOne({ mercado: 'AUKA-ORIGEN' }).lean();
+  comprobar(!!t, 'hay al menos un trato de las pruebas de arriba');
+  const pedir = (id, query = {}) => new Promise((listo) => {
+    const res = { status(c) { this.c = c; return this; }, json(j) { listo({ c: this.c || 200, j }); } };
+    misTratos({ usuario: { id }, query }, res, (e) => listo({ c: 500, j: { error: String(e) } }));
+  });
+  const c = await pedir(t.compradorId), v = await pedir(t.vendedorId);
+  comprobar(c.c === 200 && c.j.tratos.some((x) => x.id === String(t._id) && x.lado === 'compra'), 'el comprador lo ve como compra', JSON.stringify(c.j).slice(0, 160));
+  comprobar(v.c === 200 && v.j.tratos.some((x) => x.id === String(t._id) && x.lado === 'venta'), 'y el vendedor como venta');
+  const mio = c.j.tratos.find((x) => x.id === String(t._id));
+  comprobar(mio.total === ((BigInt(t.cantidad) * BigInt(t.precio)) / 10n ** 18n).toString(), 'con el total pagado en ORIGEN, floor como el motor');
+  comprobar(!('compradorId' in mio) && !('vendedorId' in mio), 'y sin la contraparte: el libro es anónimo');
+  const raro = await pedir(t.compradorId, { mercado: 'NADA-ORIGEN' });
+  comprobar(raro.c === 400 && raro.j.codigo === 'MERCADO_INVALIDO', 'un mercado que no existe es 400');
+  const nadie = await pedir('nadie');
+  comprobar(nadie.c === 200 && nadie.j.tratos.length === 0, 'y quien no operó no ve nada');
+}
+
 await mongoose.disconnect();
 await servidor.stop();
 

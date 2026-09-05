@@ -49,6 +49,25 @@ async function vender(req, res) {
   }
 }
 
+// ── GET /ventas/limites ─────────────────────────────────────────────────────
+// Publica y sin sesion, como /salud y /tarifas: el techo de lo que la casa
+// puede pagar es de quien va a vender, antes de vender. Se cachea quince
+// segundos porque lee la caja por RPC y la sondea toda pantalla abierta.
+const CAPACIDAD_MS = 15_000;
+let capacidadCache = { en: 0, promesa: null };
+async function limites(req, res) {
+  try {
+    if (!capacidadCache.promesa || Date.now() - capacidadCache.en >= CAPACIDAD_MS) {
+      const promesa = venta.capacidad();
+      capacidadCache = { en: Date.now(), promesa };
+      promesa.catch(() => { if (capacidadCache.promesa === promesa) capacidadCache = { en: 0, promesa: null }; });
+    }
+    return res.json(await capacidadCache.promesa);
+  } catch (e) {
+    return responder(res, e);
+  }
+}
+
 // ── GET /ventas ─────────────────────────────────────────────────────────────
 async function mias(req, res) {
   try {
@@ -58,4 +77,4 @@ async function mias(req, res) {
   }
 }
 
-module.exports = { cotizar, vender, mias };
+module.exports = { cotizar, vender, mias, limites };

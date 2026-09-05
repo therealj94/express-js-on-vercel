@@ -18,6 +18,7 @@
  */
 
 import velas from '../lib/velas.js';
+const { serie24hPuro } = velas;
 const { MARCOS, t0De, agregar, resumen24hPuro } = velas;
 
 let fallos = 0;
@@ -192,6 +193,20 @@ decir('resumen 24h');
     ahora
   );
   comprobar(desordenado.ultimo === String(5n * U), 'velas desordenadas: el ultimo sigue siendo el mas nuevo');
+}
+
+
+decir('la serie del día para la mini gráfica');
+{
+  const H = 3_600_000, ahora = 100 * H;
+  const v = (t0, c) => ({ t0, c: String(c) });
+  comprobar(serie24hPuro([], ahora).length === 0, 'sin velas, sin serie: un guion y no una línea plana');
+  // Un cierre de antes de la ventana y tres horas dentro: cuatro puntos, en orden.
+  const s = serie24hPuro([v(80 * H, 5), v(77 * H, 3), v(90 * H, 7), v(70 * H, 2)], ahora);
+  comprobar(s.join(',') === '2,3,5,7', 'empieza con el cierre en pie al abrir la ventana (el de 70 h) y sigue en orden de tiempo', s.join(','));
+  comprobar(serie24hPuro([v(79 * H, 9)], ahora).join(',') === '9', 'un mercado viejo sin tratos hoy sigue teniendo su último precio');
+  const muchas = Array.from({ length: 40 }, (_, i) => v((100 - 39 + i) * H, i));
+  comprobar(serie24hPuro(muchas, ahora).length === 25, 'y nunca más de 25 puntos', String(serie24hPuro(muchas, ahora).length));
 }
 
 console.log(fallos ? `\n${fallos} comprobación(es) fallaron` : '\nTodo en verde');

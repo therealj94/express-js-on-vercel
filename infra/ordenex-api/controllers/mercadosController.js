@@ -9,7 +9,7 @@
 
 const { MERCADOS } = require('../lib/tokens');
 const motor = require('../lib/motor');
-const { MARCOS, resumen24h } = require('../lib/velas');
+const { MARCOS, resumen24h, serie24h } = require('../lib/velas');
 const { referenciaDe } = require('../lib/referencia');
 // Las velas de referencia son otra cosa que el precio puntual de referencia.js:
 // aquel es el numero de ahora para la lista de mercados, estas son la serie
@@ -74,12 +74,14 @@ function puntasDe(par) {
 function armarLista() {
   return Promise.all(
     MERCADOS.map(async (mercado) => {
-      const [r, referencia] = await Promise.all([resumen24h(mercado), referenciaDe(mercado)]);
+      const [r, referencia, serie] = await Promise.all([resumen24h(mercado), referenciaDe(mercado), serie24h(mercado)]);
       return {
         mercado,
         ultimo: r.ultimo,
         cambio24h: r.cambio24h,
         vol24h: r.vol24h,
+        // La linea del dia: cierres de 1h, para la mini grafica de la fila.
+        serie24h: serie,
         // Lo que hay descansando AHORA, que es lo que dice si se puede operar.
         ...puntasDe(mercado),
         // El rango del dia. Van en null cuando no hubo tratos: un mercado sin

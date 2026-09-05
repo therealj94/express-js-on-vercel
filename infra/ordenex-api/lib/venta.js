@@ -349,6 +349,39 @@ async function mias(userId, { limite = 20 } = {}) {
   return v.map(paraPantalla);
 }
 
+/**
+ * LO QUE SE PUEDE VENDER AHORA MISMO, para la pantalla y sin sesión.
+ *
+ * Un exchange dice el máximo ANTES de que la persona escriba: aquí el techo
+ * no es su saldo sino la caja de la casa, y descubrirlo con un SIN_CAJA
+ * después de rellenar todo es la peor forma de enterarse. Sale de la misma
+ * cuenta que hace `vender()` —caja menos lo en vuelo menos el apartado— y se
+ * traduce a ORIGEN con el neto por unidad, que es lo que la persona teclea.
+ * Sin referencia o con la caja ilegible va en null: no se inventa un techo.
+ */
+async function capacidad() {
+  const p = await precioAhora();
+  const salida = { encendida: encendida(), precioWei: p?.wei || null, precioUsd: p?.usd || null,
+                   netoPorOrigen: null, comisionPpm: comisionSalida.ppm(), redes: [] };
+  if (p) salida.netoPorOrigen = comisionSalida.partir(p.wei).neto;
+  for (const id of redes.abiertas()) {
+    const fila = { id, nombre: redes.REDES[id].nombre, maxUsdtCanonico: null, maxOrigenWei: null };
+    try {
+      const [caja, enVuelo] = await Promise.all([pagoUsdt.saldo(id), comprometido(id)]);
+      let libre = BigInt(caja.canonico) - enVuelo - APARTADO_CANONICO;
+      if (libre < 0n) libre = 0n;
+      fila.maxUsdtCanonico = libre.toString();
+      if (salida.netoPorOrigen && BigInt(salida.netoPorOrigen) > 0n) {
+        fila.maxOrigenWei = ((libre * 10n ** 18n) / BigInt(salida.netoPorOrigen)).toString();
+      }
+    } catch (e) {
+      fila.error = String(e.message).slice(0, 120);
+    }
+    salida.redes.push(fila);
+  }
+  return salida;
+}
+
 /** Para el panel: si se puede pagar, con qué, y lo que hay que mirar. */
 async function estado() {
   const salida = {
@@ -382,6 +415,6 @@ async function estado() {
 }
 
 module.exports = {
-  OrdenVenta, cotizar, vender, mias, estado, encendida, ESPERADA, ACTIVO,
+  OrdenVenta, cotizar, vender, mias, estado, capacidad, encendida, ESPERADA, ACTIVO,
   _adentro: { usdtPorOrigen, comprometido, precioAhora, paraPantalla, APARTADO_CANONICO },
 };

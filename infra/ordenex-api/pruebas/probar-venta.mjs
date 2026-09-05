@@ -262,6 +262,30 @@ decir('no se paga más de lo que hay en la caja');
   CAJA = guardada;
 }
 
+decir('lo que se puede vender AHORA se dice antes, no con un SIN_CAJA después');
+{
+  const guardada = CAJA;
+  // La caja de hoy: 10 USDT libres, por encima de lo que la prueba anterior
+  // dejó EN DUDA (que sigue comprometido, y así tiene que ser).
+  const enVuelo = await venta._adentro.comprometido(BSC);
+  CAJA = enVuelo + 10n * 10n ** 18n;
+  const c = await venta.capacidad();
+  comprobar(c.precioWei && c.netoPorOrigen && BigInt(c.netoPorOrigen) < BigInt(c.precioWei), 'trae precio y neto por ORIGEN, con la comisión ya quitada', JSON.stringify(c).slice(0, 120));
+  const bsc = c.redes.find((r) => r.id === BSC);
+  comprobar(bsc && bsc.maxUsdtCanonico === (9n * 10n ** 18n).toString(), 'el máximo en USDT es la caja menos el apartado de 1', bsc?.maxUsdtCanonico);
+  // 9 USDT entre el neto por ORIGEN: exactamente lo que vender() acepta.
+  const techo = BigInt(bsc.maxOrigenWei);
+  comprobar(techo > 0n && techo < 10n * 10n ** 18n, 'y el máximo en ORIGEN sale de ese neto', techo.toString());
+  const u = await persona({ origen: (100n * 10n ** 18n).toString() });
+  let cabe = null, noCabe = null;
+  try { await venta.vender(u, { origenWei: techo.toString(), red: BSC, direccion: afuera(), ventaKey: clave() }); cabe = 'ok'; } catch (e) { cabe = e.codigo; }
+  comprobar(cabe === 'ok', 'vender justo el máximo entra', cabe);
+  CAJA = enVuelo + 10n * 10n ** 18n;
+  try { await venta.vender(u, { origenWei: (techo + 10n ** 16n).toString(), red: BSC, direccion: afuera(), ventaKey: clave() }); noCabe = 'ok'; } catch (e) { noCabe = e.codigo; }
+  comprobar(noCabe === 'SIN_CAJA', 'y un centavo más de ORIGEN no entra: el techo es exacto', noCabe);
+  CAJA = guardada;
+}
+
 decir('sin gas en la pagadora no se acepta la venta');
 {
   /* La pagadora paga desde si misma y su moneda nativa la pone una persona:

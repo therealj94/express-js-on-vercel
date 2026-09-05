@@ -184,6 +184,9 @@ const tratoSchema = new Schema(
 );
 // GET /mercados/:par/tratos — los ultimos 50 de un mercado.
 tratoSchema.index({ mercado: 1, en: -1 });
+// GET /tratos — los MIOS: cada trato tiene dos duenos y se busca por los dos.
+tratoSchema.index({ compradorId: 1, en: -1 });
+tratoSchema.index({ vendedorId: 1, en: -1 });
 
 // ── Vela ────────────────────────────────────────────────────────────────────
 // OHLC + volumen, agregada del flujo de tratos al confirmar cada calce.

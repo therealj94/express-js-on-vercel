@@ -243,4 +243,37 @@ async function resumen24h(mercado) {
   return resumen24hPuro(previa ? [previa, ...ventana] : ventana, ahora);
 }
 
-module.exports = { MARCOS, t0De, agregar, resumen24hPuro, anotarTrato, resumen24h };
+/**
+ * La linea del dia para la lista de mercados: los cierres de las velas de
+ * 1h de las ultimas 24 horas, en orden, como strings de wei. Es lo que pinta
+ * la mini grafica de cada fila. Se rellena hacia atras con el cierre anterior
+ * para que una hora sin tratos no sea un hueco, y NO hacia adelante: una hora
+ * que no existio todavia no tiene precio.
+ */
+function serie24hPuro(velas, ahora) {
+  const orden = [...velas].sort((a, b) => a.t0 - b.t0);
+  if (!orden.length) return [];
+  const corte = ahora - DIA_MS;
+  const dentro = orden.filter((v) => v.t0 >= corte);
+  // El cierre en pie al empezar la ventana: es el primer punto, aunque la
+  // primera hora de la ventana no haya tenido tratos.
+  let previo = null;
+  for (let i = orden.length - 1; i >= 0; i--) { if (orden[i].t0 < corte) { previo = orden[i].c; break; } }
+  const serie = [];
+  if (previo != null) serie.push(previo);
+  for (const v of dentro) serie.push(v.c);
+  return serie.slice(-25);
+}
+
+async function serie24h(mercado) {
+  const { Vela } = losModelos();
+  const ahora = Date.now();
+  const corte = ahora - DIA_MS;
+  const [previa, ventana] = await Promise.all([
+    Vela.findOne({ mercado, marco: '1h', t0: { $lt: corte } }).sort({ t0: -1 }).select('t0 c').lean(),
+    Vela.find({ mercado, marco: '1h', t0: { $gte: corte } }).select('t0 c').lean(),
+  ]);
+  return serie24hPuro(previa ? [previa, ...ventana] : ventana, ahora);
+}
+
+module.exports = { MARCOS, t0De, agregar, resumen24hPuro, anotarTrato, resumen24h, serie24hPuro, serie24h };

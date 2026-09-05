@@ -7,11 +7,15 @@ const express = require('express');
 const router = express.Router();
 const { sesion } = require('../middleware/sesion');
 const { portafolio, retirar, movimientos } = require('../controllers/portafolioController');
+const { misTratos } = require('../controllers/ordenesController');
 
 router.get('/portafolio', sesion, portafolio);
 // El retiro firma desde la caliente: el circuito entero (tamiz → debitar →
 // firmar → anotar → AML, con retiroKey idempotente) vive en el controller.
 router.post('/retiros', sesion, retirar);
 router.get('/movimientos', sesion, movimientos);
+// Mis tratos: la cuarta forma de la misma pregunta —que se me calzo, a que
+// precio— y la que un exchange enseña como «historial de operaciones».
+router.get('/tratos', sesion, misTratos);
 
 module.exports = router;

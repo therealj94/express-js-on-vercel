@@ -10,7 +10,7 @@
 
 const { MERCADOS } = require('../lib/tokens');
 const motor = require('../lib/motor');
-const { Orden, Usuario } = require('../models');
+const { Orden, Usuario, Trato } = require('../models');
 const { esDeclarable } = require('../lib/preciosDeclarados');
 const { referenciaDe } = require('../lib/referencia');
 const guardaPrecio = require('../lib/guardaPrecio');
@@ -226,6 +226,41 @@ async function listar(req, res, next) {
   }
 }
 
+/** GET /tratos — MIS tratos, los mas nuevos primero.
+ *
+ * Un trato tiene dos duenos y aqui se devuelve desde el lado de quien
+ * pregunta: `lado` es lo que YO hice (compre o vendi), no el lado de la orden
+ * agresora que pinta el tape. `total` es lo que se pago en ORIGEN, con el
+ * mismo floor del motor. La contraparte no viaja: ver tratoJson.
+ */
+async function misTratos(req, res, next) {
+  try {
+    const yo = req.usuario.id;
+    const filtro = { $or: [{ compradorId: yo }, { vendedorId: yo }] };
+    if (req.query.mercado != null) {
+      if (!MERCADOS.includes(String(req.query.mercado))) {
+        return malo(res, 'MERCADO_INVALIDO', 'Ese mercado no existe en esta casa.');
+      }
+      filtro.mercado = String(req.query.mercado);
+    }
+    const docs = await Trato.find(filtro).sort({ en: -1, _id: -1 }).limit(200).lean();
+    res.json({
+      tratos: docs.map((t) => ({
+        id: String(t._id),
+        mercado: t.mercado,
+        lado: t.compradorId === yo ? 'compra' : 'venta',
+        precio: t.precio,
+        cantidad: t.cantidad,
+        total: ((BigInt(t.cantidad) * BigInt(t.precio)) / 10n ** 18n).toString(),
+        ordenId: t.compradorId === yo ? t.ordenCompra : t.ordenVenta,
+        en: t.en,
+      })),
+    });
+  } catch (e) {
+    next(e);
+  }
+}
+
 /** DELETE /ordenes/:id — cancela y libera lo que quedaba en garantia. */
 async function cancelar(req, res, next) {
   try {
@@ -241,4 +276,4 @@ async function cancelar(req, res, next) {
 // funcion que devuelve la referencia que quiera, sin red.
 colocar.traerReferencia = undefined;
 
-module.exports = { colocar, listar, cancelar, guardar };
+module.exports = { colocar, listar, cancelar, guardar, misTratos };
