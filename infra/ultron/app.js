@@ -120,9 +120,13 @@ const frenoPensar = rateLimit({ windowMs: 60 * 1000, max: 20, standardHeaders: t
 // ── Público ─────────────────────────────────────────────────────────────────
 
 app.get('/salud', async (req, res) => {
+  // Si piensa con el nodo, /salud dice si el nodo contesta: un cerebro
+  // «encendido» cuyo motor está caído no está encendido.
+  const nodoSalud = cerebro.cual() === 'nodo' ? await cerebro.nodo.salud() : null;
   res.json({
+    nodo: nodoSalud,
     ok: true, nombre: 'ULTRON FP · Conocimiento Full',
-    junta: JUNTA.length, cerebro: cerebro.encendido(), modelo: cerebro.MODELO,
+    junta: JUNTA.length, cerebro: cerebro.encendido(), modelo: cerebro.modelo(), donde: cerebro.cual(),
     voz: voz.encendida(), memoria: memoria.estado(), canales: canales.estado(),
     saber: saber.resumen().total, saberArmado: saber.resumen().armadoEn,
   });
@@ -149,7 +153,7 @@ app.get('/yo', puerta, (req, res) => {
   res.json({
     miembro: sinClave(req.miembro),
     junta: JUNTA.map((m) => ({ nombre: m.nombre, correo: m.correo, rol: m.rol, whatsapp: !!m.whatsapp })),
-    cerebro: cerebro.encendido(), modelo: cerebro.MODELO, voz: voz.encendida(),
+    cerebro: cerebro.encendido(), modelo: cerebro.modelo(), donde: cerebro.cual(), voz: voz.encendida(),
     memoria: memoria.estado(), canales: canales.estado(), saber: saber.resumen(),
   });
 });
@@ -209,7 +213,7 @@ app.get('/conversaciones/:id', puerta, async (req, res) => {
 app.post('/pensar', puerta, frenoPensar, async (req, res) => {
   const texto = String(req.body?.texto || '').trim().slice(0, 12_000);
   if (!texto) return res.status(400).json({ error: 'Nada que pensar.', codigo: 'VACIO' });
-  if (!cerebro.encendido()) return res.status(503).json({ error: 'El cerebro está apagado: falta ANTHROPIC_API_KEY.', codigo: 'CEREBRO_APAGADO' });
+  if (!cerebro.encendido()) return res.status(503).json({ error: cerebro.cual() === 'nodo' ? 'El cerebro del nodo no está configurado (ULTRON_NODO_URL / ULTRON_NODO_SECRETO).' : 'El cerebro está apagado: falta ANTHROPIC_API_KEY.', codigo: 'CEREBRO_APAGADO' });
 
   res.setHeader('Content-Type', 'text/event-stream; charset=utf-8');
   res.setHeader('Cache-Control', 'no-cache, no-transform');
@@ -373,10 +377,10 @@ if (require.main === module) {
   const PUERTO = Number(process.env.PORT || 3900);
   memoria.conectar().finally(() => {
     app.listen(PUERTO, () => {
-      console.log(`[ultron] escuchando en ${PUERTO} · cerebro ${cerebro.encendido() ? MODELO_LOG() : 'APAGADO (sin ANTHROPIC_API_KEY)'} · voz ${voz.encendida() ? 'ElevenLabs' : 'del navegador'} · memoria ${memoria.estado()}`);
+      console.log(`[ultron] escuchando en ${PUERTO} · cerebro ${cerebro.encendido() ? MODELO_LOG() : 'APAGADO'} · voz ${voz.encendida() ? 'ElevenLabs' : 'del navegador'} · memoria ${memoria.estado()}`);
     });
   });
 }
-function MODELO_LOG() { return cerebro.MODELO; }
+function MODELO_LOG() { return cerebro.modelo(); }
 
 module.exports = { app, _adentro: { emitirSesion, leerSesion, leerJunta, documentoHtml } };

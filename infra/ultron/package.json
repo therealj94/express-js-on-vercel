@@ -10,7 +10,7 @@
   "scripts": {
     "start": "node app.js",
     "armar-saber": "node bin/armar-saber.mjs",
-    "probar": "node pruebas/probar-saber.mjs && node pruebas/probar-vivo.mjs && node pruebas/probar-cerebro.mjs && node pruebas/probar-puerta.mjs && node pruebas/probar-panel.mjs"
+    "probar": "node pruebas/probar-saber.mjs && node pruebas/probar-vivo.mjs && node pruebas/probar-cerebro.mjs && node pruebas/probar-nodo.mjs && node pruebas/probar-puerta.mjs && node pruebas/probar-panel.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.124.0",

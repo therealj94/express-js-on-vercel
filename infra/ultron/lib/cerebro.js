@@ -80,7 +80,7 @@ function clienteAnthropic() {
   cliente = new Anthropic({ apiKey: llave });
   return cliente;
 }
-function encendido() { return !!(process.env.ANTHROPIC_API_KEY || '').trim(); }
+function claudeEncendido() { return !!(process.env.ANTHROPIC_API_KEY || '').trim(); }
 
 /* POR QUE ESTO EXISTE, Y NO UN «probá de nuevo»
  *
@@ -199,145 +199,17 @@ ${fichas}`;
 }
 
 // ── Las herramientas ────────────────────────────────────────────────────────
+//
+// Viven en lib/herramientas.js, compartidas con el cerebro del nodo. Claude
+// trae su propia búsqueda web (del lado de Anthropic), así que la nuestra no
+// se le ofrece: dos buscadores para lo mismo es pedirle que elija sin motivo.
 
+const herramientas = require('./herramientas');
 const HERRAMIENTAS = [
   { type: 'web_search_20250305', name: 'web_search', max_uses: 6 },
-  {
-    name: 'buscar_saber',
-    description: 'Busca en el saber escrito de Orden Global (documentos, dosieres de la junta, fichas legales) más secciones sobre un tema. Usala cuando lo que tenés delante no alcanza.',
-    input_schema: { type: 'object', properties: { pregunta: { type: 'string', description: 'De qué querés más secciones' } }, required: ['pregunta'] },
-  },
-  {
-    name: 'estado_vivo',
-    description: 'Lee ahora mismo cómo están las casas: Ordenex, AuCorp, Veta Wallet, Genesis ID, OrdenScan, y el precio del ORIGEN. Usala si la pregunta es sobre el estado actual.',
-    input_schema: { type: 'object', properties: {}, additionalProperties: false },
-  },
-  {
-    name: 'recordar',
-    description: 'Guarda un hecho en tu memoria para las próximas conversaciones. Corto y concreto.',
-    input_schema: {
-      type: 'object',
-      properties: {
-        texto: { type: 'string', description: 'El hecho, en una o dos frases' },
-        alcance: { type: 'string', enum: ['miembro', 'junta'], description: '«junta» si es de todos; «miembro» si es de esta persona' },
-        tema: { type: 'string', description: 'Una o dos palabras: decisión, preferencia, fecha, dato' },
-      },
-      required: ['texto', 'alcance'],
-    },
-  },
-  {
-    name: 'crear_documento',
-    description: 'Escribe y guarda un documento completo (memo, acta, análisis, carta, plan) en markdown. Queda en la biblioteca de la junta y se puede bajar.',
-    input_schema: {
-      type: 'object',
-      properties: {
-        titulo: { type: 'string' },
-        tipo: { type: 'string', enum: ['memo', 'acta', 'analisis', 'carta', 'plan', 'otro'] },
-        markdown: { type: 'string', description: 'El documento entero, en markdown, con título, fecha y fuentes' },
-        para: { type: 'string', enum: ['junta', 'fuera'], description: '«fuera» si va a salir de la junta: entonces solo lo público' },
-      },
-      required: ['titulo', 'tipo', 'markdown'],
-    },
-  },
-  {
-    name: 'anotar_pendiente',
-    description: 'Anota algo que la junta tiene que HACER. Distinto de recordar, que guarda cómo son las cosas: esto se puede cerrar cuando se haga. Usalo cuando en la conversación aparece una tarea, un paso que falta o un compromiso.',
-    input_schema: {
-      type: 'object',
-      properties: {
-        texto: { type: 'string', description: 'Qué hay que hacer, en una frase clara y concreta.' },
-        quien: { type: 'string', description: 'A quién le toca. Vacío si es de toda la junta.' },
-        tema: { type: 'string', description: 'Una palabra: ordenex, aucorp, wallet, seguridad, legal…' },
-      },
-      required: ['texto'],
-    },
-  },
-  {
-    name: 'cerrar_pendiente',
-    description: 'Marca un pendiente como hecho. Usalo solo cuando alguien de la junta dice que ya se hizo, nunca por tu cuenta.',
-    input_schema: {
-      type: 'object',
-      properties: { id: { type: 'string', description: 'El id del pendiente, tal como aparece en la lista.' } },
-      required: ['id'],
-    },
-  },
-  {
-    name: 'proponer_envio',
-    description: 'Prepara un mensaje de WhatsApp o un correo para un miembro de la junta. NO se manda: queda listo y la persona lo confirma en el panel.',
-    input_schema: {
-      type: 'object',
-      properties: {
-        canal: { type: 'string', enum: ['whatsapp', 'correo'] },
-        destinatario: { type: 'string', description: 'El nombre o el correo del miembro de la junta' },
-        asunto: { type: 'string', description: 'Solo para correo' },
-        texto: { type: 'string', description: 'El mensaje completo, listo para salir' },
-      },
-      required: ['canal', 'destinatario', 'texto'],
-    },
-  },
+  ...herramientas.DEFINICIONES.filter((d) => !['buscar_web', 'leer_pagina'].includes(d.name)),
 ];
-
-/** Corre una herramienta. Nunca lanza: lo que salga mal vuelve al modelo como texto. */
-async function correr(nombre, entrada, ctx) {
-  try {
-    switch (nombre) {
-      case 'buscar_saber': {
-        const s = saber.buscar(String(entrada.pregunta || ''), { maximo: 8, maxBytes: 40_000 });
-        ctx.fuentes.push(...s.map((x) => ({ id: x.id, titulo: x.titulo, fuente: x.fuente })));
-        return s.length
-          ? s.map((x) => `### [${x.id}] ${x.titulo}\n(fuente: ${x.fuente})\n${x.texto}`).join('\n\n')
-          : 'No hay secciones del saber sobre eso.';
-      }
-      case 'estado_vivo': {
-        const v = await vivo.leer();
-        return vivo.paraElModelo(v);
-      }
-      case 'recordar': {
-        const m = await memoria.recordar({
-          texto: entrada.texto, alcance: entrada.alcance === 'junta' ? 'junta' : 'miembro',
-          miembro: ctx.miembro.correo, dichoPor: ctx.miembro.nombre, tema: entrada.tema, origen: 'deducido',
-        });
-        ctx.memorias.push(m);
-        return m ? `Guardado (${m.alcance}): ${m.texto}` : 'No se guardó: texto vacío.';
-      }
-      case 'anotar_pendiente': {
-        const p = await memoria.anotarPendiente({
-          texto: entrada.texto, quien: entrada.quien, tema: entrada.tema, creadoPor: ctx.miembro.correo,
-        });
-        if (p) ctx.pendientes.push({ _id: p._id, texto: p.texto, quien: p.quien });
-        return p ? `Anotado como pendiente (id ${p._id}): ${p.texto}` : 'No se anotó: texto vacío.';
-      }
-      case 'cerrar_pendiente': {
-        const p = await memoria.cerrarPendiente(String(entrada.id || ''), ctx.miembro.correo);
-        return p ? `Cerrado: ${p.texto}` : 'No existe un pendiente con ese id.';
-      }
-      case 'crear_documento': {
-        const d = await memoria.guardarDocumento({
-          titulo: entrada.titulo, tipo: entrada.tipo || 'otro', markdown: entrada.markdown,
-          miembro: ctx.miembro.correo, conversacion: ctx.conversacionId, para: entrada.para || 'junta',
-        });
-        ctx.documentos.push({ _id: d._id, titulo: d.titulo, tipo: d.tipo });
-        return `Documento guardado con id ${d._id}: «${d.titulo}». La persona puede bajarlo desde el panel.`;
-      }
-      case 'proponer_envio': {
-        const quien = ctx.junta.find((j) =>
-          j.correo.toLowerCase() === String(entrada.destinatario || '').toLowerCase()
-          || j.nombre.toLowerCase().includes(String(entrada.destinatario || '').toLowerCase()));
-        if (!quien) return `No hay ningún miembro de la junta que se llame «${entrada.destinatario}». Los miembros son: ${ctx.junta.map((j) => j.nombre).join(', ')}.`;
-        if (entrada.canal === 'whatsapp' && !quien.whatsapp) return `${quien.nombre} no tiene WhatsApp registrado en la junta.`;
-        const p = { id: `env-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`, canal: entrada.canal,
-          a: { nombre: quien.nombre, correo: quien.correo, whatsapp: quien.whatsapp || null },
-          asunto: entrada.asunto || null, texto: entrada.texto, propuestoPor: ctx.miembro.correo };
-        ctx.envios.push(p);
-        return `Envío preparado (${p.id}) por ${entrada.canal} a ${quien.nombre}. NO se ha mandado: la persona lo confirma en el panel.`;
-      }
-      default:
-        return `No existe la herramienta ${nombre}.`;
-    }
-  } catch (e) {
-    return `La herramienta ${nombre} falló: ${String(e?.message || e).slice(0, 200)}`;
-  }
-}
+const correr = herramientas.correr;
 
 // ── Pensar ──────────────────────────────────────────────────────────────────
 
@@ -346,9 +218,9 @@ async function correr(nombre, entrada, ctx) {
  * medida que sale, herramientas que corren— para que el panel lo pinte en
  * vivo. Devuelve el resultado entero cuando termina.
  */
-async function pensar({ miembro, junta, texto, conversacionId, emitir = () => {} }) {
+async function pensarConClaude({ miembro, junta, texto, conversacionId, emitir = () => {} }) {
   const cl = clienteAnthropic();
-  const ctx = { miembro, junta, conversacionId, fuentes: [], memorias: [], documentos: [], envios: [], pendientes: [] };
+  const ctx = { miembro, junta, conversacionId, fuentes: [], memorias: [], documentos: [], envios: [], pendientes: [], acciones: [] };
 
   // El contexto: memoria, estado vivo, saber, voz de la casa.
   const [memorias, estadoVivo, abiertos] = await Promise.all([
@@ -426,11 +298,11 @@ async function pensar({ miembro, junta, texto, conversacionId, emitir = () => {}
 
   return { texto: textoFinal, fuentes, herramientas: herramientasUsadas,
            memorias: ctx.memorias, documentos: ctx.documentos, envios: ctx.envios,
-           pendientes: ctx.pendientes, uso: { ...uso, dolares }, modelo: MODELO };
+           pendientes: ctx.pendientes, acciones: ctx.acciones, uso: { ...uso, dolares }, modelo: MODELO };
 }
 
 /** Un título corto para un hilo nuevo, con el modelo chico y barato. */
-async function titular(texto) {
+async function titularConClaude(texto) {
   try {
     const cl = clienteAnthropic();
     const r = await cl.messages.create({
@@ -441,4 +313,47 @@ async function titular(texto) {
   } catch { return null; }
 }
 
-module.exports = { pensar, titular, encendido, motivo, dolaresDe, PRECIOS, MODELO, HERRAMIENTAS, _adentro: { sistema, correr, clienteAnthropic } };
+// ── Qué cerebro ─────────────────────────────────────────────────────────────
+//
+// Dos cerebros, unas mismas manos. `ULTRON_CEREBRO` elige: «nodo» piensa con el
+// modelo de AU-RA en nuestra tarjeta (lib/cerebros/nodo.js); «claude» con
+// Anthropic. Sin la variable, el nodo si está configurado, y si no Claude.
+// La junta lo decidió el 5-sep: lo nuestro, en nuestro nodo. Claude queda
+// como opción, no como camino.
+
+const nodo = require('./cerebros/nodo');
+
+function cual() {
+  const dicho = (process.env.ULTRON_CEREBRO || '').trim().toLowerCase();
+  if (dicho === 'claude') return 'claude';
+  if (dicho === 'nodo') return 'nodo';
+  return nodo.encendido() ? 'nodo' : 'claude';
+}
+function encendido() { return cual() === 'nodo' ? nodo.encendido() : claudeEncendido(); }
+function modelo() { return cual() === 'nodo' ? 'nodo:' + nodo.MODELO : MODELO; }
+
+async function pensar(args) {
+  if (cual() === 'nodo') return nodo.pensar({ ...args, sistema });
+  return pensarConClaude(args);
+}
+async function titular(texto) {
+  if (cual() === 'nodo') return nodo.titular(texto);
+  return titularConClaude(texto);
+}
+
+/* Los motivos del nodo, con arreglo conocido, se suman a los de Claude. */
+const motivoClaude = motivo;
+function motivoDeCualquiera(e) {
+  switch (e?.codigo) {
+    case 'NODO_APAGADO': return { codigo: 'NODO_APAGADO', mensaje: 'El cerebro del nodo no está configurado (ULTRON_NODO_URL y ULTRON_NODO_SECRETO).' };
+    case 'NODO_MUDO': return { codigo: 'NODO_MUDO', mensaje: 'El nodo de AU-RA no contesta. Puede estar apagado o sin el motor de ULTRON corriendo (systemctl status ultron-motor).' };
+    case 'NODO_LENTO': return { codigo: 'NODO_LENTO', mensaje: 'El nodo tardó demasiado en pensar. Probá con una pregunta más corta, o esperá a que baje la carga de AU-RA.' };
+    case 'NODO_NO': return { codigo: 'NODO_NO', mensaje: 'El nodo rechazó el secreto de ULTRON (ULTRON_NODO_SECRETO no cuadra con /etc/ultron-motor.env).' };
+    case 'MODELO_MUDO': return { codigo: 'MODELO_MUDO', mensaje: 'El motor del nodo está vivo pero Ollama no contesta. En el nodo: systemctl status ollama.' };
+    case 'MODELO': return { codigo: 'MODELO', mensaje: 'El modelo del nodo contestó con un error. Está en el registro del motor (journalctl -u ultron-motor).' };
+    default: return motivoClaude(e);
+  }
+}
+
+module.exports = { pensar, titular, encendido, cual, modelo, motivo: motivoDeCualquiera, dolaresDe, PRECIOS, MODELO, HERRAMIENTAS,
+  nodo, _adentro: { sistema, correr, clienteAnthropic, pensarConClaude, claudeEncendido } };

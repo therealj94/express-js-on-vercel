@@ -91,6 +91,7 @@ jobs:
           node pruebas/probar-saber.mjs
           node pruebas/probar-vivo.mjs
           node pruebas/probar-cerebro.mjs
+          node pruebas/probar-nodo.mjs
           node pruebas/probar-puerta.mjs
 
       # Las tres pruebas que NO corrian en ningun sitio. Dos leian de

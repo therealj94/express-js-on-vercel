@@ -1,0 +1,20 @@
+[Unit]
+Description=ULTRON · el motor: la puerta con secreto y TLS hacia el modelo del nodo
+After=network-online.target ollama.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=root
+EnvironmentFile=/etc/ultron-motor.env
+ExecStart=/usr/bin/python3 /opt/ultron/ultron-motor.py
+Restart=always
+RestartSec=3
+# Lo justo: lee dos archivos y habla con localhost.
+ProtectSystem=strict
+ReadOnlyPaths=/opt/ultron /etc/ultron-motor
+PrivateTmp=true
+NoNewPrivileges=true
+
+[Install]
+WantedBy=multi-user.target

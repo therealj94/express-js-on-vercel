@@ -186,7 +186,9 @@ verde(`✓ /salud: ${JSON.stringify(salud)}`);
 const p = salud;
 const fila = (k, bien, que) => console.log(`  ${bien ? '✓' : '·'} ${k.padEnd(10)} ${que}`);
 fila('junta', p.junta > 0, p.junta ? `${p.junta} miembro(s)` : 'SIN JUNTA — nadie puede entrar (ULTRON_JUNTA)');
-fila('cerebro', p.cerebro, p.cerebro ? `encendido · ${p.modelo}` : 'apagado — falta ANTHROPIC_API_KEY');
+fila('cerebro', p.cerebro && !(p.nodo && !p.nodo.vivo), p.cerebro
+  ? (p.donde === 'nodo' ? (p.nodo?.vivo ? `en nuestro nodo · ${p.nodo.modelo} · ctx ${p.nodo.ctx}` : `nodo configurado pero NO contesta: ${p.nodo?.porQue || '?'}`) : `Claude · ${p.modelo}`)
+  : 'apagado — sin nodo ni ANTHROPIC_API_KEY');
 fila('memoria', p.memoria === 'mongo', p.memoria === 'mongo' ? 'Mongo' : 'provisional (sin MONGODB_URI)');
 fila('voz', p.voz, p.voz ? 'ElevenLabs' : 'del navegador');
 fila('whatsapp', p.canales?.whatsapp, p.canales?.whatsapp ? 'Zernio' : 'apagado');

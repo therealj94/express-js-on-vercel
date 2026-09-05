@@ -7,7 +7,7 @@ sistema**, **lo que la junta le ha dicho** e **internet**.
 
 ```
 node bin/armar-saber.mjs     # compila el saber de la casa a saber/
-npm run probar               # 5 suites
+npm run probar               # 6 suites
 node app.js                  # http://localhost:3900
 ```
 
@@ -20,16 +20,25 @@ node app.js                  # http://localhost:3900
 | **El saber** | 679 secciones de 36 fuentes —los documentos de la raíz, los dosieres de la junta, lo legal, las 40 fichas de AU-RA—, partidas por encabezado y recuperadas por pregunta (BM25). Se **compila** con `bin/armar-saber.mjs` y viaja dentro del paquete; una prueba se pone roja si los documentos cambiaron y nadie rearmó. | `lib/saber.js`, `saber/` |
 | **El estado vivo** | Ordenex, AuCorp, Veta Wallet, Genesis ID, OrdenScan y el precio del ORIGEN, leídos de sus rutas públicas cada 30 s. Cada pata falla sola. | `lib/vivo.js` |
 | **La memoria** | Lo que la junta le dice (por miembro o de toda la junta), los hilos y los documentos. Mongo; sin Mongo, provisional y lo dice. | `lib/memoria.js` |
-| **El cerebro** | Claude con seis herramientas: búsqueda web, buscar saber, estado vivo, recordar, crear documento, proponer envío. Streaming. | `lib/cerebro.js` |
+| **El cerebro** | **Dos, unas mismas manos.** El del **nodo** piensa con el modelo de AU-RA en nuestra tarjeta (`lib/cerebros/nodo.js`, por el motor de `nodo/`); el de **Claude** con Anthropic. `ULTRON_CEREBRO` elige; sin la variable, el nodo si está configurado. Streaming en los dos. | `lib/cerebro.js` |
+| **Las manos** | Diez herramientas compartidas: buscar saber, estado vivo, buscar web, leer página, abrir (una casa o un documento, a un toque), recordar, anotar y cerrar pendiente, crear documento, proponer envío. | `lib/herramientas.js` |
+| **El motor del nodo** | La única puerta hacia el modelo: TLS propio, secreto, solo `/api/chat` y `/api/tags`, y FIJA el modelo y el contexto a los de AU-RA para no desalojarla nunca. Se instala por SSM con `nodo/desplegar-motor.py`. | `nodo/` |
 | **Los canales** | WhatsApp por Zernio (la misma línea de AU-RA) y correo por SES (el mismo remitente de siempre). **Solo a la junta**, y **solo con una persona confirmando**. | `lib/canales.js` |
 | **La voz** | ElevenLabs, con la llave en el servidor; sin llave, la voz del navegador. | `lib/voz.js` |
 | **El panel** | La presencia (un campo de partículas que está vivo), la conversación, el pulso de la casa, la memoria, la biblioteca, los hilos. Un archivo. | `public/index.html` |
 
 ## Cómo se conecta con AU-RA
 
-No comparten cerebro: AU-RA corre un modelo de 7 mil millones en el nodo, hecho
-para miles de personas con un guion; ULTRON corre Claude para seis personas
-que piensan a fondo. Comparten **lo demás**:
+Desde el 5-sep **comparten el cerebro**: ULTRON piensa con el mismo
+`qwen2.5:14b` que atiende a los clientes de AU-RA, en la misma tarjeta, con el
+mismo contexto de 12 288 fichas. La junta lo decidió así —lo nuestro, en
+nuestro nodo— y el motor lo garantiza: un pedido con otro modelo u otro
+contexto desalojaría al de AU-RA, así que el motor los fija y no se negocia.
+Lo que cambia es el prompt (con presupuesto: ~28 mil letras) y que la búsqueda
+web es nuestra (`buscar_web`, DuckDuckGo sin llave o Brave con `ULTRON_BRAVE`).
+Claude sigue disponible con `ULTRON_CEREBRO=claude` y una llave.
+
+Comparten también **lo demás**:
 
 - **el saber**: ULTRON lee las mismas 40 fichas de `infra/cerebro/conocimiento/saber.json`, y sabe cuáles son públicas;
 - **la voz de la casa**: las fichas públicas van en cada prompt — «referenciado», nunca «respaldado»; no «regulada»;
@@ -50,7 +59,11 @@ que piensan a fondo. Comparten **lo demás**:
 |---|---|---|
 | `ULTRON_JUNTA` | JSON: `[{"nombre","correo","clave","rol","whatsapp"}]`. **Sin esto no entra nadie.** | sí |
 | `ULTRON_SECRETO` | Firma de las sesiones (una cadena larga al azar). | sí |
-| `ANTHROPIC_API_KEY` | El cerebro. Sin ella el panel arranca y dice «cerebro apagado». | sí para pensar |
+| `ULTRON_CEREBRO` | `nodo` o `claude`. Sin ella: nodo si está configurado. | no |
+| `ULTRON_NODO_URL`, `ULTRON_NODO_SECRETO`, `ULTRON_NODO_CERT` | El motor del nodo: `https://<ip>:8443`, su secreto y su certificado (PEM). Los pone `nodo/desplegar-motor.py`. | sí para pensar con el nodo |
+| `ULTRON_NODO_MODELO`, `ULTRON_NODO_PRESUPUESTO` | Por omisión `qwen2.5:14b` y 28 000 letras. | no |
+| `ULTRON_BRAVE` | Llave de Brave Search; sin ella, DuckDuckGo. | no |
+| `ANTHROPIC_API_KEY` | El cerebro de Claude. Solo hace falta con `ULTRON_CEREBRO=claude`. | no |
 | `MONGODB_URI` | La memoria. Sin ella, provisional. Base `ultron` (`ULTRON_DB`). | recomendada |
 | `ULTRON_MODELO` | Por omisión `claude-fable-5-1`. | no |
 | `ELEVENLABS_API_KEY`, `ELEVENLABS_VOZ` | La voz. | no |
@@ -68,6 +81,16 @@ Heroku, app `ultron-fp`, por la API de la plataforma igual que Ordenex:
 ```
 node infra/ultron/bin/desplegar.mjs        # pruebas → paquete → build → /salud
 ```
+
+El motor en el nodo de AU-RA (una vez, o cuando cambie `nodo/`):
+
+```
+HEROKU_API_KEY=… python3 infra/ultron/nodo/desplegar-motor.py
+```
+
+Abre el puerto 8443, instala el servicio, genera certificado y secreto si no
+existen, y le pone a ULTRON en Heroku la URL, el certificado y el secreto sin
+que pasen por ninguna pantalla.
 
 Antes de cada despliegue, `node bin/armar-saber.mjs` si cambió algún documento
 (la prueba lo exige).

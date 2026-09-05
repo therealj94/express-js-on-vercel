@@ -375,62 +375,96 @@ function avisar(texto, mal = false) {
    el dibujo. Canvas y no SVG porque son mil quinientas partículas a sesenta
    cuadros y el DOM no está para eso. */
 function Presencia(canvas, { n = 1400, chica = false } = {}) {
+  /* LA PRESENCIA: una figura de partículas, no una nube.
+     Es la imagen que mandó la junta: un busto luminoso —cabeza, cuello,
+     hombros— hecho de puntos de luz, con el núcleo en el pecho. Cada
+     partícula tiene su CASA en la silueta y vive alrededor de ella; en reposo
+     deriva, pensando se recoge hacia el núcleo y gira, hablando ondula con la
+     voz, oyendo respira. La silueta se dibuja con densidad en el borde, que es
+     lo que la hace leerse como figura y no como mancha. */
   const ctx = canvas.getContext('2d');
   let W = canvas.width, H = canvas.height;
-  const cx = () => W / 2, cy = () => H * 0.55;
-  const R = () => Math.min(W, H) * (chica ? 0.36 : 0.34);
-  const parts = Array.from({ length: n }, (_, i) => nueva(i, true));
+  const cx = () => W / 2, cy = () => H * 0.54;
+  const R = () => Math.min(W, H) * (chica ? 0.46 : 0.44);
   let modo = 'reposo', energia = 0, objetivoEnergia = 0, t = 0, amplitud = 0;
 
-  function nueva(i, primera) {
-    const a = Math.random() * Math.PI * 2;
-    const r = R() * (0.15 + Math.pow(Math.random(), 0.6) * 1.15);
-    return { a, r, y: (Math.random() - 0.5) * H * (primera ? 1.1 : 0.2), v: 0.002 + Math.random() * 0.004,
-      s: 0.6 + Math.random() * 1.4, f: Math.random() * Math.PI * 2, brillo: Math.random() };
+  // La silueta, en coordenadas de [-1,1]. Arriba es negativo.
+  function dentro(x, y) {
+    const cabeza = ((x / 0.30) ** 2 + ((y + 0.62) / 0.36) ** 2) <= 1;
+    const cuello = Math.abs(x) <= 0.13 && y >= -0.32 && y <= -0.06;
+    const torso = y >= -0.10 && y <= 0.98 && ((x / 0.98) ** 2 + ((y - 0.50) / 0.64) ** 2) <= 1;
+    return cabeza || cuello || torso;
   }
+  function enBorde(x, y) {
+    const d = 0.055;
+    return !dentro(x + d, y) || !dentro(x - d, y) || !dentro(x, y + d) || !dentro(x, y - d);
+  }
+  function casa() {
+    for (let i = 0; i < 60; i++) {
+      const x = (Math.random() * 2 - 1) * 1.02, y = (Math.random() * 2 - 1) * 1.02;
+      if (!dentro(x, y)) continue;
+      const borde = enBorde(x, y);
+      // El borde se acepta siempre; el interior, a veces: así se lee la forma.
+      if (borde || Math.random() < 0.5) return { x, y, borde };
+    }
+    return { x: 0, y: 0.2, borde: false };
+  }
+  const parts = Array.from({ length: n }, () => {
+    const c = casa();
+    return { hx: c.x, hy: c.y, borde: c.borde, f: Math.random() * Math.PI * 2, v: 0.4 + Math.random() * 0.9,
+      s: c.borde ? 0.7 + Math.random() * 1.3 : 0.5 + Math.random() * 0.9, brillo: Math.random(), ang: Math.random() * Math.PI * 2 };
+  });
   function setModo(m) { modo = m; objetivoEnergia = { reposo: 0, pensando: 1, hablando: 0.7, oyendo: 0.45 }[m] ?? 0; }
   function setAmplitud(a) { amplitud = a; }
 
   function cuadro() {
     t += 0.016;
-    energia += (objetivoEnergia - energia) * 0.04;
+    energia += (objetivoEnergia - energia) * 0.045;
     ctx.clearRect(0, 0, W, H);
-    // la columna: un halo vertical que respira
-    const g = ctx.createRadialGradient(cx(), cy(), 0, cx(), cy(), R() * 1.5);
-    const resp = 0.08 + 0.05 * Math.sin(t * 1.2) + energia * 0.12 + amplitud * 0.25;
-    g.addColorStop(0, `rgba(93,214,255,${resp})`); g.addColorStop(0.5, `rgba(27,107,255,${resp * 0.4})`); g.addColorStop(1, 'rgba(27,107,255,0)');
+    const r = R();
+    // el halo detrás de la figura
+    const g = ctx.createRadialGradient(cx(), cy() + r * 0.15, 0, cx(), cy() + r * 0.15, r * 1.25);
+    const resp = 0.07 + 0.04 * Math.sin(t * 1.1) + energia * 0.10 + amplitud * 0.2;
+    g.addColorStop(0, `rgba(93,214,255,${resp})`); g.addColorStop(0.55, `rgba(27,107,255,${resp * 0.35})`); g.addColorStop(1, 'rgba(27,107,255,0)');
     ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
 
     ctx.globalCompositeOperation = 'lighter';
+    const nucleoY = 0.28;                                   // el pecho
     for (const p of parts) {
-      // el flujo: gira alrededor de un eje vertical y sube despacio
-      const contr = 1 - energia * 0.35 - amplitud * 0.15;        // pensar = contraer
-      p.a += p.v * (1 + energia * 2.2 + amplitud * 2);
-      p.y -= (0.15 + energia * 0.5) * p.s;
-      if (modo === 'oyendo') p.y -= 0.6 * Math.sin(t * 3 + p.f) * p.s;
-      if (p.y < -H * 0.6) { const q = nueva(0, false); p.a = q.a; p.r = q.r; p.y = H * 0.55; }
-      const ondula = Math.sin(t * 0.9 + p.f + p.y * 0.01) * R() * 0.12;
-      const rr = (p.r * contr + ondula) * (0.55 + 0.45 * Math.abs(Math.cos(p.y * 0.006)));
-      const x = cx() + Math.cos(p.a) * rr;
-      const y = cy() + p.y * 0.62 + Math.sin(p.a) * rr * 0.28;
-      const prof = (Math.sin(p.a) + 1) / 2;                       // delante/detrás
-      const alfa = (0.18 + prof * 0.5) * (0.5 + p.brillo * 0.5) * (0.7 + energia * 0.5 + amplitud * 0.8);
-      const tam = p.s * (0.6 + prof * 0.9) * (1 + amplitud * 0.6);
-      ctx.fillStyle = prof > 0.85 && p.brillo > 0.6 ? `rgba(234,242,255,${alfa})` : `rgba(93,214,255,${alfa})`;
-      ctx.beginPath(); ctx.arc(x, y, tam, 0, Math.PI * 2); ctx.fill();
+      // deriva alrededor de casa; pensando, se recoge hacia el núcleo y gira
+      const recoger = energia * 0.35;
+      const ang = p.ang + t * (0.15 + energia * 0.9) * p.v;
+      const gira = energia * 0.08;
+      let x = p.hx * (1 - recoger) + Math.cos(ang) * gira;
+      let y = p.hy * (1 - recoger) + nucleoY * recoger + Math.sin(ang) * gira;
+      x += Math.sin(t * p.v + p.f) * 0.012 * (1 + energia);
+      y += Math.cos(t * p.v * 0.8 + p.f) * 0.012 * (1 + energia);
+      if (modo === 'hablando' || amplitud > 0.02) y += Math.sin(t * 6 + p.hy * 5) * amplitud * 0.06;
+      if (modo === 'oyendo') x *= 1 + 0.03 * Math.sin(t * 2.2);
+      const px = cx() + x * r, py = cy() + y * r;
+      const cerca = 1 - Math.min(1, Math.hypot(x, y - nucleoY) / 1.2);
+      const alfa = (p.borde ? 0.55 : 0.28) * (0.55 + p.brillo * 0.45) * (0.75 + energia * 0.5 + amplitud * 0.8) * (0.6 + cerca * 0.6);
+      const tam = p.s * (1 + amplitud * 0.5) * (chica ? 0.8 : 1);
+      ctx.fillStyle = p.brillo > 0.72 ? `rgba(234,242,255,${alfa})` : `rgba(93,214,255,${alfa})`;
+      ctx.beginPath(); ctx.arc(px, py, tam, 0, Math.PI * 2); ctx.fill();
     }
-    // el núcleo
-    const nucleo = ctx.createRadialGradient(cx(), cy() - H * 0.02, 0, cx(), cy() - H * 0.02, R() * (0.22 + energia * 0.1 + amplitud * 0.2));
-    nucleo.addColorStop(0, `rgba(234,242,255,${0.55 + energia * 0.3 + amplitud * 0.4})`);
-    nucleo.addColorStop(0.35, `rgba(93,214,255,${0.25 + energia * 0.2})`); nucleo.addColorStop(1, 'rgba(93,214,255,0)');
-    ctx.fillStyle = nucleo; ctx.beginPath(); ctx.arc(cx(), cy() - H * 0.02, R() * 0.5, 0, Math.PI * 2); ctx.fill();
+    // el núcleo en el pecho, y una chispa en la cabeza
+    const ny = cy() + nucleoY * r;
+    const nucleo = ctx.createRadialGradient(cx(), ny, 0, cx(), ny, r * (0.20 + energia * 0.12 + amplitud * 0.22));
+    nucleo.addColorStop(0, `rgba(234,242,255,${0.6 + energia * 0.3 + amplitud * 0.4})`);
+    nucleo.addColorStop(0.35, `rgba(93,214,255,${0.28 + energia * 0.22})`); nucleo.addColorStop(1, 'rgba(93,214,255,0)');
+    ctx.fillStyle = nucleo; ctx.beginPath(); ctx.arc(cx(), ny, r * 0.5, 0, Math.PI * 2); ctx.fill();
+    const hy = cy() - 0.62 * r;
+    const ojo = ctx.createRadialGradient(cx(), hy, 0, cx(), hy, r * 0.12);
+    ojo.addColorStop(0, `rgba(234,242,255,${0.25 + energia * 0.25})`); ojo.addColorStop(1, 'rgba(93,214,255,0)');
+    ctx.fillStyle = ojo; ctx.beginPath(); ctx.arc(cx(), hy, r * 0.12, 0, Math.PI * 2); ctx.fill();
     ctx.globalCompositeOperation = 'source-over';
     requestAnimationFrame(cuadro);
   }
   /* Con «reducir movimiento» puesto, la presencia se pinta UNA vez y se queda
      quieta: sigue siendo la imagen, deja de ser la animación. */
   if (matchMedia('(prefers-reduced-motion: reduce)').matches) {
-    const ctxCuadro = cuadro; const unaVez = () => { const raf = requestAnimationFrame; window.requestAnimationFrame = () => 0; try { ctxCuadro(); } finally { window.requestAnimationFrame = raf; } };
+    const unaVez = () => { const raf = window.requestAnimationFrame; window.requestAnimationFrame = () => 0; try { cuadro(); } finally { window.requestAnimationFrame = raf; } };
     unaVez();
     return { setModo: () => {}, setAmplitud: () => {} };
   }
@@ -484,7 +518,7 @@ async function entrarAlPanel() {
   E.yo = await api('/yo');
   $('#puerta').hidden = true; $('#panel').hidden = false;
   $('#nombre').textContent = E.yo.miembro.nombre;
-  if (!presencia) presencia = Presencia($('#presencia'));
+  if (!presencia) presencia = Presencia($('#presencia'), { n: 1900 });
   pintarPuntos(); pintarSaber(); pintarVozBtn();
   await Promise.all([cargarVivo(), cargarPendientes(), cargarMemorias(), cargarDocumentos(), cargarHilos(), cargarGasto()]);
   pintarVacio();
@@ -494,7 +528,8 @@ async function entrarAlPanel() {
 function pintarPuntos() {
   const y = E.yo;
   const p = [
-    ['cerebro', y.cerebro ? 'ok' : 'mal', y.cerebro ? y.modelo : 'sin llave'],
+    ['cerebro', y.cerebro ? (y.donde === 'nodo' && y.nodo && !y.nodo.vivo ? 'mal' : 'ok') : 'mal',
+      !y.cerebro ? 'apagado' : y.donde === 'nodo' ? (y.nodo?.vivo ? `en nuestro nodo · ${y.nodo.modelo || y.modelo}` : `el nodo no contesta${y.nodo?.porQue ? ' · ' + y.nodo.porQue : ''}`) : y.modelo],
     ['memoria', y.memoria === 'mongo' ? 'ok' : 'medio', y.memoria === 'mongo' ? 'guardando' : 'provisional'],
     ['voz', y.voz ? 'ok' : 'medio', y.voz ? 'ElevenLabs' : 'del navegador'],
     ['whatsapp', y.canales.whatsapp ? 'ok' : 'medio', y.canales.whatsapp ? 'lista' : 'sin configurar'],
@@ -555,7 +590,7 @@ function burbujaUltron() {
   return d;
 }
 
-const NOMBRE_HERR = { web_search: 'buscando en internet', buscar_saber: 'leyendo el saber de la casa', estado_vivo: 'mirando el estado vivo', recordar: 'guardando en la memoria', crear_documento: 'escribiendo el documento', proponer_envio: 'preparando el envío' };
+const NOMBRE_HERR = { web_search: 'buscando en internet', buscar_web: 'buscando en internet', leer_pagina: 'leyendo la página', buscar_saber: 'leyendo el saber de la casa', estado_vivo: 'mirando el estado vivo', abrir: 'preparando el enlace', recordar: 'guardando en la memoria', anotar_pendiente: 'anotando el pendiente', cerrar_pendiente: 'cerrando el pendiente', crear_documento: 'escribiendo el documento', proponer_envio: 'preparando el envío' };
 
 async function mandar() {
   const ta = $('#entrada'); const texto = ta.value.trim();
@@ -582,8 +617,9 @@ async function mandar() {
         if (!ev || !dl) continue;
         const d = JSON.parse(dl);
         if (ev === 'inicio') { E.conversacionId = d.conversacionId; if (d.nueva) cargarHilos(); }
+        else if (ev === 'pensando') { pens.textContent = d.vuelta ? 'pensando con lo que encontró…' : 'pensando…'; }
         else if (ev === 'texto') { md += d.t; if (!pintarPendiente) pintarPendiente = requestAnimationFrame(() => { pintarPendiente = null; repintar(); }); }
-        else if (ev === 'herramienta') { pens.textContent = NOMBRE_HERR[d.nombre] || d.nombre; const c = document.createElement('span'); c.className = 'chip herr corriendo'; c.dataset.h = d.nombre; c.innerHTML = `<span class="t">${esc(NOMBRE_HERR[d.nombre] || d.nombre)}${d.entrada?.query || d.entrada?.pregunta ? ': ' + esc(d.entrada.query || d.entrada.pregunta) : ''}</span>`; act.appendChild(c); }
+        else if (ev === 'herramienta') { pens.textContent = NOMBRE_HERR[d.nombre] || d.nombre; const c = document.createElement('span'); c.className = 'chip herr corriendo'; c.dataset.h = d.nombre; c.innerHTML = `<span class="t">${esc(NOMBRE_HERR[d.nombre] || d.nombre)}${d.entrada?.query || d.entrada?.pregunta || d.entrada?.consulta ? ': ' + esc(d.entrada.query || d.entrada.pregunta || d.entrada.consulta) : ''}</span>`; act.appendChild(c); }
         else if (ev === 'herramienta-lista') { const c = [...act.querySelectorAll('.chip.corriendo')].find((x) => x.dataset.h === d.nombre); if (c) c.classList.remove('corriendo'); pens.textContent = ''; }
         else if (ev === 'titulo') { cargarHilos(); }
         else if (ev === 'fin') { terminar(b, d, md); }
@@ -614,6 +650,14 @@ function terminar(b, d, md) {
       <div class="tx"><b>${esc(doc.titulo)}</b><small>${esc(doc.tipo)} · guardado en la biblioteca</small></div>
       <div class="acciones"><a class="btn chico linea" href="/documentos/${esc(doc._id)}/descargar?formato=md">.md</a><a class="btn chico" href="/documentos/${esc(doc._id)}/descargar?formato=html">.html</a></div></div>`);
     cargarDocumentos();
+  }
+  // lo que ULTRON quiere que la persona ABRA. No se abre solo: un navegador
+  // no deja abrir pestañas sin un toque, y está bien que sea así.
+  for (const a of d.acciones || []) {
+    if (a.tipo !== 'abrir' || !a.url) continue;
+    extras.insertAdjacentHTML('beforeend', `<div class="tarjeta abrir"><div class="ic"><svg viewBox="0 0 24 24"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><path d="M15 3h6v6M10 14L21 3"/></svg></div>
+      <div class="tx"><b>${esc(a.nombre)}</b><small>${a.porQue ? esc(a.porQue) : 'ULTRON te lo deja a un toque'}</small></div>
+      <div class="acciones"><a class="btn chico oro" href="${esc(a.url)}" target="_blank" rel="noopener">Abrir ${esc(a.nombre)}</a></div></div>`);
   }
   // memorias guardadas
   if ((d.memorias || []).length) { cargarMemorias(); }
@@ -772,10 +816,13 @@ function pintarPie() {
   const g = E.gasto; const m = E.yo?.modelo || '';
   if (!g) { $('#pieDer').textContent = m; return; }
   const plata = (n) => '$' + n.toFixed(n < 1 ? 3 : 2);
+  const enNodo = E.yo?.donde === 'nodo';
   const hoy = g.hoy.turnos
-    ? `<b>${plata(g.hoy.dolares)}</b> hoy${g.hoy.conPrecio ? '' : '+'} · ${g.hoy.turnos} ${g.hoy.turnos === 1 ? 'pregunta' : 'preguntas'}`
-    : 'sin gasto hoy';
-  const mes = g.mes.turnos ? ` · ${plata(g.mes.dolares)} en 30 días` : '';
+    ? (enNodo && !g.hoy.dolares
+      ? `<b>${g.hoy.turnos}</b> ${g.hoy.turnos === 1 ? 'pregunta' : 'preguntas'} hoy · sin costo por pregunta`
+      : `<b>${plata(g.hoy.dolares)}</b> hoy${g.hoy.conPrecio ? '' : '+'} · ${g.hoy.turnos} ${g.hoy.turnos === 1 ? 'pregunta' : 'preguntas'}`)
+    : 'sin preguntas hoy';
+  const mes = g.mes.turnos && g.mes.dolares ? ` · ${plata(g.mes.dolares)} en 30 días` : '';
   $('#pieDer').innerHTML = `<span title="Lo que la junta lleva gastado en pensar${g.hoy.conPrecio ? '' : '. El «+» es porque algún turno salió de un modelo sin precio conocido y no está sumado'}">${hoy}${mes}</span> · ${esc(m)}`;
 }
 async function cargarMemorias() {
