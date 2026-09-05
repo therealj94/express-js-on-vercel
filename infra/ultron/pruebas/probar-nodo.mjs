@@ -144,6 +144,43 @@ titulo('el presupuesto: 12 288 fichas no son infinitas');
   decir(/recortado/.test(hilo[0].content), 'y cada turno viejo va recortado, no entero', hilo[0].content.slice(-30));
 }
 
+titulo('la guarda de las citas: no se cita una herramienta que no corrió');
+{
+  /* 5-sep, primera prueba real: «El oro cerró hoy a US$ 4,435 (según
+     buscar_web)» y buscar_web no se había llamado. El dato venía del estado
+     vivo y la fuente era inventada. La guarda mira, devuelve UNA vez, y si
+     reincide lo marca en el texto. */
+  guion = [
+    { texto: 'El oro cerró hoy a US$ 4,435 la onza (según buscar_web).' },              // la cita falsa
+    { texto: '', llamadas: [{ name: 'buscar_web', arguments: { consulta: 'precio del oro hoy' } }] }, // corrige: la llama
+    { texto: 'Según buscar_web, el oro cerró a US$ 4,410 la onza.' },
+  ];
+  const eventos = [];
+  const r = await cerebro.pensar({ miembro: JOSE, junta: JUNTA, texto: '¿a cuánto cerró el oro hoy?', emitir: (e, d) => eventos.push([e, d]) });
+  decir(r.herramientas.some((h) => h.nombre === 'buscar_web'), 'al citar buscar_web sin usarla, se le devuelve y la llama', r.herramientas.map((h) => h.nombre).join(','));
+  decir(/4,410/.test(r.texto) && !/4,435/.test(r.texto), 'y la respuesta final es la que salió DESPUÉS de buscar, no la inventada', r.texto);
+  decir(eventos.some(([e]) => e === 'reemplazo'), 'el panel recibe el reemplazo del texto');
+  const nudge = pedidos.at(-2).messages.at(-1);
+  decir(nudge.role === 'user' && /\[sistema\]/.test(nudge.content) && /buscar_web/.test(nudge.content), 'la devolución nombra la herramienta citada', nudge.content.slice(0, 90));
+
+  // Reincide: se marca, no se esconde.
+  guion = [
+    { texto: 'Cerró a 4,400 (según leer_pagina).' },
+    { texto: 'Insisto: 4,400 (según leer_pagina).' },
+  ];
+  const r2 = await cerebro.pensar({ miembro: JOSE, junta: JUNTA, texto: 'y hoy?' });
+  decir(/tomá ese dato con cuidado/.test(r2.texto) && /leer_pagina/.test(r2.texto), 'si insiste sin llamarla, la cita queda marcada para la persona', r2.texto.slice(-90));
+
+  // Y una cita LEGÍTIMA no se toca.
+  guion = [
+    { texto: '', llamadas: [{ name: 'estado_vivo', arguments: {} }] },
+    { texto: 'Ordenex no contesta (según estado_vivo).' },
+  ];
+  const antes = pedidos.length;
+  const r3 = await cerebro.pensar({ miembro: JOSE, junta: JUNTA, texto: 'estado' });
+  decir(pedidos.length - antes === 2 && /según estado_vivo/.test(r3.texto), 'una cita de una herramienta que SÍ corrió pasa sin devolución', `${pedidos.length - antes} pedidos`);
+}
+
 titulo('el título, sin herramientas y corto');
 {
   guion = [{ texto: '"Fondeo de la caliente"\n' }];

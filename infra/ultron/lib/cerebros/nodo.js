@@ -193,6 +193,45 @@ async function pensar({ miembro, junta, texto, conversacionId, emitir = () => {}
     // turnos viejos del hilo (nunca el system ni la pregunta ni los resultados).
     while (largoDe(mensajes) > PRESUPUESTO && mensajes.length > 3 && mensajes[1].role !== 'tool' && !mensajes[1].tool_calls) mensajes.splice(1, 1);
   }
+  /* LA GUARDA DE LAS CITAS. 5-sep, primera prueba real: «El oro cerró hoy a
+     US$ 4,435 (según buscar_web)» — y buscar_web no se había llamado. El
+     número venía del estado vivo y la fuente era inventada. Un modelo chico
+     hace esto, y no se arregla pidiéndole por favor: se mira si citó una
+     herramienta que no corrió, y si lo hizo se le devuelve UNA vez para que
+     la llame o quite la cita. Si reincide, la cita se marca en el texto para
+     que la persona lo vea. */
+  const citadas = [...new Set([...textoFinal.matchAll(/seg[uú]n\s+(buscar_web|leer_pagina|estado_vivo|buscar_saber)/gi)].map((m) => m[1].toLowerCase()))];
+  const corridas = new Set(usadas.map((h) => h.nombre));
+  const falsas = citadas.filter((c) => !corridas.has(c));
+  if (falsas.length) {
+    emitir('pensando', { vuelta: MAX_VUELTAS, motivo: 'cita sin herramienta' });
+    mensajes.push({ role: 'assistant', content: textoFinal });
+    mensajes.push({ role: 'user', content: `[sistema] Citaste «${falsas.join('», «')}» pero no la llamaste en este turno. Llamala ahora y contestá con lo que devuelva, o reescribí la respuesta sin esa cita diciendo de dónde sale de verdad el dato.` });
+    let dicho = '';
+    const r = await pedir({ model: MODELO, messages: mensajes, tools: herramientas.paraOllama(), stream: true, options: opciones }, { alTrozo: (t) => { dicho += t; } });
+    uso.entrada += r.uso.entrada; uso.salida += r.uso.salida;
+    const enTexto = llamadasEnTexto(r.content);
+    const llamadas = [...r.tool_calls, ...enTexto.llamadas];
+    if (llamadas.length) {
+      mensajes.push({ role: 'assistant', content: r.content, tool_calls: r.tool_calls.length ? r.tool_calls : undefined });
+      for (const tc of llamadas) {
+        const nombre = tc.function?.name; let entrada = tc.function?.arguments;
+        if (typeof entrada === 'string') { try { entrada = JSON.parse(entrada); } catch { entrada = {}; } }
+        emitir('herramienta', { nombre, entrada });
+        const salida = await herramientas.correr(nombre, entrada || {}, ctx);
+        usadas.push({ nombre, entrada, salida: String(salida).slice(0, 2000) });
+        emitir('herramienta-lista', { nombre });
+        mensajes.push({ role: 'tool', content: recortar(salida, TOPE_RESULTADO), tool_name: nombre });
+      }
+      const r2 = await pedir({ model: MODELO, messages: mensajes, tools: herramientas.paraOllama(), stream: true, options: opciones }, { alTrozo: (t) => {} });
+      uso.entrada += r2.uso.entrada; uso.salida += r2.uso.salida;
+      dicho = llamadasEnTexto(r2.content).limpio;
+    } else dicho = enTexto.limpio;
+    if (dicho.trim()) { textoFinal = dicho.trim(); emitir('reemplazo', { texto: textoFinal }); }
+    // Si aun así cita lo que no corrió, se marca: la persona tiene que verlo.
+    const todavia = [...textoFinal.matchAll(/seg[uú]n\s+(buscar_web|leer_pagina|estado_vivo|buscar_saber)/gi)].map((m) => m[1].toLowerCase()).filter((c) => !new Set(usadas.map((h) => h.nombre)).has(c));
+    if (todavia.length) textoFinal += `\n\n_(ULTRON citó ${todavia.join(', ')} sin haberla usado en este turno: tomá ese dato con cuidado.)_`;
+  }
   if (!textoFinal.trim()) textoFinal = 'Miré lo que pediste pero no me salió una respuesta con palabras. Preguntámelo de otra forma.';
 
   const vistas = new Set();

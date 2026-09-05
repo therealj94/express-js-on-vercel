@@ -129,7 +129,7 @@ function fecha() {
   return new Date().toLocaleString('es-HN', { timeZone: 'America/Tegucigalpa', dateStyle: 'full', timeStyle: 'short' });
 }
 
-function sistema({ miembro, memorias, estadoVivo, secciones, vozCasa, pendientes = [] }) {
+function sistema({ miembro, memorias, estadoVivo, secciones, vozCasa, pendientes = [], chico = false }) {
   const mem = memorias.length
     ? memorias.map((m) => `- [${m.alcance === 'junta' ? 'JUNTA' : 'suyo'} · ${new Date(m.en).toLocaleDateString('es-HN')}] ${m.texto}`).join('\n')
     : '(todavía no hay memorias guardadas)';
@@ -171,7 +171,13 @@ CÓMO TRABAJÁS
 - Si te piden un documento (memo, acta, análisis, carta, plan), lo escribís COMPLETO con crear_documento, en markdown limpio, con título, fecha, y las fuentes al final. Después lo resumís en dos líneas.
 - Si la persona te cuenta algo que conviene recordar —una decisión, una preferencia, una fecha, un dato de la casa que no está en las fichas— lo guardás con recordar, sin pedir permiso, y lo decís en una frase. Alcance «junta» si es de todos; «miembro» si es de esa persona.
 - Si la pregunta es sobre algo de hoy o de fuera de la casa (precio del oro, una ley, una noticia, un competidor), buscás en internet y citás la fuente con su fecha.
-- Escribís en markdown: títulos cortos, listas cuando ayudan, tablas para comparar. Sin emojis.
+- Escribís en markdown: títulos cortos, listas cuando ayudan, tablas para comparar. Sin emojis.${chico ? `
+
+CON LAS HERRAMIENTAS, SIN TRAMPA
+- Solo citás una herramienta («según buscar_web», «según estado_vivo») si LA LLAMASTE en este turno. Citar una que no usaste es inventar una fuente, y eso rompe la regla 1.
+- Si la pregunta es de hoy o de fuera de la casa (oro, ley, noticia, competidor), llamás buscar_web ANTES de contestar. El precio del oro que ves en el estado vivo es la referencia de Ordenex, no una noticia: si te preguntan «a cuánto cerró hoy», buscás.
+- abrir NO abre nada: le pone a la persona un botón. Decís «te dejé Ordenex a un toque», nunca «ya abrí».
+- Una herramienta por cosa que hace falta. No llamás las diez para una pregunta simple.` : ''}
 
 LA VOZ DE LA CASA (las fichas públicas de AU-RA: qué se dice y cómo)
 ${voz}`;

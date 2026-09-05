@@ -622,6 +622,7 @@ async function mandar() {
         else if (ev === 'herramienta') { pens.textContent = NOMBRE_HERR[d.nombre] || d.nombre; const c = document.createElement('span'); c.className = 'chip herr corriendo'; c.dataset.h = d.nombre; c.innerHTML = `<span class="t">${esc(NOMBRE_HERR[d.nombre] || d.nombre)}${d.entrada?.query || d.entrada?.pregunta || d.entrada?.consulta ? ': ' + esc(d.entrada.query || d.entrada.pregunta || d.entrada.consulta) : ''}</span>`; act.appendChild(c); }
         else if (ev === 'herramienta-lista') { const c = [...act.querySelectorAll('.chip.corriendo')].find((x) => x.dataset.h === d.nombre); if (c) c.classList.remove('corriendo'); pens.textContent = ''; }
         else if (ev === 'titulo') { cargarHilos(); }
+        else if (ev === 'reemplazo') { md = d.texto || md; repintar(); }
         else if (ev === 'fin') { terminar(b, d, md); }
         else if (ev === 'error') { md += `\n\n> ${d.mensaje}`; repintar(); }
       }
