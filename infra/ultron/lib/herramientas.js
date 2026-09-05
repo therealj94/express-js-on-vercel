@@ -235,7 +235,7 @@ async function buscarWeb(consulta) {
   // El aviso va CON los resultados: el modelo tiene que poder decir con qué se
   // buscó de verdad, y que lo de internet es lo que se dice afuera de la casa.
   const nota = afinada
-    ? `(La consulta «${q}» trae artículos de geopolítica, no a la casa: se buscó «${afinada}». Lo que sigue es lo que se dice AFUERA de Orden Global; lo que la casa ES sale de las fichas y del estado vivo, no de aquí.)\n\n`
+    ? `(La consulta «${q}» trae artículos de geopolítica, no a la casa: se buscó «${afinada}». Lo que sigue es lo que se dice AFUERA de Orden Global; lo que la casa ES sale de las fichas y del estado vivo, no de aquí. Si un titular dice «respaldado en oro», esa es la palabra de esa fuente: se cita como está y, al comentarlo, la palabra de la casa es «referenciado».)\n\n`
     : '';
   if (afinada) q = afinada;
   const brave = (process.env.ULTRON_BRAVE || '').trim();

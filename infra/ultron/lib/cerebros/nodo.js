@@ -234,6 +234,15 @@ function sinRepetidos(texto) {
   return salida.join('\n\n');
 }
 
+/* Y a veces arranca escupiendo el resto de una herramienta que quiso llamar y
+   no le salió: «_icallculator_» antes de la primera frase. No es cursiva ni es
+   una palabra: es una sola pieza sin espacios, entre guiones bajos o entre
+   ángulos, en la línea de arriba de todo. Se quita solo ahí —una cursiva de
+   verdad lleva espacios o acompaña a una frase— y solo si abajo queda algo. */
+function sinElRestoDeUnaHerramienta(texto) {
+  return String(texto).replace(/^\s*(?:_{1,2}[a-z][a-z0-9_]{2,30}_{1,2}|<\|?[a-z_]{3,30}\|?>)\s*(?=\S)/i, '');
+}
+
 function largoDe(mensajes) { return mensajes.reduce((a, m) => a + String(m.content || '').length + JSON.stringify(m.tool_calls || '').length, 0); }
 
 // ── Pensar ──────────────────────────────────────────────────────────────────
@@ -398,10 +407,10 @@ async function pensar({ miembro, junta, texto, conversacionId, emitir = () => {}
     if (dicho.trim()) { textoFinal = dicho.trim(); emitir('reemplazo', { texto: textoFinal }); }
     // Si aun así cita lo que no corrió, se marca: la persona tiene que verlo.
     const todavia = [...textoFinal.matchAll(CITA)].map((m) => m[1].toLowerCase()).filter((c) => !new Set(usadas.map((h) => h.nombre)).has(c));
-    if (todavia.length) textoFinal += `\n\n_(ULTRON citó ${todavia.join(', ')} sin haberla usado en este turno: tomá ese dato con cuidado.)_`;
+    if (todavia.length) textoFinal += `\n\n_(ULTRON citó ${todavia.join(', ')} sin haberla usado en este turno: tome ese dato con cuidado.)_`;
   }
-  textoFinal = sinRepetidos(textoFinal);
-  if (!textoFinal.trim()) textoFinal = 'Miré lo que pediste pero no me salió una respuesta con palabras. Preguntámelo de otra forma.';
+  textoFinal = sinRepetidos(sinElRestoDeUnaHerramienta(textoFinal));
+  if (!textoFinal.trim()) textoFinal = 'Revisé lo que me pidió y no me salió una respuesta con palabras. Le pido que me lo plantee de otra forma.';
 
   const vistas = new Set();
   const fuentes = ctx.fuentes.filter((f) => !vistas.has(f.id) && vistas.add(f.id));
@@ -440,4 +449,4 @@ async function salud() {
   });
 }
 
-module.exports = { pensar, titular, salud, encendido, MODELO, _adentro: { pedir, llamadasEnTexto, armarMensajes, sinRepetidos, hastaOtroAlfabeto, dondeEmpiezaElBucle, fichas, PRESUPUESTO, PRESUPUESTO_FICHAS, CTX } };
+module.exports = { pensar, titular, salud, encendido, MODELO, _adentro: { pedir, llamadasEnTexto, armarMensajes, sinRepetidos, sinElRestoDeUnaHerramienta, hastaOtroAlfabeto, dondeEmpiezaElBucle, fichas, PRESUPUESTO, PRESUPUESTO_FICHAS, CTX } };

@@ -200,7 +200,7 @@ titulo('la guarda de las citas: no se cita una herramienta que no corrió');
     { texto: 'Insisto: 4,400 (según `leer_pagina`).' },
   ];
   const r2 = await cerebro.pensar({ miembro: JOSE, junta: JUNTA, texto: 'y hoy?' });
-  decir(/tomá ese dato con cuidado/.test(r2.texto) && /leer_pagina/.test(r2.texto), 'si insiste sin llamarla, la cita queda marcada para la persona', r2.texto.slice(-90));
+  decir(/tome ese dato con cuidado/.test(r2.texto) && /leer_pagina/.test(r2.texto), 'si insiste sin llamarla, la cita queda marcada para la persona, de usted', r2.texto.slice(-90));
 
   // Y una cita LEGÍTIMA no se toca.
   guion = [
@@ -218,6 +218,14 @@ titulo('la guarda de las citas: no se cita una herramienta que no corrió');
   // Lo repetido palabra por palabra se quita; lo parecido se deja.
   decir(nodo._adentro.sinRepetidos('Hola.\n\nEl oro cerró a 4,410.\n\nEl oro cerró a 4,410.\n\nEl oro cerró a 4,410 según Investing.') === 'Hola.\n\nEl oro cerró a 4,410.\n\nEl oro cerró a 4,410 según Investing.',
     'un párrafo repetido igual se quita una vez; uno parecido se deja');
+  // El 5-sep, contestando sobre Orden Global, arrancó con «_icallculator_»:
+  // el resto de una herramienta que quiso llamar y no le salió.
+  const b = nodo._adentro.sinElRestoDeUnaHerramienta;
+  decir(b('_icallculator_\n\nSegún la búsqueda, esto es lo que hay.') === 'Según la búsqueda, esto es lo que hay.', 'el resto de una herramienta al inicio se quita');
+  decir(b('<|buscar_web|> La casa está en orden.') === 'La casa está en orden.', 'y también si viene entre ángulos');
+  decir(b('_Nota:_ el oro subió.') === '_Nota:_ el oro subió.', 'pero una cursiva de verdad no se toca', b('_Nota:_ el oro subió.'));
+  decir(b('_muy importante_ y además esto') === '_muy importante_ y además esto', 'ni una cursiva de varias palabras');
+  decir(b('_solo_') === '_solo_', 'y si no queda nada abajo, no se quita nada', b('_solo_'));
 }
 
 titulo('el presupuesto en FICHAS: el saber recibe lo que sobra, y nunca se pasa');
