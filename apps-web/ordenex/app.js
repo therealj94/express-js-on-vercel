@@ -574,7 +574,7 @@ const ONX = (() => {
    * que sigue viendo el fallo. Sin este dato no había manera de distinguir
    * «no se arregló» de «no te llegó», y se buscaba dos horas en el lugar
    * equivocado. */
-  const ONX_V = 'd40277e5f5';
+  const ONX_V = 'ae8ebe28de';
   const ONX_FECHA = '2026-09-05';
 
   function sellar() {
