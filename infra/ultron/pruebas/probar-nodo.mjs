@@ -329,7 +329,21 @@ titulo('la deriva a otro idioma se ataja en vivo');
   decir(!/[\u4e00-\u9fff]/.test(emitido), 'y al panel tampoco le llegó ni un instante', emitido);
   const nudge = pedidos.at(-1).messages.at(-1);
   decir(/otro idioma/.test(nudge.content) && /ESPAÑOL/.test(nudge.content), 'la devolución dice qué pasó y qué hacer', nudge.content.slice(0, 80));
-  decir(pedidos.at(-1).options.repeat_penalty <= 1.05, 'y la penalización por repetir está baja, que es donde deja de pasar tanto', String(pedidos.at(-1).options.repeat_penalty));
+  /* LOS PARÁMETROS SON LOS DEL FABRICANTE, y esta prueba existe para que nadie
+     los vuelva a inventar. Durante dos días el bucle se combatió a mano
+     subiendo y bajando repeat_penalty; el fabricante publica cuatro
+     parámetros para su modo instruct y decíamos uno. `presence_penalty` es,
+     por su propia ficha, el que existe «para reducir la repetición sin fin». */
+  /* Se mira el PRIMER pedido del turno y no el último: el último de este bloque
+     es la llamada de rescate del idioma, que baja la temperatura a 0,2 a
+     propósito para traer al modelo de vuelta al español. Esa excepción es
+     deliberada y no debe arrastrar a la regla. */
+  const o = pedidos[0].options;
+  decir(o.repeat_penalty === 1.0, 'repeat_penalty vuelve a 1.0, que es lo que pide el fabricante', String(o.repeat_penalty));
+  decir(o.presence_penalty === 1.0, 'presence_penalty puesto: es la perilla contra la repetición sin fin', String(o.presence_penalty));
+  decir(o.presence_penalty < 1.5, 'y por debajo de su 1.5, porque alto mezcla idiomas y acá se habla español', String(o.presence_penalty));
+  decir(o.temperature === 0.7 && o.top_p === 0.8 && o.top_k === 20, 'y temperatura, top_p y top_k son los suyos', JSON.stringify({ t: o.temperature, p: o.top_p, k: o.top_k }));
+  decir(pedidos.at(-1).options.temperature === 0.2, 'y el rescate del idioma SÍ baja la temperatura, que es su excepción', String(pedidos.at(-1).options.temperature));
   // Si reincide, se queda con lo que hay: no se entra en bucle.
   guion = [{ texto: 'Hola 你好 mundo' }, { texto: '再见' }];
   const r2 = await cerebro.pensar({ miembro: JOSE, junta: JUNTA, texto: 'x' });

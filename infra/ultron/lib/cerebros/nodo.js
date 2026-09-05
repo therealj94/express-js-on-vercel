@@ -299,13 +299,41 @@ async function pensar({ miembro, junta, texto, conversacionId, emitir = () => {}
   const uso = { entrada: 0, salida: 0, lecturaCache: 0, escrituraCache: 0 };
   // En voz, la respuesta es corta por diseño: menos fichas de salida es menos
   // segundos hasta la primera frase dicha, y una frase dicha larga no se sigue.
-  /* La penalización por repetir se queda BAJA, en 1,05, aunque el enganche del
-     5-sep tiente a subirla: subirla es justo lo que el 4-sep mandó a qwen al
-     chino a media frase, y eso cuesta una vuelta entera de rescate. Contra el
-     bucle está la guarda que mira lo escrito, que corta siempre; contra la
-     deriva no hay más que no empujarlo fuera del español. Se paga con la
-     guarda, no con el parámetro. */
-  const opciones = { temperature: 0.35, num_predict: modo === 'voz' ? 360 : 1400, repeat_penalty: 1.05 };
+  /* LOS PARÁMETROS QUE PIDE EL FABRICANTE, Y POR QUÉ SE TARDÓ EN PONERLOS.
+   *
+   * Durante dos días el bucle de «sourceMappingError» se trató como un vicio
+   * del modelo chico y se combatió a mano: una guarda que mira lo escrito y
+   * corta. Se cambió el modelo entero —de qwen2.5:14b a qwen3.8:27b— y el
+   * bucle salió IGUAL, con el mismo texto literal. Eso descartó al modelo: dos
+   * generaciones distintas no coinciden por casualidad.
+   *
+   * La respuesta estaba en la ficha del fabricante, sin buscar mucho. Qwen
+   * publica los parámetros de su modo instruct y dice, textual, que
+   * `presence_penalty` se ajusta «para reducir la repetición sin fin», y que
+   * subirlo de más «puede producir mezcla de idiomas». Repetición sin fin y
+   * mezcla de idiomas son EXACTAMENTE los dos síntomas que llevábamos
+   * persiguiendo — y de los cuatro parámetros que recomiendan, mandábamos uno.
+   *
+   *   fabricante:  temperature 0.7 · top_p 0.80 · top_k 20 · presence_penalty 1.5
+   *   se mandaba:  temperature 0.35 · repeat_penalty 1.05 · nada más
+   *
+   * Se adoptan los suyos con dos salvedades pensadas:
+   *
+   *   · `presence_penalty` va en 1.0, no en 1.5. Su propio aviso dice que
+   *     alto mezcla idiomas, y esta casa habla español y solo español: se
+   *     toma lo que cura la repetición sin pagar la deriva.
+   *   · `repeat_penalty` vuelve a 1.0, que es lo que piden. El 1.05 era un
+   *     apaño nuestro contra el mismo mal, y dos frenos a la vez sobre el
+   *     mismo eje es como se llega al chino de media frase del 4-sep.
+   *
+   * LAS GUARDAS SE QUEDAN. Curar la causa no es razón para quitar la red: si
+   * el modelo se engancha igual, la guarda sigue cortando. Lo que cambia es
+   * que ya no es lo único que hay. */
+  const opciones = {
+    temperature: 0.7, top_p: 0.8, top_k: 20, min_p: 0,
+    presence_penalty: 1.0, repeat_penalty: 1.0,
+    num_predict: modo === 'voz' ? 360 : 1400,
+  };
   // El trozo pasa por la guarda del idioma ANTES de llegar al panel: lo que se
   // fue a otro alfabeto no se enseña ni un instante.
   /* Las dos guardas del stream, en el mismo sitio: el idioma y el bucle. Las
