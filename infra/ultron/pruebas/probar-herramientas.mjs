@@ -229,6 +229,20 @@ Ver [ordenglobal.org](https://ordenglobal.org/).`;
   decir(dice(b, '1 / 1'), 'y la página numerada sobre el total');
   decir(dice(b, 'Escrito por ULTRON FP'), 'y dice quién lo escribió');
 }
+titulo('y el título no sale dos veces');
+{
+  /* ULTRON abre casi todos sus documentos repitiendo el título como «# …»,
+     porque en markdown eso ES el título. Arriba ya está, en grande. */
+  const b = await pdf.documentoPdf({ titulo: 'Análisis FODA', tipo: 'analisis',
+    markdown: '# Análisis FODA\n\nFortalezas y debilidades.', en: new Date(), miembro: 'j@x.org', para: 'junta' });
+  const t = textoDe(b);
+  decir((t.match(/AnálisisFODA/g) || t.match(/Análisis FODA/g) || []).length === 1,
+    'el encabezado repetido se quita', t.slice(0, 120));
+  const otro = await pdf.documentoPdf({ titulo: 'Informe de agosto', tipo: 'informe',
+    markdown: '# Resumen ejecutivo\n\nTexto.', en: new Date(), miembro: 'j@x.org', para: 'junta' });
+  decir(dice(otro, 'Resumen ejecutivo') && dice(otro, 'Informe de agosto'),
+    'pero un primer apartado que dice otra cosa se respeta');
+}
 {
   const b = await pdf.documentoPdf({ titulo: 'Comunicado', tipo: 'carta', markdown: md, en: new Date(), miembro: 'j@x.org', para: 'fuera' });
   decir(!dice(b, 'USO INTERNO'), 'el que va para fuera NO lleva el sello de interno');

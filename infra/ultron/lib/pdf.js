@@ -319,7 +319,18 @@ function documentoPdf(d) {
     doc.moveDown(0.9);
     doc.x = MARGEN;
 
-    pintar(doc, bloques(d.markdown), ancho);
+    /* ULTRON casi siempre abre el markdown repitiendo el título del documento
+       —«# Análisis FODA de Orden Global»— porque en markdown eso ES el título.
+       Acá el título ya está arriba, en grande, con su fecha y su sello: dejarlo
+       otra vez tres centímetros más abajo hace que el papel parezca mal armado.
+       Se quita solo si es lo primero y dice lo mismo; si dice otra cosa, se
+       respeta, porque entonces es un apartado y no un título repetido. */
+    const cuerpo = bloques(d.markdown);
+    const igual = (a, b) => plano(String(a)).trim().toLowerCase().replace(/\s+/g, ' ')
+      === plano(String(b)).trim().toLowerCase().replace(/\s+/g, ' ');
+    if (cuerpo[0]?.t === 'titulo' && cuerpo[0].nivel <= 2 && igual(cuerpo[0].texto, d.titulo)) cuerpo.shift();
+
+    pintar(doc, cuerpo, ancho);
 
     // Quién lo escribió, al final del texto y no en el pie: es parte del
     // documento, no del papel.
