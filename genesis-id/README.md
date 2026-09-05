@@ -228,15 +228,22 @@ otro.
 
 ### Sesión única
 
-Un GID vale en las tres apps. La app que ya autenticó al usuario pide un token
-(`POST /api/v1/sso/token`) y cualquier otra lo valida
-(`POST /api/v1/sso/verificar`). Si la identidad se suspende, los tokens vivos
-dejan de valer en el acto.
+Un GID vale en todas las apps del ecosistema (`APPS_ECOSISTEMA`: Veta Wallet,
+MyTokenPay, ordenscan, Ordenex, AuCorp y ULTRON). La app que ya autenticó al
+usuario pide un token (`POST /api/v1/sso/token`) y cualquier otra con el
+alcance `gid.verificar` lo valida (`POST /api/v1/sso/verificar`). Si la
+identidad se suspende, los tokens vivos dejan de valer en el acto.
 
 Es un modelo de **cliente de confianza**: Genesis ID comprueba que la cuenta
 esté atada a ese GID, pero no vuelve a autenticar a la persona — de eso responde
-la app con su clave. Vale porque las tres son del mismo ecosistema; no sería
+la app con su clave. Vale porque todas son del mismo ecosistema; no sería
 aceptable para aplicaciones de terceros.
+
+**Un token válido no es una llave maestra.** Dice QUIÉN es quien llega, no que
+pueda entrar: cada casa decide eso con su propio padrón. ULTRON es el caso
+extremo y el más claro — su padrón son seis personas escritas en su
+configuración, así que un GID verificado del ecosistema que no esté en esa
+lista rebota en su puerta aunque su pase sea perfectamente legítimo.
 
 ---
 
