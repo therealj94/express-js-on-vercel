@@ -245,6 +245,18 @@ titulo('la guarda de las citas: no se cita una herramienta que no corrió');
   decir(cc('sourceMapping: sourceMapping') === 'sourceMapping: sourceMapping',
     'y si debajo no queda nada, no se borra: mejor basura que tragarse la respuesta');
   decir(cc('El ORIGEN está a 2,59.') === 'El ORIGEN está a 2,59.', 'una respuesta limpia pasa intacta');
+
+  /* La segunda cara, y la que destapó qué era todo esto: «pregunta» es el
+     parámetro de buscar_saber y los «}}>» son la cola de una etiqueta de
+     llamada que no cerró. Nunca fue prosa repetida: es una herramienta escrita
+     mal, igual que el «_icallculator_». */
+  decir(cc("sourceMapping: {pregunta: 'a cuánto está el ORIGEN'}}>\nEl ORIGEN está a $2.59.") === 'El ORIGEN está a $2.59.',
+    'una llamada malformada en la cabecera se quita entera, con su cola de cierres',
+    JSON.stringify(cc("sourceMapping: {pregunta: 'a cuánto está el ORIGEN'}}>\nEl ORIGEN está a $2.59.")));
+  decir(cc('herramienta: [1, 2, 3]\n\nHay tres casas vivas.') === 'Hay tres casas vivas.',
+    'y también si el valor viene entre corchetes');
+  decir(cc('La junta acordó: {revisar el gas, cerrar el trato} y seguir.') === 'La junta acordó: {revisar el gas, cerrar el trato} y seguir.',
+    'PERO una frase que sigue hablando después de la llave no se toca');
 }
 
 titulo('el presupuesto en FICHAS: el saber recibe lo que sobra, y nunca se pasa');

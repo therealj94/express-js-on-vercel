@@ -275,13 +275,31 @@ function sinElRestoDeUnaHerramienta(texto) {
  * línea que no encaja, se para — lo que venga después es la respuesta y no se
  * toca. Si al final no quedara nada, se devuelve el texto tal cual: más vale
  * enseñar basura que tragarse una respuesta buena. */
+/* Dos formas, las dos vistas en vivo el 5-sep contra el modelo de producción:
+ *
+ *   sourceMapping: sourceMapping                       ← el mismo a los dos lados
+ *   sourceMapping: {pregunta: 'a cuánto está…'}}>      ← una LLAMADA malformada
+ *
+ * La segunda destapó qué era todo esto: `pregunta` es el parámetro de
+ * buscar_saber, y los `}}>` del final son la cola de una etiqueta de llamada
+ * que no cerró. O sea que nunca fue prosa repetida: es una herramienta que el
+ * modelo quiso llamar y escribió mal, igual que el «_icallculator_» — con otra
+ * cara. Se limpian las dos, y con las mismas tres cautelas: solo en la
+ * CABECERA, se para en la primera línea que no encaje, y si debajo no queda
+ * nada se devuelve el texto tal cual. */
+const CODIGO_SUELTO = [
+  // «algo: algo» — el mismo identificador a los dos lados. En español no pasa.
+  /^([A-Za-z_][A-Za-z0-9_]{2,40})\s*[:=]\s*\1\s*[,;.]?$/,
+  // «algo: {…}» con la cola de cierres que deja una etiqueta rota: } ] > )
+  /^[A-Za-z_][A-Za-z0-9_]{2,40}\s*[:=]\s*[{[][^\n]*[}\]][}\]>)]*\s*[,;]?$/,
+];
 function sinCodigoPegadoArriba(texto) {
   const lineas = String(texto).split('\n');
   let i = 0;
   while (i < lineas.length) {
     const l = lineas[i].trim();
     if (!l) { i++; continue; }
-    if (!/^([A-Za-z_][A-Za-z0-9_]{2,40})\s*[:=]\s*\1\s*[,;.]?$/.test(l)) break;
+    if (!CODIGO_SUELTO.some((re) => re.test(l))) break;
     i++;
   }
   if (!i) return String(texto);
