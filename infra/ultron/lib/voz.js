@@ -19,6 +19,12 @@ const LLAVE = (process.env.ELEVENLABS_API_KEY || '').trim();
    español. Se cambia con ELEVENLABS_VOZ; el id se ve en la cuenta. */
 const VOZ = (process.env.ELEVENLABS_VOZ || 'XrExE9yKIg1WjnnlVkGX').trim();
 const MODELO = process.env.ELEVENLABS_MODELO || 'eleven_multilingual_v2';
+/* Para CONVERSAR importa más el tiempo hasta la primera palabra que el último
+   matiz: `eleven_flash_v2_5` contesta en una fracción de segundo. El panel lo
+   pide frase por frase mientras el modelo sigue escribiendo, así que ULTRON
+   empieza a hablar antes de terminar de pensar. Para leer un documento entero
+   se sigue usando el multilingüe, que suena mejor. */
+const MODELO_RAPIDO = process.env.ELEVENLABS_MODELO_RAPIDO || 'eleven_flash_v2_5';
 const MAXIMO = 2500;   // letras por petición: más largo se parte en el panel
 
 const memoria = new Map();   // sha1(texto) -> Buffer
@@ -36,21 +42,25 @@ function paraDecir(texto) {
     .replace(/\s+/g, ' ').trim().slice(0, MAXIMO);
 }
 
-async function hablar(texto) {
+async function hablar(texto, { rapido = false } = {}) {
   if (!LLAVE) { const e = new Error('Voz no configurada.'); e.codigo = 'VOZ_APAGADA'; throw e; }
   const dicho = paraDecir(texto);
   if (!dicho) { const e = new Error('Nada que decir.'); e.codigo = 'VACIO'; throw e; }
+  const modelo = rapido ? MODELO_RAPIDO : MODELO;
   const { createHash } = require('node:crypto');
-  const clave = createHash('sha1').update(VOZ + '|' + MODELO + '|' + dicho).digest('hex');
+  const clave = createHash('sha1').update(VOZ + '|' + modelo + '|' + dicho).digest('hex');
   if (memoria.has(clave)) return memoria.get(clave);
 
   const r = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${encodeURIComponent(VOZ)}?output_format=mp3_44100_128`, {
     method: 'POST',
     headers: { 'xi-api-key': LLAVE, 'Content-Type': 'application/json', Accept: 'audio/mpeg' },
     body: JSON.stringify({
-      text: dicho, model_id: MODELO,
-      // Estable pero con vida: 0,5 de estabilidad suena a persona; 1,0 suena a lector.
-      voice_settings: { stability: 0.45, similarity_boost: 0.8, style: 0.25, use_speaker_boost: true },
+      text: dicho, model_id: modelo,
+      /* La voz de un mayordomo, no la de un locutor: estable (0,6) para que no
+         se agite, poco «estilo» (0,15) para que no actúe, y el mismo timbre
+         siempre (0,85). Un asistente que suena igual a las tres de la tarde y
+         a las once de la noche es uno en el que se confía. */
+      voice_settings: { stability: 0.6, similarity_boost: 0.85, style: 0.15, use_speaker_boost: true },
     }),
     signal: AbortSignal.timeout(30_000),
   });
@@ -64,4 +74,4 @@ async function hablar(texto) {
   return audio;
 }
 
-module.exports = { hablar, encendida, paraDecir, _adentro: { memoria, VOZ, MODELO } };
+module.exports = { hablar, encendida, paraDecir, _adentro: { memoria, VOZ, MODELO, MODELO_RAPIDO } };

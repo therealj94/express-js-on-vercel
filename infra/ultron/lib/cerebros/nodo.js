@@ -194,7 +194,7 @@ function largoDe(mensajes) { return mensajes.reduce((a, m) => a + String(m.conte
 
 // ── Pensar ──────────────────────────────────────────────────────────────────
 
-async function pensar({ miembro, junta, texto, conversacionId, emitir = () => {}, sistema }) {
+async function pensar({ miembro, junta, texto, conversacionId, emitir = () => {}, sistema, modo = 'texto', alias = null }) {
   if (!encendido()) throw conCodigo('NODO_APAGADO', 'Faltan ULTRON_NODO_URL o ULTRON_NODO_SECRETO.');
   const ctx = { miembro, junta, conversacionId, fuentes: [], memorias: [], documentos: [], envios: [], pendientes: [], acciones: [], chico: true };
 
@@ -207,7 +207,7 @@ async function pensar({ miembro, junta, texto, conversacionId, emitir = () => {}
   // reserva aparte; el saber recibe lo que sobra, y si sobra poco, poco.
   const previa = conversacionId ? await memoria.conversacion(conversacionId, miembro.correo) : null;
   const voz = saber.vozDeLaCasa().slice(0, 6);
-  const armar = (secciones) => sistema({ miembro, memorias, estadoVivo, secciones, vozCasa: voz, pendientes: abiertos, chico: true }).map((b) => b.text).join('\n\n');
+  const armar = (secciones) => sistema({ miembro, memorias, estadoVivo, secciones, vozCasa: voz, pendientes: abiertos, chico: true, modo, alias }).map((b) => b.text).join('\n\n');
   const base = armar([]);
   const hiloEstimado = Math.min(TOPE_HILO, (previa?.turnos || []).slice(-8).reduce((a, t) => a + Math.min(TOPE_TURNO, String(t.texto || '').length), 0));
   const sobra = PRESUPUESTO_FICHAS - fichas(base) - fichas(hiloEstimado ? 'x'.repeat(hiloEstimado) : '') - fichas(texto);
@@ -221,7 +221,9 @@ async function pensar({ miembro, junta, texto, conversacionId, emitir = () => {}
   let textoFinal = '';
   const usadas = [];
   const uso = { entrada: 0, salida: 0, lecturaCache: 0, escrituraCache: 0 };
-  const opciones = { temperature: 0.35, num_predict: 1400, repeat_penalty: 1.05 };
+  // En voz, la respuesta es corta por diseño: menos fichas de salida es menos
+  // segundos hasta la primera frase dicha, y una frase dicha larga no se sigue.
+  const opciones = { temperature: 0.35, num_predict: modo === 'voz' ? 360 : 1400, repeat_penalty: 1.05 };
   // El trozo pasa por la guarda del idioma ANTES de llegar al panel: lo que se
   // fue a otro alfabeto no se enseña ni un instante.
   const conGuarda = (acum) => (t) => { const limpio = hastaOtroAlfabeto(t); if (limpio) { acum.t += limpio; emitir('texto', { t: limpio }); } return limpio.length < t.length ? limpio : t; };

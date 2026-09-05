@@ -259,7 +259,12 @@ app.post('/pensar', puerta, frenoPensar, async (req, res) => {
     emitir('inicio', { conversacionId: convId, nueva });
     await memoria.anotarTurno(convId, req.miembro.correo, { rol: 'miembro', texto });
 
-    const r = await cerebro.pensar({ miembro: req.miembro, junta: JUNTA.map(sinClave), texto, conversacionId: convId, emitir });
+    // `modo: 'voz'` es la conversación hablada: respuestas cortas, sin markdown,
+    // hechas para escucharse. `texto` (por omisión) es la de siempre.
+    const modo = req.body?.modo === 'voz' ? 'voz' : 'texto';
+    // `alias`: cómo se presenta en esta interfaz (AURA OS le dice «Aura»).
+    const alias = /^[A-Za-zÁÉÍÓÚáéíóúñÑ\- ]{2,24}$/.test(String(req.body?.alias || '')) ? String(req.body.alias).trim() : null;
+    const r = await cerebro.pensar({ miembro: req.miembro, junta: JUNTA.map(sinClave), texto, conversacionId: convId, emitir, modo, alias });
     await memoria.anotarTurno(convId, req.miembro.correo, { rol: 'ultron', texto: r.texto, herramientas: r.herramientas, fuentes: r.fuentes });
     if (nueva) { const t = await cerebro.titular(texto); if (t) await memoria.titular(convId, req.miembro.correo, t); emitir('titulo', { titulo: t }); }
     emitir('fin', { ...r, conversacionId: convId });
@@ -346,7 +351,7 @@ app.post('/enviar', puerta, async (req, res) => {
 app.post('/voz', puerta, frenoPensar, async (req, res) => {
   if (!voz.encendida()) return res.status(503).json({ error: 'Voz apagada (falta ELEVENLABS_API_KEY).', codigo: 'VOZ_APAGADA' });
   try {
-    const audio = await voz.hablar(String(req.body?.texto || ''));
+    const audio = await voz.hablar(String(req.body?.texto || ''), { rapido: req.body?.rapido === true });
     res.setHeader('Content-Type', 'audio/mpeg');
     res.setHeader('Cache-Control', 'private, max-age=3600');
     res.send(audio);
@@ -391,6 +396,13 @@ app.post('/whatsapp/entrada', async (req, res) => {
 
 // ── El panel ────────────────────────────────────────────────────────────────
 
+/* LA RAÍZ ES AURA OS cuando está construido (public/os); el panel de antes
+   sigue en /clasico —pendientes, biblioteca, hilos— y en la raíz si el OS no
+   está. Un despliegue sin `out/` de Next no deja la casa sin puerta. */
+const { existsSync } = require('node:fs');
+const HAY_OS = existsSync(join(__dirname, 'public', 'os', 'index.html'));
+app.get('/', (req, res, next) => (HAY_OS ? res.redirect(302, '/os/') : next()));
+app.use('/clasico', express.static(join(__dirname, 'public'), { index: 'index.html', maxAge: '10m' }));
 app.use(express.static(join(__dirname, 'public'), { index: 'index.html', maxAge: '10m' }));
 app.use((req, res) => res.status(404).json({ error: 'No existe esa ruta.', codigo: 'NO_EXISTE' }));
 app.use((err, req, res, next) => {   // eslint-disable-line no-unused-vars

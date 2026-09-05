@@ -229,6 +229,25 @@ titulo('la deriva a otro idioma se ataja en vivo');
   decir(r2.texto === 'Hola' && !/[\u4e00-\u9fff]/.test(r2.texto), 'si reincide, se queda lo que había en español y no se insiste', r2.texto);
 }
 
+titulo('el modo voz: corto, sin markdown, hecho para escucharse');
+{
+  guion = [{ texto: 'El ORIGEN está a dos dólares con cincuenta y nueve. La compra sigue cerrada.' }];
+  const r = await cerebro.pensar({ miembro: JOSE, junta: JUNTA, texto: '¿cómo está?', modo: 'voz' });
+  const p = pedidos.at(-1);
+  decir(p.options.num_predict <= 400, 'en voz se piden pocas fichas de salida: menos segundos hasta la primera frase', String(p.options.num_predict));
+  decir(/MODO VOZ/.test(p.messages[0].content) && /Sin markdown/.test(p.messages[0].content), 'y el prompt dice que lo que diga se va a ESCUCHAR');
+  decir(r.texto.length < 200, 'la respuesta es corta', r.texto);
+  guion = [{ texto: 'ok' }];
+  await cerebro.pensar({ miembro: JOSE, junta: JUNTA, texto: 'x' });
+  decir(!/MODO VOZ/.test(pedidos.at(-1).messages[0].content) && pedidos.at(-1).options.num_predict > 1000, 'y en texto, lo de siempre');
+  /* El orden del prompt: lo quieto primero, la hora al final. Ollama reusa la
+     caché del prefijo que coincide; la fecha adelante la rompía cada minuto. */
+  const sys = pedidos.at(-1).messages[0].content;
+  const i = (t) => sys.indexOf(t);
+  decir(i('LO QUE LA JUNTA TE HA DICHO') < i('EL SABER DE LA CASA') && i('EL SABER DE LA CASA') < i('EL ESTADO VIVO') && i('EL ESTADO VIVO') < i('Hoy es'),
+    'memoria → saber → estado vivo → hora: de lo más quieto a lo más movido, para la caché del nodo');
+}
+
 titulo('el título, sin herramientas y corto');
 {
   guion = [{ texto: '"Fondeo de la caliente"\n' }];

@@ -129,7 +129,7 @@ function fecha() {
   return new Date().toLocaleString('es-HN', { timeZone: 'America/Tegucigalpa', dateStyle: 'full', timeStyle: 'short' });
 }
 
-function sistema({ miembro, memorias, estadoVivo, secciones, vozCasa, pendientes = [], chico = false }) {
+function sistema({ miembro, memorias, estadoVivo, secciones, vozCasa, pendientes = [], chico = false, modo = 'texto', alias = null }) {
   const mem = memorias.length
     ? memorias.map((m) => `- [${m.alcance === 'junta' ? 'JUNTA' : 'suyo'} · ${new Date(m.en).toLocaleDateString('es-HN')}] ${m.texto}`).join('\n')
     : '(todavía no hay memorias guardadas)';
@@ -186,20 +186,32 @@ CON LAS HERRAMIENTAS, SIN TRAMPA
 LA VOZ DE LA CASA (las fichas públicas de AU-RA: qué se dice y cómo)
 ${voz}`;
 
-  const delMomento = `Hoy es ${fecha()}. Estás hablando con ${miembro.nombre} (${miembro.rol || 'junta directiva'}).
+  /* EL ORDEN DEL BLOQUE DEL MOMENTO TAMBIÉN IMPORTA, y por lo mismo: Ollama
+     reusa la caché del prefijo que coincide byte a byte con el turno anterior.
+     Memoria y pendientes cambian poco; el saber cambia por pregunta; el estado
+     vivo cambia cada 30 s; la fecha, cada minuto. De lo más quieto a lo más
+     movido, y la hora al final: así el nodo evalúa de nuevo solo la cola. */
+  const enVoz = modo === 'voz' ? `
 
-LO QUE LA JUNTA TE HA DICHO (tu memoria)
+MODO VOZ — lo que digas se va a ESCUCHAR, no a leer
+- Dos a cuatro frases. Sin markdown, sin listas, sin títulos, sin tablas, sin enlaces.
+- Los números, como se dicen: «dos dólares con cincuenta y nueve», «cuatro mil cuatrocientos».
+- Lo primero es la respuesta; el contexto, después y solo si hace falta.
+- Si el tema pide detalle, lo decís en una frase y ofrecés escribirlo: «¿te lo escribo completo?».` : '';
+  const delMomento = `LO QUE LA JUNTA TE HA DICHO (tu memoria)
 ${mem}
 
 LO QUE ESTÁ PENDIENTE (tareas abiertas, con su id)
 ${tareas}
 Cuando en la conversación aparezca algo que hay que hacer, anotalo con anotar_pendiente. Cerrá uno solo si alguien de la junta dice que ya se hizo.
 
+EL SABER DE LA CASA (las secciones que hablan de esto)
+${fichas}
+
 EL ESTADO VIVO DE LAS CASAS (leído ahora mismo)
 ${vivo.paraElModelo(estadoVivo)}
 
-EL SABER DE LA CASA (las secciones que hablan de esto)
-${fichas}`;
+Hoy es ${fecha()}. Estás hablando con ${miembro.nombre} (${miembro.rol || 'junta directiva'}).${alias ? `\nEn esta interfaz te presentás como «${alias}»: si te preguntan tu nombre, sos ${alias}. Seguís siendo el mismo asistente de la junta, con las mismas reglas.` : ''}${enVoz}`;
 
   // La voz de la casa entra en el bloque estable, así que el corte queda ahí.
   return [

@@ -1,0 +1,25 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* El vacío. Todo lo demás es emisivo encima de esto. */
+html, body { height: 100%; background: #02060f; color: #EAF2FF; overflow: hidden; }
+body { margin: 0; -webkit-font-smoothing: antialiased; font-family: Manrope, system-ui, sans-serif; }
+canvas { display: block; }
+::selection { background: rgba(93, 214, 255, .35); }
+
+/* Las burbujas: vidrio oscuro, borde de luz. */
+.burbuja { backdrop-filter: blur(14px) saturate(120%); -webkit-backdrop-filter: blur(14px) saturate(120%); }
+.burbuja.mia { background: rgba(6, 14, 30, .74); border: 1px solid rgba(93, 214, 255, .18); }
+.burbuja.aura { background: rgba(8, 22, 46, .74); border: 1px solid rgba(93, 214, 255, .38); box-shadow: 0 0 40px rgba(93, 214, 255, .12), inset 0 0 24px rgba(93, 214, 255, .06); }
+
+/* El arco de voz: una línea luminosa, no una barra de chat. */
+.arco { background: linear-gradient(90deg, transparent, rgba(93, 214, 255, .55) 30%, rgba(93, 214, 255, .55) 70%, transparent); height: 1px; }
+.arco-input { background: transparent; border: 0; outline: 0; color: #EAF2FF; text-align: center; caret-color: #5DD6FF; }
+.arco-input::placeholder { color: rgba(159, 179, 204, .55); letter-spacing: .04em; }
+
+@keyframes aparecer { from { opacity: 0; transform: translateY(6px) } to { opacity: 1; transform: none } }
+@keyframes latir { 0%, 100% { opacity: .55 } 50% { opacity: 1 } }
+.aparece { animation: aparecer .6s ease-out both; }
+.late { animation: latir 2.4s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) { .aparece, .late { animation: none } }

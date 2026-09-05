@@ -33,7 +33,7 @@ const errores = []; p.on('pageerror', (e) => errores.push(String(e.message).slic
 p.on('console', (m) => { if (m.type() === 'error' && !/fonts\.g|401|403|503|Failed to load resource/.test(m.text())) errores.push(m.text().slice(0, 120)); });
 
 titulo('la puerta');
-await p.goto(BASE + '/', { waitUntil: 'domcontentloaded' });
+await p.goto(BASE + '/clasico/', { waitUntil: 'domcontentloaded' });
 await p.waitForTimeout(1200);
 decir(await p.evaluate(() => !document.getElementById('puerta').hidden && document.getElementById('panel').hidden), 'sin sesión se ve la puerta y no el panel');
 decir(await p.evaluate(() => { const c = document.getElementById('presenciaPuerta'); const d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data; let n = 0; for (let i = 3; i < d.length; i += 4 * 97) if (d[i] > 10) n++; return n > 40; }), 'la presencia de la puerta tiene tinta: el lienzo no está en blanco');
