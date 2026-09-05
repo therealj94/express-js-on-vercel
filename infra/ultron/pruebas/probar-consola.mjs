@@ -50,21 +50,31 @@ await p.waitForFunction(() => /Buen(os|as) (días|tardes|noches), José\./.test(
 {
   decir(await p.evaluate(() => !document.getElementById('portada').hidden && document.getElementById('hilo').hidden),
     'sin conversación se ve la portada, no un hilo vacío');
-  // La figura tiene que tener TINTA: un lienzo en blanco no da error y es la
-  // forma en que una presencia rota pasa desapercibida.
+  /* La figura es una imagen, y una imagen que no llegó no da error: deja un
+     hueco y la consola sigue como si nada. Así que se comprueba que cargó de
+     verdad —con ancho propio— y que va compuesta en modo pantalla, que es lo
+     que hace desaparecer su negro contra el grafito de la casa. */
+  decir(await p.evaluate(() => {
+    const f = document.getElementById('figura');
+    return !!f && f.complete && f.naturalWidth > 300;
+  }), 'la figura de ULTRON cargó: la imagen está, no es un hueco');
+  decir(await p.evaluate(() => getComputedStyle(document.getElementById('figura')).mixBlendMode === 'screen'),
+    'y va en modo pantalla, para que su negro no sea un rectángulo sobre la consola');
+  // El lienzo de al lado tiene que tener TINTA: es el aura y el latido que la
+  // hacen estar viva, y un lienzo en blanco no da error.
   decir(await p.evaluate(() => {
     const c = document.getElementById('presencia');
     const d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data;
     let n = 0; for (let i = 3; i < d.length; i += 4 * 131) if (d[i] > 12) n++;
     return n > 150;
-  }), 'la figura está dibujada: el lienzo tiene tinta');
+  }), 'el aura está pintada: el lienzo tiene tinta');
   decir(await p.evaluate(() => {
-    // Y está donde tiene que estar: pintada en el centro, no en una esquina.
+    // Y está donde tiene que estar: el aura envuelve a la figura, en el centro.
     const c = document.getElementById('presencia'); const x = c.getContext('2d');
     const centro = x.getImageData(c.width * 0.42, c.height * 0.3, c.width * 0.16, c.height * 0.3).data;
     let n = 0; for (let i = 3; i < centro.length; i += 4 * 37) if (centro[i] > 20) n++;
     return n > 40;
-  }), 'y la cabeza cae en el centro del lienzo');
+  }), 'y cae sobre la figura, en el centro, no en una esquina');
   const h = await texto('#portada');
   decir(/Buen(os|as) (días|tardes|noches), José\./.test(h), 'saluda por el nombre de pila', h);
   decir(/Quedo a su disposición\./.test(h), 'y cede la palabra en registro institucional', h);
@@ -94,7 +104,9 @@ titulo('pensar sin cerebro lo dice, no se cuelga');
   decir(await p.evaluate(() => !document.getElementById('btnEnviar').disabled), 'y el compositor vuelve a quedar usable');
   decir(await p.evaluate(() => document.getElementById('portada').hidden && !document.getElementById('hilo').hidden),
     'con conversación, la portada deja paso al hilo');
-  decir(await p.evaluate(() => document.getElementById('presencia').classList.contains('fondo')),
+  decir(await p.evaluate(() => document.getElementById('presencia').classList.contains('fondo')
+    && document.getElementById('figura').classList.contains('fondo')
+    && parseFloat(getComputedStyle(document.getElementById('figura')).opacity) < 0.5),
     'y la figura se atenúa para no competir con el texto');
   decir(/Buen(os|as) (días|tardes|noches), José\./.test(h), 'el saludo pasó al hilo: queda en el registro', h.slice(0, 120));
 }
