@@ -82,7 +82,7 @@ Comparten también **lo demás**:
 
 | Variable | Qué es | Obligatoria |
 |---|---|---|
-| `ULTRON_JUNTA` | JSON: `[{"nombre","correo","clave","rol","whatsapp"}]`. **Sin esto no entra nadie.** | sí |
+| `ULTRON_JUNTA` | JSON: `[{"nombre","correo","clave","gid","rol","whatsapp"}]`. Hace falta `clave` **o** `gid` (o las dos). **Sin esto no entra nadie.** | sí |
 | `ULTRON_SECRETO` | Firma de las sesiones (una cadena larga al azar). | sí |
 | `ULTRON_CEREBRO` | `nodo` o `claude`. Sin ella: nodo si está configurado. | no |
 | `ULTRON_NODO_URL`, `ULTRON_NODO_SECRETO`, `ULTRON_NODO_CERT` | El motor del nodo: `https://<ip>:8443`, su secreto y su certificado (PEM). Los pone `nodo/desplegar-motor.py`. | sí para pensar con el nodo |
@@ -95,9 +95,38 @@ Comparten también **lo demás**:
 | `ZERNIO_BASE`, `ZERNIO_CLAVE`, `ZERNIO_CUENTA` | WhatsApp de salida (las mismas de AU-RA). | no |
 | `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY` | Correo por SES. | no |
 | `ULTRON_SECRETO_AURA` | El secreto con el que AU-RA reenvía WhatsApp de la junta. | no |
+| `GENESIS_API_KEY` | La clave de la app `ultron` en Genesis ID. Enciende el ingreso con Veta Wallet. Sin ella el botón ni se enseña. | no |
+| `GENESIS_URL` | Genesis ID. Por omisión `https://genesis-id.onrender.com`. | no |
 | `ORDENEX_API`, `AUCORP_API`, `WALLET_API`, `GENESIS_API`, `ORDENSCAN_API` | Para apuntar a otras casas (ensayo). | no |
 
 **Ninguna llave va en el código ni en el repositorio.** Se ponen en Heroku.
+
+## La puerta
+
+Dos formas de entrar, y **la lista manda en las dos**:
+
+- **Correo y clave.** La de siempre, rotable desde `ULTRON_JUNTA`.
+- **El pase de Genesis.** La persona toca «Entrar con mi Veta Wallet», la
+  wallet le pide a Genesis ID un pase de SSO y la devuelve a ULTRON con él;
+  ULTRON se lo da a Genesis a comprobar con su propia `GENESIS_API_KEY` y
+  Genesis contesta de quién es ese pase (un GID). Si ese GID está en
+  `ULTRON_JUNTA`, entra.
+
+Genesis no decide quién es de la junta: decide si un pase es de verdad y de
+quién. Un GID verificado del ecosistema —hay miles— **no** abre esta puerta si
+no está en la lista. Quien rebota ve su GID en pantalla para pasárselo a quien
+administra la variable; ese es el alta de un miembro nuevo.
+
+Para encenderlo hacen falta dos cosas, y ninguna pasa por el código:
+
+1. Dar de alta la app `ultron` en Genesis ID (ya está declarada en
+   `APPS_ECOSISTEMA`, se crea sola en el arranque) y poner su clave de API en
+   `GENESIS_API_KEY` aquí. Si el arranque no dejó ver la clave, se rota desde
+   el panel de Genesis → Aplicaciones → ultron → Rotar.
+2. Escribir el `gid` de cada miembro en `ULTRON_JUNTA`.
+
+Sin `GENESIS_API_KEY` el botón ni se enseña y todo sigue como estaba: **el SSO
+suma una forma de entrar, no reemplaza la que hay.**
 
 ## Desplegar
 
@@ -124,4 +153,7 @@ Antes de cada despliegue, `node bin/armar-saber.mjs` si cambió algún documento
 
 - **PDF.** Los documentos se bajan como `.md` y `.html` (que se imprime a PDF desde el navegador). Un `.pdf` directo es la siguiente pieza.
 - **Entrada por correo.** Los correos salen; para que la junta le escriba por correo hace falta el buzón entrante (`infra/correo-entrante`) enchufado, como con WhatsApp.
-- **Genesis SSO.** La puerta es correo + clave por miembro. El SSO de Genesis existe y se enchufa cuando la junta sea más que seis.
+- **Que la junta tenga su GID puesto.** El ingreso con Veta Wallet ya está,
+  pero solo entra por ahí quien tenga su `gid` escrito en `ULTRON_JUNTA`. Quien
+  entre sin estar en la lista ve su GID en pantalla para pasarlo: ese es el
+  alta.

@@ -73,6 +73,11 @@ const DATOS = (() => {
     FalloApi, get, post, patch, borrar, pensar, voz,
     yo: () => get('/yo'),
     entrar: (correo, clave) => post('/entrar', { correo, clave }),
+    /* El pase que trae la wallet en el hash. Se canjea contra el servidor, que
+       es el único que puede preguntarle a Genesis: la clave de API no baja
+       nunca al navegador. Plazo largo porque del otro lado hay un Genesis en
+       Render que puede estar despertando. */
+    entrarConGenesis: (token) => pedir('/entrar/genesis', { metodo: 'POST', cuerpo: { token }, plazo: 40_000 }),
     salir: () => post('/salir', {}),
     saludo: () => get('/saludo'),
     vivo: () => get('/vivo'),

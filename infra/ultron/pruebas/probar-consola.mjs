@@ -38,6 +38,17 @@ await p.goto(BASE + '/', { waitUntil: 'domcontentloaded' });
 await p.waitForSelector('#puerta:not([hidden])', { timeout: 10000 });
 decir(await p.evaluate(() => document.getElementById('consola').hidden), 'sin sesión se ve la puerta y no la consola');
 decir(/Junta Directiva/.test(await texto('#puerta')), 'y la puerta dice a quién está reservada');
+/* Este servidor de prueba NO tiene GENESIS_API_KEY. Un botón «Entrar con mi
+   Veta Wallet» que no puede funcionar es peor que no tenerlo: la persona lo
+   toca, da la vuelta entera por la wallet y vuelve a un 503 creyendo que la
+   puerta está rota. Se esconde, y la clave vuelve a ser el camino de oro. */
+decir(await p.evaluate(() => document.getElementById('puertaGenesis').hidden),
+  'sin Genesis configurado, el botón de la wallet no se enseña');
+decir(await p.evaluate(() => {
+  const b = document.querySelector('#formPuerta button[type=submit]');
+  return getComputedStyle(b).backgroundColor === getComputedStyle(document.documentElement).getPropertyValue('--oro').trim()
+    || /201, 169, 97/.test(getComputedStyle(b).backgroundColor);
+}), 'y entonces «Ingresar» es el botón principal, en oro');
 await p.fill('input[name=correo]', 'jose@ordenglobal.org'); await p.fill('input[name=clave]', 'mala'); await p.click('#formPuerta button[type=submit]');
 await p.waitForTimeout(600);
 decir(/incorrectos/i.test(await texto('#puertaError')), 'con la clave mala lo dice');

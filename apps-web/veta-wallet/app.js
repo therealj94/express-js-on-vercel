@@ -54,6 +54,18 @@ const VETA = (() => {
      'https://www.aucorp.io/banca' y nada mas cambia. Mientras tanto, mandar a
      la gente a una puerta que no existe seria peor que la URL fea. */
   const URL_AUCORP = window.AUC_URL || 'https://main.d2e55u6ls6v9xt.amplifyapp.com/banca';
+  /* ULTRON — la consola de la Junta Directiva. Mismo circuito que Ordenex y
+     AuCorp: su puerta manda a /#sso-ultron y volverConLlave devuelve a la
+     persona con su pase.
+
+     Y una diferencia que importa: a ULTRON no entra cualquiera con el pase.
+     El pase solo dice QUIEN es; ser de la junta lo decide la lista de ULTRON,
+     y una identidad verificada del ecosistema que no este en esa lista rebota
+     alli. Asi que esta linea no abre nada: solo lleva el pase hasta la puerta.
+
+     Apunta al dominio de Heroku porque es el que ULTRON sirve hoy; el dia que
+     tenga nombre propio, esta linea cambia y nada mas cambia. */
+  const URL_ULTRON = window.ULT_URL || 'https://ultron-fp-d47136405fc3.herokuapp.com';
 
   const $ = s => document.querySelector(s);
   // Todos los que coincidan, ya como lista de verdad y no como NodeList: en la
@@ -6614,6 +6626,7 @@ const VETA = (() => {
   const CASAS_SSO = {
     '#sso-ordenex': () => URL_ORDENEX,
     '#sso-aucorp': () => URL_AUCORP,
+    '#sso-ultron': () => URL_ULTRON,
   };
 
   /* ── LA LLAVE, SIN SALIR DE CASA ─────────────────────────────────────────
@@ -16163,9 +16176,9 @@ const VETA = (() => {
     const invEntrante = location.hash.startsWith('#chat') ? leerInvitacion(location.hash) : null;
     if (invEntrante) { vistaActual = 'chat'; chatPendiente = invEntrante; }
 
-    /* #sso-ordenex y #sso-aucorp son las casas del ecosistema pidiendo la
-       llave (ver volverConLlave): una intencion que llega de fuera, no una
-       ruta — se consume aqui y no entra al historial. */
+    /* #sso-ordenex, #sso-aucorp y #sso-ultron son las casas del ecosistema
+       pidiendo la llave (ver volverConLlave): una intencion que llega de
+       fuera, no una ruta — se consume aqui y no entra al historial. */
     const casaSso = CASAS_SSO[location.hash] ? CASAS_SSO[location.hash]() : null;
     ssoDestino = casaSso;
 

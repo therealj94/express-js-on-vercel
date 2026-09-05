@@ -60,6 +60,21 @@ button{cursor:pointer}
 .puerta-caja{width:min(400px,100%);border:1px solid var(--linea);background:var(--panel);border-radius:14px;padding:32px 30px}
 .marca{font:700 30px/1 var(--serif);letter-spacing:.22em;color:var(--tinta)}
 .marca-sub{margin-top:6px;font:500 11px/1.4 var(--mono);letter-spacing:.14em;text-transform:uppercase;color:var(--oro)}
+.puerta-nota{margin:10px 0 0;font-size:11.5px;line-height:1.5;color:var(--tenue);text-align:center}
+.puerta-estado{margin-top:14px;font-size:12.5px;line-height:1.5;color:var(--oro);text-align:center}
+/* El GID que el servidor devuelve cuando la identidad es buena pero no es de
+   la junta. Va en monoespaciada y seleccionable: existe para copiarlo y
+   pasárselo a quien administra la lista. */
+.puerta-gid{display:block;margin-top:8px;font:500 12px/1.5 var(--mono);color:var(--tinta);user-select:all;word-break:break-all}
+/* El «o» que separa las dos formas de entrar: una línea con la palabra
+   encima, para que se lea como una alternativa y no como un paso siguiente. */
+.puerta-o{display:flex;align-items:center;gap:12px;margin:22px 0 2px;color:var(--tenue);font:500 10.5px/1 var(--mono);letter-spacing:.14em;text-transform:uppercase}
+.puerta-o::before,.puerta-o::after{content:'';flex:1;height:1px;background:var(--linea)}
+/* Sin el pase de la wallet, la clave vuelve a ser el camino principal y su
+   botón vuelve a ser el de oro. Lo decide el CSS y no el JavaScript: así el
+   botón nunca parpadea de un estilo al otro mientras carga /salud. */
+#puertaGenesis[hidden]+form .btn{background:var(--oro);border-color:var(--oro);color:#1B1607}
+#puertaGenesis[hidden]+form .btn:hover{background:var(--oroHi);border-color:var(--oroHi)}
 .campo{display:block;margin-top:16px}
 .campo>span{display:block;margin-bottom:6px;font-size:12.5px;color:var(--tenue)}
 .entrada{width:100%;padding:11px 12px;border-radius:8px;border:1px solid var(--linea2);background:var(--fondo);color:var(--tinta);outline:none}
@@ -297,15 +312,35 @@ button{cursor:pointer}
 
 <!-- ── LA PUERTA ─────────────────────────────────────────────────────────── -->
 <div id="puerta" hidden>
-  <form class="puerta-caja" id="formPuerta" autocomplete="on">
+  <div class="puerta-caja">
     <div class="marca">ULTRON</div>
     <div class="marca-sub">Junta Directiva · Orden Global</div>
-    <label class="campo"><span>Correo</span><input class="entrada" name="correo" type="email" autocomplete="username" required></label>
-    <label class="campo"><span>Clave</span><input class="entrada" name="clave" type="password" autocomplete="current-password" required></label>
-    <button class="btn btn-oro" type="submit" style="width:100%;margin-top:20px">Ingresar</button>
+
+    <!-- El pase de la wallet. Oculto mientras no se sepa que este servidor
+         tiene Genesis: enseñar un botón que no puede funcionar es peor que no
+         tenerlo, porque la persona cree que la puerta está rota. -->
+    <div id="puertaGenesis" hidden>
+      <button class="btn btn-oro" id="btnWallet" type="button" style="width:100%;margin-top:22px">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="6" width="20" height="13" rx="2.5"/><path d="M2 10h20"/><circle cx="17.5" cy="14.5" r="1.4"/></svg>
+        Entrar con mi Veta Wallet
+      </button>
+      <p class="puerta-nota">Su identidad la confirma Genesis ID. Acá no escribe ninguna clave.</p>
+      <div class="puerta-o"><span>o con su clave</span></div>
+    </div>
+
+    <form id="formPuerta" autocomplete="on">
+      <label class="campo"><span>Correo</span><input class="entrada" name="correo" type="email" autocomplete="username" required></label>
+      <label class="campo"><span>Clave</span><input class="entrada" name="clave" type="password" autocomplete="current-password" required></label>
+      <button class="btn" type="submit" style="width:100%;margin-top:20px">Ingresar</button>
+    </form>
+
     <div class="error" id="puertaError" aria-live="polite"></div>
+    <!-- Lo que está PASANDO no es un error y no se pinta en rojo: comprobar
+         una identidad contra Genesis puede tardar unos segundos y en ese rato
+         la persona tiene que ver que algo avanza. -->
+    <div class="puerta-estado" id="puertaEstado" aria-live="polite" hidden></div>
     <p class="tenue" style="font-size:12px;margin:18px 0 0;line-height:1.5">Acceso reservado a los miembros de la Junta Directiva. Cada sesión queda registrada.</p>
-  </form>
+  </div>
 </div>
 
 <!-- ── LA CONSOLA ────────────────────────────────────────────────────────── -->

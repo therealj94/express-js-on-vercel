@@ -197,5 +197,192 @@ titulo('buscar en internet un nombre de la casa: la consulta se afina sola');
 }
 
 await s.cerrar();
+
+/* ═══ LA PUERTA POR GENESIS ═══════════════════════════════════════════════════
+ *
+ * El circuito entero contra un Genesis fingido: la wallet manda a la persona
+ * con un pase, ULTRON se lo da a Genesis a comprobar, y la LISTA decide.
+ *
+ * Lo que se castiga acá es lo que dejaría entrar a quien no debe (un pase de
+ * alguien que no es de la junta, una identidad que dejó de estar verificada,
+ * un miembro sin clave al que se le adivina la clave vacía) y lo que confunde
+ * «Genesis dijo que no» con «Genesis no contestó», que llevan a la persona a
+ * sitios distintos.
+ */
+import { createServer } from 'node:http';
+
+const GID_JOSE = 'GEN-AAAA-BBBB-1';
+const GID_NUEVO = 'GEN-CCCC-DDDD-2';
+const GID_AJENO = 'GEN-EEEE-FFFF-3';
+
+/** Un Genesis de mentira. `responder` decide qué contesta a /sso/verificar. */
+async function genesisFingido(responder) {
+  const vistas = [];
+  const sv = createServer((req, res) => {
+    let cuerpo = '';
+    req.on('data', (c) => { cuerpo += c; });
+    req.on('end', () => {
+      let d = {}; try { d = JSON.parse(cuerpo || '{}'); } catch {}
+      vistas.push({ ruta: req.url, clave: req.headers['x-api-key'] || null, token: d.token });
+      const r = responder(d, req);
+      res.writeHead(r.http, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify(r.cuerpo ?? {}));
+    });
+  });
+  await new Promise((ok) => sv.listen(0, '127.0.0.1', ok));
+  return { url: `http://127.0.0.1:${sv.address().port}`, vistas, cerrar: () => new Promise((ok) => sv.close(ok)) };
+}
+
+/* La junta de las pruebas del SSO: uno con las dos llaves, uno con solo clave
+   (como toda la junta hasta hoy) y uno con SOLO GID — el caso nuevo, y el que
+   más cuidado necesita. */
+const JUNTA_GID = JSON.stringify([
+  { nombre: 'José', correo: 'jose@ordenglobal.org', clave: 'clave-jose', gid: GID_JOSE, rol: 'presidente' },
+  { nombre: 'Mayra', correo: 'mayra@ordenglobal.org', clave: 'clave-mayra' },
+  // El gid va con espacios y en minúsculas a propósito: así se pega de una
+  // pantalla, y así tiene que funcionar igual.
+  { nombre: 'Nuevo', correo: 'nuevo@ordenglobal.org', gid: '  gen-cccc-dddd-2 ' },
+]);
+
+titulo('sin GENESIS_API_KEY el SSO ni se ofrece');
+{
+  delete process.env.GENESIS_API_KEY;
+  delete process.env.GENESIS_URL;
+  const g = await levantar(JUNTA_GID);
+  const salud = await g.pedir('/salud');
+  decir(salud.json.genesis === false, '/salud dice que no hay Genesis, y así la puerta no enseña el botón', JSON.stringify({ genesis: salud.json.genesis }));
+  const e = await g.pedir('/entrar/genesis', { metodo: 'POST', cuerpo: { token: 'lo-que-sea' } });
+  decir(e.http === 503 && e.json.codigo === 'SIN_GENESIS', 'un pase llega y se contesta 503 SIN_GENESIS: es fallo NUESTRO, no se manda a sacar otro pase', `${e.http} ${e.json?.codigo}`);
+  const c = await g.pedir('/entrar', { metodo: 'POST', cuerpo: { correo: 'jose@ordenglobal.org', clave: 'clave-jose' } });
+  decir(c.http === 200, 'y la clave sigue abriendo igual: el SSO suma, no reemplaza');
+  await g.cerrar();
+}
+
+titulo('un miembro de solo GID no tiene clave que adivinar');
+{
+  delete process.env.GENESIS_API_KEY;
+  const g = await levantar(JUNTA_GID);
+  for (const clave of ['', 'null', 'undefined', '  ']) {
+    const r = await g.pedir('/entrar', { metodo: 'POST', cuerpo: { correo: 'nuevo@ordenglobal.org', clave } });
+    decir(r.http === 401 && !r.setCookie, `«${clave}» como clave de quien no tiene clave → 401`, `${r.http}`);
+  }
+  await g.cerrar();
+}
+
+titulo('el pase de Genesis abre la puerta');
+{
+  const gen = await genesisFingido(() => ({ http: 200, cuerpo: { valido: true, gid: GID_JOSE, perfil: { gid: GID_JOSE, verificada: true, nombre: 'José Enamorado' } } }));
+  process.env.GENESIS_URL = gen.url;
+  process.env.GENESIS_API_KEY = 'gid_test_de_ultron';
+  const g = await levantar(JUNTA_GID);
+
+  const salud = await g.pedir('/salud');
+  decir(salud.json.genesis === true && salud.json.juntaConGid === 2, '/salud dice que hay Genesis y cuántos miembros tienen gid', JSON.stringify({ genesis: salud.json.genesis, conGid: salud.json.juntaConGid }));
+
+  const sinPase = await g.pedir('/entrar/genesis', { metodo: 'POST', cuerpo: {} });
+  decir(sinPase.http === 400 && sinPase.json.codigo === 'SIN_PASE', 'sin pase → 400');
+
+  const e = await g.pedir('/entrar/genesis', { metodo: 'POST', cuerpo: { token: 'pase-de-jose' } });
+  decir(e.http === 200 && e.json.miembro.nombre === 'José' && e.json.por === 'genesis', 'con el pase bueno entra José', `${e.http} ${JSON.stringify(e.json)?.slice(0, 90)}`);
+  decir(!('clave' in e.json.miembro), 'y la respuesta NO trae la clave');
+  decir(/HttpOnly/i.test(e.setCookie) && /SameSite=Strict/i.test(e.setCookie), 'con la misma cookie de siempre: HttpOnly y SameSite=Strict');
+  const cookie = e.setCookie.split(';')[0];
+  const yo = await g.pedir('/yo', { cookie });
+  decir(yo.http === 200 && yo.json.miembro.correo === 'jose@ordenglobal.org', 'y esa cookie sirve para todo lo demás, igual que la de la clave');
+
+  decir(gen.vistas.at(-1)?.ruta === '/api/v1/sso/verificar' && gen.vistas.at(-1)?.clave === 'gid_test_de_ultron',
+    'ULTRON preguntó a /api/v1/sso/verificar con SU clave de API', JSON.stringify({ ruta: gen.vistas.at(-1)?.ruta, conClave: !!gen.vistas.at(-1)?.clave }));
+  decir(gen.vistas.at(-1)?.token === 'pase-de-jose', 'y le mandó el pase tal cual llegó');
+  await g.cerrar(); await gen.cerrar();
+}
+
+titulo('el gid se compara sin importar espacios ni mayúsculas');
+{
+  // Genesis contesta el gid en su forma canónica; en la variable está pegado
+  // con espacios y en minúsculas. Tienen que ser la misma persona.
+  const gen = await genesisFingido(() => ({ http: 200, cuerpo: { valido: true, gid: GID_NUEVO, perfil: { verificada: true } } }));
+  process.env.GENESIS_URL = gen.url;
+  process.env.GENESIS_API_KEY = 'gid_test_de_ultron';
+  const g = await levantar(JUNTA_GID);
+  const e = await g.pedir('/entrar/genesis', { metodo: 'POST', cuerpo: { token: 'pase' } });
+  decir(e.http === 200 && e.json.miembro.nombre === 'Nuevo', 'el miembro de solo GID entra por la wallet', `${e.http} ${e.json?.codigo || ''}`);
+  await g.cerrar(); await gen.cerrar();
+}
+
+titulo('los cuatro «no», cada uno con su salida');
+{
+  process.env.GENESIS_API_KEY = 'gid_test_de_ultron';
+
+  // 1. Un pase válido de alguien que NO es de la junta.
+  {
+    const gen = await genesisFingido(() => ({ http: 200, cuerpo: { valido: true, gid: GID_AJENO, perfil: { verificada: true } } }));
+    process.env.GENESIS_URL = gen.url;
+    const g = await levantar(JUNTA_GID);
+    const e = await g.pedir('/entrar/genesis', { metodo: 'POST', cuerpo: { token: 'pase' } });
+    decir(e.http === 403 && e.json.codigo === 'NO_ES_JUNTA' && !e.setCookie,
+      'una identidad verificada del ecosistema que NO está en la junta rebota: Genesis dice quién es, la lista dice quién entra', `${e.http} ${e.json?.codigo}`);
+    decir(e.json.gid === GID_AJENO, 'y se le dice su GID, que es suyo y sin verlo no puede pedir que lo agreguen', String(e.json.gid));
+    await g.cerrar(); await gen.cerrar();
+  }
+
+  // 2. Genesis dice que el pase no vale.
+  {
+    const gen = await genesisFingido(() => ({ http: 401, cuerpo: { valido: false } }));
+    process.env.GENESIS_URL = gen.url;
+    const g = await levantar(JUNTA_GID);
+    const e = await g.pedir('/entrar/genesis', { metodo: 'POST', cuerpo: { token: 'pase-vencido' } });
+    decir(e.http === 401 && e.json.codigo === 'PASE_INVALIDO', 'un pase vencido → 401 PASE_INVALIDO: sacar otro sirve', `${e.http} ${e.json?.codigo}`);
+    await g.cerrar(); await gen.cerrar();
+  }
+
+  // 3. Genesis se cae. FAIL-CLOSED: no se adivina.
+  {
+    const gen = await genesisFingido(() => ({ http: 500, cuerpo: { error: 'se cayó' } }));
+    process.env.GENESIS_URL = gen.url;
+    const g = await levantar(JUNTA_GID);
+    const e = await g.pedir('/entrar/genesis', { metodo: 'POST', cuerpo: { token: 'pase-de-jose' } });
+    decir(e.http === 503 && e.json.codigo === 'GENESIS_CAIDO' && !e.setCookie,
+      'Genesis caído → 503 y NADIE entra: no se adivina un sí', `${e.http} ${e.json?.codigo}`);
+    await g.cerrar(); await gen.cerrar();
+  }
+
+  // 4. Un 200 sin `valido: true` no es un sí a medias: es un no.
+  {
+    const gen = await genesisFingido(() => ({ http: 200, cuerpo: { gid: GID_JOSE } }));
+    process.env.GENESIS_URL = gen.url;
+    const g = await levantar(JUNTA_GID);
+    const e = await g.pedir('/entrar/genesis', { metodo: 'POST', cuerpo: { token: 'pase' } });
+    decir(e.http === 401 && !e.setCookie, 'un 200 sin «valido: true» se trata como un no', `${e.http}`);
+    await g.cerrar(); await gen.cerrar();
+  }
+}
+
+titulo('la identidad tiene que seguir verificada hoy');
+{
+  process.env.GENESIS_API_KEY = 'gid_test_de_ultron';
+  {
+    const gen = await genesisFingido(() => ({ http: 200, cuerpo: { valido: true, gid: GID_JOSE, perfil: { verificada: false, estado: 'suspendida' } } }));
+    process.env.GENESIS_URL = gen.url;
+    const g = await levantar(JUNTA_GID);
+    const e = await g.pedir('/entrar/genesis', { metodo: 'POST', cuerpo: { token: 'pase' } });
+    decir(e.http === 403 && e.json.codigo === 'SIN_VERIFICAR' && !e.setCookie,
+      'un miembro de la junta cuya identidad dejó de estar verificada no entra por la wallet', `${e.http} ${e.json?.codigo}`);
+    await g.cerrar(); await gen.cerrar();
+  }
+  {
+    // Sin perfil = a nuestra clave le falta el alcance gid.perfil. Es un fallo
+    // de configuración NUESTRO y no se le cobra al usuario dejándolo entrar.
+    const gen = await genesisFingido(() => ({ http: 200, cuerpo: { valido: true, gid: GID_JOSE } }));
+    process.env.GENESIS_URL = gen.url;
+    const g = await levantar(JUNTA_GID);
+    const e = await g.pedir('/entrar/genesis', { metodo: 'POST', cuerpo: { token: 'pase' } });
+    decir(e.http === 503 && e.json.codigo === 'SIN_GENESIS' && !e.setCookie,
+      'sin perfil (falta el alcance gid.perfil) no se entra a ciegas: 503 y se canta en el log', `${e.http} ${e.json?.codigo}`);
+    await g.cerrar(); await gen.cerrar();
+  }
+  delete process.env.GENESIS_API_KEY;
+  delete process.env.GENESIS_URL;
+}
+
 console.log(fallos ? `\n${fallos} comprobación(es) fallaron` : '\nTodo en verde');
 process.exit(fallos ? 1 : 0);

@@ -7,12 +7,27 @@
 // ── LA PUERTA ───────────────────────────────────────────────────────────────
 //
 // Entra la junta y nadie más. La lista de miembros viene de ULTRON_JUNTA —un
-// JSON con nombre, correo, WhatsApp, rol y clave de cada uno— y sin esa
-// variable NO ENTRA NADIE: fail-closed, como toda puerta de esta casa. Una
-// sesión es una cookie firmada con ULTRON_SECRETO que vence sola en doce
-// horas. Sin Genesis por ahora: la junta son seis personas y una clave por
-// cabeza, rotable desde la variable, es lo proporcionado. Cuando haga falta
-// más, el SSO de Genesis ya existe y se enchufa acá.
+// JSON con nombre, correo, WhatsApp, rol, clave y (desde hoy) gid de cada uno—
+// y sin esa variable NO ENTRA NADIE: fail-closed, como toda puerta de esta
+// casa. Una sesión es una cookie firmada con ULTRON_SECRETO que vence sola en
+// doce horas.
+//
+// DOS FORMAS DE ENTRAR, Y LA LISTA MANDA EN LAS DOS:
+//
+//   · Correo y clave. La de siempre, rotable desde la variable.
+//   · El pase de Genesis. La persona toca «Entrar con mi Veta Wallet», la
+//     wallet le pide a Genesis un pase de SSO y la devuelve acá con él;
+//     ULTRON se lo da a Genesis a comprobar con SU clave de API y Genesis
+//     contesta de QUIÉN es ese pase (un GID). Si ese GID está en ULTRON_JUNTA,
+//     entra; si no, no — aunque el pase sea perfectamente válido.
+//
+// GENESIS NO DECIDE QUIÉN ES DE LA JUNTA. Decide si un pase es de verdad y de
+// quién; ser de la junta lo decide la junta, y eso vive en ULTRON_JUNTA. Un
+// GID verificado del ecosistema —hay miles— no abre esta puerta. Por eso el
+// SSO no es un agujero: es un segundo cerrojo delante del mismo padrón.
+//
+// Y SUMA, NO REEMPLAZA. Sin GENESIS_API_KEY el botón ni se enseña y todo sigue
+// como estaba. Si Genesis se cae un martes, la junta entra con su clave.
 //
 // ── LO QUE CUESTA DINERO SE FRENA ───────────────────────────────────────────
 //
@@ -35,6 +50,7 @@ const cerebro = require('./lib/cerebro');
 const canales = require('./lib/canales');
 const voz = require('./lib/voz');
 const herramientas = require('./lib/herramientas');
+const genesis = require('./lib/genesis');
 
 const app = express();
 app.set('trust proxy', 1);
@@ -42,15 +58,29 @@ app.disable('x-powered-by');
 
 // ── La junta ────────────────────────────────────────────────────────────────
 
+/* El GID se compara SIEMPRE por esta forma, de los dos lados: el que escribió
+   quien configuró la variable y el que contesta Genesis. Un espacio de más al
+   pegar, o una minúscula, dejaría a un miembro fuera de su propia casa sin que
+   nada explicara por qué. */
+const normalizarGid = (g) => String(g || '').trim().toUpperCase();
+
 function leerJunta() {
   const raw = (process.env.ULTRON_JUNTA || '').trim();
   if (!raw) return [];
   try {
     const l = JSON.parse(raw);
     if (!Array.isArray(l)) return [];
-    return l.filter((m) => m && m.correo && m.clave && m.nombre).map((m) => ({
+    /* Hace falta nombre, correo y AL MENOS UNA forma de probar quién es: la
+       clave o el GID. Un miembro con las dos entra por donde quiera; uno con
+       solo GID entra únicamente por la wallet (y es lo correcto: no tiene
+       clave que adivinarle); uno con solo clave, como hasta hoy. Uno sin
+       ninguna de las dos no es un miembro, es una línea suelta, y se descarta
+       en vez de crear un correo que abre sin nada. */
+    return l.filter((m) => m && m.correo && m.nombre && (m.clave || m.gid)).map((m) => ({
       nombre: String(m.nombre), correo: String(m.correo).toLowerCase(), rol: m.rol ? String(m.rol) : 'junta directiva',
-      whatsapp: m.whatsapp ? String(m.whatsapp) : null, clave: String(m.clave),
+      whatsapp: m.whatsapp ? String(m.whatsapp) : null,
+      clave: m.clave ? String(m.clave) : null,
+      gid: m.gid ? normalizarGid(m.gid) : null,
     }));
   } catch (e) {
     console.error(`[puerta] ULTRON_JUNTA no es JSON válido: ${e.message}`);
@@ -62,6 +92,14 @@ const SECRETO = (process.env.ULTRON_SECRETO || '').trim() || randomBytes(32).toS
 if (!process.env.ULTRON_SECRETO) console.warn('[puerta] sin ULTRON_SECRETO: las sesiones se caen al reiniciar');
 if (!JUNTA.length) console.error('[puerta] SIN JUNTA (ULTRON_JUNTA vacía o inválida): no entra nadie');
 else console.log(`[puerta] junta de ${JUNTA.length}: ${JUNTA.map((m) => m.nombre).join(', ')}`);
+/* Cuántos de la junta tienen GID se canta al arrancar, y no es un detalle: si
+   el botón de la wallet está encendido pero NADIE tiene gid, el único síntoma
+   sería que todo el mundo rebota con «esa identidad no es de la junta» y nadie
+   sabría que lo que falta es un campo en una variable. */
+const CON_GID = JUNTA.filter((m) => m.gid).length;
+if (!genesis.configurado()) console.log('[puerta] SSO de Genesis apagado (sin GENESIS_API_KEY): se entra con correo y clave');
+else if (!CON_GID) console.warn('[puerta] SSO de Genesis encendido pero NINGÚN miembro tiene gid en ULTRON_JUNTA: nadie va a poder entrar por la wallet');
+else console.log(`[puerta] SSO de Genesis encendido: ${CON_GID} de ${JUNTA.length} miembro(s) con gid`);
 
 const SESION_MS = 12 * 60 * 60 * 1000;
 const firmar = (s) => createHmac('sha256', SECRETO).update(s).digest('base64url');
@@ -136,6 +174,11 @@ app.get('/salud', async (req, res) => {
     nodo: nodoSalud,
     ok: true, nombre: 'ULTRON FP · Conocimiento Full',
     junta: JUNTA.length, cerebro: cerebro.encendido(), modelo: cerebro.modelo(), donde: cerebro.cual(),
+    /* La puerta se describe entera: si el SSO está encendido y cuántos
+       miembros pueden usarlo. Es lo que mira la pantalla de entrada para
+       decidir si enseña el botón de la wallet, y lo que mira quien diagnostica
+       por qué no lo enseña. */
+    genesis: genesis.configurado(), juntaConGid: CON_GID,
     voz: voz.encendida(), memoria: memoria.estado(), canales: canales.estado(),
     saber: saber.resumen().total, saberArmado: saber.resumen().armadoEn,
   });
@@ -146,12 +189,92 @@ app.post('/entrar', frenoEntrar, (req, res) => {
   const correo = String(req.body?.correo || '').trim().toLowerCase();
   const clave = String(req.body?.clave || '');
   const m = JUNTA.find((x) => x.correo === correo);
+  /* `!m.clave` ANTES de comparar, y esto no es defensa de más. Un miembro de
+     solo GID —el que entra por la wallet y no tiene clave— llegaba acá con
+     m.clave = null; iguales() hace String(null) y la puerta se abría a
+     cualquiera que escribiera «null». La comparación vacía nunca es un sí. */
   // El mismo mensaje exista o no el correo: no se regala la lista.
-  if (!m || !iguales(m.clave, clave)) return res.status(401).json({ error: 'Correo o clave incorrectos.', codigo: 'NO_ENTRA' });
+  if (!m || !m.clave || !iguales(m.clave, clave)) return res.status(401).json({ error: 'Correo o clave incorrectos.', codigo: 'NO_ENTRA' });
   res.cookie('ultron', emitirSesion(m.correo), {
     httpOnly: true, sameSite: 'strict', secure: process.env.NODE_ENV === 'production', maxAge: SESION_MS,
   });
   res.json({ miembro: sinClave(m) });
+});
+
+/* ── POST /entrar/genesis — la puerta por el pase de la wallet ──────────────
+ *
+ * { token } → { miembro } y la misma cookie de siempre.
+ *
+ * La persona toca «Entrar con mi Veta Wallet», la wallet le pide a Genesis un
+ * pase y la devuelve acá con él en el hash. Esta ruta hace tres cosas y ni una
+ * más: se lo da a Genesis a comprobar, mira de quién es, y busca ese GID en la
+ * junta.
+ *
+ * LOS TRES «NO» SON DISTINTOS Y SE DICEN DISTINTO, porque llevan a la persona
+ * a sitios distintos:
+ *
+ *   503 SIN_GENESIS      — acá no hay clave de API. Es culpa NUESTRA; no se le
+ *                          manda a la gente a sacar otro pase contra algo que
+ *                          jamás va a poder abrirles.
+ *   503 GENESIS_CAIDO    — no se pudo preguntar. Reintentar sirve.
+ *   401 PASE_INVALIDO    — Genesis dijo que no. Sacar otro pase sirve.
+ *   403 NO_ES_JUNTA      — el pase vale, pero ese GID no está en la lista.
+ *                          Reintentar NO sirve: hay que entrar en la lista.
+ *
+ * Y el 403 SÍ dice el GID, a propósito. Es el suyo —lo acaba de probar con un
+ * pase firmado— así que no se le regala nada, y sin verlo escrito nadie puede
+ * pedir que lo agreguen: sería un «no» sin salida. Es también como se da de
+ * alta a un miembro nuevo sin inventar un trámite: entra, ve su GID, se lo
+ * pasa a quien administra la variable, y a la segunda vez entra.
+ */
+app.post('/entrar/genesis', frenoEntrar, async (req, res) => {
+  if (!JUNTA.length) return res.status(503).json({ error: 'ULTRON no tiene junta configurada.', codigo: 'SIN_JUNTA' });
+  if (!genesis.configurado()) {
+    console.error('[puerta] pase de Genesis recibido pero este servidor no tiene GENESIS_API_KEY');
+    return res.status(503).json({ error: 'El ingreso con Veta Wallet no está configurado en este servidor.', codigo: 'SIN_GENESIS' });
+  }
+  const token = String(req.body?.token || '').trim();
+  if (!token) return res.status(400).json({ error: 'Falta el pase.', codigo: 'SIN_PASE' });
+
+  let acceso;
+  try {
+    acceso = await genesis.verificarSso(token);
+  } catch (e) {
+    console.error(`[puerta] no se pudo comprobar el pase contra Genesis: ${e.message}`);
+    return res.status(503).json({ error: 'No se pudo comprobar el acceso con Genesis. Intente de nuevo.', codigo: 'GENESIS_CAIDO' });
+  }
+  if (!acceso.valido || !acceso.gid) {
+    return res.status(401).json({ error: 'El pase no es válido o ya venció.', codigo: 'PASE_INVALIDO' });
+  }
+
+  const gid = normalizarGid(acceso.gid);
+  const m = JUNTA.find((x) => x.gid && x.gid === gid);
+  if (!m) {
+    console.warn(`[puerta] pase válido de ${gid}, que no está en la junta`);
+    return res.status(403).json({
+      error: 'Su identidad es válida, pero no está en la junta directiva de ULTRON.',
+      codigo: 'NO_ES_JUNTA', gid,
+    });
+  }
+  /* La identidad tiene que seguir verificada HOY. Genesis ya devuelve 403
+     cuando la bloqueó o la suspendió —así que esto casi nunca dispara— pero
+     «casi nunca» no es «nunca», y el perfil es la única lectura que lo dice de
+     frente. Si a la clave le faltara el alcance gid.perfil el perfil no
+     vendría: eso es un fallo NUESTRO de configuración y se canta como tal en
+     vez de dejar entrar a ciegas. */
+  if (!acceso.perfil || typeof acceso.perfil !== 'object') {
+    console.error('[puerta] Genesis validó el pase pero no mandó perfil: a la clave de ultron le falta el alcance gid.perfil');
+    return res.status(503).json({ error: 'El ingreso con Veta Wallet no está bien configurado.', codigo: 'SIN_GENESIS' });
+  }
+  if (acceso.perfil.verificada !== true) {
+    return res.status(403).json({ error: 'Su identidad ya no está verificada en Genesis ID.', codigo: 'SIN_VERIFICAR', gid });
+  }
+
+  console.log(`[puerta] ${m.nombre} entró con el pase de Genesis (${gid})`);
+  res.cookie('ultron', emitirSesion(m.correo), {
+    httpOnly: true, sameSite: 'strict', secure: process.env.NODE_ENV === 'production', maxAge: SESION_MS,
+  });
+  res.json({ miembro: sinClave(m), por: 'genesis' });
 });
 
 app.post('/salir', (req, res) => { res.clearCookie('ultron'); res.json({ ok: true }); });

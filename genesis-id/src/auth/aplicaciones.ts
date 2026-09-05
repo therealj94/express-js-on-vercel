@@ -101,6 +101,27 @@ export const APPS_ECOSISTEMA: { clave: string; nombre: string; alcances: Alcance
       'movimiento.enviar', 'tamiz.direccion', 'telemetria.enviar',
     ],
   },
+  {
+    clave: 'ultron',
+    nombre: 'ULTRON FP',
+    // La consola de la junta directiva. Es la app MÁS PEQUEÑA del ecosistema y
+    // a propósito: no tiene usuarios, tiene una lista de seis personas escrita
+    // en su propia configuración. Genesis no decide quién es de la junta —eso
+    // lo decide la junta— así que aquí solo se le pregunta una cosa: «este pase
+    // que me traen, ¿es de verdad, y de quién?». Eso es gid.verificar.
+    //
+    // gid.perfil va con él por una razón que no es comodidad: sin el perfil,
+    // ULTRON solo sabría el GID, y no podría distinguir «es la identidad de
+    // José y sigue verificada» de «es un GID que alguna vez existió». La puerta
+    // de la casa donde se habla de dinero y de la junta exige las dos cosas.
+    //
+    // Y nada más. Ni identidad.* (ULTRON no hace KYC de nadie), ni
+    // vinculo.crear (no tiene cuentas que atar: su padrón es ULTRON_JUNTA), ni
+    // movimiento.enviar (no mueve un centavo), ni tamiz.direccion (no paga
+    // retiros), ni directorio.enviar (seis personas no son un censo). Una clave
+    // filtrada de ULTRON no abre nada más que la pregunta de si un pase vale.
+    alcances: ['gid.verificar', 'gid.perfil'],
+  },
 ]
 
 /**
