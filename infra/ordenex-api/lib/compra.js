@@ -576,7 +576,16 @@ async function entregar(ordenId) {
     return { ok: false, estado, motivo };
   };
 
-  if (!cadena.direccionCaliente()) return soltar('fallida', 'la billetera de entrega no está configurada');
+  /* Sin billetera de entrega la orden queda EN REVISION, no fallida.
+   *
+   * La diferencia importa y se aprendio el 5 de septiembre: ORDENEX_HOT_KEY
+   * tenia pegada una direccion en vez de una llave. Eso es un error de la
+   * CASA, no de la orden — la persona ya deposito y su compra es buena. Con
+   * 'fallida' (terminal, y fuera del inventario comprometido) su orden moria
+   * por un dedazo nuestro y habia que rehacerla a mano. 'en-revision' la deja
+   * viva, comprometiendo su ORIGEN, y se entrega sola en cuanto la llave este
+   * bien. Los otros dos noes de aqui abajo SI son de la orden. */
+  if (!cadena.direccionCaliente()) return soltar('en-revision', 'la billetera de entrega no está configurada: lo tiene que ver una persona');
   if (billeteras.esDeLaCasa(o.aWallet)) return soltar('fallida', 'el destino es una billetera de la casa');
   if (BigInt(o.origenWei) <= 0n) {
     return soltar('fallida', 'la cantidad no llega ni a un wei de ORIGEN');

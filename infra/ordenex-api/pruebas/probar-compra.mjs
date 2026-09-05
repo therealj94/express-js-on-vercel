@@ -318,6 +318,22 @@ decir('sin ORIGEN para entregar, la orden NO nace');
   delete process.env.ORDENEX_HOT_KEY;
   let e4 = null; try { await pedir(); } catch (x) { e4 = x; }
   comprobar(e4?.codigo === 'ENTREGA_SIN_BILLETERA', 'sin ORDENEX_HOT_KEY tampoco nace', e4?.codigo);
+
+  // Y la que YA estaba depositada no se muere por un dedazo nuestro: queda en
+  // revisión —viva y comprometiendo su ORIGEN— y no fallida.
+  const u2 = await persona();
+  const vieja = await compra.OrdenCompra.create({
+    userId: String(u2._id), cadena: POLYGON, direccion: u2.direccionDeposito,
+    aWallet: u2.direccionWallet, montoMicro: '2000000', precioWei: PRECIO_WEI,
+    origenWeiCotizado: '1', plazoSeg: 900, venceEn: new Date(Date.now() + 900_000),
+    reglaRecalculo: compra.REGLA_RECALCULO,
+    depositoId: new mongoose.Types.ObjectId(), origenWei: '1000000000000000000',
+  });
+  await compra.entregar(vieja._id);
+  const leidaV = await compra.OrdenCompra.findById(vieja._id).lean();
+  comprobar(leidaV.estado === 'en-revision', 'una orden ya depositada queda EN REVISION, no fallida', `${leidaV.estado}: ${leidaV.motivo}`);
+  await compra.OrdenCompra.deleteOne({ _id: vieja._id });
+
   process.env.ORDENEX_HOT_KEY = llave;
 }
 
