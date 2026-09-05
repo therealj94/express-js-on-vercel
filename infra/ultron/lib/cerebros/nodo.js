@@ -258,6 +258,37 @@ function sinElRestoDeUnaHerramienta(texto) {
   return String(texto).replace(/^\s*(?:_{1,2}[a-z][a-z0-9_]{2,30}_{1,2}|<\|?[a-z_]{3,30}\|?>)\s*(?=\S)/i, '');
 }
 
+/* ── EL «sourceMapping: sourceMapping» DE LA CABECERA ─────────────────────────
+ *
+ * Con los parámetros del fabricante puestos, la repetición sin fin se apagó:
+ * de cientos de líneas idénticas quedó UNA, y detrás la respuesta buena y
+ * completa en español. Lo que sobrevive no es un bucle: es un PREFIJO. El
+ * modelo, en el mismo turno en que llama a una herramienta, a veces escupe
+ * además un pedazo de código; `llamadasEnTexto` se lleva lo que reconoce como
+ * llamada, y este resto se queda pegado arriba de la respuesta.
+ *
+ * La firma que se limpia es deliberadamente estrecha: una línea cuyo lado
+ * izquierdo y derecho son EL MISMO identificador —«sourceMapping:
+ * sourceMapping»—. En español eso no ocurre nunca; un dato de verdad
+ * («ORIGEN: 2,59», «Ordenex: VIVA») tiene distinto a cada lado, así que no
+ * puede caer por accidente. Y solo se mira la CABECERA: en cuanto aparece una
+ * línea que no encaja, se para — lo que venga después es la respuesta y no se
+ * toca. Si al final no quedara nada, se devuelve el texto tal cual: más vale
+ * enseñar basura que tragarse una respuesta buena. */
+function sinCodigoPegadoArriba(texto) {
+  const lineas = String(texto).split('\n');
+  let i = 0;
+  while (i < lineas.length) {
+    const l = lineas[i].trim();
+    if (!l) { i++; continue; }
+    if (!/^([A-Za-z_][A-Za-z0-9_]{2,40})\s*[:=]\s*\1\s*[,;.]?$/.test(l)) break;
+    i++;
+  }
+  if (!i) return String(texto);
+  const resto = lineas.slice(i).join('\n').replace(/^\s+/, '');
+  return resto.trim() ? resto : String(texto);
+}
+
 function largoDe(mensajes) { return mensajes.reduce((a, m) => a + String(m.content || '').length + JSON.stringify(m.tool_calls || '').length, 0); }
 
 // ── Pensar ──────────────────────────────────────────────────────────────────
@@ -489,7 +520,7 @@ async function pensar({ miembro, junta, texto, conversacionId, emitir = () => {}
     const todavia = [...textoFinal.matchAll(CITA)].map((m) => m[1].toLowerCase()).filter((c) => !new Set(usadas.map((h) => h.nombre)).has(c));
     if (todavia.length) textoFinal += `\n\n_(ULTRON citó ${todavia.join(', ')} sin haberla usado en este turno: tome ese dato con cuidado.)_`;
   }
-  textoFinal = sinRepetidos(sinElRestoDeUnaHerramienta(textoFinal));
+  textoFinal = sinRepetidos(sinCodigoPegadoArriba(sinElRestoDeUnaHerramienta(textoFinal)));
   if (!textoFinal.trim()) textoFinal = 'Revisé lo que me pidió y no me salió una respuesta con palabras. Le pido que me lo plantee de otra forma.';
 
   const vistas = new Set();
@@ -539,4 +570,4 @@ async function salud() {
   });
 }
 
-module.exports = { pensar, titular, salud, encendido, MODELO, _adentro: { pedir, llamadasEnTexto, armarMensajes, sinRepetidos, sinElRestoDeUnaHerramienta, hastaOtroAlfabeto, dondeEmpiezaElBucle, fichas, PRESUPUESTO, PRESUPUESTO_FICHAS, CTX } };
+module.exports = { pensar, titular, salud, encendido, MODELO, _adentro: { pedir, llamadasEnTexto, armarMensajes, sinRepetidos, sinElRestoDeUnaHerramienta, sinCodigoPegadoArriba, hastaOtroAlfabeto, dondeEmpiezaElBucle, fichas, PRESUPUESTO, PRESUPUESTO_FICHAS, CTX } };

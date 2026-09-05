@@ -226,6 +226,25 @@ titulo('la guarda de las citas: no se cita una herramienta que no corrió');
   decir(b('_Nota:_ el oro subió.') === '_Nota:_ el oro subió.', 'pero una cursiva de verdad no se toca', b('_Nota:_ el oro subió.'));
   decir(b('_muy importante_ y además esto') === '_muy importante_ y además esto', 'ni una cursiva de varias palabras');
   decir(b('_solo_') === '_solo_', 'y si no queda nada abajo, no se quita nada', b('_solo_'));
+
+  /* Y el otro resto, el que sobrevivió a los parámetros del fabricante. Con
+     ellos puestos la repetición sin fin se apagó —de cientos de líneas quedó
+     UNA— pero el modelo sigue escupiendo a veces un pedazo de código pegado
+     ARRIBA de la respuesta buena, en el mismo turno en que llama una
+     herramienta. Se limpia por una firma estrechísima: el mismo identificador
+     a los dos lados de los dos puntos, que en español no pasa nunca. */
+  const cc = nodo._adentro.sinCodigoPegadoArriba;
+  decir(cc('sourceMapping: sourceMapping\n\nEl ORIGEN está a 2,59 dólares.') === 'El ORIGEN está a 2,59 dólares.',
+    'el «sourceMapping: sourceMapping» de la cabecera se quita', JSON.stringify(cc('sourceMapping: sourceMapping\n\nEl ORIGEN está a 2,59 dólares.')));
+  decir(cc('sourceMapping: sourceMapping,\ntargetMapping: targetMapping;\n\nHay 10 pendientes.') === 'Hay 10 pendientes.',
+    'y varias líneas seguidas también, con su coma o su punto y coma');
+  decir(cc('ORIGEN: 2,59\nOrdenex: VIVA\n\nTodo en orden.') === 'ORIGEN: 2,59\nOrdenex: VIVA\n\nTodo en orden.',
+    'PERO un dato de verdad no se toca: los dos lados son distintos');
+  decir(cc('Nota: Nota es un nombre propio y esto sigue.') === 'Nota: Nota es un nombre propio y esto sigue.',
+    'ni una frase que empiece igual a los dos lados pero SIGA hablando');
+  decir(cc('sourceMapping: sourceMapping') === 'sourceMapping: sourceMapping',
+    'y si debajo no queda nada, no se borra: mejor basura que tragarse la respuesta');
+  decir(cc('El ORIGEN está a 2,59.') === 'El ORIGEN está a 2,59.', 'una respuesta limpia pasa intacta');
 }
 
 titulo('el presupuesto en FICHAS: el saber recibe lo que sobra, y nunca se pasa');
