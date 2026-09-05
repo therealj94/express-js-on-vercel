@@ -104,6 +104,14 @@ async function api(q, r, ruta) {
   if (q.method === 'GET' && (ruta === '/movimientos' || ruta === '/ordenes' || ruta === '/fiat/solicitudes' || ruta === '/ventas')) {
     return json(r, 200, []);
   }
+  /* El techo: lo que la caja de la casa puede pagar AHORA. 9 USDT libres —los
+     10 de la caja menos el apartado de 1— que al neto por ORIGEN dan 3,5423… */
+  if (q.method === 'GET' && ruta === '/ventas/limites') {
+    const neto = (BigInt(PRECIO_WEI) * BigInt(1000000 - PPM)) / 1000000n;
+    return json(r, 200, { encendida: ventaAbierta, precioWei: PRECIO_WEI, precioUsd: 2.566148,
+      netoPorOrigen: neto.toString(), comisionPpm: PPM,
+      redes: [{ id: 56, nombre: 'BNB Smart Chain', maxUsdtCanonico: (9n * U).toString(), maxOrigenWei: ((9n * U * U) / neto).toString() }] });
+  }
 
   // ── LAS DOS RUTAS DE LA VENTA ────────────────────────────────────────────
   if (q.method === 'POST' && ruta === '/ventas/cotizar') {
@@ -274,6 +282,37 @@ titulo('sin saldo se dice dónde está el ORIGEN');
   decir(/en Ordenex/.test(texto) && /Veta Wallet/.test(texto),
     'no es un cero mudo: dice que se vende lo que está en Ordenex', texto.slice(0, 240));
   decir(texto.includes(DEPOSITO), 'y enseña la dirección de depósito para traerlo', texto.slice(0, 240));
+}
+
+titulo('el techo de la caja se dice ANTES, no con un error después');
+{
+  saldo = wei(500);
+  await p.evaluate(() => VVENTA.otra());
+  await p.waitForTimeout(700);
+  const izq = () => p.evaluate(() => document.getElementById('vn-izq').innerText);
+  decir(/3\.542/.test(await izq()), 'el máximo que la casa puede pagar sale en pantalla sin escribir nada', (await izq()).slice(0, 260));
+  // Por debajo del techo se puede seguir; por encima, no, y se dice cuánto es.
+  await p.fill('#vn-cant', '2'); await p.waitForTimeout(900);
+  await p.fill('#vn-dir', AFUERA); await p.waitForTimeout(300);
+  decir(await p.evaluate(() => document.querySelector('.vn-btn')?.disabled === false), 'con 2 ORIGEN, por debajo del techo, se puede confirmar');
+  await p.fill('#vn-cant', '5'); await p.waitForTimeout(900);
+  decir(await p.evaluate(() => document.querySelector('.vn-btn')?.disabled === true), 'con 5, por encima, el botón se apaga');
+  decir(/La casa no puede pagar tanto/.test(await izq()), 'y se dice por qué y cuál es el máximo', (await izq()).slice(-260));
+}
+
+titulo('las partes del saldo');
+{
+  saldo = wei(500);
+  await p.evaluate(() => VVENTA.otra());
+  await p.waitForTimeout(700);
+  await p.evaluate(() => VVENTA.parte(25));
+  await p.waitForTimeout(500);
+  decir((await p.evaluate(() => document.getElementById('vn-cant').value)) === '125',
+    'el 25 % de 500 ORIGEN son 125', await p.evaluate(() => document.getElementById('vn-cant').value));
+  await p.evaluate(() => VVENTA.todo());
+  await p.waitForTimeout(500);
+  decir((await p.evaluate(() => document.getElementById('vn-cant').value)) === '500',
+    '«vender todo» sigue siendo el saldo entero, sin polvo', await p.evaluate(() => document.getElementById('vn-cant').value));
 }
 
 titulo('a 390 px no se sale nada');

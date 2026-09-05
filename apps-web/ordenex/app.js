@@ -143,11 +143,10 @@ const ONX = (() => {
     VFIAT: () => typeof VFIAT === 'undefined' ? null : VFIAT,
     VCOMPRA: () => typeof VCOMPRA === 'undefined' ? null : VCOMPRA,
     VVENTA: () => typeof VVENTA === 'undefined' ? null : VVENTA,
-    VCONVERTIR: () => typeof VCONVERTIR === 'undefined' ? null : VCONVERTIR,
   };
   // Quién es dueño de cada vista: a su módulo van alPintar() y apagar().
   const DUENO = { mercados: 'VMERCADO', mercado: 'VMERCADO', portafolio: 'VPORTA', fiat: 'VFIAT',
-                  comprar: 'VCOMPRA', vender: 'VVENTA', convertir: 'VCONVERTIR', actividad: 'VPORTA' };
+                  comprar: 'VCOMPRA', vender: 'VVENTA', actividad: 'VPORTA' };
 
   const stub = cual => `
     <div class="cab"><div><h2>${esc(t('nav.' + (cual === 'mercado' ? 'mercados' : cual)))}</h2></div></div>
@@ -160,7 +159,6 @@ const ONX = (() => {
     fiat: () => modulos.VFIAT()?.vista?.() ?? stub('fiat'),
     comprar: () => modulos.VCOMPRA()?.vista?.() ?? stub('comprar'),
     vender: () => modulos.VVENTA()?.vista?.() ?? stub('vender'),
-    convertir: () => modulos.VCONVERTIR()?.vista?.() ?? stub('convertir'),
     actividad: () => modulos.VPORTA()?.vistaActividad?.() ?? stub('actividad'),
   };
 
@@ -216,8 +214,7 @@ const ONX = (() => {
       cual === 'mercado' ? 'mercado.' + String(parAbierto || '?') : cual,
       rutaDe(cual, dato));
     // La pestaña encendida: mirar UN mercado sigue siendo estar en Mercados.
-    const encendida = cual === 'mercado' ? 'mercados'
-      : (cual === 'comprar' || cual === 'vender') ? 'convertir' : cual;
+    const encendida = cual === 'mercado' ? 'mercados' : cual;
     document.querySelectorAll('.nav[data-vista]').forEach(b =>
       b.dataset.vista === encendida ? b.setAttribute('aria-current', 'page') : b.removeAttribute('aria-current'));
     const l = $('#lienzo');

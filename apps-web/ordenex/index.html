@@ -738,6 +738,14 @@ body.en-mercado::before{content:'';position:fixed;inset:0;z-index:-1;
            border-top:1px solid rgba(255,255,255,.08)}
 .vn-recibe span{font-size:12.5px;color:var(--tenue)}
 .vn-recibe b{font-size:23px;color:var(--oroHi);font-variant-numeric:tabular-nums}
+.vn-pct{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:10px}
+.vn-pct button{padding:7px 0;border-radius:9px;border:1px solid rgba(255,255,255,.1);background:rgba(2,22,23,.45);
+  color:var(--bruma);font-family:var(--mono);font-size:11.5px;font-weight:600;cursor:pointer;transition:.15s}
+.vn-pct button:hover{color:var(--crema);border-color:var(--linea)}
+.vn-techo{margin-top:14px;padding:11px 13px;border-radius:var(--r);background:rgba(201,169,97,.06);
+  border:1px solid var(--linea2);display:grid;gap:3px;font-size:12px;color:var(--bruma)}
+.vn-techo b{font-size:15px;color:var(--crema);font-variant-numeric:tabular-nums}
+.vn-techo small{color:var(--humo);line-height:1.5}
 .vn-btn{width:100%;margin-top:16px}
 .vn-pie{margin-top:10px;font-size:11.5px;color:var(--tenue);line-height:1.5}
 .vn-lado h3{font-size:13px;letter-spacing:.02em;margin:0 0 8px}
@@ -745,38 +753,6 @@ body.en-mercado::before{content:'';position:fixed;inset:0;z-index:-1;
 .vn-pasos{margin:0 0 16px;padding-left:18px;font-size:12.5px;color:var(--tenue);line-height:1.65}
 .vn-pasos b{color:var(--crema)}
 .vn-ok{text-align:center}
-/* ── Convertir: dos cajas y una flecha ─────────────────────────────────── */
-.cv-lado{position:relative}
-.cv-et{display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap;
-  font-size:12px;color:var(--bruma);margin-bottom:7px;font-weight:500}
-.cv-et em{font-style:normal;font-size:11px;color:var(--humo)}
-.cv-max{background:none;border:0;padding:0;color:var(--bruma);font:inherit;font-size:11.5px;cursor:pointer}
-.cv-max b{color:var(--crema)} .cv-max:hover{color:var(--oroLt)}
-.cv-campo{position:relative}
-.cv-campo input{width:100%;box-sizing:border-box;padding:16px 92px 16px 15px;background:var(--campo);
-  border:1px solid var(--linea2);border-radius:var(--r2);color:var(--crema);font-family:var(--mono);
-  font-size:24px;font-variant-numeric:tabular-nums;letter-spacing:-.01em}
-.cv-campo input:focus{outline:none;border-color:var(--oro)}
-.cv-mon{position:absolute;right:12px;top:50%;transform:translateY(-50%);padding:5px 10px;border-radius:8px;
-  background:rgba(201,169,97,.12);color:var(--oroLt);font-family:var(--mono);font-size:12px;font-weight:700;letter-spacing:.06em}
-.cv-girar{display:grid;place-items:center;width:40px;height:40px;margin:6px auto;border-radius:50%;cursor:pointer;
-  border:1px solid var(--linea);background:var(--panel2);color:var(--oroLt);transition:transform .25s,background .15s}
-.cv-girar svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
-.cv-girar:hover{background:rgba(201,169,97,.14);transform:rotate(180deg)}
-.cv-precio{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-top:16px;
-  font-size:12.5px;color:var(--bruma);font-variant-numeric:tabular-nums}
-.cv-precio b{color:var(--crema)}
-.cv-fresco{color:var(--humo);font-family:var(--mono);font-size:11px}
-.cv-com{margin-top:6px;font-size:12px;color:var(--humo)} .cv-com b{color:var(--jade)}
-.cv-red{margin-top:16px}
-.cv-techo{margin-top:4px;padding:11px 13px;border-radius:var(--r);background:rgba(201,169,97,.06);
-  border:1px solid var(--linea2);display:grid;gap:3px;font-size:12px;color:var(--bruma)}
-.cv-techo b{font-size:15px;color:var(--crema)} .cv-techo small{color:var(--humo);line-height:1.5}
-.cv-btn{margin-top:16px}
-.cv-tarifas{display:grid;gap:6px;margin:0 0 14px}
-.cv-tarifas div{display:flex;justify-content:space-between;gap:12px;font-size:12.5px;color:var(--tenue);
-  padding:6px 0;border-bottom:1px solid rgba(255,255,255,.06)}
-.cv-tarifas b{color:var(--crema)}
 
 .vn-tick{font-size:34px;color:var(--oroHi);line-height:1}
 
@@ -1128,7 +1104,8 @@ body.en-mercado::before{content:'';position:fixed;inset:0;z-index:-1;
   <nav class="riel" aria-label="Secciones">
     <div class="riel-marca marca"><img src="assets/ordenex.svg" alt="">ORDEN<em>EX</em></div>
     <button class="nav" aria-current="page" data-vista="mercados" onclick="ONX.vista('mercados')"><svg viewBox="0 0 24 24"><path d="M7 3.5v3M7 16.5v4M5 6.5h4v10H5zM17 6v3M17 19v1.5M15 9h4v10h-4z"/></svg><span data-t="nav.mercados"></span></button>
-    <button class="nav" data-vista="convertir" onclick="ONX.vista('convertir')"><svg viewBox="0 0 24 24"><path d="M7 4v13M7 17l-3-3M7 17l3-3M17 20V7M17 7l-3 3M17 7l3 3"/></svg><span data-t="nav.convertir"></span></button>
+    <button class="nav" data-vista="comprar" onclick="ONX.vista('comprar')"><svg viewBox="0 0 24 24"><path d="M12 4v16M12 4l-4 4M12 4l4 4"/><path d="M4 20h16"/></svg><span data-t="nav.comprar"></span></button>
+    <button class="nav" data-vista="vender" onclick="ONX.vista('vender')"><svg viewBox="0 0 24 24"><path d="M12 20V4M12 20l-4-4M12 20l4 4"/><path d="M4 4h16"/></svg><span data-t="nav.vender"></span></button>
     <button class="nav" data-vista="portafolio" onclick="ONX.vista('portafolio')"><svg viewBox="0 0 24 24"><path d="M3 7.5A2.5 2.5 0 0 1 5.5 5H18a2 2 0 0 1 2 2v1"/><rect x="3" y="8" width="18" height="11" rx="2.5"/><circle cx="16.5" cy="13.5" r="1.3"/></svg><span data-t="nav.portafolio"></span></button>
     <button class="nav" data-vista="fiat" onclick="ONX.vista('fiat')"><svg viewBox="0 0 24 24"><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="2.6"/><path d="M5.5 9.5h.01M18.5 14.5h.01"/></svg><span data-t="nav.fiat"></span></button>
     <button class="nav" data-vista="actividad" onclick="ONX.vista('actividad')"><svg viewBox="0 0 24 24"><path d="M3 12h4l3 8 4-16 3 8h4"/></svg><span data-t="nav.actividad"></span></button>
@@ -1158,7 +1135,8 @@ body.en-mercado::before{content:'';position:fixed;inset:0;z-index:-1;
   <div class="lienzo" id="lienzo"></div>
   <nav class="tabs" aria-label="Secciones">
     <button class="nav" aria-current="page" data-vista="mercados" onclick="ONX.vista('mercados')"><svg viewBox="0 0 24 24"><path d="M7 3.5v3M7 16.5v4M5 6.5h4v10H5zM17 6v3M17 19v1.5M15 9h4v10h-4z"/></svg><span data-t="nav.mercados"></span></button>
-    <button class="nav" data-vista="convertir" onclick="ONX.vista('convertir')"><svg viewBox="0 0 24 24"><path d="M7 4v13M7 17l-3-3M7 17l3-3M17 20V7M17 7l-3 3M17 7l3 3"/></svg><span data-t="nav.convertir"></span></button>
+    <button class="nav" data-vista="comprar" onclick="ONX.vista('comprar')"><svg viewBox="0 0 24 24"><path d="M12 4v16M12 4l-4 4M12 4l4 4"/><path d="M4 20h16"/></svg><span data-t="nav.comprar"></span></button>
+    <button class="nav" data-vista="vender" onclick="ONX.vista('vender')"><svg viewBox="0 0 24 24"><path d="M12 20V4M12 20l-4-4M12 20l4 4"/><path d="M4 4h16"/></svg><span data-t="nav.vender"></span></button>
     <button class="nav" data-vista="portafolio" onclick="ONX.vista('portafolio')"><svg viewBox="0 0 24 24"><path d="M3 7.5A2.5 2.5 0 0 1 5.5 5H18a2 2 0 0 1 2 2v1"/><rect x="3" y="8" width="18" height="11" rx="2.5"/><circle cx="16.5" cy="13.5" r="1.3"/></svg><span data-t="nav.portafolio"></span></button>
     <button class="nav" data-vista="fiat" onclick="ONX.vista('fiat')"><svg viewBox="0 0 24 24"><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="2.6"/><path d="M5.5 9.5h.01M18.5 14.5h.01"/></svg><span data-t="nav.fiat"></span></button>
     <button class="nav" data-vista="actividad" onclick="ONX.vista('actividad')"><svg viewBox="0 0 24 24"><path d="M3 12h4l3 8 4-16 3 8h4"/></svg><span data-t="nav.actividad"></span></button>
@@ -1185,6 +1163,5 @@ body.en-mercado::before{content:'';position:fixed;inset:0;z-index:-1;
 <script src="fiat.js?v=6006f3ce46"></script>
 <script src="comprar.js?v=6006f3ce46"></script>
 <script src="vender.js?v=6006f3ce46"></script>
-<script src="convertir.js?v=6006f3ce46"></script>
 <script src="i18n.js?v=6006f3ce46"></script>
 <script src="app.js?v=6006f3ce46"></script>

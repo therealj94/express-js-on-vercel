@@ -51,7 +51,7 @@ es: {
   'pt.legal': 'Antes de operar, leé los <a href="legal.html#terminos" target="_blank" rel="noopener">términos y condiciones</a> y el <a href="legal.html#riesgo" target="_blank" rel="noopener">aviso de riesgo</a>. ORIGEN está referenciado al oro; una referencia no es una promesa de valor.',
 
   'nav.mercados': 'Mercados', 'nav.portafolio': 'Portafolio',
-  'nav.fiat': 'Fiat', 'nav.comprar': 'Comprar', 'nav.vender': 'Vender', 'nav.convertir': 'Convertir', 'nav.actividad': 'Actividad',
+  'nav.fiat': 'Fiat', 'nav.comprar': 'Comprar', 'nav.vender': 'Vender', 'nav.actividad': 'Actividad',
   'nav.salir': 'Salir',
   'pie.duena': 'Una casa de',
   'pie.og': 'Orden Global',
@@ -105,7 +105,7 @@ en: {
   'pt.legal': 'Before trading, read the <a href="legal.html#terminos" target="_blank" rel="noopener">terms and conditions</a> and the <a href="legal.html#riesgo" target="_blank" rel="noopener">risk notice</a>. ORIGEN is referenced to gold; a reference is not a promise of value.',
 
   'nav.mercados': 'Markets', 'nav.portafolio': 'Portfolio',
-  'nav.fiat': 'Fiat', 'nav.comprar': 'Buy', 'nav.vender': 'Sell', 'nav.convertir': 'Convert', 'nav.actividad': 'Activity',
+  'nav.fiat': 'Fiat', 'nav.comprar': 'Buy', 'nav.vender': 'Sell', 'nav.actividad': 'Activity',
   'nav.salir': 'Sign out',
   'pie.duena': 'A house of',
   'pie.og': 'Orden Global',

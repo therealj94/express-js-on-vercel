@@ -58,6 +58,7 @@ const VVENTA = (() => {
   let trabajando = false;
   let resultado = null;         // { ok, id, hash, explorador, neto } o { error, codigo }
   let abierta = null;           // /salud → venta
+  let capacidad = null;         // GET /ventas/limites → el techo de la caja
   let tCotiza = null;
 
   const REDES = {
@@ -113,6 +114,24 @@ const VVENTA = (() => {
     }
   }
 
+  /* EL TECHO, ANTES DE ESCRIBIR NADA.
+   *
+   * Lo que se puede vender no lo decide el saldo de quien vende sino la caja
+   * de la casa: si hay 10 USDT, no hay forma de pagar veinte. Hasta hoy eso se
+   * descubría con un SIN_CAJA DESPUÉS de escribir la cantidad, elegir la red y
+   * pegar la dirección — el peor momento para enterarse. `GET /ventas/limites`
+   * lo publica, sale de la misma cuenta que hace la venta de verdad (caja
+   * menos lo en vuelo menos el apartado) y se vuelve a leer con cada
+   * cotización: la caja baja con cada venta de cualquiera. */
+  async function traerCapacidad() {
+    try { capacidad = await DATOS.get('/ventas/limites'); } catch { capacidad = null; }
+  }
+  function techoWei() {
+    const r = (capacidad?.redes || []).find((x) => Number(x.id) === red);
+    if (!r?.maxOrigenWei) return null;
+    try { return BigInt(r.maxOrigenWei); } catch { return null; }
+  }
+
   async function traerSalud() {
     try {
       const r = await fetch(DATOS.API + '/salud', { signal: AbortSignal.timeout(8000) });
@@ -129,6 +148,7 @@ const VVENTA = (() => {
     if (!wei) { cotiza = null; return repintar(); }
     tCotiza = setTimeout(async () => {
       const pedido = wei;
+      traerCapacidad().then(() => { if (aWei(cantidad) === pedido) repintar(); });
       try {
         const c = await DATOS.post('/ventas/cotizar', { origenWei: pedido, red });
         if (aWei(cantidad) === pedido) { cotiza = c; repintar(); }
@@ -146,7 +166,7 @@ const VVENTA = (() => {
     <div class="cab">
       <div>
         <h2>Vender ORIGEN</h2>
-        <p class="cab-sub">Convertí el ORIGEN que tenés en Ordenex en USDT, a la dirección que digas.</p>
+        <p class="cab-sub">Vendé el ORIGEN que tenés en Ordenex y recibí USDT en la dirección que digas.</p>
       </div>
     </div>
     <div class="cp-grid">
@@ -160,8 +180,10 @@ const VVENTA = (() => {
     const wei = aWei(cantidad);
     const sinSaldo = saldoWei !== null && BigInt(saldoWei) === 0n;
     const pasa = wei && saldoWei !== null && BigInt(wei) <= BigInt(saldoWei);
+    const techo = techoWei();
+    const cabe = !(wei && techo !== null && BigInt(wei) > techo);
     const r = redDe(red);
-    const listo = Boolean(pasa && cotiza && !cotiza.error && destino && !trabajando && abierta !== false);
+    const listo = Boolean(pasa && cabe && cotiza && !cotiza.error && destino && !trabajando && abierta !== false);
 
     return `
     <div class="vidrio cp-caja">
@@ -186,7 +208,12 @@ const VVENTA = (() => {
             Acá se vende lo que está <b>en Ordenex</b>, no lo que tenés en tu Veta Wallet.
             ${direccionDeposito ? `Para traerlo, mandá ORIGEN a tu dirección de depósito:<br><code class="vn-dir">${esc(direccionDeposito)}</code>` : ''}
           </div>` : ''}
+        ${saldoWei && BigInt(saldoWei) > 0n ? `
+          <div class="vn-pct" role="group">
+            ${[25, 50, 75, 100].map((n) => `<button type="button" onclick="VVENTA.parte(${n})">${n} %</button>`).join('')}
+          </div>` : ''}
         ${wei && !pasa && saldoWei !== null ? '<div class="vn-mal">No tenés tanto ORIGEN disponible.</div>' : ''}
+        ${pasa && !cabe ? `<div class="vn-mal">La casa no puede pagar tanto ahora mismo: el máximo es ${deWei(techo, 4)} ORIGEN.</div>` : ''}
       </div>
 
       <div class="campo">
@@ -208,6 +235,13 @@ const VVENTA = (() => {
         <input id="vn-dir" class="vn-input" autocomplete="off" spellcheck="false" placeholder="0x…"
                value="${esc(destino)}" oninput="VVENTA.destino(this.value)">
       </div>
+
+      ${techo !== null ? `
+      <div class="vn-techo">
+        <span>Máximo que la casa puede pagar ahora</span>
+        <b class="mono">${deWei(techo, 4)} ORIGEN</b>
+        <small>Es lo que hay en la caja de salidas. Para vender más, hacelo en dos veces o esperá a que se reponga.</small>
+      </div>` : ''}
 
       ${cotiza && !cotiza.error ? `
       <div class="vn-cuenta">
@@ -281,8 +315,17 @@ const VVENTA = (() => {
   // ── manejadores ───────────────────────────────────────────────────────────
 
   function cantidadCambia(v) { cantidad = v; cotizarPronto(); repintar(); }
-  function todo() { if (saldoWei) { cantidad = deWei(saldoWei, 18); cotizarPronto(); repintar(); } }
-  function redCambia(id) { red = Number(id); cotizarPronto(); repintar(); }
+  function todo() { parte(100); }
+  /* Una parte del saldo. Se trunca hacia abajo —jamás se ofrece un wei que no
+     se tiene— y se escribe con los dieciocho decimales para que «100 %» sea
+     exactamente el saldo y no un redondeo que deje polvo sin vender. */
+  function parte(pct) {
+    if (saldoWei === null) return;
+    const n = BigInt(Math.max(1, Math.min(100, Number(pct) || 0)));
+    cantidad = deWei(((BigInt(saldoWei) * n) / 100n).toString(), 18);
+    cotizarPronto(); repintar();
+  }
+  function redCambia(id) { red = Number(id); cotizarPronto(); repintar(); }   // el techo es por red
   function destinoCambia(v) { destino = String(v || '').trim(); repintar(); }
   function otra() { resultado = null; ventaKey = null; cantidad = ''; cotiza = null; traerSaldo().then(repintar); repintar(); }
 
@@ -307,7 +350,7 @@ const VVENTA = (() => {
   }
 
   async function alPintar() {
-    await Promise.all([traerSaldo(), traerLimites(), traerSalud()]);
+    await Promise.all([traerSaldo(), traerLimites(), traerSalud(), traerCapacidad()]);
     repintar();
   }
 
@@ -315,7 +358,7 @@ const VVENTA = (() => {
 
   return {
     vista, alPintar, apagar,
-    cantidad: cantidadCambia, todo, red: redCambia, destino: destinoCambia, vender, otra,
+    cantidad: cantidadCambia, todo, parte, red: redCambia, destino: destinoCambia, vender, otra,
     _adentro: { aWei, deWei },
   };
 })();

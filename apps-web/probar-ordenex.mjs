@@ -378,12 +378,12 @@ console.log('\n── mercados, sin sesión ────────────
      esperaba catorce, la tabla pinta cinco, y el numero a mano llevaba tanto
      tiempo mal que ya no delataba nada. La lista es el contrato; la prueba
      comprueba que la pantalla lo cumple, no que coincida con un recuerdo. */
-  const filas = await p.evaluate(() => document.querySelectorAll('#ms-cuerpo tr').length);
+  const filas = await p.evaluate(() => document.querySelectorAll('#ms-cuerpo .ms-fila').length);
   const pares = await p.evaluate(() => CADENA.PARES.length);
   decir(filas === pares && filas > 0,
     'todos los mercados publicados están SIEMPRE en pantalla, con guion donde no hay dato',
     `filas: ${filas} de ${pares} pares`);
-  const auka = await p.evaluate(() => document.querySelector('#ms-cuerpo tr')?.textContent || '');
+  const auka = await p.evaluate(() => document.querySelector('#ms-cuerpo .ms-fila')?.textContent || '');
   decir(/AUKA/.test(auka) && /\b111\b/.test(auka) && /222 AUKA/.test(auka), 'la fila de AUKA trae último 111 y volumen 222', auka);
 
   /* LAS DOS PUNTAS EN LA LISTA, y los TRES estados distintos.
@@ -396,8 +396,9 @@ console.log('\n── mercados, sin sesión ────────────
      pasar, y exige que los tres estados se distingan — porque «vacio» donde
      en realidad es «no lo se» es la misma mentira con otra letra. */
   const puntas = await p.evaluate(() => {
-    const fila = (i) => document.querySelectorAll('#ms-cuerpo tr')[i];
-    const celda = (i) => fila(i)?.children[2]?.innerText.replace(/\s+/g, ' ').trim() ?? null;
+    // La columna del libro es .ms-libro dentro de cada fila de la rejilla.
+    const fila = (i) => document.querySelectorAll('#ms-cuerpo .ms-fila')[i];
+    const celda = (i) => fila(i)?.querySelector('.ms-libro')?.innerText.replace(/\s+/g, ' ').trim() ?? null;
     return { auka: celda(0), agka: celda(1), otro: celda(2) };
   });
   decir(/venta/i.test(puntas.auka) && /112/.test(puntas.auka) && /compra/i.test(puntas.auka) && /110/.test(puntas.auka),
@@ -409,7 +410,7 @@ console.log('\n── mercados, sin sesión ────────────
 // ── 3 · un mercado abierto: velas pintadas, libro con filas, invitación ────
 console.log('\n── AUKA-ORIGEN abierto, sin sesión ───────────────────────────');
 {
-  await p.click('#ms-cuerpo tr');
+  await p.click('#ms-cuerpo .ms-fila');
   await p.waitForTimeout(1200);
   decir(await p.evaluate(() => location.hash) === '#mercado/AUKA-ORIGEN', 'la barra de direcciones nombra el mercado');
   decir(/\b111\b/.test(await p.evaluate(() => document.querySelector('#vm-ultimo')?.textContent || '')), 'la cabecera dice el último: 111');
@@ -833,7 +834,10 @@ console.log('\n── LA SALA, COMO UNA MESA DE OPERACIONES ──────�
 
   // 4. Las pestañas de abajo, sin cambiar de vista.
   const pes = await pg.evaluate(() => [...document.querySelectorAll('.vm-peskab button')].map(b => b.innerText.trim()));
-  decir(pes.length === 2, 'hay dos pestañas debajo del libro', pes.join(' · '));
+  /* Cuatro: los tratos de la casa, mis órdenes abiertas, el historial de las
+     cerradas y mis tratos. Son las cuatro preguntas que alguien que opera se
+     hace sin querer salir de la sala. */
+  decir(pes.length === 4, 'hay cuatro pestañas debajo del libro', pes.join(' · '));
   await pg.evaluate(() => VMERCADO.pestana('mias'));
   await pg.waitForTimeout(250);
   const mias = await pg.evaluate(() => ({
@@ -1056,7 +1060,7 @@ console.log('\n── EL BACKEND CAIDO: LOS MERCADOS SIGUEN EN PANTALLA ──�
   await pg.waitForTimeout(3000);
 
   const est = await pg.evaluate(() => ({
-    filas: document.querySelectorAll('#ms-cuerpo tr').length,
+    filas: document.querySelectorAll('#ms-cuerpo .ms-fila').length,
     pares: CADENA.PARES.length,
     guiones: (document.querySelector('#ms-cuerpo')?.innerText.match(/—/g) || []).length,
     nota: document.querySelector('#ms-nota')?.textContent || '',
