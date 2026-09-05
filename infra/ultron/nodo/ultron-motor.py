@@ -137,13 +137,26 @@ class Motor(BaseHTTPRequestHandler):
             if entrada is None:
                 return self._json(400, {'error': 'falta input', 'codigo': 'SIN_ENTRADA'})
             self._reenviar('POST', ruta, json.dumps(
-                {'model': MODELO_VECTOR, 'input': entrada, 'keep_alive': '30m'}).encode())
+                {'model': MODELO_VECTOR, 'input': entrada, 'keep_alive': -1}).encode())
             return
         pedido['model'] = MODELO
         opciones = pedido.get('options') if isinstance(pedido.get('options'), dict) else {}
         opciones['num_ctx'] = CTX
         pedido['options'] = opciones
-        pedido['keep_alive'] = pedido.get('keep_alive') or '30m'
+        # KEEP_ALIVE = -1: NO SE SUELTA NUNCA, y no es una exageracion.
+        #
+        # La maquina tiene 15 GB de RAM y el modelo pesa 16: no cabe en la
+        # cache del sistema, asi que CADA carga son 16 GB leidos del disco, dos
+        # minutos largos. Con el '30m' que habia antes, media hora sin
+        # preguntar bastaba para que se soltara, y la siguiente pregunta pagaba
+        # esos dos minutos... o peor: si el plazo del cliente vencia primero, la
+        # carga se CANCELABA a medias y la pregunta siguiente empezaba de cero.
+        # Eso es lo que dejo a Jose sin respuesta el 5-sep: un bucle de cargas
+        # que nunca terminaban.
+        #
+        # Se ignora tambien lo que pida el cliente: un keep_alive corto de
+        # fuera vuelve a abrir el mismo agujero.
+        pedido['keep_alive'] = -1
         self._reenviar('POST', ruta, json.dumps(pedido).encode())
 
     def _ollama_vivo(self):
