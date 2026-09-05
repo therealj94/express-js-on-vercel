@@ -53,6 +53,11 @@ const REGISTRO = (() => {
   }
   async function ajustes() {
     try { $('silencio').checked = localStorage.getItem('ultron.silencio') === '1'; } catch { /* nada */ }
+    /* La figura quieta parece rota, y no lo está: es el teléfono pidiendo no
+       animar. Se dice, y se ofrece moverla igual. El aviso solo aparece cuando
+       el dispositivo lo pide DE VERDAD — si no, sería ruido. */
+    try { $('figuraViva').checked = localStorage.getItem('ultron.figuraViva') === '1'; } catch { /* nada */ }
+    $('avisoQuieto').hidden = !(PRESENCIA.pideQuieto() && !PRESENCIA.insiste());
     $('plataforma').innerHTML = `
       <div class="dato"><span>Cerebro</span><b class="${yo?.cerebro ? 'ok' : 'mal'}">${yo?.cerebro ? (yo.donde === 'nodo' ? 'Nodo propio de Orden Global' : 'Claude') : 'sin configurar'}</b></div>
       <div class="dato"><span>Modelo</span><b>${esc(String(yo?.modelo || '—').replace(/^nodo:/, ''))}</b></div>
@@ -86,6 +91,12 @@ const REGISTRO = (() => {
     $('listaConversaciones').addEventListener('click', (e) => { if (e.target.closest('[data-nueva]')) { DESPACHO.nueva(); APP.vista('despacho'); return; } const it = e.target.closest('[data-conv]'); if (it) DESPACHO.retomar(it.dataset.conv); });
     $('listaJunta').addEventListener('click', (e) => { const b = e.target.closest('[data-mensaje]'); if (b) { APP.vista('despacho'); $('entrada').value = `Prepare un mensaje por WhatsApp para ${b.dataset.mensaje}: `; $('entrada').focus(); } });
     $('voces').addEventListener('click', (e) => { const b = e.target.closest('[data-voz]'); if (b) { DESPACHO.probarVoz(b.dataset.voz || null); ajustes(); } });
+    $('figuraViva').addEventListener('change', (e) => {
+      try { localStorage.setItem('ultron.figuraViva', e.target.checked ? '1' : '0'); } catch { /* nada */ }
+      // Se aplica en el acto: parar y volver a arrancar relee la preferencia.
+      PRESENCIA.parar(); PRESENCIA.correr();
+      $('avisoQuieto').hidden = !(PRESENCIA.pideQuieto() && !PRESENCIA.insiste());
+    });
     $('silencio').addEventListener('change', (e) => { try { localStorage.setItem('ultron.silencio', e.target.checked ? '1' : '0'); } catch { /* nada */ } if (e.target.checked) DESPACHO.conversar(false); });
     document.addEventListener('ultron:registro-cambio', () => { pendientes(); memorias(); documentos(); });
     document.addEventListener('ultron:bitacora', conversaciones);

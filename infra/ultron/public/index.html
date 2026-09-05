@@ -447,6 +447,13 @@ button{cursor:pointer}
           <p class="que">Seleccione una voz y ULTRON la probará con una frase. La selección se conserva en este navegador.</p>
           <div class="acciones" id="voces"></div>
           <label class="tenue" style="font-size:13px;display:block;margin-top:14px"><input type="checkbox" id="silencio"> Mantener a ULTRON en silencio (solo texto)</label>
+          <!-- El teléfono de José tenía «quitar animaciones» del sistema y la
+               figura salía congelada. ULTRON respeta ese ajuste a propósito
+               —es de accesibilidad, no un capricho— pero quien lo quiere ver
+               moverse igual tiene que poder decirlo, y sobre todo tiene que
+               ENTERARSE de por qué está quieta. -->
+          <label class="tenue" style="font-size:13px;display:block;margin-top:10px"><input type="checkbox" id="figuraViva"> Mover la figura aunque el teléfono tenga las animaciones apagadas</label>
+          <p class="tenue" id="avisoQuieto" hidden style="font-size:12px;margin:6px 0 0;line-height:1.5">Su dispositivo pide no animar (ahorro de batería o accesibilidad), así que la figura está quieta. Marque la casilla de arriba para moverla igual.</p>
         </div>
         <div class="tarjeta" style="max-width:640px;margin-top:14px">
           <h3>La plataforma</h3>

@@ -61,7 +61,19 @@ const PRESENCIA = (() => {
   let modo = 'quieto';            // quieto · pensando · escuchando · hablando
   let intensidad = 1;             // 1 portada · 0.3 detrás del texto
   let intensidadSuave = 1;
-  const quieto = () => window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+  /* QUIETO O NO, Y QUIÉN MANDA.
+   *
+   * Por omisión manda el dispositivo: si pide no animar —ahorro de batería o
+   * accesibilidad— la figura se pinta una vez y se queda. Eso es lo correcto y
+   * no se toca.
+   *
+   * Pero el 5-sep José vio su figura congelada en el teléfono y no había forma
+   * de saber por qué: parecía rota. Así que la persona puede decir «muévela
+   * igual», y esa decisión suya gana sobre la del sistema. La casilla vive en
+   * Ajustes, y al lado se le explica por qué estaba quieta. */
+  const insiste = () => { try { return localStorage.getItem('ultron.figuraViva') === '1'; } catch { return false; } };
+  const pideQuieto = () => !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+  const quieto = () => pideQuieto() && !insiste();
 
   /* Dónde cae el pecho dentro de la imagen, en fracciones de ella. Es el
      centro del aura y del núcleo, y el eje del remolino lento. */
@@ -318,6 +330,6 @@ const PRESENCIA = (() => {
     if (!raf) pintarUnaVez();
   };
 
-  return { arrancar, nivel, estado, plano, correr, parar,
+  return { arrancar, nivel, estado, plano, correr, parar, pideQuieto, insiste,
     _adentro: { encuadre, sembrar, moleculas: () => moleculas } };
 })();
