@@ -65,6 +65,20 @@ const billeteras = (await import('../lib/billeteras.js')).default;
 const terminos = (await import('../lib/terminos.js')).default;
 const { DepositoExterno } = (await import('../lib/vigiaDepositosExternos.js')).default;
 const compra = (await import('../lib/compra.js')).default;
+const cadena = (await import('../lib/cadena5550.js')).default;
+
+/* LA 5550, FINGIDA. `lib/compra.js` guarda el MODULO y no la funcion suelta
+   (compra.js:45) exactamente para esto: aqui se le cambian las dos funciones
+   que salen a la cadena y el resto del camino es el de produccion.
+
+   Hace falta desde que `abrir` mira el inventario ANTES de dar una direccion
+   de deposito: sin esto, la prueba probaba las cuentas de una compra que en
+   produccion no habria nacido. */
+process.env.ORDENEX_HOT_KEY = Wallet.createRandom().privateKey;
+let INVENTARIO = 10n ** 24n;              // mil millones de ORIGEN: de sobra
+let enviados = 0;
+cadena.saldoDe = async () => ({ ok: true, wei: INVENTARIO.toString(), error: null });
+cadena.enviarDesdeCaliente = async () => { enviados++; return { hash: `0x${'ab'.repeat(32)}` }; };
 
 let fallos = 0;
 const comprobar = (ok, que, detalle = '') => {
@@ -247,16 +261,64 @@ decir('entregar es de una sola vez');
     reglaRecalculo: compra.REGLA_RECALCULO,
     depositoId: new mongoose.Types.ObjectId(), origenWei: '1000000000000000000',
   });
-  // Sin ORDENEX_HOT_KEY no hay entrega — y eso es lo correcto. Lo que se prueba
-  // aquí es que el paso a 'entregando' lo gana UNO SOLO: los dos intentos
-  // simultáneos no pueden acabar los dos firmando.
+  // El paso a 'entregando' lo gana UNO SOLO: los dos intentos simultáneos no
+  // pueden acabar los dos firmando. Con la cadena fingida se comprueba lo que
+  // antes no se podía ver: que se firma UNA vez, no ninguna.
+  const antesDeEnviar = enviados;
   const [x, y] = await Promise.all([compra.entregar(orden._id), compra.entregar(orden._id)]);
   const noTocaba = [x, y].filter((r) => r.estado === 'no-tocaba').length;
   comprobar(noTocaba === 1, 'de dos intentos a la vez, uno se queda fuera', `${x.estado} / ${y.estado}`);
+  comprobar(enviados - antesDeEnviar === 1, 'y se firma UNA sola vez', String(enviados - antesDeEnviar));
   const leida = await compra.OrdenCompra.findById(orden._id).lean();
-  comprobar(leida.estado === 'fallida' && /no está configurada/.test(leida.motivo || ''),
-    'y sin billetera de entrega la orden queda fallida, no entregada', `${leida.estado}: ${leida.motivo}`);
-  comprobar(leida.hash === null, 'sin hash: no salió nada');
+  comprobar(leida.estado === 'entregada' && leida.hash, 'la orden queda entregada, con su hash', `${leida.estado}: ${leida.hash}`);
+}
+
+decir('sin ORIGEN para entregar, la orden NO nace');
+{
+  // La guarda de delante. `entregar` ya se negaba a firmar sin inventario,
+  // pero para entonces la persona ya mandó su USDT: la casa cobró y no
+  // entregó. Ahora se mira antes de dar una dirección de depósito.
+  const u = await persona();
+  const pedir = () => compra.abrir(u, { montoMicro: '100000000', cadena: POLYGON,
+    aceptoRecalculo: true, reglaRecalculoVersion: compra.REGLA_RECALCULO });
+
+  const guardado = INVENTARIO;
+  INVENTARIO = 0n;
+  let e = null; try { await pedir(); } catch (x) { e = x; }
+  comprobar(e?.codigo === 'SIN_INVENTARIO', 'con la caliente vacía, abrir falla con SIN_INVENTARIO', e?.codigo);
+  comprobar(/No mandes nada/.test(e?.message || ''), 'y el mensaje dice que NO mande nada', e?.message);
+  comprobar(e?.status === 503, 'con 503: es un no de ahora, no un no para siempre', String(e?.status));
+
+  // Lo comprometido cuenta: con 39 ORIGEN y una orden de 38 esperando, la
+  // segunda no entra. Sin esto, el primero en depositar cobra y el resto
+  // espera a una persona.
+  // Las órdenes de los bloques anteriores siguen vivas y ya comprometen
+  // ORIGEN: el margen se mide DESDE ahí, que es como se mide en producción.
+  const vivas = await compra.OrdenCompra.find({
+    estado: { $in: ['esperando', 'recalculada', 'entregando', 'en-revision'] },
+  }).select('origenWei origenWeiCotizado').lean();
+  const yaComprometido = vivas.reduce((a, o) => a + BigInt(o.origenWei || o.origenWeiCotizado || 0), 0n);
+  INVENTARIO = yaComprometido + 39n * 10n ** 18n;
+  const primera = await pedir();
+  comprobar(!!primera.id, 'con inventario justo, la primera nace', primera.id);
+  let e2 = null; try { await pedir(); } catch (x) { e2 = x; }
+  comprobar(e2?.codigo === 'SIN_INVENTARIO', 'y la segunda no, porque la primera ya comprometió el ORIGEN', e2?.codigo);
+  await compra.OrdenCompra.deleteOne({ _id: primera.id });
+
+  // Si el inventario no se puede leer, tampoco se cobra: fail-closed.
+  INVENTARIO = guardado;
+  const leerBien = cadena.saldoDe;
+  cadena.saldoDe = async () => ({ ok: false, wei: null, error: 'el nodo no contesta' });
+  let e3 = null; try { await pedir(); } catch (x) { e3 = x; }
+  comprobar(e3?.codigo === 'INVENTARIO_ILEGIBLE', 'y si no se puede leer el inventario, tampoco nace', e3?.codigo);
+  cadena.saldoDe = leerBien;
+
+  // Y sin llave de entrega no nace ninguna: es el caso de la billetera vieja.
+  const llave = process.env.ORDENEX_HOT_KEY;
+  delete process.env.ORDENEX_HOT_KEY;
+  let e4 = null; try { await pedir(); } catch (x) { e4 = x; }
+  comprobar(e4?.codigo === 'ENTREGA_SIN_BILLETERA', 'sin ORDENEX_HOT_KEY tampoco nace', e4?.codigo);
+  process.env.ORDENEX_HOT_KEY = llave;
 }
 
 decir('las guardas de abrir');

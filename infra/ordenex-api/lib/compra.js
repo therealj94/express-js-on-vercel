@@ -295,6 +295,43 @@ async function abrir(usuario, { montoMicro, cadena: red, aceptoRecalculo, reglaR
   if (!p) throw fallo('SIN_REFERENCIA_AHORA', 'No hay referencia del oro ahora mismo: probá en un rato.', 503);
 
   const canonico = microACanonico(montoMicro);
+  const cotizado = origenWeiDe(canonico, p.wei);
+
+  /* LA GUARDA DE DELANTE: no se congela un precio que no se puede entregar.
+   *
+   * `entregar()` ya se niega a firmar sin inventario y deja la orden en
+   * revision (linea 552). Eso protege el ORIGEN, pero llega TARDE para la
+   * persona: a esa altura ya mando su USDT y esta esperando. La casa cobro y
+   * no entrego, que es exactamente lo que este archivo dice en su cabecera
+   * que no puede pasar.
+   *
+   * Asi que el inventario se mira ANTES de dar una direccion de deposito, y
+   * se cuenta lo COMPROMETIDO por las ordenes que ya estan vivas: con 199
+   * ORIGEN y dos ordenes de 100 esperando, la tercera no entra. Sin esto, el
+   * primero en depositar cobra y el resto espera a una persona.
+   *
+   * Fail-closed a proposito: si el inventario no se puede leer, no se abre la
+   * orden. Cobrar a ciegas es peor que hacer esperar. */
+  const caliente = cadena.direccionCaliente();
+  if (!caliente) {
+    throw fallo('ENTREGA_SIN_BILLETERA',
+      'La entrega de ORIGEN no esta disponible en este momento. No mandes nada todavia.', 503);
+  }
+  const inventario = await cadena.saldoDe(caliente, 'ORIGEN');
+  if (!inventario.ok) {
+    throw fallo('INVENTARIO_ILEGIBLE',
+      'No puedo confirmar el ORIGEN disponible ahora mismo. Proba en un rato.', 503);
+  }
+  const vivas = await OrdenCompra.find({
+    estado: { $in: ['esperando', 'recalculada', 'entregando', 'en-revision'] },
+  }).select('origenWei origenWeiCotizado').lean();
+  const comprometido = vivas.reduce((a, o) => a + BigInt(o.origenWei || o.origenWeiCotizado || 0), 0n);
+  if (BigInt(inventario.wei) < comprometido + BigInt(cotizado)) {
+    console.error(`[compra] SIN INVENTARIO al abrir: hay ${inventario.wei} wei, comprometidos ${comprometido}, piden ${cotizado}`);
+    throw fallo('SIN_INVENTARIO',
+      'No hay suficiente ORIGEN disponible para esa compra ahora mismo. No mandes nada todavia.', 503);
+  }
+
   const orden = await OrdenCompra.create({
     userId: String(usuario._id),
     cadena: id,
@@ -302,7 +339,7 @@ async function abrir(usuario, { montoMicro, cadena: red, aceptoRecalculo, reglaR
     aWallet: destino,
     montoMicro: String(montoMicro),
     precioWei: p.wei,
-    origenWeiCotizado: origenWeiDe(canonico, p.wei),
+    origenWeiCotizado: cotizado,
     oroUsd: p.oroUsd,
     plazoSeg: PLAZO_SEG,
     venceEn: new Date(Date.now() + PLAZO_SEG * 1000),

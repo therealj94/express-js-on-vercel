@@ -415,6 +415,29 @@ app.listen(puerto, () => {
     // El atendedor de compras: le busca orden a cada deposito, decide el
     // precio y entrega el ORIGEN. Como el barrido, FIRMA — desde la caliente —
     // asi que tambien se enciende a mano.
+    /* LA CALIENTE TIENE QUE SER LA DE AHORA, Y SE DICE AL ARRANCAR.
+     *
+     * ORDENEX_HOT_KEY estuvo apuntando a una billetera anterior con cero
+     * ORIGEN mientras billeteras.ORIGEN era otra: desde fuera las dos firman
+     * igual, y el sintoma era una entrega que no se podia hacer. Se veia solo
+     * mirando /admin/estado a proposito. Ahora se canta en el arranque, que
+     * es donde alguien lo lee sin ir a buscarlo. */
+    try {
+      const cadena = require('./lib/cadena5550');
+      const billeteras = require('./lib/billeteras');
+      const caliente = cadena.direccionCaliente();
+      if (!caliente) {
+        console.error('[caliente] ORDENEX_HOT_KEY no esta puesta: no se puede entregar ORIGEN');
+      } else if (caliente !== billeteras.ORIGEN) {
+        console.error(`[caliente] LA LLAVE ES DE OTRA BILLETERA: firma desde ${caliente} y se espera ${billeteras.ORIGEN}. `
+          + 'Las entregas van a fallar por inventario hasta que se cambie ORDENEX_HOT_KEY.');
+      } else {
+        console.log(`[caliente] ${caliente} · la de ahora`);
+      }
+    } catch (e) {
+      console.error(`[caliente] no se pudo comprobar: ${e.message}`);
+    }
+
     if (process.env.COMPRAS === '1') {
       const compra = require('./lib/compra');
       Promise.resolve(compra.arrancar()).catch((e) =>

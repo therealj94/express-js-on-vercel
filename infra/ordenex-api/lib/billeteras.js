@@ -49,6 +49,7 @@ const RETIRADAS = {
   '0x8E839Af7A405f49bf72B239929b8ee3c07Ee7ba0': 'gas · COMPROMETIDA, nunca mandarle nada',
   '0x3E531Ce4fd73b5a3EA86E37fbcd92e2c36490909': 'caja USDT anterior',
   '0xDE451Ac0B5d341e4F7171AA6aD82c55ddF98f2ed': 'ORIGEN anterior',
+  '0xc7E7B859Bb625a32c69AA52F534b721DF3A5D204': 'caliente anterior; quedo puesta en ORDENEX_HOT_KEY hasta el 5 de septiembre, sin ORIGEN',
   '0x6A1aeD0BFCC8c8aC7CB916270509CcD66911eBBc': 'tesorería del circuito de contratos',
   '0x746268404Cc9CA2ef0Ac344F02B236DB232c3ad8': 'pagadora del circuito de contratos',
 };
