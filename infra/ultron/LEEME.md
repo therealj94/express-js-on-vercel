@@ -25,7 +25,8 @@ node app.js                  # http://localhost:3900
 | **El motor del nodo** | La única puerta hacia el modelo: TLS propio, secreto, solo `/api/chat` y `/api/tags`, y FIJA el modelo y el contexto a los de AU-RA para no desalojarla nunca. Se instala por SSM con `nodo/desplegar-motor.py`. | `nodo/` |
 | **Los canales** | WhatsApp por Zernio (la misma línea de AU-RA) y correo por SES (el mismo remitente de siempre). **Solo a la junta**, y **solo con una persona confirmando**. | `lib/canales.js` |
 | **La voz** | ElevenLabs, con la llave en el servidor; sin llave, la voz del navegador. | `lib/voz.js` |
-| **El panel** | La presencia (un campo de partículas que está vivo), la conversación, el pulso de la casa, la memoria, la biblioteca, los hilos. Un archivo. | `public/index.html` |
+| **El panel** | La presencia: una persona de luz —busto de partículas, ojos que parpadean, el núcleo en el pecho— con los datos vivos del ecosistema orbitando alrededor. Al entrar, el hero: la figura grande y el saludo por nombre escribiéndose. **Conversar**: escucha, contesta con voz y vuelve a escuchar. Gestos: respira, ladea la cabeza oyendo, se recoge pensando, asiente hablando. Y la conversación, el pulso, los pendientes, la memoria, la biblioteca, los hilos. Un archivo. | `public/index.html` |
+| **El saludo** | `GET /saludo`: por su nombre, con la hora de Honduras y con lo que hay. Determinista: sale al instante y no puede irse a otro idioma. | `app.js` |
 
 ## Cómo se conecta con AU-RA
 
@@ -34,8 +35,14 @@ Desde el 5-sep **comparten el cerebro**: ULTRON piensa con el mismo
 mismo contexto de 12 288 fichas. La junta lo decidió así —lo nuestro, en
 nuestro nodo— y el motor lo garantiza: un pedido con otro modelo u otro
 contexto desalojaría al de AU-RA, así que el motor los fija y no se negocia.
-Lo que cambia es el prompt (con presupuesto: ~28 mil letras) y que la búsqueda
-web es nuestra (`buscar_web`, DuckDuckGo sin llave o Brave con `ULTRON_BRAVE`).
+Lo que cambia es el prompt (con presupuesto en FICHAS: se mide la base y el
+saber recibe lo que sobra, para no pasarse nunca del contexto) y que la
+búsqueda web es nuestra (`buscar_web`, DuckDuckGo sin llave o Brave con
+`ULTRON_BRAVE`). Y tres guardas que un modelo chico necesita: la del
+**idioma** (al primer carácter de otro alfabeto se corta el stream y se le
+pide seguir en español), la de las **citas** (no cita `buscar_web` sin
+haberla llamado) y la de los **pendientes repetidos** (dos que dicen lo mismo
+son uno).
 Claude sigue disponible con `ULTRON_CEREBRO=claude` y una llave.
 
 Comparten también **lo demás**:
