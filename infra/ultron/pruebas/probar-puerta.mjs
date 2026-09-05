@@ -179,6 +179,23 @@ titulo('los instrumentos, a mano: el mismo camino que usa ULTRON');
   decir(sin.http === 401, 'y sin sesión no hay catálogo');
 }
 
+titulo('buscar en internet un nombre de la casa: la consulta se afina sola');
+{
+  const { afinarConsulta } = (await import('../lib/herramientas.js')).default._adentro;
+  const casos = [
+    ['Orden Global', 'ordenglobal.org', 'el nombre pelado se busca con el sitio puesto'],
+    ['información sobre Orden Global', 'ordenglobal.org', 'y el relleno de la pregunta no cuenta como pregunta'],
+    ['ordenex', 'ordenexchange.link', 'lo mismo con Ordenex'],
+    ['Veta Wallet', 'Veta Wallet', 'y con Veta Wallet'],
+  ];
+  for (const [q, esperado, que] of casos) {
+    const r = afinarConsulta(q);
+    decir(!!r && r.includes(esperado), que, `${q} → ${r}`);
+  }
+  const propias = ['Orden Global demanda 2026', 'precio del oro hoy', 'ordenex hackeo octubre', 'ley fintech Honduras'];
+  for (const q of propias) decir(afinarConsulta(q) === null, `«${q}» se manda tal cual: es una pregunta, no un nombre`, String(afinarConsulta(q)));
+}
+
 await s.cerrar();
 console.log(fallos ? `\n${fallos} comprobación(es) fallaron` : '\nTodo en verde');
 process.exit(fallos ? 1 : 0);

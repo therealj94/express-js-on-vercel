@@ -194,10 +194,50 @@ function limpiarHtml(html) {
     .replace(/[ \t]+/g, ' ').replace(/\n\s*\n+/g, '\n').trim();
 }
 
+/* ── LOS NOMBRES DE LA CASA NO SE BUSCAN SOLOS ────────────────────────────────
+ *
+ * «Orden Global», a secas, le devuelve al buscador seis artículos sobre el
+ * orden internacional y ni una línea de la casa; con eso delante el modelo
+ * contesta que la organización no existe en internet. Decírselo en el prompt no
+ * alcanzó —qwen propone la búsqueda buena y sigue mandando la mala—, así que la
+ * afina la herramienta, que no se olvida.
+ *
+ * Solo cuando la consulta es el nombre PELADO: si alguien pregunta «Orden
+ * Global demanda 2026» esa consulta es suya y se manda tal cual.
+ */
+const NOMBRES_DE_LA_CASA = [
+  { re: /\borden\s*global\b/i, como: '"Orden Global" ordenglobal.org Honduras' },
+  { re: /\bordenex\b/i, como: '"Ordenex" ordenexchange.link ORIGEN' },
+  { re: /\borden\s*scan\b/i, como: '"OrdenScan" ordenscan.com' },
+  { re: /\bau\s*corp\b/i, como: '"AuCorp" "Orden Global" Honduras' },
+  { re: /\bveta\s*wallet\b/i, como: '"Veta Wallet" "Orden Global" ORIGEN' },
+  { re: /\bgenesis\s*id\b/i, como: '"Genesis ID" "Orden Global" identidad' },
+  { re: /\b(auka|agka)\b/i, como: '"Orden Global" AUKA AGKA plata oro' },
+];
+// Lo que no cuenta como «pregunta»: el relleno con el que se pide una búsqueda.
+const RELLENO = /\b(informacion|información|info|datos?|sobre|acerca|de|del|la|el|los|las|un|una|que|qué|se|dice|dicen|en|internet|web|busca|busque|buscar|buscame|y|o|empresa|organizacion|organización|compania|compañia|compañía|proyecto|plataforma|ecosistema)\b/gi;
+
+function afinarConsulta(q) {
+  for (const n of NOMBRES_DE_LA_CASA) {
+    if (!n.re.test(q)) continue;
+    const resto = q.replace(n.re, ' ').replace(RELLENO, ' ').replace(/[^\p{L}\p{N}\s]/gu, ' ').trim();
+    // Una palabra suelta todavía es el nombre pelado; dos ya son una pregunta.
+    if (resto.split(/\s+/).filter(Boolean).length <= 1) return n.como;
+  }
+  return null;
+}
+
 /** DuckDuckGo (sin llave) o Brave (con ULTRON_BRAVE). Devuelve texto para el modelo. */
 async function buscarWeb(consulta) {
-  const q = String(consulta || '').trim().slice(0, 200);
+  let q = String(consulta || '').trim().slice(0, 200);
   if (!q) return 'Consulta vacía.';
+  const afinada = afinarConsulta(q);
+  // El aviso va CON los resultados: el modelo tiene que poder decir con qué se
+  // buscó de verdad, y que lo de internet es lo que se dice afuera de la casa.
+  const nota = afinada
+    ? `(La consulta «${q}» trae artículos de geopolítica, no a la casa: se buscó «${afinada}». Lo que sigue es lo que se dice AFUERA de Orden Global; lo que la casa ES sale de las fichas y del estado vivo, no de aquí.)\n\n`
+    : '';
+  if (afinada) q = afinada;
   const brave = (process.env.ULTRON_BRAVE || '').trim();
   try {
     if (brave) {
@@ -205,8 +245,8 @@ async function buscarWeb(consulta) {
         { headers: { 'X-Subscription-Token': brave, Accept: 'application/json' }, signal: AbortSignal.timeout(PLAZO_WEB_MS) });
       const j = await r.json();
       const res = (j.web?.results || []).slice(0, 6);
-      if (!res.length) return `Sin resultados para «${q}».`;
-      return res.map((x, i) => `${i + 1}. ${x.title}\n   ${x.url}\n   ${x.description || ''}`).join('\n');
+      if (!res.length) return `${nota}Sin resultados para «${q}».`;
+      return nota + res.map((x, i) => `${i + 1}. ${x.title}\n   ${x.url}\n   ${x.description || ''}`).join('\n');
     }
     const r = await fetch(`https://html.duckduckgo.com/html/?q=${encodeURIComponent(q)}&kl=es-es`,
       { headers: { 'User-Agent': 'Mozilla/5.0 ULTRON/1' }, signal: AbortSignal.timeout(PLAZO_WEB_MS) });
@@ -219,8 +259,8 @@ async function buscarWeb(consulta) {
       const uddg = /uddg=([^&]+)/.exec(url); if (uddg) url = decodeURIComponent(uddg[1]);
       res.push({ url, titulo: limpiarHtml(m[2]), resumen: limpiarHtml(m[3] || '') });
     }
-    if (!res.length) return `Sin resultados para «${q}» (o el buscador no contestó bien).`;
-    return res.map((x, i) => `${i + 1}. ${x.titulo}\n   ${x.url}\n   ${x.resumen}`).join('\n');
+    if (!res.length) return `${nota}Sin resultados para «${q}» (o el buscador no contestó bien).`;
+    return nota + res.map((x, i) => `${i + 1}. ${x.titulo}\n   ${x.url}\n   ${x.resumen}`).join('\n');
   } catch (e) {
     return `No pude buscar «${q}»: ${e?.name === 'TimeoutError' ? 'el buscador tardó demasiado' : String(e?.message || e).slice(0, 120)}.`;
   }
@@ -566,4 +606,4 @@ function paraOllama() {
   return DEFINICIONES.map((d) => ({ type: 'function', function: { name: d.name, description: d.description, parameters: d.input_schema } }));
 }
 
-module.exports = { DEFINICIONES, CASAS, GRUPOS, catalogo, correr, paraOllama, buscarWeb, leerPagina, _adentro: { limpiarHtml, ori, calcular, leerJson } };
+module.exports = { DEFINICIONES, CASAS, GRUPOS, catalogo, correr, paraOllama, buscarWeb, leerPagina, _adentro: { limpiarHtml, ori, calcular, leerJson, afinarConsulta } };
