@@ -161,6 +161,47 @@ function llamadasEnTexto(texto) {
 const OTRO_ALFABETO = /[\u3040-\u30ff\u3400-\u4dbf\u4e00-\u9fff\uac00-\ud7af\u0400-\u04ff\u0600-\u06ff\u0e00-\u0e7f]/;
 function hastaOtroAlfabeto(t) { const m = OTRO_ALFABETO.exec(t); return m ? t.slice(0, m.index) : t; }
 
+/* ── LA GUARDA DEL BUCLE ──────────────────────────────────────────────────────
+ *
+ * El 5 de septiembre, con una pregunta sobre Orden Global, el modelo se atascó
+ * y escribió «sourceMappingError:» cientos de veces seguidas hasta agotar el
+ * cupo de salida. Ni las herramientas ni la búsqueda tenían esa palabra: fue
+ * el modelo. Un modelo chico se engancha en un token y ya no sale solo, y
+ * ninguna penalización por repetir lo garantiza —subirla, además, lo manda al
+ * chino: ver la deriva de arriba—, así que la única cura es una guarda que
+ * MIRE lo escrito y corte.
+ *
+ * Qué se considera un bucle: que la cola del texto sea una misma tira corta
+ * repetida cuatro veces o más, seguidas. Cuatro y no dos porque en español hay
+ * repeticiones legítimas («muy, muy grande», una tabla con celdas iguales);
+ * cuatro veces la misma tira de más de dos caracteres no es prosa.
+ *
+ * Devuelve el texto cortado ANTES de la primera repetición, o null si no hay
+ * bucle. Se mira solo la cola: un bucle siempre está al final de lo escrito.
+ */
+const COLA_BUCLE = 1200;        // cuánto se mira hacia atrás
+const VECES_BUCLE = 4;          // repeticiones seguidas para llamarlo bucle
+const LARGO_BUCLE = 60;         // y cuánto tiene que ocupar lo repetido, en total
+function dondeEmpiezaElBucle(texto) {
+  const t = String(texto || '');
+  if (t.length < LARGO_BUCLE) return null;
+  const cola = t.slice(-COLA_BUCLE);
+  /* De la tira MÁS CORTA a la más larga, para dar con la unidad que se repite
+     —«sourceMappingError: »— y no con un múltiplo suyo; si se busca al revés,
+     el corte deja dentro un par de repeticiones.
+     Y se exige que lo repetido ocupe sesenta caracteres además de repetirse
+     cuatro veces: una tabla con cuatro celdas «— | » es legítima y no llega;
+     un modelo enganchado escribe cientos. */
+  for (let n = 3; n <= Math.floor(cola.length / VECES_BUCLE); n++) {
+    const patron = cola.slice(-n);
+    if (!patron.trim()) continue;
+    let veces = 1;
+    while (cola.length >= n * (veces + 1) && cola.slice(-n * (veces + 1), -n * veces) === patron) veces++;
+    if (veces >= VECES_BUCLE && n * veces >= LARGO_BUCLE) return t.length - n * veces;
+  }
+  return null;
+}
+
 // ── El prompt, con presupuesto ──────────────────────────────────────────────
 
 function recortar(t, n) { t = String(t || ''); return t.length <= n ? t : t.slice(0, n - 12) + '\n[…recortado]'; }
@@ -234,10 +275,32 @@ async function pensar({ miembro, junta, texto, conversacionId, emitir = () => {}
   const uso = { entrada: 0, salida: 0, lecturaCache: 0, escrituraCache: 0 };
   // En voz, la respuesta es corta por diseño: menos fichas de salida es menos
   // segundos hasta la primera frase dicha, y una frase dicha larga no se sigue.
+  /* La penalización por repetir se queda BAJA, en 1,05, aunque el enganche del
+     5-sep tiente a subirla: subirla es justo lo que el 4-sep mandó a qwen al
+     chino a media frase, y eso cuesta una vuelta entera de rescate. Contra el
+     bucle está la guarda que mira lo escrito, que corta siempre; contra la
+     deriva no hay más que no empujarlo fuera del español. Se paga con la
+     guarda, no con el parámetro. */
   const opciones = { temperature: 0.35, num_predict: modo === 'voz' ? 360 : 1400, repeat_penalty: 1.05 };
   // El trozo pasa por la guarda del idioma ANTES de llegar al panel: lo que se
   // fue a otro alfabeto no se enseña ni un instante.
-  const conGuarda = (acum) => (t) => { const limpio = hastaOtroAlfabeto(t); if (limpio) { acum.t += limpio; emitir('texto', { t: limpio }); } return limpio.length < t.length ? limpio : t; };
+  /* Las dos guardas del stream, en el mismo sitio: el idioma y el bucle. Las
+     dos cortan devolviendo menos de lo que llegó, que es la señal que
+     `pedir()` usa para cerrar la conexión con el nodo. */
+  const conGuarda = (acum) => (t) => {
+    const limpio = hastaOtroAlfabeto(t);
+    if (limpio) { acum.t += limpio; emitir('texto', { t: limpio }); }
+    if (limpio.length < t.length) return limpio;
+    const corte = dondeEmpiezaElBucle(acum.t);
+    if (corte != null) {
+      // Lo repetido ya se emitió: se le dice a la consola con qué quedarse.
+      acum.t = acum.t.slice(0, corte).trimEnd();
+      acum.bucle = true;
+      emitir('reemplazo', { texto: acum.t });
+      return '';
+    }
+    return t;
+  };
   let derivas = 0;
 
   for (let vuelta = 0; vuelta < MAX_VUELTAS; vuelta++) {
@@ -245,6 +308,15 @@ async function pensar({ miembro, junta, texto, conversacionId, emitir = () => {}
     const acum = { t: '' };
     let r = await pedir({ model: MODELO, messages: mensajes, tools: herramientas.paraOllama(), stream: true, options: opciones }, { alTrozo: conGuarda(acum) });
     uso.entrada += r.uso.entrada; uso.salida += r.uso.salida;
+    /* SE ENGANCHÓ. Nada de continuar ni de reintentar: el modelo estaba dando
+       vueltas sobre sí mismo y lo que valía es lo que dijo ANTES de engancharse.
+       Se cierra el turno con eso. */
+    if (acum.bucle) {
+      emitir('pensando', { vuelta, motivo: 'se repetía' });
+      console.warn('[nodo] el modelo se repetía: se cortó el turno donde empezó el bucle');
+      textoFinal = acum.t;
+      break;
+    }
     if (r.cortado && derivas === 0) {
       derivas++;
       emitir('pensando', { vuelta, motivo: 'otro idioma' });
@@ -368,4 +440,4 @@ async function salud() {
   });
 }
 
-module.exports = { pensar, titular, salud, encendido, MODELO, _adentro: { pedir, llamadasEnTexto, armarMensajes, sinRepetidos, hastaOtroAlfabeto, fichas, PRESUPUESTO, PRESUPUESTO_FICHAS, CTX } };
+module.exports = { pensar, titular, salud, encendido, MODELO, _adentro: { pedir, llamadasEnTexto, armarMensajes, sinRepetidos, hastaOtroAlfabeto, dondeEmpiezaElBucle, fichas, PRESUPUESTO, PRESUPUESTO_FICHAS, CTX } };

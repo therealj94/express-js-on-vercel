@@ -114,6 +114,14 @@ app.use(cookieParser());
 
 const frenoEntrar = rateLimit({ windowMs: 15 * 60 * 1000, max: 12, standardHeaders: true, legacyHeaders: false,
   message: { error: 'Demasiados intentos. Esperá un rato.', codigo: 'FRENO' } });
+/* La voz tiene su propio freno, y mucho más alto. Cada RESPUESTA se dice
+   frase por frase, así que una respuesta larga son diez o quince llamadas a
+   /voz en pocos segundos: con el freno de pensar (veinte por minuto) se
+   agotaba a mitad de la segunda respuesta y ULTRON se quedaba mudo sin decir
+   por qué. Lo que hay que frenar es el PENSAR, que es lo que cuesta. */
+const frenoVoz = rateLimit({ windowMs: 60 * 1000, max: 180, standardHeaders: true, legacyHeaders: false,
+  message: { error: 'Demasiadas frases seguidas. Esperá unos segundos.', codigo: 'MUCHA_VOZ' },
+});
 const frenoPensar = rateLimit({ windowMs: 60 * 1000, max: 20, standardHeaders: true, legacyHeaders: false,
   keyGenerator: (req) => req.miembro?.correo || req.ip,
   message: { error: 'Muy seguido. Esperá un momento.', codigo: 'FRENO' } });
@@ -375,7 +383,7 @@ app.get('/voces', puerta, async (req, res) => {
   catch (e) { res.status(502).json({ error: e.message, codigo: 'PROVEEDOR' }); }
 });
 
-app.post('/voz', puerta, frenoPensar, async (req, res) => {
+app.post('/voz', puerta, frenoVoz, async (req, res) => {
   if (!voz.encendida()) return res.status(503).json({ error: 'Voz apagada (falta ELEVENLABS_API_KEY).', codigo: 'VOZ_APAGADA' });
   try {
     const audio = await voz.hablar(String(req.body?.texto || ''), { rapido: req.body?.rapido === true, vozId: req.body?.vozId ? String(req.body.vozId).slice(0, 40) : null });

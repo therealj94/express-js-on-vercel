@@ -30,16 +30,43 @@ const VOZ = (() => {
     return { frases, resto };
   }
 
+  /** Un WAV de un frame en silencio: la llave del permiso de audio. */
+  function wavMudo() {
+    const b = new ArrayBuffer(44), v = new DataView(b);
+    const txt = (o, t) => { for (let i = 0; i < t.length; i++) v.setUint8(o + i, t.charCodeAt(i)); };
+    txt(0, 'RIFF'); v.setUint32(4, 36, true); txt(8, 'WAVEfmt ');
+    v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 1, true);
+    v.setUint32(24, 8000, true); v.setUint32(28, 8000, true); v.setUint16(32, 1, true); v.setUint16(34, 8, true);
+    txt(36, 'data'); v.setUint32(40, 0, true);
+    return new Blob([b], { type: 'audio/wav' });
+  }
+
   class Locutor {
-    constructor({ conElevenLabs, alNivel, alEmpezar, alTerminar }) {
-      Object.assign(this, { conElevenLabs, alNivel, alEmpezar, alTerminar });
+    static avisado = false;   // el aviso de «no pude usar la voz» se da una vez
+    constructor({ conElevenLabs, alNivel, alEmpezar, alTerminar, alFallo }) {
+      Object.assign(this, { conElevenLabs, alNivel, alEmpezar, alTerminar, alFallo });
       this.cola = []; this.sonando = false; this.generacion = 0; this.resto = ''; this.ctx = null; this.audio = null; this.vozId = null;
+      // Un desbloqueo silencioso: un audio de un instante, dentro del gesto,
+      // que deja al navegador con el permiso dado para los que vengan después.
+      this.desbloqueado = false;
     }
+    /**
+     * Se llama DENTRO de un gesto de la persona: un audio mudo de un instante
+     * le da al navegador lo que exige para dejar sonar los que vengan después,
+     * que llegan del servidor y ya no nacen de un gesto.
+     *
+     * Va por `blob:` y no por `data:` a propósito: la política de contenido de
+     * la casa admite `blob:` en media —es por donde llegan los audios de
+     * verdad— y no hay motivo para ampliarla por un silencio de un frame.
+     */
     despertar() {
+      if (this.desbloqueado) return;
       try {
-        this.ctx = this.ctx || new (window.AudioContext || window.webkitAudioContext)();
-        if (this.ctx.state === 'suspended') this.ctx.resume();
-      } catch { /* sin AudioContext: suena por <audio> igual */ }
+        const a = new Audio(URL.createObjectURL(wavMudo()));
+        a.volume = 0;
+        const p = a.play();
+        if (p && p.then) p.then(() => { this.desbloqueado = true; }).catch(() => {});
+      } catch { /* si no se puede, el primer audio de verdad lo intentará */ }
     }
     alimentar(trozo) {
       this.resto += trozo;
@@ -54,7 +81,9 @@ const VOZ = (() => {
     decir(frase) {
       const limpio = paraDecir(frase); if (!limpio) return;
       const gen = this.generacion;
-      this.cola.push(this.conElevenLabs ? DATOS.voz(limpio, { rapido: true, vozId: this.vozId }).catch(() => null) : Promise.resolve(new Blob([limpio], { type: 'text/plain' })));
+      // El texto viaja CON el audio: si el mp3 no llega o no puede sonar, hay
+      // con qué decirlo por el otro camino en vez de callarse.
+      this.cola.push({ texto: limpio, audio: this.conElevenLabs ? DATOS.voz(limpio, { rapido: true, vozId: this.vozId }).catch(() => null) : Promise.resolve(null) });
       if (!this.sonando) this.seguir(gen);
     }
     callar() {
@@ -67,28 +96,59 @@ const VOZ = (() => {
     async seguir(gen) {
       this.sonando = true; this.alEmpezar?.();
       while (this.cola.length && gen === this.generacion) {
-        const blob = await this.cola.shift();
+        const { texto, audio } = this.cola.shift();
+        const blob = await audio;
         if (gen !== this.generacion) break;
-        if (!blob) continue;
-        if (blob.type === 'text/plain') await this.conNavegador(await blob.text(), gen); else await this.sonar(blob, gen);
+        // Sin mp3 —no hay ElevenLabs, o el servidor no pudo— se dice igual.
+        if (blob && blob.size > 0) await this.sonar(blob, gen, texto);
+        else await this.conNavegador(texto, gen);
       }
       if (gen === this.generacion) { this.sonando = false; this.alNivel?.(0); this.alTerminar?.(); }
     }
-    sonar(blob, gen) {
+    /**
+     * Sonar un audio. Y aquí va la lección más cara de esta consola:
+     *
+     * NO SE ENRUTA EL AUDIO POR WEB AUDIO. La versión anterior conectaba cada
+     * `<audio>` a un AnalyserNode con `createMediaElementSource` para medir la
+     * envolvente y mover la figura. Eso REDIRIGE el sonido del elemento al
+     * grafo de Web Audio: si el contexto está suspendido —y lo está siempre
+     * hasta que un gesto lo despierta, y vuelve a suspenderse si la pestaña
+     * pierde el foco— el elemento deja de sonar por su cuenta y no suena por
+     * ningún lado. El síntoma era exacto: «ULTRON está hablando» abajo y
+     * silencio total. Una envolvente bonita no vale que el asistente sea mudo.
+     *
+     * Así que el audio suena por el elemento, a secas, y el nivel que mueve la
+     * figura se sintetiza mientras suena. La figura no sabe la diferencia.
+     *
+     * Y si el audio no puede sonar —`play()` rechazado por la política de
+     * autoarranque, un mp3 que no llegó— NO se calla: se dice la frase con la
+     * voz del navegador. Peor timbre, pero se oye, que es lo que importa.
+     */
+    sonar(blob, gen, texto) {
       return new Promise((listo) => {
         const url = URL.createObjectURL(blob); const a = new Audio(url); this.audio = a;
-        try {
-          this.despertar();
-          if (this.ctx && this.ctx.state === 'running') {
-            const src = this.ctx.createMediaElementSource(a); const an = this.ctx.createAnalyser(); an.fftSize = 256;
-            src.connect(an); an.connect(this.ctx.destination);
-            const datos = new Uint8Array(an.frequencyBinCount);
-            const medir = () => { if (a.paused || a.ended || gen !== this.generacion) return; an.getByteFrequencyData(datos); let s = 0; for (let i = 0; i < 40; i++) s += datos[i]; this.alNivel?.(Math.min(1, s / 40 / 150)); requestAnimationFrame(medir); };
-            a.addEventListener('play', () => requestAnimationFrame(medir), { once: true });
-          }
-        } catch { /* sin envolvente */ }
-        const fin = () => { URL.revokeObjectURL(url); this.alNivel?.(0); listo(); };
-        a.onended = fin; a.onerror = fin; a.play().catch(fin);
+        a.preload = 'auto';
+        let envolvente = null;
+        const soltar = () => { clearInterval(envolvente); URL.revokeObjectURL(url); this.alNivel?.(0); };
+        const fin = () => { soltar(); listo(); };
+        a.onended = fin;
+        a.onerror = () => { soltar(); this.conNavegador(texto, gen).then(listo); };
+        a.onplaying = () => {
+          // La envolvente: un habla tiene sílabas, no una línea recta.
+          envolvente = setInterval(() => {
+            if (gen !== this.generacion || a.paused || a.ended) return;
+            const t = performance.now() / 1000;
+            this.alNivel?.(Math.min(1, 0.35 + 0.3 * Math.abs(Math.sin(t * 7.3)) + 0.2 * Math.abs(Math.sin(t * 3.1))));
+          }, 55);
+        };
+        a.play().catch((e) => {
+          // Lo más común: la política de autoarranque. Se dice igual, con la
+          // voz del navegador, y se avisa UNA vez para que se sepa por qué
+          // cambió el timbre.
+          soltar();
+          if (!Locutor.avisado) { Locutor.avisado = true; this.alFallo?.(String(e?.name || e)); }
+          this.conNavegador(texto, gen).then(listo);
+        });
       });
     }
     conNavegador(texto, gen) {

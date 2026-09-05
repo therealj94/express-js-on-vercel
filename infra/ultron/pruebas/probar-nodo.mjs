@@ -224,6 +224,30 @@ titulo('el presupuesto en FICHAS: el saber recibe lo que sobra, y nunca se pasa'
   decir(nodo._adentro.PRESUPUESTO_FICHAS + 1500 < nodo._adentro.CTX, 'con sitio para la respuesta debajo del contexto de AU-RA', `${nodo._adentro.PRESUPUESTO_FICHAS} + 1500 < ${nodo._adentro.CTX}`);
 }
 
+titulo('el modelo enganchado se corta donde empezó a repetirse');
+{
+  /* Pasó de verdad: con una pregunta sobre Orden Global el modelo escribió
+     «sourceMappingError:» cientos de veces hasta agotar el cupo. Ni la
+     búsqueda ni la lectura de páginas traían esa palabra: fue el modelo. */
+  const d = nodo._adentro.dondeEmpiezaElBucle;
+  decir(d('El ORIGEN está a 2,59 dólares y la cadena va en el bloque 88.900 de hoy.') === null, 'la prosa normal no es un bucle');
+  decir(d('Es muy, muy, muy grande y muy claro para todos los que lo miran de cerca.') === null, 'una repetición legítima tampoco');
+  decir(d('| Casa | Estado |\n| --- | --- |\n| a | — |\n| b | — |\n| c | — |\n| d | — |') === null, 'ni una tabla con celdas iguales');
+  const enganchado = 'Según el sitio de Orden Global. ' + 'sourceMappingError: '.repeat(40);
+  const corte = d(enganchado);
+  decir(corte === 32, 'y un enganche se corta en la PRIMERA repetición, no en la tercera', String(corte));
+  decir(enganchado.slice(0, corte) === 'Según el sitio de Orden Global. ', 'dejando lo que dijo antes de engancharse');
+
+  // Y en vivo: el stream se corta, se avisa, y la respuesta es la buena.
+  guion = [{ texto: 'La casa está en orden. ' + 'sourceMappingError: '.repeat(40) }];
+  const eventos = [];
+  const r = await cerebro.pensar({ miembro: JOSE, junta: JUNTA, texto: 'buscá información de Orden Global', emitir: (e, d2) => eventos.push([e, d2]) });
+  decir(!/sourceMappingError: sourceMappingError/.test(r.texto), 'la respuesta que llega no trae el bucle', r.texto.slice(0, 90));
+  decir(/La casa está en orden/.test(r.texto), 'y sí trae lo que dijo antes', r.texto.slice(0, 90));
+  decir(eventos.some(([e, d2]) => e === 'pensando' && d2.motivo === 'se repetía'), 'la consola se entera de por qué se cortó');
+  decir(eventos.some(([e]) => e === 'reemplazo'), 'y se le dice con qué texto quedarse');
+}
+
 titulo('la deriva a otro idioma se ataja en vivo');
 {
   /* «…cambiar rápid嫂，总结一下FilterWhere助手…» en el panel de José. Al

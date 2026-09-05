@@ -45,15 +45,33 @@ await p.fill('input[name=clave]', 'clave-jose'); await p.click('#formPuerta butt
 await p.waitForSelector('#consola:not([hidden])', { timeout: 8000 });
 decir(true, 'con la buena entra');
 
-titulo('el despacho saluda por el nombre, en registro institucional');
-await p.waitForFunction(() => /Buen(os|as) (días|tardes|noches), José\./.test(document.getElementById('hilo').innerText), null, { timeout: 8000 }).catch(() => {});
+titulo('la portada: la figura de ULTRON y el saludo por el nombre');
+await p.waitForFunction(() => /Buen(os|as) (días|tardes|noches), José\./.test(document.getElementById('portada').innerText), null, { timeout: 8000 }).catch(() => {});
 {
-  const h = await texto('#hilo');
+  decir(await p.evaluate(() => !document.getElementById('portada').hidden && document.getElementById('hilo').hidden),
+    'sin conversación se ve la portada, no un hilo vacío');
+  // La figura tiene que tener TINTA: un lienzo en blanco no da error y es la
+  // forma en que una presencia rota pasa desapercibida.
+  decir(await p.evaluate(() => {
+    const c = document.getElementById('presencia');
+    const d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data;
+    let n = 0; for (let i = 3; i < d.length; i += 4 * 131) if (d[i] > 12) n++;
+    return n > 150;
+  }), 'la figura está dibujada: el lienzo tiene tinta');
+  decir(await p.evaluate(() => {
+    // Y está donde tiene que estar: pintada en el centro, no en una esquina.
+    const c = document.getElementById('presencia'); const x = c.getContext('2d');
+    const centro = x.getImageData(c.width * 0.42, c.height * 0.3, c.width * 0.16, c.height * 0.3).data;
+    let n = 0; for (let i = 3; i < centro.length; i += 4 * 37) if (centro[i] > 20) n++;
+    return n > 40;
+  }), 'y la cabeza cae en el centro del lienzo');
+  const h = await texto('#portada');
   decir(/Buen(os|as) (días|tardes|noches), José\./.test(h), 'saluda por el nombre de pila', h);
   decir(/Quedo a su disposición\./.test(h), 'y cede la palabra en registro institucional', h);
   decir(!/¿Por dónde empezamos\?|vos|che/.test(h), 'sin coloquialismos', h);
   decir(/ninguna casa contesta|no hay pendientes/.test(h), 'y dice la verdad sobre la casa (sin red, ninguna contesta)', h);
   decir((await p.$$('#sugerencias .sug')).length >= 4, 'con sugerencias de consulta para la Junta');
+  decir(/ULTRON/.test(h), 'la portada lleva el nombre');
   decir(/José Enamorado/.test(await texto('#cabecera')) && /presidente/.test(await texto('#cabecera')), 'la cabecera dice quién está y con qué cargo');
 }
 
@@ -74,6 +92,82 @@ titulo('pensar sin cerebro lo dice, no se cuelga');
   const h = await texto('#hilo');
   decir(/ANTHROPIC_API_KEY|cerebro/i.test(h), 'aparece el motivo en el hilo', h.slice(-200));
   decir(await p.evaluate(() => !document.getElementById('btnEnviar').disabled), 'y el compositor vuelve a quedar usable');
+  decir(await p.evaluate(() => document.getElementById('portada').hidden && !document.getElementById('hilo').hidden),
+    'con conversación, la portada deja paso al hilo');
+  decir(await p.evaluate(() => document.getElementById('presencia').classList.contains('fondo')),
+    'y la figura se atenúa para no competir con el texto');
+  decir(/Buen(os|as) (días|tardes|noches), José\./.test(h), 'el saludo pasó al hilo: queda en el registro', h.slice(0, 120));
+}
+
+titulo('la voz: suena, y si no puede sonar NO se calla');
+{
+  /* Esto es lo que estuvo roto y no se veía: el pie decía «ULTRON está
+     hablando» y no salía sonido. La causa era enrutar el `<audio>` por Web
+     Audio con un contexto suspendido. Aquí se comprueba el camino entero:
+     que se pida el audio, que se reproduzca, y que si NO se puede reproducir
+     se diga con la voz del navegador en vez de quedarse mudo. */
+  await p.evaluate(() => {
+    window.__voz = { pedidas: 0, reproducidos: 0, dichoPorNavegador: [], fallos: [] };
+    const play = HTMLMediaElement.prototype.play;
+    HTMLMediaElement.prototype.play = function () {
+      if (this.volume === 0) return play.call(this);      // el desbloqueo mudo
+      window.__voz.reproducidos++;
+      if (window.__negarAudio) return Promise.reject(new DOMException('bloqueado', 'NotAllowedError'));
+      return play.call(this);
+    };
+    speechSynthesis.speak = (u) => { window.__voz.dichoPorNavegador.push(u.text); setTimeout(() => u.onend?.(), 10); };
+  });
+  // Un WAV de verdad, corto, en lugar del mp3 de ElevenLabs.
+  await p.route('**/voz', (ruta) => {
+    const n = 1600;                                         // 0,2 s a 8 kHz
+    const b = Buffer.alloc(44 + n); b.write('RIFF', 0); b.writeUInt32LE(36 + n, 4); b.write('WAVEfmt ', 8);
+    b.writeUInt32LE(16, 16); b.writeUInt16LE(1, 20); b.writeUInt16LE(1, 22); b.writeUInt32LE(8000, 24);
+    b.writeUInt32LE(8000, 28); b.writeUInt16LE(1, 32); b.writeUInt16LE(8, 34); b.write('data', 36); b.writeUInt32LE(n, 40);
+    b.fill(128, 44);
+    ruta.fulfill({ status: 200, contentType: 'audio/wav', body: b });
+  });
+
+  // Con audio disponible: se pide y se reproduce.
+  await p.evaluate(async () => {
+    const L = new VOZ.Locutor({ conElevenLabs: true, alNivel: () => {}, alEmpezar: () => {}, alTerminar: () => {} });
+    L.despertar(); L.decir('Buenos días, señor presidente.'); L.cerrar();
+    await new Promise((r) => setTimeout(r, 900));
+  });
+  decir(await p.evaluate(() => window.__voz.reproducidos >= 1), 'el audio de la casa se reproduce', String(await p.evaluate(() => window.__voz.reproducidos)));
+  decir(await p.evaluate(() => window.__voz.dichoPorNavegador.length === 0), 'y no hace falta la voz del navegador');
+
+  // Con el audio negado por el navegador: se dice igual, y se avisa.
+  await p.evaluate(async () => {
+    window.__negarAudio = true;
+    const L = new VOZ.Locutor({ conElevenLabs: true, alNivel: () => {}, alEmpezar: () => {}, alTerminar: () => {}, alFallo: (x) => window.__voz.fallos.push(x) });
+    L.decir('La compra con USDT está abierta.'); L.cerrar();
+    await new Promise((r) => setTimeout(r, 900));
+    window.__negarAudio = false;
+  });
+  decir(await p.evaluate(() => window.__voz.dichoPorNavegador.some((t) => /USDT/.test(t))),
+    'si el navegador no deja reproducir, la frase se dice con su voz: nunca silencio',
+    await p.evaluate(() => JSON.stringify(window.__voz.dichoPorNavegador)));
+  decir(await p.evaluate(() => window.__voz.fallos.length === 1), 'y se avisa una sola vez del motivo');
+
+  // Sin ElevenLabs configurado: tampoco se calla.
+  await p.evaluate(async () => {
+    window.__voz.dichoPorNavegador = [];
+    const L = new VOZ.Locutor({ conElevenLabs: false, alNivel: () => {}, alEmpezar: () => {}, alTerminar: () => {} });
+    L.decir('Quedo a su disposición.'); L.cerrar();
+    await new Promise((r) => setTimeout(r, 400));
+  });
+  decir(await p.evaluate(() => window.__voz.dichoPorNavegador.length === 1), 'sin ElevenLabs, la voz del navegador dice la frase');
+
+  // Y la figura se mueve con la voz.
+  const nivel = await p.evaluate(async () => {
+    let max = 0;
+    const L = new VOZ.Locutor({ conElevenLabs: true, alNivel: (v) => { max = Math.max(max, v); }, alEmpezar: () => {}, alTerminar: () => {} });
+    L.decir('El ORIGEN está a dos dólares con cincuenta y nueve.'); L.cerrar();
+    await new Promise((r) => setTimeout(r, 900));
+    return max;
+  });
+  decir(nivel > 0.2, 'y mientras habla, la envolvente mueve la figura', String(nivel));
+  await p.unroute('**/voz');
 }
 
 titulo('los instrumentos: el catálogo entero, y cada uno a mano');
@@ -144,6 +238,7 @@ titulo('biblioteca, bitácora, la Junta y ajustes');
 if (process.env.ULTRON_FOTO) {
   const D = process.env.ULTRON_FOTO;
   await p.click('.nav[data-vista=despacho]'); await p.waitForTimeout(500); await p.screenshot({ path: `${D}/consola-despacho.png` });
+  await p.evaluate(() => DESPACHO.nueva()); await p.waitForTimeout(1400); await p.screenshot({ path: `${D}/consola-portada.png` });
   await p.click('.nav[data-vista=instrumentos]'); await p.waitForTimeout(400); await p.screenshot({ path: `${D}/consola-instrumentos.png` });
   await p.click('.nav[data-vista=ecosistema]'); await p.waitForTimeout(400); await p.screenshot({ path: `${D}/consola-ecosistema.png` });
   await p.setViewportSize({ width: 390, height: 800 }); await p.click('#pestanas-movil [data-vista=despacho]'); await p.waitForTimeout(500); await p.screenshot({ path: `${D}/consola-movil.png` });

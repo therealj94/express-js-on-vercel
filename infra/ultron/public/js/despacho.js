@@ -45,11 +45,20 @@ const DESPACHO = (() => {
     if (locutor) return locutor;
     locutor = new VOZ.Locutor({
       conElevenLabs: !!yo?.voz,
-      alNivel: () => {},
-      alEmpezar: () => { $('vozEstado').textContent = 'ULTRON está hablando'; },
+      // La envolvente del habla mueve la figura: el núcleo late y las cintas
+      // se aceleran mientras ULTRON habla.
+      alNivel: (v) => PRESENCIA.nivel(v),
+      alEmpezar: () => { $('vozEstado').textContent = 'ULTRON está hablando'; PRESENCIA.estado('hablando'); },
       alTerminar: () => {
         $('vozEstado').textContent = conversando ? 'Conversación continua' : '';
+        PRESENCIA.estado(conversando ? 'escuchando' : 'quieto'); PRESENCIA.nivel(0);
         if (conversando) setTimeout(() => { if (conversando) escucharUnaVez(); }, 350);
+      },
+      // Si el navegador no dejó sonar el audio, se dice por qué UNA vez: el
+      // silencio sin explicación es lo que hace pensar que está roto.
+      alFallo: (porQue) => {
+        $('vozEstado').textContent = 'Voz por el navegador';
+        APP.avisar(`Su navegador no permitió reproducir el audio (${porQue}). ULTRON continúa con la voz del navegador; toque la pantalla para habilitar la voz completa.`);
       },
     });
     locutor.vozId = vozElegida();
@@ -61,12 +70,20 @@ const DESPACHO = (() => {
     saludoDicho = true; for (const f of saludoPendiente) elLocutor().decir(f); saludoPendiente = [];
   }
 
+  /** Portada cuando no hay nada dicho; la figura al fondo cuando sí. */
+  function acomodarPresencia() {
+    const vacio = $('hilo').childElementCount === 0;
+    $('portada').hidden = !vacio;
+    $('hilo').hidden = vacio;
+    PRESENCIA.plano(vacio ? 'portada' : 'fondo');
+  }
+
   // ── el hilo ─────────────────────────────────────────────────────────────
   function turno(de, html, { id } = {}) {
     const el = document.createElement('article');
     el.className = `turno ${de === 'ultron' ? 'ultron' : 'miembro'}`; if (id) el.id = id;
     el.innerHTML = `<div class="de"><b>${de === 'ultron' ? 'ULTRON' : esc(yo?.miembro?.nombre || 'Usted')}</b><time>${ahora()}</time></div><div class="cuerpo">${html}</div>`;
-    $('hilo').appendChild(el); $('hilo').scrollTop = $('hilo').scrollHeight;
+    $('hilo').appendChild(el); acomodarPresencia(); $('hilo').scrollTop = $('hilo').scrollHeight;
     return el;
   }
   function registro(nombre, entrada) {
@@ -82,6 +99,8 @@ const DESPACHO = (() => {
     if (!t || pensando) return;
     permitirAudio(); const L = elLocutor(); L.callar();
     pensando = true; $('btnEnviar').disabled = true; $('sugerencias').hidden = true;
+    PRESENCIA.estado('pensando');
+    if ($('hilo').childElementCount === 0 && $('portadaLinea').textContent) turno('ultron', `<p>${esc($('portadaLinea').textContent)}</p>`);
     turno('miembro', `<p>${esc(t)}</p>`);
     const resp = turno('ultron', '<div class="pensando">Consultando</div>');
     const cuerpo = resp.querySelector('.cuerpo');
@@ -111,15 +130,16 @@ const DESPACHO = (() => {
       error: (mensaje) => { acumulado = acumulado || `No fue posible responder: ${mensaje}`; pintarTexto(); if (!silencio()) L.decir(mensaje); },
     }).catch((e) => { acumulado = acumulado || `No fue posible responder: ${e.message}`; pintarTexto(); });
     pensando = false; $('btnEnviar').disabled = false;
+    if (!L.ocupado) PRESENCIA.estado('quieto');
   }
 
   // ── la voz de la persona ─────────────────────────────────────────────────
   async function escucharUnaVez() {
     if (!VOZ.hayOido()) { APP.avisar('Este navegador no admite dictado. Escriba la consulta y ULTRON responderá con voz.'); conversar(false); return; }
     permitirAudio(); elLocutor().callar();
-    $('btnVoz').classList.add('escuchando'); $('vozEstado').textContent = 'Escuchando';
+    $('btnVoz').classList.add('escuchando'); $('vozEstado').textContent = 'Escuchando'; PRESENCIA.estado('escuchando');
     const dicho = await VOZ.escuchar({ alParcial: (t) => { $('entrada').value = t; } });
-    $('btnVoz').classList.remove('escuchando'); $('vozEstado').textContent = conversando ? 'Conversación continua' : '';
+    $('btnVoz').classList.remove('escuchando'); $('vozEstado').textContent = conversando ? 'Conversación continua' : ''; PRESENCIA.estado('quieto');
     if (dicho) { vaciasSeguidas = 0; $('entrada').value = ''; await enviar(dicho, 'voz'); return; }
     if (conversando) { vaciasSeguidas++; if (vaciasSeguidas >= 3) { conversar(false); APP.avisar('Conversación en pausa por silencio.'); } else setTimeout(() => { if (conversando) escucharUnaVez(); }, 400); }
   }
@@ -135,17 +155,19 @@ const DESPACHO = (() => {
     const c = await DATOS.conversacion(id);
     conversacionId = id; $('hilo').innerHTML = ''; $('sugerencias').hidden = true;
     for (const t of c.turnos || []) turno(t.rol === 'miembro' ? 'miembro' : 'ultron', t.rol === 'miembro' ? `<p>${esc(t.texto)}</p>` : `<div class="md">${MARKDOWN.aHtml(t.texto || '')}</div>`);
-    APP.vista('despacho');
+    acomodarPresencia(); APP.vista('despacho');
   }
-  function nueva() { conversacionId = null; $('hilo').innerHTML = ''; $('sugerencias').hidden = false; saludar(); }
+  function nueva() { conversacionId = null; $('hilo').innerHTML = ''; $('sugerencias').hidden = false; acomodarPresencia(); saludar(); }
 
   // ── el saludo ───────────────────────────────────────────────────────────
   async function saludar() {
     try {
       const s = await DATOS.saludo();
-      turno('ultron', `<p>${esc(s.texto)}</p>`);
+      // En la portada, bajo la figura: es lo primero que se ve al entrar. Al
+      // hilo pasa en cuanto haya conversación, para que quede en el registro.
+      $('portadaLinea').textContent = s.texto;
       saludoPendiente.push(s.texto); saludoDicho = false; decirSaludoSiSePuede();
-    } catch { turno('ultron', '<p>Buen día. Quedo a su disposición.</p>'); }
+    } catch { $('portadaLinea').textContent = 'Quedo a su disposición.'; }
   }
 
   function arrancar(quien) {
@@ -155,6 +177,7 @@ const DESPACHO = (() => {
     const marcador = () => { $('entrada').placeholder = window.innerWidth <= 820 ? 'Consulta o instrucción' : 'Indique la consulta o la instrucción para ULTRON'; };
     marcador(); window.addEventListener('resize', marcador);
     $('cerebroEstado').textContent = yo.cerebro ? (yo.donde === 'nodo' ? `Pensando en el nodo propio · ${String(yo.modelo).replace(/^nodo:/, '')}` : `Pensando con ${yo.modelo}`) : 'El cerebro no está configurado';
+    acomodarPresencia();
     if ($('hilo').childElementCount === 0) saludar();
   }
 

@@ -18,7 +18,8 @@ const APP = (() => {
     $('principal').style.display = esTablero && window.innerWidth <= 1180 ? 'none' : '';
     document.querySelectorAll('[data-vista]').forEach((b) => { if (b.dataset.vista === nombre) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current'); });
     if (location.hash !== '#' + nombre) history.replaceState(null, '', '#' + nombre);
-    if (nombre === 'despacho') $('entrada').focus({ preventScroll: true });
+    // La figura solo anima cuando se la está mirando.
+    if (nombre === 'despacho') { PRESENCIA.correr(); $('entrada').focus({ preventScroll: true }); } else PRESENCIA.parar();
   }
 
   function pintarCabecera() {
@@ -33,6 +34,7 @@ const APP = (() => {
   async function entrar() {
     $('puerta').hidden = true; $('consola').hidden = false;
     pintarCabecera();
+    PRESENCIA.arrancar();
     TABLERO.arrancar(yo);
     DESPACHO.arrancar(yo);
     INSTRUMENTOS.arrancar();
