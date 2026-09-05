@@ -363,6 +363,22 @@ titulo('el título, sin herramientas y corto');
   decir(!pedidos.at(-1).tools && pedidos.at(-1).stream === false, 'y el pedido fue sin herramientas y sin streaming');
 }
 
+titulo('el modelo no piensa en voz alta delante de la junta');
+{
+  /* Qwen3.8 y toda la generación Qwen3 traen el «pensamiento» ENCENDIDO por
+     omisión: escriben su borrador antes de contestar. Eso es lo que vería la
+     junta, y se paga en fichas y en segundos. Se apaga en `pedir()`, que es por
+     donde pasan TODOS los pedidos — y esta prueba existe porque son siete
+     llamadas y la que se olvide es la que un día enseña el borrador. */
+  guion = [{ texto: 'Listo.' }];
+  await cerebro.pensar({ miembro: JOSE, junta: JUNTA, texto: 'hola' });
+  decir(pedidos.every((p) => p.think === false), `los ${pedidos.length} pedidos del turno llevan think:false`,
+    JSON.stringify(pedidos.map((p) => p.think)));
+  guion = [{ texto: 'Un título' }];
+  await cerebro.titular('algo');
+  decir(pedidos.at(-1).think === false, 'y el del título también');
+}
+
 titulo('cuando el nodo dice que no, se dice por qué');
 {
   process.env.ULTRON_NODO_SECRETO = 'otro-secreto-que-no-cuadra';

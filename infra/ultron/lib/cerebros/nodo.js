@@ -75,7 +75,22 @@ function pedir(cuerpo, { alTrozo = () => {}, plazo = PLAZO_MS } = {}) {
     let u;
     try { u = new URL(URL_NODO + '/api/chat'); } catch { return fallar(conCodigo('NODO_APAGADO', 'ULTRON_NODO_URL no es una URL.')); }
     const seguro = u.protocol === 'https:';
-    const datos = JSON.stringify(cuerpo);
+    /* SIN PENSAR EN VOZ ALTA.
+     *
+     * Los modelos de la generación Qwen3 traen el «pensamiento» ENCENDIDO por
+     * omisión: antes de contestar escriben su borrador —«el usuario pregunta
+     * X, debería mirar Y…»— y eso es lo que vería la junta en pantalla, además
+     * de pagarse en fichas y en segundos de espera.
+     *
+     * Se apaga acá, en el único sitio por el que pasan TODOS los pedidos, y no
+     * en cada llamada: son siete y la que se olvide es la que un día enseña el
+     * borrador. Va antes del `...cuerpo` a propósito, para que una llamada que
+     * algún día quiera el pensamiento pueda pedirlo y ganarle a este valor.
+     *
+     * Un modelo que no sabe pensar en voz alta —qwen2.5, el de hasta hoy— lo
+     * ignora sin quejarse: está comprobado contra el motor de verdad, no
+     * supuesto. */
+    const datos = JSON.stringify({ think: false, ...cuerpo });
     const opciones = {
       method: 'POST', hostname: u.hostname, port: u.port || (seguro ? 443 : 80), path: u.pathname,
       headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(datos), 'x-ultron-secreto': SECRETO },
