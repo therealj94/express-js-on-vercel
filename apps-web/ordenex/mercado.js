@@ -113,6 +113,8 @@ const VMERCADO = (() => {
       'sub': 'Los {mercados} mercados de la cadena, cada uno contra ORIGEN.',
       'cMercado': 'Mercado', 'cUltimo': 'Último (ORIGEN)', 'cCambio': '24 h', 'cVol': 'Volumen 24 h',
       'cLibro': 'En el libro', 'pCompra': 'compra', 'pVenta': 'venta', 'libroVacio': 'vacío',
+      'cDia': 'El día', 'ordenar': 'Ordenar por', 'oCadena': 'Cadena', 'oNombre': 'Nombre', 'oPrecio': 'Precio', 'oCambio': '24 h', 'oVol': 'Volumen',
+      'sinDia': 'sin tratos hoy',
       'libroTit': 'Lo mejor que hay descansando ahora en este libro. Es lo que dice si hay con quién operar: el último es lo que ya se pagó, esto es lo que se ofrece.',
       'ref': 'ref.',
       'cargando': 'Trayendo los mercados…',
@@ -193,6 +195,11 @@ const VMERCADO = (() => {
       'disp': 'Disponible: {monto} {sim}',
       'dispNo': 'No pudimos leer tu saldo. Sin saldo leído no se coloca nada — probá de nuevo en un momento.',
       'max': 'Usar todo',
+      'totalIn': 'Total (ORIGEN)',
+      'promedio': 'Precio promedio', 'sobrePunta': '{pct} % sobre la punta', 'bajoPunta': '{pct} % bajo la punta',
+      'ps.historial': 'Historial', 'ps.mistratos': 'Mis tratos',
+      'ps.sinHist': 'Todavía no hay órdenes cerradas en este mercado.', 'ps.sinMisTratos': 'Todavía no se te calzó nada en este mercado.',
+      'est.ejecutada': 'Ejecutada', 'est.cancelada': 'Cancelada', 'est.rechazada': 'Rechazada', 'est.abierta': 'Abierta',
       'colocada': 'Orden colocada.',
       'cancelada': 'Orden cancelada.',
       'noCubre': 'El libro no cubre toda la cantidad: lo que no calce se cancela solo, jamás queda descansando.',
@@ -320,6 +327,8 @@ const VMERCADO = (() => {
       'sub': 'The {mercados} markets of the chain, each against ORIGEN.',
       'cMercado': 'Market', 'cUltimo': 'Last (ORIGEN)', 'cCambio': '24 h', 'cVol': '24 h volume',
       'cLibro': 'On the book', 'pCompra': 'bid', 'pVenta': 'ask', 'libroVacio': 'empty',
+      'cDia': 'Today', 'ordenar': 'Sort by', 'oCadena': 'Chain', 'oNombre': 'Name', 'oPrecio': 'Price', 'oCambio': '24 h', 'oVol': 'Volume',
+      'sinDia': 'no trades today',
       'libroTit': 'The best resting orders on this book right now. This is what tells you whether there is anyone to trade with: last is what was already paid, this is what is on offer.',
       'ref': 'ref.',
       'cargando': 'Fetching the markets…',
@@ -393,6 +402,11 @@ const VMERCADO = (() => {
       'disp': 'Available: {monto} {sim}',
       'dispNo': 'We couldn’t read your balance. Nothing gets placed on an unread balance — try again in a moment.',
       'max': 'Use all',
+      'totalIn': 'Total (ORIGEN)',
+      'promedio': 'Average price', 'sobrePunta': '{pct} % above the top', 'bajoPunta': '{pct} % below the top',
+      'ps.historial': 'History', 'ps.mistratos': 'My trades',
+      'ps.sinHist': 'No closed orders in this market yet.', 'ps.sinMisTratos': 'Nothing has filled for you in this market yet.',
+      'est.ejecutada': 'Filled', 'est.cancelada': 'Cancelled', 'est.rechazada': 'Rejected', 'est.abierta': 'Open',
       'colocada': 'Order placed.',
       'cancelada': 'Order cancelled.',
       'noCubre': 'The book doesn’t cover the whole amount: whatever doesn’t match is cancelled — it never rests.',
@@ -682,8 +696,47 @@ const VMERCADO = (() => {
     .ms-puntas .lado{color:var(--humo);white-space:nowrap}
     .ms-puntas .lado b{font-weight:600}
     .ms-puntas .venta b{color:var(--coral)} .ms-puntas .compra b{color:var(--jade)}
-    .ms-fila{cursor:pointer;transition:background .15s}
+    .ms-caja{padding:0;overflow:hidden}
+    .ms-herr{display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap;
+      padding:10px 14px;border-bottom:1px solid var(--linea2)}
+    .ms-herr .vm-buscar{flex:1 1 200px;border-bottom:0;padding:6px 8px;border:1px solid var(--linea2);border-radius:100px}
+    .ms-ord{display:flex;gap:4px;align-items:center}
+    .ms-ord button{padding:6px 11px;border-radius:100px;font-size:11.5px;font-weight:600;color:var(--humo);
+      border:1px solid transparent;transition:.15s}
+    .ms-ord button:hover{color:var(--bruma)}
+    .ms-ord button[aria-pressed=true]{color:var(--oroHi);background:rgba(201,169,97,.14);border-color:var(--linea2)}
+    .ms-cab,.ms-fila{display:grid;grid-template-columns:30px minmax(0,1.6fr) 120px minmax(0,1.1fr) 84px minmax(0,1.1fr) minmax(0,1fr);
+      gap:10px;align-items:center;padding:0 16px}
+    .ms-cab{padding-top:10px;padding-bottom:8px;font-size:10.5px;font-weight:700;letter-spacing:.08em;
+      text-transform:uppercase;color:var(--humo);border-bottom:1px solid var(--linea2)}
+    .ms-cab span:nth-child(n+4),.ms-fila>.ms-ult,.ms-fila>.ms-cambio,.ms-fila>.ms-libro,.ms-fila>.ms-vol{text-align:right}
+    .ms-fila{cursor:pointer;transition:background .15s;padding-top:11px;padding-bottom:11px;
+      border-bottom:1px solid rgba(255,255,255,.05)}
+    .ms-fila:last-child{border-bottom:0}
     .ms-fila:hover{background:rgba(116,230,200,.05)}
+    .ms-fila:focus-visible{outline:2px solid var(--oro);outline-offset:-2px}
+    .ms-fila .vm-fav{padding:0;font-size:15px;color:var(--humo)}
+    .ms-fila .vm-fav[aria-pressed=true]{color:var(--oro)}
+    .ms-ult{font-size:14.5px;color:var(--crema);font-variant-numeric:tabular-nums}
+    .ms-cambio{display:flex;justify-content:flex-end}
+    .ms-libro{display:flex;justify-content:flex-end}
+    .ms-vol{font-size:13px;color:var(--bruma)}
+    .ms-chispa{width:100%;height:28px;display:block;fill:none;stroke-width:1.6;stroke-linejoin:round;stroke-linecap:round}
+    .ms-chispa.sube{stroke:var(--jade)} .ms-chispa.baja{stroke:var(--coral)}
+    .ms-sin{font-size:10.5px;color:var(--humo)}
+    @media (max-width:900px){
+      .ms-cab,.ms-fila{grid-template-columns:26px minmax(0,1.5fr) 72px minmax(0,1fr) 72px;gap:8px;padding:0 12px}
+      .ms-cab span:nth-child(n+6),.ms-fila>.ms-libro,.ms-fila>.ms-vol{display:none}
+      .ms-fila{padding-top:10px;padding-bottom:10px}
+      .ms-par b{font-size:13.5px} .ms-ult{font-size:13px}
+      .ms-par{gap:8px} .ms-par .vm-ic{width:28px;height:28px;border-radius:9px}
+      .ms-par small,.ms-nom{display:none}
+      .ms-ref{white-space:nowrap}
+    }
+    @media (max-width:420px){
+      .ms-cab,.ms-fila{grid-template-columns:22px minmax(0,1.2fr) 64px minmax(0,1fr) 64px;gap:6px;padding:0 10px}
+      .ms-cab{font-size:9.5px}
+    }
     .ms-par{display:flex;align-items:center;gap:11px}
     .ms-par b{font-size:14.5px;color:var(--crema)}
     .ms-par small{color:var(--humo);font-size:11.5px}
@@ -792,7 +845,10 @@ const VMERCADO = (() => {
        Mis ordenes abiertas y el historial, debajo del libro y sin cambiar de
        vista. Un operador mira sus ordenes cada pocos segundos; mandarlo a otra
        pantalla para eso es el error de diseño mas caro que tenia esta sala. */
-    .vm-peskab{display:flex;gap:2px;border-bottom:1px solid var(--linea2);margin-bottom:10px}
+    .vm-peskab{display:flex;gap:2px;border-bottom:1px solid var(--linea2);margin-bottom:10px;
+      overflow-x:auto;white-space:nowrap;scrollbar-width:none}
+    .vm-peskab::-webkit-scrollbar{display:none}
+    .vm-peskab button{flex:none}
     .vm-peskab button{padding:8px 14px;font-size:12.5px;font-weight:600;color:var(--humo);
       border-bottom:2px solid transparent;transition:.15s}
     .vm-peskab button:hover{color:var(--bruma)}
@@ -806,6 +862,14 @@ const VMERCADO = (() => {
     .vm-mia .lado.compra{color:var(--jade)} .vm-mia .lado.venta{color:var(--coral)}
     .vm-mia .pr{color:var(--crema)} .vm-mia .ct{color:var(--bruma);font-size:11.5px}
     .vm-mia .x{color:var(--humo);font-size:12px;padding:2px 5px;line-height:1}
+    .vm-hist .est{font-size:11px;color:var(--bruma);text-align:right;display:grid;line-height:1.3}
+    .vm-hist .est small{color:var(--humo);font-family:var(--mono);font-size:10.5px}
+    .vm-hist .est.ejecutada{color:var(--jade)} .vm-hist .est.cancelada{color:var(--humo)} .vm-hist .est.rechazada{color:var(--coral)}
+    .vm-pct{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin:-6px 0 14px}
+    .vm-pct button{padding:6px 0;border-radius:8px;border:1px solid var(--linea2);background:rgba(2,22,23,.45);
+      color:var(--bruma);font-family:var(--mono);font-size:11.5px;font-weight:600;cursor:pointer;transition:.15s}
+    .vm-pct button:hover{color:var(--crema);border-color:var(--linea)}
+    .vm-pct button.es{background:rgba(201,169,97,.16);color:var(--oroLt);border-color:var(--linea)}
     .vm-mia .x:hover{color:var(--coral)}
 
     /* La cabecera de la gráfica: la fuente manda y el marco la sigue, en esa
@@ -897,6 +961,31 @@ const VMERCADO = (() => {
        una pantalla de 320 — la sala entera se salía por 25 px. En 360 entraba
        por poco: por eso nadie lo vio. */
     @media (max-width:1100px){body.en-mercado .vm-rejilla{grid-template-columns:minmax(0,1fr)}}
+    /* ═══ LA SALA EN UN TELÉFONO ════════════════════════════════════════════
+       Una columna con la gráfica, después el formulario, después las
+       veintiocho filas del libro y después los tratos era una página de
+       cuatro mil píxeles en la que operar quedaba a mitad de camino. La app
+       de cualquier exchange pone el formulario y el libro LADO A LADO —se
+       teclea el precio mirando las puntas— y la gráfica arriba. Los dos
+       envoltorios de columna se disuelven (display:contents) y las cuatro
+       cajas se colocan en una rejilla de dos: gráfica a lo ancho, formulario
+       y libro juntos, tratos a lo ancho. El libro enseña ocho niveles por
+       lado, que es lo que cabe al lado de un formulario. */
+    @media (min-width:401px) and (max-width:820px){
+      .vm-rejilla,body.en-mercado .vm-rejilla{grid-template-columns:minmax(0,1fr) minmax(0,.9fr);gap:10px}
+      .vm-rejilla>div{display:contents}
+      .vm-grafica-caja{grid-column:1/-1;order:1}
+      #vm-form-caja{order:2;padding:14px}
+      .vm-libro-caja{order:2;padding:12px 8px}
+      .vm-tape-caja{grid-column:1/-1;order:3}
+      .vm-libro-caja h3{font-size:13px;padding:0 6px}
+      .vm-lado .vm-fila:nth-child(n+9){display:none}
+      .vm-fila{padding:4px 6px;font-size:11.5px}
+      .vm-medio{font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+      .vm-medio small{display:none}
+      .vm-pct{grid-template-columns:repeat(2,1fr)}
+    }
+    @media (max-width:820px){.vm-pct{grid-template-columns:repeat(4,1fr)}}
     .vm-nota{position:absolute;inset:0;display:grid;place-items:center;text-align:center;
       color:var(--humo);font-size:13px;line-height:1.6;padding:0 20px;pointer-events:none}
 
@@ -1153,74 +1242,121 @@ const VMERCADO = (() => {
       <h2>${esc(tx('t'))}</h2>
       <div class="sub">${esc(tx('sub'))}</div>
     </div></div>
-    <div class="vidrio bloque">
-      <!-- Dentro de su riel (.desliza, en index.html): cuatro columnas con
-           «Volumen 24 h» no entran en 360 px, y sin el riel la última se
-           recortaba contra el borde en vez de poder deslizarse. -->
-      <div class="desliza">
-        <table class="tabla">
-          <thead><tr>
-            <th>${esc(tx('cMercado'))}</th>
-            <th>${esc(tx('cUltimo'))}</th>
-            <th title="${esc(tx('libroTit'))}">${esc(tx('cLibro'))}</th>
-            <th>${esc(tx('cCambio'))}</th>
-            <th>${esc(tx('cVol'))}</th>
-          </tr></thead>
-          <tbody id="ms-cuerpo"></tbody>
-        </table>
+    <div class="vidrio bloque ms-caja">
+      <div class="ms-herr">
+        <div class="vm-buscar">
+          <svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="9" cy="9" r="6"/><path d="M13.5 13.5 18 18"/></svg>
+          <input id="ms-q" type="search" autocomplete="off" spellcheck="false"
+                 placeholder="${esc(tx('ls.buscar'))}" aria-label="${esc(tx('ls.buscar'))}"
+                 oninput="VMERCADO.buscarLista(this.value)">
+        </div>
+        <div class="ms-ord" role="group" aria-label="${esc(tx('ordenar'))}">
+          ${[['cadena', 'oCadena'], ['precio', 'oPrecio'], ['cambio', 'oCambio'], ['vol', 'oVol']].map(([k, t]) => `
+            <button type="button" data-ord="${k}" aria-pressed="${String(ordenLista.por === k)}"
+                    onclick="VMERCADO.ordenarLista('${k}')">${esc(tx(t))}</button>`).join('')}
+        </div>
       </div>
+      <div class="ms-cab">
+        <span></span><span>${esc(tx('cMercado'))}</span><span>${esc(tx('cDia'))}</span>
+        <span>${esc(tx('cUltimo'))}</span><span>${esc(tx('cCambio'))}</span>
+        <span title="${esc(tx('libroTit'))}">${esc(tx('cLibro'))}</span><span>${esc(tx('cVol'))}</span>
+      </div>
+      <div id="ms-cuerpo"></div>
       <p class="pie" id="ms-nota">${esc(tx('cargando'))}</p>
     </div>`;
   }
 
+  /* ═══ LA LISTA, COMO LA DE UN EXCHANGE ═══════════════════════════════════
+     Cada fila lleva la mini gráfica del día —los cierres de 1 h que manda
+     el API en serie24h—, la estrella de favorito, y la lista se busca y se
+     ordena. Los favoritos van arriba siempre y viven en el navegador, como
+     en la sala. El orden por omisión es el de la cadena: es el único que no
+     baila con cada refresco. */
+  let filtroLista = '';
+  let ordenLista = { por: 'cadena', dir: 1 };
+
+  function buscarLista(q) { filtroLista = String(q || '').trim().toUpperCase(); pintarFilasMercados($('ms-cuerpo'), $('ms-nota')); }
+  function ordenarLista(por) {
+    if (ordenLista.por === por) ordenLista.dir = -ordenLista.dir; else ordenLista = { por, dir: por === 'cadena' ? 1 : -1 };
+    document.querySelectorAll('.ms-ord button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.ord === por)));
+    pintarFilasMercados($('ms-cuerpo'), $('ms-nota'));
+  }
+
+  /* La mini gráfica: una línea de 100 × 28 con los cierres del día,
+     normalizada a su propio rango. Jade si cerró por encima de donde abrió,
+     coral si por debajo. Sin serie no hay línea: un guion, no una raya plana. */
+  function chispa(serie) {
+    const v = (Array.isArray(serie) ? serie : []).map(x => entero(x)).filter(x => x != null && x > 0n);
+    if (v.length < 2) return `<span class="ms-sin">${esc(tx('sinDia'))}</span>`;
+    const min = v.reduce((a, b) => (b < a ? b : a)), max = v.reduce((a, b) => (b > a ? b : a));
+    const rango = max - min > 0n ? max - min : 1n;
+    const pts = v.map((y, i) => `${(i * 100 / (v.length - 1)).toFixed(1)},${(26 - Number((y - min) * 24n / rango)).toFixed(1)}`).join(' ');
+    const sube = v[v.length - 1] >= v[0];
+    return `<svg class="ms-chispa ${sube ? 'sube' : 'baja'}" viewBox="0 0 100 28" preserveAspectRatio="none" aria-hidden="true">
+      <polyline points="${pts}"/></svg>`;
+  }
+
+  const claveOrden = (m, par) => {
+    const num = x => { const n = entero(x); return n == null ? null : n; };
+    if (ordenLista.por === 'precio') return num(m?.ultimo) ?? num(refEnOrigen(m)) ?? -1n;
+    if (ordenLista.por === 'cambio') return m?.cambio24h == null ? null : Number(m.cambio24h);
+    if (ordenLista.por === 'vol') return num(m?.vol24h) ?? -1n;
+    return CADENA.PARES.indexOf(par);
+  };
+  const compara = (a, b) => (a == null && b == null ? 0 : a == null ? 1 : b == null ? -1 : a < b ? -1 : a > b ? 1 : 0);
+
   /* Se itera CADENA.PARES y no la respuesta del API: la tabla de activos es
-     el contrato, y así los mercados están SIEMPRE en pantalla —los que haya,
-     que hoy son cinco y mañana los que publique la Junta—, en el
-     orden de la cadena, con guiones donde el dato no llegó — un mercado sin
-     feed no es un mercado que desaparece. */
+     el contrato, y así los mercados están SIEMPRE en pantalla, con guiones
+     donde el dato no llegó. Con el backend caído, lo pintado se queda: viejo
+     y honesto; sin nada previo, se dice que no llegó. */
   async function pintarMercados() {
     const cuerpo = $('ms-cuerpo'), nota = $('ms-nota');
     if (!cuerpo) return;
     try {
       mercadosCache = await DATOS.mercados();
     } catch {
-      /* CON EL BACKEND CAÍDO, LOS MERCADOS SIGUEN EN PANTALLA.
-         Esto retornaba antes de pintar cuando no había caché, así que un
-         primer sondeo fallido dejaba la tabla VACÍA y el comentario de arriba
-         —«SIEMPRE en pantalla, con guiones donde el dato no llegó»— prometía
-         algo que el código no hacía. Y la promesa no era un adorno: la lista
-         se itera desde CADENA.PARES justamente para no depender del API, o
-         sea que las filas se pueden pintar sin una sola respuesta.
-         Una casa de cambio que se queda sin mercados cuando su backend
-         tropieza parece cerrada; con guiones, parece lo que es: viva y sin
-         precio. Si ya había datos, se dejan quietos: viejos y honestos. */
       pintarFilasMercados(cuerpo, nota, !mercadosCache);
       return;
     }
     pintarFilasMercados(cuerpo, nota);
   }
 
-  // `sinFeed` distingue los dos vacíos: sin precios porque no llegaron (se
-  // dice) y sin precios porque no hay tratos (el guion habla solo).
   function pintarFilasMercados(cuerpo, nota, sinFeed) {
+    if (!cuerpo) return;
     const porPar = new Map((mercadosCache || []).map(m => [m.mercado, m]));
-    cuerpo.innerHTML = CADENA.PARES.map(par => {
+    const fav = favoritos();
+    const pares = CADENA.PARES
+      .filter(p => !filtroLista || String(CADENA.baseDe(p) || p).toUpperCase().includes(filtroLista)
+                || String(CADENA.meta(CADENA.baseDe(p)).n || '').toUpperCase().includes(filtroLista))
+      .sort((a, b) => ((fav.has(b) ? 1 : 0) - (fav.has(a) ? 1 : 0))
+        || ordenLista.dir * compara(claveOrden(porPar.get(a), a), claveOrden(porPar.get(b), b)));
+    if (!pares.length) {
+      cuerpo.innerHTML = `<div class="vm-vacio">${esc(tx('ls.nada'))}</div>`;
+      if (nota) nota.textContent = '';
+      return;
+    }
+    cuerpo.innerHTML = pares.map(par => {
       const sim = CADENA.baseDe(par);
       const m = porPar.get(par) || {};
       const pf = precioFila(m);
       const ref = refUsd(m);
       const vol = deWei(m.vol24h, 2);
+      const es = fav.has(par);
       return `
-      <tr class="ms-fila" onclick="ONX.vista('mercado', ${jsTxt(par)})">
-        <td><span class="ms-par">${icono(sim)}<span><b>${esc(sim)}</b> <small>/ ORIGEN</small>
-          <span class="ms-nom">${esc(CADENA.meta(sim).n || '')}</span></span></span></td>
-        <td class="mono">${pf.txt == null ? '<span class="vm-sin">—</span>'
+      <div class="ms-fila" onclick="ONX.vista('mercado', ${jsTxt(par)})" role="link" tabindex="0"
+           onkeydown="if(event.key==='Enter')ONX.vista('mercado', ${jsTxt(par)})">
+        <button class="vm-fav" aria-pressed="${String(es)}" aria-label="${esc(tx(es ? 'ls.quitarFav' : 'ls.ponerFav'))}"
+                onclick="event.stopPropagation();VMERCADO.favorito(${jsTxt(par)});VMERCADO.buscarLista(document.getElementById('ms-q')?.value||'')">${es ? '★' : '☆'}</button>
+        <span class="ms-par">${icono(sim)}<span><b>${esc(sim)}</b> <small>/ ORIGEN</small>
+          <span class="ms-nom">${esc(CADENA.meta(sim).n || '')}</span></span></span>
+        <span class="ms-dia">${chispa(m.serie24h)}</span>
+        <span class="mono ms-ult">${pf.txt == null ? '<span class="vm-sin">—</span>'
           : `<span class="${pf.ref ? 'ms-esref' : ''}" title="${pf.ref ? esc(tx('ls.esRef') + (m.referencia?.en ? ' · ' + rell(tx('leida'), { hora: hora(m.referencia.en) }) + ' · ' + String(m.referencia.fuente || '') : '')) : ''}">${esc(pf.txt)}</span>`}
-          ${ref == null ? '' : `<small class="ms-ref">${esc(tx('ref'))} ${esc(ref)}</small>`}</td>
-        <td>${puntasFila(m)}</td>
-        <td>${pastillaCambio(m.cambio24h)}</td>
-        <td class="mono">${vol == null ? '<span class="vm-sin">—</span>' : esc(vol) + ' ' + esc(sim)}</td>
-      </tr>`;
+          ${ref == null ? '' : `<small class="ms-ref">${esc(tx('ref'))} ${esc(ref)}</small>`}</span>
+        <span class="ms-cambio">${pastillaCambio(m.cambio24h)}</span>
+        <span class="ms-libro">${puntasFila(m)}</span>
+        <span class="mono ms-vol">${vol == null ? '<span class="vm-sin">—</span>' : esc(vol) + ' ' + esc(sim)}</span>
+      </div>`;
     }).join('');
     if (nota) nota.textContent = sinFeed ? tx('sinFeed') : '';
   }
@@ -1279,7 +1415,7 @@ const VMERCADO = (() => {
         <div class="vm-lista-cuerpo" id="vm-lista"></div>
       </aside>
       <div>
-        <div class="vidrio bloque">
+        <div class="vidrio bloque vm-grafica-caja">
           <div class="vm-cabgraf" id="vm-cabgraf">${cabGrafica(par)}</div>
           <div class="vm-lienzo">
             <canvas id="vm-velas"></canvas>
@@ -1304,7 +1440,7 @@ const VMERCADO = (() => {
         <div class="vidrio bloque" id="vm-form-caja">${cajaOperar(sim, par)}</div>
       </div>
       <div>
-        <div class="vidrio bloque">
+        <div class="vidrio bloque vm-libro-caja">
           <h3>${esc(tx('libro'))}</h3>
           <div class="vm-cab3"><span>${esc(tx('precio'))}</span><span>${esc(tx('cantidad'))}</span></div>
           <div class="vm-lado" id="vm-ventas"></div>
@@ -1312,15 +1448,21 @@ const VMERCADO = (() => {
           <div class="vm-lado" id="vm-compras"></div>
           <div class="vm-vacio oculto" id="vm-libro-nota"></div>
         </div>
-        <div class="vidrio bloque">
+        <div class="vidrio bloque vm-tape-caja">
           <div class="vm-peskab" role="tablist">
             <button role="tab" aria-selected="true" data-pes="tratos"
                     onclick="VMERCADO.pestana('tratos')">${esc(tx('tratos'))}</button>
             <button role="tab" aria-selected="false" data-pes="mias"
                     onclick="VMERCADO.pestana('mias')">${esc(tx('ps.mias'))}<span class="cuenta" id="vm-nmias"></span></button>
+            <button role="tab" aria-selected="false" data-pes="historial"
+                    onclick="VMERCADO.pestana('historial')">${esc(tx('ps.historial'))}</button>
+            <button role="tab" aria-selected="false" data-pes="mistratos"
+                    onclick="VMERCADO.pestana('mistratos')">${esc(tx('ps.mistratos'))}</button>
           </div>
           <div id="vm-tratos"><div class="vm-vacio">—</div></div>
           <div id="vm-mias" class="oculto"></div>
+          <div id="vm-historial" class="oculto"></div>
+          <div id="vm-mistratos" class="oculto"></div>
         </div>
       </div>
     </div>
@@ -1520,15 +1662,57 @@ const VMERCADO = (() => {
      eso era el error de diseño más caro que tenía esta sala. */
   let pestanaAbierta = 'tratos';
 
+  const PESTANAS = ['tratos', 'mias', 'historial', 'mistratos'];
   function pestana(cual) {
-    if (cual !== 'tratos' && cual !== 'mias') return;
+    if (!PESTANAS.includes(cual)) return;
     pestanaAbierta = cual;
     document.querySelectorAll('.vm-peskab button').forEach(b =>
       b.setAttribute('aria-selected', String(b.dataset.pes === cual)));
-    const t = $('vm-tratos'), m = $('vm-mias');
-    if (t) t.classList.toggle('oculto', cual !== 'tratos');
-    if (m) m.classList.toggle('oculto', cual !== 'mias');
+    for (const k of PESTANAS) $('vm-' + k)?.classList.toggle('oculto', cual !== k);
     if (cual === 'mias') pintarMias();
+    if (cual === 'historial') cargarHistorial();
+    if (cual === 'mistratos') cargarMisTratos();
+  }
+
+  /* ── el historial y mis tratos: las dos pestañas que un exchange llama
+        «historial de órdenes» y «historial de operaciones». Se piden al abrir
+        la pestaña y no con reloj: son papeles cerrados, no cambian solos. ── */
+  const rotuloEstado = e => tx('est.' + e) === 'est.' + e ? e : tx('est.' + e);
+  async function cargarHistorial() {
+    const caja = $('vm-historial');
+    if (!caja) return;
+    if (!DATOS.haySesion()) { caja.innerHTML = `<div class="vm-vacio">${esc(tx('ps.sinSesion'))}</div>`; return; }
+    caja.innerHTML = `<div class="vm-vacio">${esc(tx('ps.cargando'))}</div>`;
+    let lista;
+    try { lista = await DATOS.historialOrdenes(); } catch { caja.innerHTML = `<div class="vm-vacio">${esc(tx('ordenesNo'))}</div>`; return; }
+    const mias = lista.filter(o => o.mercado === parActual && o.estado !== 'abierta');
+    if (!mias.length) { caja.innerHTML = `<div class="vm-vacio">${esc(tx('ps.sinHist'))}</div>`; return; }
+    caja.innerHTML = mias.map(o => {
+      const hecha = entero(o.cantidad) != null && entero(o.resta) != null ? entero(o.cantidad) - entero(o.resta) : null;
+      return `
+      <div class="vm-mia vm-hist">
+        <span class="lado ${o.lado === 'venta' ? 'venta' : 'compra'}">${esc(tx(o.lado === 'venta' ? 'vender' : 'comprar'))}</span>
+        <span class="mono pr">${o.precio == null ? esc(tx('mercado')) : esc(deWei(o.precio, 4) ?? '—')}</span>
+        <span class="mono ct">${esc(deWei(hecha == null ? o.cantidad : hecha.toString(), 4) ?? '—')} / ${esc(deWei(o.cantidad, 4) ?? '—')}</span>
+        <span class="est ${esc(o.estado)}">${esc(rotuloEstado(o.estado))}<small>${esc(hora(o.en))}</small></span>
+      </div>`;
+    }).join('');
+  }
+  async function cargarMisTratos() {
+    const caja = $('vm-mistratos');
+    if (!caja) return;
+    if (!DATOS.haySesion()) { caja.innerHTML = `<div class="vm-vacio">${esc(tx('ps.sinSesion'))}</div>`; return; }
+    caja.innerHTML = `<div class="vm-vacio">${esc(tx('ps.cargando'))}</div>`;
+    let lista;
+    try { lista = await DATOS.misTratos(parActual); } catch { caja.innerHTML = `<div class="vm-vacio">${esc(tx('tratosNo'))}</div>`; return; }
+    if (!lista.length) { caja.innerHTML = `<div class="vm-vacio">${esc(tx('ps.sinMisTratos'))}</div>`; return; }
+    caja.innerHTML = lista.map(t => `
+      <div class="vm-mia vm-hist">
+        <span class="lado ${t.lado === 'venta' ? 'venta' : 'compra'}">${esc(tx(t.lado === 'venta' ? 'vender' : 'comprar'))}</span>
+        <span class="mono pr">${esc(deWei(t.precio, 4) ?? '—')}</span>
+        <span class="mono ct">${esc(deWei(t.cantidad, 4) ?? '—')} · ${esc(deWei(t.total, 4) ?? '—')} ORIGEN</span>
+        <span class="est"><small>${esc(hora(t.en))}</small></span>
+      </div>`).join('');
   }
 
   /* Mis órdenes, filtradas a ESTE mercado. Ver las de otro par mezcladas aquí
@@ -2158,8 +2342,26 @@ const VMERCADO = (() => {
         oninput="VMERCADO.recalcular()">
       <span class="ayuda" id="vm-saldo"></span>
     </div>
+    <!-- Las cuatro partes del saldo. Es lo que un exchange pone debajo de la
+         cantidad y lo que evita la calculadora aparte: «¿cuánto es la mitad
+         de lo que tengo a este precio?» se contesta con un toque. -->
+    <div class="vm-pct" role="group">
+      ${[25, 50, 75, 100].map(n => `<button type="button" onclick="VMERCADO.parte(${n})">${n}%</button>`).join('')}
+    </div>
+    <!-- El total se ESCRIBE, no solo se lee: «quiero gastar 500 ORIGEN» es
+         tan válido como «quiero 0,3 AUKA», y la cantidad sale de dividir. Solo
+         a límite: a mercado no hay precio con el que dividir. -->
+    <div class="campo" id="vm-campo-total">
+      <label for="vm-total-in">${esc(tx('totalIn'))}</label>
+      <input id="vm-total-in" inputmode="decimal" autocomplete="off" spellcheck="false"
+        oninput="VMERCADO.desdeTotal()">
+    </div>
     <div class="vm-linea-total"><span id="vm-total-lbl">${esc(tx('total'))}</span>
       <b class="mono" id="vm-total">—</b></div>
+    <!-- A mercado, el precio al que de verdad se llena y cuánto se aleja de
+         la punta: es lo que decide si conviene una orden límite en su lugar. -->
+    <div class="vm-linea-fee oculto" id="vm-prom-linea"><span>${esc(tx('promedio'))}</span>
+      <span class="mono" id="vm-prom">—</span></div>
     <!-- Lo que cobra la casa y lo que queda, ANTES del botón. El orden de
          lectura es el de la cuenta: total, menos comisión, recibís. -->
     <div class="vm-linea-fee"><span id="vm-comision-lbl">${esc(tx('comision'))}</span>
@@ -2193,6 +2395,8 @@ const VMERCADO = (() => {
     // Una orden de mercado no tiene precio: el campo se va, no se deshabilita
     // — un campo gris que igual hay que mirar es ruido.
     $('vm-campo-precio')?.classList.toggle('oculto', tipoActual === 'mercado');
+    $('vm-campo-total')?.classList.toggle('oculto', tipoActual === 'mercado');
+    $('vm-prom-linea')?.classList.toggle('oculto', tipoActual !== 'mercado');
     const btn = $('vm-enviar');
     if (btn) {
       btn.classList.remove('compra', 'venta');
@@ -2330,6 +2534,9 @@ const VMERCADO = (() => {
      un estimado sin rótulo es un número inventado. */
   function recalcular() {
     ordenKeyViva = null; // tocar el formulario = otra orden, otra llave
+    if (document.activeElement?.id === 'vm-cant' || document.activeElement?.id === 'vm-total-in') {
+      document.querySelectorAll('.vm-pct button.es').forEach(b => b.classList.remove('es'));
+    }
     const totalEl = $('vm-total'), lblEl = $('vm-total-lbl'), aviso = $('vm-aviso');
     if (!totalEl) return;
     if (aviso) { aviso.textContent = ''; aviso.classList.remove('suave'); }
@@ -2353,8 +2560,83 @@ const VMERCADO = (() => {
 
     if (lblEl) lblEl.textContent = tx(aprox ? 'totalAprox' : 'total');
     totalEl.textContent = total == null ? '—' : `${aprox ? '≈ ' : ''}${deWei(total.toString(), 6)} ORIGEN`;
+    // El total escribible sigue a la cantidad, salvo que sea justo lo que
+    // se está tecleando: pisarle el campo a quien escribe es perderle letras.
+    const totalIn = $('vm-total-in');
+    if (totalIn && document.activeElement !== totalIn && !aprox) totalIn.value = total == null ? '' : texto(total, 6);
+    pintarPromedio(cant, total, aprox);
     pintarComision(cant, total, aprox);
     if (notaSuave && aviso) { aviso.textContent = notaSuave; aviso.classList.add('suave'); }
+  }
+
+  /* El total escrito manda sobre la cantidad: cant = total / precio, con
+     floor, que es lo único que no gasta de más. Solo a límite. */
+  function desdeTotal() {
+    if (tipoActual !== 'limite') return;
+    const total = entero(ONX.aWei($('vm-total-in')?.value));
+    const precio = entero(ONX.aWei($('vm-precio')?.value));
+    const inp = $('vm-cant');
+    if (!inp) return;
+    if (total == null || precio == null || precio === 0n) { recalcular(); return; }
+    inp.value = texto((total * WEI) / precio);
+    recalcular();
+  }
+
+  /* Una parte del saldo, en cantidad del activo. Vendiendo es una fracción de
+     lo que se tiene; comprando a límite, la fracción del ORIGEN entre el
+     precio; comprando a mercado, lo que ese presupuesto compra caminando el
+     libro —la misma caminata que hará el motor, con floor en cada escalón. */
+  function parte(pct) {
+    const sim = CADENA.baseDe(parActual);
+    const inp = $('vm-cant');
+    if (!inp || !DATOS.haySesion()) return;
+    const n = BigInt(Math.max(1, Math.min(100, Number(pct) || 0)));
+    let cant = null;
+    if (ladoActual === 'venta') {
+      const s = saldoDe(sim); if (s == null) return;
+      cant = (s * n) / 100n;
+    } else {
+      const s = saldoDe('ORIGEN'); if (s == null) return;
+      let presupuesto = (s * n) / 100n;
+      if (tipoActual === 'limite') {
+        const precio = entero(ONX.aWei($('vm-precio')?.value));
+        if (precio == null || precio === 0n) { ONX.avisar(tx('ePrecio')); return; }
+        cant = (presupuesto * WEI) / precio;
+      } else {
+        const ventas = libroCache?.ventas;
+        if (!Array.isArray(ventas)) { ONX.avisar(tx('eLibro')); return; }
+        cant = 0n;
+        for (const [p, c] of ventas) {
+          const pp = entero(p), cc = entero(c);
+          if (pp == null || cc == null || pp === 0n) break;
+          const costo = notionalDe(cc, pp);
+          if (costo <= presupuesto) { cant += cc; presupuesto -= costo; }
+          else { cant += (presupuesto * WEI) / pp; break; }
+        }
+      }
+    }
+    if (cant == null) return;
+    inp.value = texto(cant);
+    document.querySelectorAll('.vm-pct button').forEach(b => b.classList.toggle('es', Number(b.textContent) === Number(pct)));
+    recalcular();
+  }
+
+  /* A mercado: el precio promedio de la caminata y cuánto se aleja de la
+     punta, en por ciento con signo. Es la cifra que un exchange llama
+     «deslizamiento» y la que dice si conviene una orden límite. */
+  function pintarPromedio(cant, total, aprox) {
+    const el = $('vm-prom');
+    if (!el) return;
+    if (!aprox || cant == null || cant <= 0n || total == null) { el.textContent = '—'; return; }
+    const prom = (total * WEI) / cant;
+    const lado = ladoActual === 'compra' ? libroCache?.ventas : libroCache?.compras;
+    const punta = Array.isArray(lado) && lado.length ? entero(lado[0][0]) : null;
+    let nota = '';
+    if (punta && punta > 0n) {
+      const d = Number(((prom - punta) * 10000n) / punta) / 100;   // dos decimales, truncado
+      if (d !== 0) nota = ` · ${rell(tx(d > 0 ? 'sobrePunta' : 'bajoPunta'), { pct: Math.abs(d).toFixed(2) })}`;
+    }
+    el.textContent = `≈ ${deWei(prom.toString(), 4)} ORIGEN${nota}`;
   }
 
   /* LA COMISIÓN Y LO QUE QUEDA.
@@ -3015,8 +3297,8 @@ const VMERCADO = (() => {
   }
 
   return {
-    vistaMercados, vistaMercado, alPintar, apagar, zoom, favorito, filtrar, pestana,
-    marco, fuente, lado, tipo, usarPrecio, recalcular, maximo, colocar, quitar,
+    vistaMercados, vistaMercado, alPintar, apagar, zoom, favorito, filtrar, pestana, buscarLista, ordenarLista,
+    marco, fuente, lado, tipo, usarPrecio, recalcular, maximo, parte, desdeTotal, colocar, quitar,
     marcarDescargo, aceptarDescargo,
     cerrarConfirmacion, marcarConfirmacion, confirmar,
     // Para las pruebas, como _piezas en qr.js: los textos y las cuentas puras.

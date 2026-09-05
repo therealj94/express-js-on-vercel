@@ -216,7 +216,19 @@ const DATOS = (() => {
   // más del aviso de la referencia (el API la exige: DESVIO_SIN_ACEPTAR).
   const colocar = o => pedir('/ordenes', { metodo: 'POST', cuerpo: o });
   const cancelar = id => pedir(`/ordenes/${encodeURIComponent(id)}`, { metodo: 'DELETE' });
-  const misOrdenes = () => pedir('/ordenes?estado=abierta');
+  /* El API contesta { ordenes: [...] } y esta función devolvía el sobre tal
+     cual: mercado.js preguntaba Array.isArray y veía un objeto, así que la
+     tabla de órdenes abiertas quedaba VACÍA en producción mientras las
+     pruebas —que fingían un arreglo pelado— seguían en verde. Se desenvuelve
+     acá, una vez, y se admiten las dos formas para que ningún fingido viejo
+     vuelva a esconderlo. */
+  const desenvolver = r => (Array.isArray(r) ? r : Array.isArray(r?.ordenes) ? r.ordenes : []);
+  const misOrdenes = () => pedir('/ordenes?estado=abierta').then(desenvolver);
+  // Sin filtro de estado: todas las mías, para el historial de la sala.
+  const historialOrdenes = () => pedir('/ordenes').then(desenvolver);
+  // Mis tratos, opcionalmente de un solo mercado. GET /tratos (raíz, sesión).
+  const misTratos = par => pedir('/tratos' + (par ? `?mercado=${encodeURIComponent(par)}` : ''))
+    .then(r => (Array.isArray(r?.tratos) ? r.tratos : []));
 
   // ── portafolio y cadena 🔒 ────────────────────────────────────────────────
   const portafolio = () => pedir('/portafolio');
@@ -299,7 +311,7 @@ const DATOS = (() => {
     API, sondeo,
     mercados, libro, velas, tratos, referencia, declarado, tarifas, limites,
     terminos, aceptarTerminos, terminosAceptados,
-    colocar, cancelar, misOrdenes,
+    colocar, cancelar, misOrdenes, historialOrdenes, misTratos,
     portafolio, retirar, movimientos,
     agentes, solicitudes, crearSolicitud, accionSolicitud,
     sso, salir, haySesion, usuario,

@@ -90,6 +90,9 @@ const VPORTA = (() => {
       walComo: 'Para operar con esto, mandalo a tu dirección de depósito de aquí abajo. En cuanto la cadena lo confirme, aparece arriba y se puede vender.',
       reintentar: 'Reintentar',
       reservado: 'reservado',
+      totalT: 'Valor de referencia del portafolio', totalP: 'Suma de tus saldos en Ordenex al precio de referencia; los activos sin feed no suman.',
+      totalSin: 'Sin referencia ahora mismo.', reparto: 'Reparto',
+      mvTrato: 'Trato en el libro', mvTratoCompra: 'Compraste', mvTratoVenta: 'Vendiste', mvA: 'a',
       refNota: 'El valor en dólares es una referencia informativa (oro y plata del mismo feed de la billetera), rotulada y jamás el precio de una operación. Los activos sin feed real no llevan valor: acá no se inventa un número.',
       refOrigen: 'ref. oro · gramo/55', refOro: 'ref. onza de oro', refPlata: 'ref. onza de plata',
 
@@ -155,6 +158,9 @@ const VPORTA = (() => {
       walComo: 'To trade with this, send it to your deposit address below. As soon as the chain confirms it, it shows up above and can be sold.',
       reintentar: 'Retry',
       reservado: 'reserved',
+      totalT: 'Portfolio reference value', totalP: 'Your Ordenex balances added up at the reference price; assets without a feed do not count.',
+      totalSin: 'No reference right now.', reparto: 'Allocation',
+      mvTrato: 'Book trade', mvTratoCompra: 'You bought', mvTratoVenta: 'You sold', mvA: 'at',
       refNota: 'The dollar value is an informational reference (gold and silver, same feed as the wallet), labelled and never the price of any trade. Assets with no real feed carry no value: no numbers get invented here.',
       refOrigen: 'ref. gold · gram/55', refOro: 'ref. ounce of gold', refPlata: 'ref. ounce of silver',
 
@@ -201,6 +207,15 @@ const VPORTA = (() => {
      entera. Un <style> por innerHTML se aplica igual que uno estático, y al
      re-pintar la vista se reemplaza, no se acumula. */
   const ESTILO = `<style>
+    .po-total-caja h3{margin-bottom:6px}
+    .po-total-num{font-size:34px;font-weight:700;color:var(--oroHi);letter-spacing:-.01em;line-height:1.15;
+      font-variant-numeric:tabular-nums;margin:2px 0 12px}
+    .po-reparto{display:flex;height:8px;border-radius:99px;overflow:hidden;gap:2px;background:rgba(255,255,255,.05)}
+    .po-reparto i{display:block;height:100%;min-width:3px}
+    .po-leyenda{display:flex;flex-wrap:wrap;gap:6px 16px;margin:10px 0 4px;font-size:12px;color:var(--bruma)}
+    .po-leyenda i{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px;vertical-align:middle}
+    .po-leyenda b{color:var(--crema)}
+    .po-sinfeed{color:var(--humo);font-size:11.5px}
     .po-error{color:var(--coral);font-size:13px;line-height:1.55;margin:12px 0}
     .po-dep{display:flex;gap:22px;flex-wrap:wrap;align-items:flex-start;margin-top:14px}
     .po-qr{width:min(190px,58vw);flex:0 0 auto;background:#F3ECD9;padding:12px;border-radius:var(--r)}
@@ -336,6 +351,7 @@ const VPORTA = (() => {
     if (!DATOS.haySesion()) return pedirSesion(t.titulo, t.sub);
     return `${ESTILO}
       <div class="cab"><div><h2>${esc(t.titulo)}</h2><div class="sub">${esc(t.sub)}</div></div></div>
+      <div class="vidrio bloque po-total-caja" id="po-total">${totalHTML()}</div>
       <div class="vidrio bloque">
         <h3>${esc(t.saldosT)}</h3>
         <p class="pie">${esc(t.saldosP)}</p>
@@ -355,6 +371,48 @@ const VPORTA = (() => {
         <p class="pie">${esc(t.retP)}</p>
         <div id="po-retiro">${retiroHTML()}</div>
       </div>`;
+  }
+
+  // ── el valor total y el reparto ───────────────────────────────────────────
+  /* Lo primero que un exchange enseña del portafolio es UN número: cuánto
+     vale todo junto. Sale de los mismos saldos y la misma referencia que las
+     filas de abajo, y con la misma honestidad: lo que no tiene feed no suma
+     y se dice. El reparto es una barra por activo, en proporción a su valor. */
+  function valorUsd(activo, totalWei) {
+    if (!referencias || totalWei <= 0n) return null;
+    const usd = activo === 'ORIGEN' ? referencias.origen : activo === 'AUKA' ? referencias.oro : activo === 'AGKA' ? referencias.plata : null;
+    if (usd == null) return null;
+    const v = (Number(totalWei / 10n ** 14n) / 1e4) * usd;
+    return isFinite(v) ? v : null;
+  }
+  const COLOR = { ORIGEN: 'var(--oro)', AUKA: '#E4C25A', AGKA: '#B9C4D0' };
+  function totalHTML() {
+    const t = tx();
+    if (!cuentas || !cuentas.length) return `<h3>${esc(t.totalT)}</h3><div class="po-total-num mono">—</div><p class="pie">${esc(t.totalP)}</p>`;
+    const partes = [];
+    let total = 0, sinFeed = [];
+    for (const c of cuentas) {
+      let w = 0n; try { w = BigInt(c.disponible) + BigInt(c.reservado || 0); } catch {}
+      if (w <= 0n) continue;
+      const v = valorUsd(c.activo, w);
+      if (v == null) { sinFeed.push(c.activo); continue; }
+      total += v; partes.push({ activo: c.activo, v });
+    }
+    partes.sort((a, b) => b.v - a.v);
+    const num = referencias
+      ? '$' + total.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+      : t.totalSin;
+    return `<h3>${esc(t.totalT)}</h3>
+      <div class="po-total-num mono">${esc(num)}</div>
+      ${partes.length && total > 0 ? `
+      <div class="po-reparto" aria-label="${esc(t.reparto)}">
+        ${partes.map((p) => `<i style="width:${(p.v / total * 100).toFixed(2)}%;background:${COLOR[p.activo] || 'var(--bruma)'}" title="${esc(p.activo)}"></i>`).join('')}
+      </div>
+      <div class="po-leyenda">
+        ${partes.map((p) => `<span><i style="background:${COLOR[p.activo] || 'var(--bruma)'}"></i>${esc(p.activo)} <b class="mono">${(p.v / total * 100).toFixed(1)} %</b></span>`).join('')}
+        ${sinFeed.length ? `<span class="po-sinfeed">${esc(sinFeed.join(', '))}: ${esc(t.refNota.split('.')[2] || '')}</span>` : ''}
+      </div>` : ''}
+      <p class="pie">${esc(t.totalP)}</p>`;
   }
 
   // ── saldos ────────────────────────────────────────────────────────────────
@@ -885,6 +943,8 @@ const VPORTA = (() => {
       referencias = extraerReferencias(lista);
       const el = document.getElementById('po-saldos');
       if (el) el.innerHTML = saldosHTML();
+      const tot = document.getElementById('po-total');
+      if (tot) tot.innerHTML = totalHTML();
     } catch {}
   }
 
@@ -907,6 +967,8 @@ const VPORTA = (() => {
   function pintarTodo() {
     const s = document.getElementById('po-saldos');
     if (s) s.innerHTML = saldosHTML();
+    const tot = document.getElementById('po-total');
+    if (tot) tot.innerHTML = totalHTML();
     const d = document.getElementById('po-deposito');
     if (d) d.innerHTML = depositoHTML();
     pintarRetiro();
@@ -926,9 +988,11 @@ const VPORTA = (() => {
     if (!DATOS.haySesion()) return;
     const t = tx();
     const mia = ++carga;
-    let d;
+    let d, tratos = [];
     try {
-      d = await DATOS.movimientos();
+      // Los tratos del libro van aparte y no pueden tumbar la actividad: si
+      // GET /tratos falla, se enseña el resto y punto.
+      [d, tratos] = await Promise.all([DATOS.movimientos(), DATOS.misTratos().catch(() => [])]);
     } catch (e) {
       if (mia !== carga) return;
       if (e?.codigo === 'SESION_VENCIDA') { ONX.avisar(e.message); ONX.vista('actividad'); return; }
@@ -939,16 +1003,17 @@ const VPORTA = (() => {
     }
     if (mia !== carga) return;
     const el = document.getElementById('ac-lista');
-    if (el) el.innerHTML = actividadHTML(d);
+    if (el) el.innerHTML = actividadHTML(d, tratos);
   }
 
   /* Las tres colecciones en UNA línea de tiempo, lo más nuevo primero. Los
      asientos son la verdad del libro; los depósitos y retiros traen además su
      cara de cadena — el bloque, el hash — y el hash se enlaza al explorador:
      la prueba pública de que el dinero se movió de verdad. */
-  function actividadHTML(d) {
+  function actividadHTML(d, tratos) {
     const t = tx();
     const filas = [
+      ...(Array.isArray(tratos) ? tratos : []).map((x) => ({ f: 'trato', ...x })),
       ...(Array.isArray(d?.depositos) ? d.depositos : []).map((x) => ({ f: 'deposito', ...x })),
       ...(Array.isArray(d?.retiros) ? d.retiros : []).map((x) => ({ f: 'retiro', ...x })),
       ...(Array.isArray(d?.asientos) ? d.asientos : []).map((x) => ({ f: 'asiento', ...x })),
@@ -963,6 +1028,16 @@ const VPORTA = (() => {
         detalle: esc(dirCorta(m.direccion)) + (m.bloque != null ? ` · ${esc(t.mvBloque)} ${esc(String(m.bloque))}` : ''),
         monto: '+' + dinero(m.cantidad), entra: true, activo: m.activo, en: m.en,
       });
+      if (m.f === 'trato') {
+        const base = String(m.mercado || '').split('-')[0];
+        const compra = m.lado === 'compra';
+        return filaHTML({
+          icono: 'M4 17l5-6 4 3 7-8M4 20h16',
+          titulo: `${compra ? t.mvTratoCompra : t.mvTratoVenta} ${dinero(m.cantidad)} ${base}`,
+          detalle: `${esc(m.mercado || '')} · ${esc(t.mvA)} <span class="mono">${esc(dinero(m.precio))}</span> ORIGEN`,
+          monto: (compra ? '−' : '+') + dinero(m.total), entra: !compra, activo: 'ORIGEN', en: m.en,
+        });
+      }
       if (m.f === 'retiro') {
         const titulo = m.estado === 'enviado' ? t.mvRetEnviado : m.estado === 'fallido' ? t.mvRetFallido : t.mvRetPendiente;
         const enlace = m.hash
