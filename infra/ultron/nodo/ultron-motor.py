@@ -31,7 +31,7 @@ dos tarjetas, esto crece; hoy con una alcanza.
 Variables (en /etc/ultron-motor.env):
   ULTRON_MOTOR_SECRETO    obligatoria; sin ella no arranca
   ULTRON_MOTOR_PUERTO     8443
-  ULTRON_MOTOR_MODELO     qwen2.5:14b   (el de AU-RA)
+  ULTRON_MOTOR_MODELO     qwen3.8:27b   (el mismo que AU-RA)
   ULTRON_MOTOR_CTX        12288         (el de AU-RA — mismo número o se recarga)
   ULTRON_MOTOR_CERT / _LLAVE   rutas del certificado y la llave
 """
@@ -49,7 +49,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 SECRETO = (os.environ.get('ULTRON_MOTOR_SECRETO') or '').strip()
 PUERTO = int(os.environ.get('ULTRON_MOTOR_PUERTO', '8443'))
-MODELO = os.environ.get('ULTRON_MOTOR_MODELO', 'qwen2.5:14b')
+MODELO = os.environ.get('ULTRON_MOTOR_MODELO', 'qwen3.8:27b')
 CTX = int(os.environ.get('ULTRON_MOTOR_CTX', '12288'))
 CERT = os.environ.get('ULTRON_MOTOR_CERT', '/etc/ultron-motor/cert.pem')
 LLAVE = os.environ.get('ULTRON_MOTOR_LLAVE', '/etc/ultron-motor/llave.pem')

@@ -22,13 +22,18 @@ const titulo = (t) => console.log(`\n── ${t} ${'─'.repeat(Math.max(2, 58 -
 let guion = [];              // cada entrada: { texto, llamadas:[{name,arguments}], enTexto:bool }
 const pedidos = [];
 let secretoBueno = 'secreto-de-prueba-largo-24';
+/* El motor de VERDAD reescribe `model` con el suyo, así que el fingido también
+   dice el suyo en /salud. Se deja distinto del de ULTRON a propósito: es el
+   desacuerdo que el 5-sep tuvo a producción una hora pensando con el modelo
+   viejo mientras /salud decía el nuevo, y nadie se enteró. */
+const MODELO_DEL_MOTOR = 'qwen3.8:27b';
 let caido = false;
 const sv = createServer((q, r) => {
   let cuerpo = ''; q.on('data', (d) => { cuerpo += d; });
   q.on('end', () => {
     if (caido) { q.socket.destroy(); return; }
     if (q.headers['x-ultron-secreto'] !== secretoBueno) { r.writeHead(401); r.end('{"error":"no"}'); return; }
-    if (q.url === '/salud') { r.writeHead(200, { 'Content-Type': 'application/json' }); r.end(JSON.stringify({ ok: true, modelo: 'qwen2.5:14b', ctx: 12288 })); return; }
+    if (q.url === '/salud') { r.writeHead(200, { 'Content-Type': 'application/json' }); r.end(JSON.stringify({ ok: true, modelo: MODELO_DEL_MOTOR, ctx: 12288 })); return; }
     const pedido = JSON.parse(cuerpo || '{}'); pedidos.push(pedido);
     const paso = guion.shift() || { texto: 'Fin.' };
     r.writeHead(200, { 'Content-Type': 'application/x-ndjson' });
@@ -74,7 +79,12 @@ titulo('un turno simple: el texto sale en vivo y el prompt lleva lo suyo');
   decir(r.texto === 'La casa está bien, José.', 'el texto llega entero', r.texto);
   decir(eventos.filter(([e]) => e === 'texto').length >= 3, 'y se emitió por trozos, en vivo', String(eventos.filter(([e]) => e === 'texto').length));
   const p = pedidos.at(-1);
-  decir(p.model === 'qwen2.5:14b' && p.stream === true, 'pide el modelo de AU-RA, en streaming');
+  /* El nombre del modelo se comprueba contra la constante, no escrito a mano:
+     el 5-sep esta prueba clavaba «qwen2.5:14b» y siguió en verde mientras
+     producción cambiaba de modelo. Una prueba que no se entera de un cambio de
+     cerebro no está cuidando nada. Lo que importa es que se pida EL MISMO que
+     el módulo dice usar, y en streaming. */
+  decir(p.model === nodo.MODELO && p.stream === true, `pide el modelo que dice usar (${nodo.MODELO}), en streaming`, p.model);
   decir(p.messages[0].role === 'system' && /Sos ULTRON FP/.test(p.messages[0].content) && /NUNCA «respaldados»/.test(p.messages[0].content), 'el system lleva la identidad y las reglas');
   // El 5-sep el modelo cerró una respuesta con «¿Podrías proporcionar más
   // detalles?». A un miembro de la junta se le habla de usted, y para un modelo
@@ -90,7 +100,7 @@ titulo('un turno simple: el texto sale en vivo y el prompt lleva lo suyo');
   decir(Array.isArray(p.tools) && p.tools.some((t) => t.function?.name === 'buscar_web') && p.tools.some((t) => t.function?.name === 'abrir'), 'y las herramientas en formato de Ollama, con buscar_web y abrir', p.tools.map((t) => t.function.name).join(','));
   decir(!p.tools.some((t) => t.function?.name === 'web_search'), 'sin la búsqueda de Anthropic, que aquí no existe');
   decir(r.uso.entrada > 0 && r.uso.dolares === 0, 'el uso se cuenta y el costo es cero: la tarjeta ya está pagada', JSON.stringify(r.uso));
-  decir(r.modelo === 'nodo:qwen2.5:14b', 'y el turno dice de dónde salió', r.modelo);
+  decir(r.modelo === 'nodo:' + nodo.MODELO, `y el turno dice de dónde salió (nodo:${nodo.MODELO})`, r.modelo);
 }
 
 titulo('herramientas como tool_calls: se corren y el modelo sigue');

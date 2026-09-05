@@ -2,7 +2,7 @@
 //
 // ── LO QUE CAMBIA RESPECTO A CLAUDE, Y POR QUÉ ──────────────────────────────
 //
-// El modelo es el MISMO que atiende a los clientes de AU-RA (qwen2.5:14b), con
+// El modelo es el MISMO que atiende a los clientes de AU-RA (qwen3.8:27b), con
 // el mismo contexto de 12 288 fichas, y eso no es una limitación que se pueda
 // negociar desde aquí: la tarjeta carga un modelo a la vez, y un pedido con
 // otro tamaño lo desaloja. El motor del nodo lo fija de todas formas; este
@@ -31,7 +31,17 @@ const herramientas = require('../herramientas');
 const URL_NODO = (process.env.ULTRON_NODO_URL || '').replace(/\/$/, '');
 const SECRETO = (process.env.ULTRON_NODO_SECRETO || '').trim();
 const CERT = (process.env.ULTRON_NODO_CERT || '').trim();
-const MODELO = process.env.ULTRON_NODO_MODELO || 'qwen2.5:14b';
+/* OJO: EL MOTOR DEL NODO PISA ESTE VALOR.
+   `ultron-motor.py` reescribe `model` en cada pedido con su propia
+   ULTRON_MOTOR_MODELO —lo hace a propósito, para que un pedido de acá no
+   pueda desalojar el modelo que AU-RA tiene cargado—. O sea que esta
+   constante NO decide con qué se piensa: decide lo que ULTRON CREE que
+   está usando, y sale en /salud. El 5-sep las dos discreparon durante una
+   hora (acá qwen3.8:27b, el motor sirviendo qwen2.5:14b) y todas las
+   pruebas «del modelo nuevo» corrieron contra el viejo sin que nada
+   avisara. Cambiar de modelo son LAS DOS: esta variable en Heroku y
+   ULTRON_MOTOR_MODELO en /etc/ultron-motor.env del nodo. */
+const MODELO = process.env.ULTRON_NODO_MODELO || 'qwen3.8:27b';
 const MAX_VUELTAS = 6;
 const PLAZO_MS = 170_000;
 
