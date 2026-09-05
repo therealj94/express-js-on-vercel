@@ -19,10 +19,16 @@
 //
 //   buscar_saber, recordar, anotar_pendiente, cerrar_pendiente, crear_documento
 //
-// ── LA QUE PREPARA Y NO MANDA ───────────────────────────────────────────────
+// ── LAS QUE PREPARAN Y NO MANDAN ────────────────────────────────────────────
 //
 //   proponer_envio             deja listo un WhatsApp o correo. La persona lo
 //                              manda desde el panel. Nunca sale solo.
+//   exportar_pdf               deja un documento listo para bajar en PDF, con
+//                              la cara de la casa. Es el formato con el que un
+//                              escrito SALE: se adjunta, se imprime, se
+//                              entrega. Tampoco lo manda.
+//   quien_es_quien             la lista de la junta con sus vías. Va antes de
+//                              proponer un envío, no después de que falle.
 //
 // Ninguna llega a una billetera ni a una llave. Ni tiene con qué.
 
@@ -179,6 +185,16 @@ const DEFINICIONES = [
     description: 'Prepara un WhatsApp o un correo para un miembro de la junta. NO lo manda: la persona lo confirma en el panel.',
     input_schema: { type: 'object', properties: { canal: { type: 'string', enum: ['whatsapp', 'correo'] }, destinatario: { type: 'string', description: 'Nombre o correo del miembro' }, asunto: { type: 'string' }, texto: { type: 'string' } }, required: ['canal', 'destinatario', 'texto'] },
   },
+  {
+    name: 'quien_es_quien',
+    description: 'La lista de la Junta Directiva: nombre, rol, y por qué vías se le puede escribir (correo, WhatsApp). Úsala antes de proponer un envío para saber a quién se le puede mandar y cómo.',
+    input_schema: { type: 'object', properties: {} },
+  },
+  {
+    name: 'exportar_pdf',
+    description: 'Deja un documento de la biblioteca listo para bajar en PDF, con la cara de Orden Global. Es el formato para mandar por correo, imprimir o entregar fuera. Le pone un botón a la persona; no manda nada.',
+    input_schema: { type: 'object', properties: { id: { type: 'string', description: 'El id del documento' }, porQue: { type: 'string', description: 'En una frase, para qué se lo dejás' } }, required: ['id'] },
+  },
 ];
 
 // ── Internet ────────────────────────────────────────────────────────────────
@@ -293,6 +309,77 @@ async function leerPagina(url) {
  * acumula lo que el panel tiene que pintar (fuentes, documentos, envíos,
  * pendientes, acciones).
  */
+/* LAS QUE ESCRIBEN. Importa para dos cosas: el panel las pinta distinto, y en
+   un lote de herramientas van en fila india mientras las de leer van todas a
+   la vez. Guardar una memoria y cerrar un pendiente tienen un orden que el
+   modelo pidió; leer el mercado y leer la altura de la cadena, no. */
+const ESCRIBEN = new Set(['recordar', 'olvidar', 'anotar_pendiente', 'cerrar_pendiente', 'crear_documento', 'proponer_envio']);
+
+/* ── UN LOTE DE HERRAMIENTAS, NO UNA FILA ────────────────────────────────────
+ *
+ * Cuando el modelo pide tres cosas en la misma vuelta —«mirá el mercado, la
+ * altura de la cadena y qué dice AuCorp»— las tres son viajes por internet que
+ * no dependen entre sí. Corrertas una tras otra suma sus esperas: tres
+ * lecturas de dos segundos son seis segundos de la junta mirando el punto que
+ * parpadea. En paralelo son dos.
+ *
+ * Tres reglas hacen que eso sea seguro:
+ *
+ *   · Las que ESCRIBEN van en fila india y en el orden en que se pidieron. Si
+ *     el modelo anota un pendiente y cierra otro en la misma vuelta, ese orden
+ *     es el que quiso; ejecutarlas a la vez es dejar el resultado al azar.
+ *   · La misma llamada con la misma entrada se corre UNA vez, aunque venga
+ *     repetida en el lote o ya se haya corrido antes en el turno. El modelo
+ *     chico repite, y cada repetición es una lectura más a la casa.
+ *   · Los resultados vuelven EN EL ORDEN EN QUE SE PIDIERON, pase lo que pase.
+ *     El modelo empareja cada resultado con su llamada por posición: si
+ *     devolvés el que terminó primero, le estás dando la altura de la cadena
+ *     donde esperaba el precio del mercado.
+ */
+async function correrLote(llamadas, { ctx, usadas = [], emitir = () => {}, correr: unaHerramienta = null } = {}) {
+  /* Quién ejecuta cada herramienta entra por la puerta, con `correr` de fábrica.
+     No es un adorno para las pruebas: lo que se prueba acá —quién corre a la
+     vez, quién en fila, en qué orden vuelve— no se puede ver con las de
+     verdad sin internet y sin la casa en pie. Y un parche desde fuera no
+     funcionaría: `correr` se llama por cierre, no por el objeto exportado. */
+  const ejecutar = unaHerramienta || correr;
+  const normal = llamadas.map((tc) => {
+    const nombre = tc.function?.name;
+    let entrada = tc.function?.arguments;
+    if (typeof entrada === 'string') { try { entrada = JSON.parse(entrada); } catch { entrada = {}; } }
+    return { nombre, entrada: entrada && typeof entrada === 'object' ? entrada : {} };
+  });
+  for (const n of normal) emitir('herramienta', { nombre: n.nombre, entrada: n.entrada });
+
+  const clave = (n) => `${n.nombre}:${JSON.stringify(n.entrada)}`;
+  const salidas = new Array(normal.length);
+  const nuevas = new Array(normal.length).fill(false);
+  const enMarcha = new Map();
+  const espera = [];
+  let fila = Promise.resolve();   // la cola de las que escriben
+
+  normal.forEach((n, i) => {
+    const repetida = usadas.find((u) => u.nombre === n.nombre
+      && JSON.stringify(u.entrada || {}) === JSON.stringify(n.entrada));
+    if (repetida) { salidas[i] = `(ya consultado en este turno; el resultado es el mismo)\n${repetida.salida}`; return; }
+    const k = clave(n);
+    if (!enMarcha.has(k)) {
+      nuevas[i] = true;
+      const lanzar = () => ejecutar(n.nombre, n.entrada, ctx).catch((e) => `La herramienta ${n.nombre} falló: ${String(e?.message || e).slice(0, 200)}`);
+      enMarcha.set(k, ESCRIBEN.has(n.nombre) ? (fila = fila.then(lanzar)) : lanzar());
+    }
+    espera.push(enMarcha.get(k).then((s) => { salidas[i] = s; }));
+  });
+  await Promise.all(espera);
+
+  return normal.map((n, i) => {
+    const salida = String(salidas[i] ?? '');
+    if (nuevas[i]) usadas.push({ nombre: n.nombre, entrada: n.entrada, salida: salida.slice(0, 2000) });
+    emitir('herramienta-lista', { nombre: n.nombre, salida: salida.slice(0, 600) });
+    return { nombre: n.nombre, entrada: n.entrada, salida };
+  });
+}
+
 async function correr(nombre, entrada, ctx) {
   entrada = entrada && typeof entrada === 'object' ? entrada : {};
   ctx.acciones = ctx.acciones || [];
@@ -526,6 +613,24 @@ async function correr(nombre, entrada, ctx) {
         }
         return l.length > 1 ? l.join('\n') : 'No hay máquinas visibles en us-east-1 ni us-east-2.';
       }
+      case 'quien_es_quien': {
+        /* Sin esto, «mandale el memo a Ramírez» terminaba en un intento a
+           ciegas: proponer_envio buscaba el nombre, no lo encontraba y recién
+           ahí devolvía la lista. Una herramienta que solo enseña la lista
+           cuando ya fallaste es una lista que llega tarde. */
+        const j = ctx.junta || [];
+        if (!j.length) return 'La junta no está cargada en este momento.';
+        return [`La Junta Directiva son ${j.length} personas:`,
+          ...j.map((m) => `- ${m.nombre}${m.rol ? ` · ${m.rol}` : ''} · correo ${m.correo}${m.whatsapp ? ` · WhatsApp ${m.whatsapp}` : ' · sin WhatsApp registrado'}${m.correo === ctx.miembro?.correo ? ' · (es con quien estás hablando ahora)' : ''}`),
+          'Solo se le puede proponer un envío a alguien de esta lista, y por una vía que tenga registrada.'].join('\n');
+      }
+      case 'exportar_pdf': {
+        const d = await memoria.documento(String(entrada.id || '').trim());
+        if (!d) return `No hay un documento con id ${entrada.id}. Mirá cuáles hay con listar_documentos.`;
+        ctx.acciones.push({ tipo: 'abrir', nombre: `${d.titulo} (PDF)`,
+          url: `/documentos/${d._id}/descargar?formato=pdf`, porQue: entrada.porQue || null });
+        return `Le puse a la persona un botón para bajar «${d.titulo}» en PDF, con la cabecera de Orden Global, la fecha, el sello de ${d.para === 'fuera' ? 'para fuera de la junta' : 'uso interno'} y el pie numerado. Sirve para adjuntar a un correo o imprimir.`;
+      }
       case 'calcular': {
         return calcular(String(entrada.expresion || ''));
       }
@@ -590,15 +695,15 @@ const GRUPOS = {
   'El saber y la memoria': ['buscar_saber', 'buscar_conversaciones', 'recordar', 'olvidar'],
   'Pendientes y documentos': ['listar_pendientes', 'anotar_pendiente', 'cerrar_pendiente', 'listar_documentos', 'leer_documento', 'crear_documento'],
   'Internet': ['buscar_web', 'leer_pagina'],
-  'Acciones que confirma la persona': ['abrir', 'proponer_envio'],
+  'La junta': ['quien_es_quien'],
+  'Acciones que confirma la persona': ['abrir', 'exportar_pdf', 'proponer_envio'],
   'Cuentas': ['calcular', 'gasto'],
 };
 
 /** El catálogo para la consola: definición, grupo y si escribe algo. */
 function catalogo() {
-  const escriben = new Set(['recordar', 'olvidar', 'anotar_pendiente', 'cerrar_pendiente', 'crear_documento', 'proponer_envio']);
   const grupoDe = (n) => Object.entries(GRUPOS).find(([, l]) => l.includes(n))?.[0] || 'Otras';
-  return DEFINICIONES.map((d) => ({ nombre: d.name, descripcion: d.description, entrada: d.input_schema, grupo: grupoDe(d.name), escribe: escriben.has(d.name) }));
+  return DEFINICIONES.map((d) => ({ nombre: d.name, descripcion: d.description, entrada: d.input_schema, grupo: grupoDe(d.name), escribe: ESCRIBEN.has(d.name) }));
 }
 
 /** Las definiciones en el formato de Ollama. */
@@ -606,4 +711,4 @@ function paraOllama() {
   return DEFINICIONES.map((d) => ({ type: 'function', function: { name: d.name, description: d.description, parameters: d.input_schema } }));
 }
 
-module.exports = { DEFINICIONES, CASAS, GRUPOS, catalogo, correr, paraOllama, buscarWeb, leerPagina, _adentro: { limpiarHtml, ori, calcular, leerJson, afinarConsulta } };
+module.exports = { DEFINICIONES, CASAS, GRUPOS, ESCRIBEN, catalogo, correr, correrLote, paraOllama, buscarWeb, leerPagina, _adentro: { limpiarHtml, ori, calcular, leerJson, afinarConsulta } };

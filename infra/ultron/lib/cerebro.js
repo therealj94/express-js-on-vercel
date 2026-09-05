@@ -168,7 +168,8 @@ LAS REGLAS QUE NO SE NEGOCIAN
 
 CÓMO TRABAJÁS
 - Preguntas cortas: respuesta corta. Preguntas de fondo: estructura, números, opciones y una recomendación.
-- Si te piden un documento (memo, acta, análisis, carta, plan), lo escribís COMPLETO con crear_documento, en markdown limpio, con título, fecha, y las fuentes al final. Después lo resumís en dos líneas.
+- Si te piden un documento (memo, acta, análisis, carta, plan), lo escribís COMPLETO con crear_documento, en markdown limpio, con título, fecha, y las fuentes al final. Después lo resumís en dos líneas. Si es para mandar, imprimir o entregar fuera de la junta, además le dejás el PDF con exportar_pdf: es el formato con el que un documento sale de la casa, y marcá para «fuera» solo lo que de verdad va afuera, porque el PDF lleva el sello de uso interno cuando no lo es.
+- Antes de proponer un envío a alguien, mirás quien_es_quien: ahí está quién es de la junta y por qué vía se le puede escribir. Proponer un WhatsApp a quien no tiene número registrado es hacerle perder el viaje a la persona.
 - Si la persona te cuenta algo que conviene recordar —una decisión, una preferencia, una fecha, un dato de la casa que no está en las fichas— lo guardás con recordar, sin pedir permiso, y lo decís en una frase. Alcance «junta» si es de todos; «miembro» si es de esa persona.
 - Si la pregunta es sobre algo de hoy o de fuera de la casa (precio del oro, una ley, una noticia, un competidor), buscás en internet y citás la fuente con su fecha.
 - Escribís en markdown: títulos cortos, listas cuando ayudan, tablas para comparar. Sin emojis.${chico ? `
@@ -237,6 +238,7 @@ const HERRAMIENTAS = [
   ...herramientas.DEFINICIONES.filter((d) => !['buscar_web', 'leer_pagina'].includes(d.name)),
 ];
 const correr = herramientas.correr;
+const correrLote = herramientas.correrLote;
 
 // ── Pensar ──────────────────────────────────────────────────────────────────
 
@@ -302,15 +304,16 @@ async function pensarConClaude({ miembro, junta, texto, conversacionId, emitir =
     if (msg.stop_reason !== 'tool_use' || !pedidas.length) break;
 
     mensajes.push({ role: 'assistant', content: msg.content });
-    const resultados = [];
-    for (const p of pedidas) {
-      emitir('herramienta', { nombre: p.name, entrada: p.input });
-      const salida = await correr(p.name, p.input || {}, ctx);
-      herramientasUsadas.push({ nombre: p.name, entrada: p.input, salida: String(salida).slice(0, 2000) });
-      emitir('herramienta-lista', { nombre: p.name, salida: String(salida).slice(0, 600) });
-      resultados.push({ type: 'tool_result', tool_use_id: p.id, content: String(salida) });
-    }
-    mensajes.push({ role: 'user', content: resultados });
+    /* Las que solo leen van todas a la vez; las que escriben, en fila y en el
+       orden pedido. Lo hace el mismo lote que usa el cerebro del nodo
+       (lib/herramientas.js), porque una diferencia de comportamiento entre los
+       dos cerebros es una diferencia que un día aparece como un error que solo
+       pasa con uno. Se le da la forma de llamada de Ollama y vuelve en orden. */
+    const lote = await correrLote(
+      pedidas.map((p) => ({ function: { name: p.name, arguments: p.input || {} } })),
+      { ctx, usadas: herramientasUsadas, emitir });
+    mensajes.push({ role: 'user', content: lote.map((res, n) => (
+      { type: 'tool_result', tool_use_id: pedidas[n].id, content: res.salida })) });
   }
 
   // Fuentes únicas, para pintarlas.

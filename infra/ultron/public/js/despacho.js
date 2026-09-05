@@ -120,7 +120,7 @@ const DESPACHO = (() => {
         if (hablado) L.cerrar();
         const extras = [];
         for (const a of d.acciones || []) if (a.tipo === 'abrir' && a.url) extras.push(`<a class="btn btn-chico" href="${esc(a.url)}" target="_blank" rel="noopener">Abrir ${esc(a.nombre)}</a>`);
-        for (const doc of d.documentos || []) extras.push(`<a class="btn btn-chico" href="/documentos/${esc(doc._id)}/descargar?formato=html" target="_blank" rel="noopener">Documento: ${esc(doc.titulo)}</a>`);
+        for (const doc of d.documentos || []) extras.push(`<a class="btn btn-chico" href="/documentos/${esc(doc._id)}/descargar?formato=pdf" target="_blank" rel="noopener">Documento: ${esc(doc.titulo)} (PDF)</a>`);
         for (const e of d.envios || []) extras.push(`<button class="btn btn-chico btn-oro" data-envio='${esc(JSON.stringify(e))}'>Confirmar envío por ${e.canal} a ${esc(e.a?.nombre || '')}</button>`);
         if (extras.length) { const z = document.createElement('div'); z.className = 'acciones'; z.innerHTML = extras.join(''); cuerpo.appendChild(z); }
         const fuentes = (d.fuentes || []).filter((f) => f.fuente && f.fuente !== 'internet');

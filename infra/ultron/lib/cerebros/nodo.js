@@ -27,6 +27,7 @@ const saber = require('../saber');
 const vivo = require('../vivo');
 const memoria = require('../memoria');
 const herramientas = require('../herramientas');
+const correrLote = herramientas.correrLote;
 
 const URL_NODO = (process.env.ULTRON_NODO_URL || '').replace(/\/$/, '');
 const SECRETO = (process.env.ULTRON_NODO_SECRETO || '').trim();
@@ -545,19 +546,8 @@ async function pensar({ miembro, junta, texto, conversacionId, emitir = () => {}
     // verdad (una frase de «voy a mirar»), no si era la etiqueta.
     if (visible) textoFinal += (textoFinal ? '\n\n' : '') + visible;
     mensajes.push({ role: 'assistant', content: r.content, tool_calls: r.tool_calls.length ? r.tool_calls : undefined });
-    for (const tc of llamadas) {
-      const nombre = tc.function?.name; let entrada = tc.function?.arguments;
-      if (typeof entrada === 'string') { try { entrada = JSON.parse(entrada); } catch { entrada = {}; } }
-      emitir('herramienta', { nombre, entrada });
-      /* La misma consulta, con la misma entrada, no se corre dos veces en un
-         turno: el modelo chico a veces vuelve a pedir lo que ya tiene, y cada
-         vuelta son segundos de la junta esperando y una lectura mas a la
-         casa. Se le devuelve el resultado que ya obtuvo, y se dice. */
-      const repetida = usadas.find((u) => u.nombre === nombre && JSON.stringify(u.entrada || {}) === JSON.stringify(entrada || {}));
-      const salida = repetida ? `(ya consultado en este turno; el resultado es el mismo)\n${repetida.salida}` : await herramientas.correr(nombre, entrada || {}, ctx);
-      if (!repetida) usadas.push({ nombre, entrada, salida: String(salida).slice(0, 2000) });
-      emitir('herramienta-lista', { nombre, salida: String(salida).slice(0, 600) });
-      mensajes.push({ role: 'tool', content: recortar(salida, TOPE_RESULTADO), tool_name: nombre });
+    for (const res of await correrLote(llamadas, { ctx, usadas, emitir })) {
+      mensajes.push({ role: 'tool', content: recortar(res.salida, TOPE_RESULTADO), tool_name: res.nombre });
     }
     // Si con los resultados el pedido se pasa del presupuesto, se sueltan los
     // turnos viejos del hilo (nunca el system ni la pregunta ni los resultados).
@@ -587,14 +577,13 @@ async function pensar({ miembro, junta, texto, conversacionId, emitir = () => {}
     const llamadas = [...r.tool_calls, ...enTexto.llamadas];
     if (llamadas.length) {
       mensajes.push({ role: 'assistant', content: r.content, tool_calls: r.tool_calls.length ? r.tool_calls : undefined });
-      for (const tc of llamadas) {
-        const nombre = tc.function?.name; let entrada = tc.function?.arguments;
-        if (typeof entrada === 'string') { try { entrada = JSON.parse(entrada); } catch { entrada = {}; } }
-        emitir('herramienta', { nombre, entrada });
-        const salida = await herramientas.correr(nombre, entrada || {}, ctx);
-        usadas.push({ nombre, entrada, salida: String(salida).slice(0, 2000) });
-        emitir('herramienta-lista', { nombre, salida: String(salida).slice(0, 600) });
-        mensajes.push({ role: 'tool', content: recortar(salida, TOPE_RESULTADO), tool_name: nombre });
+      /* Acá el lote va con `usadas` vacío a propósito: si el modelo cita
+         buscar_web sin haberla corrido, se le está pidiendo justamente que la
+         corra. Pasarle la lista del turno haría que se le devolviera «ya
+         consultado» y la cita seguiría siendo falsa. */
+      for (const res of await correrLote(llamadas, { ctx, usadas: [], emitir })) {
+        usadas.push({ nombre: res.nombre, entrada: res.entrada, salida: res.salida.slice(0, 2000) });
+        mensajes.push({ role: 'tool', content: recortar(res.salida, TOPE_RESULTADO), tool_name: res.nombre });
       }
       const r2 = await pedir({ model: MODELO, messages: mensajes, tools: herramientas.paraOllama(), stream: true, options: opciones }, { alTrozo: (t) => {} });
       uso.entrada += r2.uso.entrada; uso.salida += r2.uso.salida;

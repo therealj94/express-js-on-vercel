@@ -51,6 +51,7 @@ const canales = require('./lib/canales');
 const voz = require('./lib/voz');
 const herramientas = require('./lib/herramientas');
 const genesis = require('./lib/genesis');
+const pdf = require('./lib/pdf');
 
 const app = express();
 app.set('trust proxy', 1);
@@ -441,7 +442,23 @@ app.get('/documentos/:id', puerta, async (req, res) => {
 app.get('/documentos/:id/descargar', puerta, async (req, res) => {
   const d = await memoria.documento(req.params.id);
   if (!d) return res.status(404).json({ error: 'No existe.', codigo: 'NO_EXISTE' });
-  const nombre = d.titulo.normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^\w\s-]/g, '').trim().replace(/\s+/g, '-').slice(0, 60) || 'documento';
+  const nombre = pdf.nombreArchivo(d.titulo);
+  /* El PDF es el formato con el que un documento SALE de la casa: se adjunta a
+     un correo, se imprime para una reunión, se le manda a un abogado. Se dibuja
+     acá mismo, sin navegador sin ventana (lib/pdf.js explica por qué). */
+  if (req.query.formato === 'pdf') {
+    try {
+      const bytes = await pdf.documentoPdf(d);
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Length', bytes.length);
+      res.setHeader('Content-Disposition',
+        `${req.query.ver === '1' ? 'inline' : 'attachment'}; filename="${nombre}.pdf"`);
+      return res.send(bytes);
+    } catch (e) {
+      console.error(`[pdf] ${d._id}: ${e.message}`);
+      return res.status(500).json({ error: 'No se pudo armar el PDF.', codigo: 'PDF_ROTO' });
+    }
+  }
   if (req.query.formato === 'html') {
     res.setHeader('Content-Type', 'text/html; charset=utf-8');
     res.setHeader('Content-Disposition', `attachment; filename="${nombre}.html"`);

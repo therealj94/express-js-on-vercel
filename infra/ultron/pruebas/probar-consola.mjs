@@ -298,8 +298,24 @@ titulo('biblioteca, bitácora, la Junta y ajustes');
   await memoria.guardarDocumento({ titulo: 'Memorando de prueba', tipo: 'memo', markdown: '# Memorando\n\nTexto.', miembro: 'jose@ordenglobal.org' });
   await p.click('.nav[data-vista=biblioteca]'); await p.waitForTimeout(300); await p.evaluate(() => REGISTRO.documentos()); await p.waitForTimeout(600);
   decir(/Memorando de prueba/.test(await texto('#listaDocumentos')), 'el documento aparece en la biblioteca');
+  decir(/PDF/.test(await texto('#listaDocumentos')), 'con el PDF a un toque, que es como un documento sale de la casa');
   await p.click('#listaDocumentos .doc'); await p.waitForTimeout(600);
   decir(await p.evaluate(() => !document.getElementById('lector').hidden && /Memorando/.test(document.getElementById('lector').innerText)), 'y se lee dentro de la consola');
+  /* La descarga se pide con la sesión del navegador, no con fetch a pelo: lo
+     que se prueba es el camino entero —puerta, ruta, impresor— y no la
+     librería sola, que ya tiene sus pruebas aparte. */
+  {
+    const r = await p.evaluate(async () => {
+      const doc = (await (await fetch('/documentos')).json())[0];
+      const res = await fetch(`/documentos/${doc._id}/descargar?formato=pdf`);
+      const b = new Uint8Array(await res.arrayBuffer());
+      return { tipo: res.headers.get('content-type'), cabecera: res.headers.get('content-disposition'),
+        firma: String.fromCharCode(...b.slice(0, 5)), bytes: b.length };
+    });
+    decir(r.tipo === 'application/pdf' && r.firma === '%PDF-', 'y al bajarlo llega un PDF de verdad', `${r.tipo} · ${r.firma} · ${r.bytes} bytes`);
+    decir(/attachment; filename="Memorando-de-prueba\.pdf"/.test(r.cabecera || ''),
+      'con nombre de archivo legible y sin acentos que rompan la descarga', r.cabecera);
+  }
   await p.click('.nav[data-vista=bitacora]'); await p.waitForTimeout(600);
   decir(/Nueva conversación/.test(await texto('#listaConversaciones')), 'la bitácora ofrece empezar de nuevo');
   await p.click('.nav[data-vista=junta]'); await p.waitForTimeout(300);

@@ -29,12 +29,13 @@ const REGISTRO = (() => {
     let lista = []; try { lista = await DATOS.documentos(); } catch { /* sin lectura */ }
     $('listaDocumentos').innerHTML = lista.length ? lista.map((d) => `<div class="item doc" data-id="${esc(d._id)}">
       <div class="texto"><b>${esc(d.titulo)}</b><small>${esc(d.tipo || 'documento')} · ${fecha(d.en)} · ${esc(d.miembro || '')}</small></div>
-      <a class="btn btn-chico" href="/documentos/${esc(d._id)}/descargar?formato=html" target="_blank" rel="noopener" onclick="event.stopPropagation()">Descargar</a></div>`).join('') : '<div class="vacio">La biblioteca está vacía. Pida a ULTRON un memorando, un acta o un análisis y quedará aquí.</div>';
+      <a class="btn btn-chico" href="/documentos/${esc(d._id)}/descargar?formato=pdf" target="_blank" rel="noopener" onclick="event.stopPropagation()">PDF</a>
+      <a class="btn btn-chico" href="/documentos/${esc(d._id)}/descargar" onclick="event.stopPropagation()">Markdown</a></div>`).join('') : '<div class="vacio">La biblioteca está vacía. Pida a ULTRON un memorando, un acta o un análisis y quedará aquí.</div>';
   }
   async function leer(id) {
     const d = await DATOS.documento(id);
     const l = $('lector'); l.hidden = false;
-    l.innerHTML = `<div class="rotulo">${esc(d.tipo || 'documento')} · ${fecha(d.en)}</div><h1 class="serif" style="margin:6px 0 14px">${esc(d.titulo)}</h1><div class="cuerpo">${MARKDOWN.aHtml(d.markdown || '')}</div><div class="acciones" style="margin-top:16px"><a class="btn btn-chico" href="/documentos/${esc(d._id)}/descargar?formato=html" target="_blank" rel="noopener">Descargar</a><button class="btn btn-chico" data-cerrar-lector>Cerrar</button></div>`;
+    l.innerHTML = `<div class="rotulo">${esc(d.tipo || 'documento')} · ${fecha(d.en)}</div><h1 class="serif" style="margin:6px 0 14px">${esc(d.titulo)}</h1><div class="cuerpo">${MARKDOWN.aHtml(d.markdown || '')}</div><div class="acciones" style="margin-top:16px"><a class="btn btn-chico" href="/documentos/${esc(d._id)}/descargar?formato=pdf" target="_blank" rel="noopener">Descargar en PDF</a><a class="btn btn-chico" href="/documentos/${esc(d._id)}/descargar" >Markdown</a><button class="btn btn-chico" data-cerrar-lector>Cerrar</button></div>`;
     l.scrollIntoView({ block: 'start' });
   }
 

@@ -21,7 +21,7 @@ node app.js                  # http://localhost:3900
 | **El estado vivo** | Ordenex, AuCorp, Veta Wallet, Genesis ID, OrdenScan y el precio del ORIGEN, leídos de sus rutas públicas cada 30 s. Cada pata falla sola. | `lib/vivo.js` |
 | **La memoria** | Lo que la junta le dice (por miembro o de toda la junta), los hilos y los documentos. Mongo; sin Mongo, provisional y lo dice. | `lib/memoria.js` |
 | **El cerebro** | **Dos, unas mismas manos.** El del **nodo** piensa con el modelo de AU-RA en nuestra tarjeta (`lib/cerebros/nodo.js`, por el motor de `nodo/`); el de **Claude** con Anthropic. `ULTRON_CEREBRO` elige; sin la variable, el nodo si está configurado. Streaming en los dos. | `lib/cerebro.js` |
-| **Las manos** | Diez herramientas compartidas: buscar saber, estado vivo, buscar web, leer página, abrir (una casa o un documento, a un toque), recordar, anotar y cerrar pendiente, crear documento, proponer envío. | `lib/herramientas.js` |
+| **Las manos** | Veintinueve herramientas compartidas por los dos cerebros: el saber, el estado vivo, internet, los mercados y las cadenas, la memoria, los pendientes, la biblioteca, quién es quién en la junta, y las tres que preparan y no mandan — abrir, exportar a PDF y proponer un envío. En una misma vuelta, las que leen corren a la vez y las que escriben en fila. | `lib/herramientas.js` |
 | **El motor del nodo** | La única puerta hacia el modelo: TLS propio, secreto, solo `/api/chat` y `/api/tags`, y FIJA el modelo y el contexto a los de AU-RA para no desalojarla nunca. Se instala por SSM con `nodo/desplegar-motor.py`. | `nodo/` |
 | **Los canales** | WhatsApp por Zernio (la misma línea de AU-RA) y correo por SES (el mismo remitente de siempre). **Solo a la junta**, y **solo con una persona confirmando**. | `lib/canales.js` |
 | **La voz** | ElevenLabs, con la llave en el servidor; sin llave, la voz del navegador. | `lib/voz.js` |
@@ -38,7 +38,7 @@ Global) y registro institucional en cada palabra.
 | --- | --- |
 | Despacho | La conversación. Cada consulta que ULTRON hace a la casa aparece en el hilo como un registro con su entrada y su salida, antes de la respuesta. Texto en vivo, voz frase por frase, dictado y conversación continua. |
 | Ecosistema | Una tarjeta por casa, leída de su servicio. Lo que no se pudo leer se dice. |
-| Instrumentos | El catálogo entero (27) agrupado por lo que toca, cada uno ejecutable a mano por `POST /herramientas/:nombre`: corre la misma función que usa el modelo. |
+| Instrumentos | El catálogo entero (29) agrupado por lo que toca, cada uno ejecutable a mano por `POST /herramientas/:nombre`: corre la misma función que usa el modelo. |
 | Pendientes y memoria · Biblioteca · Bitácora | El registro de la Junta. |
 | La Junta · Ajustes | Los miembros y sus canales; la voz y el estado de la plataforma. |
 
@@ -74,7 +74,7 @@ Comparten también **lo demás**:
 1. **Con los hechos.** Lo que sabe de la casa sale de las fichas y del estado vivo. Si no está, dice que no sabe o lo busca.
 2. **Cita de dónde sale.** «según TRASPASO-CONOCIMIENTO.md», «según /salud de Ordenex ahora».
 3. **Nunca promete una ganancia.** ORIGEN, AUKA y AGKA son «referenciados», no «respaldados». Orden Global no está «regulada». AuCorp no es un banco.
-4. **No mueve dinero ni toca llaves.** Ni tiene con qué: sus herramientas son las seis de arriba.
+4. **No mueve dinero ni toca llaves.** Ni tiene con qué: ninguna de sus herramientas llega a una billetera, y las tres que salen de la casa —abrir, exportar a PDF, proponer un envío— dejan un botón para que lo toque una persona.
 5. **Nada sale hacia un teléfono o un correo sin que una persona lo confirme.** `proponer_envio` prepara; el botón «Enviar» del panel manda; el servidor vuelve a comprobar que el destino es de la junta.
 6. **Distingue lo interno de lo externo.** Un documento «para fuera» solo usa lo público.
 
