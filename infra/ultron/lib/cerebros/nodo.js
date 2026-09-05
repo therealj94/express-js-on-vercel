@@ -268,6 +268,62 @@ function sinElRestoDeUnaHerramienta(texto) {
   return String(texto).replace(/^\s*(?:_{1,2}[a-z][a-z0-9_]{2,30}_{1,2}|<\|?[a-z_]{3,30}\|?>)\s*(?=\S)/i, '');
 }
 
+/* EL VECTOR DE LA PREGUNTA, para buscar en el saber por significado.
+ *
+ * El modelo de vectores vive en el nodo, detrás del mismo motor y el mismo
+ * secreto que el que piensa; acá solo se le pide el vector de lo que preguntó
+ * la junta, y `saber.buscar` hace el resto.
+ *
+ * NUNCA TRUENA, y es a propósito: si el nodo no contesta, si el modelo de
+ * vectores no está, o si el saber no trae vectores, se devuelve null y la
+ * búsqueda vuelve a ser la de palabras — que es la que ha funcionado desde el
+ * primer día. Una mejora de la búsqueda no puede ser una forma nueva de
+ * quedarse sin saber.
+ *
+ * El plazo es corto (8 s) por la misma razón: esto ocurre ANTES de armar el
+ * prompt, o sea con la junta esperando. Vale la pena unos milisegundos por una
+ * mejor recuperación; no vale la pena medio minuto. */
+async function vectorDe(texto) {
+  if (!saber.hayVectores()) return null;
+  try {
+    const r = await pedirJson('/api/embed', { input: String(texto || '').slice(0, 2000) }, 8000);
+    const v = r?.embeddings?.[0];
+    if (!Array.isArray(v) || !v.length) return null;
+    // Normalizado acá para que el coseno sea un producto escalar y punto.
+    let n = 0; for (const x of v) n += x * x;
+    n = Math.sqrt(n) || 1;
+    return Float32Array.from(v, (x) => x / n);
+  } catch (e) {
+    console.warn(`[nodo] sin vector para la pregunta (${e.message}): se busca por palabras`);
+    return null;
+  }
+}
+
+/** Un POST JSON simple al motor, sin streaming. Para /api/embed. */
+function pedirJson(ruta, cuerpo, plazo) {
+  return new Promise((resolver, fallar) => {
+    let u;
+    try { u = new URL(URL_NODO + ruta); } catch { return fallar(new Error('URL del nodo mala')); }
+    const seguro = u.protocol === 'https:';
+    const datos = JSON.stringify(cuerpo);
+    const op = { method: 'POST', hostname: u.hostname, port: u.port || (seguro ? 443 : 80), path: u.pathname,
+      headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(datos), 'x-ultron-secreto': SECRETO },
+      timeout: plazo };
+    if (seguro && CERT) op.ca = CERT;
+    const req = (seguro ? https : http).request(op, (res) => {
+      let t = ''; res.setEncoding('utf8');
+      res.on('data', (d) => { t += d; });
+      res.on('end', () => {
+        if (res.statusCode !== 200) return fallar(new Error(`el motor contestó ${res.statusCode}`));
+        try { resolver(JSON.parse(t)); } catch { fallar(new Error('respuesta que no es JSON')); }
+      });
+    });
+    req.on('timeout', () => { req.destroy(); fallar(new Error('sin respuesta a tiempo')); });
+    req.on('error', (e) => fallar(e));
+    req.end(datos);
+  });
+}
+
 /* ── EL «sourceMapping: sourceMapping» DE LA CABECERA ─────────────────────────
  *
  * Con los parámetros del fabricante puestos, la repetición sin fin se apagó:
@@ -347,7 +403,8 @@ async function pensar({ miembro, junta, texto, conversacionId, emitir = () => {}
   const hiloEstimado = Math.min(TOPE_HILO, (previa?.turnos || []).slice(-8).reduce((a, t) => a + Math.min(TOPE_TURNO, String(t.texto || '').length), 0));
   const sobra = PRESUPUESTO_FICHAS - fichas(base) - fichas(hiloEstimado ? 'x'.repeat(hiloEstimado) : '') - fichas(texto);
   const paraSaber = Math.max(0, Math.floor(sobra * LETRAS_POR_FICHA));
-  const secciones = paraSaber >= SABER_MINIMO ? saber.buscar(texto, { maximo: 8, maxBytes: paraSaber }) : [];
+  const vector = paraSaber >= SABER_MINIMO ? await vectorDe(texto) : null;
+  const secciones = paraSaber >= SABER_MINIMO ? saber.buscar(texto, { maximo: 8, maxBytes: paraSaber, vector }) : [];
   if (paraSaber < SABER_MINIMO) console.warn(`[nodo] sin sitio para el saber: la base ya ocupa ${fichas(base)} fichas de ${PRESUPUESTO_FICHAS}`);
   ctx.fuentes.push(...secciones.map((s) => ({ id: s.id, titulo: s.titulo, fuente: s.fuente })));
   const system = armar(secciones);
@@ -598,4 +655,4 @@ async function salud() {
   });
 }
 
-module.exports = { pensar, titular, salud, encendido, MODELO, _adentro: { pedir, llamadasEnTexto, armarMensajes, sinRepetidos, sinElRestoDeUnaHerramienta, sinCodigoPegadoArriba, hastaOtroAlfabeto, dondeEmpiezaElBucle, fichas, PRESUPUESTO, PRESUPUESTO_FICHAS, CTX } };
+module.exports = { pensar, titular, salud, encendido, MODELO, _adentro: { pedir, pedirJson, vectorDe, llamadasEnTexto, armarMensajes, sinRepetidos, sinElRestoDeUnaHerramienta, sinCodigoPegadoArriba, hastaOtroAlfabeto, dondeEmpiezaElBucle, fichas, PRESUPUESTO, PRESUPUESTO_FICHAS, CTX } };

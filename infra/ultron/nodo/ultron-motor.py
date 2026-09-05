@@ -32,7 +32,8 @@ Variables (en /etc/ultron-motor.env):
   ULTRON_MOTOR_SECRETO    obligatoria; sin ella no arranca
   ULTRON_MOTOR_PUERTO     8443
   ULTRON_MOTOR_MODELO     qwen3.8:27b   (el mismo que AU-RA)
-  ULTRON_MOTOR_CTX        12288         (el de AU-RA — mismo número o se recarga)
+  ULTRON_MOTOR_CTX        32768         (el de AU-RA — mismo número o se recarga)
+  ULTRON_MOTOR_VECTOR     embeddinggemma:300m  (para buscar en el saber por significado)
   ULTRON_MOTOR_CERT / _LLAVE   rutas del certificado y la llave
 """
 
@@ -50,7 +51,11 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 SECRETO = (os.environ.get('ULTRON_MOTOR_SECRETO') or '').strip()
 PUERTO = int(os.environ.get('ULTRON_MOTOR_PUERTO', '8443'))
 MODELO = os.environ.get('ULTRON_MOTOR_MODELO', 'qwen3.8:27b')
-CTX = int(os.environ.get('ULTRON_MOTOR_CTX', '12288'))
+CTX = int(os.environ.get('ULTRON_MOTOR_CTX', '32768'))
+# El modelo de vectores para buscar en el saber POR SIGNIFICADO y no por
+# palabras. Es otro modelo, chico (621 MB) y aparte del que piensa: ollama los
+# tiene los dos y el de vectores no desaloja al grande.
+MODELO_VECTOR = os.environ.get('ULTRON_MOTOR_VECTOR', 'embeddinggemma:300m')
 CERT = os.environ.get('ULTRON_MOTOR_CERT', '/etc/ultron-motor/cert.pem')
 LLAVE = os.environ.get('ULTRON_MOTOR_LLAVE', '/etc/ultron-motor/llave.pem')
 OLLAMA = os.environ.get('OLLAMA_HOST_LOCAL', 'http://127.0.0.1:11434')
@@ -64,7 +69,7 @@ CUPO = threading.BoundedSemaphore(int(os.environ.get('ULTRON_MOTOR_CUPO', '2')))
 
 # Solo lo que ULTRON necesita. Todo lo demás es 404, no 403: no se cuenta qué
 # hay detrás.
-PERMITIDO = {('POST', '/api/chat'), ('GET', '/api/tags'), ('GET', '/salud')}
+PERMITIDO = {('POST', '/api/chat'), ('POST', '/api/embed'), ('GET', '/api/tags'), ('GET', '/salud')}
 
 contador = {'pedidos': 0, 'rechazados': 0, 'desde': time.time()}
 
@@ -113,7 +118,7 @@ class Motor(BaseHTTPRequestHandler):
                                     'desde': int(contador['desde'])})
         if ruta == '/api/tags':
             return self._reenviar('GET', ruta, None)
-        # /api/chat
+        # /api/chat y /api/embed
         n = int(self.headers.get('Content-Length') or 0)
         if n <= 0 or n > TOPE_CUERPO:
             return self._json(413, {'error': 'cuerpo fuera de medida', 'codigo': 'MEDIDA'})
@@ -121,7 +126,19 @@ class Motor(BaseHTTPRequestHandler):
             pedido = json.loads(self.rfile.read(n) or b'{}')
         except Exception:
             return self._json(400, {'error': 'no es JSON', 'codigo': 'JSON'})
-        # LA REGLA QUE NO SE NEGOCIA: el modelo y el contexto de AU-RA, siempre.
+        # LA REGLA QUE NO SE NEGOCIA: el modelo y el contexto son los de esta
+        # casa, no los que pida quien llama. Un pedido con otro modelo u otra
+        # ventana obliga a ollama a recargar 17 GB y deja a AU-RA esperando.
+        if ruta == '/api/embed':
+            # Los vectores van con SU modelo, que es otro y chico. Del pedido
+            # solo se respeta la entrada: ni modelo ni opciones se aceptan de
+            # fuera, por la misma razon que en /api/chat.
+            entrada = pedido.get('input')
+            if entrada is None:
+                return self._json(400, {'error': 'falta input', 'codigo': 'SIN_ENTRADA'})
+            self._reenviar('POST', ruta, json.dumps(
+                {'model': MODELO_VECTOR, 'input': entrada, 'keep_alive': '30m'}).encode())
+            return
         pedido['model'] = MODELO
         opciones = pedido.get('options') if isinstance(pedido.get('options'), dict) else {}
         opciones['num_ctx'] = CTX

@@ -33,6 +33,16 @@ const sv = createServer((q, r) => {
   q.on('end', () => {
     if (caido) { q.socket.destroy(); return; }
     if (q.headers['x-ultron-secreto'] !== secretoBueno) { r.writeHead(401); r.end('{"error":"no"}'); return; }
+    /* Los vectores van por su propia puerta y NO consumen el guion: son una
+       llamada más del turno, no un paso de la conversación. Se descubrió
+       porque al enchufar la búsqueda por significado, cada turno se comía un
+       paso y las pruebas del bucle empezaron a fallar sin que nada del bucle
+       hubiera cambiado. */
+    if (q.url === '/api/embed') {
+      r.writeHead(200, { 'Content-Type': 'application/json' });
+      r.end(JSON.stringify({ model: 'embeddinggemma:300m', embeddings: [Array.from({ length: 768 }, (_, i) => (i % 11 - 5) / 50)] }));
+      return;
+    }
     if (q.url === '/salud') { r.writeHead(200, { 'Content-Type': 'application/json' }); r.end(JSON.stringify({ ok: true, modelo: MODELO_DEL_MOTOR, ctx: 12288 })); return; }
     const pedido = JSON.parse(cuerpo || '{}'); pedidos.push(pedido);
     const paso = guion.shift() || { texto: 'Fin.' };

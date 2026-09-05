@@ -72,5 +72,34 @@ titulo('una pregunta sin palabras no revienta');
 decir(saber.buscar('de la el', {}).length === 0, 'solo palabras vacías → nada, sin error');
 decir(saber.buscar('', {}).length === 0, 'vacío → nada');
 
+titulo('buscar por significado, sin dejar de buscar por palabras');
+{
+  /* BM25 tiene un techo conocido: si la pregunta trae la idea con OTRAS
+     palabras que el documento, no engancha. Medido el 5-sep contra el saber
+     de verdad: «¿cuánto sale pasar la red a la cadena nueva?» no traía
+     «Cuánto cuesta y cuánto haría falta», que es justo el documento de costos.
+     Con el vector sí. */
+  decir(saber.hayVectores(), `el saber trae sus vectores (${saber.resumen().total} secciones)`);
+
+  // La fusión no puede ROMPER lo que ya funcionaba: sin vector, idéntico.
+  const sin = saber.buscar('ORIGEN oro referencia', { maximo: 5 }).map((x) => x.id).join(',');
+  decir(sin.length > 0, 'sin vector se busca por palabras, como siempre', sin.slice(0, 70));
+
+  /* Un vector INVENTADO no puede tumbar la búsqueda ni colar basura arriba:
+     se fusiona por puesto (RRF), así que lo que estaba primero por palabras
+     sigue pesando. Es la garantía de que un modelo de vectores que un día
+     conteste cualquier cosa no deja a la junta sin saber. */
+  const raro = Float32Array.from({ length: 768 }, (_, i) => (i % 7 - 3) / 100);
+  const conRaro = saber.buscar('ORIGEN oro referencia', { maximo: 5, vector: raro }).map((x) => x.id);
+  decir(conRaro.length > 0, 'con un vector inventado tampoco se queda sin resultados', conRaro.length + ' secciones');
+  const compartidos = conRaro.filter((id) => sin.includes(id)).length;
+  decir(compartidos >= 2, 'y lo bueno por palabras sobrevive a la fusión: no lo aplasta el vector', `${compartidos} de 5 en común`);
+
+  // Un vector del tamaño equivocado se ignora en vez de reventar.
+  const corto = Float32Array.from([1, 2, 3]);
+  decir(saber.buscar('ORIGEN oro', { maximo: 3, vector: corto }).length > 0,
+    'un vector del largo equivocado no revienta: el coseno da cero y manda BM25');
+}
+
 console.log(fallos ? `\n${fallos} comprobación(es) fallaron` : '\nTodo en verde');
 process.exit(fallos ? 1 : 0);

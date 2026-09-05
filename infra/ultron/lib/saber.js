@@ -39,6 +39,7 @@ function cargar() {
   }
   secciones = JSON.parse(readFileSync(a, 'utf8'));
   indice = JSON.parse(readFileSync(b, 'utf8'));
+  cargarVectores();
   porId = new Map(secciones.map((s) => [s.id, s]));
   for (const s of secciones) s._palabras = palabrasDe(s.titulo + ' ' + s.texto + ' ' + (s.palabras || []).join(' '));
   console.log(`[saber] ${secciones.length} secciones · armado ${indice.armadoEn}`);
@@ -71,7 +72,60 @@ function frecuencia(lista) {
  * por el `peso` que se le dio a la fuente al armar: un dosier de la junta
  * vale más que el LEEME de una carpeta.
  */
-function buscar(pregunta, { maximo = 12, maxBytes = 60_000 } = {}) {
+/* ── BUSCAR POR SIGNIFICADO, NO SOLO POR PALABRAS ────────────────────────────
+ *
+ * BM25 puntúa por coincidencia de palabras, y eso tiene un techo conocido: si
+ * la junta pregunta «¿cuánto costaría migrar la cadena?» y el dosier dice
+ * «presupuesto de la migración a la 5550», engancha por «migración» y pierde
+ * todo lo que hable de «inversión», «desembolso» o «cuánto sale». Las palabras
+ * de la pregunta y las del documento casi nunca son las mismas.
+ *
+ * Así que se suma una segunda opinión: el vector de cada sección, calculado al
+ * armar el saber (bin/armar-saber.mjs) con un modelo chico de 621 MB que vive
+ * en el mismo nodo. Al preguntar se calcula el vector de la pregunta y se mide
+ * el coseno contra los 679.
+ *
+ * SE FUSIONAN, NO SE REEMPLAZAN. BM25 es imbatible cuando la pregunta trae el
+ * término exacto —una dirección, un número de cadena, «AUKA»— y el vector es
+ * imbatible cuando trae la idea con otras palabras. Cada uno aporta su
+ * ranking y se suman por el inverso del puesto (RRF): así ninguna de las dos
+ * escalas —que no son comparables entre sí— puede aplastar a la otra.
+ *
+ * Y TODO ESTO ES OPCIONAL. Sin vectores en el saber, o sin nodo que conteste,
+ * `buscar` es exactamente lo que era antes. La casa no se queda sin saber
+ * porque un modelo de vectores no esté; se queda con el de palabras, que
+ * funciona desde el primer día.
+ */
+let vectores = null;      // Map(id → Float32Array normalizado)
+
+function cargarVectores() {
+  vectores = null;
+  const v = join(DIR, 'vectores.json');
+  if (!existsSync(v)) return;
+  try {
+    const crudo = JSON.parse(readFileSync(v, 'utf8'));
+    const m = new Map();
+    for (const [id, arr] of Object.entries(crudo.vectores || {})) m.set(id, Float32Array.from(arr));
+    if (m.size) { vectores = m; console.log(`[saber] ${m.size} vectores · ${crudo.modelo || '?'}`); }
+  } catch (e) {
+    console.error(`[saber] los vectores no se pudieron leer: ${e.message}`);
+  }
+}
+
+/** Coseno de dos vectores YA normalizados: el producto escalar y nada más. */
+function coseno(a, b) {
+  if (!a || !b || a.length !== b.length) return 0;
+  let s = 0;
+  for (let i = 0; i < a.length; i++) s += a[i] * b[i];
+  return s;
+}
+
+/* Fusión por el inverso del puesto. K=60 es el valor de la literatura y hace
+   lo que se quiere: el primero de una lista pesa poco más que el segundo, así
+   que hace falta estar bien puesto en LAS DOS para subir de verdad. */
+const K_RRF = 60;
+
+function buscar(pregunta, { maximo = 12, maxBytes = 60_000, vector = null } = {}) {
   if (!secciones.length) return [];
   const q = palabrasDe(pregunta);
   if (!q.length) return [];
@@ -100,9 +154,27 @@ function buscar(pregunta, { maximo = 12, maxBytes = 60_000 } = {}) {
     return { s, p: p * (s.peso || 1) };
   }).filter((x) => x.p > 0).sort((a, b2) => b2.p - a.p);
 
+  /* La segunda opinión, si la hay. `vector` lo trae quien llama —el cerebro,
+     que es el único que puede hablar con el nodo—; acá solo se compara. */
+  let orden = puntuadas;
+  if (vector && vectores && vectores.size) {
+    const porVector = secciones
+      .map((s) => ({ s, c: coseno(vector, vectores.get(s.id)) }))
+      .filter((x) => x.c > 0)
+      .sort((a, b2) => b2.c - a.c);
+    const puesto = new Map();
+    puntuadas.forEach(({ s }, i) => puesto.set(s.id, { s, rrf: 1 / (K_RRF + i + 1) }));
+    porVector.forEach(({ s }, i) => {
+      const y = puesto.get(s.id);
+      if (y) y.rrf += 1 / (K_RRF + i + 1);
+      else puesto.set(s.id, { s, rrf: 1 / (K_RRF + i + 1) });
+    });
+    orden = [...puesto.values()].sort((a, b2) => b2.rrf - a.rrf).map(({ s, rrf }) => ({ s, p: rrf * 100 }));
+  }
+
   const salida = [];
   let bytes = 0;
-  for (const { s, p } of puntuadas) {
+  for (const { s, p } of orden) {
     if (salida.length >= maximo || bytes + s.texto.length > maxBytes) break;
     salida.push({ ...sinPrivados(s), puntos: Number(p.toFixed(2)) });
     bytes += s.texto.length;
@@ -135,4 +207,6 @@ function sinPrivados(s) { const { _palabras, ...resto } = s; return resto; }
 
 cargar();
 
-module.exports = { buscar, vozDeLaCasa, seccion, resumen, huellas, cargar, _adentro: { palabrasDe, DIR } };
+module.exports = { buscar, vozDeLaCasa, seccion, resumen, huellas, cargar,
+  hayVectores: () => Boolean(vectores && vectores.size),
+  _adentro: { palabrasDe, DIR, coseno, cargarVectores, K_RRF } };
