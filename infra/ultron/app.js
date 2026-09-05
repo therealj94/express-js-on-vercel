@@ -34,6 +34,7 @@ const memoria = require('./lib/memoria');
 const cerebro = require('./lib/cerebro');
 const canales = require('./lib/canales');
 const voz = require('./lib/voz');
+const herramientas = require('./lib/herramientas');
 
 const app = express();
 app.set('trust proxy', 1);
@@ -218,8 +219,28 @@ app.get('/saludo', puerta, async (req, res) => {
   }
   const n = abiertos.length;
   partes.push(n === 0 ? 'no hay pendientes abiertos' : n === 1 ? 'hay un pendiente abierto' : `hay ${n} pendientes abiertos`);
-  const texto = `${momento}, ${nombre}. ${partes.join(', ').replace(/^./, (c) => c.toUpperCase())}. ¿Por dónde empezamos?`;
+  // Registro institucional: se saluda por el nombre, se informa, y se cede la
+  // palabra. Ni «¿por dónde empezamos?» ni exclamaciones: es un despacho.
+  const texto = `${momento}, ${nombre}. ${partes.join(', ').replace(/^./, (c) => c.toUpperCase())}. Quedo a su disposición.`;
   res.json({ texto, nombre, hora, pendientes: n });
+});
+
+/* ── LAS HERRAMIENTAS, A LA VISTA Y A MANO ────────────────────────────────────
+   La consola enseña el catálogo entero (qué puede hacer ULTRON, agrupado por
+   lo que toca) y deja correr cualquiera directamente, sin pasar por el modelo:
+   un miembro de la junta que quiere el libro de AUKA-ORIGEN no tiene por qué
+   redactar una pregunta para que un modelo decida llamar la función. Lo que
+   corre es EXACTAMENTE la misma función que usa el modelo, con el mismo
+   contexto, así que lo que la persona ve a mano es lo que ULTRON ve solo. */
+app.get('/herramientas', puerta, (req, res) => res.json({ herramientas: herramientas.catalogo(), grupos: Object.keys(herramientas.GRUPOS) }));
+
+app.post('/herramientas/:nombre', puerta, frenoPensar, async (req, res) => {
+  const nombre = String(req.params.nombre || '');
+  if (!herramientas.DEFINICIONES.some((d) => d.name === nombre)) return res.status(404).json({ error: 'No existe esa herramienta.', codigo: 'NO_EXISTE' });
+  const ctx = { miembro: req.miembro, junta: JUNTA.map(sinClave), conversacionId: null, fuentes: [], memorias: [], documentos: [], envios: [], pendientes: [], acciones: [], chico: false };
+  const t0 = Date.now();
+  const salida = await herramientas.correr(nombre, req.body?.entrada || {}, ctx);
+  res.json({ nombre, salida: String(salida), ms: Date.now() - t0, acciones: ctx.acciones, documentos: ctx.documentos, envios: ctx.envios, fuentes: ctx.fuentes.slice(0, 12) });
 });
 
 /* Lo que cuesta pensar. Va detrás de la puerta como todo lo demás: cuánto
@@ -402,13 +423,7 @@ app.post('/whatsapp/entrada', async (req, res) => {
 
 // ── El panel ────────────────────────────────────────────────────────────────
 
-/* LA RAÍZ ES AURA OS cuando está construido (public/os); el panel de antes
-   sigue en /clasico —pendientes, biblioteca, hilos— y en la raíz si el OS no
-   está. Un despliegue sin `out/` de Next no deja la casa sin puerta. */
-const { existsSync } = require('node:fs');
-const HAY_OS = existsSync(join(__dirname, 'public', 'os', 'index.html'));
-app.get('/', (req, res, next) => (HAY_OS ? res.redirect(302, '/os/') : next()));
-app.use('/clasico', express.static(join(__dirname, 'public'), { index: 'index.html', maxAge: '10m' }));
+/* LA CONSOLA vive en public/: una sola puerta, en la raíz. */
 app.use(express.static(join(__dirname, 'public'), { index: 'index.html', maxAge: '10m' }));
 app.use((req, res) => res.status(404).json({ error: 'No existe esa ruta.', codigo: 'NO_EXISTE' }));
 app.use((err, req, res, next) => {   // eslint-disable-line no-unused-vars

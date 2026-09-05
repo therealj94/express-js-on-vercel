@@ -145,6 +145,36 @@ const DEFINICIONES = [
     input_schema: { type: 'object', properties: {} },
   },
   {
+    name: 'cadena_5550_saldo',
+    description: 'Lee en la cadena 5550 (la de ORIGEN) el saldo de una dirección: ORIGEN nativo y los tokens de la casa (AUKA, AGKA, ONDK…).',
+    input_schema: { type: 'object', properties: { direccion: { type: 'string', description: '0x… de 42 caracteres' } }, required: ['direccion'] },
+  },
+  {
+    name: 'cotizar',
+    description: 'Cotiza con el precio de AHORA: cuánto ORIGEN dan N USDT (sentido «compra») o cuántos USDT dan N ORIGEN con la comisión de salida del 1 % (sentido «venta»).',
+    input_schema: { type: 'object', properties: { monto: { type: 'number', description: 'La cantidad' }, sentido: { type: 'string', enum: ['compra', 'venta'] } }, required: ['monto', 'sentido'] },
+  },
+  {
+    name: 'parte_del_dia',
+    description: 'Arma el parte del día para la junta: estado de cada casa, precio, bloques, pendientes abiertos, documentos recientes y gasto. Úsalo cuando pidan «el parte», «cómo estamos» o un resumen general.',
+    input_schema: { type: 'object', properties: {} },
+  },
+  {
+    name: 'buscar_conversaciones',
+    description: 'Busca en las conversaciones anteriores de esta persona con ULTRON por una palabra o tema, y devuelve los fragmentos que coinciden con su fecha.',
+    input_schema: { type: 'object', properties: { consulta: { type: 'string' } }, required: ['consulta'] },
+  },
+  {
+    name: 'olvidar',
+    description: 'Borra una memoria guardada, por su id, cuando la persona dice que ya no aplica o que estaba mal.',
+    input_schema: { type: 'object', properties: { id: { type: 'string' } }, required: ['id'] },
+  },
+  {
+    name: 'nube_estado',
+    description: 'Lee en AWS cómo están las máquinas de la casa: el nodo de inteligencia y los nodos de la cadena (encendidas, apagadas, su IP). Solo lee.',
+    input_schema: { type: 'object', properties: {} },
+  },
+  {
     name: 'proponer_envio',
     description: 'Prepara un WhatsApp o un correo para un miembro de la junta. NO lo manda: la persona lo confirma en el panel.',
     input_schema: { type: 'object', properties: { canal: { type: 'string', enum: ['whatsapp', 'correo'] }, destinatario: { type: 'string', description: 'Nombre o correo del miembro' }, asunto: { type: 'string' }, texto: { type: 'string' } }, required: ['canal', 'destinatario', 'texto'] },
@@ -380,6 +410,82 @@ async function correr(nombre, entrada, ctx) {
         if (!ps.length) return 'No hay pendientes.';
         return ps.map((p) => `- [${p._id}] ${p.estado === 'hecho' ? '(hecho) ' : ''}${p.texto}${p.quien ? ' · le toca a ' + p.quien : ''}${p.tema ? ' · ' + p.tema : ''}${p.en ? ' · desde ' + new Date(p.en).toISOString().slice(0, 10) : ''}`).join('\n');
       }
+      case 'cadena_5550_saldo': {
+        const d = String(entrada.direccion || '').trim();
+        if (!/^0x[0-9a-fA-F]{40}$/.test(d)) return 'Dirección inválida: tiene que ser 0x seguido de 40 caracteres hexadecimales.';
+        const rpc = process.env.OG_CHAIN_PROVIDER || 'https://rpc.ordenglobal-rpc.com';
+        const llamar = async (method, params) => {
+          const r = await fetch(rpc, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ jsonrpc: '2.0', id: 1, method, params }), signal: AbortSignal.timeout(12_000) });
+          const j = await r.json(); if (j.error) throw new Error(j.error.message); return j.result;
+        };
+        const nativo = BigInt(await llamar('eth_getBalance', [d, 'latest']));
+        const l = [`Dirección ${d} en la cadena 5550 (leído ahora):`, `- ORIGEN: ${ori(nativo.toString())}`];
+        const dato = '0x70a08231' + d.slice(2).toLowerCase().padStart(64, '0');
+        for (const [sym, contrato] of Object.entries(TOKENS_5550)) {
+          try { const v = BigInt(await llamar('eth_call', [{ to: contrato, data: dato }, 'latest']) || '0x0'); if (v > 0n) l.push(`- ${sym}: ${ori(v.toString())}`); } catch { /* un token que no contesta no tumba la lectura */ }
+        }
+        const n = parseInt(await llamar('eth_getTransactionCount', [d, 'latest']), 16);
+        l.push(`- transacciones enviadas: ${n}`);
+        return l.join('\n');
+      }
+      case 'cotizar': {
+        const monto = Number(entrada.monto);
+        if (!(monto > 0)) return 'El monto tiene que ser un número mayor que cero.';
+        const v = await vivo.leerConCache();
+        const precio = v?.origen?.origenUsd;
+        if (!precio) return 'No hay precio de referencia ahora mismo.';
+        if (entrada.sentido === 'venta') {
+          const bruto = monto * precio, comision = bruto * 0.01;
+          return `Venta de ${monto} ORIGEN a ${precio.toFixed(6)} USD: bruto ${bruto.toFixed(4)} USDT, comisión de salida del 1 % ${comision.toFixed(4)} USDT, recibe ${(bruto - comision).toFixed(4)} USDT. Precio de referencia leído ${v.leidoEn}.`;
+        }
+        return `Compra con ${monto} USDT a ${precio.toFixed(6)} USD por ORIGEN: recibe ${(monto / precio).toFixed(6)} ORIGEN (sin comisión de entrada). Precio de referencia leído ${v.leidoEn}.`;
+      }
+      case 'parte_del_dia': {
+        const [v, pend, docs, g] = await Promise.all([vivo.leer(), memoria.pendientes({ limite: 40 }), memoria.documentos({ limite: 5 }), memoria.gasto()]);
+        const l = [`PARTE DEL DÍA · ${fecha()}`, '', 'Casas:', vivo.paraElModelo(v)];
+        l.push('', `Pendientes abiertos: ${pend.length}`);
+        for (const p of pend.slice(0, 12)) l.push(`- [${p._id}] ${p.texto}${p.quien ? ' · ' + p.quien : ''}`);
+        l.push('', `Documentos recientes: ${docs.length}`);
+        for (const d of docs) l.push(`- [${d._id}] ${d.titulo} (${d.tipo || 'otro'}, ${d.en ? new Date(d.en).toISOString().slice(0, 10) : ''})`);
+        l.push('', `Gasto: hoy ${g.hoy.turnos} turnos · mes ${g.mes.turnos} turnos${g.mes.conPrecio ? ` · $${g.mes.dolares.toFixed(2)}` : ''}.`);
+        return l.join('\n');
+      }
+      case 'buscar_conversaciones': {
+        const q = String(entrada.consulta || '').trim().toLowerCase();
+        if (q.length < 2) return 'Consulta demasiado corta.';
+        const lista = await memoria.conversacionesDe(ctx.miembro.correo, { limite: 40 });
+        const hallazgos = [];
+        for (const c of lista) {
+          const conv = await memoria.conversacion(c._id, ctx.miembro.correo);
+          for (const t of conv?.turnos || []) {
+            const tx = String(t.texto || '');
+            const i = tx.toLowerCase().indexOf(q);
+            if (i >= 0) { hallazgos.push(`- ${new Date(t.en || conv.tocado || conv.en).toISOString().slice(0, 10)} · ${t.rol === 'miembro' ? ctx.miembro.nombre : 'ULTRON'} en «${conv.titulo || 'sin título'}»: …${tx.slice(Math.max(0, i - 80), i + 160).replace(/\s+/g, ' ')}…`); }
+            if (hallazgos.length >= 12) break;
+          }
+          if (hallazgos.length >= 12) break;
+        }
+        return hallazgos.length ? `Fragmentos que mencionan «${q}»:\n${hallazgos.join('\n')}` : `Ninguna conversación anterior menciona «${q}».`;
+      }
+      case 'olvidar': {
+        const ok = await memoria.olvidar(String(entrada.id || ''), ctx.miembro.correo);
+        return ok ? 'Memoria borrada.' : 'No hay una memoria con ese id que esta persona pueda borrar.';
+      }
+      case 'nube_estado': {
+        if (!process.env.AWS_ACCESS_KEY_ID) return 'No hay credenciales de AWS configuradas: no puedo leer la nube.';
+        const { EC2Client, DescribeInstancesCommand } = require('@aws-sdk/client-ec2');
+        const l = ['Máquinas de la casa en AWS (leído ahora):'];
+        for (const region of ['us-east-1', 'us-east-2']) {
+          try {
+            const r = await new EC2Client({ region }).send(new DescribeInstancesCommand({}));
+            for (const res of r.Reservations || []) for (const i of res.Instances || []) {
+              const nombre = (i.Tags || []).find((t) => t.Key === 'Name')?.Value || i.InstanceId;
+              l.push(`- ${nombre} (${i.InstanceId}, ${region}, ${i.InstanceType}): ${i.State?.Name}${i.PublicIpAddress ? ' · ' + i.PublicIpAddress : ''}`);
+            }
+          } catch (e) { l.push(`- ${region}: no se pudo leer (${String(e.message).slice(0, 80)})`); }
+        }
+        return l.length > 1 ? l.join('\n') : 'No hay máquinas visibles en us-east-1 ni us-east-2.';
+      }
       case 'calcular': {
         return calcular(String(entrada.expresion || ''));
       }
@@ -397,6 +503,13 @@ async function correr(nombre, entrada, ctx) {
 }
 
 // ── Auxiliares de las manos sobre el ecosistema ─────────────────────────────
+
+/** Los tokens de la casa en la 5550, para leer saldos. Contratos públicos. */
+const TOKENS_5550 = {
+  AUKA: '0x6Facc8Df79cEDc6C5065442ce27e915Aa3a26B9B', AGKA: '0x961f798f998c7Ff44D47d62C7FA1B572eF187a4B',
+  ONDK: '0xfb83eEA4B384a4b18E5A1EBa7a4bb4C0b7CA19c1', MNKA: '0x18b6680CFF71c11067bec312Fc48786bE2e54Ead',
+};
+const fecha = () => new Date().toLocaleDateString('es-HN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', timeZone: 'America/Tegucigalpa' });
 
 /** GET JSON con plazo; null si no contesta o no es JSON. */
 async function leerJson(url) {
@@ -429,9 +542,28 @@ function calcular(expresion) {
   } catch { return 'No pude calcular eso.'; }
 }
 
+/** Cómo se agrupan en la consola: la persona ve las manos por lo que tocan. */
+const GRUPOS = {
+  'La casa, en vivo': ['estado_vivo', 'parte_del_dia', 'cotizar', 'nodo_salud', 'nube_estado'],
+  'Ordenex y las cadenas': ['ordenex_mercado', 'cadena_altura', 'cadena_direccion', 'cadena_5550_saldo'],
+  'Las otras casas': ['aucorp_monedas', 'genesis_salud'],
+  'El saber y la memoria': ['buscar_saber', 'buscar_conversaciones', 'recordar', 'olvidar'],
+  'Pendientes y documentos': ['listar_pendientes', 'anotar_pendiente', 'cerrar_pendiente', 'listar_documentos', 'leer_documento', 'crear_documento'],
+  'Internet': ['buscar_web', 'leer_pagina'],
+  'Acciones que confirma la persona': ['abrir', 'proponer_envio'],
+  'Cuentas': ['calcular', 'gasto'],
+};
+
+/** El catálogo para la consola: definición, grupo y si escribe algo. */
+function catalogo() {
+  const escriben = new Set(['recordar', 'olvidar', 'anotar_pendiente', 'cerrar_pendiente', 'crear_documento', 'proponer_envio']);
+  const grupoDe = (n) => Object.entries(GRUPOS).find(([, l]) => l.includes(n))?.[0] || 'Otras';
+  return DEFINICIONES.map((d) => ({ nombre: d.name, descripcion: d.description, entrada: d.input_schema, grupo: grupoDe(d.name), escribe: escriben.has(d.name) }));
+}
+
 /** Las definiciones en el formato de Ollama. */
 function paraOllama() {
   return DEFINICIONES.map((d) => ({ type: 'function', function: { name: d.name, description: d.description, parameters: d.input_schema } }));
 }
 
-module.exports = { DEFINICIONES, CASAS, correr, paraOllama, buscarWeb, leerPagina, _adentro: { limpiarHtml, ori, calcular, leerJson } };
+module.exports = { DEFINICIONES, CASAS, GRUPOS, catalogo, correr, paraOllama, buscarWeb, leerPagina, _adentro: { limpiarHtml, ori, calcular, leerJson } };

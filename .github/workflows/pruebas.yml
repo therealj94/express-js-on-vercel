@@ -251,27 +251,14 @@ jobs:
         working-directory: apps-web
         run: node probar-movil-todo.mjs
 
-      # El panel de ULTRON FP contra su servidor de verdad, sin llaves: la
-      # puerta, el pulso, la memoria, la biblioteca, 360 px y la presencia.
-      - name: El panel de ULTRON FP
+      # La consola de ULTRON contra su servidor de verdad, sin llaves: la
+      # puerta, el despacho, el tablero, los 27 instrumentos a mano, los
+      # pendientes, la biblioteca y 390 px.
+      - name: La consola de ULTRON
         working-directory: infra/ultron
         run: |
           npm ci --no-audit --no-fund
-          node pruebas/probar-panel.mjs
-
-      # AURA OS, el sistema operativo espacial de la junta, ya construido en
-      # infra/ultron/public/os: la puerta, el boot, el saludo por nombre, las
-      # casas orbitando, el arco de voz y 390 px. Y que el paquete de Next
-      # siga compilando en limpio.
-      - name: AURA OS
-        working-directory: infra/ultron
-        run: node pruebas/probar-os.mjs
-      - name: AURA OS compila
-        working-directory: apps-web/aura-os
-        run: |
-          npm ci --no-audit --no-fund
-          npm run typecheck
-          npm run build
+          node pruebas/probar-consola.mjs
 
       # Si algo falla, las capturas del momento valen mas que el registro.
       - name: Guardar las capturas si algo se rompio

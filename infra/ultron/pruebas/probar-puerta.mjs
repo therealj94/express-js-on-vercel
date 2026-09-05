@@ -157,10 +157,26 @@ titulo('el saludo: por su nombre, con la hora y con lo que hay');
 {
   const r = await s.pedir('/saludo', { cookie: cookieJose });
   decir(r.http === 200 && /^Buen(os|as) (días|tardes|noches), José\./.test(r.json.texto), 'saluda por el nombre de pila según la hora de Honduras', r.json.texto);
-  decir(/pendiente/.test(r.json.texto) && /¿Por dónde empezamos\?$/.test(r.json.texto), 'dice cuántos pendientes hay y pregunta por dónde empezar', r.json.texto);
+  decir(/pendiente/.test(r.json.texto) && /Quedo a su disposición\.$/.test(r.json.texto), 'dice cuántos pendientes hay y cede la palabra, en registro institucional', r.json.texto);
   decir(/no contesta/.test(r.json.texto), 'y sin red, dice qué casa no contesta en vez de callarlo', r.json.texto);
   const sin = await s.pedir('/saludo');
   decir(sin.http === 401, 'sin sesión no hay saludo');
+}
+
+titulo('los instrumentos, a mano: el mismo camino que usa ULTRON');
+{
+  const cat = await s.pedir('/herramientas', { cookie: cookieJose });
+  decir(cat.http === 200 && cat.json.herramientas.length >= 27, `el catálogo trae ${cat.json.herramientas.length} instrumentos con su grupo`, JSON.stringify(cat.json).slice(0, 120));
+  decir(cat.json.herramientas.every((h) => h.nombre && h.descripcion && h.grupo && h.entrada), 'y cada uno lleva nombre, descripción, grupo y esquema de entrada');
+  decir(cat.json.herramientas.filter((h) => h.escribe).map((h) => h.nombre).sort().join(',') === 'anotar_pendiente,cerrar_pendiente,crear_documento,olvidar,proponer_envio,recordar', 'los que escriben van marcados, y son exactamente esos');
+  const c = await s.pedir('/herramientas/calcular', { cookie: cookieJose, metodo: 'POST', cuerpo: { entrada: { expresion: '4467.53 / 31.1035 / 55' } } });
+  decir(c.http === 200 && /= 2\.6115/.test(c.json.salida) && typeof c.json.ms === 'number', 'calcular corre a mano y devuelve el gramín con lo que tardó', JSON.stringify(c.json).slice(0, 120));
+  const a = await s.pedir('/herramientas/abrir', { cookie: cookieJose, metodo: 'POST', cuerpo: { entrada: { que: 'ordenex' } } });
+  decir(a.http === 200 && a.json.acciones?.[0]?.url === 'https://ordenexchange.link/', 'abrir devuelve la acción para que la persona la toque, no abre nada');
+  const no = await s.pedir('/herramientas/mover_dinero', { cookie: cookieJose, metodo: 'POST', cuerpo: { entrada: {} } });
+  decir(no.http === 404, 'un instrumento que no existe es 404: no se inventa');
+  const sin = await s.pedir('/herramientas', {});
+  decir(sin.http === 401, 'y sin sesión no hay catálogo');
 }
 
 await s.cerrar();

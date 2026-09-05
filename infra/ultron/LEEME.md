@@ -28,6 +28,24 @@ node app.js                  # http://localhost:3900
 | **El panel** | La presencia: una persona de luz —busto de partículas, ojos que parpadean, el núcleo en el pecho— con los datos vivos del ecosistema orbitando alrededor. Al entrar, el hero: la figura grande y el saludo por nombre escribiéndose. **Conversar**: escucha, contesta con voz y vuelve a escuchar. Gestos: respira, ladea la cabeza oyendo, se recoge pensando, asiente hablando. Y la conversación, el pulso, los pendientes, la memoria, la biblioteca, los hilos. Un archivo. | `public/index.html` |
 | **El saludo** | `GET /saludo`: por su nombre, con la hora de Honduras y con lo que hay. Determinista: sale al instante y no puede irse a otro idioma. | `app.js` |
 
+## La consola
+
+`public/` es la consola de la Junta: una sola puerta, en la raíz. Vanilla,
+sin compilar, con la identidad de la casa (grafito, marfil y el oro de Orden
+Global) y registro institucional en cada palabra.
+
+| Sección | Qué hace |
+| --- | --- |
+| Despacho | La conversación. Cada consulta que ULTRON hace a la casa aparece en el hilo como un registro con su entrada y su salida, antes de la respuesta. Texto en vivo, voz frase por frase, dictado y conversación continua. |
+| Ecosistema | Una tarjeta por casa, leída de su servicio. Lo que no se pudo leer se dice. |
+| Instrumentos | El catálogo entero (27) agrupado por lo que toca, cada uno ejecutable a mano por `POST /herramientas/:nombre`: corre la misma función que usa el modelo. |
+| Pendientes y memoria · Biblioteca · Bitácora | El registro de la Junta. |
+| La Junta · Ajustes | Los miembros y sus canales; la voz y el estado de la plataforma. |
+
+Se prueba con `node pruebas/probar-consola.mjs` (navegador de verdad contra
+el servidor de verdad, sin llaves). Con `ULTRON_FOTO=<carpeta>` guarda
+capturas.
+
 ## Cómo se conecta con AU-RA
 
 Desde el 5-sep **comparten el cerebro**: ULTRON piensa con el mismo

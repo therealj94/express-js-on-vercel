@@ -1,1058 +1,403 @@
 <!doctype html>
-<html lang="es">
+<html lang="es-HN">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="color-scheme" content="dark">
-<title>ULTRON FP</title>
+<meta name="theme-color" content="#0A0D12">
+<meta name="robots" content="noindex,nofollow">
+<title>ULTRON · Junta Directiva de Orden Global</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Source+Sans+3:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
 <style>
-/* ══ ULTRON FP · Conocimiento Full ═══════════════════════════════════════════
-   Un solo acento —el cian filamento— sobre abismo. El oro de la casa aparece
-   en un solo sitio: el precio del ORIGEN. Todo lo demás calla para que la
-   presencia y la conversación sean lo único que se mueve. */
+/* ═══════════════════════════════════════════════════════════════════════════
+   ULTRON · la consola de la Junta Directiva de Orden Global
+
+   UN DESPACHO, NO UN CHAT. Lo que la junta necesita de su sistema de
+   inteligencia es lo que necesita de un secretario técnico: que conteste con
+   la casa delante, que deje constancia de lo que consultó, que tenga a mano
+   los instrumentos, y que hable con propiedad. La consola está compuesta así:
+
+     · el despacho (centro): la conversación, con cada consulta que ULTRON
+       hizo a la casa visible como un registro, no escondida;
+     · el tablero (derecha): la casa en vivo, siempre a la vista;
+     · el índice (izquierda): el ecosistema, los instrumentos, los pendientes,
+       la biblioteca, la bitácora.
+
+   LA IDENTIDAD ES LA DE LA CASA: grafito profundo, marfil, y el oro de Orden
+   Global como único acento. Nada de cian ni de efectos: es un instrumento de
+   gobierno. Tipografía: Cormorant (institucional) para los rótulos, Source
+   Sans para el texto, IBM Plex Mono para los datos.
+   ═══════════════════════════════════════════════════════════════════════════ */
 :root{
-  --abismo:#030814; --noche:#071228; --vidrio:rgba(9,22,48,.66); --vidrio2:rgba(12,30,62,.78);
-  --linea:rgba(93,214,255,.14); --linea2:rgba(93,214,255,.26);
-  --fila:#5DD6FF; --fila2:#9BE7FF; --electrico:#1B6BFF; --profundo:#0A2F7A;
-  --hielo:#EAF2FF; --bruma:#8FA6CC; --humo:#56698F;
-  --oro:#C9A961; --oroLt:#EAD79C;
-  --alerta:#FF6B6B; --vivo:#3ED9A0; --aviso:#F5B32B;
-  --sans:'Manrope',system-ui,-apple-system,'Segoe UI',sans-serif;
-  --mono:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,monospace;
-  --marca:'Cinzel',Georgia,serif;
-  --r:16px; --r2:22px;
+  --fondo:#0A0D12; --panel:#10141B; --panel2:#161B24; --panel3:#1C222C;
+  --linea:#242B36; --linea2:#333C4A;
+  --tinta:#ECE6D8; --tenue:#9AA3B1; --humo:#626B78;
+  --oro:#C9A961; --oroHi:#E6CD8A; --oroBajo:rgba(201,169,97,.14);
+  --bien:#7CC298; --aviso:#D9B45B; --mal:#D9787D;
+  --serif:'Cormorant Garamond',Georgia,'Times New Roman',serif;
+  --sans:'Source Sans 3','Source Sans Pro',system-ui,-apple-system,'Segoe UI',sans-serif;
+  --mono:'IBM Plex Mono',ui-monospace,SFMono-Regular,Menlo,monospace;
+  --radio:10px;
 }
-*{box-sizing:border-box;margin:0;padding:0}
-html,body{height:100%}
-body{background:var(--abismo);color:var(--hielo);font:15px/1.6 var(--sans);-webkit-font-smoothing:antialiased;overflow:hidden}
-button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
-input,textarea{font:inherit;color:inherit}
-a{color:var(--fila)}
-::selection{background:rgba(93,214,255,.28)}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0;background:var(--fondo);color:var(--tinta);font:15px/1.5 var(--sans);-webkit-font-smoothing:antialiased}
+body{overflow:hidden}
+a{color:var(--oroHi);text-decoration:none}
+a:hover{text-decoration:underline}
+button,input,textarea,select{font:inherit;color:inherit}
+button{cursor:pointer}
+::selection{background:var(--oroBajo)}
+.mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
+.serif{font-family:var(--serif)}
 [hidden]{display:none!important}
+.rotulo{font:500 10.5px/1 var(--mono);letter-spacing:.16em;text-transform:uppercase;color:var(--humo)}
+.tenue{color:var(--tenue)}
+.ok{color:var(--bien)} .aviso{color:var(--aviso)} .mal{color:var(--mal)}
 
-/* el fondo: una lluvia de datos muy tenue, como en la imagen, sin competir */
-#lluvia{position:fixed;inset:0;z-index:0;opacity:.55;pointer-events:none}
-.velo{position:fixed;inset:0;z-index:0;background:
-  radial-gradient(900px 600px at 50% 0%,rgba(27,107,255,.16),transparent 60%),
-  radial-gradient(700px 500px at 50% 100%,rgba(93,214,255,.08),transparent 60%);pointer-events:none}
+/* ── la puerta ──────────────────────────────────────────────────────────── */
+#puerta{position:fixed;inset:0;display:grid;place-items:center;background:var(--fondo);z-index:50;padding:24px}
+.puerta-caja{width:min(400px,100%);border:1px solid var(--linea);background:var(--panel);border-radius:14px;padding:32px 30px}
+.marca{font:700 30px/1 var(--serif);letter-spacing:.22em;color:var(--tinta)}
+.marca-sub{margin-top:6px;font:500 11px/1.4 var(--mono);letter-spacing:.14em;text-transform:uppercase;color:var(--oro)}
+.campo{display:block;margin-top:16px}
+.campo>span{display:block;margin-bottom:6px;font-size:12.5px;color:var(--tenue)}
+.entrada{width:100%;padding:11px 12px;border-radius:8px;border:1px solid var(--linea2);background:var(--fondo);color:var(--tinta);outline:none}
+.entrada:focus{border-color:var(--oro)}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:10px 16px;border-radius:8px;border:1px solid var(--linea2);background:var(--panel2);color:var(--tinta);font-weight:500}
+.btn:hover{border-color:var(--oro)}
+.btn:disabled{opacity:.45;cursor:default;border-color:var(--linea)}
+.btn-oro{background:var(--oro);border-color:var(--oro);color:#1B1607}
+.btn-oro:hover{background:var(--oroHi);border-color:var(--oroHi)}
+.btn-chico{padding:6px 10px;font-size:12.5px}
+.error{margin-top:12px;font-size:13px;color:var(--mal)}
 
-/* ── la puerta ─────────────────────────────────────────────────────────────── */
-#puerta{position:relative;z-index:2;height:100%;display:grid;place-items:center;padding:24px}
-.puerta-caja{width:min(420px,100%);text-align:center}
-.puerta-caja canvas{width:220px;height:220px;margin:0 auto 8px;display:block}
-.marca{font-family:var(--marca);font-weight:700;letter-spacing:.32em;font-size:26px;color:var(--hielo);text-shadow:0 0 24px rgba(93,214,255,.35)}
-.marca small{display:block;font-family:var(--sans);font-weight:500;letter-spacing:.34em;font-size:10.5px;color:var(--fila);margin-top:6px;text-transform:uppercase}
-.puerta-caja form{margin-top:26px;display:grid;gap:10px;text-align:left}
-.campo{background:var(--vidrio);border:1px solid var(--linea);border-radius:12px;padding:12px 14px;outline:0;color:var(--hielo);width:100%;transition:border-color .2s,box-shadow .2s}
-.campo::placeholder{color:var(--humo)}
-.campo:focus{border-color:var(--linea2);box-shadow:0 0 0 3px rgba(93,214,255,.10)}
-.btn{background:linear-gradient(180deg,rgba(93,214,255,.22),rgba(27,107,255,.22));border:1px solid var(--linea2);border-radius:12px;padding:12px 16px;font-weight:600;color:var(--hielo);transition:transform .12s,box-shadow .2s,background .2s}
-.btn:hover{box-shadow:0 0 28px rgba(93,214,255,.18);background:linear-gradient(180deg,rgba(93,214,255,.3),rgba(27,107,255,.26))}
-.btn:active{transform:translateY(1px)}
-.btn:disabled{opacity:.5;cursor:default;box-shadow:none}
-.btn.oro{background:linear-gradient(180deg,rgba(201,169,97,.26),rgba(150,121,63,.22));border-color:rgba(201,169,97,.4)}
-.btn.linea{background:transparent}
-.btn.chico{padding:7px 11px;font-size:12.5px;border-radius:9px}
-.puerta-error{color:var(--alerta);font-size:13px;min-height:18px;text-align:center}
-.puerta-pie{margin-top:22px;color:var(--humo);font-size:12px;line-height:1.5}
+/* ── la rejilla ─────────────────────────────────────────────────────────── */
+#consola{display:grid;grid-template-rows:56px 1fr;grid-template-columns:228px minmax(0,1fr) 304px;height:100%}
+#cabecera{grid-column:1/-1;display:flex;align-items:center;justify-content:space-between;padding:0 20px;border-bottom:1px solid var(--linea);background:var(--panel)}
+#cabecera .marca{font-size:20px;letter-spacing:.24em}
+#cabecera .marca small{display:block;margin-top:3px;font:500 10px/1 var(--mono);letter-spacing:.14em;text-transform:uppercase;color:var(--oro)}
+#cabecera .quien{display:flex;align-items:center;gap:18px;font-size:12.5px;color:var(--tenue)}
+#cabecera .quien b{color:var(--tinta);font-weight:600}
+.pulso{display:inline-flex;align-items:center;gap:7px;font:500 11px/1 var(--mono);letter-spacing:.06em}
+.pulso i{width:7px;height:7px;border-radius:50%;background:var(--humo)}
+.pulso.ok i{background:var(--bien);box-shadow:0 0 0 3px rgba(124,194,152,.15)}
+.pulso.mal i{background:var(--mal)}
 
-/* ── el panel ─────────────────────────────────────────────────────────────── */
-#panel{position:relative;z-index:1;height:100%;display:grid;grid-template-rows:56px 1fr;grid-template-columns:300px 1fr 330px;grid-template-areas:"cab cab cab" "izq centro der"}
-.cab{grid-area:cab;display:flex;align-items:center;gap:16px;padding:0 18px;border-bottom:1px solid var(--linea);background:rgba(3,8,20,.55);backdrop-filter:blur(14px)}
-.cab .marca{font-size:15px;letter-spacing:.28em}
-.cab .marca small{display:inline;margin:0 0 0 12px;font-size:9.5px;letter-spacing:.3em;color:var(--fila)}
-.cab .quien{margin-left:auto;display:flex;align-items:center;gap:14px;font-size:12.5px;color:var(--bruma)}
-.puntos{display:flex;gap:10px;align-items:center}
-.punto{display:inline-flex;align-items:center;gap:6px;font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--humo)}
-.punto i{width:7px;height:7px;border-radius:50%;background:var(--humo);box-shadow:0 0 0 0 transparent;transition:background .3s,box-shadow .3s}
-.punto.ok i{background:var(--vivo);box-shadow:0 0 10px rgba(62,217,160,.6)}
-.punto.mal i{background:var(--alerta);box-shadow:0 0 10px rgba(255,107,107,.6)}
-.punto.medio i{background:var(--aviso);box-shadow:0 0 10px rgba(245,179,43,.5)}
-.interruptor{display:inline-flex;align-items:center;gap:8px;padding:6px 10px;border-radius:999px;border:1px solid var(--linea);color:var(--bruma);font-size:12px}
-.interruptor.on{border-color:var(--linea2);color:var(--fila)}
-.interruptor svg{width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+#indice{border-right:1px solid var(--linea);background:var(--panel);padding:14px 12px;display:flex;flex-direction:column;gap:2px;overflow:auto}
+#indice .rotulo{padding:10px 10px 8px}
+.nav{display:flex;align-items:center;gap:11px;width:100%;text-align:left;padding:10px 12px;border-radius:8px;border:0;background:transparent;color:var(--tenue);font-size:14px}
+.nav svg{width:17px;height:17px;stroke:currentColor;fill:none;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round;flex:none}
+.nav:hover{background:var(--panel2);color:var(--tinta)}
+.nav[aria-current=page]{background:var(--oroBajo);color:var(--oroHi)}
+.nav .n{margin-left:auto;font:500 11px/1 var(--mono);color:var(--humo)}
+#indice .pie{margin-top:auto;padding:12px 10px 4px;font-size:12px;color:var(--humo);line-height:1.6}
 
-.izq,.der{overflow:auto;padding:18px;scrollbar-width:thin;scrollbar-color:rgba(93,214,255,.18) transparent}
-.izq{grid-area:izq;border-right:1px solid var(--linea)}
-.der{grid-area:der;border-left:1px solid var(--linea)}
-.centro{grid-area:centro;display:grid;grid-template-rows:1fr auto;min-height:0}
+#principal{min-width:0;min-height:0;display:flex;flex-direction:column;overflow:hidden}
+.vista{display:none;flex:1;min-height:0;flex-direction:column}
+.vista.activa{display:flex}
+.vista-cab{padding:22px 28px 14px;border-bottom:1px solid var(--linea)}
+.vista-cab h1{margin:0;font:600 26px/1.15 var(--serif);letter-spacing:.01em}
+.vista-cab p{margin:6px 0 0;color:var(--tenue);font-size:13.5px;max-width:70ch}
+.vista-cuerpo{flex:1;min-height:0;overflow:auto;padding:22px 28px 40px}
 
-/* la presencia */
-.presencia{position:relative;aspect-ratio:1/1.15;border-radius:var(--r2);overflow:hidden;background:radial-gradient(60% 50% at 50% 55%,rgba(27,107,255,.12),transparent 70%);border:1px solid var(--linea)}
-.presencia canvas{width:100%;height:100%;display:block}
-.presencia .estado{position:absolute;left:14px;bottom:12px;font-family:var(--mono);font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--fila);opacity:.85}
-.presencia .estado::before{content:'';display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--fila);margin-right:8px;box-shadow:0 0 10px var(--fila);animation:latir 2.4s ease-in-out infinite}
-@keyframes latir{0%,100%{opacity:.5}50%{opacity:1}}
+#tablero{border-left:1px solid var(--linea);background:var(--panel);overflow:auto;padding:18px 16px}
+.tab-bloque{margin-bottom:22px}
+.tab-bloque .rotulo{margin-bottom:10px}
+.dato{display:flex;justify-content:space-between;align-items:baseline;gap:10px;padding:7px 0;border-bottom:1px solid var(--linea);font-size:13px}
+.dato:last-child{border-bottom:0}
+.dato span{color:var(--tenue)}
+.dato b{font-family:var(--mono);font-weight:500;font-variant-numeric:tabular-nums;color:var(--tinta);text-align:right}
+.dato b.ok{color:var(--bien)} .dato b.mal{color:var(--mal)} .dato b.aviso{color:var(--aviso)}
+.casa-fila{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--linea);font-size:13px}
+.casa-fila:last-child{border-bottom:0}
+.casa-fila i{width:8px;height:8px;border-radius:50%;background:var(--humo);flex:none}
+.casa-fila.ok i{background:var(--bien)} .casa-fila.mal i{background:var(--mal)} .casa-fila.aviso i{background:var(--aviso)}
+.casa-fila b{font-weight:600}
+.casa-fila span{margin-left:auto;font-family:var(--mono);font-size:11.5px;color:var(--tenue)}
 
-.bloque{margin-top:16px}
-.bloque h3{font-size:10.5px;letter-spacing:.2em;text-transform:uppercase;color:var(--humo);font-weight:600;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between}
-.bloque h3 button{color:var(--fila);font-size:11px;letter-spacing:.04em;text-transform:none}
-.vital{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 0;border-top:1px solid var(--linea);font-size:13px}
-.vital:first-of-type{border-top:0}
-.vital .n{color:var(--bruma)}
-.vital .v{font-family:var(--mono);font-size:12.5px;color:var(--hielo);font-variant-numeric:tabular-nums}
-.vital .v.oro{color:var(--oroLt);text-shadow:0 0 14px rgba(201,169,97,.35);font-size:15px;font-weight:500}
-.vital .v.mal{color:var(--alerta)}.vital .v.ok{color:var(--vivo)}.vital .v.aviso{color:var(--aviso)}
-.vital small{display:block;color:var(--humo);font-size:11px;font-family:var(--sans)}
+/* ── el despacho ────────────────────────────────────────────────────────── */
+#despacho .vista-cuerpo{padding:0;display:flex;flex-direction:column}
+#hilo{flex:1;min-height:0;overflow:auto;padding:26px 28px 12px}
+.turno{max-width:78ch;margin:0 0 22px}
+.turno .de{display:flex;align-items:baseline;gap:10px;margin-bottom:6px}
+.turno .de b{font:600 12px/1 var(--mono);letter-spacing:.12em;text-transform:uppercase}
+.turno.ultron .de b{color:var(--oro)}
+.turno.miembro .de b{color:var(--tenue)}
+.turno .de time{font:400 11px/1 var(--mono);color:var(--humo)}
+.turno .cuerpo{font-size:15px;line-height:1.6}
+.turno.miembro .cuerpo{color:var(--tinta);background:var(--panel2);border:1px solid var(--linea);border-radius:var(--radio);padding:12px 16px;display:inline-block;max-width:100%}
+.turno .cuerpo p{margin:0 0 10px} .turno .cuerpo p:last-child{margin-bottom:0}
+.turno .cuerpo h1,.turno .cuerpo h2,.turno .cuerpo h3{font:600 17px/1.3 var(--serif);margin:14px 0 6px;color:var(--tinta)}
+.turno .cuerpo ul,.turno .cuerpo ol{margin:6px 0 10px;padding-left:22px}
+.turno .cuerpo li{margin:3px 0}
+.turno .cuerpo table{border-collapse:collapse;margin:8px 0 12px;font-size:13.5px;display:block;overflow-x:auto;max-width:100%}
+.turno .cuerpo th,.turno .cuerpo td{border:1px solid var(--linea2);padding:5px 10px;text-align:left}
+.turno .cuerpo th{background:var(--panel2);font-weight:600}
+.turno .cuerpo code{font-family:var(--mono);font-size:13px;background:var(--panel2);padding:1px 5px;border-radius:4px}
+.turno .cuerpo pre{background:var(--panel2);border:1px solid var(--linea);border-radius:8px;padding:12px;overflow:auto}
+.turno .cuerpo pre code{background:none;padding:0}
+.turno .cuerpo blockquote{margin:8px 0;padding:4px 14px;border-left:2px solid var(--oro);color:var(--tenue)}
+.pensando{font:400 12.5px/1 var(--mono);color:var(--humo);padding:2px 0 14px}
+.pensando::after{content:'…';animation:puntos 1.4s steps(4) infinite}
+@keyframes puntos{0%{content:''}25%{content:'.'}50%{content:'..'}75%{content:'...'}}
 
-/* el hilo */
-.hilo{overflow:auto;padding:26px 8% 18px;scrollbar-width:thin;scrollbar-color:rgba(93,214,255,.18) transparent;scroll-behavior:smooth}
-/* EL HERO: lo primero que se ve al entrar. La figura grande con los datos de
-   la casa orbitando, el saludo escribiéndose, y dos formas de empezar: hablar
-   o escribir. Cuando arranca la conversación, esto se va y la figura chica de
-   la izquierda sigue viva. */
-.hero{max-width:860px;margin:0 auto;text-align:center;color:var(--bruma);animation:aparecer .9s ease-out both}
-@keyframes aparecer{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
-.hero canvas{width:min(100%,640px);aspect-ratio:9/7;display:block;margin:0 auto}
-.hero .saludo{font-family:var(--marca);font-weight:500;font-size:clamp(17px,2.1vw,23px);line-height:1.55;color:var(--hielo);min-height:2.6em;margin:-6px auto 14px;max-width:720px;letter-spacing:.01em}
-.hero .saludo::after{content:'▍';color:var(--fila);animation:latir 1s steps(2) infinite;margin-left:2px}
-.hero .saludo.listo::after{content:''}
-.hero-acciones{display:flex;gap:10px;justify-content:center;margin-bottom:18px;flex-wrap:wrap}
-.btn.grande{padding:12px 22px;font-size:14px;border-radius:999px}
-.btn.grande svg{width:16px;height:16px;margin-right:8px;vertical-align:-3px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round}
-.vacio{max-width:560px;margin:8vh auto 0;text-align:center;color:var(--bruma)}
-/* Conversar: el modo en que ULTRON escucha, contesta con voz y vuelve a
-   escuchar. Cuando está en marcha, el botón late. */
-.interruptor.conversando{border-color:var(--fila);color:var(--fila);box-shadow:0 0 0 0 rgba(93,214,255,.5);animation:latido-borde 1.8s ease-out infinite}
-@keyframes latido-borde{0%{box-shadow:0 0 0 0 rgba(93,214,255,.45)}100%{box-shadow:0 0 0 9px rgba(93,214,255,0)}}
-/* Cuando habla, la casa entera lo nota: la marca respira con la voz. */
-body.hablando .marca{text-shadow:0 0 30px rgba(93,214,255,.75),0 0 60px rgba(93,214,255,.3)}
-.onda{display:flex;gap:3px;align-items:center;justify-content:center;height:22px;margin:8px 14px 0;opacity:0;transition:opacity .3s}
-.onda.viva{opacity:1}
-.onda i{flex:1;max-width:5px;height:3px;border-radius:2px;background:var(--fila);transition:height .08s;box-shadow:0 0 6px rgba(93,214,255,.5)}
-@media (prefers-reduced-motion:reduce){.hero,.interruptor.conversando{animation:none}}
-.vacio h2{font-family:var(--marca);font-weight:600;letter-spacing:.18em;font-size:18px;color:var(--hielo);margin-bottom:10px}
-.vacio p{font-size:14px;line-height:1.7}
-.sugerencias{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:22px;text-align:left}
-.sug{background:var(--vidrio);border:1px solid var(--linea);border-radius:14px;padding:12px 14px;font-size:13px;color:var(--bruma);transition:border-color .2s,color .2s,transform .12s}
-.sug:hover{border-color:var(--linea2);color:var(--hielo);transform:translateY(-1px)}
-.sug b{display:block;color:var(--hielo);font-weight:600;margin-bottom:2px;font-size:13px}
+/* el registro de lo consultado: cada herramienta, con su entrada y su salida */
+.registro{margin:8px 0 12px;border:1px solid var(--linea);border-radius:8px;background:var(--panel);overflow:hidden}
+.registro summary{list-style:none;display:flex;align-items:center;gap:10px;padding:8px 12px;cursor:pointer;font-size:12.5px;color:var(--tenue)}
+.registro summary::-webkit-details-marker{display:none}
+.registro summary b{font:500 11.5px/1 var(--mono);letter-spacing:.06em;color:var(--oroHi)}
+.registro summary .estado{margin-left:auto;font:400 11px/1 var(--mono);color:var(--humo)}
+.registro summary .estado.viva{color:var(--aviso)}
+.registro .detalle{padding:8px 12px 12px;border-top:1px solid var(--linea);font-family:var(--mono);font-size:12px;line-height:1.55;color:var(--tenue);white-space:pre-wrap;word-break:break-word;max-height:260px;overflow:auto}
+.registro .detalle b{color:var(--humo);font-weight:500}
+.acciones{display:flex;flex-wrap:wrap;gap:8px;margin:6px 0 4px}
+.fuentes{margin-top:8px;font-size:12px;color:var(--humo)}
+.fuentes span{display:inline-block;margin-right:10px}
 
-.msg{max-width:800px;margin:0 auto 22px;animation:entra .28s ease-out}
-@keyframes entra{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
-.msg.mio{display:flex;justify-content:flex-end}
-.msg.mio .burbuja{background:linear-gradient(180deg,rgba(27,107,255,.22),rgba(10,47,122,.28));border:1px solid rgba(93,214,255,.22);border-radius:18px 18px 4px 18px;padding:12px 16px;max-width:80%;white-space:pre-wrap;word-break:break-word}
-.msg.ultron .quien{font-family:var(--mono);font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--fila);margin-bottom:8px;display:flex;align-items:center;gap:10px}
-.msg.ultron .quien .pensando{color:var(--humo);letter-spacing:.02em;text-transform:none;font-family:var(--sans);font-size:12px}
-.cuerpo{font-size:15px;line-height:1.7;color:var(--hielo)}
-.cuerpo>*+*{margin-top:10px}
-.cuerpo h1,.cuerpo h2,.cuerpo h3{font-weight:700;line-height:1.3;color:#fff}
-.cuerpo h1{font-size:19px}.cuerpo h2{font-size:17px;margin-top:18px}.cuerpo h3{font-size:15px;margin-top:14px}
-.cuerpo ul,.cuerpo ol{padding-left:22px}.cuerpo li{margin:3px 0}
-.cuerpo code{font-family:var(--mono);font-size:12.5px;background:rgba(93,214,255,.10);padding:1px 5px;border-radius:5px}
-.cuerpo pre{background:rgba(3,8,20,.7);border:1px solid var(--linea);border-radius:12px;padding:12px 14px;overflow:auto}
-.cuerpo pre code{background:none;padding:0}
-.cuerpo blockquote{border-left:2px solid var(--oro);padding:2px 14px;color:var(--bruma)}
-.cuerpo .tabla{overflow-x:auto}
-.cuerpo table{border-collapse:collapse;width:100%;font-size:13.5px}
-.cuerpo th,.cuerpo td{border:1px solid var(--linea);padding:7px 10px;text-align:left;vertical-align:top}
-.cuerpo th{color:var(--bruma);font-weight:600;font-size:12px;letter-spacing:.04em}
-.cuerpo td{font-variant-numeric:tabular-nums}
-.cuerpo hr{border:0;border-top:1px solid var(--linea);margin:16px 0}
-.cursor::after{content:'▍';color:var(--fila);animation:latir 1s infinite}
+#sugerencias{display:flex;flex-wrap:wrap;gap:8px;padding:0 28px 12px}
+.sug{padding:7px 12px;border-radius:999px;border:1px solid var(--linea2);background:transparent;color:var(--tenue);font-size:12.5px}
+.sug:hover{border-color:var(--oro);color:var(--tinta)}
 
-.actividad{display:flex;flex-wrap:wrap;gap:6px;margin-top:12px}
-.chip{display:inline-flex;align-items:center;gap:6px;font-size:11.5px;color:var(--bruma);border:1px solid var(--linea);border-radius:999px;padding:4px 10px;background:rgba(3,8,20,.4);max-width:100%}
-.chip.fuente{cursor:pointer}.chip.fuente:hover{color:var(--hielo);border-color:var(--linea2)}
-.chip.herr{color:var(--fila)}.chip.herr::before{content:'';width:6px;height:6px;border-radius:50%;background:var(--fila);box-shadow:0 0 8px var(--fila)}
-.chip.corriendo::before{animation:latir .8s infinite}
-.chip .t{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#compositor{border-top:1px solid var(--linea);background:var(--panel);padding:12px 28px 14px}
+#compositor .caja{display:flex;align-items:flex-end;gap:10px;border:1px solid var(--linea2);border-radius:12px;background:var(--fondo);padding:8px 8px 8px 14px}
+#compositor .caja:focus-within{border-color:var(--oro)}
+#entrada{flex:1;min-height:24px;max-height:180px;resize:none;border:0;background:transparent;outline:none;padding:6px 0;line-height:1.5}
+#entrada::placeholder{color:var(--humo)}
+.icono{width:38px;height:38px;border-radius:9px;border:1px solid var(--linea2);background:var(--panel2);display:inline-flex;align-items:center;justify-content:center;flex:none}
+.icono svg{width:17px;height:17px;stroke:currentColor;fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.icono:hover{border-color:var(--oro)}
+.icono.activo{border-color:var(--oro);color:var(--oroHi);background:var(--oroBajo)}
+.icono.escuchando{border-color:var(--mal);color:var(--mal);animation:latir 1.2s ease-in-out infinite}
+@keyframes latir{50%{box-shadow:0 0 0 5px rgba(217,120,125,.12)}}
+#compositor .pie{display:flex;justify-content:space-between;align-items:center;margin-top:8px;font:400 11px/1 var(--mono);color:var(--humo);letter-spacing:.04em}
+#compositor .pie .voz-estado{color:var(--tenue)}
 
-.tarjeta{margin-top:12px;background:var(--vidrio2);border:1px solid var(--linea2);border-radius:14px;padding:12px 14px;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
-.tarjeta .ic{width:36px;height:36px;border-radius:10px;display:grid;place-items:center;background:rgba(93,214,255,.10);flex:none}
-.tarjeta .ic svg{width:18px;height:18px;fill:none;stroke:var(--fila);stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
-.tarjeta .tx{flex:1;min-width:160px}
-.tarjeta .tx b{display:block;font-weight:600}
-.tarjeta .tx small{color:var(--bruma);font-size:12px}
-.tarjeta .acciones{display:flex;gap:6px}
-.tarjeta.envio{border-color:rgba(201,169,97,.35)}
-.tarjeta.envio .ic{background:rgba(201,169,97,.12)}
-.tarjeta.envio .ic svg{stroke:var(--oroLt)}
-.tarjeta.envio pre{flex-basis:100%;white-space:pre-wrap;font:13px/1.55 var(--sans);color:var(--bruma);background:rgba(3,8,20,.45);border-radius:10px;padding:10px 12px;max-height:180px;overflow:auto}
-.tarjeta.hecho{opacity:.6}
+/* ── el ecosistema ──────────────────────────────────────────────────────── */
+.rejilla{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px}
+.tarjeta{border:1px solid var(--linea);border-radius:12px;background:var(--panel);padding:16px 18px}
+.tarjeta h3{margin:0;font:600 18px/1.2 var(--serif);display:flex;align-items:center;gap:10px}
+.tarjeta h3 i{width:8px;height:8px;border-radius:50%;background:var(--humo)}
+.tarjeta.ok h3 i{background:var(--bien)} .tarjeta.mal h3 i{background:var(--mal)} .tarjeta.aviso h3 i{background:var(--aviso)}
+.tarjeta .que{margin:4px 0 12px;font-size:12.5px;color:var(--tenue)}
+.tarjeta .acciones{margin-top:12px}
 
-/* el compositor */
-.compositor{padding:12px 8% 18px;border-top:1px solid var(--linea);background:linear-gradient(180deg,transparent,rgba(3,8,20,.6))}
-.caja-escribir{max-width:800px;margin:0 auto;background:var(--vidrio2);border:1px solid var(--linea2);border-radius:18px;padding:10px 10px 8px 16px;display:grid;grid-template-columns:1fr auto;gap:8px;align-items:end;box-shadow:0 0 0 0 rgba(93,214,255,0);transition:box-shadow .25s}
-.caja-escribir:focus-within{box-shadow:0 0 0 4px rgba(93,214,255,.08),0 0 40px rgba(27,107,255,.12)}
-.caja-escribir textarea{background:none;border:0;outline:0;resize:none;width:100%;max-height:200px;line-height:1.55;padding:6px 0;color:var(--hielo)}
-.caja-escribir textarea::placeholder{color:var(--humo)}
-.mandos{display:flex;gap:6px;align-items:center}
-.redondo{width:40px;height:40px;border-radius:50%;display:grid;place-items:center;border:1px solid var(--linea);color:var(--bruma);transition:all .2s}
-.redondo svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
-.redondo:hover{color:var(--hielo);border-color:var(--linea2)}
-.redondo.mandar{background:linear-gradient(180deg,var(--fila),var(--electrico));color:#04101f;border:0;box-shadow:0 0 22px rgba(93,214,255,.35)}
-.redondo.mandar:disabled{opacity:.35;box-shadow:none}
-.redondo.oyendo{color:var(--alerta);border-color:rgba(255,107,107,.5);box-shadow:0 0 0 6px rgba(255,107,107,.10);animation:latir 1.2s infinite}
-.pie-caja{max-width:800px;margin:8px auto 0;display:flex;justify-content:space-between;font-size:11.5px;color:var(--humo)}
-.pie-caja b{color:var(--bruma);font-weight:500}
+/* ── los instrumentos ───────────────────────────────────────────────────── */
+.grupo{margin-bottom:26px}
+.grupo h2{margin:0 0 10px;font:600 15px/1 var(--serif);letter-spacing:.06em;text-transform:uppercase;color:var(--oro)}
+.instrumento{border:1px solid var(--linea);border-radius:10px;background:var(--panel);margin-bottom:8px;overflow:hidden}
+.instrumento summary{list-style:none;display:flex;align-items:center;gap:12px;padding:12px 16px;cursor:pointer}
+.instrumento summary::-webkit-details-marker{display:none}
+.instrumento summary b{font:500 13px/1 var(--mono);color:var(--tinta)}
+.instrumento summary span{font-size:13px;color:var(--tenue)}
+.instrumento summary .sello{margin-left:auto;font:500 10px/1 var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--humo);border:1px solid var(--linea2);border-radius:999px;padding:4px 8px;white-space:nowrap}
+.instrumento summary .sello.escribe{color:var(--aviso);border-color:rgba(217,180,91,.4)}
+.instrumento .forma{padding:6px 16px 16px;border-top:1px solid var(--linea)}
+.instrumento .campos{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px;margin:10px 0 12px}
+.instrumento .salida{margin-top:12px;border:1px solid var(--linea);border-radius:8px;background:var(--fondo);padding:12px;font-family:var(--mono);font-size:12.5px;line-height:1.55;white-space:pre-wrap;word-break:break-word;max-height:380px;overflow:auto;color:var(--tinta)}
+.instrumento .salida.vacia{color:var(--humo)}
+.instrumento .ms{font:400 11px/1 var(--mono);color:var(--humo);margin-top:6px}
 
-/* derecha */
-/* Cuatro pestañas en 300 px: con el tamaño de tres, la última se cortaba
-   contra el borde. Se aprieta la letra y el espaciado, y si algún día son
-   cinco el riel las deja deslizarse en vez de recortarlas. */
-.pestanas{display:flex;gap:3px;background:rgba(3,8,20,.5);border:1px solid var(--linea);border-radius:12px;padding:4px;
-  overflow-x:auto;scrollbar-width:none}
-.pestanas::-webkit-scrollbar{display:none}
-.pestanas button{flex:1 1 auto;white-space:nowrap;padding:7px 6px;border-radius:9px;font-size:10.5px;letter-spacing:.03em;text-transform:uppercase;color:var(--humo);font-weight:600}
-.pestanas button.on{background:rgba(93,214,255,.12);color:var(--fila)}
-/* Un pendiente se toca para cerrarlo, así que el objetivo es toda la fila y no
-   una casilla de 13 px: en el teléfono una casilla chica se falla, y fallar
-   acá marca hecho lo que no lo está. */
-.tarea{display:flex;gap:10px;align-items:flex-start}
-.tarea .caja{flex:0 0 auto;width:17px;height:17px;margin-top:1px;border:1.5px solid var(--linea2);border-radius:5px;
-  display:grid;place-items:center;cursor:pointer;transition:.15s}
-.tarea .caja:hover{border-color:var(--fila)}
-.tarea .caja svg{width:11px;height:11px;stroke:var(--abismo);stroke-width:3.2;fill:none;opacity:0}
-.item.hecho .tarea .caja{background:var(--fila);border-color:var(--fila)}
-.item.hecho .tarea .caja svg{opacity:1}
-.item.hecho .tarea .tx{color:var(--humo);text-decoration:line-through;text-decoration-color:rgba(255,255,255,.25)}
-.tarea .tx{flex:1;min-width:0;cursor:pointer}
-.verHechos{display:flex;align-items:center;gap:7px;margin-top:12px;font-size:11.5px;color:var(--humo);cursor:pointer}
-.verHechos input{accent-color:var(--fila)}
-/* El gasto vive en el pie, al lado del modelo: es el mismo dato —qué cerebro
-   contestó y qué costó— y separarlos los volvía dos adornos sueltos. */
-#pieDer b{color:var(--bruma);font-weight:600}
-/* En el teléfono, la cabecera se aprieta: Conversar sin rótulo, y sin el
-   interruptor de voz (Conversar la enciende solo). Las barras de la voz van
-   con la presencia grande, no con la chica del teléfono. */
-@media (max-width:700px){#conversarBtn span{display:none}#conversarBtn{padding:6px 8px}#vozBtn{display:none}.cab{gap:10px;padding:0 12px}.puntos{gap:6px}}
-@media (max-width:1100px){.onda{display:none}}
-.lista{margin-top:14px;display:grid;gap:8px}
-.item{background:var(--vidrio);border:1px solid var(--linea);border-radius:12px;padding:10px 12px;font-size:13px;transition:border-color .2s}
-.item:hover{border-color:var(--linea2)}
-.item b{display:block;font-weight:600;font-size:13px;line-height:1.4;color:var(--hielo)}
-.item small{display:block;color:var(--humo);font-size:11.5px;margin-top:3px}
-.item .fila{display:flex;justify-content:space-between;align-items:flex-start;gap:8px}
-.item .x{color:var(--humo);font-size:14px;line-height:1;padding:2px 4px;border-radius:6px}
-.item .x:hover{color:var(--alerta);background:rgba(255,107,107,.1)}
-.item.junta{border-left:2px solid var(--oro)}
-.item.clic{cursor:pointer}
-.item.actual{border-color:var(--linea2);background:var(--vidrio2)}
-.etq{display:inline-block;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--oroLt);border:1px solid rgba(201,169,97,.35);border-radius:999px;padding:1px 7px;margin-right:6px;vertical-align:middle}
-.etq.azul{color:var(--fila);border-color:var(--linea2)}
-.nada{color:var(--humo);font-size:12.5px;text-align:center;padding:26px 10px;line-height:1.6}
-.añadir{display:flex;gap:6px;margin-top:12px}
-.añadir input{flex:1;padding:8px 11px;font-size:13px;border-radius:10px}
+/* ── listas: pendientes, biblioteca, bitácora ───────────────────────────── */
+.lista{display:flex;flex-direction:column;gap:6px}
+.item{display:flex;align-items:flex-start;gap:12px;padding:12px 14px;border:1px solid var(--linea);border-radius:10px;background:var(--panel)}
+.item .texto{flex:1;min-width:0}
+.item .texto small{display:block;margin-top:4px;font:400 11.5px/1.4 var(--mono);color:var(--humo)}
+.item.hecho .texto{color:var(--humo);text-decoration:line-through}
+.item .caja-x{width:18px;height:18px;border-radius:5px;border:1px solid var(--linea2);background:var(--fondo);flex:none;margin-top:3px;cursor:pointer}
+.item .caja-x:hover{border-color:var(--oro)}
+.item .quitar{background:none;border:0;color:var(--humo);font-size:16px;line-height:1;padding:0 4px}
+.item .quitar:hover{color:var(--mal)}
+.formulario{display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap}
+.formulario .entrada{flex:1;min-width:220px}
+.vacio{color:var(--humo);font-size:13.5px;padding:20px 0}
+.doc{cursor:pointer}
+.doc:hover{border-color:var(--oro)}
+#lector{border:1px solid var(--linea);border-radius:12px;background:var(--panel);padding:22px 26px;margin-bottom:18px}
+#lector .cuerpo{font-size:14.5px;line-height:1.65}
+#lector h1,#lector h2,#lector h3{font-family:var(--serif)}
+.pestanas{display:flex;gap:4px;margin-bottom:16px;border-bottom:1px solid var(--linea)}
+.pestanas button{background:none;border:0;border-bottom:2px solid transparent;padding:8px 12px;color:var(--tenue);font-size:13.5px;margin-bottom:-1px}
+.pestanas button[aria-selected=true]{color:var(--oroHi);border-bottom-color:var(--oro)}
 
-/* la ficha de una fuente */
-.velo-ficha{position:fixed;inset:0;z-index:20;background:rgba(3,8,20,.72);backdrop-filter:blur(8px);display:grid;place-items:center;padding:20px}
-.ficha{width:min(760px,100%);max-height:86vh;overflow:auto;background:var(--noche);border:1px solid var(--linea2);border-radius:var(--r2);padding:22px 26px;box-shadow:0 30px 80px rgba(0,0,0,.6)}
-.ficha h2{font-size:16px;font-weight:700;margin-bottom:4px}
-.ficha .ruta{font-family:var(--mono);font-size:11.5px;color:var(--fila);margin-bottom:14px;word-break:break-all}
-.ficha pre{white-space:pre-wrap;font:13.5px/1.65 var(--sans);color:var(--bruma)}
-.ficha .cerrar{float:right;color:var(--humo);font-size:20px;line-height:1}
+/* ── el aviso ───────────────────────────────────────────────────────────── */
+#aviso{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:var(--panel3);border:1px solid var(--linea2);border-radius:10px;padding:10px 16px;font-size:13.5px;z-index:60;box-shadow:0 10px 30px rgba(0,0,0,.4)}
 
-.aviso-flotante{position:fixed;left:50%;bottom:26px;transform:translateX(-50%);z-index:30;background:var(--noche);border:1px solid var(--linea2);border-radius:12px;padding:10px 16px;font-size:13px;box-shadow:0 10px 40px rgba(0,0,0,.5);animation:entra .25s}
-.aviso-flotante.mal{border-color:rgba(255,107,107,.5);color:#ffd2d2}
-
-/* el botón del lateral solo existe en el teléfono. Va ANTES del @media: una
-   regla con la misma especificidad declarada después la pisaría — y así fue,
-   la primera versión lo dejaba invisible a 360 px. */
-#abrirDer{display:none}
-@media (max-width:1100px){
-  #panel{grid-template-columns:1fr;grid-template-rows:56px auto 1fr;grid-template-areas:"cab" "izq" "centro"}
-  .izq{border-right:0;border-bottom:1px solid var(--linea);padding:12px 16px;display:grid;grid-template-columns:110px 1fr;gap:14px;align-items:center}
-  .presencia{aspect-ratio:1;border-radius:14px}
-  .presencia .estado{display:none}
-  .izq .bloque{margin:0}.izq .bloque h3{display:none}
-  .izq .bloque:not(:first-of-type){display:none}
-  .vital{padding:5px 0}
-  .der{display:none}
-  .der.abierta{display:block;position:fixed;inset:56px 0 0 0;z-index:15;background:var(--abismo)}
-  .hilo{padding:18px 16px}.compositor{padding:10px 12px 14px}
-  .cab .quien span.nombre{display:none}
-  .sugerencias{grid-template-columns:1fr}
-  #abrirDer{display:inline-flex}
-  /* La cabecera en un teléfono: cinco puntos con rótulo, el interruptor de
-     voz con su palabra, el nombre y «Salir» medían 826 px en 360. Se quedan
-     los PUNTOS —el color dice el estado y el título dice el nombre— y se van
-     las palabras. La marca se acorta a la palabra sola. */
-  .cab{gap:10px;padding:0 12px}
-  .cab .marca small{display:none}
-  .cab .quien{gap:8px}
-  .puntos{gap:6px}
-  .punto{font-size:0;gap:0}
-  .punto i{width:8px;height:8px}
-  .interruptor span{display:none}
-  .interruptor{padding:6px 8px}
+/* ── el teléfono ────────────────────────────────────────────────────────── */
+#pestanas-movil{display:none}
+@media (max-width:1180px){
+  #consola{grid-template-columns:228px minmax(0,1fr)}
+  #tablero{display:none}
+  #tablero.vista-movil{display:block;grid-column:2;border-left:0}
+}
+@media (max-width:820px){
+  #consola{grid-template-columns:minmax(0,1fr);grid-template-rows:52px 1fr 58px}
+  #cabecera{padding:0 14px} #cabecera .quien .oculta-movil{display:none}
+  #cabecera .marca{font-size:18px} #cabecera .marca small{display:none}
+  #cabecera .pulso span{display:none} #cabecera .quien{gap:10px}
+  #salir{padding:6px 10px;font-size:12.5px;white-space:nowrap}
+  #indice{display:none}
+  #tablero.vista-movil{grid-column:1}
+  .vista-cab{padding:16px 16px 12px} .vista-cab h1{font-size:22px}
+  .vista-cuerpo{padding:16px 16px 30px}
+  #hilo{padding:18px 16px 8px} #sugerencias{padding:0 16px 10px} #compositor{padding:10px 12px 12px}
+  #pestanas-movil{display:flex;border-top:1px solid var(--linea);background:var(--panel)}
+  #pestanas-movil button{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;padding:8px 2px;border:0;background:none;color:var(--tenue);font:500 10.5px/1 var(--mono);letter-spacing:.04em}
+  #pestanas-movil button svg{width:19px;height:19px;stroke:currentColor;fill:none;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+  #pestanas-movil button[aria-current=page]{color:var(--oroHi)}
 }
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 </style>
 </head>
 <body>
-<canvas id="lluvia" aria-hidden="true"></canvas>
-<div class="velo" aria-hidden="true"></div>
 
-<!-- ══ LA PUERTA ═══════════════════════════════════════════════════════════ -->
-<section id="puerta">
-  <div class="puerta-caja">
-    <canvas id="presenciaPuerta" width="440" height="440" aria-hidden="true"></canvas>
-    <div class="marca">ULTRON<small>Conocimiento Full · Junta Directiva</small></div>
-    <form id="formPuerta" autocomplete="on">
-      <input class="campo" name="correo" type="email" placeholder="Tu correo" autocomplete="username" required>
-      <input class="campo" name="clave" type="password" placeholder="Tu clave" autocomplete="current-password" required>
-      <button class="btn" type="submit">Entrar</button>
-      <div class="puerta-error" id="puertaError" aria-live="polite"></div>
-    </form>
-    <p class="puerta-pie">Solo la junta. Cada sesión vence en doce horas.<br>Nada de lo que se hable aquí sale de la junta sin que una persona lo confirme.</p>
-  </div>
-</section>
+<!-- ── LA PUERTA ─────────────────────────────────────────────────────────── -->
+<div id="puerta" hidden>
+  <form class="puerta-caja" id="formPuerta" autocomplete="on">
+    <div class="marca">ULTRON</div>
+    <div class="marca-sub">Junta Directiva · Orden Global</div>
+    <label class="campo"><span>Correo</span><input class="entrada" name="correo" type="email" autocomplete="username" required></label>
+    <label class="campo"><span>Clave</span><input class="entrada" name="clave" type="password" autocomplete="current-password" required></label>
+    <button class="btn btn-oro" type="submit" style="width:100%;margin-top:20px">Ingresar</button>
+    <div class="error" id="puertaError" aria-live="polite"></div>
+    <p class="tenue" style="font-size:12px;margin:18px 0 0;line-height:1.5">Acceso reservado a los miembros de la Junta Directiva. Cada sesión queda registrada.</p>
+  </form>
+</div>
 
-<!-- ══ EL PANEL ════════════════════════════════════════════════════════════ -->
-<section id="panel" hidden>
-  <header class="cab">
-    <div class="marca">ULTRON<small>Conocimiento Full</small></div>
+<!-- ── LA CONSOLA ────────────────────────────────────────────────────────── -->
+<div id="consola" hidden>
+  <header id="cabecera">
+    <div class="marca">ULTRON<small>Sistema de inteligencia de la Junta Directiva</small></div>
     <div class="quien">
-      <div class="puntos" id="puntos"></div>
-      <button class="interruptor" id="conversarBtn" title="Hablar con ULTRON: escucha, contesta con voz y vuelve a escuchar">
-        <svg viewBox="0 0 24 24"><path d="M12 3a3 3 0 00-3 3v6a3 3 0 006 0V6a3 3 0 00-3-3z"/><path d="M19 11a7 7 0 01-14 0M12 18v3"/></svg><span>Conversar</span>
-      </button>
-      <button class="interruptor" id="vozBtn" title="Que ULTRON lea en voz alta sus respuestas">
-        <svg viewBox="0 0 24 24"><path d="M11 5L6 9H2v6h4l5 4V5z"/><path d="M15.5 8.5a5 5 0 010 7"/><path d="M18.5 5.5a9 9 0 010 13"/></svg><span>Voz</span>
-      </button>
-      <button class="interruptor" id="abrirDer" title="Memoria y biblioteca"><svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h10"/></svg></button>
-      <span class="nombre" id="nombre"></span>
-      <button class="btn chico linea" id="salir">Salir</button>
+      <span class="pulso" id="pulsoCerebro" title="El cerebro"><i></i><span>cerebro</span></span>
+      <span class="pulso oculta-movil" id="pulsoVoz" title="La voz"><i></i><span>voz</span></span>
+      <span class="oculta-movil" id="quienSoy"></span>
+      <button class="btn btn-chico" id="salir" type="button">Cerrar sesión</button>
     </div>
   </header>
 
-  <aside class="izq">
-    <div class="presencia"><canvas id="presencia" width="600" height="690"></canvas><div class="estado" id="estadoPresencia">en reposo</div></div>
-    <div class="onda" id="onda" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
-    <div class="bloque">
-      <h3>El pulso de la casa <button id="refrescarVivo" title="Volver a leer">actualizar</button></h3>
-      <div id="vitales"></div>
-    </div>
-    <div class="bloque">
-      <h3>Lo que sabe</h3>
-      <div id="saberResumen" style="font-size:12.5px;color:var(--bruma);line-height:1.6"></div>
-    </div>
-  </aside>
+  <nav id="indice" aria-label="Índice">
+    <div class="rotulo">Consola</div>
+    <button class="nav" data-vista="despacho"><svg viewBox="0 0 24 24"><path d="M4 5h16v11H8l-4 4z"/></svg>Despacho</button>
+    <button class="nav" data-vista="ecosistema"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><circle cx="12" cy="12" r="9"/><path d="M12 3v2M12 19v2M3 12h2M19 12h2"/></svg>Ecosistema</button>
+    <button class="nav" data-vista="instrumentos"><svg viewBox="0 0 24 24"><path d="M14 4l6 6-9 9H5v-6z"/><path d="M12 6l6 6"/></svg>Instrumentos<span class="n" id="nInstrumentos"></span></button>
+    <div class="rotulo">Registro</div>
+    <button class="nav" data-vista="pendientes"><svg viewBox="0 0 24 24"><path d="M5 12l4 4L19 6"/></svg>Pendientes<span class="n" id="nPendientes"></span></button>
+    <button class="nav" data-vista="biblioteca"><svg viewBox="0 0 24 24"><path d="M5 4h10l4 4v12H5z"/><path d="M15 4v4h4M8 13h8M8 17h8"/></svg>Biblioteca</button>
+    <button class="nav" data-vista="bitacora"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>Bitácora</button>
+    <div class="rotulo">Gobierno</div>
+    <button class="nav" data-vista="junta"><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3"/><circle cx="17" cy="9" r="2.5"/><path d="M3 20c0-3 3-5 6-5s6 2 6 5M14 19c0-2 2-3.5 4-3.5s3 1.5 3 3.5"/></svg>La Junta</button>
+    <button class="nav" data-vista="ajustes"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M18.4 5.6l-2.1 2.1M7.7 16.3l-2.1 2.1"/></svg>Ajustes</button>
+    <div class="pie" id="piePlataforma"></div>
+  </nav>
 
-  <main class="centro">
-    <div class="hilo" id="hilo"></div>
-    <div class="compositor">
-      <div class="caja-escribir">
-        <textarea id="entrada" rows="1" placeholder="Preguntale a ULTRON, pedile un memo, o decile algo que tenga que recordar…"></textarea>
-        <div class="mandos">
-          <button class="redondo" id="micBtn" title="Hablar"><svg viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0014 0M12 18v3"/></svg></button>
-          <button class="redondo mandar" id="mandar" title="Enviar" disabled><svg viewBox="0 0 24 24"><path d="M5 12h13M13 6l6 6-6 6"/></svg></button>
+  <main id="principal">
+
+    <section class="vista" id="despacho" aria-label="Despacho">
+      <div class="vista-cuerpo">
+        <div id="hilo" aria-live="polite"></div>
+        <div id="sugerencias"></div>
+        <div id="compositor">
+          <div class="caja">
+            <textarea id="entrada" rows="1" placeholder="Indique la consulta o la instrucción para ULTRON" aria-label="Consulta"></textarea>
+            <button class="icono" id="btnVoz" type="button" title="Dictar" aria-label="Dictar"><svg viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg></button>
+            <button class="icono" id="btnConversar" type="button" title="Modo conversación: ULTRON escucha, responde y vuelve a escuchar" aria-label="Conversación continua"><svg viewBox="0 0 24 24"><path d="M4 12a8 8 0 0 1 14-5l2-2v6h-6l2-2a5 5 0 0 0-9 3M20 12a8 8 0 0 1-14 5l-2 2v-6h6l-2 2a5 5 0 0 0 9-3"/></svg></button>
+            <button class="icono activo" id="btnEnviar" type="button" title="Enviar" aria-label="Enviar"><svg viewBox="0 0 24 24"><path d="M4 12l16-7-5 16-3-7z"/></svg></button>
+          </div>
+          <div class="pie"><span id="vozEstado" class="voz-estado"></span><span id="cerebroEstado"></span></div>
         </div>
       </div>
-      <div class="pie-caja"><span id="pieIzq">Enter envía · Shift+Enter salto de línea</span><span id="pieDer"></span></div>
-    </div>
+    </section>
+
+    <section class="vista" id="ecosistema" aria-label="Ecosistema">
+      <div class="vista-cab"><h1>El ecosistema, en vivo</h1><p>Cada casa de Orden Global, leída de su propio servicio. Lo que no se pudo leer se dice; ningún número se estima.</p></div>
+      <div class="vista-cuerpo"><div class="rejilla" id="casas"></div></div>
+    </section>
+
+    <section class="vista" id="instrumentos" aria-label="Instrumentos">
+      <div class="vista-cab"><h1>Instrumentos</h1><p>Todo lo que ULTRON puede consultar o hacer, agrupado por lo que toca. Cada instrumento se puede ejecutar directamente desde aquí: corre la misma función que usa ULTRON, con el mismo contexto, y devuelve exactamente lo que ULTRON vería.</p></div>
+      <div class="vista-cuerpo" id="catalogo"></div>
+    </section>
+
+    <section class="vista" id="pendientes" aria-label="Pendientes">
+      <div class="vista-cab"><h1>Pendientes y memoria</h1><p>Lo que la Junta tiene por hacer y lo que le ha indicado a ULTRON que conserve. ULTRON anota y cierra pendientes en la conversación; aquí se revisan.</p></div>
+      <div class="vista-cuerpo">
+        <div class="pestanas" role="tablist">
+          <button role="tab" aria-selected="true" data-p="pend">Pendientes</button>
+          <button role="tab" aria-selected="false" data-p="mem">Memoria</button>
+        </div>
+        <div id="pPend">
+          <form class="formulario" id="formPendiente"><input class="entrada" name="texto" placeholder="Nuevo pendiente" required><input class="entrada" name="quien" placeholder="A cargo de (opcional)" style="max-width:200px"><button class="btn btn-oro" type="submit">Anotar</button></form>
+          <label class="tenue" style="font-size:12.5px;display:block;margin-bottom:12px"><input type="checkbox" id="verHechos"> Mostrar los ya cerrados</label>
+          <div class="lista" id="listaPendientes"></div>
+        </div>
+        <div id="pMem" hidden>
+          <form class="formulario" id="formMemoria"><input class="entrada" name="texto" placeholder="Indicación para conservar" required><select class="entrada" name="alcance" style="max-width:170px"><option value="junta">De la Junta</option><option value="miembro">Solo mía</option></select><button class="btn btn-oro" type="submit">Conservar</button></form>
+          <div class="lista" id="listaMemorias"></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="vista" id="biblioteca" aria-label="Biblioteca">
+      <div class="vista-cab"><h1>Biblioteca</h1><p>Los documentos que ULTRON ha redactado a pedido de la Junta: memorandos, actas, análisis, cartas y planes. Cada uno se puede leer aquí o descargar.</p></div>
+      <div class="vista-cuerpo"><div id="lector" hidden></div><div class="lista" id="listaDocumentos"></div></div>
+    </section>
+
+    <section class="vista" id="bitacora" aria-label="Bitácora">
+      <div class="vista-cab"><h1>Bitácora</h1><p>Las conversaciones anteriores con ULTRON. Se puede retomar cualquiera desde el Despacho.</p></div>
+      <div class="vista-cuerpo"><div class="lista" id="listaConversaciones"></div></div>
+    </section>
+
+    <section class="vista" id="junta" aria-label="La Junta">
+      <div class="vista-cab"><h1>La Junta Directiva</h1><p>Los miembros con acceso a ULTRON y los canales por los que ULTRON puede dirigirse a cada uno, siempre con confirmación previa.</p></div>
+      <div class="vista-cuerpo"><div class="lista" id="listaJunta"></div></div>
+    </section>
+
+    <section class="vista" id="ajustes" aria-label="Ajustes">
+      <div class="vista-cab"><h1>Ajustes</h1><p>La voz con la que ULTRON se dirige a usted y el estado de la plataforma.</p></div>
+      <div class="vista-cuerpo">
+        <div class="tarjeta" style="max-width:640px">
+          <h3>La voz</h3>
+          <p class="que">Seleccione una voz y ULTRON la probará con una frase. La selección se conserva en este navegador.</p>
+          <div class="acciones" id="voces"></div>
+          <label class="tenue" style="font-size:13px;display:block;margin-top:14px"><input type="checkbox" id="silencio"> Mantener a ULTRON en silencio (solo texto)</label>
+        </div>
+        <div class="tarjeta" style="max-width:640px;margin-top:14px">
+          <h3>La plataforma</h3>
+          <div id="plataforma"></div>
+        </div>
+      </div>
+    </section>
+
   </main>
 
-  <aside class="der" id="der">
-    <div class="pestanas">
-      <button class="on" data-p="pendientes">Pendientes</button>
-      <button data-p="memoria">Memoria</button>
-      <button data-p="biblioteca">Biblioteca</button>
-      <button data-p="hilos">Hilos</button>
-    </div>
-    <div id="pPendientes">
-      <div class="añadir"><input class="campo" id="nuevoPendiente" placeholder="Algo que hay que hacer…"><button class="btn chico" id="guardarPendiente">Anotar</button></div>
-      <div class="lista" id="pendientes"></div>
-      <label class="verHechos"><input type="checkbox" id="verHechos"> ver lo ya hecho</label>
-    </div>
-    <div id="pMemoria" hidden>
-      <div class="añadir"><input class="campo" id="nuevaMemoria" placeholder="Algo que ULTRON tenga que recordar…"><button class="btn chico" id="guardarMemoria">Guardar</button></div>
-      <div class="lista" id="memorias"></div>
-    </div>
-    <div id="pBiblioteca" hidden><div class="lista" id="documentos"></div></div>
-    <div id="pHilos" hidden>
-      <button class="btn chico" id="nuevoHilo" style="width:100%;margin-top:12px">Empezar un hilo nuevo</button>
-      <div class="lista" id="hilos"></div>
-    </div>
+  <aside id="tablero" aria-label="Tablero">
+    <div class="tab-bloque"><div class="rotulo">ORIGEN · referencia del oro</div><div id="tabOrigen"></div></div>
+    <div class="tab-bloque"><div class="rotulo">Las casas</div><div id="tabCasas"></div></div>
+    <div class="tab-bloque"><div class="rotulo">Las cadenas</div><div id="tabCadenas"></div></div>
+    <div class="tab-bloque"><div class="rotulo">La Junta</div><div id="tabJunta"></div></div>
+    <div class="tab-bloque"><div class="rotulo">El sistema</div><div id="tabSistema"></div></div>
   </aside>
-</section>
+
+  <nav id="pestanas-movil" aria-label="Secciones">
+    <button data-vista="despacho"><svg viewBox="0 0 24 24"><path d="M4 5h16v11H8l-4 4z"/></svg>Despacho</button>
+    <button data-vista="tablero"><svg viewBox="0 0 24 24"><path d="M4 19V9M10 19V5M16 19v-8M22 19H2"/></svg>Tablero</button>
+    <button data-vista="instrumentos"><svg viewBox="0 0 24 24"><path d="M14 4l6 6-9 9H5v-6z"/></svg>Instrumentos</button>
+    <button data-vista="pendientes"><svg viewBox="0 0 24 24"><path d="M5 12l4 4L19 6"/></svg>Pendientes</button>
+    <button data-vista="ajustes"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3"/></svg>Más</button>
+  </nav>
+</div>
+
+<div id="aviso" hidden></div>
 
 <script src="/markdown.js"></script>
-<script>
-/* ═══════════════════════════════════════════════════════════════════════════
-   EL ESTADO Y EL API
-   ═══════════════════════════════════════════════════════════════════════════ */
-const $ = (s) => document.querySelector(s);
-const esc = MARKDOWN.esc;
-const E = {           // el estado del panel
-  yo: null, conversacionId: null, hablando: false, vozOn: false, oyendo: false, conversando: false, saludo: null, saludoDicho: false,
-  vivo: null, memorias: [], documentos: [], hilos: [], pendientes: [], gasto: null, enviosPendientes: new Map(),
-};
-try { E.vozOn = localStorage.getItem('ultron.voz') === '1'; } catch {}
-
-async function api(ruta, opciones = {}) {
-  const r = await fetch(ruta, { headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', ...opciones,
-    body: opciones.body && typeof opciones.body !== 'string' ? JSON.stringify(opciones.body) : opciones.body });
-  const d = await r.json().catch(() => null);
-  if (r.status === 401 && ruta !== '/entrar') { mostrarPuerta(); }
-  if (!r.ok) { const e = new Error(d?.error || `El servidor contestó ${r.status}.`); e.codigo = d?.codigo; e.http = r.status; throw e; }
-  return d;
-}
-function avisar(texto, mal = false) {
-  const a = document.createElement('div'); a.className = 'aviso-flotante' + (mal ? ' mal' : ''); a.textContent = texto;
-  document.body.appendChild(a); setTimeout(() => a.remove(), 3800);
-}
-
-/* ═══════════════════════════════════════════════════════════════════════════
-   LA PRESENCIA · un campo de partículas que está vivo
-   ───────────────────────────────────────────────────────────────────────────
-   No es un adorno: es el único indicador de estado. En reposo deriva; cuando
-   ULTRON piensa se contrae y acelera; cuando habla, pulsa con el audio; cuando
-   escucha, ondula desde abajo. Todo con el mismo campo — cambia la fuerza, no
-   el dibujo. Canvas y no SVG porque son mil quinientas partículas a sesenta
-   cuadros y el DOM no está para eso. */
-function Presencia(canvas, { n = 1400, chica = false, datos = false, fuente = 1 } = {}) {
-  /* LA PRESENCIA: una persona de luz con la casa alrededor.
-     Un busto de partículas —cabeza, cuello, hombros, el núcleo en el pecho—
-     y, si `datos`, los datos vivos del ecosistema ORBITANDO alrededor: el
-     ORIGEN, el oro, cada casa con su estado, los bloques, los pendientes.
-     Los que pasan por detrás se ven más tenues; cada uno tira un hilo al
-     núcleo. Gestos: en reposo respira y parpadea; oyendo ladea la cabeza;
-     pensando se recoge, gira y los datos aceleran; hablando asiente con la
-     voz. `saludar()` manda una onda desde el pecho hacia afuera. */
-  const ctx = canvas.getContext('2d');
-  let W = canvas.width, H = canvas.height;
-  const cx = () => W / 2, cy = () => H * (datos ? 0.52 : 0.54);
-  const R = () => Math.min(W, H) * (datos ? 0.30 : chica ? 0.46 : 0.44);
-  let modo = 'reposo', energia = 0, objetivoEnergia = 0, t = 0, amplitud = 0, onda = -1, guiño = 0, nodos = [];
-
-  function dentro(x, y) {
-    const cabeza = ((x / 0.30) ** 2 + ((y + 0.62) / 0.36) ** 2) <= 1;
-    const cuello = Math.abs(x) <= 0.13 && y >= -0.32 && y <= -0.06;
-    const torso = y >= -0.10 && y <= 0.98 && ((x / 0.98) ** 2 + ((y - 0.50) / 0.64) ** 2) <= 1;
-    return cabeza || cuello || torso;
-  }
-  function enBorde(x, y) { const d = 0.05; return !dentro(x + d, y) || !dentro(x - d, y) || !dentro(x, y + d) || !dentro(x, y - d); }
-  function casa() {
-    for (let i = 0; i < 80; i++) {
-      const x = (Math.random() * 2 - 1) * 1.02, y = (Math.random() * 2 - 1) * 1.02;
-      if (!dentro(x, y)) continue;
-      const borde = enBorde(x, y);
-      if (borde || Math.random() < 0.55) return { x, y, borde };
-    }
-    return { x: 0, y: 0.2, borde: false };
-  }
-  const parts = Array.from({ length: n }, () => {
-    const c = casa();
-    return { hx: c.x, hy: c.y, borde: c.borde, f: Math.random() * Math.PI * 2, v: 0.4 + Math.random() * 0.9,
-      s: c.borde ? 0.75 + Math.random() * 1.3 : 0.5 + Math.random() * 0.95, brillo: Math.random(), ang: Math.random() * Math.PI * 2 };
-  });
-  function setModo(m) { modo = m; objetivoEnergia = { reposo: 0, pensando: 1, hablando: 0.7, oyendo: 0.45 }[m] ?? 0; }
-  function setAmplitud(a) { amplitud = a; }
-  function setDatos(lista) { nodos = (lista || []).slice(0, 12).map((d, i) => ({ ...d, i })); }
-  function saludar() { onda = 0; }
-
-  const COLOR = { ok: '62,217,160', mal: '255,107,107', aviso: '245,179,43', oro: '201,169,97', fila: '93,214,255' };
-  function pintarNodo(nd, x, y, prof, r) {
-    const c = COLOR[nd.estado] || COLOR.fila;
-    const a = 0.25 + prof * 0.75;
-    // el hilo al núcleo
-    ctx.strokeStyle = `rgba(93,214,255,${0.05 + prof * 0.10})`; ctx.lineWidth = Math.max(1, r * 0.006);
-    ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(cx(), cy() + 0.28 * r); ctx.stroke();
-    // el punto
-    const g = ctx.createRadialGradient(x, y, 0, x, y, r * 0.09);
-    g.addColorStop(0, `rgba(${c},${a})`); g.addColorStop(1, `rgba(${c},0)`);
-    ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y, r * 0.09, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = `rgba(${c},${a})`; ctx.beginPath(); ctx.arc(x, y, r * 0.018 * (0.7 + prof * 0.6), 0, Math.PI * 2); ctx.fill();
-    // la etiqueta y el valor
-    const tam = Math.max(9, W * 0.021 * fuente) * (0.85 + prof * 0.25);
-    ctx.font = `700 ${tam * 1.08}px "JetBrains Mono", ui-monospace, monospace`; ctx.textBaseline = 'middle';
-    // La etiqueta va del lado donde cabe: hacia afuera si hay sitio, y si el
-    // borde del lienzo la cortaría, hacia adentro. Un dato cortado no es dato.
-    const ancho = Math.max(ctx.measureText(nd.v).width, ctx.measureText(nd.k).width * 0.95);
-    let derecha = x >= cx();
-    if (derecha && x + r * 0.05 + ancho > W - 6) derecha = false;
-    if (!derecha && x - r * 0.05 - ancho < 6) derecha = true;
-    ctx.textAlign = derecha ? 'left' : 'right';
-    const dx = derecha ? r * 0.05 : -r * 0.05;
-    const ty = Math.min(H - tam, Math.max(tam * 1.4, y));
-    ctx.font = `600 ${tam}px "JetBrains Mono", ui-monospace, monospace`;
-    ctx.fillStyle = `rgba(170,190,215,${a * 0.9})`; ctx.fillText(nd.k, x + dx, ty - tam * 0.62);
-    ctx.fillStyle = `rgba(${nd.estado === 'oro' ? COLOR.oro : nd.estado === 'mal' ? COLOR.mal : '234,242,255'},${a})`;
-    ctx.font = `700 ${tam * 1.08}px "JetBrains Mono", ui-monospace, monospace`; ctx.fillText(nd.v, x + dx, ty + tam * 0.62);
-  }
-
-  function cuadro() {
-    t += 0.016;
-    energia += (objetivoEnergia - energia) * 0.045;
-    if (onda >= 0) { onda += 0.018; if (onda > 1.4) onda = -1; }
-    // parpadeo: cada tantos segundos, medio segundo de ojos casi cerrados
-    guiño = (Math.sin(t * 0.55) > 0.985) ? 1 : Math.max(0, guiño - 0.12);
-    ctx.clearRect(0, 0, W, H);
-    const r = R();
-    // los gestos: asentir hablando, ladear oyendo
-    const asiente = modo === 'hablando' ? Math.sin(t * 2.6) * 0.018 * (0.4 + amplitud) : 0;
-    const ladea = modo === 'oyendo' ? 0.06 : 0;
-    // el halo
-    const g = ctx.createRadialGradient(cx(), cy() + r * 0.15, 0, cx(), cy() + r * 0.15, r * 1.25);
-    const resp = 0.07 + 0.04 * Math.sin(t * 1.1) + energia * 0.10 + amplitud * 0.2;
-    g.addColorStop(0, `rgba(93,214,255,${resp})`); g.addColorStop(0.55, `rgba(27,107,255,${resp * 0.35})`); g.addColorStop(1, 'rgba(27,107,255,0)');
-    ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
-
-    // los datos: posiciones, y primero los que pasan por detrás
-    const N = nodos.length; const puestos = [];
-    for (const nd of nodos) {
-      const ang = (nd.i / N) * Math.PI * 2 + t * (0.10 + energia * 0.35) * (modo === 'oyendo' ? 0.3 : 1);
-      const alto = Math.sin(nd.i * 1.9) * 0.55 - 0.05;
-      // el radio de la órbita: lo que dé el lienzo, con sitio para la etiqueta
-      const rx = Math.min(r * 1.9, W / 2 - r * 0.42 - Math.max(9, W * 0.021 * fuente) * 6);
-      const x = cx() + Math.cos(ang) * rx, y = cy() + alto * r + Math.sin(ang) * r * 0.34;
-      puestos.push({ nd, x, y, prof: (Math.sin(ang) + 1) / 2 });
-    }
-    ctx.globalCompositeOperation = 'source-over';
-    for (const q of puestos) if (q.prof < 0.5) pintarNodo(q.nd, q.x, q.y, q.prof, r);
-
-    ctx.globalCompositeOperation = 'lighter';
-    const nucleoY = 0.28;
-    for (const p of parts) {
-      const recoger = energia * 0.32;
-      const ang = p.ang + t * (0.15 + energia * 0.9) * p.v;
-      const gira = energia * 0.07;
-      const esCabeza = p.hy < -0.28;
-      let x = p.hx * (1 - recoger) + Math.cos(ang) * gira + (esCabeza ? ladea * (p.hy + 0.62) : 0);
-      let y = p.hy * (1 - recoger) + nucleoY * recoger + Math.sin(ang) * gira + (esCabeza ? asiente : 0);
-      x += Math.sin(t * p.v + p.f) * 0.012 * (1 + energia);
-      y += Math.cos(t * p.v * 0.8 + p.f) * 0.012 * (1 + energia);
-      if (amplitud > 0.02) y += Math.sin(t * 6 + p.hy * 5) * amplitud * 0.05;
-      const px = cx() + x * r, py = cy() + y * r;
-      const cerca = 1 - Math.min(1, Math.hypot(x, y - nucleoY) / 1.2);
-      let alfa = (p.borde ? 0.6 : 0.3) * (0.55 + p.brillo * 0.45) * (0.75 + energia * 0.5 + amplitud * 0.8) * (0.6 + cerca * 0.6);
-      if (onda >= 0) { const d = Math.abs(Math.hypot(x, y - nucleoY) - onda * 1.3); if (d < 0.12) alfa += (0.12 - d) * 5; }
-      const tam = p.s * (1 + amplitud * 0.5) * (chica ? 0.8 : 1);
-      ctx.fillStyle = p.brillo > 0.72 ? `rgba(234,242,255,${Math.min(1, alfa)})` : `rgba(93,214,255,${Math.min(1, alfa)})`;
-      ctx.beginPath(); ctx.arc(px, py, tam, 0, Math.PI * 2); ctx.fill();
-    }
-    // el núcleo en el pecho
-    const ny = cy() + nucleoY * r;
-    const nucleo = ctx.createRadialGradient(cx(), ny, 0, cx(), ny, r * (0.20 + energia * 0.12 + amplitud * 0.22));
-    nucleo.addColorStop(0, `rgba(234,242,255,${0.6 + energia * 0.3 + amplitud * 0.4})`);
-    nucleo.addColorStop(0.35, `rgba(93,214,255,${0.28 + energia * 0.22})`); nucleo.addColorStop(1, 'rgba(93,214,255,0)');
-    ctx.fillStyle = nucleo; ctx.beginPath(); ctx.arc(cx(), ny, r * 0.5, 0, Math.PI * 2); ctx.fill();
-    // los ojos: dos brasas suaves que parpadean
-    const oy = cy() + (-0.64 + asiente) * r, sep = 0.105 * r, abiertos = 1 - guiño * 0.85;
-    for (const sx of [-1, 1]) {
-      const ox = cx() + sx * sep + ladea * r * 0.02;
-      const ojo = ctx.createRadialGradient(ox, oy, 0, ox, oy, r * 0.07);
-      ojo.addColorStop(0, `rgba(234,242,255,${(0.55 + energia * 0.3) * abiertos})`); ojo.addColorStop(0.5, `rgba(93,214,255,${0.25 * abiertos})`); ojo.addColorStop(1, 'rgba(93,214,255,0)');
-      ctx.fillStyle = ojo; ctx.beginPath(); ctx.ellipse(ox, oy, r * 0.07, r * 0.07 * (0.35 + 0.65 * abiertos), 0, 0, Math.PI * 2); ctx.fill();
-    }
-    ctx.globalCompositeOperation = 'source-over';
-    for (const q of puestos) if (q.prof >= 0.5) pintarNodo(q.nd, q.x, q.y, q.prof, r);
-    requestAnimationFrame(cuadro);
-  }
-  if (matchMedia('(prefers-reduced-motion: reduce)').matches) {
-    const unaVez = () => { const raf = window.requestAnimationFrame; window.requestAnimationFrame = () => 0; try { cuadro(); } finally { window.requestAnimationFrame = raf; } };
-    unaVez();
-    return { setModo: () => {}, setAmplitud: () => {}, setDatos: (l) => { nodos = (l || []).slice(0, 12).map((d, i) => ({ ...d, i })); unaVez(); }, saludar: () => {} };
-  }
-  requestAnimationFrame(cuadro);
-  return { setModo, setAmplitud, setDatos, saludar };
-}
-
-/* la lluvia de fondo: columnas de dígitos muy tenues, como en la imagen */
-(function lluvia() {
-  const c = $('#lluvia'), ctx = c.getContext('2d');
-  let cols = [];
-  const medir = () => { c.width = innerWidth; c.height = innerHeight; cols = Array.from({ length: Math.floor(c.width / 26) }, () => ({ y: Math.random() * c.height, v: 0.3 + Math.random() * 0.9 })); };
-  addEventListener('resize', medir); medir();
-  if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-  ctx.font = '11px JetBrains Mono, monospace';
-  (function cuadro() {
-    ctx.fillStyle = 'rgba(3,8,20,.18)'; ctx.fillRect(0, 0, c.width, c.height);
-    cols.forEach((col, i) => {
-      const ch = String.fromCharCode(0x30A0 + Math.random() * 60 | 0);
-      ctx.fillStyle = Math.random() > 0.97 ? 'rgba(155,231,255,.35)' : 'rgba(93,214,255,.10)';
-      ctx.fillText(Math.random() > .5 ? ch : (Math.random() * 10 | 0), i * 26, col.y);
-      col.y += col.v * 14; if (col.y > c.height + 20) col.y = -20;
-    });
-    setTimeout(() => requestAnimationFrame(cuadro), 70);
-  })();
-})();
-
-const presenciaPuerta = Presencia($('#presenciaPuerta'), { n: 700, chica: true });
-let presencia = null;
-
-/* ═══════════════════════════════════════════════════════════════════════════
-   LA PUERTA
-   ═══════════════════════════════════════════════════════════════════════════ */
-function mostrarPuerta() { $('#panel').hidden = true; $('#puerta').hidden = false; }
-$('#formPuerta').addEventListener('submit', async (ev) => {
-  ev.preventDefault();
-  const f = new FormData(ev.target);
-  $('#puertaError').textContent = '';
-  presenciaPuerta.setModo('pensando');
-  try {
-    await api('/entrar', { method: 'POST', body: { correo: f.get('correo'), clave: f.get('clave') } });
-    await entrarAlPanel();
-  } catch (e) {
-    $('#puertaError').textContent = e.message;
-    presenciaPuerta.setModo('reposo');
-  }
-});
-$('#salir').addEventListener('click', async () => { await api('/salir', { method: 'POST' }).catch(() => {}); location.reload(); });
-
-async function entrarAlPanel() {
-  E.yo = await api('/yo');
-  $('#puerta').hidden = true; $('#panel').hidden = false;
-  $('#nombre').textContent = E.yo.miembro.nombre;
-  if (!presencia) presencia = Presencia($('#presencia'), { n: 1700, datos: true, fuente: 2.0 });
-  pintarPuntos(); pintarSaber(); pintarVozBtn();
-  await Promise.all([cargarVivo(), cargarPendientes(), cargarMemorias(), cargarDocumentos(), cargarHilos(), cargarGasto()]);
-  pintarVacio();
-  saludar();
-  setInterval(cargarVivo, 45_000);
-}
-
-function pintarPuntos() {
-  const y = E.yo;
-  const p = [
-    ['cerebro', y.cerebro ? (y.donde === 'nodo' && y.nodo && !y.nodo.vivo ? 'mal' : 'ok') : 'mal',
-      !y.cerebro ? 'apagado' : y.donde === 'nodo' ? (y.nodo?.vivo ? `en nuestro nodo · ${y.nodo.modelo || y.modelo}` : `el nodo no contesta${y.nodo?.porQue ? ' · ' + y.nodo.porQue : ''}`) : y.modelo],
-    ['memoria', y.memoria === 'mongo' ? 'ok' : 'medio', y.memoria === 'mongo' ? 'guardando' : 'provisional'],
-    ['voz', y.voz ? 'ok' : 'medio', y.voz ? 'ElevenLabs' : 'del navegador'],
-    ['whatsapp', y.canales.whatsapp ? 'ok' : 'medio', y.canales.whatsapp ? 'lista' : 'sin configurar'],
-    ['correo', y.canales.correo ? 'ok' : 'medio', y.canales.correo ? 'listo' : 'sin configurar'],
-  ];
-  $('#puntos').innerHTML = p.map(([n, c, t]) => `<span class="punto ${c}" title="${esc(n)}: ${esc(t)}"><i></i>${esc(n)}</span>`).join('');
-}
-function pintarSaber() {
-  const s = E.yo.saber;
-  const cuando = s.armadoEn ? new Date(s.armadoEn).toLocaleDateString('es-HN', { day: 'numeric', month: 'short' }) : '—';
-  $('#saberResumen').innerHTML = `<b style="color:var(--hielo)">${s.total}</b> secciones de <b style="color:var(--hielo)">${s.fuentes.length}</b> fuentes · armado el ${esc(cuando)}<br>${s.temas.slice(0, 8).map((t) => `<span class="etq azul" style="margin:3px 4px 0 0">${esc(t)}</span>`).join('')}${s.temas.length > 8 ? ` <span style="color:var(--humo)">+${s.temas.length - 8}</span>` : ''}`;
-}
-
-/* ═══════════════════════════════════════════════════════════════════════════
-   EL PULSO DE LA CASA
-   ═══════════════════════════════════════════════════════════════════════════ */
-const dolares = (n, d = 2) => n == null ? '—' : '$' + Number(n).toLocaleString('es-HN', { minimumFractionDigits: d, maximumFractionDigits: d });
-async function cargarVivo() {
-  try { E.vivo = await api('/vivo'); } catch { return; }
-  const v = E.vivo;
-  const fila = (n, val, clase = '', sub = '') => `<div class="vital"><span class="n">${n}${sub ? `<small>${sub}</small>` : ''}</span><span class="v ${clase}">${val}</span></div>`;
-  const casa = (c, extra = '') => fila(esc(c.nombre.split(' · ')[0]), c.vivo ? 'viva' : (c.http ? 'HTTP ' + c.http : 'no contesta'), c.vivo ? 'ok' : 'mal', extra);
-  $('#vitales').innerHTML =
-    fila('ORIGEN', v.origen ? dolares(v.origen.origenUsd, 6) : '—', 'oro', v.origen ? `oro ${dolares(v.origen.oroOnzaUsd)} la onza` : 'sin precio ahora') +
-    fila('Compra con USDT', v.ordenex.compraUsdt === 'abierta' ? 'abierta' : v.ordenex.compraUsdt === 'cerrada' ? 'cerrada' : '—', v.ordenex.compraUsdt === 'abierta' ? 'ok' : 'aviso') +
-    casa(v.ordenex, `bloque 5550 · ${v.ordenex.bloque5550 ?? '—'}`) +
-    casa(v.aucorp, v.aucorp.tasas ? `tasas ${v.aucorp.tasasCuando ? new Date(v.aucorp.tasasCuando).toLocaleDateString('es-HN', { day: 'numeric', month: 'short' }) : 'al día'}` : 'sin tasas') +
-    casa(v.wallet) + casa(v.genesis) +
-    casa(v.ordenscan, `bloque 8532 · ${v.ordenscan.bloque8532 ?? '—'}`);
-  repartirDatos();
-}
-$('#refrescarVivo').addEventListener('click', cargarVivo);
-
-/* ═══════════════════════════════════════════════════════════════════════════
-   EL HILO
-   ═══════════════════════════════════════════════════════════════════════════ */
-const hilo = $('#hilo');
-let presenciaHero = null;
-function pintarVacio() {
-  if (hilo.children.length) return;
-  const sug = [
-    ['¿Cómo está la casa ahora?', 'Estado vivo de Ordenex, AuCorp, la billetera y las cadenas, con lo que necesita ojos.'],
-    ['Preparame el memo de la próxima junta', 'Con los pendientes, los riesgos y una recomendación por punto.'],
-    ['¿Qué implica el precio del oro de hoy para el ORIGEN?', 'La referencia viva y la cuenta con la fórmula de la casa.'],
-    ['¿Qué dice el estado legal de la minería?', 'Lo que hay escrito, las contradicciones y lo que falta.'],
-  ];
-  hilo.innerHTML = `<div class="hero">
-    <canvas id="presenciaHero" width="900" height="700" aria-label="ULTRON, con los datos de la casa alrededor"></canvas>
-    <div class="saludo" id="saludoTexto"></div>
-    <div class="hero-acciones">
-      <button class="btn grande" id="heroConversar"><svg viewBox="0 0 24 24"><path d="M12 3a3 3 0 00-3 3v6a3 3 0 006 0V6a3 3 0 00-3-3z"/><path d="M19 11a7 7 0 01-14 0M12 18v3"/></svg>Hablar con ULTRON</button>
-      <button class="btn grande linea" id="heroEscribir">Escribir</button>
-    </div>
-    <div class="sugerencias">${sug.map(([t, s]) => `<button class="sug" data-t="${esc(t)}"><b>${esc(t)}</b>${esc(s)}</button>`).join('')}</div></div>`;
-  hilo.querySelectorAll('.sug').forEach((b) => b.addEventListener('click', () => { $('#entrada').value = b.dataset.t; mandar(); }));
-  $('#heroConversar').addEventListener('click', () => conversar(true));
-  $('#heroEscribir').addEventListener('click', () => $('#entrada').focus());
-  presenciaHero = Presencia($('#presenciaHero'), { n: 2600, datos: true });
-  presenciaHero.setDatos(datosParaPresencia());
-  if (E.saludo) escribirSaludo(E.saludo.texto);
-}
-
-/* Lo que orbita alrededor de la figura: el ecosistema, en vivo. */
-function datosParaPresencia() {
-  const v = E.vivo; const d = [];
-  const casa = (c, k) => c && d.push({ k, v: c.vivo ? 'viva' : (c.http ? 'HTTP ' + c.http : 'no contesta'), estado: c.vivo ? 'ok' : 'mal' });
-  if (v?.origen) d.push({ k: 'ORIGEN', v: dolares(v.origen.origenUsd, 4), estado: 'oro' });
-  if (v?.origen?.oroOnzaUsd) d.push({ k: 'ORO · ONZA', v: dolares(v.origen.oroOnzaUsd), estado: 'oro' });
-  casa(v?.ordenex, 'ORDENEX'); if (v?.ordenex?.bloque5550) d.push({ k: 'BLOQUE 5550', v: String(v.ordenex.bloque5550), estado: 'fila' });
-  if (v?.ordenex) d.push({ k: 'COMPRA USDT', v: v.ordenex.compraUsdt || '—', estado: v.ordenex.compraUsdt === 'abierta' ? 'ok' : 'aviso' });
-  casa(v?.aucorp, 'AUCORP'); casa(v?.wallet, 'VETA WALLET'); casa(v?.genesis, 'GENESIS ID'); casa(v?.ordenscan, 'ORDENSCAN');
-  if (v?.ordenscan?.bloque8532) d.push({ k: 'BLOQUE 8532', v: String(v.ordenscan.bloque8532), estado: 'fila' });
-  d.push({ k: 'PENDIENTES', v: String((E.pendientes || []).filter((p) => p.estado !== 'hecho').length), estado: 'fila' });
-  if (E.yo?.saber?.total) d.push({ k: 'SABER', v: `${E.yo.saber.total} secc.`, estado: 'fila' });
-  return d;
-}
-/* La presencia chica se ve a un 43 % del lienzo: cinco datos caben legibles,
-   ocho se amontonan. La grande lleva todos. */
-function repartirDatos() { const d = datosParaPresencia(); presencia?.setDatos(d.filter((x) => /ORIGEN|ORO|^ORDENEX|COMPRA|PENDIENTES/.test(x.k)).slice(0, 5)); presenciaHero?.setDatos(d); }
-
-/* EL SALUDO: por su nombre, con la hora y con lo que hay. Se escribe letra a
-   letra en el hero, la figura manda su onda, y si la voz está encendida se
-   dice. Determinista y al instante: viene de /saludo, no del modelo. */
-let escribiendoSaludo = null;
-function escribirSaludo(texto) {
-  const el = $('#saludoTexto'); if (!el) return;
-  if (escribiendoSaludo) clearInterval(escribiendoSaludo);
-  el.textContent = ''; el.classList.remove('listo');
-  presenciaHero?.saludar(); presencia?.saludar();
-  let i = 0;
-  const rapido = matchMedia('(prefers-reduced-motion: reduce)').matches;
-  if (rapido) { el.textContent = texto; el.classList.add('listo'); return; }
-  escribiendoSaludo = setInterval(() => {
-    i += 2; el.textContent = texto.slice(0, i);
-    if (i >= texto.length) { clearInterval(escribiendoSaludo); escribiendoSaludo = null; el.classList.add('listo'); }
-  }, 22);
-}
-async function saludar() {
-  try { E.saludo = await api('/saludo'); } catch { return; }
-  escribirSaludo(E.saludo.texto);
-  if (E.vozOn) hablar(E.saludo.texto);
-}
-
-function burbujaMia(texto) {
-  const d = document.createElement('div'); d.className = 'msg mio'; d.innerHTML = `<div class="burbuja">${esc(texto)}</div>`;
-  hilo.appendChild(d); hilo.scrollTop = hilo.scrollHeight;
-}
-function burbujaUltron() {
-  const d = document.createElement('div'); d.className = 'msg ultron';
-  d.innerHTML = `<div class="quien">ULTRON <span class="pensando"></span></div><div class="cuerpo cursor"></div><div class="actividad"></div><div class="extras"></div>`;
-  hilo.appendChild(d); hilo.scrollTop = hilo.scrollHeight;
-  return d;
-}
-
-const NOMBRE_HERR = { web_search: 'buscando en internet', buscar_web: 'buscando en internet', leer_pagina: 'leyendo la página', buscar_saber: 'leyendo el saber de la casa', estado_vivo: 'mirando el estado vivo', abrir: 'preparando el enlace', recordar: 'guardando en la memoria', anotar_pendiente: 'anotando el pendiente', cerrar_pendiente: 'cerrando el pendiente', crear_documento: 'escribiendo el documento', proponer_envio: 'preparando el envío' };
-
-async function mandar() {
-  const ta = $('#entrada'); const texto = ta.value.trim();
-  if (!texto || E.hablando) return;
-  if (!hilo.querySelector('.msg')) hilo.innerHTML = '';
-  ta.value = ''; ajustarAlto(); $('#mandar').disabled = true; E.hablando = true;
-  burbujaMia(texto);
-  const b = burbujaUltron(); const cuerpo = b.querySelector('.cuerpo'), act = b.querySelector('.actividad'), pens = b.querySelector('.pensando');
-  presencia.setModo('pensando'); presenciaHero = null; $('#estadoPresencia').textContent = 'pensando';
-  let md = '', pintarPendiente = null;
-  const repintar = () => { cuerpo.innerHTML = MARKDOWN.aHtml(md); hilo.scrollTop = hilo.scrollHeight; };
-  try {
-    const r = await fetch('/pensar', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin',
-      body: JSON.stringify({ texto, conversacionId: E.conversacionId }) });
-    if (!r.ok) { const d = await r.json().catch(() => ({})); throw new Error(d.error || `El servidor contestó ${r.status}.`); }
-    const lector = r.body.getReader(); const dec = new TextDecoder(); let buf = '';
-    while (true) {
-      const { value, done } = await lector.read(); if (done) break;
-      buf += dec.decode(value, { stream: true });
-      let i;
-      while ((i = buf.indexOf('\n\n')) >= 0) {
-        const bloque = buf.slice(0, i); buf = buf.slice(i + 2);
-        const ev = (bloque.match(/^event: (.+)$/m) || [])[1]; const dl = (bloque.match(/^data: (.+)$/m) || [])[1];
-        if (!ev || !dl) continue;
-        const d = JSON.parse(dl);
-        if (ev === 'inicio') { E.conversacionId = d.conversacionId; if (d.nueva) cargarHilos(); }
-        else if (ev === 'pensando') { pens.textContent = d.vuelta ? 'pensando con lo que encontró…' : 'pensando…'; }
-        else if (ev === 'texto') { md += d.t; if (!pintarPendiente) pintarPendiente = requestAnimationFrame(() => { pintarPendiente = null; repintar(); }); }
-        else if (ev === 'herramienta') { pens.textContent = NOMBRE_HERR[d.nombre] || d.nombre; const c = document.createElement('span'); c.className = 'chip herr corriendo'; c.dataset.h = d.nombre; c.innerHTML = `<span class="t">${esc(NOMBRE_HERR[d.nombre] || d.nombre)}${d.entrada?.query || d.entrada?.pregunta || d.entrada?.consulta ? ': ' + esc(d.entrada.query || d.entrada.pregunta || d.entrada.consulta) : ''}</span>`; act.appendChild(c); }
-        else if (ev === 'herramienta-lista') { const c = [...act.querySelectorAll('.chip.corriendo')].find((x) => x.dataset.h === d.nombre); if (c) c.classList.remove('corriendo'); pens.textContent = ''; }
-        else if (ev === 'titulo') { cargarHilos(); }
-        else if (ev === 'reemplazo') { md = d.texto || md; repintar(); }
-        else if (ev === 'fin') { terminar(b, d, md); }
-        else if (ev === 'error') { md += `\n\n> ${d.mensaje}`; repintar(); }
-      }
-    }
-    repintar();
-  } catch (e) {
-    md += `\n\n> ${e.message}`; repintar();
-  } finally {
-    cuerpo.classList.remove('cursor'); pens.textContent = '';
-    E.hablando = false; $('#mandar').disabled = !$('#entrada').value.trim();
-    presencia.setModo('reposo'); $('#estadoPresencia').textContent = 'en reposo';
-  }
-}
-
-function terminar(b, d, md) {
-  const extras = b.querySelector('.extras'), act = b.querySelector('.actividad');
-  // las fuentes
-  for (const f of (d.fuentes || []).slice(0, 8)) {
-    const c = document.createElement('span'); c.className = 'chip fuente'; c.title = f.fuente;
-    c.innerHTML = `<span class="t">${esc(f.titulo.split(' › ').pop())}</span>`;
-    c.addEventListener('click', () => abrirFicha(f)); act.appendChild(c);
-  }
-  // documentos creados
-  for (const doc of d.documentos || []) {
-    extras.insertAdjacentHTML('beforeend', `<div class="tarjeta"><div class="ic"><svg viewBox="0 0 24 24"><path d="M14 3H7a2 2 0 00-2 2v14a2 2 0 002 2h10a2 2 0 002-2V8z"/><path d="M14 3v5h5M9 13h6M9 17h6"/></svg></div>
-      <div class="tx"><b>${esc(doc.titulo)}</b><small>${esc(doc.tipo)} · guardado en la biblioteca</small></div>
-      <div class="acciones"><a class="btn chico linea" href="/documentos/${esc(doc._id)}/descargar?formato=md">.md</a><a class="btn chico" href="/documentos/${esc(doc._id)}/descargar?formato=html">.html</a></div></div>`);
-    cargarDocumentos();
-  }
-  // lo que ULTRON quiere que la persona ABRA. No se abre solo: un navegador
-  // no deja abrir pestañas sin un toque, y está bien que sea así.
-  for (const a of d.acciones || []) {
-    if (a.tipo !== 'abrir' || !a.url) continue;
-    extras.insertAdjacentHTML('beforeend', `<div class="tarjeta abrir"><div class="ic"><svg viewBox="0 0 24 24"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><path d="M15 3h6v6M10 14L21 3"/></svg></div>
-      <div class="tx"><b>${esc(a.nombre)}</b><small>${a.porQue ? esc(a.porQue) : 'ULTRON te lo deja a un toque'}</small></div>
-      <div class="acciones"><a class="btn chico oro" href="${esc(a.url)}" target="_blank" rel="noopener">Abrir ${esc(a.nombre)}</a></div></div>`);
-  }
-  // memorias guardadas
-  if ((d.memorias || []).length) { cargarMemorias(); }
-  // envíos propuestos: se confirman ACÁ
-  for (const env of d.envios || []) {
-    E.enviosPendientes.set(env.id, env);
-    extras.insertAdjacentHTML('beforeend', `<div class="tarjeta envio" data-env="${esc(env.id)}"><div class="ic"><svg viewBox="0 0 24 24"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4z"/></svg></div>
-      <div class="tx"><b>${env.canal === 'whatsapp' ? 'WhatsApp' : 'Correo'} para ${esc(env.a.nombre)}</b><small>${env.asunto ? esc(env.asunto) + ' · ' : ''}no se ha mandado: lo confirmás vos</small></div>
-      <div class="acciones"><button class="btn chico linea" data-desc>Descartar</button><button class="btn chico oro" data-env-ok>Enviar</button></div>
-      <pre>${esc(env.texto)}</pre></div>`);
-  }
-  extras.querySelectorAll('[data-env-ok]').forEach((btn) => btn.addEventListener('click', () => confirmarEnvio(btn.closest('.tarjeta'))));
-  extras.querySelectorAll('[data-desc]').forEach((btn) => btn.addEventListener('click', () => { const t = btn.closest('.tarjeta'); E.enviosPendientes.delete(t.dataset.env); t.remove(); }));
-  if ((d.pendientes || []).length) cargarPendientes();
-  cargarGasto();
-  if ((E.vozOn || E.conversando) && md.trim()) hablar(md);
-}
-
-async function confirmarEnvio(t) {
-  const env = E.enviosPendientes.get(t.dataset.env); if (!env) return;
-  const b = t.querySelector('[data-env-ok]'); b.disabled = true; b.textContent = 'Enviando…';
-  try {
-    const r = await api('/enviar', { method: 'POST', body: { envio: env } });
-    t.classList.add('hecho'); t.querySelector('.tx small').textContent = `enviado por ${r.canal} a ${r.a}`; t.querySelector('.acciones').remove();
-    E.enviosPendientes.delete(env.id); avisar(`Enviado a ${r.a}.`);
-  } catch (e) { b.disabled = false; b.textContent = 'Enviar'; avisar(e.message, true); }
-}
-
-async function abrirFicha(f) {
-  try {
-    const l = await api('/saber/buscar?q=' + encodeURIComponent(f.titulo.split(' › ').pop()));
-    const s = l.find((x) => x.id === f.id) || l[0]; if (!s) return;
-    const v = document.createElement('div'); v.className = 'velo-ficha';
-    v.innerHTML = `<div class="ficha"><button class="cerrar" aria-label="Cerrar">×</button><h2>${esc(s.titulo)}</h2><div class="ruta">${esc(s.fuente)}</div><pre>${esc(s.texto)}</pre></div>`;
-    v.addEventListener('click', (e) => { if (e.target === v || e.target.classList.contains('cerrar')) v.remove(); });
-    document.body.appendChild(v);
-  } catch {}
-}
-
-/* el compositor */
-const entrada = $('#entrada');
-function ajustarAlto() { entrada.style.height = 'auto'; entrada.style.height = Math.min(200, entrada.scrollHeight) + 'px'; }
-entrada.addEventListener('input', () => { ajustarAlto(); $('#mandar').disabled = !entrada.value.trim() || E.hablando; });
-entrada.addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); mandar(); } });
-$('#mandar').addEventListener('click', mandar);
-
-/* ═══════════════════════════════════════════════════════════════════════════
-   LA VOZ · escuchar con el navegador, hablar con ElevenLabs (o el navegador)
-   ═══════════════════════════════════════════════════════════════════════════ */
-const Reconocedor = window.SpeechRecognition || window.webkitSpeechRecognition;
-let rec = null;
-if (!Reconocedor) { $('#micBtn').title = 'Este navegador no escucha'; $('#micBtn').style.opacity = .4; }
-
-/* ESCUCHAR. Una vez por toque del micrófono, o en bucle cuando se conversa.
-   Lo que se oye va al compositor a medida que se reconoce, y al terminar de
-   hablar se manda solo. `vacias` cuenta las veces seguidas que no se oyó nada
-   conversando: a la tercera, ULTRON deja de escuchar y lo dice — quedarse con
-   el micrófono abierto para siempre no es escuchar, es vigilar. */
-let vacias = 0;
-function escuchar() {
-  if (!Reconocedor || E.oyendo || E.hablando) return false;
-  rec = new Reconocedor(); rec.lang = 'es-HN'; rec.interimResults = true; rec.continuous = false;
-  let final = '';
-  rec.onstart = () => { E.oyendo = true; $('#micBtn').classList.add('oyendo'); presencia.setModo('oyendo'); presenciaHero?.setModo('oyendo'); $('#estadoPresencia').textContent = 'escuchando'; };
-  rec.onresult = (ev) => { let inter = ''; for (const r of ev.results) { if (r.isFinal) final += r[0].transcript; else inter += r[0].transcript; } entrada.value = (final + ' ' + inter).trim(); ajustarAlto(); $('#mandar').disabled = !entrada.value.trim(); };
-  rec.onerror = (ev) => { if (ev.error !== 'no-speech' && ev.error !== 'aborted') avisar('No se pudo escuchar. Revisá el permiso del micrófono.', true); };
-  rec.onend = () => {
-    E.oyendo = false; $('#micBtn').classList.remove('oyendo'); presencia.setModo('reposo'); presenciaHero?.setModo('reposo'); $('#estadoPresencia').textContent = 'en reposo';
-    if (entrada.value.trim()) { vacias = 0; mandar(); return; }
-    if (E.conversando) { vacias++; if (vacias >= 3) { conversar(false); avisar('Acá estoy cuando querás.'); } else setTimeout(() => { if (E.conversando) escuchar(); }, 400); }
-  };
-  try { rec.start(); return true; } catch { return false; }
-}
-$('#micBtn').addEventListener('click', () => { if (E.oyendo) { rec?.stop(); return; } escuchar(); });
-
-/* CONVERSAR: escucha, contesta con voz y vuelve a escuchar, hasta que se
-   apaga. Encender la voz es parte de conversar; apagarla al salir no, porque
-   quien la tenía encendida la sigue queriendo. */
-function conversar(encender) {
-  E.conversando = encender === undefined ? !E.conversando : !!encender;
-  $('#conversarBtn').classList.toggle('conversando', E.conversando);
-  $('#conversarBtn').querySelector('span').textContent = E.conversando ? 'Escuchando' : 'Conversar';
-  if (E.conversando) {
-    vacias = 0;
-    if (!E.vozOn) { E.vozOn = true; pintarVozBtn(); try { localStorage.setItem('ultron.voz', '1'); } catch {} }
-    if (!Reconocedor) { avisar('Este navegador no escucha. Podés escribir, y ULTRON te contesta con voz.', true); E.conversando = false; $('#conversarBtn').classList.remove('conversando'); return; }
-    // Si todavía está el saludo, se dice primero; después se escucha.
-    if (E.saludo && hilo.querySelector('.hero') && !E.saludoDicho) { E.saludoDicho = true; hablar(E.saludo.texto); } else escuchar();
-  } else { rec?.stop(); }
-}
-$('#conversarBtn').addEventListener('click', () => conversar());
-
-function pintarVozBtn() { $('#vozBtn').classList.toggle('on', E.vozOn); }
-$('#vozBtn').addEventListener('click', () => { E.vozOn = !E.vozOn; try { localStorage.setItem('ultron.voz', E.vozOn ? '1' : '0'); } catch {} pintarVozBtn(); if (!E.vozOn) { audioActual?.pause(); speechSynthesis?.cancel(); } });
-
-let audioActual = null, audioCtx = null;
-function paraDecir(md) { return md.replace(/```[\s\S]*?```/g, ' ').replace(/https?:\/\/\S+/g, ' ').replace(/[#*_>`|]/g, '').replace(/\[(.*?)\]\(.*?\)/g, '$1').replace(/\s+/g, ' ').trim(); }
-const barras = [...document.querySelectorAll('#onda i')];
-function amplitud(a) {
-  presencia.setAmplitud(a); presenciaHero?.setAmplitud(a);
-  // las barras: cada una con su fase, para que se vea voz y no un medidor
-  const t = performance.now() / 90;
-  barras.forEach((b, i) => { b.style.height = `${3 + a * 18 * (0.45 + 0.55 * Math.abs(Math.sin(t + i * 0.7)))}px`; });
-}
-async function hablar(md) {
-  const texto = paraDecir(md); if (!texto) return;
-  presencia.setModo('hablando'); presenciaHero?.setModo('hablando'); $('#estadoPresencia').textContent = 'hablando';
-  document.body.classList.add('hablando'); $('#onda').classList.add('viva');
-  const fin = () => {
-    presencia.setModo('reposo'); presenciaHero?.setModo('reposo'); amplitud(0); $('#estadoPresencia').textContent = 'en reposo';
-    document.body.classList.remove('hablando'); $('#onda').classList.remove('viva');
-    // conversando, al terminar de hablar se vuelve a escuchar
-    if (E.conversando) setTimeout(() => { if (E.conversando) escuchar(); }, 350);
-  };
-  if (E.yo?.voz) {
-    try {
-      const r = await fetch('/voz', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify({ texto: texto.slice(0, 2500) }) });
-      if (r.ok) {
-        const blob = await r.blob(); const url = URL.createObjectURL(blob);
-        audioActual?.pause(); audioActual = new Audio(url);
-        // la amplitud, para que la presencia pulse con la voz
-        try {
-          audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
-          const src = audioCtx.createMediaElementSource(audioActual); const an = audioCtx.createAnalyser(); an.fftSize = 256;
-          src.connect(an); an.connect(audioCtx.destination);
-          const datos = new Uint8Array(an.frequencyBinCount);
-          (function medir() { if (audioActual.paused || audioActual.ended) return; an.getByteFrequencyData(datos); let s = 0; for (let i = 0; i < 40; i++) s += datos[i]; amplitud(Math.min(1, s / 40 / 160)); requestAnimationFrame(medir); })();
-        } catch {}
-        audioActual.onended = () => { URL.revokeObjectURL(url); fin(); }; audioActual.onerror = fin;
-        await audioActual.play(); return;
-      }
-    } catch {}
-  }
-  // el navegador, como red
-  if (!('speechSynthesis' in window)) return fin();
-  speechSynthesis.cancel();
-  const u = new SpeechSynthesisUtterance(texto.slice(0, 2500)); u.lang = 'es-HN'; u.rate = 1.02;
-  const respira = setInterval(() => amplitud(0.35 + 0.3 * Math.abs(Math.sin(performance.now() / 160))), 60);
-  const finR = fin; const fin2 = () => { clearInterval(respira); finR(); };
-  u.onend = fin2; u.onerror = fin2; speechSynthesis.speak(u); return;
-  const voces = speechSynthesis.getVoices(); u.voice = voces.find((v) => /es-(HN|MX|US|419)/i.test(v.lang)) || voces.find((v) => /^es/i.test(v.lang)) || null;
-}
-
-/* ═══════════════════════════════════════════════════════════════════════════
-   LA DERECHA · memoria, biblioteca, hilos
-   ═══════════════════════════════════════════════════════════════════════════ */
-document.querySelectorAll('.pestanas button').forEach((b) => b.addEventListener('click', () => {
-  document.querySelectorAll('.pestanas button').forEach((x) => x.classList.toggle('on', x === b));
-  for (const p of ['Pendientes', 'Memoria', 'Biblioteca', 'Hilos']) $('#p' + p).hidden = b.dataset.p !== p.toLowerCase();
-}));
-$('#abrirDer').addEventListener('click', () => $('#der').classList.toggle('abierta'));
-
-const cuando = (d) => new Date(d).toLocaleDateString('es-HN', { day: 'numeric', month: 'short' });
-
-/* LOS PENDIENTES. Son de la junta: los ve, los anota y los cierra cualquiera
-   de los seis. Se pinta el abierto arriba y el hecho tachado, solo si se pide
-   verlo — una lista donde lo hecho y lo pendiente pesan igual deja de servir
-   para saber qué falta. */
-async function cargarPendientes() {
-  const hechos = $('#verHechos')?.checked ? '?hechos=1' : '';
-  try { E.pendientes = await api('/pendientes' + hechos); } catch { return; }
-  const l = $('#pendientes');
-  repartirDatos();
-  if (!E.pendientes.length) {
-    l.innerHTML = '<div class="nada">Nada pendiente.<br>Anotá algo arriba, o decímelo y lo apunto yo.</div>';
-    return;
-  }
-  l.innerHTML = E.pendientes.map((p) => `<div class="item ${p.estado === 'hecho' ? 'hecho' : ''}">
-    <div class="tarea">
-      <span class="caja" data-id="${esc(p._id)}"><svg viewBox="0 0 24 24"><path d="M4 12l6 6L20 6"/></svg></span>
-      <div class="tx" data-id="${esc(p._id)}">${esc(p.texto)}<small>${p.tema ? `<span class="etq azul">${esc(p.tema)}</span>` : ''}${p.quien ? `<span class="etq">${esc(p.quien)}</span>` : ''}${cuando(p.en)}${p.cerradoPor ? ' · cerrado por ' + esc(p.cerradoPor.split('@')[0]) : ''}</small></div>
-      <button class="x" data-borrar="${esc(p._id)}" title="Borrar">×</button>
-    </div></div>`).join('');
-  const alternar = async (id) => {
-    const p = E.pendientes.find((x) => String(x._id) === String(id)); if (!p) return;
-    await api('/pendientes/' + id, { method: 'PATCH', body: { estado: p.estado === 'hecho' ? 'abierto' : 'hecho' } });
-    cargarPendientes();
-  };
-  l.querySelectorAll('.caja, .tx').forEach((e) => e.addEventListener('click', () => alternar(e.dataset.id)));
-  l.querySelectorAll('[data-borrar]').forEach((b) => b.addEventListener('click', async () => {
-    await api('/pendientes/' + b.dataset.borrar, { method: 'DELETE' }); cargarPendientes();
-  }));
-}
-$('#guardarPendiente').addEventListener('click', async () => {
-  const i = $('#nuevoPendiente'); const t = i.value.trim(); if (!t) return;
-  await api('/pendientes', { method: 'POST', body: { texto: t } }); i.value = ''; cargarPendientes();
-  avisar('Anotado.');
-});
-$('#nuevoPendiente').addEventListener('keydown', (e) => { if (e.key === 'Enter') $('#guardarPendiente').click(); });
-$('#verHechos').addEventListener('change', cargarPendientes);
-
-/* LO QUE CUESTA. Se enseña en fichas Y en dólares, y si algún turno salió de
-   un modelo sin precio conocido se dice que el total va incompleto: un total
-   que miente por lo bajo es peor que no tener total. */
-async function cargarGasto() {
-  try { E.gasto = await api('/gasto'); } catch { return; }
-  pintarPie();
-}
-function pintarPie() {
-  const g = E.gasto; const m = E.yo?.modelo || '';
-  if (!g) { $('#pieDer').textContent = m; return; }
-  const plata = (n) => '$' + n.toFixed(n < 1 ? 3 : 2);
-  const enNodo = E.yo?.donde === 'nodo';
-  const hoy = g.hoy.turnos
-    ? (enNodo && !g.hoy.dolares
-      ? `<b>${g.hoy.turnos}</b> ${g.hoy.turnos === 1 ? 'pregunta' : 'preguntas'} hoy · sin costo por pregunta`
-      : `<b>${plata(g.hoy.dolares)}</b> hoy${g.hoy.conPrecio ? '' : '+'} · ${g.hoy.turnos} ${g.hoy.turnos === 1 ? 'pregunta' : 'preguntas'}`)
-    : 'sin preguntas hoy';
-  const mes = g.mes.turnos && g.mes.dolares ? ` · ${plata(g.mes.dolares)} en 30 días` : '';
-  $('#pieDer').innerHTML = `<span title="Lo que la junta lleva gastado en pensar${g.hoy.conPrecio ? '' : '. El «+» es porque algún turno salió de un modelo sin precio conocido y no está sumado'}">${hoy}${mes}</span> · ${esc(m)}`;
-}
-async function cargarMemorias() {
-  try { E.memorias = await api('/memorias'); } catch { return; }
-  const l = $('#memorias');
-  if (!E.memorias.length) { l.innerHTML = '<div class="nada">Todavía no recuerdo nada.<br>Contame algo, o escribilo arriba.</div>'; return; }
-  l.innerHTML = E.memorias.map((m) => `<div class="item ${m.alcance === 'junta' ? 'junta' : ''}"><div class="fila"><div>${m.alcance === 'junta' ? '<span class="etq">junta</span>' : ''}${esc(m.texto)}<small>${esc(m.dichoPor || '')} · ${cuando(m.en)}${m.origen === 'deducido' ? ' · lo guardé yo' : ''}</small></div><button class="x" data-id="${esc(m._id)}" title="Olvidar">×</button></div></div>`).join('');
-  l.querySelectorAll('.x').forEach((b) => b.addEventListener('click', async () => { await api('/memorias/' + b.dataset.id, { method: 'DELETE' }); cargarMemorias(); }));
-}
-$('#guardarMemoria').addEventListener('click', async () => {
-  const i = $('#nuevaMemoria'); const t = i.value.trim(); if (!t) return;
-  const junta = /\b(junta|todos|nosotros)\b/i.test(t);
-  await api('/memorias', { method: 'POST', body: { texto: t, alcance: junta ? 'junta' : 'miembro' } }); i.value = ''; cargarMemorias();
-  avisar(junta ? 'Guardado para toda la junta.' : 'Guardado.');
-});
-$('#nuevaMemoria').addEventListener('keydown', (e) => { if (e.key === 'Enter') $('#guardarMemoria').click(); });
-
-async function cargarDocumentos() {
-  try { E.documentos = await api('/documentos'); } catch { return; }
-  const l = $('#documentos');
-  if (!E.documentos.length) { l.innerHTML = '<div class="nada">La biblioteca está vacía.<br>Pedime un memo, un acta o un análisis.</div>'; return; }
-  l.innerHTML = E.documentos.map((d) => `<div class="item"><b>${esc(d.titulo)}</b><small><span class="etq azul">${esc(d.tipo)}</span>${d.para === 'fuera' ? '<span class="etq">para fuera</span>' : ''}${cuando(d.en)} · ${esc((d.miembro || '').split('@')[0])}</small>
-    <div style="display:flex;gap:6px;margin-top:8px"><a class="btn chico linea" href="/documentos/${esc(d._id)}/descargar?formato=md">.md</a><a class="btn chico" href="/documentos/${esc(d._id)}/descargar?formato=html">.html</a></div></div>`).join('');
-}
-
-async function cargarHilos() {
-  try { E.hilos = await api('/conversaciones'); } catch { return; }
-  const l = $('#hilos');
-  if (!E.hilos.length) { l.innerHTML = '<div class="nada">Ningún hilo todavía.</div>'; return; }
-  l.innerHTML = E.hilos.map((h) => `<div class="item clic ${h._id === E.conversacionId ? 'actual' : ''}" data-id="${esc(h._id)}"><b>${esc(h.titulo || 'Sin título')}</b><small>${h.canal !== 'panel' ? `<span class="etq azul">${esc(h.canal)}</span>` : ''}${h.turnos} turnos · ${cuando(h.tocado)}</small></div>`).join('');
-  l.querySelectorAll('.item').forEach((it) => it.addEventListener('click', () => abrirHilo(it.dataset.id)));
-}
-async function abrirHilo(id) {
-  const c = await api('/conversaciones/' + id); E.conversacionId = id;
-  hilo.innerHTML = '';
-  for (const t of c.turnos) {
-    if (t.rol === 'miembro') burbujaMia(t.texto);
-    else { const b = burbujaUltron(); b.querySelector('.cuerpo').classList.remove('cursor'); b.querySelector('.cuerpo').innerHTML = MARKDOWN.aHtml(t.texto);
-      const act = b.querySelector('.actividad'); for (const f of (t.fuentes || []).slice(0, 6)) { const ch = document.createElement('span'); ch.className = 'chip fuente'; ch.innerHTML = `<span class="t">${esc(f.titulo.split(' › ').pop())}</span>`; ch.addEventListener('click', () => abrirFicha(f)); act.appendChild(ch); } }
-  }
-  hilo.scrollTop = hilo.scrollHeight; cargarHilos(); $('#der').classList.remove('abierta');
-}
-$('#nuevoHilo').addEventListener('click', () => { E.conversacionId = null; hilo.innerHTML = ''; pintarVacio(); cargarHilos(); $('#der').classList.remove('abierta'); });
-
-/* ═══════════════════════════════════════════════════════════════════════════
-   ARRANQUE: si hay sesión, adentro; si no, la puerta.
-   ═══════════════════════════════════════════════════════════════════════════ */
-(async () => { try { await entrarAlPanel(); } catch { mostrarPuerta(); } })();
-</script>
+<script src="/js/datos.js"></script>
+<script src="/js/voz.js"></script>
+<script src="/js/tablero.js"></script>
+<script src="/js/despacho.js"></script>
+<script src="/js/ecosistema.js"></script>
+<script src="/js/instrumentos.js"></script>
+<script src="/js/registro.js"></script>
+<script src="/js/app.js"></script>
 </body>
 </html>

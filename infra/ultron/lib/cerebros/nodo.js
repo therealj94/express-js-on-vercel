@@ -274,7 +274,7 @@ async function pensar({ miembro, junta, texto, conversacionId, emitir = () => {}
       emitir('herramienta', { nombre, entrada });
       const salida = await herramientas.correr(nombre, entrada || {}, ctx);
       usadas.push({ nombre, entrada, salida: String(salida).slice(0, 2000) });
-      emitir('herramienta-lista', { nombre });
+      emitir('herramienta-lista', { nombre, salida: String(salida).slice(0, 600) });
       mensajes.push({ role: 'tool', content: recortar(salida, TOPE_RESULTADO), tool_name: nombre });
     }
     // Si con los resultados el pedido se pasa del presupuesto, se sueltan los
@@ -311,7 +311,7 @@ async function pensar({ miembro, junta, texto, conversacionId, emitir = () => {}
         emitir('herramienta', { nombre, entrada });
         const salida = await herramientas.correr(nombre, entrada || {}, ctx);
         usadas.push({ nombre, entrada, salida: String(salida).slice(0, 2000) });
-        emitir('herramienta-lista', { nombre });
+        emitir('herramienta-lista', { nombre, salida: String(salida).slice(0, 600) });
         mensajes.push({ role: 'tool', content: recortar(salida, TOPE_RESULTADO), tool_name: nombre });
       }
       const r2 = await pedir({ model: MODELO, messages: mensajes, tools: herramientas.paraOllama(), stream: true, options: opciones }, { alTrozo: (t) => {} });
