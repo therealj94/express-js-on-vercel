@@ -19,6 +19,7 @@ import com.ordenglobal.hotspotlibre.core.Stats
 import com.ordenglobal.hotspotlibre.core.humanBytes
 import com.ordenglobal.hotspotlibre.net.LocalAddresses
 import com.ordenglobal.hotspotlibre.net.PacServer
+import com.ordenglobal.hotspotlibre.net.WifiMonitor
 import com.ordenglobal.hotspotlibre.proxy.ProxyServer
 import com.ordenglobal.hotspotlibre.ui.MainActivity
 import kotlinx.coroutines.CoroutineScope
@@ -53,6 +54,7 @@ class TetherService : Service() {
         Stats.load(this)
         createChannel()
         registerHotspotWatcher()
+        WifiMonitor.start(this)
     }
 
     /**

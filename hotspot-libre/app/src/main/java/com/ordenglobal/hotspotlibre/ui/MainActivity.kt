@@ -44,12 +44,17 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.ordenglobal.hotspotlibre.core.LogBus
 import com.ordenglobal.hotspotlibre.core.Settings
+import com.ordenglobal.hotspotlibre.core.IncidentLog
 import com.ordenglobal.hotspotlibre.core.Stats
 import com.ordenglobal.hotspotlibre.core.humanBytes
 import com.ordenglobal.hotspotlibre.net.CheckResult
 import com.ordenglobal.hotspotlibre.net.ClientScanner
 import com.ordenglobal.hotspotlibre.net.Diagnostics
+import com.ordenglobal.hotspotlibre.net.Diagnosis
 import com.ordenglobal.hotspotlibre.net.LocalAddresses
+import com.ordenglobal.hotspotlibre.net.NetworkDoctor
+import com.ordenglobal.hotspotlibre.net.NetworkProbe
+import com.ordenglobal.hotspotlibre.net.WifiMonitor
 import com.ordenglobal.hotspotlibre.net.SpeedProbe
 import com.ordenglobal.hotspotlibre.radio.SignalQuality
 import com.ordenglobal.hotspotlibre.radio.SignalReader
@@ -97,6 +102,10 @@ private fun HomeScreen(modifier: Modifier = Modifier) {
     var verbose by remember { mutableStateOf(LogBus.verbose) }
 
     var signal by remember { mutableStateOf<SignalSnapshot?>(null) }
+    var diagnosis by remember { mutableStateOf<Diagnosis?>(null) }
+    var gateway by remember { mutableStateOf<String?>(null) }
+    var diagnosing by remember { mutableStateOf(false) }
+    val incidents by IncidentLog.incidents.collectAsStateWithLifecycle()
     var bestRsrp by remember { mutableStateOf<Int?>(null) }
     var hasSignalPermission by remember { mutableStateOf(SignalReader.hasPermission(context)) }
 
@@ -110,9 +119,16 @@ private fun HomeScreen(modifier: Modifier = Modifier) {
     }
 
     // Con el servicio parado nadie publica; la pantalla se refresca sola.
+    // La vigilancia arranca con la pantalla y sigue con el servicio: así
+    // registra cortes aunque el proxy esté apagado, que es cuando más falta hace.
+    LaunchedEffect(Unit) {
+        WifiMonitor.start(context)
+    }
+
     LaunchedEffect(Unit) {
         while (true) {
             Stats.tick()
+            WifiMonitor.sample()
             val now = withContext(Dispatchers.IO) { SignalReader.read(context) }
             signal = now
             // El mejor visto se guarda para poder recorrer la casa mirando la
@@ -239,6 +255,62 @@ private fun HomeScreen(modifier: Modifier = Modifier) {
                     clients = withContext(Dispatchers.IO) { ClientScanner.scan() }
                 }
             }) { Text("Refrescar") }
+        }
+
+        Section("¿Por qué se cae el Wi-Fi?") {
+            Text(
+                "Prueba el camino entero —router, salida a internet y resolución " +
+                    "de nombres— y se detiene en el primer eslabón roto. Así se " +
+                    "distingue un fallo de DNS de un router apagado, que desde la " +
+                    "pantalla se ven igual.",
+                style = MaterialTheme.typography.bodyMedium,
+            )
+            Button(
+                enabled = !diagnosing,
+                onClick = {
+                    diagnosing = true
+                    diagnosis = null
+                    scope.launch {
+                        val (checks, router) = withContext(Dispatchers.IO) {
+                            NetworkProbe.run(context)
+                        }
+                        gateway = router
+                        diagnosis = NetworkDoctor.diagnose(checks)
+                        diagnosing = false
+                    }
+                },
+            ) { Text(if (diagnosing) "Comprobando…" else "Diagnosticar ahora") }
+
+            diagnosis?.let { result ->
+                Text(result.title, fontWeight = FontWeight.Bold)
+                Text(result.detail, style = MaterialTheme.typography.bodyMedium)
+                Text("Qué hacer: ${result.fix}", style = MaterialTheme.typography.bodyMedium)
+                gateway?.let {
+                    Text(
+                        "Router: $it",
+                        fontFamily = FontFamily.Monospace,
+                        fontSize = 12.sp,
+                    )
+                }
+            }
+
+            Text("Historial de cortes", fontWeight = FontWeight.Bold)
+            if (incidents.isEmpty()) {
+                Text(
+                    "Sin cortes registrados. La vigilancia queda activa mientras " +
+                        "la app esté instalada y el servicio encendido.",
+                    style = MaterialTheme.typography.bodySmall,
+                )
+            }
+            incidents.takeLast(15).reversed().forEach {
+                Text(it.explain(), fontSize = 12.sp)
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedButton(onClick = {
+                    copy(context, incidents.joinToString("\n") { it.explain() })
+                }) { Text("Copiar historial") }
+                OutlinedButton(onClick = { IncidentLog.clear() }) { Text("Limpiar") }
+            }
         }
 
         Section("Señal móvil") {

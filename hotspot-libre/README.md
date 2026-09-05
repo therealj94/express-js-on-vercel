@@ -153,6 +153,34 @@ Dos causas distintas, las dos del proxy:
   lanzan escalonadas cada 250 ms alternando familias y gana la primera que
   conteste; la familia ganadora ordena los intentos siguientes.
 
+## ¿Por qué se cae el Wi-Fi?
+
+Dos herramientas que responden preguntas distintas.
+
+**Diagnóstico bajo demanda.** Recorre el camino de un paquete y se detiene en
+el primer eslabón roto: Wi-Fi → router → salida a internet por IP desnuda →
+resolución de nombres. Ese orden es lo que separa culpas que desde la pantalla
+se ven idénticas — «no carga nada» es lo mismo para un router apagado que para
+un DNS caído, y llevan a arreglos opuestos.
+
+La salida a internet se prueba contra una **IP, sin nombre de por medio**. Si
+esa responde y el nombre no, el culpable es el DNS sin lugar a dudas. Y se
+comprueba con conexiones TCP, no con ping: casi todo el mundo descarta el
+ICMP, así que un ping fallido no distingue «caído» de «no contesta pings».
+
+**Historial de cortes.** Un servicio anota cada caída con el contexto del
+instante anterior: canal, señal y punto de acceso. Eso es lo que convierte «se
+cayó otra vez» en una explicación:
+
+- *El canal cambió de 52 a 100* → el router abandonó un canal de radar (DFS).
+  Obligatorio por normativa, y tira a todos los dispositivos a la vez.
+- *Señal de −88 dBm al caerse* → cobertura.
+- *Wi-Fi en pie pero sin internet* → DNS o proveedor, nunca el enlace.
+
+El contexto se guarda **antes** del corte a propósito: cuando la red se pierde,
+el sistema ya no reporta ni canal ni señal, y sin esos datos el registro no
+explicaría nada.
+
 ## Señal móvil
 
 Ninguna app amplifica la señal: eso es antena, distancia y obstáculos. Lo que
