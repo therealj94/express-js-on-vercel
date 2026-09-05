@@ -311,20 +311,57 @@ async function pensar({ miembro, junta, texto, conversacionId, emitir = () => {}
     return t;
   };
   let derivas = 0;
+  let reintentos = 0;
 
   for (let vuelta = 0; vuelta < MAX_VUELTAS; vuelta++) {
     emitir('pensando', { vuelta });
     const acum = { t: '' };
     let r = await pedir({ model: MODELO, messages: mensajes, tools: herramientas.paraOllama(), stream: true, options: opciones }, { alTrozo: conGuarda(acum) });
     uso.entrada += r.uso.entrada; uso.salida += r.uso.salida;
-    /* SE ENGANCHÓ. Nada de continuar ni de reintentar: el modelo estaba dando
-       vueltas sobre sí mismo y lo que valía es lo que dijo ANTES de engancharse.
-       Se cierra el turno con eso. */
+    /* SE ENGANCHÓ.
+     *
+     * Si ya había dicho algo, eso es lo que vale y se cierra el turno con
+     * ello: el modelo estaba dando vueltas sobre sí mismo y lo de después no
+     * aporta nada.
+     *
+     * PERO SI SE ENGANCHÓ SIN HABER DICHO NADA —el primer token ya era el
+     * bucle— cerrar ahí le deja a la junta un «no me salió una respuesta con
+     * palabras» y el turno entero perdido por un token. Pasó en vivo el 5-sep
+     * con una pregunta de tres líneas: el modelo escribió «sourceMapping»
+     * cientos de veces desde el arranque y la guarda, haciendo su trabajo,
+     * devolvió el vacío.
+     *
+     * El enganche es ALEATORIO, no determinista: la misma pregunta con otra
+     * semilla sale bien. Así que se reintenta UNA vez, con otra semilla y algo
+     * más de temperatura para que no caiga en el mismo pozo. Una y no más: si
+     * vuelve a engancharse, el problema no es la semilla y hay que decirlo en
+     * vez de quemar el nodo a reintentos. */
     if (acum.bucle) {
       emitir('pensando', { vuelta, motivo: 'se repetía' });
       console.warn('[nodo] el modelo se repetía: se cortó el turno donde empezó el bucle');
-      textoFinal = acum.t;
-      break;
+      /* «Nada que salvar» se mide en PALABRAS, no en caracteres. La guarda
+         corta en la primera repetición, y cuando el bucle empieza en el token
+         uno lo que queda es un cascajo —«sou», el principio de la primera
+         «sourceMapping»— que no está vacío pero tampoco es una respuesta.
+         Tres palabras es el corte: menos que eso no es una frase que nadie
+         pueda leer, y más que eso ya dijo algo que vale la pena conservar. */
+      const palabras = acum.t.trim().split(/\s+/).filter(Boolean).length;
+      const nadaQueSalvar = palabras < 3 && !textoFinal.trim();
+      if (!nadaQueSalvar || reintentos > 0) { textoFinal = acum.t; break; }
+      reintentos++;
+      emitir('pensando', { vuelta, motivo: 'se reintenta' });
+      console.warn('[nodo] se enganchó sin decir nada: un reintento con otra semilla');
+      const otro = { t: '' };
+      r = await pedir({ model: MODELO, messages: mensajes, tools: herramientas.paraOllama(), stream: true,
+        options: { ...opciones, temperature: 0.6, seed: Math.floor(Math.random() * 1e9) } },
+        { alTrozo: conGuarda(otro) });
+      uso.entrada += r.uso.entrada; uso.salida += r.uso.salida;
+      if (otro.bucle) {
+        console.warn('[nodo] se volvió a enganchar en el reintento: se cierra el turno');
+        textoFinal = otro.t;
+        break;
+      }
+      // Salió: sigue el turno normal con esta respuesta (herramientas incluidas).
     }
     if (r.cortado && derivas === 0) {
       derivas++;
@@ -428,7 +465,17 @@ async function titular(texto) {
     const r = await pedir({ model: MODELO, stream: false, options: { temperature: 0.2, num_predict: 24 },
       messages: [{ role: 'user', content: `Título de máximo seis palabras, en español, sin comillas ni punto final, para una conversación que empieza así:\n\n${texto.slice(0, 400)}\n\nSolo el título.` }] },
       { plazo: 30_000 });
-    return (r.content || '').split('\n')[0].replace(/^["«»]+|["«»]+$/g, '').trim().slice(0, 80) || null;
+    /* EL TÍTULO TAMBIÉN SE VA A OTRO ALFABETO. Visto en vivo el 5-sep:
+       «Consultas ORIGEN y pendientes сегодня不宜继续用西班牙语回答». La guarda
+       del idioma vigilaba la RESPUESTA y no el título, que se pide aparte —
+       y el título es lo que la junta ve en la lista de conversaciones para
+       siempre. Se corta donde empieza el otro alfabeto; si lo que queda no
+       llega a dos palabras no se fuerza un título malo: se devuelve null y
+       quien llama pone el suyo. */
+    const crudo = (r.content || '').split('\n')[0].replace(/^["«»]+|["«»]+$/g, '').trim();
+    const limpio = hastaOtroAlfabeto(crudo).trim().replace(/[\s,;:·—-]+$/, '');
+    if (limpio.split(/\s+/).filter(Boolean).length < 2) return null;
+    return limpio.slice(0, 80) || null;
   } catch { return null; }
 }
 

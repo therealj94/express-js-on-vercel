@@ -80,7 +80,14 @@ async function leer() {
     pata('aucorp', () => json(CASAS.aucorp.api + '/salud')),
     pata('aucorp', () => json(CASAS.aucorp.api + '/monedas')),
     pata('wallet', () => json(CASAS.wallet.api + '/salud')),
-    pata('genesis', () => json(CASAS.genesis.api + '/api/publico/salud')),
+    /* `/healthz`, no `/api/publico/salud`: esa ruta no existe y nunca existió.
+       Genesis contestaba 404 a cada lectura, así que el tablero la pintaba
+       caída y el saludo de la mañana decía «Genesis ID no contesta» todos los
+       días con Genesis perfectamente viva. Una alarma que siempre suena es una
+       alarma que se deja de mirar, y entonces el día que se caiga de verdad no
+       lo va a notar nadie. (lib/herramientas.js ya usaba la ruta buena: eran
+       dos sitios diciendo cosas distintas de la misma casa.) */
+    pata('genesis', () => json(CASAS.genesis.api + '/healthz')),
     pata('ordenscan', () => json(CASAS.ordenscan.api + '/block/totalBlock')),
   ]);
 

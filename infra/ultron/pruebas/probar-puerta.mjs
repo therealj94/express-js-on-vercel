@@ -158,7 +158,19 @@ titulo('el saludo: por su nombre, con la hora y con lo que hay');
   const r = await s.pedir('/saludo', { cookie: cookieJose });
   decir(r.http === 200 && /^Buen(os|as) (días|tardes|noches), José\./.test(r.json.texto), 'saluda por el nombre de pila según la hora de Honduras', r.json.texto);
   decir(/pendiente/.test(r.json.texto) && /Quedo a su disposición\.$/.test(r.json.texto), 'dice cuántos pendientes hay y cede la palabra, en registro institucional', r.json.texto);
-  decir(/no contesta/.test(r.json.texto), 'y sin red, dice qué casa no contesta en vez de callarlo', r.json.texto);
+  /* ESTA COMPROBACIÓN ESTABA MINTIENDO. Decía «y sin red, dice qué casa no
+     contesta» — pero acá SÍ hay red, y lo único que la hacía pasar era que
+     ULTRON leía Genesis por una ruta que no existe y la daba por caída todos
+     los días. Al arreglar la ruta, la prueba se cayó: estaba certificando el
+     fallo. Ahora se comprueba la REGLA en los dos sentidos contra la lectura
+     de verdad — se nombra a la que no contesta, y no se inventa ninguna
+     cuando todas contestan— que es lo que se quería comprobar desde el
+     principio. */
+  const v = await s.pedir('/vivo', { cookie: cookieJose });
+  const caidas = ['ordenex', 'aucorp', 'wallet', 'genesis', 'ordenscan'].filter((k) => v.json?.[k]?.vivo === false);
+  decir(caidas.length ? caidas.every((k) => r.json.texto.toLowerCase().includes(k)) || /ninguna casa contesta/.test(r.json.texto) : !/no contesta|no contestan/.test(r.json.texto),
+    caidas.length ? `nombra a la casa que no contesta (${caidas.join(', ')}) en vez de callarlo` : 'con todas las casas en pie, no inventa ninguna caída',
+    r.json.texto);
   const sin = await s.pedir('/saludo');
   decir(sin.http === 401, 'sin sesión no hay saludo');
 }

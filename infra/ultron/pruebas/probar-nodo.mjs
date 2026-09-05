@@ -267,6 +267,51 @@ titulo('el modelo enganchado se corta donde empezó a repetirse');
   decir(eventos.some(([e]) => e === 'reemplazo'), 'y se le dice con qué texto quedarse');
 }
 
+titulo('engancharse SIN haber dicho nada se reintenta una vez, no se rinde');
+{
+  /* Visto en vivo el 5-sep contra el nodo de producción, con una pregunta de
+     tres líneas: el PRIMER token ya era el bucle, así que la guarda cortó y
+     dejó el vacío — y la junta leyó «no me salió una respuesta con palabras».
+     El turno entero perdido por un token. El enganche es aleatorio: con otra
+     semilla sale. */
+  guion = [
+    { texto: 'sourceMapping: '.repeat(60) },
+    { texto: 'El ORIGEN está a 2,59 dólares y hay diez pendientes abiertos.' },
+  ];
+  const eventos = [];
+  const r = await cerebro.pensar({ miembro: JOSE, junta: JUNTA, texto: '¿a cuánto está el ORIGEN?', emitir: (e, d2) => eventos.push([e, d2]) });
+  decir(/2,59 dólares/.test(r.texto), 'el reintento contesta de verdad, en vez de rendirse con el vacío', r.texto.slice(0, 100));
+  decir(!/sourceMapping/.test(r.texto), 'y sin rastro del bucle');
+  decir(eventos.some(([e, d2]) => e === 'pensando' && d2.motivo === 'se reintenta'), 'y se dice que se reintentó, no se hace a escondidas');
+}
+
+titulo('pero solo una vez: dos enganches seguidos no queman el nodo');
+{
+  guion = [
+    { texto: 'sourceMapping: '.repeat(60) },
+    { texto: 'otraCosaRota: '.repeat(60) },
+    { texto: 'Esto ya no se debería pedir nunca.' },
+  ];
+  let pedidos = 0;
+  const antes = guion.length;
+  const r = await cerebro.pensar({ miembro: JOSE, junta: JUNTA, texto: 'hola', emitir: () => { pedidos++; } });
+  decir(!/Esto ya no se debería pedir/.test(r.texto), 'al segundo enganche se cierra el turno: no hay tercer intento', r.texto.slice(0, 90));
+  decir(guion.length === antes - 2, 'y se gastaron exactamente dos llamadas al nodo, no tres', `quedan ${guion.length} de ${antes}`);
+}
+
+titulo('el título tampoco se va a otro alfabeto');
+{
+  /* «Consultas ORIGEN y pendientes сегодня不宜继续用西班牙语回答» — visto en
+     vivo. La guarda del idioma vigilaba la respuesta y no el título, y el
+     título es lo que queda en la lista de conversaciones para siempre. */
+  guion = [{ texto: 'Consultas ORIGEN y pendientes сегодня不宜继续用西班牙语回答' }];
+  const t1 = await cerebro.titular('¿a cuánto está el ORIGEN?');
+  decir(t1 === 'Consultas ORIGEN y pendientes', 'el título se corta donde empieza el otro alfabeto', String(t1));
+  guion = [{ texto: '标题' }];
+  const t2 = await cerebro.titular('hola');
+  decir(t2 === null, 'y si no queda un título en español no se fuerza uno malo: null, y quien llama pone el suyo', String(t2));
+}
+
 titulo('la deriva a otro idioma se ataja en vivo');
 {
   /* «…cambiar rápid嫂，总结一下FilterWhere助手…» en el panel de José. Al
