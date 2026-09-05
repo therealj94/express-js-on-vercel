@@ -390,7 +390,14 @@ async function estado(req, res) {
     casa = { error: e.message };
   }
 
-  return res.json({ ...conteos, caliente, casa, entrada, gasPorRed,
+  // EL CIRCUITO DE SALIDA. La entrada tiene tres piezas y la salida una sola,
+  // pero es la que PAGA: si la caja se queda corta o la llave no es la de la
+  // caja, las ventas se caen de a una y en silencio. Va con su propio try por
+  // lo de siempre: una pieza rota no puede tumbar el panel.
+  let venta = null;
+  try { venta = await require('../lib/venta').estado(); } catch (e) { venta = { error: e.message }; }
+
+  return res.json({ ...conteos, caliente, casa, entrada, venta, gasPorRed,
                     configuracion, faltan, terminosVersion: TERMINOS_VERSION });
 }
 

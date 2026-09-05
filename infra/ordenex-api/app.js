@@ -127,6 +127,8 @@ const limiteDinero = rateLimit({
 app.use('/ordenes', soloEscritura(limiteDinero));
 // Comprar mueve dinero de verdad: el mismo limite que una orden.
 app.use('/compras', soloEscritura(limiteDinero));
+// Vender saca dinero de la casa hacia fuera: el mismo limite, y por mas motivo.
+app.use('/ventas', soloEscritura(limiteDinero));
 app.use('/fiat', soloEscritura(limiteDinero));
 
 // El retiro firma una transaccion en la cadena y saca el dinero de la casa:
@@ -216,6 +218,9 @@ app.get('/salud', async (req, res) => {
   res.status(ok ? 200 : 503).json({
     ok, cadena: cadenaOk, mongo: mongoOk, bloque,
     entrega: process.env.COMPRAS === '1',
+    // La salida es OTRA cosa que la entrada y puede estar cerrada sola: quien
+    // vaya a vender tiene que poder saberlo antes de intentarlo.
+    venta: require('./lib/venta').encendida(),
   });
 });
 
@@ -287,6 +292,7 @@ app.use('/mercados', require('./routes/mercados'));
 app.use('/precio-declarado', require('./routes/precios'));
 app.use('/ordenes', require('./routes/ordenes'));
 app.use('/compras', require('./routes/compras'));
+app.use('/ventas', require('./routes/ventas'));
 app.use('/', require('./routes/portafolio'));
 app.use('/fiat', require('./routes/fiat'));
 app.use('/admin', require('./routes/admin'));
@@ -445,6 +451,23 @@ app.listen(puerto, () => {
       );
     } else {
       console.log('[compra] apagado (COMPRAS != 1): los depositos se ven pero no se entrega ORIGEN');
+    }
+
+    /* La venta paga USDT desde la caja, asi que su llave es la de la caja: la
+       unica billetera que hasta hoy podia estar quieta. Se canta al arrancar
+       en que estado quedo, porque «la venta no anda» y «la venta esta apagada
+       a proposito» se ven igual desde fuera. */
+    try {
+      const venta = require('./lib/venta');
+      if (process.env.VENTAS !== '1') {
+        console.log('[venta] apagada (VENTAS != 1): no se paga USDT por ORIGEN');
+      } else if (!venta.encendida()) {
+        console.error('[venta] ENCENDIDA SIN LLAVE: falta ORDENEX_VENTA_KEY y ninguna venta va a poder pagarse');
+      } else {
+        console.log(`[venta] paga desde ${venta.ESPERADA}`);
+      }
+    } catch (e) {
+      console.error(`[venta] no se pudo comprobar: ${e.message}`);
     }
 
     if (process.env.BARRIDO === '1') {

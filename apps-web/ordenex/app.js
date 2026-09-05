@@ -142,10 +142,11 @@ const ONX = (() => {
     VPORTA: () => typeof VPORTA === 'undefined' ? null : VPORTA,
     VFIAT: () => typeof VFIAT === 'undefined' ? null : VFIAT,
     VCOMPRA: () => typeof VCOMPRA === 'undefined' ? null : VCOMPRA,
+    VVENTA: () => typeof VVENTA === 'undefined' ? null : VVENTA,
   };
   // Quién es dueño de cada vista: a su módulo van alPintar() y apagar().
   const DUENO = { mercados: 'VMERCADO', mercado: 'VMERCADO', portafolio: 'VPORTA', fiat: 'VFIAT',
-                  comprar: 'VCOMPRA', actividad: 'VPORTA' };
+                  comprar: 'VCOMPRA', vender: 'VVENTA', actividad: 'VPORTA' };
 
   const stub = cual => `
     <div class="cab"><div><h2>${esc(t('nav.' + (cual === 'mercado' ? 'mercados' : cual)))}</h2></div></div>
@@ -157,6 +158,7 @@ const ONX = (() => {
     portafolio: () => modulos.VPORTA()?.vista?.() ?? stub('portafolio'),
     fiat: () => modulos.VFIAT()?.vista?.() ?? stub('fiat'),
     comprar: () => modulos.VCOMPRA()?.vista?.() ?? stub('comprar'),
+    vender: () => modulos.VVENTA()?.vista?.() ?? stub('vender'),
     actividad: () => modulos.VPORTA()?.vistaActividad?.() ?? stub('actividad'),
   };
 
