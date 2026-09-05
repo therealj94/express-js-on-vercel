@@ -163,22 +163,46 @@ titulo('la guarda de las citas: no se cita una herramienta que no corrió');
   const nudge = pedidos.at(-2).messages.at(-1);
   decir(nudge.role === 'user' && /\[sistema\]/.test(nudge.content) && /buscar_web/.test(nudge.content), 'la devolución nombra la herramienta citada', nudge.content.slice(0, 90));
 
-  // Reincide: se marca, no se esconde.
+  // Reincide: se marca, no se esconde. Y con acentos graves, que es como el
+  // modelo suele escribir el nombre.
   guion = [
-    { texto: 'Cerró a 4,400 (según leer_pagina).' },
-    { texto: 'Insisto: 4,400 (según leer_pagina).' },
+    { texto: 'Cerró a 4,400 (según `leer_pagina`).' },
+    { texto: 'Insisto: 4,400 (según `leer_pagina`).' },
   ];
   const r2 = await cerebro.pensar({ miembro: JOSE, junta: JUNTA, texto: 'y hoy?' });
   decir(/tomá ese dato con cuidado/.test(r2.texto) && /leer_pagina/.test(r2.texto), 'si insiste sin llamarla, la cita queda marcada para la persona', r2.texto.slice(-90));
 
   // Y una cita LEGÍTIMA no se toca.
   guion = [
-    { texto: '', llamadas: [{ name: 'estado_vivo', arguments: {} }] },
-    { texto: 'Ordenex no contesta (según estado_vivo).' },
+    { texto: '', llamadas: [{ name: 'buscar_web', arguments: { consulta: 'oro' } }] },
+    { texto: 'Cerró a 4,410 (según buscar_web).' },
   ];
-  const antes = pedidos.length;
-  const r3 = await cerebro.pensar({ miembro: JOSE, junta: JUNTA, texto: 'estado' });
-  decir(pedidos.length - antes === 2 && /según estado_vivo/.test(r3.texto), 'una cita de una herramienta que SÍ corrió pasa sin devolución', `${pedidos.length - antes} pedidos`);
+  let antes = pedidos.length;
+  const r3 = await cerebro.pensar({ miembro: JOSE, junta: JUNTA, texto: 'oro' });
+  decir(pedidos.length - antes === 2 && /según buscar_web/.test(r3.texto), 'una cita de una herramienta que SÍ corrió pasa sin devolución', `${pedidos.length - antes} pedidos`);
+  // El estado vivo y el saber VAN en el prompt: citarlos sin llamarlos es correcto.
+  guion = [{ texto: 'Ordenex no contesta (según `estado_vivo`).' }];
+  antes = pedidos.length;
+  const r4 = await cerebro.pensar({ miembro: JOSE, junta: JUNTA, texto: 'estado' });
+  decir(pedidos.length - antes === 1 && /estado_vivo/.test(r4.texto) && !/cuidado/.test(r4.texto), 'citar el estado vivo sin llamarlo es legítimo: va en el prompt', `${pedidos.length - antes} pedido`);
+  // Lo repetido palabra por palabra se quita; lo parecido se deja.
+  decir(nodo._adentro.sinRepetidos('Hola.\n\nEl oro cerró a 4,410.\n\nEl oro cerró a 4,410.\n\nEl oro cerró a 4,410 según Investing.') === 'Hola.\n\nEl oro cerró a 4,410.\n\nEl oro cerró a 4,410 según Investing.',
+    'un párrafo repetido igual se quita una vez; uno parecido se deja');
+}
+
+titulo('el presupuesto en FICHAS: el saber recibe lo que sobra, y nunca se pasa');
+{
+  // Una junta con muchas memorias largas: la base crece y el saber tiene que
+  // achicarse solo. Antes el tope del saber era fijo y la suma se pasaba del
+  // contexto, y Ollama recortaba por el principio: la identidad y las reglas.
+  for (let i = 0; i < 40; i++) await memoria.recordar({ texto: `Memoria larga número ${i}: ` + 'dato '.repeat(90), alcance: 'junta', miembro: JOSE.correo, dichoPor: 'José' });
+  guion = [{ texto: 'ok' }];
+  await cerebro.pensar({ miembro: JOSE, junta: JUNTA, texto: '¿qué es el gramin?' });
+  const p = pedidos.at(-1);
+  const total = p.messages.reduce((a, m) => a + nodo._adentro.fichas(m.content || ''), 0);
+  decir(total <= nodo._adentro.PRESUPUESTO_FICHAS, `el pedido entero cabe en ${nodo._adentro.PRESUPUESTO_FICHAS} fichas (estimadas a 2,4 letras)`, `${total} fichas`);
+  decir(/Sos ULTRON FP/.test(p.messages[0].content) && /NUNCA «respaldados»/.test(p.messages[0].content), 'y la identidad y las reglas siguen al principio, enteras');
+  decir(nodo._adentro.PRESUPUESTO_FICHAS + 1500 < nodo._adentro.CTX, 'con sitio para la respuesta debajo del contexto de AU-RA', `${nodo._adentro.PRESUPUESTO_FICHAS} + 1500 < ${nodo._adentro.CTX}`);
 }
 
 titulo('el título, sin herramientas y corto');

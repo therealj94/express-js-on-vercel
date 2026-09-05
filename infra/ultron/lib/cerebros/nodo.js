@@ -35,13 +35,28 @@ const MODELO = process.env.ULTRON_NODO_MODELO || 'qwen2.5:14b';
 const MAX_VUELTAS = 6;
 const PLAZO_MS = 170_000;
 
-// El presupuesto, en letras. 12 288 fichas menos ~1 500 de salida son ~10 500
-// de entrada; a 3 letras por ficha (medido con este modelo en español) son
-// 31 000 letras. Se deja margen.
-const PRESUPUESTO = Number(process.env.ULTRON_NODO_PRESUPUESTO || 28_000);
-const TOPE_HILO = 6_000;          // el hilo anterior, como mucho
-const TOPE_TURNO = 1_400;         // cada turno viejo, como mucho
-const TOPE_RESULTADO = 3_200;     // cada resultado de herramienta
+/* EL PRESUPUESTO, EN FICHAS Y NO EN LETRAS.
+   5-sep, segunda prueba real: una sola llamada midió 13 421 fichas de entrada
+   con un contexto de 12 288. Cuando el pedido no cabe, Ollama recorta POR EL
+   PRINCIPIO —o sea la identidad y las reglas— y no avisa. El presupuesto en
+   letras se quedaba corto porque las secciones del saber traen tablas, JSON y
+   direcciones, que salen a menos de dos letras por ficha, no a tres.
+
+   Así que: se cuenta en fichas con una estimación CONSERVADORA (2,4 letras
+   por ficha), se mide primero la base (identidad, voz, memoria, pendientes,
+   estado vivo) y el saber recibe lo que sobra, no un tope fijo. Y cada
+   llamada real devuelve cuántas fichas evaluó: si se acerca al techo, se
+   escribe en el registro con todas las letras. */
+const CTX = Number(process.env.ULTRON_NODO_CTX || 12_288);
+const RESERVA_SALIDA = 1_500;
+const PRESUPUESTO_FICHAS = Number(process.env.ULTRON_NODO_PRESUPUESTO_FICHAS || (CTX - RESERVA_SALIDA - 600));   // 10 188
+const LETRAS_POR_FICHA = 2.4;
+const fichas = (t) => Math.ceil(String(t || '').length / LETRAS_POR_FICHA);
+const PRESUPUESTO = Math.floor(PRESUPUESTO_FICHAS * LETRAS_POR_FICHA);   // en letras, para el hilo y los resultados
+const TOPE_HILO = 5_000;          // el hilo anterior, como mucho
+const TOPE_TURNO = 1_200;         // cada turno viejo, como mucho
+const TOPE_RESULTADO = 2_800;     // cada resultado de herramienta
+const SABER_MINIMO = 2_500;       // por debajo de esto no vale la pena traer secciones
 
 function encendido() { return !!(URL_NODO && SECRETO); }
 
@@ -136,6 +151,20 @@ function armarMensajes({ system, previa, texto }) {
   return mensajes;
 }
 
+/* Un modelo chico a veces cierra diciendo lo mismo dos veces con otras
+   palabras, o exactamente igual. Lo exactamente igual se quita; lo parecido
+   se deja, que no es asunto de una regex decidir qué es redundante. */
+function sinRepetidos(texto) {
+  const vistos = new Set(); const salida = [];
+  for (const p of String(texto).split(/\n{2,}/)) {
+    const clave = p.trim().toLowerCase().replace(/[`*_"'«».,:;!?]/g, '').replace(/\s+/g, ' ');
+    if (clave && vistos.has(clave)) continue;
+    if (clave) vistos.add(clave);
+    salida.push(p);
+  }
+  return salida.join('\n\n');
+}
+
 function largoDe(mensajes) { return mensajes.reduce((a, m) => a + String(m.content || '').length + JSON.stringify(m.tool_calls || '').length, 0); }
 
 // ── Pensar ──────────────────────────────────────────────────────────────────
@@ -149,14 +178,19 @@ async function pensar({ miembro, junta, texto, conversacionId, emitir = () => {}
     vivo.leerConCache(),
     memoria.pendientes({ limite: 25 }),
   ]);
-  // Menos saber que con Claude, y a propósito: cabe lo que cabe, y ocho
-  // secciones bien elegidas valen más que doce recortadas por el final.
-  const secciones = saber.buscar(texto, { maximo: 8, maxBytes: 11_000 });
-  ctx.fuentes.push(...secciones.map((s) => ({ id: s.id, titulo: s.titulo, fuente: s.fuente })));
-  const bloques = sistema({ miembro, memorias, estadoVivo, secciones, vozCasa: saber.vozDeLaCasa().slice(0, 6), pendientes: abiertos, chico: true });
-  const system = bloques.map((b) => b.text).join('\n\n');
-
+  // Primero la base sin saber, para saber cuánto queda. El hilo anterior se
+  // reserva aparte; el saber recibe lo que sobra, y si sobra poco, poco.
   const previa = conversacionId ? await memoria.conversacion(conversacionId, miembro.correo) : null;
+  const voz = saber.vozDeLaCasa().slice(0, 6);
+  const armar = (secciones) => sistema({ miembro, memorias, estadoVivo, secciones, vozCasa: voz, pendientes: abiertos, chico: true }).map((b) => b.text).join('\n\n');
+  const base = armar([]);
+  const hiloEstimado = Math.min(TOPE_HILO, (previa?.turnos || []).slice(-8).reduce((a, t) => a + Math.min(TOPE_TURNO, String(t.texto || '').length), 0));
+  const sobra = PRESUPUESTO_FICHAS - fichas(base) - fichas(hiloEstimado ? 'x'.repeat(hiloEstimado) : '') - fichas(texto);
+  const paraSaber = Math.max(0, Math.floor(sobra * LETRAS_POR_FICHA));
+  const secciones = paraSaber >= SABER_MINIMO ? saber.buscar(texto, { maximo: 8, maxBytes: paraSaber }) : [];
+  if (paraSaber < SABER_MINIMO) console.warn(`[nodo] sin sitio para el saber: la base ya ocupa ${fichas(base)} fichas de ${PRESUPUESTO_FICHAS}`);
+  ctx.fuentes.push(...secciones.map((s) => ({ id: s.id, titulo: s.titulo, fuente: s.fuente })));
+  const system = armar(secciones);
   const mensajes = armarMensajes({ system, previa, texto });
 
   let textoFinal = '';
@@ -170,6 +204,7 @@ async function pensar({ miembro, junta, texto, conversacionId, emitir = () => {}
     const r = await pedir({ model: MODELO, messages: mensajes, tools: herramientas.paraOllama(), stream: true, options: opciones },
       { alTrozo: (t) => { dicho += t; emitir('texto', { t }); } });
     uso.entrada += r.uso.entrada; uso.salida += r.uso.salida;
+    if (r.uso.entrada > CTX * 0.92) console.warn(`[nodo] AVISO: una llamada evaluó ${r.uso.entrada} fichas con un contexto de ${CTX}: el principio del prompt pudo quedar fuera`);
 
     const enTexto = llamadasEnTexto(r.content);
     const llamadas = [...r.tool_calls, ...enTexto.llamadas];
@@ -200,7 +235,10 @@ async function pensar({ miembro, junta, texto, conversacionId, emitir = () => {}
      herramienta que no corrió, y si lo hizo se le devuelve UNA vez para que
      la llame o quite la cita. Si reincide, la cita se marca en el texto para
      que la persona lo vea. */
-  const citadas = [...new Set([...textoFinal.matchAll(/seg[uú]n\s+(buscar_web|leer_pagina|estado_vivo|buscar_saber)/gi)].map((m) => m[1].toLowerCase()))];
+  // Solo las de internet: el estado vivo y el saber SÍ van en el prompt, así
+  // que citarlos sin llamarlos es correcto. Una búsqueda, no.
+  const CITA = /seg[uú]n\s+[`«"']?(buscar_web|leer_pagina)[`»"']?/gi;
+  const citadas = [...new Set([...textoFinal.matchAll(CITA)].map((m) => m[1].toLowerCase()))];
   const corridas = new Set(usadas.map((h) => h.nombre));
   const falsas = citadas.filter((c) => !corridas.has(c));
   if (falsas.length) {
@@ -229,9 +267,10 @@ async function pensar({ miembro, junta, texto, conversacionId, emitir = () => {}
     } else dicho = enTexto.limpio;
     if (dicho.trim()) { textoFinal = dicho.trim(); emitir('reemplazo', { texto: textoFinal }); }
     // Si aun así cita lo que no corrió, se marca: la persona tiene que verlo.
-    const todavia = [...textoFinal.matchAll(/seg[uú]n\s+(buscar_web|leer_pagina|estado_vivo|buscar_saber)/gi)].map((m) => m[1].toLowerCase()).filter((c) => !new Set(usadas.map((h) => h.nombre)).has(c));
+    const todavia = [...textoFinal.matchAll(CITA)].map((m) => m[1].toLowerCase()).filter((c) => !new Set(usadas.map((h) => h.nombre)).has(c));
     if (todavia.length) textoFinal += `\n\n_(ULTRON citó ${todavia.join(', ')} sin haberla usado en este turno: tomá ese dato con cuidado.)_`;
   }
+  textoFinal = sinRepetidos(textoFinal);
   if (!textoFinal.trim()) textoFinal = 'Miré lo que pediste pero no me salió una respuesta con palabras. Preguntámelo de otra forma.';
 
   const vistas = new Set();
@@ -271,4 +310,4 @@ async function salud() {
   });
 }
 
-module.exports = { pensar, titular, salud, encendido, MODELO, _adentro: { pedir, llamadasEnTexto, armarMensajes, PRESUPUESTO } };
+module.exports = { pensar, titular, salud, encendido, MODELO, _adentro: { pedir, llamadasEnTexto, armarMensajes, sinRepetidos, fichas, PRESUPUESTO, PRESUPUESTO_FICHAS, CTX } };
