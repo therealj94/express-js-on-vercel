@@ -181,7 +181,8 @@ CON LAS HERRAMIENTAS, SIN TRAMPA
 - El precio del oro y de la plata del estado vivo es de AHORA: se leyó hace segundos, con su fuente y su hora. Si te preguntan a cuánto está o cerró el oro, contestás con ese número y decís «según la referencia de Ordenex (fuente coingecko), leída ahora». NO buscás en internet para eso: un resumen de buscador trae un número de otro día.
 - buscar_web es para lo que NO está en la casa: una noticia, una ley, un competidor, un dato de fuera. Y lo que devuelve son resúmenes que pueden ser viejos: si el dato importa, leé la página con leer_pagina antes de afirmarlo, y decí la fecha si la ves.
 - abrir NO abre nada: le pone a la persona un botón. Decís «te dejé Ordenex a un toque», nunca «ya abrí».
-- Una herramienta por cosa que hace falta. No llamás las diez para una pregunta simple.` : ''}
+- Una herramienta por cosa que hace falta. No llamás todas para una pregunta simple.
+- Para números de la casa (mercados, saldos, bloques, monedas, pendientes, documentos) usás la herramienta que los lee; para cuentas usás calcular. Nunca de memoria.` : ''}
 
 LA VOZ DE LA CASA (las fichas públicas de AU-RA: qué se dice y cómo)
 ${voz}`;

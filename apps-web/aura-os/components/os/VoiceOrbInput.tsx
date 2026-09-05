@@ -8,6 +8,10 @@
 // el texto que va llegando a la burbuja Y al locutor (que lo dice frase por
 // frase mientras el modelo sigue escribiendo), pone el modo del ser en cada
 // paso, y si se está conversando vuelve a escuchar al terminar de hablar.
+//
+// AURA HABLA SIEMPRE —se escriba o se hable— salvo que la persona la calle
+// con el botón de voz. Y el audio se despierta en el primer toque: un
+// navegador no deja sonar nada sin gesto, y ese era el motivo del silencio.
 import { useEffect, useRef, useState } from 'react';
 import { api, pensar } from '@/lib/api';
 import { useOs } from '@/lib/os-store';
@@ -21,6 +25,7 @@ let vaciasSeguidas = 0;
 let audioPermitido = false;
 let saludoDicho = false;
 let saludoPendiente: string[] = [];
+let iniciado = false;
 
 function elLocutor(): Locutor {
   if (locutor) return locutor;
@@ -28,24 +33,28 @@ function elLocutor(): Locutor {
   locutor = new Locutor({
     conElevenLabs: !!S().yo?.voz,
     alNivel: (v) => S().setVoiceLevel(v),
-    alEmpezar: () => { if (S().mode !== 'think') S().setMode('speak'); else S().setMode('speak'); },
+    alEmpezar: () => S().setMode('speak'),
     alTerminar: () => {
       const s = S();
       if (s.mode === 'speak') s.setMode('idle');
       if (s.conversando) setTimeout(() => { if (useOs.getState().conversando) void os.escucharUnaVez(); }, 350);
     },
   });
+  locutor.vozId = S().vozId;
+  useOs.subscribe((s) => { if (locutor) locutor.vozId = s.vozId; });
   return locutor;
 }
 
 export const os = {
   /** Se llama una vez: sesión, datos vivos, saludo. */
   async iniciar() {
+    if (iniciado) return; iniciado = true;
     const S = useOs.getState;
     try { S().setYo(await api.yo()); S().setNecesitaEntrar(false); }
-    catch (e) { if ((e as { status?: number }).status === 401) { S().setNecesitaEntrar(true); return; } S().avisar('No pude hablar con el servidor.'); return; }
+    catch (e) { iniciado = false; if ((e as { status?: number }).status === 401) { S().setNecesitaEntrar(true); return; } S().avisar('No pude hablar con el servidor.'); return; }
     await os.refrescar();
     setInterval(() => { void os.refrescar(); }, 30_000);
+    void api.voces().then((v) => S().setVoces(v.voces)).catch(() => {});
     // el boot dura 2,8 s: la primera línea llega cuando los ojos ya se encendieron
     setTimeout(() => {
       S().setBootComplete();
@@ -61,12 +70,13 @@ export const os = {
     if (v.status === 'fulfilled') S().setVivo(v.value);
     if (p.status === 'fulfilled') S().setPendientes(p.value);
   },
-  /** El navegador no deja sonar nada sin un toque: al primero, se dice el saludo. */
+  /** El navegador no deja sonar nada sin un toque: al primero se despierta el audio y se dice el saludo. */
   permitirAudio() {
+    elLocutor().despertar();
     if (audioPermitido) return; audioPermitido = true; os.decirSaludoSiSePuede();
   },
   decirSaludoSiSePuede() {
-    if (!audioPermitido || saludoDicho || !saludoPendiente.length) return;
+    if (!audioPermitido || saludoDicho || !saludoPendiente.length || useOs.getState().silencio) return;
     saludoDicho = true;
     const L = elLocutor(); for (const f of saludoPendiente) L.decir(f); saludoPendiente = [];
   },
@@ -79,23 +89,25 @@ export const os = {
     s.sendUser(t);
     const burbuja = s.auraReply('', { vivo: true });
     let acumulado = ''; const herr: string[] = []; let hablado = false;
+    const conVoz = () => !S().silencio;
     await pensar(t, { modo, conversacionId: S().conversacionId, alias: 'Aura' }, {
       onInicio: (id) => S().setConversacionId(id),
       onTexto: (trozo) => {
         acumulado += trozo; S().patchAura(burbuja.id, acumulado, true, herr);
-        if (modo === 'voz' || S().conversando) { L.alimentar(trozo); hablado = true; }
+        if (conVoz()) { L.alimentar(trozo); hablado = true; }
       },
       onReemplazo: (texto2) => { acumulado = texto2; S().patchAura(burbuja.id, acumulado, true, herr); },
       onHerramienta: (n) => { herr.push(n); S().patchAura(burbuja.id, acumulado, true, herr); },
       onFin: (r) => {
         const final = r.texto || acumulado; S().patchAura(burbuja.id, final, false, herr);
         if (hablado) L.cerrar(); else if (S().mode === 'think') S().setMode('idle');
-        if (r.herramientas?.some((h) => /pendiente|recordar/.test(h.nombre))) void os.refrescar();
+        if (r.herramientas?.some((h) => /pendiente|recordar|documento/.test(h.nombre))) void os.refrescar();
         for (const a of r.acciones || []) if (a.tipo === 'abrir' && a.url) S().auraReply(`Te dejé ${a.nombre} a un toque: ${a.url}`);
       },
       onError: (mensaje, codigo) => {
         S().patchAura(burbuja.id, mensaje, false);
         if (S().mode === 'think') S().setMode('idle');
+        if (conVoz()) { L.decir(mensaje); }
         if (codigo === 'SIN_SESION') S().setNecesitaEntrar(true);
       },
     });
@@ -118,9 +130,20 @@ export const os = {
   conversar(encender: boolean) {
     const S = useOs.getState;
     S().setConversando(encender); vaciasSeguidas = 0;
-    if (encender) void os.escucharUnaVez(); else elLocutor().callar();
+    if (encender) { if (S().silencio) S().setSilencio(false); void os.escucharUnaVez(); } else elLocutor().callar();
   },
   callar() { elLocutor().callar(); const s = useOs.getState(); if (s.mode === 'speak') s.setMode('idle'); },
+  /** Apagar o encender la voz de Aura. Al encenderla, dice una línea para que se oiga. */
+  silenciar(si: boolean) {
+    const S = useOs.getState; S().setSilencio(si);
+    if (si) os.callar(); else { os.permitirAudio(); elLocutor().decir('Acá estoy.'); }
+  },
+  /** Probar una voz del catálogo: la elige y dice una línea. */
+  probarVoz(id: string | null) {
+    const S = useOs.getState; S().setVozId(id); if (S().silencio) S().setSilencio(false);
+    os.permitirAudio(); const L = elLocutor(); L.callar(); L.vozId = id;
+    L.decir(`Hola ${S().yo?.miembro.nombre.split(' ')[0] || ''}. Soy Aura, con esta voz. ¿Seguimos así?`);
+  },
 };
 
 /* ── el arco ────────────────────────────────────────────────────────────── */
@@ -136,8 +159,8 @@ export default function VoiceOrbInput() {
 
   useEffect(() => {
     const permitir = () => os.permitirAudio();
-    window.addEventListener('pointerdown', permitir, { once: true });
-    window.addEventListener('keydown', permitir, { once: true });
+    window.addEventListener('pointerdown', permitir);
+    window.addEventListener('keydown', permitir);
     return () => { window.removeEventListener('pointerdown', permitir); window.removeEventListener('keydown', permitir); };
   }, []);
 

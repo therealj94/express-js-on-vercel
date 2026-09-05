@@ -51,10 +51,24 @@ export class Locutor {
   private alEmpezar: () => void;
   private conElevenLabs: boolean;
   private respirando: number | null = null;
+  /** La voz elegida por la persona; null = la de la casa. */
+  vozId: string | null = null;
 
   constructor({ alNivel, alEmpezar, alTerminar, conElevenLabs }: { alNivel: Nivel; alEmpezar: () => void; alTerminar: () => void; conElevenLabs: boolean }) {
     this.alNivel = alNivel; this.alEmpezar = alEmpezar; this.alTerminar = alTerminar; this.conElevenLabs = conElevenLabs;
   }
+
+  /** Se llama DENTRO de un toque o una tecla: el navegador no deja sonar un
+   *  AudioContext creado fuera de un gesto —nace suspendido y todo lo que se
+   *  conecte a él es silencio—. Este es el motivo más común de «no escucho
+   *  ninguna voz», y por eso el OS llama esto en el primer toque. */
+  despertar() {
+    try {
+      this.ctx = this.ctx || new (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)();
+      if (this.ctx.state === 'suspended') void this.ctx.resume();
+    } catch { /* sin AudioContext: la voz sale por <audio> igual */ }
+  }
+  get despierto() { return !!this.ctx && this.ctx.state === 'running'; }
 
   /** Texto que va llegando del modelo (markdown). Se dice lo que ya es frase. */
   alimentar(trozo: string) {
@@ -76,7 +90,7 @@ export class Locutor {
     if (this.conElevenLabs) {
       // Se pide YA y se encola la promesa: el audio se fabrica mientras suena
       // la frase anterior.
-      this.cola.push(pedirVoz(limpio, true).catch(() => null));
+      this.cola.push(pedirVoz(limpio, true, this.vozId).catch(() => null));
     } else {
       this.cola.push(Promise.resolve(new Blob([limpio], { type: 'text/plain' })));
     }
@@ -109,10 +123,12 @@ export class Locutor {
       const url = URL.createObjectURL(blob);
       const a = new Audio(url); this.audio = a;
       try {
-        this.ctx = this.ctx || new (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)();
-        const src = this.ctx.createMediaElementSource(a);
-        this.analizador = this.ctx.createAnalyser(); this.analizador.fftSize = 256;
-        src.connect(this.analizador); this.analizador.connect(this.ctx.destination);
+        this.despertar();
+        if (this.ctx && this.ctx.state !== 'running') throw new Error('contexto dormido');   // que suene por <audio> a secas
+        const ctx = this.ctx!;
+        const src = ctx.createMediaElementSource(a);
+        this.analizador = ctx.createAnalyser(); this.analizador.fftSize = 256;
+        src.connect(this.analizador); this.analizador.connect(ctx.destination);
         const datos = new Uint8Array(this.analizador.frequencyBinCount);
         const medir = () => {
           if (a.paused || a.ended || gen !== this.generacion) return;

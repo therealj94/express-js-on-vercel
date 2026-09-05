@@ -4,7 +4,7 @@
 // `mode` es lo que la figura ACTÚA: boot, idle, listen, think, speak, focus.
 // No es un estado de UI, es el estado del ser: cambiar el modo cambia la cara.
 import { create } from 'zustand';
-import type { EstadoVivo, Pendiente, Yo } from './api';
+import type { EstadoVivo, Pendiente, VozCatalogo, Yo } from './api';
 
 export type Mode = 'boot' | 'idle' | 'listen' | 'think' | 'speak' | 'focus';
 export type ModuleId = 'gold' | 'wallet' | 'ordenex' | 'chain' | 'aucorp' | 'genesis' | 'pendientes';
@@ -34,6 +34,9 @@ export interface OsState {
   lod: 0 | 1 | 2;            // 0 pleno · 1 menos partículas · 2 mínimo
   sinWebGL: boolean;
   aviso: string | null;
+  silencio: boolean;         // la persona apagó la voz
+  vozId: string | null;      // la voz elegida (id de ElevenLabs); null = la de la casa
+  voces: VozCatalogo[];
 
   boot: () => void;
   setBootComplete: () => void;
@@ -54,6 +57,9 @@ export interface OsState {
   setLod: (l: 0 | 1 | 2) => void;
   setSinWebGL: (b: boolean) => void;
   avisar: (t: string | null) => void;
+  setSilencio: (b: boolean) => void;
+  setVozId: (id: string | null) => void;
+  setVoces: (v: VozCatalogo[]) => void;
 }
 
 let contador = 0;
@@ -75,6 +81,9 @@ export const useOs = create<OsState>((set, get) => ({
   lod: 0,
   sinWebGL: false,
   aviso: null,
+  silencio: leerLocal('aura.silencio') === '1',
+  vozId: leerLocal('aura.voz'),
+  voces: [],
 
   boot: () => set({ mode: 'boot', bootComplete: false }),
   setBootComplete: () => set({ bootComplete: true, mode: 'idle' }),
@@ -104,7 +113,15 @@ export const useOs = create<OsState>((set, get) => ({
   setLod: (lod) => set({ lod }),
   setSinWebGL: (sinWebGL) => set({ sinWebGL }),
   avisar: (aviso) => set({ aviso }),
+  setSilencio: (silencio) => { guardarLocal('aura.silencio', silencio ? '1' : '0'); set({ silencio }); },
+  setVozId: (vozId) => { guardarLocal('aura.voz', vozId || ''); set({ vozId }); },
+  setVoces: (voces) => set({ voces }),
 }));
+
+// La voz elegida y el silencio se recuerdan en este navegador. Puede no haber
+// almacenamiento (ventana privada, captura): se sigue igual, sin recordar.
+function leerLocal(k: string): string | null { try { return typeof localStorage !== 'undefined' ? localStorage.getItem(k) || null : null; } catch { return null; } }
+function guardarLocal(k: string, v: string) { try { localStorage.setItem(k, v); } catch { /* sin almacenamiento */ } }
 
 /** Los tres últimos visibles; los demás ya se hicieron partículas. */
 export const visibles = (messages: Mensaje[]) => messages.slice(-3);

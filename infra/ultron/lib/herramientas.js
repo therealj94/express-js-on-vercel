@@ -88,6 +88,62 @@ const DEFINICIONES = [
     description: 'Escribe y guarda un documento completo en markdown: memo, acta, análisis, carta o plan. Queda en la biblioteca.',
     input_schema: { type: 'object', properties: { titulo: { type: 'string' }, tipo: { type: 'string', enum: ['memo', 'acta', 'analisis', 'carta', 'plan', 'otro'] }, markdown: { type: 'string' }, para: { type: 'string', enum: ['junta', 'fuera'] } }, required: ['titulo', 'markdown'] },
   },
+  // ── Las manos sobre el ecosistema: leen las APIs de verdad de cada casa ───
+  {
+    name: 'ordenex_mercado',
+    description: 'Lee un mercado de Ordenex ahora mismo: libro (compras y ventas), últimos tratos y la referencia del oro. Mercados: AUKA-ORIGEN, ONDK-ORIGEN, USDT-ORIGEN (o los que devuelva estado_vivo).',
+    input_schema: { type: 'object', properties: { mercado: { type: 'string', description: 'Par, p. ej. AUKA-ORIGEN' } }, required: ['mercado'] },
+  },
+  {
+    name: 'cadena_direccion',
+    description: 'Consulta una dirección en la cadena 8532 (OrdenScan): saldo, tokens (ONDK, AUKA, ORIGEN…) y últimas transacciones.',
+    input_schema: { type: 'object', properties: { direccion: { type: 'string', description: '0x… de 42 caracteres' } }, required: ['direccion'] },
+  },
+  {
+    name: 'cadena_altura',
+    description: 'La altura actual de las cadenas de la casa: bloque de la 8532 (OrdenScan) y de la 5550 (Ordenex).',
+    input_schema: { type: 'object', properties: {} },
+  },
+  {
+    name: 'aucorp_monedas',
+    description: 'Las monedas que maneja AuCorp y si las tasas están al día. AuCorp es una FinTech con cuentas en moneda local, NO un banco.',
+    input_schema: { type: 'object', properties: {} },
+  },
+  {
+    name: 'genesis_salud',
+    description: 'Cómo está Genesis ID (identidad): estado del servicio y qué le falta para el cumplimiento.',
+    input_schema: { type: 'object', properties: {} },
+  },
+  {
+    name: 'nodo_salud',
+    description: 'Cómo está nuestro nodo de inteligencia (el motor donde pensás): modelo cargado, contexto, pedidos atendidos y rechazados.',
+    input_schema: { type: 'object', properties: {} },
+  },
+  {
+    name: 'listar_documentos',
+    description: 'Lista los documentos de la biblioteca de la junta (memos, actas, análisis) con su id, para leerlos o abrirlos.',
+    input_schema: { type: 'object', properties: {} },
+  },
+  {
+    name: 'leer_documento',
+    description: 'Lee entero un documento de la biblioteca por su id (de listar_documentos).',
+    input_schema: { type: 'object', properties: { id: { type: 'string' } }, required: ['id'] },
+  },
+  {
+    name: 'listar_pendientes',
+    description: 'Lista los pendientes abiertos de la junta con su id, a quién le tocan y desde cuándo.',
+    input_schema: { type: 'object', properties: { conHechos: { type: 'boolean', description: 'true para ver también los ya hechos' } } },
+  },
+  {
+    name: 'calcular',
+    description: 'Calcula una expresión aritmética exacta (+ - * / % ^ y paréntesis). Usala para cualquier cuenta: no hagas aritmética de cabeza.',
+    input_schema: { type: 'object', properties: { expresion: { type: 'string', description: 'p. ej. 4467.53 / 31.1035 / 55' } }, required: ['expresion'] },
+  },
+  {
+    name: 'gasto',
+    description: 'Lo gastado en pensar hoy y en el mes: turnos, fichas y dólares.',
+    input_schema: { type: 'object', properties: {} },
+  },
   {
     name: 'proponer_envio',
     description: 'Prepara un WhatsApp o un correo para un miembro de la junta. NO lo manda: la persona lo confirma en el panel.',
@@ -251,6 +307,87 @@ async function correr(nombre, entrada, ctx) {
         ctx.envios.push(p);
         return `Envío preparado (${p.id}) por ${p.canal} a ${quien.nombre}. NO se ha mandado: la persona lo confirma en el panel.`;
       }
+      case 'ordenex_mercado': {
+        const par = String(entrada.mercado || '').trim().toUpperCase().replace(/[^A-Z0-9-]/g, '');
+        if (!par) return 'Falta el mercado.';
+        const base = vivo.CASAS.ordenex.api;
+        const [mercados, libro, tratos, ref] = await Promise.all([
+          leerJson(base + '/mercados'), leerJson(`${base}/mercados/${par}/libro`), leerJson(`${base}/mercados/${par}/tratos`), leerJson(`${base}/mercados/${par}/referencia`),
+        ]);
+        const m = Array.isArray(mercados) ? mercados.find((x) => x.mercado === par) : null;
+        if (!m) return `Ordenex no tiene el mercado ${par}. Los que hay: ${Array.isArray(mercados) ? mercados.map((x) => x.mercado).join(', ') : 'no se pudieron leer'}.`;
+        const l = [`Mercado ${par} (Ordenex, leído ahora):`];
+        l.push(`- último trato: ${m.ultimo ? ori(m.ultimo) : 'ninguno'} · volumen 24 h: ${ori(m.vol24h || '0')} · mejor compra: ${m.mejorCompra ? ori(m.mejorCompra) : '—'} · mejor venta: ${m.mejorVenta ? ori(m.mejorVenta) : '—'}`);
+        if (libro && !libro.error) {
+          l.push(`- libro: ${(libro.compras || []).length} compras, ${(libro.ventas || []).length} ventas`);
+          for (const [p, c] of (libro.compras || []).slice(0, 5)) l.push(`  · compra ${ori(p)} × ${ori(c)}`);
+          for (const [p, c] of (libro.ventas || []).slice(0, 5)) l.push(`  · venta ${ori(p)} × ${ori(c)}`);
+        }
+        if (Array.isArray(tratos)) l.push(`- tratos recientes: ${tratos.length}${tratos.slice(0, 5).map((t) => `\n  · ${t.precio ? ori(t.precio) : '?'} × ${t.cantidad ? ori(t.cantidad) : '?'} ${t.en ? new Date(t.en).toISOString() : ''}`).join('')}`);
+        if (ref && !ref.error) { const v = Array.isArray(ref.velas) && ref.velas.length ? ref.velas[ref.velas.length - 1] : null; l.push(`- referencia: ${ref.rotulo || ''} (${ref.fuente || '?'})${v ? ` · último cierre ${v[4]} ${ref.unidad || ''}` : ''}`); }
+        l.push('Precios en ORIGEN; las cantidades en unidades del activo. Los 18 decimales ya están convertidos.');
+        return l.join('\n');
+      }
+      case 'cadena_direccion': {
+        const d = String(entrada.direccion || '').trim();
+        if (!/^0x[0-9a-fA-F]{40}$/.test(d)) return 'Dirección inválida: tiene que ser 0x seguido de 40 caracteres hexadecimales.';
+        const j = await leerJson(`${vivo.CASAS.ordenscan.api}/address/${d}`);
+        if (!j || j.error) return `OrdenScan no contestó por esa dirección${j?.error ? ': ' + j.error : ''}.`;
+        const l = [`Dirección ${d} en la cadena 8532 (OrdenScan):`, `- saldo nativo: ${ori(j.balance || '0')}`];
+        for (const [sym, t] of Object.entries(j.tokensBalance || {})) l.push(`- ${sym} (${t.name || sym}): ${ori(t.balance || '0')}${t.contractAddress ? ' · contrato ' + t.contractAddress : ''}`);
+        const tx = Array.isArray(j.transactions) ? j.transactions : [];
+        l.push(`- transacciones: ${tx.length}`);
+        for (const t of tx.slice(0, 5)) l.push(`  · ${t.hash || t.transactionHash || '?'} ${t.from ? 'de ' + t.from : ''} ${t.to ? 'a ' + t.to : ''} ${t.value ? ori(t.value) : ''}`.trim());
+        return l.join('\n');
+      }
+      case 'cadena_altura': {
+        const [scan, v] = await Promise.all([leerJson(`${vivo.CASAS.ordenscan.api}/block/totalBlock`), vivo.leerConCache()]);
+        return `Cadena 8532 (OrdenScan): bloque ${scan?.blockTotal ?? 'no leído'}. Cadena 5550 (Ordenex): bloque ${v?.ordenex?.bloque5550 ?? 'no leído'}. Leído ahora.`;
+      }
+      case 'aucorp_monedas': {
+        const base = vivo.CASAS.aucorp.api;
+        const [salud, mon] = await Promise.all([leerJson(base + '/salud'), leerJson(base + '/monedas')]);
+        if (!salud) return 'AuCorp no contesta.';
+        const l = [`AuCorp: ${salud.ok ? 'viva' : 'con problemas'} · tasas ${salud.tasas ? 'al día' : 'sin tasas'}${salud.tasasCuando ? ' (' + salud.tasasCuando + ')' : ''} · Genesis ${salud.genesis ? 'conectado' : 'no'} · sanciones cargadas: ${salud.sanciones?.registros ?? '?'} registros`];
+        for (const m of mon?.monedas || []) l.push(`- ${m.codigo} ${m.nombre} (${m.pais})`);
+        l.push('AuCorp es una FinTech: cuentas en moneda local. No es un banco y no hay «depósito asegurado».');
+        return l.join('\n');
+      }
+      case 'genesis_salud': {
+        const j = await leerJson(`${vivo.CASAS.genesis.api}/healthz`);
+        if (!j) return 'Genesis ID no contesta.';
+        const falta = j.cumplimiento?.falta || [];
+        return `Genesis ID: ${j.estado || '?'} (${j.en || ''}). Cumplimiento ${j.cumplimiento?.completo ? 'completo' : 'incompleto'}${falta.length ? ':\n- ' + falta.join('\n- ') : '.'}`;
+      }
+      case 'nodo_salud': {
+        const nodo = require('./cerebros/nodo');
+        const s = await nodo.salud();
+        if (!s?.vivo) return `El nodo no contesta${s?.porQue ? ': ' + s.porQue : ''}.`;
+        return `Nodo vivo: modelo ${s.modelo || '?'} · contexto ${s.ctx || '?'} fichas · modelos cargados: ${(s.ollama?.modelos || []).join(', ') || '?'} · pedidos ${s.pedidos ?? '?'} · rechazados ${s.rechazados ?? '?'}.`;
+      }
+      case 'listar_documentos': {
+        const docs = await memoria.documentos({ limite: 30 });
+        if (!docs.length) return 'La biblioteca está vacía.';
+        return docs.map((d) => `- [${d._id}] ${d.titulo} (${d.tipo || 'otro'}, ${d.miembro || '?'}, ${d.en ? new Date(d.en).toISOString().slice(0, 10) : ''})`).join('\n');
+      }
+      case 'leer_documento': {
+        const d = await memoria.documento(String(entrada.id || '').trim());
+        if (!d) return 'No hay un documento con ese id.';
+        return `# ${d.titulo}\n(${d.tipo || 'otro'} · ${d.en ? new Date(d.en).toISOString().slice(0, 10) : ''})\n\n${String(d.markdown || '').slice(0, ctx.chico ? 6000 : 20000)}`;
+      }
+      case 'listar_pendientes': {
+        const ps = await memoria.pendientes({ conHechos: entrada.conHechos === true, limite: 40 });
+        if (!ps.length) return 'No hay pendientes.';
+        return ps.map((p) => `- [${p._id}] ${p.estado === 'hecho' ? '(hecho) ' : ''}${p.texto}${p.quien ? ' · le toca a ' + p.quien : ''}${p.tema ? ' · ' + p.tema : ''}${p.en ? ' · desde ' + new Date(p.en).toISOString().slice(0, 10) : ''}`).join('\n');
+      }
+      case 'calcular': {
+        return calcular(String(entrada.expresion || ''));
+      }
+      case 'gasto': {
+        const g = await memoria.gasto();
+        const f = (c) => `${c.turnos} turnos · ${c.entrada + c.salida} fichas · ${c.conPrecio ? '$' + c.dolares.toFixed(4) : 'dólares incompletos'}`;
+        return `Hoy: ${f(g.hoy)}. Últimos 30 días: ${f(g.mes)}. En el nodo propio el pensar no cuesta por pregunta.`;
+      }
       default:
         return `No existe la herramienta ${nombre}. Las que hay: ${DEFINICIONES.map((d) => d.name).join(', ')}.`;
     }
@@ -259,9 +396,42 @@ async function correr(nombre, entrada, ctx) {
   }
 }
 
+// ── Auxiliares de las manos sobre el ecosistema ─────────────────────────────
+
+/** GET JSON con plazo; null si no contesta o no es JSON. */
+async function leerJson(url) {
+  try {
+    const r = await fetch(url, { headers: { Accept: 'application/json' }, signal: AbortSignal.timeout(12_000) });
+    const t = await r.text();
+    try { return JSON.parse(t); } catch { return r.ok ? null : { error: `HTTP ${r.status}` }; }
+  } catch (e) { return { error: String(e?.message || e).slice(0, 80) }; }
+}
+
+/** Un entero de 18 decimales (wei) a número legible. Acepta números normales. */
+function ori(v) {
+  const s = String(v ?? '0').trim();
+  if (!/^\d+$/.test(s)) return s;
+  if (s.length <= 12) return s;                            // ya viene en unidades
+  const ent = s.slice(0, -18) || '0', dec = s.slice(-18).padStart(18, '0').slice(0, 6).replace(/0+$/, '');
+  return Number(ent).toLocaleString('en-US') + (dec ? '.' + dec : '');
+}
+
+/** Aritmética exacta y nada más: sin nombres, sin llamadas, sin trucos. */
+function calcular(expresion) {
+  const e = expresion.replace(/,/g, '').replace(/\s+/g, '').replace(/\^/g, '**').replace(/×/g, '*').replace(/÷/g, '/');
+  if (!e) return 'Expresión vacía.';
+  if (!/^[0-9.+\-*/%()]+$/.test(e) || /[a-zA-Z_$]/.test(e)) return 'Solo números y + - * / % ^ ( ).';
+  if (e.length > 200) return 'Expresión demasiado larga.';
+  try {
+    const r = Function(`"use strict"; return (${e});`)();
+    if (typeof r !== 'number' || !Number.isFinite(r)) return 'No da un número.';
+    return `${expresion.trim()} = ${Number.isInteger(r) ? r : r.toPrecision(10).replace(/\.?0+$/, '')}`;
+  } catch { return 'No pude calcular eso.'; }
+}
+
 /** Las definiciones en el formato de Ollama. */
 function paraOllama() {
   return DEFINICIONES.map((d) => ({ type: 'function', function: { name: d.name, description: d.description, parameters: d.input_schema } }));
 }
 
-module.exports = { DEFINICIONES, CASAS, correr, paraOllama, buscarWeb, leerPagina, _adentro: { limpiarHtml } };
+module.exports = { DEFINICIONES, CASAS, correr, paraOllama, buscarWeb, leerPagina, _adentro: { limpiarHtml, ori, calcular, leerJson } };

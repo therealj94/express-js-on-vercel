@@ -348,10 +348,16 @@ app.post('/enviar', puerta, async (req, res) => {
 
 // ── La voz ──────────────────────────────────────────────────────────────────
 
+/* Las voces que la junta puede elegir (español primero). Sin llave: lista vacía. */
+app.get('/voces', puerta, async (req, res) => {
+  try { res.json({ actual: voz.VOZ, voces: await voz.voces() }); }
+  catch (e) { res.status(502).json({ error: e.message, codigo: 'PROVEEDOR' }); }
+});
+
 app.post('/voz', puerta, frenoPensar, async (req, res) => {
   if (!voz.encendida()) return res.status(503).json({ error: 'Voz apagada (falta ELEVENLABS_API_KEY).', codigo: 'VOZ_APAGADA' });
   try {
-    const audio = await voz.hablar(String(req.body?.texto || ''), { rapido: req.body?.rapido === true });
+    const audio = await voz.hablar(String(req.body?.texto || ''), { rapido: req.body?.rapido === true, vozId: req.body?.vozId ? String(req.body.vozId).slice(0, 40) : null });
     res.setHeader('Content-Type', 'audio/mpeg');
     res.setHeader('Cache-Control', 'private, max-age=3600');
     res.send(audio);

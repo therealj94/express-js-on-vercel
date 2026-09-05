@@ -35,7 +35,9 @@ export const api = {
   vivo: () => pedir<EstadoVivo>('/vivo'),
   pendientes: () => pedir<Pendiente[]>('/pendientes'),
   salir: () => pedir<{ ok: true }>('/salir', { method: 'POST' }),
+  voces: () => pedir<{ actual: string; voces: VozCatalogo[] }>('/voces'),
 };
+export interface VozCatalogo { id: string; nombre: string; genero: string | null; edad: string | null; acento: string | null; idioma: string | null; descripcion: string | null; categoria: string | null }
 
 export interface PensarEventos {
   onInicio?: (conversacionId: string) => void;
@@ -83,8 +85,8 @@ export async function pensar(texto: string, { modo, conversacionId, alias }: { m
 }
 
 /** El audio de una frase, con la voz rápida para conversar. */
-export async function voz(texto: string, rapido = true): Promise<Blob | null> {
-  const r = await fetch('/voz', { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ texto, rapido }) });
+export async function voz(texto: string, rapido = true, vozId: string | null = null): Promise<Blob | null> {
+  const r = await fetch('/voz', { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ texto, rapido, vozId: vozId || undefined }) });
   if (!r.ok) return null;
   return r.blob();
 }

@@ -49,7 +49,10 @@ const PLAZO_MS = 170_000;
    escribe en el registro con todas las letras. */
 const CTX = Number(process.env.ULTRON_NODO_CTX || 12_288);
 const RESERVA_SALIDA = 1_500;
-const PRESUPUESTO_FICHAS = Number(process.env.ULTRON_NODO_PRESUPUESTO_FICHAS || (CTX - RESERVA_SALIDA - 600));   // 10 188
+// Las 21 herramientas van en la plantilla de Ollama y cuestan ~1 900 fichas
+// que no se ven desde aquí: se reservan aparte de la salida.
+const RESERVA_HERRAMIENTAS = 2_000;
+const PRESUPUESTO_FICHAS = Number(process.env.ULTRON_NODO_PRESUPUESTO_FICHAS || (CTX - RESERVA_SALIDA - RESERVA_HERRAMIENTAS - 600));   // 8 188
 const LETRAS_POR_FICHA = 2.4;
 const fichas = (t) => Math.ceil(String(t || '').length / LETRAS_POR_FICHA);
 const PRESUPUESTO = Math.floor(PRESUPUESTO_FICHAS * LETRAS_POR_FICHA);   // en letras, para el hilo y los resultados
@@ -207,8 +210,16 @@ async function pensar({ miembro, junta, texto, conversacionId, emitir = () => {}
   // reserva aparte; el saber recibe lo que sobra, y si sobra poco, poco.
   const previa = conversacionId ? await memoria.conversacion(conversacionId, miembro.correo) : null;
   const voz = saber.vozDeLaCasa().slice(0, 6);
-  const armar = (secciones) => sistema({ miembro, memorias, estadoVivo, secciones, vozCasa: voz, pendientes: abiertos, chico: true, modo, alias }).map((b) => b.text).join('\n\n');
-  const base = armar([]);
+  // La base (identidad, memoria, pendientes, estado vivo) no puede comerse el
+  // presupuesto: si las memorias son muchas y largas, se sueltan las más
+  // viejas hasta que la base quede en menos de la mitad y el saber y el hilo
+  // tengan sitio. Antes una junta con cuarenta memorias largas dejaba la
+  // pregunta sin saber y el pedido pasado del contexto.
+  let memoriasUsadas = memorias;
+  const armar = (secciones) => sistema({ miembro, memorias: memoriasUsadas, estadoVivo, secciones, vozCasa: voz, pendientes: abiertos, chico: true, modo, alias }).map((b) => b.text).join('\n\n');
+  let base = armar([]);
+  const TOPE_BASE = Math.floor(PRESUPUESTO_FICHAS * 0.5);
+  while (fichas(base) > TOPE_BASE && memoriasUsadas.length) { memoriasUsadas = memoriasUsadas.slice(0, Math.max(0, memoriasUsadas.length - 4)); base = armar([]); }
   const hiloEstimado = Math.min(TOPE_HILO, (previa?.turnos || []).slice(-8).reduce((a, t) => a + Math.min(TOPE_TURNO, String(t.texto || '').length), 0));
   const sobra = PRESUPUESTO_FICHAS - fichas(base) - fichas(hiloEstimado ? 'x'.repeat(hiloEstimado) : '') - fichas(texto);
   const paraSaber = Math.max(0, Math.floor(sobra * LETRAS_POR_FICHA));
