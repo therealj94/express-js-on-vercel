@@ -17,7 +17,8 @@ const billeteras = require('./billeteras');
 
 const LARGO_MINIMO_SECRETO = 32;
 
-const esLlavePrivada = (t) => /^0x[0-9a-fA-F]{64}$/.test(String(t || ''));
+const { normalizarLlave } = require('./cripto');
+const esLlavePrivada = (t) => Boolean(normalizarLlave(t));
 
 function puesta(nombre) {
   const v = process.env[nombre];

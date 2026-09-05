@@ -43,6 +43,7 @@
 // cuesta exposición.
 
 const { Wallet, parseUnits, formatEther } = require('ethers');
+const { normalizarLlave } = require('./cripto');
 // Se guarda el MODULO y no la funcion suelta: `const { proveedorDe } = ...`
 // captura la referencia al importar, y entonces no hay forma de ponerle
 // enfrente una cadena fingida sin salir a las redes de verdad. Un modulo que
@@ -103,7 +104,8 @@ const TECHO_GAS = 90000n;
 const BARRIDOS_AVISO = Number(process.env.ORDENEX_GAS_AVISO_BARRIDOS || 200);
 const BARRIDOS_CRITICO = Number(process.env.ORDENEX_GAS_CRITICO_BARRIDOS || 50);
 
-const llave = () => (process.env.ORDENEX_GAS_KEY || '').trim();
+// Se acepta con `0x` y sin el: MetaMask exporta sin el. Ver lib/cripto.js.
+const llave = () => normalizarLlave(process.env.ORDENEX_GAS_KEY) || '';
 
 function fallo(codigo, mensaje) {
   const e = new Error(mensaje);

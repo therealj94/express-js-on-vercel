@@ -16,7 +16,7 @@
 
 const { JsonRpcProvider, Contract, Wallet, getAddress } = require('ethers');
 const { TOKENS, PORSIMBOLO } = require('./tokens');
-const { esLlavePrivada } = require('./cripto');
+const { esLlavePrivada, normalizarLlave } = require('./cripto');
 
 const OG_RPC = process.env.OG_CHAIN_PROVIDER || 'https://rpc.ordenglobal-rpc.com';
 
@@ -194,8 +194,8 @@ async function saldoDe(direccion, activo) {
 
 /** La direccion de la billetera caliente, o null si no esta configurada. */
 function direccionCaliente() {
-  const llave = process.env.ORDENEX_HOT_KEY;
-  if (!esLlavePrivada(llave)) return null;
+  const llave = normalizarLlave(process.env.ORDENEX_HOT_KEY);
+  if (!llave) return null;
   return new Wallet(llave).address;
 }
 
@@ -327,8 +327,8 @@ async function nonceFresco(p, direccion) {
 }
 
 async function envioCaliente({ a, activo, cantidadWei }) {
-  const llave = process.env.ORDENEX_HOT_KEY;
-  if (!esLlavePrivada(llave)) {
+  const llave = normalizarLlave(process.env.ORDENEX_HOT_KEY);
+  if (!llave) {
     const e = new Error('ORDENEX_HOT_KEY no esta puesta o no tiene forma de llave.');
     e.codigo = 'SIN_CONFIGURAR';
     throw nuncaSalio(e);

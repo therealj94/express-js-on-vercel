@@ -105,5 +105,47 @@ for (const f of readdirSync(dirLib).filter((n) => n.endsWith('.js') && n !== 'bi
   comprobar(!literal.test(txt), `lib/${f} no escribe ninguna dirección de la casa a mano`);
 }
 
+
+// ── La llave, escrita como la escribe cualquiera ────────────────────────────
+//
+// MetaMask exporta la llave privada SIN el `0x`. El 5 de septiembre eso dejo
+// la casa sin poder entregar ORIGEN durante horas, y desde fuera se veia
+// igual que no tener llave.
+{
+  const cripto = (await import('../lib/cripto.js')).default;
+  const { Wallet } = await import('ethers');
+  const w = Wallet.createRandom();
+  const conPrefijo = w.privateKey;                 // ethers siempre la da con 0x
+  const sinPrefijo = conPrefijo.slice(2);
+
+  comprobar(cripto.normalizarLlave(sinPrefijo) === conPrefijo,
+    'una llave sin 0x se acepta y queda con 0x');
+  comprobar(cripto.normalizarLlave(conPrefijo) === conPrefijo,
+    'una llave con 0x se queda igual');
+  comprobar(cripto.normalizarLlave(`  ${sinPrefijo}\n`) === conPrefijo,
+    'y los espacios o el salto de linea de un copiar-pegar no la rompen');
+  comprobar(cripto.normalizarLlave(conPrefijo.toUpperCase().replace('0X', '0X')) === conPrefijo,
+    'en mayusculas tambien');
+
+  // Lo que NO es una llave sigue sin serlo. Esto es lo que importa: la
+  // direccion publica tiene 40 hexadecimales y se pego una vez por error.
+  comprobar(cripto.normalizarLlave(w.address) === null,
+    'una DIRECCION no pasa por llave', w.address);
+  comprobar(cripto.normalizarLlave('') === null && cripto.normalizarLlave(null) === null,
+    'ni lo vacio');
+  comprobar(cripto.normalizarLlave('0x' + 'z'.repeat(64)) === null,
+    'ni 64 caracteres que no son hexadecimales');
+  comprobar(cripto.normalizarLlave('0x' + 'a'.repeat(63)) === null,
+    'ni una a la que le falta un caracter');
+
+  // Y la caliente la reconoce por el camino de produccion.
+  const antes = process.env.ORDENEX_HOT_KEY;
+  process.env.ORDENEX_HOT_KEY = sinPrefijo;
+  const cadena = (await import('../lib/cadena5550.js')).default;
+  comprobar(cadena.direccionCaliente() === w.address,
+    'con la llave sin 0x, la caliente sale con su direccion de verdad', String(cadena.direccionCaliente()));
+  if (antes === undefined) delete process.env.ORDENEX_HOT_KEY; else process.env.ORDENEX_HOT_KEY = antes;
+}
+
 console.log(`\n${malos.length ? `FALLARON ${malos.length} de ${bien + malos.length}` : 'Todo en verde'}`);
 if (malos.length) process.exit(1);

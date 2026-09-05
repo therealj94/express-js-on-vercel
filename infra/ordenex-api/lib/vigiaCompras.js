@@ -146,8 +146,9 @@ async function proveedor(red) {
 
 // ── la 5550: quien paga ─────────────────────────────────────────────────────
 function pagador() {
-  const llave = process.env.ORIGEN_PAGADOR_KEY;
-  if (!llave) return null;   // fail-closed: sin llave no se paga nada
+  // Con `0x` o sin el: MetaMask exporta sin el. Ver lib/cripto.js.
+  const llave = require('./cripto').normalizarLlave(process.env.ORIGEN_PAGADOR_KEY);
+  if (!llave) return null;   // fail-closed: sin llave (o con una que no lo es) no se paga nada
   const rpc = process.env.OG_CHAIN_PROVIDER || 'https://rpc.ordenglobal-rpc.com';
   const p = new ethers.JsonRpcProvider(rpc, undefined, { staticNetwork: true });
   return new ethers.Wallet(llave, p);

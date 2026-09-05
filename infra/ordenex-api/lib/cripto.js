@@ -33,6 +33,28 @@ const CLAVE = () => process.env.ORDENEX_ADM;
 const esLlavePrivada = (t) => /^0x[0-9a-fA-F]{64}$/.test(String(t || ''));
 
 /**
+ * La misma llave, escrita como la escribe cualquiera.
+ *
+ * MetaMask exporta la llave privada SIN el `0x` delante; ethers y este codigo
+ * la quieren CON el. El 5 de septiembre eso dejo la casa sin poder entregar
+ * ORIGEN, y desde fuera se veia igual que no tener llave: 64 hexadecimales
+ * son una llave privada y nada mas, asi que aceptarlos no relaja nada.
+ *
+ * Se normaliza SOLO lo que viene del entorno o de una persona. Lo que sale
+ * descifrado de la base sigue pasando por `esLlavePrivada` tal cual, porque
+ * ahi un formato raro no es un dedazo: es una senal de que algo se toco.
+ *
+ * Devuelve la llave con `0x`, o null si eso no es una llave.
+ */
+function normalizarLlave(t) {
+  const s = String(t == null ? '' : t).trim();
+  if (!s) return null;
+  const cuerpo = s.startsWith('0x') || s.startsWith('0X') ? s.slice(2) : s;
+  if (!/^[0-9a-fA-F]{64}$/.test(cuerpo)) return null;
+  return '0x' + cuerpo.toLowerCase();
+}
+
+/**
  * Cifra un texto con ORDENEX_ADM. Sin la clave configurada NO se cifra
  * nada: devolver el texto en claro "mientras tanto" es exactamente como una
  * llave termina desnuda en la base, asi que se lanza y quien llama decide
@@ -75,4 +97,4 @@ function descifrar(cifrado, validar) {
 /** Atajo con la validacion de formato ya puesta. */
 const descifrarLlavePrivada = (c) => descifrar(c, esLlavePrivada);
 
-module.exports = { esLlavePrivada, cifrar, descifrar, descifrarLlavePrivada };
+module.exports = { esLlavePrivada, normalizarLlave, cifrar, descifrar, descifrarLlavePrivada };
