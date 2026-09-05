@@ -83,6 +83,8 @@ button{cursor:pointer}
 .pulso i{width:7px;height:7px;border-radius:50%;background:var(--humo)}
 .pulso.ok i{background:var(--bien);box-shadow:0 0 0 3px rgba(124,194,152,.15)}
 .pulso.mal i{background:var(--mal)}
+.pulso.aviso i{background:var(--aviso)}
+.pulso.aviso{color:var(--aviso)}
 
 #indice{border-right:1px solid var(--linea);background:var(--panel);padding:14px 12px;display:flex;flex-direction:column;gap:2px;overflow:auto}
 #indice .rotulo{padding:10px 10px 8px}
@@ -115,6 +117,11 @@ button{cursor:pointer}
 .casa-fila.ok i{background:var(--bien)} .casa-fila.mal i{background:var(--mal)} .casa-fila.aviso i{background:var(--aviso)}
 .casa-fila b{font-weight:600}
 .casa-fila span{margin-left:auto;font-family:var(--mono);font-size:11.5px;color:var(--tenue)}
+/* Un hueco EXPLICADO en vez de una columna de guiones: cuando no hay dato se
+   dice por qué, una vez, y se recupera el sitio que ocupaban cinco renglones
+   vacíos. */
+.hueco{padding:9px 11px;border-radius:8px;border:1px dashed var(--linea2);
+  background:rgba(154,163,177,.05);color:var(--tenue);font-size:12px;line-height:1.55}
 
 /* ── el despacho ────────────────────────────────────────────────────────── */
 #despacho .vista-cuerpo{padding:0;display:flex;flex-direction:column;position:relative;isolation:isolate}
@@ -122,7 +129,7 @@ button{cursor:pointer}
    conversación —el texto empieza arriba— y todo cuando es la portada. */
 #presencia{position:absolute;inset:0;width:100%;height:100%;z-index:0;pointer-events:none;
            transition:opacity .8s ease}
-#presencia.fondo{opacity:.5}
+#presencia.fondo{opacity:.34}
 /* La figura. Va en modo PANTALLA porque es luz sobre negro: así el negro de la
    imagen desaparece contra el grafito de la casa y el aura del lienzo se ve a
    través de ella, en vez de quedar tapada por un recorte rectangular. */
@@ -138,7 +145,7 @@ button{cursor:pointer}
    imagen más angosta que la pantalla enseña sus cuatro bordes; sangrada por los
    lados no tiene ninguno. */
 @media(max-width:820px){#figura{height:74%;object-fit:cover}}
-#figura.fondo{opacity:.3}
+#figura.fondo{opacity:.16}
 #hilo{position:relative;z-index:1;flex:1;min-height:0;overflow:auto;padding:26px 28px 12px}
 /* La portada: cuando no hay nada dicho todavía, la figura y una línea. */
 #portada{position:relative;z-index:1;flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;
@@ -187,9 +194,14 @@ button{cursor:pointer}
 .fuentes{margin-top:8px;font-size:12px;color:var(--humo)}
 .fuentes span{display:inline-block;margin-right:10px}
 
-#sugerencias{display:flex;flex-wrap:wrap;gap:8px;padding:0 28px 12px}
-.sug{padding:7px 12px;border-radius:999px;border:1px solid var(--linea2);background:transparent;color:var(--tenue);font-size:12.5px}
-.sug:hover{border-color:var(--oro);color:var(--tinta)}
+#sugerencias{display:flex;flex-wrap:wrap;gap:8px;padding:0 28px 12px;position:relative;z-index:2}
+/* Las pastillas caen encima de la parte más ocupada de la figura —el torso,
+   que es donde hay más luz y más líneas— y ahí un fondo transparente es texto
+   sobre ruido. Llevan su propio fondo y su desenfoque: se leen contra
+   cualquier cosa que tengan debajo, sin tener que apagar la figura. */
+.sug{padding:7px 13px;border-radius:999px;border:1px solid var(--linea2);color:var(--tenue);font-size:12.5px;
+  background:rgba(16,20,27,.78);backdrop-filter:blur(7px);-webkit-backdrop-filter:blur(7px)}
+.sug:hover{border-color:var(--oro);color:var(--tinta);background:rgba(22,27,36,.92)}
 
 #compositor{border-top:1px solid var(--linea);background:var(--panel);padding:12px 28px 14px}
 #compositor .caja{display:flex;align-items:flex-end;gap:10px;border:1px solid var(--linea2);border-radius:12px;background:var(--fondo);padding:8px 8px 8px 14px}
@@ -310,16 +322,16 @@ button{cursor:pointer}
 
   <nav id="indice" aria-label="Índice">
     <div class="rotulo">Consola</div>
-    <button class="nav" data-vista="despacho"><svg viewBox="0 0 24 24"><path d="M4 5h16v11H8l-4 4z"/></svg>Despacho</button>
-    <button class="nav" data-vista="ecosistema"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><circle cx="12" cy="12" r="9"/><path d="M12 3v2M12 19v2M3 12h2M19 12h2"/></svg>Ecosistema</button>
-    <button class="nav" data-vista="instrumentos"><svg viewBox="0 0 24 24"><path d="M14 4l6 6-9 9H5v-6z"/><path d="M12 6l6 6"/></svg>Instrumentos<span class="n" id="nInstrumentos"></span></button>
+    <button class="nav" data-vista="despacho" title="Hablar con ULTRON: consultas, encargos y lo que hizo para contestar"><svg viewBox="0 0 24 24"><path d="M4 5h16v11H8l-4 4z"/></svg>Despacho</button>
+    <button class="nav" data-vista="ecosistema" title="Cómo está cada casa de Orden Global ahora mismo"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><circle cx="12" cy="12" r="9"/><path d="M12 3v2M12 19v2M3 12h2M19 12h2"/></svg>Ecosistema</button>
+    <button class="nav" data-vista="instrumentos" title="Las herramientas que ULTRON usa para contestar, ejecutables a mano"><svg viewBox="0 0 24 24"><path d="M14 4l6 6-9 9H5v-6z"/><path d="M12 6l6 6"/></svg>Instrumentos<span class="n" id="nInstrumentos"></span></button>
     <div class="rotulo">Registro</div>
-    <button class="nav" data-vista="pendientes"><svg viewBox="0 0 24 24"><path d="M5 12l4 4L19 6"/></svg>Pendientes<span class="n" id="nPendientes"></span></button>
-    <button class="nav" data-vista="biblioteca"><svg viewBox="0 0 24 24"><path d="M5 4h10l4 4v12H5z"/><path d="M15 4v4h4M8 13h8M8 17h8"/></svg>Biblioteca</button>
-    <button class="nav" data-vista="bitacora"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>Bitácora</button>
+    <button class="nav" data-vista="pendientes" title="Lo que la Junta dejó pendiente, con quién lo pidió y cuándo"><svg viewBox="0 0 24 24"><path d="M5 12l4 4L19 6"/></svg>Pendientes<span class="n" id="nPendientes"></span></button>
+    <button class="nav" data-vista="biblioteca" title="Los documentos que ULTRON redactó: memorandos, actas, análisis"><svg viewBox="0 0 24 24"><path d="M5 4h10l4 4v12H5z"/><path d="M15 4v4h4M8 13h8M8 17h8"/></svg>Biblioteca</button>
+    <button class="nav" data-vista="bitacora" title="Las conversaciones anteriores con ULTRON"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>Bitácora</button>
     <div class="rotulo">Gobierno</div>
-    <button class="nav" data-vista="junta"><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3"/><circle cx="17" cy="9" r="2.5"/><path d="M3 20c0-3 3-5 6-5s6 2 6 5M14 19c0-2 2-3.5 4-3.5s3 1.5 3 3.5"/></svg>La Junta</button>
-    <button class="nav" data-vista="ajustes"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M18.4 5.6l-2.1 2.1M7.7 16.3l-2.1 2.1"/></svg>Ajustes</button>
+    <button class="nav" data-vista="junta" title="Quiénes son los miembros y con qué cargo"><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3"/><circle cx="17" cy="9" r="2.5"/><path d="M3 20c0-3 3-5 6-5s6 2 6 5M14 19c0-2 2-3.5 4-3.5s3 1.5 3 3.5"/></svg>La Junta</button>
+    <button class="nav" data-vista="ajustes" title="Con qué piensa, con qué habla y qué recuerda esta plataforma"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M18.4 5.6l-2.1 2.1M7.7 16.3l-2.1 2.1"/></svg>Ajustes</button>
     <div class="pie" id="piePlataforma"></div>
   </nav>
 
@@ -327,8 +339,12 @@ button{cursor:pointer}
 
     <section class="vista" id="despacho" aria-label="Despacho">
       <div class="vista-cuerpo">
-        <canvas id="presencia" aria-hidden="true"></canvas>
+        <!-- LA IMAGEN VA PRIMERO Y EL LIENZO ENCIMA: las moléculas tienen
+             que verse SOBRE el cuerpo, no detrás. Invertir estas dos líneas
+             es lo único que hace falta para que la figura vuelva a parecer
+             una foto quieta. -->
         <img id="figura" src="/img/ultron.webp" alt="" aria-hidden="true" decoding="async">
+        <canvas id="presencia" aria-hidden="true"></canvas>
         <div id="portada" hidden><div class="titulo">ULTRON</div><div class="linea" id="portadaLinea"></div></div>
         <div id="hilo" aria-live="polite"></div>
         <div id="sugerencias"></div>
@@ -415,11 +431,11 @@ button{cursor:pointer}
   </aside>
 
   <nav id="pestanas-movil" aria-label="Secciones">
-    <button data-vista="despacho"><svg viewBox="0 0 24 24"><path d="M4 5h16v11H8l-4 4z"/></svg>Despacho</button>
-    <button data-vista="tablero"><svg viewBox="0 0 24 24"><path d="M4 19V9M10 19V5M16 19v-8M22 19H2"/></svg>Tablero</button>
-    <button data-vista="instrumentos"><svg viewBox="0 0 24 24"><path d="M14 4l6 6-9 9H5v-6z"/></svg>Instrumentos</button>
-    <button data-vista="pendientes"><svg viewBox="0 0 24 24"><path d="M5 12l4 4L19 6"/></svg>Pendientes</button>
-    <button data-vista="ajustes"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3"/></svg>Más</button>
+    <button data-vista="despacho" title="Hablar con ULTRON: consultas, encargos y lo que hizo para contestar"><svg viewBox="0 0 24 24"><path d="M4 5h16v11H8l-4 4z"/></svg>Despacho</button>
+    <button data-vista="tablero" title="La casa en vivo: la referencia del oro, las casas y las cadenas"><svg viewBox="0 0 24 24"><path d="M4 19V9M10 19V5M16 19v-8M22 19H2"/></svg>Tablero</button>
+    <button data-vista="instrumentos" title="Las herramientas que ULTRON usa para contestar, ejecutables a mano"><svg viewBox="0 0 24 24"><path d="M14 4l6 6-9 9H5v-6z"/></svg>Instrumentos</button>
+    <button data-vista="pendientes" title="Lo que la Junta dejó pendiente, con quién lo pidió y cuándo"><svg viewBox="0 0 24 24"><path d="M5 12l4 4L19 6"/></svg>Pendientes</button>
+    <button data-vista="ajustes" title="Con qué piensa, con qué habla y qué recuerda esta plataforma"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3"/></svg>Más</button>
   </nav>
 </div>
 

@@ -24,8 +24,11 @@ const APP = (() => {
 
   function pintarCabecera() {
     $('quienSoy').innerHTML = `<b>${esc(yo.miembro.nombre)}</b> · ${esc(yo.miembro.rol || 'Junta Directiva')}`;
-    $('pulsoCerebro').className = 'pulso ' + (yo.cerebro ? 'ok' : 'mal');
-    $('pulsoCerebro').lastElementChild.textContent = yo.cerebro ? (yo.donde === 'nodo' ? 'nodo propio' : 'Claude') : 'sin cerebro';
+    /* «sin cerebro» en rojo en la cabecera se lee como un insulto y como una
+       avería. No hay avería: falta una llave. Se dice eso, y en ámbar, que es
+       el color de lo que está a medio poner. */
+    $('pulsoCerebro').className = 'pulso ' + (yo.cerebro ? 'ok' : 'aviso');
+    $('pulsoCerebro').lastElementChild.textContent = yo.cerebro ? (yo.donde === 'nodo' ? 'nodo propio' : 'Claude') : 'cerebro sin configurar';
     $('pulsoVoz').className = 'pulso oculta-movil ' + (yo.voz ? 'ok' : '');
     $('pulsoVoz').lastElementChild.textContent = yo.voz ? 'voz' : 'voz del navegador';
     $('piePlataforma').textContent = `Orden Global · ${new Date().getFullYear()}`;

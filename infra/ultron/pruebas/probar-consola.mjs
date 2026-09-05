@@ -4,7 +4,7 @@
  *
  * Sin cerebro, sin voz y sin red: lo que se comprueba es que la consola sea
  * una puerta, un despacho que saluda por el nombre y en registro
- * institucional, un tablero que dice «no responde» y no un cero, el catálogo
+ * institucional, un tablero que dice qué no pudo leer y jamás un cero, el catálogo
  * entero de instrumentos —cada uno ejecutable a mano por el mismo camino que
  * usa ULTRON—, los pendientes y la memoria por el API, y que cuando no hay
  * cerebro lo diga en vez de fingir. Y a 390 px, que no se salga nada.
@@ -68,6 +68,48 @@ await p.waitForFunction(() => /Buen(os|as) (días|tardes|noches), José\./.test(
     let n = 0; for (let i = 3; i < d.length; i += 4 * 131) if (d[i] > 12) n++;
     return n > 150;
   }), 'el aura está pintada: el lienzo tiene tinta');
+
+  /* ── LAS MOLÉCULAS ────────────────────────────────────────────────────────
+     Lo que la Junta pidió es que la figura se MUEVA. Una captura no puede
+     enseñar movimiento y una imagen quieta no da error, así que se comprueban
+     las tres cosas que lo hacen cierto:
+
+       1. que las moléculas salgan DE LA IMAGEN, no de un molde aparte —si
+          getImageData fallara por procedencia, la lista quedaría vacía y la
+          figura volvería a ser una foto sin que nadie se entere;
+       2. que caigan SOBRE el cuerpo: el encuadre rehace la cuenta de
+          object-fit, y si se equivoca las partículas aterrizan corridas;
+       3. que entre dos cuadros separados por medio segundo el lienzo haya
+          CAMBIADO de verdad. */
+  decir(await p.evaluate(() => PRESENCIA._adentro.moleculas().length > 800),
+    'las moléculas salieron de los píxeles de la imagen',
+    await p.evaluate(() => PRESENCIA._adentro.moleculas().length + ' moléculas'));
+  decir(await p.evaluate(() => {
+    const m = PRESENCIA._adentro.moleculas();
+    // Con su color: una del pecho es del azul del pecho. Si todas fueran
+    // iguales, serían un molde pintado encima y no la imagen viva.
+    const colores = new Set(m.slice(0, 400).map((x) => `${x.r >> 4},${x.g >> 4},${x.b >> 4}`));
+    return colores.size > 6;
+  }), 'y cada una con el color de su píxel, no todas del mismo azul');
+  decir(await p.evaluate(() => {
+    const e = PRESENCIA._adentro.encuadre(), c = document.getElementById('presencia');
+    return !!e && e.w > 100 && e.h > 100 && e.x > -1 && e.x + e.w <= c.clientWidth + 1;
+  }), 'el encuadre cae dentro del lienzo: aterrizan sobre el cuerpo', await p.evaluate(() => JSON.stringify(PRESENCIA._adentro.encuadre())));
+  {
+    const foto = () => p.evaluate(() => {
+      const c = document.getElementById('presencia');
+      const d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data;
+      const out = []; for (let i = 3; i < d.length; i += 4 * 37) out.push(d[i]);
+      return out;
+    });
+    const a1 = await foto();
+    await p.waitForTimeout(600);
+    const a2 = await foto();
+    let cambiaron = 0;
+    for (let i = 0; i < a1.length; i++) if (Math.abs(a1[i] - a2[i]) > 8) cambiaron++;
+    decir(cambiaron > a1.length * 0.01, 'y se MUEVEN: entre dos cuadros el lienzo cambió',
+      `${cambiaron} de ${a1.length} muestras`);
+  }
   decir(await p.evaluate(() => {
     // Y está donde tiene que estar: el aura envuelve a la figura, en el centro.
     const c = document.getElementById('presencia'); const x = c.getContext('2d');
@@ -87,12 +129,22 @@ await p.waitForFunction(() => /Buen(os|as) (días|tardes|noches), José\./.test(
 
 titulo('el tablero dice la verdad');
 {
-  await p.waitForFunction(() => /no responde/.test(document.getElementById('tabCasas').innerText), null, { timeout: 8000 }).catch(() => {});
+  await p.waitForFunction(() => /no se pudo leer/.test(document.getElementById('tabCasas').innerText), null, { timeout: 8000 }).catch(() => {});
   const t = await texto('#tablero');
-  decir(/no responde/.test(t), 'las casas caídas dicen «no responde», no un cero', t.slice(0, 200));
-  decir(/sin precio/.test(t), 'y el ORIGEN sale «sin precio», no con uno inventado');
+  /* SIN RED, EL PROBLEMA ES DE QUIEN MIRA, Y SE DICE ASÍ. Antes las cinco
+     casas se pintaban de rojo con «no responde»: un tablero gritando que el
+     ecosistema está caído cuando lo único que pasa es que este servidor no
+     pudo salir. Ahora se dice una vez, arriba, y las filas quedan neutras —
+     el rojo se guarda para cuando una casa CONTESTA mal, que es lo único que
+     de verdad es una avería suya. */
+  decir(/Ninguna casa se pudo leer desde este servidor/.test(t),
+    'sin red se dice UNA vez que el ciego es el servidor, no las cinco casas', t.slice(0, 200));
+  decir(await p.evaluate(() => document.querySelectorAll('#tabCasas .casa-fila.mal').length === 0),
+    'y ninguna fila se pinta de rojo: no llegar no es un fallo de la casa');
+  decir(/La referencia del oro no se pudo leer/.test(t) && !/\bsin precio\b/.test(t),
+    'el ORIGEN no sale con un cero ni con cinco guiones: se explica el hueco', t.slice(0, 240));
   decir(/José Enamorado/.test(t), 'la Junta aparece con sus miembros');
-  decir(/sin cerebro|nodo propio|Claude/.test(t), 'y el sistema dice con qué piensa');
+  decir(/sin configurar|nodo propio|Claude/.test(t), 'y el sistema dice con qué piensa');
 }
 
 titulo('pensar sin cerebro lo dice, no se cuelga');
