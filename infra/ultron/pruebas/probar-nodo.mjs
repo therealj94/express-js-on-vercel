@@ -101,6 +101,25 @@ titulo('herramientas como tool_calls: se corren y el modelo sigue');
   decir(eventos.some(([e, d]) => e === 'herramienta' && d.nombre === 'abrir') && eventos.some(([e]) => e === 'herramienta-lista'), 'el panel se entera de cada herramienta');
 }
 
+titulo('la misma consulta no se corre dos veces en un turno');
+{
+  // Un modelo chico a veces vuelve a pedir lo que ya tiene. Cada vuelta son
+  // segundos de la junta esperando y una lectura mas a la casa: se le
+  // devuelve el resultado que ya obtuvo, y se le dice.
+  guion = [
+    { texto: '', llamadas: [{ name: 'calcular', arguments: { expresion: '2+2' } }] },
+    { texto: '', llamadas: [{ name: 'calcular', arguments: { expresion: '2+2' } }] },
+    { texto: 'Son cuatro.' },
+  ];
+  const eventos = [];
+  const r = await cerebro.pensar({ miembro: JOSE, junta: JUNTA, texto: 'cuanto es dos mas dos', emitir: (e, d) => eventos.push([e, d]) });
+  decir(r.herramientas.length === 1, 'la segunda llamada identica no vuelve a correr: cuenta una sola', String(r.herramientas.length));
+  const tools = pedidos.at(-1).messages.filter((m) => m.role === 'tool');
+  decir(tools.length === 2 && /ya consultado en este turno/.test(tools[1].content) && /= 4/.test(tools[1].content), 'y al modelo se le devuelve el mismo resultado, diciendo que ya lo tenia', tools[1]?.content);
+  decir(eventos.filter(([e, d]) => e === 'herramienta-lista' && /= 4/.test(d.salida || '')).length === 2, 'la consola ve la salida en los dos eventos');
+  decir(/Son cuatro/.test(r.texto), 'y la respuesta llega igual', r.texto);
+}
+
 titulo('herramientas escritas como TEXTO: un modelo chico a veces lo hace');
 {
   guion = [

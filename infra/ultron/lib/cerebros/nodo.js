@@ -272,8 +272,13 @@ async function pensar({ miembro, junta, texto, conversacionId, emitir = () => {}
       const nombre = tc.function?.name; let entrada = tc.function?.arguments;
       if (typeof entrada === 'string') { try { entrada = JSON.parse(entrada); } catch { entrada = {}; } }
       emitir('herramienta', { nombre, entrada });
-      const salida = await herramientas.correr(nombre, entrada || {}, ctx);
-      usadas.push({ nombre, entrada, salida: String(salida).slice(0, 2000) });
+      /* La misma consulta, con la misma entrada, no se corre dos veces en un
+         turno: el modelo chico a veces vuelve a pedir lo que ya tiene, y cada
+         vuelta son segundos de la junta esperando y una lectura mas a la
+         casa. Se le devuelve el resultado que ya obtuvo, y se dice. */
+      const repetida = usadas.find((u) => u.nombre === nombre && JSON.stringify(u.entrada || {}) === JSON.stringify(entrada || {}));
+      const salida = repetida ? `(ya consultado en este turno; el resultado es el mismo)\n${repetida.salida}` : await herramientas.correr(nombre, entrada || {}, ctx);
+      if (!repetida) usadas.push({ nombre, entrada, salida: String(salida).slice(0, 2000) });
       emitir('herramienta-lista', { nombre, salida: String(salida).slice(0, 600) });
       mensajes.push({ role: 'tool', content: recortar(salida, TOPE_RESULTADO), tool_name: nombre });
     }
