@@ -60,8 +60,16 @@ titulo('el panel dice la verdad sobre lo que tiene');
 titulo('la presencia y el vacío');
 {
   decir(await p.evaluate(() => { const c = document.getElementById('presencia'); const d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data; let n = 0; for (let i = 3; i < d.length; i += 4 * 97) if (d[i] > 10) n++; return n > 100; }), 'la presencia del panel tiene tinta');
-  decir(/CONOCIMIENTO FULL/.test(await p.textContent('#hilo')), 'el hilo vacío se presenta');
+  decir(await p.evaluate(() => !!document.querySelector('#hilo .hero canvas')), 'al entrar hay un hero con la figura grande');
+  decir(await p.evaluate(() => { const c = document.getElementById('presenciaHero'); const d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data; let n = 0; for (let i = 3; i < d.length; i += 4 * 97) if (d[i] > 10) n++; return n > 200; }), 'y la figura del hero tiene tinta');
+  await p.waitForSelector('#saludoTexto.listo', { timeout: 8000 }).catch(() => {});
+  const saludo = await p.textContent('#saludoTexto');
+  decir(/^Buen(os|as) (días|tardes|noches), José\./.test(saludo), 'ULTRON saluda por el nombre de pila', saludo);
+  decir(/pendiente/.test(saludo) && /¿Por dónde empezamos\?/.test(saludo), 'con lo que hay y una pregunta', saludo);
   decir((await p.$$('#hilo .sug')).length === 4, 'con cuatro sugerencias para empezar');
+  decir(await p.evaluate(() => !!document.getElementById('heroConversar') && !!document.getElementById('conversarBtn')), 'y dos formas de empezar a hablar: en el hero y en la cabecera');
+  // los datos alrededor de la figura: la presencia chica los recibe
+  decir(await p.evaluate(() => datosParaPresencia().some((d) => d.k === 'PENDIENTES') && datosParaPresencia().some((d) => /ORDENEX/.test(d.k))), 'los datos del ecosistema orbitan la figura: pendientes, casas', await p.evaluate(() => datosParaPresencia().map((d) => d.k).join(',')));
 }
 
 titulo('pensar con el cerebro apagado lo dice, no se cuelga');
@@ -70,6 +78,7 @@ titulo('pensar con el cerebro apagado lo dice, no se cuelga');
   await p.waitForTimeout(1500);
   const t = await p.textContent('#hilo');
   decir(/ANTHROPIC_API_KEY|apagado/i.test(t), 'aparece el motivo en el hilo', t.slice(-160));
+  decir(await p.evaluate(() => !document.querySelector('#hilo .hero')), 'y el hero se fue: empezó la conversación');
   decir(await p.evaluate(() => !document.getElementById('mandar').disabled || !document.getElementById('entrada').value), 'y el compositor vuelve a quedar usable');
 }
 

@@ -101,7 +101,30 @@ a{color:var(--fila)}
 
 /* el hilo */
 .hilo{overflow:auto;padding:26px 8% 18px;scrollbar-width:thin;scrollbar-color:rgba(93,214,255,.18) transparent;scroll-behavior:smooth}
+/* EL HERO: lo primero que se ve al entrar. La figura grande con los datos de
+   la casa orbitando, el saludo escribiéndose, y dos formas de empezar: hablar
+   o escribir. Cuando arranca la conversación, esto se va y la figura chica de
+   la izquierda sigue viva. */
+.hero{max-width:860px;margin:0 auto;text-align:center;color:var(--bruma);animation:aparecer .9s ease-out both}
+@keyframes aparecer{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+.hero canvas{width:min(100%,640px);aspect-ratio:9/7;display:block;margin:0 auto}
+.hero .saludo{font-family:var(--marca);font-weight:500;font-size:clamp(17px,2.1vw,23px);line-height:1.55;color:var(--hielo);min-height:2.6em;margin:-6px auto 14px;max-width:720px;letter-spacing:.01em}
+.hero .saludo::after{content:'▍';color:var(--fila);animation:latir 1s steps(2) infinite;margin-left:2px}
+.hero .saludo.listo::after{content:''}
+.hero-acciones{display:flex;gap:10px;justify-content:center;margin-bottom:18px;flex-wrap:wrap}
+.btn.grande{padding:12px 22px;font-size:14px;border-radius:999px}
+.btn.grande svg{width:16px;height:16px;margin-right:8px;vertical-align:-3px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round}
 .vacio{max-width:560px;margin:8vh auto 0;text-align:center;color:var(--bruma)}
+/* Conversar: el modo en que ULTRON escucha, contesta con voz y vuelve a
+   escuchar. Cuando está en marcha, el botón late. */
+.interruptor.conversando{border-color:var(--fila);color:var(--fila);box-shadow:0 0 0 0 rgba(93,214,255,.5);animation:latido-borde 1.8s ease-out infinite}
+@keyframes latido-borde{0%{box-shadow:0 0 0 0 rgba(93,214,255,.45)}100%{box-shadow:0 0 0 9px rgba(93,214,255,0)}}
+/* Cuando habla, la casa entera lo nota: la marca respira con la voz. */
+body.hablando .marca{text-shadow:0 0 30px rgba(93,214,255,.75),0 0 60px rgba(93,214,255,.3)}
+.onda{display:flex;gap:3px;align-items:center;justify-content:center;height:22px;margin:8px 14px 0;opacity:0;transition:opacity .3s}
+.onda.viva{opacity:1}
+.onda i{flex:1;max-width:5px;height:3px;border-radius:2px;background:var(--fila);transition:height .08s;box-shadow:0 0 6px rgba(93,214,255,.5)}
+@media (prefers-reduced-motion:reduce){.hero,.interruptor.conversando{animation:none}}
 .vacio h2{font-family:var(--marca);font-weight:600;letter-spacing:.18em;font-size:18px;color:var(--hielo);margin-bottom:10px}
 .vacio p{font-size:14px;line-height:1.7}
 .sugerencias{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:22px;text-align:left}
@@ -194,6 +217,11 @@ a{color:var(--fila)}
 /* El gasto vive en el pie, al lado del modelo: es el mismo dato —qué cerebro
    contestó y qué costó— y separarlos los volvía dos adornos sueltos. */
 #pieDer b{color:var(--bruma);font-weight:600}
+/* En el teléfono, la cabecera se aprieta: Conversar sin rótulo, y sin el
+   interruptor de voz (Conversar la enciende solo). Las barras de la voz van
+   con la presencia grande, no con la chica del teléfono. */
+@media (max-width:700px){#conversarBtn span{display:none}#conversarBtn{padding:6px 8px}#vozBtn{display:none}.cab{gap:10px;padding:0 12px}.puntos{gap:6px}}
+@media (max-width:1100px){.onda{display:none}}
 .lista{margin-top:14px;display:grid;gap:8px}
 .item{background:var(--vidrio);border:1px solid var(--linea);border-radius:12px;padding:10px 12px;font-size:13px;transition:border-color .2s}
 .item:hover{border-color:var(--linea2)}
@@ -281,6 +309,9 @@ a{color:var(--fila)}
     <div class="marca">ULTRON<small>Conocimiento Full</small></div>
     <div class="quien">
       <div class="puntos" id="puntos"></div>
+      <button class="interruptor" id="conversarBtn" title="Hablar con ULTRON: escucha, contesta con voz y vuelve a escuchar">
+        <svg viewBox="0 0 24 24"><path d="M12 3a3 3 0 00-3 3v6a3 3 0 006 0V6a3 3 0 00-3-3z"/><path d="M19 11a7 7 0 01-14 0M12 18v3"/></svg><span>Conversar</span>
+      </button>
       <button class="interruptor" id="vozBtn" title="Que ULTRON lea en voz alta sus respuestas">
         <svg viewBox="0 0 24 24"><path d="M11 5L6 9H2v6h4l5 4V5z"/><path d="M15.5 8.5a5 5 0 010 7"/><path d="M18.5 5.5a9 9 0 010 13"/></svg><span>Voz</span>
       </button>
@@ -292,6 +323,7 @@ a{color:var(--fila)}
 
   <aside class="izq">
     <div class="presencia"><canvas id="presencia" width="600" height="690"></canvas><div class="estado" id="estadoPresencia">en reposo</div></div>
+    <div class="onda" id="onda" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
     <div class="bloque">
       <h3>El pulso de la casa <button id="refrescarVivo" title="Volver a leer">actualizar</button></h3>
       <div id="vitales"></div>
@@ -348,7 +380,7 @@ a{color:var(--fila)}
 const $ = (s) => document.querySelector(s);
 const esc = MARKDOWN.esc;
 const E = {           // el estado del panel
-  yo: null, conversacionId: null, hablando: false, vozOn: false, oyendo: false,
+  yo: null, conversacionId: null, hablando: false, vozOn: false, oyendo: false, conversando: false, saludo: null, saludoDicho: false,
   vivo: null, memorias: [], documentos: [], hilos: [], pendientes: [], gasto: null, enviosPendientes: new Map(),
 };
 try { E.vozOn = localStorage.getItem('ultron.voz') === '1'; } catch {}
@@ -374,102 +406,152 @@ function avisar(texto, mal = false) {
    escucha, ondula desde abajo. Todo con el mismo campo — cambia la fuerza, no
    el dibujo. Canvas y no SVG porque son mil quinientas partículas a sesenta
    cuadros y el DOM no está para eso. */
-function Presencia(canvas, { n = 1400, chica = false } = {}) {
-  /* LA PRESENCIA: una figura de partículas, no una nube.
-     Es la imagen que mandó la junta: un busto luminoso —cabeza, cuello,
-     hombros— hecho de puntos de luz, con el núcleo en el pecho. Cada
-     partícula tiene su CASA en la silueta y vive alrededor de ella; en reposo
-     deriva, pensando se recoge hacia el núcleo y gira, hablando ondula con la
-     voz, oyendo respira. La silueta se dibuja con densidad en el borde, que es
-     lo que la hace leerse como figura y no como mancha. */
+function Presencia(canvas, { n = 1400, chica = false, datos = false, fuente = 1 } = {}) {
+  /* LA PRESENCIA: una persona de luz con la casa alrededor.
+     Un busto de partículas —cabeza, cuello, hombros, el núcleo en el pecho—
+     y, si `datos`, los datos vivos del ecosistema ORBITANDO alrededor: el
+     ORIGEN, el oro, cada casa con su estado, los bloques, los pendientes.
+     Los que pasan por detrás se ven más tenues; cada uno tira un hilo al
+     núcleo. Gestos: en reposo respira y parpadea; oyendo ladea la cabeza;
+     pensando se recoge, gira y los datos aceleran; hablando asiente con la
+     voz. `saludar()` manda una onda desde el pecho hacia afuera. */
   const ctx = canvas.getContext('2d');
   let W = canvas.width, H = canvas.height;
-  const cx = () => W / 2, cy = () => H * 0.54;
-  const R = () => Math.min(W, H) * (chica ? 0.46 : 0.44);
-  let modo = 'reposo', energia = 0, objetivoEnergia = 0, t = 0, amplitud = 0;
+  const cx = () => W / 2, cy = () => H * (datos ? 0.52 : 0.54);
+  const R = () => Math.min(W, H) * (datos ? 0.30 : chica ? 0.46 : 0.44);
+  let modo = 'reposo', energia = 0, objetivoEnergia = 0, t = 0, amplitud = 0, onda = -1, guiño = 0, nodos = [];
 
-  // La silueta, en coordenadas de [-1,1]. Arriba es negativo.
   function dentro(x, y) {
     const cabeza = ((x / 0.30) ** 2 + ((y + 0.62) / 0.36) ** 2) <= 1;
     const cuello = Math.abs(x) <= 0.13 && y >= -0.32 && y <= -0.06;
     const torso = y >= -0.10 && y <= 0.98 && ((x / 0.98) ** 2 + ((y - 0.50) / 0.64) ** 2) <= 1;
     return cabeza || cuello || torso;
   }
-  function enBorde(x, y) {
-    const d = 0.055;
-    return !dentro(x + d, y) || !dentro(x - d, y) || !dentro(x, y + d) || !dentro(x, y - d);
-  }
+  function enBorde(x, y) { const d = 0.05; return !dentro(x + d, y) || !dentro(x - d, y) || !dentro(x, y + d) || !dentro(x, y - d); }
   function casa() {
-    for (let i = 0; i < 60; i++) {
+    for (let i = 0; i < 80; i++) {
       const x = (Math.random() * 2 - 1) * 1.02, y = (Math.random() * 2 - 1) * 1.02;
       if (!dentro(x, y)) continue;
       const borde = enBorde(x, y);
-      // El borde se acepta siempre; el interior, a veces: así se lee la forma.
-      if (borde || Math.random() < 0.5) return { x, y, borde };
+      if (borde || Math.random() < 0.55) return { x, y, borde };
     }
     return { x: 0, y: 0.2, borde: false };
   }
   const parts = Array.from({ length: n }, () => {
     const c = casa();
     return { hx: c.x, hy: c.y, borde: c.borde, f: Math.random() * Math.PI * 2, v: 0.4 + Math.random() * 0.9,
-      s: c.borde ? 0.7 + Math.random() * 1.3 : 0.5 + Math.random() * 0.9, brillo: Math.random(), ang: Math.random() * Math.PI * 2 };
+      s: c.borde ? 0.75 + Math.random() * 1.3 : 0.5 + Math.random() * 0.95, brillo: Math.random(), ang: Math.random() * Math.PI * 2 };
   });
   function setModo(m) { modo = m; objetivoEnergia = { reposo: 0, pensando: 1, hablando: 0.7, oyendo: 0.45 }[m] ?? 0; }
   function setAmplitud(a) { amplitud = a; }
+  function setDatos(lista) { nodos = (lista || []).slice(0, 12).map((d, i) => ({ ...d, i })); }
+  function saludar() { onda = 0; }
+
+  const COLOR = { ok: '62,217,160', mal: '255,107,107', aviso: '245,179,43', oro: '201,169,97', fila: '93,214,255' };
+  function pintarNodo(nd, x, y, prof, r) {
+    const c = COLOR[nd.estado] || COLOR.fila;
+    const a = 0.25 + prof * 0.75;
+    // el hilo al núcleo
+    ctx.strokeStyle = `rgba(93,214,255,${0.05 + prof * 0.10})`; ctx.lineWidth = Math.max(1, r * 0.006);
+    ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(cx(), cy() + 0.28 * r); ctx.stroke();
+    // el punto
+    const g = ctx.createRadialGradient(x, y, 0, x, y, r * 0.09);
+    g.addColorStop(0, `rgba(${c},${a})`); g.addColorStop(1, `rgba(${c},0)`);
+    ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y, r * 0.09, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = `rgba(${c},${a})`; ctx.beginPath(); ctx.arc(x, y, r * 0.018 * (0.7 + prof * 0.6), 0, Math.PI * 2); ctx.fill();
+    // la etiqueta y el valor
+    const tam = Math.max(9, W * 0.021 * fuente) * (0.85 + prof * 0.25);
+    ctx.font = `700 ${tam * 1.08}px "JetBrains Mono", ui-monospace, monospace`; ctx.textBaseline = 'middle';
+    // La etiqueta va del lado donde cabe: hacia afuera si hay sitio, y si el
+    // borde del lienzo la cortaría, hacia adentro. Un dato cortado no es dato.
+    const ancho = Math.max(ctx.measureText(nd.v).width, ctx.measureText(nd.k).width * 0.95);
+    let derecha = x >= cx();
+    if (derecha && x + r * 0.05 + ancho > W - 6) derecha = false;
+    if (!derecha && x - r * 0.05 - ancho < 6) derecha = true;
+    ctx.textAlign = derecha ? 'left' : 'right';
+    const dx = derecha ? r * 0.05 : -r * 0.05;
+    const ty = Math.min(H - tam, Math.max(tam * 1.4, y));
+    ctx.font = `600 ${tam}px "JetBrains Mono", ui-monospace, monospace`;
+    ctx.fillStyle = `rgba(170,190,215,${a * 0.9})`; ctx.fillText(nd.k, x + dx, ty - tam * 0.62);
+    ctx.fillStyle = `rgba(${nd.estado === 'oro' ? COLOR.oro : nd.estado === 'mal' ? COLOR.mal : '234,242,255'},${a})`;
+    ctx.font = `700 ${tam * 1.08}px "JetBrains Mono", ui-monospace, monospace`; ctx.fillText(nd.v, x + dx, ty + tam * 0.62);
+  }
 
   function cuadro() {
     t += 0.016;
     energia += (objetivoEnergia - energia) * 0.045;
+    if (onda >= 0) { onda += 0.018; if (onda > 1.4) onda = -1; }
+    // parpadeo: cada tantos segundos, medio segundo de ojos casi cerrados
+    guiño = (Math.sin(t * 0.55) > 0.985) ? 1 : Math.max(0, guiño - 0.12);
     ctx.clearRect(0, 0, W, H);
     const r = R();
-    // el halo detrás de la figura
+    // los gestos: asentir hablando, ladear oyendo
+    const asiente = modo === 'hablando' ? Math.sin(t * 2.6) * 0.018 * (0.4 + amplitud) : 0;
+    const ladea = modo === 'oyendo' ? 0.06 : 0;
+    // el halo
     const g = ctx.createRadialGradient(cx(), cy() + r * 0.15, 0, cx(), cy() + r * 0.15, r * 1.25);
     const resp = 0.07 + 0.04 * Math.sin(t * 1.1) + energia * 0.10 + amplitud * 0.2;
     g.addColorStop(0, `rgba(93,214,255,${resp})`); g.addColorStop(0.55, `rgba(27,107,255,${resp * 0.35})`); g.addColorStop(1, 'rgba(27,107,255,0)');
     ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
 
+    // los datos: posiciones, y primero los que pasan por detrás
+    const N = nodos.length; const puestos = [];
+    for (const nd of nodos) {
+      const ang = (nd.i / N) * Math.PI * 2 + t * (0.10 + energia * 0.35) * (modo === 'oyendo' ? 0.3 : 1);
+      const alto = Math.sin(nd.i * 1.9) * 0.55 - 0.05;
+      // el radio de la órbita: lo que dé el lienzo, con sitio para la etiqueta
+      const rx = Math.min(r * 1.9, W / 2 - r * 0.42 - Math.max(9, W * 0.021 * fuente) * 6);
+      const x = cx() + Math.cos(ang) * rx, y = cy() + alto * r + Math.sin(ang) * r * 0.34;
+      puestos.push({ nd, x, y, prof: (Math.sin(ang) + 1) / 2 });
+    }
+    ctx.globalCompositeOperation = 'source-over';
+    for (const q of puestos) if (q.prof < 0.5) pintarNodo(q.nd, q.x, q.y, q.prof, r);
+
     ctx.globalCompositeOperation = 'lighter';
-    const nucleoY = 0.28;                                   // el pecho
+    const nucleoY = 0.28;
     for (const p of parts) {
-      // deriva alrededor de casa; pensando, se recoge hacia el núcleo y gira
-      const recoger = energia * 0.35;
+      const recoger = energia * 0.32;
       const ang = p.ang + t * (0.15 + energia * 0.9) * p.v;
-      const gira = energia * 0.08;
-      let x = p.hx * (1 - recoger) + Math.cos(ang) * gira;
-      let y = p.hy * (1 - recoger) + nucleoY * recoger + Math.sin(ang) * gira;
+      const gira = energia * 0.07;
+      const esCabeza = p.hy < -0.28;
+      let x = p.hx * (1 - recoger) + Math.cos(ang) * gira + (esCabeza ? ladea * (p.hy + 0.62) : 0);
+      let y = p.hy * (1 - recoger) + nucleoY * recoger + Math.sin(ang) * gira + (esCabeza ? asiente : 0);
       x += Math.sin(t * p.v + p.f) * 0.012 * (1 + energia);
       y += Math.cos(t * p.v * 0.8 + p.f) * 0.012 * (1 + energia);
-      if (modo === 'hablando' || amplitud > 0.02) y += Math.sin(t * 6 + p.hy * 5) * amplitud * 0.06;
-      if (modo === 'oyendo') x *= 1 + 0.03 * Math.sin(t * 2.2);
+      if (amplitud > 0.02) y += Math.sin(t * 6 + p.hy * 5) * amplitud * 0.05;
       const px = cx() + x * r, py = cy() + y * r;
       const cerca = 1 - Math.min(1, Math.hypot(x, y - nucleoY) / 1.2);
-      const alfa = (p.borde ? 0.55 : 0.28) * (0.55 + p.brillo * 0.45) * (0.75 + energia * 0.5 + amplitud * 0.8) * (0.6 + cerca * 0.6);
+      let alfa = (p.borde ? 0.6 : 0.3) * (0.55 + p.brillo * 0.45) * (0.75 + energia * 0.5 + amplitud * 0.8) * (0.6 + cerca * 0.6);
+      if (onda >= 0) { const d = Math.abs(Math.hypot(x, y - nucleoY) - onda * 1.3); if (d < 0.12) alfa += (0.12 - d) * 5; }
       const tam = p.s * (1 + amplitud * 0.5) * (chica ? 0.8 : 1);
-      ctx.fillStyle = p.brillo > 0.72 ? `rgba(234,242,255,${alfa})` : `rgba(93,214,255,${alfa})`;
+      ctx.fillStyle = p.brillo > 0.72 ? `rgba(234,242,255,${Math.min(1, alfa)})` : `rgba(93,214,255,${Math.min(1, alfa)})`;
       ctx.beginPath(); ctx.arc(px, py, tam, 0, Math.PI * 2); ctx.fill();
     }
-    // el núcleo en el pecho, y una chispa en la cabeza
+    // el núcleo en el pecho
     const ny = cy() + nucleoY * r;
     const nucleo = ctx.createRadialGradient(cx(), ny, 0, cx(), ny, r * (0.20 + energia * 0.12 + amplitud * 0.22));
     nucleo.addColorStop(0, `rgba(234,242,255,${0.6 + energia * 0.3 + amplitud * 0.4})`);
     nucleo.addColorStop(0.35, `rgba(93,214,255,${0.28 + energia * 0.22})`); nucleo.addColorStop(1, 'rgba(93,214,255,0)');
     ctx.fillStyle = nucleo; ctx.beginPath(); ctx.arc(cx(), ny, r * 0.5, 0, Math.PI * 2); ctx.fill();
-    const hy = cy() - 0.62 * r;
-    const ojo = ctx.createRadialGradient(cx(), hy, 0, cx(), hy, r * 0.12);
-    ojo.addColorStop(0, `rgba(234,242,255,${0.25 + energia * 0.25})`); ojo.addColorStop(1, 'rgba(93,214,255,0)');
-    ctx.fillStyle = ojo; ctx.beginPath(); ctx.arc(cx(), hy, r * 0.12, 0, Math.PI * 2); ctx.fill();
+    // los ojos: dos brasas suaves que parpadean
+    const oy = cy() + (-0.64 + asiente) * r, sep = 0.105 * r, abiertos = 1 - guiño * 0.85;
+    for (const sx of [-1, 1]) {
+      const ox = cx() + sx * sep + ladea * r * 0.02;
+      const ojo = ctx.createRadialGradient(ox, oy, 0, ox, oy, r * 0.07);
+      ojo.addColorStop(0, `rgba(234,242,255,${(0.55 + energia * 0.3) * abiertos})`); ojo.addColorStop(0.5, `rgba(93,214,255,${0.25 * abiertos})`); ojo.addColorStop(1, 'rgba(93,214,255,0)');
+      ctx.fillStyle = ojo; ctx.beginPath(); ctx.ellipse(ox, oy, r * 0.07, r * 0.07 * (0.35 + 0.65 * abiertos), 0, 0, Math.PI * 2); ctx.fill();
+    }
     ctx.globalCompositeOperation = 'source-over';
+    for (const q of puestos) if (q.prof >= 0.5) pintarNodo(q.nd, q.x, q.y, q.prof, r);
     requestAnimationFrame(cuadro);
   }
-  /* Con «reducir movimiento» puesto, la presencia se pinta UNA vez y se queda
-     quieta: sigue siendo la imagen, deja de ser la animación. */
   if (matchMedia('(prefers-reduced-motion: reduce)').matches) {
     const unaVez = () => { const raf = window.requestAnimationFrame; window.requestAnimationFrame = () => 0; try { cuadro(); } finally { window.requestAnimationFrame = raf; } };
     unaVez();
-    return { setModo: () => {}, setAmplitud: () => {} };
+    return { setModo: () => {}, setAmplitud: () => {}, setDatos: (l) => { nodos = (l || []).slice(0, 12).map((d, i) => ({ ...d, i })); unaVez(); }, saludar: () => {} };
   }
   requestAnimationFrame(cuadro);
-  return { setModo, setAmplitud };
+  return { setModo, setAmplitud, setDatos, saludar };
 }
 
 /* la lluvia de fondo: columnas de dígitos muy tenues, como en la imagen */
@@ -518,10 +600,11 @@ async function entrarAlPanel() {
   E.yo = await api('/yo');
   $('#puerta').hidden = true; $('#panel').hidden = false;
   $('#nombre').textContent = E.yo.miembro.nombre;
-  if (!presencia) presencia = Presencia($('#presencia'), { n: 1900 });
+  if (!presencia) presencia = Presencia($('#presencia'), { n: 1700, datos: true, fuente: 2.0 });
   pintarPuntos(); pintarSaber(); pintarVozBtn();
   await Promise.all([cargarVivo(), cargarPendientes(), cargarMemorias(), cargarDocumentos(), cargarHilos(), cargarGasto()]);
   pintarVacio();
+  saludar();
   setInterval(cargarVivo, 45_000);
 }
 
@@ -559,6 +642,7 @@ async function cargarVivo() {
     casa(v.aucorp, v.aucorp.tasas ? `tasas ${v.aucorp.tasasCuando ? new Date(v.aucorp.tasasCuando).toLocaleDateString('es-HN', { day: 'numeric', month: 'short' }) : 'al día'}` : 'sin tasas') +
     casa(v.wallet) + casa(v.genesis) +
     casa(v.ordenscan, `bloque 8532 · ${v.ordenscan.bloque8532 ?? '—'}`);
+  repartirDatos();
 }
 $('#refrescarVivo').addEventListener('click', cargarVivo);
 
@@ -566,17 +650,70 @@ $('#refrescarVivo').addEventListener('click', cargarVivo);
    EL HILO
    ═══════════════════════════════════════════════════════════════════════════ */
 const hilo = $('#hilo');
+let presenciaHero = null;
 function pintarVacio() {
   if (hilo.children.length) return;
   const sug = [
     ['¿Cómo está la casa ahora?', 'Estado vivo de Ordenex, AuCorp, la billetera y las cadenas, con lo que necesita ojos.'],
     ['Preparame el memo de la próxima junta', 'Con los pendientes, los riesgos y una recomendación por punto.'],
-    ['¿A cuánto cerró el oro hoy y qué implica para el ORIGEN?', 'Busca en internet y hace la cuenta con la fórmula de la casa.'],
+    ['¿Qué implica el precio del oro de hoy para el ORIGEN?', 'La referencia viva y la cuenta con la fórmula de la casa.'],
     ['¿Qué dice el estado legal de la minería?', 'Lo que hay escrito, las contradicciones y lo que falta.'],
   ];
-  hilo.innerHTML = `<div class="vacio"><h2>CONOCIMIENTO FULL</h2><p>Tengo delante todo lo que la casa tiene escrito, el estado vivo de cada sistema, lo que la junta me ha dicho, e internet. Preguntá, pedime un documento, o contame algo que tenga que recordar.</p>
+  hilo.innerHTML = `<div class="hero">
+    <canvas id="presenciaHero" width="900" height="700" aria-label="ULTRON, con los datos de la casa alrededor"></canvas>
+    <div class="saludo" id="saludoTexto"></div>
+    <div class="hero-acciones">
+      <button class="btn grande" id="heroConversar"><svg viewBox="0 0 24 24"><path d="M12 3a3 3 0 00-3 3v6a3 3 0 006 0V6a3 3 0 00-3-3z"/><path d="M19 11a7 7 0 01-14 0M12 18v3"/></svg>Hablar con ULTRON</button>
+      <button class="btn grande linea" id="heroEscribir">Escribir</button>
+    </div>
     <div class="sugerencias">${sug.map(([t, s]) => `<button class="sug" data-t="${esc(t)}"><b>${esc(t)}</b>${esc(s)}</button>`).join('')}</div></div>`;
   hilo.querySelectorAll('.sug').forEach((b) => b.addEventListener('click', () => { $('#entrada').value = b.dataset.t; mandar(); }));
+  $('#heroConversar').addEventListener('click', () => conversar(true));
+  $('#heroEscribir').addEventListener('click', () => $('#entrada').focus());
+  presenciaHero = Presencia($('#presenciaHero'), { n: 2600, datos: true });
+  presenciaHero.setDatos(datosParaPresencia());
+  if (E.saludo) escribirSaludo(E.saludo.texto);
+}
+
+/* Lo que orbita alrededor de la figura: el ecosistema, en vivo. */
+function datosParaPresencia() {
+  const v = E.vivo; const d = [];
+  const casa = (c, k) => c && d.push({ k, v: c.vivo ? 'viva' : (c.http ? 'HTTP ' + c.http : 'no contesta'), estado: c.vivo ? 'ok' : 'mal' });
+  if (v?.origen) d.push({ k: 'ORIGEN', v: dolares(v.origen.origenUsd, 4), estado: 'oro' });
+  if (v?.origen?.oroOnzaUsd) d.push({ k: 'ORO · ONZA', v: dolares(v.origen.oroOnzaUsd), estado: 'oro' });
+  casa(v?.ordenex, 'ORDENEX'); if (v?.ordenex?.bloque5550) d.push({ k: 'BLOQUE 5550', v: String(v.ordenex.bloque5550), estado: 'fila' });
+  if (v?.ordenex) d.push({ k: 'COMPRA USDT', v: v.ordenex.compraUsdt || '—', estado: v.ordenex.compraUsdt === 'abierta' ? 'ok' : 'aviso' });
+  casa(v?.aucorp, 'AUCORP'); casa(v?.wallet, 'VETA WALLET'); casa(v?.genesis, 'GENESIS ID'); casa(v?.ordenscan, 'ORDENSCAN');
+  if (v?.ordenscan?.bloque8532) d.push({ k: 'BLOQUE 8532', v: String(v.ordenscan.bloque8532), estado: 'fila' });
+  d.push({ k: 'PENDIENTES', v: String((E.pendientes || []).filter((p) => p.estado !== 'hecho').length), estado: 'fila' });
+  if (E.yo?.saber?.total) d.push({ k: 'SABER', v: `${E.yo.saber.total} secc.`, estado: 'fila' });
+  return d;
+}
+/* La presencia chica se ve a un 43 % del lienzo: cinco datos caben legibles,
+   ocho se amontonan. La grande lleva todos. */
+function repartirDatos() { const d = datosParaPresencia(); presencia?.setDatos(d.filter((x) => /ORIGEN|ORO|^ORDENEX|COMPRA|PENDIENTES/.test(x.k)).slice(0, 5)); presenciaHero?.setDatos(d); }
+
+/* EL SALUDO: por su nombre, con la hora y con lo que hay. Se escribe letra a
+   letra en el hero, la figura manda su onda, y si la voz está encendida se
+   dice. Determinista y al instante: viene de /saludo, no del modelo. */
+let escribiendoSaludo = null;
+function escribirSaludo(texto) {
+  const el = $('#saludoTexto'); if (!el) return;
+  if (escribiendoSaludo) clearInterval(escribiendoSaludo);
+  el.textContent = ''; el.classList.remove('listo');
+  presenciaHero?.saludar(); presencia?.saludar();
+  let i = 0;
+  const rapido = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if (rapido) { el.textContent = texto; el.classList.add('listo'); return; }
+  escribiendoSaludo = setInterval(() => {
+    i += 2; el.textContent = texto.slice(0, i);
+    if (i >= texto.length) { clearInterval(escribiendoSaludo); escribiendoSaludo = null; el.classList.add('listo'); }
+  }, 22);
+}
+async function saludar() {
+  try { E.saludo = await api('/saludo'); } catch { return; }
+  escribirSaludo(E.saludo.texto);
+  if (E.vozOn) hablar(E.saludo.texto);
 }
 
 function burbujaMia(texto) {
@@ -599,7 +736,7 @@ async function mandar() {
   ta.value = ''; ajustarAlto(); $('#mandar').disabled = true; E.hablando = true;
   burbujaMia(texto);
   const b = burbujaUltron(); const cuerpo = b.querySelector('.cuerpo'), act = b.querySelector('.actividad'), pens = b.querySelector('.pensando');
-  presencia.setModo('pensando'); $('#estadoPresencia').textContent = 'pensando';
+  presencia.setModo('pensando'); presenciaHero = null; $('#estadoPresencia').textContent = 'pensando';
   let md = '', pintarPendiente = null;
   const repintar = () => { cuerpo.innerHTML = MARKDOWN.aHtml(md); hilo.scrollTop = hilo.scrollHeight; };
   try {
@@ -674,7 +811,7 @@ function terminar(b, d, md) {
   extras.querySelectorAll('[data-desc]').forEach((btn) => btn.addEventListener('click', () => { const t = btn.closest('.tarjeta'); E.enviosPendientes.delete(t.dataset.env); t.remove(); }));
   if ((d.pendientes || []).length) cargarPendientes();
   cargarGasto();
-  if (E.vozOn && md.trim()) hablar(md);
+  if ((E.vozOn || E.conversando) && md.trim()) hablar(md);
 }
 
 async function confirmarEnvio(t) {
@@ -711,27 +848,68 @@ $('#mandar').addEventListener('click', mandar);
 const Reconocedor = window.SpeechRecognition || window.webkitSpeechRecognition;
 let rec = null;
 if (!Reconocedor) { $('#micBtn').title = 'Este navegador no escucha'; $('#micBtn').style.opacity = .4; }
-$('#micBtn').addEventListener('click', () => {
-  if (!Reconocedor) return;
-  if (E.oyendo) { rec?.stop(); return; }
+
+/* ESCUCHAR. Una vez por toque del micrófono, o en bucle cuando se conversa.
+   Lo que se oye va al compositor a medida que se reconoce, y al terminar de
+   hablar se manda solo. `vacias` cuenta las veces seguidas que no se oyó nada
+   conversando: a la tercera, ULTRON deja de escuchar y lo dice — quedarse con
+   el micrófono abierto para siempre no es escuchar, es vigilar. */
+let vacias = 0;
+function escuchar() {
+  if (!Reconocedor || E.oyendo || E.hablando) return false;
   rec = new Reconocedor(); rec.lang = 'es-HN'; rec.interimResults = true; rec.continuous = false;
   let final = '';
-  rec.onstart = () => { E.oyendo = true; $('#micBtn').classList.add('oyendo'); presencia.setModo('oyendo'); $('#estadoPresencia').textContent = 'escuchando'; };
+  rec.onstart = () => { E.oyendo = true; $('#micBtn').classList.add('oyendo'); presencia.setModo('oyendo'); presenciaHero?.setModo('oyendo'); $('#estadoPresencia').textContent = 'escuchando'; };
   rec.onresult = (ev) => { let inter = ''; for (const r of ev.results) { if (r.isFinal) final += r[0].transcript; else inter += r[0].transcript; } entrada.value = (final + ' ' + inter).trim(); ajustarAlto(); $('#mandar').disabled = !entrada.value.trim(); };
-  rec.onerror = () => avisar('No se pudo escuchar. Revisá el permiso del micrófono.', true);
-  rec.onend = () => { E.oyendo = false; $('#micBtn').classList.remove('oyendo'); presencia.setModo('reposo'); $('#estadoPresencia').textContent = 'en reposo'; if (entrada.value.trim()) mandar(); };
-  rec.start();
-});
+  rec.onerror = (ev) => { if (ev.error !== 'no-speech' && ev.error !== 'aborted') avisar('No se pudo escuchar. Revisá el permiso del micrófono.', true); };
+  rec.onend = () => {
+    E.oyendo = false; $('#micBtn').classList.remove('oyendo'); presencia.setModo('reposo'); presenciaHero?.setModo('reposo'); $('#estadoPresencia').textContent = 'en reposo';
+    if (entrada.value.trim()) { vacias = 0; mandar(); return; }
+    if (E.conversando) { vacias++; if (vacias >= 3) { conversar(false); avisar('Acá estoy cuando querás.'); } else setTimeout(() => { if (E.conversando) escuchar(); }, 400); }
+  };
+  try { rec.start(); return true; } catch { return false; }
+}
+$('#micBtn').addEventListener('click', () => { if (E.oyendo) { rec?.stop(); return; } escuchar(); });
+
+/* CONVERSAR: escucha, contesta con voz y vuelve a escuchar, hasta que se
+   apaga. Encender la voz es parte de conversar; apagarla al salir no, porque
+   quien la tenía encendida la sigue queriendo. */
+function conversar(encender) {
+  E.conversando = encender === undefined ? !E.conversando : !!encender;
+  $('#conversarBtn').classList.toggle('conversando', E.conversando);
+  $('#conversarBtn').querySelector('span').textContent = E.conversando ? 'Escuchando' : 'Conversar';
+  if (E.conversando) {
+    vacias = 0;
+    if (!E.vozOn) { E.vozOn = true; pintarVozBtn(); try { localStorage.setItem('ultron.voz', '1'); } catch {} }
+    if (!Reconocedor) { avisar('Este navegador no escucha. Podés escribir, y ULTRON te contesta con voz.', true); E.conversando = false; $('#conversarBtn').classList.remove('conversando'); return; }
+    // Si todavía está el saludo, se dice primero; después se escucha.
+    if (E.saludo && hilo.querySelector('.hero') && !E.saludoDicho) { E.saludoDicho = true; hablar(E.saludo.texto); } else escuchar();
+  } else { rec?.stop(); }
+}
+$('#conversarBtn').addEventListener('click', () => conversar());
 
 function pintarVozBtn() { $('#vozBtn').classList.toggle('on', E.vozOn); }
 $('#vozBtn').addEventListener('click', () => { E.vozOn = !E.vozOn; try { localStorage.setItem('ultron.voz', E.vozOn ? '1' : '0'); } catch {} pintarVozBtn(); if (!E.vozOn) { audioActual?.pause(); speechSynthesis?.cancel(); } });
 
 let audioActual = null, audioCtx = null;
 function paraDecir(md) { return md.replace(/```[\s\S]*?```/g, ' ').replace(/https?:\/\/\S+/g, ' ').replace(/[#*_>`|]/g, '').replace(/\[(.*?)\]\(.*?\)/g, '$1').replace(/\s+/g, ' ').trim(); }
+const barras = [...document.querySelectorAll('#onda i')];
+function amplitud(a) {
+  presencia.setAmplitud(a); presenciaHero?.setAmplitud(a);
+  // las barras: cada una con su fase, para que se vea voz y no un medidor
+  const t = performance.now() / 90;
+  barras.forEach((b, i) => { b.style.height = `${3 + a * 18 * (0.45 + 0.55 * Math.abs(Math.sin(t + i * 0.7)))}px`; });
+}
 async function hablar(md) {
   const texto = paraDecir(md); if (!texto) return;
-  presencia.setModo('hablando'); $('#estadoPresencia').textContent = 'hablando';
-  const fin = () => { presencia.setModo('reposo'); presencia.setAmplitud(0); $('#estadoPresencia').textContent = 'en reposo'; };
+  presencia.setModo('hablando'); presenciaHero?.setModo('hablando'); $('#estadoPresencia').textContent = 'hablando';
+  document.body.classList.add('hablando'); $('#onda').classList.add('viva');
+  const fin = () => {
+    presencia.setModo('reposo'); presenciaHero?.setModo('reposo'); amplitud(0); $('#estadoPresencia').textContent = 'en reposo';
+    document.body.classList.remove('hablando'); $('#onda').classList.remove('viva');
+    // conversando, al terminar de hablar se vuelve a escuchar
+    if (E.conversando) setTimeout(() => { if (E.conversando) escuchar(); }, 350);
+  };
   if (E.yo?.voz) {
     try {
       const r = await fetch('/voz', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify({ texto: texto.slice(0, 2500) }) });
@@ -744,7 +922,7 @@ async function hablar(md) {
           const src = audioCtx.createMediaElementSource(audioActual); const an = audioCtx.createAnalyser(); an.fftSize = 256;
           src.connect(an); an.connect(audioCtx.destination);
           const datos = new Uint8Array(an.frequencyBinCount);
-          (function medir() { if (audioActual.paused || audioActual.ended) return; an.getByteFrequencyData(datos); let s = 0; for (let i = 0; i < 40; i++) s += datos[i]; presencia.setAmplitud(Math.min(1, s / 40 / 160)); requestAnimationFrame(medir); })();
+          (function medir() { if (audioActual.paused || audioActual.ended) return; an.getByteFrequencyData(datos); let s = 0; for (let i = 0; i < 40; i++) s += datos[i]; amplitud(Math.min(1, s / 40 / 160)); requestAnimationFrame(medir); })();
         } catch {}
         audioActual.onended = () => { URL.revokeObjectURL(url); fin(); }; audioActual.onerror = fin;
         await audioActual.play(); return;
@@ -755,8 +933,10 @@ async function hablar(md) {
   if (!('speechSynthesis' in window)) return fin();
   speechSynthesis.cancel();
   const u = new SpeechSynthesisUtterance(texto.slice(0, 2500)); u.lang = 'es-HN'; u.rate = 1.02;
+  const respira = setInterval(() => amplitud(0.35 + 0.3 * Math.abs(Math.sin(performance.now() / 160))), 60);
+  const finR = fin; const fin2 = () => { clearInterval(respira); finR(); };
+  u.onend = fin2; u.onerror = fin2; speechSynthesis.speak(u); return;
   const voces = speechSynthesis.getVoices(); u.voice = voces.find((v) => /es-(HN|MX|US|419)/i.test(v.lang)) || voces.find((v) => /^es/i.test(v.lang)) || null;
-  u.onend = fin; u.onerror = fin; speechSynthesis.speak(u);
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -778,6 +958,7 @@ async function cargarPendientes() {
   const hechos = $('#verHechos')?.checked ? '?hechos=1' : '';
   try { E.pendientes = await api('/pendientes' + hechos); } catch { return; }
   const l = $('#pendientes');
+  repartirDatos();
   if (!E.pendientes.length) {
     l.innerHTML = '<div class="nada">Nada pendiente.<br>Anotá algo arriba, o decímelo y lo apunto yo.</div>';
     return;

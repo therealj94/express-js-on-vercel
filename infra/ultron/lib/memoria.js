@@ -219,9 +219,25 @@ async function documento(id) {
 
 // ── Pendientes ──────────────────────────────────────────────────────────────
 
+/* Dos pendientes que dicen lo mismo son uno. 4-sep: tres «Fondear la
+   billetera caliente de Ordenex con ORIGEN» seguidos en el panel, de tres
+   pruebas que pidieron lo mismo. Se compara sin acentos, sin puntuación y
+   sin mayúsculas; si ya hay uno ABIERTO igual (o uno contiene al otro y
+   tienen cuerpo), se devuelve ese con `repetido: true` y no se crea otro. */
+const llano = (t) => String(t || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9ñ ]+/g, ' ').replace(/\s+/g, ' ').trim();
+function mismoPendiente(a, b) {
+  const x = llano(a), y = llano(b);
+  if (!x || !y) return false;
+  if (x === y) return true;
+  return x.length >= 24 && y.length >= 24 && (x.includes(y) || y.includes(x));
+}
+
 async function anotarPendiente({ texto, quien, tema, creadoPor }) {
   const t = String(texto || '').trim().slice(0, 400);
   if (!t) return null;
+  const abiertos = await pendientes({ limite: 200 });
+  const igual = abiertos.find((p) => mismoPendiente(p.texto, t));
+  if (igual) return { ...igual, repetido: true };
   const doc = { texto: t, estado: 'abierto', quien: quien ? String(quien).slice(0, 80) : null,
     tema: tema ? String(tema).slice(0, 60) : null, creadoPor: creadoPor || null };
   if (conMongo) return (await Pendiente.create(doc)).toObject();
@@ -292,7 +308,7 @@ async function gasto() {
 
 module.exports = {
   conectar, estado,
-  anotarPendiente, pendientes, cerrarPendiente, borrarPendiente,
+  anotarPendiente, pendientes, cerrarPendiente, borrarPendiente, mismoPendiente,
   anotarGasto, gasto,
   recordar, olvidar, memoriasDe,
   abrirConversacion, conversacion, conversacionesDe, anotarTurno, titular,

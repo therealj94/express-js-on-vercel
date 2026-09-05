@@ -195,6 +195,33 @@ app.delete('/pendientes/:id', puerta, async (req, res) => {
   res.json({ ok: await memoria.borrarPendiente(req.params.id) });
 });
 
+/* ── EL SALUDO ───────────────────────────────────────────────────────────────
+   Lo primero que ULTRON dice al abrir: por su nombre, con la hora de Honduras
+   y con lo que hay —qué casa no contesta, si la compra está cerrada, cuántos
+   pendientes—. Es DETERMINISTA a propósito: sale al instante, no gasta un
+   turno del modelo y no puede irse a otro idioma. Lo que se dice después ya
+   es conversación. */
+app.get('/saludo', puerta, async (req, res) => {
+  const [v, abiertos] = await Promise.all([vivo.leerConCache().catch(() => null), memoria.pendientes({ limite: 100 })]);
+  const hora = Number(new Date().toLocaleString('en-US', { timeZone: 'America/Tegucigalpa', hour: 'numeric', hour12: false }));
+  const momento = hora < 12 ? 'Buenos días' : hora < 19 ? 'Buenas tardes' : 'Buenas noches';
+  const nombre = String(req.miembro.nombre || '').split(' ')[0];
+  const partes = [];
+  if (v) {
+    const caidas = ['ordenex', 'aucorp', 'wallet', 'genesis', 'ordenscan'].filter((k) => v[k] && v[k].vivo === false)
+      .map((k) => ({ ordenex: 'Ordenex', aucorp: 'AuCorp', wallet: 'Veta Wallet', genesis: 'Genesis ID', ordenscan: 'OrdenScan' })[k]);
+    if (v.origen?.origenUsd) partes.push(`el ORIGEN está a ${v.origen.origenUsd.toFixed(4)} dólares`);
+    if (v.ordenex?.compraUsdt === 'cerrada') partes.push('la compra con USDT sigue cerrada');
+    const lista = (l) => l.length <= 1 ? l.join('') : l.slice(0, -1).join(', ') + ' y ' + l.at(-1);
+    if (caidas.length >= 5) partes.push('ninguna casa contesta');
+    else if (caidas.length) partes.push(`${lista(caidas)} no ${caidas.length > 1 ? 'contestan' : 'contesta'}`);
+  }
+  const n = abiertos.length;
+  partes.push(n === 0 ? 'no hay pendientes abiertos' : n === 1 ? 'hay un pendiente abierto' : `hay ${n} pendientes abiertos`);
+  const texto = `${momento}, ${nombre}. ${partes.join(', ').replace(/^./, (c) => c.toUpperCase())}. ¿Por dónde empezamos?`;
+  res.json({ texto, nombre, hora, pendientes: n });
+});
+
 /* Lo que cuesta pensar. Va detrás de la puerta como todo lo demás: cuánto
    gasta la junta no es asunto de nadie más. */
 app.get('/gasto', puerta, async (req, res) => res.json(await memoria.gasto()));

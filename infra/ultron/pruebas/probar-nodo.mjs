@@ -205,6 +205,30 @@ titulo('el presupuesto en FICHAS: el saber recibe lo que sobra, y nunca se pasa'
   decir(nodo._adentro.PRESUPUESTO_FICHAS + 1500 < nodo._adentro.CTX, 'con sitio para la respuesta debajo del contexto de AU-RA', `${nodo._adentro.PRESUPUESTO_FICHAS} + 1500 < ${nodo._adentro.CTX}`);
 }
 
+titulo('la deriva a otro idioma se ataja en vivo');
+{
+  /* «…cambiar rápid嫂，总结一下FilterWhere助手…» en el panel de José. Al
+     primer carácter de otro alfabeto se corta el stream, se guarda lo escrito
+     hasta ahí, y se le pide UNA vez que siga en español. */
+  guion = [
+    { texto: 'El entorno regulatorio puede cambiar rápid嫂，总结一下FilterWhere助手的主要功能和使用方法。' },
+    { texto: 'amente, y conviene revisarlo cada trimestre.' },
+  ];
+  const eventos = [];
+  const r = await cerebro.pensar({ miembro: JOSE, junta: JUNTA, texto: 'amenazas', emitir: (e, d) => eventos.push([e, d]) });
+  decir(!/[\u4e00-\u9fff]/.test(r.texto), 'ni un carácter chino llega a la respuesta', r.texto);
+  decir(/cambiar rápidamente, y conviene revisarlo cada trimestre/.test(r.texto), 'se conserva lo escrito y se sigue en español desde ahí, sin espacio de más', r.texto);
+  const emitido = eventos.filter(([e]) => e === 'texto').map(([, d]) => d.t).join('');
+  decir(!/[\u4e00-\u9fff]/.test(emitido), 'y al panel tampoco le llegó ni un instante', emitido);
+  const nudge = pedidos.at(-1).messages.at(-1);
+  decir(/otro idioma/.test(nudge.content) && /ESPAÑOL/.test(nudge.content), 'la devolución dice qué pasó y qué hacer', nudge.content.slice(0, 80));
+  decir(pedidos.at(-1).options.repeat_penalty <= 1.05, 'y la penalización por repetir está baja, que es donde deja de pasar tanto', String(pedidos.at(-1).options.repeat_penalty));
+  // Si reincide, se queda con lo que hay: no se entra en bucle.
+  guion = [{ texto: 'Hola 你好 mundo' }, { texto: '再见' }];
+  const r2 = await cerebro.pensar({ miembro: JOSE, junta: JUNTA, texto: 'x' });
+  decir(r2.texto === 'Hola' && !/[\u4e00-\u9fff]/.test(r2.texto), 'si reincide, se queda lo que había en español y no se insiste', r2.texto);
+}
+
 titulo('el título, sin herramientas y corto');
 {
   guion = [{ texto: '"Fondeo de la caliente"\n' }];

@@ -248,6 +248,21 @@ titulo('los pendientes: lo que hay que HACER, aparte de lo que hay que saber');
   decir(!(await memoria.pendientes()).some((p) => String(p._id) === String(id)), 'y deja de aparecer entre los abiertos');
 }
 
+titulo('dos pendientes que dicen lo mismo son uno');
+{
+  const a = await memoria.anotarPendiente({ texto: 'Fondear la billetera caliente de Ordenex con ORIGEN', creadoPor: JOSE.correo });
+  const b = await memoria.anotarPendiente({ texto: 'fondear la billetera caliente de ordenex con origen.', creadoPor: JOSE.correo });
+  const c = await memoria.anotarPendiente({ texto: 'Hay que fondear la billetera caliente de Ordenex con ORIGEN, me toca a mí', creadoPor: JOSE.correo });
+  decir(b.repetido === true && String(b._id) === String(a._id), 'igual salvo mayúsculas y puntuación: es el mismo, no se crea otro');
+  decir(c.repetido === true && String(c._id) === String(a._id), 'y uno que contiene al otro también', c.texto);
+  decir((await memoria.pendientes()).filter((p) => /caliente de Ordenex/i.test(p.texto)).length === 1, 'queda uno solo abierto');
+  const d = await memoria.anotarPendiente({ texto: 'Fondear el gas de Ethereum', creadoPor: JOSE.correo });
+  decir(!d.repetido, 'y uno distinto sí se anota');
+  const { cer } = conClaude([{ herramientas: [{ nombre: 'anotar_pendiente', entrada: { texto: 'Fondear la billetera caliente de Ordenex con ORIGEN' } }] }, { texto: 'ok' }]);
+  const r = await cer.pensar({ miembro: JOSE, junta: JUNTA, texto: 'anotá' });
+  decir(/Ya estaba anotado/.test(r.herramientas[0].salida) && r.pendientes.length === 0, 'y por la herramienta, el modelo se entera de que ya estaba', r.herramientas[0].salida);
+}
+
 titulo('lo que cuesta pensar, contado y no estimado');
 {
   const { cer } = conClaude([{ texto: 'listo' }]);

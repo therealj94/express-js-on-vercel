@@ -91,26 +91,38 @@ function pedir(cuerpo, { alTrozo = () => {}, plazo = PLAZO_MS } = {}) {
       }
       let resto = ''; let content = ''; const tool_calls = []; let final = null;
       res.setEncoding('utf8');
+      let cortado = false, resuelto = false;
+      const terminar = () => { if (resuelto) return; resuelto = true; resolver({ content, tool_calls, uso: { entrada: final?.prompt_eval_count || 0, salida: final?.eval_count || 0 }, final, cortado }); };
       res.on('data', (d) => {
+        if (cortado) return;
         resto += d;
         const lineas = resto.split('\n'); resto = lineas.pop();
         for (const l of lineas) {
           if (!l.trim()) continue;
           let j; try { j = JSON.parse(l); } catch { continue; }
           const m = j.message || {};
-          if (m.content) { content += m.content; alTrozo(m.content); }
+          if (m.content) {
+            /* `alTrozo` puede devolver el trozo RECORTADO (una cadena) o false
+               para cortar la respuesta aquí mismo: es lo que ataja una deriva
+               a otro idioma sin esperar a que termine de escribirla. */
+            const r = alTrozo(m.content);
+            if (r === false) { cortado = true; req.destroy(); terminar(); return; }
+            content += typeof r === 'string' ? r : m.content;
+            if (typeof r === 'string' && r.length < m.content.length) { cortado = true; req.destroy(); terminar(); return; }
+          }
           for (const tc of m.tool_calls || []) tool_calls.push(tc);
           if (j.done) final = j;
         }
       });
       res.on('end', () => {
-        if (resto.trim()) { try { const j = JSON.parse(resto); if (j.message?.content) { content += j.message.content; alTrozo(j.message.content); } for (const tc of j.message?.tool_calls || []) tool_calls.push(tc); if (j.done) final = j; } catch { /* trozo roto */ } }
-        resolver({ content, tool_calls, uso: { entrada: final?.prompt_eval_count || 0, salida: final?.eval_count || 0 }, final });
+        if (resto.trim() && !cortado) { try { const j = JSON.parse(resto); if (j.message?.content) { content += j.message.content; alTrozo(j.message.content); } for (const tc of j.message?.tool_calls || []) tool_calls.push(tc); if (j.done) final = j; } catch { /* trozo roto */ } }
+        terminar();
       });
-      res.on('error', (e) => fallar(conCodigo('NODO_MUDO', e.message)));
+      res.on('close', terminar);
+      res.on('error', (e) => { if (!cortado) fallar(conCodigo('NODO_MUDO', e.message)); });
     });
     req.on('timeout', () => { req.destroy(conCodigo('NODO_LENTO', `el nodo no terminó en ${Math.round(plazo / 1000)} s`)); });
-    req.on('error', (e) => fallar(e.codigo ? e : conCodigo('NODO_MUDO', e.message)));
+    req.on('error', (e) => { if (!/aborted|destroyed|ECONNRESET/i.test(String(e.message)) || !e.codigo) fallar(e.codigo ? e : conCodigo('NODO_MUDO', e.message)); });
     req.end(datos);
   });
 }
@@ -132,6 +144,19 @@ function llamadasEnTexto(texto) {
   }
   return { llamadas: salida, limpio: limpio.trim() };
 }
+
+// ── La deriva a otro idioma ─────────────────────────────────────────────────
+
+/* 4-sep, en el panel de José: «El entorno regulatorio puede cambiar rápid嫂，
+   总结一下FilterWhere助手的主要功能…». qwen se va al chino a media frase, y no
+   es raro: es lo que hace un modelo chico cuando la penalización por repetir
+   lo empuja fuera del español. Se ataja EN VIVO: al primer carácter de otro
+   alfabeto se corta el stream ahí mismo, se conserva lo escrito hasta ese
+   punto, y se le pide UNA vez que siga en español desde donde quedó. Si
+   vuelve a irse, se queda lo que hay. La penalización por repetir baja a
+   1,05, que es donde deja de pasar tanto. */
+const OTRO_ALFABETO = /[\u3040-\u30ff\u3400-\u4dbf\u4e00-\u9fff\uac00-\ud7af\u0400-\u04ff\u0600-\u06ff\u0e00-\u0e7f]/;
+function hastaOtroAlfabeto(t) { const m = OTRO_ALFABETO.exec(t); return m ? t.slice(0, m.index) : t; }
 
 // ── El prompt, con presupuesto ──────────────────────────────────────────────
 
@@ -196,14 +221,29 @@ async function pensar({ miembro, junta, texto, conversacionId, emitir = () => {}
   let textoFinal = '';
   const usadas = [];
   const uso = { entrada: 0, salida: 0, lecturaCache: 0, escrituraCache: 0 };
-  const opciones = { temperature: 0.35, num_predict: 1400, repeat_penalty: 1.08 };
+  const opciones = { temperature: 0.35, num_predict: 1400, repeat_penalty: 1.05 };
+  // El trozo pasa por la guarda del idioma ANTES de llegar al panel: lo que se
+  // fue a otro alfabeto no se enseña ni un instante.
+  const conGuarda = (acum) => (t) => { const limpio = hastaOtroAlfabeto(t); if (limpio) { acum.t += limpio; emitir('texto', { t: limpio }); } return limpio.length < t.length ? limpio : t; };
+  let derivas = 0;
 
   for (let vuelta = 0; vuelta < MAX_VUELTAS; vuelta++) {
     emitir('pensando', { vuelta });
-    let dicho = '';
-    const r = await pedir({ model: MODELO, messages: mensajes, tools: herramientas.paraOllama(), stream: true, options: opciones },
-      { alTrozo: (t) => { dicho += t; emitir('texto', { t }); } });
+    const acum = { t: '' };
+    let r = await pedir({ model: MODELO, messages: mensajes, tools: herramientas.paraOllama(), stream: true, options: opciones }, { alTrozo: conGuarda(acum) });
     uso.entrada += r.uso.entrada; uso.salida += r.uso.salida;
+    if (r.cortado && derivas === 0) {
+      derivas++;
+      emitir('pensando', { vuelta, motivo: 'otro idioma' });
+      const hastaAqui = r.content;
+      const sigue = await pedir({ model: MODELO, stream: true, options: { ...opciones, temperature: 0.2 },
+        messages: [...mensajes, { role: 'assistant', content: hastaAqui }, { role: 'user', content: '[sistema] Te fuiste a otro idioma a media frase. Seguí en ESPAÑOL exactamente desde donde quedaste, sin repetir lo ya escrito y sin herramientas.' }] },
+        { alTrozo: conGuarda(acum) });
+      uso.entrada += sigue.uso.entrada; uso.salida += sigue.uso.salida;
+      // Sin separador: el corte fue a media palabra («rápid|amente») y el
+      // modelo sigue exactamente desde ahí.
+      r = { ...r, content: hastaAqui + sigue.content, tool_calls: r.tool_calls };
+    }
     if (r.uso.entrada > CTX * 0.92) console.warn(`[nodo] AVISO: una llamada evaluó ${r.uso.entrada} fichas con un contexto de ${CTX}: el principio del prompt pudo quedar fuera`);
 
     const enTexto = llamadasEnTexto(r.content);
@@ -310,4 +350,4 @@ async function salud() {
   });
 }
 
-module.exports = { pensar, titular, salud, encendido, MODELO, _adentro: { pedir, llamadasEnTexto, armarMensajes, sinRepetidos, fichas, PRESUPUESTO, PRESUPUESTO_FICHAS, CTX } };
+module.exports = { pensar, titular, salud, encendido, MODELO, _adentro: { pedir, llamadasEnTexto, armarMensajes, sinRepetidos, hastaOtroAlfabeto, fichas, PRESUPUESTO, PRESUPUESTO_FICHAS, CTX } };

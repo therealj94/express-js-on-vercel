@@ -221,7 +221,8 @@ async function correr(nombre, entrada, ctx) {
         const p = await memoria.anotarPendiente({
           texto: entrada.texto, quien: entrada.quien, tema: entrada.tema, creadoPor: ctx.miembro.correo,
         });
-        if (p) ctx.pendientes.push({ _id: p._id, texto: p.texto, quien: p.quien });
+        if (p && !p.repetido) ctx.pendientes.push({ _id: p._id, texto: p.texto, quien: p.quien });
+        if (p?.repetido) return `Ya estaba anotado (id ${p._id}): «${p.texto}». No lo repetí.`;
         return p ? `Anotado como pendiente (id ${p._id}): ${p.texto}` : 'No se anotó: texto vacío.';
       }
       case 'cerrar_pendiente': {

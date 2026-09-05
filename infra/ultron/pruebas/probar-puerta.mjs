@@ -153,6 +153,16 @@ titulo('los documentos');
   decir(sin.http === 401, 'sin sesión no se baja nada');
 }
 
+titulo('el saludo: por su nombre, con la hora y con lo que hay');
+{
+  const r = await s.pedir('/saludo', { cookie: cookieJose });
+  decir(r.http === 200 && /^Buen(os|as) (días|tardes|noches), José\./.test(r.json.texto), 'saluda por el nombre de pila según la hora de Honduras', r.json.texto);
+  decir(/pendiente/.test(r.json.texto) && /¿Por dónde empezamos\?$/.test(r.json.texto), 'dice cuántos pendientes hay y pregunta por dónde empezar', r.json.texto);
+  decir(/no contesta/.test(r.json.texto), 'y sin red, dice qué casa no contesta en vez de callarlo', r.json.texto);
+  const sin = await s.pedir('/saludo');
+  decir(sin.http === 401, 'sin sesión no hay saludo');
+}
+
 await s.cerrar();
 console.log(fallos ? `\n${fallos} comprobación(es) fallaron` : '\nTodo en verde');
 process.exit(fallos ? 1 : 0);
