@@ -13,9 +13,9 @@
  *
  * QUÉ SE COMPRUEBA
  *
- *   1. Que la cotización se pida DE VERDAD y que el número grande sea el NETO,
- *      con la comisión ya descontada. Si el número grande fuera el bruto, cada
- *      venta terminaría en un reclamo.
+ *   1. Que la cotización se pida DE VERDAD y que lo que la casa dice que va a
+ *      pagar sea el NETO, con la comisión ya descontada. Si ahí fuera el
+ *      bruto, cada venta terminaría en un reclamo.
  *   2. Que vender mande origenWei, red, direccion y ventaKey. Sin la clave, el
  *      servidor no puede impedir el doble pago.
  *   3. Que un reintento reuse LA MISMA ventaKey. Es la mitad de la defensa: la

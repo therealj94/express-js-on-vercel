@@ -746,6 +746,9 @@ body.en-mercado::before{content:'';position:fixed;inset:0;z-index:-1;
   border:1px solid var(--linea2);display:grid;gap:3px;font-size:12px;color:var(--bruma)}
 .vn-techo b{font-size:15px;color:var(--crema);font-variant-numeric:tabular-nums}
 .vn-techo small{color:var(--humo);line-height:1.5}
+.vn-neto{margin-top:8px;padding-top:9px;border-top:1px solid rgba(255,255,255,.08)}
+.vn-neto span{color:var(--bruma)}
+.vn-neto b{font-size:16px;color:var(--oroLt)}
 .vn-btn{width:100%;margin-top:16px}
 .vn-pie{margin-top:10px;font-size:11.5px;color:var(--tenue);line-height:1.5}
 .vn-lado h3{font-size:13px;letter-spacing:.02em;margin:0 0 8px}
@@ -802,6 +805,16 @@ body.en-mercado::before{content:'';position:fixed;inset:0;z-index:-1;
 /* EL NUMERO QUE RECIBE. Es el heroe de la pantalla y por eso lleva la serif de
    la casa: es lo unico que la persona vino a saber, y lleva la comision ya
    descontada — no hay letra chica que reste despues. */
+.cp-grande input{font-size:26px;padding:16px 96px 16px 15px}
+.cp-grande .cp-mon{font-size:12px}
+/* El pago va en su renglón y no de titular: lo que la casa vende es ORIGEN;
+   el USDT es el medio, y por eso se lee después y más chico. */
+.cp-pagas{margin-top:2px;font-size:15px;color:var(--bruma);display:flex;flex-wrap:wrap;align-items:baseline;gap:7px}
+.cp-pagas b{font-size:19px;color:var(--crema);font-variant-numeric:tabular-nums}
+.cp-pagas span{font-size:12.5px;color:var(--humo)}
+.cp-pagas.vacio{color:var(--humo);font-size:13px}
+.cp-recibes-min{margin-top:7px;font-size:12.5px;color:var(--humo)}
+.cp-recibes-min b{color:var(--oroLt);font-variant-numeric:tabular-nums}
 .cp-recibe{margin:20px 0 16px;padding:18px 0 0;border-top:1px solid var(--linea2)}
 .cp-lbl{display:block;font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;
   color:var(--humo);font-weight:600;margin-bottom:8px}

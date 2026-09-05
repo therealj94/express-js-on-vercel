@@ -6,9 +6,12 @@
  * ══════════════════════════════════════════════════════════════════════════
  * LO QUE ESTA PANTALLA TIENE GRABADO
  *
- * · EL NÚMERO GRANDE ES EL QUE RECIBE. Igual que en comprar.js: lo que se
- *   enseña arriba lleva la comisión YA DESCONTADA. La comisión se ve, en su
- *   renglón, pero nunca resta DESPUÉS del número grande.
+ * · EL NÚMERO GRANDE ES EL ORIGEN QUE SALE. La casa vende y compra ORIGEN;
+ *   el USDT es el medio de pago y vive en la cuenta de abajo, en su tamaño.
+ *   Lo que NO cambia es la regla vieja: el último renglón —lo que la casa
+ *   paga— lleva la comisión ya descontada, y la comisión se ve en el suyo.
+ *   Nunca se enseña un bruto donde se va a cobrar un neto: eso termina
+ *   siempre en un reclamo.
  *
  * · LA DIRECCIÓN ES LO ÚNICO QUE NO SE PUEDE DESHACER. Vender es la única
  *   pantalla de esta casa donde el dinero sale hacia fuera. Una dirección mal
@@ -191,7 +194,7 @@ const VVENTA = (() => {
 
       <div class="campo">
         <label for="vn-cant">¿Cuánto ORIGEN querés vender?</label>
-        <div class="cp-monto">
+        <div class="cp-monto cp-grande">
           <input id="vn-cant" inputmode="decimal" autocomplete="off" placeholder="0"
                  value="${esc(cantidad)}" oninput="VVENTA.cantidad(this.value)">
           <span class="cp-mon">ORIGEN</span>
@@ -217,7 +220,7 @@ const VVENTA = (() => {
       </div>
 
       <div class="campo">
-        <label>¿En qué red querés el USDT?</label>
+        <label>¿En qué red te pagamos?</label>
         <div class="vn-redes">
           ${(redesAbiertas.length ? redesAbiertas : [56]).map((id) => `
             <button type="button" class="vn-red${id === red ? ' es' : ''}" onclick="VVENTA.red(${id})">
@@ -249,13 +252,13 @@ const VVENTA = (() => {
         <div class="vn-fila"><span>Precio</span><b>${deWei(cotiza.precioWei, 6)} USD por ORIGEN</b></div>
         <div class="vn-fila"><span>Bruto</span><b>${deWei(cotiza.brutoCanonico, 6)} USDT</b></div>
         <div class="vn-fila vn-com"><span>Comisión de salida (${(cotiza.comisionPpm / 10000).toFixed(2)} %)</span><b>− ${deWei(cotiza.comisionCanonico, 6)} USDT</b></div>
-        <div class="vn-recibe"><span>Recibís</span><b>${deWei(cotiza.netoCanonico, 6)} USDT</b></div>
+        <div class="vn-fila vn-neto"><span>Te pagamos</span><b>${deWei(cotiza.netoCanonico, 6)} USDT</b></div>
       </div>` : cotiza?.error ? `<div class="vn-mal">${esc(cotiza.error)}</div>` : ''}
 
       <button class="btn btn-oro vn-btn" ${listo ? '' : 'disabled'} onclick="VVENTA.vender()">
         ${trabajando ? 'Pagando…'
           : cotiza && !cotiza.error && destino
-            ? `Vender y recibir ${deWei(cotiza.netoCanonico, 4)} USDT en ${esc(r.corto)}`
+            ? `Vender ${deWei(cotiza.origenWei, 4)} ORIGEN`
             : 'Vender'}
       </button>
       <p class="vn-pie">El precio se toma en el momento de confirmar. El pago sale enseguida y te dejamos el comprobante.</p>
@@ -301,7 +304,7 @@ const VVENTA = (() => {
       <ul class="vn-pasos">
         <li>La dirección tiene que ser tuya y de la red elegida.</li>
         <li>El precio sale de la referencia del oro, la misma que usa la compra.</li>
-        <li>La comisión de salida ya está descontada del número grande.</li>
+        <li>La comisión de salida ya está descontada de lo que te pagamos.</li>
       </ul>
       <p class="vn-pie">ORIGEN está referenciado al oro. Una referencia no es una promesa de valor.</p>
     </div>`;

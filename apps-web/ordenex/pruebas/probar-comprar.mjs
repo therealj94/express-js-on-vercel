@@ -207,10 +207,22 @@ decir(faltan.length === 0,
   'DATOS tiene los métodos que comprar.js llama en sus cuatro rutas',
   faltan.length ? `faltan: DATOS.${faltan.join(', DATOS.')}` : 'post y get');
 
-titulo('congelar el precio llama al servidor');
+titulo('se pide en ORIGEN y la casa dice qué USDT mandar');
 llamadas = [];
 await p.fill('#cp-monto', '100');
-await p.waitForTimeout(400);
+await p.waitForTimeout(500);
+{
+  /* La pantalla la gobierna el ORIGEN —es lo que la casa vende— y el USDT es
+     el medio de pago: va abajo y más chico. 100 ORIGEN a 2,566148 son
+     256,6148 dólares, que se redondean HACIA ARRIBA al centavo: 256,62. Se
+     paga un pelo de más y se recibe un pelo más de ORIGEN, nunca menos —y de
+     paso es una cifra que un exchange deja teclear. */
+  const izq = await p.evaluate(() => document.getElementById('cp-izq')?.innerText || '');
+  decir(/256\.62 USDT/.test(izq), 'por 100 ORIGEN se pagan 256,62 USDT, redondeando al centavo hacia arriba', izq.slice(0, 220));
+  decir(await p.evaluate(() => document.querySelector('.cp-monto .cp-mon')?.textContent.trim() === 'ORIGEN'),
+    'y el campo grande pide ORIGEN, no USDT');
+}
+await p.waitForTimeout(200);
 await p.evaluate(() => VCOMPRA.red(137));      // Polygon
 await p.waitForTimeout(300);
 await p.evaluate(() => VCOMPRA.congelar());
@@ -219,9 +231,11 @@ await p.waitForTimeout(1500);
 const abrió = llamadas.find((l) => l.ruta === '/compras' && l.metodo === 'POST');
 decir(!!abrió, 'POST /compras llegó al servidor', JSON.stringify(abrió || llamadas));
 if (abrió) {
-  // 100 USDT en micros: el API los cuenta en enteros, nunca en flotantes.
-  decir(abrió.cuerpo.montoMicro === '100000000',
-    'con el monto en micros y como texto, sin un flotante en el camino', String(abrió.cuerpo.montoMicro));
+  /* Lo que viaja al API sigue siendo micro-dólares: el contrato del servidor
+     no cambia porque la pantalla hable en ORIGEN. Enteros y texto, nunca un
+     flotante. */
+  decir(abrió.cuerpo.montoMicro === '256620000',
+    'al servidor viajan los micro-dólares de esos 100 ORIGEN, en texto y sin un flotante en el camino', String(abrió.cuerpo.montoMicro));
   decir(Number(abrió.cuerpo.cadena) === 137, 'y con la cadena que se eligió', String(abrió.cuerpo.cadena));
 }
 

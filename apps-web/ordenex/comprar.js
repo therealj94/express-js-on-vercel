@@ -66,14 +66,16 @@ const VCOMPRA = (() => {
 
   const TXT = {
     es: {
-      t: 'Comprar ORIGEN', sub: 'Con USDT, desde tu exchange o tu billetera.',
+      t: 'Comprar ORIGEN', sub: 'Decí cuánto ORIGEN querés y la casa te dice qué mandar. Se paga con USDT, desde tu exchange o tu billetera.',
       previa: 'Vista previa del diseño. El servidor de compras se está construyendo: acá no se mueve dinero todavía.',
       cerrada: 'La compra de ORIGEN con USDT está cerrada en este momento. No mandes nada todavía: no habría quién te lo entregue.',
-      cuanto: 'Quiero depositar', red: 'Por la red', recibis: 'Vas a recibir',
-      precioA: 'a', porOrigen: 'por ORIGEN', comision: 'comisión ya descontada',
+      cuanto: '¿Cuánto ORIGEN querés comprar?', red: 'Por la red', recibis: 'Vas a recibir',
+      pagas: 'Vas a pagar', porLaRed: 'por', recibisAlMenos: 'Recibís',
+      escribiOrigen: 'Escribí cuánto ORIGEN querés',
+      precioA: 'a', porOrigen: 'por ORIGEN', comision: 'sin comisión de compra',
       congelar: 'Congelar este precio', congelando: 'Congelando…',
       cargando: 'Buscando el precio del oro…',
-      escribi: 'Escribí cuánto querés depositar',
+      escribi: 'Escribí cuánto ORIGEN querés',
       oroA: 'Oro a', laOnza: 'la onza', hace: 'leído hace',
       plazo: 'El precio te queda fijo {min} minutos.',
       minimo: 'Mínimo en esta red', tiempoRed: 'La red tarda',
@@ -102,18 +104,20 @@ const VCOMPRA = (() => {
       sinWalletD: 'Abrila una vez y volvé — se vincula sola, no hay nada que copiar.',
       abrirWallet: 'Abrir Veta Wallet',
       sinRef: 'No hay precio de referencia ahora mismo. No se puede congelar un precio sobre un dato que no llegó.',
-      malMonto: 'Escribí cuánto USDT querés depositar.',
+      malMonto: 'Escribí cuánto ORIGEN querés comprar.',
       bajoMinimo: 'En esta red el mínimo es',
     },
     en: {
-      t: 'Buy ORIGEN', sub: 'With USDT, from your exchange or wallet.',
+      t: 'Buy ORIGEN', sub: 'Say how much ORIGEN you want and the house tells you what to send. Paid with USDT, from your exchange or wallet.',
       previa: 'Design preview. The purchase backend is being built: no money moves here yet.',
       cerrada: 'Buying ORIGEN with USDT is closed right now. Do not send anything yet: there would be nobody to deliver it.',
-      cuanto: 'I want to deposit', red: 'On network', recibis: "You'll receive",
-      precioA: 'at', porOrigen: 'per ORIGEN', comision: 'fee already deducted',
+      cuanto: 'How much ORIGEN do you want?', red: 'On network', recibis: "You'll receive",
+      pagas: "You'll pay", porLaRed: 'on', recibisAlMenos: 'You receive',
+      escribiOrigen: 'Enter how much ORIGEN you want',
+      precioA: 'at', porOrigen: 'per ORIGEN', comision: 'no purchase fee',
       congelar: 'Lock this price', congelando: 'Locking…',
       cargando: 'Fetching the gold price…',
-      escribi: 'Enter how much you want to deposit',
+      escribi: 'Enter how much ORIGEN you want',
       oroA: 'Gold at', laOnza: 'per ounce', hace: 'read',
       plazo: 'Your price stays fixed for {min} minutes.',
       minimo: 'Minimum on this network', tiempoRed: 'Network takes',
@@ -139,7 +143,7 @@ const VCOMPRA = (() => {
       sinWalletD: 'Open it once and come back — it links itself, nothing to copy.',
       abrirWallet: 'Open Veta Wallet',
       sinRef: "No reference price right now. We won't lock a price on data that didn't arrive.",
-      malMonto: 'Enter how much USDT you want to deposit.',
+      malMonto: 'Enter how much ORIGEN you want to buy.',
       bajoMinimo: 'On this network the minimum is',
     },
   };
@@ -170,6 +174,32 @@ const VCOMPRA = (() => {
   function origenDe(microUsd, precioWei) {
     if (!microUsd || !precioWei || BigInt(precioWei) === 0n) return null;
     return ((BigInt(microUsd) * (10n ** 30n)) / BigInt(precioWei)).toString();
+  }
+
+  /** De lo que teclea la gente a wei de ORIGEN. Misma severidad que aMicro. */
+  function aWei(txt) {
+    const s = String(txt == null ? '' : txt).trim().replace(',', '.');
+    if (!/^\d{1,12}(\.\d{1,18})?$/.test(s)) return null;
+    const [e, d = ''] = s.split('.');
+    const v = BigInt(e) * (10n ** 18n) + BigInt((d + '0'.repeat(18)).slice(0, 18));
+    return v > 0n ? v.toString() : null;
+  }
+
+  /**
+   * EL CAMINO DE VUELTA: cuántos micro-dólares hay que mandar por N ORIGEN.
+   *
+   * Es la inversa de origenDe, y se redondea HACIA ARRIBA hasta el centavo por
+   * dos razones que van juntas. La primera es de dinero: hacia abajo la casa
+   * entregaría ORIGEN que nadie pagó. La segunda es práctica y pesa más —
+   * quien manda USDT lo hace desde un exchange, y pedirle 310,994312 es
+   * pedirle algo que su pantalla no siempre deja teclear. Al centavo, se paga
+   * un pelo de más y se recibe un pelo más de ORIGEN del pedido, nunca menos.
+   */
+  function microDe(origenWei, precioWei) {
+    if (!origenWei || !precioWei || BigInt(precioWei) === 0n) return null;
+    const exacto = (BigInt(origenWei) * BigInt(precioWei)) / (10n ** 30n);
+    const CENTAVO = 10000n;                       // 0,01 USD en micro
+    return (((exacto + CENTAVO - 1n) / CENTAVO) * CENTAVO).toString();
   }
 
   const deWei = (w, dec = 4) => {
@@ -341,8 +371,14 @@ const VCOMPRA = (() => {
 
   function panelCalculadora() {
     const r = redDe(redElegida);
-    const micro = aMicro(monto);
     const pw = precioWei();
+    /* Se teclea ORIGEN, que es lo que la casa vende; el USDT es el medio de
+       pago y va abajo, en su renglón. La cuenta va en la dirección del
+       tecleo: del ORIGEN pedido al USDT que hay que mandar. */
+    const quiere = aWei(monto);
+    const micro = quiere && pw ? microDe(quiere, pw) : null;
+    // Lo que de verdad se recibe: lo que compra el USDT redondeado al centavo,
+    // que es igual o un pelo más que lo pedido. Jamás menos.
     const recibe = micro && pw ? origenDe(micro, pw) : null;
     const bajo = micro && Number(deMicro(micro)) < r.minimo;
 
@@ -355,13 +391,13 @@ const VCOMPRA = (() => {
       ${entregaAbierta === false ? `<div class="cp-previa">${esc(t('cerrada'))}</div>` : ''}
       <div class="campo">
         <label for="cp-monto">${esc(t('cuanto'))}</label>
-        <div class="cp-monto">
+        <div class="cp-monto cp-grande">
           <input id="cp-monto" inputmode="decimal" autocomplete="off" placeholder="100"
                  value="${esc(monto)}" oninput="VCOMPRA.monto(this.value)">
-          <span class="cp-mon">USDT</span>
+          <span class="cp-mon">ORIGEN</span>
         </div>
         <div class="cp-rapidos">
-          ${[50, 100, 500, 1000].map((v) => `
+          ${[20, 50, 100, 500].map((v) => `
             <button type="button" class="cp-rap${String(monto).trim() === String(v) ? ' es' : ''}"
                     onclick="VCOMPRA.monto('${v}')">${v}</button>`).join('')}
         </div>
@@ -382,10 +418,13 @@ const VCOMPRA = (() => {
       </div>
 
       <div class="cp-recibe">
-        <span class="cp-lbl">${esc(t('recibis'))}</span>
-        <div class="cp-hero${recibe ? '' : ' vacio'}">
-          ${recibe ? `${partido(recibe)} <em>ORIGEN</em>` : `<span>${esc(t('escribi'))}</span>`}
+        <span class="cp-lbl">${esc(t('pagas'))}</span>
+        <div class="cp-pagas${micro ? '' : ' vacio'}">
+          ${micro
+            ? `<b class="mono">${esc(deMicro(micro))} USDT</b> <span>${esc(t('porLaRed'))} ${esc(r.nombre)}</span>`
+            : `<span>${esc(t('escribi'))}</span>`}
         </div>
+        ${recibe ? `<div class="cp-recibes-min">${esc(t('recibisAlMenos'))} <b class="mono">${deWei(recibe, 4)}</b> ORIGEN</div>` : ''}
         <div class="cp-precio">
           ${precio
             ? `${esc(t('precioA'))} <b class="mono">$${precio.usd.toFixed(4)}</b> ${esc(t('porOrigen'))} · <span class="cp-com">${esc(t('comision'))}</span>`
@@ -638,8 +677,9 @@ const VCOMPRA = (() => {
   }
 
   async function congelar() {
-    const micro = aMicro(monto);
     const pw = precioWei();
+    const quiere = aWei(monto);
+    const micro = quiere && pw ? microDe(quiere, pw) : null;
     if (!micro) return ONX.avisar(t('malMonto'), 'mal');
     if (!pw) return ONX.avisar(t('sinRef'), 'mal');
 
