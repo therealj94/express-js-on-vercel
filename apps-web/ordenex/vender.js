@@ -310,9 +310,37 @@ const VVENTA = (() => {
     </div>`;
   }
 
+  /* EL CAMPO NO SE PIERDE AL REPINTAR.
+   *
+   * Esta pantalla se repinta entera (`innerHTML = panel()`) y se repinta
+   * MUCHO: en cada tecla, otra vez cuando vuelve la cotización 400 ms después,
+   * y otra cuando vuelve la capacidad. Cada repintado destruía el <input> y
+   * creaba uno nuevo — o sea que el foco se perdía y el cursor se iba al
+   * final. Escribir «12,5» era escribir «1», quedarse sin campo, tocar otra
+   * vez, escribir «2»… y por eso el monto «se regresaba y no se mantenía».
+   * En comprar.js esto ya estaba resuelto; acá no se había hecho.
+   *
+   * Se guarda cuál campo tenía el foco y dónde estaba el cursor, y se
+   * devuelven después de pintar. Sirve para los dos campos de texto —el monto
+   * y la dirección— porque los dos sufrían lo mismo. */
   function repintar() {
     const i = document.getElementById('vn-izq');
-    if (i) i.innerHTML = panel();
+    if (!i) return;
+    const act = document.activeElement;
+    const id = act && (act.id === 'vn-cant' || act.id === 'vn-dir') ? act.id : null;
+    let ini = null, fin = null;
+    if (id) { try { ini = act.selectionStart; fin = act.selectionEnd; } catch { /* algunos tipos no lo dan */ } }
+    i.innerHTML = panel();
+    if (!id) return;
+    const nuevo = document.getElementById(id);
+    if (!nuevo) return;
+    nuevo.focus({ preventScroll: true });
+    // El cursor donde estaba, sin pasarse del largo nuevo (un 100 % puede
+    // haber alargado el texto por debajo del cursor).
+    if (ini != null) {
+      const tope = nuevo.value.length;
+      try { nuevo.setSelectionRange(Math.min(ini, tope), Math.min(fin ?? ini, tope)); } catch { /* idem */ }
+    }
   }
 
   // ── manejadores ───────────────────────────────────────────────────────────
@@ -345,6 +373,20 @@ const VVENTA = (() => {
                     neto: v.netoCanonico, red: v.red, direccion: v.direccion };
       await traerSaldo();
     } catch (e) {
+      /* LOS TÉRMINOS NO SON UN ERROR DE LA VENTA: SON UN PASO QUE FALTA.
+       *
+       * El API contesta 403 TERMINOS_NO_ACEPTADOS antes de la primera
+       * operación de una cuenta. Pintarlo como «no se pudo completar la
+       * venta» dejaba a la persona leyendo que hay que aceptar algo, sin un
+       * solo sitio donde aceptarlo. Se abre el diálogo y, al aceptar, se
+       * reintenta la venta con lo que ya estaba puesto.
+       *
+       * La ventaKey NO se toca: es la misma clave del intento anterior, y por
+       * eso reintentar no puede cobrar dos veces. */
+      if (e?.codigo === 'TERMINOS_NO_ACEPTADOS' && typeof ONX.pedirTerminos === 'function') {
+        trabajando = false; repintar();
+        return ONX.pedirTerminos(() => vender());
+      }
       resultado = { ok: false, error: e?.message || 'No se pudo completar la venta.', codigo: e?.codigo || 'ERROR' };
     } finally {
       trabajando = false;

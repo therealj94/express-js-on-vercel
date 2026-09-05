@@ -659,11 +659,25 @@ const VCOMPRA = (() => {
     }
   }
 
+  /* `pintarCalculo` ya cuidaba el foco del campo, pero `repintar` no — y
+     `repintar` corre al cambiar de red y cada diez segundos, cuando el reloj
+     mira si la entrega se abrió. Quien estaba tecleando el monto justo en ese
+     instante perdía el campo y el cursor. Es el mismo cuidado, en el otro
+     camino. */
   function repintar() {
     const izq = document.getElementById('cp-izq');
     const der = document.getElementById('cp-der');
+    const enMonto = document.activeElement?.id === 'cp-monto';
+    const pos = enMonto ? document.activeElement.selectionStart : null;
     if (izq) izq.innerHTML = orden ? panelDireccion() : panelCalculadora();
     if (der) der.innerHTML = panelRiel();
+    if (enMonto) {
+      const c = document.getElementById('cp-monto');
+      if (c) {
+        c.focus({ preventScroll: true });
+        if (pos != null) { const tope = c.value.length; try { c.setSelectionRange(Math.min(pos, tope), Math.min(pos, tope)); } catch { /* nada */ } }
+      }
+    }
     if (orden) dibujarQr();
   }
 
@@ -712,6 +726,21 @@ const VCOMPRA = (() => {
       orden = r; repintar(); arrancarReloj(); arrancarSondeo();
     } catch (e) {
       if (e?.codigo === 'SIN_DIRECCION_WALLET') return pedirWallet();
+      /* LOS TÉRMINOS, PEDIDOS DONDE SE CHOCA CON ELLOS.
+       *
+       * El API exige términos y aviso de riesgo aceptados antes de la primera
+       * operación (lib/terminos.js) y contesta 403 TERMINOS_NO_ACEPTADOS.
+       * Fiat y la sala de mercado lo atendían; esta pantalla y la de vender no
+       * — así que acá el mensaje salía como un aviso suelto («hay que aceptar
+       * los términos») y NO HABÍA DÓNDE ACEPTARLOS. Un callejón sin salida:
+       * la persona lee que le falta algo y la pantalla no le ofrece hacerlo.
+       *
+       * `ONX.pedirTerminos` abre el diálogo y, al aceptar, vuelve a intentar
+       * la misma operación con lo que ya estaba tecleado: no se le hace
+       * escribir de nuevo a quien solo le faltaba una casilla. */
+      if (e?.codigo === 'TERMINOS_NO_ACEPTADOS' && typeof ONX.pedirTerminos === 'function') {
+        return ONX.pedirTerminos(() => congelar());
+      }
       ONX.avisar(e?.message || 'No se pudo congelar el precio.', 'mal');
     }
   }

@@ -42,6 +42,10 @@ const TOKEN_SSO = 'sso-fingido';
 const JWT = 'jwt-fingido';
 const DEPOSITO = '0x' + 'b7c3'.repeat(10);
 const AFUERA = '0x' + '42'.repeat(20);
+/* Los terminos: la casa los exige antes de la PRIMERA operacion de una cuenta.
+   Arranca en false para poder recorrer el camino de verdad. */
+const TERMINOS_V = '2026-09-02';
+let terminosAceptados = true;
 
 // El precio del ORIGEN: la onza a 4.389,89 entre 31,1035 y entre 55.
 const PRECIO_WEI = '2566148000000000000';   // $2,566148
@@ -87,8 +91,21 @@ async function api(q, r, ruta) {
     return json(r, 200, { ok: true, cadena: true, mongo: true, bloque: 1, entrega: true, venta: ventaAbierta });
   }
   if (q.method === 'GET' && ruta === '/limites') {
+    /* `terminos` viaja acá porque es de donde lo lee ONX.pedirTerminos para
+       saber QUÉ versión pedir y a qué páginas enlazar. Faltaba en este
+       fingido, y por eso ninguna prueba veía el camino de los términos. */
     return json(r, 200, { desvio: { avisoPct: 5, bloqueoPct: 20 },
+                          terminos: { version: TERMINOS_V, terminos: 'legal.html#terminos', riesgo: 'legal.html#riesgo' },
                           redes: [{ id: 56, nombre: 'BNB Smart Chain', minimoUsd: 2 }] });
+  }
+  if (q.method === 'GET' && ruta === '/auth/terminos') {
+    return json(r, 200, { version: TERMINOS_V, terminos: 'legal.html#terminos', riesgo: 'legal.html#riesgo', aceptada: terminosAceptados });
+  }
+  if (q.method === 'POST' && ruta === '/auth/terminos') {
+    const c = await cuerpoDe(q);
+    if (c.version !== TERMINOS_V) return json(r, 409, { error: 'Otra version.', codigo: 'VERSION_VIEJA' });
+    terminosAceptados = true;
+    return json(r, 200, { version: TERMINOS_V, aceptada: true });
   }
   if (q.method === 'POST' && ruta === '/auth/sso') {
     const { token } = await cuerpoDe(q);
@@ -355,6 +372,96 @@ titulo('a 390 px no se sale nada');
   decir(botonVisible, 'y el botón de confirmar entra entero');
   await p.setViewportSize({ width: 1280, height: 950 });
   await p.waitForTimeout(400);
+}
+
+titulo('los términos se piden DONDE se chocan, no como un aviso sin salida');
+{
+  /* José, 5-sep: «me dice tengo que aceptar políticas y no hay nada, no
+     aparece dónde, y no puedo comprar ni vender».
+     El API contesta 403 TERMINOS_NO_ACEPTADOS antes de la primera operación
+     de una cuenta. Fiat y la sala de mercado abrían el diálogo; comprar y
+     vender NO — así que el mensaje salía como un aviso suelto y la pantalla
+     no ofrecía un solo sitio donde aceptar. Un callejón sin salida. */
+  saldo = wei(500);
+  terminosAceptados = false;
+  siguienteFalla = { status: 403, error: 'Antes de operar hay que aceptar los términos y condiciones y el aviso de riesgo vigentes.',
+                     codigo: 'TERMINOS_NO_ACEPTADOS', version: TERMINOS_V };
+  await p.evaluate(() => VVENTA.otra());
+  await p.waitForTimeout(700);
+  await p.fill('#vn-cant', '2'); await p.waitForTimeout(900);
+  await p.fill('#vn-dir', AFUERA); await p.waitForTimeout(300);
+  const antes = llamadas.filter((l) => l.ruta === '/ventas').length;
+  await p.evaluate(() => VVENTA.vender());
+  await p.waitForTimeout(1200);
+  decir(await p.evaluate(() => !!document.getElementById('onx-terminos')),
+    'al chocar con los términos se ABRE el diálogo para aceptarlos, en vez de un aviso sin salida');
+  const caja = await p.evaluate(() => document.getElementById('onx-terminos')?.innerText || '');
+  decir(/[Aa]cept/.test(caja), 'y el diálogo trae con qué aceptar', caja.slice(0, 120));
+
+  // El botón de aceptar nace APAGADO hasta que se marca la casilla: la puerta
+  // no se abre sin el gesto, y eso también se comprueba.
+  decir(await p.evaluate(() => document.getElementById('onx-term-ok')?.disabled === true),
+    'y aceptar nace apagado: sin marcar la casilla no se acepta nada');
+  await p.check('#onx-term-check');
+  decir(await p.evaluate(() => document.getElementById('onx-term-ok')?.disabled === false),
+    'al marcarla se enciende');
+  await p.click('#onx-term-ok');
+  await p.waitForTimeout(1800);
+  const despues = llamadas.filter((l) => l.ruta === '/ventas').slice(antes);
+  decir(despues.length === 2, 'al aceptar se reintenta la venta sola: no se le hace teclear todo de nuevo',
+    `intentos: ${despues.length}`);
+  decir(despues.length === 2 && despues[0].cuerpo.ventaKey === despues[1].cuerpo.ventaKey,
+    'y el reintento reusa LA MISMA ventaKey: aceptar los términos no puede pagar dos veces',
+    `${despues[0]?.cuerpo?.ventaKey} vs ${despues[1]?.cuerpo?.ventaKey}`);
+  decir(await p.evaluate(() => !document.getElementById('onx-terminos')), 'y el diálogo se cierra');
+  terminosAceptados = true;
+}
+
+titulo('el monto se puede TECLEAR: el campo no se pierde debajo de los dedos');
+{
+  /* EL BUG QUE ESTAS PRUEBAS NO VEÍAN, Y POR QUÉ.
+   *
+   * José, 5-sep: «el botón para seleccionar el monto se regresa y no se
+   * mantiene bien». Todas las pruebas de arriba usan p.fill(), que pone el
+   * valor DE GOLPE — y de golpe nunca falla. Una persona teclea de a una, y
+   * esta pantalla se repinta entera en cada tecla y otra vez cuando vuelve la
+   * cotización 400 ms después. Cada repintado destruía el <input> y creaba uno
+   * nuevo: el foco se perdía y lo siguiente que se escribía no llegaba.
+   *
+   * Así que acá se teclea como una persona, con el freno de la cotización
+   * cayendo en medio, y se exige que lo escrito esté entero y que el campo
+   * siga siendo el campo. */
+  saldo = wei(500);
+  await p.evaluate(() => VVENTA.otra());
+  await p.waitForTimeout(700);
+  await p.click('#vn-cant');
+  await p.locator('#vn-cant').pressSequentially('12', { delay: 60 });
+  // El hueco deja que caiga la cotización (400 ms) y repinte en medio.
+  await p.waitForTimeout(700);
+  await p.locator('#vn-cant').pressSequentially('.5', { delay: 60 });
+  await p.waitForTimeout(900);
+  decir(await p.evaluate(() => document.getElementById('vn-cant')?.value) === '12.5',
+    'lo tecleado con la cotización cayendo en medio queda entero',
+    await p.evaluate(() => document.getElementById('vn-cant')?.value));
+  decir(await p.evaluate(() => document.activeElement?.id) === 'vn-cant',
+    'y el cursor sigue en el campo, no en el limbo',
+    await p.evaluate(() => document.activeElement?.id));
+
+  // Y el atajo del porcentaje: se toca 25 % y el monto tiene que QUEDARSE,
+  // también después de que vuelvan la cotización y la capacidad.
+  await p.evaluate(() => VVENTA.parte(25));
+  await p.waitForTimeout(1200);
+  const v25 = await p.evaluate(() => document.getElementById('vn-cant')?.value);
+  decir(v25 === '125', 'el 25 % de 500 pone 125 y ahí se queda tras la cotización', String(v25));
+
+  // La dirección sufría lo mismo: es el otro campo de texto de la pantalla.
+  await p.evaluate(() => { document.getElementById('vn-dir').value = ''; VVENTA.destino(''); });
+  await p.click('#vn-dir');
+  await p.locator('#vn-dir').pressSequentially('0x1234', { delay: 40 });
+  await p.waitForTimeout(600);
+  decir(await p.evaluate(() => document.getElementById('vn-dir')?.value) === '0x1234',
+    'y la dirección tecleada también queda entera',
+    await p.evaluate(() => document.getElementById('vn-dir')?.value));
 }
 
 /* Con ONX_FOTO puesta se guardan capturas de la pantalla. No es parte de la
