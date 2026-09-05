@@ -76,6 +76,17 @@ titulo('un turno simple: el texto sale en vivo y el prompt lleva lo suyo');
   const p = pedidos.at(-1);
   decir(p.model === 'qwen2.5:14b' && p.stream === true, 'pide el modelo de AU-RA, en streaming');
   decir(p.messages[0].role === 'system' && /Sos ULTRON FP/.test(p.messages[0].content) && /NUNCA «respaldados»/.test(p.messages[0].content), 'el system lleva la identidad y las reglas');
+  // El 5-sep el modelo cerró una respuesta con «¿Podrías proporcionar más
+  // detalles?». A un miembro de la junta se le habla de usted, y para un modelo
+  // chico la regla tiene que venir con las formas puestas, no en abstracto.
+  const sys = p.messages[0].content;
+  decir(/Y SIEMPRE DE USTED/.test(sys) && /¿Qué necesita\?/.test(sys) && /«¿podrías\?»/.test(sys), 'y el trato de usted con las formas que sí y las que no');
+  // Y el resto del prompt —quitando el párrafo de la regla, que nombra el
+  // tuteo para prohibirlo— no puede traer un ejemplo que tutee: un modelo chico
+  // copia el ejemplo antes que la regla.
+  const sinLaRegla = sys.replace(/Y SIEMPRE DE USTED[\s\S]*?\n\n/, '');
+  const tuteo = sinLaRegla.match(/«[^»]*(?:podrías|tenés|tienes|necesitás|te dej[oé]|tu cuenta)[^»]*»/i);
+  decir(!tuteo, 'sin un solo ejemplo de respuesta que tutee', tuteo ? tuteo[0] : '');
   decir(Array.isArray(p.tools) && p.tools.some((t) => t.function?.name === 'buscar_web') && p.tools.some((t) => t.function?.name === 'abrir'), 'y las herramientas en formato de Ollama, con buscar_web y abrir', p.tools.map((t) => t.function.name).join(','));
   decir(!p.tools.some((t) => t.function?.name === 'web_search'), 'sin la búsqueda de Anthropic, que aquí no existe');
   decir(r.uso.entrada > 0 && r.uso.dolares === 0, 'el uso se cuenta y el costo es cero: la tarjeta ya está pagada', JSON.stringify(r.uso));
