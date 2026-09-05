@@ -158,6 +158,43 @@ async function techo(pv, red) {
   return suelo;
 }
 
+/* ── LAS REDES QUE LA CASA TIENE ABIERTAS HOY ────────────────────────────────
+ *
+ * La tabla de arriba dice qué redes SABE atender esta casa. Cuáles están
+ * abiertas AHORA es otra cosa, y depende de algo que cambia solo: el gas.
+ *
+ * 5-sep. Ethereum tenía 0 de gas —cero barridos posibles— y la pantalla la
+ * seguía ofreciendo igual que a las otras dos. Quien mandara USDT por ahí
+ * habría depositado de verdad, en una dirección de verdad, y el barrido no
+ * habría podido moverlo: dinero llegado y quieto, con la casa sin poder hacer
+ * nada hasta fondear una billetera. La red se puede atender técnicamente y aun
+ * así no se debe ofrecer.
+ *
+ * `ORDENEX_REDES` es la lista de las que se ofrecen: «56» para probar solo por
+ * BNB, «56,137» para dos, sin la variable TODAS (lo de siempre). Es la misma
+ * forma que BARRIDO y COMPRAS — una variable, a mano, sabiendo lo que se hace.
+ *
+ * Se lee en cada llamada, no al arrancar: cerrar una red no puede exigir un
+ * despliegue el día que el gas se acabe.
+ */
+function abiertas() {
+  const todas = Object.keys(REDES).map(Number);
+  const dicho = String(process.env.ORDENEX_REDES || '').trim();
+  if (!dicho) return todas;
+  const pedidas = dicho.split(/[,\s]+/).map(Number).filter((n) => todas.includes(n));
+  // Una lista que no deja ninguna red en pie es casi seguro un dedazo, y
+  // dejaría la casa sin puerta de entrada sin decirlo. Se avisa y se abre todo:
+  // el que cierra redes es quien escribe la variable, no un typo.
+  if (!pedidas.length) {
+    console.error(`[redes] ORDENEX_REDES="${dicho}" no nombra ninguna red conocida: se abren todas`);
+    return todas;
+  }
+  return pedidas;
+}
+
+/** ¿Se puede depositar por esta red ahora mismo? */
+function abierta(id) { return abiertas().includes(Number(id)); }
+
 /** El cuadro del panel: qué se midió de verdad y qué salió de la tabla. */
 function estado() {
   const salida = {};
@@ -170,6 +207,7 @@ function estado() {
       bloqueSegundos: m ? Number(m.segundos.toFixed(3)) : REDES[id].bloqueSegundos,
       confirmaciones: bloquesDe(id),
       medido: Boolean(m && m.medido),
+      abierta: abierta(id),
       en: m ? m.en : null,
     };
   }
@@ -178,6 +216,6 @@ function estado() {
 
 module.exports = {
   REDES, TEMA_TRANSFER,
-  medir, bloquesDe, techo, estado,
+  medir, bloquesDe, techo, estado, abiertas, abierta,
   _adentro: { medido, olvidar: () => medido.clear() },
 };

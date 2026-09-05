@@ -243,6 +243,13 @@ async function abrir(usuario, { montoMicro, cadena: red, aceptoRecalculo, reglaR
 
   const id = Number(red);
   if (!redes.REDES[id]) throw fallo('RED_INVALIDA', 'Esa red no recibe USDT en esta casa.');
+  /* Y que esté ABIERTA hoy, que no es lo mismo que conocida: una red sin gas
+     para barrer recibe el depósito y lo deja quieto. Acá y no solo en la
+     pantalla, por lo de siempre — la pantalla puede estar vieja. */
+  if (!redes.abierta(id)) {
+    throw fallo('RED_CERRADA',
+      `${redes.REDES[id].nombre} no está recibiendo depósitos en este momento. Elegí otra red.`, 503);
+  }
   if (!decimales.listo(id)) {
     throw fallo('RED_NO_LISTA', 'Esa red no está disponible ahora mismo.', 503);
   }

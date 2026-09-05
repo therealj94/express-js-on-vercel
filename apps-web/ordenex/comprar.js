@@ -237,6 +237,12 @@ const VCOMPRA = (() => {
    * servidor cuando toque. Fingir aquí una puerta cerrada por no poder
    * preguntar sería tan malo como fingirla abierta. */
   let entregaAbierta = null;
+  /* Las redes que la casa recibe HOY, dichas por el servidor (GET /limites).
+     `null` es «todavía no se preguntó»: hasta que conteste se ofrecen las de
+     la tabla, que es lo que se hacía siempre. Cuando contesta manda él — una
+     red sin gas para barrer recibiría el depósito y lo dejaría quieto, y esa
+     decisión no la puede tomar una pantalla. */
+  let redesAbiertas = null;
 
   async function mirarEntrega() {
     if (!hayServidor) return;
@@ -247,6 +253,24 @@ const VCOMPRA = (() => {
       entregaAbierta = d?.entrega === true;
       if (antes !== entregaAbierta) repintar();
     } catch { /* sin respuesta no se cambia nada: manda el servidor, no el silencio */ }
+  }
+
+  /* Las redes abiertas se preguntan UNA vez al entrar: no cambian solas, las
+     cambia una persona con una variable. Si /limites no contesta, se quedan
+     las de la tabla y el servidor igual se niega si alguien manda por una
+     cerrada (RED_CERRADA) — la pantalla ayuda, la puerta es el servidor. */
+  async function mirarRedes() {
+    if (!hayServidor) return;
+    try {
+      const l = await DATOS.limites();
+      if (!Array.isArray(l?.redes) || !l.redes.length) return;
+      const ids = l.redes.map((x) => Number(x.id));
+      redesAbiertas = REDES.filter((r) => ids.includes(r.id));
+      // Si la elegida quedó cerrada, se mueve a la primera abierta: dejarla
+      // marcada sería ofrecer un botón que el servidor va a rechazar.
+      if (!redesAbiertas.some((r) => r.id === redElegida)) redElegida = redesAbiertas[0].id;
+      repintar();
+    } catch { /* se ofrecen las de siempre */ }
   }
 
   // ── la referencia del oro ─────────────────────────────────────────────────
@@ -346,7 +370,7 @@ const VCOMPRA = (() => {
       <div class="campo">
         <label>${esc(t('red'))}</label>
         <div class="cp-redes" role="radiogroup">
-          ${REDES.map((x) => `
+          ${(redesAbiertas || REDES).map((x) => `
             <button type="button" role="radio" aria-checked="${x.id === redElegida}"
                     class="cp-red${x.id === redElegida ? ' es' : ''}${x.lenta ? ' lenta' : ''}"
                     onclick="VCOMPRA.red(${x.id})">
@@ -750,6 +774,7 @@ const VCOMPRA = (() => {
     // Antes que nada: si no hay quien entregue, que se vea al abrir y no
     // después de llenar el formulario.
     mirarEntrega();
+    mirarRedes();
     /* La referencia se vuelve a pedir cada minuto y el rotulo de frescura cada
        diez segundos. Una cotizacion quieta cinco minutos es una cotizacion
        vieja que parece viva, y esa es la clase de mentira que una casa de

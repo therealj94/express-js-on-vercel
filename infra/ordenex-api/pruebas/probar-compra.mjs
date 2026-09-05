@@ -551,6 +551,46 @@ decir('con el atendedor apagado no se abre ninguna orden');
   process.env.COMPRAS = '1';
 }
 
+decir('una red que la casa no tiene abierta hoy');
+{
+
+  /* Conocer una red y tenerla ABIERTA no es lo mismo, y la diferencia es el
+     gas: el 5-sep Ethereum tenía cero, o sea cero barridos posibles, y la
+     pantalla la ofrecía igual que a las otras dos. Quien mandara USDT por ahí
+     habría depositado de verdad y el barrido no habría podido moverlo —
+     dinero llegado y quieto. `ORDENEX_REDES` dice cuáles se ofrecen, y la
+     puerta está acá, no en la pantalla. */
+  const antes = process.env.ORDENEX_REDES;
+  process.env.ORDENEX_REDES = '56';            // solo BNB, como en la prueba con dinero de verdad
+  const quien = await persona({ conWallet: true });
+  let e = null;
+  try {
+    await compra.abrir(quien, { montoMicro: '2000000', cadena: POLYGON,
+      aceptoRecalculo: true, reglaRecalculoVersion: compra.REGLA_RECALCULO });
+  } catch (x) { e = x; }
+  comprobar(!!e && e.codigo === 'RED_CERRADA',
+    'con ORDENEX_REDES=56, abrir por Polygon se niega con RED_CERRADA', e ? `${e.codigo} · ${e.message}` : 'NO se negó');
+  comprobar(e?.status === 503, 'y con 503: la red existe, lo que pasa es que la casa no la atiende ahora', String(e?.status));
+  comprobar(/Polygon/.test(e?.message || '') && /otra red/i.test(e?.message || ''),
+    'y el mensaje nombra la red y dice qué hacer', e?.message);
+
+  // Y la que SÍ está abierta sigue abriendo: cerrar dos no puede cerrar tres.
+  let bien = null;
+  try {
+    await compra.abrir(quien, { montoMicro: '2000000', cadena: 56,
+      aceptoRecalculo: true, reglaRecalculoVersion: compra.REGLA_RECALCULO });
+  } catch (x) { bien = x; }
+  comprobar(!bien, 'y por BNB, que es la abierta, la compra nace igual', bien ? `${bien.codigo} · ${bien.message}` : 'nació');
+
+  // Una lista con un dedazo no deja la casa sin puerta: se abren todas.
+  process.env.ORDENEX_REDES = 'bnb';
+  const redes = (await import('../lib/redesUsdt.js')).default;
+  comprobar(redes.abiertas().length === Object.keys(redes.REDES).length,
+    'una lista que no nombra ninguna red conocida abre TODAS, no ninguna', redes.abiertas().join(','));
+
+  if (antes === undefined) delete process.env.ORDENEX_REDES; else process.env.ORDENEX_REDES = antes;
+}
+
 console.log(`\n${fallos ? `FALLARON ${fallos}` : 'Todo en verde'}`);
 genesisFingido.close();
 await mongoose.disconnect();

@@ -262,9 +262,16 @@ app.get('/limites', (req, res) => {
   const { umbrales } = require('./lib/guardaPrecio');
   const terminos = require('./lib/terminos');
   const { avisoPct, bloqueoPct } = umbrales();
+  // Las redes por las que la casa recibe USDT HOY. La pantalla ofrece estas y
+  // no la tabla entera: una red conocida pero cerrada —sin gas para barrer—
+  // recibiria el deposito y lo dejaria quieto. Ver lib/redesUsdt.js.
+  const redes = require('./lib/redesUsdt');
   res.json({
     desvio: { avisoPct, bloqueoPct, contra: 'referencia del oro (onza / 31,1035 / 55) en ORIGEN' },
     terminos: { version: terminos.TERMINOS_VERSION, terminos: terminos.TERMINOS_RUTA, riesgo: terminos.RIESGO_RUTA },
+    redes: redes.abiertas().map((id) => ({
+      id, nombre: redes.REDES[id].nombre, minimoUsd: Number(redes.REDES[id].minimoMicro || 0) / 1e6,
+    })),
   });
 });
 

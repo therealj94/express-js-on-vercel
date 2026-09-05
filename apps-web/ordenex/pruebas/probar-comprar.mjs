@@ -62,6 +62,10 @@ let llamadas = [];
 let ordenes = new Map();
 let siguienteFalla = null;   // para probar que un error del API se enseña
 let entregaEncendida = true; // el COMPRAS=1 del servidor, fingido
+// Las redes que la casa recibe hoy (ORDENEX_REDES del servidor), fingidas.
+let REDES_ABIERTAS = [{ id: 137, nombre: 'Polygon', minimoUsd: 2 },
+                      { id: 56, nombre: 'BNB Smart Chain', minimoUsd: 2 },
+                      { id: 1, nombre: 'Ethereum', minimoUsd: 25 }];
 
 const json = (r, codigo, obj) => {
   r.writeHead(codigo, { 'Content-Type': 'application/json; charset=utf-8' });
@@ -85,7 +89,9 @@ async function api(q, r, ruta) {
   if (q.method === 'GET' && ruta === '/salud') {
     return json(r, 200, { ok: true, cadena: true, mongo: true, bloque: 1, entrega: entregaEncendida });
   }
-  if (q.method === 'GET' && ruta === '/limites') return json(r, 200, { desvio: { avisoPct: 5, bloqueoPct: 20 } });
+  if (q.method === 'GET' && ruta === '/limites') {
+    return json(r, 200, { desvio: { avisoPct: 5, bloqueoPct: 20 }, redes: REDES_ABIERTAS });
+  }
   if (q.method === 'POST' && ruta === '/auth/sso') {
     const { token } = await cuerpoDe(q);
     if (token !== TOKEN_SSO) return json(r, 401, { error: 'No vale.', codigo: 'SSO_INVALIDO' });
@@ -286,6 +292,43 @@ decir(tras.length === 0, 'y del 400 a propósito no cuelga ningún otro error',
  * la nuestra— y que la pantalla lo diga a tiempo, que enterarse después de
  * escribir el monto y elegir la red es enterarse tarde.
  */
+/* LAS REDES QUE LA CASA RECIBE HOY.
+ *
+ * Conocer una red y tenerla abierta no es lo mismo: el 5-sep Ethereum tenía
+ * cero gas —cero barridos posibles— y la pantalla la ofrecía igual que a las
+ * otras dos. Quien mandara USDT por ahí habría depositado de verdad y el
+ * barrido no habría podido moverlo: dinero llegado y quieto. Cuando el
+ * servidor dice cuáles atiende, la pantalla ofrece ESAS y ninguna más.
+ */
+titulo('solo se ofrecen las redes que el servidor tiene abiertas');
+{
+  REDES_ABIERTAS = [{ id: 56, nombre: 'BNB Smart Chain', minimoUsd: 2 }];
+  await p.evaluate(() => ONX.vista('mercado', 'AUKA-ORIGEN'));
+  await p.waitForTimeout(300);
+  await p.evaluate(() => ONX.vista('comprar'));
+  await p.waitForTimeout(1600);
+
+  const r = await p.evaluate(() => ({
+    botones: [...document.querySelectorAll('.cp-red')].map((b) => b.textContent.replace(/\s+/g, ' ').trim()),
+    elegida: [...document.querySelectorAll('.cp-red')].filter((b) => b.getAttribute('aria-checked') === 'true').length,
+  }));
+  decir(r.botones.length === 1 && /BNB/.test(r.botones[0]),
+    'con una sola red abierta, se ofrece una sola', r.botones.join(' | '));
+  decir(!r.botones.some((b) => /Ethereum|Polygon/.test(b)),
+    'y las cerradas no aparecen ni apagadas: lo que no se puede usar no se enseña', r.botones.join(' | '));
+  decir(r.elegida === 1, 'y la que queda está elegida, no hay que tocarla', String(r.elegida));
+
+  REDES_ABIERTAS = [{ id: 137, nombre: 'Polygon', minimoUsd: 2 },
+                    { id: 56, nombre: 'BNB Smart Chain', minimoUsd: 2 },
+                    { id: 1, nombre: 'Ethereum', minimoUsd: 25 }];
+  await p.evaluate(() => ONX.vista('mercado', 'AUKA-ORIGEN'));
+  await p.waitForTimeout(300);
+  await p.evaluate(() => ONX.vista('comprar'));
+  await p.waitForTimeout(1600);
+  const tres = await p.evaluate(() => document.querySelectorAll('.cp-red').length);
+  decir(tres === 3, 'y con las tres abiertas vuelven las tres', String(tres));
+}
+
 titulo('con la entrega apagada, la pantalla no deja empezar');
 {
   entregaEncendida = false;
