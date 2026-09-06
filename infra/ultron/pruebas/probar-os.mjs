@@ -770,6 +770,45 @@ titulo('interrumpir MATA el turno, no solo calla la bocina');
   decir(t.pensando === false, 'y la consola queda libre en el acto: el micrófono no espera a nadie');
 }
 
+titulo(`el globo no se come el botón de hablar, a ${ANCHO} px`);
+{
+  /* Medido antes de esto: con una respuesta en pantalla el globo tapaba el 38 %
+     del botón de hablar en el teléfono y el 31 % en escritorio. El mando
+     principal dejaba de responder en su parte de abajo JUSTO cuando hay una
+     respuesta, que es cuando uno quiere interrumpir. */
+  const tapado = async () => p.evaluate(() => {
+    const h = document.querySelector('#hablar');
+    const c = h.getBoundingClientRect();
+    let dentro = 0, tapados = 0;
+    const cx = c.left + c.width / 2, cy = c.top + c.height / 2, rad = c.width / 2;
+    for (let y = c.top; y < c.bottom; y += 5) for (let x = c.left; x < c.right; x += 5) {
+      if ((x - cx) ** 2 + (y - cy) ** 2 > rad * rad) continue;
+      dentro++;
+      const el = document.elementFromPoint(x, y);
+      if (el && el !== h && !h.contains(el)) tapados++;
+    }
+    return dentro ? Math.round(tapados / dentro * 100) : 0;
+  });
+  await p.evaluate(() => OS._adentro.pintarDicho('Una respuesta corta, de las que caben enteras en el globo.'));
+  await p.waitForTimeout(120);
+  const corta = await tapado();
+  decir(corta <= (ANCHO < 900 ? 2 : 25),
+    'con una respuesta en pantalla, el botón de hablar sigue siendo del botón', `${corta}% tapado`);
+
+  /* Y con una respuesta LARGA el texto se queda con el toque, porque
+     desplazarla con el dedo es lo que hay que poder hacer. */
+  const larga = await p.evaluate(async () => {
+    OS._adentro.pintarDicho('Renglón que se repite para llenar el globo y obligarlo a desplazarse. '.repeat(60));
+    await new Promise((ok) => setTimeout(ok, 120));
+    const d = document.querySelector('#dicho');
+    return { desplaza: d.scrollHeight > d.clientHeight + 2, toque: getComputedStyle(d).pointerEvents };
+  });
+  decir(!larga.desplaza || larga.toque === 'auto',
+    'y si la respuesta NO cabe, el texto se queda con el toque para poder desplazarla',
+    `${larga.desplaza ? 'se desplaza' : 'cabe entera'} · pointer-events ${larga.toque}`);
+  await p.evaluate(() => OS._adentro.pintarDicho(''));
+}
+
 titulo('la caja de Ordenex y el registro del día, en el tablero');
 {
   decir(await p.$('.p[data-panel="caja"]') !== null, 'el tablero trae el panel de la caja de Ordenex');

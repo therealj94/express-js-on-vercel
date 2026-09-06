@@ -255,7 +255,16 @@ body.ya-sabe-hablar #pista-hablar{opacity:0}
    busto —la corona, los ojos y la nariz— y lo único que se veía de ULTRON era
    el pecho. Abajo hace de rótulo: la cara queda libre y la boca, que es lo que
    se mira mientras habla, se ve entera. */
-#globo{position:absolute;left:0;right:0;bottom:2px;max-width:440px;margin:0 auto;animation:sube .4s ease;pointer-events:auto;z-index:3;max-height:40%;display:flex}
+/* ── EL GLOBO NO SE COME EL BOTÓN DE HABLAR ─────────────────────────────────
+   Medido: con una respuesta en pantalla, el globo tapaba el 38 % del botón de
+   hablar en el teléfono y el 31 % en escritorio. O sea que el mando principal
+   —el que José usa para hablarle— dejaba de responder en su parte de abajo
+   justo cuando hay una respuesta, que es cuando uno quiere interrumpir.
+   El globo deja pasar el toque: solo lo atrapan las partes que de verdad lo
+   necesitan —el texto, las fuentes y los botones—, y el marco, el relleno y el
+   rótulo «ULTRON:» dejan de robar toques que no van para ellos. */
+#globo{position:absolute;left:0;right:0;bottom:2px;max-width:440px;margin:0 auto;animation:sube .4s ease;pointer-events:none;z-index:3;max-height:40%;display:flex}
+#dicho,#fuentes,#chips{pointer-events:auto}
 #globo>div{clip-path:polygon(0 0,calc(100% - 18px) 0,100% 18px,100% 100%,0 100%);
   background:linear-gradient(135deg,rgba(5,225,255,.8),rgba(5,225,255,.25) 50%,rgba(5,225,255,.6));padding:1px;
   box-shadow:0 0 40px rgba(5,225,255,.18);flex:1;min-height:0;display:flex}

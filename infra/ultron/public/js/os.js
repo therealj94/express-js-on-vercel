@@ -1613,10 +1613,20 @@ const OS = (() => {
     l.textContent = window.VOZ?.paraDecir ? VOZ.paraDecir(md) : String(md || '');
   }
 
+  /* En el teléfono, el dedo. El globo ya deja pasar el toque por su marco, pero
+     el TEXTO seguía tapando parte del botón de hablar. Cuando la respuesta cabe
+     entera no hay nada que desplazar, así que el texto tampoco tiene por qué
+     atrapar el toque: se lo deja al botón. Cuando NO cabe, se queda con él,
+     porque desplazar una respuesta larga con el dedo es lo que hay que poder
+     hacer. Solo en aparatos de dedo: con ratón se pierde poder seleccionar el
+     texto para copiar una cifra, y eso pesa más que un cuarto del botón. */
+  const dedo = matchMedia('(hover:none) and (pointer:coarse)');
   function pintarDicho(md) {
     $('#globo').classList.remove('oculto');
-    $('#dicho').innerHTML = window.MARKDOWN ? MARKDOWN.aHtml(md) : esc(md);
-    $('#dicho').scrollTop = $('#dicho').scrollHeight;
+    const d = $('#dicho');
+    d.innerHTML = window.MARKDOWN ? MARKDOWN.aHtml(md) : esc(md);
+    d.scrollTop = d.scrollHeight;
+    if (dedo.matches) d.style.pointerEvents = d.scrollHeight > d.clientHeight + 2 ? 'auto' : 'none';
   }
 
   /* El botón de «oír el resto». Sale junto a las sugerencias, con la misma
