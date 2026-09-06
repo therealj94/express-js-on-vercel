@@ -359,6 +359,110 @@ body.cajon #tirador{bottom:calc(76dvh + 4px)}
   #texto::placeholder{font-size:13px}
 }
 
+/* ══ LA ENTRADA: ARRANQUE Y PUERTA ═══════════════════════════════════════
+   Una sola pantalla para todo. Se llega a ULTRON por un solo enlace y lo que
+   pasa después es una secuencia, no tres páginas: el núcleo despierta, dice
+   de quién es, comprueba la casa, y solo entonces pide la llave.
+
+   El núcleo NO se tapa en ningún momento — es lo que hace que esto se vea
+   vivo desde el primer segundo. Lo que se esconde durante el arranque y la
+   puerta son los paneles, el muelle y la caja de hablar: enseñar el tablero
+   entero por detrás de un formulario es enseñar datos a quien no ha entrado.
+   Se hace con `visibility` y no con `display`, para que la rejilla ya esté
+   medida y los paneles no salten cuando aparecen. */
+body.arrancando #techo,body.arrancando #cuerpo,body.arrancando #muelle,body.arrancando #pie,body.arrancando #tirador,
+body.cerrada #techo,body.cerrada #cuerpo,body.cerrada #muelle,body.cerrada #pie,body.cerrada #tirador{
+  visibility:hidden;pointer-events:none}
+body.arrancando #centro,body.cerrada #centro{visibility:hidden}
+
+#entrada{position:fixed;inset:0;z-index:80;display:grid;place-items:center;padding:24px;
+  background:radial-gradient(ellipse 60% 50% at 50% 45%,rgba(4,7,11,0) 0%,rgba(4,7,11,.72) 62%,rgba(4,7,11,.93) 100%);
+  transition:opacity .5s ease,transform .5s ease}
+#entrada[hidden]{display:none}
+#entrada.se-va{opacity:0;transform:scale(1.04);pointer-events:none}
+
+/* ── el arranque ── */
+/* Un velo suave detrás de la marca. El núcleo late justo ahí y su punto
+   caliente es casi blanco: sin esto, «POWERED BY ORDEN GLOBAL AND NEXUS CODER»
+   se cruzaba con el brillo y se perdía media línea. El velo tapa el brillo, no
+   el núcleo — los anillos siguen viéndose alrededor. */
+#arranque{text-align:center;max-width:min(460px,100%);position:relative;padding:38px 22px}
+#arranque::before{content:'';position:absolute;inset:-30px -40px;z-index:-1;
+  background:radial-gradient(ellipse 62% 58% at 50% 44%,rgba(4,7,11,.9) 0%,rgba(4,7,11,.62) 55%,rgba(4,7,11,0) 100%)}
+.eco-marca{font-family:var(--sans);font-weight:700;font-size:clamp(38px,10vw,62px);letter-spacing:.34em;
+  color:var(--letra-f);text-indent:.34em;line-height:1;
+  text-shadow:0 0 34px rgba(5,225,255,.45);opacity:0;animation:surge 1s .1s ease forwards}
+.eco-por{margin-top:16px;font-family:var(--mono);font-size:clamp(8.5px,2.2vw,10px);letter-spacing:.24em;
+  text-transform:uppercase;color:var(--tenue);opacity:0;animation:surge .9s .5s ease forwards}
+.eco-por b{color:var(--cian);font-weight:400}
+@keyframes surge{from{opacity:0;transform:translateY(9px);filter:blur(5px)}to{opacity:1;transform:none;filter:none}}
+
+/* La barra dice VERDAD: avanza cuando un paso termina de verdad, no con un
+   temporizador. Una barra que corre sola mientras el servidor no contesta es
+   una mentira con animación. */
+.eco-barra{margin:30px auto 0;width:min(300px,74vw);height:1px;background:rgba(5,225,255,.16);position:relative;overflow:hidden}
+.eco-barra i{position:absolute;inset:0 auto 0 0;width:0;background:linear-gradient(90deg,rgba(5,225,255,.25),var(--cian));
+  transition:width .55s cubic-bezier(.22,1,.36,1);box-shadow:0 0 12px rgba(5,225,255,.7)}
+.eco-pasos{margin:14px auto 0;min-height:3.4em;display:flex;flex-direction:column;gap:3px;
+  font-family:var(--mono);font-size:10px;letter-spacing:.11em;color:var(--tenue);text-transform:uppercase}
+.eco-pasos div{opacity:0;animation:surge .4s ease forwards}
+.eco-pasos b{color:var(--cian);font-weight:400}
+.eco-pasos .mal{color:var(--rojo)}
+
+/* ── la puerta ── */
+#puerta-os{width:min(392px,100%);opacity:0;animation:surge .7s ease forwards}
+.pt{clip-path:polygon(0 0,calc(100% - 20px) 0,100% 20px,100% 100%,20px 100%,0 calc(100% - 20px));
+  background:linear-gradient(135deg,var(--cian-t),var(--cian-d) 45%,rgba(5,225,255,.4));padding:1px}
+.pt>div{clip-path:polygon(0 0,calc(100% - 19px) 0,100% 19px,100% 100%,19px 100%,0 calc(100% - 19px));
+  background:linear-gradient(170deg,rgba(9,24,37,.96),rgba(4,9,16,.97));backdrop-filter:blur(18px);padding:30px 28px 26px}
+.pt-marca{font-family:var(--sans);font-weight:700;font-size:25px;letter-spacing:.3em;color:var(--letra-f);text-indent:.3em}
+.pt-sub{margin-top:7px;font-family:var(--mono);font-size:9.5px;letter-spacing:.2em;text-transform:uppercase;color:var(--cian)}
+.pt-campo{display:block;margin-top:17px}
+.pt-campo>span{display:block;margin-bottom:6px;font-family:var(--mono);font-size:9.5px;letter-spacing:.17em;
+  text-transform:uppercase;color:var(--tenue)}
+.pt-caja{position:relative;display:flex;align-items:center}
+.pt-campo input{width:100%;padding:11px 13px;background:rgba(4,9,16,.8);color:var(--letra-f);
+  border:1px solid rgba(5,225,255,.22);outline:none;font-family:var(--mono);font-size:13px;letter-spacing:.03em;
+  transition:border-color .2s,box-shadow .2s}
+.pt-campo input:focus{border-color:var(--cian);box-shadow:0 0 0 1px rgba(5,225,255,.3),0 0 20px rgba(5,225,255,.14)}
+.pt-campo input::placeholder{color:rgba(200,208,216,.28)}
+/* El ojo: una clave que no se puede mirar se escribe mal dos veces y a la
+   tercera la persona la cambia por una peor. Es un botón de verdad —se llega
+   con el tabulador y dice en qué estado está—, no un icono decorativo. */
+#pt-ojo{position:absolute;right:1px;top:1px;bottom:1px;width:42px;display:grid;place-items:center;
+  background:none;border:0;color:var(--tenue);cursor:pointer}
+#pt-ojo:hover,#pt-ojo:focus-visible{color:var(--cian)}
+#pt-ojo svg{width:17px;height:17px;stroke:currentColor;fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.pt-btn{width:100%;margin-top:22px;padding:12px;background:var(--cian);color:#03131a;border:0;
+  font-family:var(--sans);font-weight:700;font-size:13px;letter-spacing:.24em;text-transform:uppercase;cursor:pointer;
+  clip-path:polygon(0 0,calc(100% - 11px) 0,100% 11px,100% 100%,11px 100%,0 calc(100% - 11px));
+  transition:filter .18s,transform .18s}
+.pt-btn:hover:not(:disabled){filter:brightness(1.14)}
+.pt-btn:active:not(:disabled){transform:translateY(1px)}
+.pt-btn:disabled{opacity:.5;cursor:progress}
+.pt-btn.wallet{background:transparent;color:var(--cian);border:1px solid var(--cian);margin-top:20px}
+.pt-btn.wallet:hover{background:rgba(5,225,255,.1)}
+.pt-o{display:flex;align-items:center;gap:12px;margin:20px 0 -4px;color:var(--tenue);
+  font-family:var(--mono);font-size:9px;letter-spacing:.19em;text-transform:uppercase}
+.pt-o::before,.pt-o::after{content:'';flex:1;height:1px;background:rgba(5,225,255,.18)}
+.pt-dicho{margin-top:14px;font-family:var(--mono);font-size:11px;line-height:1.6;letter-spacing:.04em;
+  color:var(--cian);min-height:1.6em}
+.pt-dicho.mal{color:var(--rojo)}
+.pt-gid{display:block;margin-top:6px;color:var(--letra-f);user-select:all;word-break:break-all}
+.pt-pie{margin:20px 0 0;font-family:var(--mono);font-size:9px;letter-spacing:.13em;line-height:1.7;
+  color:rgba(200,208,216,.42);text-transform:uppercase;text-align:center}
+
+/* El ecosistema, debajo de la puerta: las seis casas por su sigla. Es
+   IDENTIDAD, no estado — quien no ha entrado no ve si algo está caído. */
+.pt-eco{display:flex;justify-content:center;flex-wrap:wrap;gap:7px;margin-top:22px}
+.pt-eco span{font-family:var(--mono);font-size:8.5px;letter-spacing:.16em;color:rgba(200,208,216,.34);
+  border:1px solid rgba(5,225,255,.14);padding:4px 8px}
+
+@media (max-width:600px){
+  .pt>div{padding:26px 20px 22px}
+  .eco-barra{width:min(260px,80vw)}
+}
+
 @media (prefers-reduced-motion:reduce){
   /* `animation-iteration-count:1` NO es opcional. Sin él, una animación
      `1.6s infinite` con duración de 0,01 ms sigue siendo infinita y pasa a
@@ -373,7 +477,55 @@ body.cajon #tirador{bottom:calc(76dvh + 4px)}
 }
 </style>
 </head>
-<body>
+<body class="arrancando">
+
+<!-- ══ LA ENTRADA ══════════════════════════════════════════════════════════
+     El arranque y la puerta, encima del núcleo, que sigue latiendo detrás. -->
+<div id="entrada">
+  <div id="arranque">
+    <div class="eco-marca">ULTRON</div>
+    <div class="eco-por">POWERED BY <b>ORDEN GLOBAL</b> AND <b>NEXUS CODER</b></div>
+    <div class="eco-barra"><i id="eco-barra-i"></i></div>
+    <div class="eco-pasos" id="eco-pasos" role="status" aria-live="polite"></div>
+  </div>
+
+  <div id="puerta-os" hidden>
+    <div class="pt"><div>
+      <div class="pt-marca">ULTRON</div>
+      <div class="pt-sub">Junta Directiva · Orden Global</div>
+
+      <!-- El pase de la wallet: oculto mientras no se sepa que este servidor
+           tiene Genesis. Un botón que no puede funcionar hace creer que la
+           puerta está rota. -->
+      <div id="pt-genesis" hidden>
+        <button class="pt-btn wallet" id="pt-wallet" type="button">Entrar con mi Veta Wallet</button>
+        <div class="pt-o"><span>o con su clave</span></div>
+      </div>
+
+      <form id="pt-form" autocomplete="on">
+        <label class="pt-campo"><span>Correo</span>
+          <div class="pt-caja"><input name="correo" type="email" autocomplete="username" required placeholder="usted@ordenglobal.org" enterkeyhint="next"></div>
+        </label>
+        <label class="pt-campo"><span>Clave</span>
+          <div class="pt-caja">
+            <input name="clave" id="pt-clave" type="password" autocomplete="current-password" required placeholder="••••••••" enterkeyhint="go" style="padding-right:46px">
+            <button type="button" id="pt-ojo" aria-label="Ver la clave" aria-pressed="false" title="Ver la clave">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M1.5 12S5.2 5.5 12 5.5 22.5 12 22.5 12 18.8 18.5 12 18.5 1.5 12 1.5 12Z"/><circle cx="12" cy="12" r="3.2"/></svg>
+            </button>
+          </div>
+        </label>
+        <button class="pt-btn" type="submit" id="pt-entrar">Ingresar</button>
+      </form>
+
+      <div class="pt-dicho" id="pt-dicho" aria-live="polite"></div>
+      <p class="pt-pie">Acceso reservado a la Junta Directiva<br>Cada sesión queda registrada</p>
+    </div></div>
+    <div class="pt-eco" aria-hidden="true">
+      <span>ORDENEX</span><span>AUCORP</span><span>VETA WALLET</span>
+      <span>GENESIS ID</span><span>ORDENSCAN</span><span>ORDEN GLOBAL</span>
+    </div>
+  </div>
+</div>
 
 <div id="os">
   <!-- Un encabezado de verdad: sin él la página empieza en los h2 de los
@@ -591,5 +743,6 @@ body.cajon #tirador{bottom:calc(76dvh + 4px)}
 <script src="js/os.js"></script>
 <!-- El centro: el núcleo se carga siempre; el busto en 3D solo si se pide. -->
 <script type="module" src="js/os-nucleo.js"></script>
+<script src="js/os-puerta.js"></script>
 </body>
 </html>

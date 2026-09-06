@@ -34,7 +34,11 @@ p.on('console', (m) => { if (m.type() === 'error' && !/Failed to load resource|f
 const texto = (sel) => p.evaluate((s) => document.querySelector(s)?.innerText || '', sel);
 
 titulo('la puerta');
-await p.goto(BASE + '/', { waitUntil: 'domcontentloaded' });
+/* `/consola`, no `/`. Desde que hay UN SOLO ENLACE, la raíz es ULTRON OS con
+   su arranque y su puerta; la consola de siempre —la que la junta ya conocía y
+   que funciona en cualquier navegador viejo— quedó en `/consola`. Se sigue
+   probando entera: no se borró, se movió. */
+await p.goto(BASE + '/consola', { waitUntil: 'domcontentloaded' });
 await p.waitForSelector('#puerta:not([hidden])', { timeout: 10000 });
 decir(await p.evaluate(() => document.getElementById('consola').hidden), 'sin sesión se ve la puerta y no la consola');
 decir(/Junta Directiva/.test(await texto('#puerta')), 'y la puerta dice a quién está reservada');

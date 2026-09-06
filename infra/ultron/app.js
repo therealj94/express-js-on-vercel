@@ -809,10 +809,23 @@ app.get('/habilidades/:nombre', puerta, async (req, res) => {
   try { res.json(await aprender.usar(req.params.nombre)); } catch (e) { res.status(404).json({ error: e.message }); }
 });
 
-app.get('/os', (req, res) => res.sendFile(join(__dirname, 'public', 'os.html')));
+/* ── UNA SOLA PUERTA ────────────────────────────────────────────────────────
+   José lo pidió con estas palabras: «un solo link, que no cambie». La raíz ES
+   ULTRON OS: se llega, el núcleo despierta, se pide la llave si hace falta y se
+   abre el tablero, todo en la misma pantalla y sin recargar.
+   `/os` sigue existiendo porque está en enlaces viejos y en las pruebas. Y la
+   consola de siempre —la que la junta ya conocía, que funciona en cualquier
+   navegador viejo— queda en `/consola`: no se borra nada, se cambia cuál es la
+   puerta principal. */
+const paginaOS = (req, res) => res.sendFile(join(__dirname, 'public', 'os.html'));
+app.get('/', paginaOS);
+app.get('/os', paginaOS);
+app.get('/consola', (req, res) => res.sendFile(join(__dirname, 'public', 'index.html')));
 
 /* LA CONSOLA vive en public/: una sola puerta, en la raíz. */
-app.use(express.static(join(__dirname, 'public'), { index: 'index.html', maxAge: '10m' }));
+/* `index:false`: la raíz la sirve la ruta de arriba (el OS). Con `index:
+   'index.html'` el estático se adelantaba y devolvía la consola vieja. */
+app.use(express.static(join(__dirname, 'public'), { index: false, maxAge: '10m' }));
 app.use((req, res) => res.status(404).json({ error: 'No existe esa ruta.', codigo: 'NO_EXISTE' }));
 app.use((err, req, res, next) => {   // eslint-disable-line no-unused-vars
   console.error(`[ultron] ${err?.message || err}`);

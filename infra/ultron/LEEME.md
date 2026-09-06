@@ -30,9 +30,26 @@ node app.js                  # http://localhost:3900
 | **La salud propia** | Nueve signos de ULTRON mismo cada cinco minutos, una nota de 0 a 100 guardada en la base, y **reparación sola** de lo que es interno y reversible. Incluye el relevo del cerebro al respaldo cuando el nodo no contesta. | `lib/salud.js` |
 | **El saludo** | `GET /saludo`: por su nombre, con la hora de Honduras y con lo que hay. Determinista: sale al instante y no puede irse a otro idioma. | `app.js` |
 
+## Una sola puerta
+
+`https://ultron.ordenglobal.org` — un enlace, que no cambia. La raíz **es**
+ULTRON OS: se llega, el núcleo despierta con la marca y el «powered by», se
+comprueba la casa y la sesión, y solo entonces se pide la llave. Todo en la
+misma pantalla, sin recargar y sin saltar entre páginas. El tablero queda
+oculto hasta que hay sesión; el núcleo no, que es lo que hace que se vea vivo
+desde el primer segundo. La barra del arranque avanza cuando un paso TERMINA
+de verdad, nunca con un temporizador — solo espera un suelo de 1,9 s para no
+cortar la animación de la marca.
+
+La clave tiene ojo para verla, y el pase de la wallet aparece solo si este
+servidor tiene Genesis. Si la sesión vence mientras se usa el tablero, la
+puerta vuelve encima, sin recargar y sin perder lo que hay detrás.
+`/os` sigue valiendo (enlaces viejos, pruebas) y la consola de siempre —la que
+funciona en cualquier navegador viejo— quedó en **`/consola`**.
+
 ## La consola
 
-`public/` es la consola de la Junta: una sola puerta, en la raíz. Vanilla,
+`public/` es la consola de la Junta, en `/consola`. Vanilla,
 sin compilar, con la identidad de la casa (grafito, marfil y el oro de Orden
 Global) y registro institucional en cada palabra.
 

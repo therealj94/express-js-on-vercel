@@ -1007,7 +1007,11 @@ const OS = (() => {
     addEventListener('pointerdown', despertarAudio, { once: false });
     addEventListener('keydown', despertarAudio, { once: false });
 
-    document.addEventListener('ultron:sin-sesion', () => { location.href = '/'; });
+    /* La sesión vencida la atiende la entrada (os-puerta.js): enseña la puerta
+       encima, sin recargar y sin perder lo que hay en pantalla.
+       ANTES aquí había `location.href = '/'`, y desde que la raíz ES esta misma
+       página eso era un BUCLE: se carga, no hay sesión, se va a «/», que es
+       ella misma, y otra vez — el navegador recargando para siempre. */
 
     /* Al cerrar la pestaña se suelta todo: la voz, el contexto de audio que
        mide la boca y el motor 3D. Ninguno de los tres se soltaba nunca —el
@@ -1026,8 +1030,22 @@ const OS = (() => {
     });
   }
 
-  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', arrancar);
-  else arrancar();
+  /* ── NO SE PIDE NADA HASTA ESTAR ADENTRO ──────────────────────────────────
+     La entrada (os-puerta.js) avisa con `ultron:adentro` cuando hay sesión de
+     verdad. Antes el tablero arrancaba con la página y disparaba ocho lecturas
+     que devolvían 401: ocho peticiones inútiles, ocho «sesión vencida» en el
+     registro, y los paneles pintados de huecos por detrás del formulario que
+     ya nunca se volvían a llenar.
+     El respaldo va atado a que NO EXISTA la entrada —una prueba que carga esta
+     consola suelta—, y no a un temporizador: con tres segundos, quien tarda en
+     escribir su clave arrancaba el tablero antes de entrar. */
+  let yaArranco = false;
+  const unaVez = () => { if (yaArranco) return; yaArranco = true; arrancar(); };
+  document.addEventListener('ultron:adentro', unaVez);
+  if (!document.getElementById('entrada')) {
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', unaVez);
+    else unaVez();
+  }
 
   return { enviar, estado, avisar, mente, _adentro: { pintarVivo, pintarSalud, pintarSaludPropia, pintarArchivos, pintarPendientes, pintarAutorizaciones, pintarDicho, DESPIERTA, CASAS,
     /* Solo para la prueba: mueve el reloj de la última lectura buena hacia
