@@ -130,6 +130,14 @@ const OS = (() => {
     fila('ONZA DE ORO', v?.origen?.oroOnzaUsd ? `${num(v.origen.oroOnzaUsd, 2)} USD` : nada, v?.origen?.oroOnzaUsd ? '' : NOSE);
     fila('REFERENCIA', v?.origen?.fuente || nada, v?.origen?.fuente ? '' : NOSE);
 
+    titulo('LA PUERTA DEL DINERO');
+    /* La compra con USDT cerrada es lo primero que hay que saber antes de
+       decirle a nadie que mande dinero. */
+    const cu = v?.ordenex?.compraUsdt;
+    fila('COMPRA CON USDT', cu ? cu.toUpperCase() : nada, cu === 'abierta' ? SI : cu ? NO : NOSE);
+    fila('CADENA DE ORDENEX', v?.ordenex?.cadena === true ? 'CONECTADA' : v?.ordenex?.cadena === false ? 'SIN CADENA' : nada,
+      v?.ordenex?.cadena === true ? SI : v?.ordenex?.cadena === false ? NO : NOSE);
+
     /* A QUÉ PRECIO SE PUEDE VENDER HOY. Los pares de la casa todavía no tienen
        operaciones —`ultimo` es nulo de verdad, no es un fallo de lectura— así
        que lo que contesta esa pregunta es la mejor oferta puesta y la
@@ -138,19 +146,14 @@ const OS = (() => {
     if (mercados.length) {
       titulo('LOS MERCADOS · en ORIGEN');
       for (const m of mercados.slice(0, 6)) {
-        const ref = m.enOrigen ? ` · vale ${num(m.enOrigen, 2)}` : '';
-        fila(m.mercado, m.mejorVenta ? `piden ${num(m.mejorVenta, 2)}${ref}` : (m.enOrigen ? `sin oferta${ref}` : 'sin oferta'),
-          m.mejorVenta ? '' : NOSE);
+        /* El nombre va SIN el «-ORIGEN»: todos los pares se cotizan en ORIGEN y
+           ya lo dice el título. Con el par entero, el renglón no cabía en el
+           panel y la cifra de referencia se cortaba a media palabra. */
+        const base = String(m.mercado || '').split('-')[0] || m.mercado;
+        fila(base, m.mejorVenta ? `piden ${num(m.mejorVenta, 2)}` : 'sin oferta', m.mejorVenta ? '' : NOSE);
+        if (m.enOrigen) filas.push(`<div class="sub" style="margin-top:-2px;padding-left:10px">vale ${esc(num(m.enOrigen, 2))} de referencia</div>`);
       }
     }
-
-    titulo('LA PUERTA DEL DINERO');
-    /* La compra con USDT cerrada es lo primero que hay que saber antes de
-       decirle a nadie que mande dinero. */
-    const cu = v?.ordenex?.compraUsdt;
-    fila('COMPRA CON USDT', cu ? cu.toUpperCase() : nada, cu === 'abierta' ? SI : cu ? NO : NOSE);
-    fila('CADENA DE ORDENEX', v?.ordenex?.cadena === true ? 'CONECTADA' : v?.ordenex?.cadena === false ? 'SIN CADENA' : nada,
-      v?.ordenex?.cadena === true ? SI : v?.ordenex?.cadena === false ? NO : NOSE);
 
     titulo('CUMPLIMIENTO');
     const sa = v?.aucorp?.sanciones;

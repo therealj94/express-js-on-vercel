@@ -236,8 +236,9 @@ titulo('EL NEGOCIO: el tablero enseña por fin una cifra de negocio');
   decir(/2[.,]587519/.test(r.t), 'el precio del ORIGEN, con los decimales que hacen falta para verlo mover', r.t.split('\n')[1]);
   decir(/4[.,\s]?426[.,]45/.test(r.t), 'y la onza de oro que lo referencia', JSON.stringify(r.t.slice(0, 160)));
   decir(/ABIERTA/.test(r.t), 'si la puerta del dinero está abierta: lo primero antes de decirle a alguien que mande dinero');
-  decir(/AUKA-ORIGEN/.test(r.t) && /piden/.test(r.t) && /vale/.test(r.t),
-    'a qué precio se puede vender hoy: la mejor oferta y lo que vale de referencia', r.t.split('\n').find((l) => /AUKA/.test(l)));
+  decir(/AUKA/.test(r.t) && /piden 4[.,]?365[.,]30/.test(r.t) && /vale 1[.,]?710[.,]69/.test(r.t),
+    'a qué precio se puede vender hoy: la mejor oferta y lo que vale de referencia',
+    r.t.split('\n').filter((l) => /AUKA|piden|vale/.test(l)).join(' · '));
   decir(/19[.,\s]?321/.test(r.t) && /2026-09-02/.test(r.t), 'las listas de sanciones, con su fecha', JSON.stringify(r.t.slice(-220)));
   decir(/bitácora sin firmar/.test(r.t), 'y lo que le falta a Genesis para estar en regla, con todas las letras');
   decir(/2[.,]5875/.test(r.sub) && /abierta/.test(r.sub), 'el resumen del panel dice lo mismo sin abrirlo', r.sub);
