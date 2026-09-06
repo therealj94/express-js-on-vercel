@@ -129,7 +129,7 @@ function fecha() {
   return new Date().toLocaleString('es-HN', { timeZone: 'America/Tegucigalpa', dateStyle: 'full', timeStyle: 'short' });
 }
 
-function sistema({ miembro, memorias, estadoVivo, secciones, vozCasa, pendientes = [], chico = false, modo = 'texto', alias = null, habilidades = '', pedidos = [] }) {
+function sistema({ miembro, memorias, estadoVivo, secciones, vozCasa, pendientes = [], chico = false, modo = 'texto', alias = null, idioma = 'es', habilidades = '', pedidos = [] }) {
   /* Las LECCIONES van aparte de las memorias y ARRIBA de todo lo del momento:
      son correcciones de la junta, y mandan sobre cualquier ficha vieja que
      diga lo contrario. Es lo que hace que un error corregido no vuelva. */
@@ -235,6 +235,7 @@ ${fichas}
 EL ESTADO VIVO DE LAS CASAS (leído ahora mismo)
 ${vivo.paraElModelo(estadoVivo)}
 
+${require('./preferencias').ordenDeIdioma(idioma)}
 Hoy es ${fecha()}. Estás hablando con ${miembro.nombre} (${miembro.rol || 'junta directiva'}${miembro.esDueño ? ' · EL DUEÑO: es quien aprueba lo peligroso' : ''}).${miembro.rol === 'bot' ? '\nSOS UN BOT DEL EQUIPO: escribís tu parte y terminás. Solo leés, y anotás memorias o pendientes. No pedís nada peligroso: si hace falta, lo anotás como pendiente.' : `
 ${chico
     ? 'MANOS: repo_*, terminal, boveda_*, aprender, habilidad_*, equipo_*, desplegarse. Lo peligroso lo aprueba el dueño en el panel; si una herramienta dice «ESPERANDO AUTORIZACIÓN», decilo y no la repitas.'
@@ -270,7 +271,7 @@ const correrLote = herramientas.correrLote;
  * medida que sale, herramientas que corren— para que el panel lo pinte en
  * vivo. Devuelve el resultado entero cuando termina.
  */
-async function pensarConClaude({ miembro, junta, texto, conversacionId, emitir = () => {} }) {
+async function pensarConClaude({ miembro, junta, texto, conversacionId, idioma = 'es', emitir = () => {} }) {
   const cl = clienteAnthropic();
   const ctx = { miembro, junta, conversacionId, fuentes: [], memorias: [], documentos: [], envios: [], pendientes: [], acciones: [] };
 
@@ -283,7 +284,7 @@ async function pensarConClaude({ miembro, junta, texto, conversacionId, emitir =
   ]);
   const secciones = saber.buscar(texto, { maximo: 12, maxBytes: 60_000 });
   ctx.fuentes.push(...secciones.map((s) => ({ id: s.id, titulo: s.titulo, fuente: s.fuente })));
-  const system = sistema({ miembro: extras.miembro, memorias, estadoVivo, secciones, vozCasa: saber.vozDeLaCasa(), pendientes: abiertos, habilidades: extras.habilidades, pedidos: extras.pedidos });
+  const system = sistema({ miembro: extras.miembro, memorias, estadoVivo, secciones, vozCasa: saber.vozDeLaCasa(), pendientes: abiertos, habilidades: extras.habilidades, pedidos: extras.pedidos, idioma });
   /* Un bot ve solo sus herramientas; una persona, todas. La búsqueda web de
      Claude no se le da a un bot: no le hace falta para vigilar la casa. */
   const HERRAMIENTAS_DE_ESTE = miembro.rol === 'bot'
@@ -444,7 +445,7 @@ async function contextoExtra(miembro, junta = []) {
 async function pensar(args) {
   if (cual() === 'nodo') {
     const extras = await contextoExtra(args.miembro, args.junta || []);
-    const conExtras = (o) => sistema({ ...o, miembro: { ...o.miembro, esDueño: extras.miembro.esDueño }, habilidades: extras.habilidades, pedidos: extras.pedidos });
+    const conExtras = (o) => sistema({ ...o, miembro: { ...o.miembro, esDueño: extras.miembro.esDueño }, habilidades: extras.habilidades, pedidos: extras.pedidos, idioma: args.idioma || 'es' });
     try {
       const r = await nodo.pensar({ ...args, sistema: conExtras, pensar });
       if (guardia.hasta) { volverAlNodo(); console.log('[cerebro] el nodo volvió: se deja el relevo'); }

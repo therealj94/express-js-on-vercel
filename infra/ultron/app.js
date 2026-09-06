@@ -61,6 +61,8 @@ const equipo = require('./lib/equipo');
 const salud = require('./lib/salud');
 const avisos = require('./lib/avisos');
 const bitacora = require('./lib/bitacora');
+const sesiones = require('./lib/sesiones');
+const preferencias = require('./lib/preferencias');
 
 const app = express();
 app.set('trust proxy', 1);
@@ -115,9 +117,15 @@ const SESION_MS = 12 * 60 * 60 * 1000;
 const firmar = (s) => createHmac('sha256', SECRETO).update(s).digest('base64url');
 const iguales = (a, b) => { const x = Buffer.from(String(a)), y = Buffer.from(String(b)); return x.length === y.length && timingSafeEqual(x, y); };
 
-function emitirSesion(correo) {
+/* La cookie lleva TRES cosas: quién, hasta cuándo y CUÁL sesión. El id es lo
+   que permite cerrarla desde otro aparato: sin él, una cookie firmada vale
+   hasta que vence —doce horas— y no hay manera de retirarla. Perder el teléfono
+   desbloqueado era perder ULTRON hasta el día siguiente.
+   Las cookies viejas (sin id) siguen valiendo hasta que venzan: no se echa a
+   nadie de su sesión por un despliegue. */
+function emitirSesion(correo, sid = '') {
   const vence = Date.now() + SESION_MS;
-  const cuerpo = `${correo}|${vence}`;
+  const cuerpo = `${correo}|${vence}${sid ? `|${sid}` : ''}`;
   return `${Buffer.from(cuerpo).toString('base64url')}.${firmar(cuerpo)}`;
 }
 function leerSesion(token) {
@@ -125,9 +133,11 @@ function leerSesion(token) {
   const [c, f] = token.split('.');
   let cuerpo; try { cuerpo = Buffer.from(c, 'base64url').toString(); } catch { return null; }
   if (!iguales(firmar(cuerpo), f)) return null;
-  const [correo, vence] = cuerpo.split('|');
+  const [correo, vence, sid] = cuerpo.split('|');
   if (Number(vence) < Date.now()) return null;
-  return JUNTA.find((m) => m.correo === correo) || null;
+  if (sid && !sesiones.vive(sid)) return null;        // se cerró desde Ajustes
+  const m = JUNTA.find((x) => x.correo === correo);
+  return m ? { ...m, sid: sid || null } : null;
 }
 const sinClave = ({ clave, ...m }) => m;
 
@@ -147,6 +157,7 @@ function puerta(req, res, next) {
   const m = leerSesion(req.cookies?.ultron);
   if (!m) return res.status(401).json({ error: 'Sin sesión.', codigo: 'SIN_SESION' });
   req.miembro = m;
+  sesiones.tocar(m.sid);               // «visto por última vez», como mucho cada 5 min
   next();
 }
 
@@ -251,10 +262,19 @@ app.post('/entrar', frenoEntrar, (req, res) => {
      cualquiera que escribiera «null». La comparación vacía nunca es un sí. */
   // El mismo mensaje exista o no el correo: no se regala la lista.
   if (!m || !m.clave || !iguales(m.clave, clave)) return res.status(401).json({ error: 'Correo o clave incorrectos.', codigo: 'NO_ENTRA' });
-  res.cookie('ultron', emitirSesion(m.correo), {
-    httpOnly: true, sameSite: 'strict', secure: process.env.NODE_ENV === 'production', maxAge: SESION_MS,
+  sesiones.abrir({ correo: m.correo, req, como: 'clave', vence: Date.now() + SESION_MS }).then((sid) => {
+    res.cookie('ultron', emitirSesion(m.correo, sid), {
+      httpOnly: true, sameSite: 'strict', secure: process.env.NODE_ENV === 'production', maxAge: SESION_MS,
+    });
+    res.json({ miembro: sinClave(m) });
+  }).catch((e) => {
+    /* Si no se pudo apuntar la sesión, se entra igual —quedarse fuera por no
+       poder escribir un registro sería peor— pero sin id, o sea sin poder
+       cerrarla desde lejos. Queda en el registro. */
+    console.warn('[sesiones] no se pudo abrir:', e.message);
+    res.cookie('ultron', emitirSesion(m.correo), { httpOnly: true, sameSite: 'strict', secure: process.env.NODE_ENV === 'production', maxAge: SESION_MS });
+    res.json({ miembro: sinClave(m) });
   });
-  res.json({ miembro: sinClave(m) });
 });
 
 /* ── POST /entrar/genesis — la puerta por el pase de la wallet ──────────────
@@ -327,13 +347,21 @@ app.post('/entrar/genesis', frenoEntrar, async (req, res) => {
   }
 
   console.log(`[puerta] ${m.nombre} entró con el pase de Genesis (${gid})`);
-  res.cookie('ultron', emitirSesion(m.correo), {
+  const sidG = await sesiones.abrir({ correo: m.correo, req, como: 'genesis', vence: Date.now() + SESION_MS }).catch(() => '');
+  res.cookie('ultron', emitirSesion(m.correo, sidG), {
     httpOnly: true, sameSite: 'strict', secure: process.env.NODE_ENV === 'production', maxAge: SESION_MS,
   });
   res.json({ miembro: sinClave(m), por: 'genesis' });
 });
 
-app.post('/salir', (req, res) => { res.clearCookie('ultron'); res.json({ ok: true }); });
+app.post('/salir', (req, res) => {
+  /* Borrar la cookie del navegador no basta: la copia firmada que alguien
+     tuviera seguiría valiendo hasta que venza. Se cierra la sesión de verdad. */
+  const m = leerSesion(req.cookies?.ultron);
+  if (m?.sid) sesiones.cerrar(m.sid, { por: m.correo }).catch(() => {});
+  res.clearCookie('ultron');
+  res.json({ ok: true });
+});
 
 // ── La junta ────────────────────────────────────────────────────────────────
 
@@ -489,7 +517,10 @@ app.post('/pensar', puerta, frenoPensar, async (req, res) => {
     const modo = req.body?.modo === 'voz' ? 'voz' : 'texto';
     // `alias`: cómo se presenta en esta interfaz (AURA OS le dice «Aura»).
     const alias = /^[A-Za-zÁÉÍÓÚáéíóúñÑ\- ]{2,24}$/.test(String(req.body?.alias || '')) ? String(req.body.alias).trim() : null;
-    const r = await cerebro.pensar({ miembro: req.miembro, junta: JUNTA.map(sinClave), texto, conversacionId: convId, emitir, modo, alias });
+    /* El idioma de la persona, no el del servidor: si eligió inglés en Ajustes,
+       ULTRON contesta en inglés aunque le escriban en español. */
+    const pref = await preferencias.de(req.miembro.correo).catch(() => ({ idioma: 'es' }));
+    const r = await cerebro.pensar({ miembro: req.miembro, junta: JUNTA.map(sinClave), texto, conversacionId: convId, emitir, modo, alias, idioma: pref.idioma });
     await memoria.anotarTurno(convId, req.miembro.correo, { rol: 'ultron', texto: r.texto, herramientas: r.herramientas, fuentes: r.fuentes });
     if (nueva) { const t = await cerebro.titular(texto); if (t) await memoria.titular(convId, req.miembro.correo, t); emitir('titulo', { titulo: t }); }
     emitir('fin', { ...r, conversacionId: convId });
@@ -708,7 +739,8 @@ app.post('/whatsapp/entrada', async (req, res) => {
     let conv = lista.find((c) => c.canal === 'whatsapp');
     if (!conv) conv = await memoria.abrirConversacion(m.correo, { canal: 'whatsapp', titulo: 'WhatsApp' });
     await memoria.anotarTurno(conv._id, m.correo, { rol: 'miembro', texto });
-    const r = await cerebro.pensar({ miembro: m, junta: JUNTA.map(sinClave), texto, conversacionId: String(conv._id) });
+    const prefW = await preferencias.de(m.correo).catch(() => ({ idioma: 'es' }));
+    const r = await cerebro.pensar({ miembro: m, junta: JUNTA.map(sinClave), texto, conversacionId: String(conv._id), idioma: prefW.idioma });
     await memoria.anotarTurno(conv._id, m.correo, { rol: 'ultron', texto: r.texto, herramientas: r.herramientas, fuentes: r.fuentes });
     // WhatsApp no pinta markdown: se le quita lo que no se ve.
     const plano = r.texto.replace(/^#{1,6}\s*/gm, '').replace(/\*\*(.+?)\*\*/g, '*$1*').replace(/`/g, '');
@@ -784,6 +816,38 @@ app.get('/salud/profunda', puerta, async (req, res) => {
 });
 /* Los avisos: modo, últimos enviados y por dónde. Nunca el texto entero de
    uno grave si lleva datos; aquí solo título, gravedad y canal. */
+/* ── AJUSTES ────────────────────────────────────────────────────────────────
+   Todo lo que una persona puede mirar y cambiar de SU ULTRON: su perfil, la
+   voz, el idioma, la figura del centro, y desde dónde tiene la sesión abierta.
+   Las sesiones son de quien pregunta y de nadie más: ni el dueño ve las de
+   otro miembro desde aquí. */
+app.get('/sesiones', puerta, async (req, res) => {
+  try {
+    const l = await sesiones.listar(req.miembro.correo);
+    res.json({ sesiones: l.map((s) => ({ ...s, esta: s.sid === req.miembro.sid })), actual: req.miembro.sid || null });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+app.delete('/sesiones/:sid', puerta, async (req, res) => {
+  try {
+    const mias = await sesiones.listar(req.miembro.correo);
+    if (!mias.some((s) => s.sid === req.params.sid)) return res.status(404).json({ error: 'No existe esa sesión.', codigo: 'NO_EXISTE' });
+    await sesiones.cerrar(req.params.sid, { por: req.miembro.correo });
+    res.json({ ok: true, era: req.params.sid === req.miembro.sid ? 'esta' : 'otra' });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+app.post('/sesiones/cerrar-otras', puerta, async (req, res) => {
+  try { res.json({ cerradas: await sesiones.cerrarOtras(req.miembro.correo, req.miembro.sid, { por: req.miembro.correo }) }); }
+  catch (e) { res.status(500).json({ error: e.message }); }
+});
+app.get('/preferencias', puerta, async (req, res) => {
+  try { res.json({ ...(await preferencias.de(req.miembro.correo)), sugeridas: preferencias.VOCES_SUGERIDAS, vozDeLaCasa: voz.VOZ }); }
+  catch (e) { res.status(500).json({ error: e.message }); }
+});
+app.post('/preferencias', puerta, express.json({ limit: '8kb' }), async (req, res) => {
+  try { res.json(await preferencias.guardar(req.miembro.correo, req.body || {})); }
+  catch (e) { res.status(400).json({ error: e.message }); }
+});
+
 app.get('/avisos', puerta, (req, res) => res.json(avisos.estado()));
 /* La bitácora: solo lectura desde aquí también. */
 app.get('/bitacora', puerta, async (req, res) => {
@@ -845,6 +909,7 @@ if (require.main === module) {
     /* El médico. Arranca con el servidor por la misma razón que el vigía: la
        avería que importa es la que pasa cuando nadie está mirando. */
     salud.arrancar();
+    sesiones.cargar().then((n) => { if (n) console.log(`[sesiones] ${n} sesión(es) cerradas recordadas`); });
     if (!boveda.encendida()) console.warn('[boveda] apagada: sin ULTRON_BOVEDA_LLAVE no se guardan secretos');
     app.listen(PUERTO, () => {
       console.log(`[ultron] escuchando en ${PUERTO} · cerebro ${cerebro.encendido() ? MODELO_LOG() : 'APAGADO'} · voz ${voz.encendida() ? 'ElevenLabs' : 'del navegador'} · memoria ${memoria.estado()}`);

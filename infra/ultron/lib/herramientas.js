@@ -197,7 +197,7 @@ const DEFINICIONES = [
   },
   {
     name: 'listar_archivos',
-    description: 'Los archivos que la junta le subió a ULTRON (PDF, Word, texto, CSV, imágenes) con su id, su tamaño y si se les pudo sacar el texto. Mirá esto cuando alguien mencione «el informe», «el contrato» o «lo que te mandé».',
+    description: 'Los archivos que la junta le subió a ULTRON (PDF, Word, texto, CSV, imágenes) con su id y su tamaño. Mirá esto cuando alguien mencione «el informe», «el contrato», «la foto» o «lo que te mandé». Una IMAGEN no tiene texto que extraer y aun así se puede leer: `leer_archivo` se la da al cerebro para que la MIRE y describa lo que hay. Nunca digas que no podés ver una imagen sin haberlo intentado.',
     input_schema: { type: 'object', properties: {} },
   },
   {

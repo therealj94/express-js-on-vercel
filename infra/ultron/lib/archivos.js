@@ -255,7 +255,17 @@ function pareceTexto(t) {
 
 /** El texto de un archivo, o el motivo por el que no se pudo sacar. */
 function leer(buf, clase) {
-  if (!clase.lee) return { texto: '', porQue: `Es una ${clase.rotulo}: se guarda entera y se puede volver a bajar, pero no lleva texto que se pueda leer.` };
+  if (!clase.lee) {
+    /* LA FRASE QUE DEJABA CIEGO A ULTRON. Decía «no lleva texto que se pueda
+       leer», y eso es lo que el modelo veía al listar los archivos: leía «no
+       hay nada que leer» y ni lo intentaba. José subió una imagen y ULTRON le
+       dijo que no podía. Puede: `leer_archivo` se la da al cerebro para que la
+       MIRE. Así que el aviso ya no cierra la puerta, la señala. */
+    if (/^image\//.test(String(clase.rotulo).toLowerCase()) || /imagen/i.test(clase.rotulo)) {
+      return { texto: '', porQue: `Es una ${clase.rotulo}. No tiene texto que extraer, pero SÍ se puede mirar: usá leer_archivo con su id y el cerebro describe lo que hay, con las cifras y las palabras que se lean.` };
+    }
+    return { texto: '', porQue: `Es una ${clase.rotulo}: se guarda entera y se puede volver a bajar, pero no lleva texto que se pueda leer.` };
+  }
   try {
     let t = clase.lee === 'pdf' ? dePdf(buf)
       : clase.lee === 'docx' ? deDocx(buf)

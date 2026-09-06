@@ -322,6 +322,46 @@ titulo('la salud de ULTRON: se mide y se repara solo');
   decir(Array.isArray(h) && h.length >= 1, 'y la ronda queda en el historial', `${h.length} ronda(s)`);
 }
 
+// ── LAS SESIONES: dónde está abierto, y poder cerrarlo desde lejos ─────────
+titulo('las sesiones: se registran, se listan y se cierran de verdad');
+{
+  const sesiones = require('../lib/sesiones.js');
+  const req = { get: (h) => (h === 'user-agent' ? 'Mozilla/5.0 (iPad; CPU OS 18_0 like Mac OS X) AppleWebKit/605.1.15 Version/18.0 Safari/605.1.15' : ''), ip: '::ffff:190.53.1.9' };
+  /* Un correo solo para esta prueba: las pruebas de la puerta, más arriba en
+     este mismo archivo, ya abrieron sesiones de José, y «cerrar las demás»
+     habría cerrado también aquellas. */
+  const QUIEN = 'prueba-sesiones@ordenglobal.org';
+  const sid = await sesiones.abrir({ correo: QUIEN, req, como: 'clave', vence: Date.now() + 3600_000 });
+  decir(!!sid && sesiones.vive(sid), 'una entrada abre una sesión y la sesión vive');
+  const l = await sesiones.listar(QUIEN);
+  const mia = l.find((x) => x.sid === sid);
+  decir(mia && mia.aparato === 'iPad · Safari', 'del navegador se saca un aparato que una persona reconoce', mia?.aparato);
+  decir(mia && mia.ip === '190.53.1.9', 'y la IP va sin el prefijo de IPv6', mia?.ip);
+  await sesiones.cerrar(sid, { por: 'la prueba' });
+  decir(!sesiones.vive(sid), 'cerrarla la corta de verdad: no espera a que venza');
+  const sid2 = await sesiones.abrir({ correo: QUIEN, req, como: 'clave', vence: Date.now() + 3600_000 });
+  const sid3 = await sesiones.abrir({ correo: QUIEN, req, como: 'genesis', vence: Date.now() + 3600_000 });
+  const n = await sesiones.cerrarOtras(QUIEN, sid3);
+  decir(n === 1 && !sesiones.vive(sid2) && sesiones.vive(sid3), '«cerrar las demás» deja viva la que se está usando', `cerró ${n}`);
+  decir(sesiones.aparatoDe('Mozilla/5.0 (Windows NT 10.0) Chrome/120') === 'Windows · Chrome'
+    && sesiones.aparatoDe('') === 'aparato desconocido · navegador desconocido', 'y lo que no se reconoce se dice, no se adivina');
+}
+
+// ── LAS PREFERENCIAS: de la persona, no del navegador ──────────────────────
+titulo('las preferencias: idioma, voz y figura, guardadas con su correo');
+{
+  const pref = require('../lib/preferencias.js');
+  const a = await pref.de('nadie@ordenglobal.org');
+  decir(a.idioma === 'es' && a.figura === 'nucleo' && a.conVoz === true, 'sin nada guardado, valores por omisión razonables');
+  const b = await pref.guardar('jose@ordenglobal.org', { idioma: 'en', vozId: 'JBFqnCBsd6RMkjVDRZzb', figura: 'busto' });
+  decir(b.idioma === 'en' && b.vozId === 'JBFqnCBsd6RMkjVDRZzb' && b.figura === 'busto', 'se guarda lo que vale');
+  const c = await pref.guardar('jose@ordenglobal.org', { idioma: 'klingon', figura: 'dragón', vozId: 'rm -rf' });
+  decir(c.idioma === 'en' && c.figura === 'busto' && c.vozId === 'JBFqnCBsd6RMkjVDRZzb', 'y lo que no vale se ignora: no se guarda basura que deje a ULTRON mudo');
+  decir(/ENGLISH/.test(pref.ordenDeIdioma('en')) && pref.ordenDeIdioma('es') === '', 'el inglés añade una orden al encabezado; el español no añade nada');
+  decir(/Orden Global.*not words to translate/s.test(pref.ordenDeIdioma('en')), 'y los nombres de la casa no se traducen');
+  await pref.guardar('jose@ordenglobal.org', { idioma: 'es', figura: 'nucleo', vozId: null });
+}
+
 // ── EL MUNDO DE AFUERA: la hora y el clima ──────────────────────────────────
 titulo('la hora y el clima: lo que José pidió y ULTRON no podía');
 {

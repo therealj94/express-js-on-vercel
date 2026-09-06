@@ -463,6 +463,38 @@ body.arrancando #centro,body.cerrada #centro{visibility:hidden}
   .eco-barra{width:min(260px,80vw)}
 }
 
+/* ── AJUSTES ─────────────────────────────────────────────────────────────── */
+#m-ajustes svg{width:15px;height:15px;stroke:currentColor;fill:none;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+.aj-sec{border-top:1px solid rgba(5,225,255,.13);padding:15px 0 3px;margin-top:4px}
+.aj-sec:first-of-type{border-top:0;padding-top:2px;margin-top:0}
+.aj-sec>h4{margin:0 0 10px;font-family:var(--sans);font-size:10.5px;font-weight:600;letter-spacing:.26em;
+  text-transform:uppercase;color:var(--cian)}
+.aj-fila{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:5px 0;min-width:0}
+.aj-fila>span:first-child{font-size:12.5px;color:var(--letra);flex:none}
+.aj-fila>span:last-child,.aj-fila>b{font-family:var(--mono);font-size:11px;color:var(--letra-f);
+  text-align:right;min-width:0;overflow:hidden;text-overflow:ellipsis;font-weight:400}
+/* Un par de botones que se comportan como un interruptor de dos posiciones:
+   el elegido se ve elegido, y se dice con aria-pressed, no solo con el color. */
+.aj-par{display:flex;gap:0;flex:none}
+.aj-par button{font-family:var(--mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;
+  padding:6px 12px;background:transparent;color:var(--tenue);border:1px solid rgba(5,225,255,.22);cursor:pointer}
+.aj-par button+button{border-left:0}
+.aj-par button[aria-pressed=true]{background:var(--cian);color:#03131a;border-color:var(--cian)}
+.aj-sel{font-family:var(--mono);font-size:11px;padding:7px 9px;background:rgba(4,9,16,.85);color:var(--letra-f);
+  border:1px solid rgba(5,225,255,.22);outline:none;max-width:58%}
+.aj-sel:focus{border-color:var(--cian)}
+.aj-ses{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;padding:9px 0;
+  border-bottom:1px solid rgba(5,225,255,.08)}
+.aj-ses:last-child{border-bottom:0}
+.aj-ses .q{min-width:0}
+.aj-ses b{display:block;font-family:var(--mono);font-size:11.5px;font-weight:400;color:var(--letra-f)}
+.aj-ses .d{font-family:var(--mono);font-size:9.5px;letter-spacing:.05em;color:var(--tenue);margin-top:2px;
+  word-break:break-all;line-height:1.5}
+.aj-ses .esta{color:var(--verde)}
+.aj-ses .vieja b,.aj-ses .vieja .d{opacity:.5}
+.aj-nota{font-size:11.5px;line-height:1.6;color:var(--tenue);margin:8px 0 0}
+.aj-peligro{color:var(--rojo);border-color:var(--rojo)!important}
+
 @media (prefers-reduced-motion:reduce){
   /* `animation-iteration-count:1` NO es opcional. Sin él, una animación
      `1.6s infinite` con duración de 0,01 ms sigue siendo infinita y pasa a
@@ -567,6 +599,11 @@ body.arrancando #centro,body.cerrada #centro{visibility:hidden}
            marca del techo, que pasaba a leerse «ULTR». El color ya dice lo demás. -->
       <button id="m-salud" class="chip oculto" title="La salud de ULTRON"><span class="esconde">ULTRON </span><span id="m-salud-n">—</span></button>
       <div id="m-reloj">—</div>
+      <!-- AJUSTES. En el techo y no dentro de un panel: es de la persona, no
+           del ecosistema, y tiene que estar donde está siempre. -->
+      <button id="m-ajustes" class="mando" title="Ajustes" aria-label="Ajustes" style="width:28px;height:28px;flex:none">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z"/></svg>
+      </button>
     </div>
   </header>
 

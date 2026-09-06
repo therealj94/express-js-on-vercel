@@ -52,6 +52,34 @@ puerta vuelve encima, sin recargar y sin perder lo que hay detrás.
 `/os` sigue valiendo (enlaces viejos, pruebas) y la consola de siempre —la que
 funciona en cualquier navegador viejo— quedó en **`/consola`**.
 
+## Ajustes
+
+El engranaje del techo abre lo que es de LA PERSONA y no del ecosistema:
+
+- **Su perfil** — nombre, correo, papel (y si es el dueño), Genesis ID, si tiene
+  número para los avisos.
+- **La voz** — encenderla o apagarla, elegir quién habla de las voces de la
+  cuenta, y **PROBAR LA VOZ** para oírla antes de quedársela. La de la casa es
+  **George** (`ELEVENLABS_VOZ`), que habla los dos idiomas con el modelo
+  multilingüe —con acento inglés en español, y eso se dice ahí mismo—.
+- **Idioma** — español o inglés. Cambia tres cosas a la vez: en qué idioma
+  CONTESTA ULTRON (una orden en el encabezado del modelo), con qué voz lo dice y
+  en qué idioma escucha el micrófono. Los rótulos de la pantalla siguen en
+  español por ahora, y se dice.
+- **La figura del centro** — núcleo o busto 3D.
+- **Dónde tiene la sesión abierta** — cada entrada queda registrada con aparato,
+  IP, cuándo entró y cuándo se le vio por última vez, y **se puede cerrar desde
+  otro aparato**. Hasta hoy una cookie firmada valía doce horas y no había manera
+  de retirarla: perder el teléfono desbloqueado era perder ULTRON hasta el día
+  siguiente.
+- **La casa** — cerebro, memoria, avisos y herramientas, de un vistazo.
+- **Salir de ULTRON**, que cierra la sesión de verdad y no solo borra la cookie.
+
+Las preferencias van a la base **con su correo, no en el navegador**: lo que
+elige en el iPad vale en la computadora. Las sesiones viven en `lib/sesiones.js`
+—con el id dentro de la cookie firmada— y las preferencias en
+`lib/preferencias.js`.
+
 ## La consola
 
 `public/` es la consola de la Junta, en `/consola`. Vanilla,

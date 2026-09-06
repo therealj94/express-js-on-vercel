@@ -353,6 +353,163 @@ const OS = (() => {
     });
   }
 
+  /* ── AJUSTES ──────────────────────────────────────────────────────────────
+     Todo lo que es de LA PERSONA y no del ecosistema: quién es, cómo suena
+     ULTRON, en qué idioma le contesta, qué figura ve en el centro, y desde qué
+     aparatos tiene la sesión abierta. Y la puerta de salida.
+
+     Las preferencias viven en el servidor con su correo, no en este navegador:
+     si elige George en el iPad, ULTRON habla con George también en la
+     computadora. Guardar esto en el navegador habría sido más fácil y habría
+     durado hasta el segundo aparato. */
+  let PREF = null;
+
+  async function aplicarPreferencias(p) {
+    PREF = p || PREF;
+    if (!PREF) return;
+    conVoz = PREF.conVoz !== false;
+    $('#altavoz')?.setAttribute('aria-pressed', String(conVoz));
+    if (locutor) locutor.vozId = PREF.vozId || null;
+    /* El idioma no es solo la pantalla: también es en el que escucha el
+       micrófono. Si está en inglés y el reconocedor sigue en español, lo que
+       se dicta llega escrito como suena en español y no se entiende nada. */
+    IDIOMA = PREF.idioma === 'en' ? 'en-US' : 'es-HN';
+    document.documentElement.lang = PREF.idioma === 'en' ? 'en' : 'es';
+    if (PREF.figura && window.UltronNucleo && UltronNucleo.figuraActual() !== PREF.figura) {
+      UltronNucleo.cambiarFigura(PREF.figura);
+    }
+  }
+
+  async function guardarPreferencia(cambios) {
+    try {
+      const p = await DATOS.post('/preferencias', cambios);
+      await aplicarPreferencias(p);
+      return p;
+    } catch (e) { avisar(`No se pudo guardar: ${e.message}`, true); return null; }
+  }
+
+  async function abrirAjustes() {
+    const [yo, pref, voces, ses, salud] = await Promise.all([
+      DATOS.get('/yo').catch(() => null),
+      DATOS.get('/preferencias').catch(() => null),
+      DATOS.get('/voces').catch(() => null),
+      DATOS.get('/sesiones').catch(() => null),
+      DATOS.get('/salud').catch(() => null),
+    ]);
+    if (pref) PREF = pref;
+    const m = yo?.miembro || {};
+    const esp = (PREF?.idioma || 'es') === 'es';
+    const listaVoces = (voces?.voces || []);
+    const vozPuesta = PREF?.vozId || voces?.actual || '';
+    const nombreDe = (id) => listaVoces.find((v) => (v.id || v.voice_id) === id)?.nombre || listaVoces.find((v) => (v.id || v.voice_id) === id)?.name || id || '—';
+
+    const filasSes = (ses?.sesiones || []).map((x) => `
+      <div class="aj-ses ${x.viva ? '' : 'vieja'}">
+        <div class="q">
+          <b>${esc(x.aparato || 'aparato desconocido')}${x.esta ? ' <span class="esta">· esta</span>' : ''}</b>
+          <div class="d">${esc(x.ip || 'sin IP')} · entró ${esc(hace(x.abierta) || '')}${x.ultimoVisto ? ` · visto ${esc(hace(x.ultimoVisto) || '')}` : ''}
+            · ${x.como === 'genesis' ? 'con la wallet' : 'con la clave'}${x.viva ? '' : ' · CERRADA'}</div>
+        </div>
+        ${x.viva && !x.esta ? `<button class="chip" data-cerrar="${esc(x.sid)}">CERRAR</button>` : ''}
+      </div>`).join('');
+
+    const d = dialogo(`<h3>AJUSTES</h3>
+
+      <div class="aj-sec"><h4>Su perfil</h4>
+        <div class="aj-fila"><span>Nombre</span><b>${esc(m.nombre || '—')}</b></div>
+        <div class="aj-fila"><span>Correo</span><b>${esc(m.correo || '—')}</b></div>
+        <div class="aj-fila"><span>Papel</span><b>${esc(yo?.permiso === 'dueño' ? 'DUEÑO · aprueba lo peligroso' : (m.rol || 'junta directiva'))}</b></div>
+        ${m.gid ? `<div class="aj-fila"><span>Genesis ID</span><b>${esc(m.gid)}</b></div>` : ''}
+        <div class="aj-fila"><span>WhatsApp para avisos</span><b>${m.whatsapp ? 'puesto' : 'sin número'}</b></div>
+      </div>
+
+      <div class="aj-sec"><h4>La voz</h4>
+        <div class="aj-fila"><span>Que ULTRON hable</span>
+          <span class="aj-par"><button data-voz="1" aria-pressed="${conVoz}">Sí</button><button data-voz="0" aria-pressed="${!conVoz}">No</button></span></div>
+        <div class="aj-fila"><span>Quién habla</span>
+          ${listaVoces.length
+            ? `<select class="aj-sel" id="aj-voz">${listaVoces.map((v) => { const id = v.id || v.voice_id; return `<option value="${esc(id)}" ${id === vozPuesta ? 'selected' : ''}>${esc(v.nombre || v.name || id)}</option>`; }).join('')}</select>`
+            : `<b>${voces ? esc(nombreDe(vozPuesta)) : 'no se pudo leer la lista'}</b>`}</div>
+        <div class="aj-fila"><span>Motor</span><b>${salud?.voz ? 'ElevenLabs' : 'la del navegador'}</b></div>
+        ${!listaVoces.length && salud?.voz ? '<p class="aj-nota mal">La lista de voces no llegó: ElevenLabs no contestó. La voz puesta sigue funcionando.</p>' : ''}
+        <div class="fila-btn" style="margin-top:8px"><button class="btn" id="aj-probar">PROBAR LA VOZ</button></div>
+        <p class="aj-nota">George habla los dos idiomas con el modelo multilingüe. En español se le nota el acento inglés: si prefiere una voz nacida en español, ahí están Diego, Emiliano y Jorge.</p>
+      </div>
+
+      <div class="aj-sec"><h4>Idioma</h4>
+        <div class="aj-fila"><span>ULTRON le contesta en</span>
+          <span class="aj-par"><button data-idi="es" aria-pressed="${esp}">Español</button><button data-idi="en" aria-pressed="${!esp}">English</button></span></div>
+        <p class="aj-nota">Cambia en qué idioma contesta, con qué voz lo dice y en qué idioma escucha el micrófono. Los rótulos de esta pantalla siguen en español por ahora.</p>
+      </div>
+
+      <div class="aj-sec"><h4>La figura del centro</h4>
+        <div class="aj-fila"><span>Qué se ve</span>
+          <span class="aj-par"><button data-fig="nucleo" aria-pressed="${(PREF?.figura || 'nucleo') === 'nucleo'}">Núcleo</button><button data-fig="busto" aria-pressed="${PREF?.figura === 'busto'}">Busto 3D</button></span></div>
+        <p class="aj-nota">El busto pide una tarjeta con tres dimensiones y pesa 600 kB más. En un teléfono viejo puede no dibujarse: si pasa, se vuelve al núcleo solo.</p>
+      </div>
+
+      <div class="aj-sec"><h4>Dónde tiene la sesión abierta</h4>
+        <div style="max-height:30dvh;overflow-y:auto">${filasSes || '<div class="sub">sin registro todavía</div>'}</div>
+        <p class="aj-nota">Si ve un aparato que no es suyo, ciérrelo y cambie la clave. Cerrar una sesión la corta de verdad: no espera a que venza.</p>
+        <div class="fila-btn" style="margin-top:8px"><button class="btn" id="aj-otras">CERRAR LAS DEMÁS</button></div>
+      </div>
+
+      <div class="aj-sec"><h4>La casa</h4>
+        <div class="aj-fila"><span>Cerebro</span><b>${esc(salud?.modelo || '—')}</b></div>
+        <div class="aj-fila"><span>Memoria</span><b>${esc(salud?.memoria || '—')}</b></div>
+        <div class="aj-fila"><span>Avisos</span><b>${esc(salud?.avisos === 'partido' ? 'grave a WhatsApp · leve a correo' : (salud?.avisos || 'apagados'))}</b></div>
+        <div class="aj-fila"><span>Herramientas</span><b>${salud?.herramientas ?? '—'}</b></div>
+      </div>
+
+      <div class="fila-btn" style="margin-top:18px">
+        <button class="btn" id="aj-cerrar">CERRAR</button>
+        <button class="btn aj-peligro" id="aj-salir">SALIR DE ULTRON</button>
+      </div>`);
+
+    d.querySelector('#aj-cerrar').onclick = () => d.remove();
+    d.querySelectorAll('[data-voz]').forEach((b) => b.onclick = async () => {
+      const si = b.dataset.voz === '1';
+      if (si) despertarVoz();
+      await guardarPreferencia({ conVoz: si });
+      d.querySelectorAll('[data-voz]').forEach((x) => x.setAttribute('aria-pressed', String((x.dataset.voz === '1') === si)));
+    });
+    d.querySelectorAll('[data-idi]').forEach((b) => b.onclick = async () => {
+      await guardarPreferencia({ idioma: b.dataset.idi });
+      d.querySelectorAll('[data-idi]').forEach((x) => x.setAttribute('aria-pressed', String(x.dataset.idi === b.dataset.idi)));
+      avisar(b.dataset.idi === 'en' ? 'ULTRON will answer in English from now on.' : 'ULTRON vuelve a contestar en español.');
+    });
+    d.querySelectorAll('[data-fig]').forEach((b) => b.onclick = async () => {
+      await guardarPreferencia({ figura: b.dataset.fig });
+      d.querySelectorAll('[data-fig]').forEach((x) => x.setAttribute('aria-pressed', String(x.dataset.fig === b.dataset.fig)));
+    });
+    const sel = d.querySelector('#aj-voz');
+    if (sel) sel.onchange = () => guardarPreferencia({ vozId: sel.value });
+    d.querySelector('#aj-probar').onclick = () => {
+      /* Se prueba con la voz elegida AHORA, no con la guardada: si acaba de
+         cambiarla y todavía no se guardó, lo que quiere oír es la nueva. */
+      despertarVoz();
+      locutor.vozId = (sel ? sel.value : vozPuesta) || null;
+      locutor.callar();
+      locutor.alimentar((PREF?.idioma || 'es') === 'en'
+        ? 'Good morning. This is how I sound. Ready when you are.'
+        : 'Buenos días, José. Así es como sueno. Quedo a su disposición.');
+      locutor.cerrar();
+    };
+    d.querySelectorAll('[data-cerrar]').forEach((b) => b.onclick = async () => {
+      b.disabled = true; b.textContent = '…';
+      try { await DATOS.borrar(`/sesiones/${encodeURIComponent(b.dataset.cerrar)}`); avisar('Sesión cerrada.'); d.remove(); abrirAjustes(); }
+      catch (e) { avisar(`No se pudo cerrar: ${e.message}`, true); b.disabled = false; b.textContent = 'CERRAR'; }
+    });
+    d.querySelector('#aj-otras').onclick = async () => {
+      try { const r = await DATOS.post('/sesiones/cerrar-otras', {}); avisar(r.cerradas ? `${r.cerradas} sesión(es) cerradas.` : 'No había ninguna otra abierta.'); d.remove(); abrirAjustes(); }
+      catch (e) { avisar(`No se pudo: ${e.message}`, true); }
+    };
+    d.querySelector('#aj-salir').onclick = async () => {
+      try { await DATOS.post('/salir', {}); } catch { /* se sale igual */ }
+      location.reload();
+    };
+  }
+
   /* ── LA SALUD DE ULTRON, EN LA PANTALLA ───────────────────────────────────
      Nueve signos y una nota. La regla del tablero se respeta: mientras no llega
      la lectura, la nota dice «—». Y el botón REPARAR solo aparece cuando hay
@@ -624,6 +781,7 @@ const OS = (() => {
   // ══ HABLAR Y ESCUCHAR ═════════════════════════════════════════════════════
 
   let locutor = null, conVoz = true, conversacionId = null, pensando = false;
+  let IDIOMA = 'es-HN';       // el del reconocimiento de voz; lo fija la preferencia
   let oreja = null, despierta = false;
 
   /* ── DESPERTAR LA VOZ ─────────────────────────────────────────────────────
@@ -639,13 +797,15 @@ const OS = (() => {
   }
 
   function locutorNuevo() {
-    return new VOZ.Locutor({
+    const l = new VOZ.Locutor({
       conElevenLabs: true,
       alNivel: (n) => { mente.nivel = n; },
       alEmpezar: () => estado('speak'),
       alTerminar: () => { mente.nivel = 0; if (!pensando) estado('idle'); },
       alFallo: (q) => avisar(`La voz del navegador tomó el relevo (${q}).`, false),
     });
+    l.vozId = PREF?.vozId || null;      // la voz que la persona eligió, no la de la casa
+    return l;
   }
 
   /* DE DÓNDE SALIÓ. Un tablero de junta del que no se puede decir «esta cifra
@@ -816,6 +976,7 @@ const OS = (() => {
     };
     try { oreja?.abort?.(); } catch { /* ya estaba */ }
     oreja = VOZ.oir({
+      idioma: IDIOMA,
       continuo: true,
       alOir: (frase, firme) => {
         if (!DESPIERTA.test(frase)) return;
@@ -864,6 +1025,7 @@ const OS = (() => {
     const fin = () => { $('#micro').classList.remove('oyendo'); $('#micro').setAttribute('aria-pressed', 'false'); alTerminar?.(); };
     let mando = null;
     mando = VOZ.oir({
+      idioma: IDIOMA,
       continuo: false,
       alOir: (frase, firme) => {
         $('#texto').value = frase;
@@ -952,6 +1114,10 @@ const OS = (() => {
     $('#b-saber').addEventListener('click', abrirSaberHacer);
     $('#b-nodos').addEventListener('click', abrirNodos);
     $('#b-reparar').addEventListener('click', repararSalud);
+    $('#m-ajustes').addEventListener('click', abrirAjustes);
+    /* Las preferencias, lo primero: la voz, el idioma y la figura tienen que
+       estar puestas antes de que ULTRON diga la primera palabra. */
+    DATOS.get('/preferencias').then(aplicarPreferencias).catch(() => {});
     $('#m-salud').addEventListener('click', () => {
       if (innerWidth <= 860 && !document.body.classList.contains('cajon')) $('#tirador')?.click();
       $('#signos')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -1107,7 +1273,7 @@ const OS = (() => {
     else unaVez();
   }
 
-  return { enviar, estado, avisar, mente, despertarVoz, _adentro: { pintarVivo, pintarSalud, pintarSaludPropia, pintarArchivos, pintarPendientes, pintarAutorizaciones, pintarDicho, DESPIERTA, CASAS,
+  return { enviar, estado, avisar, mente, despertarVoz, abrirAjustes, _adentro: { pintarVivo, pintarSalud, pintarSaludPropia, pintarArchivos, pintarPendientes, pintarAutorizaciones, pintarDicho, DESPIERTA, CASAS,
     /* Solo para la prueba: mueve el reloj de la última lectura buena hacia
        atrás, para comprobar que la pantalla avisa cuando se queda vieja sin
        tener que esperar diez minutos de verdad. */
