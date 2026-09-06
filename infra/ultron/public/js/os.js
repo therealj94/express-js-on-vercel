@@ -154,7 +154,7 @@ const OS = (() => {
     document.body.classList.toggle('alerta', faltan > 0);
 
     // ── integridad: solo lo que no está ya escrito arriba
-    const ox = v?.ordenex, auc = v?.aucorp;
+    const ox = v?.ordenex, auc = v?.aucorp, g = v?.vigia;
     const int = [
       ['CASAS EN PIE', `${vivas} / ${CASAS.length}`, faltan === 0 ? SI : NO],
       /* «cerrada» es una decisión de la casa; «no leído» es que no sabemos.
@@ -174,6 +174,13 @@ const OS = (() => {
       ['ORDENSCAN AL DÍA', (bOx == null || bSc == null) ? 'NO LEÍDO'
         : Math.abs(bOx - bSc) <= 5 ? 'SÍ' : `${num(Math.abs(bOx - bSc))} bloques atrás`,
       (bOx == null || bSc == null) ? NOSE : Math.abs(bOx - bSc) <= 5 ? SI : 'amb'],
+      /* Si hay alguien mirando cuando la pantalla está apagada. Un tablero que
+         solo mide mientras se le mira no vigila nada, y esta es la fila que
+         contesta «¿me voy a enterar a las tres de la mañana?». */
+      ['VIGÍA', !g ? nada : !g.encendido ? 'APAGADO'
+        : g.avisa === 'apagado' ? `cada ${Math.round(g.cada / 1000)} s · sin avisos`
+          : `cada ${Math.round(g.cada / 1000)} s · avisa por ${g.avisa}`,
+      !g?.encendido ? NOSE : g.avisa === 'apagado' ? 'amb' : SI],
     ];
     $('#integridad').innerHTML = int.map(([a, b, cl]) => fila(a, b, cl)).join('');
     $('#integridad-tag').textContent = faltan === 0 ? 'todas las casas contestan'
@@ -199,11 +206,17 @@ const OS = (() => {
     const cab = o?.origenUsd
       ? `<div class="grande"><b>${num(o.origenUsd, 4)}</b><span>USD por ORIGEN · oro ${o.oroOnzaUsd ? num(o.oroOnzaUsd, 0) + ' USD/oz' : nada}</span></div>`
       : `<div class="grande"><span class="hueco">Sin referencia de precio en esta lectura.</span></div>`;
-    caja.innerHTML = cab + (ms.length
-      ? ms.slice(0, 6).map((m) => fila(m.mercado,
-        `${m.ultimo != null ? num(m.ultimo, 4) : nada}${m.vol24h ? ' · vol ' + num(m.vol24h, 0) : ''}`,
-        m.conReferencia ? '' : NOSE)).join('')
-      : '');
+    /* Un par SIN OPERACIONES no se pinta con rayas: se dice que no ha operado y
+       se enseña lo que sí existe —a cuánto se está ofreciendo, o cuánto vale su
+       referencia en ORIGEN—, que es lo que de verdad contesta «¿a qué precio se
+       puede vender hoy?». Rayas donde hay dato es esconderlo. */
+    const linea = (m) => {
+      if (m.ultimo != null) return [`${num(m.ultimo, 4)}${Number(m.vol24h) > 0 ? ' · vol ' + num(m.vol24h, 0) : ''}`, ''];
+      if (m.mejorVenta) return [`en venta desde ${num(m.mejorVenta, 2)}`, 'on'];
+      if (m.enOrigen) return [`ref. ${num(m.enOrigen, 2)} ORIGEN`, NOSE];
+      return ['sin operar', NOSE];
+    };
+    caja.innerHTML = cab + ms.slice(0, 6).map((m) => fila(m.mercado, ...linea(m))).join('');
   }
 
   /* EL CEREBRO QUE ESTÁ EN USO, no el que no se está usando.
@@ -242,8 +255,10 @@ const OS = (() => {
       ['ESTADO', s?.cerebro ? 'ENCENDIDO' : 'APAGADO', s?.cerebro ? SI : NO],
       ...(enNodo ? [
         ['MOTOR', n?.vivo ? 'VIVO' : 'SIN RESPUESTA', n?.vivo ? SI : NO],
-        ['PEDIDOS', num(n?.pedidos), ''],
-        ['RECHAZADOS', num(n?.rechazados), n?.rechazados ? NO : ''],
+        // Los rechazados van con los pedidos: solos ocupan un renglón para
+        // decir «0» casi siempre, y al lado dicen algo — cuántos de cuántos.
+        ['PEDIDOS', `${num(n?.pedidos)}${n?.rechazados ? ' · ' + num(n.rechazados) + ' rechazados' : ''}`,
+          n?.rechazados ? NO : ''],
       ] : []),
       ['SABER', s?.saber ? `${num(s.saber)} secciones` : nada, s?.saber ? '' : NOSE],
       /* La memoria PROVISIONAL vive en el proceso y se pierde al reiniciar: los
@@ -253,15 +268,7 @@ const OS = (() => {
       ['MEMORIA', s?.memoria === 'mongo' ? 'EN MONGO' : s?.memoria ? 'PROVISIONAL' : nada,
         s?.memoria === 'mongo' ? SI : s?.memoria ? 'amb' : NOSE],
       ['VOZ', s?.voz ? 'ELEVENLABS' : 'LA DEL NAVEGADOR', s?.voz ? SI : ''],
-      ['JUNTA', s?.junta ? `${s.junta} miembro${s.junta > 1 ? 's' : ''}` : nada, s?.junta ? '' : NOSE],
-      /* Que se vea si hay alguien mirando cuando la pantalla está apagada. Un
-         tablero que solo mide mientras se le mira no vigila nada. */
-      ['VIGÍA', !ultimoVivo?.vigia ? nada
-        : !ultimoVivo.vigia.encendido ? 'APAGADO'
-          : ultimoVivo.vigia.avisa === 'apagado' ? `cada ${Math.round(ultimoVivo.vigia.cada / 1000)} s · sin avisos`
-            : `cada ${Math.round(ultimoVivo.vigia.cada / 1000)} s · avisa por ${ultimoVivo.vigia.avisa}`,
-      !ultimoVivo?.vigia?.encendido ? NOSE : ultimoVivo.vigia.avisa === 'apagado' ? 'amb' : SI],
-    ];
+    ];   // cuántos son la junta ya lo dice la puerta; aquí sería un renglón repetido
     $('#nodo-lineas').innerHTML = lineas.map(([a, b, cl]) => fila(a, b, cl)).join('');
   }
 
@@ -817,7 +824,7 @@ const OS = (() => {
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', arrancar);
   else arrancar();
 
-  return { enviar, estado, avisar, mente, _adentro: { pintarVivo, pintarSalud, pintarArchivos, pintarDicho, DESPIERTA, CASAS,
+  return { enviar, estado, avisar, mente, _adentro: { pintarVivo, pintarSalud, pintarArchivos, pintarPendientes, pintarDicho, DESPIERTA, CASAS,
     /* Solo para la prueba: mueve el reloj de la última lectura buena hacia
        atrás, para comprobar que la pantalla avisa cuando se queda vieja sin
        tener que esperar diez minutos de verdad. */

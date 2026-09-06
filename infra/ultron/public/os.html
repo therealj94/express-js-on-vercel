@@ -132,7 +132,10 @@ body.vieja #izq,body.vieja #der,body.vieja #medidas{opacity:.48;filter:saturate(
    nombra a mano en vez de confiar en el orden. */
 #paneles{display:contents}
 #izq,#der{display:grid;gap:11px;min-height:0;min-width:0;pointer-events:auto;overflow:hidden}
-#izq{grid-column:1;grid-row:1;grid-template-rows:minmax(0,1.15fr) minmax(0,.8fr) minmax(0,1fr) minmax(0,1fr)}
+/* El reparto de alto va por CUÁNTO tiene que decir cada panel, no por el orden
+   en que se escribieron. ENLACES son seis puntos y cabe en poco; MERCADO lleva
+   la cifra grande más un renglón por par, y CEREBRO siete renglones. */
+#izq{grid-column:1;grid-row:1;grid-template-rows:minmax(0,.8fr) minmax(0,1.12fr) minmax(0,1.18fr) minmax(0,1.12fr)}
 #der{grid-column:3;grid-row:1;grid-template-rows:minmax(0,1fr) minmax(0,1.35fr) minmax(0,1.1fr)}
 #centro{grid-column:2;grid-row:1;position:relative;min-height:0;min-width:0;z-index:3}
 
@@ -359,7 +362,9 @@ body.cajon #tirador{bottom:calc(76dvh + 4px)}
     <div id="medidas">
       <div><span class="pulso"></span><span id="m-bloque">CADENA 5550 · —</span></div>
       <div class="esconde">RPC <span id="m-rpc">—</span> ms</div>
-      <div class="esconde">AU <span id="m-oro">—</span></div>
+      <!-- «AU» es también la sigla de AuCorp en el muelle: «AU —» se leía como
+           «AuCorp sin dato». Es el oro. -->
+      <div class="esconde">ORO <span id="m-oro">—</span></div>
       <div id="m-reloj">—</div>
     </div>
   </header>
@@ -420,8 +425,12 @@ body.cajon #tirador{bottom:calc(76dvh + 4px)}
 
       <div class="p"><div>
         <div><h2>CEREBRO</h2><div class="sub" id="nodo-modelo">—</div><div class="sub" id="cerebro-donde">—</div></div>
-        <div style="display:flex;gap:12px;align-items:center;flex:1;min-height:0">
-          <div id="rueda" style="position:relative;width:clamp(46px,36%,74px);aspect-ratio:1;flex:none;border-radius:50%;
+        <!-- `align-items:center` con una lista más alta que la caja la centraba
+             y la desbordaba HACIA ARRIBA, encima del propio título del panel:
+             «ESTADO ENCENDIDO» se pintaba sobre «CEREBRO». Alineado arriba y con
+             su propio desplazamiento. -->
+        <div style="display:flex;gap:12px;align-items:stretch;flex:1;min-height:0;overflow:hidden">
+          <div id="rueda" style="position:relative;width:clamp(46px,32%,68px);aspect-ratio:1;flex:none;align-self:center;border-radius:50%;
                background:conic-gradient(var(--cian) 0deg,rgba(5,225,255,.12) 0);display:grid;place-items:center;
                box-shadow:0 0 18px rgba(5,225,255,.25)">
             <div style="position:absolute;inset:5px;border-radius:50%;background:#071018;display:grid;place-items:center">
@@ -431,7 +440,7 @@ body.cajon #tirador{bottom:calc(76dvh + 4px)}
               </div>
             </div>
           </div>
-          <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:5px" id="nodo-lineas"></div>
+          <div style="flex:1;min-width:0;min-height:0;overflow-y:auto;display:flex;flex-direction:column;gap:4px" id="nodo-lineas" tabindex="0"></div>
         </div>
       </div></div>
 

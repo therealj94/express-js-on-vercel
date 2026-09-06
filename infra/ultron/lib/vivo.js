@@ -125,7 +125,18 @@ async function leer() {
       // servidor se niega, y ULTRON tiene que saberlo para no decirle a nadie
       // que mande dinero.
       compraUsdt: oxSalud.datos?.entrega === true ? 'abierta' : (oxSalud.datos ? 'cerrada' : null),
-      mercados: mercados.map((m) => ({ mercado: m.mercado, ultimo: m.ultimo, vol24h: m.vol24h, conReferencia: !!m.referencia })),
+      /* Con `mejorVenta` y la referencia en ORIGEN. Los pares de la casa todavía
+         no tienen operaciones —`ultimo` es nulo de verdad, no es un fallo de
+         lectura—, así que sin esto el tablero solo podía enseñar rayas. Lo que
+         sí existe es a cuánto se está ofreciendo y cuánto vale la referencia:
+         eso es lo que contesta «¿a qué precio se puede vender hoy?».
+         `mejorVenta` viene en la unidad mínima (18 decimales). */
+      mercados: mercados.map((m) => ({
+        mercado: m.mercado, ultimo: m.ultimo, vol24h: m.vol24h, conReferencia: !!m.referencia,
+        mejorVenta: m.mejorVenta ? Number(m.mejorVenta) / 1e18 : null,
+        mejorCompra: m.mejorCompra ? Number(m.mejorCompra) / 1e18 : null,
+        enOrigen: m.referencia?.enOrigen ?? null,
+      })),
     },
     aucorp: {
       ...CASAS.aucorp,

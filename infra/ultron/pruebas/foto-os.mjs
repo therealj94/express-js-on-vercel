@@ -3,6 +3,7 @@
  * Deja las fotos en el borrador de la sesión. */
 import { chromium } from 'playwright';
 import { createRequire } from 'node:module';
+import { readFileSync } from 'node:fs';
 const require = createRequire(import.meta.url);
 const SALIDA = process.env.ULTRON_FOTOS || '/tmp/claude-0/-home-user-express-js-on-vercel/0391d4fe-0c9f-53b0-b60e-0030ebf74708/scratchpad';
 
@@ -11,6 +12,9 @@ process.env.ULTRON_SECRETO = 'p';
 process.env.ULTRON_JUNTA = JSON.stringify([{ nombre: 'José Enamorado', correo: 'jose@ordenglobal.org', clave: 'clave-jose', rol: 'presidente' }]);
 const fetchReal = globalThis.fetch;
 globalThis.fetch = async (u, o) => { if (String(u).startsWith('http://127.0.0.1')) return fetchReal(u, o); throw new Error('sin red'); };
+
+const leerJson = (n) => { try { return JSON.parse(readFileSync(`${SALIDA}/${n}`, 'utf8')); } catch { return null; } };
+const REAL = { v: leerJson('vivo-real.json'), sa: leerJson('salud-real.json'), pe: leerJson('pend-real.json') };
 
 const { app } = require('../app.js');
 const sv = await new Promise((ok) => { const s = app.listen(0, '127.0.0.1', () => ok(s)); });
@@ -25,6 +29,17 @@ for (const [nombre, w, h] of [['os-escritorio', 1400, 900], ['os-telefono', 390,
     body: JSON.stringify({ correo: 'jose@ordenglobal.org', clave: 'clave-jose' }) }); }, BASE);
   await p.goto(BASE + '/os?buffer', { waitUntil: 'domcontentloaded' });   // ?buffer: para poder fotografiar el lienzo
   await p.waitForTimeout(3400);
+  /* CON LAS LECTURAS DE VERDAD. Este entorno no tiene salida a internet, así
+     que las seis casas salían caídas y la foto enseñaba el estado de avería en
+     vez del de todos los días. Se le pasan las últimas lecturas reales de
+     producción, guardadas al lado; si no están, se fotografía lo que haya. */
+  await p.evaluate(({ v, sa, pe }) => {
+    const a = window.OS._adentro;
+    if (v) a.pintarVivo(v);
+    if (sa) a.pintarSalud(sa);
+    if (pe) a.pintarPendientes(pe);
+  }, REAL);
+  await p.waitForTimeout(300);
   // con una conversación puesta, que es como se ve de verdad
   await p.evaluate(() => {
     window.OS._adentro.pintarDicho(
