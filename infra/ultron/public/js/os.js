@@ -22,7 +22,7 @@ const OS = (() => {
      El motor 3D lee este objeto sesenta veces por segundo con `get()`. No se
      le manda nada: él viene a mirar. Así el busto nunca bloquea la consola ni
      al revés. */
-  const mente = { state: 'idle', mood: 'neutral', nivel: 0, speech: null, mouse: { x: 0, y: 0 } };
+  const mente = { state: 'idle', mood: 'neutral', nivel: 0, cerca: 0, speech: null, mouse: { x: 0, y: 0 } };
   window.__ULTRON_MENTE = () => mente;
 
   const COLORES = { idle: '#05E1FF', listen: '#5CF2B0', think: '#FFB648', speak: '#05E1FF', error: '#FF5A6E' };
@@ -34,6 +34,11 @@ const OS = (() => {
   function estado(st, mood) {
     mente.state = st;
     if (mood !== undefined) mente.mood = mood;
+    /* El botón de hablar dice si está escuchando, para quien lo ve y para
+       quien lo oye: `aria-pressed` es lo que un lector de pantalla anuncia. */
+    const bh = $('#hablar');
+    if (bh) bh.setAttribute('aria-pressed', String(st === 'listen'));
+    document.body.classList.toggle('escuchando', st === 'listen');
     const c = COLORES[st] || COLORES.idle;
     const luz = $('#estado .luz');
     if (luz) { luz.style.background = c; luz.style.boxShadow = `0 0 8px ${c}`; }
@@ -1656,7 +1661,12 @@ const OS = (() => {
    * otro botón. Es la versión a mano de lo que el vigilante del micrófono ya
    * hace con la voz.
    */
+  const YA_SABE = 'ultron.ya-sabe-hablar';
   function toqueNucleo() {
+    /* La pista está para enseñar que el centro se toca. Usado una vez, sobra:
+       se va y no vuelve, en este aparato y en los siguientes que abra. */
+    try { localStorage.setItem(YA_SABE, '1'); } catch { /* modo privado */ }
+    document.body.classList.add('ya-sabe-hablar');
     despertarVoz();                       // el toque ES el gesto que da permiso
     if (mente.state === 'listen') { orejaApagar(); avisar('Micrófono cerrado.'); return; }
     /* Hablando o pensando: se calla lo que esté sonando —la respuesta y las
@@ -1667,6 +1677,137 @@ const OS = (() => {
       try { locutor?.callar(); } catch { /* ya estaba callado */ }
     }
     escucharYa();
+  }
+
+  /* ══ EL BOTÓN DE HABLAR ═════════════════════════════════════════════════════
+   * «Botón de en medio, mejorar para hablar; que se haga fluido, bien touch y
+   * con el mouse que funcione bien, y agregar air touch.»
+   *
+   * Antes esto era un oyente de toques sobre TODA la pantalla, filtrado por
+   * quién recibió el evento. Tres cosas malas: el micrófono se abría tocando
+   * cualquier hueco del fondo, no había NADA que dijera que el centro se podía
+   * tocar, y con el teclado no había manera de llegar.
+   *
+   * Ahora es un `<button>` de verdad, del tamaño del núcleo y encima del
+   * núcleo. Eso trae gratis lo que costaba escribir a mano: el tabulador llega,
+   * Enter y la barra lo disparan, el lector de pantalla lo anuncia como un
+   * botón, y el navegador ya sabe qué es un toque y qué es un arrastre.
+   *
+   * Lo que sí hay que escribir a mano son tres cosas:
+   *   · DÓNDE va. Lo dice el propio dibujo, no una copia de sus números.
+   *   · QUÉ es un arrastre. El botón tapa el núcleo, así que recoge el
+   *     arrastre y se lo pasa al dibujo para que siga girando. Y el umbral es
+   *     más ancho con el dedo que con el ratón: un dedo se mueve doce píxeles
+   *     en un toque que nadie diría que se movió.
+   *   · ACERCARSE. El «air touch»: el núcleo se enciende antes de que lo
+   *     toquen. Vale para el ratón, para el lápiz que flota sobre un iPad y
+   *     para cualquier puntero que el aparato vea sin contacto.
+   */
+  const UMBRAL = { mouse: 6, pen: 12, touch: 16 };
+
+  function botonDeHablar() {
+    const b = $('#hablar'); if (!b) return;
+
+    /* ── DÓNDE VA ────────────────────────────────────────────────────────
+       La posición sale de `UltronNucleo.zona()`, que la calcula el mismo
+       código que dibuja el núcleo. Se vuelve a preguntar al cambiar de tamaño
+       y al cambiar de figura; entre medias no cambia, así que no hay nada que
+       recalcular en cada cuadro.
+       El blanco es el 75 % del radio del núcleo: generoso para el dedo y sin
+       tragarse media pantalla como antes. */
+    let zona = null;
+    const colocar = () => {
+      zona = window.__ULTRON_FIGURA_VIVA?.zona?.() || null;
+      const r = document.documentElement.style;
+      if (zona) {
+        r.setProperty('--nx', `${zona.cx}px`);
+        r.setProperty('--ny', `${zona.cy}px`);
+        r.setProperty('--nr', `${Math.round(zona.r * 1.5)}px`);
+      } else {
+        /* El busto en tres dimensiones no publica su geometría: se cae a algo
+           razonable en vez de dejar el botón en una esquina. */
+        r.setProperty('--nx', '50%'); r.setProperty('--ny', '46%');
+        r.setProperty('--nr', `${Math.round(Math.min(innerWidth * .45, innerHeight * .5))}px`);
+      }
+      document.body.classList.add('puede-hablar');
+    };
+    /* «Toque» con el dedo y «pulse» con el ratón. Decirle «toque» a quien
+       tiene un ratón delante es pedirle que haga algo que no puede hacer. */
+    const pista = $('#pista-hablar');
+    if (pista) pista.textContent = matchMedia('(hover:hover) and (pointer:fine)').matches ? 'PULSE PARA HABLAR' : 'TOQUE PARA HABLAR';
+    try { if (localStorage.getItem(YA_SABE)) document.body.classList.add('ya-sabe-hablar'); } catch { /* modo privado */ }
+    colocar();
+    addEventListener('resize', colocar);
+    addEventListener('ultron-holo-ready', colocar);
+    /* La figura tarda un instante en montarse; si todavía no estaba, se
+       coloca en cuanto esté. */
+    if (!window.__ULTRON_FIGURA_VIVA) setTimeout(colocar, 600);
+
+    /* ── TOCAR, Y ARRASTRAR ──────────────────────────────────────────────
+       `setPointerCapture` es lo que hace que el arrastre siga funcionando
+       aunque el dedo se salga del botón: sin él, sacar el dedo del círculo a
+       media vuelta soltaba el giro en seco. */
+    let baja = null;
+    b.addEventListener('pointerdown', (e) => {
+      baja = { x: e.clientX, y: e.clientY, t: Date.now(), giro: false, umbral: UMBRAL[e.pointerType] || UMBRAL.mouse };
+      b.classList.add('apretado');
+      try { b.setPointerCapture(e.pointerId); } catch { /* sin captura se vive */ }
+    });
+    b.addEventListener('pointermove', (e) => {
+      if (!baja) return;
+      const dx = e.clientX - baja.x;
+      if (!baja.giro && Math.hypot(dx, e.clientY - baja.y) > baja.umbral) { baja.giro = true; b.classList.remove('apretado'); }
+      if (baja.giro) {
+        /* El giro va por el desplazamiento DESDE EL ÚLTIMO aviso, no desde el
+           principio: si no, cada aviso repetiría todo el recorrido y el núcleo
+           saldría disparado. */
+        const desde = baja.ultimoX === undefined ? baja.x : baja.ultimoX;
+        window.__ULTRON_FIGURA_VIVA?.girar?.(e.clientX - desde);
+        baja.ultimoX = e.clientX;
+      }
+    });
+    const soltar = (e) => {
+      const p0 = baja; baja = null;
+      b.classList.remove('apretado');
+      try { b.releasePointerCapture(e.pointerId); } catch { /* ya */ }
+      if (!p0 || p0.giro) return;                       // fue un giro, no un toque
+      if (Date.now() - p0.t > 700) return;              // se quedó apoyado: tampoco es un toque
+      toqueNucleo();
+    };
+    b.addEventListener('pointerup', soltar);
+    b.addEventListener('pointercancel', () => { baja = null; b.classList.remove('apretado'); });
+
+    /* Enter y la barra: el navegador los convierte en `click`. Se atiende ahí
+       y NO en `pointerup`, para no hacerlo dos veces con el ratón. */
+    b.addEventListener('click', (e) => {
+      if (e.detail !== 0) return;                       // detail 0 = vino del teclado
+      toqueNucleo();
+    });
+    /* La barra espaciadora desplaza la página si no se para. */
+    b.addEventListener('keydown', (e) => { if (e.key === ' ') e.preventDefault(); });
+
+    /* ── ACERCARSE SIN TOCAR ─────────────────────────────────────────────
+       `mente.cerca` va de 0 a 1 y lo lee el dibujo del núcleo. Se calcula con
+       la distancia al centro: a dos radios y medio empieza a notarse, encima
+       está al máximo. El mismo cálculo sirve para el ratón y para un lápiz que
+       flota, que es lo que manda `pointermove` con `pointerType` «pen» antes
+       de tocar la pantalla.
+       Con el dedo NO se hace: un dedo no tiene «cerca», y encenderlo con cada
+       toque de desplazamiento sería ruido. */
+    addEventListener('pointermove', (e) => {
+      if (e.pointerType === 'touch' || !zona) return;
+      const d = Math.hypot(e.clientX - zona.cx, e.clientY - zona.cy);
+      /* Encendido del todo dentro del botón (tres cuartos del radio) y apagado
+         del todo pasado el borde de los anillos (uno coma seis radios). Entre
+         medias sube gradual. Una franja más ancha dejaba el núcleo encendido
+         con el puntero en cualquier parte, que es lo mismo que no reaccionar. */
+      mente.cerca = Math.max(0, Math.min(1, (zona.r * 1.6 - d) / (zona.r * .85)));
+    }, { passive: true });
+    /* `pointerleave` no burbujea: se escucha en el elemento raíz, que es el que
+       lo recibe cuando el puntero se va de la ventana. */
+    document.documentElement.addEventListener('pointerleave', () => { mente.cerca = 0; });
+    /* Un lápiz que se aleja de la pantalla manda `pointerout` sin tocar nada. */
+    addEventListener('pointerout', (e) => { if (e.pointerType === 'pen') mente.cerca = 0; });
   }
 
   /** Abrir el micrófono para un turno, y dejar la oreja encendida. */
@@ -2028,26 +2169,7 @@ const OS = (() => {
     // ── los mandos
     $('#micro').addEventListener('click', () => { despertarVoz(); dictar(); });
 
-    /* ── EL CENTRO SE TOCA ────────────────────────────────────────────────
-       El lienzo se reemplaza al cambiar de figura (núcleo ↔ busto), así que
-       el oyente NO va en el lienzo: va en el documento y mira quién recibió
-       el toque. Un oyente puesto sobre un elemento que se sustituye deja de
-       existir sin que nadie lo note.
-
-       Y hay que distinguir un TOQUE de un ARRASTRE: el mismo lienzo gira con
-       el dedo, y girar no puede abrir el micrófono. Un toque es poco
-       movimiento y poco tiempo; lo demás es un giro. */
-    const enElNucleo = (t) => !!t && (t.id === 'holo' || t.id === 'centro');
-    let toque = null;
-    addEventListener('pointerdown', (e) => {
-      toque = enElNucleo(e.target) ? { x: e.clientX, y: e.clientY, t: Date.now() } : null;
-    }, true);
-    addEventListener('pointerup', (e) => {
-      const p0 = toque; toque = null;
-      if (!p0 || !enElNucleo(e.target)) return;
-      if (Math.hypot(e.clientX - p0.x, e.clientY - p0.y) > 10 || Date.now() - p0.t > 600) return;  // fue un giro
-      toqueNucleo();
-    }, true);
+    botonDeHablar();
     $('#oreja').addEventListener('click', () => (despierta ? orejaApagar() : orejaEncender()));
     /* El rótulo del botón no puede prometer una palabra que despierta en un
        aparato donde no la hay. */
@@ -2198,7 +2320,7 @@ const OS = (() => {
     else unaVez();
   }
 
-  return { enviar, estado, avisar, mente, despertarVoz, abrirAjustes, _adentro: { pintarVivo, pintarSalud, pintarSaludPropia, pintarArchivos, pintarPendientes, pintarAutorizaciones, pintarDicho, DESPIERTA, CASAS, entrarArmar, salirArmar, aplicarTablero, tableroActual, toqueNucleo, pedirPermisos, pintarCaja, pintarRegistro, borrarArchivo,
+  return { enviar, estado, avisar, mente, despertarVoz, abrirAjustes, _adentro: { pintarVivo, pintarSalud, pintarSaludPropia, pintarArchivos, pintarPendientes, pintarAutorizaciones, pintarDicho, DESPIERTA, CASAS, entrarArmar, salirArmar, aplicarTablero, tableroActual, toqueNucleo, pedirPermisos, botonDeHablar, pintarCaja, pintarRegistro, borrarArchivo,
     /* Solo para la prueba: mueve el reloj de la última lectura buena hacia
        atrás, para comprobar que la pantalla avisa cuando se queda vieja sin
        tener que esperar diez minutos de verdad. */

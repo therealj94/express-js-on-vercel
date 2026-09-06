@@ -55,6 +55,20 @@ for (const [nombre, w, h] of [['os-escritorio', 1400, 900], ['os-telefono', 390,
   await p.screenshot({ path: `${SALIDA}/${nombre}.png` });
   if (w < 900) { await p.evaluate(() => document.body.classList.add('cajon')); await p.waitForTimeout(400);
     await p.screenshot({ path: `${SALIDA}/${nombre}-cajon.png` }); }
+  // el botón de hablar: enfocado con el teclado y con el puntero encima.
+  // Con el cajón CERRADO, que es donde se ve el núcleo.
+  await p.evaluate(() => document.body.classList.remove('cajon'));
+  await p.waitForTimeout(400);
+  await p.evaluate(() => {
+    const z = window.__ULTRON_FIGURA_VIVA?.zona?.();
+    if (z) window.__ULTRON_MENTE().cerca = 1;
+    document.querySelector('#hablar')?.focus();
+  });
+  await p.waitForTimeout(600);
+  await p.screenshot({ path: `${SALIDA}/${nombre}-hablar.png` });
+  await p.evaluate(() => { window.__ULTRON_MENTE().cerca = 0; document.querySelector('#hablar')?.blur(); });
+  await p.waitForTimeout(400);
+
   // y armando el tablero, que es lo nuevo
   await p.evaluate(() => window.OS._adentro.entrarArmar?.());
   await p.waitForTimeout(500);

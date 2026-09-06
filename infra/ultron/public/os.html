@@ -174,6 +174,70 @@ body.vieja #izq,body.vieja #der,body.vieja #medidas{opacity:.48;filter:saturate(
 #der{grid-column:3;grid-row:1}
 #centro{grid-column:2;grid-row:1;position:relative;min-height:0;min-width:0;z-index:3}
 
+/* ══ EL BOTÓN DE HABLAR ══════════════════════════════════════════════════════
+   «Botón de en medio, mejorar para hablar; que se haga fluido, bien touch y
+   con el mouse que funcione bien, y agregar air touch.»
+
+   Va encima del núcleo y del tamaño del núcleo: su sitio lo dice el propio
+   dibujo (`UltronNucleo.zona()`), no una copia de sus constantes en el CSS.
+   Se coloca con tres variables que pone `os.js`.
+
+   ── LAS TRES MANERAS DE USARLO ─────────────────────────────────────────────
+   TOCAR      un toque abre el micrófono; otro lo cierra. El umbral entre
+              «toque» y «arrastre» es más ancho con el dedo que con el ratón,
+              porque un dedo se mueve doce píxeles sin que nadie lo note.
+   ARRASTRAR  sigue girando el núcleo. El botón lo tapa, así que recoge el
+              arrastre y se lo pasa al dibujo: la misma superficie hace las
+              dos cosas, que es lo que se espera de algo que parece una esfera.
+   ACERCARSE  «air touch»: el núcleo se enciende cuando el puntero se acerca,
+              sin tocarlo. Vale para el ratón, para el lápiz que flota sobre
+              un iPad y para el dedo que se aproxima donde el aparato lo
+              detecta. Es lo que hace que se note que es un botón sin tener
+              que escribir «botón» encima.
+
+   Sin fondo ni borde propios: el botón ES el núcleo. Lo único que se dibuja
+   aquí es el aro que aparece al apretar y al enfocar — que sí hace falta,
+   porque quien navega con teclado tiene que ver dónde está. */
+#hablar{position:absolute;z-index:1;padding:0;border:0;background:none;cursor:pointer;
+  left:var(--nx,50%);top:var(--ny,46%);width:var(--nr,240px);height:var(--nr,240px);
+  transform:translate(-50%,-50%);border-radius:50%;touch-action:none;
+  -webkit-tap-highlight-color:transparent;transition:transform .18s cubic-bezier(.22,1,.36,1)}
+#hablar .aro{position:absolute;inset:6%;border-radius:50%;border:1px solid transparent;transition:border-color .2s,box-shadow .2s}
+#hablar:active,#hablar.apretado{transform:translate(-50%,-50%) scale(.965)}
+#hablar.apretado .aro{border-color:rgba(5,225,255,.5);box-shadow:0 0 30px rgba(5,225,255,.25) inset}
+/* El puntero fino se acerca y el aro asoma; el dedo no tiene «encima», así que
+   esto se limita a los aparatos que de verdad saben qué es flotar.
+   VA ANTES QUE EL FOCO, y no es un capricho de orden: las dos reglas pesan
+   igual, así que gana la última. Con el ratón encima del botón y el foco
+   puesto con el tabulador, el aro tenue del «encima» tapaba el aro claro del
+   foco — justo en el caso en que hace falta ver dónde está el foco. */
+@media (hover:hover) and (pointer:fine){
+  #hablar:hover .aro{border-color:rgba(5,225,255,.35)}
+}
+#hablar:focus-visible{outline:none}
+#hablar:focus-visible .aro{border-color:var(--cian);box-shadow:0 0 0 2px rgba(5,225,255,.35),0 0 34px rgba(5,225,255,.3) inset}
+/* La pista debajo del núcleo. Se va cuando ya está escuchando: ahí el rótulo
+   del estado dice LE ESTOY ESCUCHANDO y repetirlo sobra. */
+/* Justo debajo del centro, y CON FONDO. Los anillos ocupan casi todo el hueco
+   alrededor del núcleo: sin fondo, la pista se leía a medias por encima de las
+   marcas y parecía un fallo de dibujo. Un rectángulo oscuro y estrecho la
+   separa sin taparle nada al núcleo.
+   Y desaparece para siempre en cuanto se usa el botón una vez: está para
+   enseñar que el centro se toca, y una vez enseñado sobra. */
+#pista-hablar{position:absolute;z-index:1;left:var(--nx,50%);top:calc(var(--ny,46%) + var(--nr,240px) * .30);
+  transform:translateX(-50%);pointer-events:none;white-space:nowrap;
+  padding:4px 11px;background:rgba(4,7,11,.78);
+  clip-path:polygon(0 0,calc(100% - 6px) 0,100% 6px,100% 100%,6px 100%,0 calc(100% - 6px));
+  font-family:var(--mono);font-size:9.5px;letter-spacing:.26em;color:rgba(5,225,255,.7);
+  opacity:0;transition:opacity .25s}
+body.puede-hablar #pista-hablar{opacity:1}
+body.escuchando #pista-hablar,body.arrancando #pista-hablar,body.cerrada #pista-hablar,
+body.ya-sabe-hablar #pista-hablar{opacity:0}
+@media (max-width:860px){#pista-hablar{font-size:9px;letter-spacing:.2em}}
+@media (prefers-reduced-motion:reduce){
+  #hablar,#hablar .aro,#pista-hablar{transition:none}
+}
+
 /* ── el centro: estado, burbuja, sugerencias ─────────────────────────────── */
 #estado{position:absolute;left:6px;top:4px;display:flex;align-items:center;gap:8px;
   font-family:var(--mono);font-size:10px;letter-spacing:.22em;pointer-events:none}
@@ -477,6 +541,9 @@ body.arrancando #techo,body.arrancando #cuerpo,body.arrancando #muelle,body.arra
 body.cerrada #techo,body.cerrada #cuerpo,body.cerrada #muelle,body.cerrada #pie,body.cerrada #tirador{
   visibility:hidden;pointer-events:none}
 body.arrancando #centro,body.cerrada #centro{visibility:hidden}
+/* El botón de hablar tampoco existe antes de entrar: sin sesión no hay a quién
+   hablarle, y un botón que no hace nada enseña a no tocar los botones. */
+body.arrancando #hablar,body.cerrada #hablar{visibility:hidden;pointer-events:none}
 
 #entrada{position:fixed;inset:0;z-index:80;display:grid;place-items:center;padding:24px;
   background:radial-gradient(ellipse 60% 50% at 50% 45%,rgba(4,7,11,0) 0%,rgba(4,7,11,.72) 62%,rgba(4,7,11,.93) 100%);
@@ -678,6 +745,16 @@ body.arrancando #centro,body.cerrada #centro{visibility:hidden}
   <h1 class="solo-lector">ULTRON OS · consola de la junta directiva de Orden Global</h1>
   <!-- El busto es decoración para quien no lo ve: se oculta al lector. -->
   <canvas id="holo" aria-hidden="true"></canvas>
+  <!-- EL BOTÓN DE HABLAR. Es el núcleo: cae justo encima, del tamaño del
+       núcleo, y es un <button> de verdad — se llega con el tabulador, se
+       dispara con Enter o con la barra, y un lector de pantalla lo anuncia
+       como lo que es. Antes esto era un oyente de toques sobre TODA la
+       pantalla: se abría el micrófono tocando cualquier hueco del fondo, y no
+       había nada que dijera que el centro se podía tocar. -->
+  <button id="hablar" aria-label="Hablar con ULTRON" aria-pressed="false">
+    <span class="aro" aria-hidden="true"></span>
+  </button>
+  <div id="pista-hablar" aria-hidden="true">TOQUE PARA HABLAR</div>
   <div id="velo" aria-hidden="true"></div>
 
   <!-- Lo que ULTRON contesta se anuncia UNA vez, al terminar. Anunciar cada
@@ -861,7 +938,7 @@ body.arrancando #centro,body.cerrada #centro{visibility:hidden}
 
     <div id="centro">
       <div id="estado"><span class="luz"></span><span id="estado-txt">EN LÍNEA</span></div>
-      <div id="pista">TOQUE EL CENTRO PARA HABLARLE · ARRASTRE PARA GIRAR · SUELTE UN ARCHIVO PARA QUE LO LEA</div>
+      <div id="pista">ARRASTRE PARA GIRAR · SUELTE UN ARCHIVO PARA QUE LO LEA</div>
       <div id="globo" class="oculto"><div><div>
         <div class="quien" id="globo-quien">ULTRON:</div>
         <!-- `tabindex=0`: es un contenedor que se desplaza, y sin esto quien

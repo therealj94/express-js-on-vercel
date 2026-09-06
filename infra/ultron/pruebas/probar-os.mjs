@@ -35,6 +35,7 @@ const decir = (ok, que, extra = '') => {
   console.log(`  ${ok ? 'ok   ' : 'FALLA'} ${que}`);
   if (extra) console.log(`           ${String(extra).replace(/\s+/g, ' ').slice(0, 170)}`);
 };
+const innerAncho = (a) => a;
 const titulo = (t) => console.log(`\n── ${t} ${'─'.repeat(Math.max(2, 56 - t.length))}`);
 
 /* Sin Mongo, sin modelo, sin voz y SIN RED: el OS tiene que levantarse igual y
@@ -539,10 +540,10 @@ titulo('el dueño: aprobar con un clic');
 /* ── EL CENTRO SE TOCA ────────────────────────────────────────────────────────
    «Darle click y nos escuche, se pone en verde y aparezca te estoy
    escuchando; y si vuelvo a tocar el centro lo interrumpo.» */
-titulo('el centro: tocarlo abre el micrófono, y volver a tocarlo lo cierra');
+titulo('el botón de en medio: tocar, arrastrar, teclado y acercarse');
 {
   /* Chromium sin marca NO trae `webkitSpeechRecognition`, así que aquí se le
-     pone uno de mentira: lo que se comprueba es la CONDUCTA del toque —abre,
+     pone uno de mentira: lo que se comprueba es la CONDUCTA del botón —abre,
      lo dice, se pone verde, y volver a tocar cierra—, no el reconocedor del
      navegador, que es de Google y no es nuestro. */
   await p.evaluate(() => {
@@ -552,21 +553,99 @@ titulo('el centro: tocarlo abre el micrófono, y volver a tocarlo lo cierra');
     VOZ.oir = () => ({ abort() {} });
   });
   const rotulo = () => p.evaluate(() => document.querySelector('#estado-txt')?.textContent || '');
-  await p.evaluate(() => window.OS._adentro.toqueNucleo());
-  await p.waitForTimeout(500);
-  const r = await rotulo();
-  decir(/ESTOY ESCUCHANDO/.test(r), 'el toque abre el micrófono y lo DICE en primera persona', r);
+
+  /* ES UN BOTÓN DE VERDAD, no un oyente de toques sobre el fondo. De ahí sale
+     gratis lo que costaba escribir a mano: el tabulador, Enter, y que un
+     lector de pantalla lo anuncie como botón y diga si está apretado. */
+  const b = await p.evaluate(() => {
+    const e = document.querySelector('#hablar');
+    if (!e) return null;
+    const r = e.getBoundingClientRect();
+    const z = window.__ULTRON_FIGURA_VIVA?.zona?.() || null;
+    return { etiqueta: e.tagName, nombre: e.getAttribute('aria-label'), apretado: e.getAttribute('aria-pressed'),
+      cx: r.x + r.width / 2, cy: r.y + r.height / 2, d: r.width, zona: z };
+  });
+  decir(b?.etiqueta === 'BUTTON' && /Hablar/.test(b.nombre || ''), 'el centro ES un botón, con su nombre', `${b?.etiqueta} · ${b?.nombre}`);
+  decir(b?.apretado === 'false', 'y dice si está apretado, que es lo que anuncia un lector de pantalla');
+  decir(b?.zona && Math.abs(b.cx - b.zona.cx) < 2 && Math.abs(b.cy - b.zona.cy) < 2,
+    'cae EXACTAMENTE encima del núcleo: su sitio lo dice el dibujo, no una copia de sus números',
+    `botón ${Math.round(b.cx)},${Math.round(b.cy)} · núcleo ${Math.round(b.zona?.cx)},${Math.round(b.zona?.cy)}`);
+  decir(b && b.d > 120 && b.d < innerAncho(ANCHO) , 'y mide lo que el núcleo, no la pantalla entera como antes', `${Math.round(b.d)} px`);
+
+  /* La pista dice para qué sirve, y lo dice según con qué se puede hacer: con
+     un ratón no se «toca». Se mira ANTES de usar el botón, porque en cuanto se
+     usa desaparece —ya enseñó lo que tenía que enseñar—. */
+  const pista = await p.evaluate(() => ({ txt: document.querySelector('#pista-hablar')?.textContent,
+    visible: getComputedStyle(document.querySelector('#pista-hablar')).opacity }));
+  decir(/HABLAR/.test(pista.txt || '') && Number(pista.visible) > 0, 'una pista junto al núcleo dice para qué sirve', `${pista.txt} · opacidad ${pista.visible}`);
+
+  // ── TOCAR
+  await p.click('#hablar');
+  await p.waitForTimeout(450);
+  decir(/ESTOY ESCUCHANDO/.test(await rotulo()), 'un toque abre el micrófono y lo DICE en primera persona', await rotulo());
+  decir(await p.$eval('#hablar', (e) => e.getAttribute('aria-pressed')) === 'true', 'y el botón queda marcado como apretado');
   const verde = await p.evaluate(() => getComputedStyle(document.querySelector('#estado')).color);
-  decir(/92, 242, 176/.test(verde), 'y el centro y el estado se ponen en verde', verde);
-  await p.evaluate(() => window.OS._adentro.toqueNucleo());
+  decir(/92, 242, 176/.test(verde), 'el centro y el estado se ponen en verde', verde);
+  await p.click('#hablar');
   await p.waitForTimeout(400);
-  decir(!/ESTOY ESCUCHANDO/.test(await rotulo()), 'volver a tocarlo lo cierra', await rotulo());
-  /* Y girar NO puede abrir el micrófono: es el mismo lienzo y el mismo dedo. */
-  const caja = await p.$eval('#holo', (e) => { const b = e.getBoundingClientRect(); return { x: b.x + b.width / 2, y: b.y + b.height / 2 }; });
-  await p.mouse.move(caja.x, caja.y); await p.mouse.down();
-  await p.mouse.move(caja.x + 90, caja.y, { steps: 6 }); await p.mouse.up();
+  decir(!/ESTOY ESCUCHANDO/.test(await rotulo()), 'y volver a tocarlo lo cierra', await rotulo());
+
+  // ── ARRASTRAR: gira, y NO abre el micrófono
+  const giroAntes = await p.evaluate(() => { window.__GIRO = 0; const v = window.__ULTRON_FIGURA_VIVA; const g = v.girar; v.girar = (dx) => { window.__GIRO += dx; return g.call(v, dx); }; return 0; });
+  const c = await p.$eval('#hablar', (e) => { const r = e.getBoundingClientRect(); return { x: r.x + r.width / 2, y: r.y + r.height / 2 }; });
+  await p.mouse.move(c.x, c.y); await p.mouse.down();
+  await p.mouse.move(c.x + 90, c.y, { steps: 8 }); await p.mouse.up();
   await p.waitForTimeout(400);
-  decir(!/ESTOY ESCUCHANDO/.test(await rotulo()), 'y arrastrar para girar NO lo abre: eso sería un micrófono que se enciende solo', await rotulo());
+  decir(!/ESTOY ESCUCHANDO/.test(await rotulo()), 'arrastrar para girar NO abre el micrófono: eso sería un micrófono que se enciende solo', await rotulo());
+  const giro = await p.evaluate(() => window.__GIRO);
+  decir(giro > 40 && giro < 140, 'y el arrastre SÍ llega al dibujo: el botón lo tapa y se lo pasa', `${Math.round(giro)} px girados`);
+
+  // ── EL TECLADO
+  /* Y SE VE dónde está el foco. Un botón al que se llega con el tabulador y no
+     se ve es peor que uno al que no se llega.
+     Hay que llegar TABULANDO de verdad: `:focus-visible` —que es lo que
+     enciende el aro, y a propósito, para que un clic de ratón no deje un aro
+     puesto— no se enciende con un foco puesto por programa. */
+  await p.evaluate(() => document.querySelector('#hablar').blur());
+  await p.keyboard.press('Escape');
+  let vueltas = 0;
+  while (vueltas++ < 60 && await p.evaluate(() => document.activeElement?.id) !== 'hablar') await p.keyboard.press('Tab');
+  /* El aro entra con una transición de 200 ms, y `getComputedStyle` devuelve el
+     valor de AHORA, no el de destino: sin esperar se lee el color de partida,
+     que es transparente, y la prueba pasa o falla según lo rápida que vaya la
+     máquina. */
+  await p.waitForTimeout(400);
+  const aro = await p.evaluate(() => {
+    const e = document.querySelector('#hablar');
+    const g = getComputedStyle(e.querySelector('.aro'));
+    return { enfocado: e.matches(':focus-visible'), borde: g.borderTopColor, sombra: g.boxShadow, vueltas: 0 };
+  });
+  decir(aro.enfocado, `se llega tabulando (${vueltas} tabuladas) y el navegador lo marca como foco de teclado`);
+  decir(aro.borde === 'rgb(5, 225, 255)' && /rgba\(5, 225, 255/.test(aro.sombra),
+    'y entonces se ve dónde está: el aro se enciende', `${aro.borde} · ${String(aro.sombra).slice(0, 46)}`);
+  /* Y en cuanto se usa una vez, la pista se va y no vuelve: está para enseñar
+     que el centro se toca, y una vez enseñado sobra. */
+  decir(await p.evaluate(() => Number(getComputedStyle(document.querySelector('#pista-hablar')).opacity)) === 0,
+    'y usado una vez, la pista se retira: ya enseñó lo que tenía que enseñar');
+  await p.keyboard.press('Enter');
+  await p.waitForTimeout(400);
+  decir(/ESTOY ESCUCHANDO/.test(await rotulo()), 'y Enter lo dispara, sin tocar la pantalla', await rotulo());
+  await p.keyboard.press('Enter');
+  await p.waitForTimeout(350);
+
+  /* ── ACERCARSE SIN TOCAR · «air touch» ────────────────────────────────────
+     El núcleo se enciende cuando el puntero se acerca. Se comprueba el número
+     que lee el dibujo: lejos cero, encima uno. */
+  await p.mouse.move(4, 4); await p.waitForTimeout(120);
+  const lejos = await p.evaluate(() => window.__ULTRON_MENTE().cerca);
+  await p.mouse.move(c.x, c.y); await p.waitForTimeout(120);
+  const encima = await p.evaluate(() => window.__ULTRON_MENTE().cerca);
+  /* A un radio y pico del centro: dentro de la franja donde sube gradual, en
+     cualquier tamaño de pantalla. */
+  await p.mouse.move(c.x, Math.max(2, c.y - Math.round(b.zona.r * 1.1))); await p.waitForTimeout(120);
+  const medio = await p.evaluate(() => window.__ULTRON_MENTE().cerca);
+  decir(lejos === 0 && encima === 1, 'lejos no se enciende y encima se enciende del todo', `lejos ${lejos} · encima ${encima}`);
+  decir(medio > 0 && medio < 1, 'y en medio se enciende A MEDIAS: el núcleo reacciona según lo cerca que esté', `${medio.toFixed(2)}`);
 }
 
 /* ── LOS DOS WIDGETS NUEVOS ─────────────────────────────────────────────────── */

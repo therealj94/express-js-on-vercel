@@ -141,6 +141,15 @@ export function mount(canvas, mirar, opts = {}) {
     else objetivo = .07 + Math.sin(t * 1.15) * .025;
     if (lento) objetivo = Math.min(objetivo, .2);
 
+    /* ── ACERCARSE SIN TOCAR ───────────────────────────────────────────
+       `s.cerca` va de 0 a 1 según lo cerca que esté el puntero —el dedo con
+       el Pencil, el ratón, el lápiz que flota sobre el iPad—. El núcleo se
+       enciende ANTES de que lo toquen: es lo que hace que se note que es un
+       botón sin escribir «botón» encima. En reposo aporta hasta un tercio de
+       amplitud; mientras habla o escucha no aporta nada, porque ahí la
+       amplitud ya está diciendo otra cosa más importante. */
+    if (st === 'idle' && typeof s.cerca === 'number' && s.cerca > 0) objetivo = Math.max(objetivo, .07 + s.cerca * .3);
+
     amp = lerp(amp, objetivo, .18); ampRapida = lerp(ampRapida, objetivo, .5);
     nivel = lerp(nivel, amp, .06); respiro = Math.sin(t * 1.15);
 
@@ -295,6 +304,19 @@ export function mount(canvas, mirar, opts = {}) {
 
   raf = requestAnimationFrame(cuadro);
   return {
+    /* ── DÓNDE ESTÁ EL NÚCLEO, EN PÍXELES DE PANTALLA ─────────────────────
+       El botón de hablar tiene que caer EXACTAMENTE encima del núcleo, y el
+       núcleo se coloca aquí con dos constantes que dependen del ancho, del
+       alto y de si es un teléfono. Copiarlas en el CSS habría funcionado hasta
+       el día que alguna cambiara y el botón se quedara en otro sitio sin que
+       nadie lo notara. Así que la posición la dice quien la calcula.
+       Sin el desvío del ratón: el botón no puede perseguir al cursor. */
+    zona() { return { cx: w * .5, cy: h * (opts.alto ?? .46), r: Math.min(w * .30, h * .34) * (opts.zoom ?? 1) }; },
+    /* Girar desde fuera. El botón tapa el núcleo, así que los arrastres que
+       antes recogía el lienzo ahora los recoge el botón y los pasa por aquí:
+       tocar para hablar y arrastrar para girar siguen siendo la misma
+       superficie, que es lo que se espera de algo que se ve como una esfera. */
+    girar(dx) { giroVel = dx * .0022; giro += giroVel; },
     dispose() {
       cancelAnimationFrame(raf);
       canvas.removeEventListener('pointerdown', alBajar); canvas.removeEventListener('pointermove', alMover);
