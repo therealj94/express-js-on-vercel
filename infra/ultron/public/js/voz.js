@@ -536,5 +536,24 @@ const VOZ = (() => {
     return { abort() { muerto = true; try { rec.abort(); } catch { /* ya estaba */ } } };
   }
 
-  return { Locutor, escuchar, oir, hayOido, paraDecir, partirFrases, esIOS, vigilarMicrofono, numerosParaLaVoz };
+  /* Desbloquear CUALQUIER otro elemento de audio con el mismo gesto. En iOS el
+     permiso para sonar es del ELEMENTO, no de la página: el locutor se
+     desbloquea solo, pero el audio de las muletillas es otro elemento y nadie
+     lo desbloqueaba nunca. Resultado: en el iPad de José las muletillas —lo
+     único que rompe los veinte segundos de silencio mientras el nodo piensa—
+     no sonaron ni una vez. */
+  function desbloquear(audio) {
+    if (!audio || audio.__despierto) return;
+    try {
+      const url = URL.createObjectURL(wavMudo());
+      audio.playsInline = true;
+      audio.src = url;
+      const p = audio.play();
+      const listo = () => { audio.__despierto = true; URL.revokeObjectURL(url); };
+      if (p && p.then) p.then(listo).catch(() => URL.revokeObjectURL(url));
+      else listo();
+    } catch { /* sin permiso: se intentará en el gesto siguiente */ }
+  }
+
+  return { Locutor, escuchar, oir, hayOido, paraDecir, partirFrases, esIOS, vigilarMicrofono, numerosParaLaVoz, desbloquear };
 })();

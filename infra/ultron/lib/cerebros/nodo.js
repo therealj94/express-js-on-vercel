@@ -76,6 +76,22 @@ const fichas = (t) => Math.ceil(String(t || '').length / LETRAS_POR_FICHA);
 const PRESUPUESTO = Math.floor(PRESUPUESTO_FICHAS * LETRAS_POR_FICHA);   // en letras, para el hilo y los resultados
 const TOPE_HILO = 5_000;          // el hilo anterior, como mucho
 const TOPE_TURNO = 1_200;         // cada turno viejo, como mucho
+/* ── HABLANDO, EL PROMPT ES OTRO ────────────────────────────────────────────
+   Escribiendo, la espera se llena leyendo lo que ya salió. Hablando no: entre
+   la pregunta y la primera palabra hay SILENCIO, y el silencio se mide en
+   fichas de prompt —el modelo evalúa las 8 188 antes de decir «buenos».
+   Lo que se recorta para hablar es lo que en una conversación hablada nadie
+   tiene en la cabeza: el hilo largo, las treinta memorias, los veinticinco
+   pendientes y ocho secciones del saber. Con eso el prompt de voz baja a
+   ~3 000 fichas y la primera palabra sale en un tercio del tiempo. No es un
+   modelo distinto ni una respuesta peor: es la misma cabeza con la mesa
+   despejada. */
+const TOPE_HILO_VOZ = 1_800;
+const TOPE_TURNO_VOZ = 500;
+const MEMORIAS_VOZ = 10;
+const PENDIENTES_VOZ = 6;
+const SABER_VOZ = 3;              // secciones, en vez de ocho
+const TOPE_SABER_VOZ = 3_000;     // letras, en vez de lo que sobre
 const TOPE_RESULTADO = 2_800;     // cada resultado de herramienta
 /* Por debajo de esto no vale la pena traer secciones del saber. Bajó de 2 500
    a 2 300 el 6-sep para hacerle sitio a la regla de las cajas: cuatro renglones
@@ -260,14 +276,18 @@ function dondeEmpiezaElBucle(texto) {
 
 function recortar(t, n) { t = String(t || ''); return t.length <= n ? t : t.slice(0, n - 12) + '\n[…recortado]'; }
 
-function armarMensajes({ system, previa, texto }) {
+function armarMensajes({ system, previa, texto, voz = false }) {
   const mensajes = [{ role: 'system', content: system }];
   // El hilo: lo último primero en importancia. Se toman los últimos ocho
   // turnos, cada uno recortado, y si aun así no cabe se van soltando los
-  // más viejos.
-  let hilo = (previa?.turnos || []).slice(-8).map((t) => ({ role: t.rol === 'miembro' ? 'user' : 'assistant', content: recortar(t.texto, TOPE_TURNO) }));
+  // más viejos. Hablando son cuatro: en una conversación de voz lo de hace
+  // seis turnos ya no lo tiene nadie en la cabeza, y cada turno viejo son
+  // fichas que el modelo evalúa antes de decir la primera palabra.
+  const cuantos = voz ? 4 : 8;
+  const tope = voz ? TOPE_HILO_VOZ : TOPE_HILO;
+  let hilo = (previa?.turnos || []).slice(-cuantos).map((t) => ({ role: t.rol === 'miembro' ? 'user' : 'assistant', content: recortar(t.texto, voz ? TOPE_TURNO_VOZ : TOPE_TURNO) }));
   let largo = hilo.reduce((a, m) => a + m.content.length, 0);
-  while (hilo.length && largo > TOPE_HILO) { largo -= hilo[0].content.length; hilo = hilo.slice(1); }
+  while (hilo.length && largo > tope) { largo -= hilo[0].content.length; hilo = hilo.slice(1); }
   const disponible = PRESUPUESTO - system.length - texto.length;
   while (hilo.length && largo > disponible) { largo -= hilo[0].content.length; hilo = hilo.slice(1); }
   mensajes.push(...hilo, { role: 'user', content: texto });
@@ -428,10 +448,11 @@ async function pensar({ miembro, junta, texto, conversacionId, previa: previaDad
      silencio. Solo depende del texto de la pregunta, así que sale con las
      demás. Si al final resulta que no hay sitio para el saber, se tira; haber
      pedido de más cuesta cero segundos, y haberlo pedido tarde costaba todos. */
+  const hablando = modo === 'voz';
   const [memorias, estadoVivo, abiertos, previaLeida, vector] = await Promise.all([
-    memoria.memoriasDe(miembro.correo, { limite: 30 }),
+    memoria.memoriasDe(miembro.correo, { limite: hablando ? MEMORIAS_VOZ : 30 }),
     vivo.leerRapido(),
-    memoria.pendientes({ limite: 25 }),
+    memoria.pendientes({ limite: hablando ? PENDIENTES_VOZ : 25 }),
     previaDada ? Promise.resolve(previaDada) : (conversacionId ? memoria.conversacion(conversacionId, miembro.correo) : Promise.resolve(null)),
     saber.hayVectores() ? vectorDe(texto) : Promise.resolve(null),
   ]);
@@ -450,14 +471,16 @@ async function pensar({ miembro, junta, texto, conversacionId, previa: previaDad
   let base = armar([]);
   const TOPE_BASE = Math.floor(PRESUPUESTO_FICHAS * 0.5);
   while (fichas(base) > TOPE_BASE && memoriasUsadas.length) { memoriasUsadas = memoriasUsadas.slice(0, Math.max(0, memoriasUsadas.length - 4)); base = armar([]); }
-  const hiloEstimado = Math.min(TOPE_HILO, (previa?.turnos || []).slice(-8).reduce((a, t) => a + Math.min(TOPE_TURNO, String(t.texto || '').length), 0));
+  const hiloEstimado = Math.min(hablando ? TOPE_HILO_VOZ : TOPE_HILO, (previa?.turnos || []).slice(hablando ? -4 : -8).reduce((a, t) => a + Math.min(hablando ? TOPE_TURNO_VOZ : TOPE_TURNO, String(t.texto || '').length), 0));
   const sobra = PRESUPUESTO_FICHAS - fichas(base) - fichas(hiloEstimado ? 'x'.repeat(hiloEstimado) : '') - fichas(texto);
   const paraSaber = Math.max(0, Math.floor(sobra * LETRAS_POR_FICHA));
-  const secciones = paraSaber >= SABER_MINIMO ? saber.buscar(texto, { maximo: 8, maxBytes: paraSaber, vector }) : [];
+  const paraSaberReal = hablando ? Math.min(paraSaber, TOPE_SABER_VOZ) : paraSaber;
+  const secciones = paraSaberReal >= SABER_MINIMO ? saber.buscar(texto, { maximo: hablando ? SABER_VOZ : 8, maxBytes: paraSaberReal, vector }) : [];
+  // Hablando, quedarse sin saber es a propósito y no se avisa como avería.
   if (paraSaber < SABER_MINIMO) console.warn(`[nodo] sin sitio para el saber: la base ya ocupa ${fichas(base)} fichas de ${PRESUPUESTO_FICHAS}`);
   ctx.fuentes.push(...secciones.map((s) => ({ id: s.id, titulo: s.titulo, fuente: s.fuente })));
   const system = armar(secciones);
-  const mensajes = armarMensajes({ system, previa, texto });
+  const mensajes = armarMensajes({ system, previa, texto, voz: hablando });
 
   let textoFinal = '';
   /* ── EL CRONÓMETRO ───────────────────────────────────────────────────────

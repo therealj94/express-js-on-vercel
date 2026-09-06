@@ -242,6 +242,52 @@ titulo('el presupuesto: 12 288 fichas no son infinitas');
   decir(/recortado/.test(hilo[0].content), 'y cada turno viejo va recortado, no entero', hilo[0].content.slice(-30));
 }
 
+titulo('hablando, el prompt es OTRO: menos fichas antes de la primera palabra');
+{
+  /* ── POR QUÉ ─────────────────────────────────────────────────────────────
+     Escribiendo, la espera se llena leyendo lo que ya salió. Hablando no:
+     entre la pregunta y la primera palabra hay SILENCIO, y el silencio se
+     mide en fichas de prompt —el modelo evalúa el prompt entero antes de
+     decir «buenos». Hasta hoy `modo:'voz'` solo acortaba la RESPUESTA
+     (num_predict); el prompt seguía siendo el mismo ladrillo de 8 188 fichas,
+     así que el «se pone lento cuando le hablo» seguía intacto. */
+  const conv = await memoria.abrirConversacion(JOSE.correo, { titulo: 'hablado' });
+  for (let i = 0; i < 20; i++) {
+    await memoria.anotarTurno(conv._id, JOSE.correo, { rol: 'miembro', texto: `pregunta ${i} ` + 'x'.repeat(1200) });
+    await memoria.anotarTurno(conv._id, JOSE.correo, { rol: 'ultron', texto: `respuesta ${i} ` + 'y'.repeat(1200) });
+  }
+  guion = [{ texto: 'ok' }];
+  await cerebro.pensar({ miembro: JOSE, junta: JUNTA, texto: 'cómo va la cadena', conversacionId: String(conv._id) });
+  const escrito = pedidos.at(-1);
+  guion = [{ texto: 'ok' }];
+  await cerebro.pensar({ miembro: JOSE, junta: JUNTA, texto: 'cómo va la cadena', conversacionId: String(conv._id), modo: 'voz' });
+  const hablado = pedidos.at(-1);
+  const fichasDe = (p) => p.messages.reduce((a, m) => a + nodo._adentro.fichas(m.content || ''), 0);
+  const fe = fichasDe(escrito), fh = fichasDe(hablado);
+  decir(fh < fe * 0.65, 'el prompt hablado pesa bastante menos que el escrito', `${fh} fichas hablando · ${fe} escribiendo`);
+  const hiloH = hablado.messages.filter((m) => m.role !== 'system');
+  const hiloE = escrito.messages.filter((m) => m.role !== 'system');
+  decir(hiloH.length < hiloE.length, 'hablando se lleva menos hilo: lo de hace seis turnos no lo tiene nadie en la cabeza', `${hiloH.length} vs ${hiloE.length} mensajes`);
+  decir(hiloH.at(-1).content === 'cómo va la cadena', 'y la pregunta sigue siendo la última, entera');
+  decir(hablado.options.num_predict < escrito.options.num_predict, 'y la respuesta también viene acotada', `${hablado.options.num_predict} vs ${escrito.options.num_predict}`);
+  decir(/MODO VOZ/.test(hablado.messages[0].content) && !/MODO VOZ/.test(escrito.messages[0].content),
+    'con la orden de hablar como se habla: sin markdown, sin listas, dos a cuatro frases');
+
+  /* LO QUE NO SE RECORTA NUNCA. Acortar el prompt es una mejora de velocidad;
+     dejar caer una regla de cumplimiento por el camino sería un problema de
+     los que llegan a un acta. Estas son las que protegen a la casa y tienen
+     que estar EXACTAS también cuando ULTRON habla. */
+  const sv = hablado.messages[0].content;
+  decir(/referenciados/.test(sv) && /NUNCA «respaldados»/.test(sv),
+    'hablando también dice «referenciados» y nunca «respaldados»');
+  decir(/no está «regulada» ni «registrada»/.test(sv) && /AuCorp NO es un banco/.test(sv),
+    'ni «regulada» ni «registrada», y AuCorp no es un banco');
+  decir(/No movés dinero/.test(sv) && /no tocás llaves ni frases de respaldo/.test(sv),
+    'no mueve dinero ni toca llaves');
+  decir(/5550/.test(sv) && /8532/.test(sv), 'y la cadena viva sigue siendo la 5550');
+  decir(/mas_herramientas/.test(sv), 'y sabe que tiene cajas que pedir antes de decir «no puedo»');
+}
+
 titulo('la guarda de las citas: no se cita una herramienta que no corrió');
 {
   /* 5-sep, primera prueba real: «El oro cerró hoy a US$ 4,435 (según

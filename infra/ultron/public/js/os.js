@@ -1460,6 +1460,13 @@ const OS = (() => {
   function despertarVoz() {
     locutor = locutor || locutorNuevo();
     locutor.despertar?.();
+    /* Y con el MISMO gesto, el audio de las muletillas. Son dos elementos
+       distintos a propósito —si compartieran uno, la muletilla y la primera
+       frase de la respuesta se pisarían— y en iOS el permiso es de cada
+       elemento: el locutor se desbloqueaba y el de las muletillas no, así que
+       en el iPad no se oyó una muletilla nunca. */
+    audioMuletilla = audioMuletilla || new Audio();
+    VOZ.desbloquear?.(audioMuletilla);
     return true;
   }
 
