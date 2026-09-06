@@ -60,8 +60,15 @@ const PLAZO_MS = 170_000;
    escribe en el registro con todas las letras. */
 const CTX = Number(process.env.ULTRON_NODO_CTX || 12_288);
 const RESERVA_SALIDA = 1_500;
-// Las 21 herramientas van en la plantilla de Ollama y cuestan ~1 900 fichas
-// que no se ven desde aquí: se reservan aparte de la salida.
+/* Las herramientas van en la plantilla de Ollama y cuestan fichas que no se
+   ven desde aquí, así que se reservan aparte de la salida.
+   ── LO QUE ESTA CIFRA SE COMIÓ CALLADA ───────────────────────────────────
+   Estos 2 000 se calcularon cuando había 21 herramientas. Llegaron a ser 64 y
+   nadie volvió aquí: costaban 6 622 fichas, o sea que el prompt real se pasaba
+   del contexto en unas 4 600 y el «presupuesto» de 8 188 era una cuenta que no
+   cuadraba con la realidad. Desde que ULTRON lleva doce a la mano y pide el
+   resto en cajas, vuelven a ser ~1 900 y la reserva es verdad otra vez.
+   Si algún día se suben las de siempre, este número sube con ellas. */
 const RESERVA_HERRAMIENTAS = 2_000;
 const PRESUPUESTO_FICHAS = Number(process.env.ULTRON_NODO_PRESUPUESTO_FICHAS || (CTX - RESERVA_SALIDA - RESERVA_HERRAMIENTAS - 600));   // 8 188
 const LETRAS_POR_FICHA = 2.4;
@@ -70,7 +77,12 @@ const PRESUPUESTO = Math.floor(PRESUPUESTO_FICHAS * LETRAS_POR_FICHA);   // en l
 const TOPE_HILO = 5_000;          // el hilo anterior, como mucho
 const TOPE_TURNO = 1_200;         // cada turno viejo, como mucho
 const TOPE_RESULTADO = 2_800;     // cada resultado de herramienta
-const SABER_MINIMO = 2_500;       // por debajo de esto no vale la pena traer secciones
+/* Por debajo de esto no vale la pena traer secciones del saber. Bajó de 2 500
+   a 2 300 el 6-sep para hacerle sitio a la regla de las cajas: cuatro renglones
+   que le dicen a ULTRON que tiene cincuenta herramientas guardadas y que las
+   pida antes de decir que no puede. Doscientas fichas de saber a cambio de que
+   no niegue lo que sí sabe hacer es un cambio bueno. */
+const SABER_MINIMO = 2_300;
 
 function encendido() { return !!(URL_NODO && SECRETO); }
 
@@ -594,6 +606,52 @@ async function pensar({ miembro, junta, texto, conversacionId, emitir = () => {}
     // turnos viejos del hilo (nunca el system ni la pregunta ni los resultados).
     while (largoDe(mensajes) > PRESUPUESTO && mensajes.length > 3 && mensajes[1].role !== 'tool' && !mensajes[1].tool_calls) mensajes.splice(1, 1);
   }
+  /* ── LA GUARDA DEL «NO PUEDO» SIN HABER MIRADO ────────────────────────────
+     Es la red de la que cuelga todo el recorte a doce herramientas.
+
+     6-sep, primera prueba real después de recortar: a «¿qué archivos hay en
+     infra/ultron/lib?» ULTRON contestó «no tengo esa información» SIN haber
+     pedido la caja del taller, que era donde estaban las manos para mirarlo.
+     Y a la pregunta siguiente —su propia salud— sí pidió la caja y contestó
+     bien. O sea que el modelo entiende la puerta, pero no siempre se acuerda
+     de ella, y cuando no se acuerda el fallo es INVISIBLE: la junta se queda
+     sin un dato que sí existía y nadie sabe por qué.
+
+     Pedirle por favor en el encabezado no alcanza —ya está pedido, y aun así
+     pasó—. Así que se comprueba: si la respuesta es una negativa Y no se abrió
+     ninguna caja Y no se corrió ninguna herramienta, se le devuelve UNA vez
+     con TODO a la vista y la orden de mirar antes de negar. Cuesta una vuelta
+     y solo se paga en el caso en que ya habíamos fallado.
+
+     Se exige que no se haya corrido NINGUNA herramienta a propósito: si miró
+     algo y aun así no encontró, la negativa es legítima y no se le insiste. */
+  const NEGATIVA = /\b(no tengo esa informaci[oó]n|no tengo acceso|no puedo (acceder|leer|ver|hacer)|no dispongo|no s[eé] (eso|nada)|no est[aá] entre (las fichas|lo que)|no me consta)\b/i;
+  if (!cajas.length && !usadas.length && NEGATIVA.test(textoFinal)) {
+    emitir('pensando', { vuelta: MAX_VUELTAS, motivo: 'dijo que no sin mirar' });
+    mensajes.push({ role: 'assistant', content: textoFinal });
+    mensajes.push({ role: 'user', content: '[sistema] Dijiste que no podés o que no sabés, y no llamaste ni una herramienta. '
+      + 'Ahora las tenés TODAS a la vista. Mirá con la que corresponda y contestá con lo que devuelva. '
+      + 'Si después de mirar sigue sin poder saberse, entonces sí decilo, pero diciendo QUÉ miraste.' });
+    let dicho = '';
+    const r = await pedir({ model: MODELO, messages: mensajes, tools: herramientas.paraOllama({ cajas: herramientas.CAJAS_UTILES }), stream: true, options: opciones }, { alTrozo: (t) => { dicho += t; } });
+    uso.entrada += r.uso.entrada; uso.salida += r.uso.salida;
+    const enTexto = llamadasEnTexto(r.content);
+    const llamadas = [...r.tool_calls, ...enTexto.llamadas];
+    if (llamadas.length) {
+      mensajes.push({ role: 'assistant', content: r.content, tool_calls: r.tool_calls.length ? r.tool_calls : undefined });
+      for (const res of await correrLote(llamadas, { ctx, usadas, emitir })) {
+        mensajes.push({ role: 'tool', content: recortar(res.salida, TOPE_RESULTADO), tool_name: res.nombre });
+      }
+      const r2 = await pedir({ model: MODELO, messages: mensajes, tools: herramientas.paraOllama({ cajas: herramientas.CAJAS_UTILES }), stream: true, options: opciones }, { alTrozo: (t) => {} });
+      uso.entrada += r2.uso.entrada; uso.salida += r2.uso.salida;
+      const limpio = llamadasEnTexto(r2.content).limpio.trim();
+      if (limpio) { textoFinal = limpio; emitir('reemplazo', { texto: textoFinal }); }
+    } else if (dicho.trim() && !NEGATIVA.test(dicho)) {
+      textoFinal = llamadasEnTexto(dicho).limpio.trim() || textoFinal;
+      emitir('reemplazo', { texto: textoFinal });
+    }
+  }
+
   /* LA GUARDA DE LAS CITAS. 5-sep, primera prueba real: «El oro cerró hoy a
      US$ 4,435 (según buscar_web)» — y buscar_web no se había llamado. El
      número venía del estado vivo y la fuente era inventada. Un modelo chico
