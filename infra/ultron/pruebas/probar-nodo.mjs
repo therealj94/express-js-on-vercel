@@ -305,7 +305,12 @@ titulo('calentar la caché mientras la persona habla');
   const calentado = pedidos.at(-1);
   decir(r?.ok === true && pedidos.length === antes + 1, 'calentar manda UN pedido al motor', JSON.stringify(r));
   decir(calentado.options?.num_predict === 1, 'y le pide UN token: no se quiere la respuesta, se quiere la caché', String(calentado.options?.num_predict));
-  decir(calentado.messages.length === 1 && calentado.messages[0].role === 'system', 'sin pregunta: solo el prompt', `${calentado.messages.length} mensajes`);
+  /* El sistema y una pregunta mínima detrás: un /api/chat con SOLO el sistema
+     lo rechaza el motor, y esa fue la razón de que la primera versión no
+     calentara nada en producción. La pregunta va después del sistema, o sea
+     fuera del prefijo compartido: no lo acorta. */
+  decir(calentado.messages.length === 2 && calentado.messages[0].role === 'system' && calentado.messages[1].content.length <= 2,
+    'el prompt y una pregunta mínima detrás, que es lo que el motor acepta', JSON.stringify(calentado.messages.map((m) => m.role)));
 
   guion = [{ texto: 'ok' }];
   await cerebro.pensar({ miembro: JOSE, junta: JUNTA, texto: 'cómo va la cadena', modo: 'voz' });

@@ -806,8 +806,14 @@ async function precalentar({ miembro, junta, sistema, modo = 'voz', alias = null
   const hastaQuieto = [];
   for (const b of bloques) { hastaQuieto.push(b.text); if (b.quieto) break; }
   const system = hastaQuieto.join('\n\n');
+  /* CON UNA PREGUNTA MÍNIMA DETRÁS, y no por gusto: un /api/chat con SOLO un
+     mensaje de sistema lo rechaza el motor (502 · MODELO), así que la primera
+     versión de esto no calentó nada en producción y solo dejó una línea en el
+     registro diciéndolo. La pregunta va DESPUÉS del sistema, o sea fuera del
+     prefijo que se comparte con el turno de verdad: no lo acorta ni un byte. */
   await pedir({
-    model: MODELO, stream: false, messages: [{ role: 'system', content: system }],
+    model: MODELO, stream: false,
+    messages: [{ role: 'system', content: system }, { role: 'user', content: '.' }],
     tools: herramientas.paraOllama({ cajas: [] }),
     options: { num_predict: 1, temperature: 0, num_ctx: CTX },
   }, { plazo: 20_000 });

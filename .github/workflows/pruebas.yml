@@ -260,6 +260,19 @@ jobs:
           npm ci --no-audit --no-fund
           node pruebas/probar-consola.mjs
 
+      # ULTRON OS —el tablero— NO CORRIA EN NINGUN SITIO, y es donde vive todo
+      # lo que se toca: el boton de hablar, la voz que suena mientras baja, el
+      # turno que se cancela, los paneles que se arman, el negocio y los 44 px
+      # del dedo. Se prueba en los DOS anchos porque la mitad de sus reglas son
+      # del telefono y en escritorio no se disparan: a 1400 px una regla de 390
+      # puede estar rota semanas sin que nada se ponga rojo.
+      - name: ULTRON OS, el tablero (escritorio y telefono)
+        working-directory: infra/ultron
+        run: |
+          node pruebas/probar-os.mjs 1400 900
+          node pruebas/probar-os.mjs 390 844
+          node pruebas/probar-mano-derecha.mjs
+
       # Si algo falla, las capturas del momento valen mas que el registro.
       - name: Guardar las capturas si algo se rompio
         if: failure()

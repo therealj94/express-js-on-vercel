@@ -571,7 +571,7 @@ async function precalentar({ miembro, junta = [], modo = 'voz', alias = null }) 
     const extras = await contextoExtra(miembro, junta);
     const conExtras = (o) => sistema({ ...o, miembro: { ...o.miembro, esDueño: extras.miembro.esDueño }, habilidades: extras.habilidades, pedidos: extras.pedidos, idioma: 'es' });
     return await nodo.precalentar({ miembro, junta, sistema: conExtras, modo, alias });
-  } catch (e) { return { ok: false, motivo: String(e?.codigo || e?.message || e).slice(0, 80) }; }
+  } catch (e) { return { ok: false, motivo: `${e?.codigo || 'ERROR'} · ${String(e?.message || e).slice(0, 160)}` }; }
 }
 
 async function titular(texto) {
