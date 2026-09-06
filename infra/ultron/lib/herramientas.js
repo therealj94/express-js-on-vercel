@@ -227,17 +227,17 @@ const DEFINICIONES = [
   },
   {
     name: 'repo_arbol',
-    description: 'Lista una carpeta del repositorio de la casa (GitHub). Sin ruta, la raíz. Para ubicarse antes de leer o cambiar algo.',
+    description: 'Lista una carpeta del repositorio de la casa (GitHub). Sin ruta, la raíz. Sin rama, la que ULTRON está corriendo —que NO es la principal—. Para ubicarse antes de leer o cambiar algo.',
     input_schema: { type: 'object', properties: { repo: { type: 'string', description: 'dueño/repo; por omisión el de la casa' }, ruta: { type: 'string' }, rama: { type: 'string' } } },
   },
   {
     name: 'repo_leer',
-    description: 'Lee un archivo ENTERO del repositorio. Leer antes de tocar: un cambio sobre un archivo que no se leyó completo rompe algo diez líneas más abajo.',
+    description: 'Lee un archivo ENTERO del repositorio, de la rama que ULTRON está corriendo. Leer antes de tocar: un cambio sobre un archivo que no se leyó completo rompe algo diez líneas más abajo.',
     input_schema: { type: 'object', properties: { repo: { type: 'string' }, ruta: { type: 'string' }, rama: { type: 'string' } }, required: ['ruta'] },
   },
   {
     name: 'repo_buscar',
-    description: 'Busca texto o código en el repositorio: una función, un campo, un nombre. Para saber quién más usa lo que se va a cambiar.',
+    description: 'Busca texto o código en el repositorio: una función, un campo, un nombre. OJO: GitHub solo busca en la rama PRINCIPAL, y el código de ULTRON vive en otra; si no sale nada, no quiere decir que no exista — mírelo con repo_arbol y repo_leer.',
     input_schema: { type: 'object', properties: { repo: { type: 'string' }, consulta: { type: 'string' } }, required: ['consulta'] },
   },
   {
