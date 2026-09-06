@@ -145,15 +145,24 @@ const ONX = (() => {
     VVENTA: () => typeof VVENTA === 'undefined' ? null : VVENTA,
   };
   // Quién es dueño de cada vista: a su módulo van alPintar() y apagar().
-  const DUENO = { mercados: 'VMERCADO', mercado: 'VMERCADO', portafolio: 'VPORTA', fiat: 'VFIAT',
+  const DUENO = { mercado: 'VMERCADO', portafolio: 'VPORTA', fiat: 'VFIAT',
                   comprar: 'VCOMPRA', vender: 'VVENTA', actividad: 'VPORTA' };
 
   const stub = cual => `
     <div class="cab"><div><h2>${esc(t('nav.' + (cual === 'mercado' ? 'mercados' : cual)))}</h2></div></div>
     <div class="vidrio bloque"><div class="vacio"><b>${esc(t('stub.t'))}</b>${esc(t('stub.p'))}</div></div>`;
 
+  /* MERCADOS YA NO ES UNA SECCIÓN. La junta la sacó de la barra el 6-sep: la
+     casa opera en ORIGEN, y una lista de cinco pares sin tratos delante de
+     alguien que viene a comprar es una sala de espera con las luces prendidas.
+     Quedan cinco botones — portafolio, comprar, vender, fiat, actividad.
+
+     La SALA de un mercado (#mercado/AUKA-ORIGEN) sigue existiendo y se llega a
+     ella desde la portada pública, que es donde vive la tabla de precios para
+     quien todavía no entró. Borrar también la sala apagaría las velas y el
+     libro sin que nadie lo haya pedido; sacarla de la barra es lo que se
+     pidió. */
   const VISTAS = {
-    mercados: () => modulos.VMERCADO()?.vistaMercados?.() ?? stub('mercados'),
     mercado: () => modulos.VMERCADO()?.vistaMercado?.(parAbierto) ?? stub('mercado'),
     portafolio: () => modulos.VPORTA()?.vista?.() ?? stub('portafolio'),
     fiat: () => modulos.VFIAT()?.vista?.() ?? stub('fiat'),
@@ -162,7 +171,7 @@ const ONX = (() => {
     actividad: () => modulos.VPORTA()?.vistaActividad?.() ?? stub('actividad'),
   };
 
-  let vistaActual = 'mercados';
+  let vistaActual = 'portafolio';
   let parAbierto = null;        // el mercado abierto, p. ej. 'AUKA-ORIGEN'
 
   // ── hash-routing, como la billetera: la barra de direcciones es producto ──
@@ -179,6 +188,9 @@ const ONX = (() => {
     if (txt.startsWith('sso=')) return null;   // una intención no es una ruta
     const [a, b] = txt.split('/');
     if (a === 'mercado' && b) return { v: 'mercado', d: decodeURIComponent(b) };
+    // Un enlace viejo a #mercados —un marcador, un mensaje de WhatsApp— ya no
+    // tiene sección adonde ir. Se lleva al portafolio en vez de no hacer nada.
+    if (a === 'mercados') return { v: 'portafolio' };
     return VISTAS[a] ? { v: a } : null;
   }
 
@@ -198,7 +210,7 @@ const ONX = (() => {
   }
 
   function vista(cual, dato) {
-    if (!VISTAS[cual]) cual = 'mercados';
+    if (!VISTAS[cual]) cual = 'portafolio';
     apagarVista();
     vistaActual = cual;
     if (cual === 'mercado' && dato) parAbierto = dato;
@@ -213,8 +225,11 @@ const ONX = (() => {
     tele('pantalla',
       cual === 'mercado' ? 'mercado.' + String(parAbierto || '?') : cual,
       rutaDe(cual, dato));
-    // La pestaña encendida: mirar UN mercado sigue siendo estar en Mercados.
-    const encendida = cual === 'mercado' ? 'mercados' : cual;
+    /* La pestaña encendida. En la sala de un mercado no se enciende ninguna:
+       la sala ya no cuelga de una sección de la barra, se llega desde la
+       portada. Encender Portafolio ahí sería decirle a la persona que está
+       donde no está. */
+    const encendida = cual;
     document.querySelectorAll('.nav[data-vista]').forEach(b =>
       b.dataset.vista === encendida ? b.setAttribute('aria-current', 'page') : b.removeAttribute('aria-current'));
     const l = $('#lienzo');
@@ -232,7 +247,7 @@ const ONX = (() => {
        reinicia la animación cuando se navega dos veces seguidas. */
     l.classList.remove('lz-dentro', 'lz-fuera');
     void l.offsetWidth;
-    l.classList.add(cual === 'mercados' ? 'lz-fuera' : 'lz-dentro');
+    l.classList.add(cual === 'mercado' ? 'lz-dentro' : 'lz-fuera');
     l.innerHTML = VISTAS[cual]();
     // El post-pintado es del dueño: canvas, focus y sondeos van ahí.
     try { modulos[DUENO[cual]]?.()?.alPintar?.(cual, parAbierto); } catch {}
@@ -487,7 +502,7 @@ const ONX = (() => {
     tele('accion', 'sesion.salir');
     tele('vaciar');
     DATOS.salir();
-    vistaActual = 'mercados';
+    vistaActual = 'portafolio';
     parAbierto = null;
     history.replaceState(null, '', location.pathname + location.search);
     ir('portada');
@@ -616,7 +631,7 @@ const ONX = (() => {
       return;
     }
 
-    /* Una ruta directa (#mercados, #mercado/AUKA-ORIGEN…) entra a la
+    /* Una ruta directa (#portafolio, #mercado/AUKA-ORIGEN…) entra a la
        aplicación aunque no haya sesión: todo lo público se ve sin cuenta, y
        la sesión se pide recién al operar. */
     const r = leerRuta(hash);

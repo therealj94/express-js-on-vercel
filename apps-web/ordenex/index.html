@@ -1073,12 +1073,16 @@ body.en-mercado::before{content:'';position:fixed;inset:0;z-index:-1;
       <p data-t="pt.p"></p>
     </div>
     <div>
-      <!-- Dos salidas y ni una más: entrar con la cuenta del ecosistema, o
-           pasar a mirar los mercados sin cuenta. No hay «crear cuenta» porque
-           Ordenex no crea cuentas: la cuenta ya existe en la wallet. -->
+      <!-- UNA SOLA SALIDA. Había dos: entrar con la cuenta, o «ver los
+           mercados» sin ella. Al salir Mercados de la barra (6-sep) esa
+           segunda puerta se quedó sin cuarto detrás: dentro de la aplicación
+           ya no hay nada que se vea sin sesión, así que el botón llevaba a un
+           cartel pidiendo entrar. Los precios siguen a la vista sin cuenta —
+           en la tabla de aquí al lado, y tocando una fila se abre su sala con
+           las velas y el libro. No hay «crear cuenta» porque Ordenex no crea
+           cuentas: la cuenta ya existe en la wallet. -->
       <div class="bv-btns">
         <button class="btn btn-oro" data-t="pt.entrar" onclick="ONX.entrar()"></button>
-        <button class="btn btn-linea" data-t="pt.ver" onclick="ONX.ir('app')"></button>
       </div>
       <p class="bv-nota" data-t="pt.nota"></p>
       <!-- Los términos y el aviso de riesgo, desde la portada. Se aceptan
@@ -1116,10 +1120,9 @@ body.en-mercado::before{content:'';position:fixed;inset:0;z-index:-1;
 <main id="app" class="oculto">
   <nav class="riel" aria-label="Secciones">
     <div class="riel-marca marca"><img src="assets/ordenex.svg" alt="">ORDEN<em>EX</em></div>
-    <button class="nav" aria-current="page" data-vista="mercados" onclick="ONX.vista('mercados')"><svg viewBox="0 0 24 24"><path d="M7 3.5v3M7 16.5v4M5 6.5h4v10H5zM17 6v3M17 19v1.5M15 9h4v10h-4z"/></svg><span data-t="nav.mercados"></span></button>
+    <button class="nav" aria-current="page" data-vista="portafolio" onclick="ONX.vista('portafolio')"><svg viewBox="0 0 24 24"><path d="M3 7.5A2.5 2.5 0 0 1 5.5 5H18a2 2 0 0 1 2 2v1"/><rect x="3" y="8" width="18" height="11" rx="2.5"/><circle cx="16.5" cy="13.5" r="1.3"/></svg><span data-t="nav.portafolio"></span></button>
     <button class="nav" data-vista="comprar" onclick="ONX.vista('comprar')"><svg viewBox="0 0 24 24"><path d="M12 4v16M12 4l-4 4M12 4l4 4"/><path d="M4 20h16"/></svg><span data-t="nav.comprar"></span></button>
     <button class="nav" data-vista="vender" onclick="ONX.vista('vender')"><svg viewBox="0 0 24 24"><path d="M12 20V4M12 20l-4-4M12 20l4 4"/><path d="M4 4h16"/></svg><span data-t="nav.vender"></span></button>
-    <button class="nav" data-vista="portafolio" onclick="ONX.vista('portafolio')"><svg viewBox="0 0 24 24"><path d="M3 7.5A2.5 2.5 0 0 1 5.5 5H18a2 2 0 0 1 2 2v1"/><rect x="3" y="8" width="18" height="11" rx="2.5"/><circle cx="16.5" cy="13.5" r="1.3"/></svg><span data-t="nav.portafolio"></span></button>
     <button class="nav" data-vista="fiat" onclick="ONX.vista('fiat')"><svg viewBox="0 0 24 24"><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="2.6"/><path d="M5.5 9.5h.01M18.5 14.5h.01"/></svg><span data-t="nav.fiat"></span></button>
     <button class="nav" data-vista="actividad" onclick="ONX.vista('actividad')"><svg viewBox="0 0 24 24"><path d="M3 12h4l3 8 4-16 3 8h4"/></svg><span data-t="nav.actividad"></span></button>
 
@@ -1147,10 +1150,9 @@ body.en-mercado::before{content:'';position:fixed;inset:0;z-index:-1;
   </nav>
   <div class="lienzo" id="lienzo"></div>
   <nav class="tabs" aria-label="Secciones">
-    <button class="nav" aria-current="page" data-vista="mercados" onclick="ONX.vista('mercados')"><svg viewBox="0 0 24 24"><path d="M7 3.5v3M7 16.5v4M5 6.5h4v10H5zM17 6v3M17 19v1.5M15 9h4v10h-4z"/></svg><span data-t="nav.mercados"></span></button>
+    <button class="nav" aria-current="page" data-vista="portafolio" onclick="ONX.vista('portafolio')"><svg viewBox="0 0 24 24"><path d="M3 7.5A2.5 2.5 0 0 1 5.5 5H18a2 2 0 0 1 2 2v1"/><rect x="3" y="8" width="18" height="11" rx="2.5"/><circle cx="16.5" cy="13.5" r="1.3"/></svg><span data-t="nav.portafolio"></span></button>
     <button class="nav" data-vista="comprar" onclick="ONX.vista('comprar')"><svg viewBox="0 0 24 24"><path d="M12 4v16M12 4l-4 4M12 4l4 4"/><path d="M4 20h16"/></svg><span data-t="nav.comprar"></span></button>
     <button class="nav" data-vista="vender" onclick="ONX.vista('vender')"><svg viewBox="0 0 24 24"><path d="M12 20V4M12 20l-4-4M12 20l4 4"/><path d="M4 4h16"/></svg><span data-t="nav.vender"></span></button>
-    <button class="nav" data-vista="portafolio" onclick="ONX.vista('portafolio')"><svg viewBox="0 0 24 24"><path d="M3 7.5A2.5 2.5 0 0 1 5.5 5H18a2 2 0 0 1 2 2v1"/><rect x="3" y="8" width="18" height="11" rx="2.5"/><circle cx="16.5" cy="13.5" r="1.3"/></svg><span data-t="nav.portafolio"></span></button>
     <button class="nav" data-vista="fiat" onclick="ONX.vista('fiat')"><svg viewBox="0 0 24 24"><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="2.6"/><path d="M5.5 9.5h.01M18.5 14.5h.01"/></svg><span data-t="nav.fiat"></span></button>
     <button class="nav" data-vista="actividad" onclick="ONX.vista('actividad')"><svg viewBox="0 0 24 24"><path d="M3 12h4l3 8 4-16 3 8h4"/></svg><span data-t="nav.actividad"></span></button>
   </nav>

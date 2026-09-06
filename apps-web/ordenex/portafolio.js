@@ -349,8 +349,20 @@ const VPORTA = (() => {
   function vista() {
     const t = tx();
     if (!DATOS.haySesion()) return pedirSesion(t.titulo, t.sub);
+    /* EL ORDEN LO PUSO LA JUNTA (6-sep), y no es el que estaba.
+       Antes se abría por el valor total. Pero el portafolio es ahora la
+       PRIMERA pantalla de Ordenex —Mercados salió de la barra—, y lo primero
+       que ve alguien que acaba de entrar es su valor total en cero. Un cero
+       recibiendo a quien llega no explica nada; una dirección de depósito, sí.
+       Así que el recorrido va: cómo meter plata → cuánto vale lo que hay →
+       qué hay → lo que está en la wallet y todavía no llegó → cómo sacarlo. */
     return `${ESTILO}
       <div class="cab"><div><h2>${esc(t.titulo)}</h2><div class="sub">${esc(t.sub)}</div></div></div>
+      <div class="vidrio bloque">
+        <h3>${esc(t.depT)}</h3>
+        <p class="pie">${esc(t.depP)}</p>
+        <div id="po-deposito">${depositoHTML()}</div>
+      </div>
       <div class="vidrio bloque po-total-caja" id="po-total">${totalHTML()}</div>
       <div class="vidrio bloque">
         <h3>${esc(t.saldosT)}</h3>
@@ -358,14 +370,9 @@ const VPORTA = (() => {
         <div id="po-saldos">${saldosHTML()}</div>
         <p class="pie" style="margin-top:14px">${esc(t.refNota)}</p>
       </div>
-      <!-- «¿Y lo que tengo en mi wallet?» Se contesta ANTES de explicar como
-           depositar, porque es la pregunta que viene primero. -->
+      <!-- «¿Y lo que tengo en mi wallet?» Va después de los saldos de la casa:
+           primero lo que Ordenex tiene, después lo que está a un depósito. -->
       <div class="vidrio bloque" id="po-wallet-caja">${walletHTML()}</div>
-      <div class="vidrio bloque">
-        <h3>${esc(t.depT)}</h3>
-        <p class="pie">${esc(t.depP)}</p>
-        <div id="po-deposito">${depositoHTML()}</div>
-      </div>
       <div class="vidrio bloque">
         <h3>${esc(t.retT)}</h3>
         <p class="pie">${esc(t.retP)}</p>
@@ -422,7 +429,18 @@ const VPORTA = (() => {
     if (falloSaldos) return `<div class="vacio"><b>${esc(t.falloSaldos)}</b>${esc(t.falloSaldosP)}<br><br>
       <button class="btn btn-linea btn-sm" onclick="VPORTA.recargar()">${esc(t.reintentar)}</button></div>`;
     if (!cuentas) return `<div class="vacio">${esc(t.cargando)}</div>`;
-    return cuentas.map((c) => {
+    /* SOLO LO QUE TIENE ALGO, Y ORIGEN SIEMPRE.
+       La casa lleva cuenta de catorce activos, y la lista salía entera: una
+       columna de trece ceros debajo del único saldo de verdad. La junta pidió
+       quitar los demás tokens y esto es esa regla, con una salvedad que no se
+       negocia: se esconde lo que está en CERO, nunca lo que tiene saldo.
+       Ocultar una fila con dinero adentro sería esconderle a alguien su
+       propio dinero — y de paso dejarlo sin manera de verlo para retirarlo.
+       ORIGEN se queda siempre aunque esté en cero: es la moneda de la casa y
+       la que se deposita. */
+    const conSaldo = (c) => { try { return BigInt(c.disponible) + BigInt(c.reservado) > 0n; } catch { return true; } };
+    const lista = cuentas.filter((c) => c.activo === 'ORIGEN' || conSaldo(c));
+    return lista.map((c) => {
       const m = CADENA.meta(c.activo);
       let reservado = 0n, total = 0n;
       try { reservado = BigInt(c.reservado); total = BigInt(c.disponible) + reservado; } catch {}

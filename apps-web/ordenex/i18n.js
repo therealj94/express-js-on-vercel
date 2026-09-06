@@ -23,7 +23,6 @@ es: {
      pantalla — abajo se contaban las filas y no daban quince. */
   'pt.p': 'Los {mercados} mercados de la cadena 5550, cada uno contra ORIGEN. Libro de órdenes de verdad, velas que solo pintan tratos reales, y entrada y salida en lempiras o dólares con agentes verificados.',
   'pt.entrar': 'Entrar con mi cuenta Veta Wallet',
-  'pt.ver': 'Ver los mercados',
   // La nota del botón: acá no se inventa una contraseña nueva. La cuenta es
   // la misma de todo el ecosistema, y decirlo quita el miedo a «otra cuenta».
   'pt.nota': 'Tu cuenta es la misma de todo el ecosistema: te mandamos a tu Veta Wallet, confirmás ahí, y volvés adentro. Ordenex no guarda contraseñas.',
@@ -91,7 +90,6 @@ en: {
   'pt.t1': 'THE HOUSE', 'pt.t2': 'MARKET.',
   'pt.p': 'The {mercados} markets of chain 5550, each against ORIGEN. A real order book, candles drawn only from real trades, and cash in and out in lempiras or dollars through verified agents.',
   'pt.entrar': 'Sign in with my Veta Wallet account',
-  'pt.ver': 'See the markets',
   'pt.nota': 'Your account is the same one across the ecosystem: we send you to your Veta Wallet, you confirm there, and you come back inside. Ordenex stores no passwords.',
   'pt.vivos': 'The market, right now',
   'pt.mvPar': 'Market', 'pt.mvUltimo': 'Last', 'pt.mvCambio': '24 h',

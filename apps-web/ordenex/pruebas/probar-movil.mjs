@@ -177,8 +177,26 @@ async function api(q, r, ruta) {
     return json(r, 200, []);
   }
   if (q.method === 'GET' && /^\/fiat\/agentes/.test(ruta)) return json(r, 200, AGENTES);
-  if (q.method === 'GET' && /^\/mercados\/[^/]+\/referencia$/.test(ruta)) {
-    return json(r, 404, { error: 'Este activo no tiene referencia.', codigo: 'SIN_REFERENCIA' });
+  /* LA REFERENCIA, COMO EN LA CASA DE VERDAD. Esto contestaba 404 para TODOS
+     los pares, incluidos los tres que en producción sí llevan cartel de metal
+     —AUKA y AGKA contra su onza, ORIGEN contra el gramín—. Con ese 404, la
+     sala se entera de que no hay referencia y RETIRA el selector de fuente…
+     un instante después de pintarlo. La prueba del blanco de toque medía ese
+     instante: pasaba porque llegaba antes que la respuesta, no porque el mando
+     estuviera bien. Cambiar el orden de las pruebas de más arriba bastó para
+     que el 404 ganara la carrera y la prueba se pusiera roja sin que el botón
+     hubiera cambiado.
+     Ahora los tres con referencia la traen y el resto sigue con su 404: así el
+     selector existe de verdad y medirlo quiere decir algo. */
+  const refPar = ruta.match(/^\/mercados\/([^/]+)\/referencia$/);
+  if (q.method === 'GET' && refPar) {
+    const base = refPar[1].split('-')[0];
+    if (!['AUKA', 'AGKA', 'ORIGEN'].includes(base)) {
+      return json(r, 404, { error: 'Este activo no tiene referencia.', codigo: 'SIN_REFERENCIA' });
+    }
+    return json(r, 200, { activo: base, unidad: 'USD',
+      rotulo: base === 'AGKA' ? 'onza de plata' : base === 'AUKA' ? 'onza de oro' : 'gramín de oro',
+      fuente: 'fingido', actualizadoEn: AHORA, velas: VELAS_AGKA });
   }
   if (q.method === 'GET' && /^\/precio-declarado\//.test(ruta)) {
     return json(r, 404, { error: 'No declarable.', codigo: 'NO_DECLARABLE' });
@@ -330,13 +348,21 @@ console.log('\n── la portada ───────────────�
     d.fuera.length ? JSON.stringify(d.fuera) : `documento: ${d.documento}px`);
 }
 
-// ── 2 · la lista de mercados ──────────────────────────────────────────────
-console.log('\n── la lista de mercados ──────────────────────────────────────');
+/* ── 2 · la sala de un mercado, entrando por la portada ───────────────────
+   Antes se entraba por el botón «Ver los mercados» a la lista de la sección
+   Mercados. Esa sección salió de la barra el 6-sep y el botón con ella: lo
+   público ahora se mira en la tabla de la portada, y tocar una fila abre la
+   sala. Se prueba ese camino, que es el que le queda a quien no tiene cuenta,
+   y se sigue midiendo lo mismo — que a 360 px nada se salga a lo ancho. */
+console.log('\n── la sala de un mercado, desde la portada ───────────────────');
 {
-  await p.click('button[data-t="pt.ver"]');
+  await p.waitForSelector('.mv tbody tr', { timeout: 8000 });
+  await p.click('.mv tbody tr');
   await p.waitForTimeout(900);
+  const dentro = await p.evaluate(() => !document.getElementById('app').classList.contains('oculto'));
+  decir(dentro, 'tocar una fila de la portada abre la sala sin pedir cuenta');
   const d = await desbordes();
-  decir(d.fuera.length === 0, 'la tabla de mercados no se sale: desliza dentro de su riel',
+  decir(d.fuera.length === 0, 'y la sala no se sale: velas y libro deslizan dentro de su riel',
     d.fuera.length ? JSON.stringify(d.fuera) : `documento: ${d.documento}px`);
 }
 
