@@ -1325,6 +1325,24 @@ const OS = (() => {
   let vigilante = null;
   async function vigilarParaInterrumpir() {
     if (vigilante || !micAutorizado) return;
+    /* ── POR QUÉ ESTO NO SE HACE EN iPAD ───────────────────────────────────
+       Vigilar el micrófono mientras ULTRON habla cuesta tener una captura de
+       audio ABIERTA durante toda la respuesta. En iOS y iPadOS eso cambia la
+       sesión de audio del sistema a «reproducir y grabar»: el sonido se va al
+       auricular, baja de volumen y se entrecorta. Y encima el vigilante oye a
+       ULTRON por el altavoz —la cancelación de eco del navegador no alcanza
+       con el volumen alto de un iPad— y lo toma por alguien interrumpiendo,
+       así que ULTRON se calla a sí mismo a media frase. Es exactamente lo que
+       vio José: «se está confundiendo la voz y súper lento».
+
+       En iPad, entonces, interrumpir es TOCAR EL CENTRO, que hace lo mismo en
+       un gesto y no cuesta nada. En computadora el vigilante se queda: ahí la
+       cancelación de eco funciona y la sesión de audio no cambia.
+
+       Y NUNCA durante el saludo, en ningún aparato: mientras se contestan los
+       carteles de permiso la sesión de audio se está acomodando, y un
+       vigilante armado en ese momento corta la bienvenida por la mitad. */
+    if (VOZ.esIOS || !saludoDicho) return;
     vigilante = await VOZ.vigilarMicrofono({
       umbral: PREF?.soloYo === false ? 0.04 : 0.07,   // «solo a mí» exige más cerca
       alHablar: () => {
@@ -1344,6 +1362,9 @@ const OS = (() => {
   /* Se sabe que hay permiso porque ya se usó el micrófono una vez: pedirlo por
      nuestra cuenta para poder interrumpir sería pedirlo sin motivo visible. */
   let micAutorizado = false;
+  /* El saludo se dice una vez, al entrar, y hasta que termina no se vigila el
+     micrófono para interrumpir: ver `vigilarParaInterrumpir`. */
+  let saludoDicho = false;
 
   /* ¿El navegador YA tiene el permiso del micrófono dado? Se pregunta sin
      pedirlo. Donde no se pueda preguntar —Safari no siempre deja— se contesta
@@ -1807,7 +1828,8 @@ const OS = (() => {
         locutor.alimentar(s.texto);
         locutor.cerrar();
         locutor.tope = antes;
-      }
+        marcarSaludoDicho();
+      } else saludoDicho = true;
       /* Y AL TERMINAR, ESCUCHA. «Quedo a su disposición, ¿en qué le ayudo?» y
          quedarse callado esperando a que la persona busque un botón es dejar la
          frase a medias. En modo conversación, el micrófono se abre solo cuando
@@ -1820,6 +1842,16 @@ const OS = (() => {
          micrófono una vez; desde entonces, la conversación empieza sola. */
       if (PREF?.oido === 'conversacion' && VOZ.hayOido?.() && await micYaConcedido()) esperarYEscuchar();
     } catch { /* sin saludo se entra igual */ }
+  }
+
+  /* Hasta que la bienvenida termina de sonar no se vigila el micrófono para
+     interrumpir: ver `vigilarParaInterrumpir`. Con un tope duro por si algo se
+     tuerce — dejar la interrupción apagada para siempre sería peor que el
+     problema que esto evita. */
+  function marcarSaludoDicho() {
+    const listo = () => { if (locutor?.ocupado) return setTimeout(listo, 300); saludoDicho = true; };
+    setTimeout(listo, 400);
+    setTimeout(() => { saludoDicho = true; }, 45_000);
   }
 
   /* ══ LOS DOS PERMISOS, AL ENTRAR ═══════════════════════════════════════════
@@ -1850,8 +1882,17 @@ const OS = (() => {
         const cinta = await navigator.mediaDevices?.getUserMedia?.({ audio: true });
         cinta?.getTracks?.().forEach((t) => t.stop());     // el permiso, no la grabación
         micAutorizado = true;
+        /* En iOS, soltar la captura NO devuelve la sesión de audio a
+           «reproducir» en el mismo instante: hay que darle un respiro o la
+           bienvenida sale por el auricular y entrecortada. Un cuarto de
+           segundo basta y no se nota. */
+        if (VOZ.esIOS) await new Promise((ok) => setTimeout(ok, 250));
       } catch { /* dijo que no, o no hay micrófono: se sigue igual */ }
     }
+    /* La ubicación NO se espera: su cartel puede tardar lo que la persona
+       tarde en contestarlo, y el saludo no puede quedarse esperando a eso. El
+       clima que use el saludo será el del sitio de Ajustes esta vez, y el de
+       donde esté de verdad a partir de la siguiente. */
     ubicacion();
   }
 
@@ -1959,7 +2000,12 @@ const OS = (() => {
        lo primero que se escriba sigue lo de esta mañana en vez de abrir una
        conversación nueva por haber recargado la página. */
     DATOS.get('/conversaciones/hoy').then((c) => { if (c?._id) conversacionId = c._id; }).catch(() => {});
-    saludar();
+    /* EL ORDEN QUE PIDIÓ JOSÉ: «poner los permisos, debe saltar, y darme
+       bienvenido, el clima y todo lo demás». Y además es lo que suena bien:
+       los carteles del navegador salen ANTES de que ULTRON abra la boca, no
+       encima de la bienvenida. Si no hay permisos que pedir —una prueba que
+       carga la consola suelta— la promesa ya está resuelta y no se espera nada. */
+    permisosListos.finally(saludar);
 
     // ── escribir
     const ta = $('#texto');
@@ -2132,14 +2178,19 @@ const OS = (() => {
      consola suelta—, y no a un temporizador: con tres segundos, quien tarda en
      escribir su clave arrancaba el tablero antes de entrar. */
   let yaArranco = false;
+  /* Por omisión no hay nada que esperar: una prueba que carga la consola suelta
+     no pide permisos y no puede quedarse sin saludo por eso. */
+  let permisosListos = Promise.resolve();
   const unaVez = () => { if (yaArranco) return; yaArranco = true; arrancar(); };
   document.addEventListener('ultron:adentro', () => {
-    unaVez();
     /* Los permisos se piden AQUÍ y no dentro de `arrancar()`: solo se piden
        cuando se entró de verdad, nunca en una prueba que carga la consola
        suelta, y en el mismo instante en que el toque de entrar todavía cuenta
-       como gesto para el navegador. */
-    pedirPermisos();
+       como gesto para el navegador.
+       Se apunta la promesa ANTES de arrancar, porque `arrancar()` la espera
+       para saludar. */
+    permisosListos = pedirPermisos();
+    unaVez();
   });
   document.addEventListener('ultron:adentro', unaVez);
   if (!document.getElementById('entrada')) {

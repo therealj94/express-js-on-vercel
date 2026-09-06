@@ -109,6 +109,49 @@ titulo('la voz: un solo elemento de audio, que es lo que iOS exige');
   decir(v.inline, 'con playsInline: en iOS, si no, se abre el reproductor a pantalla completa');
 }
 
+/* ── LA DESPENSA DE LA VOZ ────────────────────────────────────────────────────
+   «¿Será si agregamos caché? Que sea más fluido; la voz está tardando.»
+   Medido en producción, cada frase cuesta entre 0,25 y 0,75 s, y casi todo eso
+   es el viaje: el servidor ya tiene el audio hecho. ULTRON dice muchas frases
+   que ya dijo —el saludo entero, las muletillas, «quedo a su disposición»—, así
+   que la segunda vez no puede volver a viajar. */
+titulo('la voz guardada en el aparato: la misma frase no viaja dos veces');
+{
+  const r = await p.evaluate(async () => {
+    /* Se cuenta cuántas veces se sale a la red. `DATOS.voz` es lo que hace el
+       viaje: se sustituye por uno que cuenta y devuelve un mp3 de mentira. */
+    const real = DATOS.voz;
+    let viajes = 0;
+    DATOS.voz = async () => { viajes++; return new Blob([new Uint8Array([1, 2, 3, 4])], { type: 'audio/mpeg' }); };
+    try {
+      const L = new VOZ.Locutor({ conElevenLabs: true, alNivel() {}, alEmpezar() {}, alTerminar() {}, alFallo() {} });
+      L.vozId = 'vozDePrueba';
+      const a = await L.pedirAudio('Quedo a su disposición.');
+      const b = await L.pedirAudio('Quedo a su disposición.');
+      const c = await L.pedirAudio('Otra frase distinta.');
+      /* Y con OTRA voz la misma frase SÍ viaja: cambiar de voz en Ajustes no
+         puede hacer que salga la anterior guardada. */
+      L.vozId = 'otraVoz';
+      const d = await L.pedirAudio('Quedo a su disposición.');
+      /* Un locutor nuevo, como al recargar la página: la despensa del navegador
+         sobrevive y no vuelve a viajar. */
+      const M = new VOZ.Locutor({ conElevenLabs: true, alNivel() {}, alEmpezar() {}, alTerminar() {}, alFallo() {} });
+      M.vozId = 'vozDePrueba';
+      const e = await M.pedirAudio('Quedo a su disposición.');
+      /* Guardar en la despensa no se espera —el audio ya se está oyendo, no
+         puede quedarse esperando al disco—, así que aquí sí hay que darle un
+         momento antes de contar. */
+      await new Promise((ok) => setTimeout(ok, 400));
+      const guardadas = (await (await caches.open('ultron-voz-1')).keys()).length;
+      return { viajes, hay: !!(a && b && c && d && e), tam: b.size, guardadas };
+    } finally { DATOS.voz = real; }
+  });
+  decir(r.hay, 'las cinco peticiones devuelven audio');
+  decir(r.viajes === 3, 'y solo TRES viajan: la repetida sale de la despensa, la otra voz y la otra frase no', `${r.viajes} viajes`);
+  decir(r.tam === 4, 'lo guardado es el mismo audio, byte por byte', `${r.tam} bytes`);
+  decir(r.guardadas >= 3, 'y queda en la despensa del navegador, que sobrevive a recargar', `${r.guardadas} guardadas`);
+}
+
 titulo('la figura de ULTRON, en el centro');
 {
   await p.waitForFunction(() => window.ULTRON_HOLO_LISTO !== undefined, { timeout: 15000 }).catch(() => {});

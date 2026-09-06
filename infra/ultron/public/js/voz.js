@@ -117,6 +117,77 @@ const VOZ = (() => {
     return new Blob([b], { type: 'audio/wav' });
   }
 
+  /* ══ LA DESPENSA DE LA VOZ ═════════════════════════════════════════════════
+   * «¿Será si agregamos caché? Que no se pueda, que sea más fluido; la voz
+   * está tardando.»
+   *
+   * Tiene razón y el sitio era éste. El servidor ya guardaba las últimas ciento
+   * veinte frases, pero eso se pierde cuando el dyno se reinicia y, sobre todo,
+   * NO ahorra el viaje: aunque el audio esté hecho, hay que ir a Honduras–
+   * Virginia–Honduras a buscarlo. Medido en producción, ese viaje son entre
+   * doscientos y trescientos milisegundos por frase, y ULTRON dice muchas
+   * frases que ya dijo: el cierre del saludo, las muletillas, «quedo a su
+   * disposición», los «sí, señor».
+   *
+   * Aquí se guardan EN EL APARATO, en dos capas:
+   *   · un Map en memoria, que contesta en el mismo cuadro de dibujo;
+   *   · la despensa del navegador (Cache API), que SOBREVIVE a recargar la
+   *     página — que es donde de verdad se nota, porque el saludo se dice
+   *     entero cada vez que se entra.
+   *
+   * La clave lleva la voz dentro: cambiar de voz en Ajustes no puede hacer que
+   * salga la anterior guardada. Y es un resumen criptográfico y no un número
+   * rápido a propósito: dos frases distintas con la misma clave sonarían
+   * cambiadas, y eso en una conversación de dinero no se puede.
+   */
+  const DESPENSA = 'ultron-voz-1';
+  const enMemoria = new Map();          // clave -> Blob
+  const MEMORIA_MAX = 60;
+
+  async function claveDe(texto, vozId) {
+    const bytes = new TextEncoder().encode(`${vozId || 'casa'}|${texto}`);
+    const h = await crypto.subtle.digest('SHA-256', bytes);
+    return [...new Uint8Array(h)].slice(0, 16).map((x) => x.toString(16).padStart(2, '0')).join('');
+  }
+
+  async function deLaDespensa(clave) {
+    const ya = enMemoria.get(clave);
+    if (ya) return ya;
+    try {
+      const c = await caches.open(DESPENSA);
+      const r = await c.match(`/voz-guardada/${clave}`);
+      if (!r) return null;
+      const b = await r.blob();
+      if (b && b.size) { enMemoria.set(clave, b); return b; }
+    } catch { /* sin despensa se pide como siempre */ }
+    return null;
+  }
+
+  /* La despensa no puede crecer para siempre en un iPad. Se hace una sola vez
+     al cargar: se tiran las versiones viejas —cambiar el nombre invalida todo
+     lo guardado, que es lo que hay que hacer si cambia el motor de voz— y se
+     recorta la actual si se pasó. Las claves salen en el orden en que se
+     guardaron, así que las primeras son las más viejas. */
+  (async () => {
+    try {
+      for (const n of await caches.keys()) if (n.startsWith('ultron-voz-') && n !== DESPENSA) caches.delete(n);
+      const c = await caches.open(DESPENSA);
+      const k = await c.keys();
+      if (k.length > 400) for (const r of k.slice(0, k.length - 300)) c.delete(r);
+    } catch { /* sin despensa no hay nada que ordenar */ }
+  })();
+
+  async function aLaDespensa(clave, blob) {
+    /* El Map no crece sin fin: sesenta frases son unos tres megas y el resto se
+       queda en la despensa del navegador, que sí sabe cuánto sitio tiene. */
+    if (enMemoria.size >= MEMORIA_MAX) enMemoria.delete(enMemoria.keys().next().value);
+    enMemoria.set(clave, blob);
+    try {
+      const c = await caches.open(DESPENSA);
+      await c.put(`/voz-guardada/${clave}`, new Response(blob, { headers: { 'Content-Type': blob.type || 'audio/mpeg' } }));
+    } catch { /* sin sitio o sin permiso: la memoria ya lo tiene */ }
+  }
+
   /* iOS —y iPadOS, que se hace pasar por Mac— tiene reglas propias: el permiso
      de audio vive en el ELEMENTO que sonó durante el gesto, no en la página. */
   const esIOS = /iPad|iPhone|iPod/.test(navigator.userAgent)
@@ -134,7 +205,11 @@ const VOZ = (() => {
          de verdad contesta. Con `tope = 0` se lee todo (el botón «LEER TODO»). */
       this.tope = 900; this.dicho = 0; this.cortado = false; this.cierreDicho = false; this.avisadoAqui = false;
       this.idioma = 'es';
-      this.enVuelo = 0; this.TOPE_VUELO = 2;
+      /* Tres por delante de la que suena. Con dos había huecos en las frases
+         cortas —se dicen en menos de lo que tarda el viaje de la siguiente— y
+         con quince, que es lo que había antes, la ráfaga atascaba la cola
+         entera. Tres cubre el hueco sin hacer ráfaga. */
+      this.enVuelo = 0; this.TOPE_VUELO = 3;
       this.cierre = 'Le dejo el resto escrito en la pantalla.';
       /* ── UN SOLO ELEMENTO, PARA SIEMPRE ─────────────────────────────────
          El fallo que esto arregla, con nombre y fecha: en el iPad de José
@@ -251,9 +326,17 @@ const VOZ = (() => {
         });
       }
     }
-    pedirAudio(texto) {
-      if (!this.conElevenLabs) return Promise.resolve(null);
-      return DATOS.voz(texto, { rapido: true, vozId: this.vozId }).catch(() => null);
+    async pedirAudio(texto) {
+      if (!this.conElevenLabs) return null;
+      let clave = null;
+      try {
+        clave = await claveDe(texto, this.vozId);
+        const guardado = await deLaDespensa(clave);
+        if (guardado) return guardado;                 // sin viaje: suena ya
+      } catch { /* sin resumen no hay despensa, y se pide como siempre */ }
+      const blob = await DATOS.voz(texto, { rapido: true, vozId: this.vozId }).catch(() => null);
+      if (clave && blob && blob.size) aLaDespensa(clave, blob);
+      return blob;
     }
     callar() {
       this.generacion++; this.cola = []; this.resto = ''; this.enVuelo = 0;
