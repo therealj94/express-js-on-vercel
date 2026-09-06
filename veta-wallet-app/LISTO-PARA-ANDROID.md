@@ -55,7 +55,7 @@ velocidad de un mensaje. Veta Wallet es la billetera para guardarlo, moverlo
 y pagar con él, y para el resto de los activos de la cadena de Orden Global.
 
 TU BILLETERA
-Guardá y movés ORIGEN y los demás tokens de la red 8532: AUKA (respaldado en
+Guardá y movés ORIGEN y los demás tokens de la red 5550: AUKA (respaldado en
 oro), AGKA (respaldado en plata), ONDK y el resto del ecosistema. Cada saldo
 se lee directo de la cadena. Enviá y recibí con una dirección o con un
 código QR.
@@ -93,7 +93,7 @@ message. Veta Wallet is where you keep it, move it, and pay with it, along
 with the rest of the assets on the Orden Global chain.
 
 YOUR WALLET
-Hold and move ORIGEN and the other tokens on network 8532: AUKA
+Hold and move ORIGEN and the other tokens on network 5550: AUKA
 (gold-backed), AGKA (silver-backed), ONDK, and the rest of the ecosystem.
 Every balance is read straight from the chain. Send and receive with an
 address or a QR code.

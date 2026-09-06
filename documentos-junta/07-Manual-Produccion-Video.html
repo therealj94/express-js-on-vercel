@@ -1,0 +1,511 @@
+<!doctype html>
+<html lang="es"><head><meta charset="utf-8">
+<title>Orden Global · Manual de producción de video</title>
+<link rel="stylesheet" href="recursos/estilo.css">
+</head><body><section class="portada">
+  <div>
+    <div class="sello"><svg viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
+  <circle cx="24" cy="24" r="22" fill="none" stroke="#0A3436" stroke-width="1.6"/>
+  <circle cx="24" cy="24" r="17" fill="none" stroke="#C9A961" stroke-width="1"/>
+  <path d="M24 7 L24 41" stroke="#0A3436" stroke-width="1.6"/>
+  <path d="M12 15 Q24 24 36 15" fill="none" stroke="#C9A961" stroke-width="1.6"/>
+  <path d="M12 33 Q24 24 36 33" fill="none" stroke="#C9A961" stroke-width="1.6"/>
+  <circle cx="24" cy="24" r="3.4" fill="#C9A961"/>
+</svg><div class="marca"><b>Orden Global</b><span>Manual técnico</span></div></div>
+  </div>
+  <div>
+    <div class="filete"></div>
+    <h1>Cómo se produjo<br>el comercial</h1>
+    <p class="bajada">Manual de replicación. Qué máquinas se usaron y qué tenían, qué modelos de
+    video se probaron, qué herramientas y en qué versión, qué método se siguió, qué errores se
+    cometieron y cómo se arreglaron. Escrito para que otra IA pueda repetir el trabajo completo
+    sin volver a pagar el precio de los mismos tropiezos.</p>
+  </div>
+  <div class="pie">
+    <b>Documento técnico 7 · No es un documento de Junta</b><br>
+    6 de septiembre de 2026 · Redactado sobre el estado real de las máquinas y del repositorio<br>
+    Todo dato marcado como <i>medido</i> se comprobó ejecutando el comando que se indica.
+  </div>
+</section>
+
+<h2>0 · Para quién es este documento</h2>
+
+<p>El lector previsto es <strong>otra inteligencia artificial</strong> que recibe el encargo de
+producir un comercial para Orden Global y no tiene el historial de esta conversación. Al terminar
+de leer debe poder responder, sin preguntar:</p>
+
+<ul>
+  <li>Qué máquina necesita, qué tiene esa máquina y qué <em>no</em> puede hacer en ella.</li>
+  <li>Qué modelo de generación de video usar para cada cosa, y cuáles ya se descartaron y por qué.</li>
+  <li>Qué parte del comercial se genera con IA y qué parte <strong>jamás</strong> se genera.</li>
+  <li>Cómo está armado el proyecto de montaje y cuál es el único archivo que hay que tocar.</li>
+  <li>Los diecisiete errores que ya se cometieron, para no repetirlos.</li>
+</ul>
+
+<div class="nota"><b class="t">La regla que gobierna todo el documento</b>
+Lo que lleva marca —texto, logotipos, cifras, el monograma— <b>se compone en post, nunca se
+genera</b>. Un modelo de video escribe «ORDEN GLOBAL» con una letra de más y el remate del
+comercial se muere. La imagen la pone la IA; la marca la pone el código.</div>
+
+<h2>1 · Las máquinas</h2>
+
+<h3>1.1 · La máquina donde se hizo el trabajo</h3>
+
+<p>Todo lo que se produjo salió de un contenedor efímero de Claude Code en la nube. Sus
+características, <em>medidas</em> con <code>nproc</code>, <code>free -h</code> y <code>df -h</code>:</p>
+
+<div class="cifras">
+  <div class="tarjeta"><div class="n">4</div><div class="et">vCPU</div></div>
+  <div class="tarjeta"><div class="n">15 GiB</div><div class="et">RAM</div></div>
+  <div class="tarjeta"><div class="n">252 GB</div><div class="et">Disco</div></div>
+  <div class="tarjeta"><div class="n">0</div><div class="et">GPU</div></div>
+</div>
+
+<p>Linux 6.18.44 sobre x86_64. <strong>Sin ninguna GPU.</strong> Ese único dato decide toda la
+arquitectura: en esta máquina es imposible ejecutar un modelo de video, así que la generación
+tuvo que salir por API o por la web de un proveedor, y la máquina se dedicó a lo demás.</p>
+
+<h4>Qué sí resolvió esta máquina, y bien</h4>
+
+<table>
+<tr><th>Tarea</th><th>Con qué</th><th>Rendimiento medido</th></tr>
+<tr><td>Recortar y teñir 11 logotipos</td><td>Pillow + numpy</td><td>segundos</td></tr>
+<tr><td>Generar los fotogramas de referencia 1440×1440</td><td>Pillow</td><td>~2 s por imagen</td></tr>
+<tr><td>Sintetizar los 9 efectos de sonido</td><td>numpy + <code>wave</code></td><td>instantáneo</td></tr>
+<tr><td>Montar y codificar video</td><td>ffmpeg 7.0.2</td><td>tiempo real aprox. en 1080×1920</td></tr>
+<tr><td>Renderizar el montaje React</td><td>Remotion 4.0.518 + Chromium</td><td>varios min a 4 vCPU</td></tr>
+<tr><td>Generar este PDF</td><td>Chromium headless</td><td>&lt; 5 s</td></tr>
+<tr><td>Verificar la cadena 5550</td><td><code>curl</code> al RPC público</td><td>&lt; 1 s por llamada</td></tr>
+</table>
+
+<h4>Qué no pudo hacer</h4>
+
+<table>
+<tr><th>Límite</th><th>Consecuencia real</th></tr>
+<tr><td>Sin GPU</td><td>Ningún modelo de video local. Wan 2.2, HunyuanVideo y LTX-Video quedaron descartados de entrada.</td></tr>
+<tr><td>4 vCPU para render</td><td>Remotion sirve, pero un render completo de 63 s es lento. Se trabajó con <code>--crf=32 --scale=0.5</code> para las pruebas.</td></tr>
+<tr><td>Contenedor efímero</td><td>Todo lo que no se commitea se pierde al cerrar la sesión. Por eso este manual vive en el repositorio.</td></tr>
+<tr><td>Sin credenciales de AWS</td><td>No se pudo verificar el estado de los nodos ni automatizar los respaldos de la cadena.</td></tr>
+<tr><td>El clip final de 1 minuto era muy pesado</td><td>El usuario terminó editando en su máquina local. El proyecto se le entregó empaquetado.</td></tr>
+</table>
+
+<h3>1.2 · Las máquinas de AWS que la empresa ya tiene</h3>
+
+<p>Orden Global opera <strong>7 nodos</strong> de la cadena 5550 en AWS. Estado <em>medido</em> hoy
+contra <code>https://rpc.ordenglobal-rpc.com/</code>:</p>
+
+<table>
+<tr><th>Qué</th><th>Valor</th><th>Método</th></tr>
+<tr><td>Chain ID</td><td class="n">5550 (<code>0x15ae</code>)</td><td><code>eth_chainId</code></td></tr>
+<tr><td>Motor</td><td>Besu 26.7.1 · Java Corretto 25</td><td><code>web3_clientVersion</code></td></tr>
+<tr><td>Altura</td><td class="n">95.455</td><td><code>eth_blockNumber</code> → <code>0x174df</code></td></tr>
+<tr><td>Pares conectados</td><td class="n">6</td><td><code>net_peerCount</code> → 7 nodos en total</td></tr>
+<tr><td>gasLimit</td><td class="n">10.000.000</td><td>último bloque</td></tr>
+<tr><td>baseFeePerGas</td><td class="n">0</td><td>último bloque</td></tr>
+</table>
+
+<p>Las direcciones fijas de las máquinas, según <code>infra/nodos/README.md</code>:</p>
+
+<table>
+<tr><th>Nodo</th><th>Región</th><th>IP elástica</th></tr>
+<tr><td>node1</td><td>us-east-1</td><td><code>23.23.205.33</code></td></tr>
+<tr><td>node3</td><td>us-east-1</td><td><code>54.205.125.99</code></td></tr>
+<tr><td>node5</td><td>us-east-1</td><td><code>18.211.40.149</code></td></tr>
+<tr><td>node6</td><td>us-east-1</td><td><code>3.224.143.231</code></td></tr>
+<tr><td>node2</td><td>us-east-2</td><td><code>18.190.14.28</code></td></tr>
+<tr><td>node4</td><td>us-east-2</td><td><code>18.226.95.184</code></td></tr>
+</table>
+
+<div class="nota riesgo"><b class="t">Estas máquinas no se tocan para video</b>
+Son nodos de blockchain: sin GPU, dimensionadas para firmar bloques, y con la cadena de la empresa
+encima. Instalarles cualquier cosa de render es arriesgar producción a cambio de nada. La
+infraestructura de video va en recursos <b>separados</b>, en la misma cuenta pero sin relación con
+estas instancias.</div>
+
+<h3>1.3 · Las instancias de AWS evaluadas para video</h3>
+
+<p>Precios aproximados bajo demanda en <code>us-east-1</code>. <strong>Verificar en la consola antes
+de comprometer nada</strong>: AWS los cambia y este documento envejece.</p>
+
+<table>
+<tr><th>Instancia</th><th>GPU</th><th>VRAM</th><th>~US$/hora</th><th>Veredicto</th></tr>
+<tr><td><code>g6.xlarge</code></td><td>1× L4</td><td>24 GB</td><td class="n">0,80</td><td>Alcanza para LTX-Video y pruebas. Corto para lo bueno.</td></tr>
+<tr><td><code>g5.2xlarge</code></td><td>1× A10G</td><td>24 GB</td><td class="n">1,21</td><td>Wan 2.2 5B cuantizado. Calidad insuficiente para rostros.</td></tr>
+<tr><td><code>g6e.xlarge</code></td><td>1× L40S</td><td>48 GB</td><td class="n">1,86</td><td><b>El punto dulce si se va por modelos abiertos.</b> Wan 2.2 14B entra.</td></tr>
+<tr><td><code>g6e.12xlarge</code></td><td>4× L40S</td><td>192 GB</td><td class="n">10,5</td><td>HunyuanVideo 13B. Caro para iterar.</td></tr>
+<tr><td><code>p4d.24xlarge</code></td><td>8× A100</td><td>320 GB</td><td class="n">32,8</td><td>Solo para entrenar o afinar un modelo propio. No aplica hoy.</td></tr>
+<tr><td><code>c7i.4xlarge</code></td><td>—</td><td>—</td><td class="n">0,71</td><td>Máquina de edición: 16 vCPU, 32 GB. Sirve y es barata.</td></tr>
+</table>
+
+<div class="nota riesgo"><b class="t">Trampa administrativa</b>
+Las familias <b>G y P vienen con cuota cero</b> en una cuenta nueva. Hay que pedir el aumento en
+Service Quotas (<code>Running On-Demand G and VT instances</code>, mínimo 8 vCPU) y la aprobación
+tarda de horas a un par de días. Si el plan depende de una GPU, ese trámite se abre <b>antes</b> de
+prometer una fecha.</div>
+
+<h2 class="salto">2 · Los modelos de generación de video</h2>
+
+<h3>2.1 · Lo que se usó</h3>
+
+<table>
+<tr><th>Modelo</th><th>Fabricante</th><th>Para qué sirvió</th><th>Dónde falla</th></tr>
+<tr><td><b>Seedance 2.5</b><br>con Omni-referencia</td><td>ByteDance</td>
+    <td>Tomas de hasta ~30 s. <b>Es el único que mantiene la misma cara humana entre tomas</b> cuando se le entregan imágenes de referencia. Toda la película con personajes depende de esto.</td>
+    <td>Cerrado: no hay pesos, no hay AMI, no se puede alojar. Solo por su web o su API.</td></tr>
+<tr><td><b>Veo 3 / 3.1</b></td><td>Google</td>
+    <td>Tomas nativas de 4, 6 y 8 s con <b>audio generado</b>. Tiene Frames-to-Video, que permite encadenar tomas usando el último fotograma de la anterior.</td>
+    <td>Tomas cortas: un comercial de 63 s son diez o más generaciones. <b>Defecto conocido: inyecta subtítulos quemados sin que se los pidan.</b> Igualmente cerrado.</td></tr>
+<tr><td><b>Claude</b></td><td>Anthropic</td>
+    <td>Guion, estructura dramática, redacción de los prompts JSON, todo el código de composición, de sonido y de montaje, y este manual.</td>
+    <td>No genera video. Es el director y el montajista, no la cámara.</td></tr>
+</table>
+
+<h3>2.2 · Lo que se evaluó y se descartó</h3>
+
+<table>
+<tr><th>Opción</th><th>Qué ofrece</th><th>Por qué se descartó</th></tr>
+<tr><td><b>Amazon Nova Reel 1.1</b><br>(Bedrock)</td><td>6 s por toma, multi-toma hasta 2 min, 1280×720. Sin servidores. ~US$0,08 por segundo de video.</td>
+    <td><b>No sostiene la identidad de un rostro entre tomas.</b> El comercial tiene seis personajes con nombre que deben ser la misma persona en cada plano, y uno de ellos debe ser el mismo hombre del comercial anterior. Nova entrega seis personas distintas.</td></tr>
+<tr><td><b>Luma Ray2</b><br>(Bedrock)</td><td>5–9 s, 720p y 1080p. ~US$0,06–0,12 por segundo.</td><td>Mismo problema de consistencia facial. Sirve para planos de objeto o abstractos, no para actores.</td></tr>
+<tr><td><b>Wan 2.2</b> (Alibaba)</td><td>Abierto. El mejor de los abiertos hoy. 14B necesita ~48 GB de VRAM.</td><td>Requiere GPU propia y su fotorrealismo de rostro sigue por debajo de Seedance. Para este comercial no compensa.</td></tr>
+<tr><td><b>HunyuanVideo</b> (Tencent)</td><td>Abierto, 13B, buen movimiento.</td><td>Necesita 4 GPU. Coste por iteración demasiado alto para un proceso que exige muchas repeticiones.</td></tr>
+<tr><td><b>LTX-Video</b> (Lightricks)</td><td>Abierto, rápido, cabe en 24 GB.</td><td>Calidad claramente por debajo de lo que pide una pieza de marca.</td></tr>
+</table>
+
+<div class="nota bien"><b class="t">Conclusión que otra IA debe heredar sin volver a investigarla</b>
+<b>La generación no se mueve a infraestructura propia.</b> Ningún modelo alojable sostiene hoy la
+consistencia facial entre tomas, y esa consistencia <em>es</em> el comercial. Seedance 2.5 se queda
+donde está. Lo que sí conviene mover a AWS es el montaje y el render, que es determinista, barato y
+no depende de ningún modelo.</div>
+
+<h2>3 · Las herramientas, con versión exacta</h2>
+
+<table>
+<tr><th>Herramienta</th><th>Versión medida</th><th>Para qué</th></tr>
+<tr><td>Node.js</td><td class="n">22.22.2</td><td>Ejecuta Remotion</td></tr>
+<tr><td>npm</td><td class="n">10.9.7</td><td>Dependencias</td></tr>
+<tr><td>Remotion</td><td class="n">4.0.518</td><td>Montaje: contador, subtítulos, cierre, mezcla de audio</td></tr>
+<tr><td>React / React DOM</td><td class="n">19.0.0</td><td>El video se escribe como componentes</td></tr>
+<tr><td>TypeScript</td><td class="n">5.8.2</td><td>El guion es un archivo tipado</td></tr>
+<tr><td>Python</td><td class="n">3.11.15</td><td>Fotogramas de referencia, sonido, montaje alterno</td></tr>
+<tr><td>Pillow</td><td class="n">12.3.0</td><td>Recorte de logos, composición, tipografía</td></tr>
+<tr><td>numpy</td><td class="n">2.4.6</td><td>Canal alfa, degradados, síntesis de audio</td></tr>
+<tr><td>ffmpeg</td><td class="n">7.0.2 estático</td><td>Vía <code>imageio-ffmpeg</code>, <b>no</b> por <code>apt</code></td></tr>
+<tr><td>Chromium</td><td class="n">build 1194</td><td>PDF; Remotion baja su propio <code>chrome-headless-shell</code></td></tr>
+</table>
+
+<h4>Instalación reproducible</h4>
+<pre>pip install imageio-ffmpeg numpy pillow
+npx create-video@latest        # plantilla "Blank"
+npx remotion browser ensure    # imprescindible: ver el error 9 de la sección 7</pre>
+
+<h3>3.1 · Las tipografías</h3>
+
+<p>Fraunces (serif, pesos 200–300), Manrope (palo seco) y JetBrains Mono para cifras. Los colores de
+marca, tomados de <code>sitio-ordenglobal/index.html</code>:</p>
+
+<table>
+<tr><th>Nombre</th><th>Hex</th><th>Uso</th></tr>
+<tr><td>Oro</td><td><code>#F5E4AB</code></td><td>Cifras del contador</td></tr>
+<tr><td>Oro profundo</td><td><code>#D9B45F</code></td><td>Bordes, el hilo dorado</td></tr>
+<tr><td>Ámbar</td><td><code>#E8963C</code></td><td>El «−N» que sale volando</td></tr>
+<tr><td>Crema</td><td><code>#F4EFE4</code></td><td>Texto</td></tr>
+<tr><td>Negro</td><td><code>#060505</code></td><td>Fondo, medido del propio material generado</td></tr>
+</table>
+
+<div class="nota riesgo"><b class="t">Cómo descargar las tipografías</b>
+Las URL de Google Fonts con <code>/raw/</code> devuelven una redirección y dejan archivos rotos de
+378 bytes que Pillow acepta y luego dibuja mal. Hay que usar <b><code>raw.githubusercontent.com</code></b>.
+Comprobar siempre el tamaño del <code>.ttf</code> después de bajarlo.</div>
+
+<h2 class="salto">4 · El método</h2>
+
+<p>Seis principios. Cada uno costó un error o una corrección del cliente; están en el orden en que
+importan.</p>
+
+<h3>4.1 · La marca se compone en post</h3>
+<p>Ya está arriba y se repite aquí porque es el principio del que cuelgan todos los demás. El modelo
+genera fotografía. El contador, los subtítulos, las cartelas de nombre y el monograma los dibuja
+Remotion sobre el clip. Así una corrección de texto cuesta un render de tres minutos y no una
+generación nueva.</p>
+
+<h3>4.2 · Referencias normalizadas, no descripciones</h3>
+<p>A Seedance no se le describe un logotipo: se le entrega. Se prepararon <strong>once imágenes de
+referencia de 1440×1440</strong>, todas con el mismo encuadre, el mismo fondo y la misma luz, para que
+el modelo no interprete diferencias de formato como diferencias de intención.</p>
+
+<pre>REF-A1-ORIGEN      REF-B1-VETAWALLET    REF-B5-GENESISID
+REF-A2-AUKA        REF-B2-MYTOKENPAY    REF-B6-PULSE2CHAT
+REF-A3-AGKA        REF-B3-ORDENEX       REF-B7-OG-MONOGRAMA
+REF-A4-ONDK        REF-B4-AUCORP</pre>
+
+<p>Para el comercial con personajes, la misma lógica se aplica a las caras: una imagen de referencia
+por persona, y esa imagen se adjunta en <em>todas</em> las tomas donde esa persona aparece.</p>
+
+<h3>4.3 · Un solo archivo fuente de verdad</h3>
+<p>Todos los tiempos, cifras, textos y colores del montaje viven en <code>src/guion.ts</code>. Ningún
+otro archivo tiene un número escrito a mano. Se cambia un valor, se vuelve a renderizar, y sale
+idéntico salvo por ese cambio. Esa reproducibilidad es exactamente lo que un editor de línea de
+tiempo tipo CapCut no da.</p>
+
+<pre>export const FPS = 24;
+export const DURACION = 63;
+export const COBROS = [
+  { t: 8.0,  quedan: 21, resta: 3, dureza: 0.0 },   // el florista
+  { t: 14.0, quedan: 19, resta: 2, dureza: 0.2 },   // la camioneta
+  { t: 19.0, quedan: 18, resta: 1, dureza: 0.4 },   // banda · operario 1
+  { t: 19.8, quedan: 17, resta: 1, dureza: 0.6 },
+  { t: 20.6, quedan: 16, resta: 1, dureza: 0.8 },
+  { t: 36.0, quedan: 14, resta: 2, dureza: 1.0 },   // las manos que descartan
+];
+export const NO_COBRO = 49.5;   // el ding que NO suena</pre>
+
+<h3>4.4 · Zonas seguras verticales</h3>
+<p>El formato es 1080×1920 para TikTok, Instagram y Shorts. Las plataformas ocupan zonas del cuadro
+con su propia interfaz:</p>
+
+<table>
+<tr><th>Zona</th><th>Quién la ocupa</th><th>Qué se hizo</th></tr>
+<tr><td>Arriba a la derecha y 15 % del borde derecho</td><td>Botones de la app</td><td>El contador se movió <b>arriba al centro</b></td></tr>
+<tr><td>25 % inferior</td><td>Descripción y usuario</td><td>Los subtítulos se subieron al <b>62 % de altura</b></td></tr>
+<tr><td>Arriba a la izquierda</td><td>Libre</td><td>Ahí va el reloj del viaje</td></tr>
+</table>
+
+<h3>4.5 · La física manda sobre la estética</h3>
+<p>Corrección textual del cliente: «no se queda el ramo flores paradas cuando no se puede». Un ramo
+envuelto <strong>no se sostiene de pie solo</strong>. Desde ese momento todo prompt lleva un bloque
+<code>physics_rules</code> explícito: la gravedad, el peso del mineral en la mano, el papel que se
+arruga y se queda arrugado. Una toma físicamente imposible destruye la credibilidad de todo el
+comercial, por buena que se vea.</p>
+
+<h3>4.6 · La víctima no ve el robo</h3>
+<p>El hallazgo estructural que hizo funcionar la pieza, y el más fácil de perder. El comercial de
+Coinbase que sirvió de referencia no es una denuncia enojada: es comedia seca. <strong>La víctima
+nunca se entera de que le están robando; solo el espectador lo ve.</strong> La primera versión que se
+escribió era una denuncia con personajes indignados y no funcionaba. La narración explica, no
+poetiza. Frase textual del original: «It's a complicated system full of middlemen and fees, and
+everyone is taking a bite.»</p>
+
+<div class="nota"><b class="t">El corolario del logotipo</b>
+Si el repartidor lleva la camisa de Orden Global en el comercial del sistema roto, Orden Global
+parece cómplice. Se resolvió haciéndolo <b>el único eslabón que no toma nada y no cobra nada</b>, y
+el único que habla a cámara.</div>
+
+<h2>5 · El recorte de los logotipos</h2>
+
+<p>Los logotipos llegaron en tres estados distintos: con fondo blanco, con fondo negro y con alfa
+real. Uno venía en CMYK. Un recorte por luminancia funciona con los claros y <strong>apaga los
+oscuros</strong>. La función que resuelve los tres casos, en <code>lib.py</code>:</p>
+
+<pre>def keyed(path, mode="white", tint=None, boost=2.6):
+    """RGBA recortado. mode: white / black / alpha."""
+    im = Image.open(os.path.join(SRC, path))
+    if im.mode == "CMYK": im = im.convert("RGB")
+    if mode == "alpha":
+        im = im.convert("RGBA"); a = im.split()[3]
+    elif mode == "black":
+        rgb = im.convert("RGB"); arr = np.asarray(rgb).astype(np.float32)
+        lum = arr.max(axis=2)
+        a = Image.fromarray(np.clip((lum - 14) * 2.9, 0, 255).astype(np.uint8))
+        im = rgb.convert("RGBA")
+    else:
+        rgb = im.convert("RGB"); arr = np.asarray(rgb).astype(np.float32)
+        dist = (255.0 - arr).max(axis=2)          # distancia al blanco
+        a = Image.fromarray(np.clip(dist * boost, 0, 255).astype(np.uint8))
+        im = rgb.convert("RGBA")
+    im.putalpha(a)
+    if (bb := im.getbbox()): im = im.crop(bb)
+    if tint:
+        arr = np.asarray(im).astype(np.float32)
+        if mode == "white":
+            # Marca oscura sobre blanco: el color util esta en el ALFA, no en el
+            # brillo. Tintar por luminancia apagaba los logos oscuros (MyTokenPay).
+            arr[..., :3] = np.array(tint, dtype=np.float32)
+        else:
+            lum = arr[..., :3].max(axis=2, keepdims=True) / 255.0
+            arr[..., :3] = np.array(tint, dtype=np.float32) * np.clip(lum * 1.15, 0, 1)
+        im = Image.fromarray(arr.astype(np.uint8), "RGBA")
+    return im</pre>
+
+<p>El comentario en medio de la función no es decorativo: es el registro de un error real que costó
+una entrega. Está explicado en la sección 7.</p>
+
+<h2>6 · El sonido</h2>
+
+<p>No se usó ninguna librería de efectos. Los nueve sonidos se sintetizaron con numpy, y esa decisión
+tiene un motivo dramático, no técnico: el sonido tenía que <strong>envejecer</strong>. El primer cobro
+es amable; el sexto raspa. Un banco de sonidos no da esa gradación continua.</p>
+
+<pre>def ding(dureza=0.0, dur=0.55):
+    """dureza 0..1 — 0 es el primer cobro, amable; 1 es el ultimo, seco."""
+    n = int(SR * dur); t = np.arange(n) / SR
+    caida = 14 + dureza * 26                  # la caida se acorta con la dureza
+    env = np.exp(-t * caida) * (1 - np.exp(-t * 900))
+    f1, f2 = 1318.5, 1760.0                   # E6 y A6
+    ...
+    for k, a in ((2, .18), (3, .12), (4.7, .10)):
+        y += np.sin(2*np.pi*f2*k*t) * env * a * dureza   # armonicos metalicos</pre>
+
+<p>Dos notas separadas 70 ms, como un lector de pago real. Los armónicos metálicos y el acortamiento
+de la caída están multiplicados por <code>dureza</code>, así que el mismo gesto sonoro de Apple Pay
+se va volviendo desagradable sin que el espectador sepa por qué. La nota final bajo el monograma es
+un Re grave de 73,42 Hz con tres armónicos y una caída de 3,4 s.</p>
+
+<div class="nota bien"><b class="t">El mejor sonido del comercial es el que no suena</b>
+A los 49,5 s hay un cobro que <b>no ocurre</b>. La píldora del contador tiembla como si fuera a bajar
+y no baja. Está implementado como una oscilación amortiguada de 0,55 s que solo afecta la posición y
+el brillo del borde, nunca la cifra.</div>
+
+<h2 class="salto">7 · Los errores, y cómo se arreglaron</h2>
+
+<p>Esta es la sección más valiosa del documento. Diecisiete problemas reales, en el orden en que
+aparecieron.</p>
+
+<h3>7.1 · Errores de herramienta</h3>
+
+<table>
+<tr><th>#</th><th>Síntoma</th><th>Causa</th><th>Arreglo</th></tr>
+<tr><td class="n">1</td><td><code>apt-get install ffmpeg</code> devuelve 404</td><td>Índices del contenedor sin actualizar</td><td><code>pip install imageio-ffmpeg</code>. Trae un binario estático 7.0.2 que funciona sin permisos de sistema.</td></tr>
+<tr><td class="n">2</td><td><code>ModuleNotFoundError: numpy</code> / <code>PIL</code></td><td>Entorno limpio</td><td><code>pip install numpy pillow</code> antes de nada.</td></tr>
+<tr><td class="n">3</td><td>Tipografías de 378 bytes, rotas</td><td>Las URL con <code>/raw/</code> devuelven una redirección, no el archivo</td><td>Usar <code>raw.githubusercontent.com</code> y comprobar el tamaño del archivo.</td></tr>
+<tr><td class="n">4</td><td>ffmpeg: <i>«Filter volume:default has an unconnected output»</i></td><td>Un <i>ding</i> programado en el segundo 36 dentro de una demo de 22 s</td><td>No programar audio fuera de la duración real. Validar cada evento contra <code>DURACION</code>.</td></tr>
+<tr><td class="n">5</td><td>Remotion: <i>«Old Headless mode has been removed from the Chrome binary»</i></td><td>El Chromium del sistema en <code>/opt/pw-browsers/</code> no sirve para Remotion</td><td><code>npx remotion browser ensure</code>, que descarga <code>chrome-headless-shell</code>. <b>Es un paso obligatorio de instalación.</b></td></tr>
+</table>
+
+<h3>7.2 · Errores de composición</h3>
+
+<table>
+<tr><th>#</th><th>Síntoma</th><th>Causa</th><th>Arreglo</th></tr>
+<tr><td class="n">6</td><td>El logotipo OG mostraba un cuadrado oscuro visible</td><td>La referencia traía fondo <code>#060505</code> horneado</td><td>Regenerar con alfa real: <code>keyed(..., "white", tint=(245,228,171))</code>.</td></tr>
+<tr><td class="n">7</td><td>El logotipo de MyTokenPay desaparecía al teñirlo</td><td>Marca azul oscura sobre blanco, teñida <b>por luminancia</b>: luminancia baja, resultado negro</td><td>Cuando <code>mode=="white"</code>, teñir <b>por alfa</b> y no por brillo. Es el arreglo del código de la sección 5.</td></tr>
+<tr><td class="n">8</td><td>OrdenEx mostraba una caja blanca</td><td>PNG en RGBA con el fondo blanco horneado bajo un alfa opaco</td><td>Recortar con <code>"white"</code> en vez de <code>"alpha"</code>. <b>No confiar en que un RGBA traiga alfa útil.</b></td></tr>
+<tr><td class="n">9</td><td>La palabra «ORDEN GLOBAL» se montaba sobre el logotipo</td><td>Ambos centrados en el mismo punto</td><td>Logotipo a <code>translateY(-90px)</code>, palabra al <code>top: 68%</code>.</td></tr>
+<tr><td class="n">10</td><td>El «−N» del contador se cortaba en el borde superior</td><td>La píldora estaba a <code>top: 44</code> y el número sale hacia arriba</td><td>Bajar la píldora a <code>top: 68</code>. En vertical hay que dejar aire para lo que vuela.</td></tr>
+</table>
+
+<h3>7.3 · Errores de criterio</h3>
+
+<p>Los caros. Ninguno da un mensaje de error; los detecta el cliente.</p>
+
+<table>
+<tr><th>#</th><th>Qué se entregó mal</th><th>Qué se aprendió</th></tr>
+<tr><td class="n">11</td><td>Un film de arte abstracto en vez de una presentación de productos. Textual: <i>«me has hecho un video basura… esperaba un fondo negro presentando cada cosa ecosistema»</i></td><td>«Tipo Apple» significa <b>alineación de productos</b>, no abstracción bonita. Si el cliente nombra una referencia, hay que <b>ver la referencia</b> antes de escribir.</td></tr>
+<tr><td class="n">12</td><td>Prompts que decían «componer el logotipo en post» sin entregar nada componible. Textual: <i>«referencia no veo los logos»</i></td><td>Se construyeron los fotogramas reales con los logotipos dentro. Un plan de post no es un entregable.</td></tr>
+<tr><td class="n">13</td><td>Todos los logotipos forzados a crema monocroma</td><td>Al estudiar de verdad la referencia de Apple: <b>cada icono conserva su color</b>. Se había leído mal la referencia dos veces.</td></tr>
+<tr><td class="n">14</td><td>La rejilla de iconos aparecía al final</td><td>En la referencia la rejilla va <b>al principio</b>, y después cada app con un beneficio de una línea. No es poesía: es una frase útil por producto.</td></tr>
+<tr><td class="n">15</td><td>Una denuncia airada en vez de comedia. Textual: <i>«no me gusta… quiero armar algo parecido a la pizza»</i></td><td>El principio 4.6. La víctima no ve el robo. Cambió la película entera.</td></tr>
+<tr><td class="n">16</td><td>Un ramo envuelto de pie sobre una mesa</td><td>El principio 4.5. Bloque <code>physics_rules</code> obligatorio en todo prompt.</td></tr>
+<tr><td class="n">17</td><td>Dos películas en espejo cuando el cliente pedía una. Textual: <i>«solo es hacer un solo camino»</i></td><td>Se colapsó en un solo viaje. Menos estructura y más impacto.</td></tr>
+</table>
+
+<div class="nota riesgo"><b class="t">Instrucciones imposibles</b>
+Una revisión con cuatro lectores críticos encontró órdenes que ningún modelo puede cumplir y que
+solo generan ruido: contar 55 meridianos en un objeto, «recordar ese diámetro» entre generaciones
+distintas, y pedir «luz más fría» dentro de una paleta declarada sin azules. <b>Un prompt que exige
+memoria entre generaciones o conteo exacto de elementos pequeños está roto.</b> Hay que releer cada
+prompt buscando específicamente esto antes de gastar una generación.</div>
+
+<h2 class="salto">8 · Qué sirvió y qué no</h2>
+
+<div class="comparar">
+  <div class="col ahora"><div class="cab">Sirvió</div><ul>
+    <li><b>Seedance 2.5 con Omni-referencia</b> para todo lo que lleva rostro humano.</li>
+    <li><b>Veo 3</b> para tomas sueltas de 6–8 s con audio propio.</li>
+    <li><b>Remotion</b> para el montaje: reproducible, versionable, y una corrección cuesta un render.</li>
+    <li><b>Sonido sintetizado</b> con numpy: permite graduar la dureza, cosa que un banco de efectos no da.</li>
+    <li><b>Referencias 1440×1440 normalizadas</b> en vez de descripciones de logotipo.</li>
+    <li><b>Un solo <code>guion.ts</code></b> como fuente de verdad de todo el montaje.</li>
+    <li><b>ffmpeg estático por pip</b> en contenedores sin permisos.</li>
+    <li><b>Chromium headless</b> para PDF: es el mismo pipeline que produjo este documento.</li>
+  </ul></div>
+  <div class="col antes"><div class="cab">No sirvió</div><ul>
+    <li><b>Nova Reel y Luma Ray2</b>: no sostienen un rostro entre tomas.</li>
+    <li><b>Modelos abiertos</b> (Wan, Hunyuan, LTX): exigen GPU propia y aun así quedan cortos en rostro.</li>
+    <li><b>Pedir texto o logotipos al modelo</b>: un carácter de más mata el remate.</li>
+    <li><b>Los nodos de la cadena</b> como máquinas de render: sin GPU y con producción encima.</li>
+    <li><b>Teñir por luminancia</b> logotipos oscuros sobre fondo blanco.</li>
+    <li><b>Confiar en el alfa de un PNG</b> sin comprobarlo.</li>
+    <li><b>Editar un clip pesado en el contenedor</b>: 4 vCPU no alcanzan; se trabajó en local.</li>
+    <li><b>Escribir el prompt antes de ver la referencia</b> que nombró el cliente.</li>
+  </ul></div>
+</div>
+
+<h2>9 · Los costos reales</h2>
+
+<table>
+<tr><th>Concepto</th><th>Coste</th><th>Nota</th></tr>
+<tr><td>Generación en Seedance / Veo</td><td>Según plan del proveedor</td><td>El grueso del gasto está en las repeticiones, no en la toma buena.</td></tr>
+<tr><td>Montaje y render en Remotion Lambda</td><td>~US$0,01–0,05 por render</td><td>63 s a 1080×1920 en 1–3 min. Sin servidor encendido.</td></tr>
+<tr><td>Almacenamiento en S3</td><td>Unos pocos dólares al mes</td><td>Clips crudos y máster.</td></tr>
+<tr><td>Máquina de edición <code>c7i.4xlarge</code></td><td>~US$0,71/hora</td><td>Solo si hace falta. Se apaga cuando no se usa.</td></tr>
+<tr><td>GPU <code>g6e.xlarge</code> para modelos abiertos</td><td>US$15–30 por corrida completa</td><td>8–15 h de GPU. <b>No recomendado hoy</b>: la calidad no llega.</td></tr>
+</table>
+
+<p>La operación completa recomendada cuesta <strong>menos de US$5 al mes</strong> de infraestructura,
+casi todo almacenamiento.</p>
+
+<h2>10 · La arquitectura recomendada</h2>
+
+<pre>Seedance 2.5 (web o API)   →  generación de tomas
+        ↓
+      S3                   →  clips crudos y master
+        ↓
+Remotion Lambda            →  contador, cartelas, sonidos, monograma, render
+        ↓
+   CloudFront              →  entrega</pre>
+
+<p>El despliegue del render, completo:</p>
+
+<pre>npx remotion lambda functions deploy --memory=3009 --disk=10240
+npx remotion lambda sites create src/index.ts --site-name=comercial
+npx remotion lambda render comercial Comercial --codec=h264</pre>
+
+<p>Remotion Lambda reparte el render en cientos de funciones en paralelo. No hay instancia encendida,
+no hay coste por hora y no hay cuota de GPU que pedir. Es la pieza de AWS que este proyecto
+verdaderamente necesita.</p>
+
+<h2 class="salto">11 · Cómo replicarlo desde cero</h2>
+
+<ol>
+  <li><b>Ver la referencia que nombró el cliente</b> antes de escribir una sola línea. Si menciona un
+      anuncio, hay que entender su mecanismo, no su apariencia.</li>
+  <li><b>Contar la historia en prosa</b> y hacerla aprobar. Nunca entregar prompts para decidir una
+      historia: el cliente pidió expresamente <i>«no me des prompt solo la historia para decidir»</i>.</li>
+  <li><b>Preparar las referencias</b>: 1440×1440, encuadre y fondo idénticos, una por logotipo y una
+      por personaje.</li>
+  <li><b>Escribir un solo prompt JSON</b> con: <code>format</code>, <code>premise</code>,
+      <code>production_look</code>, <code>casting_rule</code>, <code>physics_rules</code>,
+      <code>tone</code>, <code>characters</code> con características físicas completas, las tomas con
+      su <code>span</code> en segundos, <code>on_screen_text: NONE</code>, <code>must_hold</code> y
+      <code>negative_prompt</code>.</li>
+  <li><b>Releerlo cazando instrucciones imposibles</b>: conteos exactos, memoria entre generaciones,
+      contradicciones de paleta.</li>
+  <li><b>Generar</b>, adjuntando las referencias de personaje en todas las tomas donde aparecen.</li>
+  <li><b>Montar en Remotion</b>: <code>npx create-video@latest</code>, plantilla en blanco, 1080×1920 a
+      24 fps, y todo el tiempo en <code>src/guion.ts</code>.</li>
+  <li><b>Calibrar contra el clip real</b>: abrir <code>npm run dev</code>, buscar el fotograma exacto
+      de cada evento, leer el segundo en la línea de tiempo y corregirlo en <code>guion.ts</code>. Los
+      tiempos del guion son del papel, no del video.</li>
+  <li><b>Borrador</b> con <code>--crf=32 --scale=0.5</code> para revisar; render final después.</li>
+  <li><b>Commitear</b>. El contenedor es efímero.</li>
+</ol>
+
+<h2>12 · Lo que sigue pendiente</h2>
+
+<table>
+<tr><th>Pendiente</th><th>Qué hace falta</th></tr>
+<tr><td>Descripción real de AuCorp</td><td>Solo el cliente la tiene. Todo el texto escrito hasta hoy sobre AuCorp es una suposición declarada como tal.</td></tr>
+<tr><td>Logotipo de AGKA en mayor resolución</td><td>El actual mide 447×431 px. Insuficiente para una referencia de 1440×1440 sin interpolación visible.</td></tr>
+<tr><td>Calibrar <code>COBROS</code> contra el clip generado</td><td>Fotograma por fotograma, cuando el clip esté subido.</td></tr>
+<tr><td>Respaldos automáticos de la cadena</td><td>Acción manual en la consola de AWS: EC2 → Lifecycle Manager. Las credenciales de sesión tienen IAM bloqueado. Hoy el único respaldo de la 5550 es manual.</td></tr>
+<tr><td>Registro de la cadena en Chainlist</td><td>Falta el ícono: PNG cuadrado de 512×512 subido a IPFS.</td></tr>
+</table>
+
+<div class="pie-doc">
+Documento técnico 7 · Orden Global · 6 de septiembre de 2026<br>
+Fuentes: el repositorio en la rama <code>claude/seedance-global-ecosystem-ydgx9q</code>, el RPC público
+de la cadena 5550 consultado el día de la fecha, y el registro completo de la producción de los dos
+comerciales. Los precios de AWS son aproximados y deben verificarse en la consola.
+</div>
+
+</body></html>

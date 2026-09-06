@@ -499,7 +499,7 @@ export async function fichaPorEmail(email: string) {
 // Saldos: se le preguntan a la cadena, no a las apps
 //
 // Veta Wallet es custodia y lleva su propia contabilidad, pero lo que de verdad
-// tiene una persona es lo que dice la cadena 8532 sobre su dirección. Son dos
+// tiene una persona es lo que dice la cadena 5550 sobre su dirección. Son dos
 // cifras que deberían coincidir y a veces no coinciden — y cuando no coinciden,
 // eso es exactamente lo que hay que ver en una revisión.
 //

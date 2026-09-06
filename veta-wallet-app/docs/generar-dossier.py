@@ -254,7 +254,7 @@ tabla(["Pieza", "Tecnología", "Dónde corre", "Función"],
         "Custodia de claves, firma de transacciones, puente con CryptoMate y Veriff."],
        ["Base de datos", "MongoDB", "MongoDB Atlas",
         "Usuarios, claves cifradas, tarjetas, recargas, depósitos."],
-       ["Cadena", "EVM privada · chain 8532", "Nodos de Orden Global",
+       ["Cadena", "EVM privada · chain 5550", "Nodos de Orden Global",
         "Donde viven ORIGEN, AUKA, AGKA, ONDK y MNKA."]],
       widths=[1.4, 2, 1.4, 3.4])
 
@@ -270,7 +270,7 @@ tabla(["Proveedor", "Para qué", "Qué recibe"],
 
 h2("Un detalle de diseño que conviene entender")
 
-p("Los saldos de la cadena 8532 <b>no los sirve el backend</b>: la app los lee "
+p("Los saldos de la cadena 5550 <b>no los sirve el backend</b>: la app los lee "
   "directamente del nodo RPC. Eso tiene dos consecuencias buenas y una a vigilar.")
 
 bullets([
@@ -288,7 +288,7 @@ tabla(["Paso", "Quién", "Qué pasa"],
       [["1", "App", "El usuario escribe destino y monto, y su contraseña"],
        ["2", "Backend", "Verifica la contraseña contra el hash bcrypt"],
        ["3", "Backend", "Descifra la clave privada del usuario con AES"],
-       ["4", "Backend", "Firma y emite la transacción en la cadena 8532"],
+       ["4", "Backend", "Firma y emite la transacción en la cadena 5550"],
        ["5", "Backend", "Devuelve el hash <b>sin esperar el minado</b>"],
        ["6", "App", "Muestra el envío como pendiente; el saldo se actualiza al refrescar"]],
       widths=[0.7, 1.3, 6])
@@ -305,7 +305,7 @@ h1("SECCIÓN 3", "La blockchain de Orden Global")
 
 tabla(["Parámetro", "Valor"],
       [["Nombre", "Orden Global"],
-       ["Chain ID", "<b>8532</b>"],
+       ["Chain ID", "<b>5550</b>"],
        ["Tipo", "EVM privada (compatible con Ethereum)"],
        ["Moneda nativa", "ORIGEN"],
        ["Decimales", "18"],
@@ -331,12 +331,12 @@ callout("La contrapartida honesta",
         "además custodia las claves, esa descentralización no aportaría garantías "
         "reales — pero es una diferencia que corresponde declarar, no esconder.<br/><br/>"
         "Consecuencia práctica: <b>ningún exchange descentralizado público soporta la "
-        "cadena 8532</b>. Por eso el puente entre ORIGEN y USDT lo opera internamente "
+        "cadena 5550</b>. Por eso el puente entre ORIGEN y USDT lo opera internamente "
         "el treasury de Orden Global, y no un DEX.")
 
 h2("Direcciones")
 
-p("La dirección de un usuario es la misma en la cadena 8532 y en Polygon: ambas son "
+p("La dirección de un usuario es la misma en la cadena 5550 y en Polygon: ambas son "
   "EVM, y una misma clave privada produce la misma dirección en las dos. Esto no es "
   "un detalle menor — es lo que permite que el usuario deposite USDT en Polygon "
   "<b>a su propia dirección</b>, sin que haya que generarle una cuenta aparte.", "body")
@@ -344,7 +344,7 @@ p("La dirección de un usuario es la misma en la cadena 8532 y en Polygon: ambas
 # ══════════════════════════════════════════════════════════════════════════════
 h1("SECCIÓN 4", "Las monedas del ecosistema")
 
-p("Cinco activos, todos en la cadena 8532. ORIGEN es la moneda nativa; los otros "
+p("Cinco activos, todos en la cadena 5550. ORIGEN es la moneda nativa; los otros "
   "cuatro son contratos ERC-20.", "lead")
 
 tabla(["Símbolo", "Tipo", "Respaldo", "Contrato"],
@@ -447,7 +447,7 @@ h2("Los dos saldos de ORIGEN")
 p("Hoy conviven dos saldos que no son lo mismo y la app los muestra por separado:")
 
 tabla(["Saldo", "Dónde vive", "Se cobra", "Se puede enviar"],
-      [["<b>En la billetera</b>", "Cadena 8532", "Firmando una transferencia", "Sí"],
+      [["<b>En la billetera</b>", "Cadena 5550", "Firmando una transferencia", "Sí"],
        ["<b>Comprado</b>", "Base de datos del backend", "Decremento atómico", "Todavía no"]],
       widths=[1.4, 2, 2, 1.4])
 
@@ -572,7 +572,7 @@ h2("Dos caminos")
 tabla(["Origen del ORIGEN", "Cómo se cobra", "Espera"],
       [["<b>Saldo comprado</b> (depósitos de USDT)",
         "Decremento atómico en la base de datos", "Ninguna: no hay nada que confirmar"],
-       ["<b>Saldo en la billetera</b> (cadena 8532)",
+       ["<b>Saldo en la billetera</b> (cadena 5550)",
         "Transferencia firmada al treasury", "Hasta 18 s por la confirmación"]],
       widths=[2.6, 2.6, 2.4])
 
@@ -896,7 +896,7 @@ tabla(["Límite", "Consecuencia", "Qué haría falta"],
         "La frase de respaldo no recupera los mismos fondos en otra billetera (MetaMask, Trust)",
         "Migrar a derivación BIP-44 estándar. Afecta a las cuentas existentes"],
        ["<b>Cadena privada</b>",
-        "Ningún exchange descentralizado soporta la 8532. El puente lo opera el treasury",
+        "Ningún exchange descentralizado soporta la 5550. El puente lo opera el treasury",
         "Es una decisión de diseño, no un defecto a corregir"],
        ["<b>Sin push provisioning</b>",
         "La tarjeta no se puede agregar a Google Wallet ni Apple Wallet",

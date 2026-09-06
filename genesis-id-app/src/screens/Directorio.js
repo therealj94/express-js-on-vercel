@@ -253,7 +253,7 @@ export function Directorio({ avisar, abrirPersona, volver }) {
         {resumen?.porMoneda?.length ? (
           <Card style={{ marginBottom: 12 }}>
             <Text style={st.h}>Monedas del ecosistema</Text>
-            <Text style={st.sub}>leídas de la cadena 8532, no de las apps</Text>
+            <Text style={st.sub}>leídas de la cadena 5550, no de las apps</Text>
             {resumen.porMoneda.map((m) => (
               <Pressable key={m.simbolo} disabled={!m.tenedores}
                 onPress={() => { hap(); setMoneda(moneda === m.simbolo ? '' : m.simbolo); }}

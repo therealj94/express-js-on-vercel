@@ -213,7 +213,7 @@ header > *{pointer-events:auto}
 <!-- Lo primero que se ve: qué es esto y qué tamaño tiene. -->
 <div id="sello">
   <div class="cartucho">
-    <div class="casa">Orden Global · Cadena 8532</div>
+    <div class="casa">Orden Global · Cadena 5550</div>
     <div class="cifra" id="sBloques"><i>leyendo la cadena…</i></div>
     <div class="ley" id="sLey">bloques firmados en cadena propia</div>
     <div class="ensayo">
@@ -228,7 +228,7 @@ header > *{pointer-events:auto}
 <header>
   <div class="marca">
     <b>orden <em>global</em></b>
-    <span>el ecosistema · cadena 8532</span>
+    <span>el ecosistema · cadena 5550</span>
   </div>
   <button id="verSello" onclick="abrirSello()" title="El resumen de lo que hay">Sello</button>
   <input id="buscar" placeholder="Buscar…" autocomplete="off" spellcheck="false">
@@ -916,8 +916,11 @@ function abrirSello() {
 }
 
 async function traerCadena() {
-  const [alturaHex, peersHex, bloque] = await Promise.all([
+  const [alturaHex, peersHex, bloque, chainHex] = await Promise.all([
     rpc('eth_blockNumber'), rpc('net_peerCount'), rpc('eth_getBlockByNumber', ['latest', false]),
+    // El chain ID se pregunta, no se escribe. Estuvo puesto a mano y sobrevivió
+    // entero a la migración de la 8532 a la 5550, enseñando el número viejo.
+    rpc('eth_chainId'),
   ]);
   const altura = parseInt(alturaHex, 16);
   const anterior = await rpc('eth_getBlockByNumber', ['0x' + (altura - 20).toString(16), false]);
@@ -925,7 +928,7 @@ async function traerCadena() {
   const vals = validadoresDe(bloque.extraData);
 
   enVivo.cadena = {
-    'Altura': nf(altura), 'Chain ID': parseInt(bloque.number ? '0x2154' : '0', 16) || 8532,
+    'Altura': nf(altura), 'Chain ID': parseInt(chainHex, 16) || '—',
     'Entre bloques': seg.toFixed(1) + ' s', 'Gas límite': nf(parseInt(bloque.gasLimit, 16)),
   };
   enVivo.rpc = { 'Estado': 'responde', 'Peers': parseInt(peersHex, 16), 'Altura': nf(altura) };
@@ -939,10 +942,23 @@ async function traerCadena() {
   // lo que alguien escribió hace un mes.
   const a = porId.get('a-validador');
   if (a && vals.length) {
-    a.d = `El conjunto validador de la cadena tiene ${vals.length === 1 ? 'UNA sola dirección' : vals.length + ' direcciones'}: `
-      + `${vals.map((v) => v.slice(0, 10) + '…').join(', ')}. `
-      + `Hay ${parseInt(peersHex, 16) + 1} nodos en la red, pero los demás solo sincronizan y sirven RPC — no firman. `
-      + 'Es centralización real, no de papel. Ponerlos a validar mueve tesorería: necesita la Junta.';
+    const nodos = parseInt(peersHex, 16) + 1;
+    // Solo se reescribe el TEXTO. El grupo —y con él el color y el sitio en el
+    // mapa— sale del archivo de datos: la geometría se arma una sola vez al
+    // cargar, así que cambiarlo aquí dejaría la ficha de un color y la bola de
+    // otro. Si la cadena volviera a un solo validador, esto lo dice en el acto
+    // y el archivo se corrige a mano.
+    if (vals.length === 1) {
+      a.d = `⚠ El conjunto validador de la cadena tiene UNA sola dirección: ${vals[0].slice(0, 10)}…. `
+        + `Hay ${nodos} nodos en la red, pero los demás solo sincronizan y sirven RPC — no firman. `
+        + 'Es centralización real, no de papel. Ponerlos a validar mueve tesorería: necesita la Junta.';
+    } else {
+      // Se resolvió con la migración: QBFT tolera (n-1)/3 validadores caídos.
+      a.d = `Cerrado. El conjunto validador tiene ${vals.length} direcciones que se turnan para firmar `
+        + `(${vals.map((v) => v.slice(0, 8) + '…').join(', ')}), sobre ${nodos} nodos en la red. `
+        + `QBFT aguanta ${Math.floor((vals.length - 1) / 3)} validador(es) caído(s) sin detener la cadena. `
+        + 'Ya no hay un único punto de falla.';
+    }
   }
   const cifra = document.getElementById('sBloques');
   if (cifra) cifra.textContent = nf(altura);

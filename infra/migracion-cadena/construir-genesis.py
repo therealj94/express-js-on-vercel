@@ -40,8 +40,12 @@ import argparse, json, sys
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('inventario')
-    ap.add_argument('--salida', default='genesis-besu-8532.json')
+    ap.add_argument('--salida', default='genesis-besu-5550.json')
     ap.add_argument('--periodo', type=int, default=10, help='segundos por bloque')
+    # El plan era conservar el 8532; la cadena que se levantó usa el 5550. El
+    # número deja de estar escrito en el cuerpo del script para que no vuelva a
+    # discrepar en silencio con lo que hay corriendo.
+    ap.add_argument('--chain-id', type=int, default=5550, help='identificador de la cadena nueva')
     ap.add_argument('--devolver-stake', action='store_true',
                     help='suma al validador los ORIGEN retenidos por el contrato de staking viejo')
     a = ap.parse_args()
@@ -86,7 +90,7 @@ def main():
 
     genesis = {
         'config': {
-            'chainId': 8532,
+            'chainId': a.chain_id,
             'homesteadBlock': 0, 'eip150Block': 0, 'eip155Block': 0, 'eip158Block': 0,
             'byzantiumBlock': 0, 'constantinopleBlock': 0, 'petersburgBlock': 0,
             'istanbulBlock': 0, 'berlinBlock': 0, 'londonBlock': 0,
