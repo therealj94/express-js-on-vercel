@@ -377,7 +377,18 @@ titulo('las preferencias: idioma, voz y figura, guardadas con su correo');
   decir(c.idioma === 'en' && c.figura === 'busto' && c.vozId === 'JBFqnCBsd6RMkjVDRZzb', 'y lo que no vale se ignora: no se guarda basura que deje a ULTRON mudo');
   decir(/ENGLISH/.test(pref.ordenDeIdioma('en')) && pref.ordenDeIdioma('es') === '', 'el inglés añade una orden al encabezado; el español no añade nada');
   decir(/Orden Global.*not words to translate/s.test(pref.ordenDeIdioma('en')), 'y los nombres de la casa no se traducen');
-  await pref.guardar('jose@ordenglobal.org', { idioma: 'es', figura: 'nucleo', vozId: null });
+  /* EL TABLERO ARMADO. Va con el correo y no en el navegador, por lo mismo que
+     la voz: lo que se arma en la computadora tiene que aparecer en el iPad. */
+  const t = await pref.guardar('jose@ordenglobal.org', {
+    tablero: [{ id: 'salud', col: 'der', peso: 1.6 }, { id: 'mercado', col: 'izq', peso: 0.6, oculto: true }],
+  });
+  decir(t.tablero.length === 2 && t.tablero[0].col === 'der' && t.tablero[0].peso === 1.6 && t.tablero[1].oculto === true,
+    'el tablero armado se guarda con su correo: columna, orden, alto y lo que se quitó');
+  const sucio = pref.limpiarTablero([{ id: 'salud', col: 'marte', peso: 900 }, { id: 'salud', col: 'izq' }, { id: 'DROP TABLE', col: 'izq' }, { id: 'x'.repeat(80) }]);
+  decir(sucio.length === 1 && sucio[0].col === 'izq' && sucio[0].peso === 3,
+    'y lo que llegue de la pantalla se limpia: sin columnas inventadas, sin pesos que rompan la rejilla, sin repetidos',
+    JSON.stringify(sucio));
+  await pref.guardar('jose@ordenglobal.org', { idioma: 'es', figura: 'nucleo', vozId: null, tablero: [] });
 }
 
 // ── EL MUNDO DE AFUERA: la hora y el clima ──────────────────────────────────

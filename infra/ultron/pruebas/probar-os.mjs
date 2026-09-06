@@ -456,9 +456,24 @@ titulo('el dueño: aprobar con un clic');
   await p.waitForTimeout(900);
   const despues = (await permisos.lista({ limite: 5 })).find((x) => String(x._id) === String(pedido._id));
   decir(despues?.estado === 'aprobado' && despues.resueltoPor === 'jose@ordenglobal.org', 'el clic aprueba de verdad, firmado por el dueño', despues?.estado);
-  // la bóveda
-  await p.click('#b-boveda');
-  await p.waitForFunction(() => /BÓVEDA/.test(document.querySelector('#dialogo')?.innerText || ''), { timeout: 8000 }).catch(() => {});
+  /* LA BÓVEDA. En pantalla ancha, desde el chip del panel del dueño. En el
+     teléfono ese chip ya no está —el panel vive dentro del cajón y el chip
+     medía once píxeles entre otros dos—: se llega desde AJUSTES, que es donde
+     se buscan las cosas de uno. Se comprueba el camino que toca a cada ancho. */
+  const chipBoveda = await p.evaluate(() => {
+    const b = document.querySelector('#b-boveda');
+    return !!b && getComputedStyle(b).display !== 'none';
+  });
+  decir(ANCHO < 860 ? !chipBoveda : chipBoveda, ANCHO < 860
+    ? 'en el teléfono la bóveda NO está en el panel del dueño'
+    : 'en pantalla ancha la bóveda sigue en el panel del dueño');
+  if (chipBoveda) await p.click('#b-boveda');
+  else {
+    await p.click('#m-ajustes');
+    await p.waitForFunction(() => document.querySelector('#aj-boveda'), { timeout: 9000 }).catch(() => {});
+    await p.click('#aj-boveda');
+  }
+  await p.waitForFunction(() => /BÓVEDA/.test(document.querySelector('#dialogo')?.innerText || ''), { timeout: 9000 }).catch(() => {});
   const dlg = await texto('#dialogo');
   decir(/LA BÓVEDA/.test(dlg), 'la bóveda se abre desde el panel');
   decir(/APAGADA/.test(dlg) || /cifran aquí/.test(dlg), 'y dice si está encendida o qué falta para encenderla', dlg.slice(0, 120));
@@ -472,6 +487,85 @@ titulo('el dueño: aprobar con un clic');
   decir(/EL EQUIPO/.test(eq) && /centinela/.test(eq) && /cerrajero/.test(eq), 'el equipo enseña sus bots', eq.slice(0, 160));
   await p.evaluate(() => document.querySelector('#dialogo')?.remove());
   if (ANCHO < 860) { await p.click('#tirador'); await p.waitForTimeout(400); }
+}
+
+/* ── EL BOTÓN DE ATRÁS ────────────────────────────────────────────────────────
+   «Revisemos que botón atrás tengamos.» En el teléfono, atrás es el gesto que
+   más se usa, y antes se salía de ULTRON entero con el diálogo abierto detrás.
+   Se comprueba con la vuelta atrás DE VERDAD del navegador, no con una tecla. */
+titulo('el botón de atrás cierra lo que esté encima, no ULTRON');
+{
+  const url = p.url();
+  await p.click('#m-ajustes');
+  await p.waitForFunction(() => /AJUSTES/.test(document.querySelector('#dialogo')?.innerText || ''), { timeout: 9000 }).catch(() => {});
+  decir(await p.$('#dialogo') !== null, 'con AJUSTES abierto…');
+  await p.goBack();
+  await p.waitForTimeout(350);
+  decir(await p.$('#dialogo') === null, '…atrás lo cierra');
+  decir(p.url() === url, 'y NO saca de ULTRON: se queda en la misma pantalla', p.url());
+  /* Y el cierre por botón tiene que dejar el historial como estaba: si dejara
+     una marca de más, la siguiente vuelta atrás no haría nada y parecería
+     que el gesto se rompió. */
+  await p.click('#m-ajustes');
+  await p.waitForFunction(() => document.querySelector('#dialogo'), { timeout: 9000 }).catch(() => {});
+  await p.click('#aj-cerrar');
+  await p.waitForTimeout(400);
+  decir(await p.$('#dialogo') === null, 'CERRAR también cierra');
+  const largo = await p.evaluate(() => history.length);
+  await p.click('#m-ajustes');
+  await p.waitForFunction(() => document.querySelector('#dialogo'), { timeout: 9000 }).catch(() => {});
+  await p.click('#aj-cerrar');
+  await p.waitForTimeout(400);
+  decir(await p.evaluate(() => history.length) === largo, 'y abrir y cerrar no deja marcas sueltas en el historial', `${largo}`);
+}
+
+/* ── LOS PANELES COMO WIDGETS ─────────────────────────────────────────────────
+   «Que las cosas en web se puedan organizar, hacer más grande, más pequeñas,
+   como widgets que se puedan ir armando.» */
+titulo('armar el tablero: mover, agrandar y quitar paneles');
+{
+  await p.click('#m-ajustes');
+  await p.waitForFunction(() => /EL TABLERO/.test(document.querySelector('#dialogo')?.innerText || ''), { timeout: 9000 }).catch(() => {});
+  decir(await p.$('#aj-armar') !== null, 'AJUSTES tiene ARMAR EL TABLERO');
+  decir(await p.$('#aj-boveda') !== null, 'y la bóveda, que en el teléfono ya no está en el panel del dueño');
+  await p.click('#aj-armar');
+  await p.waitForTimeout(500);
+  decir(await p.evaluate(() => document.body.classList.contains('armando')), 'se entra al modo de armar');
+  const mandos = await p.evaluate(() => document.querySelectorAll('.p-mandos').length);
+  decir(mandos >= 8, `cada panel a la vista trae sus mandos (${mandos})`);
+
+  const antes = await p.evaluate(() => [...document.querySelectorAll('#izq .p')].map((x) => x.dataset.panel));
+  await p.click('#izq .p:nth-of-type(2) .p-mandos button[data-m="subir"]');
+  await p.waitForTimeout(450);
+  const despues = await p.evaluate(() => [...document.querySelectorAll('#izq .p')].map((x) => x.dataset.panel));
+  decir(despues[0] === antes[1] && despues[1] === antes[0], 'subir un panel lo sube de verdad', `${antes.join(',')} → ${despues.join(',')}`);
+
+  const peso0 = await p.evaluate(() => parseFloat(document.querySelector('#izq .p').style.getPropertyValue('--peso')));
+  await p.click('#izq .p:first-of-type .p-mandos button[data-m="mas"]');
+  await p.waitForTimeout(400);
+  const peso1 = await p.evaluate(() => parseFloat(document.querySelector('#izq .p').style.getPropertyValue('--peso')));
+  decir(peso1 > peso0, 'y agrandarlo le cambia el alto que ocupa', `${peso0} → ${peso1}`);
+
+  const cual = await p.evaluate(() => document.querySelector('#izq .p').dataset.panel);
+  await p.click('#izq .p:first-of-type .p-mandos button[data-m="quitar"]');
+  await p.waitForTimeout(450);
+  decir(await p.evaluate((c) => document.querySelector(`.p[data-panel="${c}"]`).classList.contains('escondido'), cual), 'quitarlo lo saca del tablero');
+  decir(await p.evaluate((c) => !!document.querySelector(`#armar-ocultos [data-vuelve="${c}"]`), cual), 'y queda a mano en la barra para devolverlo');
+  await p.click(`#armar-ocultos [data-vuelve="${cual}"]`);
+  await p.waitForTimeout(450);
+  decir(await p.evaluate((c) => !document.querySelector(`.p[data-panel="${c}"]`).classList.contains('escondido'), cual), 'devolverlo lo devuelve');
+
+  /* Lo armado se guarda con el correo, no en el navegador: es la misma regla
+     que la voz y el idioma. Se comprueba pidiéndoselo al servidor. */
+  const g = await p.evaluate(async () => (await (await fetch('/preferencias', { credentials: 'same-origin' })).json()).tablero);
+  decir(Array.isArray(g) && g.length >= 8 && g.some((x) => x.peso > 1), 'y todo eso queda guardado en el servidor, con su correo', JSON.stringify(g).slice(0, 130));
+
+  await p.click('#armar-fabrica');
+  await p.waitForTimeout(450);
+  await p.click('#armar-listo');
+  await p.waitForTimeout(450);
+  decir(!(await p.evaluate(() => document.body.classList.contains('armando'))), 'LISTO sale del modo de armar');
+  decir(await p.evaluate(() => document.querySelectorAll('.p-mandos').length) === 0, 'y los mandos se van con él');
 }
 
 titulo('sin errores de JavaScript');

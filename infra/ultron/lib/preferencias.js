@@ -33,13 +33,43 @@ const prefSchema = new Schema({
   /* «Solo a mí»: ignora lo que suene lejos y exige la palabra para empezar.
      NO es reconocer una voz —el navegador no puede— y así se dice en Ajustes. */
   soloYo: { type: Boolean, default: true },
+  /* EL TABLERO, ARMADO POR QUIEN LO MIRA.
+     Un panel por entrada: en qué columna va, en qué orden, qué alto ocupa y si
+     se enseña. Va aquí y no en el navegador por lo mismo que la voz: quien
+     arma su tablero en la computadora quiere encontrarlo armado en el iPad.
+     Vacío = el reparto de fábrica, que es el que decidió el diseño. */
+  tablero: { type: [{ _id: false, id: String, col: String, peso: Number, oculto: Boolean }], default: [] },
   tocado: { type: Date, default: Date.now },
 }, { versionKey: false });
 const Pref = mongoose.models.Pref || mongoose.model('Pref', prefSchema);
 
 const conMongo = () => mongoose.connection.readyState === 1;
 const provisional = new Map();
-const POR_OMISION = { idioma: 'es', vozId: null, figura: 'nucleo', conVoz: true, lugar: 'Tegucigalpa', oido: 'conversacion', soloYo: true };
+const POR_OMISION = { idioma: 'es', vozId: null, figura: 'nucleo', conVoz: true, lugar: 'Tegucigalpa', oido: 'conversacion', soloYo: true, tablero: [] };
+
+/* El tablero llega de la pantalla, así que se limpia aquí y no se cree nada:
+   un peso de 900 rompería la rejilla y un id inventado dejaría un hueco.
+   Se recorta a lo que puede existir; lo que no encaja se descarta callado, que
+   es mejor que guardar un tablero que no se puede dibujar. */
+const COLUMNAS = ['izq', 'der'];
+function limpiarTablero(t) {
+  if (!Array.isArray(t)) return null;
+  const visto = new Set();
+  const salida = [];
+  for (const x of t.slice(0, 24)) {
+    const id = String(x?.id || '').trim();
+    if (!/^[a-z][a-z0-9-]{0,23}$/.test(id) || visto.has(id)) continue;
+    visto.add(id);
+    const peso = Number(x?.peso);
+    salida.push({
+      id,
+      col: COLUMNAS.includes(x?.col) ? x.col : 'izq',
+      peso: Number.isFinite(peso) ? Math.min(3, Math.max(0.4, Math.round(peso * 100) / 100)) : 1,
+      oculto: !!x?.oculto,
+    });
+  }
+  return salida;
+}
 
 /* Las dos voces que la casa usa, una por idioma. George es la que José eligió;
    habla los dos idiomas con el modelo multilingüe, con acento inglés en
@@ -66,6 +96,7 @@ async function guardar(correo, cambios = {}) {
   if (typeof cambios.conVoz === 'boolean') limpio.conVoz = cambios.conVoz;
   if (typeof cambios.soloYo === 'boolean') limpio.soloYo = cambios.soloYo;
   if (['conversacion', 'palabra', 'apagado'].includes(cambios.oido)) limpio.oido = cambios.oido;
+  if (cambios.tablero !== undefined) { const t = limpiarTablero(cambios.tablero); if (t) limpio.tablero = t; }
   if (typeof cambios.lugar === 'string' && cambios.lugar.trim().length >= 3 && cambios.lugar.length <= 60) limpio.lugar = cambios.lugar.trim();
   /* El id de una voz de ElevenLabs es alfanumérico de 20: cualquier otra cosa
      no se guarda. Sin esto, un id inventado dejaría a ULTRON mudo hasta que
@@ -147,5 +178,5 @@ async function guardarCasa(cambios = {}, porQuien = '?') {
   return casaEnMemoria;
 }
 
-module.exports = { de, guardar, ordenDeIdioma, VOCES_SUGERIDAS, POR_OMISION,
+module.exports = { de, guardar, ordenDeIdioma, VOCES_SUGERIDAS, POR_OMISION, limpiarTablero,
   casa, casaYa, guardarCasa, CEREBROS, _adentro: { Pref, Casa, provisional } };

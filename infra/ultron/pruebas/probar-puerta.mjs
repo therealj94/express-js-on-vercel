@@ -188,6 +188,10 @@ titulo('los instrumentos, a mano: el mismo camino que usa ULTRON');
      habilidades y el equipo: todas dejan rastro o cuestan, y el panel las
      pinta distinto. Si mañana se añade una que escribe y no aparece aquí, esta
      línea se pone roja a propósito. */
+  /* La llave de GitHub se puede MIRAR sin poder verla: `repo_llave` dice de
+     quién es, qué permisos lleva y si le alcanzan, y por eso es de LEER. */
+  const llv = cat.json.herramientas.find((h) => h.nombre === 'repo_llave');
+  decir(!!llv && !llv.escribe, 'está repo_llave, que dice qué le falta a la llave de GitHub, y solo lee', llv?.descripcion?.slice(0, 90));
   const ESCRIBEN_ESPERADAS = 'anotar_pendiente,aprender,avisar_junta,boveda_aplicar,cerrar_pendiente,crear_documento,desplegarse,equipo_correr,habilidad_crear,habilidad_publicar,heroku_reiniciar,nodo_comando,olvidar,proponer_envio,recordar,repo_proponer_cambio,salud_reparar,terminal';
   decir(cat.json.herramientas.filter((h) => h.escribe).map((h) => h.nombre).sort().join(',') === ESCRIBEN_ESPERADAS, 'los que escriben van marcados, y son exactamente esos',
     cat.json.herramientas.filter((h) => h.escribe).map((h) => h.nombre).sort().join(','));

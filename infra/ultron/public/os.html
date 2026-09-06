@@ -47,7 +47,9 @@ a{color:var(--cian);text-decoration:none}
 
 /* ── el marco de panel: el bisel cortado del diseño, en dos capas ─────────── */
 .p{clip-path:polygon(0 0,calc(100% - var(--corte)) 0,100% var(--corte),100% 100%,var(--corte) 100%,0 calc(100% - var(--corte)));
-  background:linear-gradient(135deg,var(--cian-t),var(--cian-d) 40%,rgba(5,225,255,.35));padding:1px;min-height:0;display:flex}
+  background:linear-gradient(135deg,var(--cian-t),var(--cian-d) 40%,rgba(5,225,255,.35));padding:1px;min-height:0;display:flex;
+  flex:var(--peso,1) 1 0;position:relative}
+.p.escondido{display:none}
 .p>div{flex:1;min-height:0;min-width:0;
   clip-path:polygon(0 0,calc(100% - calc(var(--corte) - 1px)) 0,100% calc(var(--corte) - 1px),100% 100%,calc(var(--corte) - 1px) 100%,0 calc(100% - calc(var(--corte) - 1px)));
   background:linear-gradient(180deg,var(--panel-a),var(--panel-b));backdrop-filter:blur(10px);
@@ -135,22 +137,33 @@ body.vieja #izq,body.vieja #der,body.vieja #medidas{opacity:.48;filter:saturate(
 #medidas .pulso{width:6px;height:6px;border-radius:50%;background:var(--cian);box-shadow:0 0 8px var(--cian);display:inline-block;margin-right:7px}
 
 #cuerpo{position:relative;z-index:2;display:grid;
-  grid-template-columns:minmax(190px,22%) minmax(320px,1fr) minmax(210px,25%);
+  /* Los anchos van en variables para que, si se quitan todos los paneles de una
+     columna, esa columna deje de ocupar su cuarto de pantalla en vez de quedar
+     como una franja vacía. Lo pone `aplicarTablero`. */
+  grid-template-columns:var(--c-izq,minmax(190px,22%)) minmax(320px,1fr) var(--c-der,minmax(210px,25%));
   gap:14px;padding:6px 22px;min-height:0;pointer-events:none}
 /* `display:contents` deja al envoltorio fuera de la disposición: las dos
    columnas vuelven a ser hijas directas de la rejilla. Y como en el marcado van
    las dos seguidas —para poder subirlas juntas en el teléfono—, la columna se
    nombra a mano en vez de confiar en el orden. */
 #paneles{display:contents}
-#izq,#der{display:grid;gap:11px;min-height:0;min-width:0;pointer-events:auto;overflow:hidden}
-/* El reparto de alto va por CUÁNTO tiene que decir cada panel, no por el orden
-   en que se escribieron. ENLACES son seis puntos y cabe en poco; MERCADO lleva
-   la cifra grande más un renglón por par, y CEREBRO siete renglones. */
-/* Cinco paneles desde que ULTRON se mira a sí mismo: SALUD va arriba del
-   todo porque es el único que puede decir «lo que estás viendo abajo no es
-   de fiar». Un tablero que no dice si el tablero funciona miente sin saberlo. */
-#izq{grid-column:1;grid-row:1;grid-template-rows:minmax(0,1.3fr) minmax(0,.62fr) minmax(0,.95fr) minmax(0,1.02fr) minmax(0,.95fr)}
-#der{grid-column:3;grid-row:1;grid-template-rows:minmax(0,1fr) minmax(0,1fr) minmax(0,.9fr) minmax(0,1.1fr)}
+/* ── LAS DOS COLUMNAS, ARMABLES ───────────────────────────────────────────
+   Eran dos rejillas con el alto de cada fila escrito a mano. Se veían bien y
+   no se podían tocar: mover un panel de sitio pedía cambiar el índice de la
+   fila en el CSS, y agrandarlo, reescribir la lista entera de `fr`.
+   Ahora son dos COLUMNAS FLEXIBLES y el alto de cada panel es suyo, en
+   `--peso`. Un panel se agranda cambiando su número, se mueve cambiándolo de
+   sitio en el documento, y se cambia de columna moviéndolo de padre. Nada de
+   eso toca el CSS, así que puede hacerlo quien mira la pantalla.
+   Los pesos de fábrica siguen siendo los del diseño —van escritos en cada
+   panel— y salen de CUÁNTO tiene que decir cada uno: ENLACES son seis puntos
+   y cabe en poco; MERCADO lleva la cifra grande más un renglón por par.
+   SALUD arranca arriba del todo porque es el único que puede decir «lo que
+   estás viendo abajo no es de fiar». */
+#izq,#der{display:flex;flex-direction:column;gap:11px;min-height:0;min-width:0;pointer-events:auto;overflow:hidden}
+#izq.vacia,#der.vacia{display:none}
+#izq{grid-column:1;grid-row:1}
+#der{grid-column:3;grid-row:1}
 #centro{grid-column:2;grid-row:1;position:relative;min-height:0;min-width:0;z-index:3}
 
 /* ── el centro: estado, burbuja, sugerencias ─────────────────────────────── */
@@ -210,6 +223,62 @@ body.vieja #izq,body.vieja #der,body.vieja #medidas{opacity:.48;filter:saturate(
 .chip{font-size:11px;letter-spacing:.06em;padding:4px 10px;border:1px solid rgba(5,225,255,.35);color:var(--cian);
   clip-path:polygon(0 0,calc(100% - 7px) 0,100% 7px,100% 100%,7px 100%,0 calc(100% - 7px));transition:background .15s}
 .chip:hover,.chip:focus-visible{background:rgba(5,225,255,.14)}
+
+/* ══ ARMAR EL TABLERO ════════════════════════════════════════════════════════
+   «Que las cosas en web se puedan organizar, hacer más grande, más pequeñas,
+   como widgets que se puedan ir armando.»
+
+   El modo de armar es un MODO, no un arrastre. Arrastrar es bonito con ratón y
+   es una tortura en una pantalla táctil de 390 px, donde el mismo gesto sirve
+   para desplazar la lista de dentro del panel. Con botones, mover un panel es
+   un toque, se deshace con otro toque, y funciona igual con el teclado — que
+   con arrastre no funcionaría en absoluto.
+
+   Se entra desde AJUSTES, se sale con LISTO, y lo armado se guarda con el
+   correo de quien lo armó: el tablero que se arma en la computadora aparece
+   armado en el iPad. */
+body.armando .p{outline:1px dashed rgba(5,225,255,.55);outline-offset:-1px}
+body.armando .p>div{padding-top:6px}
+.p-mandos{display:none}
+body.armando .p-mandos{display:flex;flex:none;gap:4px;align-items:center;
+  margin:-4px -6px 2px -6px;padding:3px 4px;background:rgba(5,225,255,.07)}
+.p-mandos b{flex:1;min-width:0;font-size:9px;letter-spacing:.16em;color:var(--cian);font-weight:400;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.p-mandos button{width:26px;height:26px;flex:none;display:grid;place-items:center;
+  font-family:var(--mono);font-size:12px;line-height:1;color:var(--cian);
+  border:1px solid rgba(5,225,255,.3);background:rgba(4,12,20,.6);transition:background .15s}
+.p-mandos button:hover:not(:disabled),.p-mandos button:focus-visible{background:rgba(5,225,255,.2)}
+.p-mandos button:disabled{opacity:.28}
+.p-mandos .quita{color:var(--ambar);border-color:rgba(255,176,32,.35)}
+
+/* La barra de armar. Va sobre el muelle porque mientras se arma el muelle no
+   se usa, y así no tapa ningún panel. */
+#armar-barra{position:fixed;left:0;right:0;bottom:0;z-index:60;display:none;
+  flex-wrap:wrap;align-items:center;gap:8px;padding:10px 16px calc(10px + var(--seguro-ab));
+  /* OPACA de verdad. Con un degradado translúcido, el texto de los paneles se
+     leía a través de la barra y las dos cosas quedaban ilegibles. */
+  background:#050a10;border-top:1px solid rgba(5,225,255,.35);
+  box-shadow:0 -14px 26px rgba(4,7,11,.85)}
+body.armando #armar-barra{display:flex}
+/* Mientras se arma no se habla ni se cambia de casa: el renglón y el muelle se
+   apagan para que la barra no se les monte encima. `visibility` y no `display`,
+   para que la rejilla no salte al entrar y salir del modo. */
+body.armando #pie,body.armando #muelle{visibility:hidden;pointer-events:none}
+#armar-barra .tit{font-size:10px;letter-spacing:.2em;color:var(--cian);flex:none}
+#armar-barra .sub{font-size:10.5px;letter-spacing:.04em;color:var(--tenue);flex:1;min-width:120px}
+#armar-ocultos{display:flex;gap:5px;flex-wrap:wrap}
+@media (max-width:860px){
+  #armar-barra .sub{flex-basis:100%}
+  /* La barra mide tres renglones en el teléfono: el cajón le deja sitio o el
+     último panel queda debajo y no se puede mover. */
+  body.armando #paneles{padding-bottom:calc(158px + var(--seguro-ab))}
+  /* LA BÓVEDA EN EL TELÉFONO. El chip vivía en la esquina del panel EL DUEÑO,
+     que en el teléfono está dentro del cajón: para guardar una llave había que
+     subir el cajón, buscar el panel y dar con un chip de once píxeles entre
+     otros dos. Se guarda una llave desde AJUSTES, que es donde se buscan las
+     cosas de uno. En pantalla ancha el chip se queda donde estaba. */
+  #b-boveda{display:none}
+}
 
 /* ── el muelle de casas ───────────────────────────────────────────────────── */
 #muelle{position:relative;z-index:2;display:flex;align-items:flex-start;gap:7px;padding:4px 22px 0;overflow-x:auto;scrollbar-width:none}
@@ -321,8 +390,11 @@ body.cajon #tirador{bottom:calc(76dvh + 4px)}
     background:linear-gradient(180deg,rgba(4,7,11,.75),rgba(4,7,11,.97) 8%);
     transform:translateY(101%);transition:transform .32s cubic-bezier(.22,1,.36,1)}
   body.cajon #paneles{transform:none}
-  #izq,#der{display:grid;grid-column:auto;grid-row:auto;grid-template-rows:none;
-    grid-auto-rows:minmax(128px,auto);overflow:visible;gap:10px}
+  /* En el cajón no hay alto que repartir: se apilan y cada uno mide lo suyo.
+     El peso sigue contando —un panel «grande» es más alto también aquí— pero
+     como suelo, no como reparto: la lista de dentro manda. */
+  #izq,#der{display:flex;flex-direction:column;grid-column:auto;grid-row:auto;overflow:visible;gap:10px}
+  #izq .p,#der .p{flex:none;min-height:calc(96px + var(--peso,1) * 40px)}
   #der{margin-bottom:10px}
   #centro{grid-column:1;grid-row:1}
   #techo{padding:10px 14px 6px;gap:8px}
@@ -628,12 +700,12 @@ body.arrancando #centro,body.cerrada #centro{visibility:hidden}
          de verlos desde un teléfono. -->
     <div id="paneles">
     <div id="der">
-      <div class="p"><div>
+      <div class="p" data-panel="ecosistema" data-nombre="ECOSISTEMA" style="--peso:1"><div>
         <div><h2>ECOSISTEMA</h2><div class="sub" id="eco-sub">—</div></div>
         <div style="display:flex;flex-direction:column;gap:3px;flex:1;min-height:0;overflow-y:auto" class="dato" id="eco" tabindex="0"></div>
       </div></div>
 
-      <div class="p"><div>
+      <div class="p" data-panel="documentos" data-nombre="DOCUMENTOS" style="--peso:1"><div>
         <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
           <div style="min-width:0"><h2>DOCUMENTOS ENTRANTES</h2><div class="sub" id="arch-sub">nada todavía</div></div>
           <button class="mando" id="clip" title="Subir un archivo" aria-label="Subir un archivo" style="width:32px;height:32px;margin:-4px -4px 0 0">
@@ -644,7 +716,7 @@ body.arrancando #centro,body.cerrada #centro{visibility:hidden}
         <input type="file" id="fichero" class="oculto" multiple>
       </div></div>
 
-      <div class="p"><div>
+      <div class="p" data-panel="pendientes" data-nombre="PENDIENTES" style="--peso:0.9"><div>
         <div><h2>PENDIENTES DE LA JUNTA</h2><div class="sub" id="pend-sub">—</div></div>
         <div style="flex:1;min-height:0;overflow-y:auto;display:flex;flex-direction:column;gap:6px" id="pendientes" tabindex="0"></div>
       </div></div>
@@ -652,7 +724,7 @@ body.arrancando #centro,body.cerrada #centro{visibility:hidden}
       <!-- LA MANO DERECHA. Lo que ULTRON pide y el dueño aprueba, viendo el
            resumen exacto; la bóveda, cuyo valor entra por aquí y no sale por
            ningún lado; y los partes del equipo de bots. -->
-      <div class="p"><div>
+      <div class="p" data-panel="dueno" data-nombre="EL DUEÑO" style="--peso:1.1"><div>
         <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
           <div><h2>EL DUEÑO</h2><div class="sub" id="dueno-sub">—</div></div>
           <div style="display:flex;gap:4px">
@@ -669,7 +741,7 @@ body.arrancando #centro,body.cerrada #centro{visibility:hidden}
            mira. La nota sale de nueve signos (cerebro, base, memoria, bucle,
            vigía, equipo, puerta, autorizaciones, fallos) y REPARAR arregla lo
            que se puede arreglar sin riesgo: reconectar, relevar, rearrancar. -->
-      <div class="p"><div>
+      <div class="p" data-panel="salud" data-nombre="SALUD PROPIA" style="--peso:1.3"><div>
         <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
           <div style="min-width:0"><h2>SALUD PROPIA</h2><div class="sub" id="salud-sub">midiendo…</div></div>
           <div style="display:flex;gap:4px;flex:none">
@@ -686,7 +758,7 @@ body.arrancando #centro,body.cerrada #centro{visibility:hidden}
         </div>
       </div></div>
 
-      <div class="p"><div>
+      <div class="p" data-panel="enlaces" data-nombre="ENLACES" style="--peso:0.62"><div>
         <div><h2>ENLACES</h2><div class="sub" id="nervio-estado">leyendo…</div></div>
         <canvas id="red" style="width:100%;flex:1;min-height:0;display:block"></canvas>
       </div></div>
@@ -698,7 +770,7 @@ body.arrancando #centro,body.cerrada #centro{visibility:hidden}
            su propio tablero: el precio del ORIGEN y los pares ya viajaban en
            cada lectura de /vivo y nadie los pintaba. La onda de la voz se
            queda, pequeña, dentro de este mismo panel. -->
-      <div class="p"><div>
+      <div class="p" data-panel="mercado" data-nombre="MERCADO" style="--peso:0.95"><div>
         <div style="display:flex;justify-content:space-between;align-items:flex-start">
           <div><h2>MERCADO</h2><div class="sub" id="mercado-sub">—</div></div>
           <div class="dato on" id="onda-estado">EN REPOSO</div>
@@ -707,7 +779,7 @@ body.arrancando #centro,body.cerrada #centro{visibility:hidden}
         <canvas id="onda" style="width:100%;height:18px;flex:none;display:block;opacity:.75"></canvas>
       </div></div>
 
-      <div class="p"><div>
+      <div class="p" data-panel="cerebro" data-nombre="CEREBRO" style="--peso:1.02"><div>
         <div><h2>CEREBRO</h2><div class="sub" id="nodo-modelo">—</div><div class="sub" id="cerebro-donde">—</div></div>
         <!-- `align-items:center` con una lista más alta que la caja la centraba
              y la desbordaba HACIA ARRIBA, encima del propio título del panel:
@@ -728,7 +800,7 @@ body.arrancando #centro,body.cerrada #centro{visibility:hidden}
         </div>
       </div></div>
 
-      <div class="p"><div>
+      <div class="p" data-panel="integridad" data-nombre="INTEGRIDAD" style="--peso:0.95"><div>
         <div><h2>INTEGRIDAD</h2><div class="sub" id="integridad-tag">—</div></div>
         <div style="display:flex;flex-direction:column;gap:3px;flex:1;min-height:0;overflow:hidden" class="dato" id="integridad" tabindex="0"></div>
       </div></div>
@@ -749,6 +821,16 @@ body.arrancando #centro,body.cerrada #centro{visibility:hidden}
     </div>
 
   </main>
+
+  <!-- La barra de armar el tablero. Vive fuera de #cuerpo para que no la
+       recorte el cajón del teléfono. -->
+  <div id="armar-barra" role="toolbar" aria-label="Armar el tablero">
+    <span class="tit">ARMANDO EL TABLERO</span>
+    <span class="sub" id="armar-sub">Mueva, agrande o quite paneles. Se guarda con su correo.</span>
+    <span id="armar-ocultos"></span>
+    <button class="chip" id="armar-fabrica">DE FÁBRICA</button>
+    <button class="chip" id="armar-listo">LISTO</button>
+  </div>
 
   <!-- ── MUELLE ───────────────────────────────────────────────────────────── -->
   <nav id="muelle" aria-label="Las casas del ecosistema"></nav>

@@ -221,6 +221,11 @@ const DEFINICIONES = [
      peligrosas piden autorización al dueño antes de correr, y la herramienta
      lo dice cuando pasa. */
   {
+    name: 'repo_llave',
+    description: 'Dice QUÉ llave de GitHub tiene la casa y qué le falta: de qué cuenta es, de qué clase, qué permisos lleva marcados y si con ellos ve el repositorio. Nunca enseña la llave. Se usa cuando repo_arbol, repo_leer o repo_buscar fallan con 404 o 401, en vez de adivinar.',
+    input_schema: { type: 'object', properties: { repo: { type: 'string', description: 'dueño/repo a comprobar; por omisión el de la casa' } } },
+  },
+  {
     name: 'repo_arbol',
     description: 'Lista una carpeta del repositorio de la casa (GitHub). Sin ruta, la raíz. Para ubicarse antes de leer o cambiar algo.',
     input_schema: { type: 'object', properties: { repo: { type: 'string', description: 'dueño/repo; por omisión el de la casa' }, ruta: { type: 'string' }, rama: { type: 'string' } } },
@@ -912,6 +917,7 @@ async function correrAdentro(nombre, entrada, ctx) {
         return `Hoy: ${f(g.hoy)}. Últimos 30 días: ${f(g.mes)}. En el nodo propio el pensar no cuesta por pregunta.`;
       }
       // ── la mano derecha ─────────────────────────────────────────────────
+      case 'repo_llave': return await taller.llave(entrada);
       case 'repo_arbol': return await taller.arbol(entrada);
       case 'repo_leer': return await taller.leer(entrada);
       case 'repo_buscar': return await taller.buscar(entrada);
@@ -1119,7 +1125,7 @@ const GRUPOS = {
   'Lo que le mandan': ['listar_archivos', 'leer_archivo'],
   'Acciones que confirma la persona': ['abrir', 'exportar_pdf', 'proponer_envio'],
   'Cuentas': ['calcular', 'gasto'],
-  'El taller (repositorio, terminal, despliegue)': ['repo_arbol', 'repo_leer', 'repo_buscar', 'repo_proponer_cambio', 'terminal', 'desplegarse'],
+  'El taller (repositorio, terminal, despliegue)': ['repo_llave', 'repo_arbol', 'repo_leer', 'repo_buscar', 'repo_proponer_cambio', 'terminal', 'desplegarse'],
   'La bóveda': ['boveda_listar', 'boveda_aplicar'],
   'Aprender': ['aprender', 'habilidad_usar', 'habilidad_crear', 'habilidad_publicar'],
   'El equipo': ['equipo_estado', 'equipo_partes', 'equipo_correr', 'auditar_dependencias', 'autorizaciones'],

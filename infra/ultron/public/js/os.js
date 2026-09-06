@@ -324,11 +324,84 @@ const OS = (() => {
     } catch (e) { avisar(`No se pudo: ${e.message}`, true); }
   }
 
+  /* ── EL BOTÓN DE ATRÁS ────────────────────────────────────────────────────
+   * En el teléfono, «atrás» es el gesto que más se usa: es el que cierra lo que
+   * esté encima. Aquí no cerraba nada — se salía de ULTRON entero, con el
+   * diálogo todavía abierto detrás, y había que volver a entrar.
+   *
+   * La causa es que esto es UNA página: sin decírselo, el navegador no sabe que
+   * abrir la bóveda o subir el cajón es «ir a algún sitio». Así que se lo
+   * decimos: cada capa que se abre deja una marca en el historial, y atrás
+   * quita la de arriba. Cerrar con el botón CERRAR hace lo mismo por dentro,
+   * para que el historial no se quede con marcas de capas que ya no existen.
+   *
+   * Una capa es cualquier cosa que tape: un diálogo o el cajón de paneles.
+   */
+  const capas = [];
+  let deshaciendo = 0;   // una vuelta atrás la pedimos nosotros: no cerrar dos veces
+  let volviendo = false; // el navegador ya consumió la marca; no pedir otra
+
+  function abrirCapa(el, cerrar) {
+    capas.push({ el, cerrar });
+    try { history.pushState({ ultron: capas.length }, ''); } catch { /* sin historial se vive igual */ }
+  }
+
+  /* `history.go` NO es inmediato: el navegador avisa después, con `popstate`.
+     Por eso «cierro esto y abro aquello» no puede hacerse seguido — la marca
+     nueva se pondría antes de que se quitara la vieja y el historial quedaría
+     con una capa de más, que es media pulsación de atrás perdida. Lo que va
+     después de cerrar se apunta aquí y se corre cuando la vuelta ya pasó. */
+  let trasVolver = null;
+
+  function cerrarCapa(el, luego) {
+    const i = capas.findIndex((c) => c.el === el);
+    if (i < 0) return false;
+    /* Se cierra ésta y todo lo que se haya abierto encima: si un diálogo abrió
+       otro y se cierra el de abajo, el de arriba quedaría huérfano. */
+    const arriba = capas.splice(i).reverse();
+    for (const c of arriba) { try { c.cerrar(); } catch { /* seguimos cerrando el resto */ } }
+    if (volviendo) { if (luego) setTimeout(luego, 0); return true; }
+    deshaciendo = 1; trasVolver = luego || null;
+    try { history.go(-arriba.length); }
+    catch { deshaciendo = 0; trasVolver = null; if (luego) setTimeout(luego, 0); }
+    return true;
+  }
+
+  addEventListener('popstate', () => {
+    if (deshaciendo > 0) {
+      deshaciendo--;
+      const f = trasVolver; trasVolver = null;
+      if (f) setTimeout(f, 0);
+      return;
+    }
+    const c = capas[capas.length - 1];
+    if (!c) return;   // no hay nada abierto: que el navegador haga lo suyo
+    volviendo = true;
+    try { cerrarCapa(c.el); } finally { volviendo = false; }
+  });
+
   // ── la bóveda: el valor va de esta pantalla al servidor y a ningún otro lado
   function dialogo(html) {
     const d = document.createElement('div'); d.id = 'dialogo'; d.innerHTML = `<div>${html}</div>`;
+    /* `remove` se sustituye en ESTE elemento, no en el prototipo: así las
+       treinta llamadas a `d.remove()` que ya había —el botón CERRAR, el velo,
+       el guardado que se completa— pasan todas por el cierre de capa y ninguna
+       deja una marca suelta en el historial. */
+    const quitar = () => Element.prototype.remove.call(d);
+    d.remove = () => { if (!cerrarCapa(d)) quitar(); };
+    /* Cerrar este diálogo y abrir otra cosa: lo segundo espera a que la vuelta
+       atrás haya pasado de verdad. */
+    d.cerrarY = (fn) => { if (!cerrarCapa(d, fn)) { quitar(); setTimeout(fn, 0); } };
     d.addEventListener('click', (e) => { if (e.target === d) d.remove(); });
-    document.body.appendChild(d); return d;
+    /* Escape cierra, como en cualquier ventana. Se escucha en el diálogo y en
+       el documento porque el foco puede estar en cualquiera de los dos. */
+    d.addEventListener('keydown', (e) => { if (e.key === 'Escape') { e.stopPropagation(); d.remove(); } });
+    document.body.appendChild(d);
+    abrirCapa(d, quitar);
+    /* El foco entra al diálogo: sin esto, quien navega con teclado sigue en el
+       botón que lo abrió y tabula por detrás de la ventana. */
+    (d.querySelector('input,select,button') || d.firstElementChild)?.focus?.({ preventScroll: true });
+    return d;
   }
   async function abrirBoveda() {
     let lista = null; try { lista = await DATOS.get('/boveda'); } catch { /* sin lectura */ }
@@ -401,6 +474,7 @@ const OS = (() => {
     if (PREF.figura && window.UltronNucleo && UltronNucleo.figuraActual() !== PREF.figura) {
       UltronNucleo.cambiarFigura(PREF.figura);
     }
+    aplicarTablero(PREF.tablero);
   }
 
   async function guardarPreferencia(cambios) {
@@ -411,15 +485,168 @@ const OS = (() => {
     } catch (e) { avisar(`No se pudo guardar: ${e.message}`, true); return null; }
   }
 
+  /* ══ EL TABLERO, ARMADO POR QUIEN LO MIRA ══════════════════════════════════
+   * «Que las cosas en web se puedan organizar, hacer más grande, más pequeñas,
+   * como widgets que se puedan ir armando.»
+   *
+   * Nueve paneles. El reparto que trae de fábrica es una opinión —la mía, la
+   * del diseño— sobre qué mira José más. Pero quien pasa el día delante de
+   * esto es él, y lo que mira cambia según el día: una semana el tablero es
+   * MERCADO y SALUD, y otra son los DOCUMENTOS y los PENDIENTES.
+   *
+   * Tres cosas se pueden hacer con cada panel: moverlo (arriba, abajo, a la
+   * otra columna), cambiarle el alto, y quitarlo de en medio. Nada más: un
+   * tablero con veinte mandos no se arma, se abandona.
+   *
+   * SE GUARDA CON EL CORREO, no en el navegador. Es la misma regla que la voz
+   * y el idioma: lo que uno arma en la computadora tiene que aparecer armado
+   * en el iPad, o no vale la pena armarlo.
+   */
+  const PESOS = [0.6, 1, 1.6, 2.4];   // chico · normal · grande · enorme
+  let FABRICA = null;
+  let armando = false;
+
+  const panelesTodos = () => [...document.querySelectorAll('.p[data-panel]')];
+  const columnaDe = (el) => (el.closest('#der') ? 'der' : 'izq');
+
+  /* El reparto del diseño se guarda ANTES de tocar nada: es el «de fábrica» al
+     que se vuelve, y también el sitio de un panel que se añada más adelante y
+     que ningún tablero guardado conoce todavía. */
+  function recordarFabrica() {
+    if (FABRICA) return FABRICA;
+    FABRICA = panelesTodos().map((el) => ({
+      id: el.dataset.panel,
+      col: columnaDe(el),
+      peso: parseFloat(el.style.getPropertyValue('--peso')) || 1,
+      oculto: false,
+    }));
+    return FABRICA;
+  }
+
+  const tableroActual = () => panelesTodos().map((el) => ({
+    id: el.dataset.panel,
+    col: columnaDe(el),
+    peso: parseFloat(el.style.getPropertyValue('--peso')) || 1,
+    oculto: el.classList.contains('escondido'),
+  }));
+
+  function aplicarTablero(t) {
+    recordarFabrica();
+    const cols = { izq: $('#izq'), der: $('#der') };
+    if (!cols.izq || !cols.der) return;
+    const porId = new Map(panelesTodos().map((el) => [el.dataset.panel, el]));
+    const guardado = Array.isArray(t) ? t.filter((x) => porId.has(x.id)) : [];
+    /* Un panel que el tablero guardado no menciona —porque se añadió después de
+       que José armara el suyo— vuelve a su sitio de fábrica en vez de
+       desaparecer o amontonarse arriba. */
+    const dichos = new Set(guardado.map((x) => x.id));
+    const lista = guardado.length ? [...guardado, ...FABRICA.filter((f) => !dichos.has(f.id))] : FABRICA;
+    for (const x of lista) {
+      const el = porId.get(x.id); if (!el) continue;
+      (cols[x.col] || cols.izq).appendChild(el);
+      el.style.setProperty('--peso', String(x.peso || 1));
+      el.classList.toggle('escondido', !!x.oculto);
+    }
+    /* Una columna sin ningún panel a la vista no tiene que seguir ocupando su
+       cuarto de pantalla: el centro se la queda. */
+    for (const c of ['izq', 'der']) {
+      const vacia = !cols[c].querySelector('.p:not(.escondido)');
+      cols[c].classList.toggle('vacia', vacia);
+      document.documentElement.style.setProperty(`--c-${c}`, vacia ? '0px' : '');
+    }
+    if (armando) pintarMandos();
+  }
+
+  const guardarTablero = () => guardarPreferencia({ tablero: tableroActual() });
+
+  // ── los mandos de cada panel, solo mientras se arma
+  function pintarMandos() {
+    document.querySelectorAll('.p-mandos').forEach((x) => x.remove());
+    const visibles = panelesTodos().filter((el) => !el.classList.contains('escondido'));
+    for (const el of visibles) {
+      const caja = el.firstElementChild; if (!caja) continue;
+      const hermanos = [...el.parentElement.children].filter((x) => x.classList.contains('p') && !x.classList.contains('escondido'));
+      const i = hermanos.indexOf(el);
+      const peso = parseFloat(el.style.getPropertyValue('--peso')) || 1;
+      const iPeso = PESOS.reduce((mejor, v, k) => (Math.abs(v - peso) < Math.abs(PESOS[mejor] - peso) ? k : mejor), 0);
+      const m = document.createElement('div');
+      m.className = 'p-mandos';
+      m.innerHTML = `<b>${esc(el.dataset.nombre || el.dataset.panel)}</b>
+        <button data-m="subir" title="Subirlo" aria-label="Subir ${esc(el.dataset.nombre)}" ${i === 0 ? 'disabled' : ''}>↑</button>
+        <button data-m="bajar" title="Bajarlo" aria-label="Bajar ${esc(el.dataset.nombre)}" ${i === hermanos.length - 1 ? 'disabled' : ''}>↓</button>
+        <button data-m="columna" title="A la otra columna" aria-label="Cambiar de columna">${columnaDe(el) === 'izq' ? '→' : '←'}</button>
+        <button data-m="menos" title="Más pequeño" aria-label="Más pequeño" ${iPeso === 0 ? 'disabled' : ''}>−</button>
+        <button data-m="mas" title="Más grande" aria-label="Más grande" ${iPeso === PESOS.length - 1 ? 'disabled' : ''}>+</button>
+        <button data-m="quitar" class="quita" title="Quitarlo del tablero" aria-label="Quitar ${esc(el.dataset.nombre)}">×</button>`;
+      m.addEventListener('click', (ev) => {
+        const b = ev.target.closest('button[data-m]'); if (!b) return;
+        ev.preventDefault(); ev.stopPropagation();
+        mandoDePanel(el, b.dataset.m);
+      });
+      caja.insertBefore(m, caja.firstChild);
+    }
+    pintarOcultos();
+  }
+
+  function mandoDePanel(el, que) {
+    const col = el.parentElement;
+    const hermanos = [...col.children].filter((x) => x.classList.contains('p') && !x.classList.contains('escondido'));
+    const i = hermanos.indexOf(el);
+    const peso = parseFloat(el.style.getPropertyValue('--peso')) || 1;
+    const iPeso = PESOS.reduce((mejor, v, k) => (Math.abs(v - peso) < Math.abs(PESOS[mejor] - peso) ? k : mejor), 0);
+    if (que === 'subir' && i > 0) col.insertBefore(el, hermanos[i - 1]);
+    else if (que === 'bajar' && i < hermanos.length - 1) col.insertBefore(hermanos[i + 1], el);
+    else if (que === 'columna') (columnaDe(el) === 'izq' ? $('#der') : $('#izq')).appendChild(el);
+    else if (que === 'menos') el.style.setProperty('--peso', String(PESOS[Math.max(0, iPeso - 1)]));
+    else if (que === 'mas') el.style.setProperty('--peso', String(PESOS[Math.min(PESOS.length - 1, iPeso + 1)]));
+    else if (que === 'quitar') el.classList.add('escondido');
+    aplicarTablero(tableroActual());
+    guardarTablero();
+    /* El foco se pierde al repintar los mandos: se devuelve al mismo botón del
+       mismo panel, o el tablero no se puede armar con el teclado. */
+    el.querySelector(`.p-mandos button[data-m="${que}"]:not(:disabled)`)?.focus({ preventScroll: true });
+  }
+
+  function pintarOcultos() {
+    const caja = $('#armar-ocultos'); if (!caja) return;
+    const fuera = panelesTodos().filter((el) => el.classList.contains('escondido'));
+    caja.innerHTML = fuera.map((el) => `<button class="chip" data-vuelve="${esc(el.dataset.panel)}">+ ${esc(el.dataset.nombre || el.dataset.panel)}</button>`).join('');
+    const sub = $('#armar-sub');
+    if (sub) {
+      sub.textContent = fuera.length
+        ? `Mueva, agrande o quite paneles. ${fuera.length} fuera del tablero: toque para devolverlo.`
+        : 'Mueva ↑ ↓, cámbielo de columna, hágalo más grande o más pequeño. Se guarda solo, con su correo.';
+    }
+  }
+
+  function entrarArmar() {
+    if (armando) return;
+    recordarFabrica();
+    armando = true;
+    document.body.classList.add('armando');
+    /* En el teléfono los paneles viven en el cajón: armar con el cajón cerrado
+       sería armar a ciegas. */
+    if (innerWidth <= 860 && !document.body.classList.contains('cajon')) $('#tirador')?.click();
+    pintarMandos();
+    abrirCapa($('#armar-barra'), () => {
+      armando = false;
+      document.body.classList.remove('armando');
+      document.querySelectorAll('.p-mandos').forEach((x) => x.remove());
+    });
+  }
+  const salirArmar = () => { if (armando) cerrarCapa($('#armar-barra')); };
+
   async function abrirAjustes() {
-    const [yo, pref, voces, ses, salud, casa] = await Promise.all([
+    const [yo, pref, voces, ses, salud, casa, bov] = await Promise.all([
       DATOS.get('/yo').catch(() => null),
       DATOS.get('/preferencias').catch(() => null),
       DATOS.get('/voces').catch(() => null),
       DATOS.get('/sesiones').catch(() => null),
       DATOS.get('/salud').catch(() => null),
       DATOS.get('/casa').catch(() => null),
+      DATOS.get('/boveda').catch(() => null),
     ]);
+    const llaves = bov?.secretos ? bov.secretos.length : null;
     const esDueno = yo?.permiso === 'dueño';
     if (pref) PREF = pref;
     const m = yo?.miembro || {};
@@ -493,6 +720,18 @@ const OS = (() => {
         <p class="aj-nota">El busto pide una tarjeta con tres dimensiones y pesa 600 kB más. En un teléfono viejo puede no dibujarse: si pasa, se vuelve al núcleo solo.</p>
       </div>
 
+      <div class="aj-sec"><h4>El tablero</h4>
+        <div class="aj-fila"><span>Los paneles</span><b>${panelesTodos().filter((x) => !x.classList.contains('escondido')).length} a la vista de ${panelesTodos().length}</b></div>
+        <div class="fila-btn" style="margin-top:8px"><button class="btn" id="aj-armar">ARMAR EL TABLERO</button></div>
+        <p class="aj-nota">Cada panel se puede subir, bajar, pasar a la otra columna, hacer más grande o más pequeño, y quitar de en medio. Lo armado se guarda con su correo: si lo arma aquí, lo encuentra armado en el iPad. Se vuelve al reparto original con DE FÁBRICA.</p>
+      </div>
+
+      <div class="aj-sec"><h4>La bóveda</h4>
+        <div class="aj-fila"><span>Llaves guardadas</span><b>${llaves === null ? '—' : llaves + (llaves === 1 ? ' llave' : ' llaves')}</b></div>
+        <div class="fila-btn" style="margin-top:8px"><button class="btn" id="aj-boveda">ABRIR LA BÓVEDA</button></div>
+        <p class="aj-nota">Aquí se guardan las llaves de la casa —GitHub, Mongo, ElevenLabs— cifradas. ULTRON las usa y nunca las ve: de una llave guardada solo puede saber el nombre, el largo y la edad. Ni usted ni nadie tiene que escribirlas en una conversación.</p>
+      </div>
+
       <div class="aj-sec"><h4>Dónde tiene la sesión abierta</h4>
         <div style="max-height:30dvh;overflow-y:auto">${filasSes || '<div class="sub">sin registro todavía</div>'}</div>
         <p class="aj-nota">Si ve un aparato que no es suyo, ciérrelo y cambie la clave. Cerrar una sesión la corta de verdad: no espera a que venza.</p>
@@ -527,6 +766,8 @@ const OS = (() => {
       </div>`);
 
     d.querySelector('#aj-cerrar').onclick = () => d.remove();
+    d.querySelector('#aj-armar').onclick = () => d.cerrarY(entrarArmar);
+    d.querySelector('#aj-boveda').onclick = () => d.cerrarY(abrirBoveda);
     d.querySelectorAll('[data-cer]').forEach((b) => b.onclick = async () => {
       try {
         await DATOS.post('/casa', { cerebro: b.dataset.cer });
@@ -578,11 +819,11 @@ const OS = (() => {
     };
     d.querySelectorAll('[data-cerrar]').forEach((b) => b.onclick = async () => {
       b.disabled = true; b.textContent = '…';
-      try { await DATOS.borrar(`/sesiones/${encodeURIComponent(b.dataset.cerrar)}`); avisar('Sesión cerrada.'); d.remove(); abrirAjustes(); }
+      try { await DATOS.borrar(`/sesiones/${encodeURIComponent(b.dataset.cerrar)}`); avisar('Sesión cerrada.'); d.cerrarY(abrirAjustes); }
       catch (e) { avisar(`No se pudo cerrar: ${e.message}`, true); b.disabled = false; b.textContent = 'CERRAR'; }
     });
     d.querySelector('#aj-otras').onclick = async () => {
-      try { const r = await DATOS.post('/sesiones/cerrar-otras', {}); avisar(r.cerradas ? `${r.cerradas} sesión(es) cerradas.` : 'No había ninguna otra abierta.'); d.remove(); abrirAjustes(); }
+      try { const r = await DATOS.post('/sesiones/cerrar-otras', {}); avisar(r.cerradas ? `${r.cerradas} sesión(es) cerradas.` : 'No había ninguna otra abierta.'); d.cerrarY(abrirAjustes); }
       catch (e) { avisar(`No se pudo: ${e.message}`, true); }
     };
     d.querySelector('#aj-salir').onclick = async () => {
@@ -1405,6 +1646,17 @@ const OS = (() => {
     $('#b-nodos').addEventListener('click', abrirNodos);
     $('#b-reparar').addEventListener('click', repararSalud);
     $('#m-ajustes').addEventListener('click', abrirAjustes);
+    $('#armar-listo').addEventListener('click', salirArmar);
+    $('#armar-ocultos').addEventListener('click', (e) => {
+      const b = e.target.closest('[data-vuelve]'); if (!b) return;
+      document.querySelector(`.p[data-panel="${b.dataset.vuelve}"]`)?.classList.remove('escondido');
+      aplicarTablero(tableroActual()); guardarTablero();
+    });
+    $('#armar-fabrica').addEventListener('click', () => {
+      aplicarTablero(null);
+      guardarPreferencia({ tablero: [] });
+      avisar('El tablero vuelve al reparto de fábrica.');
+    });
     /* Las preferencias, lo primero: la voz, el idioma y la figura tienen que
        estar puestas antes de que ULTRON diga la primera palabra. */
     DATOS.get('/preferencias').then(aplicarPreferencias).catch(() => {});
@@ -1501,11 +1753,21 @@ const OS = (() => {
       const p = $('#paneles');
       if (p) p.inert = enTelefono && !abierto;
     };
-    tir.addEventListener('click', () => {
-      const ab = document.body.classList.toggle('cajon');
-      tir.setAttribute('aria-expanded', String(ab));
-      tir.querySelector('span').textContent = ab ? 'CERRAR' : 'PANELES';
+    /* El cajón es una capa como cualquier otra: subirlo deja marca en el
+       historial y el gesto de atrás lo baja, en vez de sacar de ULTRON. */
+    const bajarCajon = () => {
+      document.body.classList.remove('cajon');
+      tir.setAttribute('aria-expanded', 'false');
+      tir.querySelector('span').textContent = 'PANELES';
       cajonSegunAncho();
+    };
+    tir.addEventListener('click', () => {
+      if (document.body.classList.contains('cajon')) { if (!cerrarCapa(tir)) bajarCajon(); return; }
+      document.body.classList.add('cajon');
+      tir.setAttribute('aria-expanded', 'true');
+      tir.querySelector('span').textContent = 'CERRAR';
+      cajonSegunAncho();
+      abrirCapa(tir, bajarCajon);
     });
     document.body.appendChild(tir);
     cajonSegunAncho();
@@ -1568,7 +1830,7 @@ const OS = (() => {
     else unaVez();
   }
 
-  return { enviar, estado, avisar, mente, despertarVoz, abrirAjustes, _adentro: { pintarVivo, pintarSalud, pintarSaludPropia, pintarArchivos, pintarPendientes, pintarAutorizaciones, pintarDicho, DESPIERTA, CASAS,
+  return { enviar, estado, avisar, mente, despertarVoz, abrirAjustes, _adentro: { pintarVivo, pintarSalud, pintarSaludPropia, pintarArchivos, pintarPendientes, pintarAutorizaciones, pintarDicho, DESPIERTA, CASAS, entrarArmar, salirArmar, aplicarTablero, tableroActual,
     /* Solo para la prueba: mueve el reloj de la última lectura buena hacia
        atrás, para comprobar que la pantalla avisa cuando se queda vieja sin
        tener que esperar diez minutos de verdad. */

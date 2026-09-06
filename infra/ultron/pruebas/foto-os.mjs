@@ -55,6 +55,10 @@ for (const [nombre, w, h] of [['os-escritorio', 1400, 900], ['os-telefono', 390,
   await p.screenshot({ path: `${SALIDA}/${nombre}.png` });
   if (w < 900) { await p.evaluate(() => document.body.classList.add('cajon')); await p.waitForTimeout(400);
     await p.screenshot({ path: `${SALIDA}/${nombre}-cajon.png` }); }
+  // y armando el tablero, que es lo nuevo
+  await p.evaluate(() => window.OS._adentro.entrarArmar?.());
+  await p.waitForTimeout(500);
+  await p.screenshot({ path: `${SALIDA}/${nombre}-armando.png` });
   await p.close();
   console.log(`${SALIDA}/${nombre}.png`);
 }
