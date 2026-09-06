@@ -408,15 +408,20 @@ titulo('el dueño: aprobar con un clic');
      treinta segundos y un elemento guardado puede quedar suelto del DOM entre
      medirlo y tocarlo. El localizador se resuelve otra vez al tocar. */
   const boton = p.locator('#autorizaciones .btn.si').first();
+  await boton.waitFor({ state: 'visible', timeout: 8000 }).catch(() => {});
   decir((await boton.count()) === 1, 'el dueño ve el botón APROBAR');
-  const box = await boton.boundingBox();
+  /* El panel se vuelve a pintar con cada lectura; si la medida cae en medio,
+     se mide otra vez. Una medida nula no es un botón chico. */
+  let box = await boton.boundingBox();
+  if (!box) { await p.waitForTimeout(400); box = await boton.boundingBox(); }
   decir(box && box.height >= 32, 'y llega al blanco del dedo', box && `${Math.round(box.width)}×${Math.round(box.height)}`);
   await boton.click();
   await p.waitForTimeout(900);
   const despues = (await permisos.lista({ limite: 5 })).find((x) => String(x._id) === String(pedido._id));
   decir(despues?.estado === 'aprobado' && despues.resueltoPor === 'jose@ordenglobal.org', 'el clic aprueba de verdad, firmado por el dueño', despues?.estado);
   // la bóveda
-  await p.click('#b-boveda'); await p.waitForTimeout(500);
+  await p.click('#b-boveda');
+  await p.waitForFunction(() => /BÓVEDA/.test(document.querySelector('#dialogo')?.innerText || ''), { timeout: 8000 }).catch(() => {});
   const dlg = await texto('#dialogo');
   decir(/LA BÓVEDA/.test(dlg), 'la bóveda se abre desde el panel');
   decir(/APAGADA/.test(dlg) || /cifran aquí/.test(dlg), 'y dice si está encendida o qué falta para encenderla', dlg.slice(0, 120));
@@ -424,7 +429,8 @@ titulo('el dueño: aprobar con un clic');
   decir(tipo === 'password' || tipo.startsWith('no hay'), 'el valor se escribe a ciegas', tipo);
   await p.evaluate(() => document.querySelector('#dialogo')?.remove());
   // el equipo
-  await p.click('#b-equipo'); await p.waitForTimeout(600);
+  await p.click('#b-equipo');
+  await p.waitForFunction(() => /centinela/.test(document.querySelector('#dialogo')?.innerText || ''), { timeout: 8000 }).catch(() => {});
   const eq = await texto('#dialogo');
   decir(/EL EQUIPO/.test(eq) && /centinela/.test(eq) && /cerrajero/.test(eq), 'el equipo enseña sus bots', eq.slice(0, 160));
   await p.evaluate(() => document.querySelector('#dialogo')?.remove());
