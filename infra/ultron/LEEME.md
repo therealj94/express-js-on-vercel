@@ -98,6 +98,14 @@ Comparten también **lo demás**:
 | `GENESIS_API_KEY` | La clave de la app `ultron` en Genesis ID. Enciende el ingreso con Veta Wallet. Sin ella el botón ni se enseña. | no |
 | `GENESIS_URL` | Genesis ID. Por omisión `https://genesis-id.onrender.com`. | no |
 | `ORDENEX_API`, `AUCORP_API`, `WALLET_API`, `GENESIS_API`, `ORDENSCAN_API` | Para apuntar a otras casas (ensayo). | no |
+| `ULTRON_DUENO` | El correo del dueño: el único que aprueba lo peligroso y toca la bóveda. Sin ella, el miembro con rol «presidente», o el primero de la junta. | recomendada |
+| `ULTRON_BOVEDA_LLAVE` | 32 bytes en hex: la llave que cifra la bóveda. **Sin ella la bóveda está apagada** y se dice. Rotarla deja ilegible lo guardado. | para la bóveda |
+| `GITHUB_TOKEN` | Para entrar al repositorio. Mejor en la bóveda con ese mismo nombre que en el entorno. | para el taller |
+| `HEROKU_API_KEY` | Para desplegarse y aplicar secretos. Mejor en la bóveda. | para desplegarse |
+| `ULTRON_REPOS` | Los repositorios de la casa, separados por coma. Por omisión `therealj94/express-js-on-vercel`. | no |
+| `ULTRON_APP` | La app de Heroku que se despliega a sí misma. Por omisión `ultron-fp`. | no |
+| `ULTRON_EQUIPO`, `ULTRON_EQUIPO_TOPE` | `on` enciende el reloj de los bots; el tope de vueltas al día (12). Sin la primera, los bots se corren a mano. | no |
+| `ULTRON_AVISOS` | `whatsapp`, `correo` o `ambos`: el vigía avisa a la junta cuando una casa cae o vuelve. Sin ella mide y recuerda, pero no manda nada. | no |
 
 **Ninguna llave va en el código ni en el repositorio.** Se ponen en Heroku.
 
@@ -127,6 +135,57 @@ Para encenderlo hacen falta dos cosas, y ninguna pasa por el código:
 
 Sin `GENESIS_API_KEY` el botón ni se enseña y todo sigue como estaba: **el SSO
 suma una forma de entrar, no reemplaza la que hay.**
+
+## La mano derecha
+
+José lo pidió así: «una AI libre para pensar y ayudarme, que busque
+constantemente mejorarse, pero siempre yo siendo el dueño y nadie más». Eso son
+dos ideas y van separadas:
+
+- **Libre para pensar.** Ninguna herramienta está prohibida. ULTRON puede
+  proponer correr un comando, cambiar su propio código, poner un secreto en
+  producción, desplegarse.
+- **El dueño autoriza.** Lo que puede romper algo o sale de la casa no corre
+  hasta que el dueño lo aprueba **con un clic en el panel, viendo exactamente qué
+  se va a correr**. Ni siquiera para el propio dueño se salta ese clic: es la
+  segunda firma, y protege contra un modelo que actúe «en su nombre» por una
+  instrucción colada en un documento.
+
+Cuatro niveles (`lib/permisos.js`): **leer** (pasa), **escribir** (pasa a la
+junta; un bot solo memorias y pendientes), **peligroso** y **fuera** (pedido al
+dueño). Una aprobación vale para la huella exacta de esa llamada —aprobar
+`terminal: ls` no aprueba `terminal: rm -rf`—, una sola vez, media hora.
+
+Las manos (`lib/taller.js`, `lib/boveda.js`, `lib/aprender.js`, `lib/equipo.js`):
+
+| Qué | Herramientas | Nivel |
+|---|---|---|
+| El repositorio | `repo_arbol`, `repo_leer`, `repo_buscar` | leer |
+| Proponer un cambio de código | `repo_proponer_cambio` — rama `ultron/…` + commit + PR; **nunca la rama principal** | peligroso |
+| La terminal | `terminal` — un comando, 60 s, salida acotada, **sin ninguna variable de entorno de la casa** | peligroso |
+| Desplegarse | `desplegarse` — la rama que se diga, a Heroku, desde el propio dyno (sin las pruebas del navegador: para una rama que ya pasó por una persona) | peligroso |
+| La bóveda | `boveda_listar` (nombres, edades, dónde está aplicado: **nunca valores**), `boveda_aplicar` (de la bóveda a una variable de Heroku, sin pasar por el modelo) | leer / peligroso |
+| Aprender | `aprender` (una lección: una corrección de la junta que manda sobre las fichas), `habilidad_usar`, `habilidad_crear`, `habilidad_publicar` (al repositorio, como PR) | escribir / peligroso |
+| El equipo | `equipo_estado`, `equipo_partes`, `equipo_correr`, `auditar_dependencias`, `autorizaciones` | leer / peligroso |
+
+**El valor de un secreto no pasa por el modelo. Nunca.** Entra por el
+formulario de la bóveda del panel (solo el dueño), se cifra con AES-256-GCM
+antes de tocar la base, y sale por un solo camino: hacia una variable de
+Heroku, con autorización.
+
+**Las habilidades** son archivos markdown en `habilidades/` con un encabezado
+(`nombre`, `cuando`), como las skills de Claude. ULTRON ve la lista y carga
+una entera cuando la tarea lo pide. Las que escribe él van a la base; si el
+dueño aprueba, se publican al repositorio como PR.
+
+**El equipo** son bots en `equipo/`: centinela (cada 6 h), cerrajero (cada
+semana), contador y cronista (cada día). Cada uno tiene su tarea y su lista de
+herramientas; leen, y solo escriben memorias y pendientes. Sus partes se leen
+en el panel. El reloj arranca apagado (`ULTRON_EQUIPO=on`), con tope diario.
+
+**El vigía** (`lib/vigia.js`) mide las seis casas cada minuto desde el servidor
+—aunque nadie mire—, exige dos lecturas fallidas antes de declarar una caída y
+recuerda desde cuándo. Avisa a la junta solo con `ULTRON_AVISOS`.
 
 ## Desplegar
 

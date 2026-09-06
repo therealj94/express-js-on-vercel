@@ -35,6 +35,11 @@
 const saber = require('./saber');
 const vivo = require('./vivo');
 const memoria = require('./memoria');
+const permisos = require('./permisos');
+const boveda = require('./boveda');
+const taller = require('./taller');
+const aprender = require('./aprender');
+const equipo = require('./equipo');
 
 // Adónde puede mandar a abrir. Cerrado a la casa a propósito: «abrí» con una
 // URL cualquiera es la forma más fácil de que un modelo lleve a alguien a un
@@ -205,6 +210,100 @@ const DEFINICIONES = [
     description: 'Deja un documento de la biblioteca listo para bajar en PDF, con la cara de Orden Global. Es el formato para mandar por correo, imprimir o entregar fuera. Le pone un botón a la persona; no manda nada.',
     input_schema: { type: 'object', properties: { id: { type: 'string', description: 'El id del documento' }, porQue: { type: 'string', description: 'En una frase, para qué se lo dejás' } }, required: ['id'] },
   },
+  /* ── LA MANO DERECHA ────────────────────────────────────────────────────────
+     Lo que José pidió: entrar al repositorio, correr comandos, guardar secretos,
+     aprender, tener un equipo. Cada una lleva su nivel en lib/permisos.js; las
+     peligrosas piden autorización al dueño antes de correr, y la herramienta
+     lo dice cuando pasa. */
+  {
+    name: 'repo_arbol',
+    description: 'Lista una carpeta del repositorio de la casa (GitHub). Sin ruta, la raíz. Para ubicarse antes de leer o cambiar algo.',
+    input_schema: { type: 'object', properties: { repo: { type: 'string', description: 'dueño/repo; por omisión el de la casa' }, ruta: { type: 'string' }, rama: { type: 'string' } } },
+  },
+  {
+    name: 'repo_leer',
+    description: 'Lee un archivo ENTERO del repositorio. Leer antes de tocar: un cambio sobre un archivo que no se leyó completo rompe algo diez líneas más abajo.',
+    input_schema: { type: 'object', properties: { repo: { type: 'string' }, ruta: { type: 'string' }, rama: { type: 'string' } }, required: ['ruta'] },
+  },
+  {
+    name: 'repo_buscar',
+    description: 'Busca texto o código en el repositorio: una función, un campo, un nombre. Para saber quién más usa lo que se va a cambiar.',
+    input_schema: { type: 'object', properties: { repo: { type: 'string' }, consulta: { type: 'string' } }, required: ['consulta'] },
+  },
+  {
+    name: 'repo_proponer_cambio',
+    description: 'PELIGROSA (pide autorización al dueño). Propone un cambio de código: crea una rama ultron/…, escribe los archivos ENTEROS y abre un pull request. Nunca escribe en la rama principal. Cada archivo lleva ruta y contenido completo.',
+    input_schema: { type: 'object', properties: {
+      repo: { type: 'string' }, base: { type: 'string', description: 'rama base; por omisión la principal' },
+      titulo: { type: 'string' }, descripcion: { type: 'string', description: 'qué cambia y por qué, con el síntoma' },
+      archivos: { type: 'array', items: { type: 'object', properties: { ruta: { type: 'string' }, contenido: { type: 'string' } }, required: ['ruta', 'contenido'] } },
+    }, required: ['titulo', 'archivos'] },
+  },
+  {
+    name: 'terminal',
+    description: 'PELIGROSA (pide autorización al dueño). Corre UN comando de shell en el servidor de ULTRON, con plazo de 60 s, salida acotada y sin ninguna variable de entorno de la casa. El dueño ve el comando exacto antes de aprobarlo.',
+    input_schema: { type: 'object', properties: { comando: { type: 'string' }, motivo: { type: 'string', description: 'para qué, en una línea: lo lee el dueño' } }, required: ['comando'] },
+  },
+  {
+    name: 'desplegarse',
+    description: 'PELIGROSA (pide autorización al dueño). Despliega ULTRON a Heroku desde una rama del repositorio, desde el propio servidor. No corre las pruebas del navegador antes: es para una rama que ya pasó por una persona.',
+    input_schema: { type: 'object', properties: { rama: { type: 'string' }, repo: { type: 'string' }, motivo: { type: 'string' } }, required: ['rama'] },
+  },
+  {
+    name: 'boveda_listar',
+    description: 'La bóveda de secretos: qué hay, cuántos días tiene cada uno, si es corto, en qué apps está puesto. NUNCA los valores: no existen para vos.',
+    input_schema: { type: 'object', properties: {} },
+  },
+  {
+    name: 'boveda_aplicar',
+    description: 'PELIGROSA (pide autorización al dueño). Pone un secreto de la bóveda como variable de entorno de una app en Heroku. El valor viaja de la bóveda a Heroku sin pasar por vos.',
+    input_schema: { type: 'object', properties: { nombre: { type: 'string' }, app: { type: 'string' }, variable: { type: 'string', description: 'nombre de la variable; por omisión el del secreto' } }, required: ['nombre', 'app'] },
+  },
+  {
+    name: 'aprender',
+    description: 'Guarda una LECCIÓN: una corrección de la junta que manda sobre las fichas viejas («la cadena viva es la 5550, no la 8532»). Usala cuando alguien te corrija un hecho, para no repetir el error.',
+    input_schema: { type: 'object', properties: { texto: { type: 'string' } }, required: ['texto'] },
+  },
+  {
+    name: 'habilidad_usar',
+    description: 'Carga una habilidad (un procedimiento escrito) para hacer una tarea como se hace en la casa. Las que hay están listadas en tu contexto con su nombre y cuándo se usan.',
+    input_schema: { type: 'object', properties: { nombre: { type: 'string' } }, required: ['nombre'] },
+  },
+  {
+    name: 'habilidad_crear',
+    description: 'Escribe o mejora una habilidad: el procedimiento de algo que salió bien, para hacerlo igual la próxima vez. Con nombre, CUÁNDO se usa y el contenido en markdown.',
+    input_schema: { type: 'object', properties: { nombre: { type: 'string' }, cuando: { type: 'string' }, contenido: { type: 'string' } }, required: ['nombre', 'cuando', 'contenido'] },
+  },
+  {
+    name: 'habilidad_publicar',
+    description: 'PELIGROSA (pide autorización al dueño). Publica una habilidad aprendida en el repositorio como pull request, para que quede versionada y la lea alguien.',
+    input_schema: { type: 'object', properties: { nombre: { type: 'string' } }, required: ['nombre'] },
+  },
+  {
+    name: 'equipo_estado',
+    description: 'El equipo de bots de ULTRON: cuáles hay, cada cuánto corren, si el reloj está encendido, cuándo corrió cada uno.',
+    input_schema: { type: 'object', properties: {} },
+  },
+  {
+    name: 'equipo_partes',
+    description: 'Los partes que escribieron los bots (centinela, cerrajero, contador, cronista). Con bot y límite; sin bot, los últimos de todos.',
+    input_schema: { type: 'object', properties: { bot: { type: 'string' }, limite: { type: 'integer' }, horas: { type: 'integer', description: 'solo los de las últimas N horas' } } },
+  },
+  {
+    name: 'equipo_correr',
+    description: 'PELIGROSA (pide autorización al dueño: cuesta fichas). Corre un bot del equipo ahora y devuelve su parte.',
+    input_schema: { type: 'object', properties: { bot: { type: 'string' } }, required: ['bot'] },
+  },
+  {
+    name: 'auditar_dependencias',
+    description: 'Fallos conocidos en los paquetes de ULTRON (npm audit). Solo lee; no cambia nada.',
+    input_schema: { type: 'object', properties: {} },
+  },
+  {
+    name: 'autorizaciones',
+    description: 'Los pedidos de autorización: pendientes de que el dueño apruebe, aprobados, negados. Para decirle a la persona qué está esperando su clic.',
+    input_schema: { type: 'object', properties: { estado: { type: 'string', enum: ['pendiente', 'aprobado', 'negado', 'usado', 'vencido'] } } },
+  },
 ];
 
 // ── Internet ────────────────────────────────────────────────────────────────
@@ -323,7 +422,8 @@ async function leerPagina(url) {
    un lote de herramientas van en fila india mientras las de leer van todas a
    la vez. Guardar una memoria y cerrar un pendiente tienen un orden que el
    modelo pidió; leer el mercado y leer la altura de la cadena, no. */
-const ESCRIBEN = new Set(['recordar', 'olvidar', 'anotar_pendiente', 'cerrar_pendiente', 'crear_documento', 'proponer_envio']);
+const ESCRIBEN = new Set(['recordar', 'olvidar', 'anotar_pendiente', 'cerrar_pendiente', 'crear_documento', 'proponer_envio',
+  'aprender', 'habilidad_crear', 'habilidad_publicar', 'repo_proponer_cambio', 'terminal', 'desplegarse', 'boveda_aplicar', 'equipo_correr']);
 
 /* ── UN LOTE DE HERRAMIENTAS, NO UNA FILA ────────────────────────────────────
  *
@@ -394,6 +494,32 @@ async function correr(nombre, entrada, ctx) {
   entrada = entrada && typeof entrada === 'object' ? entrada : {};
   ctx.acciones = ctx.acciones || [];
   try {
+    /* ── LA PUERTA DE CADA HERRAMIENTA ─────────────────────────────────────
+       Antes de correr nada se mira quién pide y qué nivel tiene lo pedido
+       (lib/permisos.js). Lo de leer pasa. Lo de escribir pasa para la junta
+       y solo memorias/pendientes para un bot. Lo PELIGROSO y lo que sale
+       FUERA no corre sin una aprobación del dueño con la huella exacta de
+       esta llamada: si la hay, se consume y se corre; si no, se crea el
+       pedido y se le dice al modelo que está esperando el clic. */
+    const ojo = permisos.puede(ctx.miembro, nombre, ctx.junta || []);
+    if (!ojo.ok) {
+      if (!ojo.autorizable) return `No se puede: ${ojo.motivo}`;
+      const { motivo: motivoPedido, ...entradaLimpia } = entrada;
+      const aprob = await permisos.consumirAprobacion(nombre, entradaLimpia);
+      if (!aprob) {
+        const p = await permisos.pedir({ actor: ctx.miembro, herramienta: nombre, entrada: entradaLimpia, motivo: motivoPedido || '' });
+        ctx.acciones.push({ tipo: 'autorizacion', id: String(p._id), resumen: p.resumen });
+        return `ESPERANDO AUTORIZACIÓN DEL DUEÑO. Pedido ${String(p._id).slice(-6)}: «${p.resumen}». ${p.repetido ? 'Ya estaba pedido.' : 'Quedó en el panel, en AUTORIZACIONES.'} No lo repitas: cuando el dueño lo apruebe, volvé a llamar a ${nombre} con la MISMA entrada y correrá. Decile a la persona qué está esperando su aprobación.`;
+      }
+      entrada = entradaLimpia;
+      ctx.acciones.push({ tipo: 'autorizado', id: String(aprob._id), resumen: aprob.resumen });
+    }
+    /* Un bot solo ve las herramientas de su encabezado, además de las de
+       todos. Si pide otra, no es que falle: es que no la tiene. */
+    if (ctx.miembro?.rol === 'bot' && Array.isArray(ctx.miembro.herramientas) && ctx.miembro.herramientas.length
+        && !ctx.miembro.herramientas.includes(nombre) && !SIEMPRE_PARA_BOTS.has(nombre)) {
+      return `El bot ${ctx.miembro.nombre} no tiene la herramienta ${nombre}. Tiene: ${ctx.miembro.herramientas.join(', ')}.`;
+    }
     switch (nombre) {
       case 'buscar_saber': {
         const s = saber.buscar(String(entrada.pregunta || ''), { maximo: ctx.chico ? 5 : 8, maxBytes: ctx.chico ? 12_000 : 40_000 });
@@ -676,6 +802,76 @@ async function correr(nombre, entrada, ctx) {
         const f = (c) => `${c.turnos} turnos · ${c.entrada + c.salida} fichas · ${c.conPrecio ? '$' + c.dolares.toFixed(4) : 'dólares incompletos'}`;
         return `Hoy: ${f(g.hoy)}. Últimos 30 días: ${f(g.mes)}. En el nodo propio el pensar no cuesta por pregunta.`;
       }
+      // ── la mano derecha ─────────────────────────────────────────────────
+      case 'repo_arbol': return taller.arbol(entrada);
+      case 'repo_leer': return taller.leer(entrada);
+      case 'repo_buscar': return taller.buscar(entrada);
+      case 'repo_proponer_cambio': {
+        const r = await taller.proponerCambio({ ...entrada, por: ctx.miembro?.nombre || ctx.miembro?.correo });
+        ctx.acciones.push({ tipo: 'pr', url: r.pr, rama: r.rama });
+        return `Cambio propuesto: rama ${r.rama}, pull request #${r.numero} → ${r.pr}. Archivos: ${r.archivos.join(', ')}. Lo mezcla una persona después de leerlo.`;
+      }
+      case 'terminal': return taller.terminal(entrada);
+      case 'desplegarse': {
+        const pasos = [];
+        const r = await taller.desplegarse({ ...entrada, avisar: (m) => pasos.push(m) });
+        ctx.acciones.push({ tipo: 'despliegue', ...r });
+        return `Desplegado ${r.app} desde ${r.rama} (${r.commit}). ${pasos.join(' · ')}. El servidor se reinicia solo con la versión nueva.`;
+      }
+      case 'boveda_listar': {
+        const l = await boveda.listar();
+        if (!boveda.encendida()) return 'La bóveda está APAGADA: falta ULTRON_BOVEDA_LLAVE en el entorno (32 bytes en hex). Hasta que se ponga no se puede guardar ningún secreto.';
+        if (!l.length) return 'La bóveda está vacía. Los secretos se guardan desde el panel (el dueño, con el formulario de la bóveda), nunca por aquí.';
+        return l.map((x) => `- ${x.nombre}: ${x.largo} caracteres${x.corto ? ' (CORTO)' : ''} · ${x.dias} días desde la última rotación${x.aplicadoEn.length ? ' · en ' + x.aplicadoEn.map((a) => `${a.app}:${a.variable}`).join(', ') : ' · sin aplicar en ninguna app'}${x.nota ? ' · ' + x.nota : ''}`).join('\n');
+      }
+      case 'boveda_aplicar': {
+        const r = await boveda.aplicarEnHeroku(entrada);
+        ctx.acciones.push({ tipo: 'secreto_aplicado', app: r.app, variable: r.variable });
+        return `Puesto: ${r.variable} en ${r.app} desde la bóveda. La app se reinicia sola con la variable nueva.`;
+      }
+      case 'aprender': {
+        const m = await aprender.aprender({ texto: entrada.texto, dichoPor: ctx.miembro?.nombre || ctx.miembro?.correo, miembro: ctx.miembro?.correo });
+        ctx.memorias.push(m);
+        return `Aprendido: «${m.texto}». Manda sobre las fichas viejas desde ahora.`;
+      }
+      case 'habilidad_usar': {
+        const h = await aprender.usar(entrada.nombre);
+        return `## Habilidad «${h.nombre}»${h.origen === 'aprendida' ? ' (aprendida, v' + h.version + ')' : ''}\nCuándo: ${h.cuando}\n\n${h.contenido}`;
+      }
+      case 'habilidad_crear': {
+        const h = await aprender.crear({ ...entrada, por: ctx.miembro?.correo });
+        return `Habilidad «${h.nombre}» guardada (versión ${h.version}). Queda en la base; para que vaya al repositorio y la lea alguien, habilidad_publicar.`;
+      }
+      case 'habilidad_publicar': {
+        const h = await aprender.usar(entrada.nombre);
+        const r = await taller.proponerCambio({
+          titulo: `Habilidad de ULTRON: ${h.nombre}`, descripcion: `Cuándo se usa: ${h.cuando}\n\nEscrita por ULTRON y aprobada por el dueño.`,
+          archivos: [{ ruta: `infra/ultron/habilidades/${h.nombre}.md`, contenido: aprender.comoArchivo(h) }], por: ctx.miembro?.nombre || ctx.miembro?.correo,
+        });
+        await aprender.marcarPublicada(h.nombre);
+        return `Habilidad «${h.nombre}» publicada como pull request: ${r.pr}.`;
+      }
+      case 'equipo_estado': {
+        const e = equipo.estado();
+        return `Equipo ${e.encendido ? 'ENCENDIDO' : 'apagado (ULTRON_EQUIPO no está en «on»; se corren a mano)'} · ${e.vueltasHoy}/${e.tope} vueltas hoy\n`
+          + e.bots.map((b) => `- ${b.nombre}: ${b.descripcion} · ${b.cada ? `cada ${b.cada} h` : 'solo a mano'}${b.ultimaVuelta ? ` · última ${new Date(b.ultimaVuelta).toISOString()}` : ''}${b.corriendo ? ' · CORRIENDO' : ''}`).join('\n');
+      }
+      case 'equipo_partes': {
+        const desde = entrada.horas ? new Date(Date.now() - Number(entrada.horas) * 3600_000) : null;
+        const l = await equipo.partes({ bot: entrada.bot || null, limite: Math.min(20, Number(entrada.limite) || 6), desde });
+        if (!l.length) return 'No hay partes todavía.';
+        return l.map((p) => `### ${p.bot} · ${new Date(p.en).toISOString()}${p.fallo ? ' · FALLÓ' : ''}\n${p.texto}`).join('\n\n');
+      }
+      case 'equipo_correr': {
+        const p = await equipo.correr(entrada.bot, { pensar: ctx.pensar, junta: ctx.junta || [], pedidoPor: ctx.miembro?.correo || 'panel' });
+        return `Parte de ${p.bot} (${p.ms} ms${p.dolares ? `, ${p.dolares.toFixed(4)} USD` : ''}):\n${p.texto}`;
+      }
+      case 'auditar_dependencias': return auditarDependencias();
+      case 'autorizaciones': {
+        const l = await permisos.lista({ estado: entrada.estado || null, limite: 20 });
+        if (!l.length) return 'No hay pedidos de autorización.';
+        return l.map((p) => `- [${p.estado}] ${String(p._id).slice(-6)} · ${p.resumen} · pedido por ${p.pedidoPor} · ${new Date(p.en).toISOString()}${p.motivo ? ' · ' + p.motivo : ''}`).join('\n');
+      }
       default:
         return `No existe la herramienta ${nombre}. Las que hay: ${DEFINICIONES.map((d) => d.name).join(', ')}.`;
     }
@@ -685,6 +881,36 @@ async function correr(nombre, entrada, ctx) {
 }
 
 // ── Auxiliares de las manos sobre el ecosistema ─────────────────────────────
+
+/* Lo que cualquier bot tiene aunque su encabezado no lo diga: mirar sus
+   propios partes y anotar. Sin esto habría que repetirlas en cada archivo. */
+const SIEMPRE_PARA_BOTS = new Set(['equipo_partes', 'anotar_pendiente', 'recordar', 'buscar_saber', 'habilidad_usar']);
+
+/* npm audit sobre el propio paquete de ULTRON. Solo lee. Corre con el
+   entorno mínimo y sin red hacia la casa: npm consulta su registro y nada más. */
+async function auditarDependencias() {
+  const { execFile } = require('node:child_process');
+  const { promisify } = require('node:util');
+  const { join } = require('node:path');
+  try {
+    const { stdout } = await promisify(execFile)('npm', ['audit', '--json', '--omit=dev'], {
+      cwd: join(__dirname, '..'), timeout: 90_000, maxBuffer: 4_000_000, env: { PATH: process.env.PATH, HOME: process.env.HOME || '/tmp' },
+    });
+    return resumirAudit(stdout);
+  } catch (e) {
+    if (e.stdout) return resumirAudit(e.stdout);   // npm audit sale con 1 cuando hay fallos: la salida sigue siendo válida
+    return `No se pudo auditar: ${String(e.message).slice(0, 200)}`;
+  }
+}
+function resumirAudit(json) {
+  let d; try { d = JSON.parse(json); } catch { return 'npm audit no devolvió JSON legible.'; }
+  const v = d.metadata?.vulnerabilities || {};
+  const total = Object.values(v).reduce((a, b) => a + (b || 0), 0);
+  if (!total) return 'Sin fallos conocidos en las dependencias de ULTRON.';
+  const lista = Object.entries(d.vulnerabilities || {}).filter(([, x]) => ['critical', 'high', 'moderate'].includes(x.severity)).slice(0, 15)
+    .map(([n, x]) => `- ${n} · ${x.severity}${x.fixAvailable ? ' · arreglo disponible' + (x.fixAvailable.version ? ' (' + x.fixAvailable.name + '@' + x.fixAvailable.version + ')' : '') : ' · sin arreglo publicado'}`);
+  return `Fallos conocidos: ${total} (críticos ${v.critical || 0}, altos ${v.high || 0}, moderados ${v.moderate || 0}, bajos ${v.low || 0}).\n${lista.join('\n')}`;
+}
 
 /** Los tokens de la casa en la 5550, para leer saldos. Contratos públicos. */
 const TOKENS_5550 = {
@@ -736,6 +962,10 @@ const GRUPOS = {
   'Lo que le mandan': ['listar_archivos', 'leer_archivo'],
   'Acciones que confirma la persona': ['abrir', 'exportar_pdf', 'proponer_envio'],
   'Cuentas': ['calcular', 'gasto'],
+  'El taller (repositorio, terminal, despliegue)': ['repo_arbol', 'repo_leer', 'repo_buscar', 'repo_proponer_cambio', 'terminal', 'desplegarse'],
+  'La bóveda': ['boveda_listar', 'boveda_aplicar'],
+  'Aprender': ['aprender', 'habilidad_usar', 'habilidad_crear', 'habilidad_publicar'],
+  'El equipo': ['equipo_estado', 'equipo_partes', 'equipo_correr', 'auditar_dependencias', 'autorizaciones'],
 };
 
 /** El catálogo para la consola: definición, grupo y si escribe algo. */
@@ -749,4 +979,12 @@ function paraOllama() {
   return DEFINICIONES.map((d) => ({ type: 'function', function: { name: d.name, description: d.description, parameters: d.input_schema } }));
 }
 
-module.exports = { DEFINICIONES, CASAS, GRUPOS, ESCRIBEN, catalogo, correr, correrLote, paraOllama, buscarWeb, leerPagina, _adentro: { limpiarHtml, ori, calcular, leerJson, afinarConsulta } };
+/** Las definiciones que ve un actor: un bot solo las de su encabezado (más las de todos). */
+function definicionesPara(actor) {
+  if (actor?.rol === 'bot' && Array.isArray(actor.herramientas) && actor.herramientas.length) {
+    return DEFINICIONES.filter((d) => actor.herramientas.includes(d.name) || SIEMPRE_PARA_BOTS.has(d.name));
+  }
+  return DEFINICIONES;
+}
+
+module.exports = { DEFINICIONES, CASAS, GRUPOS, ESCRIBEN, SIEMPRE_PARA_BOTS, catalogo, correr, correrLote, paraOllama, definicionesPara, buscarWeb, leerPagina, _adentro: { limpiarHtml, ori, calcular, leerJson, afinarConsulta, resumirAudit } };

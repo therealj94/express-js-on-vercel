@@ -97,7 +97,7 @@ titulo('el prompt lleva lo que tiene que llevar');
   decir(Array.isArray(bloques) && !/Hoy es/.test(bloques[0].text) && /Hoy es/.test(bloques[1].text),
     'y la fecha va en el bloque del momento: en el estable rompería la caché en cada turno');
   decir(/Sos ULTRON FP/.test(sys), 'se presenta como ULTRON FP');
-  decir(/José \(presidente\)/.test(sys), 'sabe con quién habla');
+  decir(/José \(presidente/.test(sys) && /EL DUEÑO/.test(sys), 'sabe con quién habla, y que es el dueño');
   decir(/La junta se reúne los martes/.test(sys), 'lleva la memoria de la junta');
   decir(/EL SABER DE LA CASA/.test(sys) && /gramin|ORIGEN/i.test(sys.split('EL SABER DE LA CASA')[1]), 'lleva secciones del saber sobre la pregunta');
   decir(/LA VOZ DE LA CASA/.test(sys), 'y la voz de la casa (fichas públicas)');

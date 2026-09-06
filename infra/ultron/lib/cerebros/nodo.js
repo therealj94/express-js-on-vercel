@@ -380,7 +380,7 @@ function largoDe(mensajes) { return mensajes.reduce((a, m) => a + String(m.conte
 
 async function pensar({ miembro, junta, texto, conversacionId, emitir = () => {}, sistema, modo = 'texto', alias = null }) {
   if (!encendido()) throw conCodigo('NODO_APAGADO', 'Faltan ULTRON_NODO_URL o ULTRON_NODO_SECRETO.');
-  const ctx = { miembro, junta, conversacionId, fuentes: [], memorias: [], documentos: [], envios: [], pendientes: [], acciones: [], chico: true };
+  const ctx = { miembro, junta, conversacionId, fuentes: [], memorias: [], documentos: [], envios: [], pendientes: [], acciones: [], chico: true , pensar: args.pensar || null };
 
   const [memorias, estadoVivo, abiertos] = await Promise.all([
     memoria.memoriasDe(miembro.correo, { limite: 30 }),

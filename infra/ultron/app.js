@@ -54,6 +54,10 @@ const herramientas = require('./lib/herramientas');
 const genesis = require('./lib/genesis');
 const pdf = require('./lib/pdf');
 const archivos = require('./lib/archivos');
+const permisos = require('./lib/permisos');
+const boveda = require('./lib/boveda');
+const aprender = require('./lib/aprender');
+const equipo = require('./lib/equipo');
 
 const app = express();
 app.set('trust proxy', 1);
@@ -123,6 +127,16 @@ function leerSesion(token) {
   return JUNTA.find((m) => m.correo === correo) || null;
 }
 const sinClave = ({ clave, ...m }) => m;
+
+/* EL DUEÑO. ULTRON_DUENO, o el miembro con rol «presidente», o el primero de
+   la junta. Es el único que aprueba lo peligroso y el único que toca la
+   bóveda. Se canta al arrancar para que nadie tenga que adivinarlo. */
+const DUENO = permisos.dueñoDe(JUNTA);
+if (JUNTA.length) console.log(`[permisos] el dueño es ${DUENO}${process.env.ULTRON_DUENO ? ' (ULTRON_DUENO)' : ' (por rol o por orden en la junta)'}`);
+function soloDueño(req, res, next) {
+  if (permisos.rolDe(req.miembro, JUNTA) !== 'dueño') return res.status(403).json({ error: 'Esto lo hace solo el dueño.', codigo: 'SOLO_DUENO' });
+  next();
+}
 
 /** La puerta. */
 function puerta(req, res, next) {
@@ -213,6 +227,7 @@ app.get('/salud', async (req, res) => {
     genesis: genesis.configurado(), juntaConGid: CON_GID,
     voz: voz.encendida(), memoria: memoria.estado(), canales: canales.estado(),
     saber: saber.resumen().total, saberArmado: saber.resumen().armadoEn,
+    boveda: boveda.encendida(), equipo: equipo.estado().encendido, dueño: !!DUENO, herramientas: herramientas.DEFINICIONES.length,
   });
 });
 
@@ -316,7 +331,8 @@ app.post('/salir', (req, res) => { res.clearCookie('ultron'); res.json({ ok: tru
 app.get('/yo', puerta, (req, res) => {
   res.json({
     miembro: sinClave(req.miembro),
-    junta: JUNTA.map((m) => ({ nombre: m.nombre, correo: m.correo, rol: m.rol, whatsapp: !!m.whatsapp })),
+    junta: JUNTA.map((m) => ({ nombre: m.nombre, correo: m.correo, rol: m.rol, whatsapp: !!m.whatsapp, esDueño: m.correo === DUENO })),
+    permiso: permisos.rolDe(req.miembro, JUNTA), dueño: DUENO,
     cerebro: cerebro.encendido(), modelo: cerebro.modelo(), donde: cerebro.cual(), voz: voz.encendida(),
     memoria: memoria.estado(), canales: canales.estado(), saber: saber.resumen(),
   });
@@ -695,6 +711,60 @@ app.post('/whatsapp/entrada', async (req, res) => {
    otra cara —el tablero con el busto— y vive en /os.
    Dos puertas al mismo ULTRON, no dos ULTRON: la misma sesión, las mismas
    rutas, la misma memoria. Si el 3D no arranca en un aparato, /  sigue ahí. */
+/* ── LA MANO DERECHA: autorizaciones, bóveda, equipo, habilidades ───────────
+ *
+ * Todo lo peligroso que ULTRON propone pasa por aquí antes de correr. El
+ * panel lista los pedidos; el dueño —y nadie más— aprueba o niega, viendo el
+ * resumen exacto de lo que se va a hacer. La bóveda solo la toca el dueño y
+ * el valor de un secreto entra por POST /boveda desde su pantalla: no hay
+ * ninguna ruta que lo devuelva.
+ */
+app.get('/autorizaciones', puerta, async (req, res) => {
+  try { res.json({ pendientes: await permisos.pendientes(), recientes: await permisos.lista({ limite: 20 }), dueño: DUENO, soyDueño: permisos.rolDe(req.miembro, JUNTA) === 'dueño' }); }
+  catch (e) { res.status(500).json({ error: e.message }); }
+});
+app.post('/autorizaciones/:id', puerta, soloDueño, async (req, res) => {
+  try {
+    const decision = String(req.body?.decision || '');
+    const p = await permisos.resolver(req.params.id, { por: req.miembro.correo, decision });
+    if (!p) return res.status(404).json({ error: 'Ese pedido no está pendiente.', codigo: 'NO_PENDIENTE' });
+    console.log(`[permisos] ${req.miembro.correo} ${decision}: ${p.resumen}`);
+    res.json(p);
+  } catch (e) { res.status(e.codigo === 'DECISION' ? 400 : 500).json({ error: e.message, codigo: e.codigo }); }
+});
+
+app.get('/boveda', puerta, async (req, res) => {
+  try { res.json({ encendida: boveda.encendida(), secretos: await boveda.listar(), juicio: await boveda.juicio() }); }
+  catch (e) { res.status(500).json({ error: e.message }); }
+});
+app.post('/boveda', puerta, soloDueño, express.json({ limit: '32kb' }), async (req, res) => {
+  try {
+    const s = await boveda.guardar({ nombre: req.body?.nombre, valor: req.body?.valor, nota: req.body?.nota, por: req.miembro.correo });
+    console.log(`[boveda] ${req.miembro.correo} guardó ${s.nombre} (${s.largo} caracteres)`);   // el nombre y el largo; el valor, jamás
+    res.json(s);
+  } catch (e) { res.status(e.codigo === 'BOVEDA_APAGADA' ? 503 : 400).json({ error: e.message, codigo: e.codigo }); }
+});
+app.delete('/boveda/:nombre', puerta, soloDueño, async (req, res) => {
+  try { res.json({ ok: await boveda.borrar(req.params.nombre) }); } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.get('/equipo', puerta, async (req, res) => {
+  try { res.json({ ...equipo.estado(), partes: await equipo.partes({ limite: Number(req.query.limite) || 12, bot: req.query.bot || null }) }); }
+  catch (e) { res.status(500).json({ error: e.message }); }
+});
+app.post('/equipo/:bot/correr', puerta, async (req, res) => {
+  try { res.json(await equipo.correr(req.params.bot, { pensar: cerebro.pensar, junta: JUNTA, pedidoPor: req.miembro.correo })); }
+  catch (e) { res.status(e.codigo === 'NO_EXISTE' ? 404 : e.codigo === 'EN_MARCHA' ? 409 : 500).json({ error: e.message, codigo: e.codigo }); }
+});
+
+app.get('/habilidades', puerta, async (req, res) => {
+  try { res.json((await aprender.listar()).map((h) => ({ nombre: h.nombre, cuando: h.cuando, origen: h.origen, version: h.version, publicada: h.publicada }))); }
+  catch (e) { res.status(500).json({ error: e.message }); }
+});
+app.get('/habilidades/:nombre', puerta, async (req, res) => {
+  try { res.json(await aprender.usar(req.params.nombre)); } catch (e) { res.status(404).json({ error: e.message }); }
+});
+
 app.get('/os', (req, res) => res.sendFile(join(__dirname, 'public', 'os.html')));
 
 /* LA CONSOLA vive en public/: una sola puerta, en la raíz. */
@@ -713,6 +783,9 @@ if (require.main === module) {
     /* El vigía arranca con el servidor y no con la pantalla: la avería que
        importa es la que pasa cuando nadie está mirando. */
     vigia.arrancar();
+    permisos.comprobarCatalogo(herramientas.DEFINICIONES.map((d) => d.name));
+    equipo.arrancar({ pensar: cerebro.pensar, junta: JUNTA });
+    if (!boveda.encendida()) console.warn('[boveda] apagada: sin ULTRON_BOVEDA_LLAVE no se guardan secretos');
     app.listen(PUERTO, () => {
       console.log(`[ultron] escuchando en ${PUERTO} · cerebro ${cerebro.encendido() ? MODELO_LOG() : 'APAGADO'} · voz ${voz.encendida() ? 'ElevenLabs' : 'del navegador'} · memoria ${memoria.estado()}`);
     });

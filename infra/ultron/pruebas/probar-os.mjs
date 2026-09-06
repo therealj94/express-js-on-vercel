@@ -388,6 +388,49 @@ titulo('lo que la crítica encontró');
   decir(fuera.length === 0, 'la pantalla no le pide nada a ningún servidor de fuera', fuera.join(' '));
 }
 
+/* ── EL DUEÑO EN EL PANEL ────────────────────────────────────────────────────
+   ULTRON pide; el dueño aprueba con un clic viendo el resumen exacto. Aquí se
+   crea un pedido por dentro y se comprueba que el panel lo enseña, que el
+   botón aprueba de verdad (la ruta cambia el estado) y que la bóveda se abre
+   sin enseñar jamás un valor. */
+titulo('el dueño: aprobar con un clic');
+{
+  const permisos = require('../lib/permisos.js');
+  // En el teléfono los paneles viven en el cajón: se abre antes de tocar nada.
+  if (ANCHO < 860) { await p.click('#tirador'); await p.waitForTimeout(450); }
+  const pedido = await permisos.pedir({ actor: { correo: 'jose@ordenglobal.org' }, herramienta: 'terminal', entrada: { comando: 'npm audit' }, motivo: 'revisar dependencias' });
+  await p.evaluate(async () => { const d = await (await fetch('/autorizaciones', { credentials: 'same-origin' })).json(); window.OS._adentro.pintarAutorizaciones(d); });
+  await p.waitForTimeout(200);
+  const panel = await texto('#autorizaciones');
+  decir(/npm audit/.test(panel) && /revisar dependencias/.test(panel), 'el pedido aparece con el comando exacto y el motivo', panel);
+  decir(/1 esperando.*\(usted\)/.test(await texto('#dueno-sub')), 'y el panel sabe que quien mira es el dueño', await texto('#dueno-sub'));
+  /* Con el localizador, no con el elemento: el panel se vuelve a pintar cada
+     treinta segundos y un elemento guardado puede quedar suelto del DOM entre
+     medirlo y tocarlo. El localizador se resuelve otra vez al tocar. */
+  const boton = p.locator('#autorizaciones .btn.si').first();
+  decir((await boton.count()) === 1, 'el dueño ve el botón APROBAR');
+  const box = await boton.boundingBox();
+  decir(box && box.height >= 32, 'y llega al blanco del dedo', box && `${Math.round(box.width)}×${Math.round(box.height)}`);
+  await boton.click();
+  await p.waitForTimeout(900);
+  const despues = (await permisos.lista({ limite: 5 })).find((x) => String(x._id) === String(pedido._id));
+  decir(despues?.estado === 'aprobado' && despues.resueltoPor === 'jose@ordenglobal.org', 'el clic aprueba de verdad, firmado por el dueño', despues?.estado);
+  // la bóveda
+  await p.click('#b-boveda'); await p.waitForTimeout(500);
+  const dlg = await texto('#dialogo');
+  decir(/LA BÓVEDA/.test(dlg), 'la bóveda se abre desde el panel');
+  decir(/APAGADA/.test(dlg) || /cifran aquí/.test(dlg), 'y dice si está encendida o qué falta para encenderla', dlg.slice(0, 120));
+  const tipo = await p.evaluate(() => document.querySelector('#bv-valor')?.type || 'no hay campo (apagada)');
+  decir(tipo === 'password' || tipo.startsWith('no hay'), 'el valor se escribe a ciegas', tipo);
+  await p.evaluate(() => document.querySelector('#dialogo')?.remove());
+  // el equipo
+  await p.click('#b-equipo'); await p.waitForTimeout(600);
+  const eq = await texto('#dialogo');
+  decir(/EL EQUIPO/.test(eq) && /centinela/.test(eq) && /cerrajero/.test(eq), 'el equipo enseña sus bots', eq.slice(0, 160));
+  await p.evaluate(() => document.querySelector('#dialogo')?.remove());
+  if (ANCHO < 860) { await p.click('#tirador'); await p.waitForTimeout(400); }
+}
+
 titulo('sin errores de JavaScript');
 decir(errores.length === 0, 'ninguno', errores.slice(0, 3).join(' | '));
 

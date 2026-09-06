@@ -129,7 +129,18 @@ function fecha() {
   return new Date().toLocaleString('es-HN', { timeZone: 'America/Tegucigalpa', dateStyle: 'full', timeStyle: 'short' });
 }
 
-function sistema({ miembro, memorias, estadoVivo, secciones, vozCasa, pendientes = [], chico = false, modo = 'texto', alias = null }) {
+function sistema({ miembro, memorias, estadoVivo, secciones, vozCasa, pendientes = [], chico = false, modo = 'texto', alias = null, habilidades = '', pedidos = [] }) {
+  /* Las LECCIONES van aparte de las memorias y ARRIBA de todo lo del momento:
+     son correcciones de la junta, y mandan sobre cualquier ficha vieja que
+     diga lo contrario. Es lo que hace que un error corregido no vuelva. */
+  const { lecciones, otras } = aprender.partir(memorias);
+  memorias = otras;
+  const lec = lecciones.length
+    ? lecciones.map((m) => `- ${m.texto} (${m.dichoPor || 'la junta'}, ${new Date(m.en).toLocaleDateString('es-HN')})`).join('\n')
+    : '(ninguna todavía: cuando alguien te corrija un hecho, guardalo con aprender)';
+  const esperando = pedidos.length
+    ? pedidos.map((p) => `- ${String(p._id).slice(-6)} · ${p.resumen} (pedido por ${p.pedidoPor})`).join('\n')
+    : '';
   const mem = memorias.length
     ? memorias.map((m) => `- [${m.alcance === 'junta' ? 'JUNTA' : 'suyo'} · ${new Date(m.en).toLocaleDateString('es-HN')}] ${m.texto}`).join('\n')
     : '(todavía no hay memorias guardadas)';
@@ -205,7 +216,13 @@ MODO VOZ — lo que digas se va a ESCUCHAR, no a leer
 - Los números, como se dicen: «dos dólares con cincuenta y nueve», «cuatro mil cuatrocientos».
 - Lo primero es la respuesta; el contexto, después y solo si hace falta.
 - Si el tema pide detalle, lo decís en una frase y ofrecés escribirlo: «¿te lo escribo completo?».` : '';
-  const delMomento = `LO QUE LA JUNTA TE HA DICHO (tu memoria)
+  const delMomento = `LO QUE APRENDISTE (correcciones de la junta: mandan sobre las fichas)
+${lec}
+
+LAS HABILIDADES QUE TENÉS (procedimientos escritos; cargá uno con habilidad_usar cuando la tarea lo pida)
+${habilidades || '(ninguna)'}
+${esperando ? `\nESPERANDO LA APROBACIÓN DEL DUEÑO (no lo repitas; cuando lo apruebe, volvé a llamar a la herramienta con la misma entrada)\n${esperando}\n` : ''}
+LO QUE LA JUNTA TE HA DICHO (tu memoria)
 ${mem}
 
 LO QUE ESTÁ PENDIENTE (tareas abiertas, con su id)
@@ -218,7 +235,8 @@ ${fichas}
 EL ESTADO VIVO DE LAS CASAS (leído ahora mismo)
 ${vivo.paraElModelo(estadoVivo)}
 
-Hoy es ${fecha()}. Estás hablando con ${miembro.nombre} (${miembro.rol || 'junta directiva'}).${alias ? `\nEn esta interfaz te presentás como «${alias}»: si te preguntan tu nombre, sos ${alias}. Seguís siendo el mismo asistente de la junta, con las mismas reglas.` : ''}${enVoz}`;
+Hoy es ${fecha()}. Estás hablando con ${miembro.nombre} (${miembro.rol || 'junta directiva'}${miembro.esDueño ? ' · EL DUEÑO: es quien aprueba lo peligroso' : ''}).${miembro.rol === 'bot' ? '\nSOS UN BOT DEL EQUIPO: escribís tu parte y terminás. Solo leés, y anotás memorias o pendientes. No pedís nada peligroso: si hace falta, lo anotás como pendiente.' : `
+LO QUE PODÉS HACER, Y CÓMO. Tenés manos de verdad: entrar al repositorio (repo_*), correr comandos (terminal), guardar y aplicar secretos (boveda_*), aprender (aprender, habilidad_*), un equipo de bots (equipo_*), y desplegarte (desplegarse). Lo que puede romper algo o sale de la casa lo aprueba el dueño con un clic en el panel ANTES de correr: cuando una herramienta te conteste «ESPERANDO AUTORIZACIÓN», decile a la persona qué está esperando y no la repitas. No pidas permiso por adelantado en prosa: llamá a la herramienta, que ella pide. Y buscá mejorarte: cuando algo te sale bien y es repetible, escribilo como habilidad; cuando te corrijan, guardalo como lección; cuando veas un fallo en tu propio código, proponé el cambio.`}${alias ? `\nEn esta interfaz te presentás como «${alias}»: si te preguntan tu nombre, sos ${alias}. Seguís siendo el mismo asistente de la junta, con las mismas reglas.` : ''}${enVoz}`;
 
   // La voz de la casa entra en el bloque estable, así que el corte queda ahí.
   return [
@@ -234,6 +252,8 @@ Hoy es ${fecha()}. Estás hablando con ${miembro.nombre} (${miembro.rol || 'junt
 // se le ofrece: dos buscadores para lo mismo es pedirle que elija sin motivo.
 
 const herramientas = require('./herramientas');
+const aprender = require('./aprender');
+const permisos = require('./permisos');
 const HERRAMIENTAS = [
   { type: 'web_search_20250305', name: 'web_search', max_uses: 6 },
   ...herramientas.DEFINICIONES.filter((d) => !['buscar_web', 'leer_pagina'].includes(d.name)),
@@ -253,14 +273,21 @@ async function pensarConClaude({ miembro, junta, texto, conversacionId, emitir =
   const ctx = { miembro, junta, conversacionId, fuentes: [], memorias: [], documentos: [], envios: [], pendientes: [], acciones: [] };
 
   // El contexto: memoria, estado vivo, saber, voz de la casa.
-  const [memorias, estadoVivo, abiertos] = await Promise.all([
+  const [memorias, estadoVivo, abiertos, extras] = await Promise.all([
     memoria.memoriasDe(miembro.correo),
     vivo.leerConCache(),
     memoria.pendientes({ limite: 40 }),
+    contextoExtra(miembro, junta),
   ]);
   const secciones = saber.buscar(texto, { maximo: 12, maxBytes: 60_000 });
   ctx.fuentes.push(...secciones.map((s) => ({ id: s.id, titulo: s.titulo, fuente: s.fuente })));
-  const system = sistema({ miembro, memorias, estadoVivo, secciones, vozCasa: saber.vozDeLaCasa(), pendientes: abiertos });
+  const system = sistema({ miembro: extras.miembro, memorias, estadoVivo, secciones, vozCasa: saber.vozDeLaCasa(), pendientes: abiertos, habilidades: extras.habilidades, pedidos: extras.pedidos });
+  /* Un bot ve solo sus herramientas; una persona, todas. La búsqueda web de
+     Claude no se le da a un bot: no le hace falta para vigilar la casa. */
+  const HERRAMIENTAS_DE_ESTE = miembro.rol === 'bot'
+    ? herramientas.definicionesPara(miembro)
+    : HERRAMIENTAS;
+  ctx.pensar = pensar;     // para que equipo_correr pueda pensar con el mismo cerebro
 
   // El hilo: los turnos anteriores, para que retome.
   const previa = conversacionId ? await memoria.conversacion(conversacionId, miembro.correo) : null;
@@ -278,7 +305,7 @@ async function pensarConClaude({ miembro, junta, texto, conversacionId, emitir =
 
   for (let vuelta = 0; vuelta < MAX_VUELTAS; vuelta++) {
     const stream = cl.messages.stream({
-      model: MODELO, max_tokens: MAX_SALIDA, system, tools: HERRAMIENTAS, messages: mensajes,
+      model: MODELO, max_tokens: MAX_SALIDA, system, tools: HERRAMIENTAS_DE_ESTE, messages: mensajes,
     });
     let textoVuelta = '';
     stream.on('text', (t) => { textoVuelta += t; emitir('texto', { t }); });
@@ -363,8 +390,23 @@ function cual() {
 function encendido() { return cual() === 'nodo' ? nodo.encendido() : claudeEncendido(); }
 function modelo() { return cual() === 'nodo' ? 'nodo:' + nodo.MODELO : MODELO; }
 
+/* Lo que los dos cerebros necesitan y no estaba en `sistema()`: las
+   habilidades (nombre y cuándo), los pedidos que esperan al dueño, y si quien
+   habla ES el dueño. Se calcula una vez por turno. */
+async function contextoExtra(miembro, junta = []) {
+  const [habilidades, pedidos] = await Promise.all([
+    aprender.catalogoParaElModelo().catch(() => '(no se pudieron leer)'),
+    miembro.rol === 'bot' ? [] : permisos.pendientes().catch(() => []),
+  ]);
+  return { habilidades, pedidos, miembro: { ...miembro, esDueño: permisos.rolDe(miembro, junta) === 'dueño' } };
+}
+
 async function pensar(args) {
-  if (cual() === 'nodo') return nodo.pensar({ ...args, sistema });
+  if (cual() === 'nodo') {
+    const extras = await contextoExtra(args.miembro, args.junta || []);
+    const conExtras = (o) => sistema({ ...o, miembro: { ...o.miembro, esDueño: extras.miembro.esDueño }, habilidades: extras.habilidades, pedidos: extras.pedidos });
+    return nodo.pensar({ ...args, sistema: conExtras, pensar });
+  }
   return pensarConClaude(args);
 }
 async function titular(texto) {

@@ -270,6 +270,89 @@ const OS = (() => {
     $('#nodo-lineas').innerHTML = lineas.map(([a, b, cl]) => fila(a, b, cl)).join('');
   }
 
+  /* ── EL DUEÑO ──────────────────────────────────────────────────────────────
+     Lo que ULTRON pidió y espera un clic. Cada pedido enseña el RESUMEN EXACTO
+     de lo que se va a correr —el comando, la rama, el secreto y la app— y el
+     motivo que dio ULTRON. Aprobar es un botón; negar, otro. Quien no es el
+     dueño ve la lista y no ve los botones. */
+  let soyDueño = false;
+  function pintarAutorizaciones(d) {
+    soyDueño = !!d?.soyDueño;
+    const pend = d?.pendientes || [], rec = (d?.recientes || []).filter((p) => p.estado !== 'pendiente').slice(0, 6);
+    $('#dueno-sub').textContent = `${pend.length ? pend.length + ' esperando' : 'nada esperando'} · dueño: ${d?.dueño ? d.dueño.split('@')[0] : nada}${soyDueño ? ' (usted)' : ''}`;
+    const uno = (p) => `<div class="pedido ${p.estado !== 'pendiente' ? 'hecho' : ''}" data-id="${esc(p._id)}">
+        <div class="que">${esc(p.resumen)}</div>
+        <div class="por">${esc(p.pedidoPor)} · ${esc(hace(p.en) || '')}${p.motivo ? ' · ' + esc(p.motivo) : ''}${p.estado !== 'pendiente' ? ' · ' + esc(p.estado.toUpperCase()) : ''}</div>
+        ${p.estado === 'pendiente' && soyDueño ? `<div class="mandos"><button class="btn si" data-decision="aprobado">APROBAR</button><button class="btn no" data-decision="negado">NEGAR</button></div>` : ''}
+      </div>`;
+    $('#autorizaciones').innerHTML = (pend.length || rec.length)
+      ? pend.map(uno).join('') + rec.map(uno).join('')
+      : '<div class="sub">ULTRON no ha pedido nada. Cuando proponga algo peligroso —un comando, un cambio de código, un despliegue— aparece aquí para que el dueño lo apruebe.</div>';
+  }
+  async function decidir(id, decision) {
+    try {
+      const r = await fetch(`/autorizaciones/${encodeURIComponent(id)}`, { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ decision }) });
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.error || r.status);
+      avisar(decision === 'aprobado' ? 'Aprobado. Dígale a ULTRON que siga: la aprobación vale media hora.' : 'Negado.');
+      DATOS.get('/autorizaciones').then(pintarAutorizaciones).catch(() => {});
+      /* Con la aprobación puesta, ULTRON tiene que volver a llamar a la
+         herramienta. Se le manda el aviso como un turno corto. */
+      if (decision === 'aprobado') enviar(`Aprobé el pedido ${String(id).slice(-6)}: seguí con eso.`);
+    } catch (e) { avisar(`No se pudo: ${e.message}`, true); }
+  }
+
+  // ── la bóveda: el valor va de esta pantalla al servidor y a ningún otro lado
+  function dialogo(html) {
+    const d = document.createElement('div'); d.id = 'dialogo'; d.innerHTML = `<div>${html}</div>`;
+    d.addEventListener('click', (e) => { if (e.target === d) d.remove(); });
+    document.body.appendChild(d); return d;
+  }
+  async function abrirBoveda() {
+    let lista = null; try { lista = await DATOS.get('/boveda'); } catch { /* sin lectura */ }
+    const filas = (lista?.secretos || []).map((x) => `<div class="fila dato"><span>${esc(x.nombre)}</span><span class="${x.corto ? 'mal' : x.dias > 90 ? 'amb' : 'ok'}">${x.largo} car. · ${x.dias} d${x.aplicadoEn?.length ? ' · ' + x.aplicadoEn.map((a) => a.app).join(',') : ''}</span></div>`).join('');
+    const d = dialogo(`<h3>LA BÓVEDA</h3>
+      <div class="sub">${lista?.encendida ? 'Los valores se cifran aquí y no salen por ningún lado: ULTRON solo ve nombres y edades.' : 'APAGADA: falta ULTRON_BOVEDA_LLAVE en el servidor (32 bytes en hex).'}</div>
+      <div style="display:flex;flex-direction:column;gap:3px;max-height:160px;overflow-y:auto">${filas || '<div class="sub">vacía</div>'}</div>
+      ${soyDueño && lista?.encendida ? `<label>NOMBRE<input id="bv-nombre" placeholder="MONGO_PASSWORD" autocomplete="off"></label>
+      <label>VALOR<input id="bv-valor" type="password" autocomplete="new-password" placeholder="se guarda cifrado"></label>
+      <label>NOTA (opcional)<input id="bv-nota" placeholder="para qué es"></label>
+      <div class="fila-btn"><button class="btn" id="bv-cerrar">CERRAR</button><button class="btn si" id="bv-guardar">GUARDAR</button></div>`
+      : `<div class="fila-btn"><button class="btn" id="bv-cerrar">CERRAR</button></div>`}`);
+    d.querySelector('#bv-cerrar').onclick = () => d.remove();
+    const g = d.querySelector('#bv-guardar');
+    if (g) g.onclick = async () => {
+      const nombre = d.querySelector('#bv-nombre').value, valor = d.querySelector('#bv-valor').value, nota = d.querySelector('#bv-nota').value;
+      g.disabled = true;
+      try {
+        const r = await fetch('/boveda', { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ nombre, valor, nota }) });
+        const x = await r.json(); if (!r.ok) throw new Error(x.error || r.status);
+        avisar(`Guardado ${x.nombre} (${x.largo} caracteres).`); d.remove();
+      } catch (e) { avisar(`No se guardó: ${e.message}`, true); g.disabled = false; }
+    };
+  }
+
+  // ── el equipo: los bots y sus partes
+  async function abrirEquipo() {
+    let e = null; try { e = await DATOS.get('/equipo'); } catch { /* nada */ }
+    const bots = (e?.bots || []).map((b) => `<div class="fila dato"><span>${esc(b.nombre)} · ${esc(b.cada ? 'cada ' + b.cada + ' h' : 'a mano')}</span><span><button class="chip" data-bot="${esc(b.nombre)}">CORRER</button></span></div>`).join('');
+    const partes = (e?.partes || []).map((p) => `<div class="parte ${p.fallo ? 'fallo' : ''}"><b>${esc(p.bot)} · ${esc(hace(p.en) || '')}${p.dolares ? ' · ' + p.dolares.toFixed(3) + ' USD' : ''}</b>${esc(p.texto).slice(0, 900).replace(/\n/g, '<br>')}</div>`).join('');
+    const d = dialogo(`<h3>EL EQUIPO</h3>
+      <div class="sub">${e ? (e.encendido ? `Reloj encendido · ${e.vueltasHoy}/${e.tope} vueltas hoy` : 'Reloj apagado (ULTRON_EQUIPO=on lo enciende) · se corren a mano') : 'no se pudo leer'}</div>
+      <div style="display:flex;flex-direction:column;gap:4px">${bots}</div>
+      <div style="max-height:40dvh;overflow-y:auto">${partes || '<div class="sub">Sin partes todavía.</div>'}</div>
+      <div class="fila-btn"><button class="btn" id="eq-cerrar">CERRAR</button></div>`);
+    d.querySelector('#eq-cerrar').onclick = () => d.remove();
+    d.querySelectorAll('[data-bot]').forEach((b) => b.onclick = async () => {
+      b.disabled = true; b.textContent = 'CORRIENDO…';
+      try {
+        const r = await fetch(`/equipo/${encodeURIComponent(b.dataset.bot)}/correr`, { method: 'POST', credentials: 'same-origin' });
+        const x = await r.json(); if (!r.ok) throw new Error(x.error || r.status);
+        avisar(`${x.bot} escribió su parte.`); d.remove(); abrirEquipo();
+      } catch (er) { avisar(`No corrió: ${er.message}`, true); b.disabled = false; b.textContent = 'CORRER'; }
+    });
+  }
+
   function pintarPendientes(l) {
     const abiertos = (l || []).filter((p) => p.estado !== 'hecho');
     $('#pend-sub').textContent = abiertos.length ? `${abiertos.length} sin cerrar` : 'nada abierto';
@@ -521,6 +604,7 @@ const OS = (() => {
           anunciar(acum);                       // una sola vez, para el lector de pantalla
           cargarArchivos();
           DATOS.get('/pendientes').then(pintarPendientes).catch(() => {});
+          DATOS.get('/autorizaciones').then(pintarAutorizaciones).catch(() => {});
         },
         error: (msj) => { estado('error', 'concern'); avisar(msj, true); setTimeout(() => estado('idle', 'neutral'), 2600); },
       });
@@ -694,8 +778,17 @@ const OS = (() => {
       DATOS.get('/vivo').then((v) => { ultimaBuena = Date.now(); pintarVivo(v); }).catch(() => {});
       DATOS.get('/salud').then(pintarSalud).catch(() => {});
       DATOS.get('/pendientes').then(pintarPendientes).catch(() => {});
+      DATOS.get('/autorizaciones').then(pintarAutorizaciones).catch(() => {});
     };
     leer();
+    $('#autorizaciones').addEventListener('click', (e) => {
+      const b = e.target.closest('[data-decision]'); if (!b) return;
+      const id = b.closest('.pedido')?.dataset.id; if (!id) return;
+      b.closest('.mandos').querySelectorAll('button').forEach((x) => { x.disabled = true; });
+      decidir(id, b.dataset.decision);
+    });
+    $('#b-boveda').addEventListener('click', abrirBoveda);
+    $('#b-equipo').addEventListener('click', abrirEquipo);
     /* Con la pestaña oculta no se lee: son tres peticiones cada treinta
        segundos, y en datos móviles eso se paga. Al volver se lee enseguida, que
        es cuando de verdad hace falta el dato fresco. */
@@ -822,7 +915,7 @@ const OS = (() => {
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', arrancar);
   else arrancar();
 
-  return { enviar, estado, avisar, mente, _adentro: { pintarVivo, pintarSalud, pintarArchivos, pintarPendientes, pintarDicho, DESPIERTA, CASAS,
+  return { enviar, estado, avisar, mente, _adentro: { pintarVivo, pintarSalud, pintarArchivos, pintarPendientes, pintarAutorizaciones, pintarDicho, DESPIERTA, CASAS,
     /* Solo para la prueba: mueve el reloj de la última lectura buena hacia
        atrás, para comprobar que la pantalla avisa cuando se queda vieja sin
        tener que esperar diez minutos de verdad. */

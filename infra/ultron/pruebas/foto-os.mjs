@@ -40,6 +40,9 @@ for (const [nombre, w, h] of [['os-escritorio', 1400, 900], ['os-telefono', 390,
     if (pe) a.pintarPendientes(pe);
   }, REAL);
   await p.waitForTimeout(300);
+  // y un pedido esperando al dueño, que es lo nuevo del panel
+  await p.evaluate(() => window.OS._adentro.pintarAutorizaciones({ soyDueño: true, dueño: 'j.ordonez@ordenglobal.org', recientes: [],
+    pendientes: [{ _id: 'x1', resumen: 'Proponer un cambio en el repositorio: «Vigía: avisar también cuando OrdenScan se atrasa»', pedidoPor: 'ULTRON', motivo: 'lo pidió José en la conversación', en: new Date(Date.now() - 40000).toISOString(), estado: 'pendiente' }] }));
   // con una conversación puesta, que es como se ve de verdad
   await p.evaluate(() => {
     window.OS._adentro.pintarDicho(

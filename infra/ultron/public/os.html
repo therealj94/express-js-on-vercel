@@ -136,7 +136,7 @@ body.vieja #izq,body.vieja #der,body.vieja #medidas{opacity:.48;filter:saturate(
    en que se escribieron. ENLACES son seis puntos y cabe en poco; MERCADO lleva
    la cifra grande más un renglón por par, y CEREBRO siete renglones. */
 #izq{grid-column:1;grid-row:1;grid-template-rows:minmax(0,.8fr) minmax(0,1.12fr) minmax(0,1.18fr) minmax(0,1.12fr)}
-#der{grid-column:3;grid-row:1;grid-template-rows:minmax(0,1fr) minmax(0,1.35fr) minmax(0,1.1fr)}
+#der{grid-column:3;grid-row:1;grid-template-rows:minmax(0,1fr) minmax(0,1fr) minmax(0,.9fr) minmax(0,1.1fr)}
 #centro{grid-column:2;grid-row:1;position:relative;min-height:0;min-width:0;z-index:3}
 
 /* ── el centro: estado, burbuja, sugerencias ─────────────────────────────── */
@@ -172,6 +172,27 @@ body.vieja #izq,body.vieja #der,body.vieja #medidas{opacity:.48;filter:saturate(
 #dicho td,#dicho th{border:1px solid rgba(5,225,255,.2);padding:3px 6px;text-align:left}
 #dicho code{font-family:var(--mono);font-size:12px;background:rgba(5,225,255,.1);padding:1px 4px}
 #chips{display:flex;gap:6px;flex-wrap:wrap;padding-top:6px;border-top:1px solid rgba(5,225,255,.2);flex:none}
+/* ── el dueño: pedidos, bóveda, equipo ───────────────────────────────────── */
+.pedido{display:flex;flex-direction:column;gap:5px;padding:7px 9px;border:1px solid rgba(255,182,72,.45);background:rgba(255,182,72,.07)}
+.pedido.hecho{border-color:rgba(200,208,216,.18);background:none;opacity:.7}
+.pedido .que{font-size:12.5px;line-height:1.35;color:var(--letra-f)}
+.pedido .por{font-family:var(--mono);font-size:10px;letter-spacing:.06em;color:var(--tenue)}
+.pedido .mandos{display:flex;gap:6px}
+.btn{min-height:32px;padding:0 12px;font-size:11px;letter-spacing:.14em;font-weight:600;border:1px solid rgba(5,225,255,.45);color:var(--cian);background:rgba(5,225,255,.08)}
+.btn.si{background:var(--verde);color:var(--tinta);border-color:var(--verde)}
+.btn.no{border-color:rgba(255,90,110,.6);color:var(--rojo)}
+.btn:disabled{opacity:.45;cursor:default}
+.parte{padding:6px 0;border-bottom:1px solid rgba(5,225,255,.12);font-size:12px;line-height:1.4}
+.parte b{font-family:var(--mono);font-size:10px;letter-spacing:.1em;color:var(--cian);display:block;margin-bottom:2px}
+.parte.fallo b{color:var(--rojo)}
+#dialogo{position:fixed;inset:0;z-index:80;display:grid;place-items:center;background:rgba(4,7,11,.72);backdrop-filter:blur(4px)}
+#dialogo>div{width:min(92vw,460px);max-height:86dvh;overflow-y:auto;background:linear-gradient(180deg,rgba(8,24,38,.98),rgba(5,14,24,.98));
+  border:1px solid rgba(5,225,255,.45);padding:18px 18px 14px;display:flex;flex-direction:column;gap:10px;
+  clip-path:polygon(0 0,calc(100% - 16px) 0,100% 16px,100% 100%,16px 100%,0 calc(100% - 16px))}
+#dialogo h3{margin:0;font-size:13px;letter-spacing:.24em;color:var(--letra-f)}
+#dialogo label{display:flex;flex-direction:column;gap:4px;font-size:11px;letter-spacing:.1em;color:var(--tenue)}
+#dialogo input,#dialogo textarea{background:rgba(4,7,11,.7);border:1px solid rgba(5,225,255,.3);color:var(--letra-f);padding:8px 10px;font-size:14px;font-family:var(--mono)}
+#dialogo .fila-btn{display:flex;gap:8px;justify-content:flex-end}
 .chip{font-size:11px;letter-spacing:.06em;padding:4px 10px;border:1px solid rgba(5,225,255,.35);color:var(--cian);
   clip-path:polygon(0 0,calc(100% - 7px) 0,100% 7px,100% 100%,7px 100%,0 calc(100% - 7px));transition:background .15s}
 .chip:hover,.chip:focus-visible{background:rgba(5,225,255,.14)}
@@ -399,6 +420,20 @@ body.cajon #tirador{bottom:calc(76dvh + 4px)}
       <div class="p"><div>
         <div><h2>PENDIENTES DE LA JUNTA</h2><div class="sub" id="pend-sub">—</div></div>
         <div style="flex:1;min-height:0;overflow-y:auto;display:flex;flex-direction:column;gap:6px" id="pendientes" tabindex="0"></div>
+      </div></div>
+
+      <!-- LA MANO DERECHA. Lo que ULTRON pide y el dueño aprueba, viendo el
+           resumen exacto; la bóveda, cuyo valor entra por aquí y no sale por
+           ningún lado; y los partes del equipo de bots. -->
+      <div class="p"><div>
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
+          <div><h2>EL DUEÑO</h2><div class="sub" id="dueno-sub">—</div></div>
+          <div style="display:flex;gap:4px">
+            <button class="chip" id="b-boveda" title="Guardar un secreto en la bóveda">BÓVEDA</button>
+            <button class="chip" id="b-equipo" title="El equipo de bots">EQUIPO</button>
+          </div>
+        </div>
+        <div style="flex:1;min-height:0;overflow-y:auto;display:flex;flex-direction:column;gap:6px" id="autorizaciones" tabindex="0"></div>
       </div></div>
     </div>
     <div id="izq">
