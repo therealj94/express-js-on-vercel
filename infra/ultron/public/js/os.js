@@ -389,6 +389,7 @@ const OS = (() => {
   async function aplicarPreferencias(p) {
     PREF = p || PREF;
     if (!PREF) return;
+    document.dispatchEvent(new CustomEvent('ultron:preferencias'));
     conVoz = PREF.conVoz !== false;
     $('#altavoz')?.setAttribute('aria-pressed', String(conVoz));
     if (locutor) locutor.vozId = PREF.vozId || null;
@@ -458,6 +459,26 @@ const OS = (() => {
         ${!listaVoces.length && salud?.voz ? '<p class="aj-nota mal">La lista de voces no llegó: ElevenLabs no contestó. La voz puesta sigue funcionando.</p>' : ''}
         <div class="fila-btn" style="margin-top:8px"><button class="btn" id="aj-probar">PROBAR LA VOZ</button></div>
         <p class="aj-nota">George habla los dos idiomas con el modelo multilingüe. En español se le nota el acento inglés: si prefiere una voz nacida en español, ahí están Diego, Emiliano y Jorge.</p>
+      </div>
+
+      <div class="aj-sec"><h4>Cómo le escucha</h4>
+        <div class="aj-fila"><span>El micrófono</span>
+          <span class="aj-par">
+            <button data-oi="conversacion" aria-pressed="${(PREF?.oido || 'conversacion') === 'conversacion'}">Conversación</button>
+            <button data-oi="palabra" aria-pressed="${PREF?.oido === 'palabra'}">Hey ULTRON</button>
+            <button data-oi="apagado" aria-pressed="${PREF?.oido === 'apagado'}">Solo el botón</button>
+          </span></div>
+        <div class="aj-fila"><span>Ignorar lo que suene lejos</span>
+          <span class="aj-par"><button data-solo="1" aria-pressed="${PREF?.soloYo !== false}">Sí</button><button data-solo="0" aria-pressed="${PREF?.soloYo === false}">No</button></span></div>
+        <p class="aj-nota"><b style="color:var(--letra-f)">Conversación</b>: al entrar y después de cada respuesta el micrófono se abre solo; hable y ya. Si interrumpe mientras ULTRON habla, se calla y le escucha.
+        <b style="color:var(--letra-f)">Hey ULTRON</b>: solo atiende lo que empiece por su nombre — para cuando hay gente alrededor.
+        <br><b style="color:var(--ambar)">Lo que no puede hacer:</b> reconocer su voz. El navegador no distingue quién habla, y decirle que sí sería mentirle. Lo que sí hace es no hacerle caso a lo que suena lejos, y en modo «Hey ULTRON» ignorar todo lo que no lleve su nombre.</p>
+      </div>
+
+      <div class="aj-sec"><h4>El clima del saludo</h4>
+        <div class="aj-fila"><span>De dónde</span>
+          <input class="aj-sel" id="aj-lugar" value="${esc(PREF?.lugar || 'Tegucigalpa')}" placeholder="Tegucigalpa" style="font-family:var(--mono)"></div>
+        <p class="aj-nota">Al entrar, ULTRON saluda con el tiempo de este sitio. Roatán, Tegucigalpa, San Pedro Sula, La Ceiba, Utila y Guanaja los sabe de memoria; cualquier otro lo busca.</p>
       </div>
 
       <div class="aj-sec"><h4>Idioma</h4>
@@ -530,6 +551,18 @@ const OS = (() => {
       await guardarPreferencia({ figura: b.dataset.fig });
       d.querySelectorAll('[data-fig]').forEach((x) => x.setAttribute('aria-pressed', String(x.dataset.fig === b.dataset.fig)));
     });
+    d.querySelectorAll('[data-oi]').forEach((b) => b.onclick = async () => {
+      await guardarPreferencia({ oido: b.dataset.oi });
+      d.querySelectorAll('[data-oi]').forEach((x) => x.setAttribute('aria-pressed', String(x.dataset.oi === b.dataset.oi)));
+      if (b.dataset.oi === 'apagado' && despierta) orejaApagar();
+    });
+    d.querySelectorAll('[data-solo]').forEach((b) => b.onclick = async () => {
+      const si = b.dataset.solo === '1';
+      await guardarPreferencia({ soloYo: si });
+      d.querySelectorAll('[data-solo]').forEach((x) => x.setAttribute('aria-pressed', String((x.dataset.solo === '1') === si)));
+    });
+    const lug = d.querySelector('#aj-lugar');
+    if (lug) lug.onchange = () => guardarPreferencia({ lugar: lug.value.trim() });
     const sel = d.querySelector('#aj-voz');
     if (sel) sel.onchange = () => guardarPreferencia({ vozId: sel.value });
     d.querySelector('#aj-probar').onclick = () => {
@@ -862,6 +895,53 @@ const OS = (() => {
   let IDIOMA = 'es-HN';       // el del reconocimiento de voz; lo fija la preferencia
   let oreja = null, despierta = false;
 
+  /* ── INTERRUMPIR ──────────────────────────────────────────────────────────
+     «Si está hablando y lo interrumpo, guarde silencio y siga escuchándome.»
+     Es lo que separa una conversación de un contestador: poder cortar.
+
+     Mientras ULTRON habla se vigila el micrófono con cancelación de eco —que
+     es exactamente lo que existe para que el aparato no se oiga a sí mismo—. Si
+     hay voz sostenida un cuarto de segundo, se calla y abre el turno. El
+     vigilante se suelta en cuanto termina de hablar: un micrófono abierto que
+     nadie cierra no se hace, ni por un rato.
+
+     Y no se enciende solo la primera vez: pedir el micrófono en cuanto alguien
+     entra, sin que lo haya pedido, es exactamente lo que nadie quiere. Se
+     enciende cuando la persona ya abrió la conversación o el micrófono. */
+  let vigilante = null;
+  async function vigilarParaInterrumpir() {
+    if (vigilante || !micAutorizado) return;
+    vigilante = await VOZ.vigilarMicrofono({
+      umbral: PREF?.soloYo === false ? 0.04 : 0.07,   // «solo a mí» exige más cerca
+      alHablar: () => {
+        if (!locutor?.ocupado) return;
+        locutor.callar();
+        estado('listen');
+        soltarVigilante();
+        /* Y se vuelve a escuchar enseguida: interrumpir para que no pase nada
+           es peor que no poder interrumpir. */
+        if (despierta) volverAEscuchar(); else dictar();
+      },
+    });
+    if (vigilante?.error) { vigilante = null; }
+  }
+  function soltarVigilante() { try { vigilante?.soltar?.(); } catch { /* ya */ } vigilante = null; }
+
+  /* Se sabe que hay permiso porque ya se usó el micrófono una vez: pedirlo por
+     nuestra cuenta para poder interrumpir sería pedirlo sin motivo visible. */
+  let micAutorizado = false;
+
+  /* ¿El navegador YA tiene el permiso del micrófono dado? Se pregunta sin
+     pedirlo. Donde no se pueda preguntar —Safari no siempre deja— se contesta
+     que no: nunca se abre el micrófono por si acaso. */
+  async function micYaConcedido() {
+    try {
+      const p = await navigator.permissions?.query?.({ name: 'microphone' });
+      if (p?.state === 'granted') { micAutorizado = true; return true; }
+      return false;
+    } catch { return false; }
+  }
+
   /* ── LAS MULETILLAS: lo que dice mientras piensa ──────────────────────────
      Entre la pregunta y la respuesta del nodo pueden pasar veinte segundos de
      silencio, y un silencio así se siente como que el aparato se colgó.
@@ -926,8 +1006,8 @@ const OS = (() => {
     const l = new VOZ.Locutor({
       conElevenLabs: true,
       alNivel: (n) => { mente.nivel = n; },
-      alEmpezar: () => estado('speak'),
-      alTerminar: () => { mente.nivel = 0; if (!pensando) estado('idle'); },
+      alEmpezar: () => { estado('speak'); vigilarParaInterrumpir(); },
+      alTerminar: () => { mente.nivel = 0; soltarVigilante(); if (!pensando) estado('idle'); },
       alFallo: (q) => avisar(`La voz del navegador tomó el relevo (${q}).`, false),
     });
     l.vozId = PREF?.vozId || null;      // la voz que la persona eligió, no la de la casa
@@ -1065,7 +1145,13 @@ const OS = (() => {
      audio a ningún lado»— y era falso justo en el navegador que la propia
      pantalla recomienda. Con una junta hablando de sanciones y tasas al alcance
      del micrófono, eso no es un matiz: se avisa al encender. */
-  const DESPIERTA = /\b(hey|hei|ey|oye|ok)\s+(ultron|ultrón|altron)\b|\bultron\b/i;
+  /* LA PALABRA, CON SUS ERRORES. El reconocedor casi nunca escribe «ultron»:
+     escribe «ultra», «ultrón», «el tron», «hultron», «ultran», «ultrom». Con la
+     lista corta de antes, José tenía que repetirla tres veces —«no es
+     sensible»—. Cada variante de aquí es un intento suyo que se perdía.
+     El precio de ampliarla es alguna falsa alarma; el precio de no ampliarla es
+     que la función no sirve, que es peor. */
+  const DESPIERTA = /\b(?:hey|hei|ey|oye|okay|ok|he)?\s*(?:ul|hul|al|el\s)?(?:tr[oó]n|ultr[oó]n?|ultra|ultran|ultrom|ultro)\b/i;
   let cicloOreja = 0;                 // token: solo el ciclo vigente puede reprogramar
 
   /* ── DOS MANERAS DE ESCUCHAR, PORQUE HAY DOS MUNDOS ───────────────────────
@@ -1081,14 +1167,23 @@ const OS = (() => {
      contesta en voz alta y vuelve a abrir el micrófono. Sin palabra que
      despierta —que ahí no funciona— y sin tener que tocar entre turno y turno.
      No se promete lo que el aparato no puede: se cambia lo que se ofrece. */
-  const CONVERSACION = !!VOZ.esIOS;
+  /* Cuándo la oreja es «conversación» y cuándo es «palabra que despierta»:
+       · Si la persona eligió un modo en Ajustes, manda ese.
+       · Si no, en iOS conversación —la palabra no funciona en Safari— y en los
+         demás, la palabra.
+     La palabra que despierta es para cuando el micrófono está CERRADO: es la
+     manera de abrirlo sin tocar. Con la conversación abierta no hace falta
+     decirla, que es lo que pidió José: «el hey ULTRON es solo cuando no quiero
+     me digas escuchando». */
+  const CONVERSACION = () => (PREF?.oido === 'conversacion' ? true : PREF?.oido === 'palabra' ? false : !!VOZ.esIOS);
 
   function orejaEncender() {
     if (!VOZ.hayOido?.()) { avisar('Este navegador no trae reconocimiento de voz. En Chrome sí funciona.', true); return; }
+    micAutorizado = true;
     despierta = true;
     $('#oreja').setAttribute('aria-pressed', 'true');
     despertarVoz();                        // el toque que enciende es el gesto que da el permiso
-    if (CONVERSACION) {
+    if (CONVERSACION()) {
       avisar('Conversación abierta: hable y ULTRON contesta; al terminar vuelve a escucharlo. Toque otra vez para cerrar.');
       dictar(volverAEscuchar);
       return;
@@ -1106,6 +1201,7 @@ const OS = (() => {
   }
   function orejaApagar() {
     despierta = false;
+    soltarVigilante();
     cicloOreja++;                     // invalida cualquier reinicio ya programado
     $('#oreja').setAttribute('aria-pressed', 'false');
     try { oreja?.abort?.(); } catch { /* ya estaba */ }
@@ -1176,6 +1272,7 @@ const OS = (() => {
   /** El micrófono a mano: se dicta una frase y se manda. */
   function dictar(alTerminar) {
     if (!VOZ.hayOido?.()) { avisar('Este navegador no trae reconocimiento de voz.', true); alTerminar?.(); return; }
+    micAutorizado = true;              // desde aquí ya se puede vigilar para interrumpir
     estado('listen');
     $('#micro').classList.add('oyendo');
     $('#micro').setAttribute('aria-pressed', 'true');
@@ -1186,7 +1283,15 @@ const OS = (() => {
       continuo: false,
       alOir: (frase, firme) => {
         $('#texto').value = frase;
-        if (firme && frase.trim()) { mando?.abort(); fin(); enviar(frase); }
+        if (!firme || !frase.trim()) return;
+        /* «SOLO A MÍ», con lo que de verdad se puede hacer: el navegador NO
+           sabe de quién es una voz, y decir que sí sería mentir. Lo que sí:
+           en modo «palabra» no se atiende nada que no la lleve, y el vigilante
+           del micrófono ignora lo que suena lejos. Una conversación al otro
+           lado del cuarto no dispara nada. */
+        if (PREF?.oido === 'palabra' && !DESPIERTA.test(frase)) { $('#texto').value = ''; return; }
+        const limpia = frase.replace(/^.*?\b(ultron|ultrón|ultra|ultro|altron|tron)\b[,.\s]*/i, '').trim() || frase;
+        mando?.abort(); fin(); enviar(limpia);
       },
       alFin: () => { fin(); if (mente.state === 'listen') estado('idle'); },
       alFallo: (q) => { fin(); avisar(`No se pudo escuchar (${q}).`, true); estado('idle'); },
@@ -1240,10 +1345,38 @@ const OS = (() => {
       if (conVoz) {
         locutor = locutor || locutorNuevo();
         locutor.despertar?.();
+        /* El saludo se dice ENTERO: es corto y es lo primero que se oye. */
+        const antes = locutor.tope; locutor.tope = 0;
         locutor.alimentar(s.texto);
         locutor.cerrar();
+        locutor.tope = antes;
       }
+      /* Y AL TERMINAR, ESCUCHA. «Quedo a su disposición, ¿en qué le ayudo?» y
+         quedarse callado esperando a que la persona busque un botón es dejar la
+         frase a medias. En modo conversación, el micrófono se abre solo cuando
+         ULTRON termina de saludar.
+         No se pide el micrófono aquí mismo: se espera a que la voz acabe, para
+         que el permiso lo pida ULTRON cuando ya explicó para qué. */
+      /* SOLO SI EL MICRÓFONO YA ESTÁ CONCEDIDO. Abrirlo por nuestra cuenta la
+         primera vez sería sacarle a la persona un permiso que no pidió, y con
+         el cartel del navegador encima del saludo. La primera vez se toca el
+         micrófono una vez; desde entonces, la conversación empieza sola. */
+      if (PREF?.oido === 'conversacion' && VOZ.hayOido?.() && await micYaConcedido()) esperarYEscuchar();
     } catch { /* sin saludo se entra igual */ }
+  }
+
+  /* Abre el turno cuando ULTRON deja de hablar. Con un respiro corto, para no
+     grabar la cola de su propia voz saliendo del altavoz. */
+  function esperarYEscuchar() {
+    const listo = () => {
+      if (locutor?.ocupado) return setTimeout(listo, 350);
+      if (pensando || despierta) return;
+      despierta = true;
+      $('#oreja')?.setAttribute('aria-pressed', 'true');
+      micAutorizado = true;
+      dictar(volverAEscuchar);
+    };
+    setTimeout(listo, 700);
   }
 
   function arrancar() {
@@ -1311,10 +1444,14 @@ const OS = (() => {
     $('#oreja').addEventListener('click', () => (despierta ? orejaApagar() : orejaEncender()));
     /* El rótulo del botón no puede prometer una palabra que despierta en un
        aparato donde no la hay. */
-    if (CONVERSACION) {
-      $('#oreja').title = 'Conversar: hable y ULTRON contesta, y vuelve a escucharlo';
-      $('#oreja').setAttribute('aria-label', 'Conversación continua');
-    }
+    const rotularOreja = () => {
+      const c = CONVERSACION();
+      $('#oreja').title = c ? 'Conversar: hable y ULTRON contesta, y vuelve a escucharlo'
+        : 'Escuchar la palabra: diga «hey ULTRON» y le atiende';
+      $('#oreja').setAttribute('aria-label', c ? 'Conversación continua' : 'Esperar «hey ULTRON»');
+    };
+    rotularOreja();
+    document.addEventListener('ultron:preferencias', rotularOreja);
     $('#altavoz').addEventListener('click', (e) => {
       conVoz = !conVoz;
       if (conVoz) despertarVoz();          // el toque que la enciende es el permiso

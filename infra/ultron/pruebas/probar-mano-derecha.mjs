@@ -285,6 +285,9 @@ titulo('las rutas: el dueño y nadie más');
   const salud = await (await fetch(B + '/salud')).json();
   decir(salud.boveda === true && salud.dueño === true && salud.herramientas >= 48, '/salud dice bóveda, dueño y cuántas herramientas hay', JSON.stringify({ b: salud.boveda, d: salud.dueño, h: salud.herramientas }));
 
+  const sal = await (await fetch(B + '/saludo', { headers: { Cookie: cj } })).json();
+  decir(/Quedo a su disposición: ¿en qué le ayudo\?$/.test(sal.texto), 'el saludo cede la palabra, no se queda callado', sal.texto.slice(-60));
+  decir(typeof sal.lugar === 'string' && sal.lugar.length > 2, 'y dice de dónde daría el clima', sal.lugar);
   const prof = await (await fetch(B + '/salud/profunda', { headers: { Cookie: cm } })).json();
   decir(typeof prof.puntaje === 'number' && prof.signos.length >= 8, '/salud/profunda da nota y los nueve signos', `${prof.puntaje}/100 · ${prof.signos.length} signos`);
   decir(prof.signos.some((g) => g.clave === 'cerebro') && prof.signos.some((g) => g.clave === 'bucle'), 'entre ellos el cerebro y el bucle de eventos');
@@ -320,6 +323,21 @@ titulo('la salud de ULTRON: se mide y se repara solo');
   decir(typeof rep.antes === 'number' && typeof rep.despues === 'number', 'reparar sin nada que reparar no rompe nada');
   const h = await salud.historial({ limite: 5 });
   decir(Array.isArray(h) && h.length >= 1, 'y la ronda queda en el historial', `${h.length} ronda(s)`);
+}
+
+// ── LOS NÚMEROS, DICHOS ────────────────────────────────────────────────────
+titulo('los números, para que se entiendan al oírlos');
+{
+  const n = require('../lib/decir-numeros.js');
+  decir(n.paraLaVoz('2.5902 USD') === '2.59 dólares', 'cuatro decimales se redondean a dos', n.paraLaVoz('2.5902 USD'));
+  decir(n.paraLaVoz('1,250.00 lempiras') === '1,250 lempiras', 'los ceros de la derecha se quitan', n.paraLaVoz('1,250.00 lempiras'));
+  decir(n.paraLaVoz('#1,283,459') === 'número 1,283,459', 'el separador de miles NO se toca: no es un decimal', n.paraLaVoz('#1,283,459'));
+  decir(/termina en CAb3/.test(n.paraLaVoz('0x8832E2D5cCc707bC5fef5780739f6a2F1C3eCAb3')), 'una dirección no se deletrea: se nombra por su final');
+  decir(n.paraLaVoz('137/512 MB · 27 %') === '137 de 512 megas · 27 por ciento', 'las unidades se dicen como se hablan', n.paraLaVoz('137/512 MB · 27 %'));
+  decir(n.paraLaVoz('1 ms') === '1 milisegundo', 'y en singular cuando es uno', n.paraLaVoz('1 ms'));
+  decir(n.paraLaVoz('ORO 4,431 USD/oz') === 'ORO 4,431 dólares la onza', 'USD/oz no se deletrea', n.paraLaVoz('ORO 4,431 USD/oz'));
+  const voz = require('../lib/voz.js');
+  decir(voz.paraDecir('**El ORIGEN** a `2.5902` USD') === 'El ORIGEN a 2.59 dólares', 'y la voz lo aplica sobre el markdown ya limpio', voz.paraDecir('**El ORIGEN** a `2.5902` USD'));
 }
 
 // ── LAS SESIONES: dónde está abierto, y poder cerrarlo desde lejos ─────────

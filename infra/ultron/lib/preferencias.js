@@ -21,13 +21,25 @@ const prefSchema = new Schema({
   vozId: { type: String, default: null },          // null = la de la casa
   figura: { type: String, enum: ['nucleo', 'busto'], default: 'nucleo' },
   conVoz: { type: Boolean, default: true },
+  /* El lugar del que se da el clima al saludar. Base de operaciones por
+     omisión; se cambia en Ajustes porque José viaja a Roatán. */
+  lugar: { type: String, default: 'Tegucigalpa' },
+  /* Cómo escucha:
+       conversacion  al entrar y después de cada respuesta abre el micrófono
+                     solo. Es la que hace que esto sea una conversación.
+       palabra       solo escucha cuando se dice «hey ULTRON».
+       apagado       solo con el botón del micrófono, un turno cada vez. */
+  oido: { type: String, enum: ['conversacion', 'palabra', 'apagado'], default: 'conversacion' },
+  /* «Solo a mí»: ignora lo que suene lejos y exige la palabra para empezar.
+     NO es reconocer una voz —el navegador no puede— y así se dice en Ajustes. */
+  soloYo: { type: Boolean, default: true },
   tocado: { type: Date, default: Date.now },
 }, { versionKey: false });
 const Pref = mongoose.models.Pref || mongoose.model('Pref', prefSchema);
 
 const conMongo = () => mongoose.connection.readyState === 1;
 const provisional = new Map();
-const POR_OMISION = { idioma: 'es', vozId: null, figura: 'nucleo', conVoz: true };
+const POR_OMISION = { idioma: 'es', vozId: null, figura: 'nucleo', conVoz: true, lugar: 'Tegucigalpa', oido: 'conversacion', soloYo: true };
 
 /* Las dos voces que la casa usa, una por idioma. George es la que José eligió;
    habla los dos idiomas con el modelo multilingüe, con acento inglés en
@@ -52,6 +64,9 @@ async function guardar(correo, cambios = {}) {
   if (cambios.idioma === 'es' || cambios.idioma === 'en') limpio.idioma = cambios.idioma;
   if (cambios.figura === 'nucleo' || cambios.figura === 'busto') limpio.figura = cambios.figura;
   if (typeof cambios.conVoz === 'boolean') limpio.conVoz = cambios.conVoz;
+  if (typeof cambios.soloYo === 'boolean') limpio.soloYo = cambios.soloYo;
+  if (['conversacion', 'palabra', 'apagado'].includes(cambios.oido)) limpio.oido = cambios.oido;
+  if (typeof cambios.lugar === 'string' && cambios.lugar.trim().length >= 3 && cambios.lugar.length <= 60) limpio.lugar = cambios.lugar.trim();
   /* El id de una voz de ElevenLabs es alfanumérico de 20: cualquier otra cosa
      no se guarda. Sin esto, un id inventado dejaría a ULTRON mudo hasta que
      alguien mirara la base. */

@@ -64,6 +64,7 @@ const avisos = require('./lib/avisos');
 const bitacora = require('./lib/bitacora');
 const sesiones = require('./lib/sesiones');
 const preferencias = require('./lib/preferencias');
+const mundo = require('./lib/mundo');
 
 const app = express();
 app.set('trust proxy', 1);
@@ -456,8 +457,23 @@ app.get('/saludo', puerta, async (req, res) => {
   partes.push(n === 0 ? 'no hay pendientes abiertos' : n === 1 ? 'hay un pendiente abierto' : `hay ${n} pendientes abiertos`);
   // Registro institucional: se saluda por el nombre, se informa, y se cede la
   // palabra. Ni «¿por dónde empezamos?» ni exclamaciones: es un despacho.
-  const texto = `${momento}, ${nombre}. ${partes.join(', ').replace(/^./, (c) => c.toUpperCase())}. Quedo a su disposición.`;
-  res.json({ texto, nombre, hora, pendientes: n });
+  /* EL CLIMA EN EL SALUDO. José lo pidió así: «cuando abro ocupo me diga cómo
+     está señor José, cómo está el día de hoy, y da el clima actualizado». Va
+     con su plazo propio y corto: si Open-Meteo tarda, se saluda sin clima — un
+     saludo que se hace esperar tres segundos deja de ser un saludo. */
+  const pref = await preferencias.de(req.miembro.correo).catch(() => ({ lugar: 'Tegucigalpa' }));
+  const donde = pref.lugar || 'Tegucigalpa';
+  let clima = null;
+  try {
+    clima = await Promise.race([
+      mundo.climaCorto(donde),
+      new Promise((ok) => setTimeout(() => ok(null), 2500)),
+    ]);
+  } catch { /* sin clima se saluda igual */ }
+
+  const texto = `${momento}, ${nombre}. ${clima ? `${clima} ` : ''}${partes.join(', ').replace(/^./, (c) => c.toUpperCase())}. `
+    + 'Quedo a su disposición: ¿en qué le ayudo?';
+  res.json({ texto, nombre, hora, pendientes: n, clima, lugar: donde });
 });
 
 /* ── LAS HERRAMIENTAS, A LA VISTA Y A MANO ────────────────────────────────────

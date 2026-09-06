@@ -33,13 +33,14 @@ const MEMORIA_MAX = 120;   // 60 frases sueltas + las muletillas, que conviene q
 function encendida() { return !!LLAVE; }
 
 /** Lo que se lee en voz alta no es lo que se lee en pantalla. */
+const numeros = require('./decir-numeros');
 function paraDecir(texto) {
-  return String(texto)
+  return numeros.paraLaVoz(String(texto)
     .replace(/```[\s\S]*?```/g, ' (código omitido) ')
     .replace(/https?:\/\/\S+/g, ' (enlace) ')
-    .replace(/[#*_>`|]/g, '')
     .replace(/\[(.*?)\]\(.*?\)/g, '$1')
-    .replace(/\s+/g, ' ').trim().slice(0, MAXIMO);
+    .replace(/[#*_>`|]/g, '')
+    .replace(/\s+/g, ' ').trim()).slice(0, MAXIMO);
 }
 
 /* ── EL CATÁLOGO DE VOCES ─────────────────────────────────────────────────────

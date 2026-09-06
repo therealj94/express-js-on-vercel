@@ -157,7 +157,10 @@ titulo('el saludo: por su nombre, con la hora y con lo que hay');
 {
   const r = await s.pedir('/saludo', { cookie: cookieJose });
   decir(r.http === 200 && /^Buen(os|as) (días|tardes|noches), José\./.test(r.json.texto), 'saluda por el nombre de pila según la hora de Honduras', r.json.texto);
-  decir(/pendiente/.test(r.json.texto) && /Quedo a su disposición\.$/.test(r.json.texto), 'dice cuántos pendientes hay y cede la palabra, en registro institucional', r.json.texto);
+  /* El saludo ya no termina en punto: PREGUNTA. «Quedo a su disposición» y
+     callarse deja a la persona buscando un botón; con la pregunta, el
+     micrófono se abre solo detrás y la conversación empieza sola. */
+  decir(/pendiente/.test(r.json.texto) && /Quedo a su disposición: ¿en qué le ayudo\?$/.test(r.json.texto), 'dice cuántos pendientes hay y CEDE la palabra con una pregunta', r.json.texto);
   /* ESTA COMPROBACIÓN ESTABA MINTIENDO. Decía «y sin red, dice qué casa no
      contesta» — pero acá SÍ hay red, y lo único que la hacía pasar era que
      ULTRON leía Genesis por una ruta que no existe y la daba por caída todos

@@ -134,7 +134,7 @@ await p.waitForFunction(() => /Buen(os|as) (días|tardes|noches), José\./.test(
   }), 'y cae sobre la figura, en el centro, no en una esquina');
   const h = await texto('#portada');
   decir(/Buen(os|as) (días|tardes|noches), José\./.test(h), 'saluda por el nombre de pila', h);
-  decir(/Quedo a su disposición\./.test(h), 'y cede la palabra en registro institucional', h);
+  decir(/Quedo a su disposición: ¿en qué le ayudo\?/.test(h), 'y cede la palabra con una pregunta, para que la conversación empiece sola', h);
   /* CON LÍMITES DE PALABRA, y no es quisquillosidad: `che` a secas casa dentro
      de «Buenas noCHEs», así que esta comprobación se ponía roja sola a partir
      de las siete de la tarde y verde otra vez por la mañana. Una prueba que

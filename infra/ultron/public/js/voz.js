@@ -14,9 +14,37 @@
 const VOZ = (() => {
   'use strict';
 
-  const paraDecir = (md) => String(md || '')
+  /* LOS NÚMEROS, PARA QUE SE ENTIENDAN AL OÍRLOS. Las mismas reglas que el
+     servidor (lib/decir-numeros.js), aquí para el respaldo del navegador: dos
+     decimales redondeando, nada de deletrear direcciones, y las unidades dichas
+     como se hablan. Un precio con cuatro decimales leído en voz alta no es más
+     preciso: es más largo y menos claro. */
+  const UNIDADES = [
+    [/\bUSD\s*\/\s*oz\b/gi, 'dólares la onza'], [/\bUSD\s*\/\s*g\b/gi, 'dólares el gramo'],
+    [/\bUSD\b/g, 'dólares'], [/\bHNL\b/g, 'lempiras'],   // USDT no se toca: se lee «u-ese-de-te»
+    [/(\d)\s*°\s*C\b/g, '$1 grados'], [/(\d)\s*%/g, '$1 por ciento'],
+    [/(\d)\s*km\/h\b/gi, '$1 kilómetros por hora'], [/(\d)\s*MB\b/g, '$1 megas'],
+    [/(\d)\s*GB\b/g, '$1 gigas'], [/(\d)\s*ms\b/g, '$1 milisegundos'],
+    [/(\d)\s*\/\s*(\d)/g, '$1 de $2'], [/#(\d)/g, 'número $1'],
+  ];
+  function numerosParaLaVoz(t) {
+    let x = String(t)
+      .replace(/(\d)([.,])00\b(?!\d)/g, '$1')
+      .replace(/(\d[.,]\d)0\b(?!\d)/g, '$1')
+      .replace(/(\d)([.,])(\d{3,})\b/g, (todo, ent, sep, dec) => {
+        if (dec.length === 3) return todo;                    // separador de miles
+        const n = Number(`${ent}.${dec}`);
+        return Number.isFinite(n) ? String(Math.round(n * 100) / 100).replace('.', sep) : todo;
+      })
+      .replace(/\b0x[a-fA-F0-9]{8,}\b/g, (d) => `la dirección que termina en ${d.slice(-4)}`)
+      .replace(/\b[a-f0-9]{24,}\b/g, (d) => `el identificador que termina en ${d.slice(-4)}`);
+    for (const [re, con] of UNIDADES) x = x.replace(re, con);
+    return x.replace(/\b1 (milisegundo|grado|hora|mega|giga|dólar|lempira)s\b/g, '1 $1');
+  }
+
+  const paraDecir = (md) => numerosParaLaVoz(String(md || '')
     .replace(/```[\s\S]*?```/g, ' ').replace(/https?:\/\/\S+/g, ' ').replace(/\[(.*?)\]\(.*?\)/g, '$1')
-    .replace(/^\s*[#>*-]+\s*/gm, '').replace(/[*_`|]/g, '').replace(/\s+/g, ' ').trim();
+    .replace(/^\s*[#>*-]+\s*/gm, '').replace(/[*_`|]/g, '').replace(/\s+/g, ' ').trim());
 
   function partirFrases(texto) {
     const frases = []; let resto = texto;
@@ -262,6 +290,59 @@ const VOZ = (() => {
     }
   }
 
+  /* ── EL VIGILANTE DEL MICRÓFONO ───────────────────────────────────────────
+     Dos cosas que hacen que esto se sienta una conversación y no un walkie:
+
+     INTERRUMPIR. Si ULTRON está hablando y la persona empieza a hablar, se
+     calla. Para saberlo hay que oír mientras habla, y ahí está el truco: el
+     micrófono se abre con `echoCancellation`, que es exactamente lo que existe
+     para que el aparato NO se oiga a sí mismo. Sin eso, ULTRON se interrumpiría
+     con su propia voz en la primera sílaba.
+
+     LO QUE SUENA LEJOS NO CUENTA. El nivel también sirve de puerta: una
+     conversación al otro lado del cuarto llega bajita, y con el umbral puesto
+     no dispara nada. No es reconocer una voz —el navegador no puede hacer eso,
+     y decir que sí sería mentir—: es no hacerle caso a lo que suena lejos.
+
+     Esto NO enruta el audio de SALIDA por Web Audio: es el micrófono, que es
+     entrada. La lección de os-boca.js sigue en pie y sin tocar. */
+  async function vigilarMicrofono({ alHablar, umbral = 0.055, sostenido = 260 } = {}) {
+    let flujo = null, ctx = null, raf = null, desde = 0, muerto = false;
+    try {
+      flujo = await navigator.mediaDevices.getUserMedia({
+        audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
+      });
+      ctx = new (window.AudioContext || window.webkitAudioContext)();
+      if (ctx.state === 'suspended') await ctx.resume().catch(() => {});
+      const fuente = ctx.createMediaStreamSource(flujo);
+      const an = ctx.createAnalyser(); an.fftSize = 512; an.smoothingTimeConstant = 0.6;
+      fuente.connect(an);                       // y NADA hacia los altavoces: solo se mide
+      const datos = new Uint8Array(an.fftSize);
+      const mirar = () => {
+        if (muerto) return;
+        raf = requestAnimationFrame(mirar);
+        an.getByteTimeDomainData(datos);
+        let s = 0;
+        for (let i = 0; i < datos.length; i++) { const v = (datos[i] - 128) / 128; s += v * v; }
+        const nivel = Math.sqrt(s / datos.length);
+        if (nivel > umbral) {
+          if (!desde) desde = performance.now();
+          else if (performance.now() - desde > sostenido) { desde = 0; alHablar?.(nivel); }
+        } else desde = 0;
+      };
+      raf = requestAnimationFrame(mirar);
+    } catch (e) {
+      return { soltar() {}, error: String(e?.name || e) };
+    }
+    return {
+      soltar() {
+        muerto = true; cancelAnimationFrame(raf);
+        try { flujo?.getTracks().forEach((t) => t.stop()); } catch { /* ya */ }
+        try { ctx?.close(); } catch { /* ya */ }
+      },
+    };
+  }
+
   const hayOido = () => !!(window.SpeechRecognition || window.webkitSpeechRecognition);
 
   /** Escucha una vez. Resuelve con lo dicho (vacío si no se oyó nada). */
@@ -311,5 +392,5 @@ const VOZ = (() => {
     return { abort() { muerto = true; try { rec.abort(); } catch { /* ya estaba */ } } };
   }
 
-  return { Locutor, escuchar, oir, hayOido, paraDecir, partirFrases, esIOS };
+  return { Locutor, escuchar, oir, hayOido, paraDecir, partirFrases, esIOS, vigilarMicrofono, numerosParaLaVoz };
 })();

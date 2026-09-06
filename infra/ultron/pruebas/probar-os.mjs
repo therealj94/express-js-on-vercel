@@ -286,8 +286,13 @@ titulo('«hey ULTRON»');
   });
   decir(r.hey && r.oye && r.solo && r.acento, 'reconoce «hey ULTRON», «oye ULTRON», con y sin tilde');
   decir(!r.hola && !r.casa, 'y NO se despierta con cualquier frase', JSON.stringify(r));
+  /* La regla no cambió, cambió cómo se cumple. En «conversación» el micrófono
+     se abre solo después del saludo —José lo pidió—, pero SOLO si el permiso ya
+     estaba dado de antes. Sin permiso concedido, la oreja arranca cerrada: nunca
+     se le saca a nadie un permiso que no pidió. Aquí no hay permiso, así que
+     tiene que estar cerrada. */
   decir(await p.evaluate(() => document.querySelector('#oreja')?.getAttribute('aria-pressed') === 'false'),
-    'la oreja arranca CERRADA: un micrófono abierto que nadie encendió no se hace');
+    'sin permiso de micrófono la oreja arranca CERRADA: no se saca un permiso que nadie pidió');
 }
 
 // ── que se pueda tocar ─────────────────────────────────────────────────────

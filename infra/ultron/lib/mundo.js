@@ -137,4 +137,22 @@ const ZONAS = {
   'los angeles': 'America/Los_Angeles', chicago: 'America/Chicago',
 };
 
-module.exports = { clima, hora, buscarLugar, LUGARES_DE_LA_CASA, ZONAS, _adentro: { cielo, llano, pedir } };
+/**
+ * El clima en UNA frase, para el saludo de la mañana. Nada de pronóstico ni de
+ * fuentes: eso es para cuando se pregunta. Aquí solo «cómo está el día».
+ */
+async function climaCorto(lugar = 'Tegucigalpa') {
+  const l = await buscarLugar(lugar);
+  const d = await pedir(`https://api.open-meteo.com/v1/forecast?latitude=${l.lat}&longitude=${l.lon}`
+    + '&current=temperature_2m,weather_code&daily=temperature_2m_max,precipitation_probability_max'
+    + `&timezone=${encodeURIComponent(l.zona)}&forecast_days=1`);
+  const c = d.current || {}, dd = d.daily || {};
+  if (typeof c.temperature_2m !== 'number') return null;
+  const donde = l.nombre.split(',')[0];
+  const lluvia = dd.precipitation_probability_max?.[0];
+  return `En ${donde} hay ${Math.round(c.temperature_2m)} grados y está ${cielo(c.weather_code)}`
+    + (typeof lluvia === 'number' && lluvia >= 40 ? `, con ${lluvia} por ciento de probabilidad de lluvia` : '')
+    + '.';
+}
+
+module.exports = { clima, climaCorto, hora, buscarLugar, LUGARES_DE_LA_CASA, ZONAS, _adentro: { cielo, llano, pedir } };

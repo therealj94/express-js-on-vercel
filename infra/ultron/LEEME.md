@@ -260,7 +260,17 @@ lee las variables de cada app y las guarda con `yaEn` (dónde vive cada una),
 sin imprimir ningún valor. Las llaves privadas de billeteras y las semillas
 NO entran, a propósito: no se rotan por ULTRON y duplicarlas no gana nada.
 
-## La voz: las muletillas y el resumen hablado
+## La voz: los números, las muletillas y la conversación
+
+**Los números, para que se entiendan al oírlos** (`lib/decir-numeros.js`). Un
+número escrito y un número dicho no son lo mismo: `2.5902 USD` se dice «2,59
+dólares», `137/512 MB` es «137 de 512 megas», `27 %` es «27 por ciento», y una
+dirección `0x8832…` **no se deletrea** — se nombra por su final, que es como la
+nombra una persona. Dos decimales, redondeando: la cuarta cifra de un precio no
+hace la respuesta más exacta, la hace más larga. Solo para la voz: en pantalla
+el precio con cuatro decimales sigue entero, que hace falta para copiarlo.
+
+## Las muletillas y el resumen hablado
 
 Dos cosas que se sienten en cada turno y que arreglan el mismo problema —que en
 voz *hay mucho que procesar*—:
@@ -281,6 +291,27 @@ porque el entregable va primero— y al pasar de unas 900 letras se corta con
 «le dejo el resto escrito en la pantalla», y aparece un botón **OÍR TODO** para
 quien lo quiera entero. No se le pide un resumen a otro modelo: eso añadiría
 espera antes de la primera palabra, que es justo el problema.
+
+**Interrumpir.** Mientras ULTRON habla se vigila el micrófono con cancelación
+de eco —lo que existe justo para que un aparato no se oiga a sí mismo—: si la
+persona empieza a hablar, se calla y abre el turno. Es lo que separa una
+conversación de un contestador.
+
+**La conversación empieza sola.** Al entrar, ULTRON saluda con el tiempo del
+sitio que se elija (`lugar` en Ajustes) y cede la palabra con una pregunta; si
+el micrófono ya tenía permiso, se abre solo. La primera vez no: sacarle a
+alguien un permiso que no pidió, con el cartel del navegador encima del saludo,
+no se hace. Se toca el micrófono una vez y desde entonces empieza sola.
+
+**«Hey ULTRON» es para cuando el micrófono está cerrado.** Con la conversación
+abierta no hace falta decir nada. La palabra reconoce además cómo la escriben
+de verdad los reconocedores —«ultra», «ultrón», «el tron», «ultran»—: con la
+lista corta de antes había que repetirla tres veces.
+
+**«Solo a mí», con lo que de verdad se puede.** El navegador **no** sabe de
+quién es una voz, y decir que sí sería mentir. Lo que sí: ignorar lo que suene
+lejos (umbral de nivel) y, en modo «Hey ULTRON», no atender nada que no lleve su
+nombre. Así se dice en Ajustes, con esas palabras.
 
 **Y si un audio no llega, se pide otra vez antes de cambiar de voz.** Con una
 respuesta larga se piden diez o quince audios casi a la vez; si uno se perdía,
