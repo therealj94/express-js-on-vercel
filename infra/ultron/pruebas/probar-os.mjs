@@ -773,6 +773,55 @@ titulo('la caja de Ordenex y el registro del día, en el tablero');
 }
 
 /* ── BORRAR UN DOCUMENTO ────────────────────────────────────────────────────── */
+titulo('el tablero dice lo que costó y lo que tardó');
+{
+  /* Tres cifras que el servidor daba desde el principio y que la pantalla no
+     enseñaba: el RELEVO (cuándo ULTRON está pensando en la nube en vez de en
+     nuestro nodo, que cuesta y sale de la casa), el GASTO del día, y lo que
+     TARDÓ el último turno. La queja de siempre es «va lento» y no había un
+     solo número en pantalla que lo dijera. */
+  await p.evaluate(() => OS._adentro.pintarSalud({ cerebro: true, donde: 'nodo', modelo: 'nodo:x', relevo: true, nodo: { vivo: true, ctx: 12288, ctxMax: 32768 } }));
+  const conRelevo = await p.evaluate(() => document.querySelector('#nodo-lineas').innerText);
+  decir(/RELEVO/.test(conRelevo) && /CLAUDE/i.test(conRelevo),
+    'cuando el nodo cae y cubre Claude, el tablero lo DICE', conRelevo.split('\n').find((l) => /RELEVO/.test(l)));
+  await p.evaluate(() => OS._adentro.pintarSalud({ cerebro: true, donde: 'nodo', modelo: 'nodo:x', relevo: false, nodo: { vivo: true, ctx: 12288, ctxMax: 32768 } }));
+  decir(!/RELEVO/.test(await p.evaluate(() => document.querySelector('#nodo-lineas').innerText)),
+    'y cuando no hay relevo, no ocupa un renglón para decir «no»');
+
+  const conGasto = await p.evaluate(async () => {
+    await new Promise((ok) => setTimeout(ok, 1200));
+    return document.querySelector('#nodo-lineas').innerText;
+  });
+  decir(/GASTO HOY/.test(conGasto), '/gasto existía y nadie lo llamaba: ahora está en el panel del cerebro',
+    conGasto.split('\n').find((l) => /GASTO/.test(l)));
+
+  const conCrono = await p.evaluate(() => {
+    OS._adentro.marcarTurno({ primera: 1200, total: 3400 });
+    return document.querySelector('#nodo-lineas').innerText;
+  });
+  decir(/ÚLTIMO TURNO/.test(conCrono) && /1[.,]2 s/.test(conCrono),
+    'y lo que tardó el último turno, con la primera palabra aparte: es el silencio que se siente',
+    conCrono.split('\n').find((l) => /ÚLTIMO/.test(l)));
+}
+
+titulo('el reloj de LA CAJA corre: un saldo viejo no puede parecer de ahora');
+{
+  /* Es la única cifra del tablero que se lee a mano, así que es la que más
+     fácil se queda vieja. «Leída hace 2 min» escrito una vez y quieto mientras
+     pasa media hora es peor que no poner nada. */
+  const r = await p.evaluate(async () => {
+    OS._adentro.pintarCaja({ cuando: new Date(Date.now() - 3 * 60_000).toISOString(), caliente: {}, gas: {}, comision: {} });
+    const alPintar = document.querySelector('#caja-sub').textContent;
+    OS._adentro.envejecerCaja(12);
+    await new Promise((ok) => setTimeout(ok, 1300));
+    const sub = document.querySelector('#caja-sub');
+    return { alPintar, luego: sub.textContent, clase: sub.className };
+  });
+  decir(/hace 3 min/.test(r.alPintar), 'al pintarla dice de cuándo es', r.alPintar);
+  decir(/hace 12 min/.test(r.luego), 'y el reloj sigue corriendo solo, sin volver a leer', r.luego);
+  decir(/amb/.test(r.clase), 'y pasados diez minutos se pone en ámbar: ya no sirve para decidir un envío', r.clase);
+}
+
 titulo('los documentos entrantes se pueden borrar');
 {
   /* Las peticiones van DENTRO de la página: la sesión es una galleta de este

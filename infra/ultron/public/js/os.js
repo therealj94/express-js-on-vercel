@@ -255,7 +255,14 @@ const OS = (() => {
     document.body.appendChild(b);
   }
 
+  /* Lo último que se leyó de /gasto y lo que tardó el último turno. Viven aquí
+     arriba porque los pinta el panel del cerebro y los llena otra cosa: el
+     gasto lo trae su propia lectura, y el cronómetro llega en el `fin` de cada
+     turno. */
+  let gastoUltimo = null, ultimoTurno = null, saludUltima = null;
+
   function pintarSalud(s) {
+    saludUltima = s || saludUltima;
     mirarVersion(s);
     const n = s?.nodo || null;
     const enNodo = s?.donde === 'nodo';
@@ -296,6 +303,26 @@ const OS = (() => {
       ['MEMORIA', s?.memoria === 'mongo' ? 'EN MONGO' : s?.memoria ? 'PROVISIONAL' : nada,
         s?.memoria === 'mongo' ? SI : s?.memoria ? 'amb' : NOSE],
       ['VOZ', s?.voz ? 'ELEVENLABS' : 'LA DEL NAVEGADOR', s?.voz ? SI : ''],
+      /* ── EL RELEVO, QUE NADIE VEÍA ────────────────────────────────────────
+         `/salud` lo dice desde el primer día y la pantalla no lo enseñaba
+         nunca. Es exactamente el dato que hay que ver: cuando el nodo no
+         contesta, ULTRON sigue contestando —con Claude— y eso CUESTA y esa
+         conversación SALE de la casa. Sin este renglón la junta puede estar
+         una semana pensando en la nube sin enterarse. */
+      ...(s?.relevo ? [['RELEVO', 'CLAUDE ESTÁ CUBRIENDO', NO]] : []),
+      /* ── LO QUE VA COSTANDO ───────────────────────────────────────────────
+         /gasto existía y nadie lo llamaba. Los turnos del nodo salen a cero
+         dólares —es nuestra tarjeta— y por eso lo que importa es el CONTADOR:
+         si hoy hay dólares, es que algo se fue a la nube. */
+      ...(gastoUltimo ? [['GASTO HOY', `${num(gastoUltimo.hoy?.turnos)} turnos${gastoUltimo.hoy?.dolares ? ` · ${gastoUltimo.hoy.dolares.toFixed(2)} USD` : ' · sin costo (nodo propio)'}`,
+        gastoUltimo.hoy?.dolares ? 'amb' : '']] : []),
+      /* ── LO QUE TARDÓ EL ÚLTIMO TURNO ─────────────────────────────────────
+         La queja de siempre es «se traba» y «va lento», y no había ni un
+         número en pantalla que lo dijera. El cronómetro del turno ya viaja en
+         el evento `fin`; aquí se ve. La PRIMERA PALABRA es la cifra que
+         importa: es el silencio que se siente. */
+      ...(ultimoTurno ? [['ÚLTIMO TURNO', `${(ultimoTurno.primera / 1000).toFixed(1)} s la 1.ª palabra · ${(ultimoTurno.total / 1000).toFixed(1)} s en total`,
+        ultimoTurno.primera > 4000 ? 'amb' : SI]] : []),
     ];   // cuántos son la junta ya lo dice la puerta; aquí sería un renglón repetido
     $('#nodo-lineas').innerHTML = lineas.map(([a, b, cl]) => fila(a, b, cl)).join('');
   }
@@ -1034,6 +1061,7 @@ const OS = (() => {
   const dosDec = (n) => (typeof n === 'number' && isFinite(n)
     ? n.toLocaleString('es-HN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : nada);
 
+  let cajaCuando = null;
   function pintarCaja(c) {
     const caja = $('#caja-ox'), sub = $('#caja-sub');
     if (!caja) return;
@@ -1089,7 +1117,12 @@ const OS = (() => {
       m.compraEncendida && m.ventaEncendida ? 'ok' : 'amb');
 
     caja.innerHTML = filas.join('');
-    sub.textContent = `leída ${hace(c.cuando) || 'ahora'}`;
+    /* El reloj de la caja TIENE que correr. Es la única cifra del tablero que
+       se lee a mano, así que es la que más fácil se queda vieja: «leída hace 2
+       min» escrito una vez y quieto mientras pasa media hora es peor que no
+       poner nada, porque parece de ahora. Lo actualiza `reloj()` cada segundo. */
+    cajaCuando = c.cuando || new Date().toISOString();
+    sub.textContent = `leída ${hace(cajaCuando) || 'ahora'}`;
     sub.className = 'sub';
   }
 
@@ -1595,6 +1628,10 @@ const OS = (() => {
           usadas.push(n);                       // para dejarlas escritas al pie de la respuesta
         },
         fin: (d) => {
+          /* El cronómetro del turno, a la vista. «Se traba» y «va lento» eran
+             quejas sin un número al lado; ahora el panel del cerebro dice
+             cuánto tardó la primera palabra, que es el silencio que se siente. */
+          if (d?.ms?.total) { ultimoTurno = { primera: d.ms.primera || d.ms.total, total: d.ms.total }; pintarSalud(saludUltima); }
           if (d?.texto) { acum = d.texto; pintarDicho(acum); }
           if (conVoz) locutor?.cerrar?.(); else estado('idle');
           chips(d?.acciones?.length ? d.acciones.map((a) => a.nombre) : null);
@@ -2104,6 +2141,13 @@ const OS = (() => {
        `.catch(() => {})`, así que un 500 o un corte de red dejaba los paneles
        intactos y con buena cara. Si pasan más de 90 s sin una lectura buena, la
        pantalla se apaga y lo dice. */
+    /* La caja se lee a mano: su reloj corre aquí, con el de la pantalla. Y a
+       los diez minutos se pone en ámbar, porque un saldo de hace diez minutos
+       ya no sirve para decidir un envío. */
+    if (cajaCuando) {
+      const sc = $('#caja-sub'); const min = (Date.now() - new Date(cajaCuando).getTime()) / 60000;
+      if (sc) { sc.textContent = `leída ${hace(cajaCuando) || 'ahora'}`; sc.className = 'sub ' + (min > 10 ? 'amb' : ''); }
+    }
     const edad = (Date.now() - ultimaBuena) / 1000;
     const vieja = ultimaBuena && edad > 90;
     document.body.classList.toggle('vieja', !!vieja);
@@ -2253,6 +2297,9 @@ const OS = (() => {
       DATOS.get('/pendientes').then(pintarPendientes).catch(() => {});
       DATOS.get('/autorizaciones').then(pintarAutorizaciones).catch(() => {});
       DATOS.get('/salud/profunda').then(pintarSaludPropia).catch(() => pintarSaludPropia(null));
+      /* /gasto existía desde el principio y no lo llamaba nadie. Va en la misma
+         ronda que el resto: es una lectura de Mongo, no una de cadena. */
+      DATOS.get('/gasto').then((g) => { gastoUltimo = g; pintarSalud(saludUltima); }).catch(() => {});
     };
     leer();
     $('#b-caja').addEventListener('click', leerCaja);
@@ -2502,6 +2549,10 @@ const OS = (() => {
        atrás, para comprobar que la pantalla avisa cuando se queda vieja sin
        tener que esperar diez minutos de verdad. */
     envejecer: (segundos) => { ultimaBuena = Date.now() - segundos * 1000; },
+    /* Para la prueba: mover hacia atrás el reloj de LA CAJA, y meter el
+       cronómetro de un turno sin tener que hablar con el nodo. */
+    envejecerCaja: (minutos) => { cajaCuando = new Date(Date.now() - minutos * 60_000).toISOString(); },
+    marcarTurno: (ms) => { ultimoTurno = ms; pintarSalud(saludUltima); },
     /* Para la prueba: si el turno sigue en vuelo. Es lo que distingue
        «interrumpí y quedó libre» de «interrumpí y sigue colgado». */
     pensando: () => pensando } };
