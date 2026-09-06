@@ -59,7 +59,11 @@ MODELO_VECTOR = os.environ.get('ULTRON_MOTOR_VECTOR', 'embeddinggemma:300m')
 CERT = os.environ.get('ULTRON_MOTOR_CERT', '/etc/ultron-motor/cert.pem')
 LLAVE = os.environ.get('ULTRON_MOTOR_LLAVE', '/etc/ultron-motor/llave.pem')
 OLLAMA = os.environ.get('OLLAMA_HOST_LOCAL', 'http://127.0.0.1:11434')
-TOPE_CUERPO = 512 * 1024          # un prompt de ULTRON son ~20 KB; medio mega es de sobra
+TOPE_CUERPO = 12 * 1024 * 1024    # 12 MB
+# Eran 512 KB, y estaba bien mientras solo pasara texto: un prompt de ULTRON son
+# unos 20 KB. Pero desde que ULTRON MIRA imágenes, una foto del teléfono viaja
+# en base64 —un tercio más de lo que pesa— y el motor la rechazaba con un 413.
+# El síntoma: José subía una foto y ULTRON decía que no la podía ver.
 PLAZO_S = 180                     # un turno largo con herramientas
 
 # Cuántos piensan a la vez. Ollama tiene NUM_PARALLEL=3 y AU-RA usa esas

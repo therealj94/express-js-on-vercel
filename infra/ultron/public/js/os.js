@@ -653,11 +653,41 @@ const OS = (() => {
     }).join('') : '<div class="sub">Suelte un PDF, un Word o un texto en la pantalla y ULTRON lo lee.</div>';
   }
 
+  /* ── UNA FOTO DEL TELÉFONO NO VIAJA ENTERA ────────────────────────────────
+     Una foto del iPad son cuatro o cinco megas, y para MIRARLA no hacen falta:
+     el cerebro la reduce igual antes de verla. Lo que sí hace un archivo así es
+     tardar —viaja entera, se guarda entera y se manda entera al modelo en
+     base64, que abulta un tercio más—. Con el lado largo a 1600 píxeles el
+     texto de una factura o de una pantalla sigue leyéndose y el archivo baja a
+     una fracción.
+     Si el navegador no puede con el lienzo, o si el resultado sale MÁS grande
+     que el original —pasa con capturas de pantalla, que ya vienen muy
+     comprimidas—, se sube el original: encoger no puede empeorar las cosas. */
+  const LADO_MAXIMO = 1600;
+  async function encoger(f) {
+    if (!/^image\/(jpeg|png|webp)$/.test(f.type) || f.size < 400 * 1024) return f;
+    try {
+      const bm = await createImageBitmap(f);
+      const escala = Math.min(1, LADO_MAXIMO / Math.max(bm.width, bm.height));
+      if (escala === 1) { bm.close?.(); return f; }
+      const lz = document.createElement('canvas');
+      lz.width = Math.round(bm.width * escala); lz.height = Math.round(bm.height * escala);
+      lz.getContext('2d').drawImage(bm, 0, 0, lz.width, lz.height);
+      bm.close?.();
+      const chico = await new Promise((ok) => lz.toBlob(ok, 'image/jpeg', 0.85));
+      if (!chico || chico.size >= f.size) return f;
+      const nombre = f.name.replace(/\.(png|webp|jpeg|jpg)$/i, '') + '.jpg';
+      return new File([chico], nombre, { type: 'image/jpeg' });
+    } catch { return f; }
+  }
+
   async function subir(ficheros) {
     const l = [...ficheros].slice(0, 6);
-    for (const f of l) {
+    for (const original of l) {
       try {
-        avisar(`Subiendo ${f.name}…`);
+        avisar(`Subiendo ${original.name}…`);
+        const f = await encoger(original);
+        if (f !== original) avisar(`${original.name}: ${num(Math.round(original.size / 1024))} KB → ${num(Math.round(f.size / 1024))} KB para que se pueda mirar rápido.`);
         const r = await fetch('/archivos', {
           method: 'POST', credentials: 'same-origin',
           headers: { 'Content-Type': f.type || 'application/octet-stream', 'X-Nombre': encodeURIComponent(f.name) },
@@ -670,7 +700,7 @@ const OS = (() => {
            ULTRON contesta que no ve nada, la culpa parece suya. */
         avisar(d.texto ? `${f.name}: ${num(d.texto.length)} letras leídas.` : `${f.name} guardado, pero ${d.porQue || 'sin texto que leer'}`);
       } catch (e) {
-        avisar(`No se pudo subir ${f.name}: ${e.message}`, true);
+        avisar(`No se pudo subir ${original.name}: ${e.message}`, true);
       }
     }
     cargarArchivos();
