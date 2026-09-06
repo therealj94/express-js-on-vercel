@@ -87,7 +87,15 @@ a{color:var(--cian);text-decoration:none}
 /* Las cinco filas escritas: cintillo, techo, cuerpo, muelle, pie. Con las filas
    a medias, meter el cintillo delante empujaba al techo dentro del `1fr` y le
    daba media pantalla de alto. */
-#os{height:100dvh;display:grid;grid-template-rows:auto auto minmax(0,1fr) auto auto;grid-template-columns:minmax(0,1fr);
+/* CUATRO FILAS, QUE SON LAS QUE HAY: techo, cuerpo, muelle, pie. Decía CINCO
+   —de cuando las medidas eran una franja propia y no parte del techo— y esa
+   fila de más descolocaba TODO el reparto: el `1fr` caía en la fila 3, que ya
+   no era el cuerpo sino el muelle. En el escritorio el muelle quedaba en CERO
+   píxeles —las diez casas del ecosistema, invisibles—; en el teléfono el
+   cuerpo se encogía a 8 px (sus hijos van fijos) y el muelle se estiraba a 740,
+   con cada botón de casa estirado a 738 px de alto: una sábana invisible que
+   se tragaba los toques en media pantalla. Un solo `auto` de más. */
+#os{height:100dvh;display:grid;grid-template-rows:auto minmax(0,1fr) auto auto;grid-template-columns:minmax(0,1fr);
   position:relative;overflow:hidden;
   background:radial-gradient(ellipse 55% 70% at 50% 40%,rgba(10,40,58,.9) 0%,rgba(4,7,11,0) 70%),linear-gradient(180deg,#05080d,#03050a)}
 #holo{position:absolute;inset:0;width:100%;height:100%;display:block;z-index:0}
@@ -121,6 +129,9 @@ body.vieja #izq,body.vieja #der,body.vieja #medidas{opacity:.48;filter:saturate(
 #medidas{display:flex;align-items:center;gap:20px;min-width:0;flex-shrink:0;
   font-family:var(--mono);font-size:11px;letter-spacing:.08em;color:rgba(200,208,216,.75)}
 #medidas>div{white-space:nowrap}
+#m-salud{padding:2px 7px;font-size:9px;letter-spacing:.12em;line-height:1.5}
+#m-salud.mala{border-color:var(--rojo);color:var(--rojo)}
+#m-salud.ojo{border-color:var(--ambar);color:var(--ambar)}
 #medidas .pulso{width:6px;height:6px;border-radius:50%;background:var(--cian);box-shadow:0 0 8px var(--cian);display:inline-block;margin-right:7px}
 
 #cuerpo{position:relative;z-index:2;display:grid;
@@ -135,7 +146,10 @@ body.vieja #izq,body.vieja #der,body.vieja #medidas{opacity:.48;filter:saturate(
 /* El reparto de alto va por CUÁNTO tiene que decir cada panel, no por el orden
    en que se escribieron. ENLACES son seis puntos y cabe en poco; MERCADO lleva
    la cifra grande más un renglón por par, y CEREBRO siete renglones. */
-#izq{grid-column:1;grid-row:1;grid-template-rows:minmax(0,.8fr) minmax(0,1.12fr) minmax(0,1.18fr) minmax(0,1.12fr)}
+/* Cinco paneles desde que ULTRON se mira a sí mismo: SALUD va arriba del
+   todo porque es el único que puede decir «lo que estás viendo abajo no es
+   de fiar». Un tablero que no dice si el tablero funciona miente sin saberlo. */
+#izq{grid-column:1;grid-row:1;grid-template-rows:minmax(0,1.3fr) minmax(0,.62fr) minmax(0,.95fr) minmax(0,1.02fr) minmax(0,.95fr)}
 #der{grid-column:3;grid-row:1;grid-template-rows:minmax(0,1fr) minmax(0,1fr) minmax(0,.9fr) minmax(0,1.1fr)}
 #centro{grid-column:2;grid-row:1;position:relative;min-height:0;min-width:0;z-index:3}
 
@@ -198,7 +212,12 @@ body.vieja #izq,body.vieja #der,body.vieja #medidas{opacity:.48;filter:saturate(
 .chip:hover,.chip:focus-visible{background:rgba(5,225,255,.14)}
 
 /* ── el muelle de casas ───────────────────────────────────────────────────── */
-#muelle{position:relative;z-index:2;display:flex;gap:7px;padding:4px 22px 0;overflow-x:auto;scrollbar-width:none}
+#muelle{position:relative;z-index:2;display:flex;align-items:flex-start;gap:7px;padding:4px 22px 0;overflow-x:auto;scrollbar-width:none}
+/* El cajón vive DENTRO de #cuerpo, que es contexto de apilado propio: su
+   z-index:50 sólo vale ahí dentro. Contra el muelle —hermano de #cuerpo, con
+   el mismo z-index:2 y más abajo en el documento— perdía, y las casas se
+   dibujaban encima de los paneles abiertos. Con el cajón arriba, el muelle baja. */
+body.cajon #muelle{z-index:1}
 #muelle::-webkit-scrollbar{display:none}
 .casa{flex:none;width:76px;padding:8px 4px 6px;text-align:center;
   clip-path:polygon(0 0,calc(100% - 10px) 0,100% 10px,100% 100%,10px 100%,0 calc(100% - 10px));
@@ -388,6 +407,13 @@ body.cajon #tirador{bottom:calc(76dvh + 4px)}
       <!-- «AU» es también la sigla de AuCorp en el muelle: «AU —» se leía como
            «AuCorp sin dato». Es el oro. -->
       <div class="esconde">ORO <span id="m-oro">—</span></div>
+      <!-- LA NOTA DE ULTRON, SIEMPRE A LA VISTA. En el teléfono los paneles
+           viven en un cajón cerrado: si la salud sólo estuviera ahí dentro, la
+           única manera de saber que ULTRON está mal sería sospecharlo primero y
+           abrir a mirar. Aquí se ve sin tocar nada, y se toca para el detalle. -->
+      <!-- En el teléfono sólo el número: la palabra «ULTRON» le comía el ancho a la
+           marca del techo, que pasaba a leerse «ULTR». El color ya dice lo demás. -->
+      <button id="m-salud" class="chip oculto" title="La salud de ULTRON"><span class="esconde">ULTRON </span><span id="m-salud-n">—</span></button>
       <div id="m-reloj">—</div>
     </div>
   </header>
@@ -431,6 +457,7 @@ body.cajon #tirador{bottom:calc(76dvh + 4px)}
         <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
           <div><h2>EL DUEÑO</h2><div class="sub" id="dueno-sub">—</div></div>
           <div style="display:flex;gap:4px">
+            <button class="chip" id="b-saber" title="Habilidades y herramientas de ULTRON">SABE HACER</button>
             <button class="chip" id="b-boveda" title="Guardar un secreto en la bóveda">BÓVEDA</button>
             <button class="chip" id="b-equipo" title="El equipo de bots">EQUIPO</button>
           </div>
@@ -439,6 +466,27 @@ body.cajon #tirador{bottom:calc(76dvh + 4px)}
       </div></div>
     </div>
     <div id="izq">
+      <!-- LA SALUD DE ULTRON. El vigía mira las seis casas; esto mira al que las
+           mira. La nota sale de nueve signos (cerebro, base, memoria, bucle,
+           vigía, equipo, puerta, autorizaciones, fallos) y REPARAR arregla lo
+           que se puede arreglar sin riesgo: reconectar, relevar, rearrancar. -->
+      <div class="p"><div>
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
+          <div style="min-width:0"><h2>SALUD PROPIA</h2><div class="sub" id="salud-sub">midiendo…</div></div>
+          <div style="display:flex;gap:4px;flex:none">
+            <button class="chip" id="b-nodos" title="Las máquinas de la casa en AWS">MÁQUINAS</button>
+            <button class="chip oculto" id="b-reparar" title="Arreglar lo que se puede arreglar solo">REPARAR</button>
+          </div>
+        </div>
+        <div style="display:flex;gap:10px;align-items:stretch;flex:1;min-height:0;overflow:hidden">
+          <div id="nota" style="flex:none;align-self:center;text-align:center;min-width:52px">
+            <div class="dato" id="nota-n" style="font-size:clamp(20px,2.4vw,30px);line-height:1;color:var(--letra-f)">—</div>
+            <div style="font-size:8px;letter-spacing:.18em;color:rgba(5,225,255,.8);margin-top:3px">DE 100</div>
+          </div>
+          <div style="flex:1;min-width:0;min-height:0;overflow-y:auto;display:flex;flex-direction:column;gap:3px" class="dato" id="signos" tabindex="0"></div>
+        </div>
+      </div></div>
+
       <div class="p"><div>
         <div><h2>ENLACES</h2><div class="sub" id="nervio-estado">leyendo…</div></div>
         <canvas id="red" style="width:100%;flex:1;min-height:0;display:block"></canvas>
@@ -541,6 +589,7 @@ body.cajon #tirador{bottom:calc(76dvh + 4px)}
 <script src="js/os-boca.js"></script>
 <script src="js/voz.js"></script>
 <script src="js/os.js"></script>
-<script type="module" src="js/os-holo.js"></script>
+<!-- El centro: el núcleo se carga siempre; el busto en 3D solo si se pide. -->
+<script type="module" src="js/os-nucleo.js"></script>
 </body>
 </html>

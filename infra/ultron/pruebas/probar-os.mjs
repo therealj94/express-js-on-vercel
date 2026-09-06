@@ -86,10 +86,13 @@ titulo('la figura de ULTRON, en el centro');
   const h = await p.evaluate(() => {
     const cv = document.querySelector('#holo');
     if (!cv) return { hay: false, porQue: document.querySelector('#sin-holo') ? 'se cayó a la salida honesta' : 'no hay lienzo' };
-    const g = cv.getContext('webgl2') || cv.getContext('webgl');
-    return { hay: true, listo: !!window.ULTRON_HOLO_LISTO, montado: !!window.__ULTRON_BUSTO, ctx: !!g, w: cv.width, h: cv.height };
+    /* Desde la revisión 2 el centro es el NÚCLEO en lienzo 2D, no el busto en
+       WebGL: se pide el contexto 2d, que es el que de verdad usa. */
+    const g = cv.getContext('2d') || cv.getContext('webgl2') || cv.getContext('webgl');
+    return { hay: true, listo: !!window.ULTRON_HOLO_LISTO, figura: window.__ULTRON_FIGURA || null, montado: !!window.__ULTRON_FIGURA_VIVA, ctx: !!g, w: cv.width, h: cv.height };
   });
-  decir(h.hay && h.montado, 'el busto se monta solo, sin que nadie lo llame a mano', JSON.stringify(h));
+  decir(h.hay && h.montado, 'la figura se monta sola, sin que nadie la llame a mano', JSON.stringify(h));
+  decir(h.figura === 'nucleo', 'y la que sale por omisión es el núcleo, no el busto', String(h.figura));
   decir(h.hay && h.w > 200 && h.h > 200, 'y ocupa el centro de la pantalla', `${h.w}×${h.h}`);
   // ¿pinta? Se mira el lienzo dos veces separadas y se compara: si nada cambia, está muerto.
   const vivo = await p.evaluate(async () => {

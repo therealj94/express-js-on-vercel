@@ -210,4 +210,8 @@ async function mongoConsultar({ app, coleccion, filtro = {}, limite = 10, orden 
   return `${a} · ${col} · ${r.total} documento(s) cumplen el filtro; se muestran ${r.docs.length}:\n${JSON.stringify(r.docs, null, 1).slice(0, 14_000)}`;
 }
 
-module.exports = { herokuApps, herokuRegistro, herokuVariables, herokuReiniciar, nodos, nodoComando, mongoConsultar, _adentro: { tapar, taparDoc, resolverNodo, appValida } };
+/* Para el médico: soltar lo que se guarda en el aire cuando la memoria aprieta.
+   No borra nada de verdad —la próxima lectura vuelve a preguntarle a AWS—. */
+function olvidarNodos() { const n = mapaNodos.nodos.length; mapaNodos = { en: 0, nodos: [] }; return n; }
+
+module.exports = { herokuApps, herokuRegistro, herokuVariables, herokuReiniciar, nodos, nodoComando, mongoConsultar, olvidarNodos, _adentro: { tapar, taparDoc, resolverNodo, appValida, olvidarNodos } };

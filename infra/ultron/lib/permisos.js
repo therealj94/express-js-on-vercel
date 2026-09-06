@@ -60,6 +60,10 @@ const NIVEL_DE = {
   // escribir
   recordar: 'escribir', olvidar: 'escribir', anotar_pendiente: 'escribir', cerrar_pendiente: 'escribir',
   crear_documento: 'escribir', aprender: 'escribir', habilidad_crear: 'escribir',
+  /* El médico se cura solo: reconectar la base, relevar el cerebro, rearrancar el
+     vigía. Todo interno y reversible — pedirle permiso al dueño para que ULTRON
+     no se quede mudo sería justo la manera de que se quede mudo. */
+  salud_reparar: 'escribir',
   // peligroso
   terminal: 'peligroso', repo_proponer_cambio: 'peligroso', desplegarse: 'peligroso',
   boveda_aplicar: 'peligroso', habilidad_publicar: 'peligroso', equipo_correr: 'peligroso',

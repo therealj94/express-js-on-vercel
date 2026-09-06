@@ -131,7 +131,10 @@ function arrancar({ pensar, junta = [] }) {
        después a su ritmo. Cada uno va desfasado por su posición para que no
        se pisen. */
     const t = setTimeout(() => {
-      correr(b.nombre, { pensar, junta }).then((p) => console.log(`[equipo] ${b.nombre}: parte de ${p.texto.length} letras`)).catch((e) => console.warn(`[equipo] ${b.nombre} no corrió: ${e.message}`));
+      /* La primera vuelta también cuenta. Antes solo el intervalo apuntaba
+         `ultimaVuelta`, así que un bot que corrió una vez y se quedó parado
+         figuraba como «nunca corrió» y nadie lo veía atrasado. */
+      correr(b.nombre, { pensar, junta }).then((p) => { ultimaVuelta.set(b.nombre, new Date()); console.log(`[equipo] ${b.nombre}: parte de ${p.texto.length} letras`); }).catch((e) => console.warn(`[equipo] ${b.nombre} no corrió: ${e.message}`));
       const iv = setInterval(() => {
         correr(b.nombre, { pensar, junta }).then((p) => { ultimaVuelta.set(b.nombre, new Date()); console.log(`[equipo] ${b.nombre}: parte de ${p.texto.length} letras`); })
           .catch((e) => console.warn(`[equipo] ${b.nombre} no corrió: ${e.message}`));

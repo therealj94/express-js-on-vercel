@@ -376,42 +376,12 @@ export function mount(canvas, get, opts = {}) {
 }
 window.UltronHolo = { mount };
 
-/* ── ACOPLE · EL BUSTO SE MONTA SOLO ────────────────────────────────────────
-   El diseño que llegó dejaba el montaje a un armazón de React que aquí no
-   existe: `mount()` quedaba exportado y nadie lo llamaba nunca. El resultado
-   era una pantalla correcta con un agujero negro en el medio — y justamente el
-   medio es ULTRON.
-   Se monta contra `__ULTRON_MENTE`, que es el objeto que la consola actualiza
-   sesenta veces por segundo (estado, nivel de la voz, ratón). El busto viene a
-   mirarlo; no se le manda nada, así ninguno de los dos bloquea al otro. */
-function arrancarBusto() {
-  const cv = document.getElementById('holo');
-  if (!cv) return;
-  const mirar = () => (typeof window.__ULTRON_MENTE === 'function' ? window.__ULTRON_MENTE() : { state: 'idle' });
-  /* ACOPLE · EL ENCUADRE DEPENDE DE LA PANTALLA. El encuadre de origen mete el
-     busto entero —cabeza, hombros y pedestal— en la altura de la ventana. En un
-     teléfono eso deja la cara del tamaño de una moneda en el tercio de abajo,
-     con media pantalla vacía arriba, y la boca —que es justo lo que hay que
-     mirar mientras habla— casi no se distingue. Por debajo de 860 px se acerca
-     a la cabeza. */
-  const opciones = innerWidth < 860 ? { zoom: 0.72, mira: 0.42 } : {};
-  try {
-    window.__ULTRON_BUSTO = mount(cv, mirar, opciones);
-    window.ULTRON_HOLO_LISTO = true;
-  } catch (e) {
-    /* Un teléfono viejo sin WebGL, o la tarjeta ocupada. No se deja el hueco
-       negro: se dice qué pasó y el resto del sistema sigue sirviendo. */
-    console.warn('[holo] no se pudo dibujar el busto:', e && e.message);
-    cv.remove();
-    const aviso = document.createElement('div');
-    aviso.id = 'sin-holo';
-    aviso.innerHTML = '<b>ULTRON</b><span>Este navegador no puede dibujar la figura en tres dimensiones. '
-      + 'Todo lo demás —la voz, los archivos, el tablero— funciona igual.</span>';
-    document.getElementById('os')?.prepend(aviso);
-    window.ULTRON_HOLO_LISTO = false;
-  }
-  window.dispatchEvent(new Event('ultron-holo-ready'));
-}
+/* ── ACOPLE · YA NO SE MONTA SOLO ───────────────────────────────────────────
+   Desde la revisión 2 del diseño, el centro de ULTRON es el NÚCLEO circular
+   (os-nucleo.js) y no el busto. Quien decide cuál se dibuja es el núcleo, que
+   se carga siempre; el busto queda como opción y este módulo solo se descarga
+   —con sus 600 kB de three.js— cuando alguien lo pide de verdad.
 
-if (document.readyState === 'loading') addEventListener('DOMContentLoaded', arrancarBusto);
-else arrancarBusto();
+   Por eso aquí ya no hay arranque automático: si lo hubiera, los dos se
+   montarían sobre el mismo lienzo y el segundo pisaría al primero sesenta veces
+   por segundo. Se exporta `mount()` y el núcleo lo llama. */

@@ -58,6 +58,7 @@ const permisos = require('./lib/permisos');
 const boveda = require('./lib/boveda');
 const aprender = require('./lib/aprender');
 const equipo = require('./lib/equipo');
+const salud = require('./lib/salud');
 
 const app = express();
 app.set('trust proxy', 1);
@@ -159,6 +160,9 @@ function puerta(req, res, next) {
    avería de una pieza no puede ser la avería de todas. */
 process.on('unhandledRejection', (e) => {
   console.error('[ultron] promesa sin atrapar (la casa sigue en pie):', e?.stack || e);
+  /* Y se cuenta: veinte veces el mismo fallo es una avería, y hasta hoy se
+     perdía en el registro de Heroku sin que nadie lo sumara. */
+  try { salud.anotarFallo(e, 'promesa sin atrapar'); } catch { /* la salud no puede tumbar la casa */ }
 });
 
 app.use(helmet({
@@ -228,6 +232,9 @@ app.get('/salud', async (req, res) => {
     voz: voz.encendida(), memoria: memoria.estado(), canales: canales.estado(),
     saber: saber.resumen().total, saberArmado: saber.resumen().armadoEn,
     boveda: boveda.encendida(), equipo: equipo.estado().encendido, dueño: !!DUENO, herramientas: herramientas.DEFINICIONES.length,
+    /* La nota de la última ronda del médico. Es lo que hace que «¿está bien
+       ULTRON?» tenga una respuesta sin entrar al panel. */
+    nota: salud.ultima()?.puntaje ?? null, relevo: cerebro.relevo?.().activo || false,
   });
 });
 
@@ -757,6 +764,24 @@ app.post('/equipo/:bot/correr', puerta, async (req, res) => {
   catch (e) { res.status(e.codigo === 'NO_EXISTE' ? 404 : e.codigo === 'EN_MARCHA' ? 409 : 500).json({ error: e.message, codigo: e.codigo }); }
 });
 
+/* ── LA SALUD DE ULTRON, PARA LA PANTALLA ──────────────────────────────────
+   `/salud` es público y dice lo básico. Esto es la revisión entera, con los
+   nueve signos y sus arreglos, y solo la ve quien entró. */
+app.get('/salud/profunda', puerta, async (req, res) => {
+  try { res.json(await salud.revisar()); }
+  catch (e) { salud.anotarFallo(e, 'GET /salud/profunda'); res.status(500).json({ error: e.message }); }
+});
+app.get('/salud/historial', puerta, async (req, res) => {
+  try { res.json({ rondas: await salud.historial({ limite: Math.min(60, Number(req.query.limite) || 24) }) }); }
+  catch (e) { res.status(500).json({ error: e.message }); }
+});
+/* Reparar es de nivel «escribir»: interno y reversible. Lo puede pedir
+   cualquiera de la junta desde el panel; el dueño no tiene que estar. */
+app.post('/salud/reparar', puerta, async (req, res) => {
+  try { res.json(await salud.reparar(Array.isArray(req.body?.arreglos) ? req.body.arreglos : null)); }
+  catch (e) { salud.anotarFallo(e, 'POST /salud/reparar'); res.status(500).json({ error: e.message }); }
+});
+
 app.get('/habilidades', puerta, async (req, res) => {
   try { res.json((await aprender.listar()).map((h) => ({ nombre: h.nombre, cuando: h.cuando, origen: h.origen, version: h.version, publicada: h.publicada }))); }
   catch (e) { res.status(500).json({ error: e.message }); }
@@ -785,6 +810,9 @@ if (require.main === module) {
     vigia.arrancar();
     permisos.comprobarCatalogo(herramientas.DEFINICIONES.map((d) => d.name));
     equipo.arrancar({ pensar: cerebro.pensar, junta: JUNTA });
+    /* El médico. Arranca con el servidor por la misma razón que el vigía: la
+       avería que importa es la que pasa cuando nadie está mirando. */
+    salud.arrancar();
     if (!boveda.encendida()) console.warn('[boveda] apagada: sin ULTRON_BOVEDA_LLAVE no se guardan secretos');
     app.listen(PUERTO, () => {
       console.log(`[ultron] escuchando en ${PUERTO} · cerebro ${cerebro.encendido() ? MODELO_LOG() : 'APAGADO'} · voz ${voz.encendida() ? 'ElevenLabs' : 'del navegador'} · memoria ${memoria.estado()}`);

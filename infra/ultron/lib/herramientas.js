@@ -41,6 +41,7 @@ const taller = require('./taller');
 const aprender = require('./aprender');
 const equipo = require('./equipo');
 const operaciones = require('./operaciones');
+const salud = require('./salud');
 
 // Adónde puede mandar a abrir. Cerrado a la casa a propósito: «abrí» con una
 // URL cualquiera es la forma más fácil de que un modelo lleve a alguien a un
@@ -340,6 +341,21 @@ const DEFINICIONES = [
     description: 'Los pedidos de autorización: pendientes de que el dueño apruebe, aprobados, negados. Para decirle a la persona qué está esperando su clic.',
     input_schema: { type: 'object', properties: { estado: { type: 'string', enum: ['pendiente', 'aprobado', 'negado', 'usado', 'vencido'] } } },
   },
+  {
+    name: 'salud_revisar',
+    description: 'La salud del PROPIO ULTRON, signo por signo: memoria del proceso, bucle de eventos, base de datos, cerebro (y si está de relevo), vigía, equipo, puerta, autorizaciones olvidadas y fallos de la última hora. Da una nota de 0 a 100. Es lo primero que hay que mirar cuando ULTRON va lento, no contesta o se comporta raro.',
+    input_schema: { type: 'object', properties: {} },
+  },
+  {
+    name: 'salud_reparar',
+    description: 'Arregla solo lo que se puede arreglar sin riesgo: reconectar la base, relevar el cerebro al respaldo cuando el nodo no contesta, rearrancar el vigía o el equipo, soltar cachés cuando aprieta la memoria, cerrar autorizaciones que nadie contestó. No reinicia dynos, no borra archivos, no toca secretos: eso se anota como pendiente. Sin argumentos arregla todo lo que la revisión encontró.',
+    input_schema: { type: 'object', properties: { arreglos: { type: 'array', items: { type: 'string' }, description: 'Opcional: soltar_cache, reconectar_base, relevar_cerebro, rearrancar_vigia, rearrancar_equipo, cerrar_vencidos' } } },
+  },
+  {
+    name: 'salud_historial',
+    description: 'Las últimas rondas de salud con su nota y qué se reparó en cada una. Para ver si algo viene empeorando desde hace días en vez de mirar solo el momento.',
+    input_schema: { type: 'object', properties: { limite: { type: 'integer', description: '1 a 60; por omisión 12' } } },
+  },
 ];
 
 // ── Internet ────────────────────────────────────────────────────────────────
@@ -459,7 +475,7 @@ async function leerPagina(url) {
    la vez. Guardar una memoria y cerrar un pendiente tienen un orden que el
    modelo pidió; leer el mercado y leer la altura de la cadena, no. */
 const ESCRIBEN = new Set(['recordar', 'olvidar', 'anotar_pendiente', 'cerrar_pendiente', 'crear_documento', 'proponer_envio',
-  'aprender', 'habilidad_crear', 'habilidad_publicar', 'repo_proponer_cambio', 'terminal', 'desplegarse', 'boveda_aplicar', 'equipo_correr', 'heroku_reiniciar', 'nodo_comando']);
+  'aprender', 'habilidad_crear', 'habilidad_publicar', 'repo_proponer_cambio', 'terminal', 'desplegarse', 'boveda_aplicar', 'equipo_correr', 'heroku_reiniciar', 'nodo_comando', 'salud_reparar']);
 
 /* ── UN LOTE DE HERRAMIENTAS, NO UNA FILA ────────────────────────────────────
  *
@@ -675,9 +691,11 @@ async function correr(nombre, entrada, ctx) {
       }
       case 'aucorp_monedas': {
         const base = vivo.CASAS.aucorp.api;
-        const [salud, mon] = await Promise.all([leerJson(base + '/salud'), leerJson(base + '/monedas')]);
-        if (!salud) return 'AuCorp no contesta.';
-        const l = [`AuCorp: ${salud.ok ? 'viva' : 'con problemas'} · tasas ${salud.tasas ? 'al día' : 'sin tasas'}${salud.tasasCuando ? ' (' + salud.tasasCuando + ')' : ''} · Genesis ${salud.genesis ? 'conectado' : 'no'} · sanciones cargadas: ${salud.sanciones?.registros ?? '?'} registros`];
+        /* `sal`, no `salud`: arriba hay un módulo que se llama así y tapar su
+           nombre aquí dentro es una trampa esperando a la próxima edición. */
+        const [sal, mon] = await Promise.all([leerJson(base + '/salud'), leerJson(base + '/monedas')]);
+        if (!sal) return 'AuCorp no contesta.';
+        const l = [`AuCorp: ${sal.ok ? 'viva' : 'con problemas'} · tasas ${sal.tasas ? 'al día' : 'sin tasas'}${sal.tasasCuando ? ' (' + sal.tasasCuando + ')' : ''} · Genesis ${sal.genesis ? 'conectado' : 'no'} · sanciones cargadas: ${sal.sanciones?.registros ?? '?'} registros`];
         for (const m of mon?.monedas || []) l.push(`- ${m.codigo} ${m.nombre} (${m.pais})`);
         l.push('AuCorp es una FinTech: cuentas en moneda local. No es un banco y no hay «depósito asegurado».');
         return l.join('\n');
@@ -918,6 +936,25 @@ async function correr(nombre, entrada, ctx) {
       }
       case 'nodo_comando': return operaciones.nodoComando(entrada);
       case 'mongo_consultar': return operaciones.mongoConsultar(entrada);
+      // ── la salud del propio ULTRON ──────────────────────────────────────
+      case 'salud_revisar': {
+        const r = await salud.revisar();
+        const linea = (s) => `${s.estado === 'bien' ? '·' : s.estado === 'ojo' ? '!' : '✗'} ${s.que}: ${s.dato}${s.detalle ? ` — ${s.detalle}` : ''}`;
+        return `NOTA ${r.puntaje}/100 (${r.estado})\n${r.signos.map(linea).join('\n')}`
+          + (r.arreglos.length ? `\n\nSe puede arreglar solo: ${r.arreglos.join(', ')} (salud_reparar).` : '\n\nNo hay nada que reparar.');
+      }
+      case 'salud_reparar': {
+        const r = await salud.reparar(Array.isArray(entrada.arreglos) ? entrada.arreglos : null);
+        ctx.acciones.push({ tipo: 'salud', antes: r.antes, despues: r.despues });
+        if (!r.hechos.length) return `No hacía falta reparar nada. Nota ${r.despues}/100.`;
+        return `Nota ${r.antes} → ${r.despues}/100.\n${r.hechos.map((h) => `- ${h}`).join('\n')}`;
+      }
+      case 'salud_historial': {
+        const l = await salud.historial({ limite: Math.min(60, Math.max(1, Number(entrada.limite) || 12)) });
+        if (!l.length) return 'Todavía no hay rondas de salud guardadas.';
+        return l.map((r) => `- ${new Date(r.cuando).toISOString().slice(0, 16).replace('T', ' ')} · ${r.puntaje}/100 (${r.estado})`
+          + (r.reparado?.length ? ` · reparado: ${r.reparado.join('; ')}` : '')).join('\n');
+      }
       case 'autorizaciones': {
         const l = await permisos.lista({ estado: entrada.estado || null, limite: 20 });
         if (!l.length) return 'No hay pedidos de autorización.';
@@ -1018,6 +1055,7 @@ const GRUPOS = {
   'Aprender': ['aprender', 'habilidad_usar', 'habilidad_crear', 'habilidad_publicar'],
   'El equipo': ['equipo_estado', 'equipo_partes', 'equipo_correr', 'auditar_dependencias', 'autorizaciones'],
   'Operaciones (Heroku, nodos, bases)': ['heroku_apps', 'heroku_registro', 'heroku_variables', 'heroku_reiniciar', 'nodos', 'nodo_comando', 'mongo_consultar'],
+  'Su propia salud': ['salud_revisar', 'salud_reparar', 'salud_historial'],
 };
 
 /** El catálogo para la consola: definición, grupo y si escribe algo. */

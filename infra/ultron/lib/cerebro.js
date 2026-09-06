@@ -383,9 +383,47 @@ async function titularConClaude(texto) {
 
 const nodo = require('./cerebros/nodo');
 
+/* ── EL RELEVO ───────────────────────────────────────────────────────────────
+ * El fallo que esto arregla, con nombre y apellido: `cual()` elegía el nodo con
+ * solo mirar si las variables estaban PUESTAS, no si el nodo CONTESTABA. Con la
+ * tarjeta apagada —o el motor caído, o Ollama sin arrancar— ULTRON se quedaba
+ * mudo teniendo la llave de Anthropic al lado, sin tocar. Una casa con dos
+ * cerebros que se queda sin ninguno porque nadie escribió el «si no, el otro».
+ *
+ * Ahora, cuando el nodo falla por algo que no se arregla reintentando —no
+ * contesta, tarda demasiado, Ollama mudo, secreto rechazado— Claude toma el
+ * relevo PARA ESE MISMO TURNO (José recibe su respuesta, no un error) y queda
+ * de guardia unos minutos. Pasado el plazo se vuelve a probar el nodo solo: si
+ * revivió, se vuelve a lo nuestro sin que nadie haga nada.
+ *
+ * Lo que NO releva: que el nodo conteste algo raro o que el modelo se equivoque.
+ * Eso es trabajo del nodo y se arregla en el nodo. El relevo es para «no hay
+ * nadie al otro lado», no para «no me gusta lo que dijo». */
+const RELEVO_MS = Number(process.env.ULTRON_RELEVO_MS || 10 * 60_000);
+const RELEVABLES = new Set(['NODO_MUDO', 'NODO_LENTO', 'NODO_ERROR', 'MODELO_MUDO', 'NODO_NO', 'NODO_APAGADO']);
+const guardia = { hasta: 0, desde: 0, motivo: null, veces: 0 };
+
+function relevar(motivo) {
+  if (!claudeEncendido()) return false;
+  if (!guardia.hasta) guardia.desde = Date.now();
+  guardia.hasta = Date.now() + RELEVO_MS;
+  guardia.motivo = motivo;
+  guardia.veces++;
+  console.warn(`[cerebro] relevo a Claude por ${Math.round(RELEVO_MS / 60000)} min — ${motivo}`);
+  return true;
+}
+function relevo() {
+  const activo = Date.now() < guardia.hasta;
+  return { activo, desde: guardia.desde || null, hasta: guardia.hasta || null, motivo: activo ? guardia.motivo : null, veces: guardia.veces };
+}
+function volverAlNodo() { guardia.hasta = 0; guardia.motivo = null; return true; }
+
 function cual() {
   const dicho = (process.env.ULTRON_CEREBRO || '').trim().toLowerCase();
   if (dicho === 'claude') return 'claude';
+  /* El relevo pesa más que la preferencia: un nodo mudo no piensa aunque la
+     junta lo haya elegido. */
+  if (Date.now() < guardia.hasta && claudeEncendido()) return 'claude';
   if (dicho === 'nodo') return 'nodo';
   return nodo.encendido() ? 'nodo' : 'claude';
 }
@@ -407,12 +445,26 @@ async function pensar(args) {
   if (cual() === 'nodo') {
     const extras = await contextoExtra(args.miembro, args.junta || []);
     const conExtras = (o) => sistema({ ...o, miembro: { ...o.miembro, esDueño: extras.miembro.esDueño }, habilidades: extras.habilidades, pedidos: extras.pedidos });
-    return nodo.pensar({ ...args, sistema: conExtras, pensar });
+    try {
+      const r = await nodo.pensar({ ...args, sistema: conExtras, pensar });
+      if (guardia.hasta) { volverAlNodo(); console.log('[cerebro] el nodo volvió: se deja el relevo'); }
+      return r;
+    } catch (e) {
+      /* Aquí es donde ULTRON deja de quedarse mudo. Si el nodo no está, se
+         contesta igual —con Claude— y se dice en el registro por qué. */
+      if (!RELEVABLES.has(e?.codigo) || !claudeEncendido()) throw e;
+      relevar(motivoDeCualquiera(e).mensaje);
+      try { require('./salud').anotarFallo(e, 'cerebro/nodo'); } catch { /* la salud puede no estar en pie todavía */ }
+      return pensarConClaude(args);
+    }
   }
   return pensarConClaude(args);
 }
 async function titular(texto) {
-  if (cual() === 'nodo') return nodo.titular(texto);
+  if (cual() === 'nodo') {
+    try { return await nodo.titular(texto); }
+    catch (e) { if (!RELEVABLES.has(e?.codigo) || !claudeEncendido()) throw e; return titularConClaude(texto); }
+  }
   return titularConClaude(texto);
 }
 
@@ -431,4 +483,5 @@ function motivoDeCualquiera(e) {
 }
 
 module.exports = { pensar, titular, encendido, cual, modelo, motivo: motivoDeCualquiera, dolaresDe, PRECIOS, MODELO, HERRAMIENTAS,
-  nodo, _adentro: { sistema, correr, clienteAnthropic, pensarConClaude, claudeEncendido } };
+  relevar, relevo, volverAlNodo,
+  nodo, _adentro: { sistema, correr, clienteAnthropic, pensarConClaude, claudeEncendido, guardia, RELEVABLES } };

@@ -353,6 +353,99 @@ const OS = (() => {
     });
   }
 
+  /* ── LA SALUD DE ULTRON, EN LA PANTALLA ───────────────────────────────────
+     Nueve signos y una nota. La regla del tablero se respeta: mientras no llega
+     la lectura, la nota dice «—». Y el botón REPARAR solo aparece cuando hay
+     algo que reparar de verdad: un botón que no hace nada enseña a no tocarlo. */
+  let saludProfunda = null;
+  function pintarSaludPropia(r) {
+    saludProfunda = r;
+    const n = $('#nota-n'), sub = $('#salud-sub'), caja = $('#signos'), rep = $('#b-reparar');
+    if (!r) { n.textContent = nada; sub.textContent = 'no se pudo medir'; sub.className = 'sub mal'; return; }
+    n.textContent = String(r.puntaje);
+    n.style.color = r.estado === 'bien' ? 'var(--verde)' : r.estado === 'ojo' ? 'var(--ambar)' : 'var(--rojo)';
+    const malos = r.signos.filter((x) => x.estado === 'mal').length;
+    const ojos = r.signos.filter((x) => x.estado === 'ojo').length;
+    sub.textContent = !malos && !ojos ? 'todo en orden' : `${malos ? malos + ' grave' + (malos > 1 ? 's' : '') : ''}${malos && ojos ? ' · ' : ''}${ojos ? ojos + ' ojo' : ''}`;
+    sub.className = 'sub ' + (malos ? 'mal' : ojos ? 'amb' : 'ok');
+    caja.innerHTML = r.signos.map((x) => `<div class="fila dato" title="${esc(x.que)}: ${esc(x.dato)}${x.detalle ? ' — ' + esc(x.detalle) : ''}">`
+      + `<span>${esc(x.corto || x.que)}</span><span class="${x.estado === 'bien' ? 'ok' : x.estado === 'ojo' ? 'amb' : 'mal'}">${esc(x.dato)}</span></div>`).join('');
+    rep.classList.toggle('oculto', !r.arreglos?.length);
+    /* Y en el techo, para verla sin abrir el cajón. */
+    const chip = $('#m-salud');
+    if (chip) {
+      chip.classList.remove('oculto', 'mala', 'ojo');
+      if (r.estado === 'mal') chip.classList.add('mala'); else if (r.estado === 'ojo') chip.classList.add('ojo');
+      $('#m-salud-n').textContent = String(r.puntaje);
+      chip.title = r.resumen || 'La salud de ULTRON';
+    }
+    rep.title = r.arreglos?.length ? `Arregla: ${r.arreglos.join(', ')}` : '';
+  }
+
+  async function repararSalud() {
+    const b = $('#b-reparar'); b.disabled = true; const antes = b.textContent; b.textContent = 'ARREGLANDO…';
+    try {
+      const rr = await fetch('/salud/reparar', { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: '{}' });
+      const x = await rr.json(); if (!rr.ok) throw new Error(x.error || rr.status);
+      avisar(x.hechos?.length ? `${x.antes} → ${x.despues}/100 · ${x.hechos.length} arreglo(s).` : 'No hacía falta arreglar nada.');
+      if (x.hechos?.length) pintarDicho(`**Reparado**\n\n${x.hechos.map((h) => '- ' + h).join('\n')}`);
+      DATOS.get('/salud/profunda').then(pintarSaludPropia).catch(() => {});
+    } catch (e) { avisar(`No se pudo arreglar: ${e.message}`, true); }
+    b.disabled = false; b.textContent = antes;
+  }
+
+  /* Las máquinas de la casa. Va por la ruta de herramientas porque `nodos` es de
+     lectura y ya sabe hablar con AWS: no hacía falta una ruta nueva para lo
+     mismo. */
+  async function abrirNodos() {
+    const d = dialogo('<h3>LAS MÁQUINAS</h3><div class="sub">preguntándole a AWS…</div>');
+    let txt = null;
+    try {
+      const r = await fetch('/herramientas/nodos', { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: '{"entrada":{}}' });
+      const x = await r.json(); txt = r.ok ? (x.salida || '') : `No se pudo leer: ${x.error || r.status}`;
+    } catch (e) { txt = `No se pudo leer: ${e.message}`; }
+    const filas = String(txt).split('\n').filter(Boolean).map((l) => {
+      const t = l.replace(/^-\s*/, '');
+      const apagada = /stopped|apagad/i.test(t);
+      return `<div class="fila dato"><span>${esc(t.split(' · ').slice(0, 2).join(' · '))}</span><span class="${apagada ? 'amb' : 'ok'}">${esc(t.split(' · ').slice(2).join(' · '))}</span></div>`;
+    }).join('');
+    d.innerHTML = `<h3>LAS MÁQUINAS</h3><div class="sub">Los nodos de la cadena y las tarjetas, leídos de AWS ahora mismo.</div>
+      <div style="display:flex;flex-direction:column;gap:3px;max-height:44dvh;overflow-y:auto">${filas || '<div class="sub">sin lectura</div>'}</div>
+      <div class="fila-btn"><button class="btn" id="nd-cerrar">CERRAR</button></div>`;
+    d.querySelector('#nd-cerrar').onclick = () => d.remove();
+  }
+
+  /* LO QUE SABE HACER. Doce habilidades y cincuenta y ocho herramientas vivían
+     sin una sola puerta desde la pantalla: estaban ahí y nadie podía verlas.
+     Una habilidad se abre y se lee; una herramienta se nombra por grupo. */
+  async function abrirSaberHacer() {
+    const [hab, her] = await Promise.all([
+      DATOS.get('/habilidades').catch(() => null),
+      DATOS.get('/herramientas').catch(() => null),
+    ]);
+    const lista = Array.isArray(hab) ? hab : (hab?.habilidades || []);
+    const habs = lista.map((h) => `<div class="fila dato"><span><button class="chip" data-hab="${esc(h.nombre)}">${esc(h.nombre)}</button></span><span class="sub" style="text-align:right;max-width:60%">${esc(String(h.cuando || '').slice(0, 90))}</span></div>`).join('');
+    const porGrupo = {};
+    for (const t of her?.herramientas || []) (porGrupo[t.grupo] ||= []).push(t.nombre);
+    const grupos = Object.entries(porGrupo).map(([g, l]) => `<div class="parte"><b>${esc(g)}</b>${l.map(esc).join(' · ')}</div>`).join('');
+    const d = dialogo(`<h3>LO QUE SABE HACER</h3>
+      <div class="sub">${lista.length} habilidades (procedimientos que sigue paso por paso) y ${(her?.herramientas || []).length} herramientas (lo que puede tocar).</div>
+      <div style="display:flex;flex-direction:column;gap:3px;max-height:26dvh;overflow-y:auto">${habs || '<div class="sub">sin habilidades</div>'}</div>
+      <div style="max-height:26dvh;overflow-y:auto">${grupos || ''}</div>
+      <div class="fila-btn"><button class="btn" id="sh-cerrar">CERRAR</button></div>`);
+    d.querySelector('#sh-cerrar').onclick = () => d.remove();
+    d.querySelectorAll('[data-hab]').forEach((b) => b.onclick = async () => {
+      try {
+        const h = await DATOS.get(`/habilidades/${encodeURIComponent(b.dataset.hab)}`);
+        d.remove();
+        const v = dialogo(`<h3>${esc(b.dataset.hab.toUpperCase())}</h3>
+          <div style="max-height:56dvh;overflow-y:auto;white-space:pre-wrap;font-size:12px;line-height:1.7;color:var(--letra-f)">${esc(h.contenido || h.markdown || h.texto || '(vacía)')}</div>
+          <div class="fila-btn"><button class="btn" id="hb-cerrar">CERRAR</button></div>`);
+        v.querySelector('#hb-cerrar').onclick = () => v.remove();
+      } catch (e) { avisar(`No se pudo leer: ${e.message}`, true); }
+    });
+  }
+
   function pintarPendientes(l) {
     const abiertos = (l || []).filter((p) => p.estado !== 'hecho');
     $('#pend-sub').textContent = abiertos.length ? `${abiertos.length} sin cerrar` : 'nada abierto';
@@ -779,6 +872,7 @@ const OS = (() => {
       DATOS.get('/salud').then(pintarSalud).catch(() => {});
       DATOS.get('/pendientes').then(pintarPendientes).catch(() => {});
       DATOS.get('/autorizaciones').then(pintarAutorizaciones).catch(() => {});
+      DATOS.get('/salud/profunda').then(pintarSaludPropia).catch(() => pintarSaludPropia(null));
     };
     leer();
     $('#autorizaciones').addEventListener('click', (e) => {
@@ -789,6 +883,13 @@ const OS = (() => {
     });
     $('#b-boveda').addEventListener('click', abrirBoveda);
     $('#b-equipo').addEventListener('click', abrirEquipo);
+    $('#b-saber').addEventListener('click', abrirSaberHacer);
+    $('#b-nodos').addEventListener('click', abrirNodos);
+    $('#b-reparar').addEventListener('click', repararSalud);
+    $('#m-salud').addEventListener('click', () => {
+      if (innerWidth <= 860 && !document.body.classList.contains('cajon')) $('#tirador')?.click();
+      $('#signos')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    });
     /* Con la pestaña oculta no se lee: son tres peticiones cada treinta
        segundos, y en datos móviles eso se paga. Al volver se lee enseguida, que
        es cuando de verdad hace falta el dato fresco. */
@@ -902,7 +1003,7 @@ const OS = (() => {
     addEventListener('pagehide', () => {
       try { locutor?.callar?.(); } catch { /* ya */ }
       try { window.BOCA?.soltar?.(); } catch { /* ya */ }
-      try { window.__ULTRON_BUSTO?.dispose?.(); } catch { /* ya */ }
+      try { window.__ULTRON_FIGURA_VIVA?.dispose?.(); } catch { /* ya */ }
       orejaApagar();
     });
     /* Y si la pantalla se va a segundo plano con la oreja abierta, se cierra:
@@ -915,7 +1016,7 @@ const OS = (() => {
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', arrancar);
   else arrancar();
 
-  return { enviar, estado, avisar, mente, _adentro: { pintarVivo, pintarSalud, pintarArchivos, pintarPendientes, pintarAutorizaciones, pintarDicho, DESPIERTA, CASAS,
+  return { enviar, estado, avisar, mente, _adentro: { pintarVivo, pintarSalud, pintarSaludPropia, pintarArchivos, pintarPendientes, pintarAutorizaciones, pintarDicho, DESPIERTA, CASAS,
     /* Solo para la prueba: mueve el reloj de la última lectura buena hacia
        atrás, para comprobar que la pantalla avisa cuando se queda vieja sin
        tener que esperar diez minutos de verdad. */

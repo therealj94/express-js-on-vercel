@@ -284,7 +284,60 @@ titulo('las rutas: el dueño y nadie más');
   decir(hab.some((h) => h.nombre === 'revisar-seguridad'), '/habilidades lista las que hay');
   const salud = await (await fetch(B + '/salud')).json();
   decir(salud.boveda === true && salud.dueño === true && salud.herramientas >= 48, '/salud dice bóveda, dueño y cuántas herramientas hay', JSON.stringify({ b: salud.boveda, d: salud.dueño, h: salud.herramientas }));
+
+  const prof = await (await fetch(B + '/salud/profunda', { headers: { Cookie: cm } })).json();
+  decir(typeof prof.puntaje === 'number' && prof.signos.length >= 8, '/salud/profunda da nota y los nueve signos', `${prof.puntaje}/100 · ${prof.signos.length} signos`);
+  decir(prof.signos.some((g) => g.clave === 'cerebro') && prof.signos.some((g) => g.clave === 'bucle'), 'entre ellos el cerebro y el bucle de eventos');
+  const sinPuerta = await fetch(B + '/salud/profunda');
+  decir(sinPuerta.status === 401 || sinPuerta.status === 403, 'y la salud profunda no se lee sin entrar', String(sinPuerta.status));
+  const rep = await (await fetch(B + '/salud/reparar', { method: 'POST', headers: { 'Content-Type': 'application/json', Cookie: cm }, body: '{}' })).json();
+  decir(typeof rep.despues === 'number' && Array.isArray(rep.hechos), 'reparar contesta con la nota de antes, la de después y qué hizo', JSON.stringify(rep).slice(0, 120));
   sv.close();
+}
+
+// ── LA SALUD PROPIA ─────────────────────────────────────────────────────────
+titulo('la salud de ULTRON: se mide y se repara solo');
+{
+  const salud = require('../lib/salud.js');
+  const r = await salud.revisar({ hondo: false });
+  decir(r.puntaje >= 0 && r.puntaje <= 100, 'la nota está entre 0 y 100', `${r.puntaje}/100 (${r.estado})`);
+  const claves = r.signos.map((s) => s.clave);
+  decir(['proceso', 'bucle', 'base', 'cerebro', 'vigia', 'equipo', 'puerta', 'pedidos', 'fallos'].every((k) => claves.includes(k)),
+    'están los nueve signos', claves.join(','));
+  decir(r.signos.every((s) => ['bien', 'ojo', 'mal'].includes(s.estado)), 'cada signo dice bien, ojo o mal');
+  decir(r.resumen.includes('ULTRON') && r.resumen.length < 400, 'y hay un resumen de una línea', r.resumen);
+
+  salud.anotarFallo(new Error('fallo de prueba'), 'la prueba');
+  salud.anotarFallo(new Error('fallo de prueba'), 'la prueba');
+  const f = salud._adentro.fallosRecientes(60).find((x) => x.donde === 'la prueba');
+  decir(f && f.veces === 2, 'dos veces el mismo fallo se cuentan como uno con dos veces', JSON.stringify(f?.veces));
+
+  const rep = await salud.reparar([]);
+  decir(typeof rep.antes === 'number' && typeof rep.despues === 'number', 'reparar sin nada que reparar no rompe nada');
+  const h = await salud.historial({ limite: 5 });
+  decir(Array.isArray(h) && h.length >= 1, 'y la ronda queda en el historial', `${h.length} ronda(s)`);
+}
+
+// ── EL RELEVO DEL CEREBRO ───────────────────────────────────────────────────
+// El fallo más caro: el nodo apagado dejaba a ULTRON mudo con la llave de
+// Anthropic sin usar al lado. Se comprueba que ya no.
+titulo('el relevo: si el nodo no contesta, Claude cubre');
+{
+  const cerebro = require('../lib/cerebro.js');
+  const antesLlave = process.env.ANTHROPIC_API_KEY;
+  process.env.ANTHROPIC_API_KEY = 'sk-ant-de-prueba';
+  process.env.ULTRON_CEREBRO = 'nodo';
+  cerebro.volverAlNodo();
+  decir(cerebro.cual() === 'nodo', 'sin relevo, piensa donde dice la junta');
+  decir(cerebro.relevar('el nodo no contesta') === true, 'el relevo se puede pedir cuando hay respaldo');
+  decir(cerebro.cual() === 'claude', 'y entonces piensa con Claude aunque la junta haya elegido el nodo');
+  decir(cerebro.relevo().activo && /no contesta/.test(cerebro.relevo().motivo), 'el relevo dice desde cuándo y por qué', JSON.stringify(cerebro.relevo().motivo));
+  cerebro.volverAlNodo();
+  decir(cerebro.cual() === 'nodo' && !cerebro.relevo().activo, 'y cuando el nodo vuelve, se vuelve al nodo solo');
+  delete process.env.ANTHROPIC_API_KEY;
+  decir(cerebro.relevar('sin respaldo') === false, 'sin llave de Anthropic no hay a quién relevar: no se miente diciendo que sí');
+  if (antesLlave) process.env.ANTHROPIC_API_KEY = antesLlave;
+  delete process.env.ULTRON_CEREBRO;
 }
 
 console.log(malas ? `\n${malas} fallo(s).\n` : '\nTodo en verde\n');
