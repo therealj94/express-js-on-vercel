@@ -1898,8 +1898,26 @@ const OS = (() => {
   }
 
   /** Abrir el micrófono para un turno, y dejar la oreja encendida. */
+  /* ── CALENTAR EL MOTOR MIENTRAS LA PERSONA HABLA ──────────────────────────
+     Los tres o cuatro segundos que alguien tarda en decir su pregunta son
+     exactamente lo que el motor tarda en evaluar el prompt. Hasta hoy esos
+     segundos se desperdiciaban: el motor estaba parado esperando, y recién
+     cuando llegaba la pregunta empezaba a leer las seis mil fichas de
+     contexto. Medido contra producción: con la caché fría la primera palabra
+     tarda 6,5 s; caliente, 1,0 s.
+     No se espera la respuesta y no se avisa si falla: es velocidad, no
+     función. El servidor ya se cuida de no calentar si hay un turno en vuelo
+     y de no hacerlo dos veces seguidas. */
+  let calentadoEn = 0;
+  function calentar() {
+    if (Date.now() - calentadoEn < 15_000) return;    // el servidor también frena, pero no hace falta llegar
+    calentadoEn = Date.now();
+    try { DATOS.post('/precalentar', { modo: 'voz' }).catch(() => {}); } catch { /* nada */ }
+  }
+
   function escucharYa() {
     if (!VOZ.hayOido?.()) { avisar('Este navegador no trae reconocimiento de voz. En Chrome sí funciona.', true); return; }
+    calentar();
     micAutorizado = true;
     despierta = true;
     $('#oreja')?.setAttribute('aria-pressed', 'true');
@@ -1939,6 +1957,9 @@ const OS = (() => {
       continuo: true,
       alOir: (frase, firme) => {
         if (!DESPIERTA.test(frase)) return;
+        // Dijo el nombre: se va a preguntar algo. Se calienta ya, mientras
+        // termina la frase.
+        calentar();
         /* Lo que viene DESPUÉS de la palabra es la orden. «Hey ULTRON, ¿cómo
            está la cadena?» tiene que valer entera: obligar a decir el nombre,
            esperar un pitido y repetir la pregunta es un paso de más que nadie
@@ -2103,6 +2124,10 @@ const OS = (() => {
   async function saludar() {
     try {
       const s = await DATOS.get('/saludo');
+      /* Mientras suena la bienvenida —cinco o seis segundos— el motor está
+         parado. Es el momento exacto para dejarle el prompt evaluado, así la
+         PRIMERA pregunta del día ya sale caliente. */
+      calentar();
       if (!s?.texto) return;
       pintarDicho(s.texto); chips(s.sugerencias || null);
       if (conVoz) {

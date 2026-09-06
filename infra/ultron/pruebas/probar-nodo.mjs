@@ -288,6 +288,41 @@ titulo('hablando, el prompt es OTRO: menos fichas antes de la primera palabra');
   decir(/mas_herramientas/.test(sv), 'y sabe que tiene cajas que pedir antes de decir «no puedo»');
 }
 
+titulo('calentar la caché mientras la persona habla');
+{
+  /* ── LA MEDIDA QUE MANDA ──────────────────────────────────────────────────
+     Contra producción, 6-sep, la misma pregunta cuatro veces seguidas: la
+     primera 6,5 s hasta la primera palabra; las tres siguientes 1,0 s. La
+     diferencia entera es la caché de prefijo del motor.
+     Así que cuando se abre el micrófono se manda a evaluar el prompt YA, con
+     `num_predict: 1`, mientras la persona todavía está diciendo su pregunta.
+     Todo esto se sostiene sobre UNA condición, y es la que se prueba aquí:
+     lo que se manda a calentar tiene que ser un PREFIJO EXACTO del prompt real.
+     Un byte de diferencia y no se calienta nada; se gasta el motor y encima se
+     ocupa la única ranura. */
+  const antes = pedidos.length;
+  const r = await cerebro.precalentar({ miembro: JOSE, junta: JUNTA, modo: 'voz' });
+  const calentado = pedidos.at(-1);
+  decir(r?.ok === true && pedidos.length === antes + 1, 'calentar manda UN pedido al motor', JSON.stringify(r));
+  decir(calentado.options?.num_predict === 1, 'y le pide UN token: no se quiere la respuesta, se quiere la caché', String(calentado.options?.num_predict));
+  decir(calentado.messages.length === 1 && calentado.messages[0].role === 'system', 'sin pregunta: solo el prompt', `${calentado.messages.length} mensajes`);
+
+  guion = [{ texto: 'ok' }];
+  await cerebro.pensar({ miembro: JOSE, junta: JUNTA, texto: 'cómo va la cadena', modo: 'voz' });
+  const real = pedidos.at(-1);
+  const sc = calentado.messages[0].content, sr = real.messages[0].content;
+  decir(sr.startsWith(sc), 'LO CALENTADO ES UN PREFIJO EXACTO DEL PROMPT REAL, byte a byte',
+    sr.startsWith(sc) ? `${sc.length} de ${sr.length} letras` : `se separan en la letra ${[...sc].findIndex((c, i) => sr[i] !== c)}`);
+  decir(sc.length > 400 && sc.length < sr.length, 'y es la mayor parte, no un saludo', `${sc.length} de ${sr.length}`);
+  decir(JSON.stringify(calentado.tools) === JSON.stringify(real.tools),
+    'con las MISMAS herramientas: también viajan en la plantilla y también cuentan');
+  decir(!/EL SABER DE LA CASA/.test(sc) && /EL SABER DE LA CASA/.test(sr),
+    'lo que cambia con la pregunta —el saber— queda fuera de lo calentado: por eso es prefijo');
+  decir(!/Hoy es/.test(sc) && /Hoy es/.test(sr), 'y la hora también, que cambia sola cada minuto');
+  decir(/LO QUE LA JUNTA TE HA DICHO/.test(sc) && /LO QUE ESTÁ PENDIENTE/.test(sc),
+    'lo que dura la sesión —memoria, pendientes— sí va dentro: es lo que se ahorra');
+}
+
 titulo('la guarda de las citas: no se cita una herramienta que no corrió');
 {
   /* 5-sep, primera prueba real: «El oro cerró hoy a US$ 4,435 (según

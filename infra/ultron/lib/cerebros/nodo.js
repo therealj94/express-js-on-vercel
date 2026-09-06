@@ -771,6 +771,49 @@ async function pensar({ miembro, junta, texto, conversacionId, previa: previaDad
 }
 
 /** Un título corto, sin herramientas y con pocas fichas. */
+/* ── CALENTAR LA CACHÉ MIENTRAS LA PERSONA TODAVÍA HABLA ────────────────────
+ *
+ * Medido contra producción el 6-sep, con la misma pregunta: con la caché de
+ * prefijo FRÍA la primera palabra tarda 6,5 s; con la caché CALIENTE, 1,0 s.
+ * Seis veces, y la diferencia entera está en evaluar el prompt.
+ *
+ * Cuando alguien abre el micrófono, el motor está parado y quedan tres o
+ * cuatro segundos de persona hablando en los que no hace nada. Eso es
+ * exactamente lo que se tarda en evaluar el prompt. Así que se manda a
+ * evaluarlo YA, con `num_predict: 1`: cuando llegue la pregunta de verdad, el
+ * prefijo ya está en la caché del motor y la primera palabra sale de una.
+ *
+ * Se manda solo la parte QUIETA del prompt —identidad, lecciones, memoria,
+ * pendientes, con quién habla— porque es un prefijo válido y completo del
+ * prompt real: el saber de la pregunta, el estado vivo y la hora van detrás y
+ * todavía no se saben. Y con las MISMAS herramientas, que también viajan en la
+ * plantilla y también cuentan.
+ *
+ * Si sale mal no pasa nada: es una optimización, no una función. Quien la
+ * llama no espera la respuesta.
+ */
+async function precalentar({ miembro, junta, sistema, modo = 'voz', alias = null }) {
+  if (!encendido()) return { ok: false, motivo: 'nodo apagado' };
+  const t0 = Date.now();
+  const [memorias, estadoVivo, abiertos] = await Promise.all([
+    memoria.memoriasDe(miembro.correo, { limite: modo === 'voz' ? MEMORIAS_VOZ : 30 }),
+    vivo.leerRapido(),
+    memoria.pendientes({ limite: modo === 'voz' ? PENDIENTES_VOZ : 25 }),
+  ]);
+  const bloques = sistema({ miembro, memorias, estadoVivo, secciones: [], vozCasa: saber.vozDeLaCasa().slice(0, 6), pendientes: abiertos, chico: true, modo, alias });
+  /* Hasta el bloque quieto y ni una letra más: lo de después cambia con la
+     pregunta, y mandarlo aquí calentaría un prefijo que no va a coincidir. */
+  const hastaQuieto = [];
+  for (const b of bloques) { hastaQuieto.push(b.text); if (b.quieto) break; }
+  const system = hastaQuieto.join('\n\n');
+  await pedir({
+    model: MODELO, stream: false, messages: [{ role: 'system', content: system }],
+    tools: herramientas.paraOllama({ cajas: [] }),
+    options: { num_predict: 1, temperature: 0, num_ctx: CTX },
+  }, { plazo: 20_000 });
+  return { ok: true, ms: Date.now() - t0, fichas: fichas(system) };
+}
+
 async function titular(texto) {
   try {
     const r = await pedir({ model: MODELO, stream: false, options: { temperature: 0.2, num_predict: 24 },
@@ -807,4 +850,4 @@ async function salud() {
   });
 }
 
-module.exports = { pensar, titular, salud, encendido, MODELO, _adentro: { pedir, pedirJson, vectorDe, llamadasEnTexto, armarMensajes, sinRepetidos, sinElRestoDeUnaHerramienta, sinCodigoPegadoArriba, hastaOtroAlfabeto, dondeEmpiezaElBucle, fichas, PRESUPUESTO, PRESUPUESTO_FICHAS, CTX } };
+module.exports = { pensar, precalentar, titular, salud, encendido, MODELO, _adentro: { pedir, pedirJson, vectorDe, llamadasEnTexto, armarMensajes, sinRepetidos, sinElRestoDeUnaHerramienta, sinCodigoPegadoArriba, hastaOtroAlfabeto, dondeEmpiezaElBucle, fichas, PRESUPUESTO, PRESUPUESTO_FICHAS, CTX } };

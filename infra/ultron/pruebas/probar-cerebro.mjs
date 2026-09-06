@@ -87,15 +87,25 @@ titulo('el prompt lleva lo que tiene que llevar');
   // Se vuelve a correr con uno que guarde el pedido para leer el system.
   const { cer: cer2, c: c2 } = conClaude([{ texto: 'El gramin es…' }]);
   await cer2.pensar({ miembro: JOSE, junta: JUNTA, texto: '¿qué es el gramin y a cuánto está el ORIGEN?' });
-  /* El system son DOS bloques: el estable (identidad, reglas, voz de la casa)
-     con cache_control, y el del momento (fecha, memoria, pendientes, estado
-     vivo, saber). Se juntan para leerlos, y aparte se comprueba el corte. */
+  /* El system son TRES bloques, y el corte no es cosmético: es la diferencia
+     entre 6,5 s y 1,0 s hasta la primera palabra, medido contra producción.
+       0 · ESTABLE: identidad, reglas, voz de la casa. Nunca cambia; pide caché.
+       1 · QUIETO: lecciones, habilidades, memoria, pendientes, con quién habla.
+           Dura toda la sesión. Es lo que se manda a calentar cuando se abre el
+           micrófono, así que tiene que ser un prefijo válido por sí mismo.
+       2 · MOVIDO: el saber de la pregunta, el estado vivo y la hora. Cambia en
+           cada turno, y por eso va al final: lo que cambia obliga a volver a
+           evaluar TODO lo que tiene debajo. */
   const bloques = c2.llamadas[0].system;
   const sys = Array.isArray(bloques) ? bloques.map((b) => b.text).join('\n') : bloques;
-  decir(Array.isArray(bloques) && bloques.length === 2 && bloques[0].cache_control?.type === 'ephemeral',
-    'el prompt va partido en dos y el bloque estable pide caché', JSON.stringify(bloques?.[0]?.cache_control));
-  decir(Array.isArray(bloques) && !/Hoy es/.test(bloques[0].text) && /Hoy es/.test(bloques[1].text),
-    'y la fecha va en el bloque del momento: en el estable rompería la caché en cada turno');
+  decir(Array.isArray(bloques) && bloques.length === 3 && bloques[0].cache_control?.type === 'ephemeral',
+    'el prompt va partido en tres y el bloque estable pide caché', JSON.stringify(bloques?.[0]?.cache_control));
+  decir(Array.isArray(bloques) && !/Hoy es/.test(bloques[0].text) && !/Hoy es/.test(bloques[1].text) && /Hoy es/.test(bloques[2].text),
+    'y la fecha va en el ÚLTIMO bloque: más arriba rompería la caché de todo lo de abajo en cada turno');
+  decir(Array.isArray(bloques) && !/EL SABER DE LA CASA/.test(bloques[1].text) && /EL SABER DE LA CASA/.test(bloques[2].text),
+    'y el saber también, que cambia con cada pregunta');
+  decir(Array.isArray(bloques) && /LO QUE LA JUNTA TE HA DICHO/.test(bloques[1].text) && bloques[1].quieto === true,
+    'lo que dura la sesión va en el bloque quieto, marcado para poder calentarlo');
   decir(/Sos ULTRON FP/.test(sys), 'se presenta como ULTRON FP');
   decir(/José \(presidente/.test(sys) && /EL DUEÑO/.test(sys), 'sabe con quién habla, y que es el dueño');
   decir(/La junta se reúne los martes/.test(sys), 'lleva la memoria de la junta');

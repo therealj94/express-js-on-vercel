@@ -572,6 +572,34 @@ app.get('/conversaciones/:id', puerta, async (req, res) => {
    Server-Sent Events: el texto llega a medida que el modelo lo escribe, y las
    herramientas se anuncian cuando corren. Un asistente que se queda mudo
    veinte segundos y suelta un bloque no se siente vivo aunque piense bien. */
+/* ── CALENTAR: la mitad de la fluidez está aquí ──────────────────────────────
+ *
+ * Medido contra producción el 6-sep con la misma pregunta: caché de prefijo
+ * fría, la primera palabra a los 6,5 s; caliente, 1,0 s. La consola llama a
+ * esto en cuanto se abre el micrófono, así que los tres segundos en que la
+ * persona está hablando —en los que el motor no hacía nada— se gastan
+ * evaluando el prompt que va a hacer falta.
+ *
+ * DOS GUARDAS, y las dos importan porque el nodo tiene UNA sola ranura:
+ *  · Si hay un turno de verdad en vuelo, no se calienta: sería ponerse en fila
+ *    delante de una respuesta que alguien está esperando.
+ *  · Y no más de una vez cada veinte segundos por miembro, porque abrir y
+ *    cerrar el micrófono es un gesto que se repite.
+ * Contesta enseguida y sin esperar al motor: quien llama no espera nada. */
+let pensando = 0;
+const calentadoEn = new Map();
+app.post('/precalentar', puerta, (req, res) => {
+  const quien = req.miembro.correo;
+  const ahora = Date.now();
+  if (pensando > 0) return res.json({ ok: false, motivo: 'ocupado' });
+  if (ahora - (calentadoEn.get(quien) || 0) < 20_000) return res.json({ ok: false, motivo: 'reciente' });
+  calentadoEn.set(quien, ahora);
+  res.json({ ok: true, lanzado: true });
+  cerebro.precalentar({ miembro: req.miembro, junta: JUNTA.map(sinClave), modo: req.body?.modo === 'texto' ? 'texto' : 'voz', alias: null })
+    .then((r) => { if (r?.ok) console.log(`[calentar] ${r.fichas} fichas en ${r.ms}ms`); })
+    .catch(() => { /* es una mejora, no una función */ });
+});
+
 app.post('/pensar', puerta, frenoPensar, async (req, res) => {
   const texto = String(req.body?.texto || '').trim().slice(0, 12_000);
   if (!texto) return res.status(400).json({ error: 'Nada que pensar.', codigo: 'VACIO' });
@@ -595,6 +623,7 @@ app.post('/pensar', puerta, frenoPensar, async (req, res) => {
      libre en el acto y el turno nuevo arranca de una. */
   const corte = new AbortController();
   let terminado = false;
+  pensando++;
   res.on('close', () => { if (!terminado) { corte.abort(); console.log('[pensar] se cortó: lo dejó quien preguntaba'); } });
 
   const t0 = Date.now();
@@ -669,6 +698,7 @@ app.post('/pensar', puerta, frenoPensar, async (req, res) => {
     }
   } finally {
     terminado = true;
+    pensando--;
     clearInterval(latido);
     res.end();
   }

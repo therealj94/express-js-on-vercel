@@ -232,7 +232,29 @@ MODO VOZ — lo que digas se va a ESCUCHAR, no a leer
 - Los números, como se dicen: «dos dólares con cincuenta y nueve», «cuatro mil cuatrocientos».
 - Lo primero es la respuesta; el contexto, después y solo si hace falta.
 - Si el tema pide detalle, lo decís en una frase y ofrecés escribirlo: «¿te lo escribo completo?».` : '';
-  const delMomento = `LO QUE APRENDISTE (correcciones de la junta: mandan sobre las fichas)
+  /* ── QUIETO ARRIBA, MOVIDO ABAJO. NO ES ORDEN, ES SEGUNDOS ────────────────
+     La caché de prefijo del motor guarda el prompt evaluado hasta el PRIMER
+     byte que cambia; de ahí para abajo se vuelve a evaluar todo. Medido contra
+     producción el 6-sep: con la caché fría, la primera palabra tarda 6,5 s;
+     con la caché caliente, 1,0 s. Seis veces.
+
+     Hasta hoy el saber —que cambia con CADA pregunta— iba en medio, con el
+     estado vivo, el idioma, la fecha y las manos detrás: cambiaba una sección
+     y se re-evaluaban las mil quinientas fichas de abajo. Ahora todo lo que
+     dura una sesión va primero (lecciones, habilidades, memoria, pendientes,
+     con quién se habla, las manos) y lo que cambia por pregunta va al final
+     (el saber, el estado vivo y la hora), así que un turno nuevo solo re-evalúa
+     esa cola.
+
+     Y el corte tiene un segundo uso: lo QUIETO es un prefijo completo y válido
+     por sí mismo, así que se puede mandar a calentar en cuanto se abre el
+     micrófono, mientras la persona todavía está hablando. Ver `precalentar()`. */
+  const quienHabla = `Estás hablando con ${miembro.nombre} (${miembro.rol || 'junta directiva'}${miembro.esDueño ? ' · EL DUEÑO: es quien aprueba lo peligroso' : ''}).${miembro.rol === 'bot' ? '\nSOS UN BOT DEL EQUIPO: escribís tu parte y terminás. Solo leés, y anotás memorias o pendientes. No pedís nada peligroso: si hace falta, lo anotás como pendiente.' : `
+${chico
+    ? 'MANOS: repo_*, terminal, boveda_*, aprender, habilidad_*, equipo_*, desplegarse. Lo peligroso lo aprueba el dueño en el panel; si una herramienta dice «ESPERANDO AUTORIZACIÓN», decilo y no la repitas.'
+    : 'LO QUE PODÉS HACER, Y CÓMO. Tenés manos de verdad: entrar al repositorio (repo_*), correr comandos (terminal), guardar y aplicar secretos (boveda_*), aprender (aprender, habilidad_*), un equipo de bots (equipo_*), y desplegarte (desplegarse). Lo que puede romper algo o sale de la casa lo aprueba el dueño con un clic en el panel ANTES de correr: cuando una herramienta te conteste «ESPERANDO AUTORIZACIÓN», decile a la persona qué está esperando y no la repitas. No pidas permiso por adelantado en prosa: llamá a la herramienta, que ella pide. Y buscá mejorarte: cuando algo te sale bien y es repetible, escribilo como habilidad; cuando te corrijan, guardalo como lección; cuando veas un fallo en tu propio código, proponé el cambio.'}`}${alias ? `\nEn esta interfaz te presentás como «${alias}»: si te preguntan tu nombre, sos ${alias}. Seguís siendo el mismo asistente de la junta, con las mismas reglas.` : ''}${enVoz}`;
+
+  const quieto = `LO QUE APRENDISTE (correcciones de la junta: mandan sobre las fichas)
 ${lec}
 
 LAS HABILIDADES QUE TENÉS (procedimientos escritos; cargá uno con habilidad_usar cuando la tarea lo pida)
@@ -245,17 +267,16 @@ LO QUE ESTÁ PENDIENTE (tareas abiertas, con su id)
 ${tareas}
 Cuando en la conversación aparezca algo que hay que hacer, anotalo con anotar_pendiente. Cerrá uno solo si alguien de la junta dice que ya se hizo.
 
-EL SABER DE LA CASA (las secciones que hablan de esto)
+${require('./preferencias').ordenDeIdioma(idioma)}
+${quienHabla}`;
+
+  const movido = `EL SABER DE LA CASA (las secciones que hablan de esto)
 ${fichas}
 
 EL ESTADO VIVO DE LAS CASAS (leído ahora mismo)
 ${vivo.paraElModelo(estadoVivo)}
 
-${require('./preferencias').ordenDeIdioma(idioma)}
-Hoy es ${fecha()}. Estás hablando con ${miembro.nombre} (${miembro.rol || 'junta directiva'}${miembro.esDueño ? ' · EL DUEÑO: es quien aprueba lo peligroso' : ''}).${miembro.rol === 'bot' ? '\nSOS UN BOT DEL EQUIPO: escribís tu parte y terminás. Solo leés, y anotás memorias o pendientes. No pedís nada peligroso: si hace falta, lo anotás como pendiente.' : `
-${chico
-    ? 'MANOS: repo_*, terminal, boveda_*, aprender, habilidad_*, equipo_*, desplegarse. Lo peligroso lo aprueba el dueño en el panel; si una herramienta dice «ESPERANDO AUTORIZACIÓN», decilo y no la repitas.'
-    : 'LO QUE PODÉS HACER, Y CÓMO. Tenés manos de verdad: entrar al repositorio (repo_*), correr comandos (terminal), guardar y aplicar secretos (boveda_*), aprender (aprender, habilidad_*), un equipo de bots (equipo_*), y desplegarte (desplegarse). Lo que puede romper algo o sale de la casa lo aprueba el dueño con un clic en el panel ANTES de correr: cuando una herramienta te conteste «ESPERANDO AUTORIZACIÓN», decile a la persona qué está esperando y no la repitas. No pidas permiso por adelantado en prosa: llamá a la herramienta, que ella pide. Y buscá mejorarte: cuando algo te sale bien y es repetible, escribilo como habilidad; cuando te corrijan, guardalo como lección; cuando veas un fallo en tu propio código, proponé el cambio.'}`}${alias ? `\nEn esta interfaz te presentás como «${alias}»: si te preguntan tu nombre, sos ${alias}. Seguís siendo el mismo asistente de la junta, con las mismas reglas.` : ''}${enVoz}`;
+Hoy es ${fecha()}.`;
 
   /* ── HABLANDO, LA IDENTIDAD TAMBIÉN ES MÁS CORTA ─────────────────────────
      El bloque estable de arriba son ~4 000 fichas escritas para una PANTALLA:
@@ -292,14 +313,16 @@ LA VOZ DE LA CASA
 ${voz}`;
     return [
       { type: 'text', text: estableVoz, cache_control: { type: 'ephemeral' } },
-      { type: 'text', text: delMomento },
+      { type: 'text', text: quieto, quieto: true },
+      { type: 'text', text: movido },
     ];
   }
 
   // La voz de la casa entra en el bloque estable, así que el corte queda ahí.
   return [
     { type: 'text', text: estable, cache_control: { type: 'ephemeral' } },
-    { type: 'text', text: delMomento },
+    { type: 'text', text: quieto, quieto: true },
+    { type: 'text', text: movido },
   ];
 }
 
@@ -539,6 +562,18 @@ async function pensar(args) {
   }
   return pensarConClaude(args);
 }
+/* Calentar la caché del motor mientras la persona todavía habla. Solo tiene
+   sentido con el nodo: Claude cobra por ficha y no tiene caché que calentar a
+   voluntad. Nunca lanza: es una mejora de velocidad, no una función. */
+async function precalentar({ miembro, junta = [], modo = 'voz', alias = null }) {
+  if (cual() !== 'nodo') return { ok: false, motivo: 'sin nodo' };
+  try {
+    const extras = await contextoExtra(miembro, junta);
+    const conExtras = (o) => sistema({ ...o, miembro: { ...o.miembro, esDueño: extras.miembro.esDueño }, habilidades: extras.habilidades, pedidos: extras.pedidos, idioma: 'es' });
+    return await nodo.precalentar({ miembro, junta, sistema: conExtras, modo, alias });
+  } catch (e) { return { ok: false, motivo: String(e?.codigo || e?.message || e).slice(0, 80) }; }
+}
+
 async function titular(texto) {
   if (cual() === 'nodo') {
     try { return await nodo.titular(texto); }
@@ -564,6 +599,6 @@ function motivoDeCualquiera(e) {
   }
 }
 
-module.exports = { pensar, titular, encendido, cual, modelo, motivo: motivoDeCualquiera, dolaresDe, PRECIOS, MODELO, HERRAMIENTAS,
+module.exports = { pensar, precalentar, titular, encendido, cual, modelo, motivo: motivoDeCualquiera, dolaresDe, PRECIOS, MODELO, HERRAMIENTAS,
   relevar, relevo, volverAlNodo, modoCasa,
   nodo, _adentro: { sistema, correr, clienteAnthropic, pensarConClaude, claudeEncendido, guardia, RELEVABLES } };
