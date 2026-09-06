@@ -186,6 +186,16 @@ const DEFINICIONES = [
     input_schema: { type: 'object', properties: { canal: { type: 'string', enum: ['whatsapp', 'correo'] }, destinatario: { type: 'string', description: 'Nombre o correo del miembro' }, asunto: { type: 'string' }, texto: { type: 'string' } }, required: ['canal', 'destinatario', 'texto'] },
   },
   {
+    name: 'listar_archivos',
+    description: 'Los archivos que la junta le subió a ULTRON (PDF, Word, texto, CSV, imágenes) con su id, su tamaño y si se les pudo sacar el texto. Mirá esto cuando alguien mencione «el informe», «el contrato» o «lo que te mandé».',
+    input_schema: { type: 'object', properties: {} },
+  },
+  {
+    name: 'leer_archivo',
+    description: 'Lee el texto de un archivo subido, por su id. Devuelve el contenido para poder resumirlo, analizarlo o citarlo. Un PDF escaneado no tiene texto y lo dice.',
+    input_schema: { type: 'object', properties: { id: { type: 'string', description: 'El id que da listar_archivos' }, desde: { type: 'number', description: 'Desde qué letra seguir leyendo, si el archivo es largo y ya leíste un trozo' } }, required: ['id'] },
+  },
+  {
     name: 'quien_es_quien',
     description: 'La lista de la Junta Directiva: nombre, rol, y por qué vías se le puede escribir (correo, WhatsApp). Úsala antes de proponer un envío para saber a quién se le puede mandar y cómo.',
     input_schema: { type: 'object', properties: {} },
@@ -613,6 +623,33 @@ async function correr(nombre, entrada, ctx) {
         }
         return l.length > 1 ? l.join('\n') : 'No hay máquinas visibles en us-east-1 ni us-east-2.';
       }
+      case 'listar_archivos': {
+        const arch = require('./archivos');
+        const l = await arch.lista({ limite: 30 });
+        if (!l.length) return 'Nadie ha subido ningún archivo todavía. En el panel se arrastra encima o se toca el clip.';
+        return l.map((a) => {
+          const kb = a.bytes > 1e6 ? `${(a.bytes / 1e6).toFixed(1)} MB` : `${Math.round(a.bytes / 1024)} KB`;
+          const leible = a.texto ? `${a.texto.length} letras de texto${a.recortado ? ' (recortado)' : ''}` : `SIN TEXTO — ${a.porQue}`;
+          return `- [${a._id}] ${a.nombre} · ${kb} · subido por ${a.miembro || '?'} el ${a.en ? new Date(a.en).toISOString().slice(0, 10) : ''} · ${leible}`;
+        }).join('\n');
+      }
+      case 'leer_archivo': {
+        const arch = require('./archivos');
+        const a = await arch.uno(String(entrada.id || '').trim());
+        if (!a) return `No hay un archivo con id ${entrada.id}. Mirá cuáles hay con listar_archivos.`;
+        if (!a.texto) return `«${a.nombre}» no tiene texto que leer: ${a.porQue}`;
+        /* Un archivo largo no entra de una en el contexto de un modelo chico.
+           Se entrega por trozos y se DICE dónde se cortó, para que el modelo
+           pueda pedir el siguiente en vez de dar por terminado el documento a
+           la mitad — que es como se resume mal un contrato. */
+        const tope = ctx.chico ? 6000 : 20000;
+        const desde = Math.max(0, Number(entrada.desde) || 0);
+        const trozo = a.texto.slice(desde, desde + tope);
+        const queda = a.texto.length - (desde + trozo.length);
+        ctx.fuentes.push({ id: 'archivo:' + a._id, titulo: a.nombre, fuente: 'archivo subido por la junta' });
+        return `# ${a.nombre}\n(${a.tipo} · subido por ${a.miembro || '?'}${desde ? ` · desde la letra ${desde}` : ''})\n\n${trozo}`
+          + (queda > 0 ? `\n\n[Quedan ${queda} letras. Para seguir: leer_archivo con desde=${desde + trozo.length}.]` : '');
+      }
       case 'quien_es_quien': {
         /* Sin esto, «mandale el memo a Ramírez» terminaba en un intento a
            ciegas: proponer_envio buscaba el nombre, no lo encontraba y recién
@@ -696,6 +733,7 @@ const GRUPOS = {
   'Pendientes y documentos': ['listar_pendientes', 'anotar_pendiente', 'cerrar_pendiente', 'listar_documentos', 'leer_documento', 'crear_documento'],
   'Internet': ['buscar_web', 'leer_pagina'],
   'La junta': ['quien_es_quien'],
+  'Lo que le mandan': ['listar_archivos', 'leer_archivo'],
   'Acciones que confirma la persona': ['abrir', 'exportar_pdf', 'proponer_envio'],
   'Cuentas': ['calcular', 'gasto'],
 };

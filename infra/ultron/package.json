@@ -10,8 +10,10 @@
   "scripts": {
     "start": "node app.js",
     "armar-saber": "node bin/armar-saber.mjs",
-    "probar": "node pruebas/probar-saber.mjs && node pruebas/probar-vivo.mjs && node pruebas/probar-herramientas.mjs && node pruebas/probar-cerebro.mjs && node pruebas/probar-nodo.mjs && node pruebas/probar-puerta.mjs && node pruebas/probar-consola.mjs",
-    "probar-consola": "node pruebas/probar-consola.mjs"
+    "probar": "node pruebas/probar-saber.mjs && node pruebas/probar-vivo.mjs && node pruebas/probar-herramientas.mjs && node pruebas/probar-cerebro.mjs && node pruebas/probar-nodo.mjs && node pruebas/probar-puerta.mjs && node pruebas/probar-consola.mjs && node pruebas/probar-os.mjs && node pruebas/probar-os.mjs 390 844",
+    "probar-consola": "node pruebas/probar-consola.mjs",
+    "probar-os": "node pruebas/probar-os.mjs && node pruebas/probar-os.mjs 390 844",
+    "foto-os": "node pruebas/foto-os.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.124.0",

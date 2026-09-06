@@ -129,6 +129,16 @@ const VOZ = (() => {
         const url = URL.createObjectURL(blob); const a = new Audio(url); this.audio = a;
         a.preload = 'auto';
         let envolvente = null;
+        /* LA ENVOLVENTE DE VERDAD, si se pudo sacar. `BOCA` decodifica una
+           COPIA de los bytes en un contexto que jamás se conecta a los
+           altavoces y devuelve la energía del sonido centésima a centésima; el
+           `<audio>` de aquí abajo no se toca y sigue sonando solo, que es la
+           regla que este comentario defiende arriba.
+           Se pide sin esperar: si tarda más que el arranque del audio, las
+           primeras décimas van con la inventada y en cuanto llega se cambia
+           sola. Nadie ve el salto y nadie se queda sin voz. */
+        let real = null;
+        window.BOCA?.envolvente(blob).then((e) => { real = e; }).catch(() => { /* la inventada sigue */ });
         const soltar = () => { clearInterval(envolvente); URL.revokeObjectURL(url); this.alNivel?.(0); };
         const fin = () => { soltar(); listo(); };
         a.onended = fin;
@@ -137,9 +147,10 @@ const VOZ = (() => {
           // La envolvente: un habla tiene sílabas, no una línea recta.
           envolvente = setInterval(() => {
             if (gen !== this.generacion || a.paused || a.ended) return;
+            if (real) { this.alNivel?.(real.at(a.currentTime)); return; }
             const t = performance.now() / 1000;
             this.alNivel?.(Math.min(1, 0.35 + 0.3 * Math.abs(Math.sin(t * 7.3)) + 0.2 * Math.abs(Math.sin(t * 3.1))));
-          }, 55);
+          }, 25);
         };
         a.play().catch((e) => {
           // Lo más común: la política de autoarranque. Se dice igual, con la
@@ -179,5 +190,39 @@ const VOZ = (() => {
     });
   }
 
-  return { Locutor, escuchar, hayOido, paraDecir, partirFrases };
+  /* ── OÍR DE CONTINUO, Y PODER CORTAR ──────────────────────────────────────
+   *
+   * `escuchar` de arriba sirve para dictar UNA frase: se abre, la persona
+   * habla, se cierra y devuelve lo dicho. La palabra que despierta necesita
+   * otra cosa — quedarse abierta indefinidamente, avisar de cada trozo aunque
+   * no haya terminado, y poder cortarse en seco desde fuera cuando la palabra
+   * suena. Meter eso en la de arriba habría cambiado la que ya usa el panel,
+   * así que va aparte.
+   *
+   * Devuelve un mando con `abort()`. Quien lo enciende es responsable de
+   * apagarlo: un micrófono abierto que nadie cierra es exactamente lo que
+   * nadie quiere en su casa.
+   */
+  function oir({ idioma = 'es-HN', continuo = true, alOir, alFin, alFallo } = {}) {
+    const R = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!R) { alFallo?.('sin-reconocimiento'); return { abort() {} }; }
+    const rec = new R();
+    rec.lang = idioma; rec.interimResults = true; rec.continuous = continuo;
+    let muerto = false;
+    rec.onresult = (ev) => {
+      let final = '', inter = '';
+      for (let i = ev.resultIndex; i < ev.results.length; i++) {
+        const r = ev.results[i];
+        if (r.isFinal) final += r[0].transcript; else inter += r[0].transcript;
+      }
+      const dicho = (final + ' ' + inter).trim();
+      if (dicho) alOir?.(dicho, !!final);
+    };
+    rec.onerror = (e) => { if (!muerto) alFallo?.(String(e?.error || 'error')); };
+    rec.onend = () => { if (!muerto) alFin?.(); };
+    try { rec.start(); } catch (e) { alFallo?.(String(e?.name || e)); }
+    return { abort() { muerto = true; try { rec.abort(); } catch { /* ya estaba */ } } };
+  }
+
+  return { Locutor, escuchar, oir, hayOido, paraDecir, partirFrases };
 })();

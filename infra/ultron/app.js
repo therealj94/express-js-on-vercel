@@ -52,6 +52,7 @@ const voz = require('./lib/voz');
 const herramientas = require('./lib/herramientas');
 const genesis = require('./lib/genesis');
 const pdf = require('./lib/pdf');
+const archivos = require('./lib/archivos');
 
 const app = express();
 app.set('trust proxy', 1);
@@ -151,6 +152,11 @@ app.use(helmet({
 app.use(express.json({ limit: '256kb' }));
 app.use(cookieParser());
 
+/* Subir tiene su propio freno y es MÁS BAJO que el de pensar: cada subida lee
+   hasta ocho megas, los descomprime y les saca el texto. Veinte por minuto
+   dejarían el dyno inflando zips en vez de contestando. */
+const frenoSubir = rateLimit({ windowMs: 60 * 1000, max: 12, standardHeaders: true, legacyHeaders: false,
+  message: { error: 'Demasiados archivos seguidos. Esperá un momento.', codigo: 'FRENO' } });
 const frenoEntrar = rateLimit({ windowMs: 15 * 60 * 1000, max: 12, standardHeaders: true, legacyHeaders: false,
   message: { error: 'Demasiados intentos. Esperá un rato.', codigo: 'FRENO' } });
 /* La voz tiene su propio freno, y mucho más alto. Cada RESPUESTA se dice
@@ -431,6 +437,70 @@ app.post('/pensar', puerta, frenoPensar, async (req, res) => {
   }
 });
 
+/* ── ARCHIVOS: lo que la junta le MANDA a ULTRON ─────────────────────────────
+ *
+ * El camino contrario al de los documentos. Hasta hoy ULTRON escribía y no
+ * podía recibir: para que leyera un informe había que copiarlo y pegarlo en la
+ * caja de texto, y un informe de treinta páginas no se pega.
+ *
+ * El cuerpo llega CRUDO y no como formulario de varias partes. Un multipart se
+ * arma con una librería más y trae su propia clase de fallos —bordes mal
+ * cerrados, nombres de campo, codificaciones— para transportar un solo archivo.
+ * Aquí el archivo ES el cuerpo, el nombre viaja en una cabecera y el tipo en
+ * el Content-Type de siempre. El navegador lo manda con `fetch(body: File)` en
+ * una línea.
+ */
+const TOPE_SUBIDA = archivos.TOPE_BYTES;
+const crudo = express.raw({ type: () => true, limit: TOPE_SUBIDA });
+
+app.post('/archivos', puerta, frenoSubir, crudo, async (req, res) => {
+  try {
+    const nombre = decodeURIComponent(String(req.get('x-nombre') || '')).slice(0, 200);
+    const a = await archivos.guardar({
+      nombre, tipo: req.get('content-type'), buf: req.body,
+      miembro: req.miembro.correo, conversacion: req.get('x-conversacion') || null,
+    });
+    res.json(a);
+  } catch (e) {
+    /* Los cuatro motivos por los que un archivo se rechaza tienen nombre y se
+       dicen. «No se pudo subir» manda a la persona a probar otra vez con el
+       mismo archivo que nunca va a entrar. */
+    const codigo = e?.codigo || 'ERROR';
+    res.status(codigo === 'TIPO_NO' || codigo === 'MUY_GRANDE' || codigo === 'VACIO' ? 400 : 500)
+      .json({ error: e.message, codigo });
+  }
+});
+/* El cuerpo que pasa del tope lo corta express antes de llegar arriba, y sin
+   esto sale un 500 genérico con una pila. Se contesta lo que de verdad pasó. */
+app.use('/archivos', (err, req, res, sig) => {
+  if (err?.type === 'entity.too.large') {
+    return res.status(413).json({ error: `El archivo pasa de ${Math.round(TOPE_SUBIDA / 1e6)} MB.`, codigo: 'MUY_GRANDE' });
+  }
+  return sig(err);
+});
+
+app.get('/archivos', puerta, async (req, res) => res.json(await archivos.lista({ limite: 40 })));
+
+app.get('/archivos/:id/bajar', puerta, async (req, res) => {
+  const a = await archivos.uno(req.params.id, { conCrudo: true });
+  if (!a) return res.status(404).json({ error: 'No existe.', codigo: 'NO_EXISTE' });
+  const limpio = String(a.nombre).normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^\w. -]/g, '').slice(0, 120) || 'archivo';
+  res.setHeader('Content-Type', a.tipo);
+  res.setHeader('Content-Length', a.crudo.length);
+  /* `inline` para lo que el navegador sabe enseñar —un PDF, una imagen— y
+     `attachment` para lo demás: obligar a bajar un PDF que se podía mirar es
+     un clic de más y un archivo suelto en la carpeta de descargas. */
+  const aLaVista = /^(application\/pdf|image\/|text\/plain)/.test(a.tipo);
+  res.setHeader('Content-Disposition', `${aLaVista ? 'inline' : 'attachment'}; filename="${limpio}"`);
+  res.send(a.crudo);
+});
+
+app.delete('/archivos/:id', puerta, async (req, res) => {
+  const fue = await archivos.borrar(req.params.id, null);
+  if (!fue) return res.status(404).json({ error: 'No existe.', codigo: 'NO_EXISTE' });
+  res.json({ ok: true });
+});
+
 // ── Documentos ──────────────────────────────────────────────────────────────
 
 app.get('/documentos', puerta, async (req, res) => res.json(await memoria.documentos()));
@@ -570,6 +640,13 @@ app.post('/whatsapp/entrada', async (req, res) => {
 });
 
 // ── El panel ────────────────────────────────────────────────────────────────
+
+/* ULTRON OS. La consola de siempre sigue en la raíz y no se toca: es la que la
+   junta ya conoce y la que funciona en cualquier navegador viejo. El OS es la
+   otra cara —el tablero con el busto— y vive en /os.
+   Dos puertas al mismo ULTRON, no dos ULTRON: la misma sesión, las mismas
+   rutas, la misma memoria. Si el 3D no arranca en un aparato, /  sigue ahí. */
+app.get('/os', (req, res) => res.sendFile(join(__dirname, 'public', 'os.html')));
 
 /* LA CONSOLA vive en public/: una sola puerta, en la raíz. */
 app.use(express.static(join(__dirname, 'public'), { index: 'index.html', maxAge: '10m' }));

@@ -131,7 +131,12 @@ await p.waitForFunction(() => /Buen(os|as) (días|tardes|noches), José\./.test(
   const h = await texto('#portada');
   decir(/Buen(os|as) (días|tardes|noches), José\./.test(h), 'saluda por el nombre de pila', h);
   decir(/Quedo a su disposición\./.test(h), 'y cede la palabra en registro institucional', h);
-  decir(!/¿Por dónde empezamos\?|vos|che/.test(h), 'sin coloquialismos', h);
+  /* CON LÍMITES DE PALABRA, y no es quisquillosidad: `che` a secas casa dentro
+     de «Buenas noCHEs», así que esta comprobación se ponía roja sola a partir
+     de las siete de la tarde y verde otra vez por la mañana. Una prueba que
+     depende de la hora del día no prueba nada — solo enseña a desconfiar de
+     las rojas, que es lo peor que le puede pasar a una suite. */
+  decir(!/¿Por dónde empezamos\?|\bvos\b|\bche\b|\btenés\b|\bpodés\b/.test(h), 'sin coloquialismos', h);
   decir(/ninguna casa contesta|no hay pendientes/.test(h), 'y dice la verdad sobre la casa (sin red, ninguna contesta)', h);
   decir((await p.$$('#sugerencias .sug')).length >= 4, 'con sugerencias de consulta para la Junta');
   decir(/ULTRON/.test(h), 'la portada lleva el nombre');
