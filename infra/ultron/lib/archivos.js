@@ -339,16 +339,35 @@ async function lista({ limite = 40, miembro = null } = {}) {
   return provisional.filter((a) => !miembro || a.miembro === miembro).slice(0, limite).map(sinCrudo);
 }
 
+/* ── LOS BYTES SALEN SIEMPRE COMO Buffer ─────────────────────────────────────
+   `.lean()` NO devuelve un Buffer para un campo Buffer: devuelve un `Binary` de
+   BSON, y en un Binary `.length` es una FUNCIÓN, no un número. La ruta de
+   descarga hacía `res.setHeader('Content-Length', a.crudo.length)` y le pasaba
+   una función: cabecera inválida, excepción, y la aplicación entera caída con
+   un «Application Error» de Heroku.
+   No se vio en las pruebas porque sin Mongo los archivos van al almacén de
+   memoria, donde SÍ son Buffer de verdad: el camino que se probaba no era el
+   camino que corre en producción. Se normaliza aquí, en el único sitio por el
+   que salen los bytes, y no en cada ruta que los use. */
+function aBuffer(x) {
+  if (x == null) return null;
+  if (Buffer.isBuffer(x)) return x;
+  if (typeof x.value === 'function') return Buffer.from(x.value());       // Binary de BSON
+  if (Buffer.isBuffer(x.buffer)) return Buffer.from(x.buffer);
+  if (x.buffer instanceof ArrayBuffer || ArrayBuffer.isView(x)) return Buffer.from(x.buffer || x);
+  return Buffer.from(x);
+}
+
 async function uno(id, { conCrudo = false } = {}) {
   if (conMongo()) {
     if (!mongoose.Types.ObjectId.isValid(String(id))) return null;
     const a = await Archivo.findById(id).lean();
     if (!a) return null;
-    return conCrudo ? { ...a, _id: String(a._id) } : sinCrudo(a);
+    return conCrudo ? { ...a, _id: String(a._id), crudo: aBuffer(a.crudo) } : sinCrudo(a);
   }
   const a = provisional.find((x) => String(x._id) === String(id));
   if (!a) return null;
-  return conCrudo ? a : sinCrudo(a);
+  return conCrudo ? { ...a, crudo: aBuffer(a.crudo) } : sinCrudo(a);
 }
 
 async function borrar(id, miembro) {
@@ -364,6 +383,7 @@ async function borrar(id, miembro) {
 }
 
 module.exports = {
+  aBuffer,
   guardar, lista, uno, borrar, claseDe, admitidos, Archivo,
   TOPE_BYTES, TOPE_TEXTO, CLASES,
   _adentro: { dePdf, deDocx, deHtml, deTexto, leer, pareceTexto, provisional },

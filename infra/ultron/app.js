@@ -135,6 +135,18 @@ function puerta(req, res, next) {
 
 // ── Andamio ─────────────────────────────────────────────────────────────────
 
+/* ── QUE UNA RUTA NO SE LLEVE A LA CASA ──────────────────────────────────────
+   Express 4 no atrapa el rechazo de un manejador `async`: sube a
+   `unhandledRejection` y Node 22 termina el proceso. Un fallo en una descarga
+   —una ruta que usa una persona, de vez en cuando— tumbaba ULTRON ENTERO: la
+   junta se quedaba sin consola, sin voz y sin tablero por un archivo.
+   Se registra con todo detalle y se sigue en pie. Esto NO es tapar el fallo: el
+   registro lo canta y las rutas siguen teniendo su propio `try`; es que la
+   avería de una pieza no puede ser la avería de todas. */
+process.on('unhandledRejection', (e) => {
+  console.error('[ultron] promesa sin atrapar (la casa sigue en pie):', e?.stack || e);
+});
+
 app.use(helmet({
   contentSecurityPolicy: {
     directives: {
@@ -507,9 +519,16 @@ app.use('/archivos', (err, req, res, sig) => {
 
 app.get('/archivos', puerta, async (req, res) => res.json(await archivos.lista({ limite: 40 })));
 
+/* Con `try`. Express 4 no atrapa el rechazo de un manejador `async`: se va a
+   `unhandledRejection` y Node 22 TERMINA EL PROCESO. Por eso un solo byte mal
+   tipado en esta ruta no daba un 500 con su explicación: tumbaba a ULTRON
+   entero y Heroku enseñaba «Application Error». Una descarga que falla tiene
+   que fallar sola. */
 app.get('/archivos/:id/bajar', puerta, async (req, res) => {
+  try {
   const a = await archivos.uno(req.params.id, { conCrudo: true });
   if (!a) return res.status(404).json({ error: 'No existe.', codigo: 'NO_EXISTE' });
+  if (!Buffer.isBuffer(a.crudo)) return res.status(500).json({ error: 'El archivo está guardado en un formato que no se puede devolver.', codigo: 'CRUDO_RARO' });
   const limpio = String(a.nombre).normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^\w. -]/g, '').slice(0, 120) || 'archivo';
   res.setHeader('Content-Type', a.tipo);
   res.setHeader('Content-Length', a.crudo.length);
@@ -519,6 +538,10 @@ app.get('/archivos/:id/bajar', puerta, async (req, res) => {
   const aLaVista = /^(application\/pdf|image\/|text\/plain)/.test(a.tipo);
   res.setHeader('Content-Disposition', `${aLaVista ? 'inline' : 'attachment'}; filename="${limpio}"`);
   res.send(a.crudo);
+  } catch (e) {
+    console.error('[archivos] bajar falló:', e?.message);
+    if (!res.headersSent) res.status(500).json({ error: 'No se pudo devolver el archivo.', codigo: 'BAJAR_FALLO' });
+  }
 });
 
 app.delete('/archivos/:id', puerta, async (req, res) => {

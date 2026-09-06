@@ -161,6 +161,37 @@ titulo('subir un archivo, y que le saque el texto');
   }
 }
 
+/* ── LOS BYTES COMO LOS DEVUELVE MONGO ───────────────────────────────────────
+   Este fallo llegó a producción porque la prueba probaba el camino equivocado:
+   sin Mongo los archivos van al almacén de memoria, donde los bytes son un
+   Buffer de verdad. Con Mongo, `.lean()` devuelve un `Binary` de BSON, y en un
+   Binary `.length` es una FUNCIÓN: la cabecera Content-Length salía inválida,
+   la excepción subía sin atrapar y —Express 4 con un manejador `async`— se
+   llevaba por delante el proceso entero. La junta se quedaba sin consola por
+   una descarga.
+   Aquí se mete un Binary a mano en el almacén y se comprueba que baja bien. */
+titulo('los bytes tal como los devuelve Mongo');
+{
+  const { Binary } = require('bson');
+  const archivos = require('../lib/archivos.js');
+  const original = Buffer.from('Informe de la Junta · con acentos y ñ.\nSegunda línea.', 'utf8');
+  const guardado = await archivos.guardar({
+    nombre: 'binario.txt', tipo: 'text/plain', buf: original, miembro: 'jose@ordenglobal.org',
+  });
+  // se sustituye el Buffer por un Binary, que es lo que llega desde la base
+  archivos._adentro.provisional[0].crudo = new Binary(original);
+  const r = await p.evaluate(async (id) => {
+    const res = await fetch(`/archivos/${id}/bajar`, { credentials: 'same-origin' });
+    return { estado: res.status, largo: res.headers.get('content-length'), texto: await res.text() };
+  }, guardado._id);
+  decir(r.estado === 200, 'un archivo guardado como Binary de BSON baja igual', `HTTP ${r.estado}`);
+  decir(r.texto === original.toString('utf8'), 'y sale byte por byte como entró', r.texto?.slice(0, 40));
+  decir(String(r.largo) === String(original.length), 'con un Content-Length numérico, no una función', `${r.largo} vs ${original.length}`);
+  decir(await p.evaluate(() => fetch('/vivo', { credentials: 'same-origin' }).then((x) => x.ok)),
+    'y el servidor SIGUE EN PIE después (antes se llevaba la casa entera)');
+  await p.evaluate((id) => fetch(`/archivos/${id}`, { method: 'DELETE', credentials: 'same-origin' }), guardado._id);
+}
+
 // ── lo que NO se puede leer, lo dice ───────────────────────────────────────
 titulo('lo que no se puede leer, se dice');
 {
