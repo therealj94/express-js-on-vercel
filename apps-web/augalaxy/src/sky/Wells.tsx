@@ -140,32 +140,86 @@ const COLOR_POR_DEFECTO: Record<string, { grad: string[]; halo: string; lente: s
   dbnx: { grad: ['#DCE6F2', '#7A90AE', '#2A3852'], halo: '#9FB6D4', lente: '#080D16' },
 }
 
-/* EL ANILLO DE CASAS. Antes los pozos caían donde tocara sobre los filamentos:
-   quedaban desparramados entre el centro y el borde, tan lejos unos de otros
-   que ninguno se veía bien. Ahora forman un sistema: las cuatro casas de todos
-   los días en la órbita de adentro, las otras cuatro en la de afuera, cada una
-   con su altura propia para que el conjunto tenga aire y no sea una rueda
-   plana. Se puede leer de un vistazo, y girar la galaxia las muestra todas. */
+/* ── EL SISTEMA DE CASAS: DOS PLANOS, NO DOS ANILLOS ────────────────────────
+ *
+ * Antes los pozos caían donde tocara sobre los filamentos, desparramados. Se
+ * los puso en dos órbitas concéntricas —las de todos los días adentro, el
+ * resto afuera— y eso arregló el desparramo. Pero trajo el problema que José
+ * reportó el 6-sep: «los planetas están muy pegados, a veces no se puede tocar
+ * porque se pegan mucho».
+ *
+ * MEDIDO, no supuesto. Barriendo la pantalla con el mismo rayo que usa el dedo
+ * (__AE_MIRAR), a 390 px:
+ *
+ *     pay ↔ minas      33 px        gid ↔ oxch       46 px
+ *     genesis ↔ ajustes 49 px       chat ↔ scan      55 px
+ *
+ * La yema de un dedo mide unos 44. Cuatro pares por debajo de eso, y los tres
+ * peores son todos ADENTRO contra AFUERA: dos anillos concéntricos vistos en
+ * picado se proyectan como dos elipses encajadas una dentro de otra, y sus
+ * casas se cruzan en pantalla por más ángulo que las separe en el espacio.
+ * Ninguna rotación arregla eso, porque el cruce es de forma, no de fase.
+ *
+ * LO QUE LO ARREGLA es dejar de pensarlas como dos anillos y pensarlas como
+ * dos PLANOS: casi el mismo radio, separados en ALTURA. Al proyectarse quedan
+ * dos elipses una encima de la otra en vez de una dentro de la otra, y el
+ * cruce desaparece. Además el anillo de afuera se recoge un poco, y eso deja
+ * acercar la cámara —el encuadre ya no tiene que irse hasta el tope— así que
+ * los planetas se ven MÁS grandes con MÁS aire entre ellos, que parecía
+ * imposible y es solo la consecuencia de que quepan.
+ *
+ * Los números salieron de barrer el espacio de parámetros contra una copia
+ * exacta del encuadre (rig.encuadrar) proyectando en un teléfono y en un
+ * monitor a la vez, y quedándose con el peor de los dos. Medido después, en el
+ * navegador de verdad:
+ *
+ *                          hueco mínimo   pares < 60 px   ventana de AU-RA
+ *     teléfono   antes         33 px            4              50 px
+ *     teléfono   ahora         71 px            0              49 px
+ *     monitor    antes         48 px            1              85 px
+ *     monitor    ahora         82 px            0              54 px
+ */
+
+/* Los dos planos. `alto` es lo que los separa y es el número que de verdad
+   resolvió el problema; el resto acompaña. */
+const PLANO = {
+  0: { r: 0.84, alto: 2.2, fase: 0.26 },     // las de todos los días, arriba
+  1: { r: 0.92, alto: -3.7, fase: 0.13 },    // las demás, abajo
+} as const
+/* La pantalla de un teléfono es alta y angosta; una órbita circular, ancha y
+   plana. Estirar la órbita en PROFUNDIDAD —el eje que la perspectiva convierte
+   en alto de pantalla— la pone en la forma del cuadro que la va a mostrar. Es
+   suave a propósito: pasado 1,3 se nota como una elipse y deja de leerse como
+   un sistema.
+
+   Y las alturas de los planos NO son a ojo: salieron de barrer el espacio de
+   parámetros exigiendo, además de la separación, que ninguna casa quede tapada
+   más de un tercio por otra que esté delante. Esa condición hubo que agregarla
+   porque el primer juego de números la incumplía sin que se notara: ORDENSCAN
+   se metió detrás de Veta Wallet en monitor y su blanco de toque cayó de 127 px
+   a 31 — dos centros bien separados y una casa igualmente imposible de tocar. */
+const ESTIRAR = 1.05
+
 function anillo(lista: Casa[], i: number, banda: 0 | 1): THREE.Vector3 {
   const enBanda = lista.filter((c) => c.banda === banda)
   const idx = enBanda.findIndex((c) => c.key === lista[i].key)
   const n = Math.max(1, enBanda.length)
-  /* El giro de cada banda se corre MEDIO PASO respecto del eje de la cámara
+  const P = PLANO[banda]
+  /* El giro de cada plano se corre MEDIO PASO respecto del eje de la cámara
      (theta de reposo = 0.65): así ninguna casa cae justo delante de AU-RA
-     tapándola — el corazón siempre tiene su ventana. */
-  const giro = 0.65 + Math.PI / n + (banda === 1 ? Math.PI / (n * 2) : 0)
+     tapándola — el corazón siempre tiene su ventana. La fase propia de cada
+     plano termina de cruzarlos, para que una casa de arriba no caiga sobre la
+     de abajo. */
+  const giro = 0.65 + Math.PI / n + (banda === 1 ? Math.PI / (n * 2) : 0) + P.fase
   const a = giro + (idx / n) * Math.PI * 2
-  /* La órbita de adentro se abre para dejarle el centro a AU-RA: el corazón
-     de la galaxia tiene que verse, no quedar tapado por las casas. */
-  const r = RADIO_ANILLO * (banda === 0 ? 0.68 : 1.08)
-  /* La altura no es adorno: en la órbita de adentro, las casas del sector
-     TRASERO suben y las del frontal bajan — así ninguna se proyecta encima
-     de AU-RA y el corazón siempre tiene su ventana limpia. La anillo(a) de
-     afuera conserva su vaivén propio. */
-  const alto = banda === 0
+  const r = RADIO_ANILLO * P.r
+  /* Y dentro de cada plano, las casas siguen sin estar todas a la misma
+     altura: el vaivén le da hondura al conjunto y evita que se lea como dos
+     ruedas planas. Va sobre la altura del plano, no en su lugar. */
+  const onda = banda === 0
     ? -Math.cos(a - 0.65) * 1.15
     : Math.sin(a * 2 + 1.7) * 1.2
-  return new THREE.Vector3(Math.cos(a) * r, alto, Math.sin(a) * r)
+  return new THREE.Vector3(Math.cos(a) * r, P.alto + onda * 1.5, Math.sin(a) * r * ESTIRAR)
 }
 
 export function buildWellDefs(gal: Galaxy): WellDef[] {
@@ -258,6 +312,18 @@ const tmpV = new THREE.Vector3()
 const normalAro = new THREE.Vector3()
 const qAro = new THREE.Quaternion()
 const tmpP = new THREE.Vector3()
+const tmpQ = new THREE.Vector3()
+
+/* DÓNDE CAE CADA PLANETA EN PANTALLA, para que un rótulo sepa de sus vecinos.
+   Cada mundo se dibuja solo y no conoce a los demás, así que un nombre colgado
+   debajo de su esfera no tenía manera de enterarse de que ahí abajo hay otra
+   casa. Medido a 390 px: seis de los nueve nombres visibles se apoyaban sobre
+   un planeta ajeno — «ORDENSCAN» sobre Veta Wallet, «GENESIS CORE» sobre
+   Ajustes—, que es justo el desorden que se ve.
+   Cada mundo deja aquí su círculo en píxeles en cada cuadro; el rótulo lee el
+   de los demás. Se usa el del cuadro ANTERIOR, que a sesenta por segundo es
+   invisible y evita depender del orden en que React dibuje los mundos. */
+const enPantalla = new Map<string, { x: number; y: number; r: number }>()
 const tmpA = new THREE.Vector3()
 
 function makeAtmoMaterial(color: string, density: number) {
@@ -526,10 +592,23 @@ function WellView({ def }: { def: WellDef }) {
         THREE.MathUtils.clamp(3.1 - d / 17, 0, 1) * (1 - sim.noche) * cine
     }
     if (letrero.current) {
+      /* DÓNDE CAE ESTE PLANETA EN PANTALLA. Va lo PRIMERO del bloque porque de
+         aquí salen tres cosas que vienen después: si la casa está al borde, en
+         qué lado colgar su nombre, y el círculo que se deja apuntado para que
+         los nombres de las vecinas lo esquiven. Calcularlo más abajo —donde
+         estaba— dejaba a la elección de lado usando un valor que todavía no
+         existía, y el cielo entero se caía con un error de inicialización. */
+      tmpP.copy(g.position).project(state.camera)
+      const porMundo = state.size.height
+        / (2 * Math.tan((state.camera as THREE.PerspectiveCamera).fov * Math.PI / 360) * d)
+      const miX = (tmpP.x * 0.5 + 0.5) * state.size.width
+      const miY = (-tmpP.y * 0.5 + 0.5) * state.size.height
+      enPantalla.set(def.key, { x: miX, y: miY, r: R * porMundo })
+
       /* EL LETRERO NO CRECE CON EL PLANETA. Su tamaño en PANTALLA es el mismo
          para todas las casas —proporcional a la distancia, nada más—, así que
          de cerca no tapa medio cielo y de lejos sigue siendo legible. */
-      const s = d * 0.098
+      const s = d * 0.088
       letrero.current.scale.set(s * 2.6, s * 0.65, 1)
       /* ── Y NO TODOS A LA MISMA ALTURA ──────────────────────────────────
          Apagar los de atrás arregla el amontonamiento general, pero no el de
@@ -543,10 +622,18 @@ function WellView({ def }: { def: WellDef }) {
          de la casa —no de su orden en una lista— para que sea siempre el
          mismo aunque mañana se agregue o se quite una. */
       const escalon = (def.key.charCodeAt(0) + def.key.length) % 2 ? s * 0.52 : 0
+      /* SE PROBÓ colgar el nombre ARRIBA cuando abajo estaba ocupado, eligiendo
+         el lado por cuánto invadiría cada uno. Medido mejoraba —de seis
+         nombres sobre un planeta ajeno a tres— y mirado era peor: un nombre
+         encima de su esfera flota despegado, no se lee como suyo, y los de los
+         bordes se salían del cuadro. Un número que mejora mientras la pantalla
+         empeora quiere decir que el número no medía lo que importaba.
+         El nombre va SIEMPRE debajo, que es donde se lee como de esa casa. El
+         amontonamiento se arregla donde de verdad estaba: en la geometría de
+         los planetas y en cuántos nombres se encienden a la vez. */
       letrero.current.position.set(0, -R * 1.12 - s * 0.34 - escalon, 0)
       /* Y se calla cuando su casa está saliéndose del cuadro: un nombre
          cortado a la mitad en el borde se ve descuidado, no misterioso. */
-      tmpP.copy(g.position).project(state.camera)
       const alBorde = Math.abs(tmpP.x) > 0.82 || Math.abs(tmpP.y) > 0.86 || tmpP.z > 1
       /* De lejos los nombres se apagan del todo: en el panorama de la galaxia,
          nueve letreros a tamaño fijo se apelotonan en el centro y tapan justo
@@ -583,7 +670,18 @@ function WellView({ def }: { def: WellDef }) {
          Medido después del cambio, a 390 px: Ajustes 1.00, AuCorp 0.93,
          Veta Wallet 0.81, Genesis Core 0.63, PULSE2CHAT 0.35, y de ahí para
          atrás por debajo de 0,30. */
-      const d0 = 35.2
+      /* ── EL UMBRAL VA ATADO A LA CÁMARA, NO CLAVADO ─────────────────────
+         Aquí había un 35,2 medido a mano sobre la geometría de entonces, y
+         funcionaba. Al reordenar los planetas en dos planos la cámara se
+         acercó —de 39,5 a 33,8— y las casas pasaron a estar a 28-44 en vez de
+         34-47: contra un umbral fijo, NUEVE de los once nombres quedaron a
+         plena luz y volvieron a amontonarse. El número no estaba mal; estaba
+         clavado a una escena que cambió.
+         Ahora es una fracción de la distancia a la que está la cámara, que es
+         lo que en realidad significaba: «los que están más cerca que el grueso
+         del sistema». Así el desvanecido sobrevive a la próxima vez que alguien
+         mueva las órbitas — y también al zoom, que es la misma pregunta. */
+      const d0 = Math.max(6, rig.radius * 0.89)
       const estrechez = THREE.MathUtils.clamp(1200 / Math.max(1, state.size.width), 1, 3)
       const lejania = THREE.MathUtils.clamp(1 - (d - d0) / (22 / estrechez), 0, 1)
       /* En la puerta el sistema se mira de lejos y en silencio: los nombres
@@ -609,6 +707,28 @@ function WellView({ def }: { def: WellDef }) {
       /* Y a qué distancia está. Sin esto, calibrar el desvanecido es adivinar:
          la opacidad sale de `d` y desde fuera `d` no se ve. */
       ;(w.__AE_ROTULO_D ||= {})[def.key] = d
+      /* ── Y DÓNDE CAE, EN PÍXELES DE PANTALLA ────────────────────────────
+         Con la opacidad sola no se puede saber si dos nombres se pisan: son
+         texturas 3D, no hay caja del DOM que medir, y una foto no distingue
+         «montado» de «justo al lado». Acá se proyecta el letrero —su centro y
+         sus dos esquinas— y se publica la caja en píxeles. Con eso una prueba
+         puede afirmar que ningún nombre se monta sobre otro ni sobre un
+         planeta, que es lo que se ve mal y hasta hoy se juzgaba a ojo. */
+      const anchoM = letrero.current.scale.x / 2
+      const altoM = letrero.current.scale.y / 2
+      letrero.current.getWorldPosition(tmpP)
+      tmpP.project(state.camera)
+      const cx = (tmpP.x * 0.5 + 0.5) * state.size.width
+      const cy = (-tmpP.y * 0.5 + 0.5) * state.size.height
+      /* El ancho en pantalla sale de un punto desplazado en el plano de la
+         cámara: proyectar el vector de escala directamente daría la medida en
+         el mundo, no la que ve el ojo. */
+      letrero.current.getWorldPosition(tmpQ)
+      tmpQ.addScaledVector(state.camera.up, altoM)
+      tmpQ.project(state.camera)
+      const hpx = Math.abs((-tmpQ.y * 0.5 + 0.5) * state.size.height - cy) * 2
+      ;(w.__AE_ROTULO_CAJA ||= {})[def.key] =
+        { x: cx, y: cy, w: (hpx * anchoM) / Math.max(0.001, altoM), h: hpx, op }
     }
 
     if (halo.current) {
