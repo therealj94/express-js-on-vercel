@@ -739,7 +739,7 @@ app.get('/boveda', puerta, async (req, res) => {
 });
 app.post('/boveda', puerta, soloDueño, express.json({ limit: '32kb' }), async (req, res) => {
   try {
-    const s = await boveda.guardar({ nombre: req.body?.nombre, valor: req.body?.valor, nota: req.body?.nota, por: req.miembro.correo });
+    const s = await boveda.guardar({ nombre: req.body?.nombre, valor: req.body?.valor, nota: req.body?.nota, por: req.miembro.correo, yaEn: req.body?.yaEn });
     console.log(`[boveda] ${req.miembro.correo} guardó ${s.nombre} (${s.largo} caracteres)`);   // el nombre y el largo; el valor, jamás
     res.json(s);
   } catch (e) { res.status(e.codigo === 'BOVEDA_APAGADA' ? 503 : 400).json({ error: e.message, codigo: e.codigo }); }

@@ -63,6 +63,7 @@ const NIVEL_DE = {
   // peligroso
   terminal: 'peligroso', repo_proponer_cambio: 'peligroso', desplegarse: 'peligroso',
   boveda_aplicar: 'peligroso', habilidad_publicar: 'peligroso', equipo_correr: 'peligroso',
+  heroku_reiniciar: 'peligroso', nodo_comando: 'peligroso',
   /* fuera: HOY NO HAY NINGUNA. `proponer_envio` no manda: PREPARA el mensaje y
      la persona lo confirma en el panel, que ya es la autorización — ponerle
      un segundo clic encima era pedir permiso dos veces para lo mismo, y rompía
@@ -150,6 +151,8 @@ function resumir(herramienta, entrada) {
     case 'habilidad_publicar': return `Publicar la habilidad «${e.nombre}» en el repositorio`;
     case 'equipo_correr': return `Correr al bot «${e.bot}» ahora`;
     case 'proponer_envio': return `Mandar un mensaje a ${e.a || e.destino || '?'}`;
+    case 'heroku_reiniciar': return `Reiniciar los dynos de ${e.app || '?'} en Heroku`;
+    case 'nodo_comando': return `Correr en el nodo ${e.nodo || '?'}: ${e.comando || '?'}`;
     default: return `${herramienta} ${JSON.stringify(e).slice(0, 200)}`;
   }
 }
@@ -219,7 +222,7 @@ const pendientes = () => lista({ estado: 'pendiente' });
    estar declarada. Se comprueba por nombre —terminal, desplegar, aplicar,
    publicar, correr— porque la omisión aquí es silenciosa y la más cara. */
 function comprobarCatalogo(nombres = []) {
-  const sospechosas = nombres.filter((n) => /terminal|desplegar|aplicar|publicar|proponer_cambio|equipo_correr|borrar|rotar/.test(n) && nivelDe(n) === 'leer');
+  const sospechosas = nombres.filter((n) => /terminal|desplegar|aplicar|publicar|proponer_cambio|equipo_correr|borrar|rotar|reiniciar|_comando/.test(n) && nivelDe(n) === 'leer');
   if (sospechosas.length) throw new Error(`[permisos] herramientas sin nivel declarado: ${sospechosas.join(', ')}`);
   return true;
 }

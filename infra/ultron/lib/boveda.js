@@ -72,18 +72,22 @@ function descifrar({ cifrado, nonce, etiqueta }) {
 const nombreLimpio = (n) => String(n || '').trim().toUpperCase().replace(/[^A-Z0-9_]/g, '_').slice(0, 80);
 
 /** Guarda o rota. Solo desde el formulario del panel; nunca desde una herramienta. */
-async function guardar({ nombre, valor, nota = '', por }) {
+/* `yaEn`: dónde está puesto ya este secreto (app y variable). Se anota al
+   guardar para que la bóveda sepa desde el primer día qué apps dependen de
+   cada uno, sin tener que volver a aplicarlo. */
+async function guardar({ nombre, valor, nota = '', por, yaEn = [] }) {
   const n = nombreLimpio(nombre);
   if (!n) throw Object.assign(new Error('Hace falta el nombre.'), { codigo: 'NOMBRE' });
   const v = String(valor ?? '');
   if (!v) throw Object.assign(new Error('El valor llegó vacío.'), { codigo: 'VACIO' });
+  const marcas = (Array.isArray(yaEn) ? yaEn : []).filter((m) => m && m.app).map((m) => ({ app: String(m.app), variable: nombreLimpio(m.variable || n), en: new Date() })).slice(0, 20);
   const doc = { nombre: n, ...cifrar(v), largo: v.length, nota: String(nota || '').slice(0, 200), guardadoPor: por, rotadoEn: new Date() };
   if (conMongo()) {
-    const r = await Secreto.findOneAndUpdate({ nombre: n }, { $set: doc }, { upsert: true, new: true }).lean();
+    const r = await Secreto.findOneAndUpdate({ nombre: n }, { $set: doc, ...(marcas.length ? { $addToSet: { aplicadoEn: { $each: marcas } } } : {}) }, { upsert: true, new: true }).lean();
     return sinValor(r);
   }
   const antes = provisional.get(n);
-  const s = { ...(antes || {}), ...doc, aplicadoEn: antes?.aplicadoEn || [], en: antes?.en || new Date() };
+  const s = { ...(antes || {}), ...doc, aplicadoEn: [...(antes?.aplicadoEn || []), ...marcas], en: antes?.en || new Date() };
   provisional.set(n, s);
   return sinValor(s);
 }

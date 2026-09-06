@@ -185,7 +185,7 @@ titulo('los instrumentos, a mano: el mismo camino que usa ULTRON');
      habilidades y el equipo: todas dejan rastro o cuestan, y el panel las
      pinta distinto. Si mañana se añade una que escribe y no aparece aquí, esta
      línea se pone roja a propósito. */
-  const ESCRIBEN_ESPERADAS = 'anotar_pendiente,aprender,boveda_aplicar,cerrar_pendiente,crear_documento,desplegarse,equipo_correr,habilidad_crear,habilidad_publicar,olvidar,proponer_envio,recordar,repo_proponer_cambio,terminal';
+  const ESCRIBEN_ESPERADAS = 'anotar_pendiente,aprender,boveda_aplicar,cerrar_pendiente,crear_documento,desplegarse,equipo_correr,habilidad_crear,habilidad_publicar,heroku_reiniciar,nodo_comando,olvidar,proponer_envio,recordar,repo_proponer_cambio,terminal';
   decir(cat.json.herramientas.filter((h) => h.escribe).map((h) => h.nombre).sort().join(',') === ESCRIBEN_ESPERADAS, 'los que escriben van marcados, y son exactamente esos',
     cat.json.herramientas.filter((h) => h.escribe).map((h) => h.nombre).sort().join(','));
   const c = await s.pedir('/herramientas/calcular', { cookie: cookieJose, metodo: 'POST', cuerpo: { entrada: { expresion: '4467.53 / 31.1035 / 55' } } });

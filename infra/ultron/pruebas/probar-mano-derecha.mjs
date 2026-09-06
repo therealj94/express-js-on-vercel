@@ -221,6 +221,39 @@ titulo('el equipo');
   decir(equipo.estado().encendido === false && equipo.arrancar({ pensar: pensarFalso }) === false, 'sin ULTRON_EQUIPO=on el reloj no arranca');
 }
 
+// ── 6b · operaciones: Heroku, nodos, bases ──────────────────────────────────
+titulo('operaciones: las manos sobre la infraestructura');
+{
+  const op = require('../lib/operaciones.js');
+  const t = op._adentro.tapar('MONGODB_URI=mongodb+srv://jose:S3cr3t0@cluster.x/db y HRKU-AAksB9sThu6fkG4vH1Z y sk_1234567890abcdef y AKIAIOSFODNN7EXAMPLE');
+  decir(!/S3cr3t0|AAksB9|1234567890abc|IOSFODNN/.test(t) && /\[tapado\]/.test(t), 'un registro con llaves llega tapado', t);
+  const d = op._adentro.taparDoc({ correo: 'a@b.c', password: 'x', perfil: { privateKey: 'y', nombre: 'Ana' }, tokens: [{ token: 't' }] });
+  decir(d.password === '[tapado]' && d.perfil.privateKey === '[tapado]' && d.perfil.nombre === 'Ana' && d.tokens === '[tapado]', 'un documento de Mongo llega con los campos sensibles tapados (de más, a propósito) y los demás enteros', JSON.stringify(d));
+  const lista = [{ nombre: 'OGB node 3', id: 'i-3', corto: 'node3', region: 'us-east-1', estado: 'running' }, { nombre: 'aura-gpu-a10g', id: 'i-9', corto: null, region: 'us-east-1', estado: 'running' }];
+  decir(op._adentro.resolverNodo(lista, 'node3')?.id === 'i-3' && op._adentro.resolverNodo(lista, '3')?.id === 'i-3' && op._adentro.resolverNodo(lista, 'i-9')?.id === 'i-9' && op._adentro.resolverNodo(lista, 'aura-gpu')?.id === 'i-9' && !op._adentro.resolverNodo(lista, 'node8'),
+    'los nodos se resuelven por nombre corto, número, id o etiqueta');
+  let e = null; try { op._adentro.appValida('Ordenex API'); } catch (x) { e = x; }
+  decir(e?.codigo === 'APP', 'un nombre de app raro no pasa');
+  // el registro de Heroku, con Heroku falso
+  const guardado = globalThis.fetch;
+  globalThis.fetch = async (u, o = {}) => {
+    const url = String(u);
+    if (url.includes('/log-sessions')) return new Response(JSON.stringify({ logplex_url: 'https://logplex.falso/x' }), { status: 201, headers: { 'Content-Type': 'application/json' } });
+    if (url.includes('logplex.falso')) return new Response('2026-09-06 app[web.1]: arrancó\n2026-09-06 app[web.1]: MONGODB_URI=mongodb://u:pw@h/db\n2026-09-06 heroku[router]: at=info');
+    return guardado(u, o);
+  };
+  const reg = await herramientas.correr('heroku_registro', { app: 'ordenex-api', lineas: 50 }, { miembro: jose, junta: JUNTA, fuentes: [], memorias: [], acciones: [] });
+  decir(/arrancó/.test(reg) && !/u:pw/.test(reg) && /\[tapado\]/.test(reg), 'el registro de una app llega, y sin llaves', reg);
+  globalThis.fetch = guardado;
+  decir(permisos.nivelDe('heroku_reiniciar') === 'peligroso' && permisos.nivelDe('nodo_comando') === 'peligroso' && permisos.nivelDe('mongo_consultar') === 'leer', 'reiniciar y mandar comandos piden autorización; leer una base no');
+  const r = await herramientas.correr('nodo_comando', { nodo: 'node3', comando: 'df -h', motivo: 'disco' }, { miembro: melany, junta: JUNTA, fuentes: [], memorias: [], acciones: [] });
+  decir(/ESPERANDO AUTORIZACIÓN/.test(r) && /node3: df -h/.test(r), 'un comando en un nodo espera al dueño y el pedido dice nodo y comando', r);
+  let e2 = null; try { await op.mongoConsultar({ app: 'vetawallet', coleccion: 'users', filtro: '{"$where":"1"}' }); } catch (x) { e2 = x; }
+  decir(e2?.codigo === 'FILTRO', '$where no se admite en una consulta');
+  let e3 = null; try { await op.mongoConsultar({ app: 'vetawallet', coleccion: 'users' }); } catch (x) { e3 = x; }
+  decir(e3?.codigo === 'SIN_URI' && /VETAWALLET__MONGODB_URI/.test(e3.message), 'sin la URI en la bóveda se dice con qué nombre guardarla', e3?.message);
+}
+
 // ── 7 · las rutas ────────────────────────────────────────────────────────────
 titulo('las rutas: el dueño y nadie más');
 {

@@ -40,6 +40,7 @@ const boveda = require('./boveda');
 const taller = require('./taller');
 const aprender = require('./aprender');
 const equipo = require('./equipo');
+const operaciones = require('./operaciones');
 
 // Adónde puede mandar a abrir. Cerrado a la casa a propósito: «abrí» con una
 // URL cualquiera es la forma más fácil de que un modelo lleve a alguien a un
@@ -300,6 +301,41 @@ const DEFINICIONES = [
     input_schema: { type: 'object', properties: {} },
   },
   {
+    name: 'heroku_apps',
+    description: 'Las apps de la casa en Heroku: dynos y su estado, última versión desplegada y cuándo.',
+    input_schema: { type: 'object', properties: {} },
+  },
+  {
+    name: 'heroku_registro',
+    description: 'Las últimas líneas del registro (logs) de una app de Heroku. Para diagnosticar una casa caída o un error: primero el registro, después el reinicio.',
+    input_schema: { type: 'object', properties: { app: { type: 'string' }, lineas: { type: 'integer', description: '20 a 1500; por omisión 120' } }, required: ['app'] },
+  },
+  {
+    name: 'heroku_variables',
+    description: 'Los NOMBRES de las variables de entorno de una app de Heroku y su largo. Nunca los valores.',
+    input_schema: { type: 'object', properties: { app: { type: 'string' } }, required: ['app'] },
+  },
+  {
+    name: 'heroku_reiniciar',
+    description: 'PELIGROSA (pide autorización al dueño). Reinicia los dynos de una app de Heroku. Solo después de leer el registro y saber por qué.',
+    input_schema: { type: 'object', properties: { app: { type: 'string' }, motivo: { type: 'string' } }, required: ['app'] },
+  },
+  {
+    name: 'nodos',
+    description: 'Los nodos de la cadena y las máquinas de la casa en AWS: nombre, id, región, estado, tipo e IP.',
+    input_schema: { type: 'object', properties: {} },
+  },
+  {
+    name: 'nodo_comando',
+    description: 'PELIGROSA (pide autorización al dueño). Corre un comando en un nodo de la cadena por SSM (node1…node7 por su nombre). Plazo 90 s. Para mirar la altura, el servicio, el disco; el dueño ve el comando exacto.',
+    input_schema: { type: 'object', properties: { nodo: { type: 'string', description: 'node3, o el id i-…' }, comando: { type: 'string' }, motivo: { type: 'string' } }, required: ['nodo', 'comando'] },
+  },
+  {
+    name: 'mongo_consultar',
+    description: 'Lee una colección de una base de la casa (ordenex-api, aucorp-api, vetawallet, orden-global-scan o ultron), SOLO LECTURA, con filtro JSON y límite. Los campos sensibles llegan tapados. Para contar usuarios, ver los últimos registros, comprobar un dato.',
+    input_schema: { type: 'object', properties: { app: { type: 'string' }, coleccion: { type: 'string' }, filtro: { type: 'string', description: 'JSON de Mongo, p. ej. {"estado":"abierto"}' }, limite: { type: 'integer' } }, required: ['app', 'coleccion'] },
+  },
+  {
     name: 'autorizaciones',
     description: 'Los pedidos de autorización: pendientes de que el dueño apruebe, aprobados, negados. Para decirle a la persona qué está esperando su clic.',
     input_schema: { type: 'object', properties: { estado: { type: 'string', enum: ['pendiente', 'aprobado', 'negado', 'usado', 'vencido'] } } },
@@ -423,7 +459,7 @@ async function leerPagina(url) {
    la vez. Guardar una memoria y cerrar un pendiente tienen un orden que el
    modelo pidió; leer el mercado y leer la altura de la cadena, no. */
 const ESCRIBEN = new Set(['recordar', 'olvidar', 'anotar_pendiente', 'cerrar_pendiente', 'crear_documento', 'proponer_envio',
-  'aprender', 'habilidad_crear', 'habilidad_publicar', 'repo_proponer_cambio', 'terminal', 'desplegarse', 'boveda_aplicar', 'equipo_correr']);
+  'aprender', 'habilidad_crear', 'habilidad_publicar', 'repo_proponer_cambio', 'terminal', 'desplegarse', 'boveda_aplicar', 'equipo_correr', 'heroku_reiniciar', 'nodo_comando']);
 
 /* ── UN LOTE DE HERRAMIENTAS, NO UNA FILA ────────────────────────────────────
  *
@@ -867,6 +903,21 @@ async function correr(nombre, entrada, ctx) {
         return `Parte de ${p.bot} (${p.ms} ms${p.dolares ? `, ${p.dolares.toFixed(4)} USD` : ''}):\n${p.texto}`;
       }
       case 'auditar_dependencias': return auditarDependencias();
+      // ── operaciones: Heroku, nodos, bases ───────────────────────────────
+      case 'heroku_apps': return operaciones.herokuApps();
+      case 'heroku_registro': return operaciones.herokuRegistro(entrada);
+      case 'heroku_variables': return operaciones.herokuVariables(entrada);
+      case 'heroku_reiniciar': {
+        const r = await operaciones.herokuReiniciar(entrada);
+        ctx.acciones.push({ tipo: 'reinicio', app: r.app });
+        return `Reiniciados los dynos de ${r.app} (${r.en}). En un minuto conviene mirar estado_vivo para confirmar que levantó.`;
+      }
+      case 'nodos': {
+        const l = await operaciones.nodos({ fresco: !!entrada.fresco });
+        return l.map((n) => `- ${n.corto ? n.corto + ' · ' : ''}${n.nombre} · ${n.id || '?'} · ${n.region} · ${n.estado}${n.tipo ? ' · ' + n.tipo : ''}${n.ip ? ' · ' + n.ip : ''}`).join('\n');
+      }
+      case 'nodo_comando': return operaciones.nodoComando(entrada);
+      case 'mongo_consultar': return operaciones.mongoConsultar(entrada);
       case 'autorizaciones': {
         const l = await permisos.lista({ estado: entrada.estado || null, limite: 20 });
         if (!l.length) return 'No hay pedidos de autorización.';
@@ -966,6 +1017,7 @@ const GRUPOS = {
   'La bóveda': ['boveda_listar', 'boveda_aplicar'],
   'Aprender': ['aprender', 'habilidad_usar', 'habilidad_crear', 'habilidad_publicar'],
   'El equipo': ['equipo_estado', 'equipo_partes', 'equipo_correr', 'auditar_dependencias', 'autorizaciones'],
+  'Operaciones (Heroku, nodos, bases)': ['heroku_apps', 'heroku_registro', 'heroku_variables', 'heroku_reiniciar', 'nodos', 'nodo_comando', 'mongo_consultar'],
 };
 
 /** El catálogo para la consola: definición, grupo y si escribe algo. */

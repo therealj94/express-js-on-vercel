@@ -275,7 +275,9 @@ body.vieja #izq,body.vieja #der,body.vieja #medidas{opacity:.48;filter:saturate(
    Estando al final, el botón quedaba en `display:none` SIEMPRE y en el teléfono
    los ocho paneles se quedaban fuera de pantalla sin manera de subirlos: se
    veía el busto, el reloj y nada más. Un tablero sin tablero. */
-#tirador{display:none;position:fixed;left:50%;transform:translateX(-50%);bottom:calc(62px + var(--seguro-ab));z-index:55;
+/* Encima del muelle, no sobre él: a 62 px el tirador caía justo sobre los
+   botones de las casas y el dedo tocaba ORDENSCAN queriendo abrir el cajón. */
+#tirador{display:none;position:fixed;left:50%;transform:translateX(-50%);bottom:calc(122px + var(--seguro-ab));z-index:55;
   align-items:center;gap:7px;padding:8px 18px;min-height:38px;font-size:11px;letter-spacing:.18em;color:var(--cian);
   background:rgba(8,24,38,.94);border:1px solid rgba(5,225,255,.35);
   clip-path:polygon(0 0,calc(100% - 9px) 0,100% 9px,100% 100%,9px 100%,0 calc(100% - 9px))}

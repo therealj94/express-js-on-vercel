@@ -167,6 +167,9 @@ Las manos (`lib/taller.js`, `lib/boveda.js`, `lib/aprender.js`, `lib/equipo.js`)
 | La bóveda | `boveda_listar` (nombres, edades, dónde está aplicado: **nunca valores**), `boveda_aplicar` (de la bóveda a una variable de Heroku, sin pasar por el modelo) | leer / peligroso |
 | Aprender | `aprender` (una lección: una corrección de la junta que manda sobre las fichas), `habilidad_usar`, `habilidad_crear`, `habilidad_publicar` (al repositorio, como PR) | escribir / peligroso |
 | El equipo | `equipo_estado`, `equipo_partes`, `equipo_correr`, `auditar_dependencias`, `autorizaciones` | leer / peligroso |
+| Operaciones | `heroku_apps`, `heroku_registro` (con las llaves tapadas), `heroku_variables` (nombres y largos), `nodos` | leer |
+| | `heroku_reiniciar`, `nodo_comando` (un comando en node1…node7 por SSM, plazo 90 s) | peligroso |
+| Las bases | `mongo_consultar` — solo lectura, con la URI de la bóveda (`<APP>__MONGODB_URI`) y los campos sensibles tapados | leer |
 
 **El valor de un secreto no pasa por el modelo. Nunca.** Entra por el
 formulario de la bóveda del panel (solo el dueño), se cifra con AES-256-GCM
@@ -174,7 +177,11 @@ antes de tocar la base, y sale por un solo camino: hacia una variable de
 Heroku, con autorización.
 
 **Las habilidades** son archivos markdown en `habilidades/` con un encabezado
-(`nombre`, `cuando`), como las skills de Claude. ULTRON ve la lista y carga
+(`nombre`, `cuando`), como las skills de Claude. Hay once de fábrica:
+investigar a fondo, proponer un cambio de código, revisar la seguridad, el
+parte del día, diagnosticar una casa caída, rotar un secreto, desplegar con
+seguridad, escribir para la junta, responder a un incidente, preparar una
+reunión de junta y hablar con los nodos. ULTRON ve la lista y carga
 una entera cuando la tarea lo pide. Las que escribe él van a la base; si el
 dueño aprueba, se publican al repositorio como PR.
 
@@ -182,6 +189,11 @@ dueño aprueba, se publican al repositorio como PR.
 semana), contador y cronista (cada día). Cada uno tiene su tarea y su lista de
 herramientas; leen, y solo escriben memorias y pendientes. Sus partes se leen
 en el panel. El reloj arranca apagado (`ULTRON_EQUIPO=on`), con tope diario.
+
+**Llenar la bóveda** desde lo que ya está en Heroku: `bin/llenar-boveda.mjs`
+lee las variables de cada app y las guarda con `yaEn` (dónde vive cada una),
+sin imprimir ningún valor. Las llaves privadas de billeteras y las semillas
+NO entran, a propósito: no se rotan por ULTRON y duplicarlas no gana nada.
 
 **El vigía** (`lib/vigia.js`) mide las seis casas cada minuto desde el servidor
 —aunque nadie mire—, exige dos lecturas fallidas antes de declarar una caída y

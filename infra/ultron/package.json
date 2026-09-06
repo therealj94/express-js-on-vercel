@@ -19,6 +19,7 @@
     "@anthropic-ai/sdk": "^0.124.0",
     "@aws-sdk/client-ec2": "^3.1127.0",
     "@aws-sdk/client-sesv2": "^3.600.0",
+    "@aws-sdk/client-ssm": "^3.1127.0",
     "cookie-parser": "^1.4.6",
     "express": "^4.19.2",
     "express-rate-limit": "^7.4.0",
