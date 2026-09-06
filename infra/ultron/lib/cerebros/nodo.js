@@ -93,8 +93,17 @@ function encendido() { return !!(URL_NODO && SECRETO); }
  * medida que sale. Devuelve el mensaje final armado: { content, tool_calls,
  * uso }. Lanza con `codigo` si el motor no contesta o dice que no.
  */
-function pedir(cuerpo, { alTrozo = () => {}, plazo = PLAZO_MS } = {}) {
+/* `senalCorte` es un AbortSignal. Cuando la persona interrumpe, la consola
+   corta el SSE, el servidor se entera por `res.on('close')` y esa señal llega
+   hasta acá: se cierra la conexión con el motor Y —esto es lo que importa— el
+   motor deja de generar. Sin esto, interrumpir solo callaba la bocina: el
+   modelo seguía escribiendo una respuesta que ya nadie iba a leer, con la
+   ÚNICA ranura del nodo ocupada (`OLLAMA_NUM_PARALLEL=1`), así que la pregunta
+   siguiente se ponía en fila detrás de la respuesta abandonada. Ese era el
+   «súper lento» de después de interrumpir. */
+function pedir(cuerpo, { alTrozo = () => {}, plazo = PLAZO_MS, senalCorte = null } = {}) {
   return new Promise((resolver, fallar) => {
+    if (senalCorte?.aborted) return fallar(conCodigo('CORTADO', 'el turno se canceló antes de empezar'));
     let u;
     try { u = new URL(URL_NODO + '/api/chat'); } catch { return fallar(conCodigo('NODO_APAGADO', 'ULTRON_NODO_URL no es una URL.')); }
     const seguro = u.protocol === 'https:';
@@ -164,6 +173,13 @@ function pedir(cuerpo, { alTrozo = () => {}, plazo = PLAZO_MS } = {}) {
     });
     req.on('timeout', () => { req.destroy(conCodigo('NODO_LENTO', `el nodo no terminó en ${Math.round(plazo / 1000)} s`)); });
     req.on('error', (e) => { if (!/aborted|destroyed|ECONNRESET/i.test(String(e.message)) || !e.codigo) fallar(e.codigo ? e : conCodigo('NODO_MUDO', e.message)); });
+    if (senalCorte) {
+      const cortar = () => req.destroy(conCodigo('CORTADO', 'lo cortó quien preguntaba'));
+      senalCorte.addEventListener('abort', cortar, { once: true });
+      // Y se suelta al terminar: un turno largo con muchas vueltas dejaría
+      // ocho oyentes colgados de la misma señal.
+      req.on('close', () => senalCorte.removeEventListener('abort', cortar));
+    }
     req.end(datos);
   });
 }
@@ -399,18 +415,30 @@ function largoDe(mensajes) { return mensajes.reduce((a, m) => a + String(m.conte
 
 // ── Pensar ──────────────────────────────────────────────────────────────────
 
-async function pensar({ miembro, junta, texto, conversacionId, emitir = () => {}, sistema, modo = 'texto', alias = null, pensar: pensarDeArriba = null }) {
+async function pensar({ miembro, junta, texto, conversacionId, previa: previaDada = null, emitir = () => {}, sistema, modo = 'texto', alias = null, pensar: pensarDeArriba = null, senalCorte = null }) {
+  /* Todos los pedidos de ESTE turno llevan la misma señal de corte. */
+  const pedirDelTurno = (cuerpo, opciones = {}) => pedir(cuerpo, { ...opciones, senalCorte });
   if (!encendido()) throw conCodigo('NODO_APAGADO', 'Faltan ULTRON_NODO_URL o ULTRON_NODO_SECRETO.');
   const ctx = { miembro, junta, conversacionId, fuentes: [], memorias: [], documentos: [], envios: [], pendientes: [], acciones: [], chico: true , pensar: pensarDeArriba };
 
-  const [memorias, estadoVivo, abiertos] = await Promise.all([
+  const tArranque = Date.now();
+  /* ── TODO LO QUE SE PUEDE PEDIR A LA VEZ, SE PIDE A LA VEZ ───────────────
+     El vector de la pregunta iba en fila DESPUÉS de armar la base, y es una
+     llamada de red al nodo con plazo de ocho segundos: se sumaba entera al
+     silencio. Solo depende del texto de la pregunta, así que sale con las
+     demás. Si al final resulta que no hay sitio para el saber, se tira; haber
+     pedido de más cuesta cero segundos, y haberlo pedido tarde costaba todos. */
+  const [memorias, estadoVivo, abiertos, previaLeida, vector] = await Promise.all([
     memoria.memoriasDe(miembro.correo, { limite: 30 }),
-    vivo.leerConCache(),
+    vivo.leerRapido(),
     memoria.pendientes({ limite: 25 }),
+    previaDada ? Promise.resolve(previaDada) : (conversacionId ? memoria.conversacion(conversacionId, miembro.correo) : Promise.resolve(null)),
+    saber.hayVectores() ? vectorDe(texto) : Promise.resolve(null),
   ]);
+  const msContexto = Date.now() - tArranque;
   // Primero la base sin saber, para saber cuánto queda. El hilo anterior se
   // reserva aparte; el saber recibe lo que sobra, y si sobra poco, poco.
-  const previa = conversacionId ? await memoria.conversacion(conversacionId, miembro.correo) : null;
+  const previa = previaLeida;
   const voz = saber.vozDeLaCasa().slice(0, 6);
   // La base (identidad, memoria, pendientes, estado vivo) no puede comerse el
   // presupuesto: si las memorias son muchas y largas, se sueltan las más
@@ -425,7 +453,6 @@ async function pensar({ miembro, junta, texto, conversacionId, emitir = () => {}
   const hiloEstimado = Math.min(TOPE_HILO, (previa?.turnos || []).slice(-8).reduce((a, t) => a + Math.min(TOPE_TURNO, String(t.texto || '').length), 0));
   const sobra = PRESUPUESTO_FICHAS - fichas(base) - fichas(hiloEstimado ? 'x'.repeat(hiloEstimado) : '') - fichas(texto);
   const paraSaber = Math.max(0, Math.floor(sobra * LETRAS_POR_FICHA));
-  const vector = paraSaber >= SABER_MINIMO ? await vectorDe(texto) : null;
   const secciones = paraSaber >= SABER_MINIMO ? saber.buscar(texto, { maximo: 8, maxBytes: paraSaber, vector }) : [];
   if (paraSaber < SABER_MINIMO) console.warn(`[nodo] sin sitio para el saber: la base ya ocupa ${fichas(base)} fichas de ${PRESUPUESTO_FICHAS}`);
   ctx.fuentes.push(...secciones.map((s) => ({ id: s.id, titulo: s.titulo, fuente: s.fuente })));
@@ -433,6 +460,14 @@ async function pensar({ miembro, junta, texto, conversacionId, emitir = () => {}
   const mensajes = armarMensajes({ system, previa, texto });
 
   let textoFinal = '';
+  /* ── EL CRONÓMETRO ───────────────────────────────────────────────────────
+     Nadie tenía uno en el camino que duele. Los nueve a quince segundos se
+     midieron a mano UNA vez, y después de arreglar cinco cosas nadie iba a
+     poder decir cuál sirvió. Ahora cada turno deja escrito dónde se fueron los
+     milisegundos, y viaja en el evento `fin` para que se pueda ver también
+     desde la pantalla. */
+  let msPrimera = 0;
+  let vueltasDadas = 0;
   const usadas = [];
   const uso = { entrada: 0, salida: 0, lecturaCache: 0, escrituraCache: 0 };
   // En voz, la respuesta es corta por diseño: menos fichas de salida es menos
@@ -494,7 +529,7 @@ async function pensar({ miembro, junta, texto, conversacionId, emitir = () => {}
      `pedir()` usa para cerrar la conexión con el nodo. */
   const conGuarda = (acum) => (t) => {
     const limpio = hastaOtroAlfabeto(t);
-    if (limpio) { acum.t += limpio; emitir('texto', { t: limpio }); }
+    if (limpio) { if (!msPrimera) msPrimera = Date.now() - tArranque; acum.t += limpio; emitir('texto', { t: limpio }); }
     if (limpio.length < t.length) return limpio;
     const corte = dondeEmpiezaElBucle(acum.t);
     if (corte != null) {
@@ -517,9 +552,14 @@ async function pensar({ miembro, junta, texto, conversacionId, emitir = () => {}
   const cajas = [];
 
   for (let vuelta = 0; vuelta < MAX_VUELTAS; vuelta++) {
+    /* Se cortó entre vueltas: ni una herramienta más. Un turno cancelado en la
+       vuelta 3 seguía ejecutando las cinco restantes —con lo que eso significa
+       cuando una de ellas escribe. */
+    if (senalCorte?.aborted) break;
+    vueltasDadas = vuelta + 1;
     emitir('pensando', { vuelta });
     const acum = { t: '' };
-    let r = await pedir({ model: MODELO, messages: mensajes, tools: herramientas.paraOllama({ cajas }), stream: true, options: opciones }, { alTrozo: conGuarda(acum) });
+    let r = await pedirDelTurno({ model: MODELO, messages: mensajes, tools: herramientas.paraOllama({ cajas }), stream: true, options: opciones }, { alTrozo: conGuarda(acum) });
     uso.entrada += r.uso.entrada; uso.salida += r.uso.salida;
     /* SE ENGANCHÓ.
      *
@@ -555,7 +595,7 @@ async function pensar({ miembro, junta, texto, conversacionId, emitir = () => {}
       emitir('pensando', { vuelta, motivo: 'se reintenta' });
       console.warn('[nodo] se enganchó sin decir nada: un reintento con otra semilla');
       const otro = { t: '' };
-      r = await pedir({ model: MODELO, messages: mensajes, tools: herramientas.paraOllama({ cajas }), stream: true,
+      r = await pedirDelTurno({ model: MODELO, messages: mensajes, tools: herramientas.paraOllama({ cajas }), stream: true,
         options: { ...opciones, temperature: 0.6, seed: Math.floor(Math.random() * 1e9) } },
         { alTrozo: conGuarda(otro) });
       uso.entrada += r.uso.entrada; uso.salida += r.uso.salida;
@@ -570,7 +610,7 @@ async function pensar({ miembro, junta, texto, conversacionId, emitir = () => {}
       derivas++;
       emitir('pensando', { vuelta, motivo: 'otro idioma' });
       const hastaAqui = r.content;
-      const sigue = await pedir({ model: MODELO, stream: true, options: { ...opciones, temperature: 0.2 },
+      const sigue = await pedirDelTurno({ model: MODELO, stream: true, options: { ...opciones, temperature: 0.2 },
         messages: [...mensajes, { role: 'assistant', content: hastaAqui }, { role: 'user', content: '[sistema] Te fuiste a otro idioma a media frase. Seguí en ESPAÑOL exactamente desde donde quedaste, sin repetir lo ya escrito y sin herramientas.' }] },
         { alTrozo: conGuarda(acum) });
       uso.entrada += sigue.uso.entrada; uso.salida += sigue.uso.salida;
@@ -633,7 +673,7 @@ async function pensar({ miembro, junta, texto, conversacionId, emitir = () => {}
       + 'Ahora las tenés TODAS a la vista. Mirá con la que corresponda y contestá con lo que devuelva. '
       + 'Si después de mirar sigue sin poder saberse, entonces sí decilo, pero diciendo QUÉ miraste.' });
     let dicho = '';
-    const r = await pedir({ model: MODELO, messages: mensajes, tools: herramientas.paraOllama({ cajas: herramientas.CAJAS_UTILES }), stream: true, options: opciones }, { alTrozo: (t) => { dicho += t; } });
+    const r = await pedirDelTurno({ model: MODELO, messages: mensajes, tools: herramientas.paraOllama({ cajas: herramientas.CAJAS_UTILES }), stream: true, options: opciones }, { alTrozo: (t) => { dicho += t; } });
     uso.entrada += r.uso.entrada; uso.salida += r.uso.salida;
     const enTexto = llamadasEnTexto(r.content);
     const llamadas = [...r.tool_calls, ...enTexto.llamadas];
@@ -642,7 +682,7 @@ async function pensar({ miembro, junta, texto, conversacionId, emitir = () => {}
       for (const res of await correrLote(llamadas, { ctx, usadas, emitir })) {
         mensajes.push({ role: 'tool', content: recortar(res.salida, TOPE_RESULTADO), tool_name: res.nombre });
       }
-      const r2 = await pedir({ model: MODELO, messages: mensajes, tools: herramientas.paraOllama({ cajas: herramientas.CAJAS_UTILES }), stream: true, options: opciones }, { alTrozo: (t) => {} });
+      const r2 = await pedirDelTurno({ model: MODELO, messages: mensajes, tools: herramientas.paraOllama({ cajas: herramientas.CAJAS_UTILES }), stream: true, options: opciones }, { alTrozo: (t) => {} });
       uso.entrada += r2.uso.entrada; uso.salida += r2.uso.salida;
       const limpio = llamadasEnTexto(r2.content).limpio.trim();
       if (limpio) { textoFinal = limpio; emitir('reemplazo', { texto: textoFinal }); }
@@ -670,7 +710,7 @@ async function pensar({ miembro, junta, texto, conversacionId, emitir = () => {}
     mensajes.push({ role: 'assistant', content: textoFinal });
     mensajes.push({ role: 'user', content: `[sistema] Citaste «${falsas.join('», «')}» pero no la llamaste en este turno. Llamala ahora y contestá con lo que devuelva, o reescribí la respuesta sin esa cita diciendo de dónde sale de verdad el dato.` });
     let dicho = '';
-    const r = await pedir({ model: MODELO, messages: mensajes, tools: herramientas.paraOllama({ cajas }), stream: true, options: opciones }, { alTrozo: (t) => { dicho += t; } });
+    const r = await pedirDelTurno({ model: MODELO, messages: mensajes, tools: herramientas.paraOllama({ cajas }), stream: true, options: opciones }, { alTrozo: (t) => { dicho += t; } });
     uso.entrada += r.uso.entrada; uso.salida += r.uso.salida;
     const enTexto = llamadasEnTexto(r.content);
     const llamadas = [...r.tool_calls, ...enTexto.llamadas];
@@ -684,7 +724,7 @@ async function pensar({ miembro, junta, texto, conversacionId, emitir = () => {}
         usadas.push({ nombre: res.nombre, entrada: res.entrada, salida: res.salida.slice(0, 2000) });
         mensajes.push({ role: 'tool', content: recortar(res.salida, TOPE_RESULTADO), tool_name: res.nombre });
       }
-      const r2 = await pedir({ model: MODELO, messages: mensajes, tools: herramientas.paraOllama({ cajas }), stream: true, options: opciones }, { alTrozo: (t) => {} });
+      const r2 = await pedirDelTurno({ model: MODELO, messages: mensajes, tools: herramientas.paraOllama({ cajas }), stream: true, options: opciones }, { alTrozo: (t) => {} });
       uso.entrada += r2.uso.entrada; uso.salida += r2.uso.salida;
       dicho = llamadasEnTexto(r2.content).limpio;
     } else dicho = enTexto.limpio;
@@ -703,7 +743,8 @@ async function pensar({ miembro, junta, texto, conversacionId, emitir = () => {}
   memoria.anotarGasto({ miembro: miembro.correo, modelo: 'nodo:' + MODELO, ...uso, dolares: 0, canal: ctx.canal || 'panel' })
     .catch((e) => console.error(`[gasto] ${e.message}`));
   return { texto: textoFinal, fuentes, herramientas: usadas, memorias: ctx.memorias, documentos: ctx.documentos,
-           envios: ctx.envios, pendientes: ctx.pendientes, acciones: ctx.acciones, uso: { ...uso, dolares: 0 }, modelo: 'nodo:' + MODELO };
+           envios: ctx.envios, pendientes: ctx.pendientes, acciones: ctx.acciones, uso: { ...uso, dolares: 0 }, modelo: 'nodo:' + MODELO,
+           ms: { contexto: msContexto, primera: msPrimera, cerebro: Date.now() - tArranque, vueltas: vueltasDadas, fichas: uso.entrada } };
 }
 
 /** Un título corto, sin herramientas y con pocas fichas. */

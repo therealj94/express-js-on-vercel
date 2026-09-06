@@ -37,10 +37,17 @@ const DATOS = (() => {
    * inicio, texto (a trozos), pensando, herramienta (arranca), herramienta-lista
    * (terminó, con su salida), reemplazo, titulo, fin, error.
    */
-  async function pensar(texto, { conversacionId, modo = 'texto' }, en) {
+  async function pensar(texto, { conversacionId, modo = 'texto', señal = null }, en) {
+    /* ── SE PUEDE CANCELAR ─────────────────────────────────────────────────
+       Sin esto, interrumpir a ULTRON no interrumpía nada: se callaba la voz y
+       el servidor seguía generando la respuesta que ya nadie quería, ocupando
+       la única ranura del modelo, y dos segundos después empezaba a hablar
+       encima. Con la señal, interrumpir MATA el turno: se corta la conexión,
+       el modelo queda libre y el micrófono vuelve enseguida. */
     const r = await fetch('/pensar', {
       method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ texto, conversacionId, modo }),
+      signal: señal,
     });
     if (r.status === 401) { document.dispatchEvent(new CustomEvent('ultron:sin-sesion')); en.error?.('La sesión no está vigente.', 'SIN_SESION'); return; }
     if (!r.ok || !r.body) {
@@ -50,7 +57,10 @@ const DATOS = (() => {
     }
     const lector = r.body.getReader(); const dec = new TextDecoder(); let buf = '';
     for (;;) {
-      const { value, done } = await lector.read(); if (done) break;
+      let value, done;
+      try { ({ value, done } = await lector.read()); }
+      catch (e) { if (e?.name === 'AbortError') break; throw e; }   // cancelado a propósito
+      if (done) break;
       buf += dec.decode(value, { stream: true });
       let i;
       while ((i = buf.indexOf('\n\n')) >= 0) {

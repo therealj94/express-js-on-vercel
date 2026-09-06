@@ -202,7 +202,13 @@ titulo('la voz: suena, y si no puede sonar NO se calla');
     speechSynthesis.speak = (u) => { window.__voz.dichoPorNavegador.push(u.text); setTimeout(() => u.onend?.(), 10); };
   });
   // Un WAV de verdad, corto, en lugar del mp3 de ElevenLabs.
-  await p.route('**/voz', (ruta) => {
+  // El glob necesita el comodín del final: desde que la voz llega por
+  // streaming la consola pide «/voz?t=…&v=…» para que el navegador la guarde
+  // en su caché, y un patrón sin comodín no casa con la parte de la consulta.
+  // La prueba pasaba a medias —«se reproduce» en verde porque play() sí se
+  // llamaba— mientras el audio de verdad nunca llegaba y todo caía a la voz
+  // del navegador.
+  await p.route('**/voz*', (ruta) => {
     const n = 1600;                                         // 0,2 s a 8 kHz
     const b = Buffer.alloc(44 + n); b.write('RIFF', 0); b.writeUInt32LE(36 + n, 4); b.write('WAVEfmt ', 8);
     b.writeUInt32LE(16, 16); b.writeUInt16LE(1, 20); b.writeUInt16LE(1, 22); b.writeUInt32LE(8000, 24);
@@ -251,7 +257,7 @@ titulo('la voz: suena, y si no puede sonar NO se calla');
     return max;
   });
   decir(nivel > 0.2, 'y mientras habla, la envolvente mueve la figura', String(nivel));
-  await p.unroute('**/voz');
+  await p.unroute('**/voz*');
 }
 
 titulo('los instrumentos: el catálogo entero, y cada uno a mano');

@@ -287,14 +287,14 @@ const correrLote = herramientas.correrLote;
  * medida que sale, herramientas que corren— para que el panel lo pinte en
  * vivo. Devuelve el resultado entero cuando termina.
  */
-async function pensarConClaude({ miembro, junta, texto, conversacionId, idioma = 'es', emitir = () => {} }) {
+async function pensarConClaude({ miembro, junta, texto, conversacionId, previa: previaDada = null, idioma = 'es', emitir = () => {}, senalCorte = null }) {
   const cl = clienteAnthropic();
   const ctx = { miembro, junta, conversacionId, fuentes: [], memorias: [], documentos: [], envios: [], pendientes: [], acciones: [] };
 
   // El contexto: memoria, estado vivo, saber, voz de la casa.
   const [memorias, estadoVivo, abiertos, extras] = await Promise.all([
     memoria.memoriasDe(miembro.correo),
-    vivo.leerConCache(),
+    vivo.leerRapido(),
     memoria.pendientes({ limite: 40 }),
     contextoExtra(miembro, junta),
   ]);
@@ -309,7 +309,9 @@ async function pensarConClaude({ miembro, junta, texto, conversacionId, idioma =
   ctx.pensar = pensar;     // para que equipo_correr pueda pensar con el mismo cerebro
 
   // El hilo: los turnos anteriores, para que retome.
-  const previa = conversacionId ? await memoria.conversacion(conversacionId, miembro.correo) : null;
+  /* El hilo ya viene leído de app.js: pedirlo otra vez a Mongo con el mismo id
+     era una espera entera antes de la primera palabra, por nada. */
+  const previa = previaDada || (conversacionId ? await memoria.conversacion(conversacionId, miembro.correo) : null);
   const mensajes = [];
   for (const t of (previa?.turnos || []).slice(-16)) {
     mensajes.push({ role: t.rol === 'miembro' ? 'user' : 'assistant', content: t.texto });
@@ -323,9 +325,12 @@ async function pensarConClaude({ miembro, junta, texto, conversacionId, idioma =
   const uso = { entrada: 0, salida: 0, lecturaCache: 0, escrituraCache: 0 };
 
   for (let vuelta = 0; vuelta < MAX_VUELTAS; vuelta++) {
+    if (senalCorte?.aborted) break;
+    /* Interrumpir también corta a Claude. Si no, quien interrumpe sigue
+       pagando la respuesta completa que nadie va a leer. */
     const stream = cl.messages.stream({
       model: MODELO, max_tokens: MAX_SALIDA, system, tools: HERRAMIENTAS_DE_ESTE, messages: mensajes,
-    });
+    }, senalCorte ? { signal: senalCorte } : undefined);
     let textoVuelta = '';
     stream.on('text', (t) => { textoVuelta += t; emitir('texto', { t }); });
     const msg = await stream.finalMessage();
@@ -513,6 +518,9 @@ function motivoDeCualquiera(e) {
     case 'NODO_NO': return { codigo: 'NODO_NO', mensaje: 'El nodo rechazó el secreto de ULTRON (ULTRON_NODO_SECRETO no cuadra con /etc/ultron-motor.env).' };
     case 'MODELO_MUDO': return { codigo: 'MODELO_MUDO', mensaje: 'El motor del nodo está vivo pero Ollama no contesta. En el nodo: systemctl status ollama.' };
     case 'MODELO': return { codigo: 'MODELO', mensaje: 'El modelo del nodo contestó con un error. Está en el registro del motor (journalctl -u ultron-motor).' };
+    // No es una avería: lo cortó quien preguntaba. No se releva a Claude ni se
+    // anota como fallo de salud.
+    case 'CORTADO': return { codigo: 'CORTADO', mensaje: 'El turno se canceló.' };
     default: return motivoClaude(e);
   }
 }

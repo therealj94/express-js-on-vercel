@@ -75,6 +75,49 @@ function vozPermitida(id) {
   return catalogo.voces.some((v) => v.id === s) ? s : VOZ;
 }
 
+/* ── EL AUDIO, MIENTRAS SE FABRICA ───────────────────────────────────────────
+ * `hablar()` espera el mp3 ENTERO de ElevenLabs y después el navegador espera
+ * el mp3 entero otra vez. Dos esperas completas antes de que suene un byte.
+ *
+ * `hablarEnVivo()` usa el punto de ElevenLabs que va soltando el audio a medida
+ * que lo genera, y devuelve ese chorro tal cual para que el servidor lo pase al
+ * navegador según llega. El navegador, con una etiqueta de audio y una
+ * dirección, empieza a sonar con los primeros kilobytes: no espera al final.
+ * Es la diferencia entre oír a los tres segundos y oír al medio segundo.
+ *
+ * Y el formato baja de `mp3_44100_128` a `mp3_22050_32`. Es una voz hablando,
+ * no música: a 22 kHz y 32 kbps suena igual de bien por un altavoz de iPad y
+ * son la cuarta parte de los bytes, que en datos móviles de Honduras es la
+ * diferencia entre fluido y entrecortado.
+ */
+const FORMATO_VIVO = process.env.ELEVENLABS_FORMATO || 'mp3_22050_32';
+
+async function hablarEnVivo(texto, { rapido = true, vozId = null } = {}) {
+  const voz = vozPermitida(vozId);
+  if (!LLAVE) { const e = new Error('Voz no configurada.'); e.codigo = 'VOZ_APAGADA'; throw e; }
+  const dicho = paraDecir(texto);
+  if (!dicho) { const e = new Error('Nada que decir.'); e.codigo = 'VACIO'; throw e; }
+  const r = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${encodeURIComponent(voz)}/stream?output_format=${FORMATO_VIVO}`, {
+    method: 'POST',
+    headers: { 'xi-api-key': LLAVE, 'Content-Type': 'application/json', Accept: 'audio/mpeg' },
+    body: JSON.stringify({
+      text: dicho, model_id: rapido ? MODELO_RAPIDO : MODELO,
+      voice_settings: { stability: 0.55, similarity_boost: 0.85, style: 0.25, use_speaker_boost: true },
+      /* `optimize_streaming_latency` le dice a ElevenLabs que empiece a mandar
+         antes, a cambio de un pelo de prosodia. Para una conversación, llegar
+         antes vale más que la última décima de entonación. */
+      optimize_streaming_latency: 3,
+    }),
+    /* Sin plazo total: el chorro puede durar lo que dure la frase. Lo que sí
+       tiene plazo es la CONEXIÓN, y de eso se encarga el propio fetch. */
+  });
+  if (!r.ok) {
+    const e = new Error(`ElevenLabs contestó ${r.status}.`);
+    e.codigo = 'PROVEEDOR'; e.detalle = (await r.text().catch(() => '')).slice(0, 200); throw e;
+  }
+  return r.body;   // un chorro web; el servidor lo empalma con su respuesta
+}
+
 async function hablar(texto, { rapido = false, vozId = null } = {}) {
   const voz = vozPermitida(vozId);
   if (!LLAVE) { const e = new Error('Voz no configurada.'); e.codigo = 'VOZ_APAGADA'; throw e; }
@@ -168,5 +211,5 @@ async function muletilla(idioma, grupo, indice, { vozId = null } = {}) {
   return hablar(texto, { rapido: true, vozId });
 }
 
-module.exports = { hablar, voces, encendida, paraDecir, VOZ, muletillas, muletilla,
+module.exports = { hablar, hablarEnVivo, voces, encendida, paraDecir, VOZ, muletillas, muletilla,
   _adentro: { memoria, VOZ, MODELO, MODELO_RAPIDO, vozPermitida, MULETILLAS } };

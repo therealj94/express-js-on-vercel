@@ -417,7 +417,9 @@ app.get('/yo', puerta, (req, res) => {
    03:14» sí. La lectura del momento y la memoria del vigía son dos cosas
    distintas y viajan por separado, para que se vea cuál es cuál. */
 app.get('/vivo', puerta, async (req, res) => {
-  const v = await vivo.leerConCache();
+  /* El panel repregunta cada pocos segundos: servirle lo guardado y refrescar
+     detrás es exactamente lo que quiere. */
+  const v = await vivo.leerRapido();
   res.json({ ...v, vigia: vigia.estado() });
 });
 app.get('/saber', puerta, (req, res) => res.json(saber.resumen()));
@@ -463,7 +465,7 @@ app.delete('/pendientes/:id', puerta, async (req, res) => {
    turno del modelo y no puede irse a otro idioma. Lo que se dice después ya
    es conversación. */
 app.get('/saludo', puerta, async (req, res) => {
-  const [v, abiertos] = await Promise.all([vivo.leerConCache().catch(() => null), memoria.pendientes({ limite: 100 })]);
+  const [v, abiertos] = await Promise.all([vivo.leerRapido().catch(() => null), memoria.pendientes({ limite: 100 })]);
   const hora = Number(new Date().toLocaleString('en-US', { timeZone: 'America/Tegucigalpa', hour: 'numeric', hour12: false }));
   const momento = hora < 12 ? 'Buenos días' : hora < 19 ? 'Buenas tardes' : 'Buenas noches';
   const nombre = String(req.miembro.nombre || '').split(' ')[0];
@@ -582,38 +584,91 @@ app.post('/pensar', puerta, frenoPensar, async (req, res) => {
   const emitir = (evento, datos) => { try { res.write(`event: ${evento}\ndata: ${JSON.stringify(datos)}\n\n`); } catch { /* se fue */ } };
   const latido = setInterval(() => { try { res.write(': latido\n\n'); } catch { /* nada */ } }, 15_000);
 
+  /* ── SI SE VA, SE APAGA EL MOTOR ─────────────────────────────────────────
+     Interrumpir a ULTRON —tocar el centro, o hablarle encima— corta el SSE
+     desde la consola. Hasta hoy el servidor no se enteraba: seguía pensando la
+     respuesta entera, ocupando la ÚNICA ranura del nodo, y la pregunta
+     siguiente —la que la persona acababa de hacer— esperaba en fila detrás de
+     una respuesta que ya nadie iba a leer. De ahí venían los diez segundos de
+     silencio después de cada interrupción.
+     Ahora la desconexión aborta: el motor deja de generar, la ranura queda
+     libre en el acto y el turno nuevo arranca de una. */
+  const corte = new AbortController();
+  let terminado = false;
+  res.on('close', () => { if (!terminado) { corte.abort(); console.log('[pensar] se cortó: lo dejó quien preguntaba'); } });
+
+  const t0 = Date.now();
+  const reloj = { llegó: 0, hilo: 0, pensó: 0 };
   try {
-    let convId = req.body?.conversacionId ? String(req.body.conversacionId) : null;
-    let nueva = false;
-    if (!convId || !(await memoria.conversacion(convId, req.miembro.correo))) {
-      /* LA DEL DÍA, no una nueva. Recargar la página, cerrar la pestaña o
-         volver por la tarde abría una conversación distinta cada vez: el día
-         quedaba partido en trozos sueltos y —lo que más pesa— el cerebro leía
-         la conversación anterior para tener contexto, así que al volver del
-         almuerzo ULTRON no se acordaba de la mañana. */
-      const c = await memoria.conversacionDelDia(req.miembro.correo, { canal: 'panel' });
-      convId = String(c._id); nueva = !c.yaExistia;
-    }
+    /* ── LAS DOS LECTURAS QUE HAY QUE HACER, EN PARALELO ────────────────────
+       El hilo del día y las preferencias no dependen el uno del otro, y antes
+       iban en fila con el pensar esperando detrás. */
+    const pedidoConv = req.body?.conversacionId ? String(req.body.conversacionId) : null;
+    const [hilo, pref] = await Promise.all([
+      (async () => {
+        if (pedidoConv) {
+          const ya = await memoria.conversacion(pedidoConv, req.miembro.correo);
+          if (ya) return { conv: ya, nueva: false };
+        }
+        /* LA DEL DÍA, no una nueva. Recargar la página, cerrar la pestaña o
+           volver por la tarde abría una conversación distinta cada vez: el día
+           quedaba partido en trozos sueltos y —lo que más pesa— el cerebro lee
+           la conversación anterior para tener contexto, así que al volver del
+           almuerzo ULTRON no se acordaba de la mañana. */
+        const c = await memoria.conversacionDelDia(req.miembro.correo, { canal: 'panel' });
+        return { conv: c, nueva: !c.yaExistia };
+      })(),
+      preferencias.de(req.miembro.correo).catch(() => ({ idioma: 'es' })),
+    ]);
+    const convId = String(hilo.conv._id);
+    const nueva = hilo.nueva;
+    reloj.hilo = Date.now() - t0;
     emitir('inicio', { conversacionId: convId, nueva });
-    await memoria.anotarTurno(convId, req.miembro.correo, { rol: 'miembro', texto });
+
+    /* ── EL TURNO DEL MIEMBRO SE ANOTA MIENTRAS SE PIENSA ───────────────────
+       Era un `await` a una ESCRITURA con el modelo parado esperándola. Ahora
+       se solapa con el pensar. Pero se ESPERA antes de anotar la respuesta:
+       son dos `$push` sobre el mismo documento, y sin esperar podrían quedar
+       invertidos en la conversación; y un fallo de escritura tiene que verse,
+       no perderse en silencio. */
+    const anotado = memoria.anotarTurno(convId, req.miembro.correo, { rol: 'miembro', texto })
+      .catch((e) => { console.error('[pensar] no se anotó el turno del miembro:', e?.message); return null; });
 
     // `modo: 'voz'` es la conversación hablada: respuestas cortas, sin markdown,
     // hechas para escucharse. `texto` (por omisión) es la de siempre.
     const modo = req.body?.modo === 'voz' ? 'voz' : 'texto';
     // `alias`: cómo se presenta en esta interfaz (AURA OS le dice «Aura»).
     const alias = /^[A-Za-zÁÉÍÓÚáéíóúñÑ\- ]{2,24}$/.test(String(req.body?.alias || '')) ? String(req.body.alias).trim() : null;
-    /* El idioma de la persona, no el del servidor: si eligió inglés en Ajustes,
-       ULTRON contesta en inglés aunque le escriban en español. */
-    const pref = await preferencias.de(req.miembro.correo).catch(() => ({ idioma: 'es' }));
-    const r = await cerebro.pensar({ miembro: req.miembro, junta: JUNTA.map(sinClave), texto, conversacionId: convId, emitir, modo, alias, idioma: pref.idioma });
+    /* El hilo ya leído viaja hacia abajo: el cerebro lo volvía a pedir a Mongo
+       con el mismo id que acabamos de leer aquí. */
+    const r = await cerebro.pensar({ miembro: req.miembro, junta: JUNTA.map(sinClave), texto, conversacionId: convId, previa: hilo.conv, emitir, modo, alias, idioma: pref.idioma, senalCorte: corte.signal });
+    reloj.pensó = Date.now() - t0;
+    await anotado;
     await memoria.anotarTurno(convId, req.miembro.correo, { rol: 'ultron', texto: r.texto, herramientas: r.herramientas, fuentes: r.fuentes });
-    if (nueva) { const t = await cerebro.titular(texto); if (t) await memoria.titular(convId, req.miembro.correo, t); emitir('titulo', { titulo: t }); }
-    emitir('fin', { ...r, conversacionId: convId });
+    /* ── EL TÍTULO NO RETIENE LA RESPUESTA ──────────────────────────────────
+       Titular una conversación nueva es OTRA llamada al modelo, y estaba
+       delante del `fin`: la última frase de la respuesta se quedaba esperando
+       a que un segundo modelo inventara un título. Ahora el `fin` sale
+       primero y el título llega después, por su propio evento. */
+    emitir('fin', { ...r, conversacionId: convId, ms: { ...reloj, total: Date.now() - t0, ...(r.ms || {}) } });
+    console.log(`[pensar] ${modo} · hilo ${reloj.hilo}ms · pensar ${reloj.pensó - reloj.hilo}ms · total ${Date.now() - t0}ms${r.ms ? ` · ${Object.entries(r.ms).map(([k, v]) => `${k} ${v}ms`).join(' · ')}` : ''}`);
+    if (nueva) {
+      try {
+        const t = await cerebro.titular(texto);
+        if (t) { await memoria.titular(convId, req.miembro.correo, t); emitir('titulo', { titulo: t }); }
+      } catch { /* sin título se vive; la conversación ya está guardada */ }
+    }
   } catch (e) {
     const m = cerebro.motivo(e);
-    console.error(`[pensar] ${m.codigo} · ${e?.status || ''} ${e?.message || e}`);
-    emitir('error', { mensaje: m.mensaje, codigo: m.codigo });
+    /* Un turno cancelado no es un fallo: no se escribe en rojo en el registro
+       ni se le manda un error a una consola que ya se fue. */
+    if (m.codigo === 'CORTADO' || corte.signal.aborted) console.log('[pensar] cancelado por quien preguntaba');
+    else {
+      console.error(`[pensar] ${m.codigo} · ${e?.status || ''} ${e?.message || e}`);
+      emitir('error', { mensaje: m.mensaje, codigo: m.codigo });
+    }
   } finally {
+    terminado = true;
     clearInterval(latido);
     res.end();
   }
@@ -810,6 +865,40 @@ app.get('/voz/muletilla/:grupo/:i', puerta, async (req, res) => {
     res.setHeader('Cache-Control', 'private, max-age=31536000, immutable');
     res.send(audio);
   } catch (e) { res.status(502).json({ error: e.message, codigo: e.codigo || 'ERROR' }); }
+});
+
+/* ── LA VOZ, EN VIVO Y POR DIRECCIÓN ──────────────────────────────────────────
+ * Esta ruta existe para una cosa: que el navegador pueda poner la dirección en
+ * una etiqueta de audio y EMPEZAR A SONAR con los primeros kilobytes, en vez de
+ * bajar el mp3 entero y sonarlo después. Por eso es GET y no POST — una
+ * etiqueta de audio no sabe mandar un POST — y por eso el texto viaja en la
+ * dirección.
+ *
+ * El texto de una frase hablada son doscientas letras: cabe de sobra. Si
+ * alguien manda un párrafo entero, se corta y se dice.
+ *
+ * Y se puede guardar en el navegador una hora: la misma frase con la misma voz
+ * suena igual siempre, y ULTRON repite muchas —el cierre del saludo, «quedo a
+ * su disposición», los «sí, señor»—. `private` porque lleva lo que ULTRON le
+ * dijo a esta persona: no lo guarda ningún intermediario.
+ */
+app.get('/voz', puerta, frenoVoz, async (req, res) => {
+  if (!voz.encendida()) return res.status(503).json({ error: 'Voz apagada (falta ELEVENLABS_API_KEY).', codigo: 'VOZ_APAGADA' });
+  const texto = String(req.query?.t || '').slice(0, 900);
+  if (!texto.trim()) return res.status(400).json({ error: 'Nada que decir.', codigo: 'VACIO' });
+  try {
+    const chorro = await voz.hablarEnVivo(texto, { rapido: req.query?.lento !== '1', vozId: req.query?.v ? String(req.query.v).slice(0, 40) : null });
+    res.setHeader('Content-Type', 'audio/mpeg');
+    res.setHeader('Cache-Control', 'private, max-age=3600');
+    /* Sin esto, el proxy de Heroku junta trozos y el chorro deja de serlo. */
+    res.setHeader('X-Accel-Buffering', 'no');
+    res.flushHeaders?.();
+    const { Readable } = require('node:stream');
+    Readable.fromWeb(chorro).pipe(res);
+  } catch (e) {
+    if (res.headersSent) { try { res.end(); } catch { /* ya */ } return; }
+    res.status(e?.codigo === 'VACIO' ? 400 : 502).json({ error: e.message, codigo: e.codigo || 'ERROR' });
+  }
 });
 
 app.post('/voz', puerta, frenoVoz, async (req, res) => {

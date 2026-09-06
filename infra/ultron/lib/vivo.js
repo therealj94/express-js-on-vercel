@@ -165,21 +165,92 @@ async function leer() {
   };
 }
 
-/* Memoria corta: el panel pregunta cada pocos segundos y el modelo pregunta a
-   mitad de un razonamiento. Treinta segundos de caché evitan martillar cinco
-   APIs sin perder nada que importe. */
-let cache = null, cacheEn = 0;
+/* ══ LA DESPENSA DEL ESTADO VIVO ═════════════════════════════════════════════
+ * ── LO QUE COSTABA, MEDIDO ──────────────────────────────────────────────────
+ * `leer()` sale a SEIS casas —Ordenex, AuCorp, Veta Wallet, Genesis, OrdenScan
+ * y la web— con plazo de 9 s cada una. Genesis vive en Render y se duerme.
+ * Y esto pasaba ANTES de que el modelo viera la pregunta, en los tres caminos:
+ * el saludo, el turno del nodo y el turno de Claude.
+ *
+ * La caché duraba 30 segundos. Entre dos preguntas de junta pasan minutos, así
+ * que casi siempre estaba fría: José preguntaba «¿cómo está el ORIGEN?» y el
+ * nodo ni se enteraba mientras seis casas despertaban.
+ *
+ * ── LO QUE SE HACE AHORA: SE SIRVE LO QUE HAY, Y SE REFRESCA DETRÁS ─────────
+ * `leerRapido()` NUNCA espera si hay algo guardado, aunque esté vencido: lo
+ * devuelve y dispara el refresco para la próxima. Y no miente, porque el
+ * propio texto que va al modelo lleva `Leído: …` y, si la lectura pasó de un
+ * minuto y medio, lo dice con todas las letras.
+ *
+ * ── UNA SOLA LECTURA EN VUELO ───────────────────────────────────────────────
+ * `enVuelo` es lo que evita la estampida: el panel pregunta cada pocos
+ * segundos, el saludo pregunta al entrar y un turno pregunta a la vez. Sin
+ * esto, tres peticiones en la misma ventana fría eran DIECIOCHO llamadas a las
+ * casas en paralelo. Con esto, una.
+ *
+ * ── QUIÉN LLENA LA DESPENSA ─────────────────────────────────────────────────
+ * El vigía, que ya despierta cada minuto y ya lee las seis casas. Antes tiraba
+ * esa lectura; ahora la guarda aquí. Cero tráfico nuevo: se aprovecha el que
+ * ya se pagaba. Por eso NO hay un reloj propio en este archivo — un segundo
+ * reloj sería el doble de tráfico contra las casas y, sin `unref`, dejaría las
+ * pruebas colgadas sin cerrar el proceso.
+ */
+let cache = null, cacheEn = 0, enVuelo = null;
+
+/** Lee de verdad y llena la despensa. Una sola en vuelo. */
+function refrescar() {
+  if (!enVuelo) {
+    /* `module.exports.leer` y no `leer` a secas: así una prueba que reemplaza
+       la lectura —o el día de mañana una casa simulada— entra por el mismo
+       sitio por el que entra el vigía. Con la llamada directa, sustituir la
+       exportación no cambiaba nada y la prueba medía el código de verdad
+       creyendo que medía el suyo. */
+    enVuelo = module.exports.leer()
+      .then((c) => { cache = c; cacheEn = Date.now(); return c; })
+      .catch((e) => { console.warn('[vivo] no se pudo refrescar:', String(e?.message || e).slice(0, 120)); return cache; })
+      .finally(() => { enVuelo = null; });
+  }
+  return enVuelo;
+}
+
+/** La de siempre: espera si no hay nada guardado y fresco. */
 async function leerConCache(maxEdadMs = 30_000) {
   if (cache && Date.now() - cacheEn < maxEdadMs) return cache;
-  cache = await leer(); cacheEn = Date.now();
-  return cache;
+  return refrescar();
 }
+
+/**
+ * La rápida, para el camino donde alguien está esperando a que ULTRON hable.
+ * Devuelve lo guardado EN EL ACTO aunque esté vencido, y refresca detrás.
+ * La primera de todas —el dyno recién arrancado, la despensa vacía— no puede
+ * esperar nueve segundos: espera un segundo y sigue con lo que haya, que puede
+ * ser nada. `paraElModelo(null)` dice «no leído», así que nadie inventa un
+ * precio que no midió.
+ */
+async function leerRapido(maxEdadMs = 30_000) {
+  if (cache) {
+    if (Date.now() - cacheEn >= maxEdadMs) refrescar();
+    return cache;
+  }
+  return Promise.race([
+    refrescar(),
+    new Promise((ok) => { const t = setTimeout(() => ok(null), 1200); t.unref?.(); }),
+  ]);
+}
+
+/** Cuántos segundos tiene la lectura que hay guardada (null si no hay). */
+const edadDeLaCache = () => (cache ? Math.round((Date.now() - cacheEn) / 1000) : null);
 
 /** Texto para el modelo: corto, con lo que decide cosas. */
 function paraElModelo(v) {
-  if (!v) return 'Estado vivo: no leído.';
+  if (!v) return 'Estado vivo: no leído todavía. Si hace falta un dato de una casa, pedilo con estado_vivo en vez de suponerlo.';
   const l = [];
-  l.push(`Leído: ${v.leidoEn}`);
+  /* CUÁNDO se leyó, y en segundos cuando ya tiene edad. Con la despensa
+     sirviendo lecturas vencidas, decir solo la hora no basta: el modelo tiene
+     que poder avisar «esto es de hace cuatro minutos» en vez de cantarlo como
+     de ahora mismo. */
+  const edad = (() => { const t = Date.parse(v.leidoEn); return Number.isFinite(t) ? Math.round((Date.now() - t) / 1000) : null; })();
+  l.push(`Leído: ${v.leidoEn}${edad !== null && edad > 90 ? ` (hace ${edad >= 120 ? `${Math.round(edad / 60)} minutos` : `${edad} segundos`}: si la cifra pesa, decí de cuándo es o volvé a leer con estado_vivo)` : ''}`);
   if (v.origen) l.push(`ORIGEN: $${v.origen.origenUsd.toFixed(6)} (onza de oro $${v.origen.oroOnzaUsd?.toFixed(2) ?? '?'}, fuente ${v.origen.fuente || '?'})`);
   else l.push('ORIGEN: precio no disponible ahora');
   l.push(`Ordenex: ${v.ordenex.vivo ? 'VIVA' : 'NO CONTESTA'} · cadena ${v.ordenex.cadena} · mongo ${v.ordenex.mongo} · bloque 5550 ${v.ordenex.bloque5550} · compra con USDT ${v.ordenex.compraUsdt ?? '?'} · mercados ${v.ordenex.mercados.map((m) => m.mercado).join(', ') || 'ninguno'}`);
@@ -191,4 +262,4 @@ function paraElModelo(v) {
   return l.join('\n');
 }
 
-module.exports = { leer, leerConCache, paraElModelo, CASAS, _adentro: { precioDe } };
+module.exports = { leer, leerConCache, leerRapido, refrescar, edadDeLaCache, paraElModelo, CASAS, _adentro: { precioDe } };

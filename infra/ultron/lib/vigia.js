@@ -78,7 +78,11 @@ async function avisar(cambios) {
 /** Una vuelta: se lee, se compara con lo anterior y se anota lo que cambió. */
 async function unaVuelta() {
   let v;
-  try { v = await vivo.leer(); } catch (e) {
+  /* `refrescar()` y no `leer()`: la vuelta del vigía ya sale a las seis casas
+     cada minuto, así que de paso llena la despensa que usa el camino de
+     pensar. Cero tráfico nuevo, y la lectura que antes se tiraba ahora ahorra
+     nueve segundos de espera al turno siguiente. */
+  try { v = await vivo.refrescar(); } catch (e) {
     console.warn('[vigia] la lectura falló entera:', String(e?.message || e).slice(0, 120));
     return [];
   }

@@ -116,41 +116,59 @@ titulo('la voz: un solo elemento de audio, que es lo que iOS exige');
    es el viaje: el servidor ya tiene el audio hecho. ULTRON dice muchas frases
    que ya dijo —el saludo entero, las muletillas, «quedo a su disposición»—, así
    que la segunda vez no puede volver a viajar. */
-titulo('la voz guardada en el aparato: la misma frase no viaja dos veces');
+titulo('la voz suena mientras baja, y la siguiente se calienta mientras suena ésta');
 {
+  /* ── LO QUE COSTABA ────────────────────────────────────────────────────────
+     El mp3 se esperaba ENTERO dos veces —el servidor a ElevenLabs, y el
+     navegador al servidor— antes de que sonara un solo byte. Y la primera frase
+     no se pedía hasta que el modelo escribía su punto final.
+     Ahora el audio se pide por DIRECCIÓN y la etiqueta de audio empieza a sonar
+     con los primeros kilobytes; la primera frase se corta por cláusula para
+     pedirla antes; y las de detrás se calientan mientras suena la de delante. */
   const r = await p.evaluate(async () => {
-    /* Se cuenta cuántas veces se sale a la red. `DATOS.voz` es lo que hace el
-       viaje: se sustituye por uno que cuenta y devuelve un mp3 de mentira. */
-    const real = DATOS.voz;
-    let viajes = 0;
-    DATOS.voz = async () => { viajes++; return new Blob([new Uint8Array([1, 2, 3, 4])], { type: 'audio/mpeg' }); };
+    const L = new VOZ.Locutor({ conElevenLabs: true, alNivel() {}, alEmpezar() {}, alTerminar() {}, alFallo() {} });
+    L.vozId = 'vozDePrueba';
+    const url = L.urlDe('Quedo a su disposición.');
+    L.vozId = 'otraVoz';
+    const otra = L.urlDe('Quedo a su disposición.');
+    /* El corte rápido: la primera frase vale cortada por coma pasadas 55
+       letras; de la segunda en adelante se espera al punto. */
+    const largo = 'La cadena cinco mil quinientos cincuenta va en el bloque noventa y seis mil, y avanza dos segundos por bloque sin problemas.';
+    const rapido = VOZ.partirFrases(largo, { corteRapido: true });
+    const normal = VOZ.partirFrases(largo, { corteRapido: false });
+    /* El caso de verdad: el modelo todavía está escribiendo y no hay punto. */
+    const aMedias = VOZ.partirFrases(largo.replace(/\.$/, ' y el explorador'), { corteRapido: true });
+    const aMediasNormal = VOZ.partirFrases(largo.replace(/\.$/, ' y el explorador'), { corteRapido: false });
+    return { url, otra, rapido: rapido.frases, normal: normal.frases, aMedias, aMediasNormal };
+  });
+  decir(/^\/voz\?/.test(r.url) && /t=/.test(r.url) && /v=vozDePrueba/.test(r.url),
+    'cada frase tiene su dirección, con la voz dentro', r.url.slice(0, 80));
+  decir(r.url !== r.otra, 'y con otra voz la dirección cambia: nunca sale la voz anterior guardada');
+  decir(r.rapido.length === 2 && /,$/.test(r.rapido[0]) && r.rapido[0].length < r.normal[0].length,
+    'la PRIMERA frase se parte en la coma: el primer audio es más corto y suena antes; el resto va detrás',
+    `${r.rapido[0].length} letras en vez de ${r.normal[0].length}`);
+  decir(r.normal.length === 1 && /\.$/.test(r.normal[0]),
+    'y de la segunda en adelante se espera al punto, que es lo que suena bien', JSON.stringify(r.normal).slice(0, 70));
+  decir(r.aMedias.frases.length === 1 && /,$/.test(r.aMedias.frases[0]),
+    'y con la frase todavía a medias —que es el caso real— también corta por la coma', JSON.stringify(r.aMedias.frases));
+  decir(r.aMediasNormal.frases.length === 0,
+    'sin corte rápido, esa misma frase a medias no suelta nada y se espera al punto');
+
+  /* La primera NO se calienta —va en vivo, que es lo que la hace instantánea—
+     y las de detrás sí, para que no haya hueco entre una y otra. */
+  const c = await p.evaluate(async () => {
+    const pedidas = [];
+    const real = window.fetch;
+    window.fetch = (u, o) => { if (String(u).startsWith('/voz?')) { pedidas.push(String(u)); return Promise.resolve(new Response(new Blob([new Uint8Array([1, 2, 3])]), { status: 200 })); } return real(u, o); };
     try {
       const L = new VOZ.Locutor({ conElevenLabs: true, alNivel() {}, alEmpezar() {}, alTerminar() {}, alFallo() {} });
-      L.vozId = 'vozDePrueba';
-      const a = await L.pedirAudio('Quedo a su disposición.');
-      const b = await L.pedirAudio('Quedo a su disposición.');
-      const c = await L.pedirAudio('Otra frase distinta.');
-      /* Y con OTRA voz la misma frase SÍ viaja: cambiar de voz en Ajustes no
-         puede hacer que salga la anterior guardada. */
-      L.vozId = 'otraVoz';
-      const d = await L.pedirAudio('Quedo a su disposición.');
-      /* Un locutor nuevo, como al recargar la página: la despensa del navegador
-         sobrevive y no vuelve a viajar. */
-      const M = new VOZ.Locutor({ conElevenLabs: true, alNivel() {}, alEmpezar() {}, alTerminar() {}, alFallo() {} });
-      M.vozId = 'vozDePrueba';
-      const e = await M.pedirAudio('Quedo a su disposición.');
-      /* Guardar en la despensa no se espera —el audio ya se está oyendo, no
-         puede quedarse esperando al disco—, así que aquí sí hay que darle un
-         momento antes de contar. */
+      L.sonar = () => new Promise((ok) => setTimeout(ok, 30));   // no se suena de verdad en la prueba
+      L.alimentar('Primera frase de la respuesta. Segunda frase. Tercera frase. ');
       await new Promise((ok) => setTimeout(ok, 400));
-      const guardadas = (await (await caches.open('ultron-voz-1')).keys()).length;
-      return { viajes, hay: !!(a && b && c && d && e), tam: b.size, guardadas };
-    } finally { DATOS.voz = real; }
+      return { pedidas: pedidas.length, cola: L.cola.length };
+    } finally { window.fetch = real; }
   });
-  decir(r.hay, 'las cinco peticiones devuelven audio');
-  decir(r.viajes === 3, 'y solo TRES viajan: la repetida sale de la despensa, la otra voz y la otra frase no', `${r.viajes} viajes`);
-  decir(r.tam === 4, 'lo guardado es el mismo audio, byte por byte', `${r.tam} bytes`);
-  decir(r.guardadas >= 3, 'y queda en la despensa del navegador, que sobrevive a recargar', `${r.guardadas} guardadas`);
+  decir(c.pedidas >= 1 && c.pedidas <= 3, 'se calientan las de detrás, de dos en tres, no todas de golpe', `${c.pedidas} calentadas`);
 }
 
 titulo('la figura de ULTRON, en el centro');
@@ -649,6 +667,75 @@ titulo('el botón de en medio: tocar, arrastrar, teclado y acercarse');
 }
 
 /* ── LOS DOS WIDGETS NUEVOS ─────────────────────────────────────────────────── */
+titulo('interrumpir MATA el turno, no solo calla la bocina');
+{
+  /* ── POR QUÉ ESTO IMPORTA MÁS DE LO QUE PARECE ─────────────────────────────
+     El nodo corre con UNA sola ranura (`OLLAMA_NUM_PARALLEL=1`). Cuando José
+     interrumpía a ULTRON, la consola callaba el audio y ya: el servidor seguía
+     redactando la respuesta entera contra esa única ranura, así que la pregunta
+     nueva —la que acababa de hacer— se ponía en fila DETRÁS de una respuesta
+     que nadie iba a leer. Eso era el «súper lento» de después de interrumpir.
+     Aquí se comprueba lo único que arregla eso: que la conexión se corte de
+     verdad, que la frase con la que interrumpió se mande, y que la consola
+     quede libre en el acto en vez de esperar a que el servidor se dé cuenta. */
+  const r = await p.evaluate(async () => {
+    const visto = { abortos: 0, enviados: [], modos: [] };
+    const real = window.fetch;
+    window.fetch = (u, o = {}) => {
+      if (String(u).includes('/pensar')) {
+        try { visto.enviados.push(JSON.parse(o.body).texto); visto.modos.push(JSON.parse(o.body).modo); } catch { /* nada */ }
+        /* Un SSE que NUNCA termina: es el turno largo de verdad. Solo se
+           resuelve si lo abortan. */
+        return new Promise((ok, mal) => {
+          const s = o.signal;
+          if (s?.aborted) { visto.abortos++; return mal(new DOMException('abort', 'AbortError')); }
+          s?.addEventListener('abort', () => { visto.abortos++; mal(new DOMException('abort', 'AbortError')); });
+        });
+      }
+      return real(u, o);
+    };
+    try {
+      OS.enviar('Contame cómo va la cadena.');
+      await new Promise((ok) => setTimeout(ok, 250));
+      const pensandoAntes = OS._adentro.pensando();
+      // Y ahora se interrumpe hablándole encima, con una frase nueva.
+      OS.enviar('No, mejor decime el saldo.', true);
+      await new Promise((ok) => setTimeout(ok, 300));
+      return { ...visto, pensandoAntes, pensandoDespues: OS._adentro.pensando() };
+    } finally { window.fetch = real; }
+  });
+  decir(r.pensandoAntes === true, 'el primer turno arranca y queda pensando');
+  decir(r.abortos >= 1, 'al interrumpir se ABORTA la conexión: el servidor deja de generar', `${r.abortos} abortos`);
+  decir(r.enviados.length === 2 && /saldo/.test(r.enviados[1] || ''),
+    'y la frase con la que interrumpió SE MANDA, en vez de perderse en silencio', JSON.stringify(r.enviados));
+  decir(r.modos[0] === 'texto' && r.modos[1] === 'voz',
+    'lo dictado va con modo «voz» —respuesta corta, para oírse— y lo escrito con «texto»', JSON.stringify(r.modos));
+  decir(r.pensandoDespues === true, 'y el turno nuevo queda pensando: no hay hueco entre uno y otro');
+
+  /* Tocar el centro es la otra manera de interrumpir, y tiene que cortar
+     igual: hasta hoy solo llamaba a `locutor.callar()`. */
+  const t = await p.evaluate(async () => {
+    let abortado = false;
+    const real = window.fetch;
+    window.fetch = (u, o = {}) => {
+      if (String(u).includes('/pensar')) {
+        return new Promise((ok, mal) => o.signal?.addEventListener('abort', () => { abortado = true; mal(new DOMException('abort', 'AbortError')); }));
+      }
+      return real(u, o);
+    };
+    try {
+      OS.enviar('Una pregunta larga de las que tardan.');
+      await new Promise((ok) => setTimeout(ok, 200));
+      document.querySelector('#nucleo, .nucleo, #figura')?.dispatchEvent(new PointerEvent('pointerup', { bubbles: true, pointerId: 1 }));
+      OS._adentro.toqueNucleo();
+      await new Promise((ok) => setTimeout(ok, 200));
+      return { abortado, pensando: OS._adentro.pensando() };
+    } finally { window.fetch = real; }
+  });
+  decir(t.abortado, 'tocar el centro también corta el turno en el servidor');
+  decir(t.pensando === false, 'y la consola queda libre en el acto: el micrófono no espera a nadie');
+}
+
 titulo('la caja de Ordenex y el registro del día, en el tablero');
 {
   decir(await p.$('.p[data-panel="caja"]') !== null, 'el tablero trae el panel de la caja de Ordenex');

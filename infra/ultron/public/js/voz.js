@@ -87,11 +87,31 @@ const VOZ = (() => {
     .replace(/```[\s\S]*?```/g, ' ').replace(/https?:\/\/\S+/g, ' ').replace(/\[(.*?)\]\(.*?\)/g, '$1')
     .replace(/^\s*[#>*-]+\s*/gm, '').replace(/[*_`|]/g, '').replace(/\s+/g, ' ').trim());
 
-  function partirFrases(texto) {
+  /* ── DÓNDE SE CORTA PARA EMPEZAR A HABLAR ──────────────────────────────────
+     Se esperaba SIEMPRE al punto final. Y la primera frase de una respuesta
+     puede tener treinta palabras: hasta que el modelo escribía el punto no se
+     pedía un solo byte de audio, así que a los segundos de pensar se les sumaba
+     el tiempo de escribir la frase entera.
+     Con `corteRapido` —que solo se usa para la PRIMERA frase de la respuesta—
+     vale también una coma o un punto y coma, siempre que ya haya cincuenta y
+     cinco letras: bastante para que la frase suene natural y bastante poco para
+     que se pida el audio en cuanto hay con qué. De la segunda en adelante se
+     espera al punto, que es lo que hace que la prosodia sea buena. */
+  function partirFrases(texto, { corteRapido = false } = {}) {
     const frases = []; let resto = texto;
-    const re = /^([\s\S]*?[.!?…](?:["»)\]]?)(?=\s|$))/;
+    const fin = /^([\s\S]*?[.!?…](?:["»)\]]?)(?=\s|$))/;
+    const clausula = /^([\s\S]{55,}?[,;:](?=\s))/;
     for (;;) {
-      const m = re.exec(resto); if (!m) break;
+      let m = fin.exec(resto);
+      /* Con corte rápido gana el que corte ANTES. Si la primera frase ya llegó
+         entera y mide doscientas letras, cortarla en la coma manda a fabricar
+         un audio más corto, que empieza a sonar antes; el resto de la frase
+         sale detrás sin que se note el empalme. */
+      if (corteRapido && !frases.length) {
+        const c = clausula.exec(resto);
+        if (c && (!m || c[0].length < m[0].length)) m = c;
+      }
+      if (!m) break;
       const f = m[1].trim();
       if (f.length < 12 && frases.length) frases[frases.length - 1] += ' ' + f; else if (f) frases.push(f);
       resto = resto.slice(m[0].length);
@@ -117,76 +137,18 @@ const VOZ = (() => {
     return new Blob([b], { type: 'audio/wav' });
   }
 
-  /* ══ LA DESPENSA DE LA VOZ ═════════════════════════════════════════════════
-   * «¿Será si agregamos caché? Que no se pueda, que sea más fluido; la voz
-   * está tardando.»
-   *
-   * Tiene razón y el sitio era éste. El servidor ya guardaba las últimas ciento
-   * veinte frases, pero eso se pierde cuando el dyno se reinicia y, sobre todo,
-   * NO ahorra el viaje: aunque el audio esté hecho, hay que ir a Honduras–
-   * Virginia–Honduras a buscarlo. Medido en producción, ese viaje son entre
-   * doscientos y trescientos milisegundos por frase, y ULTRON dice muchas
-   * frases que ya dijo: el cierre del saludo, las muletillas, «quedo a su
-   * disposición», los «sí, señor».
-   *
-   * Aquí se guardan EN EL APARATO, en dos capas:
-   *   · un Map en memoria, que contesta en el mismo cuadro de dibujo;
-   *   · la despensa del navegador (Cache API), que SOBREVIVE a recargar la
-   *     página — que es donde de verdad se nota, porque el saludo se dice
-   *     entero cada vez que se entra.
-   *
-   * La clave lleva la voz dentro: cambiar de voz en Ajustes no puede hacer que
-   * salga la anterior guardada. Y es un resumen criptográfico y no un número
-   * rápido a propósito: dos frases distintas con la misma clave sonarían
-   * cambiadas, y eso en una conversación de dinero no se puede.
-   */
-  const DESPENSA = 'ultron-voz-1';
-  const enMemoria = new Map();          // clave -> Blob
-  const MEMORIA_MAX = 60;
-
-  async function claveDe(texto, vozId) {
-    const bytes = new TextEncoder().encode(`${vozId || 'casa'}|${texto}`);
-    const h = await crypto.subtle.digest('SHA-256', bytes);
-    return [...new Uint8Array(h)].slice(0, 16).map((x) => x.toString(16).padStart(2, '0')).join('');
-  }
-
-  async function deLaDespensa(clave) {
-    const ya = enMemoria.get(clave);
-    if (ya) return ya;
-    try {
-      const c = await caches.open(DESPENSA);
-      const r = await c.match(`/voz-guardada/${clave}`);
-      if (!r) return null;
-      const b = await r.blob();
-      if (b && b.size) { enMemoria.set(clave, b); return b; }
-    } catch { /* sin despensa se pide como siempre */ }
-    return null;
-  }
-
-  /* La despensa no puede crecer para siempre en un iPad. Se hace una sola vez
-     al cargar: se tiran las versiones viejas —cambiar el nombre invalida todo
-     lo guardado, que es lo que hay que hacer si cambia el motor de voz— y se
-     recorta la actual si se pasó. Las claves salen en el orden en que se
-     guardaron, así que las primeras son las más viejas. */
-  (async () => {
-    try {
-      for (const n of await caches.keys()) if (n.startsWith('ultron-voz-') && n !== DESPENSA) caches.delete(n);
-      const c = await caches.open(DESPENSA);
-      const k = await c.keys();
-      if (k.length > 400) for (const r of k.slice(0, k.length - 300)) c.delete(r);
-    } catch { /* sin despensa no hay nada que ordenar */ }
-  })();
-
-  async function aLaDespensa(clave, blob) {
-    /* El Map no crece sin fin: sesenta frases son unos tres megas y el resto se
-       queda en la despensa del navegador, que sí sabe cuánto sitio tiene. */
-    if (enMemoria.size >= MEMORIA_MAX) enMemoria.delete(enMemoria.keys().next().value);
-    enMemoria.set(clave, blob);
-    try {
-      const c = await caches.open(DESPENSA);
-      await c.put(`/voz-guardada/${clave}`, new Response(blob, { headers: { 'Content-Type': blob.type || 'audio/mpeg' } }));
-    } catch { /* sin sitio o sin permiso: la memoria ya lo tiene */ }
-  }
+  /* ── DÓNDE SE GUARDA LA VOZ, Y POR QUÉ YA NO HAY DESPENSA PROPIA ──────────
+     Hubo aquí una despensa a mano: un mapa en memoria y la caché del navegador,
+     con una clave de resumen criptográfico por frase y voz. Servía para que la
+     misma frase no viajara dos veces.
+     Ya no hace falta, y quitarla es mejor que dejarla: desde que el audio se
+     pide por DIRECCIÓN (`/voz?t=...&v=...`), esa dirección es la clave, y la
+     caché del propio navegador —con `Cache-Control: private, max-age=3600` que
+     pone el servidor— hace exactamente lo mismo, gratis, para el `fetch` que
+     calienta y para la etiqueta de audio que suena. Una caché escrita a mano
+     que duplica la del navegador es una caché más que puede quedar desfasada.
+     Lo único que había que cuidar —que cambiar de voz no saque la anterior—
+     lo cuida la dirección, que lleva la voz dentro. */
 
   /* iOS —y iPadOS, que se hace pasar por Mac— tiene reglas propias: el permiso
      de audio vive en el ELEMENTO que sonó durante el gesto, no en la página. */
@@ -277,7 +239,9 @@ const VOZ = (() => {
          resto acumulado y no sobre el trozo, porque un trozo puede llegar
          cortado justo entre el «1» y el «.». */
       this.resto = estructura(this.resto + trozo, this.idioma);
-      const { frases, resto } = partirFrases(this.resto); this.resto = resto;
+      /* El corte rápido SOLO mientras no se ha dicho nada: es para arrancar. */
+      const { frases, resto } = partirFrases(this.resto, { corteRapido: this.dicho === 0 && !this.cola.length && !this.sonando });
+      this.resto = resto;
       for (const f of frases) this.decir(f);
     }
     cerrar() {
@@ -295,9 +259,18 @@ const VOZ = (() => {
       const gen = this.generacion;
       // El texto viaja CON el audio: si el mp3 no llega o no puede sonar, hay
       // con qué decirlo por el otro camino en vez de callarse.
-      this.cola.push({ texto: limpio, audio: null });
+      this.cola.push({ texto: limpio, url: this.urlDe(limpio), audio: null, blob: null });
       this.cebar();
       if (!this.sonando) this.seguir(gen);
+    }
+
+    /* La dirección de la que sale el audio. Se pone en la etiqueta de audio y
+       el navegador empieza a sonar con los primeros kilobytes, sin esperar el
+       final. Es GET a propósito: una etiqueta de audio no sabe mandar un POST. */
+    urlDe(texto) {
+      const p = new URLSearchParams({ t: texto });
+      if (this.vozId) p.set('v', this.vozId);
+      return `/voz?${p.toString()}`;
     }
 
     /* ── CUÁNTOS AUDIOS SE PIDEN A LA VEZ ──────────────────────────────────
@@ -312,13 +285,23 @@ const VOZ = (() => {
        Se piden DE DOS EN DOS, siempre por delante de la que suena. Dos basta
        para que nunca haya un hueco —mientras suena una, la siguiente ya está
        hecha— y evita la ráfaga. Cuando una llega, se pide la siguiente. */
+    /* ── SE CALIENTA LA CACHÉ DE LA SIGUIENTE MIENTRAS SUENA ÉSTA ──────────
+       La PRIMERA frase no se calienta: se pone su dirección en la etiqueta de
+       audio y suena mientras baja — es la que decide si esto se siente
+       instantáneo. Las de detrás sí, porque tienen tiempo: se piden con un
+       `fetch` normal, quedan en la caché del navegador, y cuando les toca
+       sonar ya están enteras y arrancan sin un hueco.
+       De paso el `fetch` deja el mp3 en la mano, y de ahí sale la envolvente
+       de verdad que le mueve la boca al núcleo. */
     cebar() {
       const gen = this.generacion;
+      let saltada = false;
       for (const it of this.cola) {
+        if (!saltada && !this.sonando) { saltada = true; continue; }   // la primera va en vivo
         if (this.enVuelo >= this.TOPE_VUELO) return;
         if (it.audio) continue;
         this.enVuelo++;
-        it.audio = this.pedirAudio(it.texto).finally(() => {
+        it.audio = this.calentar(it).finally(() => {
           /* Nunca por debajo de cero: `callar()` vacía la cola pero las
              peticiones que ya salieron siguen volviendo. */
           this.enVuelo = Math.max(0, this.enVuelo - 1);
@@ -326,17 +309,14 @@ const VOZ = (() => {
         });
       }
     }
-    async pedirAudio(texto) {
-      if (!this.conElevenLabs) return null;
-      let clave = null;
+    async calentar(it) {
+      if (!this.conElevenLabs || !it.url) return null;
       try {
-        clave = await claveDe(texto, this.vozId);
-        const guardado = await deLaDespensa(clave);
-        if (guardado) return guardado;                 // sin viaje: suena ya
-      } catch { /* sin resumen no hay despensa, y se pide como siempre */ }
-      const blob = await DATOS.voz(texto, { rapido: true, vozId: this.vozId }).catch(() => null);
-      if (clave && blob && blob.size) aLaDespensa(clave, blob);
-      return blob;
+        const r = await fetch(it.url, { credentials: 'same-origin' });
+        if (!r.ok) return null;
+        it.blob = await r.blob();
+        return it.blob;
+      } catch { return null; }
     }
     callar() {
       this.generacion++; this.cola = []; this.resto = ''; this.enVuelo = 0;
@@ -362,21 +342,13 @@ const VOZ = (() => {
       while (this.cola.length && gen === this.generacion) {
         const it = this.cola.shift();
         const texto = it.texto;
-        /* Al sacar una de la cola queda un hueco: se pide la siguiente ya. */
-        if (!it.audio) { this.enVuelo++; it.audio = this.pedirAudio(texto).finally(() => { this.enVuelo = Math.max(0, this.enVuelo - 1); }); }
+        /* Al sacar una de la cola queda un hueco: se calienta la siguiente ya. */
         this.cebar();
-        let blob = await it.audio;
+        /* Si esta frase ya venía calentada, se espera a que termine de bajar
+           —falta poco y así no compite con la que suena—; si no, va en vivo. */
+        if (it.audio) { try { await it.audio; } catch { /* se sigue igual */ } }
         if (gen !== this.generacion) break;
-        /* UN REINTENTO ANTES DE CAMBIAR DE VOZ. Con una respuesta larga se
-           piden diez o quince audios casi a la vez; si uno se pierde, cambiar
-           de voz a mitad de párrafo se nota muchísimo —José lo oyó: «no sale la
-           voz de George, sale otra»—. Se pide otra vez, una sola, y solo si
-           tampoco llega se usa la del navegador. */
-        if ((!blob || !blob.size) && this.conElevenLabs) {
-          blob = await DATOS.voz(texto, { rapido: true, vozId: this.vozId }).catch(() => null);
-          if (gen !== this.generacion) break;
-        }
-        if (blob && blob.size > 0) await this.sonar(blob, gen, texto);
+        if (this.conElevenLabs && it.url) await this.sonar(it, gen, texto);
         else await this.conNavegador(texto, gen);
       }
       if (gen === this.generacion) { this.sonando = false; this.alNivel?.(0); this.alTerminar?.(); }
@@ -400,11 +372,17 @@ const VOZ = (() => {
      * autoarranque, un mp3 que no llegó— NO se calla: se dice la frase con la
      * voz del navegador. Peor timbre, pero se oye, que es lo que importa.
      */
-    sonar(blob, gen, texto) {
+    sonar(it, gen, texto) {
       return new Promise((listo) => {
-        const url = URL.createObjectURL(blob);
         const a = this.audio;                 // SIEMPRE el mismo: ver el constructor
-        a.src = url;
+        /* LA DIRECCIÓN, no un blob. Con `src` apuntando a `/voz?...` el
+           navegador empieza a sonar con los primeros kilobytes mientras el
+           resto todavía baja — y el servidor, a su vez, va soltando el audio
+           mientras ElevenLabs lo fabrica. Antes se esperaba el mp3 entero dos
+           veces seguidas antes de que sonara un byte.
+           Si la frase venía calentada, la dirección ya está en la caché del
+           navegador y arranca de disco, sin viaje. */
+        a.src = it.url;
         let envolvente = null;
         /* LA ENVOLVENTE DE VERDAD, si se pudo sacar. `BOCA` decodifica una
            COPIA de los bytes en un contexto que jamás se conecta a los
@@ -415,8 +393,8 @@ const VOZ = (() => {
            primeras décimas van con la inventada y en cuanto llega se cambia
            sola. Nadie ve el salto y nadie se queda sin voz. */
         let real = null;
-        window.BOCA?.envolvente(blob).then((e) => { real = e; }).catch(() => { /* la inventada sigue */ });
-        const soltar = () => { clearInterval(envolvente); envolvente = null; a.onended = a.onerror = a.onplaying = null; URL.revokeObjectURL(url); this.alNivel?.(0); };
+        if (it.blob) window.BOCA?.envolvente(it.blob).then((e) => { real = e; }).catch(() => { /* la inventada sigue */ });
+        const soltar = () => { clearInterval(envolvente); envolvente = null; a.onended = a.onerror = a.onplaying = null; this.alNivel?.(0); };
         const fin = () => { this.corte = null; soltar(); listo(); };
         this.corte = fin;      // para que `callar()` pueda cerrar esta sesión
         a.onended = fin;

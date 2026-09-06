@@ -1316,6 +1316,8 @@ const OS = (() => {
   // ══ HABLAR Y ESCUCHAR ═════════════════════════════════════════════════════
 
   let locutor = null, conVoz = true, conversacionId = null, pensando = false;
+  /* El mando para cortar el turno en vuelo. Ver `enviar` e `interrumpir`. */
+  let cancelarTurno = null;
   let IDIOMA = 'es-HN';       // el del reconocimiento de voz; lo fija la preferencia
   let oreja = null, despierta = false;
 
@@ -1356,8 +1358,8 @@ const OS = (() => {
     vigilante = await VOZ.vigilarMicrofono({
       umbral: PREF?.soloYo === false ? 0.04 : 0.07,   // «solo a mí» exige más cerca
       alHablar: () => {
-        if (!locutor?.ocupado) return;
-        locutor.callar();
+        if (!locutor?.ocupado && !pensando) return;
+        interrumpirTurno();
         estado('listen');
         soltarVigilante();
         /* Y se vuelve a escuchar enseguida: interrumpir para que no pase nada
@@ -1524,9 +1526,26 @@ const OS = (() => {
     c.innerHTML = l.map((s) => `<button class="chip">${esc(s)}</button>`).join('');
   }
 
-  async function enviar(texto) {
+  /**
+   * @param texto  lo que se le dice a ULTRON
+   * @param porVoz true si entró por el micrófono. NO es un detalle: manda
+   *   `modo:'voz'` al servidor, que es lo que hace que la respuesta venga corta
+   *   y hecha para oírse en vez de para leerse. El tablero mandaba SIEMPRE
+   *   `texto`, así que la rama de voz del cerebro no se usaba nunca — estaba
+   *   escrita, probada, y muerta.
+   */
+  async function enviar(texto, porVoz = false) {
     const t = String(texto || '').trim();
-    if (!t || pensando) return;
+    if (!t) return;
+    /* ── SI YA ESTABA PENSANDO, ESTO ES UNA INTERRUPCIÓN ────────────────────
+       Antes se descartaba en silencio: José interrumpía a ULTRON hablando, y
+       la frase con la que interrumpió desaparecía sin un ruido. Ahora manda la
+       nueva: se corta la anterior y se sigue con ésta, que es lo que uno
+       espera cuando interrumpe a alguien. */
+    if (pensando) {
+      interrumpirTurno();
+      await new Promise((ok) => setTimeout(ok, 60));
+    }
     pensando = true; $('#enviar').disabled = true;
     $('#texto').value = ''; $('#texto').style.height = 'auto';
     estado('think', 'think');
@@ -1546,9 +1565,17 @@ const OS = (() => {
        botón: `pensando` se quedaba en true y ENVIAR deshabilitado para siempre.
        La consola quedaba muerta hasta recargar, en la ruta principal del
        producto y con la avería más común que hay. */
+    /* El mando para cancelar este turno. Vive fuera para que interrumpir —por
+       voz o tocando el centro— pueda cortarlo desde cualquier sitio. */
+    cancelarTurno = new AbortController();
+    const miMando = cancelarTurno;
     try {
-      await DATOS.pensar(t, { conversacionId, modo: 'texto' }, {
-        abre: (d) => { conversacionId = d.conversacionId || conversacionId; },
+      await DATOS.pensar(t, { conversacionId, modo: porVoz ? 'voz' : 'texto', señal: miMando.signal }, {
+        /* El servidor emite `inicio`, no `abre`. Con el nombre equivocado el id
+           de la conversación no se recogía NUNCA, así que cada pregunta del
+           mismo rato abría hilo nuevo hasta que el servidor lo arreglaba por su
+           cuenta con la conversación del día. */
+        inicio: (d) => { conversacionId = d.conversacionId || conversacionId; },
         texto: (d) => {
           if (!acum) pararMuletillas();      // empezó a contestar: nada de hablar encima
           acum += d.t || ''; pintarDicho(acum);
@@ -1573,13 +1600,24 @@ const OS = (() => {
           DATOS.get('/pendientes').then(pintarPendientes).catch(() => {});
           DATOS.get('/autorizaciones').then(pintarAutorizaciones).catch(() => {});
         },
-        error: (msj) => { estado('error', 'concern'); avisar(msj, true); setTimeout(() => estado('idle', 'neutral'), 2600); },
+        /* El servidor manda `{mensaje, codigo}`. Se pintaba el objeto entero, así
+         que en el peor momento —el cerebro fallando a mitad de la respuesta—
+         el aviso decía «[object Object]». */
+        error: (d) => {
+          const msj = typeof d === 'string' ? d : (d?.mensaje || d?.error || 'ULTRON no pudo contestar.');
+          estado('error', 'concern'); avisar(msj, true); setTimeout(() => estado('idle', 'neutral'), 2600);
+        },
       });
     } catch (e) {
-      estado('error', 'concern');
-      avisar(`Se cortó la conexión con ULTRON: ${e?.message || e}`, true);
-      setTimeout(() => { if (mente.state === 'error') estado('idle', 'neutral'); }, 3200);
+      if (e?.name === 'AbortError' || miMando.signal.aborted) {
+        /* Cancelado a propósito: no es un fallo y no se pinta como tal. */
+      } else {
+        estado('error', 'concern');
+        avisar(`Se cortó la conexión con ULTRON: ${e?.message || e}`, true);
+        setTimeout(() => { if (mente.state === 'error') estado('idle', 'neutral'); }, 3200);
+      }
     } finally {
+      if (cancelarTurno === miMando) cancelarTurno = null;
       /* Y se apaga la muletilla: si el turno se corta antes de la primera
          letra, el temporizador seguía vivo y ULTRON decía «déjeme ver» encima
          del mensaje de error. */
@@ -1590,6 +1628,20 @@ const OS = (() => {
          una pregunta: quien quiere el resto lo toca, y quien no, no oye nada. */
       if (conVoz && locutor?.cortado) chipsMas(acum);
     }
+  }
+
+  /**
+   * Cortar el turno en vuelo: se aborta la conexión, se calla la voz y se
+   * apagan las muletillas. El servidor deja de generar y la ranura del modelo
+   * queda libre — que es lo que hacía que interrumpir no sirviera de nada.
+   */
+  function interrumpirTurno() {
+    try { cancelarTurno?.abort(); } catch { /* ya */ }
+    cancelarTurno = null;
+    pararMuletillas();
+    try { locutor?.callar(); } catch { /* ya */ }
+    pensando = false;
+    const b = $('#enviar'); if (b) b.disabled = false;
   }
 
   /* ── «HEY ULTRON» ──────────────────────────────────────────────────────────
@@ -1695,12 +1747,14 @@ const OS = (() => {
     document.body.classList.add('ya-sabe-hablar');
     despertarVoz();                       // el toque ES el gesto que da permiso
     if (mente.state === 'listen') { orejaApagar(); avisar('Micrófono cerrado.'); return; }
-    /* Hablando o pensando: se calla lo que esté sonando —la respuesta y las
-       muletillas— y se escucha. Lo que ya estaba pensado sigue llegando a la
-       pantalla; lo que no se hace es seguir hablándole encima. */
-    if (locutor?.ocupado || mente.state === 'speak' || mente.state === 'think') {
-      pararMuletillas();
-      try { locutor?.callar(); } catch { /* ya estaba callado */ }
+    /* Hablando o pensando: se corta el turno entero —la conexión, la voz y las
+       muletillas— y se escucha. Interrumpir tiene que ser inmediato: no basta
+       con callar la bocina si el servidor sigue redactando. */
+    if (locutor?.ocupado || mente.state === 'speak' || mente.state === 'think' || pensando) {
+      /* CANCELA DE VERDAD. Antes solo se callaba la voz: el servidor seguía
+         generando, ocupaba la única ranura del modelo, y dos segundos después
+         ULTRON empezaba a hablar encima de la persona. */
+      interrumpirTurno();
     }
     escucharYa();
   }
@@ -1892,7 +1946,7 @@ const OS = (() => {
         try { oreja?.abort?.(); } catch { /* nada */ }
         oreja = null;
         const volver = () => { if (despierta) setTimeout(() => escucharPalabra(0), 400); };
-        if (resto.length > 2) { estado('think'); enviar(resto).catch(() => {}).then(volver); }
+        if (resto.length > 2) { estado('think'); enviar(resto, true).catch(() => {}).then(volver); }
         else { estado('listen'); dictar(volver); }
       },
       alFin: () => reintentar(300),
@@ -1971,7 +2025,7 @@ const OS = (() => {
            lado del cuarto no dispara nada. */
         if (PREF?.oido === 'palabra' && !DESPIERTA.test(frase)) { $('#texto').value = ''; return; }
         const limpia = frase.replace(/^.*?\b(ultron|ultrón|ultra|ultro|altron|tron)\b[,.\s]*/i, '').trim() || frase;
-        mando?.abort(); fin(); enviar(limpia);
+        mando?.abort(); fin(); enviar(limpia, true);
       },
       alFin: () => { seguidasEnVacio = 0; fin(); if (mente.state === 'listen') estado('idle'); },
       alFallo: (q) => {
@@ -2415,6 +2469,9 @@ const OS = (() => {
     /* Solo para la prueba: mueve el reloj de la última lectura buena hacia
        atrás, para comprobar que la pantalla avisa cuando se queda vieja sin
        tener que esperar diez minutos de verdad. */
-    envejecer: (segundos) => { ultimaBuena = Date.now() - segundos * 1000; } } };
+    envejecer: (segundos) => { ultimaBuena = Date.now() - segundos * 1000; },
+    /* Para la prueba: si el turno sigue en vuelo. Es lo que distingue
+       «interrumpí y quedó libre» de «interrumpí y sigue colgado». */
+    pensando: () => pensando } };
 })();
 window.OS = OS;
