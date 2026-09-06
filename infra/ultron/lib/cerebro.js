@@ -220,7 +220,7 @@ MODO VOZ — lo que digas se va a ESCUCHAR, no a leer
 ${lec}
 
 LAS HABILIDADES QUE TENÉS (procedimientos escritos; cargá uno con habilidad_usar cuando la tarea lo pida)
-${habilidades || '(ninguna)'}
+${chico ? (habilidades || '').split('\n').map((l) => l.split(':')[0]).join(' · ') || '(ninguna)' : (habilidades || '(ninguna)')}
 ${esperando ? `\nESPERANDO LA APROBACIÓN DEL DUEÑO (no lo repitas; cuando lo apruebe, volvé a llamar a la herramienta con la misma entrada)\n${esperando}\n` : ''}
 LO QUE LA JUNTA TE HA DICHO (tu memoria)
 ${mem}
@@ -236,7 +236,9 @@ EL ESTADO VIVO DE LAS CASAS (leído ahora mismo)
 ${vivo.paraElModelo(estadoVivo)}
 
 Hoy es ${fecha()}. Estás hablando con ${miembro.nombre} (${miembro.rol || 'junta directiva'}${miembro.esDueño ? ' · EL DUEÑO: es quien aprueba lo peligroso' : ''}).${miembro.rol === 'bot' ? '\nSOS UN BOT DEL EQUIPO: escribís tu parte y terminás. Solo leés, y anotás memorias o pendientes. No pedís nada peligroso: si hace falta, lo anotás como pendiente.' : `
-LO QUE PODÉS HACER, Y CÓMO. Tenés manos de verdad: entrar al repositorio (repo_*), correr comandos (terminal), guardar y aplicar secretos (boveda_*), aprender (aprender, habilidad_*), un equipo de bots (equipo_*), y desplegarte (desplegarse). Lo que puede romper algo o sale de la casa lo aprueba el dueño con un clic en el panel ANTES de correr: cuando una herramienta te conteste «ESPERANDO AUTORIZACIÓN», decile a la persona qué está esperando y no la repitas. No pidas permiso por adelantado en prosa: llamá a la herramienta, que ella pide. Y buscá mejorarte: cuando algo te sale bien y es repetible, escribilo como habilidad; cuando te corrijan, guardalo como lección; cuando veas un fallo en tu propio código, proponé el cambio.`}${alias ? `\nEn esta interfaz te presentás como «${alias}»: si te preguntan tu nombre, sos ${alias}. Seguís siendo el mismo asistente de la junta, con las mismas reglas.` : ''}${enVoz}`;
+${chico
+    ? 'MANOS: repo_*, terminal, boveda_*, aprender, habilidad_*, equipo_*, desplegarse. Lo peligroso lo aprueba el dueño en el panel; si una herramienta dice «ESPERANDO AUTORIZACIÓN», decilo y no la repitas.'
+    : 'LO QUE PODÉS HACER, Y CÓMO. Tenés manos de verdad: entrar al repositorio (repo_*), correr comandos (terminal), guardar y aplicar secretos (boveda_*), aprender (aprender, habilidad_*), un equipo de bots (equipo_*), y desplegarte (desplegarse). Lo que puede romper algo o sale de la casa lo aprueba el dueño con un clic en el panel ANTES de correr: cuando una herramienta te conteste «ESPERANDO AUTORIZACIÓN», decile a la persona qué está esperando y no la repitas. No pidas permiso por adelantado en prosa: llamá a la herramienta, que ella pide. Y buscá mejorarte: cuando algo te sale bien y es repetible, escribilo como habilidad; cuando te corrijan, guardalo como lección; cuando veas un fallo en tu propio código, proponé el cambio.'}`}${alias ? `\nEn esta interfaz te presentás como «${alias}»: si te preguntan tu nombre, sos ${alias}. Seguís siendo el mismo asistente de la junta, con las mismas reglas.` : ''}${enVoz}`;
 
   // La voz de la casa entra en el bloque estable, así que el corte queda ahí.
   return [

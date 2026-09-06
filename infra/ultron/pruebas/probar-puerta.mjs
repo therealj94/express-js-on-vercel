@@ -180,7 +180,14 @@ titulo('los instrumentos, a mano: el mismo camino que usa ULTRON');
   const cat = await s.pedir('/herramientas', { cookie: cookieJose });
   decir(cat.http === 200 && cat.json.herramientas.length >= 27, `el catálogo trae ${cat.json.herramientas.length} instrumentos con su grupo`, JSON.stringify(cat.json).slice(0, 120));
   decir(cat.json.herramientas.every((h) => h.nombre && h.descripcion && h.grupo && h.entrada), 'y cada uno lleva nombre, descripción, grupo y esquema de entrada');
-  decir(cat.json.herramientas.filter((h) => h.escribe).map((h) => h.nombre).sort().join(',') === 'anotar_pendiente,cerrar_pendiente,crear_documento,olvidar,proponer_envio,recordar', 'los que escriben van marcados, y son exactamente esos');
+  /* Las que escriben, exactamente. Desde la mano derecha se suman las que
+     tocan el repositorio, la terminal, el despliegue, la bóveda, las
+     habilidades y el equipo: todas dejan rastro o cuestan, y el panel las
+     pinta distinto. Si mañana se añade una que escribe y no aparece aquí, esta
+     línea se pone roja a propósito. */
+  const ESCRIBEN_ESPERADAS = 'anotar_pendiente,aprender,boveda_aplicar,cerrar_pendiente,crear_documento,desplegarse,equipo_correr,habilidad_crear,habilidad_publicar,olvidar,proponer_envio,recordar,repo_proponer_cambio,terminal';
+  decir(cat.json.herramientas.filter((h) => h.escribe).map((h) => h.nombre).sort().join(',') === ESCRIBEN_ESPERADAS, 'los que escriben van marcados, y son exactamente esos',
+    cat.json.herramientas.filter((h) => h.escribe).map((h) => h.nombre).sort().join(','));
   const c = await s.pedir('/herramientas/calcular', { cookie: cookieJose, metodo: 'POST', cuerpo: { entrada: { expresion: '4467.53 / 31.1035 / 55' } } });
   decir(c.http === 200 && /= 2\.6115/.test(c.json.salida) && typeof c.json.ms === 'number', 'calcular corre a mano y devuelve el gramín con lo que tardó', JSON.stringify(c.json).slice(0, 120));
   const a = await s.pedir('/herramientas/abrir', { cookie: cookieJose, metodo: 'POST', cuerpo: { entrada: { que: 'ordenex' } } });
