@@ -846,7 +846,17 @@ async function correrAdentro(nombre, entrada, ctx) {
         if (!l.length) return 'Nadie ha subido ningún archivo todavía. En el panel se arrastra encima o se toca el clip.';
         return l.map((a) => {
           const kb = a.bytes > 1e6 ? `${(a.bytes / 1e6).toFixed(1)} MB` : `${Math.round(a.bytes / 1024)} KB`;
-          const leible = a.texto ? `${a.texto.length} letras de texto${a.recortado ? ' (recortado)' : ''}` : `SIN TEXTO — ${a.porQue}`;
+          /* Para una IMAGEN el rótulo se calcula aquí y no se saca del `porQue`
+             guardado: los archivos que ya estaban en la base traen el aviso
+             viejo —«no lleva texto que se pueda leer»—, y ese aviso es lo que
+             hacía que el modelo ni lo intentara. Recalcularlo arregla también
+             lo que se subió antes, sin tocar la base. */
+          const esImagen = /^image\//.test(a.tipo || '');
+          const leible = a.texto
+            ? `${a.texto.length} letras de texto${a.recortado ? ' (recortado)' : ''}${esImagen ? ' (ya mirada)' : ''}`
+            : esImagen
+              ? 'IMAGEN — no tiene texto que extraer, pero SÍ se puede mirar: leer_archivo con este id y el cerebro describe lo que hay'
+              : `SIN TEXTO — ${a.porQue}`;
           return `- [${a._id}] ${a.nombre} · ${kb} · subido por ${a.miembro || '?'} el ${a.en ? new Date(a.en).toISOString().slice(0, 10) : ''} · ${leible}`;
         }).join('\n');
       }
