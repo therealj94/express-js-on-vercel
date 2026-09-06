@@ -34,8 +34,11 @@ function encendida() { return !!LLAVE; }
 
 /** Lo que se lee en voz alta no es lo que se lee en pantalla. */
 const numeros = require('./decir-numeros');
-function paraDecir(texto) {
-  return numeros.paraLaVoz(String(texto)
+function paraDecir(texto, idioma = 'es') {
+  /* `estructura` va PRIMERO y sobre el texto con sus saltos de línea: los
+     títulos y los «1.» de una lista solo se reconocen por dónde empieza la
+     línea, y dos renglones más abajo ya se aplastó todo a un solo espacio. */
+  return numeros.paraLaVoz(numeros.estructura(String(texto), idioma)
     .replace(/```[\s\S]*?```/g, ' (código omitido) ')
     .replace(/https?:\/\/\S+/g, ' (enlace) ')
     .replace(/\[(.*?)\]\(.*?\)/g, '$1')

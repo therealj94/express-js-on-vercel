@@ -128,10 +128,101 @@ def _decimales_en_palabras(dec):
     return ' '.join(UNO_A_QUINCE[int(d)] for d in dec)
 
 
-# Un numero con su puntuacion latinoamericana: punto para los miles, coma
-# para los decimales. El orden de los grupos importa — se busca primero el
-# caso mas largo para que «1.234,56» no se parta en «1» y «234,56».
-NUMERO = re.compile(r'(?<![\w.,])(\d{1,3}(?:\.\d{3})+|\d+)(?:,(\d+))?(?![\w])')
+# ── LA PUNTUACION DE UN NUMERO NO ES UNA SOLA ─────────────────────────────
+#
+# Esto asumia la puntuacion latinoamericana —punto para los miles, coma para
+# los decimales— y con eso bastaba mientras los numeros los escribiera AU-RA.
+# Pero le llegan de todas partes: de ULTRON, de la API de Ordenex, de un
+# panel. Y casi todo el ecosistema escribe al reves: coma para los miles,
+# punto para los decimales.
+#
+# El resultado en produccion, textual:
+#
+#     «L. 25,000 de comision»   se decia   «veinticinco coma cero cero cero»
+#     «2,411,900 ORIGEN»        se decia   «dos coma cuatro uno uno, 900»
+#     «$1,250.50»               se decia   «dolares uno coma dos cinco cero.50»
+#
+# Veinticinco mil dicho como veinticinco. En una aplicacion de plata eso no es
+# un detalle de estilo.
+#
+# Asi que no se asume: se MIRA cada numero y se decide cual de los dos
+# separadores es el decimal. Las reglas, en orden:
+#
+#   1. Si estan los dos, el ULTIMO es el decimal. «1.234,56» y «1,234.56»
+#      quedan los dos bien sin saber de que pais vino el texto.
+#   2. Si solo hay uno y aparece varias veces, es de miles. «2,411,900».
+#   3. Si solo hay uno y una vez: con tres cifras detras es de MILES
+#      («25,000», «1.500»), salvo que el entero sea «0» —«0,001» es un
+#      decimal, no mil— o que el entero tenga mas de tres cifras.
+#   4. Con una, dos, o cuatro o mas cifras detras, es decimal. «12,50»,
+#      «2.5905».
+NUMERO = re.compile(r'(?<![\w.,])(\d[\d.,]*\d|\d)(?![\w])')
+
+
+def _partir(crudo, porcentaje=False):
+    """Un numero escrito, partido en (entero, decimales) sin suponer el pais.
+
+    `porcentaje` desempata el caso de tres cifras: «99,999%» es noventa y
+    nueve coma novecientos noventa y nueve por ciento, no noventa y nueve mil
+    por ciento. Un porcentaje con separador de miles no existe en esta casa —
+    nada aqui se mide en miles por ciento — y decirlo asi es lo que
+    convirtio la comision de AU-RA en una cifra absurda dicha en voz alta.
+    """
+    puntos, comas = crudo.count('.'), crudo.count(',')
+    if puntos and comas:
+        dec = '.' if crudo.rfind('.') > crudo.rfind(',') else ','
+        mil = ',' if dec == '.' else '.'
+        ent, _, res = crudo.rpartition(dec)
+        return ent.replace(mil, ''), res
+    sep = '.' if puntos else (',' if comas else '')
+    if not sep:
+        return crudo, ''
+    trozos = crudo.split(sep)
+    if len(trozos) > 2:                      # 2,411,900 — miles, seguro
+        return ''.join(trozos), ''
+    ent, cola = trozos[0], trozos[1]
+    if len(cola) == 3 and ent != '0' and len(ent) <= 3 and not porcentaje:
+        return ent + cola, ''                # 25,000 · 1.500
+    return ent, cola                         # 12,50 · 2.5905 · 0,001
+
+
+# ── LA MONEDA VA DETRAS ───────────────────────────────────────────────────
+#
+# «$1,250» se lee donde esta escrito: «dolares mil doscientos cincuenta». En
+# español la moneda va detras del numero y por eso se mueve antes de decir
+# nada. Lo mismo con la ele de los lempiras y la cu de los quetzales, que
+# ademas sueltas se deletrean.
+_MONEDA_DELANTE = [
+    (re.compile(r'\bUS\s?\$\s?(\d[\d.,]*\d|\d)'), 'dólares'),
+    (re.compile(r'\$\s?(\d[\d.,]*\d|\d)'), 'dólares'),
+    (re.compile(r'\bL\.?\s?(\d[\d.,]*\d|\d)'), 'lempiras'),
+    (re.compile(r'\bQ\.?\s?(\d[\d.,]*\d|\d)'), 'quetzales'),
+    (re.compile(r'€\s?(\d[\d.,]*\d|\d)'), 'euros'),
+]
+
+
+def moneda_detras(texto):
+    t = str(texto or '')
+    for regla, palabra in _MONEDA_DELANTE:
+        t = regla.sub(lambda m, p=palabra: f'{m.group(1)} {p}', t)
+    return t
+
+
+# ── LAS LISTAS NUMERADAS ──────────────────────────────────────────────────
+#
+# «1.» termina en punto, asi que el motor lo lee como el final de la frase
+# anterior y arranca la siguiente con un numero suelto: «…y eso es todo. Uno.
+# Fondear la caja». Se dice como lo diria una persona leyendo una lista.
+ORDINALES = ['', 'Primero', 'Segundo', 'Tercero', 'Cuarto', 'Quinto', 'Sexto',
+             'Séptimo', 'Octavo', 'Noveno', 'Décimo']
+_LISTA = re.compile(r'^(\s{0,6})(\d{1,2})[.)]\s+', re.M)
+
+
+def listas_en_palabras(texto):
+    def cambio(m):
+        i = int(m.group(2))
+        return f'{m.group(1)}{ORDINALES[i] if 1 <= i <= 10 else f"Punto {i}"}. '
+    return _LISTA.sub(cambio, str(texto or ''))
 
 # Moneda pegada al numero. Se mira DESPUES del numero porque asi se escribe.
 MONEDAS = {
@@ -151,8 +242,10 @@ def numeros_en_palabras(texto):
     exactamente la queja que llego de produccion.
     """
     def cambio(m):
-        crudo, dec = m.group(1), m.group(2)
-        entero = crudo.replace('.', '')
+        crudo = m.group(1)
+        # Lo que viene justo detras decide un caso: el porcentaje.
+        detras = m.string[m.end():m.end() + 2].lstrip()
+        entero, dec = _partir(crudo, porcentaje=detras.startswith('%'))
         palabras = entero_en_palabras(entero)
         if dec:
             palabras += ' coma ' + _decimales_en_palabras(dec)
@@ -160,7 +253,7 @@ def numeros_en_palabras(texto):
         # decimal, una cifra grande. «Te contesto en 2 minutos» no necesita
         # pausa y con ella queda «en, dos, minutos», que suena peor que el
         # problema que veniamos a arreglar.
-        grande = bool(dec) or '.' in crudo or int(entero) >= 100
+        grande = bool(dec) or len(entero) > 3 or int(entero) >= 100
         return f', {palabras}, ' if grande else palabras
 
     t = NUMERO.sub(cambio, str(texto or ''))
@@ -230,9 +323,17 @@ def nombres_como_suenan(texto):
 
 
 def para_la_voz(texto):
-    """El texto listo para decirse. Nombres primero, numeros despues.
+    """El texto listo para decirse.
 
-    El orden no da igual: «PULSE2CHAT» lleva un 2 adentro, y si los numeros
-    van primero queda «PULSE dos CHAT» y ya no hay nombre que reconocer.
+    El orden no da igual, y cada paso esta donde esta por un motivo:
+
+      1. Los NOMBRES primero: «PULSE2CHAT» lleva un 2 adentro, y si los
+         numeros van antes queda «PULSE dos CHAT» y ya no hay nombre que
+         reconocer.
+      2. Las LISTAS antes que los numeros, por lo mismo: el «1.» de una lista
+         es un numero que NO se dice como numero.
+      3. La MONEDA antes que los numeros, porque mueve el simbolo de sitio y
+         despues ya no hay simbolo que mover.
+      4. Los NUMEROS al final, cuando lo demas ya esta en su sitio.
     """
-    return numeros_en_palabras(nombres_como_suenan(texto))
+    return numeros_en_palabras(moneda_detras(listas_en_palabras(nombres_como_suenan(texto))))

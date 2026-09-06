@@ -27,8 +27,49 @@ const VOZ = (() => {
     [/(\d)\s*GB\b/g, '$1 gigas'], [/(\d)\s*ms\b/g, '$1 milisegundos'],
     [/(\d)\s*\/\s*(\d)/g, '$1 de $2'], [/#(\d)/g, 'número $1'],
   ];
+  /* Los montos y los separadores de miles por espacio. Espejo de
+     lib/decir-numeros.js: la moneda va DETRÁS del número, que es como se dice
+     en español, y «2 411 900» es un número, no tres. */
+  const CIFRA = '\\d[\\d.,]*\\d|\\d';
+  const MONEDAS = [
+    [new RegExp(`\\bUS\\s?\\$\\s?(${CIFRA})`, 'g'), '$1 dólares'],
+    [new RegExp(`\\$\\s?(${CIFRA})`, 'g'), '$1 dólares'],
+    [new RegExp(`\\bL\\.?\\s?(${CIFRA})`, 'g'), '$1 lempiras'],
+    [new RegExp(`\\bQ\\.?\\s?(${CIFRA})`, 'g'), '$1 quetzales'],
+  ];
+  const MILES_CON_ESPACIO = /\b\d{1,3}(?:[ \u00a0\u2009\u202f\u2007]\d{3})+\b(?!\s*\d)/g;
+  function montos(t) {
+    let x = String(t).replace(MILES_CON_ESPACIO, (n) => n.replace(/[ \u00a0\u2009\u202f\u2007]/g, ''));
+    for (const [re, con] of MONEDAS) x = x.replace(re, con);
+    return x;
+  }
+
+  /* ── TÍTULOS Y LISTAS NUMERADAS ─────────────────────────────────────────
+     «Cuando hay puntos o secciones como 1. 2. los lee raros.» El «1.» de una
+     lista TERMINA EN PUNTO, así que `partirFrases` lo tomaba por una frase de
+     dos letras, la pegaba al final de la anterior, y el texto del punto uno
+     salía suelto y sin número: «…y eso es todo. Uno. Fondear la caja».
+     Se arregla ANTES de partir, y de paso se dice como lo diría una persona
+     leyendo una lista: «primero», no «uno».
+     Es idempotente a propósito: el texto llega a trozos y esto pasa muchas
+     veces sobre el mismo trozo. */
+  const ORDINALES = {
+    es: ['', 'Primero', 'Segundo', 'Tercero', 'Cuarto', 'Quinto', 'Sexto', 'Séptimo', 'Octavo', 'Noveno', 'Décimo'],
+    en: ['', 'First', 'Second', 'Third', 'Fourth', 'Fifth', 'Sixth', 'Seventh', 'Eighth', 'Ninth', 'Tenth'],
+  };
+  function estructura(t, idioma = 'es') {
+    const ord = ORDINALES[idioma === 'en' ? 'en' : 'es'];
+    return String(t || '')
+      .replace(/^\s{0,3}#{1,6}\s+(.+?)\s*#*\s*$/gm, (todo, tit) => (/[.!?:]$/.test(tit) ? tit : `${tit}.`))
+      .replace(/^(\s{0,6})(\d{1,2})[.)]\s+/gm, (todo, sangria, n) => {
+        const i = Number(n);
+        return `${sangria}${i >= 1 && i <= 10 ? ord[i] : (idioma === 'en' ? `Item ${i}` : `Punto ${i}`)}. `;
+      })
+      .replace(/^(\s{0,6})[-*•·]\s+/gm, '$1');
+  }
+
   function numerosParaLaVoz(t) {
-    let x = String(t)
+    let x = montos(String(t))
       .replace(/(\d)([.,])00\b(?!\d)/g, '$1')
       .replace(/(\d[.,]\d)0\b(?!\d)/g, '$1')
       .replace(/(\d)([.,])(\d{3,})\b/g, (todo, ent, sep, dec) => {
@@ -92,6 +133,8 @@ const VOZ = (() => {
          minuto hablando: la respuesta corta entera, y de una larga la parte que
          de verdad contesta. Con `tope = 0` se lee todo (el botón «LEER TODO»). */
       this.tope = 900; this.dicho = 0; this.cortado = false; this.cierreDicho = false; this.avisadoAqui = false;
+      this.idioma = 'es';
+      this.enVuelo = 0; this.TOPE_VUELO = 2;
       this.cierre = 'Le dejo el resto escrito en la pantalla.';
       /* ── UN SOLO ELEMENTO, PARA SIEMPRE ─────────────────────────────────
          El fallo que esto arregla, con nombre y fecha: en el iPad de José
@@ -154,7 +197,11 @@ const VOZ = (() => {
        tope se corta con una frase que dice la verdad: el resto está escrito.
        Cero espera, cero fichas de más, y nada que se pierda. */
     alimentar(trozo) {
-      this.resto += trozo;
+      /* `estructura` ANTES de partir en frases, y sobre el texto con sus saltos
+         de línea: un «1.» de lista deja de parecer un punto final. Sobre el
+         resto acumulado y no sobre el trozo, porque un trozo puede llegar
+         cortado justo entre el «1» y el «.». */
+      this.resto = estructura(this.resto + trozo, this.idioma);
       const { frases, resto } = partirFrases(this.resto); this.resto = resto;
       for (const f of frases) this.decir(f);
     }
@@ -173,11 +220,43 @@ const VOZ = (() => {
       const gen = this.generacion;
       // El texto viaja CON el audio: si el mp3 no llega o no puede sonar, hay
       // con qué decirlo por el otro camino en vez de callarse.
-      this.cola.push({ texto: limpio, audio: this.conElevenLabs ? DATOS.voz(limpio, { rapido: true, vozId: this.vozId }).catch(() => null) : Promise.resolve(null) });
+      this.cola.push({ texto: limpio, audio: null });
+      this.cebar();
       if (!this.sonando) this.seguir(gen);
     }
+
+    /* ── CUÁNTOS AUDIOS SE PIDEN A LA VEZ ──────────────────────────────────
+       Antes, cada frase pedía su audio EN CUANTO SE PARTÍA. Una respuesta
+       larga son quince o veinte frases, y las quince salían a la vez contra
+       el mismo dyno y la misma cuenta de ElevenLabs. El resultado es el que
+       describió José: «se detiene la voz y se pega y no sigue». Las últimas
+       peticiones de la ráfaga se encolan detrás de las primeras, alguna se
+       pasa de plazo, y como la cola se dice EN ORDEN, una frase que tarda
+       calla a todas las de atrás aunque su audio ya estuviera listo.
+
+       Se piden DE DOS EN DOS, siempre por delante de la que suena. Dos basta
+       para que nunca haya un hueco —mientras suena una, la siguiente ya está
+       hecha— y evita la ráfaga. Cuando una llega, se pide la siguiente. */
+    cebar() {
+      const gen = this.generacion;
+      for (const it of this.cola) {
+        if (this.enVuelo >= this.TOPE_VUELO) return;
+        if (it.audio) continue;
+        this.enVuelo++;
+        it.audio = this.pedirAudio(it.texto).finally(() => {
+          /* Nunca por debajo de cero: `callar()` vacía la cola pero las
+             peticiones que ya salieron siguen volviendo. */
+          this.enVuelo = Math.max(0, this.enVuelo - 1);
+          if (gen === this.generacion) this.cebar();
+        });
+      }
+    }
+    pedirAudio(texto) {
+      if (!this.conElevenLabs) return Promise.resolve(null);
+      return DATOS.voz(texto, { rapido: true, vozId: this.vozId }).catch(() => null);
+    }
     callar() {
-      this.generacion++; this.cola = []; this.resto = '';
+      this.generacion++; this.cola = []; this.resto = ''; this.enVuelo = 0;
       this.dicho = 0; this.cortado = false; this.cierreDicho = false; this.avisadoAqui = false;
       /* `corte()` es lo que cierra la sesión de `sonar()` que esté en marcha.
          Sin esto se paraba el elemento con `pause()` —que NO dispara `ended`—,
@@ -198,8 +277,12 @@ const VOZ = (() => {
     async seguir(gen) {
       this.sonando = true; this.alEmpezar?.();
       while (this.cola.length && gen === this.generacion) {
-        const { texto, audio } = this.cola.shift();
-        let blob = await audio;
+        const it = this.cola.shift();
+        const texto = it.texto;
+        /* Al sacar una de la cola queda un hueco: se pide la siguiente ya. */
+        if (!it.audio) { this.enVuelo++; it.audio = this.pedirAudio(texto).finally(() => { this.enVuelo = Math.max(0, this.enVuelo - 1); }); }
+        this.cebar();
+        let blob = await it.audio;
         if (gen !== this.generacion) break;
         /* UN REINTENTO ANTES DE CAMBIAR DE VOZ. Con una respuesta larga se
            piden diez o quince audios casi a la vez; si uno se pierde, cambiar

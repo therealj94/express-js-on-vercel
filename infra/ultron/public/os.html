@@ -48,7 +48,7 @@ a{color:var(--cian);text-decoration:none}
 /* ── el marco de panel: el bisel cortado del diseño, en dos capas ─────────── */
 .p{clip-path:polygon(0 0,calc(100% - var(--corte)) 0,100% var(--corte),100% 100%,var(--corte) 100%,0 calc(100% - var(--corte)));
   background:linear-gradient(135deg,var(--cian-t),var(--cian-d) 40%,rgba(5,225,255,.35));padding:1px;min-height:0;display:flex;
-  flex:var(--peso,1) 1 0;position:relative}
+  flex:var(--peso,1) 1 0;position:relative;min-height:calc(96px + var(--peso,1) * 52px)}
 .p.escondido{display:none}
 .p>div{flex:1;min-height:0;min-width:0;
   clip-path:polygon(0 0,calc(100% - calc(var(--corte) - 1px)) 0,100% calc(var(--corte) - 1px),100% 100%,calc(var(--corte) - 1px) 100%,0 calc(100% - calc(var(--corte) - 1px)));
@@ -160,7 +160,15 @@ body.vieja #izq,body.vieja #der,body.vieja #medidas{opacity:.48;filter:saturate(
    y cabe en poco; MERCADO lleva la cifra grande más un renglón por par.
    SALUD arranca arriba del todo porque es el único que puede decir «lo que
    estás viendo abajo no es de fiar». */
-#izq,#der{display:flex;flex-direction:column;gap:11px;min-height:0;min-width:0;pointer-events:auto;overflow:hidden}
+/* La columna SE DESPLAZA; los paneles no se aplastan. Con cinco paneles el
+   reparto por peso bastaba. Al llegar a siete —la caja de Ordenex y el
+   registro— cada uno se quedaba en ciento diez píxeles y MERCADO y CEREBRO se
+   cortaban a media cifra: un tablero lleno de paneles ilegibles es peor que uno
+   con menos. Ahora cada panel tiene un alto MÍNIMO por debajo del cual no baja,
+   y si no caben todos, la columna se desplaza. Y como el tablero se arma, quien
+   quiera verlos todos a la vez quita los que no mira. */
+#izq,#der{display:flex;flex-direction:column;gap:11px;min-height:0;min-width:0;pointer-events:auto;
+  overflow-y:auto;overflow-x:hidden}
 #izq.vacia,#der.vacia{display:none}
 #izq{grid-column:1;grid-row:1}
 #der{grid-column:3;grid-row:1}
@@ -280,6 +288,26 @@ body.armando #pie,body.armando #muelle{visibility:hidden;pointer-events:none}
   #b-boveda{display:none}
 }
 
+/* Las filas del registro y de la caja: dos columnas, la de la derecha alineada
+   y con cifras que no bailan al cambiar de valor. */
+.reg{display:flex;justify-content:space-between;align-items:center;gap:8px;width:100%;
+  padding:4px 6px;border:0;background:none;text-align:left;color:inherit;font:inherit;transition:background .15s}
+.reg:hover,.reg:focus-visible{background:rgba(5,225,255,.12)}
+.reg b{font-weight:400;color:var(--letra-f);white-space:nowrap}
+.reg span{color:var(--tenue);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-variant-numeric:tabular-nums}
+.reg.hoy b{color:var(--cian)}
+#caja-ox .fila span:last-child{font-variant-numeric:tabular-nums}
+.caja-tit{font-size:9px;letter-spacing:.16em;color:rgba(5,225,255,.75);margin-top:5px}
+.caja-tit:first-child{margin-top:0}
+
+/* Un turno guardado, en el diálogo del día. Se distingue quién habló por el
+   filo de la izquierda y no por el color del texto: el color ya lo usa el
+   estado y dos códigos de color a la vez no se leen. */
+.rg-turno{padding:2px 0 2px 10px;border-left:2px solid rgba(5,225,255,.2)}
+.rg-turno.ultron{border-left-color:var(--cian)}
+.rg-turno .quien{font-family:var(--mono);font-size:9px;letter-spacing:.16em;color:var(--tenue);margin-bottom:3px}
+.rg-turno div:not(.quien){font-size:13px;line-height:1.5}
+
 /* ── el muelle de casas ───────────────────────────────────────────────────── */
 #muelle{position:relative;z-index:2;display:flex;align-items:flex-start;gap:7px;padding:4px 22px 0;overflow-x:auto;scrollbar-width:none}
 /* El cajón vive DENTRO de #cuerpo, que es contexto de apilado propio: su
@@ -341,7 +369,10 @@ body.cajon #muelle{z-index:1}
 .arch .qui{flex:1;min-width:0}
 .arch .nm{font-size:12px;color:var(--letra-f);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .arch .mt{font-family:var(--mono);font-size:9.5px;color:var(--tenue);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.arch .bj{flex:none;color:var(--tenue);padding:4px}
+.arch .bj{flex:none;color:var(--tenue);padding:4px;background:none;border:0}
+/* Borrar va en ámbar y no en cian: es el único de los dos que no se deshace.
+   El color lo dice antes de leer el rótulo. */
+.arch .bj.quita:hover,.arch .bj.quita:focus-visible{color:var(--ambar)}
 .arch .bj:hover{color:var(--cian)}
 .arch .bj svg{width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
 #soltar{position:fixed;inset:0;z-index:60;display:grid;place-items:center;background:rgba(4,7,11,.86);backdrop-filter:blur(6px)}
@@ -735,6 +766,14 @@ body.arrancando #centro,body.cerrada #centro{visibility:hidden}
         </div>
         <div style="flex:1;min-height:0;overflow-y:auto;display:flex;flex-direction:column;gap:6px" id="autorizaciones" tabindex="0"></div>
       </div></div>
+      <!-- EL REGISTRO. Una conversación por día: salir y volver sigue el mismo
+           hilo, y para buscar algo se busca por el día, que es de lo que uno se
+           acuerda. -->
+      <div class="p" data-panel="registro" data-nombre="REGISTRO" style="--peso:0.8"><div>
+        <div><h2>REGISTRO DE CONVERSACIONES</h2><div class="sub" id="reg-sub">—</div></div>
+        <div style="flex:1;min-height:0;overflow-y:auto;display:flex;flex-direction:column;gap:3px" id="registro" tabindex="0"></div>
+      </div></div>
+
     </div>
     <div id="izq">
       <!-- LA SALUD DE ULTRON. El vigía mira las seis casas; esto mira al que las
@@ -800,6 +839,19 @@ body.arrancando #centro,body.cerrada #centro{visibility:hidden}
         </div>
       </div></div>
 
+      <!-- LA CAJA DE ORDENEX. Lo que hay en las billeteras de la casa: el ORIGEN
+           que queda para entregar, los USDT que quedan para pagar, el gas de
+           cada una medido en operaciones y la comisión ganada. Se lee cuando se
+           pide: son cuatro lecturas de cadena y no se hacen cada diez segundos
+           con la pantalla abierta. -->
+      <div class="p" data-panel="caja" data-nombre="LA CAJA" style="--peso:1.15"><div>
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
+          <div style="min-width:0"><h2>LA CAJA DE ORDENEX</h2><div class="sub" id="caja-sub">sin leer todavía</div></div>
+          <button class="chip" id="b-caja" title="Leer los saldos ahora">ACTUALIZAR</button>
+        </div>
+        <div style="flex:1;min-height:0;overflow-y:auto;display:flex;flex-direction:column;gap:3px" class="dato" id="caja-ox" tabindex="0"></div>
+      </div></div>
+
       <div class="p" data-panel="integridad" data-nombre="INTEGRIDAD" style="--peso:0.95"><div>
         <div><h2>INTEGRIDAD</h2><div class="sub" id="integridad-tag">—</div></div>
         <div style="display:flex;flex-direction:column;gap:3px;flex:1;min-height:0;overflow:hidden" class="dato" id="integridad" tabindex="0"></div>
@@ -809,7 +861,7 @@ body.arrancando #centro,body.cerrada #centro{visibility:hidden}
 
     <div id="centro">
       <div id="estado"><span class="luz"></span><span id="estado-txt">EN LÍNEA</span></div>
-      <div id="pista">ARRASTRE PARA GIRAR · SUELTE UN ARCHIVO PARA QUE LO LEA</div>
+      <div id="pista">TOQUE EL CENTRO PARA HABLARLE · ARRASTRE PARA GIRAR · SUELTE UN ARCHIVO PARA QUE LO LEA</div>
       <div id="globo" class="oculto"><div><div>
         <div class="quien" id="globo-quien">ULTRON:</div>
         <!-- `tabindex=0`: es un contenedor que se desplaza, y sin esto quien

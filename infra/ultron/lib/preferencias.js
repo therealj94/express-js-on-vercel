@@ -24,6 +24,12 @@ const prefSchema = new Schema({
   /* El lugar del que se da el clima al saludar. Base de operaciones por
      omisión; se cambia en Ajustes porque José viaja a Roatán. */
   lugar: { type: String, default: 'Tegucigalpa' },
+  /* DÓNDE ESTÁ DE VERDAD, si dio permiso. El navegador da coordenadas y no
+     nombres; el nombre lo pone `mundo.js`. Se guarda con la fecha porque una
+     ubicación de hace tres semanas es peor que ninguna: José viaja, y dar el
+     tiempo de Tegucigalpa cuando está en Roatán es exactamente el fallo que
+     esto viene a arreglar. Pasadas 12 horas se vuelve al sitio elegido a mano. */
+  coords: { type: { lat: Number, lon: Number, cuando: Date }, default: null },
   /* Cómo escucha:
        conversacion  al entrar y después de cada respuesta abre el micrófono
                      solo. Es la que hace que esto sea una conversación.
@@ -45,7 +51,16 @@ const Pref = mongoose.models.Pref || mongoose.model('Pref', prefSchema);
 
 const conMongo = () => mongoose.connection.readyState === 1;
 const provisional = new Map();
-const POR_OMISION = { idioma: 'es', vozId: null, figura: 'nucleo', conVoz: true, lugar: 'Tegucigalpa', oido: 'conversacion', soloYo: true, tablero: [] };
+const POR_OMISION = { idioma: 'es', vozId: null, figura: 'nucleo', conVoz: true, lugar: 'Tegucigalpa', oido: 'conversacion', soloYo: true, tablero: [], coords: null };
+
+/* Cuánto vale una ubicación antes de quedar vieja. José viaja: el tiempo de
+   Tegucigalpa dado en Roatán es justo el fallo que la ubicación viene a
+   arreglar, y una medida de anteayer lo repite. */
+const COORDS_VALEN_MS = 12 * 60 * 60 * 1000;
+const coordsFrescas = (c) => !!c && Number.isFinite(c.lat) && Number.isFinite(c.lon)
+  && Date.now() - new Date(c.cuando || 0).getTime() < COORDS_VALEN_MS;
+/** El lugar del clima: dónde está, si lo sabemos hace poco; si no, el elegido. */
+const lugarDelClima = (p) => (coordsFrescas(p?.coords) ? { lat: p.coords.lat, lon: p.coords.lon } : (p?.lugar || 'Tegucigalpa'));
 
 /* El tablero llega de la pantalla, así que se limpia aquí y no se cree nada:
    un peso de 900 rompería la rejilla y un id inventado dejaría un hueco.
@@ -97,6 +112,16 @@ async function guardar(correo, cambios = {}) {
   if (typeof cambios.soloYo === 'boolean') limpio.soloYo = cambios.soloYo;
   if (['conversacion', 'palabra', 'apagado'].includes(cambios.oido)) limpio.oido = cambios.oido;
   if (cambios.tablero !== undefined) { const t = limpiarTablero(cambios.tablero); if (t) limpio.tablero = t; }
+  /* `null` es una orden: «deja de usar mi ubicación». Se distingue de «no
+     mandé coordenadas», que es no tocar nada. */
+  if (cambios.coords === null) limpio.coords = null;
+  else if (cambios.coords && Number.isFinite(Number(cambios.coords.lat)) && Number.isFinite(Number(cambios.coords.lon))
+    && Math.abs(Number(cambios.coords.lat)) <= 90 && Math.abs(Number(cambios.coords.lon)) <= 180) {
+    /* Tres decimales: unos cien metros. Basta de sobra para el tiempo y no
+       guarda en la base en qué habitación de la casa está. */
+    const red = (n) => Math.round(Number(n) * 1000) / 1000;
+    limpio.coords = { lat: red(cambios.coords.lat), lon: red(cambios.coords.lon), cuando: new Date() };
+  }
   if (typeof cambios.lugar === 'string' && cambios.lugar.trim().length >= 3 && cambios.lugar.length <= 60) limpio.lugar = cambios.lugar.trim();
   /* El id de una voz de ElevenLabs es alfanumérico de 20: cualquier otra cosa
      no se guarda. Sin esto, un id inventado dejaría a ULTRON mudo hasta que
@@ -178,5 +203,5 @@ async function guardarCasa(cambios = {}, porQuien = '?') {
   return casaEnMemoria;
 }
 
-module.exports = { de, guardar, ordenDeIdioma, VOCES_SUGERIDAS, POR_OMISION, limpiarTablero,
+module.exports = { de, guardar, ordenDeIdioma, VOCES_SUGERIDAS, POR_OMISION, limpiarTablero, lugarDelClima, coordsFrescas,
   casa, casaYa, guardarCasa, CEREBROS, _adentro: { Pref, Casa, provisional } };

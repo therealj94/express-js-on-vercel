@@ -162,6 +162,74 @@ async function abrirConversacion(miembro, { canal = 'panel', titulo } = {}) {
   return c;
 }
 
+/* ── EL REGISTRO DEL DÍA ──────────────────────────────────────────────────────
+ * «Los registros de conversaciones que se guarden por día; si me salgo, se
+ * sigue guardando en el mismo día, y poder ver la conversación.»
+ *
+ * Antes cada visita abría una conversación NUEVA: recargar la página, cerrar
+ * la pestaña o volver por la tarde partían el día en cuatro trozos sueltos con
+ * cuatro títulos parecidos. Y no era solo desorden: el cerebro lee la
+ * conversación anterior para tener contexto, así que al volver del almuerzo
+ * ULTRON no se acordaba de nada de la mañana.
+ *
+ * Ahora el día es la unidad. Una conversación por miembro, canal y día, y al
+ * volver se sigue escribiendo en la misma. El día es el de HONDURAS, no el del
+ * servidor: un dyno en UTC cambia de día a las seis de la tarde de Tegucigalpa,
+ * y partir la conversación a media tarde es peor que no partirla nunca.
+ */
+const ZONA_CASA = process.env.ULTRON_ZONA || 'America/Tegucigalpa';
+/** El día de la casa, «2026-09-06», para una fecha cualquiera. */
+function diaDe(fecha = new Date()) {
+  try { return new Intl.DateTimeFormat('en-CA', { timeZone: ZONA_CASA, year: 'numeric', month: '2-digit', day: '2-digit' }).format(fecha); }
+  catch { return new Date(fecha).toISOString().slice(0, 10); }
+}
+/** Los dos extremos del día de la casa, en horas absolutas. */
+function bordesDelDia(dia = diaDe()) {
+  /* Honduras no tiene horario de verano desde 2006: el desfase es fijo, −6.
+     Aun así se calcula y no se escribe a mano, para que el día siga siendo el
+     correcto si algún día la casa opera desde otra zona. */
+  const medio = new Date(`${dia}T12:00:00Z`);
+  const enZona = new Date(medio.toLocaleString('en-US', { timeZone: ZONA_CASA }));
+  const desfase = medio.getTime() - enZona.getTime();
+  const desde = new Date(new Date(`${dia}T00:00:00Z`).getTime() + desfase);
+  return { desde, hasta: new Date(desde.getTime() + 24 * 3600 * 1000) };
+}
+
+/**
+ * La conversación de HOY para esta persona y este canal. Si no hay, se abre.
+ * Es lo que usa el panel: así salir y volver sigue el mismo hilo.
+ */
+async function conversacionDelDia(miembro, { canal = 'panel', dia = null } = {}) {
+  const d = dia || diaDe();
+  const { desde, hasta } = bordesDelDia(d);
+  if (conMongo) {
+    const ya = await Conversacion.findOne({ miembro, canal, en: { $gte: desde, $lt: hasta } }).sort({ en: 1 }).lean();
+    if (ya) return { ...ya, yaExistia: true };
+  } else {
+    const ya = [...provisional.conversaciones.values()]
+      .filter((c) => c.miembro === miembro && c.canal === canal && c.en >= desde && c.en < hasta)
+      .sort((a, b) => a.en - b.en)[0];
+    if (ya) return { ...ya, yaExistia: true };
+  }
+  return { ...(await abrirConversacion(miembro, { canal })), yaExistia: false };
+}
+
+/** Las conversaciones agrupadas por día, para el panel del registro. */
+async function registroPorDia(miembro, { dias = 30 } = {}) {
+  const l = await conversacionesDe(miembro, { limite: 200 });
+  const porDia = new Map();
+  for (const c of l) {
+    const d = diaDe(c.en);
+    const y = porDia.get(d) || { dia: d, turnos: 0, conversaciones: [], desde: c.en, hasta: c.tocado };
+    y.turnos += c.turnos || 0;
+    y.conversaciones.push({ _id: c._id, titulo: c.titulo, canal: c.canal, turnos: c.turnos, en: c.en, tocado: c.tocado });
+    if (new Date(c.en) < new Date(y.desde)) y.desde = c.en;
+    if (new Date(c.tocado) > new Date(y.hasta)) y.hasta = c.tocado;
+    porDia.set(d, y);
+  }
+  return [...porDia.values()].sort((a, b) => (a.dia < b.dia ? 1 : -1)).slice(0, dias);
+}
+
 async function conversacion(id, miembro) {
   if (conMongo) return Conversacion.findOne({ _id: id, miembro }).lean();
   const c = provisional.conversaciones.get(String(id));
@@ -342,6 +410,7 @@ module.exports = {
   anotarGasto, gasto,
   recordar, olvidar, memoriasDe,
   abrirConversacion, conversacion, conversacionesDe, anotarTurno, titular,
+  conversacionDelDia, registroPorDia, diaDe, bordesDelDia,
   guardarDocumento, documentos, documento,
   Memoria, Conversacion, Documento, Pendiente, Gasto,
   _adentro: { provisional },

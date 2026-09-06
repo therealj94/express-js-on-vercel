@@ -140,6 +140,51 @@ t = decir.para_la_voz('En PULSE2CHAT te contesto en 2 minutos.')
 ok('Puls Chat' in t and 'dos minutos' in t,
    'el nombre se resuelve ANTES que los números, y los dos salen bien', t)
 
+# ── LOS MONTOS, CON LA PUNTUACION QUE VENGA ────────────────────────────────
+# «Los montos de dinero, mejorar al leerlos. AURA lo lee mal.»
+# Esto asumia punto para los miles y coma para los decimales, y casi todo el
+# ecosistema escribe al reves. «L. 25,000» se decia «veinticinco coma cero
+# cero cero»: veinticinco mil dicho como veinticinco, en una aplicacion de
+# plata.
+print('\nLos montos, con la puntuación que venga\n')
+
+MONTOS = [
+    ('2,411,900 ORIGEN', 'dos millones cuatrocientos once mil novecientos',
+     'los miles con coma son UN número, no tres'),
+    ('L. 25,000 de comisión', 'veinticinco mil',
+     'veinticinco mil lempiras no son veinticinco'),
+    ('L. 25,000 de comisión', 'lempiras', 'y la ele se dice, no se deletrea'),
+    ('Son $1,250.50 en USDT', 'mil doscientos cincuenta coma cincuenta',
+     'coma de miles y punto de decimales, los dos a la vez'),
+    ('Son $1,250.50 en USDT', 'dólares',
+     'y el símbolo va DETRÁS del número, que es como se habla'),
+    ('1.234,56 dólares', 'mil doscientos treinta y cuatro coma cincuenta y seis',
+     'y la puntuación de acá sigue funcionando igual que antes'),
+    ('El precio es 2.5905 dólares', 'dos coma cinco nueve cero cinco',
+     'cuatro decimales con punto son decimales, no miles'),
+    ('0,001 ORIGEN', 'cero coma cero cero uno',
+     'un cero delante siempre es un decimal'),
+    ('Más del 99,999% del pago te llega.', 'noventa y nueve coma',
+     'y un porcentaje con tres cifras detrás es decimal: nada se mide en miles por ciento'),
+]
+for texto, aguja, que in MONTOS:
+    got = decir.para_la_voz(texto)
+    ok(aguja in got, que, f'«{texto}»\n           → «{got}»')
+
+# ── LAS LISTAS NUMERADAS ───────────────────────────────────────────────────
+# El «1.» de una lista TERMINA EN PUNTO: el motor lo leía como el final de la
+# frase anterior y el punto uno salía suelto y sin número.
+print('\nLas listas numeradas\n')
+
+LISTAS = [
+    ('1. Fondear la caja.', 'Primero', 'el uno de una lista se dice «primero»'),
+    ('2. Revisar el gas.', 'Segundo', 'y el dos, «segundo»'),
+    ('11. Lo último.', 'Punto once', 'pasados los diez, «punto once»'),
+]
+for texto, aguja, que in LISTAS:
+    got = decir.para_la_voz(texto)
+    ok(got.startswith(aguja), que, f'«{texto}»\n           → «{got}»')
+
 print('\nLo que NO se toca\n')
 
 ok(decir.para_la_voz('') == '', 'texto vacío no revienta')

@@ -64,8 +64,16 @@ const DATOS = (() => {
   }
 
   /** El audio de una frase. Null si la voz no está o no pudo. */
-  async function voz(texto, { rapido = true, vozId = null } = {}) {
-    const r = await fetch('/voz', { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ texto, rapido, vozId: vozId || undefined }) });
+  async function voz(texto, { rapido = true, vozId = null, plazo = 20_000 } = {}) {
+    /* CON PLAZO, y esto arregla un fallo con nombre: «cuando tengo una
+       conversación larga se detiene la voz y se pega y no sigue». Sin plazo,
+       una petición que se queda colgada —el teléfono cambió de wifi a datos,
+       el dyno tardó de más— no falla nunca: se queda esperando para siempre.
+       Y la cola de la voz espera EN ORDEN, así que esa frase colgada calla
+       todas las que venían detrás. Con plazo, esa frase se dice con la voz del
+       navegador y la conversación sigue. */
+    const r = await fetch('/voz', { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ texto, rapido, vozId: vozId || undefined }), signal: AbortSignal.timeout(plazo) });
     return r.ok ? r.blob() : null;
   }
 

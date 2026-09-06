@@ -38,6 +38,7 @@ const memoria = require('./memoria');
 const permisos = require('./permisos');
 const boveda = require('./boveda');
 const taller = require('./taller');
+const caja = require('./caja');
 const aprender = require('./aprender');
 const equipo = require('./equipo');
 const operaciones = require('./operaciones');
@@ -114,6 +115,11 @@ const DEFINICIONES = [
     name: 'cadena_direccion',
     description: 'Consulta una dirección en la cadena 5550 vía OrdenScan: saldo, tokens (ONDK, AUKA, ORIGEN…) y últimas transacciones.',
     input_schema: { type: 'object', properties: { direccion: { type: 'string', description: '0x… de 42 caracteres' } }, required: ['direccion'] },
+  },
+  {
+    name: 'ordenex_caja',
+    description: 'Las billeteras de Ordenex ahora mismo: cuánto ORIGEN queda en la caliente (la que entrega), cuántos USDT en la pagadora de cada red (la que paga las ventas), el gas que le queda a cada una medido en operaciones, la comisión que lleva ganada la casa, y qué órdenes y retiros están en pie. Solo lee. Para «cómo está la caja», «cuánto USDT nos queda», «actualizá los saldos».',
+    input_schema: { type: 'object', properties: {} },
   },
   {
     name: 'cadena_altura',
@@ -727,6 +733,7 @@ async function correrAdentro(nombre, entrada, ctx) {
         for (const t of tx.slice(0, 5)) l.push(`  · ${t.hash || t.transactionHash || '?'} ${t.from ? 'de ' + t.from : ''} ${t.to ? 'a ' + t.to : ''} ${t.value ? ori(t.value) : ''}`.trim());
         return l.join('\n');
       }
+      case 'ordenex_caja': return caja.contar(await caja.leer());
       case 'cadena_altura': {
         const [scan, v] = await Promise.all([leerJson(`${vivo.CASAS.ordenscan.api}/block/totalBlock`), vivo.leerConCache()]);
         return `Cadena 5550 · bloque ${v?.ordenex?.bloque5550 ?? 'no leído'} según Ordenex, ${scan?.blockTotal ?? 'no leído'} según OrdenScan (el explorador). Leído ahora. La 8532 es la cadena vieja, congelada desde el 10 de agosto: no se lee.`;
@@ -1116,7 +1123,7 @@ function calcular(expresion) {
 const GRUPOS = {
   'La casa, en vivo': ['estado_vivo', 'parte_del_dia', 'cotizar', 'nodo_salud', 'nube_estado'],
   'El mundo de afuera': ['clima', 'hora'],
-  'Ordenex y las cadenas': ['ordenex_mercado', 'cadena_altura', 'cadena_direccion', 'cadena_5550_saldo'],
+  'Ordenex y las cadenas': ['ordenex_caja', 'ordenex_mercado', 'cadena_altura', 'cadena_direccion', 'cadena_5550_saldo'],
   'Las otras casas': ['aucorp_monedas', 'genesis_salud'],
   'El saber y la memoria': ['buscar_saber', 'buscar_conversaciones', 'recordar', 'olvidar'],
   'Pendientes y documentos': ['listar_pendientes', 'anotar_pendiente', 'cerrar_pendiente', 'listar_documentos', 'leer_documento', 'crear_documento'],

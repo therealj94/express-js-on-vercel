@@ -26,7 +26,10 @@ const OS = (() => {
   window.__ULTRON_MENTE = () => mente;
 
   const COLORES = { idle: '#05E1FF', listen: '#5CF2B0', think: '#FFB648', speak: '#05E1FF', error: '#FF5A6E' };
-  const ROTULOS = { idle: 'EN LÍNEA', listen: 'ESCUCHANDO', think: 'ANALIZANDO', speak: 'HABLANDO', error: 'FALLO' };
+  /* «Que aparezca te estoy escuchando». En primera persona y con todas las
+     letras: «ESCUCHANDO» a secas es una etiqueta de estado y se lee como un
+     rótulo de máquina; «LE ESTOY ESCUCHANDO» es alguien diciéndoselo. */
+  const ROTULOS = { idle: 'EN LÍNEA', listen: 'LE ESTOY ESCUCHANDO', think: 'ANALIZANDO', speak: 'HABLANDO', error: 'FALLO' };
 
   function estado(st, mood) {
     mente.state = st;
@@ -465,7 +468,7 @@ const OS = (() => {
     document.dispatchEvent(new CustomEvent('ultron:preferencias'));
     conVoz = PREF.conVoz !== false;
     $('#altavoz')?.setAttribute('aria-pressed', String(conVoz));
-    if (locutor) locutor.vozId = PREF.vozId || null;
+    if (locutor) { locutor.vozId = PREF.vozId || null; locutor.idioma = PREF.idioma === 'en' ? 'en' : 'es'; }
     /* El idioma no es solo la pantalla: también es en el que escucha el
        micrófono. Si está en inglés y el reconocedor sigue en español, lo que
        se dicta llega escrito como suena en español y no se entiende nada. */
@@ -647,6 +650,11 @@ const OS = (() => {
       DATOS.get('/boveda').catch(() => null),
     ]);
     const llaves = bov?.secretos ? bov.secretos.length : null;
+    /* La ubicación cuenta como puesta solo si es de hace menos de doce horas:
+       es la misma regla que usa el servidor para el clima, y enseñar aquí una
+       de anteayer como si valiera sería mentir en la pantalla de ajustes. */
+    const ubicacionViva = !!(PREF?.coords && Date.now() - new Date(PREF.coords.cuando || 0).getTime() < 12 * 3600 * 1000);
+    const dondeEstoy = ubicacionViva ? (pref?.donde || null) : null;
     const esDueno = yo?.permiso === 'dueño';
     if (pref) PREF = pref;
     const m = yo?.miembro || {};
@@ -703,9 +711,15 @@ const OS = (() => {
       </div>
 
       <div class="aj-sec"><h4>El clima del saludo</h4>
-        <div class="aj-fila"><span>De dónde</span>
+        <div class="aj-fila"><span>Su ubicación</span>
+          <b>${ubicacionViva ? `${esc(dondeEstoy || 'medida')} · ${esc(hace(PREF.coords.cuando) || '')}` : 'no la está usando'}</b></div>
+        <div class="aj-fila"><span>Sitio fijo</span>
           <input class="aj-sel" id="aj-lugar" value="${esc(PREF?.lugar || 'Tegucigalpa')}" placeholder="Tegucigalpa" style="font-family:var(--mono)"></div>
-        <p class="aj-nota">Al entrar, ULTRON saluda con el tiempo de este sitio. Roatán, Tegucigalpa, San Pedro Sula, La Ceiba, Utila y Guanaja los sabe de memoria; cualquier otro lo busca.</p>
+        <div class="fila-btn" style="margin-top:8px">
+          <button class="btn" id="aj-ubicar">${ubicacionViva ? 'VOLVER A MEDIR' : 'USAR MI UBICACIÓN'}</button>
+          ${ubicacionViva ? '<button class="btn" id="aj-sin-ubicar">NO USARLA</button>' : ''}
+        </div>
+        <p class="aj-nota">Si da permiso de ubicación, ULTRON saluda con el tiempo de donde esté de verdad — que es lo que hace falta cuando anda en Roatán y el sitio fijo dice Tegucigalpa. Se guardan tres decimales, unos cien metros, y a las doce horas caduca y se vuelve al sitio fijo. Sin permiso, manda siempre el sitio fijo: Roatán, Tegucigalpa, San Pedro Sula, La Ceiba, Utila y Guanaja los sabe de memoria; cualquier otro lo busca.</p>
       </div>
 
       <div class="aj-sec"><h4>Idioma</h4>
@@ -802,6 +816,9 @@ const OS = (() => {
       await guardarPreferencia({ soloYo: si });
       d.querySelectorAll('[data-solo]').forEach((x) => x.setAttribute('aria-pressed', String((x.dataset.solo === '1') === si)));
     });
+    d.querySelector('#aj-ubicar').onclick = () => { avisar('Midiendo dónde está…'); ubicacion(); d.cerrarY(abrirAjustes); };
+    const sinU = d.querySelector('#aj-sin-ubicar');
+    if (sinU) sinU.onclick = async () => { await guardarPreferencia({ coords: null }); avisar('ULTRON vuelve a usar el sitio fijo.'); d.cerrarY(abrirAjustes); };
     const lug = d.querySelector('#aj-lugar');
     if (lug) lug.onchange = () => guardarPreferencia({ lugar: lug.value.trim() });
     const sel = d.querySelector('#aj-voz');
@@ -971,9 +988,165 @@ const OS = (() => {
         </div>
         <a class="bj" href="/archivos/${esc(a._id)}/bajar" target="_blank" rel="noopener" title="Bajar" aria-label="Bajar ${esc(a.nombre)}">
           <svg viewBox="0 0 24 24"><path d="M12 3v13M7 11.5l5 5 5-5M4.5 20.5h15"/></svg></a>
+        <button class="bj quita" data-borrar="${esc(a._id)}" data-nombre="${esc(a.nombre)}" title="Borrarlo" aria-label="Borrar ${esc(a.nombre)}">
+          <svg viewBox="0 0 24 24"><path d="M4 7h16M9.5 7V4.5h5V7M6.5 7l1 13h9l1-13"/></svg></button>
       </div>`;
     }).join('') : '<div class="sub">Suelte un PDF, un Word o un texto en la pantalla y ULTRON lo lee.</div>';
   }
+
+  /* ── BORRAR UN DOCUMENTO QUE YA NO SE OCUPA ───────────────────────────────
+     Entraban y no salían nunca: la lista crecía sin fin y encima cada uno
+     seguía estando al alcance del cerebro. Se pregunta antes, porque de esto
+     no se vuelve: el archivo se va de la base con su texto y su copia. */
+  async function borrarArchivo(id, nombre) {
+    if (!confirm(`¿Borrar «${nombre}»? Se va del todo: ULTRON deja de poder leerlo.`)) return;
+    try {
+      await DATOS.borrar(`/archivos/${encodeURIComponent(id)}`);
+      avisar('Documento borrado.');
+      DATOS.get('/archivos').then(pintarArchivos).catch(() => {});
+    } catch (e) { avisar(`No se pudo borrar: ${e.message}`, true); }
+  }
+
+  /* ══ LA CAJA DE ORDENEX ═════════════════════════════════════════════════════
+   * «Poder actualizar las billeteras que usamos de Ordenex: cuánto es el
+   * saldo… tanto ORIGEN, USDT, comisiones para enviar y transacciones.»
+   *
+   * NO se lee sola cada diez segundos como el resto del tablero. Son cuatro
+   * lecturas de cadena en cuatro redes distintas: pedirlas en bucle con la
+   * pantalla abierta gastaría el proveedor de RPC todo el día para un número
+   * que cambia cuando alguien compra o vende. Se lee al entrar, una vez, y
+   * cuando se toca ACTUALIZAR o se le pide a ULTRON que lo actualice.
+   *
+   * Y NUNCA UN CERO DE CONSUELO: un saldo que no se pudo leer dice «no leído».
+   * Un panel que pinta cero con el nodo caído es un panel que un día jura que
+   * la caja está vacía.
+   */
+  const dosDec = (n) => (typeof n === 'number' && isFinite(n)
+    ? n.toLocaleString('es-HN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : nada);
+
+  function pintarCaja(c) {
+    const caja = $('#caja-ox'), sub = $('#caja-sub');
+    if (!caja) return;
+    if (!c || c.error) {
+      /* El motivo va UNA vez, y entero, en el cuerpo del panel. Antes iba
+         también en el renglón de arriba, recortado a sesenta letras: el mismo
+         texto dos veces, uno de ellos partido a media palabra. */
+      sub.textContent = /llave/i.test(c?.error || '') ? 'falta la llave de Ordenex' : 'no se pudo leer';
+      sub.className = 'sub mal';
+      caja.innerHTML = `<div class="sub">${esc(c?.error || 'La caja no contestó. Vuelva a intentarlo con ACTUALIZAR.')}</div>`;
+      return;
+    }
+    const filas = [];
+    const fila = (q, v, clase = '') => filas.push(`<div class="fila"><span>${esc(q)}</span><span class="${clase}">${esc(v)}</span></div>`);
+    const titulo = (t) => filas.push(`<div class="caja-tit">${esc(t)}</div>`);
+
+    titulo('LA CALIENTE · entrega ORIGEN');
+    if (c.caliente.ok) {
+      const conAlgo = (c.caliente.saldos || []).filter((x) => x.cantidad && x.cantidad !== '0');
+      if (conAlgo.length) for (const x of conAlgo) fila(x.simbolo, x.cantidad, 'ok');
+      else fila('saldo', 'vacía', 'mal');
+    } else fila('saldo', 'no leído', 'amb');
+
+    for (const p of (c.pagadora || [])) {
+      titulo(`LA PAGADORA · ${p.red}`);
+      if (p.error) { fila('saldo', 'no leído', 'amb'); continue; }
+      fila('USDT', dosDec(p.usdt), p.usdt > 0 ? 'ok' : 'mal');
+      if (p.enVuelo) fila('comprometido', dosDec(p.enVuelo), 'amb');
+      fila('gas', p.ventasQueQuedan === null ? 'no leído' : `${p.ventasQueQuedan} ventas`, p.alcanza === false ? 'mal' : 'ok');
+    }
+
+    if ((c.gas || []).length) {
+      titulo('EL GAS DEL BARRIDO');
+      for (const g of c.gas) fila(g.red, g.ok ? `${g.barridosQueQuedan ?? '?'} barridos` : 'no leído',
+        !g.ok ? 'amb' : g.nivel === 'seco' || g.alcanza === false ? 'mal' : g.nivel === 'bajo' ? 'amb' : 'ok');
+    }
+
+    titulo('LA COMISIÓN GANADA');
+    if (c.comision?.error) fila('saldo', 'no leído', 'amb');
+    else {
+      const s = (c.comision?.saldos || []).filter((x) => x.cantidad);
+      if (s.length) for (const x of s) fila(x.activo, dosDec(x.cantidad), 'ok');
+      else fila('saldo', 'nada todavía');
+      if (c.comision?.deRetiros) fila('de retiros', String(c.comision.deRetiros));
+    }
+
+    const m = c.movimiento || {};
+    titulo('EN PIE');
+    fila('órdenes abiertas', m.ordenesAbiertas ?? nada);
+    fila('retiros pendientes', m.retirosPendientes ?? nada);
+    if (m.retirosEnRevision) fila('EN REVISIÓN', String(m.retirosEnRevision), 'mal');
+    fila('compra · venta', `${m.compraEncendida ? 'abierta' : 'cerrada'} · ${m.ventaEncendida ? 'abierta' : 'cerrada'}`,
+      m.compraEncendida && m.ventaEncendida ? 'ok' : 'amb');
+
+    caja.innerHTML = filas.join('');
+    sub.textContent = `leída ${hace(c.cuando) || 'ahora'}`;
+    sub.className = 'sub';
+  }
+
+  async function cargarRegistro() {
+    try { registroUltimo = await DATOS.get('/conversaciones/registro'); pintarRegistro(registroUltimo); }
+    catch { pintarRegistro(null); }
+  }
+
+  async function leerCaja() {
+    const b = $('#b-caja'); if (b) { b.disabled = true; b.textContent = 'LEYENDO…'; }
+    $('#caja-sub').textContent = 'preguntándole a Ordenex…';
+    try { pintarCaja(await DATOS.get('/ordenex/caja')); }
+    catch (e) { pintarCaja({ error: e.message }); }
+    if (b) { b.disabled = false; b.textContent = 'ACTUALIZAR'; }
+  }
+
+  /* ══ EL REGISTRO POR DÍA ════════════════════════════════════════════════════
+   * «Necesitamos ver los registros de conversaciones, que se guarden por día;
+   * si me salgo se sigue guardando en el mismo día, y poder ver la
+   * conversación.»
+   *
+   * Nadie se acuerda del título de una conversación; se acuerda del día. Así
+   * que la lista es de días, no de conversaciones, y el de hoy va marcado.
+   */
+  function pintarRegistro(r) {
+    const caja = $('#registro'), sub = $('#reg-sub');
+    if (!caja) return;
+    const dias = r?.dias || [];
+    sub.textContent = dias.length ? `${dias.length} día${dias.length > 1 ? 's' : ''} guardados` : 'todavía sin conversaciones';
+    caja.innerHTML = dias.length ? dias.map((d) => {
+      const esHoy = d.dia === r.hoy;
+      const id = d.conversaciones[0]?._id;
+      const titulo = d.conversaciones.map((c) => c.titulo).find(Boolean) || 'sin título todavía';
+      return `<button class="reg ${esHoy ? 'hoy' : ''}" data-dia="${esc(d.dia)}" data-conv="${esc(id || '')}">
+        <b>${esHoy ? 'HOY' : esc(fechaCorta(d.dia))}</b>
+        <span>${esc(titulo)} · ${d.turnos} turno${d.turnos === 1 ? '' : 's'}</span>
+      </button>`;
+    }).join('') : '<div class="sub">Lo que hable con ULTRON se guarda por día. Salir y volver sigue el mismo hilo.</div>';
+  }
+
+  /* «2026-09-06» → «6 sep». El año solo cuando no es el de ahora: dentro del
+     mismo año es ruido, y en enero, al mirar diciembre, hace falta. */
+  function fechaCorta(dia) {
+    const [a, m, d] = String(dia).split('-').map(Number);
+    if (!a || !m || !d) return dia;
+    const f = new Date(Date.UTC(a, m - 1, d));
+    const corto = f.toLocaleDateString('es-HN', { day: 'numeric', month: 'short', timeZone: 'UTC' });
+    return a === new Date().getFullYear() ? corto : `${corto} ${a}`;
+  }
+
+  async function abrirDia(dia, convId) {
+    const d = dialogo(`<h3>${esc(dia === (registroUltimo?.hoy) ? 'HOY' : fechaCorta(dia))}</h3><div class="sub">trayendo la conversación…</div>`);
+    let c = null;
+    try { c = await DATOS.get(`/conversaciones/${encodeURIComponent(convId)}`); }
+    catch (e) { d.querySelector('div').innerHTML = `<h3>${esc(fechaCorta(dia))}</h3><div class="sub mal">${esc(e.message)}</div><div class="fila-btn"><button class="btn" id="rg-cerrar">CERRAR</button></div>`; d.querySelector('#rg-cerrar').onclick = () => d.remove(); return; }
+    const turnos = (c?.turnos || []).map((t) => `<div class="rg-turno ${t.rol}">
+        <div class="quien">${t.rol === 'ultron' ? 'ULTRON' : 'USTED'} · ${esc(new Date(t.en).toLocaleTimeString('es-HN', { hour: '2-digit', minute: '2-digit' }))}</div>
+        <div>${window.MARKDOWN ? MARKDOWN.aHtml(t.texto || '') : esc(t.texto || '')}</div>
+        ${(t.herramientas || []).length ? `<div class="sub">usó: ${esc(t.herramientas.map((h) => h.nombre).join(', '))}</div>` : ''}
+      </div>`).join('');
+    d.querySelector('div').innerHTML = `<h3>${esc(c?.titulo || fechaCorta(dia))}</h3>
+      <div class="sub">${(c?.turnos || []).length} turnos · ${esc(fechaCorta(dia))}</div>
+      <div style="max-height:60dvh;overflow-y:auto;display:flex;flex-direction:column;gap:10px;margin-top:10px">${turnos || '<div class="sub">sin turnos</div>'}</div>
+      <div class="fila-btn" style="margin-top:14px"><button class="btn" id="rg-cerrar">CERRAR</button></div>`;
+    d.querySelector('#rg-cerrar').onclick = () => d.remove();
+  }
+  let registroUltimo = null;
 
   /* ── UNA FOTO DEL TELÉFONO NO VIAJA ENTERA ────────────────────────────────
      Una foto del iPad son cuatro o cinco megas, y para MIRARLA no hacen falta:
@@ -1438,7 +1611,50 @@ const OS = (() => {
      propia voz saliendo del altavoz. */
   function volverAEscuchar() {
     if (!despierta) return;
-    setTimeout(() => { if (despierta) dictar(volverAEscuchar); }, 450);
+    setTimeout(() => {
+      if (!despierta) return;
+      /* Con la oreja en «hey ULTRON» se vuelve A LA PALABRA, no a un turno
+         abierto: es lo que se eligió en Ajustes y lo que dijo José —«el hey
+         ULTRON también esté escuchando»—. Antes, un toque en el centro dejaba
+         la conversación abierta para siempre aunque el ajuste dijera otra cosa. */
+      if (CONVERSACION()) dictar(volverAEscuchar); else escucharPalabra(0);
+    }, 450);
+  }
+
+  /* ── EL TOQUE EN EL CENTRO ────────────────────────────────────────────────
+   * «Cambiemos el tocar el centro donde está ULTRON: darle click y nos
+   * escuche, se pone en verde y aparezca "te estoy escuchando"; y si vuelvo a
+   * tocar el centro lo interrumpo para que me escuche nuevamente.»
+   *
+   * El centro es lo más grande de la pantalla y hasta ahora solo giraba. Es el
+   * botón que cualquiera busca primero, y ahora es el que hace lo único que
+   * importa: hablarle. El verde y el rótulo ya los pone `estado('listen')`.
+   *
+   * INTERRUMPIR ES LO MISMO QUE EMPEZAR. Si está hablando, el toque lo calla y
+   * abre el micrófono en el mismo gesto — no hay que tocar dos veces ni buscar
+   * otro botón. Es la versión a mano de lo que el vigilante del micrófono ya
+   * hace con la voz.
+   */
+  function toqueNucleo() {
+    despertarVoz();                       // el toque ES el gesto que da permiso
+    if (mente.state === 'listen') { orejaApagar(); avisar('Micrófono cerrado.'); return; }
+    /* Hablando o pensando: se calla lo que esté sonando —la respuesta y las
+       muletillas— y se escucha. Lo que ya estaba pensado sigue llegando a la
+       pantalla; lo que no se hace es seguir hablándole encima. */
+    if (locutor?.ocupado || mente.state === 'speak' || mente.state === 'think') {
+      pararMuletillas();
+      try { locutor?.callar(); } catch { /* ya estaba callado */ }
+    }
+    escucharYa();
+  }
+
+  /** Abrir el micrófono para un turno, y dejar la oreja encendida. */
+  function escucharYa() {
+    if (!VOZ.hayOido?.()) { avisar('Este navegador no trae reconocimiento de voz. En Chrome sí funciona.', true); return; }
+    micAutorizado = true;
+    despierta = true;
+    $('#oreja')?.setAttribute('aria-pressed', 'true');
+    dictar(volverAEscuchar);
   }
   function orejaApagar() {
     despierta = false;
@@ -1606,6 +1822,60 @@ const OS = (() => {
     } catch { /* sin saludo se entra igual */ }
   }
 
+  /* ══ LOS DOS PERMISOS, AL ENTRAR ═══════════════════════════════════════════
+   * «Necesito que apenas entramos a la página pida los permisos de micrófono y
+   * ubicación, para dar el clima y poner bien la ubicación.»
+   *
+   * Los dos se piden UNA VEZ, nada más entrar, y con este orden y este motivo:
+   *
+   *   EL MICRÓFONO va primero porque hay una ventana que se cierra. El
+   *   navegador solo deja pedirlo poco después de que la persona tocó algo, y
+   *   el último toque fue el botón de entrar. Si se pide más tarde —cuando
+   *   ULTRON terminó de saludar, que es lo que se hacía— Safari lo rechaza sin
+   *   preguntar y la conversación nunca se abre sola. Se pide, se comprueba
+   *   que hay micrófono, y se SUELTA en el acto: lo que queríamos era el
+   *   permiso, no la grabación. La luz del micrófono no se queda encendida.
+   *
+   *   LA UBICACIÓN después, y no la pide el navegador dos veces a la vez: dos
+   *   carteles encima del saludo es la manera más rápida de que alguien le dé
+   *   a «bloquear» a los dos.
+   *
+   * Si dicen que no, no pasa nada y no se vuelve a insistir en esta visita: el
+   * micrófono sigue estando en su botón y el clima, en el sitio de Ajustes.
+   */
+  async function pedirPermisos() {
+    /* Ya concedido de antes: ni se pregunta ni se abre el micrófono para nada. */
+    if (!(await micYaConcedido())) {
+      try {
+        const cinta = await navigator.mediaDevices?.getUserMedia?.({ audio: true });
+        cinta?.getTracks?.().forEach((t) => t.stop());     // el permiso, no la grabación
+        micAutorizado = true;
+      } catch { /* dijo que no, o no hay micrófono: se sigue igual */ }
+    }
+    ubicacion();
+  }
+
+  /* La ubicación va al servidor y de ahí al clima del saludo. Lo que se guarda
+     son tres decimales —cien metros—: basta para el tiempo y no deja escrito en
+     una base en qué parte de la casa está. */
+  function ubicacion() {
+    if (!navigator.geolocation) return;
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        const { latitude: lat, longitude: lon } = pos.coords || {};
+        if (!Number.isFinite(lat) || !Number.isFinite(lon)) return;
+        try {
+          await guardarPreferencia({ coords: { lat, lon } });
+          /* El saludo ya se dijo con el sitio viejo; no se repite entero, pero
+             sí se corrige el clima en la pantalla la próxima vez que se abra.
+             Aquí solo se deja constancia de que se supo dónde está. */
+        } catch { /* si no se pudo guardar, el clima usa el sitio de Ajustes */ }
+      },
+      () => { /* dijo que no o no se pudo medir: el sitio de Ajustes sigue valiendo */ },
+      { enableHighAccuracy: false, timeout: 12_000, maximumAge: 10 * 60 * 1000 },
+    );
+  }
+
   /* Abre el turno cuando ULTRON deja de hablar. Con un respiro corto, para no
      grabar la cola de su propia voz saliendo del altavoz. */
   function esperarYEscuchar() {
@@ -1634,6 +1904,16 @@ const OS = (() => {
       DATOS.get('/salud/profunda').then(pintarSaludPropia).catch(() => pintarSaludPropia(null));
     };
     leer();
+    $('#b-caja').addEventListener('click', leerCaja);
+    $('#registro').addEventListener('click', (e) => {
+      const b = e.target.closest('[data-dia]'); if (!b || !b.dataset.conv) return;
+      abrirDia(b.dataset.dia, b.dataset.conv);
+    });
+    $('#archivos').addEventListener('click', (e) => {
+      const b = e.target.closest('[data-borrar]'); if (!b) return;
+      e.preventDefault();
+      borrarArchivo(b.dataset.borrar, b.dataset.nombre);
+    });
     $('#autorizaciones').addEventListener('click', (e) => {
       const b = e.target.closest('[data-decision]'); if (!b) return;
       const id = b.closest('.pedido')?.dataset.id; if (!id) return;
@@ -1671,6 +1951,14 @@ const OS = (() => {
     setInterval(() => { if (!document.hidden) leer(); }, 30000);
     document.addEventListener('visibilitychange', () => { if (!document.hidden) leer(); });
     cargarArchivos();
+    /* La caja se lee UNA vez al entrar y después solo a mano: son cuatro
+       lecturas de cadena y no se piden en bucle por tener la pantalla abierta. */
+    leerCaja();
+    cargarRegistro();
+    /* EL HILO DEL DÍA. Se adopta la conversación de hoy antes de saludar, así
+       lo primero que se escriba sigue lo de esta mañana en vez de abrir una
+       conversación nueva por haber recargado la página. */
+    DATOS.get('/conversaciones/hoy').then((c) => { if (c?._id) conversacionId = c._id; }).catch(() => {});
     saludar();
 
     // ── escribir
@@ -1693,6 +1981,27 @@ const OS = (() => {
 
     // ── los mandos
     $('#micro').addEventListener('click', () => { despertarVoz(); dictar(); });
+
+    /* ── EL CENTRO SE TOCA ────────────────────────────────────────────────
+       El lienzo se reemplaza al cambiar de figura (núcleo ↔ busto), así que
+       el oyente NO va en el lienzo: va en el documento y mira quién recibió
+       el toque. Un oyente puesto sobre un elemento que se sustituye deja de
+       existir sin que nadie lo note.
+
+       Y hay que distinguir un TOQUE de un ARRASTRE: el mismo lienzo gira con
+       el dedo, y girar no puede abrir el micrófono. Un toque es poco
+       movimiento y poco tiempo; lo demás es un giro. */
+    const enElNucleo = (t) => !!t && (t.id === 'holo' || t.id === 'centro');
+    let toque = null;
+    addEventListener('pointerdown', (e) => {
+      toque = enElNucleo(e.target) ? { x: e.clientX, y: e.clientY, t: Date.now() } : null;
+    }, true);
+    addEventListener('pointerup', (e) => {
+      const p0 = toque; toque = null;
+      if (!p0 || !enElNucleo(e.target)) return;
+      if (Math.hypot(e.clientX - p0.x, e.clientY - p0.y) > 10 || Date.now() - p0.t > 600) return;  // fue un giro
+      toqueNucleo();
+    }, true);
     $('#oreja').addEventListener('click', () => (despierta ? orejaApagar() : orejaEncender()));
     /* El rótulo del botón no puede prometer una palabra que despierta en un
        aparato donde no la hay. */
@@ -1824,13 +2133,21 @@ const OS = (() => {
      escribir su clave arrancaba el tablero antes de entrar. */
   let yaArranco = false;
   const unaVez = () => { if (yaArranco) return; yaArranco = true; arrancar(); };
+  document.addEventListener('ultron:adentro', () => {
+    unaVez();
+    /* Los permisos se piden AQUÍ y no dentro de `arrancar()`: solo se piden
+       cuando se entró de verdad, nunca en una prueba que carga la consola
+       suelta, y en el mismo instante en que el toque de entrar todavía cuenta
+       como gesto para el navegador. */
+    pedirPermisos();
+  });
   document.addEventListener('ultron:adentro', unaVez);
   if (!document.getElementById('entrada')) {
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', unaVez);
     else unaVez();
   }
 
-  return { enviar, estado, avisar, mente, despertarVoz, abrirAjustes, _adentro: { pintarVivo, pintarSalud, pintarSaludPropia, pintarArchivos, pintarPendientes, pintarAutorizaciones, pintarDicho, DESPIERTA, CASAS, entrarArmar, salirArmar, aplicarTablero, tableroActual,
+  return { enviar, estado, avisar, mente, despertarVoz, abrirAjustes, _adentro: { pintarVivo, pintarSalud, pintarSaludPropia, pintarArchivos, pintarPendientes, pintarAutorizaciones, pintarDicho, DESPIERTA, CASAS, entrarArmar, salirArmar, aplicarTablero, tableroActual, toqueNucleo, pedirPermisos, pintarCaja, pintarRegistro, borrarArchivo,
     /* Solo para la prueba: mueve el reloj de la última lectura buena hacia
        atrás, para comprobar que la pantalla avisa cuando se queda vieja sin
        tener que esperar diez minutos de verdad. */

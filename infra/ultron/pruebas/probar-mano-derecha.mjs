@@ -336,8 +336,27 @@ titulo('los números, para que se entiendan al oírlos');
   decir(n.paraLaVoz('137/512 MB · 27 %') === '137 de 512 megas · 27 por ciento', 'las unidades se dicen como se hablan', n.paraLaVoz('137/512 MB · 27 %'));
   decir(n.paraLaVoz('1 ms') === '1 milisegundo', 'y en singular cuando es uno', n.paraLaVoz('1 ms'));
   decir(n.paraLaVoz('ORO 4,431 USD/oz') === 'ORO 4,431 dólares la onza', 'USD/oz no se deletrea', n.paraLaVoz('ORO 4,431 USD/oz'));
+  /* LOS MONTOS. «$1,250» leído donde está escrito sale «dólares mil
+     doscientos»: en español la moneda va detrás. */
+  decir(n.paraLaVoz('Son $1,250.00 en USDT') === 'Son 1,250 dólares en USDT', 'la moneda va detrás del número, como se habla', n.paraLaVoz('Son $1,250.00 en USDT'));
+  decir(n.paraLaVoz('L. 25,000') === '25,000 lempiras', 'la ele de los lempiras se dice, no se deletrea', n.paraLaVoz('L. 25,000'));
+  decir(n.paraLaVoz('Ver $5.') === 'Ver 5 dólares.', 'y la cifra no se come el punto de la frase', n.paraLaVoz('Ver $5.'));
+  decir(n.paraLaVoz('bloque 96 828') === 'bloque 96828', 'un separador de miles por espacio es UN número, no dos', n.paraLaVoz('bloque 96 828'));
+  decir(n.paraLaVoz('en 2 minutos 30 segundos') === 'en 2 minutos 30 segundos', 'y dos números que de verdad iban seguidos no se juntan');
+
+  /* LAS LISTAS. El «1.» termina en punto: el partidor de frases del panel lo
+     tomaba por una frase de dos letras y el texto del punto uno salía suelto y
+     sin número. Se dice como lo diría una persona leyendo una lista. */
+  const lista = n.estructura('## Lo que falta\n\n1. Fondear la caja.\n2. Revisar el gas.');
+  decir(/^Lo que falta\./.test(lista) && /Primero\. Fondear/.test(lista) && /Segundo\. Revisar/.test(lista),
+    'un título gana su punto y los números de una lista se dicen «primero», «segundo»', JSON.stringify(lista));
+  decir(n.estructura(lista) === lista, 'y pasarlo dos veces no cambia nada: en el panel el texto llega a trozos');
+  decir(/^First\./.test(n.estructura('1. Fund the box.', 'en')), 'en inglés, «first»', n.estructura('1. Fund the box.', 'en'));
+
   const voz = require('../lib/voz.js');
   decir(voz.paraDecir('**El ORIGEN** a `2.5902` USD') === 'El ORIGEN a 2.59 dólares', 'y la voz lo aplica sobre el markdown ya limpio', voz.paraDecir('**El ORIGEN** a `2.5902` USD'));
+  decir(voz.paraDecir('## Total\n\n1. Fondear con $1,250.00.') === 'Total. Primero. Fondear con 1,250 dólares.',
+    'y la voz junta las dos cosas: estructura primero, números después', voz.paraDecir('## Total\n\n1. Fondear con $1,250.00.'));
 }
 
 // ── LAS SESIONES: dónde está abierto, y poder cerrarlo desde lejos ─────────
@@ -389,6 +408,60 @@ titulo('las preferencias: idioma, voz y figura, guardadas con su correo');
     'y lo que llegue de la pantalla se limpia: sin columnas inventadas, sin pesos que rompan la rejilla, sin repetidos',
     JSON.stringify(sucio));
   await pref.guardar('jose@ordenglobal.org', { idioma: 'es', figura: 'nucleo', vozId: null, tablero: [] });
+}
+
+// ── EL REGISTRO POR DÍA ─────────────────────────────────────────────────────
+titulo('el registro: una conversación por día, y salir no la parte');
+{
+  const mem = require('../lib/memoria.js');
+  const quien = 'registro@ordenglobal.org';
+  const a = await mem.conversacionDelDia(quien, {});
+  decir(a.yaExistia === false, 'la primera del día se abre');
+  await mem.anotarTurno(a._id, quien, { rol: 'miembro', texto: 'buenos días' });
+  await mem.anotarTurno(a._id, quien, { rol: 'ultron', texto: 'buenos días, señor José' });
+  /* Y AQUÍ ESTÁ LO QUE PIDIÓ: salir y volver. Antes esto abría una
+     conversación nueva, el día quedaba partido en trozos y el cerebro perdía
+     el contexto de la mañana. */
+  const b = await mem.conversacionDelDia(quien, {});
+  decir(String(b._id) === String(a._id) && b.yaExistia === true,
+    'volver más tarde SIGUE la misma del día, no abre otra', `${String(a._id).slice(-6)} vs ${String(b._id).slice(-6)}`);
+  const reg = await mem.registroPorDia(quien);
+  decir(reg.length === 1 && reg[0].dia === mem.diaDe() && reg[0].turnos === 2,
+    'y el registro lo agrupa por día con sus turnos', JSON.stringify(reg[0]).slice(0, 110));
+  /* El día es el de HONDURAS, no el del servidor: un dyno en UTC cambia de día
+     a las seis de la tarde de Tegucigalpa y partiría la conversación a media
+     tarde, que es peor que no partirla nunca. */
+  const bordes = mem.bordesDelDia('2026-09-06');
+  decir(bordes.desde.toISOString() === '2026-09-06T06:00:00.000Z' && bordes.hasta.toISOString() === '2026-09-07T06:00:00.000Z',
+    'el día empieza a medianoche EN HONDURAS, no en UTC', `${bordes.desde.toISOString()} → ${bordes.hasta.toISOString()}`);
+  const otra = await mem.conversacionDelDia(quien, { canal: 'whatsapp' });
+  decir(String(otra._id) !== String(a._id), 'y cada canal lleva su propio hilo: el panel no se mezcla con WhatsApp');
+}
+
+// ── DÓNDE ESTÁ, PARA EL CLIMA ───────────────────────────────────────────────
+titulo('la ubicación: el clima de donde está, no del sitio escrito');
+{
+  const mundo = require('../lib/mundo.js');
+  decir(/Roatán/.test(mundo.porCoordenadas(16.31, -86.52).nombre || ''),
+    'unas coordenadas cerca de un sitio de la casa SON ese sitio, sin preguntarle a nadie',
+    mundo.porCoordenadas(16.31, -86.52).nombre);
+  const lejos = mundo.porCoordenadas(40.41, -3.70);
+  decir(lejos.nombre === null && lejos.zona === 'auto',
+    'y uno lejos no se inventa: se mide con la zona que devuelva el servicio', JSON.stringify(lejos));
+  decir(mundo.sonCoordenadas({ lat: 16.3, lon: -86.5 }) && !mundo.sonCoordenadas({ lat: 'x', lon: 2 }) && !mundo.sonCoordenadas({ lat: 999, lon: 0 }),
+    'lo que no son coordenadas no pasa por coordenadas');
+
+  const pref = require('../lib/preferencias.js');
+  const conUbicacion = await pref.guardar('ubica@ordenglobal.org', { lugar: 'Tegucigalpa', coords: { lat: 16.3229, lon: -86.53605 } });
+  decir(conUbicacion.coords.lat === 16.323 && conUbicacion.coords.lon === -86.536,
+    'se guardan tres decimales —cien metros—: basta para el tiempo y no dice en qué cuarto está', JSON.stringify(conUbicacion.coords));
+  const l = pref.lugarDelClima(conUbicacion);
+  decir(typeof l === 'object' && l.lat === 16.323, 'con ubicación fresca, el clima va por ella y no por el sitio escrito');
+  const vieja = { lugar: 'Tegucigalpa', coords: { lat: 16.3, lon: -86.5, cuando: new Date(Date.now() - 20 * 3600 * 1000) } };
+  decir(pref.lugarDelClima(vieja) === 'Tegucigalpa',
+    'pasadas doce horas caduca y manda el sitio escrito: una ubicación de anteayer es peor que ninguna');
+  const sin = await pref.guardar('ubica@ordenglobal.org', { coords: null });
+  decir(sin.coords === null && pref.lugarDelClima(sin) === 'Tegucigalpa', 'y se puede decir que no la use');
 }
 
 // ── EL MUNDO DE AFUERA: la hora y el clima ──────────────────────────────────

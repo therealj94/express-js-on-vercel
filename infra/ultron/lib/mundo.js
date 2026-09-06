@@ -76,8 +76,55 @@ async function buscarLugar(texto) {
  * El tiempo de un lugar: ahora y los próximos días.
  * Devuelve texto listo para leer en voz alta.
  */
+/* ── DÓNDE ESTÁ, DE VERDAD ────────────────────────────────────────────────────
+ * «Que pida los permisos de ubicación para dar el clima y poner bien la
+ * ubicación.»
+ *
+ * El navegador da coordenadas, no nombres. Y un nombre hace falta: «hay 29
+ * grados» sin decir dónde no sirve de nada, y «en 16.32, -86.53» menos.
+ *
+ * Dos pasos, y ninguno pregunta a un tercero:
+ *   1. Si cae a menos de 60 km de un sitio de la casa, ES ese sitio. Cubre
+ *      Roatán, Tegucigalpa, San Pedro Sula, La Ceiba, Utila y Guanaja, que es
+ *      donde José está el 99 % de los días, y lo resuelve sin red.
+ *   2. Si no, se usa la zona horaria que devuelve el propio servicio del
+ *      tiempo: «America/Tegucigalpa» → «Tegucigalpa». No es la ciudad exacta,
+ *      pero es verdad y es útil, que es más de lo que da un geocodificador
+ *      inverso de pago.
+ * Lo que NO se hace es inventar un nombre bonito para unas coordenadas.
+ */
+const RADIO_CASA_KM = 60;
+function kmEntre(a, b) {
+  const R = 6371, r = Math.PI / 180;
+  const dLat = (b.lat - a.lat) * r, dLon = (b.lon - a.lon) * r;
+  const x = Math.sin(dLat / 2) ** 2 + Math.cos(a.lat * r) * Math.cos(b.lat * r) * Math.sin(dLon / 2) ** 2;
+  return 2 * R * Math.asin(Math.min(1, Math.sqrt(x)));
+}
+function porCoordenadas(lat, lon) {
+  let mejor = null;
+  for (const l of Object.values(LUGARES_DE_LA_CASA)) {
+    const d = kmEntre({ lat, lon }, l);
+    if (!mejor || d < mejor.d) mejor = { d, l };
+  }
+  if (mejor && mejor.d <= RADIO_CASA_KM) return { ...mejor.l, porCoordenadas: true };
+  return { nombre: null, lat, lon, zona: 'auto', porCoordenadas: true };
+}
+const sonCoordenadas = (x) => !!x && typeof x === 'object'
+  && Number.isFinite(Number(x.lat)) && Number.isFinite(Number(x.lon))
+  && Math.abs(Number(x.lat)) <= 90 && Math.abs(Number(x.lon)) <= 180;
+
+/** El lugar, venga como venga: un nombre escrito o unas coordenadas. */
+async function lugarDe(x) {
+  if (sonCoordenadas(x)) return porCoordenadas(Number(x.lat), Number(x.lon));
+  return buscarLugar(String(x || 'Tegucigalpa'));
+}
+/** Cómo se llama lo que se midió, cuando el sitio no tiene nombre propio. */
+const nombrarZona = (l, zonaDicha) => l.nombre
+  || String(zonaDicha || '').split('/').pop().replace(/_/g, ' ')
+  || 'su ubicación';
+
 async function clima({ lugar = 'Roatán', dias = 3 } = {}) {
-  const l = await buscarLugar(lugar);
+  const l = await lugarDe(lugar);
   const n = Math.min(7, Math.max(1, Number(dias) || 3));
   const d = await pedir(`https://api.open-meteo.com/v1/forecast?latitude=${l.lat}&longitude=${l.lon}`
     + '&current=temperature_2m,relative_humidity_2m,apparent_temperature,precipitation,weather_code,wind_speed_10m'
@@ -86,7 +133,7 @@ async function clima({ lugar = 'Roatán', dias = 3 } = {}) {
 
   const c = d.current || {};
   const lineas = [
-    `${l.nombre} · ahora (${c.time || 'sin hora'}, hora del lugar):`,
+    `${nombrarZona(l, d.timezone)} · ahora (${c.time || 'sin hora'}, hora del lugar):`,
     `  ${Math.round(c.temperature_2m)} °C, se sienten ${Math.round(c.apparent_temperature)} °C · ${cielo(c.weather_code)}`
     + ` · humedad ${c.relative_humidity_2m} % · viento ${Math.round(c.wind_speed_10m)} km/h`
     + (c.precipitation > 0 ? ` · lloviendo (${c.precipitation} mm)` : ''),
@@ -142,17 +189,18 @@ const ZONAS = {
  * fuentes: eso es para cuando se pregunta. Aquí solo «cómo está el día».
  */
 async function climaCorto(lugar = 'Tegucigalpa') {
-  const l = await buscarLugar(lugar);
+  const l = await lugarDe(lugar);
   const d = await pedir(`https://api.open-meteo.com/v1/forecast?latitude=${l.lat}&longitude=${l.lon}`
     + '&current=temperature_2m,weather_code&daily=temperature_2m_max,precipitation_probability_max'
     + `&timezone=${encodeURIComponent(l.zona)}&forecast_days=1`);
   const c = d.current || {}, dd = d.daily || {};
   if (typeof c.temperature_2m !== 'number') return null;
-  const donde = l.nombre.split(',')[0];
+  const donde = nombrarZona(l, d.timezone).split(',')[0];
   const lluvia = dd.precipitation_probability_max?.[0];
   return `En ${donde} hay ${Math.round(c.temperature_2m)} grados y está ${cielo(c.weather_code)}`
     + (typeof lluvia === 'number' && lluvia >= 40 ? `, con ${lluvia} por ciento de probabilidad de lluvia` : '')
     + '.';
 }
 
-module.exports = { clima, climaCorto, hora, buscarLugar, LUGARES_DE_LA_CASA, ZONAS, _adentro: { cielo, llano, pedir } };
+module.exports = { clima, climaCorto, hora, buscarLugar, lugarDe, porCoordenadas, sonCoordenadas,
+  LUGARES_DE_LA_CASA, ZONAS, _adentro: { cielo, llano, pedir, kmEntre, nombrarZona } };

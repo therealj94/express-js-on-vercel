@@ -493,6 +493,97 @@ titulo('el dueño: aprobar con un clic');
    «Revisemos que botón atrás tengamos.» En el teléfono, atrás es el gesto que
    más se usa, y antes se salía de ULTRON entero con el diálogo abierto detrás.
    Se comprueba con la vuelta atrás DE VERDAD del navegador, no con una tecla. */
+/* ── EL CENTRO SE TOCA ────────────────────────────────────────────────────────
+   «Darle click y nos escuche, se pone en verde y aparezca te estoy
+   escuchando; y si vuelvo a tocar el centro lo interrumpo.» */
+titulo('el centro: tocarlo abre el micrófono, y volver a tocarlo lo cierra');
+{
+  /* Chromium sin marca NO trae `webkitSpeechRecognition`, así que aquí se le
+     pone uno de mentira: lo que se comprueba es la CONDUCTA del toque —abre,
+     lo dice, se pone verde, y volver a tocar cierra—, no el reconocedor del
+     navegador, que es de Google y no es nuestro. */
+  await p.evaluate(() => {
+    /* `VOZ` es un `const` del guion: vive en el ámbito del script y no cuelga
+       de `window`, así que se toca por su nombre. */
+    VOZ.hayOido = () => true;
+    VOZ.oir = () => ({ abort() {} });
+  });
+  const rotulo = () => p.evaluate(() => document.querySelector('#estado-txt')?.textContent || '');
+  await p.evaluate(() => window.OS._adentro.toqueNucleo());
+  await p.waitForTimeout(500);
+  const r = await rotulo();
+  decir(/ESTOY ESCUCHANDO/.test(r), 'el toque abre el micrófono y lo DICE en primera persona', r);
+  const verde = await p.evaluate(() => getComputedStyle(document.querySelector('#estado')).color);
+  decir(/92, 242, 176/.test(verde), 'y el centro y el estado se ponen en verde', verde);
+  await p.evaluate(() => window.OS._adentro.toqueNucleo());
+  await p.waitForTimeout(400);
+  decir(!/ESTOY ESCUCHANDO/.test(await rotulo()), 'volver a tocarlo lo cierra', await rotulo());
+  /* Y girar NO puede abrir el micrófono: es el mismo lienzo y el mismo dedo. */
+  const caja = await p.$eval('#holo', (e) => { const b = e.getBoundingClientRect(); return { x: b.x + b.width / 2, y: b.y + b.height / 2 }; });
+  await p.mouse.move(caja.x, caja.y); await p.mouse.down();
+  await p.mouse.move(caja.x + 90, caja.y, { steps: 6 }); await p.mouse.up();
+  await p.waitForTimeout(400);
+  decir(!/ESTOY ESCUCHANDO/.test(await rotulo()), 'y arrastrar para girar NO lo abre: eso sería un micrófono que se enciende solo', await rotulo());
+}
+
+/* ── LOS DOS WIDGETS NUEVOS ─────────────────────────────────────────────────── */
+titulo('la caja de Ordenex y el registro del día, en el tablero');
+{
+  decir(await p.$('.p[data-panel="caja"]') !== null, 'el tablero trae el panel de la caja de Ordenex');
+  decir(await p.$('.p[data-panel="registro"]') !== null, 'y el del registro de conversaciones');
+  /* Sin llave de Ordenex la caja NO puede leer. Lo que se comprueba es que lo
+     DIGA en vez de pintar ceros: un panel que pinta cero con la caja sin leer
+     es un panel que un día jura que no queda dinero. */
+  await p.evaluate(() => window.OS._adentro.pintarCaja({ error: 'No hay llave de administración de Ordenex.' }));
+  const t = await p.$eval('#caja-ox', (e) => e.innerText);
+  decir(/llave de administración/.test(t) && !/\b0\b/.test(t), 'sin llave, la caja dice qué falta y NO pinta ceros', t.slice(0, 90));
+  /* Y con datos, cada cifra en su sitio y ninguna inventada. */
+  await p.evaluate(() => window.OS._adentro.pintarCaja({
+    ok: true, cuando: new Date().toISOString(),
+    caliente: { ok: true, direccion: '0xabc', saldos: [{ simbolo: 'ORIGEN', cantidad: '412000' }, { simbolo: 'AUKA', cantidad: '0' }] },
+    pagadora: [{ red: 'BNB Smart Chain', usdt: 10.5, enVuelo: 0, gasNativo: 0.004, ventasQueQuedan: 141, alcanza: true }],
+    gas: [{ red: 'Polygon', ok: false }],
+    comision: { saldos: [{ activo: 'USDT', cantidad: 3.4 }], deRetiros: 12, ppm: 1000 },
+    movimiento: { ordenesAbiertas: 2, retirosPendientes: 0, retirosEnRevision: 1, compraEncendida: true, ventaEncendida: false },
+    faltan: [],
+  }));
+  const c = await p.$eval('#caja-ox', (e) => e.innerText);
+  decir(/412000/.test(c) && /10\.50/.test(c), 'con datos, el ORIGEN de la caliente y los USDT de la pagadora', c.replace(/\n/g, ' · ').slice(0, 120));
+  decir(/141 ventas/.test(c), 'y el gas se mide en VENTAS que quedan, no en monedas que nadie sabe leer');
+  decir(/no leído/.test(c), 'lo que no se pudo leer dice «no leído», nunca cero');
+  decir(/EN REVISIÓN/.test(c), 'y un retiro en revisión —un débito en pie que nadie sabe si salió— se ve');
+
+  await p.evaluate(() => window.OS._adentro.pintarRegistro({
+    hoy: '2026-09-06',
+    dias: [{ dia: '2026-09-06', turnos: 8, conversaciones: [{ _id: 'a1', titulo: 'La caja de Ordenex', turnos: 8 }] },
+      { dia: '2026-09-05', turnos: 3, conversaciones: [{ _id: 'a2', titulo: 'El nodo de la tarjeta', turnos: 3 }] }],
+  }));
+  const g = await p.$eval('#registro', (e) => e.innerText);
+  decir(/HOY/.test(g) && /5 sep/.test(g), 'el registro se lista por DÍA, que es de lo que uno se acuerda', g.replace(/\n/g, ' · '));
+  decir(/8 turnos/.test(g), 'con cuántos turnos tuvo cada día');
+}
+
+/* ── BORRAR UN DOCUMENTO ────────────────────────────────────────────────────── */
+titulo('los documentos entrantes se pueden borrar');
+{
+  /* Las peticiones van DENTRO de la página: la sesión es una galleta de este
+     origen y desde node habría que copiarla a mano. */
+  const cuantos = () => p.evaluate(async () => (await (await fetch('/archivos', { credentials: 'same-origin' })).json()).length);
+  const antes = await cuantos();
+  decir(antes > 0, `hay ${antes} documento(s) de las pruebas de arriba`);
+  decir(await p.$('#archivos [data-borrar]') !== null, 'cada uno trae su botón de borrar');
+  /* Se borra por la ruta, que es exactamente lo que hace el botón: `confirm()`
+     no se puede contestar desde aquí sin acordarlo con el navegador, y lo que
+     importa comprobar es que el documento se va de verdad. */
+  const fue = await p.evaluate(async () => {
+    const id = document.querySelector('#archivos [data-borrar]').dataset.borrar;
+    const r = await fetch(`/archivos/${id}`, { method: 'DELETE', credentials: 'same-origin' });
+    return r.status;
+  });
+  const despues = await cuantos();
+  decir(fue === 200 && despues === antes - 1, 'y borrarlo lo saca de verdad, no solo de la pantalla', `${antes} → ${despues}`);
+}
+
 titulo('el botón de atrás cierra lo que esté encima, no ULTRON');
 {
   const url = p.url();

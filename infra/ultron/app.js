@@ -64,6 +64,7 @@ const avisos = require('./lib/avisos');
 const bitacora = require('./lib/bitacora');
 const sesiones = require('./lib/sesiones');
 const preferencias = require('./lib/preferencias');
+const caja = require('./lib/caja');
 const mundo = require('./lib/mundo');
 
 const app = express();
@@ -462,7 +463,11 @@ app.get('/saludo', puerta, async (req, res) => {
      con su plazo propio y corto: si Open-Meteo tarda, se saluda sin clima — un
      saludo que se hace esperar tres segundos deja de ser un saludo. */
   const pref = await preferencias.de(req.miembro.correo).catch(() => ({ lugar: 'Tegucigalpa' }));
-  const donde = pref.lugar || 'Tegucigalpa';
+  /* DÓNDE, de verdad: si el navegador dio la ubicación hace poco, esa manda
+     sobre el sitio escrito en Ajustes. José viaja a Roatán y darle el tiempo de
+     Tegucigalpa desde la isla es exactamente lo que vino a arreglar. Pasadas
+     doce horas la medida caduca y se vuelve al sitio elegido a mano. */
+  const donde = preferencias.lugarDelClima(pref);
   let clima = null;
   try {
     clima = await Promise.race([
@@ -473,7 +478,7 @@ app.get('/saludo', puerta, async (req, res) => {
 
   const texto = `${momento}, ${nombre}. ${clima ? `${clima} ` : ''}${partes.join(', ').replace(/^./, (c) => c.toUpperCase())}. `
     + 'Quedo a su disposición: ¿en qué le ayudo?';
-  res.json({ texto, nombre, hora, pendientes: n, clima, lugar: donde });
+  res.json({ texto, nombre, hora, pendientes: n, clima, lugar: typeof donde === 'string' ? donde : 'su ubicación' });
 });
 
 /* ── LAS HERRAMIENTAS, A LA VISTA Y A MANO ────────────────────────────────────
@@ -507,7 +512,31 @@ app.post('/herramientas/:nombre', puerta, frenoPensar, async (req, res) => {
    gasta la junta no es asunto de nadie más. */
 app.get('/gasto', puerta, async (req, res) => res.json(await memoria.gasto()));
 
+/* ── LA CAJA DE ORDENEX, PARA EL PANEL ────────────────────────────────────────
+   El mismo dato que la herramienta `ordenex_caja`, en crudo: el panel lo pinta
+   y ULTRON lo cuenta. Va con plazo largo porque del otro lado hay cuatro
+   lecturas de cadena, y sin caché: si alguien toca ACTUALIZAR es justamente
+   porque quiere el número de ahora. */
+app.get('/ordenex/caja', puerta, async (req, res) => {
+  try { res.json(await caja.leer()); }
+  catch (e) { res.status(e.http === 401 || e.http === 403 ? 502 : 503).json({ error: e.message, codigo: e.codigo || 'CAJA' }); }
+});
+
 app.get('/conversaciones', puerta, async (req, res) => res.json(await memoria.conversacionesDe(req.miembro.correo)));
+/* EL REGISTRO POR DÍA, que es como se busca una conversación: nadie se acuerda
+   del título, se acuerda del día. */
+app.get('/conversaciones/registro', puerta, async (req, res) => {
+  try { res.json({ dias: await memoria.registroPorDia(req.miembro.correo, { dias: 30 }), hoy: memoria.diaDe() }); }
+  catch (e) { res.status(500).json({ error: e.message }); }
+});
+/* La de hoy, para que el panel siga el mismo hilo al recargar sin tener que
+   escribir nada primero. */
+app.get('/conversaciones/hoy', puerta, async (req, res) => {
+  try {
+    const c = await memoria.conversacionDelDia(req.miembro.correo, { canal: 'panel' });
+    res.json({ _id: String(c._id), titulo: c.titulo || null, turnos: (c.turnos || []).length, yaExistia: !!c.yaExistia });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
 app.get('/conversaciones/:id', puerta, async (req, res) => {
   const c = await memoria.conversacion(req.params.id, req.miembro.correo);
   if (!c) return res.status(404).json({ error: 'No existe.', codigo: 'NO_EXISTE' });
@@ -534,8 +563,13 @@ app.post('/pensar', puerta, frenoPensar, async (req, res) => {
     let convId = req.body?.conversacionId ? String(req.body.conversacionId) : null;
     let nueva = false;
     if (!convId || !(await memoria.conversacion(convId, req.miembro.correo))) {
-      const c = await memoria.abrirConversacion(req.miembro.correo, { canal: 'panel' });
-      convId = String(c._id); nueva = true;
+      /* LA DEL DÍA, no una nueva. Recargar la página, cerrar la pestaña o
+         volver por la tarde abría una conversación distinta cada vez: el día
+         quedaba partido en trozos sueltos y —lo que más pesa— el cerebro leía
+         la conversación anterior para tener contexto, así que al volver del
+         almuerzo ULTRON no se acordaba de la mañana. */
+      const c = await memoria.conversacionDelDia(req.miembro.correo, { canal: 'panel' });
+      convId = String(c._id); nueva = !c.yaExistia;
     }
     emitir('inicio', { conversacionId: convId, nueva });
     await memoria.anotarTurno(convId, req.miembro.correo, { rol: 'miembro', texto });
@@ -888,7 +922,18 @@ app.post('/sesiones/cerrar-otras', puerta, async (req, res) => {
   catch (e) { res.status(500).json({ error: e.message }); }
 });
 app.get('/preferencias', puerta, async (req, res) => {
-  try { res.json({ ...(await preferencias.de(req.miembro.correo)), sugeridas: preferencias.VOCES_SUGERIDAS, vozDeLaCasa: voz.VOZ }); }
+  try {
+    const p = await preferencias.de(req.miembro.correo);
+    /* Cómo se llama el sitio que se midió, para poder ENSEÑARLO en Ajustes. Se
+       resuelve sin red cuando cae cerca de un sitio de la casa, que es el 99 %
+       de los días; si no, se dicen las coordenadas, que es la verdad. */
+    let donde = null;
+    if (preferencias.coordsFrescas(p.coords)) {
+      const l = mundo.porCoordenadas(p.coords.lat, p.coords.lon);
+      donde = l.nombre || `${p.coords.lat}, ${p.coords.lon}`;
+    }
+    res.json({ ...p, donde, sugeridas: preferencias.VOCES_SUGERIDAS, vozDeLaCasa: voz.VOZ });
+  }
   catch (e) { res.status(500).json({ error: e.message }); }
 });
 app.post('/preferencias', puerta, express.json({ limit: '8kb' }), async (req, res) => {
