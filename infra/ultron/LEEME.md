@@ -21,11 +21,13 @@ node app.js                  # http://localhost:3900
 | **El estado vivo** | Ordenex, AuCorp, Veta Wallet, Genesis ID, OrdenScan y el precio del ORIGEN, leídos de sus rutas públicas cada 30 s. Cada pata falla sola. | `lib/vivo.js` |
 | **La memoria** | Lo que la junta le dice (por miembro o de toda la junta), los hilos y los documentos. Mongo; sin Mongo, provisional y lo dice. | `lib/memoria.js` |
 | **El cerebro** | **Dos, unas mismas manos.** El del **nodo** piensa con el modelo de AU-RA en nuestra tarjeta (`lib/cerebros/nodo.js`, por el motor de `nodo/`); el de **Claude** con Anthropic. `ULTRON_CEREBRO` elige; sin la variable, el nodo si está configurado. Streaming en los dos. | `lib/cerebro.js` |
-| **Las manos** | Veintinueve herramientas compartidas por los dos cerebros: el saber, el estado vivo, internet, los mercados y las cadenas, la memoria, los pendientes, la biblioteca, quién es quién en la junta, y las tres que preparan y no mandan — abrir, exportar a PDF y proponer un envío. En una misma vuelta, las que leen corren a la vez y las que escriben en fila. | `lib/herramientas.js` |
+| **Las manos** | Cincuenta y ocho herramientas compartidas por los dos cerebros: el saber, el estado vivo, internet, los mercados y las cadenas, la memoria, los pendientes, la biblioteca, quién es quién en la junta, y las tres que preparan y no mandan — abrir, exportar a PDF y proponer un envío. En una misma vuelta, las que leen corren a la vez y las que escriben en fila. | `lib/herramientas.js` |
 | **El motor del nodo** | La única puerta hacia el modelo: TLS propio, secreto, solo `/api/chat` y `/api/tags`, y FIJA el modelo y el contexto a los de AU-RA para no desalojarla nunca. Se instala por SSM con `nodo/desplegar-motor.py`. | `nodo/` |
 | **Los canales** | WhatsApp por Zernio (la misma línea de AU-RA) y correo por SES (el mismo remitente de siempre). **Solo a la junta**, y **solo con una persona confirmando**. | `lib/canales.js` |
 | **La voz** | ElevenLabs, con la llave en el servidor; sin llave, la voz del navegador. | `lib/voz.js` |
 | **El panel** | La presencia: una persona de luz —busto de partículas, ojos que parpadean, el núcleo en el pecho— con los datos vivos del ecosistema orbitando alrededor. Al entrar, el hero: la figura grande y el saludo por nombre escribiéndose. **Conversar**: escucha, contesta con voz y vuelve a escuchar. Gestos: respira, ladea la cabeza oyendo, se recoge pensando, asiente hablando. Y la conversación, el pulso, los pendientes, la memoria, la biblioteca, los hilos. Un archivo. | `public/index.html` |
+| **ULTRON OS** | El sistema operativo del ecosistema, en una pantalla: el **núcleo** en el centro —lienzo 2D, late con la envolvente real de la voz—, ocho paneles con las cifras vivas (salud propia, enlaces, mercado, cerebro, integridad · ecosistema, documentos, pendientes, el dueño), el muelle de las casas y la caja de hablar. En el teléfono los paneles pasan a un cajón. | `public/os.html`, `public/js/os-nucleo.js` |
+| **La salud propia** | Nueve signos de ULTRON mismo cada cinco minutos, una nota de 0 a 100 guardada en la base, y **reparación sola** de lo que es interno y reversible. Incluye el relevo del cerebro al respaldo cuando el nodo no contesta. | `lib/salud.js` |
 | **El saludo** | `GET /saludo`: por su nombre, con la hora de Honduras y con lo que hay. Determinista: sale al instante y no puede irse a otro idioma. | `app.js` |
 
 ## La consola
@@ -38,7 +40,7 @@ Global) y registro institucional en cada palabra.
 | --- | --- |
 | Despacho | La conversación. Cada consulta que ULTRON hace a la casa aparece en el hilo como un registro con su entrada y su salida, antes de la respuesta. Texto en vivo, voz frase por frase, dictado y conversación continua. |
 | Ecosistema | Una tarjeta por casa, leída de su servicio. Lo que no se pudo leer se dice. |
-| Instrumentos | El catálogo entero (29) agrupado por lo que toca, cada uno ejecutable a mano por `POST /herramientas/:nombre`: corre la misma función que usa el modelo. |
+| Instrumentos | El catálogo entero (58) agrupado por lo que toca, cada uno ejecutable a mano por `POST /herramientas/:nombre`: corre la misma función que usa el modelo. |
 | Pendientes y memoria · Biblioteca · Bitácora | El registro de la Junta. |
 | La Junta · Ajustes | Los miembros y sus canales; la voz y el estado de la plataforma. |
 
@@ -105,6 +107,9 @@ Comparten también **lo demás**:
 | `ULTRON_REPOS` | Los repositorios de la casa, separados por coma. Por omisión `therealj94/express-js-on-vercel`. | no |
 | `ULTRON_APP` | La app de Heroku que se despliega a sí misma. Por omisión `ultron-fp`. | no |
 | `ULTRON_EQUIPO`, `ULTRON_EQUIPO_TOPE` | `on` enciende el reloj de los bots; el tope de vueltas al día (12). Sin la primera, los bots se corren a mano. | no |
+| `SALUD_CADA_MS` | Cada cuánto se mira ULTRON a sí mismo (por omisión 5 min) | no |
+| `ULTRON_RAM_MB` | El límite de memoria del dyno, para la nota (por omisión 512) | no |
+| `ULTRON_RELEVO_MS` | Cuánto dura el relevo del cerebro a Claude (por omisión 10 min) | no |
 | `ULTRON_AVISOS` | `whatsapp`, `correo` o `ambos`: el vigía avisa a la junta cuando una casa cae o vuelve. Sin ella mide y recuerda, pero no manda nada. | no |
 
 **Ninguna llave va en el código ni en el repositorio.** Se ponen en Heroku.
@@ -170,6 +175,8 @@ Las manos (`lib/taller.js`, `lib/boveda.js`, `lib/aprender.js`, `lib/equipo.js`)
 | Operaciones | `heroku_apps`, `heroku_registro` (con las llaves tapadas), `heroku_variables` (nombres y largos), `nodos` | leer |
 | | `heroku_reiniciar`, `nodo_comando` (un comando en node1…node7 por SSM, plazo 90 s) | peligroso |
 | Las bases | `mongo_consultar` — solo lectura, con la URI de la bóveda (`<APP>__MONGODB_URI`) y los campos sensibles tapados | leer |
+| Su propia salud | `salud_revisar` (nueve signos y una nota), `salud_historial` | leer |
+| | `salud_reparar` — reconectar, relevar, rearrancar, soltar cachés, cerrar pedidos olvidados | escribir |
 
 **El valor de un secreto no pasa por el modelo. Nunca.** Entra por el
 formulario de la bóveda del panel (solo el dueño), se cifra con AES-256-GCM
@@ -177,16 +184,16 @@ antes de tocar la base, y sale por un solo camino: hacia una variable de
 Heroku, con autorización.
 
 **Las habilidades** son archivos markdown en `habilidades/` con un encabezado
-(`nombre`, `cuando`), como las skills de Claude. Hay once de fábrica:
+(`nombre`, `cuando`), como las skills de Claude. Hay doce de fábrica:
 investigar a fondo, proponer un cambio de código, revisar la seguridad, el
 parte del día, diagnosticar una casa caída, rotar un secreto, desplegar con
 seguridad, escribir para la junta, responder a un incidente, preparar una
-reunión de junta y hablar con los nodos. ULTRON ve la lista y carga
+reunión de junta, hablar con los nodos y cuidar a ULTRON. ULTRON ve la lista y carga
 una entera cuando la tarea lo pide. Las que escribe él van a la base; si el
 dueño aprueba, se publican al repositorio como PR.
 
-**El equipo** son bots en `equipo/`: centinela (cada 6 h), cerrajero (cada
-semana), contador y cronista (cada día). Cada uno tiene su tarea y su lista de
+**El equipo** son bots en `equipo/`: médico (cada hora), centinela (cada 6 h),
+cerrajero (cada semana), contador y cronista (cada día). Cada uno tiene su tarea y su lista de
 herramientas; leen, y solo escriben memorias y pendientes. Sus partes se leen
 en el panel. El reloj arranca apagado (`ULTRON_EQUIPO=on`), con tope diario.
 
@@ -198,6 +205,34 @@ NO entran, a propósito: no se rotan por ULTRON y duplicarlas no gana nada.
 **El vigía** (`lib/vigia.js`) mide las seis casas cada minuto desde el servidor
 —aunque nadie mire—, exige dos lecturas fallidas antes de declarar una caída y
 recuerda desde cuándo. Avisa a la junta solo con `ULTRON_AVISOS`.
+
+## La salud propia, y que se repare solo
+
+El vigía mira las seis casas. `lib/salud.js` mira **a ULTRON**, que es lo que
+faltaba: si el que vigila se cae, nadie avisa de nada. Cada cinco minutos toma
+nueve signos —memoria del proceso contra el límite del dyno, retraso del bucle
+de eventos, ping a Mongo, cerebro (y si está de relevo), vigía, equipo, puerta,
+autorizaciones que nadie contestó, y fallos repetidos de la última hora— y saca
+una nota de 0 a 100 que se guarda en la base, así que se puede decir «lleva tres
+días bajando» y no solo «ahora está mal».
+
+**Lo que se arregla solo**, sin preguntar, porque preguntar tarda horas y no
+hacerlo deja a ULTRON mudo: reconectar Mongo, relevar el cerebro, rearrancar el
+vigía o el equipo, soltar cachés cuando la memoria aprieta, cerrar los pedidos
+de autorización que llevan más de dos horas sin contestar. **Lo que no**:
+reiniciar el dyno, borrar archivos, rotar secretos, tocar variables de
+producción — eso se anota como pendiente y lo decide una persona.
+
+**El relevo del cerebro** (`lib/cerebro.js`) es la pieza que más cambia el día a
+día. Antes, `cual()` elegía el nodo con solo mirar si las variables estaban
+PUESTAS, no si el nodo CONTESTABA: con la tarjeta apagada ULTRON quedaba mudo
+teniendo la llave de Anthropic al lado sin usar. Ahora, si el nodo no contesta
+—o tarda, o Ollama está caído— Claude cubre **ese mismo turno**, queda de
+guardia diez minutos (`ULTRON_RELEVO_MS`) y se vuelve al nodo solo en cuanto
+revive. El panel dice cuándo está de relevo y por qué.
+
+**El médico** (`equipo/medico.md`, cada hora) corre esa revisión, aplica las
+reparaciones y escribe un parte. Si no hay nada, su parte es una línea.
 
 ## Desplegar
 
