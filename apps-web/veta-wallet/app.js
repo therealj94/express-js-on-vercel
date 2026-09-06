@@ -5926,10 +5926,10 @@ const VETA = (() => {
      se puede contestar: «¿esto que estoy viendo es lo último que subimos, o
      mi navegador se quedó con una copia vieja?». La ficha de Ajustes lo
      enseña, y con eso se sabe. */
-  const VETA_V = '37ce25d683';
-  const VETA_FECHA = '2026-09-05';
+  const VETA_V = '3b40de2c31';
+  const VETA_FECHA = '2026-09-06';
 
-  const AET_V = '94968b8cba';
+  const AET_V = 'fc53e9b8bf';
 
   function aetCargar() {
     if (aetCarga) return aetCarga;
