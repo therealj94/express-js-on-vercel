@@ -99,9 +99,17 @@ const OS = (() => {
 
   function pintarVivo(v) {
     ultimoVivo = v;
-    // ── el techo: las dos cadenas, con su nombre cada una
-    const b5550 = v?.ordenex?.bloque5550, b8532 = v?.ordenscan?.bloque8532;
-    $('#m-bloque').textContent = `5550 ${b5550 ? '#' + num(b5550) : nada} · 8532 ${b8532 ? '#' + num(b8532) : nada}`;
+    /* ── el techo: la altura de la cadena ────────────────────────────────────
+       CUIDADO CON LOS DOS NOMBRES. El tablero escribía «5550» a lo que dice
+       Ordenex y «8532» a lo que dice OrdenScan, como si fueran dos cadenas.
+       Medidas al mismo tiempo dan el MISMO número —96 805 y 96 805—, y el RPC
+       de la casa contesta `chainId 5550` a esa altura: es UNA cadena leída por
+       dos sitios, no dos. Así que aquí se nombra la cadena una vez y se dice
+       QUIÉN lo leyó; si los dos lectores se separan, eso es un dato de salud
+       (el explorador se quedó atrás) y sale abajo, en INTEGRIDAD. */
+    const bOx = v?.ordenex?.bloque5550, bSc = v?.ordenscan?.bloque8532;
+    const bloque = bOx ?? bSc;
+    $('#m-bloque').textContent = `CADENA 5550 · ${bloque ? '#' + num(bloque) : nada}`;
     /* La media de latencia SOLO sobre las casas que contestaron. Antes entraban
        también los ceros de las fallidas, así que con el ecosistema entero caído
        el techo publicaba «RPC 0 ms» — el mejor número posible en el peor momento
@@ -159,6 +167,13 @@ const OS = (() => {
         !auc?.sanciones ? NOSE : auc.sanciones.vencidas ? NO : SI],
       ['TASAS FIAT', auc?.tasas == null ? 'NO LEÍDO' : auc.tasas ? 'AL DÍA' : 'SIN ACTUALIZAR',
         auc?.tasas == null ? NOSE : auc.tasas ? SI : NO],
+      /* El explorador contra la cadena. Los dos leen la misma altura; si se
+         separan, OrdenScan se quedó atrás indexando y la web va a enseñar
+         bloques viejos. Es la clase de avería que no tumba nada y se nota
+         tarde: aquí sale antes de que la note un cliente. */
+      ['ORDENSCAN AL DÍA', (bOx == null || bSc == null) ? 'NO LEÍDO'
+        : Math.abs(bOx - bSc) <= 5 ? 'SÍ' : `${num(Math.abs(bOx - bSc))} bloques atrás`,
+      (bOx == null || bSc == null) ? NOSE : Math.abs(bOx - bSc) <= 5 ? SI : 'amb'],
     ];
     $('#integridad').innerHTML = int.map(([a, b, cl]) => fila(a, b, cl)).join('');
     $('#integridad-tag').textContent = faltan === 0 ? 'todas las casas contestan'
