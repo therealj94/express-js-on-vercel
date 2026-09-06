@@ -32,7 +32,11 @@ node app.js                  # http://localhost:3900
 
 ## Una sola puerta
 
-`https://ultron.ordenglobal.org` — un enlace, que no cambia. La raíz **es**
+`https://ultron.ordenglobal.link` — un enlace, que no cambia. (Se intentó
+primero en `ordenglobal.org`, pero ese dominio NO está delegado a Route 53 —sus
+nameservers son los de nivapixel—, así que un registro puesto ahí no lo ve
+nadie. `ordenglobal.link` sí está delegado a AWS y se pudo hacer entero desde
+aquí: dominio, CNAME y certificado.) La raíz **es**
 ULTRON OS: se llega, el núcleo despierta con la marca y el «powered by», se
 comprueba la casa y la sesión, y solo entonces se pide la llave. Todo en la
 misma pantalla, sin recargar y sin saltar entre páginas. El tablero queda
