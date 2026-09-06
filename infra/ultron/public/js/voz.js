@@ -88,6 +88,13 @@ const VOZ = (() => {
     }
     callar() {
       this.generacion++; this.cola = []; this.resto = '';
+      /* `corte()` es lo que cierra la sesión de `sonar()` que esté en marcha.
+         Sin esto se paraba el elemento con `pause()` —que NO dispara `ended`—,
+         así que el temporizador de la envolvente, que late a 40 Hz, seguía
+         corriendo para siempre y la promesa de `sonar()` no resolvía nunca.
+         Una conversación de treinta frases dejaba treinta temporizadores vivos
+         moviéndole la boca a nadie. */
+      this.corte?.();
       if (this.audio) { this.audio.pause(); this.audio.src = ''; this.audio = null; }
       if (window.speechSynthesis) speechSynthesis.cancel();
       this.sonando = false; this.alNivel?.(0);
@@ -139,8 +146,9 @@ const VOZ = (() => {
            sola. Nadie ve el salto y nadie se queda sin voz. */
         let real = null;
         window.BOCA?.envolvente(blob).then((e) => { real = e; }).catch(() => { /* la inventada sigue */ });
-        const soltar = () => { clearInterval(envolvente); URL.revokeObjectURL(url); this.alNivel?.(0); };
-        const fin = () => { soltar(); listo(); };
+        const soltar = () => { clearInterval(envolvente); envolvente = null; URL.revokeObjectURL(url); this.alNivel?.(0); };
+        const fin = () => { this.corte = null; soltar(); listo(); };
+        this.corte = fin;      // para que `callar()` pueda cerrar esta sesión
         a.onended = fin;
         a.onerror = () => { soltar(); this.conNavegador(texto, gen).then(listo); };
         a.onplaying = () => {

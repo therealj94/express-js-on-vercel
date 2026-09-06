@@ -45,6 +45,9 @@ const OS = (() => {
     let a = $('#aviso');
     if (!a) { a = document.createElement('div'); a.id = 'aviso'; document.body.appendChild(a); }
     a.textContent = txt; a.classList.toggle('mal', !!mal);
+    // El mismo aviso, para quien no lo ve: los avisos se creaban y se destruían
+    // sin `role`, así que ningún lector de pantalla los anunciaba.
+    const vv = $('#aviso-vivo'); if (vv) vv.textContent = txt;
     clearTimeout(avisoT); avisoT = setTimeout(() => a.remove(), mal ? 6500 : 3800);
   }
 
@@ -75,68 +78,176 @@ const OS = (() => {
     }).join('');
   }
 
+  /* ── TRES ESTADOS, NO DOS ───────────────────────────────────────────────────
+     «Está bien», «está mal» y «NO LO SÉ» son tres cosas distintas y el tablero
+     tiene que distinguirlas. Antes no lo hacía: en INTEGRIDAD, con AuCorp sin
+     contestar, SANCIONES salía en VERDE (porque `vencidas` era `undefined`, o
+     sea falso) y TASAS FIAT en ROJO. Tres ausencias, tres colores, ninguno
+     cierto. Un dato que no se leyó no se colorea nunca: va en gris y dice que
+     no se leyó. */
+  const SI = 'ok', NO = 'mal', NOSE = 'hueco';
+  const fila = (rotulo, valor, clase = '') =>
+    `<div class="fila"><span>${esc(rotulo)}</span><span class="${clase}">${esc(valor)}</span></div>`;
+
+  /* «hace 12 s» dice más que «03:41»: la pregunta de un tablero no es qué hora
+     era, es si esto es de ahora. */
+  const hace = (iso) => {
+    if (!iso) return null;
+    const s = Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 1000));
+    return s < 60 ? `hace ${s} s` : s < 3600 ? `hace ${Math.round(s / 60)} min` : `hace ${Math.round(s / 3600)} h`;
+  };
+
   function pintarVivo(v) {
     ultimoVivo = v;
-    // ── el techo
-    const bl = v?.ordenex?.bloque5550;
-    $('#m-bloque').textContent = `CADENA 5550 · ${bl ? '#' + num(bl) : nada}`;
-    const ms = [v?.ordenex?.ms, v?.aucorp?.ms, v?.genesis?.ms].filter((x) => typeof x === 'number');
+    // ── el techo: las dos cadenas, con su nombre cada una
+    const b5550 = v?.ordenex?.bloque5550, b8532 = v?.ordenscan?.bloque8532;
+    $('#m-bloque').textContent = `5550 ${b5550 ? '#' + num(b5550) : nada} · 8532 ${b8532 ? '#' + num(b8532) : nada}`;
+    /* La media de latencia SOLO sobre las casas que contestaron. Antes entraban
+       también los ceros de las fallidas, así que con el ecosistema entero caído
+       el techo publicaba «RPC 0 ms» — el mejor número posible en el peor momento
+       posible, que es justo el «número plausible» que este archivo jura no
+       imprimir. */
+    const ms = CASAS.map((c) => v?.[c.k]).filter((d) => d?.vivo && d.ms > 0).map((d) => d.ms);
     $('#m-rpc').textContent = ms.length ? Math.round(ms.reduce((a, b) => a + b, 0) / ms.length) : nada;
     $('#m-oro').textContent = v?.origen?.oroOnzaUsd ? `${num(v.origen.oroOnzaUsd, 0)} USD/oz` : nada;
 
-    // ── el ecosistema, casa por casa, con su latencia de verdad
+    /* ── el ecosistema, casa por casa ────────────────────────────────────────
+       Con el DESDE CUÁNDO, que es lo que convierte «está caída» en una
+       decisión: a las ocho de la mañana, «ORDENEX CAÍDA» no dice si lleva dos
+       minutos o nueve horas, y esa es exactamente la diferencia entre avisar al
+       equipo y avisar a los clientes. Lo recuerda el vigía del servidor, que
+       mide cada minuto aunque no haya nadie mirando la pantalla. */
+    const vg = v?.vigia?.casas || {};
     const filas = CASAS.map((c) => {
       const d = v?.[c.k];
-      if (!d) return `<div class="fila"><span>${esc(c.nb)}</span><span>${nada}</span></div>`;
-      const cl = d.vivo ? 'ok' : 'mal';
-      const txt = d.vivo ? `${d.ms} ms` : (d.http ? `HTTP ${d.http}` : 'CAÍDA');
-      return `<div class="fila"><span>${esc(c.nb)}</span><span class="${cl}">${esc(txt)}</span></div>`;
+      if (!d) return fila(c.nb, nada, NOSE);
+      if (d.vivo) return fila(c.nb, `${d.ms} ms`, SI);
+      const g = vg[c.k];
+      const cuanto = g && g.viva === false && g.desde ? ` · ${hace(g.desde)}` : '';
+      return fila(c.nb, (d.http ? `HTTP ${d.http}` : 'CAÍDA') + cuanto, NO);
     });
-    if (v?.origen?.origenUsd) filas.push(`<div class="fila"><span>ORIGEN</span><span class="on">${num(v.origen.origenUsd, 4)} USD</span></div>`);
+    /* El precio del ORIGEN se ENSEÑA SIEMPRE, con «—» cuando no se leyó. Antes
+       la fila desaparecía si no había precio: la ausencia del dato más mirado
+       de la casa era invisible, y una ausencia invisible se lee como que no
+       hacía falta. */
+    filas.push(v?.origen?.origenUsd
+      ? fila('ORIGEN', `${num(v.origen.origenUsd, 4)} USD`, 'on')
+      : fila('ORIGEN', 'sin referencia', NOSE));
     $('#eco').innerHTML = filas.join('');
     const vivas = CASAS.filter((c) => v?.[c.k]?.vivo).length;
-    $('#eco-sub').textContent = `${vivas} de ${CASAS.length} en pie · leído ${v?.leidoEn ? new Date(v.leidoEn).toLocaleTimeString('es-HN', { hour: '2-digit', minute: '2-digit' }) : nada}`;
-    $('#nervio-estado').textContent = vivas === CASAS.length ? 'Estado: SINCRONIZADO' : `Estado: ${CASAS.length - vivas} SIN RESPUESTA`;
-
-    // ── integridad
-    const int = [
-      ['CASAS EN PIE', `${vivas} / ${CASAS.length}`, vivas === CASAS.length ? 'ok' : 'mal'],
-      ['BLOQUE 5550', bl ? num(bl) : nada, ''],
-      ['COMPRA USDT', v?.ordenex?.compraUsdt ? String(v.ordenex.compraUsdt).toUpperCase() : nada, v?.ordenex?.compraUsdt === 'abierta' ? 'ok' : 'mal'],
-      ['SANCIONES', v?.aucorp?.sanciones?.registros ? num(v.aucorp.sanciones.registros) : nada, v?.aucorp?.sanciones?.vencidas ? 'mal' : 'ok'],
-      ['TASAS FIAT', v?.aucorp?.tasas ? 'AL DÍA' : nada, v?.aucorp?.tasas ? 'ok' : 'mal'],
-    ];
-    $('#integridad').innerHTML = int.map(([a, b, cl]) => `<div class="fila"><span>${a}</span><span class="${cl}">${esc(b)}</span></div>`).join('');
-    /* Que el rótulo diga el número de verdad: «hay una casa sin contestar» con
-       seis caídas es mentira, y una mentira pequeña en un tablero enseña a no
-       creerle al tablero. */
     const faltan = CASAS.length - vivas;
-    $('#integridad-tag').textContent = faltan === 0 ? 'todos los nodos operativos'
+    $('#eco-sub').textContent = `${vivas} de ${CASAS.length} en pie · ${hace(v?.leidoEn) || nada}`;
+    $('#nervio-estado').textContent = faltan === 0 ? 'Estado: SINCRONIZADO' : `Estado: ${faltan} SIN RESPUESTA`;
+
+    /* Una sola afirmación grande. El mismo hecho estaba escrito en cinco sitios
+       a diez píxeles cada uno, y cinco susurros no son un grito: el ojo los
+       trata como fondo. La franja del techo se tiñe cuando falta alguna, que se
+       ve desde el otro lado de la sala. */
+    document.body.classList.toggle('alerta', faltan > 0);
+
+    // ── integridad: solo lo que no está ya escrito arriba
+    const ox = v?.ordenex, auc = v?.aucorp;
+    const int = [
+      ['CASAS EN PIE', `${vivas} / ${CASAS.length}`, faltan === 0 ? SI : NO],
+      /* «cerrada» es una decisión de la casa; «no leído» es que no sabemos.
+         Pintarlas del mismo rojo enseña a no mirar el rojo. */
+      ['COMPRA USDT', ox?.compraUsdt ? String(ox.compraUsdt).toUpperCase() : 'NO LEÍDO',
+        !ox?.compraUsdt ? NOSE : ox.compraUsdt === 'abierta' ? SI : 'amb'],
+      ['BASE DE ORDENEX', ox?.mongo == null ? 'NO LEÍDO' : ox.mongo ? 'CONECTADA' : 'CAÍDA',
+        ox?.mongo == null ? NOSE : ox.mongo ? SI : NO],
+      ['SANCIONES', auc?.sanciones?.registros ? num(auc.sanciones.registros) : 'NO LEÍDO',
+        !auc?.sanciones ? NOSE : auc.sanciones.vencidas ? NO : SI],
+      ['TASAS FIAT', auc?.tasas == null ? 'NO LEÍDO' : auc.tasas ? 'AL DÍA' : 'SIN ACTUALIZAR',
+        auc?.tasas == null ? NOSE : auc.tasas ? SI : NO],
+    ];
+    $('#integridad').innerHTML = int.map(([a, b, cl]) => fila(a, b, cl)).join('');
+    $('#integridad-tag').textContent = faltan === 0 ? 'todas las casas contestan'
       : faltan === 1 ? 'hay una casa sin contestar' : `hay ${faltan} casas sin contestar`;
+
+    // ── el mercado: lo primero que mira quien dirige una casa de cambio
+    pintarMercado(v);
     pintarMuelle();
   }
 
+  /* EL MERCADO. `/vivo` ya traía `ordenex.mercados[]` con último precio,
+     volumen de 24 h y si el par tiene referencia — y el tablero no lo tocaba.
+     La casa de cambio no tenía ni una cifra de negocio en su propio tablero:
+     había que preguntárselo a ULTRON en prosa. */
+  function pintarMercado(v) {
+    const caja = $('#mercado'); if (!caja) return;
+    const ms = v?.ordenex?.mercados || [];
+    const o = v?.origen;
+    $('#mercado-sub').textContent = o?.leidoEn ? `referencia ${hace(o.leidoEn) || ''}`.trim()
+      : ms.length ? `${ms.length} par${ms.length > 1 ? 'es' : ''}` : 'sin lectura';
+    /* Sin precio NO se pinta un «—» enorme: un hueco del tamaño de una cifra
+       ocupa el sitio de la cifra y no dice por qué falta. Se dice por qué. */
+    const cab = o?.origenUsd
+      ? `<div class="grande"><b>${num(o.origenUsd, 4)}</b><span>USD por ORIGEN · oro ${o.oroOnzaUsd ? num(o.oroOnzaUsd, 0) + ' USD/oz' : nada}</span></div>`
+      : `<div class="grande"><span class="hueco">Sin referencia de precio en esta lectura.</span></div>`;
+    caja.innerHTML = cab + (ms.length
+      ? ms.slice(0, 6).map((m) => fila(m.mercado,
+        `${m.ultimo != null ? num(m.ultimo, 4) : nada}${m.vol24h ? ' · vol ' + num(m.vol24h, 0) : ''}`,
+        m.conReferencia ? '' : NOSE)).join('')
+      : '');
+  }
+
+  /* EL CEREBRO QUE ESTÁ EN USO, no el que no se está usando.
+     `/salud` solo calcula `nodo` cuando ULTRON piensa CON el nodo propio; con
+     un modelo en la nube devuelve `nodo:null`. El panel leía ese nulo y
+     escribía «MOTOR · SIN RESPUESTA» de forma permanente, en una pantalla donde
+     ULTRON acababa de contestar tres párrafos. Se diagnosticaba un cerebro
+     caído que no lo estaba — y el día que el nodo propio se cayera de verdad,
+     el panel habría dicho exactamente lo mismo que decía ayer.
+     Las líneas del nodo (motor, pedidos, contexto) solo tienen sentido si se
+     está pensando con el nodo. Si no, se ocultan en vez de mentir. */
   function pintarSalud(s) {
-    const n = s?.nodo || {};
-    $('#nodo-modelo').textContent = n.modelo || (s?.modelo || nada);
-    $('#rueda-n').textContent = n.ctx ? `${Math.round(n.ctx / 1024)}k` : nada;
-    /* La rueda no es un adorno con un número al azar: enseña qué parte del
-       contexto del modelo se está usando de tope. */
-    const pct = n.ctx ? Math.min(100, Math.round((n.ctx / 32768) * 100)) : 0;
-    $('#rueda').style.background = `conic-gradient(var(--cian) ${pct * 3.6}deg, rgba(5,225,255,.12) 0)`;
+    const n = s?.nodo || null;
+    const enNodo = s?.donde === 'nodo';
+    $('#nodo-modelo').textContent = s?.modelo || nada;
+    $('#cerebro-donde').textContent = !s ? nada
+      : enNodo ? 'en el nodo propio' : s.donde === 'claude' ? 'en la nube' : String(s.donde || nada);
+    $('#cerebro-donde').className = 'sub ' + (s?.cerebro ? 'ok' : 'mal');
+
+    /* La rueda del contexto SOLO cuando hay nodo: sin él, el denominador estaba
+       escrito a mano (32768) y con otro modelo el círculo marcaba cualquier
+       cosa. Un medidor que no mide enseña a no creerle a la pantalla. */
+    const rueda = $('#rueda');
+    rueda.classList.toggle('oculto', !(enNodo && n?.ctx));
+    if (enNodo && n?.ctx) {
+      $('#rueda-n').textContent = `${Math.round(n.ctx / 1024)}k`;
+      const pct = Math.min(100, Math.round((n.ctx / (n.ctxMax || 32768)) * 100));
+      rueda.style.background = `conic-gradient(var(--cian) ${pct * 3.6}deg, rgba(5,225,255,.12) 0)`;
+    }
+
+    /* Sin barras inventadas. Las de antes eran binarias o de escala arbitraria
+       —«un pedido = 1 %», SABER siempre al tope—: parecían ocupación y no
+       codificaban nada. Y «fichas» significa tokens en el resto del sistema;
+       esto son SECCIONES del saber. */
     const lineas = [
-      ['MOTOR', n.vivo ? 'VIVO' : 'SIN RESPUESTA', n.vivo ? 100 : 0],
-      ['PEDIDOS', num(n.pedidos), Math.min(100, (n.pedidos || 0))],
-      ['RECHAZADOS', num(n.rechazados), n.rechazados ? 100 : 0],
-      ['SABER', s?.saber ? `${num(s.saber)} fichas` : nada, s?.saber ? 100 : 0],
+      ['ESTADO', s?.cerebro ? 'ENCENDIDO' : 'APAGADO', s?.cerebro ? SI : NO],
+      ...(enNodo ? [
+        ['MOTOR', n?.vivo ? 'VIVO' : 'SIN RESPUESTA', n?.vivo ? SI : NO],
+        ['PEDIDOS', num(n?.pedidos), ''],
+        ['RECHAZADOS', num(n?.rechazados), n?.rechazados ? NO : ''],
+      ] : []),
+      ['SABER', s?.saber ? `${num(s.saber)} secciones` : nada, s?.saber ? '' : NOSE],
+      /* La memoria PROVISIONAL vive en el proceso y se pierde al reiniciar: los
+         pendientes de la junta se evaporan sin avisar. `/salud` lo decía y la
+         pantalla no lo enseñaba nunca. Una lista de tareas que puede
+         desaparecer sola no es un registro de junta. */
+      ['MEMORIA', s?.memoria === 'mongo' ? 'EN MONGO' : s?.memoria ? 'PROVISIONAL' : nada,
+        s?.memoria === 'mongo' ? SI : s?.memoria ? 'amb' : NOSE],
+      ['VOZ', s?.voz ? 'ELEVENLABS' : 'LA DEL NAVEGADOR', s?.voz ? SI : ''],
+      ['JUNTA', s?.junta ? `${s.junta} miembro${s.junta > 1 ? 's' : ''}` : nada, s?.junta ? '' : NOSE],
+      /* Que se vea si hay alguien mirando cuando la pantalla está apagada. Un
+         tablero que solo mide mientras se le mira no vigila nada. */
+      ['VIGÍA', !ultimoVivo?.vigia ? nada
+        : !ultimoVivo.vigia.encendido ? 'APAGADO'
+          : ultimoVivo.vigia.avisa === 'apagado' ? `cada ${Math.round(ultimoVivo.vigia.cada / 1000)} s · sin avisos`
+            : `cada ${Math.round(ultimoVivo.vigia.cada / 1000)} s · avisa por ${ultimoVivo.vigia.avisa}`,
+      !ultimoVivo?.vigia?.encendido ? NOSE : ultimoVivo.vigia.avisa === 'apagado' ? 'amb' : SI],
     ];
-    $('#nodo-lineas').innerHTML = lineas.map(([a, b, w]) => `
-      <div style="display:flex;flex-direction:column;gap:2px">
-        <div class="fila" style="font-size:10px;letter-spacing:.12em"><span>${a}</span><span class="on">${esc(b)}</span></div>
-        <div style="height:2px;background:rgba(200,208,216,.1);position:relative">
-          <div style="position:absolute;inset:0;width:${w}%;background:var(--cian);box-shadow:0 0 8px rgba(5,225,255,.6);transition:width .6s"></div>
-        </div>
-      </div>`).join('');
+    $('#nodo-lineas').innerHTML = lineas.map(([a, b, cl]) => fila(a, b, cl)).join('');
   }
 
   function pintarPendientes(l) {
@@ -206,60 +317,100 @@ const OS = (() => {
   /* El «flujo de consciencia» del diseño es una onda. Aquí esa onda es el
      NIVEL DE VOZ de verdad cuando ULTRON habla, y un latido tranquilo cuando
      no. Una onda que se mueve igual pase lo que pase es un salvapantallas. */
+  /* ── LO QUE SE MUEVE, Y LO QUE NO ──────────────────────────────────────────
+     Antes se movía TODO todo el tiempo: la constelación giraba sin parar, los
+     nodos latían, la onda oscilaba en reposo con una senoidal. Dos costes. Uno
+     de diseño: si el movimiento es constante, el movimiento no significa nada,
+     y el día que una casa se caiga de verdad no habrá ningún cambio que lo
+     delate. Uno físico: es una pantalla de sala encendida horas, manteniendo la
+     tarjeta al máximo para dibujar una senoidal.
+     Ahora el movimiento está RESERVADO: la onda se mueve cuando ULTRON habla o
+     piensa —y en reposo es una línea recta— y la constelación está quieta.
+     Además no se dibuja lo que no se ve: en el teléfono estos dos lienzos viven
+     dentro de `#izq`, que es `display:none`, y se pagaban sesenta cuadros por
+     segundo con dos lecturas de disposición cada uno para pintar en lienzos que
+     nadie miraba nunca. */
   function ondas() {
     const c = $('#onda'), g = c?.getContext('2d');
     const cr = $('#red'), gr = cr?.getContext('2d');
     if (!g) return;
+    const quieto = matchMedia('(prefers-reduced-motion: reduce)');
     const hist = new Array(120).fill(0);
-    let t = 0;
+    let t = 0, raf = 0, redPintada = null;
+    const seVe = (cv) => cv && cv.offsetParent !== null && cv.getClientRects().length > 0;
     const medir = (cv) => {
       const r = cv.getBoundingClientRect(), d = Math.min(devicePixelRatio || 1, 2);
-      if (cv.width !== Math.round(r.width * d)) { cv.width = Math.round(r.width * d); cv.height = Math.round(r.height * d); }
+      const w = Math.round(r.width * d), h = Math.round(r.height * d);
+      if (cv.width !== w || cv.height !== h) { cv.width = w; cv.height = h; }   // el ALTO también: al abrir el cajón solo cambia el alto
       return { w: r.width, h: r.height, d };
     };
-    (function paso() {
-      requestAnimationFrame(paso);
+
+    function paso() {
+      raf = requestAnimationFrame(paso);
       t += 0.016;
-      // ── la onda
-      const { w, h, d } = medir(c);
-      if (w > 0) {
-        g.setTransform(d, 0, 0, d, 0, 0); g.clearRect(0, 0, w, h);
-        hist.push(mente.state === 'speak' ? mente.nivel : mente.state === 'think' ? 0.25 + Math.sin(t * 6) * 0.12 : 0.06 + Math.sin(t * 1.6) * 0.04);
-        hist.shift();
-        g.beginPath();
-        hist.forEach((v, i) => {
-          const x = (i / (hist.length - 1)) * w;
-          const y = h / 2 - (v * h * 0.42);
-          i ? g.lineTo(x, y) : g.moveTo(x, y);
-        });
-        g.strokeStyle = COLORES[mente.state] || COLORES.idle; g.lineWidth = 1.4;
-        g.shadowColor = g.strokeStyle; g.shadowBlur = 8; g.stroke(); g.shadowBlur = 0;
-        g.beginPath();
-        hist.forEach((v, i) => { const x = (i / (hist.length - 1)) * w; const y = h / 2 + (v * h * 0.42); i ? g.lineTo(x, y) : g.moveTo(x, y); });
-        g.strokeStyle = 'rgba(5,225,255,.28)'; g.lineWidth = 1; g.stroke();
-      }
-      // ── la red de casas: un nodo por casa, encendido si contesta
-      if (gr) {
-        const m = medir(cr);
-        if (m.w > 0) {
-          gr.setTransform(m.d, 0, 0, m.d, 0, 0); gr.clearRect(0, 0, m.w, m.h);
-          const cx = m.w / 2, cy = m.h / 2, R = Math.min(m.w, m.h) * 0.36;
-          CASAS.forEach((casa, i) => {
-            const a = (i / CASAS.length) * Math.PI * 2 + t * 0.12;
-            const x = cx + Math.cos(a) * R, y = cy + Math.sin(a) * R * 0.78;
-            const viva = ultimoVivo?.[casa.k]?.vivo;
-            gr.beginPath(); gr.moveTo(cx, cy); gr.lineTo(x, y);
-            gr.strokeStyle = viva ? 'rgba(5,225,255,.30)' : 'rgba(255,90,110,.35)'; gr.lineWidth = 1; gr.stroke();
-            gr.beginPath(); gr.arc(x, y, viva ? 2.6 + Math.sin(t * 2 + i) * 0.6 : 2.2, 0, 7);
-            gr.fillStyle = viva ? '#05E1FF' : '#FF5A6E';
-            gr.shadowColor = gr.fillStyle; gr.shadowBlur = viva ? 8 : 4; gr.fill(); gr.shadowBlur = 0;
-          });
-          gr.beginPath(); gr.arc(cx, cy, 4 + Math.sin(t * 1.8) * 0.8, 0, 7);
-          gr.fillStyle = '#E4E9EE'; gr.shadowColor = '#05E1FF'; gr.shadowBlur = 14; gr.fill(); gr.shadowBlur = 0;
+      const hablando = mente.state === 'speak' || mente.state === 'think';
+
+      // ── la onda: la voz de ULTRON. En reposo, recta.
+      if (seVe(c)) {
+        const { w, h, d } = medir(c);
+        if (w > 0) {
+          const v = mente.state === 'speak' ? mente.nivel
+            : mente.state === 'think' ? (quieto.matches ? 0.25 : 0.25 + Math.sin(t * 6) * 0.12)
+              : 0;
+          hist.push(v); hist.shift();
+          if (hablando || hist.some((x) => x > 0.001)) {
+            g.setTransform(d, 0, 0, d, 0, 0); g.clearRect(0, 0, w, h);
+            g.beginPath();
+            hist.forEach((x, i) => { const px = (i / (hist.length - 1)) * w, py = h / 2 - (x * h * 0.42); i ? g.lineTo(px, py) : g.moveTo(px, py); });
+            g.strokeStyle = COLORES[mente.state] || COLORES.idle; g.lineWidth = 1.4;
+            g.shadowColor = g.strokeStyle; g.shadowBlur = 8; g.stroke(); g.shadowBlur = 0;
+            g.beginPath();
+            hist.forEach((x, i) => { const px = (i / (hist.length - 1)) * w, py = h / 2 + (x * h * 0.42); i ? g.lineTo(px, py) : g.moveTo(px, py); });
+            g.strokeStyle = 'rgba(5,225,255,.28)'; g.lineWidth = 1; g.stroke();
+          }
         }
       }
-    })();
+
+      /* ── la red de casas: un nodo por casa, CON SU NOMBRE. Seis puntos sin
+         rótulo no dejan saber qué punto es qué casa: era la misma información
+         del panel de al lado, con menos precisión. Y se redibuja SOLO cuando
+         cambia el estado, no sesenta veces por segundo. */
+      if (gr && seVe(cr)) {
+        const firma = CASAS.map((x) => (ultimoVivo?.[x.k]?.vivo ? 1 : ultimoVivo?.[x.k] ? 0 : 2)).join('') + '|' + cr.width;
+        if (firma !== redPintada) {
+          redPintada = firma;
+          const m = medir(cr);
+          if (m.w > 0) {
+            gr.setTransform(m.d, 0, 0, m.d, 0, 0); gr.clearRect(0, 0, m.w, m.h);
+            const cx = m.w / 2, cy = m.h / 2, R = Math.min(m.w, m.h) * 0.34;
+            gr.font = '600 8px ui-monospace,monospace'; gr.textAlign = 'center'; gr.textBaseline = 'middle';
+            CASAS.forEach((casa, i) => {
+              const a = (i / CASAS.length) * Math.PI * 2 - Math.PI / 2;    // quieta: arriba empieza
+              const x = cx + Math.cos(a) * R, y = cy + Math.sin(a) * R * 0.82;
+              const d = ultimoVivo?.[casa.k];
+              const col = !d ? 'rgba(200,208,216,.45)' : d.vivo ? '#05E1FF' : '#FF5A6E';
+              gr.beginPath(); gr.moveTo(cx, cy); gr.lineTo(x, y);
+              gr.strokeStyle = !d ? 'rgba(200,208,216,.18)' : d.vivo ? 'rgba(5,225,255,.30)' : 'rgba(255,90,110,.4)';
+              gr.lineWidth = 1; gr.stroke();
+              gr.beginPath(); gr.arc(x, y, 3, 0, 7);
+              gr.fillStyle = col; gr.shadowColor = col; gr.shadowBlur = d?.vivo ? 8 : 4; gr.fill(); gr.shadowBlur = 0;
+              gr.fillStyle = col;
+              gr.fillText(casa.ic, x + Math.cos(a) * 11, y + Math.sin(a) * 11);
+            });
+            gr.beginPath(); gr.arc(cx, cy, 4, 0, 7);
+            gr.fillStyle = '#E4E9EE'; gr.shadowColor = '#05E1FF'; gr.shadowBlur = 12; gr.fill(); gr.shadowBlur = 0;
+          }
+        }
+      }
+    }
+    paso();
+    // Con la pestaña oculta no se dibuja nada.
+    document.addEventListener('visibilitychange', () => {
+      cancelAnimationFrame(raf);
+      if (!document.hidden) { redPintada = null; paso(); }
+    });
   }
+
 
   // ══ HABLAR Y ESCUCHAR ═════════════════════════════════════════════════════
 
@@ -274,6 +425,25 @@ const OS = (() => {
       alTerminar: () => { mente.nivel = 0; if (!pensando) estado('idle'); },
       alFallo: (q) => avisar(`La voz del navegador tomó el relevo (${q}).`, false),
     });
+  }
+
+  /* DE DÓNDE SALIÓ. Un tablero de junta del que no se puede decir «esta cifra
+     la leyó de Ordenex a las 04:12» no se puede citar en un acta. Las
+     herramientas que ULTRON usó para contestar quedan escritas bajo la
+     respuesta, con la hora. */
+  function pintarFuentes(usadas) {
+    const f = $('#fuentes'); if (!f) return;
+    if (!usadas?.length) { f.classList.add('oculto'); f.textContent = ''; return; }
+    const unicas = [...new Set(usadas)];
+    f.classList.remove('oculto');
+    f.textContent = `Leído ${new Date().toLocaleTimeString('es-HN', { hour: '2-digit', minute: '2-digit' })} ${ZONA} · ${unicas.join(' · ')}`;
+  }
+
+  /* Al lector de pantalla se le anuncia UNA vez, al final. Anunciar cada trozo
+     del flujo haría que repitiera la respuesta entera decenas de veces. */
+  function anunciar(md) {
+    const l = $('#lector-vivo'); if (!l) return;
+    l.textContent = window.VOZ?.paraDecir ? VOZ.paraDecir(md) : String(md || '');
   }
 
   function pintarDicho(md) {
@@ -297,54 +467,103 @@ const OS = (() => {
     estado('think', 'think');
     pintarDicho('');
     chips(null);
-    let acum = '';
+    let acum = ''; const usadas = [];
+    pintarFuentes(null);
+    /* UN SOLO LOCUTOR para toda la sesión. Antes se creaba uno por mensaje y el
+       anterior se quedaba con su temporizador de 40 Hz corriendo: treinta
+       preguntas, treinta temporizadores huérfanos. */
     locutor?.callar?.();
-    if (conVoz) { locutor = locutorNuevo(); locutor.despertar?.(); }
+    if (conVoz) { locutor = locutor || locutorNuevo(); locutor.despertar?.(); }
 
-    await DATOS.pensar(t, { conversacionId, modo: 'texto' }, {
-      abre: (d) => { conversacionId = d.conversacionId || conversacionId; },
-      texto: (d) => { acum += d.t || ''; pintarDicho(acum); if (conVoz) locutor?.alimentar?.(d.t || ''); },
-      herramienta: (d) => { $('#estado-txt').textContent = String(d.nombre || '').toUpperCase().replace(/_/g, ' '); },
-      fin: (d) => {
-        if (d?.texto) { acum = d.texto; pintarDicho(acum); }
-        if (conVoz) locutor?.cerrar?.(); else estado('idle');
-        chips(d?.acciones?.length ? d.acciones.map((a) => a.nombre) : null);
-        cargarArchivos();
-        DATOS.get('/pendientes').then(pintarPendientes).catch(() => {});
-      },
-      error: (msj) => { estado('error', 'concern'); avisar(msj, true); setTimeout(() => estado('idle', 'neutral'), 2600); },
-    });
-    pensando = false; $('#enviar').disabled = false;
-    if (mente.state !== 'speak') estado('idle', 'neutral');
+    /* try/finally, y no es adorno. `DATOS.pensar` abre un SSE que puede durar
+       veinte segundos; en un teléfono que cambia de celda a mitad, la promesa
+       RECHAZA y sin este envoltorio la ejecución nunca llegaba a devolver el
+       botón: `pensando` se quedaba en true y ENVIAR deshabilitado para siempre.
+       La consola quedaba muerta hasta recargar, en la ruta principal del
+       producto y con la avería más común que hay. */
+    try {
+      await DATOS.pensar(t, { conversacionId, modo: 'texto' }, {
+        abre: (d) => { conversacionId = d.conversacionId || conversacionId; },
+        texto: (d) => { acum += d.t || ''; pintarDicho(acum); if (conVoz) locutor?.alimentar?.(d.t || ''); },
+        herramienta: (d) => {
+          const n = String(d.nombre || '').toUpperCase().replace(/_/g, ' ');
+          $('#estado-txt').textContent = n;
+          usadas.push(n);                       // para dejarlas escritas al pie de la respuesta
+        },
+        fin: (d) => {
+          if (d?.texto) { acum = d.texto; pintarDicho(acum); }
+          if (conVoz) locutor?.cerrar?.(); else estado('idle');
+          chips(d?.acciones?.length ? d.acciones.map((a) => a.nombre) : null);
+          /* De dónde salió la cifra. Un tablero de junta del que no se puede
+             decir «esto lo leyó de Ordenex a las 04:12» no se puede citar en un
+             acta. Las herramientas usadas quedan escritas bajo la respuesta. */
+          pintarFuentes(usadas);
+          anunciar(acum);                       // una sola vez, para el lector de pantalla
+          cargarArchivos();
+          DATOS.get('/pendientes').then(pintarPendientes).catch(() => {});
+        },
+        error: (msj) => { estado('error', 'concern'); avisar(msj, true); setTimeout(() => estado('idle', 'neutral'), 2600); },
+      });
+    } catch (e) {
+      estado('error', 'concern');
+      avisar(`Se cortó la conexión con ULTRON: ${e?.message || e}`, true);
+      setTimeout(() => { if (mente.state === 'error') estado('idle', 'neutral'); }, 3200);
+    } finally {
+      pensando = false; $('#enviar').disabled = false;
+      if (mente.state !== 'speak' && mente.state !== 'error') estado('idle', 'neutral');
+    }
   }
 
   /* ── «HEY ULTRON» ──────────────────────────────────────────────────────────
-     La oreja queda abierta escuchando SOLO la palabra que despierta. Lo que
-     oye no sale del navegador hasta que la palabra suena: el reconocimiento es
-     el del propio sistema, no se manda audio a ningún lado, y mientras no se
-     dice «ultron» nada de lo que capta se usa para nada.
-     Se enciende a mano y se apaga a mano, y el botón lo dice: un micrófono que
-     se queda abierto solo, sin que se vea, es exactamente lo que nadie quiere
-     en su casa. */
+     La oreja queda abierta esperando SOLO la palabra que despierta: mientras no
+     se dice «ultron», nada de lo que capta se usa para nada. Se enciende a mano
+     y se apaga a mano, y el botón lo dice — un micrófono que se queda abierto
+     solo, sin que se vea, es exactamente lo que nadie quiere en su casa.
+
+     LO QUE HAY QUE DECIR CON TODAS LAS LETRAS: el reconocimiento del navegador
+     NO es local en el escritorio. Chrome y Edge mandan el audio a su proveedor
+     mientras el reconocedor está abierto. Aquí decía lo contrario —«no se manda
+     audio a ningún lado»— y era falso justo en el navegador que la propia
+     pantalla recomienda. Con una junta hablando de sanciones y tasas al alcance
+     del micrófono, eso no es un matiz: se avisa al encender. */
   const DESPIERTA = /\b(hey|hei|ey|oye|ok)\s+(ultron|ultrón|altron)\b|\bultron\b/i;
+  let cicloOreja = 0;                 // token: solo el ciclo vigente puede reprogramar
 
   function orejaEncender() {
     if (!VOZ.hayOido?.()) { avisar('Este navegador no trae reconocimiento de voz. En Chrome sí funciona.', true); return; }
     despierta = true;
     $('#oreja').setAttribute('aria-pressed', 'true');
-    avisar('Oreja abierta. Decí «hey ULTRON» y te escucho.');
+    avisar('Oreja abierta: diga «hey ULTRON». Mientras esté encendida, su navegador manda el audio a su proveedor de reconocimiento.');
     escucharPalabra();
   }
   function orejaApagar() {
     despierta = false;
+    cicloOreja++;                     // invalida cualquier reinicio ya programado
     $('#oreja').setAttribute('aria-pressed', 'false');
     try { oreja?.abort?.(); } catch { /* ya estaba */ }
     oreja = null;
     if (mente.state === 'listen') estado('idle');
   }
 
-  function escucharPalabra() {
+  /* UN SOLO RECONOCEDOR VIVO. Chrome, ante un `no-speech` —el caso normal,
+     nadie habló en unos segundos— dispara `onerror` Y DESPUÉS `onend`: los dos
+     callbacks entraban y se programaban DOS reinicios para una sola sesión. El
+     segundo pisaba `oreja` y el primero se quedaba vivo, sin que nadie lo
+     abortara nunca, programando a su vez otros dos. La duplicación era
+     multiplicativa: sesiones de micrófono acumulándose sin techo, cada una con
+     la captura de audio abierta. Y con el permiso DENEGADO reintentaba cada
+     1,2 s para siempre con el botón encendido en cian, diciéndole a la persona
+     que la escuchan cuando no la escucha nadie. */
+  function escucharPalabra(intentos = 0) {
     if (!despierta) return;
+    const ciclo = ++cicloOreja;
+    let yaProgramado = false;
+    const reintentar = (ms) => {
+      if (yaProgramado || ciclo !== cicloOreja || !despierta) return;
+      yaProgramado = true;
+      setTimeout(() => { if (ciclo === cicloOreja) escucharPalabra(intentos + 1); }, ms);
+    };
+    try { oreja?.abort?.(); } catch { /* ya estaba */ }
     oreja = VOZ.oir({
       continuo: true,
       alOir: (frase, firme) => {
@@ -355,13 +574,33 @@ const OS = (() => {
            da dos veces. */
         const resto = frase.replace(/^.*?\b(ultron|ultrón|altron)\b[,.\s]*/i, '').trim();
         if (!firme) { estado('listen'); return; }
+        /* Se cierra ESTE ciclo del todo —`cicloOreja++` invalida el reinicio que
+           el `alFin` del abort va a programar— para no quedarse escuchando
+           mientras ULTRON contesta en voz alta y se oiga a sí mismo. La oreja
+           vuelve cuando terminó de hablar. */
+        cicloOreja++;
         try { oreja?.abort?.(); } catch { /* nada */ }
         oreja = null;
-        if (resto.length > 2) { estado('think'); enviar(resto).then(() => { if (despierta) setTimeout(escucharPalabra, 400); }); }
-        else { estado('listen'); dictar(() => { if (despierta) setTimeout(escucharPalabra, 400); }); }
+        const volver = () => { if (despierta) setTimeout(() => escucharPalabra(0), 400); };
+        if (resto.length > 2) { estado('think'); enviar(resto).catch(() => {}).then(volver); }
+        else { estado('listen'); dictar(volver); }
       },
-      alFin: () => { if (despierta && oreja) setTimeout(escucharPalabra, 300); },
-      alFallo: () => { if (despierta) setTimeout(escucharPalabra, 1200); },
+      alFin: () => reintentar(300),
+      alFallo: (q) => {
+        /* Permiso denegado: se apaga y se dice. Reintentar contra un «no» es
+           gastar batería y mentir con el botón encendido. */
+        if (q === 'not-allowed' || q === 'service-not-allowed') {
+          orejaApagar();
+          avisar('El navegador bloqueó el micrófono. Habilítelo en el candado de la barra de direcciones.', true);
+          return;
+        }
+        if (intentos > 20) {
+          orejaApagar();
+          avisar('La escucha se detuvo: el reconocimiento falló muchas veces seguidas.', true);
+          return;
+        }
+        reintentar(Math.min(15000, 1200 * Math.pow(1.6, intentos)));   // se va espaciando
+      },
     });
   }
 
@@ -386,10 +625,37 @@ const OS = (() => {
 
   // ══ ARRANQUE ══════════════════════════════════════════════════════════════
 
+  /* El reloj ROTULADO. Había tres relojes en juego —el del navegador aquí, el
+     de Tegucigalpa en el saludo del servidor, y las horas en ISO de las
+     herramientas— y ninguno decía de quién era. «¿Las 3:14 de quién?» es una
+     discusión que no debería existir al reconstruir un incidente. */
+  const ZONA = (() => {
+    try {
+      const z = Intl.DateTimeFormat().resolvedOptions().timeZone || '';
+      return z === 'America/Tegucigalpa' ? 'TGU' : (z.split('/').pop() || '').slice(0, 4).toUpperCase() || 'LOCAL';
+    } catch { return 'LOCAL'; }
+  })();
+
   function reloj() {
     const t = new Date();
-    $('#m-reloj').textContent = t.toLocaleTimeString('es-HN', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    $('#m-reloj').textContent = `${t.toLocaleTimeString('es-HN', { hour: '2-digit', minute: '2-digit', second: '2-digit' })} ${ZONA}`;
+    /* ── LA LECTURA CONGELADA ──────────────────────────────────────────────
+       Lo peor que puede hacer un tablero: quedarse con las cifras de hace tres
+       horas y el reloj corriendo al lado. Las tres lecturas terminaban en
+       `.catch(() => {})`, así que un 500 o un corte de red dejaba los paneles
+       intactos y con buena cara. Si pasan más de 90 s sin una lectura buena, la
+       pantalla se apaga y lo dice. */
+    const edad = (Date.now() - ultimaBuena) / 1000;
+    const vieja = ultimaBuena && edad > 90;
+    document.body.classList.toggle('vieja', !!vieja);
+    const c = $('#cintillo');
+    if (c) {
+      c.classList.toggle('oculto', !vieja);
+      c.classList.toggle('grave', edad > 300);
+      if (vieja) c.textContent = `SIN LECTURA ${hace(new Date(ultimaBuena).toISOString())} · lo que se ve puede estar viejo`;
+    }
   }
+  let ultimaBuena = Date.now();
 
   async function saludar() {
     try {
@@ -405,11 +671,16 @@ const OS = (() => {
     reloj(); setInterval(reloj, 1000);
 
     const leer = () => {
-      DATOS.get('/vivo').then(pintarVivo).catch(() => {});
+      DATOS.get('/vivo').then((v) => { ultimaBuena = Date.now(); pintarVivo(v); }).catch(() => {});
       DATOS.get('/salud').then(pintarSalud).catch(() => {});
       DATOS.get('/pendientes').then(pintarPendientes).catch(() => {});
     };
-    leer(); setInterval(leer, 30000);
+    leer();
+    /* Con la pestaña oculta no se lee: son tres peticiones cada treinta
+       segundos, y en datos móviles eso se paga. Al volver se lee enseguida, que
+       es cuando de verdad hace falta el dato fresco. */
+    setInterval(() => { if (!document.hidden) leer(); }, 30000);
+    document.addEventListener('visibilitychange', () => { if (!document.hidden) leer(); });
     cargarArchivos();
     saludar();
 
@@ -466,14 +737,31 @@ const OS = (() => {
       enviar(b.textContent);
     });
 
-    // ── el cajón del teléfono
+    /* ── EL CAJÓN DEL TELÉFONO ────────────────────────────────────────────────
+       `transform:translateY(101%)` desplaza el PINTADO: no saca nada del orden
+       de tabulación ni del árbol de accesibilidad. Con el cajón cerrado,
+       tabular desde el renglón llevaba el foco a botones y enlaces que están
+       fuera de la pantalla y sin ningún indicador visible. `inert` los saca de
+       verdad, del foco y del lector. */
     const tir = document.createElement('button');
     tir.id = 'tirador'; tir.innerHTML = '<span>PANELES</span>';
+    tir.setAttribute('aria-expanded', 'false');
+    tir.setAttribute('aria-controls', 'paneles');
+    const cajonSegunAncho = () => {
+      const enTelefono = innerWidth <= 860;
+      const abierto = document.body.classList.contains('cajon');
+      const p = $('#paneles');
+      if (p) p.inert = enTelefono && !abierto;
+    };
     tir.addEventListener('click', () => {
       const ab = document.body.classList.toggle('cajon');
+      tir.setAttribute('aria-expanded', String(ab));
       tir.querySelector('span').textContent = ab ? 'CERRAR' : 'PANELES';
+      cajonSegunAncho();
     });
     document.body.appendChild(tir);
+    cajonSegunAncho();
+    addEventListener('resize', cajonSegunAncho);
 
     // ── el busto sigue el ratón
     addEventListener('mousemove', (e) => {
@@ -493,11 +781,31 @@ const OS = (() => {
     addEventListener('keydown', despertarAudio, { once: false });
 
     document.addEventListener('ultron:sin-sesion', () => { location.href = '/'; });
+
+    /* Al cerrar la pestaña se suelta todo: la voz, el contexto de audio que
+       mide la boca y el motor 3D. Ninguno de los tres se soltaba nunca —el
+       `dispose()` del busto quedaba guardado y sin llamar—, y un navegador
+       admite pocos contextos de audio por pestaña. */
+    addEventListener('pagehide', () => {
+      try { locutor?.callar?.(); } catch { /* ya */ }
+      try { window.BOCA?.soltar?.(); } catch { /* ya */ }
+      try { window.__ULTRON_BUSTO?.dispose?.(); } catch { /* ya */ }
+      orejaApagar();
+    });
+    /* Y si la pantalla se va a segundo plano con la oreja abierta, se cierra:
+       un micrófono escuchando una pestaña que nadie mira no se hace. */
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden && despierta) { orejaApagar(); }
+    });
   }
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', arrancar);
   else arrancar();
 
-  return { enviar, estado, avisar, mente, _adentro: { pintarVivo, pintarSalud, pintarArchivos, pintarDicho, DESPIERTA, CASAS } };
+  return { enviar, estado, avisar, mente, _adentro: { pintarVivo, pintarSalud, pintarArchivos, pintarDicho, DESPIERTA, CASAS,
+    /* Solo para la prueba: mueve el reloj de la última lectura buena hacia
+       atrás, para comprobar que la pantalla avisa cuando se queda vieja sin
+       tener que esperar diez minutos de verdad. */
+    envejecer: (segundos) => { ultimaBuena = Date.now() - segundos * 1000; } } };
 })();
 window.OS = OS;

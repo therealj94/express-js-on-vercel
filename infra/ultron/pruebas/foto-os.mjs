@@ -23,7 +23,7 @@ for (const [nombre, w, h] of [['os-escritorio', 1400, 900], ['os-telefono', 390,
   await p.goto(BASE + '/', { waitUntil: 'domcontentloaded' });
   await p.evaluate(async (b) => { await fetch(b + '/entrar', { method: 'POST', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ correo: 'jose@ordenglobal.org', clave: 'clave-jose' }) }); }, BASE);
-  await p.goto(BASE + '/os', { waitUntil: 'domcontentloaded' });
+  await p.goto(BASE + '/os?buffer', { waitUntil: 'domcontentloaded' });   // ?buffer: para poder fotografiar el lienzo
   await p.waitForTimeout(3400);
   // con una conversación puesta, que es como se ve de verdad
   await p.evaluate(() => {

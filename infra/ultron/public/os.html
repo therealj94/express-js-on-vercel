@@ -6,9 +6,8 @@
 <meta name="theme-color" content="#04070b">
 <title>ULTRON OS · Orden Global</title>
 <link rel="icon" href="img/ultron.png">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<meta name="robots" content="noindex,nofollow">
+<link rel="stylesheet" href="vendor/fuentes/fuentes.css">
 <style>
 /* ══════════════════════════════════════════════════════════════════════════
    ULTRON OS · el sistema operativo del ecosistema
@@ -57,9 +56,27 @@ a{color:var(--cian);text-decoration:none}
 .p .sub{font-size:11px;letter-spacing:.12em;color:var(--tenue)}
 .dato{font-family:var(--mono);font-size:10.5px;letter-spacing:.06em}
 .fila{display:flex;justify-content:space-between;gap:8px}
-.fila span:first-child{color:rgba(200,208,216,.55)}
-.fila span:last-child{color:var(--letra-f)}
-.on{color:var(--cian)} .mal{color:var(--rojo)} .ok{color:var(--verde)}
+.fila span:first-child{color:rgba(200,208,216,.72)}
+/* CUIDADO CON LA ESPECIFICIDAD. `.fila span:last-child` pesa (0,2,1) y `.mal`
+   pesa (0,1,0): el selector de posición ganaba SIEMPRE y ni un solo color de
+   estado se pintaba en toda la pantalla. Con las seis casas caídas, la palabra
+   «CAÍDA» salía del mismo blanco que el reloj — el tablero no se distinguía en
+   nada de un tablero sano. El estado tiene que pesar más que la posición. */
+.fila>span:last-child{color:var(--letra-f)}
+.fila>span:last-child.on,.on{color:var(--cian)}
+.fila>span:last-child.mal,.mal{color:var(--rojo)}
+.fila>span:last-child.ok,.ok{color:var(--verde)}
+/* Ámbar: una decisión deliberada de la casa (la compra con USDT cerrada
+   a propósito, la memoria provisional). No es un fallo y no va en rojo — un
+   rojo que lleva meses encendido por decisión propia enseña a no mirar el rojo. */
+.fila>span:last-child.amb,.amb{color:var(--ambar)}
+.fila>span:last-child.hueco,.hueco{color:rgba(200,208,216,.42)}
+.grande{display:flex;flex-direction:column;gap:1px;padding-bottom:5px;margin-bottom:3px;border-bottom:1px solid rgba(5,225,255,.18)}
+.grande b{font-family:var(--mono);font-size:clamp(19px,2vw,26px);font-weight:500;color:var(--letra-f);
+  letter-spacing:-.01em;font-variant-numeric:tabular-nums;line-height:1.05}
+.grande span{font-size:10.5px;letter-spacing:.08em;color:var(--tenue)}
+#fuentes{flex:none;padding-top:6px;border-top:1px solid rgba(5,225,255,.16);
+  font-family:var(--mono);font-size:10px;letter-spacing:.08em;color:rgba(200,208,216,.6)}
 
 /* ── la rejilla ───────────────────────────────────────────────────────────── */
 /* `minmax(0,1fr)` en la COLUMNA, no solo en las filas: sin eso la única columna
@@ -67,7 +84,10 @@ a{color:var(--cian);text-decoration:none}
    sus medidas en una línea— y estira la rejilla entera a 525 px dentro de un
    teléfono de 390. El `overflow:hidden` lo tapaba, así que no se veía un
    deslizador: se veían las frases cortadas por el borde derecho. */
-#os{height:100dvh;display:grid;grid-template-rows:auto minmax(0,1fr) auto;grid-template-columns:minmax(0,1fr);
+/* Las cinco filas escritas: cintillo, techo, cuerpo, muelle, pie. Con las filas
+   a medias, meter el cintillo delante empujaba al techo dentro del `1fr` y le
+   daba media pantalla de alto. */
+#os{height:100dvh;display:grid;grid-template-rows:auto auto minmax(0,1fr) auto auto;grid-template-columns:minmax(0,1fr);
   position:relative;overflow:hidden;
   background:radial-gradient(ellipse 55% 70% at 50% 40%,rgba(10,40,58,.9) 0%,rgba(4,7,11,0) 70%),linear-gradient(180deg,#05080d,#03050a)}
 #holo{position:absolute;inset:0;width:100%;height:100%;display:block;z-index:0}
@@ -75,11 +95,24 @@ a{color:var(--cian);text-decoration:none}
 #sin-holo{position:absolute;inset:0;z-index:0;display:grid;align-content:center;justify-items:center;gap:10px;
   text-align:center;padding:0 14%;pointer-events:none}
 #sin-holo b{font-size:22px;letter-spacing:.4em;color:var(--cian);opacity:.75}
-#sin-holo span{font-size:12px;line-height:1.6;color:rgba(200,208,216,.5);max-width:34ch}
+#sin-holo span{font-size:12px;line-height:1.6;color:rgba(200,208,216,.72);max-width:34ch}
 #velo{position:absolute;inset:0;pointer-events:none;z-index:0;
   background:linear-gradient(180deg,rgba(0,0,0,.35),transparent 20%,transparent 80%,rgba(0,0,0,.5))}
 
-#techo{position:relative;z-index:2;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 22px 8px}
+/* Suelo opaco bajo el techo: las medidas flotan sobre un lienzo cuyo brillo
+   cambia en cada cuadro, y un contraste que depende del render no es un
+   contraste. La franja se tiñe de rojo cuando falta alguna casa —una sola
+   afirmación grande, que se ve desde el otro lado de la sala, en vez de cinco
+   susurros de diez píxeles repartidos por la pantalla. */
+#techo{position:relative;z-index:2;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 22px 8px;
+  background:linear-gradient(180deg,rgba(4,7,11,.9),rgba(4,7,11,0));border-top:2px solid transparent;transition:border-color .4s}
+body.alerta #techo{border-top-color:var(--rojo)}
+body.alerta .rombo{border-color:var(--rojo);box-shadow:0 0 12px rgba(255,90,110,.7)}
+#cintillo{position:relative;z-index:6;padding:5px 22px;font-family:var(--mono);font-size:11px;letter-spacing:.1em;
+  color:var(--tinta);background:var(--ambar);text-align:center}
+#cintillo.grave{background:var(--rojo)}
+/* Con la lectura vieja, las cifras se apagan: que se vea que no son de ahora. */
+body.vieja #izq,body.vieja #der,body.vieja #medidas{opacity:.48;filter:saturate(.4)}
 .marca{display:flex;align-items:center;gap:12px;min-width:0}
 .rombo{width:10px;height:10px;border:1px solid var(--cian);transform:rotate(45deg);box-shadow:0 0 12px rgba(5,225,255,.7);flex:none}
 .marca b{font-size:13px;letter-spacing:.34em;font-weight:600;color:var(--letra-f);white-space:nowrap}
@@ -93,10 +126,15 @@ a{color:var(--cian);text-decoration:none}
 #cuerpo{position:relative;z-index:2;display:grid;
   grid-template-columns:minmax(190px,22%) minmax(320px,1fr) minmax(210px,25%);
   gap:14px;padding:6px 22px;min-height:0;pointer-events:none}
+/* `display:contents` deja al envoltorio fuera de la disposición: las dos
+   columnas vuelven a ser hijas directas de la rejilla. Y como en el marcado van
+   las dos seguidas —para poder subirlas juntas en el teléfono—, la columna se
+   nombra a mano en vez de confiar en el orden. */
+#paneles{display:contents}
 #izq,#der{display:grid;gap:11px;min-height:0;min-width:0;pointer-events:auto;overflow:hidden}
-#izq{grid-template-rows:minmax(0,1.15fr) minmax(0,.8fr) minmax(0,1fr) minmax(0,1fr)}
-#der{grid-template-rows:minmax(0,1fr) minmax(0,1.35fr) minmax(0,1.1fr)}
-#centro{position:relative;min-height:0;min-width:0;z-index:3}
+#izq{grid-column:1;grid-row:1;grid-template-rows:minmax(0,1.15fr) minmax(0,.8fr) minmax(0,1fr) minmax(0,1fr)}
+#der{grid-column:3;grid-row:1;grid-template-rows:minmax(0,1fr) minmax(0,1.35fr) minmax(0,1.1fr)}
+#centro{grid-column:2;grid-row:1;position:relative;min-height:0;min-width:0;z-index:3}
 
 /* ── el centro: estado, burbuja, sugerencias ─────────────────────────────── */
 #estado{position:absolute;left:6px;top:4px;display:flex;align-items:center;gap:8px;
@@ -104,7 +142,13 @@ a{color:var(--cian);text-decoration:none}
 #estado .luz{width:6px;height:6px;border-radius:50%;animation:late 1.6s infinite}
 @keyframes late{0%,100%{opacity:1}50%{opacity:.25}}
 @keyframes sube{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
-#pista{position:absolute;left:6px;bottom:2px;font-family:var(--mono);font-size:9px;letter-spacing:.2em;color:rgba(200,208,216,.35);pointer-events:none}
+/* 11 px al 60 % (5,0:1). Estaba a 9 px al 35 % —2,4:1—, es decir: presente e
+   ilegible, que ocupa sitio y no informa. */
+/* Se esconde en cuanto hay una respuesta: compartía renglón con el globo y se
+   leía «ARR STRE PARA GIR», partido por la mitad. Una pista que estorba a lo que
+   se está leyendo es peor que ninguna pista. */
+#globo:not(.oculto)~#pista,body:has(#globo:not(.oculto)) #pista{display:none}
+#pista{position:absolute;left:6px;bottom:2px;font-family:var(--mono);font-size:11px;letter-spacing:.14em;color:rgba(200,208,216,.6);pointer-events:none}
 /* El globo va ABAJO, no arriba. Anclado arriba tapaba exactamente la cara del
    busto —la corona, los ojos y la nariz— y lo único que se veía de ULTRON era
    el pecho. Abajo hace de rótulo: la cara queda libre y la boca, que es lo que
@@ -157,7 +201,14 @@ a{color:var(--cian);text-decoration:none}
    un blanco de 32px se falla con el pulgar. Crece con el texto hasta 96px. */
 #texto{flex:1;min-width:0;background:none;border:0;outline:none;font-size:15px;color:var(--letra-f);
   padding:9px 0;resize:none;min-height:38px;max-height:96px;line-height:1.35;box-sizing:border-box}
-#texto::placeholder{color:rgba(200,208,216,.4)}
+#texto::placeholder{color:rgba(200,208,216,.62)}   /* 5,2:1 — antes 2,9:1, y es la única etiqueta del campo */
+/* EL FOCO SE VE. `outline:none` en el único campo de texto de la pantalla deja
+   a quien navega con teclado sin saber dónde está. El campo no lleva su propio
+   aro —quedaría dentro del bisel— sino que se ilumina la caja entera. */
+:focus-visible{outline:2px solid var(--cian);outline-offset:2px}
+#texto:focus-visible{outline:none}
+#caja:focus-within{box-shadow:0 0 0 2px var(--cian)}
+.solo-lector{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
 .mando{width:38px;height:38px;flex:none;display:grid;place-items:center;color:var(--tenue);transition:color .15s,background .15s;border-radius:9px}
 .mando:hover,.mando:focus-visible{color:var(--cian);background:rgba(5,225,255,.1)}
 .mando svg{width:19px;height:19px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
@@ -194,6 +245,18 @@ a{color:var(--cian);text-decoration:none}
   clip-path:polygon(0 0,calc(100% - 10px) 0,100% 10px,100% 100%,10px 100%,0 calc(100% - 10px))}
 #aviso.mal{border-color:var(--rojo);color:#FFD9DE}
 
+/* EL TIRADOR DEL CAJÓN va declarado ANTES del media query, no después.
+   Las media queries no suman especificidad: este bloque y el `#tirador{display:flex}`
+   de dentro del media pesan lo mismo (1,0,0), y ganaba el último del archivo.
+   Estando al final, el botón quedaba en `display:none` SIEMPRE y en el teléfono
+   los ocho paneles se quedaban fuera de pantalla sin manera de subirlos: se
+   veía el busto, el reloj y nada más. Un tablero sin tablero. */
+#tirador{display:none;position:fixed;left:50%;transform:translateX(-50%);bottom:calc(62px + var(--seguro-ab));z-index:55;
+  align-items:center;gap:7px;padding:8px 18px;min-height:38px;font-size:11px;letter-spacing:.18em;color:var(--cian);
+  background:rgba(8,24,38,.94);border:1px solid rgba(5,225,255,.35);
+  clip-path:polygon(0 0,calc(100% - 9px) 0,100% 9px,100% 100%,9px 100%,0 calc(100% - 9px))}
+body.cajon #tirador{bottom:calc(76dvh + 4px)}
+
 /* ══ EL TELÉFONO ══════════════════════════════════════════════════════════════
    El diseño es de tres columnas y un teléfono tiene una. No se encoge: se
    REORDENA. El busto y lo que ULTRON dice ocupan la pantalla —que es a lo que
@@ -203,15 +266,20 @@ a{color:var(--cian);text-decoration:none}
    ocupa sitio. */
 @media (max-width:860px){
   #cuerpo{grid-template-columns:1fr;padding:4px 12px}
-  #izq,#der{position:fixed;left:0;right:0;bottom:0;z-index:50;
-    grid-template-rows:none;grid-auto-rows:minmax(120px,auto);
-    max-height:76dvh;overflow-y:auto;padding:14px 12px calc(72px + var(--seguro-ab));
-    background:linear-gradient(180deg,rgba(4,7,11,.6),rgba(4,7,11,.97) 12%);
-    transform:translateY(101%);transition:transform .32s cubic-bezier(.22,1,.36,1);gap:10px}
-  body.cajon #izq,body.cajon #der{transform:none}
-  body.cajon #der{padding-top:52px}
-  #izq{display:none} /* en el teléfono los ocho paneles van en una sola pila */
-  #der{display:grid}
+  /* EL CAJÓN: los OCHO paneles en una sola pila que sube con el tirador. Antes
+     la columna izquierda era `display:none` —mercado, integridad, cerebro y
+     enlaces sin manera de verlos desde un teléfono— y la derecha se escondía
+     con `translateY(101%)`, que desplaza el pintado pero deja los botones en el
+     orden de tabulación, fuera de la pantalla y sin foco visible. */
+  #paneles{display:block;position:fixed;left:0;right:0;bottom:0;z-index:50;
+    max-height:78dvh;overflow-y:auto;padding:14px 12px calc(72px + var(--seguro-ab));
+    background:linear-gradient(180deg,rgba(4,7,11,.75),rgba(4,7,11,.97) 8%);
+    transform:translateY(101%);transition:transform .32s cubic-bezier(.22,1,.36,1)}
+  body.cajon #paneles{transform:none}
+  #izq,#der{display:grid;grid-column:auto;grid-row:auto;grid-template-rows:none;
+    grid-auto-rows:minmax(128px,auto);overflow:visible;gap:10px}
+  #der{margin-bottom:10px}
+  #centro{grid-column:1;grid-row:1}
   #techo{padding:10px 14px 6px;gap:8px}
   .marca b{font-size:11px;letter-spacing:.2em}
   .marca i{font-size:11px;letter-spacing:.2em}
@@ -245,25 +313,43 @@ a{color:var(--cian);text-decoration:none}
   #texto{font-size:14px}
   #texto::placeholder{font-size:13px}
 }
-#tirador{display:none;position:fixed;left:50%;transform:translateX(-50%);bottom:calc(62px + var(--seguro-ab));z-index:55;
-  align-items:center;gap:7px;padding:6px 16px;font-size:11px;letter-spacing:.18em;color:var(--cian);
-  background:rgba(8,24,38,.94);border:1px solid rgba(5,225,255,.35);
-  clip-path:polygon(0 0,calc(100% - 9px) 0,100% 9px,100% 100%,9px 100%,0 calc(100% - 9px))}
-body.cajon #tirador{bottom:calc(76dvh + 4px)}
 
 @media (prefers-reduced-motion:reduce){
-  *{animation-duration:.01ms!important;transition-duration:.01ms!important}
+  /* `animation-iteration-count:1` NO es opcional. Sin él, una animación
+     `1.6s infinite` con duración de 0,01 ms sigue siendo infinita y pasa a
+     iterar unas cien mil veces por segundo: se quema MÁS procesador del que se
+     ahorra, que es lo contrario de lo que la preferencia pide. */
+  *,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;
+    transition-duration:.01ms!important;scroll-behavior:auto!important}
+  /* Y el latido del micrófono es el ÚNICO aviso de «te estoy escuchando».
+     Quitarle el movimiento sin poner nada en su sitio deja sin señal justo a
+     quien más falta le hace una señal que no sea sutil. */
+  #micro.oyendo{outline:2px solid var(--cian);outline-offset:1px;background:rgba(5,225,255,.2)}
 }
 </style>
 </head>
 <body>
 
 <div id="os">
-  <canvas id="holo"></canvas>
-  <div id="velo"></div>
+  <!-- Un encabezado de verdad: sin él la página empieza en los h2 de los
+       paneles y quien navega por títulos no sabe dónde está. -->
+  <h1 class="solo-lector">ULTRON OS · consola de la junta directiva de Orden Global</h1>
+  <!-- El busto es decoración para quien no lo ve: se oculta al lector. -->
+  <canvas id="holo" aria-hidden="true"></canvas>
+  <div id="velo" aria-hidden="true"></div>
+
+  <!-- Lo que ULTRON contesta se anuncia UNA vez, al terminar. Anunciar cada
+       trozo del flujo haría que el lector repitiera la respuesta entera
+       decenas de veces. -->
+  <div id="lector-vivo" class="solo-lector" aria-live="polite" aria-atomic="true"></div>
+  <div id="aviso-vivo" class="solo-lector" role="status"></div>
+
+  <!-- Cuando la lectura se corta, se dice. Una pantalla de sala con cifras de
+       hace tres horas y un reloj vivo al lado es el peor fallo posible. -->
+  <div id="cintillo" class="oculto" role="status"></div>
 
   <!-- ── TECHO ────────────────────────────────────────────────────────────── -->
-  <div id="techo">
+  <header id="techo">
     <div class="marca">
       <div class="rombo"></div>
       <b>ORDEN GLOBAL</b>
@@ -274,29 +360,66 @@ body.cajon #tirador{bottom:calc(76dvh + 4px)}
       <div><span class="pulso"></span><span id="m-bloque">CADENA 5550 · —</span></div>
       <div class="esconde">RPC <span id="m-rpc">—</span> ms</div>
       <div class="esconde">AU <span id="m-oro">—</span></div>
-      <div id="m-reloj" style="color:var(--letra-f)">—</div>
+      <div id="m-reloj">—</div>
     </div>
-  </div>
+  </header>
 
   <!-- ── CUERPO ───────────────────────────────────────────────────────────── -->
-  <div id="cuerpo">
+  <main id="cuerpo">
 
+    <!-- Las dos columnas van envueltas. En pantalla ancha `display:contents`
+         las devuelve a la rejilla como si el envoltorio no existiera; en el
+         teléfono el envoltorio ES el cajón, y así los OCHO paneles suben con el
+         mismo tirador. Antes la columna izquierda era `display:none` y sus
+         cuatro paneles —mercado, integridad, cerebro, enlaces— no había manera
+         de verlos desde un teléfono. -->
+    <div id="paneles">
+    <div id="der">
+      <div class="p"><div>
+        <div><h2>ECOSISTEMA</h2><div class="sub" id="eco-sub">—</div></div>
+        <div style="display:flex;flex-direction:column;gap:3px;flex:1;min-height:0;overflow-y:auto" class="dato" id="eco" tabindex="0"></div>
+      </div></div>
+
+      <div class="p"><div>
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
+          <div style="min-width:0"><h2>DOCUMENTOS ENTRANTES</h2><div class="sub" id="arch-sub">nada todavía</div></div>
+          <button class="mando" id="clip" title="Subir un archivo" aria-label="Subir un archivo" style="width:32px;height:32px;margin:-4px -4px 0 0">
+            <svg viewBox="0 0 24 24"><path d="M21.4 11.05 12.25 20.2a5.5 5.5 0 0 1-7.78-7.78l9.2-9.2a3.67 3.67 0 1 1 5.18 5.19l-9.19 9.2a1.83 1.83 0 1 1-2.6-2.6l8.5-8.48"/></svg>
+          </button>
+        </div>
+        <div style="flex:1;min-height:0;overflow-y:auto" id="archivos" tabindex="0"></div>
+        <input type="file" id="fichero" class="oculto" multiple>
+      </div></div>
+
+      <div class="p"><div>
+        <div><h2>PENDIENTES DE LA JUNTA</h2><div class="sub" id="pend-sub">—</div></div>
+        <div style="flex:1;min-height:0;overflow-y:auto;display:flex;flex-direction:column;gap:6px" id="pendientes" tabindex="0"></div>
+      </div></div>
+    </div>
     <div id="izq">
       <div class="p"><div>
-        <div><h2>SISTEMA NERVIOSO</h2><div class="sub" id="nervio-estado">leyendo…</div></div>
+        <div><h2>ENLACES</h2><div class="sub" id="nervio-estado">leyendo…</div></div>
         <canvas id="red" style="width:100%;flex:1;min-height:0;display:block"></canvas>
       </div></div>
 
+      <!-- MERCADO, donde el diseño traía «FLUJO DE CONSCIENCIA · ondas
+           neurales»: una senoidal decorativa que en reposo valía siempre lo
+           mismo, y que además animaba la voz de ULTRON justo cuando esa voz se
+           está OYENDO. Una casa de cambio no tenía ni una cifra de negocio en
+           su propio tablero: el precio del ORIGEN y los pares ya viajaban en
+           cada lectura de /vivo y nadie los pintaba. La onda de la voz se
+           queda, pequeña, dentro de este mismo panel. -->
       <div class="p"><div>
         <div style="display:flex;justify-content:space-between;align-items:flex-start">
-          <div><h2>FLUJO DE CONSCIENCIA</h2><div class="sub">ondas neurales</div></div>
+          <div><h2>MERCADO</h2><div class="sub" id="mercado-sub">—</div></div>
           <div class="dato on" id="onda-estado">EN REPOSO</div>
         </div>
-        <canvas id="onda" style="width:100%;flex:1;min-height:0;display:block"></canvas>
+        <div class="dato" id="mercado" tabindex="0" style="display:flex;flex-direction:column;gap:3px;flex:1;min-height:0;overflow-y:auto"></div>
+        <canvas id="onda" style="width:100%;height:18px;flex:none;display:block;opacity:.75"></canvas>
       </div></div>
 
       <div class="p"><div>
-        <div><h2>NÚCLEO COGNITIVO</h2><div class="sub" id="nodo-modelo">—</div></div>
+        <div><h2>CEREBRO</h2><div class="sub" id="nodo-modelo">—</div><div class="sub" id="cerebro-donde">—</div></div>
         <div style="display:flex;gap:12px;align-items:center;flex:1;min-height:0">
           <div id="rueda" style="position:relative;width:clamp(46px,36%,74px);aspect-ratio:1;flex:none;border-radius:50%;
                background:conic-gradient(var(--cian) 0deg,rgba(5,225,255,.12) 0);display:grid;place-items:center;
@@ -314,8 +437,9 @@ body.cajon #tirador{bottom:calc(76dvh + 4px)}
 
       <div class="p"><div>
         <div><h2>INTEGRIDAD</h2><div class="sub" id="integridad-tag">—</div></div>
-        <div style="display:flex;flex-direction:column;gap:3px;flex:1;min-height:0;overflow:hidden" class="dato" id="integridad"></div>
+        <div style="display:flex;flex-direction:column;gap:3px;flex:1;min-height:0;overflow:hidden" class="dato" id="integridad" tabindex="0"></div>
       </div></div>
+    </div>
     </div>
 
     <div id="centro">
@@ -323,40 +447,21 @@ body.cajon #tirador{bottom:calc(76dvh + 4px)}
       <div id="pista">ARRASTRE PARA GIRAR · SUELTE UN ARCHIVO PARA QUE LO LEA</div>
       <div id="globo" class="oculto"><div><div>
         <div class="quien" id="globo-quien">ULTRON:</div>
-        <div id="dicho"></div>
+        <!-- `tabindex=0`: es un contenedor que se desplaza, y sin esto quien
+             navega solo con teclado no puede leer una respuesta larga. -->
+        <div id="dicho" tabindex="0" role="region" aria-label="Respuesta de ULTRON"></div>
+        <div id="fuentes" class="oculto"></div>
         <div id="chips" class="oculto"></div>
       </div></div></div>
     </div>
 
-    <div id="der">
-      <div class="p"><div>
-        <div><h2>ECOSISTEMA</h2><div class="sub" id="eco-sub">—</div></div>
-        <div style="display:flex;flex-direction:column;gap:3px;flex:1;min-height:0;overflow-y:auto" class="dato" id="eco"></div>
-      </div></div>
-
-      <div class="p"><div>
-        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
-          <div style="min-width:0"><h2>DOCUMENTOS ENTRANTES</h2><div class="sub" id="arch-sub">nada todavía</div></div>
-          <button class="mando" id="clip" title="Subir un archivo" aria-label="Subir un archivo" style="width:32px;height:32px;margin:-4px -4px 0 0">
-            <svg viewBox="0 0 24 24"><path d="M21.4 11.05 12.25 20.2a5.5 5.5 0 0 1-7.78-7.78l9.2-9.2a3.67 3.67 0 1 1 5.18 5.19l-9.19 9.2a1.83 1.83 0 1 1-2.6-2.6l8.5-8.48"/></svg>
-          </button>
-        </div>
-        <div style="flex:1;min-height:0;overflow-y:auto" id="archivos"></div>
-        <input type="file" id="fichero" class="oculto" multiple>
-      </div></div>
-
-      <div class="p"><div>
-        <div><h2>PENDIENTES DE LA JUNTA</h2><div class="sub" id="pend-sub">—</div></div>
-        <div style="flex:1;min-height:0;overflow-y:auto;display:flex;flex-direction:column;gap:6px" id="pendientes"></div>
-      </div></div>
-    </div>
-  </div>
+  </main>
 
   <!-- ── MUELLE ───────────────────────────────────────────────────────────── -->
-  <div id="muelle"></div>
+  <nav id="muelle" aria-label="Las casas del ecosistema"></nav>
 
   <!-- ── PIE ──────────────────────────────────────────────────────────────── -->
-  <div id="pie">
+  <div id="pie" role="search">
     <div id="caja"><div>
       <textarea id="texto" rows="1" placeholder="Indique la consulta, o suelte un archivo aquí" autocomplete="off"></textarea>
       <button class="mando" id="clip2" title="Subir un archivo" aria-label="Subir un archivo">

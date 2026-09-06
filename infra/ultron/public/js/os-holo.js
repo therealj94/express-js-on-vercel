@@ -128,8 +128,18 @@ function viseme(text, pos) {
 }
 
 export function mount(canvas, get, opts = {}) {
-  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true, preserveDrawingBuffer: true, powerPreference: 'high-performance' });
-  renderer.setPixelRatio(Math.min(devicePixelRatio, 1.75));
+  /* ACOPLE · `preserveDrawingBuffer` FUERA. Nadie llama a `toDataURL` ni a
+     `readPixels` en producción: la bandera solo obliga al controlador a
+     conservar y copiar el búfer en cada cuadro y le apaga optimizaciones. Es
+     coste puro. (La prueba del navegador sí lo necesita para comprobar que el
+     lienzo pinta, así que lo pide con `?buffer`.) */
+  const paraPrueba = /(^|[?&])buffer(=|&|$)/.test(location.search);
+  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true, preserveDrawingBuffer: paraPrueba, powerPreference: 'high-performance' });
+  /* Menos densidad en el teléfono: a DPR 3 esto renderiza 683×1477 píxeles
+     reales de cromo con abrillantado, cinco morphs, siete luces y quinientas
+     partículas subidas a la GPU en cada cuadro. Un gama media no lo sostiene:
+     se calienta y baja a veinte cuadros. */
+  renderer.setPixelRatio(Math.min(devicePixelRatio, innerWidth < 860 ? 1.25 : 1.75));
   renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.35; renderer.outputColorSpace = THREE.SRGBColorSpace;
   const scene = new THREE.Scene(); const camera = new THREE.PerspectiveCamera(30, 1, .1, 100);
   const pmrem = new THREE.PMREMGenerator(renderer); scene.environment = pmrem.fromScene(envScene(), 0.04).texture;
@@ -242,8 +252,16 @@ export function mount(canvas, get, opts = {}) {
     camera.position.set(xOff, yc + (opts.zoom ? 0 : 0.3), dist); camera.lookAt(xOff, yc, 0);
   }
 
+  /* `resize()` leía `clientWidth`/`clientHeight` SESENTA VECES POR SEGUNDO —un
+     reflujo forzado por cuadro— para comprobar algo que cambia una vez cada
+     varios minutos. Ahora avisa el observador. */
+  let hayQueMedir = true;
+  try { new ResizeObserver(() => { hayQueMedir = true; }).observe(canvas); } catch { /* sin observador, se mide siempre */ hayQueMedir = true; }
+  addEventListener('orientationchange', () => { hayQueMedir = true; });
+
   function frame(now) {
-    raf = requestAnimationFrame(frame); resize();
+    raf = requestAnimationFrame(frame);
+    if (hayQueMedir) { resize(); hayQueMedir = false; }
     const t = (now - t0) / 1000, dt = 1 / 60; const s = get() || {}; const st = s.state || 'idle', mood = s.mood || 'neutral';
     mouse.x += ((s.mouse?.x || 0) - mouse.x) * .06; mouse.y += ((s.mouse?.y || 0) - mouse.y) * .06;
 
@@ -331,7 +349,30 @@ export function mount(canvas, get, opts = {}) {
     renderer.render(scene, camera);
   }
   raf = requestAnimationFrame(frame);
-  return { dispose() { cancelAnimationFrame(raf); renderer.dispose(); pmrem.dispose(); } };
+
+  /* ACOPLE · QUE NO DIBUJE CUANDO NADIE MIRA, Y QUE VUELVA SI SE PIERDE EL
+     CONTEXTO. En un teléfono con presión de memoria, al volver de segundo plano
+     el contexto WebGL se pierde: sin esto el lienzo se quedaba NEGRO PARA
+     SIEMPRE y el bucle seguía renderizando nada. */
+  const alOcultar = () => {
+    if (document.hidden) cancelAnimationFrame(raf);
+    else { hayQueMedir = true; raf = requestAnimationFrame(frame); }
+  };
+  document.addEventListener('visibilitychange', alOcultar);
+  const perdido = (e) => { e.preventDefault(); cancelAnimationFrame(raf); };
+  const vuelto = () => { hayQueMedir = true; raf = requestAnimationFrame(frame); };
+  canvas.addEventListener('webglcontextlost', perdido, false);
+  canvas.addEventListener('webglcontextrestored', vuelto, false);
+
+  return {
+    dispose() {
+      cancelAnimationFrame(raf);
+      document.removeEventListener('visibilitychange', alOcultar);
+      canvas.removeEventListener('webglcontextlost', perdido);
+      canvas.removeEventListener('webglcontextrestored', vuelto);
+      renderer.dispose(); pmrem.dispose();
+    },
+  };
 }
 window.UltronHolo = { mount };
 

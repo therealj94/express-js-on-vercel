@@ -69,7 +69,7 @@ await p.evaluate(async (b) => {
   await fetch(b + '/entrar', { method: 'POST', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ correo: 'jose@ordenglobal.org', clave: 'clave-jose' }) });
 }, BASE);
-await p.goto(BASE + '/os', { waitUntil: 'domcontentloaded' });
+await p.goto(BASE + '/os?buffer', { waitUntil: 'domcontentloaded' });   // ?buffer: para poder fotografiar el lienzo
 await p.waitForTimeout(2600);
 decir(await p.evaluate(() => !!window.OS), 'el OS arranca');
 decir(await p.evaluate(() => !!window.BOCA), 'con el medidor de la boca cargado');
@@ -265,6 +265,96 @@ titulo(`los mandos, a ${ANCHO} px`);
     return { dentro: r.left >= -1 && r.right <= innerWidth + 1, corta: d.scrollWidth > d.clientWidth + 2, w: Math.round(r.width) };
   });
   decir(globo && globo.dentro && !globo.corta, 'la respuesta de ULTRON cabe entera en la pantalla', JSON.stringify(globo));
+}
+
+/* ── LO QUE LOS TRES EXPERTOS ENCONTRARON ────────────────────────────────────
+   Cada uno de estos fallos estaba VIVO en la pantalla y ninguno daba error:
+   salían como una pantalla bonita que mentía. Quedan clavados aquí para que no
+   vuelvan por la puerta de atrás. */
+titulo('lo que la crítica encontró');
+{
+  // 1 · Los colores de estado no se pintaban: `.fila span:last-child` (0,2,1)
+  //     ganaba a `.mal` (0,1,0), así que «CAÍDA» salía del mismo blanco que el
+  //     reloj y el tablero no se distinguía de uno sano.
+  const col = await p.evaluate(() => {
+    const s = [...document.querySelectorAll('#eco .fila > span:last-child')];
+    const mala = s.find((e) => e.classList.contains('mal'));
+    const gris = s.find((e) => e.classList.contains('hueco'));
+    const c = (e) => e && getComputedStyle(e).color;
+    return { mal: c(mala), hueco: c(gris), blanco: c(s.find((e) => !e.className)) };
+  });
+  decir(col.mal === 'rgb(255, 90, 110)', 'una casa caída se pinta ROJA de verdad', JSON.stringify(col));
+  decir(!col.hueco || col.hueco !== col.mal, 'y «no lo sé» NO se pinta del mismo color que «está mal»', JSON.stringify(col));
+
+  // 2 · «RPC 0 ms» con todo caído: la media entraba los ceros de las fallidas,
+  //     el mejor número posible en el peor momento posible.
+  const rpc = await texto('#m-rpc');
+  decir(rpc.trim() === '—', 'sin ninguna casa en pie, la latencia dice «—» y no «0»', rpc);
+
+  // 3 · El precio del ORIGEN desaparecía cuando no había referencia: una
+  //     ausencia invisible se lee como que el dato no hacía falta.
+  decir(/ORIGEN/.test(await texto('#eco')), 'el precio del ORIGEN se enseña siempre, aunque sea para decir que falta');
+
+  // 4 · «MOTOR · SIN RESPUESTA» permanente: /salud solo trae `nodo` si se
+  //     piensa con el nodo propio, y el panel leía ese nulo como una avería.
+  const cerebro = await texto('#nodo-lineas');
+  decir(!/SIN RESPUESTA/.test(cerebro), 'el cerebro no se declara caído por pensar en la nube', cerebro);
+  decir(/secciones/.test(cerebro), 'y el saber se cuenta en secciones, no en «fichas» (que son otra cosa)', cerebro);
+
+  // 5 · El tirador del cajón estaba declarado DESPUÉS del media query, así que
+  //     `display:none` ganaba siempre: en el teléfono no había forma de ver un
+  //     solo dato. Un tablero sin tablero.
+  if (ANCHO < 860) {
+    const t = await p.evaluate(() => {
+      const e = document.querySelector('#tirador'); if (!e) return null;
+      const r = e.getBoundingClientRect();
+      return { visible: getComputedStyle(e).display !== 'none', w: Math.round(r.width), h: Math.round(r.height),
+        dentro: r.bottom <= innerHeight + 1, expandido: e.getAttribute('aria-expanded') };
+    });
+    decir(t?.visible && t.h >= 34 && t.dentro, 'en el teléfono el tirador de los paneles EXISTE y se puede tocar', JSON.stringify(t));
+    const antes = await p.evaluate(() => document.querySelector("#paneles").inert);
+    await p.click('#tirador');
+    await p.waitForTimeout(450);
+    const desp = await p.evaluate(() => ({ inerte: document.querySelector("#paneles").inert,
+      exp: document.querySelector('#tirador').getAttribute('aria-expanded'),
+      eco: document.querySelector('#eco')?.getBoundingClientRect().top }));
+    decir(antes === true && desp.inerte === false, 'y el cajón cerrado no se lleva el foco fuera de la pantalla');
+    decir(desp.exp === 'true', 'el tirador dice si está abierto (aria-expanded)');
+    decir(desp.eco != null && desp.eco < ALTO, 'al abrirlo, lo primero del cajón es el ECOSISTEMA y se ve entero', String(desp.eco));
+    await p.click('#tirador'); await p.waitForTimeout(400);
+  }
+
+  // 6 · Ni una región viva: quien usa lector de pantalla escribía y no pasaba
+  //     absolutamente nada.
+  const a11y = await p.evaluate(() => ({
+    h1: !!document.querySelector('h1'),
+    main: !!document.querySelector('main'),
+    vivo: !!document.querySelector('[aria-live]'),
+    lienzoOculto: document.querySelector('#holo')?.getAttribute('aria-hidden') === 'true',
+    campo: !!document.querySelector('#texto'),
+  }));
+  decir(a11y.h1 && a11y.main, 'la página tiene un encabezado y regiones de verdad', JSON.stringify(a11y));
+  decir(a11y.vivo, 'y una región viva para anunciar lo que ULTRON contesta');
+  decir(a11y.lienzoOculto, 'el busto está oculto al lector de pantalla: para quien no lo ve es decoración');
+
+  // 7 · El foco no se veía en el único campo de la pantalla.
+  await p.focus('#texto'); await p.waitForTimeout(120);
+  const foco = await p.evaluate(() => getComputedStyle(document.querySelector('#caja')).boxShadow);
+  decir(foco && foco !== 'none', 'y al enfocar el renglón se ve dónde está el foco', foco);
+
+  // 8 · La lectura congelada: cifras de hace tres horas con el reloj vivo.
+  const cong = await p.evaluate(async () => {
+    window.OS._adentro.envejecer(600);         // como si hiciera diez minutos que no se lee
+    await new Promise((r) => setTimeout(r, 1200));
+    const c = document.querySelector('#cintillo');
+    return { avisa: c && !c.classList.contains('oculto'), texto: c?.textContent || '', apagado: document.body.classList.contains('vieja') };
+  });
+  decir(cong.avisa && cong.apagado, 'si la lectura se corta, la pantalla lo DICE y apaga las cifras', cong.texto);
+
+  // 9 · Las fuentes salían de Google en una consola privada.
+  const fuera = await p.evaluate(() => [...document.querySelectorAll('link[href],script[src]')]
+    .map((e) => e.href || e.src).filter((u) => u && !u.startsWith(location.origin)));
+  decir(fuera.length === 0, 'la pantalla no le pide nada a ningún servidor de fuera', fuera.join(' '));
 }
 
 titulo('sin errores de JavaScript');

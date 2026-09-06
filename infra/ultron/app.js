@@ -45,6 +45,7 @@ const { join } = require('node:path');
 
 const saber = require('./lib/saber');
 const vivo = require('./lib/vivo');
+const vigia = require('./lib/vigia');
 const memoria = require('./lib/memoria');
 const cerebro = require('./lib/cerebro');
 const canales = require('./lib/canales');
@@ -138,9 +139,21 @@ app.use(helmet({
   contentSecurityPolicy: {
     directives: {
       defaultSrc: ["'self'"],
-      scriptSrc: ["'self'", "'unsafe-inline'"],
-      styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
-      fontSrc: ["'self'", 'https://fonts.gstatic.com'],
+      /* SIN `'unsafe-inline'` en los guiones. No hay un solo `<script>` con
+         cuerpo ni un solo manejador `on…=` en las dos pantallas —se comprobó—,
+         así que el permiso no servía para nada y a cambio anulaba la principal
+         defensa que la política aporta: el día que se cuele una inyección en
+         alguno de los muchos `innerHTML`, esto es lo que la detiene. */
+      scriptSrc: ["'self'"],
+      /* Las fuentes ya no salen de la casa: van servidas desde /vendor/fuentes,
+         por el mismo motivo por el que Three.js se vendorizó. Una consola
+         privada no le cuenta a Google quién la abre ni desde dónde, y una hoja
+         de estilos externa en la ruta crítica deja la pantalla sin tipografía
+         cuando el otro extremo va lento.
+         `'unsafe-inline'` en los ESTILOS sigue haciendo falta por los muchos
+         `style=` en línea del marcado; quitarlos es un trabajo aparte. */
+      styleSrc: ["'self'", "'unsafe-inline'"],
+      fontSrc: ["'self'"],
       imgSrc: ["'self'", 'data:'],
       mediaSrc: ["'self'", 'blob:'],
       connectSrc: ["'self'"],
@@ -297,7 +310,14 @@ app.get('/yo', puerta, (req, res) => {
   });
 });
 
-app.get('/vivo', puerta, async (req, res) => res.json(await vivo.leerConCache()));
+/* `/vivo` lleva ADEMÁS lo que el vigía recuerda: desde cuándo está cada casa
+   como está. «ORDENEX CAÍDA» sin fecha no deja decidir nada; «caída desde las
+   03:14» sí. La lectura del momento y la memoria del vigía son dos cosas
+   distintas y viajan por separado, para que se vea cuál es cuál. */
+app.get('/vivo', puerta, async (req, res) => {
+  const v = await vivo.leerConCache();
+  res.json({ ...v, vigia: vigia.estado() });
+});
 app.get('/saber', puerta, (req, res) => res.json(saber.resumen()));
 app.get('/saber/buscar', puerta, (req, res) => res.json(saber.buscar(String(req.query.q || ''), { maximo: 10 })));
 
@@ -455,7 +475,13 @@ const crudo = express.raw({ type: () => true, limit: TOPE_SUBIDA });
 
 app.post('/archivos', puerta, frenoSubir, crudo, async (req, res) => {
   try {
-    const nombre = decodeURIComponent(String(req.get('x-nombre') || '')).slice(0, 200);
+    /* Un `%` suelto en el nombre hace que `decodeURIComponent` LANCE, y eso
+       caía en el catch de abajo y salía un 500 con un mensaje interno por un
+       archivo llamado «100% cerrado.pdf». Si no se puede descifrar, se usa tal
+       cual: el nombre es una etiqueta, no una instrucción. */
+    const crudoNombre = String(req.get('x-nombre') || '');
+    let nombre; try { nombre = decodeURIComponent(crudoNombre); } catch { nombre = crudoNombre; }
+    nombre = nombre.slice(0, 200);
     const a = await archivos.guardar({
       nombre, tipo: req.get('content-type'), buf: req.body,
       miembro: req.miembro.correo, conversacion: req.get('x-conversacion') || null,
@@ -661,6 +687,9 @@ app.use((err, req, res, next) => {   // eslint-disable-line no-unused-vars
 if (require.main === module) {
   const PUERTO = Number(process.env.PORT || 3900);
   memoria.conectar().finally(() => {
+    /* El vigía arranca con el servidor y no con la pantalla: la avería que
+       importa es la que pasa cuando nadie está mirando. */
+    vigia.arrancar();
     app.listen(PUERTO, () => {
       console.log(`[ultron] escuchando en ${PUERTO} · cerebro ${cerebro.encendido() ? MODELO_LOG() : 'APAGADO'} · voz ${voz.encendida() ? 'ElevenLabs' : 'del navegador'} · memoria ${memoria.estado()}`);
     });
@@ -668,4 +697,4 @@ if (require.main === module) {
 }
 function MODELO_LOG() { return cerebro.modelo(); }
 
-module.exports = { app, _adentro: { emitirSesion, leerSesion, leerJunta, documentoHtml } };
+module.exports = { app, _adentro: { emitirSesion, leerSesion, leerJunta, documentoHtml, vigia } };

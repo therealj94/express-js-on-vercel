@@ -37,6 +37,17 @@ const CASAS = {
     api: process.env.ORDENSCAN_API || 'https://orden-global-scan-c4abe71e8024.herokuapp.com',
     web: 'https://ordenscan.com',
   },
+  /* La casa madre se medía en NINGÚN sitio, pero el tablero la contaba entre
+     las seis. Resultado: con todo el ecosistema perfectamente sano la pantalla
+     decía «5 de 6 en pie» y encendía la alarma todos los días. Una alarma que
+     está siempre encendida es una alarma que se deja de mirar, y entonces el
+     día que se caiga una de verdad no lo nota nadie. Es el mismo fallo que ya
+     se había corregido con la ruta de Genesis, repetido en otro sitio. */
+  ordenglobal: {
+    nombre: 'Orden Global · la casa madre',
+    api: process.env.ORDENGLOBAL_WEB || 'https://ordenglobal.org',
+    web: 'https://ordenglobal.org',
+  },
 };
 
 const PLAZO_MS = Number(process.env.VIVO_PLAZO_MS || 9000);
@@ -46,6 +57,15 @@ async function json(url) {
   const t = await r.text();
   let d = null; try { d = JSON.parse(t); } catch { /* no era JSON */ }
   return { http: r.status, ok: r.ok, datos: d, ms: 0 };
+}
+
+/* La casa madre es una web, no una API: no hay `/salud` que preguntar. Se pide
+   la portada y basta con que conteste. Sin `Accept: application/json`, porque
+   pedirle JSON a una página puede sacar un 406 de un servidor bien educado. */
+async function pagina(url) {
+  const r = await fetch(url, { signal: AbortSignal.timeout(PLAZO_MS), redirect: 'follow' });
+  await r.text();
+  return { http: r.status, ok: r.ok, datos: null, ms: 0 };
 }
 
 /** Una pata, con reloj y sin lanzar nunca. */
@@ -74,7 +94,7 @@ function precioDe(mercados) {
 
 /** Todo el estado, en paralelo. Nunca lanza. */
 async function leer() {
-  const [oxSalud, oxMercados, aucSalud, aucMonedas, wSalud, gSalud, scanTotal] = await Promise.all([
+  const [oxSalud, oxMercados, aucSalud, aucMonedas, wSalud, gSalud, scanTotal, ogWeb] = await Promise.all([
     pata('ordenex', () => json(CASAS.ordenex.api + '/salud')),
     pata('ordenex', () => json(CASAS.ordenex.api + '/mercados')),
     pata('aucorp', () => json(CASAS.aucorp.api + '/salud')),
@@ -89,6 +109,7 @@ async function leer() {
        dos sitios diciendo cosas distintas de la misma casa.) */
     pata('genesis', () => json(CASAS.genesis.api + '/healthz')),
     pata('ordenscan', () => json(CASAS.ordenscan.api + '/block/totalBlock')),
+    pata('ordenglobal', () => pagina(CASAS.ordenglobal.api + '/')),
   ]);
 
   const mercados = Array.isArray(oxMercados.datos) ? oxMercados.datos : [];
@@ -118,8 +139,14 @@ async function leer() {
     genesis: { ...CASAS.genesis, vivo: gSalud.ok, http: gSalud.http, ms: gSalud.ms, error: gSalud.error },
     ordenscan: {
       ...CASAS.ordenscan, vivo: scanTotal.ok, http: scanTotal.http, ms: scanTotal.ms, error: scanTotal.error,
-      bloque8532: Number(scanTotal.datos?.totalBlock ?? scanTotal.datos?.total ?? scanTotal.datos) || null,
+      /* El campo se llama `blockTotal`. Aquí decía `totalBlock` —las mismas dos
+         palabras al revés— así que la altura de la 8532 salía en nulo SIEMPRE,
+         y el tablero lo pintaba como «no leído» con OrdenScan contestando
+         perfectamente. lib/herramientas.js ya usaba el nombre bueno: eran dos
+         ficheros leyendo la misma casa con nombres distintos. */
+      bloque8532: Number(scanTotal.datos?.blockTotal ?? scanTotal.datos?.totalBlock ?? scanTotal.datos?.total) || null,
     },
+    ordenglobal: { ...CASAS.ordenglobal, vivo: ogWeb.ok, http: ogWeb.http, ms: ogWeb.ms, error: ogWeb.error },
   };
 }
 

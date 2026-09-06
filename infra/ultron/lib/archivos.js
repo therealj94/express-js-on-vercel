@@ -278,6 +278,28 @@ function leer(buf, clase) {
 /** ¿Se admite este tipo? Devuelve la clase o null. */
 const claseDe = (tipo) => CLASES[String(tipo || '').split(';')[0].trim().toLowerCase()] || null;
 
+/* ── LA FIRMA DEL ARCHIVO, NO LA PALABRA DEL CLIENTE ─────────────────────────
+   El `Content-Type` lo elige entero quien sube: se guardaba tal cual y se
+   devolvía tal cual en la cabecera de la descarga. Un HTML declarado
+   `text/plain` se sirve EN LÍNEA, y que hoy no se ejecute depende solo de una
+   cabecera `nosniff` que nadie escribió a propósito. Depender de eso es
+   depender de la suerte.
+   Se miran los primeros bytes: son la única parte del archivo que el formato
+   obliga a decir la verdad. Los de texto no llevan firma y ahí no hay nada que
+   comprobar —pero tampoco hay nada que suplantar, porque se sirven adjuntos. */
+const FIRMAS = {
+  'application/pdf': (b) => b.slice(0, 5).toString('latin1') === '%PDF-',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document': (b) => b[0] === 0x50 && b[1] === 0x4b,
+  'image/png': (b) => b.slice(0, 8).toString('hex') === '89504e470d0a1a0a',
+  'image/jpeg': (b) => b[0] === 0xff && b[1] === 0xd8 && b[2] === 0xff,
+  'image/webp': (b) => b.slice(0, 4).toString('latin1') === 'RIFF' && b.slice(8, 12).toString('latin1') === 'WEBP',
+};
+
+function firmaCuadra(tipo, buf) {
+  const f = FIRMAS[tipo];
+  return f ? f(buf) : true;         // los de texto no firman: no hay qué comprobar
+}
+
 /** Lo que se admite, para decírselo a la persona antes de que arrastre nada. */
 const admitidos = () => Object.entries(CLASES).map(([tipo, c]) => ({ tipo, ext: c.ext, rotulo: c.rotulo, seLee: !!c.lee }));
 
@@ -286,11 +308,15 @@ async function guardar({ nombre, tipo, buf, miembro, conversacion }) {
   if (buf.length > TOPE_BYTES) throw Object.assign(new Error(`El archivo pesa ${(buf.length / 1e6).toFixed(1)} MB y el tope son 8.`), { codigo: 'MUY_GRANDE' });
   const clase = claseDe(tipo);
   if (!clase) throw Object.assign(new Error(`No se admiten archivos de tipo «${tipo}». Se admiten: ${admitidos().map((a) => a.ext).join(', ')}.`), { codigo: 'TIPO_NO' });
+  const tipoLimpio = String(tipo).split(';')[0].trim().toLowerCase();
+  if (!firmaCuadra(tipoLimpio, buf)) {
+    throw Object.assign(new Error(`El archivo dice ser ${clase.rotulo} pero por dentro no lo es. No se guarda.`), { codigo: 'FIRMA_NO' });
+  }
 
   const { texto, recortado = false, porQue } = leer(buf, clase);
   const d = {
     nombre: String(nombre || `archivo.${clase.ext}`).slice(0, 200),
-    tipo: String(tipo).split(';')[0].trim().toLowerCase(),
+    tipo: tipoLimpio,
     bytes: buf.length, crudo: buf, texto, recortado, porQue,
     miembro, conversacion: conversacion || null,
   };
