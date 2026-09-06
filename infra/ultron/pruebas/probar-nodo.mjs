@@ -107,11 +107,59 @@ titulo('un turno simple: el texto sale en vivo y el prompt lleva lo suyo');
   const sinLaRegla = sys.replace(/Y SIEMPRE DE USTED[\s\S]*?\n\n/, '');
   const tuteo = sinLaRegla.match(/«[^»]*(?:podrías|tenés|tienes|necesitás|te dej[oé]|tu cuenta)[^»]*»/i);
   decir(!tuteo, 'sin un solo ejemplo de respuesta que tutee', tuteo ? tuteo[0] : '');
-  decir(Array.isArray(p.tools) && p.tools.some((t) => t.function?.name === 'buscar_web') && p.tools.some((t) => t.function?.name === 'abrir'), 'y las herramientas en formato de Ollama, con buscar_web y abrir', p.tools.map((t) => t.function.name).join(','));
+  /* ── LAS DOCE, Y NO LAS SESENTA Y CUATRO ────────────────────────────────
+     Antes viajaban las 64 en cada turno: 6 622 fichas de un presupuesto de
+     8 188, o sea el 81 % del encabezado gastado en herramientas que la
+     pregunta no iba a usar. Ahora van las doce de todos los días y una puerta
+     para pedir el resto. Se comprueban las tres cosas que importan: que van
+     pocas, que están las de siempre, y que la puerta viaja SIEMPRE — sin ella
+     el modelo se quedaría sin manera de llegar a las otras cincuenta. */
+  const nombres = (p.tools || []).map((t) => t.function.name);
+  decir(Array.isArray(p.tools) && nombres.includes('buscar_web') && nombres.includes('estado_vivo'),
+    'las herramientas van en formato de Ollama, con las de todos los días', nombres.join(','));
+  decir(nombres.length <= 14, `y van pocas, no las 64: ${nombres.length} en el turno`);
+  decir(nombres.includes('mas_herramientas'), 'con la puerta para pedir las demás, que viaja siempre');
+  decir(!nombres.includes('terminal') && !nombres.includes('desplegarse'),
+    'y lo peligroso no viaja hasta que hace falta: la terminal no está a la vista');
   decir(!p.tools.some((t) => t.function?.name === 'web_search'), 'sin la búsqueda de Anthropic, que aquí no existe');
   decir(r.uso.entrada > 0 && r.uso.dolares === 0, 'el uso se cuenta y el costo es cero: la tarjeta ya está pagada', JSON.stringify(r.uso));
   decir(r.modelo === 'nodo:' + nodo.MODELO, `y el turno dice de dónde salió (nodo:${nodo.MODELO})`, r.modelo);
 }
+
+/* ── LA PUERTA A LAS DEMÁS HERRAMIENTAS ──────────────────────────────────────
+   Lo que de verdad hay que comprobar del recorte a doce no es que sean doce:
+   es que NO SE PIERDE NADA. El modelo pide la caja, y en la vuelta siguiente
+   las herramientas de esa caja tienen que viajar de verdad. Si no llegaran, el
+   modelo pediría la caja, se la darían, y seguiría sin verla — y contestaría
+   «no puedo» de algo que sí puede, que es justo el fallo que este diseño
+   existe para evitar. */
+titulo('pedir una caja: y en la vuelta siguiente las herramientas están');
+{
+  const antes = pedidos.length;
+  guion = [
+    { llamadas: [{ name: 'mas_herramientas', arguments: { caja: 'taller' } }] },
+    { texto: 'Ya puedo mirar el repositorio.' },
+  ];
+  const r = await cerebro.pensar({ miembro: JOSE, junta: JUNTA, texto: 'mirá el código del vigía' });
+  const vueltas = pedidos.slice(antes);
+  const enLaPrimera = (vueltas[0].tools || []).map((t) => t.function.name);
+  const enLaSegunda = (vueltas[1]?.tools || []).map((t) => t.function.name);
+  decir(!enLaPrimera.includes('repo_leer') && enLaPrimera.includes('mas_herramientas'),
+    'en la primera vuelta el taller no viaja, pero sí la puerta', `${enLaPrimera.length} herramientas`);
+  decir(enLaSegunda.includes('repo_leer') && enLaSegunda.includes('terminal'),
+    'y en la segunda, con la caja pedida, el taller YA viaja', `${enLaSegunda.length} herramientas`);
+  decir(enLaSegunda.includes('estado_vivo'), 'sin perder las de todos los días');
+  decir(r.texto === 'Ya puedo mirar el repositorio.', 'y el turno termina normal', r.texto);
+  /* La caja se cierra al terminar el turno: la pregunta siguiente vuelve a
+     salir ligera, que es de lo que se trataba. */
+  const despues = pedidos.length;
+  guion = [{ texto: 'Hola.' }];
+  await cerebro.pensar({ miembro: JOSE, junta: JUNTA, texto: 'hola' });
+  const nueva = (pedidos.slice(despues)[0].tools || []).map((t) => t.function.name);
+  decir(!nueva.includes('repo_leer'), 'y en la pregunta siguiente el taller ya no viaja: la caja se cerró sola',
+    `${nueva.length} herramientas`);
+}
+
 
 titulo('herramientas como tool_calls: se corren y el modelo sigue');
 {

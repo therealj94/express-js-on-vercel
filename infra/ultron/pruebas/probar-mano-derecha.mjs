@@ -410,6 +410,46 @@ titulo('las preferencias: idioma, voz y figura, guardadas con su correo');
   await pref.guardar('jose@ordenglobal.org', { idioma: 'es', figura: 'nucleo', vozId: null, tablero: [] });
 }
 
+// ── LAS DOCE A LA MANO, Y LAS CAJAS ─────────────────────────────────────────
+titulo('las doce herramientas de siempre, y las demás cuando se ocupen');
+{
+  const h = require('../lib/herramientas.js');
+  const fichas = (x) => Math.round(JSON.stringify(x).length / 3.6);
+  const solas = h.paraOllama();
+  const todas = h.DEFINICIONES;
+  /* EL NÚMERO QUE MOTIVÓ ESTO. Las 64 herramientas viajaban al modelo en cada
+     pregunta: 6 622 fichas de un presupuesto de 8 188. Para decir «hola», el
+     modelo leía cómo desplegarse a Heroku. */
+  decir(fichas(todas.map((d) => ({ type: 'function', function: { name: d.name, description: d.description, parameters: d.input_schema } }))) > 6000,
+    'las 64 juntas pesaban más de 6 000 fichas: eso era el 81 % del encabezado');
+  decir(solas.length === h.NUCLEO.size + 1, `a la mano van ${h.NUCLEO.size} y la puerta para pedir el resto`, `${solas.length} definiciones`);
+  decir(fichas(solas) < fichas(todas) / 3, 'y eso pesa menos de un tercio', `${fichas(solas)} fichas`);
+  decir(solas.some((t) => t.function.name === 'mas_herramientas'), 'la puerta va siempre puesta');
+  decir(/nunca se pierde|NO contestás que no podés/i.test(h.ABRIR.description),
+    'y le dice al modelo la regla: si le falta algo, PIDE la caja, no contesta que no puede');
+  /* Que el índice nombre TODAS las cajas es lo que evita el fallo silencioso:
+     si una caja no aparece ahí, el modelo no puede saber que existe. */
+  const indice = h.indiceDeCajas();
+  decir(h.CAJAS_UTILES.every((c) => indice.includes(c)), 'el índice nombra todas las cajas: ninguna queda escondida');
+
+  /* NINGUNA HERRAMIENTA SE PIERDE. Es la comprobación que de verdad importa:
+     entre las doce y las cajas tienen que estar las 64. */
+  const alcanzables = new Set([...h.NUCLEO]);
+  for (const c of Object.keys(h.CAJAS)) for (const n of h.enCaja(c)) alcanzables.add(n);
+  const perdidas = todas.map((d) => d.name).filter((n) => !alcanzables.has(n));
+  decir(perdidas.length === 0, 'entre las doce y las cajas se llega a las 64: no se perdió ninguna',
+    perdidas.length ? `PERDIDAS: ${perdidas.join(', ')}` : `${alcanzables.size} alcanzables`);
+
+  const conTaller = h.paraOllama({ cajas: ['taller'] });
+  decir(conTaller.some((t) => t.function.name === 'terminal'), 'abrir una caja trae sus herramientas');
+  decir(!solas.some((t) => t.function.name === 'terminal'), 'y sin abrirla no viajan');
+
+  const ctx = { miembro: { nombre: 'José', correo: 'jose@ordenglobal.org', rol: 'presidente' }, acciones: [], junta: [] };
+  const dicho = await h.correr('mas_herramientas', { caja: 'taller' }, ctx);
+  decir(/taller.*abierta/i.test(dicho) && /terminal/.test(dicho), 'pedir una caja dice qué quedó a la vista', dicho.slice(0, 80));
+  decir(/No existe la caja/.test(await h.correr('mas_herramientas', { caja: 'marte' }, ctx)), 'y una caja inventada se dice, no se calla');
+}
+
 // ── EL REGISTRO POR DÍA ─────────────────────────────────────────────────────
 titulo('el registro: una conversación por día, y salir no la parte');
 {

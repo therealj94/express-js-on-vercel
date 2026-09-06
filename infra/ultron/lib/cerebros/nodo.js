@@ -496,11 +496,18 @@ async function pensar({ miembro, junta, texto, conversacionId, emitir = () => {}
   };
   let derivas = 0;
   let reintentos = 0;
+  /* ── LAS CAJAS ABIERTAS EN ESTE TURNO ───────────────────────────────────
+     ULTRON lleva a mano las doce de todos los días; lo demás vive en cajas que
+     el propio modelo pide con `mas_herramientas` cuando le hacen falta. Aquí se
+     apunta cuáles abrió, y desde la vuelta siguiente sus definiciones viajan
+     con las demás. Es por TURNO: las cajas se cierran solas al terminar, así
+     que la pregunta siguiente vuelve a salir ligera. */
+  const cajas = [];
 
   for (let vuelta = 0; vuelta < MAX_VUELTAS; vuelta++) {
     emitir('pensando', { vuelta });
     const acum = { t: '' };
-    let r = await pedir({ model: MODELO, messages: mensajes, tools: herramientas.paraOllama(), stream: true, options: opciones }, { alTrozo: conGuarda(acum) });
+    let r = await pedir({ model: MODELO, messages: mensajes, tools: herramientas.paraOllama({ cajas }), stream: true, options: opciones }, { alTrozo: conGuarda(acum) });
     uso.entrada += r.uso.entrada; uso.salida += r.uso.salida;
     /* SE ENGANCHÓ.
      *
@@ -536,7 +543,7 @@ async function pensar({ miembro, junta, texto, conversacionId, emitir = () => {}
       emitir('pensando', { vuelta, motivo: 'se reintenta' });
       console.warn('[nodo] se enganchó sin decir nada: un reintento con otra semilla');
       const otro = { t: '' };
-      r = await pedir({ model: MODELO, messages: mensajes, tools: herramientas.paraOllama(), stream: true,
+      r = await pedir({ model: MODELO, messages: mensajes, tools: herramientas.paraOllama({ cajas }), stream: true,
         options: { ...opciones, temperature: 0.6, seed: Math.floor(Math.random() * 1e9) } },
         { alTrozo: conGuarda(otro) });
       uso.entrada += r.uso.entrada; uso.salida += r.uso.salida;
@@ -569,6 +576,16 @@ async function pensar({ miembro, junta, texto, conversacionId, emitir = () => {}
     // Hubo herramientas: lo dicho antes de llamarlas se conserva si es texto de
     // verdad (una frase de «voy a mirar»), no si era la etiqueta.
     if (visible) textoFinal += (textoFinal ? '\n\n' : '') + visible;
+    /* Si pidió una caja, se apunta ANTES de correr nada: la vuelta siguiente
+       tiene que salir ya con esas herramientas dentro, o el modelo pediría la
+       caja, se la darían, y seguiría sin verla. */
+    for (const l of llamadas) {
+      if (l.function?.name !== 'mas_herramientas') continue;
+      let e = l.function?.arguments;
+      if (typeof e === 'string') { try { e = JSON.parse(e); } catch { e = {}; } }
+      const caja = String(e?.caja || '').trim();
+      if (caja && herramientas.CAJAS[caja] && !cajas.includes(caja)) cajas.push(caja);
+    }
     mensajes.push({ role: 'assistant', content: r.content, tool_calls: r.tool_calls.length ? r.tool_calls : undefined });
     for (const res of await correrLote(llamadas, { ctx, usadas, emitir })) {
       mensajes.push({ role: 'tool', content: recortar(res.salida, TOPE_RESULTADO), tool_name: res.nombre });
@@ -595,7 +612,7 @@ async function pensar({ miembro, junta, texto, conversacionId, emitir = () => {}
     mensajes.push({ role: 'assistant', content: textoFinal });
     mensajes.push({ role: 'user', content: `[sistema] Citaste «${falsas.join('», «')}» pero no la llamaste en este turno. Llamala ahora y contestá con lo que devuelva, o reescribí la respuesta sin esa cita diciendo de dónde sale de verdad el dato.` });
     let dicho = '';
-    const r = await pedir({ model: MODELO, messages: mensajes, tools: herramientas.paraOllama(), stream: true, options: opciones }, { alTrozo: (t) => { dicho += t; } });
+    const r = await pedir({ model: MODELO, messages: mensajes, tools: herramientas.paraOllama({ cajas }), stream: true, options: opciones }, { alTrozo: (t) => { dicho += t; } });
     uso.entrada += r.uso.entrada; uso.salida += r.uso.salida;
     const enTexto = llamadasEnTexto(r.content);
     const llamadas = [...r.tool_calls, ...enTexto.llamadas];
@@ -609,7 +626,7 @@ async function pensar({ miembro, junta, texto, conversacionId, emitir = () => {}
         usadas.push({ nombre: res.nombre, entrada: res.entrada, salida: res.salida.slice(0, 2000) });
         mensajes.push({ role: 'tool', content: recortar(res.salida, TOPE_RESULTADO), tool_name: res.nombre });
       }
-      const r2 = await pedir({ model: MODELO, messages: mensajes, tools: herramientas.paraOllama(), stream: true, options: opciones }, { alTrozo: (t) => {} });
+      const r2 = await pedir({ model: MODELO, messages: mensajes, tools: herramientas.paraOllama({ cajas }), stream: true, options: opciones }, { alTrozo: (t) => {} });
       uso.entrada += r2.uso.entrada; uso.salida += r2.uso.salida;
       dicho = llamadasEnTexto(r2.content).limpio;
     } else dicho = enTexto.limpio;

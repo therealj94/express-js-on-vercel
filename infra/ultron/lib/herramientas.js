@@ -628,6 +628,16 @@ async function correrAdentro(nombre, entrada, ctx) {
           ? s.map((x) => `### [${x.id}] ${x.titulo}\n(fuente: ${x.fuente})\n${x.texto}`).join('\n\n')
           : 'No hay secciones del saber sobre eso.';
       }
+      /* La puerta a las demás cajas. No corre nada: dice qué quedó a la vista.
+         Quien la mira de verdad es el bucle del cerebro, que a partir de aquí
+         le manda al modelo las definiciones de esa caja. */
+      case 'mas_herramientas': {
+        const caja = String(entrada.caja || '').trim();
+        if (!CAJAS[caja]) return `No existe la caja «${caja}». Las que hay: ${CAJAS_UTILES.join(', ')}.`;
+        const dentro = enCaja(caja).filter((n) => !NUCLEO.has(n));
+        if (!dentro.length) return `La caja «${caja}» ya la tenías entera a la vista.`;
+        return `Caja «${caja}» abierta. Ya podés usar: ${dentro.join(', ')}. Seguí con lo que ibas.`;
+      }
       case 'estado_vivo': {
         const v = await vivo.leer();
         return vivo.paraElModelo(v);
@@ -1141,15 +1151,114 @@ const GRUPOS = {
   'Hacia fuera': ['avisar_junta'],
 };
 
+/* ══ LAS DOCE A LA MANO, Y UNA PUERTA PARA EL RESTO ══════════════════════════
+ * ── EL PROBLEMA, MEDIDO ─────────────────────────────────────────────────────
+ * Las 64 herramientas se le mandaban al modelo EN CADA PREGUNTA. Medido el
+ * 6-sep: 6 622 fichas de catálogo, de un presupuesto total de 8 188. El 81 %
+ * de lo que el modelo leía antes de leer la pregunta eran herramientas que esa
+ * pregunta no iba a usar. Para decir «hola» leía cómo desplegarse a Heroku.
+ * Eso son los quince segundos que José veía: «se traba, no analiza a tiempo».
+ *
+ * ── LA DECISIÓN, QUE ES SUYA ────────────────────────────────────────────────
+ * «Las 12 herramientas siempre y las demás cuando se ocupen.» Doce a la mano,
+ * y el resto en cajas que se abren pidiéndolas.
+ *
+ * ── POR QUÉ ASÍ Y NO ADIVINANDO ─────────────────────────────────────────────
+ * La manera fácil habría sido mirar la pregunta con unas palabras clave y
+ * cargar las cajas que peguen. No se hace, y por un motivo: cuando falla, falla
+ * EN SILENCIO. ULTRON contestaría «no puedo hacer eso» de algo que sí puede, y
+ * ni él ni nadie sabría por qué. Un asistente que a veces miente sobre lo que
+ * sabe hacer es peor que uno lento.
+ *
+ * Así que decide el modelo, no una lista de palabras: lleva escrito qué cajas
+ * existen y qué hay en cada una, y cuando le falta algo pide la caja con
+ * `mas_herramientas` y sigue en el mismo turno. Cuesta una vuelta más —sobre un
+ * encabezado corto, o sea rápida— y a cambio nunca se pierde una capacidad sin
+ * que se note.
+ *
+ * ── QUÉ ENTRA EN LAS DOCE ───────────────────────────────────────────────────
+ * Lo de todos los días, sacado de lo que José pregunta de verdad: cómo está la
+ * casa, el tiempo y la hora, buscar en el saber y en internet, los pendientes,
+ * recordar, la caja de Ordenex y los documentos que sube. Se cambia sin tocar
+ * código con ULTRON_NUCLEO, por si con el uso resulta que sobra una y falta
+ * otra. */
+const NUCLEO_DE_FABRICA = [
+  'estado_vivo',                                      // cómo está la casa
+  'clima', 'hora',                                    // lo que pidió para el saludo
+  'buscar_saber', 'buscar_web',                       // dónde se buscan las respuestas
+  'listar_pendientes', 'anotar_pendiente', 'cerrar_pendiente',
+  'recordar',                                         // la memoria de la junta
+  'ordenex_caja',                                     // los saldos, que mira a diario
+  'listar_archivos', 'leer_archivo',                  // lo que sube a la pantalla
+];
+const NUCLEO = new Set((process.env.ULTRON_NUCLEO || '').trim()
+  ? process.env.ULTRON_NUCLEO.split(',').map((x) => x.trim()).filter(Boolean)
+  : NUCLEO_DE_FABRICA);
+
+/* Las cajas. El nombre corto es lo que el modelo escribe para pedirla; el texto
+   es lo que lee para saber si es la que necesita, así que dice QUÉ SE PUEDE
+   HACER, no cómo se llama el grupo. */
+const CAJAS = {
+  cadenas: { grupos: ['Ordenex y las cadenas', 'Las otras casas'], que: 'mercados de Ordenex, altura de la cadena, saldo de una dirección, monedas de AuCorp, salud de Genesis' },
+  documentos: { grupos: ['Pendientes y documentos'], que: 'listar, leer y CREAR documentos de la biblioteca de la junta' },
+  taller: { grupos: ['El taller (repositorio, terminal, despliegue)'], que: 'leer el repositorio, buscar en el código, proponer un cambio, la terminal, desplegarse' },
+  operaciones: { grupos: ['Operaciones (Heroku, nodos, bases)'], que: 'Heroku (apps, registro, variables, reiniciar), las máquinas de AWS, consultar una base' },
+  equipo: { grupos: ['El equipo'], que: 'los bots de la casa, sus partes, correrlos, auditar dependencias, ver autorizaciones' },
+  salud: { grupos: ['Su propia salud'], que: 'la salud de ULTRON, repararla, su historial y la bitácora de lo que hizo' },
+  boveda: { grupos: ['La bóveda'], que: 'listar las llaves guardadas y aplicarlas en Heroku (nunca enseña un valor)' },
+  aprender: { grupos: ['Aprender'], que: 'aprender una lección, usar, crear o publicar una habilidad' },
+  memoria: { grupos: ['El saber y la memoria'], que: 'buscar en conversaciones viejas y olvidar una memoria' },
+  /* `buscar_web` va en las doce, pero `leer_pagina` no cabía, y sin caja se
+     quedaba inalcanzable: buscar y no poder abrir lo que se encuentra es media
+     herramienta. Lo cazó la prueba que comprueba que se llega a las 64. */
+  internet: { grupos: ['Internet'], que: 'abrir y leer una página web entera, cuando el resumen de la búsqueda no alcanza' },
+  cuentas: { grupos: ['Cuentas', 'La casa, en vivo'], que: 'calcular, el gasto en fichas, cotizar ORIGEN, el parte del día, la salud del nodo y de la nube' },
+  personas: { grupos: ['La junta'], que: 'quién es quién en la junta directiva' },
+  acciones: { grupos: ['Acciones que confirma la persona'], que: 'ponerle un botón para abrir una casa o un documento, exportar un PDF, proponer un envío' },
+  avisar: { grupos: ['Hacia fuera'], que: 'avisar a la junta por WhatsApp o correo (sale de la casa; pide autorización)' },
+};
+
+const enCaja = (caja) => (CAJAS[caja]?.grupos || []).flatMap((g) => GRUPOS[g] || []);
+/** Las cajas que valen la pena ofrecer: las que tienen algo fuera del núcleo. */
+const CAJAS_UTILES = Object.keys(CAJAS).filter((c) => enCaja(c).some((n) => !NUCLEO.has(n)));
+/** El índice que lee el modelo para saber qué puede pedir. */
+const indiceDeCajas = () => CAJAS_UTILES.map((c) => `${c} (${CAJAS[c].que})`).join('; ');
+
+const ABRIR = {
+  name: 'mas_herramientas',
+  get description() {
+    return 'Abre una caja de herramientas que ahora mismo no tenés a la vista, y quedan usables EN ESTE MISMO TURNO. '
+      + 'Llevás a mano solo las doce de todos los días; todo lo demás está en cajas. '
+      + 'REGLA: si para contestar hace falta algo que no ves en tu lista, NO contestás que no podés — pedís la caja y seguís. '
+      + `Las cajas son: ${indiceDeCajas()}.`;
+  },
+  input_schema: {
+    type: 'object',
+    properties: { caja: { type: 'string', enum: CAJAS_UTILES, description: 'cuál se abre' } },
+    required: ['caja'],
+  },
+};
+
 /** El catálogo para la consola: definición, grupo y si escribe algo. */
 function catalogo() {
   const grupoDe = (n) => Object.entries(GRUPOS).find(([, l]) => l.includes(n))?.[0] || 'Otras';
   return DEFINICIONES.map((d) => ({ nombre: d.name, descripcion: d.description, entrada: d.input_schema, grupo: grupoDe(d.name), escribe: ESCRIBEN.has(d.name) }));
 }
 
-/** Las definiciones en el formato de Ollama. */
-function paraOllama() {
-  return DEFINICIONES.map((d) => ({ type: 'function', function: { name: d.name, description: d.description, parameters: d.input_schema } }));
+/**
+ * Las definiciones en el formato de Ollama: el núcleo, lo de las cajas ya
+ * abiertas en este turno, y la puerta para abrir las que falten.
+ * Sin `cajas`, van solo las doce y la puerta — que es el caso de siempre.
+ */
+function paraOllama({ cajas = [] } = {}) {
+  const abiertas = new Set();
+  for (const c of cajas) for (const n of enCaja(c)) abiertas.add(n);
+  const quedan = CAJAS_UTILES.filter((c) => !cajas.includes(c));
+  const lista = DEFINICIONES.filter((d) => NUCLEO.has(d.name) || abiertas.has(d.name));
+  /* La puerta solo se ofrece si queda algo detrás: enseñarla con todo abierto
+     es invitar a una vuelta que no lleva a ningún sitio. */
+  if (quedan.length) lista.push(ABRIR);
+  return lista.map((d) => ({ type: 'function', function: { name: d.name, description: d.description, parameters: d.input_schema } }));
 }
 
 /** Las definiciones que ve un actor: un bot solo las de su encabezado (más las de todos). */
@@ -1160,4 +1269,6 @@ function definicionesPara(actor) {
   return DEFINICIONES;
 }
 
-module.exports = { DEFINICIONES, CASAS, GRUPOS, ESCRIBEN, SIEMPRE_PARA_BOTS, catalogo, correr, correrLote, paraOllama, definicionesPara, buscarWeb, leerPagina, _adentro: { limpiarHtml, ori, calcular, leerJson, afinarConsulta, resumirAudit } };
+module.exports = { DEFINICIONES, CASAS, GRUPOS, ESCRIBEN, SIEMPRE_PARA_BOTS, catalogo, correr, correrLote, paraOllama, definicionesPara, buscarWeb, leerPagina,
+  NUCLEO, CAJAS, CAJAS_UTILES, enCaja, indiceDeCajas, ABRIR,
+  _adentro: { limpiarHtml, ori, calcular, leerJson, afinarConsulta, resumirAudit } };
