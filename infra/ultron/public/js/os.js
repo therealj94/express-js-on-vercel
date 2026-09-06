@@ -366,7 +366,7 @@ const OS = (() => {
     n.style.color = r.estado === 'bien' ? 'var(--verde)' : r.estado === 'ojo' ? 'var(--ambar)' : 'var(--rojo)';
     const malos = r.signos.filter((x) => x.estado === 'mal').length;
     const ojos = r.signos.filter((x) => x.estado === 'ojo').length;
-    sub.textContent = !malos && !ojos ? 'todo en orden' : `${malos ? malos + ' grave' + (malos > 1 ? 's' : '') : ''}${malos && ojos ? ' · ' : ''}${ojos ? ojos + ' ojo' : ''}`;
+    sub.textContent = (!malos && !ojos ? 'todo en orden' : `${malos ? malos + ' grave' + (malos > 1 ? 's' : '') : ''}${malos && ojos ? ' · ' : ''}${ojos ? ojos + ' ojo' : ''}`) + (r.avisos && r.avisos !== 'apagado' ? ` · avisa: ${r.avisos}` : ' · sin avisos');
     sub.className = 'sub ' + (malos ? 'mal' : ojos ? 'amb' : 'ok');
     caja.innerHTML = r.signos.map((x) => `<div class="fila dato" title="${esc(x.que)}: ${esc(x.dato)}${x.detalle ? ' — ' + esc(x.detalle) : ''}">`
       + `<span>${esc(x.corto || x.que)}</span><span class="${x.estado === 'bien' ? 'ok' : x.estado === 'ojo' ? 'amb' : 'mal'}">${esc(x.dato)}</span></div>`).join('');
@@ -419,10 +419,12 @@ const OS = (() => {
      sin una sola puerta desde la pantalla: estaban ahí y nadie podía verlas.
      Una habilidad se abre y se lee; una herramienta se nombra por grupo. */
   async function abrirSaberHacer() {
-    const [hab, her] = await Promise.all([
+    const [hab, her, bit] = await Promise.all([
       DATOS.get('/habilidades').catch(() => null),
       DATOS.get('/herramientas').catch(() => null),
+      DATOS.get('/bitacora?limite=25').catch(() => null),
     ]);
+    const acciones = (bit?.acciones || []).map((a) => `<div class="fila dato"><span>${esc(hace(a.cuando) || '')} · ${esc(a.herramienta)} · ${esc(String(a.quien || '').replace(/@.*/, ''))}</span><span class="${a.ok ? 'ok' : 'mal'}">${a.ok ? 'ok' : 'falló'}${a.ms ? ' · ' + a.ms + ' ms' : ''}</span></div>`).join('');
     const lista = Array.isArray(hab) ? hab : (hab?.habilidades || []);
     const habs = lista.map((h) => `<div class="fila dato"><span><button class="chip" data-hab="${esc(h.nombre)}">${esc(h.nombre)}</button></span><span class="sub" style="text-align:right;max-width:60%">${esc(String(h.cuando || '').slice(0, 90))}</span></div>`).join('');
     const porGrupo = {};
@@ -431,7 +433,9 @@ const OS = (() => {
     const d = dialogo(`<h3>LO QUE SABE HACER</h3>
       <div class="sub">${lista.length} habilidades (procedimientos que sigue paso por paso) y ${(her?.herramientas || []).length} herramientas (lo que puede tocar).</div>
       <div style="display:flex;flex-direction:column;gap:3px;max-height:26dvh;overflow-y:auto">${habs || '<div class="sub">sin habilidades</div>'}</div>
-      <div style="max-height:26dvh;overflow-y:auto">${grupos || ''}</div>
+      <div style="max-height:22dvh;overflow-y:auto">${grupos || ''}</div>
+      <div class="sub" style="margin-top:6px">LA BITÁCORA · lo último que hizo (solo lo que escribe o toca algo; nunca se edita)</div>
+      <div style="display:flex;flex-direction:column;gap:3px;max-height:22dvh;overflow-y:auto">${acciones || '<div class="sub">todavía nada</div>'}</div>
       <div class="fila-btn"><button class="btn" id="sh-cerrar">CERRAR</button></div>`);
     d.querySelector('#sh-cerrar').onclick = () => d.remove();
     d.querySelectorAll('[data-hab]').forEach((b) => b.onclick = async () => {
@@ -446,16 +450,25 @@ const OS = (() => {
     });
   }
 
+  /* «VENCIÓ hace 2 d» en rojo, «vence HOY» en ámbar, «vence en 5 d» en gris:
+     la fecha es lo que ordena la lista, así que se ve antes que el nombre. */
+  function vence(p) {
+    if (!p.vence) return '';
+    const dia = (t) => Math.floor((t - 6 * 3600000) / 86400000);   // días de calendario en Honduras
+    const d = dia(+new Date(p.vence)) - dia(Date.now());
+    const t = d < 0 ? `VENCIÓ hace ${-d} d` : d === 0 ? 'vence HOY' : d === 1 ? 'vence MAÑANA' : `vence en ${d} d`;
+    return `<span class="${d < 0 ? 'mal' : d <= 1 ? 'amb' : ''}">${t}</span>${p.quien ? ' · ' : ''}`;
+  }
   function pintarPendientes(l) {
     const abiertos = (l || []).filter((p) => p.estado !== 'hecho');
     $('#pend-sub').textContent = abiertos.length ? `${abiertos.length} sin cerrar` : 'nada abierto';
     $('#pendientes').innerHTML = abiertos.length
       ? abiertos.slice(0, 12).map((p) => `
         <div style="display:flex;gap:7px;align-items:flex-start">
-          <span style="width:5px;height:5px;border-radius:50%;background:var(--ambar);margin-top:6px;flex:none;box-shadow:0 0 6px var(--ambar)"></span>
+          <span style="width:5px;height:5px;border-radius:50%;background:${p.vence && +new Date(p.vence) < Date.now() ? 'var(--rojo)' : 'var(--ambar)'};margin-top:6px;flex:none;box-shadow:0 0 6px ${p.vence && +new Date(p.vence) < Date.now() ? 'var(--rojo)' : 'var(--ambar)'}"></span>
           <div style="min-width:0">
             <div style="font-size:12.5px;line-height:1.3;color:var(--letra-f)">${esc(p.texto)}</div>
-            ${p.quien ? `<div class="dato" style="color:var(--tenue)">${esc(p.quien)}</div>` : ''}
+            ${p.quien || p.vence ? `<div class="dato" style="color:var(--tenue)">${vence(p)}${p.quien ? esc(p.quien) : ''}</div>` : ''}
           </div>
         </div>`).join('')
       : '<div class="sub">La junta no tiene nada anotado. Pídale a ULTRON que anote algo y aparece aquí.</div>';

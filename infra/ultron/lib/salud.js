@@ -40,6 +40,7 @@ const memoria = require('./memoria');
 const permisos = require('./permisos');
 const vigia = require('./vigia');
 const equipo = require('./equipo');
+const avisos = require('./avisos');
 
 /* ── LO QUE SE GUARDA ────────────────────────────────────────────────────────
    Una ronda por registro, con la nota y los hallazgos. Va a Mongo porque el
@@ -258,7 +259,7 @@ async function revisar({ hondo = true } = {}) {
   const estado = puntaje >= 85 ? 'bien' : puntaje >= 60 ? 'ojo' : 'mal';
 
   return {
-    cuando: new Date(), puntaje, estado, arranque,
+    cuando: new Date(), puntaje, estado, arranque, avisos: avisos.MODO(),
     signos,
     arreglos: [...new Set(signos.filter((s) => s.arreglo).map((s) => s.arreglo))],
     resumen: resumir(puntaje, estado, signos),
@@ -371,18 +372,58 @@ async function historial({ limite = 24 } = {}) {
 const CADA_MS = Number(process.env.SALUD_CADA_MS || 5 * 60_000);
 let reloj = null, ultima = null;
 
+/* Cuántas rondas seguidas lleva pidiendo el mismo arreglo. Un arreglo que se
+   repite tres veces es una avería disfrazada: el vigía que hay que rearrancar
+   cada cinco minutos no tiene un problema de vigía. */
+const seguidas = new Map();
+let rondasMal = 0;
+
 async function unaVuelta() {
   try {
     const r = await revisar({ hondo: true });
+    let despues = r;
     if (r.arreglos.length) {
       const rep = await reparar(r.arreglos);
       ultima = { ...r, reparado: rep.hechos };
+      despues = { ...r, puntaje: rep.despues, estado: rep.estado };
       console.log(`[salud] ${rep.antes} → ${rep.despues}/100 · reparado: ${rep.hechos.join(' | ')}`);
+      for (const a of r.arreglos) {
+        const n = (seguidas.get(a) || 0) + 1; seguidas.set(a, n);
+        if (n === 3) {
+          const texto = `ULTRON lleva tres rondas seguidas aplicando «${a}». El arreglo no está arreglando: hay que mirar la causa.`;
+          await avisos.avisar({ clave: `salud:repite:${a}`, gravedad: 'leve', titulo: `reparación que se repite: ${a}`, lineas: [texto] }).catch(() => {});
+          try { await memoria.anotarPendiente({ texto: `Revisar por qué ULTRON repara «${a}» en cada ronda (desde ${new Date().toISOString().slice(0, 16)} UTC).`, quien: 'dueño', tema: 'salud', creadoPor: 'bot:medico' }); } catch { /* sin base */ }
+        }
+      }
+      for (const k of [...seguidas.keys()]) if (!r.arreglos.includes(k)) seguidas.delete(k);
     } else {
-      ultima = r;
+      ultima = r; seguidas.clear();
       await guardar(r);
       if (r.estado !== 'bien') console.log(`[salud] ${r.resumen}`);
     }
+
+    /* Grave: ULTRON mal después de reparar (mudo, sin base, sin memoria). Va al
+       teléfono. Leve: un «ojo» que ya dura dos rondas seguidas. Va al correo. */
+    const cerebroMal = despues.signos.find((g) => g.clave === 'cerebro')?.estado === 'mal';
+    if (despues.estado === 'mal' || cerebroMal) {
+      rondasMal++;
+      await avisos.avisar({ clave: 'salud:mal', gravedad: 'grave', titulo: cerebroMal ? 'ULTRON sin cerebro' : `ULTRON ${despues.puntaje}/100`,
+        lineas: [despues.resumen, '', ...despues.signos.filter((g) => g.estado !== 'bien').map((g) => `· ${g.que}: ${g.dato}${g.detalle ? ' — ' + g.detalle : ''}`)] }).catch(() => {});
+    } else if (despues.estado === 'ojo') {
+      rondasMal++;
+      if (rondasMal >= 2) await avisos.avisar({ clave: 'salud:ojo', gravedad: 'leve', titulo: `ULTRON ${despues.puntaje}/100, para mirar`,
+        lineas: [despues.resumen, '', ...despues.signos.filter((g) => g.estado !== 'bien').map((g) => `· ${g.que}: ${g.dato}${g.detalle ? ' — ' + g.detalle : ''}`)] }).catch(() => {});
+    } else { if (rondasMal) { avisos.olvidar('salud:mal'); avisos.olvidar('salud:ojo'); } rondasMal = 0; }
+
+    /* El relevo largo: Claude cubriendo más de una hora es una tarjeta apagada
+       que nadie ha visto, y fichas que se pagan en cada respuesta. */
+    const cerebro = require('./cerebro');
+    const rl = cerebro.relevo?.();
+    if (rl?.activo && rl.desde && Date.now() - rl.desde > 3600_000) {
+      await avisos.avisar({ clave: 'cerebro:relevo', gravedad: 'leve', titulo: 'el cerebro lleva más de una hora de relevo',
+        lineas: [`Claude cubre desde hace ${duracion(Date.now() - rl.desde)} porque ${rl.motivo || 'el nodo no contesta'}.`, 'Mientras dure, cada respuesta gasta fichas de Anthropic. La tarjeta (aura-gpu-a10g) o el motor del nodo hay que mirarlos.'] }).catch(() => {});
+    } else if (!rl?.activo) avisos.olvidar('cerebro:relevo');
+
     return ultima;
   } catch (e) { anotarFallo(e, 'salud/vuelta'); return null; }
 }
@@ -408,5 +449,5 @@ function parar() {
 module.exports = {
   arrancar, parar, revisar, reparar, historial, unaVuelta, anotarFallo,
   ultima: () => ultima,
-  _adentro: { ARREGLOS, LIMITES, retrasoP95, fallosRecientes, duracion, resumir, FALLOS, RETRASOS },
+  _adentro: { ARREGLOS, LIMITES, retrasoP95, fallosRecientes, duracion, resumir, FALLOS, RETRASOS, seguidas },
 };

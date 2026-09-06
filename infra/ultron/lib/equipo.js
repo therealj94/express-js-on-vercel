@@ -52,9 +52,17 @@ function parsear(md, nombreArchivo) {
   const m = /^---\s*\n([\s\S]*?)\n---\s*\n?([\s\S]*)$/.exec(md);
   const cab = {}; let cuerpo = md;
   if (m) { cuerpo = m[2]; for (const l of m[1].split('\n')) { const i = l.indexOf(':'); if (i > 0) cab[l.slice(0, i).trim()] = l.slice(i + 1).trim(); } }
+  const hora = /^(\d{1,2}):(\d{2})$/.exec(String(cab.hora || '').trim());
   return {
     nombre: String(cab.nombre || nombreArchivo).trim().toLowerCase(),
     cada: Number(cab.cada) > 0 ? Number(cab.cada) : null,     // horas; null = solo a mano
+    /* `hora: 06:50` (hora de Honduras, UTC-6): el bot corre una vez al día a esa
+       hora en vez de «cada N horas desde que arrancó el dyno». Para el parte de
+       la mañana, «cada 24 h» desde un reinicio a las 3 de la tarde no sirve. */
+    hora: hora ? { h: Number(hora[1]), m: Number(hora[2]) } : null,
+    /* `enviar: leve|grave`: el parte se manda a la junta por los avisos
+       (correo lo leve, WhatsApp+correo lo grave). Sin esto, queda en el panel. */
+    enviar: /^(leve|grave)$/.test(String(cab.enviar || '').trim()) ? String(cab.enviar).trim() : null,
     descripcion: cab.descripcion || '',
     herramientas: String(cab.herramientas || '').split(',').map((s) => s.trim()).filter(Boolean),
     tarea: cuerpo.trim(),
@@ -103,11 +111,16 @@ async function correr(nombre, { pensar, junta = [], pedidoPor = 'reloj' }) {
     enMarcha.delete(b.nombre);
     contadorDia.vueltas++;
   }
-  if (conMongo()) { const d = (await Parte.create(parte)).toObject(); return { ...d, _id: String(d._id) }; }
-  const p = { _id: idNuevo(), ...parte, en: new Date() };
-  provisional.unshift(p);
-  if (provisional.length > 200) provisional.length = 200;
-  return p;
+  let guardado;
+  if (conMongo()) { const d = (await Parte.create(parte)).toObject(); guardado = { ...d, _id: String(d._id) }; }
+  else { guardado = { _id: idNuevo(), ...parte, en: new Date() }; provisional.unshift(guardado); if (provisional.length > 200) provisional.length = 200; }
+  if (b.enviar && !parte.fallo) {
+    try {
+      const avisos = require('./avisos');
+      await avisos.avisar({ clave: `equipo:${b.nombre}:${hoy()}`, gravedad: b.enviar, titulo: `parte de ${b.nombre}`, lineas: [parte.texto.slice(0, 3500)] });
+    } catch (e) { console.warn(`[equipo] el parte de ${b.nombre} no se pudo mandar: ${e.message}`); }
+  }
+  return guardado;
 }
 
 async function partes({ bot: nombre = null, limite = 20, desde = null } = {}) {
@@ -124,13 +137,41 @@ let ultimaVuelta = new Map();
 function arrancar({ pensar, junta = [] }) {
   parar();
   if (!ENCENDIDO()) { console.log(`[equipo] ${bots().length} bot(s) definidos · apagados (ULTRON_EQUIPO no está en «on»); se corren a mano desde el panel`); return false; }
+  /* Lo último que escribió cada bot, para no volver a correrlo al arrancar si
+     corrió hace poco. Heroku recicla el dyno a diario: sin esto, cada reinicio
+     disparaba los cinco bots a los dos minutos —cinco turnos del cerebro al
+     día por nada— y el 6-sep se vio: cinco partes idénticos de 252 letras. */
+  const ultimosPartes = new Map();
+  partes({ limite: 60 }).then((l) => { for (const p of l) if (!ultimosPartes.has(p.bot)) ultimosPartes.set(p.bot, new Date(p.en)); }).catch(() => {});
+  const corrioHacePoco = (b) => { const u = ultimosPartes.get(b.nombre); return u && (Date.now() - +u) < (b.cada || 24) * 3600_000 * 0.8; };
+
   for (const b of bots()) {
+    if (b.hora) {
+      /* A hora fija, hora de Honduras (UTC-6, sin horario de verano). */
+      const proxima = () => {
+        const ahora = new Date();
+        const objetivo = new Date(Date.UTC(ahora.getUTCFullYear(), ahora.getUTCMonth(), ahora.getUTCDate(), b.hora.h + 6, b.hora.m, 0));
+        if (objetivo <= ahora) objetivo.setUTCDate(objetivo.getUTCDate() + 1);
+        return objetivo - ahora;
+      };
+      const programar = () => {
+        const t = setTimeout(() => {
+          correr(b.nombre, { pensar, junta }).then((p) => { ultimaVuelta.set(b.nombre, new Date()); console.log(`[equipo] ${b.nombre}: parte de ${p.texto.length} letras (a su hora)`); })
+            .catch((e) => console.warn(`[equipo] ${b.nombre} no corrió: ${e.message}`)).finally(programar);
+        }, proxima());
+        t.unref?.(); relojes.push(t);
+      };
+      programar();
+      continue;
+    }
     if (!b.cada) continue;
     const cadaMs = b.cada * 3600_000;
     /* Primera vuelta a los dos minutos del arranque —no todos a la vez— y
        después a su ritmo. Cada uno va desfasado por su posición para que no
        se pisen. */
     const t = setTimeout(() => {
+      if (corrioHacePoco(b)) { console.log(`[equipo] ${b.nombre}: corrió hace poco, no se repite al arrancar`); }
+      else
       /* La primera vuelta también cuenta. Antes solo el intervalo apuntaba
          `ultimaVuelta`, así que un bot que corrió una vez y se quedó parado
          figuraba como «nunca corrió» y nadie lo veía atrasado. */
@@ -143,7 +184,7 @@ function arrancar({ pensar, junta = [] }) {
     }, 120_000 + relojes.length * 30_000);
     t.unref?.(); relojes.push(t);
   }
-  console.log(`[equipo] encendido: ${bots().filter((b) => b.cada).map((b) => `${b.nombre} cada ${b.cada} h`).join(', ')} · tope ${TOPE_DIA()} vueltas/día`);
+  console.log(`[equipo] encendido: ${bots().filter((b) => b.cada || b.hora).map((b) => b.hora ? `${b.nombre} a las ${String(b.hora.h).padStart(2, '0')}:${String(b.hora.m).padStart(2, '0')} HN` : `${b.nombre} cada ${b.cada} h`).join(', ')} · tope ${TOPE_DIA()} vueltas/día`);
   return true;
 }
 
@@ -152,7 +193,7 @@ function parar() { for (const r of relojes) { clearTimeout(r); clearInterval(r);
 function estado() {
   return {
     encendido: ENCENDIDO(), tope: TOPE_DIA(), vueltasHoy: contadorDia.dia === hoy() ? contadorDia.vueltas : 0,
-    bots: bots().map((b) => ({ nombre: b.nombre, cada: b.cada, descripcion: b.descripcion, herramientas: b.herramientas, corriendo: enMarcha.has(b.nombre), ultimaVuelta: ultimaVuelta.get(b.nombre) || null })),
+    bots: bots().map((b) => ({ nombre: b.nombre, cada: b.cada, hora: b.hora ? `${String(b.hora.h).padStart(2, '0')}:${String(b.hora.m).padStart(2, '0')}` : null, enviar: b.enviar, descripcion: b.descripcion, herramientas: b.herramientas, corriendo: enMarcha.has(b.nombre), ultimaVuelta: ultimaVuelta.get(b.nombre) || null })),
   };
 }
 

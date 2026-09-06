@@ -382,8 +382,46 @@ async function borrar(id, miembro) {
   return true;
 }
 
+/* ── VISIÓN ──────────────────────────────────────────────────────────────────
+   Una imagen no tiene texto que extraer: hay que MIRARLA. Se le pide al
+   cerebro que la describa —lo que hay, lo que dice, las cifras que se leen— y
+   la descripción se guarda con el archivo, así se mira una sola vez y después
+   se lee como cualquier otro documento.
+   Claude ve imágenes; el modelo del nodo (Qwen 3.8) también, por el campo
+   `images` de Ollama. Se prueba primero con lo que esté eligiendo el cerebro y,
+   si no puede, con el otro. Si ninguno, se dice. */
+async function describir(id, { pregunta = null } = {}) {
+  const a = await uno(id, { conCrudo: true });
+  if (!a || !/^image\//.test(a.tipo || '')) return null;
+  if (a.texto && a.porQue === 'descrita por el modelo') return a.texto + (pregunta ? '' : '');
+  const b64 = a.crudo.toString('base64');
+  const orden = `Describí esta imagen para alguien que no la ve: qué es, qué hay, y TODO el texto y las cifras que se lean, tal cual (sin inventar lo borroso: decí «ilegible»). Si es una factura, recibo, tabla o pantalla, sacá los datos en filas. En español, sin adornos.${pregunta ? ` Además, en concreto: ${pregunta}` : ''}`;
+  const cerebro = require('./cerebro');
+  let texto = null, con = null;
+  const conClaude = async () => {
+    const cl = cerebro._adentro.clienteAnthropic();
+    const r = await cl.messages.create({ model: cerebro.MODELO, max_tokens: 1200,
+      messages: [{ role: 'user', content: [{ type: 'image', source: { type: 'base64', media_type: a.tipo, data: b64 } }, { type: 'text', text: orden }] }] });
+    return r.content.filter((c) => c.type === 'text').map((c) => c.text).join('\n').trim();
+  };
+  const conNodo = async () => {
+    let dicho = '';
+    await cerebro.nodo._adentro.pedir({ model: cerebro.nodo.MODELO, stream: true, messages: [{ role: 'user', content: orden, images: [b64] }], options: { temperature: 0.2, num_predict: 900 } }, { alTrozo: (t) => { dicho += t; } });
+    return dicho.trim();
+  };
+  const orden2 = cerebro.cual() === 'nodo' ? [['nodo', conNodo], ['claude', conClaude]] : [['claude', conClaude], ['nodo', conNodo]];
+  for (const [nombre, fn] of orden2) {
+    try { texto = await fn(); if (texto) { con = nombre; break; } } catch (e) { console.warn(`[archivos] la imagen no se pudo mirar con ${nombre}: ${String(e?.message || e).slice(0, 120)}`); }
+  }
+  if (!texto) return null;
+  const nuevo = { texto: texto.slice(0, TOPE_TEXTO), porQue: 'descrita por el modelo', vistoCon: con };
+  if (conMongo()) { try { await Archivo.updateOne({ _id: a._id }, { $set: nuevo }); } catch { /* se queda sin guardar; se vuelve a mirar la próxima */ } }
+  else { const x = provisional.find((y) => String(y._id) === String(a._id)); if (x) Object.assign(x, nuevo); }
+  return texto;
+}
+
 module.exports = {
-  aBuffer,
+  aBuffer, describir,
   guardar, lista, uno, borrar, claseDe, admitidos, Archivo,
   TOPE_BYTES, TOPE_TEXTO, CLASES,
   _adentro: { dePdf, deDocx, deHtml, deTexto, leer, pareceTexto, provisional },

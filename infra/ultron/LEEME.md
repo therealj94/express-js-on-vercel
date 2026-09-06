@@ -21,7 +21,7 @@ node app.js                  # http://localhost:3900
 | **El estado vivo** | Ordenex, AuCorp, Veta Wallet, Genesis ID, OrdenScan y el precio del ORIGEN, leídos de sus rutas públicas cada 30 s. Cada pata falla sola. | `lib/vivo.js` |
 | **La memoria** | Lo que la junta le dice (por miembro o de toda la junta), los hilos y los documentos. Mongo; sin Mongo, provisional y lo dice. | `lib/memoria.js` |
 | **El cerebro** | **Dos, unas mismas manos.** El del **nodo** piensa con el modelo de AU-RA en nuestra tarjeta (`lib/cerebros/nodo.js`, por el motor de `nodo/`); el de **Claude** con Anthropic. `ULTRON_CEREBRO` elige; sin la variable, el nodo si está configurado. Streaming en los dos. | `lib/cerebro.js` |
-| **Las manos** | Cincuenta y ocho herramientas compartidas por los dos cerebros: el saber, el estado vivo, internet, los mercados y las cadenas, la memoria, los pendientes, la biblioteca, quién es quién en la junta, y las tres que preparan y no mandan — abrir, exportar a PDF y proponer un envío. En una misma vuelta, las que leen corren a la vez y las que escriben en fila. | `lib/herramientas.js` |
+| **Las manos** | Sesenta herramientas compartidas por los dos cerebros: el saber, el estado vivo, internet, los mercados y las cadenas, la memoria, los pendientes, la biblioteca, quién es quién en la junta, y las tres que preparan y no mandan — abrir, exportar a PDF y proponer un envío. En una misma vuelta, las que leen corren a la vez y las que escriben en fila. | `lib/herramientas.js` |
 | **El motor del nodo** | La única puerta hacia el modelo: TLS propio, secreto, solo `/api/chat` y `/api/tags`, y FIJA el modelo y el contexto a los de AU-RA para no desalojarla nunca. Se instala por SSM con `nodo/desplegar-motor.py`. | `nodo/` |
 | **Los canales** | WhatsApp por Zernio (la misma línea de AU-RA) y correo por SES (el mismo remitente de siempre). **Solo a la junta**, y **solo con una persona confirmando**. | `lib/canales.js` |
 | **La voz** | ElevenLabs, con la llave en el servidor; sin llave, la voz del navegador. | `lib/voz.js` |
@@ -40,7 +40,7 @@ Global) y registro institucional en cada palabra.
 | --- | --- |
 | Despacho | La conversación. Cada consulta que ULTRON hace a la casa aparece en el hilo como un registro con su entrada y su salida, antes de la respuesta. Texto en vivo, voz frase por frase, dictado y conversación continua. |
 | Ecosistema | Una tarjeta por casa, leída de su servicio. Lo que no se pudo leer se dice. |
-| Instrumentos | El catálogo entero (58) agrupado por lo que toca, cada uno ejecutable a mano por `POST /herramientas/:nombre`: corre la misma función que usa el modelo. |
+| Instrumentos | El catálogo entero (60) agrupado por lo que toca, cada uno ejecutable a mano por `POST /herramientas/:nombre`: corre la misma función que usa el modelo. |
 | Pendientes y memoria · Biblioteca · Bitácora | El registro de la Junta. |
 | La Junta · Ajustes | Los miembros y sus canales; la voz y el estado de la plataforma. |
 
@@ -110,7 +110,8 @@ Comparten también **lo demás**:
 | `SALUD_CADA_MS` | Cada cuánto se mira ULTRON a sí mismo (por omisión 5 min) | no |
 | `ULTRON_RAM_MB` | El límite de memoria del dyno, para la nota (por omisión 512) | no |
 | `ULTRON_RELEVO_MS` | Cuánto dura el relevo del cerebro a Claude (por omisión 10 min) | no |
-| `ULTRON_AVISOS` | `whatsapp`, `correo` o `ambos`: el vigía avisa a la junta cuando una casa cae o vuelve. Sin ella mide y recuerda, pero no manda nada. | no |
+| `ULTRON_AVISOS` | `apagado` · `correo` · `whatsapp` · `ambos` · **`partido`** (lo grave por WhatsApp y correo, lo leve solo por correo) | no |
+| `ULTRON_AVISOS_SILENCIO_MS` | Cuánto tarda en repetirse un aviso con la misma clave (6 h) | no |
 
 **Ninguna llave va en el código ni en el repositorio.** Se ponen en Heroku.
 
@@ -233,6 +234,43 @@ revive. El panel dice cuándo está de relevo y por qué.
 
 **El médico** (`equipo/medico.md`, cada hora) corre esa revisión, aplica las
 reparaciones y escribe un parte. Si no hay nada, su parte es una línea.
+
+## Los avisos: grave al teléfono, leve al correo
+
+`lib/avisos.js` es la única puerta por la que ULTRON habla sin que le hablen.
+Quien mide (el vigía, la salud, un bot) dice qué pasó y cuán grave es; la
+puerta decide el canal, a quién y si ya se dijo hace un rato (la misma clave
+no se repite en seis horas salvo que suba de gravedad). Con
+`ULTRON_AVISOS=partido` —lo que pidió José— lo **grave** (una casa caída,
+ULTRON sin cerebro o sin base) va por **WhatsApp y correo**, y lo **leve** (una
+casa que volvió, un signo en «ojo» que dura, el parte de la mañana, una
+reparación que se repite, el cerebro más de una hora de relevo) va **solo por
+correo**. Siempre a la junta y a nadie más. `avisar_junta` es la herramienta
+para que una persona pida un aviso; sale de la casa, así que pasa por el clic
+del dueño.
+
+**El parte de la mañana.** El cronista corre a las **06:50 de Honduras**
+(`hora: 06:50` en su encabezado) y su parte sale por correo (`enviar: leve`):
+lo que vence hoy, lo que cambió, lo que preocupa, las cifras, y lo que se
+aprendió ayer. Un bot con `hora:` corre a esa hora y no «cada N horas desde
+que arrancó el dyno». Y al arrancar, un bot que corrió hace poco no se repite.
+
+## La bitácora, los pendientes con fecha y la visión
+
+**La bitácora** (`lib/bitacora.js`, `GET /bitacora`, herramienta `bitacora`)
+anota cada herramienta que escribe, es peligrosa o sale de la casa —y cualquier
+fallo—: qué, quién (persona o bot), por qué canal, la entrada resumida sin
+secretos, si salió bien y cuánto tardó. Solo se añade. Lo de leer no se anota.
+
+**Los pendientes tienen fecha** (`vence`, AAAA-MM-DD): los vencidos y los de
+hoy van primero en la lista, en el parte del día y en el tablero (en rojo si
+vencieron). Una fecha que no se entiende no se adivina: queda sin fecha.
+
+**Visión.** Una imagen subida (PNG, JPEG, WebP) se MIRA: `leer_archivo` le
+pide al cerebro —Claude, o el modelo del nodo por `images`— que la describa
+con todo el texto y las cifras que se lean, y la descripción queda guardada
+con el archivo. Una foto de una factura o una captura de pantalla se leen como
+un documento más.
 
 ## Desplegar
 

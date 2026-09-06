@@ -23,7 +23,7 @@
  */
 
 const vivo = require('./vivo');
-const canales = require('./canales');
+const avisos = require('./avisos');
 
 const CADA_MS = Number(process.env.VIGIA_CADA_MS || 60_000);
 const FALLOS_PARA_CAIDA = 2;
@@ -53,12 +53,11 @@ function estado() {
     encendido: !!corriendo,
     cada: CADA_MS,
     ultimaVuelta,
-    avisa: MODO_AVISO || 'apagado',
+    avisa: avisos.MODO(),
     casas,
   };
 }
 
-const MODO_AVISO = (process.env.ULTRON_AVISOS || '').trim().toLowerCase();
 
 /* A quién se le avisa: a la junta, con lo que cada quien tenga puesto. Nunca a
    una lista de fuera, nunca a nadie que no esté en la junta. */
@@ -66,18 +65,13 @@ function junta() {
   try { return JSON.parse(process.env.ULTRON_JUNTA || '[]'); } catch { return []; }
 }
 
-async function avisar(lineas) {
-  if (!MODO_AVISO || MODO_AVISO === 'apagado' || !lineas.length) return;
-  const texto = `ULTRON · cambio en el ecosistema\n\n${lineas.join('\n')}`;
-  for (const m of junta()) {
-    try {
-      if ((MODO_AVISO === 'whatsapp' || MODO_AVISO === 'ambos') && m.whatsapp) await canales.whatsapp(m.whatsapp, texto);
-      if ((MODO_AVISO === 'correo' || MODO_AVISO === 'ambos') && m.correo) await canales.correo(m.correo, 'ULTRON · cambio en el ecosistema', texto);
-    } catch (e) {
-      // Un aviso que no sale no puede tumbar al vigía: si el vigía muere, se
-      // pierde también el «desde cuándo», que es lo que más falta hace después.
-      console.warn('[vigia] no se pudo avisar a', m.correo, '·', String(e?.message || e).slice(0, 120));
-    }
+/* Los avisos van por la puerta única (lib/avisos.js): una casa que se cae es
+   GRAVE —al teléfono—, una casa que vuelve es leve —al correo—. Aquí solo se
+   dice qué pasó. */
+async function avisar(cambios) {
+  for (const c of cambios) {
+    try { await avisos.avisar({ clave: `casa:${c.casa}`, gravedad: c.grave ? 'grave' : 'leve', titulo: c.titulo, lineas: [c.texto], forzar: true }); }
+    catch (e) { console.warn('[vigia] no se pudo avisar:', String(e?.message || e).slice(0, 120)); }
   }
 }
 
@@ -99,7 +93,7 @@ async function unaVuelta() {
 
     if (enPie) {
       c.fallos = 0; c.ultimoOk = ahora;
-      if (c.viva === false) { cambios.push(`${nombre(k)} volvió a contestar (estuvo caída desde ${hora(c.desde)}).`); c.desde = ahora; }
+      if (c.viva === false) { cambios.push({ casa: k, grave: false, titulo: `${nombre(k)} volvió`, texto: `${nombre(k)} volvió a contestar (estuvo caída desde ${hora(c.desde)}).` }); c.desde = ahora; }
       if (c.viva !== true) { c.viva = true; c.desde = c.desde || ahora; }
     } else {
       c.fallos++;
@@ -107,13 +101,13 @@ async function unaVuelta() {
       if (c.fallos >= FALLOS_PARA_CAIDA && c.viva !== false) {
         c.viva = false; c.desde = ahora;
         const porQue = d?.http ? `HTTP ${d.http}` : (d?.error || 'no contestó');
-        cambios.push(`${nombre(k)} dejó de contestar (${porQue}).`);
+        cambios.push({ casa: k, grave: true, titulo: `${nombre(k)} CAÍDA`, texto: `${nombre(k)} dejó de contestar (${porQue}) a las ${hora(ahora)}. Dos lecturas seguidas fallaron.` });
       }
       if (c.viva === null && c.fallos < FALLOS_PARA_CAIDA) { /* aún no se sabe */ }
     }
   }
-  if (cambios.length) { console.log('[vigia]', cambios.join(' ')); await avisar(cambios); }
-  return cambios;
+  if (cambios.length) { console.log('[vigia]', cambios.map((c) => c.texto).join(' ')); await avisar(cambios); }
+  return cambios.map((c) => c.texto);
 }
 
 const NOMBRES = {
@@ -128,7 +122,7 @@ function arrancar() {
   unaVuelta().catch(() => {});
   corriendo = setInterval(() => { unaVuelta().catch(() => {}); }, CADA_MS);
   corriendo.unref?.();          // que no impida cerrar el proceso en las pruebas
-  console.log(`[vigia] mirando las ${CASAS.length} casas cada ${Math.round(CADA_MS / 1000)} s · avisos: ${MODO_AVISO || 'apagados'}`);
+  console.log(`[vigia] mirando las ${CASAS.length} casas cada ${Math.round(CADA_MS / 1000)} s · avisos: ${avisos.MODO()}`);
   return corriendo;
 }
 

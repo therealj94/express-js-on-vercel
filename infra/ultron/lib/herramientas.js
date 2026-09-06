@@ -42,6 +42,8 @@ const aprender = require('./aprender');
 const equipo = require('./equipo');
 const operaciones = require('./operaciones');
 const salud = require('./salud');
+const bitacora = require('./bitacora');
+const avisos = require('./avisos');
 
 // Adónde puede mandar a abrir. Cerrado a la casa a propósito: «abrí» con una
 // URL cualquiera es la forma más fácil de que un modelo lleve a alguien a un
@@ -89,7 +91,7 @@ const DEFINICIONES = [
   {
     name: 'anotar_pendiente',
     description: 'Anota algo que la junta tiene que HACER. Distinto de recordar: esto se cierra cuando se hace.',
-    input_schema: { type: 'object', properties: { texto: { type: 'string' }, quien: { type: 'string', description: 'A quién le toca; vacío si es de la junta' }, tema: { type: 'string' } }, required: ['texto'] },
+    input_schema: { type: 'object', properties: { texto: { type: 'string' }, quien: { type: 'string', description: 'A quién le toca; vacío si es de la junta' }, tema: { type: 'string' }, vence: { type: 'string', description: 'Cuándo vence, AAAA-MM-DD (opcional). «el martes» se convierte a fecha antes de llamar.' } }, required: ['texto'] },
   },
   {
     name: 'cerrar_pendiente',
@@ -144,7 +146,7 @@ const DEFINICIONES = [
   },
   {
     name: 'listar_pendientes',
-    description: 'Lista los pendientes abiertos de la junta con su id, a quién le tocan y desde cuándo.',
+    description: 'Lista los pendientes abiertos de la junta con su id, a quién le tocan, desde cuándo y cuándo vencen (los vencidos y los de hoy primero).',
     input_schema: { type: 'object', properties: { conHechos: { type: 'boolean', description: 'true para ver también los ya hechos' } } },
   },
   {
@@ -199,8 +201,8 @@ const DEFINICIONES = [
   },
   {
     name: 'leer_archivo',
-    description: 'Lee el texto de un archivo subido, por su id. Devuelve el contenido para poder resumirlo, analizarlo o citarlo. Un PDF escaneado no tiene texto y lo dice.',
-    input_schema: { type: 'object', properties: { id: { type: 'string', description: 'El id que da listar_archivos' }, desde: { type: 'number', description: 'Desde qué letra seguir leyendo, si el archivo es largo y ya leíste un trozo' } }, required: ['id'] },
+    description: 'Lee un archivo subido, por su id: el texto de un PDF, Word o texto; y si es una IMAGEN (foto, captura, factura, mockup) la MIRA y describe lo que hay, con las cifras y palabras que se lean. Un PDF escaneado no tiene texto y lo dice.',
+    input_schema: { type: 'object', properties: { id: { type: 'string', description: 'El id que da listar_archivos' }, pregunta: { type: 'string', description: 'Si es una IMAGEN: qué mirar en ella (opcional)' }, desde: { type: 'number', description: 'Desde qué letra seguir leyendo, si el archivo es largo y ya leíste un trozo' } }, required: ['id'] },
   },
   {
     name: 'quien_es_quien',
@@ -342,6 +344,16 @@ const DEFINICIONES = [
     input_schema: { type: 'object', properties: { estado: { type: 'string', enum: ['pendiente', 'aprobado', 'negado', 'usado', 'vencido'] } } },
   },
   {
+    name: 'avisar_junta',
+    description: 'SALE DE LA CASA (pide autorización al dueño). Manda un aviso a la junta por los canales de ULTRON: lo grave por WhatsApp y correo, lo leve solo por correo. Para «avisale a la junta que…». Los avisos automáticos (casa caída, salud) no pasan por aquí: salen solos.',
+    input_schema: { type: 'object', properties: { titulo: { type: 'string' }, texto: { type: 'string' }, gravedad: { type: 'string', enum: ['grave', 'leve'] }, motivo: { type: 'string' } }, required: ['titulo', 'texto'] },
+  },
+  {
+    name: 'bitacora',
+    description: 'La bitácora de ULTRON: qué herramientas que escriben o tocan algo se corrieron, quién las pidió, por qué canal, si salieron bien y cuánto tardaron. Para «¿quién reinició Ordenex el lunes?» o «¿qué hiciste hoy?». Solo se añade; no se edita nunca.',
+    input_schema: { type: 'object', properties: { limite: { type: 'integer' }, herramienta: { type: 'string' }, quien: { type: 'string' }, desde: { type: 'string', description: 'fecha ISO' } } },
+  },
+  {
     name: 'salud_revisar',
     description: 'La salud del PROPIO ULTRON, signo por signo: memoria del proceso, bucle de eventos, base de datos, cerebro (y si está de relevo), vigía, equipo, puerta, autorizaciones olvidadas y fallos de la última hora. Da una nota de 0 a 100. Es lo primero que hay que mirar cuando ULTRON va lento, no contesta o se comporta raro.',
     input_schema: { type: 'object', properties: {} },
@@ -475,7 +487,7 @@ async function leerPagina(url) {
    la vez. Guardar una memoria y cerrar un pendiente tienen un orden que el
    modelo pidió; leer el mercado y leer la altura de la cadena, no. */
 const ESCRIBEN = new Set(['recordar', 'olvidar', 'anotar_pendiente', 'cerrar_pendiente', 'crear_documento', 'proponer_envio',
-  'aprender', 'habilidad_crear', 'habilidad_publicar', 'repo_proponer_cambio', 'terminal', 'desplegarse', 'boveda_aplicar', 'equipo_correr', 'heroku_reiniciar', 'nodo_comando', 'salud_reparar']);
+  'aprender', 'habilidad_crear', 'habilidad_publicar', 'repo_proponer_cambio', 'terminal', 'desplegarse', 'boveda_aplicar', 'equipo_correr', 'heroku_reiniciar', 'nodo_comando', 'salud_reparar', 'avisar_junta']);
 
 /* ── UN LOTE DE HERRAMIENTAS, NO UNA FILA ────────────────────────────────────
  *
@@ -545,6 +557,20 @@ async function correrLote(llamadas, { ctx, usadas = [], emitir = () => {}, corre
 async function correr(nombre, entrada, ctx) {
   entrada = entrada && typeof entrada === 'object' ? entrada : {};
   ctx.acciones = ctx.acciones || [];
+  const t0 = Date.now();
+  const salida = await correrAdentro(nombre, entrada, ctx);
+  /* La bitácora: lo que escribe, lo peligroso, lo de fuera, y cualquier fallo.
+     Lo de leer no se anota — son cientos al día y no cambian nada. */
+  const nivel = permisos.nivelDe(nombre);
+  const fallo = typeof salida === 'string' && /^La herramienta \S+ falló:/.test(salida);
+  if (nivel !== 'leer' || fallo) {
+    bitacora.anotar({ herramienta: nombre, quien: ctx.miembro?.correo, rol: permisos.rolDe(ctx.miembro, ctx.junta || []), canal: ctx.canal || (ctx.miembro?.rol === 'bot' ? 'reloj' : 'panel'),
+      entrada, ok: !fallo, motivo: fallo ? salida : (entrada.motivo || null), ms: Date.now() - t0 }).catch(() => {});
+  }
+  return salida;
+}
+
+async function correrAdentro(nombre, entrada, ctx) {
   try {
     /* ── LA PUERTA DE CADA HERRAMIENTA ─────────────────────────────────────
        Antes de correr nada se mira quién pide y qué nivel tiene lo pedido
@@ -620,11 +646,11 @@ async function correr(nombre, entrada, ctx) {
       }
       case 'anotar_pendiente': {
         const p = await memoria.anotarPendiente({
-          texto: entrada.texto, quien: entrada.quien, tema: entrada.tema, creadoPor: ctx.miembro.correo,
+          texto: entrada.texto, quien: entrada.quien, tema: entrada.tema, creadoPor: ctx.miembro.correo, vence: entrada.vence || null,
         });
         if (p && !p.repetido) ctx.pendientes.push({ _id: p._id, texto: p.texto, quien: p.quien });
         if (p?.repetido) return `Ya estaba anotado (id ${p._id}): «${p.texto}». No lo repetí.`;
-        return p ? `Anotado como pendiente (id ${p._id}): ${p.texto}` : 'No se anotó: texto vacío.';
+        return p ? `Anotado como pendiente (id ${p._id}): ${p.texto}${p.vence ? ` · vence ${new Date(p.vence).toISOString().slice(0, 10)}` : ''}` : 'No se anotó: texto vacío.';
       }
       case 'cerrar_pendiente': {
         const p = await memoria.cerrarPendiente(String(entrada.id || ''), ctx.miembro.correo);
@@ -725,7 +751,7 @@ async function correr(nombre, entrada, ctx) {
       case 'listar_pendientes': {
         const ps = await memoria.pendientes({ conHechos: entrada.conHechos === true, limite: 40 });
         if (!ps.length) return 'No hay pendientes.';
-        return ps.map((p) => `- [${p._id}] ${p.estado === 'hecho' ? '(hecho) ' : ''}${p.texto}${p.quien ? ' · le toca a ' + p.quien : ''}${p.tema ? ' · ' + p.tema : ''}${p.en ? ' · desde ' + new Date(p.en).toISOString().slice(0, 10) : ''}`).join('\n');
+        return ps.map((p) => `- [${p._id}] ${p.estado === 'hecho' ? '(hecho) ' : ''}${memoria.rotuloVence(p)}${p.texto}${p.quien ? ' · le toca a ' + p.quien : ''}${p.tema ? ' · ' + p.tema : ''}${p.en ? ' · desde ' + new Date(p.en).toISOString().slice(0, 10) : ''}`).join('\n');
       }
       case 'cadena_5550_saldo': {
         const d = String(entrada.direccion || '').trim();
@@ -761,7 +787,7 @@ async function correr(nombre, entrada, ctx) {
         const [v, pend, docs, g] = await Promise.all([vivo.leer(), memoria.pendientes({ limite: 40 }), memoria.documentos({ limite: 5 }), memoria.gasto()]);
         const l = [`PARTE DEL DÍA · ${fecha()}`, '', 'Casas:', vivo.paraElModelo(v)];
         l.push('', `Pendientes abiertos: ${pend.length}`);
-        for (const p of pend.slice(0, 12)) l.push(`- [${p._id}] ${p.texto}${p.quien ? ' · ' + p.quien : ''}`);
+        for (const p of pend.slice(0, 12)) l.push(`- [${p._id}] ${memoria.rotuloVence(p)}${p.texto}${p.quien ? ' · ' + p.quien : ''}`);
         l.push('', `Documentos recientes: ${docs.length}`);
         for (const d of docs) l.push(`- [${d._id}] ${d.titulo} (${d.tipo || 'otro'}, ${d.en ? new Date(d.en).toISOString().slice(0, 10) : ''})`);
         l.push('', `Gasto: hoy ${g.hoy.turnos} turnos · mes ${g.mes.turnos} turnos${g.mes.conPrecio ? ` · $${g.mes.dolares.toFixed(2)}` : ''}.`);
@@ -817,6 +843,14 @@ async function correr(nombre, entrada, ctx) {
         const arch = require('./archivos');
         const a = await arch.uno(String(entrada.id || '').trim());
         if (!a) return `No hay un archivo con id ${entrada.id}. Mirá cuáles hay con listar_archivos.`;
+        if (!a.texto && /^image\//.test(a.tipo || '')) {
+          /* VISIÓN. Una foto de una factura, una captura de pantalla, un
+             mockup: hasta hoy «no tiene texto que leer» y ahí moría. Se le
+             pide al cerebro que la mire y lo que dijo queda guardado con el
+             archivo, así se mira una sola vez. */
+          const d = await arch.describir(a._id, { pregunta: entrada.pregunta || null });
+          return d ? `«${a.nombre}» (${a.tipo}) — lo que se ve:\n${d}` : `«${a.nombre}» es una imagen y no hay cerebro que la mire ahora mismo.`;
+        }
         if (!a.texto) return `«${a.nombre}» no tiene texto que leer: ${a.porQue}`;
         /* Un archivo largo no entra de una en el contexto de un modelo chico.
            Se entrega por trozos y se DICE dónde se cortó, para que el modelo
@@ -857,15 +891,15 @@ async function correr(nombre, entrada, ctx) {
         return `Hoy: ${f(g.hoy)}. Últimos 30 días: ${f(g.mes)}. En el nodo propio el pensar no cuesta por pregunta.`;
       }
       // ── la mano derecha ─────────────────────────────────────────────────
-      case 'repo_arbol': return taller.arbol(entrada);
-      case 'repo_leer': return taller.leer(entrada);
-      case 'repo_buscar': return taller.buscar(entrada);
+      case 'repo_arbol': return await taller.arbol(entrada);
+      case 'repo_leer': return await taller.leer(entrada);
+      case 'repo_buscar': return await taller.buscar(entrada);
       case 'repo_proponer_cambio': {
         const r = await taller.proponerCambio({ ...entrada, por: ctx.miembro?.nombre || ctx.miembro?.correo });
         ctx.acciones.push({ tipo: 'pr', url: r.pr, rama: r.rama });
         return `Cambio propuesto: rama ${r.rama}, pull request #${r.numero} → ${r.pr}. Archivos: ${r.archivos.join(', ')}. Lo mezcla una persona después de leerlo.`;
       }
-      case 'terminal': return taller.terminal(entrada);
+      case 'terminal': return await taller.terminal(entrada);
       case 'desplegarse': {
         const pasos = [];
         const r = await taller.desplegarse({ ...entrada, avisar: (m) => pasos.push(m) });
@@ -920,11 +954,11 @@ async function correr(nombre, entrada, ctx) {
         const p = await equipo.correr(entrada.bot, { pensar: ctx.pensar, junta: ctx.junta || [], pedidoPor: ctx.miembro?.correo || 'panel' });
         return `Parte de ${p.bot} (${p.ms} ms${p.dolares ? `, ${p.dolares.toFixed(4)} USD` : ''}):\n${p.texto}`;
       }
-      case 'auditar_dependencias': return auditarDependencias();
+      case 'auditar_dependencias': return await auditarDependencias();
       // ── operaciones: Heroku, nodos, bases ───────────────────────────────
-      case 'heroku_apps': return operaciones.herokuApps();
-      case 'heroku_registro': return operaciones.herokuRegistro(entrada);
-      case 'heroku_variables': return operaciones.herokuVariables(entrada);
+      case 'heroku_apps': return await operaciones.herokuApps();
+      case 'heroku_registro': return await operaciones.herokuRegistro(entrada);
+      case 'heroku_variables': return await operaciones.herokuVariables(entrada);
       case 'heroku_reiniciar': {
         const r = await operaciones.herokuReiniciar(entrada);
         ctx.acciones.push({ tipo: 'reinicio', app: r.app });
@@ -934,8 +968,19 @@ async function correr(nombre, entrada, ctx) {
         const l = await operaciones.nodos({ fresco: !!entrada.fresco });
         return l.map((n) => `- ${n.corto ? n.corto + ' · ' : ''}${n.nombre} · ${n.id || '?'} · ${n.region} · ${n.estado}${n.tipo ? ' · ' + n.tipo : ''}${n.ip ? ' · ' + n.ip : ''}`).join('\n');
       }
-      case 'nodo_comando': return operaciones.nodoComando(entrada);
-      case 'mongo_consultar': return operaciones.mongoConsultar(entrada);
+      case 'nodo_comando': return await operaciones.nodoComando(entrada);
+      case 'mongo_consultar': return await operaciones.mongoConsultar(entrada);
+      case 'avisar_junta': {
+        const r = await avisos.avisar({ clave: `pedido:${Date.now()}`, gravedad: entrada.gravedad === 'grave' ? 'grave' : 'leve', titulo: String(entrada.titulo || '').slice(0, 120),
+          lineas: [String(entrada.texto || '').slice(0, 2000), '', `— pedido por ${ctx.miembro?.nombre || ctx.miembro?.correo}`], forzar: true });
+        ctx.acciones.push({ tipo: 'aviso', canales: r.canales });
+        return r.enviado ? `Avisado por ${r.canales.join(', ')}.` : `No salió: ${r.motivo || 'sin canal'}. Los avisos están en modo «${avisos.MODO()}».`;
+      }
+      case 'bitacora': {
+        const l = await bitacora.leer({ limite: Math.min(100, Math.max(1, Number(entrada.limite) || 30)), herramienta: entrada.herramienta || null, quien: entrada.quien || null, desde: entrada.desde || null });
+        if (!l.length) return 'La bitácora está vacía para ese filtro.';
+        return l.map((a) => `- ${new Date(a.cuando).toISOString().slice(0, 16).replace('T', ' ')} · ${a.ok ? 'ok' : 'FALLÓ'} · ${a.herramienta} · ${a.quien}${a.canal ? ' (' + a.canal + ')' : ''}${a.entrada ? ' · ' + a.entrada : ''}${a.motivo ? ' · ' + a.motivo.slice(0, 120) : ''}${a.ms ? ' · ' + a.ms + ' ms' : ''}`).join('\n');
+      }
       // ── la salud del propio ULTRON ──────────────────────────────────────
       case 'salud_revisar': {
         const r = await salud.revisar();
@@ -1055,7 +1100,8 @@ const GRUPOS = {
   'Aprender': ['aprender', 'habilidad_usar', 'habilidad_crear', 'habilidad_publicar'],
   'El equipo': ['equipo_estado', 'equipo_partes', 'equipo_correr', 'auditar_dependencias', 'autorizaciones'],
   'Operaciones (Heroku, nodos, bases)': ['heroku_apps', 'heroku_registro', 'heroku_variables', 'heroku_reiniciar', 'nodos', 'nodo_comando', 'mongo_consultar'],
-  'Su propia salud': ['salud_revisar', 'salud_reparar', 'salud_historial'],
+  'Su propia salud': ['salud_revisar', 'salud_reparar', 'salud_historial', 'bitacora'],
+  'Hacia fuera': ['avisar_junta'],
 };
 
 /** El catálogo para la consola: definición, grupo y si escribe algo. */

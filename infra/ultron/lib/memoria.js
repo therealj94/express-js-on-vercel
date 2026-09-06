@@ -74,6 +74,7 @@ const pendienteSchema = new Schema({
   quien: { type: String, maxlength: 80 },        // a quién le toca; vacío = a la junta
   tema: { type: String, maxlength: 60 },
   creadoPor: { type: String },                   // correo de quien lo anotó
+  vence: { type: Date, index: true },            // cuándo hay que tenerlo hecho; vacío = sin fecha
   cerradoPor: { type: String },
   cerradoEn: { type: Date },
 }, { timestamps: { createdAt: 'en', updatedAt: 'tocado' } });
@@ -232,14 +233,37 @@ function mismoPendiente(a, b) {
   return x.length >= 24 && y.length >= 24 && (x.includes(y) || y.includes(x));
 }
 
-async function anotarPendiente({ texto, quien, tema, creadoPor }) {
+/* La fecha de un pendiente. Se admite AAAA-MM-DD, una ISO entera, o nada. Una
+   fecha que no se entiende NO se adivina: se guarda sin fecha y se dice. */
+function fechaVence(v) {
+  if (!v) return null;
+  const s = String(v).trim();
+  const d = /^\d{4}-\d{2}-\d{2}$/.test(s) ? new Date(s + 'T23:59:00-06:00') : new Date(s);   // el día entero, hora de Honduras
+  return Number.isNaN(+d) ? null : d;
+}
+/* «VENCIÓ hace 2 d · », «vence HOY · », «vence en 3 d · », o nada. */
+/* Días de calendario en Honduras, no horas redondeadas: «venció ayer a las
+   23:59» es AYER aunque hayan pasado ocho horas, no «hoy». */
+function diasHasta(v) {
+  const dia = (t) => Math.floor((t - 6 * 3600_000) / 86400_000);
+  return dia(+new Date(v)) - dia(Date.now());
+}
+function rotuloVence(p) {
+  if (!p?.vence) return '';
+  const dias = diasHasta(p.vence);
+  if (dias < 0) return `VENCIÓ hace ${-dias} d · `;
+  if (dias === 0) return 'vence HOY · ';
+  return `vence en ${dias} d · `;
+}
+
+async function anotarPendiente({ texto, quien, tema, creadoPor, vence = null }) {
   const t = String(texto || '').trim().slice(0, 400);
   if (!t) return null;
   const abiertos = await pendientes({ limite: 200 });
   const igual = abiertos.find((p) => mismoPendiente(p.texto, t));
   if (igual) return { ...igual, repetido: true };
   const doc = { texto: t, estado: 'abierto', quien: quien ? String(quien).slice(0, 80) : null,
-    tema: tema ? String(tema).slice(0, 60) : null, creadoPor: creadoPor || null };
+    tema: tema ? String(tema).slice(0, 60) : null, creadoPor: creadoPor || null, vence: fechaVence(vence) };
   if (conMongo) return (await Pendiente.create(doc)).toObject();
   const p = { _id: idNuevo(), ...doc, en: new Date() };
   provisional.pendientes.unshift(p);
@@ -247,14 +271,19 @@ async function anotarPendiente({ texto, quien, tema, creadoPor }) {
 }
 
 /** Los abiertos primero y por fecha; los hechos solo si se piden. */
+/* Los abiertos primero; entre los abiertos, los que tienen fecha antes que los
+   que no, y el que vence antes primero. Así el parte de la mañana empieza por
+   lo que toca hoy sin que nadie lo ordene a mano. */
+function ordenar(l) {
+  const peso = (p) => (p.estado === 'hecho' ? 2 : 0) + (p.vence ? 0 : 1);
+  return l.sort((a, b) => peso(a) - peso(b) || (a.vence && b.vence ? +new Date(a.vence) - +new Date(b.vence) : 0) || (+new Date(b.en || 0) - +new Date(a.en || 0)));
+}
 async function pendientes({ conHechos = false, limite = 60 } = {}) {
   if (conMongo) {
     const q = conHechos ? {} : { estado: 'abierto' };
-    return Pendiente.find(q).sort({ estado: 1, en: -1 }).limit(limite).lean();
+    return ordenar(await Pendiente.find(q).sort({ estado: 1, en: -1 }).limit(limite).lean());
   }
-  return provisional.pendientes
-    .filter((p) => conHechos || p.estado === 'abierto')
-    .slice(0, limite);
+  return ordenar(provisional.pendientes.filter((p) => conHechos || p.estado === 'abierto')).slice(0, limite);
 }
 
 async function cerrarPendiente(id, quien, { reabrir = false } = {}) {
@@ -307,6 +336,7 @@ async function gasto() {
 }
 
 module.exports = {
+  rotuloVence, fechaVence, diasHasta,
   conectar, estado,
   anotarPendiente, pendientes, cerrarPendiente, borrarPendiente, mismoPendiente,
   anotarGasto, gasto,

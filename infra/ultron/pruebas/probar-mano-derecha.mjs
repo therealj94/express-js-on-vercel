@@ -290,6 +290,10 @@ titulo('las rutas: el dueño y nadie más');
   decir(prof.signos.some((g) => g.clave === 'cerebro') && prof.signos.some((g) => g.clave === 'bucle'), 'entre ellos el cerebro y el bucle de eventos');
   const sinPuerta = await fetch(B + '/salud/profunda');
   decir(sinPuerta.status === 401 || sinPuerta.status === 403, 'y la salud profunda no se lee sin entrar', String(sinPuerta.status));
+  const t0 = Date.now();
+  const rr = await fetch(B + '/herramientas/repo_arbol', { method: 'POST', headers: { 'Content-Type': 'application/json', Cookie: cj }, body: JSON.stringify({ entrada: { ruta: 'infra' } }) });
+  const rj = await rr.json();
+  decir(Date.now() - t0 < 20000 && (rj.salida || rj.error), 'una herramienta que falla contesta enseguida con el motivo, no se cuelga 30 s', (rj.salida || rj.error || '').slice(0, 100));
   const rep = await (await fetch(B + '/salud/reparar', { method: 'POST', headers: { 'Content-Type': 'application/json', Cookie: cm }, body: '{}' })).json();
   decir(typeof rep.despues === 'number' && Array.isArray(rep.hechos), 'reparar contesta con la nota de antes, la de después y qué hizo', JSON.stringify(rep).slice(0, 120));
   sv.close();
@@ -316,6 +320,80 @@ titulo('la salud de ULTRON: se mide y se repara solo');
   decir(typeof rep.antes === 'number' && typeof rep.despues === 'number', 'reparar sin nada que reparar no rompe nada');
   const h = await salud.historial({ limite: 5 });
   decir(Array.isArray(h) && h.length >= 1, 'y la ronda queda en el historial', `${h.length} ronda(s)`);
+}
+
+// ── LOS AVISOS: grave al teléfono, leve al correo ───────────────────────────
+titulo('los avisos: lo grave por WhatsApp y correo, lo leve solo por correo');
+{
+  const canales = require('../lib/canales.js');
+  const avisos = require('../lib/avisos.js');
+  const salieron = [];
+  const wa = canales.whatsapp, co = canales.correo;
+  canales.whatsapp = async (n, t) => { salieron.push(['whatsapp', n, t]); return { ok: true }; };
+  canales.correo = async (d, a, t) => { salieron.push(['correo', d, a]); return { ok: true }; };
+  process.env.ULTRON_JUNTA = JSON.stringify([{ nombre: 'José', correo: 'jose@ordenglobal.org', whatsapp: '50499990000', clave: 'x' }]);
+
+  process.env.ULTRON_AVISOS = 'apagado';
+  let r = await avisos.avisar({ clave: 'p:1', gravedad: 'grave', titulo: 'prueba', lineas: ['x'] });
+  decir(!r.enviado && salieron.length === 0, 'apagado: se anota y no sale nada', r.motivo);
+
+  process.env.ULTRON_AVISOS = 'partido';
+  r = await avisos.avisar({ clave: 'casa:ordenex', gravedad: 'grave', titulo: 'Ordenex CAÍDA', lineas: ['dejó de contestar'] });
+  decir(r.enviado && salieron.some((x) => x[0] === 'whatsapp') && salieron.some((x) => x[0] === 'correo'), 'partido + grave → WhatsApp Y correo', r.canales.join(','));
+  decir(salieron.find((x) => x[0] === 'whatsapp')[2].startsWith('ULTRON · GRAVE · Ordenex CAÍDA'), 'y el WhatsApp empieza por GRAVE y el título');
+  salieron.length = 0;
+  r = await avisos.avisar({ clave: 'casa:ordenex:volvio', gravedad: 'leve', titulo: 'Ordenex volvió', lineas: ['contesta otra vez'] });
+  decir(r.enviado && salieron.every((x) => x[0] === 'correo') && salieron.length === 1, 'partido + leve → solo correo', r.canales.join(','));
+  salieron.length = 0;
+  r = await avisos.avisar({ clave: 'casa:ordenex', gravedad: 'grave', titulo: 'Ordenex CAÍDA', lineas: ['otra vez'] });
+  decir(!r.enviado && /ya se avisó/.test(r.motivo), 'la misma clave no se repite dentro del silencio', r.motivo);
+  r = await avisos.avisar({ clave: 'casa:ordenex', gravedad: 'grave', titulo: 'Ordenex CAÍDA', lineas: ['otra vez'], forzar: true });
+  decir(r.enviado, 'salvo que se fuerce (una casa que cae, vuelve y cae de nuevo)');
+  decir(avisos.estado().modo === 'partido' && avisos.estado().ultimos.length >= 4, 'el estado dice el modo y los últimos avisos');
+  canales.whatsapp = wa; canales.correo = co;
+}
+
+// ── LA BITÁCORA ─────────────────────────────────────────────────────────────
+titulo('la bitácora: lo que escribe queda anotado, lo de leer no, y sin secretos');
+{
+  const bitacora = require('../lib/bitacora.js');
+  const herramientas = require('../lib/herramientas.js');
+  const junta = [{ nombre: 'José', correo: 'jose@ordenglobal.org', rol: 'presidente' }];
+  const ctx = () => ({ miembro: { correo: 'jose@ordenglobal.org', nombre: 'José' }, junta, acciones: [], fuentes: [], memorias: [], documentos: [], envios: [], pendientes: [], canal: 'prueba' });
+  const antes = (await bitacora.leer({ limite: 200 })).length;
+  await herramientas.correr('calcular', { expresion: '2+2' }, ctx());
+  decir((await bitacora.leer({ limite: 200 })).length === antes, 'una herramienta de leer no se anota');
+  await herramientas.correr('anotar_pendiente', { texto: 'probar la bitácora de ULTRON con una entrada larga y distinta', vence: '2026-12-31' }, ctx());
+  const l = await bitacora.leer({ limite: 5 });
+  decir(l[0]?.herramienta === 'anotar_pendiente' && l[0].quien === 'jose@ordenglobal.org' && l[0].canal === 'prueba' && l[0].ok, 'una que escribe sí, con quién y por dónde', JSON.stringify(l[0]).slice(0, 160));
+  const r = bitacora.resumirEntrada({ app: 'ordenex-api', token: 'HRKU-AAksB9sThu6fkG4vH1Z', nota: 'la URI es mongodb+srv://u:p@x.y/z' });
+  decir(!/HRKU-AAks|u:p@x/.test(r) && /app=ordenex-api/.test(r), 'la entrada se resume tapando cualquier llave', r);
+}
+
+// ── PENDIENTES CON FECHA ────────────────────────────────────────────────────
+titulo('los pendientes con fecha: lo que vence primero');
+{
+  const memoria = require('../lib/memoria.js');
+  const a = await memoria.anotarPendiente({ texto: 'pendiente sin fecha para la prueba de orden', creadoPor: 'prueba' });
+  const b = await memoria.anotarPendiente({ texto: 'pendiente que vence pasado mañana para la prueba', creadoPor: 'prueba', vence: new Date(Date.now() + 2 * 86400000).toISOString().slice(0, 10) });
+  const c = await memoria.anotarPendiente({ texto: 'pendiente que venció ayer para la prueba', creadoPor: 'prueba', vence: new Date(Date.now() - 86400000).toISOString().slice(0, 10) });
+  const l = await memoria.pendientes({ limite: 200 });
+  const pos = (id) => l.findIndex((p) => String(p._id) === String(id));
+  decir(pos(c._id) < pos(b._id) && pos(b._id) < pos(a._id), 'vencido antes que futuro, y con fecha antes que sin fecha', `${pos(c._id)} < ${pos(b._id)} < ${pos(a._id)}`);
+  decir(/VENCIÓ hace 1 d/.test(memoria.rotuloVence(c)) && /vence en 2 d/.test(memoria.rotuloVence(b)) && memoria.rotuloVence(a) === '', 'los rótulos dicen cuánto falta o cuánto pasó');
+  decir(memoria.fechaVence('el martes') === null, 'una fecha que no se entiende no se adivina');
+}
+
+// ── EL EQUIPO: hora fija y envío ────────────────────────────────────────────
+titulo('el equipo: un bot puede correr a hora fija y mandar su parte');
+{
+  const equipo = require('../lib/equipo.js');
+  const cr = equipo.bots().find((b) => b.nombre === 'cronista');
+  decir(cr && cr.hora && cr.hora.h === 6 && cr.hora.m === 50 && cr.enviar === 'leve', 'el cronista corre a las 06:50 HN y manda por correo', JSON.stringify({ hora: cr?.hora, enviar: cr?.enviar }));
+  const p = equipo._adentro.parsear('---\nnombre: x\nhora: 7:05\nenviar: grave\n---\ntarea', 'x');
+  decir(p.hora.h === 7 && p.hora.m === 5 && p.enviar === 'grave', 'el encabezado admite hora y enviar');
+  const q = equipo._adentro.parsear('---\nnombre: y\nhora: mañana\nenviar: siempre\n---\ntarea', 'y');
+  decir(q.hora === null && q.enviar === null, 'y lo que no se entiende se ignora, no se adivina');
 }
 
 // ── EL RELEVO DEL CEREBRO ───────────────────────────────────────────────────

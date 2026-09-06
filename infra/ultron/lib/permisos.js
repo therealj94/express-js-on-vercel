@@ -68,7 +68,11 @@ const NIVEL_DE = {
   terminal: 'peligroso', repo_proponer_cambio: 'peligroso', desplegarse: 'peligroso',
   boveda_aplicar: 'peligroso', habilidad_publicar: 'peligroso', equipo_correr: 'peligroso',
   heroku_reiniciar: 'peligroso', nodo_comando: 'peligroso',
-  /* fuera: HOY NO HAY NINGUNA. `proponer_envio` no manda: PREPARA el mensaje y
+  /* fuera: un aviso a la junta pedido por una persona sale de la casa y pasa
+     por el clic del dueño. Los avisos AUTOMÁTICOS (casa caída, salud) no son
+     una herramienta: salen por lib/avisos.js según ULTRON_AVISOS. */
+  avisar_junta: 'fuera',
+  /* `proponer_envio` no es «fuera»: `proponer_envio` no manda: PREPARA el mensaje y
      la persona lo confirma en el panel, que ya es la autorización — ponerle
      un segundo clic encima era pedir permiso dos veces para lo mismo, y rompía
      el flujo que la consola tenía desde el principio. El nivel queda definido
@@ -226,7 +230,7 @@ const pendientes = () => lista({ estado: 'pendiente' });
    estar declarada. Se comprueba por nombre —terminal, desplegar, aplicar,
    publicar, correr— porque la omisión aquí es silenciosa y la más cara. */
 function comprobarCatalogo(nombres = []) {
-  const sospechosas = nombres.filter((n) => /terminal|desplegar|aplicar|publicar|proponer_cambio|equipo_correr|borrar|rotar|reiniciar|_comando/.test(n) && nivelDe(n) === 'leer');
+  const sospechosas = nombres.filter((n) => /terminal|desplegar|aplicar|publicar|proponer_cambio|equipo_correr|borrar|rotar|reiniciar|_comando|avisar_/.test(n) && nivelDe(n) === 'leer');
   if (sospechosas.length) throw new Error(`[permisos] herramientas sin nivel declarado: ${sospechosas.join(', ')}`);
   return true;
 }

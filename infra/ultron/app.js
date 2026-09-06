@@ -59,6 +59,8 @@ const boveda = require('./lib/boveda');
 const aprender = require('./lib/aprender');
 const equipo = require('./lib/equipo');
 const salud = require('./lib/salud');
+const avisos = require('./lib/avisos');
+const bitacora = require('./lib/bitacora');
 
 const app = express();
 app.set('trust proxy', 1);
@@ -234,7 +236,7 @@ app.get('/salud', async (req, res) => {
     boveda: boveda.encendida(), equipo: equipo.estado().encendido, dueño: !!DUENO, herramientas: herramientas.DEFINICIONES.length,
     /* La nota de la última ronda del médico. Es lo que hace que «¿está bien
        ULTRON?» tenga una respuesta sin entrar al panel. */
-    nota: salud.ultima()?.puntaje ?? null, relevo: cerebro.relevo?.().activo || false,
+    nota: salud.ultima()?.puntaje ?? null, relevo: cerebro.relevo?.().activo || false, avisos: avisos.MODO(),
   });
 });
 
@@ -376,7 +378,7 @@ app.get('/pendientes', puerta, async (req, res) => {
 });
 app.post('/pendientes', puerta, async (req, res) => {
   const p = await memoria.anotarPendiente({
-    texto: req.body?.texto, quien: req.body?.quien, tema: req.body?.tema, creadoPor: req.miembro.correo });
+    texto: req.body?.texto, quien: req.body?.quien, tema: req.body?.tema, creadoPor: req.miembro.correo, vence: req.body?.vence || null });
   if (!p) return res.status(400).json({ error: 'Texto vacío.', codigo: 'VACIO' });
   res.json(p);
 });
@@ -430,10 +432,19 @@ app.get('/herramientas', puerta, (req, res) => res.json({ herramientas: herramie
 app.post('/herramientas/:nombre', puerta, frenoPensar, async (req, res) => {
   const nombre = String(req.params.nombre || '');
   if (!herramientas.DEFINICIONES.some((d) => d.name === nombre)) return res.status(404).json({ error: 'No existe esa herramienta.', codigo: 'NO_EXISTE' });
-  const ctx = { miembro: req.miembro, junta: JUNTA.map(sinClave), conversacionId: null, fuentes: [], memorias: [], documentos: [], envios: [], pendientes: [], acciones: [], chico: false };
+  const ctx = { miembro: req.miembro, junta: JUNTA.map(sinClave), conversacionId: null, fuentes: [], memorias: [], documentos: [], envios: [], pendientes: [], acciones: [], chico: false, canal: 'mano' };
   const t0 = Date.now();
-  const salida = await herramientas.correr(nombre, req.body?.entrada || {}, ctx);
-  res.json({ nombre, salida: String(salida), ms: Date.now() - t0, acciones: ctx.acciones, documentos: ctx.documentos, envios: ctx.envios, fuentes: ctx.fuentes.slice(0, 12) });
+  /* Con `try`. Una herramienta que revienta —GitHub 404, AWS sin permiso—
+     rechazaba la promesa, Express 4 no la atrapaba, y la persona se quedaba
+     treinta segundos mirando el punto hasta el H12 de Heroku: ni respuesta ni
+     motivo. El motivo es justo lo que la persona necesita para arreglarlo. */
+  try {
+    const salida = await herramientas.correr(nombre, req.body?.entrada || {}, ctx);
+    res.json({ nombre, salida: String(salida), ms: Date.now() - t0, acciones: ctx.acciones, documentos: ctx.documentos, envios: ctx.envios, fuentes: ctx.fuentes.slice(0, 12) });
+  } catch (e) {
+    salud.anotarFallo(e, `herramienta ${nombre}`);
+    res.status(e?.http === 404 ? 404 : 500).json({ nombre, error: String(e?.message || e).slice(0, 400), codigo: e?.codigo || 'HERRAMIENTA', ms: Date.now() - t0 });
+  }
 });
 
 /* Lo que cuesta pensar. Va detrás de la puerta como todo lo demás: cuánto
@@ -770,6 +781,14 @@ app.post('/equipo/:bot/correr', puerta, async (req, res) => {
 app.get('/salud/profunda', puerta, async (req, res) => {
   try { res.json(await salud.revisar()); }
   catch (e) { salud.anotarFallo(e, 'GET /salud/profunda'); res.status(500).json({ error: e.message }); }
+});
+/* Los avisos: modo, últimos enviados y por dónde. Nunca el texto entero de
+   uno grave si lleva datos; aquí solo título, gravedad y canal. */
+app.get('/avisos', puerta, (req, res) => res.json(avisos.estado()));
+/* La bitácora: solo lectura desde aquí también. */
+app.get('/bitacora', puerta, async (req, res) => {
+  try { res.json({ acciones: await bitacora.leer({ limite: Math.min(100, Number(req.query.limite) || 40), herramienta: req.query.herramienta || null, quien: req.query.quien || null }) }); }
+  catch (e) { res.status(500).json({ error: e.message }); }
 });
 app.get('/salud/historial', puerta, async (req, res) => {
   try { res.json({ rondas: await salud.historial({ limite: Math.min(60, Number(req.query.limite) || 24) }) }); }
