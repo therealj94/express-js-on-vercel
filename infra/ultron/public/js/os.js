@@ -226,7 +226,29 @@ const OS = (() => {
      el panel habría dicho exactamente lo mismo que decía ayer.
      Las líneas del nodo (motor, pedidos, contexto) solo tienen sentido si se
      está pensando con el nodo. Si no, se ocultan en vez de mentir. */
+  /* ── ¿HAY UNA VERSIÓN NUEVA? ──────────────────────────────────────────────
+     José preguntaba lo que no se podía contestar: «¿se actualizó?». Una
+     pantalla abierta desde ayer se ve idéntica a una recién cargada, y quien la
+     mira no tiene manera de saber cuál está viendo.
+     El servidor dice su versión en /salud; aquí se recuerda la primera que se
+     vio y, si cambia, aparece una barra con un botón. NO se recarga solo: se
+     recarga cuando la persona quiere, que puede estar a mitad de una respuesta
+     o con algo escrito sin enviar. */
+  let VERSION_VISTA = null;
+  function mirarVersion(s) {
+    const v = s?.version;
+    if (!v || v === 'taller') return;
+    if (!VERSION_VISTA) { VERSION_VISTA = v; return; }
+    if (v === VERSION_VISTA || $('#hay-version')) return;
+    const b = document.createElement('div');
+    b.id = 'hay-version'; b.setAttribute('role', 'status');
+    b.innerHTML = `<span>Hay una versión nueva de ULTRON (${esc(v)}).</span><button class="chip">RECARGAR</button>`;
+    b.querySelector('button').onclick = () => location.reload();
+    document.body.appendChild(b);
+  }
+
   function pintarSalud(s) {
+    mirarVersion(s);
     const n = s?.nodo || null;
     const enNodo = s?.donde === 'nodo';
     $('#nodo-modelo').textContent = s?.modelo || nada;
@@ -389,13 +411,15 @@ const OS = (() => {
   }
 
   async function abrirAjustes() {
-    const [yo, pref, voces, ses, salud] = await Promise.all([
+    const [yo, pref, voces, ses, salud, casa] = await Promise.all([
       DATOS.get('/yo').catch(() => null),
       DATOS.get('/preferencias').catch(() => null),
       DATOS.get('/voces').catch(() => null),
       DATOS.get('/sesiones').catch(() => null),
       DATOS.get('/salud').catch(() => null),
+      DATOS.get('/casa').catch(() => null),
     ]);
+    const esDueno = yo?.permiso === 'dueño';
     if (pref) PREF = pref;
     const m = yo?.miembro || {};
     const esp = (PREF?.idioma || 'es') === 'es';
@@ -459,6 +483,21 @@ const OS = (() => {
         <div class="aj-fila"><span>Memoria</span><b>${esc(salud?.memoria || '—')}</b></div>
         <div class="aj-fila"><span>Avisos</span><b>${esc(salud?.avisos === 'partido' ? 'grave a WhatsApp · leve a correo' : (salud?.avisos || 'apagados'))}</b></div>
         <div class="aj-fila"><span>Herramientas</span><b>${salud?.herramientas ?? '—'}</b></div>
+        <div class="aj-fila"><span>Versión</span><b>${esc(salud?.version || '—')}${salud?.versionCuando ? ` · ${esc(hace(salud.versionCuando) || '')}` : ''}</b></div>
+      </div>
+
+      <div class="aj-sec"><h4>Con qué piensa ULTRON</h4>
+        <div class="aj-fila"><span>Cerebro</span>
+          <span class="aj-par">
+            <button data-cer="nodo" aria-pressed="${(casa?.cerebro || 'nodo') === 'nodo'}" ${esDueno ? '' : 'disabled'}>Solo nosotros</button>
+            <button data-cer="relevo" aria-pressed="${casa?.cerebro === 'relevo'}" ${esDueno ? '' : 'disabled'}>Con relevo</button>
+            <button data-cer="claude" aria-pressed="${casa?.cerebro === 'claude'}" ${esDueno ? '' : 'disabled'}>Solo Claude</button>
+          </span></div>
+        <p class="aj-nota"><b style="color:var(--letra-f)">Solo nosotros</b>: el modelo de la casa, en nuestra tarjeta. Ni una palabra de la junta sale hacia afuera; si el nodo se apaga, ULTRON no puede pensar.
+        <b style="color:var(--letra-f)">Con relevo</b>: lo mismo, pero si el nodo no contesta lo cubre Claude — y entonces esa conversación sí sale.
+        <b style="color:var(--letra-f)">Solo Claude</b>: para pensar algo largo con un modelo grande.
+        ${casa && !casa.claudeConfigurado ? '<br><span class="mal">Hoy Claude no está disponible: la cuenta no tiene saldo.</span>' : ''}
+        ${esDueno ? '' : '<br>Esto lo cambia solo el dueño.'}</p>
       </div>
 
       <div class="fila-btn" style="margin-top:18px">
@@ -467,6 +506,15 @@ const OS = (() => {
       </div>`);
 
     d.querySelector('#aj-cerrar').onclick = () => d.remove();
+    d.querySelectorAll('[data-cer]').forEach((b) => b.onclick = async () => {
+      try {
+        await DATOS.post('/casa', { cerebro: b.dataset.cer });
+        d.querySelectorAll('[data-cer]').forEach((x) => x.setAttribute('aria-pressed', String(x.dataset.cer === b.dataset.cer)));
+        avisar(b.dataset.cer === 'nodo' ? 'ULTRON piensa solo con el modelo de la casa.'
+          : b.dataset.cer === 'relevo' ? 'ULTRON piensa con el nodo, y Claude cubre si el nodo cae.'
+            : 'ULTRON piensa con Claude.');
+      } catch (e) { avisar(`No se pudo cambiar: ${e.message}`, true); }
+    });
     d.querySelectorAll('[data-voz]').forEach((b) => b.onclick = async () => {
       const si = b.dataset.voz === '1';
       if (si) despertarVoz();
@@ -814,6 +862,54 @@ const OS = (() => {
   let IDIOMA = 'es-HN';       // el del reconocimiento de voz; lo fija la preferencia
   let oreja = null, despierta = false;
 
+  /* ── LAS MULETILLAS: lo que dice mientras piensa ──────────────────────────
+     Entre la pregunta y la respuesta del nodo pueden pasar veinte segundos de
+     silencio, y un silencio así se siente como que el aparato se colgó.
+
+     TRES REGLAS, y las tres son por lo que se oye:
+       · No al azar del todo. Si está corriendo una herramienta, se dice algo de
+         ESA herramienta —«déjeme leer los números»— que es más vivo y no cuesta
+         nada, porque ya se sabe cuál está corriendo. Al azar solo cuando no hay
+         nada concreto que decir.
+       · Nunca la misma dos veces seguidas. Siete frases sin memoria se vuelven
+         un tic en dos días.
+       · Solo si la espera pasa de segundo y medio. Si contesta rápido, hablar
+         encima de la respuesta es peor que el silencio. */
+  const GRUPO_DE = {
+    estado_vivo: 'datos', cotizar: 'datos', ordenex_mercado: 'datos', cadena_altura: 'datos',
+    parte_del_dia: 'datos', salud_revisar: 'datos', mongo_consultar: 'datos', clima: 'datos',
+    buscar_web: 'buscar', leer_pagina: 'buscar', buscar_saber: 'buscar', buscar_conversaciones: 'buscar',
+    leer_archivo: 'archivo', listar_archivos: 'archivo', leer_documento: 'archivo',
+  };
+  let muletillas = null, ultimaMuletilla = '', relojMuletilla = null;
+
+  const cargarMuletillas = () => DATOS.get('/voz/muletillas')
+    .then((d) => { muletillas = d.hay ? d.muletillas : []; }).catch(() => { muletillas = []; });
+
+  /* Se toca con su propio elemento de audio, aparte del locutor: si usara el
+     mismo, la muletilla y la primera frase de la respuesta se pisarían. */
+  let audioMuletilla = null;
+  function decirMuletilla(grupo = 'general') {
+    if (!conVoz || !muletillas?.length) return;
+    const delGrupo = muletillas.filter((m) => m.grupo === grupo);
+    const donde = delGrupo.length ? delGrupo : muletillas.filter((m) => m.grupo === 'general');
+    const posibles = donde.filter((m) => m.texto !== ultimaMuletilla);
+    const m = (posibles.length ? posibles : donde)[Math.floor(Math.random() * (posibles.length || donde.length))];
+    if (!m) return;
+    ultimaMuletilla = m.texto;
+    try {
+      audioMuletilla = audioMuletilla || new Audio();
+      audioMuletilla.playsInline = true;
+      audioMuletilla.src = `/voz/muletilla/${encodeURIComponent(m.grupo)}/${m.i}`;
+      audioMuletilla.play().catch(() => { /* sin permiso todavía: se calla, no se rompe */ });
+    } catch { /* nada */ }
+  }
+  function pararMuletillas() { clearTimeout(relojMuletilla); relojMuletilla = null; try { audioMuletilla?.pause?.(); } catch { /* ya */ } }
+  function muletillaTrasEspera(grupo, ms = 1500) {
+    clearTimeout(relojMuletilla);
+    relojMuletilla = setTimeout(() => decirMuletilla(grupo), ms);
+  }
+
   /* ── DESPERTAR LA VOZ ─────────────────────────────────────────────────────
      Se llama DENTRO de un gesto de la persona —el clic de Ingresar, un toque
      en la pantalla, una tecla— y es lo que le da al navegador el permiso para
@@ -863,6 +959,25 @@ const OS = (() => {
     $('#dicho').scrollTop = $('#dicho').scrollHeight;
   }
 
+  /* El botón de «oír el resto». Sale junto a las sugerencias, con la misma
+     forma, porque es lo mismo: algo que se puede tocar y que no molesta si no. */
+  function chipsMas(texto) {
+    const c = $('#chips');
+    if (!c || !texto) return;
+    c.classList.remove('oculto');
+    const b = document.createElement('button');
+    b.className = 'chip'; b.textContent = 'OÍR TODO';
+    b.onclick = () => {
+      b.remove();
+      despertarVoz();
+      locutor.callar();
+      locutor.tope = 0;                 // esta vez, entero
+      locutor.alimentar(texto); locutor.cerrar();
+      locutor.tope = 900;               // y la próxima vez, como siempre
+    };
+    c.prepend(b);
+  }
+
   function chips(l) {
     const c = $('#chips');
     if (!l?.length) { c.classList.add('oculto'); return; }
@@ -884,7 +999,7 @@ const OS = (() => {
        anterior se quedaba con su temporizador de 40 Hz corriendo: treinta
        preguntas, treinta temporizadores huérfanos. */
     locutor?.callar?.();
-    if (conVoz) { locutor = locutor || locutorNuevo(); locutor.despertar?.(); }
+    if (conVoz) { locutor = locutor || locutorNuevo(); locutor.despertar?.(); muletillaTrasEspera('general'); }
 
     /* try/finally, y no es adorno. `DATOS.pensar` abre un SSE que puede durar
        veinte segundos; en un teléfono que cambia de celda a mitad, la promesa
@@ -895,8 +1010,13 @@ const OS = (() => {
     try {
       await DATOS.pensar(t, { conversacionId, modo: 'texto' }, {
         abre: (d) => { conversacionId = d.conversacionId || conversacionId; },
-        texto: (d) => { acum += d.t || ''; pintarDicho(acum); if (conVoz) locutor?.alimentar?.(d.t || ''); },
+        texto: (d) => {
+          if (!acum) pararMuletillas();      // empezó a contestar: nada de hablar encima
+          acum += d.t || ''; pintarDicho(acum);
+          if (conVoz) locutor?.alimentar?.(d.t || '');
+        },
         herramienta: (d) => {
+          if (!acum) muletillaTrasEspera(GRUPO_DE[d.nombre] || 'general', 700);
           const n = String(d.nombre || '').toUpperCase().replace(/_/g, ' ');
           $('#estado-txt').textContent = n;
           usadas.push(n);                       // para dejarlas escritas al pie de la respuesta
@@ -921,8 +1041,15 @@ const OS = (() => {
       avisar(`Se cortó la conexión con ULTRON: ${e?.message || e}`, true);
       setTimeout(() => { if (mente.state === 'error') estado('idle', 'neutral'); }, 3200);
     } finally {
+      /* Y se apaga la muletilla: si el turno se corta antes de la primera
+         letra, el temporizador seguía vivo y ULTRON decía «déjeme ver» encima
+         del mensaje de error. */
+      pararMuletillas();
       pensando = false; $('#enviar').disabled = false;
       if (mente.state !== 'speak' && mente.state !== 'error') estado('idle', 'neutral');
+      /* Si la voz se cortó por larga, se ofrece oírla entera. Es un botón y no
+         una pregunta: quien quiere el resto lo toca, y quien no, no oye nada. */
+      if (conVoz && locutor?.cortado) chipsMas(acum);
     }
   }
 
@@ -1148,6 +1275,7 @@ const OS = (() => {
     /* Las preferencias, lo primero: la voz, el idioma y la figura tienen que
        estar puestas antes de que ULTRON diga la primera palabra. */
     DATOS.get('/preferencias').then(aplicarPreferencias).catch(() => {});
+    cargarMuletillas();
     $('#m-salud').addEventListener('click', () => {
       if (innerWidth <= 860 && !document.body.classList.contains('cajon')) $('#tirador')?.click();
       $('#signos')?.scrollIntoView({ behavior: 'smooth', block: 'center' });

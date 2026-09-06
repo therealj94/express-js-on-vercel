@@ -60,6 +60,11 @@ const VOZ = (() => {
       Object.assign(this, { conElevenLabs, alNivel, alEmpezar, alTerminar, alFallo });
       this.cola = []; this.sonando = false; this.generacion = 0; this.resto = ''; this.ctx = null; this.vozId = null;
       this.desbloqueado = false;
+      /* El tope de lo que se lee en voz alta, en letras. Unas 900 son medio
+         minuto hablando: la respuesta corta entera, y de una larga la parte que
+         de verdad contesta. Con `tope = 0` se lee todo (el botón «LEER TODO»). */
+      this.tope = 900; this.dicho = 0; this.cortado = false; this.cierreDicho = false; this.avisadoAqui = false;
+      this.cierre = 'Le dejo el resto escrito en la pantalla.';
       /* ── UN SOLO ELEMENTO, PARA SIEMPRE ─────────────────────────────────
          El fallo que esto arregla, con nombre y fecha: en el iPad de José
          ULTRON no hablaba NUNCA. `sonar()` creaba `new Audio(url)` por cada
@@ -108,6 +113,18 @@ const VOZ = (() => {
         }
       } catch { /* si no se puede, el primer audio de verdad lo intentará */ }
     }
+    /* ── UNA RESPUESTA LARGA NO SE LEE ENTERA ────────────────────────────
+       José: «cuando es muy extenso resume todo y le dice aquí te dejo toda la
+       información». Tiene razón, y la razón es de tiempo: dos mil letras leídas
+       en voz alta son dos minutos hablando, y para entonces él ya leyó la
+       pantalla y se cansó de oír.
+
+       Lo que NO se hace: pedirle un resumen a otro modelo. Eso añade una espera
+       ANTES de la primera palabra, que es justo el problema del que se queja.
+       Lo que sí: se habla mientras llega —el primer párrafo de una respuesta de
+       ULTRON ES la respuesta, porque el entregable va primero— y al pasar del
+       tope se corta con una frase que dice la verdad: el resto está escrito.
+       Cero espera, cero fichas de más, y nada que se pierda. */
     alimentar(trozo) {
       this.resto += trozo;
       const { frases, resto } = partirFrases(this.resto); this.resto = resto;
@@ -116,10 +133,15 @@ const VOZ = (() => {
     cerrar() {
       const u = this.resto.trim(); this.resto = '';
       if (u) this.decir(u);
+      if (this.cortado && !this.cierreDicho) { this.cierreDicho = true; this.decir(this.cierre); }
       if (!this.sonando && !this.cola.length) this.alTerminar?.();
     }
     decir(frase) {
       const limpio = paraDecir(frase); if (!limpio) return;
+      /* Pasado el tope se deja de encolar. Se marca `cortado` para que
+         `cerrar()` diga por qué se calla, en vez de callarse a media frase. */
+      if (this.tope && this.dicho >= this.tope) { this.cortado = true; return; }
+      this.dicho += limpio.length;
       const gen = this.generacion;
       // El texto viaja CON el audio: si el mp3 no llega o no puede sonar, hay
       // con qué decirlo por el otro camino en vez de callarse.
@@ -128,6 +150,7 @@ const VOZ = (() => {
     }
     callar() {
       this.generacion++; this.cola = []; this.resto = '';
+      this.dicho = 0; this.cortado = false; this.cierreDicho = false; this.avisadoAqui = false;
       /* `corte()` es lo que cierra la sesión de `sonar()` que esté en marcha.
          Sin esto se paraba el elemento con `pause()` —que NO dispara `ended`—,
          así que el temporizador de la envolvente, que late a 40 Hz, seguía
@@ -148,9 +171,17 @@ const VOZ = (() => {
       this.sonando = true; this.alEmpezar?.();
       while (this.cola.length && gen === this.generacion) {
         const { texto, audio } = this.cola.shift();
-        const blob = await audio;
+        let blob = await audio;
         if (gen !== this.generacion) break;
-        // Sin mp3 —no hay ElevenLabs, o el servidor no pudo— se dice igual.
+        /* UN REINTENTO ANTES DE CAMBIAR DE VOZ. Con una respuesta larga se
+           piden diez o quince audios casi a la vez; si uno se pierde, cambiar
+           de voz a mitad de párrafo se nota muchísimo —José lo oyó: «no sale la
+           voz de George, sale otra»—. Se pide otra vez, una sola, y solo si
+           tampoco llega se usa la del navegador. */
+        if ((!blob || !blob.size) && this.conElevenLabs) {
+          blob = await DATOS.voz(texto, { rapido: true, vozId: this.vozId }).catch(() => null);
+          if (gen !== this.generacion) break;
+        }
         if (blob && blob.size > 0) await this.sonar(blob, gen, texto);
         else await this.conNavegador(texto, gen);
       }
@@ -210,7 +241,7 @@ const VOZ = (() => {
           // voz del navegador, y se avisa UNA vez para que se sepa por qué
           // cambió el timbre.
           soltar();
-          if (!Locutor.avisado) { Locutor.avisado = true; this.alFallo?.(String(e?.name || e)); }
+          if (!this.avisadoAqui) { this.avisadoAqui = true; this.alFallo?.(String(e?.name || e)); }
           this.conNavegador(texto, gen).then(listo);
         });
       });

@@ -459,22 +459,43 @@ titulo('el equipo: un bot puede correr a hora fija y mandar su parte');
 // ── EL RELEVO DEL CEREBRO ───────────────────────────────────────────────────
 // El fallo más caro: el nodo apagado dejaba a ULTRON mudo con la llave de
 // Anthropic sin usar al lado. Se comprueba que ya no.
-titulo('el relevo: si el nodo no contesta, Claude cubre');
+titulo('el cerebro: solo nosotros, con relevo, o solo Claude');
 {
   const cerebro = require('../lib/cerebro.js');
+  const pref = require('../lib/preferencias.js');
   const antesLlave = process.env.ANTHROPIC_API_KEY;
   process.env.ANTHROPIC_API_KEY = 'sk-ant-de-prueba';
-  process.env.ULTRON_CEREBRO = 'nodo';
+
+  /* SOLO NOSOTROS. Es lo que la junta eligió, y quiere decir eso: ni siquiera
+     con el nodo mudo se manda la conversación afuera. */
+  await pref.guardarCasa({ cerebro: 'nodo' }, 'prueba');
   cerebro.volverAlNodo();
-  decir(cerebro.cual() === 'nodo', 'sin relevo, piensa donde dice la junta');
-  decir(cerebro.relevar('el nodo no contesta') === true, 'el relevo se puede pedir cuando hay respaldo');
-  decir(cerebro.cual() === 'claude', 'y entonces piensa con Claude aunque la junta haya elegido el nodo');
+  decir(cerebro.cual() === 'nodo', 'en «solo nosotros» piensa con el nodo');
+  decir(cerebro.relevar('el nodo no contesta') === false, 'y con el nodo mudo NO releva: solo nosotros es solo nosotros');
+  decir(cerebro.cual() === 'nodo', 'sigue siendo el nodo, aunque no conteste — mudo es mejor que salir sin permiso');
+
+  /* CON RELEVO. */
+  /* En esta prueba NO hay nodo configurado (se borran las variables arriba), así
+     que «con relevo» cae a Claude — que es exactamente lo que tiene que hacer:
+     usar lo que haya. Lo que se comprueba aquí es el mecanismo del relevo. */
+  await pref.guardarCasa({ cerebro: 'relevo' }, 'prueba');
+  cerebro.volverAlNodo();
+  decir(cerebro.cual() === 'claude', 'en «con relevo» y SIN nodo configurado, usa lo que hay: Claude');
+  decir(cerebro.relevar('el nodo no contesta') === true, 'y el relevo se puede pedir cuando hay respaldo');
   decir(cerebro.relevo().activo && /no contesta/.test(cerebro.relevo().motivo), 'el relevo dice desde cuándo y por qué', JSON.stringify(cerebro.relevo().motivo));
   cerebro.volverAlNodo();
-  decir(cerebro.cual() === 'nodo' && !cerebro.relevo().activo, 'y cuando el nodo vuelve, se vuelve al nodo solo');
+  decir(!cerebro.relevo().activo, 'y volver al nodo suelta la guardia');
   delete process.env.ANTHROPIC_API_KEY;
   decir(cerebro.relevar('sin respaldo') === false, 'sin llave de Anthropic no hay a quién relevar: no se miente diciendo que sí');
   if (antesLlave) process.env.ANTHROPIC_API_KEY = antesLlave;
+
+  /* SOLO CLAUDE. */
+  await pref.guardarCasa({ cerebro: 'claude' }, 'prueba');
+  decir(cerebro.cual() === 'claude', 'en «solo Claude» piensa con Claude');
+  let malo = null;
+  try { await pref.guardarCasa({ cerebro: 'gemini' }, 'prueba'); } catch (e) { malo = e.codigo; }
+  decir(malo === 'CEREBRO' && cerebro.cual() === 'claude', 'un cerebro que no existe se rechaza y no cambia nada', String(malo));
+  await pref.guardarCasa({ cerebro: 'nodo' }, 'prueba');
   delete process.env.ULTRON_CEREBRO;
 }
 

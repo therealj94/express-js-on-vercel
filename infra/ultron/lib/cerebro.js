@@ -192,6 +192,19 @@ Contestás en español de Honduras, de principio a fin. Ni una palabra en inglé
 Y SIEMPRE DE USTED
 A la persona que te habla le hablás de USTED, sin una sola excepción. Se dice «¿Qué necesita?», «si usted lo autoriza», «le dejo el documento», «¿me confirma la dirección?». No se dice «¿qué necesitás?», «¿podrías?», «tenés», «tu cuenta», «te dejo». Es un miembro de la Junta Directiva: el tuteo, aunque sea una sola palabra al final, arruina la respuesta entera.
 
+DECIR QUE NO, CUANDO ES QUE NO${chico ? `
+- Si no se puede, lo decís en la primera línea y decís qué haría falta. No empezás el plan de algo imposible.
+- Si el dato que le dan no cuadra con lo que la casa tiene escrito, lo decís, con la fuente que lo contradice.
+- Si le piden su opinión y es que no, la da: «no lo haría, y por esto». Una recomendación tibia no es una recomendación.
+- Si NO SABE, dice que no sabe. Una respuesta segura y equivocada cuesta más que un «no lo sé».` : `
+Un asistente que dice a todo que sí no sirve para decidir nada: la junta necesita saber cuándo algo NO se puede, NO conviene o NO es verdad, y necesita saberlo ANTES de gastar una semana. Así que:
+- Si lo que le piden no se puede hacer con lo que hay, lo decís en la primera línea y decís qué haría falta. No se empieza por el plan de algo imposible.
+- Si el dato que le dan es falso o no cuadra con lo que la casa tiene escrito, lo decís, con la fuente que lo contradice. Callarse por educación es dejar que la junta decida con un número malo.
+- Si le piden una opinión y la suya es que no, la da: «no lo haría, y por esto». Una recomendación tibia con las dos opciones al lado no es una recomendación.
+- Si le piden algo que sale de la casa o que puede romper algo, no lo hace: lo prepara y dice quién lo aprueba. Eso no es decir que no, es decir cómo se hace bien.
+- Si NO SABE, dice que no sabe. Es la más importante de todas: una respuesta segura y equivocada le cuesta más a la junta que un «no lo sé, esto es lo que puedo averiguar».
+Decir que no se hace en una línea y sin rodeos, y después se ofrece lo que SÍ se puede. Nunca se pide disculpas dos veces ni se dan discursos.`}
+
 CON LAS HERRAMIENTAS, SIN TRAMPA
 - Solo citás una herramienta («según buscar_web», «según estado_vivo») si LA LLAMASTE en este turno. Citar una que no usaste es inventar una fuente, y eso rompe la regla 1.
 - El precio del oro y de la plata del estado vivo es de AHORA: se leyó hace segundos, con su fuente y su hora. Si te preguntan a cuánto está o cerró el oro, contestás con ese número y decís «según la referencia de Ordenex (fuente coingecko), leída ahora». NO buscás en internet para eso: un resumen de buscador trae un número de otro día.
@@ -405,6 +418,7 @@ const RELEVABLES = new Set(['NODO_MUDO', 'NODO_LENTO', 'NODO_ERROR', 'MODELO_MUD
 const guardia = { hasta: 0, desde: 0, motivo: null, veces: 0 };
 
 function relevar(motivo) {
+  if (modoCasa() !== 'relevo') return false;      // en «solo nosotros» no hay a dónde relevar, y es a propósito
   if (!claudeEncendido()) return false;
   if (!guardia.hasta) guardia.desde = Date.now();
   guardia.hasta = Date.now() + RELEVO_MS;
@@ -419,13 +433,30 @@ function relevo() {
 }
 function volverAlNodo() { guardia.hasta = 0; guardia.motivo = null; return true; }
 
-function cual() {
+/* Qué eligió la junta en Ajustes: «nodo» (solo nosotros), «relevo» (nosotros y
+   Claude si el nodo cae) o «claude». Mientras la base no haya contestado se usa
+   la variable de entorno, y si tampoco está, «nodo»: lo de la casa por omisión.
+   Nunca se sale a Anthropic por no saber qué se eligió. */
+function modoCasa() {
+  const guardado = require('./preferencias').casaYa();
+  if (guardado?.cerebro) return guardado.cerebro;
   const dicho = (process.env.ULTRON_CEREBRO || '').trim().toLowerCase();
-  if (dicho === 'claude') return 'claude';
-  /* El relevo pesa más que la preferencia: un nodo mudo no piensa aunque la
-     junta lo haya elegido. */
+  if (['nodo', 'relevo', 'claude'].includes(dicho)) return dicho;
+  /* Sin nodo configurado, «solo nosotros» no es una elección: es quedarse mudo
+     por una variable que falta. Ahí vale «relevo», que usa lo que haya. */
+  return nodo.encendido() ? 'nodo' : 'relevo';
+}
+
+function cual() {
+  const modo = modoCasa();
+  if (modo === 'claude') return 'claude';
+  /* SOLO NOSOTROS quiere decir solo nosotros: ni siquiera con el nodo caído se
+     manda la conversación de la junta a Anthropic. Si el nodo no contesta,
+     ULTRON dice que no puede pensar — que es la verdad— en vez de salir por
+     una puerta que nadie abrió. */
+  if (modo === 'nodo') return 'nodo';
+  // relevo: el nodo, y Claude solo mientras el nodo esté mudo.
   if (Date.now() < guardia.hasta && claudeEncendido()) return 'claude';
-  if (dicho === 'nodo') return 'nodo';
   return nodo.encendido() ? 'nodo' : 'claude';
 }
 function encendido() { return cual() === 'nodo' ? nodo.encendido() : claudeEncendido(); }
@@ -484,5 +515,5 @@ function motivoDeCualquiera(e) {
 }
 
 module.exports = { pensar, titular, encendido, cual, modelo, motivo: motivoDeCualquiera, dolaresDe, PRECIOS, MODELO, HERRAMIENTAS,
-  relevar, relevo, volverAlNodo,
+  relevar, relevo, volverAlNodo, modoCasa,
   nodo, _adentro: { sistema, correr, clienteAnthropic, pensarConClaude, claudeEncendido, guardia, RELEVABLES } };

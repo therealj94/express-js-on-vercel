@@ -28,7 +28,7 @@ const MODELO_RAPIDO = process.env.ELEVENLABS_MODELO_RAPIDO || 'eleven_flash_v2_5
 const MAXIMO = 2500;   // letras por petición: más largo se parte en el panel
 
 const memoria = new Map();   // sha1(texto) -> Buffer
-const MEMORIA_MAX = 60;
+const MEMORIA_MAX = 120;   // 60 frases sueltas + las muletillas, que conviene que no se caigan nunca
 
 function encendida() { return !!LLAVE; }
 
@@ -107,4 +107,62 @@ async function hablar(texto, { rapido = false, vozId = null } = {}) {
   return audio;
 }
 
-module.exports = { hablar, voces, encendida, paraDecir, VOZ, _adentro: { memoria, VOZ, MODELO, MODELO_RAPIDO, vozPermitida } };
+/* ── LAS MULETILLAS ──────────────────────────────────────────────────────────
+ * José lo pidió así: «grabar voces, 7 palabras diferentes, y se activa random
+ * cuando está pensando, como un “déjame ver” o “déjame revisar”». Tiene toda la
+ * razón en el diagnóstico: entre que uno pregunta y el nodo contesta pueden
+ * pasar veinte segundos de SILENCIO, y un silencio de veinte segundos se siente
+ * como que el aparato se colgó.
+ *
+ * DOS CORRECCIONES A LA IDEA, y las dos hacen que suene más vivo, no menos:
+ *
+ *   1. NO AL AZAR DEL TODO. Si ULTRON está leyendo el mercado, decir «déjeme
+ *      mirar el mercado» es mejor que «déjeme ver» — y no cuesta nada, porque
+ *      ya se sabe qué herramienta está corriendo. Al azar solo cuando no hay
+ *      nada que decir. Y nunca la misma dos veces seguidas: siete frases que se
+ *      repiten sin memoria se vuelven un tic en dos días.
+ *   2. GRABADAS UNA VEZ, NO EN CADA VUELTA. Se piden a ElevenLabs la primera
+ *      vez y quedan en memoria: son unas 200 letras en total, se pagan una vez
+ *      por arranque del dyno y después salen al instante. Ese «al instante» es
+ *      todo el punto: una muletilla que tarda dos segundos en llegar no tapa
+ *      ningún silencio.
+ */
+const MULETILLAS = {
+  es: {
+    general: ['Déjeme ver.', 'Un momento, lo reviso.', 'Voy a mirarlo.', 'Déjeme revisar eso.',
+      'Un segundo.', 'Ya lo estoy viendo.', 'Permítame.'],
+    datos: ['Déjeme leer los números.', 'Voy a mirar cómo está eso ahora.'],
+    buscar: ['Voy a buscarlo.', 'Déjeme buscar eso.'],
+    archivo: ['Déjeme leer eso.', 'Voy a mirar el archivo.'],
+    largo: ['Esto me va a tomar un momento.'],
+  },
+  en: {
+    general: ['Let me see.', 'One moment, I am checking.', 'Let me look at that.', 'Give me a second.',
+      'I am on it.', 'Let me review that.', 'One second.'],
+    datos: ['Let me read the numbers.', 'Let me check how that stands right now.'],
+    buscar: ['Let me search for that.', 'I will look it up.'],
+    archivo: ['Let me read that.', 'I will look at the file.'],
+    largo: ['This one will take me a moment.'],
+  },
+};
+
+/** El catálogo que el panel necesita para pedirlas por su número. */
+function muletillas(idioma = 'es') {
+  const m = MULETILLAS[idioma === 'en' ? 'en' : 'es'];
+  const lista = [];
+  for (const [grupo, frases] of Object.entries(m)) frases.forEach((texto, i) => lista.push({ grupo, i, texto }));
+  return lista;
+}
+
+/** El audio de una muletilla, por grupo e índice. Se graba una vez y queda. */
+async function muletilla(idioma, grupo, indice, { vozId = null } = {}) {
+  const m = MULETILLAS[idioma === 'en' ? 'en' : 'es'];
+  const frases = m[grupo] || m.general;
+  const texto = frases[Number(indice) % frases.length];
+  if (!texto) { const e = new Error('No hay esa muletilla.'); e.codigo = 'NO_EXISTE'; throw e; }
+  /* Con el modelo rápido: son tres palabras y lo que importa es que estén ya. */
+  return hablar(texto, { rapido: true, vozId });
+}
+
+module.exports = { hablar, voces, encendida, paraDecir, VOZ, muletillas, muletilla,
+  _adentro: { memoria, VOZ, MODELO, MODELO_RAPIDO, vozPermitida, MULETILLAS } };

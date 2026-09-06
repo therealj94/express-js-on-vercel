@@ -72,7 +72,14 @@ El engranaje del techo abre lo que es de LA PERSONA y no del ecosistema:
   otro aparato**. Hasta hoy una cookie firmada valía doce horas y no había manera
   de retirarla: perder el teléfono desbloqueado era perder ULTRON hasta el día
   siguiente.
-- **La casa** — cerebro, memoria, avisos y herramientas, de un vistazo.
+- **La casa** — cerebro, memoria, avisos, herramientas y **la versión** que está
+  corriendo. Si el servidor se actualiza con la pantalla abierta, sale una barra
+  abajo con un botón de RECARGAR; no se recarga solo, porque puede estar a mitad
+  de una respuesta.
+- **Con qué piensa ULTRON** (solo el dueño): **solo nosotros** —el modelo de la
+  casa, en nuestra tarjeta; ni una palabra sale hacia afuera, y si el nodo se
+  apaga ULTRON no puede pensar—, **con relevo** —lo mismo, pero Claude cubre si
+  el nodo no contesta— o **solo Claude**. Por omisión, solo nosotros.
 - **Salir de ULTRON**, que cierra la sesión de verdad y no solo borra la cookie.
 
 Las preferencias van a la base **con su correo, no en el navegador**: lo que
@@ -252,6 +259,32 @@ en el panel. El reloj arranca apagado (`ULTRON_EQUIPO=on`), con tope diario.
 lee las variables de cada app y las guarda con `yaEn` (dónde vive cada una),
 sin imprimir ningún valor. Las llaves privadas de billeteras y las semillas
 NO entran, a propósito: no se rotan por ULTRON y duplicarlas no gana nada.
+
+## La voz: las muletillas y el resumen hablado
+
+Dos cosas que se sienten en cada turno y que arreglan el mismo problema —que en
+voz *hay mucho que procesar*—:
+
+**Las muletillas.** Entre la pregunta y la respuesta del nodo pueden pasar veinte
+segundos de silencio, y un silencio así se siente como que el aparato se colgó.
+ULTRON dice algo mientras piensa: «déjeme ver», «un momento, lo reviso». No al
+azar del todo —si está leyendo el mercado dice «déjeme leer los números», porque
+ya se sabe qué herramienta corre—, nunca la misma dos veces seguidas, y solo si
+la espera pasa de segundo y medio. Se graban una vez por arranque
+(`GET /voz/muletilla/:grupo/:i`) y después salen al instante, que es todo el
+punto.
+
+**El resumen hablado.** Dos mil letras leídas en voz alta son dos minutos
+hablando, y para entonces la persona ya leyó la pantalla. ULTRON habla mientras
+la respuesta llega —el primer párrafo de una respuesta suya ES la respuesta,
+porque el entregable va primero— y al pasar de unas 900 letras se corta con
+«le dejo el resto escrito en la pantalla», y aparece un botón **OÍR TODO** para
+quien lo quiera entero. No se le pide un resumen a otro modelo: eso añadiría
+espera antes de la primera palabra, que es justo el problema.
+
+**Y si un audio no llega, se pide otra vez antes de cambiar de voz.** Con una
+respuesta larga se piden diez o quince audios casi a la vez; si uno se perdía,
+ULTRON cambiaba a la voz del navegador a mitad de párrafo y se notaba muchísimo.
 
 **El vigía** (`lib/vigia.js`) mide las seis casas cada minuto desde el servidor
 —aunque nadie mire—, exige dos lecturas fallidas antes de declarar una caída y

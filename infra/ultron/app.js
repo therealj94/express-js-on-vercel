@@ -42,6 +42,7 @@ const cookieParser = require('cookie-parser');
 const rateLimit = require('express-rate-limit');
 const { createHmac, timingSafeEqual, randomBytes } = require('node:crypto');
 const { join } = require('node:path');
+const { readFileSync } = require('node:fs');
 
 const saber = require('./lib/saber');
 const vivo = require('./lib/vivo');
@@ -112,6 +113,16 @@ const CON_GID = JUNTA.filter((m) => m.gid).length;
 if (!genesis.configurado()) console.log('[puerta] SSO de Genesis apagado (sin GENESIS_API_KEY): se entra con correo y clave');
 else if (!CON_GID) console.warn('[puerta] SSO de Genesis encendido pero NINGÚN miembro tiene gid en ULTRON_JUNTA: nadie va a poder entrar por la wallet');
 else console.log(`[puerta] SSO de Genesis encendido: ${CON_GID} de ${JUNTA.length} miembro(s) con gid`);
+
+/* LA VERSIÓN. La escribe el despliegue dentro del paquete (bin/desplegar.mjs).
+   Corriendo desde el repositorio no existe y se dice «en el taller»: inventar
+   un número de versión en desarrollo es exactamente cómo se confunde una
+   pantalla vieja con una nueva. */
+const VERSION = (() => {
+  try { return JSON.parse(readFileSync(join(__dirname, 'version.json'), 'utf8')); }
+  catch { return { commit: 'taller', rama: 'local', cuando: new Date().toISOString() }; }
+})();
+console.log(`[ultron] versión ${VERSION.commit} (${VERSION.rama}) · ${VERSION.cuando}`);
 
 const SESION_MS = 12 * 60 * 60 * 1000;
 const firmar = (s) => createHmac('sha256', SECRETO).update(s).digest('base64url');
@@ -248,6 +259,7 @@ app.get('/salud', async (req, res) => {
     /* La nota de la última ronda del médico. Es lo que hace que «¿está bien
        ULTRON?» tenga una respuesta sin entrar al panel. */
     nota: salud.ultima()?.puntaje ?? null, relevo: cerebro.relevo?.().activo || false, avisos: avisos.MODO(),
+    version: VERSION.commit, versionCuando: VERSION.cuando, rama: VERSION.rama,
   });
 });
 
@@ -707,6 +719,26 @@ app.get('/voces', puerta, async (req, res) => {
   catch (e) { res.status(502).json({ error: e.message, codigo: 'PROVEEDOR' }); }
 });
 
+/* Las muletillas: lo que ULTRON dice mientras piensa. El catálogo es público
+   para quien entró (son siete frases, no hay nada que proteger) y cada audio se
+   pide por su grupo y su número. Se graban una vez y quedan en memoria. */
+app.get('/voz/muletillas', puerta, async (req, res) => {
+  const pref = await preferencias.de(req.miembro.correo).catch(() => ({ idioma: 'es' }));
+  res.json({ idioma: pref.idioma, muletillas: voz.muletillas(pref.idioma), hay: voz.encendida() });
+});
+app.get('/voz/muletilla/:grupo/:i', puerta, async (req, res) => {
+  if (!voz.encendida()) return res.status(503).json({ error: 'Voz apagada.', codigo: 'VOZ_APAGADA' });
+  try {
+    const pref = await preferencias.de(req.miembro.correo).catch(() => ({ idioma: 'es', vozId: null }));
+    const audio = await voz.muletilla(pref.idioma, String(req.params.grupo), Number(req.params.i) || 0, { vozId: pref.vozId || null });
+    res.setHeader('Content-Type', 'audio/mpeg');
+    /* Un año de caché: una muletilla es la misma frase con la misma voz para
+       siempre. Es lo que hace que a la segunda vez salga sin ningún viaje. */
+    res.setHeader('Cache-Control', 'private, max-age=31536000, immutable');
+    res.send(audio);
+  } catch (e) { res.status(502).json({ error: e.message, codigo: e.codigo || 'ERROR' }); }
+});
+
 app.post('/voz', puerta, frenoVoz, async (req, res) => {
   if (!voz.encendida()) return res.status(503).json({ error: 'Voz apagada (falta ELEVENLABS_API_KEY).', codigo: 'VOZ_APAGADA' });
   try {
@@ -848,6 +880,15 @@ app.post('/preferencias', puerta, express.json({ limit: '8kb' }), async (req, re
   catch (e) { res.status(400).json({ error: e.message }); }
 });
 
+app.get('/casa', puerta, async (req, res) => {
+  const c = await preferencias.casa();
+  res.json({ ...c, opciones: preferencias.CEREBROS, cual: cerebro.cual(), nodoConfigurado: cerebro.nodo.encendido(), claudeConfigurado: !!(process.env.ANTHROPIC_API_KEY || '').trim() });
+});
+app.post('/casa', puerta, soloDueño, express.json({ limit: '4kb' }), async (req, res) => {
+  try { res.json(await preferencias.guardarCasa(req.body || {}, req.miembro.correo)); }
+  catch (e) { res.status(400).json({ error: e.message, codigo: e.codigo || 'ERROR' }); }
+});
+
 app.get('/avisos', puerta, (req, res) => res.json(avisos.estado()));
 /* La bitácora: solo lectura desde aquí también. */
 app.get('/bitacora', puerta, async (req, res) => {
@@ -910,6 +951,7 @@ if (require.main === module) {
        avería que importa es la que pasa cuando nadie está mirando. */
     salud.arrancar();
     sesiones.cargar().then((n) => { if (n) console.log(`[sesiones] ${n} sesión(es) cerradas recordadas`); });
+    preferencias.casa().then((c) => console.log(`[casa] cerebro: ${c.cerebro}`));
     if (!boveda.encendida()) console.warn('[boveda] apagada: sin ULTRON_BOVEDA_LLAVE no se guardan secretos');
     app.listen(PUERTO, () => {
       console.log(`[ultron] escuchando en ${PUERTO} · cerebro ${cerebro.encendido() ? MODELO_LOG() : 'APAGADO'} · voz ${voz.encendida() ? 'ElevenLabs' : 'del navegador'} · memoria ${memoria.estado()}`);

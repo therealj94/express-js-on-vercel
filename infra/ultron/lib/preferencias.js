@@ -74,4 +74,63 @@ function ordenDeIdioma(idioma) {
     + 'Amounts, dates and sources stay in the same format.';
 }
 
-module.exports = { de, guardar, ordenDeIdioma, VOCES_SUGERIDAS, POR_OMISION, _adentro: { Pref, provisional } };
+/* ── LOS AJUSTES DE LA CASA ──────────────────────────────────────────────────
+ * Estos NO son de una persona: valen para toda la junta y los cambia solo el
+ * dueño. Hoy hay uno, y es el que más pesa: con qué cerebro piensa ULTRON.
+ *
+ *   nodo    SOLO NOSOTROS. El modelo de la casa, en nuestra tarjeta. Nada sale
+ *           hacia Anthropic — ni una palabra de la junta. Si el nodo se apaga,
+ *           ULTRON queda mudo, y eso se sabe al elegirlo.
+ *   relevo  Nosotros, y Claude SOLO si el nodo no contesta. Es el que no deja
+ *           a ULTRON mudo, y el que a cambio manda la conversación afuera
+ *           cuando la tarjeta falla.
+ *   claude  Solo Claude. Para pensar algo largo con un modelo grande.
+ *
+ * Por omisión: `nodo`. Lo pidió José con estas palabras —«dejar puro nosotros
+ * sin Claude»— y además es lo honesto hoy: la cuenta de Anthropic está sin
+ * saldo, así que un relevo por omisión sería un respaldo que no existe.
+ */
+const CEREBROS = ['nodo', 'relevo', 'claude'];
+const casaSchema = new Schema({
+  clave: { type: String, required: true, unique: true, index: true },
+  cerebro: { type: String, enum: CEREBROS, default: 'nodo' },
+  porQuien: String,
+  tocado: { type: Date, default: Date.now },
+}, { versionKey: false });
+const Casa = mongoose.models.Casa || mongoose.model('Casa', casaSchema);
+
+/* Se guarda en memoria además de en la base porque `cerebro.cual()` lo pregunta
+   en CADA turno y no puede esperar a una consulta. La base es para que
+   sobreviva a un reinicio; la memoria es la que contesta. */
+let casaEnMemoria = null;
+
+async function casa() {
+  if (casaEnMemoria) return casaEnMemoria;
+  /* Por omisión «nodo» —solo nosotros, que es lo que pidió la junta—, pero solo
+     si hay nodo configurado. Sin nodo, «nodo» dejaría a ULTRON mudo desde el
+     primer minuto sin que nadie lo haya elegido: ahí se cae a «relevo», que
+     usa lo que haya. Elegir «solo nosotros» tiene que ser una decisión, no un
+     accidente de una variable que falta. */
+  const hayNodo = !!(process.env.ULTRON_NODO_URL && process.env.ULTRON_NODO_SECRETO);
+  const dicho = (process.env.ULTRON_CEREBRO || '').trim();
+  const porOmision = { cerebro: CEREBROS.includes(dicho) ? dicho : (hayNodo ? 'nodo' : 'relevo') };
+  if (conMongo()) {
+    try { const d = await Casa.findOne({ clave: 'casa' }).lean(); if (d) { casaEnMemoria = { cerebro: d.cerebro, porQuien: d.porQuien, tocado: d.tocado }; return casaEnMemoria; } }
+    catch { /* se usa lo de omisión */ }
+  }
+  casaEnMemoria = porOmision;
+  return casaEnMemoria;
+}
+/** Lo que `cerebro.cual()` puede preguntar sin esperar: null hasta que se cargue. */
+const casaYa = () => casaEnMemoria;
+
+async function guardarCasa(cambios = {}, porQuien = '?') {
+  if (!CEREBROS.includes(cambios.cerebro)) throw Object.assign(new Error(`El cerebro es ${CEREBROS.join(', ')}.`), { codigo: 'CEREBRO' });
+  casaEnMemoria = { cerebro: cambios.cerebro, porQuien, tocado: new Date() };
+  if (conMongo()) { try { await Casa.updateOne({ clave: 'casa' }, { $set: { clave: 'casa', cerebro: cambios.cerebro, porQuien, tocado: new Date() } }, { upsert: true }); } catch (e) { console.warn('[casa] no se pudo guardar:', e.message); } }
+  console.log(`[casa] cerebro → ${cambios.cerebro} (por ${porQuien})`);
+  return casaEnMemoria;
+}
+
+module.exports = { de, guardar, ordenDeIdioma, VOCES_SUGERIDAS, POR_OMISION,
+  casa, casaYa, guardarCasa, CEREBROS, _adentro: { Pref, Casa, provisional } };

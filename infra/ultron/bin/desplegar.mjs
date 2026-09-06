@@ -117,12 +117,21 @@ if (sinCommitear) {
   process.exit(1);
 }
 const paquete = join(tmpdir(), `ultron-${commit}.tar.gz`);
+/* LA VERSIÓN VIAJA DENTRO DEL PAQUETE. Sin esto no hay manera de saber, desde
+   una pantalla abierta, si lo que se está mirando es lo de hace un minuto o lo
+   de ayer — y José preguntaba justo eso: «¿se actualizó?». Va con el commit y
+   la hora, y de ahí sale el aviso de «hay una versión nueva, recargá». */
+const versionJson = JSON.stringify({ commit, rama, cuando: new Date().toISOString() });
 await correr('bash', ['-c',
-  `git archive --format=tar HEAD:${PREFIJO} | gzip -9 > ${JSON.stringify(paquete)}`], { cwd: RAIZ });
+  `set -e; T=$(mktemp -d); git archive --format=tar HEAD:${PREFIJO} | tar -x -C "$T"; `
+  + `printf %s ${JSON.stringify(versionJson)} > "$T/version.json"; `
+  + `tar -C "$T" -czf ${JSON.stringify(paquete)} .; rm -rf "$T"`], { cwd: RAIZ });
 const mide = statSync(paquete).size;
 const dentro = (await correr('tar', ['-tzf', paquete])).stdout.split('\n');
-for (const f of ['Procfile', 'package.json', 'app.js', 'saber/secciones.json', 'saber/indice.json', 'public/index.html']) {
-  if (!dentro.includes(f)) morir(`al paquete le falta ${f}`);
+/* `tar -C dir .` nombra las entradas «./cosa»; se comparan sin el prefijo. */
+const enPaquete = new Set(dentro.map((f) => f.replace(/^\.\//, '')));
+for (const f of ['Procfile', 'package.json', 'app.js', 'saber/secciones.json', 'saber/indice.json', 'public/index.html', 'version.json']) {
+  if (!enPaquete.has(f)) morir(`al paquete le falta ${f}`);
 }
 verde(`✓ ${(mide / 1024).toFixed(0)} KB · ${dentro.length} archivos · rama ${rama} (${commit})`);
 
