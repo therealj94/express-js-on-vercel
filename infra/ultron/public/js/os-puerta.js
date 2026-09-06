@@ -109,8 +109,12 @@
     $('#arranque').hidden = true;
     const pt = $('#puerta-os');
     pt.hidden = false;
-    /* El pase de la wallet solo si este servidor tiene Genesis. */
-    $('#pt-genesis').hidden = !salud?.genesis;
+    /* El pase de la wallet solo si este servidor puede COMPROBAR uno (la clave
+       de API) Y sabe dónde se SACA (la dirección de la wallet). Faltando la
+       segunda, el botón salía igual y mandaba un pase vacío: el servidor
+       contestaba «falta el pase» y la persona se quedaba creyendo que había
+       hecho algo mal. */
+    $('#pt-genesis').hidden = !(salud?.genesis && salud?.genesisPase);
     if (innerWidth > 700) setTimeout(() => pt.querySelector('input[name=correo]')?.focus(), 260);
   }
 
@@ -175,16 +179,33 @@
     }
   }
 
-  /* ── ENTRAR CON LA WALLET (Genesis ID) ──────────────────────────────────── */
-  async function conWallet() {
+  /* ── ENTRAR CON LA WALLET (Genesis ID) ────────────────────────────────────
+   *
+   * Son dos viajes, y hasta hoy solo estaba escrito el segundo:
+   *   1. Tocar el botón lleva a la wallet a sacar el pase (`/entrar/genesis/ir`).
+   *   2. La wallet devuelve a esta misma página con el pase en el hash, y ese
+   *      pase es el que se comprueba contra Genesis.
+   * Faltando el primero, el botón mandaba `{}` y el servidor contestaba «falta
+   * el pase»: un botón que no podía funcionar nunca. */
+  function conWallet() {
     const b = $('#pt-wallet');
     try { window.OS?.despertarVoz?.(); } catch { /* nada */ }
-    b.disabled = true; b.textContent = 'Abriendo Genesis…';
+    b.disabled = true; b.textContent = 'Abriendo la wallet…';
+    dicho('Le pedimos el pase a su Veta Wallet…');
+    location.href = '/entrar/genesis/ir';
+  }
+
+  /* La vuelta: la wallet deja el pase en el hash. Se saca de la barra de
+     direcciones ENSEGUIDA —un pase en el historial del navegador es un pase
+     que se comparte al copiar el enlace— y se comprueba contra el servidor. */
+  async function conElPase(pase) {
+    const b = $('#pt-wallet');
+    if (b) { b.disabled = true; b.textContent = 'Confirmando…'; }
     dicho('Confirmando su identidad con Genesis ID…');
     try {
       const r = await fetch('/entrar/genesis', {
         method: 'POST', credentials: 'same-origin',
-        headers: { 'Content-Type': 'application/json' }, body: '{}',
+        headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ token: pase }),
         signal: AbortSignal.timeout(30_000),
       });
       const d = await r.json().catch(() => ({}));
@@ -197,8 +218,17 @@
       setTimeout(abrir, 420);
     } catch (e) {
       dicho(esc(e?.message || 'Genesis no contestó.') + (e?.gid ? `<span class="pt-gid">${esc(e.gid)}</span>` : ''), true);
-      b.disabled = false; b.textContent = 'Entrar con mi Veta Wallet';
+      if (b) { b.disabled = false; b.textContent = 'Entrar con mi Veta Wallet'; }
     }
+  }
+
+  /* El pase puede venir como `#pase=…` o `#token=…`: lo manda la wallet y no
+     lo escribimos nosotros, así que se aceptan los dos nombres. */
+  function paseDelHash() {
+    const h = String(location.hash || '').replace(/^#/, '');
+    if (!h) return null;
+    const p = new URLSearchParams(h);
+    return p.get('pase') || p.get('token') || null;
   }
 
   /* Si la sesión vence mientras se usa el tablero, se vuelve a la puerta en el
@@ -213,6 +243,17 @@
   });
 
   $('#pt-form').addEventListener('submit', entrar);
+
+  /* Al volver de la wallet. Se limpia el hash ANTES de usarlo: un pase en la
+     barra de direcciones acaba en el historial y en cualquier enlace que se
+     copie. `replaceState` no deja rastro ni añade una entrada al «atrás». */
+  {
+    const pase = paseDelHash();
+    if (pase) {
+      try { history.replaceState(null, '', location.pathname + location.search); } catch { location.hash = ''; }
+      conElPase(pase);
+    }
+  }
   $('#pt-ojo').addEventListener('click', ojo);
   $('#pt-wallet').addEventListener('click', conWallet);
   arrancar();

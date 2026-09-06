@@ -996,9 +996,17 @@ const OS = (() => {
     const abiertos = (l || []).filter((p) => p.estado !== 'hecho');
     $('#pend-sub').textContent = abiertos.length ? `${abiertos.length} sin cerrar` : 'nada abierto';
     $('#pendientes').innerHTML = abiertos.length
+      /* ── Y SE PUEDEN CERRAR ────────────────────────────────────────────
+         Se veían y no se tocaban: para cerrar uno había que pedírselo a ULTRON
+         por escrito, con el riesgo de que cerrara el que no era. `PATCH
+         /pendientes/:id` existía desde el principio y nadie lo llamaba. Marcar
+         hecho lo que ya está hecho es el gesto más repetido de una lista de
+         tareas: tiene que ser un toque. */
       ? abiertos.slice(0, 12).map((p) => `
         <div style="display:flex;gap:7px;align-items:flex-start">
-          <span style="width:5px;height:5px;border-radius:50%;background:${p.vence && +new Date(p.vence) < Date.now() ? 'var(--rojo)' : 'var(--ambar)'};margin-top:6px;flex:none;box-shadow:0 0 6px ${p.vence && +new Date(p.vence) < Date.now() ? 'var(--rojo)' : 'var(--ambar)'}"></span>
+          <button class="cerrar-pend" data-pend="${esc(String(p._id))}" title="Marcarlo como hecho" aria-label="Marcar como hecho: ${esc(p.texto)}"
+            style="width:18px;height:18px;margin-top:2px;flex:none;border-radius:50%;background:transparent;cursor:pointer;
+                   border:1.5px solid ${p.vence && +new Date(p.vence) < Date.now() ? 'var(--rojo)' : 'var(--ambar)'}"></button>
           <div style="min-width:0">
             <div style="font-size:12.5px;line-height:1.3;color:var(--letra-f)">${esc(p.texto)}</div>
             ${p.quien || p.vence ? `<div class="dato" style="color:var(--tenue)">${vence(p)}${p.quien ? esc(p.quien) : ''}</div>` : ''}
@@ -1548,6 +1556,9 @@ const OS = (() => {
     c.classList.remove('oculto');
     const b = document.createElement('button');
     b.className = 'chip'; b.textContent = 'OÍR TODO';
+    /* `propio`: este botón se maneja solo. Sin esto, el manejador de la barra
+       de chips ADEMÁS le mandaba a ULTRON la pregunta «OÍR TODO». */
+    b.dataset.propio = '1';
     b.onclick = () => {
       b.remove();
       despertarVoz();
@@ -1559,11 +1570,27 @@ const OS = (() => {
     c.prepend(b);
   }
 
-  function chips(l) {
+  /* ── LOS BOTONES QUE ULTRON DEJA ─────────────────────────────────────────
+     Se pintaban con `acciones.map(a => a.nombre)`, y `nombre` solo lo trae UNA
+     de las diez clases de acción: las demás salían como botones EN BLANCO que
+     al tocarlos le mandaban a ULTRON una pregunta vacía. Y las que sí tenían
+     nombre —«abrir Ordenex», «el memo en PDF»— tampoco abrían nada: el clic
+     mandaba el rótulo como si fuera una pregunta.
+     Ahora una acción es un botón solo si de verdad hay algo que tocar, y lo
+     que hace al tocarlo es lo que dice. Lo que no es para la persona —un
+     pedido esperando aprobación, un secreto aplicado— ya tiene su sitio en el
+     panel del DUEÑO y aquí sería ruido. */
+  function chips(acciones) {
     const c = $('#chips');
-    if (!l?.length) { c.classList.add('oculto'); return; }
+    const botones = (acciones || []).map((a) => {
+      if (typeof a === 'string') return { texto: a };
+      if (a?.tipo === 'abrir' && a.url) return { texto: a.nombre || 'Abrir', url: a.url };
+      if (a?.tipo === 'pr' && a.url) return { texto: `Ver el cambio propuesto (${a.rama || 'rama'})`, url: a.url };
+      return null;
+    }).filter((b) => b && b.texto);
+    if (!botones.length) { c.classList.add('oculto'); c.innerHTML = ''; return; }
     c.classList.remove('oculto');
-    c.innerHTML = l.map((s) => `<button class="chip">${esc(s)}</button>`).join('');
+    c.innerHTML = botones.map((b) => `<button class="chip"${b.url ? ` data-url="${esc(b.url)}"` : ''}>${esc(b.texto)}</button>`).join('');
   }
 
   /**
@@ -1621,6 +1648,17 @@ const OS = (() => {
           acum += d.t || ''; pintarDicho(acum);
           if (conVoz) locutor?.alimentar?.(d.t || '');
         },
+        /* ── EL SERVIDOR SE CORRIGE A MITAD ─────────────────────────────
+           Cuando el modelo se engancha repitiendo, la guarda del nodo corta el
+           turno donde empezó el bucle y manda `reemplazo` con el texto bueno.
+           El tablero no escuchaba ese evento: en pantalla quedaba el texto con
+           la repetición Y, peor, la voz seguía leyendo en alto lo que el
+           servidor ya había tachado. */
+        reemplazo: (d) => {
+          if (typeof d?.texto !== 'string') return;
+          acum = d.texto; pintarDicho(acum);
+          try { locutor?.olvidarLoQueFalta?.(); } catch { /* nada */ }
+        },
         herramienta: (d) => {
           if (!acum) muletillaTrasEspera(GRUPO_DE[d.nombre] || 'general', 700);
           const n = String(d.nombre || '').toUpperCase().replace(/_/g, ' ');
@@ -1634,7 +1672,7 @@ const OS = (() => {
           if (d?.ms?.total) { ultimoTurno = { primera: d.ms.primera || d.ms.total, total: d.ms.total }; pintarSalud(saludUltima); }
           if (d?.texto) { acum = d.texto; pintarDicho(acum); }
           if (conVoz) locutor?.cerrar?.(); else estado('idle');
-          chips(d?.acciones?.length ? d.acciones.map((a) => a.nombre) : null);
+          chips(d?.acciones || null);
           /* De dónde salió la cifra. Un tablero de junta del que no se puede
              decir «esto lo leyó de Ordenex a las 04:12» no se puede citar en un
              acta. Las herramientas usadas quedan escritas bajo la respuesta. */
@@ -1764,6 +1802,14 @@ const OS = (() => {
     const listo = () => {
       if (!despierta) return;
       if (pensando || locutor?.ocupado) { setTimeout(listo, 300); return; }
+      /* «SOLO EL BOTÓN» QUIERE DECIR SOLO EL BOTÓN. Con ese ajuste puesto, un
+         toque en el centro dejaba el micrófono abierto para siempre: al
+         terminar el dictado se volvía a abrir, y en el aparato de escritorio
+         encima se quedaba escuchando «hey ULTRON». Quien elige «solo el botón»
+         está diciendo que no quiere un micrófono abierto en su oficina, y el
+         ajuste tiene que valer más que la comodidad de no volver a tocar. Un
+         toque, un turno. */
+      if (PREF?.oido === 'apagado') { orejaApagar(); estado('idle'); return; }
       if (CONVERSACION()) dictar(volverAEscuchar); else escucharPalabra(0);
     };
     setTimeout(listo, 450);
@@ -2433,8 +2479,29 @@ const OS = (() => {
       const b = e.target.closest('.casa'); if (!b) return;
       window.open(b.dataset.url, '_blank', 'noopener');
     });
+    /* Cerrar un pendiente desde el tablero. Se pinta de nuevo la lista con lo
+       que devuelve el servidor: si el cierre no llegó, el punto sigue ahí. */
+    $('#pendientes').addEventListener('click', async (e) => {
+      const b = e.target.closest('[data-pend]'); if (!b) return;
+      b.disabled = true; b.style.background = 'var(--cian)';
+      try {
+        const r = await fetch(`/pendientes/${encodeURIComponent(b.dataset.pend)}`, {
+          method: 'PATCH', credentials: 'same-origin',
+          headers: { 'Content-Type': 'application/json' }, body: '{"estado":"hecho"}',
+        });
+        if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || r.status);
+        avisar('Cerrado.');
+      } catch (err) { avisar(`No se pudo cerrar: ${err.message}`, true); b.disabled = false; b.style.background = 'transparent'; }
+      DATOS.get('/pendientes').then(pintarPendientes).catch(() => {});
+    });
+
     $('#chips').addEventListener('click', (e) => {
       const b = e.target.closest('.chip'); if (!b) return;
+      /* Un botón con dirección ABRE; uno sin ella es una sugerencia y se
+         pregunta. «OÍR TODO» tiene su propio manejador y no pasa por aquí: se
+         le mandaba a ULTRON «OÍR TODO» como si fuera una pregunta. */
+      if (b.dataset.url) { window.open(b.dataset.url, '_blank', 'noopener'); return; }
+      if (b.dataset.propio) return;
       enviar(b.textContent);
     });
 
@@ -2544,7 +2611,7 @@ const OS = (() => {
     else unaVez();
   }
 
-  return { enviar, estado, avisar, mente, despertarVoz, abrirAjustes, _adentro: { pintarVivo, pintarSalud, pintarSaludPropia, pintarArchivos, pintarPendientes, pintarAutorizaciones, pintarDicho, DESPIERTA, CASAS, entrarArmar, salirArmar, aplicarTablero, tableroActual, toqueNucleo, pedirPermisos, botonDeHablar, pintarCaja, pintarRegistro, borrarArchivo,
+  return { enviar, estado, avisar, mente, despertarVoz, abrirAjustes, _adentro: { pintarVivo, pintarSalud, pintarSaludPropia, pintarArchivos, pintarPendientes, pintarAutorizaciones, pintarDicho, DESPIERTA, CASAS, entrarArmar, salirArmar, aplicarTablero, tableroActual, toqueNucleo, pedirPermisos, botonDeHablar, pintarCaja, pintarRegistro, borrarArchivo, chips,
     /* Solo para la prueba: mueve el reloj de la última lectura buena hacia
        atrás, para comprobar que la pantalla avisa cuando se queda vieja sin
        tener que esperar diez minutos de verdad. */

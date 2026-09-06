@@ -29,6 +29,21 @@ const clave = () => (process.env.GENESIS_API_KEY || '').trim();
 /** ¿Se puede preguntar? Sin clave no hay SSO, y se dice en vez de fingirlo. */
 const configurado = () => Boolean(clave());
 
+/* ── DÓNDE SE SACA EL PASE ───────────────────────────────────────────────────
+ * Verificar un pase y REPARTIRLO son dos cosas distintas y las hace gente
+ * distinta: la clave de API (`GENESIS_API_KEY`) sirve para preguntarle a
+ * Genesis «¿este pase es de verdad?», pero para que la persona TENGA un pase
+ * hay que mandarla a la wallet, que es quien se lo pide a Genesis y la
+ * devuelve acá con él en el hash.
+ *
+ * Esa dirección no se adivina: se pone en `GENESIS_SSO_URL`. Sin ella el botón
+ * de la wallet no se enseña, y no porque falte una clave —que es lo que decía
+ * antes, y era mentira— sino porque no hay a dónde mandar a nadie. Enseñar un
+ * botón que manda un pase VACÍO y contesta «falta el pase» es peor que no
+ * tener botón: la persona cree que se rompió algo suyo.
+ */
+const dondeSacarElPase = () => (process.env.GENESIS_SSO_URL || '').trim();
+
 // Genesis vive en Render y un arranque frío tarda: cortar a los pocos segundos
 // convertiría el primer ingreso de la mañana en un fallo. Es el mismo plazo
 // que usan Ordenex y AuCorp contra el mismo servidor.
@@ -78,4 +93,4 @@ async function verificarSso(token) {
   return { valido: true, gid: r.cuerpo.gid, perfil: r.cuerpo.perfil || null };
 }
 
-module.exports = { configurado, verificarSso, _adentro: { base, clave, PLAZO_MS } };
+module.exports = { configurado, dondeSacarElPase, verificarSso, _adentro: { base, clave, PLAZO_MS } };

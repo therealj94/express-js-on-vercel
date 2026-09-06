@@ -503,10 +503,20 @@ body.cajon #tirador{bottom:calc(76dvh + 4px)}
   #muelle{padding:2px 12px 0}
   .casa{width:64px}
   #pie{padding:6px 12px calc(8px + var(--seguro-ab))}
-  /* seis mandos y la palabra ENVIAR no caben en 390 px: la palabra se vuelve
-     flecha y los huecos se aprietan, sin que ningún blanco baje de 38 px. */
-  #caja>div{gap:4px;padding:5px 5px 5px 11px}
-  #enviar{padding:0;width:38px;display:grid;place-items:center}
+  /* ── EL RENGLÓN Y LOS MANDOS, EN DOS PISOS ──────────────────────────────
+     Seis mandos y la palabra ENVIAR nunca cupieron en 390 px. Apretándolos en
+     una sola fila salían dos problemas a la vez: el renglón para escribirle a
+     ULTRON se quedaba en 138 px de los 390 —un tercio de la pantalla para lo
+     que más se usa— y cada mando en 38 px, seis menos de los 44 que pide un
+     dedo. Los dos son el mismo problema: no cabe.
+     Así que no se aprieta: se parte. El renglón se lleva el ancho entero
+     arriba, y los mandos van debajo con sitio de sobra para medir 44 y no
+     robarse el toque unos a otros. */
+  #caja>div{flex-wrap:wrap;gap:6px;padding:6px 8px}
+  #texto{flex:1 0 100%;min-height:44px}
+  #clip2{margin-left:auto}   /* los mandos, juntos a la derecha, junto a ENVIAR */
+  .mando{width:44px;height:44px}
+  #enviar{padding:0;width:44px;min-height:44px;display:grid;place-items:center}
   #enviar span{display:none} #enviar svg{display:block}
   #pista{display:none}
   #tirador{display:flex}
@@ -520,10 +530,60 @@ body.cajon #tirador{bottom:calc(76dvh + 4px)}
 @media (max-width:540px){
   .marca b,.marca .barra{display:none}
   #techo{padding:10px 12px 6px}
+  /* ── EL NOMBRE NO SE PARTE A MEDIA PALABRA ──────────────────────────────
+     `#medidas` no encogía (`flex-shrink:0`) y la marca sí, así que en 390 px
+     el techo cortaba «ULTRON OS» en «ULTRO» y dejaba media palabra colgando
+     como si algo se hubiera roto. Ahora encoge lo de la derecha —la hora y la
+     cadena, que se leen igual recortadas por el borde— y el nombre queda
+     entero. */
+  .marca{flex:none}
+  #medidas{flex-shrink:1;min-width:0;gap:10px}
+  /* Lo que encoge es la lectura de la cadena, que se entiende igual recortada;
+     el reloj y la rueda de ajustes no se tocan. La hora del teléfono ya está
+     en su propia barra de estado, así que aquí sobra. */
+  #medidas>div:first-child{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  #m-reloj{display:none}
   /* El texto de ayuda del renglón se partía en dos líneas dentro de una caja de
      38 px y se leía a medias. Corto y en una línea. */
-  #texto{font-size:14px}
   #texto::placeholder{font-size:13px}
+}
+
+/* ══ NADA DE ZOOM AL TOCAR UN CAMPO ═══════════════════════════════════════
+   Safari en iPhone y iPad hace ZOOM sobre cualquier campo cuya letra mida
+   menos de 16 px, y después no vuelve solo: la pantalla se queda grande, el
+   tablero se sale por los lados y hay que pellizcar para volver. Pasaba con
+   los tres campos que tiene ULTRON, y el de escribirle es el que más se toca.
+
+   Se arregla poniendo la letra en 16 px, y NO con `maximum-scale=1` en el
+   viewport: eso quita el zoom de toda la página, incluido el que usa quien no
+   ve bien. Se prohíbe el zoom que NADIE pidió, no el que alguien necesita.
+   Solo en aparatos de dedo: en el escritorio la letra se queda como estaba. */
+@media (hover:none) and (pointer:coarse){
+  #texto,#dialogo input,#dialogo textarea,#puerta-os input{font-size:16px}
+  /* ── EL DEDO PIDE 44 px ────────────────────────────────────────────────
+     Medido a 390 px: los botones del techo median 20 y 28 px de alto, los
+     chips de los paneles 24, el clip 32. La mitad de lo que pide un dedo, y
+     se nota en la mano: se falla el toque y se acaba tocando el de al lado.
+     Se crece con relleno, no con letra: el tablero se ve igual y el blanco
+     es el que tiene que ser. */
+  #clip,.chip,#tirador,.reg,.arch .bj{min-height:44px;display:inline-flex;align-items:center;justify-content:center}
+  /* El renglón del registro no se centra: es una fila de texto con la fecha a
+     un lado y el título al otro. Solo se le da altura. */
+  .reg{display:flex}
+  .arch .bj{width:44px}
+  .chip{padding-top:0;padding-bottom:0}
+  /* El del techo es un rótulo, no un chip de panel: se queda como está y crece
+     solo su blanco (abajo). */
+  #m-salud{min-height:0}
+  #clip{width:44px;height:44px}
+  /* El rótulo de la salud y la rueda de ajustes NO se agrandan: son dos piezas
+     del techo y estirarlas a 44 px deja dos cajas enormes con una cifra
+     flotando dentro. Lo que se agranda es el BLANCO, que es de lo que se
+     queja el dedo — una capa invisible centrada encima. Solo se hace donde
+     hay sitio alrededor: en una fila apretada robaría el toque del vecino. */
+  #m-salud,#m-ajustes{position:relative}
+  #m-salud::after,#m-ajustes::after{content:'';position:absolute;top:50%;left:50%;
+    width:44px;height:44px;transform:translate(-50%,-50%)}
 }
 
 /* ══ LA ENTRADA: ARRANQUE Y PUERTA ═══════════════════════════════════════

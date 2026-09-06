@@ -277,7 +277,11 @@ app.get('/salud', async (req, res) => {
        miembros pueden usarlo. Es lo que mira la pantalla de entrada para
        decidir si enseña el botón de la wallet, y lo que mira quien diagnostica
        por qué no lo enseña. */
-    genesis: genesis.configurado(), juntaConGid: CON_GID,
+    /* `genesis` es que se pueda COMPROBAR un pase; `genesisPase` es que haya a
+       dónde mandar a la persona a SACARLO. Son dos cosas distintas y la puerta
+       necesita las dos: con la primera sola enseñaba un botón que mandaba un
+       pase vacío y contestaba «falta el pase». */
+    genesis: genesis.configurado(), genesisPase: !!genesis.dondeSacarElPase(), juntaConGid: CON_GID,
     voz: voz.encendida(), memoria: memoria.estado(), canales: canales.estado(),
     saber: saber.resumen().total, saberArmado: saber.resumen().armadoEn,
     boveda: boveda.encendida(), equipo: equipo.estado().encendido, dueño: !!DUENO, herramientas: herramientas.DEFINICIONES.length,
@@ -340,6 +344,28 @@ app.post('/entrar', frenoEntrar, (req, res) => {
  * alta a un miembro nuevo sin inventar un trámite: entra, ve su GID, se lo
  * pasa a quien administra la variable, y a la segunda vez entra.
  */
+/* ── GET /entrar/genesis/ir — a buscar el pase ───────────────────────────────
+ *
+ * COMPROBAR un pase y REPARTIRLO son dos cosas distintas. `GENESIS_API_KEY`
+ * sirve para lo primero; para lo segundo hay que mandar a la persona a la
+ * wallet, que es quien se lo pide a Genesis y la devuelve acá con él en el
+ * hash. Esa dirección no se adivina: se pone en `GENESIS_SSO_URL`, y si lleva
+ * `{volver}` se le mete ahí la dirección de vuelta.
+ *
+ * Hasta hoy el botón «Entrar con mi Veta Wallet» mandaba `{}` —un pase VACÍO—
+ * y el servidor contestaba, con toda la razón, «falta el pase». O sea: un
+ * botón que no podía funcionar nunca, y que le decía a la persona que el fallo
+ * era suyo. */
+app.get('/entrar/genesis/ir', frenoEntrar, (req, res) => {
+  const donde = genesis.dondeSacarElPase();
+  if (!donde) return res.status(503).json({ error: 'Este servidor no sabe dónde se saca el pase de la wallet (falta GENESIS_SSO_URL).', codigo: 'SIN_SSO' });
+  const volver = `${req.protocol}://${req.get('host')}/`;
+  const url = donde.includes('{volver}')
+    ? donde.replace('{volver}', encodeURIComponent(volver))
+    : donde + (donde.includes('?') ? '&' : '?') + 'volver=' + encodeURIComponent(volver);
+  res.redirect(302, url);
+});
+
 app.post('/entrar/genesis', frenoEntrar, async (req, res) => {
   if (!JUNTA.length) return res.status(503).json({ error: 'ULTRON no tiene junta configurada.', codigo: 'SIN_JUNTA' });
   if (!genesis.configurado()) {
@@ -595,9 +621,14 @@ app.post('/precalentar', puerta, (req, res) => {
   if (ahora - (calentadoEn.get(quien) || 0) < 20_000) return res.json({ ok: false, motivo: 'reciente' });
   calentadoEn.set(quien, ahora);
   res.json({ ok: true, lanzado: true });
+  /* Se registra el resultado SIEMPRE, salga bien o mal. La primera versión solo
+     escribía cuando salía bien, así que cuando en producción no salió nunca no
+     hubo ni una línea que lo dijera: el tablero calentaba, el 200 volvía, y no
+     se calentaba nada. Una mejora invisible que falla en silencio es peor que
+     no tenerla. */
   cerebro.precalentar({ miembro: req.miembro, junta: JUNTA.map(sinClave), modo: req.body?.modo === 'texto' ? 'texto' : 'voz', alias: null })
-    .then((r) => { if (r?.ok) console.log(`[calentar] ${r.fichas} fichas en ${r.ms}ms`); })
-    .catch(() => { /* es una mejora, no una función */ });
+    .then((r) => console.log(r?.ok ? `[calentar] ${r.fichas} fichas en ${r.ms}ms` : `[calentar] NO se calentó: ${r?.motivo || 'sin motivo'}`))
+    .catch((e) => console.warn(`[calentar] falló: ${e?.codigo || ''} ${String(e?.message || e).slice(0, 120)}`));
 });
 
 app.post('/pensar', puerta, frenoPensar, async (req, res) => {

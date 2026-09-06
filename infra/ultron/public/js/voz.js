@@ -318,6 +318,15 @@ const VOZ = (() => {
         return it.blob;
       } catch { return null; }
     }
+    /* Tirar lo que TODAVÍA NO SE DIJO, sin cortar lo que está sonando. Es para
+       cuando el servidor corrige el texto a mitad de la respuesta: lo ya dicho
+       ya se oyó y no hay manera de retirarlo, pero lo que queda en la cola —el
+       trozo repetido que el propio servidor acaba de tachar— no tiene por qué
+       llegar a decirse. */
+    olvidarLoQueFalta() {
+      this.cola = []; this.resto = '';
+    }
+
     callar() {
       this.generacion++; this.cola = []; this.resto = ''; this.enVuelo = 0;
       this.dicho = 0; this.cortado = false; this.cierreDicho = false; this.avisadoAqui = false;

@@ -822,6 +822,50 @@ titulo('el reloj de LA CAJA corre: un saldo viejo no puede parecer de ahora');
   decir(/amb/.test(r.clase), 'y pasados diez minutos se pone en ámbar: ya no sirve para decidir un envío', r.clase);
 }
 
+titulo('los botones que ULTRON deja, y los pendientes que se cierran');
+{
+  /* Los chips se pintaban con `acciones.map(a => a.nombre)` y `nombre` lo trae
+     UNA de las diez clases de acción: las demás salían EN BLANCO y al tocarlas
+     le mandaban a ULTRON una pregunta vacía. */
+  const r = await p.evaluate(() => {
+    OS._adentro.chips([
+      { tipo: 'abrir', nombre: 'Ordenex', url: 'https://ordenex.example/' },
+      { tipo: 'autorizacion', id: 'abc', resumen: 'desplegar' },
+      { tipo: 'secreto_aplicado', app: 'x', variable: 'Y' },
+      { tipo: 'pr', url: 'https://github.example/pr/1', rama: 'arreglo' },
+    ]);
+    const b = [...document.querySelectorAll('#chips .chip')];
+    return { n: b.length, textos: b.map((x) => x.textContent), urls: b.map((x) => x.dataset.url || null) };
+  });
+  decir(r.n === 2, 'solo son botones las acciones que de verdad tienen algo que tocar', `${r.n} de 4`);
+  decir(r.textos.every((t) => t.trim().length > 2), 'y ninguno sale en blanco', JSON.stringify(r.textos));
+  decir(r.urls.every(Boolean), 'cada uno lleva su dirección: tocarlo ABRE, no le pregunta a ULTRON', JSON.stringify(r.urls));
+
+  const sug = await p.evaluate(() => {
+    OS._adentro.chips(['¿Cómo va la cadena?', '¿A cuánto está el oro?']);
+    return [...document.querySelectorAll('#chips .chip')].map((x) => ({ t: x.textContent, u: x.dataset.url || null }));
+  });
+  decir(sug.length === 2 && !sug[0].u, 'y las sugerencias del saludo siguen siendo preguntas, no enlaces', JSON.stringify(sug));
+
+  /* Los pendientes se veían y no se tocaban: para cerrar uno había que
+     pedírselo a ULTRON por escrito. `PATCH /pendientes/:id` existía desde el
+     principio y nadie lo llamaba. */
+  const pend = await p.evaluate(async (b) => {
+    await fetch(b + '/pendientes', { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ texto: 'Rotar la clave de Mongo' }) });
+    const l = await (await fetch(b + '/pendientes', { credentials: 'same-origin' })).json();
+    OS._adentro.pintarPendientes(l);
+    const boton = document.querySelector('#pendientes [data-pend]');
+    if (!boton) return { hayBoton: false };
+    boton.click();
+    await new Promise((ok) => setTimeout(ok, 700));
+    const despues = await (await fetch(b + '/pendientes', { credentials: 'same-origin' })).json();
+    return { hayBoton: true, abiertos: despues.filter((x) => x.estado !== 'hecho').length };
+  }, BASE);
+  decir(pend.hayBoton, 'cada pendiente trae su botón para marcarlo hecho');
+  decir(pend.abiertos === 0, 'y al tocarlo se cierra DE VERDAD en el servidor, no solo en pantalla', `${pend.abiertos} abiertos`);
+}
+
 titulo('los documentos entrantes se pueden borrar');
 {
   /* Las peticiones van DENTRO de la página: la sesión es una galleta de este
@@ -840,6 +884,45 @@ titulo('los documentos entrantes se pueden borrar');
   });
   const despues = await cuantos();
   decir(fue === 200 && despues === antes - 1, 'y borrarlo lo saca de verdad, no solo de la pantalla', `${antes} → ${despues}`);
+}
+
+titulo(`el dedo: nada por debajo de 44 px, y sin zoom, a ${ANCHO} px`);
+{
+  /* Medido a 390 px antes de esto: el rótulo de la salud 20 px de alto, la
+     rueda de ajustes 28, los chips de los paneles 24, el clip 32, los mandos
+     del renglón 38. Casi todo la mitad de lo que pide un dedo — y se nota en
+     la mano, porque se falla el toque y se acaba tocando el de al lado. */
+  const r = await p.evaluate(() => {
+    const chicos = [], zoom = [];
+    for (const el of document.querySelectorAll('button,a[href],input,textarea,select,[role=button]')) {
+      const c = el.getBoundingClientRect();
+      if (!c.width || !c.height || getComputedStyle(el).visibility === 'hidden') continue;
+      /* El blanco de verdad incluye la capa invisible que algunos llevan
+         encima: se mide el mayor de los dos. */
+      const capa = getComputedStyle(el, '::after');
+      const altoCapa = parseFloat(capa.height) || 0, anchoCapa = parseFloat(capa.width) || 0;
+      const alto = Math.max(c.height, altoCapa), ancho = Math.max(c.width, anchoCapa);
+      if (alto < 44 || ancho < 28) chicos.push(`${el.id || el.className} ${Math.round(ancho)}×${Math.round(alto)}`);
+      if (/input|textarea/i.test(el.tagName) && parseFloat(getComputedStyle(el).fontSize) < 16) zoom.push(el.id || el.tagName);
+    }
+    return { chicos, zoom, dedo: matchMedia('(pointer:coarse)').matches };
+  });
+  if (r.dedo) {
+    decir(r.chicos.length === 0, 'todo lo que se toca llega a los 44 px que pide el dedo', r.chicos.join(' · ') || 'ninguno chico');
+    /* Safari hace zoom en cualquier campo con letra menor de 16 px, y después
+       no vuelve solo: la pantalla se queda grande y hay que pellizcar. */
+    decir(r.zoom.length === 0, 'y ningún campo tiene la letra por debajo de 16 px: tocarlo no hace ZOOM', r.zoom.join(' · ') || 'ninguno');
+    const dos = await p.evaluate(() => {
+      const t = document.querySelector('#texto').getBoundingClientRect();
+      const e = document.querySelector('#enviar').getBoundingClientRect();
+      return { anchoTexto: Math.round(t.width), pantalla: innerWidth, enviarDebajo: e.top >= t.bottom - 2 };
+    });
+    decir(dos.enviarDebajo, 'el renglón se lleva un piso entero y los mandos van debajo');
+    decir(dos.anchoTexto > dos.pantalla * 0.8,
+      'así el renglón deja de ser un tercio de la pantalla', `${dos.anchoTexto} de ${dos.pantalla} px`);
+  } else {
+    decir(true, `a ${ANCHO} px no es una pantalla de dedo: las reglas de los 44 px no aplican y no se miden`);
+  }
 }
 
 titulo('el botón de atrás cierra lo que esté encima, no ULTRON');
