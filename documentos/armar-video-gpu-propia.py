@@ -78,6 +78,61 @@ def construir():
         PageBreak(),
     ]
 
+    # ── 0 · La corrección posterior ─────────────────────────────────────────
+    # Este documento se escribió, José lo leyó y preguntó otra cosa: «¿sale
+    # mejor pagar mensual o lo que se ocupe? Lo que quiero es que funcione,
+    # hacer videos e imágenes, pero sin estar esperando montón que encienda».
+    # Esa pregunta cambia la respuesta, y el documento no puede quedarse en el
+    # repositorio recomendando lo contrario: el próximo que lo lea se guiaría
+    # mal. La corrección va DELANTE, no en una nota al pie.
+    h += [
+        P('0 · Corrección: por dónde empezar', 'h1'),
+        P('Este documento se escribió para contestar «¿podemos hacerlo en máquina nuestra?». '
+          'La respuesta sigue siendo que sí y todo lo que viene después sigue siendo válido. '
+          'Pero después de leerlo preguntaste otra cosa: <b>si sale mejor pagar mensual o por '
+          'lo que se ocupe, y sobre todo que no haya que estar esperando a que encienda</b>. '
+          'Esa segunda mitad cambia por dónde se empieza.'),
+        Spacer(1, 4),
+        recuadro('La máquina propia no es lenta de generar: es lenta de EMPEZAR',
+                 'Una g6e.xlarge tarda entre uno y dos minutos en arrancar, y la primera vez hay '
+                 'que instalar los modelos —descargar entre 30 y 60 GB de pesos— antes de la '
+                 'primera imagen. Después va rápido, pero eso es exactamente la espera que dijiste '
+                 'que no querías. Y si se deja encendida para no esperar, cuesta 1 340 USD al mes '
+                 'aunque no se use: en la tabla de costos de la sección 6 ese es el riesgo real '
+                 'del plan, y con esta forma de trabajar deja de ser un riesgo y pasa a ser lo '
+                 'que va a ocurrir.'),
+        Spacer(1, 6),
+        P('Por eso la etapa 1 no se hace en máquina propia. Se hace en un servicio que cobra por '
+          'segundo generado y no por hora encendida, sin nada que arrancar:'),
+        Spacer(1, 4),
+        tabla(['', 'Máquina propia (este documento)', 'Por lo que se ocupe'],
+              [['Esperar antes de la primera toma', '1–2 min de arranque + 20–40 min de instalación la primera vez',
+                '<b>Ninguna.</b> Se manda y responde'],
+               ['Lo que se paga', '1,861 USD por hora encendida, se use o no',
+                'Por segundo generado: <b>0,04 USD/s</b> a 1080p'],
+               ['Entrenar un LoRA de una cara', '8–15 USD y hay que montar el entorno',
+                '<b>9,60 USD</b> · 2 000 pasos · 20–40 min · los pesos se bajan'],
+               ['Olvidarse de apagar', '1 340 USD al mes', '<b>Imposible: no hay nada encendido</b>'],
+               ['Cuándo conviene', 'Cuando ya se genera todos los días y en volumen',
+                '<b>Ahora</b>, para medir si los LoRA sostienen la cara']],
+              [0.24 * au, 0.40 * au, 0.36 * au]),
+        Spacer(1, 6),
+        recuadro('Y la máquina propia no se descarta: se pospone hasta que haya un número',
+                 'El punto de equilibrio entre las dos formas depende de cuántos segundos de video '
+                 'se generan al mes, y ese dato hoy no existe —lo dice la sección 6 de este mismo '
+                 'documento—. Haciendo la etapa 1 por segundo generado, la factura del primer mes '
+                 'ES esa medición: si sale que se está gastando más de lo que costaría la máquina '
+                 'encendida, entonces sí conviene levantarla, y todo el plan de las secciones 3 a 7 '
+                 'está escrito y listo para ese día. Al revés no: levantar la máquina primero es '
+                 'pagar por hora para averiguar si hacía falta pagar por hora.'),
+        Spacer(1, 6),
+        P('Todo lo demás de este documento se mantiene: el LoRA por personaje sigue siendo la única '
+          'forma de sostener una cara entre tomas —25 a 30 fotos, no una imagen de referencia—, el '
+          'reparto entre lo que lleva cara y lo que no sigue siendo el correcto, y el montaje sigue '
+          'resuelto en Remotion. Lo único que cambia es DÓNDE corre la etapa 1.'),
+        PageBreak(),
+    ]
+
     # ── 1 · Lo que no se toca ───────────────────────────────────────────────
     h += [
         P('1 · Lo que el Manual 7 resolvió bien y aquí no se toca', 'h1'),
