@@ -466,6 +466,11 @@ const OS = (() => {
      computadora. Guardar esto en el navegador habría sido más fácil y habría
      durado hasta el segundo aparato. */
   let PREF = null;
+  /* La voz elegida llega del servidor; hasta que llega, el locutor habla con la
+     de la casa. El saludo espera a esto. Se declara AQUÍ, junto a lo que
+     espera, y no al final del archivo: `arrancar()` la asigna, y una variable
+     de bloque asignada antes de su propia declaración revienta. */
+  let preferenciasListas = Promise.resolve();
 
   async function aplicarPreferencias(p) {
     PREF = p || PREF;
@@ -1375,6 +1380,20 @@ const OS = (() => {
      pedirlo. Donde no se pueda preguntar —Safari no siempre deja— se contesta
      que no: nunca se abre el micrófono por si acaso. */
   async function micYaConcedido() {
+    /* ── EL FALLO QUE DEJABA A ULTRON SORDO EN EL iPAD ──────────────────────
+       Esto preguntaba SIEMPRE a `navigator.permissions`, y Safari —o sea todo
+       iPhone y todo iPad— NO admite consultar el permiso del micrófono por ahí:
+       la llamada se rechaza y aquí se contestaba «no concedido». Con eso, la
+       conversación no se abría nunca sola: ULTRON saludaba, se callaba, y para
+       que escuchara había que tocar el centro cada vez. Con estas palabras lo
+       dijo José: «puede hablar, y hasta que presiones ULTRON en medio me
+       escucha».
+
+       Y era falso: el permiso YA estaba dado —lo pedimos al entrar y lo dio—.
+       Si ya se abrió el micrófono una vez en esta visita, no hay nada que
+       preguntar. Lo que uno sabe no se va a preguntar a una oficina que no
+       atiende. */
+    if (micAutorizado) return true;
     try {
       const p = await navigator.permissions?.query?.({ name: 'microphone' });
       if (p?.state === 'granted') { micAutorizado = true; return true; }
@@ -1635,16 +1654,23 @@ const OS = (() => {
   /* El eslabón de la conversación: cuando ULTRON termina de hablar, se vuelve a
      abrir el micrófono. Con una pausa corta, para no grabar la cola de su
      propia voz saliendo del altavoz. */
+  let seguidasEnVacio = 0;      // reconocimientos que fallaron uno detrás de otro
   function volverAEscuchar() {
     if (!despierta) return;
-    setTimeout(() => {
+    /* ── CUÁNDO SE VUELVE A ESCUCHAR ────────────────────────────────────────
+       Esto se dispara cuando el RECONOCEDOR termina, que es en cuanto la
+       persona deja de hablar — y para entonces ULTRON todavía está pensando o
+       hablando. Volvía a abrir el micrófono ENCIMA de su propia voz: en iPad
+       eso cambia la sesión de audio y entrecorta el sonido, y en cualquier
+       aparato ULTRON se oye a sí mismo y contesta a lo que acaba de decir.
+       Se espera a que haya terminado de pensar Y de hablar. Es la diferencia
+       entre una conversación y dos personas hablando a la vez. */
+    const listo = () => {
       if (!despierta) return;
-      /* Con la oreja en «hey ULTRON» se vuelve A LA PALABRA, no a un turno
-         abierto: es lo que se eligió en Ajustes y lo que dijo José —«el hey
-         ULTRON también esté escuchando»—. Antes, un toque en el centro dejaba
-         la conversación abierta para siempre aunque el ajuste dijera otra cosa. */
+      if (pensando || locutor?.ocupado) { setTimeout(listo, 300); return; }
       if (CONVERSACION()) dictar(volverAEscuchar); else escucharPalabra(0);
-    }, 450);
+    };
+    setTimeout(listo, 450);
   }
 
   /* ── EL TOQUE EN EL CENTRO ────────────────────────────────────────────────
@@ -1891,11 +1917,46 @@ const OS = (() => {
   /** El micrófono a mano: se dicta una frase y se manda. */
   function dictar(alTerminar) {
     if (!VOZ.hayOido?.()) { avisar('Este navegador no trae reconocimiento de voz.', true); alTerminar?.(); return; }
+    /* ── UN SOLO RECONOCEDOR VIVO, SIEMPRE ─────────────────────────────────
+       El navegador admite UNO. Si la oreja de «hey ULTRON» estaba abierta y se
+       abre además un dictado, Safari lanza «ya está empezado» y se caen los
+       dos: el botón se queda encendido y no escucha nadie. Es una de las
+       maneras en que «el botón de hablar se traba». Se cierra la oreja antes,
+       y se invalida su ciclo para que no se reabra por detrás. */
+    cicloOreja++;
+    try { oreja?.abort?.(); } catch { /* ya estaba */ }
+    oreja = null;
+
     micAutorizado = true;              // desde aquí ya se puede vigilar para interrumpir
     estado('listen');
     $('#micro').classList.add('oyendo');
     $('#micro').setAttribute('aria-pressed', 'true');
-    const fin = () => { $('#micro').classList.remove('oyendo'); $('#micro').setAttribute('aria-pressed', 'false'); alTerminar?.(); };
+    /* `fin` se llamaba DOS veces en el camino normal: una a mano al oír la
+       frase y otra desde el `alFin` que dispara el propio abort. Con ella se
+       llamaba dos veces a `alTerminar`, o sea a `volverAEscuchar`, y quedaban
+       dos reaperturas en marcha para un solo turno. Se cierra una vez. */
+    let cerrado = false;
+    let vigilia = null;
+    const fin = () => {
+      if (cerrado) return; cerrado = true;
+      clearTimeout(vigilia);
+      $('#micro').classList.remove('oyendo'); $('#micro').setAttribute('aria-pressed', 'false');
+      alTerminar?.();
+    };
+    /* ── EL PERRO GUARDIÁN ──────────────────────────────────────────────────
+       Un reconocedor puede quedarse callado para siempre: la pestaña se va a
+       segundo plano a mitad, el sistema le quita el micrófono, iOS lo suspende
+       al bloquear la pantalla. Entonces no llega ni `alFin` ni `alFallo`, el
+       botón se queda encendido y la conversación no vuelve nunca. Es la otra
+       manera en que «el botón se traba».
+       Veinte segundos: más de lo que dura cualquier frase dicha de corrido, y
+       poco para quedarse mirando un botón que miente. */
+    vigilia = setTimeout(() => {
+      if (cerrado) return;
+      try { mando?.abort?.(); } catch { /* ya */ }
+      fin();
+      if (mente.state === 'listen') estado('idle');
+    }, 20_000);
     let mando = null;
     mando = VOZ.oir({
       idioma: IDIOMA,
@@ -1912,8 +1973,30 @@ const OS = (() => {
         const limpia = frase.replace(/^.*?\b(ultron|ultrón|ultra|ultro|altron|tron)\b[,.\s]*/i, '').trim() || frase;
         mando?.abort(); fin(); enviar(limpia);
       },
-      alFin: () => { fin(); if (mente.state === 'listen') estado('idle'); },
-      alFallo: (q) => { fin(); avisar(`No se pudo escuchar (${q}).`, true); estado('idle'); },
+      alFin: () => { seguidasEnVacio = 0; fin(); if (mente.state === 'listen') estado('idle'); },
+      alFallo: (q) => {
+        fin();
+        /* ── NO REINTENTAR CONTRA UNA PARED ──────────────────────────────
+           Con el permiso denegado o el micrófono ocupado por otra aplicación,
+           el reconocedor falla al instante, y `volverAEscuchar` lo reabría a
+           los 450 ms: un bucle que gasta batería con el botón encendido,
+           diciéndole a la persona que la escuchan cuando no la escucha nadie.
+           A la quinta seguida se para y se dice. */
+        if (q === 'not-allowed' || q === 'service-not-allowed') {
+          despierta = false; seguidasEnVacio = 0;
+          $('#oreja')?.setAttribute('aria-pressed', 'false');
+          avisar('El navegador bloqueó el micrófono. Habilítelo en el candado de la barra de direcciones.', true);
+          estado('idle'); return;
+        }
+        if (q !== 'no-speech' && ++seguidasEnVacio >= 5) {
+          despierta = false; seguidasEnVacio = 0;
+          $('#oreja')?.setAttribute('aria-pressed', 'false');
+          avisar('La escucha se detuvo: el reconocimiento falló cinco veces seguidas. Toque el centro para volver a intentarlo.', true);
+          estado('idle'); return;
+        }
+        if (q !== 'no-speech') avisar(`No se pudo escuchar (${q}).`, true);
+        estado('idle');
+      },
     });
   }
 
@@ -2120,8 +2203,9 @@ const OS = (() => {
       avisar('El tablero vuelve al reparto de fábrica.');
     });
     /* Las preferencias, lo primero: la voz, el idioma y la figura tienen que
-       estar puestas antes de que ULTRON diga la primera palabra. */
-    DATOS.get('/preferencias').then(aplicarPreferencias).catch(() => {});
+       estar puestas antes de que ULTRON diga la primera palabra. Y AHORA SE
+       ESPERAN de verdad: ver `preferenciasListas`. */
+    preferenciasListas = DATOS.get('/preferencias').then(aplicarPreferencias).catch(() => {});
     cargarMuletillas();
     $('#m-salud').addEventListener('click', () => {
       if (innerWidth <= 860 && !document.body.classList.contains('cajon')) $('#tirador')?.click();
@@ -2146,7 +2230,14 @@ const OS = (() => {
        los carteles del navegador salen ANTES de que ULTRON abra la boca, no
        encima de la bienvenida. Si no hay permisos que pedir —una prueba que
        carga la consola suelta— la promesa ya está resuelta y no se espera nada. */
-    permisosListos.finally(saludar);
+    /* ── POR QUÉ SE ESPERAN LAS DOS COSAS ──────────────────────────────────
+       Los permisos, para que los carteles del navegador no salgan encima del
+       saludo. Y las PREFERENCIAS, porque si no el saludo sale con otra voz:
+       el locutor se crea en el clic de entrar —es el único gesto que hay para
+       desbloquear el audio— y en ese momento todavía no se sabe qué voz eligió
+       la persona, así que se queda con la de la casa. José lo oyó y lo dijo
+       así: «a veces sale otra voz». */
+    Promise.all([permisosListos, preferenciasListas]).finally(saludar);
 
     // ── escribir
     const ta = $('#texto');

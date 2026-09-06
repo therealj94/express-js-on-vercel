@@ -287,7 +287,16 @@ function sinElRestoDeUnaHerramienta(texto) {
 async function vectorDe(texto) {
   if (!saber.hayVectores()) return null;
   try {
-    const r = await pedirJson('/api/embed', { input: String(texto || '').slice(0, 2000) }, 8000);
+    /* ── EL VECTOR SE SACA EN EL PROCESADOR, NO EN LA TARJETA ──────────────
+     * `embeddinggemma:300m` ocupa 700 MB, y en esta tarjeta no hay 700 MB
+     * libres al lado del modelo grande. Medido el 6-sep: pedir UN vector
+     * expulsaba el modelo de 17 GB de la tarjeta —la memoria bajaba de 19 GB a
+     * 955 MB—, y la siguiente pregunta tardaba CUATRO MINUTOS en volver a
+     * cargarlo. Buscar mejor salía a cuatro minutos por búsqueda.
+     * `num_gpu: 0` lo manda al procesador. Son trescientos millones de
+     * parámetros para una frase: en el procesador tarda unas décimas y no toca
+     * la tarjeta, así que el modelo grande no se mueve de su sitio. */
+    const r = await pedirJson('/api/embed', { input: String(texto || '').slice(0, 2000), options: { num_gpu: 0 }, keep_alive: '30m' }, 8000);
     const v = r?.embeddings?.[0];
     if (!Array.isArray(v) || !v.length) return null;
     // Normalizado acá para que el coseno sea un producto escalar y punto.
@@ -450,6 +459,21 @@ async function pensar({ miembro, junta, texto, conversacionId, emitir = () => {}
     temperature: 0.7, top_p: 0.8, top_k: 20, min_p: 0,
     presence_penalty: 1.0, repeat_penalty: 1.0,
     num_predict: modo === 'voz' ? 360 : 1400,
+    /* ── EL CONTEXTO SE PIDE, NO SE HEREDA ─────────────────────────────────
+     * Aquí NO se mandaba `num_ctx`, así que el motor usaba el del modelo:
+     * 32768. Y eso no es un número inocente — es cuánta memoria de tarjeta se
+     * reserva para la conversación ANTES de contestar la primera palabra.
+     *
+     * Medido en la máquina, el 6-sep: con 32768, una pregunta tarda 236
+     * SEGUNDOS porque el modelo no cabe y hay que volver a cargarlo entero;
+     * con el modelo ya dentro y sin recargar, la misma pregunta tarda 0,6.
+     * No era el modelo, ni la red, ni el navegador: era que no cabía.
+     *
+     * Y 32768 no lo usamos: `PRESUPUESTO_FICHAS` recorta el prompt a 8188
+     * precisamente para no pasarnos de `CTX`, que son 12288. Se estaba
+     * pagando —en memoria de tarjeta y en recargas de minutos— por un espacio
+     * que el propio código se prohíbe usar. */
+    num_ctx: CTX,
   };
   // El trozo pasa por la guarda del idioma ANTES de llegar al panel: lo que se
   // fue a otro alfabeto no se enseña ni un instante.

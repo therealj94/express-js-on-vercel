@@ -38,6 +38,7 @@
 
 const express = require('express');
 const helmet = require('helmet');
+const compression = require('compression');
 const cookieParser = require('cookie-parser');
 const rateLimit = require('express-rate-limit');
 const { createHmac, timingSafeEqual, randomBytes } = require('node:crypto');
@@ -190,6 +191,28 @@ process.on('unhandledRejection', (e) => {
      perdía en el registro de Heroku sin que nadie lo sumara. */
   try { salud.anotarFallo(e, 'promesa sin atrapar'); } catch { /* la salud no puede tumbar la casa */ }
 });
+
+/* ── COMPRIMIR LO QUE VIAJA ───────────────────────────────────────────────────
+ * Medido antes de ponerlo: la pantalla del OS son 281 kB que viajaban ENTEROS.
+ * Comprimidos son unos 65. En una oficina no se nota; con datos móviles en
+ * Roatán son varios segundos de pantalla en blanco cada vez que se entra.
+ *
+ * LO QUE NO SE COMPRIME, Y POR QUÉ IMPORTA: `/pensar` es un flujo de eventos
+ * (SSE) que manda el texto A MEDIDA que el modelo lo escribe. Un compresor,
+ * por definición, junta bytes antes de mandarlos — y eso convierte el flujo en
+ * un bloque que llega al final. ULTRON dejaría de escribir en vivo y pasaría a
+ * aparecer de golpe: exactamente el problema que el flujo vino a resolver.
+ * Los audios (mp3) tampoco: ya vienen comprimidos y volver a hacerlo gasta
+ * procesador para dejarlos igual o más grandes.
+ */
+app.use(compression({
+  filter(req, res) {
+    const tipo = String(res.getHeader('Content-Type') || '');
+    if (tipo.includes('text/event-stream')) return false;
+    if (/^(audio|video|image)\//.test(tipo) && !tipo.includes('svg')) return false;
+    return compression.filter(req, res);
+  },
+}));
 
 app.use(helmet({
   contentSecurityPolicy: {
@@ -983,15 +1006,52 @@ app.get('/habilidades/:nombre', puerta, async (req, res) => {
    consola de siempre —la que la junta ya conocía, que funciona en cualquier
    navegador viejo— queda en `/consola`: no se borra nada, se cambia cuál es la
    puerta principal. */
-const paginaOS = (req, res) => res.sendFile(join(__dirname, 'public', 'os.html'));
+/* ── LA CACHÉ, SIN QUEDARSE CON CÓDIGO VIEJO ──────────────────────────────────
+ * Los archivos de la pantalla se guardaban diez minutos. Poco: cada rato se
+ * vuelven a bajar 281 kB. Y subirlo sin más es peor todavía: como las
+ * direcciones no cambian, el navegador se quedaría con el código de ayer
+ * después de un despliegue, y no hay manera de decirle que lo tire.
+ *
+ * La solución de siempre: que la DIRECCIÓN cambie cuando cambia el código.
+ * A cada archivo de la página se le pega `?v=<commit>`, y entonces sí se puede
+ * guardar un año entero: si el commit cambia, la dirección es otra y el
+ * navegador la baja; si no cambia, no vuelve a pedir nada nunca.
+ *
+ * La página en sí NO se guarda —es la que trae las direcciones nuevas—, pero
+ * comprimida son doce kilobytes, así que pedirla cada vez no cuesta.
+ */
+const marcaVersion = String(VERSION.commit || 'dev').replace(/[^\w.-]/g, '').slice(0, 20);
+let osConVersion = null;
+function paginaConVersion() {
+  if (osConVersion) return osConVersion;
+  const crudo = readFileSync(join(__dirname, 'public', 'os.html'), 'utf8');
+  /* Solo lo de la casa: una dirección de fuera no se toca, y una que ya lleva
+     interrogante tampoco (añadir otra la rompería). */
+  osConVersion = crudo.replace(/\b(src|href)="(?!https?:|\/\/|data:|#)([^"?#]+)"/g, `$1="$2?v=${marcaVersion}"`);
+  return osConVersion;
+}
+const paginaOS = (req, res) => {
+  res.set('Cache-Control', 'no-cache');
+  res.type('html').send(paginaConVersion());
+};
 app.get('/', paginaOS);
 app.get('/os', paginaOS);
+app.get('/os.html', paginaOS);
 app.get('/consola', (req, res) => res.sendFile(join(__dirname, 'public', 'index.html')));
 
 /* LA CONSOLA vive en public/: una sola puerta, en la raíz. */
 /* `index:false`: la raíz la sirve la ruta de arriba (el OS). Con `index:
    'index.html'` el estático se adelantaba y devolvía la consola vieja. */
-app.use(express.static(join(__dirname, 'public'), { index: false, maxAge: '10m' }));
+/* Lo pedido CON versión se guarda un año y no se vuelve a preguntar; lo pedido
+   sin versión —alguien que escribe la dirección a mano, un enlace viejo— sigue
+   con los diez minutos de siempre, que es lo prudente para algo que no dice
+   qué versión es. */
+app.use((req, res, sig) => { res.locals.conVersion = !!req.query.v; sig(); });
+app.use(express.static(join(__dirname, 'public'), {
+  index: false,
+  maxAge: '10m',
+  setHeaders(res) { if (res.locals?.conVersion) res.setHeader('Cache-Control', 'public, max-age=31536000, immutable'); },
+}));
 app.use((req, res) => res.status(404).json({ error: 'No existe esa ruta.', codigo: 'NO_EXISTE' }));
 app.use((err, req, res, next) => {   // eslint-disable-line no-unused-vars
   console.error(`[ultron] ${err?.message || err}`);
