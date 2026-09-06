@@ -322,6 +322,26 @@ titulo('la salud de ULTRON: se mide y se repara solo');
   decir(Array.isArray(h) && h.length >= 1, 'y la ronda queda en el historial', `${h.length} ronda(s)`);
 }
 
+// ── EL MUNDO DE AFUERA: la hora y el clima ──────────────────────────────────
+titulo('la hora y el clima: lo que José pidió y ULTRON no podía');
+{
+  const mundo = require('../lib/mundo.js');
+  const h = mundo.hora({ lugar: 'Miami' });
+  decir(/Honduras \(Tegucigalpa\)/.test(h) && /Miami:/.test(h) && /UTC:/.test(h), 'la hora da Honduras, el lugar pedido y UTC', h.split('\n')[0]);
+  decir(!/Roatán está en otra/.test(mundo.hora({ lugar: 'Roatán' })) && /misma zona/.test(mundo.hora({ lugar: 'roatan' })),
+    'y un sitio de la casa no repite la misma hora con otro nombre');
+  const l = await mundo.buscarLugar('la isla Roatán');
+  decir(l.lat === 16.3229 && /Islas de la Bahía/.test(l.nombre), 'Roatán se sabe de memoria: no se pregunta a nadie', l.nombre);
+  decir((await mundo.buscarLugar('TEGUCIGALPA')).lat === 14.0723, 'y no importan mayúsculas ni tildes');
+  /* Aquí no hay red (la prueba la corta), así que lo que se comprueba es que
+     NO SE INVENTA un lugar: falla, y falla diciendo cuál de las dos cosas pasó
+     —que no existe, o que no se pudo preguntar—. */
+  let fallo = null;
+  try { await mundo.buscarLugar('Xqzptlk'); } catch (e) { fallo = e; }
+  decir(fallo && ['SIN_LUGAR', 'SIN_BUSCADOR'].includes(fallo.codigo), 'un lugar desconocido no se inventa: se dice qué pasó', `${fallo?.codigo} · ${String(fallo?.message).slice(0, 90)}`);
+  decir(mundo._adentro.cielo(95) === 'tormenta eléctrica' && mundo._adentro.cielo(0) === 'despejado', 'los códigos del cielo se traducen');
+}
+
 // ── LOS AVISOS: grave al teléfono, leve al correo ───────────────────────────
 titulo('los avisos: lo grave por WhatsApp y correo, lo leve solo por correo');
 {

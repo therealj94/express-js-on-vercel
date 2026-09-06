@@ -43,6 +43,7 @@ const equipo = require('./equipo');
 const operaciones = require('./operaciones');
 const salud = require('./salud');
 const bitacora = require('./bitacora');
+const mundo = require('./mundo');
 const avisos = require('./avisos');
 
 // Adónde puede mandar a abrir. Cerrado a la casa a propósito: «abrí» con una
@@ -352,6 +353,16 @@ const DEFINICIONES = [
     name: 'bitacora',
     description: 'La bitácora de ULTRON: qué herramientas que escriben o tocan algo se corrieron, quién las pidió, por qué canal, si salieron bien y cuánto tardaron. Para «¿quién reinició Ordenex el lunes?» o «¿qué hiciste hoy?». Solo se añade; no se edita nunca.',
     input_schema: { type: 'object', properties: { limite: { type: 'integer' }, herramienta: { type: 'string' }, quien: { type: 'string' }, desde: { type: 'string', description: 'fecha ISO' } } },
+  },
+  {
+    name: 'clima',
+    description: 'El tiempo de un lugar: cómo está AHORA y el pronóstico de los próximos días. Sabe de memoria los sitios de la casa (Roatán, Tegucigalpa, San Pedro Sula, La Ceiba, Utila, Guanaja) y busca cualquier otro por su nombre. Úsala cuando pregunten por el clima, si va a llover, la temperatura o si se puede viajar.',
+    input_schema: { type: 'object', properties: { lugar: { type: 'string', description: 'Roatán, Tegucigalpa, Miami…' }, dias: { type: 'integer', description: '1 a 7; por omisión 3' } } },
+  },
+  {
+    name: 'hora',
+    description: 'La hora exacta de Honduras ahora mismo, y la de otro lugar si se pide. Úsala cuando pregunten la hora, cuánto falta para algo, o al coordinar con alguien de otro país. La fecha del encabezado es la del arranque del turno; esta es del segundo en que se pregunta.',
+    input_schema: { type: 'object', properties: { lugar: { type: 'string', description: 'Otro sitio: Madrid, Miami, Dubái…' } } },
   },
   {
     name: 'salud_revisar',
@@ -970,6 +981,8 @@ async function correrAdentro(nombre, entrada, ctx) {
       }
       case 'nodo_comando': return await operaciones.nodoComando(entrada);
       case 'mongo_consultar': return await operaciones.mongoConsultar(entrada);
+      case 'clima': return await mundo.clima(entrada);
+      case 'hora': return mundo.hora(entrada);
       case 'avisar_junta': {
         const r = await avisos.avisar({ clave: `pedido:${Date.now()}`, gravedad: entrada.gravedad === 'grave' ? 'grave' : 'leve', titulo: String(entrada.titulo || '').slice(0, 120),
           lineas: [String(entrada.texto || '').slice(0, 2000), '', `— pedido por ${ctx.miembro?.nombre || ctx.miembro?.correo}`], forzar: true });
@@ -1086,6 +1099,7 @@ function calcular(expresion) {
 /** Cómo se agrupan en la consola: la persona ve las manos por lo que tocan. */
 const GRUPOS = {
   'La casa, en vivo': ['estado_vivo', 'parte_del_dia', 'cotizar', 'nodo_salud', 'nube_estado'],
+  'El mundo de afuera': ['clima', 'hora'],
   'Ordenex y las cadenas': ['ordenex_mercado', 'cadena_altura', 'cadena_direccion', 'cadena_5550_saldo'],
   'Las otras casas': ['aucorp_monedas', 'genesis_salud'],
   'El saber y la memoria': ['buscar_saber', 'buscar_conversaciones', 'recordar', 'olvidar'],

@@ -80,6 +80,35 @@ decir(/ULTRON OS/.test(await texto('#techo')), 'y se presenta como ULTRON OS');
    pantalla salía perfecta con un agujero negro en el medio, que es justo donde
    va ULTRON. Aquí se comprueba que está montado y que de verdad pinta píxeles
    —un lienzo con contexto pero en negro es lo mismo que ningún lienzo—. */
+// ── LA VOZ ──────────────────────────────────────────────────────────────────
+// El 6-sep, en el iPad de José: ULTRON no hablaba NUNCA. `sonar()` creaba un
+// `new Audio()` por frase y en iOS el permiso de reproducción es del ELEMENTO
+// que sonó dentro de un gesto — uno recién creado no lo tiene. Se comprueba que
+// hay UN solo elemento y que sobrevive a `callar()`.
+titulo('la voz: un solo elemento de audio, que es lo que iOS exige');
+{
+  const v = await p.evaluate(async () => {
+    const L = new VOZ.Locutor({ conElevenLabs: false, alNivel() {}, alEmpezar() {}, alTerminar() {}, alFallo() {} });
+    const primero = L.audio;
+    L.despertar();
+    await new Promise((r) => setTimeout(r, 350));
+    const n = 800, b = new ArrayBuffer(44 + n), d = new DataView(b);
+    const t = (o, s) => { for (let i = 0; i < s.length; i++) d.setUint8(o + i, s.charCodeAt(i)); };
+    t(0, 'RIFF'); d.setUint32(4, 36 + n, true); t(8, 'WAVEfmt ');
+    d.setUint32(16, 16, true); d.setUint16(20, 1, true); d.setUint16(22, 1, true);
+    d.setUint32(24, 8000, true); d.setUint32(28, 8000, true); d.setUint16(32, 1, true); d.setUint16(34, 8, true);
+    t(36, 'data'); d.setUint32(40, n, true);
+    for (let i = 0; i < n; i++) d.setUint8(44 + i, 128);
+    await L.sonar(new Blob([b], { type: 'audio/wav' }), L.generacion, 'una');
+    const trasSonar = L.audio;
+    L.callar();
+    return { uno: primero === trasSonar && trasSonar === L.audio, desbloqueado: L.desbloqueado, inline: !!primero.playsInline };
+  });
+  decir(v.uno, 'el mismo elemento de audio para toda la sesión, y sobrevive a callar()', JSON.stringify(v));
+  decir(v.desbloqueado, 'y el gesto lo desbloquea de verdad (el WAV mudo lleva muestras)');
+  decir(v.inline, 'con playsInline: en iOS, si no, se abre el reproductor a pantalla completa');
+}
+
 titulo('la figura de ULTRON, en el centro');
 {
   await p.waitForFunction(() => window.ULTRON_HOLO_LISTO !== undefined, { timeout: 15000 }).catch(() => {});

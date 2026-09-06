@@ -626,6 +626,18 @@ const OS = (() => {
   let locutor = null, conVoz = true, conversacionId = null, pensando = false;
   let oreja = null, despierta = false;
 
+  /* ── DESPERTAR LA VOZ ─────────────────────────────────────────────────────
+     Se llama DENTRO de un gesto de la persona —el clic de Ingresar, un toque
+     en la pantalla, una tecla— y es lo que le da al navegador el permiso para
+     que ULTRON hable después, cuando la respuesta llega del servidor y ya no
+     nace de ningún gesto. En iOS ese permiso es del ELEMENTO de audio, así que
+     hay que hacerlo antes de la primera frase o no suena ninguna. */
+  function despertarVoz() {
+    locutor = locutor || locutorNuevo();
+    locutor.despertar?.();
+    return true;
+  }
+
   function locutorNuevo() {
     return new VOZ.Locutor({
       conElevenLabs: true,
@@ -739,12 +751,41 @@ const OS = (() => {
   const DESPIERTA = /\b(hey|hei|ey|oye|ok)\s+(ultron|ultrón|altron)\b|\bultron\b/i;
   let cicloOreja = 0;                 // token: solo el ciclo vigente puede reprogramar
 
+  /* ── DOS MANERAS DE ESCUCHAR, PORQUE HAY DOS MUNDOS ───────────────────────
+     La palabra que despierta necesita un reconocimiento CONTINUO: abierto,
+     escuchando, sin que nadie lo toque. Eso existe en Chrome y NO existe en
+     Safari —o sea, en todo iPhone y iPad—: ahí `continuous` se ignora, la
+     sesión se cierra sola a los pocos segundos de silencio y cada reapertura
+     pelea con el audio, porque iOS conmuta la tarjeta entre grabar y sonar.
+     El síntoma que vio José en el iPad fue exacto: el botón encendido y
+     «cuesta que me escuche».
+     Así que en iOS la oreja hace lo que SÍ se puede y encima es mejor para
+     una conversación: modo CONVERSACIÓN. Un toque y ULTRON escucha un turno,
+     contesta en voz alta y vuelve a abrir el micrófono. Sin palabra que
+     despierta —que ahí no funciona— y sin tener que tocar entre turno y turno.
+     No se promete lo que el aparato no puede: se cambia lo que se ofrece. */
+  const CONVERSACION = !!VOZ.esIOS;
+
   function orejaEncender() {
     if (!VOZ.hayOido?.()) { avisar('Este navegador no trae reconocimiento de voz. En Chrome sí funciona.', true); return; }
     despierta = true;
     $('#oreja').setAttribute('aria-pressed', 'true');
+    despertarVoz();                        // el toque que enciende es el gesto que da el permiso
+    if (CONVERSACION) {
+      avisar('Conversación abierta: hable y ULTRON contesta; al terminar vuelve a escucharlo. Toque otra vez para cerrar.');
+      dictar(volverAEscuchar);
+      return;
+    }
     avisar('Oreja abierta: diga «hey ULTRON». Mientras esté encendida, su navegador manda el audio a su proveedor de reconocimiento.');
     escucharPalabra();
+  }
+
+  /* El eslabón de la conversación: cuando ULTRON termina de hablar, se vuelve a
+     abrir el micrófono. Con una pausa corta, para no grabar la cola de su
+     propia voz saliendo del altavoz. */
+  function volverAEscuchar() {
+    if (!despierta) return;
+    setTimeout(() => { if (despierta) dictar(volverAEscuchar); }, 450);
   }
   function orejaApagar() {
     despierta = false;
@@ -867,10 +908,22 @@ const OS = (() => {
   }
   let ultimaBuena = Date.now();
 
+  /* EL SALUDO SE DICE EN VOZ ALTA. Se pintaba y nada más: José entraba, veía
+     «Buenos días» escrito y ULTRON no abría la boca — con la voz encendida, un
+     asistente que saluda por escrito es un asistente mudo con buena letra.
+     Suena porque el clic de Ingresar ya despertó el audio: es el único gesto
+     que hay garantizado entre cargar la página y este momento. */
   async function saludar() {
     try {
       const s = await DATOS.get('/saludo');
-      if (s?.texto) { pintarDicho(s.texto); chips(s.sugerencias || null); }
+      if (!s?.texto) return;
+      pintarDicho(s.texto); chips(s.sugerencias || null);
+      if (conVoz) {
+        locutor = locutor || locutorNuevo();
+        locutor.despertar?.();
+        locutor.alimentar(s.texto);
+        locutor.cerrar();
+      }
     } catch { /* sin saludo se entra igual */ }
   }
 
@@ -930,10 +983,17 @@ const OS = (() => {
     $('#enviar').addEventListener('click', () => enviar(ta.value));
 
     // ── los mandos
-    $('#micro').addEventListener('click', () => dictar());
+    $('#micro').addEventListener('click', () => { despertarVoz(); dictar(); });
     $('#oreja').addEventListener('click', () => (despierta ? orejaApagar() : orejaEncender()));
+    /* El rótulo del botón no puede prometer una palabra que despierta en un
+       aparato donde no la hay. */
+    if (CONVERSACION) {
+      $('#oreja').title = 'Conversar: hable y ULTRON contesta, y vuelve a escucharlo';
+      $('#oreja').setAttribute('aria-label', 'Conversación continua');
+    }
     $('#altavoz').addEventListener('click', (e) => {
       conVoz = !conVoz;
+      if (conVoz) despertarVoz();          // el toque que la enciende es el permiso
       e.currentTarget.setAttribute('aria-pressed', String(conVoz));
       if (!conVoz) { locutor?.callar?.(); mente.nivel = 0; estado('idle'); }
       avisar(conVoz ? 'ULTRON vuelve a hablar.' : 'ULTRON escribe y no habla.');
@@ -1047,7 +1107,7 @@ const OS = (() => {
     else unaVez();
   }
 
-  return { enviar, estado, avisar, mente, _adentro: { pintarVivo, pintarSalud, pintarSaludPropia, pintarArchivos, pintarPendientes, pintarAutorizaciones, pintarDicho, DESPIERTA, CASAS,
+  return { enviar, estado, avisar, mente, despertarVoz, _adentro: { pintarVivo, pintarSalud, pintarSaludPropia, pintarArchivos, pintarPendientes, pintarAutorizaciones, pintarDicho, DESPIERTA, CASAS,
     /* Solo para la prueba: mueve el reloj de la última lectura buena hacia
        atrás, para comprobar que la pantalla avisa cuando se queda vieja sin
        tener que esperar diez minutos de verdad. */

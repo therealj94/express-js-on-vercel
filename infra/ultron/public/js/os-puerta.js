@@ -150,6 +150,10 @@
     ev.preventDefault();
     const f = ev.target, btn = $('#pt-entrar');
     const correo = f.correo.value.trim(), clave = f.clave.value;
+    /* AQUÍ, dentro del clic. Es el único gesto garantizado entre abrir la
+       página y la primera frase de ULTRON, y en iOS el permiso de audio se da
+       en un gesto o no se da. Sin esto, José entraba y ULTRON no hablaba. */
+    try { window.OS?.despertarVoz?.(); } catch { /* la voz no puede impedir entrar */ }
     btn.disabled = true; btn.textContent = 'Comprobando…'; dicho('');
     try {
       const r = await fetch('/entrar', {
@@ -174,6 +178,7 @@
   /* ── ENTRAR CON LA WALLET (Genesis ID) ──────────────────────────────────── */
   async function conWallet() {
     const b = $('#pt-wallet');
+    try { window.OS?.despertarVoz?.(); } catch { /* nada */ }
     b.disabled = true; b.textContent = 'Abriendo Genesis…';
     dicho('Confirmando su identidad con Genesis ID…');
     try {

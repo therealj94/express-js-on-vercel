@@ -21,13 +21,14 @@ node app.js                  # http://localhost:3900
 | **El estado vivo** | Ordenex, AuCorp, Veta Wallet, Genesis ID, OrdenScan y el precio del ORIGEN, leídos de sus rutas públicas cada 30 s. Cada pata falla sola. | `lib/vivo.js` |
 | **La memoria** | Lo que la junta le dice (por miembro o de toda la junta), los hilos y los documentos. Mongo; sin Mongo, provisional y lo dice. | `lib/memoria.js` |
 | **El cerebro** | **Dos, unas mismas manos.** El del **nodo** piensa con el modelo de AU-RA en nuestra tarjeta (`lib/cerebros/nodo.js`, por el motor de `nodo/`); el de **Claude** con Anthropic. `ULTRON_CEREBRO` elige; sin la variable, el nodo si está configurado. Streaming en los dos. | `lib/cerebro.js` |
-| **Las manos** | Sesenta herramientas compartidas por los dos cerebros: el saber, el estado vivo, internet, los mercados y las cadenas, la memoria, los pendientes, la biblioteca, quién es quién en la junta, y las tres que preparan y no mandan — abrir, exportar a PDF y proponer un envío. En una misma vuelta, las que leen corren a la vez y las que escriben en fila. | `lib/herramientas.js` |
+| **Las manos** | Sesenta y dos herramientas compartidas por los dos cerebros: el saber, el estado vivo, internet, los mercados y las cadenas, la memoria, los pendientes, la biblioteca, quién es quién en la junta, y las tres que preparan y no mandan — abrir, exportar a PDF y proponer un envío. En una misma vuelta, las que leen corren a la vez y las que escriben en fila. | `lib/herramientas.js` |
 | **El motor del nodo** | La única puerta hacia el modelo: TLS propio, secreto, solo `/api/chat` y `/api/tags`, y FIJA el modelo y el contexto a los de AU-RA para no desalojarla nunca. Se instala por SSM con `nodo/desplegar-motor.py`. | `nodo/` |
 | **Los canales** | WhatsApp por Zernio (la misma línea de AU-RA) y correo por SES (el mismo remitente de siempre). **Solo a la junta**, y **solo con una persona confirmando**. | `lib/canales.js` |
-| **La voz** | ElevenLabs, con la llave en el servidor; sin llave, la voz del navegador. | `lib/voz.js` |
+| **La voz** | ElevenLabs, con la llave en el servidor; sin llave, la voz del navegador. **Un solo elemento de audio para toda la sesión**, desbloqueado en el primer gesto: en iOS el permiso es del elemento, no de la página, y uno creado después del toque no suena nunca. | `lib/voz.js`, `public/js/voz.js` |
 | **El panel** | La presencia: una persona de luz —busto de partículas, ojos que parpadean, el núcleo en el pecho— con los datos vivos del ecosistema orbitando alrededor. Al entrar, el hero: la figura grande y el saludo por nombre escribiéndose. **Conversar**: escucha, contesta con voz y vuelve a escuchar. Gestos: respira, ladea la cabeza oyendo, se recoge pensando, asiente hablando. Y la conversación, el pulso, los pendientes, la memoria, la biblioteca, los hilos. Un archivo. | `public/index.html` |
 | **ULTRON OS** | El sistema operativo del ecosistema, en una pantalla: el **núcleo** en el centro —lienzo 2D, late con la envolvente real de la voz—, ocho paneles con las cifras vivas (salud propia, enlaces, mercado, cerebro, integridad · ecosistema, documentos, pendientes, el dueño), el muelle de las casas y la caja de hablar. En el teléfono los paneles pasan a un cajón. | `public/os.html`, `public/js/os-nucleo.js` |
 | **La salud propia** | Nueve signos de ULTRON mismo cada cinco minutos, una nota de 0 a 100 guardada en la base, y **reparación sola** de lo que es interno y reversible. Incluye el relevo del cerebro al respaldo cuando el nodo no contesta. | `lib/salud.js` |
+| **El mundo de afuera** | El clima de un lugar (ahora y el pronóstico) y la hora exacta, por Open-Meteo, sin llave. Sabe de memoria Roatán, Tegucigalpa, San Pedro Sula, La Ceiba, Utila y Guanaja. | `lib/mundo.js` |
 | **El saludo** | `GET /saludo`: por su nombre, con la hora de Honduras y con lo que hay. Determinista: sale al instante y no puede irse a otro idioma. | `app.js` |
 
 ## Una sola puerta
@@ -61,7 +62,7 @@ Global) y registro institucional en cada palabra.
 | --- | --- |
 | Despacho | La conversación. Cada consulta que ULTRON hace a la casa aparece en el hilo como un registro con su entrada y su salida, antes de la respuesta. Texto en vivo, voz frase por frase, dictado y conversación continua. |
 | Ecosistema | Una tarjeta por casa, leída de su servicio. Lo que no se pudo leer se dice. |
-| Instrumentos | El catálogo entero (60) agrupado por lo que toca, cada uno ejecutable a mano por `POST /herramientas/:nombre`: corre la misma función que usa el modelo. |
+| Instrumentos | El catálogo entero (62) agrupado por lo que toca, cada uno ejecutable a mano por `POST /herramientas/:nombre`: corre la misma función que usa el modelo. |
 | Pendientes y memoria · Biblioteca · Bitácora | El registro de la Junta. |
 | La Junta · Ajustes | Los miembros y sus canales; la voz y el estado de la plataforma. |
 

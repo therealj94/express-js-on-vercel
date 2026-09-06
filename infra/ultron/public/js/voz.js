@@ -30,25 +30,52 @@ const VOZ = (() => {
     return { frases, resto };
   }
 
-  /** Un WAV de un frame en silencio: la llave del permiso de audio. */
+  /** Un WAV corto en silencio: la llave del permiso de audio.
+   *  CON MUESTRAS, no solo cabecera. El anterior declaraba `data` de CERO
+   *  bytes: Chrome lo tragaba, pero Safari —y iOS es todo Safari— no considera
+   *  reproducido un audio sin una sola muestra, así que el permiso NUNCA se
+   *  daba y todo lo que venía después era silencio. Ochenta milisegundos de
+   *  ceros a 8 kHz: 640 bytes, inaudibles, y suficientes para que cuente. */
   function wavMudo() {
-    const b = new ArrayBuffer(44), v = new DataView(b);
+    const muestras = 640;
+    const b = new ArrayBuffer(44 + muestras), v = new DataView(b);
     const txt = (o, t) => { for (let i = 0; i < t.length; i++) v.setUint8(o + i, t.charCodeAt(i)); };
-    txt(0, 'RIFF'); v.setUint32(4, 36, true); txt(8, 'WAVEfmt ');
+    txt(0, 'RIFF'); v.setUint32(4, 36 + muestras, true); txt(8, 'WAVEfmt ');
     v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 1, true);
     v.setUint32(24, 8000, true); v.setUint32(28, 8000, true); v.setUint16(32, 1, true); v.setUint16(34, 8, true);
-    txt(36, 'data'); v.setUint32(40, 0, true);
+    txt(36, 'data'); v.setUint32(40, muestras, true);
+    for (let i = 0; i < muestras; i++) v.setUint8(44 + i, 128);   // 128 = silencio en PCM de 8 bits
     return new Blob([b], { type: 'audio/wav' });
   }
 
+  /* iOS —y iPadOS, que se hace pasar por Mac— tiene reglas propias: el permiso
+     de audio vive en el ELEMENTO que sonó durante el gesto, no en la página. */
+  const esIOS = /iPad|iPhone|iPod/.test(navigator.userAgent)
+    || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+
   class Locutor {
     static avisado = false;   // el aviso de «no pude usar la voz» se da una vez
+    static sintesisDespierta = false;
     constructor({ conElevenLabs, alNivel, alEmpezar, alTerminar, alFallo }) {
       Object.assign(this, { conElevenLabs, alNivel, alEmpezar, alTerminar, alFallo });
-      this.cola = []; this.sonando = false; this.generacion = 0; this.resto = ''; this.ctx = null; this.audio = null; this.vozId = null;
-      // Un desbloqueo silencioso: un audio de un instante, dentro del gesto,
-      // que deja al navegador con el permiso dado para los que vengan después.
+      this.cola = []; this.sonando = false; this.generacion = 0; this.resto = ''; this.ctx = null; this.vozId = null;
       this.desbloqueado = false;
+      /* ── UN SOLO ELEMENTO, PARA SIEMPRE ─────────────────────────────────
+         El fallo que esto arregla, con nombre y fecha: en el iPad de José
+         ULTRON no hablaba NUNCA. `sonar()` creaba `new Audio(url)` por cada
+         frase, y en iOS el permiso de reproducción no es de la página: es del
+         ELEMENTO que sonó dentro de un gesto de la persona. Un elemento recién
+         creado, tres segundos después del toque, no lo tiene — `play()` se
+         rechaza, se cae al respaldo del navegador, que en iOS también exige
+         gesto, y el resultado es «ULTRON está hablando» en pantalla y silencio
+         absoluto.
+         Aquí hay UN elemento, se desbloquea con el primer toque y después solo
+         se le cambia el `src`. El permiso se da una vez y vale para todo. */
+      this.audio = new Audio();
+      this.audio.preload = 'auto';
+      this.audio.playsInline = true;                 // iOS no abre el reproductor a pantalla completa
+      this.audio.setAttribute('playsinline', '');
+      this.audio.crossOrigin = 'anonymous';
     }
     /**
      * Se llama DENTRO de un gesto de la persona: un audio mudo de un instante
@@ -62,10 +89,23 @@ const VOZ = (() => {
     despertar() {
       if (this.desbloqueado) return;
       try {
-        const a = new Audio(URL.createObjectURL(wavMudo()));
-        a.volume = 0;
-        const p = a.play();
-        if (p && p.then) p.then(() => { this.desbloqueado = true; }).catch(() => {});
+        /* Sobre EL elemento, no sobre uno de usar y tirar: lo que se desbloquea
+           es este de aquí, que es el que va a sonar toda la sesión.
+           Y sin `volume = 0`: iOS ignora `volume` en un elemento de medios —no
+           se puede bajar por código— y algunos navegadores no cuentan como
+           reproducción lo que suena a cero. El WAV ya es silencio de verdad. */
+        const url = URL.createObjectURL(wavMudo());
+        this.audio.src = url;
+        const p = this.audio.play();
+        const listo = () => { this.desbloqueado = true; URL.revokeObjectURL(url); };
+        if (p && p.then) p.then(listo).catch(() => URL.revokeObjectURL(url));
+        else listo();
+        /* La voz del navegador también quiere su gesto en iOS: se le da uno
+           mudo aquí mismo, para que el respaldo funcione cuando haga falta. */
+        if (window.speechSynthesis && !Locutor.sintesisDespierta) {
+          Locutor.sintesisDespierta = true;
+          try { const u = new SpeechSynthesisUtterance(' '); u.volume = 0; speechSynthesis.speak(u); } catch { /* nada */ }
+        }
       } catch { /* si no se puede, el primer audio de verdad lo intentará */ }
     }
     alimentar(trozo) {
@@ -95,7 +135,11 @@ const VOZ = (() => {
          Una conversación de treinta frases dejaba treinta temporizadores vivos
          moviéndole la boca a nadie. */
       this.corte?.();
-      if (this.audio) { this.audio.pause(); this.audio.src = ''; this.audio = null; }
+      /* Se para, no se destruye: destruirlo tiraba a la basura el permiso de
+         iOS y la frase siguiente ya no sonaba. `removeAttribute('src')` en vez
+         de `src = ''`, que en Safari dispara un `error` de red por intentar
+         cargar la página como si fuera un audio. */
+      if (this.audio) { try { this.audio.pause(); this.audio.removeAttribute('src'); this.audio.load(); } catch { /* nada */ } }
       if (window.speechSynthesis) speechSynthesis.cancel();
       this.sonando = false; this.alNivel?.(0);
     }
@@ -133,8 +177,9 @@ const VOZ = (() => {
      */
     sonar(blob, gen, texto) {
       return new Promise((listo) => {
-        const url = URL.createObjectURL(blob); const a = new Audio(url); this.audio = a;
-        a.preload = 'auto';
+        const url = URL.createObjectURL(blob);
+        const a = this.audio;                 // SIEMPRE el mismo: ver el constructor
+        a.src = url;
         let envolvente = null;
         /* LA ENVOLVENTE DE VERDAD, si se pudo sacar. `BOCA` decodifica una
            COPIA de los bytes en un contexto que jamás se conecta a los
@@ -146,7 +191,7 @@ const VOZ = (() => {
            sola. Nadie ve el salto y nadie se queda sin voz. */
         let real = null;
         window.BOCA?.envolvente(blob).then((e) => { real = e; }).catch(() => { /* la inventada sigue */ });
-        const soltar = () => { clearInterval(envolvente); envolvente = null; URL.revokeObjectURL(url); this.alNivel?.(0); };
+        const soltar = () => { clearInterval(envolvente); envolvente = null; a.onended = a.onerror = a.onplaying = null; URL.revokeObjectURL(url); this.alNivel?.(0); };
         const fin = () => { this.corte = null; soltar(); listo(); };
         this.corte = fin;      // para que `callar()` pueda cerrar esta sesión
         a.onended = fin;
@@ -174,7 +219,10 @@ const VOZ = (() => {
       return new Promise((listo) => {
         if (!window.speechSynthesis) return listo();
         const u = new SpeechSynthesisUtterance(texto); u.lang = 'es-HN'; u.rate = 1;
-        const voces = speechSynthesis.getVoices();
+        /* `getVoices()` devuelve [] hasta que el navegador termina de cargarlas
+           —en iOS tarda—, y entonces `u.voice` quedaba en null y hablaba en
+           inglés. Si no hay ninguna todavía, se deja que elija por `lang`. */
+        const voces = speechSynthesis.getVoices() || [];
         u.voice = voces.find((v) => /es-(HN|MX|US|419)/i.test(v.lang)) || voces.find((v) => /^es/i.test(v.lang)) || null;
         const t = setInterval(() => { if (gen === this.generacion) this.alNivel?.(0.35 + 0.3 * Math.abs(Math.sin(performance.now() / 160))); }, 60);
         const fin = () => { clearInterval(t); this.alNivel?.(0); listo(); };
@@ -232,5 +280,5 @@ const VOZ = (() => {
     return { abort() { muerto = true; try { rec.abort(); } catch { /* ya estaba */ } } };
   }
 
-  return { Locutor, escuchar, oir, hayOido, paraDecir, partirFrases };
+  return { Locutor, escuchar, oir, hayOido, paraDecir, partirFrases, esIOS };
 })();
