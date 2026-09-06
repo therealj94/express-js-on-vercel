@@ -897,7 +897,7 @@ function vistaDirectorio(d) {
 
   ${(R.porMoneda || []).length ? `
   <h2>Las monedas del ecosistema
-    <span class="pista">emisión y tenencia, leídas de la cadena 8532 — no de las apps</span></h2>
+    <span class="pista">emisión y tenencia, leídas de la cadena 5550 — no de las apps</span></h2>
   <div class="tarjeta scroll" style="margin-bottom:10px"><table style="min-width:680px">
     <thead><tr><th>Moneda</th><th>Estado</th><th>Personas que la tienen</th><th></th>
       <th>En manos</th><th>Emitido</th><th>Contrato</th></tr></thead>
@@ -1323,7 +1323,7 @@ function pintarMovimientos() {
   if (!d.resumen.total) {
     caja.innerHTML = vacio('Sin movimientos en la cadena',
       d.resumen.incompleto ? 'Además, el explorador no respondió: la lista puede estar incompleta.'
-        : 'Su billetera existe pero nunca envió ni recibió nada en la 8532.');
+        : 'Su billetera existe pero nunca envió ni recibió nada en la 5550.');
     return;
   }
 
@@ -1373,7 +1373,7 @@ function pintarMovimientos() {
     <p style="color:var(--faint);font-size:11.5px;margin-top:8px">
       Solo aparece lo que ocurrió <b>en la cadena</b>. Veta Wallet es custodia y
       lleva además su contabilidad interna: un movimiento que solo existe ahí no
-      deja rastro en la 8532 y no sale en esta lista. Cuando las dos versiones no
+      deja rastro en la 5550 y no sale en esta lista. Cuando las dos versiones no
       coinciden, esa diferencia es justo lo que hay que mirar.</p>`;
 }
 

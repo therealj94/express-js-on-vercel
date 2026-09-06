@@ -151,11 +151,15 @@ async function leer() {
     ordenscan: {
       ...CASAS.ordenscan, vivo: scanTotal.ok, http: scanTotal.http, ms: scanTotal.ms, error: scanTotal.error,
       /* El campo se llama `blockTotal`. Aquí decía `totalBlock` —las mismas dos
-         palabras al revés— así que la altura de la 8532 salía en nulo SIEMPRE,
+         palabras al revés— así que la altura que trae OrdenScan salía en nulo SIEMPRE,
          y el tablero lo pintaba como «no leído» con OrdenScan contestando
          perfectamente. lib/herramientas.js ya usaba el nombre bueno: eran dos
          ficheros leyendo la misma casa con nombres distintos. */
-      bloque8532: Number(scanTotal.datos?.blockTotal ?? scanTotal.datos?.totalBlock ?? scanTotal.datos?.total) || null,
+      /* ES LA 5550. Este campo se llamó `bloque8532` como si OrdenScan explorara
+         la cadena vieja: explora la 5550 —la altura coincide con la del RPC de
+         la casa, que contesta chainId 5550— y José lo confirmó. La 8532 está
+         congelada desde el 10 de agosto y no la lee nadie aquí. */
+      bloqueScan: Number(scanTotal.datos?.blockTotal ?? scanTotal.datos?.totalBlock ?? scanTotal.datos?.total) || null,
     },
     ordenglobal: { ...CASAS.ordenglobal, vivo: ogWeb.ok, http: ogWeb.http, ms: ogWeb.ms, error: ogWeb.error },
   };
@@ -183,7 +187,7 @@ function paraElModelo(v) {
   if (v.aucorp.naturaleza) l.push(`AuCorp es: ${v.aucorp.naturaleza}`);
   l.push(`Veta Wallet backend: ${v.wallet.vivo ? 'VIVO' : 'NO CONTESTA'} (${v.wallet.http})`);
   l.push(`Genesis ID: ${v.genesis.vivo ? 'VIVO' : 'NO CONTESTA'} (${v.genesis.http})`);
-  l.push(`OrdenScan (cadena 8532): ${v.ordenscan.vivo ? 'VIVO' : 'NO CONTESTA'} · bloque ${v.ordenscan.bloque8532 ?? '?'}`);
+  l.push(`OrdenScan (explorador de la 5550): ${v.ordenscan.vivo ? 'VIVO' : 'NO CONTESTA'} · bloque ${v.ordenscan.bloqueScan ?? '?'}`);
   return l.join('\n');
 }
 

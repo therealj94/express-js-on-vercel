@@ -47,7 +47,7 @@ export const GRUPOS = {
  */
 export const NODOS = [
   // ── La cadena ────────────────────────────────────────────────────────────
-  { id: 'cadena', n: 'Cadena 8532', g: 'cadena', peso: 4, vivo: 'cadena',
+  { id: 'cadena', n: 'Cadena 5550', g: 'cadena', peso: 4, vivo: 'cadena',
     d: 'Blockchain propia del ecosistema, respaldada en oro físico certificado (NI 43-101). 1 ORIGEN = 1 gramín = 1/55 g de oro en bóveda.' },
   { id: 'rpc', n: 'RPC público', g: 'cadena', peso: 2, vivo: 'rpc',
     d: 'rpc.ordenglobal-rpc.com — la puerta por la que todo el ecosistema lee y escribe en la cadena.' },

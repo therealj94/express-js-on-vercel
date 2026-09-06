@@ -4,7 +4,7 @@ import { Schema, model } from "mongoose";
 // Saldo ORIGEN interno de un usuario.
 //
 // Es el ORIGEN que compró depositando USDT, y NO es el ORIGEN nativo de la
-// chain 8532 que ya tiene en su wallet. Son dos cosas distintas a proposito:
+// chain 5550 (antes 8532) que ya tiene en su wallet. Son dos cosas distintas a proposito:
 // este saldo lo llevamos nosotros en la base, el otro vive en la cadena. Mas
 // adelante se conectan —este saldo se emite on-chain y desaparece de aqui—
 // pero hasta entonces no se mezclan, porque el ORIGEN on-chain se puede

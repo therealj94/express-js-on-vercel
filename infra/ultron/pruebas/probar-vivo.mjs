@@ -52,7 +52,7 @@ globalThis.fetch = async (url) => {
   decir(v.ordenex.compraUsdt === 'cerrada', 'la compra con USDT sale «cerrada» cuando entrega es false', v.ordenex.compraUsdt);
   decir(v.origen?.origenUsd === 2.566148, 'el ORIGEN sale de la referencia de Ordenex, no de una cuenta acá', JSON.stringify(v.origen));
   decir(v.aucorp.monedas?.length === 2, 'AuCorp trae sus monedas');
-  decir(v.ordenscan.bloque8532 === 1234567, 'OrdenScan trae el bloque de la 8532');
+  decir(v.ordenscan.bloqueScan === 1234567, 'OrdenScan trae la altura de la 5550 (es la 5550, no la 8532 vieja)');
   const t = vivo.paraElModelo(v);
   decir(/ORIGEN: \$2\.566148/.test(t), 'el texto para el modelo lleva el precio', t.split('\n')[1]);
   decir(/compra con USDT cerrada/.test(t), 'y dice que la compra está cerrada — para que no le diga a nadie que mande dinero');

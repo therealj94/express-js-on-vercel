@@ -48,7 +48,7 @@
 const PRESENCIA = (() => {
   'use strict';
 
-  const GLIFOS = '01ABCDEF·ORIGEN5550AUKA8532';
+  const GLIFOS = '01ABCDEF·ORIGEN5550AUKAAGKA';
   const CANTIDAD = { escritorio: 3400, movil: 1500 };
   /** Cuántas se van de paseo largo. Una de cada doce: menos y no se nota que
    *  algo viaja; más y la silueta se deshace. */

@@ -13,8 +13,8 @@ const ECOSISTEMA = (() => {
       filas: (v) => [['Servicio', textoCasa(v?.wallet)]] },
     { k: 'genesis', nombre: 'Genesis ID', que: 'La identidad única de cada persona en todas las casas.', url: 'https://genesis-id.onrender.com/',
       filas: (v) => [['Servicio', textoCasa(v?.genesis)]] },
-    { k: 'ordenscan', nombre: 'OrdenScan', que: 'El explorador de la cadena 8532.', url: 'https://ordenscan.com/',
-      filas: (v) => [['Bloque 8532', num(v?.ordenscan?.bloque8532)]] },
+    { k: 'ordenscan', nombre: 'OrdenScan', que: 'El explorador de la cadena 5550.', url: 'https://ordenscan.com/',
+      filas: (v) => [['Bloque 5550 (explorador)', num(v?.ordenscan?.bloqueScan)]] },
   ];
 
   function pintar(v) {

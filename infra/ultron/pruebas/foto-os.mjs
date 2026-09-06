@@ -43,7 +43,7 @@ for (const [nombre, w, h] of [['os-escritorio', 1400, 900], ['os-telefono', 390,
   // con una conversación puesta, que es como se ve de verdad
   await p.evaluate(() => {
     window.OS._adentro.pintarDicho(
-      'La cadena 8532 está en el bloque **4 812 907** y avanza: 2.1 s por bloque en la última media hora.\n\n'
+      'La cadena 5550 está en el bloque **96 828** y avanza: 2.1 s por bloque en la última media hora.\n\n'
       + 'En el tesoro quedan **2 411 900 ORIGEN**.\n\n'
       + 'La casa que se ve floja es ORDENSCAN — contesta en 1.9 s cuando el resto está por debajo de 300 ms. '
       + 'No está caída, pero si sigue así conviene mirar el índice de bloques antes que se note en la web.');

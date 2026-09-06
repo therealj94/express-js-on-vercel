@@ -32,7 +32,7 @@ const CardFunding = new Schema(
     usdtAmountWei: { type: String, required: true },
 
     // De donde salio el ORIGEN.
-    //   onchain   el usuario firma una transferencia en la chain 8532
+    //   onchain   el usuario firma una transferencia en la chain 5550
     //   internal  se descuenta del saldo comprado con depositos de USDT
     // El interno no tiene transaccion que esperar, asi que nace ya confirmado.
     source: { type: String, enum: ["onchain", "internal"], default: "onchain" },

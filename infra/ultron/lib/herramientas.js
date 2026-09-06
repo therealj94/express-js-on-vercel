@@ -102,12 +102,12 @@ const DEFINICIONES = [
   },
   {
     name: 'cadena_direccion',
-    description: 'Consulta una dirección en la cadena 8532 (OrdenScan): saldo, tokens (ONDK, AUKA, ORIGEN…) y últimas transacciones.',
+    description: 'Consulta una dirección en la cadena 5550 vía OrdenScan: saldo, tokens (ONDK, AUKA, ORIGEN…) y últimas transacciones.',
     input_schema: { type: 'object', properties: { direccion: { type: 'string', description: '0x… de 42 caracteres' } }, required: ['direccion'] },
   },
   {
     name: 'cadena_altura',
-    description: 'La altura actual de las cadenas de la casa: bloque de la 8532 (OrdenScan) y de la 5550 (Ordenex).',
+    description: 'La altura actual de la cadena 5550, leída por dos sitios distintos: OrdenScan (el explorador) y Ordenex. Si se separan, el explorador se quedó atrás.',
     input_schema: { type: 'object', properties: {} },
   },
   {
@@ -500,7 +500,7 @@ async function correr(nombre, entrada, ctx) {
         if (!/^0x[0-9a-fA-F]{40}$/.test(d)) return 'Dirección inválida: tiene que ser 0x seguido de 40 caracteres hexadecimales.';
         const j = await leerJson(`${vivo.CASAS.ordenscan.api}/address/${d}`);
         if (!j || j.error) return `OrdenScan no contestó por esa dirección${j?.error ? ': ' + j.error : ''}.`;
-        const l = [`Dirección ${d} en la cadena 8532 (OrdenScan):`, `- saldo nativo: ${ori(j.balance || '0')}`];
+        const l = [`Dirección ${d} en la cadena 5550 (vía OrdenScan):`, `- saldo nativo: ${ori(j.balance || '0')}`];
         for (const [sym, t] of Object.entries(j.tokensBalance || {})) l.push(`- ${sym} (${t.name || sym}): ${ori(t.balance || '0')}${t.contractAddress ? ' · contrato ' + t.contractAddress : ''}`);
         const tx = Array.isArray(j.transactions) ? j.transactions : [];
         l.push(`- transacciones: ${tx.length}`);
@@ -509,7 +509,7 @@ async function correr(nombre, entrada, ctx) {
       }
       case 'cadena_altura': {
         const [scan, v] = await Promise.all([leerJson(`${vivo.CASAS.ordenscan.api}/block/totalBlock`), vivo.leerConCache()]);
-        return `Cadena 8532 (OrdenScan): bloque ${scan?.blockTotal ?? 'no leído'}. Cadena 5550 (Ordenex): bloque ${v?.ordenex?.bloque5550 ?? 'no leído'}. Leído ahora.`;
+        return `Cadena 5550 · bloque ${v?.ordenex?.bloque5550 ?? 'no leído'} según Ordenex, ${scan?.blockTotal ?? 'no leído'} según OrdenScan (el explorador). Leído ahora. La 8532 es la cadena vieja, congelada desde el 10 de agosto: no se lee.`;
       }
       case 'aucorp_monedas': {
         const base = vivo.CASAS.aucorp.api;

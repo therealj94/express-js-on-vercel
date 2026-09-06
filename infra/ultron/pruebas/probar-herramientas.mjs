@@ -202,7 +202,7 @@ titulo('quien_es_quien');
 titulo('el impresor de documentos');
 const md = `## Resumen
 
-La red **8532** cuesta 444 USD/mes y procesa \`2,5\` transacciones al día.
+La red **5550** cuesta 444 USD/mes y procesa \`2,5\` transacciones al día.
 
 | Dato | Valor |
 |---|---|
@@ -224,7 +224,7 @@ Ver [ordenglobal.org](https://ordenglobal.org/).`;
   decir(paginas === 1, `cabe en una página (${paginas})`, 'un documento corto en tres páginas es el pie escrito bajo el margen');
   decir(dice(b, 'Migración de la cadena'), 'con el título dentro');
   decir(dice(b, 'ORDEN GLOBAL · JUNTA DIRECTIVA'), 'y el rótulo de la casa arriba');
-  decir(dice(b, 'La red 8532 cuesta 444 USD/mes'), 'el texto entra sin los asteriscos del markdown');
+  decir(dice(b, 'La red 5550 cuesta 444 USD/mes'), 'el texto entra sin los asteriscos del markdown');
   decir(dice(b, 'USO INTERNO · JUNTA DIRECTIVA'), 'lleva el sello de uso interno en el pie');
   decir(dice(b, '1 / 1'), 'y la página numerada sobre el total');
   decir(dice(b, 'Escrito por ULTRON FP'), 'y dice quién lo escribió');

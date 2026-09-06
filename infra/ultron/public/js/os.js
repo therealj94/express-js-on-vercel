@@ -100,14 +100,12 @@ const OS = (() => {
   function pintarVivo(v) {
     ultimoVivo = v;
     /* ── el techo: la altura de la cadena ────────────────────────────────────
-       CUIDADO CON LOS DOS NOMBRES. El tablero escribía «5550» a lo que dice
-       Ordenex y «8532» a lo que dice OrdenScan, como si fueran dos cadenas.
-       Medidas al mismo tiempo dan el MISMO número —96 805 y 96 805—, y el RPC
-       de la casa contesta `chainId 5550` a esa altura: es UNA cadena leída por
-       dos sitios, no dos. Así que aquí se nombra la cadena una vez y se dice
-       QUIÉN lo leyó; si los dos lectores se separan, eso es un dato de salud
-       (el explorador se quedó atrás) y sale abajo, en INTEGRIDAD. */
-    const bOx = v?.ordenex?.bloque5550, bSc = v?.ordenscan?.bloque8532;
+       UNA cadena, dos lectores. Ordenex y OrdenScan leen los dos la 5550; el
+       tablero llegó a rotularlos «5550» y «8532» como si fueran dos cadenas, y
+       José confirmó que no: la 8532 es la vieja, congelada. Si los dos lectores
+       se separan, eso es un dato de salud —el explorador se quedó atrás— y sale
+       abajo, en INTEGRIDAD. */
+    const bOx = v?.ordenex?.bloque5550, bSc = v?.ordenscan?.bloqueScan;
     const bloque = bOx ?? bSc;
     $('#m-bloque').textContent = `CADENA 5550 · ${bloque ? '#' + num(bloque) : nada}`;
     /* La media de latencia SOLO sobre las casas que contestaron. Antes entraban

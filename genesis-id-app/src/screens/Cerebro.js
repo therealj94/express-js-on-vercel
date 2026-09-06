@@ -9,7 +9,7 @@
 // mapa que ve el operador en el móvil es EL MISMO que ve en el escritorio,
 // siempre — que es justo lo que se le pide a un mapa.
 //
-// Además necesita hablar con la cadena 8532 en vivo, y desde la vista web eso
+// Además necesita hablar con la cadena 5550 en vivo, y desde la vista web eso
 // funciona igual que en cualquier navegador.
 //
 // LAS DOS VISTAS, Y POR QUE SON DOS

@@ -213,7 +213,7 @@ header > *{pointer-events:auto}
 <!-- Lo primero que se ve: qué es esto y qué tamaño tiene. -->
 <div id="sello">
   <div class="cartucho">
-    <div class="casa">Orden Global · Cadena 8532</div>
+    <div class="casa">Orden Global · Cadena 5550</div>
     <div class="cifra" id="sBloques"><i>leyendo la cadena…</i></div>
     <div class="ley" id="sLey">bloques firmados en cadena propia</div>
     <div class="ensayo">
@@ -228,7 +228,7 @@ header > *{pointer-events:auto}
 <header>
   <div class="marca">
     <b>orden <em>global</em></b>
-    <span>el ecosistema · cadena 8532</span>
+    <span>el ecosistema · cadena 5550</span>
   </div>
   <button id="verSello" onclick="abrirSello()" title="El resumen de lo que hay">Sello</button>
   <input id="buscar" placeholder="Buscar…" autocomplete="off" spellcheck="false">
@@ -925,7 +925,7 @@ async function traerCadena() {
   const vals = validadoresDe(bloque.extraData);
 
   enVivo.cadena = {
-    'Altura': nf(altura), 'Chain ID': parseInt(bloque.number ? '0x2154' : '0', 16) || 8532,
+    'Altura': nf(altura), 'Chain ID': 5550,
     'Entre bloques': seg.toFixed(1) + ' s', 'Gas límite': nf(parseInt(bloque.gasLimit, 16)),
   };
   enVivo.rpc = { 'Estado': 'responde', 'Peers': parseInt(peersHex, 16), 'Altura': nf(altura) };

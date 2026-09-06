@@ -1,7 +1,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 // Las monedas del ecosistema, y cómo se leen sus saldos.
 //
-// Cada contrato de esta lista se comprobó contra la cadena 8532 antes de
+// Cada contrato de esta lista se comprobó contra la cadena (hoy la 5550) antes de
 // escribirlo: existe, responde `decimals()` y su `symbol()` en cadena coincide
 // con el símbolo de aquí. Una dirección copiada mal no da error — devuelve cero
 // para todo el mundo, y un panel que enseña ceros se ve igual de bien que uno

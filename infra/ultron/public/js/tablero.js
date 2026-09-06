@@ -54,11 +54,14 @@ const TABLERO = (() => {
     $('tabCasas').innerHTML =
       (todasCiegas ? '<div class="hueco">Ninguna casa se pudo leer desde este servidor. Es la red de la casa, no las casas.</div>' : '')
       + CASAS.map(([k, n]) => `<div class="casa-fila ${estadoCasa(v?.[k])}"><i></i><b>${n}</b><span>${textoCasa(v?.[k])}</span></div>`).join('');
-    const b5550 = v?.ordenex?.bloque5550, b8532 = v?.ordenscan?.bloque8532;
-    $('tabCadenas').innerHTML = (b5550 == null && b8532 == null)
+    /* Los dos leen la 5550: Ordenex y el explorador. Se enseñan los dos porque
+       si se separan, OrdenScan se quedó atrás. La 8532 es la cadena vieja,
+       congelada, y aquí no se lee. */
+    const b5550 = v?.ordenex?.bloque5550, bScan = v?.ordenscan?.bloqueScan;
+    $('tabCadenas').innerHTML = (b5550 == null && bScan == null)
       ? '<div class="hueco">Las alturas no se pudieron leer.</div>'
-      : `<div class="dato"><span>Cadena 5550 · bloque</span><b>${num(b5550)}</b></div>
-      <div class="dato"><span>Cadena 8532 · bloque</span><b>${num(b8532)}</b></div>`;
+      : `<div class="dato"><span>Cadena 5550 · bloque (Ordenex)</span><b>${num(b5550)}</b></div>
+      <div class="dato"><span>Cadena 5550 · bloque (OrdenScan)</span><b>${num(bScan)}</b></div>`;
     const junta = yo?.junta || [];
     $('tabJunta').innerHTML = junta.length
       ? junta.map((m) => `<div class="casa-fila ok"><i></i><b>${esc(m.nombre)}</b><span>${esc(m.rol || 'junta')}</span></div>`).join('')

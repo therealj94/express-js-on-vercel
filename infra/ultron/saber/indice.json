@@ -1,5 +1,5 @@
 {
- "armadoEn": "2026-09-04T23:04:27.905Z",
+ "armadoEn": "2026-09-06T05:06:09.185Z",
  "fuentes": [
   {
    "ruta": "ECOSISTEMA-ORDEN-GLOBAL.md",
@@ -149,7 +149,7 @@
    "ruta": "apps-web/README.md",
    "tema": "Las webs",
    "secciones": 19,
-   "bytes": 18131
+   "bytes": 18159
   },
   {
    "ruta": "infra/ordenex-api/LEEME.md",
@@ -249,7 +249,7 @@
   "infra/cerebro/conocimiento/portafolio-minero.md": "deab4f063c05bbfbda15d836e727f54ec2a04b29",
   "infra/cerebro/PROMPT-LEGAL-MINERIA.md": "fd67de5350aaf1b17540e112fa7d6413727378e2",
   "infra/aura/PROMPT-AURA.md": "2da732381a2b7e3ed23da4ad7fa34cad9adddd0c",
-  "apps-web/README.md": "64612a582af72f2b269e26a0609958f7e03b891a",
+  "apps-web/README.md": "f3a2fdad6957bd5c9034eb8645cf42682746c26a",
   "infra/ordenex-api/LEEME.md": "63c73dc1d52bf7df6f239e4beab3819d2bb25d23",
   "infra/aucorp-api/LEEME.md": "42f9d6e53cce6f1baab09a439cbac367e120d4eb",
   "infra/cerebro/LEEME.md": "392ebbe5d503fc500391f8f301dadd249faac78f",
@@ -264,5 +264,5 @@
   "infra/cerebro/conocimiento/saber.json": "94f7dd299d8273a7d49cf56e31caab222359c848"
  },
  "total": 679,
- "bytes": 450503
+ "bytes": 450531
 }

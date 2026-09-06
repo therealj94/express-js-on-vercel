@@ -104,7 +104,7 @@ titulo('la figura de ULTRON, en el centro');
 
 // Una respuesta puesta, que es como se ve de verdad cuando se usa.
 await p.evaluate(() => window.OS._adentro.pintarDicho(
-  'La cadena **8532** está en el bloque 4 812 907 y avanza a 2.1 s por bloque.\n\n'
+  'La cadena **5550** está en el bloque 96 828 y avanza a 2.1 s por bloque.\n\n'
   + 'La casa que se ve floja es ORDENSCAN: contesta en 1.9 s cuando el resto está por debajo de 300 ms. '
   + 'No está caída, pero conviene mirar el índice de bloques antes que se note en la web.'));
 await p.waitForTimeout(400);

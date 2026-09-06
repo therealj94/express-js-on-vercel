@@ -6,7 +6,7 @@
  *
  * Architecture — "Internal Bridge" model:
  * ─────────────────────────────────────────────────────────────────
- *  1. User's custodial wallet (OG chain 8532) sends ORIGEN (native) to
+ *  1. User's custodial wallet (OG chain 5550; 8532 is the frozen legacy chain) sends ORIGEN (native) to
  *     VetaWallet treasury address on the Orden Global chain.
  *  2. Backend calculates USD value using live gold price:
  *       ORIGEN price = (PAXG_oz_price / 31.1035) / 55
@@ -15,7 +15,7 @@
  *  4. CryptoMate credits the card's available_credit automatically.
  *
  * Why not 1inch / DEX swap?
- *   Orden Global (chain_id 8532) is a private chain. No public DEX supports it.
+ *   Orden Global (chain_id 5550) is a private chain. No public DEX supports it.
  *   VetaWallet operates the liquidity bridge internally via its own treasury.
  *
  * Required env vars:
