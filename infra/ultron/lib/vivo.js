@@ -147,7 +147,15 @@ async function leer() {
       monedas: Array.isArray(aucMonedas.datos?.monedas) ? aucMonedas.datos.monedas.map((m) => m.codigo) : null,
     },
     wallet: { ...CASAS.wallet, vivo: wSalud.ok, http: wSalud.http, ms: wSalud.ms, error: wSalud.error, datos: wSalud.datos },
-    genesis: { ...CASAS.genesis, vivo: gSalud.ok, http: gSalud.http, ms: gSalud.ms, error: gSalud.error },
+    genesis: { ...CASAS.genesis, vivo: gSalud.ok, http: gSalud.http, ms: gSalud.ms, error: gSalud.error,
+      /* Genesis dice en su /healthz qué le falta para estar en regla —la
+         bitácora sin firmar, operadores sin segundo factor, roturas de la
+         cadena selladas—. Se leía y se tiraba: lo único que se guardaba era
+         «contesta / no contesta». Es la casa de la IDENTIDAD de la gente: lo
+         que le falta para estar en regla es exactamente lo que la junta tiene
+         que ver sin preguntar. */
+      enRegla: gSalud.datos?.cumplimiento?.completo ?? null,
+      leFalta: Array.isArray(gSalud.datos?.cumplimiento?.falta) ? gSalud.datos.cumplimiento.falta : null },
     ordenscan: {
       ...CASAS.ordenscan, vivo: scanTotal.ok, http: scanTotal.http, ms: scanTotal.ms, error: scanTotal.error,
       /* El campo se llama `blockTotal`. Aquí decía `totalBlock` —las mismas dos
@@ -257,7 +265,10 @@ function paraElModelo(v) {
   l.push(`AuCorp: ${v.aucorp.vivo ? 'VIVA' : 'NO CONTESTA'} · tasas ${v.aucorp.tasas} (${v.aucorp.tasasCuando || '?'}) · sanciones ${v.aucorp.sanciones?.registros ?? '?'} registros del ${v.aucorp.sanciones?.fechaDescarga || '?'} · ${v.aucorp.monedas?.length ?? '?'} monedas`);
   if (v.aucorp.naturaleza) l.push(`AuCorp es: ${v.aucorp.naturaleza}`);
   l.push(`Veta Wallet backend: ${v.wallet.vivo ? 'VIVO' : 'NO CONTESTA'} (${v.wallet.http})`);
-  l.push(`Genesis ID: ${v.genesis.vivo ? 'VIVO' : 'NO CONTESTA'} (${v.genesis.http})`);
+  /* Y lo que le falta a Genesis para estar en regla, con todas las letras: es
+     la casa de la identidad de la gente y ULTRON tiene que poder decirlo sin
+     que se lo pregunten (regla 7). */
+  l.push(`Genesis ID: ${v.genesis.vivo ? 'VIVO' : 'NO CONTESTA'} (${v.genesis.http})${v.genesis.enRegla === false && v.genesis.leFalta?.length ? ` · LE FALTA para estar en regla: ${v.genesis.leFalta.join('; ')}` : v.genesis.enRegla === true ? ' · en regla' : ''}`);
   l.push(`OrdenScan (explorador de la 5550): ${v.ordenscan.vivo ? 'VIVO' : 'NO CONTESTA'} · bloque ${v.ordenscan.bloqueScan ?? '?'}`);
   return l.join('\n');
 }

@@ -218,6 +218,40 @@ titulo('el tablero: cada cifra de una lectura');
 }
 
 // ── subir un archivo de verdad ─────────────────────────────────────────────
+titulo('EL NEGOCIO: el tablero enseña por fin una cifra de negocio');
+{
+  /* El tablero tenía once paneles y ninguno de negocio: se veía si cada casa
+     CONTESTA, no a cuánto está el ORIGEN, si la puerta del dinero está abierta
+     ni si las listas de cumplimiento están al día. Ni una de estas cifras es
+     nueva: todas venían en /vivo y se tiraban. */
+  const r = await p.evaluate(() => {
+    OS._adentro.pintarNegocio({
+      origen: { origenUsd: 2.587519, oroOnzaUsd: 4426.45, fuente: 'coingecko' },
+      ordenex: { compraUsdt: 'abierta', cadena: true, mercados: [{ mercado: 'AUKA-ORIGEN', mejorVenta: 4365.3, enOrigen: 1710.69, ultimo: null }] },
+      aucorp: { sanciones: { registros: 19321, fechaDescarga: '2026-09-02', vencidas: false }, tasas: true, tasasCuando: '2026-09-06T00:02:31.000Z' },
+      genesis: { enRegla: false, leFalta: ['bitácora sin firmar', 'segundo factor sin activar en 3 operadores'] },
+    });
+    return { t: document.querySelector('#negocio').innerText, sub: document.querySelector('#neg-sub').textContent };
+  });
+  decir(/2[.,]587519/.test(r.t), 'el precio del ORIGEN, con los decimales que hacen falta para verlo mover', r.t.split('\n')[1]);
+  decir(/4[.,\s]?426[.,]45/.test(r.t), 'y la onza de oro que lo referencia', JSON.stringify(r.t.slice(0, 160)));
+  decir(/ABIERTA/.test(r.t), 'si la puerta del dinero está abierta: lo primero antes de decirle a alguien que mande dinero');
+  decir(/AUKA-ORIGEN/.test(r.t) && /piden/.test(r.t) && /vale/.test(r.t),
+    'a qué precio se puede vender hoy: la mejor oferta y lo que vale de referencia', r.t.split('\n').find((l) => /AUKA/.test(l)));
+  decir(/19[.,\s]?321/.test(r.t) && /2026-09-02/.test(r.t), 'las listas de sanciones, con su fecha', JSON.stringify(r.t.slice(-220)));
+  decir(/bitácora sin firmar/.test(r.t), 'y lo que le falta a Genesis para estar en regla, con todas las letras');
+  decir(/2[.,]5875/.test(r.sub) && /abierta/.test(r.sub), 'el resumen del panel dice lo mismo sin abrirlo', r.sub);
+
+  /* Y lo que NO se leyó dice «—», como en todo el tablero: un hueco se nota y
+     un número plausible se cree. */
+  const vacio = await p.evaluate(() => {
+    OS._adentro.pintarNegocio(null);
+    return { t: document.querySelector('#negocio').innerText, sub: document.querySelector('#neg-sub').textContent };
+  });
+  decir(!/\d/.test(vacio.t.replace(/ORIGEN|AUKA/g, '')) || /—/.test(vacio.t), 'sin lectura no inventa un precio: pone «—»', vacio.t.split('\n').slice(0, 3).join(' / '));
+  decir(/sin lectura/.test(vacio.sub), 'y lo dice en el rótulo del panel', vacio.sub);
+}
+
 titulo('subir un archivo, y que le saque el texto');
 {
   const pdf = join(AQUI, '..', '..', '..', 'documentos', 'Orden-Global-Video-GPU-Propia.pdf');

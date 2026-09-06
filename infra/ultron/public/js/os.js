@@ -105,8 +105,79 @@ const OS = (() => {
     return s < 60 ? `hace ${s} s` : s < 3600 ? `hace ${Math.round(s / 60)} min` : `hace ${Math.round(s / 3600)} h`;
   };
 
+  /* ══ EL NEGOCIO ═══════════════════════════════════════════════════════════
+   * «Agregar Dashboard y todo el ecosistema.»
+   *
+   * El tablero tenía once paneles y ninguno de negocio: se veía si cada casa
+   * CONTESTA, no a cuánto está el ORIGEN, si la puerta del dinero está abierta,
+   * a qué precio se puede vender hoy ni si las listas de cumplimiento están al
+   * día. Un tablero de junta que no enseña una cifra de negocio es un panel de
+   * sistemas.
+   *
+   * Ni una cifra de aquí es nueva: TODAS venían ya en `/vivo` y se tiraban.
+   * Y ninguna se inventa: lo que no se leyó dice «—», como en todo el tablero.
+   */
+  function pintarNegocio(v) {
+    const caja = $('#negocio'); if (!caja) return;
+    const filas = [];
+    const fila = (q, val, clase = '') => filas.push(`<div class="fila"><span>${esc(q)}</span><span class="${clase}">${esc(val)}</span></div>`);
+    const titulo = (t) => filas.push(`<div class="caja-tit">${esc(t)}</div>`);
+
+    titulo('EL ORIGEN');
+    /* Seis decimales: el ORIGEN vale unos dos dólares y medio, y con dos
+       decimales las diferencias que importan no se ven. */
+    fila('PRECIO', v?.origen?.origenUsd ? `${v.origen.origenUsd.toFixed(6)} USD` : nada, v?.origen ? SI : NOSE);
+    fila('ONZA DE ORO', v?.origen?.oroOnzaUsd ? `${num(v.origen.oroOnzaUsd, 2)} USD` : nada, v?.origen?.oroOnzaUsd ? '' : NOSE);
+    fila('REFERENCIA', v?.origen?.fuente || nada, v?.origen?.fuente ? '' : NOSE);
+
+    /* A QUÉ PRECIO SE PUEDE VENDER HOY. Los pares de la casa todavía no tienen
+       operaciones —`ultimo` es nulo de verdad, no es un fallo de lectura— así
+       que lo que contesta esa pregunta es la mejor oferta puesta y la
+       referencia en ORIGEN. */
+    const mercados = v?.ordenex?.mercados || [];
+    if (mercados.length) {
+      titulo('LOS MERCADOS · en ORIGEN');
+      for (const m of mercados.slice(0, 6)) {
+        const ref = m.enOrigen ? ` · vale ${num(m.enOrigen, 2)}` : '';
+        fila(m.mercado, m.mejorVenta ? `piden ${num(m.mejorVenta, 2)}${ref}` : (m.enOrigen ? `sin oferta${ref}` : 'sin oferta'),
+          m.mejorVenta ? '' : NOSE);
+      }
+    }
+
+    titulo('LA PUERTA DEL DINERO');
+    /* La compra con USDT cerrada es lo primero que hay que saber antes de
+       decirle a nadie que mande dinero. */
+    const cu = v?.ordenex?.compraUsdt;
+    fila('COMPRA CON USDT', cu ? cu.toUpperCase() : nada, cu === 'abierta' ? SI : cu ? NO : NOSE);
+    fila('CADENA DE ORDENEX', v?.ordenex?.cadena === true ? 'CONECTADA' : v?.ordenex?.cadena === false ? 'SIN CADENA' : nada,
+      v?.ordenex?.cadena === true ? SI : v?.ordenex?.cadena === false ? NO : NOSE);
+
+    titulo('CUMPLIMIENTO');
+    const sa = v?.aucorp?.sanciones;
+    fila('LISTAS DE SANCIONES', sa?.registros ? `${num(sa.registros)} del ${sa.fechaDescarga || '?'}` : nada,
+      !sa ? NOSE : sa.vencidas ? NO : SI);
+    fila('TASAS FIAT', v?.aucorp?.tasas === true ? `al día${v.aucorp.tasasCuando ? ' · ' + String(v.aucorp.tasasCuando).slice(0, 10) : ''}` : v?.aucorp?.tasas === false ? 'SIN CARGAR' : nada,
+      v?.aucorp?.tasas === true ? SI : v?.aucorp?.tasas === false ? NO : NOSE);
+    /* Genesis dice en su /healthz qué le falta para estar en regla. Se leía y
+       se tiraba: es la casa de la IDENTIDAD de la gente. */
+    const g = v?.genesis;
+    fila('GENESIS ID', g?.enRegla === true ? 'EN REGLA' : g?.enRegla === false ? `${g.leFalta?.length || 0} cosa${(g.leFalta?.length || 0) === 1 ? '' : 's'} por resolver` : nada,
+      g?.enRegla === true ? SI : g?.enRegla === false ? 'amb' : NOSE);
+    for (const f of (g?.leFalta || []).slice(0, 3)) {
+      filas.push(`<div class="sub" style="padding-left:10px;line-height:1.35">· ${esc(f)}</div>`);
+    }
+
+    caja.innerHTML = filas.join('');
+    const abierta = cu === 'abierta';
+    $('#neg-sub').textContent = v?.origen
+      ? `ORIGEN ${v.origen.origenUsd.toFixed(4)} USD · compra ${cu || '?'}`
+      : 'sin lectura del precio';
+    $('#neg-sub').className = 'sub ' + (!v ? 'mal' : abierta ? 'ok' : 'amb');
+  }
+
   function pintarVivo(v) {
     ultimoVivo = v;
+    pintarNegocio(v);
     /* ── el techo: la altura de la cadena ────────────────────────────────────
        UNA cadena, dos lectores. Ordenex y OrdenScan leen los dos la 5550; el
        tablero llegó a rotularlos «5550» y «8532» como si fueran dos cadenas, y
@@ -2611,7 +2682,7 @@ const OS = (() => {
     else unaVez();
   }
 
-  return { enviar, estado, avisar, mente, despertarVoz, abrirAjustes, _adentro: { pintarVivo, pintarSalud, pintarSaludPropia, pintarArchivos, pintarPendientes, pintarAutorizaciones, pintarDicho, DESPIERTA, CASAS, entrarArmar, salirArmar, aplicarTablero, tableroActual, toqueNucleo, pedirPermisos, botonDeHablar, pintarCaja, pintarRegistro, borrarArchivo, chips,
+  return { enviar, estado, avisar, mente, despertarVoz, abrirAjustes, _adentro: { pintarVivo, pintarSalud, pintarSaludPropia, pintarArchivos, pintarPendientes, pintarAutorizaciones, pintarDicho, DESPIERTA, CASAS, entrarArmar, salirArmar, aplicarTablero, tableroActual, toqueNucleo, pedirPermisos, botonDeHablar, pintarCaja, pintarRegistro, borrarArchivo, chips, pintarNegocio,
     /* Solo para la prueba: mueve el reloj de la última lectura buena hacia
        atrás, para comprobar que la pantalla avisa cuando se queda vieja sin
        tener que esperar diez minutos de verdad. */
