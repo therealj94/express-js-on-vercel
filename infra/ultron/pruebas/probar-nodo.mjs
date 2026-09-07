@@ -361,6 +361,38 @@ titulo('la guarda de lo prometido: no se dice que dejó un PDF que no existe');
   decir(!/le dejo|se lo dej|queda listo/i.test(r2.texto) && /no pude/i.test(r2.texto),
     'y si insiste en prometer sin hacerlo, el texto se corrige a «no pude»', r2.texto.slice(0, 90));
 
+  /* ── Y SI PIDIERON UN PDF, NO BASTA CON EL DOCUMENTO ────────────────────
+     Probado contra producción con la primera versión de esta guarda: ULTRON
+     llamó a `crear_documento` —y la guarda se dio por satisfecha— pero nunca
+     llamó a `exportar_pdf`. Resultado: «le dejo el PDF a un toque» con
+     `acciones: []`. El documento existía en la biblioteca, el PDF no, y no
+     había ni un botón que tocar. Quien pide un PDF quiere un archivo. */
+  /* El id tiene que ser el de un documento DE VERDAD: `exportar_pdf` busca el
+     documento en la biblioteca y si no lo encuentra no deja botón — que fue
+     exactamente lo que enseñó esta prueba la primera vez que se escribió. */
+  const doc = await memoria.guardarDocumento({ titulo: 'Los tres pendientes', texto: '# Tres pendientes\n\nUno, dos y tres.', autor: JOSE.correo });
+  guion = [{ texto: '', llamadas: [{ name: 'crear_documento', arguments: { titulo: 'Los tres pendientes', texto: '# Tres pendientes\n\nUno, dos y tres.' } }] },
+           { texto: 'Listo, le dejo el PDF a un toque.' },
+           { texto: '', llamadas: [{ name: 'exportar_pdf', arguments: { id: String(doc._id) } }] },
+           { texto: 'Ahí lo tiene para bajar.' }];
+  const r4 = await cerebro.pensar({ miembro: JOSE, junta: JUNTA, texto: 'armame un PDF con los tres pendientes', conversacionId: String(conv._id) });
+  decir(r4.herramientas.some((h) => h.nombre === 'exportar_pdf'),
+    'crear el documento NO alcanza si pidieron PDF: se le devuelve hasta que lo exporte',
+    r4.herramientas.map((h) => h.nombre).join(','));
+  decir((r4.acciones || []).some((a) => /formato=pdf/.test(a.url || '')),
+    'y queda el botón para bajarlo, que es lo que la persona pidió',
+    JSON.stringify((r4.acciones || []).map((a) => a.nombre)));
+
+  /* Si el documento quedó escrito pero el PDF no salió, se dice ESO y no un
+     «no pude» que tira a la basura el trabajo que sí se hizo. */
+  guion = [{ texto: '', llamadas: [{ name: 'crear_documento', arguments: { titulo: 'Otro', texto: '# Otro\n\nTexto.' } }] },
+           { texto: 'Listo, le dejo el PDF.' },
+           { texto: 'De verdad, el PDF queda listo.' },
+           { texto: 'Ya se lo dejé, el documento está listo.' }];
+  const r5 = await cerebro.pensar({ miembro: JOSE, junta: JUNTA, texto: 'quiero el PDF para descargar', conversacionId: String(conv._id) });
+  decir(/qued[oó] en la biblioteca/i.test(r5.texto) && /no logré dejarlo en PDF/i.test(r5.texto),
+    'y si el PDF no sale, se dice que el documento SÍ quedó escrito, no un «no pude» a secas', r5.texto.slice(0, 110));
+
   /* Lo que NO tiene que disparar: ofrecer, preguntar, o dejar un botón de
      abrir —que sí es verdad—. Una guarda que salta de más molesta más de lo
      que arregla. */

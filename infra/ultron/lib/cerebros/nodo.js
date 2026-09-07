@@ -750,16 +750,26 @@ async function pensar({ miembro, junta, texto, conversacionId, previa: previaDad
     new RegExp(`\\b(?:${DOC})\\b[^.]{0,40}(?:queda|est[a\u00e1])\\s+list[oa]`, 'i'),
   ];
   const PROMETE = { test: (t) => PROMETE_RE.some((r) => r.test(t)) };
-  const CREA = new Set(['crear_documento', 'exportar_pdf']);
-  const creoAlgo = () => usadas.some((h) => CREA.has(h.nombre));
-  if (PROMETE.test(textoFinal) && !creoAlgo()) {
+  /* SE MIDE CONTRA LO QUE PIDIERON, no contra «hizo algo». Primera versión de
+     esta guarda, probada contra producción: ULTRON llamó a `crear_documento`
+     —así que la guarda se dio por satisfecha— pero NUNCA llamó a
+     `exportar_pdf`, y siguió diciendo «le dejo el PDF a un toque» con
+     `acciones: []`. O sea: el documento existía en la biblioteca y el PDF no,
+     y no había ni un botón que tocar. Quien pidió un PDF quiere un archivo,
+     no una entrada en una lista. */
+  const pidioPdf = /\b(pdf|descargar|descarga|bajar(?:lo|la)?|para bajar|imprimir)\b/i.test(texto);
+  const creoDoc = () => usadas.some((h) => h.nombre === 'crear_documento');
+  const hayPdf = () => ctx.acciones.some((a) => a.tipo === 'abrir' && /formato=pdf/.test(a.url || ''));
+  const cumplio = () => (pidioPdf ? hayPdf() : creoDoc());
+  if (PROMETE.test(textoFinal) && !cumplio()) {
     emitir('pensando', { vuelta: MAX_VUELTAS, motivo: 'dijo que lo dejó sin haberlo hecho' });
     mensajes.push({ role: 'assistant', content: textoFinal });
-    mensajes.push({ role: 'user', content: '[sistema] Dijiste que dejabas un documento o un PDF y NO lo creaste: '
-      + 'no llamaste a crear_documento. Ahora tenés a la vista crear_documento y exportar_pdf. '
-      + 'Escribilo COMPLETO con crear_documento y, si pidieron PDF, dejalo con exportar_pdf. '
-      + 'Después contestá en dos líneas. Si de verdad no se puede, decí que no pudiste y por qué — '
-      + 'pero no vuelvas a decir que lo dejaste si no está.' });
+    /* El aviso dice EXACTAMENTE qué falta, que no es lo mismo según el caso:
+       o no escribió nada, o lo escribió y no lo dejó en PDF. */
+    mensajes.push({ role: 'user', content: '[sistema] ' + (creoDoc()
+      ? 'Escribiste el documento pero NO llamaste a exportar_pdf, así que no hay ningún botón para bajarlo y le dijiste a la persona que se lo dejabas. Llamá AHORA a exportar_pdf con el id del documento que acabás de crear.'
+      : 'Dijiste que dejabas un documento o un PDF y no lo creaste: no llamaste a crear_documento. Escribilo COMPLETO con crear_documento y, si pidieron PDF, dejalo después con exportar_pdf.')
+      + ' Después contestá en dos líneas. Si de verdad no se puede, decí que no pudiste y por qué — pero no vuelvas a decir que lo dejaste si no está.' });
     for (const c of ['documentos']) if (!cajas.includes(c)) cajas.push(c);
     let dicho = '';
     const r = await pedirDelTurno({ model: MODELO, messages: mensajes, tools: herramientas.paraOllama({ cajas }), stream: true, options: opciones }, { alTrozo: (t) => { dicho += t; } });
@@ -781,9 +791,13 @@ async function pensar({ miembro, junta, texto, conversacionId, previa: previaDad
     /* Y si después de todo sigue prometiendo sin haberlo hecho, se dice la
        verdad en su lugar. Una promesa falsa en pantalla es peor que un «no
        pude»: la persona se va a buscar un archivo que no existe. */
-    if (PROMETE.test(textoFinal) && !creoAlgo()) {
-      console.warn('[nodo] prometió un documento y no lo creó ni al segundo intento: se corrige el texto');
-      textoFinal = 'No pude armar el documento en este turno. Pídamelo otra vez y lo escribo completo.';
+    if (PROMETE.test(textoFinal) && !cumplio()) {
+      console.warn(`[nodo] prometió ${pidioPdf ? 'un PDF' : 'un documento'} y no lo dejó ni al segundo intento: se corrige el texto`);
+      /* Y se dice lo que DE VERDAD pasó, que no es lo mismo: si el documento
+         quedó escrito, decir «no pude» sería tirar el trabajo hecho. */
+      textoFinal = creoDoc()
+        ? 'Escribí el documento y quedó en la biblioteca, pero no logré dejarlo en PDF. Pídame el PDF otra vez y lo saco de ahí.'
+        : 'No pude armar el documento en este turno. Pídamelo otra vez y lo escribo completo.';
       emitir('reemplazo', { texto: textoFinal });
     }
   }
