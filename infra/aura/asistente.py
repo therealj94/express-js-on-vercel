@@ -591,13 +591,38 @@ def cargar_saber():
 
 
 RUTA_PROMPT = DATOS / 'PROMPT-AURA.md'
+# ── LA CABECERA DE LA CASA ───────────────────────────────────────────────────
+#
+# El mismo texto, byte por byte, con el que arranca ULTRON. Son dos programas
+# distintos en dos maquinas distintas y comparten esto a proposito, por dos
+# motivos:
+#
+# 1 · LA VERDAD DE LA CASA SE ESCRIBE UNA VEZ. «Referenciado, nunca
+#     respaldado», «AuCorp no es un banco», «no se nombra un regulador» —lo que
+#     costo el 30 de agosto— estaban escritas dos veces con palabras distintas.
+#     Dos copias de una regla es una regla que un dia se separa, y la que se
+#     quede vieja es la que va a hablar con alguien.
+#
+# 2 · Y CUESTA SEGUNDOS. AU-RA y ULTRON comparten UNA ranura del motor, que
+#     reusa el prompt ya evaluado mientras coincida byte a byte DESDE EL
+#     PRINCIPIO. Hasta hoy no compartian ni una letra: cada vez que uno entraba
+#     le borraba al otro el prompt entero. Medido en la tarjeta el 7-sep con
+#     esta cabecera puesta, cambiando de uno a otro: se reuso el 81 % del
+#     prompt.
+#
+# AU-RA SIGUE SIENDO AU-RA. La cabecera son los hechos de la casa y las reglas
+# que valen para todos; el nombre, el caracter y la forma de hablar siguen
+# enteros abajo, en PROMPT-AURA.md, y son suyos.
+#
+# Va PRIMERO y sin nada delante. Una sola letra antes y no coincide nada.
+RUTA_CABECERA = DATOS / 'cabecera-de-la-casa.md'
 
 
 def cargar_prompt():
     md = RUTA_PROMPT.read_text()
     i = md.index('```')
     j = md.index('```', i + 3)
-    return md[i + 3:j].strip()
+    return RUTA_CABECERA.read_text().strip() + '\n\n' + md[i + 3:j].strip()
 
 
 def todo_el_saber(saber, idioma='es'):
@@ -3065,6 +3090,7 @@ def huella_viva():
     return {
         'asistente': h(os.path.abspath(__file__)),
         'prompt': h(RUTA_PROMPT),
+        'cabecera': h(RUTA_CABECERA),
         'desde': int(time.time()),
         'modelos': MODELO_RAPIDA,
         'abierta': probadores() is None,

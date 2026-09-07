@@ -95,7 +95,12 @@ titulo('un turno simple: el texto sale en vivo y el prompt lleva lo suyo');
      cerebro no está cuidando nada. Lo que importa es que se pida EL MISMO que
      el módulo dice usar, y en streaming. */
   decir(p.model === nodo.MODELO && p.stream === true, `pide el modelo que dice usar (${nodo.MODELO}), en streaming`, p.model);
-  decir(p.messages[0].role === 'system' && /Sos ULTRON FP/.test(p.messages[0].content) && /NUNCA «respaldados»/.test(p.messages[0].content), 'el system lleva la identidad y las reglas');
+  /* El system arranca con LA CABECERA DE LA CASA —el mismo texto con el que
+     arranca AU-RA, byte a byte— y la identidad de ULTRON va detrás. El orden
+     importa: es lo que hace que las dos compartan prefijo en la única ranura
+     del motor. */
+  decir(p.messages[0].role === 'system' && /^LA CASA\n/.test(p.messages[0].content), 'el system ARRANCA con la cabecera de la casa');
+  decir(/Sos ULTRON FP/.test(p.messages[0].content) && /Nunca se dice «respaldados»/.test(p.messages[0].content), 'y lleva la identidad y las reglas');
   // El 5-sep el modelo cerró una respuesta con «¿Podrías proporcionar más
   // detalles?». A un miembro de la junta se le habla de usted, y para un modelo
   // chico la regla tiene que venir con las formas puestas, no en abstracto.
@@ -278,11 +283,11 @@ titulo('hablando, el prompt es OTRO: menos fichas antes de la primera palabra');
      los que llegan a un acta. Estas son las que protegen a la casa y tienen
      que estar EXACTAS también cuando ULTRON habla. */
   const sv = hablado.messages[0].content;
-  decir(/referenciados/.test(sv) && /NUNCA «respaldados»/.test(sv),
+  decir(/REFERENCIADOS/.test(sv) && /Nunca se dice «respaldados»/.test(sv),
     'hablando también dice «referenciados» y nunca «respaldados»');
-  decir(/no está «regulada» ni «registrada»/.test(sv) && /AuCorp NO es un banco/.test(sv),
+  decir(/no está «regulada» ni «registrada»/.test(sv) && /AuCorp NO ES UN BANCO/.test(sv),
     'ni «regulada» ni «registrada», y AuCorp no es un banco');
-  decir(/No movés dinero/.test(sv) && /no tocás llaves ni frases de respaldo/.test(sv),
+  decir(/NO SE MUEVE DINERO/.test(sv) && /no se tocan llaves\s+privadas ni frases de respaldo/.test(sv.replace(/\s+/g,' ')),
     'no mueve dinero ni toca llaves');
   decir(/5550/.test(sv) && /8532/.test(sv), 'y la cadena viva sigue siendo la 5550');
   decir(/mas_herramientas/.test(sv), 'y sabe que tiene cajas que pedir antes de decir «no puedo»');
@@ -424,7 +429,8 @@ titulo('el presupuesto en FICHAS: el saber recibe lo que sobra, y nunca se pasa'
   const p = pedidos.at(-1);
   const total = p.messages.reduce((a, m) => a + nodo._adentro.fichas(m.content || ''), 0);
   decir(total <= nodo._adentro.PRESUPUESTO_FICHAS, `el pedido entero cabe en ${nodo._adentro.PRESUPUESTO_FICHAS} fichas (estimadas a 2,4 letras)`, `${total} fichas`);
-  decir(/Sos ULTRON FP/.test(p.messages[0].content) && /NUNCA «respaldados»/.test(p.messages[0].content), 'y la identidad y las reglas siguen al principio, enteras');
+  decir(/^LA CASA\n/.test(p.messages[0].content) && /Sos ULTRON FP/.test(p.messages[0].content) && /Nunca se dice «respaldados»/.test(p.messages[0].content),
+    'y la cabecera y la identidad siguen al principio, enteras');
   decir(nodo._adentro.PRESUPUESTO_FICHAS + 1500 < nodo._adentro.CTX, 'con sitio para la respuesta debajo del contexto de AU-RA', `${nodo._adentro.PRESUPUESTO_FICHAS} + 1500 < ${nodo._adentro.CTX}`);
 }
 

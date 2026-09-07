@@ -15,6 +15,7 @@
  *   · que proponer_envio se niegue con un destinatario que no es de la junta.
  */
 import { createRequire } from 'node:module';
+import { readFileSync } from 'node:fs';
 const require = createRequire(import.meta.url);
 
 let fallos = 0;
@@ -111,8 +112,22 @@ titulo('el prompt lleva lo que tiene que llevar');
   decir(/La junta se reúne los martes/.test(sys), 'lleva la memoria de la junta');
   decir(/EL SABER DE LA CASA/.test(sys) && /gramin|ORIGEN/i.test(sys.split('EL SABER DE LA CASA')[1]), 'lleva secciones del saber sobre la pregunta');
   decir(/LA VOZ DE LA CASA/.test(sys), 'y la voz de la casa (fichas públicas)');
-  decir(/NUNCA «respaldados»/.test(sys) && /no está «regulada»/.test(sys), 'con las reglas que no se negocian: «referenciado», no «respaldado»; no «regulada»');
-  decir(/AuCorp NO es un banco/.test(sys), 'y que AuCorp no es un banco');
+  /* ── LA CABECERA DE LA CASA, ENTERA Y AL PRINCIPIO ──────────────────────
+     Las reglas que protegen a la gente —referenciado nunca respaldado, ni
+     regulada ni registrada, AuCorp no es un banco— ya no se escriben aquí:
+     viven en lib/cabecera-de-la-casa.md, el mismo texto con el que arranca
+     AU-RA. Se comprueba contra EL ARCHIVO, no contra una copia escrita a mano
+     en la prueba: así, si alguien suaviza una regla en el archivo, esto no se
+     entera de nada... por eso además se comprueban las palabras exactas. */
+  const CABECERA = readFileSync(new URL('../lib/cabecera-de-la-casa.md', import.meta.url), 'utf8').trim();
+  decir(bloques[0].text.startsWith(CABECERA),
+    'el prompt ARRANCA con la cabecera de la casa, byte a byte: es lo que comparte la ranura con AU-RA');
+  decir(/nunca se dice «respaldados»/i.test(CABECERA) && /REFERENCIADOS al\s+oro y a la plata/.test(CABECERA.replace(/\s+/g, ' ')),
+    'y la cabecera dice «referenciados», nunca «respaldados»');
+  decir(/no está «regulada» ni «registrada»/.test(CABECERA) && /AuCorp NO ES UN BANCO/.test(CABECERA),
+    'ni «regulada» ni «registrada», y AuCorp no es un banco');
+  decir(/SEC/.test(CABECERA) && /era falso/.test(CABECERA),
+    'y lleva escrito el incidente del 30-ago: por qué nombrar un regulador es de las peores mentiras');
   decir(/Estado vivo|NO CONTESTA|no leído/i.test(sys), 'y el estado vivo, aunque sea «no contesta» (sin red en la prueba)');
   decir(c2.llamadas[0].tools.some((t) => t.type === 'web_search_20250305'), 'con la búsqueda web de Anthropic entre las herramientas');
   decir(c2.llamadas[0].tools.map((t) => t.name).includes('proponer_envio'), 'y proponer_envio, que prepara y no manda');

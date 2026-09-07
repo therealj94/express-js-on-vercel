@@ -61,6 +61,12 @@ ARCHIVOS = sorted(
 # mismas que usa el cerebro.
 LADO = {
     'PROMPT-AURA.md': os.path.join(AQUI, 'PROMPT-AURA.md'),
+    # LA CABECERA DE LA CASA. El mismo texto con el que arranca ULTRON, byte
+    # por byte: la verdad de la casa y las reglas que valen para todos, escritas
+    # UNA vez. Si no sube, AU-RA arranca sin ella y deja de compartir prefijo
+    # con ULTRON — vuelven los 6,5 segundos. `probar-cabecera.py` comprueba que
+    # esta copia y la de ULTRON son identicas.
+    'cabecera-de-la-casa.md': os.path.join(AQUI, 'cabecera-de-la-casa.md'),
     # Las unidades del parte, desde el repositorio. Estuvieron escritas a la vez
     # aqui y en `instalar-en-nodo.sh`, y dos sitios que mandan sobre la misma
     # unidad es como una de las dos se queda vieja sin que nadie lo note.

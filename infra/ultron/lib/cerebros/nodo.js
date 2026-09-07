@@ -58,7 +58,18 @@ const PLAZO_MS = 170_000;
    estado vivo) y el saber recibe lo que sobra, no un tope fijo. Y cada
    llamada real devuelve cuántas fichas evaluó: si se acerca al techo, se
    escribe en el registro con todas las letras. */
-const CTX = Number(process.env.ULTRON_NODO_CTX || 12_288);
+/* ── LA VENTANA QUE DE VERDAD HAY ────────────────────────────────────────────
+   Estaba en 12 288 desde que esa era la ventana del nodo. El 7-sep la ventana
+   de la tarjeta pasó a 24 576 —la eligió el tráfico real: siete días de
+   registro, con un pico de 21 868 fichas en los turnos largos de herramientas—
+   y este número se quedó atrás. Un presupuesto calculado sobre una ventana que
+   ya no existe no es prudencia: es recortar el saber por una cuenta vieja, y
+   se vio en el registro («sin sitio para el saber: la base ya ocupa 6 037
+   fichas de 8 188») justo cuando la cabecera de la casa entró al prompt.
+   Se pone en 16 384 y no en los 24 576 completos a propósito: lo que sobra de
+   ahí para arriba es el aire de las VUELTAS de herramientas, que se van
+   sumando al hilo, no permiso para escribir prompts más largos. */
+const CTX = Number(process.env.ULTRON_NODO_CTX || 16_384);
 const RESERVA_SALIDA = 1_500;
 /* Las herramientas van en la plantilla de Ollama y cuestan fichas que no se
    ven desde aquí, así que se reservan aparte de la salida.

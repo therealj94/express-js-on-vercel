@@ -577,8 +577,16 @@ titulo('los pendientes con fecha: lo que vence primero');
 {
   const memoria = require('../lib/memoria.js');
   const a = await memoria.anotarPendiente({ texto: 'pendiente sin fecha para la prueba de orden', creadoPor: 'prueba' });
-  const b = await memoria.anotarPendiente({ texto: 'pendiente que vence pasado mañana para la prueba', creadoPor: 'prueba', vence: new Date(Date.now() + 2 * 86400000).toISOString().slice(0, 10) });
-  const c = await memoria.anotarPendiente({ texto: 'pendiente que venció ayer para la prueba', creadoPor: 'prueba', vence: new Date(Date.now() - 86400000).toISOString().slice(0, 10) });
+  /* ── LAS FECHAS SE ARMAN EN HONDURAS, NO EN UTC ────────────────────────
+     `toISOString()` da el día en UTC, y Honduras va seis horas atrás: de las
+     seis de la tarde a medianoche, el «hoy» de UTC ya es el «mañana» de aquí.
+     Con eso, «ayer» le salía a la prueba un día que en Honduras todavía era
+     HOY, y esta comprobación se ponía roja sola cada tarde. El código estaba
+     bien —dice «vence HOY» porque en Honduras vence hoy—; la que mentía era la
+     prueba. Una suite que se pone roja todas las tardes enseña a no mirarla. */
+  const enHonduras = (dias) => new Date(Date.now() - 6 * 3600_000 + dias * 86400000).toISOString().slice(0, 10);
+  const b = await memoria.anotarPendiente({ texto: 'pendiente que vence pasado mañana para la prueba', creadoPor: 'prueba', vence: enHonduras(2) });
+  const c = await memoria.anotarPendiente({ texto: 'pendiente que venció ayer para la prueba', creadoPor: 'prueba', vence: enHonduras(-1) });
   const l = await memoria.pendientes({ limite: 200 });
   const pos = (id) => l.findIndex((p) => String(p._id) === String(id));
   decir(pos(c._id) < pos(b._id) && pos(b._id) < pos(a._id), 'vencido antes que futuro, y con fecha antes que sin fecha', `${pos(c._id)} < ${pos(b._id)} < ${pos(a._id)}`);
