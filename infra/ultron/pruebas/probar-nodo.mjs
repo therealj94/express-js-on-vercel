@@ -401,15 +401,38 @@ titulo('la guarda de lo prometido: no se dice que dejó un PDF que no existe');
   decir(/Le dejo Ordenex/.test(r3.texto), 'ofrecer un documento o dejar un botón NO cuenta como prometerlo', r3.texto.slice(0, 80));
 }
 
-titulo('crear un documento y dejarlo en PDF están en la MISMA caja');
+titulo('un PDF es UNA llamada, no cuatro vueltas y dos cajas');
 {
-  /* Estaban en dos cajas distintas, así que un PDF pedía cuatro vueltas: abrir
-     una caja, crear, abrir la otra, exportar. Con seis vueltas de tope y un
-     modelo de 27 mil millones, eso no llegaba — y en vez de decirlo, mentía. */
+  /* ── EL CAMINO QUE HABÍA ──────────────────────────────────────────────────
+     `crear_documento` vivía en una caja y `exportar_pdf` en otra, así que un
+     PDF pedía cuatro vueltas: abrir caja, crear, abrir otra caja, exportar.
+     Medido contra producción tres veces el 7-sep: el modelo gastaba las
+     vueltas abriendo cajas, se perdía, y contestaba «Listo, le dejo el PDF»
+     sin haber escrito nada. No se arregla pidiéndole que se concentre: se
+     arregla haciendo que el pedido quepa en una llamada. */
+  const nucleo = herramientas.paraOllama({ cajas: [] }).map((d) => d.function?.name || d.name);
+  decir(nucleo.includes('crear_documento'),
+    'escribir un documento está SIEMPRE a la vista, sin abrir ninguna caja', `${nucleo.length} herramientas de fábrica`);
+
+  const def = herramientas.DEFINICIONES.find((d) => d.name === 'crear_documento');
+  decir(!!def.input_schema.properties.pdf,
+    'y lleva `pdf` en la misma llamada: escribirlo y dejarlo para bajar son un solo gesto');
+
+  /* Y que de verdad deje el botón, que es lo único que la persona ve. */
+  const ctx = { miembro: { correo: JOSE.correo }, documentos: [], acciones: [], junta: JUNTA, fuentes: [], memorias: [], envios: [], pendientes: [] };
+  const salida = await herramientas.correr('crear_documento',
+    { titulo: 'Los tres pendientes', markdown: '# Tres\n\nUno, dos y tres.', pdf: true }, ctx);
+  decir(ctx.acciones.some((a) => /formato=pdf/.test(a.url || '')),
+    'una sola llamada deja el documento Y el botón para bajarlo en PDF',
+    JSON.stringify(ctx.acciones.map((a) => a.nombre)));
+  decir(/PDF/.test(salida), 'y se lo dice al modelo, para que no lo intente otra vez', String(salida).slice(0, 90));
+
+  /* `exportar_pdf` sigue existiendo, y no sobra: es para sacarle el PDF a un
+     documento VIEJO, que es otra cosa que crear uno. Vive con los documentos,
+     no en la caja de acciones donde estaba. */
   const conCaja = herramientas.paraOllama({ cajas: ['documentos'] }).map((d) => d.function?.name || d.name);
-  decir(conCaja.includes('crear_documento') && conCaja.includes('exportar_pdf'),
-    'con UNA sola caja abierta se tienen las dos: escribirlo y dejarlo en PDF',
-    conCaja.filter((n) => /documento|pdf/.test(n)).join(', '));
+  decir(conCaja.includes('exportar_pdf'),
+    'y exportar_pdf queda en la caja de documentos, para los que ya estaban escritos');
 }
 
 titulo('la guarda de las citas: no se cita una herramienta que no corrió');

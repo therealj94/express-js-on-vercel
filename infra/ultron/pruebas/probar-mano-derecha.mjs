@@ -423,7 +423,19 @@ titulo('las doce herramientas de siempre, y las demás cuando se ocupen');
   decir(fichas(todas.map((d) => ({ type: 'function', function: { name: d.name, description: d.description, parameters: d.input_schema } }))) > 6000,
     'las 64 juntas pesaban más de 6 000 fichas: eso era el 81 % del encabezado');
   decir(solas.length === h.NUCLEO.size + 1, `a la mano van ${h.NUCLEO.size} y la puerta para pedir el resto`, `${solas.length} definiciones`);
-  decir(fichas(solas) < fichas(todas) / 3, 'y eso pesa menos de un tercio', `${fichas(solas)} fichas`);
+  /* ── LO QUE PESA EL NÚCLEO, CON SU PRESUPUESTO ESCRITO ────────────────────
+     Antes esto decía «menos de un tercio», y un tercio no es un presupuesto:
+     es una proporción que se mueve sola cada vez que alguien añade o quita una
+     herramienta del catálogo. El 7-sep `crear_documento` entró al núcleo —«me
+     armás un PDF» es de las tres cosas que más se piden, y estando en una caja
+     el modelo gastaba las vueltas abriéndola, se perdía y contestaba que lo
+     había dejado sin haberlo escrito— y esto se puso rojo por 58 fichas.
+     El número que importa es el absoluto: el encabezado no puede volver a
+     comerse el prompt. De 6 189 se bajó a ~2 100, y el techo son 2 600: ahí
+     caben dos o tres herramientas más a la mano si algún día hacen falta,
+     y no cabe volver a meterlas todas. */
+  decir(fichas(solas) < 2600, 'y el encabezado se queda muy por debajo de su techo de 2 600 fichas', `${fichas(solas)} fichas`);
+  decir(fichas(solas) < fichas(todas) / 2, 'ni la mitad de lo que pesaban todas juntas', `${fichas(solas)} de ${fichas(todas)}`);
   decir(solas.some((t) => t.function.name === 'mas_herramientas'), 'la puerta va siempre puesta');
   decir(/nunca se pierde|NO contestás que no podés/i.test(h.ABRIR.description),
     'y le dice al modelo la regla: si le falta algo, PIDE la caja, no contesta que no puede');

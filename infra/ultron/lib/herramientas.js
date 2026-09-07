@@ -102,8 +102,8 @@ const DEFINICIONES = [
   },
   {
     name: 'crear_documento',
-    description: 'Escribe y guarda un documento completo en markdown: memo, acta, análisis, carta o plan. Queda en la biblioteca.',
-    input_schema: { type: 'object', properties: { titulo: { type: 'string' }, tipo: { type: 'string', enum: ['memo', 'acta', 'analisis', 'carta', 'plan', 'otro'] }, markdown: { type: 'string' }, para: { type: 'string', enum: ['junta', 'fuera'] } }, required: ['titulo', 'markdown'] },
+    description: 'Escribe y guarda un documento completo en markdown: memo, acta, análisis, carta o plan. Queda en la biblioteca. Si te piden un PDF, o bajarlo, o imprimirlo, poné pdf: true y en la MISMA llamada le queda el botón para bajarlo — no hace falta nada más.',
+    input_schema: { type: 'object', properties: { titulo: { type: 'string' }, tipo: { type: 'string', enum: ['memo', 'acta', 'analisis', 'carta', 'plan', 'otro'] }, markdown: { type: 'string' }, para: { type: 'string', enum: ['junta', 'fuera'] }, pdf: { type: 'boolean', description: 'true si además hay que dejarlo listo para bajar en PDF' } }, required: ['titulo', 'markdown'] },
   },
   // ── Las manos sobre el ecosistema: leen las APIs de verdad de cada casa ───
   {
@@ -695,6 +695,18 @@ async function correrAdentro(nombre, entrada, ctx) {
           miembro: ctx.miembro.correo, conversacion: ctx.conversacionId, para: entrada.para || 'junta',
         });
         ctx.documentos.push({ _id: d._id, titulo: d.titulo, tipo: d.tipo });
+        /* ── EL PDF, EN LA MISMA LLAMADA ────────────────────────────────────
+           «Armame un PDF» pedía dos herramientas y, hasta el 7-sep, DOS CAJAS
+           distintas. Medido contra producción tres veces: el modelo abría las
+           cajas, se perdía por el camino y contestaba «Listo, le dejo el PDF»
+           sin haber creado nada. Un pedido es una intención, y esa intención
+           ahora se cumple con UNA llamada: `exportar_pdf` sigue existiendo
+           para sacarle el PDF a un documento VIEJO, que es otra cosa. */
+        if (entrada.pdf) {
+          ctx.acciones.push({ tipo: 'abrir', nombre: `${d.titulo} (PDF)`,
+            url: `/documentos/${d._id}/descargar?formato=pdf`, porQue: null });
+          return `Documento guardado con id ${d._id}: «${d.titulo}», y le dejé el botón para bajarlo en PDF, con la cabecera de Orden Global y el sello de ${d.para === 'fuera' ? 'para fuera de la junta' : 'uso interno'}. Decile en dos líneas de qué se trata.`;
+        }
         return `Documento guardado con id ${d._id}: «${d.titulo}». La persona puede bajarlo desde el panel.`;
       }
       case 'proponer_envio': {
@@ -1197,6 +1209,14 @@ const NUCLEO_DE_FABRICA = [
   'recordar',                                         // la memoria de la junta
   'ordenex_caja',                                     // los saldos, que mira a diario
   'listar_archivos', 'leer_archivo',                  // lo que sube a la pantalla
+  /* ── Y ESCRIBIR UN DOCUMENTO ───────────────────────────────────────────
+     Estaba en una caja, y «armame un PDF de esto» es de las tres cosas que
+     más se piden. Medido contra producción el 7-sep, tres veces seguidas: el
+     modelo gastaba sus vueltas abriendo cajas, se perdía, y contestaba
+     «Listo, le dejo el PDF» sin haber escrito nada. Con la herramienta a la
+     vista y el PDF en el mismo argumento, es UNA llamada en UNA vuelta.
+     Cuesta unas 130 fichas de prompt; la alternativa costaba el trabajo. */
+  'crear_documento',
 ];
 const NUCLEO = new Set((process.env.ULTRON_NUCLEO || '').trim()
   ? process.env.ULTRON_NUCLEO.split(',').map((x) => x.trim()).filter(Boolean)
