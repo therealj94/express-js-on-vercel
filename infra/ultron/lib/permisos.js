@@ -60,6 +60,13 @@ const NIVEL_DE = {
   // escribir
   recordar: 'escribir', olvidar: 'escribir', anotar_pendiente: 'escribir', cerrar_pendiente: 'escribir',
   crear_documento: 'escribir', aprender: 'escribir', habilidad_crear: 'escribir',
+  /* Correr algo que el dueño YA aprobó. Va declarado y no por omisión: sin la
+     fila, `nivelDe` lo daría por 'leer' —lo más suelto— y un bot podría
+     disparar un despliegue que el dueño aprobó para otra cosa. En 'escribir'
+     lo corre la junta y no un bot. El permiso de fondo sigue siendo el del
+     pedido: esta herramienta no abre ninguna puerta nueva, solo ejecuta la que
+     el dueño ya abrió, y una sola vez. */
+  aprobado_correr: 'escribir',
   /* El médico se cura solo: reconectar la base, relevar el cerebro, rearrancar el
      vigía. Todo interno y reversible — pedirle permiso al dueño para que ULTRON
      no se quede mudo sería justo la manera de que se quede mudo. */
@@ -218,6 +225,52 @@ async function resolver(id, { por, decision }) {
   return p;
 }
 
+/* ── LO APROBADO Y TODAVÍA SIN USAR ──────────────────────────────────────────
+ *
+ * 7-sep, José: «no continúa cuando ocupa mi permiso». Y no continuaba.
+ *
+ * La huella de un permiso es la herramienta MÁS LA ENTRADA EXACTA. El mensaje
+ * de «esperando autorización» le decía al modelo que volviera a llamar a la
+ * herramienta con la misma entrada... pero al turno siguiente solo le llega el
+ * TEXTO de los turnos anteriores (nodo.js:394): las entradas de las
+ * herramientas se guardan en Mongo y NUNCA se le devuelven. Así que para
+ * retomar un cambio de código habría tenido que reescribir archivos enteros de
+ * memoria, byte por byte. Jamás calzaba: pedía permiso otra vez, y otra.
+ *
+ * El pedido YA lleva la entrada guardada. Estas dos funciones son lo que deja
+ * ejecutarla tal cual, sin que nadie tenga que recordar nada.
+ */
+async function aprobadoPorId(id) {
+  const vigente = (p) => p && p.estado === 'aprobado' && !(p.venceEn && new Date(p.venceEn).getTime() < Date.now());
+  if (conMongo()) {
+    let p = null;
+    try { p = await Pedido.findById(id).lean(); } catch { return null; }   // un id con forma mala no es un fallo: es que no está
+    return vigente(p) ? { ...p, _id: String(p._id) } : null;
+  }
+  const p = provisional.find((x) => String(x._id) === String(id));
+  return vigente(p) ? p : null;
+}
+
+/** Marca uno como usado por id. Con guarda: dos toques no lo corren dos veces. */
+async function marcarUsado(id) {
+  const cambio = { estado: 'usado', usadoEn: new Date() };
+  if (conMongo()) {
+    const r = await Pedido.findOneAndUpdate({ _id: id, estado: 'aprobado' }, cambio, { new: true }).lean();
+    return r ? { ...r, _id: String(r._id) } : null;
+  }
+  const p = provisional.find((x) => String(x._id) === String(id) && x.estado === 'aprobado');
+  if (!p) return null;
+  Object.assign(p, cambio);
+  return p;
+}
+
+/** Los que el dueño aprobó y todavía nadie corrió. Van en el encabezado. */
+async function aprobadosSinUsar({ limite = 5 } = {}) {
+  const l = await lista({ estado: 'aprobado', limite: 20 });
+  const ahora = Date.now();
+  return l.filter((p) => !(p.venceEn && new Date(p.venceEn).getTime() < ahora)).slice(0, limite);
+}
+
 async function lista({ estado = null, limite = 40 } = {}) {
   const q = estado ? { estado } : {};
   if (conMongo()) return (await Pedido.find(q).sort({ en: -1 }).limit(limite).lean()).map((p) => ({ ...p, _id: String(p._id) }));
@@ -237,5 +290,6 @@ function comprobarCatalogo(nombres = []) {
 
 module.exports = {
   NIVELES, NIVEL_DE, nivelDe, dueñoDe, rolDe, puede, pedir, consumirAprobacion, resolver, lista, pendientes,
+  aprobadoPorId, marcarUsado, aprobadosSinUsar,
   huellaDe, resumir, comprobarCatalogo, VENCE_MS, _adentro: { provisional, Pedido },
 };

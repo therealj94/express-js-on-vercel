@@ -263,6 +263,32 @@ async function proponerCambio({ repo, base = null, titulo, descripcion = '', arc
   });
 }
 
+// ── Los cambios que ULTRON propuso ──────────────────────────────────────────
+//
+// 7-sep, José: «cuando me envía pull request no aparecen en ningún lado».
+// Y era cierto dos veces. Primero porque casi nunca llegaba a crearse — el
+// permiso no se podía retomar (ver lib/permisos.js) — y segundo porque el
+// enlace vivía SOLO en el texto de ese turno: se bajaba la pantalla y se
+// perdía. Un cambio propuesto que nadie encuentra es un cambio que nadie
+// mezcla, o sea trabajo tirado.
+//
+// Esto lo lee de donde de verdad está —GitHub— en vez de llevar una lista
+// aparte que se desincronizaría el primer día que alguien cierre uno a mano.
+async function propuestos({ repo, limite = 20 } = {}) {
+  const r = repoValido(repo);
+  return conGithub(async (tk) => {
+    const l = await gh(tk, `/repos/${r}/pulls?state=open&per_page=50&sort=updated&direction=desc`);
+    return (Array.isArray(l) ? l : [])
+      .filter((p) => String(p.head?.ref || '').startsWith('ultron/'))
+      .slice(0, limite)
+      .map((p) => ({
+        numero: p.number, titulo: p.title, url: p.html_url, rama: p.head.ref,
+        contra: p.base?.ref || null, en: p.created_at, tocado: p.updated_at,
+        borrador: !!p.draft, repo: r,
+      }));
+  });
+}
+
 // ── La terminal ─────────────────────────────────────────────────────────────
 
 const PLAZO_TERMINAL_MS = 60_000;
@@ -408,4 +434,4 @@ async function llave({ repo = null } = {}) {
   });
 }
 
-module.exports = { repos, arbol, leer, buscar, proponerCambio, terminal, desplegarse, llave, ramaCasa, _adentro: { slug, repoValido, formatear, gh } };
+module.exports = { propuestos, repos, arbol, leer, buscar, proponerCambio, terminal, desplegarse, llave, ramaCasa, _adentro: { slug, repoValido, formatear, gh } };

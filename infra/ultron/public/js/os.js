@@ -420,16 +420,42 @@ const OS = (() => {
       ? pend.map(uno).join('') + rec.map(uno).join('')
       : '<div class="sub">ULTRON no ha pedido nada. Cuando proponga algo peligroso —un comando, un cambio de código, un despliegue— aparece aquí para que el dueño lo apruebe.</div>';
   }
+  /* ── LOS CAMBIOS PROPUESTOS, EN UN SITIO FIJO ─────────────────────────────
+     José, 7-sep: «cuando me envía pull request no aparecen en ningún lado». El
+     enlace salía en el texto del turno y ahí moría: se bajaba la pantalla, se
+     cerraba la app, y el cambio quedaba abierto en GitHub sin que nadie
+     supiera. Un cambio propuesto que nadie encuentra es un cambio que nadie
+     mezcla — trabajo escrito y tirado.
+     Se leen de GitHub, no de una lista propia: si alguien cierra uno a mano,
+     desaparece de aquí solo. */
+  function pintarPropuestas(d) {
+    const c = $('#propuestas');
+    if (!c) return;
+    const l = d?.propuestas || [];
+    if (!l.length) { c.innerHTML = ''; return; }
+    c.innerHTML = `<div class="sub" style="margin-top:10px">CAMBIOS QUE ULTRON PROPUSO (${l.length})</div>`
+      + l.map((p) => `<a class="pedido" href="${esc(p.url)}" target="_blank" rel="noopener" style="text-decoration:none;display:block">
+          <div class="que">#${esc(String(p.numero))} · ${esc(p.titulo)}</div>
+          <div class="por">${esc(p.rama)} → ${esc(p.contra || '')} · ${esc(hace(p.tocado) || '')} · sin mezclar</div>
+        </a>`).join('');
+  }
+
   async function decidir(id, decision) {
     try {
       const r = await fetch(`/autorizaciones/${encodeURIComponent(id)}`, { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ decision }) });
       const d = await r.json();
       if (!r.ok) throw new Error(d.error || r.status);
-      avisar(decision === 'aprobado' ? 'Aprobado. Dígale a ULTRON que siga: la aprobación vale media hora.' : 'Negado.');
+      avisar(decision === 'aprobado' ? 'Aprobado. ULTRON lo retoma solo.' : 'Negado.');
       DATOS.get('/autorizaciones').then(pintarAutorizaciones).catch(() => {});
-      /* Con la aprobación puesta, ULTRON tiene que volver a llamar a la
-         herramienta. Se le manda el aviso como un turno corto. */
-      if (decision === 'aprobado') enviar(`Aprobé el pedido ${String(id).slice(-6)}: seguí con eso.`);
+      DATOS.get('/propuestas').then(pintarPropuestas).catch(() => {});
+      /* ── EL ID ENTERO, Y LA HERRAMIENTA QUE DE VERDAD LO RETOMA ──────────
+         Antes se le mandaba el id RECORTADO a seis letras y un «seguí con
+         eso». Con eso ULTRON no podía hacer nada: para retomar hace falta el
+         id completo, y volver a llamar a la herramienta original habría
+         pedido permiso otra vez —la huella es herramienta + entrada exacta, y
+         la entrada no vuelve al modelo nunca—. Por eso José veía que aprobaba
+         y no pasaba nada. */
+      if (decision === 'aprobado') enviar(`Ya aprobé el pedido ${id}. Corré aprobado_correr con ese id y seguí.`);
     } catch (e) { avisar(`No se pudo: ${e.message}`, true); }
   }
 
@@ -1294,7 +1320,7 @@ const OS = (() => {
       const b = d.querySelector('#pm-si');
       b.disabled = true; b.textContent = 'APROBANDO…';
       DATOS.post(`/autorizaciones/${encodeURIComponent(p.id)}`, { decision: 'aprobado' })
-        .then(() => { d.remove(); avisar('Aprobado. ULTRON sigue.'); enviar('Ya lo aprobé. Seguí con eso.'); })
+        .then(() => { d.remove(); avisar('Aprobado. ULTRON sigue.'); enviar(`Ya aprobé el pedido ${p.id}. Corré aprobado_correr con ese id y seguí.`); })
         .catch((e) => { b.disabled = false; b.textContent = 'APROBAR Y SEGUIR'; avisar(e.message || 'No se pudo aprobar.', true); });
     };
   }
@@ -1923,6 +1949,7 @@ const OS = (() => {
           cargarArchivos();
           DATOS.get('/pendientes').then(pintarPendientes).catch(() => {});
           DATOS.get('/autorizaciones').then(pintarAutorizaciones).catch(() => {});
+      DATOS.get('/propuestas').then(pintarPropuestas).catch(() => {});
         },
         /* El servidor manda `{mensaje, codigo}`. Se pintaba el objeto entero, así
          que en el peor momento —el cerebro fallando a mitad de la respuesta—
@@ -2598,6 +2625,7 @@ const OS = (() => {
       DATOS.get('/salud').then(pintarSalud).catch(() => {});
       DATOS.get('/pendientes').then(pintarPendientes).catch(() => {});
       DATOS.get('/autorizaciones').then(pintarAutorizaciones).catch(() => {});
+      DATOS.get('/propuestas').then(pintarPropuestas).catch(() => {});
       DATOS.get('/salud/profunda').then(pintarSaludPropia).catch(() => pintarSaludPropia(null));
       /* /gasto existía desde el principio y no lo llamaba nadie. Va en la misma
          ronda que el resto: es una lectura de Mongo, no una de cadena. */
@@ -2899,7 +2927,7 @@ const OS = (() => {
     else unaVez();
   }
 
-  return { enviar, estado, avisar, mente, despertarVoz, abrirAjustes, _adentro: { pintarVivo, pintarSalud, pintarSaludPropia, pintarArchivos, pintarPendientes, pintarAutorizaciones, pintarDicho, DESPIERTA, CASAS, entrarArmar, salirArmar, aplicarTablero, tableroActual, toqueNucleo, pedirPermisos, botonDeHablar, pintarCaja, pintarRegistro, borrarArchivo, chips, pintarNegocio,
+  return { enviar, estado, avisar, mente, despertarVoz, abrirAjustes, _adentro: { pintarVivo, pintarSalud, pintarSaludPropia, pintarArchivos, pintarPendientes, pintarAutorizaciones, pintarPropuestas, pintarDicho, DESPIERTA, CASAS, entrarArmar, salirArmar, aplicarTablero, tableroActual, toqueNucleo, pedirPermisos, botonDeHablar, pintarCaja, pintarRegistro, borrarArchivo, chips, pintarNegocio,
     /* Solo para la prueba: mueve el reloj de la última lectura buena hacia
        atrás, para comprobar que la pantalla avisa cuando se queda vieja sin
        tener que esperar diez minutos de verdad. */

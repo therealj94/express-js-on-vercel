@@ -256,6 +256,11 @@ const DEFINICIONES = [
     }, required: ['titulo', 'archivos'] },
   },
   {
+    name: 'aprobado_correr',
+    description: 'Corre un pedido que el dueño YA APROBÓ, con la entrada exacta que quedó guardada. Es la ÚNICA forma de retomar lo que esperaba autorización: llamar de nuevo a la herramienta original volvería a pedir permiso. El id va en el encabezado, bajo YA APROBADO.',
+    input_schema: { type: 'object', properties: { id: { type: 'string', description: 'el id del pedido aprobado' } }, required: ['id'] },
+  },
+  {
     name: 'terminal',
     description: 'PELIGROSA (pide autorización al dueño, y hasta que la dé el trabajo se queda PARADO). OJO, LO MÁS IMPORTANTE: corre en una CARPETA TEMPORAL VACÍA, sin el repositorio dentro. Un `grep` o un `cat` sobre infra/... no encuentra NADA acá, aunque el dueño lo apruebe. Para el código están repo_arbol (qué archivos hay), repo_leer (leer uno) y repo_buscar (buscar texto o una función): las tres corren al momento, sin permiso y sobre el repositorio de verdad. Esta es para lo otro: bajar algo con curl, una cuenta, una herramienta suelta. Un comando de shell, plazo de 60 s, salida acotada y sin ninguna variable de entorno de la casa; el dueño ve el comando exacto antes de aprobarlo.',
     input_schema: { type: 'object', properties: { comando: { type: 'string' }, motivo: { type: 'string', description: 'para qué, en una línea: lo lee el dueño' } }, required: ['comando'] },
@@ -489,6 +494,26 @@ async function leerPagina(url) {
     const tipo = r.headers.get('content-type') || '';
     const cuerpo = await r.text();
     const texto = /html/.test(tipo) ? limpiarHtml(cuerpo) : cuerpo;
+    /* ── LA PÁGINA QUE SE ARMA EN EL NAVEGADOR ────────────────────────────
+       7-sep, José: «ULTRON no tiene Playwright para entrar».
+       Esto es un `fetch`: trae el HTML que manda el servidor y nada más. Las
+       casas de Orden Global —Ordenex, la wallet, AuCorp, Genesis— se dibujan
+       ENTERAS con JavaScript en el navegador, así que lo que llega es la
+       cáscara. Medido el 7-sep: ordenexchange.link devuelve 78 caracteres de
+       texto. Cero mercados, cero precios, cero botones.
+       Antes eso volvía como una lectura normal y ULTRON contestaba sobre una
+       página vacía creyendo que la había visto. Ahora se dice lo que pasó y
+       por dónde SÍ se llega al dato. */
+    if (/html/.test(tipo) && texto.trim().length < 400 && /<script/i.test(cuerpo)) {
+      return `${u.hostname} contestó ${r.status}, pero la página se arma en el navegador con JavaScript y esto es solo una lectura del HTML: llegaron ${texto.trim().length} caracteres de texto, o sea la cáscara vacía. NO contestes como si la hubieras visto.\n`
+        + `Los datos de esa casa se piden por su puerta, no por su pantalla:\n`
+        + `· Ordenex (mercados, precios, saldos) → ordenex_mercado, ordenex_caja\n`
+        + `· las cadenas (altura, bloques, pares) → cadena_altura, cadenas_estado\n`
+        + `· el código de cualquier casa → repo_arbol, repo_leer, repo_buscar\n`
+        + `· cómo está todo ahora mismo → estado_vivo\n`
+        + `Si lo que hace falta es VER la pantalla como la ve una persona, eso hoy ULTRON no lo puede hacer y hay que decirlo: no hay navegador en el servidor.\n`
+        + `Lo poco que sí llegó: ${texto.trim().slice(0, 200)}`;
+    }
     if (!texto.trim()) return `La página contestó ${r.status} pero sin texto legible.`;
     return `(${u.hostname} · ${r.status} · ${texto.length > TOPE_PAGINA ? 'recortado' : 'entero'})\n${texto.slice(0, TOPE_PAGINA)}`;
   } catch (e) {
@@ -671,14 +696,31 @@ async function correrAdentro(nombre, entrada, ctx) {
       }
     }
     const ojo = permisos.puede(ctx.miembro, nombre, ctx.junta || []);
-    if (!ojo.ok) {
+    /* `_yaAutorizado` solo lo pone `aprobado_correr`, después de haber
+       encontrado el pedido aprobado y de haberlo marcado como usado. No entra
+       nunca desde fuera: `ctx` lo arma el servidor, no el modelo. */
+    if (!ojo.ok && !ctx._yaAutorizado) {
       if (!ojo.autorizable) return `No se puede: ${ojo.motivo}`;
       const { motivo: motivoPedido, ...entradaLimpia } = entrada;
       const aprob = await permisos.consumirAprobacion(nombre, entradaLimpia);
       if (!aprob) {
         const p = await permisos.pedir({ actor: ctx.miembro, herramienta: nombre, entrada: entradaLimpia, motivo: motivoPedido || '' });
         ctx.acciones.push({ tipo: 'autorizacion', id: String(p._id), resumen: p.resumen });
-        return `ESPERANDO AUTORIZACIÓN DEL DUEÑO. Pedido ${String(p._id).slice(-6)}: «${p.resumen}». ${p.repetido ? 'Ya estaba pedido.' : 'Quedó en el panel, en AUTORIZACIONES.'} No lo repitas: cuando el dueño lo apruebe, volvé a llamar a ${nombre} con la MISMA entrada y correrá. Decile a la persona qué está esperando su aprobación.`;
+        /* ── POR QUÉ NO SE LE PIDE QUE «VUELVA A LLAMAR CON LA MISMA ENTRADA»
+           Eso decía antes, y era imposible de cumplir. La huella del permiso
+           es la herramienta MÁS LA ENTRADA EXACTA, y al hilo del turno
+           siguiente solo viaja el TEXTO de cada turno (nodo.js:394) — las
+           entradas de las herramientas se guardan en Mongo pero no se le
+           devuelven nunca al modelo. O sea que para reintentar un
+           repo_proponer_cambio habría tenido que reescribir de memoria, byte
+           por byte, archivos enteros. Nunca calzaba la huella, así que pedía
+           permiso OTRA VEZ, y otra, y el trabajo no avanzaba jamás.
+           Ahora el pedido guarda la entrada y `aprobado_correr` la ejecuta tal
+           cual quedó guardada: no hay nada que recordar. */
+        return `ESPERANDO AUTORIZACIÓN DEL DUEÑO. Pedido ${String(p._id).slice(-6)} (id ${String(p._id)}): «${p.resumen}». ${p.repetido ? 'Ya estaba pedido.' : 'Quedó en el panel, en AUTORIZACIONES.'}\n`
+          + `NO vuelvas a llamar a ${nombre}: pedirías permiso otra vez. Lo que ya escribiste quedó guardado dentro del pedido.\n`
+          + `Cuando el dueño apruebe, corré \`aprobado_correr\` con ese id y se ejecuta exactamente lo que aprobó.\n`
+          + `Ahora decile a la persona, en una línea, qué está esperando su aprobación.`;
       }
       entrada = entradaLimpia;
       ctx.acciones.push({ tipo: 'autorizado', id: String(aprob._id), resumen: aprob.resumen });
@@ -690,6 +732,29 @@ async function correrAdentro(nombre, entrada, ctx) {
       return `El bot ${ctx.miembro.nombre} no tiene la herramienta ${nombre}. Tiene: ${ctx.miembro.herramientas.join(', ')}.`;
     }
     switch (nombre) {
+      /* ── RETOMAR LO QUE EL DUEÑO YA APROBÓ ──────────────────────────────
+         El pedido guardó la entrada entera. Se corre ESA, no una que el
+         modelo intente recordar — que es lo que antes no podía y por eso el
+         trabajo se quedaba parado para siempre. `marcarUsado` es la guarda:
+         un pedido aprobado se ejecuta UNA vez, aunque se pida dos. */
+      case 'aprobado_correr': {
+        const id = String(entrada.id || '').trim();
+        if (!id) return 'Falta el id del pedido aprobado.';
+        const p = await permisos.aprobadoPorId(id);
+        if (!p) {
+          const pend = (await permisos.pendientes()).find((x) => String(x._id) === id);
+          if (pend) return `El pedido ${id.slice(-6)} sigue ESPERANDO. El dueño todavía no lo aprobó: «${pend.resumen}». Decíselo y no lo repitas.`;
+          return `No hay un pedido aprobado con ese id. O ya se corrió, o venció, o el dueño lo negó. Mirá el panel de AUTORIZACIONES.`;
+        }
+        const usado = await permisos.marcarUsado(id);
+        if (!usado) return `Ese pedido ya se corrió. No se ejecuta dos veces.`;
+        ctx.acciones.push({ tipo: 'autorizado', id, resumen: p.resumen });
+        /* Se llama a `correrAdentro`, no a `correr`: la puerta ya se pasó —el
+           dueño la abrió— y volver a entrar por ella crearía otro pedido. */
+        const salida = await correrAdentro(p.herramienta, p.entrada || {}, { ...ctx, _yaAutorizado: true });
+        return `Corrido con la autorización del dueño (${p.herramienta}):\n${salida}`;
+      }
+
       case 'buscar_saber': {
         const s = saber.buscar(String(entrada.pregunta || ''), { maximo: ctx.chico ? 5 : 8, maxBytes: ctx.chico ? 12_000 : 40_000 });
         ctx.fuentes.push(...s.map((x) => ({ id: x.id, titulo: x.titulo, fuente: x.fuente })));
@@ -1271,6 +1336,10 @@ const GRUPOS = {
  * código con ULTRON_NUCLEO, por si con el uso resulta que sobra una y falta
  * otra. */
 const NUCLEO_DE_FABRICA = [
+  /* SIEMPRE, sin caja que abrir. Es lo que deja retomar un trabajo que se
+     quedó esperando permiso: si hubiera que abrir una caja para llegar a
+     ella, el turno de «ya lo aprobé, seguí» se gastaría buscándola. */
+  'aprobado_correr',
   'estado_vivo',                                      // cómo está la casa
   'clima', 'hora',                                    // lo que pidió para el saludo
   'buscar_saber', 'buscar_web',                       // dónde se buscan las respuestas

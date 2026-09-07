@@ -1149,6 +1149,16 @@ app.post('/autorizaciones/:id', puerta, soloDueño, async (req, res) => {
   } catch (e) { res.status(e.codigo === 'DECISION' ? 400 : 500).json({ error: e.message, codigo: e.codigo }); }
 });
 
+/* ── LOS CAMBIOS QUE ULTRON PROPUSO ─────────────────────────────────────────
+   José, 7-sep: «cuando me envía pull request no aparecen en ningún lado». El
+   enlace salía en el texto de un turno y se perdía al bajar la pantalla. Se
+   leen de GitHub —de donde de verdad están— y no de una lista propia que se
+   desincronizaría el primer día que alguien cierre uno a mano. */
+app.get('/propuestas', puerta, async (req, res) => {
+  try { res.json({ propuestas: await taller.propuestos({ repo: req.query.repo || null }) }); }
+  catch (e) { res.status(500).json({ error: e.message, codigo: e.codigo || null }); }
+});
+
 app.get('/boveda', puerta, async (req, res) => {
   try { res.json({ encendida: boveda.encendida(), secretos: await boveda.listar(), juicio: await boveda.juicio() }); }
   catch (e) { res.status(500).json({ error: e.message }); }

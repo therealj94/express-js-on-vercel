@@ -182,7 +182,7 @@ const CABECERA = require('node:fs').readFileSync(require('node:path').join(__dir
    texto: hablando por voz nadie pide una ruta de archivo. */
 const MAPA = require('node:fs').readFileSync(require('node:path').join(__dirname, 'mapa-de-la-casa.md'), 'utf8').trim();
 
-function sistema({ miembro, memorias, estadoVivo, secciones, vozCasa, pendientes = [], chico = false, modo = 'texto', alias = null, idioma = 'es', habilidades = '', pedidos = [], trabajo = null }) {
+function sistema({ miembro, memorias, estadoVivo, secciones, vozCasa, pendientes = [], chico = false, modo = 'texto', alias = null, idioma = 'es', habilidades = '', pedidos = [], aprobados = [], trabajo = null }) {
   /* Las LECCIONES van aparte de las memorias y ARRIBA de todo lo del momento:
      son correcciones de la junta, y mandan sobre cualquier ficha vieja que
      diga lo contrario. Es lo que hace que un error corregido no vuelva. */
@@ -193,6 +193,12 @@ function sistema({ miembro, memorias, estadoVivo, secciones, vozCasa, pendientes
     : '(ninguna todavía: cuando alguien te corrija un hecho, guardalo con aprender)';
   const esperando = pedidos.length
     ? pedidos.map((p) => `- ${String(p._id).slice(-6)} · ${p.resumen} (pedido por ${p.pedidoPor})`).join('\n')
+    : '';
+  /* LO QUE EL DUEÑO YA APROBÓ Y NADIE CORRIÓ. Va con el id ENTERO a propósito:
+     es lo que `aprobado_correr` necesita, y un id recortado no sirve para
+     llamarla. Sin este bloque el dueño aprobaba y ULTRON seguía sin enterarse. */
+  const yaAprobado = aprobados.length
+    ? aprobados.map((p) => `- id ${String(p._id)} · ${p.herramienta} · ${p.resumen}`).join('\n')
     : '';
   const mem = memorias.length
     ? memorias.map((m) => `- [${m.alcance === 'junta' ? 'JUNTA' : 'suyo'} · ${new Date(m.en).toLocaleDateString('es-HN')}] ${m.texto}`).join('\n')
@@ -308,14 +314,14 @@ MODO VOZ — lo que digas se va a ESCUCHAR, no a leer
   const quienHabla = `Estás hablando con ${miembro.nombre} (${miembro.rol || 'junta directiva'}${miembro.esDueño ? ' · EL DUEÑO: es quien aprueba lo peligroso' : ''}).${miembro.rol === 'bot' ? '\nSOS UN BOT DEL EQUIPO: escribís tu parte y terminás. Solo leés, y anotás memorias o pendientes. No pedís nada peligroso: si hace falta, lo anotás como pendiente.' : `
 ${chico
     ? 'MANOS: repo_*, terminal, boveda_*, aprender, habilidad_*, equipo_*, desplegarse. Lo peligroso lo aprueba el dueño en el panel; si una herramienta dice «ESPERANDO AUTORIZACIÓN», decilo y no la repitas.'
-    : 'LO QUE PODÉS HACER, Y CÓMO. Tenés manos de verdad: entrar al repositorio (repo_*), correr comandos (terminal), guardar y aplicar secretos (boveda_*), aprender (aprender, habilidad_*), un equipo de bots (equipo_*), y desplegarte (desplegarse). Lo que puede romper algo o sale de la casa lo aprueba el dueño con un clic en el panel ANTES de correr: cuando una herramienta te conteste «ESPERANDO AUTORIZACIÓN», decile a la persona qué está esperando y no la repitas. No pidas permiso por adelantado en prosa: llamá a la herramienta, que ella pide. Y buscá mejorarte: cuando algo te sale bien y es repetible, escribilo como habilidad; cuando te corrijan, guardalo como lección; cuando veas un fallo en tu propio código, proponé el cambio.'}`}${alias ? `\nEn esta interfaz te presentás como «${alias}»: si te preguntan tu nombre, sos ${alias}. Seguís siendo el mismo asistente de la junta, con las mismas reglas.` : ''}${enVoz}`;
+    : 'LO QUE PODÉS HACER, Y CÓMO. Tenés manos de verdad: entrar al repositorio (repo_*), correr comandos (terminal), guardar y aplicar secretos (boveda_*), aprender (aprender, habilidad_*), un equipo de bots (equipo_*), y desplegarte (desplegarse). Lo que puede romper algo o sale de la casa lo aprueba el dueño con un clic en el panel ANTES de correr. Cuando una herramienta te conteste «ESPERANDO AUTORIZACIÓN»: decile a la persona en una línea qué está esperando, y NO vuelvas a llamar a esa herramienta — pedirías permiso otra vez. Lo que ya escribiste quedó guardado dentro del pedido. En cuanto el dueño apruebe, el pedido te aparece en el encabezado bajo YA APROBADO, y lo retomás llamando a aprobado_correr con ese id: corre exactamente lo que él aprobó. No pidas permiso por adelantado en prosa: llamá a la herramienta, que ella pide. Y buscá mejorarte: cuando algo te sale bien y es repetible, escribilo como habilidad; cuando te corrijan, guardalo como lección; cuando veas un fallo en tu propio código, proponé el cambio.'}`}${alias ? `\nEn esta interfaz te presentás como «${alias}»: si te preguntan tu nombre, sos ${alias}. Seguís siendo el mismo asistente de la junta, con las mismas reglas.` : ''}${enVoz}`;
 
   const quieto = `LO QUE APRENDISTE (correcciones de la junta: mandan sobre las fichas)
 ${lec}
 
 LAS HABILIDADES QUE TENÉS (procedimientos escritos; cargá uno con habilidad_usar cuando la tarea lo pida)
 ${chico ? (habilidades || '').split('\n').map((l) => l.split(':')[0]).join(' · ') || '(ninguna)' : (habilidades || '(ninguna)')}
-${esperando ? `\nESPERANDO LA APROBACIÓN DEL DUEÑO (no lo repitas; cuando lo apruebe, volvé a llamar a la herramienta con la misma entrada)\n${esperando}\n` : ''}
+${yaAprobado ? `\nYA APROBADO POR EL DUEÑO Y SIN CORRER — CORRELO AHORA, ES LO PRIMERO QUE HACÉS\nLlamá a aprobado_correr con el id que va abajo. NO vuelvas a llamar a la herramienta original: pediría permiso de nuevo, porque la entrada nunca sale igual dos veces y lo que ya escribiste está guardado dentro del pedido.\n${yaAprobado}\n` : ''}${esperando ? `\nESPERANDO LA APROBACIÓN DEL DUEÑO (no lo repitas ni lo vuelvas a pedir; decile a la persona qué está esperando. Cuando lo apruebe vas a ver el pedido acá arriba, en YA APROBADO, y lo corrés con aprobado_correr)\n${esperando}\n` : ''}
 LO QUE LA JUNTA TE HA DICHO (tu memoria)
 ${mem}
 
@@ -425,7 +431,7 @@ async function pensarConClaude({ miembro, junta, texto, conversacionId, previa: 
   ]);
   const secciones = saber.buscar(texto, { maximo: 12, maxBytes: 60_000 });
   ctx.fuentes.push(...secciones.map((s) => ({ id: s.id, titulo: s.titulo, fuente: s.fuente })));
-  const system = sistema({ miembro: extras.miembro, memorias, estadoVivo, secciones, vozCasa: saber.vozDeLaCasa(), pendientes: abiertos, habilidades: extras.habilidades, pedidos: extras.pedidos, idioma });
+  const system = sistema({ miembro: extras.miembro, memorias, estadoVivo, secciones, vozCasa: saber.vozDeLaCasa(), pendientes: abiertos, habilidades: extras.habilidades, pedidos: extras.pedidos, aprobados: extras.aprobados, idioma });
   /* Un bot ve solo sus herramientas; una persona, todas. La búsqueda web de
      Claude no se le da a un bot: no le hace falta para vigilar la casa. */
   const HERRAMIENTAS_DE_ESTE = miembro.rol === 'bot'
@@ -599,17 +605,22 @@ function modelo() { return cual() === 'nodo' ? 'nodo:' + nodo.MODELO : MODELO; }
    habilidades (nombre y cuándo), los pedidos que esperan al dueño, y si quien
    habla ES el dueño. Se calcula una vez por turno. */
 async function contextoExtra(miembro, junta = []) {
-  const [habilidades, pedidos] = await Promise.all([
+  const [habilidades, pedidos, aprobados] = await Promise.all([
     aprender.catalogoParaElModelo().catch(() => '(no se pudieron leer)'),
     miembro.rol === 'bot' ? [] : permisos.pendientes().catch(() => []),
+    /* LO YA APROBADO Y SIN CORRER. Es la mitad que faltaba: sin esto, el dueño
+       aprobaba y ULTRON no se enteraba nunca — el hilo del turno siguiente solo
+       lleva texto, no las llamadas a herramientas. Con esto lo ve en el
+       encabezado y lo retoma solo. */
+    miembro.rol === 'bot' ? [] : permisos.aprobadosSinUsar().catch(() => []),
   ]);
-  return { habilidades, pedidos, miembro: { ...miembro, esDueño: permisos.rolDe(miembro, junta) === 'dueño' } };
+  return { habilidades, pedidos, aprobados, miembro: { ...miembro, esDueño: permisos.rolDe(miembro, junta) === 'dueño' } };
 }
 
 async function pensar(args) {
   if (cual() === 'nodo') {
     const extras = await contextoExtra(args.miembro, args.junta || []);
-    const conExtras = (o) => sistema({ ...o, miembro: { ...o.miembro, esDueño: extras.miembro.esDueño }, habilidades: extras.habilidades, pedidos: extras.pedidos, idioma: args.idioma || 'es' });
+    const conExtras = (o) => sistema({ ...o, miembro: { ...o.miembro, esDueño: extras.miembro.esDueño }, habilidades: extras.habilidades, pedidos: extras.pedidos, aprobados: extras.aprobados, idioma: args.idioma || 'es' });
     try {
       const r = await nodo.pensar({ ...args, sistema: conExtras, pensar });
       if (guardia.hasta) { volverAlNodo(); console.log('[cerebro] el nodo volvió: se deja el relevo'); }
@@ -632,7 +643,7 @@ async function precalentar({ miembro, junta = [], modo = 'voz', alias = null }) 
   if (cual() !== 'nodo') return { ok: false, motivo: 'sin nodo' };
   try {
     const extras = await contextoExtra(miembro, junta);
-    const conExtras = (o) => sistema({ ...o, miembro: { ...o.miembro, esDueño: extras.miembro.esDueño }, habilidades: extras.habilidades, pedidos: extras.pedidos, idioma: 'es' });
+    const conExtras = (o) => sistema({ ...o, miembro: { ...o.miembro, esDueño: extras.miembro.esDueño }, habilidades: extras.habilidades, pedidos: extras.pedidos, aprobados: extras.aprobados, idioma: 'es' });
     return await nodo.precalentar({ miembro, junta, sistema: conExtras, modo, alias });
   } catch (e) { return { ok: false, motivo: `${e?.codigo || 'ERROR'} · ${String(e?.message || e).slice(0, 160)}` }; }
 }

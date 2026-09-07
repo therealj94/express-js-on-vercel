@@ -431,10 +431,16 @@ titulo('las doce herramientas de siempre, y las demás cuando se ocupen');
      el modelo gastaba las vueltas abriéndola, se perdía y contestaba que lo
      había dejado sin haberlo escrito— y esto se puso rojo por 58 fichas.
      El número que importa es el absoluto: el encabezado no puede volver a
-     comerse el prompt. De 6 189 se bajó a ~2 100, y el techo son 2 600: ahí
-     caben dos o tres herramientas más a la mano si algún día hacen falta,
-     y no cabe volver a meterlas todas. */
-  decir(fichas(solas) < 2600, 'y el encabezado se queda muy por debajo de su techo de 2 600 fichas', `${fichas(solas)} fichas`);
+     comerse el prompt. De 6 189 se bajó a ~2 100.
+     El 7-sep entró `aprobado_correr` y el techo subió de 2 600 a 2 800. Se
+     sube A PROPÓSITO y se deja escrito por qué, que es lo contrario de mover
+     el número cada vez que estorba: es la herramienta que retoma un trabajo
+     parado esperando permiso, y si viviera en una caja el turno de «ya lo
+     aprobé, seguí» se gastaría entero abriendo la caja — o sea que la
+     herramienta que existe para que ULTRON no se quede parado lo dejaría
+     parado. Contra las 14 332 fichas de presupuesto, 115 más no se notan.
+     Lo que sigue sin caber es volver a meterlas todas: 64 juntas son 6 189. */
+  decir(fichas(solas) < 2800, 'y el encabezado se queda por debajo de su techo de 2 800 fichas', `${fichas(solas)} fichas`);
   decir(fichas(solas) < fichas(todas) / 2, 'ni la mitad de lo que pesaban todas juntas', `${fichas(solas)} de ${fichas(todas)}`);
   decir(solas.some((t) => t.function.name === 'mas_herramientas'), 'la puerta va siempre puesta');
   decir(/nunca se pierde|NO contestás que no podés/i.test(h.ABRIR.description),
@@ -663,3 +669,68 @@ titulo('el cerebro: solo nosotros, con relevo, o solo Claude');
 
 console.log(malas ? `\n${malas} fallo(s).\n` : '\nTodo en verde\n');
 process.exit(malas ? 1 : 0);
+
+/* ── QUE LA APROBACIÓN DE VERDAD CONTINÚE ─────────────────────────────────────
+ *
+ * 7-sep, José: «no continúa cuando ocupa mi permiso».
+ *
+ * La huella de un permiso es la herramienta MÁS la entrada exacta. El mensaje
+ * de «esperando autorización» le pedía al modelo que volviera a llamar con la
+ * MISMA entrada... y al turno siguiente solo le llega el TEXTO de los turnos
+ * (nodo.js:394): las entradas de las herramientas se guardan en Mongo y nunca
+ * se le devuelven. Para retomar un cambio de código habría tenido que
+ * reescribir archivos enteros de memoria, byte por byte. Nunca calzaba la
+ * huella: pedía permiso otra vez, y otra, para siempre.
+ *
+ * Esta prueba recorre el camino entero —pedir, aprobar, correr— porque el
+ * fallo no estaba en ninguna de las tres piezas por separado: estaba en que no
+ * había forma de pasar de la segunda a la tercera.
+ */
+{
+  titulo('el permiso aprobado se puede RETOMAR');
+  const permisos = await import('../lib/permisos.js').then((m) => m.default || m);
+  const junta = [{ correo: 'dueno@ordenglobal.org', nombre: 'Dueño', rol: 'presidente' }];
+  const dueño = junta[0];
+
+  const entrada = { titulo: 'un cambio', archivos: [{ ruta: 'a.txt', contenido: 'x'.repeat(500) }] };
+  const p = await permisos.pedir({ actor: dueño, herramienta: 'repo_proponer_cambio', entrada });
+  decir(p.estado === 'pendiente', 'el pedido nace esperando al dueño');
+  decir(JSON.stringify(p.entrada) === JSON.stringify(entrada), 'y guarda la entrada ENTERA: es lo que después se corre sin que nadie la recuerde');
+
+  decir(await permisos.aprobadoPorId(String(p._id)) === null, 'mientras está pendiente, aprobadoPorId no lo da por aprobado');
+
+  await permisos.resolver(String(p._id), { por: dueño.correo, decision: 'aprobado' });
+  const ap = await permisos.aprobadoPorId(String(p._id));
+  decir(!!ap, 'aprobado por el dueño, aprobadoPorId sí lo encuentra');
+  decir(JSON.stringify(ap?.entrada) === JSON.stringify(entrada), 'con la entrada intacta');
+
+  const sinUsar = await permisos.aprobadosSinUsar();
+  decir(sinUsar.some((x) => String(x._id) === String(p._id)), 'y sale en la lista que va al encabezado, para que ULTRON lo vea solo');
+
+  decir(!!(await permisos.marcarUsado(String(p._id))), 'se marca usado');
+  decir((await permisos.marcarUsado(String(p._id))) === null, 'y NO se puede correr dos veces: dos toques no hacen dos pull requests');
+  decir((await permisos.aprobadoPorId(String(p._id))) === null, 'ya usado, deja de estar aprobado');
+
+  const herr = await import('../lib/herramientas.js').then((m) => m.default || m);
+  decir(herr.DEFINICIONES.some((d) => d.name === 'aprobado_correr'), 'aprobado_correr existe como herramienta');
+  decir(permisos.nivelDe('aprobado_correr') === 'escribir',
+    'y su nivel va DECLARADO, no por omisión: por omisión sería «leer» y un bot podría disparar lo que el dueño aprobó para otra cosa');
+
+  const ctx = { miembro: dueño, junta, acciones: [], fuentes: [] };
+  const noHay = await herr.correr('aprobado_correr', { id: '000000000000000000000000' }, ctx);
+  decir(/no hay un pedido aprobado/i.test(noHay), 'un id que no existe se contesta, no revienta');
+  const yaUsado = await herr.correr('aprobado_correr', { id: String(p._id) }, ctx);
+  decir(/ya se corrió|no hay un pedido aprobado/i.test(yaUsado), 'y uno ya usado tampoco vuelve a correr');
+}
+
+{
+  titulo('la página que se arma en el navegador se dice, no se finge');
+  const herr = await import('../lib/herramientas.js').then((m) => m.default || m);
+  decir(typeof herr.leerPagina === 'function', 'leer_pagina sigue ahí');
+  const fuente = (await import('node:fs')).readFileSync(new URL('../lib/herramientas.js', import.meta.url), 'utf8');
+  decir(/se arma en el navegador con JavaScript/.test(fuente),
+    'y cuando llega la cáscara vacía lo dice en vez de contestar sobre una página que no vio',
+    'ordenexchange.link devuelve 78 caracteres de texto por fetch');
+  decir(/ordenex_mercado|cadena_altura/.test(fuente.slice(fuente.indexOf('se arma en el navegador'))),
+    'y manda a la puerta por donde SÍ está el dato');
+}
