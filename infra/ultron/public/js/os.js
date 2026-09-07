@@ -1326,7 +1326,7 @@ const OS = (() => {
     caja.innerHTML = `<div class="quien">ULTRON NECESITA SU PERMISO</div>
       <div style="margin:6px 0 10px;font-family:var(--mono,monospace);font-size:12.5px;word-break:break-word">${esc(p.resumen || 'una acción que necesita aprobación')}</div>
       ${p.motivo ? `<div class="sub" style="margin-bottom:10px">Para qué: ${esc(p.motivo)}</div>` : ''}
-      <div class="fila-btn"><button class="btn" data-aprobar="${esc(p.id)}">APROBAR Y SEGUIR</button></div>`;
+      <div class="fila-btn"><button class="btn" data-aprobar="${esc(p.id)}" style="min-height:44px;padding:12px 20px">APROBAR Y SEGUIR</button></div>`;
     d.appendChild(caja);
     $('#globo')?.classList.remove('oculto');
   }
