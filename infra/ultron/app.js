@@ -585,7 +585,19 @@ app.get('/conversaciones/registro', puerta, async (req, res) => {
 app.get('/conversaciones/hoy', puerta, async (req, res) => {
   try {
     const c = await memoria.conversacionDelDia(req.miembro.correo, { canal: 'panel' });
-    res.json({ _id: String(c._id), titulo: c.titulo || null, turnos: (c.turnos || []).length, yaExistia: !!c.yaExistia });
+    /* ── Y LOS ÚLTIMOS TURNOS, PARA NO PERDER EL HILO AL RECARGAR ──────────
+       7-sep, José: «el de chat poder tener cerca historial, ya que a veces se
+       cierra y no sé qué quedamos». Y era literal: al recargar, el tablero
+       adoptaba la conversación del día pero la pantalla salía en blanco, así
+       que lo hablado hacía diez minutos no estaba en ningún sitio a la vista.
+       Van los cuatro últimos, recortados: lo justo para reconocer dónde se
+       quedó uno, sin traerse el día entero por abrir la página. */
+    const ultimos = (c.turnos || []).slice(-4).map((t) => ({
+      rol: t.rol, en: t.en,
+      texto: String(t.texto || '').slice(0, 900),
+      herramientas: (t.herramientas || []).map((h) => h.nombre),
+    }));
+    res.json({ _id: String(c._id), titulo: c.titulo || null, turnos: (c.turnos || []).length, yaExistia: !!c.yaExistia, ultimos });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 app.get('/conversaciones/:id', puerta, async (req, res) => {

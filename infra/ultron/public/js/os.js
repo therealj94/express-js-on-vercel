@@ -1271,6 +1271,27 @@ const OS = (() => {
       <div class="fila-btn" style="margin-top:14px"><button class="btn" id="rg-cerrar">CERRAR</button></div>`;
     d.querySelector('#rg-cerrar').onclick = () => d.remove();
   }
+  /* Lo último que se hablaron, pintado en el globo al entrar. No es una
+     respuesta nueva y no se lee en voz alta: es el hilo de donde se quedó. */
+  function pintarDondeQuedamos(c) {
+    const ultimos = (c?.ultimos || []).filter((t) => String(t.texto || '').trim());
+    if (!ultimos.length) return;
+    const suyo = $('#globo-quien');
+    const ultimo = ultimos[ultimos.length - 1];
+    const cuando = ultimo.en ? new Date(ultimo.en).toLocaleTimeString('es-HN', { hour: '2-digit', minute: '2-digit' }) : '';
+    if (suyo) suyo.textContent = `DONDE QUEDARON${cuando ? ' · ' + cuando : ''}:`;
+    const hilo = ultimos.map((t) => {
+      const quien = t.rol === 'ultron' ? 'ULTRON' : 'USTED';
+      const cuerpo = window.MARKDOWN ? MARKDOWN.aHtml(t.texto) : esc(t.texto);
+      return `<div class="rg-turno ${esc(t.rol)}"><div class="quien">${quien}</div><div>${cuerpo}</div></div>`;
+    }).join('');
+    const d = $('#dicho');
+    if (d) d.innerHTML = `<div style="display:flex;flex-direction:column;gap:8px">${hilo}</div>`;
+    $('#globo')?.classList.remove('oculto');
+    /* Un toque abre el día entero, que es la otra mitad de lo que pidió. */
+    chips([{ tipo: 'hilo', nombre: 'VER TODO EL HILO', conv: c._id }]);
+  }
+
   let registroUltimo = null;
 
   /* ── UNA FOTO DEL TELÉFONO NO VIAJA ENTERA ────────────────────────────────
@@ -1431,6 +1452,10 @@ const OS = (() => {
   // ══ HABLAR Y ESCUCHAR ═════════════════════════════════════════════════════
 
   let locutor = null, conVoz = true, conversacionId = null, pensando = false;
+  /* Qué está haciendo ULTRON ahora mismo y desde cuándo. Viven fuera de
+     `enviar` porque los tocan tres sitios: el reloj de cada segundo, el evento
+     de la herramienta, y la prueba. */
+  let queHace = 'pensando', arranqueTurno = 0;
   /* El mando para cortar el turno en vuelo. Ver `enviar` e `interrumpir`. */
   let cancelarTurno = null;
   let envejecerTurno = () => {};   // lo rellena cada turno; solo lo usa la prueba
@@ -1665,17 +1690,28 @@ const OS = (() => {
      que hace al tocarlo es lo que dice. Lo que no es para la persona —un
      pedido esperando aprobación, un secreto aplicado— ya tiene su sitio en el
      panel del DUEÑO y aquí sería ruido. */
+  /* Pinta «QUÉ ESTÁ HACIENDO · N s». Sale aparte para que la prueba pueda
+     comprobar que el reloj NO lo borra al segundo siguiente, que es el fallo
+     que José vio: el nombre de la herramienta aparecía y desaparecía. */
+  function marcarQueHace(hace) {
+    if (hace) queHace = hace;
+    const e = $('#estado-txt');
+    if (e) e.textContent = `${String(queHace).toUpperCase()} · ${Math.round((Date.now() - (arranqueTurno || Date.now())) / 1000)} s`;
+  }
+
   function chips(acciones) {
     const c = $('#chips');
     const botones = (acciones || []).map((a) => {
       if (typeof a === 'string') return { texto: a };
       if (a?.tipo === 'abrir' && a.url) return { texto: a.nombre || 'Abrir', url: a.url };
       if (a?.tipo === 'pr' && a.url) return { texto: `Ver el cambio propuesto (${a.rama || 'rama'})`, url: a.url };
+      /* El del hilo no abre una pestaña: abre el día aquí mismo. */
+      if (a?.tipo === 'hilo' && a.conv) return { texto: a.nombre || 'Ver todo el hilo', conv: a.conv };
       return null;
     }).filter((b) => b && b.texto);
     if (!botones.length) { c.classList.add('oculto'); c.innerHTML = ''; return; }
     c.classList.remove('oculto');
-    c.innerHTML = botones.map((b) => `<button class="chip"${b.url ? ` data-url="${esc(b.url)}"` : ''}>${esc(b.texto)}</button>`).join('');
+    c.innerHTML = botones.map((b) => `<button class="chip"${b.url ? ` data-url="${esc(b.url)}"` : ''}${b.conv ? ` data-conv="${esc(b.conv)}"` : ''}>${esc(b.texto)}</button>`).join('');
   }
 
   /**
@@ -1711,11 +1747,19 @@ const OS = (() => {
        segundos», que es lo que hace que uno espere en vez de insistir. */
     const arranque = Date.now();
     let ultimaSeñal = Date.now();
+    /* ── QUÉ ESTÁ HACIENDO, NO SOLO CUÁNTO LLEVA ──────────────────────────
+       7-sep, José: «pasa los 45 seg y no se sabe si está o no está haciendo
+       algo». El nombre de la herramienta SÍ llegaba y se pintaba... y un
+       segundo después este mismo reloj lo borraba con «PENSANDO 23 s». Lo
+       único que quedaba en pantalla era un contador.
+       Ahora las dos cosas juntas: «LEYENDO EL CÓDIGO · 23 s». Se ve que
+       avanza y se ve en qué. */
+    queHace = 'pensando'; arranqueTurno = arranque;
     const relojPensar = setInterval(() => {
       if (!pensando) return;
       const s = Math.round((Date.now() - arranque) / 1000);
       const e = $('#estado-txt');
-      if (e && (mente.state === 'think')) e.textContent = `PENSANDO ${s} s`;
+      if (e && (mente.state === 'think')) e.textContent = `${queHace.toUpperCase()} · ${s} s`;
       /* ── Y SI SE QUEDA MUDO DE VERDAD ─────────────────────────────────
          Todas las demás llamadas llevan su reloj; ésta no, a propósito,
          porque un turno con herramientas puede ser largo. Pero «puede ser
@@ -1724,9 +1768,14 @@ const OS = (() => {
          segundos, se dice, y a los noventa se corta y se devuelve el
          renglón. Quedarse en «analizando» sin fin es lo peor de todo,
          porque no se puede ni esperar ni reintentar. */
+      /* El vigilante mide SILENCIO, no duración: mientras llegue una vuelta o
+         una herramienta, el turno está vivo por largo que sea. Sube de 45/90 a
+         60/150 porque ahora un turno de trabajo de verdad —abrir la caja,
+         mirar dónde está el código, leer dos archivos— pasa del minuto, y
+         cortarlo a los noventa era cortar justo lo que se le pidió. */
       const mudo = Math.round((Date.now() - ultimaSeñal) / 1000);
-      if (mudo === 45) avisar('ULTRON lleva 45 s sin mandar nada. Puede seguir esperando, o tocar el centro para cortar.', false);
-      if (mudo >= 90) { avisar('ULTRON no contestó en 90 s. Se cortó: vuelva a preguntar.', true); interrumpirTurno(); }
+      if (mudo === 60) avisar('ULTRON lleva 60 s sin mandar señal. Puede seguir esperando, o tocar el centro para cortar.', false);
+      if (mudo >= 150) { avisar('ULTRON no dio señal en 150 s. Se cortó: vuelva a preguntar.', true); interrumpirTurno(); }
     }, 1000);
     const señal = () => { ultimaSeñal = Date.now(); };
     /* Para la prueba: mover el reloj del silencio hacia atrás, y no esperar
@@ -1767,7 +1816,7 @@ const OS = (() => {
         },
         /* Cada vuelta de herramientas emite `pensando`: es la señal de que
            sigue vivo aunque todavía no haya escrito una letra. */
-        pensando: () => señal(),
+        pensando: (d) => { señal(); if (d?.hace) queHace = d.hace; },
         /* ── EL SERVIDOR SE CORRIGE A MITAD ─────────────────────────────
            Cuando el modelo se engancha repitiendo, la guarda del nodo corta el
            turno donde empezó el bucle y manda `reemplazo` con el texto bueno.
@@ -1783,8 +1832,10 @@ const OS = (() => {
           señal();
           if (!acum) muletillaTrasEspera(GRUPO_DE[d.nombre] || 'general', 700);
           const n = String(d.nombre || '').toUpperCase().replace(/_/g, ' ');
-          $('#estado-txt').textContent = n;
-          usadas.push(n);                       // para dejarlas escritas al pie de la respuesta
+          /* La frase de persona la manda el servidor; el nombre crudo se guarda
+             para el pie de la respuesta, donde sí se quiere el exacto. */
+          marcarQueHace(d.hace || n);
+          usadas.push(n);
         },
         fin: (d) => {
           señal();
@@ -2536,7 +2587,20 @@ const OS = (() => {
     /* EL HILO DEL DÍA. Se adopta la conversación de hoy antes de saludar, así
        lo primero que se escriba sigue lo de esta mañana en vez de abrir una
        conversación nueva por haber recargado la página. */
-    DATOS.get('/conversaciones/hoy').then((c) => { if (c?._id) conversacionId = c._id; }).catch(() => {});
+    DATOS.get('/conversaciones/hoy').then((c) => {
+      if (c?._id) conversacionId = c._id;
+      /* ── DÓNDE QUEDAMOS ───────────────────────────────────────────────
+         7-sep, José: «el de chat poder tener cerca historial, ya que a veces
+         se cierra y no sé qué quedamos». Al recargar, el tablero adoptaba la
+         conversación del día —así que ULTRON sí se acordaba— pero la PANTALLA
+         salía en blanco. Lo hablado hacía diez minutos no estaba a la vista en
+         ningún lado, y para verlo había que ir al panel del registro, buscar
+         el día y abrirlo.
+         Ahora, al entrar, lo último que se dijeron está donde tiene que estar:
+         en el globo, marcado como de antes para que no se confunda con una
+         respuesta nueva, y con un toque para abrir el hilo entero. */
+      pintarDondeQuedamos(c);
+    }).catch(() => {});
     /* EL ORDEN QUE PIDIÓ JOSÉ: «poner los permisos, debe saltar, y darme
        bienvenido, el clima y todo lo demás». Y además es lo que suena bien:
        los carteles del navegador salen ANTES de que ULTRON abra la boca, no
@@ -2642,6 +2706,10 @@ const OS = (() => {
          pregunta. «OÍR TODO» tiene su propio manejador y no pasa por aquí: se
          le mandaba a ULTRON «OÍR TODO» como si fuera una pregunta. */
       if (b.dataset.url) { window.open(b.dataset.url, '_blank', 'noopener'); return; }
+      /* El del hilo abre la conversación del día aquí mismo. Sin esto, tocarlo
+         le MANDABA a ULTRON la pregunta «VER TODO EL HILO», que es justo lo que
+         no se quiere: gastar un turno por querer mirar atrás. */
+      if (b.dataset.conv) { abrirDia(registroUltimo?.hoy || 'hoy', b.dataset.conv); return; }
       if (b.dataset.propio) return;
       enviar(b.textContent);
     });
@@ -2761,6 +2829,7 @@ const OS = (() => {
        cronómetro de un turno sin tener que hablar con el nodo. */
     envejecerCaja: (minutos) => { cajaCuando = new Date(Date.now() - minutos * 60_000).toISOString(); },
     marcarTurno: (ms) => { ultimoTurno = ms; pintarSalud(saludUltima); },
+    herramienta: (d) => marcarQueHace(d?.hace || d?.nombre),
     envejecerTurno: (s) => envejecerTurno(s),
     /* Para la prueba: si el turno sigue en vuelo. Es lo que distingue
        «interrumpí y quedó libre» de «interrumpí y sigue colgado». */

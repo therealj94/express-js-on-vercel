@@ -169,6 +169,18 @@ function fecha() {
  * Va PRIMERO y sin nada delante. Una sola letra antes y no coincide nada.
  */
 const CABECERA = require('node:fs').readFileSync(require('node:path').join(__dirname, 'cabecera-de-la-casa.md'), 'utf8').trim();
+/* ── EL PLANO TÉCNICO DE LA CASA ─────────────────────────────────────────────
+   7-sep, José: «no sabe nada técnico, dónde están las cosas, por si tienes que
+   mejorarte o ayudarme a hacer cambios».
+   Y era verdad por una razón concreta: para mirar el código hay que abrir la
+   caja del taller con `mas_herramientas`, y eso es una vuelta entera del turno
+   gastada solo en preguntar dónde está algo — la misma vuelta que después le
+   faltaba para hacer el trabajo. Además `repo_arbol` falla porque la casa no
+   tiene llave de GitHub puesta.
+   Las RUTAS no se buscan: se saben. Van en el prompt, en el bloque estable, o
+   sea que se evalúan una vez y quedan en la caché del motor. Solo en modo
+   texto: hablando por voz nadie pide una ruta de archivo. */
+const MAPA = require('node:fs').readFileSync(require('node:path').join(__dirname, 'mapa-de-la-casa.md'), 'utf8').trim();
 
 function sistema({ miembro, memorias, estadoVivo, secciones, vozCasa, pendientes = [], chico = false, modo = 'texto', alias = null, idioma = 'es', habilidades = '', pedidos = [] }) {
   /* Las LECCIONES van aparte de las memorias y ARRIBA de todo lo del momento:
@@ -258,6 +270,8 @@ CON LAS HERRAMIENTAS, SIN TRAMPA
 - abrir NO abre nada: le pone a la persona un botón. Decís «le dejo Ordenex a un toque», nunca «ya abrí».
 - Una herramienta por cosa que hace falta. No llamás todas para una pregunta simple.
 - Para números de la casa (mercados, saldos, bloques, monedas, pendientes, documentos) usás la herramienta que los lee; para cuentas usás calcular. Nunca de memoria.` : ''}
+
+${MAPA}
 
 LA VOZ DE LA CASA (las fichas públicas de AU-RA: qué se dice y cómo)
 ${voz}`;

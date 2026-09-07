@@ -837,11 +837,35 @@ titulo('un turno largo se ve trabajar, y nunca se queda mudo para siempre');
       return { visto, pensando: OS._adentro.pensando() };
     } finally { window.fetch = real; try { soltar?.(new DOMException('a', 'AbortError')); } catch { /* nada */ } }
   });
-  decir(r.visto.some((t) => /PENSANDO \d+ s/.test(t)),
+  decir(r.visto.some((t) => /· \d+ s$/.test(t)),
     'mientras piensa, el rótulo dice cuántos segundos lleva', JSON.stringify(r.visto));
-  const segundos = r.visto.map((t) => Number((/PENSANDO (\d+) s/.exec(t) || [])[1])).filter(Number.isFinite);
+  const segundos = r.visto.map((t) => Number((/· (\d+) s$/.exec(t) || [])[1])).filter(Number.isFinite);
   decir(segundos.length >= 2 && segundos.at(-1) > segundos[0],
     'y el contador CORRE: es lo que distingue «va lento» de «se colgó»', segundos.join(' · '));
+
+  /* ── Y QUÉ ESTÁ HACIENDO, NO SOLO CUÁNTO LLEVA ─────────────────────────
+     7-sep, José: «pasa los 45 seg y no se sabe si está o no está haciendo
+     algo». El nombre de la herramienta SÍ llegaba y se pintaba, y un segundo
+     después el reloj lo borraba con «PENSANDO 23 s». Lo único en pantalla era
+     un contador. Ahora van las dos cosas: qué hace y desde cuándo. */
+  const haciendo = await p.evaluate(async () => {
+    const real = window.fetch;
+    window.fetch = (u, o = {}) => {
+      if (String(u).includes('/pensar')) return new Promise((ok, mal) => o.signal?.addEventListener('abort', () => mal(new DOMException('a', 'AbortError'))));
+      return real(u, o);
+    };
+    try {
+      OS.enviar('Una que usa herramientas.');
+      await new Promise((ok) => setTimeout(ok, 200));
+      OS._adentro.herramienta({ nombre: 'repo_leer', hace: 'leyendo el código · lib/cerebros/nodo.js' });
+      const alInstante = document.querySelector('#estado-txt').textContent;
+      await new Promise((ok) => setTimeout(ok, 1300));
+      return { alInstante, unSegundoDespues: document.querySelector('#estado-txt').textContent };
+    } finally { window.fetch = real; }
+  });
+  decir(/LEYENDO EL CÓDIGO/.test(haciendo.alInstante), 'al correr una herramienta, el rótulo dice qué está haciendo', haciendo.alInstante);
+  decir(/LEYENDO EL CÓDIGO/.test(haciendo.unSegundoDespues) && /· \d+ s$/.test(haciendo.unSegundoDespues),
+    'y el reloj NO lo borra: sigue diciendo qué hace, con los segundos al lado', haciendo.unSegundoDespues);
 
   /* Y si de verdad se queda mudo, se corta solo en vez de dejar la pantalla
      en «analizando» para siempre. Se envejece el reloj en vez de esperar
@@ -855,12 +879,12 @@ titulo('un turno largo se ve trabajar, y nunca se queda mudo para siempre');
     try {
       OS.enviar('Otra que se queda muda del todo.');
       await new Promise((ok) => setTimeout(ok, 300));
-      OS._adentro.envejecerTurno(95);
+      OS._adentro.envejecerTurno(155);
       await new Promise((ok) => setTimeout(ok, 1600));
       return { pensando: OS._adentro.pensando(), boton: !document.querySelector('#enviar').disabled };
     } finally { window.fetch = real; }
   });
-  decir(corte.pensando === false, 'a los 90 s sin una señal, el turno se corta solo');
+  decir(corte.pensando === false, 'a los 150 s sin una señal, el turno se corta solo');
   decir(corte.boton, 'y el renglón vuelve a quedar usable, en vez de deshabilitado para siempre');
 }
 

@@ -574,6 +574,56 @@ titulo('el resumen se GUARDA de verdad, que es donde falló la primera vez');
   decir(f._id === 'abc' && f.miembro === 'jose@ordenglobal.org', 'y sigue siendo de su dueño: nadie resume la conversación de otro');
 }
 
+titulo('lo que dice que va a hacer NO es la respuesta');
+{
+  /* ── LO QUE PASÓ DE VERDAD, 7-sep, en el teléfono de José ────────────────
+     ULTRON: «Veo que tengo las herramientas listas para trabajar en el
+     dashboard. Déjame revisar primero qué hay guardado sobre las mejoras que
+     acordamos y luego ver el código actual:»
+     ...y ahí se quedó. El registro: «se acabó el presupuesto (40000 ms) en la
+     vuelta 3: se cierra con lo que hay».
+
+     El techo de tiempo cortaba «si YA dijo algo», y lo que había dicho era el
+     ANUNCIO. Así que publicaba la promesa y tiraba el trabajo — la forma más
+     molesta de fallar, porque parece que se colgó. Lo metí yo el mismo día
+     arreglando otra cosa. */
+  const anuncio = nodo._adentro.esSoloAnuncio;
+  const SI = [
+    'Veo que tengo las herramientas listas. Déjame revisar primero qué hay guardado y luego ver el código actual:',
+    'Voy a mirar el estado de la caja y le digo.',
+    'Déjeme consultar los pendientes.',
+    'Listo, primero reviso el código.',
+    'Ahora busco eso y le confirmo.',
+  ];
+  const NO = [
+    'El ORIGEN está a dos dólares con cincuenta y siete.',
+    'La cadena 5550 va en el bloque 108.455 y el nodo contesta.',
+    'No pude armar el documento en este turno. Pídamelo otra vez.',
+    'Revisé los pendientes: quedan doce abiertos, y el más urgente es rotar las llaves de producción. Se lo dejo anotado por si quiere que empiece por ahí, aunque antes conviene decidir cuál rota primero porque MONGO_PASSWORD toca producción entera.',
+  ];
+  let mal = 0;
+  for (const t of SI) if (!anuncio(t)) { console.log('    no lo vio como anuncio:', t.slice(0, 60)); mal++; }
+  for (const t of NO) if (anuncio(t)) { console.log('    lo confundió con un anuncio:', t.slice(0, 60)); mal++; }
+  decir(!mal, 'distingue un anuncio de una respuesta', `${SI.length} anuncios y ${NO.length} respuestas`);
+
+  /* Y lo que importa: con el tiempo agotado y SOLO un anuncio escrito, el
+     turno no se cierra — se le quitan las herramientas y se le exige la
+     respuesta, igual que cuando no había dicho nada. */
+  const antesDe = process.env.ULTRON_PRESUPUESTO_MS;
+  process.env.ULTRON_PRESUPUESTO_MS = '0';
+  const conv2 = await memoria.abrirConversacion(JOSE.correo, { titulo: 'anuncio' });
+  guion = [{ texto: 'Déjame revisar primero qué hay guardado y luego ver el código:', llamadas: [{ name: 'mas_herramientas', arguments: { caja: 'taller' } }] },
+           { texto: 'Miré el código: `lib/cerebros/nodo.js` es donde vive el turno.' }];
+  const n0 = pedidos.length;
+  const r = await cerebro.pensar({ miembro: JOSE, junta: JUNTA, texto: 'mejorá el tablero', conversacionId: String(conv2._id) });
+  process.env.ULTRON_PRESUPUESTO_MS = antesDe === undefined ? '' : antesDe;
+  if (antesDe === undefined) delete process.env.ULTRON_PRESUPUESTO_MS;
+  decir(pedidos.length - n0 === 2, 'se le da la vuelta de más para que conteste, no se cierra con el anuncio', `${pedidos.length - n0} llamadas`);
+  decir(!(pedidos.at(-1).tools || []).length, 'y esa vuelta va SIN herramientas: contestar es lo único que queda');
+  decir(/nodo\.js/.test(r.texto) && !/^D[ée]jame revisar/.test(r.texto.trim()),
+    'y lo que llega a pantalla es la RESPUESTA, no la promesa', r.texto.slice(0, 90));
+}
+
 titulo('el turno tiene techo: lo obligatorio siempre corre, lo opcional solo si queda tiempo');
 {
   /* ── LO QUE PASÓ DE VERDAD, 7-sep ─────────────────────────────────────────

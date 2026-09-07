@@ -532,6 +532,46 @@ const ESCRIBEN = new Set(['recordar', 'olvidar', 'anotar_pendiente', 'cerrar_pen
  *     devolvés el que terminó primero, le estás dando la altura de la cadena
  *     donde esperaba el precio del mercado.
  */
+/* La frase que ve la persona mientras la herramienta corre. Lo que no esté
+   aquí sale con su nombre en minúsculas y sin guiones bajos, que ya es
+   bastante mejor que «REPO ARBOL». */
+const QUE_HACE = {
+  buscar_saber: 'buscando en el saber de la casa',
+  buscar_web: 'buscando en internet',
+  leer_pagina: 'leyendo una página',
+  estado_vivo: 'mirando el estado del ecosistema',
+  recordar: 'guardándolo en la memoria',
+  anotar_pendiente: 'anotando el pendiente',
+  cerrar_pendiente: 'cerrando el pendiente',
+  listar_pendientes: 'mirando los pendientes',
+  crear_documento: 'escribiendo el documento',
+  exportar_pdf: 'armando el PDF',
+  listar_archivos: 'mirando los archivos que me subieron',
+  leer_archivo: 'leyendo el archivo',
+  ordenex_caja: 'mirando la caja de Ordenex',
+  clima: 'mirando el clima',
+  hora: 'mirando la hora',
+  mas_herramientas: 'abriendo la caja de herramientas',
+  repo_arbol: 'mirando dónde está el código',
+  repo_leer: 'leyendo el código',
+  repo_buscar: 'buscando en el código',
+  repo_llave: 'comprobando mi llave de GitHub',
+  repo_proponer_cambio: 'proponiendo el cambio',
+  terminal: 'trabajando en la terminal',
+  desplegarse: 'desplegándome',
+  buscar_conversaciones: 'buscando en lo que hablamos',
+  quien_es_quien: 'mirando quién es quién en la Junta',
+  nodos: 'mirando las máquinas',
+};
+function queHace(nombre, entrada) {
+  const base = QUE_HACE[nombre] || String(nombre || '').replace(/_/g, ' ');
+  /* Con el detalle cuando lo hay: «leyendo el código · lib/cerebros/nodo.js»
+     dice mucho más que «leyendo el código», y es lo que deja seguirle el hilo
+     a un turno largo. */
+  const d = entrada && (entrada.ruta || entrada.camino || entrada.archivo || entrada.q || entrada.consulta || entrada.caja || entrada.titulo);
+  return d ? `${base} · ${String(d).slice(0, 60)}` : base;
+}
+
 async function correrLote(llamadas, { ctx, usadas = [], emitir = () => {}, correr: unaHerramienta = null } = {}) {
   /* Quién ejecuta cada herramienta entra por la puerta, con `correr` de fábrica.
      No es un adorno para las pruebas: lo que se prueba acá —quién corre a la
@@ -545,7 +585,15 @@ async function correrLote(llamadas, { ctx, usadas = [], emitir = () => {}, corre
     if (typeof entrada === 'string') { try { entrada = JSON.parse(entrada); } catch { entrada = {}; } }
     return { nombre, entrada: entrada && typeof entrada === 'object' ? entrada : {} };
   });
-  for (const n of normal) emitir('herramienta', { nombre: n.nombre, entrada: n.entrada });
+  /* ── LO QUE ESTÁ HACIENDO, DICHO EN CASTELLANO ────────────────────────────
+     7-sep, José: «pasa los 45 seg y no se sabe si está o no está haciendo
+     algo». Y tenía razón: al panel le llegaba `herramienta` con el nombre
+     crudo —REPO ARBOL— y un segundo después el contador lo pisaba con
+     «PENSANDO 23 s». O sea que lo único que se veía era un reloj.
+     Ahora cada herramienta viaja con una frase de persona. No es adorno:
+     esperar treinta segundos sabiendo que está leyendo un archivo es esperar;
+     esperar treinta segundos delante de un reloj es pensar que se colgó. */
+  for (const n of normal) emitir('herramienta', { nombre: n.nombre, entrada: n.entrada, hace: queHace(n.nombre, n.entrada) });
 
   const clave = (n) => `${n.nombre}:${JSON.stringify(n.entrada)}`;
   const salidas = new Array(normal.length);

@@ -73,7 +73,34 @@ const PLAZO_MS = 170_000;
  * nadie espera. */
 /* Se lee en cada turno, no una vez al arrancar: así se puede subir o bajar
    en Heroku sin desplegar, y las pruebas pueden ponerlo en cero. */
-const presupuestoMs = () => Number(process.env.ULTRON_PRESUPUESTO_MS || 40_000);
+const presupuestoMs = () => Number(process.env.ULTRON_PRESUPUESTO_MS || 90_000);
+
+/* ── LO QUE ES UN ANUNCIO Y NO UNA RESPUESTA ─────────────────────────────────
+ * 7-sep, en el teléfono de José, y es el peor fallo de hoy porque lo metí yo:
+ *
+ *   ULTRON: «Veo que tengo las herramientas listas para trabajar en el
+ *   dashboard. Déjame revisar primero qué hay guardado sobre las mejoras que
+ *   acordamos y luego ver el código actual:»
+ *
+ *   ...y ahí se quedó. El registro lo dice con todas las letras:
+ *   «se acabó el presupuesto (40000 ms) en la vuelta 3: se cierra con lo que hay»
+ *
+ * El techo de tiempo cortaba «si YA dijo algo», y lo que había dicho era el
+ * ANUNCIO de lo que iba a hacer. O sea que el techo publicaba la promesa y
+ * tiraba el trabajo — la forma más molesta de fallar, porque parece colgado.
+ *
+ * Un texto que termina en dos puntos, o que empieza con «déjame ver», «voy a
+ * mirar», «primero reviso», NO es una respuesta: es la antesala. Con eso el
+ * turno no se cierra; se le quitan las herramientas y se le exige la
+ * respuesta, que es lo que ya se hacía cuando no había dicho nada. */
+function esSoloAnuncio(t) {
+  const x = String(t || '').trim();
+  if (!x) return true;
+  if (/[:：]$/.test(x)) return true;               // «...y luego ver el código actual:»
+  if (x.length > 700) return false;                // ya escribió de verdad
+  return /(^|[.!?]\s+)\s*(?:bien|listo|perfecto|ok|entendido|de acuerdo|veo que)?[,.\s]*(d[ée]jame|d[ée]jeme|voy a|permítame|permitame|primero (?:voy|reviso|miro|veo)|ahora (?:reviso|miro|busco|veo)|un momento|enseguida)\b/i.test(x)
+    && !/\b(por lo tanto|en resumen|el resultado|qued[oó]|est[aá] en)\b/i.test(x);
+}
 /* Una guarda cuesta dos llamadas al modelo; con menos de esto no se empieza. */
 const GUARDA_NECESITA_MS = 14_000;
 
@@ -100,7 +127,13 @@ const GUARDA_NECESITA_MS = 14_000;
    Se pone en 16 384 y no en los 24 576 completos a propósito: lo que sobra de
    ahí para arriba es el aire de las VUELTAS de herramientas, que se van
    sumando al hilo, no permiso para escribir prompts más largos. */
-const CTX = Number(process.env.ULTRON_NODO_CTX || 16_384);
+/* 7-sep: subió de 16 384 a 18 432 porque entró el plano de la casa en el
+   prompt escrito (unas 900 fichas) y con el presupuesto viejo el hilo se
+   recortaba de ocho turnos a cuatro — o sea, se cambiaba memoria por mapa, que
+   no sirve de nada. La ventana de la tarjeta son 24 576, así que siguen
+   quedando más de 6 000 fichas de aire para los RESULTADOS de las herramientas
+   dentro de una misma llamada, que es para lo que ese aire existe. */
+const CTX = Number(process.env.ULTRON_NODO_CTX || 18_432);
 const RESERVA_SALIDA = 1_500;
 /* Las herramientas van en la plantilla de Ollama y cuestan fichas que no se
    ven desde aquí, así que se reservan aparte de la salida.
@@ -418,7 +451,15 @@ async function vectorDe(texto) {
        para la pregunta: se busca por palabras». O sea: ocho segundos para
        terminar usando el respaldo igual. El respaldo por palabras es bueno;
        ocho segundos de silencio, no. */
-    const r = await pedirJson('/api/embed', { input: String(texto || '').slice(0, 2000), options: { num_gpu: 0 }, keep_alive: '30m' }, 1500);
+    /* ── EL PLAZO DEL VECTOR, QUE APRETÉ DE MÁS ────────────────────────────
+       Estaba en 8 s y lo bajé a 1,5 s el 7-sep para que no se sumara al
+       silencio. Resultado en producción: «sin vector para la pregunta (sin
+       respuesta a tiempo)» en CASI TODOS los turnos, o sea que dejó de buscar
+       por significado y pasó a buscar por palabras — peor respuesta, y encima
+       gastando el segundo y medio igual. Cuatro segundos es lo que de verdad
+       tarda con el modelo cargado, y sigue estando muy por debajo de los ocho
+       que costaba antes. */
+    const r = await pedirJson('/api/embed', { input: String(texto || '').slice(0, 2000), options: { num_gpu: 0 }, keep_alive: '30m' }, 4000);
     const v = r?.embeddings?.[0];
     if (!Array.isArray(v) || !v.length) return null;
     // Normalizado acá para que el coseno sea un producto escalar y punto.
@@ -661,8 +702,8 @@ async function pensar({ miembro, junta, texto, conversacionId, previa: previaDad
        cuando ya se pasó del presupuesto es lo que convertía un turno en
        noventa segundos de pantalla muda. Solo si YA dijo algo: cortar sin una
        palabra escrita sería peor que tardar. */
-    if (vuelta > 0 && quedaMs() <= 0 && textoFinal.trim()) {
-      emitir('pensando', { vuelta, motivo: 'se acabó el tiempo del turno' });
+    if (vuelta > 0 && quedaMs() <= 0 && textoFinal.trim() && !esSoloAnuncio(textoFinal)) {
+      emitir('pensando', { vuelta, motivo: 'se acabó el tiempo del turno', hace: 'cierro con lo que tengo' });
       console.warn(`[nodo] se acabó el presupuesto (${presupuestoMs()} ms) en la vuelta ${vuelta}: se cierra con lo que hay`);
       break;
     }
@@ -677,12 +718,23 @@ async function pensar({ miembro, junta, texto, conversacionId, previa: previaDad
        hubiera dicho algo. Ahora la vuelta que se pasa del techo es la ÚLTIMA,
        diga lo que diga. */
     const sinTiempo = vuelta > 0 && quedaMs() <= 0;
+    if (sinTiempo && textoFinal.trim() && esSoloAnuncio(textoFinal)) {
+      /* El anuncio se BORRA, no se le pega la respuesta detrás. Si no, en
+         pantalla queda «Déjame revisar primero qué hay guardado y luego ver el
+         código: Miré el código: nodo.js es donde vive el turno» — las dos
+         cosas seguidas, y la primera sobra. Ya se emitió por el hilo, así que
+         se manda `reemplazo` para que el tablero la quite. */
+      textoFinal = '';
+      emitir('reemplazo', { texto: '' });
+    }
     if (sinTiempo) {
-      console.warn(`[nodo] se acabó el presupuesto (${presupuestoMs()} ms) en la vuelta ${vuelta} y aún no dijo nada: se le pide la respuesta sin herramientas`);
-      mensajes.push({ role: 'user', content: '[sistema] Se acabó el tiempo de este turno. Contestá AHORA, en dos o tres líneas, con lo que ya averiguaste. Si te faltó algo, decí qué te faltó — pero contestá.' });
+      console.warn(`[nodo] se acabó el presupuesto (${presupuestoMs()} ms) en la vuelta ${vuelta} sin respuesta${textoFinal.trim() ? ' (solo un anuncio)' : ''}: se le pide la respuesta sin herramientas`);
+      mensajes.push({ role: 'user', content: '[sistema] Se acabó el tiempo de este turno y lo que llevás escrito es solo el ANUNCIO de lo que ibas a hacer. '
+        + 'Contestá AHORA con lo que YA averiguaste, y decí en una línea qué te quedó sin mirar. Lo que no se puede es dejarlo en «déjame revisar».' });
     }
     vueltasDadas = vuelta + 1;
-    emitir('pensando', { vuelta, ...(sinTiempo ? { motivo: 'se acabó el tiempo: cierro con lo que hay' } : {}) });
+    emitir('pensando', { vuelta, hace: sinTiempo ? 'se acabó el tiempo: cierro con lo que tengo' : (vuelta ? 'sigo trabajando' : 'estoy pensando'),
+      ...(sinTiempo ? { motivo: 'se acabó el tiempo: cierro con lo que hay' } : {}) });
     const acum = { t: '' };
     let r = await pedirDelTurno({ model: MODELO, messages: mensajes, tools: sinTiempo ? undefined : herramientas.paraOllama({ cajas }), stream: true, options: opciones }, { alTrozo: conGuarda(acum) });
     uso.entrada += r.uso.entrada; uso.salida += r.uso.salida;
@@ -1268,4 +1320,4 @@ async function salud() {
   });
 }
 
-module.exports = { pensar, precalentar, titular, resumirHilo, salud, encendido, MODELO, _adentro: { pedir, pedirJson, vectorDe, llamadasEnTexto, armarMensajes, sinRepetidos, sinElRestoDeUnaHerramienta, sinCodigoPegadoArriba, hastaOtroAlfabeto, dondeEmpiezaElBucle, fichas, PRESUPUESTO, PRESUPUESTO_FICHAS, CTX, presupuestoMs, GUARDA_NECESITA_MS, VENTANA_HILO, VENTANA_HILO_VOZ, TOPE_RESUMEN } };
+module.exports = { pensar, precalentar, titular, resumirHilo, salud, encendido, MODELO, _adentro: { esSoloAnuncio, pedir, pedirJson, vectorDe, llamadasEnTexto, armarMensajes, sinRepetidos, sinElRestoDeUnaHerramienta, sinCodigoPegadoArriba, hastaOtroAlfabeto, dondeEmpiezaElBucle, fichas, PRESUPUESTO, PRESUPUESTO_FICHAS, CTX, presupuestoMs, GUARDA_NECESITA_MS, VENTANA_HILO, VENTANA_HILO_VOZ, TOPE_RESUMEN } };
