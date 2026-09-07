@@ -1723,11 +1723,17 @@ const OS = (() => {
       /* El del hilo no abre una pestaña: abre el día aquí mismo. */
       if (a?.tipo === 'hilo' && a.conv) return { texto: a.nombre || 'Ver todo el hilo', conv: a.conv };
       if (a?.tipo === 'seguir') return { texto: a.nombre || 'SEGUIR CON ESTO', seguir: true };
+      /* ── EL PERMISO, A UN TOQUE ─────────────────────────────────────────
+         La acción viajaba desde siempre y el tablero no la pintaba: el pedido
+         se quedaba esperando INVISIBLE en el panel de autorizaciones, y ULTRON
+         repetía «en cuanto lo apruebe, sigo» sin que nadie supiera qué había
+         que aprobar. Ahora es un botón, y al aprobarlo sigue solo. */
+      if (a?.tipo === 'autorizacion' && a.id) return { texto: `APROBAR: ${a.resumen || 'lo que pidió'}`, aprobar: a.id };
       return null;
     }).filter((b) => b && b.texto);
     if (!botones.length) { c.classList.add('oculto'); c.innerHTML = ''; return; }
     c.classList.remove('oculto');
-    c.innerHTML = botones.map((b) => `<button class="chip"${b.url ? ` data-url="${esc(b.url)}"` : ''}${b.conv ? ` data-conv="${esc(b.conv)}"` : ''}${b.seguir ? ' data-seguir="1"' : ''}>${esc(b.texto)}</button>`).join('');
+    c.innerHTML = botones.map((b) => `<button class="chip"${b.url ? ` data-url="${esc(b.url)}"` : ''}${b.conv ? ` data-conv="${esc(b.conv)}"` : ''}${b.seguir ? ' data-seguir="1"' : ''}${b.aprobar ? ` data-aprobar="${esc(b.aprobar)}"` : ''}>${esc(b.texto)}</button>`).join('');
   }
 
   /**
@@ -2741,6 +2747,13 @@ const OS = (() => {
          se hizo y cuál es el paso siguiente, así que no hace falta repetirlo
          —y repetirlo sería gastar fichas en algo que ya sabe—. */
       if (b.dataset.seguir) { enviar('Seguí con eso, por favor.'); return; }
+      if (b.dataset.aprobar) {
+        const id = b.dataset.aprobar; b.disabled = true; b.textContent = 'APROBANDO…';
+        DATOS.post(`/autorizaciones/${encodeURIComponent(id)}`, { decision: 'aprobado' })
+          .then(() => { avisar('Aprobado. ULTRON sigue.'); enviar('Ya lo aprobé. Seguí con eso.'); })
+          .catch((e) => { b.disabled = false; b.textContent = 'APROBAR'; avisar(e.message || 'No se pudo aprobar.', true); });
+        return;
+      }
       if (b.dataset.propio) return;
       enviar(b.textContent);
     });

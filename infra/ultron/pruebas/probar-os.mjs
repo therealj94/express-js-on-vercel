@@ -987,11 +987,23 @@ titulo('los botones que ULTRON deja, y los pendientes que se cierran');
       { tipo: 'pr', url: 'https://github.example/pr/1', rama: 'arreglo' },
     ]);
     const b = [...document.querySelectorAll('#chips .chip')];
-    return { n: b.length, textos: b.map((x) => x.textContent), urls: b.map((x) => x.dataset.url || null) };
+    return { n: b.length, textos: b.map((x) => x.textContent),
+             urls: b.map((x) => x.dataset.url || null), aprobar: b.map((x) => x.dataset.aprobar || null) };
   });
-  decir(r.n === 2, 'solo son botones las acciones que de verdad tienen algo que tocar', `${r.n} de 4`);
+  decir(r.n === 3, 'solo son botones las acciones que de verdad tienen algo que tocar', `${r.n} de 4`);
   decir(r.textos.every((t) => t.trim().length > 2), 'y ninguno sale en blanco', JSON.stringify(r.textos));
-  decir(r.urls.every(Boolean), 'cada uno lleva su dirección: tocarlo ABRE, no le pregunta a ULTRON', JSON.stringify(r.urls));
+  /* ── EL PERMISO, A UN TOQUE ─────────────────────────────────────────────
+     7-sep, contra producción: a «mejorá el tablero» ULTRON pidió correr un
+     comando, se quedó esperando la aprobación y contestó «en cuanto lo
+     apruebe, sigo». La acción `autorizacion` VIAJABA desde siempre y el
+     tablero no la pintaba, así que el pedido esperaba invisible en otro panel
+     y el trabajo se quedaba parado sin que nadie supiera por qué.
+     No lleva dirección a propósito: no abre una pestaña, aprueba y sigue. */
+  decir(r.aprobar.some(Boolean) && r.textos.some((t) => /APROBAR/.test(t)),
+    'un permiso pendiente sale como botón de aprobar, no escondido en otro panel', JSON.stringify(r.textos));
+  decir(r.textos.every((t, i) => r.urls[i] || r.aprobar[i]),
+    'y cada botón hace algo: abre una dirección o aprueba; ninguno le pregunta a ULTRON',
+    JSON.stringify(r.urls) + ' · ' + JSON.stringify(r.aprobar));
 
   const sug = await p.evaluate(() => {
     OS._adentro.chips(['¿Cómo va la cadena?', '¿A cuánto está el oro?']);

@@ -881,6 +881,23 @@ async function pensar({ miembro, junta, texto, conversacionId, previa: previaDad
     }
   }
 
+  /* ── UN PERMISO PENDIENTE TAMBIÉN ES TRABAJO A MEDIAS ────────────────────
+     7-sep, contra producción: a «mejorá el tablero» ULTRON pidió correr un
+     `grep` en la terminal, se quedó esperando la aprobación, y contestó «en
+     cuanto lo apruebe, sigo». El turno terminó BIEN —no se le acabaron las
+     vueltas ni el tiempo— así que no quedó apuntado ningún trabajo, y al decir
+     «seguí» volvió a empezar y a pedir el mismo permiso.
+     Un turno parado esperando un clic es un trabajo a medias como cualquier
+     otro: se apunta igual, con el permiso como paso siguiente. */
+  const permisoEsperando = ctx.acciones.find((a) => a.tipo === 'autorizacion');
+  if (permisoEsperando && trabajo === undefined) {
+    trabajo = {
+      objetivo: texto.slice(0, 500),
+      hecho: usadas.length ? `Corrí: ${[...new Set(usadas.map((h) => h.nombre))].join(', ')}.` : '',
+      falta: `Esperando que el dueño apruebe el pedido ${String(permisoEsperando.id).slice(-6)}: ${permisoEsperando.resumen}`,
+    };
+  }
+
   /* ── LA GUARDA DEL «NO PUEDO» SIN HABER MIRADO ────────────────────────────
      Es la red de la que cuelga todo el recorte a doce herramientas.
 

@@ -257,7 +257,7 @@ const DEFINICIONES = [
   },
   {
     name: 'terminal',
-    description: 'PELIGROSA (pide autorización al dueño). Corre UN comando de shell en el servidor de ULTRON, con plazo de 60 s, salida acotada y sin ninguna variable de entorno de la casa. El dueño ve el comando exacto antes de aprobarlo.',
+    description: 'PELIGROSA (pide autorización al dueño, y hasta que la dé el trabajo se queda parado). ANTES DE PEDIRLA: para LEER un archivo está repo_leer, para BUSCAR texto o una función en el código está repo_buscar, y para ver qué archivos hay está repo_arbol — las tres corren al momento y sin permiso. La terminal es solo para lo que ESAS TRES no pueden hacer: correr las pruebas, un git log, contar líneas. Un grep no es motivo para parar el trabajo. Corre UN comando de shell en el servidor de ULTRON, con plazo de 60 s, salida acotada y sin ninguna variable de entorno de la casa; el dueño ve el comando exacto antes de aprobarlo.',
     input_schema: { type: 'object', properties: { comando: { type: 'string' }, motivo: { type: 'string', description: 'para qué, en una línea: lo lee el dueño' } }, required: ['comando'] },
   },
   {
