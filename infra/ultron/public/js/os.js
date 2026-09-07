@@ -1305,7 +1305,34 @@ const OS = (() => {
   }
   /* La ventana de «ULTRON necesita su permiso». Sale sola cuando una respuesta
      trae un pedido pendiente, y también se puede abrir desde el botón. */
+  /* ── EL PERMISO, DENTRO DE LA CONVERSACIÓN ────────────────────────────────
+     José, 7-sep: «cuando necesite permiso que aparezca como cuando aparece
+     aquí en Claude».
+     Lo que hace que ahí funcione no es la ventana: es que el pedido queda
+     ESCRITO EN EL HILO, con el comando exacto delante, y sigue estando ahí
+     aunque uno mire otra cosa y vuelva. Una ventana que se cierra sin querer
+     se lleva el pedido con ella y ULTRON se queda esperando algo que ya nadie
+     ve.
+     Así que van los dos: la tarjeta se queda en la conversación, y encima sale
+     la ventana para decidir sin buscar. Aprobar en cualquiera de las dos hace
+     lo mismo. */
+  function tarjetaDePermiso(p) {
+    const d = $('#dicho');
+    if (!d || d.querySelector(`[data-permiso-tarjeta="${p.id}"]`)) return;
+    const caja = document.createElement('div');
+    caja.className = 'rg-turno';
+    caja.dataset.permisoTarjeta = p.id;
+    caja.style.cssText = 'border-left:2px solid var(--acento);margin-top:10px';
+    caja.innerHTML = `<div class="quien">ULTRON NECESITA SU PERMISO</div>
+      <div style="margin:6px 0 10px;font-family:var(--mono,monospace);font-size:12.5px;word-break:break-word">${esc(p.resumen || 'una acción que necesita aprobación')}</div>
+      ${p.motivo ? `<div class="sub" style="margin-bottom:10px">Para qué: ${esc(p.motivo)}</div>` : ''}
+      <div class="fila-btn"><button class="btn" data-aprobar="${esc(p.id)}">APROBAR Y SEGUIR</button></div>`;
+    d.appendChild(caja);
+    $('#globo')?.classList.remove('oculto');
+  }
+
   function pedirPermiso(p) {
+    tarjetaDePermiso(p);
     if (document.querySelector('#dialogo [data-permiso]')) return;   // ya está abierta
     const d = dialogo(`<h3 data-permiso="${esc(p.id)}">ULTRON NECESITA SU PERMISO</h3>
       <div class="sub">Para seguir con lo que le pidió tiene que hacer esto, y no lo hace sin que usted lo apruebe:</div>
@@ -1320,7 +1347,13 @@ const OS = (() => {
       const b = d.querySelector('#pm-si');
       b.disabled = true; b.textContent = 'APROBANDO…';
       DATOS.post(`/autorizaciones/${encodeURIComponent(p.id)}`, { decision: 'aprobado' })
-        .then(() => { d.remove(); avisar('Aprobado. ULTRON sigue.'); enviar(`Ya aprobé el pedido ${p.id}. Corré aprobado_correr con ese id y seguí.`); })
+        .then(() => {
+          d.remove();
+          const t = document.querySelector(`[data-permiso-tarjeta="${p.id}"]`);
+          if (t) t.innerHTML = `<div class="quien">APROBADO</div><div class="sub">${esc(p.resumen || '')}</div>`;
+          avisar('Aprobado. ULTRON sigue.');
+          enviar(`Ya aprobé el pedido ${p.id}. Corré aprobado_correr con ese id y seguí.`);
+        })
         .catch((e) => { b.disabled = false; b.textContent = 'APROBAR Y SEGUIR'; avisar(e.message || 'No se pudo aprobar.', true); });
     };
   }

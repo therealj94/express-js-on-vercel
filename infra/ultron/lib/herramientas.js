@@ -37,6 +37,7 @@ const vivo = require('./vivo');
 const memoria = require('./memoria');
 const permisos = require('./permisos');
 const ojo = require('./ojo');
+const archivos = require('./archivos');
 const boveda = require('./boveda');
 const taller = require('./taller');
 const caja = require('./caja');
@@ -804,10 +805,29 @@ async function correrAdentro(nombre, entrada, ctx) {
         const t = !!entrada.telefono;
         const d = await ojo.foto({ url: String(entrada.url || ''), esperar: entrada.esperar || null,
           completa: !!entrada.completa, ancho: t ? 390 : 1280, alto: t ? 844 : 900 });
-        const id = ojo.guardarFoto(d.png, { url: d.url, titulo: d.titulo });
-        ctx.acciones.push({ tipo: 'abrir', nombre: `Ver la foto de ${new URL(d.url).hostname}`, url: `/ojo/foto/${id}` });
-        return `Foto de ${d.url} («${d.titulo}»), ${Math.round(d.bytes / 1024)} KB${t ? ', como se ve en un teléfono' : ''}. `
-          + `El botón para verla ya quedó debajo de la respuesta. Vos NO podés ver la foto —sos texto—: si hace falta saber qué dice la pantalla, usá leer_pagina, que la lee con el mismo navegador.`;
+        /* ── LA FOTO SE GUARDA DE VERDAD Y SE VE DENTRO DE LA RESPUESTA ────
+           Estaba en un mapa en memoria de cinco huecos: se perdía al
+           reiniciar y se abría en otra pestaña. José, 7-sep: «que pueda tomar
+           screenshot, enviarme y MOSTRARME de verdad».
+           Ahora va al mismo almacén que un PDF que sube la junta —persiste,
+           sale en la lista de archivos, se puede bajar y se puede mandar por
+           su enlace— y la respuesta lleva la imagen incrustada, así que se ve
+           en la conversación sin tocar nada. */
+        const host = new URL(d.url).hostname;
+        const png = Buffer.from(d.png, 'base64');
+        const guardado = await archivos.guardar({
+          nombre: `${host}${t ? '-telefono' : ''}-${new Date().toISOString().slice(0, 16).replace(/[:T]/g, '')}.png`,
+          tipo: 'image/png', buf: png,
+          miembro: ctx.miembro?.correo || 'ULTRON', conversacion: ctx.conversacionId || null,
+        }).catch((e) => ({ error: e }));
+        if (guardado?.error) return `Saqué la foto de ${d.url} (${Math.round(d.bytes / 1024)} KB) pero no se pudo guardar: ${guardado.error.message}`;
+        const ruta = `/archivos/${guardado._id}/bajar`;
+        ctx.acciones.push({ tipo: 'abrir', nombre: `Ver la foto de ${host}`, url: ruta });
+        return `Foto de ${d.url} («${d.titulo}»), ${Math.round(d.bytes / 1024)} KB${t ? ', como se ve en un teléfono' : ''}.\n\n`
+          + `![Foto de ${host}](${ruta})\n\n`
+          + `ESCRIBÍ ESA MISMA LÍNEA \`![...](${ruta})\` EN TU RESPUESTA: es lo que hace que la persona VEA la foto dentro de la conversación en vez de tener que abrir otra pestaña. `
+          + `Queda guardada en los archivos y se puede mandar por su enlace. `
+          + `Vos NO ves la foto —sos texto—: si hace falta saber qué DICE la pantalla, usá leer_pagina, que la lee con el mismo navegador.`;
       }
       case 'pagina_entrar': {
         /* LAS CLAVES SALEN DE LA BÓVEDA AQUÍ, NO LAS ESCRIBE EL MODELO. El

@@ -18,7 +18,24 @@
     s = s.replace(/`([^`]+)`/g, (_, c) => `<code>${c}</code>`);
     s = s.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
     s = s.replace(/(^|[^*])\*([^*\n]+)\*/g, '$1<em>$2</em>');
-    s = s.replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>');
+    /* ── IMÁGENES, Y SOLO DE LA PROPIA CASA ─────────────────────────────────
+       `![rótulo](/archivos/xxx/bajar)` se dibuja. Es lo que hace que una foto
+       de pantalla se VEA dentro de la conversación en vez de esconderse
+       detrás de un botón que hay que ir a buscar.
+       La ruta tiene que empezar por UNA barra: una imagen de fuera la elige
+       quien escribió la página que ULTRON acaba de leer, y bastaría un
+       `![](https://alguien.com/x.png)` colado en esa página para que el
+       navegador de José pidiera esa dirección solo — avisándole a un tercero
+       cuándo y desde dónde se leyó la respuesta. Las de la casa no salen de
+       la casa. */
+    s = s.replace(/!\[([^\]]*)\]\((\/[^\s)]+)\)/g,
+      (_, alt, ruta) => `<img src="${ruta}" alt="${alt}" loading="lazy" style="max-width:100%;height:auto;border-radius:6px;display:block;margin:10px 0">`);
+    /* Una imagen de FUERA se degrada a enlace, y se le come el «!» para que no
+       quede un signo suelto delante. Se ve de dónde venía y no se pide sola. */
+    s = s.replace(/!?\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>');
+    /* Y un enlace a algo de la casa, que antes no se enlazaba porque el patrón
+       de arriba solo mira las direcciones completas. */
+    s = s.replace(/\[([^\]]+)\]\((\/[^\s)]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>');
     return s;
   }
 
