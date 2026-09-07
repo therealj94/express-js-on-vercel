@@ -1126,10 +1126,19 @@ export const syncCards = async (req, res) => {
     return res.status(403).json({ message: "Forbidden" });
   }
 
+  /* ── EL ENSAYO ────────────────────────────────────────────────────────────
+     `?ensayo=1` recorre TODO y no escribe NADA: dice a quién enlazaría cada
+     tarjeta y a quién no, y por qué.
+     Existe porque este sync hace dos cosas serias de una vez: enlaza una
+     tarjeta de dinero real a una cuenta, y le pone `kycStatus: approved` a esa
+     persona. Enlazar mal es darle la tarjeta de alguien a otro. Antes de
+     escribir en producción hay que poder MIRAR la lista, y no había forma. */
+  const ensayo = req.query.ensayo === "1" || req.query.dryRun === "1";
+
   try {
     const { data: cmCards } = await cryptomateClient.get("/cards/virtual-cards/list");
 
-    const results = { synced: [], skipped: [], notFound: [] };
+    const results = { ensayo, synced: [], skipped: [], notFound: [] };
 
     for (const cm of cmCards) {
       const email = cm.meta?.email;
@@ -1146,6 +1155,15 @@ export const syncCards = async (req, res) => {
       // ¿El usuario ya tiene otra tarjeta activa vinculada?
       const userCard = await Card.findOne({ userId: user._id, status: { $ne: "DELETED" } });
       if (userCard) { results.skipped.push({ id: cm.id, email, reason: "user already has card " + userCard.cryptomateCardId }); continue; }
+
+      /* En ensayo se anota lo que PASARÍA y se sigue, sin tocar la base. El
+         last4 va en la respuesta a propósito: es con lo que una persona
+         comprueba, mirando la tarjeta física, que el enlace es el correcto. */
+      if (ensayo) {
+        results.synced.push({ id: cm.id, email, userId: user._id, titular: cm.card_holder_name, last4: cm.last4,
+          kycQuedaria: user.kycStatus !== "approved" ? "approved (hoy: " + user.kycStatus + ")" : user.kycStatus });
+        continue;
+      }
 
       // Crear el registro
       await Card.create({
