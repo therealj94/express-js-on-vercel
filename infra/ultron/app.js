@@ -627,7 +627,7 @@ app.post('/precalentar', puerta, (req, res) => {
      se calentaba nada. Una mejora invisible que falla en silencio es peor que
      no tenerla. */
   cerebro.precalentar({ miembro: req.miembro, junta: JUNTA.map(sinClave), modo: req.body?.modo === 'texto' ? 'texto' : 'voz', alias: null })
-    .then((r) => console.log(r?.ok ? `[calentar] ${r.fichas} fichas en ${r.ms}ms` : `[calentar] NO se calentó: ${r?.motivo || 'sin motivo'}`))
+    .then((r) => console.log(r?.ok ? `[calentar] ${modo} · ${r.fichas} fichas en ${r.ms}ms` : `[calentar] ${modo} · NO se calentó: ${r?.motivo || 'sin motivo'}`))
     .catch((e) => console.warn(`[calentar] falló: ${e?.codigo || ''} ${String(e?.message || e).slice(0, 120)}`));
 });
 

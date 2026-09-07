@@ -810,6 +810,60 @@ titulo(`el globo no se come el botón de hablar, a ${ANCHO} px`);
   await p.evaluate(() => OS._adentro.pintarDicho(''));
 }
 
+titulo('un turno largo se ve trabajar, y nunca se queda mudo para siempre');
+{
+  /* ── LO QUE PASÓ EL 7-SEP ─────────────────────────────────────────────────
+     Una conversación ESCRITA de diez minutos, siete turnos seguidos, todos
+     con la primera palabra a los once segundos y el turno entero en veinte o
+     treinta. Durante todo ese rato la pantalla decía «ANALIZANDO» y nada más:
+     quieto, sin una cifra, indistinguible de un cuelgue. Y como se ve colgado
+     uno vuelve a mandar la pregunta — que desde ayer MATA el turno anterior—
+     y empieza otra espera de treinta segundos. Así se queda pegado de verdad:
+     lo confirman las dos líneas «se cortó: lo dejó quien preguntaba» del
+     registro, seguidas de nada. */
+  const r = await p.evaluate(async () => {
+    const real = window.fetch;
+    let soltar;
+    window.fetch = (u, o = {}) => {
+      if (String(u).includes('/pensar')) {
+        return new Promise((ok, mal) => { soltar = mal; o.signal?.addEventListener('abort', () => mal(new DOMException('a', 'AbortError'))); });
+      }
+      return real(u, o);
+    };
+    try {
+      OS.enviar('Una pregunta de las que tardan media vuelta.');
+      const visto = [];
+      for (let i = 0; i < 5; i++) { await new Promise((ok) => setTimeout(ok, 1050)); visto.push(document.querySelector('#estado-txt').textContent); }
+      return { visto, pensando: OS._adentro.pensando() };
+    } finally { window.fetch = real; try { soltar?.(new DOMException('a', 'AbortError')); } catch { /* nada */ } }
+  });
+  decir(r.visto.some((t) => /PENSANDO \d+ s/.test(t)),
+    'mientras piensa, el rótulo dice cuántos segundos lleva', JSON.stringify(r.visto));
+  const segundos = r.visto.map((t) => Number((/PENSANDO (\d+) s/.exec(t) || [])[1])).filter(Number.isFinite);
+  decir(segundos.length >= 2 && segundos.at(-1) > segundos[0],
+    'y el contador CORRE: es lo que distingue «va lento» de «se colgó»', segundos.join(' · '));
+
+  /* Y si de verdad se queda mudo, se corta solo en vez de dejar la pantalla
+     en «analizando» para siempre. Se envejece el reloj en vez de esperar
+     noventa segundos de verdad. */
+  const corte = await p.evaluate(async () => {
+    const real = window.fetch;
+    window.fetch = (u, o = {}) => {
+      if (String(u).includes('/pensar')) return new Promise((ok, mal) => o.signal?.addEventListener('abort', () => mal(new DOMException('a', 'AbortError'))));
+      return real(u, o);
+    };
+    try {
+      OS.enviar('Otra que se queda muda del todo.');
+      await new Promise((ok) => setTimeout(ok, 300));
+      OS._adentro.envejecerTurno(95);
+      await new Promise((ok) => setTimeout(ok, 1600));
+      return { pensando: OS._adentro.pensando(), boton: !document.querySelector('#enviar').disabled };
+    } finally { window.fetch = real; }
+  });
+  decir(corte.pensando === false, 'a los 90 s sin una señal, el turno se corta solo');
+  decir(corte.boton, 'y el renglón vuelve a quedar usable, en vez de deshabilitado para siempre');
+}
+
 titulo('la caja de Ordenex y el registro del día, en el tablero');
 {
   decir(await p.$('.p[data-panel="caja"]') !== null, 'el tablero trae el panel de la caja de Ordenex');

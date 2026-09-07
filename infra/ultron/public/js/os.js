@@ -1433,6 +1433,7 @@ const OS = (() => {
   let locutor = null, conVoz = true, conversacionId = null, pensando = false;
   /* El mando para cortar el turno en vuelo. Ver `enviar` e `interrumpir`. */
   let cancelarTurno = null;
+  let envejecerTurno = () => {};   // lo rellena cada turno; solo lo usa la prueba
   let IDIOMA = 'es-HN';       // el del reconocimiento de voz; lo fija la preferencia
   let oreja = null, despierta = false;
 
@@ -1700,6 +1701,37 @@ const OS = (() => {
     pensando = true; $('#enviar').disabled = true;
     $('#texto').value = ''; $('#texto').style.height = 'auto';
     estado('think', 'think');
+    /* ── QUE SE VEA QUE ESTÁ TRABAJANDO, Y CUÁNTO LLEVA ────────────────────
+       Un turno escrito tarda veinte o treinta segundos. Durante todo ese rato
+       la pantalla decía «ANALIZANDO» y nada más: quieto, sin una cifra, igual
+       que si estuviera colgado. Y como se ve colgado, uno vuelve a mandar la
+       pregunta — que ahora MATA el turno anterior y empieza otra espera de
+       treinta segundos. Así se queda pegado de verdad, y pasó el 7-sep.
+       Un contador no acelera nada, pero convierte «no responde» en «lleva 14
+       segundos», que es lo que hace que uno espere en vez de insistir. */
+    const arranque = Date.now();
+    let ultimaSeñal = Date.now();
+    const relojPensar = setInterval(() => {
+      if (!pensando) return;
+      const s = Math.round((Date.now() - arranque) / 1000);
+      const e = $('#estado-txt');
+      if (e && (mente.state === 'think')) e.textContent = `PENSANDO ${s} s`;
+      /* ── Y SI SE QUEDA MUDO DE VERDAD ─────────────────────────────────
+         Todas las demás llamadas llevan su reloj; ésta no, a propósito,
+         porque un turno con herramientas puede ser largo. Pero «puede ser
+         largo» no es «para siempre»: si no llega NADA —ni texto, ni una
+         herramienta, ni el latido de una vuelta— en cuarenta y cinco
+         segundos, se dice, y a los noventa se corta y se devuelve el
+         renglón. Quedarse en «analizando» sin fin es lo peor de todo,
+         porque no se puede ni esperar ni reintentar. */
+      const mudo = Math.round((Date.now() - ultimaSeñal) / 1000);
+      if (mudo === 45) avisar('ULTRON lleva 45 s sin mandar nada. Puede seguir esperando, o tocar el centro para cortar.', false);
+      if (mudo >= 90) { avisar('ULTRON no contestó en 90 s. Se cortó: vuelva a preguntar.', true); interrumpirTurno(); }
+    }, 1000);
+    const señal = () => { ultimaSeñal = Date.now(); };
+    /* Para la prueba: mover el reloj del silencio hacia atrás, y no esperar
+       noventa segundos de verdad para comprobar que corta. */
+    envejecerTurno = (segundos) => { ultimaSeñal = Date.now() - segundos * 1000; };
     pintarDicho('');
     chips(null);
     let acum = ''; const usadas = [];
@@ -1726,12 +1758,16 @@ const OS = (() => {
            de la conversación no se recogía NUNCA, así que cada pregunta del
            mismo rato abría hilo nuevo hasta que el servidor lo arreglaba por su
            cuenta con la conversación del día. */
-        inicio: (d) => { conversacionId = d.conversacionId || conversacionId; },
+        inicio: (d) => { señal(); conversacionId = d.conversacionId || conversacionId; },
         texto: (d) => {
+          señal();
           if (!acum) pararMuletillas();      // empezó a contestar: nada de hablar encima
           acum += d.t || ''; pintarDicho(acum);
           if (conVoz) locutor?.alimentar?.(d.t || '');
         },
+        /* Cada vuelta de herramientas emite `pensando`: es la señal de que
+           sigue vivo aunque todavía no haya escrito una letra. */
+        pensando: () => señal(),
         /* ── EL SERVIDOR SE CORRIGE A MITAD ─────────────────────────────
            Cuando el modelo se engancha repitiendo, la guarda del nodo corta el
            turno donde empezó el bucle y manda `reemplazo` con el texto bueno.
@@ -1744,12 +1780,14 @@ const OS = (() => {
           try { locutor?.olvidarLoQueFalta?.(); } catch { /* nada */ }
         },
         herramienta: (d) => {
+          señal();
           if (!acum) muletillaTrasEspera(GRUPO_DE[d.nombre] || 'general', 700);
           const n = String(d.nombre || '').toUpperCase().replace(/_/g, ' ');
           $('#estado-txt').textContent = n;
           usadas.push(n);                       // para dejarlas escritas al pie de la respuesta
         },
         fin: (d) => {
+          señal();
           /* El cronómetro del turno, a la vista. «Se traba» y «va lento» eran
              quejas sin un número al lado; ahora el panel del cerebro dice
              cuánto tardó la primera palabra, que es el silencio que se siente. */
@@ -1783,6 +1821,7 @@ const OS = (() => {
         setTimeout(() => { if (mente.state === 'error') estado('idle', 'neutral'); }, 3200);
       }
     } finally {
+      clearInterval(relojPensar);
       if (cancelarTurno === miMando) cancelarTurno = null;
       /* Y se apaga la muletilla: si el turno se corta antes de la primera
          letra, el temporizador seguía vivo y ULTRON decía «déjeme ver» encima
@@ -2075,11 +2114,21 @@ const OS = (() => {
      No se espera la respuesta y no se avisa si falla: es velocidad, no
      función. El servidor ya se cuida de no calentar si hay un turno en vuelo
      y de no hacerlo dos veces seguidas. */
-  let calentadoEn = 0;
-  function calentar() {
-    if (Date.now() - calentadoEn < 15_000) return;    // el servidor también frena, pero no hace falta llegar
-    calentadoEn = Date.now();
-    try { DATOS.post('/precalentar', { modo: 'voz' }).catch(() => {}); } catch { /* nada */ }
+  /* ── SE CALIENTA EL MODO QUE SE VA A USAR, Y NO SIEMPRE LA VOZ ─────────────
+     La primera versión pedía SIEMPRE `voz`, y eso dejaba a quien escribe peor
+     que antes: el prompt de texto y el de voz se separan después de la
+     cabecera, así que calentar la voz no solo no ayudaba a lo escrito —le
+     DESALOJABA lo que tuviera cacheado.
+     Se vio en producción el 7-sep. Una conversación escrita de diez minutos,
+     siete turnos seguidos:
+         primera palabra 11,5 s · 11,5 s · 10,8 s · 11,9 s · 10,2 s · 11,1 s
+     mientras los turnos hablados de esa misma noche iban a 2,2 s. La
+     diferencia entera era ésta. */
+  const calentadoEn = { voz: 0, texto: 0 };
+  function calentar(modo = 'voz') {
+    if (Date.now() - calentadoEn[modo] < 15_000) return;   // el servidor también frena, pero no hace falta llegar
+    calentadoEn[modo] = Date.now();
+    try { DATOS.post('/precalentar', { modo }).catch(() => {}); } catch { /* nada */ }
   }
 
   function escucharYa() {
@@ -2514,7 +2563,15 @@ const OS = (() => {
     };
     ajustarPista(); addEventListener('resize', ajustarPista);
     // crece con el texto, pero nunca por debajo del blanco del dedo (38px)
-    ta.addEventListener('input', () => { ta.style.height = 'auto'; ta.style.height = Math.max(38, Math.min(96, ta.scrollHeight)) + 'px'; });
+    ta.addEventListener('input', () => {
+      ta.style.height = 'auto'; ta.style.height = Math.max(38, Math.min(96, ta.scrollHeight)) + 'px';
+      /* Escribir una pregunta lleva unos segundos, y son los mismos que el
+         motor tarda en leer el prompt. Se le manda a evaluar desde la primera
+         letra: para cuando se pulsa ENVIAR, ya está leído. Es lo mismo que se
+         hace al abrir el micrófono, que bajó la primera palabra de 6,5 s a
+         2,3 s — y a lo escrito no se le estaba haciendo. */
+      if (ta.value.trim().length >= 1) calentar('texto');
+    });
     ta.addEventListener('keydown', (e) => {
       if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); enviar(ta.value); }
     });
@@ -2704,6 +2761,7 @@ const OS = (() => {
        cronómetro de un turno sin tener que hablar con el nodo. */
     envejecerCaja: (minutos) => { cajaCuando = new Date(Date.now() - minutos * 60_000).toISOString(); },
     marcarTurno: (ms) => { ultimoTurno = ms; pintarSalud(saludUltima); },
+    envejecerTurno: (s) => envejecerTurno(s),
     /* Para la prueba: si el turno sigue en vuelo. Es lo que distingue
        «interrumpí y quedó libre» de «interrumpí y sigue colgado». */
     pensando: () => pensando } };
