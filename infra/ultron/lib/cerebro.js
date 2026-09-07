@@ -148,10 +148,23 @@ function fecha() {
  *     cada vez que uno entraba le borraba al otro el prompt entero — 6,5 s
  *     hasta la primera palabra en vez de 1,0 s.
  *
- *     Medido en la tarjeta el 7-sep, con esta cabecera puesta y cambiando de
- *     uno a otro: se reusó el 81 % del prompt, incluso cruzando de un pedido
- *     SIN herramientas a uno CON herramientas (la plantilla del modelo pone
- *     las herramientas DESPUÉS del sistema, así que no rompen la cabecera).
+ *     CUÁNTO VALE, MEDIDO CON LOS PROMPTS DE VERDAD (tarjeta, 7-sep):
+ *
+ *       AU-RA (su prompt real) ................ pidió 5 113 · reusó 5 109
+ *       ULTRON justo después, con herramientas  pidió 9 240 · reusó   879 (10%)
+ *
+ *     Esos 879 son la cabecera: SOBREVIVE el cambio de turno, incluso cruzando
+ *     de un pedido sin herramientas a uno con herramientas (la plantilla pone
+ *     las herramientas DESPUÉS del sistema, así que no rompen el prefijo).
+ *     Antes de esto se reusaba CERO.
+ *
+ *     Pero es el 10 % del prompt de ULTRON, no más: son 879 fichas de 9 240.
+ *     Una primera medición dio 81 % y era engañosa — estaba hecha con dos
+ *     prompts de juguete donde la cabecera era casi todo. Con los de verdad,
+ *     lo que manda es el tamaño de la COLA de cada uno. Que el ahorro crezca
+ *     depende de que la parte compartida sea mayor, que es exactamente el
+ *     paso siguiente: un solo cerebro con las mismas herramientas y dos
+ *     puertas.
  *
  * Va PRIMERO y sin nada delante. Una sola letra antes y no coincide nada.
  */

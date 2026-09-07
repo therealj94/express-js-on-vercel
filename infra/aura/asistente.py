@@ -607,8 +607,11 @@ RUTA_PROMPT = DATOS / 'PROMPT-AURA.md'
 #     reusa el prompt ya evaluado mientras coincida byte a byte DESDE EL
 #     PRINCIPIO. Hasta hoy no compartian ni una letra: cada vez que uno entraba
 #     le borraba al otro el prompt entero. Medido en la tarjeta el 7-sep con
-#     esta cabecera puesta, cambiando de uno a otro: se reuso el 81 % del
-#     prompt.
+#     los prompts DE VERDAD, cambiando de uno a otro: el de ULTRON pidio 9 240
+#     fichas y reuso 879 — la cabecera— donde antes reusaba cero. Es el 10 %,
+#     no mas: una primera medicion dio 81 % y estaba hecha con dos prompts de
+#     juguete donde la cabecera era casi todo. Con los reales manda el tamano
+#     de la cola de cada uno.
 #
 # AU-RA SIGUE SIENDO AU-RA. La cabecera son los hechos de la casa y las reglas
 # que valen para todos; el nombre, el caracter y la forma de hablar siguen
