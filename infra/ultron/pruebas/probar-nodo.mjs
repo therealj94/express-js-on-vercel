@@ -730,6 +730,27 @@ titulo('dijo que lo guardaba: se comprueba que de verdad lo guardó');
   decir(/NO qued[oó] guardado/i.test(r2.texto),
     'y si insiste sin guardarlo, se le dice a la junta que NO quedó', r2.texto.slice(-110));
 
+  /* ── Y LA GUARDA NO ESCRIBE LA RESPUESTA ───────────────────────────────
+     Medido contra producción con la primera versión: a «¿de cuánto es el tope
+     del piloto?» ULTRON contestó «No había nada que guardar: no se fijó ningún
+     número en esta respuesta». O sea que le contestó AL AVISO en vez de a
+     José, y la respuesta de verdad se perdió.
+     Dos cosas lo arreglan: la guarda no salta cuando le PREGUNTAN —«el tope
+     quedó registrado en 38» describe algo que ya está, no dice que lo acaba de
+     guardar— y si no llega a correr la herramienta, no toca el texto: se queda
+     la respuesta original con la nota. */
+  guion = [{ texto: 'El tope quedó registrado en 38 comercios, según la decisión de la junta.' }];
+  const rp = await cerebro.pensar({ miembro: JOSE, junta: JUNTA, texto: '¿de cuánto es el tope del piloto?', conversacionId: String(conv._id) });
+  decir(/38 comercios/.test(rp.texto) && !/NO qued[oó] guardado/i.test(rp.texto),
+    'a una PREGUNTA la guarda ni se asoma: describir algo que ya está no es decir que lo acaba de guardar', rp.texto.slice(0, 90));
+
+  guion = [{ texto: 'Quedó guardado: el taller es el domingo 5 a las 10.' },
+           { texto: 'No había nada nuevo que guardar, ya estaba todo.' }];
+  const rn = await cerebro.pensar({ miembro: JOSE, junta: JUNTA, texto: 'el taller es el domingo 5 a las 10 de la mañana', conversacionId: String(conv._id) });
+  decir(/domingo 5/.test(rn.texto),
+    'y si la guarda no consigue que guarde, se queda la RESPUESTA, no lo que le conteste al aviso', rn.texto.slice(0, 100));
+  decir(/NO qued[oó] guardado/i.test(rn.texto), 'con la nota de que no quedó, que es lo único que la guarda escribe');
+
   /* ── LO QUE NO PUEDE DISPARAR ────────────────────────────────────────────
      Una negativa honesta y un ofrecimiento son lo contrario del fallo, y una
      guarda que los castiga enseña justo lo que no se quiere. */

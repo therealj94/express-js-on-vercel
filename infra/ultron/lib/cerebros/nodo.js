@@ -926,8 +926,10 @@ async function pensar({ miembro, junta, texto, conversacionId, previa: previaDad
   const APUNTA_RE = [
     // «Guardado.», «Guardado para toda la junta:», «Anotado, señor»
     /^\s*(?:listo[,.]?\s*)?(?:guardad[oa]|anotad[oa]|apuntad[oa]|registrad[oa])\b/i,
-    // «queda anotado», «lo dejo anotado», «queda guardado como dato fijo»
-    /\b(?:queda|quedan|dej[oé]|dejar[eé])\s+(?:\S+\s+){0,3}?(?:guardad[oa]s?|anotad[oa]s?|apuntad[oa]s?|registrad[oa]s?)\b/i,
+    // «queda anotado», «quedó guardado», «lo dejo anotado». El pasado
+    // —«quedó»— es el que de verdad dice producción y el que se escapó la
+    // primera vez: «Quedó guardado en la memoria de la junta, José».
+    /\b(?:queda|quedan|qued[oó]|quedaron|dej[oé]|dejar[eé])\s+(?:\S+\s+){0,3}?(?:guardad[oa]s?|anotad[oa]s?|apuntad[oa]s?|registrad[oa]s?)\b/i,
     // «lo guardo», «lo anoté». Las formas de PASADO van acentuadas a propósito:
     // «que lo guarde» es un ofrecimiento, no una afirmación, y no cuenta.
     /\b(?:lo|la|los|las)\s+(?:guardo|anoto|apunto|guardé|anoté|apunté)(?![a-záéíóúñ])/i,
@@ -944,13 +946,19 @@ async function pensar({ miembro, junta, texto, conversacionId, previa: previaDad
   });
   const GUARDAR = new Set(['recordar', 'anotar_pendiente', 'cerrar_pendiente', 'crear_documento']);
   const guardoDeVerdad = () => usadas.some((h) => GUARDAR.has(h.nombre));
-  if (dijoQueGuardo(textoFinal) && !guardoDeVerdad() && hayTiempoParaGuarda('lo que dijo que guardó')) {
+  /* ── Y SOLO CUANDO LE ESTÁN DANDO UN DATO, NO CUANDO LE PREGUNTAN ───────
+     Medido: a «¿de cuánto es el tope del piloto?» contestó «el tope quedó
+     registrado en 38 comercios» — que es DESCRIBIR algo que ya está, no decir
+     que acaba de guardarlo. La guarda saltaba igual y le arruinaba la
+     respuesta. Si la persona pregunta, no está pidiendo que se guarde nada. */
+  const preguntaron = /[?¿]/.test(texto) || /^\s*(qu[eé]|cu[aá]l|cu[aá]nt|c[oó]mo|d[oó]nde|cu[aá]ndo|qui[eé]n|por qu[eé])\b/i.test(texto.trim());
+  if (!preguntaron && dijoQueGuardo(textoFinal) && !guardoDeVerdad() && hayTiempoParaGuarda('lo que dijo que guardó')) {
     emitir('pensando', { vuelta: MAX_VUELTAS, motivo: 'dijo que lo guardó sin guardarlo' });
     mensajes.push({ role: 'assistant', content: textoFinal });
     mensajes.push({ role: 'user', content: '[sistema] Dijiste que lo guardabas o lo anotabas y NO llamaste a ninguna herramienta, '
       + 'así que no quedó en ningún lado y dentro de diez turnos ese dato no va a existir. '
       + 'Llamá AHORA a `recordar` si es algo que hay que tener presente, o a `anotar_pendiente` si es algo que hay que hacer. '
-      + 'Después contestá en una línea. Si de verdad no había nada que guardar, decilo — pero no digas que lo guardaste.' });
+      + 'Después CONTESTALE A LA PERSONA, en una línea, como si este aviso no existiera — no me contestes a mí.' });
     let dicho = '';
     const r = await pedirDelTurno({ model: MODELO, messages: mensajes, tools: herramientas.paraOllama({ cajas }), stream: true, options: opciones }, { alTrozo: (t) => { dicho += t; } });
     uso.entrada += r.uso.entrada; uso.salida += r.uso.salida;
@@ -964,16 +972,19 @@ async function pensar({ miembro, junta, texto, conversacionId, previa: previaDad
       uso.entrada += r2.uso.entrada; uso.salida += r2.uso.salida;
       const limpio = llamadasEnTexto(r2.content).limpio.trim();
       if (limpio) { textoFinal = limpio; emitir('reemplazo', { texto: textoFinal }); }
-    } else if (dicho.trim()) {
-      textoFinal = llamadasEnTexto(dicho).limpio.trim() || textoFinal;
-      emitir('reemplazo', { texto: textoFinal });
     }
+    /* ── Y SI NO LLAMÓ NADA, SE QUEDA LA RESPUESTA ORIGINAL ──────────────
+       Acá había un `else` que ponía en pantalla lo que contestara al aviso. Y
+       lo que contestaba era al AVISO, no a la persona: «No había nada nuevo
+       que guardar» donde tenía que ir la respuesta. La guarda está para
+       comprobar, no para escribir: si no corrió la herramienta, lo único que
+       hace es la nota de abajo. */
   }
   /* Y si aun así sigue diciendo que lo guardó sin haberlo guardado, se le
      añade la verdad: es preferible que la junta sepa que NO quedó anotado a
      que lo dé por hecho y lo descubra dentro de una semana. Corre siempre,
      haya habido segundo intento o no. */
-  if (dijoQueGuardo(textoFinal) && !guardoDeVerdad()) {
+  if (!preguntaron && dijoQueGuardo(textoFinal) && !guardoDeVerdad()) {
     console.warn('[nodo] dijo que lo guardaba y no llamó a recordar ni a anotar_pendiente: se corrige el texto');
     textoFinal = `${textoFinal}\n\n_(Aviso: NO quedó guardado — no llegué a anotarlo. Pídamelo otra vez y lo dejo en la memoria.)_`;
     emitir('reemplazo', { texto: textoFinal });
