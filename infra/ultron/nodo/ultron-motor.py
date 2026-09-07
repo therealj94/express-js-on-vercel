@@ -31,7 +31,9 @@ dos tarjetas, esto crece; hoy con una alcanza.
 Variables (en /etc/ultron-motor.env):
   ULTRON_MOTOR_SECRETO    obligatoria; sin ella no arranca
   ULTRON_MOTOR_PUERTO     8443
-  ULTRON_MOTOR_MODELO     qwen3.8:27b   (el mismo que AU-RA)
+  ULTRON_MOTOR_MODELO     orcarouter/Qwen3.8-27B-Uncensored  (el mismo que AU-RA;
+                          sale de /etc/ogb-tarjeta.env, que es el unico sitio
+                          donde se escribe el nombre del modelo)
   ULTRON_MOTOR_CTX        32768         (el de AU-RA — mismo número o se recarga)
   ULTRON_MOTOR_VECTOR     embeddinggemma:300m  (para buscar en el saber por significado)
   ULTRON_MOTOR_CERT / _LLAVE   rutas del certificado y la llave
@@ -50,7 +52,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 SECRETO = (os.environ.get('ULTRON_MOTOR_SECRETO') or '').strip()
 PUERTO = int(os.environ.get('ULTRON_MOTOR_PUERTO', '8443'))
-MODELO = os.environ.get('ULTRON_MOTOR_MODELO', 'qwen3.8:27b')
+MODELO = os.environ.get('ULTRON_MOTOR_MODELO', 'orcarouter/Qwen3.8-27B-Uncensored')
 CTX = int(os.environ.get('ULTRON_MOTOR_CTX', '32768'))
 # El modelo de vectores para buscar en el saber POR SIGNIFICADO y no por
 # palabras. Es otro modelo, chico (621 MB) y aparte del que piensa: ollama los

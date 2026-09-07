@@ -40,8 +40,13 @@ set -uo pipefail
 # adorno: es lo que permite PROBAR el vigilante contra un puerto muerto y una
 # carpeta de mentira, y ver que cuenta las lecturas malas, sin arriesgar un
 # reinicio de la tarjeta de produccion.
+# El modelo y la ventana salen de /etc/ogb-tarjeta.env, que es el unico sitio
+# donde se escriben. Lo que ya venga puesto por entorno MANDA sobre el
+# archivo: es lo que deja probar el vigilante contra un puerto de mentira.
+[ -r /etc/ogb-tarjeta.env ] && . /etc/ogb-tarjeta.env
 OLLAMA="${OGB_OLLAMA:-http://127.0.0.1:11434}"
 MODELO="${OGB_MODELO:-qwen3.8:27b}"
+CTX="${OGB_CTX:-24576}"
 VECTOR="${OGB_MODELO_VECTOR:-embeddinggemma:300m}"
 ESTADO="${OGB_ESTADO:-/var/lib/ollama-vigia}"
 FALLOS="$ESTADO/fallos"
@@ -107,7 +112,7 @@ done
 
 # Y los dos modelos clavados otra vez, o el primero que pregunte paga la carga.
 curl -s -o /dev/null -m 300 "$OLLAMA/api/chat" \
-  -d "{\"model\":\"$MODELO\",\"stream\":false,\"think\":false,\"keep_alive\":-1,\"options\":{\"num_ctx\":24576,\"num_predict\":4},\"messages\":[{\"role\":\"user\",\"content\":\"listo\"}]}" || true
+  -d "{\"model\":\"$MODELO\",\"stream\":false,\"think\":false,\"keep_alive\":-1,\"options\":{\"num_ctx\":$CTX,\"num_predict\":4},\"messages\":[{\"role\":\"user\",\"content\":\"listo\"}]}" || true
 curl -s -o /dev/null -m 120 "$OLLAMA/api/embed" \
   -d "{\"model\":\"$VECTOR\",\"input\":\"listo\",\"keep_alive\":-1}" || true
 

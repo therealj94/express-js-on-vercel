@@ -93,6 +93,11 @@ jobs:
           node pruebas/probar-cerebro.mjs
           node pruebas/probar-nodo.mjs
           node pruebas/probar-puerta.mjs
+          node pruebas/probar-cabecera.mjs
+          # El modelo y la ventana estan escritos en UN sitio y todos lo leen.
+          # Cuando estaban en siete, uno se quedaba atras y cada pedido suyo
+          # recargaba 16 GB de disco sin que nada pareciera roto.
+          node pruebas/probar-tarjeta.mjs
 
       # Las tres pruebas que NO corrian en ningun sitio. Dos leian de
       # /tmp/mtest y /tmp/vw-deploy —andamios montados a mano en una maquina—

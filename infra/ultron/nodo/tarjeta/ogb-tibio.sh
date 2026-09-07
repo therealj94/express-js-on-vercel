@@ -16,10 +16,17 @@
 #
 # El pulso ademas refresca keep_alive: -1, o sea que hace el trabajo del
 # precalentador de arranque sin volver a leer 16 GB de disco.
+# El modelo y la ventana se leen de UN solo sitio. Si este archivo no esta
+# —maquina nueva, o alguien lo borro— se sigue con los valores de abajo, que
+# es preferible a que el pulso no corra.
+[ -r /etc/ogb-tarjeta.env ] && . /etc/ogb-tarjeta.env
+MODELO="${OGB_MODELO:-qwen3.8:27b}"
+CTX="${OGB_CTX:-24576}"
+VECTOR="${OGB_MODELO_VECTOR:-embeddinggemma:300m}"
 T0=$(date +%s%3N)
-R=$(curl -s -m 120 http://127.0.0.1:11434/api/chat -d '{"model":"qwen3.8:27b","stream":false,"think":false,"keep_alive":-1,"options":{"num_ctx":24576,"num_predict":4},"messages":[{"role":"user","content":"listo"}]}')
+R=$(curl -s -m 120 http://127.0.0.1:11434/api/chat -d "{\"model\":\"$MODELO\",\"stream\":false,\"think\":false,\"keep_alive\":-1,\"options\":{\"num_ctx\":$CTX,\"num_predict\":4},\"messages\":[{\"role\":\"user\",\"content\":\"listo\"}]}")
 MS=$(( $(date +%s%3N) - T0 ))
-curl -s -m 60 -o /dev/null http://127.0.0.1:11434/api/embed -d '{"model":"embeddinggemma:300m","input":"listo","keep_alive":-1}' || true
+curl -s -m 60 -o /dev/null http://127.0.0.1:11434/api/embed -d "{\"model\":\"$VECTOR\",\"input\":\"listo\",\"keep_alive\":-1}" || true
 if [ -z "$R" ]; then
   logger -t ogb-tibio "SIN RESPUESTA en ${MS} ms: el modelo no contesto al pulso"
 elif [ "$MS" -gt 8000 ]; then

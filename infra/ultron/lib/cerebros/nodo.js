@@ -42,7 +42,11 @@ const CERT = (process.env.ULTRON_NODO_CERT || '').trim();
    pruebas «del modelo nuevo» corrieron contra el viejo sin que nada
    avisara. Cambiar de modelo son LAS DOS: esta variable en Heroku y
    ULTRON_MOTOR_MODELO en /etc/ultron-motor.env del nodo. */
-const MODELO = process.env.ULTRON_NODO_MODELO || 'qwen3.8:27b';
+/* El motor FIJA el modelo del lado del nodo (ultron-motor.py: pedido['model']
+   = MODELO), asi que esto no elige nada: es el nombre con el que se anota el
+   gasto y el que sale en el registro. Tiene que cuadrar con
+   /etc/ogb-tarjeta.env o los turnos quedan anotados a nombre de otro. */
+const MODELO = process.env.ULTRON_NODO_MODELO || 'orcarouter/Qwen3.8-27B-Uncensored';
 const MAX_VUELTAS = 6;
 const PLAZO_MS = 170_000;
 /* ── EL PRESUPUESTO DE TIEMPO DEL TURNO ──────────────────────────────────────

@@ -47,14 +47,49 @@ y después:
 El salto grande de la segunda es de las dos cosas juntas: el pulso y que las
 herramientas de una misma vuelta ahora corren a la vez.
 
+## `ogb-tarjeta.env` — el modelo y la ventana, en UN solo sitio
+
+El nombre del modelo y el tamaño de la ventana vivían escritos a mano en siete
+archivos: el env del motor, los tres guiones de acá, dos drop-ins de AU-RA y el
+propio código. Y ollama carga el modelo con la ventana del **primero** que la
+pide, así que si uno solo se queda atrás, cada pedido suyo **recarga 16 GB de
+disco** y la junta espera dos minutos sin que nada parezca roto. No hay error,
+no hay aviso; solo lentitud.
+
+Pasó dos veces. La segunda, el 7-sep: `ogb-precalentar.sh` se había quedado en
+`num_ctx 32768` mientras los otros cuatro ya iban en 24 576, y solo se vio
+leyendo los cinco archivos uno por uno.
+
+Ahora se escribe una vez en `ogb-tarjeta.env`, los tres guiones lo leen con
+`. /etc/ogb-tarjeta.env`, y los dos servicios que piensan con el modelo
+—`aura` y `ultron-motor`— lo reciben por el mismo drop-in, `zz-tarjeta.conf`.
+Cambiar de modelo o de ventana es cambiar **este archivo** y reiniciar.
+
+`pruebas/probar-tarjeta.mjs` vigila que siga siendo así: que los cuatro nombres
+del modelo digan lo mismo, que los tres de la ventana digan lo mismo, y que
+ningún guion vuelva a llevar un `"model"` o un `num_ctx` pegado a mano.
+
 ## Instalar
 
 ```bash
-sudo install -m755 ogb-precalentar.sh ogb-tibio.sh /usr/local/bin/
-sudo install -m644 ogb-precalentar.service ogb-tibio.service ogb-tibio.timer /etc/systemd/system/
+# El archivo único primero: los demás lo leen.
+sudo install -m644 ogb-tarjeta.env /etc/ogb-tarjeta.env
+sudo install -m755 ogb-precalentar.sh ogb-tibio.sh ollama-vigia.sh /usr/local/bin/
+sudo install -m644 ogb-precalentar.service ogb-tibio.service ogb-tibio.timer \
+                   ollama-vigia.service ollama-vigia.timer /etc/systemd/system/
+# Y el drop-in a LOS DOS servicios que piensan con el modelo.
+sudo mkdir -p /etc/systemd/system/aura.service.d /etc/systemd/system/ultron-motor.service.d
+sudo install -m644 zz-tarjeta.conf /etc/systemd/system/aura.service.d/
+sudo install -m644 zz-tarjeta.conf /etc/systemd/system/ultron-motor.service.d/
 sudo systemctl daemon-reload
-sudo systemctl enable --now ogb-precalentar.service ogb-tibio.timer
+sudo systemctl enable --now ogb-precalentar.service ogb-tibio.timer ollama-vigia.timer
+sudo systemctl restart aura ultron-motor
 ```
+
+Para cambiar de modelo: se edita `/etc/ogb-tarjeta.env`, `systemctl daemon-reload`,
+`systemctl restart aura ultron-motor`, y `/usr/local/bin/ogb-precalentar.sh` para
+dejar el nuevo clavado en la tarjeta. El viejo se borra **después** de comprobar
+que el nuevo contesta y llama herramientas.
 
 Para ver si está haciendo su trabajo: `journalctl -t ogb-tibio -n 20`. Cada
 vuelta escribe cuánto tardó el pulso, y grita si pasó de ocho segundos — eso
