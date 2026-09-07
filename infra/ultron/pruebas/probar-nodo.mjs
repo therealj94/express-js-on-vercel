@@ -401,6 +401,117 @@ titulo('la guarda de lo prometido: no se dice que dejó un PDF que no existe');
   decir(/Le dejo Ordenex/.test(r3.texto), 'ofrecer un documento o dejar un botón NO cuenta como prometerlo', r3.texto.slice(0, 80));
 }
 
+titulo('el turno tiene techo: lo obligatorio siempre corre, lo opcional solo si queda tiempo');
+{
+  /* ── LO QUE PASÓ DE VERDAD, 7-sep ─────────────────────────────────────────
+     Del registro de producción, un turno escrito:
+
+       [pensar] texto · contexto 8006ms · primera 95061ms · total 97120ms
+                · vueltas 3 · fichas 33128
+
+     Noventa y siete segundos, y ninguna pieza estaba «rota»: el vector
+     agotando sus ocho segundos, tres vueltas de herramientas, y las guardas
+     volviendo a preguntarle al modelo DOS veces cada una con las 64
+     herramientas dentro. Cada una se añadió con un buen motivo y ninguna
+     miraba el reloj. Ese era el fallo de fondo — el turno no tenía techo, así
+     que su duración era la suma de todo lo que a alguien le pareció buena
+     idea.
+
+     Lo que se prueba acá es el techo: con el presupuesto agotado, lo
+     OBLIGATORIO —pensar y contestar— corre igual, y lo OPCIONAL —las vueltas
+     de más, las guardas que vuelven a preguntar— se salta. */
+  const conv = await memoria.abrirConversacion(JOSE.correo, { titulo: 'reloj' });
+  const antesDe = process.env.ULTRON_PRESUPUESTO_MS;
+
+  /* Con presupuesto normal, la guarda de lo prometido cuesta sus llamadas. */
+  guion = [{ texto: 'Listo, le dejo el PDF en el chat.' },
+           { texto: 'Ya se lo dejé, el documento está listo.' },
+           { texto: 'De verdad se lo dejé, el PDF queda listo.' }];
+  let n = pedidos.length;
+  const conTiempo = await cerebro.pensar({ miembro: JOSE, junta: JUNTA, texto: 'el PDF por favor', conversacionId: String(conv._id) });
+  const gastoConTiempo = pedidos.length - n;
+
+  /* Y con el presupuesto en cero, la misma conversación no vuelve a preguntar. */
+  process.env.ULTRON_PRESUPUESTO_MS = '0';
+  guion = [{ texto: 'Listo, le dejo el PDF en el chat.' },
+           { texto: 'Ya se lo dejé, el documento está listo.' },
+           { texto: 'De verdad se lo dejé, el PDF queda listo.' }];
+  n = pedidos.length;
+  const sinTiempo = await cerebro.pensar({ miembro: JOSE, junta: JUNTA, texto: 'el PDF por favor', conversacionId: String(conv._id) });
+  const gastoSinTiempo = pedidos.length - n;
+  process.env.ULTRON_PRESUPUESTO_MS = antesDe === undefined ? '' : antesDe;
+  if (antesDe === undefined) delete process.env.ULTRON_PRESUPUESTO_MS;
+
+  decir(gastoSinTiempo < gastoConTiempo,
+    'sin tiempo, la guarda NO vuelve a preguntarle al modelo',
+    `${gastoConTiempo} llamadas con presupuesto · ${gastoSinTiempo} sin él`);
+  decir(gastoSinTiempo >= 1, 'pero contestar sí se hace siempre: lo obligatorio no se salta', `${gastoSinTiempo} llamada(s)`);
+
+  /* ── Y ESTO ES LO QUE NO SE NEGOCIA ──────────────────────────────────────
+     Que no haya tiempo de ARREGLAR la promesa falsa no es excusa para
+     PUBLICARLA. Corregir el texto no cuesta ni una llamada al modelo, así que
+     corre igual. Antes esta corrección vivía DENTRO de la guarda: si la guarda
+     no corría, «le dejo el PDF» salía a pantalla tal cual. */
+  decir(!/le dejo el PDF/i.test(sinTiempo.texto) && /no pude/i.test(sinTiempo.texto),
+    'y la promesa falsa NO se publica aunque no haya habido tiempo de rehacerla',
+    sinTiempo.texto.slice(0, 90));
+  decir(!/le dejo el PDF/i.test(conTiempo.texto), 'con tiempo, lo mismo por el camino largo', conTiempo.texto.slice(0, 60));
+
+  /* ── EL CASO QUE DE VERDAD SE VIO: TRES VUELTAS Y NI UNA PALABRA ─────────
+     El techo entre vueltas exigía que YA hubiera dicho algo para cortar, y el
+     turno de 97 segundos no había dicho nada: eran tres llamadas de
+     herramientas encadenadas. Cortar ahí dejaría la pantalla en blanco, así
+     que no se corta — se le quitan las HERRAMIENTAS y se le pide la respuesta
+     con lo que ya tiene. Sin herramientas no puede pedir otra vuelta: el bucle
+     termina por fuerza y la llamada es la más barata del turno. */
+  process.env.ULTRON_PRESUPUESTO_MS = '0';
+  guion = [{ texto: '', llamadas: [{ name: 'ver_estado_vivo', arguments: {} }] },
+           { texto: 'El ORIGEN está a dos dólares con cincuenta y nueve.' },
+           { texto: 'esta no se llega a pedir' }];
+  n = pedidos.length;
+  const mudo = await cerebro.pensar({ miembro: JOSE, junta: JUNTA, texto: 'cómo va el ORIGEN', conversacionId: String(conv._id) });
+  const delTurno = pedidos.slice(n);
+
+  decir(delTurno.length === 2, 'sin tiempo y sin nada dicho, se da UNA vuelta más y no tres', `${delTurno.length} llamadas`);
+  decir((delTurno[0].tools || []).length > 0 && !(delTurno[1].tools || []).length,
+    'y esa última va SIN herramientas: no puede pedir otra vuelta aunque quiera',
+    `${(delTurno[0].tools || []).length} herramientas la primera · ${(delTurno[1].tools || []).length} la última`);
+  decir(/dos d[oó]lares/.test(mudo.texto), 'y la persona igual recibe una respuesta, que es lo único que no se negocia', mudo.texto.slice(0, 70));
+
+  /* Y si el modelo se pone terco y escribe una llamada aunque no le dieron
+     herramientas, tampoco se corre: la vuelta sin tiempo es la última pase lo
+     que pase. Sin esto el bucle podía seguir hasta el tope de vueltas ya
+     pasado el techo, que es justo lo que el techo existe para impedir. */
+  guion = [{ texto: '', llamadas: [{ name: 'ver_estado_vivo', arguments: {} }] },
+           { texto: '', llamadas: [{ name: 'ver_estado_vivo', arguments: {} }] },
+           { texto: '', llamadas: [{ name: 'ver_estado_vivo', arguments: {} }] }];
+  n = pedidos.length;
+  const terco = await cerebro.pensar({ miembro: JOSE, junta: JUNTA, texto: 'cómo va el ORIGEN', conversacionId: String(conv._id) });
+  decir(pedidos.length - n === 2, 'y el turno termina igual, aunque el modelo insista en pedir herramientas', `${pedidos.length - n} llamadas`);
+  decir(terco.texto.trim().length > 0, 'con una frase que se puede leer, nunca en blanco', terco.texto.slice(0, 70));
+
+  process.env.ULTRON_PRESUPUESTO_MS = antesDe === undefined ? '' : antesDe;
+  if (antesDe === undefined) delete process.env.ULTRON_PRESUPUESTO_MS;
+}
+
+titulo('las guardas no abren las 64 herramientas');
+{
+  /* La guarda de la negativa pedía `cajas: CAJAS_UTILES` — el catálogo
+     entero— en cada una de sus DOS llamadas. Son 10 058 fichas de
+     herramientas por llamada, y es de donde salían los turnos de 33 000
+     fichas del registro. Se abren las cuatro que sirven para responder una
+     negativa y nada más; si hiciera falta otra, para eso está
+     `mas_herramientas`, que va en el núcleo. */
+  const todas = herramientas.paraOllama({ cajas: herramientas.CAJAS_UTILES });
+  const deLaGuarda = herramientas.paraOllama({ cajas: ['internet', 'cadenas', 'cuentas', 'documentos'].filter((c) => herramientas.CAJAS_UTILES.includes(c)) });
+  const fichasDe = (d) => nodo._adentro.fichas(JSON.stringify(d));
+  decir(fichasDe(deLaGuarda) < fichasDe(todas) / 1.6,
+    'la guarda abre bastante menos de la mitad del catálogo',
+    `${fichasDe(deLaGuarda)} fichas contra ${fichasDe(todas)}`);
+  decir(deLaGuarda.some((d) => (d.function?.name || d.name) === 'mas_herramientas'),
+    'y sigue pudiendo pedir la que le falte, que es lo que hace que recortar sea seguro');
+}
+
 titulo('un PDF es UNA llamada, no cuatro vueltas y dos cajas');
 {
   /* ── EL CAMINO QUE HABÍA ──────────────────────────────────────────────────

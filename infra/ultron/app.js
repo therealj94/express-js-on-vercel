@@ -615,18 +615,24 @@ app.get('/conversaciones/:id', puerta, async (req, res) => {
 let pensando = 0;
 const calentadoEn = new Map();
 app.post('/precalentar', puerta, (req, res) => {
-  const quien = req.miembro.correo;
+  const modo = req.body?.modo === 'texto' ? 'texto' : 'voz';
+  /* EL FRENO ES POR MIEMBRO Y MODO. Con uno solo por miembro, calentar para
+     escribir bloqueaba veinte segundos el de hablar y al revés — y son dos
+     prefijos distintos, porque el prompt de texto y el de voz se separan
+     después de la cabecera de la casa. Frenar los dos juntos dejaba a uno
+     siempre frío, que era justo lo que esto venía a arreglar. */
+  const quien = `${req.miembro.correo}·${modo}`;
   const ahora = Date.now();
   if (pensando > 0) return res.json({ ok: false, motivo: 'ocupado' });
   if (ahora - (calentadoEn.get(quien) || 0) < 20_000) return res.json({ ok: false, motivo: 'reciente' });
   calentadoEn.set(quien, ahora);
-  res.json({ ok: true, lanzado: true });
+  res.json({ ok: true, lanzado: true, modo });
   /* Se registra el resultado SIEMPRE, salga bien o mal. La primera versión solo
      escribía cuando salía bien, así que cuando en producción no salió nunca no
      hubo ni una línea que lo dijera: el tablero calentaba, el 200 volvía, y no
      se calentaba nada. Una mejora invisible que falla en silencio es peor que
      no tenerla. */
-  cerebro.precalentar({ miembro: req.miembro, junta: JUNTA.map(sinClave), modo: req.body?.modo === 'texto' ? 'texto' : 'voz', alias: null })
+  cerebro.precalentar({ miembro: req.miembro, junta: JUNTA.map(sinClave), modo, alias: null })
     .then((r) => console.log(r?.ok ? `[calentar] ${modo} · ${r.fichas} fichas en ${r.ms}ms` : `[calentar] ${modo} · NO se calentó: ${r?.motivo || 'sin motivo'}`))
     .catch((e) => console.warn(`[calentar] falló: ${e?.codigo || ''} ${String(e?.message || e).slice(0, 120)}`));
 });
@@ -711,7 +717,13 @@ app.post('/pensar', puerta, frenoPensar, async (req, res) => {
        a que un segundo modelo inventara un título. Ahora el `fin` sale
        primero y el título llega después, por su propio evento. */
     emitir('fin', { ...r, conversacionId: convId, ms: { ...reloj, total: Date.now() - t0, ...(r.ms || {}) } });
-    console.log(`[pensar] ${modo} · hilo ${reloj.hilo}ms · pensar ${reloj.pensó - reloj.hilo}ms · total ${Date.now() - t0}ms${r.ms ? ` · ${Object.entries(r.ms).map(([k, v]) => `${k} ${v}ms`).join(' · ')}` : ''}`);
+    /* El turno tiene un techo de tiempo (ULTRON_PRESUPUESTO_MS, 40 s por
+       defecto) y lo que de verdad interesa del registro es CUÁNDO se pasa: es
+       la única línea que dice, sin abrir nada, que alguien estuvo esperando de
+       más. Se marca con todas las letras para que se pueda buscar. */
+    const msTotal = Date.now() - t0;
+    const techo = Number(process.env.ULTRON_PRESUPUESTO_MS || 40_000);
+    console.log(`[pensar] ${modo} · hilo ${reloj.hilo}ms · pensar ${reloj.pensó - reloj.hilo}ms · total ${msTotal}ms${r.ms ? ` · ${Object.entries(r.ms).map(([k, v]) => `${k} ${v}ms`).join(' · ')}` : ''}${msTotal > techo ? ` · SE PASÓ DEL PRESUPUESTO (${techo}ms)` : ''}`);
     if (nueva) {
       try {
         const t = await cerebro.titular(texto);

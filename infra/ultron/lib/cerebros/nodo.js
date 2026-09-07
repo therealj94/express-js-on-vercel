@@ -45,6 +45,33 @@ const CERT = (process.env.ULTRON_NODO_CERT || '').trim();
 const MODELO = process.env.ULTRON_NODO_MODELO || 'qwen3.8:27b';
 const MAX_VUELTAS = 6;
 const PLAZO_MS = 170_000;
+/* ── EL PRESUPUESTO DE TIEMPO DEL TURNO ──────────────────────────────────────
+ *
+ * 7-sep, del registro de producción, la noche en que José escribió «no logramos
+ * arreglarlo, se queda pensando»:
+ *
+ *     total 17 359 · 9 347 · 10 501 · 17 094 · 46 535 · 50 563 · 97 120 ms
+ *
+ * Noventa y siete segundos. Y no por UNA cosa lenta: por la SUMA de cosas
+ * razonables. El vector agotando sus ocho segundos, tres vueltas de
+ * herramientas, y una guarda que se dispara y vuelve a preguntarle al modelo
+ * dos veces más — cada llamada con las 64 herramientas dentro, o sea 33 000
+ * fichas en el turno.
+ *
+ * Cada una de esas piezas se añadió con un buen motivo y ninguna miraba el
+ * reloj. Ese es el fallo de fondo: el turno no tenía un techo, así que su
+ * duración era la suma de todo lo que a alguien le pareció buena idea.
+ *
+ * Ahora sí lo tiene. Lo que es OBLIGATORIO —pensar y contestar— siempre corre.
+ * Lo que es una MEJORA —el vector, las vueltas de más, las guardas que vuelven
+ * a preguntar— solo corre si queda tiempo, y se salta sin drama si no. Un
+ * turno bueno de treinta segundos vale más que uno perfecto de noventa que
+ * nadie espera. */
+/* Se lee en cada turno, no una vez al arrancar: así se puede subir o bajar
+   en Heroku sin desplegar, y las pruebas pueden ponerlo en cero. */
+const presupuestoMs = () => Number(process.env.ULTRON_PRESUPUESTO_MS || 40_000);
+/* Una guarda cuesta dos llamadas al modelo; con menos de esto no se empieza. */
+const GUARDA_NECESITA_MS = 14_000;
 
 /* EL PRESUPUESTO, EN FICHAS Y NO EN LETRAS.
    5-sep, segunda prueba real: una sola llamada midió 13 421 fichas de entrada
@@ -355,7 +382,14 @@ async function vectorDe(texto) {
      * `num_gpu: 0` lo manda al procesador. Son trescientos millones de
      * parámetros para una frase: en el procesador tarda unas décimas y no toca
      * la tarjeta, así que el modelo grande no se mueve de su sitio. */
-    const r = await pedirJson('/api/embed', { input: String(texto || '').slice(0, 2000), options: { num_gpu: 0 }, keep_alive: '30m' }, 8000);
+    /* MIL QUINIENTOS, no ocho mil. Esto es una llamada al MISMO motor que está
+       a punto de pensar, así que cuando el motor está ocupado —que es cuando
+       más importa— se come sus ocho segundos enteros ANTES de que empiece a
+       pensar. Se vio en producción: «contexto 8006 ms» seguido de «sin vector
+       para la pregunta: se busca por palabras». O sea: ocho segundos para
+       terminar usando el respaldo igual. El respaldo por palabras es bueno;
+       ocho segundos de silencio, no. */
+    const r = await pedirJson('/api/embed', { input: String(texto || '').slice(0, 2000), options: { num_gpu: 0 }, keep_alive: '30m' }, 1500);
     const v = r?.embeddings?.[0];
     if (!Array.isArray(v) || !v.length) return null;
     // Normalizado acá para que el coseno sea un producto escalar y punto.
@@ -585,15 +619,42 @@ async function pensar({ miembro, junta, texto, conversacionId, previa: previaDad
      que la pregunta siguiente vuelve a salir ligera. */
   const cajas = [];
 
+  /* Lo que queda del presupuesto del turno. Todo lo opcional lo consulta. */
+  const quedaMs = () => presupuestoMs() - (Date.now() - tArranque);
+
   for (let vuelta = 0; vuelta < MAX_VUELTAS; vuelta++) {
     /* Se cortó entre vueltas: ni una herramienta más. Un turno cancelado en la
        vuelta 3 seguía ejecutando las cinco restantes —con lo que eso significa
        cuando una de ellas escribe. */
     if (senalCorte?.aborted) break;
+    /* Y se acabó el tiempo: se cierra con lo que haya. Seguir dando vueltas
+       cuando ya se pasó del presupuesto es lo que convertía un turno en
+       noventa segundos de pantalla muda. Solo si YA dijo algo: cortar sin una
+       palabra escrita sería peor que tardar. */
+    if (vuelta > 0 && quedaMs() <= 0 && textoFinal.trim()) {
+      emitir('pensando', { vuelta, motivo: 'se acabó el tiempo del turno' });
+      console.warn(`[nodo] se acabó el presupuesto (${presupuestoMs()} ms) en la vuelta ${vuelta}: se cierra con lo que hay`);
+      break;
+    }
+    /* ── Y SI SE ACABÓ EL TIEMPO SIN HABER DICHO NADA ──────────────────────
+       Cortar aquí sería dejar la pantalla en blanco, así que no se corta: se
+       le quitan las HERRAMIENTAS y se le pide que conteste con lo que ya
+       tiene. Sin herramientas no puede pedir otra vuelta —el bucle termina
+       por fuerza— y encima la llamada es la más barata del turno.
+       Esto es lo que faltaba el 7-sep: «primera 95061ms · vueltas 3» son tres
+       llamadas encadenadas, ninguna de las dos primeras con una palabra para
+       la persona, y el techo entre vueltas no las paraba porque exigía que ya
+       hubiera dicho algo. Ahora la vuelta que se pasa del techo es la ÚLTIMA,
+       diga lo que diga. */
+    const sinTiempo = vuelta > 0 && quedaMs() <= 0;
+    if (sinTiempo) {
+      console.warn(`[nodo] se acabó el presupuesto (${presupuestoMs()} ms) en la vuelta ${vuelta} y aún no dijo nada: se le pide la respuesta sin herramientas`);
+      mensajes.push({ role: 'user', content: '[sistema] Se acabó el tiempo de este turno. Contestá AHORA, en dos o tres líneas, con lo que ya averiguaste. Si te faltó algo, decí qué te faltó — pero contestá.' });
+    }
     vueltasDadas = vuelta + 1;
-    emitir('pensando', { vuelta });
+    emitir('pensando', { vuelta, ...(sinTiempo ? { motivo: 'se acabó el tiempo: cierro con lo que hay' } : {}) });
     const acum = { t: '' };
-    let r = await pedirDelTurno({ model: MODELO, messages: mensajes, tools: herramientas.paraOllama({ cajas }), stream: true, options: opciones }, { alTrozo: conGuarda(acum) });
+    let r = await pedirDelTurno({ model: MODELO, messages: mensajes, tools: sinTiempo ? undefined : herramientas.paraOllama({ cajas }), stream: true, options: opciones }, { alTrozo: conGuarda(acum) });
     uso.entrada += r.uso.entrada; uso.salida += r.uso.salida;
     /* SE ENGANCHÓ.
      *
@@ -658,6 +719,11 @@ async function pensar({ miembro, junta, texto, conversacionId, previa: previaDad
     const llamadas = [...r.tool_calls, ...enTexto.llamadas];
     let visible = enTexto.limpio;
     if (!llamadas.length) { textoFinal += (textoFinal && visible ? '\n\n' : '') + visible; break; }
+    /* La vuelta sin tiempo era la ÚLTIMA por definición: fue sin herramientas,
+       así que si aun así escribió una llamada en el texto, no se corre. Sin
+       esto el bucle podría seguir hasta MAX_VUELTAS pasado el techo, que es
+       justo lo que este techo existe para impedir. */
+    if (sinTiempo) { textoFinal += (textoFinal && visible ? '\n\n' : '') + visible; break; }
 
     // Hubo herramientas: lo dicho antes de llamarlas se conserva si es texto de
     // verdad (una frase de «voy a mirar»), no si era la etiqueta.
@@ -700,14 +766,33 @@ async function pensar({ miembro, junta, texto, conversacionId, previa: previaDad
      Se exige que no se haya corrido NINGUNA herramienta a propósito: si miró
      algo y aun así no encontró, la negativa es legítima y no se le insiste. */
   const NEGATIVA = /\b(no tengo esa informaci[oó]n|no tengo acceso|no puedo (acceder|leer|ver|hacer)|no dispongo|no s[eé] (eso|nada)|no est[aá] entre (las fichas|lo que)|no me consta)\b/i;
-  if (!cajas.length && !usadas.length && NEGATIVA.test(textoFinal)) {
+  /* ── LAS GUARDAS MIRAN EL RELOJ ──────────────────────────────────────────
+     Cada una cuesta DOS llamadas más al modelo. Con el turno ya en el minuto,
+     insistir es empeorar lo único que la persona nota. Si no hay tiempo se
+     salta y queda escrito en el registro, que es mejor que un turno de
+     noventa segundos. */
+  const hayTiempoParaGuarda = (quien) => {
+    if (quedaMs() >= GUARDA_NECESITA_MS) return true;
+    console.warn(`[nodo] no se corre la guarda de ${quien}: quedan ${Math.max(0, quedaMs())} ms del presupuesto`);
+    return false;
+  };
+  if (!cajas.length && !usadas.length && NEGATIVA.test(textoFinal) && hayTiempoParaGuarda('la negativa')) {
     emitir('pensando', { vuelta: MAX_VUELTAS, motivo: 'dijo que no sin mirar' });
     mensajes.push({ role: 'assistant', content: textoFinal });
     mensajes.push({ role: 'user', content: '[sistema] Dijiste que no podés o que no sabés, y no llamaste ni una herramienta. '
       + 'Ahora las tenés TODAS a la vista. Mirá con la que corresponda y contestá con lo que devuelva. '
       + 'Si después de mirar sigue sin poder saberse, entonces sí decilo, pero diciendo QUÉ miraste.' });
+    /* ── NO SE ABREN LAS 64 ──────────────────────────────────────────────
+       Esto decía `cajas: CAJAS_UTILES`, o sea el catálogo entero: 10 058
+       fichas de herramientas en CADA una de las dos llamadas de la guarda. Es
+       lo que llevó los turnos a 33 000 fichas en producción — y de paso el
+       motivo por el que se recortaron a doce las de siempre. Se abren las que
+       sirven para responder una negativa —buscar, leer, las casas, las
+       cuentas, los documentos— y bajan a 5 144. Si de verdad hacía falta otra,
+       para eso está `mas_herramientas`, que va en el núcleo. */
+    const cajasDeLaGuarda = ['internet', 'cadenas', 'cuentas', 'documentos'].filter((c) => herramientas.CAJAS_UTILES.includes(c));
     let dicho = '';
-    const r = await pedirDelTurno({ model: MODELO, messages: mensajes, tools: herramientas.paraOllama({ cajas: herramientas.CAJAS_UTILES }), stream: true, options: opciones }, { alTrozo: (t) => { dicho += t; } });
+    const r = await pedirDelTurno({ model: MODELO, messages: mensajes, tools: herramientas.paraOllama({ cajas: cajasDeLaGuarda }), stream: true, options: opciones }, { alTrozo: (t) => { dicho += t; } });
     uso.entrada += r.uso.entrada; uso.salida += r.uso.salida;
     const enTexto = llamadasEnTexto(r.content);
     const llamadas = [...r.tool_calls, ...enTexto.llamadas];
@@ -716,7 +801,7 @@ async function pensar({ miembro, junta, texto, conversacionId, previa: previaDad
       for (const res of await correrLote(llamadas, { ctx, usadas, emitir })) {
         mensajes.push({ role: 'tool', content: recortar(res.salida, TOPE_RESULTADO), tool_name: res.nombre });
       }
-      const r2 = await pedirDelTurno({ model: MODELO, messages: mensajes, tools: herramientas.paraOllama({ cajas: herramientas.CAJAS_UTILES }), stream: true, options: opciones }, { alTrozo: (t) => {} });
+      const r2 = await pedirDelTurno({ model: MODELO, messages: mensajes, tools: herramientas.paraOllama({ cajas: cajasDeLaGuarda }), stream: true, options: opciones }, { alTrozo: (t) => {} });
       uso.entrada += r2.uso.entrada; uso.salida += r2.uso.salida;
       const limpio = llamadasEnTexto(r2.content).limpio.trim();
       if (limpio) { textoFinal = limpio; emitir('reemplazo', { texto: textoFinal }); }
@@ -761,7 +846,7 @@ async function pensar({ miembro, junta, texto, conversacionId, previa: previaDad
   const creoDoc = () => usadas.some((h) => h.nombre === 'crear_documento');
   const hayPdf = () => ctx.acciones.some((a) => a.tipo === 'abrir' && /formato=pdf/.test(a.url || ''));
   const cumplio = () => (pidioPdf ? hayPdf() : creoDoc());
-  if (PROMETE.test(textoFinal) && !cumplio()) {
+  if (PROMETE.test(textoFinal) && !cumplio() && hayTiempoParaGuarda('lo prometido')) {
     emitir('pensando', { vuelta: MAX_VUELTAS, motivo: 'dijo que lo dejó sin haberlo hecho' });
     mensajes.push({ role: 'assistant', content: textoFinal });
     /* El aviso dice EXACTAMENTE qué falta, que no es lo mismo según el caso:
@@ -788,18 +873,22 @@ async function pensar({ miembro, junta, texto, conversacionId, previa: previaDad
       textoFinal = llamadasEnTexto(dicho).limpio.trim() || textoFinal;
       emitir('reemplazo', { texto: textoFinal });
     }
-    /* Y si después de todo sigue prometiendo sin haberlo hecho, se dice la
-       verdad en su lugar. Una promesa falsa en pantalla es peor que un «no
-       pude»: la persona se va a buscar un archivo que no existe. */
-    if (PROMETE.test(textoFinal) && !cumplio()) {
-      console.warn(`[nodo] prometió ${pidioPdf ? 'un PDF' : 'un documento'} y no lo dejó ni al segundo intento: se corrige el texto`);
-      /* Y se dice lo que DE VERDAD pasó, que no es lo mismo: si el documento
-         quedó escrito, decir «no pude» sería tirar el trabajo hecho. */
-      textoFinal = creoDoc()
-        ? 'Escribí el documento y quedó en la biblioteca, pero no logré dejarlo en PDF. Pídame el PDF otra vez y lo saco de ahí.'
-        : 'No pude armar el documento en este turno. Pídamelo otra vez y lo escribo completo.';
-      emitir('reemplazo', { texto: textoFinal });
-    }
+  }
+
+  /* Y AUNQUE NO HAYA HABIDO TIEMPO DE INTENTARLO, LA MENTIRA NO SE PUBLICA.
+     Esto vivía DENTRO de la guarda de arriba, o sea que si la guarda no corría
+     —porque se acabó el presupuesto del turno— la promesa falsa salía a
+     pantalla tal cual. Corregir el texto no cuesta ni una llamada al modelo:
+     corre SIEMPRE, haya habido segundo intento o no. Si prometió un documento
+     y no está, se dice lo que hay. */
+  if (PROMETE.test(textoFinal) && !cumplio()) {
+    console.warn(`[nodo] prometió ${pidioPdf ? 'un PDF' : 'un documento'} y no lo dejó: se corrige el texto`);
+    /* Y se dice lo que DE VERDAD pasó, que no es lo mismo: si el documento
+       quedó escrito, decir «no pude» sería tirar el trabajo hecho. */
+    textoFinal = creoDoc()
+      ? 'Escribí el documento y quedó en la biblioteca, pero no logré dejarlo en PDF. Pídame el PDF otra vez y lo saco de ahí.'
+      : 'No pude armar el documento en este turno. Pídamelo otra vez y lo escribo completo.';
+    emitir('reemplazo', { texto: textoFinal });
   }
 
   /* LA GUARDA DE LAS CITAS. 5-sep, primera prueba real: «El oro cerró hoy a
@@ -815,7 +904,12 @@ async function pensar({ miembro, junta, texto, conversacionId, previa: previaDad
   const citadas = [...new Set([...textoFinal.matchAll(CITA)].map((m) => m[1].toLowerCase()))];
   const corridas = new Set(usadas.map((h) => h.nombre));
   const falsas = citadas.filter((c) => !corridas.has(c));
-  if (falsas.length) {
+  /* Sin tiempo no se le devuelve —son dos llamadas más— pero la cita falsa NO
+     se publica limpia: se marca abajo igual, que es lo que de verdad protege a
+     quien lee. */
+  if (falsas.length && !hayTiempoParaGuarda('las citas')) {
+    textoFinal += `\n\n_(ULTRON citó ${falsas.join(', ')} sin haberla usado en este turno: tome ese dato con cuidado.)_`;
+  } else if (falsas.length) {
     emitir('pensando', { vuelta: MAX_VUELTAS, motivo: 'cita sin herramienta' });
     mensajes.push({ role: 'assistant', content: textoFinal });
     mensajes.push({ role: 'user', content: `[sistema] Citaste «${falsas.join('», «')}» pero no la llamaste en este turno. Llamala ahora y contestá con lo que devuelva, o reescribí la respuesta sin esa cita diciendo de dónde sale de verdad el dato.` });
@@ -943,4 +1037,4 @@ async function salud() {
   });
 }
 
-module.exports = { pensar, precalentar, titular, salud, encendido, MODELO, _adentro: { pedir, pedirJson, vectorDe, llamadasEnTexto, armarMensajes, sinRepetidos, sinElRestoDeUnaHerramienta, sinCodigoPegadoArriba, hastaOtroAlfabeto, dondeEmpiezaElBucle, fichas, PRESUPUESTO, PRESUPUESTO_FICHAS, CTX } };
+module.exports = { pensar, precalentar, titular, salud, encendido, MODELO, _adentro: { pedir, pedirJson, vectorDe, llamadasEnTexto, armarMensajes, sinRepetidos, sinElRestoDeUnaHerramienta, sinCodigoPegadoArriba, hastaOtroAlfabeto, dondeEmpiezaElBucle, fichas, PRESUPUESTO, PRESUPUESTO_FICHAS, CTX, presupuestoMs, GUARDA_NECESITA_MS } };
