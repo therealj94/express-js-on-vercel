@@ -37,6 +37,7 @@ const vivo = require('./vivo');
 const memoria = require('./memoria');
 const permisos = require('./permisos');
 const ojo = require('./ojo');
+const tesoro = require('./tesoro');
 const archivos = require('./archivos');
 const boveda = require('./boveda');
 const taller = require('./taller');
@@ -279,6 +280,11 @@ const DEFINICIONES = [
       }, required: ['tipo'] } },
       telefono: { type: 'boolean' },
     }, required: ['pasos'] },
+  },
+  {
+    name: 'tesoro_tarjeta',
+    description: 'Cómo está el tesoro que paga las recargas de la tarjeta débito: cuánto USDT le queda, cuántas recargas aguanta y si tiene gas. Es lo que hay que mirar cuando alguien dice que no puede recargar la tarjeta — el 7-sep no se podía recargar porque al tesoro le quedaban 6,27 USDT.',
+    input_schema: { type: 'object', properties: {} },
   },
   {
     name: 'aprobado_correr',
@@ -850,6 +856,8 @@ async function correrAdentro(nombre, entrada, ctx) {
         return `${d.ok ? 'El guion corrió entero.' : 'EL GUION SE CORTÓ en el paso que falló; los de después NO se hicieron.'}\n${diario}\n\n${ojo.comoTexto(d)}`;
       }
 
+      case 'tesoro_tarjeta': return tesoro.comoTexto(await tesoro.estado());
+
       case 'buscar_saber': {
         const s = saber.buscar(String(entrada.pregunta || ''), { maximo: ctx.chico ? 5 : 8, maxBytes: ctx.chico ? 12_000 : 40_000 });
         ctx.fuentes.push(...s.map((x) => ({ id: x.id, titulo: x.titulo, fuente: x.fuente })));
@@ -1374,7 +1382,7 @@ function calcular(expresion) {
 const GRUPOS = {
   'La casa, en vivo': ['estado_vivo', 'parte_del_dia', 'cotizar', 'nodo_salud', 'nube_estado'],
   'El mundo de afuera': ['clima', 'hora'],
-  'Ordenex y las cadenas': ['ordenex_caja', 'ordenex_mercado', 'cadena_altura', 'cadena_direccion', 'cadena_5550_saldo'],
+  'Ordenex y las cadenas': ['ordenex_caja', 'ordenex_mercado', 'cadena_altura', 'cadena_direccion', 'cadena_5550_saldo', 'tesoro_tarjeta'],
   'Las otras casas': ['aucorp_monedas', 'genesis_salud'],
   'El saber y la memoria': ['buscar_saber', 'buscar_conversaciones', 'recordar', 'olvidar'],
   /* `exportar_pdf` estaba en «Acciones que confirma la persona», o sea en OTRA

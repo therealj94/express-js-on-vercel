@@ -96,3 +96,53 @@ decir(!/clave|token|secreto|HRKU|sk-/i.test(mandados[0]?.t || ''), 'el mensaje n
 vigia.parar(); vigia2.parar();
 console.log(malas ? `\n${malas} fallo(s).\n` : '\nTodo en verde\n');
 process.exit(malas ? 1 : 0);
+
+/* ── EL TESORO DE LA TARJETA ──────────────────────────────────────────────────
+ *
+ * 7-sep. José: «necesito poder recargar, que funcione recargar». El motivo era
+ * de una línea: al tesoro le quedaban 6,27 USDT.
+ *
+ * El circuito COBRA EN ORIGEN Y PAGA EN USDT, así que se vacía solo con cada
+ * recarga y nada lo vuelve a llenar. Se acaba siempre; la única pregunta es si
+ * alguien se entera antes o después. La primera vez fue después.
+ */
+{
+  titulo('el tesoro de la tarjeta: avisar ANTES de que se acabe');
+  const tesoro = await import('../lib/tesoro.js').then((m) => m.default || m);
+  const antes = process.env.TESORO_POLYGON;
+
+  delete process.env.TESORO_POLYGON;
+  decir(tesoro.hay() === false, 'sin dirección puesta, no hay tesoro que vigilar y se sabe');
+  const nada = await tesoro.estado();
+  decir(nada.hay === false, 'y el estado lo dice en vez de inventar un saldo');
+  decir(/no está configurado/.test(tesoro.comoTexto(nada)), 'y en palabras también');
+
+  process.env.TESORO_POLYGON = '0x9440d8aBa96188d1079b58cC411c682A910644ba';
+  decir(tesoro.hay() === true, 'con la dirección puesta, sí se vigila');
+  decir(tesoro.MINIMO() === 150, 'el suelo por omisión son 150 USDT', 'unas seis recargas de 25: margen para reponer sin prisa');
+  process.env.TESORO_MINIMO_USDT = '500';
+  decir(tesoro.MINIMO() === 500, 'y se puede subir con TESORO_MINIMO_USDT');
+  delete process.env.TESORO_MINIMO_USDT;
+
+  const bajo = tesoro.comoTexto({ hay: true, ok: true, direccion: '0xabc', usdt: 6.27, pol: 0.85,
+    minimo: 150, minimoGas: 1, bajo: true, sinGas: false, recargasQueAguanta: 0 });
+  decir(/POR DEBAJO/.test(bajo), 'un tesoro bajo se dice con todas las letras');
+  decir(/0 recargas/.test(bajo), 'y en RECARGAS, no solo en dólares', '«180 USDT» no dice nada; «siete recargas» sí');
+  decir(/vender el ORIGEN cobrado/.test(bajo), 'y dice CÓMO se repone, que es lo que hace falta saber a esa hora');
+
+  const sinGas = tesoro.comoTexto({ hay: true, ok: true, direccion: '0xabc', usdt: 900, pol: 0.1,
+    minimo: 150, minimoGas: 1, bajo: false, sinGas: true, recargasQueAguanta: 36 });
+  decir(/casi sin gas/.test(sinGas), 'y con USDT pero sin gas también avisa: es el mismo problema con otra moneda');
+
+  /* Que el aviso deje de sonar cuando se repone, y vuelva a sonar la próxima
+     vez. Sin el `olvidar`, el silencio de «ya avisé» taparía la segunda caída,
+     que es justo la que nadie ve venir. */
+  const fuente = (await import('node:fs')).readFileSync(new URL('../lib/tesoro.js', import.meta.url), 'utf8');
+  decir(/avisos\.olvidar\('tesoro:bajo'\)/.test(fuente),
+    'repuesto el tesoro, el aviso se olvida para poder volver a sonar');
+  decir(!/PRIVATE_KEY|privada|Wallet\(/.test(fuente),
+    'y esto NO toca ninguna llave: un saldo se lee con la dirección, que es pública',
+    'por eso puede vivir dentro de ULTRON sin ampliar lo que podría mover si lo engañaran');
+
+  if (antes) process.env.TESORO_POLYGON = antes; else delete process.env.TESORO_POLYGON;
+}

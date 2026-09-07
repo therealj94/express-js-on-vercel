@@ -24,6 +24,7 @@
 
 const vivo = require('./vivo');
 const avisos = require('./avisos');
+const tesoro = require('./tesoro');
 
 const CADA_MS = Number(process.env.VIGIA_CADA_MS || 60_000);
 const FALLOS_PARA_CAIDA = 2;
@@ -52,6 +53,7 @@ function estado() {
   return {
     encendido: !!corriendo,
     cada: CADA_MS,
+    tesoro: tesoroUltimo,
     ultimaVuelta,
     avisa: avisos.MODO(),
     casas,
@@ -76,7 +78,27 @@ async function avisar(cambios) {
 }
 
 /** Una vuelta: se lee, se compara con lo anterior y se anota lo que cambió. */
+/* ── EL TESORO, MÁS DESPACIO QUE LAS CASAS ───────────────────────────────────
+   Las casas se miran cada minuto porque una casa caída es urgente. Un tesoro
+   que baja no lo es: baja recarga a recarga, no de golpe. Mirarlo cada minuto
+   serían 1 440 llamadas al día a la cadena para ver un número que se mueve
+   unas pocas veces. Cada diez minutos llega igual de a tiempo. */
+const TESORO_CADA_MS = Number(process.env.TESORO_CADA_MS || 600_000);
+let ultimoTesoro = 0;
+let tesoroUltimo = null;
+
+async function mirarElTesoro() {
+  if (!tesoro.hay()) return;
+  if (Date.now() - ultimoTesoro < TESORO_CADA_MS) return;
+  ultimoTesoro = Date.now();
+  try { tesoroUltimo = await tesoro.mirarYAvisar(); }
+  catch (e) { console.warn('[vigia] el tesoro no se pudo mirar:', String(e?.message || e).slice(0, 120)); }
+}
+
 async function unaVuelta() {
+  /* Va primero y sin `await` que bloquee la vuelta: si la cadena de Polygon
+     está lenta, eso no puede retrasar el aviso de una casa caída. */
+  mirarElTesoro().catch(() => {});
   let v;
   /* `refrescar()` y no `leer()`: la vuelta del vigía ya sale a las seis casas
      cada minuto, así que de paso llena la despensa que usa el camino de
@@ -132,4 +154,4 @@ function arrancar() {
 
 function parar() { if (corriendo) { clearInterval(corriendo); corriendo = null; } }
 
-module.exports = { arrancar, parar, estado, unaVuelta, _adentro: { libro, CASAS, FALLOS_PARA_CAIDA } };
+module.exports = { arrancar, parar, estado, unaVuelta, mirarElTesoro, _adentro: { libro, CASAS, FALLOS_PARA_CAIDA, TESORO_CADA_MS } };
