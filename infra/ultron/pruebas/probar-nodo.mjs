@@ -604,6 +604,33 @@ titulo('se acaban las vueltas: lo averiguado no se tira');
     'y sale la RESPUESTA, no el comodín de «no me salió una respuesta con palabras»', r6.texto.slice(0, 100));
 }
 
+titulo('la terminal no tiene el repositorio, y lo dice ANTES de pedir permiso');
+{
+  /* ── LO QUE PASÓ, 7-sep, TRES TURNOS SEGUIDOS ────────────────────────────
+     A «revisá el código del tablero», ULTRON pedía permiso para
+     `grep -n "historial" infra/ultron/public/os.html`, se quedaba parado
+     esperando el clic, y contestaba «en cuanto lo apruebe, sigo». Se le
+     aprobó uno y pidió otro casi igual: cada grep distinto es una huella
+     distinta, o sea un permiso nuevo.
+
+     Y el comando NO habría encontrado nada aunque se aprobara: la terminal
+     corre en una carpeta temporal VACÍA, sin el repositorio. Peor, mientras el
+     pedido está pendiente el prompt le dice «cuando lo apruebe, volvé a
+     llamarla con la MISMA entrada», así que se quedaba fijado ahí en vez de
+     usar repo_buscar, que sí funciona y no pide nada. */
+  const ctx = () => ({ miembro: JOSE, junta: JUNTA, acciones: [], fuentes: [], memorias: [], documentos: [], envios: [], pendientes: [] });
+  for (const c of ['grep -n historial infra/ultron/public/os.html', 'cat lib/cerebro.js', 'head -40 public/js/os.js']) {
+    const r = String(await herramientas.correr('terminal', { comando: c }, ctx()));
+    decir(/carpeta TEMPORAL VACÍA/.test(r) && /repo_buscar/.test(r) && !/ESPERANDO AUTORIZACIÓN/.test(r),
+      `«${c.slice(0, 34)}…» se corta al momento y se redirige, sin pedir permiso`, r.slice(0, 70));
+  }
+  /* Y lo que SÍ es de la terminal sigue pidiendo aprobación, que es lo que la
+     hace peligrosa: bajar algo de internet, correr un programa. */
+  const c2 = ctx();
+  const r2 = String(await herramientas.correr('terminal', { comando: 'curl -s https://example.com' }, c2));
+  decir(/ESPERANDO AUTORIZACIÓN/.test(r2), 'y lo que de verdad es de la terminal sigue pidiendo el clic del dueño', r2.slice(0, 60));
+}
+
 titulo('un trabajo grande no muere con el turno: queda por dónde seguir');
 {
   /* ── LO QUE PIDIÓ JOSÉ, 7-sep ────────────────────────────────────────────

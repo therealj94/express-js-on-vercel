@@ -649,6 +649,27 @@ async function correrAdentro(nombre, entrada, ctx) {
        FUERA no corre sin una aprobación del dueño con la huella exacta de
        esta llamada: si la hay, se consume y se corre; si no, se crea el
        pedido y se le dice al modelo que está esperando el clic. */
+    /* ── LA TERMINAL NO TIENE EL REPOSITORIO, Y SE DICE ANTES DE PEDIR NADA ──
+       7-sep, tres turnos seguidos contra producción: ULTRON pedía permiso para
+       `grep -n "historial" infra/ultron/public/os.html`, se quedaba parado
+       esperando el clic, y el comando NO habría encontrado nada aunque se lo
+       dieran — la terminal corre en una carpeta temporal vacía.
+       Peor: mientras el pedido está pendiente, el prompt le dice «cuando lo
+       apruebe, volvé a llamarla con la MISMA entrada», así que se quedaba
+       fijado ahí en vez de usar repo_buscar, que sí funciona y no pide nada.
+       Se corta acá, ANTES de la puerta de permisos: un comando que mira un
+       archivo del repositorio no llega ni a pedir aprobación. Se le dice qué
+       usar y sigue en la misma vuelta. */
+    if (nombre === 'terminal') {
+      const cmd = String(entrada?.comando || '');
+      const miraElRepo = /(^|[\s"'])(infra|lib|public|pruebas|bin|saber)\//.test(cmd);
+      const soloLee = /^\s*(grep|rg|cat|head|tail|ls|find|wc|sed|awk|less|more)\b/.test(cmd);
+      if (miraElRepo || soloLee) {
+        return 'La terminal corre en una carpeta TEMPORAL VACÍA: no tiene el repositorio dentro, así que ese comando no encontraría nada. '
+          + 'Para el código usá `repo_buscar` (buscar texto o una función), `repo_leer` (leer un archivo entero o un trozo) o `repo_arbol` (ver qué archivos hay). '
+          + 'Las tres corren AHORA MISMO, sin pedirle permiso a nadie. Seguí con una de ellas en esta misma vuelta.';
+      }
+    }
     const ojo = permisos.puede(ctx.miembro, nombre, ctx.junta || []);
     if (!ojo.ok) {
       if (!ojo.autorizable) return `No se puede: ${ojo.motivo}`;
