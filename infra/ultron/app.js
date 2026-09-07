@@ -789,6 +789,18 @@ app.post('/pensar', puerta, frenoPensar, async (req, res) => {
     reloj.pensó = Date.now() - t0;
     await anotado;
     await memoria.anotarTurno(convId, req.miembro.correo, { rol: 'ultron', texto: r.texto, herramientas: r.herramientas, fuentes: r.fuentes });
+    /* ── EL TRABAJO A MEDIAS ────────────────────────────────────────────────
+       `undefined` quiere decir que este turno no tocó el asunto y lo que
+       hubiera se queda como estaba. `null` es que el propio ULTRON dijo que ya
+       no falta nada, y entonces se borra. Y un objeto es un turno que se quedó
+       a medias: se guarda con qué se pidió, qué se hizo y cuál es el paso
+       siguiente, para que el turno próximo empiece por ahí en vez de desde
+       cero. */
+    if (r.trabajo !== undefined) {
+      const antes = hilo.conv?.trabajo;
+      await memoria.guardarTrabajo(convId, req.miembro.correo,
+        r.trabajo && { ...r.trabajo, vueltas: (antes?.falta ? (antes.vueltas || 1) : 0) + 1 });
+    }
     /* ── EL TÍTULO NO RETIENE LA RESPUESTA ──────────────────────────────────
        Titular una conversación nueva es OTRA llamada al modelo, y estaba
        delante del `fin`: la última frase de la respuesta se quedaba esperando

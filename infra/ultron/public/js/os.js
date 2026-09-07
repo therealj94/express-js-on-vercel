@@ -1452,6 +1452,20 @@ const OS = (() => {
   // ══ HABLAR Y ESCUCHAR ═════════════════════════════════════════════════════
 
   let locutor = null, conVoz = true, conversacionId = null, pensando = false;
+  /* ── LA VOZ NO ARRANCA SOLA ───────────────────────────────────────────────
+     7-sep, José: «que diga buenos días, el clima, etc., pero que no se active
+     a hablar hasta que uno lo haga; solo texto hasta que toque el centro, ahí
+     se activa».
+     `conVoz` es la PREFERENCIA —si esta persona quiere voz o no—. Esto otro es
+     el PERMISO DE ESTA SESIÓN, y empieza en no: al abrir la página ULTRON
+     saluda escrito y se queda callado. Lo enciende un gesto de la persona y
+     nada más: tocar el centro, abrir el micrófono, «oír todo», o probar la voz
+     en los ajustes. Todos pasan por `despertarVoz`, así que basta con marcarlo
+     ahí. Y de paso arregla lo de siempre en un teléfono: el navegador no deja
+     sonar nada hasta que hay un toque, así que hablar antes del toque no era
+     ni posible — solo parecía que ULTRON se había quedado mudo. */
+  let vozDespierta = false;
+  const hablaAhora = () => conVoz && vozDespierta;
   /* Qué está haciendo ULTRON ahora mismo y desde cuándo. Viven fuera de
      `enviar` porque los tocan tres sitios: el reloj de cada segundo, el evento
      de la herramienta, y la prueba. */
@@ -1572,7 +1586,7 @@ const OS = (() => {
      mismo, la muletilla y la primera frase de la respuesta se pisarían. */
   let audioMuletilla = null;
   function decirMuletilla(grupo = 'general') {
-    if (!conVoz || !muletillas?.length) return;
+    if (!hablaAhora() || !muletillas?.length) return;
     const delGrupo = muletillas.filter((m) => m.grupo === grupo);
     const donde = delGrupo.length ? delGrupo : muletillas.filter((m) => m.grupo === 'general');
     const posibles = donde.filter((m) => m.texto !== ultimaMuletilla);
@@ -1599,6 +1613,7 @@ const OS = (() => {
      nace de ningún gesto. En iOS ese permiso es del ELEMENTO de audio, así que
      hay que hacerlo antes de la primera frase o no suena ninguna. */
   function despertarVoz() {
+    vozDespierta = true;
     locutor = locutor || locutorNuevo();
     locutor.despertar?.();
     /* Y con el MISMO gesto, el audio de las muletillas. Son dos elementos
@@ -1707,11 +1722,12 @@ const OS = (() => {
       if (a?.tipo === 'pr' && a.url) return { texto: `Ver el cambio propuesto (${a.rama || 'rama'})`, url: a.url };
       /* El del hilo no abre una pestaña: abre el día aquí mismo. */
       if (a?.tipo === 'hilo' && a.conv) return { texto: a.nombre || 'Ver todo el hilo', conv: a.conv };
+      if (a?.tipo === 'seguir') return { texto: a.nombre || 'SEGUIR CON ESTO', seguir: true };
       return null;
     }).filter((b) => b && b.texto);
     if (!botones.length) { c.classList.add('oculto'); c.innerHTML = ''; return; }
     c.classList.remove('oculto');
-    c.innerHTML = botones.map((b) => `<button class="chip"${b.url ? ` data-url="${esc(b.url)}"` : ''}${b.conv ? ` data-conv="${esc(b.conv)}"` : ''}>${esc(b.texto)}</button>`).join('');
+    c.innerHTML = botones.map((b) => `<button class="chip"${b.url ? ` data-url="${esc(b.url)}"` : ''}${b.conv ? ` data-conv="${esc(b.conv)}"` : ''}${b.seguir ? ' data-seguir="1"' : ''}>${esc(b.texto)}</button>`).join('');
   }
 
   /**
@@ -1789,7 +1805,7 @@ const OS = (() => {
        anterior se quedaba con su temporizador de 40 Hz corriendo: treinta
        preguntas, treinta temporizadores huérfanos. */
     locutor?.callar?.();
-    if (conVoz) { locutor = locutor || locutorNuevo(); locutor.despertar?.(); muletillaTrasEspera('general'); }
+    if (hablaAhora()) { locutor = locutor || locutorNuevo(); locutor.despertar?.(); muletillaTrasEspera('general'); }
 
     /* try/finally, y no es adorno. `DATOS.pensar` abre un SSE que puede durar
        veinte segundos; en un teléfono que cambia de celda a mitad, la promesa
@@ -1812,7 +1828,7 @@ const OS = (() => {
           señal();
           if (!acum) pararMuletillas();      // empezó a contestar: nada de hablar encima
           acum += d.t || ''; pintarDicho(acum);
-          if (conVoz) locutor?.alimentar?.(d.t || '');
+          if (hablaAhora()) locutor?.alimentar?.(d.t || '');
         },
         /* Cada vuelta de herramientas emite `pensando`: es la señal de que
            sigue vivo aunque todavía no haya escrito una letra. */
@@ -1844,8 +1860,16 @@ const OS = (() => {
              cuánto tardó la primera palabra, que es el silencio que se siente. */
           if (d?.ms?.total) { ultimoTurno = { primera: d.ms.primera || d.ms.total, total: d.ms.total }; pintarSalud(saludUltima); }
           if (d?.texto) { acum = d.texto; pintarDicho(acum); }
-          if (conVoz) locutor?.cerrar?.(); else estado('idle');
-          chips(d?.acciones || null);
+          if (hablaAhora()) locutor?.cerrar?.(); else estado('idle');
+          /* ── SI QUEDÓ TRABAJO, UN TOQUE LO SIGUE ────────────────────────
+             Un turno son seis vueltas y noventa segundos: para «mejorá el
+             tablero» no alcanza, y hasta ahora lo averiguado moría ahí. Cuando
+             el servidor dice que quedó algo a medias, el primer botón es
+             SEGUIR — y ULTRON retoma por el paso siguiente en vez de empezar
+             de cero. */
+          const acs = [...(d?.acciones || [])];
+          if (d?.trabajo?.falta) acs.unshift({ tipo: 'seguir', nombre: 'SEGUIR CON ESTO' });
+          chips(acs.length ? acs : null);
           /* De dónde salió la cifra. Un tablero de junta del que no se puede
              decir «esto lo leyó de Ordenex a las 04:12» no se puede citar en un
              acta. Las herramientas usadas quedan escritas bajo la respuesta. */
@@ -1882,7 +1906,7 @@ const OS = (() => {
       if (mente.state !== 'speak' && mente.state !== 'error') estado('idle', 'neutral');
       /* Si la voz se cortó por larga, se ofrece oírla entera. Es un botón y no
          una pregunta: quien quiere el resto lo toca, y quien no, no oye nada. */
-      if (conVoz && locutor?.cortado) chipsMas(acum);
+      if (hablaAhora() && locutor?.cortado) chipsMas(acum);
     }
   }
 
@@ -2404,7 +2428,10 @@ const OS = (() => {
       calentar();
       if (!s?.texto) return;
       pintarDicho(s.texto); chips(s.sugerencias || null);
-      if (conVoz) {
+      /* El saludo se LEE, no se oye, hasta que la persona toque el centro. Lo
+         que dice —buenos días, el clima, lo que quedó pendiente— es igual de
+         útil escrito, y así nadie se lleva un susto al abrir el teléfono. */
+      if (hablaAhora()) {
         locutor = locutor || locutorNuevo();
         locutor.despertar?.();
         /* El saludo se dice ENTERO: es corto y es lo primero que se oye. */
@@ -2710,6 +2737,10 @@ const OS = (() => {
          le MANDABA a ULTRON la pregunta «VER TODO EL HILO», que es justo lo que
          no se quiere: gastar un turno por querer mirar atrás. */
       if (b.dataset.conv) { abrirDia(registroUltimo?.hoy || 'hoy', b.dataset.conv); return; }
+      /* «Seguí» a secas: el servidor ya lleva en el prompt qué se pidió, qué
+         se hizo y cuál es el paso siguiente, así que no hace falta repetirlo
+         —y repetirlo sería gastar fichas en algo que ya sabe—. */
+      if (b.dataset.seguir) { enviar('Seguí con eso, por favor.'); return; }
       if (b.dataset.propio) return;
       enviar(b.textContent);
     });

@@ -588,7 +588,7 @@ async function pensar({ miembro, junta, texto, conversacionId, previa: previaDad
   // tengan sitio. Antes una junta con cuarenta memorias largas dejaba la
   // pregunta sin saber y el pedido pasado del contexto.
   let memoriasUsadas = memorias;
-  const armar = (secciones) => sistema({ miembro, memorias: memoriasUsadas, estadoVivo, secciones, vozCasa: voz, pendientes: abiertos, chico: true, modo, alias }).map((b) => b.text).join('\n\n');
+  const armar = (secciones) => sistema({ miembro, memorias: memoriasUsadas, estadoVivo, secciones, vozCasa: voz, pendientes: abiertos, chico: true, modo, alias, trabajo: previa?.trabajo?.falta ? previa.trabajo : null }).map((b) => b.text).join('\n\n');
   let base = armar([]);
   const TOPE_BASE = Math.floor(PRESUPUESTO_FICHAS * 0.5);
   while (fichas(base) > TOPE_BASE && memoriasUsadas.length) { memoriasUsadas = memoriasUsadas.slice(0, Math.max(0, memoriasUsadas.length - 4)); base = armar([]); }
@@ -613,6 +613,9 @@ async function pensar({ miembro, junta, texto, conversacionId, previa: previaDad
      desde la pantalla. */
   let msPrimera = 0;
   let vueltasDadas = 0;
+  /* Lo que queda por hacer cuando el turno se acaba a medias. `undefined` = el
+     turno no tocó el tema; `null` = se terminó y hay que borrarlo. */
+  let trabajo;
   const usadas = [];
   const uso = { entrada: 0, salida: 0, lecturaCache: 0, escrituraCache: 0 };
   // En voz, la respuesta es corta por diseño: menos fichas de salida es menos
@@ -853,14 +856,29 @@ async function pensar({ miembro, junta, texto, conversacionId, previa: previaDad
     console.warn(`[nodo] se acabaron las ${MAX_VUELTAS} vueltas ${textoFinal.trim() ? 'con solo un anuncio' : 'sin una palabra'}: se pide la respuesta sin herramientas`);
     emitir('pensando', { vuelta: MAX_VUELTAS, hace: 'juntando lo que averigüé' });
     if (textoFinal.trim()) { textoFinal = ''; emitir('reemplazo', { texto: '' }); }
-    mensajes.push({ role: 'user', content: '[sistema] Se te acabaron las vueltas de herramientas. Ya no podés llamar a ninguna más. '
-      + 'Contestale AHORA a la persona con lo que averiguaste en este turno —lo que leíste, lo que viste— y decí en una línea qué te quedó sin mirar. '
-      + 'No pidas otra herramienta y no digas que vas a revisar nada: contestá.' });
+    mensajes.push({ role: 'user', content: '[sistema] Se te acabaron las vueltas de herramientas de ESTE turno. Ya no podés llamar a ninguna más, pero el trabajo NO se cancela: sigue en el turno próximo.\n'
+      + 'Contestale AHORA a la persona con lo que averiguaste —lo que leíste, lo que viste, con nombres y rutas concretas—.\n'
+      + 'Y terminá con estas dos líneas, tal cual, que son las que me dejan retomarlo:\n'
+      + 'HECHO: (en una línea, lo que ya queda resuelto)\n'
+      + 'FALTA: (en una línea, el siguiente paso concreto — o la palabra NADA si ya está todo)' });
     const acum = { t: '' };
     const r = await pedirDelTurno({ model: MODELO, messages: mensajes, stream: true, options: opciones }, { alTrozo: conGuarda(acum) });
     uso.entrada += r.uso.entrada; uso.salida += r.uso.salida;
     const limpio = llamadasEnTexto(r.content).limpio.trim();
     if (limpio) textoFinal = limpio;
+    /* ── Y DE AHÍ SALE EL TRABAJO, GRATIS ────────────────────────────────
+       Las dos líneas se leen y se guardan; en pantalla se quedan, porque
+       «esto hice, esto falta» es justo lo que la persona quiere ver al final
+       de un turno que se quedó a medias. */
+    const mHecho = /^\s*HECHO:\s*(.+)$/im.exec(textoFinal);
+    const mFalta = /^\s*FALTA:\s*(.+)$/im.exec(textoFinal);
+    const falta = (mFalta?.[1] || '').trim();
+    if (falta && !/^nada\b/i.test(falta)) {
+      trabajo = { objetivo: texto.slice(0, 500), hecho: (mHecho?.[1] || '').trim().slice(0, 2000), falta: falta.slice(0, 2000) };
+      console.warn(`[nodo] el turno queda a medias · falta: ${falta.slice(0, 90)}`);
+    } else if (mFalta) {
+      trabajo = null;   // dijo NADA: el trabajo se cierra
+    }
   }
 
   /* ── LA GUARDA DEL «NO PUEDO» SIN HABER MIRADO ────────────────────────────
@@ -1148,7 +1166,7 @@ async function pensar({ miembro, junta, texto, conversacionId, previa: previaDad
   // el número honesto, y se anota igual para contar los turnos.
   memoria.anotarGasto({ miembro: miembro.correo, modelo: 'nodo:' + MODELO, ...uso, dolares: 0, canal: ctx.canal || 'panel' })
     .catch((e) => console.error(`[gasto] ${e.message}`));
-  return { texto: textoFinal, fuentes, herramientas: usadas, memorias: ctx.memorias, documentos: ctx.documentos,
+  return { texto: textoFinal, fuentes, herramientas: usadas, memorias: ctx.memorias, documentos: ctx.documentos, trabajo,
            envios: ctx.envios, pendientes: ctx.pendientes, acciones: ctx.acciones, uso: { ...uso, dolares: 0 }, modelo: 'nodo:' + MODELO,
            ms: { contexto: msContexto, primera: msPrimera, cerebro: Date.now() - tArranque, vueltas: vueltasDadas, fichas: uso.entrada } };
 }

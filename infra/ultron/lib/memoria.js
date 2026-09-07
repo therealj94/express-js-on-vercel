@@ -66,6 +66,24 @@ const conversacionSchema = new Schema({
      lo mismo ni dejar un hueco en medio. */
   resumen: { type: String, maxlength: 4000, default: '' },
   resumidos: { type: Number, default: 0 },
+  /* ── EL TRABAJO EN CURSO ──────────────────────────────────────────────────
+     7-sep, José: «que no se corte y se quede si es un trabajo grande, que le
+     toca ver cómo hacerlo, que lo pueda lograr y dar resultados».
+     Un turno son seis vueltas y noventa segundos. Eso alcanza para una
+     pregunta, no para «mejorá el tablero». Y hasta ahora, cuando se acababan,
+     lo averiguado moría con el turno: la vez siguiente se empezaba de cero.
+     Acá queda lo único que hace falta para retomarlo: qué se pidió, qué ya se
+     hizo, y qué falta. Se escribe SOLO cuando un turno se queda a medias, y en
+     la misma llamada de rescate que ya existía — no cuesta ni una llamada más.
+     Vive en la conversación porque un trabajo es de un hilo, no de la casa:
+     los pendientes son otra cosa y ya tienen su sitio. */
+  trabajo: {
+    objetivo: { type: String, maxlength: 500, default: '' },
+    hecho: { type: String, maxlength: 2000, default: '' },
+    falta: { type: String, maxlength: 2000, default: '' },
+    vueltas: { type: Number, default: 0 },     // cuántos turnos lleva
+    en: { type: Date },
+  },
 }, { timestamps: { createdAt: 'en', updatedAt: 'tocado' } });
 
 const documentoSchema = new Schema({
@@ -305,6 +323,26 @@ async function guardarResumen(id, miembro, { resumen, resumidos }) {
   return true;
 }
 
+/* Se guarda con `$set` del objeto entero: un trabajo es una foto de dónde va
+   la cosa, no un registro al que se le añaden campos sueltos. */
+async function guardarTrabajo(id, miembro, t) {
+  const doc = t ? {
+    objetivo: String(t.objetivo || '').slice(0, 500),
+    hecho: String(t.hecho || '').slice(0, 2000),
+    falta: String(t.falta || '').slice(0, 2000),
+    vueltas: Number(t.vueltas || 1),
+    en: new Date(),
+  } : { objetivo: '', hecho: '', falta: '', vueltas: 0, en: null };
+  if (conMongo) {
+    const r = await Conversacion.updateOne({ _id: id, miembro }, { $set: { trabajo: doc } });
+    return r.modifiedCount > 0;
+  }
+  const c = provisional.conversaciones.get(String(id));
+  if (!c || c.miembro !== miembro) return false;
+  c.trabajo = doc;
+  return true;
+}
+
 async function titular(id, miembro, titulo) {
   if (conMongo) return Conversacion.updateOne({ _id: id, miembro, titulo: { $in: [null, ''] } }, { titulo: String(titulo).slice(0, 120) });
   const c = provisional.conversaciones.get(String(id));
@@ -455,7 +493,7 @@ module.exports = {
   anotarPendiente, pendientes, cerrarPendiente, borrarPendiente, mismoPendiente,
   anotarGasto, gasto,
   recordar, olvidar, memoriasDe,
-  abrirConversacion, conversacion, conversacionesDe, anotarTurno, titular, guardarResumen, filtroDeResumen,
+  abrirConversacion, conversacion, conversacionesDe, anotarTurno, titular, guardarResumen, filtroDeResumen, guardarTrabajo,
   conversacionDelDia, registroPorDia, diaDe, bordesDelDia,
   guardarDocumento, documentos, documento,
   Memoria, Conversacion, Documento, Pendiente, Gasto,

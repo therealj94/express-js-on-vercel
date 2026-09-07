@@ -599,6 +599,53 @@ titulo('se acaban las vueltas: lo averiguado no se tira');
     'y sale la RESPUESTA, no el comodín de «no me salió una respuesta con palabras»', r6.texto.slice(0, 100));
 }
 
+titulo('un trabajo grande no muere con el turno: queda por dónde seguir');
+{
+  /* ── LO QUE PIDIÓ JOSÉ, 7-sep ────────────────────────────────────────────
+     «Que no se corte y se quede si es un trabajo grande, que le toca ver cómo
+     hacerlo, que lo pueda lograr y dar resultados.»
+
+     Un turno son seis vueltas y noventa segundos: alcanza para una pregunta,
+     no para «mejorá el tablero». Y hasta ahora, cuando se acababan, lo
+     averiguado moría con el turno y la vez siguiente se empezaba de cero.
+
+     Lo que se guarda es lo mínimo para retomarlo —qué se pidió, qué se hizo y
+     cuál es el paso siguiente— y sale de la MISMA llamada de rescate que ya
+     existía: no cuesta ni una llamada más. */
+  const conv4 = await memoria.abrirConversacion(JOSE.correo, { titulo: 'trabajo' });
+  guion = Array.from({ length: 6 }, () => ({ texto: '', llamadas: [{ name: 'estado_vivo', arguments: {} }] }));
+  guion.push({ texto: 'Miré el tablero y el turno.\n\nHECHO: leí os.js y nodo.js, y encontré dónde se pinta el globo.\nFALTA: escribir el panel del hilo en os.html y probarlo.' });
+  const r = await cerebro.pensar({ miembro: JOSE, junta: JUNTA, texto: 'mejorá el tablero de ULTRON', conversacionId: String(conv4._id) });
+  decir(!!r.trabajo, 'un turno que se queda a medias deja apuntado el trabajo', JSON.stringify(r.trabajo));
+  decir(/os\.html/.test(r.trabajo?.falta || ''), 'con el PASO SIGUIENTE concreto, no un «falta terminar»', r.trabajo?.falta);
+  decir(/os\.js/.test(r.trabajo?.hecho || ''), 'y con lo que ya quedó hecho, para no repetirlo', r.trabajo?.hecho);
+  decir(/mejorá el tablero/i.test(r.trabajo?.objetivo || ''), 'y qué se había pedido');
+  decir(/HECHO:/.test(r.texto) && /FALTA:/.test(r.texto),
+    'y las dos líneas se quedan EN PANTALLA: es lo que uno quiere ver de un turno a medias');
+
+  /* Y al turno siguiente, eso entra en el prompt para que empiece por ahí en
+     vez de volver a mirar lo mismo. */
+  const previa = { turnos: [], resumen: '', resumidos: 0, trabajo: { ...r.trabajo, vueltas: 1 } };
+  guion = [{ texto: 'Listo, escribí el panel.' }];
+  await cerebro.pensar({ miembro: JOSE, junta: JUNTA, texto: 'seguí', previa });
+  const sys = pedidos.at(-1).messages[0].content;
+  decir(/EL TRABAJO QUE DEJASTE A MEDIAS/.test(sys), 'al turno siguiente el trabajo va en el prompt');
+  decir(/os\.html/.test(sys), 'con el paso siguiente delante, para empezar por ahí');
+  decir(/no se empieza de nuevo/i.test(sys), 'y con la orden de seguir, no de volver a empezar');
+
+  /* Cuando dice que ya no falta nada, el trabajo se cierra: `null` es la señal
+     de borrarlo, y es distinta de «este turno no tocó el tema» (undefined). */
+  guion = Array.from({ length: 6 }, () => ({ texto: '', llamadas: [{ name: 'estado_vivo', arguments: {} }] }));
+  guion.push({ texto: 'Quedó todo.\n\nHECHO: el panel escrito y probado.\nFALTA: NADA' });
+  const rr = await cerebro.pensar({ miembro: JOSE, junta: JUNTA, texto: 'terminá el panel', conversacionId: String(conv4._id) });
+  decir(rr.trabajo === null, 'y cuando dice que no falta nada, el trabajo se cierra', String(rr.trabajo));
+
+  /* Un turno normal ni lo toca: `undefined` deja lo que hubiera como estaba. */
+  guion = [{ texto: 'El ORIGEN está a dos dólares con cincuenta y ocho.' }];
+  const corto = await cerebro.pensar({ miembro: JOSE, junta: JUNTA, texto: 'a cómo está el ORIGEN', conversacionId: String(conv4._id) });
+  decir(corto.trabajo === undefined, 'y una pregunta corta no lo pisa: lo deja como estaba', String(corto.trabajo));
+}
+
 titulo('lo que dice que va a hacer NO es la respuesta');
 {
   /* ── LO QUE PASÓ DE VERDAD, 7-sep, en el teléfono de José ────────────────

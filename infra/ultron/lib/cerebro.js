@@ -182,7 +182,7 @@ const CABECERA = require('node:fs').readFileSync(require('node:path').join(__dir
    texto: hablando por voz nadie pide una ruta de archivo. */
 const MAPA = require('node:fs').readFileSync(require('node:path').join(__dirname, 'mapa-de-la-casa.md'), 'utf8').trim();
 
-function sistema({ miembro, memorias, estadoVivo, secciones, vozCasa, pendientes = [], chico = false, modo = 'texto', alias = null, idioma = 'es', habilidades = '', pedidos = [] }) {
+function sistema({ miembro, memorias, estadoVivo, secciones, vozCasa, pendientes = [], chico = false, modo = 'texto', alias = null, idioma = 'es', habilidades = '', pedidos = [], trabajo = null }) {
   /* Las LECCIONES van aparte de las memorias y ARRIBA de todo lo del momento:
      son correcciones de la junta, y mandan sobre cualquier ficha vieja que
      diga lo contrario. Es lo que hace que un error corregido no vuelva. */
@@ -322,6 +322,13 @@ ${mem}
 LO QUE ESTÁ PENDIENTE (tareas abiertas, con su id)
 ${tareas}
 Cuando en la conversación aparezca algo que hay que hacer, anotalo con anotar_pendiente. Cerrá uno solo si alguien de la junta dice que ya se hizo.
+${trabajo?.falta ? `
+EL TRABAJO QUE DEJASTE A MEDIAS EN ESTA CONVERSACIÓN (turno ${trabajo.vueltas || 1})
+Se pidió: ${trabajo.objetivo}
+Ya hiciste: ${trabajo.hecho || '(nada todavía)'}
+El paso siguiente: ${trabajo.falta}
+Si le dicen que siga —«seguí», «dale», «continuá»— o si la pregunta es de esto mismo, EMPEZÁ POR ESE PASO. No vuelvas a mirar lo que ya miraste y no vuelvas a contar lo que ya contaste: se sigue, no se empieza de nuevo.
+` : ''}
 
 ${require('./preferencias').ordenDeIdioma(idioma)}
 ${quienHabla}`;
