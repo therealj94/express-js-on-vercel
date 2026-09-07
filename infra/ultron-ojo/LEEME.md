@@ -74,3 +74,15 @@ node pruebas/probar-ojo.mjs
 Las pruebas levantan una casa de mentira que se dibuja con JavaScript — si
 usaran HTML plano pasarían en verde con el ojo apagado — y comprueban las dos
 cerraduras con una página que redirige a la nube y otra que la pide por dentro.
+
+## Dos cosas de Heroku que costaron una construcción cada una
+
+**El stack.** El buildpack de Playwright todavía no soporta `heroku-24`: corta
+con «STACK must be heroku-18, heroku-20 or heroku-22». La app va en
+**heroku-22** a propósito. Cuando el buildpack admita 24, se sube.
+
+**Dónde queda el navegador.** El buildpack instala las dependencias del
+SISTEMA, no el Chromium. Y de la máquina de construcción a la que corre solo
+viaja `/app`, así que un navegador bajado a `~/.cache` de la construcción no
+existe después. Por eso `PLAYWRIGHT_BROWSERS_PATH=/app/.cache/ms-playwright` y
+un `heroku-postbuild` que lo baja ahí.

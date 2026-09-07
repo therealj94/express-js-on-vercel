@@ -6,9 +6,12 @@
   "main": "app.js",
   "scripts": {
     "start": "node app.js",
-    "probar": "node pruebas/probar-ojo.mjs"
+    "probar": "node pruebas/probar-ojo.mjs",
+    "heroku-postbuild": "playwright install chromium"
   },
-  "engines": { "node": "22.x" },
+  "engines": {
+    "node": "22.x"
+  },
   "dependencies": {
     "express": "^4.21.2",
     "playwright": "1.47.2"
