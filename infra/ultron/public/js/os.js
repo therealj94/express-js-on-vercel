@@ -869,6 +869,12 @@ const OS = (() => {
         <div class="aj-fila"><span>Avisos</span><b>${esc(salud?.avisos === 'partido' ? 'grave a WhatsApp · leve a correo' : (salud?.avisos || 'apagados'))}</b></div>
         <div class="aj-fila"><span>Herramientas</span><b>${salud?.herramientas ?? '—'}</b></div>
         <div class="aj-fila"><span>Versión</span><b>${esc(salud?.version || '—')}${salud?.versionCuando ? ` · ${esc(hace(salud.versionCuando) || '')}` : ''}</b></div>
+        <!-- ── LA APP DE ANDROID ────────────────────────────────────────
+             Va acá y no en un panel aparte: se busca UNA vez, el día que se
+             estrena un teléfono. Un panel fijo para eso sería ocupar sitio
+             todos los días por algo que se usa una vez al año. Dentro de la
+             app misma el renglón no aparece: ya la tiene instalada. -->
+        ${/UltronApp\//.test(navigator.userAgent) ? '' : `<div class="aj-fila"><span>App de Android</span><a class="chip" href="/apk" target="_blank" rel="noopener">DESCARGAR</a></div>`}
       </div>
 
       <div class="aj-sec"><h4>Con qué piensa ULTRON</h4>

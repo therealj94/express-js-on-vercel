@@ -1,0 +1,9 @@
+# Lo que produce la compilación y lo que la máquina pone: nada de esto va al
+# repositorio. El APK que se publica vive en infra/ultron/public/apk/, que es
+# de donde lo sirve el servidor.
+.gradle/
+build/
+app/build/
+local.properties
+*.keystore
+*.jks

@@ -98,6 +98,10 @@ jobs:
           # Cuando estaban en siete, uno se quedaba atras y cada pedido suyo
           # recargaba 16 GB de disco sin que nada pareciera roto.
           node pruebas/probar-tarjeta.mjs
+          # El APK que se descarga de /apk: que sea un APK de verdad, que la
+          # ficha diga el mismo sha256, y que el codigo de version no baje —
+          # si baja, los telefonos dejan de actualizarse en silencio.
+          node pruebas/probar-apk.mjs
 
       # Las tres pruebas que NO corrian en ningun sitio. Dos leian de
       # /tmp/mtest y /tmp/vw-deploy —andamios montados a mano en una maquina—

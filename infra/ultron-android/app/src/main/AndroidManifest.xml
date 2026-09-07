@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- ── LOS PERMISOS, Y POR QUÉ CADA UNO ─────────────────────────────────
+         Ninguno de más: lo que no se usa no se pide, porque un permiso que
+         nadie entiende es un motivo para no instalar la app.
+         INTERNET          hablar con ultron.ordenglobal.link
+         ACCESS_NETWORK_.. saber si hay red, para avisar en vez de quedarse en blanco
+         RECORD_AUDIO      el micrófono, que es como se le habla a ULTRON
+         MODIFY_AUDIO_..   bajar el volumen del resto mientras dicta
+         REQUEST_INSTALL.. instalar la actualización que la propia app se baja
+         POST_NOTIFICAT..  avisar cuando hay versión nueva (Android 13+)
+         Las de escribir en disco NO van: las descargas usan la carpeta propia
+         de la app, que desde Android 10 no necesita permiso de nadie. -->
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+
+    <!-- El micrófono es DESEABLE, no obligatorio: una tableta sin micro tiene
+         que poder instalar la app y usarla escribiendo. -->
+    <uses-feature android:name="android.hardware.microphone" android:required="false" />
+
+    <application
+        android:name=".Casa"
+        android:label="ULTRON FP"
+        android:icon="@mipmap/ic_launcher"
+        android:roundIcon="@mipmap/ic_launcher"
+        android:theme="@style/TemaUltron"
+        android:supportsRtl="false"
+        android:allowBackup="false"
+        android:usesCleartextTraffic="false"
+        android:hardwareAccelerated="true">
+
+        <activity
+            android:name=".Principal"
+            android:exported="true"
+            android:configChanges="orientation|screenSize|keyboardHidden|smallestScreenSize|screenLayout|uiMode"
+            android:windowSoftInputMode="adjustResize"
+            android:launchMode="singleTask"
+            android:screenOrientation="portrait">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+            <!-- Abrir un enlace de ULTRON lleva a la app, no al navegador. -->
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="https" android:host="ultron.ordenglobal.link" />
+            </intent-filter>
+        </activity>
+
+        <!-- Para entregarle el APK descargado al instalador de Android sin
+             exponer la carpeta de la app. -->
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.archivos"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data android:name="android.support.FILE_PROVIDER_PATHS" android:resource="@xml/rutas" />
+        </provider>
+    </application>
+</manifest>
