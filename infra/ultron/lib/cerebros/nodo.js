@@ -1132,9 +1132,23 @@ async function resumirHilo({ previa, voz = false, senalCorte = null } = {}) {
   /* Se resume lo que YA salió de la ventana, no lo que está por salir: si se
      adelantara, el mismo turno estaría en el resumen y en el hilo, y el modelo
      lo leería dos veces. */
-  const hasta = Math.min(turnos.length - ventana, hechos + RESUMIR_DE_UNA_VEZ);
+  const hasta = turnos.length - ventana;
   if (hasta <= hechos) return null;
-  const nuevos = turnos.slice(hechos, hasta);
+  /* ── SE EMPIEZA POR LO NUEVO, NO POR LO VIEJO ──────────────────────────
+     La primera versión resumía de a ocho DESDE lo más antiguo, y con una
+     conversación de cien turnos atrasados se quedaba arrastrándose por lo de
+     la mañana mientras lo de hace cinco minutos se perdía. Medido contra
+     producción: el resumen decía «Agente de Choluteca: Mario Velásquez» —de
+     tres rondas antes— y del dato de hacía diez turnos no había ni rastro.
+
+     Lo que importa de una conversación es lo RECIENTE. Así que se toman
+     siempre los últimos que salieron de la ventana, y lo de más atrás se da
+     por perdido de una vez en lugar de bloquear la cola. En marcha normal no
+     se salta nada —salen dos turnos por pregunta y caben de sobra—; el salto
+     solo pasa la primera vez, o después de un rato largo sin resumir. */
+  const desde = Math.max(hechos, hasta - RESUMIR_DE_UNA_VEZ);
+  if (desde > hechos) console.warn(`[nodo] resumen muy atrasado: se saltan ${desde - hechos} turnos viejos y se resume lo reciente`);
+  const nuevos = turnos.slice(desde, hasta);
   if (!nuevos.length) return null;
 
   const anterior = String(previa?.resumen || '').trim();

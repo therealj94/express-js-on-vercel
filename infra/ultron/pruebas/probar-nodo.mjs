@@ -486,12 +486,22 @@ titulo('conversación larga: lo que sale de la ventana se resume, no se tira');
   const reintento = await cerebro.resumirHilo({ previa });
   decir(reintento?.resumidos === 4, 'y el turno siguiente lo retoma desde donde estaba: no se perdió un turno', String(reintento?.resumidos));
 
-  /* Una pasada nunca es larga: si salieron veinte turnos de golpe se hacen
-     ocho ahora y el resto después. Un resumen de veinte segundos es un turno
-     de veinte segundos para el que pregunte justo después. */
+  /* ── SE EMPIEZA POR LO NUEVO, NO POR LO VIEJO ──────────────────────────
+     Primera versión: se resumía de a ocho DESDE lo más antiguo, y con una
+     conversación de cien turnos atrasados se quedaba arrastrándose por lo de
+     la mañana mientras lo de hace cinco minutos se perdía. Comprobado contra
+     producción: el resumen decía «Agente de Choluteca: Mario Velásquez» —de
+     tres rondas antes— y del dato de hacía diez turnos no había ni rastro.
+     Una pasada tampoco puede ser larga: si es larga, se la come el que
+     pregunte justo después. Así que se toman los ÚLTIMOS ocho que salieron de
+     la ventana y lo de más atrás se da por perdido de una vez, en vez de
+     bloquear la cola. */
   guion = [{ texto: 'resumen' }];
   const muchos = await cerebro.resumirHilo({ previa: { turnos: Array.from({ length: 40 }, (_, i) => turnoN(i)), resumen: '', resumidos: 0 } });
-  decir(muchos?.resumidos === 8, 'con cuarenta turnos atrasados se resumen OCHO por vuelta, no los treinta y dos', String(muchos?.resumidos));
+  decir(muchos?.resumidos === 32, 'con cuarenta turnos atrasados el resumen queda AL DÍA de una vez', String(muchos?.resumidos));
+  const pedido = pedidos.at(-1).messages.at(-1).content;
+  decir(/turno número 31/.test(pedido) && !/turno número 3\b/.test(pedido),
+    'y lo que resume son los ocho ÚLTIMOS que salieron, no los ocho más viejos');
   decir(nodo._adentro.TOPE_RESUMEN <= 1000 && pedidos.at(-1).options.num_predict <= 250,
     'y se le piden pocas fichas de salida: es lo que hacía que tardara veinte segundos',
     `tope ${nodo._adentro.TOPE_RESUMEN} letras · ${pedidos.at(-1).options.num_predict} fichas`);

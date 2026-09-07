@@ -674,10 +674,9 @@ async function resumirLoQueSalio(convId, correo, voz = false) {
     const guardado = await memoria.guardarResumen(convId, correo, r);
     console.log(`[resumen] ${r.resumidos} turnos dentro · ${r.vacio ? 'nada que guardar' : `${r.resumen.length} letras`}`
       + ` · ${Date.now() - t0}ms${guardado ? '' : ' · NO SE GUARDÓ (otro turno llegó antes)'}`);
-    /* Devuelve CUÁNTOS turnos quedan sin resumir: con muchos atrasados se hacen
-       de a ocho, así que puede hacer falta otra vuelta — y si son muchos, la
-       siguiente ya no espera a que haya calma. */
-    return guardado ? Math.max(0, (conv.turnos || []).length - 8 - r.resumidos) : 0;
+    /* Una pasada deja el resumen al día: el nodo toma siempre los últimos que
+       salieron de la ventana, no los más viejos. No hace falta encadenar. */
+    return 0;
   } catch (e) { console.warn('[resumen] no se pudo:', e?.message); return 0; }
 }
 setInterval(() => {
