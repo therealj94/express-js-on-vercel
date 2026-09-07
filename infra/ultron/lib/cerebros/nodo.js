@@ -97,9 +97,15 @@ function esSoloAnuncio(t) {
   const x = String(t || '').trim();
   if (!x) return true;
   if (/[:：]$/.test(x)) return true;               // «...y luego ver el código actual:»
-  if (x.length > 700) return false;                // ya escribió de verdad
-  return /(^|[.!?]\s+)\s*(?:bien|listo|perfecto|ok|entendido|de acuerdo|veo que)?[,.\s]*(d[ée]jame|d[ée]jeme|voy a|permítame|permitame|primero (?:voy|reviso|miro|veo)|ahora (?:reviso|miro|busco|veo)|un momento|enseguida)\b/i.test(x)
-    && !/\b(por lo tanto|en resumen|el resultado|qued[oó]|est[aá] en)\b/i.test(x);
+  /* ── LO QUE MANDA ES CÓMO TERMINA, NO CÓMO EMPIEZA ─────────────────────
+     Primera versión: miraba el texto entero, así que «Voy a mirar. …
+     Anotado y ahí lo tiene» le parecía un anuncio y borraba una respuesta
+     buena. Anunciar y DESPUÉS contestar es lo normal y está bien; lo que no
+     vale es que el anuncio sea lo último que se dijo. */
+  const frases = x.split(/(?<=[.!?\n])\s+/).map((f) => f.trim()).filter(Boolean);
+  const ultima = frases[frases.length - 1] || x;
+  if (ultima.length > 240) return false;           // la última ya dice algo
+  return /^(?:bien|listo|perfecto|ok|entendido|de acuerdo|veo que [^.]{0,60})?[,.\s]*(d[ée]jame|d[ée]jeme|voy a|permítame|permitame|primero (?:voy|reviso|miro|veo)|ahora (?:reviso|miro|busco|veo)|un momento|enseguida)\b/i.test(ultima);
 }
 /* Una guarda cuesta dos llamadas al modelo; con menos de esto no se empieza. */
 const GUARDA_NECESITA_MS = 14_000;
@@ -828,6 +834,35 @@ async function pensar({ miembro, junta, texto, conversacionId, previa: previaDad
     // turnos viejos del hilo (nunca el system ni la pregunta ni los resultados).
     while (largoDe(mensajes) > PRESUPUESTO && mensajes.length > 3 && mensajes[1].role !== 'tool' && !mensajes[1].tool_calls) mensajes.splice(1, 1);
   }
+
+  /* ── SE ACABARON LAS VUELTAS SIN LLEGAR A CONTESTAR ──────────────────────
+     7-sep, primera prueba contra producción con el techo ya arreglado. A
+     «mejorá el dashboard: revisá lo guardado y mirá el código» ULTRON hizo el
+     trabajo entero —listar_pendientes, abrió el taller, repo_arbol, repo_leer
+     dos veces, terminal— y llegó al tope de seis vueltas SIN escribir una
+     palabra. Lo que salió a pantalla fue el comodín: «no me salió una
+     respuesta con palabras». Siete herramientas de trabajo tiradas a la basura
+     en la última línea.
+
+     El rescate ya existía para cuando se acaba el TIEMPO; faltaba para cuando
+     se acaban las VUELTAS, que es exactamente el mismo problema. Una llamada
+     más, sin herramientas —así no puede pedir otra vuelta— pidiéndole que
+     cuente lo que averiguó. Es la llamada más barata del turno y salva el
+     turno entero. */
+  if (!senalCorte?.aborted && (!textoFinal.trim() || esSoloAnuncio(textoFinal))) {
+    console.warn(`[nodo] se acabaron las ${MAX_VUELTAS} vueltas ${textoFinal.trim() ? 'con solo un anuncio' : 'sin una palabra'}: se pide la respuesta sin herramientas`);
+    emitir('pensando', { vuelta: MAX_VUELTAS, hace: 'juntando lo que averigüé' });
+    if (textoFinal.trim()) { textoFinal = ''; emitir('reemplazo', { texto: '' }); }
+    mensajes.push({ role: 'user', content: '[sistema] Se te acabaron las vueltas de herramientas. Ya no podés llamar a ninguna más. '
+      + 'Contestale AHORA a la persona con lo que averiguaste en este turno —lo que leíste, lo que viste— y decí en una línea qué te quedó sin mirar. '
+      + 'No pidas otra herramienta y no digas que vas a revisar nada: contestá.' });
+    const acum = { t: '' };
+    const r = await pedirDelTurno({ model: MODELO, messages: mensajes, stream: true, options: opciones }, { alTrozo: conGuarda(acum) });
+    uso.entrada += r.uso.entrada; uso.salida += r.uso.salida;
+    const limpio = llamadasEnTexto(r.content).limpio.trim();
+    if (limpio) textoFinal = limpio;
+  }
+
   /* ── LA GUARDA DEL «NO PUEDO» SIN HABER MIRADO ────────────────────────────
      Es la red de la que cuelga todo el recorte a doce herramientas.
 

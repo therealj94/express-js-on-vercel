@@ -574,6 +574,28 @@ titulo('el resumen se GUARDA de verdad, que es donde falló la primera vez');
   decir(f._id === 'abc' && f.miembro === 'jose@ordenglobal.org', 'y sigue siendo de su dueño: nadie resume la conversación de otro');
 }
 
+titulo('se acaban las vueltas: lo averiguado no se tira');
+{
+  /* ── LO QUE PASÓ, 7-sep, primera prueba con el techo ya arreglado ────────
+     A «mejorá el dashboard: revisá lo guardado y mirá el código» ULTRON hizo
+     el trabajo entero —listar_pendientes, abrió el taller, repo_arbol,
+     repo_leer dos veces, terminal— llegó al tope de SEIS vueltas sin escribir
+     una palabra, y a pantalla salió el comodín: «no me salió una respuesta con
+     palabras». Siete herramientas de trabajo tiradas en la última línea.
+
+     El rescate existía para cuando se acaba el TIEMPO; faltaba para cuando se
+     acaban las VUELTAS, que es el mismo problema. */
+  const conv3 = await memoria.abrirConversacion(JOSE.correo, { titulo: 'vueltas' });
+  guion = Array.from({ length: 6 }, () => ({ texto: '', llamadas: [{ name: 'estado_vivo', arguments: {} }] }));
+  guion.push({ texto: 'Miré el código: el turno vive en `lib/cerebros/nodo.js` y el tablero en `public/js/os.js`.' });
+  const n6 = pedidos.length;
+  const r6 = await cerebro.pensar({ miembro: JOSE, junta: JUNTA, texto: 'mejorá el tablero y contame qué viste', conversacionId: String(conv3._id) });
+  decir(pedidos.length - n6 === 7, 'gastadas las seis vueltas, se pide UNA más para que cuente lo que averiguó', `${pedidos.length - n6} llamadas`);
+  decir(!(pedidos.at(-1).tools || []).length, 'y esa va sin herramientas, para que no pueda pedir otra vuelta');
+  decir(/nodo\.js/.test(r6.texto) && !/no me sali[oó] una respuesta/.test(r6.texto),
+    'y sale la RESPUESTA, no el comodín de «no me salió una respuesta con palabras»', r6.texto.slice(0, 100));
+}
+
 titulo('lo que dice que va a hacer NO es la respuesta');
 {
   /* ── LO QUE PASÓ DE VERDAD, 7-sep, en el teléfono de José ────────────────
@@ -710,7 +732,12 @@ titulo('el turno tiene techo: lo obligatorio siempre corre, lo opcional solo si 
            { texto: '', llamadas: [{ name: 'ver_estado_vivo', arguments: {} }] }];
   n = pedidos.length;
   const terco = await cerebro.pensar({ miembro: JOSE, junta: JUNTA, texto: 'cómo va el ORIGEN', conversacionId: String(conv._id) });
-  decir(pedidos.length - n === 2, 'y el turno termina igual, aunque el modelo insista en pedir herramientas', `${pedidos.length - n} llamadas`);
+  /* Tres y no dos: la del turno, la de «contestá sin herramientas», y —como
+     este modelo de mentira insiste en pedir herramientas hasta el final— el
+     rescate de después del bucle, que es el que impide que salga a pantalla
+     «no me salió una respuesta con palabras». */
+  decir(pedidos.length - n === 3, 'y el turno termina igual, aunque el modelo insista en pedir herramientas', `${pedidos.length - n} llamadas`);
+  decir(!(pedidos.at(-1).tools || []).length, 'y la última va sin herramientas: contestar es lo único que queda');
   decir(terco.texto.trim().length > 0, 'con una frase que se puede leer, nunca en blanco', terco.texto.slice(0, 70));
 
   process.env.ULTRON_PRESUPUESTO_MS = antesDe === undefined ? '' : antesDe;
