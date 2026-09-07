@@ -67,6 +67,10 @@ const NIVEL_DE = {
      pedido: esta herramienta no abre ninguna puerta nueva, solo ejecuta la que
      el dueño ya abrió, y una sola vez. */
   aprobado_correr: 'escribir',
+  /* La foto ESCRIBE: deja un documento guardado. Y `pagina_entrar` es
+     PELIGROSA porque inicia sesión con claves de la casa y toca botones en
+     pantallas de verdad — eso lo aprueba el dueño viendo los pasos exactos. */
+  pagina_foto: 'escribir',
   /* El médico se cura solo: reconectar la base, relevar el cerebro, rearrancar el
      vigía. Todo interno y reversible — pedirle permiso al dueño para que ULTRON
      no se quede mudo sería justo la manera de que se quede mudo. */
@@ -74,7 +78,7 @@ const NIVEL_DE = {
   // peligroso
   terminal: 'peligroso', repo_proponer_cambio: 'peligroso', desplegarse: 'peligroso',
   boveda_aplicar: 'peligroso', habilidad_publicar: 'peligroso', equipo_correr: 'peligroso',
-  heroku_reiniciar: 'peligroso', nodo_comando: 'peligroso',
+  heroku_reiniciar: 'peligroso', nodo_comando: 'peligroso', pagina_entrar: 'peligroso',
   /* fuera: un aviso a la junta pedido por una persona sale de la casa y pasa
      por el clic del dueño. Los avisos AUTOMÁTICOS (casa caída, salud) no son
      una herramienta: salen por lib/avisos.js según ULTRON_AVISOS. */

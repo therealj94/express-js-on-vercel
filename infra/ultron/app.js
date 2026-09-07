@@ -57,6 +57,7 @@ const genesis = require('./lib/genesis');
 const pdf = require('./lib/pdf');
 const archivos = require('./lib/archivos');
 const permisos = require('./lib/permisos');
+const ojo = require('./lib/ojo');
 const boveda = require('./lib/boveda');
 const aprender = require('./lib/aprender');
 const equipo = require('./lib/equipo');
@@ -1154,6 +1155,17 @@ app.post('/autorizaciones/:id', puerta, soloDueño, async (req, res) => {
    enlace salía en el texto de un turno y se perdía al bajar la pantalla. Se
    leen de GitHub —de donde de verdad están— y no de una lista propia que se
    desincronizaría el primer día que alguien cierre uno a mano. */
+/* La foto que sacó el ojo. Vive en memoria y se sirve una sola vez desde el
+   panel: no es un documento —es un PNG— y guardarlo en la base sería inventar
+   un almacén binario para algo que se mira y se olvida. */
+app.get('/ojo/foto/:id', puerta, (req, res) => {
+  const f = ojo.verFoto(req.params.id);
+  if (!f) return res.status(404).json({ error: 'Esa foto ya no está: se guardan las últimas cinco y solo hasta el próximo reinicio.', codigo: 'NO_HAY' });
+  res.setHeader('Content-Type', 'image/png');
+  res.setHeader('Cache-Control', 'private, max-age=600');
+  res.send(f.png);
+});
+
 app.get('/propuestas', puerta, async (req, res) => {
   try { res.json({ propuestas: await taller.propuestos({ repo: req.query.repo || null }) }); }
   catch (e) { res.status(500).json({ error: e.message, codigo: e.codigo || null }); }

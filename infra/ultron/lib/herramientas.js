@@ -36,6 +36,7 @@ const saber = require('./saber');
 const vivo = require('./vivo');
 const memoria = require('./memoria');
 const permisos = require('./permisos');
+const ojo = require('./ojo');
 const boveda = require('./boveda');
 const taller = require('./taller');
 const caja = require('./caja');
@@ -254,6 +255,29 @@ const DEFINICIONES = [
       titulo: { type: 'string' }, descripcion: { type: 'string', description: 'qué cambia y por qué, con el síntoma' },
       archivos: { type: 'array', items: { type: 'object', properties: { ruta: { type: 'string' }, contenido: { type: 'string' } }, required: ['ruta', 'contenido'] } },
     }, required: ['titulo', 'archivos'] },
+  },
+  {
+    name: 'pagina_foto',
+    description: 'Una FOTO de cómo se ve una página en un navegador de verdad, guardada como documento para poder enseñársela a una persona. Para cuando lo que hace falta es ver la pantalla, no leerla: revisar un diseño, comprobar que un despliegue se ve bien, mandarle a alguien cómo quedó.',
+    input_schema: { type: 'object', properties: {
+      url: { type: 'string' },
+      esperar: { type: 'string', description: 'un selector que tiene que aparecer antes de la foto' },
+      completa: { type: 'boolean', description: 'la página entera y no solo lo que cabe en la pantalla' },
+      telefono: { type: 'boolean', description: 'como se ve en un teléfono (390x844) en vez de en una pantalla' },
+    }, required: ['url'] },
+  },
+  {
+    name: 'pagina_entrar',
+    description: 'PELIGROSA (pide autorización al dueño). ENTRA a una página con un navegador de verdad y hace una serie de pasos: ir, escribir, tocar, esperar, leer, foto. Es lo que deja iniciar sesión y recorrer un flujo como lo haría una persona. Para una clave se pone `secreto` con el NOMBRE de la llave en la bóveda —nunca el valor— y ULTRON la saca de ahí; la clave no aparece en la respuesta ni en el registro. Un paso que falla corta el guion.',
+    input_schema: { type: 'object', properties: {
+      pasos: { type: 'array', items: { type: 'object', properties: {
+        tipo: { type: 'string', description: 'ir | escribir | tocar | esperar | leer | foto' },
+        url: { type: 'string' }, selector: { type: 'string' }, texto: { type: 'string' },
+        secreto: { type: 'string', description: 'el NOMBRE de la llave en la bóveda, jamás su valor' },
+        ms: { type: 'number' }, esperar: { type: 'string' }, completa: { type: 'boolean' },
+      }, required: ['tipo'] } },
+      telefono: { type: 'boolean' },
+    }, required: ['pasos'] },
   },
   {
     name: 'aprobado_correr',
@@ -505,6 +529,22 @@ async function leerPagina(url) {
        página vacía creyendo que la había visto. Ahora se dice lo que pasó y
        por dónde SÍ se llega al dato. */
     if (/html/.test(tipo) && texto.trim().length < 400 && /<script/i.test(cuerpo)) {
+      /* ── AQUÍ ENTRA EL OJO, SOLO ─────────────────────────────────────────
+         Se pensó en dejar que el modelo eligiera entre `leer_pagina` y el ojo,
+         y se descartó: la única forma de saber cuál hace falta es haber leído
+         la página, o sea después. Y una herramienta que hay que llamar dos
+         veces para que funcione se llama una vez y se contesta con lo que
+         salió, que era el fallo entero.
+         El ojo cuesta un segundo más y usa otro dyno, así que NO se llama
+         siempre: solo cuando el fetch ya demostró que trae la cáscara vacía. */
+      if (ojo.hay()) {
+        try {
+          const visto = await ojo.mirar({ url: u.toString(), esperar: null });
+          return ojo.comoTexto(visto);
+        } catch (e) {
+          return `${u.hostname} se dibuja con JavaScript y por fetch no dice nada (${texto.trim().length} caracteres). El ojo —el navegador de verdad— tampoco pudo: ${String(e?.message || e).slice(0, 160)}. NO contestes como si hubieras visto la página.`;
+        }
+      }
       return `${u.hostname} contestó ${r.status}, pero la página se arma en el navegador con JavaScript y esto es solo una lectura del HTML: llegaron ${texto.trim().length} caracteres de texto, o sea la cáscara vacía. NO contestes como si la hubieras visto.\n`
         + `Los datos de esa casa se piden por su puerta, no por su pantalla:\n`
         + `· Ordenex (mercados, precios, saldos) → ordenex_mercado, ordenex_caja\n`
@@ -753,6 +793,36 @@ async function correrAdentro(nombre, entrada, ctx) {
            dueño la abrió— y volver a entrar por ella crearía otro pedido. */
         const salida = await correrAdentro(p.herramienta, p.entrada || {}, { ...ctx, _yaAutorizado: true });
         return `Corrido con la autorización del dueño (${p.herramienta}):\n${salida}`;
+      }
+
+      case 'pagina_foto': {
+        const t = !!entrada.telefono;
+        const d = await ojo.foto({ url: String(entrada.url || ''), esperar: entrada.esperar || null,
+          completa: !!entrada.completa, ancho: t ? 390 : 1280, alto: t ? 844 : 900 });
+        const id = ojo.guardarFoto(d.png, { url: d.url, titulo: d.titulo });
+        ctx.acciones.push({ tipo: 'abrir', nombre: `Ver la foto de ${new URL(d.url).hostname}`, url: `/ojo/foto/${id}` });
+        return `Foto de ${d.url} («${d.titulo}»), ${Math.round(d.bytes / 1024)} KB${t ? ', como se ve en un teléfono' : ''}. `
+          + `El botón para verla ya quedó debajo de la respuesta. Vos NO podés ver la foto —sos texto—: si hace falta saber qué dice la pantalla, usá leer_pagina, que la lee con el mismo navegador.`;
+      }
+      case 'pagina_entrar': {
+        /* LAS CLAVES SALEN DE LA BÓVEDA AQUÍ, NO LAS ESCRIBE EL MODELO. El
+           guion trae el NOMBRE de la llave; el valor se busca y se manda al
+           ojo, que lo escribe en el campo y no lo registra en ningún lado. Si
+           el modelo pudiera poner el valor, la clave estaría en la
+           conversación — y la conversación se guarda y se lee. */
+        const pasos = [];
+        for (const p of (Array.isArray(entrada.pasos) ? entrada.pasos : [])) {
+          if (p?.tipo === 'escribir' && p.secreto) {
+            let valor = null;
+            try { valor = await boveda.usar(String(p.secreto), (v) => v); }
+            catch { return `No hay una llave llamada «${p.secreto}» en la bóveda (o está apagada). Guardala primero; el valor no lo escribas acá.`; }
+            pasos.push({ ...p, secreto: valor });
+          } else pasos.push(p);
+        }
+        const t = !!entrada.telefono;
+        const d = await ojo.guion({ pasos, ancho: t ? 390 : 1280, alto: t ? 844 : 900 });
+        const diario = (d.diario || []).map((s) => `  ${s.ok ? '✓' : '✗'} ${s.paso}. ${s.tipo} ${s.que}${s.valor ? ` = ${s.valor}` : ''}${s.porQue ? ` — ${s.porQue}` : ''}`).join('\n');
+        return `${d.ok ? 'El guion corrió entero.' : 'EL GUION SE CORTÓ en el paso que falló; los de después NO se hicieron.'}\n${diario}\n\n${ojo.comoTexto(d)}`;
       }
 
       case 'buscar_saber': {
@@ -1290,7 +1360,7 @@ const GRUPOS = {
      haber creado nada. Crear un documento y dejarlo en PDF son el mismo
      trabajo y ahora viven en la misma caja: una sola vuelta los trae. */
   'Pendientes y documentos': ['listar_pendientes', 'anotar_pendiente', 'cerrar_pendiente', 'listar_documentos', 'leer_documento', 'crear_documento', 'exportar_pdf'],
-  'Internet': ['buscar_web', 'leer_pagina'],
+  'Internet': ['buscar_web', 'leer_pagina', 'pagina_foto', 'pagina_entrar'],
   'La junta': ['quien_es_quien'],
   'Lo que le mandan': ['listar_archivos', 'leer_archivo'],
   'Acciones que confirma la persona': ['abrir', 'proponer_envio'],
@@ -1389,7 +1459,7 @@ const CAJAS = {
   /* `buscar_web` va en las doce, pero `leer_pagina` no cabía, y sin caja se
      quedaba inalcanzable: buscar y no poder abrir lo que se encuentra es media
      herramienta. Lo cazó la prueba que comprueba que se llega a las 64. */
-  internet: { grupos: ['Internet'], que: 'abrir y leer una página web entera, cuando el resumen de la búsqueda no alcanza' },
+  internet: { grupos: ['Internet'], que: 'abrir y leer una página web entera con un navegador de verdad (también las que se dibujan con JavaScript), sacarle una foto, o ENTRAR y recorrerla iniciando sesión' },
   cuentas: { grupos: ['Cuentas', 'La casa, en vivo'], que: 'calcular, el gasto en fichas, cotizar ORIGEN, el parte del día, la salud del nodo y de la nube' },
   personas: { grupos: ['La junta'], que: 'quién es quién en la junta directiva' },
   acciones: { grupos: ['Acciones que confirma la persona'], que: 'ponerle un botón para abrir una casa o un documento, exportar un PDF, proponer un envío' },

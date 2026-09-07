@@ -734,3 +734,66 @@ process.exit(malas ? 1 : 0);
   decir(/ordenex_mercado|cadena_altura/.test(fuente.slice(fuente.indexOf('se arma en el navegador'))),
     'y manda a la puerta por donde SÍ está el dato');
 }
+
+/* ── EL OJO: EL NAVEGADOR QUE VIVE EN OTRA CASA ───────────────────────────────
+ *
+ * 7-sep, José: «ULTRON no tiene Playwright para entrar».
+ *
+ * Y no lo tenía. `leer_pagina` es un `fetch`, y todas las casas de Orden Global
+ * se dibujan con JavaScript: medido ese día, ordenexchange.link devuelve 78
+ * caracteres de texto por fetch y 970 con el ojo, con los cinco mercados y sus
+ * precios dentro. Peor todavía, esos 78 volvían como una lectura normal y
+ * ULTRON contestaba sobre una página vacía creyendo que la había visto.
+ *
+ * El navegador NO puede vivir en este dyno —Basic, 512 MB, y Chromium pide
+ * entre 200 y 400 por pestaña—, así que vive en infra/ultron-ojo. Aquí se
+ * comprueba el teléfono, no el navegador: que sepa que no está, que no mienta
+ * cuando no está, y que las claves de un guion salgan de la bóveda y no del
+ * modelo.
+ */
+{
+  titulo('el ojo: el navegador de otra casa');
+  const ojo = await import('../lib/ojo.js').then((m) => m.default || m);
+  const antes = process.env.ULTRON_OJO_URL;
+
+  delete process.env.ULTRON_OJO_URL;
+  decir(ojo.hay() === false, 'sin ULTRON_OJO_URL, el ojo NO está y se sabe');
+  decir((await ojo.salud()).hay === false, 'y la salud lo dice en vez de fingir que sí');
+  let dijo = null;
+  try { await ojo.mirar({ url: 'https://ordenexchange.link/' }); } catch (e) { dijo = e; }
+  decir(dijo?.codigo === 'SIN_OJO', 'y mirar una página falla CLARO, no en silencio', dijo?.message?.slice(0, 80));
+
+  process.env.ULTRON_OJO_URL = 'https://ojo-de-mentira.invalid';
+  decir(ojo.hay() === true, 'con la dirección puesta, el ojo está');
+  if (antes) process.env.ULTRON_OJO_URL = antes; else delete process.env.ULTRON_OJO_URL;
+
+  const t = ojo.comoTexto({
+    url: 'https://x.test/', estado: 200, titulo: 'Mercado',
+    texto: 'AUKA 1710', botones: [{ rotulo: 'ENTRAR', selector: '#entrar' }],
+    campos: [{ selector: '#clave', tipo: 'password', rotulo: 'Su clave' }],
+    consola: [{ tipo: 'error', texto: 'algo se rompió en la línea 12' }],
+  });
+  decir(/lo vio el navegador de verdad/.test(t), 'lo que devuelve dice que lo vio un navegador, no un fetch');
+  decir(/SE PUEDE TOCAR.*ENTRAR.*#entrar/s.test(t),
+    'y trae lo que se puede TOCAR con su selector',
+    'sin eso no se puede escribir el paso siguiente de un guion');
+  decir(/ERRORES DE LA PÁGINA/.test(t), 'y los errores de la pantalla: es la diferencia entre «está rara» y «falla esta línea»');
+
+  const png = Buffer.from('89504e470d0a1a0a', 'hex');
+  const ids = [];
+  for (let i = 0; i < 8; i++) ids.push(ojo.guardarFoto(png.toString('base64'), { url: `https://x.test/${i}`, titulo: `f${i}` }));
+  decir(ojo._adentro.fotos.size === 5, 'las fotos guardadas se topan en cinco', `${ojo._adentro.fotos.size} guardadas de 8`);
+  decir(ojo.verFoto(ids[7]) !== null && ojo.verFoto(ids[0]) === null,
+    'y las que se van son las MÁS VIEJAS: en 512 MB, guardar fotos sin tope tumba a ULTRON con su propia herramienta de mirar');
+
+  const permisos = await import('../lib/permisos.js').then((m) => m.default || m);
+  decir(permisos.nivelDe('pagina_entrar') === 'peligroso',
+    'entrar a una pantalla con las claves de la casa es PELIGROSO: lo aprueba el dueño viendo los pasos exactos');
+  decir(permisos.nivelDe('pagina_foto') === 'escribir', 'y la foto solo escribe');
+
+  const fuente = (await import('node:fs')).readFileSync(new URL('../lib/herramientas.js', import.meta.url), 'utf8');
+  const trozo = fuente.slice(fuente.indexOf("case 'pagina_entrar'"), fuente.indexOf("case 'pagina_entrar'") + 1800);
+  decir(/boveda\.usar\(String\(p\.secreto\)/.test(trozo),
+    'la clave de un guion sale de la BÓVEDA, por su nombre',
+    'si el modelo pudiera escribir el valor, la clave quedaría en la conversación — y la conversación se lee');
+}
