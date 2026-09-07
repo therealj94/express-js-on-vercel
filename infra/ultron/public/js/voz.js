@@ -496,10 +496,49 @@ const VOZ = (() => {
     };
   }
 
-  const hayOido = () => !!(window.SpeechRecognition || window.webkitSpeechRecognition);
+  /* ── EL OÍDO DE LA APP DE ANDROID ─────────────────────────────────────────
+   * 7-sep, José con el APK instalado: «no me escucha el micrófono».
+   *
+   * Y no era el permiso. `SpeechRecognition` es una API de CHROME: el WebView
+   * de Android NO la trae, ni con el micrófono concedido. Así que dentro de la
+   * app `hayOido()` daba falso, el botón de hablar no hacía nada, y no había
+   * manera de que nadie supiera por qué.
+   *
+   * La app pone delante el reconocedor de Android —el mismo del teclado— y lo
+   * deja en `window.AndroidOido`. Todo lo de abajo lo prefiere cuando está, y
+   * en el navegador sigue exactamente igual que siempre. */
+  const oidoApp = () => { try { return window.AndroidOido?.hay?.() ? window.AndroidOido : null; } catch { return null; } };
+
+  /* El puente manda lo que oye por aquí. Una sola puerta, y quien esté
+     escuchando en ese momento se la queda. */
+  let escuchandoAhora = null;
+  window.__oidoAndroid = (que, texto) => {
+    const q = escuchandoAhora;
+    if (!q) return;
+    if (que === 'parcial') q.alOir?.(String(texto || ''), false);
+    else if (que === 'final') q.alOir?.(String(texto || ''), true);
+    else if (que === 'fallo') { escuchandoAhora = null; q.alFallo?.(String(texto || 'error')); }
+    else if (que === 'fin') { escuchandoAhora = null; q.alFin?.(); }
+  };
+
+  const hayOido = () => !!(oidoApp() || window.SpeechRecognition || window.webkitSpeechRecognition);
 
   /** Escucha una vez. Resuelve con lo dicho (vacío si no se oyó nada). */
   function escuchar({ alParcial } = {}) {
+    /* Dentro de la app, por el oído nativo. Se cierra con el primer resultado
+       final, que es lo que hace esta función: dictar UNA frase. */
+    const app = oidoApp();
+    if (app) {
+      return new Promise((listo) => {
+        let dicho = '';
+        escuchandoAhora = {
+          alOir: (t, final) => { dicho = t; alParcial?.(t); if (final) { escuchandoAhora = null; try { app.parar(); } catch { /* ya estaba */ } listo(dicho.trim()); } },
+          alFallo: () => listo(dicho.trim()),
+          alFin: () => listo(dicho.trim()),
+        };
+        try { app.escuchar('es-HN', false); } catch { escuchandoAhora = null; listo(''); }
+      });
+    }
     return new Promise((listo) => {
       const R = window.SpeechRecognition || window.webkitSpeechRecognition;
       if (!R) return listo('');
@@ -525,6 +564,12 @@ const VOZ = (() => {
    * nadie quiere en su casa.
    */
   function oir({ idioma = 'es-HN', continuo = true, alOir, alFin, alFallo } = {}) {
+    const app = oidoApp();
+    if (app) {
+      escuchandoAhora = { alOir, alFin, alFallo };
+      try { app.escuchar(idioma, continuo); } catch (e) { escuchandoAhora = null; alFallo?.(String(e?.message || e)); }
+      return { abort() { escuchandoAhora = null; try { app.parar(); } catch { /* ya estaba */ } } };
+    }
     const R = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!R) { alFallo?.('sin-reconocimiento'); return { abort() {} }; }
     const rec = new R();

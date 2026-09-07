@@ -1005,6 +1005,31 @@ titulo('los botones que ULTRON deja, y los pendientes que se cierran');
     'y cada botón hace algo: abre una dirección o aprueba; ninguno le pregunta a ULTRON',
     JSON.stringify(r.urls) + ' · ' + JSON.stringify(r.aprobar));
 
+  /* ── EL PERMISO SE PREGUNTA EN LA CARA ──────────────────────────────────
+     7-sep, José con el APK: «si ocupa acceso para hacer algo, que me tire un
+     pop up para aceptar y darle permiso». El botón quedaba entre los demás,
+     abajo del todo, y en el teléfono ni se veía: ULTRON se quedaba parado
+     esperando un clic que nadie sabía que existía.
+     Y la ventana enseña el comando EXACTO: aprobar sin leer qué se aprueba es
+     firmar en blanco. */
+  const vent = await p.evaluate(async () => {
+    OS._adentro.pedirPermiso({ id: 'abc123', resumen: 'Correr en la terminal: git log -3', motivo: 'ver los últimos cambios' });
+    await new Promise((ok) => setTimeout(ok, 150));
+    const d = document.querySelector('#dialogo');
+    return {
+      hay: !!d,
+      titulo: d?.querySelector('h3')?.textContent || '',
+      texto: d?.textContent || '',
+      botones: [...(d?.querySelectorAll('.fila-btn .btn') || [])].map((b) => b.textContent),
+    };
+  });
+  decir(vent.hay && /NECESITA SU PERMISO/.test(vent.titulo), 'un pedido de permiso abre una ventana, no un botón perdido', vent.titulo);
+  decir(/git log -3/.test(vent.texto), 'y enseña el comando EXACTO que se va a correr: aprobar sin leer es firmar en blanco');
+  decir(/ver los últimos cambios/.test(vent.texto), 'con el para qué, que es lo que deja decidir');
+  decir(vent.botones.some((b) => /APROBAR/.test(b)) && vent.botones.some((b) => /AHORA NO/.test(b)),
+    'y las dos salidas: aprobar y seguir, o ahora no', JSON.stringify(vent.botones));
+  await p.evaluate(() => document.querySelector('#dialogo')?.remove());
+
   const sug = await p.evaluate(() => {
     OS._adentro.chips(['¿Cómo va la cadena?', '¿A cuánto está el oro?']);
     return [...document.querySelectorAll('#chips .chip')].map((x) => ({ t: x.textContent, u: x.dataset.url || null }));

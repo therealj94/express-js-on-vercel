@@ -32,7 +32,6 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 import androidx.core.content.FileProvider;
-import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 
 import java.io.File;
 
@@ -53,7 +52,6 @@ import java.io.File;
 public class Principal extends AppCompatActivity {
 
     private WebView web;
-    private SwipeRefreshLayout refrescar;
     private ValueCallback<Uri[]> paraArchivos;
     private PermissionRequest permisoDeLaPagina;
 
@@ -64,15 +62,8 @@ public class Principal extends AppCompatActivity {
     protected void onCreate(Bundle guardado) {
         super.onCreate(guardado);
         setContentView(R.layout.principal);
-        refrescar = findViewById(R.id.refrescar);
         web = findViewById(R.id.web);
         prepararWeb();
-
-        /* Tirar hacia abajo recarga. En una app que vive de una página, es el
-           gesto que todo el mundo prueba primero cuando algo se ve raro. */
-        refrescar.setColorSchemeColors(0xFF38E1FF);
-        refrescar.setProgressBackgroundColorSchemeColor(0xFF0A1218);
-        refrescar.setOnRefreshListener(() -> web.reload());
 
         /* El botón de atrás anda por la historia del tablero; solo sale de la
            app cuando ya no hay a dónde volver. Sin esto, atrás cierra la app a
@@ -124,6 +115,13 @@ public class Principal extends AppCompatActivity {
         CookieManager.getInstance().setAcceptCookie(true);
         CookieManager.getInstance().setAcceptThirdPartyCookies(web, false);
 
+        /* EL OÍDO NATIVO Y EL PUENTE. El tablero dicta con `SpeechRecognition`,
+           que es una API de Chrome y el WebView NO trae: sin esto el botón de
+           hablar no hace nada, con permiso de micrófono y todo. Se le pone
+           delante el reconocedor de Android, el mismo del teclado. */
+        web.addJavascriptInterface(new Oido(this, web), "AndroidOido");
+        web.addJavascriptInterface(new Puente(), "Android");
+
         web.setWebViewClient(new WebViewClient() {
             /* Lo de la casa se abre DENTRO; lo de fuera, en el navegador. Sin
                esto, tocar un enlace a ordenscan dejaba la app varada en una
@@ -135,10 +133,8 @@ public class Principal extends AppCompatActivity {
                 try { startActivity(new Intent(Intent.ACTION_VIEW, u)); } catch (ActivityNotFoundException e) { return false; }
                 return true;
             }
-            @Override public void onPageFinished(WebView v, String u) { refrescar.setRefreshing(false); }
             @Override public void onReceivedError(WebView v, WebResourceRequest r, WebResourceError e) {
                 if (!r.isForMainFrame()) return;
-                refrescar.setRefreshing(false);
                 /* Sin red no se deja una pantalla en blanco: se dice qué pasa y
                    se ofrece reintentar. Una app que se abre en blanco parece
                    rota aunque el problema sea el wifi del aeropuerto. */
@@ -211,10 +207,13 @@ public class Principal extends AppCompatActivity {
         return "<html><body style='background:#05090C;color:#9FB2BF;font-family:sans-serif;"
                 + "display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;margin:0;text-align:center;padding:24px'>"
                 + "<div style='color:#38E1FF;letter-spacing:.3em;font-size:13px;margin-bottom:14px'>ULTRON FP</div>"
-                + "<div style='font-size:15px;line-height:1.6'>"
+                + "<div style='font-size:15px;line-height:1.6;margin-bottom:26px'>"
                 + (hay ? "No contesta el servidor de ULTRON.<br>Puede estar desplegándose: pruebe en un minuto."
-                       : "Este teléfono no tiene internet.<br>Conéctese y tire hacia abajo para reintentar.")
-                + "</div></body></html>";
+                       : "Este teléfono no tiene internet.<br>Conéctese y toque REINTENTAR.")
+                + "</div>"
+                + "<button onclick='Android.recargar()' style='background:#38E1FF;color:#031014;border:0;padding:14px 30px;"
+                + "font-weight:700;letter-spacing:.12em;font-size:13px;font-family:inherit'>REINTENTAR</button>"
+                + "</body></html>";
     }
 
     static boolean hayRed(Context c) {
@@ -242,6 +241,13 @@ public class Principal extends AppCompatActivity {
         if (paraArchivos == null) return;
         paraArchivos.onReceiveValue(WebChromeClient.FileChooserParams.parseResult(resultado, datos));
         paraArchivos = null;
+    }
+
+    /** Lo poquito que la página necesita de la app. Nada que lea datos del
+     *  teléfono: solo recargar, que es lo que hace falta cuando no hay red. */
+    private class Puente {
+        @android.webkit.JavascriptInterface
+        public void recargar() { runOnUiThread(() -> web.loadUrl(BuildConfig.CASA)); }
     }
 
     /** Le entrega el APK bajado al instalador de Android. */

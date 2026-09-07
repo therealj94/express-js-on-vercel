@@ -3,8 +3,8 @@ plugins { id 'com.android.application' }
 /* LA VERSIÓN. `versionCode` es lo que compara la actualización por aire: si el
    número del servidor es mayor que éste, hay APK nuevo. Sube de uno en uno y
    nunca baja. `versionName` es lo que ve la persona. */
-def codigo = 1
-def nombre = "1.0.0"
+def codigo = 2
+def nombre = "1.1.0"
 
 android {
     namespace 'org.ordenglobal.ultron'
@@ -57,6 +57,5 @@ configurations.all {
 
 dependencies {
     implementation 'androidx.appcompat:appcompat:1.7.0'
-    implementation 'androidx.swiperefreshlayout:swiperefreshlayout:1.1.0'
     implementation 'androidx.core:core:1.13.1'
 }

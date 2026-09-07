@@ -1277,6 +1277,28 @@ const OS = (() => {
       <div class="fila-btn" style="margin-top:14px"><button class="btn" id="rg-cerrar">CERRAR</button></div>`;
     d.querySelector('#rg-cerrar').onclick = () => d.remove();
   }
+  /* La ventana de «ULTRON necesita su permiso». Sale sola cuando una respuesta
+     trae un pedido pendiente, y también se puede abrir desde el botón. */
+  function pedirPermiso(p) {
+    if (document.querySelector('#dialogo [data-permiso]')) return;   // ya está abierta
+    const d = dialogo(`<h3 data-permiso="${esc(p.id)}">ULTRON NECESITA SU PERMISO</h3>
+      <div class="sub">Para seguir con lo que le pidió tiene que hacer esto, y no lo hace sin que usted lo apruebe:</div>
+      <div class="rg-turno" style="margin:12px 0"><div>${esc(p.resumen || 'una acción que necesita aprobación')}</div></div>
+      ${p.motivo ? `<div class="sub">Para qué: ${esc(p.motivo)}</div>` : ''}
+      <div class="fila-btn" style="margin-top:16px">
+        <button class="btn" id="pm-si">APROBAR Y SEGUIR</button>
+        <button class="btn" id="pm-no">AHORA NO</button>
+      </div>`);
+    d.querySelector('#pm-no').onclick = () => d.remove();
+    d.querySelector('#pm-si').onclick = () => {
+      const b = d.querySelector('#pm-si');
+      b.disabled = true; b.textContent = 'APROBANDO…';
+      DATOS.post(`/autorizaciones/${encodeURIComponent(p.id)}`, { decision: 'aprobado' })
+        .then(() => { d.remove(); avisar('Aprobado. ULTRON sigue.'); enviar('Ya lo aprobé. Seguí con eso.'); })
+        .catch((e) => { b.disabled = false; b.textContent = 'APROBAR Y SEGUIR'; avisar(e.message || 'No se pudo aprobar.', true); });
+    };
+  }
+
   /* Lo último que se hablaron, pintado en el globo al entrar. No es una
      respuesta nueva y no se lee en voz alta: es el hilo de donde se quedó. */
   function pintarDondeQuedamos(c) {
@@ -1882,6 +1904,17 @@ const OS = (() => {
           const acs = [...(d?.acciones || [])];
           if (d?.trabajo?.falta) acs.unshift({ tipo: 'seguir', nombre: 'SEGUIR CON ESTO' });
           chips(acs.length ? acs : null);
+          /* ── SI PIDIÓ PERMISO, SE PREGUNTA EN LA CARA ────────────────────
+             7-sep, José: «si ocupa acceso para hacer algo, que me tire un pop
+             up para aceptar y darle permiso». Y tenía razón: el botón de
+             aprobar quedaba entre los demás, abajo del todo, y en el teléfono
+             ni se veía — así que ULTRON se quedaba parado esperando un clic
+             que nadie sabía que existía.
+             Ahora sale la ventana con el comando EXACTO delante. Se lee lo que
+             va a correr y se decide; eso es lo que hace que dar permiso no sea
+             firmar en blanco. */
+          const pide = (d?.acciones || []).find((a) => a?.tipo === 'autorizacion' && a.id);
+          if (pide) setTimeout(() => pedirPermiso(pide), 400);
           /* De dónde salió la cifra. Un tablero de junta del que no se puede
              decir «esto lo leyó de Ordenex a las 04:12» no se puede citar en un
              acta. Las herramientas usadas quedan escritas bajo la respuesta. */
@@ -2753,13 +2786,9 @@ const OS = (() => {
          se hizo y cuál es el paso siguiente, así que no hace falta repetirlo
          —y repetirlo sería gastar fichas en algo que ya sabe—. */
       if (b.dataset.seguir) { enviar('Seguí con eso, por favor.'); return; }
-      if (b.dataset.aprobar) {
-        const id = b.dataset.aprobar; b.disabled = true; b.textContent = 'APROBANDO…';
-        DATOS.post(`/autorizaciones/${encodeURIComponent(id)}`, { decision: 'aprobado' })
-          .then(() => { avisar('Aprobado. ULTRON sigue.'); enviar('Ya lo aprobé. Seguí con eso.'); })
-          .catch((e) => { b.disabled = false; b.textContent = 'APROBAR'; avisar(e.message || 'No se pudo aprobar.', true); });
-        return;
-      }
+      /* El botón abre la MISMA ventana: se aprueba leyendo lo que se aprueba,
+         nunca a ciegas por tocar un botón pequeño. */
+      if (b.dataset.aprobar) { pedirPermiso({ id: b.dataset.aprobar, resumen: b.textContent.replace(/^APROBAR:\s*/, '') }); return; }
       if (b.dataset.propio) return;
       enviar(b.textContent);
     });
@@ -2879,6 +2908,7 @@ const OS = (() => {
        cronómetro de un turno sin tener que hablar con el nodo. */
     envejecerCaja: (minutos) => { cajaCuando = new Date(Date.now() - minutos * 60_000).toISOString(); },
     marcarTurno: (ms) => { ultimoTurno = ms; pintarSalud(saludUltima); },
+    pedirPermiso,
     herramienta: (d) => marcarQueHace(d?.hace || d?.nombre),
     envejecerTurno: (s) => envejecerTurno(s),
     /* Para la prueba: si el turno sigue en vuelo. Es lo que distingue

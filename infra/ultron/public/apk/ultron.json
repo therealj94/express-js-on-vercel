@@ -1,9 +1,9 @@
 {
-  "codigo": 1,
-  "version": "1.0.0",
+  "codigo": 2,
+  "version": "1.1.0",
   "apk": "https://ultron.ordenglobal.link/apk/ultron.apk",
-  "sha256": "851cede692e473393617968785bd49dace6a74000ec2a3be273553f2c34e748e",
-  "bytes": 2527704,
-  "nota": "Primera version de ULTRON FP para Android.",
+  "sha256": "1ac35792022f61780fc4cb2ffcba94637f7fce23c1c0674007b9692132954ce7",
+  "bytes": 2515171,
+  "nota": "Ya escucha el microfono (oido nativo de Android), la respuesta se puede desplazar, y los permisos salen en una ventana.",
   "firma_sha256": "77c55985604f57b0bfdcd3f7de8995413f1be8423f99cb1fd32a66e4f9a413f7"
 }
