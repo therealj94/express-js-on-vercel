@@ -624,6 +624,15 @@ async function titular(texto) {
   return titularConClaude(texto);
 }
 
+/* El resumen del hilo solo lo sabe hacer el nodo, y a propósito: es una
+   llamada más al modelo y no vale la pena gastarla en Claude, que se paga por
+   ficha. Sin nodo, la conversación se queda con su ventana de ocho turnos —que
+   es lo que había siempre— y nadie se entera de nada. */
+async function resumirHilo(args) {
+  if (cual() !== 'nodo') return null;
+  return nodo.resumirHilo(args);
+}
+
 /* Los motivos del nodo, con arreglo conocido, se suman a los de Claude. */
 const motivoClaude = motivo;
 function motivoDeCualquiera(e) {
@@ -641,6 +650,6 @@ function motivoDeCualquiera(e) {
   }
 }
 
-module.exports = { pensar, precalentar, titular, encendido, cual, modelo, motivo: motivoDeCualquiera, dolaresDe, PRECIOS, MODELO, HERRAMIENTAS,
+module.exports = { pensar, precalentar, titular, resumirHilo, encendido, cual, modelo, motivo: motivoDeCualquiera, dolaresDe, PRECIOS, MODELO, HERRAMIENTAS,
   relevar, relevo, volverAlNodo, modoCasa,
   nodo, _adentro: { sistema, correr, clienteAnthropic, pensarConClaude, claudeEncendido, guardia, RELEVABLES } };

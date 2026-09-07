@@ -637,6 +637,29 @@ app.post('/precalentar', puerta, (req, res) => {
     .catch((e) => console.warn(`[calentar] falló: ${e?.codigo || ''} ${String(e?.message || e).slice(0, 120)}`));
 });
 
+/* ── LO QUE SALE DE LA VENTANA SE RESUME, Y SE RESUME DESPUÉS ───────────────
+   Al prompt solo van los últimos ocho turnos. Lo de más atrás se PERDÍA:
+   medido el 7-sep contra producción, un dato dado en el turno 1 ya no estaba
+   en el turno 14. Y no es un caso raro — la conversación del panel es LA DEL
+   DÍA y la de WhatsApp es UNA SOLA para siempre, así que los ocho turnos se
+   quedan cortos todos los días.
+
+   Va DESPUÉS de contestar, siempre: para cuando esto corre, la persona ya está
+   leyendo. Si falla, no pasa nada — `resumidos` no se mueve y se reintenta en
+   el turno siguiente; mientras tanto la conversación sigue con su ventana de
+   ocho, que es lo que había antes de todo esto. */
+async function resumirLoQueSalio(convId, correo, voz = false) {
+  try {
+    const conv = await memoria.conversacion(convId, correo);
+    if (!conv) return;
+    const t0 = Date.now();
+    const r = await cerebro.resumirHilo({ previa: conv, voz });
+    if (!r) return;
+    await memoria.guardarResumen(convId, correo, r);
+    console.log(`[resumen] ${r.resumidos} turnos dentro · ${r.vacio ? 'nada que guardar' : `${r.resumen.length} letras`} · ${Date.now() - t0}ms`);
+  } catch (e) { console.warn('[resumen] no se pudo:', e?.message); }
+}
+
 app.post('/pensar', puerta, frenoPensar, async (req, res) => {
   const texto = String(req.body?.texto || '').trim().slice(0, 12_000);
   if (!texto) return res.status(400).json({ error: 'Nada que pensar.', codigo: 'VACIO' });
@@ -730,6 +753,7 @@ app.post('/pensar', puerta, frenoPensar, async (req, res) => {
         if (t) { await memoria.titular(convId, req.miembro.correo, t); emitir('titulo', { titulo: t }); }
       } catch { /* sin título se vive; la conversación ya está guardada */ }
     }
+    await resumirLoQueSalio(convId, req.miembro.correo, modo === 'voz');
   } catch (e) {
     const m = cerebro.motivo(e);
     /* Un turno cancelado no es un fallo: no se escribe en rojo en el registro
@@ -1012,6 +1036,10 @@ app.post('/whatsapp/entrada', async (req, res) => {
     // WhatsApp no pinta markdown: se le quita lo que no se ve.
     const plano = r.texto.replace(/^#{1,6}\s*/gm, '').replace(/\*\*(.+?)\*\*/g, '*$1*').replace(/`/g, '');
     res.json({ respuesta: plano.slice(0, 4000), documentos: r.documentos, envios: r.envios.length });
+    /* Y acá más que en ningún lado: el hilo de WhatsApp es UNO SOLO para
+       siempre, así que sin resumen lo de la semana pasada no existe. Después
+       de contestar, que es lo que importa. */
+    await resumirLoQueSalio(String(conv._id), m.correo, false);
   } catch (e) {
     // Por WhatsApp no se cuenta el detalle de una avería nuestra: quien
     // escribe no puede hacer nada con eso. Va al registro, con su nombre.

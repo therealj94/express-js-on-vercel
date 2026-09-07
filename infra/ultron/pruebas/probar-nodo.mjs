@@ -401,6 +401,80 @@ titulo('la guarda de lo prometido: no se dice que dejó un PDF que no existe');
   decir(/Le dejo Ordenex/.test(r3.texto), 'ofrecer un documento o dejar un botón NO cuenta como prometerlo', r3.texto.slice(0, 80));
 }
 
+titulo('conversación larga: lo que sale de la ventana se resume, no se tira');
+{
+  /* ── LO QUE PASÓ DE VERDAD, 7-sep ─────────────────────────────────────────
+     Medido contra producción. Turno 1: «al agente de Choluteca lo llamamos
+     Mario Velásquez, cupo 3.500 lempiras». Diez turnos de relleno. Turno 14:
+     «¿cómo se llama el agente de Choluteca?». No se acordaba — y no era el
+     modelo: al prompt solo van los últimos ocho turnos y lo de más atrás SE
+     TIRABA.
+
+     Ocho son los que caben; meter más es hacer que el modelo evalúe fichas de
+     hace media hora antes de decir la primera palabra. Así que la respuesta no
+     es una ventana más grande: es no perder lo que sale de ella. */
+  const turnoN = (i) => ({ rol: i % 2 ? 'ultron' : 'miembro', texto: `turno número ${i} de esta conversación, con su relleno` });
+  const previa = { turnos: Array.from({ length: 12 }, (_, i) => turnoN(i)), resumen: '', resumidos: 0 };
+
+  guion = [{ texto: 'Agente de Choluteca: Mario Velásquez, cupo 3.500 lempiras diarios. Junta: martes 22, 4 de la tarde, Roatán.' }];
+  const antes = pedidos.length;
+  const r = await cerebro.resumirHilo({ previa });
+  decir(pedidos.length === antes + 1, 'resumir cuesta UNA llamada, y va después de contestar', `${pedidos.length - antes}`);
+  decir(r?.resumidos === 4, 'se resume lo que YA salió de la ventana: 12 turnos menos los 8 que viajan enteros', String(r?.resumidos));
+  decir(/Mario Vel/.test(r?.resumen || ''), 'y el resumen guarda el NOMBRE, que es lo que hacía falta', r?.resumen?.slice(0, 80));
+
+  /* Que no se pida sin herramientas y en una sola llamada es lo que hace que
+     esto no se note: si el resumidor llamara herramientas, cada turno costaría
+     otro turno entero. */
+  const p = pedidos.at(-1);
+  decir(!p.tools?.length, 'el resumidor va SIN herramientas: es leer y escribir, no averiguar');
+  decir(p.stream === false && p.options?.temperature <= 0.3, 'y en frío, que un resumen no es sitio para inventar', JSON.stringify(p.options));
+  decir(/NOMBRES|cifras|fechas/i.test(p.messages.at(-1).content), 'se le pide lo contrario de un resumen bonito: nombres, cifras, fechas y decisiones');
+
+  /* ── NI UN HUECO NI UNA REPETICIÓN ───────────────────────────────────────
+     Lo que está en el resumen NO puede estar además en la ventana, o el modelo
+     lo lee dos veces; y lo que sale de la ventana tiene que estar en el
+     resumen, o hay un hueco. Los dos números salen de la misma constante. */
+  const conResumen = { ...previa, resumen: r.resumen, resumidos: r.resumidos };
+  const m = nodo._adentro.armarMensajes({ system: 'SISTEMA', previa: conResumen, texto: '¿cómo se llama el agente?' });
+  decir(/Mario Vel/.test(m[1]?.content || ''), 'el resumen entra en el prompt, justo antes del hilo', (m[1]?.content || '').slice(0, 70));
+  decir(m[0].role === 'system' && !/Mario Vel/.test(m[0].content),
+    'y NO entra en el system: ahí está lo que el motor tiene en caché, y meterle algo que cambia lo tiraría entero');
+  const delHilo = m.slice(2, -1).map((x) => x.content).join(' ');
+  decir(!/turno número 3\b/.test(delHilo) && /turno número 11/.test(delHilo),
+    'el hilo lleva los últimos ocho y ni uno de los ya resumidos: sin repetir y sin hueco',
+    `${m.length - 3} turnos del hilo`);
+
+  /* Segunda vuelta: el resumen se resume sobre sí mismo y NO crece. Es lo que
+     hace que una conversación de doscientos turnos cueste lo mismo que una de
+     veinte. */
+  const seguida = { ...conResumen, turnos: [...previa.turnos, turnoN(12), turnoN(13)] };
+  guion = [{ texto: 'Agente de Choluteca: Mario Velásquez, cupo 3.500. Junta: martes 22. Tope del piloto: 12 al día.' }];
+  const r2 = await cerebro.resumirHilo({ previa: seguida });
+  decir(r2?.resumidos === 6, 'la vuelta siguiente sigue donde quedó la anterior', String(r2?.resumidos));
+  decir(/Lo que ya venía anotado/.test(pedidos.at(-1).messages.at(-1).content),
+    'y se le da el resumen viejo para que lo funda con lo nuevo, no para escribir otro aparte');
+  decir(/Mario Vel/.test(r2?.resumen || '') && /12 al día|piloto/.test(r2?.resumen || ''),
+    'lo viejo sobrevive y lo nuevo entra', r2?.resumen?.slice(0, 100));
+
+  /* Si no hay nada que guardar, se apunta hasta dónde se llegó igual: si no,
+     se volvería a resumir el mismo pedazo en cada turno, para siempre. */
+  guion = [{ texto: 'NADA' }];
+  const r3 = await cerebro.resumirHilo({ previa: { turnos: Array.from({ length: 14 }, (_, i) => turnoN(i)), resumen: 'lo de antes', resumidos: 4 } });
+  decir(r3?.vacio === true && r3?.resumidos === 6 && r3?.resumen === 'lo de antes',
+    'un pedazo sin nada que guardar se marca igual, o se resumiría lo mismo para siempre', JSON.stringify(r3));
+
+  /* Y si el motor falla, la conversación sigue con su ventana de ocho, que es
+     lo que había antes de todo esto. Nada se rompe por un resumen. */
+  caido = true;
+  const r4 = await cerebro.resumirHilo({ previa });
+  caido = false;
+  decir(r4 === null, 'si el motor no contesta, el resumen se salta y no rompe el turno', String(r4));
+  const m4 = nodo._adentro.armarMensajes({ system: 'SISTEMA', previa, texto: 'hola' });
+  decir(m4.length === 10 && m4[0].role === 'system',
+    'sin resumen, el prompt es el de siempre: system, ocho turnos y la pregunta', `${m4.length} mensajes`);
+}
+
 titulo('el turno tiene techo: lo obligatorio siempre corre, lo opcional solo si queda tiempo');
 {
   /* ── LO QUE PASÓ DE VERDAD, 7-sep ─────────────────────────────────────────

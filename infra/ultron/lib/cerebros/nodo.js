@@ -116,6 +116,13 @@ const PRESUPUESTO_FICHAS = Number(process.env.ULTRON_NODO_PRESUPUESTO_FICHAS || 
 const LETRAS_POR_FICHA = 2.4;
 const fichas = (t) => Math.ceil(String(t || '').length / LETRAS_POR_FICHA);
 const PRESUPUESTO = Math.floor(PRESUPUESTO_FICHAS * LETRAS_POR_FICHA);   // en letras, para el hilo y los resultados
+/* CUÁNTOS TURNOS VIAJAN ENTEROS. Lo de más atrás no se pierde: se resume
+   (ver `resumirHilo`). Estos dos números son los que usan tanto el prompt como
+   el resumidor, y tienen que ser LOS MISMOS o quedaría un hueco de turnos que
+   no están ni en la ventana ni en el resumen. */
+const VENTANA_HILO = 8;
+const VENTANA_HILO_VOZ = 4;
+const TOPE_RESUMEN = 1_400;       // el resumen del hilo, como mucho
 const TOPE_HILO = 5_000;          // el hilo anterior, como mucho
 const TOPE_TURNO = 1_200;         // cada turno viejo, como mucho
 /* ── HABLANDO, EL PROMPT ES OTRO ────────────────────────────────────────────
@@ -320,17 +327,24 @@ function recortar(t, n) { t = String(t || ''); return t.length <= n ? t : t.slic
 
 function armarMensajes({ system, previa, texto, voz = false }) {
   const mensajes = [{ role: 'system', content: system }];
+  /* ── LO QUE YA SE HABLÓ Y NO CABE ENTERO ────────────────────────────────
+     Va ANTES del hilo y como turno del sistema, no dentro del `system`: el
+     `system` es lo que la caché del motor tiene ya evaluado, y meterle algo
+     que cambia cada turno lo invalidaría entero. Acá cuesta lo que pesa y
+     nada más. */
+  const resumen = String(previa?.resumen || '').trim();
+  if (resumen) mensajes.push({ role: 'user', content: `[sistema] Lo que ya se habló en esta misma conversación, resumido:\n${recortar(resumen, TOPE_RESUMEN)}` });
   // El hilo: lo último primero en importancia. Se toman los últimos ocho
   // turnos, cada uno recortado, y si aun así no cabe se van soltando los
   // más viejos. Hablando son cuatro: en una conversación de voz lo de hace
   // seis turnos ya no lo tiene nadie en la cabeza, y cada turno viejo son
   // fichas que el modelo evalúa antes de decir la primera palabra.
-  const cuantos = voz ? 4 : 8;
+  const cuantos = voz ? VENTANA_HILO_VOZ : VENTANA_HILO;
   const tope = voz ? TOPE_HILO_VOZ : TOPE_HILO;
   let hilo = (previa?.turnos || []).slice(-cuantos).map((t) => ({ role: t.rol === 'miembro' ? 'user' : 'assistant', content: recortar(t.texto, voz ? TOPE_TURNO_VOZ : TOPE_TURNO) }));
   let largo = hilo.reduce((a, m) => a + m.content.length, 0);
   while (hilo.length && largo > tope) { largo -= hilo[0].content.length; hilo = hilo.slice(1); }
-  const disponible = PRESUPUESTO - system.length - texto.length;
+  const disponible = PRESUPUESTO - system.length - texto.length - resumen.length;
   while (hilo.length && largo > disponible) { largo -= hilo[0].content.length; hilo = hilo.slice(1); }
   mensajes.push(...hilo, { role: 'user', content: texto });
   return mensajes;
@@ -520,7 +534,8 @@ async function pensar({ miembro, junta, texto, conversacionId, previa: previaDad
   let base = armar([]);
   const TOPE_BASE = Math.floor(PRESUPUESTO_FICHAS * 0.5);
   while (fichas(base) > TOPE_BASE && memoriasUsadas.length) { memoriasUsadas = memoriasUsadas.slice(0, Math.max(0, memoriasUsadas.length - 4)); base = armar([]); }
-  const hiloEstimado = Math.min(hablando ? TOPE_HILO_VOZ : TOPE_HILO, (previa?.turnos || []).slice(hablando ? -4 : -8).reduce((a, t) => a + Math.min(hablando ? TOPE_TURNO_VOZ : TOPE_TURNO, String(t.texto || '').length), 0));
+  const hiloEstimado = Math.min(hablando ? TOPE_HILO_VOZ : TOPE_HILO, (previa?.turnos || []).slice(hablando ? -VENTANA_HILO_VOZ : -VENTANA_HILO).reduce((a, t) => a + Math.min(hablando ? TOPE_TURNO_VOZ : TOPE_TURNO, String(t.texto || '').length), 0))
+    + Math.min(TOPE_RESUMEN, String(previa?.resumen || '').length);
   const sobra = PRESUPUESTO_FICHAS - fichas(base) - fichas(hiloEstimado ? 'x'.repeat(hiloEstimado) : '') - fichas(texto);
   const paraSaber = Math.max(0, Math.floor(sobra * LETRAS_POR_FICHA));
   const paraSaberReal = hablando ? Math.min(paraSaber, TOPE_SABER_VOZ) : paraSaber;
@@ -1005,6 +1020,74 @@ async function precalentar({ miembro, junta, sistema, modo = 'voz', alias = null
   return { ok: true, ms: Date.now() - t0, fichas: fichas(system) };
 }
 
+/* ── EL RESUMEN DEL HILO ─────────────────────────────────────────────────────
+ *
+ * 7-sep, medido contra producción. Se le dijo en el turno 1: «al agente de
+ * Choluteca lo llamamos Mario Velásquez, cupo 3.500 lempiras». Diez turnos de
+ * relleno. Turno 14: «¿cómo se llama el agente de Choluteca?». No se acordaba.
+ *
+ * Y no era el modelo: era que al prompt solo van los últimos ocho turnos y lo
+ * de más atrás SE TIRABA. Ocho son los que caben —cada turno viejo son fichas
+ * que el modelo evalúa antes de decir la primera palabra— así que la respuesta
+ * no es meter más, es no perder lo que sale.
+ *
+ * Esto corre DESPUÉS de contestar, nunca antes: a la persona no le cuesta ni
+ * un segundo. Y el resumen no crece — cuando pasa de su tope se vuelve a
+ * resumir sobre sí mismo—, o sea que una conversación de doscientos turnos
+ * cuesta en fichas lo mismo que una de veinte.
+ *
+ * Lo que se le pide es lo contrario de un resumen bonito: NOMBRES, CIFRAS,
+ * FECHAS y DECISIONES. Un resumen que dice «se habló de logística» no sirve
+ * para nada; el que dice «agente de Choluteca: Mario Velásquez, cupo 3.500»
+ * es justo el que hacía falta. */
+async function resumirHilo({ previa, voz = false } = {}) {
+  const turnos = previa?.turnos || [];
+  const ventana = voz ? VENTANA_HILO_VOZ : VENTANA_HILO;
+  const hechos = Number(previa?.resumidos || 0);
+  /* Se resume lo que YA salió de la ventana, no lo que está por salir: si se
+     adelantara, el mismo turno estaría en el resumen y en el hilo, y el modelo
+     lo leería dos veces. */
+  const hasta = turnos.length - ventana;
+  if (hasta <= hechos) return null;
+  const nuevos = turnos.slice(hechos, hasta);
+  if (!nuevos.length) return null;
+
+  const anterior = String(previa?.resumen || '').trim();
+  const transcripcion = nuevos
+    .map((t) => `${t.rol === 'miembro' ? 'ÉL' : 'VOS'}: ${recortar(String(t.texto || ''), 900)}`)
+    .join('\n');
+  const orden = [
+    'Escribí en español, en tercera persona y en frases cortas, lo que hay que RECORDAR de este pedazo de conversación.',
+    'Guardá SIEMPRE: nombres propios, cifras, fechas, cupos, acuerdos y decisiones. Con sus palabras exactas cuando sean datos.',
+    'Tirá el relleno: saludos, cortesías, y cualquier dato que se pueda volver a mirar con una herramienta (precios, alturas de bloque, saldos).',
+    'No inventes nada que no esté escrito. Si no hay nada que valga la pena, escribí solo: NADA.',
+    `Máximo ${Math.floor(TOPE_RESUMEN / 6)} palabras.`,
+  ].join(' ');
+  const cuerpo = anterior
+    ? `Lo que ya venía anotado de esta conversación:\n${anterior}\n\nY esto es lo que siguió:\n${transcripcion}\n\n${orden} Devolvé UNA sola lista, la de antes y la de ahora juntas, sin repetir.`
+    : `${transcripcion}\n\n${orden}`;
+  try {
+    const r = await pedir({ model: MODELO, stream: false,
+      options: { temperature: 0.2, num_predict: Math.floor(TOPE_RESUMEN / 3) },
+      messages: [{ role: 'user', content: cuerpo }] }, { plazo: 45_000 });
+    let texto = hastaOtroAlfabeto(llamadasEnTexto(r.content || '').limpio).trim();
+    if (!texto || /^nada\b/i.test(texto)) {
+      /* «NADA» no es un fallo: es que ese pedazo no traía nada que guardar. Se
+         apunta igual hasta dónde se llegó, o se volvería a resumir lo mismo en
+         cada turno para siempre. */
+      return { resumen: anterior, resumidos: hasta, fichas: r.uso?.entrada || 0, vacio: true };
+    }
+    if (texto.length > TOPE_RESUMEN) texto = recortar(texto, TOPE_RESUMEN);
+    return { resumen: texto, resumidos: hasta, fichas: r.uso?.entrada || 0 };
+  } catch (e) {
+    /* Que falle el resumen NO puede romper nada: la conversación sigue con su
+       ventana de ocho, que es lo que había antes de todo esto. Se reintenta
+       solo en el turno siguiente porque `resumidos` no se movió. */
+    console.warn(`[nodo] no se pudo resumir el hilo: ${e?.codigo || ''} ${String(e?.message || e).slice(0, 90)}`);
+    return null;
+  }
+}
+
 async function titular(texto) {
   try {
     const r = await pedir({ model: MODELO, stream: false, options: { temperature: 0.2, num_predict: 24 },
@@ -1041,4 +1124,4 @@ async function salud() {
   });
 }
 
-module.exports = { pensar, precalentar, titular, salud, encendido, MODELO, _adentro: { pedir, pedirJson, vectorDe, llamadasEnTexto, armarMensajes, sinRepetidos, sinElRestoDeUnaHerramienta, sinCodigoPegadoArriba, hastaOtroAlfabeto, dondeEmpiezaElBucle, fichas, PRESUPUESTO, PRESUPUESTO_FICHAS, CTX, presupuestoMs, GUARDA_NECESITA_MS } };
+module.exports = { pensar, precalentar, titular, resumirHilo, salud, encendido, MODELO, _adentro: { pedir, pedirJson, vectorDe, llamadasEnTexto, armarMensajes, sinRepetidos, sinElRestoDeUnaHerramienta, sinCodigoPegadoArriba, hastaOtroAlfabeto, dondeEmpiezaElBucle, fichas, PRESUPUESTO, PRESUPUESTO_FICHAS, CTX, presupuestoMs, GUARDA_NECESITA_MS, VENTANA_HILO, VENTANA_HILO_VOZ, TOPE_RESUMEN } };

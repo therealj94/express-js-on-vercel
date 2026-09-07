@@ -53,6 +53,19 @@ const conversacionSchema = new Schema({
   titulo: { type: String, maxlength: 120 },
   canal: { type: String, enum: ['panel', 'whatsapp', 'correo'], default: 'panel' },
   turnos: [turnoSchema],
+  /* ── EL RESUMEN DE LO QUE YA NO CABE ──────────────────────────────────────
+     Al prompt solo van los últimos ocho turnos: más no entra en la ventana, y
+     cada turno viejo son fichas que el modelo evalúa antes de decir la primera
+     palabra. Pero antes lo que salía de esos ocho se PERDÍA — medido el 7-sep
+     contra producción: se le dijo un nombre en el turno 1, se le dieron diez
+     turnos de relleno, y en el turno 14 no se acordaba de nada.
+     Ahora lo que sale de la ventana se resume acá antes de irse. El resumen no
+     crece: cuando llega a su tope se vuelve a resumir sobre sí mismo, así que
+     una conversación de doscientos turnos cuesta lo mismo que una de veinte.
+     `resumidos` dice cuántos turnos ya están dentro, para no resumir dos veces
+     lo mismo ni dejar un hueco en medio. */
+  resumen: { type: String, maxlength: 4000, default: '' },
+  resumidos: { type: Number, default: 0 },
 }, { timestamps: { createdAt: 'en', updatedAt: 'tocado' } });
 
 const documentoSchema = new Schema({
@@ -259,6 +272,23 @@ async function anotarTurno(id, miembro, turno) {
   return true;
 }
 
+/* Se guarda con `resumidos` en el `where` a propósito: si dos turnos llegaron
+   a la vez y los dos resumieron, el segundo en escribir no puede pisar al
+   primero con una cuenta más vieja. Sin esto, un resumen bueno se perdería y
+   quedaría un hueco de turnos que no están ni en la ventana ni en el resumen. */
+async function guardarResumen(id, miembro, { resumen, resumidos }) {
+  if (conMongo) {
+    const r = await Conversacion.updateOne(
+      { _id: id, miembro, resumidos: { $lt: resumidos } },
+      { $set: { resumen: String(resumen).slice(0, 4000), resumidos } });
+    return r.modifiedCount > 0;
+  }
+  const c = provisional.conversaciones.get(String(id));
+  if (!c || c.miembro !== miembro || (c.resumidos || 0) >= resumidos) return false;
+  c.resumen = String(resumen).slice(0, 4000); c.resumidos = resumidos;
+  return true;
+}
+
 async function titular(id, miembro, titulo) {
   if (conMongo) return Conversacion.updateOne({ _id: id, miembro, titulo: { $in: [null, ''] } }, { titulo: String(titulo).slice(0, 120) });
   const c = provisional.conversaciones.get(String(id));
@@ -409,7 +439,7 @@ module.exports = {
   anotarPendiente, pendientes, cerrarPendiente, borrarPendiente, mismoPendiente,
   anotarGasto, gasto,
   recordar, olvidar, memoriasDe,
-  abrirConversacion, conversacion, conversacionesDe, anotarTurno, titular,
+  abrirConversacion, conversacion, conversacionesDe, anotarTurno, titular, guardarResumen,
   conversacionDelDia, registroPorDia, diaDe, bordesDelDia,
   guardarDocumento, documentos, documento,
   Memoria, Conversacion, Documento, Pendiente, Gasto,
