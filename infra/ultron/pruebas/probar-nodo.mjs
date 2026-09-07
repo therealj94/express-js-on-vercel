@@ -72,6 +72,7 @@ globalThis.fetch = async (u, o) => { if (String(u).startsWith('http://127.0.0.1'
 const memoria = require('../lib/memoria.js');
 const cerebro = require('../lib/cerebro.js');
 const nodo = require('../lib/cerebros/nodo.js');
+const herramientas = require('../lib/herramientas.js');
 const JOSE = { nombre: 'José', correo: 'jose@ordenglobal.org', rol: 'presidente', whatsapp: '+50499990000' };
 const JUNTA = [JOSE, { nombre: 'Mayra', correo: 'mayra@ordenglobal.org', rol: 'directora', whatsapp: null }];
 
@@ -331,6 +332,52 @@ titulo('calentar la caché mientras la persona habla');
   decir(!/Hoy es/.test(sc) && /Hoy es/.test(sr), 'y la hora también, que cambia sola cada minuto');
   decir(/LO QUE LA JUNTA TE HA DICHO/.test(sc) && /LO QUE ESTÁ PENDIENTE/.test(sc),
     'lo que dura la sesión —memoria, pendientes— sí va dentro: es lo que se ahorra');
+}
+
+titulo('la guarda de lo prometido: no se dice que dejó un PDF que no existe');
+{
+  /* ── LO QUE PASÓ DE VERDAD, 7-sep ─────────────────────────────────────────
+     José: «me puedes armar un PDF de esta idea». ULTRON abrió DOS cajas
+     —crear_documento vivía en una y exportar_pdf en OTRA—, se quedó sin
+     vueltas, y contestó «Listo, le dejo el PDF en el chat». No había creado
+     nada. Tres veces seguidas, hasta que José escribió «para descargar, no me
+     lo cuentes». Decir que hizo algo que no hizo es el peor fallo que puede
+     tener, y era el único que no estaba vigilado. */
+  const conv = await memoria.abrirConversacion(JOSE.correo, { titulo: 'pdf' });
+  guion = [{ texto: 'Listo, le dejo el PDF en el chat con todo lo que conversamos.' },
+           { texto: '', llamadas: [{ name: 'crear_documento', arguments: { titulo: 'La idea P2P', texto: '# La idea\n\nUn agente local vende ORIGEN a su gente.' } }] },
+           { texto: 'Lo escribí y quedó en la biblioteca.' }];
+  const r = await cerebro.pensar({ miembro: JOSE, junta: JUNTA, texto: 'armame un PDF de esta idea', conversacionId: String(conv._id) });
+  decir(r.herramientas.some((h) => h.nombre === 'crear_documento'),
+    'si prometió un documento sin crearlo, se le devuelve y ESTA VEZ lo crea', r.herramientas.map((h) => h.nombre).join(','));
+  decir(!/le dejo el PDF/i.test(r.texto), 'y la promesa falsa ya no queda en pantalla', r.texto.slice(0, 90));
+
+  /* Y si ni al segundo intento lo hace, se dice la verdad en su lugar: un
+     «no pude» es mejor que mandar a alguien a buscar un archivo que no está. */
+  guion = [{ texto: 'Listo, le dejo el PDF en el chat.' },
+           { texto: 'Ya se lo dejé, el documento está listo.' },
+           { texto: 'De verdad se lo dejé, el PDF queda listo.' }];
+  const r2 = await cerebro.pensar({ miembro: JOSE, junta: JUNTA, texto: 'el PDF por favor', conversacionId: String(conv._id) });
+  decir(!/le dejo|se lo dej|queda listo/i.test(r2.texto) && /no pude/i.test(r2.texto),
+    'y si insiste en prometer sin hacerlo, el texto se corrige a «no pude»', r2.texto.slice(0, 90));
+
+  /* Lo que NO tiene que disparar: ofrecer, preguntar, o dejar un botón de
+     abrir —que sí es verdad—. Una guarda que salta de más molesta más de lo
+     que arregla. */
+  guion = [{ texto: 'Le dejo Ordenex a un toque. ¿Quiere que le arme un memo con esto?' }];
+  const r3 = await cerebro.pensar({ miembro: JOSE, junta: JUNTA, texto: 'abrime ordenex', conversacionId: String(conv._id) });
+  decir(/Le dejo Ordenex/.test(r3.texto), 'ofrecer un documento o dejar un botón NO cuenta como prometerlo', r3.texto.slice(0, 80));
+}
+
+titulo('crear un documento y dejarlo en PDF están en la MISMA caja');
+{
+  /* Estaban en dos cajas distintas, así que un PDF pedía cuatro vueltas: abrir
+     una caja, crear, abrir la otra, exportar. Con seis vueltas de tope y un
+     modelo de 27 mil millones, eso no llegaba — y en vez de decirlo, mentía. */
+  const conCaja = herramientas.paraOllama({ cajas: ['documentos'] }).map((d) => d.function?.name || d.name);
+  decir(conCaja.includes('crear_documento') && conCaja.includes('exportar_pdf'),
+    'con UNA sola caja abierta se tienen las dos: escribirlo y dejarlo en PDF',
+    conCaja.filter((n) => /documento|pdf/.test(n)).join(', '));
 }
 
 titulo('la guarda de las citas: no se cita una herramienta que no corrió');

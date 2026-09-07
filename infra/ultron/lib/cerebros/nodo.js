@@ -726,6 +726,68 @@ async function pensar({ miembro, junta, texto, conversacionId, previa: previaDad
     }
   }
 
+  /* ── LA GUARDA DE LO PROMETIDO ────────────────────────────────────────────
+     7-sep, conversación de verdad. José: «me puedes armar un PDF de esta
+     idea». ULTRON abrió dos cajas, se quedó sin vueltas, y contestó:
+     «Listo, le dejo el PDF en el chat.» No había creado nada. Tres veces
+     seguidas, hasta que José escribió «para descargar, no me lo cuentes».
+     Es el peor fallo que puede tener: decir que hizo algo que no hizo. Todo
+     este archivo está escrito contra eso —no inventar una cifra, no citar una
+     herramienta que no corrió— y faltaba el caso de la ENTREGA.
+     Así que se mira: si dice que dejó un documento y NO corrió la herramienta
+     que lo crea, se le devuelve UNA vez con la caja ya abierta. Y si aun así
+     no lo hace, se le quita la promesa al texto: es preferible «no pude
+     armarlo» a un PDF que no existe. */
+  /* Dos formas de prometer y una sola de comprobarlo: o dice que LO ENTREGA
+     («le dejo», «acá tiene», «adjunto») o que YA LO HIZO («ya le armé», «ya se
+     lo preparé»), y a menos de sesenta letras nombra un documento. «Le dejo
+     Ordenex a un toque» no cae: eso es `abrir`, y es verdad. */
+  const DOC = 'pdf|documento|memo|acta|informe|carta';
+  const PROMETE_RE = [
+    // «le dejo el PDF», «aquí tiene el informe», «ya le armé el documento»
+    new RegExp(`(?:(?:le|te|se lo|te lo)?\\s*dejo|ac[a\u00e1] tiene|aqu[i\u00ed] tiene|adjunto|ya\\s+(?:\\S+\\s+){0,2}(?:dej|arm|prepar|gener|cre|escrib)\\S*)[^.]{0,60}\\b(?:${DOC})\\b`, 'i'),
+    // y al revés: «el acta queda lista para bajar»
+    new RegExp(`\\b(?:${DOC})\\b[^.]{0,40}(?:queda|est[a\u00e1])\\s+list[oa]`, 'i'),
+  ];
+  const PROMETE = { test: (t) => PROMETE_RE.some((r) => r.test(t)) };
+  const CREA = new Set(['crear_documento', 'exportar_pdf']);
+  const creoAlgo = () => usadas.some((h) => CREA.has(h.nombre));
+  if (PROMETE.test(textoFinal) && !creoAlgo()) {
+    emitir('pensando', { vuelta: MAX_VUELTAS, motivo: 'dijo que lo dejó sin haberlo hecho' });
+    mensajes.push({ role: 'assistant', content: textoFinal });
+    mensajes.push({ role: 'user', content: '[sistema] Dijiste que dejabas un documento o un PDF y NO lo creaste: '
+      + 'no llamaste a crear_documento. Ahora tenés a la vista crear_documento y exportar_pdf. '
+      + 'Escribilo COMPLETO con crear_documento y, si pidieron PDF, dejalo con exportar_pdf. '
+      + 'Después contestá en dos líneas. Si de verdad no se puede, decí que no pudiste y por qué — '
+      + 'pero no vuelvas a decir que lo dejaste si no está.' });
+    for (const c of ['documentos']) if (!cajas.includes(c)) cajas.push(c);
+    let dicho = '';
+    const r = await pedirDelTurno({ model: MODELO, messages: mensajes, tools: herramientas.paraOllama({ cajas }), stream: true, options: opciones }, { alTrozo: (t) => { dicho += t; } });
+    uso.entrada += r.uso.entrada; uso.salida += r.uso.salida;
+    const llamadas = [...r.tool_calls, ...llamadasEnTexto(r.content).llamadas];
+    if (llamadas.length) {
+      mensajes.push({ role: 'assistant', content: r.content, tool_calls: r.tool_calls.length ? r.tool_calls : undefined });
+      for (const res of await correrLote(llamadas, { ctx, usadas, emitir })) {
+        mensajes.push({ role: 'tool', content: recortar(res.salida, TOPE_RESULTADO), tool_name: res.nombre });
+      }
+      const r2 = await pedirDelTurno({ model: MODELO, messages: mensajes, tools: herramientas.paraOllama({ cajas }), stream: true, options: opciones }, { alTrozo: () => {} });
+      uso.entrada += r2.uso.entrada; uso.salida += r2.uso.salida;
+      const limpio = llamadasEnTexto(r2.content).limpio.trim();
+      if (limpio) { textoFinal = limpio; emitir('reemplazo', { texto: textoFinal }); }
+    } else if (dicho.trim()) {
+      textoFinal = llamadasEnTexto(dicho).limpio.trim() || textoFinal;
+      emitir('reemplazo', { texto: textoFinal });
+    }
+    /* Y si después de todo sigue prometiendo sin haberlo hecho, se dice la
+       verdad en su lugar. Una promesa falsa en pantalla es peor que un «no
+       pude»: la persona se va a buscar un archivo que no existe. */
+    if (PROMETE.test(textoFinal) && !creoAlgo()) {
+      console.warn('[nodo] prometió un documento y no lo creó ni al segundo intento: se corrige el texto');
+      textoFinal = 'No pude armar el documento en este turno. Pídamelo otra vez y lo escribo completo.';
+      emitir('reemplazo', { texto: textoFinal });
+    }
+  }
+
   /* LA GUARDA DE LAS CITAS. 5-sep, primera prueba real: «El oro cerró hoy a
      US$ 4,435 (según buscar_web)» — y buscar_web no se había llamado. El
      número venía del estado vivo y la fuente era inventada. Un modelo chico

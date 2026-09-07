@@ -1136,11 +1136,18 @@ const GRUPOS = {
   'Ordenex y las cadenas': ['ordenex_caja', 'ordenex_mercado', 'cadena_altura', 'cadena_direccion', 'cadena_5550_saldo'],
   'Las otras casas': ['aucorp_monedas', 'genesis_salud'],
   'El saber y la memoria': ['buscar_saber', 'buscar_conversaciones', 'recordar', 'olvidar'],
-  'Pendientes y documentos': ['listar_pendientes', 'anotar_pendiente', 'cerrar_pendiente', 'listar_documentos', 'leer_documento', 'crear_documento'],
+  /* `exportar_pdf` estaba en «Acciones que confirma la persona», o sea en OTRA
+     caja que la de crear el documento. Hacer un PDF pedía entonces cuatro
+     vueltas: abrir la caja de documentos, crearlo, abrir la caja de acciones,
+     exportarlo. El 7-sep se vio lo que pasa de verdad: ULTRON abrió DOS cajas,
+     se quedó sin vueltas y contestó «Listo, le dejo el PDF en el chat» sin
+     haber creado nada. Crear un documento y dejarlo en PDF son el mismo
+     trabajo y ahora viven en la misma caja: una sola vuelta los trae. */
+  'Pendientes y documentos': ['listar_pendientes', 'anotar_pendiente', 'cerrar_pendiente', 'listar_documentos', 'leer_documento', 'crear_documento', 'exportar_pdf'],
   'Internet': ['buscar_web', 'leer_pagina'],
   'La junta': ['quien_es_quien'],
   'Lo que le mandan': ['listar_archivos', 'leer_archivo'],
-  'Acciones que confirma la persona': ['abrir', 'exportar_pdf', 'proponer_envio'],
+  'Acciones que confirma la persona': ['abrir', 'proponer_envio'],
   'Cuentas': ['calcular', 'gasto'],
   'El taller (repositorio, terminal, despliegue)': ['repo_llave', 'repo_arbol', 'repo_leer', 'repo_buscar', 'repo_proponer_cambio', 'terminal', 'desplegarse'],
   'La bóveda': ['boveda_listar', 'boveda_aplicar'],
