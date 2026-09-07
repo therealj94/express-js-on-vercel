@@ -2014,7 +2014,7 @@ const OS = (() => {
   const CONVERSACION = () => (PREF?.oido === 'conversacion' ? true : PREF?.oido === 'palabra' ? false : !!VOZ.esIOS);
 
   function orejaEncender() {
-    if (!VOZ.hayOido?.()) { avisar('Este navegador no trae reconocimiento de voz. En Chrome sí funciona.', true); return; }
+    if (!VOZ.hayOido?.()) { avisar(VOZ.porQueNoOye?.() || 'No hay reconocimiento de voz aquí.', true); return; }
     micAutorizado = true;
     despierta = true;
     $('#oreja').setAttribute('aria-pressed', 'true');
@@ -2252,7 +2252,7 @@ const OS = (() => {
   }
 
   function escucharYa() {
-    if (!VOZ.hayOido?.()) { avisar('Este navegador no trae reconocimiento de voz. En Chrome sí funciona.', true); return; }
+    if (!VOZ.hayOido?.()) { avisar(VOZ.porQueNoOye?.() || 'No hay reconocimiento de voz aquí.', true); return; }
     calentar();
     micAutorizado = true;
     despierta = true;
@@ -2334,7 +2334,7 @@ const OS = (() => {
 
   /** El micrófono a mano: se dicta una frase y se manda. */
   function dictar(alTerminar) {
-    if (!VOZ.hayOido?.()) { avisar('Este navegador no trae reconocimiento de voz.', true); alTerminar?.(); return; }
+    if (!VOZ.hayOido?.()) { avisar(VOZ.porQueNoOye?.() || 'No hay reconocimiento de voz aquí.', true); alTerminar?.(); return; }
     /* ── UN SOLO RECONOCEDOR VIVO, SIEMPRE ─────────────────────────────────
        El navegador admite UNO. Si la oreja de «hey ULTRON» estaba abierta y se
        abre además un dictado, Safari lanza «ya está empezado» y se caen los

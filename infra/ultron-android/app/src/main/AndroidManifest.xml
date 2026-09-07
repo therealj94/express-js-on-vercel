@@ -23,6 +23,29 @@
          que poder instalar la app y usarla escribiendo. -->
     <uses-feature android:name="android.hardware.microphone" android:required="false" />
 
+    <!-- ── ESTO ES LO QUE TENÍA MUDO EL MICRÓFONO EN LA 1.1.0 ────────────────
+         7-sep, José con la 1.1.0 puesta: «ya desliza pero el micrófono sigue
+         sin escuchar».
+         Desde Android 11, una app NO VE a las demás del teléfono salvo que
+         diga cuáles necesita. `SpeechRecognizer.isRecognitionAvailable()` no
+         hace magia por dentro: le pregunta al sistema qué apps ofrecen el
+         servicio de reconocimiento. Sin este bloque el sistema contesta
+         «ninguna» —aunque el reconocedor de Google esté instalado y
+         funcionando en el teclado— así que `hay()` daba falso, el tablero se
+         iba al reconocimiento del navegador, que en el WebView no existe, y el
+         botón de hablar no hacía absolutamente nada. Sin error, sin aviso.
+         No es un permiso: es decir en voz alta qué se piensa usar. -->
+    <queries>
+        <intent>
+            <action android:name="android.speech.RecognitionService" />
+        </intent>
+        <!-- Y el de texto a voz, por lo mismo: sin esto TextToSpeech tampoco
+             encuentra motor y ULTRON se queda sin voz de respaldo. -->
+        <intent>
+            <action android:name="android.intent.action.TTS_SERVICE" />
+        </intent>
+    </queries>
+
     <application
         android:name=".Casa"
         android:label="ULTRON FP"

@@ -343,6 +343,9 @@ const VOZ = (() => {
          cargar la página como si fuera un audio. */
       if (this.audio) { try { this.audio.pause(); this.audio.removeAttribute('src'); this.audio.load(); } catch { /* nada */ } }
       if (window.speechSynthesis) speechSynthesis.cancel();
+      /* Y la voz de la app, que es otro motor distinto: sin esto, callar a
+         ULTRON en el teléfono dejaba a Android terminando la frase solo. */
+      if (hablandoAhora) { const h = hablandoAhora; hablandoAhora = null; try { window.AndroidVoz?.callar?.(); } catch { /* nada */ } h.fin?.(true); }
       this.sonando = false; this.alNivel?.(0);
     }
     get ocupado() { return this.sonando || this.cola.length > 0; }
@@ -429,6 +432,22 @@ const VOZ = (() => {
     }
     conNavegador(texto, gen) {
       return new Promise((listo) => {
+        /* LA VOZ DE LA APP DE ANDROID. Igual que con el micrófono: el WebView
+           no trae `speechSynthesis`, así que en el teléfono este respaldo era
+           un `return` vacío — el día que ElevenLabs falle, ULTRON se quedaba
+           MUDO sin decir por qué. `AndroidVoz` es el motor de texto a voz del
+           propio Android puesto detrás. */
+        const app = vozApp();
+        if (app) {
+          const t = setInterval(() => { if (gen === this.generacion) this.alNivel?.(0.35 + 0.3 * Math.abs(Math.sin(performance.now() / 160))); }, 60);
+          const fin = () => { clearInterval(t); this.alNivel?.(0); listo(); };
+          try {
+            const id = String(app.decir(texto, false) || '');
+            if (!id) return fin();
+            hablandoAhora = { id, fin };
+          } catch { fin(); }
+          return;
+        }
         if (!window.speechSynthesis) return listo();
         const u = new SpeechSynthesisUtterance(texto); u.lang = 'es-HN'; u.rate = 1;
         /* `getVoices()` devuelve [] hasta que el navegador termina de cargarlas
@@ -523,6 +542,37 @@ const VOZ = (() => {
 
   const hayOido = () => !!(oidoApp() || window.SpeechRecognition || window.webkitSpeechRecognition);
 
+  /** Estamos DENTRO de la app de Android (aunque el oído no esté disponible). */
+  const enLaApp = () => { try { return !!window.AndroidOido; } catch { return false; } };
+
+  /** Por qué no escucha, en palabras. Sirve para decirlo en pantalla en vez de
+   *  soltar «este navegador no trae reconocimiento de voz», que dentro de la
+   *  app es mentira y no ayuda a nadie. */
+  function porQueNoOye() {
+    if (hayOido()) return '';
+    if (!enLaApp()) return 'Este navegador no trae reconocimiento de voz. En Chrome sí funciona.';
+    let d = {};
+    try { d = JSON.parse(window.AndroidOido.diagnostico?.() || '{}'); } catch { /* da igual */ }
+    if (d.permisoDeMicrofono === false) return 'Falta darle el micrófono a ULTRON en los ajustes del teléfono.';
+    return 'Este teléfono no tiene reconocimiento de voz instalado. Se arregla instalando la app de Google o el reconocimiento de voz de Android.';
+  }
+
+  /* ── LA VOZ DE LA APP DE ANDROID ──────────────────────────────────────────
+   * El mismo agujero que el oído, del otro lado. ULTRON habla con ElevenLabs y
+   * eso suena igual en la app; pero cuando ElevenLabs falla, el respaldo es
+   * `speechSynthesis`, que el WebView TAMPOCO trae. O sea: en el teléfono, el
+   * día que ElevenLabs se caiga, ULTRON se quedaba mudo. `AndroidVoz` pone
+   * detrás el motor de texto a voz de Android. */
+  const vozApp = () => { try { return window.AndroidVoz?.hay?.() ? window.AndroidVoz : null; } catch { return null; } };
+
+  let hablandoAhora = null;
+  window.__vozAndroid = (que, id) => {
+    const h = hablandoAhora;
+    if (!h || (id && h.id && id !== h.id)) return;
+    hablandoAhora = null;
+    h.fin?.(que === 'fallo');
+  };
+
   /** Escucha una vez. Resuelve con lo dicho (vacío si no se oyó nada). */
   function escuchar({ alParcial } = {}) {
     /* Dentro de la app, por el oído nativo. Se cierra con el primer resultado
@@ -609,5 +659,5 @@ const VOZ = (() => {
     } catch { /* sin permiso: se intentará en el gesto siguiente */ }
   }
 
-  return { Locutor, escuchar, oir, hayOido, paraDecir, partirFrases, esIOS, vigilarMicrofono, numerosParaLaVoz, desbloquear };
+  return { Locutor, escuchar, oir, hayOido, porQueNoOye, enLaApp, paraDecir, partirFrases, esIOS, vigilarMicrofono, numerosParaLaVoz, desbloquear };
 })();

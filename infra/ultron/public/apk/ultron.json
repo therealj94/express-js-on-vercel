@@ -1,9 +1,9 @@
 {
-  "codigo": 2,
-  "version": "1.1.0",
+  "codigo": 3,
+  "version": "1.2.0",
   "apk": "https://ultron.ordenglobal.link/apk/ultron.apk",
-  "sha256": "1ac35792022f61780fc4cb2ffcba94637f7fce23c1c0674007b9692132954ce7",
-  "bytes": 2515171,
-  "nota": "Ya escucha el microfono (oido nativo de Android), la respuesta se puede desplazar, y los permisos salen en una ventana.",
+  "sha256": "b523c75ad1299d5c2819fe770a1337905641b7ea4997d9958e2c00a8aa526993",
+  "bytes": 2519659,
+  "nota": "Ahora si escucha el microfono: faltaba declararle a Android 11+ que queremos ver el reconocedor de voz, y pedir el permiso. Ademas voz nativa de respaldo, avisos, y desplazamiento mas liso.",
   "firma_sha256": "77c55985604f57b0bfdcd3f7de8995413f1be8423f99cb1fd32a66e4f9a413f7"
 }
