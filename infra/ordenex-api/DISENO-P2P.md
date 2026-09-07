@@ -493,10 +493,34 @@ Variables nuevas: `ORDENEX_P2P_COMISION_PPM` (0 sin ella), `ORDENEX_P2P_FIANZA_M
 En este orden, y **cada tramo entregable solo**: si se para en cualquiera de
 ellos, lo hecho sirve.
 
-1. **Esqueleto y reloj.** Modelos, `POST /p2p/ordenes` contra un anuncio
-   sembrado a mano, `pagado`, `liberar`, `cancelar`, el barredor y la
-   evaluación perezosa al leer. Aquí ya se puede hacer una operación entera
-   por API. *Es el tramo que más importa y el que tiene los bichos peores.*
+1. **Esqueleto y reloj.** ✅ **HECHO** (7-sep). `lib/p2p.js` con el reloj
+   inyectable, `models/index.js` con `anuncios`, `p2pOrdenes` y `faltas`,
+   `controllers/p2pController.js`, `routes/p2p.js` y el barredor cada 20 s en
+   `app.js`. Ya se puede hacer una operación entera por API.
+
+   Lo que la prueba (`pruebas/probar-p2p.mjs`) deja comprobado, con el reloj
+   movido a mano — probar el vencimiento con `Date.now()` sería esperar quince
+   minutos de verdad, o sea no probarlo:
+   - el camino entero: tomar → pagar → liberar, y el ORIGEN llega a quien pagó;
+   - **el congelado**: al marcar pagado `venceEn` queda en `null`, y diez horas
+     después la orden sigue viva. Una orden pagada no vence jamás;
+   - una orden sin pagar se vence **al leerla**, sin esperar al barredor —entre
+     dos pasadas hay veinte segundos en los que una orden muerta diría «podés
+     pagar»— y la garantía y el inventario del anuncio vuelven los dos;
+   - **dos barredores a la vez vencen 2 órdenes, no 4**, y la garantía vuelve
+     una sola vez;
+   - **dos toques del botón de liberar pagan una sola vez**;
+   - el que entrega no puede cancelar nunca; el que paga no puede cancelar
+     después de haber marcado el pago;
+   - tres faltas en 24 h bloquean, y al día siguiente se puede otra vez;
+   - la misma `ordenKey` devuelve la misma orden, no una segunda;
+   - y detrás de cada camino, la invariante: **la suma de disponible +
+     reservado de las dos puntas es la misma que al empezar**. Un estado
+     correcto con el dinero mal es el bicho que nadie ve hasta que alguien
+     reclama.
+
+   Falta de este tramo, a propósito: los anuncios se siembran a mano (el alta
+   propia es el tramo 2).
 2. **Anuncios y comerciantes.** Alta propia, fianza, métodos cifrados,
    condiciones, límites, faltas.
 3. **Las pantallas** — lista, orden, cronómetro, panel del comerciante.

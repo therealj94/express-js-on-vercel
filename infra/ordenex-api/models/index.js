@@ -391,6 +391,113 @@ const solicitudSchema = new Schema(
   { timestamps: true }
 );
 
+// ── P2P: anuncio ────────────────────────────────────────────────────────────
+// Lo que alguien publica: vendo (o compro) ORIGEN a este precio, entre este
+// minimo y este maximo, por estos metodos de pago.
+//
+// `cantidadRestante` baja al tomar una orden y sube al vencerla o cancelarla.
+// No se calcula sumando las ordenes abiertas cada vez que alguien mira la
+// lista: eso son tantas consultas como anuncios en pantalla, y encima da
+// numeros distintos segun cuando se lea. Un contador que se mueve con guarda
+// atomica es una lectura y una verdad.
+const anuncioSchema = new Schema(
+  {
+    comercianteId: { type: String, required: true, index: true },
+    // 'vendo' = el comerciante ENTREGA ORIGEN. 'compro' = el comerciante PAGA fiat.
+    lado: { type: String, enum: ['vendo', 'compro'], required: true },
+    activo: { type: String, required: true, default: 'ORIGEN' },
+    moneda: { type: String, required: true },
+    // Precio en centavos de la moneda por UNA unidad entera del activo.
+    precio: { type: String, required: true },
+    cantidadTotal: { type: String, required: true },     // wei
+    cantidadRestante: { type: String, required: true },  // wei
+    minFiat: { type: String, required: true },           // centavos
+    maxFiat: { type: String, required: true },           // centavos
+    // Cuanto tiempo tiene el pagador para transferir. Es del anuncio y no de
+    // la casa: quien vende sabe cuanto puede esperar.
+    minutosParaPagar: { type: Number, required: true, default: 15, min: 5, max: 120 },
+    terminos: { type: String, default: '', maxlength: 1000 },
+    estado: { type: String, enum: ['publicado', 'pausado', 'agotado'], default: 'publicado', index: true },
+  },
+  { timestamps: true }
+);
+anuncioSchema.index({ estado: 1, lado: 1, moneda: 1 });
+
+// ── P2P: orden ──────────────────────────────────────────────────────────────
+//
+// EL RELOJ VIVE AQUI, EN UNA FECHA, Y NO EN UN setTimeout.
+//
+// Un temporizador en memoria se lo lleva el primer reinicio del dyno, y con el
+// se lleva el vencimiento de todas las ordenes abiertas: el ORIGEN de alguien
+// se queda bloqueado para siempre y nadie sabe por que. `venceEn` es una fecha
+// guardada; el barredor la mira, y CUALQUIER lectura de la orden tambien.
+//
+// Y lo que Jose pidio por nombre: al marcar pagado, `venceEn` se pone a null.
+// El reloj se PARA. Desde ahi la orden ya no vence nunca — nadie pierde su
+// dinero porque se acabe un tiempo DESPUES de haber transferido.
+const p2pOrdenSchema = new Schema(
+  {
+    numero: { type: String, required: true, unique: true },
+    anuncioId: { type: String, required: true, index: true },
+    comercianteId: { type: String, required: true, index: true },
+    tomadorId: { type: String, required: true, index: true },
+    // Los dos papeles que de verdad importan, calculados del lado del anuncio.
+    // Se guardan y no se deducen al leer: deducirlos en cada lectura es repetir
+    // la misma decision en diez sitios, y basta que uno la haga al reves para
+    // que el ORIGEN salga hacia la punta equivocada.
+    pagadorId: { type: String, required: true, index: true },
+    entregadorId: { type: String, required: true, index: true },
+    activo: { type: String, required: true, default: 'ORIGEN' },
+    cantidad: { type: String, required: true },   // wei, en garantia
+    moneda: { type: String, required: true },
+    montoFiat: { type: String, required: true },  // centavos
+    precio: { type: String, required: true },     // congelado al crear la orden
+    estado: {
+      type: String,
+      enum: ['creada', 'pagada', 'liberada', 'cancelada', 'vencida', 'apelada', 'resuelta-pagador', 'resuelta-entregador'],
+      required: true, default: 'creada', index: true,
+    },
+    venceEn: { type: Date, default: null, index: true },   // null = el reloj esta parado
+    congeladoEn: { type: Date, default: null },
+    apelableEn: { type: Date, default: null },
+    referenciaPago: { type: String, default: null, maxlength: 120 },
+    // Idempotencia del cliente, con indice parcial por el mismo motivo que
+    // ordenSchema: `default: null` presente en todos haria chocar al segundo.
+    ordenKey: { type: String, default: null },
+    historia: [
+      {
+        _id: false,
+        de: { type: String, default: null },
+        a: { type: String, default: null },
+        quien: { type: String, required: true },
+        en: { type: Date, default: Date.now },
+        nota: { type: String, default: null },
+      },
+    ],
+  },
+  { timestamps: true }
+);
+p2pOrdenSchema.index({ ordenKey: 1 }, { unique: true, partialFilterExpression: { ordenKey: { $type: 'string' } } });
+// Para el barredor: solo las que de verdad pueden vencer.
+p2pOrdenSchema.index({ estado: 1, venceEn: 1 });
+
+// ── P2P: falta ──────────────────────────────────────────────────────────────
+// Una cancelacion o un vencimiento con la garantia ya puesta. Tres en 24 h y
+// no se pueden tomar anuncios por un dia.
+//
+// Sin esto, cualquiera bloquea el inventario de todos los comerciantes gratis
+// y todo el dia: toma ordenes, no paga, y el ORIGEN ajeno se queda quieto. No
+// roba un centavo y mata el mercado igual.
+const faltaSchema = new Schema(
+  {
+    userId: { type: String, required: true, index: true },
+    ordenId: { type: String, required: true },
+    motivo: { type: String, enum: ['cancelo', 'vencio'], required: true },
+    en: { type: Date, default: Date.now, index: true },
+  },
+  { timestamps: false }
+);
+
 // Los nombres de coleccion van explicitos: el pluralizador de Mongoose es
 // ingles y a 'Orden' le pondria 'ordens'. Las colecciones de esta casa se
 // llaman en español.
@@ -408,4 +515,7 @@ module.exports = {
   Agente: mongoose.model('Agente', agenteSchema, 'agentes'),
   Solicitud: mongoose.model('Solicitud', solicitudSchema, 'solicitudes'),
   Contador: mongoose.model('Contador', contadorSchema, 'contadores'),
+  Anuncio: mongoose.model('Anuncio', anuncioSchema, 'anuncios'),
+  P2POrden: mongoose.model('P2POrden', p2pOrdenSchema, 'p2pOrdenes'),
+  Falta: mongoose.model('Falta', faltaSchema, 'faltas'),
 };

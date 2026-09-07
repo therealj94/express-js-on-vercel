@@ -130,6 +130,7 @@ app.use('/compras', soloEscritura(limiteDinero));
 // Vender saca dinero de la casa hacia fuera: el mismo limite, y por mas motivo.
 app.use('/ventas', soloEscritura(limiteDinero));
 app.use('/fiat', soloEscritura(limiteDinero));
+app.use('/p2p', soloEscritura(limiteDinero));
 
 // El retiro firma una transaccion en la cadena y saca el dinero de la casa:
 // es la operacion mas cara que existe aqui y no se hace sesenta veces por
@@ -295,6 +296,7 @@ app.use('/compras', require('./routes/compras'));
 app.use('/ventas', require('./routes/ventas'));
 app.use('/', require('./routes/portafolio'));
 app.use('/fiat', require('./routes/fiat'));
+app.use('/p2p', require('./routes/p2p'));
 app.use('/admin', require('./routes/admin'));
 
 // ── Errores: siempre { error, codigo } ──────────────────────────────────────
@@ -382,6 +384,19 @@ app.listen(puerto, () => {
   // con dinero se entera de nada.
   try {
     const vigia = require('./lib/vigia');
+    const p2p = require('./lib/p2p');
+    /* ── EL BARREDOR DEL P2P ────────────────────────────────────────────────
+       Las órdenes también se vencen al leerlas, así que esto no es la única
+       red: es la que se ocupa de las que nadie mira. Una orden abierta que
+       nadie abre tiene el ORIGEN de alguien bloqueado, y ese alguien no está
+       mirando la pantalla — por eso hace falta que pase alguien igual.
+       Es idempotente por la guarda atómica de `transitar`: dos barredores,
+       o dos dynos, vencen cada orden UNA vez. */
+    const barrerP2P = () => p2p.barrer().then((n) => { if (n) console.log(`[p2p] ${n} orden(es) vencida(s)`); })
+      .catch((e) => console.warn('[p2p] el barredor falló:', String(e?.message || e).slice(0, 120)));
+    setInterval(barrerP2P, Number(process.env.ORDENEX_P2P_BARREDOR_MS || 20_000)).unref?.();
+    barrerP2P();
+
     Promise.resolve(vigia.arrancar()).catch((e) =>
       console.error(`[vigia] no arranco: ${e.message}`)
     );
