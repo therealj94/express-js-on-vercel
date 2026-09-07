@@ -122,7 +122,18 @@ const PRESUPUESTO = Math.floor(PRESUPUESTO_FICHAS * LETRAS_POR_FICHA);   // en l
    no están ni en la ventana ni en el resumen. */
 const VENTANA_HILO = 8;
 const VENTANA_HILO_VOZ = 4;
-const TOPE_RESUMEN = 1_400;       // el resumen del hilo, como mucho
+/* ── LO QUE CUESTA UN RESUMEN, Y POR QUÉ ES CHICO ────────────────────────
+   Primera versión, medida en producción: 1 400 letras de tope, o sea 466
+   fichas de salida, o sea VEINTE SEGUNDOS de tarjeta. Y como la tarjeta tiene
+   UNA ranura, esos veinte segundos se los quitaba al turno siguiente: los
+   turnos pasaron de 13 s a 33 s. El resumen arreglaba la memoria y rompia la
+   fluidez, que era justo lo que habia que arreglar.
+   Se recorta —y se le pide menos— porque un resumen de mil letras con los
+   nombres y las cifras vale igual que uno de mil cuatrocientas con adjetivos.
+   Y se limita cuanto se resume DE UNA VEZ: si salieron veinte turnos de golpe,
+   se hacen ocho ahora y el resto en el turno siguiente, que no corre prisa. */
+const TOPE_RESUMEN = 1_000;       // el resumen del hilo, como mucho
+const RESUMIR_DE_UNA_VEZ = 8;     // turnos por pasada, para que ninguna sea larga
 const TOPE_HILO = 5_000;          // el hilo anterior, como mucho
 const TOPE_TURNO = 1_200;         // cada turno viejo, como mucho
 /* ── HABLANDO, EL PROMPT ES OTRO ────────────────────────────────────────────
@@ -1040,21 +1051,21 @@ async function precalentar({ miembro, junta, sistema, modo = 'voz', alias = null
  * FECHAS y DECISIONES. Un resumen que dice «se habló de logística» no sirve
  * para nada; el que dice «agente de Choluteca: Mario Velásquez, cupo 3.500»
  * es justo el que hacía falta. */
-async function resumirHilo({ previa, voz = false } = {}) {
+async function resumirHilo({ previa, voz = false, senalCorte = null } = {}) {
   const turnos = previa?.turnos || [];
   const ventana = voz ? VENTANA_HILO_VOZ : VENTANA_HILO;
   const hechos = Number(previa?.resumidos || 0);
   /* Se resume lo que YA salió de la ventana, no lo que está por salir: si se
      adelantara, el mismo turno estaría en el resumen y en el hilo, y el modelo
      lo leería dos veces. */
-  const hasta = turnos.length - ventana;
+  const hasta = Math.min(turnos.length - ventana, hechos + RESUMIR_DE_UNA_VEZ);
   if (hasta <= hechos) return null;
   const nuevos = turnos.slice(hechos, hasta);
   if (!nuevos.length) return null;
 
   const anterior = String(previa?.resumen || '').trim();
   const transcripcion = nuevos
-    .map((t) => `${t.rol === 'miembro' ? 'ÉL' : 'VOS'}: ${recortar(String(t.texto || ''), 900)}`)
+    .map((t) => `${t.rol === 'miembro' ? 'ÉL' : 'VOS'}: ${recortar(String(t.texto || ''), 700)}`)
     .join('\n');
   const orden = [
     'Escribí en español, en tercera persona y en frases cortas, lo que hay que RECORDAR de este pedazo de conversación.',
@@ -1068,8 +1079,8 @@ async function resumirHilo({ previa, voz = false } = {}) {
     : `${transcripcion}\n\n${orden}`;
   try {
     const r = await pedir({ model: MODELO, stream: false,
-      options: { temperature: 0.2, num_predict: Math.floor(TOPE_RESUMEN / 3) },
-      messages: [{ role: 'user', content: cuerpo }] }, { plazo: 45_000 });
+      options: { temperature: 0.2, num_predict: Math.floor(TOPE_RESUMEN / 4) },
+      messages: [{ role: 'user', content: cuerpo }] }, { plazo: 45_000, senalCorte });
     let texto = hastaOtroAlfabeto(llamadasEnTexto(r.content || '').limpio).trim();
     if (!texto || /^nada\b/i.test(texto)) {
       /* «NADA» no es un fallo: es que ese pedazo no traía nada que guardar. Se
@@ -1077,12 +1088,20 @@ async function resumirHilo({ previa, voz = false } = {}) {
          cada turno para siempre. */
       return { resumen: anterior, resumidos: hasta, fichas: r.uso?.entrada || 0, vacio: true };
     }
-    if (texto.length > TOPE_RESUMEN) texto = recortar(texto, TOPE_RESUMEN);
+    /* Se corta por la ultima linea entera, no a media palabra: el resumen se
+       le da al modelo como hechos, y medio hecho es peor que ninguno. */
+    if (texto.length > TOPE_RESUMEN) {
+      const corte = texto.lastIndexOf('\n', TOPE_RESUMEN);
+      texto = texto.slice(0, corte > TOPE_RESUMEN / 2 ? corte : TOPE_RESUMEN).trim();
+    }
     return { resumen: texto, resumidos: hasta, fichas: r.uso?.entrada || 0 };
   } catch (e) {
     /* Que falle el resumen NO puede romper nada: la conversación sigue con su
        ventana de ocho, que es lo que había antes de todo esto. Se reintenta
-       solo en el turno siguiente porque `resumidos` no se movió. */
+       solo en el turno siguiente porque `resumidos` no se movió.
+       Y el fallo NORMAL es el bueno: llegó otra pregunta y se cortó para
+       dejarle la ranura. Eso no se escribe en rojo. */
+    if (senalCorte?.aborted || e?.codigo === 'CORTADO') return null;
     console.warn(`[nodo] no se pudo resumir el hilo: ${e?.codigo || ''} ${String(e?.message || e).slice(0, 90)}`);
     return null;
   }

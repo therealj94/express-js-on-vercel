@@ -633,6 +633,18 @@ async function resumirHilo(args) {
   return nodo.resumirHilo(args);
 }
 
+/* ── LA RANURA ES DE QUIEN PREGUNTA ──────────────────────────────────────────
+   La tarjeta tiene UNA ranura y el resumen la ocupa. Medido en producción con
+   la primera versión: los turnos pasaron de 13 s a 33 s porque cada pregunta
+   esperaba a que terminara de resumirse la anterior. El resumen arreglaba la
+   memoria y rompía la fluidez.
+   Así que el resumen es SIEMPRE lo primero que cede: en cuanto entra una
+   pregunta se corta a media frase y se le devuelve la ranura. No se pierde
+   nada — `resumidos` no se mueve y se vuelve a intentar cuando haya calma. */
+let corteDelResumen = null;
+function dejarLaRanura() { corteDelResumen?.abort(); corteDelResumen = null; }
+function nuevoCorteDeResumen() { corteDelResumen = new AbortController(); return corteDelResumen.signal; }
+
 /* Los motivos del nodo, con arreglo conocido, se suman a los de Claude. */
 const motivoClaude = motivo;
 function motivoDeCualquiera(e) {
@@ -650,6 +662,6 @@ function motivoDeCualquiera(e) {
   }
 }
 
-module.exports = { pensar, precalentar, titular, resumirHilo, encendido, cual, modelo, motivo: motivoDeCualquiera, dolaresDe, PRECIOS, MODELO, HERRAMIENTAS,
+module.exports = { pensar, precalentar, titular, resumirHilo, dejarLaRanura, nuevoCorteDeResumen, encendido, cual, modelo, motivo: motivoDeCualquiera, dolaresDe, PRECIOS, MODELO, HERRAMIENTAS,
   relevar, relevo, volverAlNodo, modoCasa,
   nodo, _adentro: { sistema, correr, clienteAnthropic, pensarConClaude, claudeEncendido, guardia, RELEVABLES } };

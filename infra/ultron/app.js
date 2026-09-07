@@ -653,7 +653,7 @@ async function resumirLoQueSalio(convId, correo, voz = false) {
     const conv = await memoria.conversacion(convId, correo);
     if (!conv) return;
     const t0 = Date.now();
-    const r = await cerebro.resumirHilo({ previa: conv, voz });
+    const r = await cerebro.resumirHilo({ previa: conv, voz, senalCorte: cerebro.nuevoCorteDeResumen() });
     if (!r) return;
     await memoria.guardarResumen(convId, correo, r);
     console.log(`[resumen] ${r.resumidos} turnos dentro · ${r.vacio ? 'nada que guardar' : `${r.resumen.length} letras`} · ${Date.now() - t0}ms`);
@@ -692,6 +692,9 @@ app.post('/pensar', puerta, frenoPensar, async (req, res) => {
     /* ── LAS DOS LECTURAS QUE HAY QUE HACER, EN PARALELO ────────────────────
        El hilo del día y las preferencias no dependen el uno del otro, y antes
        iban en fila con el pensar esperando detrás. */
+    /* Lo PRIMERO: si se estaba resumiendo la conversación anterior, que suelte
+       la ranura ya. Quien pregunta manda; el resumen espera a que haya calma. */
+    cerebro.dejarLaRanura();
     const pedidoConv = req.body?.conversacionId ? String(req.body.conversacionId) : null;
     const [hilo, pref] = await Promise.all([
       (async () => {
@@ -1025,6 +1028,7 @@ app.post('/whatsapp/entrada', async (req, res) => {
   if (!texto) return res.status(400).json({ error: 'Vacío.', codigo: 'VACIO' });
   if (!cerebro.encendido()) return res.status(503).json({ error: 'Cerebro apagado.', codigo: 'CEREBRO_APAGADO' });
   try {
+    cerebro.dejarLaRanura();
     // Un hilo por canal y miembro: el de WhatsApp de José es siempre el mismo.
     const lista = await memoria.conversacionesDe(m.correo, { limite: 50 });
     let conv = lista.find((c) => c.canal === 'whatsapp');

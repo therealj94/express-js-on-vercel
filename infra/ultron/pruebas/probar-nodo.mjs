@@ -464,6 +464,38 @@ titulo('conversación larga: lo que sale de la ventana se resume, no se tira');
   decir(r3?.vacio === true && r3?.resumidos === 6 && r3?.resumen === 'lo de antes',
     'un pedazo sin nada que guardar se marca igual, o se resumiría lo mismo para siempre', JSON.stringify(r3));
 
+  /* ── LA RANURA ES DE QUIEN PREGUNTA ────────────────────────────────────
+     La tarjeta tiene UNA ranura y el resumen la ocupa. Primera versión, medida
+     en producción: los turnos pasaron de 13 s a 33 s porque cada pregunta
+     esperaba a que se terminara de resumir la anterior. El resumen arreglaba
+     la memoria y rompía la fluidez — que era justo lo que había que arreglar.
+     Así que el resumen es lo primero que cede, siempre. */
+  const corte = cerebro.nuevoCorteDeResumen();
+  guion = [{ texto: 'un resumen larguísimo que no va a llegar a terminarse nunca porque llegó una pregunta' }];
+  const t0corte = Date.now();
+  const lento = cerebro.resumirHilo({ previa, senalCorte: corte });
+  cerebro.dejarLaRanura();
+  const cortado = await lento;
+  const msCorte = Date.now() - t0corte;
+  decir(cortado === null, 'una pregunta nueva corta el resumen y le devuelve la ranura', String(cortado));
+  decir(msCorte < 60, 'y lo corta EN EL ACTO, sin esperar a que termine de escribir', `${msCorte} ms`);
+
+  /* Y cortarlo no pierde nada: `resumidos` no se movió, así que el turno
+     siguiente lo vuelve a hacer desde el mismo sitio. */
+  guion = [{ texto: 'Agente de Choluteca: Mario Velásquez.' }];
+  const reintento = await cerebro.resumirHilo({ previa });
+  decir(reintento?.resumidos === 4, 'y el turno siguiente lo retoma desde donde estaba: no se perdió un turno', String(reintento?.resumidos));
+
+  /* Una pasada nunca es larga: si salieron veinte turnos de golpe se hacen
+     ocho ahora y el resto después. Un resumen de veinte segundos es un turno
+     de veinte segundos para el que pregunte justo después. */
+  guion = [{ texto: 'resumen' }];
+  const muchos = await cerebro.resumirHilo({ previa: { turnos: Array.from({ length: 40 }, (_, i) => turnoN(i)), resumen: '', resumidos: 0 } });
+  decir(muchos?.resumidos === 8, 'con cuarenta turnos atrasados se resumen OCHO por vuelta, no los treinta y dos', String(muchos?.resumidos));
+  decir(nodo._adentro.TOPE_RESUMEN <= 1000 && pedidos.at(-1).options.num_predict <= 250,
+    'y se le piden pocas fichas de salida: es lo que hacía que tardara veinte segundos',
+    `tope ${nodo._adentro.TOPE_RESUMEN} letras · ${pedidos.at(-1).options.num_predict} fichas`);
+
   /* Y si el motor falla, la conversación sigue con su ventana de ocho, que es
      lo que había antes de todo esto. Nada se rompe por un resumen. */
   caido = true;
