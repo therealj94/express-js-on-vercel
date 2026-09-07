@@ -156,7 +156,22 @@ async function arbol({ repo, ruta = '', rama = null }) {
   });
 }
 
-async function leer({ repo, ruta, rama = null }) {
+/* ── LEER UN ARCHIVO GRANDE, POR TROZOS Y CON NÚMERO DE LÍNEA ────────────────
+ * 7-sep. A «revisá el código del tablero y decime tres cosas que están mal, con
+ * archivo y línea», ULTRON contestó esto:
+ *
+ *   «repo_leer me devuelve siempre el mismo tramo inicial de os.html aunque le
+ *   pida desde:200 o desde:500. El archivo tiene más de 2.000 líneas y no me
+ *   deja llegar a la sección del historial.»
+ *
+ * Y tenía razón: no existía ningún `desde`. Siempre leía del principio y
+ * recortaba, así que de un archivo grande solo se veía la cabecera — para
+ * siempre, por muchas vueltas que diera. Dos cosas, y las dos las pidió él:
+ *   · `desde` y `lineas`, para ir avanzando por el archivo;
+ *   · el NÚMERO DE LÍNEA delante de cada renglón, que es lo que hace que pueda
+ *     decir «os.html:1512» en vez de «línea 200 aproximadamente».
+ */
+async function leer({ repo, ruta, rama = null, desde = 1, lineas = 0 }) {
   const r = repoValido(repo);
   if (!ruta) throw Object.assign(new Error('Hace falta la ruta del archivo.'), { codigo: 'RUTA' });
   const ref = rama || ramaCasa();
@@ -167,7 +182,26 @@ async function leer({ repo, ruta, rama = null }) {
     const buf = Buffer.from(d.content, 'base64');
     const texto = buf.toString('utf8');
     if (/ /.test(texto.slice(0, 2000))) return `${ruta}: es binario (${buf.length} bytes); no se muestra.`;
-    return texto.length > TOPE_ARCHIVO ? texto.slice(0, TOPE_ARCHIVO) + `\n\n[… recortado: ${texto.length} caracteres en total]` : texto;
+    const todas = texto.split('\n');
+    const desde1 = Math.max(1, Math.floor(Number(desde) || 1));
+    /* Cuántas líneas caben: se calcula por el tope de CARACTERES, no por un
+       número fijo, porque un archivo de líneas largas y otro de líneas cortas
+       no aguantan lo mismo. */
+    const pedidas = Math.max(0, Math.floor(Number(lineas) || 0));
+    const trozo = [];
+    let largo = 0;
+    for (let i = desde1 - 1; i < todas.length; i++) {
+      if (pedidas && trozo.length >= pedidas) break;
+      const l = `${String(i + 1).padStart(5)}  ${todas[i]}`;
+      if (largo + l.length > TOPE_ARCHIVO) break;
+      trozo.push(l); largo += l.length + 1;
+    }
+    if (!trozo.length) return `${ruta}: el archivo tiene ${todas.length} líneas y usted pidió desde la ${desde1}.`;
+    const ultima = desde1 - 1 + trozo.length;
+    const cola = ultima < todas.length
+      ? `\n\n[… van ${desde1}-${ultima} de ${todas.length} líneas. Para seguir: repo_leer con desde: ${ultima + 1}]`
+      : `\n\n[fin del archivo · ${todas.length} líneas]`;
+    return `${ruta} (líneas ${desde1}-${ultima} de ${todas.length})\n${trozo.join('\n')}${cola}`;
   });
 }
 

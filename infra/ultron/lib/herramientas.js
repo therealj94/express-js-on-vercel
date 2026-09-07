@@ -238,8 +238,8 @@ const DEFINICIONES = [
   },
   {
     name: 'repo_leer',
-    description: 'Lee un archivo ENTERO del repositorio, de la rama que ULTRON está corriendo. Leer antes de tocar: un cambio sobre un archivo que no se leyó completo rompe algo diez líneas más abajo.',
-    input_schema: { type: 'object', properties: { repo: { type: 'string' }, ruta: { type: 'string' }, rama: { type: 'string' } }, required: ['ruta'] },
+    description: 'Lee un archivo del repositorio, de la rama que ULTRON está corriendo, CON EL NÚMERO DE LÍNEA delante de cada renglón — así se puede decir «os.html:1512» y no «como por la línea 200». Un archivo grande no cabe de una vez: se lee un trozo, el resultado dice hasta dónde llegó, y se sigue con `desde` en la línea siguiente. Leer antes de tocar: un cambio sobre un archivo que no se leyó completo rompe algo diez líneas más abajo.',
+    input_schema: { type: 'object', properties: { repo: { type: 'string' }, ruta: { type: 'string' }, rama: { type: 'string' }, desde: { type: 'number', description: 'desde qué línea seguir leyendo (la primera es 1)' }, lineas: { type: 'number', description: 'cuántas líneas traer; si no se dice, las que quepan' } }, required: ['ruta'] }
   },
   {
     name: 'repo_buscar',
