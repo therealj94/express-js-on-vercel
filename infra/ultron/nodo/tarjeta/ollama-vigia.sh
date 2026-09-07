@@ -107,7 +107,7 @@ done
 
 # Y los dos modelos clavados otra vez, o el primero que pregunte paga la carga.
 curl -s -o /dev/null -m 300 "$OLLAMA/api/chat" \
-  -d "{\"model\":\"$MODELO\",\"stream\":false,\"think\":false,\"keep_alive\":-1,\"options\":{\"num_ctx\":32768,\"num_predict\":4},\"messages\":[{\"role\":\"user\",\"content\":\"listo\"}]}" || true
+  -d "{\"model\":\"$MODELO\",\"stream\":false,\"think\":false,\"keep_alive\":-1,\"options\":{\"num_ctx\":24576,\"num_predict\":4},\"messages\":[{\"role\":\"user\",\"content\":\"listo\"}]}" || true
 curl -s -o /dev/null -m 120 "$OLLAMA/api/embed" \
   -d "{\"model\":\"$VECTOR\",\"input\":\"listo\",\"keep_alive\":-1}" || true
 

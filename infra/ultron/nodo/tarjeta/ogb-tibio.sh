@@ -17,7 +17,7 @@
 # El pulso ademas refresca keep_alive: -1, o sea que hace el trabajo del
 # precalentador de arranque sin volver a leer 16 GB de disco.
 T0=$(date +%s%3N)
-R=$(curl -s -m 120 http://127.0.0.1:11434/api/chat -d '{"model":"qwen3.8:27b","stream":false,"think":false,"keep_alive":-1,"options":{"num_ctx":32768,"num_predict":4},"messages":[{"role":"user","content":"listo"}]}')
+R=$(curl -s -m 120 http://127.0.0.1:11434/api/chat -d '{"model":"qwen3.8:27b","stream":false,"think":false,"keep_alive":-1,"options":{"num_ctx":24576,"num_predict":4},"messages":[{"role":"user","content":"listo"}]}')
 MS=$(( $(date +%s%3N) - T0 ))
 curl -s -m 60 -o /dev/null http://127.0.0.1:11434/api/embed -d '{"model":"embeddinggemma:300m","input":"listo","keep_alive":-1}' || true
 if [ -z "$R" ]; then
