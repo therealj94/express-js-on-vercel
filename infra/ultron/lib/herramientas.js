@@ -735,12 +735,17 @@ async function correrAdentro(nombre, entrada, ctx) {
           + 'Las tres corren AHORA MISMO, sin pedirle permiso a nadie. Seguí con una de ellas en esta misma vuelta.';
       }
     }
-    const ojo = permisos.puede(ctx.miembro, nombre, ctx.junta || []);
+    /* OJO CON EL NOMBRE. Esto se llamaba `ojo` —de «echarle un ojo»— y el
+       7-sep entró `lib/ojo.js`, el navegador. La variable local tapaba al
+       módulo dentro de TODO el switch: `leer_pagina` seguía funcionando
+       porque vive en otra función, y `pagina_foto` moría con «ojo.foto is not
+       a function». Se llama `permiso`, que además es lo que es. */
+    const permiso = permisos.puede(ctx.miembro, nombre, ctx.junta || []);
     /* `_yaAutorizado` solo lo pone `aprobado_correr`, después de haber
        encontrado el pedido aprobado y de haberlo marcado como usado. No entra
        nunca desde fuera: `ctx` lo arma el servidor, no el modelo. */
-    if (!ojo.ok && !ctx._yaAutorizado) {
-      if (!ojo.autorizable) return `No se puede: ${ojo.motivo}`;
+    if (!permiso.ok && !ctx._yaAutorizado) {
+      if (!permiso.autorizable) return `No se puede: ${permiso.motivo}`;
       const { motivo: motivoPedido, ...entradaLimpia } = entrada;
       const aprob = await permisos.consumirAprobacion(nombre, entradaLimpia);
       if (!aprob) {

@@ -797,3 +797,24 @@ process.exit(malas ? 1 : 0);
     'la clave de un guion sale de la BÓVEDA, por su nombre',
     'si el modelo pudiera escribir el valor, la clave quedaría en la conversación — y la conversación se lee');
 }
+
+{
+  /* ── QUE NINGUNA VARIABLE LOCAL TAPE UN MÓDULO ────────────────────────────
+     El 7-sep `pagina_foto` murió con «ojo.foto is not a function» y el ojo
+     estaba perfecto. Dentro de `correrAdentro` había un `const ojo` —el
+     resultado del permiso, de «echarle un ojo»— que tapaba a `lib/ojo.js` en
+     TODO el switch. `leer_pagina` seguía funcionando porque vive en otra
+     función, así que media herramienta andaba y media no.
+     No lo atrapó ninguna prueba: se vio corriendo las herramientas de verdad
+     contra el ojo de producción. Esta prueba es para que la próxima sí. */
+  titulo('ningún nombre local tapa un módulo');
+  const fs = await import('node:fs');
+  const fuente = fs.readFileSync(new URL('../lib/herramientas.js', import.meta.url), 'utf8');
+  const modulos = [...fuente.matchAll(/^const (\w+) = require\('\.\/([\w-]+)'\);/gm)].map((m) => m[1]);
+  decir(modulos.includes('ojo'), 'el ojo se importa como módulo', modulos.join(', '));
+  const cuerpo = fuente.slice(fuente.indexOf('async function correrAdentro'));
+  const tapados = modulos.filter((n) => new RegExp(`^\\s*(const|let|var)\\s+${n}\\s*=`, 'm').test(cuerpo));
+  decir(tapados.length === 0,
+    'y ninguna variable de correrAdentro se llama igual que un módulo importado',
+    tapados.length ? `TAPA: ${tapados.join(', ')} — dentro del switch ya no sería el módulo` : 'ninguna');
+}
