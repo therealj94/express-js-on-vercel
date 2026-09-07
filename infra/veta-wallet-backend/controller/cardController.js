@@ -1061,21 +1061,50 @@ export const cardWebhook = async (req, res) => {
             break;
 
           // authorization / cleared / deposit
-          case "authorization":
-            // Si la autorización fue declinada → guardar evento de notificación
-            if (data?.status === "DECLINED" || status === "DECLINED") {
-              await CardEvent.create({
-                userId: card.userId,
-                cardId: cardId,
-                type: "DECLINED",
-                amount: data?.amount,
-                currency: data?.currency || "USD",
-                merchant: data?.merchant_name || data?.description || "Comercio",
-                message: "Tu tarjeta fue declinada en una transacción",
-              });
+          case "authorization": {
+            /* ── EL AVISO DE QUE PAGASTE ────────────────────────────────────
+               Hasta hoy solo se guardaba el RECHAZO. El aviso del pago
+               aprobado llegaba a este mismo servidor y se tiraba, así que la
+               tarjeta solo hablaba cuando fallaba: pagabas bien y no te
+               enteraba nadie. Una tarjeta que solo avisa cuando algo sale mal
+               se siente rota aunque funcione.
+               Y el monto se guarda TAMBIÉN en ORIGEN: en esta casa la tarjeta
+               se cuenta en ORIGEN, y un aviso en dólares sería el único sitio
+               donde de repente se habla otra moneda. */
+            const rechazada = data?.status === "DECLINED" || status === "DECLINED";
+            const comercio = data?.merchant_name || data?.description || "Comercio";
+            const monto = Number(data?.amount);
+
+            let enOrigen = null;
+            if (Number.isFinite(monto) && monto > 0) {
+              /* Si el precio no se puede leer, el aviso sale igual sin la cifra
+                 en ORIGEN. Un aviso a medias llega; uno que no sale, no. */
+              try {
+                const precio = await getOrigenPriceUsd();
+                if (precio > 0) enOrigen = monto / precio;
+              } catch (e) {
+                console.log("aviso de tarjeta: sin precio de ORIGEN —", e.message);
+              }
             }
+            const cifra = enOrigen != null
+              ? `${enOrigen.toLocaleString("es-HN", { maximumFractionDigits: 4 })} ORIGEN`
+              : null;
+
+            await CardEvent.create({
+              userId: card.userId,
+              cardId: cardId,
+              type: rechazada ? "DECLINED" : "APPROVED",
+              amount: monto,
+              origenAmount: enOrigen,
+              currency: data?.currency || "USD",
+              merchant: comercio,
+              message: rechazada
+                ? `Tu tarjeta fue declinada en ${comercio}${cifra ? ` por ${cifra}` : ""}`
+                : `Pagaste${cifra ? ` ${cifra}` : ""} en ${comercio}`,
+            });
             console.log(`CryptoMate authorization: card=${cardId} status=${data?.status} amount=${data?.amount}`);
             break;
+          }
           case "cleared":
           case "deposit":
             console.log(`CryptoMate ${event_type}: card=${cardId} amount=${data?.amount} currency=${data?.currency}`);
