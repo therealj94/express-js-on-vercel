@@ -136,6 +136,17 @@ def main():
         f'curl -sS --fail -o /srv/aura/PROMPT-AURA.md.nuevo "{urls["PROMPT-AURA.md"]}"',
         'grep -q \'```\' /srv/aura/PROMPT-AURA.md.nuevo',
         'mv /srv/aura/PROMPT-AURA.md.nuevo /srv/aura/PROMPT-AURA.md',
+        # LA CABECERA DE LA CASA. Va aqui, con su propia descarga, y no basta
+        # con ponerla en LADO: LADO solo SUBE a S3 — cada bajada esta escrita a
+        # mano en esta lista. Ponerla arriba y olvidar esta linea fue
+        # exactamente lo que paso el 7-sep: `cargar_prompt()` empezo a leer un
+        # archivo que no existia y AU-RA se quedo reiniciandose en bucle.
+        # Se comprueba antes de moverla: sin la regla de «respaldados» dentro,
+        # esto no es la cabecera —o llego a medias— y es mejor quedarse con la
+        # de antes que arrancar sin las reglas que protegen a la gente.
+        f'curl -sS --fail -o /srv/aura/cabecera-de-la-casa.md.nuevo "{urls["cabecera-de-la-casa.md"]}"',
+        'grep -q \'Nunca se dice\' /srv/aura/cabecera-de-la-casa.md.nuevo',
+        'mv /srv/aura/cabecera-de-la-casa.md.nuevo /srv/aura/cabecera-de-la-casa.md',
     ]
 
     for nombre in ARCHIVOS:
