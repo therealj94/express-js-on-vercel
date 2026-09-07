@@ -658,35 +658,43 @@ app.post('/precalentar', puerta, (req, res) => {
    nadie está pensando y hace un rato que nadie escribe. Sigue cediendo la
    ranura si llega una pregunta a media frase, y entonces la conversación
    vuelve a la lista y se hace en la calma siguiente. */
-const porResumir = new Map();   // convId → { correo, voz, cuando }
-const CALMA_MS = 6_000;         // lo que se espera sin nadie escribiendo
-function apuntarParaResumir(convId, correo, voz = false) {
-  porResumir.set(String(convId), { correo, voz, cuando: Date.now() });
+const porResumir = new Map();   // convId → { correo, voz, cuando, atrasados }
+const CALMA_MS = 3_000;         // lo que se espera sin nadie escribiendo
+const ATRASO_QUE_NO_ESPERA = 12; // turnos sin resumir que ya no admiten esperar
+function apuntarParaResumir(convId, correo, voz = false, atrasados = 0) {
+  porResumir.set(String(convId), { correo, voz, cuando: Date.now(), atrasados });
 }
 async function resumirLoQueSalio(convId, correo, voz = false) {
   try {
     const conv = await memoria.conversacion(convId, correo);
-    if (!conv) return false;
+    if (!conv) return 0;
     const t0 = Date.now();
     const r = await cerebro.resumirHilo({ previa: conv, voz, senalCorte: cerebro.nuevoCorteDeResumen() });
-    if (!r) return false;
+    if (!r) return 0;
     const guardado = await memoria.guardarResumen(convId, correo, r);
     console.log(`[resumen] ${r.resumidos} turnos dentro · ${r.vacio ? 'nada que guardar' : `${r.resumen.length} letras`}`
       + ` · ${Date.now() - t0}ms${guardado ? '' : ' · NO SE GUARDÓ (otro turno llegó antes)'}`);
-    /* Devuelve si queda trabajo: con muchos turnos atrasados se resumen de a
-       ocho, así que puede hacer falta otra vuelta. */
-    return guardado && r.resumidos < (conv.turnos || []).length - 8;
-  } catch (e) { console.warn('[resumen] no se pudo:', e?.message); return false; }
+    /* Devuelve CUÁNTOS turnos quedan sin resumir: con muchos atrasados se hacen
+       de a ocho, así que puede hacer falta otra vuelta — y si son muchos, la
+       siguiente ya no espera a que haya calma. */
+    return guardado ? Math.max(0, (conv.turnos || []).length - 8 - r.resumidos) : 0;
+  } catch (e) { console.warn('[resumen] no se pudo:', e?.message); return 0; }
 }
 setInterval(() => {
+  /* `pensando > 0` NO se negocia: mientras alguien espera una respuesta, la
+     ranura es suya y punto. La calma sí: si se acumularon muchos turnos sin
+     resumir, esperar más sería quedarse sin memoria por no gastar siete
+     segundos. Y aunque arranque, sigue cortándose en cuanto entre una
+     pregunta. */
   if (!porResumir.size || pensando > 0) return;
   const [convId, dato] = [...porResumir.entries()][0];
-  if (Date.now() - dato.cuando < CALMA_MS) return;
+  const corrido = Date.now() - dato.cuando;
+  if (corrido < CALMA_MS && dato.atrasados < ATRASO_QUE_NO_ESPERA) return;
   porResumir.delete(convId);
   resumirLoQueSalio(convId, dato.correo, dato.voz)
-    .then((queda) => { if (queda) apuntarParaResumir(convId, dato.correo, dato.voz); })
+    .then((quedan) => { if (quedan > 0) apuntarParaResumir(convId, dato.correo, dato.voz, quedan); })
     .catch(() => {});
-}, 2_000).unref();
+}, 1_500).unref();
 
 app.post('/pensar', puerta, frenoPensar, async (req, res) => {
   const texto = String(req.body?.texto || '').trim().slice(0, 12_000);
