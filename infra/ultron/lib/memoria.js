@@ -275,11 +275,27 @@ async function anotarTurno(id, miembro, turno) {
 /* Se guarda con `resumidos` en el `where` a propósito: si dos turnos llegaron
    a la vez y los dos resumieron, el segundo en escribir no puede pisar al
    primero con una cuenta más vieja. Sin esto, un resumen bueno se perdería y
-   quedaría un hueco de turnos que no están ni en la ventana ni en el resumen. */
+   quedaría un hueco de turnos que no están ni en la ventana ni en el resumen.
+
+   ── Y EL `$exists`, QUE NO ES ADORNO ──────────────────────────────────────
+   La primera versión decía solo `resumidos: { $lt: resumidos }`, y en Mongo
+   `$lt` NO encuentra un documento donde el campo no existe. Todas las
+   conversaciones de antes de esto no lo tienen, así que ninguna entraba — y
+   en silencio, porque `updateOne` no falla, simplemente no toca nada.
+   Se vio contra producción: 72 turnos, el registro diciendo «[resumen] 26
+   turnos dentro», y el campo sin escribir. El `default: 0` del esquema no
+   salva: solo vale para los documentos NUEVOS. */
+/* Sale aparte para poder PROBARLO: el fallo estaba en el filtro y el almacén
+   de mentira de las pruebas no lo reproduce —ahí un campo que falta cuenta
+   como cero y funciona—. Lo único que lo habría cazado es mirar el filtro. */
+function filtroDeResumen(id, miembro, resumidos) {
+  return { _id: id, miembro, $or: [{ resumidos: { $exists: false } }, { resumidos: { $lt: resumidos } }] };
+}
+
 async function guardarResumen(id, miembro, { resumen, resumidos }) {
   if (conMongo) {
     const r = await Conversacion.updateOne(
-      { _id: id, miembro, resumidos: { $lt: resumidos } },
+      filtroDeResumen(id, miembro, resumidos),
       { $set: { resumen: String(resumen).slice(0, 4000), resumidos } });
     return r.modifiedCount > 0;
   }
@@ -439,7 +455,7 @@ module.exports = {
   anotarPendiente, pendientes, cerrarPendiente, borrarPendiente, mismoPendiente,
   anotarGasto, gasto,
   recordar, olvidar, memoriasDe,
-  abrirConversacion, conversacion, conversacionesDe, anotarTurno, titular, guardarResumen,
+  abrirConversacion, conversacion, conversacionesDe, anotarTurno, titular, guardarResumen, filtroDeResumen,
   conversacionDelDia, registroPorDia, diaDe, bordesDelDia,
   guardarDocumento, documentos, documento,
   Memoria, Conversacion, Documento, Pendiente, Gasto,

@@ -648,17 +648,45 @@ app.post('/precalentar', puerta, (req, res) => {
    leyendo. Si falla, no pasa nada — `resumidos` no se mueve y se reintenta en
    el turno siguiente; mientras tanto la conversación sigue con su ventana de
    ocho, que es lo que había antes de todo esto. */
+/* ── Y ESPERA A QUE HAYA CALMA ───────────────────────────────────────────────
+   Primera versión: el resumen salía justo después de contestar y se cortaba en
+   cuanto entraba la pregunta siguiente. Con alguien escribiendo seguido eso
+   quiere decir que NO CORRÍA NUNCA — comprobado contra producción: 72 turnos y
+   el campo sin escribir una sola vez.
+   Así que no sale de la ruta: la ruta solo apunta «esta conversación tiene
+   turnos sin resumir». Este obrero mira cada pocos segundos y arranca cuando
+   nadie está pensando y hace un rato que nadie escribe. Sigue cediendo la
+   ranura si llega una pregunta a media frase, y entonces la conversación
+   vuelve a la lista y se hace en la calma siguiente. */
+const porResumir = new Map();   // convId → { correo, voz, cuando }
+const CALMA_MS = 6_000;         // lo que se espera sin nadie escribiendo
+function apuntarParaResumir(convId, correo, voz = false) {
+  porResumir.set(String(convId), { correo, voz, cuando: Date.now() });
+}
 async function resumirLoQueSalio(convId, correo, voz = false) {
   try {
     const conv = await memoria.conversacion(convId, correo);
-    if (!conv) return;
+    if (!conv) return false;
     const t0 = Date.now();
     const r = await cerebro.resumirHilo({ previa: conv, voz, senalCorte: cerebro.nuevoCorteDeResumen() });
-    if (!r) return;
-    await memoria.guardarResumen(convId, correo, r);
-    console.log(`[resumen] ${r.resumidos} turnos dentro · ${r.vacio ? 'nada que guardar' : `${r.resumen.length} letras`} · ${Date.now() - t0}ms`);
-  } catch (e) { console.warn('[resumen] no se pudo:', e?.message); }
+    if (!r) return false;
+    const guardado = await memoria.guardarResumen(convId, correo, r);
+    console.log(`[resumen] ${r.resumidos} turnos dentro · ${r.vacio ? 'nada que guardar' : `${r.resumen.length} letras`}`
+      + ` · ${Date.now() - t0}ms${guardado ? '' : ' · NO SE GUARDÓ (otro turno llegó antes)'}`);
+    /* Devuelve si queda trabajo: con muchos turnos atrasados se resumen de a
+       ocho, así que puede hacer falta otra vuelta. */
+    return guardado && r.resumidos < (conv.turnos || []).length - 8;
+  } catch (e) { console.warn('[resumen] no se pudo:', e?.message); return false; }
 }
+setInterval(() => {
+  if (!porResumir.size || pensando > 0) return;
+  const [convId, dato] = [...porResumir.entries()][0];
+  if (Date.now() - dato.cuando < CALMA_MS) return;
+  porResumir.delete(convId);
+  resumirLoQueSalio(convId, dato.correo, dato.voz)
+    .then((queda) => { if (queda) apuntarParaResumir(convId, dato.correo, dato.voz); })
+    .catch(() => {});
+}, 2_000).unref();
 
 app.post('/pensar', puerta, frenoPensar, async (req, res) => {
   const texto = String(req.body?.texto || '').trim().slice(0, 12_000);
@@ -756,7 +784,7 @@ app.post('/pensar', puerta, frenoPensar, async (req, res) => {
         if (t) { await memoria.titular(convId, req.miembro.correo, t); emitir('titulo', { titulo: t }); }
       } catch { /* sin título se vive; la conversación ya está guardada */ }
     }
-    await resumirLoQueSalio(convId, req.miembro.correo, modo === 'voz');
+    apuntarParaResumir(convId, req.miembro.correo, modo === 'voz');
   } catch (e) {
     const m = cerebro.motivo(e);
     /* Un turno cancelado no es un fallo: no se escribe en rojo en el registro
@@ -1041,9 +1069,8 @@ app.post('/whatsapp/entrada', async (req, res) => {
     const plano = r.texto.replace(/^#{1,6}\s*/gm, '').replace(/\*\*(.+?)\*\*/g, '*$1*').replace(/`/g, '');
     res.json({ respuesta: plano.slice(0, 4000), documentos: r.documentos, envios: r.envios.length });
     /* Y acá más que en ningún lado: el hilo de WhatsApp es UNO SOLO para
-       siempre, así que sin resumen lo de la semana pasada no existe. Después
-       de contestar, que es lo que importa. */
-    await resumirLoQueSalio(String(conv._id), m.correo, false);
+       siempre, así que sin resumen lo de la semana pasada no existe. */
+    apuntarParaResumir(String(conv._id), m.correo, false);
   } catch (e) {
     // Por WhatsApp no se cuenta el detalle de una avería nuestra: quien
     // escribe no puede hacer nada con eso. Va al registro, con su nombre.

@@ -507,6 +507,27 @@ titulo('conversación larga: lo que sale de la ventana se resume, no se tira');
     'sin resumen, el prompt es el de siempre: system, ocho turnos y la pregunta', `${m4.length} mensajes`);
 }
 
+titulo('el resumen se GUARDA de verdad, que es donde falló la primera vez');
+{
+  /* ── EL FALLO, TAL CUAL PASÓ ──────────────────────────────────────────────
+     Se desplegó, el registro decía «[resumen] 26 turnos dentro · 1401 letras»
+     y el campo NO estaba escrito. 72 turnos y ni uno guardado.
+
+     El filtro era `{ resumidos: { $lt: n } }`, y en Mongo `$lt` NO encuentra un
+     documento donde el campo no existe. Todas las conversaciones de antes de
+     esto no lo tenían. `updateOne` no falla en ese caso: no toca nada y
+     devuelve cero, o sea que el fallo era MUDO.
+
+     El almacén de mentira de estas pruebas no lo reproduce —ahí un campo que
+     falta cuenta como cero y todo funciona—, así que lo único que lo habría
+     cazado es mirar el filtro, que es lo que se hace acá. */
+  const f = memoria.filtroDeResumen('abc', 'jose@ordenglobal.org', 6);
+  const rama = JSON.stringify(f.$or || []);
+  decir(/\$exists/.test(rama), 'el filtro contempla la conversación que TODAVÍA no tiene el campo', rama);
+  decir(/\$lt/.test(rama), 'y sigue sin dejar que un resumen viejo pise a uno nuevo', rama);
+  decir(f._id === 'abc' && f.miembro === 'jose@ordenglobal.org', 'y sigue siendo de su dueño: nadie resume la conversación de otro');
+}
+
 titulo('el turno tiene techo: lo obligatorio siempre corre, lo opcional solo si queda tiempo');
 {
   /* ── LO QUE PASÓ DE VERDAD, 7-sep ─────────────────────────────────────────
