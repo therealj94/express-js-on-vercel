@@ -127,7 +127,7 @@ titulo('un turno simple: el texto sale en vivo y el prompt lleva lo suyo');
   const nombres = (p.tools || []).map((t) => t.function.name);
   decir(Array.isArray(p.tools) && nombres.includes('buscar_web') && nombres.includes('estado_vivo'),
     'las herramientas van en formato de Ollama, con las de todos los días', nombres.join(','));
-  decir(nombres.length <= 14, `y van pocas, no las 64: ${nombres.length} en el turno`);
+  decir(nombres.length <= 18, `y van pocas, no las 64: ${nombres.length} en el turno`);
   decir(nombres.includes('mas_herramientas'), 'con la puerta para pedir las demás, que viaja siempre');
   decir(!nombres.includes('terminal') && !nombres.includes('desplegarse'),
     'y lo peligroso no viaja hasta que hace falta: la terminal no está a la vista');
@@ -154,9 +154,14 @@ titulo('pedir una caja: y en la vuelta siguiente las herramientas están');
   const vueltas = pedidos.slice(antes);
   const enLaPrimera = (vueltas[0].tools || []).map((t) => t.function.name);
   const enLaSegunda = (vueltas[1]?.tools || []).map((t) => t.function.name);
-  decir(!enLaPrimera.includes('repo_leer') && enLaPrimera.includes('mas_herramientas'),
+  /* Leer el código NO se pide: `repo_arbol`, `repo_leer` y `repo_buscar` van
+     en el núcleo desde el 7-sep. Lo que sigue en la caja es lo que ESCRIBE o
+     pide permiso —proponer un cambio, la terminal, desplegarse— y eso sí. */
+  decir(!enLaPrimera.includes('terminal') && enLaPrimera.includes('mas_herramientas'),
     'en la primera vuelta el taller no viaja, pero sí la puerta', `${enLaPrimera.length} herramientas`);
-  decir(enLaSegunda.includes('repo_leer') && enLaSegunda.includes('terminal'),
+  decir(enLaPrimera.includes('repo_leer'),
+    'aunque leer el código sí, que para eso está en el núcleo: no cuesta una vuelta preguntar dónde está algo');
+  decir(enLaSegunda.includes('terminal') && enLaSegunda.includes('repo_proponer_cambio'),
     'y en la segunda, con la caja pedida, el taller YA viaja', `${enLaSegunda.length} herramientas`);
   decir(enLaSegunda.includes('estado_vivo'), 'sin perder las de todos los días');
   decir(r.texto === 'Ya puedo mirar el repositorio.', 'y el turno termina normal', r.texto);
@@ -166,7 +171,7 @@ titulo('pedir una caja: y en la vuelta siguiente las herramientas están');
   guion = [{ texto: 'Hola.' }];
   await cerebro.pensar({ miembro: JOSE, junta: JUNTA, texto: 'hola' });
   const nueva = (pedidos.slice(despues)[0].tools || []).map((t) => t.function.name);
-  decir(!nueva.includes('repo_leer'), 'y en la pregunta siguiente el taller ya no viaja: la caja se cerró sola',
+  decir(!nueva.includes('terminal'), 'y en la pregunta siguiente el taller ya no viaja: la caja se cerró sola',
     `${nueva.length} herramientas`);
 }
 
