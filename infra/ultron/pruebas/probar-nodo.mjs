@@ -47,7 +47,11 @@ const sv = createServer((q, r) => {
     const pedido = JSON.parse(cuerpo || '{}'); pedidos.push(pedido);
     const paso = guion.shift() || { texto: 'Fin.' };
     r.writeHead(200, { 'Content-Type': 'application/x-ndjson' });
-    const trozos = (paso.texto || '').match(/.{1,9}/g) || [];
+    /* `[\s\S]` y no `.`: el punto NO casa saltos de línea, así que el motor de
+       mentira se COMÍA los saltos y todo llegaba en un párrafo. Se descubrió
+       probando el recorte del resumen, que corta por líneas: la prueba se
+       ponía roja por el andamio, no por el código. */
+    const trozos = (paso.texto || '').match(/[\s\S]{1,9}/g) || [];
     let i = 0;
     const tic = setInterval(() => {
       if (i < trozos.length) { r.write(JSON.stringify({ message: { role: 'assistant', content: trozos[i++] }, done: false }) + '\n'); return; }
@@ -515,9 +519,28 @@ titulo('conversación larga: lo que sale de la ventana se resume, no se tira');
   const pedido = pedidos.at(-1).messages.at(-1).content;
   decir(/turno número 31/.test(pedido) && !/turno número 3\b/.test(pedido),
     'y lo que resume son los ocho ÚLTIMOS que salieron, no los ocho más viejos');
-  decir(nodo._adentro.TOPE_RESUMEN <= 1000 && pedidos.at(-1).options.num_predict <= 250,
-    'y se le piden pocas fichas de salida: es lo que hacía que tardara veinte segundos',
+  /* Las fichas de SALIDA son el techo de verdad del resumen: por muchas letras
+     que se permita guardar, no puede tener más de lo que el modelo alcanza a
+     escribir en una pasada. Con 466 tardaba veinte segundos y se comía el
+     turno siguiente; con 250 se llenaba a las diez líneas y lo nuevo ya no
+     cabía. 400 son unas quince líneas y siguen siendo siete segundos, que se
+     pagan en la calma y se cortan si alguien pregunta. */
+  decir(pedidos.at(-1).options.num_predict <= 400 && nodo._adentro.TOPE_RESUMEN <= 1600,
+    'las fichas de salida son pocas: son el techo real del resumen y lo que le costaba veinte segundos',
     `tope ${nodo._adentro.TOPE_RESUMEN} letras · ${pedidos.at(-1).options.num_predict} fichas`);
+
+  /* ── Y SI NO CABE, SE TIRA LO VIEJO ────────────────────────────────────
+     Cortaba por la COLA, y la cola es donde va lo último que pasó. Medido
+     contra producción: el resumen se llenó de nombres de la mañana y se cortó
+     justo antes del taller y del tope de esa misma tarde. Se perdía
+     exactamente lo que se acababa de hablar. */
+  const largo = Array.from({ length: 60 }, (_, i) => `- dato viejo número ${i} con su relleno para ocupar sitio`).join('\n')
+    + '\n- LO ÚLTIMO: el taller es el martes 19 a las 2.';
+  guion = [{ texto: largo }];
+  const recortado = await cerebro.resumirHilo({ previa });
+  decir(/LO ÚLTIMO/.test(recortado?.resumen || ''), 'lo último sobrevive al recorte', (recortado?.resumen || '').slice(-60));
+  decir(!/dato viejo número 0\b/.test(recortado?.resumen || ''), 'y lo que se suelta es lo de arriba, que es lo más viejo');
+  decir((recortado?.resumen || '').length <= nodo._adentro.TOPE_RESUMEN, 'sin pasarse del tope', String((recortado?.resumen || '').length));
 
   /* Y si el motor falla, la conversación sigue con su ventana de ocho, que es
      lo que había antes de todo esto. Nada se rompe por un resumen. */

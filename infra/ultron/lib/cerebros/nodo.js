@@ -132,7 +132,7 @@ const VENTANA_HILO_VOZ = 4;
    nombres y las cifras vale igual que uno de mil cuatrocientas con adjetivos.
    Y se limita cuanto se resume DE UNA VEZ: si salieron veinte turnos de golpe,
    se hacen ocho ahora y el resto en el turno siguiente, que no corre prisa. */
-const TOPE_RESUMEN = 1_000;       // el resumen del hilo, como mucho
+const TOPE_RESUMEN = 1_600;       // el resumen del hilo, como mucho
 const RESUMIR_DE_UNA_VEZ = 8;     // turnos por pasada, para que ninguna sea larga
 const TOPE_HILO = 5_000;          // el hilo anterior, como mucho
 const TOPE_TURNO = 1_200;         // cada turno viejo, como mucho
@@ -1188,10 +1188,16 @@ async function resumirHilo({ previa, voz = false, senalCorte = null } = {}) {
       + ' MUY IMPORTANTE: si algo de lo nuevo CAMBIA o CORRIGE un dato de la lista vieja —otro nombre para el mismo puesto,'
       + ' otra fecha para la misma reunión, otra cifra para el mismo tope—, dejá SOLO el nuevo y borrá el viejo.'
       + ' La lista dice cómo están las cosas AHORA, no cómo fueron cambiando.'
+      + ' Poné lo más reciente ABAJO. Y si no te cabe todo, tirá las líneas de arriba: lo de hace un rato importa más que lo de esta mañana.'
     : `${transcripcion}\n\n${orden}`;
   try {
     const r = await pedir({ model: MODELO, stream: false,
-      options: { temperature: 0.2, num_predict: Math.floor(TOPE_RESUMEN / 4) },
+      /* Las fichas de salida son el techo DE VERDAD del resumen: por muchas
+         letras que se permitan guardar, el resumen no puede tener más de lo
+         que el modelo alcanza a escribir en una pasada. Con 250 se llenaba a
+         las diez líneas y a partir de ahí lo nuevo no cabía. 400 son unas
+         quince, y siguen siendo siete segundos de tarjeta en la calma. */
+      options: { temperature: 0.2, num_predict: 400 },
       messages: [{ role: 'user', content: cuerpo }] }, { plazo: 45_000, senalCorte });
     let texto = hastaOtroAlfabeto(llamadasEnTexto(r.content || '').limpio).trim();
     if (!texto || /^nada\b/i.test(texto)) {
@@ -1200,11 +1206,18 @@ async function resumirHilo({ previa, voz = false, senalCorte = null } = {}) {
          cada turno para siempre. */
       return { resumen: anterior, resumidos: hasta, fichas: r.uso?.entrada || 0, vacio: true };
     }
-    /* Se corta por la ultima linea entera, no a media palabra: el resumen se
-       le da al modelo como hechos, y medio hecho es peor que ninguno. */
+    /* ── SI NO CABE, SE TIRA LO VIEJO, NO LO NUEVO ──────────────────────
+       Esto cortaba por la COLA, y la cola es donde el modelo pone lo último
+       que pasó. Medido contra producción: el resumen se llenó de nombres de
+       la mañana y se cortó justo antes del taller y del tope de esa misma
+       tarde — se perdía exactamente lo que se acababa de hablar.
+       Ahora se sueltan líneas por ARRIBA hasta que quepa. Se corta por línea
+       entera: el resumen se le da al modelo como hechos, y medio hecho es
+       peor que ninguno. */
     if (texto.length > TOPE_RESUMEN) {
-      const corte = texto.lastIndexOf('\n', TOPE_RESUMEN);
-      texto = texto.slice(0, corte > TOPE_RESUMEN / 2 ? corte : TOPE_RESUMEN).trim();
+      const lineas = texto.split('\n');
+      while (lineas.length > 1 && lineas.join('\n').length > TOPE_RESUMEN) lineas.shift();
+      texto = lineas.join('\n').slice(0, TOPE_RESUMEN).trim();
     }
     return { resumen: texto, resumidos: hasta, fichas: r.uso?.entrada || 0 };
   } catch (e) {
