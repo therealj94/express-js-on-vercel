@@ -673,6 +673,54 @@ titulo('un PDF es UNA llamada, no cuatro vueltas y dos cajas');
     'y exportar_pdf queda en la caja de documentos, para los que ya estaban escritos');
 }
 
+titulo('dijo que lo guardaba: se comprueba que de verdad lo guardó');
+{
+  /* ── LO QUE PASÓ DE VERDAD, 7-sep ─────────────────────────────────────────
+     Tres rondas contra producción, nueve datos que se le pidió recordar:
+
+       «a la corresponsal de Yoro la llamamos ROSIBEL AGUILAR, cupo 6.400»
+       → «Guardado para toda la junta: corresponsal de Yoro, ROSIBEL AGUILAR»
+       ...trece turnos después...
+       → «No aparece en mi memoria»
+
+     Y en /memorias no había nada: nunca llamó a `recordar`. De los nueve datos
+     guardó tres. De los otros seis dijo que sí.
+
+     Es el fallo del PDF otra vez —decir que hizo algo que no hizo— y acá es
+     peor: el PDF se nota al momento porque no hay botón, y esto no se nota
+     hasta que hace falta el dato semanas después. Era también la causa de
+     fondo de «se pierde en conversación larga». */
+  const conv = await memoria.abrirConversacion(JOSE.correo, { titulo: 'memoria' });
+  guion = [{ texto: 'Guardado para toda la junta: corresponsal de Yoro, ROSIBEL AGUILAR, cupo 6.400 lempiras.' },
+           { texto: '', llamadas: [{ name: 'recordar', arguments: { texto: 'Corresponsal de Yoro: ROSIBEL AGUILAR, cupo 6.400 lempiras diarios.' } }] },
+           { texto: 'Queda en la memoria de la junta.' }];
+  const r = await cerebro.pensar({ miembro: JOSE, junta: JUNTA, texto: 'a la corresponsal de Yoro la llamamos Rosibel Aguilar, cupo 6.400', conversacionId: String(conv._id) });
+  decir(r.herramientas.some((h) => h.nombre === 'recordar'),
+    'si dice que lo guarda sin guardarlo, se le devuelve y ESTA VEZ lo guarda', r.herramientas.map((h) => h.nombre).join(','));
+
+  /* Y si ni al segundo intento lo guarda, la junta tiene que enterarse: dar
+     por guardado un dato que no está es peor que saber que se perdió. */
+  guion = [{ texto: 'Guardado para toda la junta: el taller es el lunes 13.' },
+           { texto: 'Ya lo tengo anotado, no se preocupe.' },
+           { texto: 'Listo, queda anotado.' }];
+  const r2 = await cerebro.pensar({ miembro: JOSE, junta: JUNTA, texto: 'el taller quedó para el lunes 13', conversacionId: String(conv._id) });
+  decir(/NO qued[oó] guardado/i.test(r2.texto),
+    'y si insiste sin guardarlo, se le dice a la junta que NO quedó', r2.texto.slice(-110));
+
+  /* ── LO QUE NO PUEDE DISPARAR ────────────────────────────────────────────
+     Una negativa honesta y un ofrecimiento son lo contrario del fallo, y una
+     guarda que los castiga enseña justo lo que no se quiere. */
+  for (const [frase, porque] of [
+    ['No lo tengo guardado en la memoria ni en los pendientes.', 'una negativa honesta'],
+    ['¿Quiere que lo guarde en la memoria de la junta?', 'un ofrecimiento'],
+    ['Eso no está anotado en los pendientes.', 'decir que algo NO está'],
+  ]) {
+    guion = [{ texto: frase }];
+    const rx = await cerebro.pensar({ miembro: JOSE, junta: JUNTA, texto: '¿está guardado el cupo de Yoro?', conversacionId: String(conv._id) });
+    decir(rx.texto.trim() === frase, `${porque} pasa sin que la guarda la toque`, rx.texto.slice(0, 80));
+  }
+}
+
 titulo('la guarda de las citas: no se cita una herramienta que no corrió');
 {
   /* 5-sep, primera prueba real: «El oro cerró hoy a US$ 4,435 (según

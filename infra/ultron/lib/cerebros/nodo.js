@@ -905,6 +905,80 @@ async function pensar({ miembro, junta, texto, conversacionId, previa: previaDad
     }
   }
 
+  /* ── LA GUARDA DE LO QUE DIJO QUE GUARDÓ ────────────────────────────────
+     7-sep, medido contra producción tres veces seguidas. Se le dijo: «a la
+     corresponsal de Yoro la llamamos ROSIBEL AGUILAR, cupo 6.400». Contestó
+     «Guardado para toda la junta: corresponsal de Yoro, ROSIBEL AGUILAR».
+     Trece turnos después: «No aparece en mi memoria». Y en /memorias no había
+     nada — nunca llamó a `recordar`.
+
+     De NUEVE datos que se le pidió guardar en tres rondas, guardó tres. De los
+     otros seis dijo que sí y no llamó la herramienta.
+
+     Es el mismo fallo del PDF —decir que hizo algo que no hizo— pero en la
+     memoria, y ahí es peor: el PDF se nota al momento porque no hay botón que
+     tocar, y esto no se nota hasta que hace falta el dato, semanas después, y
+     ya no está. Era también la causa de fondo de «se pierde en conversación
+     larga»: lo que se le pedía recordar no se guardaba en ningún lado.
+
+     `recordar` y `anotar_pendiente` van las DOS en el núcleo, o sea que
+     siempre las tuvo delante. No es que no pudiera. */
+  const APUNTA_RE = [
+    // «Guardado.», «Guardado para toda la junta:», «Anotado, señor»
+    /^\s*(?:listo[,.]?\s*)?(?:guardad[oa]|anotad[oa]|apuntad[oa]|registrad[oa])\b/i,
+    // «queda anotado», «lo dejo anotado», «queda guardado como dato fijo»
+    /\b(?:queda|quedan|dej[oé]|dejar[eé])\s+(?:\S+\s+){0,3}?(?:guardad[oa]s?|anotad[oa]s?|apuntad[oa]s?|registrad[oa]s?)\b/i,
+    // «lo guardo», «lo anoté». Las formas de PASADO van acentuadas a propósito:
+    // «que lo guarde» es un ofrecimiento, no una afirmación, y no cuenta.
+    /\b(?:lo|la|los|las)\s+(?:guardo|anoto|apunto|guardé|anoté|apunté)(?![a-záéíóúñ])/i,
+    /\bya\s+(?:lo|la|los|las)\s+(?:tengo\s+)?(?:guardad|anotad|apuntad|registrad|guardé|anoté|apunté)/i,
+  ];
+  /* La negación gana SIEMPRE. «No lo tengo guardado» y «eso no está anotado»
+     son respuestas honestas, y hacerlas pasar por esta guarda sería castigar
+     justo lo que se le pide. Igual una pregunta: «¿quiere que lo guarde?» es
+     un ofrecimiento. */
+  const NIEGA = /\bno\s+(?:\S+\s+){0,3}?(?:qued|guard|anot|apunt|registr|est[aá]|aparece|tengo|hay)/i;
+  const dijoQueGuardo = (t) => String(t).split(/(?<=[.!?\n])\s+/).some((f) => {
+    const frase = f.trim();
+    return frase && !NIEGA.test(frase) && !/^[¿?]/.test(frase) && APUNTA_RE.some((r) => r.test(frase));
+  });
+  const GUARDAR = new Set(['recordar', 'anotar_pendiente', 'cerrar_pendiente', 'crear_documento']);
+  const guardoDeVerdad = () => usadas.some((h) => GUARDAR.has(h.nombre));
+  if (dijoQueGuardo(textoFinal) && !guardoDeVerdad() && hayTiempoParaGuarda('lo que dijo que guardó')) {
+    emitir('pensando', { vuelta: MAX_VUELTAS, motivo: 'dijo que lo guardó sin guardarlo' });
+    mensajes.push({ role: 'assistant', content: textoFinal });
+    mensajes.push({ role: 'user', content: '[sistema] Dijiste que lo guardabas o lo anotabas y NO llamaste a ninguna herramienta, '
+      + 'así que no quedó en ningún lado y dentro de diez turnos ese dato no va a existir. '
+      + 'Llamá AHORA a `recordar` si es algo que hay que tener presente, o a `anotar_pendiente` si es algo que hay que hacer. '
+      + 'Después contestá en una línea. Si de verdad no había nada que guardar, decilo — pero no digas que lo guardaste.' });
+    let dicho = '';
+    const r = await pedirDelTurno({ model: MODELO, messages: mensajes, tools: herramientas.paraOllama({ cajas }), stream: true, options: opciones }, { alTrozo: (t) => { dicho += t; } });
+    uso.entrada += r.uso.entrada; uso.salida += r.uso.salida;
+    const llamadas = [...r.tool_calls, ...llamadasEnTexto(r.content).llamadas];
+    if (llamadas.length) {
+      mensajes.push({ role: 'assistant', content: r.content, tool_calls: r.tool_calls.length ? r.tool_calls : undefined });
+      for (const res of await correrLote(llamadas, { ctx, usadas, emitir })) {
+        mensajes.push({ role: 'tool', content: recortar(res.salida, TOPE_RESULTADO), tool_name: res.nombre });
+      }
+      const r2 = await pedirDelTurno({ model: MODELO, messages: mensajes, tools: herramientas.paraOllama({ cajas }), stream: true, options: opciones }, { alTrozo: () => {} });
+      uso.entrada += r2.uso.entrada; uso.salida += r2.uso.salida;
+      const limpio = llamadasEnTexto(r2.content).limpio.trim();
+      if (limpio) { textoFinal = limpio; emitir('reemplazo', { texto: textoFinal }); }
+    } else if (dicho.trim()) {
+      textoFinal = llamadasEnTexto(dicho).limpio.trim() || textoFinal;
+      emitir('reemplazo', { texto: textoFinal });
+    }
+  }
+  /* Y si aun así sigue diciendo que lo guardó sin haberlo guardado, se le
+     añade la verdad: es preferible que la junta sepa que NO quedó anotado a
+     que lo dé por hecho y lo descubra dentro de una semana. Corre siempre,
+     haya habido segundo intento o no. */
+  if (dijoQueGuardo(textoFinal) && !guardoDeVerdad()) {
+    console.warn('[nodo] dijo que lo guardaba y no llamó a recordar ni a anotar_pendiente: se corrige el texto');
+    textoFinal = `${textoFinal}\n\n_(Aviso: NO quedó guardado — no llegué a anotarlo. Pídamelo otra vez y lo dejo en la memoria.)_`;
+    emitir('reemplazo', { texto: textoFinal });
+  }
+
   /* Y AUNQUE NO HAYA HABIDO TIEMPO DE INTENTARLO, LA MENTIRA NO SE PUBLICA.
      Esto vivía DENTRO de la guarda de arriba, o sea que si la guarda no corría
      —porque se acabó el presupuesto del turno— la promesa falsa salía a
