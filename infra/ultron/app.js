@@ -800,7 +800,11 @@ app.post('/pensar', puerta, frenoPensar, async (req, res) => {
        la única línea que dice, sin abrir nada, que alguien estuvo esperando de
        más. Se marca con todas las letras para que se pueda buscar. */
     const msTotal = Date.now() - t0;
-    const techo = Number(process.env.ULTRON_PRESUPUESTO_MS || 40_000);
+    /* El mismo número que usa el nodo, no una copia: cuando el techo subió a
+       90 s este renglón se quedó en 40 s y el registro empezó a gritar
+       «SE PASÓ DEL PRESUPUESTO» en turnos que iban perfectamente. Un aviso que
+       miente es peor que no tenerlo. */
+    const techo = cerebro.nodo._adentro.presupuestoMs();
     console.log(`[pensar] ${modo} · hilo ${reloj.hilo}ms · pensar ${reloj.pensó - reloj.hilo}ms · total ${msTotal}ms${r.ms ? ` · ${Object.entries(r.ms).map(([k, v]) => `${k} ${v}ms`).join(' · ')}` : ''}${msTotal > techo ? ` · SE PASÓ DEL PRESUPUESTO (${techo}ms)` : ''}`);
     if (nueva) {
       try {

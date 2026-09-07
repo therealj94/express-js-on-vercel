@@ -452,10 +452,13 @@ titulo('conversación larga: lo que sale de la ventana se resume, no se tira');
   /* Segunda vuelta: el resumen se resume sobre sí mismo y NO crece. Es lo que
      hace que una conversación de doscientos turnos cueste lo mismo que una de
      veinte. */
-  const seguida = { ...conResumen, turnos: [...previa.turnos, turnoN(12), turnoN(13)] };
+  /* Cuatro turnos y no dos: una pasada cuesta dieciséis segundos de tarjeta,
+     así que se espera a que haya dos preguntas con su respuesta fuera de la
+     ventana en vez de resumir en cuanto sale la primera. */
+  const seguida = { ...conResumen, turnos: [...previa.turnos, turnoN(12), turnoN(13), turnoN(14), turnoN(15)] };
   guion = [{ texto: 'Agente de Choluteca: Mario Velásquez, cupo 3.500. Junta: martes 22. Tope del piloto: 12 al día.' }];
   const r2 = await cerebro.resumirHilo({ previa: seguida });
-  decir(r2?.resumidos === 6, 'la vuelta siguiente sigue donde quedó la anterior', String(r2?.resumidos));
+  decir(r2?.resumidos === 8, 'la vuelta siguiente sigue donde quedó la anterior', String(r2?.resumidos));
   decir(/Lo que ya venía anotado/.test(pedidos.at(-1).messages.at(-1).content),
     'y se le da el resumen viejo para que lo funda con lo nuevo, no para escribir otro aparte');
   decir(/Mario Vel/.test(r2?.resumen || '') && /12 al día|piloto/.test(r2?.resumen || ''),
@@ -477,8 +480,8 @@ titulo('conversación larga: lo que sale de la ventana se resume, no se tira');
   /* Si no hay nada que guardar, se apunta hasta dónde se llegó igual: si no,
      se volvería a resumir el mismo pedazo en cada turno, para siempre. */
   guion = [{ texto: 'NADA' }];
-  const r3 = await cerebro.resumirHilo({ previa: { turnos: Array.from({ length: 14 }, (_, i) => turnoN(i)), resumen: 'lo de antes', resumidos: 4 } });
-  decir(r3?.vacio === true && r3?.resumidos === 6 && r3?.resumen === 'lo de antes',
+  const r3 = await cerebro.resumirHilo({ previa: { turnos: Array.from({ length: 16 }, (_, i) => turnoN(i)), resumen: 'lo de antes', resumidos: 4 } });
+  decir(r3?.vacio === true && r3?.resumidos === 8 && r3?.resumen === 'lo de antes',
     'un pedazo sin nada que guardar se marca igual, o se resumiría lo mismo para siempre', JSON.stringify(r3));
 
   /* ── LA RANURA ES DE QUIEN PREGUNTA ────────────────────────────────────

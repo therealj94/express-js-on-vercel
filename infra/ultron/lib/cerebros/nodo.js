@@ -1231,6 +1231,13 @@ async function resumirHilo({ previa, voz = false, senalCorte = null } = {}) {
      adelantara, el mismo turno estaría en el resumen y en el hilo, y el modelo
      lo leería dos veces. */
   const hasta = turnos.length - ventana;
+  /* ── NO POR CADA PREGUNTA ─────────────────────────────────────────────────
+     Cada pasada cuesta unos dieciséis segundos de tarjeta, y la tarjeta es
+     UNA. Con dos turnos por pregunta, resumir en cuanto sale el primero es
+     resumir cada vez — dieciséis segundos que el turno siguiente puede acabar
+     esperando. Se espera a que haya CUATRO fuera de la ventana (dos preguntas
+     con su respuesta): mismo resultado, la mitad de tarjeta. */
+  if (hasta - hechos < 4) return null;
   if (hasta <= hechos) return null;
   /* ── SE EMPIEZA POR LO NUEVO, NO POR LO VIEJO ──────────────────────────
      La primera versión resumía de a ocho DESDE lo más antiguo, y con una
