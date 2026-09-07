@@ -41,6 +41,33 @@
  *    respuesta, no queda en ninguna traza.
  */
 
+/* ── DÓNDE ESTÁ EL NAVEGADOR, Y POR QUÉ HAY QUE BUSCARLO ─────────────────────
+ *
+ * Esto va ANTES de `require('playwright')` porque Playwright lee la variable
+ * al cargarse: ponerla después no sirve de nada.
+ *
+ * En Heroku hay tres piezas que no se ponen de acuerdo. El buildpack instala
+ * las dependencias del SISTEMA (las bibliotecas que Chromium necesita para
+ * arrancar) pero no el navegador. El navegador lo baja `heroku-postbuild` a
+ * `/app/.cache/ms-playwright`, que es de los pocos sitios que viajan de la
+ * máquina donde se construye a la que corre. Y al arrancar el dyno, el
+ * buildpack vuelve a poner `PLAYWRIGHT_BROWSERS_PATH=0` por encima de lo que
+ * diga la configuración — con lo cual Playwright busca dentro de
+ * `node_modules`, donde no está, y contesta «Executable doesn't exist».
+ *
+ * Se buscó dos construcciones seguidas. En vez de pelearse con la variable, se
+ * mira el disco: si el navegador está donde de verdad está, se apunta ahí.
+ */
+const { existsSync, readdirSync } = require('node:fs');
+for (const donde of ['/app/.cache/ms-playwright', `${process.env.HOME || ''}/.cache/ms-playwright`]) {
+  try {
+    if (!existsSync(donde) || !readdirSync(donde).some((d) => d.startsWith('chromium'))) continue;
+    process.env.PLAYWRIGHT_BROWSERS_PATH = donde;
+    console.log(`[ojo] el navegador está en ${donde}`);
+    break;
+  } catch { /* si no se puede mirar, que Playwright se arregle con lo que tenga */ }
+}
+
 const express = require('express');
 const { chromium } = require('playwright');
 
