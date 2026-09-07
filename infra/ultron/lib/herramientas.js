@@ -257,7 +257,7 @@ const DEFINICIONES = [
   },
   {
     name: 'terminal',
-    description: 'PELIGROSA (pide autorización al dueño, y hasta que la dé el trabajo se queda parado). ANTES DE PEDIRLA: para LEER un archivo está repo_leer, para BUSCAR texto o una función en el código está repo_buscar, y para ver qué archivos hay está repo_arbol — las tres corren al momento y sin permiso. La terminal es solo para lo que ESAS TRES no pueden hacer: correr las pruebas, un git log, contar líneas. Un grep no es motivo para parar el trabajo. Corre UN comando de shell en el servidor de ULTRON, con plazo de 60 s, salida acotada y sin ninguna variable de entorno de la casa; el dueño ve el comando exacto antes de aprobarlo.',
+    description: 'PELIGROSA (pide autorización al dueño, y hasta que la dé el trabajo se queda PARADO). OJO, LO MÁS IMPORTANTE: corre en una CARPETA TEMPORAL VACÍA, sin el repositorio dentro. Un `grep` o un `cat` sobre infra/... no encuentra NADA acá, aunque el dueño lo apruebe. Para el código están repo_arbol (qué archivos hay), repo_leer (leer uno) y repo_buscar (buscar texto o una función): las tres corren al momento, sin permiso y sobre el repositorio de verdad. Esta es para lo otro: bajar algo con curl, una cuenta, una herramienta suelta. Un comando de shell, plazo de 60 s, salida acotada y sin ninguna variable de entorno de la casa; el dueño ve el comando exacto antes de aprobarlo.',
     input_schema: { type: 'object', properties: { comando: { type: 'string' }, motivo: { type: 'string', description: 'para qué, en una línea: lo lee el dueño' } }, required: ['comando'] },
   },
   {
@@ -1265,6 +1265,19 @@ const NUCLEO_DE_FABRICA = [
      vista y el PDF en el mismo argumento, es UNA llamada en UNA vuelta.
      Cuesta unas 130 fichas de prompt; la alternativa costaba el trabajo. */
   'crear_documento',
+  /* ── Y MIRAR SU PROPIO CÓDIGO ──────────────────────────────────────────
+     7-sep, José: «que sepa todo lo técnico, dónde están las cosas, por si
+     tiene que mejorarse o ayudarme a hacer cambios». Estaban las tres en la
+     caja del taller, así que cualquier pregunta sobre el código costaba una
+     vuelta entera abriendo la caja — la misma que después le faltaba para
+     trabajar. Y peor: una vez abierta la caja, al lado de estas tres queda
+     `terminal`, que PIDE PERMISO y corre en una carpeta vacía sin el
+     repositorio. Medido contra producción, ULTRON eligió la terminal para
+     hacer un grep, se quedó esperando una aprobación, y el comando no habría
+     encontrado nada aunque se la dieran.
+     Las tres solo LEEN, así que no piden permiso a nadie. Con ellas a la
+     vista, mirar el código es lo natural y la terminal deja de tentar. */
+  'repo_arbol', 'repo_leer', 'repo_buscar',
 ];
 const NUCLEO = new Set((process.env.ULTRON_NUCLEO || '').trim()
   ? process.env.ULTRON_NUCLEO.split(',').map((x) => x.trim()).filter(Boolean)
