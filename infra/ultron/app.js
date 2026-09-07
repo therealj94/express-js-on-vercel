@@ -659,7 +659,12 @@ app.post('/precalentar', puerta, (req, res) => {
    ranura si llega una pregunta a media frase, y entonces la conversación
    vuelve a la lista y se hace en la calma siguiente. */
 const porResumir = new Map();   // convId → { correo, voz, cuando, atrasados }
-const CALMA_MS = 3_000;         // lo que se espera sin nadie escribiendo
+/* Ocho segundos: lo que tarda alguien en leer un párrafo. Se probó con tres y
+   era demasiado poco — el resumen arrancaba mientras la persona todavía estaba
+   leyendo, y aunque se corta al llegar la pregunta, cortar un pedido a ollama
+   no le devuelve la ranura EN EL ACTO (sigue generando por dentro un rato). O
+   sea que la mejor forma de no estorbar no es cortar rápido: es no empezar. */
+const CALMA_MS = 8_000;         // lo que se espera sin nadie escribiendo
 const ATRASO_QUE_NO_ESPERA = 12; // turnos sin resumir que ya no admiten esperar
 function apuntarParaResumir(convId, correo, voz = false, atrasados = 0) {
   porResumir.set(String(convId), { correo, voz, cuando: Date.now(), atrasados });

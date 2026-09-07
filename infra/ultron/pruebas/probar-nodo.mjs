@@ -457,6 +457,19 @@ titulo('conversación larga: lo que sale de la ventana se resume, no se tira');
   decir(/Mario Vel/.test(r2?.resumen || '') && /12 al día|piloto/.test(r2?.resumen || ''),
     'lo viejo sobrevive y lo nuevo entra', r2?.resumen?.slice(0, 100));
 
+  /* ── Y LO NUEVO PISA A LO VIEJO ────────────────────────────────────────
+     «Sin repetir» no es lo mismo que reemplazar, y esa diferencia costó una
+     ronda entera. Medido contra producción: el resumen terminó con CUATRO
+     corresponsales distintas y DOS fechas para el mismo taller, porque cada
+     vez que un dato cambiaba se añadía al lado del viejo — y al preguntar, el
+     modelo contestaba con el viejo. Un resumen de conversación dice cómo
+     están las cosas AHORA, no cómo fueron cambiando. */
+  const pedidoFusion = pedidos.at(-1).messages.at(-1).content;
+  decir(/CAMBIA o CORRIGE/.test(pedidoFusion) && /dej[aá] SOLO el nuevo/.test(pedidoFusion),
+    'y si un dato cambia, se le manda BORRAR el viejo, no ponerlo al lado');
+  decir(/AHORA, no c[oó]mo fueron cambiando/.test(pedidoFusion),
+    'porque un resumen de conversación dice cómo están las cosas, no su historia');
+
   /* Si no hay nada que guardar, se apunta hasta dónde se llegó igual: si no,
      se volvería a resumir el mismo pedazo en cada turno, para siempre. */
   guion = [{ texto: 'NADA' }];

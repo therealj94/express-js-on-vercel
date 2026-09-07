@@ -1157,13 +1157,26 @@ async function resumirHilo({ previa, voz = false, senalCorte = null } = {}) {
     .join('\n');
   const orden = [
     'Escribí en español, en tercera persona y en frases cortas, lo que hay que RECORDAR de este pedazo de conversación.',
+    'Una línea por dato, empezando con guion.',
     'Guardá SIEMPRE: nombres propios, cifras, fechas, cupos, acuerdos y decisiones. Con sus palabras exactas cuando sean datos.',
     'Tirá el relleno: saludos, cortesías, y cualquier dato que se pueda volver a mirar con una herramienta (precios, alturas de bloque, saldos).',
     'No inventes nada que no esté escrito. Si no hay nada que valga la pena, escribí solo: NADA.',
     `Máximo ${Math.floor(TOPE_RESUMEN / 6)} palabras.`,
   ].join(' ');
+  /* ── LO NUEVO PISA A LO VIEJO ────────────────────────────────────────────
+     Primera versión, el resumen decía «sin repetir» — y eso no es lo mismo que
+     reemplazar. Medido contra producción: el resumen terminó con CUATRO
+     corresponsales distintas y DOS fechas para el mismo taller, porque cada
+     vez que un dato cambiaba se añadía la versión nueva al lado de la vieja.
+     Y al preguntar, el modelo contestaba con la vieja.
+     Un resumen de conversación tiene que decir cómo están las cosas AHORA, no
+     su historia. Si algo cambió, la versión anterior se borra. */
   const cuerpo = anterior
-    ? `Lo que ya venía anotado de esta conversación:\n${anterior}\n\nY esto es lo que siguió:\n${transcripcion}\n\n${orden} Devolvé UNA sola lista, la de antes y la de ahora juntas, sin repetir.`
+    ? `Lo que ya venía anotado de esta conversación:\n${anterior}\n\nY esto es lo que siguió:\n${transcripcion}\n\n${orden}`
+      + ' Devolvé UNA sola lista, la de antes y la de ahora fundidas.'
+      + ' MUY IMPORTANTE: si algo de lo nuevo CAMBIA o CORRIGE un dato de la lista vieja —otro nombre para el mismo puesto,'
+      + ' otra fecha para la misma reunión, otra cifra para el mismo tope—, dejá SOLO el nuevo y borrá el viejo.'
+      + ' La lista dice cómo están las cosas AHORA, no cómo fueron cambiando.'
     : `${transcripcion}\n\n${orden}`;
   try {
     const r = await pedir({ model: MODELO, stream: false,
