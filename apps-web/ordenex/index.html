@@ -730,6 +730,22 @@ body.en-mercado::before{content:'';position:fixed;inset:0;z-index:-1;
 .vn-alerta{margin-bottom:10px;padding:10px 12px;border-radius:11px;font-size:12.5px;line-height:1.5;
            border:1px solid rgba(255,120,120,.35);background:rgba(255,80,80,.08);color:#ffc9c9}
 .vn-alerta b{color:#fff}
+/* ── LA TARJETA COMO DESTINO ─────────────────────────────────────────────────
+   Va pegada debajo del campo de la dirección, con borde del acento, para que
+   se lea como «esto es lo que podés poner ahí» y no como un aviso más. El
+   botón llega a los 44 px que pide el pulgar: es un botón que mueve dinero. */
+.vn-tarjeta{margin-top:10px;padding:11px 13px;border-radius:11px;display:flex;gap:10px;
+  align-items:center;justify-content:space-between;flex-wrap:wrap;font-size:12.5px;line-height:1.5;
+  background:rgba(116,230,200,.07);border:1px solid rgba(116,230,200,.28);color:var(--txt2,#9FB2BF)}
+.vn-tarjeta b{color:var(--acento,#74E6C8);display:block;margin-bottom:2px}
+.vn-tarjeta small{display:block;font-size:11px;opacity:.8;word-break:break-all}
+.vn-tarjeta-no{background:rgba(255,255,255,.04);border-color:rgba(255,255,255,.12)}
+.vn-tarjeta-ok{color:var(--acento,#74E6C8);font-weight:600;font-size:12px;white-space:nowrap}
+.vn-btn-mini{min-height:44px;padding:10px 16px;border-radius:9px;border:1px solid var(--acento,#74E6C8);
+  background:transparent;color:var(--acento,#74E6C8);font:inherit;font-size:11.5px;font-weight:600;
+  letter-spacing:.06em;cursor:pointer;white-space:nowrap}
+.vn-btn-mini:hover{background:rgba(116,230,200,.12)}
+.vn-btn-mini:focus-visible{outline:2px solid var(--acento,#74E6C8);outline-offset:2px}
 .vn-cuenta{margin-top:16px;padding-top:14px;border-top:1px solid rgba(255,255,255,.08)}
 .vn-fila{display:flex;justify-content:space-between;gap:12px;font-size:13px;padding:4px 0;color:var(--tenue)}
 .vn-fila b{color:var(--crema);font-variant-numeric:tabular-nums;font-weight:600}

@@ -56,6 +56,9 @@ const VVENTA = (() => {
   let red = 56;                 // BSC por omisión: es la que está abierta
   let redesAbiertas = [];
   let destino = '';
+  /* La tarjeta de quien está mirando, para poder ofrecerla como destino.
+     `null` = todavía no se preguntó; `{tiene:false}` = se preguntó y no hay. */
+  let tarjeta = null;
   let cotiza = null;            // { brutoCanonico, comisionCanonico, netoCanonico, … }
   let ventaKey = null;
   let trabajando = false;
@@ -135,6 +138,20 @@ const VVENTA = (() => {
     try { return BigInt(r.maxOrigenWei); } catch { return null; }
   }
 
+  /* ── LA TARJETA COMO DESTINO ───────────────────────────────────────────────
+     José, 8-sep: «pongamos el botón de recargar en Ordenex y salga la
+     billetera default la de Polygon de esa tarjeta».
+     Vender ORIGEN y que el USDT caiga en tu tarjeta ES recargar la tarjeta.
+     Lo único que faltaba era no tener que teclear la dirección: cuarenta y dos
+     caracteres, una letra cambiada, y el dinero se va a donde no hay nadie.
+     No se pone sola en el campo: se OFRECE. Rellenar un destino de pago sin
+     que la persona lo pida es decidir por ella a dónde va su dinero. */
+  async function traerTarjeta() {
+    try { tarjeta = await DATOS.get('/ventas/tarjeta'); }
+    catch { tarjeta = { tiene: false, porQue: 'no se pudo preguntar ahora mismo' }; }
+    repintar();
+  }
+
   async function traerSalud() {
     try {
       const r = await fetch(DATOS.API + '/salud', { signal: AbortSignal.timeout(8000) });
@@ -175,6 +192,53 @@ const VVENTA = (() => {
     <div class="cp-grid">
       <div class="cp-col" id="vn-izq">${panel()}</div>
       <div class="cp-col" id="vn-der">${panelLado()}</div>
+    </div>`;
+  }
+
+  /* Lo que se enseña de la tarjeta, según lo que se sepa. Los tres casos se
+     escriben: «todavía preguntando», «no hay» y «acá está». El del medio es el
+     que más importa — no tener tarjeta no es un error de nadie, y una pantalla
+     que solo sabe pintar el caso bueno deja a esa persona mirando un hueco. */
+  /* Los dos casos de «todavía no hay tarjeta que ofrecer». Van aparte porque
+     son distintos: uno es esperar y el otro es que no la hay, y mezclarlos
+     deja a la persona sin saber si tiene que esperar o escribir a mano. */
+  function bloqueSinTarjeta() {
+    if (tarjeta === null) return '<div class="vn-tarjeta">Buscando tu tarjeta…</div>';
+    return `<div class="vn-tarjeta vn-tarjeta-no">No se pudo poner tu tarjeta como destino: ${esc(tarjeta.porQue || 'no hay tarjeta')}. Escribí la dirección a mano.</div>`;
+  }
+
+  function bloqueTarjeta() {
+    /* Se mira `red`, la variable de la pantalla, y NO el objeto que devuelve
+       `redDe()`: ese trae {nombre, corto, aviso} y NO lleva `id`, así que
+       `r.id` era siempre undefined y el bloque se quedaba para siempre en la
+       rama de «cambiá la red». Lo atrapó la prueba de navegador al primer
+       intento; leyendo el código no se veía. */
+    const enPolygon = Number(red) === 137;
+    /* ── SI POLYGON NO ESTÁ ABIERTA, SE DICE ─────────────────────────────────
+       La foto de la prueba lo enseñó: el bloque decía «cambiá la red arriba»
+       y arriba no había ninguna Polygon que tocar, porque la casa hoy solo
+       paga por BSC. Mandar a alguien a un botón que no existe es peor que no
+       ofrecer nada — se queda buscándolo y creyendo que hizo algo mal.
+       Y la tarjeta SOLO se recarga por Polygon: ofrecerla en otra red sería
+       invitar a mandar el dinero a donde no llega. */
+    const polygonAbierta = redesAbiertas.includes(137);
+    if (!tarjeta?.tiene) return enPolygon ? bloqueSinTarjeta() : '';
+    if (!polygonAbierta) {
+      return `<div class="vn-tarjeta vn-tarjeta-no">Tu tarjeta ····${esc(tarjeta.last4 || '')} se recarga por <b>Polygon</b>, y hoy la casa no está pagando por esa red. Todavía no se puede recargar desde acá.</div>`;
+    }
+    if (!enPolygon) {
+      return `<div class="vn-tarjeta vn-tarjeta-no">Tu tarjeta ····${esc(tarjeta.last4 || '')} se recarga por <b>Polygon</b>. Elegí esa red arriba para pagarte ahí.</div>`;
+    }
+    const yaEs = destino.toLowerCase() === String(tarjeta.direccion).toLowerCase();
+    return `<div class="vn-tarjeta">
+      <div>
+        <b>Recargar mi tarjeta</b> ····${esc(tarjeta.last4 || '')}${tarjeta.titular ? ` · ${esc(tarjeta.titular)}` : ''}
+        <small class="mono">${esc(tarjeta.direccion)}</small>
+        <small>${esc((tarjeta.monedas || []).join(' o ') || 'USDT')} en Polygon</small>
+      </div>
+      ${yaEs
+        ? '<span class="vn-tarjeta-ok">✓ es el destino</span>'
+        : '<button type="button" class="vn-btn-mini" onclick="VVENTA.usarTarjeta()">USAR ESTA</button>'}
     </div>`;
   }
 
@@ -237,6 +301,7 @@ const VVENTA = (() => {
         <label for="vn-dir">¿A qué dirección te lo pagamos?</label>
         <input id="vn-dir" class="vn-input" autocomplete="off" spellcheck="false" placeholder="0x…"
                value="${esc(destino)}" oninput="VVENTA.destino(this.value)">
+        ${bloqueTarjeta()}
       </div>
 
       ${techo !== null ? `
@@ -397,13 +462,27 @@ const VVENTA = (() => {
   async function alPintar() {
     await Promise.all([traerSaldo(), traerLimites(), traerSalud(), traerCapacidad()]);
     repintar();
+    /* La tarjeta va DESPUÉS y sin `await` en el grupo: sale de esta casa y
+       pasa por la wallet, así que puede tardar o no contestar. Meterla con las
+       otras cuatro haría que toda la pantalla esperara por la más lenta —y por
+       una que ni siquiera hace falta para vender. */
+    traerTarjeta().catch(() => {});
+  }
+
+  /* Poner la tarjeta como destino. Lo hace la persona tocando el botón: el
+     campo NO se rellena solo. Un destino de pago puesto por el sistema es
+     decidir por alguien a dónde va su dinero, y aquí eso no se hace. */
+  function usarTarjeta() {
+    if (!tarjeta?.tiene) return;
+    destino = String(tarjeta.direccion);
+    repintar();
   }
 
   function apagar() { clearTimeout(tCotiza); }
 
   return {
     vista, alPintar, apagar,
-    cantidad: cantidadCambia, todo, parte, red: redCambia, destino: destinoCambia, vender, otra,
-    _adentro: { aWei, deWei },
+    cantidad: cantidadCambia, todo, parte, red: redCambia, destino: destinoCambia, vender, otra, usarTarjeta,
+    _adentro: { aWei, deWei, get redesAbiertas() { return redesAbiertas; } },
   };
 })();
