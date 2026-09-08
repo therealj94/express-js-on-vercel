@@ -4795,6 +4795,14 @@ const VETA = (() => {
       ${limites.length ? `<dl class="datos">${limites.map(([k, v]) =>
         `<div><dt>${esc(k)}</dt><dd>${oro(v)} ORIGEN</dd></div>`).join('')}</dl>` : ''}
       <div class="tar-botones">
+        <!-- RECARGAR VA PRIMERO Y ES EL ÚNICO DE ORO. En esta pantalla no
+             había forma de cargarle saldo a la tarjeta: se podía congelarla,
+             ver su número y su PIN, y nada más. Se recarga desde Ordenex —el
+             ORIGEN sale de ahí y el saldo cae en la tarjeta— y la casa se abre
+             directamente en esa sala, con esta sesión. -->
+        <button class="btn btn-oro btn-sm" onclick="VETA.recargarTarjeta()">
+          <svg viewBox="0 0 24 24" class="btn-ic">${ICO.recibir}</svg>${t('tar.recargar')}
+        </button>
         <button class="btn btn-linea btn-sm" onclick="VETA.congelar(${congelada ? 'false' : 'true'})">
           <svg viewBox="0 0 24 24" class="btn-ic">${ICO.nieve}</svg>${congelada ? t('tar.descongelar') : t('tar.congelar')}
         </button>
@@ -4803,6 +4811,14 @@ const VETA = (() => {
       </div>
       <div id="tar-secreto"></div>
     </div>`;
+  }
+
+  /* Recargar la tarjeta: se entra a Ordenex ya puesto en su sala de recargar.
+     Ahí la red es Polygon y la dirección es la de esta misma tarjeta, las dos
+     fijas — no hay nada que teclear y por lo tanto nada que teclear mal. */
+  function recargarTarjeta() {
+    salaDeOrdenex = '/#recargar';
+    vista('ordenex');
   }
 
   function movimientosTarjeta() {
@@ -5680,9 +5696,17 @@ const VETA = (() => {
     ordenex: { nombre: 'Ordenexchange', url: () => URL_ORDENEX, logo: null },
   };
 
+  /* CON QUÉ SALA ADENTRO SE ABRE LA CASA.
+     Quien toca «Recargar en Ordenex» desde su tarjeta ya dijo a qué va, y
+     dejarlo en el portafolio de la casa de cambio lo obliga a buscar el mismo
+     botón otra vez. Se GASTA al construir el marco —una sola entrada la usa—
+     para que la próxima vez, desde el Núcleo, Ordenex abra donde siempre. */
+  let salaDeOrdenex = '';
+
   function marcoCasa(id) {
     const c = CASAS_MARCO[id];
-    const u = c.url();
+    let u = c.url();
+    if (id === 'ordenex' && salaDeOrdenex) { u += salaDeOrdenex; salaDeOrdenex = ''; }
     return `
     <section class="marco-casa" data-al-cargar="VETA_marcoVivo">
       <header class="marco-techo">
@@ -16244,7 +16268,7 @@ const VETA = (() => {
            llaveAbrir, llaveCerrar, llaveEntrar,
            llaveCuantas, llaveOjo, llaveModo,
            importarAbrir, importarSalir, importarElegir, importarHacer,
-           tapar, copiarContrato, congelar, revelar, pedirTarjeta, cambioMonto, elegirDestino,
+           tapar, copiarContrato, congelar, revelar, pedirTarjeta, recargarTarjeta, cambioMonto, elegirDestino,
            voltear, olvidar, remMonto, remPais, refrescarTasas, nuevoContacto, borrarContacto,
            enviarA, abrirCamara, cerrarCamara, pedirSecreto, copiarTexto, guardarNombre,
            // Enviar cualquier token, no solo ORIGEN.
