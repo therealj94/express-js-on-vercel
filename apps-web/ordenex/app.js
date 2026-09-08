@@ -603,8 +603,8 @@ const ONX = (() => {
    * que sigue viendo el fallo. Sin este dato no había manera de distinguir
    * «no se arregló» de «no te llegó», y se buscaba dos horas en el lugar
    * equivocado. */
-  const ONX_V = '7819e41966';
-  const ONX_FECHA = '2026-09-06';
+  const ONX_V = 'bef5209107';
+  const ONX_FECHA = '2026-09-08';
 
   function sellar() {
     const el = document.getElementById('onx-sello');
