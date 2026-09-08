@@ -25,6 +25,7 @@ var {
   getOrigenPrice,
   cardWebhook,
   syncCards,
+  recargaDeLaTarjeta,
 } = require("../controller/cardController");
 var { fundCard, fundStatus } = require("../controller/swapController");
 
@@ -58,5 +59,10 @@ router.post("/notifications/read",verifyTokenUser, markNotificationsRead); // Ma
 
 // Admin — sin JWT, protegido por x-admin-key header
 router.post("/admin/sync", syncCards); // Sincronizar tarjetas CryptoMate → MongoDB
+
+/* Entre casas: Ordenex pregunta dónde se recarga la tarjeta de una dirección
+   custodiada. No lleva sesión de usuario porque no habla un usuario: habla
+   otra casa, con su propia clave. */
+router.get("/interno/recarga", recargaDeLaTarjeta);
 
 module.exports = router;

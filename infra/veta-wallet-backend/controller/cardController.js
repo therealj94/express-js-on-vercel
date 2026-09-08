@@ -1143,6 +1143,84 @@ export const cardWebhook = async (req, res) => {
 //  - sin ADMIN_SECRET en el entorno, `esperada` queda vacía y un header
 //    ausente mediría lo mismo que ella: la ruta quedaría abierta para
 //    cualquiera. Por eso un secreto vacío niega el paso en vez de concederlo.
+/* ── LA PUERTA ENTRE CASAS ───────────────────────────────────────────────────
+ *
+ * Ordenex necesita saber a qué dirección de Polygon se recarga la tarjeta de
+ * quien está mirando, para poder ponerla por defecto. Esa dirección la sabe
+ * CryptoMate, y la llave de CryptoMate vive AQUÍ.
+ *
+ * Se resolvió así y no dándole la llave a Ordenex, que era lo rápido: una
+ * credencial de dinero copiada a una segunda casa se rota el doble de veces,
+ * se filtra por el doble de sitios, y el día que haya que cortarla hay que
+ * acordarse de las dos. La llave se queda en una sola casa y la otra pregunta.
+ *
+ * Lo que sale por aquí es la dirección DONDE SE RECIBE dinero y los cuatro
+ * últimos dígitos. No sale el número de la tarjeta, ni el PIN, ni el saldo, ni
+ * nada que sirva para gastar. Una dirección de cobro es pública por su
+ * naturaleza: quien la tiene puede mandarle dinero, no sacarlo.
+ *
+ * La busca POR DIRECCIÓN CUSTODIADA y no por correo a propósito: es el único
+ * dato que las dos casas ya comparten sin inventar nada (Ordenex lo saca del
+ * perfil de Genesis al entrar), y no obliga a pasear correos entre servicios.
+ */
+function esCasaHermana(req) {
+  const enviada = String(req.headers["x-casa-clave"] || "");
+  const esperada = String(process.env.CASA_CLAVE || "");
+  if (!esperada || esperada.length < 24) return false;   // sin clave puesta, la puerta no existe
+  const a = Buffer.from(enviada), b = Buffer.from(esperada);
+  return a.length === b.length && crypto.timingSafeEqual(a, b);
+}
+
+/**
+ * GET /cards/interno/recarga?address=0x...
+ *
+ * Para una dirección custodiada, ¿dónde se recarga su tarjeta?
+ */
+export const recargaDeLaTarjeta = async (req, res) => {
+  if (!esCasaHermana(req)) return res.status(403).json({ message: "Forbidden" });
+  try {
+    const address = String(req.query.address || "").trim();
+    if (!/^0x[0-9a-fA-F]{40}$/.test(address)) {
+      return res.status(400).json({ message: "address no es una dirección válida", codigo: "ADDRESS" });
+    }
+    /* Insensible a mayúsculas: las direcciones se escriben con y sin checksum
+       según quién las copie, y una comparación exacta haría que la misma
+       persona tenga tarjeta o no según de dónde salió el texto. */
+    const user = await Users.findOne({ address: new RegExp("^" + address + "$", "i") });
+    if (!user) return res.json({ tiene: false, porQue: "no hay cuenta con esa dirección" });
+
+    const card = await Card.findOne({ userId: user._id, status: { $ne: "DELETED" } });
+    if (!card) return res.json({ tiene: false, porQue: "esa cuenta todavía no tiene tarjeta" });
+    if (card.status !== "ACTIVE") {
+      return res.json({ tiene: false, porQue: `la tarjeta está ${card.status}`, last4: card.last4 });
+    }
+
+    let wallets = [];
+    try {
+      const r = await cryptomateClient.get(`/cards/virtual-cards/${card.cryptomateCardId}/top-up`);
+      wallets = Array.isArray(r.data) ? r.data : [];
+    } catch (err) {
+      if (!esNoEncontrado(err)) throw err;
+    }
+    const poly = wallets.find((w) => String(w.blockchain).toUpperCase() === "POLYGON");
+    if (!poly?.address) {
+      return res.json({ tiene: false, porQue: "esa tarjeta todavía no tiene dirección de recarga asignada", last4: card.last4 });
+    }
+    return res.json({
+      tiene: true,
+      last4: card.last4,
+      titular: card.cardHolderName || null,
+      red: "POLYGON",
+      direccion: poly.address,
+      /* Qué acepta, tal cual lo dice CryptoMate. Que Ordenex no lo adivine:
+         mandar la moneda equivocada a una dirección correcta se pierde igual. */
+      monedas: (poly.tokens || []).map((t) => t.symbol).filter(Boolean),
+    });
+  } catch (e) {
+    return res.status(500).json({ message: e.message });
+  }
+};
+
 function esAdmin(req) {
   const enviada = String(req.headers["x-admin-key"] || "");
   const esperada = String(process.env.ADMIN_SECRET || "");

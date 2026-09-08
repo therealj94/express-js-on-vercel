@@ -8,6 +8,7 @@
 // verdad va al log de la casa.
 
 const venta = require('../lib/venta');
+const tarjeta = require('../lib/tarjeta');
 const { Usuario } = require('../models');
 
 const responder = (res, e) => {
@@ -28,6 +29,26 @@ const responder = (res, e) => {
 async function cotizar(req, res) {
   try {
     return res.json(await venta.cotizar(req.body || {}));
+  } catch (e) {
+    return responder(res, e);
+  }
+}
+
+// ── GET /ventas/tarjeta ─────────────────────────────────────────────────────
+//
+// Dónde se recarga MI tarjeta. Es lo que hace que «recargar la tarjeta» sea un
+// botón y no un ejercicio de copiar cuarenta y dos caracteres sin equivocarse.
+//
+// La dirección se busca con la `direccionWallet` de la SESIÓN, nunca con una
+// que venga en la petición: si el cliente pudiera pedir la de otro, cualquiera
+// con cuenta iría descubriendo dónde se recarga la tarjeta de los demás.
+async function miTarjeta(req, res) {
+  try {
+    const usuario = await Usuario.findById(req.usuario.id).lean();
+    if (!usuario) return res.status(404).json({ error: 'No existe esa cuenta.', codigo: 'NO_EXISTE' });
+    /* Un 200 con `tiene:false` y no un 404: no tener tarjeta todavía no es un
+       error de nadie, y la pantalla necesita poder explicarlo con calma. */
+    return res.json(await tarjeta.recargaDe(usuario.direccionWallet));
   } catch (e) {
     return responder(res, e);
   }
@@ -77,4 +98,4 @@ async function mias(req, res) {
   }
 }
 
-module.exports = { cotizar, vender, mias, limites };
+module.exports = { cotizar, vender, mias, limites, miTarjeta };

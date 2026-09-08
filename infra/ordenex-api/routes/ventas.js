@@ -8,11 +8,14 @@ const express = require('express');
 const router = express.Router();
 const { sesion } = require('../middleware/sesion');
 const { exigirTerminos } = require('../lib/terminos');
-const { cotizar, vender, mias, limites } = require('../controllers/ventasController');
+const { cotizar, vender, mias, limites, miTarjeta } = require('../controllers/ventasController');
 
 // Sin sesion: el techo que la casa puede pagar es de quien va a vender.
 router.get('/limites', limites);
 router.post('/cotizar', sesion, cotizar);
+/* Dónde se recarga la tarjeta de quien está mirando. Con sesión y sin
+   términos: preguntar a dónde iría el dinero no compromete nada. */
+router.get('/tarjeta', sesion, miTarjeta);
 router.post('/', sesion, exigirTerminos, vender);
 router.get('/', sesion, mias);
 
