@@ -62,6 +62,7 @@ let siguienteFalla = null;
 let ventaAbierta = true;
 let polygonAbierta = true;
 let tarjetaHay = true;
+let techoLegible = true;   // la caja se puede leer o el RPC está caído
 
 const json = (r, codigo, obj) => {
   r.writeHead(codigo, { 'Content-Type': 'application/json; charset=utf-8' });
@@ -139,8 +140,11 @@ async function api(q, r, ruta) {
     const neto = (BigInt(PRECIO_WEI) * BigInt(1000000 - PPM)) / 1000000n;
     return json(r, 200, { encendida: ventaAbierta, precioWei: PRECIO_WEI, precioUsd: 2.566148,
       netoPorOrigen: neto.toString(), comisionPpm: PPM,
-      redes: redesDeLaCasa().map((x) => ({ ...x, maxUsdtCanonico: (900n * U).toString(),
-                                           maxOrigenWei: ((900n * U * U) / neto).toString() })) });
+      redes: redesDeLaCasa().map((x) => (techoLegible
+        ? { ...x, maxUsdtCanonico: (900n * U).toString(), maxOrigenWei: ((900n * U * U) / neto).toString() }
+        /* Es lo que contesta el API de verdad cuando el RPC no da el saldo:
+           la fila existe, con su error y sin techo. */
+        : { ...x, maxUsdtCanonico: null, maxOrigenWei: null, error: 'no se pudo leer la caja' })) });
   }
   if (q.method === 'POST' && ruta === '/ventas/cotizar') {
     const cuerpo = await cuerpoDe(q);
@@ -210,9 +214,15 @@ await p.goto(`${ORIGEN_URL}/index.html#sso=${TOKEN_SSO}`, { waitUntil: 'domconte
 await p.waitForTimeout(1800);
 
 // ── 1 · la sala existe y se llega a ella ────────────────────────────────────
-titulo('Recargar es una sección, con su botón');
-decir(await p.evaluate(() => document.querySelectorAll('[data-vista="recargar"]').length >= 2),
-  'tiene botón en el riel y en las pestañas del teléfono');
+titulo('Recargar es una sección SIN pestaña');
+/* José la quitó de la barra el mismo día que la estrenó: «quitemos el botón
+   de Ordenex y dejar solo en la tarjeta». Nadie viene a un exchange a
+   «recargar»; se viene desde la tarjeta. Pero la ruta tiene que seguir siendo
+   pública y directa, porque es por donde entra el botón de la billetera. */
+decir(await p.evaluate(() => document.querySelectorAll('[data-vista="recargar"]').length === 0),
+  'no tiene pestaña en la barra: se llega desde la tarjeta');
+decir(await p.evaluate(() => document.querySelectorAll('.tabs .nav').length === 5),
+  'y las pestañas del teléfono vuelven a ser cinco');
 llamadas = [];
 await irA('recargar');
 decir(await p.evaluate(() => !!document.getElementById('rc-cant')), 'abre con su campo de cantidad');
@@ -339,6 +349,69 @@ await irA('recargar');
   decir(/sigue donde está/i.test(await texto()), 'diciendo que el ORIGEN de uno no se movió');
 }
 polygonAbierta = true;
+
+// ── 6b · el techo es la tesorería ──────────────────────────────────────────
+titulo('no se recarga más de lo que hay en tesorería');
+{
+  /* Se repone el saldo a mano: las pruebas de arriba ya gastaron parte, y un
+     monto que rebota por SALDO no prueba nada sobre el techo de la CASA. Son
+     dos frenos distintos y hay que verlos por separado. */
+  saldo = wei(500);
+  await irA('portafolio');
+  await irA('recargar');
+  const t = await texto();
+  decir(/Máximo que la casa puede pagar ahora/.test(t), 'el techo se enseña ANTES de escribir nada', t.slice(0, 160));
+  decir(/900(\.|,)?\d*\s*USD/.test(t) || /900 USD/.test(t),
+    'y también en dólares, que es como se piensa una tarjeta', (t.match(/[\d.,]+ USD/g) || []).join(' · '));
+
+  /* Por encima del techo: el botón se apaga y se dice cuál es el máximo. */
+  /* 380 ORIGEN: caben en el saldo (500) y NO en la caja (900 USD ÷ 2,5405 =
+     354,26 ORIGEN). Así el freno que salta es el de la casa y no el propio. */
+  await p.fill('#rc-cant', '380');
+  await p.waitForTimeout(1200);
+  decir(await p.evaluate(() => document.querySelector('#rc-izq .vn-btn')?.disabled === true),
+    'pidiendo más de lo que hay, no se puede confirmar');
+  decir(/no puede pagar tanto/i.test(await texto()), 'y se dice cuál es el máximo', (await texto()).slice(0, 200));
+
+  /* Y aunque se llame al manejador a mano —una consola, un botón mal
+     pintado—, el pago se niega igual: la regla vive junto al dinero. */
+  llamadas = [];
+  await p.evaluate(() => VRECARGA.recargar());
+  await p.waitForTimeout(900);
+  decir(llamadas.filter((l) => l.ruta === '/ventas' && l.metodo === 'POST').length === 0,
+    'y llamando al manejador a mano tampoco sale el pago',
+    'el botón apagado es el dibujo de la regla; la regla tiene que estar junto al dinero');
+  decir(/no puede pagar tanto/i.test(await texto()), 'se explica en vez de no hacer nada');
+
+  await p.evaluate(() => VRECARGA.otra());
+  await p.waitForTimeout(700);
+  await p.evaluate(() => VRECARGA.hastaElTecho());
+  await p.waitForTimeout(1300);
+  decir(await p.evaluate(() => document.querySelector('#rc-izq .vn-btn')?.disabled === false),
+    '«poner el máximo» deja un monto que SÍ cabe',
+    await p.evaluate(() => document.getElementById('rc-cant')?.value));
+}
+
+// ── 6c · sin poder leer la caja, no se recarga a ciegas ────────────────────
+titulo('sin techo legible, puerta cerrada');
+{
+  techoLegible = false;
+  await irA('portafolio');
+  await irA('recargar');
+  await p.fill('#rc-cant', '1');
+  await p.waitForTimeout(1200);
+  decir(/No pude leer cuánto puede pagar la casa/i.test(await texto()),
+    'se dice que no se pudo leer', (await texto()).slice(0, 200));
+  decir(await p.evaluate(() => document.querySelector('#rc-izq .vn-btn')?.disabled === true),
+    'y NO se deja confirmar',
+    '«no sé cuánto puede pagar» no puede comportarse como «puede pagar lo que sea»');
+  llamadas = [];
+  await p.evaluate(() => VRECARGA.recargar());
+  await p.waitForTimeout(900);
+  decir(llamadas.filter((l) => l.ruta === '/ventas' && l.metodo === 'POST').length === 0,
+    'ni a mano');
+  techoLegible = true;
+}
 
 // ── 7 · vender quedó intacta ───────────────────────────────────────────────
 titulo('Vender quedó como estaba');

@@ -174,7 +174,15 @@ const ONX = (() => {
        Por dentro es la misma operación, pero las dos leyes son opuestas: en
        Vender la red y la dirección se eligen —es el punto—; acá van fijas en
        Polygon y en la tarjeta de uno, porque cada campo editable es una forma
-       más de mandar el dinero a donde no hay nadie. */
+       más de mandar el dinero a donde no hay nadie.
+
+       Y ES UNA SALA SIN PESTAÑA. La tuvo unas horas y José la quitó el mismo
+       día: «quitemos el botón de Ordenex y dejar solo en la tarjeta». Se llega
+       desde la tarjeta —el botón de la billetera abre `/#recargar`— y no desde
+       la barra de la casa de cambio. Tiene sentido: nadie viene a un exchange
+       a «recargar»; se viene desde la tarjeta, que es donde está el problema.
+       La ruta sigue siendo pública y directa, así que el enlace de la
+       billetera entra igual y un marcador guardado no se rompe. */
     recargar: () => modulos.VRECARGA()?.vista?.() ?? stub('recargar'),
     actividad: () => modulos.VPORTA()?.vistaActividad?.() ?? stub('actividad'),
   };

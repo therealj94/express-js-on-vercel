@@ -119,10 +119,39 @@ const VRECARGA = (() => {
   async function traerCapacidad() {
     try { capacidad = await DATOS.get('/ventas/limites'); } catch { capacidad = null; }
   }
+
+  /* ── EL TECHO ES LA TESORERÍA, Y SIN TECHO NO SE RECARGA ───────────────────
+   *
+   * José, 8-sep: «al recargar no dejar más de lo que hay en tesorería».
+   *
+   * El número no lo pone esta pantalla: `GET /ventas/limites` lee el saldo
+   * USDT EN CADENA de la billetera que paga, le resta lo que ya está en vuelo
+   * y el apartado, y lo traduce a ORIGEN con el neto por unidad. O sea que el
+   * techo ES la tesorería, medida en el momento, y baja con cada recarga de
+   * cualquiera.
+   *
+   * Lo que faltaba: qué hacer cuando NO se puede leer. Hasta ahora «no lo sé»
+   * se comportaba igual que «no hay límite», y eso es exactamente al revés de
+   * lo que se pidió. Acá se cierra: sin techo legible no se deja confirmar.
+   * Una recarga que se rechaza es una molestia; una que sale y deja la caja en
+   * rojo es un pago que la casa no puede hacer.
+   *
+   * `techoWei()` devuelve BigInt cuando se sabe, y `null` cuando no — y quien
+   * pinta trata el null como puerta cerrada, no como vía libre.
+   */
+  function filaPolygon() {
+    return (capacidad?.redes || []).find((x) => Number(x.id) === POLYGON) || null;
+  }
   function techoWei() {
-    const r = (capacidad?.redes || []).find((x) => Number(x.id) === POLYGON);
+    const r = filaPolygon();
     if (!r?.maxOrigenWei) return null;
     try { return BigInt(r.maxOrigenWei); } catch { return null; }
+  }
+  /** Lo mismo en dólares: quien recarga una tarjeta piensa en dólares. */
+  function techoUsd() {
+    const r = filaPolygon();
+    if (!r?.maxUsdtCanonico) return null;
+    try { return BigInt(r.maxUsdtCanonico); } catch { return null; }
   }
 
   async function traerSalud() {
@@ -216,9 +245,17 @@ const VRECARGA = (() => {
     const sinSaldo = saldoWei !== null && BigInt(saldoWei) === 0n;
     const pasa = wei && saldoWei !== null && BigInt(wei) <= BigInt(saldoWei);
     const techo = techoWei();
-    const cabe = !(wei && techo !== null && BigInt(wei) > techo);
     const abiertaPolygon = polygonAbierta();
-    const listo = Boolean(hayTarjeta && pasa && cabe && cotiza && !cotiza.error
+    /* Fail-closed: con Polygon abierta pero el techo ilegible, NO se recarga.
+       «No sé cuánto puede pagar la casa» no puede comportarse como «puede
+       pagar lo que sea». */
+    /* `!== false` y no `=== true`: cuando ni siquiera se pudo saber si Polygon
+       está abierta, tampoco hay techo, y ese caso tiene que caer del lado
+       cerrado igual que los demás. Con `=== true` se colaba: red desconocida,
+       techo desconocido, botón encendido. */
+    const sinTecho = techo === null && abiertaPolygon !== false;
+    const cabe = techo !== null ? !(wei && BigInt(wei) > techo) : !sinTecho;
+    const listo = Boolean(hayTarjeta && pasa && cabe && !sinTecho && cotiza && !cotiza.error
       && !trabajando && abierta !== false && abiertaPolygon !== false);
 
     return `
@@ -228,6 +265,11 @@ const VRECARGA = (() => {
         <div class="vn-alerta">
           Ahora mismo la casa no está pagando por <b>Polygon</b>, que es la red de tu tarjeta.
           No se puede recargar hasta que se abra. Tu ORIGEN sigue donde está.
+        </div>` : ''}
+      ${sinTecho ? `
+        <div class="vn-alerta">
+          No pude leer cuánto puede pagar la casa en este momento, así que no te dejo
+          confirmar a ciegas. Probá en un rato. Tu ORIGEN sigue donde está.
         </div>` : ''}
 
       ${bloqueTarjeta()}
@@ -263,7 +305,9 @@ const VRECARGA = (() => {
       <div class="vn-techo">
         <span>Máximo que la casa puede pagar ahora</span>
         <b class="mono">${deWei(techo, 4)} ORIGEN</b>
-        <small>Es lo que hay en la caja de salidas. Para recargar más, hacelo en dos veces o esperá a que se reponga.</small>
+        ${techoUsd() !== null ? `<small>Son <b>${deWei(techoUsd(), 2)} USD</b> — lo que hay en la tesorería de salidas en este momento.</small>` : ''}
+        <small>Baja con cada recarga de cualquiera. Para recargar más, hacelo en dos veces o esperá a que se reponga.</small>
+        ${techo > 0n ? `<button type="button" class="vn-todo" onclick="VRECARGA.hastaElTecho()">poner el máximo</button>` : ''}
       </div>` : ''}
 
       ${cotiza && !cotiza.error ? `
@@ -361,6 +405,19 @@ const VRECARGA = (() => {
     cantidad = deWei(((BigInt(saldoWei) * n) / 100n).toString(), 18);
     cotizarPronto(); repintar();
   }
+  /* El máximo que se puede recargar AHORA: el menor entre lo que uno tiene y
+     lo que la casa puede pagar. Poner el techo de la casa cuando uno no lo
+     tiene sería ofrecer un monto que va a rebotar por saldo. */
+  function hastaElTecho() {
+    const techo = techoWei();
+    if (techo === null || techo <= 0n) return;
+    const mio = saldoWei === null ? null : BigInt(saldoWei);
+    const tope = mio !== null && mio < techo ? mio : techo;
+    if (tope <= 0n) return;
+    cantidad = deWei(tope.toString(), 18);
+    cotizarPronto(); repintar();
+  }
+
   function otra() { resultado = null; ventaKey = null; cantidad = ''; cotiza = null; traerSaldo().then(repintar); repintar(); }
 
   async function recargar() {
@@ -370,6 +427,19 @@ const VRECARGA = (() => {
        una dirección vacía o vieja es dinero que no vuelve. */
     const destino = tarjeta && tarjeta.tiene ? String(tarjeta.direccion || '') : '';
     if (!wei || !/^0x[0-9a-fA-F]{40}$/.test(destino) || trabajando) return;
+    /* El techo, otra vez y aquí. El botón ya está apagado cuando no cabe, pero
+       este es el único sitio por el que sale el dinero y un manejador se puede
+       llamar de otra manera —desde la consola, desde una prueba, desde un
+       botón que mañana alguien pinte mal—. Que la regla viva junto al pago y
+       no solo junto a su dibujo. */
+    const techo = techoWei();
+    if (techo === null || BigInt(wei) > techo) {
+      resultado = { ok: false, codigo: 'SIN_CAJA',
+        error: techo === null
+          ? 'No pude leer cuánto puede pagar la casa ahora mismo. No te dejo recargar a ciegas.'
+          : `La casa no puede pagar tanto ahora: el máximo es ${deWei(techo, 4)} ORIGEN.` };
+      return repintar();
+    }
     trabajando = true; repintar();
     ventaKey = ventaKey || `r-${Date.now()}-${Math.random().toString(36).slice(2, 12)}`;
     try {
@@ -407,7 +477,7 @@ const VRECARGA = (() => {
 
   return {
     vista, alPintar, apagar,
-    cantidad: cantidadCambia, todo, parte, recargar, otra,
-    _adentro: { polygonAbierta, bloqueTarjeta },
+    cantidad: cantidadCambia, todo, parte, hastaElTecho, recargar, otra,
+    _adentro: { polygonAbierta, bloqueTarjeta, techoWei },
   };
 })();
