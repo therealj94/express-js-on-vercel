@@ -13,7 +13,13 @@ import CardEvent from "../models/CardEvent";
 // propio, para no aplicar dos veces el mismo evento de webhook: ver
 // `eventoYaAplicado` mas abajo.
 import Idempotencia from "../models/Idempotencia";
+import CardPurchase from "../models/CardPurchase";
+import OrigenBalance from "../models/OrigenBalance";
 import { getOrigenPriceUsd } from "../lib/origenPrice";
+import { descifrarLlavePrivada } from "../lib/cripto";
+import { precioDeGas } from "../lib/gas";
+import { ethers } from "ethers";
+import * as venta from "../lib/ventaTarjeta";
 
 const CRYPTOMATE_BASE_URL = "https://api.cryptomate.me";
 
@@ -43,10 +49,170 @@ async function getAuthUser(req) {
   return Users.findById(decoded.userId);
 }
 
+// La cadena de Orden Global, donde vive el ORIGEN con el que se paga.
+const OG_RPC_TARJETA = process.env.OG_CHAIN_PROVIDER || "https://www.ordenglobal-rpc.com";
+
+/* Cuánto se espera a que el pago entre al bloque. Heroku corta la petición a
+   los 30 s, así que se deja margen para contestar algo útil antes. Si no da
+   tiempo, la compra queda en «pendiente» y el siguiente intento la retoma:
+   nadie paga dos veces por haber tocado otra vez. */
+const ESPERA_PAGO_MS = 16000;
+
+/**
+ * EL COBRO DE LA TARJETA, con memoria.
+ *
+ * Devuelve la compra ya en estado `pagada`, o lanza. Dos caminos, y NUNCA los
+ * dos en la misma compra —si una mitad falla habría que devolver la otra, y
+ * ese camino tiene más formas de salir mal que de salir bien:
+ *
+ *   interno   se descuenta del saldo comprado. Es un decremento atómico en la
+ *             base: sin transacción, sin gas, sin espera. El `$gte` dentro del
+ *             filtro es el candado contra dos peticiones a la vez.
+ *   cadena    el usuario firma una transferencia de ORIGEN a la billetera de
+ *             las ventas de tarjeta.
+ */
+async function cobrarLaTarjeta(user, password, req) {
+  // ¿Hay una compra a medias? Si ya está pagada, NO se vuelve a cobrar: lo que
+  // falta es emitir, y para eso ya está pagada.
+  const abierta = await CardPurchase.findOne({
+    userId: user._id,
+    estado: { $in: ["pendiente", "pagada"] },
+  });
+  if (abierta?.estado === "pagada") return abierta;
+
+  const p = await venta.precio();
+
+  if (abierta?.estado === "pendiente") {
+    // Se emitió un pago y no se supo si entró. Se mira el recibo antes de
+    // hacer nada más: cobrar otra vez acá es cobrar dos veces.
+    if (abierta.ogTxHash) {
+      const pv = new ethers.JsonRpcProvider(OG_RPC_TARJETA);
+      const recibo = await pv.getTransactionReceipt(abierta.ogTxHash).catch(() => null);
+      if (recibo?.status === 1) {
+        abierta.estado = "pagada";
+        abierta.pagadaEn = new Date();
+        await abierta.save();
+        return abierta;
+      }
+      if (recibo && recibo.status !== 1) {
+        abierta.estado = "devuelta";
+        abierta.error = "la transacción del pago no entró";
+        await abierta.save();
+        // Cae abajo y se cobra de nuevo: esta vez no se cobró nada.
+      } else {
+        const e = new Error("Tu pago todavía se está confirmando. Probá en un minuto.");
+        e.codigo = "PAGO_EN_CURSO";
+        e.http = 409;
+        throw e;
+      }
+    } else {
+      abierta.estado = "devuelta";
+      abierta.error = "quedó sin hash";
+      await abierta.save();
+    }
+  }
+
+  // ── el saldo comprado primero ─────────────────────────────────────────────
+  const interno = await OrigenBalance.findOneAndUpdate(
+    { userId: user._id, origen: { $gte: p.origen } },
+    { $inc: { origen: -p.origen } },
+    { new: true }
+  );
+  if (interno) {
+    try {
+      return await CardPurchase.create({
+        userId: user._id,
+        precioUsd: p.usd, origenAmount: p.origen, origenPriceUsd: p.origenPriceUsd,
+        fuente: "interno", destino: venta.DESTINO,
+        estado: "pagada", pagadaEn: new Date(),
+      });
+    } catch (e) {
+      // Choque con el índice único: otra petición entró en paralelo. Se
+      // devuelve el ORIGEN antes de salir — se cobró y no se va a usar.
+      await OrigenBalance.updateOne({ userId: user._id }, { $inc: { origen: p.origen } });
+      const err = new Error("Ya tenés una compra de tarjeta en proceso.");
+      err.codigo = "COMPRA_EN_CURSO"; err.http = 409;
+      throw err;
+    }
+  }
+
+  // ── si no alcanza, se firma en la cadena ──────────────────────────────────
+  if (!password) {
+    const e = new Error("Hace falta tu contraseña para pagar la tarjeta.");
+    e.codigo = "FALTA_CLAVE"; e.http = 400;
+    throw e;
+  }
+  if (!(await bcrypt.compare(password, user.password))) {
+    const e = new Error("Contraseña incorrecta.");
+    e.codigo = "CLAVE_MALA"; e.http = 401;
+    throw e;
+  }
+  const llave = descifrarLlavePrivada(user.privateKey);
+  if (!llave || !llave.startsWith("0x")) {
+    const e = new Error("No se pudo abrir tu billetera.");
+    e.http = 500;
+    throw e;
+  }
+
+  const pv = new ethers.JsonRpcProvider(OG_RPC_TARJETA);
+  const w = new ethers.Wallet(llave, pv);
+  const monto = ethers.parseEther(String(p.origen));
+  const saldo = await pv.getBalance(w.address);
+  /* El gas se descuenta del mismo saldo, así que se comprueba con él dentro:
+     quedarse a mitad por no poder pagar 21.000 de gas después de haber dicho
+     que sí es la forma más tonta de romper esto. */
+  const gasPrice = await precioDeGas(pv);
+  if (saldo < monto + gasPrice * 21000n) {
+    const e = new Error(`No te alcanza: la tarjeta cuesta ${p.origen} ORIGEN (${p.usd} USD).`);
+    e.codigo = "SIN_SALDO"; e.http = 400;
+    throw e;
+  }
+
+  // La compra se anota ANTES de firmar. Si el dyno muere entre el envío y el
+  // registro, el pago existiría y nadie sabría de él.
+  let compra;
+  try {
+    compra = await CardPurchase.create({
+      userId: user._id,
+      precioUsd: p.usd, origenAmount: p.origen, origenPriceUsd: p.origenPriceUsd,
+      fuente: "cadena", destino: venta.DESTINO, estado: "pendiente",
+    });
+  } catch (e) {
+    const err = new Error("Ya tenés una compra de tarjeta en proceso.");
+    err.codigo = "COMPRA_EN_CURSO"; err.http = 409;
+    throw err;
+  }
+
+  const tx = await w.sendTransaction({
+    to: venta.DESTINO, value: monto, gasLimit: 21000n, gasPrice,
+  });
+  compra.ogTxHash = tx.hash;
+  await compra.save();
+
+  const recibo = await Promise.race([
+    tx.wait(1),
+    new Promise((r) => setTimeout(() => r(null), ESPERA_PAGO_MS)),
+  ]).catch(() => null);
+
+  if (recibo?.status === 1) {
+    compra.estado = "pagada";
+    compra.pagadaEn = new Date();
+    await compra.save();
+    return compra;
+  }
+
+  /* 409 y no 202. Un 202 es «aceptado», y para `fetch` eso es `r.ok === true`:
+     el cliente lo leería como tarjeta emitida y enseñaría una que no existe.
+     Lo que pasó acá es que la operación NO terminó, y eso tiene que cortar. */
+  const e = new Error("Tu pago salió y todavía se está confirmando. Volvé a tocar en un minuto: no se cobra dos veces.");
+  e.codigo = "PAGO_EN_CURSO"; e.http = 409;
+  throw e;
+}
+
 // POST /cards/request
 // Emite la tarjeta Visa virtual enterprise directamente (sin crear cliente en CryptoMate).
 // La cuenta usa enterprise_cards con approval_method: "NONE".
-// Requiere KYC aprobado.
+// Requiere Genesis ID aprobado, que haya cupo, y el pago de la tarjeta en ORIGEN.
 export const requestCard = async (req, res) => {
   try {
     const user = await getAuthUser(req);
@@ -85,6 +251,49 @@ export const requestCard = async (req, res) => {
     if (!user.name) throw new Error("User name is required — update your profile first");
     if (!finalPhone) throw new Error("Phone number is required — update your profile first");
 
+    /* ── EL CUPO ────────────────────────────────────────────────────────────
+       Se pregunta al emisor cuántas hay de verdad. Falla CERRADO: si no se
+       puede contar, no se emite — un tope que se abre solo cuando el emisor no
+       contesta no es un tope.
+
+       Y no sale ni el tope ni cuántas quedan. «Quedan 3» convierte una
+       decisión de operación en una carrera; el número real va al registro del
+       servidor, que es donde hace falta. */
+    let cupo;
+    try {
+      cupo = await venta.hayCupo();
+    } catch (e) {
+      console.error("[requestCard] no se pudo contar las tarjetas:", e?.message || e);
+      return res.status(503).json({
+        code: "EMISION_CERRADA",
+        message: "No podemos emitir tarjetas nuevas en este momento. Probá más tarde.",
+      });
+    }
+    if (!cupo.hay) {
+      console.error(`[requestCard] SIN CUPO: hay ${cupo.cuantas} de ${cupo.tope}`);
+      return res.status(409).json({
+        code: "EMISION_CERRADA",
+        message: "No estamos emitiendo tarjetas nuevas en este momento.",
+      });
+    }
+
+    /* ── EL PAGO ────────────────────────────────────────────────────────────
+       La tarjeta cuesta 5 USD en ORIGEN. Se cobra ANTES de pedirla al emisor:
+       al revés, un fallo del cobro dejaría una tarjeta emitida y gratis, y esa
+       no se puede deshacer. Al derecho, un fallo de la emisión deja la compra
+       pagada y el siguiente intento reintenta la emisión sin volver a cobrar.
+
+       Y va DESPUÉS del cupo: cobrarle a alguien para después decirle que no
+       hay tarjetas es lo peor que puede hacer esta ruta. */
+    let compra;
+    try {
+      compra = await cobrarLaTarjeta(user, req.body?.password, req);
+    } catch (e) {
+      const http = e?.http || 500;
+      console.error(`[requestCard] cobro ${e?.codigo || "ERROR"}: ${e?.message}`);
+      return res.status(http).json({ code: e?.codigo || "ERROR", message: e.message });
+    }
+
     // Crear la tarjeta Visa virtual enterprise (sin paso de cliente CryptoMate)
     const cardPayload = {
       card_holder_name: user.name.slice(0, 27), // CryptoMate: máx 27 caracteres
@@ -99,10 +308,28 @@ export const requestCard = async (req, res) => {
 
     console.log("Creating card with payload:", JSON.stringify(cardPayload));
 
-    const { data: cardData } = await cryptomateClient.post(
-      "/cards/virtual-cards/create",
-      cardPayload
-    );
+    let cardData;
+    try {
+      ({ data: cardData } = await cryptomateClient.post(
+        "/cards/virtual-cards/create",
+        cardPayload
+      ));
+    } catch (e) {
+      /* PAGADA Y SIN TARJETA. La compra se queda en «pagada» a propósito: es
+         lo que hace que el siguiente intento reintente la emisión SIN volver a
+         cobrar. Se dice con esas palabras —«ya está pagada»— porque lo primero
+         que piensa quien ve un error después de pagar es que perdió el dinero,
+         y volver a intentarlo tiene que sonar seguro, que es lo que es. */
+      console.error(`[requestCard] PAGADA SIN EMITIR compra=${compra._id} usuario=${user._id}:`,
+        e?.response?.data || e.message);
+      compra.error = String(e?.response?.data?.message || e.message).slice(0, 200);
+      await compra.save();
+      return res.status(502).json({
+        code: "PAGADA_SIN_EMITIR",
+        message: "Tu pago quedó registrado, pero el emisor no pudo crear la tarjeta ahora mismo. "
+               + "Volvé a tocar en un rato: no se cobra de nuevo.",
+      });
+    }
 
     // Guardar la tarjeta en la base de datos
     const newCard = new Card({
@@ -117,6 +344,18 @@ export const requestCard = async (req, res) => {
       monthlyLimit: cardData.monthly_limit,
     });
     await newCard.save();
+
+    // La compra se cierra acá y no antes: hasta que la tarjeta no existe en
+    // nuestra base, la operación no está completa. Cerrarla libera además el
+    // candado del índice único, que es lo que deja pedir otra el día que ésta
+    // se cancele.
+    compra.estado = "emitida";
+    compra.cryptomateCardId = cardData.id;
+    compra.emitidaEn = new Date();
+    compra.error = undefined;
+    await compra.save();
+    console.log(`[requestCard] vendida: ${compra.origenAmount} ORIGEN (${compra.precioUsd} USD) `
+      + `por ${compra.fuente} → ${compra.destino} · tarjeta ${cardData.id}`);
 
     // Sincronizar teléfono OTP (3DS SMS) explícitamente
     try {
@@ -418,6 +657,32 @@ export const getOrigenPrice = async (req, res) => {
     res.json({ price, updatedAt: new Date().toISOString() });
   } catch (error) {
     res.status(500).json({ message: "Error fetching price" });
+  }
+};
+
+/**
+ * GET /cards/emision
+ *
+ * Lo que la pantalla necesita saber ANTES de que alguien llene un formulario:
+ * cuánto cuesta la tarjeta y si se está emitiendo.
+ *
+ * LO QUE NO DEVUELVE, A PROPÓSITO: el tope de tarjetas, cuántas hay y cuántas
+ * quedan. Eso es interno. «Quedan 3» convierte una decisión de operación en
+ * una carrera, y decir cuántas hay le regala a cualquiera el tamaño exacto de
+ * la operación. Acá solo `abierta: true|false`.
+ */
+export const getEmision = async (req, res) => {
+  try {
+    const user = await getAuthUser(req);
+    if (!user) return res.status(404).json({ message: "User not found" });
+    const info = await venta.paraLaPantalla();
+    // Se dice también si a esta persona le falta el Genesis ID, que es el
+    // otro requisito: la pantalla puede así llevarla al sitio correcto en vez
+    // de dejarla tocar un botón que va a contestar 403.
+    res.json({ ...info, verificada: user.kycStatus === "approved" });
+  } catch (error) {
+    console.error("[getEmision]", error?.message || error);
+    res.status(500).json({ message: "Error leyendo el precio de la tarjeta" });
   }
 };
 

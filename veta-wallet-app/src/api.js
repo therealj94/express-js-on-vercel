@@ -198,6 +198,10 @@ async function rawReq(path, { method = 'GET', body, timeout = 20000 } = {}) {
       err.code = res.status === 401 || res.status === 403 ? 'auth'
         : res.status === 400 || res.status === 422 ? 'rechazado'
           : res.status >= 500 ? 'servidor' : 'http';
+      // El código propio del servidor, cuando lo manda. `code` ya está tomado
+      // por la familia de arriba, así que va aparte: sin él, la pantalla tiene
+      // que adivinar con expresiones regulares sobre un texto traducido.
+      if (data.code) err.motivo = String(data.code);
       throw err;
     }
     return data;
@@ -304,16 +308,22 @@ export const cardApi = {
   // Estado de la tarjeta: last4, status, saldo en ORIGEN, límites.
   mine: () => req('/cards/my-card'),
 
-  // Emitir. El backend exige KYC aprobado y aceptación de términos.
-  request: ({ acceptedTerms, phoneCountryCode, phoneNumber }) =>
+  // Cuánto cuesta emitir la tarjeta y si se está emitiendo. Nunca dice cuántas
+  // quedan: eso es interno de la casa.
+  emision: () => req('/cards/emision'),
+
+  // Emitir. El backend exige Genesis ID aprobado, que haya cupo, y el pago de
+  // la tarjeta en ORIGEN — de ahí la contraseña, que firma ese pago.
+  request: ({ acceptedTerms, phoneCountryCode, phoneNumber, password }) =>
     req('/cards/request', {
       method: 'POST',
       body: {
         acceptedTerms: !!acceptedTerms,
         ...(phoneCountryCode ? { phone_country_code: Number(phoneCountryCode) } : {}),
         ...(phoneNumber ? { phone_number: String(phoneNumber) } : {}),
+        ...(password ? { password: String(password) } : {}),
       },
-      timeout: 45000,   // emitir una tarjeta pasa por CryptoMate: es lento
+      timeout: 60000,   // emitir pasa por el cobro y por CryptoMate: es lento
     }),
 
   // Congelar / descongelar. Control de seguridad real, no cosmético.

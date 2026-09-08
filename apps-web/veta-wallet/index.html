@@ -3591,6 +3591,14 @@ body.en-p2c .cha-puerta p{color:var(--p2c-bruma)}
 .tar-marca em,.tar-fantasma em{font-style:normal;color:var(--oro)}
 .tar-pie{display:flex;align-items:center;justify-content:space-between;gap:12px}
 .tar-pie b{font-family:var(--mono);color:var(--crema);font-size:15px}
+/* El precio de emitir la tarjeta, arriba del formulario. Las dos cifras a la
+   derecha y alineadas: se leen de un vistazo y se comparan sin pensar. */
+.tar-precio{margin-top:16px;padding:14px 15px;border-radius:14px;
+  background:rgba(201,169,97,.07);border:1px solid rgba(201,169,97,.28)}
+.tar-precio-fila{display:flex;justify-content:space-between;align-items:baseline;gap:12px;padding:3px 0}
+.tar-precio-fila span{color:var(--txt3);font-size:12.5px}
+.tar-precio-fila b{color:var(--oro);font-variant-numeric:tabular-nums;font-weight:700}
+.tar-precio .pie{margin-top:8px}
 .tar-botones{display:flex;flex-wrap:wrap;gap:9px;margin-top:16px}
 .tar-vacia{text-align:center}
 .tar-vacia .tar-plastico{margin:0 auto 22px}

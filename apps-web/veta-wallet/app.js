@@ -110,6 +110,11 @@ const VETA = (() => {
      tarjeta de Genesis ID. */
   let errMovs = null;
   let tarjeta = null;         // { estado, last4, saldo… } o { falta: true }
+  /* Lo que cuesta emitir la tarjeta y si se está emitiendo. Viene de
+     GET /cards/emision. El servidor NO dice cuántas quedan —eso es interno—
+     así que acá tampoco hay nada que enseñar de más: solo el precio y un sí o
+     un no. */
+  let emision = null;
   let movsTarjeta = [];
   let volteada = false;         // la tarjeta, de frente o de espaldas
   /* El numero, el CVV y el vencimiento viven SOLO en memoria y solo mientras
@@ -190,6 +195,8 @@ const VETA = (() => {
         // Sin arrastrarlo hasta aqui, quien atrapa el error solo tiene la frase
         // y acaba adivinando con expresiones regulares sobre la traduccion.
         if (datos?.motivo) e.motivo = datos.motivo;
+        // Lo mismo con `code`, que es como lo nombran las rutas de la tarjeta.
+        if (datos?.code) e.codigo = datos.code;
         // Y con «otra-cuenta» viaja el correo que la sesión SÍ prueba.
         if (datos?.correoReal) e.correoReal = String(datos.correoReal).toLowerCase();
         throw e;
@@ -2222,6 +2229,10 @@ const VETA = (() => {
     if (cual === 'enviar') $('#env-monto')?.focus();
     if (cual === 'cambiar') cambioMonto();
     if (cual === 'tarjeta' && !tarjeta) cargarTarjeta().then(() => { if (vistaActual === 'tarjeta') vista('tarjeta'); });
+    // El precio de emitir se pregunta una sola vez por sesión de pantalla: no
+    // cambia entre un repintado y el siguiente, y pedirlo en cada uno sería
+    // una llamada por cada tecla del formulario.
+    if (cual === 'tarjeta' && !emision) cargarEmision().then(() => { if (vistaActual === 'tarjeta') vista('tarjeta'); });
     if (cual === 'remesas' && !tasas) cargarTasas().then(() => { if (vistaActual === 'remesas') vista('remesas'); });
     if (cual === 'chat') { p2cPortada(); chatEntrar(); } else p2cPortadaFuera();
     if (cual === 'token') montarVelasToken();
@@ -4700,6 +4711,10 @@ const VETA = (() => {
         <h3>${t('tar.sinT')}</h3>
         <p class="pie" style="margin-top:8px">${t('tar.sinP')}</p>
         ${esVerificada() ? `
+          ${precioTarjeta()}
+          ${emision && emision.abierta === false ? `
+            <div class="nota" style="margin-top:16px">${t('tar.cerrada')}</div>`
+          : `
           <form onsubmit="return VETA.pedirTarjeta(event)" style="margin-top:18px">
             <div class="campo-fila">
               <div class="campo campo-cod">
@@ -4711,13 +4726,18 @@ const VETA = (() => {
                 <input id="tar-tel" inputmode="numeric" data-tp="tar.telPh" placeholder="${t('tar.telPh')}" required>
               </div>
             </div>
+            <div class="campo">
+              <label for="tar-clave">${t('tar.clave')}</label>
+              <input id="tar-clave" type="password" autocomplete="current-password" required>
+              <p class="pie" style="margin-top:6px">${t('tar.claveP')}</p>
+            </div>
             <label class="checa">
               <input type="checkbox" id="tar-term" required>
               <span>${t('tar.acepto')}</span>
             </label>
             <div id="tar-aviso" class="aviso oculto" role="alert"></div>
             <button class="btn btn-oro btn-full" id="tar-btn" type="submit">${t('tar.pedir')}</button>
-          </form>`
+          </form>`}`
         : `<div class="nota" style="margin-top:18px">${t('tar.necesitaGid')}</div>
            <div style="margin-top:14px"><button class="btn btn-oro btn-sm" onclick="VETA.vista('identidad')">Genesis ID</button></div>`}
       </div>`;
@@ -4819,6 +4839,27 @@ const VETA = (() => {
   function recargarTarjeta() {
     salaDeOrdenex = '/#recargar';
     vista('ordenex');
+  }
+
+  /* EL PRECIO, ANTES DEL FORMULARIO.
+     Emitir la tarjeta cuesta 5 USD y se pagan en ORIGEN. Decirlo después de
+     que alguien llenó el teléfono y aceptó los términos es la peor forma de
+     enterarse; va arriba, con las dos cifras —lo que cuesta y lo que se va a
+     descontar— porque la persona piensa en dólares y paga en ORIGEN. */
+  function precioTarjeta() {
+    if (!emision) return `<p class="pie" style="margin-top:16px">${t('tar.leyendoPrecio')}</p>`;
+    return `
+      <div class="tar-precio">
+        <div class="tar-precio-fila">
+          <span>${t('tar.cuesta')}</span>
+          <b>${usd(emision.precioUsd)}</b>
+        </div>
+        <div class="tar-precio-fila">
+          <span>${t('tar.seCobra')}</span>
+          <b>${oro(emision.precioOrigen)} ORIGEN</b>
+        </div>
+        <p class="pie">${t('tar.precioP')}</p>
+      </div>`;
   }
 
   function movimientosTarjeta() {
@@ -15939,6 +15980,16 @@ const VETA = (() => {
     vista('tarjeta');
   }
 
+  /* Cuánto cuesta la tarjeta y si se está emitiendo. Se pregunta al entrar a
+     la pantalla, no al tocar el botón: enterarse del precio cuando ya llenaste
+     el formulario es la peor forma de enterarse. Si no se puede preguntar, se
+     deja en null y la pantalla dice que lo está leyendo — nunca se inventa un
+     precio ni se da por abierta la emisión. */
+  async function cargarEmision() {
+    try { emision = await pedir('/cards/emision'); }
+    catch { emision = null; }
+  }
+
   function pedirTarjeta(ev) {
     ev.preventDefault();
     const b = $('#tar-btn'), av = $('#tar-aviso');
@@ -15946,19 +15997,45 @@ const VETA = (() => {
     b.disabled = true;
     b.innerHTML = `<span class="girando"></span> ${t('tar.pidiendo')}`;
     pedir('/cards/request', {
-      metodo: 'POST', espera: 45000,
+      metodo: 'POST', espera: 60000,
       cuerpo: {
         acceptedTerms: true,
         phone_country_code: Number($('#tar-cod').value) || undefined,
         phone_number: String($('#tar-tel').value || ''),
+        // Paga la tarjeta: 5 USD en ORIGEN, firmados con la llave de esta
+        // billetera. Si al usuario le alcanza con el saldo comprado, el
+        // servidor lo descuenta de ahí y esta clave solo sirve de confirmación.
+        password: String($('#tar-clave')?.value || ''),
       },
     }).then(() => { tarjeta = null; return cargarTarjeta(); })
       .then(() => vista('tarjeta'))
       .catch(e => {
-        av.textContent = e.estado === 403 ? t('tar.necesitaGid') : e.message;
+        /* Los finales que NO son «falló, probá de nuevo» tienen su propio
+           texto, porque lo que hay que hacer en cada uno es distinto — y
+           porque después de un cobro, «error» a secas se lee como «perdí el
+           dinero». */
+        const porCodigo = {
+          EMISION_CERRADA:   t('tar.cerrada'),
+          PAGADA_SIN_EMITIR: t('tar.pagadaSinEmitir'),
+          PAGO_EN_CURSO:     t('tar.pagoEnCurso'),
+          COMPRA_EN_CURSO:   t('tar.pagoEnCurso'),
+          SIN_SALDO:         e.message,
+          CLAVE_MALA:        t('tar.claveMala'),
+          FALTA_CLAVE:       t('tar.claveMala'),
+        };
+        av.textContent = porCodigo[e.codigo]
+          || (e.estado === 403 ? t('tar.necesitaGid') : e.message);
         av.classList.remove('oculto');
         b.disabled = false;
         b.textContent = t('tar.pedir');
+        /* El cupo puede haberse cerrado mientras tanto, así que se vuelve a
+           preguntar. Pero SOLO se repinta si de verdad cambió a cerrado:
+           repintar siempre borraba el aviso que acabamos de escribir —el
+           mensaje aparecía y desaparecía en el mismo segundo—, y justo
+           después de un cobro ese es el mensaje que más falta hace leer. */
+        cargarEmision().then(() => {
+          if (vistaActual === 'tarjeta' && emision && emision.abierta === false) vista('tarjeta');
+        });
       });
     return false;
   }
@@ -15970,6 +16047,9 @@ const VETA = (() => {
        tira la que quedo en error para que `vista('tarjeta')` la vuelva a
        pedir. */
     if (vistaActual === 'tarjeta' && tarjeta?.error) tarjeta = null;
+    // Y el precio de emitir: es lo otro que esta pantalla enseña y que puede
+    // haber cambiado. Sin esto, «Reintentar» refrescaba media pantalla.
+    emision = null;
     avisar(t('ok.act'));
     cartera = null; errCartera = null;
     if (vistaActual === 'billetera') vista('billetera');

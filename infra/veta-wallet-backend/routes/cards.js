@@ -23,6 +23,7 @@ var {
   getCardNotifications,
   markNotificationsRead,
   getOrigenPrice,
+  getEmision,
   cardWebhook,
   syncCards,
   recargaDeLaTarjeta,
@@ -36,6 +37,7 @@ router.post("/webhook", cardWebhook);
 router.post("/request", verifyTokenUser, requestCard);       // Solicitar tarjeta (requiere KYC aprobado)
 router.get("/my-card", verifyTokenUser, getMyCard);          // Datos de la tarjeta
 router.get("/origen-price", verifyTokenUser, getOrigenPrice); // Precio actual de ORIGEN en USD
+router.get("/emision", verifyTokenUser, getEmision);         // Cuánto cuesta la tarjeta y si se emite
 router.post("/pan", verifyTokenUser, getCardPan);            // URL segura para ver PAN — requiere password
 router.post("/pin", verifyTokenUser, getCardPin);            // PIN de la tarjeta — requiere password
 router.put("/pin",  verifyTokenUser, setCardPin);            // Crear/cambiar PIN — requiere password
