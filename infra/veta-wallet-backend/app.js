@@ -199,6 +199,28 @@ const financialLimiter = rateLimit({
 });
 app.use("/cards/fund", financialLimiter);
 
+/* PEDIR LA TARJETA TAMBIÉN MUEVE DINERO, DESDE HOY.
+ *
+ * Emitir dejó de ser gratis: cuesta 5 USD en ORIGEN y la ruta pide la
+ * contraseña para firmar ese pago. Eso la convierte en lo mismo que advierte
+ * el comentario de abajo sobre /transaction — un oráculo para adivinar
+ * contraseñas: se prueba una, el servidor contesta si acertó, se prueba otra.
+ * Se quedó sin freno propio al empezar a cobrar, cayendo solo en el límite
+ * global de 100/min, que existe para que nadie tumbe el servidor y no para
+ * proteger el dinero de nadie.
+ *
+ * Cinco cada quince minutos, el mismo freno que la frase semilla. Pedir una
+ * tarjeta se hace UNA vez en la vida de una cuenta: cinco intentos es holgado
+ * para quien la está pidiendo de verdad y estrecho para quien está probando
+ * contraseñas. */
+app.use("/cards/request", rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 5,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { message: "Demasiados intentos. Esperá 15 minutos." },
+}));
+
 // ── Enviar dinero ────────────────────────────────────────────────────────────
 //
 // EL FRENO DURO ESTABA DONDE EL PREMIO ERA CHICO.

@@ -98,6 +98,20 @@ await irATarjeta();
   });
   ok('y el precio va ARRIBA del formulario', antes.c < antes.form, JSON.stringify(antes));
   ok('hay dónde poner la contraseña', await pag.evaluate(() => !!document.getElementById('tar-clave')));
+  const pie = await pag.evaluate(() =>
+    document.getElementById('tar-clave')?.closest('.campo')?.querySelector('.pie')?.textContent || '');
+  ok('y el pie del campo habla del PAGO, no de revelar el número',
+    /firmar el pago/i.test(pie), pie);
+  /* EL BOTÓN DICE LO QUE VA A PAGAR — la misma regla que la casa escribió
+     para vender. Un botón que dice «Solicitar» donde se cobran 5 dólares es
+     el peor sitio para callarlo. */
+  const btn = await pag.evaluate(() => document.getElementById('tar-btn')?.textContent?.trim() || '');
+  ok('el botón nombra el importe', /\$5/.test(btn), btn);
+}
+
+if (process.env.VETA_FOTO) {
+  await pag.screenshot({ path: process.env.VETA_FOTO, fullPage: true });
+  console.log(`  ·     foto en ${process.env.VETA_FOTO}`);
 }
 
 console.log('\n── el tope no se ve por ningún lado ─────────────────────────');

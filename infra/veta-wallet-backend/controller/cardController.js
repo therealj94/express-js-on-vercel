@@ -228,6 +228,23 @@ export const requestCard = async (req, res) => {
     // Verificar que no tenga ya una tarjeta activa
     const existingCard = await Card.findOne({ userId: user._id, status: { $ne: "DELETED" } });
     if (existingCard) {
+      /* Y de paso se cuadra una compra que se haya quedado abierta.
+         EL AGUJERO QUE ESTO TAPA: si el proceso muere entre guardar la tarjeta
+         y cerrar la compra, queda una tarjeta emitida y una compra en
+         «pagada». El día que esa persona cancele la tarjeta y pida otra,
+         `cobrarLaTarjeta` encuentra esa compra pagada, no cobra, y le da una
+         segunda tarjeta gratis. Se cierra acá, que es el único sitio por el
+         que se pasa sabiendo que la tarjeta SÍ existe. */
+      const colgada = await CardPurchase.findOne({
+        userId: user._id, estado: { $in: ["pendiente", "pagada"] },
+      });
+      if (colgada) {
+        colgada.estado = "emitida";
+        colgada.cryptomateCardId = colgada.cryptomateCardId || existingCard.cryptomateCardId;
+        colgada.emitidaEn = colgada.emitidaEn || new Date();
+        await colgada.save();
+        console.log(`[requestCard] compra ${colgada._id} cuadrada contra la tarjeta que ya existía`);
+      }
       return res.status(400).json({
         message: "User already has an active card",
         cardId: existingCard.cryptomateCardId,
@@ -259,22 +276,31 @@ export const requestCard = async (req, res) => {
        Y no sale ni el tope ni cuántas quedan. «Quedan 3» convierte una
        decisión de operación en una carrera; el número real va al registro del
        servidor, que es donde hace falta. */
+    /* QUIEN YA PAGÓ NO VUELVE A PEDIR CUPO.
+       Su cupo ya se lo dio esta misma ruta cuando le cobró. Si entre el cobro
+       y el reintento se llenó el tope, volver a comprobarlo lo dejaría pagado
+       y sin tarjeta para siempre — que es exactamente el final que este orden
+       venía a evitar, llegando tarde. */
+    const yaPagada = await CardPurchase.findOne({ userId: user._id, estado: "pagada" });
+
     let cupo;
-    try {
-      cupo = await venta.hayCupo();
-    } catch (e) {
-      console.error("[requestCard] no se pudo contar las tarjetas:", e?.message || e);
-      return res.status(503).json({
-        code: "EMISION_CERRADA",
-        message: "No podemos emitir tarjetas nuevas en este momento. Probá más tarde.",
-      });
-    }
-    if (!cupo.hay) {
-      console.error(`[requestCard] SIN CUPO: hay ${cupo.cuantas} de ${cupo.tope}`);
-      return res.status(409).json({
-        code: "EMISION_CERRADA",
-        message: "No estamos emitiendo tarjetas nuevas en este momento.",
-      });
+    if (!yaPagada) {
+      try {
+        cupo = await venta.hayCupo();
+      } catch (e) {
+        console.error("[requestCard] no se pudo contar las tarjetas:", e?.message || e);
+        return res.status(503).json({
+          code: "EMISION_CERRADA",
+          message: "No podemos emitir tarjetas nuevas en este momento. Probá más tarde.",
+        });
+      }
+      if (!cupo.hay) {
+        console.error(`[requestCard] SIN CUPO: hay ${cupo.cuantas} de ${cupo.tope}`);
+        return res.status(409).json({
+          code: "EMISION_CERRADA",
+          message: "No estamos emitiendo tarjetas nuevas en este momento.",
+        });
+      }
     }
 
     /* ── EL PAGO ────────────────────────────────────────────────────────────

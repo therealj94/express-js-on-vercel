@@ -4729,14 +4729,14 @@ const VETA = (() => {
             <div class="campo">
               <label for="tar-clave">${t('tar.clave')}</label>
               <input id="tar-clave" type="password" autocomplete="current-password" required>
-              <p class="pie" style="margin-top:6px">${t('tar.claveP')}</p>
+              <p class="pie" style="margin-top:6px">${t('tar.clavePago')}</p>
             </div>
             <label class="checa">
               <input type="checkbox" id="tar-term" required>
               <span>${t('tar.acepto')}</span>
             </label>
             <div id="tar-aviso" class="aviso oculto" role="alert"></div>
-            <button class="btn btn-oro btn-full" id="tar-btn" type="submit">${t('tar.pedir')}</button>
+            <button class="btn btn-oro btn-full" id="tar-btn" type="submit">${rotuloPedir()}</button>
           </form>`}`
         : `<div class="nota" style="margin-top:18px">${t('tar.necesitaGid')}</div>
            <div style="margin-top:14px"><button class="btn btn-oro btn-sm" onclick="VETA.vista('identidad')">Genesis ID</button></div>`}
@@ -4846,6 +4846,16 @@ const VETA = (() => {
      que alguien llenó el teléfono y aceptó los términos es la peor forma de
      enterarse; va arriba, con las dos cifras —lo que cuesta y lo que se va a
      descontar— porque la persona piensa en dólares y paga en ORIGEN. */
+  /* EL BOTÓN DICE LO QUE VA A PAGAR.
+     Es la misma regla que la casa ya escribió para vender: el último botón
+     antes de que salga dinero nombra el importe. «Solicitar mi tarjeta» era
+     verdad cuando era gratis; ahora cobra 5 dólares y callarlo justo en el
+     botón es donde peor se ve. Si todavía no se sabe el precio, se queda el
+     texto de siempre en vez de inventar una cifra. */
+  const rotuloPedir = () => (emision && emision.precioUsd != null
+    ? t('tar.pedirCon').replace('{u}', usd(emision.precioUsd))
+    : t('tar.pedir'));
+
   function precioTarjeta() {
     if (!emision) return `<p class="pie" style="margin-top:16px">${t('tar.leyendoPrecio')}</p>`;
     return `
@@ -16027,7 +16037,7 @@ const VETA = (() => {
           || (e.estado === 403 ? t('tar.necesitaGid') : e.message);
         av.classList.remove('oculto');
         b.disabled = false;
-        b.textContent = t('tar.pedir');
+        b.textContent = rotuloPedir();
         /* El cupo puede haberse cerrado mientras tanto, así que se vuelve a
            preguntar. Pero SOLO se repinta si de verdad cambió a cerrado:
            repintar siempre borraba el aviso que acabamos de escribir —el

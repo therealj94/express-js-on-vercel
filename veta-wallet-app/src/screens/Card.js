@@ -353,8 +353,15 @@ function SolicitarTarjeta({ nav, onEmitida, t, toast }) {
       )}
 
       <View style={{ height: 14 }} />
+      {/* El botón dice lo que va a pagar — la misma regla que la casa ya
+          escribió para vender. «Solicitar mi tarjeta» era verdad cuando era
+          gratis; ahora cobra, y callarlo justo en el botón es donde peor se
+          ve. Sin precio leído, se queda el texto de siempre en vez de
+          inventar una cifra. */}
       <Button3D
-        title={enviando ? t('card.reqSending') : t('card.reqCta')}
+        title={enviando ? t('card.reqSending')
+          : emision?.precioUsd != null ? t('card.reqCtaCon', { u: `${money(emision.precioUsd)} USD` })
+          : t('card.reqCta')}
         disabled={enviando || !acepta || emision?.abierta === false}
         onPress={continuar}
       />

@@ -191,8 +191,27 @@ titulo("el orden: cupo → cobro → emisión");
     "cobrar y después decir que no hay tarjetas es lo peor que puede hacer esta ruta");
   ok(pCobro > -1 && pCobro < pEmite, "después el cobro, ANTES de emitir",
     "al revés, un cobro fallido deja una tarjeta emitida y gratis, y eso no se deshace");
-  ok(/estado = "emitida"/.test(trozo) && trozo.indexOf('estado = "emitida"') > pEmite,
-    "y la compra se cierra solo cuando la tarjeta ya existe");
+  ok(/estado = "emitida"/.test(trozo) && trozo.lastIndexOf('estado = "emitida"') > pEmite,
+    "y la compra se cierra cuando la tarjeta ya existe");
+
+  /* LA COMPRA COLGADA. Si el proceso muere entre guardar la tarjeta y cerrar
+     la compra, queda una tarjeta emitida y una compra en «pagada». El día que
+     esa persona cancele y pida otra, el cobro encuentra esa compra pagada, no
+     cobra, y le da una segunda tarjeta gratis. Se cuadra donde se descubre que
+     la tarjeta ya existe. */
+  const pTiene = trozo.indexOf("already has an active card");
+  const pCuadra = trozo.indexOf("colgada");
+  ok(pCuadra > -1 && pCuadra < pTiene,
+    "una compra que quedó colgada se cuadra al ver que la tarjeta ya existe",
+    "si no, cancelar la tarjeta y pedir otra la daría gratis");
+
+  /* Y AL REVÉS: quien ya pagó no vuelve a pedir cupo. Si entre el cobro y el
+     reintento se llenó el tope, volver a comprobarlo lo dejaría pagado y sin
+     tarjeta para siempre. */
+  ok(/yaPagada/.test(trozo) && trozo.indexOf("yaPagada") < pCupo,
+    "quien ya pagó no vuelve a pasar por el cupo",
+    "su cupo se lo dio esta misma ruta cuando le cobró");
+  ok(/if \(!yaPagada\)/.test(trozo), "el cupo se comprueba solo cuando todavía no se ha cobrado");
   ok(/PAGADA_SIN_EMITIR/.test(trozo),
     "con un final propio para «pagada y sin tarjeta», que es el caso feo");
   ok(!/\b40\b/.test(trozo.replace(/\d{3,}/g, "")),

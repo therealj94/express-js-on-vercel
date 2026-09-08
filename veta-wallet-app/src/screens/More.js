@@ -223,7 +223,7 @@ export function Settings({ nav }) {
             decía "Cuenta privada activada" y prometía "solo cuentas aprobadas
             te ven". Prometer una protección de privacidad que no existe es
             peor que no ofrecerla. Vuelve cuando el backend la soporte. */}
-        <Text style={styles.grpTitle}>{t('set.privacy')}</Text>
+        <Text style={styles.grpTitle}>{t('set.privacyGrp')}</Text>
         <Glass style={styles.group}>
           <ListRow first icon="person-remove" title={t('set.blocked')} onPress={() => nav.go('blocked')} />
         </Glass>
