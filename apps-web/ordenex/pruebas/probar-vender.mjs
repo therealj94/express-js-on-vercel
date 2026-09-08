@@ -55,9 +55,6 @@ let llamadas = [];
 let saldo = wei(500);
 let siguienteFalla = null;
 let ventaAbierta = true;
-let tarjetaHay = true;
-let soloBsc = false;      // para probar el estado de producción de hoy
-const DIR_TARJETA = '0x5609f8feA91bB58E79236f79b646b22F174344F9';
 
 const json = (r, codigo, obj) => {
   r.writeHead(codigo, { 'Content-Type': 'application/json; charset=utf-8' });
@@ -99,13 +96,7 @@ async function api(q, r, ruta) {
        fingido, y por eso ninguna prueba veía el camino de los términos. */
     return json(r, 200, { desvio: { avisoPct: 5, bloqueoPct: 20 },
                           terminos: { version: TERMINOS_V, terminos: 'legal.html#terminos', riesgo: 'legal.html#riesgo' },
-                          /* De AQUÍ saca vender.js las redes abiertas (DATOS.limites()),
-                             no de /ventas/limites. Poner Polygon en el otro sitio no
-                             servía de nada — y así estaba en producción también. */
-                          redes: [
-                            { id: 56, nombre: 'BNB Smart Chain', minimoUsd: 2 },
-                            ...(soloBsc ? [] : [{ id: 137, nombre: 'Polygon', minimoUsd: 2 }]),
-                          ] });
+                          redes: [{ id: 56, nombre: 'BNB Smart Chain', minimoUsd: 2 }] });
   }
   if (q.method === 'GET' && ruta === '/auth/terminos') {
     return json(r, 200, { version: TERMINOS_V, terminos: 'legal.html#terminos', riesgo: 'legal.html#riesgo', aceptada: terminosAceptados });
@@ -136,22 +127,7 @@ async function api(q, r, ruta) {
     const neto = (BigInt(PRECIO_WEI) * BigInt(1000000 - PPM)) / 1000000n;
     return json(r, 200, { encendida: ventaAbierta, precioWei: PRECIO_WEI, precioUsd: 2.566148,
       netoPorOrigen: neto.toString(), comisionPpm: PPM,
-      redes: [
-        { id: 56, nombre: 'BNB Smart Chain', maxUsdtCanonico: (9n * U).toString(), maxOrigenWei: ((9n * U * U) / neto).toString() },
-        /* Polygon abierta: es por donde se recarga la tarjeta, y sin ella el
-           bloque de la tarjeta no tendría dónde salir. */
-        ...(soloBsc ? [] : [{ id: 137, nombre: 'Polygon', maxUsdtCanonico: (9n * U).toString(), maxOrigenWei: ((9n * U * U) / neto).toString() }]),
-      ] });
-  }
-
-  /* La tarjeta de quien está mirando. `tarjetaHay` deja apagarla para probar
-     el caso de quien todavía no tiene, que es la mitad de la gente. */
-  if (q.method === 'GET' && ruta === '/ventas/tarjeta') {
-    llamadas.push({ ruta, metodo: 'GET' });
-    return json(r, 200, tarjetaHay
-      ? { tiene: true, last4: '1954', titular: 'Medardo Ordonez', red: 'POLYGON',
-          direccion: DIR_TARJETA, monedas: ['USDT', 'USDC'] }
-      : { tiene: false, porQue: 'esa cuenta todavía no tiene tarjeta' });
+      redes: [{ id: 56, nombre: 'BNB Smart Chain', maxUsdtCanonico: (9n * U).toString(), maxOrigenWei: ((9n * U * U) / neto).toString() }] });
   }
 
   // ── LAS DOS RUTAS DE LA VENTA ────────────────────────────────────────────
@@ -497,84 +473,9 @@ if (process.env.ONX_FOTO) {
   await p.fill('#vn-cant', '100'); await p.waitForTimeout(900);
   await p.fill('#vn-dir', AFUERA); await p.waitForTimeout(400);
   await p.screenshot({ path: `${process.env.ONX_FOTO}/vender-escritorio.png` });
-  /* Y una del bloque de la tarjeta, que es lo nuevo: en Polygon y en teléfono,
-     que es donde se va a usar. */
-  await p.evaluate(() => VVENTA.red(137));
-  await p.waitForTimeout(700);
-  await p.setViewportSize({ width: 390, height: 850 }); await p.waitForTimeout(500);
-  await p.locator('.vn-tarjeta').first().scrollIntoViewIfNeeded().catch(() => {});
-  await p.waitForTimeout(300);
-  await p.screenshot({ path: `${process.env.ONX_FOTO}/vender-tarjeta.png` });
-  await p.setViewportSize({ width: 1280, height: 950 });
-  await p.evaluate(() => VVENTA.red(56));
   await p.setViewportSize({ width: 390, height: 850 }); await p.waitForTimeout(600);
   await p.screenshot({ path: `${process.env.ONX_FOTO}/vender-movil.png` });
   await p.setViewportSize({ width: 1280, height: 950 });
-}
-
-/* ── RECARGAR LA TARJETA: EL DESTINO QUE SE OFRECE ──────────────────────────
-   José, 8-sep: «no veo el botón de recargar en Ordenex».
-   No lo veía porque no existía — el API estaba y la pantalla no. Esto
-   comprueba que el botón está, que pone la dirección de VERDAD, y las dos
-   cosas que se hicieron a propósito:
-     · que NO se rellene solo — un destino de pago puesto por el sistema es
-       decidir por alguien a dónde va su dinero;
-     · que en la red equivocada NO se ofrezca, porque pagar a una dirección de
-       Polygon por BSC es dinero que no llega y no se recupera. */
-titulo('recargar la tarjeta: el destino sale a un toque');
-{
-  await p.evaluate(() => VVENTA.otra());
-  await p.waitForTimeout(700);
-  await p.evaluate(() => VVENTA.red(137));      // Polygon, que es donde vive la tarjeta
-  await p.waitForTimeout(900);
-
-  const bloque = await p.locator('.vn-tarjeta').first();
-  decir(await bloque.count() > 0, 'el bloque de la tarjeta aparece');
-  const txt = await bloque.innerText().catch(() => '');
-  decir(/Recargar mi tarjeta/i.test(txt), 'y dice «Recargar mi tarjeta»', txt.split('\n')[0]);
-  decir(txt.includes('1954'), 'con los últimos cuatro, para reconocerla');
-  decir(txt.includes(DIR_TARJETA), 'y la dirección a la vista ANTES de tocar nada');
-
-  const antes = await p.inputValue('#vn-dir');
-  decir(antes !== DIR_TARJETA,
-    'el campo NO se rellena solo',
-    'poner un destino de pago sin que lo pidan es decidir por alguien a dónde va su dinero');
-
-  await p.click('.vn-btn-mini');
-  await p.waitForTimeout(500);
-  decir(await p.inputValue('#vn-dir') === DIR_TARJETA, 'al tocar USAR ESTA, el destino queda puesto');
-  decir(/es el destino/.test(await p.locator('.vn-tarjeta').first().innerText()),
-    'y el bloque pasa a decir que ya es el destino, en vez de ofrecerlo otra vez');
-
-  const alto = await p.locator('.vn-btn-mini').first().boundingBox().catch(() => null);
-  if (alto) decir(alto.height >= 44, 'el botón llega a los 44 px del pulgar', `${Math.round(alto.height)} px`);
-
-  await p.evaluate(() => VVENTA.red(56));       // BSC: la tarjeta NO se recarga por ahí
-  await p.waitForTimeout(700);
-  const enBsc = await p.locator('.vn-tarjeta').first().innerText().catch(() => '');
-  decir(!/USAR ESTA/.test(enBsc) && /Polygon/.test(enBsc),
-    'en BSC NO se ofrece, y se dice que la tarjeta va por Polygon',
-    'pagar a una dirección de Polygon por BSC es dinero que no llega y no se recupera');
-  decir(/Elegí esa red arriba/.test(enBsc), 'y manda al botón de Polygon, que existe');
-}
-
-/* ── CUANDO LA CASA NO PAGA POR POLYGON ─────────────────────────────────────
-   Es el estado de producción HOY: ORDENEX_REDES solo tiene BSC. La foto de la
-   prueba lo enseñó — el bloque decía «cambiá la red arriba» y arriba no había
-   Polygon que tocar. Mandar a alguien a un botón que no existe es peor que no
-   ofrecer nada: se queda buscándolo y creyendo que hizo algo mal. */
-titulo('si la casa no paga por Polygon, se dice y no se manda a ningún botón');
-{
-  soloBsc = true;
-  await p.evaluate(() => VVENTA.otra());
-  await p.reload({ waitUntil: 'networkidle' });
-  await p.evaluate(() => window.ONX?.ir?.('vender'));
-  await p.waitForTimeout(1400);
-  const t = await p.locator('.vn-tarjeta').first().innerText().catch(() => '');
-  decir(/no está pagando por esa red/.test(t), 'lo dice con todas las letras', t.split('\n')[0]);
-  decir(!/Elegí esa red|Cambiá la red/.test(t), 'y NO manda a un botón que no existe');
-  decir(await p.locator('.vn-btn-mini').count() === 0, 'ni ofrece usar la tarjeta');
-  soloBsc = false;
 }
 
 titulo('sin errores de JavaScript en todo el recorrido');

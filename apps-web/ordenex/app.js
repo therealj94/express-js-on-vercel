@@ -143,10 +143,12 @@ const ONX = (() => {
     VFIAT: () => typeof VFIAT === 'undefined' ? null : VFIAT,
     VCOMPRA: () => typeof VCOMPRA === 'undefined' ? null : VCOMPRA,
     VVENTA: () => typeof VVENTA === 'undefined' ? null : VVENTA,
+    VRECARGA: () => typeof VRECARGA === 'undefined' ? null : VRECARGA,
   };
   // Quién es dueño de cada vista: a su módulo van alPintar() y apagar().
   const DUENO = { mercado: 'VMERCADO', portafolio: 'VPORTA', fiat: 'VFIAT',
-                  comprar: 'VCOMPRA', vender: 'VVENTA', actividad: 'VPORTA' };
+                  comprar: 'VCOMPRA', vender: 'VVENTA', recargar: 'VRECARGA',
+                  actividad: 'VPORTA' };
 
   const stub = cual => `
     <div class="cab"><div><h2>${esc(t('nav.' + (cual === 'mercado' ? 'mercados' : cual)))}</h2></div></div>
@@ -168,6 +170,12 @@ const ONX = (() => {
     fiat: () => modulos.VFIAT()?.vista?.() ?? stub('fiat'),
     comprar: () => modulos.VCOMPRA()?.vista?.() ?? stub('comprar'),
     vender: () => modulos.VVENTA()?.vista?.() ?? stub('vender'),
+    /* RECARGAR ES SALA PROPIA Y NO UN BOTÓN DENTRO DE VENDER (José, 8-sep).
+       Por dentro es la misma operación, pero las dos leyes son opuestas: en
+       Vender la red y la dirección se eligen —es el punto—; acá van fijas en
+       Polygon y en la tarjeta de uno, porque cada campo editable es una forma
+       más de mandar el dinero a donde no hay nadie. */
+    recargar: () => modulos.VRECARGA()?.vista?.() ?? stub('recargar'),
     actividad: () => modulos.VPORTA()?.vistaActividad?.() ?? stub('actividad'),
   };
 
@@ -476,13 +484,19 @@ const ONX = (() => {
     }
   });
 
-  async function canjear(token) {
+  /* `destino` es a qué sala se entra después de canjear. Existe porque la
+     billetera manda gente con una intención concreta —«recargar mi tarjeta»—
+     y dejarla en el portafolio la obliga a buscar el botón que acaba de tocar
+     del otro lado. Se comprueba contra VISTAS antes de usarlo: llega en la
+     dirección, y una dirección la escribe cualquiera. */
+  async function canjear(token, destino) {
     avisar(t('acc.entrando'));
     try {
       await DATOS.sso(token);
       // El único modo de entrar que tiene Ordenex: no hay contraseñas propias,
       // así que «sesión» aquí es siempre esto.
       tele('sesion', 'sso.entrada');
+      if (destino && VISTAS[destino]) vistaActual = destino;
       ir('app');
       avisar(t('acc.hola'));
     } catch (e) {
@@ -624,10 +638,17 @@ const ONX = (() => {
 
     const hash = String(location.hash || '');
     if (hash.startsWith('#sso=')) {
-      const token = decodeURIComponent(hash.slice(5));
+      /* Se lee con URLSearchParams y no cortando por posición: al pase le
+         puede venir detrás un `&ir=<sala>` —la intención con la que la
+         billetera mandó a la persona— y `slice(5)` se lo tragaba dentro del
+         token. El pase va codificado, así que sus propios `&` y `=` no
+         parten nada. */
+      const q = new URLSearchParams(hash.slice(1));
+      const token = q.get('sso') || '';
+      const destino = q.get('ir');
       history.replaceState(null, '', location.pathname + location.search);
       ir('portada');
-      canjear(token);
+      canjear(token, destino);
       return;
     }
 

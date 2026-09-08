@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { View, Text, ScrollView, Pressable, TextInput, ActivityIndicator, Animated, StyleSheet } from 'react-native';
+import { View, Text, ScrollView, Pressable, TextInput, ActivityIndicator, Animated, Linking, StyleSheet } from 'react-native';
 import { Icon } from '../icons';
 import { C } from '../theme';
 import { Header, Button3D, useToast, useAccount, hap } from '../ui';
@@ -7,6 +7,8 @@ import { money, qtyFmt, parseAmt, normalizeAmtInput, tokensFromBalances } from '
 import { cardApi, depositApi } from '../api';
 import { useT } from '../i18n';
 import PedirClave from '../PedirClave';
+import genesis from '../genesis';
+import { ORDENEX_URL } from './Ordenex';
 
 // ============================================================
 // Recargar la tarjeta.
@@ -204,6 +206,8 @@ export default function FundCard({ nav }) {
 
         <View style={{ height: 18 }} />
         <Button3D title={t('fund.cta')} disabled={!(cantidad > 0) || !suficiente || !precio} onPress={continuar} />
+
+        <DesdeOrdenex t={t} toast={toast} nav={nav} />
       </ScrollView>
 
       <PedirClave
@@ -214,6 +218,66 @@ export default function FundCard({ nav }) {
         onCancel={() => setPedir(false)}
         onSubmit={autorizar}
       />
+    </View>
+  );
+}
+
+// ---------- el otro camino: recargar desde Ordenex ----------
+//
+// Hay DOS sitios de donde puede salir el saldo de la tarjeta, y no son el
+// mismo dinero:
+//
+//   · El de arriba: el ORIGEN de esta billetera. La casa libera el equivalente
+//     desde su tesorería.
+//   · Este: el ORIGEN que la persona tiene EN ORDENEX. Ahí lo vende y el saldo
+//     va derecho a la tarjeta.
+//
+// Quien tiene su ORIGEN en Ordenex entraba acá, veía su saldo de billetera en
+// cero y se iba pensando que no se podía. Este es el puente, y va acá —en la
+// pantalla de recargar, a la que se llega desde la tarjeta— y no como un
+// segundo botón «Recargar» en la tarjeta misma: dos botones con el mismo
+// nombre y distinto dinero detrás es la forma más rápida de que alguien mande
+// lo que no quería.
+//
+// Se sale con el pase de Genesis ya firmado y con la sala puesta en la
+// dirección (`&ir=recargar`), así que del otro lado no hay que iniciar sesión
+// ni buscar nada.
+function DesdeOrdenex({ t, toast }) {
+  const [abriendo, setAbriendo] = useState(false);
+
+  const abrir = async () => {
+    setAbriendo(true);
+    try {
+      const token = await genesis.tokenEcosistema();
+      if (!token) {
+        // Sin identidad verificada Genesis no firma el pase, y hace bien: el
+        // camino no es reintentar, es completar la verificación.
+        toast(t('onx.sinGid'), 'info');
+        return;
+      }
+      await Linking.openURL(`${ORDENEX_URL}/#sso=${encodeURIComponent(token)}&ir=recargar`);
+    } catch (e) {
+      toast(t('onx.noAbrio'), 'error');
+    } finally {
+      setAbriendo(false);
+    }
+  };
+
+  return (
+    <View style={st.onx}>
+      <View style={st.onxCab}>
+        <Icon name="swap-horizontal" size={18} color={C.gold} />
+        <Text style={st.onxT}>{t('fund.onxT')}</Text>
+      </View>
+      <Text style={st.onxP}>{t('fund.onxP')}</Text>
+      <Pressable onPress={() => { hap(); abrir(); }} disabled={abriendo} style={st.onxBtn} accessibilityRole="button">
+        {abriendo
+          ? <ActivityIndicator size="small" color={C.gold} />
+          : <>
+              <Text style={st.onxBtnT}>{t('fund.onxCta')}</Text>
+              <Icon name="open-outline" size={15} color={C.gold} />
+            </>}
+      </Pressable>
     </View>
   );
 }
@@ -291,6 +355,17 @@ const st = StyleSheet.create({
 
   nota: { flexDirection: 'row', gap: 11, alignItems: 'flex-start', backgroundColor: C.panel2, borderRadius: 14, padding: 14, marginTop: 20 },
   notaTxt: { flex: 1, color: C.txt3, fontSize: 12.5, lineHeight: 18 },
+
+  onx: { marginTop: 26, paddingTop: 20, borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.07)' },
+  onxCab: { flexDirection: 'row', alignItems: 'center', gap: 9 },
+  onxT: { color: C.txt, fontSize: 14.5, fontWeight: '700' },
+  onxP: { color: C.txt3, fontSize: 12.5, lineHeight: 18, marginTop: 8 },
+  onxBtn: {
+    marginTop: 14, minHeight: 48, borderRadius: 14, flexDirection: 'row', gap: 8,
+    alignItems: 'center', justifyContent: 'center',
+    borderWidth: 1, borderColor: 'rgba(201,169,97,0.45)', backgroundColor: 'rgba(201,169,97,0.08)',
+  },
+  onxBtnT: { color: C.gold, fontSize: 13.5, fontWeight: '700' },
 
   progCirculo: {
     width: 108, height: 108, borderRadius: 36, alignSelf: 'center',

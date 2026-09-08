@@ -603,9 +603,13 @@ body.en-mercado::before{content:'';position:fixed;inset:0;z-index:-1;
     padding:8px 6px calc(8px + env(safe-area-inset-bottom));
     background:rgba(2,22,23,.94);border-top:1px solid var(--linea2);
     backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px)}
-  .tabs .nav{flex:1;flex-direction:column;gap:5px;padding:8px 4px;font-size:10.5px;font-weight:700;
+  /* SEIS PESTAÑAS, NO CINCO. Con «Recargar» ya no sobra ancho en un teléfono
+     de 360 px: el rótulo se recorta con puntos antes que empujar la barra o
+     partirse en dos renglones y descuadrar la fila. */
+  .tabs .nav{flex:1 1 0;min-width:0;flex-direction:column;gap:5px;padding:8px 2px;font-size:10px;font-weight:700;
     justify-content:center;text-align:center;border-radius:12px}
-  .tabs .nav svg{width:21px;height:21px}
+  .tabs .nav span{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .tabs .nav svg{width:21px;height:21px;flex:none}
   .tabs .nav[aria-current=page]::before{display:none}
 
   /* ── mientras se teclea, las pestañas se van ──────────────────────────────
@@ -730,22 +734,33 @@ body.en-mercado::before{content:'';position:fixed;inset:0;z-index:-1;
 .vn-alerta{margin-bottom:10px;padding:10px 12px;border-radius:11px;font-size:12.5px;line-height:1.5;
            border:1px solid rgba(255,120,120,.35);background:rgba(255,80,80,.08);color:#ffc9c9}
 .vn-alerta b{color:#fff}
-/* ── LA TARJETA COMO DESTINO ─────────────────────────────────────────────────
-   Va pegada debajo del campo de la dirección, con borde del acento, para que
-   se lea como «esto es lo que podés poner ahí» y no como un aviso más. El
-   botón llega a los 44 px que pide el pulgar: es un botón que mueve dinero. */
-.vn-tarjeta{margin-top:10px;padding:11px 13px;border-radius:11px;display:flex;gap:10px;
-  align-items:center;justify-content:space-between;flex-wrap:wrap;font-size:12.5px;line-height:1.5;
-  background:rgba(116,230,200,.07);border:1px solid rgba(116,230,200,.28);color:var(--txt2,#9FB2BF)}
-.vn-tarjeta b{color:var(--acento,#74E6C8);display:block;margin-bottom:2px}
-.vn-tarjeta small{display:block;font-size:11px;opacity:.8;word-break:break-all}
-.vn-tarjeta-no{background:rgba(255,255,255,.04);border-color:rgba(255,255,255,.12)}
-.vn-tarjeta-ok{color:var(--acento,#74E6C8);font-weight:600;font-size:12px;white-space:nowrap}
-.vn-btn-mini{min-height:44px;padding:10px 16px;border-radius:9px;border:1px solid var(--acento,#74E6C8);
-  background:transparent;color:var(--acento,#74E6C8);font:inherit;font-size:11.5px;font-weight:600;
-  letter-spacing:.06em;cursor:pointer;white-space:nowrap}
-.vn-btn-mini:hover{background:rgba(116,230,200,.12)}
-.vn-btn-mini:focus-visible{outline:2px solid var(--acento,#74E6C8);outline-offset:2px}
+/* ── Recargar la tarjeta ────────────────────────────────────────────────────
+   La sala hereda de Vender (.vn-*) el saldo, la cuenta y los avisos, y agrega
+   lo suyo: la ficha de la tarjeta, que es lo contrario de un formulario. Se
+   ve como una FICHA y no como campos —sin borde de input, sin cursor de
+   texto— porque nada de lo que hay dentro se puede cambiar: la red es Polygon
+   y la dirección la da el emisor. Que no parezca editable es parte de que no
+   lo sea. */
+.rc-tarjeta{margin-bottom:18px;padding:14px 15px;border-radius:13px;font-size:13px;line-height:1.5;
+  background:rgba(201,169,97,.06);border:1px solid rgba(201,169,97,.28);color:var(--bruma)}
+.rc-tarjeta-esp{color:var(--tenue);font-size:12.5px;text-align:center}
+.rc-tarjeta-no{background:rgba(255,255,255,.04);border-color:rgba(255,255,255,.12)}
+.rc-tarjeta-no b{color:var(--crema);display:block;margin-bottom:4px}
+.rc-tarjeta-no small{display:block;font-size:11.5px;color:var(--tenue);line-height:1.5;margin-top:4px}
+.rc-t-fila{display:flex;justify-content:space-between;align-items:baseline;gap:12px;padding:4px 0}
+.rc-t-fila span{color:var(--tenue);font-size:12.5px}
+.rc-t-fila b{color:var(--crema);font-variant-numeric:tabular-nums;font-weight:600}
+/* El candado se dice con palabras («fija») y además se ve: un rótulo suelto
+   se lee como decoración, uno con su chapita se lee como una regla. */
+.rc-fijo em{display:inline-block;margin-left:6px;padding:2px 7px;border-radius:999px;font-style:normal;
+  font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;
+  background:rgba(201,169,97,.16);color:var(--oro);vertical-align:middle}
+.rc-t-dir{margin-top:10px;padding-top:10px;border-top:1px solid rgba(255,255,255,.08)}
+.rc-t-dir span{display:block;color:var(--tenue);font-size:12.5px;margin-bottom:6px}
+.rc-t-dir code{display:block;padding:9px 11px;border-radius:9px;background:rgba(0,0,0,.28);
+  font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;color:var(--crema);
+  word-break:break-all;overflow-wrap:anywhere;user-select:all}
+.rc-t-dir small{display:block;margin-top:6px;font-size:11.5px;color:var(--tenue);line-height:1.5}
 .vn-cuenta{margin-top:16px;padding-top:14px;border-top:1px solid rgba(255,255,255,.08)}
 .vn-fila{display:flex;justify-content:space-between;gap:12px;font-size:13px;padding:4px 0;color:var(--tenue)}
 .vn-fila b{color:var(--crema);font-variant-numeric:tabular-nums;font-weight:600}
@@ -1139,6 +1154,7 @@ body.en-mercado::before{content:'';position:fixed;inset:0;z-index:-1;
     <button class="nav" aria-current="page" data-vista="portafolio" onclick="ONX.vista('portafolio')"><svg viewBox="0 0 24 24"><path d="M3 7.5A2.5 2.5 0 0 1 5.5 5H18a2 2 0 0 1 2 2v1"/><rect x="3" y="8" width="18" height="11" rx="2.5"/><circle cx="16.5" cy="13.5" r="1.3"/></svg><span data-t="nav.portafolio"></span></button>
     <button class="nav" data-vista="comprar" onclick="ONX.vista('comprar')"><svg viewBox="0 0 24 24"><path d="M12 4v16M12 4l-4 4M12 4l4 4"/><path d="M4 20h16"/></svg><span data-t="nav.comprar"></span></button>
     <button class="nav" data-vista="vender" onclick="ONX.vista('vender')"><svg viewBox="0 0 24 24"><path d="M12 20V4M12 20l-4-4M12 20l4 4"/><path d="M4 4h16"/></svg><span data-t="nav.vender"></span></button>
+    <button class="nav" data-vista="recargar" onclick="ONX.vista('recargar')"><svg viewBox="0 0 24 24"><rect x="2" y="6" width="14" height="10" rx="2.5"/><path d="M2 10h14"/><circle cx="18" cy="17" r="4.6"/><path d="M18 14.8v4.4M15.8 17h4.4"/></svg><span data-t="nav.recargar"></span></button>
     <button class="nav" data-vista="fiat" onclick="ONX.vista('fiat')"><svg viewBox="0 0 24 24"><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="2.6"/><path d="M5.5 9.5h.01M18.5 14.5h.01"/></svg><span data-t="nav.fiat"></span></button>
     <button class="nav" data-vista="actividad" onclick="ONX.vista('actividad')"><svg viewBox="0 0 24 24"><path d="M3 12h4l3 8 4-16 3 8h4"/></svg><span data-t="nav.actividad"></span></button>
 
@@ -1169,6 +1185,7 @@ body.en-mercado::before{content:'';position:fixed;inset:0;z-index:-1;
     <button class="nav" aria-current="page" data-vista="portafolio" onclick="ONX.vista('portafolio')"><svg viewBox="0 0 24 24"><path d="M3 7.5A2.5 2.5 0 0 1 5.5 5H18a2 2 0 0 1 2 2v1"/><rect x="3" y="8" width="18" height="11" rx="2.5"/><circle cx="16.5" cy="13.5" r="1.3"/></svg><span data-t="nav.portafolio"></span></button>
     <button class="nav" data-vista="comprar" onclick="ONX.vista('comprar')"><svg viewBox="0 0 24 24"><path d="M12 4v16M12 4l-4 4M12 4l4 4"/><path d="M4 20h16"/></svg><span data-t="nav.comprar"></span></button>
     <button class="nav" data-vista="vender" onclick="ONX.vista('vender')"><svg viewBox="0 0 24 24"><path d="M12 20V4M12 20l-4-4M12 20l4 4"/><path d="M4 4h16"/></svg><span data-t="nav.vender"></span></button>
+    <button class="nav" data-vista="recargar" onclick="ONX.vista('recargar')"><svg viewBox="0 0 24 24"><rect x="2" y="6" width="14" height="10" rx="2.5"/><path d="M2 10h14"/><circle cx="18" cy="17" r="4.6"/><path d="M18 14.8v4.4M15.8 17h4.4"/></svg><span data-t="nav.recargar"></span></button>
     <button class="nav" data-vista="fiat" onclick="ONX.vista('fiat')"><svg viewBox="0 0 24 24"><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="2.6"/><path d="M5.5 9.5h.01M18.5 14.5h.01"/></svg><span data-t="nav.fiat"></span></button>
     <button class="nav" data-vista="actividad" onclick="ONX.vista('actividad')"><svg viewBox="0 0 24 24"><path d="M3 12h4l3 8 4-16 3 8h4"/></svg><span data-t="nav.actividad"></span></button>
   </nav>
@@ -1194,5 +1211,6 @@ body.en-mercado::before{content:'';position:fixed;inset:0;z-index:-1;
 <script src="fiat.js?v=7819e41966"></script>
 <script src="comprar.js?v=7819e41966"></script>
 <script src="vender.js?v=7819e41966"></script>
+<script src="recargar.js?v=7819e41966"></script>
 <script src="i18n.js?v=7819e41966"></script>
 <script src="app.js?v=7819e41966"></script>

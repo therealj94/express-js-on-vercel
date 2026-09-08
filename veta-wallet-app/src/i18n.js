@@ -372,6 +372,9 @@ const S = {
     'fund.tarda': 'La red está tardando más de lo normal. Revisa tu tarjeta en unos minutos.',
     'fund.yaHay': 'Ya tenías una recarga en proceso; te muestro esa.',
     'fund.verTarjeta': 'Ver mi tarjeta', 'fund.volver': 'Volver a la tarjeta',
+    'fund.onxT': 'O recargá desde Ordenex',
+    'fund.onxP': 'Si tu ORIGEN está en Ordenex, pasalo directo a esta tarjeta sin traerlo antes a la billetera. La red y la dirección salen puestas: no hay nada que teclear.',
+    'fund.onxCta': 'Recargar desde Ordenex',
     // ajustes de la tarjeta
     'cset.title': 'Ajustes de la tarjeta',
     'cset.sinTarjeta': 'Todavía no tienes una tarjeta emitida.',
@@ -1159,6 +1162,9 @@ const S = {
     'fund.tarda': 'The network is taking longer than usual. Check your card in a few minutes.',
     'fund.yaHay': 'You already had a top up in progress; showing that one.',
     'fund.verTarjeta': 'View my card', 'fund.volver': 'Back to card',
+    'fund.onxT': 'Or top up from Ordenex',
+    'fund.onxP': 'If your ORIGEN is in Ordenex, move it straight to this card without bringing it to the wallet first. The network and the address are already set — there is nothing to type.',
+    'fund.onxCta': 'Top up from Ordenex',
     // card settings
     'cset.title': 'Card settings',
     'cset.sinTarjeta': 'You do not have a card issued yet.',
