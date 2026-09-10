@@ -658,6 +658,7 @@ body.arrancando #hablar,body.cerrada #hablar{visibility:hidden;pointer-events:no
 .pt>div{clip-path:polygon(0 0,calc(100% - 19px) 0,100% 19px,100% 100%,19px 100%,0 calc(100% - 19px));
   background:linear-gradient(170deg,rgba(9,24,37,.96),rgba(4,9,16,.97));backdrop-filter:blur(18px);padding:30px 28px 26px}
 .pt-marca{font-family:var(--sans);font-weight:700;font-size:25px;letter-spacing:.3em;color:var(--letra-f);text-indent:.3em}
+.pt-hint{margin:10px 0 0;font-size:12px;line-height:1.45;color:var(--tenue)}
 .pt-sub{margin-top:7px;font-family:var(--mono);font-size:9.5px;letter-spacing:.2em;text-transform:uppercase;color:var(--cian)}
 .pt-campo{display:block;margin-top:17px}
 .pt-campo>span{display:block;margin-bottom:6px;font-family:var(--mono);font-size:9.5px;letter-spacing:.17em;
@@ -795,6 +796,12 @@ body.arrancando #hablar,body.cerrada #hablar{visibility:hidden;pointer-events:no
   #pista-hablar{z-index:9;font-size:10px}
 }
 
+
+#atajos{display:flex;gap:6px;padding:0 12px 6px;overflow-x:auto;z-index:5;position:relative;-webkit-overflow-scrolling:touch}
+#atajos button{flex:none;min-height:34px;padding:0 10px;border:1px solid rgba(5,225,255,.28);background:rgba(5,16,24,.85);color:var(--cian);
+  font-family:var(--mono);font-size:10px;letter-spacing:.12em;cursor:pointer}
+#atajos button:active{background:var(--cian);color:#031014}
+
 </style>
 </head>
 <body class="arrancando">
@@ -804,7 +811,7 @@ body.arrancando #hablar,body.cerrada #hablar{visibility:hidden;pointer-events:no
 <div id="entrada">
   <div id="arranque">
     <div class="eco-marca">ULTRON</div>
-    <div class="eco-por">POWERED BY <b>ORDEN GLOBAL</b> AND <b>NEXUS CODER</b></div>
+    <div class="eco-por">ORDEN GLOBAL · SISTEMA EN LÍNEA</div>
     <div class="eco-barra"><i id="eco-barra-i"></i></div>
     <div class="eco-pasos" id="eco-pasos" role="status" aria-live="polite"></div>
   </div>
@@ -812,7 +819,8 @@ body.arrancando #hablar,body.cerrada #hablar{visibility:hidden;pointer-events:no
   <div id="puerta-os" hidden>
     <div class="pt"><div>
       <div class="pt-marca">ULTRON</div>
-      <div class="pt-sub">Junta Directiva · Orden Global</div>
+      <div class="pt-sub">Sistema ULTRON FP · Junta Orden Global</div>
+      <p class="pt-hint">Correo y clave de la casa. El núcleo habla después; aquí solo se entra.</p>
 
       <!-- El pase de la wallet: oculto mientras no se sepa que este servidor
            tiene Genesis. Un botón que no puede funcionar hace creer que la
@@ -1091,19 +1099,26 @@ body.arrancando #hablar,body.cerrada #hablar{visibility:hidden;pointer-events:no
   <nav id="muelle" aria-label="Las casas del ecosistema"></nav>
 
   <!-- ── PIE ──────────────────────────────────────────────────────────────── -->
+  <div id="atajos" role="toolbar" aria-label="Ordenes cortas">
+    <button type="button" data-cmd="Proponé un PR en infra/ultron/MANOS-LIBRES.md: al final la línea taller fp. Sin leer de más.">PR</button>
+    <button type="button" data-cmd="Revisá salud_revisar y si hay algo roto proponé el arreglo.">SALUD</button>
+    <button type="button" data-cmd="Acordate: los PR de prueba no se mezclan a main.">ACORDATE</button>
+    <button type="button" data-cmd="Listá pendientes y cerrá los que ya están hechos.">PENDIENTES</button>
+    <button type="button" data-cmd="Explicame en 5 líneas qué podés hacer hoy y qué tool usar para cada cosa.">QUE SABES</button>
+  </div>
   <div id="pie" role="search">
     <div id="caja"><div>
       <textarea id="texto" rows="1" placeholder="Indique la consulta, o suelte un archivo aquí" autocomplete="off"></textarea>
       <button class="mando" id="clip2" title="Subir un archivo" aria-label="Subir un archivo">
         <svg viewBox="0 0 24 24"><path d="M21.4 11.05 12.25 20.2a5.5 5.5 0 0 1-7.78-7.78l9.2-9.2a3.67 3.67 0 1 1 5.18 5.19l-9.19 9.2a1.83 1.83 0 1 1-2.6-2.6l8.5-8.48"/></svg>
       </button>
-      <button class="mando" id="micro" title="Hablar" aria-label="Hablar" aria-pressed="false">
+      <button class="mando" id="micro" title="Dictar una frase (el centro es conversar)" aria-label="Dictar una frase" aria-pressed="false">
         <svg viewBox="0 0 24 24"><rect x="9" y="2.5" width="6" height="11" rx="3"/><path d="M5.5 11.5a6.5 6.5 0 0 0 13 0M12 18v3.5"/></svg>
       </button>
-      <button class="mando" id="oreja" title="Despertar con «hey ULTRON»" aria-label="Despertar con la voz" aria-pressed="false">
+      <button class="mando" id="oreja" title="Manos libres: oye hey ULTRON" aria-label="Manos libres" aria-pressed="false">
         <svg viewBox="0 0 24 24"><path d="M4 13a8 8 0 0 1 16 0M7.5 13v3.5a2.5 2.5 0 0 0 5 0V13M16.5 13v2"/><circle cx="12" cy="19.5" r="1.4"/></svg>
       </button>
-      <button class="mando" id="altavoz" title="Que ULTRON hable" aria-label="Voz de ULTRON" aria-pressed="true">
+      <button class="mando" id="altavoz" title="Encender o apagar la voz de ULTRON" aria-label="Voz de ULTRON" aria-pressed="true">
         <svg viewBox="0 0 24 24"><path d="M4 9.5h3.5L12 5.5v13L7.5 14.5H4z"/><path d="M15.5 9a4 4 0 0 1 0 6M18 6.5a7.5 7.5 0 0 1 0 11"/></svg>
       </button>
       <!-- La palabra en pantalla ancha; la flecha en el teléfono, donde 110 px
