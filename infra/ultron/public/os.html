@@ -5,9 +5,12 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#04070b">
 <title>ULTRON OS · Orden Global</title>
-<link rel="icon" href="img/ultron.png">
+<link rel="icon" href="img/ultron.png?v=taller">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="robots" content="noindex,nofollow">
-<link rel="stylesheet" href="vendor/fuentes/fuentes.css">
+<link rel="stylesheet" href="vendor/fuentes/fuentes.css?v=taller">
 <style>
 /* ══════════════════════════════════════════════════════════════════════════
    ULTRON OS · el sistema operativo del ecosistema
@@ -756,6 +759,16 @@ body.arrancando #hablar,body.cerrada #hablar{visibility:hidden;pointer-events:no
      quien más falta le hace una señal que no sea sutil. */
   #micro.oyendo{outline:2px solid var(--cian);outline-offset:1px;background:rgba(5,225,255,.2)}
 }
+
+@media (hover:none) and (pointer:coarse){
+  #pie{padding-left:12px;padding-right:12px}
+  #caja>div{gap:4px;padding-left:10px}
+  .mando,#enviar{min-width:44px;min-height:44px}
+  #chips .chip{min-height:40px;padding:8px 12px;font-size:12px}
+  #dicho{font-size:16px;line-height:1.45}
+  #ultron-lbox img{max-height:72vh}
+}
+
 </style>
 </head>
 <body class="arrancando">
@@ -1081,14 +1094,14 @@ body.arrancando #hablar,body.cerrada #hablar{visibility:hidden;pointer-events:no
   <span>PDF, Word, texto, CSV o una imagen · hasta 8 MB</span>
 </div></div>
 
-<script src="markdown.js"></script>
-<script src="js/datos.js"></script>
-<script src="js/os-boca.js"></script>
-<script src="js/voz.js"></script>
-<script src="js/os.js"></script>
-<script src="js/trabajo.js"></script>
+<script src="markdown.js?v=taller"></script>
+<script src="js/datos.js?v=taller"></script>
+<script src="js/os-boca.js?v=taller"></script>
+<script src="js/voz.js?v=taller"></script>
+<script src="js/os.js?v=taller"></script>
+<script src="js/trabajo.js?v=taller"></script>
 <!-- El centro: el núcleo se carga siempre; el busto en 3D solo si se pide. -->
-<script type="module" src="js/os-nucleo.js"></script>
-<script src="js/os-puerta.js"></script>
+<script type="module" src="js/os-nucleo.js?v=taller"></script>
+<script src="js/os-puerta.js?v=taller"></script>
 </body>
 </html>
