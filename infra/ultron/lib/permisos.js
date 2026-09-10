@@ -76,7 +76,7 @@ const NIVEL_DE = {
      no se quede mudo sería justo la manera de que se quede mudo. */
   salud_reparar: 'escribir',
   // peligroso
-  terminal: 'peligroso', repo_proponer_cambio: 'peligroso', desplegarse: 'peligroso',
+  terminal: 'peligroso', repo_proponer_cambio: 'peligroso', repo_mezclar: 'peligroso', desplegarse: 'peligroso',
   boveda_aplicar: 'peligroso', habilidad_publicar: 'peligroso', equipo_correr: 'peligroso',
   heroku_reiniciar: 'peligroso', nodo_comando: 'peligroso', pagina_entrar: 'peligroso',
   /* fuera: un aviso a la junta pedido por una persona sale de la casa y pasa
@@ -176,6 +176,7 @@ function resumir(herramienta, entrada) {
   switch (herramienta) {
     case 'terminal': return `Correr en la terminal: ${e.comando || e.cmd || '?'}`;
     case 'repo_proponer_cambio': return `Proponer un cambio en ${e.repo || 'el repositorio'}: ${e.titulo || (e.archivos || []).map((a) => a.ruta).join(', ') || '?'}`;
+    case 'repo_mezclar': return `Mezclar el pull request #${e.numero} (${e.metodo || 'squash'})`;
     case 'desplegarse': return `Desplegar ULTRON desde la rama ${e.rama || '(la actual)'}`;
     case 'boveda_aplicar': return `Poner el secreto «${e.nombre}» en la app ${e.app || '?'} como ${e.variable || e.nombre}`;
     case 'habilidad_publicar': return `Publicar la habilidad «${e.nombre}» en el repositorio`;
