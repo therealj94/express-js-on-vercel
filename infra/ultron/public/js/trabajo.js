@@ -45,8 +45,9 @@
 body.taller #cuerpo{
   grid-template-columns:minmax(140px,16%) minmax(360px,1fr) minmax(150px,18%) !important;
 }
-body.taller #globo{max-width:min(720px,92%);margin:0 auto}
-body.taller #globo #dicho{font-size:clamp(15px,1.6vw,18px);line-height:1.45}
+body.taller #globo{max-width:min(760px,96%);margin:0 auto;max-height:68%;bottom:10px}
+body.taller #globo #dicho{font-size:clamp(15px,1.6vw,18px);line-height:1.5}
+body.taller #rastro{max-height:132px;overflow-y:auto;flex-wrap:nowrap;flex-direction:column;align-items:flex-start}
 body.taller .p .sub:is(:empty),
 body.taller .hueco{opacity:.45}
 @media (max-width:860px){
@@ -76,8 +77,8 @@ body.taller .hueco{opacity:.45}
       const b = document.createElement('button');
       b.id = 'mando-taller';
       b.type = 'button';
-      b.textContent = 'TALLER';
-      b.title = 'Agrandar el hilo y achicar el tablero';
+      b.textContent = 'HILO';
+      b.title = 'Agrandar el chat y achicar el tablero';
       b.addEventListener('click', () => setTaller(!document.body.classList.contains('taller')));
       techo.appendChild(b);
     }
@@ -92,7 +93,7 @@ body.taller .hueco{opacity:.45}
     try { localStorage.setItem(CLAVE, on ? 'on' : 'off'); } catch {}
     if (!silencioso) {
       const e = $('estado-txt');
-      if (e && !e.textContent.includes(' · ')) e.textContent = on ? 'TALLER' : 'EN LÍNEA';
+      if (e && !e.textContent.includes(' · ')) e.textContent = on ? 'HILO' : 'EN LÍNEA';
     }
   }
 

@@ -2799,6 +2799,7 @@ const OS = (() => {
       decidir(id, b.dataset.decision);
     });
     $('#b-boveda').addEventListener('click', abrirBoveda);
+    $('#m-boveda')?.addEventListener('click', abrirBoveda);
     $('#b-equipo').addEventListener('click', abrirEquipo);
     $('#b-saber').addEventListener('click', abrirSaberHacer);
     $('#b-nodos').addEventListener('click', abrirNodos);
