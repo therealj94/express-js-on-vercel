@@ -1747,6 +1747,23 @@ const OS = (() => {
      que ULTRON hable después, cuando la respuesta llega del servidor y ya no
      nace de ningún gesto. En iOS ese permiso es del ELEMENTO de audio, así que
      hay que hacerlo antes de la primera frase o no suena ninguna. */
+
+  /* Teclado Android/iOS: la barra de escribir sube con visualViewport. */
+  (function tecladoMovil(){
+    const vv = window.visualViewport;
+    if (!vv) return;
+    const aplicar = () => {
+      const pie = document.getElementById('pie');
+      if (!pie) return;
+      const gap = Math.max(0, window.innerHeight - vv.height - vv.offsetTop);
+      pie.style.paddingBottom = 'calc(10px + env(safe-area-inset-bottom,0px) + ' + gap + 'px)';
+    };
+    vv.addEventListener('resize', aplicar);
+    vv.addEventListener('scroll', aplicar);
+    window.addEventListener('focusin', aplicar);
+    window.addEventListener('focusout', () => { const pie=document.getElementById('pie'); if(pie) pie.style.paddingBottom=''; });
+  })();
+
   function despertarVoz() {
     vozDespierta = true;
     locutor = locutor || locutorNuevo();
