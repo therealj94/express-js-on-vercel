@@ -1,0 +1,10 @@
+{
+  "name": "ULTRON FP",
+  "short_name": "ULTRON",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#04070b",
+  "theme_color": "#04070b",
+  "lang": "es",
+  "icons": [{ "src": "img/ultron.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }]
+}
