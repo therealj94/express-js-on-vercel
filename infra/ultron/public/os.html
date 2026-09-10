@@ -5,12 +5,12 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#04070b">
 <title>ULTRON OS · Orden Global</title>
-<link rel="icon" href="img/ultron.png?v=hud">
-<link rel="manifest" href="manifest.webmanifest?v=hud">
+<link rel="icon" href="img/ultron.png?v=hud3">
+<link rel="manifest" href="manifest.webmanifest?v=hud3">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="robots" content="noindex,nofollow">
-<link rel="stylesheet" href="vendor/fuentes/fuentes.css?v=hud">
+<link rel="stylesheet" href="vendor/fuentes/fuentes.css?v=hud3">
 <style>
 /* ══════════════════════════════════════════════════════════════════════════
    ULTRON OS · el sistema operativo del ecosistema
@@ -531,10 +531,11 @@ body.cajon #tirador{bottom:calc(76dvh + 4px)}
   #texto{flex:1 0 100%;min-height:44px}
   #clip2{margin-left:auto}   /* los mandos, juntos a la derecha, junto a ENVIAR */
   .mando{width:44px;height:44px}
-  .mando .btn-txt{display:none}
-  .mando.con-txt{width:44px;padding:0}
-  #enviar{padding:0;width:44px;min-height:44px;display:grid;place-items:center}
-  #enviar span{display:none} #enviar svg{display:block}
+  .mando .btn-txt{display:inline}
+  .mando.con-txt{width:auto;padding:0 8px;gap:5px}
+  #enviar{padding:0 14px;width:auto;min-height:44px;display:flex;align-items:center;justify-content:center}
+  #enviar span{display:inline}
+  #enviar svg{display:none}
   #pista{display:none}
   #tirador{display:flex}
 }
@@ -788,7 +789,6 @@ body.arrancando #hablar,body.cerrada #hablar{visibility:hidden;pointer-events:no
 #dicho{font-size:15px;line-height:1.45}
 #globo #dicho,#globo #chips,#globo #fuentes{pointer-events:auto}
 @media (max-width:860px){
-  #micro,#oreja,#clip2{display:none}
   #pie{padding:8px 12px calc(12px + var(--seguro-ab))}
   #globo{max-width:none;left:8px;right:8px;max-height:42%}
   #dicho{font-size:16px}
@@ -815,17 +815,17 @@ body.arrancando #hablar,body.cerrada #hablar{visibility:hidden;pointer-events:no
      El arranque y la puerta, encima del núcleo, que sigue latiendo detrás. -->
 <div id="entrada">
   <div id="arranque">
-    <div class="eco-marca">ULTRON</div>
-    <div class="eco-por">ORDEN GLOBAL · SISTEMA EN LÍNEA</div>
+    <div class="eco-marca">ULTRON FP</div>
+    <div class="eco-por">SISTEMA OPERATIVO · <b>ORDEN GLOBAL</b></div>
     <div class="eco-barra"><i id="eco-barra-i"></i></div>
     <div class="eco-pasos" id="eco-pasos" role="status" aria-live="polite"></div>
   </div>
 
   <div id="puerta-os" hidden>
     <div class="pt"><div>
-      <div class="pt-marca">ULTRON</div>
-      <div class="pt-sub">Sistema ULTRON FP · Junta Orden Global</div>
-      <p class="pt-hint">Correo y clave de la casa. El núcleo habla después; aquí solo se entra.</p>
+      <div class="pt-marca">ULTRON FP</div>
+      <div class="pt-sub">ACCESO DE OPERADOR</div>
+      <p class="pt-hint">Correo y clave de la casa. El sistema no abre el tablero hasta que usted entra.</p>
 
       <!-- El pase de la wallet: oculto mientras no se sepa que este servidor
            tiene Genesis. Un botón que no puede funcionar hace creer que la
@@ -847,7 +847,7 @@ body.arrancando #hablar,body.cerrada #hablar{visibility:hidden;pointer-events:no
             </button>
           </div>
         </label>
-        <button class="pt-btn" type="submit" id="pt-entrar">Ingresar</button>
+        <button class="pt-btn" type="submit" id="pt-entrar">ENTRAR</button>
       </form>
 
       <div class="pt-dicho" id="pt-dicho" aria-live="polite"></div>
@@ -894,7 +894,7 @@ body.arrancando #hablar,body.cerrada #hablar{visibility:hidden;pointer-events:no
       <div class="rombo"></div>
       <b>ORDEN GLOBAL</b>
       <div class="barra"></div>
-      <i>ULTRON OS</i>
+      <i>ULTRON FP</i>
     </div>
     <div id="medidas">
       <div><span class="pulso"></span><span id="m-bloque">CADENA 5550 · —</span></div>
@@ -912,12 +912,8 @@ body.arrancando #hablar,body.cerrada #hablar{visibility:hidden;pointer-events:no
       <div id="m-reloj">—</div>
       <!-- BÓVEDA y AJUSTES en el techo: en el teléfono el chip de EL DUEÑO
            vive dentro del cajón. La llave se guarda desde aquí, un toque. -->
-      <button id="m-boveda" class="mando" title="La bóveda" aria-label="Bóveda" style="width:28px;height:28px;flex:none">
-        <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="1.5"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/><circle cx="12" cy="16" r="1.2"/></svg>
-      </button>
-      <button id="m-ajustes" class="mando" title="Ajustes" aria-label="Ajustes" style="width:28px;height:28px;flex:none">
-        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z"/></svg>
-      </button>
+      <button id="m-boveda" class="chip" title="La bóveda" aria-label="Bóveda">BÓVEDA</button>
+      <button id="m-ajustes" class="chip" title="Ajustes" aria-label="Ajustes">AJUSTES</button>
     </div>
   </header>
 
@@ -1116,7 +1112,7 @@ body.arrancando #hablar,body.cerrada #hablar{visibility:hidden;pointer-events:no
   </div>
   <div id="pie" role="search">
     <div id="caja"><div>
-      <textarea id="texto" rows="1" placeholder="Indique la consulta, o suelte un archivo aquí" autocomplete="off"></textarea>
+      <textarea id="texto" rows="1" placeholder="Orden, o suelta un archivo…" autocomplete="off"></textarea>
       <button class="mando con-txt" id="clip2" title="Subir un archivo" aria-label="Adjuntar archivo">
         <svg viewBox="0 0 24 24"><path d="M21.4 11.05 12.25 20.2a5.5 5.5 0 0 1-7.78-7.78l9.2-9.2a3.67 3.67 0 1 1 5.18 5.19l-9.19 9.2a1.83 1.83 0 1 1-2.6-2.6l8.5-8.48"/></svg>
         <span class="btn-txt">Adjuntar</span>
@@ -1147,14 +1143,14 @@ body.arrancando #hablar,body.cerrada #hablar{visibility:hidden;pointer-events:no
   <span>PDF, Word, texto, CSV o una imagen · hasta 8 MB</span>
 </div></div>
 
-<script src="markdown.js?v=hud"></script>
-<script src="js/datos.js?v=hud"></script>
-<script src="js/os-boca.js?v=hud"></script>
-<script src="js/voz.js?v=hud"></script>
-<script src="js/os.js?v=hud"></script>
-<script src="js/trabajo.js?v=hud"></script>
+<script src="markdown.js?v=hud3"></script>
+<script src="js/datos.js?v=hud3"></script>
+<script src="js/os-boca.js?v=hud3"></script>
+<script src="js/voz.js?v=hud3"></script>
+<script src="js/os.js?v=hud3"></script>
+<script src="js/trabajo.js?v=hud3"></script>
 <!-- El centro: el núcleo se carga siempre; el busto en 3D solo si se pide. -->
-<script type="module" src="js/os-nucleo.js?v=hud"></script>
-<script src="js/os-puerta.js?v=hud"></script>
+<script type="module" src="js/os-nucleo.js?v=hud3"></script>
+<script src="js/os-puerta.js?v=hud3"></script>
 </body>
 </html>
