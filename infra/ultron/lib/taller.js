@@ -291,7 +291,7 @@ async function propuestos({ repo, limite = 20 } = {}) {
 
 // ── La terminal ─────────────────────────────────────────────────────────────
 
-const PLAZO_TERMINAL_MS = 60_000;
+const PLAZO_TERMINAL_MS = 120_000;
 const TOPE_SALIDA = 12_000;
 let cwdTaller = null;
 
@@ -313,7 +313,7 @@ async function terminal({ comando }) {
 
 function formatear({ codigo, stdout, stderr, ms, cmd, plazo }) {
   const corta = (s) => (s.length > TOPE_SALIDA ? s.slice(0, TOPE_SALIDA) + `\n[… recortado, ${s.length} caracteres]` : s);
-  return [`$ ${cmd}`, `(salió con ${codigo}${plazo ? ', cortado por plazo de 60 s' : ''} · ${ms} ms)`,
+  return [`$ ${cmd}`, `(salió con ${codigo}${plazo ? ', cortado por plazo de 120 s' : ''} · ${ms} ms)`,
     stdout ? corta(stdout) : '', stderr ? '--- stderr ---\n' + corta(stderr) : ''].filter(Boolean).join('\n');
 }
 
