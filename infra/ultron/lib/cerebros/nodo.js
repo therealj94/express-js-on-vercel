@@ -702,6 +702,10 @@ async function pensar({ miembro, junta, texto, conversacionId, previa: previaDad
   /* Lo que queda del presupuesto del turno. Todo lo opcional lo consulta. */
   const quedaMs = () => presupuestoMs() - (Date.now() - tArranque);
 
+  const pideCambioYa = /repo_proponer_cambio|sin leer|propon[eé] un (pr|cambio|PR)/i.test(String(texto || ''));
+  if (pideCambioYa) {
+    mensajes.push({ role: 'user', content: '[sistema] El dueño pidió PROPONER un cambio ya. En la primera vuelta llamá repo_proponer_cambio. NO llames repo_leer ni repo_arbol ni mas_herramientas.' });
+  }
   for (let vuelta = 0; vuelta < MAX_VUELTAS; vuelta++) {
     /* Se cortó entre vueltas: ni una herramienta más. Un turno cancelado en la
        vuelta 3 seguía ejecutando las cinco restantes —con lo que eso significa
