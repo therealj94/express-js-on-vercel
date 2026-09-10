@@ -263,6 +263,33 @@ async function proponerCambio({ repo, base = null, titulo, descripcion = '', arc
   });
 }
 
+async function mezclarCambio({ repo, numero, metodo = 'squash', contra_principal = false } = {}) {
+  const n = Number(numero);
+  if (!Number.isFinite(n) || n < 1) {
+    throw Object.assign(new Error('Hace falta el número del pull request.'), { codigo: 'PR' });
+  }
+  const r = repoValido(repo);
+  return conGithub(async (tk) => {
+    const pr = await gh(tk, `/repos/${r}/pulls/${n}`);
+    const base = String(pr.base?.ref || '');
+    const principal = ['main', 'master'].includes(base.toLowerCase());
+    if (principal && !contra_principal) {
+      throw Object.assign(new Error(`El PR #${n} va contra ${base}. ULTRON no mezcla a la rama principal salvo que el dueño lo pida con contra_principal=true.`), { codigo: 'PR_MAIN' });
+    }
+    if (pr.state !== 'open') {
+      throw Object.assign(new Error(`El PR #${n} no está abierto (estado: ${pr.state}).`), { codigo: 'PR_CERRADO' });
+    }
+    const merge = await gh(tk, `/repos/${r}/pulls/${n}/merge`, {
+      metodo: 'PUT',
+      cuerpo: {
+        merge_method: ['merge', 'squash', 'rebase'].includes(metodo) ? metodo : 'squash',
+        commit_title: `ultron mezcla #${n}: ${pr.title}`.slice(0, 240),
+      },
+    });
+    return { ok: true, numero: n, base, rama: pr.head?.ref, sha: merge.sha, merged: !!merge.merged, url: pr.html_url };
+  });
+}
+
 // ── Los cambios que ULTRON propuso ──────────────────────────────────────────
 //
 // 7-sep, José: «cuando me envía pull request no aparecen en ningún lado».
@@ -434,4 +461,4 @@ async function llave({ repo = null } = {}) {
   });
 }
 
-module.exports = { propuestos, repos, arbol, leer, buscar, proponerCambio, terminal, desplegarse, llave, ramaCasa, _adentro: { slug, repoValido, formatear, gh } };
+module.exports = { propuestos, repos, arbol, leer, buscar, proponerCambio, mezclarCambio, terminal, desplegarse, llave, ramaCasa, _adentro: { slug, repoValido, formatear, gh } };
