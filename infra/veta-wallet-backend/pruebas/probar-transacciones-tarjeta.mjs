@@ -45,6 +45,8 @@ function funciones() {
     "esCicloDeCompra",
     "claveDeCompra",
     "sinDuplicados",
+    "tipoDeMovimiento",
+    "esFueraDelGrupo",
   ];
   const ops = TARJETAS.match(/const OPERACIONES_BUSQUEDA = \[[\s\S]*?\];/)?.[0] || "";
   const cuerpos = nombres.map((n) => {
@@ -67,6 +69,8 @@ const {
   esCicloDeCompra,
   claveDeCompra,
   sinDuplicados,
+  tipoDeMovimiento,
+  esFueraDelGrupo,
 } = funciones();
 titulo("la puerta, la documentada");
 
@@ -82,6 +86,7 @@ const q = consultaDeMovimientos({ cardId: "card_abc", page: 2, limit: 20 });
 ok(q.path === "/cards/transactions/card_abc/search", "la ruta lleva el id de la tarjeta", q.path);
 ok(q.qs.includes("operations=TRANSACTION_CLEARED"), "pide TRANSACTION_CLEARED");
 ok(q.qs.includes("operations=TRANSACTION_APPROVED"), "pide TRANSACTION_APPROVED");
+ok(q.qs.includes("operations=TRANSACTION_AUTHORIZATION"), "pide TRANSACTION_AUTHORIZATION");
 ok(q.qs.includes("from_date="), "trae from_date");
 ok(q.qs.includes("to_date="), "trae to_date");
 ok(q.qs.includes("size=20"), "size es el límite pedido");
@@ -171,6 +176,29 @@ ok(sinDuplicados([compra, devolucion]).length === 2,
 const recarga = { merchant: "WALLET", amount: 10, date: "2026-09-01T00:00:00Z", type: "WALLET_DEPOSIT" };
 ok(sinDuplicados([ramosAprobada, ramosLiquidada, recarga]).length === 2,
   "una recarga no entra al grupo de la compra");
+
+const ramosCompra = {
+  id: "tx-p1", merchant: "ABARROTERIA RAMOS", amount: 1.1268, origenAmount: 0.4507,
+  date: "2026-09-09T18:00:00Z", type: "purchase",
+};
+const ramosCompra2 = {
+  id: "tx-p2", merchant: "ABARROTERIA RAMOS", amount: 1.1268, origenAmount: 0.4507,
+  date: "2026-09-09T18:00:00Z", type: "purchase",
+};
+ok(sinDuplicados([ramosCompra, ramosCompra2]).length === 1,
+  "dos filas type=purchase del mismo comercio y monto son un solo pago");
+
+const ramosOtra = {
+  id: "tx-p3", merchant: "ABARROTERIA RAMOS", amount: 1.6658, origenAmount: 0.6663,
+  date: "2026-09-09T12:00:00Z", type: "purchase",
+};
+ok(sinDuplicados([ramosCompra, ramosCompra2, ramosOtra]).length === 2,
+  "0.4507 y 0.6663 en Ramos son dos compras distintas");
+
+ok(esFueraDelGrupo("TRANSACTION_REFUND") && !esFueraDelGrupo("purchase"),
+  "una devolución no se junta; un purchase sí");
+ok(tipoDeMovimiento({ operation: "TRANSACTION_CLEARED" }) === "TRANSACTION_CLEARED",
+  "si type falta, se lee operation");
 
 console.log("");
 if (fallos) {

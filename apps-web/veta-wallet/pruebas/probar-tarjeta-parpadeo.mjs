@@ -115,8 +115,26 @@ await pag.route('**/cards/transactions**', (r) => {
       currency: 'ORIGEN',
       status: 'SUCCESS',
       type: 'TRANSACTION_APPROVED',
+    }, {
+      id: 'tx-ramos-a',
+      merchant: 'ABARROTERIA RAMOS',
+      date: '2026-09-09T18:00:00Z',
+      amount: 1.13,
+      origenAmount: 0.4507,
+      currency: 'ORIGEN',
+      status: 'SUCCESS',
+      type: 'purchase',
+    }, {
+      id: 'tx-ramos-b',
+      merchant: 'ABARROTERIA RAMOS',
+      date: '2026-09-09T18:00:00Z',
+      amount: 1.13,
+      origenAmount: 0.4507,
+      currency: 'ORIGEN',
+      status: 'SUCCESS',
+      type: 'purchase',
     }],
-    total: 2, page: 1, ogTokenPrice: 2.5,
+    total: 4, page: 1, ogTokenPrice: 2.5,
   } });
 });
 await pag.route('**/open.er-api.com/**', (r) => r.fulfill({ json: {
@@ -165,10 +183,12 @@ const cuerpo = await pag.locator('#lienzo').innerText();
 ok('sale el comercio', /Café Central/.test(cuerpo));
 ok('sale en ORIGEN, no en dólares sueltos', /ORIGEN/.test(cuerpo) && /Café Central/.test(cuerpo));
 ok('no dice que no hay consumos', !/Todavía no hay consumos/.test(cuerpo));
-ok('una compra no se lista dos veces', await pag.locator('button.tar-mov').count() === 1);
+ok('una compra no se lista dos veces', await pag.locator('button.tar-mov').count() === 2,
+  `${await pag.locator('button.tar-mov').count()} filas`);
+ok('Ramos type=purchase tampoco se duplica', (await pag.locator('#lienzo').innerText()).split('ABARROTERIA RAMOS').length === 2);
 
 console.log('\n── tocar un pago abre dólares y lempiras ─────────────────────');
-await pag.locator('button.tar-mov').click();
+await pag.locator('button.tar-mov').filter({ hasText: 'Café Central' }).click();
 await pag.waitForSelector('#tar-ficha:not(.oculto)', { timeout: 8000 });
 await pag.waitForFunction(() => {
   const f = document.getElementById('tar-ficha');

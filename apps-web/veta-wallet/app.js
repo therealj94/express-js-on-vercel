@@ -1707,23 +1707,36 @@ const VETA = (() => {
      lista de la gente es el mismo pago dos veces. Se juntan por comercio y
      dólares, en cinco días, y se queda la fecha de cuando se tocó. Si el
      backend ya los juntó, esto no cambia nada. */
+  function tipoDeMovLista(tx) {
+    return tx?.type || tx?.operation || tx?.status || '';
+  }
   function rangoDeCicloMov(tipo) {
     const x = String(tipo || '').toUpperCase();
-    if (x.includes('CLEARED')) return 3;
-    if (x.includes('APPROVED') || x === 'APPROVED') return 2;
-    if (x.includes('AUTHORIZATION')) return 1;
+    if (x.includes('CLEARED') || x.includes('SETTLED')) return 3;
+    if (x.includes('APPROVED')) return 2;
+    if (x.includes('AUTHORIZATION') || x.includes('AUTH')) return 1;
     return 0;
+  }
+  function esFueraDelGrupoMov(tipo) {
+    return /REFUND|REVERS|DEPOSIT|WITHDRAW|REJECT|DECLINE/.test(String(tipo || '').toUpperCase());
+  }
+  function esCicloDeCompraMov(tipo) {
+    if (esFueraDelGrupoMov(tipo)) return false;
+    if (rangoDeCicloMov(tipo) > 0) return true;
+    const x = String(tipo || '').toUpperCase();
+    return !x || x === 'PURCHASE' || x === 'DEBIT' || x === 'SUCCESS' || x === 'COMPLETED';
   }
   function sinDuplicadosMovs(lista) {
     const arr = Array.isArray(lista) ? lista : [];
     const ciclos = [], otros = [];
-    for (const tx of arr) (rangoDeCicloMov(tx.type) > 0 ? ciclos : otros).push(tx);
+    for (const tx of arr) (esCicloDeCompraMov(tipoDeMovLista(tx)) ? ciclos : otros).push(tx);
     const VENTANA = 5 * 24 * 60 * 60 * 1000;
     const grupos = [];
     for (const tx of ciclos) {
       const merc = String(tx.merchant || '').trim().toUpperCase().replace(/\s+/g, ' ');
       const usd = Math.round(Number(tx.amount || 0) * 100);
-      const clave = merc + '|' + usd;
+      const ori = Math.round(Number(tx.origenAmount || 0) * 10000);
+      const clave = merc + '|' + (usd || ori);
       const t = Date.parse(tx.date) || 0;
       let g = grupos.find(x => x.clave === clave && Math.abs((x.t || 0) - t) < VENTANA);
       if (!g) { g = { clave, t, txs: [] }; grupos.push(g); }
@@ -1732,7 +1745,8 @@ const VETA = (() => {
     }
     const unicos = grupos.map(g => {
       const porFecha = g.txs.slice().sort((a, b) => (Date.parse(a.date) || 0) - (Date.parse(b.date) || 0));
-      const porCiclo = g.txs.slice().sort((a, b) => rangoDeCicloMov(b.type) - rangoDeCicloMov(a.type));
+      const porCiclo = g.txs.slice().sort((a, b) =>
+        rangoDeCicloMov(tipoDeMovLista(b)) - rangoDeCicloMov(tipoDeMovLista(a)));
       return { ...porCiclo[0], date: porFecha[0].date };
     });
     return [...unicos, ...otros].sort((a, b) => (Date.parse(b.date) || 0) - (Date.parse(a.date) || 0));
@@ -2282,6 +2296,7 @@ const VETA = (() => {
        pestaña de Chrome pidiendo recargar—. Quien ya tiene tarjeta ni
        siquiera necesita el precio de emitir: eso es del formulario de
        pedirla. */
+    if (cual !== 'tarjeta' && movAbierto) cerrarMov();
     if (cual === 'tarjeta' && !tarjeta && !tarjetaCargando) {
       tarjetaCargando = true;
       cargarTarjeta()
@@ -4942,14 +4957,16 @@ const VETA = (() => {
         const cifra = origen != null && origen !== ''
           ? `${tapa(oro(Math.abs(Number(origen))))} ORIGEN`
           : tapa(usd(Math.abs(Number(dolares ?? 0))));
+        const usdLinea = dolares != null && origen != null
+          ? `<small>${esc(usd(Math.abs(Number(dolares))))}</small>` : '';
         return `
         <button type="button" class="hilera tar-mov" onclick="VETA.abrirMov(${i})">
           <div class="ic"><svg viewBox="0 0 24 24">${ICO.tarjeta}</svg></div>
           <div class="txt">
             <b>${esc(nombre)}</b>
-            <small>${esc(cuando(fecha) || m.status || m.type || '')}</small>
+            <small>${esc(cuando(fecha) || fechaLarga(fecha) || m.status || m.type || '')}</small>
           </div>
-          <div class="val sale">${cifra}</div>
+          <div class="val sale">${cifra}${usdLinea}</div>
         </button>`;
       }).join('')
       : errMovsTarjeta
@@ -5019,10 +5036,15 @@ const VETA = (() => {
     const alDia = tasas
       ? rell(t('tar.movAlDia'), { t: cifraHnl(tasa) })
       : rell(t('tar.movAlDiaRef'), { t: cifraHnl(tasa) });
+    const fx = [
+      dolares != null ? usd(Math.abs(Number(dolares))) : null,
+      hnl != null ? cifraHnl(Math.abs(hnl)) : null,
+    ].filter(Boolean).join(' · ');
     caja.innerHTML = `
       <div class="tar-ficha-caja" onclick="event.stopPropagation()">
         <h3 id="tar-ficha-tit">${esc(nombre)}</h3>
         <p class="tar-ficha-monto">${origen != null ? `${tapa(oro(Math.abs(Number(origen))))} ORIGEN` : '—'}</p>
+        ${fx ? `<p class="tar-ficha-fx">${esc(fx)}</p>` : ''}
         <p class="pie" style="margin-top:6px">${esc(alDia)}</p>
         <dl class="datos" style="margin-top:16px">${filas.map(([k, v]) =>
           `<div><dt>${esc(k)}</dt><dd>${esc(v)}</dd></div>`).join('')}</dl>

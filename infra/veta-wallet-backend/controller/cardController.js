@@ -62,6 +62,7 @@ function esNoEncontrado(error) {
  * un año, salvo que quien llama ponga from/to.
  */
 const OPERACIONES_BUSQUEDA = [
+  "TRANSACTION_AUTHORIZATION",
   "TRANSACTION_APPROVED",
   "TRANSACTION_CLEARED",
   "TRANSACTION_REJECTED",
@@ -121,22 +122,37 @@ function movimientoAVeta(tx, ogTokenPrice) {
    Abarrotería Ramos 0.4507 ORIGEN el 9 sept y otra vez «hace 20 h».
    Se juntan por comercio + monto, en una ventana de cinco días, y se
    queda el CLEARED con la fecha de cuando se tocó el plástico. */
+function tipoDeMovimiento(tx) {
+  return tx?.type || tx?.operation || tx?.status || "";
+}
+
 function rangoDeCiclo(tipo) {
   const t = String(tipo || "").toUpperCase();
-  if (t.includes("CLEARED")) return 3;
-  if (t.includes("APPROVED") || t === "APPROVED") return 2;
-  if (t.includes("AUTHORIZATION")) return 1;
+  if (t.includes("CLEARED") || t.includes("SETTLED")) return 3;
+  if (t.includes("APPROVED")) return 2;
+  if (t.includes("AUTHORIZATION") || t.includes("AUTH")) return 1;
   return 0;
 }
 
+function esFueraDelGrupo(tipo) {
+  const t = String(tipo || "").toUpperCase();
+  return /REFUND|REVERS|DEPOSIT|WITHDRAW|REJECT|DECLINE/.test(t);
+}
+
 function esCicloDeCompra(tipo) {
-  return rangoDeCiclo(tipo) > 0;
+  if (esFueraDelGrupo(tipo)) return false;
+  if (rangoDeCiclo(tipo) > 0) return true;
+  const t = String(tipo || "").toUpperCase();
+  /* El emisor a veces pone type "purchase" en los dos eventos del mismo
+     pago. Si no los juntamos, Ramos 0.4507 aparece dos veces. */
+  return !t || t === "PURCHASE" || t === "DEBIT" || t === "SUCCESS" || t === "COMPLETED";
 }
 
 function claveDeCompra(tx) {
   const merc = String(tx.merchant || "").trim().toUpperCase().replace(/\s+/g, " ");
   const usd = Math.round(Number(tx.amount || 0) * 100);
-  return merc + "|" + usd;
+  const ori = Math.round(Number(tx.origenAmount || 0) * 10000);
+  return merc + "|" + (usd || ori);
 }
 
 function sinDuplicados(lista) {
@@ -144,7 +160,7 @@ function sinDuplicados(lista) {
   const ciclos = [];
   const otros = [];
   for (const tx of arr) {
-    (esCicloDeCompra(tx.type) ? ciclos : otros).push(tx);
+    (esCicloDeCompra(tipoDeMovimiento(tx)) ? ciclos : otros).push(tx);
   }
   const VENTANA = 5 * 24 * 60 * 60 * 1000;
   const grupos = [];
@@ -161,7 +177,8 @@ function sinDuplicados(lista) {
   }
   const unicos = grupos.map((g) => {
     const porFecha = g.txs.slice().sort((a, b) => (Date.parse(a.date) || 0) - (Date.parse(b.date) || 0));
-    const porCiclo = g.txs.slice().sort((a, b) => rangoDeCiclo(b.type) - rangoDeCiclo(a.type));
+    const porCiclo = g.txs.slice().sort((a, b) =>
+      rangoDeCiclo(tipoDeMovimiento(b)) - rangoDeCiclo(tipoDeMovimiento(a)));
     return { ...porCiclo[0], date: porFecha[0].date };
   });
   return [...unicos, ...otros].sort((a, b) => (Date.parse(b.date) || 0) - (Date.parse(a.date) || 0));
