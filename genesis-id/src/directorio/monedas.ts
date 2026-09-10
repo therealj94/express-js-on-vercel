@@ -1,11 +1,19 @@
 // ─────────────────────────────────────────────────────────────────────────────
 // Las monedas del ecosistema, y cómo se leen sus saldos.
 //
-// Cada contrato de esta lista se comprobó contra la cadena 8532 antes de
+// Cada contrato de esta lista se comprobó contra la cadena (hoy la 5550) antes de
 // escribirlo: existe, responde `decimals()` y su `symbol()` en cadena coincide
 // con el símbolo de aquí. Una dirección copiada mal no da error — devuelve cero
 // para todo el mundo, y un panel que enseña ceros se ve igual de bien que uno
 // correcto.
+//
+// AQUI ESTAN LAS QUINCE, AUNQUE LA BILLETERA PUBLIQUE SEIS.
+//
+// Desde el 20/08/2026 Veta Wallet y Ordenex solo publican ORIGEN, AUKA, AGKA,
+// ONDK, HARV e IBS. Esto es un directorio de VIGILANCIA, no un escaparate:
+// dejar de mirar un token porque dejo de venderse es exactamente al reves de
+// como funciona el cumplimiento. Un activo que ya no se publica se sigue
+// moviendo, y esos movimientos son los que hay que poder ver.
 //
 // Se puede cambiar sin tocar código con GENESIS_MONEDAS:
 //   "SIMBOLO|nombre|0xcontrato|decimales,SIMBOLO|nombre||18"
@@ -52,7 +60,106 @@ export function monedas(): Moneda[] {
   }).filter((m) => m.simbolo)
 }
 
-const RPC = () => process.env.RPC_8532_URL || 'https://rpc.ordenglobal-rpc.com/'
+/* CONTRA QUE CADENA SE LEE, Y POR QUE SE COMPRUEBA
+ *
+ * El nombre `RPC_8532_URL` es de cuando la cadena era la 8532. Hoy la red
+ * oficial es la 5550 y ese nombre MIENTE, así que se acepta `GENESIS_RPC_URL`
+ * —que no envejece— y el viejo queda solo por compatibilidad.
+ *
+ * El 20-ago apareció por qué esto importa. El panel enseñaba 39.998,40958
+ * ORIGEN en una billetera que en la cadena tiene 0,983. El saldo de la cadena
+ * era el correcto: la consolidación había dejado 1 ORIGEN y el resto era
+ * gasolina gastada. Lo que estaba mal era la pantalla, que arrastraba una
+ * lectura vieja hecha contra la 8532 —apagada ese mismo día— y la enseñaba con
+ * la misma cara que un dato de hace un minuto.
+ *
+ * La regla de «si falla, conservo lo anterior» es correcta y se queda: inventar
+ * un cero es peor. Lo que faltaba era la otra mitad — comprobar QUE CADENA está
+ * contestando antes de creerle. Si el nodo dice un chainId que no es el nuestro,
+ * no se escribe ni un saldo: se devuelve la lectura entera como fallida.
+ *
+ * Un panel de cumplimiento donde un operador aprueba a una persona mirando
+ * saldos no puede mezclar dos cadenas. Y este fallo era invisible: los números
+ * eran plausibles y estaban bien formados; solo eran de otro sitio.
+ */
+const RPC = () =>
+  process.env.GENESIS_RPC_URL || process.env.RPC_8532_URL || 'https://rpc.ordenglobal-rpc.com/'
+
+/** La cadena que este servicio da por buena. */
+const CADENA_ESPERADA = Number(process.env.GENESIS_CADENA_ID || 5550)
+
+/** Solo el anfitrión, para poder publicarlo en /healthz sin soltar credenciales
+ *  si algún día la URL llevara una en la ruta o en el usuario. */
+export function rpcAnfitrion(): string {
+  try { return new URL(RPC()).host } catch { return '(url inválida)' }
+}
+
+/**
+ * Qué cadena contesta de verdad en ese RPC.
+ *
+ * @returns el chainId, o `null` si el nodo no contestó.
+ */
+export async function cadenaDelNodo(): Promise<number | null> {
+  try {
+    const ctrl = new AbortController()
+    const alarma = setTimeout(() => ctrl.abort(), 10000)
+    const r = await fetch(RPC(), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'eth_chainId', params: [] }),
+      signal: ctrl.signal,
+    })
+    clearTimeout(alarma)
+    const j: any = await r.json()
+    return j?.result ? Number(BigInt(j.result)) : null
+  } catch {
+    return null
+  }
+}
+
+/**
+ * Lo mismo pero SIN ESPERAR, para /healthz.
+ *
+ * `/healthz` es la sonda de salud de Render: si tarda, el servicio se reinicia.
+ * Preguntarle al nodo en cada llamada metería hasta diez segundos de espera en
+ * el sitio donde menos se puede. Así que se devuelve lo último que se supo y se
+ * dispara la siguiente lectura por detrás, como mucho una por minuto.
+ *
+ * `cadenaQueContesta: null` significa «todavía no lo he preguntado», no «el nodo
+ * está caído»: en el primer arranque es lo normal durante unos segundos.
+ */
+let ultimoEstado: { rpc: string; cadenaEsperada: number; cadenaQueContesta: number | null; coincide: boolean } | null = null
+let ultimaMirada = 0
+
+export function estadoCadenaRapido() {
+  const ahora = Date.now()
+  if (ahora - ultimaMirada > 60_000) {
+    ultimaMirada = ahora
+    estadoCadena().then((e) => { ultimoEstado = e }).catch(() => { /* se reintenta al minuto */ })
+  }
+  return ultimoEstado ?? {
+    rpc: rpcAnfitrion(),
+    cadenaEsperada: CADENA_ESPERADA,
+    cadenaQueContesta: null,
+    coincide: false,
+  }
+}
+
+/** Pregunta al nodo de verdad. Puede tardar; no usar en /healthz. */
+export async function estadoCadena(): Promise<{
+  rpc: string
+  cadenaEsperada: number
+  cadenaQueContesta: number | null
+  coincide: boolean
+}> {
+  const c = await cadenaDelNodo()
+  return {
+    rpc: rpcAnfitrion(),
+    cadenaEsperada: CADENA_ESPERADA,
+    cadenaQueContesta: c,
+    coincide: c === CADENA_ESPERADA,
+  }
+}
 
 /** `balanceOf(address)` con la dirección rellenada a 32 bytes. */
 const datosBalanceOf = (direccion: string) =>
@@ -111,6 +218,29 @@ export interface LecturaSaldos {
   saldos: Map<string, Record<string, number>>
   /** Cuántas llamadas quedaron sin respuesta. Si no es 0, la tabla está coja. */
   fallidas: number
+  /** Cuándo se leyó. Un saldo sin fecha se ve igual de fresco que uno de agosto. */
+  leidoEn: string
+  /** Qué cadena contestó. `null` = el nodo no dijo nada. */
+  cadena: number | null
+  /** `false` cuando el nodo contestó otra cadena y NO se leyó ningún saldo. */
+  cadenaCorrecta: boolean
+  /**
+   * Por cada dirección, QUE MONEDAS se leyeron de verdad — con saldo o sin él.
+   *
+   * Existe porque «no tiene nada» y «no me contestaron» salían iguales: el mapa
+   * traía `{}` en los dos casos y quien llamaba lo escribía encima, borrando
+   * saldos buenos cada vez que el nodo tosía.
+   *
+   * El primer intento de arreglarlo fue todo-o-nada por dirección, y era PEOR:
+   * con quince monedas por persona, una sola llamada perdida dejaba esa ficha
+   * sin actualizar entera. Se notó enseguida — una cuenta que acababa de
+   * vaciarse siguió mostrando sus tokens.
+   *
+   * La cuenta correcta es POR MONEDA: se actualiza lo que contestó y se deja
+   * intacto lo que no. Ni se inventa un cero ni se bloquea la ficha por una
+   * moneda floja.
+   */
+  leidas: Map<string, Set<string>>
 }
 
 /**
@@ -122,8 +252,33 @@ export interface LecturaSaldos {
 export async function saldosDe(direcciones: string[]): Promise<LecturaSaldos> {
   const lista = monedas()
   const saldos = new Map<string, Record<string, number>>()
+  const leidoEn = new Date().toISOString()
   let fallidas = 0
-  if (!direcciones.length) return { saldos, fallidas }
+  if (!direcciones.length) {
+    return { saldos, fallidas, leidoEn, cadena: null, cadenaCorrecta: true, leidas: new Map() }
+  }
+
+  /* LA PUERTA. Antes de creerle un solo número al nodo, se le pregunta qué
+     cadena es. Si contesta otra —o no contesta—, se devuelve la lectura entera
+     como fallida y sin ningún saldo dentro. Quien llama ya sabe conservar lo
+     anterior cuando faltan datos, así que la pantalla se queda con lo que
+     tenía en vez de mezclar dos cadenas. */
+  const cadena = await cadenaDelNodo()
+  if (cadena !== CADENA_ESPERADA) {
+    console.error(
+      `[monedas] NO se leyeron saldos: ${rpcAnfitrion()} contesta la cadena ` +
+      `${cadena ?? 'ninguna'} y se esperaba la ${CADENA_ESPERADA}`
+    )
+    for (const d of direcciones) saldos.set(d, {})
+    return {
+      saldos,
+      fallidas: direcciones.length * lista.length,
+      leidoEn,
+      cadena,
+      cadenaCorrecta: false,
+      leidas: new Map(),   // nada: no se guarda ni una moneda de otra cadena
+    }
+  }
 
   const llamadas: { direccion: string; moneda: Moneda }[] = []
   const cuerpo: any[] = []
@@ -140,6 +295,14 @@ export async function saldosDe(direcciones: string[]): Promise<LecturaSaldos> {
     saldos.set(d, {})
   }
 
+  /* Qué monedas contestó cada dirección. Lo que no esté aquí no se toca al
+     guardar: se conserva lo que hubiera, que es viejo pero cierto. */
+  const leidas = new Map<string, Set<string>>(direcciones.map((d) => [d, new Set<string>()]))
+  const anotarLeida = (id: any) => {
+    const m = llamadas[id]
+    if (m) leidas.get(m.direccion)?.add(m.moneda.simbolo)
+  }
+
   for (let i = 0; i < cuerpo.length; i += MAX_LOTE_RPC) {
     const trozo = cuerpo.slice(i, i + MAX_LOTE_RPC)
     const res = await lote(trozo)
@@ -154,12 +317,14 @@ export async function saldosDe(direcciones: string[]): Promise<LecturaSaldos> {
         valor = Number(BigInt(x.result)) / Math.pow(10, meta.moneda.decimales)
       } catch { fallidas++; continue }
       if (!Number.isFinite(valor)) { fallidas++; continue }
+      // Contestó: esta moneda se puede escribir, valga cero o valga mucho.
+      anotarLeida(x.id)
       // Solo se anotan los saldos que existen: quince ceros por persona harían
       // la tabla ilegible y el documento tres veces más grande.
       if (valor > 0) saldos.get(meta.direccion)![meta.moneda.simbolo] = Math.round(valor * 1e6) / 1e6
     }
   }
-  return { saldos, fallidas }
+  return { saldos, fallidas, leidoEn, cadena, cadenaCorrecta: true, leidas }
 }
 
 /**
@@ -175,6 +340,18 @@ export async function emisiones(): Promise<Record<string, number | null>> {
   const salida: Record<string, number | null> = {}
   for (const m of monedas()) salida[m.simbolo] = null
   if (!lista.length) return salida
+
+  // La misma puerta que en saldosDe: la emisión de otra cadena no es la nuestra.
+  // Todo queda en `null`, que aquí significa «no lo sé» y se pinta distinto de
+  // un cero.
+  const cadena = await cadenaDelNodo()
+  if (cadena !== CADENA_ESPERADA) {
+    console.error(
+      `[monedas] NO se leyeron emisiones: ${rpcAnfitrion()} contesta la cadena ` +
+      `${cadena ?? 'ninguna'} y se esperaba la ${CADENA_ESPERADA}`
+    )
+    return salida
+  }
 
   const cuerpo = lista.map((m, i) => ({
     jsonrpc: '2.0', id: i, method: 'eth_call',

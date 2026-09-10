@@ -12,6 +12,7 @@ import { store } from '../store.js'
 import { id } from '../lib/uid.js'
 import { registrar } from '../audit/bitacora.js'
 import { evaluarMovimientos, consolidar, type Alerta, type Movimiento } from './monitoreo.js'
+import { guardarMovimientos, movimientosDe, movimientosPorIds } from './almacenMovimientos.js'
 import type { Caso, EstadoCaso, Identidad, Negocio, Operador } from '../types.js'
 
 const ahora = () => new Date().toISOString()
@@ -102,16 +103,19 @@ export function abrirCasoPorNegocio(negocio: Negocio): Caso | null {
  * Registra movimientos y evalúa las reglas de monitoreo.
  * Si salen alertas, abre o actualiza el caso de esa identidad.
  */
-export function registrarMovimientos(gid: string, nuevos: Movimiento[], origen: string): {
+/* ES ASINCRONA PORQUE LOS MOVIMIENTOS YA NO VIVEN EN EL ESTADO.
+   Se guardan en su propia colección (ver aml/almacenMovimientos.ts) para que no
+   cuenten contra los 16 MB del documento de estado — crecen con lo que hace la
+   gente, no con cuánta gente hay, y eran el próximo en reventarlo. La
+   evaluación pide a la base SOLO los de esta persona en vez de recorrer el
+   histórico entero del ecosistema. */
+export async function registrarMovimientos(gid: string, nuevos: Movimiento[], origen: string): Promise<{
   alertas: Alerta[]; caso: Caso | null
-} {
+}> {
   const datos = store.todo()
-  const conocidos = new Set(datos.movimientos.map((m) => m.id))
-  for (const m of nuevos) {
-    if (!conocidos.has(m.id)) datos.movimientos.push(m)
-  }
+  await guardarMovimientos(nuevos)
 
-  const delUsuario = datos.movimientos.filter((m) => m.gid === gid)
+  const delUsuario = await movimientosDe(gid)
   const alertas = consolidar(evaluarMovimientos(delUsuario))
   store.guardar()
 
@@ -222,14 +226,14 @@ export async function cerrar(
  * formularios— pero deja reunido todo lo que hay que declarar, para que quien
  * lo presente no tenga que reconstruirlo a mano desde cero.
  */
-export function borradorReporte(idc: string): Record<string, unknown> | null {
+export async function borradorReporte(idc: string): Promise<Record<string, unknown> | null> {
   const caso = porIdCaso(idc)
   if (!caso) return null
   const datos = store.todo()
   const identidad = datos.identidades.find((i) => i.id === caso.identidadId || i.gid === caso.gid)
   const negocio = datos.negocios.find((n) => n.id === caso.negocioId)
-  const movimientos = datos.movimientos.filter((m) =>
-    caso.alertas.some((a) => a.movimientos.includes(m.id)))
+  const movimientos = await movimientosPorIds(
+    [...new Set(caso.alertas.flatMap((a) => a.movimientos))])
 
   return {
     generadoEn: ahora(),

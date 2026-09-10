@@ -11,6 +11,7 @@
 import { store } from '../store.js'
 import { gidNegocio, id } from '../lib/uid.js'
 import { registrar } from '../audit/bitacora.js'
+import { avisar, type Evento } from '../enganches/enganches.js'
 import { validarIdentificadorFiscal } from '../kyb/fiscal.js'
 import { tamizarEntidad, tamizarPersona } from '../aml/tamiz.js'
 import { evaluarRiesgo, ACTIVIDADES_ALTO_RIESGO } from '../aml/riesgo.js'
@@ -87,6 +88,8 @@ export function registrarNegocio(input: AltaNegocio, origen: string): ResultadoA
 
   const negocio: Negocio = {
     id: id('biz'),
+    // Igual que en identidades: de dónde vino, para saber a quién avisar.
+    creadaPor: origen.startsWith('app:') ? origen.slice(4) : null,
     emailDueno: input.emailDueno.toLowerCase().trim(),
     gidDueno: dueno.gid,
     razonSocial: input.razonSocial.trim(),
@@ -270,6 +273,10 @@ function anotar(negocio: Negocio, estado: EstadoNegocio, operador: string, motiv
   negocio.decisiones.push({ estado: estado as any, operador, motivo, fecha: ahora() })
   negocio.estado = estado
   negocio.actualizadoEn = ahora()
+
+  /* Mismo motivo que en identidades: es el único sitio por el que pasan todas
+     las decisiones de un negocio. */
+  avisar(`negocio.${estado}` as Evento, { ...negocio, vinculos: [] }, { motivo })
 }
 
 export async function aprobarNegocio(

@@ -1,0 +1,174 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Veta Wallet · la tarjeta · 1080x1350</title>
+<!--
+  PIEZA 1 · LA TARJETA · 1080×1350 (post de Instagram, 4:5)
+
+  ══ LO QUE SE CORRIGIÓ DE LA VERSIÓN ANTERIOR ═══════════════════════════════
+
+  1 · LA TARJETA NO ERA LA NUESTRA. La primera versión se inventó una tarjeta
+      verde con la V de Veta. La de verdad —apps-web/veta-wallet/index.html,
+      bloque `.tar-cara`— es NEGRA, con el circuito de oro grabado, el monograma
+      OG en el centro, PREMIUM a la izquierda y VISA a la derecha. Aquí está
+      calcada de ese CSS: mismos colores, mismo circuito, misma proporción
+      (1.586). Enseñar en un anuncio una tarjeta que no es la que le llega a la
+      persona es prometer un producto distinto del que hay.
+
+  2 · ESTO ES UN POST, NO UNA PÁGINA WEB. La versión anterior tenía titular,
+      bajada, tres viñetas y un botón: la estructura de una landing. En
+      Instagram nadie pulsa un botón dibujado y el texto largo no se lee, se
+      pasa de largo. Así que manda la imagen: la tarjeta ocupa el centro, hay
+      UNA frase, y la información va en una tira de tres palabras.
+
+  3 · OTRO CAMINO CREATIVO. La anterior era una lista ilustrada. Esta es un
+      retrato del producto: bóveda oscura, luz de oro rasante, la tarjeta
+      grande e inclinada. Menos cosas, más presencia.
+-->
+<style>
+@font-face{font-family:'Cinzel';src:url('piezas/Cinzel-Bold.ttf') format('truetype');font-weight:700}
+@font-face{font-family:'Plex';src:url('piezas/IBMPlexSans.woff2') format('woff2');font-weight:100 700}
+@font-face{font-family:'PlexMono';src:url('piezas/IBMPlexMono-500.woff2') format('woff2');font-weight:500}
+
+/* La paleta EXACTA de la billetera (index.html, :root). No una parecida: la
+   misma, para que quien vea el post y abra la app vea la misma casa. */
+:root{
+  --linea:rgba(201,169,97,.34);
+  --oro:#C9A961; --oroLt:#EAD79C; --oroHi:#F8EFCF;
+  --crema:#F3ECD9; --bruma:#AEC7C3;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{width:1080px;height:1350px;overflow:hidden;background:#050505;
+  font-family:'Plex',system-ui,sans-serif;color:var(--crema);position:relative}
+
+/* ── la bóveda ─────────────────────────────────────────────────────────────
+   Una sola luz, de oro, entrando por arriba a la derecha. Por eso la tarjeta
+   brilla en el filo de arriba y se apaga abajo, como un objeto de verdad sobre
+   una mesa. Dos luces habrían quedado planas. */
+.fondo{position:absolute;inset:0;
+  background:
+    radial-gradient(58% 46% at 74% 12%, rgba(234,215,156,.26), transparent 64%),
+    radial-gradient(70% 50% at 22% 96%, rgba(6,52,48,.55), transparent 70%),
+    linear-gradient(168deg,#0A1615 0%,#050B0C 46%,#020404 100%)}
+.polvo{position:absolute;inset:0;opacity:.55;
+  background-image:radial-gradient(rgba(234,215,156,.10) 1px,transparent 1px);
+  background-size:5px 5px}
+.halo{position:absolute;left:50%;top:48%;width:1180px;height:720px;
+  transform:translate(-50%,-50%);
+  background:radial-gradient(closest-side,rgba(234,215,156,.20),rgba(201,169,97,.05) 52%,transparent 74%);
+  filter:blur(10px)}
+
+.lienzo{position:relative;height:100%;padding:74px 78px 70px;display:flex;flex-direction:column}
+
+.cabecera{display:flex;align-items:center;gap:20px}
+.cabecera img{height:74px;width:auto}
+.cabecera .barra{width:1px;height:44px;background:rgba(201,169,97,.45)}
+.cabecera span{font:500 20px/1 'PlexMono',monospace;letter-spacing:.30em;
+  color:var(--oro);text-transform:uppercase}
+
+/* ── LA TARJETA · calcada de apps-web/veta-wallet/index.html ───────────────
+   Las medidas del original van multiplicadas por 2.33, que es lo que hay entre
+   los 378px de la app y los 880px de aquí. Se escala TODO el conjunto y no
+   solo la caja: una tarjeta con el chip a escala de la app y el número a
+   escala del cartel deja de parecer la misma tarjeta. */
+.escena{position:relative;flex:1;display:grid;place-items:center}
+.tarjeta{position:relative;width:790px;aspect-ratio:1.586;
+  border-radius:42px;overflow:hidden;
+  border:2px solid var(--linea);padding:33px 40px 36px;text-align:left;
+  background:linear-gradient(135deg,#221D15,#12100C 55%,#050505);
+  box-shadow:0 60px 130px -30px rgba(0,0,0,.95),
+             0 0 90px -20px rgba(234,215,156,.28);
+  display:flex;flex-direction:column;justify-content:space-between;
+  transform:rotate(-5.5deg)}
+.tar-circuito{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+.tar-mono{position:absolute;left:50%;top:17%;transform:translateX(-50%);
+  width:60%;max-height:44%;object-fit:contain;opacity:.95}
+.tar-fila-alta{display:flex;justify-content:space-between;align-items:center;position:relative;z-index:2}
+.tar-premium{font-size:21px;letter-spacing:.45em;color:rgba(234,215,156,.85);font-weight:600}
+.tar-visa{font-size:44px;font-weight:800;font-style:italic;color:var(--oroHi);letter-spacing:.02em}
+.tar-datos{display:flex;align-items:flex-end;gap:38px;position:relative;z-index:2}
+.tar-chip{position:relative;width:88px;height:67px;border-radius:12px;flex:none;margin-bottom:5px;
+  background:linear-gradient(135deg,#F8EFCF,#DFC078 45%,#96793F);
+  box-shadow:0 0 0 9px rgba(223,192,120,.09),0 0 0 18px rgba(223,192,120,.04)}
+.tar-chip i{position:absolute;background:rgba(90,70,25,.55)}
+.tar-chip i.l{left:0;right:0;top:23px;height:2px}
+.tar-chip i.c{top:0;bottom:0;left:31px;width:2px}
+.tar-campos{flex:1;min-width:0}
+.tar-num{display:block;font-family:'PlexMono',ui-monospace,monospace;font-size:38px;
+  letter-spacing:.09em;color:var(--oroHi);font-weight:700;white-space:nowrap;
+  text-shadow:0 3px 6px rgba(0,0,0,.7)}
+.tar-valid{display:flex;align-items:center;gap:16px;margin-top:16px}
+.tar-validK{font-size:15px;line-height:19px;letter-spacing:.12em;
+  color:rgba(234,215,156,.7);font-weight:700}
+.tar-validV{font-size:29px;color:var(--oroLt);font-weight:700;letter-spacing:.11em;
+  font-family:'PlexMono',monospace;text-shadow:0 2px 5px rgba(0,0,0,.6)}
+.tar-titular{display:block;font-size:29px;color:var(--oroLt);font-weight:700;margin-top:14px;
+  letter-spacing:.12em;text-shadow:0 2px 5px rgba(0,0,0,.6)}
+
+/* ── la frase · UNA, y grande ─────────────────────────────────────────────── */
+.frase{font-family:'Cinzel',Georgia,serif;font-weight:700;line-height:1.02;text-align:center}
+.frase .a{display:block;font-size:82px;color:var(--oroHi)}
+.frase .b{display:block;font-size:82px;color:var(--oro);margin-top:8px}
+
+/* ── la tira: la información, sin párrafos ────────────────────────────────── */
+.tira{margin-top:34px;display:flex;align-items:center;justify-content:center;gap:24px;
+  font-size:26px;color:var(--bruma)}
+.tira b{color:var(--crema);font-weight:600}
+.tira i{width:6px;height:6px;border-radius:50%;background:var(--oro);flex:none}
+</style>
+
+<div class="fondo"></div><div class="polvo"></div><div class="halo"></div>
+
+<div class="lienzo">
+  <div class="cabecera">
+    <img src="piezas/veta-mark.png" alt="Veta Wallet">
+    <span class="barra"></span>
+    <span>La tarjeta</span>
+  </div>
+
+  <div class="escena">
+    <div class="tarjeta">
+      <!-- El circuito grabado: el mismo SVG de la app, sin tocar una coma. -->
+      <svg class="tar-circuito" viewBox="0 0 320 200" preserveAspectRatio="none" aria-hidden="true">
+        <g fill="none" stroke="rgba(201,169,97,.22)" stroke-width=".8">
+          <path d="M0 44h58l16 16h72M320 150h-70l-18-18h-64M0 128h40l22 22h48"/>
+          <path d="M262 12v34l-16 16v40M74 196v-30l18-18v-44"/>
+        </g>
+        <g fill="none" stroke="rgba(223,192,120,.52)" stroke-width="1.3">
+          <path d="M0 82h96l20-20h84l22 22h98"/>
+          <path d="M140 200v-36l24-24h58"/>
+        </g>
+        <g fill="none" stroke="rgba(223,192,120,.6)" stroke-width="1">
+          <circle cx="96" cy="82" r="2.4"/><circle cx="222" cy="84" r="2.4"/>
+          <circle cx="164" cy="140" r="2.4"/><circle cx="62" cy="150" r="2.4"/>
+        </g>
+      </svg>
+
+      <img class="tar-mono" src="piezas/og-mono.png" alt="">
+
+      <span class="tar-fila-alta">
+        <span class="tar-premium">PREMIUM</span>
+        <span class="tar-visa">VISA</span>
+      </span>
+
+      <span class="tar-datos">
+        <span class="tar-chip"><i class="l"></i><i class="c"></i></span>
+        <span class="tar-campos">
+          <span class="tar-num">••••&nbsp;&nbsp;••••&nbsp;&nbsp;••••&nbsp;&nbsp;4021</span>
+          <span class="tar-valid">
+            <span class="tar-validK">VALID<br>THRU</span>
+            <span class="tar-validV">08/30</span>
+          </span>
+          <span class="tar-titular">ORDEN GLOBAL</span>
+        </span>
+      </span>
+    </div>
+  </div>
+
+  <div class="frase"><span class="a">Guardás oro.</span><span class="b">Pagás como siempre.</span></div>
+
+  <div class="tira">
+    <span><b>Oro real</b> respaldado</span><i></i>
+    <span>Pagás <b>donde sea</b></span><i></i>
+    <span><b>Una sola</b> cuenta</span>
+  </div>
+</div>

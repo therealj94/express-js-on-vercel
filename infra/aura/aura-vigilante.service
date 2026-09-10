@@ -1,0 +1,20 @@
+[Unit]
+# Mira el latido de AU-RA y avisa a los admin por WhatsApp si se quedó muda.
+#
+# Vive FUERA del asistente a propósito: un vigilante que corre dentro de lo
+# vigilado se muere con ello. El 1-sep AU-RA estuvo cuatro horas y media sin
+# contestarle a nadie con systemd diciendo «active (running)» — systemd vigila
+# que el proceso EXISTA, no que CONTESTE, y son dos preguntas distintas.
+Description=AU-RA · el vigilante mira si se quedó muda
+After=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=/srv/aura
+Environment=AURA_DATOS=/srv/aura
+EnvironmentFile=-/etc/aura-whatsapp.env
+ExecStart=/usr/bin/python3 /srv/aura/vigilante.py
+# Sale con 1 cuando avisó de algo. Eso NO es un fallo del servicio: es su
+# trabajo hecho. Marcarlo como failed llenaría de rojo el `systemctl` justo
+# cuando hay que mirarlo con la cabeza fría.
+SuccessExitStatus=0 1

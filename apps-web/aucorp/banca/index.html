@@ -1,0 +1,412 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>AuCorp · Tus cuentas</title>
+<meta name="description" content="Cuentas en moneda local de AuCorp. Se entra con tu Genesis ID.">
+<meta name="theme-color" content="#151A20">
+<!-- Una pantalla de dinero no se indexa ni se previsualiza: lo que hay detrás
+     es privado, y lo unico publico es la portada del sitio. -->
+<meta name="robots" content="noindex,nofollow">
+
+<!-- La app en el teléfono: manifiesto, ícono de iOS y modo pantalla completa. -->
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="iconos/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="AuCorp">
+
+<!-- A donde puede hablar esta pagina. `connect-src` lleva el API y NADA mas:
+     si un dia alguien mete una libreria de analitica que manda datos a un
+     tercero, va a tener que tocar esta linea, que es exactamente cuando hay
+     que pensarlo dos veces. `form-action none` porque aqui no hay ningun
+     formulario que se envie a la vieja usanza — todo va por fetch. -->
+<meta http-equiv="Content-Security-Policy" content="
+  default-src 'self';
+  script-src 'self';
+  style-src 'self' 'unsafe-inline';
+  font-src 'self';
+  img-src 'self' data: blob:;
+  connect-src 'self' https://aucorp-api-e70d3fd481ca.herokuapp.com;
+  form-action 'none';
+  base-uri 'self'">
+
+<link rel="preload" as="font" type="font/woff2" href="../assets/fonts/Fraunces-600.woff2" crossorigin>
+<link rel="preload" as="font" type="font/woff2" href="../assets/fonts/IBMPlexSans.woff2" crossorigin>
+<link rel="preload" as="font" type="font/woff2" href="../assets/fonts/IBMPlexMono-500.woff2" crossorigin>
+
+<style>
+@font-face{font-family:'Fraunces';src:url('../assets/fonts/Fraunces-600.woff2') format('woff2');
+  font-weight:600;font-style:normal;font-display:swap}
+@font-face{font-family:'Plex';src:url('../assets/fonts/IBMPlexSans.woff2') format('woff2');
+  font-weight:100 700;font-style:normal;font-display:swap}
+@font-face{font-family:'PlexMono';src:url('../assets/fonts/IBMPlexMono-400.woff2') format('woff2');
+  font-weight:400;font-style:normal;font-display:swap}
+@font-face{font-family:'PlexMono';src:url('../assets/fonts/IBMPlexMono-500.woff2') format('woff2');
+  font-weight:500;font-style:normal;font-display:swap}
+
+/* ═══ PIZARRA Y COBRE ════════════════════════════════════════════════════════
+   La banca de AuCorp tiene su propia cara, distinta de la billetera (verde y
+   oro) y distinta también del sitio de presentación (hueso y oro). Es una
+   pantalla que se OPERA, casi siempre desde un teléfono, muchas veces de
+   noche: fondo de pizarra oscura, texto marfil, y cobre para lo único que
+   tiene que saltar a la vista —el saldo, la línea del libro, el foco del
+   teclado—. El cobre es el metal de las monedas de todos los días, no el oro
+   de la reserva: aquí se cuenta dinero corriente.
+
+   Los estados llevan color Y palabra, siempre: quien no distingue verde de
+   rojo tiene que leerlo igual.
+
+   La firma de la casa es EL LIBRO RAYADO: cada movimiento es una línea de
+   libro mayor, con la fecha en su columna de cifras a la izquierda y una
+   regla de cobre de un píxel que la separa de la siguiente. El comprobante es
+   una hoja de papel marfil con su perforación, hecha para imprimirse. */
+:root{
+  --pizarra:#151A20; --papel:#1C232B; --elevado:#242D37; --hondo:#0F1317;
+  --marfil:#EDE8E0; --marfil2:#C9C2B7; --niebla:#9AA6B2; --niebla2:#6B7681;
+  --cobre:#C47A3C; --cobreLt:#E0A06A; --cobrePl:#3A2A1C;
+  --bien:#7CC9A3; --bienPl:#17352A;
+  --espera:#E0B15E; --esperaPl:#3A2C12;
+  --mal:#E39485; --malPl:#3B1F1A;
+  --linea:rgba(237,232,224,.10); --lineaCobre:rgba(196,122,60,.45);
+  --sombra:0 1px 0 rgba(0,0,0,.35),0 14px 30px -20px rgba(0,0,0,.8);
+  --r:10px; --r2:14px;
+  --riel:232px;
+  color-scheme:dark;
+}
+/* La variante clara: quien la prefiera la elige en Perfil; también sigue al
+   sistema si no eligió nada. Misma estructura, otro papel. */
+@media (prefers-color-scheme:light){
+  :root:not([data-tema="oscuro"]){
+    --pizarra:#F3F1ED; --papel:#FFFFFF; --elevado:#EAE6DF; --hondo:#E4E0D8;
+    --marfil:#1B2027; --marfil2:#3E4650; --niebla:#5F6B77; --niebla2:#8A949E;
+    --cobre:#A8642C; --cobreLt:#8E5223; --cobrePl:#F1E3D5;
+    --bien:#1F6B48; --bienPl:#DCEFE4;
+    --espera:#8A5F0E; --esperaPl:#F7EBD0;
+    --mal:#963628; --malPl:#F8E0DA;
+    --linea:rgba(27,32,39,.12); --lineaCobre:rgba(168,100,44,.45);
+    --sombra:0 1px 2px rgba(27,32,39,.06),0 12px 28px -20px rgba(27,32,39,.25);
+    color-scheme:light;
+  }
+}
+:root[data-tema="claro"]{
+  --pizarra:#F3F1ED; --papel:#FFFFFF; --elevado:#EAE6DF; --hondo:#E4E0D8;
+  --marfil:#1B2027; --marfil2:#3E4650; --niebla:#5F6B77; --niebla2:#8A949E;
+  --cobre:#A8642C; --cobreLt:#8E5223; --cobrePl:#F1E3D5;
+  --bien:#1F6B48; --bienPl:#DCEFE4;
+  --espera:#8A5F0E; --esperaPl:#F7EBD0;
+  --mal:#963628; --malPl:#F8E0DA;
+  --linea:rgba(27,32,39,.12); --lineaCobre:rgba(168,100,44,.45);
+  --sombra:0 1px 2px rgba(27,32,39,.06),0 12px 28px -20px rgba(27,32,39,.25);
+  color-scheme:light;
+}
+
+*,*::before,*::after{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--pizarra);color:var(--marfil);
+  font:400 15.5px/1.55 'Plex',system-ui,-apple-system,sans-serif;
+  -webkit-font-smoothing:antialiased;min-height:100dvh}
+h1,h2,h3{font-family:'Fraunces',Georgia,serif;font-weight:600;
+  letter-spacing:-.012em;line-height:1.15;margin:0;text-wrap:balance}
+h2{font-size:19px}
+h3{font-size:17px}
+p{margin:0;text-wrap:pretty}
+a{color:inherit}
+button{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--cobre);outline-offset:3px;border-radius:4px}
+/* Las cifras SIEMPRE tabulares: una columna de saldos donde los digitos bailan
+   es una columna que no se puede comparar de un vistazo. */
+.n{font-family:'PlexMono',ui-monospace,monospace;font-variant-numeric:tabular-nums}
+.et{font:500 11px/1 'PlexMono',ui-monospace,monospace;letter-spacing:.15em;
+  text-transform:uppercase;color:var(--niebla)}
+.sec{color:var(--niebla)}
+.chico{font-size:13px}
+[hidden]{display:none!important}
+
+/* ── el armazon ───────────────────────────────────────────────────────────── */
+.marco{display:grid;grid-template-columns:var(--riel) minmax(0,1fr);min-height:100dvh}
+@media (max-width:860px){.marco{grid-template-columns:minmax(0,1fr)}}
+
+.riel{border-right:1px solid var(--linea);background:var(--papel);
+  padding:22px 14px;display:flex;flex-direction:column;gap:3px;position:sticky;top:0;height:100dvh}
+@media (max-width:860px){.riel{display:none}}
+.marca{display:flex;align-items:center;gap:9px;margin:0 8px 22px;padding-bottom:16px;
+  border-bottom:1px solid var(--lineaCobre)}
+.marca img{width:150px;height:auto}
+:root:not([data-tema="claro"]) .marca img.clara{display:none}
+:root[data-tema="claro"] .marca img.oscura{display:none}
+@media (prefers-color-scheme:light){
+  :root:not([data-tema="oscuro"]) .marca img.oscura{display:none}
+  :root:not([data-tema="oscuro"]) .marca img.clara{display:inline}
+}
+
+.nav{appearance:none;border:0;background:none;color:var(--marfil2);text-align:left;
+  font:500 14.5px/1 'Plex',sans-serif;padding:10px 12px;border-radius:9px;cursor:pointer;
+  display:flex;align-items:center;gap:10px;width:100%}
+.nav:hover{background:var(--elevado);color:var(--marfil)}
+.nav[aria-current="page"]{background:var(--elevado);color:var(--marfil);
+  box-shadow:inset 3px 0 0 var(--cobre)}
+.nav svg{width:17px;height:17px;flex:none;stroke:currentColor;fill:none;stroke-width:1.7;
+  stroke-linecap:round;stroke-linejoin:round}
+.nav.abajo{margin-top:auto}
+
+/* La barra de abajo del telefono. Cinco destinos: mas no caben sin que el dedo
+   acierte el de al lado. */
+.barra{display:none}
+@media (max-width:860px){
+  .barra{display:grid;grid-template-columns:repeat(5,1fr);position:fixed;inset:auto 0 0 0;
+    background:var(--papel);border-top:1px solid var(--linea);z-index:30;
+    padding-bottom:env(safe-area-inset-bottom)}
+  .barra button{appearance:none;border:0;background:none;color:var(--niebla);cursor:pointer;
+    padding:9px 4px 8px;display:flex;flex-direction:column;align-items:center;gap:4px;
+    font:500 10.5px/1 'Plex',sans-serif}
+  .barra button svg{width:21px;height:21px;stroke:currentColor;fill:none;stroke-width:1.7;
+    stroke-linecap:round;stroke-linejoin:round}
+  .barra button[aria-current="page"]{color:var(--cobreLt)}
+  .lienzo{padding-bottom:84px}
+}
+
+.lienzo{padding:22px clamp(14px,3.5vw,36px) 46px;max-width:1040px;width:100%}
+.cab{display:flex;align-items:flex-end;justify-content:space-between;gap:14px;
+  flex-wrap:wrap;margin-bottom:18px}
+.cab h1{font-size:clamp(23px,3.4vw,30px)}
+.cab .acc{display:flex;gap:8px;flex-wrap:wrap}
+
+/* La cabecera del telefono: la marca chica y a dónde estás. En escritorio el
+   riel ya lo dice. */
+.techo{display:none}
+@media (max-width:860px){
+  .techo{display:flex;align-items:center;justify-content:space-between;gap:10px;
+    padding:calc(10px + env(safe-area-inset-top)) 16px 10px;
+    border-bottom:1px solid var(--lineaCobre);background:var(--papel);
+    position:sticky;top:0;z-index:20}
+  .techo img{height:22px;width:auto}
+  .techo .quien{font:500 12.5px/1 'PlexMono',monospace;color:var(--niebla);letter-spacing:.04em}
+}
+
+/* ── piezas ───────────────────────────────────────────────────────────────── */
+.tarj{background:var(--papel);border:1px solid var(--linea);border-radius:var(--r2);
+  padding:18px;box-shadow:var(--sombra)}
+.tarj.toca{cursor:pointer;text-align:left;color:inherit;font:inherit;width:100%;display:block}
+.tarj.toca:hover{border-color:var(--lineaCobre)}
+.rej{display:grid;gap:12px}
+.rej.c2{grid-template-columns:repeat(auto-fill,minmax(258px,1fr))}
+.rej.c3{grid-template-columns:repeat(auto-fill,minmax(196px,1fr))}
+.pila{display:flex;flex-direction:column;gap:12px}
+.fila{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.crece{flex:1;min-width:0}
+.der{text-align:right}
+
+/* EL SALDO. Lo único grande de la pantalla, y lo único con cobre encima. */
+.total{background:var(--hondo);border:1px solid var(--linea);border-radius:var(--r2);
+  padding:22px 22px 18px;display:flex;flex-direction:column;gap:4px;position:relative;overflow:hidden}
+.total::after{content:'';position:absolute;left:22px;right:22px;bottom:0;height:2px;
+  background:linear-gradient(90deg,var(--cobre),transparent)}
+.total .et{color:var(--cobreLt)}
+.total .cifra{font:500 clamp(30px,5vw,42px)/1.05 'PlexMono',ui-monospace,monospace;
+  font-variant-numeric:tabular-nums;letter-spacing:-.02em;margin-top:6px}
+.total .cifra small{font-size:.5em;color:var(--niebla);letter-spacing:0;margin-left:6px}
+.total .pie{color:var(--niebla);font-size:12.5px;margin-top:8px}
+
+.moneda{display:flex;flex-direction:column;gap:3px}
+.moneda .top{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.moneda .cod{font:500 12px/1 'PlexMono',monospace;letter-spacing:.08em;color:var(--cobreLt)}
+.moneda .saldo{font:500 24px/1.1 'PlexMono',monospace;font-variant-numeric:tabular-nums;letter-spacing:-.015em}
+.moneda .pais{font-size:12.5px;color:var(--niebla)}
+
+/* El sello de estado. Forma + palabra, nunca color solo. */
+.sello{display:inline-flex;align-items:center;gap:6px;border-radius:999px;
+  padding:3px 10px 3px 8px;font:500 12px/1.4 'Plex',sans-serif;white-space:nowrap}
+.sello::before{content:'';width:7px;height:7px;border-radius:50%;background:currentColor;flex:none}
+.sello.ok{background:var(--bienPl);color:var(--bien)}
+.sello.esp{background:var(--esperaPl);color:var(--espera)}
+.sello.no{background:var(--malPl);color:var(--mal)}
+.sello.esp::before{border-radius:1px;transform:rotate(45deg)}
+.sello.no::before{border-radius:1px}
+
+.bot{appearance:none;border:1px solid var(--cobre);background:var(--cobre);color:#15100A;
+  font:500 14.5px/1 'Plex',sans-serif;padding:11px 17px;border-radius:9px;cursor:pointer;
+  display:inline-flex;align-items:center;justify-content:center;gap:8px;text-decoration:none}
+.bot:hover{background:var(--cobreLt);border-color:var(--cobreLt)}
+.bot[disabled]{opacity:.42;cursor:not-allowed}
+.bot.fino{background:none;color:var(--marfil);border-color:var(--linea)}
+.bot.fino:hover{background:var(--elevado);border-color:var(--linea)}
+.bot.chico{padding:8px 13px;font-size:13.5px}
+.bot svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+
+label{display:block;font:500 12.5px/1 'Plex',sans-serif;color:var(--marfil2);
+  margin-bottom:7px;letter-spacing:.01em}
+input,select,textarea{width:100%;background:var(--pizarra);color:var(--marfil);
+  border:1px solid var(--linea);border-radius:9px;padding:11px 13px;
+  font:400 16px/1.4 'Plex',sans-serif}
+input:focus,select:focus,textarea:focus{outline:none;border-color:var(--cobre)}
+input.n{font-family:'PlexMono',monospace}
+.campo{margin-bottom:14px}
+.ayuda{font-size:12.5px;color:var(--niebla);margin-top:6px}
+.error-campo{font-size:12.5px;color:var(--mal);margin-top:6px}
+
+/* ── EL LIBRO RAYADO ────────────────────────────────────────────────────────
+   Cada movimiento es una linea del libro: la fecha en su columna, el
+   concepto, y la cifra a la derecha. La regla entre lineas es de cobre y de
+   un pixel. En el telefono la fecha sube arriba del concepto y la cifra se
+   queda a la derecha: sigue siendo una linea, no una ficha. */
+.libro{list-style:none;margin:0;padding:0}
+.libro li{display:grid;grid-template-columns:92px minmax(0,1fr) auto;gap:6px 14px;
+  align-items:baseline;padding:12px 4px;border-bottom:1px solid var(--lineaCobre)}
+.libro li:last-child{border-bottom:0}
+.libro li.toca{cursor:pointer}
+.libro li.toca:hover{background:var(--elevado)}
+.libro .fecha{font:500 12.5px/1.4 'PlexMono',monospace;color:var(--niebla);letter-spacing:.02em}
+.libro .fecha small{display:block;color:var(--niebla2);font-size:11px}
+.libro .concepto{min-width:0}
+.libro .concepto b{font-weight:500;display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.libro .concepto span{font-size:12.5px;color:var(--niebla)}
+.libro .cifra{font:500 15.5px/1.3 'PlexMono',monospace;font-variant-numeric:tabular-nums;white-space:nowrap}
+.libro .cifra.mas{color:var(--bien)}
+.libro .cifra small{color:var(--niebla);font-size:11.5px;margin-left:4px}
+.libro .cifra .saldo{display:block;font-size:11.5px;color:var(--niebla2);font-weight:400}
+@media (max-width:560px){
+  .libro li{grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"fecha fecha" "concepto cifra"}
+  .libro .fecha{grid-area:fecha;font-size:11.5px}
+  .libro .fecha small{display:inline;margin-left:8px}
+  .libro .concepto{grid-area:concepto}
+  .libro .cifra{grid-area:cifra}
+}
+
+/* Los filtros del historial. En el telefono se pliegan bajo un boton. */
+.filtros{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;align-items:end}
+.filtros .campo{margin:0}
+.filtros input,.filtros select{padding:9px 11px;font-size:14.5px}
+
+.tabla{width:100%;border-collapse:collapse;font-size:14px}
+.tabla th{text-align:left;font:500 11px/1 'PlexMono',monospace;letter-spacing:.13em;
+  text-transform:uppercase;color:var(--niebla);padding:0 10px 9px;border-bottom:1px solid var(--linea)}
+.tabla td{padding:10px;border-bottom:1px solid var(--linea);vertical-align:top}
+.tabla td.et{width:34%}
+.envuelve{overflow-x:auto}
+
+.vacio{text-align:center;padding:40px 20px;color:var(--niebla)}
+.vacio b{display:block;font-family:'Fraunces',serif;font-size:19px;color:var(--marfil);margin-bottom:6px}
+
+/* El aviso. Es lo que dice la verdad incomoda, asi que no se disimula. */
+.aviso{border-left:3px solid var(--cobre);background:var(--cobrePl);color:var(--marfil);
+  padding:12px 14px;border-radius:0 var(--r) var(--r) 0;font-size:14px}
+.aviso.malo{border-color:var(--mal);background:var(--malPl)}
+.aviso.bueno{border-color:var(--bien);background:var(--bienPl)}
+
+/* El pie legal. No es letra chica escondida: va en su sitio, legible, en todas
+   las pantallas de la app. */
+.pieL{margin-top:36px;padding-top:16px;border-top:1px solid var(--linea);
+  font-size:12.5px;color:var(--niebla);max-width:64ch}
+
+/* Las acciones de Inicio: cuatro verbos, un toque. */
+.acciones{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+@media (max-width:420px){.acciones{grid-template-columns:repeat(2,1fr)}}
+.accion{appearance:none;cursor:pointer;background:var(--papel);border:1px solid var(--linea);
+  border-radius:var(--r2);padding:14px 8px 12px;display:flex;flex-direction:column;
+  align-items:center;gap:8px;font:500 13px/1 'Plex',sans-serif;color:var(--marfil);
+  transition:border-color .15s ease}
+.accion svg{width:22px;height:22px;stroke:var(--cobreLt);fill:none;stroke-width:1.7;
+  stroke-linecap:round;stroke-linejoin:round}
+.accion:hover{border-color:var(--lineaCobre)}
+.accion:active{transform:scale(.97)}
+
+/* ── EL PAPEL: comprobante, constancia y extracto ───────────────────────────
+   Una hoja marfil, siempre clara aunque la app este oscura: es lo que se
+   imprime y lo que se guarda en PDF, y tiene que verse igual en la pantalla
+   que en el papel. */
+.papel{background:#FBF8F2;color:#1B2027;border-radius:6px;padding:26px 26px 22px;
+  max-width:720px;box-shadow:0 1px 0 rgba(0,0,0,.4),0 18px 40px -22px rgba(0,0,0,.9);
+  position:relative;font-size:14px}
+.papel::before{content:'';position:absolute;left:0;right:0;top:0;height:4px;background:#A8642C;
+  border-radius:6px 6px 0 0}
+.papel .cabP{display:flex;justify-content:space-between;align-items:flex-start;gap:14px;
+  padding-bottom:14px;margin-bottom:14px;border-bottom:1px dashed #B9AE9E}
+/* El emblema es claro: sobre el papel marfil va en su pastilla de pizarra. */
+.papel .cabP img{width:34px;height:34px;background:#151A20;border-radius:8px;padding:4px}
+.papel .cabP .quien b{font-family:'Fraunces',serif;font-size:18px;display:block}
+.papel .cabP .quien span{font-size:11.5px;color:#5F6B77}
+.papel .titP{font-family:'Fraunces',serif;font-size:22px;margin:0 0 2px}
+.papel .num{font:500 12px/1.4 'PlexMono',monospace;color:#5F6B77;letter-spacing:.04em;word-break:break-all}
+.papel .grande{font:500 34px/1.1 'PlexMono',monospace;font-variant-numeric:tabular-nums;margin:14px 0 4px;letter-spacing:-.02em}
+.papel .grande small{font-size:.45em;color:#5F6B77;margin-left:6px;letter-spacing:0}
+.papel dl{display:grid;grid-template-columns:max-content minmax(0,1fr);gap:7px 18px;margin:14px 0 0;font-size:13.5px}
+.papel dt{color:#5F6B77;font:500 11px/1.6 'PlexMono',monospace;letter-spacing:.1em;text-transform:uppercase}
+.papel dd{margin:0;word-break:break-word}
+.papel dd.n{font-family:'PlexMono',monospace}
+.papel .pieP{margin-top:18px;padding-top:12px;border-top:1px dashed #B9AE9E;font-size:11.5px;color:#5F6B77;line-height:1.5}
+.papel .huella{font:400 10.5px/1.5 'PlexMono',monospace;word-break:break-all;color:#5F6B77}
+.papel table{width:100%;border-collapse:collapse;font-size:13px;margin-top:10px}
+.papel th{text-align:left;font:500 10.5px/1 'PlexMono',monospace;letter-spacing:.1em;text-transform:uppercase;
+  color:#5F6B77;padding:0 6px 8px;border-bottom:1px solid #A8642C}
+.papel td{padding:8px 6px;border-bottom:1px solid #E3DDD2;vertical-align:top}
+.papel td.n,.papel th.n{text-align:right;font-family:'PlexMono',monospace;font-variant-numeric:tabular-nums;white-space:nowrap}
+.papel tfoot td{font-weight:500;border-bottom:0;border-top:1px solid #A8642C}
+.papel .resumenP{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-top:14px}
+.papel .resumenP div{background:#F1ECE3;border-radius:6px;padding:10px 12px}
+.papel .resumenP .et{color:#5F6B77}
+.papel .resumenP .n{font-size:16px;font-weight:500;display:block;margin-top:4px}
+@media (max-width:560px){.papel{padding:18px 16px 16px}.papel .grande{font-size:28px}}
+
+/* El papel es lo unico que se imprime. Todo lo demas —riel, barra, botones—
+   desaparece, y el papel se estira al ancho de la hoja. */
+@media print{
+  body{background:#fff;color:#000}
+  .riel,.barra,.techo,.cab .acc,.no-imprimir,.pieL,.aviso{display:none!important}
+  .marco{display:block}
+  .lienzo{padding:0;max-width:none}
+  .cab{margin:0 0 10px}
+  .papel{box-shadow:none;max-width:none;border:1px solid #999;border-radius:0;padding:18px}
+  .papel::before{display:none}
+  .papel table{page-break-inside:auto}
+  .papel tr{page-break-inside:avoid}
+}
+
+/* La puerta */
+.puerta{min-height:100dvh;display:grid;place-items:center;padding:24px;background:var(--pizarra)}
+.puerta .caja{width:min(100%,430px);text-align:center;display:flex;flex-direction:column;gap:16px}
+.puerta h1{font-size:29px}
+.puerta-marca{width:min(260px,64vw);align-self:center;object-fit:contain}
+.puerta-lista{margin:0;padding:0;list-style:none;text-align:left;display:flex;
+  flex-direction:column;gap:9px;font-size:14.5px;color:var(--marfil2)}
+.puerta-lista li{padding-left:20px;position:relative}
+.puerta-lista li::before{content:'';position:absolute;left:2px;top:.52em;width:8px;height:8px;
+  border-radius:2px;transform:rotate(45deg);background:var(--cobre)}
+
+.cargando{display:inline-block;width:15px;height:15px;border:2px solid currentColor;
+  border-right-color:transparent;border-radius:50%;animation:gira .7s linear infinite;vertical-align:-2px}
+@keyframes gira{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion:reduce){.cargando{animation-duration:2.4s}}
+
+/* ── ABRIENDO · la portada de carga ─────────────────────────────────────────
+   Un momento de marca, no una pantalla que haya que leer. */
+.abriendo{position:fixed;inset:0;z-index:60;background:#151A20;display:flex;
+  flex-direction:column;align-items:center;justify-content:center;gap:18px;
+  animation:abEntra .4s ease-out both}
+.abriendo img{width:min(300px,62vw);object-fit:contain}
+.abriendo p{color:#9AA6B2;font:400 13px/1.4 'Plex',sans-serif;letter-spacing:.05em}
+.ab-linea{width:min(240px,50vw);height:2px;border-radius:2px;overflow:hidden;background:rgba(196,122,60,.18)}
+.ab-linea::after{content:'';display:block;height:100%;width:38%;border-radius:2px;
+  background:linear-gradient(90deg,transparent,#E0A06A,transparent);animation:abCorre 1.1s linear infinite}
+@keyframes abEntra{from{opacity:0}to{opacity:1}}
+@keyframes abCorre{from{transform:translateX(-140%)}to{transform:translateX(360%)}}
+@media (prefers-reduced-motion:reduce){.ab-linea::after{animation:none;width:100%}}
+
+/* Las casas del ecosistema, en Perfil. */
+.casa{display:flex;flex-direction:column;gap:4px;text-decoration:none}
+.casa strong{font-family:'Fraunces',serif;font-size:16px}
+.casa p{font-size:13px;color:var(--niebla)}
+
+/* El interruptor del tema. */
+.seg{display:inline-flex;border:1px solid var(--linea);border-radius:9px;overflow:hidden}
+.seg button{appearance:none;border:0;background:none;padding:8px 12px;font:500 13px/1 'Plex',sans-serif;cursor:pointer;color:var(--niebla)}
+.seg button[aria-pressed="true"]{background:var(--elevado);color:var(--marfil)}
+</style>
+</head>
+<body>
+<div id="raiz" aria-live="polite"></div>
+<script src="app.js"></script>
+</body>
+</html>

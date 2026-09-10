@@ -1,0 +1,321 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Comprobar una credencial de Orden Global</title>
+<style>
+/* Misma paleta que el resto de Genesis ID. La diferencia de esta página es a
+   quién le habla: no a un operador ni a un integrador, sino a alguien que tiene
+   delante a una persona con una credencial y necesita una respuesta —sí o no—
+   en pocos segundos.
+
+   De ahí las dos decisiones de forma: el VEREDICTO es lo más grande de la
+   página, y todo lo demás son los porqués, debajo, para quien quiera mirarlos.
+   Un panel de detalles con el veredicto escondido dentro sería la forma
+   elegante de que nadie lo lea. */
+:root{
+  --bg:#0B111C; --panel:#142033; --panel2:#101A29; --line:#24374F; --line2:#1B2A41;
+  --gold:#F5B32B; --cyan:#7FB2E8; --txt:#E9EEF6; --mut:#9DB0C8; --faint:#64798F;
+  --ok:#35B77D; --warn:#E2893C; --bad:#E0685D;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:radial-gradient(1100px 640px at 50% -12%,#16233A,#0B111C);color:var(--txt);
+ font:15px/1.62 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;min-height:100vh}
+.mono{font-family:ui-monospace,Menlo,Consolas,monospace;font-variant-numeric:tabular-nums}
+a{color:var(--cyan)}
+main{max-width:800px;margin:0 auto;padding:34px 20px 80px}
+code{font-family:ui-monospace,Menlo,Consolas,monospace;background:rgba(127,178,232,.11);
+ padding:1.5px 5px;border-radius:4px;font-size:.9em}
+
+header{border-bottom:1px solid var(--line2);padding-bottom:20px;margin-bottom:26px}
+h1{font-size:25px;font-weight:650;letter-spacing:-.012em;text-wrap:balance}
+.sub{color:var(--mut);margin-top:9px;max-width:62ch}
+
+textarea{font:13px/1.5 ui-monospace,Menlo,Consolas,monospace;background:#0F1927;color:var(--txt);
+ border:1px solid var(--line);border-radius:10px;padding:12px;width:100%;min-height:130px;resize:vertical}
+label{display:block;color:var(--faint);font-size:11px;letter-spacing:.08em;text-transform:uppercase;
+ font-weight:650;margin:16px 0 6px}
+button{font:inherit;cursor:pointer;border:0;border-radius:9px;padding:12px 22px;min-height:46px;
+ background:var(--gold);color:#10161F;font-weight:700;margin-top:16px}
+button:hover{filter:brightness(1.1)}
+button:disabled{opacity:.45;cursor:not-allowed}
+
+/* ── El veredicto ─────────────────────────────────────────────────────────── */
+#veredicto{margin:26px 0}
+.ver{border-radius:14px;padding:22px 24px;border:1px solid}
+.ver.si{background:rgba(53,183,125,.09);border-color:rgba(53,183,125,.34)}
+.ver.no{background:rgba(224,104,93,.09);border-color:rgba(224,104,93,.34)}
+.ver .t{font-size:23px;font-weight:700;letter-spacing:-.01em}
+.ver.si .t{color:var(--ok)} .ver.no .t{color:var(--bad)}
+.ver .p{color:var(--mut);margin-top:7px;max-width:58ch}
+
+.atrs{display:flex;gap:9px;flex-wrap:wrap;margin-top:16px}
+.atr{background:rgba(127,178,232,.09);border:1px solid var(--line);border-radius:9px;
+ padding:8px 13px}
+.atr .k{color:var(--faint);font-size:10.5px;letter-spacing:.07em;text-transform:uppercase;
+ font-weight:650}
+.atr .v{font-weight:650;margin-top:2px}
+
+.pasos{margin-top:18px;border-top:1px solid var(--line2);padding-top:14px}
+.paso{display:flex;gap:11px;align-items:flex-start;padding:7px 0;font-size:14px}
+.paso .ic{flex:none;width:17px;font-weight:700}
+.paso.si .ic{color:var(--ok)} .paso.no .ic{color:var(--bad)} .paso.esp .ic{color:var(--warn)}
+.paso .d{color:var(--mut);font-size:13px;margin-top:1px}
+.paso .d .mono{color:var(--faint)}
+
+h2{font-size:17px;font-weight:650;margin:40px 0 8px;padding-top:16px;border-top:1px solid var(--line2)}
+p.dice{color:var(--mut);max-width:66ch;margin-bottom:12px}
+pre{background:#0F1927;border:1px solid var(--line2);border-radius:9px;padding:13px;
+ overflow-x:auto;font:12.5px/1.55 ui-monospace,Menlo,Consolas,monospace;color:var(--cyan);margin:10px 0}
+.nota{border-left:2px solid var(--gold);padding-left:14px;color:var(--mut);margin:16px 0;max-width:66ch}
+.pie{margin-top:50px;padding-top:20px;border-top:1px solid var(--line2);color:var(--faint);font-size:13px}
+</style>
+</head>
+<body>
+<main>
+
+<header>
+  <h1>Comprobar una credencial de Orden Global</h1>
+  <p class="sub">Alguien le enseñó una credencial y quiere saber si es de verdad.
+  Péguela aquí. La comprobación ocurre <strong>en su navegador</strong>: la credencial
+  no se manda a ningún sitio, ni a nosotros.</p>
+</header>
+
+<label for="cred">La credencial</label>
+<textarea id="cred" placeholder='Pegue el JSON completo que le entregaron: lleva "mensaje" y "firma".'></textarea>
+<button id="btn">Comprobar</button>
+
+<div id="veredicto"></div>
+
+<h2>Comprobarla sin esta página</h2>
+<p class="dice">Esta página es nuestra, así que no debería ser la última palabra. La
+credencial se firma como firman las billeteras —<code>personal_sign</code>, EIP-191— así que
+la comprueba cualquier herramienta que ya tenga, sin código nuestro:</p>
+<pre>import { verifyMessage } from 'ethers'
+
+const { mensaje, firma } = credencial
+const quienFirmo = verifyMessage(mensaje, firma)
+
+// Y esta dirección tiene que ser la que Genesis ID publicó EN LA CADENA 5550,
+// no la que diga su API. Se lee de la transacción del emisor:
+//   eth_getTransactionByHash(&lt;tx del emisor&gt;) → campo "input" → de hex a texto
+//   GENESIS-ID/EMISOR/1 &lt;fecha&gt; alg=secp256k1-keccak-eip191 dir=0x…
+
+const vale = quienFirmo.toLowerCase() === direccionLeidaDeLaCadena
+  &amp;&amp; new Date(JSON.parse(mensaje).expiraEn) &gt; new Date()
+  &amp;&amp; !revocadasLeidasDeLaCadena.includes(JSON.parse(mensaje).gid)</pre>
+
+<div class="nota" id="donde">Cargando de dónde leer la dirección del emisor…</div>
+
+<div class="pie">
+  <p><strong>Qué prueba una credencial y qué no.</strong> Prueba que Genesis ID verificó
+  a esa persona y qué atributos le consta, en la fecha que dice. No prueba que quien
+  se la está enseñando sea esa persona: eso lo tiene que resolver usted, igual que con
+  cualquier documento.</p>
+  <p style="margin-top:10px"><strong>La ventana de la revocación.</strong> Entre que
+  Genesis ID suspende a alguien y que la lista de revocadas se escribe en la cadena
+  pasan horas. Una credencial dentro de esa ventana se ve buena. Es una limitación real
+  y por eso está escrita aquí y no en una nota al pie.</p>
+</div>
+
+</main>
+
+<script src="/lib/firma.js"></script>
+<script>
+/* El verificador de firmas (`/lib/firma.js`) se sirve DESDE ESTE MISMO ORIGEN.
+   Eso hay que decirlo en voz alta: la página existe para que no haga falta
+   confiar en Genesis ID, y aun así el código que comprueba la firma es nuestro.
+   Cargarlo de un CDN no lo arreglaría —solo cambiaría en quién hay que confiar,
+   y por alguien que nadie eligió. Lo que sí lo arregla es el bloque de arriba:
+   las cuatro líneas para hacerlo con `ethers`, sin abrir esta página. */
+
+const $ = (s) => document.querySelector(s)
+const esc = (t) => String(t ?? '').replace(/[<>&]/g, (c) => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;' }[c]))
+
+let EMISOR = null       // lo que dice nuestra API
+let REVOCADAS = []
+let DESDE_LA_CADENA = null   // lo que dice la cadena, que es lo que vale
+
+async function rpc(url, metodo, params) {
+  const r = await fetch(url, {
+    method: 'POST', headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: metodo, params }),
+  })
+  const j = await r.json()
+  if (j.error) throw new Error(j.error.message)
+  return j.result
+}
+
+const deHexATexto = (hex) => new TextDecoder().decode(Uint8Array.from(
+  (String(hex || '').replace(/^0x/, '').match(/../g) || []).map((b) => parseInt(b, 16))))
+
+/**
+ * Lee de la CADENA quién firma y qué está revocado.
+ *
+ * Nuestra API solo se usa para saber en qué transacción mirar. Lo que se cree
+ * es lo que conteste el nodo: si las dos cosas no coinciden, se avisa y gana la
+ * cadena.
+ */
+async function leerDeLaCadena(datos) {
+  const url = datos.rpcSugerido
+  const salida = { emisor: null, revocadas: null, error: null }
+  try {
+    if (datos.emisor?.tx) {
+      const tx = await rpc(url, 'eth_getTransactionByHash', [datos.emisor.tx])
+      const m = /dir=(0x[0-9a-fA-F]{40})/.exec(deHexATexto(tx?.input))
+      if (m) salida.emisor = m[1].toLowerCase()
+    }
+    if (datos.revocadas?.enLaCadena?.tx) {
+      const tx = await rpc(url, 'eth_getTransactionByHash', [datos.revocadas.enLaCadena.tx])
+      const texto = deHexATexto(tx?.input)
+      if (texto.startsWith('GENESIS-ID/REVOCADAS/')) {
+        salida.revocadas = (texto.match(/OG-[A-Z0-9]+/g) || [])
+      }
+    }
+  } catch (e) {
+    salida.error = String(e.message || e)
+  }
+  return salida
+}
+
+async function cargar() {
+  try {
+    const d = await (await fetch('/api/publico/emisor')).json()
+    /* La API no publica su propio RPC en esta respuesta; se toma el de la lista
+       de anclas, que es la misma cadena. */
+    const anclas = await (await fetch('/api/publico/anclas')).json()
+    d.rpcSugerido = anclas.rpc
+    EMISOR = d.emisor
+    REVOCADAS = d.revocadas?.gids || []
+    DESDE_LA_CADENA = await leerDeLaCadena(d)
+
+    $('#donde').innerHTML = d.emisor?.tx
+      ? `<strong>La dirección del emisor está en la cadena ${esc(d.cadenaId)}</strong>, en la
+         transacción <span class="mono">${esc(d.emisor.tx)}</span>. Esa es la que vale.
+         ${DESDE_LA_CADENA.emisor
+           ? `Leída de ahí: <span class="mono">${esc(DESDE_LA_CADENA.emisor)}</span>.`
+           : '<span style="color:var(--warn)">No se pudo leer del nodo desde este navegador; use el comando de arriba.</span>'}`
+      : `<strong>El emisor todavía no está publicado en la cadena.</strong> Hasta que lo
+         esté, comprobar una credencial exige confiar en este servicio — que es
+         exactamente lo que la credencial vino a evitar. Se dice aquí en vez de
+         esconderlo.`
+  } catch {
+    $('#donde').textContent = 'No se pudo cargar la información del emisor.'
+  }
+}
+
+function paso(estado, texto, detalle) {
+  const ic = estado === 'si' ? '✓' : estado === 'no' ? '✕' : '!'
+  return `<div class="paso ${estado}"><div class="ic">${ic}</div>
+    <div><div>${texto}</div>${detalle ? `<div class="d">${detalle}</div>` : ''}</div></div>`
+}
+
+function comprobar() {
+  const salida = $('#veredicto')
+  let c
+  try {
+    c = JSON.parse($('#cred').value)
+    if (!c.mensaje || !c.firma) throw new Error('falta `mensaje` o `firma`')
+  } catch (e) {
+    salida.innerHTML = `<div class="ver no"><div class="t">No se pudo leer</div>
+      <div class="p">${esc(e.message)}. Pegue el JSON completo que le entregaron.</div></div>`
+    return
+  }
+
+  const pasos = []
+  let vale = true
+  const falla = (t, d) => { vale = false; pasos.push(paso('no', t, d)) }
+
+  // 1. ¿Quién la firmó?
+  const firmante = window.OG.quienFirmo(c.mensaje, c.firma)
+  if (!firmante) {
+    falla('La firma no se puede leer', 'No tiene la forma de una firma de 65 bytes.')
+  } else {
+    /* Lo que manda es la dirección leída DE LA CADENA. La de nuestra API solo
+       se usa si el nodo no contestó, y entonces se dice claramente que la
+       comprobación quedó a medias. */
+    const deLaCadena = DESDE_LA_CADENA?.emisor
+    const deLaApi = (EMISOR?.direccion || '').toLowerCase()
+    const esperada = deLaCadena || deLaApi
+
+    if (!esperada) {
+      falla('No se sabe qué dirección tendría que haber firmado',
+        'Genesis ID todavía no publicó su emisor.')
+    } else if (firmante.toLowerCase() !== esperada) {
+      falla('La firmó otra dirección',
+        `Firmada por <span class="mono">${esc(firmante)}</span>, y se esperaba `
+        + `<span class="mono">${esc(esperada)}</span>.`)
+    } else if (deLaCadena) {
+      pasos.push(paso('si', 'La firmó Genesis ID',
+        `Dirección leída de la cadena: <span class="mono">${esc(deLaCadena)}</span>.`))
+    } else {
+      pasos.push(paso('esp', 'La firmó la dirección que dice la API de Genesis ID',
+        'No se pudo leer la dirección de la cadena desde este navegador, así que esta '
+        + 'parte todavía depende de confiar en Genesis ID. Use el comando de abajo.'))
+    }
+    if (deLaCadena && deLaApi && deLaCadena !== deLaApi) {
+      falla('La cadena y la API no dicen lo mismo',
+        'Manda la cadena. Esto no debería pasar nunca.')
+    }
+  }
+
+  // 2. ¿Es una credencial, y sigue vigente?
+  let datos = null
+  try { datos = JSON.parse(c.mensaje) } catch {}
+  if (!datos || datos.t !== 'og-credencial' || datos.v !== 1) {
+    falla('Lo firmado no es una credencial de Orden Global')
+  } else {
+    const vence = new Date(datos.expiraEn)
+    const dias = Math.round((vence - Date.now()) / 86400000)
+    if (!(vence > Date.now())) {
+      falla('Está vencida', `Venció el ${esc(datos.expiraEn.slice(0, 10))}. `
+        + 'El vencimiento es lo que permite retirar una credencial sin conexión, por eso '
+        + 'los plazos son cortos.')
+    } else {
+      pasos.push(paso('si', 'Está vigente', `Vence el ${esc(datos.expiraEn.slice(0, 10))}, `
+        + `dentro de ${dias} día${dias === 1 ? '' : 's'}.`))
+    }
+
+    // 3. ¿Está revocada?
+    const lista = DESDE_LA_CADENA?.revocadas
+    const usada = lista || REVOCADAS
+    const revocada = usada.map((g) => g.toUpperCase()).includes(String(datos.gid).toUpperCase())
+    if (revocada) {
+      falla('Ese GID está revocado', 'Genesis ID retiró esa identidad.')
+    } else if (lista) {
+      pasos.push(paso('si', 'No está en la lista de revocadas',
+        `Lista leída de la cadena, con ${lista.length} entrada${lista.length === 1 ? '' : 's'}.`))
+    } else {
+      pasos.push(paso('esp', 'No está en la lista de revocadas que publica la API',
+        'La lista de la cadena no se pudo leer desde este navegador.'))
+    }
+  }
+
+  const atributos = datos?.atributos || {}
+  const nombres = { verificada: 'Verificada', mayorDeEdad: 'Mayor de edad',
+    nacionalidad: 'Nacionalidad', nombre: 'Nombre', nivelRiesgo: 'Riesgo' }
+  const chapas = Object.entries(atributos).map(([k, v]) => `<div class="atr">
+    <div class="k">${esc(nombres[k] || k)}</div>
+    <div class="v">${v === true ? 'Sí' : v === false ? 'No' : esc(v)}</div></div>`).join('')
+
+  salida.innerHTML = `
+    <div class="ver ${vale ? 'si' : 'no'}">
+      <div class="t">${vale ? 'La credencial es válida' : 'No se puede dar por válida'}</div>
+      <div class="p">${vale
+        ? 'La firmó Genesis ID, está vigente y no está revocada. Esto no dice que quien '
+          + 'se la enseñó sea esa persona: eso lo tiene que resolver usted.'
+        : 'Mire abajo qué falló. Una credencial que no cuadra no es necesariamente un '
+          + 'fraude —puede estar simplemente vencida—, pero no sirve como prueba.'}</div>
+      ${vale && chapas ? `<div class="atrs">${chapas}</div>` : ''}
+      ${datos?.gid ? `<div style="margin-top:14px;color:var(--faint);font-size:13px">
+        GID <span class="mono" style="color:var(--txt)">${esc(datos.gid)}</span></div>` : ''}
+      <div class="pasos">${pasos.join('')}</div>
+    </div>`
+}
+
+$('#btn').addEventListener('click', comprobar)
+cargar()
+</script>
+</body>
+</html>

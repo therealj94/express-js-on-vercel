@@ -1,0 +1,10 @@
+[Unit]
+Description=Pulso al modelo cada tres minutos
+[Timer]
+# Empieza cuando el precalentador de arranque ya termino de leer los 16 GB.
+OnBootSec=15min
+OnUnitActiveSec=3min
+AccuracySec=15s
+[Install]
+WantedBy=timers.target
+

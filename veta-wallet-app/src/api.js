@@ -47,7 +47,9 @@ const PATHS = {
   login: process.env.EXPO_PUBLIC_WALLET_PATH_LOGIN || '/auth/login',
   register: process.env.EXPO_PUBLIC_WALLET_PATH_REGISTER || '/auth/register',
   send: process.env.EXPO_PUBLIC_WALLET_PATH_SEND || '/transaction/send',
+  sendToken: process.env.EXPO_PUBLIC_WALLET_PATH_SEND_TOKEN || '/transaction/sendToken',
   refresh: process.env.EXPO_PUBLIC_WALLET_PATH_REFRESH || '/auth/refresh',
+  social: process.env.EXPO_PUBLIC_WALLET_PATH_SOCIAL || '/auth/social',
 };
 
 // ---------- token + credenciales recordadas (en el llavero) ----------
@@ -196,6 +198,10 @@ async function rawReq(path, { method = 'GET', body, timeout = 20000 } = {}) {
       err.code = res.status === 401 || res.status === 403 ? 'auth'
         : res.status === 400 || res.status === 422 ? 'rechazado'
           : res.status >= 500 ? 'servidor' : 'http';
+      // El código propio del servidor, cuando lo manda. `code` ya está tomado
+      // por la familia de arriba, así que va aparte: sin él, la pantalla tiene
+      // que adivinar con expresiones regulares sobre un texto traducido.
+      if (data.code) err.motivo = String(data.code);
       throw err;
     }
     return data;
@@ -302,16 +308,22 @@ export const cardApi = {
   // Estado de la tarjeta: last4, status, saldo en ORIGEN, límites.
   mine: () => req('/cards/my-card'),
 
-  // Emitir. El backend exige KYC aprobado y aceptación de términos.
-  request: ({ acceptedTerms, phoneCountryCode, phoneNumber }) =>
+  // Cuánto cuesta emitir la tarjeta y si se está emitiendo. Nunca dice cuántas
+  // quedan: eso es interno de la casa.
+  emision: () => req('/cards/emision'),
+
+  // Emitir. El backend exige Genesis ID aprobado, que haya cupo, y el pago de
+  // la tarjeta en ORIGEN — de ahí la contraseña, que firma ese pago.
+  request: ({ acceptedTerms, phoneCountryCode, phoneNumber, password }) =>
     req('/cards/request', {
       method: 'POST',
       body: {
         acceptedTerms: !!acceptedTerms,
         ...(phoneCountryCode ? { phone_country_code: Number(phoneCountryCode) } : {}),
         ...(phoneNumber ? { phone_number: String(phoneNumber) } : {}),
+        ...(password ? { password: String(password) } : {}),
       },
-      timeout: 45000,   // emitir una tarjeta pasa por CryptoMate: es lento
+      timeout: 60000,   // emitir pasa por el cobro y por CryptoMate: es lento
     }),
 
   // Congelar / descongelar. Control de seguridad real, no cosmético.
@@ -483,6 +495,35 @@ export async function apiLogin(emailRaw, password) {
   const address = claims.address || apiUser.address || apiUser.wallet || null;
   if (address) user.address = address;
   return { token: tk, user, address, claims };
+}
+
+// Entrar con Google o con Apple.
+//
+// El teléfono no manda datos de la persona: manda el token que firmó el
+// proveedor, y el servidor comprueba esa firma contra las llaves públicas de
+// Google o Apple. Desde acá el flujo termina igual que apiLogin —misma sesión,
+// mismo refresco, misma forma de usuario— para que el resto de la aplicación
+// no tenga que saber por dónde entró nadie.
+export async function apiSocialLogin(provider, idToken) {
+  if (!idToken) throw new Error('No se recibió la identidad del proveedor');
+  const d = await req(PATHS.social, { method: 'POST', body: { provider, idToken } });
+  const tk = pickToken(d);
+  if (!tk) throw new Error('El servidor no devolvió una sesión válida');
+  await setToken(tk);
+  const rt = pickRefreshToken(d);
+  if (rt) await setRefreshToken(rt);
+  const claims = decodeJwt(tk) || {};
+  const apiUser = pickUser(d) || {};
+  const user = {
+    email: (apiUser?.email || claims.email || '').trim(),
+    ...apiUser,
+    userId: claims.userId || apiUser.userId,
+    role: claims.role,
+    verify: claims.verify,
+  };
+  const address = claims.address || d?.address || apiUser.address || null;
+  if (address) user.address = address;
+  return { token: tk, user, address, claims, creada: !!d?.creada };
 }
 
 // Registro contra el backend oficial. Tras crear la cuenta inicia sesión.
@@ -843,6 +884,29 @@ export async function apiSend({ to, amount, password, idem }) {
 // Comisión de red por defecto (gasPrice 400 gwei × 21000 gas). Sirve de
 // respaldo si la lectura de gasPrice del RPC falla. En condiciones normales
 // la app llama a estimateNetworkFee() y usa el valor real de la chain.
+// Envío de un token ERC-20. El backend ya lo sabía hacer desde siempre
+// —`POST /transaction/sendToken`, con el contrato como parámetro— pero la app
+// nunca lo llamaba: la pantalla de enviar cortaba con un aviso de
+// "próximamente" en cuanto el activo no era ORIGEN. Una billetera cuyo
+// ecosistema entero son tokens no podía mover ni uno.
+//
+// La comisión se paga en ORIGEN, no en el token: mover ONDK gasta ORIGEN.
+export async function apiSendToken({ to, amount, password, contract, idem }) {
+  if (!contract) throw new Error('falta la dirección del contrato del token');
+  const body = {
+    chain_id: String(CHAIN_ID),
+    recipientAddress: to,
+    tokenContractAddress: contract,
+    password,
+    amount: String(amount),
+    ...(idem ? { idempotencyKey: idem } : {}),
+  };
+  const r = await req(PATHS.sendToken, { method: 'POST', body, timeout: 90000, noRetry: true });
+  const hash = r?.hash || r?.transactionHash || r?.txId || null;
+  const ok = r?.status === 1 || r?.status === '1' || r?.status === true || !!hash;
+  return { hash, ok, receipt: r };
+}
+
 export const NETWORK_FEE_ORIGEN = 0.0084;
 
 /**

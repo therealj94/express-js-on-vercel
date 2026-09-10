@@ -26,6 +26,15 @@ name: Veta Wallet — compilar Android
 #
 # Requisito (ya configurado): el secreto EXPO_TOKEN del repositorio.
 
+# También se puede pedir una compilación SIN entrar a la pestaña Actions:
+# escribiendo el perfil en `veta-wallet-app/.solicitud-de-build` y empujando el
+# cambio. Existe porque el operador automático puede empujar código pero no
+# tiene permiso para apretar el botón de Actions, y esperar a que alguien lo
+# apriete a mano convertía cada compilación en una cita.
+#
+# Sólo se dispara cuando cambia ESE archivo, así que los demás empujes no
+# gastan una build.
+
 on:
   workflow_dispatch:
     inputs:
@@ -38,6 +47,14 @@ on:
           - development
           - preview
           - production
+          - ensayo
+  push:
+    paths:
+      - 'veta-wallet-app/.solicitud-de-build'
+
+concurrency:
+  group: veta-build
+  cancel-in-progress: false
 
 jobs:
   build:
@@ -48,6 +65,23 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v5
+
+      # De dónde sale el perfil: del menú si se lanzó a mano, y si no del
+      # archivo de solicitud. Se valida contra la lista en vez de pasarlo tal
+      # cual, porque va derecho a una línea de comandos.
+      - name: Qué perfil
+        id: perfil
+        run: |
+          P="${{ inputs.profile }}"
+          if [ -z "$P" ] && [ -f .solicitud-de-build ]; then
+            P=$(grep -vE '^\s*(#|$)' .solicitud-de-build | head -1 | tr -d '[:space:]')
+          fi
+          case "$P" in
+            development|preview|production|ensayo) ;;
+            *) echo "::error::Perfil no reconocido: '$P'. Tiene que ser development, preview, production o ensayo."; exit 1 ;;
+          esac
+          echo "perfil=$P" >> $GITHUB_OUTPUT
+          echo "Compilando el perfil: $P"
 
       - name: Node 20
         uses: actions/setup-node@v5
@@ -67,32 +101,95 @@ jobs:
       - name: Verificar
         run: npm run verificar
 
+      # Los tres identificadores de OAuth se pegan una vez en
+      # Settings → Secrets and variables → Actions → Variables, y de ahí entran
+      # a eas.json. Si no están, avisa y sigue: la app esconde los botones.
+      - name: Identificadores de Google
+        env:
+          GOOGLE_WEB_CLIENT_ID: ${{ vars.GOOGLE_WEB_CLIENT_ID }}
+          GOOGLE_ANDROID_CLIENT_ID: ${{ vars.GOOGLE_ANDROID_CLIENT_ID }}
+          GOOGLE_IOS_CLIENT_ID: ${{ vars.GOOGLE_IOS_CLIENT_ID }}
+        run: node scripts/inyectar-google.js
+
       - name: Compilar
+        id: compilar
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
         run: |
+          set -o pipefail
           if [ -z "$EXPO_TOKEN" ]; then
             echo "::error::Falta el secreto EXPO_TOKEN. Créalo en Settings → Secrets → Actions."
             exit 1
           fi
           eas build \
             --platform android \
-            --profile "${{ inputs.profile }}" \
+            --profile "${{ steps.perfil.outputs.perfil }}" \
             --non-interactive \
-            --wait
+            --wait \
+            --json | tee build.json
+          URL=$(node -e "
+            const b=JSON.parse(require('fs').readFileSync('build.json','utf8'));
+            const x=Array.isArray(b)?b[0]:b;
+            process.stdout.write((x&&x.artifacts&&(x.artifacts.buildUrl||x.artifacts.applicationArchiveUrl))||'');
+          ")
+          echo "url=$URL" >> $GITHUB_OUTPUT
+
+      # La huella SHA-1 del certificado con que EAS firma la app. Google Cloud
+      # la pide para el identificador de Android, y no existe hasta que hay una
+      # primera compilación: por eso compilar es el paso 1 de configurar Google,
+      # no un desvío antes de configurarlo.
+      #
+      # Se lee del archivo compilado y no de la API de Expo, a propósito: lo que
+      # importa no es qué llave dice Expo que tiene guardada, sino con cuál
+      # quedó firmado esto.
+      #
+      # No se usa `keytool`: ante un APK moderno responde "Not a signed jar
+      # file", porque entiende sólo la firma vieja al estilo JAR y los APK de
+      # hoy se firman con los esquemas v2/v3 de Android, en un bloque propio que
+      # las herramientas de JAR no ven. El script lee ese bloque.
+      #
+      # Si falla, la corrida se marca en rojo. La versión anterior de este paso
+      # se tragaba el error y seguía en verde escribiendo "no se pudo leer",
+      # que es la peor de las dos opciones: parecía que había funcionado.
+      - name: Huella del certificado
+        if: success() && steps.compilar.outputs.url != ''
+        run: |
+          # `pipefail` no es decorativo: sin él, `programa | tee` devuelve el
+          # estado de `tee`, que siempre es 0. La versión anterior de este paso
+          # se quedó en verde publicando un error de Python porque le faltaba
+          # justo esta línea.
+          set -eo pipefail
+          curl -sL --max-time 300 -o app.bin "${{ steps.compilar.outputs.url }}"
+          echo "### Huella del certificado" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          python3 scripts/huella-firma.py app.bin | tee -a $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Ésta es la huella de la llave con que EAS firma. Sirve para el identificador de Android de Google Cloud junto con el paquete \`com.ordenglobal.vetawallet\`, y es la que vale mientras la app se instale desde un archivo." >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "> **La app bajada de Google Play NO se firma con ésta.** Play la vuelve a firmar con su propia llave, y la huella de ESA llave aparece en Play Console → Integridad de la app → Certificado de la clave de firma de app, recién después de subir el primer paquete. Hay que registrar **las dos** en el mismo identificador de Google Cloud. Registrar sólo ésta es el motivo clásico de que entrar con Google ande mientras se prueba y deje de andar en la tienda." >> $GITHUB_STEP_SUMMARY
 
       - name: Dónde descargarlo
         if: always()
         run: |
-          echo "### Build de Android lista" >> $GITHUB_STEP_SUMMARY
+          echo "### Build de Android" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "Perfil: **${{ inputs.profile }}**" >> $GITHUB_STEP_SUMMARY
+          echo "Perfil: **${{ steps.perfil.outputs.perfil }}**" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "Descárgala desde el panel de Expo — el enlace aparece en la fila de la build:" >> $GITHUB_STEP_SUMMARY
+          if [ -n "${{ steps.compilar.outputs.url }}" ]; then
+            echo "Descarga directa: ${{ steps.compilar.outputs.url }}" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "Panel de Expo: https://expo.dev/accounts/vetawallet/projects/veta-wallet/builds" >> $GITHUB_STEP_SUMMARY
+          fi
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "https://expo.dev/accounts/vetawallet/projects/veta-wallet/builds" >> $GITHUB_STEP_SUMMARY
+          if [ "${{ steps.perfil.outputs.perfil }}" = "production" ]; then
+            echo "Es un **.aab**, no se instala directo en un teléfono: se sube en Play Console → Producción (o Prueba interna) → Crear versión nueva." >> $GITHUB_STEP_SUMMARY
+          else
+            echo "Es un **APK**: ábrelo desde el teléfono y se instala." >> $GITHUB_STEP_SUMMARY
+          fi
           echo "" >> $GITHUB_STEP_SUMMARY
-          if [ "${{ inputs.profile }}" = "production" ]; then
+          if [ "${{ steps.perfil.outputs.perfil }}" = "production" ]; then
             echo "Es un **.aab**, no se instala directo en un teléfono: se sube en Play Console → Producción (o Prueba interna) → Crear versión nueva." >> $GITHUB_STEP_SUMMARY
           else
             echo "Ábrelo desde el teléfono y se instala. Si es el perfil \`development\`, después abre la app y apunta al servidor con \`npx expo start\` o carga el channel \`development\`." >> $GITHUB_STEP_SUMMARY

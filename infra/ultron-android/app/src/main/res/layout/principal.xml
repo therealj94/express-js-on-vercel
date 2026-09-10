@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- ── SIN «TIRAR PARA RECARGAR», Y ES A PROPÓSITO ───────────────────────────
+     7-sep, José con el APK instalado: «cuando me sale las letras de la
+     respuesta no puedo hacer swipe abajo o arriba».
+     Era el SwipeRefreshLayout que envolvía esto: el tablero tiene sus PROPIAS
+     zonas que se desplazan —la respuesta, los paneles, el registro— y el
+     WebView por fuera nunca se mueve de arriba, así que el gesto de recargar
+     se quedaba con TODOS los arrastres verticales y la respuesta larga no se
+     podía leer.
+     En una pantalla fija como ésta, tirar para recargar no pinta nada: se
+     quita entero. Para recargar está el botón de la pantalla de sin-red. -->
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/fondo">
+
+    <WebView
+        android:id="@+id/web"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="@color/fondo" />
+</FrameLayout>

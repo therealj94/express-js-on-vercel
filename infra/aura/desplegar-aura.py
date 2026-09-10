@@ -1,0 +1,225 @@
+#!/usr/bin/env python3
+"""Sube AU-RA a su maquina y la deja corriendo.
+
+Mismo molde que `desplegar-mensajes.py`: S3 con URL firmada + SSM. El nodo no
+tiene permisos de S3 y no los necesita — la firma viaja en la URL y muere en
+media hora.
+
+SE SUBEN LOS CUATRO ARCHIVOS, SIEMPRE. `asistente.py` importa `candado`, `oido`
+y `whatsapp` arriba del todo: si uno se queda viejo o falta, el servicio no
+arranca y revienta con ImportError antes de la primera linea util. Subir solo
+el que cambio es la clase de atajo que deja el servicio caido un domingo.
+
+LA CLAVE DE WHATSAPP SE LEE DEL ENTORNO Y NUNCA DEL REPOSITORIO:
+
+    ZERNIO_CLAVE=sk_... ZERNIO_CUENTA=... python3 desplegar-aura.py
+
+Va a parar a /etc/aura-whatsapp.env con permisos 600, y la unidad la lee desde
+ahi con `EnvironmentFile=-`. No se escribe dentro del `.service` a proposito:
+`systemctl cat aura` imprime la unidad entera y la lee cualquiera que entre a
+la maquina.
+
+Si no se pasa la clave, se despliega el codigo igual y WhatsApp queda como
+este: lo que ya hubiera en /etc/aura-whatsapp.env no se toca. Asi un despliegue
+de rutina no apaga WhatsApp por olvido.
+"""
+import glob as _glob
+import json
+import os
+import sys
+import time
+
+import boto3
+
+# El scratchpad se BUSCA, no se escribe: ahi viven credenciales y no pueden
+# estar en el repositorio. Misma nota que en desplegar-mensajes.py.
+S = os.environ.get('OG_SCRATCHPAD') or next(
+    iter(sorted(_glob.glob('/tmp/claude-*/*/*/scratchpad'))), '')
+if not S:
+    raise SystemExit('No encuentro la carpeta de trabajo. Pasala en OG_SCRATCHPAD.')
+
+AQUI = os.path.dirname(os.path.abspath(__file__))
+CUBO = 'og-5550-arranque-548380372606'
+# La A10G que corre desde el 1-sep. La T4 (i-02653feadc919d3a4) quedó apagada
+# de respaldo; este guion apuntaba a ella y por eso el nodo real recibió
+# archivos por otra vía y quedó con dos desfasados (lo vio el Cirujano el 2-sep).
+NODO = 'i-06530893af0dd0638'          # aura-gpu-a10g, us-east-1
+# TODOS los modulos, no una lista escrita a mano. La lista de doce nombres se
+# quedo corta sin que nadie lo notara: la A10G arranco el 1-sep sin voz.py,
+# decir.py, vozmemoria.py ni plantillas-whatsapp.py, porque nunca estuvieron
+# aqui. Lo que no se sube son las pruebas (probar-*) y las herramientas de
+# escritorio (este guion, el comparador de modelos y el templador de voz).
+_NO_VAN = {'desplegar-aura.py', 'comparar-modelos.py', 'templar-voz.py'}
+ARCHIVOS = sorted(
+    n for n in os.listdir(os.path.dirname(os.path.abspath(__file__)))
+    if n.endswith('.py') and not n.startswith('probar-') and n not in _NO_VAN)
+
+# El prompt y las fichas viajan con el codigo, y no es un detalle: la voz de
+# AU-RA y lo que SABE se cambian ahi, no en el codigo. Subir solo los .py
+# dejaba el arreglo de una alucinacion sin desplegar — que fue exactamente lo
+# que paso con lo de la SEC. Las fichas no viven en esta carpeta: son las
+# mismas que usa el cerebro.
+LADO = {
+    'PROMPT-AURA.md': os.path.join(AQUI, 'PROMPT-AURA.md'),
+    # LA CABECERA DE LA CASA. El mismo texto con el que arranca ULTRON, byte
+    # por byte: la verdad de la casa y las reglas que valen para todos, escritas
+    # UNA vez. Si no sube, AU-RA arranca sin ella y deja de compartir prefijo
+    # con ULTRON — vuelven los 6,5 segundos. `probar-cabecera.py` comprueba que
+    # esta copia y la de ULTRON son identicas.
+    'cabecera-de-la-casa.md': os.path.join(AQUI, 'cabecera-de-la-casa.md'),
+    # Las unidades del parte, desde el repositorio. Estuvieron escritas a la vez
+    # aqui y en `instalar-en-nodo.sh`, y dos sitios que mandan sobre la misma
+    # unidad es como una de las dos se queda vieja sin que nadie lo note.
+    'aura-parte.service': os.path.join(AQUI, 'aura-parte.service'),
+    'aura-parte.timer': os.path.join(AQUI, 'aura-parte.timer'),
+    # La copia diaria. El guion va a /usr/local/bin y las unidades a systemd:
+    # el nodo escribe con el rol de la instancia, que SOLO puede poner objetos
+    # bajo `copias/aura/` — ni leer, ni borrar, ni listar.
+    'copia-aura.sh': os.path.join(AQUI, 'copia-aura.sh'),
+    'aura-copia.service': os.path.join(AQUI, 'aura-copia.service'),
+    'aura-copia.timer': os.path.join(AQUI, 'aura-copia.timer'),
+    'aura-pagos.service': os.path.join(AQUI, 'aura-pagos.service'),
+    'aura-pagos.timer': os.path.join(AQUI, 'aura-pagos.timer'),
+    'saber.json': os.path.abspath(
+        os.path.join(AQUI, '..', 'cerebro', 'conocimiento', 'saber.json')),
+}
+
+# El complemento de la unidad. Se pone como drop-in y no reescribiendo el
+# `.service`: el original lo escribio `instalar-en-nodo.sh` y pisarlo desde
+# aqui haria que dos sitios distintos manden sobre lo mismo.
+DROPIN = """[Service]
+EnvironmentFile=-/etc/aura-whatsapp.env
+"""
+
+
+def espera(ssm, cid):
+    o = None
+    for _ in range(45):
+        time.sleep(4)
+        o = ssm.get_command_invocation(CommandId=cid, InstanceId=NODO)
+        if o['Status'] not in ('Pending', 'InProgress', 'Delayed'):
+            return o
+    return o
+
+
+def main():
+    k = json.load(open(S + '/aws_llaves.json'))
+    ses = boto3.Session(aws_access_key_id=k['AccessKeyId'],
+                        aws_secret_access_key=k['SecretAccessKey'],
+                        region_name='us-east-1')
+    s3, ssm = ses.client('s3'), ses.client('ssm')
+
+    urls = {}
+    fuentes = {n: os.path.join(AQUI, n) for n in ARCHIVOS}
+    fuentes.update(LADO)
+    for nombre, ruta in fuentes.items():
+        clave = 'aura/' + nombre
+        s3.put_object(Bucket=CUBO, Key=clave, Body=open(ruta, 'rb').read())
+        urls[nombre] = s3.generate_presigned_url(
+            'get_object', Params={'Bucket': CUBO, 'Key': clave}, ExpiresIn=1800)
+        print('subido', nombre)
+
+    s3.put_object(Bucket=CUBO, Key='aura/whatsapp.conf', Body=DROPIN.encode())
+    url_dropin = s3.generate_presigned_url(
+        'get_object', Params={'Bucket': CUBO, 'Key': 'aura/whatsapp.conf'},
+        ExpiresIn=1800)
+
+    cmds = ['set -e', 'mkdir -p /srv/aura']
+
+    # El prompt y las fichas primero, con su propia comprobacion: un JSON roto
+    # o un prompt sin su bloque dejan a AU-RA sin arrancar, y es mejor que se
+    # note aqui que en el reinicio.
+    cmds += [
+        f'curl -sS --fail -o /srv/aura/saber.json.nuevo "{urls["saber.json"]}"',
+        'python3 -c "import json,sys; json.load(open(\'/srv/aura/saber.json.nuevo\'))"',
+        'mv /srv/aura/saber.json.nuevo /srv/aura/saber.json',
+        f'curl -sS --fail -o /srv/aura/PROMPT-AURA.md.nuevo "{urls["PROMPT-AURA.md"]}"',
+        'grep -q \'```\' /srv/aura/PROMPT-AURA.md.nuevo',
+        'mv /srv/aura/PROMPT-AURA.md.nuevo /srv/aura/PROMPT-AURA.md',
+        # LA CABECERA DE LA CASA. Va aqui, con su propia descarga, y no basta
+        # con ponerla en LADO: LADO solo SUBE a S3 — cada bajada esta escrita a
+        # mano en esta lista. Ponerla arriba y olvidar esta linea fue
+        # exactamente lo que paso el 7-sep: `cargar_prompt()` empezo a leer un
+        # archivo que no existia y AU-RA se quedo reiniciandose en bucle.
+        # Se comprueba antes de moverla: sin la regla de «respaldados» dentro,
+        # esto no es la cabecera —o llego a medias— y es mejor quedarse con la
+        # de antes que arrancar sin las reglas que protegen a la gente.
+        f'curl -sS --fail -o /srv/aura/cabecera-de-la-casa.md.nuevo "{urls["cabecera-de-la-casa.md"]}"',
+        'grep -q \'Nunca se dice\' /srv/aura/cabecera-de-la-casa.md.nuevo',
+        'mv /srv/aura/cabecera-de-la-casa.md.nuevo /srv/aura/cabecera-de-la-casa.md',
+    ]
+
+    for nombre in ARCHIVOS:
+        # A un temporal primero y se mueve: si la descarga se corta a la mitad,
+        # el archivo bueno sigue en su sitio y el servicio sigue de pie.
+        cmds += [f'curl -sS --fail -o /srv/aura/{nombre}.nuevo "{urls[nombre]}"',
+                 f'python3 -c "import ast,sys; ast.parse(open(\'/srv/aura/{nombre}.nuevo\').read())"',
+                 f'mv /srv/aura/{nombre}.nuevo /srv/aura/{nombre}']
+
+    cmds += [
+        f'curl -sS --fail -o /etc/systemd/system/aura-parte.service'
+        f' "{urls["aura-parte.service"]}"',
+        f'curl -sS --fail -o /etc/systemd/system/aura-parte.timer'
+        f' "{urls["aura-parte.timer"]}"',
+        # `--now` y no solo `enable`: el enlace por si solo no arranca nada,
+        # porque `timers.target` ya paso hace rato y no se vuelve a alcanzar
+        # hasta el proximo reinicio. Sin esto el temporizador queda puesto,
+        # `is-enabled` dice que si, y el parte no sale nunca.
+        f'curl -sS --fail -o /usr/local/bin/copia-aura.sh "{urls["copia-aura.sh"]}"',
+        'chmod 755 /usr/local/bin/copia-aura.sh',
+        'bash -n /usr/local/bin/copia-aura.sh',
+        f'curl -sS --fail -o /etc/systemd/system/aura-copia.service'
+        f' "{urls["aura-copia.service"]}"',
+        f'curl -sS --fail -o /etc/systemd/system/aura-copia.timer'
+        f' "{urls["aura-copia.timer"]}"',
+        f'curl -sS --fail -o /etc/systemd/system/aura-pagos.service'
+        f' "{urls["aura-pagos.service"]}"',
+        f'curl -sS --fail -o /etc/systemd/system/aura-pagos.timer'
+        f' "{urls["aura-pagos.timer"]}"',
+        'systemctl daemon-reload',
+        'systemctl enable --now aura-parte.timer',
+        'systemctl enable --now aura-copia.timer',
+        'systemctl enable --now aura-pagos.timer',
+    ]
+    cmds += ['mkdir -p /etc/systemd/system/aura.service.d',
+             f'curl -sS --fail -o /etc/systemd/system/aura.service.d/whatsapp.conf "{url_dropin}"']
+
+    clave = (os.environ.get('ZERNIO_CLAVE') or '').strip()
+    cuenta = (os.environ.get('ZERNIO_CUENTA') or '').strip()
+    if clave and cuenta:
+        # `install -m 600` crea el archivo YA con los permisos puestos. Escribir
+        # primero y hacer chmod despues deja una ventana en la que la clave es
+        # legible por cualquiera que este en la maquina.
+        cmds += [
+            'install -m 600 /dev/null /etc/aura-whatsapp.env',
+            f"printf 'ZERNIO_CLAVE=%s\\nZERNIO_CUENTA=%s\\n' '{clave}' '{cuenta}'"
+            ' > /etc/aura-whatsapp.env',
+        ]
+        print('la clave de WhatsApp se escribe en el nodo (600)')
+    else:
+        print('sin ZERNIO_CLAVE en el entorno: no se toca lo que ya haya en el nodo')
+
+    cmds += [
+        'systemctl daemon-reload',
+        'systemctl restart aura',
+        'systemctl list-timers aura-parte.timer aura-copia.timer aura-pagos.timer --no-pager',
+        'sleep 8',
+        'systemctl is-active aura',
+        # Lo que de verdad se quiere ver: que arranco y que dice de WhatsApp.
+        'journalctl -u aura -n 12 --no-pager | tail -12',
+    ]
+
+    r = ssm.send_command(InstanceIds=[NODO], DocumentName='AWS-RunShellScript',
+                         Parameters={'commands': cmds})
+    o = espera(ssm, r['Command']['CommandId'])
+    print('\n== estado:', o['Status'], '==')
+    print(o.get('StandardOutputContent', '')[-2500:])
+    err = o.get('StandardErrorContent', '')
+    if err.strip():
+        print('== errores ==')
+        print(err[-1500:])
+    return 0 if o['Status'] == 'Success' else 1
+
+
+if __name__ == '__main__':
+    sys.exit(main())

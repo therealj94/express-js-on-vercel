@@ -1,11 +1,12 @@
-import React, { useState } from 'react';
-import { View, Text, Pressable, TextInput, ScrollView, StyleSheet, ActivityIndicator } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, Pressable, TextInput, ScrollView, KeyboardAvoidingView, Platform, StyleSheet, ActivityIndicator } from 'react-native';
 import { BlurView } from 'expo-blur';
 import { Icon } from '../icons';
 import { C } from '../theme';
 import { Logo, Button3D, hap, useAccount, useToast, AppBackground } from '../ui';
 import { upsertApiAccount, saveSession } from '../accounts';
-import { apiLogin, apiRegister, apiPortfolio, saveCreds, clearCreds } from '../api';
+import { apiLogin, apiRegister, apiPortfolio, saveCreds, clearCreds, apiSocialLogin } from '../api';
+import { useGoogle, idTokenDeGoogle, entrarConApple, googleDisponible, appleDisponible } from '../social';
 import { recordLogin } from '../sessionLog';
 import { versionLabel } from '../version';
 import { useT } from '../i18n';
@@ -46,6 +47,58 @@ export default function Auth({ nav }) {
   const toast = useToast();
   const t = useT();
   const login = tab === 'login';
+
+  // ---- entrar con Google / Apple -------------------------------------
+  const [social, setSocial] = useState(null);      // 'google' | 'apple' | null
+  const [hayApple, setHayApple] = useState(false);
+  const google = useGoogle();
+
+  useEffect(() => { appleDisponible().then(setHayApple); }, []);
+
+  // Termina el ingreso con el token que devolvió el proveedor. Se comparte
+  // entre Google y Apple porque desde aquí para adelante son idénticos.
+  async function terminarSocial(proveedor, idToken) {
+    if (!idToken) { setSocial(null); return; }
+    setErr(null);
+    try {
+      const r = await apiSocialLogin(proveedor, idToken);
+      const acc = await upsertApiAccount(r);
+      try { await apiPortfolio(acc); } catch (e) {}
+      await saveSession(acc);
+      await recordLogin(acc);
+      await clearCreds();
+      setAccount(acc);
+      toast(r.creada ? t('auth.welcomeNew') : t('auth.welcome'));
+      nav(seenOnboarding() ? 'home' : 'onboarding');
+    } catch (e) {
+      // Un fallo aquí casi siempre es de configuración (el identificador de
+      // cliente no coincide con el que espera el servidor), y eso no lo puede
+      // resolver quien está intentando entrar: se le ofrece el correo.
+      setErr(e?.status === 401 ? t('auth.errSocial') : (e?.message || t('auth.errGeneric')));
+    } finally { setSocial(null); }
+  }
+
+  // Google devuelve por un camino distinto: la respuesta llega después.
+  useEffect(() => {
+    const tk = idTokenDeGoogle(google.response);
+    if (tk) terminarSocial('google', tk);
+    else if (google.response && google.response.type !== 'success') setSocial(null);
+  }, [google.response]);
+
+  async function conGoogle() {
+    setSocial('google'); setErr(null);
+    try { await google.promptAsync(); }
+    catch (e) { setSocial(null); setErr(t('auth.errSocial')); }
+  }
+
+  async function conApple() {
+    setSocial('apple'); setErr(null);
+    try {
+      const r = await entrarConApple();
+      if (!r) { setSocial(null); return; }   // canceló: no es un error
+      await terminarSocial('apple', r.idToken);
+    } catch (e) { setSocial(null); setErr(e?.message || t('auth.errSocial')); }
+  }
 
   async function enter(kind) {
     // No forzamos minúsculas: algunos backends (el nuestro entre ellos)
@@ -107,7 +160,17 @@ export default function Auth({ nav }) {
 
   return (
     <AppBackground intensity="hero">
-      <ScrollView contentContainerStyle={styles.wrap} keyboardShouldPersistTaps="handled">
+      {/* Sin esto, al escribir la contraseña el teclado tapaba el campo y el
+          botón de entrar, y no había forma de ver lo que se estaba tecleando. */}
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      >
+      <ScrollView
+        contentContainerStyle={styles.wrap}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
+      >
         <View style={{ alignItems: 'center', marginBottom: 22 }}>
           <Logo size={92} />
           <Text style={styles.brand}>veta <Text style={styles.italic}>wallet</Text></Text>
@@ -125,7 +188,7 @@ export default function Auth({ nav }) {
             </View>
 
             {!login && <Input label={t('auth.name')} placeholder={t('auth.namePh')} value={regName} onChangeText={setRegName} />}
-            <Input label={t('auth.email')} placeholder="tu@correo.com" value={email} onChangeText={setEmail} keyboardType="email-address" autoCapitalize="none" autoCorrect={false} />
+            <Input label={t('auth.email')} placeholder={t('auth.emailPh')} value={email} onChangeText={setEmail} keyboardType="email-address" autoCapitalize="none" autoCorrect={false} />
             <View style={{ marginBottom: 6 }}>
               <Text style={styles.label}>{t('auth.password')}</Text>
               <View>
@@ -174,12 +237,59 @@ export default function Auth({ nav }) {
             {busy && <ActivityIndicator color={C.gold} style={{ marginTop: 14 }} />}
 
             {login && <Text style={styles.forgot}>{t('auth.forgot')}</Text>}
+
+            {(googleDisponible() || hayApple) && (
+              <>
+                <View style={styles.sepWrap}>
+                  <View style={styles.sepLine} />
+                  <Text style={styles.sepTxt}>{t('auth.or')}</Text>
+                  <View style={styles.sepLine} />
+                </View>
+
+                {googleDisponible() && (
+                  <Pressable
+                    onPress={() => { if (!social && !busy) { hap(); conGoogle(); } }}
+                    disabled={!!social || busy || !google.listo}
+                    style={({ pressed }) => [styles.social, styles.socialGoogle, (pressed || social === 'google') && styles.socialOn]}
+                  >
+                    {social === 'google'
+                      ? <ActivityIndicator color="#1f1f1f" />
+                      : <><GoogleG /><Text style={styles.socialTxtG}>{t('auth.withGoogle')}</Text></>}
+                  </Pressable>
+                )}
+
+                {hayApple && (
+                  <Pressable
+                    onPress={() => { if (!social && !busy) { hap(); conApple(); } }}
+                    disabled={!!social || busy}
+                    style={({ pressed }) => [styles.social, styles.socialApple, (pressed || social === 'apple') && styles.socialOn]}
+                  >
+                    {social === 'apple'
+                      ? <ActivityIndicator color="#fff" />
+                      : <><Icon name="logo-apple" size={19} color="#fff" /><Text style={styles.socialTxtA}>{t('auth.withApple')}</Text></>}
+                  </Pressable>
+                )}
+              </>
+            )}
           </View>
         </BlurView>
         <Text style={styles.foot}>{t('auth.foot')}</Text>
         <Text style={styles.ver}>{versionLabel()}</Text>
       </ScrollView>
+      </KeyboardAvoidingView>
     </AppBackground>
+  );
+}
+
+// La G de Google en sus cuatro colores. Se dibuja con vistas para no cargar
+// una imagen: las normas de marca exigen estos colores exactos y este trazo.
+function GoogleG() {
+  return (
+    <View style={styles.gWrap}>
+      <Text style={styles.gTxt}>
+        <Text style={{ color: '#4285F4' }}>G</Text>
+      </Text>
+    </View>
   );
 }
 
@@ -193,6 +303,23 @@ function Input({ label, ...props }) {
 }
 
 const styles = StyleSheet.create({
+  // --- entrar con Google / Apple ---
+  sepWrap: { flexDirection: 'row', alignItems: 'center', marginTop: 20, marginBottom: 14 },
+  sepLine: { flex: 1, height: 1, backgroundColor: 'rgba(255,255,255,0.12)' },
+  sepTxt: { color: '#6f938f', fontSize: 12, marginHorizontal: 12, letterSpacing: 0.6 },
+  social: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+    height: 50, borderRadius: 12, marginBottom: 10, gap: 10,
+  },
+  socialOn: { opacity: 0.75 },
+  // Blanco con borde: es como Google pide que se vea su botón.
+  socialGoogle: { backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#DADCE0' },
+  socialApple: { backgroundColor: '#000000' },
+  socialTxtG: { color: '#1F1F1F', fontSize: 15.5, fontWeight: '600' },
+  socialTxtA: { color: '#FFFFFF', fontSize: 15.5, fontWeight: '600' },
+  gWrap: { width: 20, alignItems: 'center' },
+  gTxt: { fontSize: 19, fontWeight: '700' },
+
   wrap: { flexGrow: 1, justifyContent: 'center', padding: 22, paddingTop: 80 },
   brand: { fontSize: 26, fontWeight: '800', color: '#EAD79C', letterSpacing: 1, marginTop: 6 },
   italic: { fontWeight: '300', fontStyle: 'italic', color: '#C9A961' },

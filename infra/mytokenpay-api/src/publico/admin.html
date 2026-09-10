@@ -1,0 +1,494 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MyTokenPay · Administración</title>
+<style>
+  :root{
+    --bg:#0A0812; --bg2:#100C1B; --sup:#171224; --sup2:#211A33;
+    --linea:#2C2444; --txt:#F5F2FA; --gris:#9D91B8; --gris2:#6C6089;
+    --violeta:#C266F5; --azul:#4C6EF0; --ok:#34D399; --warn:#FBBF24;
+    --mal:#FB7185; --oro:#E8B84B;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{
+    background:var(--bg);color:var(--txt);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    font-size:15px;line-height:1.5;-webkit-font-smoothing:antialiased;
+  }
+  a{color:var(--violeta);text-decoration:none}
+  button{font:inherit;cursor:pointer;border:none;border-radius:10px;transition:filter .15s,transform .08s}
+  button:active{transform:scale(.985)}
+  button:disabled{opacity:.45;cursor:not-allowed}
+  .btn{background:var(--violeta);color:#fff;padding:10px 16px;font-weight:600}
+  .btn:hover:not(:disabled){filter:brightness(1.1)}
+  .btn.ok{background:var(--ok);color:#052e20}
+  .btn.warn{background:var(--warn);color:#3a2a00}
+  .btn.mal{background:transparent;color:var(--mal);border:1px solid rgba(251,113,133,.45)}
+  .btn.fantasma{background:transparent;color:var(--txt);border:1px solid var(--linea)}
+  input,select,textarea{
+    background:var(--sup);border:1px solid var(--linea);color:var(--txt);
+    border-radius:10px;padding:11px 13px;font:inherit;width:100%;outline:none
+  }
+  input:focus,textarea:focus{border-color:var(--violeta)}
+
+  /* ── Entrada ── */
+  #entrar{min-height:100vh;display:grid;place-items:center;padding:24px}
+  #entrar .caja{width:100%;max-width:380px;background:var(--sup);border:1px solid var(--linea);border-radius:18px;padding:30px}
+  .marca{display:flex;align-items:center;gap:10px;margin-bottom:6px}
+  .marca b{font-size:19px;letter-spacing:-.3px}
+  .punto{width:11px;height:11px;border-radius:4px;background:linear-gradient(135deg,var(--violeta),var(--azul))}
+  .sub{color:var(--gris);font-size:13.5px;margin-bottom:22px}
+  .campo{margin-bottom:13px}
+  .campo label{display:block;font-size:12.5px;color:var(--gris);margin-bottom:6px}
+  .err{color:var(--mal);font-size:13px;margin-top:12px;min-height:19px}
+
+  /* ── Estructura ── */
+  #panel{display:none}
+  header{
+    position:sticky;top:0;z-index:10;background:rgba(10,8,18,.92);backdrop-filter:blur(12px);
+    border-bottom:1px solid var(--linea);padding:13px 22px;
+    display:flex;align-items:center;gap:18px;flex-wrap:wrap
+  }
+  nav{display:flex;gap:5px;margin-left:auto;flex-wrap:wrap}
+  nav button{background:transparent;color:var(--gris);padding:8px 14px;font-size:14px;font-weight:600;border-radius:9px}
+  nav button.activo{background:var(--sup2);color:var(--txt)}
+  nav button .pastilla{
+    display:inline-block;background:var(--warn);color:#3a2a00;border-radius:99px;
+    padding:1px 7px;font-size:11px;font-weight:700;margin-left:6px
+  }
+  main{padding:22px;max-width:1180px;margin:0 auto}
+  .vista{display:none}
+  .vista.activa{display:block}
+  h2{font-size:19px;margin-bottom:4px;letter-spacing:-.2px}
+  .h2sub{color:var(--gris);font-size:13.5px;margin-bottom:18px}
+
+  /* ── Tarjetas de cifras ── */
+  .cifras{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-bottom:24px}
+  .cifra{background:var(--sup);border:1px solid var(--linea);border-radius:14px;padding:16px}
+  .cifra .et{color:var(--gris);font-size:12.5px}
+  .cifra .n{font-size:25px;font-weight:700;margin-top:5px;letter-spacing:-.5px}
+  .cifra .pie{color:var(--gris2);font-size:12px;margin-top:3px}
+  .cifra.alerta{border-color:rgba(251,191,36,.45);background:rgba(251,191,36,.07)}
+
+  /* ── Retiros ── */
+  .retiro{background:var(--sup);border:1px solid var(--linea);border-radius:16px;padding:18px;margin-bottom:14px}
+  .retiro.urgente{border-color:rgba(251,191,36,.5)}
+  .rcab{display:flex;align-items:flex-start;gap:14px;flex-wrap:wrap}
+  .rmonto{font-size:29px;font-weight:700;letter-spacing:-.6px}
+  .rorigen{color:var(--violeta);font-size:13px;font-weight:600}
+  .rneg{font-size:16px;font-weight:600}
+  .rfecha{color:var(--gris);font-size:12.5px;margin-top:2px}
+  .estado{padding:4px 11px;border-radius:99px;font-size:12px;font-weight:600;white-space:nowrap}
+  .estado.solicitado{background:rgba(251,191,36,.16);color:var(--warn)}
+  .estado.en_proceso{background:rgba(76,110,240,.16);color:#8fa5f7}
+  .estado.pagado{background:rgba(52,211,153,.14);color:var(--ok)}
+  .estado.rechazado{background:rgba(251,113,133,.14);color:var(--mal)}
+
+  .banco{background:var(--bg2);border:1px solid var(--linea);border-radius:12px;padding:15px;margin-top:15px}
+  .banco h4{font-size:12px;color:var(--gris);text-transform:uppercase;letter-spacing:.5px;margin-bottom:11px;font-weight:600}
+  .bfila{display:flex;justify-content:space-between;align-items:center;gap:14px;padding:7px 0;border-top:1px solid var(--linea)}
+  .bfila:first-of-type{border-top:none}
+  .bfila .k{color:var(--gris);font-size:13px}
+  .bfila .v{font-weight:600;font-size:14px;text-align:right;word-break:break-all}
+  .copiar{background:transparent;color:var(--gris);border:1px solid var(--linea);padding:4px 9px;font-size:11.5px;border-radius:7px}
+  .copiar:hover{color:var(--txt)}
+  .acciones{display:flex;gap:9px;margin-top:15px;flex-wrap:wrap}
+  .aviso{
+    display:flex;gap:9px;align-items:flex-start;margin-top:13px;padding:11px 13px;border-radius:10px;
+    background:rgba(251,113,133,.09);border:1px solid rgba(251,113,133,.35);color:var(--gris);font-size:13px
+  }
+  .aviso.bien{background:rgba(52,211,153,.08);border-color:rgba(52,211,153,.3)}
+
+  /* ── Tabla ── */
+  .tabla{width:100%;border-collapse:collapse;background:var(--sup);border-radius:14px;overflow:hidden}
+  .tabla th{
+    text-align:left;padding:12px 14px;font-size:12px;color:var(--gris);
+    text-transform:uppercase;letter-spacing:.4px;background:var(--bg2);font-weight:600;white-space:nowrap
+  }
+  .tabla td{padding:13px 14px;border-top:1px solid var(--linea);font-size:14px;vertical-align:middle}
+  .tabla tr:hover td{background:rgba(255,255,255,.02)}
+  .envoltorio{overflow-x:auto;border:1px solid var(--linea);border-radius:14px}
+  .kyc{padding:3px 10px;border-radius:99px;font-size:11.5px;font-weight:600;white-space:nowrap}
+  .kyc.verified{background:rgba(52,211,153,.14);color:var(--ok)}
+  .kyc.pending{background:rgba(251,191,36,.16);color:var(--warn)}
+  .kyc.rejected{background:rgba(251,113,133,.14);color:var(--mal)}
+  .kyc.unsubmitted{background:var(--sup2);color:var(--gris)}
+
+  .vacio{text-align:center;padding:60px 20px;color:var(--gris)}
+  .vacio .grande{font-size:17px;color:var(--txt);margin-bottom:7px;font-weight:600}
+  .nota{color:var(--gris2);font-size:12.5px;margin-top:20px;line-height:1.6}
+  .cargando{text-align:center;padding:50px;color:var(--gris)}
+  @media(max-width:640px){
+    main{padding:16px}
+    header{padding:12px 16px}
+    .rmonto{font-size:25px}
+  }
+</style>
+</head>
+<body>
+
+<!-- ══ ENTRADA ══ -->
+<div id="entrar">
+  <div class="caja">
+    <div class="marca"><span class="punto"></span><b>MyTokenPay</b></div>
+    <p class="sub">Panel de administración · Orden Global</p>
+    <form id="formEntrar">
+      <div class="campo">
+        <label for="correo">Correo</label>
+        <input id="correo" type="email" autocomplete="username" required>
+      </div>
+      <div class="campo">
+        <label for="clave">Contraseña</label>
+        <input id="clave" type="password" autocomplete="current-password" required>
+      </div>
+      <button class="btn" style="width:100%;margin-top:8px" type="submit">Entrar</button>
+      <p class="err" id="errEntrar"></p>
+    </form>
+  </div>
+</div>
+
+<!-- ══ PANEL ══ -->
+<div id="panel">
+  <header>
+    <div class="marca"><span class="punto"></span><b>MyTokenPay</b></div>
+    <nav>
+      <button data-v="resumen" class="activo">Resumen</button>
+      <button data-v="retiros">Retiros <span class="pastilla" id="badgeRetiros" style="display:none">0</span></button>
+      <button data-v="negocios">Negocios</button>
+      <button id="salir" style="color:var(--gris2)">Salir</button>
+    </nav>
+  </header>
+
+  <main>
+    <section class="vista activa" id="v-resumen">
+      <h2>Resumen</h2>
+      <p class="h2sub">El estado del sistema ahora mismo.</p>
+      <div id="cifrasResumen" class="cargando">Cargando…</div>
+      <p class="nota">
+        Los números se actualizan solos cada 30 segundos. «Por pagar» es lo que los comercios ya
+        pidieron y todavía no se les ha transferido.
+      </p>
+    </section>
+
+    <section class="vista" id="v-retiros">
+      <h2>Retiros</h2>
+      <p class="h2sub">Cada solicitud trae los datos bancarios para hacer la transferencia a mano.</p>
+      <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap">
+        <button class="btn fantasma filtro activo" data-f="">Todos</button>
+        <button class="btn fantasma filtro" data-f="solicitado">Por pagar</button>
+        <button class="btn fantasma filtro" data-f="en_proceso">En proceso</button>
+        <button class="btn fantasma filtro" data-f="pagado">Pagados</button>
+      </div>
+      <div id="listaRetiros" class="cargando">Cargando…</div>
+    </section>
+
+    <section class="vista" id="v-negocios">
+      <h2>Negocios</h2>
+      <p class="h2sub">Todos los comercios registrados, su verificación y su saldo.</p>
+      <div id="listaNegocios" class="cargando">Cargando…</div>
+    </section>
+  </main>
+</div>
+
+<script>
+// ─────────────────────────────────────────────────────────────────────────────
+// Panel de administración de MyTokenPay.
+//
+// Es quien paga: ve la cola de retiros, hace la transferencia en el banco y la
+// marca como hecha. Está escrito sin framework ni compilación a propósito — se
+// sirve desde el mismo backend, así que no hay un segundo despliegue que se
+// pueda quedar viejo mientras la API avanza.
+//
+// El token vive en sessionStorage y no en una cookie: este panel enseña
+// números de cuenta completos, y cerrar la pestaña tiene que ser suficiente
+// para cerrar la sesión.
+// ─────────────────────────────────────────────────────────────────────────────
+
+const API = location.origin
+let token = sessionStorage.getItem('mtp_admin') || null
+let filtro = ''
+let refresco = null
+
+const $ = (s) => document.querySelector(s)
+const lps = (n) => 'L ' + Number(n || 0).toLocaleString('es-HN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+const org = (n) => Number(n || 0).toLocaleString('es-HN', { maximumFractionDigits: 6 }) + ' ORIGEN'
+const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]))
+const cuando = (iso) => iso ? new Date(iso).toLocaleString('es-HN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—'
+
+async function api(ruta, opciones = {}) {
+  const r = await fetch(API + ruta, {
+    ...opciones,
+    headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token, ...(opciones.headers || {}) },
+  })
+  if (r.status === 401 || r.status === 404) {
+    // El panel responde 404 a quien no es administrador: no hace falta
+    // confirmarle a nadie que esto existe.
+    if (r.status === 401) salir()
+  }
+  const d = await r.json().catch(() => ({}))
+  if (!r.ok) throw new Error(d.error || 'Error ' + r.status)
+  return d
+}
+
+// ── Entrar / salir ──
+$('#formEntrar').addEventListener('submit', async (e) => {
+  e.preventDefault()
+  $('#errEntrar').textContent = ''
+  try {
+    const r = await fetch(API + '/api/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: $('#correo').value.trim(), password: $('#clave').value }),
+    })
+    const d = await r.json()
+    if (!r.ok) throw new Error(d.error || 'No se pudo entrar')
+    if (d.user?.role !== 'admin') throw new Error('Esta cuenta no es de administración')
+    token = d.token
+    sessionStorage.setItem('mtp_admin', token)
+    abrirPanel()
+  } catch (err) {
+    $('#errEntrar').textContent = err.message
+  }
+})
+
+function salir() {
+  token = null
+  sessionStorage.removeItem('mtp_admin')
+  if (refresco) clearInterval(refresco)
+  $('#panel').style.display = 'none'
+  $('#entrar').style.display = 'grid'
+}
+$('#salir').addEventListener('click', salir)
+
+function abrirPanel() {
+  $('#entrar').style.display = 'none'
+  $('#panel').style.display = 'block'
+  cargarTodo()
+  if (refresco) clearInterval(refresco)
+  refresco = setInterval(cargarTodo, 30000)
+}
+
+// ── Navegación ──
+document.querySelectorAll('nav button[data-v]').forEach((b) => {
+  b.addEventListener('click', () => {
+    document.querySelectorAll('nav button[data-v]').forEach((x) => x.classList.remove('activo'))
+    b.classList.add('activo')
+    document.querySelectorAll('.vista').forEach((v) => v.classList.remove('activa'))
+    $('#v-' + b.dataset.v).classList.add('activa')
+  })
+})
+document.querySelectorAll('.filtro').forEach((b) => {
+  b.addEventListener('click', () => {
+    document.querySelectorAll('.filtro').forEach((x) => x.classList.remove('activo'))
+    b.classList.add('activo')
+    filtro = b.dataset.f
+    cargarRetiros()
+  })
+})
+
+// ── Cargas ──
+async function cargarTodo() {
+  await Promise.all([cargarResumen(), cargarRetiros(), cargarNegocios()])
+}
+
+async function cargarResumen() {
+  try {
+    const d = await api('/api/admin/resumen')
+    const t = d.tasa
+    $('#cifrasResumen').className = 'cifras'
+    $('#cifrasResumen').innerHTML = `
+      <div class="cifra ${d.retiros.solicitados > 0 ? 'alerta' : ''}">
+        <div class="et">Por pagar ahora</div>
+        <div class="n">${lps(d.retiros.lempirasPorPagar)}</div>
+        <div class="pie">${d.retiros.solicitados} solicitados · ${d.retiros.enProceso} en proceso</div>
+      </div>
+      <div class="cifra">
+        <div class="et">ORIGEN comprometido</div>
+        <div class="n">${Number(d.retiros.origenPorPagar).toLocaleString('es-HN', { maximumFractionDigits: 4 })}</div>
+        <div class="pie">a devolver por los comercios</div>
+      </div>
+      <div class="cifra">
+        <div class="et">Negocios</div>
+        <div class="n">${d.negocios.total}</div>
+        <div class="pie">${d.negocios.verificados} verificados · ${d.negocios.enRevision} en revisión</div>
+      </div>
+      <div class="cifra">
+        <div class="et">1 ORIGEN</div>
+        <div class="n">${t ? lps(t.hnlPorOrigen) : '—'}</div>
+        <div class="pie">${t ? esc(t.fuente) : 'precio no disponible'}</div>
+      </div>`
+  } catch (e) {
+    $('#cifrasResumen').className = 'cargando'
+    $('#cifrasResumen').textContent = e.message
+  }
+}
+
+async function cargarRetiros() {
+  try {
+    const d = await api('/api/admin/retiros' + (filtro ? '?estado=' + filtro : ''))
+    const rs = d.retiros
+    const pendientes = rs.filter((r) => r.estado === 'solicitado' || r.estado === 'en_proceso').length
+    const badge = $('#badgeRetiros')
+    badge.style.display = pendientes > 0 ? 'inline-block' : 'none'
+    badge.textContent = pendientes
+
+    const cont = $('#listaRetiros')
+    cont.className = ''
+    if (!rs.length) {
+      cont.innerHTML = `<div class="vacio"><div class="grande">Sin retiros ${filtro ? 'en este estado' : 'todavía'}</div>
+        <div>Cuando un comercio pida su dinero, la solicitud aparece acá con sus datos bancarios.</div></div>`
+      return
+    }
+    cont.innerHTML = rs.map(pintarRetiro).join('')
+  } catch (e) {
+    $('#listaRetiros').className = 'cargando'
+    $('#listaRetiros').textContent = e.message
+  }
+}
+
+function pintarRetiro(r) {
+  const abierto = r.estado === 'solicitado' || r.estado === 'en_proceso'
+  const b = r.banco || {}
+  const fila = (k, v, copiable) => `
+    <div class="bfila">
+      <span class="k">${esc(k)}</span>
+      <span style="display:flex;align-items:center;gap:9px">
+        <span class="v">${esc(v)}</span>
+        ${copiable ? `<button class="copiar" onclick="copiar('${esc(v)}',this)">copiar</button>` : ''}
+      </span>
+    </div>`
+
+  return `
+  <div class="retiro ${r.estado === 'solicitado' ? 'urgente' : ''}">
+    <div class="rcab">
+      <div style="flex:1;min-width:190px">
+        <div class="rneg">${esc(r.negocio?.nombre || 'Comercio')}</div>
+        <div class="rfecha">Pedido el ${cuando(r.solicitadoEn)}</div>
+      </div>
+      <div style="text-align:right">
+        <div class="rmonto">${lps(r.montoHnl)}</div>
+        <div class="rorigen">${org(r.montoOrigen)}</div>
+      </div>
+      <span class="estado ${r.estado}">${r.estado.replace('_', ' ')}</span>
+    </div>
+
+    ${r.respaldado
+      ? `<div class="aviso bien">✓ La cadena respalda este monto: el comercio tiene ${org(r.saldo.confirmado)} confirmados. Se puede transferir.</div>`
+      : `<div class="aviso">⚠ Este retiro supera lo que la cadena respalda (confirmado: ${org(r.saldo.confirmado)}). Revisá antes de transferir.</div>`}
+
+    ${abierto ? `
+    <div class="banco">
+      <h4>Transferir a esta cuenta</h4>
+      ${fila('Banco', b.banco || '—')}
+      ${fila('Tipo', b.tipoCuenta === 'cheques' ? 'Cheques' : 'Ahorro')}
+      ${fila('Número de cuenta', b.numeroCuenta || '—', true)}
+      ${fila('Titular', b.titular || '—', true)}
+      ${fila('Identidad', b.identidad || '—', true)}
+      ${fila('Monto a depositar', lps(r.montoHnl), true)}
+    </div>
+    <div class="acciones">
+      <button class="btn ok" onclick="resolver('${r.id}','pagado')">Ya transferí · marcar pagado</button>
+      ${r.estado === 'solicitado' ? `<button class="btn warn" onclick="resolver('${r.id}','en_proceso')">En proceso</button>` : ''}
+      <button class="btn mal" onclick="resolver('${r.id}','rechazado')">Rechazar</button>
+    </div>` : `
+    <div class="banco">
+      <h4>Resuelto</h4>
+      ${fila('Cuenta', '····' + String(b.numeroCuenta || '').slice(-4))}
+      ${fila('Resuelto el', cuando(r.resueltoEn))}
+      ${r.nota ? fila('Nota', r.nota) : ''}
+    </div>`}
+  </div>`
+}
+
+async function resolver(id, estado) {
+  let nota
+  if (estado === 'rechazado') {
+    nota = prompt('¿Por qué se rechaza? El comercio va a leer esto.')
+    if (!nota || !nota.trim()) return
+  }
+  if (estado === 'pagado' && !confirm('¿Confirmás que YA hiciste la transferencia bancaria?\n\nAl marcarlo pagado se descuenta el ORIGEN del saldo del comercio.')) return
+  try {
+    await api('/api/admin/retiros/' + id + '/estado', { method: 'POST', body: JSON.stringify({ estado, nota }) })
+    await cargarTodo()
+  } catch (e) {
+    alert(e.message)
+  }
+}
+
+async function cargarNegocios() {
+  try {
+    const d = await api('/api/admin/negocios')
+    const ns = d.negocios
+    const cont = $('#listaNegocios')
+    cont.className = ''
+    if (!ns.length) {
+      cont.innerHTML = `<div class="vacio"><div class="grande">Sin negocios todavía</div>
+        <div>Los comercios que se registren desde la app aparecen acá.</div></div>`
+      return
+    }
+    cont.innerHTML = `
+    <div class="envoltorio"><table class="tabla">
+      <thead><tr>
+        <th>Negocio</th><th>RTN</th><th>Dónde</th><th>Verificación</th>
+        <th>Confirmado</th><th>Por confirmar</th><th>Registrado</th><th></th>
+      </tr></thead>
+      <tbody>${ns.map((n) => `
+        <tr>
+          <td><b>${esc(n.nombre)}</b><div style="color:var(--gris2);font-size:12px">${esc(n.razonSocial)}</div></td>
+          <td style="color:var(--gris)">${esc(n.rtn)}</td>
+          <td style="color:var(--gris)">${esc(n.ciudad)}, ${esc(n.pais)}</td>
+          <td><span class="kyc ${n.kyc.status}">${
+            { verified: 'verificado', pending: 'en revisión', rejected: 'rechazado', unsubmitted: 'sin enviar' }[n.kyc.status] || n.kyc.status
+          }</span></td>
+          <td><b>${org(n.saldo.confirmado)}</b></td>
+          <td style="color:${n.saldo.porConfirmar > 0 ? 'var(--warn)' : 'var(--gris2)'}">${org(n.saldo.porConfirmar)}</td>
+          <td style="color:var(--gris2);font-size:12.5px">${cuando(n.creadoEn)}</td>
+          <td>${n.kyc.status === 'pending'
+            ? `<div style="display:flex;gap:6px">
+                 <button class="btn ok" style="padding:6px 11px;font-size:13px" onclick="resolverNegocio('${n.id}','verificar')">Verificar</button>
+                 <button class="btn mal" style="padding:6px 11px;font-size:13px" onclick="resolverNegocio('${n.id}','rechazar')">Rechazar</button>
+               </div>`
+            : ''}</td>
+        </tr>`).join('')}</tbody>
+    </table></div>
+    <p class="nota">
+      «Confirmado» es el ORIGEN que la cadena 8532 respalda: dinero de verdad en la billetera del
+      comercio, y lo único que puede retirar. «Por confirmar» son pagos que la app dio por hechos
+      y la cadena todavía no avala.
+    </p>`
+  } catch (e) {
+    $('#listaNegocios').className = 'cargando'
+    $('#listaNegocios').textContent = e.message
+  }
+}
+
+async function resolverNegocio(id, decision) {
+  let nota
+  if (decision === 'rechazar') {
+    nota = prompt('¿Por qué se rechaza? El comercio va a leer esto.')
+    if (!nota || !nota.trim()) return
+  }
+  try {
+    await api('/api/admin/negocios/' + id + '/resolver', { method: 'POST', body: JSON.stringify({ decision, nota }) })
+    await cargarTodo()
+  } catch (e) {
+    alert(e.message)
+  }
+}
+
+function copiar(texto, boton) {
+  navigator.clipboard.writeText(texto).then(() => {
+    const antes = boton.textContent
+    boton.textContent = 'copiado'
+    boton.style.color = 'var(--ok)'
+    setTimeout(() => { boton.textContent = antes; boton.style.color = '' }, 1400)
+  }).catch(() => {})
+}
+
+// Si ya había sesión en esta pestaña, entrar directo.
+if (token) abrirPanel()
+</script>
+</body>
+</html>

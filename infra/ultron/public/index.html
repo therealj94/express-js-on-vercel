@@ -1,0 +1,495 @@
+<!doctype html>
+<html lang="es-HN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0A0D12">
+<meta name="robots" content="noindex,nofollow">
+<title>ULTRON · Junta Directiva de Orden Global</title>
+<link rel="stylesheet" href="vendor/fuentes/consola.css">
+<style>
+/* ═══════════════════════════════════════════════════════════════════════════
+   ULTRON · la consola de la Junta Directiva de Orden Global
+
+   UN DESPACHO, NO UN CHAT. Lo que la junta necesita de su sistema de
+   inteligencia es lo que necesita de un secretario técnico: que conteste con
+   la casa delante, que deje constancia de lo que consultó, que tenga a mano
+   los instrumentos, y que hable con propiedad. La consola está compuesta así:
+
+     · el despacho (centro): la conversación, con cada consulta que ULTRON
+       hizo a la casa visible como un registro, no escondida;
+     · el tablero (derecha): la casa en vivo, siempre a la vista;
+     · el índice (izquierda): el ecosistema, los instrumentos, los pendientes,
+       la biblioteca, la bitácora.
+
+   LA IDENTIDAD ES LA DE LA CASA: grafito profundo, marfil, y el oro de Orden
+   Global como único acento. Nada de cian ni de efectos: es un instrumento de
+   gobierno. Tipografía: Cormorant (institucional) para los rótulos, Source
+   Sans para el texto, IBM Plex Mono para los datos.
+   ═══════════════════════════════════════════════════════════════════════════ */
+:root{
+  --fondo:#0A0D12; --panel:#10141B; --panel2:#161B24; --panel3:#1C222C;
+  --linea:#242B36; --linea2:#333C4A;
+  --tinta:#ECE6D8; --tenue:#9AA3B1; --humo:#626B78;
+  --oro:#C9A961; --oroHi:#E6CD8A; --oroBajo:rgba(201,169,97,.14);
+  --bien:#7CC298; --aviso:#D9B45B; --mal:#D9787D;
+  --serif:'Cormorant Garamond',Georgia,'Times New Roman',serif;
+  --sans:'Source Sans 3','Source Sans Pro',system-ui,-apple-system,'Segoe UI',sans-serif;
+  --mono:'IBM Plex Mono',ui-monospace,SFMono-Regular,Menlo,monospace;
+  --radio:10px;
+}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0;background:var(--fondo);color:var(--tinta);font:15px/1.5 var(--sans);-webkit-font-smoothing:antialiased}
+body{overflow:hidden}
+a{color:var(--oroHi);text-decoration:none}
+a:hover{text-decoration:underline}
+button,input,textarea,select{font:inherit;color:inherit}
+button{cursor:pointer}
+::selection{background:var(--oroBajo)}
+.mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
+.serif{font-family:var(--serif)}
+[hidden]{display:none!important}
+.rotulo{font:500 10.5px/1 var(--mono);letter-spacing:.16em;text-transform:uppercase;color:var(--humo)}
+.tenue{color:var(--tenue)}
+.ok{color:var(--bien)} .aviso{color:var(--aviso)} .mal{color:var(--mal)}
+
+/* ── la puerta ──────────────────────────────────────────────────────────── */
+#puerta{position:fixed;inset:0;display:grid;place-items:center;background:var(--fondo);z-index:50;padding:24px}
+.puerta-caja{width:min(400px,100%);border:1px solid var(--linea);background:var(--panel);border-radius:14px;padding:32px 30px}
+.marca{font:700 30px/1 var(--serif);letter-spacing:.22em;color:var(--tinta)}
+.marca-sub{margin-top:6px;font:500 11px/1.4 var(--mono);letter-spacing:.14em;text-transform:uppercase;color:var(--oro)}
+.puerta-nota{margin:10px 0 0;font-size:11.5px;line-height:1.5;color:var(--tenue);text-align:center}
+.puerta-estado{margin-top:14px;font-size:12.5px;line-height:1.5;color:var(--oro);text-align:center}
+/* El GID que el servidor devuelve cuando la identidad es buena pero no es de
+   la junta. Va en monoespaciada y seleccionable: existe para copiarlo y
+   pasárselo a quien administra la lista. */
+.puerta-gid{display:block;margin-top:8px;font:500 12px/1.5 var(--mono);color:var(--tinta);user-select:all;word-break:break-all}
+/* El «o» que separa las dos formas de entrar: una línea con la palabra
+   encima, para que se lea como una alternativa y no como un paso siguiente. */
+.puerta-o{display:flex;align-items:center;gap:12px;margin:22px 0 2px;color:var(--tenue);font:500 10.5px/1 var(--mono);letter-spacing:.14em;text-transform:uppercase}
+.puerta-o::before,.puerta-o::after{content:'';flex:1;height:1px;background:var(--linea)}
+/* Sin el pase de la wallet, la clave vuelve a ser el camino principal y su
+   botón vuelve a ser el de oro. Lo decide el CSS y no el JavaScript: así el
+   botón nunca parpadea de un estilo al otro mientras carga /salud. */
+#puertaGenesis[hidden]+form .btn{background:var(--oro);border-color:var(--oro);color:#1B1607}
+#puertaGenesis[hidden]+form .btn:hover{background:var(--oroHi);border-color:var(--oroHi)}
+.campo{display:block;margin-top:16px}
+.campo>span{display:block;margin-bottom:6px;font-size:12.5px;color:var(--tenue)}
+.entrada{width:100%;padding:11px 12px;border-radius:8px;border:1px solid var(--linea2);background:var(--fondo);color:var(--tinta);outline:none}
+.entrada:focus{border-color:var(--oro)}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:10px 16px;border-radius:8px;border:1px solid var(--linea2);background:var(--panel2);color:var(--tinta);font-weight:500}
+.btn:hover{border-color:var(--oro)}
+.btn:disabled{opacity:.45;cursor:default;border-color:var(--linea)}
+.btn-oro{background:var(--oro);border-color:var(--oro);color:#1B1607}
+.btn-oro:hover{background:var(--oroHi);border-color:var(--oroHi)}
+.btn-chico{padding:6px 10px;font-size:12.5px}
+.error{margin-top:12px;font-size:13px;color:var(--mal)}
+
+/* ── la rejilla ─────────────────────────────────────────────────────────── */
+#consola{display:grid;grid-template-rows:56px 1fr;grid-template-columns:228px minmax(0,1fr) 304px;height:100%}
+#cabecera{grid-column:1/-1;display:flex;align-items:center;justify-content:space-between;padding:0 20px;border-bottom:1px solid var(--linea);background:var(--panel)}
+#cabecera .marca{font-size:20px;letter-spacing:.24em}
+#cabecera .marca small{display:block;margin-top:3px;font:500 10px/1 var(--mono);letter-spacing:.14em;text-transform:uppercase;color:var(--oro)}
+#cabecera .quien{display:flex;align-items:center;gap:18px;font-size:12.5px;color:var(--tenue)}
+#cabecera .quien b{color:var(--tinta);font-weight:600}
+.pulso{display:inline-flex;align-items:center;gap:7px;font:500 11px/1 var(--mono);letter-spacing:.06em}
+.pulso i{width:7px;height:7px;border-radius:50%;background:var(--humo)}
+.pulso.ok i{background:var(--bien);box-shadow:0 0 0 3px rgba(124,194,152,.15)}
+.pulso.mal i{background:var(--mal)}
+.pulso.aviso i{background:var(--aviso)}
+.pulso.aviso{color:var(--aviso)}
+
+#indice{border-right:1px solid var(--linea);background:var(--panel);padding:14px 12px;display:flex;flex-direction:column;gap:2px;overflow:auto}
+#indice .rotulo{padding:10px 10px 8px}
+.nav{display:flex;align-items:center;gap:11px;width:100%;text-align:left;padding:10px 12px;border-radius:8px;border:0;background:transparent;color:var(--tenue);font-size:14px}
+.nav svg{width:17px;height:17px;stroke:currentColor;fill:none;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round;flex:none}
+.nav:hover{background:var(--panel2);color:var(--tinta)}
+.nav[aria-current=page]{background:var(--oroBajo);color:var(--oroHi)}
+.nav .n{margin-left:auto;font:500 11px/1 var(--mono);color:var(--humo)}
+#indice .pie{margin-top:auto;padding:12px 10px 4px;font-size:12px;color:var(--humo);line-height:1.6}
+
+#principal{min-width:0;min-height:0;display:flex;flex-direction:column;overflow:hidden}
+.vista{display:none;flex:1;min-height:0;flex-direction:column}
+.vista.activa{display:flex}
+.vista-cab{padding:22px 28px 14px;border-bottom:1px solid var(--linea)}
+.vista-cab h1{margin:0;font:600 26px/1.15 var(--serif);letter-spacing:.01em}
+.vista-cab p{margin:6px 0 0;color:var(--tenue);font-size:13.5px;max-width:70ch}
+.vista-cuerpo{flex:1;min-height:0;overflow:auto;padding:22px 28px 40px}
+
+#tablero{border-left:1px solid var(--linea);background:var(--panel);overflow:auto;padding:18px 16px}
+.tab-bloque{margin-bottom:22px}
+.tab-bloque .rotulo{margin-bottom:10px}
+.dato{display:flex;justify-content:space-between;align-items:baseline;gap:10px;padding:7px 0;border-bottom:1px solid var(--linea);font-size:13px}
+.dato:last-child{border-bottom:0}
+.dato span{color:var(--tenue)}
+.dato b{font-family:var(--mono);font-weight:500;font-variant-numeric:tabular-nums;color:var(--tinta);text-align:right}
+.dato b.ok{color:var(--bien)} .dato b.mal{color:var(--mal)} .dato b.aviso{color:var(--aviso)}
+.casa-fila{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--linea);font-size:13px}
+.casa-fila:last-child{border-bottom:0}
+.casa-fila i{width:8px;height:8px;border-radius:50%;background:var(--humo);flex:none}
+.casa-fila.ok i{background:var(--bien)} .casa-fila.mal i{background:var(--mal)} .casa-fila.aviso i{background:var(--aviso)}
+.casa-fila b{font-weight:600}
+.casa-fila span{margin-left:auto;font-family:var(--mono);font-size:11.5px;color:var(--tenue)}
+/* Un hueco EXPLICADO en vez de una columna de guiones: cuando no hay dato se
+   dice por qué, una vez, y se recupera el sitio que ocupaban cinco renglones
+   vacíos. */
+.hueco{padding:9px 11px;border-radius:8px;border:1px dashed var(--linea2);
+  background:rgba(154,163,177,.05);color:var(--tenue);font-size:12px;line-height:1.55}
+
+/* ── el despacho ────────────────────────────────────────────────────────── */
+#despacho .vista-cuerpo{padding:0;display:flex;flex-direction:column;position:relative;isolation:isolate}
+/* La figura vive DETRÁS del hilo. Ocupa la mitad de abajo del área cuando hay
+   conversación —el texto empieza arriba— y todo cuando es la portada. */
+#presencia{position:absolute;inset:0;width:100%;height:100%;z-index:0;pointer-events:none;
+           transition:opacity .8s ease}
+#presencia.fondo{opacity:.34}
+/* La figura. Va en modo PANTALLA porque es luz sobre negro: así el negro de la
+   imagen desaparece contra el grafito de la casa y el aura del lienzo se ve a
+   través de ella, en vez de quedar tapada por un recorte rectangular. */
+#figura{position:absolute;inset:0;height:96%;width:100%;object-fit:contain;object-position:top center;
+        z-index:0;pointer-events:none;mix-blend-mode:screen;will-change:transform,filter;
+        transition:opacity .8s ease,transform .5s ease}
+/* La viñeta que la funde con el fondo NO se pone aquí: va horneada en la
+   imagen. Con `object-fit:contain` la caja del elemento es más ancha que la
+   imagen, así que una máscara de CSS recorta donde no toca; y en modo pantalla
+   apagar el borde a negro ES recortarlo, exactamente donde termina la figura. */
+/* En un teléfono el cuerpo se mete debajo de las sugerencias: se recorta más
+   arriba y queda el busto. Y llena el ancho —`cover`, no `contain`— porque una
+   imagen más angosta que la pantalla enseña sus cuatro bordes; sangrada por los
+   lados no tiene ninguno. */
+@media(max-width:820px){#figura{height:74%;object-fit:cover}}
+#figura.fondo{opacity:.16}
+#hilo{position:relative;z-index:1;flex:1;min-height:0;overflow:auto;padding:26px 28px 12px}
+/* La portada: cuando no hay nada dicho todavía, la figura y una línea. */
+#portada{position:relative;z-index:1;flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;
+         padding:0 28px 18px;text-align:center;pointer-events:none}
+/* Un velo que sube del pie: la figura se ve entera y el texto se lee encima
+   sin tener que apagarla ni empujarla fuera del encuadre. */
+#portada::before{content:"";position:absolute;inset:auto 0 0;height:42%;pointer-events:none;
+  background:linear-gradient(to top,rgba(10,13,18,.96) 4%,rgba(10,13,18,.78) 30%,rgba(10,13,18,.36) 62%,transparent)}
+#portada>*{position:relative}
+#portada .titulo{font:600 26px/1.2 var(--serif);letter-spacing:.28em;color:var(--tinta);
+                 text-shadow:0 2px 24px rgba(10,13,18,.9)}
+#portada .linea{margin-top:8px;max-width:56ch;font-size:14px;color:var(--tenue);text-shadow:0 2px 18px rgba(10,13,18,.95)}
+.turno{max-width:78ch;margin:0 0 22px}
+.turno .de{display:flex;align-items:baseline;gap:10px;margin-bottom:6px}
+.turno .de b{font:600 12px/1 var(--mono);letter-spacing:.12em;text-transform:uppercase}
+.turno.ultron .de b{color:var(--oro)}
+.turno.miembro .de b{color:var(--tenue)}
+.turno .de time{font:400 11px/1 var(--mono);color:var(--humo)}
+.turno .cuerpo{font-size:15px;line-height:1.6}
+.turno.miembro .cuerpo{color:var(--tinta);background:var(--panel2);border:1px solid var(--linea);border-radius:var(--radio);padding:12px 16px;display:inline-block;max-width:100%}
+.turno .cuerpo p{margin:0 0 10px} .turno .cuerpo p:last-child{margin-bottom:0}
+.turno .cuerpo h1,.turno .cuerpo h2,.turno .cuerpo h3{font:600 17px/1.3 var(--serif);margin:14px 0 6px;color:var(--tinta)}
+.turno .cuerpo ul,.turno .cuerpo ol{margin:6px 0 10px;padding-left:22px}
+.turno .cuerpo li{margin:3px 0}
+.turno .cuerpo table{border-collapse:collapse;margin:8px 0 12px;font-size:13.5px;display:block;overflow-x:auto;max-width:100%}
+.turno .cuerpo th,.turno .cuerpo td{border:1px solid var(--linea2);padding:5px 10px;text-align:left}
+.turno .cuerpo th{background:var(--panel2);font-weight:600}
+.turno .cuerpo code{font-family:var(--mono);font-size:13px;background:var(--panel2);padding:1px 5px;border-radius:4px}
+.turno .cuerpo pre{background:var(--panel2);border:1px solid var(--linea);border-radius:8px;padding:12px;overflow:auto}
+.turno .cuerpo pre code{background:none;padding:0}
+.turno .cuerpo blockquote{margin:8px 0;padding:4px 14px;border-left:2px solid var(--oro);color:var(--tenue)}
+.pensando{font:400 12.5px/1 var(--mono);color:var(--humo);padding:2px 0 14px}
+.pensando::after{content:'…';animation:puntos 1.4s steps(4) infinite}
+@keyframes puntos{0%{content:''}25%{content:'.'}50%{content:'..'}75%{content:'...'}}
+
+/* el registro de lo consultado: cada herramienta, con su entrada y su salida */
+.registro{margin:8px 0 12px;border:1px solid var(--linea);border-radius:8px;background:var(--panel);overflow:hidden}
+.registro summary{list-style:none;display:flex;align-items:center;gap:10px;padding:8px 12px;cursor:pointer;font-size:12.5px;color:var(--tenue)}
+.registro summary::-webkit-details-marker{display:none}
+.registro summary b{font:500 11.5px/1 var(--mono);letter-spacing:.06em;color:var(--oroHi)}
+.registro summary .estado{margin-left:auto;font:400 11px/1 var(--mono);color:var(--humo)}
+.registro summary .estado.viva{color:var(--aviso)}
+.registro .detalle{padding:8px 12px 12px;border-top:1px solid var(--linea);font-family:var(--mono);font-size:12px;line-height:1.55;color:var(--tenue);white-space:pre-wrap;word-break:break-word;max-height:260px;overflow:auto}
+.registro .detalle b{color:var(--humo);font-weight:500}
+.acciones{display:flex;flex-wrap:wrap;gap:8px;margin:6px 0 4px}
+.fuentes{margin-top:8px;font-size:12px;color:var(--humo)}
+.fuentes span{display:inline-block;margin-right:10px}
+
+#sugerencias{display:flex;flex-wrap:wrap;gap:8px;padding:0 28px 12px;position:relative;z-index:2}
+/* Las pastillas caen encima de la parte más ocupada de la figura —el torso,
+   que es donde hay más luz y más líneas— y ahí un fondo transparente es texto
+   sobre ruido. Llevan su propio fondo y su desenfoque: se leen contra
+   cualquier cosa que tengan debajo, sin tener que apagar la figura. */
+.sug{padding:7px 13px;border-radius:999px;border:1px solid var(--linea2);color:var(--tenue);font-size:12.5px;
+  background:rgba(16,20,27,.78);backdrop-filter:blur(7px);-webkit-backdrop-filter:blur(7px)}
+.sug:hover{border-color:var(--oro);color:var(--tinta);background:rgba(22,27,36,.92)}
+
+#compositor{border-top:1px solid var(--linea);background:var(--panel);padding:12px 28px 14px}
+#compositor .caja{display:flex;align-items:flex-end;gap:10px;border:1px solid var(--linea2);border-radius:12px;background:var(--fondo);padding:8px 8px 8px 14px}
+#compositor .caja:focus-within{border-color:var(--oro)}
+#entrada{flex:1;min-height:24px;max-height:180px;resize:none;border:0;background:transparent;outline:none;padding:6px 0;line-height:1.5}
+#entrada::placeholder{color:var(--humo)}
+.icono{width:38px;height:38px;border-radius:9px;border:1px solid var(--linea2);background:var(--panel2);display:inline-flex;align-items:center;justify-content:center;flex:none}
+.icono svg{width:17px;height:17px;stroke:currentColor;fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.icono:hover{border-color:var(--oro)}
+.icono.activo{border-color:var(--oro);color:var(--oroHi);background:var(--oroBajo)}
+.icono.escuchando{border-color:var(--mal);color:var(--mal);animation:latir 1.2s ease-in-out infinite}
+@keyframes latir{50%{box-shadow:0 0 0 5px rgba(217,120,125,.12)}}
+#compositor .pie{display:flex;justify-content:space-between;align-items:center;margin-top:8px;font:400 11px/1 var(--mono);color:var(--humo);letter-spacing:.04em}
+#compositor .pie .voz-estado{color:var(--tenue)}
+
+/* ── el ecosistema ──────────────────────────────────────────────────────── */
+.rejilla{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px}
+.tarjeta{border:1px solid var(--linea);border-radius:12px;background:var(--panel);padding:16px 18px}
+.tarjeta h3{margin:0;font:600 18px/1.2 var(--serif);display:flex;align-items:center;gap:10px}
+.tarjeta h3 i{width:8px;height:8px;border-radius:50%;background:var(--humo)}
+.tarjeta.ok h3 i{background:var(--bien)} .tarjeta.mal h3 i{background:var(--mal)} .tarjeta.aviso h3 i{background:var(--aviso)}
+.tarjeta .que{margin:4px 0 12px;font-size:12.5px;color:var(--tenue)}
+.tarjeta .acciones{margin-top:12px}
+
+/* ── los instrumentos ───────────────────────────────────────────────────── */
+.grupo{margin-bottom:26px}
+.grupo h2{margin:0 0 10px;font:600 15px/1 var(--serif);letter-spacing:.06em;text-transform:uppercase;color:var(--oro)}
+.instrumento{border:1px solid var(--linea);border-radius:10px;background:var(--panel);margin-bottom:8px;overflow:hidden}
+.instrumento summary{list-style:none;display:flex;align-items:center;gap:12px;padding:12px 16px;cursor:pointer}
+.instrumento summary::-webkit-details-marker{display:none}
+.instrumento summary b{font:500 13px/1 var(--mono);color:var(--tinta)}
+.instrumento summary span{font-size:13px;color:var(--tenue)}
+.instrumento summary .sello{margin-left:auto;font:500 10px/1 var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--humo);border:1px solid var(--linea2);border-radius:999px;padding:4px 8px;white-space:nowrap}
+.instrumento summary .sello.escribe{color:var(--aviso);border-color:rgba(217,180,91,.4)}
+.instrumento .forma{padding:6px 16px 16px;border-top:1px solid var(--linea)}
+.instrumento .campos{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px;margin:10px 0 12px}
+.instrumento .salida{margin-top:12px;border:1px solid var(--linea);border-radius:8px;background:var(--fondo);padding:12px;font-family:var(--mono);font-size:12.5px;line-height:1.55;white-space:pre-wrap;word-break:break-word;max-height:380px;overflow:auto;color:var(--tinta)}
+.instrumento .salida.vacia{color:var(--humo)}
+.instrumento .ms{font:400 11px/1 var(--mono);color:var(--humo);margin-top:6px}
+
+/* ── listas: pendientes, biblioteca, bitácora ───────────────────────────── */
+.lista{display:flex;flex-direction:column;gap:6px}
+.item{display:flex;align-items:flex-start;gap:12px;padding:12px 14px;border:1px solid var(--linea);border-radius:10px;background:var(--panel)}
+.item .texto{flex:1;min-width:0}
+.item .texto small{display:block;margin-top:4px;font:400 11.5px/1.4 var(--mono);color:var(--humo)}
+.item.hecho .texto{color:var(--humo);text-decoration:line-through}
+.item .caja-x{width:18px;height:18px;border-radius:5px;border:1px solid var(--linea2);background:var(--fondo);flex:none;margin-top:3px;cursor:pointer}
+.item .caja-x:hover{border-color:var(--oro)}
+.item .quitar{background:none;border:0;color:var(--humo);font-size:16px;line-height:1;padding:0 4px}
+.item .quitar:hover{color:var(--mal)}
+.formulario{display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap}
+.formulario .entrada{flex:1;min-width:220px}
+.vacio{color:var(--humo);font-size:13.5px;padding:20px 0}
+.doc{cursor:pointer}
+.doc:hover{border-color:var(--oro)}
+#lector{border:1px solid var(--linea);border-radius:12px;background:var(--panel);padding:22px 26px;margin-bottom:18px}
+#lector .cuerpo{font-size:14.5px;line-height:1.65}
+#lector h1,#lector h2,#lector h3{font-family:var(--serif)}
+.pestanas{display:flex;gap:4px;margin-bottom:16px;border-bottom:1px solid var(--linea)}
+.pestanas button{background:none;border:0;border-bottom:2px solid transparent;padding:8px 12px;color:var(--tenue);font-size:13.5px;margin-bottom:-1px}
+.pestanas button[aria-selected=true]{color:var(--oroHi);border-bottom-color:var(--oro)}
+
+/* ── el aviso ───────────────────────────────────────────────────────────── */
+#aviso{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:var(--panel3);border:1px solid var(--linea2);border-radius:10px;padding:10px 16px;font-size:13.5px;z-index:60;box-shadow:0 10px 30px rgba(0,0,0,.4)}
+
+/* ── el teléfono ────────────────────────────────────────────────────────── */
+#pestanas-movil{display:none}
+@media (max-width:1180px){
+  #consola{grid-template-columns:228px minmax(0,1fr)}
+  #tablero{display:none}
+  #tablero.vista-movil{display:block;grid-column:2;border-left:0}
+}
+@media (max-width:820px){
+  #consola{grid-template-columns:minmax(0,1fr);grid-template-rows:52px 1fr 58px}
+  #cabecera{padding:0 14px} #cabecera .quien .oculta-movil{display:none}
+  #cabecera .marca{font-size:18px} #cabecera .marca small{display:none}
+  #cabecera .pulso span{display:none} #cabecera .quien{gap:10px}
+  #salir{padding:6px 10px;font-size:12.5px;white-space:nowrap}
+  #indice{display:none}
+  #tablero.vista-movil{grid-column:1}
+  .vista-cab{padding:16px 16px 12px} .vista-cab h1{font-size:22px}
+  .vista-cuerpo{padding:16px 16px 30px}
+  #hilo{padding:18px 16px 8px} #sugerencias{padding:0 16px 10px} #compositor{padding:10px 12px 12px}
+  #pestanas-movil{display:flex;border-top:1px solid var(--linea);background:var(--panel)}
+  #pestanas-movil button{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;padding:8px 2px;border:0;background:none;color:var(--tenue);font:500 10.5px/1 var(--mono);letter-spacing:.04em}
+  #pestanas-movil button svg{width:19px;height:19px;stroke:currentColor;fill:none;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+  #pestanas-movil button[aria-current=page]{color:var(--oroHi)}
+}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+
+<!-- ── LA PUERTA ─────────────────────────────────────────────────────────── -->
+<div id="puerta" hidden>
+  <div class="puerta-caja">
+    <div class="marca">ULTRON</div>
+    <div class="marca-sub">Junta Directiva · Orden Global</div>
+
+    <!-- El pase de la wallet. Oculto mientras no se sepa que este servidor
+         tiene Genesis: enseñar un botón que no puede funcionar es peor que no
+         tenerlo, porque la persona cree que la puerta está rota. -->
+    <div id="puertaGenesis" hidden>
+      <button class="btn btn-oro" id="btnWallet" type="button" style="width:100%;margin-top:22px">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="6" width="20" height="13" rx="2.5"/><path d="M2 10h20"/><circle cx="17.5" cy="14.5" r="1.4"/></svg>
+        Entrar con mi Veta Wallet
+      </button>
+      <p class="puerta-nota">Su identidad la confirma Genesis ID. Acá no escribe ninguna clave.</p>
+      <div class="puerta-o"><span>o con su clave</span></div>
+    </div>
+
+    <form id="formPuerta" autocomplete="on">
+      <label class="campo"><span>Correo</span><input class="entrada" name="correo" type="email" autocomplete="username" required></label>
+      <label class="campo"><span>Clave</span><input class="entrada" name="clave" type="password" autocomplete="current-password" required></label>
+      <button class="btn" type="submit" style="width:100%;margin-top:20px">Ingresar</button>
+    </form>
+
+    <div class="error" id="puertaError" aria-live="polite"></div>
+    <!-- Lo que está PASANDO no es un error y no se pinta en rojo: comprobar
+         una identidad contra Genesis puede tardar unos segundos y en ese rato
+         la persona tiene que ver que algo avanza. -->
+    <div class="puerta-estado" id="puertaEstado" aria-live="polite" hidden></div>
+    <p class="tenue" style="font-size:12px;margin:18px 0 0;line-height:1.5">Acceso reservado a los miembros de la Junta Directiva. Cada sesión queda registrada.</p>
+  </div>
+</div>
+
+<!-- ── LA CONSOLA ────────────────────────────────────────────────────────── -->
+<div id="consola" hidden>
+  <header id="cabecera">
+    <div class="marca">ULTRON<small>Sistema de inteligencia de la Junta Directiva</small></div>
+    <div class="quien">
+      <span class="pulso" id="pulsoCerebro" title="El cerebro"><i></i><span>cerebro</span></span>
+      <span class="pulso oculta-movil" id="pulsoVoz" title="La voz"><i></i><span>voz</span></span>
+      <span class="oculta-movil" id="quienSoy"></span>
+      <button class="btn btn-chico" id="salir" type="button">Cerrar sesión</button>
+    </div>
+  </header>
+
+  <nav id="indice" aria-label="Índice">
+    <div class="rotulo">Consola</div>
+    <button class="nav" data-vista="despacho" title="Hablar con ULTRON: consultas, encargos y lo que hizo para contestar"><svg viewBox="0 0 24 24"><path d="M4 5h16v11H8l-4 4z"/></svg>Despacho</button>
+    <button class="nav" data-vista="ecosistema" title="Cómo está cada casa de Orden Global ahora mismo"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><circle cx="12" cy="12" r="9"/><path d="M12 3v2M12 19v2M3 12h2M19 12h2"/></svg>Ecosistema</button>
+    <button class="nav" data-vista="instrumentos" title="Las herramientas que ULTRON usa para contestar, ejecutables a mano"><svg viewBox="0 0 24 24"><path d="M14 4l6 6-9 9H5v-6z"/><path d="M12 6l6 6"/></svg>Instrumentos<span class="n" id="nInstrumentos"></span></button>
+    <div class="rotulo">Registro</div>
+    <button class="nav" data-vista="pendientes" title="Lo que la Junta dejó pendiente, con quién lo pidió y cuándo"><svg viewBox="0 0 24 24"><path d="M5 12l4 4L19 6"/></svg>Pendientes<span class="n" id="nPendientes"></span></button>
+    <button class="nav" data-vista="biblioteca" title="Los documentos que ULTRON redactó: memorandos, actas, análisis"><svg viewBox="0 0 24 24"><path d="M5 4h10l4 4v12H5z"/><path d="M15 4v4h4M8 13h8M8 17h8"/></svg>Biblioteca</button>
+    <button class="nav" data-vista="bitacora" title="Las conversaciones anteriores con ULTRON"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>Bitácora</button>
+    <div class="rotulo">Gobierno</div>
+    <button class="nav" data-vista="junta" title="Quiénes son los miembros y con qué cargo"><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3"/><circle cx="17" cy="9" r="2.5"/><path d="M3 20c0-3 3-5 6-5s6 2 6 5M14 19c0-2 2-3.5 4-3.5s3 1.5 3 3.5"/></svg>La Junta</button>
+    <button class="nav" data-vista="ajustes" title="Con qué piensa, con qué habla y qué recuerda esta plataforma"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M18.4 5.6l-2.1 2.1M7.7 16.3l-2.1 2.1"/></svg>Ajustes</button>
+    <div class="pie" id="piePlataforma"></div>
+  </nav>
+
+  <main id="principal">
+
+    <section class="vista" id="despacho" aria-label="Despacho">
+      <div class="vista-cuerpo">
+        <!-- LA IMAGEN VA PRIMERO Y EL LIENZO ENCIMA: las moléculas tienen
+             que verse SOBRE el cuerpo, no detrás. Invertir estas dos líneas
+             es lo único que hace falta para que la figura vuelva a parecer
+             una foto quieta. -->
+        <img id="figura" src="/img/ultron.webp" alt="" aria-hidden="true" decoding="async">
+        <canvas id="presencia" aria-hidden="true"></canvas>
+        <div id="portada" hidden><div class="titulo">ULTRON</div><div class="linea" id="portadaLinea"></div></div>
+        <div id="hilo" aria-live="polite"></div>
+        <div id="sugerencias"></div>
+        <div id="compositor">
+          <div class="caja">
+            <textarea id="entrada" rows="1" placeholder="Indique la consulta o la instrucción para ULTRON" aria-label="Consulta"></textarea>
+            <button class="icono" id="btnVoz" type="button" title="Dictar" aria-label="Dictar"><svg viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg></button>
+            <button class="icono" id="btnConversar" type="button" title="Modo conversación: ULTRON escucha, responde y vuelve a escuchar" aria-label="Conversación continua"><svg viewBox="0 0 24 24"><path d="M4 12a8 8 0 0 1 14-5l2-2v6h-6l2-2a5 5 0 0 0-9 3M20 12a8 8 0 0 1-14 5l-2 2v-6h6l-2 2a5 5 0 0 0 9-3"/></svg></button>
+            <button class="icono activo" id="btnEnviar" type="button" title="Enviar" aria-label="Enviar"><svg viewBox="0 0 24 24"><path d="M4 12l16-7-5 16-3-7z"/></svg></button>
+          </div>
+          <div class="pie"><span id="vozEstado" class="voz-estado"></span><span id="cerebroEstado"></span></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="vista" id="ecosistema" aria-label="Ecosistema">
+      <div class="vista-cab"><h1>El ecosistema, en vivo</h1><p>Cada casa de Orden Global, leída de su propio servicio. Lo que no se pudo leer se dice; ningún número se estima.</p></div>
+      <div class="vista-cuerpo"><div class="rejilla" id="casas"></div></div>
+    </section>
+
+    <section class="vista" id="instrumentos" aria-label="Instrumentos">
+      <div class="vista-cab"><h1>Instrumentos</h1><p>Todo lo que ULTRON puede consultar o hacer, agrupado por lo que toca. Cada instrumento se puede ejecutar directamente desde aquí: corre la misma función que usa ULTRON, con el mismo contexto, y devuelve exactamente lo que ULTRON vería.</p></div>
+      <div class="vista-cuerpo" id="catalogo"></div>
+    </section>
+
+    <section class="vista" id="pendientes" aria-label="Pendientes">
+      <div class="vista-cab"><h1>Pendientes y memoria</h1><p>Lo que la Junta tiene por hacer y lo que le ha indicado a ULTRON que conserve. ULTRON anota y cierra pendientes en la conversación; aquí se revisan.</p></div>
+      <div class="vista-cuerpo">
+        <div class="pestanas" role="tablist">
+          <button role="tab" aria-selected="true" data-p="pend">Pendientes</button>
+          <button role="tab" aria-selected="false" data-p="mem">Memoria</button>
+        </div>
+        <div id="pPend">
+          <form class="formulario" id="formPendiente"><input class="entrada" name="texto" placeholder="Nuevo pendiente" required><input class="entrada" name="quien" placeholder="A cargo de (opcional)" style="max-width:200px"><button class="btn btn-oro" type="submit">Anotar</button></form>
+          <label class="tenue" style="font-size:12.5px;display:block;margin-bottom:12px"><input type="checkbox" id="verHechos"> Mostrar los ya cerrados</label>
+          <div class="lista" id="listaPendientes"></div>
+        </div>
+        <div id="pMem" hidden>
+          <form class="formulario" id="formMemoria"><input class="entrada" name="texto" placeholder="Indicación para conservar" required><select class="entrada" name="alcance" style="max-width:170px"><option value="junta">De la Junta</option><option value="miembro">Solo mía</option></select><button class="btn btn-oro" type="submit">Conservar</button></form>
+          <div class="lista" id="listaMemorias"></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="vista" id="biblioteca" aria-label="Biblioteca">
+      <div class="vista-cab"><h1>Biblioteca</h1><p>Los documentos que ULTRON ha redactado a pedido de la Junta: memorandos, actas, análisis, cartas y planes. Cada uno se puede leer aquí o descargar.</p></div>
+      <div class="vista-cuerpo"><div id="lector" hidden></div><div class="lista" id="listaDocumentos"></div></div>
+    </section>
+
+    <section class="vista" id="bitacora" aria-label="Bitácora">
+      <div class="vista-cab"><h1>Bitácora</h1><p>Las conversaciones anteriores con ULTRON. Se puede retomar cualquiera desde el Despacho.</p></div>
+      <div class="vista-cuerpo"><div class="lista" id="listaConversaciones"></div></div>
+    </section>
+
+    <section class="vista" id="junta" aria-label="La Junta">
+      <div class="vista-cab"><h1>La Junta Directiva</h1><p>Los miembros con acceso a ULTRON y los canales por los que ULTRON puede dirigirse a cada uno, siempre con confirmación previa.</p></div>
+      <div class="vista-cuerpo"><div class="lista" id="listaJunta"></div></div>
+    </section>
+
+    <section class="vista" id="ajustes" aria-label="Ajustes">
+      <div class="vista-cab"><h1>Ajustes</h1><p>La voz con la que ULTRON se dirige a usted y el estado de la plataforma.</p></div>
+      <div class="vista-cuerpo">
+        <div class="tarjeta" style="max-width:640px">
+          <h3>La voz</h3>
+          <p class="que">Seleccione una voz y ULTRON la probará con una frase. La selección se conserva en este navegador.</p>
+          <div class="acciones" id="voces"></div>
+          <label class="tenue" style="font-size:13px;display:block;margin-top:14px"><input type="checkbox" id="silencio"> Mantener a ULTRON en silencio (solo texto)</label>
+          <!-- El teléfono de José tenía «quitar animaciones» del sistema y la
+               figura salía congelada. ULTRON respeta ese ajuste a propósito
+               —es de accesibilidad, no un capricho— pero quien lo quiere ver
+               moverse igual tiene que poder decirlo, y sobre todo tiene que
+               ENTERARSE de por qué está quieta. -->
+          <label class="tenue" style="font-size:13px;display:block;margin-top:10px"><input type="checkbox" id="figuraViva"> Mover la figura aunque el teléfono tenga las animaciones apagadas</label>
+          <p class="tenue" id="avisoQuieto" hidden style="font-size:12px;margin:6px 0 0;line-height:1.5">Su dispositivo pide no animar (ahorro de batería o accesibilidad), así que la figura está quieta. Marque la casilla de arriba para moverla igual.</p>
+        </div>
+        <div class="tarjeta" style="max-width:640px;margin-top:14px">
+          <h3>La plataforma</h3>
+          <div id="plataforma"></div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <aside id="tablero" aria-label="Tablero">
+    <div class="tab-bloque"><div class="rotulo">ORIGEN · referencia del oro</div><div id="tabOrigen"></div></div>
+    <div class="tab-bloque"><div class="rotulo">Las casas</div><div id="tabCasas"></div></div>
+    <div class="tab-bloque"><div class="rotulo">Las cadenas</div><div id="tabCadenas"></div></div>
+    <div class="tab-bloque"><div class="rotulo">La Junta</div><div id="tabJunta"></div></div>
+    <div class="tab-bloque"><div class="rotulo">El sistema</div><div id="tabSistema"></div></div>
+  </aside>
+
+  <nav id="pestanas-movil" aria-label="Secciones">
+    <button data-vista="despacho" title="Hablar con ULTRON: consultas, encargos y lo que hizo para contestar"><svg viewBox="0 0 24 24"><path d="M4 5h16v11H8l-4 4z"/></svg>Despacho</button>
+    <button data-vista="tablero" title="La casa en vivo: la referencia del oro, las casas y las cadenas"><svg viewBox="0 0 24 24"><path d="M4 19V9M10 19V5M16 19v-8M22 19H2"/></svg>Tablero</button>
+    <button data-vista="instrumentos" title="Las herramientas que ULTRON usa para contestar, ejecutables a mano"><svg viewBox="0 0 24 24"><path d="M14 4l6 6-9 9H5v-6z"/></svg>Instrumentos</button>
+    <button data-vista="pendientes" title="Lo que la Junta dejó pendiente, con quién lo pidió y cuándo"><svg viewBox="0 0 24 24"><path d="M5 12l4 4L19 6"/></svg>Pendientes</button>
+    <button data-vista="ajustes" title="Con qué piensa, con qué habla y qué recuerda esta plataforma"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3"/></svg>Más</button>
+  </nav>
+</div>
+
+<div id="aviso" hidden></div>
+
+<script src="/markdown.js"></script>
+<script src="/js/datos.js"></script>
+<script src="/js/voz.js"></script>
+<script src="/js/presencia.js"></script>
+<script src="/js/tablero.js"></script>
+<script src="/js/despacho.js"></script>
+<script src="/js/ecosistema.js"></script>
+<script src="/js/instrumentos.js"></script>
+<script src="/js/registro.js"></script>
+<script src="/js/app.js"></script>
+</body>
+</html>

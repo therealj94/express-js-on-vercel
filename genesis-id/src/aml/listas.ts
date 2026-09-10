@@ -288,8 +288,15 @@ export function cargarListas(dir = process.env.GENESIS_LISTAS_DIR): number {
 }
 
 /** Carga en caliente una lista ya parseada. Lo usan las pruebas y el importador. */
-export function cargarEnMemoria(registros: RegistroSancion[], fuente = 'memoria'): number {
-  indice = indexar(registros, [`${fuente} (${registros.length})`], new Date().toISOString().slice(0, 10))
+/* `fechaDescarga` se puede pasar en nulo a proposito: es el caso real de unas
+   listas guardadas en Mongo sin ese campo (ver `cargarDesdeMongo`), y es el
+   unico que hace falta poder montar para probar que se cuentan como vencidas. */
+export function cargarEnMemoria(
+  registros: RegistroSancion[],
+  fuente = 'memoria',
+  fechaDescarga: string | null = new Date().toISOString().slice(0, 10),
+): number {
+  indice = indexar(registros, [`${fuente} (${registros.length})`], fechaDescarga)
   return registros.length
 }
 
@@ -310,7 +317,13 @@ export function estadoListas() {
     cargadaEn: indice.cargadaEn,
     fechaDescarga: indice.fechaDescarga,
     diasDesdeDescarga: dias,
-    vencidas: dias != null && dias > 30,
+    /* SIN FECHA ES MOTIVO DE ALARMA, NO DE SILENCIO.
+       Antes esto era `dias != null && dias > 30`, o sea que unas listas
+       cargadas sin fecha de descarga se daban por frescas PARA SIEMPRE. En un
+       modulo cuyo principio es fallar cerrado, ese contador fallaba abierto:
+       el panel habria dicho «al dia» con listas de dos anios. Si no se sabe
+       cuando se bajaron, hay que tratarlas como viejas. */
+    vencidas: dias == null || dias > 30,
   }
 }
 

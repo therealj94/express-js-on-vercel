@@ -9,6 +9,8 @@ import {
   createHash,
   randomBytes,
   scryptSync,
+  createCipheriv,
+  createDecipheriv,
   timingSafeEqual,
 } from 'crypto'
 
@@ -170,4 +172,143 @@ export function eslabon(anterior: string, contenido: unknown): string {
 
 export const sha256 = (s: string): string => createHash('sha256').update(s).digest('hex')
 
+// ─────────────────────────────────────────────────────────────────────────────
+// La firma de la bitácora
+// ─────────────────────────────────────────────────────────────────────────────
+
+/*
+ * POR QUE HACE FALTA UNA FIRMA SI LA BITACORA YA ESTA ENCADENADA
+ *
+ * El encadenado detecta a un extraño. No detecta a un administrador. Quien
+ * tenga permiso de escritura sobre la base puede borrar entradas, reescribir
+ * las siguientes y recalcular todos los hashes: la cadena verifica ENTERA y
+ * limpia, y no queda rastro. Y el de dentro es exactamente el riesgo que un
+ * regulador quiere ver cubierto en un registro de auditoria.
+ *
+ * Con HMAC deja de poder hacerlo, porque la llave NO vive en la base. Sin ella
+ * no se puede rehacer ni un solo eslabon.
+ *
+ * La llave va en `GENESIS_BITACORA_CLAVE`, y conviene decir en voz alta lo que
+ * eso significa: quien tenga la variable de entorno del servicio puede firmar.
+ * Esto sube el liston de «cualquiera con la cadena de conexion de Mongo» a
+ * «alguien con acceso al panel de despliegue», que no es perfecto pero es otra
+ * liga. El paso siguiente es un KMS, y esta escrito en el diagnostico.
+ */
+
+let claveBitacora: Buffer | null | undefined
+
+function llaveBitacora(): Buffer | null {
+  if (claveBitacora !== undefined) return claveBitacora
+  // `GENESIS_BITACORA_LLAVE` es el mismo secreto con el nombre que usa el
+  // resto de la documentación de despliegue; se aceptan los dos para que una
+  // variable mal nombrada en Render no deje la bitácora sin firmar en silencio.
+  const secreto = (process.env.GENESIS_BITACORA_CLAVE || process.env.GENESIS_BITACORA_LLAVE)?.trim()
+  // Una llave corta no es una llave: da la sensacion de firmar sin firmar.
+  claveBitacora = secreto && secreto.length >= 32
+    ? scryptSync(secreto.normalize('NFKC'), 'genesis-bitacora-v1', 32,
+        { N: SCRYPT_N, r: SCRYPT_r, p: SCRYPT_p })
+    : null
+  return claveBitacora
+}
+
+/** ¿Hay llave para firmar la bitácora? */
+export const bitacoraFirmable = (): boolean => llaveBitacora() !== null
+
+/** Solo para las pruebas: olvida la llave derivada para poder cambiarla. */
+export function olvidarClaveBitacora(): void { claveBitacora = undefined }
+
+/** La firma de un eslabón, o `null` si no hay llave configurada. */
+export function firmarEslabon(hash: string): string | null {
+  const k = llaveBitacora()
+  return k ? createHmac('sha256', k).update(hash).digest('hex') : null
+}
+
+/**
+ * ¿Cuadra esta firma con este eslabón?
+ *
+ * En tiempo constante, aunque acá el atacante no puede pedir comparaciones a
+ * voluntad: cuesta una linea y no hay motivo para dejar el hueco abierto.
+ */
+export function firmaCuadra(hash: string, firma: string): boolean {
+  const esperada = firmarEslabon(hash)
+  if (!esperada || !firma || esperada.length !== firma.length) return false
+  return timingSafeEqual(Buffer.from(esperada), Buffer.from(firma))
+}
+
 export const azar = (bytes = 16): string => randomBytes(bytes).toString('base64url')
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Cifrado del archivo de documentos
+// ─────────────────────────────────────────────────────────────────────────────
+
+/*
+ * Las imágenes del documento de identidad se conservan cinco años porque la
+ * política publicada lo dice y porque la normativa de prevención de blanqueo lo
+ * exige. Pero un montón de fotos de cédulas guardadas en claro es la peor carga
+ * que puede tener esta casa: el día que alguien entre en la base, no se filtran
+ * correos, se filtra la identidad de gente que confió.
+ *
+ * Así que se guardan cifradas, y la llave NO vive en la base: viene del entorno.
+ * Quien consiga una copia de la base no consigue las caras.
+ *
+ * AES-256-GCM y no CBC: GCM autentica además de cifrar, así que un texto cifrado
+ * manipulado falla al descifrar en vez de devolver basura que parece una imagen.
+ */
+
+const SAL_ARCHIVO = 'genesis-id/archivo-documentos/v1'
+
+/* La derivación con scrypt cuesta ~100 ms, así que se hace UNA vez y se guarda.
+   Hacerla por imagen convertiría abrir un expediente con dos caras en un cuarto
+   de segundo de CPU regalado, y esto se llama desde una pantalla. */
+let claveArchivo: Buffer | null | undefined
+
+function clave(): Buffer | null {
+  if (claveArchivo !== undefined) return claveArchivo
+  const secreto = (process.env.GENESIS_ARCHIVO_CLAVE || '').trim()
+  claveArchivo = secreto
+    ? scryptSync(secreto.normalize('NFKC'), SAL_ARCHIVO, 32, { N: SCRYPT_N, r: SCRYPT_r, p: SCRYPT_p })
+    : null
+  return claveArchivo
+}
+
+/** ¿Hay llave para cifrar el archivo? Si no la hay NO se conserva nada: antes
+ *  que guardar documentos de identidad en claro, se borran como hasta ahora. */
+export const archivoConfigurado = (): boolean => clave() !== null
+
+/** Solo para las pruebas: olvida la llave derivada para poder cambiarla. */
+export function olvidarClaveArchivo(): void { claveArchivo = undefined }
+
+/** `v1.iv.tag.cifrado`, todo en base64. Devuelve null si no hay llave. */
+export function cifrar(claro: string): string | null {
+  const k = clave()
+  if (!k) return null
+  const iv = randomBytes(12)
+  const c = createCipheriv('aes-256-gcm', k, iv)
+  const datos = Buffer.concat([c.update(claro, 'utf8'), c.final()])
+  return ['v1', iv.toString('base64'), c.getAuthTag().toString('base64'), datos.toString('base64')].join('.')
+}
+
+/**
+ * Descifra. Devuelve null si no hay llave, si el formato no es el esperado o si
+ * el contenido fue manipulado.
+ *
+ * Lo que NO se rechaza es un valor que nunca se cifró: en la base hay imágenes
+ * guardadas antes de que existiera el cifrado, y devolverlas tal cual es lo
+ * correcto —ya están ahí, negarse a leerlas no las protege y sí deja a un
+ * operador sin poder ver el documento que tiene que revisar—. Se distinguen por
+ * el prefijo, no por adivinar.
+ */
+export function descifrar(guardado: string): string | null {
+  if (!guardado.startsWith('v1.')) return guardado
+  const k = clave()
+  if (!k) return null
+  const [, ivB64, tagB64, datosB64] = guardado.split('.')
+  if (!ivB64 || !tagB64 || !datosB64) return null
+  try {
+    const d = createDecipheriv('aes-256-gcm', k, Buffer.from(ivB64, 'base64'))
+    d.setAuthTag(Buffer.from(tagB64, 'base64'))
+    return Buffer.concat([d.update(Buffer.from(datosB64, 'base64')), d.final()]).toString('utf8')
+  } catch {
+    return null
+  }
+}

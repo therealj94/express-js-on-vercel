@@ -1,0 +1,29 @@
+{
+  "name": "augalaxy",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@react-three/fiber": "9.1.2",
+    "@react-three/postprocessing": "3.0.4",
+    "framer-motion": "^12.15.0",
+    "postprocessing": "6.36.6",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0",
+    "three": "0.175.0",
+    "zustand": "^5.0.5"
+  },
+  "devDependencies": {
+    "@types/react": "^19.1.5",
+    "@types/react-dom": "^19.1.5",
+    "@types/three": "0.175.0",
+    "@vitejs/plugin-react": "^4.5.0",
+    "typescript": "~5.8.3",
+    "vite": "^6.3.5"
+  }
+}

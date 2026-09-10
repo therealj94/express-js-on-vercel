@@ -3,8 +3,9 @@
 // aquí solo se muestra tal cual, sin suavizarlo.
 
 import React, { useState } from 'react';
-import { View, Text, ScrollView, KeyboardAvoidingView, Platform, Image, StyleSheet } from 'react-native';
+import { View, Text, ScrollView, KeyboardAvoidingView, Platform, StyleSheet } from 'react-native';
 import { Icon } from '../icons';
+import { Marca } from '../marca';
 import { C } from '../theme';
 import { Boton, BotonPlano, Campo, Card, hap } from '../ui';
 import * as api from '../api';
@@ -36,8 +37,11 @@ export function Entrar({ alEntrar }) {
   return (
     <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <ScrollView contentContainerStyle={st.lienzo} keyboardShouldPersistTaps="handled">
-        <Image source={require('../../assets/icon.png')} style={st.sello} />
-        <Text style={st.titulo}>Genesis ID</Text>
+        {/* La marca oficial, y no el icono del launcher: es la primera
+            pantalla que ve un operador y tiene que ser la casa. Mientras se
+            comprueba la contraseña, late — la espera se ve, no se adivina. */}
+        <Marca size={96} latiendo={ocupado} style={st.sello} />
+        <Text style={st.titulo}>Genesis <Text style={{ color: '#F5B32B' }}>ID</Text></Text>
         <Text style={st.sub}>Panel de cumplimiento · Orden Global</Text>
 
         <Card style={{ alignSelf: 'stretch', padding: 18, marginTop: 26 }}>
@@ -81,7 +85,7 @@ export function Entrar({ alEntrar }) {
 
 const st = StyleSheet.create({
   lienzo: { flexGrow: 1, alignItems: 'center', justifyContent: 'center', padding: 26 },
-  sello: { width: 92, height: 92, borderRadius: 24 },
+  sello: { marginBottom: 2 },
   titulo: { color: C.txt, fontSize: 26, fontWeight: '800', marginTop: 14 },
   sub: { color: C.txt3, fontSize: 12, letterSpacing: 1.2, textTransform: 'uppercase', marginTop: 4 },
   error: {

@@ -1,0 +1,38 @@
+REGISTROS DNS DE ordenglobal.org PARA QUE SALGA EL CORREO
+Generado midiendo la cuenta de SES y consultando el DNS público.
+========================================================================
+
+[YA ESTA]  CNAME  vaddbn6iwla7zqgsfxlnyo3ebsqfowy6._domainkey.ordenglobal.org
+            valor: vaddbn6iwla7zqgsfxlnyo3ebsqfowy6.dkim.amazonses.com
+            para:  DKIM
+
+[YA ESTA]  CNAME  3g4ktjb67q5wr2ft5kzjdz2unygvixtg._domainkey.ordenglobal.org
+            valor: 3g4ktjb67q5wr2ft5kzjdz2unygvixtg.dkim.amazonses.com
+            para:  DKIM
+
+[YA ESTA]  CNAME  44fz7qhl7v45lgboepf64bf5d3jkipd4._domainkey.ordenglobal.org
+            valor: 44fz7qhl7v45lgboepf64bf5d3jkipd4.dkim.amazonses.com
+            para:  DKIM
+
+[ FALTA ]  MX     correo.ordenglobal.org
+            valor: 10 feedback-smtp.us-east-1.amazonses.com
+            para:  Remitente propio
+
+[ FALTA ]  TXT    correo.ordenglobal.org
+            valor: "v=spf1 include:amazonses.com ~all"
+            para:  Remitente propio
+
+[ FALTA ]  TXT    ordenglobal.org
+            valor: "v=spf1 +a +mx +ip4:50.31.177.34 include:spf.jetsmtp.net include:amazonses.com ~all"
+            para:  SPF (REEMPLAZA el que ya existe)
+            OJO:   no se agrega otro TXT de SPF. Un dominio con DOS registros
+                   SPF falla en TODOS. Se edita el que ya existe y se le mete
+                   include:amazonses.com antes del ~all.
+            hoy:   v=spf1 +a +mx +ip4:50.31.177.34 include:spf.jetsmtp.net ~all
+
+========================================================================
+FALTAN 3 registros de 6.
+
+Ninguno de estos rompe el correo que ya sale hoy. El remitente propio
+esta configurado con USE_DEFAULT_VALUE: mientras el DNS no este, SES
+vuelve solo a amazonses.com y el correo transaccional sigue saliendo.

@@ -5,30 +5,85 @@ de vuelta atrás. La regla que gobierna todo el documento: **ningún paso
 destructivo sin haber verificado el anterior, y ninguna apertura al público
 sin que `verificar.py` cuadre al 100 %.**
 
+> **ALTO — 10-ago-2026.** El ensayo encontró que la cadena tiene **173
+> contratos**, no 14, y que el método de leer el estado por RPC no puede
+> capturarlos. Las etapas 1 y 2 de abajo están **suspendidas** hasta cerrar lo
+> que describe `HALLAZGOS-2026-08-10.md`. No construir ningún génesis con
+> `inventario.py` tal como está: produciría una cadena que parece correcta y
+> ha perdido la mayor parte del estado.
+
+## Los identificadores de red
+
+| Red | Chain ID | Se registra en Chainlist |
+|---|---|---|
+| Orden Global (principal, nueva) | **5550** | sí |
+| Orden Global Testnet | **5534** | sí |
+| Ensayo desechable | **55330** | no, se tira |
+| Cadena vieja (polygon-edge) | 8532 | queda como respaldo caliente |
+
+**El número cambia, y esa es la decisión importante.** Conservar el 8532 en la
+cadena nueva obligaría a apagar la vieja en el corte: con el mismo chain ID,
+una transacción firmada para una vale en la otra, en los dos sentidos y
+mientras las dos existan. Apagar la vieja convierte el respaldo caliente
+—volver reapuntando el DNS, minutos— en uno frío —crear máquinas, restaurar
+2,2 GB, arrancar: horas—. Y un remedio que duele horas, en la práctica, no se
+usa. Con 5550 las dos conviven sin poder contaminarse.
+
+Lo que cuesta: quien agregó la red a mano en MetaMask la vuelve a agregar, y la
+app móvil necesita una actualización OTA. Está todo en un solo punto por
+sistema (ver «El interruptor», abajo).
+
 Comprobado antes de empezar:
 
-- El chain ID **8532 está libre** en el registro público (chainid.network,
-  2.681 cadenas; los vecinos ocupados son 8545 y 8569). Se conserva.
-- La cadena vieja tiene ~250 transacciones históricas y ~1 bloque/10 s.
+- **5550 y 5534 están libres** en el registro público (chainid.network,
+  2.684 cadenas, 10-ago-2026). Los ocupados más cercanos al 5550 son 5545
+  (DuckChain) por abajo y 5551 (Nahmii 2) por arriba, así que el número no
+  tiene margen a los lados: es el único libre de su vecindad inmediata.
+- En `ethereum-lists/chains` **no se puede reservar** un número: se toma cuando
+  se fusiona el PR, y para eso la cadena tiene que estar viva respondiendo por
+  RPC. Por eso cada red se registra en cuanto arranca, no meses después.
+- ~~La cadena vieja tiene ~250 transacciones históricas~~ **desmentido**: el
+  estado real son 332 cuentas, 173 de ellas contratos, y 1.385 ranuras de
+  almacenamiento. Ver `HALLAZGOS-2026-08-10.md`.
 - Polygon Edge está archivado desde el 4-dic-2024 (motivo de la migración).
 
 ## Las piezas de esta carpeta
 
 | Archivo | Qué hace |
 |---|---|
-| `inventario.py` | Etapa 1 — lee TODO el estado de la cadena vieja y lo firma (SHA-256) |
-| `construir-genesis.py` | Convierte el inventario en el génesis Besu, con contratos y saldos |
+| `volcar-estado.go` | **La fuente de verdad**: recorre el árbol de estado del nodo entero y avisa si le falta un solo nodo |
+| `emparejar-preimagenes.py` | Convierte los hashes del árbol en direcciones y ranuras reales; **cuenta lo que no logra** |
+| `inventario.py` | ~~Etapa 1~~ **INSUFICIENTE** — lee por RPC y sólo ve lo que sospecha. Sirve como fuente de candidatos, no como inventario |
+| `construir-genesis.py` | Convierte el inventario en el génesis Besu. **No usar hasta que el emparejamiento cierre en cero** |
 | `verificar.py` | El juez: compara una cadena contra el inventario. Si no cuadra, no se abre |
 | `chainlist/eip155-8532.json` | El registro para Chainlist, listo para el PR |
+| `HALLAZGOS-2026-08-10.md` | Qué encontró el ensayo y qué falta para poder seguir |
 
 ## Etapa 0 · Prerrequisitos (una vez)
 
 - [ ] Credenciales de AWS vigentes (las de la sesión anterior expiraron el 6-ago).
 - [ ] Acuerdo de la Junta sobre el Documento 6 (o al menos: autorización de las
       etapas 1–3, que no tocan producción ni mueven fondos).
-- [ ] Java 21 en las máquinas de ensayo (Besu lo requiere).
+- [x] **Java 25** en las máquinas de ensayo. (Decía «Java 21» y era falso:
+      Besu 26.7.1 está compilado con class file 69 y se niega a arrancar con
+      21. En Amazon Linux 2023: `dnf install java-25-amazon-corretto-headless`.)
 
-## Etapa 1 · Inventario (no toca nada)
+## Etapa 1 · Inventario (no toca nada) — **REHACER, ver HALLAZGOS**
+
+El inventario correcto se toma del árbol de estado del nodo, no del RPC:
+
+```bash
+# en el nodo, sobre una copia del árbol
+go build -o volcar volcar-estado.go
+./volcar -trie ./trie -raiz 0x<stateRoot> -salida estado.json
+python3 emparejar-preimagenes.py estado.json candidatos.json
+```
+
+Sólo cuando el emparejamiento cierre en **cero huérfanas y cero cuentas sin
+dirección** hay un inventario del que se pueda construir un génesis.
+
+Lo de abajo es el método viejo, que se conserva porque su barrido de eventos
+sigue siendo la mejor fuente de direcciones candidatas:
 
 ```bash
 python3 inventario.py            # produce inventario-8532.json + su SHA-256
@@ -44,7 +99,28 @@ apunta en el acta — es lo que hace al inventario inmutable como referencia.
 
 - [ ] Guardar el archivo y su huella en dos sitios (repo + copia fría).
 
-## Etapa 2 · Génesis y ensayo (máquinas temporales, no toca producción)
+## Etapa 2 · Génesis y ensayo — **HECHA el 10-ago-2026**
+
+La cadena de ensayo (chain ID 55330) arrancó con los 130 contratos completos y
+las 159 cuentas de personas, y `comparar-cadenas.py` dio **968 comprobaciones
+iguales, 0 distintas, 0 sin poder comparar**. Eso cubre código desplegado,
+nombre, símbolo, decimales y emisión de cada contrato, más saldo nativo y nonce
+de cada cuenta.
+
+Dos cosas que costaron y conviene no volver a descubrir:
+
+- **QBFT no produce bloques con `--p2p-enabled=false`.** Aunque el nodo esté
+  solo y no tenga con quién hablar, necesita la capa p2p levantada. Se arranca
+  con `--p2p-host=127.0.0.1 --discovery-enabled=false`, que lo deja aislado
+  igual pero produciendo.
+- **Besu colorea su salida.** `public-key export-address` y `rlp encode`
+  devuelven códigos ANSI mezclados con el valor; si se toman tal cual, el
+  `validadores.json` sale con basura y el `extraData` queda vacío. Hay que
+  filtrarlos.
+
+Lo de abajo es el procedimiento, ya validado.
+
+
 
 ```bash
 python3 construir-genesis.py inventario-8532.json --devolver-stake --periodo 10
@@ -66,14 +142,40 @@ En una máquina de ensayo (basta una t3.medium):
 # 1. instalar Besu (empaquetado oficial) y Java 21
 # 2. generar la llave del nodo y sacar su dirección:
 besu --data-path=nodo1 public-key export-address
-# 3. poner esa dirección en validadores.json y codificar el extraData:
-besu rlp encode --from=validadores.json --type=QBFT_EXTRA_DATA
-#    → pegar el resultado en el campo extraData del génesis
+# 3. poner esa dirección en validadores.json. El extraData YA NO se codifica a
+#    mano: lo calcula construir-genesis-desde-arbol.py con --validadores, y se
+#    comprueba en cada ejecución contra el bloque cero de la 5534.
 # 4. arrancar:
-besu --data-path=nodo1 --genesis-file=genesis-besu-8532.json \
+besu --data-path=nodo1 --genesis-file=genesis-besu-5550.json \
      --rpc-http-enabled --rpc-http-api=ETH,NET,WEB3,QBFT \
-     --min-gas-price=0
+     --min-gas-price=93000000000 \
+     --tx-pool-no-local-priority
 ```
+
+**Las dos banderas del gas van juntas o no sirven.** Los nodos de la 5534
+arrancaron con `--min-gas-price=0` copiado de este mismo runbook, y el
+resultado fue que la red aceptaba transacciones gratis. Al poner el suelo,
+seguían entrando: **Besu exime del precio mínimo a las transacciones que llegan
+por su propio RPC**, y hace falta `--tx-pool-no-local-priority` para quitarles
+ese trato. Con las dos, una transacción a 0 gwei se rechaza en el envío con
+«Gas price below configured minimum gas price», que es un error que la app
+puede mostrar, en vez de devolver un comprobante de algo que nunca se minará.
+
+*(Con `zeroBaseFee`, el suelo que la cadena aplica de verdad es «mayor que
+cero». Los 93 gwei son el suelo del cliente. Ver §2.2 de
+`REVISION-COMPLETA-12-AGO.md`.)*
+
+**Cada nodo necesita `<data-path>/static-nodes.json`.** El descubrimiento por
+sí solo no arma la malla: con `--bootnodes` y nada más, los nodos se quedaron
+en cero peers. El archivo es una lista de enodes con IP y puerto 30303, y el
+30303 tiene que estar abierto **en los dos sentidos**, TCP y UDP, entre todas
+las máquinas.
+
+**Si hay balanceador, el chequeo de salud es `/readiness`, nunca
+`/liveness`.** `/liveness` sólo dice que el proceso vive: un nodo parado en el
+bloque 0 lo pasa, entra al grupo y sirve la mitad de las peticiones con saldo
+cero y nonce cero. `/readiness?minPeers=1&maxBlocksBehind=5` mira peers y
+sincronía —comprobado: 200 en el nodo al día, 503 en el vacío.
 
 - [ ] La cadena de ensayo produce bloques.
 - [ ] `python3 verificar.py inventario-8532.json http://ensayo:8545` → TODO CUADRA.
@@ -92,6 +194,38 @@ Operar una semana como un día cualquiera.
 - [ ] El cerebro lee la cadena de ensayo (validadores vía QBFT: ahora sí
       existe `qbft_getValidatorsByBlockNumber` — actualizar `cerebro.html`,
       que hoy decodifica el extraData de Edge a mano).
+
+## El interruptor · dónde cambia el número, sistema por sistema
+
+Hoy **todo sigue en 8532**, a propósito: el backend de producción atiende esa
+red y voltear el número antes del corte rompería la billetera en vivo. Lo que
+está hecho es dejar un solo punto por sistema, para que el corte sea cambiar
+cuatro cosas y no buscar en cuarenta archivos.
+
+| Sistema | Dónde | Hoy | En el corte |
+|---|---|---|---|
+| Billetera web | `apps-web/veta-wallet/app.js` → `window.OG_CHAIN_ID` | 8532 | 5550 |
+| App móvil | `EXPO_PUBLIC_WALLET_CHAIN_ID` (llega por OTA) | 8532 | 5550 |
+| Backend de la wallet | registro en la colección `ChainId` de Mongo | fila 8532 | añadir fila 5550 |
+| Génesis de la cadena | `construir-genesis.py --chain-id` | — | 5550 |
+
+Las otras ~40 apariciones de «8532» en el repositorio son texto de páginas y
+documentos: no rompen nada, se corrigen con el resto de la comunicación.
+
+`construir-genesis.py` **se niega a construir con 8532**. Es a propósito:
+equivocar el chain ID en silencio es peor que no arrancar.
+
+> **CORRECCIONES DEL ENSAYO DEL 12-AGO — leer antes de ejecutar la etapa 4.**
+> Ver `ENSAYO-12-AGO.md`.
+>
+> 1. El directorio de datos del nodo es **`/home/ec2-user/node-x`**, no `node-1`.
+>    `node-1` está abandonado y volcarlo da 0 cuentas.
+> 2. Las herramientas ya están en `/opt/migracion` de node1 (Go, el volcador
+>    compilado, `pycryptodome`, el kit).
+> 3. **El cierre de ranuras caduca.** Cada bloque nuevo abre ranuras que la
+>    lista de candidatos no conoce, y cerrarlas exige el banco de trazado y
+>    varias vueltas. La ventana de una hora sólo es posible si el cierre se
+>    corre a diario y la distancia al corte es de horas.
 
 ## Etapa 4 · El corte (fin de semana, requiere autorización de la Junta)
 

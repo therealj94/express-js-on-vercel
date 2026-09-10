@@ -1,0 +1,18 @@
+[Unit]
+Description=El parte de Orden Global por WhatsApp
+After=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/python3 /srv/aura/parte-diario.py
+WorkingDirectory=/srv/aura
+Environment=AURA_DATOS=/srv/aura
+# A quien le llega. Es el MISMO nombre que decide quien puede pedirlo
+# escribiendo «actualizar»: una sola lista, para que no haya un sitio donde
+# agregar a alguien y otro donde olvidarse.
+Environment=AURA_PARTE_PARA=50432136457
+# El buzon de COPIAS, y la clave de WhatsApp. Ninguno se escribe aqui: este
+# archivo lo imprime entero `systemctl cat`, y lo lee cualquiera que entre a la
+# maquina. Con `-` el parte corre igual si falta uno, y lo dice en el journal.
+EnvironmentFile=-/etc/aura-correo.env
+EnvironmentFile=-/etc/aura-whatsapp.env

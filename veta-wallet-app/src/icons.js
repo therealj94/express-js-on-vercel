@@ -137,6 +137,19 @@ const PATHS = {
   heart: ['M12 21s-8-5.3-8-11.3a4.7 4.7 0 0 1 8-3.3 4.7 4.7 0 0 1 8 3.3c0 6-8 11.3-8 11.3z'],
   earth: [circle(12, 12, 9), 'M3 12h18', 'M12 3a14 14 0 0 1 0 18a14 14 0 0 1 0-18'],
   'trending-up': ['M3 17l6-6 4 4 8-8', 'M15 7h5v5'],
+
+  /* Los dos que le faltaban a la pantalla de Ordenex. Se dibujan y no se
+     sustituyen por otro parecido porque un icono que no existe NO da error:
+     `Icon` devuelve un SVG vacio y el aviso solo sale en desarrollo; en un APK
+     firmado es un hueco mudo.
+     `wallet` NO esta aqui a proposito: ya existe mas arriba. Escribirlo otra
+     vez no da error tampoco — la segunda definicion gana en silencio y cambia
+     el icono en TODA la app. Lo hice, y por eso la prueba ahora busca claves
+     repetidas. */
+  'pricetag': ['M20.6 13.4l-7.2 7.2a2 2 0 0 1-2.83 0l-7-7A2 2 0 0 1 3 12.17V5a2 2 0 0 1 2-2h7.17a2 2 0 0 1 1.42.59l7 7a2 2 0 0 1 0 2.83z',
+               circle(7.6, 7.6, 1.15)],
+  'list': ['M9 6h11', 'M9 12h11', 'M9 18h11',
+           circle(4.6, 6, 1), circle(4.6, 12, 1), circle(4.6, 18, 1)],
 };
 
 // Alias: mismos nombres que usábamos antes.

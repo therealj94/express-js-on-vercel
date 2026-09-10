@@ -3,3 +3,32 @@ node_modules
 .vercel
 dist
 *.zip
+__pycache__/
+
+# Capturas que dejan las pruebas del navegador al correr. Son de un momento
+# concreto y no describen el codigo: en el repositorio solo son ruido en cada
+# diff.
+apps-web/veta-wallet/rej-*.png
+llv-*.png
+
+# El PDF se genera; lo que se versiona es lo que lo genera.
+#
+# Se ignoran dos sitios y no todos: `entregables/`, donde vive el generado, y
+# la RAIZ, que es donde cae si alguien corre el render desde donde no toca —
+# paso, y lo que quedo tirado ahi fue una copia VIEJA y rota de un documento
+# que se le manda a la gente. Una version vieja al lado de la buena es
+# exactamente como se acaba repartiendo la equivocada.
+#
+# Lo que NO se ignora: `documentos-junta/` y `documentos/`, donde los PDF si se
+# versionan a proposito. Una regla `*.pdf` a secas los habria dejado fuera del
+# repositorio el dia que se agregue uno nuevo, sin que nadie se entere.
+entregables/**/*.pdf
+/*.pdf
+
+# sondas temporales de diagnóstico
+apps-web/veta-wallet/pruebas/_*.mjs
+
+# Llaves de publicacion. Si se filtra la cuenta de servicio de Play,
+# cualquiera puede publicar una version de la app en nuestro nombre.
+.secretos/
+*play-service-account*.json

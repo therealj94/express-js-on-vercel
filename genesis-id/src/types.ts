@@ -28,6 +28,28 @@ export type EstadoIdentidad =
   | 'rechazada'
   | 'suspendida'      // estaba verificada y se le retiró
 
+/**
+ * Un bloqueo por infracción de políticas de la empresa.
+ *
+ * ES OTRA COSA QUE `estado: 'suspendida'`, y la diferencia está en cómo se
+ * deshace. Suspender dice «este KYC ya no vale» y para volver hay que rehacer
+ * la verificación entera. Bloquear dice «esta persona no entra»: su identidad
+ * sigue siendo la que es, y levantarlo la devuelve exactamente a donde estaba.
+ *
+ * `levantadoEn` es lo que distingue un bloqueo vigente de uno histórico. Los
+ * bloqueos no se borran nunca: se les pone fecha. Ver src/motor/bloqueo.ts.
+ */
+export interface Bloqueo {
+  motivo: string
+  /** Qué política se infringió, si se quiere dejar dicho. */
+  politica: string | null
+  operador: string
+  desde: string
+  levantadoPor: string | null
+  levantadoEn: string | null
+  levantadoMotivo: string | null
+}
+
 export interface Decision {
   estado: EstadoIdentidad
   operador: string
@@ -84,6 +106,16 @@ export interface Identidad {
   /** El UID solo existe cuando la identidad está verificada. */
   gid: string | null
 
+  /**
+   * La aplicación que la dio de alta, si vino por la API.
+   *
+   * Se guarda para saber A QUIEN AVISAR cuando se decida. Sin esto, una app que
+   * manda a alguien a verificarse no tiene forma de enterarse del resultado
+   * hasta que la persona vuelve y se vincula — y el aviso llegaría tarde o no
+   * llegaría. Vacío para las que se crean desde el panel.
+   */
+  creadaPor?: string | null
+
   documento: RevisionDocumento | null
   biometria: ResultadoBiometria | null
   tamiz: ResultadoTamiz | null
@@ -95,6 +127,19 @@ export interface Identidad {
   vinculos: VinculoApp[]
 
   decisiones: Decision[]
+
+  /**
+   * Los bloqueos por políticas, en orden. Lista de solo añadir.
+   *
+   * El bloqueo VIGENTE es el último sin `levantadoEn`. No hay un booleano
+   * `bloqueada` guardado aparte a propósito: dos sitios donde vive la misma
+   * verdad son un sitio donde un día dicen cosas distintas.
+   *
+   * Opcional porque los expedientes de antes de esto no lo traen; se lee
+   * siempre con `?? []`.
+   */
+  bloqueos?: Bloqueo[]
+
   creadaEn: string
   actualizadaEn: string
   verificadaEn: string | null
@@ -147,6 +192,8 @@ export interface DocumentoNegocio {
 
 export interface Negocio {
   id: string
+  /** La aplicación que lo dio de alta, si vino por la API. Ver `Identidad`. */
+  creadaPor?: string | null
   /** Correo del dueño, que debe tener su propia identidad personal. */
   emailDueno: string
   gidDueno: string | null
@@ -195,6 +242,27 @@ export interface Operador {
   ultimoAcceso: string | null
   /** Para forzar el cambio de la contraseña inicial. */
   debeCambiarContrasena: boolean
+  /** Segundo factor, si el operador lo tiene puesto. */
+  segundoFactor?: SegundoFactor
+}
+
+export interface SegundoFactor {
+  /** El secreto en base32, cifrado si hay llave de archivo configurada. */
+  secreto: string
+  /** Nulo mientras el operador no haya demostrado que escaneó el código. */
+  activadoEn: string | null
+  /**
+   * El ultimo paso de treinta segundos que se acepto.
+   *
+   * Es lo que impide que el MISMO codigo sirva dos veces. Quien lo lee por
+   * encima del hombro tiene medio minuto para reutilizarlo, y sin esto lo
+   * aprovecha: guardar el paso convierte cada codigo en de un solo uso.
+   */
+  ultimoPaso?: number
+  /** Códigos de recuperación de un solo uso, hasheados como una contraseña. */
+  respaldos: string[]
+  /** Cuántos quedan sin usar. Se publica; los códigos no. */
+  respaldosUsados: number
 }
 
 export interface Sesion {
@@ -230,6 +298,49 @@ export interface Aplicacion {
   activa: boolean
   creadaEn: string
   ultimoUso: string | null
+  /** A dónde avisar cuando cambia algo. Ver `enganches/enganches.ts`. */
+  enganche?: Enganche
+}
+
+export interface Enganche {
+  url: string
+  /** Vacío quiere decir «todos». */
+  eventos: string[]
+  activo: boolean
+  puestoEn: string
+  /**
+   * El secreto con el que se firma cada envío.
+   *
+   * Se guarda RECUPERABLE, al revés que `hashClave`, y la diferencia tiene
+   * motivo: de la clave de API solo hay que COMPROBAR que la que llega es la
+   * buena, y para eso basta el hash. Aquí hay que FIRMAR, y no se puede firmar
+   * con un hash. Se dice en voz alta porque es la clase de asimetría que
+   * alguien lee como un descuido.
+   */
+  secreto: string
+}
+
+/** Un aviso concreto a una aplicación concreta, con su historia de intentos. */
+export interface Entrega {
+  id: string
+  /**
+   * Por dónde sale.
+   *
+   * Ausente es `http`, y así se quedan las entregas que ya estaban en la cola
+   * cuando esto se añadió: no hace falta migrar nada.
+   */
+  canal?: 'http' | 'whatsapp'
+  /** La aplicación destinataria, o `persona` cuando el aviso es a alguien. */
+  app: string
+  evento: string
+  url: string
+  cuerpo: string
+  intentos: number
+  proximoIntento: number
+  estado: 'pendiente' | 'entregada' | 'fallida' | 'cancelada'
+  creadaEn: string
+  entregadaEn?: string
+  ultimoError?: string
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -270,6 +381,15 @@ export interface EntradaBitacora {
   /** Hash encadenado con la entrada anterior. */
   hash: string
   hashAnterior: string
+  /**
+   * HMAC del hash con una llave que NO vive en la base.
+   *
+   * Opcional a proposito: las entradas escritas antes de que existiera la
+   * llave no la llevan, y negarse a leerlas seria borrar el pasado. Lo que si
+   * es delito es una firma que no cuadra, o una entrada sin firma DESPUES de
+   * otra firmada: eso ultimo seria alguien quitandolas para poder reescribir.
+   */
+  firma?: string
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -285,7 +405,40 @@ export interface DatosGenesis {
   casos: Caso[]
   movimientos: Movimiento[]
   bitacora: EntradaBitacora[]
+  /** Punteros a las anclas escritas en la cadena. Ver `audit/ancla.ts`. */
+  anclas: AnclaGuardada[]
+  /** Cola de avisos a las aplicaciones. Ver `enganches/enganches.ts`. */
+  entregas: Entrega[]
+  /**
+   * Lo que ya se publicó en la cadena sobre las credenciales.
+   *
+   * No es la prueba —la prueba está en la cadena—: es la nota de qué se publicó
+   * ya, para no volver a pagar gas cada día por escribir lo mismo.
+   */
+  publicado?: {
+    emisor?: { direccion: string; tx: string; fecha: string }
+    revocadas?: { huella: string; n: number; tx: string; fecha: string }
+  }
   version: number
+}
+
+/**
+ * Un ancla ya echada.
+ *
+ * Se guarda SOLO como puntero: la prueba no está aquí, está en la cadena. Si
+ * alguien manipulara esta lista, la comprobación contra la cadena lo delata —
+ * que es justo lo que hace que valga la pena guardarla en un sitio que
+ * controlamos nosotros.
+ */
+export interface AnclaGuardada {
+  fecha: string
+  entradas: number
+  hash: string
+  integra: boolean
+  /** Hash de la transacción en la cadena, si llegó a escribirse. */
+  tx?: string
+  desde?: string
+  cadenaId?: number
 }
 
 export type { Movimiento, Alerta }

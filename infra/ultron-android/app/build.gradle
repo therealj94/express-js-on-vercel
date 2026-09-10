@@ -1,0 +1,61 @@
+plugins { id 'com.android.application' }
+
+/* LA VERSIÓN. `versionCode` es lo que compara la actualización por aire: si el
+   número del servidor es mayor que éste, hay APK nuevo. Sube de uno en uno y
+   nunca baja. `versionName` es lo que ve la persona. */
+def codigo = 3
+def nombre = "1.2.0"
+
+android {
+    namespace 'org.ordenglobal.ultron'
+    compileSdk 34
+    defaultConfig {
+        applicationId "org.ordenglobal.ultron"
+        minSdk 24                 // Android 7: cubre teléfonos de 2016 en adelante
+        targetSdk 34
+        versionCode codigo
+        versionName nombre
+        buildConfigField "String", "CASA", '"https://ultron.ordenglobal.link"'
+    }
+    buildFeatures { buildConfig true }
+    signingConfigs {
+        release {
+            storeFile file(System.getenv("ULTRON_KEYSTORE") ?: "ultron.keystore")
+            storePassword System.getenv("ULTRON_KEYSTORE_CLAVE")
+            keyAlias "ultron"
+            keyPassword System.getenv("ULTRON_KEYSTORE_CLAVE")
+            /* v2 y v3. v1 (la firma vieja dentro del zip) no hace falta con
+               minSdk 24 y solo engorda el APK; v3 es la que deja rotar la
+               llave algún día sin que los teléfonos rechacen la actualización. */
+            enableV1Signing false
+            enableV2Signing true
+            enableV3Signing true
+        }
+    }
+    buildTypes {
+        release {
+            minifyEnabled false
+            signingConfig signingConfigs.release
+        }
+    }
+    compileOptions { sourceCompatibility JavaVersion.VERSION_17; targetCompatibility JavaVersion.VERSION_17 }
+}
+
+/* ── EL CHOQUE DE LA LIBRERÍA DE KOTLIN ──────────────────────────────────────
+   appcompat trae kotlin-stdlib 1.8.22 y swiperefreshlayout arrastra los
+   `-jdk7`/`-jdk8` en 1.6.21. Desde Kotlin 1.8 esos dos se fundieron dentro del
+   principal, así que las mismas clases aparecen dos veces y el empaquetado se
+   niega: «Duplicate class kotlin.io.path.PathsKt». No es un problema nuestro,
+   es una mezcla de versiones: se fijan las tres en la misma y desaparece. */
+configurations.all {
+    resolutionStrategy {
+        force 'org.jetbrains.kotlin:kotlin-stdlib:1.8.22'
+        force 'org.jetbrains.kotlin:kotlin-stdlib-jdk7:1.8.22'
+        force 'org.jetbrains.kotlin:kotlin-stdlib-jdk8:1.8.22'
+    }
+}
+
+dependencies {
+    implementation 'androidx.appcompat:appcompat:1.7.0'
+    implementation 'androidx.core:core:1.13.1'
+}

@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<paths>
+    <!-- Solo la carpeta donde cae la actualización. Nada más se comparte. -->
+    <external-files-path name="descargas" path="Download/" />
+    <files-path name="interna" path="." />
+</paths>

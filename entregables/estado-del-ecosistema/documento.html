@@ -1,0 +1,1044 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Orden Global · Dónde estamos</title>
+<style>
+/* ═══════════════════════════════════════════════════════════════════════════
+   DÓNDE ESTAMOS · documento para la gente que ya está con nosotros
+
+   Se imprime a A4 desde Chromium. Todo el diseño es CSS: sin librerías, sin
+   nada que bajar, y las imágenes son las de la marca — los mismos archivos que
+   sirve la aplicación, no versiones dibujadas para el folleto.
+
+   LA REGLA QUE ORDENA TODO ESTO: ninguna cifra sale de la cabeza de nadie.
+   Cada número de estas diez páginas se midió el 21/08/2026 contra la red o
+   contra el servicio que lo produce, y la última página dice con qué llamada
+   se midió cada uno para que quien quiera lo repita desde su teléfono. Un
+   documento que se puede comprobar vale más que uno que se puede admirar.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+@font-face{font-family:'Cinzel';src:url('img/Cinzel-Bold.woff2') format('woff2');
+  font-weight:700;font-style:normal}
+
+:root{
+  /* El pozo: negro con un suspiro de verde. Es el fondo del Núcleo, no un gris
+     cualquiera — el documento tiene que oler a la misma casa que la app. */
+  --pozo:#04100F; --pozo2:#020A09; --tinta:#0B1A19;
+  --oro:#C9A961; --oroHi:#EAD79C; --oroLt:#DCC489;
+  --crema:#F3ECD9; --humo:#8FA5A0; --bruma:#C4D6D1;
+  --jade:#1E8C74; --linea:rgba(201,169,97,.22); --linea2:rgba(201,169,97,.12);
+  /* PULSE2CHAT tiene su propia paleta y se respeta donde le toca. */
+  --p2c:#0756D9; --p2cCy:#00D9E8; --p2cNavy:#061A4F;
+}
+
+*{margin:0;padding:0;box-sizing:border-box}
+html{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+body{font-family:'Inter','Helvetica Neue',Arial,sans-serif;background:var(--pozo);
+  color:var(--crema);font-size:10.5pt;line-height:1.65;-webkit-font-smoothing:antialiased}
+
+@page{size:A4;margin:0}
+.hoja{width:210mm;height:297mm;position:relative;overflow:hidden;
+  background:var(--pozo);page-break-after:always;display:flex;flex-direction:column}
+.hoja:last-child{page-break-after:auto}
+.cuerpo{padding:22mm 20mm;flex:1;display:flex;flex-direction:column;min-height:0}
+
+/* El pie: discreto, con el número y el sello. Da continuidad sin gritar. */
+.pie{position:absolute;left:20mm;right:20mm;bottom:11mm;display:flex;
+  justify-content:space-between;align-items:center;
+  font-size:7.4pt;letter-spacing:.16em;text-transform:uppercase;color:rgba(143,165,160,.65);
+  border-top:1px solid var(--linea2);padding-top:5mm}
+.pie b{font-weight:600;color:var(--oro);letter-spacing:.2em}
+
+h1,h2,h3,.cinzel{font-family:'Cinzel','Georgia',serif;font-weight:700;letter-spacing:.02em}
+
+/* ── PORTADA ─────────────────────────────────────────────────────────────
+   El monograma grande y una sola frase. La portada no explica: detiene. */
+/* El contenido va centrado en la hoja entera. Con el padding de arriba de
+   `.cuerpo` quedaba corrido hacia arriba y sobraba un tercio de hoja abajo. */
+.portada .cuerpo{padding:0;justify-content:center}
+.portada{background:
+  radial-gradient(90% 60% at 50% 12%, rgba(201,169,97,.13), transparent 62%),
+  radial-gradient(70% 50% at 50% 95%, rgba(30,140,116,.12), transparent 60%),
+  linear-gradient(175deg,#05130F,#020A09 70%);
+  align-items:center;justify-content:center;text-align:center}
+.portada .cuerpo{align-items:center;justify-content:center}
+.portada img.mono{width:52mm;margin-bottom:12mm;
+  filter:drop-shadow(0 0 26px rgba(201,169,97,.32))}
+.portada .titulo{font-family:'Cinzel',serif;font-size:34pt;line-height:1.08;
+  color:var(--crema);margin-bottom:6mm}
+.portada .titulo em{font-style:normal;color:var(--oroHi)}
+.portada .bajada{font-size:12pt;line-height:1.7;color:var(--bruma);max-width:112mm}
+.portada .filete{width:34mm;height:1px;background:linear-gradient(90deg,transparent,var(--oro),transparent);
+  margin:11mm 0}
+.portada .marca{font-size:8pt;letter-spacing:.34em;text-transform:uppercase;color:var(--humo)}
+
+/* ── ESTRUCTURA DE PÁGINA ──────────────────────────────────────────────── */
+.ojo{font-size:7.6pt;letter-spacing:.3em;text-transform:uppercase;color:var(--oro);
+  margin-bottom:6mm;display:flex;align-items:center;gap:4mm}
+.ojo::after{content:"";flex:1;height:1px;background:var(--linea2)}
+h2{font-size:20pt;line-height:1.16;color:var(--crema);margin-bottom:5mm;max-width:150mm}
+h2 em{font-style:normal;color:var(--oroHi)}
+.entrada{font-size:11.4pt;line-height:1.72;color:var(--bruma);max-width:152mm;margin-bottom:8mm}
+p{margin-bottom:4mm;max-width:152mm}
+p.chico{font-size:9.6pt;color:var(--humo);line-height:1.6}
+strong{color:var(--oroHi);font-weight:600}
+
+/* ── EL DATO GRANDE ────────────────────────────────────────────────────────
+   Un número enorme con una etiqueta pequeña es el cliché número uno de este
+   tipo de documento. Aquí se usa UNA sola vez en todo el PDF —en la página de
+   la red— y precisamente porque ahí el número ES el argumento. */
+/* `overflow:hidden` era para que las esquinas redondeadas recortaran el fondo
+   de las celdas. El precio fue que la caja se comía en silencio lo que no le
+   cabía, y eso hizo desaparecer tres bloques del PDF sin decir nada. Con
+   `clip-path` las esquinas siguen redondas y la caja CRECE con su contenido. */
+.rejilla{display:grid;grid-template-columns:repeat(3,1fr);gap:0;
+  border:1px solid var(--linea2);border-radius:3mm;margin:6mm 0;
+  clip-path:inset(0 round 3mm)}
+.rejilla.dos{grid-template-columns:repeat(2,1fr)}
+.rejilla.cuatro{grid-template-columns:repeat(4,1fr)}
+.dato{padding:6mm 5mm;border-right:1px solid var(--linea2);background:rgba(201,169,97,.032)}
+.dato:last-child{border-right:0}
+.dato b{display:block;font-family:'Cinzel',serif;font-size:19pt;color:var(--oroHi);
+  line-height:1.1;margin-bottom:2mm}
+.dato span{display:block;font-size:8pt;letter-spacing:.13em;text-transform:uppercase;
+  color:var(--humo);line-height:1.45}
+
+/* ── LA FIRMA DEL DOCUMENTO: EL PULSO DE LA CADENA ─────────────────────────
+   Sesenta marcas, una por bloque, coloreadas por quién lo firmó. No es una
+   decoración: es el turno real de los siete validadores, y se ve a simple
+   vista que ninguno manda. Es el argumento entero de la página, dibujado. */
+.pulso{display:flex;gap:1.1mm;align-items:flex-end;height:26mm;margin:7mm 0 3mm}
+.pulso i{flex:1;border-radius:.6mm .6mm 0 0;display:block}
+.leyenda{display:flex;flex-wrap:wrap;gap:3mm 6mm;font-size:8pt;color:var(--humo);
+  margin-bottom:5mm}
+.leyenda span{display:flex;align-items:center;gap:2mm}
+.leyenda i{width:3mm;height:3mm;border-radius:.7mm;display:block}
+
+/* ── TARJETAS DE PRODUCTO ──────────────────────────────────────────────── */
+.pieza{display:flex;gap:6mm;align-items:flex-start;padding:6mm 0;
+  border-bottom:1px solid var(--linea2)}
+.pieza:last-child{border-bottom:0}
+.pieza img{width:13mm;height:auto;flex:none;margin-top:1mm}
+.pieza .txt{flex:1}
+.pieza h3{font-size:12pt;color:var(--crema);margin-bottom:2mm}
+.pieza h3 small{font-family:'Inter',sans-serif;font-weight:600;font-size:7.4pt;
+  letter-spacing:.16em;text-transform:uppercase;color:var(--jade);
+  border:1px solid rgba(30,140,116,.45);border-radius:20px;padding:.8mm 2.6mm;
+  margin-left:3mm;vertical-align:2px}
+.pieza h3 small.beta{color:var(--oro);border-color:var(--linea)}
+.pieza p{font-size:10pt;color:var(--bruma);margin:0;max-width:none}
+
+/* ── EL BLOQUE DESTACADO ───────────────────────────────────────────────── */
+.sello{border:1px solid var(--linea);border-radius:3mm;padding:7mm;
+  background:rgba(201,169,97,.05);margin:6mm 0}
+.sello.jade{border-color:rgba(30,140,116,.4);background:rgba(30,140,116,.07)}
+.sello .cinzel{font-size:13pt;color:var(--oroHi);display:block;margin-bottom:3mm}
+.sello p:last-child{margin-bottom:0}
+
+/* Dos afirmaciones lado a lado. NO es el componente de cifras: ese es para
+   números, y una frase metida ahí revienta la caja. Aprendido a la mala. */
+.parejas{display:grid;grid-template-columns:1fr 1fr;gap:5mm;margin:6mm 0}
+.par{border:1px solid var(--linea2);border-radius:3mm;padding:5.5mm;
+  background:rgba(201,169,97,.04)}
+.par b{display:block;font-family:'Cinzel',serif;font-size:11pt;color:var(--oroHi);
+  margin-bottom:2.5mm;line-height:1.25}
+.par span{display:block;font-size:9.2pt;line-height:1.6;color:var(--humo)}
+
+/* ── LA PÁGINA DE PULSE2CHAT, EN SU PROPIA MARCA ───────────────────────── */
+.p2choja{background:
+  radial-gradient(110% 60% at 12% 0%, rgba(7,86,217,.32), transparent 60%),
+  radial-gradient(80% 50% at 92% 4%, rgba(0,217,232,.15), transparent 58%),
+  linear-gradient(170deg,#061A4F,#050B1A 72%)}
+.p2choja .ojo{color:var(--p2cCy)}
+.p2choja .ojo::after{background:rgba(0,217,232,.2)}
+.p2choja h2 em{color:var(--p2cCy)}
+.p2choja .entrada,.p2choja .pieza p{color:#B6CEE6}
+.p2choja .dato b{color:#DFF6FF}
+.p2choja .dato{background:rgba(0,217,232,.05)}
+.p2choja .rejilla,.p2choja .dato,.p2choja .par{border-color:rgba(0,217,232,.2)}
+.p2choja .par{background:rgba(0,217,232,.05)}
+/* Esta hoja lleva logo, dos afirmaciones, dos piezas y un sello: es la más
+   cargada del documento y necesita su propio ritmo, más apretado. */
+.p2choja .entrada{margin-bottom:5mm}
+.p2choja .parejas{margin:3.5mm 0}
+.p2choja .par{padding:4.5mm}
+.p2choja .pieza{padding:3.2mm 0}
+.p2choja .sello{margin:3.5mm 0 0;padding:5mm}
+.p2choja .par b{color:var(--p2cCy)}
+.p2choja .par span{color:#9FB8D4}
+.p2choja .sello{border-color:rgba(0,217,232,.3);background:rgba(0,217,232,.07)}
+.p2choja .sello .cinzel{color:var(--p2cCy)}
+.p2choja strong{color:var(--p2cCy)}
+.p2choja .pie{border-top-color:rgba(0,217,232,.16)}
+.p2choja .pie b{color:var(--p2cCy)}
+/* EL LOGO NECESITA SU PLACA.
+   El 60 % de la tinta del logo es azul oscuro, y puesto sobre el navy de la
+   marca simplemente desaparece. No se toca el logo: el manual prohibe cambiar
+   los colores del gradiente. Se le pone debajo la superficie clara para la que
+   fue dibujado, que es lo que hace cualquier manual de marca con una version
+   sobre fondo oscuro. */
+.p2cplaca{align-self:flex-start;background:#F4F8FC;border-radius:4mm;
+  padding:5mm 8mm;margin-bottom:5mm;box-shadow:0 4mm 14mm -6mm rgba(0,0,0,.55)}
+.p2cplaca img{width:38mm;display:block}
+
+/* Una captura de la aplicación de verdad, presentada como lo que es. El borde
+   y la sombra la separan del papel: sin ellos parece parte del diseño del
+   folleto, y entonces deja de probar nada. */
+.captura{border-radius:3.5mm;overflow:hidden;border:1px solid var(--linea2);
+  box-shadow:0 8mm 18mm -8mm rgba(0,0,0,.8);display:block;width:100%}
+.captura-pie{font-size:8pt;color:var(--humo);text-align:center;margin-top:3mm;
+  letter-spacing:.06em}
+.dos-col{display:grid;grid-template-columns:1fr 1fr;gap:8mm;align-items:start;margin:5mm 0}
+/* La captura que ES el argumento va grande y sola. Metida en una columna al
+   lado de tres párrafos se lee como una miniatura decorativa, y entonces deja
+   de probar lo que vino a probar. */
+.prueba{margin:2mm auto 0;max-width:118mm;display:block}
+.parejas.tres{grid-template-columns:repeat(3,1fr);gap:4mm;margin-top:auto}
+.parejas.tres .par{padding:4.5mm}
+.parejas.tres .par b{font-size:10pt}
+.parejas.tres .par span{font-size:8.6pt;line-height:1.55}
+.dos-col.angosta{grid-template-columns:.85fr 1.15fr}
+/* La tarjeta manda en su hoja: es lo que la gente quiere ver. */
+.dos-col.tarjeta-col{grid-template-columns:1.05fr .95fr;gap:7mm;align-items:center}
+
+/* Lo que TODAVÍA no está. Va con su propia forma —rayada, no rellena— para que
+   no se pueda confundir con lo que sí funciona ni leyendo por encima. */
+.pronto{border:1px dashed var(--linea);border-radius:3mm;padding:6mm;
+  background:transparent;margin:5mm 0}
+.pronto .marbete{font-size:7.4pt;letter-spacing:.24em;text-transform:uppercase;
+  color:var(--oro);display:block;margin-bottom:3mm}
+.pronto b{font-family:'Cinzel',serif;font-size:12pt;color:var(--crema);
+  display:block;margin-bottom:2.5mm}
+.pronto p{margin:0;font-size:9.8pt;color:var(--humo)}
+
+/* Una hoja con más piezas de las que caben con el ritmo normal. Se aprieta ESA
+   hoja y no todas: quitarle aire al documento entero para arreglar una es como
+   se acaba con trece páginas incómodas en vez de una. */
+.hoja-apretada .pieza{padding:4mm 0}
+.hoja-apretada .entrada{margin-bottom:5mm}
+.hoja-apretada .monedas{margin:4mm 0;gap:3mm}
+.hoja-apretada .moneda{padding:4mm}
+.hoja-apretada .ojo{margin-bottom:4mm}
+.hoja-apretada .sello{margin:4mm 0;padding:5.5mm}
+.hoja-apretada .rejilla,.hoja-apretada .parejas{margin:4mm 0}
+.hoja-apretada .hito{padding-bottom:4.5mm}
+.hoja-apretada h2{margin-bottom:4mm}
+
+/* ── LOS ACTIVOS ───────────────────────────────────────────────────────── */
+.monedas{display:grid;grid-template-columns:repeat(3,1fr);gap:4mm;margin:6mm 0}
+.moneda{border:1px solid var(--linea2);border-radius:3mm;padding:5mm;
+  background:rgba(201,169,97,.03);display:flex;gap:4mm;align-items:center}
+.moneda img{width:11mm;height:11mm;border-radius:50%;object-fit:cover;flex:none}
+.moneda .cara{width:11mm;height:11mm;border-radius:50%;flex:none;display:grid;
+  place-items:center;font-family:'Cinzel',serif;font-size:9pt;color:var(--pozo);
+  background:linear-gradient(140deg,var(--oroHi),var(--oro))}
+.moneda b{display:block;font-size:10.5pt;color:var(--crema);line-height:1.2}
+.moneda span{display:block;font-size:8pt;color:var(--humo);line-height:1.4;margin-top:.8mm}
+
+/* LA ESCALERA DEL PRECIO DECLARADO.
+   Cada peldano es un acta de Junta con su fecha y su precio. Se dibuja como
+   escalera y no como grafico de linea a proposito: una linea sugiere un
+   movimiento continuo de mercado, y esto son cinco decisiones puntuales
+   firmadas. La forma tiene que decir la verdad igual que el texto. */
+.escalera{display:flex;align-items:flex-end;gap:0;height:44mm;margin:6mm 0 3mm;
+  border-bottom:1px solid var(--linea2)}
+.peldano{flex:1;height:100%;display:flex;flex-direction:column;justify-content:flex-end;
+  align-items:center;position:relative;padding-bottom:6mm}
+.peldano i{display:block;width:100%;border-top:2px solid var(--oro);
+  background:linear-gradient(rgba(201,169,97,.22),rgba(201,169,97,.02));
+  border-left:1px solid var(--linea2);border-right:1px solid var(--linea2)}
+.peldano.hoy i{border-top-color:var(--oroHi);
+  background:linear-gradient(rgba(234,215,156,.38),rgba(234,215,156,.05))}
+.peldano b{font-family:'Cinzel',serif;font-size:11pt;color:var(--oroHi);
+  position:absolute;white-space:nowrap;line-height:1}
+.peldano.hoy b{font-size:14pt}
+.peldano span{font-size:7.4pt;letter-spacing:.08em;color:var(--humo);
+  position:absolute;bottom:0;white-space:nowrap}
+.actas{display:flex;flex-wrap:wrap;gap:2mm 5mm;font-size:7.8pt;color:var(--humo);
+  margin-bottom:5mm}
+
+/* ── LA LÍNEA DE TIEMPO ────────────────────────────────────────────────── */
+.linea-t{position:relative;padding-left:9mm;margin:6mm 0}
+.linea-t::before{content:"";position:absolute;left:2.2mm;top:2mm;bottom:2mm;width:1px;
+  background:linear-gradient(var(--oro),rgba(201,169,97,.15))}
+.hito{position:relative;padding-bottom:6mm}
+.hito:last-child{padding-bottom:0}
+.hito::before{content:"";position:absolute;left:-7.6mm;top:1.6mm;width:3.4mm;height:3.4mm;
+  border-radius:50%;background:var(--pozo);border:1.4px solid var(--oro)}
+.hito.hoy::before{background:var(--oro);box-shadow:0 0 0 2mm rgba(201,169,97,.14)}
+.hito b{display:block;font-size:10.5pt;color:var(--crema);margin-bottom:1mm}
+.hito span{display:block;font-size:9.4pt;color:var(--humo);line-height:1.6}
+.hito em{font-style:normal;font-size:7.6pt;letter-spacing:.18em;text-transform:uppercase;
+  color:var(--oro);display:block;margin-bottom:1.4mm;white-space:nowrap}
+
+/* ── LA TABLA DE COMPROBACIÓN ──────────────────────────────────────────── */
+table{width:100%;border-collapse:collapse;font-size:8.6pt;margin-top:4mm}
+th{text-align:left;font-size:7.4pt;letter-spacing:.16em;text-transform:uppercase;
+  color:var(--oro);font-weight:600;padding:0 3mm 3mm 0;border-bottom:1px solid var(--linea)}
+td{padding:2.2mm 3mm 2.2mm 0;border-bottom:1px solid var(--linea2);
+  color:var(--bruma);vertical-align:top}
+td.num{color:var(--oroHi);font-weight:600;white-space:nowrap}
+td code{font-family:'SF Mono','Consolas',monospace;font-size:7.6pt;color:var(--humo);
+  word-break:break-all}
+
+.cierre{text-align:center;margin-top:auto;padding-top:6mm}
+.cierre .cinzel{font-size:15pt;color:var(--oroHi);margin-bottom:4mm;display:block}
+.enlaces{display:flex;flex-wrap:wrap;gap:3mm;justify-content:center;margin-top:5mm}
+.enlaces span{font-size:8.4pt;color:var(--bruma);border:1px solid var(--linea2);
+  border-radius:20px;padding:2mm 4.5mm}
+</style>
+
+<!-- ══ 1 · PORTADA ═══════════════════════════════════════════════════════ -->
+<section class="hoja portada">
+  <div class="cuerpo">
+    <img class="mono" src="img/og-mono.png" alt="Orden Global">
+    <div class="titulo">Dónde<br><em>estamos</em></div>
+    <div class="filete"></div>
+    <p class="bajada">El ecosistema completo, en un solo documento.
+      Todo lo que hay acá está funcionando hoy. Cada número se puede comprobar
+      desde tu teléfono en menos de un minuto.</p>
+    <div class="filete"></div>
+    <div class="marca">Orden Global · 21 de agosto de 2026</div>
+  </div>
+</section>
+
+<!-- ══ 2 · LA CARTA ══════════════════════════════════════════════════════ -->
+<section class="hoja">
+  <div class="cuerpo">
+    <div class="ojo">Para quien ya está con nosotros</div>
+    <h2>Cambiamos de cadena.<br><em>Te debemos la explicación.</em></h2>
+    <p class="entrada">Si estás leyendo esto es porque llevás tiempo acá.
+      Merecés saber qué pasó, sin rodeos.</p>
+
+    <p>La cadena anterior, la 8532, quedó <strong>congelada y cerrada</strong>.
+      No creció como tenía que crecer y arrastraba decisiones que no se podían
+      arreglar por encima. En vez de remendarla la paramos y levantamos otra
+      desde el suelo.</p>
+
+    <p>La red que corre hoy es la <strong>5550</strong> y arrancó el
+      <strong>15 de agosto de 2026</strong>. Es nueva. En sus primeros días no
+      ha perdido el paso ni una vez, y en la página siguiente están los números
+      con la forma de comprobarlos.</p>
+
+    <div class="sello">
+      <span class="cinzel">Lo que no cambió</span>
+      <p>Tu cuenta, tu frase de recuperación y tu identidad verificada siguen
+        siendo tuyas y siguen funcionando. Lo que cambió es el suelo sobre el
+        que se apoyan.</p>
+    </div>
+
+    <p>Mientras tanto se construyó el resto. Una billetera con tarjeta. Una casa
+      de cambio con libro de órdenes. Una mensajería cifrada donde también se
+      manda plata. Una identidad verificada que abre todas las puertas. Y una
+      asistente que todavía está aprendiendo.</p>
+
+    <p class="chico">Este documento no lleva proyecciones, ni metas, ni fechas
+      inventadas. Solo lo que existe. Lo que venga se contará cuando exista.</p>
+  </div>
+  <div class="pie"><span>Dónde estamos</span><b>Orden Global</b><span>02</span></div>
+</section>
+
+<!-- ══ 3 · LA RED ════════════════════════════════════════════════════════ -->
+<section class="hoja">
+  <div class="cuerpo">
+    <div class="ojo">La capa uno · red 5550</div>
+    <h2><em id="d-bloques">—</em> bloques.<br>Ni uno fuera de ritmo.</h2>
+    <p class="entrada">Una cadena propia no se demuestra explicándola. Se
+      demuestra dejando que cualquiera la mire. Esto es lo que la red contestó
+      el <span id="d-medido">—</span>.</p>
+
+    <div class="rejilla cuatro">
+      <div class="dato"><b id="d-b2">—</b><span>bloques<br>producidos</span></div>
+      <div class="dato"><b id="d-seg">—</b><span>segundos<br>por bloque</span></div>
+      <div class="dato"><b id="d-val">—</b><span>validadores<br>firmando</span></div>
+      <div class="dato"><b id="d-ritmo">—</b><span>del ritmo<br>teórico</span></div>
+    </div>
+
+    <p><strong>Qué significa «del ritmo teórico».</strong> Una red de bloques de
+      diez segundos, corriendo perfecta desde el 15 de agosto, produciría un
+      número exacto de bloques. La 5550 produjo ese número. Lo que falta para lo
+      ideal cabe en un puñado.</p>
+
+    <div class="ojo" style="margin-top:4mm">Los últimos 60 bloques, y quién firmó cada uno</div>
+    <div class="pulso" id="pulso"></div>
+    <div class="leyenda" id="leyenda"></div>
+    <p class="chico">Cada marca es un bloque real y su color es el validador que
+      lo selló. Ahí se ve el turno. Ninguno firma dos seguidos y ninguno manda.
+      Eso separa una cadena de un servidor con nombre de cadena.</p>
+
+    <div class="sello">
+      <span class="cinzel">Comprobalo vos</span>
+      <p>Abrí <strong>rpc.ordenglobal-rpc.com</strong> desde cualquier billetera
+        que hable Ethereum, o mirá el explorador en <strong>ordenscan</strong>.
+        No hace falta creernos. Hace falta mirar.</p>
+    </div>
+  </div>
+  <div class="pie"><span>La capa uno</span><b>Orden Global</b><span>03</span></div>
+</section>
+
+<!-- ══ 4 · EL MOTOR ══════════════════════════════════════════════════════ -->
+<section class="hoja hoja-apretada">
+  <div class="cuerpo">
+    <div class="ojo">Con nombre y apellido</div>
+    <h2>Hyperledger Besu,<br>consenso <em>QBFT</em></h2>
+    <p class="entrada">Cuando alguien dice «tenemos nuestra propia blockchain»
+      lo justo es preguntar cuál. Esta es la respuesta completa, y la red la
+      confirma sola si se la pregunta.</p>
+
+    <div class="rejilla">
+      <div class="dato"><b>Besu</b><span id="d-cliente2">—</span></div>
+      <div class="dato"><b>QBFT</b><span>consenso<br>bizantino</span></div>
+      <div class="dato"><b>Shanghai</b><span>motor de<br>contratos</span></div>
+    </div>
+
+    <div class="pieza">
+      <img src="img/og.png" alt="">
+      <div class="txt">
+        <h3>Besu es de Hyperledger, la fundación Linux</h3>
+        <p>El motor no lo escribimos nosotros. Es el mismo cliente que usan
+          bancos y consorcios industriales, con código abierto y auditado por
+          gente que no nos conoce. Lo nuestro es la red que corre encima.</p>
+      </div>
+    </div>
+
+    <div class="pieza">
+      <img src="img/gid.png" alt="">
+      <div class="txt">
+        <h3>QBFT aguanta que <span id="d-aguanta">—</span> validadores fallen</h3>
+        <p>Con <span id="d-val3">—</span> validadores en el conjunto, la red
+          sigue produciendo bloques aunque dos se caigan, se corrompan o mientan.
+          No es una promesa nuestra. Es la matemática del consenso, y es la razón
+          de que sean siete y no uno.</p>
+      </div>
+    </div>
+
+    <div class="pieza">
+      <img src="img/og-mono.png" alt="" style="width:15mm">
+      <div class="txt">
+        <h3>Shanghai quiere decir contratos de hoy</h3>
+        <p>Un contrato escrito para Ethereum funciona acá sin traducirlo, y las
+          herramientas de siempre sirven tal cual. Una versión vieja del motor
+          habría sido más fácil y nos dejaba fuera del mundo en dos años.</p>
+      </div>
+    </div>
+
+    <div class="sello jade">
+      <span class="cinzel">Lo que esto nos cuesta, dicho de frente</span>
+      <p>Una red joven tiene menos ojos encima que una veterana. Lo
+        compensamos con siete validadores en regiones distintas y un explorador
+        abierto. No vamos a decir que una red de días tiene el recorrido de una
+        de una década.</p>
+    </div>
+  </div>
+  <div class="pie"><span>El motor</span><b>Orden Global</b><span>04</span></div>
+</section>
+
+<!-- ══ 5 · GENESIS ID ════════════════════════════════════════════════════ -->
+<section class="hoja">
+  <div class="cuerpo">
+    <div class="ojo">La llave del ecosistema</div>
+    <h2>Una identidad.<br><em>Todas las puertas.</em></h2>
+    <p class="entrada">Genesis ID es lo que hace que esto sea un ecosistema y no
+      una carpeta con cinco aplicaciones sueltas. Te verificás una vez y esa
+      verificación abre la billetera, la casa de cambio, la mensajería y los
+      cobros. Sin repetir el trámite en cada puerta.</p>
+
+    <div class="rejilla">
+      <div class="dato"><b id="d-bit">—</b><span>entradas en la<br>bitácora sellada</span></div>
+      <div class="dato"><b>Sí</b><span>bitácora íntegra<br>al medirla</span></div>
+      <div class="dato"><b>0</b><span>selfies<br>guardados</span></div>
+    </div>
+
+    <div class="pieza">
+      <img src="img/gid.png" alt="">
+      <div class="txt">
+        <h3>Verificación con documento y rostro</h3>
+        <p>El rostro se coteja contra la foto del documento con biometría de
+          <strong>AWS Rekognition</strong>, con prueba de vivacidad para que una
+          foto de una foto no pase. Y acá está lo que casi nadie hace.
+          <strong>El selfie no se guarda.</strong> Se compara y se descarta.
+          Queda el veredicto, no tu cara. Un depósito de fotos de documentos es
+          el peor dato que una empresa puede acumular, y decidimos no tenerlo.</p>
+      </div>
+    </div>
+
+    <div class="pieza">
+      <img src="img/og.png" alt="">
+      <div class="txt">
+        <h3>Bitácora encadenada</h3>
+        <p>Cada anotación lleva el resumen criptográfico de la anterior. Si
+          alguien cambiara una entrada vieja, todas las siguientes dejarían de
+          cuadrar. Y cuando un eslabón se rompe no se recalcula. Recalcular
+          destruiría justo lo que aporta. Se deja escrito dónde se rompió y se
+          sigue desde ahí.</p>
+      </div>
+    </div>
+
+    <div class="pieza">
+      <img src="img/pay.png" alt="">
+      <div class="txt">
+        <h3>Para negocios, no solo para personas</h3>
+        <p>Verificación de empresas, tamizado contra listas internacionales y
+          registro de movimientos con país de contraparte. Es la parte aburrida
+          que hace que un negocio de dinero pueda existir de verdad.</p>
+      </div>
+    </div>
+  </div>
+  <div class="pie"><span>Genesis ID</span><b>Orden Global</b><span>05</span></div>
+</section>
+
+<!-- ══ 6 · VETA WALLET ═══════════════════════════════════════════════════ -->
+<section class="hoja">
+  <div class="cuerpo">
+    <div class="ojo">El dinero, en tu bolsillo</div>
+    <h2>Una tarjeta que gasta<br><em>tu ORIGEN</em></h2>
+    <p class="entrada">Tener un activo y poder usarlo son dos cosas distintas.
+      La segunda es la que cambia la vida de alguien. La tarjeta de Veta Wallet
+      se fondea con tu ORIGEN y se paga con ella donde ya se paga con tarjeta.</p>
+
+    <div class="dos-col tarjeta-col">
+      <div>
+        <img class="captura" src="img/tarjeta.png" alt="La tarjeta de Veta Wallet">
+        <div class="captura-pie">La tarjeta, en la aplicación</div>
+      </div>
+      <div>
+        <div class="pieza" style="padding-top:0">
+          <img src="img/gid.png" alt="">
+          <div class="txt">
+            <h3>Del activo al comercio, sin escalas</h3>
+            <p>Fondeás la tarjeta desde tu saldo y comprás. No hace falta vender
+              en otro lado, sacar a un banco y esperar tres días. El puente entre
+              lo que tenés y lo que pagás es la propia billetera.</p>
+          </div>
+        </div>
+        <div class="pieza">
+          <img src="img/og.png" alt="">
+          <div class="txt">
+            <h3>Y lo de siempre, hecho bien</h3>
+            <p>Enviar, recibir, cambiar, ver tu Genesis ID y tus movimientos.
+              Los saldos salen <strong>del contrato, uno por uno</strong>, no de
+              un resumen nuestro. Entrás con tu contraseña, con tu frase de
+              recuperación o traés una billetera de afuera.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="sello" style="margin-top:auto">
+      <span class="cinzel">Tu llave es tuya</span>
+      <p>La frase de recuperación no la tenemos nosotros y no la podemos
+        recuperar por vos. Es la contra de que sea de verdad tuya. Preferimos
+        decirlo antes de que haga falta.</p>
+    </div>
+  </div>
+  <div class="pie"><span>Veta Wallet</span><b>Orden Global</b><span>06</span></div>
+</section>
+
+<!-- ══ 7 · ORDENEX ═══════════════════════════════════════════════════════ -->
+<section class="hoja hoja-apretada">
+  <div class="cuerpo">
+    <div class="ojo">La casa de cambio</div>
+    <h2>Poné tu precio.<br><em>El mercado responde.</em></h2>
+    <p class="entrada">Ordenex no es un botón de «cambiar» con un precio que
+      alguien decidió por vos. Es un mercado. Ponés una orden de compra o de
+      venta al precio que querés y se cruza cuando alguien la acepta.</p>
+
+    <div class="pieza">
+      <img src="img/og.png" alt="">
+      <div class="txt">
+        <h3>Libro de órdenes real</h3>
+        <p>Se ve lo que la gente está pidiendo y lo que está ofreciendo, con sus
+          cantidades. Podés tomar el precio que hay o poner el tuyo y esperar.
+          Las velas del gráfico son <strong>tratos que ocurrieron</strong>, no
+          una línea de adorno.</p>
+      </div>
+    </div>
+
+    <div class="pieza">
+      <img src="img/origen.jpg" alt="" style="width:13mm;border-radius:50%">
+      <div class="txt">
+        <h3>Todo se cambia contra ORIGEN</h3>
+        <p>ORIGEN es la moneda de la casa y cada activo publicado tiene su par
+          contra él. Eso concentra la liquidez en un solo sitio en vez de
+          repartirla entre veinte pares medio vacíos, que es como mueren los
+          mercados chicos.</p>
+      </div>
+    </div>
+
+    <div class="pieza">
+      <img src="img/gid.png" alt="">
+      <div class="txt">
+        <h3>Entrar y salir en lempiras o dólares</h3>
+        <p>A través de <strong>agentes verificados con Genesis ID</strong>. Del
+          otro lado de una entrada o una salida de dinero hay siempre alguien con
+          nombre y documento comprobado.</p>
+      </div>
+    </div>
+
+    <div class="ojo" style="margin-top:5mm">Los seis activos publicados</div>
+    <div class="monedas">
+      <div class="moneda"><img src="img/origen.jpg" alt="">
+        <div><b>ORIGEN</b><span>Nativo de la red · sigue el precio del oro</span></div></div>
+      <div class="moneda"><img src="img/auka.jpg" alt="">
+        <div><b>AUKA</b><span>Referenciado a la onza de oro</span></div></div>
+      <div class="moneda"><img src="img/agka.jpg" alt="">
+        <div><b>AGKA</b><span>Referenciado a la onza de plata</span></div></div>
+      <div class="moneda"><img src="img/ondk.jpg" alt="">
+        <div><b>ONDK</b><span>Token de seguridad · ver página siguiente</span></div></div>
+      <div class="moneda"><span class="cara">IBS</span>
+        <div><b>IBS ENERGY</b><span>Activo del ecosistema</span></div></div>
+      <div class="moneda"><span class="cara">HRV</span>
+        <div><b>HARVIS</b><span>Activo del ecosistema</span></div></div>
+    </div>
+
+    <p class="chico"><strong>Con todas las letras:</strong> ORIGEN y AUKA
+      <em>siguen el precio</em> del metal como referencia. Eso no es lo mismo que
+      decir que cada unidad es una onza guardada en una bóveda, y no lo vamos a
+      decir. En la red hay <span id="d-tok">—</span> contratos vivos. Publicados
+      para cambiar, estos seis. Los otros nueve responden pero no se listan
+      hasta que tengan mercado y quién responda por ellos.</p>
+  </div>
+  <div class="pie"><span>Ordenex</span><b>Orden Global</b><span>07</span></div>
+</section>
+
+<!-- ══ 8 · ONDK ══════════════════════════════════════════════════════════ -->
+<section class="hoja">
+  <div class="cuerpo">
+    <div class="ojo">Token de seguridad</div>
+    <h2>ONDK: <em id="d-ondk-h">—</em> por unidad,<br>y cada precio con su acta</h2>
+    <p class="entrada">ONDK es un token de seguridad. Su precio no lo pone un
+      algoritmo ni el humor del día. Lo declara la Junta Directiva en acta
+      firmada, y esa es toda la historia desde 2024.</p>
+
+    <div class="escalera" id="escalera"></div>
+    <div class="actas" id="actas"></div>
+
+    <div class="pieza">
+      <img src="img/ondk.jpg" alt="" style="width:13mm;border-radius:50%">
+      <div class="txt">
+        <h3>Qué es un precio declarado, y qué no es</h3>
+        <p>Es el valor que la Junta fija y firma para las operaciones internas
+          del ecosistema. <strong>No es una cotización de mercado</strong>, y
+          mientras sea declarado no lo es. La diferencia importa y por eso está
+          escrita acá y no en una nota al pie.</p>
+      </div>
+    </div>
+
+    <div class="pieza">
+      <img src="img/og.png" alt="">
+      <div class="txt">
+        <h3>Qué cambia cuando salga a Ordenex</h3>
+        <p>Al abrir su par contra ORIGEN, ONDK pasa a tener
+          <strong>precio de mercado</strong>. Ahí lo fija quien compra y quien
+          vende, con el libro de órdenes a la vista de todos. El precio declarado
+          deja de mandar y pasa a ser una referencia histórica.</p>
+      </div>
+    </div>
+
+    <div class="sello jade">
+      <span class="cinzel">Y esto hay que decirlo</span>
+      <p>Un precio de mercado sube y baja. Puede quedar por encima del declarado
+        y puede quedar por debajo. Que la Junta haya firmado
+        <span id="d-ondk-p2">—</span> no obliga a nadie a comprar a ese precio
+        el día que el mercado abra. Nadie que te diga lo contrario te está
+        cuidando.</p>
+    </div>
+  </div>
+  <div class="pie"><span>ONDK</span><b>Orden Global</b><span>08</span></div>
+</section>
+
+<!-- ══ 9 · PULSE2CHAT ════════════════════════════════════════════════════ -->
+<section class="hoja p2choja">
+  <div class="cuerpo">
+    <span class="p2cplaca"><img src="img/p2c-logo.png" alt="PULSE2CHAT"></span>
+    <div class="ojo">La mensajería del ecosistema</div>
+    <h2>Ni nosotros podemos<br><em>leer tus mensajes.</em></h2>
+    <p class="entrada">No es una forma de hablar. Cada teléfono se fabrica un par
+      de llaves y la privada nunca sale de ahí. Lo que guarda nuestro servidor
+      son bultos cerrados que no tiene con qué abrir.</p>
+
+    <div class="parejas">
+      <div class="par">
+        <b>Cifrado de punta a punta</b>
+        <span>Lo que escribís y las llamadas. La llave privada de cada teléfono
+          no se puede exportar. Ni el propio código de la aplicación la lee.</span>
+      </div>
+      <div class="par">
+        <b>Código de seguridad</b>
+        <span>Dos personas comparan un número en voz alta. Si coincide, nadie se
+          metió en medio. Es lo que hace que el cifrado no sea solo una palabra
+          en un folleto.</span>
+      </div>
+    </div>
+
+    <div class="pieza">
+      <img src="img/p2c-simbolo.png" alt="">
+      <div class="txt">
+        <h3>Todo lo que se le pide a una app de mensajes</h3>
+        <p>Mensajes, fotos, notas de voz, grupos, reacciones, responder citando,
+          buscar en la conversación, borrar, reenviar y silenciar. Llamadas y
+          videollamadas, también de grupo, con pantalla compartida y en ventanita
+          para seguir usando el resto mientras hablás. Y estados de 24 horas.</p>
+      </div>
+    </div>
+
+    <div class="pieza">
+      <img src="img/origen.jpg" alt="" style="width:13mm;border-radius:50%">
+      <div class="txt">
+        <h3>Y le podés mandar plata ahí mismo</h3>
+        <p>Sin salir de la conversación y sin copiar una dirección. Nadie te
+          escribe si vos no lo aceptaste, se puede bloquear, y esa regla vive en
+          el servidor. Quien intente saltarse la aplicación recibe la misma
+          puerta cerrada.</p>
+      </div>
+    </div>
+
+    <p class="chico" style="margin-top:auto"><strong>Lo que todavía no:</strong>
+      las fotos, los videos y las notas de voz viajan cifrados hasta nuestro
+      servidor, pero ahí se guardan como están. Lo estamos cambiando, y mientras
+      no esté la app lo dice en la propia pantalla del chat.</p>
+  </div>
+  <div class="pie"><span>PULSE2CHAT</span><b>Orden Global</b><span>09</span></div>
+</section>
+
+<!-- ══ 10 · EL PAGO EN EL CHAT ═══════════════════════════════════════════ -->
+<section class="hoja p2choja">
+  <div class="cuerpo">
+    <div class="ojo">Así se ve</div>
+    <h2>«Va ahora mismo»<br><em>y va, de verdad.</em></h2>
+    <p class="entrada">Esto no es una maqueta hecha para este documento. Es la
+      pantalla de la aplicación, tal cual, con su enlace para comprobar el
+      movimiento en el explorador.</p>
+
+    <figure class="prueba">
+      <img class="captura" src="img/pago-en-chat.png" alt="Un pago dentro de una conversación">
+      <figcaption class="captura-pie">PULSE2CHAT · un pago de 25 ORIGEN, con su enlace al explorador</figcaption>
+    </figure>
+
+    <div class="parejas tres">
+      <div class="par">
+        <b>Sin salir de la conversación</b>
+        <span>No hay que copiar una dirección ni preguntar «¿cuál es tu
+          billetera?». La persona ya está en tu chat.</span>
+      </div>
+      <div class="par">
+        <b>El comprobante queda</b>
+        <span>Con el monto, el concepto y el enlace. Los dos lo ven, y
+          cualquiera lo puede comprobar en la cadena.</span>
+      </div>
+      <div class="par">
+        <b>Después de confirmar</b>
+        <span>Aparece cuando la red ya selló el movimiento. Un recibo de algo
+          que no pasó sería una mentira firmada por nosotros.</span>
+      </div>
+    </div>
+  </div>
+  <div class="pie"><span>PULSE2CHAT</span><b>Orden Global</b><span>10</span></div>
+</section>
+
+<!-- ══ 11 · AU-RA ════════════════════════════════════════════════════════ -->
+<section class="hoja">
+  <div class="cuerpo">
+    <div class="ojo">Inteligencia artificial · modelo 1, en beta</div>
+    <h2>AU-RA no sabe de todo.<br>Sabe de <em>esto</em>.</h2>
+    <p class="entrada">No es un modelo de propósito general y no compite con
+      ninguno. Es una asistente que conoce este ecosistema por dentro. Tus
+      saldos, tus contactos, tus movimientos y dónde está cada cosa.</p>
+
+    <div class="pieza">
+      <img src="img/og.png" alt="">
+      <div class="txt">
+        <h3>Prepara, pero no firma</h3>
+        <p>Le decís «mandale veinticinco a Ana» y te deja el envío armado, con el
+          destino sacado de <em>tus contactos</em> y nunca de una dirección
+          inventada. <strong>La contraseña la ponés vos, siempre.</strong> AU-RA
+          no mueve dinero sola, y esa no es una limitación temporal. Es cómo está
+          diseñada.</p>
+      </div>
+    </div>
+
+    <div class="pieza">
+      <img src="img/gid.png" alt="">
+      <div class="txt">
+        <h3>Entiende y contesta hablando</h3>
+        <p>Escucha y responde con la voz del navegador, sin instalar nada. Te
+          lleva a la pantalla que buscás, te explica una moneda, te dice tu saldo
+          y te muestra lo que tenés que revisar.</p>
+      </div>
+    </div>
+
+    <div class="pieza">
+      <img src="img/og-mono.png" alt="" style="width:16mm">
+      <div class="txt">
+        <h3>Se llama modelo 1 a propósito</h3>
+        <p>El nombre lleva número porque esto es el principio de una línea, no un
+          producto cerrado. AU-RA aprende de usarse. Cada pregunta que no
+          entiende y cada camino que alguien recorre es lo que hace mejor a la
+          siguiente. <strong>No vamos a poner una fecha ni a prometer qué sabrá
+          hacer.</strong> Eso se cuenta cuando exista, como todo acá.</p>
+      </div>
+    </div>
+
+    <div class="sello jade">
+      <span class="cinzel">Está en beta, y lo decimos primero</span>
+      <p>AU-RA se equivoca. A veces no entiende y a veces contesta de más. Se
+        presenta como lo que es, modelo 1 en beta, porque preferimos que la
+        juzgues por lo que hace hoy. Lo que nunca hace: inventar un monto,
+        inventar un destino, o firmar por vos.</p>
+    </div>
+  </div>
+  <div class="pie"><span>AU-RA</span><b>Orden Global</b><span>11</span></div>
+</section>
+
+<!-- ══ 12 · AUCORP ═══════════════════════════════════════════════════════ -->
+<section class="hoja hoja-apretada">
+  <div class="cuerpo">
+    <div class="ojo">La pieza que cierra el círculo</div>
+    <h2>AuCorp:<br>banca <em>sin fronteras</em></h2>
+    <p class="entrada">Una empresa constituida, con sede en Próspera y en Dubái,
+      y con sus plataformas construidas. Lo que falta es la licencia, y hasta que
+      esté no vamos a llamarle banco.</p>
+
+    <div class="rejilla">
+      <div class="dato"><b>Constituida</b><span>sociedad<br>ya formada</span></div>
+      <div class="dato"><b>2 sedes</b><span>Próspera<br>y Dubái</span></div>
+      <div class="dato"><b>En trámite</b><span>licencias<br>bancarias</span></div>
+    </div>
+
+    <div class="pieza">
+      <img src="img/og.png" alt="">
+      <div class="txt">
+        <h3>Por qué hace falta</h3>
+        <p>Todo lo de las páginas anteriores mueve valor dentro del ecosistema.
+          Para que ese valor entre y salga del sistema financiero mundial con
+          reglas claras hace falta una contraparte regulada. AuCorp es esa pieza.</p>
+      </div>
+    </div>
+
+    <div class="pieza">
+      <img src="img/gid.png" alt="">
+      <div class="txt">
+        <h3>Dos jurisdicciones, elegidas</h3>
+        <p>Próspera para operar cerca de donde está nuestra gente, con un marco
+          pensado para empresas nuevas. Dubái para el alcance internacional y el
+          acceso a corresponsalía. Son dos sedes de la misma empresa, no dos
+          proyectos.</p>
+      </div>
+    </div>
+
+    <div class="pieza">
+      <img src="img/pay.png" alt="">
+      <div class="txt">
+        <h3>Las plataformas ya están construidas</h3>
+        <p>No se empieza a programar el día que llegue el permiso. El trabajo
+          técnico está hecho. Cuando la licencia esté, se enciende un sistema
+          que ya existe.</p>
+      </div>
+    </div>
+
+    <div class="sello">
+      <span class="cinzel">La palabra «banco», con cuidado</span>
+      <p>AuCorp no presta servicios bancarios todavía y no los va a prestar hasta
+        tener la licencia que corresponde. Lo decimos así de claro porque en
+        esto la precisión no es un detalle legal. Es lo que separa a una empresa
+        seria de una que promete de más.</p>
+    </div>
+  </div>
+  <div class="pie"><span>AuCorp</span><b>Orden Global</b><span>12</span></div>
+</section>
+
+<!-- ══ 13 · LAS APPS ═════════════════════════════════════════════════════ -->
+<section class="hoja hoja-apretada">
+  <div class="cuerpo">
+    <div class="ojo">En tu teléfono</div>
+    <h2>Las aplicaciones están<br>en <em>verificación</em></h2>
+    <p class="entrada">Todo lo que leíste funciona hoy en el navegador, con la
+      misma cuenta y desde cualquier teléfono. Las aplicaciones nativas están en
+      revisión en las dos tiendas.</p>
+
+    <div class="parejas">
+      <div class="par">
+        <b>Android</b>
+        <span>Desde el <strong>24 de agosto de 2026</strong> se descarga en
+          nuestra página. En la tienda de Google, pronto.</span>
+      </div>
+      <div class="par">
+        <b>iOS</b>
+        <span>En revisión en la App Store. Mientras tanto, la versión web
+          funciona completa en el navegador del iPhone.</span>
+      </div>
+    </div>
+
+    <p class="chico">Android te va a pedir permiso una vez para instalar desde
+      la web. Descargala solo desde nuestro dominio. Si te llega por otro lado,
+      no es la nuestra.</p>
+
+    <div class="ojo" style="margin-top:7mm">Cómo llegamos hasta acá</div>
+    <div class="linea-t">
+      <div class="hito">
+        <em>Antes</em>
+        <b>La cadena 8532</b>
+        <span>Funcionó, enseñó lo que había que aprender y llegó a un techo que
+          no se podía subir remendando. Se congeló y se cerró.</span>
+      </div>
+      <div class="hito">
+        <em>15 de agosto de 2026</em>
+        <b>Arranca la red 5550</b>
+        <span>Besu con consenso QBFT, siete validadores en regiones distintas, y
+          los quince activos del ecosistema desplegados y respondiendo.</span>
+      </div>
+      <div class="hito">
+        <em>Estos días</em>
+        <b>Genesis ID debajo de todo</b>
+        <span>Identidad con biometría y bitácora encadenada, puesta como
+          cimiento en vez de al lado.</span>
+      </div>
+      <div class="hito hoy">
+        <em>Hoy · <span id="d-hoy2">—</span></em>
+        <b>Todo en un solo lugar</b>
+        <span>Billetera con tarjeta, mercado, mensajería cifrada con pagos,
+          identidad y asistente. Una cuenta, una red.</span>
+      </div>
+    </div>
+
+    <p class="chico" style="margin-top:auto">Lo que sigue abierto está escrito
+      en cada página que le toca. Cifrar los archivos del chat, los avisos con la
+      aplicación cerrada, sumar validadores y la licencia de AuCorp. Una lista de
+      pendientes a la vista vale más que una lista de promesas.</p>
+  </div>
+  <div class="pie"><span>En tu teléfono</span><b>Orden Global</b><span>13</span></div>
+</section>
+
+<!-- ══ 14 · COMPROBALO ═══════════════════════════════════════════════════ -->
+<section class="hoja">
+  <div class="cuerpo">
+    <div class="ojo">Las cuentas claras</div>
+    <h2>Cada número de este documento,<br>y <em>dónde comprobarlo</em></h2>
+    <p class="entrada">Un documento que se puede comprobar vale más que uno que
+      se puede admirar. Estos son todos los datos que aparecen en estas páginas,
+      con la medición exacta que los produjo.</p>
+
+    <table>
+      <tr><th>Dato</th><th>Valor</th><th>De dónde salió</th></tr>
+      <tr><td>Bloques de la red</td><td class="num" id="t-bloque">—</td>
+          <td><code>eth_blockNumber</code> en rpc.ordenglobal-rpc.com</td></tr>
+      <tr><td>Segundos por bloque</td><td class="num" id="t-seg">—</td>
+          <td>Tiempo entre el bloque 1 y el último, dividido entre los bloques</td></tr>
+      <tr><td>Software de la red</td><td class="num" id="t-cliente">—</td>
+          <td><code>web3_clientVersion</code></td></tr>
+      <tr><td>Validadores</td><td class="num" id="t-val">—</td>
+          <td><code>qbft_getValidatorsByBlockNumber</code></td></tr>
+      <tr><td>Nodos conectados</td><td class="num" id="t-pares">—</td>
+          <td><code>net_peerCount</code></td></tr>
+      <tr><td>Red arrancó el</td><td class="num" id="t-desde">—</td>
+          <td>Fecha del bloque 1</td></tr>
+      <tr><td>Contratos vivos</td><td class="num" id="t-tok">—</td>
+          <td><code>totalSupply()</code> de cada contrato de la red</td></tr>
+      <tr><td>Precio declarado de ONDK</td><td class="num" id="t-ondk">—</td>
+          <td>Acta <span id="t-acta">—</span>, firmada por el Secretario de la Junta</td></tr>
+      <tr><td>Bitácora de Genesis ID</td><td class="num" id="t-bit">—</td>
+          <td><code>/healthz</code> de genesis-id.onrender.com</td></tr>
+      <tr><td>Identificador de la red</td><td class="num" id="t-cadena">—</td>
+          <td><code>eth_chainId</code></td></tr>
+    </table>
+
+    <p class="chico" style="margin-top:5mm">Medido el <span id="d-medido2">—</span>.
+      Los números de una red viva cambian mientras leés. Los bloques van a ser
+      más de los que dice esta hoja, y eso es exactamente lo que tiene que pasar.</p>
+
+    <div class="cierre">
+      <span class="cinzel">Nada de esto es una promesa.<br>Todo está andando.</span>
+      <p class="chico" style="max-width:120mm;margin:0 auto">Si algo de lo que
+        leíste no cuadra con lo que ves en la aplicación, escribinos. Preferimos
+        que nos lo digas.</p>
+      <div class="enlaces">
+        <span>app.vetawallet.com</span>
+        <span>ordenexchange.link</span>
+        <span>ordenglobal.org</span>
+      </div>
+    </div>
+  </div>
+  <div class="pie"><span>Las cuentas claras</span><b>Orden Global</b><span>14</span></div>
+</section>
+
+<script>
+/* Los números y los dibujos se inyectan desde `datos.json`, que se generó
+   midiendo. El HTML no lleva ni una cifra escrita a mano: si la medición no
+   corrió, las páginas muestran una raya en vez de un dato bonito e inventado. */
+(async () => {
+  const d = await (await fetch('datos.json')).json();
+  const poner = (id, v) => { const e = document.getElementById(id); if (e) e.textContent = v; };
+  const mil = n => n.toLocaleString('es-HN');
+
+  poner('d-bloques', mil(d.bloque));  poner('d-b2', mil(d.bloque));
+  poner('d-seg', d.segundosPorBloque.toFixed(1));
+  poner('d-val', d.validadores);      poner('d-ritmo', d.ritmo.toFixed(1) + ' %');
+  poner('d-medido', d.medidoEn);      poner('d-medido2', d.medidoEn);
+  poner('d-bit', mil(d.gidBitacora)); poner('d-tok', d.tokensVivos);
+  poner('d-hoy2', d.medidoEn.slice(0, 10));
+
+  /* El motor. La versión sale entera de `web3_clientVersion` y se recorta a lo
+     que le importa a una persona: el nombre y el número. */
+  const v = (d.cliente || '').split('/');
+  poner('d-cliente2', (v[1] || '') + ' · cliente de Hyperledger');
+  poner('d-aguanta', d.aguanta);
+  poner('d-val3', d.validadoresConsenso);
+
+  poner('t-bloque', mil(d.bloque));   poner('t-seg', d.segundosPorBloque.toFixed(1) + ' s');
+  poner('t-val', d.validadoresConsenso);  poner('t-pares', d.pares);
+  poner('t-desde', d.desde);          poner('t-tok', d.tokensVivos + ' de ' + d.tokens);
+  poner('t-bit', mil(d.gidBitacora)); poner('t-cadena', d.cadena);
+  poner('t-cliente', 'Besu ' + (v[1] || ''));
+
+  /* ONDK. El precio y su acta, siempre juntos: un precio sin su acta es un
+     número, y un número sin fuente no vale nada en un documento como este. */
+  if (d.ondk) {
+    const usd = n => n.toFixed(2) + ' USD';
+    poner('d-ondk-h', usd(d.ondk.precio));
+    poner('d-ondk-p2', usd(d.ondk.precio));
+    poner('t-ondk', usd(d.ondk.precio));
+    poner('t-acta', d.ondk.acta);
+
+    /* La escalera. Cada peldaño es un acta, y la altura sale del precio con un
+       piso del 30 % para que el primero se vea: una barra de altura cero no
+       comunica «poco», comunica «error». */
+    const esc = document.getElementById('escalera');
+    const max = Math.max(...d.ondk.serie.map(x => x.precio));
+    d.ondk.serie.forEach((p, i) => {
+      const ultimo = i === d.ondk.serie.length - 1;
+      const el = document.createElement('div');
+      el.className = 'peldano' + (ultimo ? ' hoy' : '');
+      const alto = 30 + (p.precio / max) * 70;
+      /* El rótulo se coloca por encima de SU barra con la misma cuenta que
+         la altura, para que crecer el texto del último no le robe altura a su
+         propia barra: eso hacía que 2.15 se viera más bajo que 2.10. */
+      el.innerHTML = `<b style="bottom:calc(${alto}% + 3mm)">${p.precio.toFixed(2)}</b>
+        <i style="height:${alto}%"></i>
+        <span>${p.fecha.slice(8, 10)}/${p.fecha.slice(5, 7)}/${p.fecha.slice(2, 4)}</span>`;
+      esc.appendChild(el);
+    });
+    const actas = document.getElementById('actas');
+    actas.textContent = 'Actas: ' + d.ondk.serie.map(p => p.acta).join(' · ');
+  }
+
+  /* EL PULSO. Cada barra es un bloque real y su color, el validador que lo
+     firmó. Siete tonos que se distinguen de verdad: cuatro dorados parecidos no
+     dejaban ver el turno, y el turno es el argumento entero de esa página. */
+  const TINTES = ['#EAD79C','#1E8C74','#D89A4E','#7ED8C4','#9B7F3E','#4FA8C7','#C46A5A'];
+  const pulso = document.getElementById('pulso');
+  const leyenda = document.getElementById('leyenda');
+  const orden = [...new Set(d.turno)];
+  d.turno.forEach((firmante, i) => {
+    const b = document.createElement('i');
+    b.style.background = TINTES[orden.indexOf(firmante) % TINTES.length];
+    b.style.height = (52 + (i * 37 % 48)) + '%';
+    pulso.appendChild(b);
+  });
+  orden.forEach((f, k) => {
+    const s = document.createElement('span');
+    s.innerHTML = `<i style="background:${TINTES[k % TINTES.length]}"></i>Validador ${k + 1}
+      · ${f.slice(0, 8)}…`;
+    leyenda.appendChild(s);
+  });
+  document.body.dataset.listo = '1';
+})();
+</script>

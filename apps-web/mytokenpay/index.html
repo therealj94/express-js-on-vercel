@@ -134,6 +134,9 @@ h1,h2,h3,.disp{font-family:var(--disp);font-weight:600;letter-spacing:-.02em}
 .r-desc{margin-top:11px;font-size:13.5px;color:var(--niebla);line-height:1.55;
   display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 .r-pie{margin-top:13px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:12px;color:var(--niebla2)}
+/* El «Abrir» de cada tarjeta media 35x14. Es EL enlace de la tarjeta —lo que
+   uno viene a tocar— y era el blanco mas chico de la pagina. */
+.r-pie a{display:inline-flex;align-items:center;min-height:40px;padding:0 6px}
 .chapa{display:inline-flex;align-items:center;gap:5px;padding:3px 9px;border-radius:100px;font-size:11.5px;font-weight:700}
 .ch-ok{background:rgba(52,211,153,.13);color:var(--ok)}
 .ch-rev{background:rgba(251,191,36,.13);color:var(--alerta)}
@@ -208,9 +211,34 @@ h1,h2,h3,.disp{font-family:var(--disp);font-weight:600;letter-spacing:-.02em}
   backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}
 .techo .tm{display:flex;align-items:center;gap:10px;font-family:var(--disp);font-weight:800;font-size:17px;letter-spacing:-.02em}
 .techo .tm img{width:28px;height:28px;border-radius:8px}
-.idiomas{display:flex;border:1px solid var(--borde);border-radius:100px;overflow:hidden;background:rgba(23,18,36,.7)}
-.idiomas button{padding:7px 14px;font-size:12px;font-weight:700;letter-spacing:.08em;color:var(--niebla2);transition:.2s}
+.idiomas{display:flex;flex:none;border:1px solid var(--borde);border-radius:100px;overflow:hidden;background:rgba(23,18,36,.7)}
+  /* 40 px de alto: por debajo de eso se falla el toque en un telefono. */
+.idiomas button{padding:13px 14px;min-height:40px;font-size:12px;font-weight:700;letter-spacing:.08em;color:var(--niebla2);transition:.2s}
 .idiomas button[aria-pressed=true]{background:linear-gradient(100deg,var(--violeta),var(--azul));color:#fff}
+
+/* EL TECHO EN UN TELEFONO.
+   Las tres piezas del techo miden juntas unos 370 px y a 360 px solo quedaban
+   324 libres: el que se salia era el grupo ES/EN, o sea el ultimo de la fila.
+   Medido antes: el boton EN terminaba en 401 px de una pantalla de 360, y a
+   320 px se salian los dos. Como el techo es `position:fixed`, la pagina no
+   crecia ni aparecia barra de desplazamiento: el boton simplemente quedaba
+   fuera del cristal, sin gesto que lo trajera. Quien abriera la pagina en
+   ingles no tenia como volver al español.
+
+   El reparto sigue el mismo criterio que AuCorp, que ya lo tenia resuelto: el
+   idioma NUNCA cede ancho (`flex:none`, arriba) porque es un mando y a medio
+   mando no se llega; la marca encoge de tamaño; y lo unico que se estruja de
+   verdad es el enlace al ecosistema, que es secundario. Se estruja, no se
+   esconde: sigue siendo la unica salida hacia el resto de la casa. */
+@media (max-width:520px){
+  .techo{padding-left:14px;padding-right:14px;gap:10px}
+  .techo .tm{font-size:15px;flex:none;min-width:0}
+  .techo .tm img{width:24px;height:24px}
+  /* `min-width:0` ademas del recorte: sin el, un hijo de flex se niega a bajar
+     de su contenido minimo y el ellipsis no llega a activarse nunca. */
+  .techo>a.btn{flex:0 1 auto;min-width:0;padding-left:12px;padding-right:12px;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block;line-height:1.5}
+}
 
 #bienvenida{position:relative;min-height:min(100svh,880px);display:grid;align-items:center;
   grid-template-columns:minmax(0,6fr) minmax(0,5fr);gap:clamp(20px,3.5vw,54px);
@@ -298,7 +326,10 @@ h1,h2,h3,.disp{font-family:var(--disp);font-weight:600;letter-spacing:-.02em}
 .cierre .btns{margin-top:34px;display:flex;gap:12px;flex-wrap:wrap}
 .pie{border-top:1px solid var(--borde);padding:24px clamp(20px,5vw,60px);display:flex;gap:18px;flex-wrap:wrap;
   align-items:center;justify-content:space-between;max-width:1440px;margin:0 auto;font-size:12.5px;color:var(--niebla2)}
-.pie a{color:var(--niebla)}
+/* Los enlaces del pie median QUINCE pixeles de alto: el correo de contacto,
+   los terminos y la privacidad. Los dos ultimos son los que pide una tienda
+   de aplicaciones que se puedan encontrar. */
+.pie a{color:var(--niebla);display:inline-flex;align-items:center;min-height:40px;padding:0 4px}
 .pie a:hover{color:var(--cian)}
 .pie nav{display:flex;gap:16px;flex-wrap:wrap}
 
@@ -339,6 +370,7 @@ h1,h2,h3,.disp{font-family:var(--disp);font-weight:600;letter-spacing:-.02em}
 
 <header class="techo" id="techo">
   <div class="tm"><img src="assets/mark.png" alt="">MyTokenPay</div>
+  <a class="btn btn-linea btn-sm" href="https://www.vetawallet.com/" data-t="x.eco"></a>
   <div class="idiomas" role="group" aria-label="Idioma">
     <button data-lang="es" aria-pressed="true" onclick="MTP.idioma('es')">ES</button>
     <button data-lang="en" aria-pressed="false" onclick="MTP.idioma('en')">EN</button>
@@ -418,7 +450,10 @@ h1,h2,h3,.disp{font-family:var(--disp);font-weight:600;letter-spacing:-.02em}
     </article>
     <article class="rotulo rev der" style="--neon:#4FF0FF">
       <div class="r-nom">Genesis ID</div><div class="r-desc" data-t="r3.gid"></div>
-      <div class="r-pie"><a href="https://genesis-id.onrender.com" target="_blank" rel="noopener" style="color:var(--cian);font-weight:700" data-t="x.abrir"></a></div>
+      <!-- Este rotulo lo lee el publico, asi que no puede llevar al panel de
+           cumplimiento del equipo (genesis-id.onrender.com): ahi solo hay una
+           entrada de operadores donde nadie de fuera puede registrarse. -->
+      <div class="r-pie"><a href="https://www.vetawallet.com/genesis-id" target="_blank" rel="noopener" style="color:var(--cian);font-weight:700" data-t="x.abrir"></a></div>
     </article>
     <article class="rotulo rev der" style="--neon:#34D399">
       <div class="r-nom">ordenscan</div><div class="r-desc" data-t="r3.scan"></div>

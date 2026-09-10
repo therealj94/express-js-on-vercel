@@ -1,9 +1,9 @@
 // Aplicaciones del ecosistema y sus claves de API.
 //
-// Veta Wallet, ordenscan y MyTokenPay hablan con Genesis ID a través de estas
-// claves. Cada una tiene sus propios alcances, así que una clave filtrada no da
-// acceso a todo: la de ordenscan puede consultar si un GID está verificado,
-// pero no puede crear identidades ni ver documentos.
+// Veta Wallet, ordenscan, MyTokenPay y Ordenex hablan con Genesis ID a través
+// de estas claves. Cada una tiene sus propios alcances, así que una clave
+// filtrada no da acceso a todo: la de ordenscan puede consultar si un GID está
+// verificado, pero no puede crear identidades ni ver documentos.
 //
 // De la clave solo se guarda el hash. Se muestra entera una única vez, al
 // crearla. Si se pierde, se revoca y se emite otra — no hay forma de
@@ -25,6 +25,7 @@ export const ALCANCES = {
   'vinculo.crear': 'Atar una cuenta de la app a un GID',
   'negocio.crear': 'Registrar un negocio para KYB',
   'movimiento.enviar': 'Enviar movimientos para monitoreo AML',
+  'credencial.emitir': 'Emitir a sus usuarios la credencial que se llevan consigo',
   'tamiz.direccion': 'Consultar si una dirección está sancionada',
   'telemetria.enviar': 'Reportar uso y errores al panel de analítica',
   'directorio.enviar': 'Sincronizar su padrón de usuarios con el directorio',
@@ -32,7 +33,7 @@ export const ALCANCES = {
 
 export type Alcance = keyof typeof ALCANCES
 
-/** Las tres aplicaciones del ecosistema y lo que necesita cada una. */
+/** Las aplicaciones del ecosistema y lo que necesita cada una. */
 export const APPS_ECOSISTEMA: { clave: string; nombre: string; alcances: Alcance[] }[] = [
   {
     clave: 'veta-wallet',
@@ -41,7 +42,7 @@ export const APPS_ECOSISTEMA: { clave: string; nombre: string; alcances: Alcance
     // y además manda movimientos para el monitoreo.
     alcances: [
       'identidad.crear', 'identidad.leer', 'identidad.documento',
-      'gid.verificar', 'gid.perfil', 'vinculo.crear',
+      'gid.verificar', 'gid.perfil', 'vinculo.crear', 'credencial.emitir',
       'movimiento.enviar', 'tamiz.direccion', 'telemetria.enviar', 'directorio.enviar',
     ],
   },
@@ -61,6 +62,65 @@ export const APPS_ECOSISTEMA: { clave: string; nombre: string; alcances: Alcance
     // Un explorador es público: solo necesita saber si una dirección tiene
     // identidad verificada detrás. Nada de datos personales.
     alcances: ['gid.verificar', 'tamiz.direccion', 'telemetria.enviar'],
+  },
+  {
+    clave: 'ordenex',
+    nombre: 'Ordenex',
+    // La casa de cambio. A Ordenex solo entra gente que YA hizo su KYC en la
+    // wallet, así que verifica los tokens del SSO con los que llegan
+    // (gid.verificar) y lee el perfil para saber si la identidad sigue
+    // verificada y cuál es su dirección custodiada en la wallet (gid.perfil);
+    // ata su cuenta local al GID (vinculo.crear); tamiza la dirección de cada
+    // retiro (tamiz.direccion) y reporta al monitoreo cada retiro y cada
+    // operación fiat (movimiento.enviar); telemetria.enviar para el panel.
+    // Y ni un alcance más, a propósito: nada de identidad.* porque Ordenex NO
+    // hace KYC — el trámite vive en la wallet, y repetirlo aquí sería guardar
+    // documentos de la gente en una base más — y sin directorio.enviar porque
+    // su padrón ES el de la wallet: no tiene usuarios propios que censar.
+    alcances: [
+      'gid.verificar', 'gid.perfil', 'vinculo.crear',
+      'movimiento.enviar', 'tamiz.direccion', 'telemetria.enviar',
+    ],
+  },
+  {
+    clave: 'aucorp',
+    nombre: 'AuCorp',
+    // La banca fiat. Misma figura que Ordenex y por los mismos motivos: a
+    // AuCorp entra gente que YA hizo su KYC, así que verifica el pase del SSO
+    // (gid.verificar) y lee el perfil para saber si sigue verificada y cuál es
+    // su dirección custodiada (gid.perfil); ata su cuenta local al GID
+    // (vinculo.crear); tamiza cada cuenta de destino antes de pagar un retiro
+    // (tamiz.direccion) y reporta cada movimiento de dinero al monitoreo
+    // (movimiento.enviar), que en una institución financiera no es opcional;
+    // telemetria.enviar para el panel.
+    // Sin identidad.* a propósito: AuCorp no hace KYC ni guarda documentos —
+    // el trámite vive en la wallet. Y sin directorio.enviar: su padrón es el
+    // del ecosistema, no tiene censo propio que sincronizar.
+    alcances: [
+      'gid.verificar', 'gid.perfil', 'vinculo.crear',
+      'movimiento.enviar', 'tamiz.direccion', 'telemetria.enviar',
+    ],
+  },
+  {
+    clave: 'ultron',
+    nombre: 'ULTRON FP',
+    // La consola de la junta directiva. Es la app MÁS PEQUEÑA del ecosistema y
+    // a propósito: no tiene usuarios, tiene una lista de seis personas escrita
+    // en su propia configuración. Genesis no decide quién es de la junta —eso
+    // lo decide la junta— así que aquí solo se le pregunta una cosa: «este pase
+    // que me traen, ¿es de verdad, y de quién?». Eso es gid.verificar.
+    //
+    // gid.perfil va con él por una razón que no es comodidad: sin el perfil,
+    // ULTRON solo sabría el GID, y no podría distinguir «es la identidad de
+    // José y sigue verificada» de «es un GID que alguna vez existió». La puerta
+    // de la casa donde se habla de dinero y de la junta exige las dos cosas.
+    //
+    // Y nada más. Ni identidad.* (ULTRON no hace KYC de nadie), ni
+    // vinculo.crear (no tiene cuentas que atar: su padrón es ULTRON_JUNTA), ni
+    // movimiento.enviar (no mueve un centavo), ni tamiz.direccion (no paga
+    // retiros), ni directorio.enviar (seis personas no son un censo). Una clave
+    // filtrada de ULTRON no abre nada más que la pregunta de si un pase vale.
+    alcances: ['gid.verificar', 'gid.perfil'],
   },
 ]
 
@@ -87,6 +147,64 @@ export function alinearAlcances(): string[] {
   return tocadas
 }
 
+/* ── Las claves públicas de ingesta, que tienen que sobrevivir al almacén ──────
+ *
+ * POR QUÉ ESTO EXISTE
+ *
+ * La clave pública se emitía al azar la primera vez que alguien la miraba en el
+ * panel. Eso está bien para una app que todavía no salió, y es una trampa para
+ * una que ya salió: la clave viaja DENTRO del APK que la gente tiene instalado,
+ * así que el día que el almacén cambia —de archivo a Mongo, o a una base
+ * nueva— las apps de la calle siguen mandando la clave vieja, el servidor ya no
+ * la reconoce, y todo lo que reportan se cae con un 401 que nadie ve. Desde
+ * dentro no se nota nada: el panel enseña «no hay datos», que es exactamente
+ * como se ve «no entra nadie». Fue lo que pasó, y estuvo así sin que se notara.
+ *
+ * Así que las claves ya publicadas se declaran aquí, junto al código, y se
+ * vuelven a poner en cada arranque si el almacén no las tiene. No es un secreto
+ * que se filtra: esta clave está impresa en cada teléfono que instaló la app y
+ * en el JavaScript de la web, y solo abre la ruta de telemetría —escribe
+ * métricas anónimas y no lee absolutamente nada.
+ *
+ * LO QUE ESTO NO PISA
+ *
+ * Solo se siembra la que FALTA. Si la clave de una app se rotó desde el panel,
+ * ahí está guardada y esta función no la toca: rotar tiene que seguir dejando
+ * muda a la versión vieja, que es para lo que sirve. Para forzar un valor
+ * concreto sin desplegar —volver a una clave que se rotó por error, o estrenar
+ * una— está la variable de entorno, que sí manda siempre.
+ */
+const CLAVES_PUBLICAS_PUBLICADAS: Record<string, string> = {
+  'veta-wallet': 'gidp_veta-wallet_98cwxS8AnbUIRAEr',
+  mytokenpay: 'gidp_mytokenpay__riQsWLOw5v2XQ_R',
+  ordenscan: 'gidp_ordenscan_RIo4I1gyxv6gewfq',
+}
+
+/** `GENESIS_CLAVES_PUBLICAS="veta-wallet=gidp_…,ordenscan=gidp_…"` */
+function clavesFijadasPorEntorno(): Record<string, string> {
+  const fijadas: Record<string, string> = {}
+  for (const trozo of (process.env.GENESIS_CLAVES_PUBLICAS || '').split(',')) {
+    const [app, clave] = trozo.split('=').map((s) => s.trim())
+    if (app && clave?.startsWith('gidp_')) fijadas[app] = clave
+  }
+  return fijadas
+}
+
+export function asegurarClavesPublicas(): string[] {
+  const fijadas = clavesFijadasPorEntorno()
+  const tocadas: string[] = []
+  for (const app of store.todo().aplicaciones) {
+    const debeSer = fijadas[app.clave] ?? (app.clavePublica ? null : CLAVES_PUBLICAS_PUBLICADAS[app.clave])
+    if (!debeSer || app.clavePublica === debeSer) continue
+    const habia = Boolean(app.clavePublica)
+    app.clavePublica = debeSer
+    tocadas.push(`${app.clave}: clave de ingesta ${habia ? 'fijada por entorno' : 'repuesta'}`)
+    registrar('sistema', 'aplicacion.clavePublicaRepuesta', app.clave, { porEntorno: Boolean(fijadas[app.clave]) })
+  }
+  if (tocadas.length) store.guardar()
+  return tocadas
+}
+
 export function crearAplicacion(clave: string, nombre: string, alcances: string[]): {
   aplicacion: Aplicacion; clave_secreta: string
 } {
@@ -107,7 +225,7 @@ export function crearAplicacion(clave: string, nombre: string, alcances: string[
   return { aplicacion, clave_secreta: secreta }
 }
 
-/** Da de alta las tres apps del ecosistema si aún no existen. */
+/** Da de alta las apps del ecosistema si aún no existen. */
 export function asegurarAplicaciones(): { clave: string; secreta: string }[] {
   const nuevas: { clave: string; secreta: string }[] = []
   for (const def of APPS_ECOSISTEMA) {

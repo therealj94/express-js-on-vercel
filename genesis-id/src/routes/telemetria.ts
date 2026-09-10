@@ -9,7 +9,7 @@ import { Router } from 'express'
 import type { Request, Response, NextFunction } from 'express'
 import { exigeApp, limite } from '../middleware/proteger.js'
 import { ingerir, paisDeCabeceras, guardarCenso, MAX_LOTE, TIPOS } from '../analitica/eventos.js'
-import { aplicacionDeClavePublica } from '../auth/aplicaciones.js'
+import { aplicacionDeClavePublica, clavePublicaDe } from '../auth/aplicaciones.js'
 
 export const telemetriaRouter = Router()
 
@@ -135,4 +135,32 @@ telemetriaRouter.post('/censo', limite(60), exigeApp('telemetria.enviar'), async
     registrados, activos30, verificados, negocios, extra,
   })
   res.json({ ok: true, censo })
+})
+
+/**
+ * La clave pública de ingesta de la app que pregunta.
+ *
+ * POR QUE NO ES UN AGUJERO
+ *
+ * Se pide con la clave SECRETA de la app, y solo devuelve la pública DE ESA
+ * MISMA app: quien ya tiene el secreto puede hacer todo lo que permite la
+ * pública y bastante más, así que no se entrega nada que no tuviera ya. No
+ * acepta un nombre de app en la petición a propósito — si lo aceptara, una app
+ * podría pedir la clave de otra y reportar métricas en su nombre.
+ *
+ * Existe porque la alternativa era peor: hasta ahora la única forma de conocer
+ * la clave pública de una app era que un operador entrara al panel, la rotara y
+ * la copiara a mano en el código del navegador. Eso convertía instrumentar una
+ * app en un trámite entre dos personas, y el resultado se ve en el panel de
+ * analítica: una sola app reportando de tres que hay.
+ *
+ * La clave se crea la primera vez que se lee. Rotarla desde el panel deja muda
+ * a la versión desplegada del cliente, que es justo el efecto que se busca
+ * cuando una clave se filtra.
+ */
+telemetriaRouter.get('/clave', limite(30), exigeApp('telemetria.enviar'), (req, res) => {
+  res.json({
+    app: req.app_ecosistema!.clave,
+    clave_publica: clavePublicaDe(req.app_ecosistema!),
+  })
 })

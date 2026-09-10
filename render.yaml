@@ -5,7 +5,15 @@ services:
     name: genesis-id
     runtime: node
     rootDir: genesis-id
-    plan: free
+    # PLAN DE PAGO, y no es un lujo. En el plan gratis son 512 MB de RAM y 0,1
+    # de CPU, y el servicio SE APAGA a los 15 minutos sin tráfico, con arranque
+    # en frío de 30 a 60 segundos. Con una campaña en marcha eso significa que
+    # el primer usuario tras cada pausa espera casi un minuto en blanco y se va.
+    #
+    # Este valor tiene que coincidir con el que esté puesto en el panel de
+    # Render: si el panel dice `standard` y esto dice `free`, una
+    # resincronización del blueprint lo baja de vuelta sin avisar.
+    plan: starter
     buildCommand: npm install
     startCommand: npm start
     healthCheckPath: /healthz
@@ -23,6 +31,35 @@ services:
       - key: GENESIS_MONGO_DB
         value: genesisid
 
+      # ─── Archivo de documentos de identidad ────────────────────────────────
+      # Llave con la que se cifran las imágenes del documento que se conservan
+      # cinco años, como promete la política de privacidad publicada.
+      #
+      # SIN ESTA LLAVE NO SE CONSERVA NADA: las imágenes se borran al decidir el
+      # expediente, y entonces el servicio está incumpliendo su propio documento.
+      # `/healthz` publica `conservacionDocumentos` para que se vea desde fuera.
+      #
+      # Genere una larga al azar y póngala en el panel de Render. Guárdela
+      # también fuera: si se pierde, el archivo entero queda ilegible — que es
+      # justo lo que la protege de quien consiga una copia de la base.
+      # sync:false = Render la pide en el panel y NO queda escrita en el repo.
+      - key: GENESIS_ARCHIVO_CLAVE
+        sync: false
+
+      # ─── Cuántas verificaciones pesadas caben a la vez ─────────────────────
+      # Las rutas que reciben imágenes admiten cuerpos de 25 MB —no se pueden
+      # bajar sin dejar sin verificarse a quien tenga la app vieja—, y una
+      # petición así ocupa bastante más de 25 MB ya parseada. Esto limita
+      # cuántas entran A LA VEZ, que es lo que de verdad consume memoria.
+      #
+      # 3 es prudente para 512 MB. Al subir de plan, subir también este número:
+      # con 2 GB, entre 8 y 12 va bien. `/healthz` publica cuántas hay dentro y
+      # cuántas en cola, así que se ajusta mirando, no adivinando.
+      - key: GENESIS_PESADAS_A_LA_VEZ
+        value: "3"
+      - key: GENESIS_PESADAS_EN_COLA
+        value: "12"
+
       # ─── Primer administrador ──────────────────────────────────────────────
       # Si no se define la contraseña, el motor genera una al azar y la imprime
       # UNA sola vez en el registro de arranque.
@@ -37,6 +74,39 @@ services:
         sync: false
       - key: GENESIS_SSO_MINUTOS
         value: "15"
+
+      # ─── Firma de la bitácora ──────────────────────────────────────────────
+      # Cada entrada de la bitácora se firma con esta llave (HMAC-SHA256 sobre
+      # una derivación scrypt). Sin ella el motor arranca y avisa, pero quien
+      # controle la base podría reescribir el registro y recalcular la cadena
+      # sin dejar rastro. 32 caracteres o más al azar; no cambiarla después:
+      # cambiarla marca como rotas todas las firmas anteriores. El motor acepta
+      # también el nombre GENESIS_BITACORA_LLAVE.
+      - key: GENESIS_BITACORA_CLAVE
+        sync: false
+
+      # ─── Correo saliente (Amazon SES) ──────────────────────────────────────
+      # Sin estas variables el correo queda APAGADO y el servicio funciona
+      # igual: nadie recibe el aviso de su verificación, pero nada se rompe.
+      # NO se usa el buzón de la empresa: mandar decenas de miles de correos
+      # desde el hosting compartido termina con la IP en lista negra, y ahí se
+      # pierde TODO el correo del dominio. SES usa credenciales propias, que se
+      # revocan sin tocar el correo de nadie.
+      # El usuario IAM de estas llaves solo debe poder `ses:SendEmail`.
+      - key: GENESIS_SES_REGION
+        value: us-east-1
+      - key: GENESIS_SES_DE
+        value: Orden Global <info@ordenglobal.org>
+      - key: GENESIS_SES_LLAVE
+        sync: false
+      - key: GENESIS_SES_SECRETO
+        sync: false
+      # Conjunto de configuración de SES. Recoge los rebotes y las quejas y los
+      # publica donde una persona los vea. Sin esto se suprime la dirección en
+      # silencio y nadie se entera de que un correo no llegó — que fue justo el
+      # motivo por el que AWS denegó la salida del cajón de arena en agosto.
+      - key: GENESIS_SES_CONJUNTO
+        value: ordenglobal-transaccional
 
       # ─── Listas de sanciones ───────────────────────────────────────────────
       # Carpeta con SDN.CSV y ALT.CSV de la OFAC, o listas propias en JSON.
@@ -62,3 +132,48 @@ services:
       #   value: "30"
       # - key: GENESIS_SESION_HORAS        # duración de la sesión del panel
       #   value: "8"
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # EL BUZÓN DE AU-RA
+  #
+  # Por donde la burbuja del ecosistema habla con AU-RA. La razón de que esta
+  # pieza exista está en `infra/aura/buzon/servidor.js`, en corto:
+  #
+  # AU-RA vive en el nodo de la GPU, y ese nodo NO ACEPTA NINGUNA ENTRADA de
+  # internet. Ahí dentro vive también la llave privada que firma los pagos de
+  # los premios. Se podía abrir un puerto en esa máquina; se decidió que no.
+  # La web deja el recado aquí y el nodo lo recoge SALIENDO, igual que ya hace
+  # con WhatsApp. Cuesta uno o dos segundos de espera.
+  #
+  # POR QUÉ ES UN SERVICIO APARTE Y NO UNA RUTA EN GENESIS ID
+  #
+  # Genesis ID guarda documentos de identidad cifrados. Colgarle al lado un
+  # chat abierto al público junta las dos superficies de ataque y hace que un
+  # fallo del chat pueda tumbar el KYC. Son dos procesos a propósito, y cuesta
+  # un plan más.
+  - type: web
+    name: aura-buzon
+    runtime: node
+    rootDir: infra/aura/buzon
+    # `starter` por lo mismo que genesis-id: en el plan gratis el servicio se
+    # duerme a los 15 minutos sin tráfico y arranca en frío en medio minuto.
+    # La burbuja es justo donde alguien está MIRANDO LA PANTALLA mientras
+    # espera; medio minuto en blanco ahí es la persona que se fue.
+    plan: starter
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /healthz
+    autoDeploy: true
+    envVars:
+      - key: NODE_VERSION
+        value: "20"
+
+      # La llave con la que el NODO se identifica para recoger los recados.
+      # sync:false = Render la pide en el panel y NO queda escrita en el repo.
+      #
+      # La misma cadena va en `/etc/aura-buzon.env` del nodo, chmod 600. Sin
+      # ella el buzón arranca igual pero no deja recoger nada — mejor mudo que
+      # abierto —, y `/healthz` publica `llaveConfigurada` para que eso se vea
+      # desde fuera en vez de descubrirse porque nadie contesta.
+      - key: AURA_BUZON_LLAVE
+        sync: false

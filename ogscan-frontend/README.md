@@ -124,3 +124,46 @@ Por eso la ficha de un bloque no muestra «Validador: 0x000…000» — eso no i
 de nada y hace pensar que el bloque no tiene validador. Muestra el consenso.
 Decodificar el proponente real exige desempaquetar el RLP de `extraData`; queda
 pendiente si se quiere mostrar.
+
+> Nota: la sección del validador de arriba describe la cadena anterior
+> (PolyBFT). En la **5550 (QBFT)** el proponente sí viaja en `miner`, y la ficha
+> del bloque lo enseña con su nombre («Validador node3»).
+
+## Etiquetas humanas
+
+Las direcciones conocidas llevan su nombre al lado del hash: los catorce
+contratos de tokens (de `infra/ordenex-api/lib/tokens.js` y del catálogo del
+backend), el tesoro (billetera única de ORIGEN), WORIGEN, la liquidez
+preservada, la tesorería de venta de ORIGEN y los siete validadores. La lista
+está en `ETIQUETAS` / `NOMBRES_TOKEN` de `index.html`, con la nota de dónde
+sale cada dirección. **No se etiquetan las tres asignaciones madre**: el
+Protocolo de Seguridad de Accesos dice que no se divulgan.
+
+## Precio de referencia de ORIGEN
+
+La portada enseña `onza de oro ÷ 31,1035 ÷ 55`, la misma fórmula de la casa
+de cambio y la billetera, leída de CoinGecko (pax-gold) o gold-api.com, y
+rotulada: referencia, fuente y hora. No es un precio de mercado de ORIGEN.
+
+## Verificación de contratos
+
+`verificar-contratos.mjs` lee por RPC el bytecode de cada contrato del
+catálogo, calcula su SHA-256 y lo deja en el registro `VERIFICADOS` de
+`index.html`. La ficha del token (y la de una dirección con código) vuelve a
+leer el bytecode, lo resume y compara: «Verificado por Orden Global» si
+coincide, aviso rojo si cambió. Es verificación del **bytecode**, no de la
+fuente: el repositorio no tiene el Solidity de estos tokens. Cuando lo tenga,
+se pone en `fuente` y la ficha lo dice.
+
+```
+node ogscan-frontend/verificar-contratos.mjs              # regenera el registro
+node ogscan-frontend/verificar-contratos.mjs --comprobar  # compara cadena vs registro
+```
+
+## Búsqueda por GID
+
+El buscador reconoce la forma `GEN-XXXX-XXXX-X` / `GNB-…` y abre `/gid/<gid>`,
+que explica que **hoy no se puede resolver**: la cadena no tiene registro de
+GID y Genesis ID solo expone a las apps el sentido dirección → GID. Qué haría
+falta está escrito en `vistaGid` (una ruta de solo-direcciones por GID en
+Genesis bajo `gid.verificar`, o un registro en cadena).

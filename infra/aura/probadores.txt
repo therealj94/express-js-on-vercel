@@ -1,0 +1,9 @@
+# La lista de prueba de AU-RA. Un correo por linea; # comenta.
+#
+# El asistente la relee en cada vuelta: agregar a alguien es escribir su
+# linea, sin reiniciar nada. A quien no este aqui, la solicitud de amistad le
+# queda pendiente en silencio; si mañana se le agrega, se le acepta sola.
+#
+# El correo es el del CHAT (con el que la persona entro a PULSE2CHAT).
+j.ordonez@ordenglobal.org
+nandino89@icloud.com

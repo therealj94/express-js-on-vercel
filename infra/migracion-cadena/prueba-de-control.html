@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Prueba de control de billetera &middot; Orden Global</title>
+<style>
+:root{--oro:#C9A961;--fondo:#04191A;--panel:#072526;--linea:#123E3F;--txt:#EAF3F2;--txt2:#9FBDBA;--mal:#E2725B;--bien:#5FB98B}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--fondo);color:var(--txt);font:16px/1.7 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;-webkit-font-smoothing:antialiased;padding:0 20px 60px}
+.env{max-width:680px;margin:0 auto}
+header{padding:28px 0 6px}
+.logo{font-weight:800;font-size:17px}.logo span{color:var(--oro)}
+h1{font-size:26px;line-height:1.25;margin:22px 0 10px;letter-spacing:-.4px}
+p{margin:0 0 14px;color:#DCE9E7}
+.nota{background:var(--panel);border:1px solid var(--linea);border-left:3px solid var(--oro);padding:15px 17px;border-radius:8px;margin:0 0 22px}
+.nota p:last-child{margin-bottom:0}
+button{font:600 16px/1 inherit;background:var(--oro);color:#04191A;border:0;border-radius:10px;padding:15px 22px;cursor:pointer;width:100%;margin:0 0 12px}
+button:disabled{opacity:.45;cursor:not-allowed}
+button.sec{background:transparent;color:var(--oro);border:1px solid var(--linea)}
+.caja{background:var(--panel);border:1px solid var(--linea);border-radius:10px;padding:14px 16px;margin:0 0 16px;word-break:break-all;font:13.5px/1.6 ui-monospace,SFMono-Regular,Menlo,monospace;color:var(--txt2)}
+.caja.ok{border-color:var(--bien)}
+label{display:block;font-size:13.5px;color:var(--txt2);margin:0 0 6px;letter-spacing:.02em;text-transform:uppercase}
+.est{font-size:14.5px;padding:12px 15px;border-radius:8px;margin:0 0 16px;display:none}
+.est.v{display:block;background:rgba(95,185,139,.12);border:1px solid var(--bien);color:var(--bien)}
+.est.r{display:block;background:rgba(226,114,91,.12);border:1px solid var(--mal);color:var(--mal)}
+hr{border:0;border-top:1px solid var(--linea);margin:28px 0}
+footer{color:#6C918E;font-size:13px;text-align:center;padding-top:22px}
+</style>
+</head>
+<body>
+<div class="env">
+<header><div class="logo">ORDEN <span>GLOBAL</span></div></header>
+
+<h1>Prueba de control de billetera</h1>
+
+<div class="nota">
+<p><strong>Esto no mueve fondos.</strong> No envía ninguna transacción, no gasta
+gas y no toca la cadena. Sólo pide a la billetera que firme un texto, que es la
+forma de demostrar que se tiene la llave sin usarla para nada más.</p>
+<p><strong>Nunca escribas aquí tu frase de respaldo ni tu llave privada.</strong>
+Esta página no las pide y no tiene dónde escribirlas. Si alguna vez una página
+te las pide, no es ésta.</p>
+</div>
+
+<div id="estado" class="est"></div>
+
+<button id="conectar">Conectar billetera</button>
+
+<div id="paso2" style="display:none">
+  <label>Billetera conectada</label>
+  <div class="caja" id="cuenta">—</div>
+
+  <label>Texto que se va a firmar</label>
+  <div class="caja" id="mensaje">—</div>
+
+  <button id="firmar">Firmar</button>
+</div>
+
+<div id="paso3" style="display:none">
+  <label>Copiá esto entero y envialo</label>
+  <div class="caja ok" id="firma">—</div>
+  <button class="sec" id="copiar">Copiar dirección y firma</button>
+</div>
+
+<hr>
+
+<p style="font-size:14.5px;color:var(--txt2)">
+<strong>Si no aparece nada al tocar «Conectar»:</strong> esta página necesita
+abrirse desde una billetera. En el teléfono, abrí la aplicación de tu billetera,
+buscá su navegador interno y pegá esta dirección ahí. En la computadora, hace
+falta la extensión instalada.
+</p>
+
+<footer>Orden Global Corp</footer>
+</div>
+
+<script>
+// No se carga ninguna biblioteca. Firmar un texto es una peticion que la propia
+// billetera atiende (`personal_sign`), asi que esta pagina no toca ni ve
+// material de llaves en ningun momento: solo pide y muestra el resultado.
+const $ = (id) => document.getElementById(id);
+const estado = (txt, ok) => { const e = $('estado'); e.textContent = txt; e.className = 'est ' + (ok ? 'v' : 'r'); };
+
+// La fecha va dentro del texto y se fija al cargar la pagina. Sirve para que una
+// firma vieja no valga como prueba nueva.
+const FECHA = new Date().toISOString().slice(0, 10);
+let cuenta = null, texto = null;
+
+$('conectar').onclick = async () => {
+  if (!window.ethereum) {
+    estado('No se encontró ninguna billetera en este navegador. Abrí esta página desde el navegador interno de tu billetera.', false);
+    return;
+  }
+  try {
+    const cuentas = await window.ethereum.request({ method: 'eth_requestAccounts' });
+    cuenta = cuentas[0];
+    // La direccion va DENTRO del texto: asi una firma hecha con una billetera
+    // no puede presentarse como prueba de otra.
+    texto = `Orden Global · prueba de control de esta billetera\n`
+          + `Dirección: ${cuenta}\n`
+          + `Fecha: ${FECHA}`;
+    $('cuenta').textContent = cuenta;
+    $('mensaje').textContent = texto;
+    $('paso2').style.display = 'block';
+    $('conectar').style.display = 'none';
+    estado('Billetera conectada. Revisá que la dirección de abajo sea la correcta antes de firmar.', true);
+  } catch (e) {
+    estado('No se pudo conectar: ' + (e && e.message ? e.message : e), false);
+  }
+};
+
+$('firmar').onclick = async () => {
+  try {
+    const firma = await window.ethereum.request({ method: 'personal_sign', params: [texto, cuenta] });
+    $('firma').textContent = `Dirección: ${cuenta}\nFirma: ${firma}`;
+    $('paso3').style.display = 'block';
+    estado('Firmado. Copiá el bloque de abajo entero — lleva la dirección y la firma.', true);
+  } catch (e) {
+    // Cancelar no es un error: es una decision.
+    const m = (e && e.message ? e.message : String(e));
+    estado(/reject|denied|cancel/i.test(m) ? 'Firma cancelada. No pasó nada.' : 'No se pudo firmar: ' + m, false);
+  }
+};
+
+$('copiar').onclick = async () => {
+  const t = $('firma').textContent;
+  try { await navigator.clipboard.writeText(t); estado('Copiado. Pegalo tal cual, con las dos líneas.', true); }
+  catch (e) { estado('No se pudo copiar sola. Seleccioná el texto y copialo a mano.', false); }
+};
+</script>
+</body>
+</html>

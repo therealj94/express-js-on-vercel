@@ -1,0 +1,663 @@
+/* La voz de ULTRON en el navegador: decir y escuchar.
+ *
+ * DECIR, FRASE POR FRASE. El texto llega del modelo a trozos; se corta en
+ * frases completas y cada frase se pide a /voz en cuanto está, mientras la
+ * anterior suena. La primera palabra se oye a los dos o tres segundos, no al
+ * final. Sin ElevenLabs se usa la voz del navegador: peor timbre, misma
+ * conducta.
+ *
+ * EL AUDIO SE DESPIERTA CON UN GESTO. Un navegador no deja sonar nada que no
+ * nazca de un toque o una tecla: el AudioContext nace suspendido y todo lo
+ * que se conecte a él es silencio. `despertar()` se llama en el primer gesto
+ * de la persona, y es el motivo por el que ULTRON habla cuando toca.
+ */
+const VOZ = (() => {
+  'use strict';
+
+  /* LOS NÚMEROS, PARA QUE SE ENTIENDAN AL OÍRLOS. Las mismas reglas que el
+     servidor (lib/decir-numeros.js), aquí para el respaldo del navegador: dos
+     decimales redondeando, nada de deletrear direcciones, y las unidades dichas
+     como se hablan. Un precio con cuatro decimales leído en voz alta no es más
+     preciso: es más largo y menos claro. */
+  const UNIDADES = [
+    [/\bUSD\s*\/\s*oz\b/gi, 'dólares la onza'], [/\bUSD\s*\/\s*g\b/gi, 'dólares el gramo'],
+    [/\bUSD\b/g, 'dólares'], [/\bHNL\b/g, 'lempiras'],   // USDT no se toca: se lee «u-ese-de-te»
+    [/(\d)\s*°\s*C\b/g, '$1 grados'], [/(\d)\s*%/g, '$1 por ciento'],
+    [/(\d)\s*km\/h\b/gi, '$1 kilómetros por hora'], [/(\d)\s*MB\b/g, '$1 megas'],
+    [/(\d)\s*GB\b/g, '$1 gigas'], [/(\d)\s*ms\b/g, '$1 milisegundos'],
+    [/(\d)\s*\/\s*(\d)/g, '$1 de $2'], [/#(\d)/g, 'número $1'],
+  ];
+  /* Los montos y los separadores de miles por espacio. Espejo de
+     lib/decir-numeros.js: la moneda va DETRÁS del número, que es como se dice
+     en español, y «2 411 900» es un número, no tres. */
+  const CIFRA = '\\d[\\d.,]*\\d|\\d';
+  const MONEDAS = [
+    [new RegExp(`\\bUS\\s?\\$\\s?(${CIFRA})`, 'g'), '$1 dólares'],
+    [new RegExp(`\\$\\s?(${CIFRA})`, 'g'), '$1 dólares'],
+    [new RegExp(`\\bL\\.?\\s?(${CIFRA})`, 'g'), '$1 lempiras'],
+    [new RegExp(`\\bQ\\.?\\s?(${CIFRA})`, 'g'), '$1 quetzales'],
+  ];
+  const MILES_CON_ESPACIO = /\b\d{1,3}(?:[ \u00a0\u2009\u202f\u2007]\d{3})+\b(?!\s*\d)/g;
+  function montos(t) {
+    let x = String(t).replace(MILES_CON_ESPACIO, (n) => n.replace(/[ \u00a0\u2009\u202f\u2007]/g, ''));
+    for (const [re, con] of MONEDAS) x = x.replace(re, con);
+    return x;
+  }
+
+  /* ── TÍTULOS Y LISTAS NUMERADAS ─────────────────────────────────────────
+     «Cuando hay puntos o secciones como 1. 2. los lee raros.» El «1.» de una
+     lista TERMINA EN PUNTO, así que `partirFrases` lo tomaba por una frase de
+     dos letras, la pegaba al final de la anterior, y el texto del punto uno
+     salía suelto y sin número: «…y eso es todo. Uno. Fondear la caja».
+     Se arregla ANTES de partir, y de paso se dice como lo diría una persona
+     leyendo una lista: «primero», no «uno».
+     Es idempotente a propósito: el texto llega a trozos y esto pasa muchas
+     veces sobre el mismo trozo. */
+  const ORDINALES = {
+    es: ['', 'Primero', 'Segundo', 'Tercero', 'Cuarto', 'Quinto', 'Sexto', 'Séptimo', 'Octavo', 'Noveno', 'Décimo'],
+    en: ['', 'First', 'Second', 'Third', 'Fourth', 'Fifth', 'Sixth', 'Seventh', 'Eighth', 'Ninth', 'Tenth'],
+  };
+  function estructura(t, idioma = 'es') {
+    const ord = ORDINALES[idioma === 'en' ? 'en' : 'es'];
+    return String(t || '')
+      .replace(/^\s{0,3}#{1,6}\s+(.+?)\s*#*\s*$/gm, (todo, tit) => (/[.!?:]$/.test(tit) ? tit : `${tit}.`))
+      .replace(/^(\s{0,6})(\d{1,2})[.)]\s+/gm, (todo, sangria, n) => {
+        const i = Number(n);
+        return `${sangria}${i >= 1 && i <= 10 ? ord[i] : (idioma === 'en' ? `Item ${i}` : `Punto ${i}`)}. `;
+      })
+      .replace(/^(\s{0,6})[-*•·]\s+/gm, '$1');
+  }
+
+  function numerosParaLaVoz(t) {
+    let x = montos(String(t))
+      .replace(/(\d)([.,])00\b(?!\d)/g, '$1')
+      .replace(/(\d[.,]\d)0\b(?!\d)/g, '$1')
+      .replace(/(\d)([.,])(\d{3,})\b/g, (todo, ent, sep, dec) => {
+        if (dec.length === 3) return todo;                    // separador de miles
+        const n = Number(`${ent}.${dec}`);
+        return Number.isFinite(n) ? String(Math.round(n * 100) / 100).replace('.', sep) : todo;
+      })
+      .replace(/\b0x[a-fA-F0-9]{8,}\b/g, (d) => `la dirección que termina en ${d.slice(-4)}`)
+      .replace(/\b[a-f0-9]{24,}\b/g, (d) => `el identificador que termina en ${d.slice(-4)}`);
+    for (const [re, con] of UNIDADES) x = x.replace(re, con);
+    return x.replace(/\b1 (milisegundo|grado|hora|mega|giga|dólar|lempira)s\b/g, '1 $1');
+  }
+
+  const paraDecir = (md) => numerosParaLaVoz(String(md || '')
+    .replace(/```[\s\S]*?```/g, ' ').replace(/https?:\/\/\S+/g, ' ').replace(/\[(.*?)\]\(.*?\)/g, '$1')
+    .replace(/^\s*[#>*-]+\s*/gm, '').replace(/[*_`|]/g, '').replace(/\s+/g, ' ').trim());
+
+  /* ── DÓNDE SE CORTA PARA EMPEZAR A HABLAR ──────────────────────────────────
+     Se esperaba SIEMPRE al punto final. Y la primera frase de una respuesta
+     puede tener treinta palabras: hasta que el modelo escribía el punto no se
+     pedía un solo byte de audio, así que a los segundos de pensar se les sumaba
+     el tiempo de escribir la frase entera.
+     Con `corteRapido` —que solo se usa para la PRIMERA frase de la respuesta—
+     vale también una coma o un punto y coma, siempre que ya haya cincuenta y
+     cinco letras: bastante para que la frase suene natural y bastante poco para
+     que se pida el audio en cuanto hay con qué. De la segunda en adelante se
+     espera al punto, que es lo que hace que la prosodia sea buena. */
+  function partirFrases(texto, { corteRapido = false } = {}) {
+    const frases = []; let resto = texto;
+    const fin = /^([\s\S]*?[.!?…](?:["»)\]]?)(?=\s|$))/;
+    const clausula = /^([\s\S]{55,}?[,;:](?=\s))/;
+    for (;;) {
+      let m = fin.exec(resto);
+      /* Con corte rápido gana el que corte ANTES. Si la primera frase ya llegó
+         entera y mide doscientas letras, cortarla en la coma manda a fabricar
+         un audio más corto, que empieza a sonar antes; el resto de la frase
+         sale detrás sin que se note el empalme. */
+      if (corteRapido && !frases.length) {
+        const c = clausula.exec(resto);
+        if (c && (!m || c[0].length < m[0].length)) m = c;
+      }
+      if (!m) break;
+      const f = m[1].trim();
+      if (f.length < 12 && frases.length) frases[frases.length - 1] += ' ' + f; else if (f) frases.push(f);
+      resto = resto.slice(m[0].length);
+    }
+    return { frases, resto };
+  }
+
+  /** Un WAV corto en silencio: la llave del permiso de audio.
+   *  CON MUESTRAS, no solo cabecera. El anterior declaraba `data` de CERO
+   *  bytes: Chrome lo tragaba, pero Safari —y iOS es todo Safari— no considera
+   *  reproducido un audio sin una sola muestra, así que el permiso NUNCA se
+   *  daba y todo lo que venía después era silencio. Ochenta milisegundos de
+   *  ceros a 8 kHz: 640 bytes, inaudibles, y suficientes para que cuente. */
+  function wavMudo() {
+    const muestras = 640;
+    const b = new ArrayBuffer(44 + muestras), v = new DataView(b);
+    const txt = (o, t) => { for (let i = 0; i < t.length; i++) v.setUint8(o + i, t.charCodeAt(i)); };
+    txt(0, 'RIFF'); v.setUint32(4, 36 + muestras, true); txt(8, 'WAVEfmt ');
+    v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 1, true);
+    v.setUint32(24, 8000, true); v.setUint32(28, 8000, true); v.setUint16(32, 1, true); v.setUint16(34, 8, true);
+    txt(36, 'data'); v.setUint32(40, muestras, true);
+    for (let i = 0; i < muestras; i++) v.setUint8(44 + i, 128);   // 128 = silencio en PCM de 8 bits
+    return new Blob([b], { type: 'audio/wav' });
+  }
+
+  /* ── DÓNDE SE GUARDA LA VOZ, Y POR QUÉ YA NO HAY DESPENSA PROPIA ──────────
+     Hubo aquí una despensa a mano: un mapa en memoria y la caché del navegador,
+     con una clave de resumen criptográfico por frase y voz. Servía para que la
+     misma frase no viajara dos veces.
+     Ya no hace falta, y quitarla es mejor que dejarla: desde que el audio se
+     pide por DIRECCIÓN (`/voz?t=...&v=...`), esa dirección es la clave, y la
+     caché del propio navegador —con `Cache-Control: private, max-age=3600` que
+     pone el servidor— hace exactamente lo mismo, gratis, para el `fetch` que
+     calienta y para la etiqueta de audio que suena. Una caché escrita a mano
+     que duplica la del navegador es una caché más que puede quedar desfasada.
+     Lo único que había que cuidar —que cambiar de voz no saque la anterior—
+     lo cuida la dirección, que lleva la voz dentro. */
+
+  /* iOS —y iPadOS, que se hace pasar por Mac— tiene reglas propias: el permiso
+     de audio vive en el ELEMENTO que sonó durante el gesto, no en la página. */
+  const esIOS = /iPad|iPhone|iPod/.test(navigator.userAgent)
+    || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+
+  class Locutor {
+    static avisado = false;   // el aviso de «no pude usar la voz» se da una vez
+    static sintesisDespierta = false;
+    constructor({ conElevenLabs, alNivel, alEmpezar, alTerminar, alFallo }) {
+      Object.assign(this, { conElevenLabs, alNivel, alEmpezar, alTerminar, alFallo });
+      this.cola = []; this.sonando = false; this.generacion = 0; this.resto = ''; this.ctx = null; this.vozId = null;
+      this.desbloqueado = false;
+      /* El tope de lo que se lee en voz alta, en letras. Unas 900 son medio
+         minuto hablando: la respuesta corta entera, y de una larga la parte que
+         de verdad contesta. Con `tope = 0` se lee todo (el botón «LEER TODO»). */
+      this.tope = 900; this.dicho = 0; this.cortado = false; this.cierreDicho = false; this.avisadoAqui = false;
+      this.idioma = 'es';
+      /* Tres por delante de la que suena. Con dos había huecos en las frases
+         cortas —se dicen en menos de lo que tarda el viaje de la siguiente— y
+         con quince, que es lo que había antes, la ráfaga atascaba la cola
+         entera. Tres cubre el hueco sin hacer ráfaga. */
+      this.enVuelo = 0; this.TOPE_VUELO = 3;
+      this.cierre = 'Le dejo el resto escrito en la pantalla.';
+      /* ── UN SOLO ELEMENTO, PARA SIEMPRE ─────────────────────────────────
+         El fallo que esto arregla, con nombre y fecha: en el iPad de José
+         ULTRON no hablaba NUNCA. `sonar()` creaba `new Audio(url)` por cada
+         frase, y en iOS el permiso de reproducción no es de la página: es del
+         ELEMENTO que sonó dentro de un gesto de la persona. Un elemento recién
+         creado, tres segundos después del toque, no lo tiene — `play()` se
+         rechaza, se cae al respaldo del navegador, que en iOS también exige
+         gesto, y el resultado es «ULTRON está hablando» en pantalla y silencio
+         absoluto.
+         Aquí hay UN elemento, se desbloquea con el primer toque y después solo
+         se le cambia el `src`. El permiso se da una vez y vale para todo. */
+      this.audio = new Audio();
+      this.audio.preload = 'auto';
+      this.audio.playsInline = true;                 // iOS no abre el reproductor a pantalla completa
+      this.audio.setAttribute('playsinline', '');
+      this.audio.crossOrigin = 'anonymous';
+    }
+    /**
+     * Se llama DENTRO de un gesto de la persona: un audio mudo de un instante
+     * le da al navegador lo que exige para dejar sonar los que vengan después,
+     * que llegan del servidor y ya no nacen de un gesto.
+     *
+     * Va por `blob:` y no por `data:` a propósito: la política de contenido de
+     * la casa admite `blob:` en media —es por donde llegan los audios de
+     * verdad— y no hay motivo para ampliarla por un silencio de un frame.
+     */
+    despertar() {
+      if (this.desbloqueado) return;
+      try {
+        /* Sobre EL elemento, no sobre uno de usar y tirar: lo que se desbloquea
+           es este de aquí, que es el que va a sonar toda la sesión.
+           Y sin `volume = 0`: iOS ignora `volume` en un elemento de medios —no
+           se puede bajar por código— y algunos navegadores no cuentan como
+           reproducción lo que suena a cero. El WAV ya es silencio de verdad. */
+        const url = URL.createObjectURL(wavMudo());
+        this.audio.src = url;
+        const p = this.audio.play();
+        const listo = () => { this.desbloqueado = true; URL.revokeObjectURL(url); };
+        if (p && p.then) p.then(listo).catch(() => URL.revokeObjectURL(url));
+        else listo();
+        /* La voz del navegador también quiere su gesto en iOS: se le da uno
+           mudo aquí mismo, para que el respaldo funcione cuando haga falta. */
+        if (window.speechSynthesis && !Locutor.sintesisDespierta) {
+          Locutor.sintesisDespierta = true;
+          try { const u = new SpeechSynthesisUtterance(' '); u.volume = 0; speechSynthesis.speak(u); } catch { /* nada */ }
+        }
+      } catch { /* si no se puede, el primer audio de verdad lo intentará */ }
+    }
+    /* ── UNA RESPUESTA LARGA NO SE LEE ENTERA ────────────────────────────
+       José: «cuando es muy extenso resume todo y le dice aquí te dejo toda la
+       información». Tiene razón, y la razón es de tiempo: dos mil letras leídas
+       en voz alta son dos minutos hablando, y para entonces él ya leyó la
+       pantalla y se cansó de oír.
+
+       Lo que NO se hace: pedirle un resumen a otro modelo. Eso añade una espera
+       ANTES de la primera palabra, que es justo el problema del que se queja.
+       Lo que sí: se habla mientras llega —el primer párrafo de una respuesta de
+       ULTRON ES la respuesta, porque el entregable va primero— y al pasar del
+       tope se corta con una frase que dice la verdad: el resto está escrito.
+       Cero espera, cero fichas de más, y nada que se pierda. */
+    alimentar(trozo) {
+      /* `estructura` ANTES de partir en frases, y sobre el texto con sus saltos
+         de línea: un «1.» de lista deja de parecer un punto final. Sobre el
+         resto acumulado y no sobre el trozo, porque un trozo puede llegar
+         cortado justo entre el «1» y el «.». */
+      this.resto = estructura(this.resto + trozo, this.idioma);
+      /* El corte rápido SOLO mientras no se ha dicho nada: es para arrancar. */
+      const { frases, resto } = partirFrases(this.resto, { corteRapido: this.dicho === 0 && !this.cola.length && !this.sonando });
+      this.resto = resto;
+      for (const f of frases) this.decir(f);
+    }
+    cerrar() {
+      const u = this.resto.trim(); this.resto = '';
+      if (u) this.decir(u);
+      if (this.cortado && !this.cierreDicho) { this.cierreDicho = true; this.decir(this.cierre); }
+      if (!this.sonando && !this.cola.length) this.alTerminar?.();
+    }
+    decir(frase) {
+      const limpio = paraDecir(frase); if (!limpio) return;
+      /* Pasado el tope se deja de encolar. Se marca `cortado` para que
+         `cerrar()` diga por qué se calla, en vez de callarse a media frase. */
+      if (this.tope && this.dicho >= this.tope) { this.cortado = true; return; }
+      this.dicho += limpio.length;
+      const gen = this.generacion;
+      // El texto viaja CON el audio: si el mp3 no llega o no puede sonar, hay
+      // con qué decirlo por el otro camino en vez de callarse.
+      this.cola.push({ texto: limpio, url: this.urlDe(limpio), audio: null, blob: null });
+      this.cebar();
+      if (!this.sonando) this.seguir(gen);
+    }
+
+    /* La dirección de la que sale el audio. Se pone en la etiqueta de audio y
+       el navegador empieza a sonar con los primeros kilobytes, sin esperar el
+       final. Es GET a propósito: una etiqueta de audio no sabe mandar un POST. */
+    urlDe(texto) {
+      const p = new URLSearchParams({ t: texto });
+      if (this.vozId) p.set('v', this.vozId);
+      return `/voz?${p.toString()}`;
+    }
+
+    /* ── CUÁNTOS AUDIOS SE PIDEN A LA VEZ ──────────────────────────────────
+       Antes, cada frase pedía su audio EN CUANTO SE PARTÍA. Una respuesta
+       larga son quince o veinte frases, y las quince salían a la vez contra
+       el mismo dyno y la misma cuenta de ElevenLabs. El resultado es el que
+       describió José: «se detiene la voz y se pega y no sigue». Las últimas
+       peticiones de la ráfaga se encolan detrás de las primeras, alguna se
+       pasa de plazo, y como la cola se dice EN ORDEN, una frase que tarda
+       calla a todas las de atrás aunque su audio ya estuviera listo.
+
+       Se piden DE DOS EN DOS, siempre por delante de la que suena. Dos basta
+       para que nunca haya un hueco —mientras suena una, la siguiente ya está
+       hecha— y evita la ráfaga. Cuando una llega, se pide la siguiente. */
+    /* ── SE CALIENTA LA CACHÉ DE LA SIGUIENTE MIENTRAS SUENA ÉSTA ──────────
+       La PRIMERA frase no se calienta: se pone su dirección en la etiqueta de
+       audio y suena mientras baja — es la que decide si esto se siente
+       instantáneo. Las de detrás sí, porque tienen tiempo: se piden con un
+       `fetch` normal, quedan en la caché del navegador, y cuando les toca
+       sonar ya están enteras y arrancan sin un hueco.
+       De paso el `fetch` deja el mp3 en la mano, y de ahí sale la envolvente
+       de verdad que le mueve la boca al núcleo. */
+    cebar() {
+      const gen = this.generacion;
+      let saltada = false;
+      for (const it of this.cola) {
+        if (!saltada && !this.sonando) { saltada = true; continue; }   // la primera va en vivo
+        if (this.enVuelo >= this.TOPE_VUELO) return;
+        if (it.audio) continue;
+        this.enVuelo++;
+        it.audio = this.calentar(it).finally(() => {
+          /* Nunca por debajo de cero: `callar()` vacía la cola pero las
+             peticiones que ya salieron siguen volviendo. */
+          this.enVuelo = Math.max(0, this.enVuelo - 1);
+          if (gen === this.generacion) this.cebar();
+        });
+      }
+    }
+    async calentar(it) {
+      if (!this.conElevenLabs || !it.url) return null;
+      try {
+        const r = await fetch(it.url, { credentials: 'same-origin' });
+        if (!r.ok) return null;
+        it.blob = await r.blob();
+        return it.blob;
+      } catch { return null; }
+    }
+    /* Tirar lo que TODAVÍA NO SE DIJO, sin cortar lo que está sonando. Es para
+       cuando el servidor corrige el texto a mitad de la respuesta: lo ya dicho
+       ya se oyó y no hay manera de retirarlo, pero lo que queda en la cola —el
+       trozo repetido que el propio servidor acaba de tachar— no tiene por qué
+       llegar a decirse. */
+    olvidarLoQueFalta() {
+      this.cola = []; this.resto = '';
+    }
+
+    callar() {
+      this.generacion++; this.cola = []; this.resto = ''; this.enVuelo = 0;
+      this.dicho = 0; this.cortado = false; this.cierreDicho = false; this.avisadoAqui = false;
+      /* `corte()` es lo que cierra la sesión de `sonar()` que esté en marcha.
+         Sin esto se paraba el elemento con `pause()` —que NO dispara `ended`—,
+         así que el temporizador de la envolvente, que late a 40 Hz, seguía
+         corriendo para siempre y la promesa de `sonar()` no resolvía nunca.
+         Una conversación de treinta frases dejaba treinta temporizadores vivos
+         moviéndole la boca a nadie. */
+      this.corte?.();
+      /* Se para, no se destruye: destruirlo tiraba a la basura el permiso de
+         iOS y la frase siguiente ya no sonaba. `removeAttribute('src')` en vez
+         de `src = ''`, que en Safari dispara un `error` de red por intentar
+         cargar la página como si fuera un audio. */
+      if (this.audio) { try { this.audio.pause(); this.audio.removeAttribute('src'); this.audio.load(); } catch { /* nada */ } }
+      if (window.speechSynthesis) speechSynthesis.cancel();
+      /* Y la voz de la app, que es otro motor distinto: sin esto, callar a
+         ULTRON en el teléfono dejaba a Android terminando la frase solo. */
+      if (hablandoAhora) { const h = hablandoAhora; hablandoAhora = null; try { window.AndroidVoz?.callar?.(); } catch { /* nada */ } h.fin?.(true); }
+      this.sonando = false; this.alNivel?.(0);
+    }
+    get ocupado() { return this.sonando || this.cola.length > 0; }
+    async seguir(gen) {
+      this.sonando = true; this.alEmpezar?.();
+      while (this.cola.length && gen === this.generacion) {
+        const it = this.cola.shift();
+        const texto = it.texto;
+        /* Al sacar una de la cola queda un hueco: se calienta la siguiente ya. */
+        this.cebar();
+        /* Si esta frase ya venía calentada, se espera a que termine de bajar
+           —falta poco y así no compite con la que suena—; si no, va en vivo. */
+        if (it.audio) { try { await it.audio; } catch { /* se sigue igual */ } }
+        if (gen !== this.generacion) break;
+        if (this.conElevenLabs && it.url) await this.sonar(it, gen, texto);
+        else await this.conNavegador(texto, gen);
+      }
+      if (gen === this.generacion) { this.sonando = false; this.alNivel?.(0); this.alTerminar?.(); }
+    }
+    /**
+     * Sonar un audio. Y aquí va la lección más cara de esta consola:
+     *
+     * NO SE ENRUTA EL AUDIO POR WEB AUDIO. La versión anterior conectaba cada
+     * `<audio>` a un AnalyserNode con `createMediaElementSource` para medir la
+     * envolvente y mover la figura. Eso REDIRIGE el sonido del elemento al
+     * grafo de Web Audio: si el contexto está suspendido —y lo está siempre
+     * hasta que un gesto lo despierta, y vuelve a suspenderse si la pestaña
+     * pierde el foco— el elemento deja de sonar por su cuenta y no suena por
+     * ningún lado. El síntoma era exacto: «ULTRON está hablando» abajo y
+     * silencio total. Una envolvente bonita no vale que el asistente sea mudo.
+     *
+     * Así que el audio suena por el elemento, a secas, y el nivel que mueve la
+     * figura se sintetiza mientras suena. La figura no sabe la diferencia.
+     *
+     * Y si el audio no puede sonar —`play()` rechazado por la política de
+     * autoarranque, un mp3 que no llegó— NO se calla: se dice la frase con la
+     * voz del navegador. Peor timbre, pero se oye, que es lo que importa.
+     */
+    sonar(it, gen, texto) {
+      return new Promise((listo) => {
+        const a = this.audio;                 // SIEMPRE el mismo: ver el constructor
+        /* LA DIRECCIÓN, no un blob. Con `src` apuntando a `/voz?...` el
+           navegador empieza a sonar con los primeros kilobytes mientras el
+           resto todavía baja — y el servidor, a su vez, va soltando el audio
+           mientras ElevenLabs lo fabrica. Antes se esperaba el mp3 entero dos
+           veces seguidas antes de que sonara un byte.
+           Si la frase venía calentada, la dirección ya está en la caché del
+           navegador y arranca de disco, sin viaje. */
+        a.src = it.url;
+        let envolvente = null;
+        /* LA ENVOLVENTE DE VERDAD, si se pudo sacar. `BOCA` decodifica una
+           COPIA de los bytes en un contexto que jamás se conecta a los
+           altavoces y devuelve la energía del sonido centésima a centésima; el
+           `<audio>` de aquí abajo no se toca y sigue sonando solo, que es la
+           regla que este comentario defiende arriba.
+           Se pide sin esperar: si tarda más que el arranque del audio, las
+           primeras décimas van con la inventada y en cuanto llega se cambia
+           sola. Nadie ve el salto y nadie se queda sin voz. */
+        let real = null;
+        if (it.blob) window.BOCA?.envolvente(it.blob).then((e) => { real = e; }).catch(() => { /* la inventada sigue */ });
+        const soltar = () => { clearInterval(envolvente); envolvente = null; a.onended = a.onerror = a.onplaying = null; this.alNivel?.(0); };
+        const fin = () => { this.corte = null; soltar(); listo(); };
+        this.corte = fin;      // para que `callar()` pueda cerrar esta sesión
+        a.onended = fin;
+        a.onerror = () => { soltar(); this.conNavegador(texto, gen).then(listo); };
+        a.onplaying = () => {
+          // La envolvente: un habla tiene sílabas, no una línea recta.
+          envolvente = setInterval(() => {
+            if (gen !== this.generacion || a.paused || a.ended) return;
+            if (real) { this.alNivel?.(real.at(a.currentTime)); return; }
+            const t = performance.now() / 1000;
+            this.alNivel?.(Math.min(1, 0.35 + 0.3 * Math.abs(Math.sin(t * 7.3)) + 0.2 * Math.abs(Math.sin(t * 3.1))));
+          }, 25);
+        };
+        a.play().catch((e) => {
+          // Lo más común: la política de autoarranque. Se dice igual, con la
+          // voz del navegador, y se avisa UNA vez para que se sepa por qué
+          // cambió el timbre.
+          soltar();
+          if (!this.avisadoAqui) { this.avisadoAqui = true; this.alFallo?.(String(e?.name || e)); }
+          this.conNavegador(texto, gen).then(listo);
+        });
+      });
+    }
+    conNavegador(texto, gen) {
+      return new Promise((listo) => {
+        /* LA VOZ DE LA APP DE ANDROID. Igual que con el micrófono: el WebView
+           no trae `speechSynthesis`, así que en el teléfono este respaldo era
+           un `return` vacío — el día que ElevenLabs falle, ULTRON se quedaba
+           MUDO sin decir por qué. `AndroidVoz` es el motor de texto a voz del
+           propio Android puesto detrás. */
+        const app = vozApp();
+        if (app) {
+          const t = setInterval(() => { if (gen === this.generacion) this.alNivel?.(0.35 + 0.3 * Math.abs(Math.sin(performance.now() / 160))); }, 60);
+          const fin = () => { clearInterval(t); this.alNivel?.(0); listo(); };
+          try {
+            const id = String(app.decir(texto, false) || '');
+            if (!id) return fin();
+            hablandoAhora = { id, fin };
+          } catch { fin(); }
+          return;
+        }
+        if (!window.speechSynthesis) return listo();
+        const u = new SpeechSynthesisUtterance(texto); u.lang = 'es-HN'; u.rate = 1;
+        /* `getVoices()` devuelve [] hasta que el navegador termina de cargarlas
+           —en iOS tarda—, y entonces `u.voice` quedaba en null y hablaba en
+           inglés. Si no hay ninguna todavía, se deja que elija por `lang`. */
+        const voces = speechSynthesis.getVoices() || [];
+        u.voice = voces.find((v) => /es-(HN|MX|US|419)/i.test(v.lang)) || voces.find((v) => /^es/i.test(v.lang)) || null;
+        const t = setInterval(() => { if (gen === this.generacion) this.alNivel?.(0.35 + 0.3 * Math.abs(Math.sin(performance.now() / 160))); }, 60);
+        const fin = () => { clearInterval(t); this.alNivel?.(0); listo(); };
+        u.onend = fin; u.onerror = fin; speechSynthesis.speak(u);
+      });
+    }
+  }
+
+  /* ── EL VIGILANTE DEL MICRÓFONO ───────────────────────────────────────────
+     Dos cosas que hacen que esto se sienta una conversación y no un walkie:
+
+     INTERRUMPIR. Si ULTRON está hablando y la persona empieza a hablar, se
+     calla. Para saberlo hay que oír mientras habla, y ahí está el truco: el
+     micrófono se abre con `echoCancellation`, que es exactamente lo que existe
+     para que el aparato NO se oiga a sí mismo. Sin eso, ULTRON se interrumpiría
+     con su propia voz en la primera sílaba.
+
+     LO QUE SUENA LEJOS NO CUENTA. El nivel también sirve de puerta: una
+     conversación al otro lado del cuarto llega bajita, y con el umbral puesto
+     no dispara nada. No es reconocer una voz —el navegador no puede hacer eso,
+     y decir que sí sería mentir—: es no hacerle caso a lo que suena lejos.
+
+     Esto NO enruta el audio de SALIDA por Web Audio: es el micrófono, que es
+     entrada. La lección de os-boca.js sigue en pie y sin tocar. */
+  async function vigilarMicrofono({ alHablar, umbral = 0.055, sostenido = 260 } = {}) {
+    let flujo = null, ctx = null, raf = null, desde = 0, muerto = false;
+    try {
+      flujo = await navigator.mediaDevices.getUserMedia({
+        audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
+      });
+      ctx = new (window.AudioContext || window.webkitAudioContext)();
+      if (ctx.state === 'suspended') await ctx.resume().catch(() => {});
+      const fuente = ctx.createMediaStreamSource(flujo);
+      const an = ctx.createAnalyser(); an.fftSize = 512; an.smoothingTimeConstant = 0.6;
+      fuente.connect(an);                       // y NADA hacia los altavoces: solo se mide
+      const datos = new Uint8Array(an.fftSize);
+      const mirar = () => {
+        if (muerto) return;
+        raf = requestAnimationFrame(mirar);
+        an.getByteTimeDomainData(datos);
+        let s = 0;
+        for (let i = 0; i < datos.length; i++) { const v = (datos[i] - 128) / 128; s += v * v; }
+        const nivel = Math.sqrt(s / datos.length);
+        if (nivel > umbral) {
+          if (!desde) desde = performance.now();
+          else if (performance.now() - desde > sostenido) { desde = 0; alHablar?.(nivel); }
+        } else desde = 0;
+      };
+      raf = requestAnimationFrame(mirar);
+    } catch (e) {
+      return { soltar() {}, error: String(e?.name || e) };
+    }
+    return {
+      soltar() {
+        muerto = true; cancelAnimationFrame(raf);
+        try { flujo?.getTracks().forEach((t) => t.stop()); } catch { /* ya */ }
+        try { ctx?.close(); } catch { /* ya */ }
+      },
+    };
+  }
+
+  /* ── EL OÍDO DE LA APP DE ANDROID ─────────────────────────────────────────
+   * 7-sep, José con el APK instalado: «no me escucha el micrófono».
+   *
+   * Y no era el permiso. `SpeechRecognition` es una API de CHROME: el WebView
+   * de Android NO la trae, ni con el micrófono concedido. Así que dentro de la
+   * app `hayOido()` daba falso, el botón de hablar no hacía nada, y no había
+   * manera de que nadie supiera por qué.
+   *
+   * La app pone delante el reconocedor de Android —el mismo del teclado— y lo
+   * deja en `window.AndroidOido`. Todo lo de abajo lo prefiere cuando está, y
+   * en el navegador sigue exactamente igual que siempre. */
+  const oidoApp = () => { try { return window.AndroidOido?.hay?.() ? window.AndroidOido : null; } catch { return null; } };
+
+  /* El puente manda lo que oye por aquí. Una sola puerta, y quien esté
+     escuchando en ese momento se la queda. */
+  let escuchandoAhora = null;
+  window.__oidoAndroid = (que, texto) => {
+    const q = escuchandoAhora;
+    if (!q) return;
+    if (que === 'parcial') q.alOir?.(String(texto || ''), false);
+    else if (que === 'final') q.alOir?.(String(texto || ''), true);
+    else if (que === 'fallo') { escuchandoAhora = null; q.alFallo?.(String(texto || 'error')); }
+    else if (que === 'fin') { escuchandoAhora = null; q.alFin?.(); }
+  };
+
+  const hayOido = () => !!(oidoApp() || window.SpeechRecognition || window.webkitSpeechRecognition);
+
+  /** Estamos DENTRO de la app de Android (aunque el oído no esté disponible). */
+  const enLaApp = () => { try { return !!window.AndroidOido; } catch { return false; } };
+
+  /** Por qué no escucha, en palabras. Sirve para decirlo en pantalla en vez de
+   *  soltar «este navegador no trae reconocimiento de voz», que dentro de la
+   *  app es mentira y no ayuda a nadie. */
+  function porQueNoOye() {
+    if (hayOido()) return '';
+    if (!enLaApp()) return 'Este navegador no trae reconocimiento de voz. En Chrome sí funciona.';
+    let d = {};
+    try { d = JSON.parse(window.AndroidOido.diagnostico?.() || '{}'); } catch { /* da igual */ }
+    if (d.permisoDeMicrofono === false) return 'Falta darle el micrófono a ULTRON en los ajustes del teléfono.';
+    return 'Este teléfono no tiene reconocimiento de voz instalado. Se arregla instalando la app de Google o el reconocimiento de voz de Android.';
+  }
+
+  /* ── LA VOZ DE LA APP DE ANDROID ──────────────────────────────────────────
+   * El mismo agujero que el oído, del otro lado. ULTRON habla con ElevenLabs y
+   * eso suena igual en la app; pero cuando ElevenLabs falla, el respaldo es
+   * `speechSynthesis`, que el WebView TAMPOCO trae. O sea: en el teléfono, el
+   * día que ElevenLabs se caiga, ULTRON se quedaba mudo. `AndroidVoz` pone
+   * detrás el motor de texto a voz de Android. */
+  const vozApp = () => { try { return window.AndroidVoz?.hay?.() ? window.AndroidVoz : null; } catch { return null; } };
+
+  let hablandoAhora = null;
+  window.__vozAndroid = (que, id) => {
+    const h = hablandoAhora;
+    if (!h || (id && h.id && id !== h.id)) return;
+    hablandoAhora = null;
+    h.fin?.(que === 'fallo');
+  };
+
+  /** Escucha una vez. Resuelve con lo dicho (vacío si no se oyó nada). */
+  function escuchar({ alParcial } = {}) {
+    /* Dentro de la app, por el oído nativo. Se cierra con el primer resultado
+       final, que es lo que hace esta función: dictar UNA frase. */
+    const app = oidoApp();
+    if (app) {
+      return new Promise((listo) => {
+        let dicho = '';
+        escuchandoAhora = {
+          alOir: (t, final) => { dicho = t; alParcial?.(t); if (final) { escuchandoAhora = null; try { app.parar(); } catch { /* ya estaba */ } listo(dicho.trim()); } },
+          alFallo: () => listo(dicho.trim()),
+          alFin: () => listo(dicho.trim()),
+        };
+        try { app.escuchar('es-HN', false); } catch { escuchandoAhora = null; listo(''); }
+      });
+    }
+    return new Promise((listo) => {
+      const R = window.SpeechRecognition || window.webkitSpeechRecognition;
+      if (!R) return listo('');
+      const rec = new R(); rec.lang = 'es-HN'; rec.interimResults = true; rec.continuous = false;
+      let final = '';
+      rec.onresult = (ev) => { let inter = ''; for (let i = 0; i < ev.results.length; i++) { const r = ev.results[i]; if (r.isFinal) final += r[0].transcript; else inter += r[0].transcript; } alParcial?.((final + ' ' + inter).trim()); };
+      rec.onerror = () => listo(final.trim()); rec.onend = () => listo(final.trim());
+      try { rec.start(); } catch { listo(''); }
+    });
+  }
+
+  /* ── OÍR DE CONTINUO, Y PODER CORTAR ──────────────────────────────────────
+   *
+   * `escuchar` de arriba sirve para dictar UNA frase: se abre, la persona
+   * habla, se cierra y devuelve lo dicho. La palabra que despierta necesita
+   * otra cosa — quedarse abierta indefinidamente, avisar de cada trozo aunque
+   * no haya terminado, y poder cortarse en seco desde fuera cuando la palabra
+   * suena. Meter eso en la de arriba habría cambiado la que ya usa el panel,
+   * así que va aparte.
+   *
+   * Devuelve un mando con `abort()`. Quien lo enciende es responsable de
+   * apagarlo: un micrófono abierto que nadie cierra es exactamente lo que
+   * nadie quiere en su casa.
+   */
+  function oir({ idioma = 'es-HN', continuo = true, alOir, alFin, alFallo } = {}) {
+    const app = oidoApp();
+    if (app) {
+      escuchandoAhora = { alOir, alFin, alFallo };
+      try { app.escuchar(idioma, continuo); } catch (e) { escuchandoAhora = null; alFallo?.(String(e?.message || e)); }
+      return { abort() { escuchandoAhora = null; try { app.parar(); } catch { /* ya estaba */ } } };
+    }
+    const R = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!R) { alFallo?.('sin-reconocimiento'); return { abort() {} }; }
+    const rec = new R();
+    rec.lang = idioma; rec.interimResults = true; rec.continuous = continuo;
+    let muerto = false;
+    rec.onresult = (ev) => {
+      let final = '', inter = '';
+      for (let i = ev.resultIndex; i < ev.results.length; i++) {
+        const r = ev.results[i];
+        if (r.isFinal) final += r[0].transcript; else inter += r[0].transcript;
+      }
+      const dicho = (final + ' ' + inter).trim();
+      if (dicho) alOir?.(dicho, !!final);
+    };
+    rec.onerror = (e) => { if (!muerto) alFallo?.(String(e?.error || 'error')); };
+    rec.onend = () => { if (!muerto) alFin?.(); };
+    try { rec.start(); } catch (e) { alFallo?.(String(e?.name || e)); }
+    return { abort() { muerto = true; try { rec.abort(); } catch { /* ya estaba */ } } };
+  }
+
+  /* Desbloquear CUALQUIER otro elemento de audio con el mismo gesto. En iOS el
+     permiso para sonar es del ELEMENTO, no de la página: el locutor se
+     desbloquea solo, pero el audio de las muletillas es otro elemento y nadie
+     lo desbloqueaba nunca. Resultado: en el iPad de José las muletillas —lo
+     único que rompe los veinte segundos de silencio mientras el nodo piensa—
+     no sonaron ni una vez. */
+  function desbloquear(audio) {
+    if (!audio || audio.__despierto) return;
+    try {
+      const url = URL.createObjectURL(wavMudo());
+      audio.playsInline = true;
+      audio.src = url;
+      const p = audio.play();
+      const listo = () => { audio.__despierto = true; URL.revokeObjectURL(url); };
+      if (p && p.then) p.then(listo).catch(() => URL.revokeObjectURL(url));
+      else listo();
+    } catch { /* sin permiso: se intentará en el gesto siguiente */ }
+  }
+
+  return { Locutor, escuchar, oir, hayOido, porQueNoOye, enLaApp, paraDecir, partirFrases, esIOS, vigilarMicrofono, numerosParaLaVoz, desbloquear };
+})();

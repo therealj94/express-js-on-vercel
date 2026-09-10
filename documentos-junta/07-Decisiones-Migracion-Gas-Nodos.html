@@ -1,0 +1,721 @@
+<!doctype html>
+<html lang="es"><head><meta charset="utf-8">
+<title>Orden Global · Decisiones: migración, gas y nodos</title>
+<link rel="stylesheet" href="recursos/estilo.css">
+<style>
+  .acuerdo { border:1px solid var(--linea); border-left:4px solid var(--oro-cl);
+             background:var(--fondo2); padding:11px 14px; margin:11px 0;
+             page-break-inside:avoid; border-radius:2px; }
+  .acuerdo h3 { margin:0 0 5px; }
+  .acuerdo .num { color:var(--oro); font-size:15pt; font-weight:700; margin-right:8px; }
+  .acuerdo .porque { font-size:9.4pt; color:var(--suave); border-top:1px solid var(--linea);
+                     margin-top:8px; padding-top:7px; }
+  .acuerdo .porque b { color:var(--verde); }
+  .aviso { border-left:4px solid var(--alerta); background:#FDF6EE; padding:11px 14px;
+           margin:12px 0; page-break-inside:avoid; }
+  .grave-c { border-left:4px solid var(--grave); background:#FCEFEE; padding:11px 14px;
+             margin:12px 0; page-break-inside:avoid; }
+  .prueba { border-left:4px solid var(--ok); background:#EEF6F2; padding:11px 14px; margin:12px 0; }
+  .mono { font-family:"SF Mono",Menlo,Consolas,monospace; font-size:8.6pt; color:var(--verde2); }
+  table.decidir td:first-child { font-weight:600; }
+  .decision { background:#FFF9E8; }
+  figure { margin:16px 0; page-break-inside:avoid; text-align:center; }
+  figure svg { width:100%; height:auto; max-width:170mm; }
+  figcaption { font-size:8.8pt; color:var(--suave); text-align:left; margin-top:6px;
+               line-height:1.4; border-top:1px solid var(--linea); padding-top:5px; }
+  td.der, th.der { text-align:right; font-variant-numeric:tabular-nums; }
+  .grave { color:var(--grave); font-weight:600; }
+  .ok { color:var(--ok); font-weight:600; }
+  .suave { color:var(--suave); font-size:8.4pt; }
+</style>
+</head><body>
+
+<section class="portada">
+  <div>
+    <div class="sello"><svg viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="24" cy="24" r="22" fill="none" stroke="#0A3436" stroke-width="1.6"/>
+      <circle cx="24" cy="24" r="17" fill="none" stroke="#C9A961" stroke-width="1"/>
+      <path d="M24 7 L24 41" stroke="#0A3436" stroke-width="1.6"/>
+      <path d="M12 15 Q24 24 36 15" fill="none" stroke="#C9A961" stroke-width="1.6"/>
+      <path d="M12 33 Q24 24 36 33" fill="none" stroke="#C9A961" stroke-width="1.6"/>
+      <circle cx="24" cy="24" r="3.4" fill="#C9A961"/></svg>
+      <div class="marca"><b>Orden Global</b><span>Documento 7 · Junta Directiva</span></div>
+    </div>
+  </div>
+  <div>
+    <div class="filete"></div>
+    <h1>Tres decisiones:<br>la migración,<br>el gas y los nodos</h1>
+    <p class="bajada">Qué está probado y listo, qué hay que votar, y qué hay que
+    resolver antes de anunciar el programa de nodos validadores.</p>
+  </div>
+  <div class="pie">
+    <b>10 de agosto de 2026</b><br>
+    Las cifras de migración provienen de mediciones sobre la cadena real, verificadas
+    contra la raíz criptográfica de cada contrato. Lo que es estimación está marcado como tal.
+  </div>
+</section>
+
+<h2>En una página</h2>
+
+<p>Hay <strong>tres asuntos</strong> sobre la mesa y conviene no mezclarlos, porque
+están en estados muy distintos. Antes de los dos últimos va una explicación de la
+tecnología nueva, porque de ella depende qué se puede ofrecer y qué no.</p>
+
+<p><strong>La migración de la cadena está probada y esperando autorización.</strong>
+Se ejecutó el inventario, se construyó el génesis nuevo y se levantó una cadena de
+ensayo. Los catorce tokens oficiales tienen el almacenamiento <em>idéntico</em>, bit
+a bit, verificado por hash. Falta la firma de la Junta para el corte.</p>
+
+<p><strong>La política de gas es una decisión abierta que hoy nadie ha tomado.</strong>
+La cadena cobra cero por transacción. Eso es excelente para el usuario y significa que
+la red no genera ingreso alguno — lo que importa para el tercer asunto.</p>
+
+<p><strong>El programa de nodos validadores necesita trabajo antes de anunciarse.</strong>
+Es viable, pero la tecnología nueva <em>no tiene staking</em>: los validadores se suman
+por voto, no depositando. La recompensa mensual no la paga la cadena; la paga la
+sociedad. Y un puesto de validador conlleva poder de gobierno sobre la red.</p>
+
+<div class="cifras">
+  <div class="tarjeta"><div class="n">14/14</div><div class="et">tokens con almacenamiento idéntico</div></div>
+  <div class="tarjeta"><div class="n">332</div><div class="et">cuentas migradas y verificadas</div></div>
+  <div class="tarjeta"><div class="n">0</div><div class="et">ingreso actual de la red por gas</div></div>
+  <div class="tarjeta"><div class="n">1</div><div class="et">validador en producción hoy</div></div>
+</div>
+
+<h2>Parte I · La migración</h2>
+
+<h3>Lo que está probado</h3>
+
+<p>Las etapas que no requieren autorización —inventario, génesis y ensayo— ya se
+ejecutaron. Estos son sus resultados, medidos y no estimados.</p>
+
+<table>
+  <thead><tr><th>Comprobación</th><th>Resultado</th><th>Estado</th></tr></thead>
+  <tbody>
+    <tr><td>Volcado del estado completo, sin nodos faltantes</td><td>1.385 entradas</td><td class="ok">Verificado</td></tr>
+    <tr><td>Suma de saldos contra la emisión de cada token</td><td>14 de 14</td><td class="ok">Cuadra exacto</td></tr>
+    <tr><td>Raíz de almacenamiento de los tokens</td><td>14 de 14</td><td class="ok">Idéntica</td></tr>
+    <tr><td>Cuentas con dirección identificada</td><td>332 de 332</td><td class="ok">Completo</td></tr>
+    <tr><td>Contratos migrados enteros</td><td>169 de 173</td><td class="ok">Verificado</td></tr>
+    <tr><td>Semillas y llaves que descifran correctamente</td><td>405 de 406</td><td class="ok">Verificado</td></tr>
+    <tr><td>Posiciones de liquidez con dueño y datos correctos</td><td>31 de 31</td><td class="ok">Verificado</td></tr>
+    <tr><td>Índice para listar posiciones en la billetera</td><td>en curso</td><td class="alerta">Último pendiente</td></tr>
+  </tbody>
+</table>
+
+<div class="prueba">
+  <p style="margin:0 0 5px"><strong>La prueba que no admite interpretación.</strong>
+  La raíz del almacenamiento es el hash de todo lo que guarda un contrato. Si coincide
+  entre las dos cadenas, no falta ni sobra una sola entrada.</p>
+  <p class="mono" style="margin:0">ONDK &nbsp;0x0dd44606fc108f6921… → 0x0dd44606fc108f6921…<br>
+  AUKA &nbsp;0x03111b7a5aa74330e5… → 0x03111b7a5aa74330e5…</p>
+  <p style="margin:5px 0 0">Los catorce coinciden. Los 138 tenedores de ONDK y los 39
+  de AUKA viajan con su saldo exacto.</p>
+</div>
+
+<h3>Qué pasa con las personas</h3>
+
+<p>Correos, contraseñas y frases semilla <strong>no están en la cadena</strong>: viven
+en la base de la billetera y el corte no las toca. La dirección de cada persona es la
+misma en la cadena nueva, con el mismo saldo. Entra con su correo y contraseña de
+siempre.</p>
+
+<div class="aviso">
+  <p style="margin:0"><strong>El aviso a los usuarios es parte del corte, no un extra.</strong>
+  Quien no actualice la aplicación seguirá hablándole a la cadena vieja: la verá
+  funcionando, pero congelada. La comunicación tiene que salir antes.</p>
+</div>
+
+<h3>Los seis acuerdos de la migración</h3>
+
+<div class="acuerdo"><h3><span class="num">1</span>El corte</h3>
+  <p>Congelar la escritura, tomar la foto final del estado, arrancar la cadena nueva y
+  mover el DNS. Una ventana de fin de semana.</p>
+  <p class="porque"><b>Por qué necesita acta:</b> interrumpe el servicio, y desde ese
+  momento el registro oficial de saldos pasa a ser la cadena nueva.</p></div>
+
+<div class="acuerdo"><h3><span class="num">2</span>Identificador de red 5550</h3>
+  <p>La red nueva será <strong>5550</strong> y la de pruebas <strong>5534</strong>, ambos
+  verificados libres en el registro público.</p>
+  <p class="porque"><b>Por qué necesita acta:</b> toda persona debe actualizar su
+  billetera. <b>Por qué se hace igual:</b> conservar el número viejo obligaría a apagar
+  la cadena anterior en el corte, y con ella el respaldo que permite volver atrás en
+  minutos en vez de horas.</p></div>
+
+<div class="acuerdo"><h3><span class="num">3</span>El alcance: viaja todo</h3>
+  <p>Los catorce tokens, el ORIGEN nativo, las 332 cuentas y los contratos del
+  intercambio.</p>
+  <p class="porque"><b>Estado:</b> 169 de 173 contratos completos. Los cuatro restantes
+  son estructuras internas del intercambio; el trabajo para cerrarlos está en curso y
+  no depende de esta votación.</p></div>
+
+<div class="acuerdo"><h3><span class="num">4</span>Los 10 ORIGEN del contrato de garantía</h3>
+  <p>El contrato de garantía de la tecnología vieja no viaja. Sus 10 ORIGEN retenidos se
+  devuelven a la dirección validadora en el génesis.</p>
+  <p class="porque"><b>Por qué necesita acta:</b> es un movimiento de fondos, por
+  pequeño que sea.</p></div>
+
+<div class="acuerdo"><h3><span class="num">5</span>Inscripción en el registro público</h3>
+  <p>Registrar 5550 y 5534 en el catálogo que alimenta a las billeteras.</p>
+  <p class="porque"><b>Por qué necesita acta:</b> es un compromiso hacia afuera, y no
+  hay forma de reservar un número por adelantado.</p></div>
+
+<div class="acuerdo"><h3><span class="num">6</span>La red de pruebas permanente</h3>
+  <p><strong>Ya está funcionando</strong> desde hoy: tres validadores, bloques cada cinco
+  segundos, con acceso público cifrado en <span class="mono">rpc-testnet.ordenglobal-rpc.com</span>.
+  Costo real medido: <strong>61 dólares al mes</strong>, por debajo de lo presupuestado.</p>
+  <p class="porque"><b>Qué se pide:</b> ratificar el gasto. La red ya demuestra con tres
+  validadores lo que producción todavía no tiene.</p></div>
+
+<h2>Parte II · Por qué QBFT y no proof of stake</h2>
+
+<p>El cambio de tecnología no es sólo cambiar un programa por otro: cambia
+<strong>cómo se decide qué es verdad</strong> en la cadena. Y de eso depende qué se
+puede ofrecer en el programa de nodos, así que conviene entenderlo bien.</p>
+
+<h3>Lo que había, y lo que realmente era</h3>
+
+<p>La cadena actual corre en modo <em>proof of stake</em>: quien quiere validar deposita
+tokens en un contrato de garantía, y si se porta mal se los quitan. Ese contrato existe
+—es el que retiene los 10 ORIGEN— así que técnicamente la cadena era PoS.</p>
+
+<p>En la práctica <strong>nunca funcionó como tal</strong>: hay un solo validador y nadie
+podía entrar sin autorización de la sociedad. El depósito era una formalidad sobre una
+decisión que ya se tomaba a mano.</p>
+
+<h3>Cómo se hace definitivo un bloque</h3>
+
+<figure>
+<svg viewBox="0 0 640 296" xmlns="http://www.w3.org/2000/svg" role="img"
+     aria-label="Comparación: en proof of stake el bloque se vuelve definitivo sólo después de esperar muchos bloques; en QBFT es definitivo en cuanto firman más de dos tercios de los validadores conocidos.">
+  <defs>
+    <marker id="fl" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5" markerHeight="5"
+            orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="#5C6B68"/></marker>
+    <marker id="flo" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5" markerHeight="5"
+            orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="#9A7B2E"/></marker>
+  </defs>
+
+  <line x1="320" y1="16" x2="320" y2="274" stroke="#D9E0DE" stroke-width="1"/>
+
+  <!-- ── PROOF OF STAKE ── -->
+  <text x="18" y="24" font-size="10" font-weight="700" fill="#0A3436" font-family="Helvetica">PROOF OF STAKE</text>
+  <text x="18" y="38" font-size="8.5" fill="#5C6B68" font-family="Helvetica">validadores anónimos · el depósito es la garantía</text>
+
+  <g font-family="Helvetica">
+    <circle cx="40" cy="72" r="12" fill="#F4F7F6" stroke="#5C6B68"/><text x="40" y="76" font-size="10" text-anchor="middle" fill="#5C6B68">?</text>
+    <circle cx="70" cy="72" r="12" fill="#F4F7F6" stroke="#5C6B68"/><text x="70" y="76" font-size="10" text-anchor="middle" fill="#5C6B68">?</text>
+    <circle cx="100" cy="72" r="12" fill="#F4F7F6" stroke="#5C6B68"/><text x="100" y="76" font-size="10" text-anchor="middle" fill="#5C6B68">?</text>
+    <circle cx="130" cy="72" r="12" fill="#F4F7F6" stroke="#5C6B68"/><text x="130" y="76" font-size="10" text-anchor="middle" fill="#5C6B68">?</text>
+    <text x="152" y="76" font-size="8.5" fill="#5C6B68">cualquiera</text>
+
+    <line x1="85" y1="88" x2="85" y2="108" stroke="#5C6B68" marker-end="url(#fl)"/>
+    <text x="92" y="102" font-size="8" fill="#5C6B68">deposita</text>
+    <rect x="30" y="110" width="120" height="24" rx="3" fill="#FBF6E9" stroke="#C9A961"/>
+    <text x="90" y="126" font-size="8.5" text-anchor="middle" fill="#9A7B2E">contrato de garantía</text>
+
+    <text x="90" y="150" font-size="7.5" text-anchor="middle" fill="#5C6B68">el protocolo sortea,</text>
+    <text x="90" y="161" font-size="7.5" text-anchor="middle" fill="#5C6B68">pesado por el depósito</text>
+    <line x1="152" y1="122" x2="204" y2="122" stroke="#5C6B68" marker-end="url(#fl)"/>
+
+    <rect x="208" y="108" width="56" height="28" rx="3" fill="#0A3436"/>
+    <text x="236" y="126" font-size="9" text-anchor="middle" fill="#FFFFFF">bloque</text>
+
+    <text x="18" y="182" font-size="8.5" fill="#5C6B68">y después hay que ESPERAR:</text>
+    <g>
+      <rect x="18" y="192" width="17" height="20" rx="2" fill="#0A3436"/>
+      <rect x="39" y="192" width="17" height="20" rx="2" fill="#D9E0DE"/>
+      <rect x="60" y="192" width="17" height="20" rx="2" fill="#D9E0DE"/>
+      <rect x="81" y="192" width="17" height="20" rx="2" fill="#D9E0DE"/>
+      <rect x="102" y="192" width="17" height="20" rx="2" fill="#D9E0DE"/>
+      <text x="126" y="200" font-size="9" fill="#5C6B68">…</text>
+      <rect x="140" y="192" width="17" height="20" rx="2" fill="#D9E0DE"/>
+    </g>
+    <line x1="26" y1="220" x2="150" y2="220" stroke="#A8590F" stroke-width="1.2" marker-end="url(#fl)"/>
+    <text x="18" y="236" font-size="8.5" fill="#A8590F">12 a 64 bloques más</text>
+    <text x="18" y="250" font-size="9" font-weight="700" fill="#A8590F">…y aun así es sólo PROBABLE</text>
+    <text x="18" y="266" font-size="8" fill="#5C6B68">se puede revertir si alguien reescribe la punta</text>
+  </g>
+
+  <!-- ── QBFT ── -->
+  <text x="340" y="24" font-size="10" font-weight="700" fill="#0A3436" font-family="Helvetica">QBFT</text>
+  <text x="340" y="38" font-size="8.5" fill="#5C6B68" font-family="Helvetica">validadores conocidos · la mayoría de dos tercios es la garantía</text>
+
+  <g font-family="Helvetica">
+    <circle cx="362" cy="72" r="13" fill="#0A3436"/><text x="362" y="76" font-size="8.5" text-anchor="middle" fill="#FFFFFF">V1</text>
+    <circle cx="404" cy="72" r="13" fill="#F4F7F6" stroke="#0A3436"/><text x="404" y="76" font-size="8.5" text-anchor="middle" fill="#0A3436">V2</text>
+    <circle cx="446" cy="72" r="13" fill="#F4F7F6" stroke="#0A3436"/><text x="446" y="76" font-size="8.5" text-anchor="middle" fill="#0A3436">V3</text>
+    <circle cx="488" cy="72" r="13" fill="#F4F7F6" stroke="#0A3436"/><text x="488" y="76" font-size="8.5" text-anchor="middle" fill="#0A3436">V4</text>
+    <text x="510" y="76" font-size="8" fill="#5C6B68">lista conocida</text>
+    <text x="362" y="52" font-size="7.5" text-anchor="middle" fill="#9A7B2E">propone</text>
+
+    <line x1="362" y1="88" x2="410" y2="120" stroke="#9A7B2E" marker-end="url(#flo)"/>
+    <rect x="414" y="112" width="56" height="28" rx="3" fill="#0A3436"/>
+    <text x="442" y="130" font-size="9" text-anchor="middle" fill="#FFFFFF">bloque</text>
+
+    <path d="M404 88 Q408 104 420 110" fill="none" stroke="#1E7A5A" stroke-width="1.3" marker-end="url(#fl)"/>
+    <path d="M446 88 Q446 100 446 108" fill="none" stroke="#1E7A5A" stroke-width="1.3" marker-end="url(#fl)"/>
+    <path d="M488 88 Q484 104 468 110" fill="none" stroke="#1E7A5A" stroke-width="1.3" marker-end="url(#fl)"/>
+    <text x="500" y="104" font-size="7.5" fill="#1E7A5A">firman</text>
+
+    <rect x="340" y="160" width="240" height="40" rx="3" fill="#EEF6F2" stroke="#1E7A5A"/>
+    <text x="352" y="177" font-size="9" font-weight="700" fill="#1E7A5A">3 de 4 firmaron — más de dos tercios</text>
+    <text x="352" y="192" font-size="8.5" fill="#0A3436">el bloque queda DEFINITIVO en ese instante</text>
+
+    <text x="340" y="226" font-size="9" font-weight="700" fill="#1E7A5A">no se puede revertir nunca</text>
+    <text x="340" y="242" font-size="8" fill="#5C6B68">el comercio cobra y en cinco segundos tiene certeza,</text>
+    <text x="340" y="255" font-size="8" fill="#5C6B68">no una probabilidad alta</text>
+  </g>
+</svg>
+<figcaption>Un bloque se vuelve definitivo de dos maneras muy distintas. En proof of
+stake hay que esperar y la certeza nunca es total; en QBFT basta con que firmen más de
+dos tercios de los validadores, y eso ocurre en el mismo bloque.</figcaption>
+</figure>
+
+<h3>Cómo entra un validador nuevo</h3>
+
+<p>Ésta es la diferencia que decide qué se puede ofrecer en el programa de nodos.</p>
+
+<figure>
+<svg viewBox="0 0 640 130" xmlns="http://www.w3.org/2000/svg" role="img"
+     aria-label="En proof of stake un validador entra depositando fondos; en QBFT entra porque los validadores existentes lo votan.">
+  <defs><marker id="fl2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5" markerHeight="5"
+    orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="#5C6B68"/></marker></defs>
+  <line x1="320" y1="10" x2="320" y2="120" stroke="#D9E0DE"/>
+  <g font-family="Helvetica">
+    <text x="18" y="24" font-size="9" font-weight="700" fill="#0A3436">ANTES · con depósito</text>
+    <circle cx="42" cy="62" r="14" fill="#F4F7F6" stroke="#5C6B68"/><text x="42" y="66" font-size="9" text-anchor="middle" fill="#5C6B68">?</text>
+    <line x1="60" y1="62" x2="104" y2="62" stroke="#5C6B68" marker-end="url(#fl2)"/>
+    <text x="62" y="55" font-size="7.5" fill="#5C6B68">deposita</text>
+    <rect x="108" y="48" width="86" height="28" rx="3" fill="#FBF6E9" stroke="#C9A961"/>
+    <text x="151" y="66" font-size="8" text-anchor="middle" fill="#9A7B2E">garantía</text>
+    <line x1="194" y1="62" x2="234" y2="62" stroke="#5C6B68" marker-end="url(#fl2)"/>
+    <rect x="238" y="48" width="62" height="28" rx="3" fill="#0A3436"/>
+    <text x="269" y="66" font-size="8" text-anchor="middle" fill="#FFFFFF">ya valida</text>
+    <text x="18" y="104" font-size="8" fill="#5C6B68">el dinero es la garantía porque no se sabe quién es</text>
+  </g>
+  <g font-family="Helvetica">
+    <text x="340" y="24" font-size="9" font-weight="700" fill="#0A3436">AHORA · por voto</text>
+    <circle cx="364" cy="62" r="14" fill="#F4F7F6" stroke="#0A3436"/><text x="364" y="66" font-size="8" text-anchor="middle" fill="#0A3436">V5</text>
+    <line x1="382" y1="62" x2="424" y2="62" stroke="#5C6B68" marker-end="url(#fl2)"/>
+    <text x="384" y="55" font-size="7.5" fill="#5C6B68">pide entrar</text>
+    <rect x="428" y="44" width="100" height="36" rx="3" fill="#EEF6F2" stroke="#1E7A5A"/>
+    <text x="478" y="60" font-size="8" text-anchor="middle" fill="#1E7A5A">los validadores</text>
+    <text x="478" y="72" font-size="8" text-anchor="middle" fill="#1E7A5A">existentes votan</text>
+    <line x1="528" y1="62" x2="562" y2="62" stroke="#5C6B68" marker-end="url(#fl2)"/>
+    <rect x="566" y="48" width="58" height="28" rx="3" fill="#0A3436"/>
+    <text x="595" y="66" font-size="8" text-anchor="middle" fill="#FFFFFF">ya valida</text>
+    <text x="340" y="104" font-size="8" fill="#5C6B68">no hace falta depósito: se sabe quién es y se lo puede votar fuera</text>
+  </g>
+</svg>
+<figcaption>Antes se entraba poniendo dinero en garantía. Ahora se entra porque los
+validadores existentes lo votan — y por el mismo mecanismo se lo puede sacar.</figcaption>
+</figure>
+
+<h3>Por qué el depósito no aportaba nada de todos modos</h3>
+
+<p>El depósito tiene sentido cuando los validadores son <strong>anónimos</strong>: como no
+se sabe quiénes son, se les exige dinero en garantía y se les quema si hacen trampa.</p>
+
+<p>Cuando el conjunto es conocido y se lo puede expulsar por voto, el depósito es teatro:
+ya existe el castigo —sacarlo— y es inmediato, mientras que ejecutar una garantía es
+lento y discutible.</p>
+
+<table>
+  <thead><tr><th></th><th>Proof of stake</th><th>QBFT</th></tr></thead>
+  <tbody>
+    <tr><td>Quién puede validar</td><td>Cualquiera que deposite</td><td>Sólo quien el conjunto vote</td></tr>
+    <tr><td>Qué respalda la seguridad</td><td>Dinero en riesgo</td><td>Identidad conocida y mayoría de dos tercios</td></tr>
+    <tr><td>Castigo</td><td>Le queman el depósito</td><td>Lo votan fuera, de inmediato</td></tr>
+    <tr><td><b>Cuándo el bloque es definitivo</b></td><td>Tras 12 a 64 bloques, y sólo probable</td><td><b>En el acto, y para siempre</b></td></tr>
+    <tr><td>Cuántos validadores admite</td><td>Miles</td><td>Unas decenas</td></tr>
+    <tr><td>Para qué sirve mejor</td><td>Redes públicas y anónimas</td><td>Redes de una empresa con participantes identificados</td></tr>
+  </tbody>
+</table>
+
+<div class="prueba">
+  <p style="margin:0"><strong>La finalidad inmediata es la ventaja que casi nadie
+  menciona.</strong> En una cadena pública, un comercio que cobra tiene que esperar
+  varias confirmaciones porque el pago todavía podría revertirse. Aquí no: cuando dos
+  tercios firmaron, se acabó. Para una billetera de pagos eso vale más que cualquier
+  otra diferencia técnica.</p>
+</div>
+
+<h3>Qué se puede ofrecer entonces en el programa de nodos</h3>
+
+<p>Como el protocolo no paga nada por validar, <strong>no se puede ofrecer «deposite y la
+red le paga»</strong>. Hay tres formas honestas de armarlo:</p>
+
+<table>
+  <thead><tr><th>Forma</th><th>De dónde sale el dinero</th><th>Qué es legalmente</th></tr></thead>
+  <tbody>
+    <tr><td><b>Reparto de comisiones de gas</b></td>
+        <td>De las transacciones de la red. Requiere dejar de cobrar cero.</td>
+        <td>Ingreso genuino de la operación. La opción más sana.</td></tr>
+    <tr><td><b>Pago por operar la máquina</b></td>
+        <td>De la sociedad, como cualquier proveedor.</td>
+        <td>Contrato de servicios. El tratamiento más simple.</td></tr>
+    <tr><td><b>Contrato de bloqueo de ORIGEN</b></td>
+        <td>De tesorería, hasta que la red genere ingresos.</td>
+        <td>Instrumento financiero. Requiere opinión legal.</td></tr>
+  </tbody>
+</table>
+
+<p>Las dos primeras se sostienen solas. La tercera —que es lo que la mayoría de los
+programas de nodos son en realidad— es una promesa de la sociedad, y conviene llamarla
+por su nombre antes de anunciarla.</p>
+
+<h2>Parte III · La política de gas</h2>
+
+<p>Hoy la cadena cobra <strong>cero</strong> por transacción. Es una decisión que se
+tomó al construirla y que nunca se revisó. Ahora hay que revisarla, porque de ella
+depende si la red puede pagar recompensas.</p>
+
+<table>
+  <thead><tr><th>Opción</th><th>Para el usuario</th><th>Para la red</th></tr></thead>
+  <tbody>
+    <tr><td><b>Mantener el gas en cero</b></td>
+        <td>Envía sin tener saldo para comisiones. La mejor experiencia posible.</td>
+        <td>Ingreso cero. Sin freno contra el abuso: alguien puede llenar bloques sin costo.</td></tr>
+    <tr><td><b>Comisión mínima</b></td>
+        <td>Necesita ORIGEN para mover cualquier cosa, incluso para recibir ayuda.</td>
+        <td>Ingreso que puede financiar a los validadores. Freno natural contra el abuso.</td></tr>
+    <tr><td><b>Cero ahora, comisión al lanzar los nodos</b></td>
+        <td>Sin cambios hasta que haya un motivo.</td>
+        <td>Permite decidir con datos reales de uso en vez de suposiciones.</td></tr>
+  </tbody>
+</table>
+
+<div class="aviso">
+  <p style="margin:0"><strong>El dato que ata las dos partes:</strong> con el gas en cero
+  la red no genera un centavo. Si además se prometen recompensas mensuales, ese dinero
+  sale íntegro de la tesorería. No es un detalle técnico: es la diferencia entre un
+  programa que se sostiene solo y uno que drena caja.</p>
+</div>
+
+<h2>Parte IV · El programa de nodos validadores</h2>
+
+<p>La propuesta es abrir puestos de validador con cuatro niveles de participación y una
+recompensa mensual proporcional. Es viable. Antes de anunciarlo hay que resolver cinco
+cosas, y tres de ellas no son técnicas.</p>
+
+<h3>Los niveles propuestos</h3>
+
+<table class="decidir">
+  <thead><tr><th>Nivel</th><th>Monto</th><th>Recompensa mensual</th><th>Puestos</th></tr></thead>
+  <tbody>
+    <tr><td>Nivel 1</td><td>5.000</td><td class="decision">por definir</td><td class="decision">por definir</td></tr>
+    <tr><td>Nivel 2</td><td>2.500</td><td class="decision">por definir</td><td class="decision">por definir</td></tr>
+    <tr><td>Nivel 3</td><td>1.000</td><td class="decision">por definir</td><td class="decision">por definir</td></tr>
+    <tr><td>Nivel 4</td><td>250</td><td class="decision">por definir</td><td class="decision">por definir</td></tr>
+  </tbody>
+</table>
+
+<p style="font-size:9.4pt;color:var(--suave)">Los montos se recibieron sin unidad. Si son
+<b>dólares</b>, el programa capta capital y paga en moneda o en ORIGEN. Si son
+<b>ORIGEN</b>, capta token y el rendimiento diluye la emisión. Son dos productos
+distintos con dos tratamientos contables y legales distintos, y hay que elegir uno
+antes de escribir una sola línea de la oferta.</p>
+
+<h3>Lo que hay que resolver antes de anunciar</h3>
+
+<div class="grave-c">
+  <p style="margin:0 0 6px"><strong>1. La cadena nueva no tiene staking. Ninguno.</strong></p>
+  <p style="margin:0">En la tecnología nueva los validadores se suman <b>por voto de los
+  validadores existentes</b>, no depositando fondos. Eso es una ventaja —se acabó el
+  contrato de garantía que hoy retiene ORIGEN— pero significa que <b>la recompensa
+  mensual no la paga la cadena: la paga la sociedad</b>. No es un rendimiento generado
+  por el protocolo; es una obligación en el balance. Con el gas en cero, sale íntegra de
+  tesorería.</p>
+</div>
+
+<div class="grave-c">
+  <p style="margin:0 0 6px"><strong>2. Un puesto de validador es poder de gobierno.</strong></p>
+  <p style="margin:0">Quien valida <b>vota sobre quién entra y quién sale</b> del conjunto
+  de validadores. Vender puestos a terceros es vender participación en el gobierno de la
+  red, no sólo un rendimiento. Si un grupo externo llegara a sumar dos tercios de los
+  votos, controla quién puede validar. Hay que decidir si los puestos vendidos votan o si
+  se les asigna un rol sin voto — y esa segunda opción hay que construirla, no viene de
+  fábrica.</p>
+</div>
+
+<div class="aviso">
+  <p style="margin:0 0 6px"><strong>3. Un rendimiento mensual prometido a cambio de un
+  aporte es, en la mayoría de las jurisdicciones, un valor negociable.</strong></p>
+  <p style="margin:0">No es una opinión sobre el negocio: es la definición que usan la
+  mayoría de los reguladores. Conviene opinión legal <b>antes</b> de publicar la oferta,
+  no después. Es más barato ajustar la estructura ahora que reestructurar un programa con
+  participantes dentro.</p>
+</div>
+
+<h3>4. Cuántos validadores tolera la red</h3>
+
+<p>El consenso necesita que más de dos tercios de los validadores estén en línea y
+funcionando. Eso pone un límite práctico que conviene tener presente al vender puestos.</p>
+
+<table>
+  <thead><tr><th>Validadores</th><th>Tolera caídos</th><th>Deben estar en línea</th></tr></thead>
+  <tbody>
+    <tr><td>1 <span style="color:var(--grave)">(producción hoy)</span></td><td>0</td><td>1 — si cae, la cadena se detiene</td></tr>
+    <tr><td>4</td><td>1</td><td>3</td></tr>
+    <tr><td>7</td><td>2</td><td>5</td></tr>
+    <tr><td>10</td><td>3</td><td>7</td></tr>
+    <tr><td>22</td><td>7</td><td>15</td></tr>
+  </tbody>
+</table>
+
+<p>Más validadores dan más resistencia, pero también más máquinas que deben mantenerse
+encendidas y más mensajes por bloque. Por encima de unos veinte el consenso se vuelve
+notablemente más lento. <strong>Un programa que venda cien puestos no cabe en esta
+arquitectura</strong>; uno de diez a veinte, sí.</p>
+
+<h3>5. Quién opera la máquina</h3>
+
+<p>Un validador es un servidor que debe estar encendido siempre. Hay dos modelos y
+cambian por completo el producto:</p>
+
+<table>
+  <thead><tr><th>Modelo</th><th>Qué recibe el participante</th><th>Riesgo</th></tr></thead>
+  <tbody>
+    <tr><td><b>La sociedad opera</b></td>
+        <td>Un contrato y una recompensa. No toca nada.</td>
+        <td>El costo de operación es de la sociedad. Se parece más a un instrumento financiero.</td></tr>
+    <tr><td><b>El participante opera</b></td>
+        <td>Su propia máquina y su llave de validador.</td>
+        <td>Si no la mantiene en línea, degrada la red. Requiere soporte y reglas de expulsión.</td></tr>
+  </tbody>
+</table>
+
+<h2>Parte V · La corrida financiera</h2>
+
+<p>Todo lo que sigue está medido sobre la cadena y sobre la factura de infraestructura.
+Lo que es supuesto está marcado como tal. La comisión modelada es de
+<strong>0,011 dólares por transacción</strong>.</p>
+
+<h3>Qué hace hoy la cadena</h3>
+
+<table>
+  <thead><tr><th>Medición</th><th class="der">Valor</th></tr></thead>
+  <tbody>
+    <tr><td>Primer bloque</td><td class="der">25 de julio de 2024</td></tr>
+    <tr><td>Edad de la cadena</td><td class="der">747 días</td></tr>
+    <tr><td>Ritmo</td><td class="der">un bloque cada 15,5 s · 5.575/día</td></tr>
+    <tr><td><b>Transacciones en toda su historia</b></td><td class="der"><b>1.871</b></td></tr>
+    <tr><td>Transacciones por día</td><td class="der">2,5</td></tr>
+    <tr><td>Bloques que llevan alguna transacción</td><td class="der">0,045 %</td></tr>
+    <tr><td>Costo de operación</td><td class="der">444 USD/mes</td></tr>
+    <tr><td><b>Costo por transacción</b></td><td class="der"><b>5,91 USD</b></td></tr>
+  </tbody>
+</table>
+
+<h3>El dato que manda: cuánto usa la gente la billetera</h3>
+
+<p>Hay 406 personas registradas en la billetera y la cadena procesó 1.871 transacciones
+en dos años. Dividiendo:</p>
+
+<div class="grave-c">
+  <p style="margin:0 0 5px"><strong>0,185 transacciones por usuario y por mes.</strong></p>
+  <p style="margin:0">Un usuario hace <b>una transacción cada cinco meses</b>. No es un
+  problema de la cadena —aguanta miles por segundo— ni del precio de la comisión. Es que
+  la billetera está registrada pero no usada.</p>
+</div>
+
+<h3>La comisión, y un riesgo que trae</h3>
+
+<p>Con el ORIGEN a 2,10 dólares, cobrar 0,011 por transferencia equivale a fijar el gas
+en <strong>103 gwei</strong>. Conviene saber que <strong>la comisión se fija en gwei, no
+en dólares</strong>: si el ORIGEN llegara a 5 dólares, esos mismos 103 gwei costarían
+0,026 — más del doble. La tarifa hay que revisarla cuando el precio se mueva, o el
+usuario termina pagando de más sin que nadie lo haya decidido.</p>
+
+<h3>Punto de equilibrio</h3>
+
+<table>
+  <thead><tr><th>Configuración de infraestructura</th><th class="der">Costo anual</th><th class="der">Transacciones/año</th><th class="der">Por día</th></tr></thead>
+  <tbody>
+    <tr><td>Hoy · seis t2.large</td><td class="der">5.332</td><td class="der">484.727</td><td class="der">1.328</td></tr>
+    <tr><td><b>Optimizado · seis t3.medium</b></td><td class="der"><b>2.640</b></td><td class="der"><b>240.000</b></td><td class="der"><b>658</b></td></tr>
+    <tr><td>Migrado · cuatro t3.medium</td><td class="der">1.920</td><td class="der">174.545</td><td class="der">478</td></tr>
+  </tbody>
+</table>
+
+<p>Bajar los servidores a su tamaño real <strong>reduce el equilibrio a la mitad</strong>.
+Es la palanca más rápida y no depende de que nadie use nada.</p>
+
+<h3>Cuántos usuarios hacen falta</h3>
+
+<p>El equilibrio en transacciones es abstracto. Traducido a personas, sobre la base
+optimizada de 240.000 transacciones al año:</p>
+
+<table>
+  <thead><tr><th>Intensidad de uso</th><th class="der">Transacciones por usuario y mes</th><th class="der">Usuarios activos necesarios</th></tr></thead>
+  <tbody>
+    <tr><td>Como hoy <span class="suave">(medido)</span></td><td class="der">0,19</td><td class="der grave">108.064</td></tr>
+    <tr><td>Uso muy bajo</td><td class="der">1</td><td class="der">20.000</td></tr>
+    <tr><td><b>Billetera ocasional</b></td><td class="der"><b>5</b></td><td class="der"><b>4.000</b></td></tr>
+    <tr><td>Billetera de uso diario</td><td class="der">20</td><td class="der">1.000</td></tr>
+    <tr><td>Comercio que cobra a diario</td><td class="der">60</td><td class="der">333</td></tr>
+  </tbody>
+</table>
+
+<div class="aviso">
+  <p style="margin:0"><strong>Ahí está la verdadera palanca, y no es el precio de la
+  comisión.</strong> Con el uso de hoy harían falta cien mil usuarios. Con una billetera
+  que se use cinco veces al mes —una vez por semana— bastan <b>cuatro mil</b>. La
+  diferencia entre esas dos cifras no la mueve la tecnología: la mueve que la gente
+  efectivamente use la aplicación.</p>
+</div>
+
+<h3>Proyección a veinticuatro meses</h3>
+
+<p>Supuesto: se parte de los 406 usuarios actuales, crecen 20 % al mes, y cada usuario
+activo hace cinco transacciones mensuales. La comisión es 0,011 y el costo, la base
+optimizada de 220 dólares al mes.</p>
+
+<figure>
+<svg viewBox="0 0 640 240" xmlns="http://www.w3.org/2000/svg" role="img"
+  aria-label="Proyección a 24 meses: el ingreso mensual por comisiones crece y cruza el costo fijo de 220 dólares al mes alrededor del mes 12 y medio.">
+  <g font-family="Helvetica">
+    <g stroke="#E8EDEB" stroke-width="1">
+      <line x1="60" y1="30" x2="60" y2="180"/><line x1="60" y1="180" x2="614" y2="180"/>
+      <line x1="60" y1="142" x2="614" y2="142"/><line x1="60" y1="105" x2="614" y2="105"/>
+      <line x1="60" y1="67" x2="614" y2="67"/><line x1="60" y1="30" x2="614" y2="30"/>
+    </g>
+    <g font-size="7.5" fill="#8C9793" text-anchor="end">
+      <text x="54" y="183">0</text><text x="54" y="145">400</text><text x="54" y="108">800</text>
+      <text x="54" y="70">1.200</text><text x="54" y="33">1.600</text>
+    </g>
+    <text x="24" y="105" font-size="7.5" fill="#5C6B68" transform="rotate(-90 24 105)" text-anchor="middle">USD por mes</text>
+    <g font-size="7.5" fill="#8C9793" text-anchor="middle">
+      <text x="60" y="194">mes 1</text><text x="198" y="194">6</text><text x="337" y="194">12</text>
+      <text x="475" y="194">18</text><text x="614" y="194">24</text>
+    </g>
+
+    <!-- costo fijo -->
+    <line x1="60" y1="159" x2="614" y2="159" stroke="#A8590F" stroke-width="2" stroke-dasharray="5 3"/>
+    <text x="614" y="154" font-size="8" font-weight="700" fill="#A8590F" text-anchor="end">costo fijo · 220 USD/mes</text>
+
+    <!-- ingreso -->
+    <polyline fill="none" stroke="#135054" stroke-width="2" stroke-linejoin="round"
+      points="60,178 88,177 115,176 143,175 171,174 198,175 226,173 254,171 281,168 309,165 337,164 364,159 392,152 420,143 447,130 475,113 503,89 531,57 558,14 586,-45 614,-140"
+      clip-path="inset(0 0 0 0)"/>
+    <!-- recorte visual: sólo hasta donde cabe -->
+    <rect x="615" y="0" width="25" height="185" fill="#FFFFFF"/>
+
+    <circle cx="337" cy="164" r="4" fill="#135054"/>
+    <text x="330" y="176" font-size="7.5" fill="#5C6B68" text-anchor="end">mes 12 · 166 USD</text>
+
+    <circle cx="364" cy="159" r="5" fill="#1E7A5A" stroke="#FFFFFF" stroke-width="1.5"/>
+    <line x1="345" y1="128" x2="361" y2="152" stroke="#1E7A5A" stroke-width="1"/>
+    <text x="253" y="116" font-size="8" font-weight="700" fill="#1E7A5A">equilibrio · mes 12,5</text>
+    <text x="253" y="127" font-size="7.5" fill="#5C6B68">unos 4.000 usuarios activos</text>
+
+    <circle cx="475" cy="113" r="4" fill="#135054"/>
+    <text x="475" y="103" font-size="7.5" fill="#5C6B68" text-anchor="middle">mes 18 · 495 USD</text>
+
+    <g font-size="8">
+      <rect x="66" y="36" width="9" height="3" fill="#135054"/>
+      <text x="80" y="40" fill="#16211F">ingreso por comisiones</text>
+      <rect x="66" y="50" width="9" height="3" fill="#A8590F"/>
+      <text x="80" y="54" fill="#16211F">costo de infraestructura</text>
+    </g>
+  </g>
+</svg>
+<figcaption>Con 20 % de crecimiento mensual y cinco transacciones por usuario activo, el
+ingreso cruza el costo alrededor del mes doce y medio. La curva se dispara después
+porque el crecimiento es compuesto: el mes 24 quedaría fuera de la escala del gráfico,
+en 1.479 dólares mensuales.</figcaption>
+</figure>
+
+<table>
+  <thead><tr><th class="der">Mes</th><th class="der">Usuarios</th><th class="der">Transacciones</th><th class="der">Ingreso</th><th class="der">Resultado</th><th class="der">Acumulado</th></tr></thead>
+  <tbody>
+    <tr><td class="der">1</td><td class="der">406</td><td class="der">2.030</td><td class="der">22</td><td class="der grave">−198</td><td class="der grave">−198</td></tr>
+    <tr><td class="der">6</td><td class="der">1.010</td><td class="der">5.051</td><td class="der">56</td><td class="der grave">−164</td><td class="der grave">−1.098</td></tr>
+    <tr><td class="der">12</td><td class="der">3.017</td><td class="der">15.083</td><td class="der">166</td><td class="der grave">−54</td><td class="der grave">−1.756</td></tr>
+    <tr><td class="der">15</td><td class="der">5.213</td><td class="der">26.064</td><td class="der">287</td><td class="der ok">+67</td><td class="der grave">−1.691</td></tr>
+    <tr><td class="der">21</td><td class="der">15.565</td><td class="der">77.825</td><td class="der">856</td><td class="der ok">+636</td><td class="der ok">+405</td></tr>
+    <tr><td class="der">24</td><td class="der">26.896</td><td class="der">134.482</td><td class="der">1.479</td><td class="der ok">+1.259</td><td class="der ok">+3.484</td></tr>
+  </tbody>
+</table>
+
+<p>La inversión acumulada hasta el equilibrio es de <strong>unos 1.800 dólares</strong>:
+lo que la red pierde mientras crece. Se recupera hacia el mes veintiuno.</p>
+
+<h3>Cuándo llega el equilibrio, según cuánto se crezca</h3>
+
+<table>
+  <thead><tr><th class="der">Crecimiento mensual</th><th class="der">Meses hasta 4.000 usuarios activos</th><th class="der">En años</th></tr></thead>
+  <tbody>
+    <tr><td class="der">5 %</td><td class="der">47</td><td class="der">3,9</td></tr>
+    <tr><td class="der">10 %</td><td class="der">24</td><td class="der">2,0</td></tr>
+    <tr><td class="der">15 %</td><td class="der">16</td><td class="der">1,4</td></tr>
+    <tr><td class="der"><b>20 %</b></td><td class="der"><b>13</b></td><td class="der"><b>1,0</b></td></tr>
+    <tr><td class="der">30 %</td><td class="der">9</td><td class="der">0,7</td></tr>
+  </tbody>
+</table>
+
+<h3>Qué dice esta corrida</h3>
+
+<p><strong>El equilibrio no es inalcanzable: son cuatro mil usuarios activos.</strong>
+Eso es un objetivo comercial normal, no una fantasía. Con 20 % de crecimiento mensual se
+alcanza en un año, y la pérdida acumulada del camino son unos mil ochocientos dólares —
+menos de lo que cuesta un mes de la nómina más chica.</p>
+
+<p><strong>Pero el obstáculo no es conseguir usuarios: es activarlos.</strong> Hoy hay
+406 registrados y cada uno transacciona una vez cada cinco meses. Pasar de 0,19 a 5
+transacciones mensuales es multiplicar por veintisiete el uso, y eso no lo resuelve la
+blockchain ni el precio de la comisión: lo resuelve que la aplicación sirva para algo que
+la gente quiera hacer seguido.</p>
+
+<p><strong>Y las recompensas siguen sin poder salir de aquí.</strong> Incluso en el mes
+veinticuatro, con veintisiete mil usuarios, la red genera 1.479 dólares al mes. Un
+programa de veinte participantes al 2 % mensual sobre 5.000 dólares cada uno cuesta 2.000
+al mes. La red todavía no lo cubriría.</p>
+
+<h3>Recomendación</h3>
+
+<table>
+  <thead><tr><th>Asunto</th><th>Recomendación</th><th>Por qué</th></tr></thead>
+  <tbody>
+    <tr><td><b>Comisión</b></td><td>0,011 USD, revisable cuando el ORIGEN se mueva</td>
+        <td>Protege del abuso, es imperceptible para el usuario, y con crecimiento razonable llega al equilibrio en un año.</td></tr>
+    <tr><td><b>Infraestructura</b></td><td>Bajar a t3.medium al migrar</td>
+        <td>Reduce el equilibrio a la mitad desde el primer mes, sin depender de nada externo.</td></tr>
+    <tr><td><b>Recompensas</b></td><td>Pagar por servicio medible, no por depósito</td>
+        <td>La red no las cubre ni al mes veinticuatro. Como gasto operativo son sostenibles; como rendimiento prometido, no.</td></tr>
+    <tr><td><b>Prioridad real</b></td><td>Activar a los 406 usuarios que ya existen</td>
+        <td>Multiplicar por veintisiete el uso vale más que cualquier decisión de esta parte del documento.</td></tr>
+  </tbody>
+</table>
+
+<h2>Qué se pide a la Junta</h2>
+
+<table class="decidir">
+  <thead><tr><th>Asunto</th><th>Qué se decide</th><th>Urgencia</th></tr></thead>
+  <tbody>
+    <tr><td>Migración</td><td>Sí o no a los seis acuerdos, y la ventana del corte</td><td><b>Alta</b> — la cadena actual corre sobre software abandonado</td></tr>
+    <tr><td>Gas</td><td>Cero, comisión mínima, o cero hasta lanzar los nodos</td><td>Media — condiciona el programa de nodos</td></tr>
+    <tr><td>Nodos</td><td>Unidad de los montos, cuántos puestos, si votan, y quién opera</td><td>Media — no anunciar sin opinión legal</td></tr>
+  </tbody>
+</table>
+
+<h2>El riesgo que sigue abierto</h2>
+
+<p>La cadena de producción tiene <strong>un solo validador</strong>, y su llave está en
+una única máquina. Mientras eso siga así, esa máquina <em>es</em> la cadena: si se pierde
+su disco, no se produce un bloque más. Hoy hay respaldo cifrado de esa llave, de modo que
+el escenario catastrófico está cubierto, pero la solución de fondo es tener varios
+validadores.</p>
+
+<p>La red de pruebas levantada esta semana ya funciona con tres, y demuestra que la
+arquitectura nueva lo resuelve. <strong>Es la razón de peso para no postergar la
+migración</strong>, y es también el cimiento sobre el que se apoyaría cualquier programa
+de nodos.</p>
+
+<div class="pie-doc">
+  Orden Global Corp · Isla Roatán, Honduras · Documento interno para la Junta Directiva.<br>
+  Cadena 8532 → 5550 · El inventario firmado, el respaldo cifrado y el material técnico
+  están archivados y son auditables.
+</div>
+
+</body></html>

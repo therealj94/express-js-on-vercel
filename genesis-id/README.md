@@ -228,15 +228,22 @@ otro.
 
 ### Sesión única
 
-Un GID vale en las tres apps. La app que ya autenticó al usuario pide un token
-(`POST /api/v1/sso/token`) y cualquier otra lo valida
-(`POST /api/v1/sso/verificar`). Si la identidad se suspende, los tokens vivos
-dejan de valer en el acto.
+Un GID vale en todas las apps del ecosistema (`APPS_ECOSISTEMA`: Veta Wallet,
+MyTokenPay, ordenscan, Ordenex, AuCorp y ULTRON). La app que ya autenticó al
+usuario pide un token (`POST /api/v1/sso/token`) y cualquier otra con el
+alcance `gid.verificar` lo valida (`POST /api/v1/sso/verificar`). Si la
+identidad se suspende, los tokens vivos dejan de valer en el acto.
 
 Es un modelo de **cliente de confianza**: Genesis ID comprueba que la cuenta
 esté atada a ese GID, pero no vuelve a autenticar a la persona — de eso responde
-la app con su clave. Vale porque las tres son del mismo ecosistema; no sería
+la app con su clave. Vale porque todas son del mismo ecosistema; no sería
 aceptable para aplicaciones de terceros.
+
+**Un token válido no es una llave maestra.** Dice QUIÉN es quien llega, no que
+pueda entrar: cada casa decide eso con su propio padrón. ULTRON es el caso
+extremo y el más claro — su padrón son seis personas escritas en su
+configuración, así que un GID verificado del ecosistema que no esté en esa
+lista rebota en su puerta aunque su pase sea perfectamente legítimo.
 
 ---
 
@@ -408,13 +415,39 @@ contar como coincidencia fuerte.
 
 ---
 
+## Registro cámara-primero
+
+La app y la web leen el documento ANTES de pedir nada: la persona confirma lo
+leído en vez de teclearlo. Para eso el motor:
+
+- devuelve en `estadoParaUsuario` un `hecho: { datos, documento, rostro }` y
+  un `documentoDatos` (nombre, fecha, nacionalidad, número, vencimiento), y
+  deduce `siguientePaso` de lo hecho y no del estado;
+- no hace retroceder el estado cuando el documento se reenvía después del
+  rostro (`adjuntarDocumento`);
+- lee la MRZ del **reverso** desde la foto con Rekognition `DetectText`
+  (`kyc/lectura.ts`, la misma corrección por dígitos de control que el
+  teléfono) en `POST /api/v1/identidades/:id/documento/leer` y dentro de
+  `/documento-fotos`: si cuadra, el documento pasa las mismas comprobaciones
+  que por el teléfono y la persona ve al instante si sirve. Sin proveedor,
+  `503 sin-lector`; nunca un lector de mentira;
+- publica `GET /api/publico/gid/:gid` sin credenciales: `verificada`, el día y
+  el tipo, nada más. Es lo que abre el QR de la tarjeta de identidad
+  (`app.vetawallet.com/gid/<GID>`). «No existe» y «sin verificar» responden
+  igual, a propósito.
+
+La llave de la bitácora se acepta como `GENESIS_BITACORA_CLAVE` o
+`GENESIS_BITACORA_LLAVE`.
+
 ## Qué falta
 
-- **Montar el puente en el backend de Veta Wallet.** El router está listo y
-  probado en `infra/genesis-proxy/`, y el cliente móvil ya apunta a él, pero
-  añadirlo al backend exige un despliegue en Heroku — bloqueado por el mismo
-  token vencido que la rotación de `PASS_ADM`. Hasta entonces la app enseña
-  "el servidor todavía no tiene activada la conexión", que es la verdad.
+- ~~**Montar el puente en el backend de Veta Wallet.**~~ Ya está montado y
+  responde: `infra/veta-wallet-backend/app.js` monta `routerGenesis` en
+  `/genesis`, y `GET /genesis/estado` contesta con el middleware de sesión, no
+  con el 404 del catch-all. Esta nota se quedó vieja y desviaba el diagnóstico
+  —quien la leía buscaba el fallo donde ya no estaba—. Lo que sí faltaba era el
+  nombre de la ruta: la web pedía `/genesis/status`, que no existe. Corregido en
+  `apps-web/veta-wallet/app.js`. Ver `ENTRAR.md`.
 - **Probar el flujo en un teléfono.** La lógica está verificada de punta a
   punta contra el servidor real, pero la cámara y el teclado solo se pueden
   comprobar ejecutando la app.

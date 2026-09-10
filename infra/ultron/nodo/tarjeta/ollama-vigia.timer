@@ -1,0 +1,14 @@
+[Unit]
+Description=Mirar cada minuto si ollama sigue contestando
+
+[Timer]
+# Cada minuto, y con tres lecturas malas seguidas antes de tocar nada: el
+# cuelgue queda acotado a unos tres minutos en vez de los 300 segundos del
+# 5-sep. Arranca a los 15 min de encender, cuando el precalentador ya termino
+# de leer los 16 GB: antes de eso, ollama tarda por motivos legitimos.
+OnBootSec=15min
+OnUnitActiveSec=1min
+AccuracySec=10s
+
+[Install]
+WantedBy=timers.target

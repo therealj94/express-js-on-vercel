@@ -482,7 +482,17 @@ async function traer(forzar) {
     const q = new URLSearchParams({ limite: '100' });
     if (app !== 'todas') q.set('app', app);
     if (conexPlataforma) q.set('plataforma', conexPlataforma);
-    Object.assign(r, await p('/sesiones?' + q.toString()));
+    /* El reparto va aparte de la lista a propósito: la lista son las cien más
+       recientes y el reparto es el total. Mezclarlos daría un porcentaje
+       calculado sobre una página, que es la clase de cifra que se cita en una
+       reunión y no significa nada. */
+    const qr = new URLSearchParams();
+    if (app !== 'todas') qr.set('app', app);
+    const [ses, rep] = await Promise.all([
+      p('/sesiones?' + q.toString()),
+      p('/reparto?' + qr.toString()).catch(() => null),
+    ]);
+    Object.assign(r, ses, { reparto: rep });
   } else if (pestana === 'seguridad') {
     Object.assign(r, await p('/seguridad'));
   } else if (pestana === 'salud') {
@@ -877,14 +887,17 @@ function vistaDirectorio(d) {
       <span style="font-size:12px;color:var(--faint)">
         ${dirActivos() ? `${dirActivos()} filtro(s) puesto(s)` : 'sin filtros'}</span>
       ${dirActivos() ? `<button class="g mini" onclick="limpiarFiltros()">Limpiar todo</button>` : ''}
-      <button class="g mini" onclick="exportarCsv()" title="Descarga lo que estás viendo, con los filtros puestos">Exportar CSV</button>
-      <button class="g mini" onclick="refrescarSaldos(this)" title="Le pregunta a la cadena 8532 el saldo real de cada billetera">Actualizar saldos</button>
+      <button class="g mini" onclick="exportar(this, 'xlsx')"
+        title="Baja las ${n(L.total)} personas del filtro —no solo las de esta pantalla— en el mismo orden, listas para Excel">Bajar a Excel</button>
+      <button class="g mini" onclick="exportar(this, 'csv')"
+        title="Lo mismo, en CSV, para cargarlo en otro programa">CSV</button>
+      <button class="g mini" onclick="refrescarSaldos(this)" title="Le pregunta a la cadena el saldo real de cada billetera. Si el nodo contesta otra cadena, NO se guarda nada.">Actualizar saldos</button>
     </div>
   </div>
 
   ${(R.porMoneda || []).length ? `
   <h2>Las monedas del ecosistema
-    <span class="pista">emisión y tenencia, leídas de la cadena 8532 — no de las apps</span></h2>
+    <span class="pista">emisión y tenencia, leídas de la cadena 5550 — no de las apps</span></h2>
   <div class="tarjeta scroll" style="margin-bottom:10px"><table style="min-width:680px">
     <thead><tr><th>Moneda</th><th>Estado</th><th>Personas que la tienen</th><th></th>
       <th>En manos</th><th>Emitido</th><th>Contrato</th></tr></thead>
@@ -960,34 +973,259 @@ function vistaDirectorio(d) {
   aquí hasta que alguien lo agregue a mano.</p>`;
 }
 
-/**
- * Descarga lo que se está viendo, con los filtros puestos.
+/* ── Exportar el directorio ───────────────────────────────────────────────
  *
- * Se genera en el navegador con los datos que ya están en pantalla: no hace
- * otra consulta ni manda nada a ningún lado. Un padrón de clientes que sale
- * del servidor por una ruta nueva es una ruta más que proteger.
+ * POR QUE SE LE PIDE OTRA VEZ AL SERVIDOR EN VEZ DE USAR LO DE LA PANTALLA
+ *
+ * Esto bajaba `datos[...].lista.usuarios`, que es la página que se está
+ * viendo. Y la pantalla pide `limite: 150`. O sea que con un filtro que daba
+ * 900 personas, el título decía «900 personas» y el archivo traía 150 — sin
+ * un aviso, sin un error, sin nada. Quien lo abría creía tener el padrón
+ * entero.
+ *
+ * Un archivo incompleto que PARECE completo es peor que no poder bajarlo:
+ * lo que sale de acá se usa para decidir. Así que la descarga PAGINA hasta
+ * traer todas las filas del filtro, y si no las consigue todas lo dice antes
+ * de bajar nada.
+ *
+ * El orden lo pone el servidor —el mismo `orden`/`direccion` de la pantalla—
+ * y paginar lo respeta: la fila 700 del archivo es la fila 700 de la tabla.
  */
-function exportarCsv() {
-  const filas = (datos[pestana + qs()]?.lista?.usuarios) || [];
-  if (!filas.length) { alert('No hay nada que exportar con estos filtros.'); return; }
-  const monedas = [...new Set(filas.flatMap((u) => Object.keys(u.saldos || {})))].sort();
-  const cab = ['correo', 'nombre', 'app', 'pais', 'billetera', 'genesis_id',
-    'estado_genesis', 'alta', 'ultima_conexion', ...monedas];
-  const esc2 = (v) => `"${String(v ?? '').replace(/"/g, '""')}"`;
-  const lineas = [cab.join(',')];
-  for (const u of filas) {
-    lineas.push([u.email, u.nombre || u.usuario || '', u.app, u.pais || '',
-      u.direccionWallet || '', u.gid || '', u.estadoGenesis || '',
-      u.creadoEn || '', u.ultimoAcceso || '',
-      ...monedas.map((m) => (u.saldos || {})[m] || 0)].map(esc2).join(','));
+
+const EXPORT_POR_PAGINA = 500;   // el tope que admite la ruta
+const EXPORT_TECHO = 20000;      // más que eso no es una consulta, es un volcado
+
+/** Todas las filas del filtro puesto, no solo la página visible. */
+async function traerTodoElDirectorio(avisar) {
+  const base = filtrosDir();
+  delete base.limite;
+  const filas = [];
+  let total = null;
+  for (let desde = 0; desde < EXPORT_TECHO; desde += EXPORT_POR_PAGINA) {
+    const q = new URLSearchParams({ ...base, limite: EXPORT_POR_PAGINA, desde });
+    const r = await api('/panel/directorio?' + q.toString());
+    if (total === null) total = r.total ?? 0;
+    filas.push(...(r.usuarios || []));
+    if (avisar) avisar(filas.length, total);
+    // Se corta por lo que DEVOLVIÓ, no por la cuenta: si el servidor manda
+    // menos de una página, ya no hay más que pedir. Fiarse solo del total
+    // deja el bucle girando cuando el total y las filas no cuadran.
+    if (!r.usuarios || r.usuarios.length < EXPORT_POR_PAGINA) break;
   }
-  // El BOM es para que Excel abra los acentos bien; sin él, «México» sale roto.
-  const blob = new Blob(['\uFEFF' + lineas.join('\n')], { type: 'text/csv;charset=utf-8' });
+  return { filas, total: total ?? filas.length };
+}
+
+/** Las columnas del archivo. Las monedas se agregan al final, una por una. */
+function columnasDirectorio(filas) {
+  const monedas = [...new Set(filas.flatMap((u) => Object.keys(u.saldos || {})))].sort();
+  const fijas = [
+    ['Correo', (u) => u.email],
+    ['Nombre', (u) => u.nombre || u.usuario || ''],
+    ['App', (u) => u.app],
+    ['País', (u) => u.pais || ''],
+    ['Billetera', (u) => u.direccionWallet || ''],
+    ['Genesis ID', (u) => u.gid || ''],
+    ['Estado Genesis', (u) => u.estadoGenesis || ''],
+    ['Alta', (u) => u.creadoEn || ''],
+    ['Última conexión', (u) => u.ultimoAcceso || ''],
+    // El total va como NÚMERO, no como texto: es lo primero que alguien
+    // quiere sumar u ordenar apenas abre el archivo.
+    ['Saldo total', (u) => Object.values(u.saldos || {}).reduce((s, x) => s + x, 0)],
+  ];
+  return [...fijas, ...monedas.map((m) => [m, (u) => (u.saldos || {})[m] || 0])];
+}
+
+/* ── Un .xlsx de verdad, sin librería ──────────────────────────────────────
+ *
+ * Un .xlsx es un ZIP con unos XML adentro. Se arma a mano —unas cien líneas—
+ * y a cambio el archivo se abre en Excel con sus columnas, con los saldos
+ * como NÚMEROS (se suman y se ordenan solos), con la cabecera fija y con el
+ * filtro ya puesto.
+ *
+ * El CSV se queda y sigue estando: hay quien lo carga en otra cosa. Pero un
+ * CSV no tiene tipos, así que un saldo entra como texto y en Excel hay que
+ * arreglarlo a mano cada vez.
+ */
+
+function _crc32(bytes) {
+  let c, tabla = _crc32.tabla;
+  if (!tabla) {
+    tabla = _crc32.tabla = new Uint32Array(256);
+    for (let i = 0; i < 256; i++) {
+      c = i;
+      for (let k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1;
+      tabla[i] = c >>> 0;
+    }
+  }
+  let crc = 0xFFFFFFFF;
+  for (let i = 0; i < bytes.length; i++) crc = tabla[(crc ^ bytes[i]) & 0xFF] ^ (crc >>> 8);
+  return (crc ^ 0xFFFFFFFF) >>> 0;
+}
+
+/** ZIP sin comprimir (método 0). Excel lo acepta igual y ahorra un deflate. */
+function _zip(archivos) {
+  const cod = new TextEncoder();
+  const trozos = [], central = [];
+  let desplazamiento = 0;
+  const u16 = (v) => [v & 0xFF, (v >>> 8) & 0xFF];
+  const u32 = (v) => [v & 0xFF, (v >>> 8) & 0xFF, (v >>> 16) & 0xFF, (v >>> 24) & 0xFF];
+  for (const [nombre, texto] of archivos) {
+    const cuerpo = cod.encode(texto), nom = cod.encode(nombre);
+    const crc = _crc32(cuerpo);
+    const cabecera = [...u32(0x04034b50), ...u16(20), ...u16(0), ...u16(0),
+      ...u16(0), ...u16(0), ...u32(crc), ...u32(cuerpo.length),
+      ...u32(cuerpo.length), ...u16(nom.length), ...u16(0)];
+    trozos.push(new Uint8Array(cabecera), nom, cuerpo);
+    central.push([...u32(0x02014b50), ...u16(20), ...u16(20), ...u16(0), ...u16(0),
+      ...u16(0), ...u16(0), ...u32(crc), ...u32(cuerpo.length), ...u32(cuerpo.length),
+      ...u16(nom.length), ...u16(0), ...u16(0), ...u16(0), ...u16(0), ...u32(0),
+      ...u32(desplazamiento), ...Array.from(nom)]);
+    desplazamiento += cabecera.length + nom.length + cuerpo.length;
+  }
+  const dir = central.flat();
+  const fin = [...u32(0x06054b50), ...u16(0), ...u16(0), ...u16(central.length),
+    ...u16(central.length), ...u32(dir.length), ...u32(desplazamiento), ...u16(0)];
+  return new Blob([...trozos, new Uint8Array(dir), new Uint8Array(fin)],
+    { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+}
+
+const _xmlEsc = (s) => String(s ?? '')
+  .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+  .replace(/"/g, '&quot;')
+  // Excel rechaza el archivo ENTERO si aparece un carácter de control. Un
+  // nombre pegado desde otro sistema puede traerlos sin que se vean.
+  .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g, '');
+
+const _letraCol = (i) => {
+  let s = '';
+  for (i += 1; i > 0; i = Math.floor((i - 1) / 26)) s = String.fromCharCode(65 + (i - 1) % 26) + s;
+  return s;
+};
+
+/** Una hoja con la cabecera fija, el filtro puesto y los números como números. */
+function _hoja(cabeceras, filas) {
+  const ultima = _letraCol(cabeceras.length - 1);
+  const celda = (v, col, fila) => {
+    const ref = _letraCol(col) + fila;
+    if (typeof v === 'number' && Number.isFinite(v)) return `<c r="${ref}"><v>${v}</v></c>`;
+    return `<c r="${ref}" t="inlineStr"><is><t xml:space="preserve">${_xmlEsc(v)}</t></is></c>`;
+  };
+  const cuerpo = filas.map((f, i) =>
+    `<row r="${i + 2}">${f.map((v, c) => celda(v, c, i + 2)).join('')}</row>`).join('');
+  return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
+<dimension ref="A1:${ultima}${filas.length + 1}"/>
+<sheetViews><sheetView workbookViewId="0" tabSelected="1">
+<pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/>
+</sheetView></sheetViews>
+<cols>${cabeceras.map((c, i) =>
+    `<col min="${i + 1}" max="${i + 1}" width="${Math.min(42, Math.max(12, String(c).length + 4))}" customWidth="1"/>`).join('')}</cols>
+<sheetData><row r="1">${cabeceras.map((c, i) =>
+      `<c r="${_letraCol(i)}1" s="1" t="inlineStr"><is><t>${_xmlEsc(c)}</t></is></c>`).join('')}</row>${cuerpo}</sheetData>
+<autoFilter ref="A1:${ultima}${filas.length + 1}"/>
+</worksheet>`;
+}
+
+function _libro(nombreHoja, cabeceras, filas) {
+  return _zip([
+    ['[Content_Types].xml', `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
+<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
+<Default Extension="xml" ContentType="application/xml"/>
+<Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>
+<Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>
+<Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>
+</Types>`],
+    ['_rels/.rels', `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/>
+</Relationships>`],
+    ['xl/_rels/workbook.xml.rels', `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/>
+<Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>
+</Relationships>`],
+    ['xl/workbook.xml', `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"
+ xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
+<sheets><sheet name="${_xmlEsc(nombreHoja).slice(0, 31)}" sheetId="1" r:id="rId1"/></sheets>
+</workbook>`],
+    // Un solo estilo: la cabecera en negrita. Todo lo demás por omisión.
+    ['xl/styles.xml', `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
+<fonts count="2"><font><sz val="11"/><name val="Calibri"/></font>
+<font><b/><sz val="11"/><name val="Calibri"/></font></fonts>
+<fills count="1"><fill><patternFill patternType="none"/></fill></fills>
+<borders count="1"><border/></borders>
+<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>
+<cellXfs count="2"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>
+<xf numFmtId="0" fontId="1" fillId="0" borderId="0" xfId="0" applyFont="1"/></cellXfs>
+<cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles>
+</styleSheet>`],
+    ['xl/worksheets/sheet1.xml', _hoja(cabeceras, filas)],
+  ]);
+}
+
+function _bajar(blob, nombre) {
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
-  a.download = `directorio-${new Date().toISOString().slice(0, 10)}.csv`;
+  a.download = nombre;
+  document.body.appendChild(a);   // Firefox no dispara un <a> suelto
   a.click();
-  URL.revokeObjectURL(a.href);
+  a.remove();
+  // Se revoca DESPUÉS: revocarlo en la misma vuelta cancela la descarga en
+  // algunos navegadores antes de que llegue a empezar.
+  setTimeout(() => URL.revokeObjectURL(a.href), 60000);
+}
+
+/** Un nombre que dice qué filtro se usó, para no confundir dos bajadas. */
+function _nombreExport(ext) {
+  const partes = Object.entries(dirFiltros)
+    .filter(([k, v]) => k !== 'orden' && k !== 'direccion' && v !== '' && v !== 'todas')
+    .map(([k, v]) => `${k}-${String(v).replace(/[^\w.-]+/g, '')}`);
+  const cola = partes.length ? '-' + partes.join('-').slice(0, 70) : '';
+  return `directorio-${new Date().toISOString().slice(0, 10)}${cola}.${ext}`;
+}
+
+async function exportar(boton, formato) {
+  const original = boton.textContent;
+  const hermanos = boton.parentElement.querySelectorAll('button');
+  hermanos.forEach((b) => { b.disabled = true; });
+  try {
+    boton.textContent = 'Juntando…';
+    const { filas, total } = await traerTodoElDirectorio((hechas, t) => {
+      boton.textContent = t > EXPORT_POR_PAGINA ? `Juntando ${hechas} de ${t}…` : 'Juntando…';
+    });
+    if (!filas.length) { alert('No hay nada que exportar con estos filtros.'); return; }
+    // NO SE BAJA UN ARCHIVO INCOMPLETO SIN DECIRLO. Es exactamente el fallo
+    // que se está arreglando: un padrón al que le faltan filas y nadie lo nota.
+    if (filas.length < total) {
+      const seguir = confirm(
+        `El filtro da ${total} personas y solo se pudieron traer ${filas.length}.\n\n`
+        + 'Si bajás esto, el archivo va INCOMPLETO. Mejor achicá el filtro y probá de nuevo.\n\n'
+        + '¿Bajarlo igual?');
+      if (!seguir) return;
+    }
+    const cols = columnasDirectorio(filas);
+    const cab = cols.map(([t]) => t);
+    const cuerpo = filas.map((u) => cols.map(([, saca]) => saca(u)));
+    if (formato === 'xlsx') {
+      _bajar(_libro('Directorio', cab, cuerpo), _nombreExport('xlsx'));
+    } else {
+      const esc2 = (v) => `"${String(v ?? '').replace(/"/g, '""')}"`;
+      const lineas = [cab.map(esc2).join(','),
+        ...cuerpo.map((f) => f.map(esc2).join(','))];
+      // El BOM es para que Excel abra los acentos bien; sin él, «México» sale roto.
+      _bajar(new Blob(['\uFEFF' + lineas.join('\r\n')],
+        { type: 'text/csv;charset=utf-8' }), _nombreExport('csv'));
+    }
+  } catch (e) {
+    alert('No se pudo armar la descarga: ' + (e.message || e)
+      + '\n\nNo se bajó nada — mejor eso que un archivo a medias.');
+  } finally {
+    boton.textContent = original;
+    hermanos.forEach((b) => { b.disabled = false; });
+  }
 }
 
 async function refrescarSaldos(boton) {
@@ -995,6 +1233,15 @@ async function refrescarSaldos(boton) {
   try {
     const r = await api('/panel/directorio/saldos', { method: 'POST' });
     boton.textContent = r.mensaje;
+    /* Si el nodo contestó otra cadena no se tocó ni un saldo, y los números de
+       la pantalla son los de antes. Sin este aviso, quien aprieta el botón ve
+       los mismos números y concluye que la cadena está así — que es como el
+       panel llegó a enseñar saldos de la cadena vieja durante días. */
+    if (r.cadenaEquivocada) {
+      alert('NO se actualizó ningún saldo: el nodo respondió una cadena distinta '
+        + 'de la esperada. Lo que ves en pantalla es la lectura anterior.\n\n'
+        + 'Revisá GENESIS_RPC_URL y cadenaCoincide en /healthz.');
+    }
   } catch (e) { boton.textContent = e.message; }
   setTimeout(() => { boton.disabled = false; boton.textContent = 'Actualizar saldos'; }, 8000);
 }
@@ -1076,7 +1323,7 @@ function pintarMovimientos() {
   if (!d.resumen.total) {
     caja.innerHTML = vacio('Sin movimientos en la cadena',
       d.resumen.incompleto ? 'Además, el explorador no respondió: la lista puede estar incompleta.'
-        : 'Su billetera existe pero nunca envió ni recibió nada en la 8532.');
+        : 'Su billetera existe pero nunca envió ni recibió nada en la 5550.');
     return;
   }
 
@@ -1126,7 +1373,7 @@ function pintarMovimientos() {
     <p style="color:var(--faint);font-size:11.5px;margin-top:8px">
       Solo aparece lo que ocurrió <b>en la cadena</b>. Veta Wallet es custodia y
       lleva además su contabilidad interna: un movimiento que solo existe ahí no
-      deja rastro en la 8532 y no sale en esta lista. Cuando las dos versiones no
+      deja rastro en la 5550 y no sale en esta lista. Cuando las dos versiones no
       coinciden, esa diferencia es justo lo que hay que mirar.</p>`;
 }
 
@@ -1180,8 +1427,32 @@ function vistaConexiones(d) {
     `<button class="g mini ${conexPlataforma === v ? 'sel' : ''}"
        onclick="ponPlataforma('${v}')">${t}</button>`).join('');
 
+  /* El reparto por dónde entra la gente. Es la primera pregunta que se hace
+     de este panel —«¿cuántos usan la app y cuántos la web?»— y hasta ahora
+     había que deducirla leyendo dos columnas de la tabla fila por fila. */
+  const R = d.reparto;
+  const repartoKpis = !R ? '' : `
+  <div class="kpis">
+    ${kpi('Personas en total', n(R.personas), 'g',
+      `<div class="d">todas las que han abierto Veta Wallet alguna vez</div>`)}
+    ${kpi('Solo por la app', n(R.soloApp), 'v',
+      `<div class="d">${R.personas ? Math.round(R.soloApp * 100 / R.personas) : 0}% del total</div>`)}
+    ${kpi('Solo por la web', n(R.soloWeb), 'c',
+      `<div class="d">${R.personas ? Math.round(R.soloWeb * 100 / R.personas) : 0}% del total</div>`)}
+    ${kpi('Por las dos', n(R.ambas), 'gold',
+      `<div class="d">entran por donde les queda mejor</div>`)}
+  </div>
+  <p style="color:var(--faint);font-size:11.5px;margin:-4px 0 14px">
+    <b>${n(R.estrenaronApp)}</b> estrenaron la app en los últimos ${R.dias} días
+    ${R.estrenaronWeb ? ` · <b>${n(R.estrenaronWeb)}</b> entraron por primera vez desde la web` : ''}${
+    R.sinDato ? ` · ${n(R.sinDato)} de antes del desglose por plataforma` : ''}.
+    Descargas no se pueden contar: el archivo lo sirve Expo y quien lo baja y no
+    lo abre nunca no deja rastro. Lo que se cuenta es quién <b>abrió</b> la app.
+  </p>`;
+
+
   if (!filas.length) {
-    return `<div class="tarjeta p" style="margin-bottom:14px">
+    return repartoKpis + `<div class="tarjeta p" style="margin-bottom:14px">
         <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
           ${botonera}
           <button class="g mini" onclick="pintar(true)">Actualizar</button>
@@ -1191,8 +1462,9 @@ function vistaConexiones(d) {
   }
 
   return `
+  ${repartoKpis}
   <div class="kpis">
-    ${kpi('Personas conectadas', n(filas.length), 'g',
+    ${kpi('Conexiones recientes', n(filas.length), 'g',
       `<div class="d">las ${filas.length} más recientes</div>`)}
     ${kpi('Con nombre', n(conNombre), 'v',
       `<div class="d">${n(filas.length - conNombre)} fuera del padrón</div>`)}

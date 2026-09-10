@@ -3,10 +3,10 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Orden Global Explorer · Chain 8532</title>
-<meta name="description" content="Explorador oficial de la blockchain Orden Global (chain 8532). Bloques, transacciones, direcciones y tokens en tiempo real.">
+<title>Orden Global Explorer · Chain 5550</title>
+<meta name="description" content="Explorador oficial de la blockchain Orden Global (chain 5550) · Layer 1 · Hyperledger Besu · consenso QBFT · EVM Shanghai. Bloques, transacciones, direcciones y tokens en tiempo real.">
 <meta property="og:title" content="Orden Global Explorer">
-<meta property="og:description" content="Explorador oficial de la blockchain Orden Global · Chain 8532">
+<meta property="og:description" content="Explorador oficial de la blockchain Orden Global · Chain 5550 · Layer 1 · Besu QBFT · Shanghai">
 <meta property="og:type" content="website">
 <meta name="theme-color" content="#04191A">
 <!-- Favicon en linea: sin peticiones externas, que la politica de contenido del
@@ -62,7 +62,20 @@
   @media(max-width:720px){
     .barra{flex-wrap:wrap;gap:0;padding:11px 0 0}
     .logo{margin:0 0 9px}
-    nav{margin:0 -20px;padding:0 20px 9px;width:calc(100% + 40px);
+    /* El sangrado hasta el borde se hace con margen negativo y ancho AUTO.
+       Con `width:calc(100% + 40px)` el 100% se resolvia contra una caja que ya
+       tenia su propio ancho, y la barra terminaba midiendo mas que la pantalla:
+       la pagina entera se podia arrastrar de lado. */
+    /* La barra se desliza DENTRO del margen de la pagina.
+       Antes sangraba hasta el borde con margen negativo y `width:calc(100% +
+       40px)`, y ese calculo la dejaba midiendo 430px en una pantalla de 390:
+       la pagina entera se arrastraba de lado. El sangrado era un adorno; que
+       no se pueda mover la pagina en horizontal, no.
+       `flex-basis:0` con `flex-grow:1` la hace ocupar la linea que le queda sin
+       mirar el ancho de su contenido, y `min-width:0` le da permiso para
+       encogerse por debajo de el — que es lo que deja que el desplazamiento
+       ocurra por dentro. */
+    nav{margin:0;padding:0 0 9px;flex:1 1 0;min-width:0;
       flex-wrap:nowrap;overflow-x:auto;-webkit-overflow-scrolling:touch;
       scrollbar-width:none}
     nav::-webkit-scrollbar{display:none}
@@ -133,7 +146,17 @@
   table{width:100%;border-collapse:collapse}
   td{padding:12px 17px;border-top:1px solid var(--linea);vertical-align:top;font-size:13.8px}
   tr:first-child td{border-top:0}
+  .sello{color:var(--txt3);opacity:.6;font-size:11.5px;margin-left:10px;
+    font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
   td.k{color:var(--txt3);width:200px;white-space:nowrap}
+  /* Una linea de ayuda bajo la etiqueta, para los datos que no se explican
+     solos. «Tolerancia a caidas» no le dice nada a quien no sabe que es QBFT;
+     «cuantos validadores pueden faltar» si. */
+  /* «ARTIFICIAL INTELLIGENCE» desbordaba su tarjeta: los nombres largos se
+     parten en vez de empujar. */
+  .tarj .va{overflow-wrap:anywhere}
+  td.k .ayuda{display:block;color:var(--txt3);opacity:.72;font-size:11.5px;
+    line-height:1.35;white-space:normal;font-weight:400;margin-top:1px}
   td.v{word-break:break-all}
   @media(max-width:640px){
     td.k{width:auto;display:block;border-top:1px solid var(--linea);padding-bottom:2px;font-size:12px}
@@ -141,6 +164,11 @@
   }
 
   .cols{display:grid;grid-template-columns:1fr 1fr;gap:22px}
+  /* `min-width:0` en las columnas: por defecto una celda de rejilla no se
+     encoge por debajo de su contenido mas ancho, asi que un hash largo o una
+     tabla con etiquetas fijas estiraban la columna MAS que la pantalla y
+     sacaban la pagina de cuadro en el telefono. */
+  .cols > *{min-width:0}
   @media(max-width:860px){.cols{grid-template-columns:1fr}}
 
   /* ── Filtros ──────────────────────────────────────────────────────────── */
@@ -217,6 +245,53 @@
   .pie a{color:var(--txt2)}
   .pie a:hover{color:var(--oro)}
 
+  /* ── Etiquetas humanas ────────────────────────────────────────────────── */
+  /* Una direccion conocida lleva su nombre al lado: «AUKA · contrato»,
+     «Tesoro», «Validador node3». La pastilla es chica y va DESPUES del hash,
+     nunca en su lugar: el hash sigue siendo el dato; el nombre es la ayuda. */
+  .etq{display:inline-block;vertical-align:middle;margin-left:6px;padding:1px 8px;border-radius:999px;
+    font-size:10.5px;font-weight:700;letter-spacing:.3px;white-space:nowrap;line-height:1.6;
+    background:var(--oro-t);border:1px solid rgba(201,169,97,.3);color:var(--oro)}
+  .etq.val{background:rgba(90,169,224,.12);border-color:rgba(90,169,224,.3);color:var(--info)}
+  .etq.tes{background:rgba(63,185,132,.12);border-color:rgba(63,185,132,.3);color:var(--ok)}
+  .etq.con{background:var(--panel2);border-color:var(--linea2);color:var(--txt2)}
+  a.dir{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:12.7px}
+
+  /* ── Verificacion de contrato ────────────────────────────────────────── */
+  .verif{display:flex;gap:12px;align-items:flex-start;padding:14px 17px;border-radius:var(--r2);
+    border:1px solid var(--linea);background:var(--panel);margin:14px 0;font-size:13.5px;line-height:1.5}
+  .verif .ic{flex:none;width:30px;height:30px;border-radius:9px;display:grid;place-items:center;font-weight:800}
+  .verif.ok{border-color:rgba(63,185,132,.4)} .verif.ok .ic{background:rgba(63,185,132,.15);color:var(--ok)}
+  .verif.mal{border-color:rgba(232,106,106,.45)} .verif.mal .ic{background:rgba(232,106,106,.15);color:var(--mal)}
+  .verif.gris .ic{background:var(--panel2);color:var(--txt3)}
+  .verif b{display:block;margin-bottom:2px}
+  .verif .mono{color:var(--txt3);font-size:11.5px;word-break:break-all}
+
+  /* ── La cabecera de una ficha (tx, bloque, direccion) ─────────────────── */
+  /* Al estilo de un explorador limpio: el titulo, el identificador entero en
+     mono con su boton de copiar, y las pastillas de estado en la misma fila.
+     Sin adornos: el dato manda. */
+  .ficha-cab{display:flex;flex-direction:column;gap:6px;margin-bottom:16px}
+  .ficha-cab h2{font-size:19px}
+  .ficha-id{display:flex;align-items:center;gap:6px;flex-wrap:wrap;color:var(--txt2);
+    font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:13px;word-break:break-all}
+  .ficha-pills{display:flex;gap:6px;flex-wrap:wrap}
+  /* La fila «de → para» de una transaccion, en una sola linea que envuelve. */
+  .flujo{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  .flujo .flecha{color:var(--txt3)}
+  /* Las tarjetas de una direccion: saldo nativo grande y los tokens chicos. */
+  .tarj .va.chico{font-size:17px}
+  /* Las filas de transacciones de un bloque, leidas del nodo: de, para, valor. */
+  .txb .fila{align-items:flex-start}
+  .txb .sub{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+  /* Precio de ORIGEN en la portada: referencia, rotulada, con su hora. */
+  .tarj .ref{font-size:11px;color:var(--txt3);margin-top:3px;line-height:1.4}
+  .tarj .ref b{color:var(--txt2);font-weight:600}
+  @media(max-width:640px){
+    .ficha-cab h2{font-size:17px}
+    .etq{margin-left:0;margin-top:3px}
+  }
+
   /* Aviso flotante al copiar. */
   #brindis{position:fixed;bottom:22px;left:50%;transform:translate(-50%,80px);
     background:var(--panel2);border:1px solid var(--oro);color:var(--oro);
@@ -246,8 +321,9 @@
 <main id="app"><div class="env"><div class="cargando">Cargando…</div></div></main>
 
 <footer><div class="env pie">
-  <div>Explorador de la blockchain <b style="color:var(--txt2)">Orden Global</b> · Chain 8532</div>
-  <div><a href="/red" data-ruta>Datos de la red</a> · <a href="/tokens" data-ruta>Tokens</a></div>
+  <div>Explorador de la blockchain <b style="color:var(--txt2)">Orden Global</b> · Chain 5550 · Layer 1 · Besu QBFT · Shanghai</div>
+  <div><a href="/red" data-ruta>Datos de la red</a> · <a href="/tokens" data-ruta>Tokens</a>
+    <span id="sello" class="sello"></span></div>
 </div></footer>
 
 <div id="brindis"></div>
@@ -262,9 +338,41 @@ const API = (typeof window.OGSCAN_API === "string")
   ? window.OGSCAN_API
   : "https://orden-global-scan-c4abe71e8024.herokuapp.com";
 
-const CHAIN_ID = 8532;
+/* EL SELLO DE ESTA COPIA.
+   Lo estampa `apps-web/subir.py` en cada publicacion, y sale del contenido de
+   los archivos: publicar dos veces lo mismo da el mismo sello.
+   Existe porque «no se si se actualizo» no se puede contestar mirando la
+   pantalla — un navegador con una copia vieja se ve igual que uno al dia—, y
+   esta pagina estuvo sirviendo «Chain 8532», el numero de la cadena ANTERIOR,
+   sin que nada lo delatara. Ahora se contesta leyendo el pie. */
+const OGS_V = 'bee6945b1c';
+const OGS_FECHA = '2026-09-02';
+
+const CHAIN_ID = 5550;   // red oficial desde el corte del 15-ago-2026
 const RPC = "https://ordenglobal-rpc.com/";
+const RPC2 = "https://rpc.ordenglobal-rpc.com/";   // el segundo nombre publicado en Chainlist
 const MONEDA = "ORIGEN";
+
+/* Preguntarle a la CADENA, no al indexador.
+   El explorador vive del backend, que es una copia de la cadena con retraso.
+   Para los datos que definen la red —quiénes validan, qué cliente corre, cuál
+   es el techo de gas— eso no sirve: hay que preguntárselo al nodo. Y se puede,
+   porque el RPC acepta llamadas del navegador desde este dominio.
+   Un dato de la red que se escribe a mano en el HTML envejece sin avisar; es
+   exactamente lo que dejó a esta página diciendo «PolyBFT» —el consenso de la
+   cadena ANTERIOR— durante meses. */
+async function rpc(metodo, params = []) {
+  const r = await fetch(RPC, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: metodo, params }),
+  });
+  if (!r.ok) throw new Error("el nodo respondió " + r.status);
+  const d = await r.json();
+  if (d.error) throw new Error(d.error.message || "el nodo devolvió un error");
+  return d.result;
+}
+const aNum = (h) => (typeof h === "string" && h.startsWith("0x") ? parseInt(h, 16) : Number(h));
 
 // El catalogo de tokens lo sirve el backend (/address/tokens), que los resuelve
 // contra la cadena. Aqui solo se guarda en memoria al vuelo, para no llevar una
@@ -289,6 +397,204 @@ const NO_TOKEN = new Set(["", "ORIGEN", "CONTRACT"]);
 const contratoDe = (s) => CONTRATOS[String(s || "").toUpperCase()] || null;
 const tokenPorContrato = (a) => Object.keys(CONTRATOS)
   .find(s => CONTRATOS[s].toLowerCase() === String(a || "").toLowerCase());
+
+// ── Etiquetas humanas ────────────────────────────────────────────────────────
+// Las direcciones que el ecosistema conoce POR SU NOMBRE. Salen del codigo del
+// propio ecosistema —no de una lista escrita de memoria—:
+//   · los contratos de los tokens: infra/ordenex-api/lib/tokens.js (la tabla
+//     espejo) y el catalogo que sirve el backend (/address/tokens), que se
+//     suma al vuelo por si un dia hay un token que esta lista no tiene;
+//   · el tesoro (la billetera unica de ORIGEN) y el envoltorio WORIGEN:
+//     infra/migracion-cadena/reinicio-5550/construir-genesis-nuevo.py y
+//     PLAN-ARRANQUE.md, que son los que armaron el genesis de la 5550;
+//   · los siete validadores: el mismo archivo, y comprobados contra
+//     qbft_getValidatorsByBlockNumber el 2-sep-2026;
+//   · la tesoreria de la venta directa de ORIGEN (Polygon/BSC, y con 1 ORIGEN
+//     en la 5550): infra/contratos-venta/scripts/desplegar.js.
+//
+// LO QUE NO ESTA, A PROPOSITO. Las tres asignaciones madre de 250.000
+// millones que el genesis preservo no se etiquetan: el Protocolo de Seguridad
+// de Accesos dice que las direcciones del tesoro no se divulgan, y ponerles
+// nombre en un explorador publico es divulgarlas. La billetera unica SI esta
+// porque PLAN-ARRANQUE.md ya la publica como tal y es la que recibe los
+// restos del genesis; si la Junta prefiere que tampoco, se quita de aqui y
+// listo. Y no hay «relevo de pagos» con direccion propia: el relevo de
+// mensajes (infra/mensajes/servidor.py) no transmite nunca —comprueba pagos
+// ajenos contra la cadena— asi que no tiene billetera que etiquetar.
+const ETIQUETAS = {
+  "0x3d5510e5081822877d14cd51b356bf01df2c32c9": { nombre: "Tesoro · billetera única de ORIGEN", clase: "tes" },
+  "0xccbe0c6690bf61d1f23f95f3998e4ba0d7b89f75": { nombre: "WORIGEN · Wrapped ORIGEN", clase: "con", simbolo: "WORIGEN" },
+  "0xa22180530d9d52676925e6ad9247ce3c24341fb1": { nombre: "Liquidez preservada en el génesis", clase: "con" },
+  "0x6a1aed0bfcc8c8ac7cb916270509ccd66911ebbc": { nombre: "Tesorería de venta de ORIGEN (Ordenex)", clase: "tes" },
+  "0xbc820391f2a8ae402d00ef8bf4d0ec09ea0caf2a": { nombre: "Validador node1", clase: "val" },
+  "0x4c03eb38c7dc49eed7784c323089a4af2c698036": { nombre: "Validador node2", clase: "val" },
+  "0x69e8a7b25586511a0c14430b45100e9439aae36c": { nombre: "Validador node3", clase: "val" },
+  "0x48ccec9a54b9357623458f26afadcd7412a6a833": { nombre: "Validador node4", clase: "val" },
+  "0x65f987264bd77c3a094badfd88e4ba84c0b36382": { nombre: "Validador node5", clase: "val" },
+  "0xc548464725d5fd4a15b882a221da67b9cfd29514": { nombre: "Validador node6", clase: "val" },
+  "0x453493fcf778f133c51505cb81397f08850fc12e": { nombre: "Validador node7", clase: "val" },
+};
+// Los catorce contratos de la tabla espejo, escritos aqui ademas de venir por
+// el catalogo del backend: si el backend no contesta, las etiquetas siguen.
+const NOMBRES_TOKEN = {
+  "0x6facc8df79cedc6c5065442ce27e915aa3a26b9b": "AUKA", "0x961f798f998c7ff44d47d62c7fa1b572ef187a4b": "AGKA",
+  "0xfb83eea4b384a4b18e5a1eba7a4bb4c0b7ca19c1": "ONDK", "0x18b6680cff71c11067bec312fc48786be2e54ead": "MNKA",
+  "0x7af11d3e94a174f6fc290a5b7791a6dee2718e62": "IBS", "0x0fa04d11f28b28cbc9b98dd016f02023addb1923": "HARV",
+  "0xf1498640b27a66c0dc505093d70911c060e04fb0": "AUBEX", "0x69846ac960d45f9946c613dfce1b761d37faf098": "ASL",
+  "0x638f2ba0e3e1083d1ba570b449bd266f3860d164": "LOVE", "0x1ac12ebd7739003059d1e9ea2a4863c92d1505dd": "REST",
+  "0xaac6ae2e2037fc2e94d0b060792e7eb4e5fbfa66": "SOL", "0xae14db486872ac07d74ad69cc09590239b21ba2e": "AIT",
+  "0x2a31ba919a5339fcb0f8aeeffce2c807b16007fe": "AGRO", "0x92496e1848e001428a3495409a9a9f616bb6dd3b": "POLITICAL",
+};
+
+/** La etiqueta de una direccion, o null si no se la conoce. */
+function etiquetaDe(addr) {
+  const a = String(addr || "").toLowerCase();
+  if (!a) return null;
+  if (ETIQUETAS[a]) return ETIQUETAS[a];
+  const sim = tokenPorContrato(a) || NOMBRES_TOKEN[a];
+  if (sim) return { nombre: `${sim} · contrato del token`, clase: "", simbolo: sim };
+  return null;
+}
+const pillEtq = (e) => e ? `<span class="etq ${e.clase || ""}">${esc(e.nombre)}</span>` : "";
+
+/** Una direccion como enlace, corta o entera, con su etiqueta si la tiene. */
+function dirHtml(addr, { corta = true, copiar = false } = {}) {
+  if (!addr) return `<span class="pill">creación de contrato</span>`;
+  const e = etiquetaDe(addr);
+  const txt = corta ? corto(addr, 8, 6) : addr;
+  return `<a class="dir" href="/address/${esc(addr)}" data-ruta title="${esc(addr)}">${esc(txt)}</a>${copiar ? " " + btnCopiar(addr) : ""}${pillEtq(e)}`;
+}
+
+// ── El precio de referencia de ORIGEN ────────────────────────────────────────
+// LA MISMA FORMULA que la casa de cambio (infra/ordenex-api/lib/referencia.js)
+// y la billetera: un ORIGEN se REFERENCIA a un gramin, la onza troy de oro
+// dividida entre 31,1035 gramos y entre 55. Se lee del mismo feed (CoinGecko,
+// pax-gold; de respaldo gold-api.com XAU) y se enseña ROTULADO: referencia,
+// fuente y hora. No es un precio de mercado de ORIGEN —no hay tratos que lo
+// pongan— y no se dice que lo sea. Si el feed no llega, guion; jamas un numero
+// de consuelo.
+const ONZA_EN_GRAMOS = 31.1035;
+const GRAMOS_POR_ORIGEN = 55;
+const DIVISOR_ORIGEN = ONZA_EN_GRAMOS * GRAMOS_POR_ORIGEN; // 1710,6925
+async function precioOrigen() {
+  const plazo = (ms) => AbortSignal.timeout ? AbortSignal.timeout(ms) : undefined;
+  let oro = null, fuente = null;
+  try {
+    const r = await fetch("https://api.coingecko.com/api/v3/simple/price?ids=pax-gold&vs_currencies=usd", { signal: plazo(5000) });
+    const d = r.ok ? await r.json() : null;
+    const n = Number(d?.["pax-gold"]?.usd);
+    if (n > 0) { oro = n; fuente = "coingecko · pax-gold"; }
+  } catch (e) { /* respaldo */ }
+  if (oro == null) {
+    try {
+      const r = await fetch("https://api.gold-api.com/price/XAU", { signal: plazo(5000) });
+      const n = Number(r.ok ? (await r.json())?.price : NaN);
+      if (n > 0) { oro = n; fuente = "gold-api.com · XAU"; }
+    } catch (e) { /* guion */ }
+  }
+  if (oro == null) return null;
+  return { oro, origenUsd: oro / DIVISOR_ORIGEN, fuente, en: Date.now() };
+}
+
+// ── Verificacion de contratos ────────────────────────────────────────────────
+// Lo que Orden Global REGISTRO de cada contrato: el SHA-256 del bytecode que
+// habia en la cadena el dia que se anoto (lo genera y comprueba
+// verificar-contratos.mjs, en esta misma carpeta). La ficha lee el bytecode
+// de HOY por RPC, lo vuelve a resumir y compara: si coincide, «verificado
+// por Orden Global»; si no, se dice en rojo, porque un contrato que cambio
+// en la misma direccion es exactamente lo que hay que ver.
+//
+// `fuente` esta en null en todos: el repositorio no tiene el Solidity de estos
+// tokens, asi que no se puede compilar y comparar, y no se finge. El dia que
+// aparezca, se pone la ruta y el sha256 del archivo y la ficha lo enseña.
+// Generado por verificar-contratos.mjs el 2026-09-02 contra https://rpc.ordenglobal-rpc.com/
+const VERIFICADOS = {
+  "0x6facc8df79cedc6c5065442ce27e915aa3a26b9b": { simbolo: "AUKA", nombre: "Gold Kapital · token de commodity referenciado a la onza de oro", bytecodeSha256: "35cd1e6484dd9d021001e7cf57a3d4bb71a5f894f7089c0b56dcc8b41d870d0d", bytes: 5615, registradoEn: "2026-09-02", fuente: null },
+  "0x961f798f998c7ff44d47d62c7fa1b572ef187a4b": { simbolo: "AGKA", nombre: "AGKA · token de commodity referenciado a la onza de plata", bytecodeSha256: "35cd1e6484dd9d021001e7cf57a3d4bb71a5f894f7089c0b56dcc8b41d870d0d", bytes: 5615, registradoEn: "2026-09-02", fuente: null },
+  "0xfb83eea4b384a4b18e5a1eba7a4bb4c0b7ca19c1": { simbolo: "ONDK", nombre: "Orden Kapital · security token", bytecodeSha256: "35cd1e6484dd9d021001e7cf57a3d4bb71a5f894f7089c0b56dcc8b41d870d0d", bytes: 5615, registradoEn: "2026-09-02", fuente: null },
+  "0x18b6680cff71c11067bec312fc48786be2e54ead": { simbolo: "MNKA", nombre: "MNKA", bytecodeSha256: "29ed4635fa24b53b59a7f91f97ed36923b32907ef0e79c244f6eceaea6eae85c", bytes: 3670, registradoEn: "2026-09-02", fuente: null },
+  "0x7af11d3e94a174f6fc290a5b7791a6dee2718e62": { simbolo: "IBS", nombre: "IBS Energy", bytecodeSha256: "48aeeb7224644fa17eac0da1770ccaca07ab912c703d76ba15c663553c785fa3", bytes: 4137, registradoEn: "2026-09-02", fuente: null },
+  "0x0fa04d11f28b28cbc9b98dd016f02023addb1923": { simbolo: "HARV", nombre: "Harvi", bytecodeSha256: "640abb699107fa0d25a6b0275b82b572aaea2427c7dcdc3ac0c9a745d1320402", bytes: 4138, registradoEn: "2026-09-02", fuente: null },
+  "0xf1498640b27a66c0dc505093d70911c060e04fb0": { simbolo: "AUBEX", nombre: "AUBEX", bytecodeSha256: "c96730055fb1f35b490c8d4a882f67016226a85822bc43dbfb06a339a573c598", bytes: 3670, registradoEn: "2026-09-02", fuente: null },
+  "0x69846ac960d45f9946c613dfce1b761d37faf098": { simbolo: "ASL", nombre: "Athletic", bytecodeSha256: "29ed4635fa24b53b59a7f91f97ed36923b32907ef0e79c244f6eceaea6eae85c", bytes: 3670, registradoEn: "2026-09-02", fuente: null },
+  "0x638f2ba0e3e1083d1ba570b449bd266f3860d164": { simbolo: "LOVE", nombre: "Amor Global", bytecodeSha256: "29ed4635fa24b53b59a7f91f97ed36923b32907ef0e79c244f6eceaea6eae85c", bytes: 3670, registradoEn: "2026-09-02", fuente: null },
+  "0x1ac12ebd7739003059d1e9ea2a4863c92d1505dd": { simbolo: "REST", nombre: "Real State", bytecodeSha256: "29ed4635fa24b53b59a7f91f97ed36923b32907ef0e79c244f6eceaea6eae85c", bytes: 3670, registradoEn: "2026-09-02", fuente: null },
+  "0xaac6ae2e2037fc2e94d0b060792e7eb4e5fbfa66": { simbolo: "SOL", nombre: "Solar", bytecodeSha256: "29ed4635fa24b53b59a7f91f97ed36923b32907ef0e79c244f6eceaea6eae85c", bytes: 3670, registradoEn: "2026-09-02", fuente: null },
+  "0xae14db486872ac07d74ad69cc09590239b21ba2e": { simbolo: "AIT", nombre: "AI", bytecodeSha256: "29ed4635fa24b53b59a7f91f97ed36923b32907ef0e79c244f6eceaea6eae85c", bytes: 3670, registradoEn: "2026-09-02", fuente: null },
+  "0x2a31ba919a5339fcb0f8aeeffce2c807b16007fe": { simbolo: "AGRO", nombre: "Agrotech", bytecodeSha256: "29ed4635fa24b53b59a7f91f97ed36923b32907ef0e79c244f6eceaea6eae85c", bytes: 3670, registradoEn: "2026-09-02", fuente: null },
+  "0x92496e1848e001428a3495409a9a9f616bb6dd3b": { simbolo: "POLITICAL", nombre: "Political", bytecodeSha256: "29ed4635fa24b53b59a7f91f97ed36923b32907ef0e79c244f6eceaea6eae85c", bytes: 3670, registradoEn: "2026-09-02", fuente: null },
+  "0xccbe0c6690bf61d1f23f95f3998e4ba0d7b89f75": { simbolo: "WORIGEN", nombre: "Wrapped ORIGEN · envoltorio del nativo", bytecodeSha256: "3323556b5e102cecee89ec95810fedd6f8e4eb5504868a9ecca8f3586478543c", bytes: 2216, registradoEn: "2026-09-02", fuente: null },
+};
+
+async function sha256Hex(hex) {
+  const limpio = String(hex || "").replace(/^0x/, "");
+  const bytes = new Uint8Array(limpio.length / 2);
+  for (let i = 0; i < bytes.length; i++) bytes[i] = parseInt(limpio.slice(i * 2, i * 2 + 2), 16);
+  const d = await crypto.subtle.digest("SHA-256", bytes);
+  return Array.from(new Uint8Array(d), b => b.toString(16).padStart(2, "0")).join("");
+}
+
+/** { estado, registro, hashCadena } — estado: verificado | distinto | sinRegistro | sinCodigo | noSePudo */
+async function verificarContrato(addr) {
+  const a = String(addr || "").toLowerCase();
+  const registro = VERIFICADOS[a] || null;
+  try {
+    const codigo = await rpc("eth_getCode", [a, "latest"]);
+    if (!codigo || codigo === "0x") return { estado: "sinCodigo", registro, hashCadena: null };
+    const hashCadena = await sha256Hex(codigo);
+    if (!registro) return { estado: "sinRegistro", registro, hashCadena };
+    return { estado: hashCadena === registro.bytecodeSha256 ? "verificado" : "distinto", registro, hashCadena };
+  } catch (e) {
+    return { estado: "noSePudo", registro, hashCadena: null };
+  }
+}
+
+function cajaVerificacion(v) {
+  if (!v) return "";
+  const r = v.registro;
+  const hash = v.hashCadena ? `<div class="mono">sha256 del bytecode en cadena: ${esc(v.hashCadena)}</div>` : "";
+  if (v.estado === "verificado") return `<div class="verif ok"><div class="ic">✓</div><div>
+    <b>Verificado por Orden Global</b>El bytecode que hay hoy en la cadena es el que Orden Global registró el ${esc(r.registradoEn)}
+    (${num(r.bytes)} bytes)${r.fuente ? `, y coincide con la fuente <span class="mono">${esc(r.fuente.ruta)}</span> del repositorio` : ". El código fuente no está publicado en el repositorio: la verificación es del bytecode, no de la fuente"}.
+    ${hash}</div></div>`;
+  if (v.estado === "distinto") return `<div class="verif mal"><div class="ic">!</div><div>
+    <b>El contrato cambió</b>El bytecode que hay hoy en la cadena NO es el que Orden Global registró el ${esc(r.registradoEn)}.
+    Hasta que alguien lo explique, no se confíe en esta dirección. ${hash}</div></div>`;
+  if (v.estado === "sinRegistro") return `<div class="verif gris"><div class="ic">?</div><div>
+    <b>Contrato sin verificar</b>Hay código en esta dirección, pero Orden Global no lo tiene en su registro. ${hash}</div></div>`;
+  if (v.estado === "sinCodigo") return "";
+  return `<div class="verif gris"><div class="ic">…</div><div><b>No se pudo comprobar</b>El nodo no respondió a la lectura del bytecode. Se reintenta al recargar.</div></div>`;
+}
+
+// ── Búsqueda por GID ─────────────────────────────────────────────────────────
+// El GID (Genesis ID) tiene forma GEN-XXXX-XXXX-X (persona) o GNB-… (negocio),
+// con un digito verificador. La forma se reconoce aqui; la RESOLUCION no
+// existe todavia, y se dice —ver vistaGid— en vez de fingir un resultado.
+const esGid = (q) => /^(GEN|GNB)-[2-9A-HJ-NP-Z]{4}-[2-9A-HJ-NP-Z]{4}-[2-9A-HJ-NP-Z]$/i.test(String(q || "").replace(/\s/g, ""));
+
+// ── Metodos conocidos ────────────────────────────────────────────────────────
+// Los selectores ERC-20 y los pocos que se ven en esta cadena, con su nombre.
+// Un selector que no esta aqui se enseña como esta (0x…), no como «desconocido».
+const METODOS = {
+  "0xa9059cbb": "transfer(address,uint256)", "0x095ea7b3": "approve(address,uint256)",
+  "0x23b872dd": "transferFrom(address,address,uint256)", "0x40c10f19": "mint(address,uint256)",
+  "0x42966c68": "burn(uint256)", "0x79cc6790": "burnFrom(address,uint256)",
+  "0xd0e30db0": "deposit()", "0x2e1a7d4d": "withdraw(uint256)",
+  "0x39509351": "increaseAllowance(address,uint256)", "0xa457c2d7": "decreaseAllowance(address,uint256)",
+};
+const metodoDe = (input) => {
+  const s = String(input || "");
+  if (!s.startsWith("0x") || s.length < 10) return null;
+  const sel = s.slice(0, 10).toLowerCase();
+  return { selector: sel, nombre: METODOS[sel] || null };
+};
+
+// El sello, en el pie. Sin publicar todavia no dice nada en vez de decir una
+// cadena vacia, que pareceria un fallo.
+addEventListener("DOMContentLoaded", () => {
+  const e = document.getElementById("sello");
+  if (e && OGS_V) e.textContent = `v${OGS_V}${OGS_FECHA ? " · " + OGS_FECHA : ""}`;
+});
 
 // ── Utilidades ───────────────────────────────────────────────────────────────
 const $ = (s) => document.querySelector(s);
@@ -411,16 +717,25 @@ function buscar(e) {
     return ir(s ? `/token/${q}` : `/address/${q}`);
   }
   if (/^\d+$/.test(q)) return ir(`/block/${q}`);
+  // Un GID: se reconoce la forma y se explica que no hay indice que lo
+  // resuelva (vistaGid). Fingir «no hay resultados» seria mentir.
+  if (esGid(q)) return ir(`/gid/${encodeURIComponent(q.replace(/\s/g, "").toUpperCase())}`);
   // Cualquier otra cosa se trata como busqueda libre sobre las transacciones.
   return ir(`/txs?q=${encodeURIComponent(q)}`);
 }
-function ejemplo(el) { const i = $("#q"); if (i) { i.value = el.textContent; buscar(); } }
+/* El chip puede ENSEÑAR una version corta y llevar el valor entero en
+   `data-valor`: una direccion completa mide 307px y no cabe en un telefono de
+   320. Sin `data-valor` se usa el texto, que es como estaba. */
+function ejemplo(el) {
+  const i = $("#q");
+  if (i) { i.value = el.dataset.valor || el.textContent; buscar(); }
+}
 
 const iconoLupa = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.2-4.2"/></svg>`;
 const cajaBuscar = (compacta) => `
   <form class="buscar" onsubmit="buscar(event)" style="${compacta ? "margin:0 0 18px" : ""}">
     <div class="campo">${iconoLupa}
-      <input id="q" placeholder="Bloque, hash de transacción, dirección o texto" autocomplete="off" spellcheck="false">
+      <input id="q" placeholder="Bloque, hash de transacción, dirección, GID o texto" autocomplete="off" spellcheck="false">
     </div>
     <button type="submit">Buscar</button>
   </form>`;
@@ -440,10 +755,12 @@ async function vistaInicio(app) {
         <h1>Explorador de <b>Orden Global</b></h1>
         <p>Consultá bloques, transacciones, direcciones y tokens de la cadena, en tiempo real.</p>
         ${cajaBuscar()}
-        <div class="pista">Probá:
-          <code onclick="ejemplo(this)">4129701</code>
-          <code onclick="ejemplo(this)">0x049f03cf2efd67906d774203bda023eb1e209ed8</code>
-        </div>
+        <!-- Los ejemplos se rellenan con datos VIVOS de la cadena, no escritos
+             a mano. Los que habia -bloque 4.129.701 y una direccion suya- eran
+             de la cadena anterior: quien los tocaba caia en un «no existe», y
+             el primer gesto que ofrece la pagina no puede ser un callejon.
+             Leyendolos de la punta, no vuelven a envejecer. -->
+        <div class="pista" id="ejs"></div>
       </section>
 
       <!-- Las cuatro tarjetas se crean ya, con su identificador definitivo, y
@@ -451,8 +768,12 @@ async function vistaInicio(app) {
            una de las llamadas, asi que la respuesta que llegaba primero no
            encontraba su elemento y se perdia en silencio: las tarjetas de
            Transacciones y Tokens se quedaban en "…" para siempre. -->
+      <!-- La quinta tarjeta es el precio de REFERENCIA de ORIGEN: la misma
+           formula que la casa de cambio y la billetera (onza de oro entre
+           31,1035 y entre 55), rotulada como referencia con su fuente y su
+           hora. No es un precio de mercado de ORIGEN y no se dice que lo sea. -->
       <section class="seccion"><div class="tarjetas">
-        ${[["Último bloque", "cbloq"], ["Transacciones", "ctx"], ["Tokens", "ctk"], ["Tiempo de bloque", "ctiem"]]
+        ${[["Último bloque", "cbloq"], ["Transacciones", "ctx"], ["Tokens", "ctk"], ["Tiempo de bloque", "ctiem"], ["ORIGEN · referencia", "corig"]]
           .map(([t, id]) => `<div class="tarj" id="${id}"><div class="et">${t}</div>
             <div class="hueso" style="width:64%;height:20px"></div></div>`).join("")}
       </div></section>
@@ -467,6 +788,23 @@ async function vistaInicio(app) {
         <div>
           <div class="cabecera-seccion"><h2>Últimas transacciones</h2><a class="mas" href="/txs" data-ruta>Ver todas →</a></div>
           <div class="panel" id="tx">${esqueleto()}</div>
+
+          <!-- La cadena produce un bloque cada diez segundos y transacciones
+               muy de vez en cuando, asi que esta columna quedaba mucho mas
+               corta que la de bloques y dejaba un hueco. Se llena con lo que
+               alguien que llega por primera vez necesita saber: que red es
+               esta. Informa y ademas cuadra la pagina. -->
+          <div class="cabecera-seccion" style="margin-top:26px"><h2>La red, en corto</h2>
+            <a class="mas" href="/red" data-ruta>Ver todo →</a></div>
+          <div class="panel"><table>
+            <tr><td class="k">Qué es</td><td class="v">Blockchain propia de Orden Global
+              <span class="pill">Layer 1</span></td></tr>
+            <tr><td class="k">ID de cadena</td><td class="v">${CHAIN_ID}
+              <span class="pill">0x${CHAIN_ID.toString(16)}</span></td></tr>
+            <tr><td class="k">Moneda</td><td class="v">${MONEDA} <span class="pill">18 decimales</span></td></tr>
+            <tr><td class="k">Consenso</td><td class="v" id="p-cons">QBFT</td></tr>
+            <tr><td class="k">Compatible con</td><td class="v">EVM · Shanghai</td></tr>
+          </table></div>
         </div>
       </div></section>
 
@@ -487,8 +825,48 @@ async function vistaInicio(app) {
 
   // Cada bloque se carga por separado: si una parte falla, el resto se ve igual.
   api("/block/totalBlock")
-    .then(d => tarjeta("cbloq", "Último bloque", num(d.blockTotal), "", "oro"))
+    .then(d => {
+      tarjeta("cbloq", "Último bloque", num(d.blockTotal), "", "oro");
+      ejemplosVivos({ bloque: d.blockTotal });
+    })
     .catch(() => tarjeta("cbloq", "Último bloque", "—", "el nodo no respondió"));
+
+  /* Los ejemplos de búsqueda, con datos que EXISTEN.
+     Se juntan de a poco —el bloque llega por un lado y la dirección por otro—
+     así que cada trozo que llega repinta la línea con lo que haya. Mientras no
+     haya nada no se enseña nada: una pista que lleva a un «no existe» es peor
+     que ninguna pista. */
+  const _ej = {};
+  function ejemplosVivos(mas) {
+    Object.assign(_ej, mas || {});
+    const el = $("#ejs");
+    if (!el) return;
+    const trozos = [];
+    if (_ej.bloque) trozos.push(`<code onclick="ejemplo(this)">${esc(String(_ej.bloque))}</code>`);
+    if (_ej.direccion) trozos.push(
+      `<code onclick="ejemplo(this)" data-valor="${esc(_ej.direccion)}"
+         title="${esc(_ej.direccion)}">${esc(corto(_ej.direccion, 10, 8))}</code>`);
+    el.innerHTML = trozos.length ? "Probá: " + trozos.join(" ") : "";
+  }
+
+  // El precio de referencia de ORIGEN, rotulado con fuente y hora. Sin feed,
+  // guion y el porque — nunca un numero inventado.
+  precioOrigen().then(p => {
+    const el = $("#corig");
+    if (!el) return;
+    if (!p) {
+      el.innerHTML = `<div class="et">ORIGEN · referencia</div><div class="va">—</div><div class="ref">sin feed del oro ahora mismo</div>`;
+      return;
+    }
+    const hora = new Date(p.en).toLocaleTimeString("es", { hour: "2-digit", minute: "2-digit" });
+    el.innerHTML = `<div class="et">ORIGEN · referencia</div>
+      <div class="va oro" title="onza de oro ÷ 31,1035 ÷ 55">$${p.origenUsd.toFixed(4)}</div>
+      <div class="ref"><b>onza de oro $${p.oro.toLocaleString("en-US", { maximumFractionDigits: 2 })}</b> ÷ 31,1035 ÷ 55 · ${esc(p.fuente)} · leída ${hora}<br>
+        Referencia, no un precio de mercado de ORIGEN.</div>`;
+  }).catch(() => {
+    const el = $("#corig");
+    if (el) el.innerHTML = `<div class="et">ORIGEN · referencia</div><div class="va">—</div><div class="ref">sin feed del oro ahora mismo</div>`;
+  });
 
   // El tiempo de bloque se mide de verdad, con bloques reales, en vez de
   // escribir "15 s" a mano y que envejezca mal.
@@ -498,18 +876,31 @@ async function vistaInicio(app) {
     tarjeta("ctiem", "Tiempo de bloque", t, "promedio de los últimos 10");
   }).catch(() => tarjeta("ctiem", "Tiempo de bloque", "—"));
 
-  Promise.all([api("/transaction/resumen"), catalogo()]).then(([r]) => {
+  Promise.all([api("/transaction/resumen"), catalogo()]).then(([r, tokens]) => {
     const tks = (r.simbolos || []).filter(s => !NO_TOKEN.has(s.simbolo.toUpperCase()));
     tarjeta("ctx", "Transacciones", num(r.total),
       "desde " + (r.primera ? new Date(r.primera * 1000).toLocaleDateString("es", { month: "short", year: "numeric" }) : "—"));
-    tarjeta("ctk", "Tokens", tks.length, "con movimientos registrados");
+    /* La tarjeta contaba los tokens QUE SE HAN MOVIDO, y enseñaba «1» en una
+       red con cinco desplegados. Como titular es falso: quien lo lee entiende
+       que la cadena tiene un token. Se cuenta el catálogo —lo que existe— y el
+       movimiento pasa al subtítulo, que es donde ese matiz sí informa. */
+    const cuantosSeMovieron = tks.length;
+    tarjeta("ctk", "Tokens", num((tokens || []).length || cuantosSeMovieron),
+      cuantosSeMovieron
+        ? `${num(cuantosSeMovieron)} con movimientos registrados`
+        : "desplegados en la red");
 
     // Grafico de actividad. SVG a mano: sin librerias, que la politica de
     // contenido del hosting bloquea igualmente.
+    //
+    // Con UN SOLO mes de historia el grafico era una barra dorada de lado a
+    // lado: no compara nada y ocupa media pantalla fingiendo que dice algo. Se
+    // dibuja a partir de dos meses; con menos, el dato va en una linea y la
+    // pagina no pierde el sitio.
     const meses = r.porMes || [];
-    if (meses.length) {
+    const et = (m) => new Date(m.anio, m.mes - 1, 1).toLocaleDateString("es", { month: "short", year: "2-digit" });
+    if (meses.length > 1) {
       const max = Math.max(...meses.map(m => m.n));
-      const et = (m) => new Date(m.anio, m.mes - 1, 1).toLocaleDateString("es", { month: "short", year: "2-digit" });
       $("#secgraf").innerHTML = `
         <div class="cabecera-seccion"><h2>Actividad de la cadena</h2>
           <span class="mas">${num(meses.length)} meses · pico de ${num(max)} en un mes</span></div>
@@ -518,16 +909,33 @@ async function vistaInicio(app) {
             <div class="b" style="height:${Math.max(3, (m.n / max) * 100)}%" title="${et(m)}: ${num(m.n)} transacciones"></div>`).join("")}</div>
           <div class="ejes"><span>${et(meses[0])}</span><span>${et(meses[meses.length - 1])}</span></div>
         </div>`;
+    } else if (meses.length === 1) {
+      $("#secgraf").innerHTML = `
+        <div class="cabecera-seccion"><h2>Actividad de la cadena</h2></div>
+        <div class="panel" style="padding:16px 18px;color:var(--txt2);font-size:14px">
+          ${num(meses[0].n)} ${meses[0].n === 1 ? "transacción" : "transacciones"} en
+          ${et(meses[0])}. La gráfica aparece cuando haya más de un mes con que comparar.
+        </div>`;
     }
 
-    // Los tokens de la portada salen de los datos reales, no de una lista fija.
-    $("#tks").innerHTML = tks.slice(0, 4).map(s => {
-      const c = contratoDe(s.simbolo);
-      const dest = c ? `/token/${c}` : `/txs?simbolo=${encodeURIComponent(s.simbolo)}`;
+    /* Los tokens DE LA RED son los que están desplegados, no los que se han
+       movido. La sección enseñaba uno solo —el único con transacciones— bajo un
+       título que promete la red entera, y daba a entender que la cadena tiene un
+       token cuando tiene catorce. Se listan los del catálogo y el movimiento va
+       de subtítulo, que es donde ese dato acompaña en vez de mentir. */
+    const movidos = Object.fromEntries(tks.map(s => [s.simbolo.toUpperCase(), s.n]));
+    const lista = (tokens || []).length
+      ? tokens.slice(0, 8).map(t => ({ simbolo: t.symbol, nombre: t.nombre || t.symbol,
+                                       contrato: t.contrato, n: movidos[String(t.symbol).toUpperCase()] || 0 }))
+      : tks.slice(0, 8).map(s => ({ simbolo: s.simbolo, nombre: NOMBRES[s.simbolo] || s.simbolo,
+                                    contrato: contratoDe(s.simbolo), n: s.n }));
+    $("#tks").innerHTML = lista.map(t => {
+      const dest = t.contrato ? `/token/${t.contrato}` : `/txs?simbolo=${encodeURIComponent(t.simbolo)}`;
       return `<a class="tarj" href="${dest}" data-ruta>
-        <div class="et">${esc(s.simbolo)}</div>
-        <div class="va">${esc(NOMBRES[s.simbolo] || s.simbolo)}</div>
-        <div class="sub">${num(s.n)} ${s.n === 1 ? "transacción" : "transacciones"}</div>
+        <div class="et">${esc(t.simbolo)}</div>
+        <div class="va">${esc(t.nombre)}</div>
+        <div class="sub">${t.n ? `${num(t.n)} ${t.n === 1 ? "transacción" : "transacciones"}`
+                               : "sin movimientos todavía"}</div>
       </a>`;
     }).join("");
   }).catch(() => {
@@ -535,6 +943,12 @@ async function vistaInicio(app) {
     tarjeta("ctk", "Tokens", "—");
     $("#tks").innerHTML = `<div class="aviso">No se pudo cargar el resumen.</div>`;
   });
+
+  // El número de validadores en la ficha corta: leído del nodo, no escrito.
+  rpc("qbft_getValidatorsByBlockNumber", ["latest"])
+    .then(v => { const e = $("#p-cons"); if (e && (v || []).length)
+      e.innerHTML = `QBFT <span class="pill">${num(v.length)} validadores</span>`; })
+    .catch(() => {});
 
   api("/block/allBlocks?lastBlock=8").then(d => {
     const b = d.blockInfo || [];
@@ -549,9 +963,13 @@ async function vistaInicio(app) {
   }).catch(e => { $("#bl").innerHTML = err(e.message); });
 
   api("/transaction/allTransactions?lastTransaction=8").then(d => {
-    $("#tx").innerHTML = (d.transactions || []).length
-      ? d.transactions.map(filaTx).join("")
-      : `<div class="aviso">Sin transacciones para mostrar.</div>`;
+    const t = d.transactions || [];
+    $("#tx").innerHTML = t.length
+      ? t.map(filaTx).join("")
+      : `<div class="aviso">Todavía no hay transacciones en la cadena.</div>`;
+    // Una dirección de verdad para la pista de búsqueda.
+    const dir = (t.find(x => x.from) || {}).from;
+    if (dir) ejemplosVivos({ direccion: dir });
   }).catch(e => { $("#tx").innerHTML = err(e.message); });
 }
 
@@ -562,7 +980,7 @@ function filaTx(x) {
       <div class="icono">${esc(esToken(x) ? mon.slice(0, 3) : "Tx")}</div>
       <div style="min-width:0">
         <a href="/tx/${esc(x.hash)}" data-ruta class="mono cortar">${esc(corto(x.hash, 16, 8))}</a>
-        <div class="sub mono cortar">${esc(corto(x.from, 8, 6))} → ${destinoCorto(x)}</div>
+        <div class="sub flujo">${dirHtml(x.from)} <span class="flecha">→</span> ${dirHtml(x.to)}</div>
       </div></div>
     <div class="der">${valor(x.value)} <span class="pill">${esc(mon)}</span>
       <div class="sub">${hace(x.timestamp)}</div></div></div>`;
@@ -729,7 +1147,7 @@ function aplicarFiltros(e) {
 
 async function vistaBloque(app, id) {
   app.innerHTML = `<div class="env">${cajaBuscar(true)}
-    <div class="cabecera-seccion"><h2>Bloque #${esc(num(id))}</h2></div>
+    <div class="ficha-cab"><h2>Bloque #${esc(num(id))}</h2><div class="ficha-id" id="bid"></div></div>
     <div class="panel" id="d">${esqueleto(6)}</div><div id="txb"></div></div>`;
   try {
     const r = await api(`/block/block/${encodeURIComponent(id)}`);
@@ -738,44 +1156,111 @@ async function vistaBloque(app, id) {
 
     const hashes = Array.isArray(b.transactions) ? b.transactions : [];
     const cuantas = b.transactionCount ?? hashes.length;
+    const n = Number(b.number);
 
-    // Sobre el validador: en PolyBFT la cabecera `miner` es siempre la
-    // direccion cero — el proponente va firmado dentro de extraData. Mostrar
-    // "Validador: 0x000…000" no es un dato, es ruido que ademas hace pensar
-    // que el bloque no tiene validador. Se indica el consenso y ya.
+    $("#bid").innerHTML = `${esc(b.hash)} ${btnCopiar(b.hash)}`;
+
+    // Sobre el validador: en la 5550 el proponente SI viaja en `miner` —QBFT lo
+    // pone ahi— y por eso se muestra, con su nombre si es uno de los siete
+    // conocidos. La direccion cero solo aparece en el bloque cero, que no lo
+    // propuso nadie: es el genesis. Decir «Validador: 0x000…000» ahi no es un
+    // dato, es ruido que ademas hace pensar que al bloque le falta algo.
     const cero = /^0x0{40}$/i.test(String(b.miner || ""));
     const filaValidador = cero
-      ? `<tr><td class="k">Consenso</td><td class="v">PolyBFT <span class="pill">el proponente va firmado en extraData</span></td></tr>`
-      : `<tr><td class="k">Validador</td><td class="v mono">${esc(b.miner)} ${btnCopiar(b.miner)}</td></tr>`;
+      ? `<tr><td class="k">Origen</td><td class="v">Bloque génesis <span class="pill">no lo propuso ningún validador</span></td></tr>`
+      : `<tr><td class="k">Validador</td><td class="v">${dirHtml(b.miner, { corta: false, copiar: true })}</td></tr>`;
+    const usado = Number(b.gasUsed), limite = Number(b.gasLimit);
+    const pctGas = usado >= 0 && limite > 0 ? ` <span class="pill">${((usado / limite) * 100).toFixed(2)} %</span>` : "";
 
     $("#d").innerHTML = `<table>
-      <tr><td class="k">Número</td><td class="v">${num(b.number)}</td></tr>
-      <tr><td class="k">Hash</td><td class="v mono">${esc(b.hash)} ${btnCopiar(b.hash)}</td></tr>
+      <tr><td class="k">Número</td><td class="v">${num(b.number)}
+        <span class="pill"><a href="/block/${n - 1}" data-ruta>← anterior</a></span>
+        <span class="pill"><a href="/block/${n + 1}" data-ruta>siguiente →</a></span></td></tr>
       <tr><td class="k">Fecha</td><td class="v">${fecha(b.timestamp)} <span class="pill">${hace(b.timestamp)}</span></td></tr>
       <tr><td class="k">Transacciones</td><td class="v">${num(cuantas)}</td></tr>
-      <tr><td class="k">Gas usado / límite</td><td class="v">${num(b.gasUsed)} / ${num(b.gasLimit)}</td></tr>
-      <tr><td class="k">Tamaño</td><td class="v">${num(b.size)} bytes</td></tr>
       ${filaValidador}
-      ${b.parentHash ? `<tr><td class="k">Bloque padre</td><td class="v mono"><a href="/block/${Number(b.number) - 1}" data-ruta>${esc(b.parentHash)}</a></td></tr>` : ""}
-    </table>
-    <div class="fila"><div class="izq"><a href="/block/${Number(b.number) - 1}" data-ruta>← Bloque anterior</a></div>
-      <div class="der"><a href="/block/${Number(b.number) + 1}" data-ruta>Bloque siguiente →</a></div></div>`;
+      <tr><td class="k">Gas usado / límite</td><td class="v">${num(b.gasUsed)} / ${num(b.gasLimit)}${pctGas}</td></tr>
+      <tr><td class="k">Tamaño</td><td class="v">${num(b.size)} bytes</td></tr>
+      <tr><td class="k">Hash</td><td class="v mono">${esc(b.hash)} ${btnCopiar(b.hash)}</td></tr>
+      ${b.parentHash ? `<tr><td class="k">Bloque padre</td><td class="v mono"><a href="/block/${n - 1}" data-ruta>${esc(b.parentHash)}</a></td></tr>` : ""}
+      ${b.stateRoot ? `<tr><td class="k">Raíz de estado</td><td class="v mono">${esc(b.stateRoot)}</td></tr>` : ""}
+    </table>`;
 
     if (hashes.length) {
+      // Los detalles de cada transaccion —de, para, valor— se leen del nodo:
+      // el indice solo guarda los hashes en el bloque. Hasta 25 en paralelo;
+      // si el nodo no contesta alguna, esa fila queda con el hash a secas.
+      const TOPE = 25;
+      const lote = hashes.slice(0, TOPE);
       $("#txb").innerHTML = `<div class="seccion">
-        <div class="cabecera-seccion"><h2>Transacciones del bloque (${num(hashes.length)})</h2></div>
-        <div class="panel">` + hashes.map(h => `
-          <div class="fila"><div class="conicono izq"><div class="icono">Tx</div>
-            <a href="/tx/${esc(h)}" data-ruta class="mono cortar">${esc(h)}</a>
-          </div></div>`).join("") + `</div></div>`;
+        <div class="cabecera-seccion"><h2>Transacciones del bloque (${num(hashes.length)})</h2>
+          ${hashes.length > TOPE ? `<span class="mas">se detallan las primeras ${TOPE}</span>` : ""}</div>
+        <div class="panel txb" id="txbl">` + lote.map(h => `
+          <div class="fila" id="tx-${esc(h.slice(2, 18))}"><div class="conicono izq"><div class="icono">Tx</div>
+            <div style="min-width:0"><a href="/tx/${esc(h)}" data-ruta class="mono cortar">${esc(corto(h, 18, 10))}</a>
+            <div class="sub">…</div></div></div><div class="der"></div></div>`).join("")
+        + hashes.slice(TOPE).map(h => `<div class="fila"><div class="conicono izq"><div class="icono">Tx</div>
+            <a href="/tx/${esc(h)}" data-ruta class="mono cortar">${esc(h)}</a></div></div>`).join("")
+        + `</div></div>`;
+      await Promise.all(lote.map(async (h) => {
+        const el = $(`#tx-${h.slice(2, 18)}`);
+        if (!el) return;
+        try {
+          const t = await rpc("eth_getTransactionByHash", [h]);
+          if (!t) throw new Error("no está");
+          const m = metodoDe(t.input);
+          const valorEth = Number(BigInt(t.value || "0x0") / 1000000000000n) / 1e6; // wei → ORIGEN, 6 decimales
+          el.querySelector(".sub").innerHTML = `${dirHtml(t.from)} <span class="flecha">→</span> ${dirHtml(t.to)}${m && m.nombre ? ` <span class="pill mono">${esc(m.nombre.split("(")[0])}</span>` : ""}`;
+          el.querySelector(".der").innerHTML = `${valorEth.toLocaleString("es", { maximumFractionDigits: 6 })} <span class="pill">${MONEDA}</span>`;
+        } catch (e) {
+          el.querySelector(".sub").textContent = "el nodo no devolvió el detalle";
+        }
+      }));
     }
   } catch (e) { $("#d").innerHTML = err(e.message); }
 }
 
+// ── Búsqueda por GID: se reconoce, y se dice con verdad que no se resuelve ──
+//
+// QUE HAY Y QUE FALTA. En la cadena 5550 NO existe un registro de GID: ningun
+// contrato guarda «este GID es esta direccion», y un GID no se deriva de una
+// llave. Lo que existe es Genesis ID, fuera de la cadena, y su API contesta
+// en UN sentido: dada una direccion, si hay una identidad verificada detras
+// y cual es su GID (`GET /api/v1/direccion/:direccion`, alcance
+// gid.verificar — es lo que este explorador ya enseña en la ficha de una
+// direccion). El sentido contrario —dado un GID, sus direcciones— no esta
+// expuesto a las apps: `GET /api/v1/identidades/por-gid/:gid` existe pero
+// exige el alcance gid.perfil, que devuelve el perfil entero y que Ordenscan
+// NO tiene ni debe tener (un explorador es publico; con esa clave se leerian
+// nombres).
+//
+// Para que esta busqueda funcione haria falta UNA de estas dos cosas, y la
+// decision es de Genesis/la Junta, no del explorador:
+//   a) en Genesis ID, una ruta de solo-direcciones `GET /api/v1/gid/:gid/direcciones`
+//      bajo el alcance gid.verificar (devuelve las direcciones vinculadas y
+//      nada mas), y que ogscan-backend la consulte con su clave y la sirva
+//      como `GET /address/por-gid/:gid`; o
+//   b) un registro EN CADENA (contrato de vinculos GID → direccion, firmado
+//      por Genesis), que cualquiera pueda leer sin clave.
+// Hasta entonces esta vista dice eso, en vez de un «sin resultados» que
+// haria creer que el GID no existe.
+async function vistaGid(app, gid) {
+  const g = String(gid || "").toUpperCase();
+  app.innerHTML = `<div class="env">${cajaBuscar(true)}
+    <div class="ficha-cab"><h2>Genesis ID</h2><div class="ficha-id">${esc(g)} ${btnCopiar(g)}
+      <span class="pill">${g.startsWith("GNB") ? "negocio" : "persona"} · forma válida</span></div></div>
+    <div class="panel"><table>
+      <tr><td class="k">Qué es</td><td class="v">Un identificador de <b>Genesis ID</b>, el registro de identidad del ecosistema. Vive fuera de la cadena: ningún contrato de la 5550 guarda a qué direcciones corresponde.</td></tr>
+      <tr><td class="k">Buscar por GID</td><td class="v">Todavía no se puede resolver un GID a sus direcciones desde el explorador. Genesis ID solo expone a las apps el sentido contrario —de una dirección a su GID—, que es lo que este explorador enseña en la ficha de cada dirección con identidad verificada.</td></tr>
+      <tr><td class="k">Qué haría falta</td><td class="v">Que Genesis ID publique una consulta de solo-direcciones por GID (sin datos personales) y este explorador la sirva, o un registro de vínculos GID → dirección en la propia cadena. Está anotado en el código de esta vista.</td></tr>
+      <tr><td class="k">Mientras tanto</td><td class="v">Si tenés una dirección, buscala: si detrás hay una identidad verificada, la ficha lo dice y muestra su GID.</td></tr>
+    </table></div></div>`;
+}
+
 async function vistaTx(app, hash) {
   app.innerHTML = `<div class="env">${cajaBuscar(true)}
-    <div class="cabecera-seccion"><h2>Transacción</h2></div>
-    <div class="panel" id="d">${esqueleto(7)}</div></div>`;
+    <div class="ficha-cab"><h2>Transacción</h2><div class="ficha-id" id="tid">${esc(hash)}</div><div class="ficha-pills" id="tpills"></div></div>
+    <div class="panel" id="d">${esqueleto(7)}</div><div id="tdet"></div></div>`;
   try {
     const r = await api(`/transaction/transaction/${encodeURIComponent(hash)}`);
     const t = r.transaction || r.transactionInfo || r;
@@ -787,46 +1272,47 @@ async function vistaTx(app, hash) {
     const contrato = t.addressContract || (tk ? contratoDe(mon) : null);
     const rc = t.recibo;
 
+    $("#tid").innerHTML = `${esc(t.hash)} ${btnCopiar(t.hash)}`;
+    $("#tpills").innerHTML = (rc
+      ? (rc.exito ? `<span class="pill ok">✓ Éxito</span>` : `<span class="pill sal">✕ Fallida</span>`)
+      : `<span class="pill">estado no disponible</span>`)
+      + (rc && rc.confirmaciones ? ` <span class="pill">${num(rc.confirmaciones)} confirmaciones</span>` : "")
+      + ` <span class="pill">${hace(t.timestamp)}</span>`;
+
     // Hay dos formas de transferencia de token en los datos. Cuando el
     // indexador la reconocio, `to` ya es el destinatario y `value` la cantidad
     // del token. Cuando no, queda el `input` en crudo y el backend lo
     // decodifica: ahi `to` es el contrato y el destinatario va aparte.
     const tr = t.transferencia;
-    const filaDestino = t.to
-      ? `<tr><td class="k">Para</td><td class="v mono"><a href="/address/${esc(t.to)}" data-ruta>${esc(t.to)}</a> ${btnCopiar(t.to)}${tr ? ` <span class="pill">contrato del token</span>` : ""}</td></tr>`
-      : `<tr><td class="k">Para</td><td class="v"><span class="pill">creación de contrato</span></td></tr>`;
+    const m = metodoDe(t.input);
+    const tipo = tk ? `Transferencia de token <span class="pill oro">${esc(mon)}</span>`
+      : (String(t.symbol).toUpperCase() === "CONTRACT" || (m && m.nombre))
+        ? `Llamada a contrato${m && m.nombre ? ` <span class="pill mono">${esc(m.nombre)}</span>` : ""}`
+        : `Transferencia de ${MONEDA}`;
+
+    // El resumen humano: quien, a quien, cuanto. Es la primera fila porque es
+    // lo que la gente vino a ver; el resto de la tabla es para quien sabe.
+    const resumen = `<div class="flujo">${dirHtml(t.from, { corta: false, copiar: true })} <span class="flecha">→</span>
+      ${t.to ? dirHtml(t.to, { corta: false, copiar: true }) : `<span class="pill">creación de contrato</span>`}</div>`;
 
     const filasToken = tr ? `
-      <tr><td class="k">Destinatario real</td><td class="v mono"><a href="/address/${esc(tr.destino)}" data-ruta>${esc(tr.destino)}</a> ${btnCopiar(tr.destino)}</td></tr>
+      <tr><td class="k">Destinatario real</td><td class="v">${dirHtml(tr.destino, { corta: false, copiar: true })}</td></tr>
       <tr><td class="k">Cantidad transferida</td><td class="v"><b>${valor(tr.cantidad)}</b> ${esc(t.symbol || "")}</td></tr>` : "";
 
     // Los datos crudos de la llamada: util para quien sabe leerlos, oculto
     // tras un desplegable para quien no.
     const hayDatos = t.input && t.input !== "0x" && t.input !== "Transfer";
-    const metodo = hayDatos && t.input.startsWith("0x") && t.input.length >= 10
-      ? t.input.slice(0, 10) : null;
 
     $("#d").innerHTML = `<table>
-      <tr><td class="k">Hash</td><td class="v mono">${esc(t.hash)} ${btnCopiar(t.hash)}</td></tr>
-      <tr><td class="k">Estado</td><td class="v">${rc
-        ? (rc.exito ? `<span class="pill ok">✓ Éxito</span>`
-                    : `<span class="pill sal">✕ Fallida</span>`)
-        : `<span class="pill">no disponible</span>`}${
-        rc && rc.confirmaciones ? ` <span class="pill">${num(rc.confirmaciones)} confirmaciones</span>` : ""}</td></tr>
-      <tr><td class="k">Tipo</td><td class="v">${tk
-        ? `Transferencia de token <span class="pill oro">${esc(mon)}</span>`
-        : (String(t.symbol).toUpperCase() === "CONTRACT"
-            ? `Interacción con contrato`
-            : `Transferencia de ${MONEDA}`)}</td></tr>
+      <tr><td class="k">Tipo</td><td class="v">${tipo}</td></tr>
+      <tr><td class="k">De → Para</td><td class="v">${resumen}</td></tr>
+      <tr><td class="k">Valor</td><td class="v"><b style="font-size:15px">${valor(t.value)}</b> ${esc(mon)}</td></tr>
+      ${filasToken}
       <tr><td class="k">Bloque</td><td class="v"><a href="/block/${esc(t.blockNumber)}" data-ruta>#${num(t.blockNumber)}</a>${
         rc && rc.posicionEnBloque !== null ? ` <span class="pill">posición ${esc(rc.posicionEnBloque)}</span>` : ""}</td></tr>
       <tr><td class="k">Fecha</td><td class="v">${fecha(t.timestamp)} <span class="pill">${hace(t.timestamp)}</span></td></tr>
-      <tr><td class="k">De</td><td class="v mono"><a href="/address/${esc(t.from)}" data-ruta>${esc(t.from)}</a> ${btnCopiar(t.from)}</td></tr>
-      ${filaDestino}
-      <tr><td class="k">Valor</td><td class="v"><b style="font-size:15px">${valor(t.value)}</b> ${esc(mon)}</td></tr>
-      ${filasToken}
-      ${contrato ? `<tr><td class="k">Contrato del token</td><td class="v mono"><a href="/token/${esc(contrato)}" data-ruta>${esc(contrato)}</a> ${btnCopiar(contrato)}</td></tr>` : ""}
-      ${rc && rc.contratoCreado ? `<tr><td class="k">Contrato creado</td><td class="v mono"><a href="/address/${esc(rc.contratoCreado)}" data-ruta>${esc(rc.contratoCreado)}</a></td></tr>` : ""}
+      ${contrato ? `<tr><td class="k">Contrato del token</td><td class="v">${dirHtml(contrato, { corta: false, copiar: true })} <span class="pill"><a href="/token/${esc(contrato)}" data-ruta>ficha del token →</a></span></td></tr>` : ""}
+      ${rc && rc.contratoCreado ? `<tr><td class="k">Contrato creado</td><td class="v">${dirHtml(rc.contratoCreado, { corta: false, copiar: true })}</td></tr>` : ""}
       ${rc && rc.comision !== null ? `<tr><td class="k">Comisión pagada</td><td class="v">${valor(rc.comision)} ${MONEDA}</td></tr>` : ""}
       <tr><td class="k">Gas usado / límite</td><td class="v">${rc && rc.gasUsado ? num(rc.gasUsado) : "—"}${
         t.gas ? ` / ${num(t.gas)}` : ""}${
@@ -835,7 +1321,7 @@ async function vistaTx(app, hash) {
       <tr><td class="k">Nonce</td><td class="v">${esc(t.nonce)}</td></tr>
       ${rc ? `<tr><td class="k">Eventos emitidos</td><td class="v">${num(rc.eventos)}</td></tr>` : ""}
       ${hayDatos ? `<tr><td class="k">Datos de entrada</td><td class="v">
-        ${metodo ? `<span class="pill mono">método ${esc(metodo)}</span> ` : ""}
+        ${m ? `<span class="pill mono">${esc(m.nombre || ("método " + m.selector))}</span> ` : ""}
         <details style="margin-top:7px"><summary style="cursor:pointer;color:var(--oro)">Ver datos en crudo</summary>
         <div class="mono" style="margin-top:8px;word-break:break-all;color:var(--txt2);
              background:var(--fondo);border:1px solid var(--linea);border-radius:9px;padding:11px;
@@ -868,13 +1354,17 @@ async function vistaTokens(app) {
 
 async function vistaToken(app, contrato) {
   await catalogo();
-  const sim = tokenPorContrato(contrato);
+  const sim = tokenPorContrato(contrato) || NOMBRES_TOKEN[String(contrato).toLowerCase()];
   app.innerHTML = `<div class="env">${cajaBuscar(true)}
-    <div class="cabecera-seccion"><h2>Token ${sim ? esc(sim) : ""}</h2></div>
-    <div class="mono" style="color:var(--txt2);margin:-6px 0 16px;word-break:break-all">${esc(contrato)} ${btnCopiar(contrato)}</div>
+    <div class="ficha-cab"><h2>Token ${sim ? esc(sim) : ""}</h2>
+      <div class="ficha-id">${esc(contrato)} ${btnCopiar(contrato)}${pillEtq(etiquetaDe(contrato))}</div></div>
+    <div id="verif"></div>
     <div id="res"></div>
     <div class="cabecera-seccion" style="margin-top:26px"><h2>Movimientos del token</h2></div>
     <div class="panel" id="l">${esqueleto(6)}</div></div>`;
+  // La verificacion va por su lado: lee el bytecode del nodo y compara con el
+  // registro. Si el nodo no contesta, lo dice y la ficha sigue.
+  verificarContrato(contrato).then(v => { const el = $("#verif"); if (el) el.innerHTML = cajaVerificacion(v); });
   try {
     const r = await api(`/address/token/${encodeURIComponent(contrato)}`);
     const d = r.result || r;
@@ -929,24 +1419,34 @@ function avisoIdentidad(g) {
 
 async function vistaDireccion(app, addr) {
   await catalogo();
-  const sim = tokenPorContrato(addr);
+  const sim = tokenPorContrato(addr) || NOMBRES_TOKEN[String(addr).toLowerCase()];
+  const etq = etiquetaDe(addr);
   const banner = sim
     ? `<div class="pista" style="text-align:left;margin:-6px 0 16px">Esta dirección es el contrato del token <b>${esc(sim)}</b>. <a href="/token/${addr}" data-ruta>Ver la ficha del token →</a></div>`
     : "";
   app.innerHTML = `<div class="env">${cajaBuscar(true)}
-    <div class="cabecera-seccion"><h2>Dirección</h2></div>
-    <div class="mono" style="color:var(--txt2);margin:-6px 0 14px;word-break:break-all">${esc(addr)} ${btnCopiar(addr)}</div>
-    ${banner}<div id="res"></div>
+    <div class="ficha-cab"><h2>${etq ? esc(etq.nombre) : "Dirección"}</h2>
+      <div class="ficha-id">${esc(addr)} ${btnCopiar(addr)}</div>
+      <div class="ficha-pills" id="dpills"></div></div>
+    ${banner}<div id="verif"></div><div id="res"></div>
     <div class="cabecera-seccion" style="margin-top:26px"><h2>Transacciones<span id="ntx"></span></h2>
       <a class="mas" href="/txs?q=${encodeURIComponent(addr)}" data-ruta>Buscar con filtros →</a></div>
     <div class="panel" id="l">${esqueleto(6)}</div></div>`;
   try {
     const d = await api(`/address/${encodeURIComponent(addr)}`);
     const tk = d.tokensBalance || {};
+    // Cuenta o contrato: lo dice el nodo (getCode) via el backend. Un
+    // contrato lleva ademas su verificacion contra el registro.
+    $("#dpills").innerHTML = (d.esContrato ? `<span class="pill oro">contrato</span>` : `<span class="pill">cuenta</span>`)
+      + (etq ? pillEtq(etq) : "")
+      + (d.identidad && d.identidad.verificada === true ? ` <span class="pill ok">identidad verificada</span>` : "");
+    if (d.esContrato) {
+      verificarContrato(addr).then(v => { const el = $("#verif"); if (el) el.innerHTML = cajaVerificacion(v); });
+    }
     const filasTk = Object.entries(tk).map(([k, v]) => {
       const c = v.contractAddress;
       return `<a class="tarj" href="${c ? `/token/${c}` : "#"}" data-ruta>
-        <div class="et">${esc(k)}</div><div class="va">${valor(v.balance)}</div></a>`;
+        <div class="et">${esc(k)}</div><div class="va chico">${valor(v.balance)}</div></a>`;
     }).join("");
     $("#res").innerHTML = avisoIdentidad(d.identidad) + `<div class="tarjetas">
       <div class="tarj"><div class="et">Saldo ${MONEDA}</div>
@@ -963,9 +1463,9 @@ async function vistaDireccion(app, addr) {
         <div class="icono">${sale ? "↑" : "↓"}</div>
         <div style="min-width:0">
           <a href="/tx/${esc(x.hash)}" data-ruta class="mono cortar">${esc(corto(x.hash, 16, 8))}</a>
-          <div class="sub mono cortar">${sale
-            ? `<span class="pill sal">envió</span> a ${destinoCorto(x)}`
-            : `<span class="pill ent">recibió</span> de ${esc(corto(x.from, 10, 6))}`}</div>
+          <div class="sub flujo">${sale
+            ? `<span class="pill sal">envió</span> a ${dirHtml(x.to)}`
+            : `<span class="pill ent">recibió</span> de ${dirHtml(x.from)}`}</div>
         </div></div>
         <div class="der">${valor(x.value)} <span class="pill">${esc(mon)}</span>
           <div class="sub">${hace(x.timestamp)}</div></div></div>`;
@@ -974,30 +1474,144 @@ async function vistaDireccion(app, addr) {
   } catch (e) { $("#l").innerHTML = err(e.message); }
 }
 
-// ── Datos de la red, con alta en la billetera ────────────────────────────────
+// ── La red: qué es esta cadena, con los datos leídos del nodo ────────────────
+//
+// Lo que se enseña aquí es la ficha de identidad de la red, y tiene que ser
+// CIERTA: quien la lee decide con ella si conecta su billetera o su servicio.
+// Por eso casi todo se le pregunta al nodo en vivo —validadores, cliente,
+// techo de gas, ritmo— en vez de escribirlo en el HTML. Lo escrito a mano se
+// limita a lo que no cambia: el nombre, la moneda y las direcciones públicas.
 async function vistaRed(app) {
+  const dato = (k, id, ayuda) => `<tr><td class="k">${k}${
+    ayuda ? `<div class="ayuda">${ayuda}</div>` : ""}</td><td class="v" id="${id}">…</td></tr>`;
+
   app.innerHTML = `<div class="env">
-    <div class="cabecera-seccion" style="margin-top:26px"><h2>Datos de la red</h2></div>
-    <div class="panel"><table>
-      <tr><td class="k">Nombre</td><td class="v">Orden Global</td></tr>
-      <tr><td class="k">ID de cadena</td><td class="v">${CHAIN_ID} <span class="pill">0x${CHAIN_ID.toString(16)}</span> ${btnCopiar(String(CHAIN_ID))}</td></tr>
-      <tr><td class="k">Moneda</td><td class="v">${MONEDA} <span class="pill">18 decimales</span></td></tr>
-      <tr><td class="k">RPC</td><td class="v mono">${RPC} ${btnCopiar(RPC)}</td></tr>
-      <tr><td class="k">Explorador</td><td class="v mono">${esc(location.origin)} ${btnCopiar(location.origin)}</td></tr>
-      <tr><td class="k">Consenso</td><td class="v">PolyBFT</td></tr>
-      <tr><td class="k">Último bloque</td><td class="v" id="ub">…</td></tr>
-    </table></div>
-    <div class="acciones-f" style="margin-top:18px">
-      <button class="btn" onclick="agregarBilletera()">Añadir a MetaMask</button>
-      <span class="resumen-f" id="mmsg" style="margin-left:0"></span>
-    </div>
-    <p class="pista" style="text-align:left;margin-top:22px">
+    <section class="hero" style="padding:34px 0 6px">
+      <div class="et"><span class="punto"></span> Layer 1 propia · Chain ${CHAIN_ID}</div>
+      <h1>La cadena de <b>Orden Global</b></h1>
+      <p>Una blockchain propia, no una red de pruebas ni una capa encima de otra:
+         bloques cada diez segundos, validada por su propio grupo de nodos, y
+         compatible con las herramientas de Ethereum.</p>
+    </section>
+
+    <section class="seccion"><div class="tarjetas">
+      <div class="tarj"><div class="et">Validadores</div><div class="va oro" id="r-val">…</div>
+        <div class="sub" id="r-val-sub">consenso QBFT</div></div>
+      <div class="tarj"><div class="et">Ritmo</div><div class="va" id="r-ritmo">…</div>
+        <div class="sub">entre bloque y bloque</div></div>
+      <div class="tarj"><div class="et">Último bloque</div><div class="va" id="r-alt">…</div>
+        <div class="sub" id="r-alt-sub">&nbsp;</div></div>
+      <div class="tarj"><div class="et">Techo de gas</div><div class="va" id="r-gas">…</div>
+        <div class="sub">por bloque</div></div>
+    </div></section>
+
+    <section class="seccion"><div class="cols">
+      <div>
+        <div class="cabecera-seccion"><h2>Para conectarse</h2></div>
+        <div class="panel"><table>
+          <tr><td class="k">Nombre de la red</td><td class="v">Orden Global</td></tr>
+          <tr><td class="k">ID de cadena</td><td class="v">${CHAIN_ID}
+            <span class="pill">0x${CHAIN_ID.toString(16)}</span> ${btnCopiar(String(CHAIN_ID))}</td></tr>
+          <tr><td class="k">Moneda</td><td class="v">${MONEDA} <span class="pill">18 decimales</span></td></tr>
+          <tr><td class="k">RPC</td><td class="v mono">${RPC} ${btnCopiar(RPC)}</td></tr>
+          <tr><td class="k">RPC alterno</td><td class="v mono">${RPC2} ${btnCopiar(RPC2)}</td></tr>
+          <tr><td class="k">Explorador</td><td class="v mono">${esc(location.origin)} ${btnCopiar(location.origin)}</td></tr>
+        </table></div>
+        <div class="acciones-f" style="margin-top:16px">
+          <button class="btn" onclick="agregarBilletera()">Añadir a MetaMask</button>
+          <span class="resumen-f" id="mmsg" style="margin-left:0"></span>
+        </div>
+      </div>
+      <div>
+        <div class="cabecera-seccion"><h2>Cómo funciona</h2></div>
+        <div class="panel"><table>
+          ${dato("Tipo", "r-tipo")}
+          ${dato("Cliente", "r-cliente")}
+          ${dato("Consenso", "r-cons", "quién puede proponer un bloque")}
+          ${dato("Tolerancia a caídas", "r-tol", "cuántos validadores pueden faltar")}
+          ${dato("Máquina virtual", "r-evm", "qué contratos entiende")}
+          ${dato("Coste del gas", "r-precio")}
+          ${dato("Bloque génesis", "r-gen", "la huella de esta cadena")}
+        </table></div>
+      </div>
+    </div></section>
+
+    <section class="seccion">
+      <div class="cabecera-seccion"><h2>Los tokens de la red</h2>
+        <a class="mas" href="/tokens" data-ruta>Ver todos →</a></div>
+      <div class="tarjetas" id="r-tokens"></div>
+    </section>
+
+    <p class="pista" style="text-align:left;margin-top:6px">
       Este explorador implementa <b>EIP-3091</b> — las rutas <code>/block/&lt;n&gt;</code>,
       <code>/tx/&lt;hash&gt;</code> y <code>/address/&lt;0x…&gt;</code> — que es el estándar
-      que exigen Chainlist y las billeteras para reconocer un explorador de bloques.</p>
+      que exigen Chainlist y las billeteras para reconocer un explorador de bloques.
+      La red está publicada en <b>Chainlist</b> con este mismo ID.</p>
   </div>`;
-  api("/block/totalBlock").then(d => { $("#ub").textContent = num(d.blockTotal); })
-    .catch(() => { $("#ub").textContent = "—"; });
+
+  const poner = (id, txt, pill) => {
+    const el = $("#" + id);
+    if (el) el.innerHTML = txt + (pill ? ` <span class="pill">${pill}</span>` : "");
+  };
+  // Cada dato por su lado: si el nodo no contesta a uno, los demás se ven igual.
+  const flojo = (id) => () => poner(id, "—");
+
+  poner("r-tipo", "Layer 1 propia", "no es un rollup ni una sidechain");
+  poner("r-evm", "EVM · Shanghai", "compatible con Solidity y las herramientas de Ethereum");
+
+  rpc("web3_clientVersion")
+    .then(v => poner("r-cliente", esc(String(v).split("/").slice(0, 2).join(" · "))))
+    .catch(flojo("r-cliente"));
+
+  rpc("qbft_getValidatorsByBlockNumber", ["latest"]).then(v => {
+    const n = (v || []).length;
+    poner("r-val", num(n));
+    // La tolerancia de QBFT es (n−1)/3 hacia abajo. No se escribe «2» a mano:
+    // el día que entre o salga un validador, este número tiene que moverse solo.
+    const aguanta = Math.floor((n - 1) / 3);
+    const el = $("#r-val-sub");
+    if (el) el.textContent = `consenso QBFT · quórum de ${n - aguanta}`;
+    poner("r-cons", "QBFT", "tolerante a fallos bizantinos");
+    poner("r-tol", aguanta === 1 ? "1 validador" : `${num(aguanta)} validadores`,
+      `de ${num(n)}`);
+  }).catch(() => { flojo("r-val")(); flojo("r-cons")(); flojo("r-tol")(); });
+
+  // El ritmo y el techo de gas salen de bloques REALES, no de la configuración.
+  Promise.all([rpc("eth_blockNumber"), rpc("eth_getBlockByNumber", ["latest", false])])
+    .then(async ([alt, b]) => {
+      const n = aNum(alt);
+      poner("r-alt", num(n));
+      poner("r-gas", num(aNum(b.gasLimit)));
+      const sub = $("#r-alt-sub");
+      if (sub) sub.textContent = hace(aNum(b.timestamp));
+      const antes = await rpc("eth_getBlockByNumber", ["0x" + Math.max(0, n - 10).toString(16), false]);
+      const dt = (aNum(b.timestamp) - aNum(antes.timestamp)) / Math.max(1, n - Math.max(0, n - 10));
+      poner("r-ritmo", dt > 0 ? dt.toFixed(1) + " s" : "—");
+    })
+    .catch(() => { flojo("r-alt")(); flojo("r-gas")(); flojo("r-ritmo")(); });
+
+  rpc("eth_getBlockByNumber", ["0x0", false])
+    .then(g => poner("r-gen", `<span class="mono">${esc(corto(g.hash, 12, 8))}</span> ${btnCopiar(g.hash)}`))
+    .catch(flojo("r-gen"));
+
+  rpc("eth_gasPrice")
+    .then(p => {
+      const gwei = aNum(p) / 1e9;
+      poner("r-precio", gwei ? `${gwei.toLocaleString("es", { maximumFractionDigits: 2 })} gwei` : "sin coste",
+        "mínimo que aceptan los validadores");
+    })
+    .catch(flojo("r-precio"));
+
+  catalogo().then(tokens => {
+    const el = $("#r-tokens");
+    if (!el) return;
+    el.innerHTML = (tokens || []).length
+      ? tokens.map(t => `<a class="tarj" href="/token/${esc(t.contrato)}" data-ruta>
+          <div class="et">${esc(t.symbol)}</div>
+          <div class="va">${esc(t.nombre || t.symbol)}</div>
+          <div class="sub mono">${esc(corto(t.contrato, 10, 6))}</div></a>`).join("")
+      : `<div class="aviso">No se pudo leer el catálogo de tokens.</div>`;
+  });
 }
 
 async function agregarBilletera() {
@@ -1041,6 +1655,7 @@ function pintar() {
   if ((m = p.match(/^\/tx\/(.+)$/))) return vistaTx(app, decodeURIComponent(m[1]));
   if ((m = p.match(/^\/token\/(.+)$/))) return vistaToken(app, decodeURIComponent(m[1]));
   if ((m = p.match(/^\/address\/(.+)$/))) return vistaDireccion(app, decodeURIComponent(m[1]));
+  if ((m = p.match(/^\/gid\/(.+)$/))) return vistaGid(app, decodeURIComponent(m[1]));
 
   app.innerHTML = `<div class="env">${cajaBuscar(true)}
     <div class="aviso">Esa página no existe. <a href="/" data-ruta>Volver al inicio</a></div></div>`;

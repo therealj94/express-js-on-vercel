@@ -2,9 +2,26 @@
 // que la segunda pasada no toca nada y, sobre todo, que el respaldo sigue
 // siendo el cifrado ORIGINAL de la clave vieja. Si la segunda pasada pisara el
 // respaldo con el cifrado nuevo, se perderia la unica via de vuelta.
-import CryptoJS from "crypto-js";
-import mongoose from "mongoose";
-import * as m from "./lib/cripto.js";
+/* LA CAJA SE MONTA ACA, no se da por supuesta.
+   Antes esto importaba "./lib/cripto.js" y "mongoose" a secas, lo cual solo
+   resuelve si la prueba corre DENTRO de /tmp/mtest —un andamio montado a mano
+   el 5-ago que no existe en el CI ni en ninguna otra maquina—. Ver caja.mjs. */
+import { pathToFileURL } from "node:url";
+import { join } from "node:path";
+import { montarCaja } from "./caja.mjs";
+
+const caja = montarCaja();
+process.on("exit", caja.tirar);
+
+const CryptoJS = (await import(pathToFileURL(
+  join(caja.carpeta, "node_modules", "crypto-js", "index.js")).href)).default;
+/* El mongoose de mentira se importa por su ruta EXACTA dentro de la caja, que
+   es la misma a la que resuelve el `import "mongoose"` de migrar.js. Asi los
+   dos comparten la coleccion en memoria; con dos instancias distintas la
+   prueba miraria un almacen vacio y se pondria verde sin ejercitar nada. */
+const mongoose = (await import(pathToFileURL(
+  join(caja.carpeta, "node_modules", "mongoose", "index.cjs")).href)).default;
+const m = await import(pathToFileURL(caja.cripto).href);
 
 const store = mongoose.__store;
 const PK = "0x" + "cd".repeat(32);
@@ -14,8 +31,7 @@ const viejo = (t) => CryptoJS.AES.encrypt(t, process.env.PASS_ADM).toString();
 store.docs = [{ _id: "p1", address: "0xbbb1", privateKey: viejo(PK), seed: viejo(SD) }];
 const original = { ...store.docs[0] };
 
-const { pathToFileURL } = await import("node:url");
-const correr = () => import(pathToFileURL("/tmp/mtest/migrar.js").href + "?v=" + Math.random());
+const correr = () => import(pathToFileURL(caja.guion).href + "?v=" + Math.random());
 
 // El script llama a process.exit al terminar; se neutraliza para poder correrlo
 // dos veces en el mismo proceso.

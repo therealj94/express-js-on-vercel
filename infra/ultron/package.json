@@ -1,0 +1,31 @@
+{
+  "name": "ultron-fp",
+  "version": "1.0.0",
+  "description": "ULTRON FP · Conocimiento Full — el asistente de la junta directiva de Orden Global",
+  "private": true,
+  "main": "app.js",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "start": "node app.js",
+    "armar-saber": "node bin/armar-saber.mjs",
+    "probar": "node pruebas/probar-saber.mjs && node pruebas/probar-vivo.mjs && node pruebas/probar-herramientas.mjs && node pruebas/probar-cerebro.mjs && node pruebas/probar-nodo.mjs && node pruebas/probar-puerta.mjs && node pruebas/probar-vigia.mjs && node pruebas/probar-mano-derecha.mjs && node pruebas/probar-consola.mjs && node pruebas/probar-os.mjs && node pruebas/probar-os.mjs 390 844",
+    "probar-consola": "node pruebas/probar-consola.mjs",
+    "probar-os": "node pruebas/probar-os.mjs && node pruebas/probar-os.mjs 390 844",
+    "foto-os": "node pruebas/foto-os.mjs"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.124.0",
+    "@aws-sdk/client-ec2": "^3.1127.0",
+    "@aws-sdk/client-sesv2": "^3.600.0",
+    "@aws-sdk/client-ssm": "^3.1127.0",
+    "compression": "^1.8.1",
+    "cookie-parser": "^1.4.6",
+    "express": "^4.19.2",
+    "express-rate-limit": "^7.4.0",
+    "helmet": "^7.1.0",
+    "mongoose": "^8.5.0",
+    "pdfkit": "^0.20.2"
+  }
+}

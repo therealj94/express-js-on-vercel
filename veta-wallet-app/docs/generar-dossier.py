@@ -919,7 +919,7 @@ sp(6)
 p("<b>Orden Global Corp</b> · vetawallet.com · soporte@vetawallet.com", "small")
 
 # ══════════════════════════════════════════════════════════════════════════════
-SALIDA = "/tmp/claude-0/-home-user-express-js-on-vercel/0391d4fe-0c9f-53b0-b60e-0030ebf74708/scratchpad/Veta-Wallet-Dossier-Tecnico.pdf"
+SALIDA = "/tmp/Veta-Wallet-Dossier-Tecnico.pdf"
 
 doc = BaseDocTemplate(SALIDA, pagesize=A4,
                       leftMargin=MARGEN, rightMargin=MARGEN,

@@ -8,9 +8,9 @@
 # contestan el index. Solo hay un archivo alcanzable.
 #
 # Como el origen de ese CDN si es nuestro, la salida es que ese unico archivo se
-# baste solo: los tres scripts y el icono viajan dentro del HTML, y las dos
-# paginas legales van de acompañantes para que /privacidad y /terminos sigan
-# existiendo aunque el CDN entregue siempre lo mismo.
+# baste solo: los tres scripts y el icono viajan dentro del HTML, y las paginas
+# sueltas van de acompañantes para que /privacidad, /terminos y /genesis-id
+# sigan existiendo aunque el CDN entregue siempre lo mismo.
 #
 # No hay una segunda copia del sitio que mantener: esto se genera de las mismas
 # fuentes que el resto, en cada despliegue.
@@ -24,7 +24,12 @@ html = leer('index.html')
 
 # --- las imagenes, dentro del HTML ---------------------------------------
 MAX_PNG = 260   # el monograma de la tarjeta se pinta a ~227 px de ancho
-TIPOS = {'.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.svg': 'image/svg+xml'}
+# La tipografia de display viaja por el mismo carril que las imagenes: en
+# www.vetawallet.com solo se entrega un documento, asi que un @font-face que
+# apunte a un archivo suelto no llegaria nunca y la marca caeria a la letra
+# del sistema.
+TIPOS = {'.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.svg': 'image/svg+xml',
+         '.woff2': 'font/woff2'}
 
 
 def como_datos(rel):
@@ -74,6 +79,7 @@ window.__legal = (function () {
   var p = location.pathname.replace(/\\/+$/, '').toLowerCase();
   if (p === '/privacidad' || p === '/privacidad.html') return 'privacidad';
   if (p === '/terminos' || p === '/terminos.html') return 'terminos';
+  if (p === '/genesis-id' || p === '/genesis-id.html') return 'genesis-id';
   return null;
 })();
 </script>
@@ -85,15 +91,40 @@ html = html.replace('<meta charset="utf-8">', '<meta charset="utf-8">\n' + arran
 # se engancha a DOMContentLoaded y buscaria elementos que ahi no existen.
 # VETA vuelve a window a mano porque los manejadores en linea del HTML lo
 # llaman por su nombre, y dentro del bloque seria inalcanzable.
-SCRIPTS = [n for n in ('telemetria.js', 'qr.js', 'cadena.js', 'datos.js', 'i18n.js', 'app.js')
-           if os.path.exists(os.path.join(ORIGEN, n))]
+# LA LISTA SALE DEL HTML, NO DE AQUI.
+#
+# Estaba escrita a mano y en un orden fijo. El dia que se metio un `<script>`
+# nuevo en index.html —los modulos de llamadas, el 16 de agosto— la lista dejo
+# de casar con la pagina, el `assert` de abajo salto, y `www.vetawallet.com` se
+# quedo congelado sin que nadie se enterara: el sitio bueno seguia
+# desplegandose y el unificado fallaba en un paso aparte.
+#
+# Ahora se leen las etiquetas de la propia pagina, en su orden. Agregar un
+# script nuevo no vuelve a romper esto, y —lo que de verdad importa— tampoco
+# puede dejarlo fuera en silencio: un `chat.js` sin su `candado.js` cifraria
+# nada y el sello seguiria diciendo que si.
+SCRIPTS = re.findall(r'<script src="([^"]+)"></script>', html)
+faltan = [n for n in SCRIPTS if not os.path.exists(os.path.join(ORIGEN, n))]
+assert not faltan, 'la pagina pide scripts que no estan: %s' % faltan
+assert SCRIPTS, 'no se encontro ni una etiqueta de script en la pagina'
 codigo = '\n'.join(leer(n) for n in SCRIPTS)
 assert '</script' not in codigo, 'un script cierra la etiqueta y romperia el HTML'
 bloque = ('<script>\nif (!window.__legal) {\n' + codigo +
           '\nwindow.VETA = VETA;\n}\n</script>')
-etiquetas = ''.join(rf'<script src="{re.escape(n)}"></script>\s*' for n in SCRIPTS)
-html, n = re.subn(etiquetas.rstrip('\\s*'), lambda _: bloque, html, count=1)
-assert n == 1, 'no se encontraron las etiquetas de script en el orden esperado'
+
+# Las etiquetas no van todas seguidas en la pagina: hay dos grupos, con el HTML
+# del sitio en medio. Se sustituye la PRIMERA por el bloque entero y las demas
+# se quitan, en vez de exigir que esten pegadas —exigirlo fue justo lo que
+# rompio esto—.
+primera = True
+def cambiar(m):
+    global primera
+    if primera:
+        primera = False
+        return bloque
+    return ''
+html, n = re.subn(r'<script src="[^"]+"></script>\s*', cambiar, html)
+assert n == len(SCRIPTS), 'se sustituyeron %d etiquetas de %d' % (n, len(SCRIPTS))
 
 # Las rutas a imagenes se sustituyen DESPUES de incrustar el codigo: algunas
 # viven dentro de cadena.js (los logos de los tokens), no en el HTML.
@@ -116,7 +147,11 @@ def pagina(nombre):
             f'<style>{estilo}</style>{cuerpo}</template>')
 
 
-legales = pagina('privacidad.html') + pagina('terminos.html')
+# genesis-id.html no es una pagina legal, pero viaja por el mismo carril y por
+# el mismo motivo: es una pagina suelta, y en www.vetawallet.com no hay forma de
+# alcanzarla si no va dentro del unico documento que ese CDN entrega. Sin esto,
+# /genesis-id responde 200 con la portada — un enlace roto que no lo parece.
+legales = pagina('privacidad.html') + pagina('terminos.html') + pagina('genesis-id.html')
 
 # El intercambio va al final del cuerpo, cuando las plantillas ya existen.
 # Los estilos de la aplicacion se retiran: los de la pagina legal son de otro

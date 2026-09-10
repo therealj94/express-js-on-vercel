@@ -210,6 +210,11 @@ export function Settings({ nav }) {
           <ListRow icon="eye" title={t('set.watchLbl')} onPress={() => nav.go('watchOnly')} />
           <ListRow icon="card" title={t('set.card')} onPress={() => nav.go('card')} />
           <ListRow icon="qr-code" title={t('set.addr')} sub={shortAddr(acc.addr)} onPress={() => nav.go('receive')} />
+          {/* Las dos casas del ecosistema, juntas: a las dos se entra con el
+              mismo Genesis ID y sin repetir el KYC. Ordenex va primero porque
+              es donde se cambia dinero; MyTokenPay, donde se gasta. */}
+          <ListRow icon="swap-horizontal" title={t('set.onx')} sub={t('set.onxSub')} onPress={() => nav.go('ordenex')} />
+          <ListRow icon="cash" title={t('set.auc')} sub={t('set.aucSub')} onPress={() => nav.go('aucorp')} />
           <ListRow icon="storefront" title={t('set.mtp')} sub={t('set.mtpSub')} onPress={() => nav.go('mytokenpay')} />
         </Glass>
 
@@ -218,7 +223,7 @@ export function Settings({ nav }) {
             decía "Cuenta privada activada" y prometía "solo cuentas aprobadas
             te ven". Prometer una protección de privacidad que no existe es
             peor que no ofrecerla. Vuelve cuando el backend la soporte. */}
-        <Text style={styles.grpTitle}>{t('set.privacy')}</Text>
+        <Text style={styles.grpTitle}>{t('set.privacyGrp')}</Text>
         <Glass style={styles.group}>
           <ListRow first icon="person-remove" title={t('set.blocked')} onPress={() => nav.go('blocked')} />
         </Glass>

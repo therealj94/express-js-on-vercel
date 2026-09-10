@@ -1,5 +1,10 @@
 const { Web3 } = require("web3");
-const web3 = new Web3("https://ordenglobal-rpc.com/");
+// El nodo de la cadena sale de OG_RPC. Estaba escrito a fuego en cinco
+// archivos, asi que apuntar el explorador a otra red obligaba a editar
+// codigo. Sin la variable se comporta igual que siempre.
+const RPC_CADENA = process.env.OG_RPC || "https://ordenglobal-rpc.com/";
+
+const web3 = new Web3(RPC_CADENA);
 import Transaction from "../Models/Transaction";
 import Token from "../Models/TokenTx";
 

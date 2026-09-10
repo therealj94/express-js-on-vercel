@@ -499,7 +499,7 @@ export async function fichaPorEmail(email: string) {
 // Saldos: se le preguntan a la cadena, no a las apps
 //
 // Veta Wallet es custodia y lleva su propia contabilidad, pero lo que de verdad
-// tiene una persona es lo que dice la cadena 8532 sobre su dirección. Son dos
+// tiene una persona es lo que dice la cadena 5550 sobre su dirección. Son dos
 // cifras que deberían coincidir y a veces no coinciden — y cuando no coinciden,
 // eso es exactamente lo que hay que ver en una revisión.
 //
@@ -514,6 +514,8 @@ export async function fichaPorEmail(email: string) {
  */
 export async function refrescarSaldos(maximo = 800): Promise<{
   consultadas: number; conSaldo: number; monedas: number; perdidas: number
+  /** `true` = no se tocó ni un saldo porque el nodo contestó otra cadena. */
+  cadenaEquivocada: boolean
 }> {
   let perdidas = 0
   const c = col()
@@ -521,20 +523,69 @@ export async function refrescarSaldos(maximo = 800): Promise<{
   const conDireccion = todas.filter((e) => e.direccionWallet).slice(0, maximo)
 
   let conSaldo = 0
+  let cadenaMal = false
   // De cuarenta direcciones a la vez: cada una son quince llamadas, así que un
   // grupo es unas seiscientas y el nodo las aguanta sin despeinarse.
   for (let i = 0; i < conDireccion.length; i += 25) {
     const grupo = conDireccion.slice(i, i + 25)
-    const { saldos, fallidas } = await saldosDe(grupo.map((e) => e.direccionWallet!))
+    const lectura = await saldosDe(grupo.map((e) => e.direccionWallet!))
+    const { saldos, fallidas, leidas, leidoEn, cadenaCorrecta } = lectura
     perdidas += fallidas
+    if (!cadenaCorrecta) {
+      // El nodo contestó otra cadena. No se escribe nada: lo que hay guardado
+      // será viejo, pero al menos es de la cadena correcta.
+      cadenaMal = true
+      continue
+    }
     for (const e of grupo) {
-      const nuevos = saldos.get(e.direccionWallet!)
-      if (nuevos === undefined) continue      // sin respuesta: se deja lo previo
+      const dir = e.direccionWallet!
+      const contestaron = leidas.get(dir)
+      const nuevos = saldos.get(dir)
+      if (!contestaron?.size || nuevos === undefined) continue   // no contestó nada: se deja lo que hubiera
+
+      /* SE ESCRIBE MONEDA POR MONEDA, y solo las que contestaron.
+         Dos formas de equivocarse aquí, y las dos ya ocurrieron:
+           - escribir el mapa entero metía un CERO INVENTADO en las monedas que
+             el nodo no contestó;
+           - saltarse la dirección si fallaba UNA sola de las quince dejaba la
+             ficha congelada -- una cuenta recién vaciada siguió mostrando sus
+             tokens.
+         Lo que contestó con saldo se pone; lo que contestó con cero se quita;
+         lo que no contestó ni se toca. */
+      const poner: Record<string, unknown> = { saldosLeidosEn: leidoEn }
+      const quitar: Record<string, ''> = {}
+      for (const sim of contestaron) {
+        const v = nuevos[sim]
+        if (v !== undefined) poner[`saldos.${sim}`] = v
+        else quitar[`saldos.${sim}`] = ''
+      }
       if (Object.keys(nuevos).length) conSaldo++
-      if (c) await c.updateOne({ _id: e._id }, { $set: { saldos: nuevos } })
-      else memoria.get(e._id)!.saldos = nuevos
+      if (c) {
+        const cambio: any = { $set: poner }
+        if (Object.keys(quitar).length) cambio.$unset = quitar
+        await c.updateOne({ _id: e._id }, cambio)
+      } else {
+        const m = memoria.get(e._id)! as any
+        m.saldos = m.saldos || {}
+        for (const sim of contestaron) {
+          if (nuevos[sim] !== undefined) m.saldos[sim] = nuevos[sim]
+          else delete m.saldos[sim]
+        }
+        m.saldosLeidosEn = leidoEn
+      }
     }
   }
   if (perdidas) console.warn(`[directorio] ${perdidas} lecturas sin respuesta del nodo`)
-  return { consultadas: conDireccion.length, conSaldo, monedas: monedas().length, perdidas }
+  if (cadenaMal) {
+    console.error('[directorio] NO se actualizó ningún saldo: el nodo contestó otra cadena')
+  }
+  return {
+    consultadas: conDireccion.length,
+    conSaldo,
+    monedas: monedas().length,
+    perdidas,
+    /* Que quien aprieta el botón vea POR QUE no cambió nada, en vez de mirar
+       los mismos números y pensar que la cadena está así. */
+    cadenaEquivocada: cadenaMal,
+  }
 }

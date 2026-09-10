@@ -5,28 +5,92 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Genesis ID · Panel de cumplimiento</title>
 <style>
+/* La paleta sale del logotipo de Genesis ID: azul tinta y oro. Antes era verde
+   azulado, que no venía de ninguna parte.
+
+   Dos reglas que sostienen el resto:
+
+   - El ORO es la marca y la acción principal. NUNCA un estado. Por eso el aviso
+     (`--warn`) se corrió a naranja y ya no es el mismo amarillo del oro: cuando
+     los dos colores coinciden, el ojo deja de distinguir «esto es de la casa»
+     de «esto está mal», y este panel es el peor sitio del ecosistema para esa
+     confusión.
+
+   - `--lecho` es gris NEUTRO puro, y es lo único que va debajo de una imagen de
+     una persona. Un fondo con tinte desplaza el tono de piel percibido: sobre
+     azul una cara se ve más rojiza, sobre cálido más pálida. Los mismos valores
+     están en revision.html, que es donde se coteja de verdad. */
 :root{
-  --bg:#021012; --panel:#0A3436; --panel2:#0d2b2d; --line:#1C5E61; --line2:#164a4d;
-  --gold:#C9A961; --cyan:#4FD8E0; --txt:#F1EAD6; --mut:#9BB6B2; --faint:#66857f;
-  --ok:#3ED9A0; --warn:#F5B62E; --bad:#F0776B; --crit:#ff5a7a;
+  --bg:#0B111C; --panel:#142033; --panel2:#101A29; --line:#24374F; --line2:#1B2A41;
+  --gold:#F5B32B; --cyan:#7FB2E8; --txt:#E9EEF6; --mut:#9DB0C8; --faint:#64798F;
+  --ok:#35B77D; --warn:#E2893C; --bad:#E0685D; --crit:#FF5A7A;
+  --lecho:#0A0A0B;
 }
 *{margin:0;padding:0;box-sizing:border-box}
-body{background:radial-gradient(1100px 640px at 50% -12%,#0a2f31,#021012);color:var(--txt);
+body{background:radial-gradient(1100px 640px at 50% -12%,#16233A,#0B111C);color:var(--txt);
  font:14px/1.55 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;min-height:100vh}
 .num{font-variant-numeric:tabular-nums;font-family:ui-monospace,Menlo,Consolas,monospace}
-button{font:inherit;cursor:pointer;border:0;border-radius:9px;padding:8px 14px;background:var(--line);color:var(--txt)}
+/* El activo, como sello y no como texto gris pegado a la cifra: ONDK, ORIGEN
+   y AUKA tienen que distinguirse de un vistazo, que es cuando se miran. */
+.activo{display:inline-block;margin-left:7px;padding:1px 6px;border-radius:5px;
+  font-family:system-ui,sans-serif;font-size:10.5px;font-weight:700;letter-spacing:.06em;
+  color:var(--cyan);background:rgba(127,178,232,.13);border:1px solid rgba(127,178,232,.28);
+  vertical-align:1px}
+.qi-cripto{color:var(--mut);white-space:nowrap}
+/* 40 px de alto: por debajo de eso se falla el toque en un telefono. */
+button{font:inherit;cursor:pointer;border:0;border-radius:9px;padding:10px 14px;min-height:40px;background:var(--line);color:var(--txt)}
 button:hover{filter:brightness(1.18)}
 button:disabled{opacity:.45;cursor:not-allowed}
-button.p{background:var(--gold);color:#1a1200;font-weight:700}
-button.ok{background:var(--ok);color:#022;font-weight:700}
-button.bad{background:var(--bad);color:#2a0a06;font-weight:700}
+button.p{background:var(--gold);color:#10161F;font-weight:700}
+button.ok{background:var(--ok);color:#04140D;font-weight:700}
+button.bad{background:var(--bad);color:#230704;font-weight:700}
+/* EL CARTEL DEL BLOQUEO. Va arriba del expediente y ocupa sitio a proposito:
+   quien abre la ficha de alguien bloqueado tiene que verlo antes que nada, no
+   descubrirlo al llegar a los botones y preguntarse por que dice
+   «Desbloquear». */
+.bloqueo-cartel{border:1px solid var(--bad);border-left:4px solid var(--bad);
+  background:rgba(224,104,93,.10);border-radius:10px;padding:14px 16px;margin:0 0 16px}
+.bloqueo-cartel b{color:var(--bad);letter-spacing:.6px;font-size:13px}
+.bloqueo-cartel .d{margin-top:5px;font-size:12.5px;line-height:1.6}
 button.g{background:transparent;border:1px solid var(--line)}
-input,select,textarea{font:inherit;background:#061e20;color:var(--txt);border:1px solid var(--line);
+input,select,textarea{font:inherit;background:#0F1927;color:var(--txt);border:1px solid var(--line);
  border-radius:9px;padding:9px 11px;width:100%}
 a{color:var(--cyan)}
 .oculto{display:none!important}
 
 #entrada{display:grid;place-items:center;min-height:100vh;padding:20px}
+
+/* ══ LA MARCA ══════════════════════════════════════════════════════════════
+   En la entrada se DIBUJA: primero el trazo del marco, despues la cinta y la
+   huella, y al final aparecen la i y el nucleo. No es adorno gratuito: es el
+   gesto de la casa —una identidad que se construye trazo a trazo— y dura
+   menos de dos segundos. Con reduccion de movimiento activada, sale entera. */
+.gidDibujo{width:118px;margin:2px auto 12px;display:block;color:var(--gold)}
+.gidDibujo .gm-anillo{stroke-dasharray:1400;stroke-dashoffset:1400;animation:gmTrazo 1s ease-out forwards}
+.gidDibujo .gm-cinta{stroke-dasharray:300;stroke-dashoffset:300;animation:gmTrazo .6s ease-out .55s forwards}
+.gidDibujo .gm-huella path{stroke-dasharray:700;stroke-dashoffset:700;animation:gmTrazo .8s ease-out forwards}
+.gidDibujo .gm-huella path:nth-child(1){animation-delay:.65s}
+.gidDibujo .gm-huella path:nth-child(2){animation-delay:.73s}
+.gidDibujo .gm-huella path:nth-child(3){animation-delay:.81s}
+.gidDibujo .gm-huella path:nth-child(4){animation-delay:.89s}
+.gidDibujo .gm-huella path:nth-child(5){animation-delay:.97s}
+.gidDibujo .gm-huella path:nth-child(6){animation-delay:1.05s}
+.gidDibujo .gm-huella path:nth-child(7){animation-delay:1.13s}
+.gidDibujo .gm-dot,.gidDibujo .gm-tallo,.gidDibujo .gm-nucleo{opacity:0;animation:gmAparece .45s ease-out .5s forwards}
+.gidDibujo .gm-nucleo{animation-delay:.9s}
+@keyframes gmTrazo{to{stroke-dashoffset:0}}
+@keyframes gmAparece{to{opacity:1}}
+.gidPalabra{text-align:center;font-size:23px;letter-spacing:.04em;margin-bottom:2px}
+.gidPalabra span{color:var(--gold);font-weight:600}
+
+#velo{position:fixed;inset:0;z-index:950;display:grid;place-items:center;align-content:center;gap:14px;background:var(--bg)}
+.veloMarca{width:104px;color:var(--gold);animation:gmLate 1.5s ease-in-out infinite}
+.veloTxt{font-size:15px;letter-spacing:.14em;text-transform:uppercase;color:var(--mut)}
+.veloTxt b{color:var(--gold)}
+@keyframes gmLate{50%{transform:scale(.94);opacity:.7}}
+@media (prefers-reduced-motion:reduce){
+  .gidDibujo *,.veloMarca{animation:none !important;stroke-dashoffset:0 !important;opacity:1 !important}
+}
 .caja{background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:30px;width:100%;max-width:400px}
 .caja h1{font-size:20px;margin-bottom:4px}
 .caja p.sub{color:var(--faint);font-size:12px;margin-bottom:22px}
@@ -36,7 +100,10 @@ header{display:flex;align-items:center;gap:14px;padding:14px 22px;border-bottom:
 .marca{display:flex;align-items:center;gap:11px}
 .sello{width:38px;height:38px;border-radius:11px;border:1px solid var(--line);display:grid;place-items:center;
  background:linear-gradient(135deg,rgba(201,169,97,.2),transparent)}
-.sello svg{width:21px;height:21px;stroke:var(--gold);fill:none;stroke-width:1.7}
+.sello svg{width:24px;height:24px;color:var(--gold)}
+/* La marca trae sus propios rellenos y grosores de trazo. La regla anterior
+   —heredada del escudo de dos líneas que había antes— le imponía fill:none y
+   stroke-width:1.7, y eso la convertía en un garabato ilegible. */
 .marca b{font-size:16px;display:block}
 .marca span{font-size:10px;color:var(--faint);letter-spacing:.16em;text-transform:uppercase}
 .quien{margin-left:auto;display:flex;align-items:center;gap:12px;font-size:12.5px}
@@ -86,10 +153,28 @@ tbody tr:hover{background:rgba(255,255,255,.035)}
 
 #capa{position:fixed;inset:0;background:rgba(0,8,9,.72);backdrop-filter:blur(3px);z-index:50;display:none}
 #capa.abierta{display:block}
+/* EL CAJON CERRADO TENIA QUE DEJAR DE EXISTIR, NO SOLO DE VERSE.
+   Aparcado con `translateX(100%)` el cajon esta fuera del cristal, pero para el
+   navegador sigue estando: se comprobo que el boton «Cerrar» de un cajon
+   CERRADO recibe el foco del teclado, asi que tabulando desde la cabecera te
+   metias en una ficha que no se ve, y un lector de pantalla la lee entera.
+   `visibility:hidden` lo saca de las dos cosas a la vez, del orden de
+   tabulacion y del arbol de accesibilidad, sin tocar la animacion.
+
+   El retardo de la transicion es la pieza fina: al CERRAR, `visibility` espera
+   los .22s que dura el deslizamiento (`0s linear .22s`) para que el cajon se
+   vea salir en vez de desaparecer de golpe; al ABRIR salta en el acto (`0s`),
+   porque un cajon que aparece a medio camino se ve roto.
+
+   De paso deja de contaminar la medida: el barrido de moviles daba cuatro
+   elementos «fuera del ancho» en TODAS las pantallas del panel, y los cuatro
+   eran este cajon aparcado. Cuatro fallos fijos que hay que aprender a ignorar
+   son la forma mas rapida de que se deje de leer el informe entero. */
 #ficha{position:fixed;top:0;right:0;bottom:0;width:min(760px,100%);background:var(--bg);
- border-left:1px solid var(--line);z-index:51;transform:translateX(100%);transition:transform .22s;
+ border-left:1px solid var(--line);z-index:51;transform:translateX(100%);
+ visibility:hidden;transition:transform .22s,visibility 0s linear .22s;
  display:flex;flex-direction:column}
-#ficha.abierta{transform:none}
+#ficha.abierta{transform:none;visibility:visible;transition:transform .22s,visibility 0s}
 .fichaCab{display:flex;align-items:center;gap:12px;padding:16px 20px;border-bottom:1px solid var(--line2)}
 .fichaCab h2{margin:0;flex:1;font-size:16px}
 .fichaCuerpo{padding:20px;overflow-y:auto;flex:1}
@@ -105,39 +190,323 @@ tbody tr:hover{background:rgba(255,255,255,.035)}
 .item .t{font-weight:650;margin-bottom:2px}
 .item .d{color:var(--mut)}
 .acciones{display:flex;gap:8px;flex-wrap:wrap;margin-top:18px;padding-top:16px;border-top:1px solid var(--line2)}
-.barra{height:7px;background:#06282a;border-radius:99px;overflow:hidden;margin-top:6px}
+.barra{height:7px;background:#1B2A41;border-radius:99px;overflow:hidden;margin-top:6px}
 .barra i{display:block;height:100%;border-radius:99px}
-pre{background:#061e20;border:1px solid var(--line2);border-radius:10px;padding:12px;overflow-x:auto;font-size:11.5px;white-space:pre-wrap;word-break:break-word}
+pre{background:#0F1927;border:1px solid var(--line2);border-radius:10px;padding:12px;overflow-x:auto;font-size:11.5px;white-space:pre-wrap;word-break:break-word}
 .aguja{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:var(--panel);
  border:1px solid var(--line);border-radius:11px;padding:11px 18px;z-index:99;font-size:13px;display:none}
 .aguja.ver{display:block}
 .aguja.mal{border-color:var(--bad);color:var(--bad)}
-@media(max-width:640px){main{padding:14px}.fichaCuerpo{padding:14px}}
+@media(max-width:640px){main{padding:14px}.fichaCuerpo{padding:14px}
+
+  /* EL NOMBRE DE LA OPERADORA, EN SU PROPIO RENGLON.
+     `.quien` es una fila de cuatro piezas: el nombre, el sello del rol, el
+     boton del segundo factor y SALIR. Los tres ultimos no encogen, asi que al
+     nombre le quedaba una columna de una palabra de ancho y
+     «Mayra Carolina Enamorado Alvarez» caia en CUATRO renglones, uno por
+     palabra, en una tira vertical pegada al borde izquierdo. Medido a 360 px:
+     cuatro renglones antes, uno despues, y la cabecera de 167 a 154 px.
+
+     El alto importa poco; lo que estaba mal era la FORMA. Un nombre repartido
+     en cuatro renglones de una palabra no se lee como un nombre, se lee como
+     una pagina rota, y es lo primero que ve quien entra a decidir sobre la
+     identidad de otro.
+
+     No lo cazaba ninguna medida automatica y por eso conviene dejarlo escrito:
+     nada se salia del ancho. El fallo no era desbordar, era APLASTARSE, y eso
+     solo se ve mirando.
+
+     El nombre pasa a ocupar la fila entera y los mandos bajan a la siguiente.
+     `anywhere` es para el caso feo de verdad: cuando no hay nombre, ahi va el
+     correo, y un correo largo es una sola palabra sin donde partirse. */
+  .quien{flex-wrap:wrap;width:100%;margin-left:0;row-gap:8px}
+  #qNombre{flex:1 1 100%;min-width:0;overflow-wrap:anywhere}
+}
+
+/* ══ LAS IMÁGENES DE LA REVISIÓN ══════════════════════════════════════════
+   La tira de fotos y la lupa. Van juntas y con sitio: el operador tiene que
+   PODER MIRAR una cara antes de firmar que coincide. */
+.fotos{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));
+  gap:12px;margin:10px 0 8px}
+.fotos figure{margin:0}
+/* `contain` y no `cover`: recortar una credencial para que cuadre en un 4:3 se
+   come el borde donde está la fecha de vencimiento, y recortar un retrato se
+   come la barbilla. En una tira de revisión hay que ver la imagen ENTERA
+   aunque sobre lecho a los lados. */
+.fotos img{width:100%;aspect-ratio:4/3;object-fit:contain;border-radius:8px;
+  border:1px solid var(--line);background:var(--lecho);cursor:zoom-in;display:block}
+.fotos img:hover{border-color:var(--gold)}
+
+/* El paso de hojear a resolver. Va arriba de la ficha, antes que las fotos:
+   quien abre un expediente para decidirlo tiene que encontrarlo sin buscar. */
+.mesaCotejo{display:block;margin:0 0 14px;padding:11px 14px;border-radius:10px;
+  background:linear-gradient(180deg,#1D2C43,#16233A);border:1px solid var(--line);
+  color:var(--txt);text-decoration:none;font-weight:600;font-size:13.5px;
+  border-left:3px solid var(--gold)}
+.mesaCotejo:hover{border-color:var(--gold);background:#22344F}
+.mesaCotejo span{display:block;margin-top:2px;font-weight:400;font-size:11.5px;color:var(--mut)}
+.fotos .hueco{width:100%;aspect-ratio:4/3;border-radius:8px;
+  border:1px dashed var(--line);display:grid;place-items:center;
+  color:var(--faint);font-size:11.5px}
+.fotos figcaption{margin-top:6px;font-size:11.5px;color:var(--txt)}
+.fotos figcaption span{display:block;color:var(--faint);font-size:10.5px;margin-top:1px}
+.fotos .falta figcaption{color:var(--mut)}
+.nota-foto{font-size:11px;color:var(--faint);margin:2px 0 4px;line-height:1.5}
+
+/* La ventana del segundo factor. Clase propia y no `#velo`, que ya es la
+   pantalla de carga, ni `.lupa`, que es el visor de documentos: reutilizar
+   cualquiera de las dos habria roto una de ellas sin que se notara hasta que
+   alguien abriera las dos a la vez. */
+.sfCapa{position:fixed;inset:0;z-index:960;display:grid;place-items:center;padding:20px;
+ background:rgba(2,6,10,.86);backdrop-filter:blur(3px);overflow:auto}
+.sfCapa .caja{width:100%}
+.lupa{position:fixed;inset:0;z-index:900;background:rgba(2,6,10,.93);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:14px;padding:22px;cursor:zoom-out}
+.lupa img{max-width:min(1100px,94vw);max-height:82vh;object-fit:contain;
+  border-radius:10px;border:1px solid var(--line);cursor:default;background:var(--lecho)}
+.lupa .cab{display:flex;align-items:center;gap:14px;color:var(--txt);font-size:13px}
+.lupa .cab button{background:none;border:0;color:var(--mut);font-size:16px;cursor:pointer}
+.lupa .cab button:hover{color:var(--txt)}
+
+/* ══ EL TABLERO (resumen) ═════════════════════════════════════════════════
+   Antes el resumen era una parrilla de dieciocho números del mismo tamaño y el
+   mismo peso: el total histórico de identidades pesaba lo mismo que los casos
+   abiertos hoy. Un operador no entra a contemplar el censo, entra a saber QUÉ
+   LE ESPERA. Por eso el orden nuevo: primero lo que espera decisión, en fichas
+   grandes que llevan a su pestaña; después el censo y el estado del sistema,
+   en celdas calladas.
+
+   El silencio es el estado bueno. Una ficha sin nada que atender no lleva
+   verde ni palomita: lleva nada. El color aparece solo cuando hay que mirar
+   —naranja si conviene, rojo si urge— y así un vistazo al tablero distingue
+   un día tranquilo de uno que no lo es sin leer un solo número. El acento va
+   como sombra interior y no como border-left para no comerse el filete del
+   borde propio de la ficha. */
+.rz-titulo{font-size:12px;font-weight:600;line-height:1;letter-spacing:.13em;
+  text-transform:uppercase;color:var(--faint);margin:24px 0 10px}
+.rz-ojillo{font-size:10px;font-weight:600;line-height:1;letter-spacing:.13em;
+  text-transform:uppercase;color:var(--faint)}
+
+/* Avisos: dejan de ser globos de color de fondo y pasan al lenguaje de la mesa
+   de cotejo — lista con juntura de 1px y borde izquierdo según gravedad. */
+.rz-avisos{display:grid;gap:1px;background:var(--line);border:1px solid var(--line);
+  border-radius:4px;overflow:hidden;margin-bottom:4px}
+.rz-aviso{background:var(--panel);padding:10px 13px;font-size:12.5px;line-height:1.5;
+  border-left:2px solid var(--warn)}
+.rz-aviso.grave{border-left-color:var(--bad)}
+.rz-aviso b{display:block;margin-bottom:2px}
+.rz-aviso span{color:var(--mut)}
+.rz-quieto{font-size:12.5px;color:var(--faint)}
+
+/* La ficha grande clicable. Es un <button> para que el teclado también llegue,
+   así que hay que desmontar el estilo global de botón (radio 9px, relleno,
+   brillo al pasar): esto es un instrumento, no un botón de acción. */
+.rz-cola{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}
+.rz-ficha{display:flex;flex-direction:column;align-items:stretch;width:100%;padding:0;
+  text-align:left;background:var(--panel);border:1px solid var(--line);border-radius:4px;
+  overflow:hidden;color:var(--txt);cursor:pointer}
+.rz-ficha:hover{filter:none;border-color:#35506f;background:#16253C}
+.rz-ficha:hover .rz-ir{color:var(--txt)}
+.rz-ficha .rz-cinta{display:flex;align-items:center;justify-content:space-between;gap:8px;
+  padding:8px 12px;background:#0F1927;border-bottom:1px solid var(--line)}
+.rz-ir{font-size:10.5px;color:var(--faint);white-space:nowrap}
+.rz-ficha .rz-cuerpo{display:block;padding:12px 12px 13px}
+.rz-cifra{display:block;font-size:32px;font-weight:300;line-height:1;letter-spacing:-.02em}
+.rz-pie{display:block;margin-top:7px;font-size:11.5px;color:var(--mut);line-height:1.45}
+.rz-ficha.rz-ojo{box-shadow:inset 2px 0 0 var(--warn)}
+.rz-ficha.rz-mal{box-shadow:inset 2px 0 0 var(--bad)}
+
+/* Bloque de celdas: la rejilla con juntura de 1px de revision.html. Rótulo
+   arriba, dato abajo en monoespaciada — un dato de tablero es un dato. */
+.rz-bloque{background:var(--panel);border:1px solid var(--line);border-radius:4px;overflow:hidden}
+.rz-campos{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:1px;background:var(--line)}
+.rz-celda{background:var(--panel);padding:9px 13px}
+.rz-celda .rz-ojillo{display:block;margin-bottom:4px}
+.rz-dato{font-size:12.5px;line-height:1.4;word-break:break-word}
+.rz-dato.rz-cuenta{font-size:20px;font-weight:300;line-height:1.15;letter-spacing:-.02em}
+.rz-celda.rz-ojo{box-shadow:inset 2px 0 0 var(--warn)}
+.rz-celda.rz-mal{box-shadow:inset 2px 0 0 var(--bad)}
+
+/* ══ LA COLA DE IDENTIDADES ═══════════════════════════════════════════════
+   Antes era una tabla de ocho columnas: para saber si había algo que revisar
+   había que leerla entera, y en el móvil había que arrastrarla de lado. Una
+   cola de trabajo se hojea en vertical: cada identidad es una fila-ficha con
+   lo que hace falta para decidir si se abre — quién es, en qué estado está,
+   qué riesgo carga y cuándo se movió por última vez.
+
+   Las que esperan revisión van primero y llevan el borde cian de «pendiente».
+   Cian y no ámbar: en este sistema el ámbar es duda y el rojo es rechazo; que
+   algo esté en cola no es ninguna de las dos cosas, es información. */
+.qi-filtros input,.qi-filtros select{border-radius:4px;background:#0F1927}
+/* Las dos casillas del respaldo. 40 px de alto porque el panel se abre desde
+   el teléfono y una casilla de 16 px no se acierta con el pulgar. */
+/* La demostración. Tres columnas por paso —qué hizo ella, qué recibe Genesis,
+   qué ve el operador— porque las tres cosas pasan A LA VEZ y contarlas en fila
+   haría pensar que son tres momentos distintos. */
+.dm-pasos{display:flex;flex-direction:column;gap:10px}
+.dm-paso{display:flex;gap:14px;padding:14px;border-radius:10px;
+  border:1px solid var(--line);background:var(--surface)}
+.dm-paso.dm-malo{border-color:rgba(240,119,107,.35)}
+.dm-num{width:30px;height:30px;flex:0 0 auto;border-radius:50%;display:grid;place-items:center;
+  background:var(--line);color:var(--txt);font-weight:700;font-size:13px}
+.dm-cuerpo{flex:1;min-width:0}
+.dm-cab{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:9px}
+.dm-tiempo{font-size:11.5px;color:var(--mut);margin-left:auto}
+.dm-tres{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;font-size:12.5px;
+  color:var(--txt);line-height:1.5}
+.dm-paso.dm-malo .dm-tres{grid-template-columns:repeat(2,1fr)}
+@media (max-width:860px){.dm-tres,.dm-paso.dm-malo .dm-tres{grid-template-columns:1fr;gap:10px}}
+.dm-rot{display:block;font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;
+  color:var(--mut);margin-bottom:3px}
+.dm-json{margin:0;padding:12px;border-radius:8px;background:#0F1927;overflow-x:auto;
+  font-size:12px;line-height:1.6;color:var(--txt)}
+.c8-nota{margin-top:4px;font-size:11.5px;color:var(--mut);line-height:1.35}
+.c8-check{display:inline-flex;align-items:center;gap:7px;min-height:40px;padding:0 4px;
+  font-size:13px;color:var(--mut);cursor:pointer;white-space:nowrap}
+.c8-check input{width:16px;height:16px;accent-color:var(--oro);cursor:pointer}
+.c8-check:hover{color:var(--txt)}
+.qi-mas{width:100%;margin-top:10px;padding:12px;min-height:44px;border-radius:8px;border:1px dashed var(--line);background:transparent;color:var(--mut);cursor:pointer}
+.qi-mas:hover{color:var(--txt);border-color:var(--mut)}
+/* Seis filtros no caben con el ancho automático de los tres de identidades: el
+   de texto manda y el resto se acomoda. */
+.mv-filtros{align-items:center}
+.mv-filtros #mvTexto{flex:1 1 260px;min-width:200px}
+.mv-filtros select,.mv-filtros input[type=date]{flex:0 0 auto}
+.qi-marco{background:var(--panel);border:1px solid var(--line);border-radius:4px;overflow:hidden}
+.qi-cinta{display:flex;align-items:center;gap:10px;padding:9px 13px;
+  background:#0F1927;border-bottom:1px solid var(--line)}
+.qi-ojillo{flex:1;font-size:10px;font-weight:600;line-height:1;letter-spacing:.13em;
+  text-transform:uppercase;color:var(--faint)}
+.qi-cuenta{font-size:11px;color:var(--faint);white-space:nowrap}
+.qi-cola{display:grid;gap:1px;background:var(--line)}
+.qi-fila{display:grid;grid-template-columns:minmax(0,1.25fr) auto minmax(0,.85fr);
+  gap:4px 16px;align-items:center;background:var(--panel);padding:10px 13px;
+  border-left:2px solid transparent;cursor:pointer}
+.qi-fila:hover{background:#182740}
+.qi-fila.qi-prio{border-left-color:var(--cyan)}
+.qi-quien{min-width:0}
+.qi-nombre{font-size:14px;font-weight:600;letter-spacing:-.01em;line-height:1.3;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.qi-datos{margin-top:2px;font-size:11.5px;color:var(--faint);
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.qi-sellos{display:flex;gap:5px;flex-wrap:wrap;align-items:center}
+.qi-meta{text-align:right;min-width:0}
+.qi-apps{font-size:11.5px;color:var(--mut);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.qi-fecha{margin-top:2px;font-size:11px;color:var(--faint)}
+/* En estrecho la fila se apila pero NO pierde nada: los sellos y la fecha son
+   justamente lo que decide si se abre el expediente. */
+@media(max-width:860px){
+  .qi-fila{grid-template-columns:minmax(0,1fr)}
+  .qi-meta{text-align:left}
+}
 </style>
 </head>
 <body>
 
+<!-- La marca de Genesis ID, dibujada a mano en vectores a partir del
+     logotipo oficial: el marco hexagonal en G, la i de identidad y la huella
+     que se vuelve mano. Definida UNA vez; el resto de la pagina la referencia
+     con <use>. En currentColor para poder pintarla del oro o del azul segun
+     donde caiga. -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+  <g id="gidMarca">
+    <path class="gm-anillo" d="M 251.3 75.2 L 261.4 81 Q 232 64 202.6 81 L 100.4 140 Q 70.9 157 70.9 191 L 70.9 309 Q 70.9 343 100.4 360 L 202.6 419 Q 232 436 261.4 419 L 238.4 432.3" stroke="currentColor" stroke-width="58" stroke-linecap="round" stroke-linejoin="round"/>
+    <path class="gm-cinta" d="M 354 124 Q 416 150 424 216 L 424 240" stroke="currentColor" stroke-width="54" stroke-linecap="round"/>
+    <circle class="gm-dot" cx="272" cy="158" r="40" fill="currentColor"/>
+    <rect class="gm-tallo" x="236" y="212" width="70" height="122" rx="32" fill="currentColor"/>
+    <circle class="gm-nucleo" cx="374" cy="302" r="15" fill="currentColor"/>
+    <g class="gm-huella" stroke="currentColor" stroke-width="15" stroke-linecap="round" fill="none">
+      <path d="M 342.8 284.0 A 36 36 0 1 1 338.8 309.5"/>
+      <path d="M 333.0 261.0 A 58 58 0 1 1 316.6 310.1"/>
+      <path d="M 331.6 234.2 A 80 80 0 1 1 294.2 307.6"/>
+      <path d="M 377.9 413.9 A 112 112 0 0 1 272.5 349.3"/>
+      <path d="M 369.3 437.9 A 136 136 0 0 1 251.8 361.6"/>
+      <path d="M 360.1 461.4 A 160 160 0 0 1 232.7 377.1"/>
+      <path d="M 348.4 484.2 A 184 184 0 0 1 214.7 394.0"/>
+    </g>
+  </g>
+</defs></svg>
+
+<!-- El velo de carga: la marca latiendo mientras el panel trae su primera
+     vista. Existe porque entre «Entrar» y ver el tablero hay dos viajes al
+     servidor, y una pantalla congelada sin explicacion parece un fallo. -->
+<div id="velo" class="oculto" role="status" aria-label="Cargando el panel">
+  <svg class="veloMarca" viewBox="0 0 512 512" fill="none"><use href="#gidMarca"/></svg>
+  <div class="veloTxt">Genesis <b>ID</b></div>
+</div>
+
 <div id="entrada">
   <form class="caja" onsubmit="entrar(event)">
-    <h1>Genesis ID</h1>
-    <p class="sub">Panel de cumplimiento · Orden Global</p>
+    <svg class="gidDibujo" viewBox="0 0 512 512" fill="none" aria-hidden="true">
+    <path class="gm-anillo" d="M 251.3 75.2 L 261.4 81 Q 232 64 202.6 81 L 100.4 140 Q 70.9 157 70.9 191 L 70.9 309 Q 70.9 343 100.4 360 L 202.6 419 Q 232 436 261.4 419 L 238.4 432.3" stroke="currentColor" stroke-width="58" stroke-linecap="round" stroke-linejoin="round"/>
+    <path class="gm-cinta" d="M 354 124 Q 416 150 424 216 L 424 240" stroke="currentColor" stroke-width="54" stroke-linecap="round"/>
+    <circle class="gm-dot" cx="272" cy="158" r="40" fill="currentColor"/>
+    <rect class="gm-tallo" x="236" y="212" width="70" height="122" rx="32" fill="currentColor"/>
+    <circle class="gm-nucleo" cx="374" cy="302" r="15" fill="currentColor"/>
+    <g class="gm-huella" stroke="currentColor" stroke-width="15" stroke-linecap="round" fill="none">
+      <path d="M 342.8 284.0 A 36 36 0 1 1 338.8 309.5"/>
+      <path d="M 333.0 261.0 A 58 58 0 1 1 316.6 310.1"/>
+      <path d="M 331.6 234.2 A 80 80 0 1 1 294.2 307.6"/>
+      <path d="M 377.9 413.9 A 112 112 0 0 1 272.5 349.3"/>
+      <path d="M 369.3 437.9 A 136 136 0 0 1 251.8 361.6"/>
+      <path d="M 360.1 461.4 A 160 160 0 0 1 232.7 377.1"/>
+      <path d="M 348.4 484.2 A 184 184 0 0 1 214.7 394.0"/>
+    </g>
+    </svg>
+    <h1 class="gidPalabra">Genesis <span>ID</span></h1>
+    <p class="sub" style="text-align:center">Panel de cumplimiento · Orden Global</p>
     <label>Correo</label>
     <input id="eMail" type="email" autocomplete="username" required>
     <label>Contraseña</label>
     <input id="eClave" type="password" autocomplete="current-password" required>
+    <!--
+      El código no se pide de entrada: solo aparece cuando el servidor contesta
+      que hace falta. Enseñarlo siempre haría que quien todavía no lo tiene
+      puesto se quedara mirando un campo que no puede rellenar.
+      `inputmode=numeric` saca el teclado de números en el móvil, y
+      `autocomplete=one-time-code` deja que el teléfono lo ofrezca solo.
+    -->
+    <div id="eDosFactoresCaja" style="display:none;margin-top:14px">
+      <label>Código de su aplicación de autenticación</label>
+      <input id="eCodigo" inputmode="numeric" autocomplete="one-time-code"
+             maxlength="14" placeholder="000000">
+      <p class="sub" style="margin:6px 0 0">
+        Si perdió el teléfono, escriba aquí uno de sus códigos de recuperación.
+      </p>
+    </div>
     <button class="p" style="width:100%;margin-top:18px" type="submit">Entrar</button>
     <p id="eError" class="sub" style="color:var(--bad);margin-top:12px;display:none"></p>
+    <!--
+      Esta aclaración no sobra: la raíz del servicio sirve este panel, y las
+      webs del ecosistema han estado mandando aquí a los usuarios con un botón
+      de «Verificar mi identidad». Quien llega así escribe el correo y la
+      contraseña de su billetera, y no puede entrar por la sencilla razón de
+      que no es operador. Decirlo antes ahorra el intento y el bloqueo.
+    -->
+    <p class="sub" style="margin-top:16px;margin-bottom:0;line-height:1.5">
+      Esta entrada es solo para operadores del equipo de cumplimiento.
+      Si viene a verificar su identidad, no necesita una cuenta aquí: la
+      verificación se hace desde la aplicación de su billetera en el teléfono,
+      que es la que puede leer el documento y comprobar el rostro con la cámara.
+    </p>
   </form>
 </div>
 
 <div id="app" class="oculto">
   <header>
     <div class="marca">
-      <div class="sello"><svg viewBox="0 0 24 24"><path d="M12 2l8 4v6c0 5-3.4 8.2-8 10-4.6-1.8-8-5-8-10V6l8-4z"/><path d="M8.5 12l2.5 2.5L15.5 9.5"/></svg></div>
+      <div class="sello"><svg viewBox="0 0 512 512" fill="none"><use href="#gidMarca"/></svg></div>
       <div><b>Genesis ID</b><span>Cumplimiento</span></div>
     </div>
     <div class="quien">
       <span id="qNombre"></span><span class="rol" id="qRol"></span>
+      <!--
+        El botón dice en qué estado está, no solo qué hace. «Segundo factor» a
+        secas no le diría a nadie si lo tiene puesto, y esa es justo la pregunta.
+      -->
+      <button class="g" id="qSegundoFactor" onclick="activarSegundoFactor()"
+              style="display:none"></button>
       <button class="g" onclick="salir()">Salir</button>
     </div>
   </header>
@@ -156,6 +525,7 @@ pre{background:#061e20;border:1px solid var(--line2);border-radius:10px;padding:
 
 <div class="aguja" id="aguja"></div>
 
+<script src="/qr-core.js"></script>
 <script>
 let sesion = localStorage.getItem('gid.sesion') || ''
 let yo = null
@@ -165,7 +535,60 @@ const $ = (s) => document.querySelector(s)
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) =>
   ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]))
 const fecha = (f) => f ? new Date(f).toLocaleString('es', { dateStyle: 'short', timeStyle: 'short' }) : '—'
-const dinero = (n) => 'USD ' + Number(n || 0).toLocaleString('es', { maximumFractionDigits: 0 })
+
+/* ── LAS CIFRAS, SIN ADIVINAR ────────────────────────────────────────────────
+ *
+ * «20.000» y «20,000» son la misma cifra escrita de dos maneras y significan
+ * cosas distintas según quién lo lea: veinte mil, o veinte con tres decimales.
+ * En un panel de cumplimiento, donde se mira un monto para decidir si se abre
+ * un caso, esa duda no es un detalle de estilo.
+ *
+ * Así que aquí el punto y la coma no compiten: los MILES se separan con un
+ * espacio fino y el DECIMAL es siempre la coma.
+ *
+ *     20 000        veinte mil, sin decimales
+ *     20 000,50     veinte mil con cincuenta centavos
+ *     0,50          cincuenta centavos
+ *     1,532505      un ORIGEN y pico
+ *
+ * El espacio es el separador de miles de la norma ISO 31-0 justamente por esto:
+ * no se puede confundir con un decimal en ningún idioma. Va como espacio fino
+ * indivisible (U+202F) para que la cifra no se parta al final de un renglón.
+ */
+const MILES = ' '
+
+function cifra(n, minDec = 0, maxDec = 6) {
+  /* SIN DATO NO SE ESCRIBE UN CERO. `Number(null)` es 0, y pintar «0» donde no
+     hay monto dice que la operación fue de cero: es un dato inventado, y de los
+     que se creen. Un hueco se enseña como hueco. El cero de verdad sí se pinta. */
+  if (n === null || n === undefined || n === '') return '—'
+  const x = Number(n)
+  if (!Number.isFinite(x)) return '—'
+  const partido = Math.abs(x).toFixed(Math.max(minDec, Math.min(maxDec, decimalesDe(x, minDec, maxDec))))
+  const [enteros, decimales] = partido.split('.')
+  const conMiles = enteros.replace(/\B(?=(\d{3})+(?!\d))/g, MILES)
+  return (x < 0 ? '−' : '') + conMiles + (decimales ? ',' + decimales : '')
+}
+
+/* Cuántos decimales enseñar: los que la cifra tenga de verdad, dentro del
+   máximo. Un monto redondo no se ensucia con ceros y uno de 1,532505 no se
+   recorta a 1,53 — recortar en un panel de cumplimiento es esconder dinero. */
+function decimalesDe(x, minDec, maxDec) {
+  const texto = Math.abs(x).toFixed(maxDec).replace(/0+$/, '')
+  const punto = texto.indexOf('.')
+  const tiene = punto < 0 ? 0 : texto.length - punto - 1
+  return Math.max(minDec, tiene)
+}
+
+/* Dólares: siempre con sus dos decimales y con la moneda por delante.
+   El formato anterior tiraba los decimales (`maximumFractionDigits: 0`), así
+   que un movimiento de 0,50 USD se leía «USD 0» — un movimiento de cero. */
+const dinero = (n) => 'USD' + MILES + cifra(n, 2, 2)
+
+/* El activo, como sello aparte y no como texto gris al lado del número.
+   Un ONDK y un ORIGEN no se distinguen de un vistazo cuando los dos van en el
+   mismo tono apagado pegados a la cifra. */
+const sello = (a) => a ? `<span class="activo">${esc(a)}</span>` : ''
 
 function avisar(texto, mal) {
   const a = $('#aguja')
@@ -175,21 +598,56 @@ function avisar(texto, mal) {
   a._t = setTimeout(() => { a.className = 'aguja' }, 4200)
 }
 
+// La puerta se trata aparte del resto de las rutas.
+//
+// Antes, CUALQUIER 401 se anunciaba como «La sesión caducó» y el cuerpo de la
+// respuesta se tiraba sin leerlo. Como entrar() pasa por aquí, un login
+// rechazado —contraseña equivocada, correo que no es de ningún operador,
+// cuenta desactivada, bloqueo por intentos— salía en rojo hablando de una
+// sesión que nunca llegó a existir. Quien lo leía no tenía forma de saber qué
+// arreglar, y el único dato útil —el motivo, que el servidor sí manda— se
+// perdía por el camino. Un mensaje que miente cuesta días de diagnóstico.
+const RUTA_ENTRAR = '/sesion/entrar'
+
 async function api(ruta, opciones = {}) {
-  const r = await fetch('/api' + ruta, {
-    ...opciones,
-    headers: {
-      'Content-Type': 'application/json',
-      ...(sesion ? { Authorization: 'Bearer ' + sesion } : {}),
-      ...(opciones.headers || {}),
-    },
-  })
-  if (r.status === 401) {
-    sesion = ''; localStorage.removeItem('gid.sesion'); mostrarEntrada()
-    throw new Error('La sesión caducó')
+  const enLaPuerta = ruta === RUTA_ENTRAR
+  const habiaSesion = Boolean(sesion)
+
+  let r
+  try {
+    r = await fetch('/api' + ruta, {
+      ...opciones,
+      headers: {
+        'Content-Type': 'application/json',
+        ...(sesion ? { Authorization: 'Bearer ' + sesion } : {}),
+        ...(opciones.headers || {}),
+      },
+    })
+  } catch {
+    // Que no haya red no es un rechazo del servidor. Decirlo tal cual evita que
+    // alguien empiece a cambiar contraseñas para arreglar lo que es una raya de
+    // cobertura.
+    throw Object.assign(
+      new Error('No se pudo conectar con el servidor. Compruebe la conexión e inténtelo otra vez.'),
+      { red: true })
   }
+
+  // El cuerpo se lee SIEMPRE, también en 401: ahí viaja el motivo verdadero.
   const cuerpo = await r.json().catch(() => ({}))
-  if (!r.ok) throw Object.assign(new Error(cuerpo.error || 'Error'), { datos: cuerpo })
+
+  if (r.status === 401 && !enLaPuerta) {
+    // Fuera de la puerta un 401 sí cierra el panel. Pero «caducó» solo se dice
+    // cuando de verdad había una sesión guardada; si no la había, se repite lo
+    // que dice el servidor.
+    sesion = ''; localStorage.removeItem('gid.sesion'); mostrarEntrada()
+    throw Object.assign(
+      new Error(habiaSesion
+        ? 'La sesión caducó. Vuelva a entrar.'
+        : (cuerpo.error || 'Hace falta entrar con una cuenta de operador.')),
+      { datos: cuerpo, http: 401 })
+  }
+
+  if (!r.ok) throw Object.assign(new Error(cuerpo.error || 'Error'), { datos: cuerpo, http: r.status })
   return cuerpo
 }
 
@@ -197,19 +655,200 @@ const puede = (p) => yo && (yo.permisos.includes('*') || yo.permisos.includes(p)
 
 async function entrar(ev) {
   ev.preventDefault()
+  const error = $('#eError')
+  const boton = ev.target.querySelector('button[type=submit]')
+  error.style.display = 'none'
+  // El botón se bloquea mientras se pregunta. En el móvil es fácil pulsar dos
+  // veces sin querer, y cada pulsación gasta uno de los cinco intentos que
+  // bloquean la cuenta un cuarto de hora.
+  if (boton) { boton.disabled = true; boton.textContent = 'Entrando…' }
   try {
-    const r = await api('/sesion/entrar', {
+    const r = await api(RUTA_ENTRAR, {
       method: 'POST',
-      body: JSON.stringify({ email: $('#eMail').value, contrasena: $('#eClave').value }),
+      body: JSON.stringify({
+        email: $('#eMail').value,
+        contrasena: $('#eClave').value,
+        codigo: $('#eCodigo').value,
+      }),
     })
     sesion = r.token
     localStorage.setItem('gid.sesion', sesion)
     yo = r.operador
+    $('#eCodigo').value = ''
     arrancar()
     if (yo.debeCambiarContrasena) avisar('Debe cambiar la contraseña inicial', true)
+    // El empujón al segundo factor va DESPUÉS de dejarlo entrar, no en vez de
+    // hacerlo: cerrarle la puerta a quien todavía no lo activó dejaría fuera al
+    // equipo entero el día que esto se despliega.
+    else if (yo.debeActivarSegundoFactor) avisarSegundoFactor()
   } catch (e) {
-    $('#eError').textContent = e.message
-    $('#eError').style.display = 'block'
+    /* El servidor distingue «falta el código» de «datos incorrectos», y eso no
+       filtra nada: para llegar a ese error ya hay que traer la contraseña
+       buena. Sin distinguirlo esta pantalla no sabría si pedir el código o
+       decir que el correo no existe. */
+    if (e && e.datos && e.datos.segundoFactor) {
+      $('#eDosFactoresCaja').style.display = 'block'
+      $('#eCodigo').focus()
+    }
+    // Se enseña lo que dice el servidor, sin adornarlo: «Correo o contraseña
+    // incorrectos» (que a propósito no distingue cuál de los dos falla, para
+    // no revelar qué correos son de operadores), «Demasiados intentos…» o el
+    // fallo de red. Este formulario es solo para operadores del panel de
+    // cumplimiento: quien venga a verificar su identidad no tiene cuenta aquí,
+    // y también merece leerlo.
+    error.textContent = e.message
+    error.style.display = 'block'
+  } finally {
+    if (boton) { boton.disabled = false; boton.textContent = 'Entrar' }
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Segundo factor
+// ─────────────────────────────────────────────────────────────────────────────
+
+/*
+ * Tres pantallas encadenadas, y el orden importa:
+ *
+ *   1. Se pide el secreto y se enseña el QR. Hasta acá NO queda activo nada.
+ *   2. El operador escribe un código, lo que demuestra que su teléfono ya lo
+ *      tiene. Recién ahí se activa. Darlo por activo sin comprobarlo es la
+ *      forma más fácil de dejar a alguien fuera de su propia cuenta.
+ *   3. Salen los códigos de recuperación, una sola vez. Esta pantalla no se
+ *      cierra sola: hay que confirmar que se apuntaron, porque quien la cierre
+ *      sin leerla y pierda el teléfono va a necesitar que un administrador le
+ *      quite el segundo factor a mano.
+ */
+
+/* Quien ya lo tiene puesto no necesita ningún botón: el suyo no se puede
+   volver a preparar, y ofrecérselo solo lleva a un error. Se le dice que está
+   activo y se acabó. */
+function pintarSegundoFactor() {
+  const b = $('#qSegundoFactor')
+  if (!b || !yo) return
+  if (yo.segundoFactorActivo) {
+    b.textContent = '2FA activo'
+    b.style.display = ''
+    b.disabled = true
+    b.title = 'Su segundo factor está activo. Para quitarlo hace falta un administrador.'
+    return
+  }
+  b.textContent = yo.debeActivarSegundoFactor ? 'Activar 2FA · pendiente' : 'Activar 2FA'
+  b.style.display = ''
+  b.disabled = false
+  b.title = yo.debeActivarSegundoFactor
+    ? 'Su rol lo exige y todavía no lo tiene puesto'
+    : 'Recomendado para cualquier cuenta que pueda ver documentos'
+}
+
+function avisarSegundoFactor() {
+  avisar('Su rol exige segundo factor. Actívelo desde su nombre, arriba a la derecha.', true)
+}
+
+async function activarSegundoFactor() {
+  let preparado
+  try {
+    preparado = await api('/sesion/segundo-factor/preparar', { method: 'POST' })
+  } catch (e) { return avisar(e.message, true) }
+
+  const legible = preparado.secreto.replace(/(.{4})/g, '$1 ').trim()
+  const dibujo = (typeof QR !== 'undefined' && QR.svg)
+    ? QR.svg(preparado.uri, 200)
+    : ''
+
+  const caja = document.createElement('div')
+  caja.className = 'sfCapa'
+  caja.innerHTML = `
+    <div class="caja" style="max-width:460px">
+      <h2 style="margin-top:0">Segundo factor</h2>
+      <p class="sub">
+        Escanee este código con Google Authenticator, Authy, 1Password o
+        cualquier aplicación de autenticación.
+      </p>
+      ${dibujo ? `<div style="text-align:center;margin:16px 0">${dibujo}</div>` : ''}
+      <p class="sub" style="margin-bottom:4px">
+        Si no puede escanear, escriba esta clave a mano en la aplicación:
+      </p>
+      <code style="display:block;padding:10px;border-radius:8px;background:rgba(127,127,127,.14);
+                   word-break:break-all;letter-spacing:.5px;font-size:14px">${legible}</code>
+      <label style="margin-top:18px">Escriba el código que le sale ahora</label>
+      <input id="sfCodigo" inputmode="numeric" autocomplete="one-time-code"
+             maxlength="6" placeholder="000000">
+      <p id="sfError" class="sub" style="color:var(--bad);display:none;margin-top:10px"></p>
+      <div style="display:flex;gap:10px;margin-top:18px">
+        <button class="p" id="sfOk" style="flex:1">Activar</button>
+        <button id="sfNo" style="flex:1">Ahora no</button>
+      </div>
+    </div>`
+  document.body.appendChild(caja)
+  const cerrar = () => caja.remove()
+  caja.querySelector('#sfNo').onclick = cerrar
+  caja.querySelector('#sfCodigo').focus()
+
+  const intentar = async () => {
+    const boton = caja.querySelector('#sfOk')
+    const error = caja.querySelector('#sfError')
+    error.style.display = 'none'
+    boton.disabled = true; boton.textContent = 'Comprobando…'
+    try {
+      const r = await api('/sesion/segundo-factor/activar', {
+        method: 'POST',
+        body: JSON.stringify({ codigo: caja.querySelector('#sfCodigo').value }),
+      })
+      cerrar()
+      yo.segundoFactorActivo = true
+      yo.debeActivarSegundoFactor = false
+      pintarSegundoFactor()
+      mostrarRespaldos(r.respaldos)
+    } catch (e) {
+      error.textContent = e.message
+      error.style.display = 'block'
+      boton.disabled = false; boton.textContent = 'Activar'
+    }
+  }
+  caja.querySelector('#sfOk').onclick = intentar
+  caja.querySelector('#sfCodigo').onkeydown = (ev) => { if (ev.key === 'Enter') intentar() }
+}
+
+/* Los códigos de recuperación salen UNA vez. Esta pantalla no se cierra sola ni
+   se cierra tocando fuera: hay que marcar la casilla. Quien la cierre sin leer y
+   pierda el teléfono necesita que un administrador le quite el segundo factor a
+   mano, y eso es justo lo que hay que evitar. */
+function mostrarRespaldos(codigos) {
+  const caja = document.createElement('div')
+  caja.className = 'sfCapa'
+  caja.innerHTML = `
+    <div class="caja" style="max-width:460px">
+      <h2 style="margin-top:0">Guarde estos códigos ahora</h2>
+      <p class="sub">
+        Son de un solo uso y no se van a volver a mostrar. Son la única forma de
+        entrar si pierde el teléfono. Guárdelos fuera del teléfono.
+      </p>
+      <div id="rLista" style="padding:14px;border-radius:8px;background:rgba(127,127,127,.14);
+                  line-height:2;letter-spacing:1px;font-size:15px;text-align:center">
+        ${codigos.map((c) => `<code class="rCodigo" style="display:block">${c}</code>`).join('')}
+      </div>
+      <div style="display:flex;gap:10px;margin-top:16px">
+        <button id="rCopiar" style="flex:1">Copiar</button>
+      </div>
+      <label style="display:flex;gap:10px;align-items:flex-start;margin-top:18px;cursor:pointer">
+        <input type="checkbox" id="rLeido" style="width:auto;margin-top:3px">
+        <span class="sub" style="margin:0">Los apunté y los guardé en un sitio seguro</span>
+      </label>
+      <button class="p" id="rOk" style="width:100%;margin-top:14px" disabled>Listo</button>
+    </div>`
+  document.body.appendChild(caja)
+  caja.querySelector('#rCopiar').onclick = () => {
+    navigator.clipboard.writeText(codigos.join('\n'))
+      .then(() => avisar('Códigos copiados'))
+      .catch(() => avisar('No se pudieron copiar. Apúntelos a mano.', true))
+  }
+  caja.querySelector('#rLeido').onchange = (ev) => {
+    caja.querySelector('#rOk').disabled = !ev.target.checked
+  }
+  caja.querySelector('#rOk').onclick = () => {
+    caja.remove()
+    avisar('Segundo factor activado')
   }
 }
 
@@ -230,37 +869,82 @@ const PESTANAS = [
   { id: 'identidades', txt: 'Identidades', permiso: 'identidad.ver' },
   { id: 'negocios', txt: 'Negocios', permiso: 'negocio.ver' },
   { id: 'casos', txt: 'Casos', permiso: 'caso.ver' },
+  { id: 'movimientos', txt: 'Movimientos', permiso: 'caso.ver' },
   { id: 'listas', txt: 'Listas', permiso: 'listas.ver' },
   { id: 'bitacora', txt: 'Bitácora', permiso: 'bitacora.ver' },
+  /* El respaldo de la cadena que se cerró. Va DESPUÉS de la bitácora y antes
+     de los ajustes: se consulta poco, pero cuando se consulta es porque
+     alguien está reclamando algo y hay prisa. */
+  { id: 'demo', txt: 'Demostración', permiso: 'identidad.ver',
+    titulo: 'El camino entero con una persona que no existe, para enseñarlo' },
+  { id: 'cadena8532', txt: 'Cadena 8532', permiso: 'identidad.ver',
+    titulo: 'El respaldo de la cadena anterior, cerrada el 10-ago' },
   { id: 'ajustes', txt: 'Operadores y apps', permiso: '*' },
   // La analítica vive en su propia página pero se entra desde aquí: tener dos
   // direcciones sueltas que nadie recuerda es la forma más segura de que un
   // panel no se use nunca.
-  { id: 'analitica', txt: 'Analítica ↗', permiso: 'analitica.ver', fuera: '/analitica' },
+  { id: 'analitica', txt: 'Analítica ↗', permiso: 'analitica.ver', fuera: '/analitica',
+    titulo: 'Métricas, errores y salud del ecosistema' },
   // El cerebro no pide permiso: lo que enseña de la cadena es público —
   // cualquiera puede leer la 8532— y del panel solo saca recuentos. Esconderlo
   // detrás de un permiso sería fingir que protege algo que no protege.
-  { id: 'cerebro', txt: 'El cerebro ↗', fuera: '/cerebro' },
+  { id: 'cerebro', txt: 'El cerebro ↗', fuera: '/cerebro',
+    titulo: 'El mapa de trabajo: capas, ficha de cada pieza y datos en vivo' },
+  // Genesis Core es la vista para ENSEÑAR, no para trabajar: sin panel y sin
+  // ficha, solo la arquitectura. Se entra desde aquí para que quien va a
+  // proyectarla no tenga que acordarse de una dirección suelta.
+  { id: 'core', txt: 'Genesis Core ↗', fuera: '/genesis-core',
+    titulo: 'La vista para proyectar: el ecosistema en 3D, sin panel ni fichas' },
 ]
 
 function arrancar() {
   $('#entrada').classList.add('oculto')
+  /* EL VELO SE REARMA, y no es cosmético: `veloApagado` se ponía en true la
+     primera vez y no volvía atrás nunca. Al salir y volver a entrar sin
+     recargar la página, `arrancar()` mostraba el velo otra vez y `apagarVelo()`
+     se salía por el `if` de la primera línea, así que ya no lo quitaba nadie.
+     Y como el velo conservaba su `opacity: 0` del desvanecido anterior, quedaba
+     INVISIBLE pero tapando la página entera: el panel se veía perfecto y no
+     respondía a un solo clic. Lo encontró la prueba del segundo factor al
+     entrar dos veces seguidas. */
+  veloApagado = false
+  const velo = $('#velo')
+  velo.style.transition = ''
+  velo.style.opacity = ''
+  velo.classList.remove('oculto')
   $('#app').classList.remove('oculto')
   $('#qNombre').textContent = yo.nombre || yo.email
   $('#qRol').textContent = yo.rol
+  pintarSegundoFactor()
   $('#nav').innerHTML = PESTANAS.filter((p) => !p.permiso || puede(p.permiso))
     .map((p) => p.fuera
-      ? `<button data-p="${p.id}" onclick="location.href='${p.fuera}'" title="Métricas, errores y salud del ecosistema">${p.txt}</button>`
+      // El título sale de la propia pestaña. Estaba escrito a mano y era el de
+      // analítica para todas: el botón del cerebro prometía «métricas, errores
+      // y salud», que es otra pantalla.
+      ? `<button data-p="${p.id}" onclick="location.href='${p.fuera}'" title="${p.titulo || ''}">${p.txt}</button>`
       : `<button data-p="${p.id}" onclick="ir('${p.id}')">${p.txt}</button>`).join('')
   ir('resumen')
 }
 
 const VISTAS = {}
+let veloApagado = false
+function apagarVelo() {
+  if (veloApagado) return
+  veloApagado = true
+  const v = $('#velo')
+  v.style.transition = 'opacity .28s ease'
+  v.style.opacity = '0'
+  setTimeout(() => v.classList.add('oculto'), 300)
+}
 function ir(id) {
   pestana = id
   document.querySelectorAll('#nav button').forEach((b) => b.classList.toggle('sel', b.dataset.p === id))
   $('#vista').innerHTML = '<div class="vacio">Cargando…</div>'
-  VISTAS[id]().catch((e) => { $('#vista').innerHTML = `<div class="aviso grave"><div>${esc(e.message)}</div></div>` })
+  VISTAS[id]()
+    .catch((e) => { $('#vista').innerHTML = `<div class="aviso grave"><div>${esc(e.message)}</div></div>` })
+    // El velo cae cuando la PRIMERA vista ya está pintada — también si falló,
+    // porque un error que no se ve es peor que un error.
+    .finally(apagarVelo)
 }
 
 const kpi = (l, v, c = '') => `<div class="kpi ${c}"><div class="l">${l}</div><div class="v num">${v}</div></div>`
@@ -296,63 +980,93 @@ VISTAS.resumen = async function () {
     `Las vigentes son de la plenaria del ${s.listasGafi.fecha}, hace ${s.listasGafi.dias} días. `
     + 'El GAFI se reúne unas tres veces al año: Listas → Actualizar listas del GAFI.'])
 
+  /* La ficha grande: una cifra que espera decisión y el camino a su pestaña.
+     El pie lleva los números hermanos —los que antes eran KPIs sueltos— para
+     que el censo no desaparezca, solo deje de gritar. El tono (naranja/rojo)
+     lo decide el número, no el rótulo: cero pendientes no lleva adorno,
+     porque en este tablero el silencio es el estado bueno. */
+  const ficha = (destino, rotulo, cifra, pie, tono) => `
+    <button class="rz-ficha ${tono || ''}" onclick="ir('${destino}')">
+      <span class="rz-cinta"><span class="rz-ojillo">${rotulo}</span><span class="rz-ir">abrir ›</span></span>
+      <span class="rz-cuerpo">
+        <span class="rz-cifra num">${cifra}</span>
+        <span class="rz-pie">${pie}</span>
+      </span>
+    </button>`
+
+  const celda = (rotulo, valor, tono, grande) => `
+    <div class="rz-celda ${tono || ''}">
+      <span class="rz-ojillo">${rotulo}</span>
+      <div class="rz-dato num ${grande ? 'rz-cuenta' : ''}">${valor}</div>
+    </div>`
+
+  const idn = d.identidades, ng = d.negocios, cs = d.casos
+
   $('#vista').innerHTML = `
-    ${avisos.length ? `<div class="avisos">${avisos.map(([g, t, x]) =>
-      `<div class="aviso ${g}"><div><b>${t}</b>${esc(x)}</div></div>`).join('')}</div>`
-      : '<div class="aviso bien"><div><b>Todo en orden</b>El motor está en condiciones de operar.</div></div>'}
+    ${avisos.length ? `<div class="rz-avisos">${avisos.map(([g, t, x]) =>
+      `<div class="rz-aviso ${g}"><b>${t}</b><span>${esc(x)}</span></div>`).join('')}</div>`
+      : '<div class="rz-quieto">Sin avisos. El motor está en condiciones de operar.</div>'}
 
-    <h2>Identidades</h2>
-    <div class="kpis">
-      ${kpi('Total', d.identidades.total)}
-      ${kpi('Verificadas', d.identidades.verificadas, 'o')}
-      ${kpi('En revisión', d.identidades.enRevision, 'w')}
-      ${kpi('Sin terminar', d.identidades.sinTerminar)}
-      ${kpi('Riesgo alto', d.identidades.riesgoAlto, 'b')}
-      ${kpi('PEP', d.identidades.pep, 'g')}
-      ${kpi('Rechazadas', d.identidades.rechazadas)}
-      ${kpi('Suspendidas', d.identidades.suspendidas)}
+    <div class="rz-titulo">Espera decisión</div>
+    <div class="rz-cola">
+      ${ficha('identidades', 'Identidades en revisión', idn.enRevision,
+        `${idn.sinTerminar} sin terminar · ${idn.riesgoAlto} de riesgo alto`,
+        idn.enRevision > 0 ? 'rz-ojo' : '')}
+      ${ficha('casos', 'Casos abiertos', cs.abiertos,
+        `${cs.criticos} críticos · ${cs.enAnalisis} en análisis`,
+        cs.criticos > 0 ? 'rz-mal' : cs.abiertos > 0 ? 'rz-ojo' : '')}
+      ${ficha('negocios', 'Negocios en revisión', ng.enRevision,
+        `${ng.total} registrados · ${ng.verificados} verificados`,
+        ng.enRevision > 0 ? 'rz-ojo' : '')}
     </div>
 
-    <h2>Negocios</h2>
-    <div class="kpis">
-      ${kpi('Total', d.negocios.total)}
-      ${kpi('Verificados', d.negocios.verificados, 'o')}
-      ${kpi('En revisión', d.negocios.enRevision, 'w')}
-      ${kpi('Rechazados', d.negocios.rechazados)}
-    </div>
+    <div class="rz-titulo">El registro</div>
+    <div class="rz-bloque"><div class="rz-campos">
+      ${celda('Identidades', idn.total, '', true)}
+      ${celda('Verificadas', idn.verificadas, '', true)}
+      ${celda('Rechazadas', idn.rechazadas, '', true)}
+      ${celda('Suspendidas', idn.suspendidas, '', true)}
+      ${celda('Marcadas PEP', idn.pep, '', true)}
+      ${/* Si esto no es cero, ordenscan enseña «no verificada» sobre gente
+            que SI lo esta: pregunta por direccion, y esas no la tienen. */''}
+      ${celda('Verificadas sin dirección', idn.verificadasSinDireccion ?? 0,
+              'ordenscan no las puede ver: pregunta por dirección', true)}
+      ${celda('Negocios rechazados', ng.rechazados, '', true)}
+      ${celda('Casos reportados', cs.reportados, '', true)}
+      ${celda('Casos cerrados', cs.cerrados, '', true)}
+      ${celda('Movimientos', d.movimientos.total, '', true)}
+      ${celda('Volumen monitoreado', dinero(d.movimientos.volumenUsd), '', true)}
+    </div></div>
 
-    <h2>Casos de cumplimiento</h2>
-    <div class="kpis">
-      ${kpi('Abiertos', d.casos.abiertos, 'w')}
-      ${kpi('En análisis', d.casos.enAnalisis, 'c')}
-      ${kpi('Críticos', d.casos.criticos, 'b')}
-      ${kpi('Reportados', d.casos.reportados, 'g')}
-      ${kpi('Cerrados', d.casos.cerrados)}
-    </div>
-
-    <h2>Monitoreo</h2>
-    <div class="kpis">
-      ${kpi('Movimientos', d.movimientos.total)}
-      ${kpi('Volumen', dinero(d.movimientos.volumenUsd), 'c')}
-    </div>
-
-    <h2>Estado del sistema</h2>
-    <div class="tarjeta p"><div class="campos">
-      ${campo('Almacén', s.almacen.motor + (s.almacen.efimero ? ' (efímero)' : ''))}
-      ${campo('Listas de sanciones', s.listas.cargadas ? `${s.listas.registros.toLocaleString('es')} registros` : 'ninguna')}
-      ${campo('Fuentes', (s.listas.fuentes || []).join(', ') || '—')}
-      ${campo('Biometría', s.biometria)}
-      ${campo('Listas GAFI', `${s.listasGafi.fecha} (${s.listasGafi.dias} días)`)}
-      ${campo('Bitácora', s.bitacora.integra ? `íntegra · ${s.bitacora.total} entradas` : 'ALTERADA')}
-      ${campo('Apps activas', s.apps)}
-      ${campo('Sesión única', s.sso ? 'configurada' : 'desactivada')}
+    ${/* El estado del sistema repite en celda lo que los avisos dicen en
+          prosa: el aviso explica qué hacer, la celda marca DÓNDE está el
+          hueco cuando se vuelve a mirar el tablero al cabo de una hora. */''}
+    <div class="rz-titulo">Estado del sistema</div>
+    <div class="rz-bloque"><div class="rz-campos">
+      ${celda('Almacén', esc(s.almacen.motor) + (s.almacen.efimero ? ' · efímero' : ''),
+        s.almacen.efimero ? 'rz-mal' : '')}
+      ${celda('Listas de sanciones', s.listas.cargadas
+        ? `${cifra(s.listas.registros)} registros${s.listas.diasDesdeDescarga != null
+            ? ` · hace ${s.listas.diasDesdeDescarga} días` : ''}`
+        : 'ninguna cargada',
+        !s.listas.cargadas ? 'rz-mal' : s.listas.vencidas ? 'rz-ojo' : '')}
+      ${celda('Fuentes', esc((s.listas.fuentes || []).join(', ')) || '—')}
+      ${celda('Biometría', esc(s.biometria), s.biometria === 'sin proveedor' ? 'rz-ojo' : '')}
+      ${celda('Listas GAFI', `${esc(s.listasGafi.fecha)} · hace ${s.listasGafi.dias} días`,
+        s.listasGafi.vencidas ? 'rz-ojo' : '')}
+      ${celda('Bitácora', s.bitacora.integra ? `íntegra · ${s.bitacora.total} entradas` : 'ALTERADA',
+        s.bitacora.integra ? '' : 'rz-mal')}
+      ${celda('Apps activas', s.apps)}
+      ${celda('Sesión única', s.sso ? 'configurada' : 'desactivada', s.sso ? '' : 'rz-ojo')}
     </div></div>`
 }
 
 // ── Identidades ─────────────────────────────────────────────────────────────
+// Los tres filtros se conservan tal cual —mismos ids, mismos manejadores—
+// porque recargarIdentidades() los lee por id. Solo cambia el traje.
 VISTAS.identidades = async function () {
   $('#vista').innerHTML = `
-    <div class="filtros">
+    <div class="filtros qi-filtros">
       <input id="fTexto" placeholder="Buscar por nombre, correo o GID" oninput="recargarIdentidades()">
       <select id="fEstado" onchange="recargarIdentidades()">
         <option value="">Todos los estados</option>
@@ -364,31 +1078,126 @@ VISTAS.identidades = async function () {
         ${['bajo','medio','alto','inaceptable'].map((e) => `<option>${e}</option>`).join('')}
       </select>
     </div>
-    <div class="tarjeta scroll" id="tablaIdentidades"><div class="vacio">Cargando…</div></div>`
+    <div id="tablaIdentidades"><div class="vacio">Cargando…</div></div>`
   await recargarIdentidades()
 }
 
-async function recargarIdentidades() {
+/* Lo que ya se trajo. Se guarda fuera de la funcion porque «traer mas» tiene
+   que AÑADIR a lo que hay, no repintar desde cero: repintar perderia el sitio
+   donde estabas mirando, que en una cola de trabajo es medio trabajo. */
+let idsTraidas = []
+
+async function recargarIdentidades(mas = false) {
   const q = new URLSearchParams({
     texto: $('#fTexto')?.value || '', estado: $('#fEstado')?.value || '', riesgo: $('#fRiesgo')?.value || '',
+    desde: String(mas ? idsTraidas.length : 0),
   })
-  const { identidades: lista } = await api('/panel/identidades?' + q)
-  $('#tablaIdentidades').innerHTML = lista.length ? `
-    <table><thead><tr>
-      <th>Persona</th><th>GID</th><th>Estado</th><th>Riesgo</th>
-      <th>Bloqueos</th><th>Listas</th><th>Apps</th><th>Actualizada</th>
-    </tr></thead><tbody>
-    ${lista.map((i) => `<tr onclick="verIdentidad('${i.id}')">
-      <td><div>${esc(i.nombre || '—')}</div><div style="color:var(--faint);font-size:11.5px">${esc(i.email)}</div></td>
-      <td class="uid num">${esc(i.gid || '—')}</td>
-      <td>${pill(i.estado, PILL_ESTADO[i.estado])}${i.pep ? ' ' + pill('PEP', 'warn') : ''}</td>
-      <td>${i.riesgo ? pill(`${i.riesgo} · ${i.puntuacion}`, PILL_RIESGO[i.riesgo]) : '—'}</td>
-      <td>${i.bloqueos ? pill(i.bloqueos, 'bad') : pill('0', 'ok')}</td>
-      <td>${i.coincidencias ? pill(i.coincidencias, 'crit') : '—'}</td>
-      <td style="font-size:11.5px;color:var(--mut)">${esc(i.apps.join(', ') || '—')}</td>
-      <td style="font-size:11.5px;color:var(--faint)">${fecha(i.actualizadaEn)}</td>
-    </tr>`).join('')}
-    </tbody></table>` : '<div class="vacio">No hay identidades que cumplan el filtro</div>'
+  const r = await api('/panel/identidades?' + q)
+  idsTraidas = mas ? idsTraidas.concat(r.identidades) : r.identidades
+  const lista = idsTraidas
+  const total = r.total
+  const hayMas = r.hayMas
+
+  /* Colores de estado PROPIOS de la cola en lugar del mapa global: el mapa
+     global pinta «en-revision» en ámbar, y en este sistema el ámbar es duda.
+     Estar en cola no es una duda, es información: va en cian. El mapa global
+     no se toca porque las demás vistas lo comparten. */
+  const QI_ESTADO = {
+    verificada: 'ok', rechazada: 'bad', suspendida: 'crit',
+    'en-revision': 'info', pendiente: 'info', biometria: 'info',
+    documento: 'mut', datos: 'mut', iniciada: 'mut',
+  }
+
+  /* Lo que espera revisión va primero. Se ordena AQUÍ y no en la API porque
+     es una decisión de presentación —qué merece el primer golpe de vista—,
+     no de datos; dentro de cada grupo se respeta el orden que trajo el
+     servidor (sort es estable y el comparador devuelve 0 entre iguales). */
+  const espera = (i) => i.estado === 'en-revision' || i.estado === 'pendiente'
+  const orden = lista.slice().sort((a, b) => Number(espera(b)) - Number(espera(a)))
+  const pendientes = orden.filter(espera).length
+
+  $('#tablaIdentidades').innerHTML = `
+    <div class="qi-marco">
+      <div class="qi-cinta">
+        <span class="qi-ojillo">Cola de trabajo</span>
+        ${/* Se dice «N de M» cuando faltan. Antes ponia solo N —las que
+              cabian— y el tablero contaba M: dos numeros distintos en dos
+              pantallas y nada que explicara la diferencia. */''}
+        <span class="qi-cuenta num">${lista.length < total
+          ? `${lista.length} de ${total} identidades`
+          : `${total} identidad${total === 1 ? '' : 'es'}`}${
+          pendientes ? ` · ${pendientes} espera${pendientes === 1 ? '' : 'n'} revisión` : ''}</span>
+      </div>
+      ${orden.length ? `<div class="qi-cola">
+        ${orden.map((i) => `<div class="qi-fila ${espera(i) ? 'qi-prio' : ''}" onclick="verIdentidad('${i.id}')">
+          <div class="qi-quien">
+            <div class="qi-nombre">${esc(i.nombre || i.email || '—')}</div>
+            <div class="qi-datos num">${esc(i.email)}${i.gid ? ' · ' + esc(i.gid) : ''}</div>
+          </div>
+          <div class="qi-sellos">
+            ${pill(i.estado, QI_ESTADO[i.estado])}
+            ${i.pep ? pill('PEP', 'warn') : ''}
+            ${i.riesgo ? pill(i.puntuacion == null ? i.riesgo : `${i.riesgo} · ${i.puntuacion}`, PILL_RIESGO[i.riesgo]) : ''}
+            ${/* Cero bloqueos y cero coincidencias no se anuncian: en una cola
+                  el silencio es el estado bueno, y una pastilla verde por fila
+                  entierra a las dos que sí traen algo. */''}
+            ${i.bloqueos ? pill(`${i.bloqueos} bloqueo${i.bloqueos === 1 ? '' : 's'}`, 'bad') : ''}
+            ${i.coincidencias ? pill(`${i.coincidencias} en listas`, 'crit') : ''}
+          </div>
+          <div class="qi-meta">
+            <div class="qi-apps">${esc(i.apps.join(', ') || 'sin apps vinculadas')}</div>
+            <div class="qi-fecha num">${fecha(i.actualizadaEn)}</div>
+          </div>
+        </div>`).join('')}
+      </div>` : '<div class="vacio">No hay identidades que cumplan el filtro</div>'}
+      ${/* El boton solo sale si de verdad falta algo. Un «ver mas» permanente
+            que no trae nada enseña a no tocarlo. */''}
+      ${hayMas ? `<button class="qi-mas" onclick="recargarIdentidades(true)">
+        Ver las ${total - lista.length} que faltan</button>` : ''}
+    </div>`
+}
+
+/** El `src` de una imagen guardada. Los almacenes traen base64 a secas o ya
+ *  con su prefijo `data:`, según por dónde entró la foto: se acepta cualquiera
+ *  de los dos en vez de exigir uno, porque una imagen que no se ve por un
+ *  prefijo es una revisión que no se puede hacer. */
+/** El país, en letra y con su código al lado. El servidor resuelve el nombre
+ *  con la misma tabla que usa el tamizado del GAFI; aquí solo se junta. Antes
+ *  se pintaba «HND» a secas, y quien revisa a mano no tiene por qué saberse
+ *  doscientos y pico códigos de memoria. */
+function pais(resuelto, crudo) {
+  if (resuelto && resuelto.nombre) {
+    // Texto plano, no HTML: `campo()` escapa lo que le llega —y hace bien— así
+    // que devolver etiquetas aquí las pintaría como texto literal. Y un dato de
+    // expediente no tiene por qué poder meter marcado en el panel.
+    return resuelto.nombre === resuelto.codigo
+      ? resuelto.codigo
+      : `${resuelto.nombre} · ${resuelto.codigo}`
+  }
+  return crudo || '—'
+}
+
+function imgSrc(dato) {
+  const d = String(dato || '')
+  return d.startsWith('data:') ? d : 'data:image/jpeg;base64,' + d
+}
+
+/** La imagen a tamaño completo. Hace falta de verdad: en la tira de la ficha
+ *  una credencial se ve del tamaño de un sello y ahí no se coteja una cara ni
+ *  se lee un número de documento. */
+function ampliar(src, titulo) {
+  const capa = document.createElement('div')
+  capa.className = 'lupa'
+  capa.innerHTML = `<div class="cab">${esc(titulo)}<button aria-label="Cerrar">✕</button></div>`
+  const im = new Image()
+  im.src = src
+  im.alt = titulo
+  capa.appendChild(im)
+  const cerrar = () => { capa.remove(); removeEventListener('keydown', porTecla) }
+  const porTecla = (e) => { if (e.key === 'Escape') cerrar() }
+  capa.addEventListener('click', (e) => { if (e.target !== im) cerrar() })
+  addEventListener('keydown', porTecla)
+  document.body.appendChild(capa)
 }
 
 async function verIdentidad(id) {
@@ -398,7 +1207,67 @@ async function verIdentidad(id) {
   const hallazgos = i.documento?.hallazgos || []
   const coincidencias = i.tamiz?.coincidencias || []
 
+  /* ══ LO QUE SE VE ANTES DE DECIDIR ═══════════════════════════════════════
+
+     El panel pedía «Rostro coincide» / «Rostro NO coincide» SIN ENSEÑAR NUNCA
+     una foto. Se le pedía a un operador que resolviera a mano un cotejo
+     biométrico dándole solo texto. Eso no es una revisión: es una firma a
+     ciegas, y encima queda escrita en la bitácora con su nombre.
+
+     Y las fotos estaban ahí todo el tiempo. `/panel/identidades/:id` ya
+     devuelve `documento.imagenes` (anverso y reverso) y `fotoCredencial`, que
+     el servidor va a buscar a sus dos almacenes aparte justamente para esta
+     pantalla. Llegaban al navegador y esta página las tiraba sin mirarlas. */
+  const img = i.documento?.imagenes || {}
+  const fotos = [
+    ['Rostro', i.fotoCredencial, 'el retrato de la credencial'],
+    ['Documento · anverso', img.anverso, 'la cara con la foto'],
+    ['Documento · reverso', img.reverso, 'la MRZ'],
+  ]
+  const hayFoto = fotos.some(([, d]) => d)
+
   abrirFicha(esc(i.nombreLegal || i.nombreDeclarado || i.email), `
+    ${/* EL CARTEL DEL BLOQUEO VA PRIMERO, antes de la foto y antes del riesgo.
+          La primera version quedo abajo, junto a los botones, y ahi no sirve:
+          esta ficha es larga y quien la abre se forma su opinion leyendo lo de
+          arriba. Alguien puede aprobar, marcar PEP o mandar a revision a una
+          persona bloqueada sin haberse enterado nunca de que estaba bloqueada. */''}
+    ${(() => { const b = bloqueoVigente(i); return !b ? '' : `
+    <div class="bloqueo-cartel">
+      <b>ACCESO BLOQUEADO</b>
+      <div class="d">${esc(b.motivo)}</div>
+      ${b.politica ? `<div class="d">Política: ${esc(b.politica)}</div>` : ''}
+      <div class="d">Lo bloqueó ${esc(b.operador)} · ${fecha(b.desde)}</div>
+      <div class="d">No entra a ninguna app del ecosistema. Su verificación sigue intacta: al desbloquear vuelve a donde estaba, sin repetir nada.</div>
+    </div>`; })()}
+
+    ${/* La ficha lateral sirve para hojear; para RESOLVER hace falta la ventana
+          entera. En este cajón una credencial se ve del tamaño de un sello y
+          dos rostros no se comparan uno encima del otro. */''}
+    <a class="mesaCotejo" href="/revision/${encodeURIComponent(i.id)}">
+      Abrir en la mesa de cotejo
+      <span>comparar el rostro y el documento a pantalla completa, con lupa</span>
+    </a>
+
+    <h3>Documento y rostro</h3>
+    ${hayFoto ? `<div class="fotos">
+      ${fotos.map(([rot, dato, pie]) => dato ? `
+        <figure>
+          <img src="${imgSrc(dato)}" alt="${esc(rot)}" loading="lazy"
+               onclick="ampliar(this.src, '${esc(rot)}')">
+          <figcaption>${esc(rot)}<span>${esc(pie)}</span></figcaption>
+        </figure>` : `
+        <figure class="falta">
+          <div class="hueco">no aportado</div>
+          <figcaption>${esc(rot)}<span>${esc(pie)}</span></figcaption>
+        </figure>`).join('')}
+    </div>
+    <p class="nota-foto">Tocá una imagen para verla a tamaño completo. Salen
+      comprimidas para que la ficha cargue; el original está guardado.</p>`
+      : `<div class="item grave">No hay ninguna imagen guardada de esta identidad.
+         Sin rostro ni documento no se puede resolver el cotejo a mano — pedí
+         que se repita la captura antes de decidir.</div>`}
+
     <div class="campos">
       ${campo('Estado', i.estado)}
       ${campo('GID', i.gid || 'todavía sin emitir')}
@@ -411,16 +1280,16 @@ async function verIdentidad(id) {
           : 'aportado, sin nombre que cotejar')
         : 'no aportado — solo se cotejó la MRZ')}
       ${campo('Nacimiento', i.fechaNacimiento || i.fechaNacimientoDeclarada || '—')}
-      ${campo('Nacionalidad', i.nacionalidad || '—')}
+      ${campo('Nacionalidad', pais(i.nacionalidadNombre, i.nacionalidad))}
       ${campo('Documento', i.numeroDocumento ? `${i.numeroDocumento} (${i.tipoDocumento || ''})` : '—')}
       ${campo('Vence', i.vencimientoDocumento || '—')}
-      ${campo('País de residencia', i.paisResidencia || '—')}
+      ${campo('País de residencia', pais(i.paisResidenciaNombre, i.paisResidencia))}
       ${campo('Teléfono', i.telefono || '—')}
       ${campo('Dirección', i.direccion || '—')}
       ${campo('Ocupación', i.ocupacion || '—')}
       ${campo('Origen de fondos', i.origenFondos || '—')}
       ${campo('Propósito de la cuenta', i.propositoCuenta || '—')}
-      ${campo('Volumen esperado', i.volumenEsperadoUsd != null ? `${i.volumenEsperadoUsd.toLocaleString('es')} USD/año` : 'sin declarar')}
+      ${campo('Volumen esperado', i.volumenEsperadoUsd != null ? `${dinero(i.volumenEsperadoUsd)} al año` : 'sin declarar')}
       ${campo('Diligencia', i.volumenEsperadoUsd != null && i.volumenEsperadoUsd < 10000
         ? 'simplificada — declara menos de 10 000 USD/año; el perfil completo se exige si sus movimientos cruzan el umbral'
         : 'completa — sobre el umbral de reporte, u omitió declarar volumen')}
@@ -460,7 +1329,7 @@ async function verIdentidad(id) {
           <div class="d">${esc(c.razones.join('. '))}</div>
           <div class="d">Lista ${esc(c.registro.lista)} · programa ${esc(c.registro.programa || '—')}</div>
         </div>`).join('')}</div>`
-      : `<div class="item bien">Sin coincidencias · ${i.tamiz.estadoListas.registros.toLocaleString('es')} registros consultados</div>`}
+      : `<div class="item bien">Sin coincidencias · ${cifra(i.tamiz.estadoListas.registros)} registros consultados</div>`}
 
     <h3>Biometría</h3>
     ${i.biometria ? `<div class="item ${i.biometria.estado === 'ok' ? 'bien'
@@ -490,6 +1359,12 @@ async function verIdentidad(id) {
         `<div class="item"><div class="t">${esc(d.estado)} — ${esc(d.operador)}</div>
          <div class="d">${esc(d.motivo)}</div><div class="d">${fecha(d.fecha)}</div></div>`).join('')}</div>` : ''}
 
+    ${(i.bloqueos || []).filter((b) => b.levantadoEn).length ? `<h3>Bloqueos anteriores</h3>
+      <div class="lista">${i.bloqueos.filter((b) => b.levantadoEn).slice().reverse().map((b) =>
+        `<div class="item"><div class="t">${esc(b.motivo)}</div>
+         <div class="d">Bloqueó ${esc(b.operador)} · ${fecha(b.desde)}</div>
+         <div class="d">Levantó ${esc(b.levantadoPor)} · ${fecha(b.levantadoEn)} — ${esc(b.levantadoMotivo || '')}</div></div>`).join('')}</div>` : ''}
+
     <div class="acciones">
       ${puede('identidad.revisar') && i.estado !== 'verificada' ? `
         <button class="g" onclick="reiniciarVerificacion('${i.id}')">Reiniciar verificación</button>
@@ -506,15 +1381,70 @@ async function verIdentidad(id) {
             quien acaba de saltar en una lista. Ahora sale siempre que no este
             ya suspendida. */''}
       ${puede('identidad.suspender') && i.estado !== 'suspendida'
-        ? `<button class="bad" onclick="decidir('/panel/identidades/${i.id}/suspender','Motivo de la suspensión — bloquea el GID en todo el ecosistema')">Suspender / bloquear</button>` : ''}
+        ? `<button class="bad" onclick="decidir('/panel/identidades/${i.id}/suspender','Motivo de la suspensión — el KYC deja de valer y para volver hay que rehacerlo entero')">Suspender KYC</button>` : ''}
+      ${/* BLOQUEAR ES OTRA COSA QUE SUSPENDER, y la diferencia esta en como se
+            deshace: suspender obliga a rehacer la verificacion entera,
+            bloquear se levanta con un clic y la persona vuelve a donde
+            estaba. Por eso son dos botones y no uno con dos nombres. */''}
+      ${puede('identidad.bloquear') ? (bloqueoVigente(i)
+        ? `<button class="ok" onclick="desbloquearIdentidad('${i.id}')">Desbloquear acceso</button>`
+        : `<button class="bad" onclick="bloquearIdentidad('${i.id}')">Bloquear acceso</button>`) : ''}
       ${i.estado === 'suspendida' && puede('identidad.aprobar')
         ? `<button class="g" onclick="reiniciarVerificacion('${i.id}')">Reactivar (rehacer verificación)</button>` : ''}
     </div>
     <p style="color:var(--faint);font-size:12px;margin-top:10px">
-      Los expedientes no se borran: en cumplimiento, el registro de que alguien intentó
-      verificarse —y qué se encontró— es justamente lo que hay que conservar. Suspender
-      retira el GID de todas las apps del ecosistema, que es el efecto que se busca al
-      «borrar» a alguien.</p>`)
+      <b>Bloquear</b> le cierra el acceso a todo el ecosistema y se levanta con un clic:
+      su verificación queda intacta y al desbloquear vuelve exactamente a donde estaba.
+      Es lo que se usa cuando alguien infringe una política.<br>
+      <b>Suspender</b> es otra cosa: dice que el KYC ya no vale —documento vencido, una
+      lista de sanciones— y para volver hay que rehacer la verificación entera.<br>
+      Los expedientes no se borran nunca: en cumplimiento, el registro de que alguien
+      intentó verificarse —y qué se encontró— es justamente lo que hay que conservar.</p>`)
+}
+
+/* EL BLOQUEO POR INFRACCION DE POLITICAS.
+   Vigente = el ultimo de la lista al que nadie le puso fecha de levantamiento.
+   Se calcula aqui igual que en el servidor (src/motor/bloqueo.ts) en vez de
+   guardarse un booleano: dos sitios donde vive la misma verdad son un sitio
+   donde un dia dicen cosas distintas. */
+function bloqueoVigente(i) {
+  const lista = (i && i.bloqueos) || []
+  for (let k = lista.length - 1; k >= 0; k--) if (!lista[k].levantadoEn) return lista[k]
+  return null
+}
+
+async function bloquearIdentidad(id) {
+  const motivo = prompt(
+    'BLOQUEAR EL ACCESO\n\n' +
+    'La persona deja de entrar a todas las apps del ecosistema, ahora mismo:\n' +
+    'sus sesiones abiertas se caen y no puede volver a entrar en ninguna.\n\n' +
+    'Su verificacion NO se toca. Al desbloquear vuelve exactamente a donde\n' +
+    'estaba, sin repetir el documento ni el rostro.\n\n' +
+    'Motivo (queda en el expediente y en la bitacora):')
+  if (!motivo) return
+  // La politica es opcional a proposito: obligar a elegir una de una lista
+  // hace que se elija la primera que suene parecido, y despues nadie sabe que
+  // paso de verdad. El motivo escrito es lo que vale.
+  const politica = prompt('Que politica se infringio (opcional, se puede dejar vacio):') || null
+  try {
+    await api(`/panel/identidades/${id}/bloquear`, { method: 'POST', body: JSON.stringify({ motivo, politica }) })
+    avisar('Acceso bloqueado')
+    verIdentidad(id)
+  } catch (e) { alert(e.message) }
+}
+
+async function desbloquearIdentidad(id) {
+  const motivo = prompt(
+    'DESBLOQUEAR EL ACCESO\n\n' +
+    'Vuelve a entrar a todo el ecosistema con su verificacion de siempre.\n' +
+    'El bloqueo no se borra: queda con fecha de levantamiento en el expediente.\n\n' +
+    'Motivo del levantamiento:')
+  if (!motivo) return
+  try {
+    await api(`/panel/identidades/${id}/desbloquear`, { method: 'POST', body: JSON.stringify({ motivo }) })
+    avisar('Acceso restablecido')
+    verIdentidad(id)
+  } catch (e) { alert(e.message) }
 }
 
 async function aprobarIdentidad(id, bloqueos) {
@@ -671,6 +1601,125 @@ async function aprobarNegocio(id, bloqueos) {
 }
 
 // ── Casos ───────────────────────────────────────────────────────────────────
+/* ══ MOVIMIENTOS ═══════════════════════════════════════════════════════════
+   Qué se movió en el ecosistema y de quién. Va en el panel de cumplimiento y
+   NO en analítica porque aquí cada renglón lleva nombre y GID; la analítica
+   cuenta por huella anónima a propósito y mezclarlas la habría convertido en
+   un listado de operaciones con nombre. */
+let mvPagina = 0
+
+VISTAS.movimientos = async function () {
+  const q = new URLSearchParams()
+  for (const [k, sel] of [['texto', '#mvTexto'], ['app', '#mvApp'], ['direccion', '#mvDir'],
+                          ['desde', '#mvDesde'], ['hasta', '#mvHasta'], ['montoMin', '#mvMonto']]) {
+    const v = $(sel)?.value?.trim()
+    if (v) q.set(k, v)
+  }
+  q.set('saltar', String(mvPagina * 100))
+  const d = await api('/panel/movimientos?' + q)
+
+  const flecha = (m) => m.direccion === 'entrada'
+    ? '<span style="color:var(--ok)">↓ entra</span>'
+    : '<span style="color:var(--warn)">↑ sale</span>'
+
+  $('#vista').innerHTML = `
+    <h2 class="rz-titulo">Movimientos</h2>
+    <p class="pie" style="color:var(--faint);font-size:12.5px;margin:-6px 0 14px;max-width:70ch">
+      Lo que las apps del ecosistema reportan al monitoreo. Cada consulta queda
+      escrita en la bitácora con su nombre: esto es un registro de operaciones
+      con persona identificada, no un tablero de métricas.
+    </p>
+
+    <div class="filtros qi-filtros mv-filtros">
+      <input id="mvTexto" placeholder="Contraparte, hash, activo o GID" value="${esc(mvFiltro.texto)}"
+             oninput="mvBuscar()">
+      <select id="mvApp" onchange="mvBuscar()">
+        <option value="">Todas las apps</option>
+        ${d.porApp.map((a) => `<option value="${esc(a.app)}" ${mvFiltro.app === a.app ? 'selected' : ''}>${esc(a.app)}</option>`).join('')}
+      </select>
+      <select id="mvDir" onchange="mvBuscar()">
+        <option value="">Entradas y salidas</option>
+        <option value="entrada" ${mvFiltro.direccion === 'entrada' ? 'selected' : ''}>Solo entradas</option>
+        <option value="salida" ${mvFiltro.direccion === 'salida' ? 'selected' : ''}>Solo salidas</option>
+      </select>
+      <input id="mvDesde" type="date" value="${esc(mvFiltro.desde)}" onchange="mvBuscar()" title="Desde">
+      <input id="mvHasta" type="date" value="${esc(mvFiltro.hasta)}" onchange="mvBuscar()" title="Hasta">
+      <input id="mvMonto" type="number" placeholder="USD mín." value="${esc(mvFiltro.montoMin)}"
+             oninput="mvBuscar()" style="width:110px">
+    </div>
+
+    ${d.porApp.length ? `<div class="rz-cola" style="margin-bottom:16px">
+      ${d.porApp.map((a) => `
+        <div class="rz-ficha" style="cursor:default">
+          <span class="rz-cinta"><span class="rz-ojillo">${esc(a.app)}</span></span>
+          <span class="rz-cuerpo">
+            <span class="rz-cifra num">${cifra(a.n)}</span>
+            <span class="rz-pie">${dinero(a.volumenUsd)} movidos</span>
+          </span>
+        </div>`).join('')}
+    </div>` : ''}
+
+    <div class="qi-marco">
+      <div class="qi-cinta">
+        <span class="qi-ojillo">Operaciones</span>
+        <span class="qi-cuenta num">${cifra(d.total)} · ${dinero(d.volumenUsd)}</span>
+      </div>
+      ${d.movimientos.length ? `<div class="qi-cola">
+        ${d.movimientos.map((m) => `
+          <div class="qi-fila" ${m.persona ? `onclick="verIdentidad('${m.persona.id}')"` : 'style="cursor:default"'}>
+            <div class="qi-quien">
+              <div class="qi-nombre">${esc(m.persona?.nombre || m.persona?.email || m.gid || 'sin identificar')}</div>
+              <div class="qi-datos">${esc(m.gid || '—')}${m.persona ? ' · ' + esc(m.persona.email) : ''}</div>
+            </div>
+            <div class="qi-sellos">
+              ${flecha(m)}
+              <b class="num">${dinero(m.montoUsd)}</b>
+              <span class="qi-cripto num">${cifra(m.monto)}${sello(m.activo)}</span>
+              ${m.app ? pill(m.app, 'info') : ''}
+            </div>
+            <div class="qi-meta">
+              <div class="qi-apps num" title="${esc(m.contraparte || '')}">${esc((m.contraparte || '—').slice(0, 22))}</div>
+              <div class="qi-fecha num">${fecha(m.fecha)}</div>
+            </div>
+          </div>`).join('')}
+      </div>` : `<div class="vacio">
+        ${d.total === 0 && !q.toString().replace(/saltar=\d+/, '').replace(/&/g, '')
+          ? 'Todavía no hay ningún movimiento reportado. Las apps los mandan a /api/v1/movimientos; si una app opera y no aparece acá, es que no está reportando.'
+          : 'Ningún movimiento con esos filtros.'}
+      </div>`}
+    </div>
+
+    ${d.total > 100 ? `<div style="display:flex;gap:8px;justify-content:center;margin-top:14px">
+      <button class="g" onclick="mvIr(-1)" ${mvPagina === 0 ? 'disabled' : ''}>← Anteriores</button>
+      <span style="align-self:center;color:var(--faint);font-size:12px">
+        ${cifra(mvPagina * 100 + 1)}–${cifra(Math.min((mvPagina + 1) * 100, d.total))} de ${cifra(d.total)}</span>
+      <button class="g" onclick="mvIr(1)" ${(mvPagina + 1) * 100 >= d.total ? 'disabled' : ''}>Siguientes →</button>
+    </div>` : ''}`
+}
+
+/* Los filtros viven fuera de la vista porque repintarla los borraría: el
+   operador escribe en la caja de texto y cada letra vuelve a pintar la lista. */
+let mvFiltro = { texto: '', app: '', direccion: '', desde: '', hasta: '', montoMin: '' }
+let mvReloj = null
+
+function mvBuscar() {
+  mvFiltro = {
+    texto: $('#mvTexto')?.value || '', app: $('#mvApp')?.value || '',
+    direccion: $('#mvDir')?.value || '', desde: $('#mvDesde')?.value || '',
+    hasta: $('#mvHasta')?.value || '', montoMin: $('#mvMonto')?.value || '',
+  }
+  mvPagina = 0
+  // Se espera a que pare de escribir: una consulta por tecla castiga a la base
+  // justo en la pantalla que más filas mueve.
+  clearTimeout(mvReloj)
+  mvReloj = setTimeout(() => VISTAS.movimientos(), 280)
+}
+
+function mvIr(d) {
+  mvPagina = Math.max(0, mvPagina + d)
+  VISTAS.movimientos()
+}
+
 VISTAS.casos = async function () {
   const { casos: lista } = await api('/panel/casos')
   $('#vista').innerHTML = `
@@ -755,7 +1804,7 @@ VISTAS.listas = async function () {
       en la carpeta que indique GENESIS_LISTAS_DIR y pulse recargar.</div></div>` : ''}
     <div class="tarjeta p">
       <div class="campos">
-        ${campo('Registros', e.registros.toLocaleString('es'))}
+        ${campo('Registros', cifra(e.registros))}
         ${campo('Fuentes', (e.fuentes || []).join(', ') || '—')}
         ${campo('Descargadas', e.fechaDescarga || 'desconocido')}
         ${campo('Antigüedad', e.diasDesdeDescarga != null ? `${e.diasDesdeDescarga} días` : '—')}
@@ -789,7 +1838,7 @@ VISTAS.listas = async function () {
 async function recargarListas() {
   avisar('Recargando…')
   const r = await api('/panel/listas/recargar', { method: 'POST' })
-  avisar(`${r.registros.toLocaleString('es')} registros · ${r.revisadas} identidades retamizadas · ${r.conCoincidencias} con coincidencias`)
+  avisar(`${cifra(r.registros)} registros · ${r.revisadas} identidades retamizadas · ${r.conCoincidencias} con coincidencias`)
   ir('listas')
 }
 
@@ -800,7 +1849,7 @@ async function descargarOfac() {
   avisar('Descargando de la OFAC… puede tardar un par de minutos')
   try {
     const r = await api('/panel/listas/ofac', { method: 'POST' })
-    avisar(`${r.registros.toLocaleString('es')} fichas (${r.conAlias.toLocaleString('es')} con alias) · `
+    avisar(`${cifra(r.registros)} fichas (${cifra(r.conAlias)} con alias) · `
       + `${r.revisadas} identidades retamizadas · ${r.conCoincidencias} con coincidencias`)
     ir('listas')
   } catch (e) { alert(e.message) }
@@ -814,7 +1863,7 @@ async function importarPropia() {
   avisar('Importando…')
   try {
     const r = await api('/panel/listas/importar', { method: 'POST', body: JSON.stringify({ texto, fuente }) })
-    avisar(`${r.registros.toLocaleString('es')} fichas importadas · ${r.revisadas} identidades retamizadas`)
+    avisar(`${cifra(r.registros)} fichas importadas · ${r.revisadas} identidades retamizadas`)
     ir('listas')
   } catch (e) { alert(e.message) }
 }
@@ -878,6 +1927,46 @@ VISTAS.bitacora = async function () {
            <span class="num">${esc(d.anclaje.hash.slice(0, 32))}…</span>`
         : `La cadena se rompe en la entrada ${d.cadena.rotaEn}. Alguien modificó o borró el registro.`}</div>
     </div>
+    ${!d.cadena.integra ? `
+    <div class="tarjeta" style="border-left:3px solid var(--warn,#C9A961);margin-top:14px">
+      <h3 style="margin:0 0 8px">Declarar la rotura</h3>
+      <p style="margin:0 0 6px;font-size:13px;color:var(--mut)">
+        Sellar <b>no arregla ni borra nada</b>: deja las entradas rotas exactamente como
+        están. Lo único que hace es añadir al final una entrada que dice dónde estaba la
+        rotura, cuántas entradas había y quién lo declara — y desde ahí la cadena vuelve a
+        ser verificable.
+      </p>
+      <p style="margin:0 0 12px;font-size:13px;color:var(--mut)">
+        Mientras no se selle, cada entrada nueva se suma a un tramo que ya está roto.
+        El motivo queda escrito para siempre y se exporta a los auditores.
+      </p>
+      <div class="campo">
+        <label for="sello-motivo">Motivo (mínimo 10 caracteres)</label>
+        <input id="sello-motivo" maxlength="300"
+               placeholder="Rotura heredada en la entrada ${d.cadena.rotaEn}; origen no determinado">
+      </div>
+      <div id="sello-aviso" class="aviso oculto" style="margin:10px 0"></div>
+      <button class="btn" id="sello-btn" onclick="sellarBitacora()">Sellar y abrir tramo nuevo</button>
+    </div>` : ''}
+    ${/* `scroll` NO es decoracion: era la unica tabla del panel sin riel. Todas
+          las demas van en `tarjeta scroll`; a esta se le quedo la palabra, y
+          como `.tarjeta` lleva `overflow:hidden` y `table` un `min-width` de
+          720 px, en un telefono de 360 no se desplazaba: se RECORTABA. Lo que
+          quedaba fuera del borde era la tercera columna, «Entradas hasta
+          entonces», que es la que dice cuanto registro habia antes de la
+          rotura. Un operador que abriera esto desde el telefono leia que la
+          bitacora se rompio y no podia leer el alcance, sin ninguna señal de
+          que le faltaba una columna. */''}
+    ${d.cadena.sellos && d.cadena.sellos.length ? `
+    <div class="tarjeta scroll">
+      <h3 style="margin:0 0 8px">Roturas ya declaradas</h3>
+      <table><thead><tr><th>Fecha</th><th>Rotura en</th><th>Entradas hasta entonces</th></tr></thead><tbody>
+      ${d.cadena.sellos.map((s) => `<tr>
+        <td style="font-size:11.5px">${fecha(s.fecha)}</td>
+        <td class="num">${s.rotaEn ?? '—'}</td>
+        <td class="num">${s.entradasAntes}</td>
+      </tr>`).join('')}</tbody></table>
+    </div>` : ''}
     <div class="tarjeta scroll">
       <table><thead><tr><th>Fecha</th><th>Actor</th><th>Acción</th><th>Objeto</th><th>Detalle</th></tr></thead><tbody>
       ${d.entradas.map((e, n) => `<tr onclick="verEntrada(${n})">
@@ -892,11 +1981,256 @@ VISTAS.bitacora = async function () {
   window._bitacora = d.entradas
 }
 
+/* Sellar la bitácora.
+ *
+ * La ruta existía desde hace tiempo y no había forma de llamarla: sin botón,
+ * declarar una rotura exigía armar una petición a mano con la sesión de un
+ * operador. Por eso la cadena llevaba mil entradas rota y cero sellos.
+ *
+ * Se pide confirmación explícita porque el sello queda en el registro para
+ * siempre y lleva el nombre de quien lo firma. */
+async function sellarBitacora() {
+  const inp = $('#sello-motivo'), btn = $('#sello-btn'), av = $('#sello-aviso')
+  const motivo = (inp.value || '').trim()
+  const decir = (txt, clase) => {
+    av.textContent = txt
+    av.className = 'aviso ' + (clase || 'grave')
+    av.classList.toggle('oculto', !txt)
+  }
+  if (motivo.length < 10) return decir('Escribí el motivo: queda en el registro y lo van a leer los auditores.')
+  if (!confirm('Se va a añadir un sello a la bitácora con tu nombre y este motivo.\n\n' +
+               'No borra ni arregla las entradas rotas: las declara.\n\n¿Seguir?')) return
+
+  decir('')
+  btn.disabled = true
+  const antes = btn.textContent
+  btn.textContent = 'Sellando…'
+  try {
+    const r = await api('/panel/bitacora/sellar', { method: 'POST', body: JSON.stringify({ motivo }) })
+    decir(`Sellado. La rotura de la entrada ${r.rotaEn ?? '—'} quedó declarada y la cadena vuelve a encadenar desde acá.`, 'bien')
+    setTimeout(() => VISTAS.bitacora(), 1400)
+  } catch (e) {
+    decir(e.message || 'No se pudo sellar.')
+    btn.disabled = false
+    btn.textContent = antes
+  }
+}
+
 function verEntrada(n) {
   abrirFicha('Entrada de bitácora', `<pre>${esc(JSON.stringify(window._bitacora[n], null, 2))}</pre>`)
 }
 
 // ── Operadores y aplicaciones ───────────────────────────────────────────────
+/* ── EL RESPALDO DE LA CADENA 8532 ──────────────────────────────────────────
+ *
+ * La cadena vieja se cerró el 10-ago y su nodo ya no contesta. Lo único que
+ * queda es el volcado del corte, que estaba en un bucket de S3 y en ningún
+ * sitio más. Las preguntas que se le hacen —«¿cuánto tenía esta dirección
+ * antes del cambio?»— llegan justo cuando alguien reclama, o sea cuando no
+ * hay tiempo de bajar un fichero de 5 MB y abrirlo a mano.
+ *
+ * Los saldos se pintan desde CADENAS con BigInt. Un saldo en wei tiene hasta
+ * 21 dígitos y `Number` guarda 15: formatearlos con aritmética normal da
+ * cifras que parecen bien y están mal, en un respaldo que ya no se puede
+ * volver a consultar para descubrirlo.
+ */
+const UNO_8532 = 10n ** 18n
+
+/* Celda propia y no la de `resumen`: aquella vive DENTRO de esa vista —o sea
+   que desde aquí no existe— y además su tercer parámetro es una clase CSS, no
+   un subtítulo. Llamarla como si lo fuera metía texto dentro de un `class`.
+   Ésta lleva la nota debajo, que es lo que hace falta acá: un número del corte
+   sin decir de qué corte es no dice nada. */
+const celda8 = (rotulo, valor, nota, grande) => `
+  <div class="rz-celda">
+    <span class="rz-ojillo">${rotulo}</span>
+    <div class="rz-dato num ${grande ? 'rz-cuenta' : ''}">${valor}</div>
+    ${nota ? `<div class="c8-nota">${esc(String(nota))}</div>` : ''}
+  </div>`
+
+function origen8532(wei) {
+  const v = BigInt(wei)
+  const ent = v / UNO_8532
+  const dec = (v % UNO_8532).toString().padStart(18, '0').slice(0, 4).replace(/0+$/, '')
+  return ent.toLocaleString('es') + (dec ? ',' + dec : '')
+}
+
+let f8532 = { texto: '', tipo: '', minimo: '', conSaldo: false, movieron: false,
+              orden: 'saldo', desde: 0 }
+let traidas8532 = []
+
+/* ── LA DEMOSTRACION ────────────────────────────────────────────────────────
+ *
+ * Enseñar el producto obligaba a abrir el expediente de una persona real —o
+ * sea, su documento y su cara— delante de quien mira. Esto es el camino entero
+ * con alguien que no existe.
+ *
+ * El aviso va ARRIBA y en rojo, no al pie: quien entra a esta pantalla por
+ * error tiene que saber en el primer vistazo que nada de lo que ve es real.
+ */
+VISTAS.demo = async function () {
+  const d = await api('/panel/demo')
+  const p = d.persona
+
+  $('#vista').innerHTML = `
+    <div class="aviso grave" style="margin-bottom:16px">
+      <div><b>Demostración.</b> ${esc(d.aviso)}</div>
+    </div>
+
+    <div class="rz-titulo">La persona del ejemplo</div>
+    <div class="rz-bloque"><div class="rz-campos">
+      ${celda8('Nombre', esc(p.nombreDeclarado), 'declarado por ella')}
+      ${celda8('Correo', esc(p.email), 'dominio que no puede existir')}
+      ${celda8('Documento', esc(p.documento.numero), esc(p.documento.tipo))}
+      ${celda8('Genesis ID', esc(p.gid), 'el que recibiría al final', true)}
+    </div></div>
+
+    <div class="rz-titulo" style="margin-top:22px">El camino, paso por paso</div>
+    <div class="dm-pasos">
+      ${d.pasos.map((x, i) => `
+        <div class="dm-paso">
+          <div class="dm-num">${i + 1}</div>
+          <div class="dm-cuerpo">
+            <div class="dm-cab">
+              <b>${esc(x.titulo)}</b>
+              ${pill(x.estado, x.estado === 'verificada' ? 'ok' : 'info')}
+              ${pill(x.automatico ? 'automático' : 'lo decide una persona',
+                     x.automatico ? 'mut' : 'warn')}
+              <span class="dm-tiempo">${esc(x.duracionTipica)}</span>
+            </div>
+            <div class="dm-tres">
+              <div><span class="dm-rot">Qué hizo ella</span>${esc(x.queHizoLaPersona)}</div>
+              <div><span class="dm-rot">Qué recibe Genesis ID</span>${esc(x.queRecibeGenesis)}</div>
+              <div><span class="dm-rot">Qué ve el operador</span>${esc(x.queVeElOperador)}</div>
+            </div>
+          </div>
+        </div>`).join('')}
+    </div>
+
+    ${/* Las salidas que no son la buena. Una demo que solo enseña el camino
+          feliz vende algo que no existe: lo que decide si un sistema de
+          cumplimiento sirve es qué hace cuando algo NO cuadra. */''}
+    <div class="rz-titulo" style="margin-top:22px">Y cuando no cuadra</div>
+    <div class="dm-pasos">
+      ${d.salidas.map((x) => `
+        <div class="dm-paso dm-malo">
+          <div class="dm-num">✕</div>
+          <div class="dm-cuerpo">
+            <div class="dm-cab"><b>${esc(x.titulo)}</b>${pill(x.estado, 'bad')}</div>
+            <div class="dm-tres">
+              <div><span class="dm-rot">Por qué pasa</span>${esc(x.porQuePasa)}</div>
+              <div><span class="dm-rot">Qué queda</span>${esc(x.queQueda)}</div>
+            </div>
+          </div>
+        </div>`).join('')}
+    </div>
+
+    ${/* La mitad que nadie enseña: se enseña el trámite y no el RESULTADO, que
+          es justo lo que le importa a quien va a integrar. Y lo que NO se
+          entrega, con todas las letras. */''}
+    <div class="rz-titulo" style="margin-top:22px">Lo que recibe la app que la mandó</div>
+    <div class="rz-bloque">
+      <pre class="dm-json">${esc(JSON.stringify(
+        Object.fromEntries(Object.entries(d.loQueRecibeLaApp).filter(([k]) => k !== 'noRecibe')),
+        null, 2))}</pre>
+      <p class="chaf-honesto" style="margin:12px 0 0">
+        Lo que <b>no</b> recibe, tenga la clave que tenga:
+        ${d.loQueRecibeLaApp.noRecibe.map((x) => esc(x)).join(' · ')}.
+      </p>
+    </div>`
+}
+
+VISTAS.cadena8532 = async function () {
+  $('#vista').innerHTML = `
+    <div class="filtros qi-filtros mv-filtros">
+      <input id="c8Texto" placeholder="Buscar por dirección o hash" oninput="recargar8532()">
+      <select id="c8Tipo" onchange="recargar8532()">
+        <option value="">Todo</option>
+        <option value="billetera">Billeteras</option>
+        <option value="contrato">Contratos</option>
+      </select>
+      <input id="c8Min" type="number" min="0" placeholder="Saldo mínimo (ORIGEN)"
+             oninput="recargar8532()">
+      <select id="c8Orden" onchange="recargar8532()">
+        <option value="saldo">Por saldo</option>
+        <option value="nonce">Por movimientos</option>
+        <option value="direccion">Por dirección</option>
+      </select>
+      <label class="c8-check"><input type="checkbox" id="c8Saldo" onchange="recargar8532()">
+        Solo con saldo</label>
+      <label class="c8-check"><input type="checkbox" id="c8Mov" onchange="recargar8532()">
+        Solo las que movieron</label>
+    </div>
+    <div id="c8Ficha"></div>
+    <div id="c8Tabla"><div class="vacio">Cargando…</div></div>`
+  f8532.desde = 0
+  await recargar8532()
+}
+
+async function recargar8532(mas = false) {
+  const q = new URLSearchParams({
+    texto: $('#c8Texto')?.value || '',
+    tipo: $('#c8Tipo')?.value || '',
+    minimo: $('#c8Min')?.value || '',
+    orden: $('#c8Orden')?.value || 'saldo',
+    conSaldo: $('#c8Saldo')?.checked ? '1' : '',
+    movieron: $('#c8Mov')?.checked ? '1' : '',
+    desde: String(mas ? traidas8532.length : 0),
+    limite: '100',
+  })
+  const r = await api('/panel/cadena-8532?' + q)
+  traidas8532 = mas ? traidas8532.concat(r.cuentas) : r.cuentas
+
+  /* La ficha de la cadena se pinta UNA vez y no se toca al filtrar: son los
+     datos del corte, no del filtro. Mezclarlos haría que «332 cuentas» cambiara
+     al escribir en el buscador y ya no se sabría qué está contando. */
+  $('#c8Ficha').innerHTML = `
+    <div class="rz-titulo">La cadena que se cerró</div>
+    <div class="rz-bloque"><div class="rz-campos">
+      ${celda8('Cadena', r.cadena.id, r.cadena.motor, true)}
+      ${celda8('Estado', 'Cerrada', 'sustituida por la ' + r.cadena.sustituidaPor)}
+      ${celda8('Corte', r.cadena.cortadaEn, 'el volcado que decidió la 5550')}
+      ${celda8('Cuentas', r.resumen.cuentas, `${r.resumen.billeteras} billeteras · ${r.resumen.contratos} contratos`, true)}
+      ${celda8('ORIGEN total', origen8532(r.resumen.origenTotal), 'en el momento del corte', true)}
+      ${celda8('Billeteras con saldo', r.resumen.billeterasConSaldo,
+              `${r.resumen.billeterasQueMovieron} movieron algo alguna vez`, true)}
+      ${/* Se enseña aunque sea cero, y sobre todo PORQUE es cero: «hay cuentas
+            sin dueño conocido» asusta hasta que se ve que no guardan nada. */''}
+      ${celda8('Sin dirección conocida', r.resumen.sinDireccionConocida,
+              origen8532(r.resumen.origenSinDireccion) + ' ORIGEN en ellas', true)}
+    </div></div>
+    <p class="chaf-honesto" style="margin:10px 0 18px">
+      Raíz de estado <code class="mono">${esc(String(r.cadena.raizDeEstado).slice(0, 26))}…</code>
+      · origen del dato: <code class="mono">${esc(String(r.cadena.origenDelDato))}</code>
+    </p>`
+
+  const l = traidas8532
+  $('#c8Tabla').innerHTML = `
+    <div class="qi-marco">
+      <div class="qi-cinta">
+        <span class="qi-ojillo">Cuentas del corte</span>
+        <span class="qi-cuenta num">${l.length < r.total
+          ? `${l.length} de ${r.total}` : `${r.total}`} · suman ${origen8532(r.sumaFiltrada)} ORIGEN</span>
+      </div>
+      ${l.length ? `<div class="qi-cola">
+        ${l.map((c) => `<div class="qi-fila">
+          <div class="qi-quien">
+            <div class="qi-nombre mono">${esc(c.direccion || '—')}</div>
+            <div class="qi-datos num">${c.direccion
+              ? `${c.nonce} movimiento${c.nonce === 1 ? '' : 's'}`
+              : `sin dirección conocida · ${esc(c.hash.slice(0, 22))}…`}</div>
+          </div>
+          <div class="qi-sellos">${pill(c.tipo, c.tipo === 'billetera' ? 'ok' : 'mut')}</div>
+          <div class="qi-meta">
+            <div class="qi-apps num">${origen8532(c.saldo)} ORIGEN</div>
+          </div>
+        </div>`).join('')}
+      </div>` : '<div class="vacio">Ninguna cuenta cumple el filtro</div>'}
+      ${r.hayMas ? `<button class="qi-mas" onclick="recargar8532(true)">
+        Ver las ${r.total - l.length} que faltan</button>` : ''}
+    </div>`
+}
+
 VISTAS.ajustes = async function () {
   const [o, a] = await Promise.all([api('/panel/operadores'), api('/panel/aplicaciones')])
   $('#vista').innerHTML = `
@@ -922,14 +2256,16 @@ VISTAS.ajustes = async function () {
 
     <h2>Aplicaciones del ecosistema</h2>
     <div class="tarjeta scroll">
-      <table><thead><tr><th>Aplicación</th><th>Clave</th><th>Alcances</th><th>Estado</th><th>Último uso</th><th></th></tr></thead><tbody>
+      <table><thead><tr><th>Aplicación</th><th>Clave</th><th>Alcances</th><th>Avisos</th><th>Estado</th><th>Último uso</th><th></th></tr></thead><tbody>
       ${a.aplicaciones.map((x) => `<tr>
         <td><div>${esc(x.nombre)}</div><div style="color:var(--faint);font-size:11.5px">${esc(x.clave)}</div></td>
         <td class="num" style="font-size:11.5px">${esc(x.pistaClave)}</td>
-        <td style="font-size:11px;color:var(--mut);max-width:280px">${esc(x.alcances.join(', '))}</td>
+        <td style="font-size:11px;color:var(--mut);max-width:240px">${esc(x.alcances.join(', '))}</td>
+        <td>${engancheCelda(x)}</td>
         <td>${pill(x.activa ? 'activa' : 'revocada', x.activa ? 'ok' : 'bad')}</td>
         <td style="font-size:11.5px;color:var(--faint)">${fecha(x.ultimoUso)}</td>
         <td style="white-space:nowrap">
+          <button class="g" onclick="verAvisos('${x.id}','${esc(x.nombre)}')">Avisos</button>
           <button class="g" onclick="rotarApp('${x.id}')">Rotar</button>
           ${x.activa ? `<button class="g" onclick="revocarApp('${x.id}')">Revocar</button>` : ''}
         </td>
@@ -954,6 +2290,76 @@ async function activarOperador(id, activo) {
   await api(`/panel/operadores/${id}/activo`, { method: 'POST', body: JSON.stringify({ activo }) })
   avisar('Actualizado'); ir('ajustes')
 }
+/* La columna de avisos enseña UNA cosa: si hay entregas fallidas.
+   Un aviso que se rindió es un integrador que no se enteró de una aprobación, y
+   eso no se nota desde aquí —aquí todo salió bien— así que si no salta a la
+   vista en la tabla, no lo mira nadie hasta que alguien se queja. */
+function engancheCelda(x) {
+  const e = x.enganche
+  if (!e) return '<span style="color:var(--faint);font-size:12px">—</span>'
+  if (!e.activo) return pill('apagado', 'mut')
+  const f = e.entregas.fallidas
+  return f ? pill(`${f} sin entregar`, 'bad')
+    : e.entregas.pendientes ? pill(`${e.entregas.pendientes} en cola`, 'warn')
+    : pill('al día', 'ok')
+}
+
+async function verAvisos(id, nombre) {
+  const r = await api(`/panel/aplicaciones/${id}/enganche`)
+  const e = r.enganche
+  const ult = e?.entregas?.ultima
+  abrirFicha(`Avisos · ${esc(nombre)}`, `
+    ${e ? `
+      <div class="item"><div class="t">A dónde van</div>
+        <div class="d" style="word-break:break-all">${esc(e.url)}</div></div>
+      <div class="item"><div class="t">Qué eventos</div>
+        <div class="d">${e.eventos.length ? esc(e.eventos.join(', ')) : 'todos'}</div></div>
+      <div class="item"><div class="t">Entregas</div>
+        <div class="d">${e.entregas.entregadas} entregadas · ${e.entregas.pendientes} en cola ·
+        <span style="color:${e.entregas.fallidas ? 'var(--bad)' : 'inherit'}">${e.entregas.fallidas} sin entregar</span></div></div>
+      ${ult ? `<div class="item"><div class="t">La última</div>
+        <div class="d">${esc(ult.evento)} — ${esc(ult.estado)}, ${ult.intentos} intento(s)
+        ${ult.ultimoError ? `<br><span style="color:var(--bad)">${esc(ult.ultimoError)}</span>` : ''}</div></div>` : ''}
+      <div class="acciones">
+        <button class="g" onclick="probarAviso('${id}')">Mandar uno de prueba</button>
+        <button class="bad" onclick="quitarAviso('${id}')">Quitar</button>
+      </div>`
+    : '<div class="item"><div class="d">Esta aplicación no recibe avisos. Sin ellos tiene que '
+      + 'preguntar cada tanto por cada persona pendiente.</div></div>'}
+    <div class="acciones"><button class="p" onclick="ponerAviso('${id}')">
+      ${e ? 'Cambiar la dirección' : 'Configurar'}</button></div>
+    <div class="item aviso2" style="margin-top:14px">El secreto de firma se enseña UNA vez, al
+      configurarlo. Con él, quien recibe los avisos comprueba que salieron de aquí; sin
+      comprobarlo, cualquiera que adivine su dirección puede mandarle identidades aprobadas.</div>`)
+}
+
+async function ponerAviso(id) {
+  const url = prompt('Dirección https donde recibirlos:'); if (!url) return
+  const eventos = prompt('Eventos separados por coma (vacío = todos):', '') || ''
+  try {
+    const r = await api(`/panel/aplicaciones/${id}/enganche`, {
+      method: 'PUT',
+      body: JSON.stringify({ url, eventos: eventos.split(',').map((s) => s.trim()).filter(Boolean) }),
+    })
+    abrirFicha('Secreto de firma', `<div class="item aviso2">Se muestra una sola vez.
+      Cópielo ahora: con él se comprueba la cabecera <code>X-Genesis-Firma</code> de cada
+      aviso.</div><pre>${esc(r.secreto)}</pre>`)
+  } catch (e) { alert(e.message) }
+}
+
+async function probarAviso(id) {
+  try {
+    await api(`/panel/aplicaciones/${id}/enganche/probar`, { method: 'POST' })
+    avisar('Mandado. Vuelva a abrir para ver si llegó.')
+  } catch (e) { alert(e.message) }
+}
+
+async function quitarAviso(id) {
+  if (!confirm('¿Dejar de mandarle avisos a esta aplicación?')) return
+  await api(`/panel/aplicaciones/${id}/enganche`, { method: 'DELETE' })
+  cerrarFicha(); avisar('Quitado'); ir('ajustes')
+}
+
 async function rotarApp(id) {
   if (!confirm('La clave actual dejará de funcionar en el acto. ¿Continuar?')) return
   const r = await api(`/panel/aplicaciones/${id}/rotar`, { method: 'POST' })
@@ -981,7 +2387,8 @@ document.addEventListener('keydown', (e) => { if (e.key === 'Escape') cerrarFich
 
 // Sesión guardada: se comprueba que siga viva antes de mostrar el panel.
 if (sesion) {
-  api('/sesion/yo').then((r) => { yo = r.operador; arrancar() }).catch(() => mostrarEntrada())
+  $('#velo').classList.remove('oculto')
+  api('/sesion/yo').then((r) => { yo = r.operador; arrancar() }).catch(() => { $('#velo').classList.add('oculto'); mostrarEntrada() })
 } else {
   mostrarEntrada()
 }

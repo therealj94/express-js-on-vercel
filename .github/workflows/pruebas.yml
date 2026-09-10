@@ -1,0 +1,295 @@
+# Las pruebas, en cada cambio.
+#
+# POR QUE ESTE ARCHIVO
+#
+# El ecosistema tiene cientos de pruebas y hasta hoy NO LAS CORRIA NADA. Los
+# otros cuatro flujos de este directorio compilan y publican apps de telefono;
+# ninguno toca el codigo de los servidores ni el de las webs.
+#
+# Eso es la mitad del patron que salio del diagnostico: el conocimiento existe
+# en la casa y no viaja de un rincon al otro. Una prueba que nadie corre es un
+# comentario que envejece.
+#
+# QUE HACE Y QUE NO
+#
+# Corre lo que ya existe, sin inventar nada: las de Genesis ID, las de la casa
+# de cambio, los scripts sueltos del backend de la billetera, y las del
+# navegador. No despliega, no toca produccion, no necesita ni un secreto.
+
+name: pruebas
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+  # Para poder dispararlo a mano desde la pestaña Actions sin empujar nada.
+  workflow_dispatch:
+
+# Un cambio nuevo cancela la corrida anterior de la misma rama: lo que importa
+# es el ultimo estado, no la cola.
+concurrency:
+  group: pruebas-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+
+  # ── Lo rapido: nada de navegador, falla en dos minutos si algo se rompio ──
+  servidores:
+    name: Servidores
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Genesis ID
+        working-directory: genesis-id
+        run: |
+          npm ci --no-audit --no-fund
+          npm run typecheck
+          npm run prueba
+
+      - name: Ordenex
+        working-directory: infra/ordenex-api
+        run: |
+          npm ci --no-audit --no-fund
+          npm run probar
+
+      # El backend de la billetera no tiene script de pruebas: son scripts
+      # sueltos en `pruebas/`. Se corren todos y cualquiera que falle tumba el
+      # trabajo, que es lo que hace falta.
+      - name: Billetera
+        working-directory: infra/veta-wallet-backend
+        run: |
+          npm ci --no-audit --no-fund
+          for f in pruebas/*.mjs; do
+            echo "── $f"
+            node "$f"
+          done
+
+      # Las puertas al ecosistema (Ordenex y AuCorp) en la app del telefono. No monta React Native
+      # —no hay forma barata— pero comprueba lo que ahi falla EN SILENCIO: un
+      # icono que no existe (se dibuja un SVG vacio), un texto que falta en un
+      # idioma, una pantalla sin registrar en el mapa de App.js. Solo necesita
+      # node, asi que corre en el trabajo rapido.
+      - name: Las puertas al ecosistema en la app
+        working-directory: veta-wallet-app
+        run: node pruebas/probar-puertas.mjs
+
+      # ULTRON FP, el asistente de la junta. Sin llaves: el cerebro se finge
+      # en su prueba, y el saber compilado tiene que estar AL DIA con los
+      # documentos (la prueba se pone roja si alguien cambio un dosier y no
+      # rearmo). El panel en navegador corre en el trabajo de abajo.
+      - name: ULTRON FP
+        working-directory: infra/ultron
+        run: |
+          npm ci --no-audit --no-fund
+          node bin/armar-saber.mjs --comprobar
+          node pruebas/probar-saber.mjs
+          node pruebas/probar-vivo.mjs
+          node pruebas/probar-cerebro.mjs
+          node pruebas/probar-nodo.mjs
+          node pruebas/probar-puerta.mjs
+          node pruebas/probar-cabecera.mjs
+          # El modelo y la ventana estan escritos en UN sitio y todos lo leen.
+          # Cuando estaban en siete, uno se quedaba atras y cada pedido suyo
+          # recargaba 16 GB de disco sin que nada pareciera roto.
+          node pruebas/probar-tarjeta.mjs
+          # El APK que se descarga de /apk: que sea un APK de verdad, que la
+          # ficha diga el mismo sha256, y que el codigo de version no baje —
+          # si baja, los telefonos dejan de actualizarse en silencio.
+          node pruebas/probar-apk.mjs
+
+      # Las tres pruebas que NO corrian en ningun sitio. Dos leian de
+      # /tmp/mtest y /tmp/vw-deploy —andamios montados a mano en una maquina—
+      # y la del taller de idempotencia apuntaba ademas a una copia del modulo
+      # 78 lineas mas vieja que la desplegada. Guardan la rotacion de PASS_ADM
+      # y el sello de los envios: las dos cosas que impiden, respectivamente,
+      # perder el acceso a los fondos de alguien y cobrarle dos veces.
+      - name: La rotacion de PASS_ADM
+        working-directory: infra/veta-wallet-migracion
+        run: |
+          npm ci --no-audit --no-fund
+          npm run prueba
+
+      - name: El sello de los envios
+        working-directory: infra/veta-wallet-idempotencia
+        run: node pruebas/unidad.test.mjs
+
+      # Otra que no corria en ningun sitio: apuntaba a un servidor en el 3399
+      # que no levantaba, y moria con «fetch failed». Prueba justo lo que cuesta
+      # dinero — que una parte no se pague dos veces, que dos personas no paguen
+      # la misma porcion, que nadie retire de mas, que un comercio sin verificar
+      # no cobre. Ahora levanta su propio API (cae a almacen en memoria).
+      - name: El cobro de MyTokenPay
+        working-directory: infra/mytokenpay-api
+        run: |
+          npm ci --no-audit --no-fund
+          node --test pruebas/caja.test.mjs
+
+      # El candado de AU-RA y su oido. El primero abre un navegador de verdad
+      # con el candado.js que se despacha: sin eso solo se comprobaria que las
+      # dos implementaciones en Python estan de acuerdo entre ellas.
+      - name: El oido de AU-RA
+        working-directory: infra/aura
+        run: |
+          python3 -m pip install --quiet cryptography
+          python3 probar-candado-aura.py
+          python3 probar-oido.py
+          python3 probar-modelo-existe.py
+          python3 probar-huella.py
+          python3 probar-asistente.py
+
+      # El guardia y el puente de WhatsApp. Van APARTE y sin la libreria de
+      # cripto porque no la necesitan, y porque son los dos que se escribieron
+      # despues de un fallo en produccion: si algun dia el bloque de arriba se
+      # cae por una dependencia, estos tienen que seguir corriendo igual.
+      #
+      # `probar-guardia.py` es el que importa mas. Sus dos primeras pruebas son
+      # los textos EXACTOS que AU-RA le mando a gente de verdad por WhatsApp
+      # —la mentira de la SEC y la respuesta que se fue al chino—. Que sigan en
+      # verde es lo unico que garantiza que no vuelvan a salir.
+      - name: El guardia de AU-RA y su puente de WhatsApp
+        working-directory: infra/aura
+        run: |
+          python3 probar-guardia.py
+          python3 probar-whatsapp.py
+          python3 probar-ultron.py
+          python3 probar-olvido.py
+          python3 probar-registro.py
+          python3 probar-guion.py
+          python3 probar-premio.py
+          python3 probar-vistazo.py
+          python3 probar-parte-diario.py
+          python3 probar-pagador.py
+          python3 probar-espejo.py
+          python3 probar-idiomas.py
+          python3 probar-decir.py
+          # El vigia vive en su propia carpeta: es lo unico que corre FUERA del
+          # nodo, y por eso no comparte ni un import con el resto.
+          (cd vigia && python3 probar-vigia.py)
+          # `probar-voz.py` queda fuera a proposito: necesita numpy, que no
+          # esta en esta maquina de CI y solo hace falta para el canal de voz.
+          # Se corre a mano en el nodo cuando se toca la voz.
+
+      - name: El relevo de mensajes
+        working-directory: infra/mensajes
+        run: |
+          for f in pruebas/*.py; do
+            echo "── $f"
+            python3 "$f"
+          done
+
+  # ── Lo lento: navegador de verdad, en los anchos de verdad ───────────────
+  navegador:
+    name: Navegador
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Instalar Playwright
+        run: |
+          npm ci --no-audit --no-fund
+          npx playwright install --with-deps chromium
+
+      # ── EL PUENTE, y conviene decir que es un puente ──────────────────────
+      #
+      # Treinta y siete de las pruebas del navegador llevan la ruta del
+      # Chromium ESCRITA A MANO, apuntando a `/opt/pw-browsers/...`. Solo
+      # cuatro aceptan una variable de entorno.
+      #
+      # Migrar las treinta y siete a un ayudante compartido es lo correcto y es
+      # lo que hay que hacer, pero es un cambio mecanico grande y no se hace el
+      # mismo dia que se enciende el CI: si algo saliera mal no se sabria si fue
+      # la migracion o el flujo nuevo.
+      #
+      # Asi que por ahora se le pone el navegador donde lo buscan. Es un enlace,
+      # tres lineas, y deja el CI corriendo hoy. `apps-web/navegador.mjs` es
+      # adonde tienen que migrar, y las pruebas nuevas ya lo usan.
+      - name: Poner el navegador donde las pruebas lo buscan
+        run: |
+          real=$(node -e "console.log(require('playwright').chromium.executablePath())")
+          echo "Chromium de verdad: $real"
+          sudo mkdir -p /opt/pw-browsers/chromium-1194/chrome-linux
+          sudo ln -sf "$real" /opt/pw-browsers/chromium-1194/chrome-linux/chrome
+          sudo ln -sf "$real" /opt/pw-browsers/chromium
+          ls -l /opt/pw-browsers/chromium-1194/chrome-linux/chrome
+
+      # Las pruebas piden las paginas a un servidor estatico en 8791. Se levanta
+      # desde la raiz del repositorio, que es como estan escritas las rutas.
+      - name: Levantar el servidor estatico
+        run: |
+          python3 -m http.server 8791 --bind 127.0.0.1 &
+          for i in $(seq 1 30); do
+            curl -sf -o /dev/null http://127.0.0.1:8791/ && break
+            sleep 1
+          done
+          curl -sf -o /dev/null http://127.0.0.1:8791/ || { echo "no levanto"; exit 1; }
+
+      - name: PULSE2CHAT y la billetera
+        working-directory: apps-web/veta-wallet/pruebas
+        run: |
+          for f in probar-candado.mjs probar-firma-bulto.mjs probar-chat-vivo.mjs \
+                   probar-grupo.mjs probar-p2c-completo.mjs probar-voz.mjs \
+                   probar-textos.mjs probar-movil-cabecera.mjs \
+                   probar-estados-24h.mjs probar-pulsar-hablar.mjs \
+                   probar-avisos-apagar.mjs probar-denunciar.mjs \
+                   probar-actividad-scan.mjs \
+                   probar-globo-crece.mjs probar-musica-calla.mjs \
+                   probar-una-sola-voz.mjs probar-sabe-que-pasa.mjs; do
+            [ -f "$f" ] || continue
+            echo "── $f"
+            node "$f"
+          done
+
+      - name: Ordenex
+        run: |
+          cd apps-web && node probar-ordenex.mjs
+          cd ordenex/pruebas
+          for f in *.mjs; do echo "── $f"; node "$f"; done
+
+      - name: El barrido de movil del ecosistema
+        working-directory: apps-web
+        run: node probar-movil-todo.mjs
+
+      # La consola de ULTRON contra su servidor de verdad, sin llaves: la
+      # puerta, el despacho, el tablero, los 27 instrumentos a mano, los
+      # pendientes, la biblioteca y 390 px.
+      - name: La consola de ULTRON
+        working-directory: infra/ultron
+        run: |
+          npm ci --no-audit --no-fund
+          node pruebas/probar-consola.mjs
+
+      # ULTRON OS —el tablero— NO CORRIA EN NINGUN SITIO, y es donde vive todo
+      # lo que se toca: el boton de hablar, la voz que suena mientras baja, el
+      # turno que se cancela, los paneles que se arman, el negocio y los 44 px
+      # del dedo. Se prueba en los DOS anchos porque la mitad de sus reglas son
+      # del telefono y en escritorio no se disparan: a 1400 px una regla de 390
+      # puede estar rota semanas sin que nada se ponga rojo.
+      - name: ULTRON OS, el tablero (escritorio y telefono)
+        working-directory: infra/ultron
+        run: |
+          node pruebas/probar-os.mjs 1400 900
+          node pruebas/probar-os.mjs 390 844
+          node pruebas/probar-mano-derecha.mjs
+
+      # Si algo falla, las capturas del momento valen mas que el registro.
+      - name: Guardar las capturas si algo se rompio
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: capturas
+          path: |
+            apps-web/**/*.png
+            /tmp/*.png
+          if-no-files-found: ignore
+          retention-days: 7

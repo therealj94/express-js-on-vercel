@@ -12,7 +12,9 @@
       },
       "env": {
         "EXPO_PUBLIC_GENESIS_URL": "https://genesis-id.onrender.com",
-        "EXPO_PUBLIC_WALLET_API_URL": "https://vetawallet-1a2e38ac52b1.herokuapp.com"
+        "EXPO_PUBLIC_WALLET_API_URL": "https://vetawallet-1a2e38ac52b1.herokuapp.com",
+        "EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID": "228754403847-okgebm17m153o29068aq3an2muts4k7h.apps.googleusercontent.com",
+        "EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID": "228754403847-qt86jmvbts9fuhmpunk6vc54mq7se3nh.apps.googleusercontent.com"
       },
       "channel": "development"
     },
@@ -23,7 +25,9 @@
       "distribution": "internal",
       "env": {
         "EXPO_PUBLIC_GENESIS_URL": "https://genesis-id.onrender.com",
-        "EXPO_PUBLIC_WALLET_API_URL": "https://vetawallet-1a2e38ac52b1.herokuapp.com"
+        "EXPO_PUBLIC_WALLET_API_URL": "https://vetawallet-1a2e38ac52b1.herokuapp.com",
+        "EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID": "228754403847-okgebm17m153o29068aq3an2muts4k7h.apps.googleusercontent.com",
+        "EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID": "228754403847-qt86jmvbts9fuhmpunk6vc54mq7se3nh.apps.googleusercontent.com"
       },
       "channel": "preview"
     },
@@ -33,9 +37,23 @@
       },
       "env": {
         "EXPO_PUBLIC_GENESIS_URL": "https://genesis-id.onrender.com",
-        "EXPO_PUBLIC_WALLET_API_URL": "https://vetawallet-1a2e38ac52b1.herokuapp.com"
+        "EXPO_PUBLIC_WALLET_API_URL": "https://vetawallet-1a2e38ac52b1.herokuapp.com",
+        "EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID": "228754403847-okgebm17m153o29068aq3an2muts4k7h.apps.googleusercontent.com",
+        "EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID": "228754403847-qt86jmvbts9fuhmpunk6vc54mq7se3nh.apps.googleusercontent.com"
       },
       "channel": "production"
+    },
+    "ensayo": {
+      "android": {
+        "buildType": "apk"
+      },
+      "distribution": "internal",
+      "env": {
+        "EXPO_PUBLIC_ENSAYO": "1",
+        "EXPO_PUBLIC_GENESIS_URL": "https://genesis-id.onrender.com",
+        "EXPO_PUBLIC_WALLET_API_URL": "http://32.192.209.12:3000"
+      },
+      "channel": "ensayo"
     }
   }
 }

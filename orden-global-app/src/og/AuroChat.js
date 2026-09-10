@@ -1,0 +1,2685 @@
+// ═══ PULSE2CHAT ═════════════════════════════════════════════════════════
+// La mensajería de Orden Global. Lo que la define:
+//   · SOLO se abre con Genesis ID aprobado — es la red de gente real;
+//   · personas Y grupos en la MISMA lista: un grupo es otra conversación,
+//     no otra pantalla, porque así se usan de verdad;
+//   · el pago vive DENTRO de la charla: un mensaje tipo:'pago' no se pinta
+//     como texto sino como comprobante, con su hash y su enlace al
+//     explorador. Eso es lo que ninguna otra mensajería puede enseñar;
+//   · a alguien se le encuentra por el directorio (nombre, correo o su
+//     GID de Genesis) o ESCANEANDO SU CÓDIGO, y
+//     al escanear se ofrece guardarlo — un contacto que se pierde obliga a
+//     volver a escanear, y eso ya no es una red;
+//   · adjuntos (📎) ≤ 8 MB: el id largo del archivo ES su permiso.
+// CIFRADO DE PUNTA A PUNTA, con el mismo sobre que la web (candado.js). Esta
+// línea decía lo contrario —«sin cifrado de extremo a extremo en esta
+// versión»— durante todo el tiempo en que ya lo tenía, y eso no es un detalle:
+// un comentario que miente hace perder horas a quien viene detrás buscando el
+// fallo en el sitio equivocado. Hoy pasó.
+//
+// Y la mitad que sí importa: que este archivo cifre no garantiza que el
+// mensaje SALGA cifrado. Si el otro no tiene ninguna llave publicada, `cerrar`
+// no puede hacer sobre y el texto sale en claro. Hoy, en producción, 18 de 34
+// fichas no tienen ni un aparato publicado, así que no es un caso raro — y por
+// eso esta pantalla lo dice cuando pasa (`t.sinCifrar`, en `enviarTexto`).
+import React, { useEffect, useRef, useState, useCallback } from 'react';
+import {
+  View, Text, TextInput, Pressable, FlatList, StyleSheet, Modal, Animated,
+  ActivityIndicator, Image, Platform, BackHandler,
+} from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
+import QRCode from 'react-native-qrcode-svg';
+import { CameraView, useCameraPermissions } from 'expo-camera';
+import * as ImagePicker from 'expo-image-picker';
+import * as DocumentPicker from 'expo-document-picker';
+import * as Linking from 'expo-linking';
+import { useAudioPlayer } from 'expo-audio';
+import Constants from 'expo-constants';
+import * as Clipboard from 'expo-clipboard';
+import { C, G } from '../theme';
+import { Button3D, Avatar, useAccount, useToast, hap } from '../ui';
+/* La paleta propia del chat: azul, y sólo aquí. El resto de la app sigue
+   verde y oro; el comprobante de pago dentro del hilo también (es dinero). */
+import { P2C } from './paletaP2C';
+import { Icon } from '../icons';
+import { useLang } from '../i18n';
+import { PantallaConTeclado, useTeclado } from './Teclado';
+import { genesis } from '../genesis';
+import * as M from './mensajes';
+import LLAMADA from './llamada';
+import GRUPO from './llamadaGrupo';
+import { alLlegarSenal } from './Timbre';
+
+import { aUri } from './rutas';
+import { guardarContacto, renombrarContacto, eliminarContacto, leerLibreta, comoMapa } from './contactos';
+import { reproducir } from './sonidos';
+
+const TXT = {
+  es: {
+    marca: 'PULSE2CHAT', sub: 'Personas y grupos, con Genesis ID',
+    buscar: 'Buscar por nombre, correo o GID…', dir: 'EN EL ECOSISTEMA',
+    nadie: 'Nadie con ese nombre o GID todavía.',
+    vacio: 'Aún no tienes conversaciones.',
+    escribe: 'Escribe…', origen: 'ENVIAR ORIGEN', miqr: 'MI CÓDIGO', escanear: 'ESCANEAR',
+    llamar: 'Llamar', videollamar: 'Videollamada',
+    agregar: 'AGREGAR', ayer: 'ayer',
+    ajustes: 'Mi perfil y ajustes', nuevoGrupo: 'Nuevo grupo',
+    gateTit: 'El chat es de gente verificada',
+    gateTxt: 'Para chatear necesitas tu Genesis ID aprobado. Así todos saben que del otro lado hay una persona real.',
+    gateBtn: 'COMPLETAR MI GENESIS ID', mirando: 'Comprobando tu Genesis ID…',
+    qrTuyo: 'Este es tu código. Quien lo escanee abre un chat con vos en PULSE2CHAT.',
+    apunta: 'Apunta al código de la otra persona',
+    adjImagen: 'Imagen', adjVideo: 'Video', adjArchivo: 'Archivo',
+    ultImagen: 'Imagen', ultVideo: 'Video', ultArchivo: 'Archivo',
+    grande: 'Pesa más de 8 MB. Comparte una versión más ligera.',
+    noSubio: 'No se pudo subir. Revisa tu conexión e intenta de nuevo.',
+    noAbre: 'No se pudo abrir el archivo.',
+    tu: 'Tú', miembros: 'miembros', grupo: 'Grupo',
+    escaneaste: 'Escaneaste a', guardarTxt: '¿Lo dejas guardado en tus contactos?',
+    guardarBtn: 'AGREGAR CONTACTO', guardado: 'Guardado en tus contactos.',
+    noGuardo: 'No se pudo guardar el contacto.',
+    pagoEnviaste: 'ENVIASTE', pagoRecibiste: 'RECIBISTE', pagoEnvio: 'ENVIÓ',
+    confirmado: 'confirmado', explorador: 'Ver en el explorador',
+    editarNombre: 'Editar nombre', quitarLibreta: 'Eliminar de mi libreta',
+    guardarNombre: 'GUARDAR', nombrePh: 'Nombre',
+    renombrado: 'Nombre guardado en tu libreta.',
+    eliminado: 'Se quitó de tu libreta.',
+    editarNota: 'Así lo verás tú en tu libreta; su perfil no cambia.',
+    // Vaciar y borrar. El texto dice lo que PASA, no lo que suena bien:
+    // el hilo es de dos y esto solo cambia lo que ve quien lo pide.
+    vaciar: 'Vaciar los mensajes', borrarConv: 'Borrar la conversación',
+    vaciarQ: '¿Vaciar los mensajes de esta conversación? Dejarás de verlos tú; la otra persona conserva su copia.',
+    borrarQ: '¿Borrar esta conversación de tu lista? Dejarás de ver lo hablado; la otra persona conserva su copia, y si te escribe volverá a aparecer.',
+    vaciado: 'Conversación vaciada.', borrado: 'Se quitó de tu lista.',
+    noOlvido: 'No se pudo. Revisa tu conexión e intenta de nuevo.',
+    siVaciar: 'VACIAR', siBorrar: 'BORRAR', cancelar: 'Cancelar',
+    fallo: 'No se envió', reintentar: 'Reintentar',
+    nuevos: 'Mensajes nuevos ↓',
+    /* ══ LOS TRES ESTADOS QUE EL CIFRADO PUEDE DEJAR, Y QUE NO SE CALLAN ══
+     * Un mensaje que este teléfono no puede abrir salía como una BURBUJA
+     * VACÍA con la hora al lado. Eso se lee como «el chat perdió un mensaje»,
+     * que es lo contrario de lo que pasó: el mensaje está entero y cerrado
+     * para otro aparato tuyo — el navegador, por ejemplo, si escribiste desde
+     * ahí antes de que este teléfono publicara su llave. */
+    cerrado: 'Cifrado para otro de tus aparatos',
+    adjNoAbre: 'Este adjunto no se pudo abrir aquí',
+    /* La firma se pudo comprobar y NO cuadró. No es lo mismo que «no se pudo
+     * comprobar»: esto merece verse. */
+    sinFirma: 'Sin firma verificada',
+    /* Se mandó EN CLARO porque quien recibe todavía no tiene ninguna llave
+     * publicada. Se dice en el momento, no en una pantalla de ajustes: es de
+     * ese mensaje, no de la app. */
+    sinCifrar: 'Se envió sin cifrar: esa persona todavía no abrió el chat en ningún aparato.',
+    /* ── el círculo ──────────────────────────────────────────────────────
+       El texto del 403 tiene que decir DOS cosas: que no es la red, y que hay
+       algo que hacer. «No se pudo enviar» era mentira a medias y dejaba a la
+       persona reintentando contra una pared. */
+    faltaTit: 'Todavía no te aceptó',
+    faltaTxt: 'Para escribirle hace falta que te acepte en su círculo. Mandale la solicitud y te avisamos cuando conteste.',
+    mandarSolicitud: 'Mandar solicitud',
+    pedidoIdo: 'Solicitud enviada',
+    aceptado: 'Ya se pueden escribir',
+    rechazado: 'Solicitud rechazada',
+    noSePudo: 'No se pudo. Probá de nuevo.',
+    solicTit: 'Te quieren escribir',
+    aceptar: 'Aceptar',
+    rechazar: 'Rechazar',
+    enviadas: 'Esperando respuesta',
+    enviadaCorto: 'Enviada',
+    enClaro: 'Viajó sin cifrar',
+    ultVoz: 'Nota de voz', ultBorrado: 'Se borró este mensaje', borrado: 'Este mensaje se borró',
+    noAbreAdj: 'No se pudo abrir el archivo en este teléfono.',
+    cancelar: 'Cancelar',
+    sinRedT: 'Sin conexión',
+    sinRedConvos: 'No pudimos traer tus conversaciones. Revisa tu conexión; tus chats siguen ahí.',
+    sinRedHilo: 'No pudimos traer los mensajes de esta conversación.',
+    sinRedBusca: 'La búsqueda no salió. Revisa tu conexión e intenta de nuevo.',
+    reint: 'REINTENTAR', bannerRed: 'Sin conexión — reintentando…',
+    // Culpar a la red cuando el servidor SÍ contestó —y contestó que esta
+    // instalación no es la de antes— manda a la persona a revisar su wifi
+    // durante horas. Se dice lo que pasa y dónde están sus mensajes.
+    /* DOS CAUSAS, DOS SALIDAS. El relevo las distingue y llevan a sitios
+       opuestos: una se arregla volviendo a entrar aquí mismo; la otra, con el
+       teléfono donde el chat sigue abierto. Con un solo texto se mandaba a la
+       mitad de la gente al sitio equivocado. */
+    otraTit: 'Tenés que entrar de nuevo a tu cuenta',
+    otraTxt: 'Tus conversaciones están a salvo en el servidor. Tu sesión venció —dura poco a propósito— y hace falta para abrir el chat en este teléfono. Entrá de nuevo desde Ajustes y volvé acá. Mientras tanto, el resto de la app funciona con normalidad.',
+    otraTit2: 'Este chat quedó en tu instalación anterior',
+    otraTxt2: 'Tus conversaciones están a salvo en el servidor. El chat sigue abierto en el teléfono donde lo usabas antes: abrilo ahí una vez y volvé acá. Mientras tanto, el resto de la app funciona con normalidad.',
+    /* La tercera causa: la sesión vale, pero es de OTRA cuenta. La app se
+       corrige sola (ver `alta` en mensajes.js) y esto casi nunca se ve; se
+       escribe igual porque antes este caso caía en el texto de arriba y
+       mandaba a la persona a buscar un teléfono que no tenía nada que ver. */
+    otraTit3: 'Estás dentro con otra cuenta',
+    otraTxt3: 'Tus conversaciones están a salvo. El chat que estás pidiendo es de otro correo, no del que tenés abierto ahora. Cerrá sesión y entrá con el correo de esas conversaciones. Mientras tanto, el resto de la app funciona con normalidad.',
+    /* ── lo que faltaba para estar a la par de la web ─────────────────── */
+    enLinea: 'En línea', escribiendo: 'está escribiendo…', escribiendoVarios: 'están escribiendo…',
+    leido: 'Leído', masViejos: 'Cargando mensajes anteriores…', principio: 'Este es el principio de la conversación',
+    responder: 'Responder', reaccionar: 'Reaccionar', reenviar: 'Reenviar', copiar: 'Copiar', copiado: 'Copiado.',
+    respondiendoA: 'Respondiendo a', citaIda: 'Mensaje', citaIdaP: 'ya no está',
+    errReaccion: 'No se pudo guardar tu reacción.',
+    reenviarNota: 'Se manda como un mensaje tuyo, sin decir de quién venía.',
+    reenviado: 'Reenviado.', aQuienReenviar: 'Todavía no tenés a nadie a quien reenviárselo.',
+    nadaQueReenviar: 'Solo se puede reenviar texto por ahora.',
+    borrarMsg: 'Borrar el mensaje',
+    borrarMsgP: 'Borrarlo para todos lo quita también de la pantalla de la otra persona, y queda dicho que había algo. Borrarlo para vos solo lo esconde de la tuya.',
+    borrarMsgSoloMio: 'Esto lo escribió la otra persona, así que solo podés esconderlo de tu pantalla. La suya no se toca.',
+    borrarTodos: 'Borrar para todos', borrarMio: 'Borrar solo para mí',
+    borrasteEsto: 'Borraste este mensaje',
+    bloquear: 'Bloquear', bloqueadoOk: 'Bloqueado.',
+    bloquearNota: '{n} no va a poder escribirte, llamarte ni ver tus estados, y vos tampoco los suyos. Se sale de tu círculo: si algún día lo desbloqueás, hay que volver a aceptarse.',
+    denunciar: 'Denunciar', denunciarA: 'Denunciar a {n}',
+    denNota: 'Esto lo lee alguien de Orden Global. Al denunciar también bloqueás a esta persona: deja de escribirte y sale de tu círculo.',
+    denMotivo: 'Qué pasó', denDetalle: 'Contanos qué pasó (opcional)', denElegir: 'Elegí qué pasó',
+    denOk: 'Gracias. Lo vamos a revisar, y esa persona ya no puede escribirte.',
+    den_estafa: 'Me quiso estafar', den_acoso: 'Me acosa o me amenaza', den_contenido: 'Manda cosas que no debería',
+    den_suplantacion: 'Se hace pasar por otro', den_spam: 'Spam', den_otro: 'Otra cosa',
+    verCodigo: 'Código de seguridad', codigoTit: 'Código de seguridad',
+    codigoQue: 'Comparalo con la otra persona en voz alta o en persona. Si los dos números coinciden, nadie se metió en medio de esta conversación.',
+    codigoAparato: 'La llave de este chat vive en este teléfono y no sale de acá — por eso nadie más puede leerlo, ni nosotros. La otra cara: si entrás desde un teléfono nuevo, los mensajes viejos ya no se van a poder abrir. Los nuevos sí, sin hacer nada.',
+    codigoNo: 'Todavía no hay código: falta que alguno de los dos abra el chat en esta versión.',
+    estados: 'Estados', miEstado: 'Tu estado', subirEstado: 'Subir un estado', estadoPh: 'Escribí algo…',
+    estadoVacio: 'Escribí algo o poné una foto.', estadoFoto: 'Foto', publicar: 'PUBLICAR',
+    estadoHonesto: 'Un estado lo ve todo tu círculo y dura 24 horas. A diferencia de tus mensajes, esto no va cifrado de punta a punta: se guarda en nuestro servidor hasta que vence.',
+    borrarEstadoP: 'Se va ahora mismo, y también el archivo. No se puede deshacer.',
+    vistas: 'vistas', sinEstados: 'Nadie de tu círculo subió un estado todavía.',
+    cerrar: 'Cerrar', listo: 'LISTO',
+  },
+  en: {
+    marca: 'PULSE2CHAT', sub: 'People and groups, with Genesis ID',
+    buscar: 'Search by name, email or GID…', dir: 'IN THE ECOSYSTEM',
+    nadie: 'Nobody with that name or GID yet.',
+    vacio: 'No conversations yet.',
+    escribe: 'Type…', origen: 'SEND ORIGEN', miqr: 'MY CODE', escanear: 'SCAN',
+    llamar: 'Call', videollamar: 'Video call',
+    agregar: 'ADD', ayer: 'yesterday',
+    ajustes: 'My profile and settings', nuevoGrupo: 'New group',
+    gateTit: 'The chat is for verified people',
+    gateTxt: 'You need your approved Genesis ID to chat. That way everyone knows there is a real person on the other side.',
+    gateBtn: 'COMPLETE MY GENESIS ID', mirando: 'Checking your Genesis ID…',
+    qrTuyo: 'This is your code. Whoever scans it opens a chat with you on PULSE2CHAT.',
+    apunta: 'Point at the other person’s code',
+    adjImagen: 'Image', adjVideo: 'Video', adjArchivo: 'File',
+    ultImagen: 'Image', ultVideo: 'Video', ultArchivo: 'File',
+    grande: 'It is over 8 MB. Share a lighter version.',
+    noSubio: 'Upload failed. Check your connection and try again.',
+    noAbre: 'Could not open the file.',
+    tu: 'You', miembros: 'members', grupo: 'Group',
+    escaneaste: 'You scanned', guardarTxt: 'Want to keep them in your contacts?',
+    guardarBtn: 'ADD CONTACT', guardado: 'Saved to your contacts.',
+    noGuardo: 'The contact could not be saved.',
+    pagoEnviaste: 'YOU SENT', pagoRecibiste: 'YOU RECEIVED', pagoEnvio: 'SENT',
+    confirmado: 'confirmed', explorador: 'View on the explorer',
+    editarNombre: 'Edit name', quitarLibreta: 'Remove from my contacts',
+    guardarNombre: 'SAVE', nombrePh: 'Name',
+    renombrado: 'Name saved to your contacts.',
+    eliminado: 'Removed from your contacts.',
+    editarNota: 'This is how YOU will see them; their profile does not change.',
+    vaciar: 'Clear the messages', borrarConv: 'Delete the conversation',
+    vaciarQ: 'Clear the messages in this conversation? You will stop seeing them; the other person keeps their copy.',
+    borrarQ: 'Remove this conversation from your list? You will stop seeing what was said; the other person keeps their copy, and if they write it comes back.',
+    vaciado: 'Conversation cleared.', borrado: 'Removed from your list.',
+    noOlvido: 'It did not work. Check your connection and try again.',
+    siVaciar: 'CLEAR', siBorrar: 'DELETE', cancelar: 'Cancel',
+    fallo: 'Not sent', reintentar: 'Retry',
+    nuevos: 'New messages ↓',
+    cerrado: 'Encrypted for another of your devices',
+    adjNoAbre: 'This attachment could not be opened here',
+    sinFirma: 'Signature not verified',
+    sinCifrar: 'Sent unencrypted: that person has not opened the chat on any device yet.',
+    faltaTit: 'They have not accepted you yet',
+    faltaTxt: 'To write to them they need to accept you into their circle. Send the request and we will tell you when they answer.',
+    mandarSolicitud: 'Send request',
+    pedidoIdo: 'Request sent',
+    aceptado: 'You can write to each other now',
+    rechazado: 'Request declined',
+    noSePudo: 'It did not work. Try again.',
+    solicTit: 'They want to write to you',
+    aceptar: 'Accept',
+    rechazar: 'Decline',
+    enviadas: 'Waiting for an answer',
+    enviadaCorto: 'Sent',
+    enClaro: 'Traveled unencrypted',
+    ultVoz: 'Voice note', ultBorrado: 'This message was deleted', borrado: 'This message was deleted',
+    noAbreAdj: 'Could not open the file on this phone.',
+    cancelar: 'Cancel',
+    sinRedT: 'No connection',
+    sinRedConvos: 'We could not fetch your conversations. Check your connection; your chats are still there.',
+    sinRedHilo: 'We could not fetch the messages of this conversation.',
+    sinRedBusca: 'The search did not go through. Check your connection and try again.',
+    reint: 'RETRY', bannerRed: 'Offline — retrying…',
+    otraTit: 'You need to sign in again',
+    otraTxt: 'Your conversations are safe on the server. Your session expired —it is short on purpose— and it is needed to open the chat on this phone. Sign in again from Settings and come back. Meanwhile the rest of the app works normally.',
+    otraTit2: 'This chat stayed in your previous install',
+    otraTxt2: 'Your conversations are safe on the server. The chat is still open on the phone you used before: open it there once and come back. Meanwhile the rest of the app works normally.',
+    otraTit3: 'You are signed in with another account',
+    otraTxt3: 'Your conversations are safe. The chat you are asking for belongs to a different email, not the one you have open now. Sign out and sign in with the email of those conversations. Meanwhile the rest of the app works normally.',
+    enLinea: 'Online', escribiendo: 'is typing…', escribiendoVarios: 'are typing…',
+    leido: 'Read', masViejos: 'Loading earlier messages…', principio: 'This is the beginning of the conversation',
+    responder: 'Reply', reaccionar: 'React', reenviar: 'Forward', copiar: 'Copy', copiado: 'Copied.',
+    respondiendoA: 'Replying to', citaIda: 'Message', citaIdaP: 'is gone',
+    errReaccion: 'Your reaction could not be saved.',
+    reenviarNota: 'It goes out as a message from you, without saying who it came from.',
+    reenviado: 'Forwarded.', aQuienReenviar: 'You do not have anyone to forward it to yet.',
+    nadaQueReenviar: 'Only text can be forwarded for now.',
+    borrarMsg: 'Delete the message',
+    borrarMsgP: 'Deleting for everyone removes it from the other person’s screen too, and leaves a note that something was there. Deleting for you only hides it from yours.',
+    borrarMsgSoloMio: 'The other person wrote this, so you can only hide it from your screen. Theirs stays untouched.',
+    borrarTodos: 'Delete for everyone', borrarMio: 'Delete for me only',
+    borrasteEsto: 'You deleted this message',
+    bloquear: 'Block', bloqueadoOk: 'Blocked.',
+    bloquearNota: '{n} will not be able to message you, call you or see your updates, and you will not see theirs. They leave your circle: if you ever unblock them, you both have to accept again.',
+    denunciar: 'Report', denunciarA: 'Report {n}',
+    denNota: 'Someone at Orden Global reads this. Reporting also blocks this person: they stop writing to you and leave your circle.',
+    denMotivo: 'What happened', denDetalle: 'Tell us what happened (optional)', denElegir: 'Pick what happened',
+    denOk: 'Thank you. We will look into it, and that person can no longer write to you.',
+    den_estafa: 'They tried to scam me', den_acoso: 'They harass or threaten me', den_contenido: 'They send things they should not',
+    den_suplantacion: 'They are impersonating someone', den_spam: 'Spam', den_otro: 'Something else',
+    verCodigo: 'Safety code', codigoTit: 'Safety code',
+    codigoQue: 'Compare it with the other person out loud or in person. If both numbers match, nobody got in the middle of this conversation.',
+    codigoAparato: 'This chat’s key lives on this phone and never leaves it — that is why nobody else can read it, not even us. The other side of that: if you sign in from a new phone, the old messages will no longer open. New ones will, with nothing to do.',
+    codigoNo: 'No code yet: one of you still has to open the chat on this version.',
+    estados: 'Updates', miEstado: 'Your update', subirEstado: 'Post an update', estadoPh: 'Say something…',
+    estadoVacio: 'Write something or add a photo.', estadoFoto: 'Photo', publicar: 'POST',
+    estadoHonesto: 'An update is seen by your whole circle and lasts 24 hours. Unlike your messages, this is not end-to-end encrypted: it sits on our server until it expires.',
+    borrarEstadoP: 'It goes now, file and all. This cannot be undone.',
+    vistas: 'views', sinEstados: 'Nobody in your circle has posted an update yet.',
+    cerrar: 'Close', listo: 'DONE',
+  },
+};
+
+/* Los motivos de una denuncia: la MISMA lista cerrada que el relevo y la
+   web. Un campo libre suena más flexible y llega todo como «otro». */
+const MOTIVOS_DENUNCIA = ['estafa', 'acoso', 'contenido', 'suplantacion', 'spam', 'otro'];
+/* Las reacciones rápidas: las mismas seis que la web. */
+const REACCIONES = ['👍', '❤️', '😂', '😮', '🙏', '🔥'];
+
+/* La cabecera del chat, en su propio azul. La `Header` de la casa es de oro
+   y es de la billetera; PULSE2CHAT tiene la suya. */
+function CabeceraP2C({ titulo, sub, onBack, right }) {
+  return (
+    <LinearGradient colors={[P2C.fondo2, P2C.fondo]} start={{ x: 0, y: 0 }} end={{ x: 0, y: 1 }} style={st.cab}>
+      {onBack ? (
+        <Pressable onPress={onBack} hitSlop={10} style={st.cabAtras} accessibilityRole="button">
+          <Icon name="chevron-back" size={22} color={P2C.acentoLt} />
+        </Pressable>
+      ) : null}
+      <View style={{ flex: 1, minWidth: 0 }}>
+        <Text style={st.cabTit}>{titulo}</Text>
+        {sub ? <Text style={st.cabSub} numberOfLines={1}>{sub}</Text> : null}
+      </View>
+      {right}
+    </LinearGradient>
+  );
+}
+
+// El relevo rechaza adjuntos de más de 8MB — mismo número aquí para avisar
+// ANTES de gastar datos subiendo algo que va a rebotar.
+const TOPE_ADJUNTO = 8_000_000;
+
+// El explorador de la cadena. El comprobante no se cree a sí mismo: enseña el
+// hash y lleva a donde cualquiera puede comprobarlo por su cuenta. La URL sale
+// de expoConfig.extra —igual que la del relevo en mensajes.js— y el valor por
+// defecto está aquí solo por si extra viniera vacío.
+//
+// Estuvo apuntando a testnet.ordenscan.com, que servía el explorador VIEJO: la
+// cadena 8532, muerta desde el reinicio a la 5550. Cada comprobante llevaba a
+// un sitio donde su transacción no existe. Cambiarlo aquí arregla las
+// instalaciones nuevas; los teléfonos que ya están instalados no leen este
+// archivo hasta que la persona actualice, así que el dominio viejo quedó
+// redirigido a ordenscan.com conservando la ruta. Los dos lados, no uno.
+const EXPLORADOR = ((Constants.expoConfig?.extra || {}).exploradorTx || 'https://ordenscan.com/tx/');
+
+// La libreta del chat (og.contactos) se mudó a ./contactos.js: antes solo se
+// ESCRIBÍA desde aquí y ninguna pantalla la leía. Ahora esta pantalla la lee
+// —el nombre que tú le pusiste a alguien pinta encima del que esa persona se
+// puso en el relevo— y Enviar la renombra cuando el pago nace de una charla.
+
+// blob → base64 pelado (sin el prefijo data:...;base64,). FileReader existe
+// en React Native y evita cargar el binario entero como string intermedio.
+const blobABase64 = (blob) => new Promise((res, rej) => {
+  const r = new FileReader();
+  r.onerror = () => rej(new Error('lector'));
+  r.onload = () => res(String(r.result).split(',')[1] || '');
+  r.readAsDataURL(blob);
+});
+
+const hora = (ms) => { const d = new Date(ms); return String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0'); };
+// El cuándo de la LISTA, dicho como lo diría una persona: la hora si fue hoy,
+// «ayer», el día corto («lun») dentro de la semana y la fecha corta después.
+// Dentro del hilo la hora exacta sí importa; aquí solo orienta.
+const cuandoHumano = (ms, lang, ayer) => {
+  const d = new Date(ms);
+  const hoy = new Date();
+  const dia0 = (x) => new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime();
+  const dias = Math.round((dia0(hoy) - dia0(d)) / 86400000);
+  if (dias <= 0) return hora(ms);
+  if (dias === 1) return ayer;
+  const loc = lang === 'en' ? 'en-US' : 'es-HN';
+  if (dias < 7) return d.toLocaleDateString(loc, { weekday: 'short' });
+  return d.toLocaleDateString(loc, { day: 'numeric', month: 'short' });
+};
+// Una conversación se identifica por su id de grupo o por el correo, y de ahí
+// en adelante el destino es UNO SOLO: enviar, bandeja, leído y el aviso del
+// pago hablan todos del mismo string.
+const idDe = (c) => (c ? (c.id || c.correo || '') : '');
+const esGrupoDe = (c) => !!(c && (c.esGrupo || M.esGrupo(idDe(c))));
+// El monto llega como TEXTO del relevo a propósito (un float redondearía los
+// decimales de ORIGEN); aquí solo se le quitan los ceros de adorno.
+const montoBonito = (x) => {
+  const s = String(x == null ? '' : x).trim();
+  if (!/^\d+(\.\d+)?$/.test(s)) return s;
+  return s.includes('.') ? s.replace(/0+$/, '').replace(/\.$/, '') : s;
+};
+
+// Entrada en cascada: cada fila aparece con opacidad + subida, escalonada.
+// useNativeDriver porque solo se anima opacity/transform — nada de layout —
+// y así la lista sigue fluida mientras el relevo contesta en segundo plano.
+function Entrada({ delay = 0, style, children }) {
+  const op = useRef(new Animated.Value(0)).current;
+  const y = useRef(new Animated.Value(14)).current;
+  useEffect(() => {
+    Animated.parallel([
+      Animated.timing(op, { toValue: 1, duration: 380, delay, useNativeDriver: true }),
+      Animated.spring(y, { toValue: 0, delay, speed: 12, bounciness: 6, useNativeDriver: true }),
+    ]).start();
+  }, [op, y, delay]);
+  return <Animated.View style={[{ opacity: op, transform: [{ translateY: y }] }, style]}>{children}</Animated.View>;
+}
+
+// El Avatar vive ahora en src/ui.js: estaba triplicado aquí, en GruposAuro y
+// en AjustesAuro, y tres copias del mismo dibujo acaban pintando a la misma
+// persona de tres maneras.
+
+// ── La tarjeta de pago ────────────────────────────────────────────────────
+// Un pago NO es un mensaje de texto y no debe parecerlo: monto grande en oro,
+// la marca de confirmado, la hora, y el enlace al explorador cuando hay hash.
+// Es el comprobante de algo que ya pasó en la cadena.
+/* ══ UN ADJUNTO QUE HAY QUE ABRIR ANTES DE VERLO ═══════════════════════════
+ *
+ * Los adjuntos de siempre están en claro y su dirección del relevo se le da a
+ * `<Image>` y listo. Uno CIFRADO son bytes: hay que bajarlo, abrirlo con la
+ * llave que venía dentro del mensaje y recién entonces pintarlo.
+ *
+ * Eso es una espera, así que mientras tanto se deja el hueco con el marco —no
+ * un espacio en blanco que salta cuando llega la foto, ni una imagen rota—. Y
+ * si no se pudo abrir, se DICE: dejar el hueco callado hace pensar que el chat
+ * perdió la foto, que es lo contrario de lo que pasó. */
+function Adjunto({ m, t, alTocar }) {
+  const [uri, setUri] = useState(null);
+  const [roto, setRoto] = useState(false);
+  useEffect(() => {
+    let vivo = true;
+    M.archivoAbierto(m.archivo, m.llaveArchivo, m.ivArchivo, m.mime || 'image/jpeg')
+      .then((u) => { if (!vivo) return; if (u) setUri(u); else setRoto(true); })
+      .catch(() => { if (vivo) setRoto(true); });
+    return () => { vivo = false; };
+  }, [m.archivo, m.llaveArchivo, m.ivArchivo, m.mime]);
+
+  if (roto) {
+    return (
+      <View style={[st.foto, st.fotoHueco]}>
+        <Icon name="lock-closed" size={18} color={P2C.texto3} />
+        <Text style={st.fotoHuecoTxt}>{t.adjNoAbre}</Text>
+      </View>
+    );
+  }
+  if (!uri) return <View style={[st.foto, st.fotoHueco]} />;
+  return (
+    <Pressable onPress={() => alTocar(uri)}>
+      <Image source={{ uri }} style={st.foto} resizeMode="cover" />
+    </Pressable>
+  );
+}
+
+/* LA NOTA DE VOZ, DESCIFRADA Y CON REPRODUCTOR. Llegaba como burbuja vacía con
+   el sello «viajó sin cifrar»: el tipo `voz` no entraba en la lista de
+   adjuntos y el mensaje no traía texto. `expo-audio` ya estaba en la app. */
+function NotaDeVoz({ m, mio, t }) {
+  const [uri, setUri] = useState(null);
+  const [roto, setRoto] = useState(false);
+  useEffect(() => {
+    let vivo = true;
+    M.archivoAbierto(m.archivo, m.llaveArchivo, m.ivArchivo, m.mime || 'audio/m4a')
+      .then((u) => { if (!vivo) return; if (u) setUri(u); else setRoto(true); })
+      .catch(() => { if (vivo) setRoto(true); });
+    return () => { vivo = false; };
+  }, [m.archivo, m.llaveArchivo, m.ivArchivo, m.mime]);
+  const player = useAudioPlayer(uri ? { uri } : null);
+  const color = mio ? P2C.textoMia : P2C.acentoLt;
+  if (roto) return (
+    <View style={st.vozFila}><Icon name="lock-closed" size={16} color={P2C.texto3} /><Text style={st.vozTxt}>{t.adjNoAbre}</Text></View>
+  );
+  return (
+    <Pressable style={st.vozFila} disabled={!uri} onPress={() => { hap(); if (player.playing) player.pause(); else { if (player.duration && player.currentTime >= player.duration - 0.2) player.seekTo(0); player.play(); } }}>
+      <View style={[st.vozBtn, { borderColor: color }]}>
+        {uri ? <Icon name={player.playing ? 'pause' : 'play'} size={16} color={color} /> : <ActivityIndicator size="small" color={color} />}
+      </View>
+      <Text style={[st.vozTxt, { color }]}>{t.ultVoz}{player.duration ? ' · ' + Math.round(player.duration) + 's' : ''}</Text>
+    </Pressable>
+  );
+}
+
+function TarjetaPago({ m, mio, autor, t, toast }) {
+  const abrir = () => {
+    hap();
+    Linking.openURL(EXPLORADOR + m.hash).catch(() => toast(t.noAbre, 'error'));
+  };
+  return (
+    <View style={st.pago}>
+      {/* el filo de oro: lo primero que distingue el comprobante del chat */}
+      <LinearGradient colors={G.gold} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={st.pagoFilo} />
+      <View style={st.pagoDentro}>
+        {!!autor && <Text style={st.autor}>{autor}</Text>}
+        <Text style={st.pagoVerbo}>
+          {mio ? t.pagoEnviaste : (autor ? t.pagoEnvio : t.pagoRecibiste)}
+        </Text>
+        <View style={st.pagoFila}>
+          <Text style={st.pagoMonto}>{montoBonito(m.monto)}</Text>
+          <Text style={st.pagoMoneda}>{m.moneda || 'ORIGEN'}</Text>
+        </View>
+        {!!m.texto && <Text style={st.pagoNota}>{m.texto}</Text>}
+        <View style={st.pagoPie}>
+          <Icon name="checkmark-circle" size={13} color={P2C.bien} />
+          <Text style={st.pagoOk}>{t.confirmado}</Text>
+          <Text style={st.pagoHora}>· {hora(m.cuando)}</Text>
+        </View>
+        {!!m.hash && (
+          <Pressable style={st.pagoLink} onPress={abrir}>
+            <Icon name="open-outline" size={14} color={C.gold} />
+            <Text style={st.pagoLinkTxt}>{t.explorador}</Text>
+            <Text style={st.pagoHash} numberOfLines={1}>{m.hash.slice(0, 10)}…</Text>
+          </Pressable>
+        )}
+      </View>
+    </View>
+  );
+}
+
+export default function AuroChat({ nav, params }) {
+  const { lang } = useLang();
+  const t = TXT[lang] || TXT.es;
+  const { account } = useAccount();
+  /* Por qué el relevo dijo que no: «sesion-no-vale» (se arregla entrando de
+     nuevo) o «sin-sesion» / otro dueño (se arregla con el teléfono anterior). */
+  const [motivoOtra, setMotivoOtra] = React.useState(null);
+
+  /* La llamada. `llam` es lo que dice el motor; `quienLlama` es a quién se le
+     pone cara y nombre en la pantalla —eso el motor no lo sabe ni tiene por
+     qué: él solo maneja audio, video y señales. */
+  const [puerta, setPuerta] = useState('mirando');       // mirando | falta | abierta
+  const [convos, setConvos] = useState(null);
+  const [busca, setBusca] = useState('');
+  const [gente, setGente] = useState(null);
+  const [con, setCon] = useState(null);                  // la conversación abierta
+  const [hilo, setHilo] = useState([]);
+  const [pendientes, setPendientes] = useState([]);      // burbujas mías aún sin entrar (o fallidas)
+  /* ══ EL CÍRCULO ══════════════════════════════════════════════════════════
+   * `circulo` son las solicitudes: las que me llegaron y las que mandé.
+   * `faltaAceptar` es el correo de alguien que me devolvió un 403 al
+   * escribirle — no me aceptó todavía—, para poder ofrecerle la solicitud en
+   * el sitio donde se descubre el problema y no en un menú aparte. */
+  const [circulo, setCirculo] = useState(null);
+  const [faltaAceptar, setFaltaAceptar] = useState(null);
+  const [pidiendo, setPidiendo] = useState(false);
+  const [sinRed, setSinRed] = useState(false);           // el relevo no contesta: se DICE, no se finge vacío
+  const [llaveOtra, setLlaveOtra] = useState(false);     // el relevo SÍ contesta: la llave quedó en la instalación anterior
+  const reparando = useRef(false);                       // cerrojo: la reparación de la llave se intenta UNA vez
+  const [buscaMal, setBuscaMal] = useState(false);       // la búsqueda falló por red, no por "nadie"
+  const [nuevos, setNuevos] = useState(false);           // chip «mensajes nuevos ↓» si el scroll no está al fondo
+  const [nombres, setNombres] = useState({});            // correo → nombre, para saber quién habla
+  const [texto, setTexto] = useState('');
+  const [qr, setQr] = useState(null);                    // 'mio' | 'scan' | null
+  const [hoja, setHoja] = useState(false);               // la hojita del 📎
+  const [subiendo, setSubiendo] = useState(false);
+  const [foto, setFoto] = useState(null);                // url de imagen a pantalla completa
+  const [ofrecido, setOfrecido] = useState(null);        // a quién ofrecemos guardar tras escanear
+  const [libreta, setLibreta] = useState({});            // correo → ficha de MI libreta (og.contactos)
+  const [menuContacto, setMenuContacto] = useState(null); // {correo, nombre, addr}: la hojita de mantener pulsado
+  const [editar, setEditar] = useState(null);            // a quién se le edita el nombre
+  const [nombreEd, setNombreEd] = useState('');          // el nombre en la hoja de editar
+  /* ══ LO QUE LA WEB YA TENÍA Y AQUÍ FALTABA ═══════════════════════════════ */
+  const [viejos, setViejos] = useState([]);              // páginas anteriores del hilo, cargadas al subir
+  const [hayMas, setHayMas] = useState(false);           // ¿queda historial detrás de lo cargado?
+  const [cargandoViejos, setCargandoViejos] = useState(false);
+  const [leidoHasta, setLeidoHasta] = useState(0);       // hasta cuándo leyó la otra persona (doble check)
+  const [enLinea, setEnLinea] = useState(false);         // la presencia, dicha por el relevo
+  const [escribiendo, setEscribiendo] = useState({});    // correo → cuándo llegó su último «escribe»
+  const [menuMsg, setMenuMsg] = useState(null);          // la burbuja mantenida pulsada
+  const [citando, setCitando] = useState(null);          // el mensaje al que se responde
+  const [reenviando, setReenviando] = useState(null);    // el mensaje que se reenvía (eligiendo a quién)
+  const [borrando, setBorrando] = useState(null);        // el mensaje a borrar (eligiendo cómo)
+  const [bloqueando, setBloqueando] = useState(null);    // {correo, nombre}: la pregunta antes de bloquear
+  const [denuncia, setDenuncia] = useState(null);        // {a, nombre, motivo, nota}
+  const [codigo, setCodigo] = useState(null);            // {cargando} | {texto} : el código de seguridad
+  const [estados, setEstados] = useState(null);          // los estados de 24 h del círculo
+  const [viendo, setViendo] = useState(null);            // {quien, i}: el estado abierto
+  const [subeEstado, setSubeEstado] = useState(null);    // {texto, fondo, foto:{base64,mime,uri}}
+  const [permiso, pedirPermiso] = useCameraPermissions();
+  const toast = useToast();
+  const lista = useRef(null);
+  const leido = useRef(false);
+  const fotoConvos = useRef(null);                       // id → cuando del último; para oír solo lo NUEVO
+  const alFondo = useRef(true);                          // ¿el scroll del hilo está pegado al final?
+  const prevLargo = useRef(0);                           // cuántas filas tenía el hilo en el último repintado
+  const enviando = useRef(false);                        // un envío en vuelo: no se dispara dos veces
+  const destino = idDe(con);
+  const enGrupo = esGrupoDe(con);
+  const tecla = useTeclado();
+
+  // Al abrirse el teclado la lista pierde alto por abajo, y el último
+  // mensaje —que es el que se estaba leyendo— se queda fuera de cuadro. Se
+  // vuelve al final en cuanto el teclado termina de subir. El retardo no es
+  // capricho: sin él el desplazamiento se calcula con el alto viejo y la
+  // lista se queda a media pantalla.
+  useEffect(() => {
+    if (!tecla.alto) return undefined;
+    const id = setTimeout(() => {
+      // solo si ya se estaba al fondo: abrir el teclado mientras se lee el
+      // historial no debe robar el scroll igual que no lo roba el sondeo
+      if (!alFondo.current) return;
+      try { lista.current?.scrollToEnd({ animated: true }); } catch (e) {}
+    }, 60);
+    return () => clearTimeout(id);
+  }, [tecla.alto]);
+
+  // La lista de nombres solo se reemplaza si de verdad cambió: si no, cada
+  // vuelta del sondeo repintaría el hilo entero sin haber novedad.
+  const aprenderNombres = useCallback((pares) => {
+    setNombres((prev) => {
+      let nuevo = null;
+      for (const [correo, nombre] of pares) {
+        const c = String(correo || '').toLowerCase();
+        if (!c || !nombre || prev[c] === nombre) continue;
+        nuevo = nuevo || { ...prev };
+        nuevo[c] = nombre;
+      }
+      return nuevo || prev;
+    });
+  }, []);
+
+  // ── mi libreta: el nombre que YO le puse manda sobre el del relevo ──
+  const cargarLibreta = useCallback(async () => {
+    setLibreta(comoMapa(await leerLibreta().catch(() => [])));
+  }, []);
+  useEffect(() => { cargarLibreta(); }, [cargarLibreta]);
+
+  // El nombre con el que se pinta a alguien: primero mi libreta, luego lo
+  // que diga el relevo, y de último lo que va antes de la arroba.
+  const nombreDe = useCallback((correo, delRelevo) => {
+    const c = String(correo || '').toLowerCase();
+    return (libreta[c] && libreta[c].nombre) || delRelevo || c.split('@')[0] || '?';
+  }, [libreta]);
+
+  // ── el candado de Genesis: primero lo guardado (rápido), luego la red ──
+  useEffect(() => {
+    let vivo = true;
+    (async () => {
+      const local = await genesis.local().catch(() => null);
+      if (local?.verificada) { if (vivo) setPuerta('abierta'); }
+      const e = await genesis.estado().catch(() => null);
+      if (!vivo) return;
+      if (e?.verificada) setPuerta('abierta');
+      else if (!local?.verificada) setPuerta('falta');
+    })();
+    return () => { vivo = false; };
+  }, []);
+
+  useEffect(() => {
+    if (puerta === 'abierta' && account?.email) M.alta(account).catch(() => {});
+  }, [puerta, account?.email]);
+
+  const traerConvos = useCallback(async () => {
+    try {
+      const d = await M.conversaciones();
+      const cs = d.conversaciones || [];
+      setConvos(cs);
+      aprenderNombres(cs.filter((c) => !esGrupoDe(c)).map((c) => [c.correo, c.nombre]));
+      // El tono suave del chat: solo cuando un mensaje AJENO llega estando
+      // esta lista a la vista (el sondeo se detiene con un hilo abierto, así
+      // que aquí nunca se suena encima de la conversación que se está
+      // leyendo). La primera pasada solo toma la foto: el historial no suena.
+      const mio = String(account?.email || '').toLowerCase();
+      const previa = fotoConvos.current;
+      const foto = {};
+      let hayNuevo = false;
+      for (const c of cs) {
+        const u = c.ultimo;
+        const cuando = u ? Number(u.cuando) || 0 : 0;
+        foto[idDe(c)] = cuando;
+        if (previa && u && c.sinLeer > 0 && String(u.de || '').toLowerCase() !== mio
+          && cuando > (previa[idDe(c)] || 0)) hayNuevo = true;
+      }
+      fotoConvos.current = foto;
+      if (hayNuevo) reproducir('recibido', { suave: true });
+      // Salió bien: se apagan los DOS avisos, o el de la llave se quedaría
+      // pegado en pantalla después de recuperarse.
+      setSinRed(false); setLlaveOtra(false);
+    } catch (e) {
+      // Sin red NO se finge una lista vacía: `convos` se queda como estaba
+      // (null pinta el estado de «sin conexión», nunca el «aún no tienes
+      // conversaciones») y el banner avisa mientras el sondeo reintenta.
+      //
+      // Pero hay un fallo que NO es la red y que estaba disfrazado de red: al
+      // reinstalar la app se borra el almacén seguro, y con él la llave del
+      // chat. El correo sigue reclamado por la instalación anterior, así que
+      // el relevo contesta 401 (llave que no coincide) o 409 (ese correo ya
+      // tiene llave). Decirle «revisa tu conexión» a alguien con wifi perfecto
+      // lo manda a pelear con su router durante horas. Se distingue.
+      if (e && (e.code === 401 || e.code === 409)) {
+        /* Los DOS se intentan reparar solos, y el 409 también desde que existe
+           el rescate por sesión: el alta manda el JWT de la wallet, el relevo
+           le pregunta al backend de quién es, y al dueño demostrado le
+           devuelve su llave EXISTENTE. Antes un 409 era un callejón sin
+           salida —«este chat quedó en tu instalación anterior», con las
+           conversaciones intactas del otro lado del cristal— y lo único que
+           hacía falta era probar quién eres, que la sesión ya lo hace.
+
+           Se intenta UNA vez, con `reparando` de cerrojo: si el correo tiene
+           otro dueño de verdad, el relevo vuelve a decir 409 y ahí sí toca
+           decírselo a la persona en vez de girar en bucle. */
+        if (!reparando.current && account?.email) {
+          reparando.current = true;
+          try {
+            await M.rehacerAlta(account);
+            await traerConvos();          // con la llave nueva, otra vez
+            return;
+          } catch (e2) {
+            if (!(e2 && e2.code === 409)) {
+              /* EL CERROJO SE SUELTA CUANDO EL FALLO NO ES DEFINITIVO.
+                 Estaba puesto para no girar en bucle, y hacía falta. Pero no
+                 se soltaba NUNCA: un tropiezo cualquiera —la red, una
+                 excepción inesperada dentro del alta— dejaba el chat muerto
+                 hasta reiniciar la app, mostrando «este chat quedó en tu
+                 instalación anterior», que además no era verdad.
+                 El 409 sí es definitivo y ahí el cerrojo se queda echado: si
+                 el correo tiene otro dueño de verdad, insistir no arregla
+                 nada. Cualquier otra cosa merece otro intento. */
+              reparando.current = false;
+              setSinRed(true); return;
+            }
+            // Se guarda POR QUE, para decirle a la persona a dónde ir.
+            setMotivoOtra(e2.motivo || null);
+          }
+        }
+        setLlaveOtra(true);
+      } else setSinRed(true);
+    }
+  }, [aprenderNombres, account?.email]);
+  /* EL CÍRCULO VIAJA CON EL MISMO LATIDO, y eso no es un detalle de eficiencia.
+     En la web se carga UNA vez al entrar y no se vuelve a pedir nunca: si la
+     solicitud llega mientras tenés el chat abierto, el globito no aparece y no
+     te enterás hasta recargar la página entera. En producción hay solicitudes
+     de hace diez días sin contestar. Aquí se pide con cada vuelta. */
+  const traerCirculo = useCallback(async () => {
+    try { setCirculo(await M.circulo()); } catch { /* el banner de red ya avisa */ }
+  }, []);
+  useEffect(() => {
+    if (puerta !== 'abierta' || con) return;
+    traerConvos();
+    traerCirculo();
+    const r = setInterval(() => { traerConvos(); traerCirculo(); }, 5000);
+    return () => clearInterval(r);
+  }, [puerta, con, traerConvos, traerCirculo]);
+
+  /* Mandar la solicitud, y aceptarla o rechazarla. Después de cada una se
+     vuelve a pedir el círculo: sin eso la pantalla seguiría enseñando el
+     estado de antes y la persona tocaría dos veces. */
+  const mandarSolicitud = useCallback(async (para) => {
+    if (!para || pidiendo) return;
+    setPidiendo(true); hap();
+    try {
+      await M.pedirAmistad(para);
+      setFaltaAceptar(null);
+      await traerCirculo();
+      toast(t.pedidoIdo);
+    } catch { toast(t.noSePudo, 'error'); }
+    finally { setPidiendo(false); }
+  }, [pidiendo, traerCirculo, t]);
+
+  const responder = useCallback(async (de, aceptar) => {
+    hap();
+    try {
+      await M.responderAmistad(de, aceptar);
+      await traerCirculo();
+      await traerConvos();
+      toast(aceptar ? t.aceptado : t.rechazado);
+    } catch { toast(t.noSePudo, 'error'); }
+  }, [traerCirculo, traerConvos, t]);
+
+  // Abrir el hilo de una persona: se pinta con lo que ya se sabe y la ficha
+  // (nombre real, dirección, foto) llega después — esperarla dejaría la
+  // pantalla en blanco por una red lenta.
+  const abrirPersona = useCallback(async (correoCrudo, ofrecerGuardar) => {
+    const correo = String(correoCrudo || '').toLowerCase();
+    if (!correo) return;
+    const base = { correo, nombre: correo.split('@')[0], addr: '' };
+    setCon(base);
+    if (ofrecerGuardar) setOfrecido(base);
+    try {
+      const f = await M.ficha(correo);
+      // /ficha ya devuelve gid: con él la cabecera del hilo firma a la
+      // persona con su Genesis ID pequeño debajo del nombre.
+      const lleno = { correo, nombre: f.nombre || base.nombre, addr: f.addr || '', foto: f.foto || '', gid: f.gid || '' };
+      setCon((x) => (x && x.correo === correo ? { ...x, ...lleno } : x));
+      setOfrecido((x) => (x && x.correo === correo ? { ...x, ...lleno } : x));
+      aprenderNombres([[correo, lleno.nombre]]);
+    } catch {}
+  }, [aprenderNombres]);
+
+  // llegar con ?con=correo (del QR o del asistente) abre el hilo directo.
+  // Y si además viene ?txt= (el mensaje DICTADO a AU-RA: «…que diga llego en
+  // diez minutos»), el texto se deja ESCRITO en la caja, jamás enviado: José
+  // lo pidió con todas las letras — «solo toque enviar». El último control
+  // sobre lo que sale de su teléfono es su dedo, no el asistente.
+  useEffect(() => {
+    if (params?.con && puerta === 'abierta') {
+      abrirPersona(params.con);
+      if (params?.txt) setTexto(String(params.txt));
+    }
+  }, [params?.con, params?.txt, puerta, abrirPersona]);
+
+  // La ficha del grupo: de aquí salen los nombres con los que se firma cada
+  // burbuja ajena. Sin esto un grupo sería un montón de correos hablando.
+  useEffect(() => {
+    if (!enGrupo || !destino) return;
+    let vivo = true;
+    M.grupoInfo(destino).then((g) => {
+      if (!vivo || !g) return;
+      const gente = Array.isArray(g.miembros) ? g.miembros : [];
+      /* Se guarda la LISTA, no solo cuántos son. El número basta para la
+         seña bajo el nombre; para llamar al grupo hacen falta los correos, y
+         volver a pedirlos en el momento de llamar sería una espera justo
+         cuando la persona ya tocó el botón. */
+      setCon((x) => (idDe(x) === destino
+        ? { ...x, nombre: g.nombre || x.nombre, foto: g.foto || x.foto, admin: g.admin,
+            miembros: gente.length || x.miembros, gente }
+        : x));
+      aprenderNombres(gente.map((m) => [m.correo, m.nombre]));
+    }).catch(() => {});
+    return () => { vivo = false; };
+  }, [destino, enGrupo, aprenderNombres]);
+
+  // La ficha del cara a cara: un hilo abierto desde la LISTA llega sin gid
+  // (la fila de conversaciones no lo trae) y la cabecera lo quiere pequeño
+  // bajo el nombre. Se pide una sola vez por hilo; abrirPersona ya lo hace
+  // por su cuenta y entonces `con.gid` existe y esto no dispara.
+  useEffect(() => {
+    if (!destino || enGrupo || con?.gid !== undefined) return;
+    let vivo = true;
+    M.ficha(destino).then((f) => {
+      if (!vivo || !f) return;
+      setCon((x) => (x && idDe(x) === destino
+        ? { ...x, nombre: f.nombre || x.nombre, addr: f.addr || x.addr || '', foto: x.foto || f.foto || '', gid: f.gid || '' }
+        : x));
+    }).catch(() => {});
+    return () => { vivo = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [destino, enGrupo]);
+
+  useEffect(() => {
+    if (busca.trim().length < 2) { setGente(null); return; }
+    const r = setTimeout(async () => {
+      // Sin red la búsqueda NO dice «nadie con ese nombre» — eso sería
+      // afirmar algo que el relevo nunca contestó. `buscaMal` pinta la verdad.
+      try { const d = await M.buscar(busca.trim()); setGente(d.gente || []); setBuscaMal(false); }
+      catch { setGente([]); setBuscaMal(true); }
+    }, 350);
+    return () => clearTimeout(r);
+  }, [busca]);
+
+  const traerHilo = useCallback(async () => {
+    if (!destino) return;
+    try {
+      const d = await M.bandeja(destino);
+      setHilo(d.mensajes || []);
+      /* La primera página del relevo son los últimos 200: `hayMas` sólo
+         manda si todavía no se cargó nada hacia atrás; después lo dice la
+         última página vieja que llegó. */
+      setHayMas((antes) => (viejosRef.current.length ? antes : d.hayMas === true));
+      setLeidoHasta(d.leidoHasta || 0);
+      setEnLinea(d.enLinea === true);
+      setSinRed(false);
+      if (!leido.current) { leido.current = true; M.leido(destino).catch(() => {}); }
+    } catch {
+      // El catch vacío dejaba la pantalla en blanco sin decir por qué. Ahora
+      // `sinRed` pinta el aviso y el sondeo de 3s sigue reintentando solo.
+      setSinRed(true);
+    }
+  }, [destino]);
+  const viejosRef = useRef([]);
+  useEffect(() => { viejosRef.current = viejos; }, [viejos]);
+  useEffect(() => {
+    if (!destino) return;
+    leido.current = false;
+    // hilo nuevo, scroll nuevo: se arranca pegado al fondo y sin chip
+    alFondo.current = true;
+    prevLargo.current = 0;
+    setNuevos(false);
+    setViejos([]); viejosRef.current = [];
+    setHayMas(false); setLeidoHasta(0); setEnLinea(false);
+    setCitando(null); setMenuMsg(null); setEscribiendo({});
+    traerHilo();
+    const r = setInterval(traerHilo, 3000);
+    return () => clearInterval(r);
+  }, [destino, traerHilo]);
+
+  /* ══ EL HISTORIAL, HACIA ATRÁS ═══════════════════════════════════════════
+     El relevo manda los últimos 200 y ahí había un muro. Al llegar arriba se
+     pide la página anterior con `antes` (el `cuando` del más viejo que ya se
+     tiene) y se pega delante. Las páginas viejas viven en `viejos`, aparte
+     de `hilo`: el sondeo de 3 s reemplaza `hilo` entero y no puede llevarse
+     lo que se cargó hacia atrás. */
+  const cargarViejos = useCallback(async () => {
+    if (!destino || cargandoViejos || !hayMas) return;
+    const primero = (viejosRef.current[0] || hilo[0]);
+    if (!primero?.cuando) return;
+    setCargandoViejos(true);
+    try {
+      const d = await M.bandeja(destino, primero.cuando);
+      const ya = new Set([...viejosRef.current, ...hilo].map((m) => m.id));
+      const nuevos = (d.mensajes || []).filter((m) => !ya.has(m.id));
+      setViejos((v) => [...nuevos, ...v]);
+      setHayMas(d.hayMas === true);
+    } catch { /* el banner de red ya avisa; se vuelve a intentar al subir */ }
+    finally { setCargandoViejos(false); }
+  }, [destino, cargandoViejos, hayMas, hilo]);
+
+  /* ══ EL BUZÓN DE SEÑALES, MIENTRAS EL HILO ESTÁ ABIERTO ══════════════════
+     Por aquí llega el «está escribiendo…» —y es lo que el relevo toma como
+     estar EN LÍNEA de verdad—. Se apaga al salir del hilo: en un teléfono un
+     bucle abierto es batería. Quien escribe se olvida solo a los tres
+     segundos: nadie manda un «ya paré», se asume por silencio. */
+  /* EL BUZÓN YA NO CUELGA DEL HILO ABIERTO.
+     Antes se encendía con `destino` y se apagaba al salir, porque lo único
+     que traía era el «está escribiendo…». Ahora también trae las llamadas, y
+     una llamada que solo entra si ya estabas mirando esa conversación no es
+     una llamada: es una casualidad. Se enciende con la pantalla del chat.
+     El hilo abierto se lee de una referencia y no de la dependencia del
+     efecto: si fuera dependencia, cambiar de conversación cortaría el bucle y
+     una llamada entrante se perdería justo en ese hueco. */
+  const destinoRef = useRef(destino);
+  useEffect(() => { destinoRef.current = destino; }, [destino]);
+
+  /** Llamar a quien está abierto en el hilo. */
+  const llamarA = useCallback(async (conVideo) => {
+    if (!destinoRef.current) return;
+    const a = destinoRef.current;
+    try {
+      await LLAMADA.llamar(a, conVideo);
+    } catch {
+      /* El motor ya colgó y ya dijo el motivo por `alCambiar`; acá no se
+         repite el aviso para no dar dos carteles por un solo fallo. */
+    }
+  }, []);
+
+  useEffect(() => {
+    /* El buzón lo abre `Timbre`, que vive en toda la app: una llamada tiene
+       que entrar aunque estés mirando la billetera. Acá solo se escucha lo que
+       es del chat. */
+    const suelta = alLlegarSenal((s) => {
+      if (s?.tipo !== 'escribe') return;
+      const aqui = destinoRef.current;
+      if (!aqui) return;
+      const de = String(s.de || '').toLowerCase();
+      const donde = String(s.datos?.donde || '').toLowerCase();
+      if (donde !== aqui && de !== aqui) return;
+      setEscribiendo((e) => ({ ...e, [de]: Date.now() }));
+    });
+    const reloj = setInterval(() => {
+      setEscribiendo((e) => {
+        const ahora = Date.now();
+        const vivos = Object.fromEntries(Object.entries(e).filter(([, v]) => ahora - v < 3000));
+        return Object.keys(vivos).length === Object.keys(e).length ? e : vivos;
+      });
+    }, 700);
+    return () => { clearInterval(reloj); suelta(); };
+  }, []);
+
+  /* ══ LOS GESTOS SOBRE UNA BURBUJA ════════════════════════════════════════ */
+  const reaccionar = async (m, emoji) => {
+    setMenuMsg(null);
+    if (!m?.id) return;
+    hap();
+    /* Tocar la misma otra vez la quita — y como la reacción viaja cerrada,
+       eso se decide ACÁ, donde está abierta, no en el relevo. */
+    const mia = m.reacciones?.[String(account?.email || '').toLowerCase()] || null;
+    try {
+      await M.reaccionar(m.id, mia === emoji ? null : emoji, destino);
+      await traerHilo();
+    } catch { toast(t.errReaccion, 'error'); }
+  };
+
+  const copiar = async (m) => {
+    setMenuMsg(null);
+    if (!m?.texto) return;
+    try { await Clipboard.setStringAsync(m.texto); hap(); toast(t.copiado); } catch { /* sin portapapeles */ }
+  };
+
+  /* Reenviar manda un mensaje NUEVO con el mismo texto, sin decir de quién
+     venía: reenviar algo con el nombre de quien lo escribió es publicar a una
+     persona en una conversación en la que no entró. Igual que la web. */
+  const reenviarA = async (a) => {
+    const m = reenviando;
+    setReenviando(null);
+    if (!m?.texto || !a) return;
+    try {
+      const r = await M.enviar(a, m.texto);
+      if (r && r.e2e === false) toast(t.sinCifrar, 'info');
+      hap(); toast(t.reenviado);
+      traerConvos();
+    } catch { toast(t.noSePudo, 'error'); }
+  };
+
+  const borrarMensaje = async (paraTodos) => {
+    const m = borrando;
+    setBorrando(null);
+    if (!m?.id) return;
+    try {
+      await M.borrarMsg(m.id, paraTodos);
+      hap();
+      await traerHilo();
+      setViejos((v) => (paraTodos
+        ? v.map((x) => (x.id === m.id ? { ...x, borrado: true, texto: '', archivo: '', tipo: '' } : x))
+        : v.filter((x) => x.id !== m.id)));
+      traerConvos();
+    } catch { toast(t.noSePudo, 'error'); }
+  };
+
+  /* ══ DESDE LA FICHA DEL CONTACTO: BLOQUEAR, DENUNCIAR, EL CÓDIGO ═════════ */
+  const bloquear = async () => {
+    const b = bloqueando;
+    setBloqueando(null);
+    if (!b?.correo) return;
+    try {
+      await M.bloquear(b.correo, true);
+      hap(); toast(t.bloqueadoOk);
+      if (idDe(con) === b.correo) { setCon(null); setHilo([]); setPendientes([]); }
+      traerConvos(); traerCirculo(); traerEstados();
+    } catch { toast(t.noSePudo, 'error'); }
+  };
+
+  const denunciarHacer = async () => {
+    const d = denuncia;
+    if (!d?.motivo) { toast(t.denElegir, 'error'); return; }
+    setDenuncia(null);
+    try {
+      /* El TEXTO del mensaje no viaja: va cifrado y el relevo no puede
+         abrirlo. Va su id, que es lo que permite pedírselo a las partes. */
+      await M.denunciar(d.a, d.motivo, d.nota || '', d.mensaje || '');
+      hap(); toast(t.denOk);
+      if (idDe(con) === d.a) { setCon(null); setHilo([]); setPendientes([]); }
+      traerConvos(); traerCirculo(); traerEstados();
+    } catch { toast(t.noSePudo, 'error'); }
+  };
+
+  const verCodigo = async (correo) => {
+    setMenuContacto(null);
+    setCodigo({ cargando: true, correo });
+    try { setCodigo({ correo, texto: await M.codigoCon(correo) }); }
+    catch { setCodigo({ correo, texto: null }); }
+  };
+
+  /* ══ LOS ESTADOS DE 24 HORAS ═════════════════════════════════════════════
+     Se piden al entrar a la lista y cada medio minuto: no son un chat, no
+     hace falta el latido de cinco segundos. */
+  const traerEstados = useCallback(async () => {
+    try { setEstados(await M.estados()); } catch { /* sin red la tira no se pinta */ }
+  }, []);
+  useEffect(() => {
+    if (puerta !== 'abierta' || con) return undefined;
+    traerEstados();
+    const r = setInterval(traerEstados, 30000);
+    return () => clearInterval(r);
+  }, [puerta, con, traerEstados]);
+
+  const verEstado = (correo) => {
+    const g = (estados || []).find((x) => x.correo === correo);
+    if (!g?.estados?.length) return;
+    /* Se abre en el primero SIN VER, no en el primero de todos: quien ya vio
+       tres de cinco quiere el cuarto, no volver a empezar. */
+    const i = Math.max(0, g.estados.findIndex((e) => !e.visto));
+    hap();
+    setViendo({ quien: correo, i: g.estados[i] ? i : 0 });
+    marcarVisto(g, g.estados[i] ? i : 0);
+  };
+  const marcarVisto = (g, i) => {
+    const e = g?.estados?.[i];
+    if (!e || e.visto) return;
+    e.visto = true;
+    g.sinVer = g.estados.filter((x) => !x.visto).length;
+    M.estadoVisto(e.id);
+  };
+  /** Tocar pasa al siguiente; en el tercio izquierdo, al anterior. */
+  const estadoSiguiente = (ev) => {
+    const v = viendo;
+    if (!v) return;
+    const g = (estados || []).find((x) => x.correo === v.quien);
+    if (!g) { setViendo(null); return; }
+    const x = ev?.nativeEvent?.locationX;
+    const atras = typeof x === 'number' && x < 120;
+    const sig = v.i + (atras ? -1 : 1);
+    if (sig < 0 || sig >= g.estados.length) { setViendo(null); return; }
+    setViendo({ quien: v.quien, i: sig });
+    marcarVisto(g, sig);
+  };
+  const borrarEstado = async (id) => {
+    try { await M.borrarEstado(id); } catch { /* si no se pudo, sigue en la lista */ }
+    setViendo(null);
+    traerEstados();
+  };
+  const elegirFotoEstado = async () => {
+    const r = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], base64: true, quality: 0.8 }).catch(() => null);
+    const a = r?.assets?.[0];
+    if (!a) return;
+    const base64 = a.base64 || (await leerUri(a.uri).catch(() => null));
+    if (!base64) return;
+    setSubeEstado((s) => ({ ...(s || { texto: '', fondo: 0 }), foto: { base64, mime: a.mimeType || 'image/jpeg', uri: a.uri } }));
+  };
+  const publicarEstado = async () => {
+    const s = subeEstado;
+    if (!s) return;
+    const texto = (s.texto || '').trim();
+    if (!texto && !s.foto) { toast(t.estadoVacio, 'error'); return; }
+    setSubiendo(true);
+    try {
+      let archivo = '';
+      // La foto de un estado es pública por definición: sube en claro.
+      if (s.foto) archivo = (await M.subirPublico('estado.jpg', 'imagen', s.foto.mime, s.foto.base64)).id;
+      await M.subirEstado({ texto, archivo, fondo: s.fondo });
+      hap(); setSubeEstado(null);
+      traerEstados();
+    } catch { toast(t.noSubio, 'error'); }
+    finally { setSubiendo(false); }
+  };
+
+  // El botón ATRÁS de Android dentro de una conversación vuelve a la LISTA,
+  // no afuera de PULSE2CHAT: el hilo no es una ruta del router (vive en el
+  // estado `con`), así que sin esto el handler global de App.js hacía pop de
+  // 'chat' entero — en WhatsApp atrás = lista, y esa es la expectativa.
+  // Misma convención de la casa que ExplorarPay y NegocioPanel: el listener
+  // más reciente gana al global mientras haya hilo abierto.
+  useEffect(() => {
+    if (Platform.OS !== 'android' || !con) return undefined;
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+      setCon(null); setHilo([]); setPendientes([]); setOfrecido(null);
+      return true;
+    });
+    return () => sub.remove();
+  }, [con]);
+
+  // Enviar sin que el texto pueda perderse JAMÁS. Tres reglas:
+  //   · la burbuja optimista vive en `pendientes`, NO en `hilo`: el sondeo de
+  //     3s puede reemplazar el hilo entero sin llevársela;
+  //   · la caja no se vacía hasta que el envío ENTRA en el relevo;
+  //   · si falla, la burbuja queda en rojo con «Reintentar» al toque.
+  const mandar = async () => {
+    const cuerpo = texto.trim();
+    if (!cuerpo || !destino || enviando.current) return;
+    enviando.current = true;
+    const mio = {
+      idLocal: 'p' + Date.now() + Math.random().toString(36).slice(2, 6),
+      de: account.email, texto: cuerpo, cuando: Date.now(), pendiente: true,
+      ...(citando?.id ? { cita: citando.id } : {}),
+    };
+    setPendientes((p) => [...p, mio]);
+    const cita = citando?.id || null;
+    try {
+      const r = await M.enviar(destino, cuerpo, cita ? { cita } : undefined);
+      setCitando(null);
+      /* SE DICE CUANDO NO SE PUDO CIFRAR. `enviar` devuelve `e2e:false` si la
+         otra persona no tiene ninguna llave publicada, y hasta ahora ese dato
+         se tiraba: el mensaje salía en claro y la pantalla no lo mencionaba.
+         Mandar en claro no es el problema —es lo único que se puede hacer—;
+         el problema sería no decirlo, con una app que promete cifrado. */
+      if (r && r.e2e === false) toast(t.sinCifrar, 'info');
+      // solo AHORA se vacía la caja — y sin pisar lo que se haya tecleado
+      // encima mientras el envío viajaba
+      setTexto((x) => (x.trim() === cuerpo ? '' : x));
+      await traerHilo();
+      setPendientes((p) => p.filter((x) => x.idLocal !== mio.idLocal));
+    } catch (e) {
+      /* EL 403 NO ES UN FALLO DE RED, Y REINTENTAR NO LO ARREGLA NUNCA.
+         El relevo contesta 403 cuando esa persona todavía no te aceptó en su
+         círculo. Antes caía en este mismo `catch` mudo: quedaba una burbuja
+         roja con «Reintentar» que iba a fallar siempre, sin una palabra de
+         por qué, y sin forma de mandar la solicitud desde ningún sitio de la
+         app. Ahora se dice qué pasa y se ofrece el único gesto que lo
+         resuelve, aquí mismo. */
+      if (e && e.code === 403) {
+        setFaltaAceptar(destino);
+        setPendientes((p) => p.filter((x) => x.idLocal !== mio.idLocal));
+        setTexto((x) => (x.trim() === cuerpo ? cuerpo : x));
+        return;
+      }
+      // la burbuja roja conserva el texto y ofrece reintentar: la caja se
+      // libera para lo siguiente, el mensaje ya no puede desaparecer
+      setPendientes((p) => p.map((x) => (x.idLocal === mio.idLocal ? { ...x, pendiente: false, fallo: true } : x)));
+      setTexto((x) => (x.trim() === cuerpo ? '' : x));
+    } finally { enviando.current = false; }
+  };
+
+  const reintentar = async (m) => {
+    hap();
+    setPendientes((p) => p.map((x) => (x.idLocal === m.idLocal ? { ...x, pendiente: true, fallo: false } : x)));
+    try {
+      await M.enviar(destino, m.texto, m.cita ? { cita: m.cita } : undefined);
+      await traerHilo();
+      setPendientes((p) => p.filter((x) => x.idLocal !== m.idLocal));
+    } catch {
+      setPendientes((p) => p.map((x) => (x.idLocal === m.idLocal ? { ...x, pendiente: false, fallo: true } : x)));
+    }
+  };
+
+  // ── adjuntos ──────────────────────────────────────────────────────────
+  // Leer la uri como blob y pasarla a base64. Si pesa de más se avisa AQUÍ,
+  // antes de subir nada: gastar megas del plan para recibir un 413 es cruel.
+  const leerUri = async (uri) => {
+    const res = await fetch(uri);
+    const blob = await res.blob();
+    if (blob.size > TOPE_ADJUNTO) { toast(t.grande, 'error'); return null; }
+    return blobABase64(blob);
+  };
+
+  // Subir el binario al relevo y mandar el mensaje que lo referencia. El
+  // hilo se refresca del servidor (sin burbuja optimista): el adjunto igual
+  // necesita la URL real del relevo para pintarse.
+  const subirYMandar = async (tipo, nombre, mime, datos) => {
+    if (!datos) return;
+    if (datos.length * 0.75 > TOPE_ADJUNTO) { toast(t.grande, 'error'); return; }
+    setSubiendo(true);
+    try {
+      /* `subir` devuelve la llave del archivo y `enviarAdjunto` la mete DENTRO
+         del texto cifrado del mensaje. Antes esto llamaba a `enviar` con el id
+         suelto y el archivo viajaba en claro. */
+      const adj = await M.subir(nombre, tipo, mime, datos);
+      const r = await M.enviarAdjunto(destino, { ...adj, tipo, nombre }, '');
+      if (r && r.e2e === false) toast(t.sinCifrar, 'info');
+      hap(); traerHilo();
+    } catch { toast(t.noSubio, 'error'); }
+    finally { setSubiendo(false); }
+  };
+
+  const elegirImagen = async () => {
+    setHoja(false);
+    const r = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images'], base64: true, quality: 0.8,
+    }).catch(() => null);
+    const a = r?.assets?.[0];
+    if (!a) return;
+    // el picker ya trae el base64 de la imagen; la uri es solo el respaldo
+    const datos = a.base64 || (await leerUri(a.uri).catch(() => null));
+    await subirYMandar('imagen', a.fileName || 'imagen.jpg', a.mimeType || 'image/jpeg', datos);
+  };
+
+  const elegirVideo = async () => {
+    setHoja(false);
+    const r = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['videos'] }).catch(() => null);
+    const a = r?.assets?.[0];
+    if (!a) return;
+    // primer filtro con el peso que reporta el picker; el definitivo lo da
+    // el blob, que es lo que de verdad viajaría
+    if (a.fileSize && a.fileSize > TOPE_ADJUNTO) { toast(t.grande, 'error'); return; }
+    const datos = await leerUri(a.uri).catch(() => { toast(t.noSubio, 'error'); return null; });
+    if (datos) await subirYMandar('video', a.fileName || 'video.mp4', a.mimeType || 'video/mp4', datos);
+  };
+
+  const elegirArchivo = async () => {
+    setHoja(false);
+    const r = await DocumentPicker.getDocumentAsync({ copyToCacheDirectory: true }).catch(() => null);
+    const a = r?.assets?.[0];
+    if (!a || r?.canceled) return;
+    if (a.size && a.size > TOPE_ADJUNTO) { toast(t.grande, 'error'); return; }
+    const datos = await leerUri(a.uri).catch(() => { toast(t.noSubio, 'error'); return null; });
+    if (datos) await subirYMandar('archivo', a.name || 'archivo', a.mimeType || 'application/octet-stream', datos);
+  };
+
+  const abrirAdjunto = (id) => {
+    hap();
+    Linking.openURL(M.urlArchivo(id)).catch(() => toast(t.noAbre, 'error'));
+  };
+  /* Video y archivo: se descifran a la caché y se abren con el visor del
+     sistema. Antes iban a `abrirAdjunto` con la URL cruda: bytes cifrados. */
+  const abrirAdjuntoCifrado = async (m) => {
+    hap();
+    if (!m.llaveArchivo) return abrirAdjunto(m.archivo);
+    try {
+      const uri = await M.archivoACache(m.archivo, m.llaveArchivo, m.ivArchivo, m.mime, m.nombre);
+      await Linking.openURL(uri);
+    } catch { toast(t.noAbreAdj, 'error'); }
+  };
+
+  // Quién habla, en corto. Primero MI libreta (el nombre que yo le puse),
+  // luego los nombres aprendidos de las charlas y de la ficha del grupo;
+  // mientras no se sepa el de alguien se usa lo que va antes de la arroba —
+  // feo, pero nunca deja una frase sin dueño.
+  const nombreCorto = (correo) => {
+    const c = String(correo || '').toLowerCase();
+    const n = (libreta[c] && libreta[c].nombre) || nombres[c];
+    return (n || c.split('@')[0]).split(' ')[0];
+  };
+
+  // Cómo se resume la última línea de una conversación. En un grupo lleva
+  // SIEMPRE el prefijo de quién habló: sin eso, una lista de grupos es una
+  // lista de frases sueltas sin dueño.
+  // El cuerpo de un mensaje dicho en una línea: sirve para la lista y para
+  // la vista previa de una cita, que no lleva el «✓ » ni el «quién:».
+  const cuerpoDe = (u) => {
+    if (u.borrado) return '🚫 ' + t.ultBorrado;
+    if (u.tipo === 'pago') return '💰 ' + montoBonito(u.monto) + ' ' + (u.moneda || 'ORIGEN');
+    if (u.tipo === 'voz') return '🎤 ' + t.ultVoz;
+    if (u.tipo === 'imagen') return '📷 ' + t.ultImagen;
+    if (u.tipo === 'video') return '🎬 ' + t.ultVideo;
+    if (u.tipo === 'archivo') return '📎 ' + (u.nombre || t.ultArchivo);
+    return u.texto;
+  };
+  const resumen = (c) => {
+    const u = c.ultimo;
+    if (!u) return esGrupoDe(c) ? (c.miembros || 0) + ' ' + t.miembros : c.correo;
+    const mio = u.de === account?.email;
+    const cuerpo = cuerpoDe(u);
+    if (esGrupoDe(c)) return (mio ? t.tu : nombreCorto(u.de)) + ': ' + cuerpo;
+    return (mio ? '✓ ' : '') + cuerpo;
+  };
+
+  /* Lee un código de PULSE2CHAT venga de donde venga.
+     Hay dos formatos vivos y son el mismo ecosistema: og://chat/… lo imprime
+     el APK, y https://…/#chat?… lo imprime la web. La web ya entendía los dos;
+     el teléfono solo el suyo, así que quien enseñaba su código desde la web y
+     lo escaneaban con la app no pasaba NADA — sin error, sin nada, que es la
+     peor forma de fallar. Ahora los dos leen los dos. */
+  const leerCodigo = (crudo) => {
+    const s = String(crudo || '').trim();
+    const m = s.match(/(?:og:\/\/chat\/(?:abrir|grupo)|#chat)\?([^\s]+)/);
+    if (!m) return null;
+    let q;
+    try { q = new URLSearchParams(m[1]); } catch { return null; }
+    const inv = String(q.get('inv') || '').trim();
+    // la invitación es un permiso de 24 hex: si no tiene esa forma, no lo es
+    if (/^[0-9a-f]{24}$/.test(inv)) return { inv };
+    const con = String(q.get('con') || '').trim().toLowerCase();
+    return con.includes('@') ? { con } : null;
+  };
+
+  const alEscanear = ({ data }) => {
+    const leido = leerCodigo(data);
+    if (!leido) return;
+    hap(); setQr(null); setBusca(''); setGente(null);
+    if (leido.inv) { nav.go('auro-grupo', { inv: leido.inv }); return; }
+    // se abre el hilo Y se ofrece guardarlo: escanear a alguien y que no
+    // quede nada obliga a volver a buscar el papel del QR la próxima vez
+    abrirPersona(leido.con, true);
+  };
+
+  const guardarOfrecido = async () => {
+    if (!ofrecido) return;
+    try {
+      await guardarContacto(ofrecido.correo, ofrecido.nombre, ofrecido.addr, account?.email);
+      hap(); setOfrecido(null); toast(t.guardado);
+      cargarLibreta();
+    } catch { toast(t.noGuardo, 'error'); }
+  };
+
+  // AGREGAR desde el buscador: UN toque y la persona queda en la libreta del
+  // chat (og.contactos) Y —si su ficha trae dirección de cadena— en la de la
+  // wallet, porque guardarContacto ya hace los dos asientos de un solo
+  // guardado. Un contacto que solo existe en una de las dos libretas acaba
+  // contando historias distintas en Enviar y en el chat.
+  /* «AGREGAR» AHORA AGREGA DE VERDAD.
+   *
+   * Antes esto sólo escribía en la libreta local del teléfono y decía
+   * «Guardado en tus contactos», y ahí terminaba: al relevo no le llegaba
+   * nada. La persona creía que había agregado a alguien, abría el hilo, y el
+   * relevo le contestaba 403 porque nunca hubo solicitud. Un botón que dice
+   * que hizo algo y no lo hizo es peor que no tener el botón.
+   *
+   * El relevo ya calcula el `lazo` de cada persona que devuelve el buscador
+   * —'amigos', 'enviada', 'recibida', 'bloqueado', 'no'— y la app lo tiraba a
+   * la basura. Con él se sabe si hay que pedir o si ya está pedido, y no se
+   * manda dos veces.
+   *
+   * La libreta se sigue guardando: son dos cosas distintas y las dos hacen
+   * falta. La libreta es tuya y le pone el nombre con el que vos lo conocés;
+   * el círculo es de los dos y es el que da permiso para escribir. */
+  const agregarBuscado = async (p) => {
+    try {
+      await guardarContacto(p.correo, p.nombre, p.addr, account?.email);
+      cargarLibreta();
+    } catch { toast(t.noGuardo, 'error'); return; }
+    if (p.lazo === 'amigos' || p.lazo === 'enviada') { hap(); toast(t.guardado); return; }
+    await mandarSolicitud(p.correo);
+  };
+
+  // ── editar nombre / eliminar de mi libreta ────────────────────────────
+  // La hojita sale de mantener pulsado un contacto en la lista o de tocar la
+  // cabecera de un hilo 1 a 1 (en un grupo la cabecera abre su ficha).
+  const abrirMenuContacto = (correo, delRelevo, addr) => {
+    const c = String(correo || '').toLowerCase();
+    if (!c || M.esGrupo(c)) return;
+    hap();
+    setMenuContacto({ correo: c, nombre: nombreDe(c, delRelevo), addr: addr || (libreta[c] && libreta[c].addr) || '' });
+  };
+
+  const renombrar = async () => {
+    const n = nombreEd.trim();
+    if (!n || !editar) return;
+    try {
+      await renombrarContacto(editar.correo, n, editar.addr, account?.email);
+      hap(); setEditar(null); toast(t.renombrado);
+      cargarLibreta(); // el hilo y la lista se repintan solos con el nombre nuevo
+    } catch { toast(t.noGuardo, 'error'); }
+  };
+
+  /* Vaciar o quitar la conversación. Se pide confirmación SIEMPRE y con las
+     palabras exactas de lo que pasa: nadie debería descubrir después que «lo
+     borré» solo valía para su lado. Al terminar se refresca la lista y, si el
+     hilo abierto era ése, se cierra — dejarlo abierto y vacío parece un fallo
+     de carga, no una acción que salió bien. */
+  const [olvidando, setOlvidando] = useState(null);   // {correo, nombre, quitar}
+
+  const confirmarOlvidar = async () => {
+    const o = olvidando;
+    if (!o) return;
+    setOlvidando(null);
+    try {
+      await M.olvidar(o.correo, o.quitar);
+      hap();
+      toast(o.quitar ? t.borrado : t.vaciado);
+      if (idDe(con) === o.correo) {
+        // el hilo abierto era ése: vaciado se queda pero sin nada dentro, y
+        // quitado se cierra — dejarlo abierto y vacío parece un fallo de carga
+        setHilo([]); setPendientes([]);
+        if (o.quitar) { setCon(null); setOfrecido(null); }
+      }
+      traerConvos();
+    } catch { toast(t.noOlvido, 'error'); }
+  };
+
+  const quitarDeLibreta = async () => {
+    if (!menuContacto) return;
+    try {
+      await eliminarContacto(menuContacto.correo, account?.email);
+      hap(); setMenuContacto(null); toast(t.eliminado);
+      cargarLibreta();
+    } catch { toast(t.noGuardo, 'error'); }
+  };
+
+  // Las dos hojas del contacto viven en una sola pieza porque se llegan a
+  // ellas desde DOS pantallas de este mismo fichero: la lista (mantener
+  // pulsada una fila) y el hilo (tocar la cabecera).
+  const hojasContacto = (
+    <>
+      {/* la hojita: editar nombre / eliminar de mi libreta */}
+      <Modal visible={!!menuContacto} transparent animationType="fade" onRequestClose={() => setMenuContacto(null)}>
+        <Pressable style={st.veloBajo} onPress={() => setMenuContacto(null)}>
+          <View style={st.hoja}>
+            <View style={st.menuQuien}>
+              <Avatar nombre={menuContacto?.nombre} correo={menuContacto?.correo || ''} tam={36} />
+              <View style={{ flex: 1, minWidth: 0 }}>
+                <Text style={st.nom} numberOfLines={1}>{menuContacto?.nombre}</Text>
+                <Text style={st.mini} numberOfLines={1}>{menuContacto?.correo}</Text>
+              </View>
+            </View>
+            <Pressable style={st.hojaBtn} onPress={() => {
+              hap(); setNombreEd(menuContacto?.nombre || ''); setEditar(menuContacto); setMenuContacto(null);
+            }}>
+              <Icon name="create" size={19} color={P2C.acento} />
+              <Text style={st.hojaTxt}>{t.editarNombre}</Text>
+            </Pressable>
+            <Pressable style={st.hojaBtn} onPress={quitarDeLibreta}>
+              <Icon name="trash" size={19} color={P2C.texto2} />
+              <Text style={st.hojaTxt}>{t.quitarLibreta}</Text>
+            </Pressable>
+            <Pressable style={st.hojaBtn} onPress={() => {
+              hap();
+              setOlvidando({ ...menuContacto, quitar: false });
+              setMenuContacto(null);
+            }}>
+              <Icon name="refresh" size={19} color={P2C.acento} />
+              <Text style={st.hojaTxt}>{t.vaciar}</Text>
+            </Pressable>
+            <Pressable style={st.hojaBtn} onPress={() => {
+              hap();
+              setOlvidando({ ...menuContacto, quitar: true });
+              setMenuContacto(null);
+            }}>
+              <Icon name="close-circle" size={19} color={P2C.mal} />
+              <Text style={[st.hojaTxt, { color: P2C.mal }]}>{t.borrarConv}</Text>
+            </Pressable>
+            {/* ══ LO QUE LA WEB YA OFRECÍA DESDE LA FICHA ═══════════════
+                El código de seguridad es lo único que impide que el servidor
+                cambie una llave por la suya y se meta en medio: un código
+                que nadie puede comparar no protege de nada. Bloquear y
+                denunciar existían en mensajes.js y no había dónde tocarlos. */}
+            <Pressable style={st.hojaBtn} onPress={() => verCodigo(menuContacto?.correo)}>
+              <Icon name="shield-checkmark" size={19} color={P2C.acento} />
+              <Text style={st.hojaTxt}>{t.verCodigo}</Text>
+            </Pressable>
+            <Pressable style={st.hojaBtn} onPress={() => { hap(); setBloqueando(menuContacto); setMenuContacto(null); }}>
+              <Icon name="ban" size={19} color={P2C.mal} />
+              <Text style={[st.hojaTxt, { color: P2C.mal }]}>{t.bloquear}</Text>
+            </Pressable>
+            <Pressable style={[st.hojaBtn, { borderBottomWidth: 0 }]} onPress={() => {
+              hap();
+              setDenuncia({ a: menuContacto?.correo, nombre: menuContacto?.nombre, motivo: '', nota: '' });
+              setMenuContacto(null);
+            }}>
+              <Icon name="flag" size={19} color={P2C.mal} />
+              <Text style={[st.hojaTxt, { color: P2C.mal }]}>{t.denunciar}</Text>
+            </Pressable>
+          </View>
+        </Pressable>
+      </Modal>
+
+      {/* Bloquear: se pregunta con las consecuencias enteras, antes. */}
+      <Modal visible={!!bloqueando} transparent animationType="fade" onRequestClose={() => setBloqueando(null)}>
+        <Pressable style={st.velo} onPress={() => setBloqueando(null)}>
+          <Pressable style={st.editCaja} onPress={() => {}}>
+            <Text style={st.editTit}>{t.bloquear}</Text>
+            <Text style={st.mini} numberOfLines={1}>{bloqueando?.nombre || bloqueando?.correo}</Text>
+            <Text style={[st.editNota, { marginTop: 12 }]}>
+              {t.bloquearNota.replace('{n}', bloqueando?.nombre || String(bloqueando?.correo || '').split('@')[0])}
+            </Text>
+            <Pressable style={st.btnMalo} onPress={bloquear}>
+              <Text style={st.btnMaloTxt}>{t.bloquear}</Text>
+            </Pressable>
+            <Pressable onPress={() => setBloqueando(null)} style={{ paddingVertical: 12, alignItems: 'center' }}>
+              <Text style={st.mini}>{t.cancelar}</Text>
+            </Pressable>
+          </Pressable>
+        </Pressable>
+      </Modal>
+
+      {/* Denunciar: motivos cerrados —los mismos que el relevo—, nota libre
+          aparte, y dicho con todas las letras que bloquear va incluido. */}
+      <Modal visible={!!denuncia} transparent animationType="fade" onRequestClose={() => setDenuncia(null)}>
+        <Pressable style={st.velo} onPress={() => setDenuncia(null)}>
+          <Pressable style={st.editCaja} onPress={() => {}}>
+            <Text style={st.editTit}>{t.denunciarA.replace('{n}', denuncia?.nombre || String(denuncia?.a || '').split('@')[0])}</Text>
+            <Text style={[st.editNota, { marginTop: 6 }]}>{t.denNota}</Text>
+            <Text style={st.denTit}>{t.denMotivo}</Text>
+            <View style={st.denMotivos}>
+              {MOTIVOS_DENUNCIA.map((m) => (
+                <Pressable key={m} onPress={() => { hap(); setDenuncia((d) => ({ ...d, motivo: m })); }}
+                  style={[st.denMotivo, denuncia?.motivo === m && st.denMotivoOn]}
+                  accessibilityRole="radio" accessibilityState={{ checked: denuncia?.motivo === m }}>
+                  <Text style={[st.denMotivoTxt, denuncia?.motivo === m && { color: P2C.textoBoton }]}>{t['den_' + m]}</Text>
+                </Pressable>
+              ))}
+            </View>
+            <TextInput value={denuncia?.nota || ''} onChangeText={(v) => setDenuncia((d) => ({ ...d, nota: v }))}
+              placeholder={t.denDetalle} placeholderTextColor={P2C.texto3} style={st.editInput} maxLength={500} />
+            <Pressable style={[st.btnMalo, { marginTop: 14 }]} onPress={denunciarHacer}>
+              <Text style={st.btnMaloTxt}>{t.denunciar}</Text>
+            </Pressable>
+            <Pressable onPress={() => setDenuncia(null)} style={{ paddingVertical: 12, alignItems: 'center' }}>
+              <Text style={st.mini}>{t.cancelar}</Text>
+            </Pressable>
+          </Pressable>
+        </Pressable>
+      </Modal>
+
+      {/* El código de seguridad: la huella de las llaves de los dos lados,
+          para comparar en persona. Y la nota de qué pasa al cambiar de
+          teléfono va SIEMPRE, con o sin código: quien abre esto ya se está
+          preguntando por el cifrado. */}
+      <Modal visible={!!codigo} transparent animationType="fade" onRequestClose={() => setCodigo(null)}>
+        <Pressable style={st.velo} onPress={() => setCodigo(null)}>
+          <Pressable style={st.editCaja} onPress={() => {}}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+              <Icon name="shield-checkmark" size={18} color={P2C.acento} />
+              <Text style={st.editTit}>{t.codigoTit}</Text>
+            </View>
+            <Text style={st.mini} numberOfLines={1}>{codigo?.correo}</Text>
+            {codigo?.cargando ? (
+              <ActivityIndicator color={P2C.acento} style={{ marginVertical: 18 }} />
+            ) : codigo?.texto ? (
+              <>
+                <Text style={st.codigoNums} selectable>{codigo.texto}</Text>
+                <Text style={st.editNota}>{t.codigoQue}</Text>
+              </>
+            ) : (
+              <Text style={[st.editNota, { marginTop: 12 }]}>{t.codigoNo}</Text>
+            )}
+            <Text style={[st.editNota, st.honesto]}>{t.codigoAparato}</Text>
+            <Button3D title={t.listo} onPress={() => setCodigo(null)} />
+          </Pressable>
+        </Pressable>
+      </Modal>
+
+      {/* la hoja pequeña de renombrar */}
+      <Modal visible={!!editar} transparent animationType="fade" onRequestClose={() => setEditar(null)}>
+        <Pressable style={st.velo} onPress={() => setEditar(null)}>
+          <Pressable style={st.editCaja} onPress={() => {}}>
+            <Text style={st.editTit}>{t.editarNombre}</Text>
+            <Text style={st.mini} numberOfLines={1}>{editar?.correo}</Text>
+            <TextInput value={nombreEd} onChangeText={setNombreEd} placeholder={t.nombrePh}
+              placeholderTextColor={P2C.texto3} style={st.editInput} autoFocus maxLength={60}
+              onSubmitEditing={renombrar} returnKeyType="done" />
+            <Text style={st.editNota}>{t.editarNota}</Text>
+            <Button3D title={t.guardarNombre} onPress={renombrar} disabled={!nombreEd.trim()} />
+          </Pressable>
+        </Pressable>
+      </Modal>
+
+      {/* Vaciar o borrar: se pregunta con las palabras exactas de lo que pasa.
+          Nadie debería enterarse DESPUÉS de que «lo borré» valía solo para su
+          lado — por eso la pregunta lo dice, y no una nota al pie. */}
+      <Modal visible={!!olvidando} transparent animationType="fade" onRequestClose={() => setOlvidando(null)}>
+        <Pressable style={st.velo} onPress={() => setOlvidando(null)}>
+          <Pressable style={st.editCaja} onPress={() => {}}>
+            <Text style={st.editTit}>{olvidando?.quitar ? t.borrarConv : t.vaciar}</Text>
+            <Text style={st.mini} numberOfLines={1}>{olvidando?.nombre || olvidando?.correo}</Text>
+            <Text style={[st.editNota, { marginTop: 12 }]}>
+              {olvidando?.quitar ? t.borrarQ : t.vaciarQ}
+            </Text>
+            <Button3D
+              title={olvidando?.quitar ? t.siBorrar : t.siVaciar}
+              onPress={confirmarOlvidar}
+              style={{ marginTop: 14 }}
+            />
+            <Pressable onPress={() => setOlvidando(null)} style={{ paddingVertical: 12, alignItems: 'center' }}>
+              <Text style={st.mini}>{t.cancelar}</Text>
+            </Pressable>
+          </Pressable>
+        </Pressable>
+      </Modal>
+    </>
+  );
+
+  // ════ el candado ═════════════════════════════════════════════════════
+  if (puerta !== 'abierta') {
+    return (
+      <View style={st.screen}>
+        <CabeceraP2C titulo={t.marca} onBack={nav.back} />
+        <View style={st.centro}>
+          {puerta === 'mirando' ? (
+            <><ActivityIndicator color={P2C.acento} size="large" /><Text style={st.espera}>{t.mirando}</Text></>
+          ) : (
+            <View style={st.gate}>
+              <Text style={st.gateTit}>{t.gateTit}</Text>
+              <Text style={st.gateTxt}>{t.gateTxt}</Text>
+              {/* el mismo Button3D de la casa que usa GruposAuro para este
+                  mismo CTA: dos pantallas, un solo botón */}
+              <Button3D title={t.gateBtn} onPress={() => nav.go('kyc')} />
+            </View>
+          )}
+        </View>
+      </View>
+    );
+  }
+
+  // ════ hilo abierto ═══════════════════════════════════════════════════
+  /* LA LLAMADA SE PINTA ENCIMA DE TODO Y ANTES QUE NADA.
+     Va con `return` propio y no como una capa dentro de la lista: durante una
+     llamada no hay nada más que mirar, y dejar la lista montada debajo
+     significa que un repintado suyo puede tirar el video. */
+  if (con) {
+    // Los pendientes/fallidos se FUSIONAN al final del hilo del relevo: así
+    // el sondeo puede reemplazar `hilo` completo sin llevarse ninguna burbuja
+    // mía que todavía no entró (o que falló y espera su reintento).
+    // ...y las páginas viejas van DELANTE: son historial, no novedad.
+    const todos = viejos.concat(hilo, pendientes);
+    const porId = new Map(todos.filter((m) => m.id).map((m) => [m.id, m]));
+    const mioCorreo = String(account?.email || '').toLowerCase();
+    const quienesEscriben = Object.keys(escribiendo);
+    const conDias = []; let dPrev = '';
+    for (const m of todos) {
+      const d = new Date(m.cuando).toDateString();
+      if (d !== dPrev) { conDias.push({ sep: d, cuando: m.cuando }); dPrev = d; }
+      conDias.push(m);
+    }
+    return (
+      // El hilo NO es un formulario: aquí no se desplaza la pantalla entera,
+      // se ENCOGE. La cabecera se queda arriba, la lista cede el alto que
+      // ocupa el teclado y la caja de escribir queda pegada justo encima de
+      // las teclas —que es donde José espera verla mientras escribe—. De eso
+      // se encarga `desplaza={false}`: KeyboardAvoidingView manda sobre el
+      // alto y la FlatList, al ser el único hijo con flex:1, es la que paga.
+      <PantallaConTeclado desplaza={false} style={st.screen}>
+        <View style={st.cabHilo}>
+          <Pressable onPress={() => { setCon(null); setHilo([]); setPendientes([]); setOfrecido(null); }} hitSlop={10}>
+            <Text style={st.volver}>‹</Text>
+          </Pressable>
+          {/* en un grupo la cabecera es la puerta a su ficha: nombre, foto,
+              miembros e invitación viven allí, no aquí. En un cara a cara la
+              cabecera abre la hojita del contacto: editar su nombre en MI
+              libreta o quitarlo de ella. */}
+          <Pressable style={st.cabQuien}
+            onPress={() => {
+              if (enGrupo) { hap(); nav.go('auro-grupo', { id: destino }); }
+              else abrirMenuContacto(destino, con.nombre, con.addr);
+            }}>
+            <Avatar nombre={enGrupo ? con.nombre : nombreDe(destino, con.nombre)} correo={destino} foto={con.foto} grupo={enGrupo} tam={38} />
+            <View style={{ flex: 1, minWidth: 0 }}>
+              <Text style={st.nom} numberOfLines={1}>{enGrupo ? con.nombre : nombreDe(destino, con.nombre)}</Text>
+              {/* la seña bajo el nombre: primero el GID (la identidad de la
+                  casa), luego la cadena, y el correo solo si no hay más */}
+              {/* Y encima de todo eso, lo vivo: «está escribiendo…» manda
+                  sobre «En línea», que manda sobre la seña. Misma regla que
+                  la cabecera de la web. */}
+              {quienesEscriben.length ? (
+                <Text style={[st.mini, { color: P2C.acentoLt }]} numberOfLines={1}>
+                  {enGrupo ? quienesEscriben.map(nombreCorto).join(', ') + ' ' : ''}
+                  {quienesEscriben.length > 1 ? t.escribiendoVarios : t.escribiendo}
+                </Text>
+              ) : (!enGrupo && enLinea) ? (
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
+                  <View style={st.puntoVerde} />
+                  <Text style={[st.mini, { color: P2C.bien }]}>{t.enLinea}</Text>
+                </View>
+              ) : (
+                <Text style={st.mini} numberOfLines={1}>
+                  {enGrupo
+                    ? (con.miembros ? con.miembros + ' ' + t.miembros : t.grupo)
+                    : (con.gid || (con.addr ? '⛓ ' + con.addr.slice(0, 8) + '…' + con.addr.slice(-4) : con.correo))}
+                </Text>
+              )}
+            </View>
+          </Pressable>
+          {/* LLAMAR Y VIDEOLLAMAR. Los mismos dos botones para los dos casos:
+              en un cara a cara llaman a la persona, en un grupo abren la
+              llamada en malla con todos. Que el botón sea el mismo es la
+              idea — quien lo toca no tiene por qué saber que por dentro son
+              dos motores distintos. */}
+          <>
+            <Pressable style={st.btnLlamar} hitSlop={8} accessibilityRole="button"
+              accessibilityLabel={t.llamar}
+              onPress={() => { hap(); enGrupo ? llamarGrupo(false) : llamarA(false); }}>
+              <Icon name="call" size={20} color={P2C.acentoLt} />
+            </Pressable>
+            <Pressable style={st.btnLlamar} hitSlop={8} accessibilityRole="button"
+              accessibilityLabel={t.videollamar}
+              onPress={() => { hap(); enGrupo ? llamarGrupo(true) : llamarA(true); }}>
+              <Icon name="videocam" size={20} color={P2C.acentoLt} />
+            </Pressable>
+          </>
+          {/* El puente con la wallet: `avisarChat` es lo que hará que el
+              comprobante caiga en ESTA conversación cuando la cadena confirme
+              —nunca antes—. En un grupo el destino de cadena lo elige la
+              persona en la pantalla de envío; el aviso ya sabe a dónde ir. */}
+          <Pressable onPress={() => { hap(); nav.go('send', { to: con.addr || '', amount: '', avisarChat: destino }); }}>
+            <LinearGradient colors={P2C.grad} style={st.btnOrigen} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
+              <Text style={st.btnOrigenTxt}>{t.origen}</Text>
+            </LinearGradient>
+          </Pressable>
+        </View>
+
+        {/* tras escanear: el ofrecimiento de guardarlo, arriba del hilo */}
+        {!!ofrecido && (
+          <Entrada style={st.guardaBar}>
+            <View style={{ flex: 1, minWidth: 0 }}>
+              <Text style={st.guardaTit} numberOfLines={1}>{t.escaneaste} {ofrecido.nombre}</Text>
+              <Text style={st.guardaTxt} numberOfLines={1}>{t.guardarTxt}</Text>
+            </View>
+            <Pressable onPress={guardarOfrecido}>
+              <LinearGradient colors={P2C.grad} style={st.guardaBtn} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
+                <Text style={st.guardaBtnTxt}>{t.guardarBtn}</Text>
+              </LinearGradient>
+            </Pressable>
+            <Pressable onPress={() => setOfrecido(null)} hitSlop={10}>
+              <Icon name="close" size={17} color={P2C.texto3} />
+            </Pressable>
+          </Entrada>
+        )}
+
+        {/* el relevo no contesta pero hay historial: banner, como WhatsApp */}
+        {sinRed && todos.length > 0 && (
+          <View style={st.bannerRed}>
+            <Icon name="cloud-offline" size={13} color="#fff" />
+            <Text style={st.bannerRedTxt}>{t.bannerRed}</Text>
+          </View>
+        )}
+
+        <FlatList
+          ref={lista} data={conDias}
+          keyExtractor={(m, i) => (m.sep ? 'd' + m.sep : m.idLocal || ((m.cuando || i) + '·' + (m.de || '')))}
+          contentContainerStyle={{ padding: 14, gap: 4 }}
+          // Sin esto, con el teclado abierto el primer toque en un
+          // comprobante solo cierra el teclado: había que tocar dos veces
+          // para abrir el explorador.
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag"
+          // ¿Dónde anda el scroll? Si está pegado al fondo, un mensaje nuevo
+          // sí desplaza; si se está leyendo el historial, NO se roba el
+          // scroll: sale el chip «mensajes nuevos ↓» (como WhatsApp).
+          onScroll={(e) => {
+            const { contentOffset, contentSize, layoutMeasurement } = e.nativeEvent;
+            const fondo = contentOffset.y + layoutMeasurement.height >= contentSize.height - 60;
+            alFondo.current = fondo;
+            if (fondo && nuevos) setNuevos(false);
+          }}
+          scrollEventThrottle={90}
+          onContentSizeChange={() => {
+            if (alFondo.current) lista.current?.scrollToEnd({ animated: true });
+            /* Una página vieja que se pegó delante también hace crecer la
+               lista, y eso NO son «mensajes nuevos»: el chip sólo sale si
+               creció por abajo. */
+            else if (conDias.length > prevLargo.current && !cargandoViejos) setNuevos(true);
+            prevLargo.current = conDias.length;
+          }}
+          /* ══ HACIA ATRÁS AL SUBIR ═══════════════════════════════════════
+             Al acercarse al principio se pide la página anterior, y
+             `maintainVisibleContentPosition` deja quieto lo que se estaba
+             leyendo mientras lo viejo entra por arriba. */
+          onStartReached={cargarViejos}
+          onStartReachedThreshold={0.4}
+          maintainVisibleContentPosition={{ minIndexForVisible: 1 }}
+          ListHeaderComponent={
+            cargandoViejos ? (
+              <View style={st.masViejos}>
+                <ActivityIndicator color={P2C.acento} size="small" />
+                <Text style={st.masViejosTxt}>{t.masViejos}</Text>
+              </View>
+            ) : (!hayMas && todos.length > 0) ? (
+              <Text style={[st.masViejosTxt, { textAlign: 'center', marginBottom: 10 }]}>{t.principio}</Text>
+            ) : null
+          }
+          // Sin mensajes hay dos verdades distintas: conversación nueva
+          // (nada que decir) o SIN RED (se dice y se ofrece reintentar).
+          ListEmptyComponent={sinRed ? (
+            <View style={st.redCaja}>
+              <Icon name="cloud-offline" size={22} color={P2C.mal} />
+              <Text style={st.redTit}>{t.sinRedT}</Text>
+              <Text style={st.redTxt}>{t.sinRedHilo}</Text>
+              <Pressable style={st.redBtn} onPress={() => { hap(); traerHilo(); }}>
+                <Text style={st.redBtnTxt}>{t.reint}</Text>
+              </Pressable>
+            </View>
+          ) : null}
+          renderItem={({ item }) => {
+            if (item.sep) return (
+              <View style={st.dia}><Text style={st.diaTxt}>
+                {new Date(item.cuando).toLocaleDateString(lang === 'en' ? 'en-US' : 'es-HN', { weekday: 'short', day: 'numeric', month: 'short' })}
+              </Text></View>
+            );
+            const mio = item.de === account?.email;
+            // en un grupo cada burbuja ajena se firma; en un cara a cara no
+            // hace falta decir quién habla, ya está en la cabecera
+            const autor = enGrupo && !mio ? nombreCorto(item.de) : '';
+            if (item.tipo === 'pago') return (
+              <Entrada style={[st.linea, st.lineaPago, mio ? st.der : st.izq]}>
+                <TarjetaPago m={item} mio={mio} autor={autor} t={t} toast={toast} />
+              </Entrada>
+            );
+            /* UN MENSAJE BORRADO SE DICE, no se deja como un hueco con sello.
+               El relevo conserva el sitio (de, para, cuando) y quita el
+               contenido: aquí se pinta en gris, sin adjunto, sin sellos. */
+            if (item.borrado) return (
+              <Entrada style={[st.linea, mio ? st.der : st.izq]}>
+                <View style={[st.burbuja, mio ? st.mia : st.suya, { opacity: 0.7 }]}>
+                  <View style={st.selloFila}>
+                    <Icon name="trash" size={12} color={mio ? P2C.textoMiaSuave : P2C.texto3} />
+                    <Text style={[st.msg, { fontStyle: 'italic', fontSize: 13 }, mio && { color: P2C.textoMia }]}>{t.borrado}</Text>
+                  </View>
+                  <Text style={[st.msgHora, mio && { color: P2C.textoMiaSuave }]}>{hora(item.cuando)}</Text>
+                </View>
+              </Entrada>
+            );
+            const conAdj = !!item.archivo && ['imagen', 'video', 'archivo', 'voz'].includes(item.tipo);
+            /* La cita se lee del hilo por id, no se guarda copiada: si el
+               original se borra, la cita no queda contando algo viejo. */
+            const citado = item.cita ? porId.get(item.cita) : null;
+            const reacs = item.reacciones || {};
+            const cuenta = {};
+            for (const e of Object.values(reacs)) cuenta[e] = (cuenta[e] || 0) + 1;
+            const miReac = reacs[mioCorreo] || null;
+            return (
+              <Entrada style={[st.linea, mio ? st.der : st.izq]}>
+                {/* Un envío fallido NO se desvanece: burbuja marcada en rojo
+                    con «Reintentar» al toque — el texto nunca se pierde.
+                    Mantener pulsada la burbuja abre sus gestos: responder,
+                    reaccionar, reenviar, copiar, borrar. */}
+                <Pressable style={[st.burbuja, mio ? st.mia : st.suya, item.fallo && st.burbujaFallo]}
+                  onLongPress={item.id ? () => { hap(); setMenuMsg(item); } : undefined} delayLongPress={300}>
+                  {!!autor && <Text style={st.autor}>{autor}</Text>}
+                  {!!item.cita && (
+                    <View style={[st.cita, mio && st.citaMia]}>
+                      <Text style={[st.citaDe, mio && { color: P2C.textoMia }]} numberOfLines={1}>
+                        {citado ? (citado.de === mioCorreo ? t.tu : nombreCorto(citado.de)) : t.citaIda}
+                      </Text>
+                      <Text style={[st.citaTxt, mio && { color: P2C.textoMiaSuave }]} numberOfLines={2}>
+                        {citado ? cuerpoDe(citado) : t.citaIdaP}
+                      </Text>
+                    </View>
+                  )}
+                  {/* UN ADJUNTO CIFRADO NO SE PUEDE PINTAR DIRECTO: son bytes
+                      que ninguna etiqueta sabe dibujar. `Adjunto` lo baja, lo
+                      abre con la llave que venía dentro del mensaje y recién
+                      entonces lo enseña; mientras tanto deja su hueco. */}
+                  {conAdj && item.tipo === 'imagen' && (
+                    <Adjunto m={item} t={t} alTocar={(uri) => { hap(); setFoto(uri); }} />
+                  )}
+                  {conAdj && item.tipo === 'voz' && <NotaDeVoz m={item} mio={mio} t={t} />}
+                  {conAdj && item.tipo !== 'imagen' && item.tipo !== 'voz' && (
+                    <Pressable style={st.adjCard} onPress={() => abrirAdjuntoCifrado(item)}>
+                      <Icon name={item.tipo === 'video' ? 'videocam' : 'document-text'} size={24}
+                        color={mio ? P2C.textoMia : P2C.acento} />
+                      <Text style={[st.adjNom, mio && { color: P2C.textoMia }]} numberOfLines={2}>
+                        {item.nombre || (item.tipo === 'video' ? t.ultVideo : t.ultArchivo)}
+                      </Text>
+                    </Pressable>
+                  )}
+                  {!!item.texto && <Text style={[st.msg, mio && { color: item.fallo ? P2C.texto : P2C.textoMia }]}>{item.texto}</Text>}
+                  {/* CIFRADO PARA OTRO APARATO. Sin esto la burbuja sale
+                      VACÍA con la hora al lado, y eso se lee como «el chat
+                      perdió un mensaje» — cuando el mensaje está entero, sólo
+                      que cerrado con una llave que este teléfono no tiene.
+                      Pasa de verdad: quien escribió desde el navegador antes
+                      de que este teléfono publicara su llave tiene toda su
+                      conversación así. */}
+                  {item.cerrado && (
+                    <View style={st.selloFila}>
+                      <Icon name="lock-closed" size={11} color={mio ? P2C.textoMiaSuave : P2C.texto3} />
+                      <Text style={[st.selloTxt, mio && { color: P2C.textoMiaSuave }]}>{t.cerrado}</Text>
+                    </View>
+                  )}
+                  {/* ESTE MENSAJE VIAJÓ EN CLARO, Y SE DICE PARA SIEMPRE.
+                      El único aviso que había era un toast de tres segundos
+                      que veía sólo quien lo mandaba: al recargar el hilo no
+                      quedaba rastro, y quien lo recibía no se enteraba nunca.
+                      El sello va en la burbuja porque es una propiedad DEL
+                      MENSAJE, no de un instante — y lo ven los dos lados,
+                      porque se calcula igual en las dos puntas. */}
+                  {item.e2e === false && !item.cerrado && (
+                    <View style={st.selloFila}>
+                      <Icon name="eye" size={11} color={mio ? P2C.textoMiaSuave : P2C.texto3} />
+                      <Text style={[st.selloTxt, mio && { color: P2C.textoMiaSuave }]}>{t.enClaro}</Text>
+                    </View>
+                  )}
+                  {/* Y si la firma NO cuadró, se dice. Un mensaje cifrado cuya
+                      firma falla puede ser el relevo poniendo palabras en boca
+                      de alguien: taparlo sería justo lo que la firma vino a
+                      impedir. `verificado === false` con motivo, no la simple
+                      ausencia — los mensajes viejos de antes de la firma no
+                      tienen por qué salir marcados. */}
+                  {/* «sin-llaves-del-remitente» NO es una firma mala: es que el
+                      relevo no nos quiso dar la llave de quien escribió —pasaba
+                      en cada mensaje de un grupo con alguien que no es tu
+                      amigo—. Pintar la alarma roja ahí es gritar lobo, y gasta
+                      la única señal que hay para cuando el lobo venga. */}
+                  {item.e2e && item.verificado === false && item.motivoFirma
+                    && item.motivoFirma !== 'sin-firma'
+                    && item.motivoFirma !== 'sin-llaves-del-remitente' && !item.cerrado && (
+                    <View style={st.selloFila}>
+                      <Icon name="alert-circle" size={11} color={P2C.mal} />
+                      <Text style={[st.selloTxt, { color: P2C.mal }]}>{t.sinFirma}</Text>
+                    </View>
+                  )}
+                  {item.fallo ? (
+                    <Pressable onPress={() => reintentar(item)} hitSlop={8} style={st.reintentar}>
+                      <Icon name="refresh" size={12} color={P2C.mal} />
+                      <Text style={st.reintentarTxt}>{t.fallo} · {t.reintentar}</Text>
+                    </Pressable>
+                  ) : (
+                    <View style={st.pieBurbuja}>
+                      <Text style={[st.msgHora, mio && { color: P2C.textoMiaSuave }]}>{hora(item.cuando)}</Text>
+                      {/* Un check: llegó al relevo. Dos: la otra persona
+                          abrió el hilo DESPUÉS de este mensaje (`leidoHasta`,
+                          una fecha sin contenido). Un punto: todavía en
+                          camino. */}
+                      {mio && (item.pendiente
+                        ? <Text style={[st.msgHora, { color: P2C.textoMiaSuave }]}>·</Text>
+                        : <Icon name={leidoHasta >= (item.cuando || 0) ? 'checkmark-done' : 'checkmark'} size={13}
+                            color={leidoHasta >= (item.cuando || 0) ? P2C.acentoHi : P2C.textoMiaSuave} />)}
+                    </View>
+                  )}
+                </Pressable>
+                {/* La tira de reacciones, debajo de la burbuja. Tocar la
+                    propia la quita; tocar otra la pone. */}
+                {Object.keys(cuenta).length > 0 && (
+                  <View style={[st.reacs, mio && { alignSelf: 'flex-end' }]}>
+                    {Object.entries(cuenta).map(([e, n]) => (
+                      <Pressable key={e} onPress={() => reaccionar(item, e)} hitSlop={4}
+                        style={[st.reac, e === miReac && st.reacMia]}>
+                        <Text style={st.reacTxt}>{e}{n > 1 ? ' ' + n : ''}</Text>
+                      </Pressable>
+                    ))}
+                  </View>
+                )}
+              </Entrada>
+            );
+          }}
+        />
+        {/* el chip que avisa sin robar el scroll: tocarlo baja al final */}
+        {nuevos && (
+          <Pressable style={st.chipNuevos} onPress={() => {
+            hap(); setNuevos(false); alFondo.current = true;
+            try { lista.current?.scrollToEnd({ animated: true }); } catch (e) {}
+          }}>
+            <Text style={st.chipNuevosTxt}>{t.nuevos}</Text>
+          </Pressable>
+        )}
+        {/* EL 403, DICHO DONDE SE DESCUBRE. Aparece justo encima de la caja de
+            escribir —el sitio exacto donde la persona se acaba de topar con el
+            problema— y trae el único gesto que lo resuelve. Antes esto era una
+            burbuja roja con «Reintentar» que iba a fallar para siempre. */}
+        {faltaAceptar === destino && (
+          <View style={st.faltaCaja}>
+            <Icon name="people" size={20} color={P2C.acento} />
+            <Text style={st.faltaTit}>{t.faltaTit}</Text>
+            <Text style={st.faltaTxt}>{t.faltaTxt}</Text>
+            <Pressable onPress={() => mandarSolicitud(destino)} disabled={pidiendo} style={st.faltaBtn}>
+              {pidiendo
+                ? <ActivityIndicator color={P2C.textoBoton} size="small" />
+                : <Text style={st.faltaBtnTxt}>{t.mandarSolicitud}</Text>}
+            </Pressable>
+          </View>
+        )}
+        {/* Respondiendo a…: la vista previa encima de la caja, con su X. */}
+        {!!citando && (
+          <View style={st.citando}>
+            <View style={st.citandoBarra} />
+            <View style={{ flex: 1, minWidth: 0 }}>
+              <Text style={st.citaDe} numberOfLines={1}>
+                {t.respondiendoA} {citando.de === mioCorreo ? t.tu.toLowerCase() : nombreCorto(citando.de)}
+              </Text>
+              <Text style={st.citaTxt} numberOfLines={1}>{cuerpoDe(citando)}</Text>
+            </View>
+            <Pressable onPress={() => setCitando(null)} hitSlop={10}>
+              <Icon name="close" size={17} color={P2C.texto3} />
+            </Pressable>
+          </View>
+        )}
+        <View style={st.emojis}>
+          {['👍', '🙏', '🎉', '💙', '😂', '🤝', '🔥', '✨', '💰', '🚀'].map((e) => (
+            <Pressable key={e} onPress={() => setTexto((x) => x + e)} hitSlop={4}><Text style={st.emoji}>{e}</Text></Pressable>
+          ))}
+        </View>
+        <View style={st.filaEscribe}>
+          {/* el clip es del set de la casa: el emoji 📎 salía a color en
+              Android y desentonaba con la paleta */}
+          <Pressable onPress={() => { hap(); setHoja(true); }} disabled={subiendo} style={st.clip}>
+            {subiendo ? <ActivityIndicator color={P2C.acento} size="small" /> : <Icon name="attach" size={20} color={P2C.acentoLt} />}
+          </Pressable>
+          {/* Al teclear se avisa «está escribiendo…»; el módulo se encarga
+              de no inundar el relevo (una vez cada dos segundos). */}
+          <TextInput value={texto} onChangeText={(v) => { setTexto(v); if (v && destino) M.escribiendo(destino); }}
+            placeholder={t.escribe}
+            placeholderTextColor={P2C.texto3} style={st.caja} onSubmitEditing={mandar} returnKeyType="send" multiline />
+          <Pressable onPress={mandar}>
+            <LinearGradient colors={P2C.grad} style={st.mandar} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
+              <Text style={st.mandarTxt}>↑</Text>
+            </LinearGradient>
+          </Pressable>
+        </View>
+
+        {/* la hojita del clip: tres opciones y nada más */}
+        <Modal visible={hoja} transparent animationType="fade" onRequestClose={() => setHoja(false)}>
+          <Pressable style={st.veloBajo} onPress={() => setHoja(false)}>
+            <View style={st.hoja}>
+              {/* iconos de la casa, no emojis: en Android el emoji sale a
+                  color y rompe la paleta oro/verde de toda la hojita */}
+              <Pressable style={st.hojaBtn} onPress={elegirImagen}>
+                <Icon name="image" size={20} color={P2C.acento} /><Text style={st.hojaTxt}>{t.adjImagen}</Text>
+              </Pressable>
+              <Pressable style={st.hojaBtn} onPress={elegirVideo}>
+                <Icon name="videocam" size={20} color={P2C.acento} /><Text style={st.hojaTxt}>{t.adjVideo}</Text>
+              </Pressable>
+              <Pressable style={[st.hojaBtn, { borderBottomWidth: 0 }]} onPress={elegirArchivo}>
+                <Icon name="document-text" size={20} color={P2C.acento} /><Text style={st.hojaTxt}>{t.adjArchivo}</Text>
+              </Pressable>
+            </View>
+          </Pressable>
+        </Modal>
+
+        {/* imagen a pantalla completa; tocar en cualquier lado la cierra */}
+        <Modal visible={!!foto} transparent animationType="fade" onRequestClose={() => setFoto(null)}>
+          <Pressable style={st.fotoVelo} onPress={() => setFoto(null)}>
+            {!!foto && <Image source={{ uri: foto }} style={st.fotoLlena} resizeMode="contain" />}
+          </Pressable>
+        </Modal>
+
+        {/* ══ LOS GESTOS DE UNA BURBUJA ══════════════════════════════════
+            Las seis reacciones rápidas arriba (las mismas que la web) y
+            debajo responder, reenviar, copiar y borrar. Lo que no aplica no
+            sale: un mensaje sin texto no se reenvía ni se copia. */}
+        <Modal visible={!!menuMsg} transparent animationType="fade" onRequestClose={() => setMenuMsg(null)}>
+          <Pressable style={st.veloBajo} onPress={() => setMenuMsg(null)}>
+            <View style={st.hoja}>
+              <View style={st.reacFila}>
+                {REACCIONES.map((e) => (
+                  <Pressable key={e} onPress={() => reaccionar(menuMsg, e)} hitSlop={6}
+                    style={[st.reacBtn, menuMsg?.reacciones?.[mioCorreo] === e && st.reacBtnOn]}>
+                    <Text style={st.reacBtnTxt}>{e}</Text>
+                  </Pressable>
+                ))}
+              </View>
+              <Pressable style={st.hojaBtn} onPress={() => { hap(); setCitando(menuMsg); setMenuMsg(null); }}>
+                <Icon name="arrow-undo" size={19} color={P2C.acento} /><Text style={st.hojaTxt}>{t.responder}</Text>
+              </Pressable>
+              {!!menuMsg?.texto && (
+                <Pressable style={st.hojaBtn} onPress={() => { hap(); setReenviando(menuMsg); setMenuMsg(null); }}>
+                  <Icon name="arrow-redo" size={19} color={P2C.acento} /><Text style={st.hojaTxt}>{t.reenviar}</Text>
+                </Pressable>
+              )}
+              {!!menuMsg?.texto && (
+                <Pressable style={st.hojaBtn} onPress={() => copiar(menuMsg)}>
+                  <Icon name="copy" size={19} color={P2C.acento} /><Text style={st.hojaTxt}>{t.copiar}</Text>
+                </Pressable>
+              )}
+              <Pressable style={[st.hojaBtn, { borderBottomWidth: 0 }]} onPress={() => { hap(); setBorrando(menuMsg); setMenuMsg(null); }}>
+                <Icon name="trash" size={19} color={P2C.mal} /><Text style={[st.hojaTxt, { color: P2C.mal }]}>{t.borrarMsg}</Text>
+              </Pressable>
+            </View>
+          </Pressable>
+        </Modal>
+
+        {/* Reenviar: a quién. Personas y grupos de mi lista, menos este hilo. */}
+        <Modal visible={!!reenviando} transparent animationType="fade" onRequestClose={() => setReenviando(null)}>
+          <Pressable style={st.veloBajo} onPress={() => setReenviando(null)}>
+            <View style={[st.hoja, { maxHeight: '70%' }]}>
+              <View style={st.menuQuien}>
+                <Icon name="arrow-redo" size={20} color={P2C.acento} />
+                <View style={{ flex: 1, minWidth: 0 }}>
+                  <Text style={st.nom}>{t.reenviar}</Text>
+                  <Text style={st.mini} numberOfLines={2}>{t.reenviarNota}</Text>
+                </View>
+              </View>
+              <FlatList
+                data={(convos || []).filter((c) => idDe(c) !== destino)}
+                keyExtractor={(c) => idDe(c)}
+                ListEmptyComponent={<Text style={[st.vacio, { padding: 16 }]}>{t.aQuienReenviar}</Text>}
+                renderItem={({ item }) => (
+                  <Pressable style={st.hojaBtn} onPress={() => { hap(); reenviarA(idDe(item)); }}>
+                    <Avatar nombre={esGrupoDe(item) ? item.nombre : nombreDe(idDe(item), item.nombre)} correo={idDe(item)} foto={item.foto} grupo={esGrupoDe(item)} tam={32} />
+                    <Text style={st.hojaTxt} numberOfLines={1}>{esGrupoDe(item) ? item.nombre : nombreDe(idDe(item), item.nombre)}</Text>
+                  </Pressable>
+                )}
+              />
+            </View>
+          </Pressable>
+        </Modal>
+
+        {/* Borrar: se PREGUNTA cuál de las dos cosas, porque son distintas y
+            la gente las confunde: esconderlo de mi pantalla no se lo quita a
+            la otra persona. «Para todos» sólo lo puede quien lo escribió. */}
+        <Modal visible={!!borrando} transparent animationType="fade" onRequestClose={() => setBorrando(null)}>
+          <Pressable style={st.velo} onPress={() => setBorrando(null)}>
+            <Pressable style={st.editCaja} onPress={() => {}}>
+              <Text style={st.editTit}>{t.borrarMsg}</Text>
+              <Text style={[st.editNota, { marginTop: 8 }]}>
+                {borrando?.de === mioCorreo ? t.borrarMsgP : t.borrarMsgSoloMio}
+              </Text>
+              {borrando?.de === mioCorreo && (
+                <Pressable style={st.btnMalo} onPress={() => borrarMensaje(true)}>
+                  <Text style={st.btnMaloTxt}>{t.borrarTodos}</Text>
+                </Pressable>
+              )}
+              <Button3D title={t.borrarMio} onPress={() => borrarMensaje(false)} style={{ marginTop: 10 }} />
+              <Pressable onPress={() => setBorrando(null)} style={{ paddingVertical: 12, alignItems: 'center' }}>
+                <Text style={st.mini}>{t.cancelar}</Text>
+              </Pressable>
+            </Pressable>
+          </Pressable>
+        </Modal>
+
+        {hojasContacto}
+      </PantallaConTeclado>
+    );
+  }
+
+  // ════ lista + directorio + QR ════════════════════════════════════════
+  const filas = gente !== null ? gente : (convos || []);
+  const mioLista = String(account?.email || '').toLowerCase();
+  const grupoViendo = viendo ? (estados || []).find((g) => g.correo === viendo.quien) : null;
+  const estadoAbierto = grupoViendo?.estados?.[viendo?.i] || null;
+  return (
+    <View style={st.screen}>
+      <CabeceraP2C titulo={t.marca} sub={t.sub} onBack={nav.back} right={(
+        <View style={st.accesos}>
+          <Pressable style={st.acceso} accessibilityRole="button" accessibilityLabel={t.nuevoGrupo}
+            onPress={() => { hap(); nav.go('auro-nuevo'); }}>
+            <Icon name="people" size={19} color={P2C.acento} />
+            <Text style={st.masChico}>+</Text>
+          </Pressable>
+          <Pressable style={st.acceso} accessibilityRole="button" accessibilityLabel={t.ajustes}
+            onPress={() => { hap(); nav.go('auro-ajustes'); }}>
+            <Icon name="settings-sharp" size={19} color={P2C.acento} />
+          </Pressable>
+        </View>
+      )} />
+      <View style={{ paddingHorizontal: 16 }}>
+        <TextInput value={busca} onChangeText={setBusca} placeholder={t.buscar}
+          placeholderTextColor={P2C.texto3} style={st.busca} autoCapitalize="none" />
+        <View style={st.qrFila}>
+          <Pressable style={st.qrBtn} onPress={() => { hap(); setQr('mio'); }}>
+            <Icon name="qr-code" size={14} color={P2C.acentoLt} />
+            <Text style={st.qrBtnTxt}>{t.miqr}</Text>
+          </Pressable>
+          <Pressable style={st.qrBtn} onPress={async () => {
+            hap();
+            if (!permiso?.granted) await pedirPermiso();
+            setQr('scan');
+          }}>
+            {/* 'scan' existe en el set desde 1.10 (la pestaña Pagar lo usa):
+                el glifo ⌖ salía con otra fuente y otro grosor que el resto */}
+            <Icon name="scan" size={14} color={P2C.acentoLt} />
+            <Text style={st.qrBtnTxt}>{t.escanear}</Text>
+          </Pressable>
+        </View>
+      </View>
+      {/* ══ LAS SOLICITUDES QUE TE LLEGARON ═══════════════════════════════
+          Va ARRIBA de las conversaciones y no en una pestaña aparte, a
+          propósito: en la web están en una pestaña que no se recarga sola, y
+          por eso hay solicitudes de hace diez días que su destinatario nunca
+          vio. Lo que no se ve, no existe. */}
+      {circulo?.recibidas?.length > 0 && (
+        <View style={st.solicCaja}>
+          <Text style={st.solicTit}>{t.solicTit}</Text>
+          {circulo.recibidas.map((p) => (
+            <View key={p.correo} style={st.solicFila}>
+              <Avatar nombre={p.nombre || p.correo} correo={p.correo} foto={p.foto} tam={38} />
+              <View style={{ flex: 1, minWidth: 0 }}>
+                <Text style={st.solicNom} numberOfLines={1}>{p.nombre || p.correo}</Text>
+                <Text style={st.solicSub} numberOfLines={1}>{p.nota || p.correo}</Text>
+              </View>
+              <Pressable onPress={() => responder(p.correo, true)} style={st.solicSi}>
+                <Text style={st.solicSiTxt}>{t.aceptar}</Text>
+              </Pressable>
+              <Pressable onPress={() => responder(p.correo, false)} style={st.solicNo} hitSlop={6}>
+                <Icon name="close" size={16} color={P2C.texto3} />
+              </Pressable>
+            </View>
+          ))}
+        </View>
+      )}
+      {/* Las que mandaste vos, con su salida. Sin este botón, una solicitud
+          mandada por error se queda para siempre: la ruta existe en el relevo
+          y en la web no hay dónde tocarla. */}
+      {circulo?.enviadas?.length > 0 && (
+        <View style={st.solicCaja}>
+          <Text style={st.solicTit}>{t.enviadas}</Text>
+          {circulo.enviadas.map((p) => (
+            <View key={p.correo} style={st.solicFila}>
+              <Avatar nombre={p.nombre || p.correo} correo={p.correo} foto={p.foto} tam={30} />
+              <Text style={[st.solicNom, { flex: 1 }]} numberOfLines={1}>{p.nombre || p.correo}</Text>
+              <Pressable onPress={async () => {
+                hap();
+                try { await M.quitarAmigo(p.correo); await traerCirculo(); }
+                catch { toast(t.noSePudo, 'error'); }
+              }} hitSlop={6}>
+                <Text style={st.solicCancel}>{t.cancelar}</Text>
+              </Pressable>
+            </View>
+          ))}
+        </View>
+      )}
+      {/* el relevo no contesta pero hay lista vieja a la vista: banner */}
+      {sinRed && convos !== null && (
+        <View style={st.bannerRed}>
+          <Icon name="cloud-offline" size={13} color="#fff" />
+          <Text style={st.bannerRedTxt}>{t.bannerRed}</Text>
+        </View>
+      )}
+      {convos === null ? (
+        // Nunca se ha podido leer el relevo: sin red se DICE (con reintentar),
+        // no se pinta el «aún no tienes conversaciones» de una cuenta nueva.
+        llaveOtra ? (
+          // El relevo contestó: no es la red. Se dice lo que pasa y —lo que
+          // más importa— que los mensajes NO se perdieron.
+          <View style={st.redCaja}>
+            <Icon name="key" size={22} color={P2C.acento} />
+            <Text style={st.redTit}>
+              {motivoOtra === 'sesion-no-vale' ? t.otraTit
+                : motivoOtra === 'otra-cuenta' ? t.otraTit3 : t.otraTit2}</Text>
+            <Text style={st.redTxt}>
+              {motivoOtra === 'sesion-no-vale' ? t.otraTxt
+                : motivoOtra === 'otra-cuenta' ? t.otraTxt3 : t.otraTxt2}</Text>
+          </View>
+        ) : sinRed ? (
+          <View style={st.redCaja}>
+            <Icon name="cloud-offline" size={22} color={P2C.mal} />
+            <Text style={st.redTit}>{t.sinRedT}</Text>
+            <Text style={st.redTxt}>{t.sinRedConvos}</Text>
+            <Pressable style={st.redBtn} onPress={() => { hap(); traerConvos(); }}>
+              <Text style={st.redBtnTxt}>{t.reint}</Text>
+            </Pressable>
+          </View>
+        ) : <ActivityIndicator color={P2C.acento} style={{ marginTop: 28 }} />
+      ) : (
+        <FlatList
+          data={filas} keyExtractor={(c) => idDe(c)}
+          contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 16 }}
+          /* ══ LA TIRA DE ESTADOS ═════════════════════════════════════════
+             Arriba de las conversaciones, como se miran: mi círculo para
+             subir el mío, y uno por persona con anillo si tiene algo sin
+             ver. Sólo cuando no se está buscando. */
+          ListHeaderComponent={gente !== null ? <Text style={st.dir}>{t.dir}</Text> : (
+            <View style={st.estados}>
+              <Text style={st.dir}>{t.estados}</Text>
+              <FlatList horizontal showsHorizontalScrollIndicator={false}
+                data={[{ correo: '__mio' }, ...(estados || []).filter((g) => g.correo !== mioLista)]}
+                keyExtractor={(g) => g.correo}
+                contentContainerStyle={{ gap: 12, paddingVertical: 4 }}
+                renderItem={({ item }) => {
+                  if (item.correo === '__mio') {
+                    const mios = (estados || []).find((g) => g.correo === mioLista);
+                    return (
+                      <Pressable style={st.estado} onPress={() => { hap(); if (mios?.estados?.length) verEstado(mioLista); else setSubeEstado({ texto: '', fondo: 0, foto: null }); }}
+                        onLongPress={() => { hap(); setSubeEstado({ texto: '', fondo: 0, foto: null }); }}>
+                        <View style={[st.estadoAro, mios?.estados?.length ? st.estadoAroVisto : st.estadoAroNada]}>
+                          <Avatar nombre={account?.name || account?.email} correo={mioLista} tam={50} />
+                          <View style={st.estadoMas}><Icon name="add" size={12} color={P2C.textoBoton} /></View>
+                        </View>
+                        <Text style={st.estadoNom} numberOfLines={1}>{t.miEstado}</Text>
+                      </Pressable>
+                    );
+                  }
+                  return (
+                    <Pressable style={st.estado} onPress={() => verEstado(item.correo)}>
+                      <View style={[st.estadoAro, item.sinVer ? st.estadoAroNuevo : st.estadoAroVisto]}>
+                        <Avatar nombre={nombreDe(item.correo, item.nombre)} correo={item.correo} foto={item.foto} tam={50} />
+                      </View>
+                      <Text style={st.estadoNom} numberOfLines={1}>{nombreCorto(item.correo) || nombreDe(item.correo, item.nombre)}</Text>
+                    </Pressable>
+                  );
+                }}
+              />
+            </View>
+          )}
+          ListEmptyComponent={<Text style={st.vacio}>{gente !== null ? (buscaMal ? t.sinRedBusca : t.nadie) : t.vacio}</Text>}
+          renderItem={({ item, index }) => {
+            const grupo = esGrupoDe(item);
+            const enBusca = gente !== null;
+            const yaMio = enBusca && !!libreta[String(idDe(item)).toLowerCase()];
+            return (
+              // la cascada solo escalona las primeras filas: más abajo el
+              // retraso se notaría como lentitud, no como elegancia
+              <Entrada delay={Math.min(index, 7) * 45}>
+                <Pressable style={st.fila} onPress={() => {
+                  hap(); setBusca(''); setGente(null); setOfrecido(null);
+                  setCon(grupo ? { ...item, esGrupo: true } : item);
+                }}
+                  // mantener pulsada a una persona abre su hojita: editar el
+                  // nombre con el que YO la veo, o quitarla de mi libreta
+                  onLongPress={grupo ? undefined : () => abrirMenuContacto(idDe(item), item.nombre, item.addr)}
+                  delayLongPress={350}>
+                  <View>
+                    <Avatar nombre={grupo ? item.nombre : nombreDe(idDe(item), item.nombre)} correo={idDe(item)} foto={item.foto} grupo={grupo} />
+                    {/* el punto verde: la lista ya trae `enLinea` del relevo */}
+                    {!enBusca && !grupo && item.enLinea === true && <View style={st.puntoLista} />}
+                  </View>
+                  <View style={{ flex: 1, minWidth: 0 }}>
+                    <View style={st.filaSup}>
+                      <Text style={st.nom} numberOfLines={1}>{grupo ? item.nombre : nombreDe(idDe(item), item.nombre)}</Text>
+                      {!enBusca && !!item.ultimo && <Text style={st.hora}>{cuandoHumano(item.ultimo.cuando, lang, t.ayer)}</Text>}
+                    </View>
+                    {enBusca ? (
+                      // el resultado enseña SOLO el nombre; debajo, pequeño,
+                      // su GID — y el correo únicamente cuando no tiene GID.
+                      // El correo en grande convertía el directorio en una
+                      // guía telefónica; el nombre es lo que se busca.
+                      <Text style={[st.mini, { marginTop: 2 }]} numberOfLines={1}>{item.gid || item.correo}</Text>
+                    ) : (
+                      <View style={st.filaSup}>
+                        <Text style={[st.ult, item.sinLeer > 0 && st.ultVivo]} numberOfLines={1}>{resumen(item)}</Text>
+                        {item.sinLeer > 0 && <View style={st.globo}><Text style={st.globoTxt}>{item.sinLeer}</Text></View>}
+                      </View>
+                    )}
+                  </View>
+                  {/* EL BOTÓN DICE EN QUÉ PUNTO ESTÁ LA RELACIÓN, no si está
+                      en mi libreta. El relevo manda el `lazo` de cada
+                      resultado justamente para esto —lo dice su propio
+                      comentario— y la app lo tiraba: enseñaba «Agregar» a
+                      quien ya te había mandado una solicitud, y una palomita
+                      de «ya es mío» a quien no te acepta y no te va a dejar
+                      escribirle. La libreta local no es el círculo. */}
+                  {enBusca && (
+                    item.lazo === 'amigos' ? (
+                      <Icon name="checkmark-circle" size={20} color={P2C.bien} />
+                    ) : item.lazo === 'enviada' ? (
+                      <Text style={st.lazoTxt}>{t.enviadaCorto}</Text>
+                    ) : item.lazo === 'recibida' ? (
+                      <Pressable onPress={() => responder(item.correo, true)} hitSlop={6}>
+                        <LinearGradient colors={P2C.grad} style={st.guardaBtn} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
+                          <Text style={st.guardaBtnTxt}>{t.aceptar}</Text>
+                        </LinearGradient>
+                      </Pressable>
+                    ) : (
+                      <Pressable onPress={() => agregarBuscado(item)} hitSlop={6} disabled={pidiendo}>
+                        <LinearGradient colors={P2C.grad} style={st.guardaBtn} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
+                          <Text style={st.guardaBtnTxt}>{t.agregar}</Text>
+                        </LinearGradient>
+                      </Pressable>
+                    )
+                  )}
+                </Pressable>
+              </Entrada>
+            );
+          }}
+        />
+      )}
+
+      {/* mi código / escanear */}
+      <Modal visible={!!qr} transparent animationType="fade" onRequestClose={() => setQr(null)}>
+        <Pressable style={st.velo} onPress={() => setQr(null)}>
+          <View style={st.qrCaja}>
+            {qr === 'mio' ? (
+              <>
+                <View style={st.qrBlanco}>
+                  <QRCode value={aUri('chat/abrir', { con: account?.email })} size={210} color={P2C.fondo} backgroundColor="#ffffff" ecl="M" />
+                </View>
+                <Text style={st.qrNota}>{t.qrTuyo}</Text>
+              </>
+            ) : (
+              <>
+                {permiso?.granted ? (
+                  <CameraView style={st.camara} barcodeScannerSettings={{ barcodeTypes: ['qr'] }} onBarcodeScanned={alEscanear} />
+                ) : <ActivityIndicator color={P2C.acento} />}
+                <Text style={st.qrNota}>{t.apunta}</Text>
+              </>
+            )}
+          </View>
+        </Pressable>
+      </Modal>
+
+      {/* ══ VER UN ESTADO ═══════════════════════════════════════════════════
+          A pantalla completa. Tocar pasa al siguiente; en el borde izquierdo,
+          al anterior. Quien lo subió ve cuántos lo vieron y puede borrarlo. */}
+      <Modal visible={!!estadoAbierto} transparent animationType="fade" onRequestClose={() => setViendo(null)}>
+        <Pressable style={[st.estadoVelo, { backgroundColor: estadoAbierto?.archivo ? '#000' : P2C.fondosEstado[estadoAbierto?.fondo || 0] }]}
+          onPress={estadoSiguiente}>
+          {!!estadoAbierto && (
+            <>
+              <View style={st.estadoBarras}>
+                {grupoViendo.estados.map((e, i) => (
+                  <View key={e.id} style={[st.estadoBarra, i <= viendo.i && st.estadoBarraOn]} />
+                ))}
+              </View>
+              <View style={st.estadoCab}>
+                <Avatar nombre={nombreDe(grupoViendo.correo, grupoViendo.nombre)} correo={grupoViendo.correo} foto={grupoViendo.foto} tam={34} />
+                <View style={{ flex: 1, minWidth: 0 }}>
+                  <Text style={st.estadoQuien} numberOfLines={1}>{grupoViendo.correo === mioLista ? t.tu : nombreDe(grupoViendo.correo, grupoViendo.nombre)}</Text>
+                  <Text style={st.estadoCuando}>{cuandoHumano(estadoAbierto.cuando, lang, t.ayer)}</Text>
+                </View>
+                <Pressable onPress={() => setViendo(null)} hitSlop={12}><Icon name="close" size={22} color="#fff" /></Pressable>
+              </View>
+              {!!estadoAbierto.archivo && (
+                <Image source={{ uri: M.urlArchivo(estadoAbierto.archivo) }} style={st.estadoImg} resizeMode="contain" />
+              )}
+              {!!estadoAbierto.texto && (
+                <View style={[st.estadoTextoCaja, !!estadoAbierto.archivo && st.estadoTextoPie]}>
+                  <Text style={[st.estadoTexto, !estadoAbierto.archivo && { fontSize: 26, lineHeight: 34 }]}>{estadoAbierto.texto}</Text>
+                </View>
+              )}
+              {grupoViendo.correo === mioLista && (
+                <View style={st.estadoPie}>
+                  <Icon name="eye" size={14} color="#fff" />
+                  <Text style={st.estadoVistas}>{estadoAbierto.vistas || 0} {t.vistas}</Text>
+                  <Pressable onPress={() => { hap(); borrarEstado(estadoAbierto.id); }} hitSlop={10} style={{ marginLeft: 'auto' }}>
+                    <Icon name="trash" size={18} color="#fff" />
+                  </Pressable>
+                </View>
+              )}
+            </>
+          )}
+        </Pressable>
+      </Modal>
+
+      {/* ══ SUBIR UN ESTADO ═════════════════════════════════════════════════
+          Texto con un color de fondo, o una foto con texto encima. Y dicho
+          con todas las letras, en el sitio donde la persona decide: esto NO va
+          cifrado de punta a punta —lo ve todo el círculo y el servidor lo
+          guarda hasta que vence—. */}
+      <Modal visible={!!subeEstado} transparent animationType="fade" onRequestClose={() => setSubeEstado(null)}>
+        <Pressable style={st.velo} onPress={() => setSubeEstado(null)}>
+          <Pressable style={[st.editCaja, { backgroundColor: subeEstado?.foto ? P2C.hoja : P2C.fondosEstado[subeEstado?.fondo || 0] }]} onPress={() => {}}>
+            <Text style={[st.editTit, { color: '#fff' }]}>{t.subirEstado}</Text>
+            {!!subeEstado?.foto && (
+              <Image source={{ uri: subeEstado.foto.uri }} style={st.estadoPrevia} resizeMode="cover" />
+            )}
+            <TextInput value={subeEstado?.texto || ''} onChangeText={(v) => setSubeEstado((s) => ({ ...s, texto: v }))}
+              placeholder={t.estadoPh} placeholderTextColor="rgba(255,255,255,0.55)" multiline maxLength={300}
+              style={[st.editInput, st.estadoInput]} />
+            {!subeEstado?.foto && (
+              <View style={st.fondos}>
+                {P2C.fondosEstado.map((c, i) => (
+                  <Pressable key={c} onPress={() => setSubeEstado((s) => ({ ...s, fondo: i }))}
+                    style={[st.fondo, { backgroundColor: c }, subeEstado?.fondo === i && st.fondoOn]} />
+                ))}
+              </View>
+            )}
+            <View style={{ flexDirection: 'row', gap: 10, marginTop: 12 }}>
+              <Pressable style={st.btnLinea} onPress={elegirFotoEstado}>
+                <Icon name="camera" size={16} color="#fff" /><Text style={st.btnLineaTxt}>{t.estadoFoto}</Text>
+              </Pressable>
+              <Pressable style={[st.btnLinea, { flex: 1, backgroundColor: 'rgba(255,255,255,0.92)' }]} onPress={publicarEstado} disabled={subiendo}>
+                {subiendo ? <ActivityIndicator color={P2C.textoBoton} size="small" /> : <Text style={[st.btnLineaTxt, { color: P2C.textoBoton }]}>{t.publicar}</Text>}
+              </Pressable>
+            </View>
+            <Text style={[st.editNota, { color: 'rgba(255,255,255,0.8)', marginTop: 12, marginBottom: 0 }]}>{t.estadoHonesto}</Text>
+            <Pressable onPress={() => setSubeEstado(null)} style={{ paddingVertical: 12, alignItems: 'center' }}>
+              <Text style={[st.mini, { color: 'rgba(255,255,255,0.7)' }]}>{t.cancelar}</Text>
+            </Pressable>
+          </Pressable>
+        </Pressable>
+      </Modal>
+
+      {hojasContacto}
+    </View>
+  );
+}
+
+const st = StyleSheet.create({
+  /* El suelo azul de PULSE2CHAT: la pantalla entera, no sólo las burbujas. */
+  screen: { flex: 1, backgroundColor: P2C.fondo },
+  cab: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 16, paddingTop: 6, paddingBottom: 14 },
+  cabAtras: { width: 36, height: 36, borderRadius: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: P2C.tinte },
+  cabTit: { fontSize: 19, fontWeight: '800', color: P2C.texto, letterSpacing: 1.2 },
+  cabSub: { fontSize: 11.5, color: P2C.texto2, marginTop: 1 },
+  puntoVerde: { width: 7, height: 7, borderRadius: 4, backgroundColor: P2C.bien },
+  puntoLista: { position: 'absolute', right: 0, bottom: 1, width: 11, height: 11, borderRadius: 6, backgroundColor: P2C.bien, borderWidth: 2, borderColor: P2C.fondo },
+  masViejos: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 8 },
+  masViejosTxt: { color: P2C.texto3, fontSize: 11 },
+  // la cita dentro de la burbuja: una barra al costado y dos renglones
+  cita: { borderLeftWidth: 3, borderLeftColor: P2C.acentoLt, backgroundColor: 'rgba(0,0,0,0.18)', borderRadius: 8, paddingHorizontal: 9, paddingVertical: 5, marginBottom: 6 },
+  citaMia: { borderLeftColor: '#fff', backgroundColor: 'rgba(0,0,0,0.16)' },
+  citaDe: { color: P2C.acentoLt, fontSize: 11, fontWeight: '800' },
+  citaTxt: { color: P2C.texto2, fontSize: 12.5, marginTop: 1 },
+  citando: { flexDirection: 'row', alignItems: 'center', gap: 10, marginHorizontal: 12, marginBottom: 4, padding: 10, borderRadius: 12, backgroundColor: P2C.panel2, borderWidth: 1, borderColor: P2C.linea2 },
+  citandoBarra: { width: 3, alignSelf: 'stretch', borderRadius: 2, backgroundColor: P2C.acento },
+  pieBurbuja: { flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', gap: 3, marginTop: 2 },
+  // la tira de reacciones, colgando del borde de la burbuja
+  reacs: { flexDirection: 'row', flexWrap: 'wrap', gap: 4, marginTop: -6, marginLeft: 8, marginBottom: 4 },
+  reac: { flexDirection: 'row', backgroundColor: P2C.hoja, borderWidth: 1, borderColor: P2C.linea2, borderRadius: 999, paddingHorizontal: 7, paddingVertical: 2 },
+  reacMia: { borderColor: P2C.acento, backgroundColor: P2C.tinte2 },
+  reacTxt: { color: P2C.texto, fontSize: 12 },
+  reacFila: { flexDirection: 'row', justifyContent: 'space-around', paddingVertical: 12, paddingHorizontal: 10, borderBottomWidth: 1, borderBottomColor: P2C.linea2 },
+  reacBtn: { width: 42, height: 42, borderRadius: 21, alignItems: 'center', justifyContent: 'center' },
+  reacBtnOn: { backgroundColor: P2C.tinte2, borderWidth: 1, borderColor: P2C.acento },
+  reacBtnTxt: { fontSize: 24 },
+  btnMalo: { marginTop: 14, paddingVertical: 12, borderRadius: 12, alignItems: 'center', borderWidth: 1.5, borderColor: P2C.mal, backgroundColor: 'rgba(240,119,107,0.12)' },
+  btnMaloTxt: { color: P2C.mal, fontSize: 13.5, fontWeight: '800', letterSpacing: 0.4 },
+  btnLinea: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7, paddingHorizontal: 14, paddingVertical: 11, borderRadius: 12, borderWidth: 1, borderColor: 'rgba(255,255,255,0.55)' },
+  btnLineaTxt: { color: '#fff', fontSize: 12.5, fontWeight: '800', letterSpacing: 0.5 },
+  denTit: { color: P2C.acentoLt, fontSize: 11, fontWeight: '800', letterSpacing: 1, textTransform: 'uppercase', marginTop: 10, marginBottom: 6 },
+  denMotivos: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
+  denMotivo: { borderWidth: 1, borderColor: P2C.linea, borderRadius: 999, paddingHorizontal: 11, paddingVertical: 6 },
+  denMotivoOn: { backgroundColor: P2C.acentoLt, borderColor: P2C.acentoLt },
+  denMotivoTxt: { color: P2C.texto2, fontSize: 12.5, fontWeight: '600' },
+  codigoNums: { color: P2C.texto, fontSize: 17, lineHeight: 26, fontWeight: '700', textAlign: 'center', marginVertical: 14, fontVariant: ['tabular-nums'], letterSpacing: 1 },
+  honesto: { borderTopWidth: 1, borderTopColor: P2C.linea2, paddingTop: 10 },
+  // la tira de estados
+  estados: { marginBottom: 4 },
+  estado: { width: 62, alignItems: 'center', gap: 4 },
+  estadoAro: { width: 58, height: 58, borderRadius: 29, alignItems: 'center', justifyContent: 'center', borderWidth: 2.5 },
+  estadoAroNuevo: { borderColor: P2C.acento },
+  estadoAroVisto: { borderColor: P2C.linea },
+  estadoAroNada: { borderColor: 'transparent' },
+  estadoMas: { position: 'absolute', right: -2, bottom: -2, width: 20, height: 20, borderRadius: 10, backgroundColor: P2C.acentoLt, alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: P2C.fondo },
+  estadoNom: { color: P2C.texto2, fontSize: 10.5, maxWidth: 62 },
+  estadoVelo: { flex: 1, justifyContent: 'center' },
+  estadoBarras: { position: 'absolute', top: 44, left: 10, right: 10, flexDirection: 'row', gap: 4, zIndex: 2 },
+  estadoBarra: { flex: 1, height: 3, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.3)' },
+  estadoBarraOn: { backgroundColor: '#fff' },
+  estadoCab: { position: 'absolute', top: 56, left: 12, right: 12, flexDirection: 'row', alignItems: 'center', gap: 10, zIndex: 2 },
+  estadoQuien: { color: '#fff', fontSize: 14, fontWeight: '700' },
+  estadoCuando: { color: 'rgba(255,255,255,0.7)', fontSize: 11 },
+  estadoImg: { width: '100%', height: '100%' },
+  estadoTextoCaja: { paddingHorizontal: 26 },
+  estadoTextoPie: { position: 'absolute', left: 0, right: 0, bottom: 90, backgroundColor: 'rgba(0,0,0,0.45)', paddingVertical: 12 },
+  estadoTexto: { color: '#fff', fontSize: 16, lineHeight: 23, textAlign: 'center', fontWeight: '600' },
+  estadoPie: { position: 'absolute', left: 16, right: 16, bottom: 34, flexDirection: 'row', alignItems: 'center', gap: 6 },
+  estadoVistas: { color: '#fff', fontSize: 12.5, fontWeight: '600' },
+  estadoPrevia: { width: '100%', height: 200, borderRadius: 12, marginTop: 10, backgroundColor: 'rgba(0,0,0,0.3)' },
+  estadoInput: { backgroundColor: 'rgba(0,0,0,0.22)', borderColor: 'rgba(255,255,255,0.35)', color: '#fff', minHeight: 70, textAlignVertical: 'top' },
+  fondos: { flexDirection: 'row', gap: 8, marginTop: 12, flexWrap: 'wrap' },
+  fondo: { width: 28, height: 28, borderRadius: 14, borderWidth: 2, borderColor: 'rgba(255,255,255,0.35)' },
+  fondoOn: { borderColor: '#fff', transform: [{ scale: 1.15 }] },
+  centro: { flex: 1, justifyContent: 'center', padding: 24 },
+  espera: { color: P2C.texto3, textAlign: 'center', marginTop: 12 },
+  gate: { backgroundColor: P2C.panel, borderWidth: 1, borderColor: P2C.linea2, borderRadius: 18, padding: 20 },
+  gateTit: { color: P2C.acentoLt, fontSize: 17, fontWeight: '600', marginBottom: 8 },
+  gateTxt: { color: P2C.texto2, fontSize: 13.5, lineHeight: 20, marginBottom: 16 },
+  accesos: { flexDirection: 'row', gap: 8 },
+  acceso: { width: 38, height: 38, borderRadius: 13, borderWidth: 1, borderColor: P2C.linea2, backgroundColor: P2C.tinte, alignItems: 'center', justifyContent: 'center' },
+  masChico: { position: 'absolute', top: 4, right: 5, color: P2C.acentoHi, fontSize: 12, fontWeight: '900' },
+  busca: { backgroundColor: P2C.input, borderWidth: 1, borderColor: P2C.inputBr, borderRadius: 14, paddingHorizontal: 14, paddingVertical: 11, color: P2C.texto, fontSize: 14 },
+  qrFila: { flexDirection: 'row', gap: 8, marginTop: 8, marginBottom: 6 },
+  qrBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7, borderWidth: 1, borderColor: P2C.linea, borderRadius: 12, paddingVertical: 9 },
+  qrBtnTxt: { color: P2C.acentoLt, fontSize: 11, fontWeight: '700', letterSpacing: 1 },
+  dir: { color: P2C.texto3, fontSize: 10, fontWeight: '700', letterSpacing: 3, marginVertical: 8 },
+  // ── los estados de red honestos ──
+  // El banner dice «sin conexión» ENCIMA de lo ya cargado (que sigue siendo
+  // legible); la caja roja es para cuando no hay nada que enseñar y lo único
+  // honesto es decirlo y ofrecer reintentar.
+  bannerRed: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7, backgroundColor: '#8A2A21', paddingVertical: 5 },
+  bannerRedTxt: { color: '#fff', fontSize: 11, fontWeight: '700' },
+  redCaja: { alignItems: 'center', gap: 6, marginTop: 30, marginHorizontal: 24, padding: 20, borderRadius: 18, borderWidth: 1, borderColor: 'rgba(240,119,107,0.35)', backgroundColor: 'rgba(52,20,18,0.35)' },
+  redTit: { color: P2C.texto, fontWeight: '800', fontSize: 14.5 },
+  redTxt: { color: P2C.texto2, fontSize: 12.5, lineHeight: 18, textAlign: 'center' },
+  redBtn: { marginTop: 8, borderWidth: 1, borderColor: P2C.linea, borderRadius: 12, paddingHorizontal: 18, paddingVertical: 9 },
+  redBtnTxt: { color: P2C.acentoLt, fontSize: 10.5, fontWeight: '800', letterSpacing: 1.2 },
+  vacio: { color: P2C.texto3, fontSize: 13, lineHeight: 20, marginTop: 16, textAlign: 'center' },
+  fila: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 11, borderBottomWidth: 1, borderBottomColor: P2C.tinte },
+  filaSup: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
+  nom: { color: P2C.texto, fontSize: 15, fontWeight: '600', flexShrink: 1 },
+  hora: { color: P2C.texto3, fontSize: 10.5 },
+  ult: { color: P2C.texto3, fontSize: 12.5, flexShrink: 1, marginTop: 2 },
+  // con mensajes sin leer la última línea sube de tono: el globo dorado dice
+  // cuántos, y el texto dice que están vivos sin tener que contarlos
+  ultVivo: { color: P2C.texto2, fontWeight: '600' },
+  globo: { minWidth: 20, height: 20, borderRadius: 10, backgroundColor: P2C.acento, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 5 },
+  globoTxt: { color: P2C.textoMia, fontSize: 11, fontWeight: '800' },
+  cabHilo: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 12, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: P2C.linea2 },
+  cabQuien: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 10, minWidth: 0 },
+  volver: { color: P2C.acento, fontSize: 28, paddingHorizontal: 4, lineHeight: 30 },
+  mini: { color: P2C.texto3, fontSize: 10.5 },
+  /* Redondo y del tamaño del pulgar: la cabecera es estrecha y estos dos
+     botones tienen que poder tocarse sin abrir la ficha del contacto. */
+  btnLlamar: {
+    width: 36, height: 36, borderRadius: 18, alignItems: 'center',
+    justifyContent: 'center', backgroundColor: P2C.tinte,
+  },
+  btnOrigen: { borderRadius: 11, paddingHorizontal: 11, paddingVertical: 8 },
+  btnOrigenTxt: { color: P2C.textoMia, fontSize: 9.5, fontWeight: '800', letterSpacing: 0.5 },
+  guardaBar: { flexDirection: 'row', alignItems: 'center', gap: 10, marginHorizontal: 12, marginTop: 10, padding: 11, borderRadius: 15, borderWidth: 1, borderColor: P2C.linea, backgroundColor: P2C.tinte },
+  guardaTit: { color: P2C.acentoLt, fontSize: 13, fontWeight: '700' },
+  guardaTxt: { color: P2C.texto3, fontSize: 11.5, marginTop: 1 },
+  guardaBtn: { borderRadius: 11, paddingHorizontal: 12, paddingVertical: 9 },
+  guardaBtnTxt: { color: P2C.textoMia, fontSize: 9.5, fontWeight: '800', letterSpacing: 0.6 },
+  dia: { alignSelf: 'center', backgroundColor: P2C.tinte, borderRadius: 10, paddingHorizontal: 10, paddingVertical: 3, marginVertical: 8 },
+  diaTxt: { color: P2C.texto3, fontSize: 10.5 },
+  // el lado lo pone la línea (la que se anima); la burbuja solo se ocupa de
+  // su propia forma, así el comprobante puede ser más ancho que un texto
+  linea: { maxWidth: '82%' },
+  lineaPago: { maxWidth: '90%', minWidth: 244 },
+  izq: { alignSelf: 'flex-start' },
+  der: { alignSelf: 'flex-end' },
+  burbuja: { borderRadius: 16, paddingHorizontal: 13, paddingVertical: 8, marginVertical: 1.5 },
+  // la propia en el azul del acento con texto blanco; la ajena en un azul
+  // sordo con el texto claro — las dos se distinguen de un vistazo
+  mia: { backgroundColor: P2C.mia, borderBottomRightRadius: 5 },
+  suya: { backgroundColor: P2C.suya, borderBottomLeftRadius: 5 },
+  // el envío fallido se marca, no se desvanece: borde y fondo rojizos con el
+  // texto legible, y debajo su «Reintentar»
+  burbujaFallo: { backgroundColor: 'rgba(52,20,18,0.55)', borderWidth: 1.5, borderColor: 'rgba(240,119,107,0.6)' },
+  reintentar: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 6, alignSelf: 'flex-end' },
+  reintentarTxt: { color: P2C.mal, fontSize: 11, fontWeight: '800', letterSpacing: 0.3 },
+  // el chip que baja al final sin robar el scroll mientras se lee historial
+  chipNuevos: { alignSelf: 'center', marginTop: 2, marginBottom: 4, backgroundColor: P2C.acento, borderRadius: 999, paddingHorizontal: 14, paddingVertical: 6, shadowColor: P2C.acento, shadowOpacity: 0.4, shadowRadius: 8, shadowOffset: { width: 0, height: 3 }, elevation: 4 },
+  chipNuevosTxt: { color: P2C.textoMia, fontSize: 11.5, fontWeight: '800' },
+  autor: { color: P2C.acento, fontSize: 11, fontWeight: '700', marginBottom: 2 },
+  msg: { color: P2C.texto, fontSize: 14.5, lineHeight: 20 },
+  msgHora: { color: P2C.texto3, fontSize: 9.5, alignSelf: 'flex-end', marginTop: 2 },
+  /* El sello del cifrado: en cursiva y con menos peso que el mensaje. Dice
+     algo del SOBRE, no de lo que la persona escribió, y tiene que leerse como
+     una nota al margen — no como parte de la conversación. */
+  selloFila: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 3 },
+  /* El hueco de un adjunto que todavía se está abriendo: MISMO tamaño que la
+     foto, para que la burbuja no salte cuando llegue. */
+  fotoHueco: { alignItems: 'center', justifyContent: 'center', gap: 6,
+    backgroundColor: 'rgba(255,255,255,0.05)', borderWidth: 1, borderColor: P2C.linea },
+  fotoHuecoTxt: { color: P2C.texto3, fontSize: 10.5, fontStyle: 'italic', textAlign: 'center',
+    paddingHorizontal: 12 },
+  selloTxt: { color: P2C.texto3, fontSize: 10.5, fontStyle: 'italic', flexShrink: 1 },
+  pago: { borderRadius: 18, borderWidth: 1, borderColor: C.line, backgroundColor: 'rgba(4,25,27,0.86)', overflow: 'hidden', marginVertical: 3, shadowColor: C.gold, shadowOpacity: 0.28, shadowRadius: 14, shadowOffset: { width: 0, height: 6 }, elevation: 5 },
+  pagoFilo: { height: 3, width: '100%' },
+  pagoDentro: { paddingHorizontal: 15, paddingVertical: 13 },
+  pagoVerbo: { color: C.gold, fontSize: 9.5, fontWeight: '800', letterSpacing: 2.2 },
+  pagoFila: { flexDirection: 'row', alignItems: 'flex-end', gap: 7, marginTop: 3 },
+  pagoMonto: { color: C.goldHi, fontSize: 30, fontWeight: '800', letterSpacing: -0.4, fontVariant: ['tabular-nums'] },
+  pagoMoneda: { color: C.gold, fontSize: 12.5, fontWeight: '700', letterSpacing: 1.4, marginBottom: 4 },
+  pagoNota: { color: P2C.texto2, fontSize: 13, lineHeight: 18, marginTop: 4 },
+  pagoPie: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 6 },
+  pagoOk: { color: C.up, fontSize: 11.5, fontWeight: '700' },
+  pagoHora: { color: P2C.texto3, fontSize: 10.5 },
+  pagoLink: { flexDirection: 'row', alignItems: 'center', gap: 7, marginTop: 10, paddingTop: 9, borderTopWidth: 1, borderTopColor: 'rgba(201,169,97,0.20)' },
+  pagoLinkTxt: { color: C.gold, fontSize: 12, fontWeight: '700' },
+  pagoHash: { color: P2C.texto3, fontSize: 10.5, flexShrink: 1, fontVariant: ['tabular-nums'] },
+  emojis: { flexDirection: 'row', justifyContent: 'space-around', paddingVertical: 7, borderTopWidth: 1, borderTopColor: P2C.linea2 },
+  emoji: { fontSize: 21 },
+  /* El círculo. Las solicitudes recibidas llevan borde dorado —piden un gesto—
+     y las enviadas se quedan calladas en gris: son un recordatorio, no una
+     tarea. */
+  solicCaja: { marginHorizontal: 16, marginTop: 12, padding: 12, borderRadius: 16, borderWidth: 1, borderColor: P2C.linea, backgroundColor: P2C.panel2, gap: 10 },
+  solicTit: { color: P2C.acentoLt, fontSize: 11.5, fontWeight: '800', letterSpacing: 0.8, textTransform: 'uppercase' },
+  solicFila: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  solicNom: { color: P2C.texto, fontSize: 14.5, fontWeight: '700' },
+  solicSub: { color: P2C.texto3, fontSize: 12.5, marginTop: 1 },
+  solicSi: { paddingHorizontal: 14, paddingVertical: 7, borderRadius: 9, backgroundColor: P2C.acento },
+  solicSiTxt: { color: P2C.textoBoton, fontSize: 13, fontWeight: '800' },
+  solicNo: { padding: 6 },
+  solicCancel: { color: P2C.texto3, fontSize: 13, fontWeight: '700' },
+
+  /* El aviso del 403, pegado a la caja de escribir. */
+  faltaCaja: { marginHorizontal: 12, marginBottom: 8, padding: 14, borderRadius: 14, borderWidth: 1, borderColor: P2C.linea, backgroundColor: P2C.panel2, alignItems: 'center', gap: 5 },
+  faltaTit: { color: P2C.texto, fontSize: 15, fontWeight: '800' },
+  faltaTxt: { color: P2C.texto2, fontSize: 13, lineHeight: 18.5, textAlign: 'center' },
+  faltaBtn: { marginTop: 6, paddingHorizontal: 18, paddingVertical: 9, borderRadius: 10, backgroundColor: P2C.acento, minWidth: 150, alignItems: 'center' },
+  faltaBtnTxt: { color: P2C.textoBoton, fontSize: 13.5, fontWeight: '800' },
+
+  lazoTxt: { color: P2C.texto3, fontSize: 12.5, fontWeight: '700' },
+  vozFila: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 4, minWidth: 160 },
+  vozBtn: { width: 34, height: 34, borderRadius: 17, borderWidth: 1.5, alignItems: 'center', justifyContent: 'center' },
+  vozTxt: { color: P2C.texto2, fontSize: 13.5, fontWeight: '600' },
+  filaEscribe: { flexDirection: 'row', gap: 8, paddingHorizontal: 12, paddingBottom: 10, alignItems: 'flex-end' },
+  clip: { width: 42, height: 42, borderRadius: 21, borderWidth: 1, borderColor: P2C.linea, alignItems: 'center', justifyContent: 'center' },
+  // la imagen adentro de la burbuja: ancho fijo cómodo, el server no manda
+  // dimensiones así que un rectángulo estable evita saltos en el scroll
+  foto: { width: 210, height: 210, borderRadius: 12, backgroundColor: 'rgba(0,0,0,0.25)' },
+  adjCard: { flexDirection: 'row', alignItems: 'center', gap: 9, paddingVertical: 4, maxWidth: 220 },
+  adjNom: { color: P2C.texto, fontSize: 13.5, fontWeight: '600', flexShrink: 1 },
+  veloBajo: { flex: 1, backgroundColor: 'rgba(3,12,28,0.62)', justifyContent: 'flex-end' },
+  hoja: { backgroundColor: P2C.hoja, borderWidth: 1, borderColor: P2C.linea2, borderRadius: 18, margin: 12, marginBottom: 26, overflow: 'hidden' },
+  hojaBtn: { flexDirection: 'row', alignItems: 'center', gap: 13, paddingHorizontal: 18, paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: P2C.tinte },
+  hojaTxt: { color: P2C.texto, fontSize: 14.5, fontWeight: '600' },
+  // la hojita del contacto: quién es arriba, sus dos acciones debajo
+  menuQuien: { flexDirection: 'row', alignItems: 'center', gap: 11, paddingHorizontal: 18, paddingVertical: 13, borderBottomWidth: 1, borderBottomColor: P2C.tinte2, backgroundColor: P2C.tinte },
+  // la hoja pequeña de renombrar, centrada: es un solo campo y un botón
+  editCaja: { alignSelf: 'stretch', marginHorizontal: 26, backgroundColor: P2C.hoja, borderWidth: 1, borderColor: P2C.linea2, borderRadius: 18, padding: 18 },
+  editTit: { color: P2C.acentoLt, fontSize: 15, fontWeight: '700', marginBottom: 2 },
+  editInput: { backgroundColor: P2C.input, borderWidth: 1, borderColor: P2C.inputBr, borderRadius: 13, paddingHorizontal: 14, paddingVertical: 11, color: P2C.texto, fontSize: 14.5, marginTop: 12 },
+  editNota: { color: P2C.texto3, fontSize: 11.5, lineHeight: 16, marginTop: 8, marginBottom: 12 },
+  fotoVelo: { flex: 1, backgroundColor: 'rgba(0,0,0,0.96)', alignItems: 'center', justifyContent: 'center' },
+  fotoLlena: { width: '100%', height: '100%' },
+  caja: { flex: 1, backgroundColor: P2C.input, borderWidth: 1, borderColor: P2C.inputBr, borderRadius: 20, paddingHorizontal: 15, paddingVertical: 10, color: P2C.texto, fontSize: 14.5, maxHeight: 110 },
+  mandar: { width: 42, height: 42, borderRadius: 21, alignItems: 'center', justifyContent: 'center' },
+  mandarTxt: { color: P2C.textoMia, fontSize: 18, fontWeight: '800' },
+  velo: { flex: 1, backgroundColor: 'rgba(3,12,28,0.9)', alignItems: 'center', justifyContent: 'center' },
+  qrCaja: { alignItems: 'center', padding: 20 },
+  qrBlanco: { backgroundColor: '#fff', padding: 16, borderRadius: 18 },
+  camara: { width: 260, height: 260, borderRadius: 18, overflow: 'hidden' },
+  qrNota: { color: P2C.texto2, fontSize: 13, textAlign: 'center', marginTop: 14, maxWidth: 260 },
+});

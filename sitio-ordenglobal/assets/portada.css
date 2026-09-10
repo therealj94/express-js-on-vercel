@@ -1,0 +1,488 @@
+/* ══════════════════════════════════════════════════════════════════════════
+   ordenglobal.org · LA GALAXIA ES LA CASA
+
+   Dos correcciones de José, el 2-sep, y las dos tenían razón:
+
+     «rompió patrón que teníamos para nuestra web os con vetawallet»
+     «quitemos esos cuadros verdes, eso solo es para veta wallet»
+
+   La primera vez leí «el patrón» como «la piel de la billetera» y vestí la
+   portada de verde. Era exactamente al revés. El patrón de la casa madre es
+   LA GALAXIA —el cielo, el oro, las casas como planetas—; el verde profundo
+   es de Veta Wallet y solo suyo, igual que el azul es de PULSE2CHAT y el
+   cobre de AuCorp. Vestir a la madre con la ropa de una hija la convierte en
+   una función de su propio producto.
+
+   Así que aquí no hay un solo panel verde. Espacio, oro y la letra de la
+   casa. El cielo (`galaxia.js`, el mismo archivo de la puerta de la
+   billetera) va detrás de TODA la página y no de una franja, y las casas son
+   planetas de verdad (`constelacion.js`), con las coordenadas y los colores
+   del mapa que ya usan la app y la billetera.
+
+   Y lo que se fue, que era la mitad del problema:
+
+     · Las pastillas de estado con su puntito verde —«FUNCIONA HOY», «EN
+       BETA», «CON COMERCIOS DE MUESTRA»—. Ninguna empresa publica su tablero
+       de madurez en la portada; eso es un tablero de trabajo, no una página,
+       y era lo que más cara de hecho-por-una-máquina tenía de todo el sitio.
+     · Los veintisiete recuadros. Todo era una tarjeta en una rejilla, así que
+       nada pesaba más que nada y no había jerarquía.
+     · La captura del teléfono flotando con su pie «Es la app de verdad, no un
+       dibujo»: se defendía de una acusación que nadie había hecho.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+:root{
+  /* El espacio. Sale del cielo que pinta galaxia.js, no de un color elegido
+     aparte: el fondo de la página y el fondo del lienzo son el mismo negro. */
+  --espacio:#07091A; --noche:#0B0E22;
+  --vidrio:rgba(9,12,30,.62); --vidrio2:rgba(12,16,38,.78);
+  --linea:rgba(201,169,97,.30); --linea2:rgba(201,169,97,.16);
+  /* El oro es de la casa madre y no se toca: es lo único que comparten todas
+     las casas, y por eso es lo que las hace familia. */
+  --oro:#C9A961; --oroLt:#EAD79C; --oroHi:#F8EFCF; --oroDp:#96793F;
+  --crema:#F3ECD9; --bruma:#B3BDD6; --humo:#939CB8;
+  /* ── LA LETRA ─────────────────────────────────────────────────────────────
+     Cinzel se va del texto y se queda SOLO en el lockup, que es para lo que
+     sirve: es una capital romana lapidaria, no tiene minúsculas de verdad
+     —lo que le pedís en minúscula sale en versalitas— y en un titular de dos
+     líneas eso se lee como el serif dorado sobre negro que usa todo el mundo
+     cuando quiere aparentar lujo sin decidir nada. José lo dijo mirando el
+     teléfono: «esto es AI puro».
+
+     La casa YA tenía su letra editorial y estaba en /historia/, que es la
+     única pantalla del dominio que parece hecha por un estudio: Fraunces
+     —con eje óptico de 9 a 144, minúsculas de verdad y una itálica de
+     verdad— con Manrope para el texto. Portada e historia dejan de ser dos
+     marcas. */
+  --marca:'Cinzel',Georgia,serif;
+  --serif:'Fraunces',Georgia,'Times New Roman',serif;
+  --sans:'Manrope',system-ui,-apple-system,sans-serif;
+  --mono:'JetBrains Mono',ui-monospace,monospace;
+  --r:18px; --r2:26px;
+}
+
+*{box-sizing:border-box;margin:0;padding:0}
+html{-webkit-text-size-adjust:100%;scroll-behavior:smooth}
+@media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}*{animation:none!important;transition:none!important}}
+
+body{
+  background:var(--espacio); color:var(--crema); font-family:var(--sans);
+  min-height:100svh; overflow-x:hidden; -webkit-font-smoothing:antialiased;
+  font-size:16px; line-height:1.65;
+}
+a{color:var(--oroLt)}
+:focus-visible{outline:2px solid var(--oro);outline-offset:4px;border-radius:6px}
+.mono{font-family:var(--mono);font-variant-ligatures:none;font-variant-numeric:tabular-nums}
+img{max-width:100%}
+h1,h2,h3{text-wrap:balance}
+ul,ol{list-style:none}
+
+.env{max-width:1080px;margin:0 auto;padding-left:clamp(18px,4vw,42px);padding-right:clamp(18px,4vw,42px)}
+main{position:relative;z-index:2}
+
+/* ── el cielo, detrás de TODA la página ──────────────────────────────────── */
+.cielo{position:fixed;inset:0;z-index:0;pointer-events:none}
+.cielo canvas{position:absolute;inset:0;width:100%;height:100%}
+/* Un velo que se hace más denso hacia abajo: arriba manda el cielo, y donde
+   hay texto largo manda la legibilidad. */
+body::after{content:"";position:fixed;inset:0;z-index:1;pointer-events:none;
+  background:linear-gradient(180deg,rgba(7,9,26,0) 0%,rgba(7,9,26,.30) 38%,rgba(6,8,22,.72) 100%)}
+
+/* ── la veta: el hilo de oro de la casa ──────────────────────────────────── */
+/* Absoluta y no fija: la veta es de la ENTRADA. Fija se quedaba cruzando la
+   pantalla toda la página abajo, compitiendo con la constelación y con el
+   texto. Se sube con el desplazamiento y desaparece, que es lo que hace en la
+   puerta de la billetera. */
+.veta-svg{position:absolute;top:0;left:0;width:100%;height:min(1500px,190vh);
+  pointer-events:none;z-index:1}
+.veta-svg path{fill:none;stroke:url(#vetaGrad);stroke-width:1.7;stroke-linecap:round;
+  stroke-dasharray:var(--largo);stroke-dashoffset:var(--largo);
+  animation:vetaCrece 2.6s cubic-bezier(.32,.9,.35,1) forwards}
+.veta-svg path.b{animation-delay:.55s;opacity:.7}
+.veta-svg path.c{animation-delay:.95s;opacity:.45}
+@keyframes vetaCrece{to{stroke-dashoffset:0}}
+.pepita{fill:var(--oroHi);opacity:0;animation:pepitaSale .9s 2.1s ease forwards}
+@keyframes pepitaSale{from{opacity:0}to{opacity:1}}
+@media (prefers-reduced-motion:reduce){.veta-svg path{stroke-dashoffset:0}.pepita{opacity:1}}
+
+/* ── la marca y los botones, los de la casa ──────────────────────────────── */
+.marca{display:flex;align-items:baseline;gap:.34ch;
+  font-family:var(--marca);font-weight:700;letter-spacing:.14em;line-height:1;color:var(--crema)}
+.marca span{color:var(--oro)}
+
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:9px;
+  padding:15px 30px;border-radius:100px;font-weight:700;font-size:15px;
+  text-decoration:none;border:1px solid transparent;
+  transition:transform .22s cubic-bezier(.2,.8,.3,1),box-shadow .22s,background .22s,border-color .22s;
+  white-space:nowrap;position:relative;overflow:hidden}
+.btn:active{transform:scale(.975)}
+.btn-oro{color:#2A2007;background:linear-gradient(120deg,var(--oroLt),var(--oro) 52%,var(--oroLt));
+  background-size:210% 100%;box-shadow:0 14px 40px -16px rgba(201,169,97,.7)}
+.btn-oro:hover{transform:translateY(-2px);box-shadow:0 20px 52px -16px rgba(201,169,97,.85)}
+/* El destello cruza SOLO al pasar el cursor. En reposo se veía una banda
+   diagonal clara encima del botón que partía el texto en dos pesos, que es
+   justo el defecto que se busca evitar. Apagado con opacidad, no con la
+   posición: calcular el desplazamiento a ojo fue lo que lo dejó a medias. */
+.btn-oro::after{content:"";position:absolute;inset:0;opacity:0;
+  background:linear-gradient(105deg,transparent 40%,rgba(255,255,255,.5) 50%,transparent 60%);
+  background-size:250% 100%;background-position:150% 0;
+  transition:background-position .7s ease,opacity .2s ease}
+.btn-oro:hover::after{opacity:1;background-position:-60% 0}
+.btn-linea{border-color:var(--linea);color:var(--crema);background:rgba(255,255,255,.04)}
+.btn-linea:hover{border-color:var(--oro);background:rgba(201,169,97,.10);transform:translateY(-2px)}
+
+/* ── rótulos ─────────────────────────────────────────────────────────────── */
+h2{font:600 12px var(--sans);letter-spacing:.16em;text-transform:uppercase;
+  color:var(--oro);margin-bottom:10px;margin-right:-.16em}
+.tit{font:700 clamp(23px,3vw,30px)/1.25 var(--sans);letter-spacing:-.4px;
+  color:var(--crema);margin-bottom:26px;max-width:24ch}
+
+/* ── barra ───────────────────────────────────────────────────────────────── */
+.barra{position:sticky;top:0;z-index:20;background:rgba(7,9,26,.72);
+  backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
+  border-bottom:1px solid var(--linea2)}
+.barra .env{display:flex;align-items:center;gap:18px;min-height:66px}
+.lock{display:flex;align-items:center;gap:11px;text-decoration:none}
+.lock img{height:26px;width:auto}
+.lock .marca{font-size:15px}
+.nav{display:flex;gap:22px;margin-left:auto;font-size:14.5px}
+.nav a{color:var(--bruma);text-decoration:none;transition:color .2s}
+.nav a:hover{color:var(--oroLt)}
+.barra .btn{padding:11px 24px;font-size:14px}
+/* ── el menú en el teléfono ──────────────────────────────────────────────
+   Antes esto era `display:none` y punto: desde un teléfono no se llegaba al
+   inglés, ni a la historia, ni a ninguna sección. En Latinoamérica casi todo
+   el tráfico es móvil, así que era medio sitio apagado para la mayoría. */
+.menuBtn{display:none;margin-left:auto;width:44px;height:44px;border:1px solid var(--linea2);
+  border-radius:100px;background:rgba(255,255,255,.04);cursor:pointer;
+  flex-direction:column;align-items:center;justify-content:center;gap:5px}
+.menuBtn span{display:block;width:17px;height:1.5px;background:var(--crema);
+  border-radius:2px;transition:transform .24s,opacity .18s}
+.menuBtn[aria-expanded=true] span:nth-child(1){transform:translateY(6.5px) rotate(45deg)}
+.menuBtn[aria-expanded=true] span:nth-child(2){opacity:0}
+.menuBtn[aria-expanded=true] span:nth-child(3){transform:translateY(-6.5px) rotate(-45deg)}
+@media (max-width:860px){
+  .menuBtn{display:flex}
+  .nav{position:absolute;top:100%;left:0;right:0;display:none;flex-direction:column;
+    gap:0;padding:8px clamp(18px,4vw,42px) 18px;
+    background:rgba(7,9,26,.96);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
+    border-bottom:1px solid var(--linea2)}
+  .nav.abierto{display:flex}
+  .nav a{padding:15px 0;border-top:1px solid var(--linea2);font-size:16px}
+  .barra .env{position:relative}
+  .barra .btn{display:none}
+  /* El botón de crear cuenta se va del techo y aparece al final del menú, con
+     el ancho entero: en una barra de 44 px no cabía sin apretar todo. */
+  .nav .btn{display:inline-flex;margin-top:14px;border:0}
+  .nav a.btn-oro{color:#2A2007}
+}
+
+/* ── la portada: una sola idea, sin recuadros ────────────────────────────── */
+.portada{padding-top:clamp(56px,9vw,104px);padding-bottom:clamp(26px,4vw,40px);max-width:820px}
+.eti{font:600 12px var(--sans);letter-spacing:.16em;text-transform:uppercase;
+  color:var(--oro);margin-bottom:22px;margin-right:-.16em}
+.h1{font:300 clamp(40px,6.4vw,72px)/1.02 var(--serif);letter-spacing:-.012em;
+  font-variation-settings:'opsz' 144,'SOFT' 0,'WONK' 1;
+  color:var(--crema);margin-bottom:24px;max-width:15ch}
+/* El titular va de un solo color. Destacar una palabra en oro era, junto con
+   la lapidaria, lo que lo hacía leer como plantilla. */
+.bajada{font-size:clamp(16.5px,1.7vw,19px);color:var(--bruma);margin-bottom:32px;max-width:56ch}
+.botones{display:flex;gap:12px;flex-wrap:wrap}
+
+/* ── la constelación ─────────────────────────────────────────────────────── */
+.sistema{padding:clamp(8px,2vw,20px) 0 clamp(30px,5vw,54px)}
+#constelacion{--modo:orbita;position:relative;height:clamp(390px,54vh,560px);touch-action:pan-y}
+#constelacion .campo{position:absolute;inset:0}
+#constelacion canvas{z-index:1}
+#constelacion canvas{position:absolute;inset:0;width:100%;height:100%}
+/* El nombre del sol, anclado al pie del campo y no a una distancia del centro.
+   Colgado del centro caía justo por donde pasan las órbitas, y cada vez que un
+   planeta cruzaba se leía «AU...A», partido por una bola. Abajo del todo no lo
+   cruza nadie a ningún ancho, y funciona como el pie de la estrella. */
+.sol{position:absolute;left:50%;bottom:10px;transform:translateX(-50%);
+  width:auto;max-width:min(280px,64vw);text-align:center;pointer-events:none;z-index:0}
+/* Sin placa: la placa era un globito aparcado en medio del dibujo. Debajo
+   del lienzo, el nombre se lee a través del resplandor y no compite. */
+.sol b{font:600 12px var(--sans);letter-spacing:.26em;color:var(--oroHi);
+  padding-left:.26em;text-shadow:0 1px 10px rgba(7,9,26,.95),0 0 24px rgba(7,9,26,.8)}
+.sol span{display:block;margin-top:7px;font-size:12.5px;line-height:1.5;color:var(--bruma);
+  padding:7px 14px;border-radius:14px}
+.orbe{position:absolute;left:0;top:0;width:160px;
+  display:flex;flex-direction:column;align-items:center;justify-content:flex-start;
+  text-align:center;text-decoration:none;background:none;border:0;padding:0;
+  color:inherit;font:inherit;cursor:pointer;transition:opacity .3s}
+.orbe b{font:700 13.5px var(--sans);color:var(--crema);letter-spacing:.01em;
+  text-shadow:0 2px 10px rgba(0,0,0,.9)}
+.orbe span{font-size:12.5px;line-height:1.4;color:var(--bruma);margin-top:2px;
+  opacity:0;transform:translateY(-3px);transition:opacity .22s,transform .22s}
+.orbe:hover span,.orbe:focus-visible span{opacity:1;transform:none}
+.orbe:hover b,.orbe:focus-visible b{color:var(--oroHi)}
+/* La casa abierta: su rótulo crece y se pone de oro, debajo del planeta que
+   ya se vino al frente. */
+.orbe.abierta{width:250px}
+.orbe.abierta b{font:700 20px var(--serif);letter-spacing:.14em;color:var(--oroHi)}
+.orbe.abierta span{display:none}
+
+/* ── la ficha de una casa ────────────────────────────────────────────────
+   Se abre EN la portada, al lado del planeta que se adelantó. No es una
+   ventana encima de todo: es el mismo cielo, con una casa al frente. */
+.ficha{position:absolute;right:clamp(18px,5vw,64px);top:50%;transform:translateY(-50%);
+  width:min(410px,40vw);z-index:5;
+  /* Que no se meta debajo de la barra ni se salga del campo: si el texto no
+     cabe, se desplaza dentro de la ficha y no empuja nada. */
+  max-height:calc(100% - 20px);overflow:auto;overscroll-behavior:contain;
+  background:var(--vidrio2);border:1px solid var(--linea);border-radius:var(--r2);
+  backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);
+  padding:24px 26px;box-shadow:0 40px 90px -40px rgba(0,0,0,.9);
+  animation:fichaEntra .42s cubic-bezier(.2,.8,.3,1) both}
+@keyframes fichaEntra{from{opacity:0;transform:translateY(calc(-50% + 14px))}}
+@media (prefers-reduced-motion:reduce){.ficha{animation:none}}
+.ficha .cerrar{position:absolute;top:12px;right:14px;width:34px;height:34px;
+  border:1px solid var(--linea2);border-radius:50%;background:rgba(255,255,255,.04);
+  color:var(--bruma);font:400 20px/1 var(--sans);cursor:pointer;transition:.2s}
+.ficha .cerrar:hover{border-color:var(--oro);color:var(--oroHi)}
+.ficha .deQuien{font:600 10.5px var(--sans);letter-spacing:.2em;text-transform:uppercase;
+  color:var(--oro);margin-bottom:8px}
+.ficha h3{font:400 clamp(23px,2.6vw,28px)/1.1 var(--serif);color:var(--oroHi);
+  font-variation-settings:'opsz' 72;letter-spacing:-.012em;margin-bottom:12px;outline:none}
+.ficha .quees{color:var(--crema);font-size:15px;margin-bottom:16px}
+.ficha .comoRotulo{font:600 10.5px var(--sans);letter-spacing:.2em;text-transform:uppercase;
+  color:var(--oro);padding-top:14px;border-top:1px solid var(--linea2);margin-bottom:10px}
+.usos{display:flex;flex-direction:column;gap:8px;margin-bottom:20px}
+.usos li{position:relative;padding-left:20px;color:var(--bruma);font-size:14px;line-height:1.5}
+.usos li::before{content:"";position:absolute;left:0;top:9px;width:7px;height:7px;
+  border-radius:50%;background:linear-gradient(120deg,var(--oroLt),var(--oroDp))}
+.ficha .btn{width:100%}
+@media (max-width:900px){
+  .ficha{position:absolute;left:clamp(18px,4vw,42px);right:clamp(18px,4vw,42px);
+    width:auto;top:auto;bottom:14px;transform:none;padding:22px 22px 24px}
+  @keyframes fichaEntra{from{opacity:0;transform:translateY(14px)}}
+}
+.pieDelSistema{color:var(--humo);font-size:14.5px;max-width:58ch;margin:6px auto 0;text-align:center}
+/* En el teléfono el sistema es más chico y las etiquetas se apretarían unas
+   con otras: se deja el dibujo y los nombres, y la línea de cada casa vive en
+   el pie. Un rótulo ilegible es peor que ninguno. */
+/* ══════════════════════════════════════════════════════════════════════════
+   EL TELÉFONO
+
+   Aquí llega casi todo el tráfico de Latinoamérica, así que esto no es «la
+   versión chica»: es la versión. Lo que cambia no es el tamaño de las cosas,
+   es qué se enseña y en qué orden.
+   ══════════════════════════════════════════════════════════════════════════ */
+@media (max-width:700px){
+  /* MODO LISTA. El sistema se queda de dibujo, girando igual, y los nombres
+     bajan a una lista de verdad con lo que hace cada uno. `constelacion.js`
+     lee este --modo y deja de mover los rótulos. */
+  #constelacion{--modo:lista;height:auto;display:grid;
+    grid-template-columns:1fr 1fr;gap:14px 18px;
+    padding-left:clamp(18px,4vw,42px);padding-right:clamp(18px,4vw,42px)}
+  /* El lienzo se sale del margen a los dos lados: el cielo es fondo, y un
+     fondo con margen parece una estampilla pegada. */
+  /* El dibujo, más alto y a sangre: en el teléfono es lo primero que se ve
+     después del titular y tiene que verse ENTERO, no una franja recortada
+     entre la barra y la lista. */
+  #constelacion .campo{position:relative;grid-column:1/-1;
+    height:clamp(280px,40vh,340px);margin-bottom:2px;
+    margin-left:calc(clamp(18px,4vw,42px) * -1);
+    margin-right:calc(clamp(18px,4vw,42px) * -1)}
+  .orbe{position:static;transform:none!important;opacity:1!important;
+    width:auto;height:auto;align-items:flex-start;text-align:left;
+    padding-top:11px;border-top:1px solid var(--linea2)}
+  .orbe b{font-size:13px}
+  .orbe span{display:block;opacity:1;transform:none;color:var(--humo)}
+  .sol{bottom:6px}
+  .sol b{font-size:11px;letter-spacing:.22em}
+  /* El pie no repite la lista que tiene encima: en el teléfono se queda con
+     la única frase que la lista no dice. */
+  .pieDelSistema{text-align:left;margin-top:20px;font-size:14px;
+    padding-top:16px;border-top:1px solid var(--linea2)}
+  /* La ficha entra en el flujo: en el teléfono no hay «al lado». */
+  .ficha{position:static;grid-column:1/-1;width:auto;transform:none;
+    margin-top:4px;padding:22px}
+  .orbe[aria-expanded=true] b{color:var(--oroHi)}
+}
+
+/* ── las dos cifras vivas: lo mejor que tenemos, en grande ───────────────── */
+#vivo{display:grid;grid-template-columns:1fr 1fr;gap:clamp(20px,4vw,44px);
+  padding-top:clamp(34px,5vw,56px);padding-bottom:clamp(34px,5vw,56px);align-items:start}
+.cifra .k{font:600 11px var(--sans);letter-spacing:.2em;text-transform:uppercase;
+  color:var(--oro);margin-bottom:6px}
+.numero{font:300 clamp(44px,7vw,78px)/1 var(--serif);color:var(--oroHi);
+  font-variation-settings:'opsz' 144;letter-spacing:-.015em;margin-bottom:12px}
+.numero.mono{font:600 clamp(34px,5.4vw,58px)/1 var(--mono)}
+.cifra .s{font-size:14px;color:var(--bruma);margin-bottom:6px;max-width:46ch}
+.cifra .s .mono{color:var(--humo);font-size:12px;word-break:break-all}
+@media (max-width:820px){#vivo{grid-template-columns:1fr}}
+
+section{padding-top:clamp(44px,6vw,72px);padding-bottom:clamp(44px,6vw,72px);
+  scroll-margin-top:84px}
+#vivo+section,#hace,#como,#origen,#cadena,#comprobar,#mision{border-top:1px solid rgba(201,169,97,.12)}
+
+/* ── los seis verbos: tipografía, no tarjetas ────────────────────────────── */
+.verbos{display:grid;grid-template-columns:repeat(3,1fr);gap:clamp(20px,3vw,38px) clamp(24px,4vw,46px)}
+.verbos h3{font:700 19px var(--sans);color:var(--oroLt);margin-bottom:7px;
+  padding-top:13px;border-top:1px solid var(--linea2)}
+.verbos p{color:var(--bruma);font-size:15px;max-width:none}
+@media (max-width:860px){.verbos{grid-template-columns:1fr 1fr}}
+@media (max-width:560px){.verbos{grid-template-columns:1fr}}
+
+/* ── los tres pasos ──────────────────────────────────────────────────────── */
+.pasos{display:grid;grid-template-columns:repeat(3,1fr);gap:clamp(22px,4vw,42px);counter-reset:p}
+.pasos li::before{counter-increment:p;content:counter(p);display:block;
+  font:700 13px var(--mono);color:var(--oro);letter-spacing:.1em;
+  padding-bottom:11px;margin-bottom:13px;border-bottom:1px solid var(--linea2)}
+.pasos h3{font:700 17.5px var(--sans);color:var(--crema);margin-bottom:6px}
+.pasos p{color:var(--bruma);font-size:15px;max-width:none}
+.remate{margin-top:clamp(26px,4vw,40px);font:300 clamp(21px,2.8vw,28px)/1.2 var(--serif);
+  color:var(--oroHi);font-variation-settings:'opsz' 96;letter-spacing:-.01em}
+@media (max-width:820px){.pasos{grid-template-columns:1fr}}
+
+/* ── ORIGEN y la cadena ──────────────────────────────────────────────────── */
+.dos{display:grid;grid-template-columns:1fr 1fr;gap:clamp(24px,4vw,44px);align-items:start}
+.dos>p{color:var(--bruma)}
+.formula{font:600 clamp(17px,2.2vw,23px) var(--mono);color:var(--oroHi);
+  border:1px solid var(--linea);border-radius:var(--r);background:var(--vidrio);
+  backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
+  padding:20px 22px;margin-bottom:18px;text-align:center}
+.honesto{border-left:2px solid var(--oro);padding-left:16px;color:var(--bruma);font-size:15px}
+.honesto b{color:var(--oroLt)}
+.monedas{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.monedas li{display:flex;align-items:center;gap:12px}
+.monedas img{width:42px;height:42px;border-radius:50%;object-fit:cover;border:1px solid var(--linea)}
+.monedas b{display:block;font-size:15px;color:var(--crema)}
+.monedas span{font-size:12.5px;color:var(--humo)}
+.datos{display:grid;grid-template-columns:repeat(2,1fr);gap:18px 24px}
+.datos dt{font:600 10.5px var(--sans);letter-spacing:.18em;text-transform:uppercase;color:var(--oro)}
+.datos dd{font-size:22px;color:var(--crema);margin-top:3px}
+#cadena .btn{margin-top:clamp(24px,4vw,36px)}
+@media (max-width:820px){.dos{grid-template-columns:1fr}.monedas{grid-template-columns:1fr}}
+
+/* ── comprobalo por fuera ────────────────────────────────────────────────
+   El argumento más fuerte que tenemos y no estaba en la página: lo que
+   dice de nosotros gente que no controlamos. Las palabras son las que la
+   Junta ya aprobó para AU-RA (ficha `verificable-por-fuera`), y los dos LEI
+   se comprobaron contra el registro de GLEIF antes de escribirlos. */
+.pruebas{display:grid;grid-template-columns:repeat(3,1fr);gap:clamp(22px,4vw,40px)}
+.pruebas h3{font:700 17px var(--sans);color:var(--oroLt);margin-bottom:7px;
+  padding-top:13px;border-top:1px solid var(--linea2)}
+.pruebas p{color:var(--bruma);font-size:15px}
+.lei{margin-top:10px;font-size:13.5px;line-height:1.9}
+.lei .mono{color:var(--oroHi);font-size:12.5px;letter-spacing:.02em;
+  background:rgba(201,169,97,.10);border:1px solid var(--linea2);
+  border-radius:6px;padding:3px 7px;margin-right:7px}
+@media (max-width:820px){.pruebas{grid-template-columns:1fr}}
+
+/* ── la misión ───────────────────────────────────────────────────────────── */
+.mision{display:grid;grid-template-columns:repeat(3,1fr);gap:clamp(22px,4vw,40px)}
+.mision li{font:700 clamp(17px,2.1vw,20px)/1.4 var(--sans);color:var(--crema);
+  padding-top:14px;border-top:2px solid var(--oro)}
+@media (max-width:820px){.mision{grid-template-columns:1fr}}
+
+/* ── la historia y el cierre ─────────────────────────────────────────────── */
+.historia{display:flex;align-items:center;justify-content:space-between;gap:22px;flex-wrap:wrap;
+  background:var(--vidrio);border:1px solid var(--linea2);border-radius:var(--r2);padding:28px 30px;
+  backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px)}
+.historia h3{font:400 clamp(21px,2.6vw,26px)/1.15 var(--serif);color:var(--oroHi);
+  font-variation-settings:'opsz' 72;letter-spacing:-.01em}
+.historia p{color:var(--bruma);margin-top:5px}
+.cierre{text-align:center;padding-top:clamp(58px,8vw,88px);padding-bottom:clamp(58px,8vw,88px)}
+.cierre h3{font:300 clamp(28px,4.2vw,44px)/1.08 var(--serif);color:var(--crema);
+  font-variation-settings:'opsz' 144;letter-spacing:-.015em;margin-bottom:14px}
+.cierre p{margin:0 auto 26px;color:var(--bruma)}
+.cierre .botones{justify-content:center}
+
+footer{position:relative;z-index:2;border-top:1px solid var(--linea2);
+  padding:38px 0 50px;color:var(--humo);font-size:13.5px;background:rgba(5,7,20,.6)}
+.pie{display:grid;grid-template-columns:2fr 1fr 1fr;gap:26px;margin-bottom:24px}
+.pie h4{font:600 11px var(--sans);letter-spacing:.18em;text-transform:uppercase;
+  color:var(--oro);margin-bottom:11px}
+.pie p{color:var(--bruma);max-width:44ch}
+.pie a{display:block;color:var(--bruma);text-decoration:none;margin-bottom:7px;transition:color .2s}
+.pie a:hover{color:var(--oroLt)}
+.legal{border-top:1px solid var(--linea2);padding-top:17px;display:flex;
+  justify-content:space-between;flex-wrap:wrap;gap:8px}
+@media (max-width:820px){.pie{grid-template-columns:1fr}}
+
+/* ── lo que hay que saber antes de abrir ─────────────────────────────────
+   Los tres informes de fuera coincidieron: los términos de Veta Wallet dicen
+   con todas las letras que es una billetera custodia, que no es un banco y
+   que no hay seguro de depósitos —y están mejor escritos que los de un banco
+   de verdad—, pero eso vivía en la puerta de al lado y no en la vidriera.
+   Decirlo uno mismo, antes y en el mismo tono, convence más que callarlo. */
+.claro{max-width:64ch;margin:22px auto 0;font-size:13.5px;line-height:1.7;color:var(--humo);
+  padding-top:18px;border-top:1px solid var(--linea2)}
+.claro b{color:var(--bruma);font-weight:600}
+.cierre .claro{text-align:left}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   EL TELÉFONO, EN SERIO
+
+   Casi todo el tráfico de Latinoamérica entra por aquí, así que esto no es
+   la versión reducida: es la versión. Lo que se ajusta abajo salió de mirar
+   la página en un teléfono de verdad, pantalla por pantalla.
+   ══════════════════════════════════════════════════════════════════════════ */
+@media (max-width:700px){
+  /* Los botones, del ancho de la pantalla y en el orden en que se decide.
+     Apilados y de anchos distintos parecían dos piezas sueltas. */
+  .botones{flex-direction:column;align-items:stretch;gap:10px}
+  .botones .btn{width:100%;padding:16px 24px;font-size:16px}
+
+  /* El titular respira menos y la bajada se acorta: siete líneas de entrada
+     en una pantalla de 844 px se leen como un muro. */
+  .portada{padding-top:clamp(38px,11vw,64px);padding-bottom:26px}
+  .h1{font-size:clamp(36px,10.5vw,46px);line-height:1.04;margin-bottom:18px}
+  .bajada{font-size:16.5px;line-height:1.55;margin-bottom:26px}
+  .eti{font-size:11px;letter-spacing:.14em;margin-bottom:16px}
+
+  /* Las secciones, más juntas. En el teléfono el aire cuesta pantallas. */
+  section{padding-top:44px;padding-bottom:44px}
+  .tit{font-size:24px;line-height:1.2;margin-bottom:20px;max-width:none}
+
+  /* Las cifras vivas, que son la prueba: siguen siendo lo más grande, pero
+     dejan de partirse en dos columnas mal repartidas. */
+  #vivo{padding-top:40px;padding-bottom:40px;gap:34px}
+  .numero{font-size:clamp(46px,13vw,58px)}
+  .numero.mono{font-size:clamp(34px,10vw,44px)}
+  .cifra .s{font-size:14.5px;max-width:none}
+  .cifra .s .mono{font-size:11.5px}
+
+  /* El paso, con su número al lado del título y no colgando solo encima de
+     una raya: suelto parecía un resto de la sección anterior. */
+  .pasos{gap:26px}
+  .pasos li{display:grid;grid-template-columns:auto 1fr;column-gap:14px;
+    padding-top:14px;border-top:1px solid var(--linea2)}
+  .pasos li::before{padding-bottom:0;margin-bottom:0;border-bottom:0;
+    font-size:12px;line-height:1.7}
+  .pasos h3{grid-column:2;font-size:17px}
+  .pasos p{grid-column:2}
+
+  .verbos{gap:22px}
+  .verbos h3{font-size:18px;padding-top:14px}
+  .pruebas{gap:22px}
+
+  /* La fórmula, que es una cifra y no un párrafo: que no se parta nunca. */
+  .formula{font-size:clamp(15px,4.4vw,19px);padding:16px 12px;white-space:nowrap}
+
+  .historia{padding:22px;border-radius:var(--r)}
+  .historia .btn{width:100%}
+  .cierre{padding-top:56px;padding-bottom:56px}
+  .cierre .botones{align-items:stretch}
+  .claro{margin-top:26px;font-size:13px}
+
+  /* Nada que se toque baja de 44 px, que es lo que mide un pulgar. */
+  .nav a,.pie a,.orbe,.ficha .cerrar{min-height:44px}
+  /* El lockup medía 26 px de alto: es el enlace de vuelta a la portada y hay
+     que poder acertarle con el pulgar. Los enlaces dentro de un párrafo se
+     quedan como están, que ahí la regla del blanco de toque no aplica. */
+  .lock{padding-top:9px;padding-bottom:9px}
+  .pie a{display:flex;align-items:center}
+  .legal{gap:6px;font-size:12.5px}
+}
+
+/* Pantallas muy angostas: que la lista de casas no se apriete a dos columnas
+   de 140 px, donde cada línea entra en tres renglones. */
+@media (max-width:430px){
+  #constelacion{grid-template-columns:1fr;gap:0}
+  .orbe{padding-top:13px;padding-bottom:13px}
+  .orbe span{font-size:13px}
+}

@@ -1,0 +1,8 @@
+[Unit]
+Description=Un pulso al modelo para que los nucleos de CUDA no se enfrien
+After=ollama.service ogb-precalentar.service
+Wants=ollama.service
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/ogb-tibio.sh
+TimeoutStartSec=180

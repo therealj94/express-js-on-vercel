@@ -18,9 +18,9 @@ import { Router } from 'express'
 import { exigeOperador, exigePermiso } from '../middleware/proteger.js'
 import {
   resumen, porApp, paises, retencion, errores, errorDetalle, marcarError,
-  embudoKyc, saludEcosistema, serviciosVigilados,
+  embudoKyc, tiemposDeVerificacion, saludEcosistema, serviciosVigilados,
 } from '../analitica/consultas.js'
-import { explorar, afectadosPorError, ultimasSesiones } from '../analitica/explorador.js'
+import { explorar, afectadosPorError, ultimasSesiones, repartoPorPlataforma } from '../analitica/explorador.js'
 import { almacen, leerCenso } from '../analitica/eventos.js'
 import { clavePublicaDe, rotarPublica } from '../auth/aplicaciones.js'
 import { consultar as bitacoraConsultar, registrar } from '../audit/bitacora.js'
@@ -111,6 +111,18 @@ analiticaRouter.get('/sesiones', exigePermiso('usuarios.ver'), async (req, res) 
   res.json(r)
 })
 
+/**
+ * Cuánta gente por app y cuánta por web, sobre el total y no sobre una página.
+ *
+ * Va con el permiso del padrón y no con el de analítica porque se lee junto a
+ * la lista de conexiones, que sí lleva nombres; separar los dos permisos aquí
+ * solo haría que la pantalla se cargara a medias para el mismo operador.
+ */
+analiticaRouter.get('/reparto', exigePermiso('usuarios.ver'), async (req, res) => {
+  const q = req.query as Record<string, string>
+  res.json(await repartoPorPlataforma({ app: app(q.app), dias: num(q.dias) }))
+})
+
 // ── Resumen ──────────────────────────────────────────────────────────────────
 
 analiticaRouter.get('/resumen', async (req, res) => {
@@ -131,6 +143,13 @@ analiticaRouter.get('/retencion', async (req, res) => {
 
 analiticaRouter.get('/embudo', (_req, res) => {
   res.json(embudoKyc())
+})
+
+/* Cuánto tarda una verificación y cuánto lleva esperando la cola. Es la cifra
+   sobre la que vive una operación de cumplimiento y no se medía en ningún
+   sitio, teniendo `verificadaEn` guardado desde siempre. */
+analiticaRouter.get('/tiempos', (req, res) => {
+  res.json(tiemposDeVerificacion(Math.min(365, Math.max(1, Number(req.query.dias) || 30))))
 })
 
 // ── Errores ──────────────────────────────────────────────────────────────────

@@ -1,0 +1,18 @@
+# El mayordomo: hace lo que ya lleva firma. Corre y sale.
+#
+# NO es un servicio que vive: es una vuelta cada pocos minutos. Un proceso
+# permanente que ejecuta cosas es un proceso al que hay que vigilar; uno que
+# arranca, hace lo firmado y se muere no tiene estado que corromper.
+[Unit]
+Description=AU-RA · el mayordomo hace lo que ya lleva firma
+After=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=/srv/aura
+EnvironmentFile=-/etc/aura-whatsapp.env
+ExecStart=/usr/bin/python3 /srv/aura/mayordomo.py
+# Si una vuelta se cuelga, se corta: la siguiente vuelve en tres minutos.
+# Colgado para siempre es la unica forma en que esto deja de hacer lo firmado
+# sin que nadie se entere.
+TimeoutStartSec=600

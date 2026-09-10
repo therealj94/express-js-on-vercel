@@ -1,0 +1,590 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Orden Global · GENESIS — maqueta</title>
+<!--
+  MAQUETA de la app única. No es la app: es el PLANO, para mirarlo y discutirlo
+  antes de escribir React Native.
+
+  Lo que se prueba aquí es una sola idea, la que sostiene todo el diseño:
+  cada pantalla tiene una dirección, y el asistente no hace magia --traduce
+  una frase en una de esas direcciones--. Por eso la maqueta enseña, al lado
+  del teléfono, la dirección a la que resolvió cada frase. Si el mapa está
+  bien, la app funciona; si el mapa está mal, se ve aquí y no en la reunión.
+
+  Los colores y los nombres de pantalla son los REALES de veta-wallet-app
+  (src/theme.js y el mapa SCREENS de App.js): esto tiene que parecerse a lo
+  que ya existe, no a un diseño nuevo que luego haya que inventar dos veces.
+-->
+<style>
+:root{
+  --bg:#021B1C; --bg2:#062A2B; --panel:rgba(6,40,42,.82); --panel2:rgba(12,54,56,.86);
+  --panel3:rgba(22,78,80,.74); --line:rgba(201,169,97,.34); --line2:rgba(201,169,97,.20);
+  --gold:#C9A961; --goldLt:#EAD79C; --goldHi:#F8EFCF; --txt:#F3ECD9; --txt2:#AEC7C3;
+  --txt3:#6E938F; --up:#3ED9A0; --down:#F0776B; --input:rgba(8,44,46,.88);
+  --disp:'Segoe UI',system-ui,-apple-system,sans-serif;
+  --mono:'SF Mono',ui-monospace,'Cascadia Mono',Menlo,monospace;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{margin:0;background:
+     radial-gradient(1200px 800px at 12% -10%,rgba(13,88,79,.30),transparent 60%),
+     radial-gradient(900px 700px at 110% 10%,rgba(201,169,97,.10),transparent 55%),
+     var(--bg);
+  color:var(--txt);font:15px/1.5 var(--disp);min-height:100vh;padding:22px 16px 40px}
+h1,h2,h3{margin:0;font-weight:300;letter-spacing:.02em}
+.wrap{max-width:1180px;margin:0 auto;display:grid;gap:26px;
+      grid-template-columns:minmax(0,340px) minmax(0,1fr);align-items:start}
+@media(max-width:880px){.wrap{grid-template-columns:1fr}}
+
+/* ── cabecera ─────────────────────────────────────────────────────────── */
+.cab{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:14px;align-items:baseline;
+     justify-content:space-between;border-bottom:1px solid var(--line2);padding-bottom:14px}
+.cab .et{font:600 10px var(--disp);letter-spacing:.32em;color:var(--txt3)}
+.cab h1{font-size:26px}
+.cab h1 b{color:var(--gold);font-weight:400}
+
+/* ── teléfono ─────────────────────────────────────────────────────────── */
+.tel{position:relative;width:100%;max-width:340px;aspect-ratio:9/19.5;margin:0 auto;
+     border:9px solid #0a1414;border-radius:38px;overflow:hidden;background:#000;
+     box-shadow:0 30px 70px rgba(0,0,0,.6),0 0 0 1px rgba(201,169,97,.18)}
+.pantalla{position:absolute;inset:0;display:flex;flex-direction:column;
+          background:linear-gradient(180deg,#04262a 0%,var(--bg) 46%,#010e0f 100%)}
+.muesca{position:absolute;top:0;left:50%;transform:translateX(-50%);width:38%;height:20px;
+        background:#0a1414;border-radius:0 0 13px 13px;z-index:9}
+
+/* barra superior */
+.sup{display:flex;align-items:center;gap:9px;padding:26px 14px 10px;flex:0 0 auto}
+.sup .men{font-size:17px;color:var(--txt2);cursor:pointer;line-height:1}
+.sup .tit{font:600 10px var(--disp);letter-spacing:.26em;color:var(--txt2);flex:1}
+.sup .gid{font:600 8px var(--disp);letter-spacing:.14em;color:#04201d;background:var(--gold);
+          padding:3px 7px;border-radius:20px;white-space:nowrap}
+
+/* lienzo */
+.lienzo{flex:1;overflow:auto;padding:4px 14px 12px;scrollbar-width:thin}
+.lienzo::-webkit-scrollbar{width:3px}
+.lienzo::-webkit-scrollbar-thumb{background:var(--line2);border-radius:3px}
+.vista{display:none;animation:entra .34s ease}
+.vista.on{display:block}
+@keyframes entra{from{opacity:0;transform:translateY(9px)}to{opacity:1;transform:none}}
+
+.tarj{background:var(--panel);border:1px solid var(--line2);border-radius:15px;
+      padding:13px;margin-bottom:10px;backdrop-filter:blur(9px)}
+.eti{font:600 8px var(--disp);letter-spacing:.24em;color:var(--txt3);margin-bottom:6px}
+.saldo{font:200 33px var(--disp);letter-spacing:.01em;color:var(--txt)}
+.saldo small{font-size:14px;color:var(--txt3);margin-left:5px}
+.sub{font-size:11px;color:var(--txt2);margin-top:3px}
+.fila{display:flex;align-items:center;gap:10px;padding:9px 0;border-top:1px solid rgba(201,169,97,.10)}
+.fila:first-of-type{border-top:0}
+.mon{width:29px;height:29px;border-radius:50%;display:grid;place-items:center;flex:0 0 auto;
+     background:linear-gradient(140deg,#F8EFCF,#C9A961 55%,#96793F);color:#3A2C08;
+     font:700 10px var(--disp)}
+.mon.v{background:linear-gradient(140deg,#0E6155,#063430);color:var(--goldLt)}
+.fila .n{flex:1;min-width:0}
+.fila .n b{display:block;font-weight:500;font-size:13px}
+.fila .n span{font-size:10.5px;color:var(--txt3)}
+.fila .v{text-align:right;font-size:13px;white-space:nowrap}
+.fila .v i{display:block;font-style:normal;font-size:10px;color:var(--up)}
+.fila .v i.b{color:var(--down)}
+
+.acc{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;margin:10px 0 12px}
+.acc button{background:var(--panel2);border:1px solid var(--line2);border-radius:12px;
+            padding:9px 3px;color:var(--txt2);font:600 8.5px var(--disp);letter-spacing:.09em;
+            cursor:pointer;display:grid;gap:4px;justify-items:center}
+.acc button:hover{border-color:var(--line);color:var(--goldLt)}
+.acc button em{font-style:normal;font-size:14px;color:var(--gold)}
+
+.visa{border-radius:15px;padding:15px;background:linear-gradient(140deg,#221D15,#12100C 55%,#050505);
+      border:1px solid rgba(201,169,97,.28);margin-bottom:10px}
+.visa .num{font:400 15px var(--mono);letter-spacing:.14em;color:var(--goldLt);margin:20px 0 9px}
+.visa .pie{display:flex;justify-content:space-between;font-size:9.5px;color:var(--txt3);letter-spacing:.1em}
+
+.campo{background:var(--input);border:1px solid rgba(46,116,119,.7);border-radius:11px;
+       padding:9px 11px;margin-bottom:8px}
+.campo .k{font:600 8px var(--disp);letter-spacing:.2em;color:var(--txt3)}
+.campo .v{font-size:15px;margin-top:2px}
+.campo .v.g{color:var(--goldLt);font:400 15px var(--mono)}
+.campo.rell{border-color:var(--gold);box-shadow:0 0 0 2px rgba(201,169,97,.14)}
+
+.btn{display:block;width:100%;border:0;border-radius:12px;padding:12px;cursor:pointer;
+     font:700 11px var(--disp);letter-spacing:.16em;
+     background:linear-gradient(140deg,#F8EFCF,#C9A961 60%,#96793F);color:#2A2008}
+.btn.sec{background:transparent;border:1px solid var(--line);color:var(--txt2)}
+.aviso{border-left:2px solid var(--gold);padding:8px 11px;margin:10px 0;background:rgba(201,169,97,.07);
+       font-size:11.5px;color:var(--txt2);border-radius:0 9px 9px 0}
+
+/* la barra de hablar */
+.hab{flex:0 0 auto;border-top:1px solid var(--line2);background:rgba(2,20,21,.94);
+     padding:9px 12px 13px;backdrop-filter:blur(11px)}
+.oido{min-height:32px;display:flex;flex-direction:column;justify-content:center;
+      font-size:11.5px;color:var(--txt3);margin-bottom:8px;transition:color .2s}
+.oido b{color:var(--txt);font-weight:400;font-size:12.5px}
+.oido .res{color:var(--goldLt);font:11px var(--mono);margin-top:3px;word-break:break-all}
+.oido .par{display:flex;gap:7px;margin-top:7px}
+.oido .par button{flex:1;border-radius:9px;padding:8px;border:0;cursor:pointer;
+                  font:700 9.5px var(--disp);letter-spacing:.14em}
+.oido .par .si{background:linear-gradient(140deg,#F8EFCF,#C9A961);color:#2A2008}
+.oido .par .no{background:transparent;border:1px solid var(--line2);color:var(--txt3)}
+.mic{display:flex;align-items:center;gap:10px}
+.mic .bola{width:44px;height:44px;border-radius:50%;flex:0 0 auto;cursor:pointer;
+           display:grid;place-items:center;font-size:17px;color:#2A2008;
+           background:linear-gradient(140deg,#F8EFCF,#C9A961 60%,#96793F);
+           box-shadow:0 0 0 0 rgba(201,169,97,.5)}
+.mic .bola.oye{animation:late 1.4s infinite}
+@keyframes late{0%{box-shadow:0 0 0 0 rgba(201,169,97,.45)}70%{box-shadow:0 0 0 15px rgba(201,169,97,0)}100%{box-shadow:0 0 0 0 rgba(201,169,97,0)}}
+.mic input{flex:1;min-width:0;background:var(--input);border:1px solid rgba(46,116,119,.6);
+           border-radius:22px;padding:11px 13px;color:var(--txt);font:13px var(--disp)}
+.mic input::placeholder{color:var(--txt3)}
+.mic input:focus{outline:0;border-color:var(--gold)}
+
+/* pestañas de abajo */
+.tabs{display:flex;border-top:1px solid var(--line2);background:rgba(2,17,18,.96);flex:0 0 auto}
+.tabs button{flex:1;background:0;border:0;padding:7px 2px 10px;cursor:pointer;color:var(--txt3);
+             font:600 7.5px var(--disp);letter-spacing:.1em;display:grid;gap:2px;justify-items:center}
+.tabs button em{font-style:normal;font-size:15px}
+.tabs button.on{color:var(--gold)}
+
+/* ── panel derecho ────────────────────────────────────────────────────── */
+.col{display:grid;gap:16px;min-width:0}
+.caja{background:var(--panel);border:1px solid var(--line2);border-radius:16px;padding:17px}
+.caja h2{font-size:15px;color:var(--goldLt);margin-bottom:4px}
+.caja p{margin:0 0 12px;color:var(--txt2);font-size:13px}
+.pruebe{display:flex;flex-wrap:wrap;gap:7px}
+.pruebe button{background:var(--panel2);border:1px solid var(--line2);border-radius:20px;
+               padding:8px 13px;color:var(--txt2);font:13px var(--disp);cursor:pointer;text-align:left}
+.pruebe button:hover{border-color:var(--gold);color:var(--goldHi)}
+.reg{font:11.5px var(--mono);color:var(--txt3);max-height:190px;overflow:auto;
+     border-left:2px solid var(--line2);padding-left:11px;display:grid;gap:7px}
+.reg div{word-break:break-all}
+.reg b{color:var(--goldLt);font-weight:400}
+.reg s{color:var(--down);text-decoration:none}
+.tabla{width:100%;border-collapse:collapse;font-size:12.5px}
+.tabla th{text-align:left;font:600 8.5px var(--disp);letter-spacing:.2em;color:var(--txt3);
+          padding:6px 8px 6px 0;border-bottom:1px solid var(--line2)}
+.tabla td{padding:7px 8px 7px 0;border-bottom:1px solid rgba(201,169,97,.09);vertical-align:top}
+.tabla td:first-child{font:11.5px var(--mono);color:var(--goldLt);white-space:nowrap}
+.tabla td:last-child{color:var(--txt3)}
+.env{overflow-x:auto}
+.nota{font-size:12px;color:var(--txt3);border-top:1px solid var(--line2);padding-top:12px;margin-top:4px}
+.nota b{color:var(--goldLt);font-weight:400}
+</style>
+
+<div class="wrap">
+  <div class="cab">
+    <div>
+      <div class="et">MAQUETA · NO ES LA APP</div>
+      <h1>Orden Global <b>· GENESIS</b></h1>
+    </div>
+    <div class="et" style="text-align:right">HÁBLALE ABAJO ·<br>O PULSA UNA FRASE →</div>
+  </div>
+
+  <!-- ══ TELÉFONO ══════════════════════════════════════════════════════ -->
+  <div class="tel">
+    <div class="muesca"></div>
+    <div class="pantalla">
+
+      <div class="sup">
+        <span class="men" onclick="ir('home')">☰</span>
+        <span class="tit" id="tit">ORDEN GLOBAL</span>
+        <span class="gid" id="gid">GENESIS ID ✓</span>
+      </div>
+
+      <div class="lienzo" id="lienzo">
+
+        <!-- puerta -->
+        <div class="vista on" id="v-puerta">
+          <div style="text-align:center;padding:34px 6px 18px">
+            <div style="width:74px;height:74px;margin:0 auto 18px;border-radius:50%;
+                        background:linear-gradient(140deg,#F8EFCF,#C9A961 60%,#96793F);
+                        display:grid;place-items:center;font:200 30px var(--disp);color:#2A2008">◈</div>
+            <div style="font:200 24px var(--disp);letter-spacing:.04em">Orden Global</div>
+            <div class="sub" style="margin-top:7px">Una identidad. Todo el ecosistema.</div>
+          </div>
+          <div class="tarj">
+            <div class="eti">PRIMERO, QUIÉN ERES</div>
+            <div style="font-size:12.5px;color:var(--txt2);margin-bottom:11px">
+              Genesis ID verifica una vez y abre la billetera, la pasarela y el
+              explorador sin volver a pedir nada.</div>
+            <button class="btn" onclick="entrar()">CREAR MI GENESIS ID</button>
+            <button class="btn sec" style="margin-top:7px" onclick="entrar()">YA TENGO UNA</button>
+          </div>
+          <div class="aviso">La app se abre por aquí <b>siempre</b>. Sin identidad no hay
+            billetera: es lo que hace que una sola sesión valga para todo.</div>
+        </div>
+
+        <!-- inicio -->
+        <div class="vista" id="v-home">
+          <div class="tarj">
+            <div class="eti">SALDO TOTAL</div>
+            <div class="saldo">1 108,42 <small>USD</small></div>
+            <div class="sub">435 ORIGEN · 1 ORIGEN = 2,5455 USD</div>
+          </div>
+          <div class="acc">
+            <button onclick="ir('send')"><em>↑</em>ENVIAR</button>
+            <button onclick="ir('recibir')"><em>↓</em>RECIBIR</button>
+            <button onclick="ir('pay')"><em>◇</em>COBRAR</button>
+            <button onclick="ir('scan')"><em>⌕</em>EXPLORAR</button>
+          </div>
+          <div class="tarj">
+            <div class="eti">MIS ACTIVOS</div>
+            <div class="fila"><div class="mon">OG</div><div class="n"><b>ORIGEN</b><span>Orden Global</span></div>
+                 <div class="v">1 107,29 $<i>+0,4 %</i></div></div>
+            <div class="fila"><div class="mon v">ON</div><div class="n"><b>ONDK</b><span>red de pruebas</span></div>
+                 <div class="v">1,13 $<i class="b">−0,2 %</i></div></div>
+          </div>
+          <div class="aviso">Esto es la pantalla de inicio de Veta Wallet tal como
+            existe hoy — aquí <b>no cambia nada</b>. Lo que cambia es que ahora
+            vive dentro de Orden Global y se puede llegar hablando.</div>
+        </div>
+
+        <!-- billetera (dashboard llamado por voz) -->
+        <div class="vista" id="v-wallet">
+          <div class="tarj">
+            <div class="eti">VETA WALLET · DENTRO DE LA APP</div>
+            <div class="saldo">435,00 <small>ORIGEN</small></div>
+            <div class="sub">≈ 1 107,29 USD · cadena 5534</div>
+          </div>
+          <div class="tarj">
+            <div class="eti">ÚLTIMOS MOVIMIENTOS</div>
+            <div class="fila"><div class="mon v">↑</div><div class="n"><b>A Juan</b><span>hace 2 días</span></div><div class="v">−15,00</div></div>
+            <div class="fila"><div class="mon v">↓</div><div class="n"><b>Depósito tarjeta</b><span>hace 5 días</span></div><div class="v">+200,00</div></div>
+            <div class="fila"><div class="mon v">↑</div><div class="n"><b>Café Luna</b><span>MyTokenPay</span></div><div class="v">−4,20</div></div>
+          </div>
+        </div>
+
+        <!-- tarjeta -->
+        <div class="vista" id="v-card">
+          <div class="visa">
+            <div class="eti" style="color:var(--goldLt)">ORDEN GLOBAL</div>
+            <div class="num">5412 •••• •••• 3318</div>
+            <div class="pie"><span>J. ENAMORADO</span><span>12/29</span></div>
+          </div>
+          <div class="tarj">
+            <div class="eti">DISPONIBLE</div>
+            <div class="saldo">240,00 <small>USD</small></div>
+            <div class="sub">Se fondea con ORIGEN · se gasta en moneda corriente</div>
+          </div>
+          <button class="btn" onclick="ir('home')">FONDEAR CON ORIGEN</button>
+        </div>
+
+        <!-- mytokenpay -->
+        <div class="vista" id="v-pay">
+          <div class="tarj">
+            <div class="eti">MYTOKENPAY · COBRAR</div>
+            <div class="saldo">0,00 <small>ORIGEN</small></div>
+            <div class="sub">Escribe el monto y se genera el código</div>
+          </div>
+          <div class="campo"><div class="k">MONTO A COBRAR</div><div class="v" id="pay-monto">—</div></div>
+          <div class="tarj" style="text-align:center;padding:20px">
+            <div style="width:110px;height:110px;margin:0 auto;border-radius:11px;
+                        background:repeating-conic-gradient(#F3ECD9 0 25%,#04201d 0 50%) 50%/13px 13px;
+                        border:5px solid #F3ECD9"></div>
+            <div class="sub" style="margin-top:9px">El cliente escanea y paga en ORIGEN</div>
+          </div>
+          <div class="aviso">En la fase 1 esta pantalla es la web de MyTokenPay
+            embebida. Se vuelve nativa cuando haya motivo — <b>nunca</b> algo
+            que vea una clave privada.</div>
+        </div>
+
+        <!-- enviar -->
+        <div class="vista" id="v-send">
+          <div class="eti" style="margin:2px 0 9px">ENVIAR</div>
+          <div class="campo" id="c-to"><div class="k">PARA</div><div class="v" id="s-to">—</div></div>
+          <div class="campo" id="c-amt"><div class="k">MONTO</div><div class="v" id="s-amt">—</div></div>
+          <div class="campo"><div class="k">DESDE</div><div class="v">ORIGEN · saldo 435,00</div></div>
+          <div class="campo"><div class="k">COMISIÓN DE RED</div><div class="v">0,00 ORIGEN</div></div>
+          <button class="btn" onclick="firmar()">REVISAR Y FIRMAR</button>
+          <div class="aviso"><b>GENESIS rellenó esta pantalla. No la envía.</b>
+            El envío pasa por la revisión y la huella, igual que si lo hubieras
+            tecleado tú.</div>
+        </div>
+
+        <!-- firmado -->
+        <div class="vista" id="v-ok">
+          <div style="text-align:center;padding:30px 6px 14px">
+            <div style="width:64px;height:64px;margin:0 auto 16px;border-radius:50%;
+                        border:2px solid var(--up);display:grid;place-items:center;
+                        font-size:27px;color:var(--up)">✓</div>
+            <div style="font:200 21px var(--disp)">Enviado</div>
+            <div class="sub" style="margin-top:5px" id="ok-txt">15,00 ORIGEN a Juan</div>
+          </div>
+          <div class="campo"><div class="k">HASH</div><div class="v g">0x7a3f…c210</div></div>
+          <div class="campo"><div class="k">BLOQUE</div><div class="v">24 318 · 11,4 s</div></div>
+          <button class="btn sec" onclick="ir('scan')">VERLO EN EL EXPLORADOR</button>
+        </div>
+
+        <!-- recibir -->
+        <div class="vista" id="v-recibir">
+          <div class="tarj" style="text-align:center;padding:22px">
+            <div class="eti">MI DIRECCIÓN</div>
+            <div style="width:128px;height:128px;margin:13px auto;border-radius:11px;
+                        background:repeating-conic-gradient(#F3ECD9 0 25%,#04201d 0 50%) 50%/11px 11px;
+                        border:5px solid #F3ECD9"></div>
+            <div class="v g" style="font:12px var(--mono);color:var(--goldLt);word-break:break-all">
+              0x4c81…9f02</div>
+          </div>
+        </div>
+
+        <!-- explorador -->
+        <div class="vista" id="v-scan">
+          <div class="tarj">
+            <div class="eti">ORDENSCAN · CADENA 5534</div>
+            <div class="saldo">24 318</div>
+            <div class="sub">último bloque · 10 s · 93 gwei</div>
+          </div>
+          <div class="tarj">
+            <div class="eti">TRANSACCIÓN</div>
+            <div class="fila"><div class="n"><b>0x7a3f…c210</b><span>confirmada · 11,4 s</span></div><div class="v">15,00</div></div>
+          </div>
+          <div class="aviso">Público y comprobable desde cualquier teléfono, sin
+            entrar en la app. Es el argumento entero.</div>
+        </div>
+
+        <!-- actividad -->
+        <div class="vista" id="v-activity">
+          <div class="eti" style="margin:2px 0 9px">ACTIVIDAD</div>
+          <div class="tarj">
+            <div class="fila"><div class="mon v">↑</div><div class="n"><b>A Juan</b><span>hoy · confirmada</span></div><div class="v">−15,00</div></div>
+            <div class="fila"><div class="mon v">↑</div><div class="n"><b>Café Luna</b><span>ayer · MyTokenPay</span></div><div class="v">−4,20</div></div>
+            <div class="fila"><div class="mon v">↓</div><div class="n"><b>Depósito tarjeta</b><span>hace 5 días</span></div><div class="v">+200,00</div></div>
+          </div>
+        </div>
+
+      </div><!-- /lienzo -->
+
+      <!-- ── la barra de hablar, SIEMPRE ─────────────────────────────── -->
+      <div class="hab">
+        <div class="oido" id="oido">Pulsa el micrófono y dime qué quieres hacer.</div>
+        <div class="mic">
+          <div class="bola" id="bola" onclick="oir()">🎙</div>
+          <input id="dicho" placeholder="«envía 15 dólares a Juan»"
+                 onkeydown="if(event.key==='Enter')atender(this.value)">
+        </div>
+      </div>
+
+      <div class="tabs" id="tabs">
+        <button data-r="home"     onclick="ir('home')"><em>◆</em>INICIO</button>
+        <button data-r="card"     onclick="ir('card')"><em>▭</em>TARJETA</button>
+        <button data-r="pay"      onclick="ir('pay')"><em>◇</em>COBRAR</button>
+        <button data-r="activity" onclick="ir('activity')"><em>≡</em>ACTIVIDAD</button>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ══ PANEL DERECHO ═════════════════════════════════════════════════ -->
+  <div class="col">
+
+    <div class="caja">
+      <h2>Pruébalo</h2>
+      <p>Pulsa una frase, o escríbela abajo del teléfono. Es la misma gramática
+         que llevaría la app: cuatro verbos —<b>abrir · enviar · cobrar ·
+         mostrar</b>— y las entidades salen de la libreta de contactos.</p>
+      <div class="pruebe">
+        <button onclick="atender(this.textContent)">quiero ver veta wallet</button>
+        <button onclick="atender(this.textContent)">envía 15 dólares a Juan</button>
+        <button onclick="atender(this.textContent)">abre mytokenpay</button>
+        <button onclick="atender(this.textContent)">cóbrale 200 a este cliente</button>
+        <button onclick="atender(this.textContent)">muéstrame mi tarjeta</button>
+        <button onclick="atender(this.textContent)">mándale 7,50 a María</button>
+        <button onclick="atender(this.textContent)">abre el explorador</button>
+        <button onclick="atender(this.textContent)">quiero recibir</button>
+        <button onclick="atender(this.textContent)">mis movimientos</button>
+        <button onclick="atender(this.textContent)">envíale 20 a Pedro</button>
+        <button onclick="atender(this.textContent)">compra un carro</button>
+      </div>
+    </div>
+
+    <div class="caja">
+      <h2>A dónde resolvió cada frase</h2>
+      <p>Esto es el mecanismo entero, a la vista: una frase entra, sale una
+         dirección del mapa. Lo que no está en el mapa no se puede hacer.</p>
+      <div class="reg" id="reg"><div>—</div></div>
+    </div>
+
+    <div class="caja">
+      <h2>El mapa de rutas</h2>
+      <p>Cada pantalla tiene dirección. Las mismas rutas que ya existen dentro
+         de <code>veta-wallet-app</code>, con nombre estable.</p>
+      <div class="env"><table class="tabla">
+        <tr><th>DIRECCIÓN</th><th>PANTALLA</th><th>NECESITA</th></tr>
+        <tr><td>og://wallet/home</td><td>Inicio · saldos</td><td>sesión</td></tr>
+        <tr><td>og://wallet/send?to=&amp;amount=</td><td>Enviar</td><td>sesión + firma</td></tr>
+        <tr><td>og://wallet/receive</td><td>Recibir · QR</td><td>sesión</td></tr>
+        <tr><td>og://wallet/card</td><td>Tarjeta</td><td>sesión</td></tr>
+        <tr><td>og://wallet/activity</td><td>Actividad</td><td>sesión</td></tr>
+        <tr><td>og://pay/cobrar?monto=</td><td>MyTokenPay</td><td>sesión comercio</td></tr>
+        <tr><td>og://id/verificar</td><td>Genesis ID</td><td>—</td></tr>
+        <tr><td>og://scan/tx?hash=</td><td>Explorador</td><td>—</td></tr>
+      </table></div>
+    </div>
+
+    <div class="caja">
+      <h2>Las tres reglas</h2>
+      <div class="nota" style="border-top:0;padding-top:0">
+        <b>1 · Si no está en el mapa, GENESIS no lo puede hacer.</b><br>
+        Un asistente que solo llama a una lista cerrada no puede inventarse una
+        acción. Pruébalo con «compra un carro».
+      </div>
+      <div class="nota">
+        <b>2 · GENESIS prepara, la persona firma.</b><br>
+        Nunca transmite. Rellena la pantalla y la deja lista; el envío pasa por
+        la revisión y la huella. Un fallo de reconocimiento no puede costar
+        dinero.
+      </div>
+      <div class="nota">
+        <b>3 · Enseña lo que entendió antes de actuar.</b><br>
+        El monto y el destino se ven escritos —y la dirección resuelta— antes
+        de que se toque nada.
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+/* ═══ EL MAPA ═════════════════════════════════════════════════════════════
+   Lo único que GENESIS puede alcanzar. Una entrada = una pantalla + los
+   parametros que admite. En la app de verdad este objeto vive en un fichero
+   aparte y lo leen los dos: el asistente y los enlaces profundos. */
+const MAPA={
+  'wallet/home'    :{v:'home',    tit:'ORDEN GLOBAL', tab:'home'},
+  'wallet/dash'    :{v:'wallet',  tit:'VETA WALLET'},
+  'wallet/send'    :{v:'send',    tit:'ENVIAR',    firma:true},
+  'wallet/receive' :{v:'recibir', tit:'RECIBIR'},
+  'wallet/card'    :{v:'card',    tit:'TARJETA',   tab:'card'},
+  'wallet/activity':{v:'activity',tit:'ACTIVIDAD', tab:'activity'},
+  'pay/cobrar'     :{v:'pay',     tit:'MYTOKENPAY',tab:'pay'},
+  'scan/tx'        :{v:'scan',    tit:'ORDENSCAN'},
+  'id/verificar'   :{v:'puerta',  tit:'GENESIS ID'},
+};
+/* La libreta: en la app son listContacts() y nameFor(), que YA existen. */
+const LIBRETA=[
+  {n:'Juan',  d:'0x7a3f…c210'},
+  {n:'María', d:'0x91b4…5d77'},
+  {n:'Pedro', d:'0x2e08…aa31'},
+];
+
+/* ═══ EL TRADUCTOR ════════════════════════════════════════════════════════
+   Frase -> una entrada del mapa. Gramatica, no adivinanza: cuatro verbos y
+   las entidades salen de la libreta. Un modelo de lenguaje entraria DESPUES
+   y solo para lo que esto no entienda --nunca para decidir un monto--. */
+function sinTildes(x){return x.normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase();}
+
+function traducir(frase){
+  const s=sinTildes(frase).trim();
+  if(!s)return null;
+
+  /* enviar: el verbo, el monto y a quien. El monto admite coma o punto. */
+  if(/\b(envia|enviale|envio|manda|mandale|transfiere|pasale|send)\b/.test(s)){
+    const m=s.match(/(\d+(?:[.,]\d{1,2})?)/);
+    const quien=LIBRETA.find(c=>s.includes(sinTildes(c.n)));
+    const monto=m?m[1].replace(',','.'):null;
+    if(!quien)return {falla:'no tengo ese contacto en la libreta'};
+    if(!monto)return {falla:'no entendi el monto'};
+    return {ruta:'wallet/send', p:{to:quien.n, dir:quien.d, amount:monto}};
+  }
+  /* cobrar */
+  if(/\b(cobra|cobrale|cobrar|cobro|charge)\b/.test(s)){
+    const m=s.match(/(\d+(?:[.,]\d{1,2})?)/);
+    return {ruta:'pay/cobrar', p:m?{monto:m[1].replace(',','.')}:{}};
+  }
+  /* abrir / mostrar: el destino sale de como se llama la cosa */
+  const DEST=[
+    [/veta ?wallet|billetera|cartera|mi dinero|wallet/, 'wallet/dash'],
+    [/my ?token ?pay|pasarela|punto de venta|comercio/, 'pay/cobrar'],
+    [/tarjeta|card|visa/,                               'wallet/card'],
+    [/explorador|ordenscan|scan|bloque|transaccion|hash/,'scan/tx'],
+    [/genesis|identidad|verificar|kyc/,                 'id/verificar'],
+    [/recibir|mi direccion|qr|cobrarme/,                'wallet/receive'],
+    [/actividad|movimiento|historial|activity/,         'wallet/activity'],
+    [/inicio|principal|saldo|home|volver|vuelve/,       'wallet/home'],
+  ];
+  for(const [re,ruta] of DEST) if(re.test(s)) return {ruta,p:{}};
+  return null;                                   // fuera del mapa: se dice
+}
+
+/* ═══ LA BARRA ════════════════════════════════════════════════════════════ */
+let pendiente=null;
+const $=x=>document.querySelector(x);
+const oido=$('#oido'), reg=$('#reg');
+
+function apunta(frase,txt,mal){
+  if(reg.textContent.trim()==='—')reg.innerHTML='';
+  const d=document.createElement('div');
+  d.innerHTML='«'+frase+'»<br>'+(mal?'<s>✕ '+txt+'</s>':'<b>→ '+txt+'</b>');
+  reg.prepend(d);
+}
+
+function ir(v,tit){
+  document.querySelectorAll('.vista').forEach(x=>x.classList.remove('on'));
+  const el=$('#v-'+v); if(el)el.classList.add('on');
+  $('#lienzo').scrollTop=0;
+  if(tit)$('#tit').textContent=tit;
+  document.querySelectorAll('#tabs button').forEach(b=>
+    b.classList.toggle('on', b.dataset.r===v));
+}
+function entrar(){ ir('home','ORDEN GLOBAL'); $('#gid').style.display='';
+  oido.innerHTML='Listo. Ya estás dentro. Dime qué quieres hacer.'; }
+
+function atender(frase){
+  $('#dicho').value='';
+  const r=traducir(frase);
+  if(!r){
+    oido.innerHTML='<b>«'+frase+'»</b><div class="res">no está en el mapa</div>'+
+      '<div style="margin-top:5px">Eso no lo puedo hacer. Puedo abrir, enviar, cobrar y mostrar.</div>';
+    apunta(frase,'fuera del mapa — se dice, no se inventa',true);
+    return;
+  }
+  if(r.falla){
+    oido.innerHTML='<b>«'+frase+'»</b><div style="margin-top:5px">'+r.falla+'.</div>';
+    apunta(frase,r.falla,true);
+    return;
+  }
+  const dest=MAPA[r.ruta];
+  const q=Object.entries(r.p).filter(([k])=>k!=='dir')
+           .map(([k,v])=>k+'='+encodeURIComponent(v)).join('&');
+  const uri='og://'+r.ruta+(q?'?'+q:'');
+  apunta(frase,uri);
+
+  /* Lo que toca dinero se CONFIRMA. Lo demás se abre y ya. */
+  if(dest.firma){
+    pendiente={r,dest,uri};
+    oido.innerHTML='<b>«'+frase+'»</b><div class="res">'+uri+'</div>'+
+      '<div style="margin-top:6px">Enviar <b>'+r.p.amount+' ORIGEN</b> a '+
+      r.p.to+' ('+r.p.dir+')</div>'+
+      '<div class="par"><button class="si" onclick="confirmar()">SÍ, ABRE</button>'+
+      '<button class="no" onclick="cancelar()">NO</button></div>';
+    return;
+  }
+  oido.innerHTML='<b>«'+frase+'»</b><div class="res">'+uri+'</div>';
+  if(r.ruta==='pay/cobrar')$('#pay-monto').textContent=r.p.monto?r.p.monto+' ORIGEN':'—';
+  ir(dest.v,dest.tit);
+}
+
+function confirmar(){
+  if(!pendiente)return;
+  const {r,dest}=pendiente;
+  $('#s-to').textContent=r.p.to+' · '+r.p.dir;
+  $('#s-amt').textContent=r.p.amount+' ORIGEN';
+  $('#c-to').classList.add('rell'); $('#c-amt').classList.add('rell');
+  $('#ok-txt').textContent=r.p.amount+',00 ORIGEN a '+r.p.to;
+  ir(dest.v,dest.tit);
+  oido.innerHTML='Te la dejé lista. <b>La firmas tú.</b>';
+  pendiente=null;
+}
+function cancelar(){ pendiente=null; oido.textContent='Como quieras. Dime otra cosa.'; }
+function firmar(){ ir('ok','ENVIADO'); oido.innerHTML='Enviada y confirmada. El hash está en pantalla.'; }
+
+/* El microfono de mentira: aqui solo enciende el pulso y toma lo escrito. */
+function oir(){
+  const b=$('#bola'); b.classList.add('oye');
+  oido.textContent='Te escucho…';
+  setTimeout(()=>{
+    b.classList.remove('oye');
+    const v=$('#dicho').value.trim();
+    if(v)atender(v);
+    else oido.innerHTML='En la app esto es reconocimiento del sistema. '+
+      'Aquí, escríbelo en la caja y pulsa Enter.';
+  },1100);
+}
+</script>

@@ -1,0 +1,15 @@
+[Unit]
+Description=El pagador de premios de AU-RA
+After=network-online.target
+
+[Service]
+Type=oneshot
+# El python del venv: eth-account vive ahi y no en el sistema (PEP 668).
+ExecStart=/srv/aura/venv-pagos/bin/python3 /srv/aura/pagador.py
+WorkingDirectory=/srv/aura
+Environment=AURA_DATOS=/srv/aura
+# La llave de la billetera de pagos. SOLO existe en el nodo, 600. Si el
+# archivo falta, el pagador lo dice y no paga nada — un despliegue sin llave
+# no es un error, es una boca sin poner.
+EnvironmentFile=-/etc/aura-pagos.env
+EnvironmentFile=-/etc/aura-whatsapp.env

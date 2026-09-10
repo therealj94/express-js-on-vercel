@@ -1,0 +1,1524 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<title>Mesa de cotejo · Genesis ID</title>
+<style>
+/* ═══════════════════════════════════════════════════════════════════════════
+   LA MESA DE COTEJO
+
+   Esto no es un tablero de métricas. Es una mesa de examen: dos caras sobre un
+   lecho neutro, una lupa y una firma. Todo lo que hay aquí existe para que el
+   operador pueda MIRAR antes de decidir, porque su nombre queda escrito en la
+   bitácora junto a lo que decida.
+
+   Tres decisiones que conviene no deshacer:
+
+   1. El lecho bajo las imágenes es GRIS NEUTRO PURO (#0A0A0B), no el azul del
+      resto de la página. Un fondo con tinte desplaza el tono de piel percibido:
+      sobre azul una cara se ve más rojiza, sobre cálido más pálida. Comparar
+      dos rostros sobre fondos distintos es comparar mal.
+
+   2. El oro (#F5B32B) es la marca y UNA sola acción. Nunca un estado. Si el oro
+      significara además «bien», el ojo dejaría de distinguir la marca del
+      veredicto, y este es el peor sitio del ecosistema para esa confusión.
+
+   3. Los datos de peritaje van en monoespaciada: puntuaciones, GID, número de
+      documento, fechas. Un número de cotejo es un dato, no una frase.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+:root {
+  --tinta:  #0B111C;   /* fondo general */
+  --mesa:   #142033;   /* paneles */
+  --mesa2:  #1B2A41;   /* panel elevado */
+  --linea:  #24374F;
+  --oro:    #F5B32B;
+  --oro-b:  #FBC65A;
+  --lecho:  #0A0A0B;   /* NEUTRO — ver nota 1 */
+  --si:     #35B77D;
+  --no:     #E0685D;
+  --ojo:    #E2893C;   /* aviso; ámbar, distinto del oro de marca */
+  --texto:  #E9EEF6;
+  --medio:  #9DB0C8;
+  --tenue:  #64798F;
+
+  --ui: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --dato: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+
+  --r: 4px;            /* radio corto: instrumento, no tarjeta */
+}
+
+* { box-sizing: border-box; }
+
+html, body { height: 100%; }
+
+body {
+  margin: 0;
+  background: var(--tinta);
+  color: var(--texto);
+  font: 400 14px/1.5 var(--ui);
+  -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+}
+
+a { color: var(--oro-b); }
+
+::selection { background: rgba(245,179,43,.28); }
+
+:focus-visible {
+  outline: 2px solid var(--oro);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+.mono { font-family: var(--dato); font-variant-numeric: tabular-nums; }
+
+/* Ojillo: la etiqueta pequeña que nombra un dato. Va en versalitas espaciadas
+   porque tiene que leerse como rótulo de instrumento y no competir con el dato
+   que rotula. */
+.ojillo {
+  font: 600 10px/1 var(--ui);
+  letter-spacing: .13em;
+  text-transform: uppercase;
+  color: var(--tenue);
+}
+
+/* ── Cabecera ─────────────────────────────────────────────────────────────── */
+
+.cab {
+  position: sticky; top: 0; z-index: 40;
+  display: flex; align-items: center; gap: 16px;
+  padding: 12px 20px;
+  background: rgba(11,17,28,.92);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid var(--linea);
+}
+
+.marca { display: flex; align-items: center; gap: 9px; flex: none; }
+.marca svg { display: block; }
+.marca b {
+  font: 700 13px/1 var(--ui);
+  letter-spacing: .16em;
+  text-transform: uppercase;
+}
+.marca b span { color: var(--oro); font-weight: 500; }
+
+.cab .quien { min-width: 0; flex: 1; }
+.cab .quien h1 {
+  margin: 0;
+  font: 600 17px/1.25 var(--ui);
+  letter-spacing: -.015em;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.cab .quien .sub {
+  display: flex; gap: 10px; align-items: center; flex-wrap: wrap;
+  margin-top: 3px;
+  font-family: var(--dato); font-size: 11.5px; color: var(--tenue);
+}
+/* EL CORREO ROMPE, Y ES LA PIEZA QUE MAS SE SALE DE TODA LA MESA.
+   `flex-wrap` baja el correo a su propio renglon, pero un renglon no lo hace
+   caber: «mayra.carolina.enamorado.alvarez@corporacionordenglobal.hn» es una
+   sola palabra de 400 px sin un espacio donde partirla, y un hijo de flex no
+   encoge por debajo de su contenido minimo. Resultado medido a 360 px: el
+   documento entero media 448 px. No era el correo el que se salia: era LA
+   MESA, que se corria de lado y dejaba las dos caras descentradas justo
+   cuando hay que compararlas.
+
+   Va `anywhere` y no `break-word` a proposito. Las dos parten la palabra al
+   pintar, pero solo `anywhere` reduce tambien el ANCHO MINIMO de la caja, que
+   es lo que el flex mira para decidir cuanto puede encoger. Con `break-word`
+   la caja seguiria reservando sus 400 px y la mesa seguiria corrida. */
+.cab .quien .sub > * { min-width: 0; overflow-wrap: anywhere; }
+
+.volver {
+  flex: none;
+  color: var(--medio); text-decoration: none;
+  font-size: 12.5px;
+  padding: 7px 12px;
+  border: 1px solid var(--linea); border-radius: var(--r);
+}
+.volver:hover { color: var(--texto); border-color: #35506f; }
+
+/* Pastilla de estado */
+.pill {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 3px 9px; border-radius: 100px;
+  font: 600 10.5px/1.6 var(--ui); letter-spacing: .06em; text-transform: uppercase;
+  border: 1px solid currentColor;
+}
+.pill::before { content: ''; width: 5px; height: 5px; border-radius: 50%; background: currentColor; }
+.pill.si   { color: var(--si); }
+.pill.no   { color: var(--no); }
+.pill.ojo  { color: var(--ojo); }
+.pill.info { color: #7FB2E8; }
+.pill.gris { color: var(--tenue); }
+
+/* ── Cinta de procedencia ─────────────────────────────────────────────────
+   De dónde salió lo que dice este expediente. Es lo primero que se lee porque
+   cambia el valor de todo lo demás: si el documento entró por fotos, no hay
+   dígito de control que respalde ni un solo campo. */
+
+.procedencia {
+  display: flex; gap: 12px; align-items: flex-start;
+  padding: 11px 20px;
+  border-bottom: 1px solid var(--linea);
+  font-size: 12.5px; line-height: 1.5;
+}
+.procedencia .icono { flex: none; margin-top: 1px; }
+.procedencia b { font-weight: 600; }
+.procedencia.maquina { background: rgba(53,183,125,.07); color: var(--medio); }
+.procedencia.maquina b { color: var(--si); }
+.procedencia.humana  { background: rgba(226,137,60,.09); color: var(--medio); }
+.procedencia.humana b { color: var(--ojo); }
+.procedencia.nada    { background: rgba(224,104,93,.09); color: var(--medio); }
+.procedencia.nada b  { color: var(--no); }
+
+/* ── Cuerpo ───────────────────────────────────────────────────────────────── */
+
+.mesa {
+  padding-bottom: 8px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 400px;
+  gap: 20px;
+  padding: 20px;
+  align-items: start;
+}
+
+/* El expediente es un RAÍL DE CONSULTA, no una segunda columna de lectura: se
+   queda quieto y se desplaza por dentro mientras la mesa no se mueve. Sin esto
+   la columna de datos era mucho más larga que el comparador y dejaba medio
+   metro de vacío debajo de las caras — justo el sitio donde el ojo espera
+   encontrar la decisión. */
+@media (min-width: 1081px) {
+  .expediente {
+    position: sticky;
+    top: 76px;
+    max-height: calc(100vh - 178px);
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: var(--linea) transparent;
+    padding-right: 2px;
+  }
+}
+
+section h2 {
+  margin: 0 0 10px;
+  font: 600 12px/1 var(--ui);
+  letter-spacing: .13em; text-transform: uppercase;
+  color: var(--tenue);
+}
+
+/* ── El comparador ────────────────────────────────────────────────────────── */
+
+.comparador {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2px;                       /* la juntura, no un marco */
+  background: var(--linea);
+  border: 1px solid var(--linea);
+  border-radius: var(--r);
+  overflow: hidden;
+}
+
+.placa { background: var(--lecho); display: flex; flex-direction: column; min-width: 0; }
+
+.placa .rotulo {
+  display: flex; align-items: center; gap: 8px;
+  padding: 8px 10px;
+  background: #101823;
+  border-bottom: 1px solid var(--linea);
+}
+.placa .rotulo .ojillo { flex: 1; }
+
+/* El selector de qué imagen va en cada placa. Existe porque «rostro contra
+   documento» no siempre es la comparación que hace falta: a veces es el retrato
+   contra el anverso, o el anverso contra el reverso para leer la MRZ. */
+.fuentes { display: flex; gap: 2px; }
+.fuentes button {
+  font: 500 10.5px/1 var(--ui);
+  letter-spacing: .04em;
+  padding: 5px 8px;
+  color: var(--tenue);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 3px;
+  cursor: pointer;
+}
+.fuentes button:hover:not(:disabled) { color: var(--texto); }
+.fuentes button[aria-pressed="true"] { color: var(--texto); background: var(--mesa2); border-color: var(--linea); }
+.fuentes button:disabled { opacity: .3; cursor: not-allowed; }
+
+.visor {
+  position: relative;
+  /* Cuadrado a propósito: un retrato es vertical y una credencial apaisada, y
+     en un 4:3 una de las dos siempre acababa del tamaño de un sello. El cuadrado
+     es el único encaje que no favorece a ninguna de las dos. */
+  aspect-ratio: 1 / 1;
+  max-height: 54vh;
+  min-height: 300px;
+  overflow: hidden;
+  background: var(--lecho);
+  touch-action: none;
+  cursor: crosshair;
+}
+.visor[data-herramienta="mano"] { cursor: grab; }
+.visor[data-herramienta="mano"].arrastrando { cursor: grabbing; }
+.visor.vacio { display: flex; align-items: center; justify-content: center; cursor: default; }
+
+.lienzo { position: absolute; top: 0; left: 0; transform-origin: 0 0; will-change: transform; }
+.lienzo img { display: block; max-width: none; user-select: none; -webkit-user-drag: none; }
+
+/* La lupa: una copia del mismo lienzo, ampliada y recortada en círculo. Es una
+   copia y no un filtro para que la ampliación salga del PIXEL ORIGINAL y no de
+   lo que ya está pintado en pantalla. */
+.aumento {
+  position: absolute; inset: 0;
+  pointer-events: none;
+  opacity: 0;
+}
+.aumento .lienzo img { image-rendering: auto; }
+.aro {
+  position: absolute;
+  border: 1px solid rgba(245,179,43,.85);
+  border-radius: 50%;
+  box-shadow: 0 0 0 1px rgba(0,0,0,.7), 0 6px 22px rgba(0,0,0,.55);
+  pointer-events: none;
+  opacity: 0;
+}
+.visor.lupa-viva .aumento, .visor.lupa-viva .aro { opacity: 1; }
+
+/* LA REGLA DEL OJO. Una hebra horizontal a la misma altura en las dos placas.
+   Comparar dos caras es alinear la línea de los ojos, la base de la nariz y la
+   de la boca; con una regla común eso se ve sin tener que mover la lupa. Va muy
+   callada —un píxel, el oro al 40 %— porque acompaña a la lupa, no compite. */
+.regla-ojo {
+  position: absolute; left: 0; right: 0; height: 1px;
+  background: rgba(245,179,43,.4);
+  pointer-events: none; opacity: 0;
+}
+.visor.lupa-viva .regla-ojo { opacity: 1; }
+
+.hueco {
+  text-align: center; padding: 24px;
+  color: var(--tenue); font-size: 12.5px; max-width: 260px;
+}
+.hueco .ojillo { display: block; margin-bottom: 6px; color: #4a5d72; }
+
+.mandos {
+  display: flex; align-items: center; gap: 4px;
+  padding: 7px 8px;
+  background: #101823;
+  border-top: 1px solid var(--linea);
+}
+.mandos button {
+  font: 500 11px/1 var(--ui);
+  min-height: 28px; padding: 0 8px;
+  color: var(--medio);
+  background: transparent;
+  border: 1px solid var(--linea); border-radius: 3px;
+  cursor: pointer;
+}
+.mandos button:hover { color: var(--texto); border-color: #35506f; }
+.mandos .escala { margin-left: auto; font-family: var(--dato); font-size: 10.5px; color: var(--tenue); }
+
+/* La barra que gobierna las DOS placas a la vez. Que la lupa y el aumento sean
+   compartidos no es un ahorro de espacio: es el gesto. */
+.barra-mesa {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  margin-top: 10px; padding: 9px 12px;
+  background: var(--mesa); border: 1px solid var(--linea); border-radius: var(--r);
+}
+.herramientas { display: flex; gap: 2px; padding: 2px; background: #0F1927; border-radius: 4px; }
+.herramientas button {
+  font: 500 11.5px/1 var(--ui);
+  min-height: 28px; padding: 0 11px;
+  color: var(--tenue); background: transparent; border: 0; border-radius: 3px; cursor: pointer;
+}
+.herramientas button[aria-pressed="true"] { color: var(--tinta); background: var(--oro); font-weight: 600; }
+.barra-mesa label { display: flex; align-items: center; gap: 7px; font-size: 12px; color: var(--medio); }
+.barra-mesa input[type=range] { width: 92px; accent-color: var(--oro); }
+.barra-mesa .pista { margin-left: auto; font-size: 11.5px; color: var(--tenue); }
+
+/* Un expediente sin ninguna imagen no merece dos recuadros negros del alto de
+   la pantalla: merece una frase. */
+.sinNada {
+  border: 1px dashed var(--linea); border-radius: var(--r);
+  background: var(--mesa);
+  padding: 26px 24px;
+  border-left: 3px solid var(--no);
+}
+.sinNada .ojillo { display: block; margin-bottom: 8px; color: var(--no); }
+.sinNada p { margin: 0; max-width: 62ch; color: var(--medio); font-size: 13px; line-height: 1.6; }
+
+/* ── La lectura de la máquina ─────────────────────────────────────────────── */
+
+.maquina {
+  margin-top: 20px;
+  border: 1px solid var(--linea); border-radius: var(--r);
+  background: var(--mesa);
+  overflow: hidden;
+}
+.maquina .cinta {
+  display: flex; align-items: baseline; gap: 10px;
+  padding: 9px 14px;
+  background: #0F1927; border-bottom: 1px solid var(--linea);
+}
+.maquina .cinta .ojillo { flex: 1; }
+.maquina .cuerpo { padding: 14px; display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); }
+
+.medida .ojillo { display: block; margin-bottom: 5px; }
+.medida .cifra { font: 300 30px/1 var(--dato); letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
+.medida .cifra small { font-size: 15px; color: var(--tenue); margin-left: 1px; }
+.medida .cifra.sin { font-size: 15px; color: var(--tenue); font-weight: 400; }
+.regla { position: relative; height: 4px; margin-top: 8px; background: #0B1420; border-radius: 2px; overflow: hidden; }
+.regla i { position: absolute; inset: 0 auto 0 0; display: block; border-radius: 2px; }
+.umbral { position: absolute; top: -4px; bottom: -4px; width: 2px; background: var(--texto); border-radius: 1px; }
+.medida .marcaUmbral { position: relative; height: 13px; margin-top: 2px; font: 500 9.5px/13px var(--dato); color: var(--tenue); }
+.medida .marcaUmbral span { position: absolute; transform: translateX(-50%); white-space: nowrap; }
+.medida .pie { margin-top: 7px; font-size: 11.5px; color: var(--tenue); line-height: 1.45; }
+
+.gestos { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 7px; }
+.gestos span {
+  font: 500 11px/1 var(--dato);
+  padding: 4px 7px; border-radius: 3px;
+  background: #0B1420; border: 1px solid var(--linea); color: var(--medio);
+}
+.gestos span.ok  { color: var(--si); border-color: rgba(53,183,125,.4); }
+.gestos span.mal { color: var(--no); border-color: rgba(224,104,93,.4); }
+
+.deslinde {
+  padding: 10px 14px;
+  border-top: 1px solid var(--linea);
+  background: rgba(226,137,60,.07);
+  font-size: 12px; color: var(--medio); line-height: 1.5;
+}
+.deslinde b { color: var(--ojo); font-weight: 600; }
+
+/* ── El expediente ────────────────────────────────────────────────────────── */
+
+.expediente { display: grid; gap: 16px; }
+
+.bloque {
+  background: var(--mesa);
+  border: 1px solid var(--linea);
+  border-radius: var(--r);
+  overflow: hidden;
+}
+.bloque > .cinta {
+  display: flex; align-items: center; gap: 8px;
+  padding: 9px 13px;
+  background: #0F1927; border-bottom: 1px solid var(--linea);
+}
+.bloque > .cinta .ojillo { flex: 1; }
+.bloque .relleno { padding: 12px 13px; }
+
+/* Ficha de datos: rótulo arriba, dato abajo en monoespaciada. La rejilla de dos
+   columnas de etiqueta/valor obliga a saltar el ojo de lado; esto se lee en
+   vertical, que es como se revisa una lista de campos. */
+.campos { display: grid; grid-template-columns: repeat(auto-fit, minmax(165px, 1fr)); gap: 1px; background: var(--linea); }
+.campos > div { background: var(--mesa); padding: 9px 13px; }
+.campos .ojillo { display: block; margin-bottom: 3px; }
+.campos .v { font-family: var(--dato); font-size: 12.5px; line-height: 1.4; word-break: break-word; }
+.campos .v.na { color: var(--tenue); font-style: normal; }
+.campos .v.discrepa { color: var(--ojo); }
+.campos > div.ancho { grid-column: 1 / -1; }
+
+.marcador { display: flex; align-items: center; gap: 12px; }
+.marcador .cifra { font: 300 34px/1 var(--dato); letter-spacing: -.03em; }
+.marcador .cifra.bajo { color: var(--si); }
+.marcador .cifra.medio { color: var(--ojo); }
+.marcador .cifra.alto, .marcador .cifra.critico { color: var(--no); }
+.marcador .que { font-size: 12px; color: var(--medio); }
+
+.lista { display: grid; gap: 1px; background: var(--linea); }
+.lista .item { background: var(--mesa); padding: 9px 13px; border-left: 2px solid transparent; }
+.lista .item .t { font-size: 12.5px; line-height: 1.45; }
+.lista .item .d { margin-top: 3px; font-family: var(--dato); font-size: 11px; color: var(--tenue); }
+.lista .item.grave { border-left-color: var(--no); }
+.lista .item.aviso { border-left-color: var(--ojo); }
+.lista .item.bien  { border-left-color: var(--si); }
+
+.vacio { padding: 13px; color: var(--tenue); font-size: 12.5px; }
+
+/* El texto crudo que leyó la máquina en el frente: plegado por defecto porque
+   es materia prima, no conclusión. En monoespaciada porque es evidencia. */
+.leido { border-top: 1px solid var(--linea); }
+.leido summary {
+  padding: 9px 13px; cursor: pointer;
+  font: 600 10px/1 var(--ui); letter-spacing: .13em; text-transform: uppercase;
+  color: var(--tenue); list-style: none;
+}
+.leido summary::before { content: '▸ '; }
+.leido[open] summary::before { content: '▾ '; }
+.leido pre {
+  margin: 0; padding: 4px 13px 12px;
+  font: 400 11.5px/1.6 var(--dato);
+  color: var(--medio); white-space: pre-wrap; word-break: break-word;
+}
+
+/* ── La firma ─────────────────────────────────────────────────────────────── */
+
+.firma {
+  position: sticky; bottom: 0; z-index: 30;
+  border-top: 1px solid var(--linea);
+  background: rgba(11,17,28,.94);
+  backdrop-filter: blur(10px);
+  padding: 12px 20px calc(12px + env(safe-area-inset-bottom));
+}
+.firma .dentro {
+  display: flex; gap: 20px; align-items: center; flex-wrap: wrap;
+}
+
+/* La friccion deliberada: aprobar nace DESARMADO. La casilla no es un tramite,
+   es lo que obliga a mirar; y deja escrito que se miró. */
+.armado { display: flex; flex-direction: column; gap: 5px; flex: 1; min-width: 260px; }
+.armado label {
+  display: flex; align-items: flex-start; gap: 8px;
+  font-size: 12.5px; color: var(--medio); cursor: pointer; line-height: 1.4;
+}
+.armado input { margin: 2px 0 0; accent-color: var(--oro); width: 15px; height: 15px; flex: none; }
+.armado label:has(input:checked) { color: var(--texto); }
+
+.botones { display: flex; gap: 8px; flex-wrap: wrap; }
+.botones button {
+  font: 600 13px/1 var(--ui);
+  min-height: 40px; padding: 0 17px;
+  border-radius: var(--r); border: 1px solid var(--linea);
+  background: var(--mesa2); color: var(--texto);
+  cursor: pointer;
+  transition: background .12s ease, border-color .12s ease, color .12s ease;
+}
+.botones button:hover:not(:disabled) { border-color: #3d5b7d; background: #22344f; }
+.botones button.aprobar {
+  background: var(--oro); color: #10161F; border-color: var(--oro);
+}
+.botones button.aprobar:hover:not(:disabled) { background: var(--oro-b); border-color: var(--oro-b); }
+.botones button.aprobar:disabled {
+  background: transparent; color: var(--tenue); border-color: var(--linea);
+  border-style: dashed; cursor: not-allowed;
+}
+.botones button.negar { color: #F0A9A2; border-color: rgba(224,104,93,.42); }
+.botones button.negar:hover:not(:disabled) { background: rgba(224,104,93,.14); border-color: var(--no); }
+.botones button:disabled { opacity: .55; cursor: not-allowed; }
+
+/* ── Estados de la página ─────────────────────────────────────────────────── */
+
+.pantalla {
+  min-height: 100vh;
+  display: flex; align-items: center; justify-content: center;
+  padding: 24px; text-align: center;
+}
+.pantalla .caja { max-width: 380px; }
+.pMarca { width: 88px; color: var(--oro); animation: pLate 1.5s ease-in-out infinite; }
+@keyframes pLate { 50% { transform: scale(.94); opacity: .7; } }
+@media (prefers-reduced-motion: reduce) { .pMarca { animation: none; } }
+.pantalla h2 { margin: 14px 0 8px; font-size: 17px; font-weight: 600; letter-spacing: -.01em; color: var(--texto); text-transform: none; letter-spacing: normal; }
+.pantalla p { margin: 0; color: var(--medio); font-size: 13px; line-height: 1.6; }
+.pantalla a.boton {
+  /* 40 px clavados. Medía 110x40 justos, que redondeando se queda corto: es el
+     boton con el que un operador entra al panel desde la pantalla de revision,
+     y no hay razon para dejarlo en el limite. */
+  display: inline-flex; align-items: center; min-height: 44px;
+  margin-top: 16px; padding: 12px 18px;
+  background: var(--oro); color: #10161F; text-decoration: none;
+  border-radius: var(--r); font-weight: 600; font-size: 13px;
+}
+
+.oculto { display: none !important; }
+
+/* Aviso flotante */
+.aguja {
+  position: fixed; left: 50%; bottom: 92px; transform: translate(-50%, 14px);
+  z-index: 60;
+  padding: 10px 16px; border-radius: var(--r);
+  background: var(--mesa2); border: 1px solid var(--linea);
+  box-shadow: 0 10px 34px rgba(0,0,0,.5);
+  font-size: 13px;
+  opacity: 0; pointer-events: none;
+  transition: opacity .18s ease, transform .18s ease;
+}
+.aguja.ver { opacity: 1; transform: translate(-50%, 0); }
+.aguja.mal { border-color: var(--no); color: #F3B4AE; }
+
+/* ── Móvil ────────────────────────────────────────────────────────────────── */
+
+@media (max-width: 1080px) {
+  .mesa { grid-template-columns: minmax(0, 1fr); }
+}
+
+@media (max-width: 720px) {
+  .cab { padding: 10px 14px; gap: 10px; align-items: flex-start; }
+  .marca { padding-top: 2px; }
+  .marca b { display: none; }
+  .cab .quien h1 { white-space: normal; font-size: 15.5px; }
+  .procedencia, .mesa, .firma { padding-left: 14px; padding-right: 14px; }
+
+  /* LAS DOS PLACAS SIGUEN LADO A LADO. Apilarlas parecía lo obvio en una
+     pantalla estrecha, pero cotejar dos caras que no se pueden ver a la vez no
+     es cotejar: es acordarse. Lo que cambia es el encaje —vertical, que es la
+     forma de un rostro— y no el número de columnas. */
+  .visor { aspect-ratio: 3 / 4; min-height: 0; max-height: 46vh; }
+  .placa .rotulo { flex-wrap: wrap; gap: 4px; padding: 6px 7px; }
+  /* LAS CUATRO FUENTES, EN DOS FILAS DE DOS.
+     Estaban en una sola fila de cuatro, y no cabian: dentro de una placa de
+     unos 155 px cada boton se quedaba con 34 px de caja util, mientras que
+     «Anverso» a 9.5 px pide 40. El texto no se recortaba ni ponia puntos
+     suspensivos, se DERRAMABA fuera de su propio boton y se metia encima del
+     vecino: en la pantalla se leia «RetratoAnversoReverso» pegado, sin saber
+     donde acababa uno y empezaba el siguiente. Y esto no es un adorno, es el
+     mando que decide QUE IMAGEN va en cada placa; tocar el de al lado por
+     error es cotejar la cara contra la cara.
+
+     No se veia en ninguna medida automatica porque nada se salia de la
+     pantalla: el derrame ocurria dentro de la fila. Salio mirando la captura.
+
+     Dos por dos da unos 76 px por celda, de sobra para la palabra mas larga, y
+     de paso los blancos de toque pasan a ser el doble de anchos. */
+  .fuentes { width: 100%; display: grid; grid-template-columns: 1fr 1fr; gap: 2px; }
+  .fuentes button { min-width: 0; padding: 6px 2px; font-size: 10px; letter-spacing: 0; }
+  .mandos { padding: 5px; flex-wrap: wrap; }
+  .mandos button { padding: 0 6px; }
+  .mandos .escala { width: 100%; margin: 2px 0 0; text-align: right; }
+
+  /* LA FIRMA BAJA AL FINAL. Pegada abajo se comía casi la mitad de la pantalla
+     —tres casillas y siete botones— justo encima de las caras que hay que
+     mirar. Al final del documento el orden es el natural: mirar, leer, decidir. */
+  .firma { position: static; background: var(--tinta); backdrop-filter: none; }
+  .firma .dentro { align-items: stretch; }
+  .botones { display: grid; grid-template-columns: 1fr 1fr; }
+  .botones button.aprobar { grid-column: 1 / -1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * { transition-duration: .01ms !important; animation-duration: .01ms !important; }
+}
+</style>
+</head>
+<body>
+
+<!-- La marca oficial, en vectores, definida una vez para toda la página. -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+  <g id="gidMarca">
+    <path d="M 251.3 75.2 L 261.4 81 Q 232 64 202.6 81 L 100.4 140 Q 70.9 157 70.9 191 L 70.9 309 Q 70.9 343 100.4 360 L 202.6 419 Q 232 436 261.4 419 L 238.4 432.3" stroke="currentColor" stroke-width="58" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M 354 124 Q 416 150 424 216 L 424 240" stroke="currentColor" stroke-width="54" stroke-linecap="round"/>
+    <circle cx="272" cy="158" r="40" fill="currentColor"/>
+    <rect x="236" y="212" width="70" height="122" rx="32" fill="currentColor"/>
+    <circle cx="374" cy="302" r="15" fill="currentColor"/>
+    <g stroke="currentColor" stroke-width="15" stroke-linecap="round" fill="none">
+      <path d="M 342.8 284.0 A 36 36 0 1 1 338.8 309.5"/>
+      <path d="M 333.0 261.0 A 58 58 0 1 1 316.6 310.1"/>
+      <path d="M 331.6 234.2 A 80 80 0 1 1 294.2 307.6"/>
+      <path d="M 377.9 413.9 A 112 112 0 0 1 272.5 349.3"/>
+      <path d="M 369.3 437.9 A 136 136 0 0 1 251.8 361.6"/>
+      <path d="M 360.1 461.4 A 160 160 0 0 1 232.7 377.1"/>
+      <path d="M 348.4 484.2 A 184 184 0 0 1 214.7 394.0"/>
+    </g>
+  </g>
+</defs></svg>
+
+<!-- Cargando / sin sesión / error -->
+<div class="pantalla" id="pantalla">
+  <div class="caja">
+    <svg class="pMarca" viewBox="0 0 512 512" fill="none" aria-hidden="true"><use href="#gidMarca"/></svg>
+    <div id="pIcono"></div>
+    <h2 id="pTitulo">Abriendo el expediente…</h2>
+    <p id="pTexto">Se están trayendo las imágenes y la lectura de la máquina.</p>
+    <a class="boton oculto" id="pBoton" href="/admin">Ir al panel</a>
+  </div>
+</div>
+
+<div id="app" class="oculto">
+
+  <header class="cab">
+    <span class="marca" aria-hidden="true">
+      <svg width="24" height="24" viewBox="0 0 512 512" fill="none" style="color:var(--oro)"><use href="#gidMarca"/></svg>
+      <b>Genesis <span>ID</span></b>
+    </span>
+    <div class="quien">
+      <h1 id="hNombre">—</h1>
+      <div class="sub">
+        <span id="hEstado"></span>
+        <span id="hGid"></span>
+        <span id="hCorreo"></span>
+      </div>
+    </div>
+    <a class="volver" href="/admin">← Panel</a>
+  </header>
+
+  <div class="procedencia" id="procedencia"></div>
+
+  <main class="mesa">
+
+    <section aria-labelledby="tCotejo">
+      <h2 id="tCotejo">Cotejo</h2>
+
+      <!-- Cuando no hay ni una imagen guardada, en vez de dos agujeros negros -->
+      <div class="sinNada oculto" id="sinNada"></div>
+
+      <div class="comparador" id="comparador">
+        <!-- Placa izquierda -->
+        <div class="placa">
+          <div class="rotulo">
+            <span class="ojillo" id="rotA">—</span>
+            <span class="fuentes" id="fuentesA" role="group" aria-label="Qué imagen va a la izquierda"></span>
+          </div>
+          <div class="visor" id="visorA" data-lado="A" data-herramienta="lupa"></div>
+          <div class="mandos" id="mandosA"></div>
+        </div>
+        <!-- Placa derecha -->
+        <div class="placa">
+          <div class="rotulo">
+            <span class="ojillo" id="rotB">—</span>
+            <span class="fuentes" id="fuentesB" role="group" aria-label="Qué imagen va a la derecha"></span>
+          </div>
+          <div class="visor" id="visorB" data-lado="B" data-herramienta="lupa"></div>
+          <div class="mandos" id="mandosB"></div>
+        </div>
+      </div>
+
+      <div class="barra-mesa">
+        <span class="herramientas" role="group" aria-label="Herramienta">
+          <button type="button" id="hLupa" aria-pressed="true">Lupa</button>
+          <button type="button" id="hMano" aria-pressed="false">Mano</button>
+        </span>
+        <label>Aumento
+          <input type="range" id="rAumento" min="2" max="8" step="0.5" value="4"
+                 aria-label="Aumento de la lupa">
+          <span class="mono" id="vAumento">4×</span>
+        </label>
+        <span class="pista" id="pistaMesa">Arrastre para encuadrar cada cara; la lupa sigue al cursor y aparece
+          en las dos placas a la vez, a la misma altura.</span>
+      </div>
+
+      <!-- Lo que dijo la máquina, separado a propósito de lo que decide la persona -->
+      <div class="maquina" id="maquina"></div>
+    </section>
+
+    <aside class="expediente" id="expediente"></aside>
+
+  </main>
+
+  <footer class="firma">
+    <div class="dentro">
+      <div class="armado" id="armado"></div>
+      <div class="botones" id="botones"></div>
+    </div>
+  </footer>
+
+</div>
+
+<div class="aguja" id="aguja" role="status" aria-live="polite"></div>
+
+<script>
+'use strict'
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Esta página comparte sesión con el panel: el mismo `gid.sesion` y la misma
+   API. No es un panel aparte con su propia puerta — es la pantalla de revisión
+   del panel, servida en su propia dirección porque necesita toda la ventana.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+const $ = (s) => document.querySelector(s)
+const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) =>
+  ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]))
+const fecha = (f) => f ? new Date(f).toLocaleString('es', { dateStyle: 'short', timeStyle: 'short' }) : '—'
+const pct = (n, d = 1) => (n * 100).toFixed(d) + '%'
+
+/* Las cifras, con el mismo criterio que el panel: los miles con espacio fino
+   indivisible y el decimal con coma. «20.000» y «20,000» significan cosas
+   distintas según quién las lea, y la mesa de cotejo es justo donde no se
+   puede adivinar. Sin dato se enseña un hueco, nunca un cero. */
+const MILES = '\u202f'
+const cifra = (n) => {
+  if (n === null || n === undefined || n === '') return '—'
+  const x = Number(n)
+  if (!Number.isFinite(x)) return '—'
+  const [ent, dec] = Math.abs(x).toFixed(6).replace(/0+$/, '').replace(/\.$/, '').split('.')
+  return (x < 0 ? '−' : '') + ent.replace(/\B(?=(\d{3})+(?!\d))/g, MILES) + (dec ? ',' + dec : '')
+}
+const dinero = (n) => {
+  if (n === null || n === undefined || !Number.isFinite(Number(n))) return '—'
+  const [ent, dec] = Math.abs(Number(n)).toFixed(2).split('.')
+  // El signo va con la cifra, no delante de la moneda: «USD −20 000,50».
+  return 'USD' + MILES + (Number(n) < 0 ? '−' : '') +
+    ent.replace(/\B(?=(\d{3})+(?!\d))/g, MILES) + ',' + dec
+}
+
+let sesion = localStorage.getItem('gid.sesion') || ''
+let yo = null
+let ident = null
+
+async function api(ruta, opciones = {}) {
+  let r
+  try {
+    r = await fetch('/api' + ruta, {
+      ...opciones,
+      headers: {
+        'Content-Type': 'application/json',
+        ...(sesion ? { Authorization: 'Bearer ' + sesion } : {}),
+        ...(opciones.headers || {}),
+      },
+    })
+  } catch {
+    throw Object.assign(new Error('No se pudo conectar con el servidor. Compruebe la conexión.'), { red: true })
+  }
+  const cuerpo = await r.json().catch(() => ({}))
+  if (!r.ok) throw Object.assign(new Error(cuerpo.error || 'Error'), { datos: cuerpo, http: r.status })
+  return cuerpo
+}
+
+const puede = (p) => yo && (yo.permisos.includes('*') || yo.permisos.includes(p))
+
+function avisar(texto, mal) {
+  const a = $('#aguja')
+  a.textContent = texto
+  a.className = 'aguja ver' + (mal ? ' mal' : '')
+  clearTimeout(a._t)
+  a._t = setTimeout(() => { a.className = 'aguja' }, 4200)
+}
+
+function pantalla(titulo, texto, conBoton) {
+  $('#app').classList.add('oculto')
+  $('#pantalla').classList.remove('oculto')
+  $('#pTitulo').textContent = titulo
+  $('#pTexto').textContent = texto
+  $('#pBoton').classList.toggle('oculto', !conBoton)
+}
+
+const imgSrc = (dato) => {
+  const d = String(dato || '')
+  return d.startsWith('data:') ? d : 'data:image/jpeg;base64,' + d
+}
+
+/* ── LA PLACA ──────────────────────────────────────────────────────────────
+   Una placa es un visor con una imagen encima de un lecho neutro, que se puede
+   girar, acercar y mover. Guarda su propia geometría; la lupa es lo único que
+   comparte con la otra.
+
+   La imagen se dimensiona A MANO al tamaño de encaje (`contain`) en lugar de
+   dejárselo a `object-fit`, porque hace falta saber exactamente dónde está
+   pintado cada píxel para poder invertir la transformación y colocar la lupa.
+   Con `object-fit` el navegador conoce esa caja y el guion no. */
+
+class Placa {
+  constructor(visorEl, mandosEl, rotuloEl, fuentesEl) {
+    this.visor = visorEl
+    this.mandos = mandosEl
+    this.rotulo = rotuloEl
+    this.fuentesEl = fuentesEl
+    this.fuentes = []
+    this.actual = -1
+    this.z = 1; this.giro = 0; this.tx = 0; this.ty = 0
+    this.iw = 0; this.ih = 0
+    this.pareja = null
+    this.arrastre = null
+    this._armarMandos()
+  }
+
+  _armarMandos() {
+    this.mandos.innerHTML = `
+      <button type="button" data-a="giro-" title="Girar a la izquierda" aria-label="Girar a la izquierda">⟲</button>
+      <button type="button" data-a="giro+" title="Girar a la derecha" aria-label="Girar a la derecha">⟳</button>
+      <button type="button" data-a="menos" title="Alejar" aria-label="Alejar">−</button>
+      <button type="button" data-a="mas" title="Acercar" aria-label="Acercar">+</button>
+      <button type="button" data-a="encaje" title="Volver al encaje">Encajar</button>
+      <span class="escala">100%</span>`
+    this.mandos.addEventListener('click', (e) => {
+      const b = e.target.closest('button'); if (!b) return
+      const a = b.dataset.a
+      if (a === 'giro-') this.giro -= 90
+      else if (a === 'giro+') this.giro += 90
+      else if (a === 'menos') this.z = Math.max(0.25, this.z / 1.25)
+      else if (a === 'mas') this.z = Math.min(12, this.z * 1.25)
+      else if (a === 'encaje') { this.z = 1; this.giro = 0; this.tx = 0; this.ty = 0 }
+      this.pintar()
+    })
+  }
+
+  /** Las imágenes disponibles para esta placa, y cuál se enseña primero. */
+  ofrecer(fuentes, preferida) {
+    this.fuentes = fuentes
+    this.fuentesEl.innerHTML = fuentes.map((f, n) =>
+      `<button type="button" data-n="${n}" ${f.dato ? '' : 'disabled'}
+        aria-pressed="false" title="${esc(f.pie)}">${esc(f.corto)}</button>`).join('')
+    this.fuentesEl.addEventListener('click', (e) => {
+      const b = e.target.closest('button'); if (!b || b.disabled) return
+      this.poner(Number(b.dataset.n))
+    })
+    const n = fuentes.findIndex((f) => f.clave === preferida && f.dato)
+    this.poner(n >= 0 ? n : fuentes.findIndex((f) => f.dato))
+  }
+
+  poner(n) {
+    this.actual = n
+    ;[...this.fuentesEl.children].forEach((b, i) => b.setAttribute('aria-pressed', String(i === n)))
+    const f = this.fuentes[n]
+    this.z = 1; this.giro = 0; this.tx = 0; this.ty = 0
+    this.visor.classList.remove('lupa-viva')
+
+    if (!f || !f.dato) {
+      this.rotulo.textContent = f ? f.rotulo : 'Sin imagen'
+      this.visor.classList.add('vacio')
+      this.visor.innerHTML = `<div class="hueco">
+        <span class="ojillo">No aportado</span>
+        ${esc(f ? f.ausente : 'Esta identidad no tiene ninguna imagen guardada.')}</div>`
+      this.img = null
+      this.mandos.style.visibility = 'hidden'
+      return
+    }
+
+    this.rotulo.textContent = f.rotulo
+    this.mandos.style.visibility = 'visible'
+    this.visor.classList.remove('vacio')
+    this.visor.innerHTML = `
+      <div class="lienzo"><img alt="${esc(f.rotulo)}" draggable="false"></div>
+      <div class="regla-ojo"></div>
+      <div class="aumento"><div class="lienzo"><img alt="" draggable="false"></div></div>
+      <div class="aro"></div>`
+    this.lienzo = this.visor.querySelector('.lienzo')
+    this.img = this.lienzo.querySelector('img')
+    this.aumento = this.visor.querySelector('.aumento .lienzo')
+    this.imgAum = this.aumento.querySelector('img')
+    this.aro = this.visor.querySelector('.aro')
+    this.reglaOjo = this.visor.querySelector('.regla-ojo')
+
+    const src = imgSrc(f.dato)
+    this.img.onload = () => { this.encajar(); this.pintar() }
+    this.img.src = src
+    this.imgAum.src = src
+    this._escuchar()
+  }
+
+  /** Calcula el tamaño de encaje: la imagen entera, sin recortar, sin deformar. */
+  encajar() {
+    const c = this.visor.getBoundingClientRect()
+    const nw = this.img.naturalWidth || 1
+    const nh = this.img.naturalHeight || 1
+    // Con giro de 90° o 270° la caja útil se intercambia: encajar contra el lado
+    // corto evita que una credencial girada se salga del visor.
+    const vertical = Math.abs(this.giro % 180) === 90
+    const cw = vertical ? c.height : c.width
+    const ch = vertical ? c.width : c.height
+    const s = Math.min(cw / nw, ch / nh)
+    this.iw = nw * s; this.ih = nh * s
+    this.img.style.width = this.iw + 'px'
+    this.img.style.height = this.ih + 'px'
+    this.imgAum.style.width = this.iw + 'px'
+    this.imgAum.style.height = this.ih + 'px'
+  }
+
+  /** La matriz del lienzo, con origen en la esquina del visor. */
+  matriz(extra) {
+    const c = this.visor.getBoundingClientRect()
+    return (extra || '') +
+      `translate(${c.width / 2 + this.tx}px, ${c.height / 2 + this.ty}px) ` +
+      `rotate(${this.giro}deg) scale(${this.z}) ` +
+      `translate(${-this.iw / 2}px, ${-this.ih / 2}px)`
+  }
+
+  pintar() {
+    if (!this.img) return
+    this.encajar()
+    this.lienzo.style.transform = this.matriz()
+    this.mandos.querySelector('.escala').textContent = Math.round(this.z * 100) + '%'
+    if (this._p) this.lupa(this._p.u, this._p.v)
+  }
+
+  /** Coloca la lupa en la posición RELATIVA AL VISOR (u, v), ambas 0..1.
+      Relativa al visor y no a la imagen: una vez que las dos caras están
+      encuadradas dentro de su placa, el mismo punto del recuadro es el mismo
+      rasgo en las dos. Eso es lo que hace que los mandos de encuadre sirvan
+      para algo y no sean adorno. */
+  lupa(u, v) {
+    if (!this.img) return
+    this._p = { u, v }
+    const c = this.visor.getBoundingClientRect()
+    const px = u * c.width, py = v * c.height
+    const R = Math.max(48, Math.min(c.width, c.height) * 0.19)
+    const M = AUMENTO
+    this.aumento.style.transform =
+      this.matriz(`translate(${px}px, ${py}px) scale(${M}) translate(${-px}px, ${-py}px) `)
+    this.aumento.parentElement.style.clipPath = `circle(${R}px at ${px}px ${py}px)`
+    this.aro.style.width = this.aro.style.height = (R * 2) + 'px'
+    this.aro.style.left = (px - R) + 'px'
+    this.aro.style.top = (py - R) + 'px'
+    this.reglaOjo.style.top = py + 'px'
+    this.visor.classList.add('lupa-viva')
+  }
+
+  apagarLupa() { this._p = null; this.visor.classList.remove('lupa-viva') }
+
+  _escuchar() {
+    const v = this.visor
+    v.addEventListener('pointermove', (e) => {
+      if (this.arrastre || HERRAMIENTA !== 'lupa' || e.pointerType === 'touch') return
+      const c = v.getBoundingClientRect()
+      const u = (e.clientX - c.left) / c.width
+      const t = (e.clientY - c.top) / c.height
+      if (u < 0 || u > 1 || t < 0 || t > 1) return
+      this.lupa(u, t)
+      if (this.pareja) this.pareja.lupa(u, t)
+    })
+    v.addEventListener('pointerleave', () => {
+      if (this.arrastre) return
+      this.apagarLupa(); if (this.pareja) this.pareja.apagarLupa()
+    })
+    v.addEventListener('pointerdown', (e) => {
+      if (!this.img) return
+      v.setPointerCapture(e.pointerId)
+      v.classList.add('arrastrando')
+      this.arrastre = { x: e.clientX, y: e.clientY, tx: this.tx, ty: this.ty }
+      if (HERRAMIENTA !== 'lupa' || e.pointerType !== 'touch') {
+        this.apagarLupa(); if (this.pareja) this.pareja.apagarLupa()
+      }
+    })
+    v.addEventListener('pointermove', (e) => {
+      if (!this.arrastre) return
+      // Con el dedo, arrastrar CON LA LUPA PUESTA la mueve en vez de encuadrar:
+      // es el único gesto que queda cuando no se puede pasar por encima.
+      if (HERRAMIENTA === 'lupa' && e.pointerType === 'touch') {
+        const c = v.getBoundingClientRect()
+        const u = Math.min(1, Math.max(0, (e.clientX - c.left) / c.width))
+        const t = Math.min(1, Math.max(0, (e.clientY - c.top) / c.height))
+        this.lupa(u, t); if (this.pareja) this.pareja.lupa(u, t)
+        return
+      }
+      this.tx = this.arrastre.tx + (e.clientX - this.arrastre.x)
+      this.ty = this.arrastre.ty + (e.clientY - this.arrastre.y)
+      this.pintar()
+    })
+    const soltar = (e) => {
+      if (!this.arrastre) return
+      this.arrastre = null
+      v.classList.remove('arrastrando')
+      try { v.releasePointerCapture(e.pointerId) } catch {}
+    }
+    v.addEventListener('pointerup', soltar)
+    v.addEventListener('pointercancel', soltar)
+    v.addEventListener('wheel', (e) => {
+      e.preventDefault()
+      this.z = Math.max(0.25, Math.min(12, this.z * (e.deltaY < 0 ? 1.12 : 1 / 1.12)))
+      this.pintar()
+    }, { passive: false })
+  }
+}
+
+let HERRAMIENTA = 'lupa'
+let AUMENTO = 4
+let placaA, placaB
+
+function armarHerramientas() {
+  const poner = (h) => {
+    HERRAMIENTA = h
+    $('#hLupa').setAttribute('aria-pressed', String(h === 'lupa'))
+    $('#hMano').setAttribute('aria-pressed', String(h === 'mano'))
+    $('#visorA').dataset.herramienta = h
+    $('#visorB').dataset.herramienta = h
+    $('#pistaMesa').textContent = h === 'lupa'
+      ? 'Toque una cara para poner la lupa; aparece en las dos placas a la vez.'
+      : 'Arrastre para encuadrar cada cara; después vuelva a la lupa.'
+    if (h !== 'lupa') { placaA.apagarLupa(); placaB.apagarLupa() }
+  }
+  $('#hLupa').onclick = () => poner('lupa')
+  $('#hMano').onclick = () => poner('mano')
+  /* CON RATÓN NO HAY MODOS. La lupa sigue al cursor y el arrastre encuadra, que
+     es el gesto que hay que hacer ANTES de que la lupa sirva de nada: la misma
+     posición del recuadro solo es el mismo rasgo si las dos caras están
+     encuadradas igual. Obligar a cambiar de herramienta para encuadrar era un
+     modo que estorbaba al gesto que lo precede. El selector se queda solo donde
+     el dedo no puede pasar por encima sin tocar. */
+  if (matchMedia('(hover: none)').matches) poner('mano')
+  else $('#hLupa').parentElement.classList.add('oculto')
+
+  const r = $('#rAumento')
+  r.oninput = () => {
+    AUMENTO = Number(r.value)
+    $('#vAumento').textContent = AUMENTO + '×'
+    placaA.pintar(); placaB.pintar()
+  }
+}
+
+/* ── Procedencia ───────────────────────────────────────────────────────────
+   La frase que más falta hacía en todo el panel. Un expediente que entró por
+   fotos no tiene NI UN campo comprobado: nombre, número y nacionalidad los
+   escribió la persona sobre sí misma. Decirlo aquí, arriba y sin rodeos, es lo
+   que impide que un operador lea esos campos como si fueran datos leídos de un
+   documento. */
+function pintarProcedencia(i) {
+  const el = $('#procedencia')
+  const via = i.documento?.via
+  const hayDoc = Boolean(i.documento)
+  if (!hayDoc) {
+    el.className = 'procedencia nada'
+    el.innerHTML = `<span class="icono">◈</span><div>
+      <b>Sin documento.</b> Todavía no se ha recibido ningún documento de identidad.
+      Todo lo que aparece como nombre, número o nacionalidad en este expediente lo
+      escribió la persona sobre sí misma.</div>`
+    return
+  }
+  if (via === 'fotos') {
+    // Desde que el servidor lee el frente con Rekognition, esta cinta tiene
+    // que distinguir tres casos: la máquina encontró el nombre impreso, lo
+    // buscó y no lo encontró, o ni siquiera pudo leer. Decir «sin comprobación
+    // automática» cuando la máquina sí leyó sería mentirle al operador en la
+    // dirección contraria a la de antes.
+    const nombreLeido = i.documento?.anverso?.nombreConfirmado
+    const leida = nombreLeido === true
+      ? 'La máquina leyó el impreso del frente y <b>encontró el nombre declarado</b>. '
+      : nombreLeido === false
+        ? 'La máquina leyó el impreso del frente y <b>NO encontró el nombre declarado completo</b> — mírelo letra por letra. '
+        : 'La máquina no pudo leer el impreso del frente. '
+    el.innerHTML = `<span class="icono">◈</span><div>
+      <b>Documento entrado por fotos — sin dígitos de control.</b>
+      Entró por el navegador: no hay lector de MRZ, así que ninguna aritmética
+      respalda estos campos. ${leida}Aun así, <b>lo que aparece como nombre, número o
+      nacionalidad lo escribió la persona sobre sí misma</b>: el cotejo que vale es el
+      suyo, contra las dos fotos de arriba, campo por campo.</div>`
+    el.className = 'procedencia humana'
+    return
+  }
+  el.className = 'procedencia maquina'
+  el.innerHTML = `<span class="icono">◈</span><div>
+    <b>MRZ leída y comprobada.</b> Los campos vienen de la zona de lectura mecánica
+    del documento y sus dígitos de control cuadran. Eso prueba que el documento está
+    bien <i>formado</i> — no que sea auténtico ni que sea de quien lo presenta: eso
+    es lo que se resuelve mirando las dos caras de arriba.</div>`
+}
+
+/* ── La lectura de la máquina ──────────────────────────────────────────────
+   Va en su propio recuadro, con su propia cinta y su propio deslinde, para que
+   nunca se lea como si fuera la decisión. Rekognition devuelve un parecido; el
+   umbral y la conclusión los pone Genesis ID, y la firma la pone una persona. */
+function pintarMaquina(i) {
+  const b = i.biometria
+  const el = $('#maquina')
+  if (!b) {
+    el.innerHTML = `<div class="cinta"><span class="ojillo">Lectura de la máquina</span></div>
+      <div class="vacio">Todavía no se ha corrido ningún cotejo biométrico sobre esta identidad.</div>`
+    return
+  }
+  const cls = b.estado === 'ok' ? 'si' : b.estado === 'no-configurada' ? 'gris' : 'no'
+  const par = b.parecido
+  const viv = b.vivacidad
+
+  const medida = (rotulo, valor, umbral, pie, formato) => `
+    <div class="medida">
+      <span class="ojillo">${esc(rotulo)}</span>
+      ${valor == null
+        ? `<div class="cifra sin">no medido</div>`
+        : `<div class="cifra">${formato(valor)}</div>
+           <div class="regla">
+             <i style="width:${Math.min(100, valor * 100)}%;background:${
+               umbral != null && valor < umbral ? 'var(--no)' : 'var(--si)'}"></i>
+             ${umbral != null ? `<span class="umbral" style="left:${umbral * 100}%"></span>` : ''}
+           </div>
+           ${umbral != null ? `<div class="marcaUmbral"><span style="left:${umbral * 100}%">umbral ${
+             Math.round(umbral * 100)}%</span></div>` : ''}`}
+      <div class="pie">${pie}</div>
+    </div>`
+
+  el.innerHTML = `
+    <div class="cinta">
+      <span class="ojillo">Lectura de la máquina</span>
+      <span class="pill ${cls}">${esc(b.estado)}</span>
+      <span class="mono" style="font-size:11px;color:var(--tenue)">${esc(b.proveedor || '')}</span>
+    </div>
+    <div class="cuerpo">
+      ${medida('Parecido con el documento', par, 0.9,
+        'AWS Rekognition compara los dos rostros y devuelve un porcentaje. El umbral lo pone Genesis ID, no el proveedor.',
+        (v) => pct(v, 1).replace('%', '<small>%</small>'))}
+      ${medida('Prueba de vida', viv, 0.7,
+        'Mide si al otro lado había una persona y no una fotografía de una fotografía.',
+        (v) => pct(v, 0).replace('%', '<small>%</small>'))}
+      <div class="medida">
+        <span class="ojillo">Gestos pedidos</span>
+        ${(b.pasosVivacidad || []).length
+          ? `<div class="gestos">${b.pasosVivacidad.map((p) =>
+              `<span class="${p.ok ? 'ok' : 'mal'}">${p.ok ? '✓' : '✗'} ${esc(p.gesto)}</span>`).join('')}</div>`
+          : `<div class="cifra sin">ninguno</div>`}
+        <div class="pie">${b.motivo ? esc(b.motivo) : 'Sin observaciones del proveedor.'}</div>
+        ${(b.avisos || []).length
+          ? `<div class="pie" style="color:var(--ojo)">${b.avisos.map((a) => '⚠ ' + esc(a)).join('<br>')}</div>` : ''}
+      </div>
+    </div>
+    <div class="deslinde">
+      <b>Esto lo dijo la máquina, no es la decisión.</b> Un parecido alto no verifica a
+      nadie y uno bajo no descarta a nadie: una foto movida, unas gafas o mala luz bajan
+      el número sin que haya nada raro. La decisión —y la firma en la bitácora— es de
+      quien está mirando las dos caras.
+    </div>`
+}
+
+/* ── El expediente ─────────────────────────────────────────────────────────── */
+
+const pais = (o, codigo) => o ? `${o.nombre} (${o.codigo})` : (codigo || '—')
+
+function campo(rotulo, valor, marca, ancho) {
+  const vacio = valor == null || valor === '' || valor === '—'
+  return `<div class="${ancho ? 'ancho' : ''}"><span class="ojillo">${esc(rotulo)}</span>
+    <div class="v ${vacio ? 'na' : ''} ${marca ? 'discrepa' : ''}">${vacio ? 'sin dato' : esc(valor)}</div></div>`
+}
+
+function pintarExpediente(i) {
+  const r = i.riesgo || {}
+  const hallazgos = i.documento?.hallazgos || []
+  const coincidencias = i.tamiz?.coincidencias || []
+  // El nombre declarado contra el del documento es la discrepancia que más
+  // veces decide un expediente: se marca en vez de dejarla en dos campos que
+  // hay que comparar de memoria.
+  const norm = (s) => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toUpperCase().replace(/\s+/g, ' ').trim()
+  const discrepa = i.nombreLegal && i.nombreDeclarado && norm(i.nombreLegal) !== norm(i.nombreDeclarado)
+
+  $('#expediente').innerHTML = `
+    <div class="bloque">
+      <div class="cinta"><span class="ojillo">Riesgo</span>
+        ${r.nivel ? `<span class="pill ${r.nivel === 'bajo' ? 'si' : r.nivel === 'medio' ? 'ojo' : 'no'}">${esc(r.nivel)}</span>` : ''}</div>
+      <div class="relleno">
+        <div class="marcador">
+          <span class="cifra ${esc(r.nivel || '')}">${r.puntuacion ?? '—'}</span>
+          <span class="que">Recomendación del motor:<br><b>${esc(r.recomendacion || '—')}</b></span>
+        </div>
+      </div>
+      ${(r.factores || []).length ? `<div class="lista">${r.factores.map((f) =>
+        `<div class="item ${f.puntos > 0 ? 'aviso' : 'bien'}">
+          <div class="t">${esc(f.detalle)}</div>
+          <div class="d">${esc(f.clave)} · ${f.puntos > 0 ? '+' : ''}${f.puntos}</div></div>`).join('')}</div>` : ''}
+    </div>
+
+    ${(r.bloqueos || []).length ? `<div class="bloque">
+      <div class="cinta"><span class="ojillo">Bloqueos — impiden aprobar</span></div>
+      <div class="lista">${r.bloqueos.map((b) => `<div class="item grave"><div class="t">${esc(b)}</div></div>`).join('')}</div>
+    </div>` : ''}
+
+    <div class="bloque">
+      <div class="cinta"><span class="ojillo">Lo que declara el expediente</span></div>
+      <div class="campos">
+        ${/* Los campos anchos van PRIMERO y los pares después: intercalados,
+              cada campo largo partía una fila por la mitad y dejaba al lado una
+              celda vacía. Los pares que quedan son un número par a propósito. */''}
+        ${campo('Correo', i.email, false, true)}
+        ${campo('Nombre declarado', i.nombreDeclarado, discrepa, true)}
+        ${campo('Nombre del documento', i.nombreLegal, discrepa, true)}
+        ${campo('GID', i.gid || 'todavía sin emitir')}
+        ${campo('Estado', i.estado)}
+        ${campo('Nacimiento', i.fechaNacimiento || i.fechaNacimientoDeclarada)}
+        ${campo('Nacionalidad', pais(i.nacionalidadNombre, i.nacionalidad))}
+        ${campo('Documento', i.numeroDocumento ? `${i.numeroDocumento} · ${i.tipoDocumento || ''}` : '')}
+        ${campo('Vence', i.vencimientoDocumento)}
+        ${campo('Residencia', pais(i.paisResidenciaNombre, i.paisResidencia))}
+        ${campo('Teléfono', i.telefono)}
+        ${campo('Ocupación', i.ocupacion)}
+        ${campo('PEP declarado', i.pepDeclarado == null ? '' : (i.pepDeclarado ? 'SÍ' : 'no'))}
+        ${campo('Origen de fondos', i.origenFondos, false, true)}
+        ${campo('Volumen esperado', i.volumenEsperadoUsd != null ? dinero(i.volumenEsperadoUsd) + ' al año' : '', false, true)}
+      </div>
+      ${discrepa ? `<div class="deslinde"><b>El nombre declarado y el del documento no son el mismo.</b>
+        Compruébelo letra por letra en el anverso antes de decidir: la MRZ corta los nombres largos.</div>` : ''}
+    </div>
+
+    <div class="bloque">
+      <div class="cinta"><span class="ojillo">Documento</span></div>
+      ${hallazgos.length ? `<div class="lista">${hallazgos.map((h) =>
+        `<div class="item ${h.gravedad === 'grave' ? 'grave' : h.gravedad === 'aviso' ? 'aviso' : 'bien'}">
+          <div class="t">${esc(h.detalle)}</div><div class="d">${esc(h.clave)}</div></div>`).join('')}</div>`
+        : '<div class="vacio">Todavía no se ha revisado ningún documento.</div>'}
+      ${i.documento?.textoAnverso ? `
+      ${/* Sin esto, un «no se encontró el nombre» es inapelable; con el texto
+            delante, el operador distingue una foto ilegible de una discrepancia
+            real, que es la diferencia entre repetir la captura y abrir un caso. */''}
+      <details class="leido">
+        <summary>Lo que la máquina leyó impreso en el frente</summary>
+        <pre>${esc(i.documento.textoAnverso)}</pre>
+      </details>` : ''}
+    </div>
+
+    <div class="bloque">
+      <div class="cinta"><span class="ojillo">Tamizado de sanciones</span></div>
+      ${!i.tamiz ? '<div class="vacio">Sin tamizar.</div>'
+        : !i.tamiz.tamizado ? '<div class="lista"><div class="item grave"><div class="t">No hay listas cargadas: esta identidad NO ha sido tamizada.</div></div></div>'
+        : coincidencias.length ? `<div class="lista">${coincidencias.map((c) =>
+          `<div class="item ${c.fuerza === 'fuerte' ? 'grave' : 'aviso'}">
+            <div class="t">${esc(c.registro.nombre)} · ${(c.puntuacion * 100).toFixed(0)} % · ${esc(c.fuerza)}</div>
+            <div class="d">${esc(c.razones.join('. '))}</div>
+            <div class="d">${esc(c.registro.lista)} · ${esc(c.registro.programa || '—')}</div>
+          </div>`).join('')}</div>`
+        : `<div class="lista"><div class="item bien"><div class="t">Sin coincidencias</div>
+           <div class="d">${cifra(i.tamiz.estadoListas.registros)} registros consultados</div></div></div>`}
+    </div>
+
+    ${(i.decisiones || []).length ? `<div class="bloque">
+      <div class="cinta"><span class="ojillo">Decisiones anteriores</span></div>
+      <div class="lista">${i.decisiones.slice().reverse().map((d) =>
+        `<div class="item"><div class="t">${esc(d.estado)} — ${esc(d.operador)}</div>
+         <div class="d">${esc(d.motivo)}</div><div class="d">${fecha(d.fecha)}</div></div>`).join('')}</div>
+    </div>` : ''}
+
+    ${(i.vinculos || []).length ? `<div class="bloque">
+      <div class="cinta"><span class="ojillo">Cuentas del ecosistema</span></div>
+      <div class="lista">${i.vinculos.map((v) =>
+        `<div class="item"><div class="t">${esc(v.app)}</div>
+         <div class="d">${esc(v.cuenta)}${v.direccion ? ' · ' + esc(v.direccion) : ''}</div></div>`).join('')}</div>
+    </div>` : ''}`
+}
+
+/* ── La firma ──────────────────────────────────────────────────────────────
+   El botón de aprobar nace DESARMADO y se arma cuando el operador marca qué
+   miró. No es un obstáculo por gusto: es que la casilla obligue a mirar, y que
+   quede escrito qué se miró junto a la firma. */
+
+/* LO QUE SE DECLARA HABER MIRADO.
+   La lista NO es fija: se arma con lo que de verdad hay delante. Un expediente
+   sin ninguna imagen ofrecía igualmente la casilla «comparé el rostro con la
+   foto del documento», y marcarla era firmar algo que no ocurrió. Ahí la
+   friccion dejaba de proteger a nadie y se volvía teatro — peor que no tenerla,
+   porque queda escrita en la bitácora como si el cotejo se hubiera hecho.
+
+   Cuando no hay imagen, la casilla cambia de texto Y DE CLAVE: lo que se firma
+   es lo contrario, «apruebo sin haber visto un rostro», y así se lee después. */
+function loQueSeDeclara(hayImagen) {
+  return hayImagen
+    ? [
+      ['caras', 'Comparé el rostro con la foto del documento'],
+      ['datos', 'Comprobé el número, el nombre y la vigencia contra la imagen'],
+      ['riesgo', 'Leí los hallazgos, el tamizado y los bloqueos'],
+    ]
+    : [
+      ['sin-imagen', 'No hay ninguna imagen guardada: apruebo sin haber visto un rostro'],
+      ['riesgo', 'Leí los hallazgos, el tamizado y los bloqueos'],
+    ]
+}
+
+function pintarFirma(i, hayImagen) {
+  const revisable = puede('identidad.revisar')
+  const aprobable = puede('identidad.aprobar') && i.estado !== 'verificada'
+
+  const declarar = loQueSeDeclara(hayImagen)
+  $('#armado').innerHTML = aprobable
+    ? declarar.map(([k, t]) =>
+        `<label><input type="checkbox" data-k="${k}"><span>${esc(t)}</span></label>`).join('') +
+      `<div class="ojillo" id="pistaArmado" style="margin-top:2px">Aprobar se habilita al marcar ${
+        declarar.length === 2 ? 'las dos' : 'las tres'}</div>`
+    : `<div class="ojillo">Sesión de ${esc(yo.email)} · lo que decida queda firmado con su nombre</div>`
+
+  $('#botones').innerHTML = `
+    ${/* Resolver el cotejo a mano SOLO si hay algo que mirar. Ofrecer «los
+          rostros coinciden» sobre un expediente sin ninguna imagen es pedir
+          exactamente la firma a ciegas que esta pantalla existe para evitar. */''}
+    ${revisable && hayImagen && i.estado !== 'verificada' ? `
+      <button type="button" id="bSi">Los rostros coinciden</button>
+      <button type="button" id="bNo" class="negar">No coinciden</button>` : ''}
+    ${revisable ? `<button type="button" id="bPep">${i.pep ? 'Quitar PEP' : 'Marcar PEP'}</button>` : ''}
+    ${revisable && i.estado !== 'verificada' ? `<button type="button" id="bReiniciar">Reiniciar</button>` : ''}
+    ${puede('identidad.rechazar') && i.estado !== 'rechazada'
+      ? `<button type="button" id="bRechazar" class="negar">Rechazar</button>` : ''}
+    ${puede('identidad.suspender') && i.estado !== 'suspendida'
+      ? `<button type="button" id="bSuspender" class="negar">Suspender</button>` : ''}
+    ${aprobable ? `<button type="button" id="bAprobar" class="aprobar" disabled>Aprobar identidad</button>` : ''}`
+
+  if (aprobable) {
+    const cajas = [...$('#armado').querySelectorAll('input')]
+    const revisar = () => {
+      const listo = cajas.every((c) => c.checked)
+      $('#bAprobar').disabled = !listo
+      $('#pistaArmado').textContent = listo
+        ? 'Listo para firmar'
+        : `Aprobar se habilita al marcar ${declarar.length === 2 ? 'las dos' : 'las tres'} (${
+            cajas.filter((c) => c.checked).length}/${declarar.length})`
+    }
+    cajas.forEach((c) => c.addEventListener('change', revisar))
+    $('#bAprobar').onclick = () => aprobar(i, cajas)
+  }
+
+  const al = (id, fn) => { const b = $(id); if (b) b.onclick = fn }
+  al('#bSi', () => cotejoManual(i.id, true))
+  al('#bNo', () => cotejoManual(i.id, false))
+  al('#bPep', () => marcarPep(i.id, !i.pep))
+  al('#bReiniciar', () => reiniciar(i.id))
+  al('#bRechazar', () => decidir(`/panel/identidades/${i.id}/rechazar`, 'Motivo del rechazo'))
+  al('#bSuspender', () => decidir(`/panel/identidades/${i.id}/suspender`,
+    'Motivo de la suspensión — bloquea el GID en todo el ecosistema'))
+}
+
+async function aprobar(i, cajas) {
+  const motivo = prompt('Motivo de la aprobación (queda en la bitácora):')
+  if (!motivo) return
+  const bloqueos = (i.riesgo?.bloqueos || []).length
+  let anulacion
+  if (bloqueos) {
+    anulacion = prompt(
+      `Hay ${bloqueos} comprobación(es) sin resolver.\n\n` +
+      'Para aprobar igualmente hace falta una justificación escrita de al menos 20 caracteres.\n' +
+      'Quedará marcada de forma permanente en el expediente y en la bitácora.')
+    if (!anulacion) return
+  }
+  try {
+    const r = await api(`/panel/identidades/${i.id}/aprobar`, {
+      method: 'POST',
+      body: JSON.stringify({
+        motivo,
+        anulacion,
+        // Qué se miró viaja junto a la firma: sin esto, la casilla sería un
+        // trámite que nadie puede auditar después.
+        revisado: cajas.filter((c) => c.checked).map((c) => c.dataset.k),
+      }),
+    })
+    avisar('Aprobada · GID ' + r.gid)
+    cargar()
+  } catch (e) {
+    alert(e.message + (e.datos?.bloqueos ? '\n\n· ' + e.datos.bloqueos.join('\n· ') : ''))
+  }
+}
+
+async function cotejoManual(id, coincide) {
+  const nota = prompt(coincide
+    ? 'Nota del cotejo — qué rasgos comparó:'
+    : 'Por qué no coinciden — qué rasgo no cuadra:')
+  if (nota === null) return
+  await api(`/panel/identidades/${id}/biometria`, { method: 'POST', body: JSON.stringify({ coincide, nota }) })
+  avisar('Cotejo registrado')
+  cargar()
+}
+
+async function marcarPep(id, pep) {
+  const nota = prompt('Fundamento de la marca PEP:')
+  if (nota === null) return
+  await api(`/panel/identidades/${id}/pep`, { method: 'POST', body: JSON.stringify({ pep, nota }) })
+  avisar('Actualizado'); cargar()
+}
+
+async function reiniciar(id) {
+  const motivo = prompt('Motivo para que esta persona vuelva a hacer la verificación desde el documento:\n\n'
+    + 'No se borra nada: queda el expediente y la bitácora, y se limpia solo lo que tiene que volver a aportar.')
+  if (!motivo || motivo.trim().length < 8) return
+  try {
+    await api(`/panel/identidades/${id}/reiniciar`, { method: 'POST', body: JSON.stringify({ motivo }) })
+    avisar('Verificación reiniciada'); cargar()
+  } catch (e) { alert(e.message) }
+}
+
+async function decidir(ruta, etiqueta) {
+  const motivo = prompt(etiqueta + ':')
+  if (!motivo) return
+  try {
+    await api(ruta, { method: 'POST', body: JSON.stringify({ motivo }) })
+    avisar('Hecho'); cargar()
+  } catch (e) { alert(e.message) }
+}
+
+/* ── Arranque ──────────────────────────────────────────────────────────────── */
+
+const ESTADO_PILL = {
+  verificada: 'si', aprobada: 'si',
+  rechazada: 'no', suspendida: 'no',
+  pendiente: 'info', 'en-revision': 'info', revision: 'info',
+  // «dudosa» SÍ va en ámbar: es el único estado en curso que avisa de algo.
+  dudosa: 'ojo',
+}
+
+function idDeLaUrl() {
+  const q = new URLSearchParams(location.search).get('id')
+  if (q) return q
+  const partes = location.pathname.split('/').filter(Boolean)
+  return partes.length > 1 ? decodeURIComponent(partes[partes.length - 1]) : ''
+}
+
+async function cargar() {
+  const id = idDeLaUrl()
+  if (!id) return pantalla('Falta el expediente',
+    'Esta pantalla se abre desde una identidad del panel. No hay ninguna en la dirección.', true)
+  if (!sesion) return pantalla('Hace falta entrar',
+    'La mesa de cotejo usa la sesión del panel. Entre en el panel y vuelva a abrir la identidad.', true)
+
+  let d
+  try {
+    d = await api('/panel/identidades/' + encodeURIComponent(id))
+  } catch (e) {
+    if (e.http === 401) {
+      localStorage.removeItem('gid.sesion')
+      return pantalla('La sesión caducó', 'Entre otra vez en el panel y vuelva a abrir esta identidad.', true)
+    }
+    return pantalla('No se pudo abrir el expediente', e.message, true)
+  }
+  ident = d.identidad
+  const i = ident
+
+  $('#pantalla').classList.add('oculto')
+  $('#app').classList.remove('oculto')
+
+  document.title = (i.nombreLegal || i.nombreDeclarado || i.email || 'Cotejo') + ' · Mesa de cotejo'
+  $('#hNombre').textContent = i.nombreLegal || i.nombreDeclarado || i.email || i.id
+  $('#hEstado').innerHTML = `<span class="pill ${ESTADO_PILL[i.estado] || 'gris'}">${esc(i.estado)}</span>`
+  $('#hGid').textContent = i.gid || 'sin GID emitido'
+  $('#hCorreo').textContent = i.email || ''
+
+  pintarProcedencia(i)
+  pintarMaquina(i)
+  pintarExpediente(i)
+
+  // Las cuatro imágenes que puede haber, y cuál va de salida en cada placa.
+  // A la izquierda el rostro del cotejo —el que la máquina comparó— porque es
+  // el que hasta ahora no se enseñaba nunca. A la derecha el anverso, que es
+  // donde está la foto impresa contra la que hay que compararlo.
+  const img = i.documento?.imagenes || {}
+  const fuentes = [
+    { clave: 'rostro', corto: 'Rostro', rotulo: 'Rostro del cotejo', dato: i.rostroCotejo,
+      pie: 'la selfie que la máquina comparó',
+      ausente: 'No se conservó el rostro de este cotejo. Los expedientes anteriores al arreglo del 20 de agosto solo guardaban el retrato aportado.' },
+    { clave: 'retrato', corto: 'Retrato', rotulo: 'Retrato aportado', dato: i.fotoCredencial,
+      pie: 'la foto que subió la persona',
+      ausente: 'La persona no subió ningún retrato.' },
+    { clave: 'anverso', corto: 'Anverso', rotulo: 'Documento · anverso', dato: img.anverso,
+      pie: 'la cara con la foto impresa',
+      ausente: 'No se aportó el anverso del documento.' },
+    { clave: 'reverso', corto: 'Reverso', rotulo: 'Documento · reverso', dato: img.reverso,
+      pie: 'la cara con la MRZ',
+      ausente: 'No se aportó el reverso del documento.' },
+  ]
+
+  const hayImagen = fuentes.some((f) => f.dato)
+  pintarFirma(i, hayImagen)
+
+  // Sin ninguna imagen no se arman las placas: dos recuadros negros del alto de
+  // la pantalla no informan de nada, y la frase sí.
+  $('#comparador').classList.toggle('oculto', !hayImagen)
+  $('.barra-mesa').classList.toggle('oculto', !hayImagen)
+  $('#sinNada').classList.toggle('oculto', hayImagen)
+  if (!hayImagen) {
+    $('#sinNada').innerHTML = `<span class="ojillo">Nada que cotejar</span>
+      <p>De esta identidad no hay ninguna imagen guardada: ni rostro, ni retrato, ni las
+      dos caras del documento. Sin eso el cotejo no se puede resolver a mano — lo que
+      corresponde es <b>reiniciar la verificación</b> para que la persona vuelva a
+      aportarlos, no aprobar a ciegas.</p>`
+    return
+  }
+
+  if (!placaA) {
+    placaA = new Placa($('#visorA'), $('#mandosA'), $('#rotA'), $('#fuentesA'))
+    placaB = new Placa($('#visorB'), $('#mandosB'), $('#rotB'), $('#fuentesB'))
+    placaA.pareja = placaB; placaB.pareja = placaA
+    armarHerramientas()
+    addEventListener('resize', () => { placaA.pintar(); placaB.pintar() })
+  }
+  placaA.ofrecer(fuentes, i.rostroCotejo ? 'rostro' : 'retrato')
+  placaB.ofrecer(fuentes.map((f) => ({ ...f })), img.anverso ? 'anverso' : 'retrato')
+}
+
+;(async function arrancar() {
+  if (!sesion) return cargar()
+  try {
+    const r = await api('/sesion/yo')
+    yo = r.operador || r
+  } catch (e) {
+    if (e.http === 401) {
+      localStorage.removeItem('gid.sesion'); sesion = ''
+      return pantalla('La sesión caducó', 'Entre otra vez en el panel y vuelva a abrir esta identidad.', true)
+    }
+    return pantalla('No se pudo comprobar la sesión', e.message, true)
+  }
+  cargar()
+})()
+</script>
+</body>
+</html>

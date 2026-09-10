@@ -1,0 +1,12 @@
+[Unit]
+Description=El vigilante de ollama: si el planificador se cuelga, lo reinicia
+After=ollama.service
+Wants=ollama.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/ollama-vigia.sh
+# Un reinicio con recarga de los dos modelos son unos dos minutos: el plazo
+# tiene que dar para eso, o systemd lo mata a mitad de la recarga y deja la
+# tarjeta a medias.
+TimeoutStartSec=420

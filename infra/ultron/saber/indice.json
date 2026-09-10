@@ -1,0 +1,268 @@
+{
+ "armadoEn": "2026-09-07T14:01:13.891Z",
+ "fuentes": [
+  {
+   "ruta": "ECOSISTEMA-ORDEN-GLOBAL.md",
+   "tema": "El ecosistema",
+   "secciones": 21,
+   "bytes": 9944
+  },
+  {
+   "ruta": "TRASPASO-CONOCIMIENTO.md",
+   "tema": "Traspaso de conocimiento",
+   "secciones": 50,
+   "bytes": 33829
+  },
+  {
+   "ruta": "LEEME.md",
+   "tema": "El repositorio",
+   "secciones": 1,
+   "bytes": 2364
+  },
+  {
+   "ruta": "README.md",
+   "tema": "El repositorio",
+   "secciones": 4,
+   "bytes": 805
+  },
+  {
+   "ruta": "AUCORP.md",
+   "tema": "AuCorp",
+   "secciones": 25,
+   "bytes": 19922
+  },
+  {
+   "ruta": "VETA_WALLET_README.md",
+   "tema": "Veta Wallet",
+   "secciones": 24,
+   "bytes": 7340
+  },
+  {
+   "ruta": "VETA_WALLET_SPECS.md",
+   "tema": "Veta Wallet",
+   "secciones": 38,
+   "bytes": 10398
+  },
+  {
+   "ruta": "GENESIS_ID_INTEGRACION.md",
+   "tema": "Genesis ID",
+   "secciones": 7,
+   "bytes": 4055
+  },
+  {
+   "ruta": "CONECTAR-GENESIS-AUCORP.md",
+   "tema": "Genesis ID y AuCorp",
+   "secciones": 10,
+   "bytes": 4925
+  },
+  {
+   "ruta": "INTEGRACION_BLOCKCHAIN.md",
+   "tema": "La cadena",
+   "secciones": 7,
+   "bytes": 4446
+  },
+  {
+   "ruta": "ONDK-PREVENTA.md",
+   "tema": "ONDK",
+   "secciones": 17,
+   "bytes": 9602
+  },
+  {
+   "ruta": "PLAN-CRECIMIENTO.md",
+   "tema": "Plan de crecimiento",
+   "secciones": 22,
+   "bytes": 11825
+  },
+  {
+   "ruta": "POR-HACER.md",
+   "tema": "Pendientes",
+   "secciones": 17,
+   "bytes": 7021
+  },
+  {
+   "ruta": "DIAGNOSTICO-2026-08-26.md",
+   "tema": "Diagnóstico",
+   "secciones": 15,
+   "bytes": 9875
+  },
+  {
+   "ruta": "REVISION-2026-08-26.md",
+   "tema": "Revisión",
+   "secciones": 13,
+   "bytes": 6224
+  },
+  {
+   "ruta": "ESTADO-MANANA-15-AGO.md",
+   "tema": "Estado",
+   "secciones": 7,
+   "bytes": 3064
+  },
+  {
+   "ruta": "COMO_GENERAR_APK.md",
+   "tema": "La app",
+   "secciones": 11,
+   "bytes": 3492
+  },
+  {
+   "ruta": "EMPEZAR-EN-MI-COMPUTADORA.md",
+   "tema": "Operación",
+   "secciones": 15,
+   "bytes": 7985
+  },
+  {
+   "ruta": "infra/cerebro/conocimiento/legal-detalle.md",
+   "tema": "Legal",
+   "secciones": 13,
+   "bytes": 20080
+  },
+  {
+   "ruta": "infra/cerebro/conocimiento/legal-contradicciones.md",
+   "tema": "Legal",
+   "secciones": 6,
+   "bytes": 8543
+  },
+  {
+   "ruta": "infra/cerebro/conocimiento/mineria-pendiente-legal.md",
+   "tema": "Minería · legal",
+   "secciones": 9,
+   "bytes": 5211
+  },
+  {
+   "ruta": "infra/cerebro/conocimiento/portafolio-minero.md",
+   "tema": "Minería",
+   "secciones": 20,
+   "bytes": 18461
+  },
+  {
+   "ruta": "infra/cerebro/PROMPT-LEGAL-MINERIA.md",
+   "tema": "Minería · legal",
+   "secciones": 20,
+   "bytes": 14807
+  },
+  {
+   "ruta": "infra/aura/PROMPT-AURA.md",
+   "tema": "AU-RA",
+   "secciones": 5,
+   "bytes": 17187
+  },
+  {
+   "ruta": "apps-web/README.md",
+   "tema": "Las webs",
+   "secciones": 19,
+   "bytes": 18159
+  },
+  {
+   "ruta": "infra/ordenex-api/LEEME.md",
+   "tema": "Ordenex",
+   "secciones": 5,
+   "bytes": 3111
+  },
+  {
+   "ruta": "infra/aucorp-api/LEEME.md",
+   "tema": "AuCorp",
+   "secciones": 7,
+   "bytes": 7327
+  },
+  {
+   "ruta": "infra/cerebro/LEEME.md",
+   "tema": "El cerebro",
+   "secciones": 26,
+   "bytes": 16327
+  },
+  {
+   "ruta": "documentos-junta/01-Resumen-Ejecutivo.html",
+   "tema": "Dosier de la junta",
+   "secciones": 10,
+   "bytes": 8063
+  },
+  {
+   "ruta": "documentos-junta/02-Blockchain-Orden-Global.html",
+   "tema": "Dosier de la junta",
+   "secciones": 26,
+   "bytes": 20736
+  },
+  {
+   "ruta": "documentos-junta/03-Veta-Wallet.html",
+   "tema": "Dosier de la junta",
+   "secciones": 22,
+   "bytes": 18074
+  },
+  {
+   "ruta": "documentos-junta/04-Genesis-ID.html",
+   "tema": "Dosier de la junta",
+   "secciones": 26,
+   "bytes": 18877
+  },
+  {
+   "ruta": "documentos-junta/05-ORIGEN-Inversion.html",
+   "tema": "Dosier de la junta",
+   "secciones": 46,
+   "bytes": 27135
+  },
+  {
+   "ruta": "documentos-junta/06-Migracion-Blockchain.html",
+   "tema": "Dosier de la junta",
+   "secciones": 15,
+   "bytes": 12972
+  },
+  {
+   "ruta": "documentos-junta/07-Decisiones-Migracion-Gas-Nodos.html",
+   "tema": "Dosier de la junta",
+   "secciones": 35,
+   "bytes": 21452
+  },
+  {
+   "ruta": "documentos-junta/08-Migracion-Cadena-5550.html",
+   "tema": "Dosier de la junta",
+   "secciones": 25,
+   "bytes": 15068
+  },
+  {
+   "ruta": "infra/cerebro/conocimiento/saber.json",
+   "tema": "Fichas de AU-RA",
+   "secciones": 40,
+   "bytes": 52060
+  }
+ ],
+ "huellas": {
+  "ECOSISTEMA-ORDEN-GLOBAL.md": "2bc1d068c1bfa18150a8eaf131cae1595f331100",
+  "TRASPASO-CONOCIMIENTO.md": "db791da60b36baca52028847f2710f548dd67ef0",
+  "LEEME.md": "05480432166bb4be4193a235a36575446b3a965e",
+  "README.md": "e1f9854ad4508ed4e766dbaf9569ef95550a5d62",
+  "AUCORP.md": "39d4e628ac4d659478f38896310a0f0f5fdde029",
+  "VETA_WALLET_README.md": "13363951cfbf3fdf7b6e6c209a9f3801fa9cc128",
+  "VETA_WALLET_SPECS.md": "90f5a9bd3573ec70290082840b2af2d9cec831a7",
+  "GENESIS_ID_INTEGRACION.md": "cd55d8fe7492a1cf9708c1afc36a3a33942678ea",
+  "CONECTAR-GENESIS-AUCORP.md": "ce7d2ec4ace52c6059c17ee1d9edec33f68361b9",
+  "INTEGRACION_BLOCKCHAIN.md": "09d0d815ffedbf5518f4df072878dab0317b9d28",
+  "ONDK-PREVENTA.md": "15419107c96bafc1c7590e4df4bdb7eb3183e87b",
+  "PLAN-CRECIMIENTO.md": "e07290828c6dfb44830d71d77f27370a599c3259",
+  "POR-HACER.md": "fab9530c321d4df1225c6021c465221998bc38d7",
+  "DIAGNOSTICO-2026-08-26.md": "60e72aaba99ee4c189b708ffb74b5137f31efdc4",
+  "REVISION-2026-08-26.md": "deb1cdccf1b079abf57406aaaaf6d57bd3fec4ba",
+  "ESTADO-MANANA-15-AGO.md": "103ab3d2de8c9ec05a659e828d2f602fc917de46",
+  "COMO_GENERAR_APK.md": "8a9e3fc0bf0121c96a98037f830a947728ccd53f",
+  "EMPEZAR-EN-MI-COMPUTADORA.md": "ec4b71647d08e3be144621bb880bfeb81f180099",
+  "infra/cerebro/conocimiento/legal-detalle.md": "d87c314ff8381cd20a1fb2f62c64d23ae3c36554",
+  "infra/cerebro/conocimiento/legal-contradicciones.md": "013fb603e82c50ae97678835beeb2b6a1969882f",
+  "infra/cerebro/conocimiento/mineria-pendiente-legal.md": "6fbbed1aa52e476393cbc9a4c172ea7600406aa5",
+  "infra/cerebro/conocimiento/portafolio-minero.md": "deab4f063c05bbfbda15d836e727f54ec2a04b29",
+  "infra/cerebro/PROMPT-LEGAL-MINERIA.md": "fd67de5350aaf1b17540e112fa7d6413727378e2",
+  "infra/aura/PROMPT-AURA.md": "2da732381a2b7e3ed23da4ad7fa34cad9adddd0c",
+  "apps-web/README.md": "f3a2fdad6957bd5c9034eb8645cf42682746c26a",
+  "infra/ordenex-api/LEEME.md": "63c73dc1d52bf7df6f239e4beab3819d2bb25d23",
+  "infra/aucorp-api/LEEME.md": "42f9d6e53cce6f1baab09a439cbac367e120d4eb",
+  "infra/cerebro/LEEME.md": "392ebbe5d503fc500391f8f301dadd249faac78f",
+  "documentos-junta/01-Resumen-Ejecutivo.html": "badfef1e9af4cf8b85f40ccc01fd23b30e78c2cc",
+  "documentos-junta/02-Blockchain-Orden-Global.html": "7c94aa5a3095f083e603a66822ceabec024e95f6",
+  "documentos-junta/03-Veta-Wallet.html": "5bb3410605216330e1d7c5e4925866c9473a2f53",
+  "documentos-junta/04-Genesis-ID.html": "80eed37e39e038a36211f06685a97a8e8ec20ef4",
+  "documentos-junta/05-ORIGEN-Inversion.html": "4408e4cc04399cee29ea3e988e829752852935a3",
+  "documentos-junta/06-Migracion-Blockchain.html": "c16952747dffd6f63842a553eaf02b72fe51aa8a",
+  "documentos-junta/07-Decisiones-Migracion-Gas-Nodos.html": "926d94ff656a8024f1f9f458bbb4b590a9a6fe4a",
+  "documentos-junta/08-Migracion-Cadena-5550.html": "23866f2e6746b0435f3c149823f018651e7eb3fc",
+  "infra/cerebro/conocimiento/saber.json": "94f7dd299d8273a7d49cf56e31caab222359c848"
+ },
+ "total": 679,
+ "bytes": 450531
+}

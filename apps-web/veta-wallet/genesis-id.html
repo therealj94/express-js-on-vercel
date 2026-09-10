@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Genesis ID &middot; Veta Wallet</title>
+<meta name="description" content="Que es Genesis ID, para que sirve, que datos pide y que no hace. La identidad digital del ecosistema Orden Global.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%2304191A'/%3E%3Cpath d='M16 6l8.5 5v10L16 26l-8.5-5V11z' fill='none' stroke='%23C9A961' stroke-width='2.2' stroke-linejoin='round'/%3E%3C/svg%3E">
+<style>
+/* Misma paleta y mismo esqueleto que privacidad.html y terminos.html: las tres
+   son paginas sueltas de esta web y tienen que leerse como una sola familia. */
+:root{--oro:#C9A961;--oroLt:#EAD79C;--fondo:#04191A;--panel:#072526;--linea:#123E3F;--txt:#EAF3F2;--txt2:#9FBDBA;--jade:#3ED9A0;--coral:#F0776B}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--fondo);color:var(--txt);font:16px/1.75 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;-webkit-font-smoothing:antialiased}
+.env{max-width:780px;margin:0 auto;padding:0 22px}
+header{border-bottom:1px solid var(--linea);background:rgba(7,37,38,.8);position:sticky;top:0;backdrop-filter:blur(8px);z-index:5}
+.barra{display:flex;align-items:center;gap:20px;padding:16px 0;flex-wrap:wrap}
+.logo{font-weight:800;font-size:17px;color:var(--txt);text-decoration:none}
+.logo span{color:var(--oro)}
+nav{display:flex;gap:16px;margin-left:auto;font-size:14.5px;align-items:center}
+nav a{color:var(--txt2);text-decoration:none}
+nav a:hover,nav a.on{color:var(--oro)}
+/* El selector de idioma repite el patron de la app: un boton por idioma con
+   aria-pressed, no un desplegable. Dos idiomas no merecen un menu. Va oculto
+   hasta que el script arranca: sin JS no cambia nada y seria un boton muerto. */
+.idi{display:none;gap:2px;border:1px solid var(--linea);border-radius:8px;overflow:hidden;margin-left:4px}
+.idi.va{display:flex}
+.idi button{background:none;border:0;color:var(--txt2);font:600 12.5px/1 inherit;padding:7px 10px;cursor:pointer;letter-spacing:.5px}
+.idi button[aria-pressed="true"]{background:var(--oro);color:#04191A}
+main{padding:38px 0 60px}
+h1{font-size:29px;line-height:1.25;margin:0 0 10px;letter-spacing:-.5px}
+.entradilla{font-size:17.5px;color:var(--oroLt);margin:0 0 26px}
+h2{font-size:20px;margin:34px 0 12px;color:var(--oro);letter-spacing:-.2px}
+h3{font-size:16.5px;margin:24px 0 8px}
+p{margin:0 0 14px;color:#DCE9E7}
+ul{margin:0 0 16px 22px}li{margin-bottom:7px;color:#DCE9E7}
+strong{color:var(--txt)}
+hr{border:0;border-top:1px solid var(--linea);margin:28px 0}
+a{color:var(--oro)}
+footer{border-top:1px solid var(--linea);padding:24px 0 40px;color:#6C918E;font-size:13.5px;text-align:center}
+/* Los tres pasos, numerados: el numero es la promesa de que son tres y se
+   acaban, no una lista que sigue creciendo mientras la persona rellena. */
+.pasos{list-style:none;margin:0 0 8px;padding:0;counter-reset:paso}
+.pasos li{display:flex;gap:14px;align-items:flex-start;margin-bottom:16px;counter-increment:paso}
+.pasos li::before{content:counter(paso);flex:0 0 28px;height:28px;border-radius:50%;background:var(--panel);
+  border:1px solid var(--linea);color:var(--oro);font-weight:700;font-size:13.5px;display:flex;align-items:center;justify-content:center;margin-top:3px}
+.pasos b{display:block;color:var(--txt)}
+.caja{background:var(--panel);border:1px solid var(--linea);border-radius:12px;padding:18px 20px;margin:18px 0}
+.caja.no{border-color:rgba(240,119,107,.35)}
+.caja h3{margin-top:0}
+.caja p:last-child{margin-bottom:0}
+/* Las dos salidas, una al lado de la otra y del mismo tamaño: verificarse por
+   la web y hacerlo en el telefono son el mismo tramite, no una principal y un
+   plan B. */
+.salidas{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:22px 0 8px}
+@media(max-width:620px){.salidas{grid-template-columns:1fr}}
+.salida{background:var(--panel);border:1px solid var(--linea);border-radius:12px;padding:20px;display:flex;flex-direction:column}
+.salida h3{margin:0 0 8px}
+.salida p{font-size:14.5px;color:var(--txt2);flex:1}
+.btn{display:inline-block;text-align:center;text-decoration:none;font-weight:700;font-size:14.5px;
+  padding:11px 18px;border-radius:10px;margin-top:14px}
+.btn-oro{background:var(--oro);color:#04191A}
+.btn-linea{border:1px solid var(--linea);color:var(--oro)}
+.sello{display:inline-block;font-size:12px;letter-spacing:1.4px;text-transform:uppercase;color:var(--txt2);
+  border:1px solid var(--linea);border-radius:99px;padding:5px 12px;margin-bottom:14px}
+.estados{list-style:none;margin:0;padding:0}
+.estados li{display:flex;gap:10px;align-items:flex-start;margin-bottom:10px}
+.pip{flex:0 0 9px;height:9px;border-radius:50%;background:var(--txt2);margin-top:9px}
+.pip.rev{background:var(--oro)}.pip.ok{background:var(--jade)}.pip.mal{background:var(--coral)}
+</style>
+</head>
+<body>
+<header><div class="env barra">
+  <a class="logo" href="/">VETA <span>WALLET</span></a>
+  <nav>
+    <a href="/genesis-id" class="on">Genesis ID</a>
+    <a href="/privacidad" data-en="Privacy">Privacidad</a>
+    <a href="/terminos" data-en="Terms">Términos</a>
+    <span class="idi" id="idi">
+      <button data-lang="es" aria-pressed="true" onclick="idioma('es')">ES</button>
+      <button data-lang="en" aria-pressed="false" onclick="idioma('en')">EN</button>
+    </span>
+  </nav>
+</div></header>
+
+<main class="env">
+<div class="sello" data-en="The Orden Global ecosystem">El ecosistema Orden Global</div>
+
+<h1 data-en="Genesis ID: your identity, verified once">Genesis ID: tu identidad, verificada una sola vez</h1>
+
+<p class="entradilla" data-en="It is the group's identity record. You verify it once and it works in Veta Wallet, in MyTokenPay and across the rest of the Orden Global services, without repeating the process in each one.">Es el registro de identidad del grupo. Lo verificás una vez y vale en Veta Wallet, en MyTokenPay y en el resto de los servicios de Orden Global, sin repetir el trámite en cada uno.</p>
+
+<!-- EL BOTON, ANTES DE LA EXPLICACION.
+     Estaba al final, despues de dos pantallas de texto y de una seccion
+     titulada «Que NO hace». Quien llegaba con ganas se las gastaba leyendo.
+     Se lee para decidirse, no para encontrar por donde se empieza. -->
+<p style="margin:26px 0 4px">
+  <a class="btn btn-oro" href="/#verificar" data-en="Verify me">Verificarme</a>
+</p>
+<p style="margin:0;font-size:14px;color:var(--mut)" data-en="Three steps, from this browser. Nothing to install.">Tres pasos, desde este mismo navegador. Nada que instalar.</p>
+
+<hr>
+
+<h2 data-en="What it is for">Para qué sirve</h2>
+<ul>
+  <li data-en="<strong>Send and receive without the limits</strong> that an unverified account carries."><strong>Enviar y recibir sin los límites</strong> que lleva una cuenta sin verificar.</li>
+  <li data-en="<strong>Request the Visa card.</strong> The issuer cannot issue it without a verified identity: that is their requirement, not ours."><strong>Pedir la tarjeta Visa.</strong> El emisor no puede emitirla sin una identidad verificada: es requisito suyo, no nuestro.</li>
+  <li data-en="<strong>Get paid as a business</strong> in MyTokenPay."><strong>Cobrar como comercio</strong> en MyTokenPay.</li>
+  <li data-en="<strong>The same identity across the group.</strong> One verification, not one per service."><strong>La misma identidad en todo el grupo.</strong> Una verificación, no una por servicio.</li>
+</ul>
+<p data-en="There is a reason underneath, and it is not commercial: anti-money-laundering rules require identifying whoever operates. We prefer to say it plainly, instead of calling it &ldquo;improving your experience&rdquo;.">Hay un motivo de fondo, y no es comercial: la normativa de prevención de lavado de dinero obliga a identificar a quien opera. Preferimos decirlo así, en vez de llamarlo &laquo;mejorar tu experiencia&raquo;.</p>
+
+<hr>
+
+<h2 data-en="What data it asks for">Qué datos te pide</h2>
+<ol class="pasos">
+  <li><span>
+    <b data-en="Your details">Tus datos</b>
+    <span data-en="Full name, date of birth, country of residence, address, phone, occupation, source of funds, what you will use the account for, the volume you expect to move and whether you are a politically exposed person.">Nombre completo, fecha de nacimiento, país de residencia, domicilio, teléfono, ocupación, origen de los fondos, para qué vas a usar la cuenta, el volumen que esperás mover y si sos una persona políticamente expuesta.</span>
+  </span></li>
+  <li><span>
+    <b data-en="Your document">Tu documento</b>
+    <span data-en="A photo of your identity document and the data printed on it.">La foto de tu documento de identidad y los datos que lleva impresos.</span>
+  </span></li>
+  <li><span>
+    <b data-en="Your face">Tu rostro</b>
+    <span data-en="A selfie taken with the browser camera, to check that it is you and that you are there at that moment.">Un selfie tomado con la cámara del navegador, para comprobar que sos vos y que estás ahí en ese momento.</span>
+  </span></li>
+</ol>
+
+<p data-en="Verification data is kept for five years after the account closes, because the law requires it. The full detail is in the <a href=&quot;/privacidad&quot;>Privacy Policy</a>.">Los datos de verificación se conservan cinco años desde el cierre de la cuenta, porque la ley obliga. El detalle completo está en la <a href="/privacidad">Política de Privacidad</a>.</p>
+
+<hr>
+
+<!-- ESTA SECCION SE LLAMABA «QUE NO HACE» Y ABRIA CON UNA CAJA QUE DECIA
+     «esta web no aprueba identidades», «no es instantanea ni automatica, puede
+     tardar». Todo cierto, y todo puesto justo donde le quitaba las ganas a
+     quien venia a completarlo.
+     Lo que queda es lo mismo pero por el otro lado: no son limitaciones, son
+     promesas. Y la primera NO SE TOCA por mucho que se quiera acortar: es la
+     que impide que alguien caiga en una pagina que imite a esta y le pida la
+     frase de respaldo. Quitarla haria dano de verdad. -->
+<h2 data-en="What you can take for granted">Lo que podés dar por seguro</h2>
+
+<ul>
+  <li data-en="<strong>It does not ask for your recovery phrase or your private key.</strong> Ever. If someone asks for them in the name of Veta Wallet or Genesis ID, it is a fraud."><strong>No te pide tu frase de respaldo ni tu clave privada.</strong> Nunca. Si alguien te las pide en nombre de Veta Wallet o de Genesis ID, es un fraude.</li>
+  <li data-en="<strong>It does not cost money.</strong> Verifying is free and we will not ask you for a payment to speed it up."><strong>No cuesta dinero.</strong> Verificarse es gratis y no te vamos a pedir un pago para acelerarlo.</li>
+  <li data-en="<strong>It does not publish your data on the blockchain.</strong> The chain stores your address, not your name or your document."><strong>No publica tus datos en la cadena de bloques.</strong> La cadena guarda tu dirección, no tu nombre ni tu documento.</li>
+  <li data-en="<strong>It is not used for advertising</strong> and it is not sold to anyone."><strong>No se usa para publicidad</strong> y no se vende a nadie.</li>
+  <li data-en="<strong>It is not a way to move money.</strong> Genesis ID is identity and nothing else; your funds stay in your wallet."><strong>No sirve para mover dinero.</strong> Genesis ID es identidad y nada más; tus fondos siguen en tu billetera.</li>
+</ul>
+
+<hr>
+
+<h2 data-en="What happens after you send it">Qué pasa después de enviarla</h2>
+<p data-en="You will see one of these states in your account, and it will tell the truth even when the truth is &ldquo;nothing yet&rdquo;:">Vas a ver uno de estos estados en tu cuenta, y va a decir la verdad aunque la verdad sea &laquo;todavía nada&raquo;:</p>
+<ul class="estados">
+  <li><span class="pip rev"></span><span><strong data-en="Under review">En revisión</strong> &mdash; <span data-en="it arrived and we are reviewing it. We will let you know as soon as it is ready.">ya llegó y la estamos revisando. Te avisamos apenas esté.</span></span></li>
+  <li><span class="pip ok"></span><span><strong data-en="Verified">Verificada</strong> &mdash; <span data-en="you are verified across the whole ecosystem. Nothing has to be repeated.">quedás verificado en todo el ecosistema. No hay que repetir nada.</span></span></li>
+  <li><span class="pip mal"></span><span><strong data-en="Rejected">Rechazada</strong> &mdash; <span data-en="something did not add up. Write to soporte@vetawallet.com and we will look at it with you.">algo no cuadró. Escribinos a soporte@vetawallet.com y lo vemos juntos.</span></span></li>
+</ul>
+<p data-en="If something is missing or a photo cannot be read, we tell you and you can repeat that step.">Si falta algo o la foto no se lee bien, te lo decimos y podés repetir ese paso.</p>
+
+<hr>
+
+<!-- El sorteo, dicho con la regla de cobre: AUKA SIGUE el precio de la onza,
+     nunca «es una onza». El script del pie lo retira solo despues del 9-sep
+     (misma fecha que app.js y las bases); quitarlo a mano sigue siendo lo
+     aseado. -->
+<p id="promo-sorteo" style="padding:14px 16px;border-left:2px solid #C9A961;background:rgba(201,169,97,.08);border-radius:0 10px 10px 0"
+   data-en="Right now verifying has a prize: you enter the raffle for 1 AUKA, which tracks the price of one ounce of gold. It closes September 9, 2026 — rules at vetawallet.com/sorteo-orden-global.">Ahora mismo verificarte tiene premio: participás en el sorteo de 1 AUKA, que sigue el precio de la onza de oro. Cierra el 9 de septiembre de 2026 — bases en vetawallet.com/sorteo-orden-global.</p>
+
+<!-- AQUI HABIA «DOS FORMAS DE HACERLO», Y LA SEGUNDA ERA LA APP DEL
+     TELEFONO. La app todavia no esta publicada en ninguna tienda, asi que esa
+     mitad mandaba a la gente a buscar algo que no existe, y de paso sembraba
+     la duda de si convenia esperar a que saliera. Una sola puerta, y abierta. -->
+<h2 data-en="Ready?">¿Empezamos?</h2>
+<p data-en="Your Veta Wallet account is all you need. If you do not have one yet, it takes a minute.">Con tu cuenta de Veta Wallet alcanza. Si todavía no tenés, se crea en un minuto.</p>
+<p style="margin:18px 0 0">
+  <a class="btn btn-oro" href="/#verificar" data-en="Verify me">Verificarme</a>
+</p>
+
+<hr>
+
+<h2 data-en="Questions">Dudas</h2>
+<p data-en="Write to <strong>soporte@vetawallet.com</strong>. For questions about your data, <strong>privacidad@vetawallet.com</strong>.">Escribinos a <strong>soporte@vetawallet.com</strong>. Para preguntas sobre tus datos, <strong>privacidad@vetawallet.com</strong>.</p>
+</main>
+
+<footer class="env">Orden Global Corp &middot; Veta Wallet</footer>
+
+<script>
+/* Bilingue sin depender de i18n.js: esta pagina es suelta y tiene que pintarse
+   aunque el resto de la web no cargue.
+   El español va escrito en el HTML y el ingles vive en data-en. Se hace asi, y
+   no con las dos versiones en atributos, porque si este script no llega a
+   correr —JS apagado, o el dia que esta pagina viaje dentro de otra— la pagina
+   se lee igual en español en vez de quedarse en blanco. El original se guarda
+   la primera vez que se cambia, para no repetir el español en dos sitios y que
+   luego uno de los dos se quede viejo. */
+function idioma(cual) {
+  if (cual !== 'es' && cual !== 'en') return;
+  document.documentElement.lang = cual;
+  document.querySelectorAll('[data-en]').forEach(function (el) {
+    if (el.dataset.es == null) el.dataset.es = el.innerHTML;
+    el.innerHTML = cual === 'en' ? el.dataset.en : el.dataset.es;
+  });
+  document.querySelectorAll('[data-lang]').forEach(function (b) {
+    b.setAttribute('aria-pressed', String(b.dataset.lang === cual));
+  });
+  // Se recuerda con la MISMA clave que usa la app, para que quien cambie a
+  // ingles aqui no vuelva a encontrarse el español al entrar en la billetera.
+  try { localStorage.setItem('veta.idioma', cual); } catch (e) {}
+}
+
+(function () {
+  document.getElementById('idi').classList.add('va');
+  var guardado = null;
+  try { guardado = localStorage.getItem('veta.idioma'); } catch (e) {}
+  var cual = guardado || ((navigator.language || 'es').slice(0, 2) === 'en' ? 'en' : 'es');
+  if (cual === 'en') idioma('en');
+
+  // El sorteo se apaga solo: despues del 9-sep-2026 23:59:59 (Honduras,
+  // UTC−6 — la MISMA marca que app.js y las bases) la promo se retira, para
+  // que esta pagina no siga invitando a un sorteo que las bases dan por
+  // cerrado si nadie la limpia a tiempo.
+  if (Date.now() > Date.UTC(2026, 8, 10, 5, 59, 59)) {
+    var promo = document.getElementById('promo-sorteo');
+    if (promo && promo.parentNode) promo.parentNode.removeChild(promo);
+  }
+})();
+</script>
+</body>
+</html>

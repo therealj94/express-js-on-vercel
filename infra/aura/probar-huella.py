@@ -1,0 +1,216 @@
+#!/usr/bin/env python3
+"""¿QUÉ VERSIÓN DE AU-RA ESTÁ CORRIENDO? Contestado con un GET.
+
+El relevo ya lo tenía (version_servida) y se inventó por un caso concreto: un
+arreglo estuvo diez días en el repositorio sin estar en la máquina, y desde
+fuera no había forma de notarlo — /salud contestaba «vivo: true» con la misma
+alegría sirviendo cualquier versión. Averiguarlo costó medir tiempos de
+respuesta, que no es manera de trabajar.
+
+AU-RA se había quedado sin esa cura, y es donde más se nota: el prompt es lo
+que decide CÓMO contesta. «¿Está desplegado el prompt nuevo?» no tenía
+respuesta que no fuera entrar a la máquina, o preguntarle a ella y adivinar
+por el tono.
+
+Se prueba corriendo las funciones de verdad, no leyendo el archivo.
+"""
+import ast
+import hashlib
+import json
+import os
+import pathlib
+import tempfile
+import time
+
+RAIZ = pathlib.Path(__file__).resolve().parent
+RELEVO = RAIZ.parent / 'mensajes' / 'servidor.py'
+mal = 0
+
+
+def prueba(nombre, fn):
+    global mal
+    try:
+        fn()
+        print('  ok  ' + nombre)
+    except Exception as e:
+        mal += 1
+        print('  MAL ' + nombre + '\n      ' + str(e))
+
+
+def cargar(ruta, nombres, extra):
+    """Saca unas funciones del archivo y las corre solas, con lo que necesiten
+    puesto a mano. Así se prueba el comportamiento sin arrancar el servicio
+    entero ni hablarle a Ollama."""
+    arbol = ast.parse(pathlib.Path(ruta).read_text())
+    trozos = [n for n in arbol.body
+              if isinstance(n, ast.FunctionDef) and n.name in nombres]
+    faltan = set(nombres) - {n.name for n in trozos}
+    if faltan:
+        raise AssertionError('faltan funciones en ' + str(ruta) + ': ' + str(faltan))
+    g = dict(extra)
+    exec(compile(ast.Module(body=trozos, type_ignores=[]), str(ruta), 'exec'), g)
+    return g
+
+
+def casa():
+    """Una casa de mentira con un prompt y un asistente dentro."""
+    d = pathlib.Path(tempfile.mkdtemp())
+    (d / 'PROMPT-AURA.md').write_text('```\nsoy el prompt\n```')
+    mio = d / 'asistente-falso.py'
+    mio.write_text('cuerpo del asistente')
+    g = cargar(RAIZ / 'asistente.py', ('huella_viva', 'dejar_huella'), {
+        'os': os, 'time': time, 'json': json,
+        'DATOS': d, 'RUTA_PROMPT': d / 'PROMPT-AURA.md',
+        'MODELO_RAPIDA': 'qwen2.5:7b', 'MODELO_PENSADORA': 'gemma2:9b',
+        'probadores': lambda: None, 'log': lambda *a: None,
+        '__file__': str(mio),
+    })
+    return d, mio, g
+
+
+def sha(p):
+    return hashlib.sha256(pathlib.Path(p).read_bytes()).hexdigest()[:10]
+
+
+def afirmar(cierto, motivo):
+    if not cierto:
+        raise AssertionError(motivo)
+
+
+print('\nla huella dice qué está corriendo')
+
+
+def es_la_del_archivo():
+    d, mio, g = casa()
+    h = g['huella_viva']()
+    afirmar(h['prompt'] == sha(d / 'PROMPT-AURA.md'),
+            'la huella del prompt no es la del prompt')
+    afirmar(h['asistente'] == sha(mio),
+            'la huella del asistente no es la del asistente')
+
+
+def distingue_dos_prompts():
+    d, mio, g = casa()
+    antes = g['huella_viva']()['prompt']
+    (d / 'PROMPT-AURA.md').write_text('```\notro prompt\n```')
+    afirmar(g['huella_viva']()['prompt'] != antes,
+            'cambia el prompt y la huella no se entera: entonces no sirve de nada')
+
+
+def dice_si_esta_abierta():
+    d, mio, g = casa()
+    afirmar(g['huella_viva']()['abierta'] is True,
+            'no informa de si le contesta a todo el mundo o solo a una lista')
+
+
+def la_manda_al_relevo():
+    """Por el canal que ya existe, no por un fichero: el relevo corre en OTRA
+    máquina —AU-RA vive en la de la GPU— así que dejarla en disco no la haría
+    llegar a ninguna parte."""
+    d, mio, g = casa()
+    mandado = []
+
+    class RelevoFalso:
+        def huella(self, h):
+            mandado.append(h)
+
+    g['dejar_huella'](RelevoFalso())
+    afirmar(mandado, 'no mandó nada al relevo')
+    afirmar(mandado[0]['prompt'] == sha(d / 'PROMPT-AURA.md'), 'mandó otra cosa')
+
+
+def que_falle_el_relevo_no_la_tumba():
+    d, mio, g = casa()
+
+    class RelevoCaido:
+        def huella(self, h):
+            raise OSError('sin red')
+
+    g['dejar_huella'](RelevoCaido())   # comodidad, no condición
+
+
+prueba('es la del archivo de verdad, no un número puesto a mano', es_la_del_archivo)
+prueba('distingue un prompt de otro, que es para lo que existe', distingue_dos_prompts)
+prueba('dice si está abierta a todos', dice_si_esta_abierta)
+prueba('la manda al relevo, que es quien tiene un /salud', la_manda_al_relevo)
+prueba('que el relevo esté caído no tumba a AU-RA', que_falle_el_relevo_no_la_tumba)
+
+
+print('\ny el relevo la sirve')
+
+
+def el_relevo_la_publica():
+    txt = RELEVO.read_text()
+    afirmar("'aura': version_de_aura()" in txt, '/salud no publica la huella')
+    afirmar("if ruta == '/huella':" in txt, 'no hay ruta por donde recibirla')
+    g = cargar(RELEVO, ('version_de_aura',),
+               {'HUELLAS': {}, 'CORREO_AURA': 'aura@ordenglobal.org'})
+    afirmar(g['version_de_aura']() == {'estado': 'sin huella'},
+            'sin huella no lo dice: «no está desplegado» y «este relevo no se '
+            'enteró» quedan con la misma cara, que es el fallo que esto viene '
+            'a arreglar')
+    g['HUELLAS']['aura@ordenglobal.org'] = {'prompt': 'abc1234567'}
+    afirmar(g['version_de_aura']()['prompt'] == 'abc1234567', 'no la sirve')
+
+
+def solo_publica_la_de_aura():
+    """Cualquiera con llave puede dejar la suya; /salud es público y no es
+    sitio para lo que quiera escribir cualquiera."""
+    g = cargar(RELEVO, ('version_de_aura',),
+               {'HUELLAS': {'otro@ejemplo.com': {'prompt': 'lo-que-sea'}},
+                'CORREO_AURA': 'aura@ordenglobal.org'})
+    afirmar(g['version_de_aura']() == {'estado': 'sin huella'},
+            'publica la huella de cualquiera que la mande')
+
+
+def guarda_solo_lo_que_entiende():
+    cuerpo = RELEVO.read_text().split("if ruta == '/huella':")[1].split("if ruta ==")[0]
+    afirmar("for k in ('asistente', 'prompt', 'modelos')" in cuerpo,
+            'guarda el objeto entero tal como llega: /salud terminaría '
+            'sirviendo lo que escriba quien tenga una llave')
+    afirmar('[:80]' in cuerpo, 'no acota el largo de lo que llega')
+
+
+prueba('lo publica en /salud, y sin huella dice que no la hay', el_relevo_la_publica)
+prueba('solo publica la de AU-RA, no la de cualquiera', solo_publica_la_de_aura)
+prueba('guarda solo los campos que entiende, y acotados', guarda_solo_lo_que_entiende)
+
+# ── QUE LA HUELLA SE VUELVA A DEJAR, Y NO SOLO AL ARRANCAR ───────────────────
+#
+# `dejar_huella` se llamaba UNA vez, en main(). La huella vive en el RELEVO, asi
+# que cualquier redespliegue del relevo la borra — y desde ahi /salud contesta
+# «aura: sin huella», que se lee como que AU-RA esta caida estando viva.
+#
+# Paso el 29-ago al desplegar la denuncia: el relevo se reinicio, AU-RA siguio
+# atendiendo sin enterarse, y la unica forma de recuperar la respuesta a «que
+# version del asistente corre» era reiniciar AU-RA. O sea, perder el servicio
+# para recuperar el dato.
+#
+# Esto se comprueba LEYENDO el codigo a proposito: el fallo es «se llama una vez
+# en vez de cada tanto», y eso no se ve ejercitando la funcion —funciona
+# perfectamente— solo se ve mirando desde donde se llama.
+import re as _re
+_fuente = open(AQUI / 'asistente.py').read() if 'AQUI' in dir() else open(
+    __file__.replace('probar-huella.py', 'asistente.py')).read()
+
+_i = _fuente.index('def latido_templado():')
+_j = _fuente.index('threading.Thread(target=latido_templado', _i)
+_latido = _fuente[_i:_j]
+
+def _refresca():
+    assert 'dejar_huella' in _latido, (
+        'sin esto, un redespliegue del relevo deja /salud diciendo «sin huella» '
+        'hasta que alguien reinicie AU-RA')
+
+
+def _no_tumba():
+    assert _latido.count('except Exception') >= 2, (
+        'el latido tambien mantiene templado el motor: si refrescar la huella '
+        'lo rompiera, se perderia lo uno y lo otro')
+
+
+prueba('la huella se refresca en el latido, no solo al arrancar', _refresca)
+prueba('y un fallo al refrescarla no tumba el latido', _no_tumba)
+
+print(f'\n{mal} mal\n' if mal else '\ntodo bien\n')
+raise SystemExit(1 if mal else 0)

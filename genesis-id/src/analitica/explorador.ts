@@ -387,3 +387,64 @@ export async function ultimasSesiones(opciones: {
     }),
   }
 }
+
+/**
+ * Cuánta gente entra por la app y cuánta por la web.
+ *
+ * `ultimasSesiones` contesta «quién entró», y por eso está capada a las
+ * últimas doscientas filas. Esta contesta «cuántos son», que es otra pregunta
+ * y no se puede responder contando una página: sobre cien filas, «la mitad usa
+ * la web» puede significar cualquier cosa. Aquí se cuenta la colección entera.
+ *
+ * SOBRE «DESCARGAS». No se pueden contar: el APK lo sirve Expo y quien lo baja
+ * y no lo abre nunca no deja rastro en ninguna parte nuestra. Lo que sí se
+ * cuenta es el ESTRENO — el teléfono que abrió la app por primera vez— y eso
+ * es lo que se enseña, con ese nombre. Una cifra de descargas inventada a
+ * partir de aperturas se ve igual de convincente que una real.
+ */
+export async function repartoPorPlataforma(opciones: { app?: string; dias?: number } = {}) {
+  const dias = opciones.dias ?? 30
+  const desde = new Date(Date.now() - dias * 86400000)
+
+  const cuenta = {
+    personas: 0, soloApp: 0, soloWeb: 0, ambas: 0, sinDato: 0,
+    estrenaronApp: 0, estrenaronWeb: 0, dias,
+  }
+
+  const contar = (u: any) => {
+    const enApp = Boolean(u.ultimaEn?.android || u.ultimaEn?.ios)
+    const enWeb = Boolean(u.ultimaEn?.web)
+    /* Las filas viejas se guardaron antes de que existiera el desglose por
+       plataforma: para esas queda el último valor suelto, que es peor pero es
+       lo que hay. Lo que no se hace es contarlas como si no existieran. */
+    const app = enApp || (!enWeb && u.plataforma && u.plataforma !== 'web')
+    const web = enWeb || u.plataforma === 'web'
+
+    cuenta.personas++
+    if (app && web) cuenta.ambas++
+    else if (app) cuenta.soloApp++
+    else if (web) cuenta.soloWeb++
+    else cuenta.sinDato++
+
+    if (u.primera && new Date(u.primera) >= desde) {
+      if (app) cuenta.estrenaronApp++
+      else if (web) cuenta.estrenaronWeb++
+    }
+  }
+
+  if (almacen.hayMongo()) {
+    const q: Record<string, unknown> = {}
+    if (opciones.app) q.app = opciones.app
+    const cursor = almacen.cUsuarios()!.find(q, {
+      projection: { ultimaEn: 1, plataforma: 1, primera: 1 },
+    })
+    for await (const u of cursor) contar(u)
+  } else {
+    for (const u of almacen.memoria.usuarios.values()) {
+      if (opciones.app && (u as any).app !== opciones.app) continue
+      contar(u)
+    }
+  }
+
+  return cuenta
+}

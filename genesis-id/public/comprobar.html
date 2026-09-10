@@ -1,0 +1,361 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Genesis ID · Comprobación pública de la bitácora</title>
+<style>
+/* Misma paleta que el panel —azul tinta y oro del logotipo— para que esto se
+   lea como parte del producto y no como una herramienta suelta.
+
+   Pero con un peso distinto a propósito: el panel es una consola de trabajo,
+   esto es un DOCUMENTO que alguien de fuera abre una vez, probablemente con
+   desconfianza, y del que tiene que salir con una respuesta. Por eso hay más
+   aire, la tipografía de lectura es más grande, y el color solo aparece donde
+   hay un veredicto. */
+:root{
+  --bg:#0B111C; --panel:#142033; --panel2:#101A29; --line:#24374F; --line2:#1B2A41;
+  --gold:#F5B32B; --cyan:#7FB2E8; --txt:#E9EEF6; --mut:#9DB0C8; --faint:#64798F;
+  --ok:#35B77D; --warn:#E2893C; --bad:#E0685D;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:radial-gradient(1100px 640px at 50% -12%,#16233A,#0B111C);color:var(--txt);
+ font:15px/1.62 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;min-height:100vh}
+.mono{font-family:ui-monospace,Menlo,Consolas,monospace;font-variant-numeric:tabular-nums}
+a{color:var(--cyan)}
+main{max-width:940px;margin:0 auto;padding:34px 20px 80px}
+
+header{border-bottom:1px solid var(--line2);padding-bottom:22px;margin-bottom:30px}
+h1{font-size:25px;line-height:1.25;font-weight:650;letter-spacing:-.01em;text-wrap:balance}
+.sub{color:var(--mut);margin-top:9px;max-width:62ch}
+
+h2{font-size:17px;font-weight:650;margin:38px 0 6px;letter-spacing:-.005em}
+h2 .n{color:var(--gold);font-family:ui-monospace,monospace;font-size:14px;margin-right:9px}
+.dice{color:var(--mut);max-width:66ch;margin-bottom:16px}
+
+.caja{background:var(--panel2);border:1px solid var(--line2);border-radius:12px;padding:16px 18px}
+.caja + .caja{margin-top:10px}
+
+table{width:100%;border-collapse:collapse;font-size:13.5px}
+th{text-align:left;color:var(--faint);font-weight:600;font-size:11px;letter-spacing:.07em;
+ text-transform:uppercase;padding:0 10px 8px 0;border-bottom:1px solid var(--line2)}
+td{padding:9px 10px 9px 0;border-bottom:1px solid var(--line2);vertical-align:top}
+tr:last-child td{border-bottom:0}
+.desborda{overflow-x:auto}
+
+/* El veredicto es lo único con color fuerte en la página. */
+.v{display:inline-flex;align-items:center;gap:6px;padding:2px 9px;border-radius:999px;
+ font-size:12px;font-weight:700;white-space:nowrap}
+.v.si{color:var(--ok);background:rgba(53,183,125,.13);border:1px solid rgba(53,183,125,.3)}
+.v.no{color:var(--bad);background:rgba(224,104,93,.13);border:1px solid rgba(224,104,93,.32)}
+.v.esp{color:var(--warn);background:rgba(226,137,60,.13);border:1px solid rgba(226,137,60,.3)}
+.v.gris{color:var(--faint);background:rgba(100,121,143,.12);border:1px solid var(--line2)}
+
+textarea{font:13px/1.5 ui-monospace,Menlo,Consolas,monospace;background:#0F1927;color:var(--txt);
+ border:1px solid var(--line);border-radius:10px;padding:12px;width:100%;min-height:150px;resize:vertical}
+button{font:inherit;cursor:pointer;border:0;border-radius:9px;padding:10px 16px;min-height:44px;
+ background:var(--line);color:var(--txt);font-weight:600}
+button:hover{filter:brightness(1.18)}
+button.p{background:var(--gold);color:#10161F}
+button:disabled{opacity:.45;cursor:not-allowed}
+.fila{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:12px}
+
+pre{background:#0F1927;border:1px solid var(--line2);border-radius:9px;padding:12px;
+ overflow-x:auto;font:12.5px/1.5 ui-monospace,Menlo,Consolas,monospace;color:var(--cyan)}
+code{font:13px ui-monospace,Menlo,Consolas,monospace;background:rgba(127,178,232,.1);
+ padding:1px 5px;border-radius:4px}
+
+.nota{border-left:2px solid var(--gold);padding-left:14px;color:var(--mut);margin:16px 0;max-width:66ch}
+.pie{margin-top:56px;padding-top:20px;border-top:1px solid var(--line2);color:var(--faint);font-size:13px}
+.corta{max-width:22ch;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:inline-block;
+ vertical-align:bottom}
+</style>
+</head>
+<body>
+<main>
+
+<header>
+  <h1>Comprobar la bitácora de Genesis ID</h1>
+  <p class="sub">Genesis ID escribe cada día, en la cadena 5550 de Orden Global, un resumen
+  de su registro de auditoría. Esta página lo comprueba <strong>contra el nodo de la
+  cadena</strong>, desde su navegador. Lo que ve abajo no se lo estamos contando nosotros:
+  se lo está contestando la cadena.</p>
+</header>
+
+<h2><span class="n">1</span>Lo que hay escrito en la cadena</h2>
+<p class="dice">Cada renglón es un ancla: un día, cuántos asientos tenía el registro y el hash
+del último. Su navegador pide cada transacción al nodo y compara lo que dice la cadena con lo
+que decimos nosotros. Si difieren, <strong>el bueno es el de la cadena</strong>.</p>
+
+<div class="caja" id="cabecera">Cargando…</div>
+<div class="caja desborda" style="margin-top:10px"><table id="tabla"><tbody></tbody></table></div>
+
+<div class="nota" id="limite"></div>
+
+<h2><span class="n">2</span>Comprobar un extracto que le hayamos entregado</h2>
+<p class="dice">Si tiene un extracto de la bitácora, péguelo aquí. Su navegador recalcula la
+cadena de hashes —sin mandar nada a ningún sitio— y le dice si cuadra y si su último hash
+coincide con alguna de las anclas de arriba.</p>
+
+<textarea id="extracto" placeholder='Pegue aquí el extracto en JSON. Se acepta la lista de asientos tal cual, o el objeto que la contenga.'></textarea>
+<div class="fila">
+  <button class="p" id="btn">Comprobar</button>
+  <span id="privacidad" style="color:var(--faint);font-size:13px">El extracto no sale de su navegador.</span>
+</div>
+<div id="resultado" style="margin-top:14px"></div>
+
+<h2><span class="n">3</span>Comprobarlo sin esta página</h2>
+<p class="dice">Esta página también es nuestra, así que no debería ser el final del camino.
+Estas dos órdenes hacen lo mismo desde su propia terminal:</p>
+<pre id="curl">…</pre>
+<p class="dice">Y el cálculo del encadenado, por si quiere rehacerlo con sus herramientas:</p>
+<pre>hash(n) = sha256( hash(n-1) + JSON.stringify({fecha, actor, accion, objeto, detalle}) )
+hash(0) = sha256( "000…0" (64 ceros) + JSON.stringify(...) )</pre>
+<p class="dice">El orden de las claves importa. El campo <code>firma</code> no entra en el hash:
+es un HMAC del hash con una llave que no sale del servicio, así que esa parte no se puede
+comprobar desde fuera. El encadenado sí, y es el que detecta un borrado.</p>
+
+<div class="pie">
+  <p><strong>Qué prueba esto y qué no.</strong> Prueba que el registro no se ha cortado ni
+  reescrito desde la última ancla: si hoy hubiera menos asientos que ayer, la resta salta.
+  No prueba que lo que se escribió fuera verdad — para eso está la auditoría, no un hash.</p>
+  <p style="margin-top:10px">Ninguna identidad, nombre ni dato personal aparece en esta página
+  ni en la cadena. Un hash y una cuenta de asientos no dicen quién se verificó.</p>
+</div>
+
+</main>
+
+<script>
+/* ── Sin dependencias, y a propósito ────────────────────────────────────────
+   Una página cuyo trabajo es que no haga falta confiar en nosotros no puede
+   cargar código de terceros: cada script externo es alguien más en quien hay
+   que confiar para creerse el resultado. Todo lo que hace falta —SHA-256 y
+   `fetch`— ya está en el navegador. */
+
+const $ = (s) => document.querySelector(s)
+const esc = (s) => String(s).replace(/[<>&"]/g, (c) => (
+  { '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;' }[c]))
+
+const CEROS = '0'.repeat(64)
+const SELLO = 'S'.repeat(64)
+
+async function sha256(texto) {
+  const b = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(texto))
+  return [...new Uint8Array(b)].map((x) => x.toString(16).padStart(2, '0')).join('')
+}
+
+/** El contenido que entra en el hash, con las claves en su orden exacto. */
+const contenidoDe = (e) => ({
+  fecha: e.fecha, actor: e.actor, accion: e.accion, objeto: e.objeto, detalle: e.detalle,
+})
+
+const eslabon = (anterior, e) => sha256(anterior + JSON.stringify(contenidoDe(e)))
+
+/** Hexadecimal a texto. Es como se lee el `input` de una transacción. */
+function deHexATexto(hex) {
+  const limpio = String(hex || '').replace(/^0x/, '')
+  const bytes = new Uint8Array(limpio.length / 2)
+  for (let i = 0; i < bytes.length; i++) bytes[i] = parseInt(limpio.substr(i * 2, 2), 16)
+  return new TextDecoder().decode(bytes)
+}
+
+let ANCLAS = []
+
+async function rpc(url, metodo, params) {
+  const r = await fetch(url, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: metodo, params }),
+  })
+  const j = await r.json()
+  if (j.error) throw new Error(j.error.message || 'el nodo devolvió un error')
+  return j.result
+}
+
+const marca = (clase, texto) => `<span class="v ${clase}">${esc(texto)}</span>`
+
+async function cargar() {
+  let datos
+  try {
+    datos = await (await fetch('/api/publico/anclas')).json()
+  } catch (e) {
+    $('#cabecera').innerHTML = marca('no', 'No se pudo cargar la lista de anclas')
+    return
+  }
+  ANCLAS = datos.anclas || []
+
+  $('#cabecera').innerHTML =
+    `<div style="display:flex;gap:26px;flex-wrap:wrap">
+      <div><div style="color:var(--faint);font-size:11px;letter-spacing:.07em;text-transform:uppercase">Cadena</div>
+        <div class="mono">${esc(datos.cadenaId)}</div></div>
+      <div><div style="color:var(--faint);font-size:11px;letter-spacing:.07em;text-transform:uppercase">Dirección del ancla</div>
+        <div class="mono">${datos.direccion ? esc(datos.direccion) : '<span style="color:var(--warn)">todavía sin configurar</span>'}</div></div>
+      <div><div style="color:var(--faint);font-size:11px;letter-spacing:.07em;text-transform:uppercase">Anclas</div>
+        <div class="mono">${esc(datos.enLaCadena)} en la cadena · ${esc(datos.total)} en total</div></div>
+    </div>`
+
+  $('#curl').textContent =
+    `# 1. La lista de anclas (esto lo decimos nosotros)\n`
+    + `curl -s ${location.origin}/api/publico/anclas\n\n`
+    + `# 2. Lo que dice la cadena de una de ellas (esto no lo decimos nosotros)\n`
+    + `curl -s -X POST ${datos.rpc} -H 'content-type: application/json' \\\n`
+    + `  -d '{"jsonrpc":"2.0","id":1,"method":"eth_getTransactionByHash",`
+    + `"params":["<hash de la transacción>"]}'\n\n`
+    + `# El campo "input" de la respuesta, de hexadecimal a texto, es el ancla.`
+
+  $('#limite').innerHTML = datos.direccion
+    ? `<strong>Lo que esta lista no puede demostrar.</strong> Podríamos omitir un ancla de
+       aquí. Para descartarlo, enumere usted las transacciones que salen de
+       <span class="mono">${esc(datos.direccion)}</span> en el explorador: las lista todas,
+       las hayamos puesto en esta página o no.`
+    : `<strong>El ancla en cadena todavía no está encendida.</strong> Los asientos ya se
+       encadenan y se firman, pero hasta que haya una dirección configurada esta página no
+       puede enseñarle nada que no dependa de nuestra palabra. Es una diferencia real y por
+       eso se dice aquí en vez de esconderla.`
+
+  pintarTabla()
+  comprobarContraLaCadena(datos.rpc, datos.direccion)
+}
+
+function pintarTabla() {
+  const t = $('#tabla').querySelector('tbody')
+  if (!ANCLAS.length) {
+    t.innerHTML = '<tr><td style="color:var(--mut)">Todavía no hay anclas.</td></tr>'
+    return
+  }
+  t.innerHTML = '<tr><th>Fecha</th><th>Asientos</th><th>Hash del último asiento</th>'
+    + '<th>Transacción</th><th>La cadena dice</th></tr>'
+    + ANCLAS.map((a, i) => `<tr>
+      <td class="mono">${esc(a.fecha.slice(0, 16).replace('T', ' '))}</td>
+      <td class="mono">${esc(a.entradas)}</td>
+      <td class="mono corta" title="${esc(a.hash)}">${esc(a.hash)}</td>
+      <td class="mono corta" title="${esc(a.tx || '')}">${a.tx ? esc(a.tx) : '—'}</td>
+      <td id="v${i}">${a.tx ? marca('esp', 'preguntando…') : marca('gris', 'no llegó a la cadena')}</td>
+    </tr>`).join('')
+}
+
+/**
+ * La comprobación de verdad: se le pregunta al NODO, no a nuestro servidor.
+ *
+ * Tres cosas tienen que cuadrar para que un ancla valga: que la transacción
+ * exista, que su contenido sea exactamente el renglón que publicamos, y que
+ * salga de la dirección del ancla. Si el renglón cuadra pero el remitente es
+ * otro, cualquiera pudo escribirlo — y entonces no prueba nada.
+ */
+async function comprobarContraLaCadena(url, direccion) {
+  for (let i = 0; i < ANCLAS.length; i++) {
+    const a = ANCLAS[i]
+    const celda = $('#v' + i)
+    if (!a.tx || !celda) continue
+    try {
+      const tx = await rpc(url, 'eth_getTransactionByHash', [a.tx])
+      if (!tx) { celda.innerHTML = marca('no', 'no existe en la cadena'); continue }
+
+      const enCadena = deHexATexto(tx.input)
+      const mismoTexto = enCadena === a.renglon
+      const mismoRemite = !direccion
+        || String(tx.from || '').toLowerCase() === direccion.toLowerCase()
+
+      if (mismoTexto && mismoRemite) {
+        celda.innerHTML = marca('si', 'coincide')
+      } else if (!mismoTexto) {
+        celda.innerHTML = marca('no', 'el texto NO coincide')
+        celda.innerHTML += `<div class="mono" style="color:var(--mut);font-size:11.5px;margin-top:5px">
+          la cadena dice: ${esc(enCadena.slice(0, 120))}</div>`
+      } else {
+        celda.innerHTML = marca('no', 'la escribió otra dirección')
+      }
+    } catch (e) {
+      /* Que el nodo no conteste no es que el ancla esté mal: es que no se pudo
+         mirar. Decir «no coincide» aquí sería una acusación falsa. */
+      celda.innerHTML = marca('esp', 'no se pudo consultar el nodo')
+    }
+  }
+}
+
+/* ── 2. El extracto ──────────────────────────────────────────────────────── */
+
+function sacarLista(crudo) {
+  const j = JSON.parse(crudo)
+  const lista = Array.isArray(j) ? j
+    : Array.isArray(j.bitacora) ? j.bitacora
+    : Array.isArray(j.entradas) ? j.entradas
+    : Array.isArray(j.asientos) ? j.asientos
+    : null
+  if (!lista) throw new Error('no encuentro la lista de asientos dentro de eso')
+  if (!lista.length) throw new Error('la lista está vacía')
+  if (!lista[0] || !lista[0].hash) throw new Error('esos objetos no parecen asientos de la bitácora')
+  return lista
+}
+
+async function comprobarExtracto() {
+  const salida = $('#resultado')
+  let lista
+  try {
+    lista = sacarLista($('#extracto').value)
+  } catch (e) {
+    salida.innerHTML = `<div class="caja">${marca('no', 'No se pudo leer')} ${esc(e.message)}</div>`
+    return
+  }
+
+  /* El panel entrega los asientos del más nuevo al más viejo. Se detecta en vez
+     de exigir un orden: pedirle a un auditor que le dé la vuelta a un JSON
+     antes de comprobar nada es una forma elegante de que no lo compruebe. */
+  const alReves = lista.length > 1 && lista[0].hashAnterior !== CEROS
+    && lista[lista.length - 1].hashAnterior === CEROS
+  const asientos = alReves ? [...lista].reverse() : lista
+
+  let anterior = asientos[0].hashAnterior || CEROS
+  let rotoEn = null
+  for (let i = 0; i < asientos.length; i++) {
+    const e = asientos[i]
+    /* Un sello abre tramo: su hash no cuelga del anterior sino de una semilla
+       propia. Tratarlo como un eslabón normal daría «rota» en un extracto
+       perfectamente sano. */
+    const base = e.hashAnterior === SELLO ? SELLO : anterior
+    if (e.hashAnterior !== base || (await eslabon(base, e)) !== e.hash) { rotoEn = i; break }
+    anterior = e.hash
+  }
+
+  const ultimo = asientos[asientos.length - 1].hash
+  const coincide = ANCLAS.find((a) => a.hash === ultimo)
+
+  const partes = []
+  partes.push(`<div class="caja">
+    <div style="margin-bottom:10px">${asientos.length} asiento${asientos.length === 1 ? '' : 's'}
+    ${alReves ? '<span style="color:var(--faint)">· venían del más nuevo al más viejo, se les dio la vuelta</span>' : ''}</div>
+    <div style="margin-bottom:8px">${rotoEn === null
+      ? marca('si', 'El encadenado cuadra entero')
+      : marca('no', `El encadenado se rompe en el asiento ${rotoEn + 1}`)}</div>
+    ${rotoEn !== null ? `<div style="color:var(--mut);font-size:13.5px">Ese asiento no cuelga del
+      anterior, o su contenido cambió después de escribirse. Todo lo que va antes sí cuadra.</div>` : ''}
+  </div>`)
+
+  partes.push(`<div class="caja">
+    <div style="color:var(--faint);font-size:11px;letter-spacing:.07em;text-transform:uppercase;margin-bottom:6px">
+      Hash del último asiento del extracto</div>
+    <div class="mono" style="word-break:break-all;margin-bottom:12px">${esc(ultimo)}</div>
+    ${coincide
+      ? `${marca('si', 'Está anclado en la cadena')}
+         <div style="color:var(--mut);font-size:13.5px;margin-top:8px">Ancla del
+         ${esc(coincide.fecha.slice(0, 16).replace('T', ' '))}, con ${esc(coincide.entradas)} asientos
+         ${coincide.tx ? `· transacción <span class="mono">${esc(coincide.tx)}</span>` : ''}.</div>`
+      : `${marca('esp', 'No coincide con ninguna ancla')}
+         <div style="color:var(--mut);font-size:13.5px;margin-top:8px">Lo normal es que sea un
+         extracto PARCIAL —los asientos de un mes, de una persona— y entonces su último hash
+         no tiene por qué ser el último de la bitácora entera. Solo es un problema si esperaba
+         que fuera el registro completo hasta el día del ancla.</div>`}
+  </div>`)
+
+  salida.innerHTML = partes.join('')
+}
+
+$('#btn').addEventListener('click', () => {
+  $('#btn').disabled = true
+  comprobarExtracto().finally(() => { $('#btn').disabled = false })
+})
+
+cargar()
+</script>
+</body>
+</html>

@@ -1,0 +1,398 @@
+<title>La Tarjeta, por Dentro</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600&family=Spectral:wght@300;400;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+
+<style>
+  :root{
+    --pozo:#021B1C; --alto:#06282A; --oro:#C9A961; --crema:#F3ECD9;
+    --bruma:#AEC7C3; --humo:#6E938F; --jade:#3ED9A0; --ambar:#ECB44C; --rojo:#E4574B;
+    --linea:rgba(174,199,195,.16);
+    --display:'Cinzel',Georgia,serif; --cuerpo:'Spectral',Georgia,serif;
+    --dato:'IBM Plex Mono',ui-monospace,monospace;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--pozo);color:var(--crema);
+       font-family:var(--cuerpo);font-weight:300;font-size:17px;line-height:1.72;
+       -webkit-font-smoothing:antialiased}
+  .env{max-width:880px;margin:0 auto;padding:0 28px}
+  h1,h2{font-family:var(--display);font-weight:600;line-height:1.18;margin:0;text-wrap:balance}
+  p{margin:0 0 1.1em}
+  strong{font-weight:600;color:#fff}
+  code,.m{font-family:var(--dato);font-size:.87em;font-variant-numeric:tabular-nums}
+  a{color:var(--oro)}
+
+  header{padding:84px 0 56px;border-bottom:1px solid var(--linea)}
+  .cintillo{font-family:var(--dato);font-size:11px;letter-spacing:.22em;
+            text-transform:uppercase;color:var(--humo);margin-bottom:26px}
+  header h1{font-size:clamp(36px,6vw,60px)}
+  header h1 em{font-style:normal;color:var(--oro)}
+  .bajada{font-size:clamp(19px,2.3vw,22px);color:var(--bruma);margin-top:22px;
+          max-width:36em;line-height:1.62}
+
+  section{padding:60px 0;border-bottom:1px solid var(--linea)}
+  section > h2{font-size:clamp(25px,3.5vw,33px);margin-bottom:10px}
+  .sub{font-family:var(--dato);font-size:11px;letter-spacing:.2em;
+       text-transform:uppercase;color:var(--oro);margin-bottom:14px}
+  .lede{font-size:20px;color:var(--bruma);margin:16px 0 30px;max-width:38em}
+
+  .cifras{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:14px;margin:28px 0}
+  .c{background:var(--alto);border:1px solid var(--linea);border-radius:2px;padding:20px}
+  .c .n{font-family:var(--dato);font-size:30px;line-height:1.05;color:var(--oro);
+        font-variant-numeric:tabular-nums}
+  .c .q{font-size:14px;color:var(--humo);margin-top:9px;line-height:1.5}
+  .c.mal .n{color:var(--rojo)} .c.ojo .n{color:var(--ambar)} .c.bien .n{color:var(--jade)}
+
+  figure{margin:34px 0 0;padding:30px 26px 22px;background:var(--alto);
+         border:1px solid var(--linea);border-radius:2px}
+  figcaption{font-family:var(--dato);font-size:11px;letter-spacing:.16em;
+             text-transform:uppercase;color:var(--humo);margin-bottom:24px}
+  figure svg{display:block;width:100%;height:auto}
+  .pie-fig{font-size:15px;color:var(--bruma);margin:18px 0 0}
+
+  .h{display:grid;grid-template-columns:110px 1fr;gap:22px;padding:22px 0;
+     border-bottom:1px solid rgba(174,199,195,.08)}
+  .h:last-child{border-bottom:none}
+  .h > *{min-width:0}
+  .et{font-family:var(--dato);font-size:10px;letter-spacing:.13em;text-transform:uppercase;
+      padding-top:5px;line-height:1.6}
+  .et.r{color:var(--rojo)} .et.a{color:var(--ambar)} .et.v{color:var(--jade)} .et.g{color:var(--humo)}
+  .h h3{font-family:var(--cuerpo);font-weight:600;font-size:18px;color:#fff;margin:0 0 5px}
+  .h p{margin:0;color:var(--bruma);font-size:16px;line-height:1.65}
+  .h p + p{margin-top:.7em}
+
+  .desliz{overflow-x:auto;margin:26px 0}
+  table{border-collapse:collapse;width:100%;font-family:var(--dato);font-size:14px;
+        font-variant-numeric:tabular-nums;white-space:nowrap}
+  th{font-weight:500;text-align:left;color:var(--humo);font-size:11px;letter-spacing:.14em;
+     text-transform:uppercase;padding:0 18px 12px 0;border-bottom:1px solid var(--linea)}
+  td{padding:11px 18px 11px 0;border-bottom:1px solid rgba(174,199,195,.07)}
+  tr:last-child td{border-bottom:none}
+  .si{color:var(--jade)} .no{color:var(--rojo)} .quiza{color:var(--ambar)}
+
+  .caja{background:var(--alto);border-left:2px solid var(--oro);padding:22px 26px;
+        margin:26px 0;border-radius:0 2px 2px 0}
+  .caja p:last-child{margin-bottom:0}
+
+  ol.pasos{counter-reset:p;list-style:none;padding:0;margin:26px 0}
+  ol.pasos li{counter-increment:p;display:grid;grid-template-columns:34px 1fr;gap:18px;
+              padding:16px 0;border-bottom:1px solid rgba(174,199,195,.08)}
+  ol.pasos li:last-child{border-bottom:none}
+  ol.pasos li::before{content:counter(p);font-family:var(--dato);font-size:15px;
+                      color:var(--oro);padding-top:2px}
+  ol.pasos b{color:#fff;font-weight:600}
+  ol.pasos span{color:var(--bruma);font-size:16px}
+
+  footer{padding:46px 0 76px;color:var(--humo);font-size:15px}
+
+  @media (max-width:620px){
+    body{font-size:16px}
+    .h{grid-template-columns:1fr;gap:8px}
+    .et{padding-top:0}
+    .env{padding:0 20px}
+  }
+</style>
+
+<div class="env">
+
+<header>
+  <div class="cintillo">Veta Wallet · Tarjetas de débito · 27 de agosto de 2026</div>
+  <h1>Está construida entera.<br><em>Nadie ha comprado nunca.</em></h1>
+  <p class="bajada">
+    Veintiséis tarjetas Visa emitidas, ciento diez dólares cargados, y cero
+    movimientos. Ni uno. El producto está de pie y todavía no ha tocado el
+    mundo real.
+  </p>
+</header>
+
+<section>
+  <div class="sub">Lo que hay, medido hoy</div>
+  <h2>Los números</h2>
+  <div class="cifras">
+    <div class="c"><div class="n">26</div><div class="q">tarjetas activas en Cryptomate</div></div>
+    <div class="c ojo"><div class="n">24</div><div class="q">las que nuestro sistema controla — <strong>faltan 2</strong></div></div>
+    <div class="c bien"><div class="n">110,61</div><div class="q">dólares cargados, repartidos en 5 tarjetas</div></div>
+    <div class="c mal"><div class="n">0</div><div class="q">compras hechas, desde siempre</div></div>
+    <div class="c mal"><div class="n">6,27</div><div class="q">dólares en el tesoro que paga las recargas</div></div>
+    <div class="c"><div class="n">26</div><div class="q">personas con identidad aprobada</div></div>
+  </div>
+  <p>
+    La cifra que manda es la penúltima. No es un saldo cualquiera: es el fondo
+    del que sale <em>cada</em> recarga de <em>cada</em> tarjeta. Mientras diga
+    seis dólares, seis dólares es todo lo que el producto puede entregar.
+  </p>
+</section>
+
+<section>
+  <div class="sub">Cómo funciona de verdad</div>
+  <h2>El camino del dinero</h2>
+  <p class="lede">
+    Entre el ORIGEN de una persona y su tarjeta hay cuatro saltos y un puente
+    que sostenemos nosotros. Conviene verlo entero, porque el punto flaco no
+    está donde uno lo buscaría.
+  </p>
+
+  <figure>
+    <figcaption>De ORIGEN a poder pagar en una tienda</figcaption>
+    <svg viewBox="0 0 760 260" role="img"
+         aria-label="La persona manda ORIGEN al tesoro en la cadena 5550. El backend calcula el valor en dólares con el precio del oro. El tesoro de Polygon, que tiene 6,27 dólares en USDT, manda el equivalente a la billetera de recarga que Cryptomate le da a esa tarjeta. Cryptomate acredita el saldo. El cuello de botella es el tesoro de Polygon, y comprar en una tienda nunca ha pasado.">
+      <defs>
+        <marker id="fl" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+          <polygon points="0,0 10,5 0,10" fill="#6E938F"/>
+        </marker>
+      </defs>
+
+      <rect x="0" y="60" width="132" height="62" rx="3" fill="none" stroke="#6E938F" stroke-width="1"/>
+      <text x="66" y="85" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="11" fill="#F3ECD9">La persona</text>
+      <text x="66" y="103" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="10" fill="#6E938F">manda ORIGEN</text>
+
+      <line x1="136" y1="91" x2="176" y2="91" stroke="#6E938F" stroke-width="1" marker-end="url(#fl)"/>
+
+      <rect x="182" y="60" width="132" height="62" rx="3" fill="none" stroke="#6E938F" stroke-width="1"/>
+      <text x="248" y="85" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="11" fill="#F3ECD9">Tesoro 5550</text>
+      <text x="248" y="103" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="10" fill="#3ED9A0">recibe el ORIGEN</text>
+
+      <line x1="318" y1="91" x2="358" y2="91" stroke="#6E938F" stroke-width="1" marker-end="url(#fl)"/>
+      <text x="338" y="74" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="9" fill="#6E938F">precio</text>
+      <text x="338" y="85" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="9" fill="#6E938F">del oro</text>
+
+      <rect x="364" y="52" width="150" height="78" rx="3" fill="rgba(228,87,75,.09)" stroke="#E4574B" stroke-width="1.5"/>
+      <text x="439" y="76" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="11" fill="#FFFFFF">Tesoro Polygon</text>
+      <text x="439" y="96" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="15" fill="#E4574B">6,27 USDT</text>
+      <text x="439" y="114" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="9" fill="#E4574B">aquí se corta todo</text>
+
+      <line x1="518" y1="91" x2="558" y2="91" stroke="#6E938F" stroke-width="1" marker-end="url(#fl)"/>
+
+      <rect x="564" y="60" width="132" height="62" rx="3" fill="none" stroke="#6E938F" stroke-width="1"/>
+      <text x="630" y="85" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="11" fill="#F3ECD9">Cryptomate</text>
+      <text x="630" y="103" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="10" fill="#6E938F">acredita la tarjeta</text>
+
+      <line x1="630" y1="126" x2="630" y2="176" stroke="#6E938F" stroke-width="1" stroke-dasharray="4 4" marker-end="url(#fl)"/>
+      <rect x="546" y="182" width="168" height="52" rx="3" fill="none" stroke="#E4574B" stroke-width="1" stroke-dasharray="4 4"/>
+      <text x="630" y="204" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="11" fill="#E4574B">Comprar en una tienda</text>
+      <text x="630" y="221" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="10" fill="#E4574B">nunca ha pasado</text>
+
+      <text x="0" y="176" font-family="IBM Plex Mono, monospace" font-size="10" fill="#6E938F">Solo POLYGON, solo USDT y USDC — lo impone Cryptomate</text>
+      <text x="0" y="196" font-family="IBM Plex Mono, monospace" font-size="10" fill="#6E938F">Prepago: la tarjeta gasta lo cargado, no hay crédito</text>
+      <text x="0" y="216" font-family="IBM Plex Mono, monospace" font-size="10" fill="#6E938F">Límites 1.000 / día · 5.000 / semana · 20.000 / mes</text>
+    </svg>
+    <p class="pie-fig">
+      El puente lo sostenemos nosotros porque la 5550 es una cadena propia y
+      ningún mercado público la cotiza. Eso no es un defecto — es la
+      consecuencia de tener cadena propia. Pero significa que
+      <strong>nuestro saldo en Polygon es el techo del producto entero</strong>.
+    </p>
+  </figure>
+</section>
+
+<section>
+  <div class="sub">Lo que encontré</div>
+  <h2>Hallazgos</h2>
+
+  <div class="h">
+    <div class="et r">Bloquea todo</div>
+    <div>
+      <h3>El tesoro que paga las recargas tiene 6,27 dólares</h3>
+      <p>
+        Cada vez que alguien carga su tarjeta, ese dinero sale de una billetera
+        nuestra en Polygon. Hoy tiene <strong>6,27 USDT</strong>. La siguiente
+        persona que quiera cargar veinte dólares no va a poder, y el error que
+        va a ver no le va a explicar por qué.
+      </p>
+      <p>
+        Hay <span class="m">0,85 POL</span> para el gas, que alcanza para un buen
+        rato de transferencias pero también se acaba.
+      </p>
+    </div>
+  </div>
+
+  <div class="h">
+    <div class="et r">Serio</div>
+    <div>
+      <h3>Nadie ha comprado nunca con una tarjeta</h3>
+      <p>
+        Recorrí las veinticuatro tarjetas una por una preguntándole a Cryptomate
+        por sus movimientos. <strong>Cero, en todas.</strong> Hay 110,61 dólares
+        cargados en cinco tarjetas y ninguno se ha gastado.
+      </p>
+      <p>
+        Eso quiere decir que el tramo final —que la tarjeta pase en un comercio
+        de verdad— <em>no está probado</em>. Todo lo demás sí: emitir funciona,
+        cargar funciona, el saldo llega. Pero lo que la gente va a hacer con
+        ella es justo lo único que nadie ha visto funcionar.
+      </p>
+    </div>
+  </div>
+
+  <div class="h">
+    <div class="et a">Descontrol</div>
+    <div>
+      <h3>Dos tarjetas vivas que nuestro sistema no conoce</h3>
+      <p>
+        Cryptomate tiene 26 tarjetas activas; nuestra base conoce 24. Las dos
+        que faltan están a nombre de <span class="m">Lennie Dukes ····5572</span> y
+        <span class="m">Jose Ordonez ····1236</span>, y están <strong>ACTIVE</strong>.
+      </p>
+      <p>
+        No se pueden congelar desde la app, no se les pueden cambiar los límites,
+        no aparecen en ningún listado nuestro. Si una de esas se pierde, no
+        tenemos botón para apagarla — hay que entrar al panel de Cryptomate a
+        mano. Casi seguro son de pruebas hechas antes de que existiera el
+        backend, pero eso hay que confirmarlo y luego cancelarlas o adoptarlas.
+      </p>
+    </div>
+  </div>
+
+  <div class="h">
+    <div class="et a">Riesgo</div>
+    <div>
+      <h3>No hay tope por compra</h3>
+      <p>
+        Los límites por día, semana y mes están puestos (1.000, 5.000, 20.000).
+        El de <span class="m">por compra</span> está en <span class="m">null</span>:
+        sin poner. Una sola compra puede llevarse los mil dólares del día de una
+        vez. Es el límite más barato de activar y el que más duele no tener el
+        día que alguien roba unos datos de tarjeta.
+      </p>
+    </div>
+  </div>
+
+  <div class="h">
+    <div class="et a">Dependencia</div>
+    <div>
+      <h3>Solo Polygon, y solo USDT o USDC</h3>
+      <p>
+        Se lo pregunté a Cryptomate directamente: la única red por la que acepta
+        recargas es <strong>Polygon</strong>, con USDT o USDC. No es una decisión
+        nuestra — es lo que su cuenta ofrece.
+      </p>
+      <p>
+        O sea que el producto depende de una cadena ajena, de su gas, y de que
+        nuestra billetera de allá tenga fondos. Cualquier problema en Polygon es
+        un problema nuestro sin que podamos hacer nada.
+      </p>
+    </div>
+  </div>
+
+  <div class="h">
+    <div class="et g">Menor</div>
+    <div>
+      <h3><span class="m">CORREO_SOPORTE</span> no está puesta</h3>
+      <p>
+        El código la usa. Sin ella, los avisos que deberían ir a soporte no
+        tienen a dónde ir. Se arregla en un minuto.
+      </p>
+    </div>
+  </div>
+
+  <div class="h">
+    <div class="et v">Sano</div>
+    <div>
+      <h3>La integración, por lo demás, está completa</h3>
+      <p>
+        Emitir, ver el número, PIN, congelar y descongelar, cambiar límites,
+        reemitir con número nuevo, quitar el bloqueo del emisor, configurar 3D
+        Secure, teléfono para los códigos, historial, detalle de un movimiento,
+        gastado contra los límites, y estado de cuenta en CSV. Todo está
+        cableado y todo pide la contraseña donde debe.
+      </p>
+      <p>
+        La emisión exige identidad aprobada, comprobado en el código. Y el camino
+        de fondeo apunta bien a la cadena 5550 — el comentario que dice 8532
+        quedó viejo, pero la configuración es correcta.
+      </p>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="sub">Lo que nos da hoy, y lo que no</div>
+  <h2>Qué tenemos de Cryptomate</h2>
+  <div class="desliz">
+    <table>
+      <thead><tr><th>Qué</th><th>Hoy</th><th>Comentario</th></tr></thead>
+      <tbody>
+        <tr><td>Tarjeta virtual Visa</td><td class="si">sí</td><td>26 emitidas, todas «Virtual»</td></tr>
+        <tr><td>Tarjeta física</td><td class="no">no</td><td>la cuenta no ofrece ninguna</td></tr>
+        <tr><td>Modelo</td><td class="si">prepago</td><td>«TopUp» — gasta lo cargado, sin crédito</td></tr>
+        <tr><td>Recarga</td><td class="quiza">Polygon</td><td>única red · USDT y USDC</td></tr>
+        <tr><td>Límites día / semana / mes</td><td class="si">sí</td><td>1.000 · 5.000 · 20.000</td></tr>
+        <tr><td>Límite por compra</td><td class="no">sin poner</td><td>se puede, no está</td></tr>
+        <tr><td>Congelar · reemitir · PIN</td><td class="si">sí</td><td>por API, ya cableado</td></tr>
+        <tr><td>3D Secure</td><td class="si">sí</td><td>configurable por tarjeta</td></tr>
+        <tr><td>Apple Pay · Google Pay</td><td class="no">no</td><td>por eso la carta a los usuarios lo dice</td></tr>
+        <tr><td>Entorno de pruebas</td><td class="quiza">sin confirmar</td><td>hoy se prueba con dinero real</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section>
+  <div class="sub">La conversación pendiente</div>
+  <h2>Qué pedirle a Cryptomate</h2>
+  <p class="lede">
+    Por orden de lo que más cambia el producto. Las tres primeras son las que
+    valen la reunión.
+  </p>
+  <div class="caja">
+    <p>
+      <strong>Tarjetas físicas.</strong> Es la diferencia entre comprar en línea
+      y poder pagar en la tienda de la esquina o sacar efectivo. Preguntar si
+      las emiten, a qué países envían, cuánto cuesta cada una y cuánto tardan.
+    </p>
+  </div>
+  <div class="caja">
+    <p>
+      <strong>Apple Pay y Google Pay.</strong> Sin esto la tarjeta virtual solo
+      sirve para compras en línea. Con esto sirve para pagar con el teléfono en
+      cualquier lado, y deja de hacer falta la física para la mayoría de la
+      gente. Preguntar si soportan tokenización y qué hace falta de nuestro lado.
+    </p>
+  </div>
+  <div class="caja">
+    <p>
+      <strong>Más redes para recargar.</strong> Hoy todo depende de Polygon.
+      Preguntar qué otras aceptan — y si aceptan un depósito en dólares por
+      transferencia, que nos sacaría de la cripto para el fondeo y haría el
+      puente mucho más simple de sostener.
+    </p>
+  </div>
+  <p>Y de segunda vuelta:</p>
+  <ol class="pasos">
+    <li><b>Un entorno de pruebas.</b><span> Hoy cada prueba cuesta dinero real. Si tienen sandbox, probamos el flujo entero sin gastar.</span></li>
+    <li><b>Confirmar los webhooks.</b><span> Tenemos la llave puesta y el endpoint escrito, pero no está comprobado que ellos nos estén llamando. Sin eso, un movimiento en la tarjeta no llega solo a la app.</span></li>
+    <li><b>Límites más altos.</b><span> 1.000 al día está bien para empezar y se queda corto rápido para alguien que use la tarjeta de verdad.</span></li>
+    <li><b>Qué son los <span class="m">ramps</span>.</b><span> Aparece un campo con ese nombre en la respuesta de recargas. Si es una pasarela de compra con tarjeta o transferencia, cambia el producto entero.</span></li>
+    <li><b>Las dos tarjetas de más.</b><span> Que nos digan de dónde salieron ····5572 y ····1236, para cancelarlas o adoptarlas con conocimiento.</span></li>
+  </ol>
+</section>
+
+<section>
+  <div class="sub">Si me preguntás por dónde</div>
+  <h2>El orden que yo seguiría</h2>
+  <ol class="pasos">
+    <li><b>Fondear el tesoro de Polygon.</b><span> Nada de lo demás importa mientras haya seis dólares. Cuánto depende de a cuánta gente se le quiere abrir; con 26 tarjetas y un límite de 1.000 al día, unos pocos miles de dólares dan margen para empezar sin sustos.</span></li>
+    <li><b>Hacer UNA compra real.</b><span> Cargar una tarjeta, ir a una tienda en línea y comprar algo de cinco dólares. Hasta que eso pase, no sabemos si el producto funciona — y si falla, mejor que le falle a alguien de la casa que a un cliente.</span></li>
+    <li><b>Poner tope por compra.</b><span> Se hace por API, ya está la ruta. Diez minutos.</span></li>
+    <li><b>Resolver las dos tarjetas sueltas.</b><span> O entran a nuestra base o se cancelan. Vivas y sin control no se quedan.</span></li>
+    <li><b>Poner <span class="m">CORREO_SOPORTE</span>.</b><span> Un minuto.</span></li>
+    <li><b>Y después sí, la reunión con Cryptomate.</b><span> Con los números en la mano y una compra real hecha, la conversación sobre físicas y Apple Pay se tiene desde otro lugar.</span></li>
+  </ol>
+  <div class="caja">
+    <p>
+      Los pasos 3, 4 y 5 los puedo hacer yo hoy si querés. El 1 es tuyo —es
+      dinero—, y el 2 conviene que lo haga una persona con una tarjeta en la
+      mano, no yo desde acá.
+    </p>
+  </div>
+</section>
+
+<footer>
+  <p>
+    Todo lo de este informe está medido contra la API de Cryptomate y contra
+    nuestra base de datos hoy, 27 de agosto de 2026. Ninguna cifra viene de
+    memoria ni del código: se preguntó y se leyó la respuesta.
+  </p>
+</footer>
+
+</div>

@@ -1,0 +1,1214 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>ORDENEX · La casa de cambio de AuCorp</title>
+<!-- Sin cifra a propósito. Decía «los quince activos» y los mercados abiertos
+     son cinco: es el mismo número escrito a mano que ya se despegó tres veces
+     en esta página. En el cuerpo la cuenta la pone t() desde CADENA.PARES,
+     pero acá no llega —esto lo lee un buscador antes de que corra un guion—,
+     así que lo honesto es no prometer un número que nadie va a mantener. -->
+<meta name="description" content="ORDENEX: la casa de cambio de AuCorp, donde se cambian los activos publicados de la cadena 5550 contra ORIGEN, con libro de órdenes real, velas de tratos reales y entrada y salida en lempiras o dólares con agentes verificados.">
+<meta name="theme-color" content="#0A0E14">
+
+<!-- A dónde puede hablar esta página, y desde dónde puede traer cosas.
+
+     Igual que en la billetera: los manejadores en línea obligan a permitir
+     'unsafe-inline' en los guiones, así que esto NO reemplaza escapar bien los
+     datos. Lo que sí hace es cortarle las piernas a una inyección: connect-src
+     solo deja hablar con lo nuestro, así que no hay a dónde mandarse la sesión
+     de nadie. Cada dominio está porque algo concreto lo necesita:
+
+       ordenex-api-ba4b27b8b51a.herokuapp.com   el API de la casa de cambio (datos.js)
+       rpc.ordenglobal-rpc.com     la cadena 5550, para lo que se comprueba
+                                   directo contra ella (depósitos, saldos)
+       genesis-id.onrender.com     la ingesta de telemetría (telemetria.js)
+       fonts.googleapis/gstatic    Archivo y JetBrains Mono; la Cinzel viaja
+                                   dentro de la página y no está aquí a propósito
+
+     SI SE AGREGA UN SERVICIO NUEVO HAY QUE AGREGARLO AQUÍ. Y esto no es un
+     consejo: es lo que ya pasó. genesis-id.onrender.com faltaba en esta lista,
+     así que el navegador cortaba el CIEN POR CIENTO de los eventos de
+     telemetria.js, en silencio y sin que nadie lo notara desde fuera — el
+     panel de Genesis enseñaba un ecosistema sin Ordenex mientras la casa
+     operaba. Un connect-src incompleto no rompe la pantalla: apaga una pieza
+     y la deja pareciendo viva.
+
+     La forma de comprobarlo es la consola del navegador («Refused to
+     connect…»), y por eso apps-web/probar-ordenex.mjs falla la prueba entera
+     si aparece una sola violación de CSP en todo el recorrido. -->
+<!-- frame-src deja enmarcar SOLO a la wallet: es el panel de depositar. Lo de
+     adentro sigue siendo el documento de la wallet, en su dominio, asi que la
+     contraseña se teclea alla y esta pagina no puede leerla.
+     Ojo al tocar esto: la CSP NO admite comentarios dentro del atributo — un
+     /* aqui dentro llega al navegador como una directiva invalida. -->
+<meta http-equiv="Content-Security-Policy" content="
+  default-src 'self';
+  script-src 'self' 'unsafe-inline';
+  style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
+  font-src 'self' data: https://fonts.gstatic.com;
+  img-src 'self' data: blob:;
+  connect-src 'self'
+    https://ordenex-api-ba4b27b8b51a.herokuapp.com
+    https://rpc.ordenglobal-rpc.com
+    https://genesis-id.onrender.com;
+  object-src 'none';
+  base-uri 'self';
+  form-action 'self';
+  frame-src https://app.vetawallet.com https://www.vetawallet.com;
+">
+<!-- El icono es el de ORIGEN: la moneda de cotización de todos los mercados
+     de la casa, y el único logo que ya viaja con estos assets. -->
+<link rel="icon" href="assets/tokens/origen.jpg">
+<link rel="apple-touch-icon" href="assets/tokens/origen.jpg">
+<meta property="og:title" content="ORDENEX">
+<meta property="og:description" content="La casa de cambio de AuCorp. Los activos del ecosistema Orden Global, con libro de órdenes real.">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+
+<style>
+/* ═══════════════════════════════════════════════════════════════════════════
+   ORDENEX · web
+
+   La casa de cambio de la casa: misma paleta, misma foto de fondo, mismo
+   vidrio y misma lapidaria que Veta Wallet — una app hermana tiene que
+   parecer de la misma familia desde el primer píxel. Lo único propio es el
+   acento: el verde agua #74E6C8 que el Núcleo del ecosistema ya le tenía
+   reservado a Ordenexchange. Entra como --acento, en la marca y en los
+   detalles; la paleta de la casa no se toca.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* La tipografía de display de la casa. Cinzel Bold: el mismo woff2 que viaja
+   dentro de la billetera, servido desde aquí — no depende de ningún CDN, así
+   que la marca nunca cae a la letra del sistema. Solo hay negrita: la fuente
+   no sintetiza pesos, por eso todo lo que la use va en 700. */
+@font-face{
+  font-family:'Cinzel';src:url('assets/fonts/Cinzel-Bold.woff2') format('woff2');
+  font-weight:700;font-style:normal;font-display:swap;
+}
+
+/* La paleta de la casa, entera y sin tocar un valor: son los de
+   orden-global-app/src/theme.js, uno a uno, como en la billetera. Lo único
+   que se agrega es --acento, la marca propia de Ordenex. */
+/* ═══ LA PIEL DE ORDENEX ══════════════════════════════════════════════════════
+   Esta sala era verde: el mismo pozo #021B1C de Veta Wallet y ordenglobal.org.
+   Tiene sentido para la billetera —es la casa de Orden Global hablando— pero
+   NO para esta, que es de AuCorp y es otra cosa: una casa de cambio.
+
+   Así que Ordenex pasa al GRAFITO. Un negro con sesgo azul, que es el color de
+   una mesa de operaciones y no el de una marca; el oro del logo se queda, y
+   sigue siendo el metal de la casa. Los grises se enfrían para acompañarlo:
+   sobre grafito, un gris verdoso se ve sucio.
+
+   El jade y el coral NO se tocan. Sube y baja son verde y rojo en todos los
+   mercados del mundo, y hacerlos propios de la marca sería cambiar el
+   significado de un color que la gente ya lee sin pensar.
+
+   Y las esquinas se cierran de 18 a 10 px. Un radio grande es amable y suena a
+   aplicación de consumo; una mesa de operaciones se lee mejor con la esquina
+   corta. Es el cambio que más se nota sin que nadie sepa nombrarlo. */
+:root{
+  --pozo:#0A0E14; --veta:#131A24;
+  --panel:rgba(19,26,36,.86); --panel2:rgba(26,35,47,.88); --panel3:rgba(38,50,66,.76);
+  --linea:rgba(201,169,97,.32); --linea2:rgba(201,169,97,.22);
+  --campo:rgba(16,22,31,.90); --campoBr:#3A4C63;
+  --oro:#C9A961; --oroLt:#EAD79C; --oroHi:#F8EFCF; --oroDp:#96793F;
+  --crema:#EEF1F5; --bruma:#A7B4C4; --humo:#6B7A8C; --tenue:#8E9BAB;
+  --jade:#3ED9A0; --coral:#F0776B; --tinta:#3A2C08;
+  --acento:#8FB9E0;
+  --serif:'Cinzel','Bodoni Moda',Didot,'Times New Roman',serif;
+  --sans:'Archivo',system-ui,sans-serif;
+  --mono:'JetBrains Mono',ui-monospace,monospace;
+  --r:10px; --r2:14px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{-webkit-text-size-adjust:100%}
+/* La app se dibuja sobre la fotografía de marca con un velo encima, y la
+   legibilidad la resuelven las tarjetas de vidrio, no oscurecer la foto
+   entera. El velo son los mismos tres pasos que usa la billetera. */
+/* El fondo ya NO es la fotografía de marca de Veta Wallet: era prestada, y una
+   casa de cambio que se viste con la foto de la billetera parece una pantalla
+   más de la billetera. En su lugar, una retícula de 44 px —el papel milimetrado
+   de una mesa de operaciones— y una lumbre de oro arriba, del lado del logo.
+   Pesa cero: son dos degradados, no una imagen de 400 kB. */
+body{
+  background:var(--pozo); color:var(--crema); font-family:var(--sans); font-weight:400;
+  min-height:100svh; overflow-x:hidden; -webkit-font-smoothing:antialiased;
+  background-image:
+    radial-gradient(120% 70% at 50% -10%, rgba(201,169,97,.10), transparent 62%),
+    radial-gradient(90% 60% at 80% 100%, rgba(143,185,224,.05), transparent 66%),
+    linear-gradient(rgba(238,241,245,.030) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(238,241,245,.030) 1px, transparent 1px);
+  background-size:auto, auto, 44px 44px, 44px 44px;
+  background-attachment:fixed, fixed, fixed, fixed;
+}
+button,input,select,textarea{font:inherit;color:inherit}
+button{background:none;border:0;cursor:pointer}
+a{color:inherit}
+:focus-visible{outline:2px solid var(--oro);outline-offset:3px;border-radius:6px}
+.oculto{display:none!important}
+.mono{font-family:var(--mono);font-variant-ligatures:none}
+
+/* ═══ LA CINTA DE PRECIOS ════════════════════════════════════════════════════
+   Fija arriba, siempre. Es lo primero que tiene cualquier casa de cambio y lo
+   que mas rapido dice «esto esta vivo»: los mercados publicados pasando, con su
+   ultimo precio y su cambio del dia.
+
+   Los que no tienen precio pasan con GUION, no se esconden. Una cinta que solo
+   enseña los mercados que se movieron parece mas liquida de lo que es, y eso es
+   exactamente la mentira que esta casa no dice.
+
+   El desplazamiento es de CSS, duplicando la lista y corriendo el 50%: sin
+   temporizador, sin JS por cuadro, y se para al pasar el raton por encima para
+   poder leer uno. Con prefers-reduced-motion no se mueve. */
+.cinta{position:fixed;inset:0 0 auto;z-index:11;height:34px;overflow:hidden;
+  background:rgba(10,14,20,.94);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
+  border-bottom:1px solid rgba(238,241,245,.07)}
+.cinta-pista{display:flex;width:max-content;animation:cintaCorre 70s linear infinite}
+.cinta:hover .cinta-pista,.cinta-pista:focus-within{animation-play-state:paused}
+@keyframes cintaCorre{to{transform:translateX(-50%)}}
+.cinta-mitad{display:flex;flex:none}
+.cinta-it{display:flex;align-items:center;gap:8px;padding:0 18px;height:34px;
+  font-family:var(--mono);font-size:11.5px;font-variant-numeric:tabular-nums;
+  white-space:nowrap;color:var(--bruma);border:0;cursor:pointer}
+.cinta-it:hover{background:rgba(238,241,245,.05)}
+.cinta-it b{color:var(--crema);font-weight:700;font-family:var(--sans);font-size:12px;letter-spacing:.02em}
+.cinta-it .p{color:var(--crema)}
+/* El precio de referencia, en oro y con la marca: pintado igual que uno de
+   trato diria «esto se pago» donde solo hay «esto valdria». */
+.cinta-it .p.esRef{color:var(--oro)}
+.cinta-it .p.esRef::before{content:'ref ';font-size:9px;color:var(--humo)}
+/* Un activo que ya no se publica pero que alguien tiene en su wallet. Tono
+   apagado y no rojo: no es un error, es un estado. */
+.no-listado{display:inline-block;margin-left:7px;padding:2px 7px;border-radius:100px;
+  font-size:9px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;
+  color:var(--humo);background:rgba(255,255,255,.05);border:1px solid var(--linea2);
+  vertical-align:1px}
+#mercados-vivos .mv-num.esRef{color:var(--oro)}
+#mercados-vivos .mv-num.esRef::before{content:'ref ';font-size:10px;color:var(--humo);text-transform:uppercase}
+.cinta-it .c.sube{color:var(--jade)} .cinta-it .c.baja{color:var(--coral)}
+.cinta-it .c.nada{color:var(--humo)}
+@media (prefers-reduced-motion:reduce){
+  .cinta-pista{animation:none}
+  .cinta{overflow-x:auto}
+}
+/* Todo lo de abajo baja 34 px para dejarle sitio. */
+.techo{top:34px!important}
+.riel{top:34px!important}
+body.en-app .lienzo{padding-top:calc(34px + 22px)}
+
+/* ── cabecera fina: solo de la portada ───────────────────────────────────── */
+.techo{position:fixed;inset:0 0 auto;z-index:10;display:flex;align-items:center;
+  justify-content:space-between;padding:18px clamp(18px,4vw,42px)}
+.techo .marca{font-size:clamp(19px,2.6vw,23px)}
+.idiomas{display:flex;border:1px solid var(--linea2);border-radius:100px;overflow:hidden;
+  background:rgba(19,26,36,.62);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
+.idiomas button{padding:7px 14px;font-size:12px;font-weight:700;letter-spacing:.08em;color:var(--humo);transition:.2s}
+.idiomas button[aria-pressed=true]{background:rgba(201,169,97,.18);color:var(--oroHi)}
+
+/* ── la marca. ORDEN es de la casa y va en crema; EX es el cambio y lleva el
+   acento — la misma gramática que veta wallet, con el color propio. ──────── */
+.marca{display:flex;align-items:center;gap:10px;letter-spacing:.04em;line-height:1;
+  font-family:var(--serif);font-weight:700;color:var(--crema)}
+.marca img{width:1.15em;height:1.15em;flex:none;display:block}
+.marca .letras{display:flex;align-items:baseline}
+.marca em{font-style:normal;font-weight:700;
+  background:linear-gradient(100deg,var(--acento),#D9FBF1 42%,#57C9AB 72%,var(--acento));
+  background-size:220% 100%;-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;
+  animation:brillo 6s linear infinite}
+@keyframes brillo{to{background-position:220% 0}}
+
+/* ── portada: editorial, cargada a la izquierda, como la casa. El texto vive
+   en la mitad izquierda; la derecha es de la tabla de mercados viva — acá el
+   argumento de venta son números de verdad, no una promesa. ───────────────── */
+/* La portada YA NO es un anuncio con una tabla de adorno al costado: es la
+   TABLA, con el titular reducido a una franja arriba. Ninguna casa de cambio
+   del mundo abre con un eslogan a pantalla completa — abren con precios,
+   porque es lo que la gente vino a ver y porque enseñar el mercado respirando
+   vende mas que cualquier adjetivo.
+
+   La proporcion se invierte: antes el texto llevaba 6 de 10 columnas y la
+   tabla 4; ahora el texto es una franja de arriba y la tabla se lleva el
+   ancho entero. */
+#bienvenida{position:relative;z-index:2;display:grid;align-items:start;
+  grid-template-columns:1fr;gap:clamp(18px,2.6vw,30px);
+  max-width:1420px;margin:0 auto;
+  padding:calc(34px + clamp(48px,7vh,72px)) clamp(16px,4vw,48px) clamp(36px,6vh,56px)}
+.bv{max-width:none;display:grid;gap:14px;
+  grid-template-columns:minmax(0,1fr) auto;align-items:end}
+@media (max-width:900px){.bv{grid-template-columns:1fr}}
+.bv .renglon{display:block;overflow:hidden;padding-bottom:.06em}
+.bv .palabra{display:inline-block;transform:translateY(112%);animation:palabraSube .8s cubic-bezier(.2,.8,.2,1) forwards}
+@keyframes palabraSube{to{transform:none}}
+.sello{font-size:11px;font-weight:700;letter-spacing:.34em;color:var(--oroDp);text-transform:uppercase;
+  display:flex;align-items:center;gap:14px}
+.sello::after{content:"";height:1px;width:74px;background:linear-gradient(90deg,var(--oroDp),transparent)}
+/* El titular de la portada YA NO va en serif. La Cinzel es una capital romana
+   —casa de subastas, no mesa de operaciones— y mientras estuviera aqui la
+   pagina se iba a seguir viendo «boutique» por muchas piezas que se le
+   agregaran. La serif queda para la MARCA y para nada mas.
+
+   Y baja de 82 px a 46: el titular de un exchange no compite con los numeros,
+   los presenta. */
+.bv h1{margin-top:18px;font-family:var(--sans);font-weight:700;letter-spacing:-.02em;
+  font-size:clamp(30px,4vw,46px);line-height:1.08;color:var(--crema)}
+.bv h1 i{font-style:normal;font-weight:700;color:var(--oroLt)}
+.bv p{margin-top:10px;color:var(--bruma);font-size:14.5px;line-height:1.6;max-width:72ch;
+  opacity:0;animation:aparece .6s .4s ease forwards}
+.bv-btns{margin-top:0;display:flex;gap:10px;flex-wrap:wrap;align-items:center;
+  opacity:0;animation:aparece .6s .5s ease forwards}
+@keyframes aparece{to{opacity:1}}
+/* La nota del SSO va pegada al botón porque contesta la pregunta que el botón
+   abre: «¿otra cuenta más?». No. */
+.bv-nota{margin-top:8px;font-size:12px;color:var(--humo);line-height:1.55;max-width:52ch;
+  opacity:0;animation:aparece .6s .6s ease forwards}
+
+/* ── la tabla de mercados viva de la portada ─────────────────────────────── */
+.mv{width:100%;padding:0;justify-self:stretch;overflow:hidden;
+  opacity:0;animation:aparece .6s .3s ease forwards}
+.mv-lbl{padding:13px 16px 11px}
+#mercados-vivos{margin-top:0}
+#mercados-vivos th,#mercados-vivos td{padding-left:16px}
+#mercados-vivos th:last-child,#mercados-vivos td:last-child{padding-right:16px}
+.mv-nota{padding:0 16px 13px}
+.mv-lbl{font-size:11.5px;letter-spacing:.26em;text-transform:uppercase;color:var(--oro);font-weight:600;opacity:.9;
+  display:flex;align-items:center;gap:9px}
+/* El punto que respira: la señal de que la tabla está viva, no una captura. */
+.mv-lbl::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--acento);
+  box-shadow:0 0 9px 2px rgba(116,230,200,.55);animation:latir 2.6s ease-in-out infinite}
+@keyframes latir{0%,100%{transform:scale(1);opacity:.85}50%{transform:scale(1.25);opacity:1}}
+#mercados-vivos{width:100%;margin-top:14px;border-collapse:collapse}
+#mercados-vivos th{font-size:10.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;
+  color:var(--humo);text-align:right;padding:0 0 8px;border-bottom:1px solid var(--linea2)}
+#mercados-vivos th:first-child{text-align:left}
+#mercados-vivos td{padding:10px 0 10px 10px;border-bottom:1px solid rgba(255,255,255,.05);
+  text-align:right;vertical-align:middle}
+#mercados-vivos td:first-child{padding-left:0;text-align:left}
+#mercados-vivos tr:last-child td{border-bottom:0}
+#mercados-vivos tbody tr{cursor:pointer;transition:background .15s}
+#mercados-vivos tbody tr:hover{background:rgba(116,230,200,.05)}
+.mv-par b{font-size:14px;font-weight:700;color:var(--crema)}
+.mv-par small{margin-left:4px;font-size:11px;color:var(--humo)}
+.mv-num{font-size:13px;font-variant-numeric:lining-nums tabular-nums}
+/* Las tres columnas de detalle se van en pantalla angosta: en un telefono, seis
+   columnas de numeros no se leen, se adivinan. */
+.soloAncho{display:none}
+@media (min-width:1000px){.soloAncho{display:table-cell}}
+#mercados-vivos tbody tr{border-left:2px solid transparent}
+#mercados-vivos tbody tr:hover{background:rgba(201,169,97,.06)}
+/* La referencia SIEMPRE rotulada y en letra chica: es un dato informativo del
+   feed, jamás la última operación — la regla n.º 2 de la casa. */
+.mv-ref{display:block;font-size:10.5px;color:var(--humo);font-family:var(--sans)}
+.mv-sin{color:var(--humo)}
+.mv-nota{margin-top:12px;font-size:12px;color:var(--humo);line-height:1.55}
+.pastilla{display:inline-block;padding:3px 9px;border-radius:100px;
+  font-size:12px;font-weight:700;font-family:var(--mono)}
+.sube-p{background:rgba(62,217,160,.14);color:var(--jade)}
+.baja-p{background:rgba(240,119,107,.14);color:var(--coral)}
+
+/* ── botones: la pastilla de la casa, con su destello de metal ───────────── */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:9px;
+  padding:15px 30px;border-radius:100px;font-weight:700;font-size:15px;letter-spacing:.01em;
+  transition:transform .22s cubic-bezier(.2,.8,.3,1),box-shadow .22s,background .22s,border-color .22s;
+  white-space:nowrap;position:relative;overflow:hidden}
+/* PROFUNDIDAD DE VERDAD, NO UN ENCOGIMIENTO. `scale(.975)` se lee como
+   «se achico», no como «lo apreté». Un boton con cuerpo tiene tres cosas: un
+   filo claro arriba (la luz que le pega), un canto oscuro abajo (su grosor), y
+   al presionarlo BAJA y pierde ese canto — que es exactamente lo que hace un
+   boton fisico. */
+.btn{position:relative;transition:transform .12s cubic-bezier(.2,.8,.3,1),
+  box-shadow .16s,filter .16s,border-color .16s,background .16s}
+.btn:active{transform:translateY(2px)}
+.btn:focus-visible{outline:2px solid var(--oroLt);outline-offset:3px}
+.btn-oro{color:#2A2007;background:linear-gradient(120deg,var(--oroLt),var(--oro) 52%,var(--oroLt));
+  background-size:210% 100%;box-shadow:0 14px 40px -16px rgba(201,169,97,.7)}
+.btn-oro{box-shadow:
+  inset 0 1px 0 rgba(255,255,255,.55),
+  inset 0 -1px 0 rgba(90,70,20,.35),
+  0 3px 0 var(--oroDp),
+  0 10px 26px -10px rgba(201,169,97,.55)}
+.btn-oro:hover{transform:translateY(-1px);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.6),inset 0 -1px 0 rgba(90,70,20,.35),
+  0 4px 0 var(--oroDp),0 20px 44px -14px rgba(201,169,97,.8)}
+.btn-oro:active{transform:translateY(3px);
+  box-shadow:inset 0 2px 5px rgba(90,70,20,.45),0 0 0 var(--oroDp),
+  0 4px 14px -8px rgba(201,169,97,.5)}
+.btn-oro::after{content:"";position:absolute;inset:0;
+  background:linear-gradient(105deg,transparent 40%,rgba(255,255,255,.55) 50%,transparent 60%);
+  background-size:250% 100%;background-position:160% 0;transition:background-position .7s ease}
+.btn-oro:hover::after{background-position:-60% 0}
+.btn-linea{border:1px solid var(--linea);color:var(--crema);background:rgba(255,255,255,.03)}
+.btn-linea{box-shadow:inset 0 1px 0 rgba(255,255,255,.06),0 2px 0 rgba(0,0,0,.45)}
+.btn-linea:hover{border-color:var(--oro);background:rgba(201,169,97,.09);transform:translateY(-1px);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.09),0 3px 0 rgba(0,0,0,.5)}
+.btn-linea:active{transform:translateY(2px);box-shadow:inset 0 2px 4px rgba(0,0,0,.4)}
+.btn:disabled{opacity:.5;cursor:not-allowed;transform:none!important}
+.btn-full{width:100%}
+.btn-sm{padding:11px 20px;font-size:13.5px}
+
+.vidrio{background:var(--panel);border:1px solid var(--linea2);border-radius:var(--r2);
+  backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);
+  box-shadow:0 30px 80px -40px rgba(0,0,0,.9)}
+
+/* ── campos ──────────────────────────────────────────────────────────────── */
+.campo{margin-bottom:15px}
+.campo label{display:block;font-size:12px;color:var(--bruma);margin-bottom:7px;font-weight:500}
+.campo input,.campo select,.campo textarea{width:100%;padding:14px 15px;background:var(--campo);
+  border:1px solid var(--campoBr);border-radius:var(--r);font-size:15.5px;color:var(--crema);
+  transition:border-color .2s,box-shadow .2s}
+.campo input::placeholder,.campo textarea::placeholder{color:var(--humo)}
+.campo input:focus,.campo select:focus,.campo textarea:focus{outline:none;border-color:var(--oro);
+  box-shadow:0 0 0 3px rgba(201,169,97,.14)}
+.campo .ayuda{display:block;font-size:11.5px;color:var(--humo);margin-top:7px;line-height:1.55}
+
+/* ── estados: la pastilla con su punto ───────────────────────────────────── */
+.estado{display:inline-flex;align-items:center;gap:7px;padding:5px 12px;border-radius:100px;
+  font-size:12px;font-weight:700;letter-spacing:.02em}
+.estado::before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor}
+.e-ok{background:rgba(62,217,160,.13);color:var(--jade)}
+.e-rev{background:rgba(201,169,97,.14);color:var(--oroLt)}
+.e-no{background:rgba(174,199,195,.1);color:var(--bruma)}
+.e-mal{background:rgba(240,119,107,.12);color:var(--coral)}
+
+/* ── hileras: la fila icono + texto + valor de toda lista de la casa ─────── */
+.hilera{display:flex;align-items:center;gap:14px;padding:14px 0;border-bottom:1px solid rgba(255,255,255,.05)}
+.hilera:last-child{border-bottom:0}
+.hilera .ic{width:38px;height:38px;flex:0 0 auto;border-radius:12px;display:grid;place-items:center;
+  background:rgba(201,169,97,.11);border:1px solid var(--linea2);overflow:hidden}
+.hilera .ic img{width:100%;height:100%;object-fit:cover}
+.hilera .ic svg{width:17px;height:17px;stroke:var(--oro);fill:none;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+.hilera .txt{flex:1;min-width:0}
+.hilera .txt b{display:block;font-size:14.5px;font-weight:600}
+.hilera .txt small{display:block;font-size:12.5px;color:var(--humo);margin-top:2px;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hilera .val{text-align:right;font-family:var(--mono);font-size:14px;font-weight:500;white-space:nowrap;
+  font-variant-numeric:lining-nums tabular-nums}
+.val.entra{color:var(--jade)} .val.sale{color:var(--crema)}
+
+/* ── tablas de mercado: el libro y la lista de mercados las comparten. Vive
+   aquí y no en un módulo porque es geometría de la casa, no de una vista. ── */
+.tabla{width:100%;border-collapse:collapse}
+.tabla th{font-size:10.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;
+  color:var(--humo);text-align:right;padding:0 10px 9px;border-bottom:1px solid var(--linea2)}
+.tabla th:first-child{text-align:left;padding-left:0}
+.tabla td{padding:11px 10px;border-bottom:1px solid rgba(255,255,255,.05);text-align:right;
+  font-variant-numeric:lining-nums tabular-nums}
+.tabla td:first-child{text-align:left;padding-left:0}
+.tabla tr:last-child td{border-bottom:0}
+
+/* ── el riel de cada tabla ────────────────────────────────────────────────
+   Toda tabla de la casa va DENTRO de uno de estos. No es adorno: en un
+   teléfono de 360 px la tabla de «mis órdenes abiertas» mide 443, y como el
+   body lleva `overflow-x:hidden` lo que sobra no se desplaza — se RECORTA.
+   Lo que quedaba fuera del borde era la columna del botón «Cancelar», así que
+   una orden colocada desde el teléfono no se podía cancelar desde el teléfono
+   con ningún gesto. Eso no es un fallo de maquetación: es dinero atrapado.
+
+   El arreglo es que desborde la tabla y no la página. Cada tabla lleva su
+   propio desplazamiento horizontal, el `body` conserva su guarda (quitarla
+   deja que CUALQUIER cosa ancha empuje la página entera, que es el problema
+   que esa línea vino a resolver), y `min-width:max-content` es lo que impide
+   que las celdas se estrujen hasta ser ilegibles en vez de deslizarse.
+
+   `overscroll-behavior-x:contain` evita que llegar al final del riel se lleve
+   por delante el gesto de «atrás» del navegador. */
+.desliza{overflow-x:auto;overscroll-behavior-x:contain;-webkit-overflow-scrolling:touch}
+.desliza>table{min-width:max-content}
+
+/* ── armazón de la aplicación ────────────────────────────────────────────── */
+#app{position:relative;z-index:2;min-height:100svh}
+.riel{position:fixed;left:0;top:0;bottom:0;width:232px;padding:26px 18px;z-index:5;
+  border-right:1px solid var(--linea2);background:rgba(10,14,20,.74);
+  backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);
+  display:flex;flex-direction:column;gap:6px}
+.riel-marca{padding:6px 6px 22px;font-size:16.5px;letter-spacing:.04em;white-space:nowrap}
+.nav{display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:14px;
+  font-size:14.5px;font-weight:600;color:var(--bruma);transition:.18s;width:100%;text-align:left;position:relative}
+.nav svg{width:19px;height:19px;flex:0 0 auto;stroke:currentColor;fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.nav:hover{background:rgba(255,255,255,.045);color:var(--crema)}
+.nav[aria-current=page]{background:rgba(201,169,97,.13);color:var(--oroHi)}
+.nav[aria-current=page] svg{color:var(--oro)}
+/* La sección activa lleva su propia astilla de veta al costado. */
+.nav[aria-current=page]::before{content:"";position:absolute;left:-18px;top:22%;bottom:22%;width:2px;
+  background:linear-gradient(180deg,transparent,var(--oro),transparent)}
+.riel-pie{margin-top:auto;padding:14px 12px 0;border-top:1px solid var(--linea2);font-size:11.5px;color:var(--humo);line-height:1.7}
+.riel-pie a{color:var(--bruma);text-decoration:none}
+.riel-pie a:hover{color:var(--oroLt)}
+.riel-pie button{color:var(--bruma);font-size:11.5px;padding:0}
+.riel-pie button:hover{color:var(--oroLt)}
+.riel-pie .idiomas{margin-top:10px;width:max-content}
+/* El sello se lee cuando se lo busca y no antes: es un dato de diagnostico,
+   no una linea de la interfaz. De ahi el tamaño chico y el gris apagado. */
+.riel-pie .sello{margin-top:10px;font-size:10.5px;letter-spacing:.06em;
+  color:var(--humo);opacity:.62;font-variant-numeric:tabular-nums;user-select:all}
+/* La linea de propiedad. Lleva el oro del logo y una regla encima: es un dato
+   de la casa, no un enlace mas de la lista. */
+.riel-pie .duena{padding-bottom:10px;margin-bottom:10px;border-bottom:1px solid var(--linea2);
+  font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--humo)}
+.riel-pie .duena a{color:var(--oroLt);font-weight:700;letter-spacing:.04em;
+  display:inline-flex;align-items:center;gap:6px}
+.riel-pie .duena a img{width:22px;height:18px;display:block}
+.riel-pie .duena a:hover{color:var(--oroHi)}
+
+.lienzo{margin-left:232px;padding:clamp(20px,3vw,38px) clamp(16px,3vw,38px) 60px;max-width:980px}
+/* ── la sala de mercado: ancha y a oscuras ─────────────────────────────────
+   Las demás vistas se leen; esta se opera. Se suelta el ancho de lectura
+   hasta 1720 px y se apaga la fotografía del fondo hasta dejarla en un
+   rumor: sobre una gráfica de velas, una foto a contraste pleno no es
+   ambiente, es ruido encima del dato. Es la misma decisión territorial que
+   `body.en-cerebro` en la billetera — cada sala con su luz. */
+body.en-mercado .lienzo{max-width:1720px}
+body.en-mercado::before{content:'';position:fixed;inset:0;z-index:-1;
+  background:linear-gradient(180deg,rgba(10,14,20,.92),rgba(8,11,16,.96));
+  pointer-events:none}
+/* Cada vista entra en cascada: los bloques se levantan uno tras otro. Como el
+   contenido se re-crea al navegar, la animación corre sola en cada cambio. */
+.lienzo>*{animation:bloqueSube .55s cubic-bezier(.2,.8,.3,1) both}
+.lienzo>*:nth-child(2){animation-delay:.07s}
+.lienzo>*:nth-child(3){animation-delay:.14s}
+.lienzo>*:nth-child(4){animation-delay:.21s}
+.lienzo>*:nth-child(5){animation-delay:.28s}
+@keyframes bloqueSube{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}
+/* La dirección del viaje: entrar a un mercado llega desde más lejos y se
+   acerca; volver a la lista llega desde más cerca y se asienta. 260 ms que
+   nadie nombra y todo el mundo nota. */
+@keyframes lzDentro{from{opacity:0;transform:scale(.972) translateY(10px)}
+  to{opacity:1;transform:none}}
+@keyframes lzFuera{from{opacity:0;transform:scale(1.028) translateY(-6px)}
+  to{opacity:1;transform:none}}
+.lz-dentro{animation:lzDentro .26s cubic-bezier(.2,.7,.3,1) both}
+.lz-fuera{animation:lzFuera .26s cubic-bezier(.2,.7,.3,1) both}
+.cab{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:26px}
+/* Dentro de la aplicación no hay lapidaria: títulos de pantalla secos y en
+   negrita, como en la billetera — la Cinzel es de la portada y de la marca. */
+.cab h2{font-family:var(--sans);font-weight:800;font-size:clamp(19px,2.2vw,24px);
+  letter-spacing:-.01em;color:var(--crema)}
+.cab .sub{font-size:12px;color:var(--bruma);margin-top:5px}
+.bloque{margin-top:22px;padding:clamp(20px,3vw,26px)}
+.bloque:first-child{margin-top:0}
+.bloque h3{font-size:16.5px;font-weight:700;margin-bottom:4px;color:var(--crema)}
+.bloque .pie{font-size:13px;color:var(--humo);line-height:1.6}
+.vacio{padding:34px 20px;text-align:center;color:var(--humo);font-size:14px;line-height:1.7}
+.vacio b{display:block;color:var(--bruma);font-size:15px;margin-bottom:6px;font-weight:600}
+.tabs{display:none}
+
+/* ═══ LA CONFIRMACIÓN Y LOS TÉRMINOS ═══════════════════════════════════════
+   Un velo sobre la casa y una caja en el medio. La usa la sala de mercado para
+   la confirmación de una orden (mercado.js: das, recibís, precio, referencia
+   del oro, diferencia) y el cascarón para pedir los términos y el aviso de
+   riesgo antes de la primera operación (ONX.pedirTerminos, también desde el
+   circuito fiat). Vive acá y no en un módulo porque se cuelga del body, fuera
+   del lienzo, y la abren dos vistas distintas. El desvío va en tres colores:
+   jade (dentro del margen), oro (aviso: hay que marcar la casilla), coral
+   (bloqueo: no hay casilla que valga). */
+.cf-velo{position:fixed;inset:0;z-index:70;display:grid;place-items:center;padding:16px;
+  background:rgba(10,14,20,.72);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}
+.cf-caja{width:min(560px,100%);max-height:calc(100svh - 32px);overflow:auto;padding:22px 22px 18px}
+.cf-caja h3{font-size:17px;font-weight:800;margin-bottom:14px;color:var(--crema)}
+.cf-caja p{font-size:13px;color:var(--bruma);line-height:1.6;margin-bottom:12px}
+.cf-fila{display:grid;grid-template-columns:150px minmax(0,1fr);gap:4px 14px;align-items:baseline;
+  padding:9px 0;border-top:1px solid rgba(255,255,255,.06);font-size:13px}
+.cf-fila>span{color:var(--humo);font-size:11px;letter-spacing:.08em;text-transform:uppercase;
+  font-family:var(--mono)}
+.cf-fila>b{color:var(--crema);font-weight:600;overflow-wrap:anywhere}
+.cf-fila>small{grid-column:2;color:var(--humo);font-size:11.5px;line-height:1.5}
+.cf-grande{font-size:15.5px;font-weight:700}
+.cf-desvio{font-size:12.5px;line-height:1.55;color:var(--bruma)}
+.cf-desvio b{display:inline-block;margin-right:6px;font-family:var(--mono);font-weight:700}
+.cf-desvio.ok b{color:var(--jade)}
+.cf-desvio.aviso{color:var(--oroLt)} .cf-desvio.aviso b{color:var(--oroHi)}
+.cf-desvio.bloqueo{color:var(--coral)} .cf-desvio.bloqueo b{color:var(--coral)}
+.cf-check,.vm-descargo-check{display:flex;gap:9px;align-items:flex-start;margin-bottom:12px;
+  cursor:pointer;color:var(--crema);font-size:12.5px;line-height:1.5}
+.cf-check input,.vm-descargo-check input{flex:none;width:17px;height:17px;margin-top:1px;accent-color:var(--oro)}
+.cf-desvio .vm-descargo-check{margin:10px 0 0}
+.cf-terminos{margin-top:12px;padding-top:12px;border-top:1px solid rgba(255,255,255,.06)}
+.cf-caja a{color:var(--oroLt);text-decoration:underline}
+.cf-botones{display:flex;gap:10px;justify-content:flex-end;margin-top:8px;flex-wrap:wrap}
+.cf-botones .btn{min-height:42px}
+.cf-aviso{min-height:18px;margin:8px 2px 10px;font-size:12.5px;line-height:1.55;color:var(--coral)}
+@media (max-width:640px){
+  .cf-fila{grid-template-columns:1fr}
+  .cf-fila>small{grid-column:1}
+  .cf-botones .btn{flex:1}
+}
+/* Los enlaces legales: en la portada bajo la nota del SSO y en el pie del
+   riel. Van a la vista, no a un «acerca de»: lo que se acepta antes de operar
+   tiene que poder leerse antes de entrar. */
+.bv-legal{margin-top:8px;font-size:12px;color:var(--humo);line-height:1.55;max-width:52ch;
+  opacity:0;animation:aparece .6s .7s ease forwards}
+.bv-legal a{color:var(--bruma);text-decoration:underline}
+.bv-legal a:hover{color:var(--oroLt)}
+.riel-pie .legal{display:block;margin-top:6px}
+.riel-pie .legal a{text-decoration:underline}
+
+/* ── la tostada ──────────────────────────────────────────────────────────── */
+#tostada{position:fixed;left:50%;bottom:26px;transform:translate(-50%,140%);z-index:60;
+  opacity:0;visibility:hidden;
+  padding:13px 22px;border-radius:100px;background:rgba(6,44,46,.96);border:1px solid var(--linea);
+  font-size:14px;font-weight:600;box-shadow:0 18px 50px -18px rgba(0,0,0,.9);
+  transition:transform .38s cubic-bezier(.2,.9,.3,1),opacity .3s,visibility .3s;
+  max-width:90vw;text-align:center}
+#tostada.ver{transform:translate(-50%,0);opacity:1;visibility:visible}
+
+/* ── móvil ───────────────────────────────────────────────────────────────── */
+@media (max-width:900px){
+  #bienvenida{gap:20px;padding-top:calc(34px + 56px)}
+  .bv h1{font-size:clamp(26px,7vw,36px)}
+  .mv{justify-self:stretch;width:100%}
+  /* El padding de arriba lleva los 34 px de la cinta sumados: la cinta va
+     `position:fixed` y el riel, acá, `static` — así que sin esa cuenta la
+     primera hilera del riel nace DEBAJO de la cinta y la marca ORDENEX queda
+     tapada por los precios que pasan. Se veía en cualquier captura de 360 px:
+     una barra en blanco donde tenía que estar el nombre de la casa. */
+  .riel{position:static;width:auto;height:auto;flex-direction:row;align-items:center;
+    border-right:0;border-bottom:1px solid var(--linea2);
+    padding:calc(14px + 34px) 16px 14px;gap:12px 14px;
+    justify-content:space-between;flex-wrap:wrap}
+  /* Las secciones sí se van: abajo están las pestañas, que hacen lo mismo con
+     el pulgar más cerca. El PIE no: ahí viven salir y el cambio de idioma, y
+     hasta hoy los dos desaparecían por debajo de 900 px — o sea que en un
+     teléfono no había manera de cerrar sesión ni de cambiar de idioma en toda
+     la aplicación. Un botón que solo existe en el escritorio no existe.
+
+     Así que en angosto el pie deja de ser una columna al fondo del riel y se
+     vuelve una hilera en la barra de arriba: se pierde el `margin-top:auto`,
+     la regla y el sangrado, y si no cabe cae a un segundo renglón, que es
+     para lo que el riel lleva `flex-wrap` acá arriba. */
+  .riel .nav{display:none}
+  .riel-pie{margin:0;padding:0;border-top:0;line-height:1.4;
+    display:flex;flex-wrap:wrap;align-items:center;gap:8px 10px}
+  .riel-pie .idiomas{margin-top:0}
+  /* La línea de propiedad se queda —en el teléfono también se tiene derecho a
+     saber con quién se opera— pero sin la regla ni el aire de la versión
+     vertical, que ahí separaban dos bloques y acá partirían una hilera. */
+  .riel-pie .duena{padding-bottom:0;margin-bottom:0;border-bottom:0;
+    display:inline-flex;align-items:center;gap:6px}
+  .riel-marca{padding:0;font-size:19px}
+  /* Una sola línea. Términos, «Orden Global» y el sello se van de la
+     cabecera del teléfono —viven en la portada y en legal.html— y quedan la
+     marca, la casa dueña, el idioma y salir: lo que hace falta para saber
+     dónde se está y poder irse. Medido a 390 px: de 150 px de cabecera a 56. */
+  .riel{padding:calc(8px + 34px) 12px 8px;gap:6px 8px;min-width:0}
+  .riel-pie{gap:6px;font-size:11px;min-width:0}
+  .riel-marca{font-size:17px}
+  /* En 390 px entran marca, logo de la casa dueña, idioma y salir en una
+     línea si el nombre de AuCorp se va y queda su escudo; en 320 se envuelve. */
+  .riel-pie .duena a{font-size:0;gap:0}
+  .riel-pie .duena a img{width:20px;height:16px}
+  .riel-pie .legal,.riel-pie .sello,.riel-pie a[data-t="pie.og"],.riel-pie>span:not(.legal){display:none}
+  .riel-pie .duena span{display:none}
+  .riel-pie .duena a{gap:4px}
+  .riel-pie .idiomas button{padding:4px 8px;font-size:11px}
+  .lienzo{margin-left:0;padding:16px 12px 104px}
+  .tabs{display:flex;position:fixed;left:0;right:0;bottom:0;z-index:20;
+    padding:8px 6px calc(8px + env(safe-area-inset-bottom));
+    background:rgba(2,22,23,.94);border-top:1px solid var(--linea2);
+    backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px)}
+  /* El rótulo se recorta con puntos antes que empujar la barra o partirse en
+     dos renglones y descuadrar la fila. Con cinco pestañas sobra ancho; en
+     inglés o con una palabra larga, no siempre. */
+  .tabs .nav{flex:1 1 0;min-width:0;flex-direction:column;gap:5px;padding:8px 4px;font-size:10.5px;font-weight:700;
+    justify-content:center;text-align:center;border-radius:12px}
+  .tabs .nav span{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .tabs .nav svg{width:21px;height:21px;flex:none}
+  .tabs .nav[aria-current=page]::before{display:none}
+
+  /* ── mientras se teclea, las pestañas se van ──────────────────────────────
+     El teclado del teléfono no empuja la página: le RECORTA la ventana por
+     abajo, de 740 px a unos 380. Y las pestañas van `position:fixed` pegadas
+     al borde de esa ventana nueva, así que suben con el teclado y se plantan
+     encima de lo que se está escribiendo. Medido a 360 px con el campo de
+     precio de la sala: el campo quedaba en 346–394 y la barra empezaba en 309.
+     O sea que se teclea un precio sin ver el precio que se teclea, y en una
+     casa de cambio eso es donde se pierde un cero.
+
+     Quien está tecleando no está navegando: mientras un campo tiene el foco,
+     esos 60 px de barra no sirven para nada y sí tapan. Se van, y vuelven al
+     soltar el campo. Como la barra es fija, esconderla no mueve ni un píxel
+     del contenido — no hay salto.
+
+     Y `scroll-margin-bottom` es el cinturón: cuando el navegador (o la casa)
+     lleva el campo a la vista, lo deja con aire por debajo en vez de pegado al
+     filo, que es donde el teclado vuelve a comérselo. */
+  body:has(#app input:focus, #app select:focus, #app textarea:focus) .tabs{display:none}
+  #app input,#app select,#app textarea{scroll-margin-bottom:96px}
+
+  /* ── las dos salidas de la portada, apiladas y con el rótulo envolviendo ──
+     Esto no es gusto: es lo que hacía que la portada entera se desplazara a lo
+     ancho en 320 y 360 px. `.btn` lleva `white-space:nowrap` —una pastilla
+     partida en dos renglones se ve rota— y en inglés el rótulo de entrar es
+     «Sign in with my Veta Wallet account». Un botón que no envuelve tiene el
+     ancho de su rótulo entero como ancho MÍNIMO, y como la columna de `.bv` es
+     `1fr` —o sea `minmax(auto,1fr)`, y ese `auto` es el mínimo de su
+     contenido— esos 371 px se los comía la rejilla completa: el sello, el
+     titular y el párrafo se iban con ella dentro de una pantalla de 320.
+
+     Se veía SOLO en inglés, que es exactamente por lo que llevaba ahí sin que
+     nadie lo notara: se prueba en el idioma de uno. Lo que arregla el
+     desbordamiento es `white-space:normal` —le baja el mínimo a la palabra más
+     larga—; el apilado es la consecuencia honesta: en un teléfono dos
+     llamadas a la acción van una encima de otra y del ancho de la pantalla, no
+     peleándose media fila cada una. */
+  .bv-btns{flex-direction:column;align-items:stretch}
+  .bv-btns .btn{width:100%;white-space:normal}
+
+  /* ── el dedo no es un puntero ────────────────────────────────────────────
+     40 px de alto en todo lo que se toca. No se cambia ni la tipografía ni el
+     relleno lateral: se pone un alto mínimo y se centra, así el rótulo queda
+     donde estaba y lo que crece es el blanco donde se acierta. */
+  .idiomas button{min-height:40px;display:inline-flex;align-items:center;justify-content:center}
+  /* El botón chico se queda chico de letra —es una acción secundaria y tiene
+     que seguir pareciéndolo— pero no de blanco: 38 px es un fallo de dos de
+     cada diez toques, y algunos de estos traen dinero desde la billetera. */
+  .btn-sm{min-height:40px}
+
+  /* El pie del riel es, en el teléfono, el único sitio de TODA la aplicación
+     donde se cierra sesión y se cambia de idioma. Y `.riel-pie button{padding:0}`
+     —escrito para que los enlaces del pie vertical no abrieran huecos— le
+     estaba comiendo el relleno a las pastillas de idioma: quedaban de 18×16 px,
+     el tamaño de las dos letras y nada más. SALIR medía 25×16, que es el
+     tamaño de la PALABRA, no el de un botón; acá se le da borde y blanco
+     propios, porque una hilera de texto no se toca, se lee. */
+  .riel-pie .idiomas button{padding:0 16px}
+  .riel-pie button[data-t="nav.salir"]{min-height:40px;padding:0 14px;
+    border:1px solid var(--linea2);border-radius:100px;color:var(--crema);font-weight:700}
+
+  /* ── la hilera, apilada cuando lleva un botón ────────────────────────────
+     La hilera es [icono][texto que encoge][acción]. La acción es un `.btn`, y
+     un `.btn` no envuelve: su ancho mínimo es el rótulo entero. En una fila de
+     328 px con «Comprarle ORIGEN» al lado, al texto le quedaban 30 px — el
+     nombre del agente bajaba a UNA PALABRA POR RENGLÓN y, si el nombre venía
+     en una sola palabra larga, se metía por debajo del botón.
+
+     Es el mismo fallo que reportó José con «Mayra Carolina Enamorado Alvarez»,
+     y es de los que no atrapa medir desbordes: nada se sale del ancho de la
+     pantalla, se PISAN dentro de ella. Por eso hay que mirar además de medir.
+
+     Solo se apila la hilera que termina en botón. La del portafolio termina en
+     una cifra (`.val`), que es corta, va sin envolver y tiene que quedarse en
+     el renglón del activo: apilarla partiría en dos lo que se lee de un
+     vistazo.
+
+     El sangrado de 52 px es el icono (38) más el hueco (14), para que la
+     acción nazca en la misma columna que el nombre. Va de relleno y no de
+     margen a propósito: la base es el 100 % del renglón, y un margen se SUMA a
+     esa base — 100 % + 52 px es más ancho que el renglón, y la fila entera se
+     salía de la pantalla por esos mismos 52 px. El relleno cae dentro, porque
+     todo en esta hoja es `border-box`. */
+  .hilera:has(.btn){flex-wrap:wrap}
+  .hilera:has(.btn)>*:last-child{flex:1 0 100%;padding-left:52px}
+  /* Y un nombre sin espacios —un identificador, una razón social con guiones—
+     se parte donde toque antes que salirse de su caja. */
+  .hilera .txt b{overflow-wrap:anywhere}
+}
+/* Quien pidió que las cosas no se muevan no pidió menos información: se queda
+   todo visible y se va lo que se mueve solo. */
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}
+  .bv .palabra{transform:none}
+  .bv p,.bv-btns,.bv-nota,.mv{opacity:1}
+  .lz-dentro,.lz-fuera{animation:none}
+}
+/* ── Vender ORIGEN ──────────────────────────────────────────────────────────
+   Hereda de la calculadora de comprar (.cp-*) todo lo que ya estaba resuelto
+   —la rejilla, la caja de vidrio, el campo del monto— y agrega solo lo suyo:
+   el saldo con su atajo, el aviso de red ARRIBA de la dirección, y la cuenta
+   con el número grande al final. La comisión se ve, pero nunca resta después
+   del número que la persona va a recibir. */
+.vn-saldo{margin-top:8px;font-size:12.5px;color:var(--tenue)}
+.vn-saldo b{color:var(--crema);font-variant-numeric:tabular-nums}
+.vn-todo{background:none;border:0;color:var(--oro);cursor:pointer;font:inherit;text-decoration:underline;padding:0}
+.vn-nota{margin-top:10px;font-size:12.5px;color:var(--tenue);line-height:1.55}
+.vn-mal{margin-top:8px;font-size:12.5px;color:#ff9b9b}
+.vn-dir{display:block;margin-top:6px;padding:8px 10px;border-radius:9px;background:rgba(255,255,255,.04);
+        font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;word-break:break-all;color:var(--crema)}
+.vn-input{width:100%;box-sizing:border-box;padding:12px 13px;border-radius:12px;border:1px solid rgba(255,255,255,.1);
+          background:rgba(0,0,0,.25);color:var(--crema);font:inherit;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:13px}
+.vn-input:focus{outline:none;border-color:rgba(201,169,97,.5)}
+.vn-redes{display:flex;gap:8px;flex-wrap:wrap}
+.vn-red{flex:1 1 120px;padding:10px 12px;border-radius:12px;border:1px solid rgba(255,255,255,.1);
+        background:rgba(255,255,255,.02);color:var(--crema);cursor:pointer;text-align:left;font:inherit}
+.vn-red span{display:block;font-size:11px;color:var(--tenue);margin-top:2px}
+.vn-red.es{border-color:rgba(201,169,97,.55);background:rgba(201,169,97,.1)}
+.vn-cuenta,.vn-fila,.vn-recibe,.vn-alerta,.vn-saldo,.vn-nota{min-width:0}
+.vn-input{overflow-wrap:anywhere}
+.vn-alerta{margin-bottom:10px;padding:10px 12px;border-radius:11px;font-size:12.5px;line-height:1.5;
+           border:1px solid rgba(255,120,120,.35);background:rgba(255,80,80,.08);color:#ffc9c9}
+.vn-alerta b{color:#fff}
+/* ── Recargar la tarjeta ────────────────────────────────────────────────────
+   La sala hereda de Vender (.vn-*) el saldo, la cuenta y los avisos, y agrega
+   lo suyo: la ficha de la tarjeta, que es lo contrario de un formulario. Se
+   ve como una FICHA y no como campos —sin borde de input, sin cursor de
+   texto— porque nada de lo que hay dentro se puede cambiar: la red es Polygon
+   y la dirección la da el emisor. Que no parezca editable es parte de que no
+   lo sea. */
+.rc-tarjeta{margin-bottom:18px;padding:14px 15px;border-radius:13px;font-size:13px;line-height:1.5;
+  background:rgba(201,169,97,.06);border:1px solid rgba(201,169,97,.28);color:var(--bruma)}
+.rc-tarjeta-esp{color:var(--tenue);font-size:12.5px;text-align:center}
+.rc-tarjeta-no{background:rgba(255,255,255,.04);border-color:rgba(255,255,255,.12)}
+.rc-tarjeta-no b{color:var(--crema);display:block;margin-bottom:4px}
+.rc-tarjeta-no small{display:block;font-size:11.5px;color:var(--tenue);line-height:1.5;margin-top:4px}
+.rc-t-fila{display:flex;justify-content:space-between;align-items:baseline;gap:12px;padding:4px 0}
+.rc-t-fila span{color:var(--tenue);font-size:12.5px}
+.rc-t-fila b{color:var(--crema);font-variant-numeric:tabular-nums;font-weight:600}
+/* El candado se dice con palabras («fija») y además se ve: un rótulo suelto
+   se lee como decoración, uno con su chapita se lee como una regla. */
+.rc-fijo em{display:inline-block;margin-left:6px;padding:2px 7px;border-radius:999px;font-style:normal;
+  font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;
+  background:rgba(201,169,97,.16);color:var(--oro);vertical-align:middle}
+.rc-t-dir{margin-top:10px;padding-top:10px;border-top:1px solid rgba(255,255,255,.08)}
+.rc-t-dir span{display:block;color:var(--tenue);font-size:12.5px;margin-bottom:6px}
+.rc-t-dir code{display:block;padding:9px 11px;border-radius:9px;background:rgba(0,0,0,.28);
+  font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;color:var(--crema);
+  word-break:break-all;overflow-wrap:anywhere;user-select:all}
+.rc-t-dir small{display:block;margin-top:6px;font-size:11.5px;color:var(--tenue);line-height:1.5}
+.vn-cuenta{margin-top:16px;padding-top:14px;border-top:1px solid rgba(255,255,255,.08)}
+.vn-fila{display:flex;justify-content:space-between;gap:12px;font-size:13px;padding:4px 0;color:var(--tenue)}
+.vn-fila b{color:var(--crema);font-variant-numeric:tabular-nums;font-weight:600}
+.vn-com b{color:#ffc9c9}
+.vn-recibe{display:flex;justify-content:space-between;align-items:baseline;gap:12px;margin-top:10px;padding-top:10px;
+           border-top:1px solid rgba(255,255,255,.08)}
+.vn-recibe span{font-size:12.5px;color:var(--tenue)}
+.vn-recibe b{font-size:23px;color:var(--oroHi);font-variant-numeric:tabular-nums}
+.vn-pct{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:10px}
+.vn-pct button{padding:7px 0;border-radius:9px;border:1px solid rgba(255,255,255,.1);background:rgba(2,22,23,.45);
+  color:var(--bruma);font-family:var(--mono);font-size:11.5px;font-weight:600;cursor:pointer;transition:.15s}
+.vn-pct button:hover{color:var(--crema);border-color:var(--linea)}
+.vn-techo{margin-top:14px;padding:11px 13px;border-radius:var(--r);background:rgba(201,169,97,.06);
+  border:1px solid var(--linea2);display:grid;gap:3px;font-size:12px;color:var(--bruma)}
+.vn-techo b{font-size:15px;color:var(--crema);font-variant-numeric:tabular-nums}
+.vn-techo small{color:var(--humo);line-height:1.5}
+.vn-neto{margin-top:8px;padding-top:9px;border-top:1px solid rgba(255,255,255,.08)}
+.vn-neto span{color:var(--bruma)}
+.vn-neto b{font-size:16px;color:var(--oroLt)}
+.vn-btn{width:100%;margin-top:16px}
+.vn-pie{margin-top:10px;font-size:11.5px;color:var(--tenue);line-height:1.5}
+.vn-lado h3{font-size:13px;letter-spacing:.02em;margin:0 0 8px}
+.vn-lado h3+*{margin-top:0}
+.vn-pasos{margin:0 0 16px;padding-left:18px;font-size:12.5px;color:var(--tenue);line-height:1.65}
+.vn-pasos b{color:var(--crema)}
+.vn-ok{text-align:center}
+
+.vn-tick{font-size:34px;color:var(--oroHi);line-height:1}
+
+/* ── Comprar ORIGEN ─────────────────────────────────────────────────────────
+   Se construye DENTRO del sistema de la casa, no al lado: pozo de fondo, oro
+   solo para el dinero, jade para lo confirmado, coral para lo que no se puede
+   deshacer. El azul --acento, que casi no se usaba, se reserva aqui para «la
+   red que elegiste» — asi el oro nunca compite consigo mismo y el numero que
+   importa sigue siendo el unico dorado de la pantalla. */
+.cab-sub{margin:5px 0 0;font-size:13px;color:var(--humo);line-height:1.6}
+.cp-previa{margin:0 0 16px;padding:11px 14px;border-radius:var(--r);
+  border:1px dashed var(--linea);background:rgba(201,169,97,.05);
+  color:var(--bruma);font-size:12.5px;line-height:1.6}
+.cp-grid{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,.85fr);gap:18px;align-items:start}
+/* minmax(0,1fr) y no 1fr: `1fr` es `minmax(auto,1fr)`, y ese `auto` deja que
+   el contenido mas ancho de la columna FIJE el minimo. Con una direccion de 42
+   caracteres dentro —la de vender— la columna crecia a 446 px en un telefono
+   de 390 y el boton de confirmar quedaba a medio salir. */
+@media(max-width:860px){.cp-grid{grid-template-columns:minmax(0,1fr)}}
+.cp-col{min-width:0}
+.cp-caja{padding:22px}
+.cp-riel{padding:22px}
+
+/* el monto, con su moneda pegada al campo para que no parezca otro dato */
+.cp-monto{position:relative}
+.cp-monto input{padding-right:74px;font-family:var(--mono);font-size:20px;
+  font-variant-numeric:tabular-nums;letter-spacing:-.01em}
+.cp-mon{position:absolute;right:11px;top:50%;transform:translateY(-50%);pointer-events:none}
+
+/* EL SELECTOR DE RED. Lleva el tiempo y el minimo DENTRO, porque esa es la
+   decision de verdad: entre Polygon y Ethereum no se elige un nombre, se
+   elige entre dos minutos y veinticinco. Esconderlo en un aviso posterior es
+   dejar que alguien elija a ciegas la opcion cara. */
+.cp-redes{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+@media(max-width:520px){.cp-redes{grid-template-columns:1fr}}
+.cp-red{display:flex;flex-direction:column;align-items:flex-start;gap:2px;
+  padding:12px 13px;border-radius:var(--r);cursor:pointer;text-align:left;
+  border:1px solid var(--campoBr);background:var(--campo);color:var(--bruma);
+  transition:border-color .16s,background .16s,transform .16s}
+.cp-red:hover{border-color:var(--acento);transform:translateY(-1px)}
+.cp-red.es{border-color:var(--acento);background:rgba(143,185,224,.10);color:var(--crema)}
+.cp-red-n{font-size:13.5px;font-weight:600}
+.cp-red-t{font-size:11.5px;color:var(--acento);font-variant-numeric:tabular-nums}
+.cp-red.lenta .cp-red-t{color:var(--oroDp)}
+.cp-red-m{font-size:10.5px;color:var(--humo)}
+
+/* EL NUMERO QUE RECIBE. Es el heroe de la pantalla y por eso lleva la serif de
+   la casa: es lo unico que la persona vino a saber, y lleva la comision ya
+   descontada — no hay letra chica que reste despues. */
+.cp-grande input{font-size:26px;padding:16px 96px 16px 15px}
+.cp-grande .cp-mon{font-size:12px}
+/* El pago va en su renglón y no de titular: lo que la casa vende es ORIGEN;
+   el USDT es el medio, y por eso se lee después y más chico. */
+.cp-pagas{margin-top:2px;font-size:15px;color:var(--bruma);display:flex;flex-wrap:wrap;align-items:baseline;gap:7px}
+.cp-pagas b{font-size:19px;color:var(--crema);font-variant-numeric:tabular-nums}
+.cp-pagas span{font-size:12.5px;color:var(--humo)}
+.cp-pagas.vacio{color:var(--humo);font-size:13px}
+.cp-recibes-min{margin-top:7px;font-size:12.5px;color:var(--humo)}
+.cp-recibes-min b{color:var(--oroLt);font-variant-numeric:tabular-nums}
+.cp-recibe{margin:20px 0 16px;padding:18px 0 0;border-top:1px solid var(--linea2)}
+.cp-lbl{display:block;font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;
+  color:var(--humo);font-weight:600;margin-bottom:8px}
+/* EL NUMERO NO PUEDE BAILAR. Medido: en Cinzel un «1» ocupa 144,6px donde un
+   «8» ocupa 160 — y `tabular-nums` NO lo corrige, la fuente no trae esa
+   caracteristica. Archivo tampoco. La unica de la casa con cifras de ancho
+   fijo es JetBrains Mono, y este numero se repinta en cada tecla: con una
+   proporcional, el heroe se corre quince pixeles mientras alguien escribe.
+   La serif se queda para los titulos, donde nada cambia. */
+.cp-hero{font-family:var(--mono);font-weight:700;color:var(--oroHi);
+  font-size:clamp(30px,4.6vw,44px);line-height:1.05;letter-spacing:-.025em;
+  font-variant-numeric:tabular-nums;display:flex;align-items:baseline;gap:2px}
+/* Los decimales, mas chicos y mas apagados: es como los lee un exchange y es
+   como los lee un ojo — primero la magnitud, despues la precision. */
+.cp-hero .dec{font-size:.62em;color:var(--oro);opacity:.92;letter-spacing:-.01em}
+.cp-hero em{font-style:normal;font-family:var(--sans);font-size:.36em;
+  font-weight:700;color:var(--oro);letter-spacing:.08em;margin-left:10px;
+  align-self:center}
+/* El destello cuando el precio se mueve. Sin esto un numero que cambia solo
+   parece un numero que nunca cambio. */
+@keyframes cp-tic{0%{color:var(--jade)}100%{color:var(--oroHi)}}
+.cp-hero.tic{animation:cp-tic .55s ease-out}
+@media(prefers-reduced-motion:reduce){.cp-hero.tic{animation:none}}
+.cp-hero.vacio{color:var(--humo);padding:0}
+.cp-precio{margin-top:9px;font-size:12px;color:var(--bruma);font-variant-numeric:tabular-nums}
+.cp-com{color:var(--jade)}
+.cp-pie{margin:10px 0 0;font-size:11.5px;color:var(--humo);line-height:1.6}
+.cp-alerta{margin:0 0 13px;padding:10px 13px;border-radius:var(--r);
+  border-left:3px solid var(--coral);background:rgba(240,119,107,.08);
+  color:var(--crema);font-size:12.5px}
+
+/* EL AVISO DE RED. Va ARRIBA de la direccion y en coral porque es el unico
+   error de esta pantalla que no se puede reparar: lo que se manda por TRON no
+   vuelve. Una advertencia al pie aqui seria una advertencia que nadie lee. */
+.cp-red-aviso{margin:16px 0;padding:13px 15px;border-radius:var(--r);
+  border:1px solid rgba(240,119,107,.45);background:rgba(240,119,107,.09)}
+.cp-red-aviso strong{display:block;color:var(--coral);font-size:14px;
+  letter-spacing:.02em;margin-bottom:4px}
+.cp-red-aviso span{display:block;color:var(--bruma);font-size:12px;line-height:1.6}
+
+.cp-manda{margin-bottom:4px}
+.cp-dir{display:flex;gap:9px;align-items:stretch}
+.cp-dir code{flex:1;min-width:0;padding:13px 14px;border-radius:var(--r);
+  background:var(--campo);border:1px solid var(--campoBr);color:var(--crema);
+  font-size:11.5px;letter-spacing:-.01em;line-height:1.6;word-break:break-all;
+  display:flex;align-items:center}
+.cp-qr{margin-top:12px;display:flex;justify-content:center}
+.cp-qr svg{background:#fff;padding:9px;border-radius:var(--r)}
+
+.cp-reloj{margin:18px 0 14px;padding-top:16px;border-top:1px solid var(--linea2)}
+.cp-tiempo{font-size:30px;font-weight:700;color:var(--crema);
+  font-variant-numeric:tabular-nums;letter-spacing:.02em}
+.cp-reloj.mal .cp-tiempo{color:var(--coral)}
+
+/* EL RIEL. Cuatro renglones, no una rueda girando: entre que manda el dinero y
+   ve su ORIGEN pasan minutos, y cada uno tiene que decir algo distinto y
+   verdadero. Una rueda sin texto es donde se pierde la confianza. */
+.cp-paso{display:flex;gap:13px;padding:13px 0;border-bottom:1px solid var(--linea2)}
+.cp-paso:last-of-type{border-bottom:0}
+.cp-punto{flex:none;width:28px;height:28px;border-radius:50%;display:grid;place-items:center;
+  font-family:var(--mono);font-size:12px;font-weight:700;
+  border:1px solid var(--campoBr);color:var(--humo);background:var(--campo)}
+.cp-txt b{display:block;font-size:13.5px;color:var(--bruma);font-weight:600;margin-bottom:3px}
+.cp-txt span{display:block;font-size:12px;color:var(--humo);line-height:1.6}
+.cp-paso.ahora .cp-punto{border-color:var(--oro);color:var(--tinta);
+  background:linear-gradient(120deg,var(--oroLt),var(--oro));
+  box-shadow:0 0 0 4px rgba(201,169,97,.14)}
+.cp-paso.ahora .cp-txt b{color:var(--crema)}
+.cp-paso.hecho .cp-punto{border-color:var(--jade);color:var(--jade);background:rgba(62,217,160,.10)}
+.cp-paso.hecho .cp-txt b{color:var(--bruma)}
+.cp-paso.porvenir{opacity:.5}
+.cp-link{display:inline-block;margin-top:6px;font-size:11.5px;color:var(--acento);
+  text-decoration:none;border-bottom:1px solid rgba(143,185,224,.4)}
+.cp-link:hover{color:var(--oroLt);border-bottom-color:var(--oro)}
+/* El enlace de la ENTREGA es de otra cadena que el del deposito, asi que se
+   distingue: jade, que es el color de lo que ya esta hecho. */
+.cp-link-entrega{display:block;margin-top:12px;color:var(--jade);
+  border-bottom-color:rgba(62,217,160,.4);text-align:center}
+.cp-link-entrega:hover{color:var(--jade);border-bottom-color:var(--jade)}
+
+/* ── EL RECALCULO ──────────────────────────────────────────────────────────
+   El unico panel de esta pantalla que PIDE UNA DECISION. Va ancho y arriba de
+   todo, con borde coral, porque el riesgo aqui no es asustar: es que alguien
+   con el dinero ya depositado no vea que le estan preguntando algo y se quede
+   esperando una entrega que nadie va a hacer. */
+/* ACUSAR RECIBO NO ES PEDIR. Cuando el dinero ya llegó, el heroe deja de ser
+   la cantidad que hay que mandar y pasa a ser la que llegó, en jade, y el
+   aviso rojo de la red se apaga: ya no hay nada que se pueda mandar mal. */
+.cp-manda.llego .cp-hero{color:var(--jade)}
+.cp-dir.quieta{opacity:.72}
+.cp-red-aviso.quieto{border-color:var(--linea);background:rgba(255,255,255,.02)}
+.cp-red-aviso.quieto strong{color:var(--bruma)}
+
+.cp-recal{margin:0 0 18px;padding:18px 20px;border:1px solid rgba(240,119,107,.42);
+  background:linear-gradient(180deg,rgba(240,119,107,.09),rgba(240,119,107,.03))}
+.cp-recal-cab strong{display:block;font-size:15px;color:var(--crema);letter-spacing:.1px}
+.cp-recal-cab span{display:block;margin-top:6px;font-size:12.5px;color:var(--bruma);
+  line-height:1.65;max-width:64ch}
+.cp-recal-nums{display:flex;flex-wrap:wrap;gap:10px;margin:16px 0 4px}
+.cp-recal-n{flex:1 1 150px;padding:10px 12px;border:1px solid var(--linea);
+  border-radius:10px;background:rgba(255,255,255,.02)}
+.cp-recal-n b{display:block;margin-top:5px;font-size:19px;color:var(--crema);
+  font-variant-numeric:tabular-nums}
+.cp-recal-n b em{font-style:normal;font-size:11px;color:var(--bruma);
+  letter-spacing:.6px;margin-left:3px}
+.cp-recal-n .dec{color:var(--bruma)}
+/* El viejo tachado y apagado; el nuevo en oro. Los dos se enseñan y ninguno se
+   recomienda: a veces el nuevo es mayor, y empujar en cualquiera de las dos
+   direcciones seria vender. */
+.cp-recal-n.vieja b{color:var(--bruma);text-decoration:line-through;
+  text-decoration-color:rgba(240,119,107,.6)}
+.cp-recal-n.nueva{border-color:rgba(201,169,97,.45);background:rgba(201,169,97,.07)}
+.cp-recal-n.nueva b{color:var(--oroLt)}
+.cp-recal-btn{display:flex;gap:10px;margin-top:14px}
+.cp-recal-btn .btn{flex:1 1 auto}
+@media (max-width:560px){.cp-recal-btn{flex-direction:column}}
+
+.cp-falta{text-align:center}
+.cp-falta-t{margin:6px 0 0;font-size:15px;color:var(--crema);line-height:1.6}
+.cp-falta .btn{margin-top:16px}
+
+/* CARGANDO NO ES FALLAR. Se veian igual y la que se enseñaba era la alarma:
+   al abrir la pantalla salia un error rojo que todavia no era cierto. */
+.cp-cargando{color:var(--humo)}
+.cp-sinref{display:block;padding:9px 12px;border-radius:var(--r);
+  border-left:3px solid var(--coral);background:rgba(240,119,107,.08);
+  color:var(--bruma);font-size:12px;line-height:1.6}
+.cp-precio b{color:var(--crema);font-weight:600}
+.cp-hero.vacio span{font-family:var(--sans);font-size:15px;font-weight:400;color:var(--humo)}
+/* Un boton dorado a medio brillo sigue leyendose como la accion principal. El
+   deshabilitado tiene que dejar de ser oro, no solo bajar de opacidad. */
+.btn-oro:disabled{background:var(--campo);color:var(--humo);
+  border:1px solid var(--campoBr);box-shadow:none;opacity:1}
+.btn-oro:disabled::after{display:none}
+.cp-chip{display:inline-block;margin-left:8px;padding:1px 7px;border-radius:99px;
+  font-style:normal;font-size:10.5px;font-weight:600;letter-spacing:.02em;
+  color:var(--acento);background:rgba(143,185,224,.12);border:1px solid rgba(143,185,224,.28)}
+/* Sin orden en curso el riel es una promesa, no un estado: se aparta. */
+/* En telefono el riel ocupa media pantalla, y a .62 sobre un fondo ya oscuro
+   se leia como algo roto en vez de como una promesa. .74 lo aparta sin
+   apagarlo. */
+.cp-riel.quieto{opacity:.74}
+.cp-riel.quieto .cp-paso.ahora .cp-punto{background:var(--campo);color:var(--humo);
+  border-color:var(--campoBr);box-shadow:none}
+.cp-riel.quieto .cp-paso.ahora .cp-txt b{color:var(--bruma)}
+
+/* De donde sale el precio y hace cuanto se leyo. Un numero sin hora es un
+   numero que nadie puede discutir despues — y en la pantalla donde alguien
+   decide, eso es la diferencia entre cotizar y afirmar. */
+.cp-fuente{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;
+  margin-top:7px;font-size:11px;color:var(--humo);font-variant-numeric:tabular-nums}
+.cp-fuente b{color:var(--bruma);font-weight:600}
+.cp-fresco{color:var(--jade);opacity:.8}
+
+/* ── El contador ────────────────────────────────────────────────────────────
+   Un reloj de dinero no es un texto que cambia: es una cantidad que se agota, y
+   eso se ve mejor drenando que contando. El anillo da la magnitud de un
+   vistazo —«voy por la mitad»— y los digitos dan la precision. Y la urgencia
+   ESCALA en color: oro mientras sobra, ambar bajo diez minutos, coral bajo dos
+   y con latido. Un contador que se ve igual a los 59 minutos que a los 30
+   segundos no esta contando nada. */
+.cp-cuenta{display:flex;align-items:center;gap:16px}
+.cp-anillo{position:relative;flex:none;width:72px;height:72px}
+.cp-anillo svg{width:72px;height:72px;transform:rotate(-90deg)}
+.cp-anillo circle{fill:none;stroke-width:5;stroke-linecap:round}
+.cp-anillo .pista{stroke:rgba(255,255,255,.07)}
+.cp-anillo .arco{stroke:var(--oro);transition:stroke-dashoffset 1s linear,stroke .4s}
+.cp-reloj.aviso .cp-anillo .arco{stroke:#E0A93C}
+.cp-reloj.urge .cp-anillo .arco{stroke:var(--coral)}
+.cp-anillo b{position:absolute;inset:0;display:grid;place-items:center;
+  font-family:var(--mono);font-size:11px;font-weight:700;color:var(--humo)}
+.cp-tiempo{font-family:var(--mono);font-size:clamp(28px,4vw,36px);font-weight:700;
+  color:var(--crema);font-variant-numeric:tabular-nums;letter-spacing:.01em;line-height:1}
+.cp-reloj.aviso .cp-tiempo{color:#E8C56A}
+.cp-reloj.urge .cp-tiempo{color:var(--coral);animation:cp-lat 1.1s ease-in-out infinite}
+@keyframes cp-lat{0%,100%{opacity:1}50%{opacity:.55}}
+@media(prefers-reduced-motion:reduce){.cp-reloj.urge .cp-tiempo{animation:none}}
+.cp-reloj.mal .cp-tiempo{color:var(--coral);animation:none}
+
+/* ── Montos rapidos ─────────────────────────────────────────────────────────
+   Los tiene cualquier exchange y no es por moda: la mayoria de la gente
+   deposita cifras redondas, y teclear «100» en un telefono es tres toques mas
+   que apretar 100. */
+.cp-rapidos{display:flex;gap:7px;margin-top:9px;flex-wrap:wrap}
+.cp-rap{padding:6px 13px;border-radius:99px;cursor:pointer;font-family:var(--mono);
+  font-size:12px;font-weight:600;color:var(--bruma);background:var(--campo);
+  border:1px solid var(--campoBr);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.05),0 2px 0 rgba(0,0,0,.4);
+  transition:transform .12s,border-color .16s,color .16s,box-shadow .16s}
+.cp-rap:hover{border-color:var(--oro);color:var(--oroLt);transform:translateY(-1px)}
+.cp-rap.es{border-color:var(--oro);color:var(--tinta);
+  background:linear-gradient(120deg,var(--oroLt),var(--oro));
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.5),0 2px 0 var(--oroDp)}
+.cp-rap:active{transform:translateY(2px);box-shadow:inset 0 2px 4px rgba(0,0,0,.4)}
+.cp-rap:focus-visible{outline:2px solid var(--oroLt);outline-offset:2px}
+
+/* La moneda del campo, como ficha y no como texto suelto. */
+.cp-mon{padding:4px 9px;border-radius:7px;background:rgba(201,169,97,.12);
+  border:1px solid var(--linea2);color:var(--oroLt);font-family:var(--mono);
+  font-size:11.5px;font-weight:700;letter-spacing:.04em}
+
+/* El QR con marco y la red encima: el codigo es lo que la gente escanea sin
+   leer, asi que la red tiene que viajar CON el. */
+.cp-qr-caja{margin-top:14px;display:flex;flex-direction:column;align-items:center;gap:9px}
+.cp-qr:empty{display:none}
+.cp-qr{background:#fff;padding:11px;border-radius:12px;line-height:0;
+  box-shadow:0 10px 30px -12px rgba(0,0,0,.9),inset 0 0 0 1px rgba(0,0,0,.08)}
+.cp-qr-red{padding:4px 12px;border-radius:99px;background:rgba(143,185,224,.13);
+  border:1px solid rgba(143,185,224,.3);color:var(--acento);
+  font-size:11px;font-weight:700;letter-spacing:.05em}
+
+/* La direccion: al copiar, el bloque entero confirma — un cambio de texto en
+   el boton es facil de perderse si el dedo lo tapa. */
+.cp-dir code{transition:border-color .2s,background .2s}
+/* En telefono la direccion y el boton no caben uno al lado del otro: la
+   direccion quedaba estrangulada en seis renglones de siete caracteres y el
+   boton se estiraba en un ovalo enorme. Se apilan, y la direccion se queda con
+   todo el ancho — que es lo que la gente va a mirar para comprobarla. */
+@media(max-width:560px){
+  .cp-dir{flex-direction:column}
+  .cp-dir code{font-size:12.5px;line-height:1.7;justify-content:center;text-align:center}
+  .cp-dir .btn{width:100%}
+}
+.cp-dir.ok code{border-color:var(--jade);background:rgba(62,217,160,.07)}
+
+.cp-red:focus-visible,.cp-dir code:focus-visible{outline:2px solid var(--acento);outline-offset:2px}
+.campo input:focus-visible{outline:none}
+
+</style>
+
+<!-- La cinta. La pista se pinta dos veces (app.js) y la animacion corre el
+     50%: asi el bucle no tiene costura visible. -->
+<div class="cinta" id="cinta" aria-label="Precios de los mercados">
+  <div class="cinta-pista" id="cinta-pista"></div>
+</div>
+
+<header class="techo" id="techo">
+  <div class="marca"><img src="assets/ordenex.svg" alt="">ORDEN<em>EX</em></div>
+  <div class="idiomas" role="group" aria-label="Idioma">
+    <button data-lang="es" id="lang-es" aria-pressed="true" onclick="ONX.idioma('es')">ES</button>
+    <button data-lang="en" id="lang-en" aria-pressed="false" onclick="ONX.idioma('en')">EN</button>
+  </div>
+</header>
+
+<!-- ══════════════════════════ PORTADA ═════════════════════════════════════
+     Corta a propósito: sello, titular, dos salidas y la tabla viva. Una casa
+     de cambio no se vende con adjetivos — se vende enseñando el mercado
+     respirando antes de pedirte nada. Todo lo público se ve sin cuenta; la
+     sesión se pide recién al operar. -->
+<div id="portada">
+<section id="bienvenida">
+  <div class="bv">
+    <div>
+      <div class="sello" data-t="pt.sello"></div>
+      <h1 id="pt-titulo" aria-live="polite"></h1>
+      <p data-t="pt.p"></p>
+    </div>
+    <div>
+      <!-- UNA SOLA SALIDA. Había dos: entrar con la cuenta, o «ver los
+           mercados» sin ella. Al salir Mercados de la barra (6-sep) esa
+           segunda puerta se quedó sin cuarto detrás: dentro de la aplicación
+           ya no hay nada que se vea sin sesión, así que el botón llevaba a un
+           cartel pidiendo entrar. Los precios siguen a la vista sin cuenta —
+           en la tabla de aquí al lado, y tocando una fila se abre su sala con
+           las velas y el libro. No hay «crear cuenta» porque Ordenex no crea
+           cuentas: la cuenta ya existe en la wallet. -->
+      <div class="bv-btns">
+        <button class="btn btn-oro" data-t="pt.entrar" onclick="ONX.entrar()"></button>
+      </div>
+      <p class="bv-nota" data-t="pt.nota"></p>
+      <!-- Los términos y el aviso de riesgo, desde la portada. Se aceptan
+           antes de la primera orden (la confirmación los pide), pero se
+           leen desde acá, antes de entrar a nada. -->
+      <p class="bv-legal" data-t="pt.legal"></p>
+    </div>
+  </div>
+  <aside class="mv vidrio">
+    <div class="mv-lbl" data-t="pt.vivos"></div>
+    <!-- Con su riel, como toda tabla de la casa: acá son tres columnas en el
+         teléfono y entran, pero la regla es de la casa y no del caso. -->
+    <div class="desliza">
+      <table id="mercados-vivos">
+        <thead><tr>
+          <th data-t="pt.mvPar"></th>
+          <th data-t="pt.mvUltimo"></th>
+          <th data-t="pt.mvCambio"></th>
+          <th class="soloAncho" data-t="pt.mvAlto"></th>
+          <th class="soloAncho" data-t="pt.mvBajo"></th>
+          <th class="soloAncho" data-t="pt.mvVol"></th>
+        </tr></thead>
+        <tbody id="mv-cuerpo"></tbody>
+      </table>
+    </div>
+    <p class="mv-nota" id="mv-nota" data-t="pt.mvCargando"></p>
+  </aside>
+</section>
+</div>
+
+<!-- ══════════════════════════ LA APLICACIÓN ═══════════════════════════════
+     El riel a la izquierda y el lienzo vacío: las vistas las pintan los
+     módulos (mercado.js, portafolio.js, fiat.js) por innerHTML, orquestados
+     por app.js. -->
+<main id="app" class="oculto">
+  <nav class="riel" aria-label="Secciones">
+    <div class="riel-marca marca"><img src="assets/ordenex.svg" alt="">ORDEN<em>EX</em></div>
+    <button class="nav" aria-current="page" data-vista="portafolio" onclick="ONX.vista('portafolio')"><svg viewBox="0 0 24 24"><path d="M3 7.5A2.5 2.5 0 0 1 5.5 5H18a2 2 0 0 1 2 2v1"/><rect x="3" y="8" width="18" height="11" rx="2.5"/><circle cx="16.5" cy="13.5" r="1.3"/></svg><span data-t="nav.portafolio"></span></button>
+    <button class="nav" data-vista="comprar" onclick="ONX.vista('comprar')"><svg viewBox="0 0 24 24"><path d="M12 4v16M12 4l-4 4M12 4l4 4"/><path d="M4 20h16"/></svg><span data-t="nav.comprar"></span></button>
+    <button class="nav" data-vista="vender" onclick="ONX.vista('vender')"><svg viewBox="0 0 24 24"><path d="M12 20V4M12 20l-4-4M12 20l4 4"/><path d="M4 4h16"/></svg><span data-t="nav.vender"></span></button>
+    <button class="nav" data-vista="fiat" onclick="ONX.vista('fiat')"><svg viewBox="0 0 24 24"><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="2.6"/><path d="M5.5 9.5h.01M18.5 14.5h.01"/></svg><span data-t="nav.fiat"></span></button>
+    <button class="nav" data-vista="actividad" onclick="ONX.vista('actividad')"><svg viewBox="0 0 24 24"><path d="M3 12h4l3 8 4-16 3 8h4"/></svg><span data-t="nav.actividad"></span></button>
+
+    <div class="riel-pie">
+      <!-- De quien es esta casa. Va en el riel y no escondido en un «acerca
+           de»: quien opera aqui tiene derecho a saber con quien opera, y
+           enterarse en la pantalla donde se opera, no dos clics mas alla. -->
+      <div class="duena"><span data-t="pie.duena"></span>
+        <a href="https://www.aucorp.io" target="_blank" rel="noopener">
+          <img src="assets/aucorp.svg" alt="">AuCorp</a></div>
+      <a href="https://www.ordenglobal.org" target="_blank" rel="noopener" data-t="pie.og"></a> ·
+      <button data-t="nav.salir" onclick="ONX.salir()"></button>
+      <span class="legal"><a href="legal.html#terminos" target="_blank" rel="noopener" data-t="pie.terminos"></a> ·
+        <a href="legal.html#riesgo" target="_blank" rel="noopener" data-t="pie.riesgo"></a></span>
+      <div class="idiomas" role="group" aria-label="Idioma">
+        <button data-lang="es" id="lang-es-r" aria-pressed="true" onclick="ONX.idioma('es')">ES</button>
+        <button data-lang="en" id="lang-en-r" aria-pressed="false" onclick="ONX.idioma('en')">EN</button>
+      </div>
+      <!-- QUE COPIA ESTA CORRIENDO. Un navegador puede seguir sirviendo la de
+           ayer durante horas, y sin este dato «ya lo arreglamos» y «a mi me
+           sigue fallando» son las dos ciertas al mismo tiempo y no hay forma
+           de saber cual. Aqui se lee el sello y se termina la discusion. -->
+      <div class="sello" id="onx-sello" title=""></div>
+    </div>
+  </nav>
+  <div class="lienzo" id="lienzo"></div>
+  <nav class="tabs" aria-label="Secciones">
+    <button class="nav" aria-current="page" data-vista="portafolio" onclick="ONX.vista('portafolio')"><svg viewBox="0 0 24 24"><path d="M3 7.5A2.5 2.5 0 0 1 5.5 5H18a2 2 0 0 1 2 2v1"/><rect x="3" y="8" width="18" height="11" rx="2.5"/><circle cx="16.5" cy="13.5" r="1.3"/></svg><span data-t="nav.portafolio"></span></button>
+    <button class="nav" data-vista="comprar" onclick="ONX.vista('comprar')"><svg viewBox="0 0 24 24"><path d="M12 4v16M12 4l-4 4M12 4l4 4"/><path d="M4 20h16"/></svg><span data-t="nav.comprar"></span></button>
+    <button class="nav" data-vista="vender" onclick="ONX.vista('vender')"><svg viewBox="0 0 24 24"><path d="M12 20V4M12 20l-4-4M12 20l4 4"/><path d="M4 4h16"/></svg><span data-t="nav.vender"></span></button>
+    <button class="nav" data-vista="fiat" onclick="ONX.vista('fiat')"><svg viewBox="0 0 24 24"><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="2.6"/><path d="M5.5 9.5h.01M18.5 14.5h.01"/></svg><span data-t="nav.fiat"></span></button>
+    <button class="nav" data-vista="actividad" onclick="ONX.vista('actividad')"><svg viewBox="0 0 24 24"><path d="M3 12h4l3 8 4-16 3 8h4"/></svg><span data-t="nav.actividad"></span></button>
+  </nav>
+</main>
+
+<div id="tostada" role="status" aria-live="polite"></div>
+
+<!-- El orden es el grafo de dependencias: datos y tablas primero, las vistas
+     después, i18n penúltimo y app.js SIEMPRE último — es el orquestador que
+     consume a todos y engancha DOMContentLoaded. Sin bundler, sin CDN de JS:
+     el orden del HTML es el único sistema de módulos de la casa. -->
+<!-- El reportero va PRIMERO y sin depender de nadie: los módulos de abajo lo
+     buscan en window cuando les toca, y si no estuviera seguirían funcionando
+     igual. Cargarlo el último dejaría sin contar justamente los fallos de
+     carga, que son los que dejan la pantalla en blanco. -->
+<script src="telemetria.js?v=ddd3c04741"></script>
+<script src="qr.js?v=ddd3c04741"></script>
+<script src="cadena.js?v=ddd3c04741"></script>
+<script src="datos.js?v=ddd3c04741"></script>
+<script src="velas.js?v=ddd3c04741"></script>
+<script src="mercado.js?v=ddd3c04741"></script>
+<script src="portafolio.js?v=ddd3c04741"></script>
+<script src="fiat.js?v=ddd3c04741"></script>
+<script src="comprar.js?v=ddd3c04741"></script>
+<script src="vender.js?v=ddd3c04741"></script>
+<script src="recargar.js?v=ddd3c04741"></script>
+<script src="i18n.js?v=ddd3c04741"></script>
+<script src="app.js?v=ddd3c04741"></script>

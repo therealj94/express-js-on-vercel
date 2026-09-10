@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Copia fría de las llaves &middot; Orden Global</title>
+<style>
+:root{--oro:#C9A961;--fondo:#04191A;--panel:#072526;--linea:#123E3F;--txt:#EAF3F2;--txt2:#9FBDBA;--mal:#E2725B;--bien:#5FB98B}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--fondo);color:var(--txt);font:16px/1.7 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;-webkit-font-smoothing:antialiased;padding:0 20px 70px}
+.env{max-width:700px;margin:0 auto}
+header{padding:26px 0 4px}.logo{font-weight:800;font-size:17px}.logo span{color:var(--oro)}
+h1{font-size:25px;line-height:1.25;margin:20px 0 10px;letter-spacing:-.4px}
+h2{font-size:18px;margin:34px 0 12px;color:var(--oro)}
+p{margin:0 0 13px;color:#DCE9E7}
+.nota{background:var(--panel);border:1px solid var(--linea);border-left:3px solid var(--oro);padding:15px 17px;border-radius:8px;margin:0 0 20px}
+.nota.peligro{border-left-color:var(--mal)}
+.nota p:last-child{margin-bottom:0}
+button{font:600 16px/1 inherit;background:var(--oro);color:#04191A;border:0;border-radius:10px;padding:15px 22px;cursor:pointer;width:100%;margin:0 0 12px}
+button:disabled{opacity:.45;cursor:not-allowed}
+button.sec{background:transparent;color:var(--oro);border:1px solid var(--linea)}
+textarea,.caja{width:100%;background:var(--panel);border:1px solid var(--linea);border-radius:10px;padding:13px 15px;margin:0 0 12px;color:var(--txt2);font:12.5px/1.55 ui-monospace,SFMono-Regular,Menlo,monospace;word-break:break-all;white-space:pre-wrap}
+textarea{min-height:120px;resize:vertical}
+.caja.ok{border-color:var(--bien);color:var(--txt)}
+label{display:block;font-size:13px;color:var(--txt2);margin:0 0 6px;text-transform:uppercase;letter-spacing:.02em}
+.est{font-size:14.5px;padding:12px 15px;border-radius:8px;margin:0 0 14px;display:none}
+.est.v{display:block;background:rgba(95,185,139,.12);border:1px solid var(--bien);color:var(--bien)}
+.est.r{display:block;background:rgba(226,114,91,.12);border:1px solid var(--mal);color:var(--mal)}
+hr{border:0;border-top:1px solid var(--linea);margin:30px 0}
+footer{color:#6C918E;font-size:13px;text-align:center;padding-top:20px}
+</style>
+</head>
+<body>
+<div class="env">
+<header><div class="logo">ORDEN <span>GLOBAL</span></div></header>
+
+<h1>Copia fría de las llaves de validador</h1>
+
+<div class="nota">
+<p>Esta página genera un par de llaves <strong>dentro de tu navegador</strong>.
+No hay servidor, no viaja nada, y no se guarda nada al cerrarla. Podés apagar
+los datos y el wifi antes de usarla: funciona igual.</p>
+<p>Con la mitad <strong>pública</strong> cada nodo cifra su llave de validador.
+Con la <strong>privada</strong> —que sólo tenés vos— se abren. Así las llaves de
+la cadena nunca aparecen en claro fuera de su máquina.</p>
+</div>
+
+<h2>1 · Generar el par</h2>
+
+<div id="est1" class="est"></div>
+<button id="generar">Generar el par de llaves</button>
+
+<div id="salida" style="display:none">
+  <label>Llave pública &mdash; ésta es la que se envía</label>
+  <div class="caja" id="pub"></div>
+  <button class="sec" id="copiarPub">Copiar la pública</button>
+  <button class="sec" id="bajarPub">Descargar la pública</button>
+
+  <div class="nota peligro" style="margin-top:22px">
+  <p><strong>Lo de abajo es la llave privada.</strong> Es lo único que abre el
+  respaldo. Si la perdés, las copias de las llaves de validador quedan
+  ilegibles para siempre; si alguien más la consigue, puede abrirlas.</p>
+  <p><strong>Guardala antes de cerrar esta página.</strong> Al cerrarla
+  desaparece: no queda en ningún sitio. Ponela en tu gestor de contraseñas, o
+  descargala y llevá el archivo a un lugar seguro. Y hacé dos copias, en dos
+  sitios distintos.</p>
+  </div>
+
+  <label>Llave privada &mdash; ésta NO se envía a nadie</label>
+  <div class="caja" id="priv"></div>
+  <button class="sec" id="copiarPriv">Copiar la privada</button>
+  <button class="sec" id="bajarPriv">Descargar la privada</button>
+</div>
+
+<hr>
+
+<h2>2 · Comprobar el respaldo</h2>
+
+<p>Cuando recibas los cuatro bloques cifrados, usalos acá. Si sale una tira de
+64 caracteres, el respaldo sirve. <strong>Comprobarlo el día que se hace, y no
+el día que hace falta</strong>, es la diferencia entre tener un respaldo y creer
+que se tiene uno.</p>
+
+<label>Tu llave privada</label>
+<textarea id="privIn" placeholder="-----BEGIN PRIVATE KEY-----&#10;…"></textarea>
+
+<label>El bloque cifrado de un nodo</label>
+<textarea id="cifIn" placeholder="Pegá acá el texto en base64 que te devuelvan"></textarea>
+
+<div id="est2" class="est"></div>
+<button id="descifrar">Descifrar y comprobar</button>
+<div class="caja ok" id="claro" style="display:none"></div>
+
+<footer>Orden Global Corp</footer>
+</div>
+
+<script>
+// Todo ocurre en el navegador con la criptografía que el propio navegador trae
+// (WebCrypto). No se carga ninguna biblioteca y no se hace ninguna petición de
+// red: por eso esta página funciona con el aparato en modo avión, y esa es la
+// forma de comprobar que no manda nada a ningún lado.
+const $ = (id) => document.getElementById(id);
+const est = (id, txt, ok) => { const e = $(id); e.textContent = txt; e.className = 'est ' + (ok ? 'v' : 'r'); };
+
+// RSA-OAEP con SHA-256 en los dos sitios --el hash del relleno y el de la
+// máscara-- para que openssl del lado del nodo pueda cifrar exactamente esto.
+// Si el nodo cifrara con la máscara en SHA-1, que es el valor por defecto de
+// openssl, el descifrado fallaría aquí sin decir por qué.
+const ALGO = { name: 'RSA-OAEP', hash: 'SHA-256' };
+
+const b64 = (buf) => btoa(String.fromCharCode(...new Uint8Array(buf)));
+const desB64 = (s) => Uint8Array.from(atob(s.replace(/\s+/g, '')), c => c.charCodeAt(0));
+
+function pem(tipo, buf) {
+  const c = b64(buf).match(/.{1,64}/g).join('\n');
+  return `-----BEGIN ${tipo}-----\n${c}\n-----END ${tipo}-----\n`;
+}
+
+function bajar(nombre, texto) {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([texto], { type: 'application/x-pem-file' }));
+  a.download = nombre;
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
+async function copiar(texto, idEst, queEs) {
+  try { await navigator.clipboard.writeText(texto); est(idEst, queEs + ' copiada.', true); }
+  catch (e) { est(idEst, 'No se pudo copiar sola. Seleccioná el texto y copialo a mano.', false); }
+}
+
+$('generar').onclick = async () => {
+  $('generar').disabled = true;
+  est('est1', 'Generando 4096 bits… puede tardar unos segundos.', true);
+  try {
+    const par = await crypto.subtle.generateKey(
+      { ...ALGO, modulusLength: 4096, publicExponent: new Uint8Array([1, 0, 1]) },
+      true, ['encrypt', 'decrypt']);
+    const pubPem  = pem('PUBLIC KEY',  await crypto.subtle.exportKey('spki',  par.publicKey));
+    const privPem = pem('PRIVATE KEY', await crypto.subtle.exportKey('pkcs8', par.privateKey));
+    $('pub').textContent = pubPem;
+    $('priv').textContent = privPem;
+    $('salida').style.display = 'block';
+    est('est1', 'Listo. Guardá la privada ANTES de cerrar esta página.', true);
+    $('copiarPub').onclick  = () => copiar(pubPem,  'est1', 'Pública');
+    $('copiarPriv').onclick = () => copiar(privPem, 'est1', 'Privada');
+    $('bajarPub').onclick   = () => bajar('og-respaldo-publica.pem', pubPem);
+    $('bajarPriv').onclick  = () => bajar('og-respaldo-privada.pem', privPem);
+  } catch (e) {
+    est('est1', 'No se pudo generar: ' + e.message, false);
+    $('generar').disabled = false;
+  }
+};
+
+$('descifrar').onclick = async () => {
+  const p = $('privIn').value.trim(), c = $('cifIn').value.trim();
+  if (!p || !c) { est('est2', 'Faltan la llave privada o el bloque cifrado.', false); return; }
+  try {
+    const cuerpo = p.replace(/-----[^-]+-----/g, '').replace(/\s+/g, '');
+    const llave = await crypto.subtle.importKey('pkcs8', desB64(cuerpo).buffer, ALGO, false, ['decrypt']);
+    const claro = await crypto.subtle.decrypt(ALGO, llave, desB64(c).buffer);
+    const txt = new TextDecoder().decode(claro).trim();
+    $('claro').textContent = txt;
+    $('claro').style.display = 'block';
+    const bien = /^(0x)?[0-9a-fA-F]{64}$/.test(txt);
+    est('est2', bien
+      ? '✓ Descifrado correcto: 64 caracteres, tiene forma de llave de validador. El respaldo sirve.'
+      : 'Se descifró, pero no tiene forma de llave de validador. Revisá que sea el bloque correcto.', bien);
+  } catch (e) {
+    est('est2', 'No se pudo descifrar. O la privada no es la que corresponde a ese bloque, o el texto está incompleto.', false);
+    $('claro').style.display = 'none';
+  }
+};
+</script>
+</body>
+</html>

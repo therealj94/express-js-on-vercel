@@ -6,11 +6,57 @@
 // sistema): el motivo queda en la bitácora y es lo que un auditor va a leer.
 
 import React, { useEffect, useState } from 'react';
-import { View, Text, ScrollView, Image, StyleSheet, ActivityIndicator } from 'react-native';
+import {
+  View, Text, ScrollView, Image, StyleSheet, ActivityIndicator, Modal, Pressable,
+  useWindowDimensions,
+} from 'react-native';
 import { C, SEMAFORO } from '../theme';
 import { Card, Boton, BotonPlano, Campo, Pastilla, Cabecera, Dato, hap, useToast } from '../ui';
 import { Icon } from '../icons';
 import * as api from '../api';
+
+/* Las imágenes llegan unas veces con el prefijo `data:` puesto y otras en
+   base64 pelado, según por qué almacén hayan pasado. React Native no adivina:
+   un `uri` sin esquema no carga y no avisa —se queda el hueco en blanco, que
+   es exactamente el síntoma que se reportó—. Así que se normaliza aquí. */
+/** «Honduras · HND», o el código solo si el servidor todavía no manda nombre
+ *  —un panel viejo contra un servidor nuevo no debe quedarse en blanco—. */
+const pais = (resuelto, crudo) => {
+  if (resuelto?.nombre) return `${resuelto.nombre} · ${resuelto.codigo}`;
+  return resuelto?.codigo || crudo || null;
+};
+
+const fuente = (dato) => {
+  const d = String(dato || '');
+  if (!d) return null;
+  return d.startsWith('data:') ? d : `data:image/jpeg;base64,${d}`;
+};
+
+/** Una de las tres tomas del expediente. Cuando no hay, se dibuja el hueco con
+ *  «no aportado»: que falte una cara del documento es información para quien
+ *  decide, y esconderlo haría creer que el expediente está completo. */
+function Toma({ dato, rot, pie, onVer }) {
+  const src = fuente(dato);
+  return (
+    <View style={st.toma}>
+      {src ? (
+        <Pressable onPress={() => { hap(); onVer({ src, rot }); }}
+          accessibilityRole="imagebutton" accessibilityLabel={`Ampliar: ${rot}`}>
+          {/* «contain», no «cover»: recortar una credencial para que llene un
+              recuadro es justamente lo que corta la cara. */}
+          <Image source={{ uri: src }} style={st.foto} resizeMode="contain" />
+        </Pressable>
+      ) : (
+        <View style={[st.foto, st.hueco]}>
+          <Icon name="image" size={20} color={C.txt3} />
+          <Text style={st.huecoTxt}>no aportado</Text>
+        </View>
+      )}
+      <Text style={st.tomaRot}>{rot}</Text>
+      <Text style={st.tomaPie}>{pie}</Text>
+    </View>
+  );
+}
 
 export function FichaIdentidad({ id, volver, operador }) {
   const toast = useToast();
@@ -20,6 +66,9 @@ export function FichaIdentidad({ id, volver, operador }) {
   const [motivo, setMotivo] = useState('');
   const [anulacion, setAnulacion] = useState('');
   const [ocupado, setOcupado] = useState(false);
+  const [mirando, setMirando] = useState(null);   // {src, rot} de la imagen ampliada
+
+  const { width: ancho, height: alto } = useWindowDimensions();
 
   const puede = (p) => (operador?.permisos || []).includes('*') || (operador?.permisos || []).includes(p);
 
@@ -98,13 +147,29 @@ export function FichaIdentidad({ id, volver, operador }) {
           {ficha.pep ? <Pastilla texto="PEP" color={C.warn} /> : null}
         </View>
 
-        {/* La foto de la credencial, si existe: es lo que un humano coteja. */}
-        {ficha.fotoCredencial ? (
-          <Card style={{ alignItems: 'center' }}>
-            <Image source={{ uri: ficha.fotoCredencial.startsWith('data:') ? ficha.fotoCredencial : `data:image/jpeg;base64,${ficha.fotoCredencial}` }}
-              style={st.foto} resizeMode="cover" />
-          </Card>
-        ) : null}
+        {/* ── documento y rostro ─────────────────────────────────────────────
+
+            Va ARRIBA de todo lo demás a propósito. Debajo hay botones para
+            aprobar una identidad y para firmar «el rostro coincide»; pedir esa
+            firma sin enseñar antes las caras es pedir que se decida a ciegas.
+
+            La app las tenía y no las pintaba: el servidor ya mandaba las tres
+            —`documento.imagenes.anverso`, `.reverso` y `fotoCredencial`— y esta
+            pantalla solo dibujaba el retrato, en una caja apaisada y recortando
+            («cover»), que a un retrato vertical le corta justo la frente y el
+            mentón. Por eso «no se veía el rostro». */}
+        <Card>
+          <Text style={st.cardT}>Documento y rostro</Text>
+          <Text style={[st.mut, { marginBottom: 10 }]}>Tocá una imagen para verla en grande.</Text>
+          <View style={st.tira}>
+            <Toma dato={ficha.fotoCredencial} rot="Rostro del documento"
+              pie="recortado de la credencial" onVer={setMirando} />
+            <Toma dato={ficha.documento?.imagenes?.anverso} rot="Anverso"
+              pie="cara delantera" onVer={setMirando} />
+            <Toma dato={ficha.documento?.imagenes?.reverso} rot="Reverso"
+              pie="cara trasera y MRZ" onVer={setMirando} />
+          </View>
+        </Card>
 
         {/* ── riesgo ─────────────────────────────────────────────────────── */}
         <Card>
@@ -150,8 +215,12 @@ export function FichaIdentidad({ id, volver, operador }) {
           <Dato k="Nacimiento" v={ficha.fechaNacimiento || ficha.fechaNacimientoDeclarada} />
           <Dato k="Documento" v={ficha.numeroDocumento ? `${ficha.numeroDocumento} (${ficha.tipoDocumento || ''})` : null} />
           <Dato k="Vence" v={ficha.vencimientoDocumento} />
-          <Dato k="Nacionalidad" v={ficha.nacionalidad} />
-          <Dato k="Residencia" v={ficha.paisResidencia} />
+          {/* Nombre Y código. El expediente guarda el ISO-3 y hay que poder
+              verlo; pero «HND» a secas obliga a traducir de memoria, y con
+              doscientos y pico países no hay quien se los sepa. El nombre lo
+              resuelve el servidor con la misma tabla del tamizado GAFI. */}
+          <Dato k="Nacionalidad" v={pais(ficha.nacionalidadNombre, ficha.nacionalidad)} />
+          <Dato k="Residencia" v={pais(ficha.paisResidenciaNombre, ficha.paisResidencia)} />
           <Dato k="Correo" v={ficha.email} />
           <Dato k="Teléfono" v={ficha.telefono} />
           <Dato k="Ocupación" v={ficha.ocupacion} />
@@ -202,11 +271,25 @@ export function FichaIdentidad({ id, volver, operador }) {
           {/* Cotejo manual: cuando no hay proveedor, una persona compara las
               dos caras y lo firma. Solo con permiso de revisar. */}
           {puede('identidad.revisar') && bio?.estado !== 'ok' && decidible && (
-            <View style={{ flexDirection: 'row', gap: 8, marginTop: 12 }}>
-              <Boton title="El rostro coincide" tono="ok" onPress={() => resolverRostro(true)}
-                disabled={ocupado} style={{ flex: 1 }} />
-              <Boton title="No coincide" tono="mal" onPress={() => resolverRostro(false)}
-                disabled={ocupado} style={{ flex: 1 }} />
+            <View style={{ marginTop: 12 }}>
+              {/* Se dice con todas las letras contra qué se coteja. El selfie
+                  en vivo NO se guarda: se compara y se descarta, para que
+                  Genesis ID no acabe siendo un depósito de fotos de caras
+                  —el peor dato que se puede acumular—. Así que aquí arriba
+                  está el rostro del documento, y la otra mitad del cotejo la
+                  pone quien revisa: la persona delante, o la videollamada.
+                  Firmar «coincide» sin eso es firmar en el aire. */}
+              <Text style={[st.mut, { marginBottom: 10 }]}>
+                Arriba está el rostro recortado del documento. El selfie en vivo no se
+                guarda —se coteja y se descarta—, así que la otra cara la ponés vos:
+                la persona presente o la videollamada. Tu firma queda en la bitácora.
+              </Text>
+              <View style={{ flexDirection: 'row', gap: 8 }}>
+                <Boton title="El rostro coincide" tono="ok" onPress={() => resolverRostro(true)}
+                  disabled={ocupado} style={{ flex: 1 }} />
+                <Boton title="No coincide" tono="mal" onPress={() => resolverRostro(false)}
+                  disabled={ocupado} style={{ flex: 1 }} />
+              </View>
             </View>
           )}
         </Card>
@@ -279,6 +362,19 @@ export function FichaIdentidad({ id, volver, operador }) {
           </Card>
         )}
       </ScrollView>
+
+      {/* El visor. Hace falta de verdad: en la tira, una credencial se ve del
+          tamaño de un sello, y ahí no se coteja una cara ni se lee un número de
+          documento. Se cierra tocando en cualquier parte. */}
+      <Modal visible={!!mirando} transparent animationType="fade"
+        onRequestClose={() => setMirando(null)}>
+        <Pressable style={st.visor} onPress={() => setMirando(null)}>
+          <Text style={st.visorRot}>{mirando?.rot}</Text>
+          <Image source={{ uri: mirando?.src }} resizeMode="contain"
+            style={{ width: ancho - 24, height: alto * 0.7 }} />
+          <Text style={st.visorPie}>Tocá para cerrar</Text>
+        </Pressable>
+      </Modal>
     </View>
   );
 }
@@ -290,5 +386,23 @@ const st = StyleSheet.create({
   factor: { flexDirection: 'row', gap: 9, alignItems: 'flex-start', paddingVertical: 5 },
   factorPts: { color: C.warn, fontSize: 11.5, fontWeight: '800', width: 30 },
   factorTxt: { color: C.txt2, fontSize: 12.5, flex: 1, lineHeight: 18 },
-  foto: { width: 210, height: 140, borderRadius: 10 },
+  // La tira envuelve: en un teléfono estrecho las tres tomas no caben en fila,
+  // y comprimirlas para que quepan las deja ilegibles, que es lo contrario de
+  // para lo que están.
+  tira: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
+  toma: { width: 148 },
+  foto: {
+    width: 148, height: 108, borderRadius: 10,
+    backgroundColor: C.input, borderWidth: 1, borderColor: C.line2,
+  },
+  hueco: { alignItems: 'center', justifyContent: 'center', gap: 4, borderStyle: 'dashed' },
+  huecoTxt: { color: C.txt3, fontSize: 11 },
+  tomaRot: { color: C.txt2, fontSize: 11.5, fontWeight: '700', marginTop: 5 },
+  tomaPie: { color: C.txt3, fontSize: 10.5, marginTop: 1 },
+  visor: {
+    flex: 1, backgroundColor: 'rgba(2,16,18,0.97)',
+    alignItems: 'center', justifyContent: 'center', padding: 12, gap: 12,
+  },
+  visorRot: { color: C.txt, fontSize: 14, fontWeight: '700' },
+  visorPie: { color: C.txt3, fontSize: 12 },
 });

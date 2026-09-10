@@ -42,14 +42,73 @@ for (const ruta of [app.icon, app.splash?.image, app.android?.adaptiveIcon?.fore
 }
 if (!fallos) bien('assets de app.json presentes');
 
-// 3. Desfases de dependencias contra el SDK de Expo.
+/* 3. Desfases de dependencias contra el SDK de Expo.
+
+   Un desfase de PARCHE dentro del mismo SDK avisa, no bloquea. Y no es
+   relajar el listón: es que subirlo cuesta más de lo que arregla.
+
+   El caso real que lo enseñó: `expo@54.0.36` contra `~54.0.37`, y dos
+   paquetes más igual. Correr `expo install --fix` los alinea, sí — y CAMBIA
+   LA HUELLA DE RUNTIME, medido: 94c7667c → 049f6a49. Con la huella cambiada,
+   un update por aire ya no llega a ningún APK instalado y hay que compilar
+   uno nuevo y que la gente lo instale. Bloquear una publicación por tres
+   parches, y forzar así una reinstalación, es cambiar un problema pequeño por
+   uno grande.
+
+   Un desfase de MAYOR o de MENOR sí bloquea: ahí ya no son parches del mismo
+   SDK, es otro SDK, y eso sí rompe. */
+const versionesDe = (linea) => {
+  // «  expo@54.0.36 - expected version: ~54.0.37»
+  const m = linea.match(/^\s*(\S+)@(\d+\.\d+\.\d+\S*)\s*-\s*expected version:\s*[~^]?(\d+\.\d+\.\d+\S*)/);
+  if (!m) return null;
+  return { paquete: m[1], hay: m[2], espera: m[3] };
+};
+const soloParche = (v) => {
+  const a = v.hay.split('.'), b = v.espera.split('.');
+  return a[0] === b[0] && a[1] === b[1];
+};
+
 try {
   execSync('npx expo install --check', { stdio: 'pipe' });
   bien('dependencias alineadas con el SDK');
 } catch (e) {
-  const salida = String(e.stdout || e.message);
-  // `expo install --check` sale con código 1 cuando hay desfases.
-  mal('dependencias fuera del SDK esperado:\n' + salida.slice(0, 1200));
+  /* Se leen LAS DOS salidas, y ese fue el otro fallo: `expo install --check`
+     escribe qué dependencia está desfasada en STDERR, no en stdout. Leyendo
+     solo `stdout`, el aviso salía así:
+
+         ✗ dependencias fuera del SDK esperado:
+         (nada)
+         1 problema(s). No compilar hasta arreglarlos.
+
+     Un guion que dice «hay un problema» y no dice cuál es peor que no
+     tenerlo: bloquea y no deja avanzar a quien lo lee. Costó una publicación
+     por aire que nunca salió. */
+  const salida = [e.stdout, e.stderr, e.message]
+    .map((x) => String(x || '').trim()).filter(Boolean).join('\n');
+
+  // Sin duplicados: el mismo listado llega por stdout y por stderr, y sin esto
+  // cada paquete se anunciaba dos veces.
+  const porPaquete = new Map();
+  for (const v of salida.split('\n').map(versionesDe).filter(Boolean)) {
+    if (!porPaquete.has(v.paquete)) porPaquete.set(v.paquete, v);
+  }
+  const desfases = [...porPaquete.values()];
+  const graves = desfases.filter((v) => !soloParche(v));
+  const parches = desfases.filter(soloParche);
+
+  if (graves.length) {
+    mal('dependencias de otro SDK — hay que alinearlas antes de compilar:\n' +
+      graves.map((v) => `      ${v.paquete}: hay ${v.hay}, se espera ${v.espera}`).join('\n'));
+  } else if (parches.length) {
+    console.log('  ⚠ desfase de parche dentro del mismo SDK (avisa, no bloquea):');
+    for (const v of parches) console.log(`      ${v.paquete}: hay ${v.hay}, se espera ${v.espera}`);
+    console.log('      Alinearlos cambia la huella de runtime y obliga a un APK nuevo:');
+    console.log('      hacerlo junto con la próxima compilación, no antes.');
+  } else {
+    // No se pudo entender la salida: se bloquea, que es lo prudente cuando no
+    // se sabe qué pasa. Pero se enseña ENTERA, para poder decidir a mano.
+    mal('no se pudo interpretar la comprobación de dependencias:\n' + salida.slice(0, 1500));
+  }
 }
 
 if (fallos) {

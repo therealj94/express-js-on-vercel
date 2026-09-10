@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" role="img" aria-label="Ordenex">
+<!-- El monograma de Ordenex, redibujado en vectores.
+     Dos flechas circulares —el cambio, la circulación— alrededor de la O y la
+     E enlazadas. Va en SVG y no en PNG por dos razones: se ve nítido en el
+     riel a 26 px y en una pantalla de retina a 200, y toma el oro de la casa
+     por `currentColor`, así que si algún día cambia el metal, el logo cambia
+     con él en vez de quedarse en el tono viejo. -->
+<defs>
+  <linearGradient id="oxOro" x1="0" y1="0" x2="1" y2="1">
+    <stop offset="0" stop-color="#EAD79C"/>
+    <stop offset=".5" stop-color="#C9A961"/>
+    <stop offset="1" stop-color="#96793F"/>
+  </linearGradient>
+</defs>
+<g fill="none" stroke="url(#oxOro)" stroke-width="7.5">
+  <!-- El anillo exterior, abierto arriba-izquierda y abajo-derecha para dejar
+       sitio a las dos puntas de flecha. -->
+  <path d="M22.5 44.5 A40 40 0 0 1 96 36" stroke-linecap="butt"/>
+  <path d="M97.5 75.5 A40 40 0 0 1 24 84" stroke-linecap="butt"/>
+</g>
+<!-- Las puntas. Sólidas, porque una flecha con la punta hueca se lee como un
+     acento y no como una dirección. -->
+<g fill="url(#oxOro)">
+  <path d="M22.5 47 L10 30 L36.5 27 Z"/>
+  <path d="M97.5 73 L110 90 L83.5 93 Z"/>
+</g>
+<!-- La O y la E enlazadas, dentro. -->
+<g fill="none" stroke="url(#oxOro)">
+  <circle cx="55" cy="60" r="19" stroke-width="7"/>
+  <path d="M74 45 h20 M74 60 h17 M74 75 h20" stroke-width="7" stroke-linecap="butt"/>
+</g>
+<circle cx="55" cy="60" r="7.5" fill="url(#oxOro)"/>
+</svg>

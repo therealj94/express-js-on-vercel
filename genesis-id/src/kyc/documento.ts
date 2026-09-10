@@ -28,6 +28,41 @@ export interface RevisionDocumento {
   edad: number | null
   /** Qué se pudo confirmar con el anverso, si se aportó. */
   anverso: { aportado: boolean; nombreConfirmado: boolean | null; fechaConfirmada: boolean | null }
+
+  /**
+   * Por dónde entró el documento.
+   *
+   * `mrz` es el camino bueno: el teléfono lee la zona de lectura mecánica y
+   * aquí se comprueban dígitos de control, fechas y nombre sin que nadie mire.
+   *
+   * `fotos` es el camino del NAVEGADOR, donde no hay lector: la persona sube el
+   * anverso y el reverso y **los lee un operador**. Nada de esto se comprueba
+   * solo, así que una identidad que entró por aquí NO puede quedar verificada
+   * sin que alguien la apruebe a mano — que es exactamente lo que ya exige
+   * `aprobar()`.
+   */
+  via?: 'mrz' | 'fotos'
+
+  /**
+   * Las dos caras, solo en la vía `fotos` y solo DE PASO.
+   *
+   * No se guardan aquí: viven en su propio almacén (`kyc/fotosDocumento`) porque
+   * son megabytes de base64 y el estado del motor entero es un solo documento de
+   * MongoDB, que no puede pasar de 16 MB. Este campo se rellena únicamente al
+   * armar la ficha que ve el operador, y en el expediente guardado siempre va
+   * `null`. Volver a escribirlo antes de un guardado es rearmar la bomba.
+   */
+  imagenes?: { anverso: string; reverso: string } | null
+
+  /**
+   * Lo que la MÁQUINA leyó impreso en el frente, solo en la vía `fotos`.
+   *
+   * Es la materia prima del cotejo automático de nombre y fecha, y se guarda
+   * (recortada) para que el operador pueda ver QUÉ leyó la máquina cuando el
+   * cotejo diga que algo no aparece: sin esto, un «no se encontró el nombre»
+   * no se puede distinguir de una foto ilegible.
+   */
+  textoAnverso?: string | null
 }
 
 /**
@@ -49,7 +84,7 @@ export interface RevisionDocumento {
  * Se compara sobre el TEXTO reconocido, no sobre una foto: la imagen se
  * procesa en el teléfono y aquí solo llegan las palabras.
  */
-function cotejarAnverso(
+export function cotejarAnverso(
   texto: string,
   declarado: { nombreCompleto?: string | null; fechaNacimiento?: string | null },
 ): { nombre: boolean | null; fecha: boolean | null; detalle: string } {

@@ -1,0 +1,443 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Genesis Core · el cerebro del ecosistema</title>
+<meta name="theme-color" content="#02060B">
+<!-- Embebido: sin esto el navegador pide /favicon.ico y se lleva un 404 en
+     cada carga, y en una proyección la pestaña queda con el icono genérico. -->
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 32 32\'%3E%3Crect width=\'32\' height=\'32\' rx=\'8\' fill=\'%2302060B\'/%3E%3Ccircle cx=\'16\' cy=\'16\' r=\'5\' fill=\'%236FE3F5\'/%3E%3Ccircle cx=\'7\' cy=\'9\' r=\'2.2\' fill=\'%23C9A961\'/%3E%3Ccircle cx=\'25\' cy=\'10\' r=\'2.2\' fill=\'%237BE0C0\'/%3E%3Ccircle cx=\'24\' cy=\'24\' r=\'2.2\' fill=\'%239B8FD8\'/%3E%3Ccircle cx=\'8\' cy=\'24\' r=\'2.2\' fill=\'%23F0776B\'/%3E%3Cg stroke=\'%236FE3F5\' stroke-width=\'1\' opacity=\'.55\'%3E%3Cpath d=\'M16 16 7 9M16 16l9-6M16 16l8 8M16 16l-8 8\'/%3E%3C/g%3E%3C/svg%3E">
+<!-- Esta pantalla es para ENSEÑAR, y por eso no se indexa: la versión que
+     circula es la que se proyecta en una reunión, no una que aparezca en una
+     búsqueda con el mapa de la casa dentro. -->
+<meta name="robots" content="noindex,nofollow">
+
+<meta http-equiv="Content-Security-Policy" content="
+  default-src 'self';
+  script-src 'self';
+  style-src 'self' 'unsafe-inline';
+  img-src 'self' data:;
+  connect-src 'self' https://cerebro.ordenscan.com;
+  media-src 'self' https://cerebro.ordenscan.com;
+  form-action 'none';
+  base-uri 'self'">
+<!-- `media-src` y `connect-src` abren UN origen y solo uno: cerebro.ordenscan.com,
+     que es donde vive el banco de voz grabado de la casa. No se abre a `*`: la
+     gracia de esta cabecera es que si alguien colara una etiqueta en esta
+     página, no pudiera sacar nada hacia donde quisiera. El banco sirve con
+     `access-control-allow-origin: *`, así que además se puede ANALIZAR la
+     señal para mover la boca al ritmo del audio de verdad. -->
+
+<style>
+/* ═══ GENESIS CORE · LA VISTA DE PRESENTACIÓN ════════════════════════════════
+
+   QUÉ ES Y QUÉ NO ES
+
+   El cerebro de trabajo es `cerebro.html`: tiene panel de capas, ficha de cada
+   pieza y los datos en vivo. Es una herramienta interna y se sigue usando para
+   eso.
+
+   Esta pantalla es otra cosa: es la que se PROYECTA. No tiene panel, no tiene
+   ficha, no se puede hurgar. Enseña la ARQUITECTURA —cuántas piezas hay, cómo
+   se agrupan, cómo se hablan— y no el contenido de ninguna.
+
+   Esa distinción es la que respeta la regla que ya tenía la casa («Genesis
+   Core no se fotografía»): lo que no se enseña es lo que el cerebro SABE. Que
+   existe, cuántas piezas tiene y cómo laten, se puede enseñar — de hecho es
+   justo lo que impresiona, y no revela nada que sirva para atacarnos.
+
+   LOS NÚMEROS SON REALES. Cada etiqueta cuenta las piezas de verdad que hay en
+   `cerebro-datos.js`. Las dendritas que salen de cada neurona son TEXTURA, no
+   piezas: por eso no se cuentan ni se etiquetan. Inflar el recuento para que
+   se vea más grande sería exactamente lo que esta casa no hace. */
+
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;overflow:hidden;background:#02060B;
+  /* Sin esto, en el móvil el arrastre para girar el cerebro también tira de la
+     página: el navegador la desplaza, la refresca al tirar hacia abajo, y el
+     gesto se pierde a la mitad. */
+  overscroll-behavior:none;touch-action:none}
+body{font-family:ui-monospace,'SF Mono',Menlo,monospace;color:#DCE7F5;
+  -webkit-font-smoothing:antialiased;
+  /* El texto no se selecciona: mantener el dedo apoyado sobre el lienzo
+     mientras se gira sacaba la lupa y el menú de copiar. */
+  -webkit-user-select:none;user-select:none;
+  -webkit-tap-highlight-color:transparent}
+canvas{display:block;width:100%;height:100%;cursor:grab;touch-action:none}
+canvas:active{cursor:grabbing}
+
+/* El sello: qué es esto, en una línea, arriba a la izquierda. En una
+   proyección la gente entra a mitad de la explicación y hay que decirle qué
+   está mirando sin que nadie tenga que decirlo en voz alta. */
+/* El sello baja: el botón del índice vive en la esquina y le caía encima. */
+#sello{position:fixed;top:76px;left:30px;z-index:10;pointer-events:none}
+#sello .t{font-size:13px;letter-spacing:.34em;text-transform:uppercase;
+  color:#6FE3F5;text-shadow:0 0 18px rgba(111,227,245,.6)}
+#sello .s{margin-top:9px;font-size:12.5px;color:#5B7085;letter-spacing:.05em}
+
+/* El pie: el pulso y la ayuda. */
+#pie{position:fixed;bottom:24px;left:30px;right:30px;z-index:10;
+  display:flex;justify-content:space-between;align-items:flex-end;gap:20px;
+  font-size:11.5px;color:#4C6076;letter-spacing:.08em;pointer-events:none}
+#pulso{display:flex;align-items:center;gap:10px;color:#6FE3F5}
+#pulso i{width:8px;height:8px;border-radius:50%;background:#6FE3F5;
+  box-shadow:0 0 14px #6FE3F5;animation:latir 2.4s ease-in-out infinite}
+@keyframes latir{0%,100%{transform:scale(.75);opacity:.55}12%{transform:scale(1.5);opacity:1}}
+#ayuda{display:flex;flex-direction:column;align-items:flex-end;gap:5px;text-align:right}
+#ayuda .nota{color:#3C4E60}
+
+/* ══ EL TELÉFONO ══════════════════════════════════════════════════════════
+   Misma pieza, no una versión recortada. Lo que cambia es lo que en una
+   pantalla de seis pulgadas estorba: los márgenes grandes, el texto de
+   proyector y la ayuda en dos líneas al lado del pulso.
+
+   Los márgenes salen de `env(safe-area-inset-*)` porque esto se abre DENTRO
+   de la app: sin eso el sello se mete debajo de la muesca y el pie debajo de
+   la barra de gestos. */
+/* La misma regla que el guion: manda el lado corto. Un teléfono acostado
+   entra por `max-height`. */
+@media (max-width:620px), (max-height:620px){
+  #sello{top:calc(14px + env(safe-area-inset-top));left:calc(16px + env(safe-area-inset-left))}
+  #sello .t{font-size:11px;letter-spacing:.26em}
+  #sello .s{margin-top:6px;font-size:10.5px}
+  #pie{
+    bottom:calc(12px + env(safe-area-inset-bottom));
+    left:calc(16px + env(safe-area-inset-left));
+    right:calc(16px + env(safe-area-inset-right));
+    /* En vertical las dos mitades no caben en una línea: el pulso arriba y la
+       ayuda debajo, ambos a la izquierda. Forzarlas en fila las parte a mitad
+       de palabra. */
+    flex-direction:column;align-items:flex-start;gap:5px;font-size:10px}
+  #ayuda{align-items:flex-start;text-align:left;gap:3px;line-height:1.45}
+  /* La nota de honestidad se queda; lo que se acorta es el margen alrededor,
+     no el texto. Que quepa en dos renglones es aceptable — quitarla no. */
+  #ayuda .nota{max-width:100%}
+}
+@media (prefers-reduced-motion:reduce){#pulso i{animation:none}}
+
+/* ══ EL ÍNDICE ══════════════════════════════════════════════════════════════
+   Un cajón que entra desde la izquierda. Cajón y no una columna fija porque
+   esta pantalla se PROYECTA: mientras se enseña el cerebro no tiene que haber
+   una lista comiéndose un tercio del cuadro, y cuando alguien quiere buscar
+   algo, la abre. */
+#abreIndice{position:fixed;left:30px;top:26px;z-index:14;
+  display:flex;align-items:center;gap:9px;padding:8px 14px 8px 11px;
+  border-radius:999px;cursor:pointer;
+  background:rgba(3,12,20,.86);border:1px solid rgba(111,227,245,.3);
+  color:#6FE3F5;font:600 10.5px/1 ui-monospace,Menlo,monospace;
+  letter-spacing:.18em;text-transform:uppercase;
+  transition:border-color .2s,background .2s}
+#abreIndice:hover{border-color:#6FE3F5;background:rgba(8,26,38,.92)}
+#abreIndice:focus-visible{outline:2px solid #6FE3F5;outline-offset:3px}
+#abreIndice .rayas{display:flex;flex-direction:column;gap:3px;width:13px}
+#abreIndice .rayas i{height:1.4px;background:currentColor;border-radius:1px;
+  transition:transform .24s,opacity .2s}
+/* Las tres rayas se vuelven una equis al abrir: el mismo botón abre y cierra,
+   y el dibujo dice en cuál de los dos estados está. */
+body.indice-abierto #abreIndice .rayas i:nth-child(1){transform:translateY(4.4px) rotate(45deg)}
+body.indice-abierto #abreIndice .rayas i:nth-child(2){opacity:0}
+body.indice-abierto #abreIndice .rayas i:nth-child(3){transform:translateY(-4.4px) rotate(-45deg)}
+
+#indice{position:fixed;left:0;top:0;bottom:0;z-index:13;width:min(348px,86vw);
+  display:flex;flex-direction:column;
+  background:rgba(3,10,17,.96);border-right:1px solid rgba(111,227,245,.18);
+  backdrop-filter:blur(10px);
+  transform:translateX(-100%);transition:transform .34s cubic-bezier(.22,.7,.3,1);
+  padding-top:78px}
+body.indice-abierto #indice{transform:none}
+#indice .cab{padding:0 18px 12px;border-bottom:1px solid rgba(111,227,245,.12)}
+#q{width:100%;padding:9px 13px;border-radius:999px;
+  background:rgba(8,20,30,.9);border:1px solid rgba(111,227,245,.24);
+  color:#DCE7F5;font:400 12px ui-monospace,Menlo,monospace;outline:none}
+#q::placeholder{color:#4C6076}
+#q:focus{border-color:#6FE3F5}
+#indice .cuenta{margin-top:9px;font-size:9.5px;letter-spacing:.13em;
+  text-transform:uppercase;color:#4C6076}
+
+#arbol{flex:1;overflow-y:auto;padding:8px 10px 26px;
+  scrollbar-width:thin;scrollbar-color:rgba(111,227,245,.26) transparent}
+/* ── una región ── */
+#arbol .reg{margin-bottom:2px}
+#arbol .reg>button{width:100%;display:flex;align-items:center;gap:9px;
+  padding:8px 10px;border:0;border-radius:7px;background:none;cursor:pointer;
+  color:#B6CADA;font:600 11.5px/1.2 ui-monospace,Menlo,monospace;text-align:left;
+  transition:background .16s}
+#arbol .reg>button:hover{background:rgba(111,227,245,.08)}
+#arbol .reg .punto{width:7px;height:7px;border-radius:50%;flex:0 0 auto}
+#arbol .reg .n{flex:1}
+#arbol .reg .c{font-size:9.5px;color:#516A80;letter-spacing:.08em}
+#arbol .reg .fl{width:7px;height:7px;border-right:1.4px solid #516A80;
+  border-bottom:1.4px solid #516A80;transform:rotate(-45deg);
+  transition:transform .22s;margin-right:2px}
+#arbol .reg.abierta .fl{transform:rotate(45deg)}
+/* La lista de piezas se despliega con una transición de altura. `grid` con
+   `1fr`→`0fr` porque es lo único que anima una altura DESCONOCIDA sin tener
+   que medirla en JavaScript en cada apertura. */
+#arbol .piezas{display:grid;grid-template-rows:0fr;transition:grid-template-rows .26s ease}
+#arbol .reg.abierta .piezas{grid-template-rows:1fr}
+#arbol .piezas>div{overflow:hidden}
+#arbol .piezas button{width:100%;display:flex;align-items:baseline;gap:8px;
+  padding:6px 10px 6px 26px;border:0;border-radius:6px;background:none;cursor:pointer;
+  color:#8CA6BC;font:400 11.5px/1.35 ui-monospace,Menlo,monospace;text-align:left;
+  transition:background .16s,color .16s}
+#arbol .piezas button:hover,#arbol .piezas button.sel{background:rgba(111,227,245,.11);color:#EAF3FB}
+#arbol .piezas .doc{font-size:8.5px;letter-spacing:.1em;text-transform:uppercase;
+  color:#4E7F92;flex:0 0 auto}
+#arbol .vacio{padding:16px 12px;font-size:11px;line-height:1.6;color:#516A80}
+
+/* ══ LA VENTANA ═════════════════════════════════════════════════════════════ */
+#ventana{position:fixed;inset:0;z-index:20;display:grid;place-items:center;padding:24px}
+#ventana[hidden]{display:none}
+#ventana .fondo{position:absolute;inset:0;background:rgba(1,5,10,.72);
+  opacity:0;transition:opacity .26s}
+#ventana article{position:relative;width:min(620px,100%);max-height:min(84vh,760px);
+  display:flex;flex-direction:column;padding:26px 28px 24px;
+  background:rgba(5,14,23,.985);border:1px solid rgba(111,227,245,.3);border-radius:14px;
+  box-shadow:0 26px 80px rgba(0,0,0,.66);
+  opacity:0;transform:translateY(14px) scale(.985);
+  transition:opacity .26s,transform .26s cubic-bezier(.22,.7,.3,1)}
+/* La clase la pone el guion un cuadro después de quitar `hidden`: sin ese
+   respiro el navegador aplica el estado final de golpe y no hay transición. */
+body.ventana-viva #ventana .fondo{opacity:1}
+body.ventana-viva #ventana article{opacity:1;transform:none}
+#ventana .x{position:absolute;right:14px;top:13px;width:28px;height:28px;
+  border:0;border-radius:50%;background:none;color:#5B7085;cursor:pointer;
+  font-size:14px;line-height:1;transition:background .16s,color .16s}
+#ventana .x:hover{background:rgba(111,227,245,.12);color:#DCE7F5}
+
+/* La ruta: de dónde cuelga esta pieza. Es la respuesta a «dónde pertenece». */
+#ventana .miga{display:flex;flex-wrap:wrap;align-items:center;gap:6px;
+  font-size:9.5px;letter-spacing:.16em;text-transform:uppercase;color:#4C6076;
+  margin-right:34px}
+#ventana .miga b{font-weight:600}
+#ventana .miga i{font-style:normal;opacity:.55}
+#ventana h2{margin:11px 0 0;font-size:21px;font-weight:600;color:#EFF6FC;
+  letter-spacing:.01em;line-height:1.22}
+
+/* Las etiquetas: qué es esto, de un vistazo y sin leer el párrafo. */
+#ventana .tags{display:flex;flex-wrap:wrap;gap:6px;margin-top:11px}
+#ventana .tags span{padding:3px 9px;border-radius:999px;font-size:9px;
+  letter-spacing:.13em;text-transform:uppercase;border:1px solid currentColor}
+#ventana .tags .neutra{color:#5F7C93}
+#ventana .tags .confirmado{color:#5FD3A8}
+#ventana .tags .dicho{color:#E0B25E}
+#ventana .tags .alerta{color:#F0776B}
+
+#ventana .lede{margin-top:14px;font-size:13px;line-height:1.66;color:#C3D6E4}
+#ventana .cuerpo{margin-top:4px;overflow-y:auto;padding-right:4px;
+  scrollbar-width:thin;scrollbar-color:rgba(111,227,245,.28) transparent}
+#ventana .cuerpo h3{margin:18px 0 7px;font-size:10.5px;letter-spacing:.17em;
+  text-transform:uppercase;color:#7FA7BF;font-weight:600;
+  padding-bottom:6px;border-bottom:1px solid rgba(111,227,245,.13)}
+#ventana .cuerpo p{font-size:12.5px;line-height:1.68;color:#A9BFD0;margin:0 0 8px}
+#ventana .cuerpo dl{display:grid;grid-template-columns:auto 1fr;gap:5px 16px;margin:10px 0 4px}
+#ventana .cuerpo dt{font-size:11px;color:#65809A}
+#ventana .cuerpo dd{font-size:11px;color:#D3E3EE;margin:0}
+#ventana .cuerpo .aviso{margin-top:10px;padding:9px 11px;border-radius:7px;
+  border:1px solid rgba(240,119,107,.4);background:rgba(240,119,107,.07);
+  font-size:11px;line-height:1.55;color:#EFA79E}
+#ventana .cuerpo .fte{margin-top:8px;font-size:9.5px;color:#43596E;line-height:1.5}
+/* Las conexiones se pueden pulsar: de una pieza se salta a la de al lado y se
+   recorre el ecosistema por donde de verdad está unido. */
+#ventana .ira{display:inline-block;margin-top:2px;padding:8px 15px;border-radius:999px;
+  background:rgba(111,227,245,.12);border:1px solid rgba(111,227,245,.42);
+  color:#8FE6F7;font:500 11.5px ui-monospace,Menlo,monospace;text-decoration:none;
+  transition:background .16s,border-color .16s}
+#ventana .ira:hover{background:rgba(111,227,245,.2);border-color:#6FE3F5;color:#DAF6FD}
+#ventana .vecinas{display:flex;flex-wrap:wrap;gap:6px;margin-top:4px}
+#ventana .vecinas button{padding:5px 11px;border-radius:999px;cursor:pointer;
+  background:rgba(8,20,30,.8);border:1px solid rgba(111,227,245,.22);
+  color:#9FBACC;font:400 11px ui-monospace,Menlo,monospace;
+  transition:border-color .16s,color .16s}
+#ventana .vecinas button:hover{border-color:#6FE3F5;color:#EAF3FB}
+
+@media (prefers-reduced-motion:reduce){
+  #indice,#ventana .fondo,#ventana article,#arbol .piezas,#abreIndice .rayas i{transition:none}
+}
+
+/* ══ LOS TEMAS ══════════════════════════════════════════════════════════════ */
+#temas{position:fixed;left:30px;bottom:74px;z-index:11;
+  display:flex;flex-wrap:wrap;gap:6px;max-width:min(430px,calc(100vw - 320px))}
+#temas button{
+  padding:6px 12px;border-radius:999px;cursor:pointer;
+  background:rgba(3,12,20,.78);border:1px solid rgba(111,227,245,.24);
+  color:#7E9AB0;font:600 10px/1 ui-monospace,Menlo,monospace;
+  letter-spacing:.13em;text-transform:uppercase}
+#temas button:hover{border-color:rgba(111,227,245,.6);color:#BFDCEA}
+#temas button.viva{border-color:#6FE3F5;color:#6FE3F5;background:rgba(8,30,44,.9)}
+#temas button:focus-visible{outline:2px solid #6FE3F5;outline-offset:2px}
+
+/* ══ LA CARA Y LO QUE DICE ══════════════════════════════════════════════════ */
+#cara{position:fixed;right:26px;bottom:74px;z-index:11;
+  display:flex;flex-direction:column;align-items:center;gap:8px}
+#lienzoCara{width:210px;height:248px;display:block;pointer-events:none}
+#botonHablar{
+  display:flex;align-items:center;gap:8px;
+  padding:7px 15px 7px 12px;border-radius:999px;cursor:pointer;
+  background:rgba(3,12,20,.82);border:1px solid rgba(111,227,245,.5);
+  color:#6FE3F5;font:600 11px/1 ui-monospace,Menlo,monospace;
+  letter-spacing:.16em;text-transform:uppercase}
+#cara .mandos{display:flex;align-items:center;gap:7px}
+#botonHablar:hover{border-color:#6FE3F5;background:rgba(8,26,38,.9)}
+#botonSon{width:30px;height:30px;flex:0 0 auto;border-radius:50%;cursor:pointer;
+  display:grid;place-items:center;
+  background:rgba(3,12,20,.82);border:1px solid rgba(111,227,245,.34);
+  color:#4C6076;transition:color .2s,border-color .2s}
+#botonSon:hover{border-color:#6FE3F5;color:#9FD8E6}
+#botonSon[aria-pressed="true"]{color:#6FE3F5;border-color:#6FE3F5}
+#botonSon:focus-visible{outline:2px solid #6FE3F5;outline-offset:3px}
+/* Dos barras que crecen: apagadas quedan bajas y quietas; encendidas se mueven
+   con desfases distintos, que es lo que se lee como «está sonando». */
+#botonSon .on{display:flex;align-items:flex-end;gap:2.5px;height:11px}
+#botonSon .on::before,#botonSon .on::after{content:'';display:block;
+  width:2px;height:4px;background:currentColor;border-radius:1px}
+#botonSon[aria-pressed="true"] .on::before{animation:barra 1.1s ease-in-out infinite}
+#botonSon[aria-pressed="true"] .on::after{animation:barra 1.1s ease-in-out .55s infinite}
+@keyframes barra{0%,100%{height:3px}50%{height:11px}}
+@media (prefers-reduced-motion:reduce){#botonSon .on::before,#botonSon .on::after{animation:none}}
+#botonHablar:focus-visible{outline:2px solid #6FE3F5;outline-offset:3px}
+/* El triángulo/cuadrado del botón se dibuja con bordes en vez de con un
+   carácter: «▶» y «■» salen de tamaños distintos en cada sistema y el botón
+   daba un salto al cambiar de estado. */
+#botonHablar .pico{width:0;height:0;border-left:8px solid currentColor;
+  border-top:5px solid transparent;border-bottom:5px solid transparent}
+#botonHablar.hablando .pico{width:9px;height:9px;border:0;background:currentColor}
+
+#dice{position:fixed;left:50%;transform:translateX(-50%);
+  bottom:74px;z-index:11;width:min(760px,calc(100vw - 300px));
+  text-align:center;font-size:14px;line-height:1.55;color:#CFE2F2;
+  text-shadow:0 2px 18px rgba(0,0,0,.95);pointer-events:none;
+  opacity:0;transition:opacity .25s}
+#dice.viva{opacity:1}
+
+@media (max-width:620px), (max-height:620px){
+  /* En el teléfono las tres cosas se APILAN, de abajo arriba: el pie, la cara
+     con su botón, y encima el subtítulo a todo el ancho.
+
+     En horizontal, como en el escritorio, no cabían: el subtítulo caía justo
+     encima de la cara y se leía el texto sobre la malla. Con cuatrocientos
+     píxeles de ancho no hay sitio para dos columnas — hay sitio para una. */
+  /* 86 y no 70: a 70 el botón quedaba justo encima del renglón del pulso y se
+     leía «13 regiones PARAR» de corrido. */
+  #cara{right:10px;bottom:calc(86px + env(safe-area-inset-bottom));gap:5px}
+  #lienzoCara{width:100px;height:118px}
+  #botonHablar{padding:5px 11px 5px 9px;font-size:9.5px;letter-spacing:.12em}
+  /* El cajón ocupa casi todo el ancho y el botón se encoge: en el teléfono un
+     índice de 348 px al lado del cerebro no deja ver ninguno de los dos. */
+  #abreIndice{left:16px;top:calc(14px + env(safe-area-inset-top));
+    padding:6px 11px 6px 9px;font-size:9px;letter-spacing:.13em}
+  #indice{width:min(320px,90vw);padding-top:66px}
+  #ventana{padding:14px}
+  #ventana article{padding:20px 18px 18px;max-height:88vh;border-radius:12px}
+  #ventana h2{font-size:18px}
+  #ventana .lede{font-size:12.5px}
+  /* El sello se aparta: el botón del índice le cae encima. */
+  #sello{top:calc(52px + env(safe-area-inset-top))}
+  /* Los temas se hacen una tira que se desliza: siete botones no caben en
+     cuatrocientos píxeles, y apilarlos en tres filas se come la pantalla. */
+  #temas{left:0;right:0;max-width:none;padding:0 14px;
+    bottom:calc(196px + env(safe-area-inset-bottom));
+    flex-wrap:nowrap;overflow-x:auto;overflow-y:hidden;
+    scrollbar-width:none;-webkit-overflow-scrolling:touch;touch-action:pan-x}
+  #temas::-webkit-scrollbar{display:none}
+  #temas button{flex:0 0 auto;font-size:9px;padding:5px 10px}
+  /* Con el índice abierto, los temas y el subtítulo se van: el cajón ocupa el
+     ancho y todo lo demás quedaba debajo, respondiendo a toques que nadie
+     puede ver que está dando. */
+  body.indice-abierto #temas,body.indice-abierto #dice,body.indice-abierto #cara{display:none}
+  #dice{width:calc(100vw - 32px);left:16px;transform:none;
+    bottom:calc(238px + env(safe-area-inset-bottom));
+    font-size:12.5px;line-height:1.5;text-align:left}
+}
+</style>
+</head>
+<body>
+
+<canvas id="lienzo"></canvas>
+
+<div id="sello">
+  <div class="t">Genesis Core</div>
+  <div class="s">El cerebro del ecosistema Orden Global</div>
+</div>
+
+<!-- ══ EL ÍNDICE ═══════════════════════════════════════════════════════════
+     La respuesta a «no sé qué información hay». El cerebro enseña la FORMA del
+     ecosistema; el índice enseña su CONTENIDO, región por región, con lo que
+     hay dentro de cada una y cuánto expediente tiene. Sin él, la única manera
+     de saber qué hay es girar la bola hasta toparse con algo. -->
+<button id="abreIndice" type="button" aria-expanded="false" aria-controls="indice">
+  <span class="rayas"><i></i><i></i><i></i></span><span class="rot">Índice</span>
+</button>
+
+<aside id="indice" aria-label="Índice del ecosistema">
+  <div class="cab">
+    <input id="q" type="search" placeholder="Buscar en todo…" autocomplete="off"
+           spellcheck="false" aria-label="Buscar">
+    <p class="cuenta"></p>
+  </div>
+  <div id="arbol" role="tree"></div>
+</aside>
+
+<!-- ══ LA VENTANA ═══════════════════════════════════════════════════════════
+     Una pieza se abre en su propia ventana, con la RUTA arriba —de dónde
+     cuelga— y sus etiquetas. Se cierra y se vuelve a donde se estaba: el
+     índice sigue abierto por debajo, en el mismo sitio. -->
+<div id="ventana" hidden>
+  <div class="fondo"></div>
+  <article role="dialog" aria-modal="true" aria-labelledby="vTit">
+    <button class="x" type="button" aria-label="Cerrar">✕</button>
+    <nav class="miga"></nav>
+    <h2 id="vTit"></h2>
+    <div class="tags"></div>
+    <p class="lede"></p>
+    <div class="cuerpo"></div>
+  </article>
+</div>
+
+<!-- ══ LOS TEMAS ═══════════════════════════════════════════════════════════
+     Siete cosas de las que la voz puede hablar. Botones y no un desplegable:
+     en una reunión hay que poder saltar a «lo legal» de un toque, sin abrir
+     un menú delante de todos. -->
+<nav id="temas" aria-label="De qué puede hablar"></nav>
+
+<!-- ══ LA CARA ═════════════════════════════════════════════════════════════
+     Va debajo del cerebro y a un lado, no en el medio: en el medio tapa
+     justo la masa que hay que mirar mientras habla de ella. -->
+<div id="cara">
+  <canvas id="lienzoCara"></canvas>
+  <div class="mandos">
+    <button id="botonHablar" type="button" aria-label="Que Genesis Core presente el ecosistema">
+      <span class="pico"></span><span class="rot">Presentar</span>
+    </button>
+    <!-- El ambiente arranca apagado: ningún navegador deja sonar una página sin
+         que alguien la haya tocado, y abrir un enlace y que empiece a sonar
+         música es de mala educación. -->
+    <button id="botonSon" type="button" aria-pressed="false" aria-label="Sonido de ambiente"
+            title="Sonido de ambiente"><span class="on"></span></button>
+  </div>
+</div>
+
+<!-- El subtítulo. Está siempre que se habla, y no como accesorio: en una sala
+     con ruido —o con alguien que no oye bien— el subtítulo ES la
+     presentación. Y es lo que permite comprobar de un vistazo que el audio
+     dice lo que pone. -->
+<div id="dice" aria-live="polite"></div>
+
+<div id="pie">
+  <div id="pulso"><i></i><span id="txtPulso">—</span></div>
+  <!-- Esta línea no es decoración. Si alguien en la sala pregunta «¿esos miles
+       de puntos son piezas?», la respuesta ya está en pantalla y no depende de
+       que quien proyecta se acuerde de aclararlo. -->
+  <div id="ayuda">
+    <span class="nota">El tejido es textura · lo contado son las piezas del mapa</span>
+    <!-- El texto del gesto lo pone el guion: en un teléfono no hay rueda de
+         ratón, y decirle a alguien que use una que no tiene es peor que no
+         decir nada. -->
+    <span id="gesto">Arrastrá para girar · rueda para acercar</span>
+  </div>
+</div>
+
+<script type="module" src="cerebro-3d.js"></script>
+</body>
+</html>

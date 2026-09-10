@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "448329275241",
+    "project_id": "orden-global",
+    "storage_bucket": "orden-global.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:448329275241:android:4a733eac7bcc1e4d168ff8",
+        "android_client_info": {
+          "package_name": "com.ordenglobal.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyChtLU8kJzDIGlVt3yXGrwtd8jpd1CGIUo"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

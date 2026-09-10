@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 100" role="img" aria-label="AuCorp">
+<!-- La marca de AuCorp, redibujada: un circuito que crece hacia arriba dentro
+     de un galón. Aquí va en pequeño —al pie del riel de Ordenex, donde dice de
+     quién es la casa— así que las pistas son ocho y no cuarenta: a 20 px de
+     alto, cuarenta trazos son una mancha. El galón y la aguja central, que son
+     lo que hace reconocible la marca, se conservan enteros. -->
+<defs>
+  <linearGradient id="auOro" x1="0" y1="1" x2="0" y2="0">
+    <stop offset="0" stop-color="#F8EFCF"/>
+    <stop offset="1" stop-color="#C9A961"/>
+  </linearGradient>
+</defs>
+<g fill="none" stroke="url(#auOro)" stroke-width="2.6" stroke-linejoin="round" stroke-linecap="round">
+  <path d="M22 26 v34 h8 v14"/>
+  <path d="M36 14 v30"/>
+  <path d="M48 32 v18 h9 v20"/>
+  <path d="M72 32 v18 h-9 v20"/>
+  <path d="M84 14 v30"/>
+  <path d="M98 26 v34 h-8 v14"/>
+</g>
+<g fill="url(#auOro)">
+  <circle cx="22" cy="26" r="3"/><circle cx="36" cy="14" r="3"/><circle cx="48" cy="32" r="3"/>
+  <circle cx="72" cy="32" r="3"/><circle cx="84" cy="14" r="3"/><circle cx="98" cy="26" r="3"/>
+</g>
+<!-- La aguja central: la punta que baja hasta el vértice del galón. -->
+<path d="M60 4 L63 52 L60 88 L57 52 Z" fill="url(#auOro)"/>
+<!-- El galón. Dos brazos que se juntan abajo, como el logo. -->
+<path d="M6 62 L60 92 L114 62 L114 68 L60 98 L6 68 Z" fill="url(#auOro)"/>
+</svg>

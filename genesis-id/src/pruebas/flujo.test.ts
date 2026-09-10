@@ -12,7 +12,7 @@
 
 import { test, describe, before, after } from 'node:test'
 import assert from 'node:assert/strict'
-import { mkdtempSync, rmSync } from 'fs'
+import { mkdtempSync, rmSync, readFileSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
 import type { Server } from 'http'
@@ -209,6 +209,52 @@ L898902C36UTO9008122F1204159ZE184226B<<<<<10`
     assert.ok(r.cuerpo.documento.problemas.some((p: string) => /dígitos de control/i.test(p)))
   })
 
+  test('desde el navegador, el documento entra como dos fotos', async () => {
+    // Quien se verifica en un navegador no tiene lector de MRZ, asi que sube
+    // las dos caras y las lee un operador. Se hace sobre una identidad aparte
+    // para no pisar el flujo de la MRZ de arriba.
+    const alta = await pedir('/api/v1/identidades', {
+      method: 'POST', headers: conClave(),
+      body: JSON.stringify({ email: 'porfotos@prueba.local' }),
+    })
+    const otra = alta.cuerpo.identidad.id
+    await pedir(`/api/v1/identidades/${otra}/datos`, {
+      method: 'POST', headers: conClave(),
+      body: JSON.stringify({ nombreCompleto: 'Persona Por Fotos', fechaNacimiento: '1990-01-01' }),
+    })
+    const foto = 'data:image/jpeg;base64,' + 'A'.repeat(2000)
+    const r = await pedir(`/api/v1/identidades/${otra}/documento-fotos`, {
+      method: 'POST', headers: conClave(),
+      body: JSON.stringify({ anverso: foto, reverso: foto }),
+    })
+    assert.equal(r.estado, 200)
+    assert.equal(r.cuerpo.identidad.estado, 'documento')
+    // Las dos claves se leen juntas: `aceptable` en falso aqui no quiere decir
+    // rechazado, quiere decir que todavia no lo miro nadie.
+    assert.equal(r.cuerpo.documento.via, 'fotos')
+    assert.equal(r.cuerpo.documento.aceptable, false)
+    assert.equal(r.cuerpo.documento.pendienteDeLectura, true)
+    assert.deepEqual(r.cuerpo.documento.problemas, [])
+  })
+
+  test('media cara, o algo que no es una imagen, no entra', async () => {
+    const alta = await pedir('/api/v1/identidades', {
+      method: 'POST', headers: conClave(),
+      body: JSON.stringify({ email: 'mediacara@prueba.local' }),
+    })
+    const otra = alta.cuerpo.identidad.id
+    const foto = 'data:image/jpeg;base64,' + 'A'.repeat(2000)
+    const soloUna = await pedir(`/api/v1/identidades/${otra}/documento-fotos`, {
+      method: 'POST', headers: conClave(), body: JSON.stringify({ anverso: foto }),
+    })
+    assert.equal(soloUna.estado, 400)
+    const noEsFoto = await pedir(`/api/v1/identidades/${otra}/documento-fotos`, {
+      method: 'POST', headers: conClave(),
+      body: JSON.stringify({ anverso: 'https://algun.sitio/foto.jpg', reverso: foto }),
+    })
+    assert.equal(noEsFoto.estado, 400)
+  })
+
   test('la app NO puede aprobar la identidad', async () => {
     // Aunque tenga una clave de API perfectamente válida.
     const r = await pedir(`/api/panel/identidades/${identidadId}/aprobar`, {
@@ -304,9 +350,14 @@ describe('Inicio de sesión único', () => {
   test('con la cuenta atada sí se emite, y otra app lo valida', async () => {
     const identidad = store.todo().identidades.find((i) => i.email === 'persona@prueba.local')!
 
+    // El correo es obligatorio: es la prueba de que la app autenticó a la
+    // dueña de esa identidad. Ver la prueba de abajo para por qué.
     const vinculo = await pedir('/api/v1/vinculos', {
       method: 'POST', headers: conClave(),
-      body: JSON.stringify({ identidadId: identidad.id, cuenta: 'usuario-1', direccion: '0xabc' }),
+      body: JSON.stringify({
+        identidadId: identidad.id, cuenta: 'usuario-1', direccion: '0xabc',
+        email: 'persona@prueba.local',
+      }),
     })
     assert.equal(vinculo.estado, 200)
 
@@ -322,6 +373,32 @@ describe('Inicio de sesión único', () => {
     assert.equal(validado.estado, 200)
     assert.equal(validado.cuerpo.valido, true)
     assert.equal(validado.cuerpo.gid, identidad.gid)
+  })
+
+  /* EL VINCULO ES LA LLAVE DEL SSO, ASI QUE HAY QUE GANARSELO.
+     La cadena era: cualquier app con `vinculo.crear` ataba SU cuenta a
+     CUALQUIER identidad sin probar nada, y con la cuenta atada `/sso/token` le
+     emitía un token de esa persona. Una clave de API filtrada alcanzaba para
+     suplantar a cualquier verificado del ecosistema. Estas dos pruebas son el
+     candado: sin correo no hay vínculo, y con el correo de otro tampoco. */
+  test('no se ata una cuenta sin el correo de la persona', async () => {
+    const identidad = store.todo().identidades.find((i) => i.email === 'persona@prueba.local')!
+    const r = await pedir('/api/v1/vinculos', {
+      method: 'POST', headers: conClave(),
+      body: JSON.stringify({ identidadId: identidad.id, cuenta: 'colada-sin-correo' }),
+    })
+    assert.equal(r.estado, 400)
+  })
+
+  test('no se ata una cuenta con el correo de otra persona', async () => {
+    const identidad = store.todo().identidades.find((i) => i.email === 'persona@prueba.local')!
+    const r = await pedir('/api/v1/vinculos', {
+      method: 'POST', headers: conClave(),
+      body: JSON.stringify({
+        identidadId: identidad.id, cuenta: 'suplantador', email: 'otro@prueba.local',
+      }),
+    })
+    assert.equal(r.estado, 403)
   })
 
   test('un token manipulado no se valida', async () => {
@@ -344,6 +421,283 @@ describe('Inicio de sesión único', () => {
       method: 'POST', headers: conClave(), body: JSON.stringify({ token: token.cuerpo.token }),
     })
     assert.equal(r.estado, 403)
+  })
+})
+
+// ─────────────────────────────────────────────────────────────────────────────
+// LAS FOTOS DEL DOCUMENTO, FUERA DEL DOCUMENTO DE ESTADO
+//
+// Se guardaban dentro del expediente, o sea dentro del ÚNICO documento de Mongo
+// donde vive todo el estado del motor. Dos caras de varios megabytes no caben
+// ahí: pasado el límite de 16 MB por documento, lo que falla no es la subida de
+// la foto sino el guardado de TODO —identidades, operadores, aprobaciones—
+// mientras el servicio sigue respondiendo bien, y el siguiente reinicio de
+// Render se lo lleva por delante.
+//
+// Estas pruebas son el cerrojo: que las fotos no vuelvan nunca al estado, que el
+// operador las siga viendo, y que se borren al decidir.
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe('Las fotos del documento viven fuera del estado', () => {
+  const foto = 'data:image/jpeg;base64,' + 'R'.repeat(20000)
+  const aparte = () => JSON.parse(readFileSync(join(carpeta, 'documentosPendientes.json'), 'utf8'))
+  const estadoEnDisco = () => readFileSync(process.env.GENESIS_DATA_FILE!, 'utf8')
+  let conFotos = ''
+
+  test('subirlas no las mete en el documento de estado', async () => {
+    const alta = await pedir('/api/v1/identidades', {
+      method: 'POST', headers: conClave(),
+      body: JSON.stringify({ email: 'fuera.del.estado@prueba.local' }),
+    })
+    conFotos = alta.cuerpo.identidad.id
+    const r = await pedir(`/api/v1/identidades/${conFotos}/documento-fotos`, {
+      method: 'POST', headers: conClave(),
+      body: JSON.stringify({ anverso: foto, reverso: foto }),
+    })
+    assert.equal(r.estado, 200)
+
+    const identidad = store.todo().identidades.find((i) => i.id === conFotos)!
+    assert.equal(identidad.documento?.via, 'fotos')
+    assert.equal(identidad.documento?.imagenes ?? null, null, 'el expediente no puede llevar las fotos')
+
+    // Y sobre todo: que no aparezcan en lo que se ESCRIBE, que es lo que
+    // reventaba el volcado.
+    await store.guardarYa()
+    assert.equal(estadoEnDisco().includes('R'.repeat(20000)), false, 'la foto acabó dentro del estado')
+    assert.equal(aparte()[conFotos].anverso, foto, 'tiene que estar guardada aparte')
+  })
+
+  test('el operador las sigue viendo en la ficha, y mirarlas no las devuelve al estado', async () => {
+    const r = await pedir(`/api/panel/identidades/${conFotos}`, { headers: conSesion() })
+    assert.equal(r.estado, 200)
+    assert.equal(r.cuerpo.identidad.documento.imagenes.anverso, foto)
+    assert.equal(r.cuerpo.identidad.documento.imagenes.reverso, foto)
+
+    const identidad = store.todo().identidades.find((i) => i.id === conFotos)!
+    assert.equal(identidad.documento?.imagenes ?? null, null)
+    await store.guardarYa()
+    assert.equal(estadoEnDisco().includes('R'.repeat(20000)), false)
+  })
+
+  test('al rechazar, las fotos desaparecen', async () => {
+    const r = await pedir(`/api/panel/identidades/${conFotos}/rechazar`, {
+      method: 'POST', headers: conSesion(),
+      body: JSON.stringify({ motivo: 'Documento ilegible en las dos caras' }),
+    })
+    assert.equal(r.estado, 200)
+    assert.equal(conFotos in aparte(), false, 'no se pueden acumular documentos ya decididos')
+
+    const ficha = await pedir(`/api/panel/identidades/${conFotos}`, { headers: conSesion() })
+    assert.equal(ficha.cuerpo.identidad.documento.imagenes, null)
+  })
+
+  test('una cara de más de 3 MB no entra, y el mensaje dice cuánto', async () => {
+    const enorme = 'data:image/jpeg;base64,' + 'A'.repeat(3_000_001)
+    const r = await pedir(`/api/v1/identidades/${conFotos}/documento-fotos`, {
+      method: 'POST', headers: conClave(),
+      body: JSON.stringify({ anverso: enorme, reverso: foto }),
+    })
+    assert.equal(r.estado, 413)
+    assert.match(r.cuerpo.error, /3 MB/)
+  })
+
+  test('las que ya estaban dentro del estado se mudan al arrancar', async () => {
+    // Datos viejos: se planta una foto dentro del expediente, tal como la
+    // guardaba la versión anterior, y se comprueba que la mudanza la saca.
+    const vieja = 'data:image/jpeg;base64,' + 'V'.repeat(20000)
+    const alta = await pedir('/api/v1/identidades', {
+      method: 'POST', headers: conClave(),
+      body: JSON.stringify({ email: 'dato.viejo@prueba.local' }),
+    })
+    const identidad = store.todo().identidades.find((i) => i.id === alta.cuerpo.identidad.id)!
+    identidad.documento = {
+      aceptable: false, datos: null, hallazgos: [], edad: null,
+      anverso: { aportado: true, nombreConfirmado: null, fechaConfirmada: null },
+      via: 'fotos',
+      imagenes: { anverso: vieja, reverso: vieja },
+    }
+    await store.guardarYa()
+    assert.equal(estadoEnDisco().includes('V'.repeat(20000)), true, 'la prueba tiene que partir del estado sucio')
+
+    const { migrarFotosDelEstado } = await import('../kyc/fotosDocumento.js')
+    const r = await migrarFotosDelEstado()
+    assert.equal(r.movidas, 1)
+    assert.equal(identidad.documento?.imagenes ?? null, null)
+    assert.equal(estadoEnDisco().includes('V'.repeat(20000)), false, 'el estado sigue pesado')
+    assert.equal(aparte()[identidad.id].anverso, vieja)
+  })
+})
+
+// ─────────────────────────────────────────────────────────────────────────────
+// LA BOMBA LENTA: EL RETRATO DE LA CREDENCIAL
+//
+// Las fotos del documento se sueltan al decidir el expediente, asi que solo
+// pesan mientras hay cola. El retrato de la credencial NO se suelta nunca —es
+// la credencial— y cada persona verificada dejaba hasta medio megabyte
+// permanente dentro del documento de estado. Con unas treinta se pasaba otra
+// vez de los 16 MB de MongoDB, y con ellos se caia el guardado de TODO:
+// identidades, aprobaciones y la cadena de hashes de la bitacora, que vive ahi
+// dentro.
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe('El retrato de la credencial vive fuera del estado', () => {
+  const retrato = 'data:image/jpeg;base64,' + 'K'.repeat(20000)
+  const aparte = () => JSON.parse(readFileSync(join(carpeta, 'fotosCredencial.json'), 'utf8'))
+  const estadoEnDisco = () => readFileSync(process.env.GENESIS_DATA_FILE!, 'utf8')
+  let conRetrato = ''
+
+  test('subirlo no lo mete en el documento de estado', async () => {
+    const alta = await pedir('/api/v1/identidades', {
+      method: 'POST', headers: conClave(),
+      body: JSON.stringify({ email: 'retrato.fuera@prueba.local' }),
+    })
+    conRetrato = alta.cuerpo.identidad.id
+    const r = await pedir(`/api/v1/identidades/${conRetrato}/foto`, {
+      method: 'POST', headers: conClave(),
+      body: JSON.stringify({ foto: retrato }),
+    })
+    assert.equal(r.estado, 200)
+
+    const identidad = store.todo().identidades.find((i) => i.id === conRetrato)!
+    assert.equal(identidad.fotoCredencial, null, 'el expediente no puede llevar el retrato')
+
+    await store.guardarYa()
+    assert.equal(estadoEnDisco().includes('K'.repeat(20000)), false, 'el retrato acabo dentro del estado')
+    assert.ok(aparte()[conRetrato], 'tiene que estar guardado aparte')
+  })
+
+  test('la app lo sigue recibiendo entero: la credencial no se ve a medias', async () => {
+    const r = await pedir(`/api/v1/identidades/${conRetrato}`, { headers: conClave() })
+    assert.equal(r.estado, 200)
+    assert.equal(r.cuerpo.identidad.fotoCredencial, retrato)
+    // y mirarlo no lo devuelve al estado
+    await store.guardarYa()
+    assert.equal(estadoEnDisco().includes('K'.repeat(20000)), false, 'leerlo lo devolvio al estado')
+  })
+
+  test('el operador lo ve en la ficha', async () => {
+    const r = await pedir(`/api/panel/identidades/${conRetrato}`, { headers: conSesion() })
+    assert.equal(r.estado, 200)
+    assert.equal(r.cuerpo.identidad.fotoCredencial, retrato.replace(/^data:image\/[a-z+]+;base64,/i, ''))
+  })
+
+  test('mandar el retrato vacio lo borra', async () => {
+    const r = await pedir(`/api/v1/identidades/${conRetrato}/foto`, {
+      method: 'POST', headers: conClave(), body: JSON.stringify({ foto: '' }),
+    })
+    assert.equal(r.estado, 200)
+    assert.equal(aparte()[conRetrato] ?? null, null, 'tenia que desaparecer del almacen')
+    const v = await pedir(`/api/v1/identidades/${conRetrato}`, { headers: conClave() })
+    assert.equal(v.cuerpo.identidad.fotoCredencial, null)
+  })
+
+  test('un retrato de mas de 400 kB se rechaza con 413 y el mensaje cuadra', async () => {
+    const enorme = 'data:image/jpeg;base64,' + 'K'.repeat(600 * 1024)
+    const r = await pedir(`/api/v1/identidades/${conRetrato}/foto`, {
+      method: 'POST', headers: conClave(), body: JSON.stringify({ foto: enorme }),
+    })
+    assert.equal(r.estado, 413)
+    assert.match(r.cuerpo.error, /400 kB/)
+  })
+
+  test('un retrato viejo plantado dentro del estado se muda al arrancar', async () => {
+    const viejo = 'W'.repeat(20000)
+    const alta = await pedir('/api/v1/identidades', {
+      method: 'POST', headers: conClave(),
+      body: JSON.stringify({ email: 'retrato.viejo@prueba.local' }),
+    })
+    const identidad = store.todo().identidades.find((i) => i.id === alta.cuerpo.identidad.id)!
+    identidad.fotoCredencial = viejo
+    await store.guardarYa()
+    assert.equal(estadoEnDisco().includes('W'.repeat(20000)), true, 'la prueba parte del estado sucio')
+
+    const { migrarFotosCredencialDelEstado } = await import('../kyc/fotoCredencial.js')
+    const r = await migrarFotosCredencialDelEstado()
+    assert.equal(r.movidas, 1)
+    assert.equal(identidad.fotoCredencial, null)
+    assert.equal(estadoEnDisco().includes('W'.repeat(20000)), false, 'el estado sigue pesado')
+    assert.equal(aparte()[identidad.id], viejo)
+  })
+})
+
+// ─────────────────────────────────────────────────────────────────────────────
+// EL SELLO DE LA BITACORA
+//
+// Un eslabon roto no se arregla: recalcular los hashes dejaria la cadena en
+// verde destruyendo justo lo que aporta. Lo que se puede hacer es CERRAR el
+// tramo roto y abrir uno nuevo, dejando el hueco escrito dentro del propio
+// registro. Estas pruebas son el cerrojo de que el sello no se pueda usar para
+// tapar nada.
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe('Sellar la bitacora cierra el tramo roto sin borrar el hueco', () => {
+  test('una cadena intacta NO se puede sellar', async () => {
+    const { verificarCadena, sellar } = await import('../audit/bitacora.js')
+    assert.equal(verificarCadena().integra, true, 'la prueba parte de una cadena sana')
+    const r = sellar('admin@prueba.local', 'sin motivo real')
+    assert.equal(r.ok, false)
+    assert.match(r.error!, /[ií]ntegra/i)
+  })
+
+  test('con la cadena rota, el sello la cierra y la deja verificable otra vez', async () => {
+    const { verificarCadena, sellar } = await import('../audit/bitacora.js')
+    const bitacora = store.todo().bitacora
+    const antes = bitacora.length
+    assert.ok(antes > 3, 'hacen falta entradas para romper una')
+
+    // Se rompe una entrada del medio, como haria la perdida de escrituras que
+    // provoco esto en produccion.
+    const roto = 2
+    bitacora[roto].detalle = { ...bitacora[roto].detalle, manipulado: true }
+    const rota = verificarCadena()
+    assert.equal(rota.integra, false)
+    assert.equal(rota.rotaEn, roto)
+
+    const r = sellar('admin@prueba.local', 'perdida de escrituras por el tope de 16 MB')
+    assert.equal(r.ok, true)
+    assert.equal(r.rotaEn, roto)
+
+    const despues = verificarCadena()
+    assert.equal(despues.integra, true, 'el tramo nuevo tiene que verificar')
+    assert.equal(despues.sellos.length, 1)
+    assert.equal(despues.sellos[0].rotaEn, roto, 'el sello guarda DONDE se rompio')
+    assert.equal(despues.sellos[0].entradasAntes, antes, 'y cuantas entradas habia')
+  })
+
+  test('la entrada rota sigue ahi: sellar no borra ni reescribe nada', () => {
+    const bitacora = store.todo().bitacora
+    assert.equal((bitacora[2].detalle as any).manipulado, true,
+      'la entrada manipulada tenia que quedarse tal cual')
+  })
+
+  test('lo que se escriba despues del sello vuelve a encadenar', async () => {
+    const { registrar, verificarCadena } = await import('../audit/bitacora.js')
+    registrar('admin@prueba.local', 'prueba.despues', 'x', {})
+    assert.equal(verificarCadena().integra, true)
+  })
+
+  test('romper algo DESPUES del sello se vuelve a notar', async () => {
+    const { verificarCadena } = await import('../audit/bitacora.js')
+    const bitacora = store.todo().bitacora
+    const ultima = bitacora.length - 1
+    const original = bitacora[ultima].detalle
+    bitacora[ultima].detalle = { ...original, colado: true }
+    assert.equal(verificarCadena().integra, false, 'el tramo nuevo tiene que seguir protegiendo')
+    bitacora[ultima].detalle = original
+    assert.equal(verificarCadena().integra, true)
+  })
+
+  test('un sello falsificado a mano no cuela', async () => {
+    const { verificarCadena } = await import('../audit/bitacora.js')
+    const bitacora = store.todo().bitacora
+    bitacora.push({
+      id: 'log_falso', fecha: new Date().toISOString(), actor: 'malo@ahi.fuera',
+      accion: 'bitacora.sello', objeto: 'bitacora', detalle: {},
+      hashAnterior: 'S'.repeat(64), hash: 'da igual lo que ponga aqui',
+    } as any)
+    assert.equal(verificarCadena().integra, false, 'un sello sin hash valido tiene que romper')
+    bitacora.pop()
+    assert.equal(verificarCadena().integra, true)
   })
 })
 

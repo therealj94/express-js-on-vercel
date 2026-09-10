@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>F.L.U.X · Orden Global</title>
+<style>
+/* La pantalla que sale cuando alguien llega sin contraseña. Antes era la
+   página en blanco del navegador: ahora dice dónde estás y ofrece la salida
+   honesta --ver la presentación-- sin dar acceso a nada interno. */
+:root{--void:#020610;--ink:#e8f2fb;--mut:#6d8ba1;--faint:#31485c;--arc:#56d9ff;
+  --disp:"Avenir Next","SF Pro Display",-apple-system,"Segoe UI",Roboto,sans-serif;}
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{height:100%}
+body{background:var(--void);color:var(--ink);font:14px/1.6 var(--disp);
+  display:grid;place-items:center;text-align:center;padding:24px;
+  -webkit-font-smoothing:antialiased;overflow:hidden}
+#fondo{position:fixed;inset:0;z-index:0}
+.caja{position:relative;z-index:1;max-width:520px}
+h1{font:200 34px var(--disp);letter-spacing:.5em;margin-bottom:8px;
+  text-shadow:0 0 44px rgba(86,217,255,.5)}
+h1 i{font-style:normal;color:var(--arc)}
+.sub{font-size:11px;color:var(--mut);letter-spacing:.3em;text-transform:uppercase;
+  margin-bottom:34px}
+.txt{font-size:14.5px;color:#bcd2e4;margin-bottom:30px;line-height:1.75}
+.bot{display:flex;gap:14px;justify-content:center;flex-wrap:wrap}
+a.b,button.b{display:inline-block;border:1px solid rgba(86,217,255,.32);border-radius:13px;
+  background:rgba(6,16,28,.7);color:var(--arc);font:600 11px var(--disp);
+  letter-spacing:.24em;padding:17px 32px;text-decoration:none;cursor:pointer;
+  transition:all .2s;backdrop-filter:blur(12px)}
+a.b:hover,button.b:hover{background:rgba(86,217,255,.1);
+  box-shadow:0 0 40px rgba(86,217,255,.2)}
+a.b.tenue{color:var(--mut);border-color:rgba(109,139,161,.28)}
+.pie{margin-top:34px;font-size:10.5px;color:var(--faint);line-height:1.9}
+@media (max-width:520px){h1{font-size:24px;letter-spacing:.34em}.bot{flex-direction:column}}
+</style>
+</head>
+<body>
+<canvas id="fondo"></canvas>
+<div class="caja">
+  <h1>F.L.U.X<i>_</i></h1>
+  <div class="sub">Orden Global · Núcleo de control</div>
+  <p class="txt">Este es el cuarto de control del ecosistema. Para entrar hace
+     falta una cuenta.<br>Si vienes a conocer Orden Global, la presentación
+     está abierta.</p>
+  <div class="bot">
+    <button class="b" onclick="location.reload()">ENTRAR</button>
+    <a class="b tenue" href="/demo">VER LA PRESENTACIÓN</a>
+  </div>
+  <div class="pie">
+    This is the ecosystem control room. Signing in requires an account.<br>
+    If you came to learn about Orden Global, the presentation is open.
+  </div>
+</div>
+<script>
+/* Un eco del cerebro, para que la puerta no sea una página muerta. */
+const c=document.getElementById('fondo'), x=c.getContext('2d');
+let W,H,P=[];
+function medir(){const d=Math.min(devicePixelRatio||1,2);
+  W=innerWidth;H=innerHeight;c.width=W*d;c.height=H*d;
+  c.style.width=W+'px';c.style.height=H+'px';x.setTransform(d,0,0,d,0,0);
+  P=[];for(let i=0;i<130;i++)P.push({x:Math.random()*W,y:Math.random()*H,
+    vx:(Math.random()-.5)*.16,vy:(Math.random()-.5)*.16});}
+addEventListener('resize',medir);medir();
+(function cuadro(){
+  x.clearRect(0,0,W,H);x.globalCompositeOperation='lighter';
+  for(const p of P){p.x+=p.vx;p.y+=p.vy;
+    if(p.x<0||p.x>W)p.vx*=-1; if(p.y<0||p.y>H)p.vy*=-1;}
+  for(let i=0;i<P.length;i++){
+    for(let j=i+1;j<P.length;j++){
+      const d=Math.hypot(P[i].x-P[j].x,P[i].y-P[j].y);
+      if(d>130)continue;
+      x.strokeStyle='rgba(86,217,255,'+(0.1*(1-d/130)).toFixed(3)+')';
+      x.lineWidth=.5;x.beginPath();x.moveTo(P[i].x,P[i].y);x.lineTo(P[j].x,P[j].y);x.stroke();
+    }
+    x.fillStyle='rgba(120,200,240,.3)';
+    x.beginPath();x.arc(P[i].x,P[i].y,1,0,6.283);x.fill();
+  }
+  x.globalCompositeOperation='source-over';
+  requestAnimationFrame(cuadro);
+})();
+</script>
+</body>
+</html>

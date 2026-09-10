@@ -1,0 +1,11 @@
+[Unit]
+Description=Deja los modelos clavados en la tarjeta (16 GB no caben en 15 de RAM)
+After=ollama.service
+Wants=ollama.service
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/local/bin/ogb-precalentar.sh
+TimeoutStartSec=1200
+[Install]
+WantedBy=multi-user.target

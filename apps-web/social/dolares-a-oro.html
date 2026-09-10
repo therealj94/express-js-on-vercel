@@ -1,0 +1,150 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Orden Global · de dólares a oro · 1080x1350</title>
+<!--
+  PIEZA 2 · DE DÓLARES A ORO · 1080×1350 (post de Instagram, 4:5)
+
+  ══ QUÉ CAMBIÓ RESPECTO DE LA PRIMERA VERSIÓN ══════════════════════════════
+
+  La primera puso un teléfono en el centro con una captura de la web dentro,
+  titular, bajada, nota al pie y un botón. Eso es una página web fotografiada.
+  En el feed de Instagram esa pieza se ve del tamaño de un pulgar: la captura
+  no se lee, el botón no se pulsa y el texto se pasa de largo.
+
+  Esta es un CARTEL: dos objetos grandes, una flecha, tres palabras. Se entiende
+  a la velocidad a la que se desliza el dedo, que es la única velocidad que hay.
+
+  ══ POR QUÉ EL LINGOTE LLEVA EL MONOGRAMA OG ═══════════════════════════════
+
+  Porque es lo que hace la pieza NUESTRA y no una imagen de banco de imágenes
+  sobre oro. El mismo monograma que va grabado en la tarjeta va troquelado en
+  el lingote: dos objetos distintos de la misma casa.
+
+  ══ SIN CIFRAS DE CONVERSIÓN ═══════════════════════════════════════════════
+
+  No se pone «500 USD = 0,29 AUKA» ni nada parecido. El precio del oro se mueve
+  todos los días y una cifra impresa en una imagen queda vieja el mismo día que
+  se publica — y una cifra vieja en un anuncio de dinero no es un detalle, es
+  una queja.
+-->
+<style>
+@font-face{font-family:'Cinzel';src:url('piezas/Cinzel-Bold.ttf') format('truetype');font-weight:700}
+@font-face{font-family:'Plex';src:url('piezas/IBMPlexSans.woff2') format('woff2');font-weight:100 700}
+@font-face{font-family:'PlexMono';src:url('piezas/IBMPlexMono-500.woff2') format('woff2');font-weight:500}
+
+/* La paleta de la billetera, sin desviarse. */
+:root{
+  --oro:#C9A961; --oroLt:#EAD79C; --oroHi:#F8EFCF; --oroDp:#96793F;
+  --crema:#F3ECD9; --bruma:#AEC7C3; --humo:#6E938F;
+  --papel:#7C8C7F;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{width:1080px;height:1350px;overflow:hidden;background:#050505;
+  font-family:'Plex',system-ui,sans-serif;color:var(--crema);position:relative}
+
+.fondo{position:absolute;inset:0;
+  background:
+    radial-gradient(62% 42% at 20% 30%, rgba(124,140,127,.26), transparent 66%),
+    radial-gradient(70% 46% at 82% 70%, rgba(234,215,156,.30), transparent 66%),
+    linear-gradient(166deg,#0A1615 0%,#050B0C 48%,#020404 100%)}
+.polvo{position:absolute;inset:0;opacity:.5;
+  background-image:radial-gradient(rgba(234,215,156,.09) 1px,transparent 1px);
+  background-size:5px 5px}
+
+.lienzo{position:relative;height:100%;padding:74px 78px 70px;display:flex;flex-direction:column}
+
+.cabecera{display:flex;align-items:center;gap:22px}
+.cabecera img.og{height:60px;width:auto}
+.cabecera img.veta{height:74px;width:auto}
+.cabecera .barra{width:1px;height:46px;background:rgba(201,169,97,.45)}
+
+/* ── la escena: papel arriba, metal abajo ─────────────────────────────────
+   En diagonal y no en dos columnas: la vertical de un post de 4:5 da más alto
+   que ancho, y dos objetos uno al lado del otro habrían salido pequeños los
+   dos. En diagonal caben grandes y el ojo los recorre en el orden correcto. */
+.escena{position:relative;flex:1;margin-top:18px}
+
+.fajo{position:absolute;left:14px;top:56px;width:420px;height:280px;
+  transform:rotate(-9deg)}
+.fajo .b{position:absolute;left:0;width:400px;height:186px;border-radius:13px;overflow:hidden;
+  background:
+    repeating-linear-gradient(115deg,rgba(255,255,255,.055) 0 2px,transparent 2px 7px),
+    linear-gradient(150deg,#7E9481,#5E7563 56%,#3F5347);
+  border:1px solid rgba(255,255,255,.22);
+  box-shadow:0 22px 44px -18px rgba(0,0,0,.85)}
+.fajo .b::after{content:'';position:absolute;inset:15px;
+  border:1px solid rgba(255,255,255,.22);border-radius:7px}
+.fajo .b:nth-child(1){top:0;left:24px;filter:brightness(.62)}
+.fajo .b:nth-child(2){top:34px;left:12px;filter:brightness(.80)}
+.fajo .b:nth-child(3){top:70px;left:0}
+.fajo .s{position:absolute;left:50%;top:48%;transform:translate(-50%,-50%);
+  font-family:'Cinzel',serif;font-size:82px;color:rgba(255,255,255,.90);z-index:2;
+  text-shadow:0 2px 6px rgba(0,0,0,.45)}
+.fajo .b small{position:absolute;bottom:26px;left:50%;transform:translateX(-50%);
+  font:500 20px/1 'PlexMono',monospace;letter-spacing:.28em;color:rgba(255,255,255,.55)}
+
+/* La flecha, en diagonal, del papel al metal. */
+.flecha{position:absolute;left:392px;top:316px;width:246px;height:4px;
+  transform:rotate(31deg);transform-origin:left center;
+  background:linear-gradient(90deg,rgba(174,199,195,.18),rgba(234,215,156,.9));z-index:3}
+.flecha::after{content:'';position:absolute;right:-3px;top:-13px;
+  border-left:26px solid var(--oroLt);border-top:13px solid transparent;border-bottom:13px solid transparent}
+
+/* El lingote: troquelado con el monograma de la casa. */
+.lingote{position:absolute;right:10px;bottom:74px;width:414px;height:250px;
+  transform:rotate(7deg);border-radius:22px/28px;
+  background:linear-gradient(158deg,#FCF3D2 0%,#EAD79C 24%,#C9A961 56%,#8A6C2F 100%);
+  box-shadow:0 50px 100px -30px rgba(234,215,156,.55),
+             0 0 0 1px rgba(255,255,255,.42) inset;
+  display:grid;place-items:center;overflow:hidden}
+/* El bisel de arriba: lo que hace que se lea como un bloque y no como una
+   pegatina amarilla. */
+.lingote::before{content:'';position:absolute;left:0;right:0;top:0;height:30%;
+  background:linear-gradient(180deg,rgba(255,255,255,.62),transparent)}
+.lingote::after{content:'';position:absolute;left:0;right:0;bottom:0;height:22%;
+  background:linear-gradient(0deg,rgba(90,68,16,.30),transparent)}
+.lingote img{position:relative;width:52%;opacity:.40;transform:translateY(-14px);
+  filter:brightness(.35) sepia(1) saturate(2.2) hue-rotate(-12deg)}
+.lingote small{position:absolute;bottom:24px;left:50%;transform:translateX(-50%);
+  font:500 21px/1 'PlexMono',monospace;letter-spacing:.3em;color:rgba(90,68,16,.72)}
+
+/* ── el remate ─────────────────────────────────────────────────────────────
+   Una sola frase, y una línea de apoyo. Nada de párrafo, nada de botón. */
+.frase{font-family:'Cinzel',Georgia,serif;font-weight:700;line-height:1.02;text-align:center}
+.frase .a{display:block;font-size:88px;color:var(--bruma)}
+.frase .b{display:block;font-size:88px;color:var(--oroHi);margin-top:6px}
+.apoyo{margin-top:26px;text-align:center;font-size:29px;color:var(--bruma)}
+.apoyo b{color:var(--oroLt);font-weight:600}
+.sello{margin-top:26px;display:flex;align-items:center;justify-content:center;gap:18px;
+  font:500 21px/1 'PlexMono',monospace;letter-spacing:.24em;color:var(--humo);text-transform:uppercase}
+.sello i{width:6px;height:6px;border-radius:50%;background:var(--oro);flex:none}
+</style>
+
+<div class="fondo"></div><div class="polvo"></div>
+
+<div class="lienzo">
+  <div class="cabecera">
+    <img class="og" src="piezas/og-mono.png" alt="Orden Global">
+    <span class="barra"></span>
+    <img class="veta" src="piezas/veta-mark.png" alt="Veta Wallet">
+  </div>
+
+  <div class="escena">
+    <div class="fajo">
+      <div class="b"></div>
+      <div class="b"></div>
+      <div class="b"><span class="s">$</span><small>USD</small></div>
+    </div>
+
+    <div class="flecha"></div>
+
+    <div class="lingote">
+      <img src="piezas/og-mono.png" alt="">
+      <small>999.9</small>
+    </div>
+  </div>
+
+  <div class="frase"><span class="a">De dólares</span><span class="b">a oro.</span></div>
+  <p class="apoyo">Cambiá tu saldo por <b>ORIGEN</b> desde el teléfono.</p>
+  <div class="sello"><span>Oro real</span><i></i><span>Certificado</span><i></i><span>Respaldo 1:1</span></div>
+</div>

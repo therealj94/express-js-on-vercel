@@ -1,0 +1,190 @@
+import 'dotenv/config'
+import express from 'express'
+import type { NextFunction, Request, Response } from 'express'
+import cors from 'cors'
+import { fileURLToPath } from 'url'
+import { dirname, join } from 'path'
+import { authRouter } from './routes/auth.js'
+import { metaRouter } from './routes/meta.js'
+import { companiesRouter } from './routes/companies.js'
+import { cobrosRouter } from './routes/cobros.js'
+import { retirosRouter } from './routes/retiros.js'
+import { adminRouter } from './routes/admin.js'
+import { genesisRouter } from './routes/genesis.js'
+import { premiosRouter } from './routes/premios.js'
+import { actividadRouter } from './routes/actividad.js'
+import { db } from './lib/db.js'
+import { conectarAlmacen, modoAlmacen } from './lib/almacen.js'
+import { hashPassword } from './lib/auth.js'
+import telemetria from './lib/telemetria.js'
+
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = dirname(__filename)
+
+/**
+ * Arranque: primero se conecta el almacén (Mongo o memoria), después se siembra
+ * el directorio y el administrador. En ese orden, porque sembrar antes de tener
+ * dónde guardar no sirve de nada.
+ */
+async function inicializar() {
+  const modo = await conectarAlmacen()
+  await db.sembrarComercios()
+  // El administrador se siembra al arrancar, si el entorno lo define. Es la única
+  // vía para tener rol de administrador: nunca se concede desde el alta pública.
+  if (process.env.ADMIN_EMAIL && process.env.ADMIN_PASSWORD) {
+    await db.asegurarAdministrador(process.env.ADMIN_EMAIL, hashPassword(process.env.ADMIN_PASSWORD))
+  }
+  console.log(`MyTokenPay API · almacén: ${modo}`)
+}
+
+const listo = inicializar()
+
+const app = express()
+app.use(cors())
+app.use(express.json({ limit: '12mb' }))
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Telemetría hacia el panel de analítica de Genesis ID.
+//
+// Se arranca aquí, antes que cualquier ruta, para que el middleware alcance a
+// medir TODAS las peticiones. Si no hay clave configurada no hace absolutamente
+// nada: ni una petición, ni un error en el registro. Eso permite desplegar este
+// backend antes de que el panel exista y encenderlo después con solo poner la
+// variable, sin volver a desplegar.
+// ─────────────────────────────────────────────────────────────────────────────
+telemetria.iniciar({
+  url: process.env.GENESIS_URL || 'https://genesis-id.onrender.com',
+  clave: (process.env.GENESIS_TELEMETRIA_KEY || process.env.GENESIS_API_KEY || '').trim(),
+  app: 'mytokenpay',
+  version: process.env.HEROKU_RELEASE_VERSION || '1.0.0',
+  plataforma: 'servidor',
+})
+app.use(telemetria.express())
+
+// ─────────────────────────────────────────────────────────────────────────────
+// El padrón: cuánta gente hay registrada de verdad.
+//
+// La telemetría solo ve a quien abre la app después de encenderla, así que sin
+// esto el panel enseñaría una fracción de la base y parecería que MyTokenPay
+// casi no tiene usuarios. Se manda al arrancar y cada seis horas — no cambia
+// tan rápido como para justificar más.
+// ─────────────────────────────────────────────────────────────────────────────
+async function declararPadron(): Promise<void> {
+  try {
+    const usuarios = await db.listUsers()
+    const negocios = await db.listCompanies({})
+    const genesis = (process.env.GENESIS_URL || 'https://genesis-id.onrender.com').replace(/\/$/, '')
+    const clave = (process.env.GENESIS_TELEMETRIA_KEY || process.env.GENESIS_API_KEY || '').trim()
+
+    // El directorio: quién es cada quien. Se manda por lotes y solo con los
+    // campos que el panel necesita — nunca el hash de la contraseña.
+    for (let i = 0; i < usuarios.length; i += 500) {
+      await fetch(`${genesis}/api/v1/directorio/sincronizar`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-API-Key': clave },
+        body: JSON.stringify({
+          usuarios: usuarios.slice(i, i + 500).map((u) => {
+            const suyos = negocios.filter((n) => n.ownerId === u.id)
+            return {
+              idExterno: u.id,
+              email: u.email,
+              nombre: u.fullName,
+              rol: u.role,
+              // El KYC de MyTokenPay no vive en su tabla: es el de Genesis ID.
+              // Genesis lo cruza solo por correo, así que aquí no se manda.
+              verificado: Boolean(u.gid),
+              creadoEn: u.createdAt,
+              direccionWallet: suyos[0]?.walletAddress,
+              extra: {
+                negocios: suyos.length,
+                negocioVerificado: suyos.some((n) => n.verified),
+                genesisId: u.gid || '',
+              },
+            }
+          }),
+        }),
+      })
+    }
+    await fetch(`${(process.env.GENESIS_URL || 'https://genesis-id.onrender.com').replace(/\/$/, '')}/api/v1/telemetria/censo`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-API-Key': (process.env.GENESIS_TELEMETRIA_KEY || process.env.GENESIS_API_KEY || '').trim(),
+      },
+      body: JSON.stringify({
+        registrados: usuarios.length,
+        negocios: negocios.length,
+        extra: { negociosVerificados: negocios.filter((n) => n.verified).length },
+      }),
+    })
+  } catch {
+    // Si Genesis ID no responde, el padrón se manda en el próximo intento. No
+    // vale la pena ni registrar el fallo: es una métrica, no una venta.
+  }
+}
+
+/**
+ * El panel de administración, servido por el mismo backend.
+ *
+ * Sin framework ni compilación y desde aquí a propósito: un segundo despliegue
+ * es un sitio más que se puede quedar viejo mientras la API avanza, y quien
+ * paga los retiros no puede estar mirando datos de ayer.
+ */
+const PANEL = join(__dirname, 'publico', 'admin.html')
+app.get('/admin', (_req, res) => res.sendFile(PANEL))
+app.use('/admin', express.static(join(__dirname, 'publico'), { redirect: false }))
+
+app.get('/', (_req, res) => {
+  res.json({ name: 'MyTokenPay API', status: 'ok' })
+})
+
+app.get('/healthz', (_req, res) => {
+  res.status(200).json({ status: 'ok', almacen: modoAlmacen(), timestamp: new Date().toISOString() })
+})
+
+app.use('/api/auth', authRouter)
+app.use('/api/companies', companiesRouter)
+app.use('/api/cobros', cobrosRouter)
+app.use('/api/retiros', retirosRouter)
+app.use('/api/admin', adminRouter)
+app.use('/genesis', genesisRouter)
+app.use('/api', premiosRouter)
+app.use('/api/actividad', actividadRouter)
+app.use('/api', metaRouter)
+
+app.use('/api', (_req, res) => {
+  res.status(404).json({ error: 'Ruta no encontrada' })
+})
+
+// Al arrancar y cada seis horas. `unref` para que no impida que el proceso
+// termine cuando Heroku recicla el dyno.
+setTimeout(declararPadron, 8000).unref?.()
+setInterval(declararPadron, 6 * 3600 * 1000).unref?.()
+
+// Reporta al panel cualquier excepción que llegue hasta aquí, y la deja seguir
+// su curso hacia el manejador de errores de siempre.
+app.use(telemetria.expressErrores())
+
+// Middleware de errores: cierra las promesas rechazadas que `h()` reenvía. Sin
+// esto, un fallo del almacén dejaría la petición colgada.
+app.use((err: unknown, _req: Request, res: Response, _next: NextFunction) => {
+  console.error('Error no controlado:', err)
+  if (res.headersSent) return
+  res.status(500).json({ error: 'Algo salió mal de nuestro lado. Intentá de nuevo.' })
+})
+
+const port = process.env.PORT || 3001
+if (process.env.VERCEL === undefined && process.argv[1] === __filename) {
+  listo
+    .then(() => {
+      app.listen(port, () => {
+        console.log(`MyTokenPay API listening on http://localhost:${port}`)
+      })
+    })
+    .catch((err) => {
+      console.error('No se pudo inicializar el almacén:', err)
+      process.exit(1)
+    })
+}
+
+export default app

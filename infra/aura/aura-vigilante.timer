@@ -1,0 +1,13 @@
+[Unit]
+Description=AU-RA · vuelta del vigilante cada cinco minutos
+
+[Timer]
+# Cinco minutos. Con el margen de tres del latido, lo peor es enterarse ocho
+# minutos tarde — contra las cuatro horas y media del 1-sep.
+OnBootSec=3min
+OnUnitActiveSec=5min
+# Si la máquina estuvo apagada, corre al arrancar en vez de esperar turno.
+Persistent=true
+
+[Install]
+WantedBy=timers.target

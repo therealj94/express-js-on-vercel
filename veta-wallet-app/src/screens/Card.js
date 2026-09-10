@@ -213,19 +213,63 @@ function SolicitarTarjeta({ nav, onEmitida, t, toast }) {
   const [acepta, setAcepta] = useState(false);
   const [enviando, setEnviando] = useState(false);
   const [faltaKyc, setFaltaKyc] = useState(false);
+  const [pedirClave, setPedirClave] = useState(false);
+  /* Cuánto cuesta emitir y si se está emitiendo. `null` mientras se pregunta:
+     no se enseña un precio inventado ni se da por abierta la emisión. El
+     servidor NO dice cuántas quedan —es interno— así que acá no hay nada de
+     más que enseñar. */
+  const [emision, setEmision] = useState(null);
 
-  const pedir = async () => {
+  useEffect(() => {
+    let vivo = true;
+    cardApi.emision()
+      .then((d) => { if (vivo) setEmision(d); })
+      .catch(() => { if (vivo) setEmision({ error: true }); });
+    return () => { vivo = false; };
+  }, []);
+
+  /* Emitir cuesta dinero, así que se firma con la contraseña — el mismo gesto
+     que ya pide ver el PIN o mandar ORIGEN. Se abre DESPUÉS de aceptar los
+     términos: pedir la clave antes de que la persona haya dicho que sí es
+     pedirla para nada. */
+  const continuar = () => {
     if (!acepta) { toast(t('card.reqNeedTerms'), 'error'); return; }
+    if (emision && emision.abierta === false) { toast(t('card.cerrada'), 'error'); return; }
     hap();
+    setPedirClave(true);
+  };
+
+  const pedir = async (password) => {
     setEnviando(true);
     try {
-      await cardApi.request({ acceptedTerms: true });
+      await cardApi.request({ acceptedTerms: true, password });
+      setPedirClave(false);
       toast(t('card.reqOk'), 'success');
       onEmitida();
+      return { ok: true };
     } catch (e) {
-      // 403 = el backend exige KYC aprobado antes de emitir.
-      if (e?.status === 403) { setFaltaKyc(true); toast(t('card.reqNeedKyc'), 'error'); }
-      else toast(mensajeDeError(e, t), 'error');
+      /* Cada final tiene su texto, porque lo que hay que hacer en cada uno es
+         distinto — y porque después de un cobro, «error» a secas se lee como
+         «perdí el dinero», que es justo lo que no pasó. */
+      const porMotivo = {
+        EMISION_CERRADA: t('card.cerrada'),
+        PAGADA_SIN_EMITIR: t('card.pagadaSinEmitir'),
+        PAGO_EN_CURSO: t('card.pagoEnCurso'),
+        COMPRA_EN_CURSO: t('card.pagoEnCurso'),
+        CLAVE_MALA: t('card.badPw'),
+        FALTA_CLAVE: t('card.badPw'),
+      };
+      if (e?.motivo === 'CLAVE_MALA' || e?.motivo === 'FALTA_CLAVE') {
+        return { ok: false, msg: t('card.badPw') };
+      }
+      setPedirClave(false);
+      if (e?.motivo && porMotivo[e.motivo]) toast(porMotivo[e.motivo], 'error');
+      // 403 = el backend exige Genesis ID aprobado antes de emitir.
+      else if (e?.status === 403) { setFaltaKyc(true); toast(t('card.reqNeedKyc'), 'error'); }
+      else toast(e?.message || mensajeDeError(e, t), 'error');
+      // El precio y el cupo pueden haber cambiado mientras tanto.
+      cardApi.emision().then(setEmision).catch(() => {});
+      return { ok: true };
     } finally { setEnviando(false); }
   };
 
@@ -277,13 +321,62 @@ function SolicitarTarjeta({ nav, onEmitida, t, toast }) {
         <Text style={styles.termsTxt}>{t('card.terms')}</Text>
       </Pressable>
 
+      {/* EL PRECIO, ANTES DEL BOTÓN. Emitir cuesta 5 USD y se pagan en ORIGEN;
+          enterarse de eso después de aceptar los términos es la peor forma de
+          enterarse. Las dos cifras, porque la persona piensa en dólares y
+          paga en ORIGEN. */}
+      <View style={styles.precioBox}>
+        {!emision ? (
+          <Text style={styles.precioCargando}>{t('card.leyendoPrecio')}</Text>
+        ) : emision.error ? (
+          <Text style={styles.precioCargando}>{t('card.precioNo')}</Text>
+        ) : (
+          <>
+            <View style={styles.precioFila}>
+              <Text style={styles.precioK}>{t('card.cuesta')}</Text>
+              <Text style={styles.precioV}>{money(emision.precioUsd)} USD</Text>
+            </View>
+            <View style={styles.precioFila}>
+              <Text style={styles.precioK}>{t('card.seCobra')}</Text>
+              <Text style={styles.precioV}>{qtyFmt(emision.precioOrigen)} ORIGEN</Text>
+            </View>
+            <Text style={styles.precioP}>{t('card.precioP')}</Text>
+          </>
+        )}
+      </View>
+
+      {emision?.abierta === false && (
+        <View style={styles.kycBox}>
+          <Icon name="information-circle" size={20} color={C.gold} />
+          <Text style={[styles.kycP, { flex: 1 }]}>{t('card.cerrada')}</Text>
+        </View>
+      )}
+
       <View style={{ height: 14 }} />
+      {/* El botón dice lo que va a pagar — la misma regla que la casa ya
+          escribió para vender. «Solicitar mi tarjeta» era verdad cuando era
+          gratis; ahora cobra, y callarlo justo en el botón es donde peor se
+          ve. Sin precio leído, se queda el texto de siempre en vez de
+          inventar una cifra. */}
       <Button3D
-        title={enviando ? t('card.reqSending') : t('card.reqCta')}
-        disabled={enviando || !acepta}
-        onPress={pedir}
+        title={enviando ? t('card.reqSending')
+          : emision?.precioUsd != null ? t('card.reqCtaCon', { u: `${money(emision.precioUsd)} USD` })
+          : t('card.reqCta')}
+        disabled={enviando || !acepta || emision?.abierta === false}
+        onPress={continuar}
       />
       {enviando && <Text style={styles.slowHint}>{t('card.reqSlow')}</Text>}
+
+      <PedirClave
+        visible={pedirClave}
+        titulo={t('card.pagarTitulo')}
+        subtitulo={emision
+          ? t('card.pagarSub', { q: `${qtyFmt(emision.precioOrigen)} ORIGEN`, u: `${money(emision.precioUsd)} USD` })
+          : ''}
+        ctaTexto={t('card.reqCta')}
+        onCancel={() => setPedirClave(false)}
+        onSubmit={pedir}
+      />
     </ScrollView>
   );
 }
@@ -1171,6 +1264,16 @@ const styles = StyleSheet.create({
   pitchIn: { flex: 1, padding: 20, justifyContent: 'space-between' },
   pitchT: { color: '#F3ECD9', fontSize: 17, fontWeight: '700', maxWidth: '85%' },
   pitchP: { color: C.txt2, fontSize: 13.5, lineHeight: 20, marginBottom: 16 },
+  precioBox: {
+    marginTop: 18, padding: 15, borderRadius: 16,
+    backgroundColor: 'rgba(201,169,97,0.07)', borderWidth: 1, borderColor: 'rgba(201,169,97,0.28)',
+  },
+  precioFila: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline', gap: 12, paddingVertical: 3 },
+  precioK: { color: C.txt3, fontSize: 12.5 },
+  precioV: { color: C.gold, fontSize: 14, fontWeight: '700' },
+  precioP: { color: C.txt3, fontSize: 11.5, lineHeight: 17, marginTop: 8 },
+  precioCargando: { color: C.txt3, fontSize: 12.5, textAlign: 'center' },
+
   kycBox: { flexDirection: 'row', gap: 12, alignItems: 'flex-start', backgroundColor: C.panel, borderWidth: 1, borderColor: 'rgba(201,169,97,0.25)', borderRadius: 16, padding: 15 },
   kycT: { color: C.txt, fontSize: 14, fontWeight: '700' },
   kycP: { color: C.txt3, fontSize: 12.5, marginTop: 3, lineHeight: 18 },

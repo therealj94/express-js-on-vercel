@@ -1,0 +1,144 @@
+// aucorp-api — las cuentas en moneda local del ecosistema.
+//
+// Este archivo es solo el andamio: CORS, JSON, Mongo, las rutas, /salud y el
+// manejo de errores. El dinero vive en lib/ (monedas, libro, asientos, cambio)
+// y en los controllers; aquí no se mueve un céntimo.
+//
+// AuCorp es una FinTech bajo Regulación A de Próspera, NO un banco con
+// licencia: no hay seguro de depósitos ni ventanilla de último recurso. Por
+// eso en toda la casa se dice «cuenta en moneda local». Está escrito aquí
+// arriba a propósito, donde lo lee cualquiera que abra el proyecto.
+//
+// El principio del arranque, como en Ordenex: el API se levanta AUNQUE Mongo o
+// la fuente de tasas no contesten. Un servicio de cuentas caído porque el
+// proveedor de tasas tardó no protege a nadie; lo que sí se hace es que /salud
+// lo cante y que cada operación con dinero falle sola y cerrada.
+
+const express = require('express');
+const cors = require('cors');
+const mongoose = require('mongoose');
+const helmet = require('helmet');
+const rateLimit = require('express-rate-limit');
+
+const app = express();
+
+// ── CORS ────────────────────────────────────────────────────────────────────
+// La lista viene de CORS_ORIGENES, no del código. Sin la variable no se
+// permite ningún origen de navegador —fail-closed también aquí— y se avisa.
+const ORIGENES = (process.env.CORS_ORIGENES || '').split(',').map((s) => s.trim()).filter(Boolean);
+if (ORIGENES.length === 0) {
+  console.error('[cors] CORS_ORIGENES no está puesta: ningún navegador va a poder llamar al API');
+}
+app.use(cors({
+  origin: ORIGENES,
+  methods: ['GET', 'POST', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+}));
+
+app.set('trust proxy', 1);
+
+// ── LO QUE ORDENEX YA TENÍA Y ESTO NO ─────────────────────────────────────
+// Este API contestaba con `X-Powered-By: Express`, sin nosniff ni frameguard,
+// y aceptaba veinte POST /auth/sso seguidos sin parpadear: la auditoría los
+// mandó y los veinte pasaron. Para una plataforma de banca eso no es un
+// detalle. Es lo mismo que infra/ordenex-api/app.js, y por la misma razón.
+app.use(helmet({ crossOriginResourcePolicy: false }));
+// Cien peticiones por minuto por IP, para todo. `trust proxy` va arriba a
+// propósito: detrás del router de Heroku, sin él todas las IP son la misma y
+// el límite sería un interruptor general.
+app.use(rateLimit({ windowMs: 60 * 1000, max: 100, standardHeaders: true, legacyHeaders: false }));
+// Y la entrada, más corta: veinte intentos por cuarto de hora. Un pase de
+// Genesis robado no se prueba a fuerza bruta contra esto.
+app.use('/auth', rateLimit({ windowMs: 15 * 60 * 1000, max: 20, standardHeaders: true, legacyHeaders: false }));
+
+// 100kb alcanzan de sobra: la petición más gorda de esta casa es una
+// transferencia con cinco campos.
+app.use(express.json({ limit: '100kb' }));
+
+// ── Mongo ───────────────────────────────────────────────────────────────────
+// La base se llama `aucorp` y se fija aquí, no en la URI: así el mismo clúster
+// puede prestar la URI sin que un descuido escriba en la base de otra app.
+const sanciones = require('./lib/sanciones');
+const barrido = require('./lib/barrido');
+
+(async () => {
+  try {
+    mongoose.set('strictQuery', true);
+    await mongoose.connect(process.env.MONGODB_URI, { dbName: 'aucorp' });
+    console.log(`[mongo] conectado a ${mongoose.connection.name}`);
+    // La lista de sanciones vive en Mongo: se carga en cuanto hay base. Si no
+    // hay nada cargado, lo canta y los retiros quedan cerrados hasta que
+    // operaciones la importe (POST /tesoreria/sanciones/importar).
+    await sanciones.iniciar();
+  } catch (e) {
+    console.error(`[mongo] no se pudo conectar: ${e.message}`);
+  }
+})();
+
+// El barrido de solicitudes atascadas. SOLO escribe en el log; no resuelve
+// nada. AUCORP_BARRIDO_HORAS (24) y AUCORP_BARRIDO_CADA_MIN (60) lo afinan.
+// Con AUCORP_BARRIDO=no se apaga (las pruebas lo apagan para no ensuciar).
+if (process.env.AUCORP_BARRIDO !== 'no') barrido.vigilar();
+
+// ── Rutas ───────────────────────────────────────────────────────────────────
+app.use('/auth', require('./routes/auth'));
+app.use('/', require('./routes/cuentas'));
+app.use('/', require('./routes/movimientos'));
+app.use('/', require('./routes/beneficiarios'));
+app.use('/', require('./routes/solicitudes'));
+app.use('/tesoreria', require('./routes/tesoreria'));
+
+// ── /salud ──────────────────────────────────────────────────────────────────
+// Dice la verdad sobre cada pieza por separado. Un /salud que devuelve 200
+// pase lo que pase es un /salud que no sirve para nada.
+app.get('/salud', async (req, res) => {
+  const mongo = mongoose.connection.readyState === 1;
+  let tasas = false;
+  let tasasCuando = null;
+  try {
+    const t = await require('./lib/cambio').tasas();
+    tasas = !!t;
+    tasasCuando = t?.cuando ? t.cuando.toISOString() : null;
+  } catch { /* ya se dijo en el log de cambio.js */ }
+
+  const bien = mongo;   // sin Mongo no hay cuentas; sin tasas solo no hay cambio
+  res.status(bien ? 200 : 503).json({
+    ok: bien,
+    mongo,
+    tasas,
+    tasasCuando,
+    genesis: !!(process.env.GENESIS_API_KEY || '').trim(),
+    sesiones: !!(process.env.AUCORP_TOKEN || '').trim(),
+    // Sin lista de sanciones cargada no sale ningún retiro. Se dice aquí para
+    // que se vea sin entrar a operaciones.
+    sanciones: (() => { const s = sanciones.estado(); return { cargadas: s.cargadas, registros: s.registros, fechaDescarga: s.fechaDescarga, vencidas: s.vencidas }; })(),
+    // Lo que esta casa ES, dicho por el propio servicio.
+    naturaleza: 'FinTech bajo Regulación A de Próspera. No es un banco con licencia bancaria: no hay seguro de depósitos.',
+  });
+});
+
+app.use((req, res) => res.status(404).json({ error: 'No existe esa ruta.', codigo: 'NO_EXISTE' }));
+
+// El manejador de errores no filtra el mensaje interno al cliente: un stack
+// trace en la respuesta le dice a quien sondea exactamente por dónde seguir.
+app.use((err, req, res, next) => {   // eslint-disable-line no-unused-vars
+  // Un JSON mal formado o demasiado grande es un error DEL CLIENTE, y se le
+  // dice con claridad en vez de un 500 que parece nuestro.
+  if (err?.type === 'entity.parse.failed') {
+    return res.status(400).json({ error: 'El cuerpo de la petición no es JSON válido.', codigo: 'JSON_INVALIDO' });
+  }
+  if (err?.type === 'entity.too.large') {
+    return res.status(413).json({ error: 'La petición es demasiado grande.', codigo: 'DEMASIADO_GRANDE' });
+  }
+  console.error(`[error] ${req.method} ${req.path}: ${err.message}`);
+  res.status(500).json({ error: 'Algo salió mal.', codigo: 'ERROR' });
+});
+
+const PUERTO = process.env.PORT || 3000;
+// El servidor se guarda y se exporta: la prueba de punta a punta necesita
+// saber en qué puerto quedó cuando se le pide PORT=0, y adivinarlo hurgando en
+// los handles del proceso es la clase de truco que se rompe solo.
+const servidor = app.listen(PUERTO, () => console.log(`[aucorp-api] escuchando en ${servidor.address().port}`));
+
+module.exports = app;
+module.exports.servidor = servidor;

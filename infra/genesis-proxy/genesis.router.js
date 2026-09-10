@@ -19,17 +19,18 @@
 //
 //   import { routerGenesis, parserRostro } from './genesis.router.js'
 //
-//   app.use('/genesis/biometria', parserRostro)   // ANTES del parser general
+//   app.use(['/genesis/biometria', '/genesis/documento/leer'], parserRostro)   // ANTES del parser general
 //   app.use(bodyParser.json({ limit: '100kb' }))  // el de siempre, sin tocar
 //   ...
 //   app.use('/genesis', routerGenesis({ exigirSesion: miMiddlewareDeAuth }))
 //
 // El orden de esas dos líneas importa y no es un detalle: el cuerpo lo parsea
-// el PRIMER parser que lo alcanza, y los fotogramas del rostro pesan más que
-// el límite general —que está bajo a propósito, porque ninguna otra ruta de la
-// app tiene motivo para recibir un megabyte—. Si el parser general va primero,
-// la verificación de identidad muere con un 413 y el usuario ve "no se pudo
-// enviar la foto" sin más explicación.
+// el PRIMER parser que lo alcanza, y los fotogramas del rostro —y la foto del
+// documento que manda la web para leerla— pesan más que el límite general,
+// que está bajo a propósito porque ninguna otra ruta de la app tiene motivo
+// para recibir un megabyte. Si el parser general va primero, la verificación
+// de identidad muere con un 413 y el usuario ve "no se pudo enviar la foto"
+// sin más explicación.
 //
 // Variables de entorno:
 //   GENESIS_URL      https://genesis-id.onrender.com   (por defecto)
@@ -107,12 +108,31 @@ export function routerGenesis({ exigirSesion } = {}) {
    * Crea la identidad si aún no existe, para que la app siempre tenga algo que
    * mostrar sin necesitar una llamada aparte.
    */
-  router.get('/estado', async (req, res) => {
+  // `/status` es el nombre con el que la web ya lo pedía; se aceptan los dos
+  // para que ninguna versión publicada se quede sin respuesta.
+  router.get(['/estado', '/status'], async (req, res) => {
     const email = req.usuario.email
     const existente = await llamar(`/api/v1/identidades/por-email/${encodeURIComponent(email)}`)
     if (existente.ok) return res.json(existente.cuerpo)
     const creada = await llamar('/api/v1/identidades', { method: 'POST', body: JSON.stringify({ email }) })
     responder(res)(creada)
+  })
+
+  /**
+   * Lee el documento desde su FOTO, para la web, que no tiene OCR propio.
+   *
+   * Genesis ID saca el texto con Rekognition, rescata la MRZ y descarta la
+   * imagen. Aquí no se guarda nada tampoco: pasa de largo. Si Genesis no tiene
+   * lector configurado responde 503 con `motivo: 'sin-lector'`, y la web
+   * ofrece teclear las líneas — que es lo que hacía antes.
+   */
+  router.post('/documento/leer', async (req, res) => {
+    const idn = await idDe(req.usuario.email)
+    if (!idn) return res.status(404).json({ error: 'Identidad no encontrada' })
+    responder(res)(await llamar(`/api/v1/identidades/${idn}/documento/leer`, {
+      method: 'POST',
+      body: JSON.stringify({ imagen: req.body?.imagen, cara: req.body?.cara === 'anverso' ? 'anverso' : 'reverso' }),
+    }))
   })
 
   /** Foto de la credencial: la unica imagen que Genesis ID conserva. */
@@ -199,6 +219,10 @@ export function routerGenesis({ exigirSesion } = {}) {
         // de la petición: si viniera del cliente, alguien podría atar su GID a
         // la cuenta de otro.
         cuenta: req.usuario.id || req.usuario.email,
+        // Genesis exige el correo de la persona para atar la cuenta: es la
+        // prueba de que esta app autenticó a la dueña de esa identidad. Sin
+        // él, el vínculo se rechaza (salvo válvula de emergencia en Genesis).
+        email: req.usuario.email,
         direccion: req.usuario.address || req.body?.direccion || null,
       }),
     }))

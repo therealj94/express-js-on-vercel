@@ -1,0 +1,31 @@
+# QUÉ PERFIL COMPILAR.
+#
+# La primera línea que no sea un comentario manda. Cambiar este archivo y
+# empujarlo dispara "Orden Global — compilar Android" — y solo este archivo lo
+# dispara, así que los demás empujes no gastan una compilación.
+#
+# Existe porque el operador automático puede empujar código pero no apretar el
+# botón de Actions, y esperar a que alguien lo apriete convertía cada
+# compilación en una cita.
+#
+#   preview      APK para instalar y repartir. El que se quiere casi siempre.
+#   development  APK con recarga en vivo, para desarrollar.
+#   production   AAB para Google Play. No se instala directo en un teléfono.
+#
+# Para volver a compilar sin cambiar de perfil, basta con tocar la fecha de
+# abajo: lo que dispara el flujo es que el ARCHIVO cambie.
+#
+#   última petición: 2026-08-25 (2ª) · el chat vuelve a ser NATIVO. Entran tres
+#   librerías nuevas (@noble/curves, hashes y ciphers) para el cifrado, y
+#   aunque son JavaScript puro, una dependencia nueva cambia la huella del
+#   paquete: sin APK nuevo, la actualización por aire no llega a nadie.
+#
+#   La primera petición murió en `npm ci`: el candado se agregó con
+#   `--package-lock-only --legacy-peer-deps` y eso RE-RESUELVE el árbol entero,
+#   no sólo añade lo pedido — se llevó por delante `react-refresh` de la raíz y
+#   el lock dejó de cuadrar con package.json. Se rehizo desde el lock del
+#   repositorio, sin banderas, y se comprobó `npm ci` en limpio ANTES de volver
+#   a pedir compilación: gastar ocho minutos de servidor para descubrir un
+#   error de treinta segundos es la clase de cosa que se paga dos veces.
+
+preview

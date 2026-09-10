@@ -1,0 +1,7 @@
+# Perfil que se va a compilar. Cambiar esta linea y empujar dispara una build.
+#   development | preview | production
+#
+# Existe porque el operador automatico puede empujar codigo pero no tiene
+# permiso para apretar el boton de la pestana Actions. Tocar este archivo es
+# la forma de pedir una compilacion sin depender de que alguien este mirando.
+preview

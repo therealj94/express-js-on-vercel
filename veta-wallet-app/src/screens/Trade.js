@@ -8,7 +8,7 @@ import * as Clipboard from 'expo-clipboard';
 import { C } from '../theme';
 import { Header, TokenIcon, Button3D, Card, useToast, useAccount, hap } from '../ui';
 import { money, qtyFmt, qtyExacto, tokensFromBalances, parseAmt, normalizeAmtInput } from '../data';
-import { apiSend, apiPortfolio, estimateNetworkFee, NETWORK_FEE_ORIGEN, CHAIN_ID } from '../api';
+import { apiSend, apiSendToken, apiPortfolio, estimateNetworkFee, NETWORK_FEE_ORIGEN, CHAIN_ID } from '../api';
 import { updateAccount } from '../accounts';
 import { listContacts, touchContact, addContact, parseAddress } from '../addressBook';
 import { ScanModal } from './Scan';
@@ -18,7 +18,10 @@ import { nombreBiometria } from '../PedirClave';
 
 function useTokens() {
   const { account } = useAccount();
-  return tokensFromBalances(account?.balances || []);
+  /* Cambiar solo ofrece lo publicado. Aqui no vale el «tengo saldo, dejame
+     verlo» de la lista de inicio: una cosa es no esconderle a alguien lo que
+     tiene, y otra ofrecerle cambiar por algo que se dejo de publicar. */
+  return tokensFromBalances(account?.balances || []).filter((t) => t.publico !== false);
 }
 
 // -------- selector de activo --------
@@ -30,16 +33,26 @@ function TokenPicker({ visible, tokens, onClose, onPick }) {
         <Pressable style={styles.sheet} onPress={() => {}}>
           <View style={styles.grab} />
           <Text style={styles.sheetTitle}>{tr('picker.title')}</Text>
-          {tokens.map((t) => (
-            <Pressable key={t.s} onPress={() => { hap(); onPick(t); onClose(); }} style={styles.pick}>
-              <TokenIcon t={t} size={40} />
-              <View style={{ flex: 1, marginLeft: 12 }}>
-                <Text style={styles.pickName}>{t.n}</Text>
-                <Text style={styles.pickSub}>{qtyFmt(t.qty)} {t.s}</Text>
-              </View>
-              <Text style={{ color: C.gold, fontWeight: '600' }}>{money(t.qty * t.price)}</Text>
-            </Pressable>
-          ))}
+          {/* La lista va dentro de un ScrollView y con altura tope.
+              Sin esto la hoja crecía tanto como tokens hubiera: con dieciséis
+              en la red, los de abajo quedaban fuera de la pantalla y no había
+              forma de llegar a ellos. ONDK era uno de esos. */}
+          <ScrollView
+            style={{ maxHeight: 420 }}
+            contentContainerStyle={{ paddingBottom: 4 }}
+            showsVerticalScrollIndicator
+          >
+            {tokens.map((t) => (
+              <Pressable key={t.s} onPress={() => { hap(); onPick(t); onClose(); }} style={styles.pick}>
+                <TokenIcon t={t} size={40} />
+                <View style={{ flex: 1, marginLeft: 12 }}>
+                  <Text style={styles.pickName}>{t.n}</Text>
+                  <Text style={styles.pickSub}>{qtyFmt(t.qty)} {t.s}</Text>
+                </View>
+                <Text style={{ color: C.gold, fontWeight: '600' }}>{money(t.qty * t.price)}</Text>
+              </Pressable>
+            ))}
+          </ScrollView>
         </Pressable>
       </Pressable>
     </Modal>
@@ -105,31 +118,45 @@ export function Send({ nav, params }) {
   // subía el gasPrice el envío fallaba en silencio. Se refresca al montar
   // la pantalla y usa el respaldo si el RPC no responde.
   const [fee, setFee] = useState(NETWORK_FEE_ORIGEN);
+  const isNative = tok.s === 'ORIGEN';
   useEffect(() => {
     let vivo = true;
-    estimateNetworkFee(21000).then((f) => { if (vivo) setFee(f); }).catch(() => {});
+    // Un envío de token gasta bastante más gas que uno nativo: 21.000 contra
+    // unos 52.500 medidos en la red. Estimar siempre con 21.000 dejaba corta
+    // la comisión que se le enseña al usuario justo en el caso caro.
+    estimateNetworkFee(isNative ? 21000 : 65000).then((f) => { if (vivo) setFee(f); }).catch(() => {});
     return () => { vivo = false; };
-  }, []);
+  }, [isNative]);
 
   const amount = parseAmt(amt);
   const usd = amount * (tok.price || 0);
-  const isNative = tok.s === 'ORIGEN';
-  const insufficient = isNative && amount > 0 && amount + fee > tok.qty;
+  // La comisión SIEMPRE se paga en ORIGEN, también al mover un token. Así que
+  // hay dos saldos que comprobar y no uno: que alcance el token que se envía,
+  // y que quede ORIGEN para pagar el viaje.
+  const origenDisponible = (tokens.find((x) => x.s === 'ORIGEN') || { qty: 0 }).qty;
+  const insufficient = amount > 0 && (isNative ? amount + fee > tok.qty : amount > tok.qty);
+  const sinGas = amount > 0 && !isNative && fee > origenDisponible;
 
   // Paso 1: revisar. Solo comprueba los datos y abre la ficha de revisión;
   // la contraseña se pide allí, junto al resumen de lo que se va a firmar.
   function revisar() {
-    if (!isNative) { toast(t('send.soon', { s: tok.s }), 'info'); return; }
     if (!/^0x[a-fA-F0-9]{40}$/.test(to.trim())) { toast(t('send.errAddr'), 'error'); return; }
     if (!(amount > 0)) { toast(t('send.errAmt'), 'error'); return; }
     if (insufficient) { toast(t('send.errBal'), 'error'); return; }
+    // Un token sin ORIGEN para el gas se queda a medias en la cadena, no en la
+    // app: se firma, se manda y muere sin minarse. Mejor pararlo aquí.
+    if (sinGas) { toast(t('send.errGas', { fee: fee.toFixed(6) }), 'error'); return; }
+    if (!isNative && !tok.contract) { toast(t('send.errContrato', { s: tok.s }), 'error'); return; }
     hap();
     setReview({
       amount,
       usd,
       symbol: tok.s,
       to: to.trim(),
-      fee: isNative ? fee : 0,
+      // La comisión se muestra siempre: en un envío de token también se paga,
+      // solo que en ORIGEN. Lo que NO se hace es sumarla al total del token.
+      fee,
+      contract: isNative ? null : tok.contract,
       total: amount + (isNative ? fee : 0),
       saldoAntes: tok.qty,
       contacto: contacts.find((c) => c.address.toLowerCase() === to.trim().toLowerCase())?.name || null,
@@ -158,7 +185,13 @@ export function Send({ nav, params }) {
     enviando.current = true;
     setSending(true);
     try {
-      const r = await apiSend({ to: tx.to, amount: tx.amount, password, idem: tx.idem });
+      // El camino depende del activo: la moneda nativa va por /transaction/send
+      // y un token por /transaction/sendToken, que además necesita el contrato.
+      // Se toma de la ficha de revisión, no del formulario vivo, por lo mismo
+      // que todo lo demás: se firma lo que el usuario aprobó.
+      const r = tx.contract
+        ? await apiSendToken({ to: tx.to, amount: tx.amount, password, contract: tx.contract, idem: tx.idem })
+        : await apiSend({ to: tx.to, amount: tx.amount, password, idem: tx.idem });
       if (r.ok) {
         touchContact(account?.email, tx.to);
         if (saveAs.trim()) addContact(account?.email, { name: saveAs.trim(), address: tx.to }).catch(() => {});
@@ -244,13 +277,30 @@ export function Send({ nav, params }) {
   return (
     <View style={{ flex: 1, paddingTop: 6 }}>
       <Header title={t('send.title')} onBack={() => nav.back()} />
-      <ScrollView contentContainerStyle={{ padding: 22 }} keyboardShouldPersistTaps="handled">
+      {/* Con el teclado abierto, los campos de abajo —la dirección, el memo—
+          quedaban tapados y uno escribía a ciegas. En Android hace falta
+          `height`: sin `behavior` no hace nada cuando la app dibuja de borde a
+          borde, que es lo normal desde Android 15. */}
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      >
+      <ScrollView
+        contentContainerStyle={{ padding: 22, paddingBottom: 40 }}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
+      >
         <Selector token={tok} onPress={() => setPick(true)} />
 
+        {/* Al mover un token, la comisión no sale del token: sale del ORIGEN.
+            Se dice aquí y no en la ficha de revisión, porque el momento de
+            enterarse es antes de escribir el monto, no después. */}
         {!isNative && (
           <View style={styles.notice}>
             <Icon name="information-circle" size={18} color={C.gold} />
-            <Text style={styles.noticeTxt}>{t('send.soon', { s: tok.s })}</Text>
+            <Text style={styles.noticeTxt}>
+              {t('send.feeEnOrigen', { s: tok.s, saldo: qtyFmt(origenDisponible) })}
+            </Text>
           </View>
         )}
 
@@ -315,8 +365,9 @@ export function Send({ nav, params }) {
         </Card>
         {insufficient && <Text style={styles.errTxt}>{t('send.insufficient', { q: qtyFmt(tok.qty), s: tok.s })}</Text>}
 
-        <Button3D title={t('send.review')} disabled={!isNative} onPress={revisar} />
+        <Button3D title={t('send.review')} onPress={revisar} />
       </ScrollView>
+      </KeyboardAvoidingView>
       <TokenPicker visible={pick} tokens={tokens} onClose={() => setPick(false)} onPick={setTok} />
       {/* La cámara va en modal: así el formulario sigue montado y la
           dirección leída se escribe directamente en el campo. */}
@@ -479,7 +530,7 @@ function ReviewSheet({ data, token, onCancel, onConfirm }) {
 
   return (
     <Modal visible transparent animationType="slide" onRequestClose={enviando ? () => {} : onCancel}>
-      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.revBg}>
+      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.revBg}>
         <ScrollView contentContainerStyle={{ flexGrow: 1, justifyContent: 'flex-end' }} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
         <Animated.View style={[styles.revCard, { transform: [{ translateX: shake }] }]}>
           <View style={styles.grab} />

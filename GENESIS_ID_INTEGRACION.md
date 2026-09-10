@@ -1,3 +1,10 @@
+ > **OBSOLETO (2026-09).** Este documento describe un puente con el portal
+> `genesisid.online` (`/api/portal/*`) que se retiró: ese portal nunca llegó a
+> funcionar y el endpoint que recibía el «pasaporte» dejaba inyectar uno a
+> cualquier correo. Hoy Genesis ID es el motor de `genesis-id/` y las apps
+> hablan con él por `infra/genesis-proxy/`. Ver `LEEME.md` y
+> `documentos/genesis-id-critica.md`. Se conserva solo como historia.
+
 # Integración con el portal Genesis ID (genesisid.online)
 
 ## Arquitectura (importante para la seguridad)

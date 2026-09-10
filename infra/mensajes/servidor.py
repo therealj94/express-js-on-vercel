@@ -1,0 +1,2616 @@
+#!/usr/bin/env python3
+"""El relevo de mensajes de Orden Global. Pequeño a propósito.
+
+Guarda y entrega los mensajes del chat de la app. Python de la biblioteca
+estándar, sin una sola dependencia: en el nodo del cerebro no hay npm y no
+va a haberlo por un chat.
+
+El modelo de identidad, dicho sin adornos:
+  · el alta declara un correo y devuelve una LLAVE aleatoria;
+  · la llave firma cada petición siguiente de ese correo;
+  · el PRIMER alta de un correo se lo queda — quien llegue después con el
+    mismo correo y otra llave, no entra.
+Eso protege el buzón de un correo ya dado de alta, pero NO impide darse de
+alta con el correo de otro ANTES que él. Cerrarlo de verdad exige verificar
+la sesión de la wallet (PASS_TOKEN), y ese secreto está en la lista de la
+Junta para rotarse (tarea 27): cuando se rote, aquí se añade la
+comprobación. Escrito en el LEEME y dicho en la entrega — no es E2E y no se
+promete E2E.
+
+Los grupos ('g:'+16hex) son la segunda mitad de AURO CHAT. Dos permisos y
+nada más: ser MIEMBRO (leer y escribir en el hilo) y ser ADMIN (renombrar,
+cambiar la foto, regenerar la invitación). La invitación es una capability:
+el token de 24 hex ES el permiso de entrar, y regenerarlo invalida el
+anterior — sin listas de invitados que mantener. La pertenencia se comprueba
+en CADA petición, nunca solo al abrir el hilo: quien sale del grupo deja de
+leer en el mismo instante.
+
+El /pago no mueve dinero: NEXUS jamás transmite. La wallet firma y transmite,
+la cadena confirma, y solo DESPUÉS el relevo deja el comprobante en el hilo.
+
+Corre detrás de Caddy en /mensajes/*. Estado en un JSON con candado; a
+este tamaño (mensajes de texto entre cientos de usuarios) sobra. Los
+adjuntos (imagen/video/archivo, ≤8MB) van como binarios en disco y se
+sirven por GET /archivo/<id>: el id aleatorio largo es el permiso. Ese GET
+entiende Range (206) —sin eso Safari no reproduce un video— y solo deja
+abrirse dentro del navegador a imágenes y videos: lo demás se descarga, para
+que nadie use nuestro dominio para servir su HTML.
+"""
+import base64, json, os, re, secrets, subprocess, threading, time, urllib.request
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+
+RUTA = os.environ.get('MENSAJES_DATOS', '/srv/mensajes/datos.json')
+# Los adjuntos (imagen/video/archivo) viven como binarios sueltos al lado del
+# JSON — meter megas en el JSON lo volvería ilegible e imposible de guardar
+# atómicamente rápido. El mime y el nombre de cada uno sí van en el JSON.
+CARPETA_ARCHIVOS = os.environ.get(
+    'MENSAJES_ARCHIVOS', os.path.join(os.path.dirname(RUTA) or '.', 'archivos'))
+TOPE_TEXTO = 2000          # un mensaje no es un documento
+TOPE_BANDEJA = 200         # lo último; el histórico completo no viaja entero
+TOPE_ARCHIVO = 8_000_000   # 8MB por adjunto: chat, no disco duro ajeno
+# El POST normal sigue en 64KB; solo /subir necesita tragar el base64 de un
+# adjunto de 8MB (≈10.7MB) más la envoltura JSON. Subir el tope global habría
+# abierto todas las rutas a cuerpos gigantes sin motivo.
+TOPE_POST = 64_000
+TOPE_POST_SUBIR = 11_000_000
+TOPE_NOMBRE = 64           # el nombre de un grupo cabe en la cabecera del hilo
+TOPE_GRUPOS = 200          # ningún usuario en más de 200 grupos
+# El JSON entero se reescribe en cada mensaje: un grupo de miles de miembros
+# haría lento cada guardado de todo el relevo. 500 sobra para lo que esto es.
+TOPE_MIEMBROS = 500
+# Las rutas de dos niveles (/grupo/crear, /amistad/pedir, …). Todo lo que no
+# esté aquí se lee solo por su último tramo.
+FAMILIAS = ('grupo', 'llaves', 'amistad', 'estado')
+ID_ARCHIVO = re.compile(r'[0-9a-f]{32}')
+ID_GRUPO = re.compile(r'g:[0-9a-f]{16}')
+# 'Range: bytes=inicio-fin', con cualquiera de los dos lados vacío. Es la
+# única forma que servimos: un solo trozo, en bytes.
+RANGO = re.compile(r'bytes=(\d*)-(\d*)')
+candado = threading.Lock()
+
+# Los navegadores no dejan a una página llamar a otro dominio si el dominio no
+# lo autoriza. La app nativa nunca tuvo que pedir permiso —fetch en React
+# Native no aplica CORS— y por eso el relevo vivió sin esto: el chat de la web
+# recibía la respuesta y el navegador la tiraba a la basura antes de que el
+# código la viera. Es una lista corta y cerrada; con '*' cualquier página
+# ajena podría hablar por el relevo desde el navegador de quien la visite.
+# El backend de la wallet, para comprobar una sesion. Se puede apuntar a otro
+# desde el entorno, que es como lo prueban las pruebas sin tocar produccion.
+WALLET_URL = os.environ.get(
+    'MENSAJES_WALLET_URL', 'https://vetawallet-1a2e38ac52b1.herokuapp.com').rstrip('/')
+
+# ── EL COMPROBANTE DE PAGO SE COMPRUEBA CONTRA LA CADENA ──────────────────────
+#
+# `/pago` deja en el hilo una tarjeta con «te mandé 1 ORIGEN» y un hash. Hasta
+# hoy el relevo solo miraba que el hash TUVIERA FORMA de hash: cualquiera con
+# llave de chat podia plantar en tu hilo un comprobante confirmado de un pago
+# que nunca existio, o de uno ajeno. Y para 1 a 1 ni siquiera exigia el
+# circulo. Un comprobante que nadie comprueba es una tarjeta bonita.
+#
+# Ahora se le pregunta a la cadena: la transaccion tiene que existir, estar
+# confirmada (status 1), salir de la direccion de quien firma la peticion,
+# llegar a la direccion de quien recibe (o a la de un miembro del grupo), y
+# mover EXACTAMENTE el monto declarado. Con ORIGEN es el `value`; con un token
+# es el evento Transfer de su contrato.
+#
+# La wallet manda el comprobante apenas emite, y el recibo puede tardar uno o
+# dos bloques (10 s cada uno): se espera, sondeando, hasta PAGO_ESPERA segundos
+# — FUERA del candado del relevo, que es de todos.
+RPC_URL = os.environ.get('MENSAJES_RPC', 'https://rpc.ordenglobal-rpc.com/')
+PAGO_ESPERA = int(os.environ.get('MENSAJES_PAGO_ESPERA', '40'))
+TRANSFER = '0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef'
+
+
+def _rpc(metodo, params):
+    import urllib.request
+    pet = urllib.request.Request(
+        RPC_URL, data=json.dumps({'jsonrpc': '2.0', 'id': 1, 'method': metodo,
+                                  'params': params}).encode(),
+        headers={'Content-Type': 'application/json'})
+    with urllib.request.urlopen(pet, timeout=8) as r:
+        return json.loads(r.read() or b'{}').get('result')
+
+
+def _wei(monto):
+    from decimal import Decimal
+    return int(Decimal(monto) * (10 ** 18))
+
+
+def _mismo(a, b):
+    return bool(a) and bool(b) and str(a).lower() == str(b).lower()
+
+
+def verificar_pago(hh, monto, moneda, addr_de, addrs_para, espera=None):
+    """`('ok', None)`, `('pendiente', None)`, `('no', por_que)` o `('sin-rpc', None)`.
+
+    `addrs_para` es la lista de direcciones que pueden recibir: una en 1 a 1,
+    las de todos los miembros en un grupo. Se sondea hasta `espera` segundos
+    mientras la transaccion exista y no tenga recibo todavia.
+    """
+    espera = PAGO_ESPERA if espera is None else espera
+    fin = time.time() + espera
+    while True:
+        try:
+            tx = _rpc('eth_getTransactionByHash', [hh])
+            rc = _rpc('eth_getTransactionReceipt', [hh]) if tx else None
+        except Exception:
+            return 'sin-rpc', None
+        if tx and rc:
+            break
+        if time.time() >= fin:
+            return 'pendiente', None
+        time.sleep(5)
+    if str(rc.get('status', '')).lower() not in ('0x1', '1'):
+        return 'no', 'la transacción falló en la cadena'
+    if not _mismo(tx.get('from'), addr_de):
+        return 'no', 'no salió de tu dirección'
+    quiere = _wei(monto)
+    if moneda == 'ORIGEN':
+        if not any(_mismo(tx.get('to'), a) for a in addrs_para):
+            return 'no', 'no llegó a la dirección de quien recibe'
+        if int(str(tx.get('value', '0x0')), 16) != quiere:
+            return 'no', 'el monto no es el de la transacción'
+        return 'ok', None
+    # un token: el evento Transfer(from, to, value) de su contrato
+    for lg in rc.get('logs') or []:
+        tp = lg.get('topics') or []
+        if len(tp) < 3 or str(tp[0]).lower() != TRANSFER:
+            continue
+        de_ev = '0x' + str(tp[1])[-40:]
+        a_ev = '0x' + str(tp[2])[-40:]
+        try:
+            valor = int(str(lg.get('data', '0x0')), 16)
+        except ValueError:
+            continue
+        if _mismo(de_ev, addr_de) and any(_mismo(a_ev, a) for a in addrs_para) and valor == quiere:
+            return 'ok', None
+    return 'no', 'la transacción no mueve ese monto de ese token a quien recibe'
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# LOS AVISOS PUSH: la mitad que faltaba.
+#
+# El relevo llevaba tiempo GUARDANDO suscripciones (/suscribir) sin que nadie
+# las usara: el obrero de la web sabe pintar el aviso desde el primer dia, pero
+# ningun aviso salia. Esta es la pieza que empuja.
+#
+# COMO SE FIRMA SIN CRIPTOGRAFIA EN PYTHON
+#
+# Los servicios de push (Google, Mozilla, Apple) exigen VAPID: un JWT firmado
+# con ES256. La biblioteca estandar no trae curvas elipticas y en este nodo no
+# se instalan dependencias — pero openssl SI esta, en cualquier Linux. La firma
+# se hace por subprocess con la llave de /srv/mensajes/vapid.pem, que se genera
+# EN el nodo al desplegar y no pasa por el repositorio jamas.
+#
+# POR QUE EL AVISO VIAJA SIN CUERPO
+#
+# Un push CON cuerpo obliga a cifrarlo (RFC 8291: ECDH + HKDF + AES-GCM), y eso
+# si que no se puede hacer con openssl de linea de comandos. Un push VACIO es
+# legal (RFC 8030), no exige cifrado, y el obrero ya lo entiende: despierta y
+# pinta «PULSE2CHAT — Te escribio». El nombre del remitente y el texto NO
+# viajan, y eso aqui es una virtud: por la red de Google no pasa ni un dato del
+# mensaje, solo el hecho de que hay algo nuevo.
+#
+# CUANDO NO SE EMPUJA
+#
+# Si esa cuenta consulto su bandeja hace menos de 45 segundos, esta con el chat
+# delante y el aviso solo duplicaria lo que ya esta viendo. El pulso vive en
+# memoria (no en el JSON): es un dato de presencia, no de estado.
+VAPID_PEM = os.environ.get('MENSAJES_VAPID_PEM', '/srv/mensajes/vapid.pem')
+VAPID_CONTACTO = 'mailto:info@ordenglobal.org'
+PULSO = {}                       # correo -> ultima consulta de bandeja (epoch)
+# La huella que deja AU-RA al arrancar. En memoria a proposito: describe un
+# proceso vivo, y un proceso que se murio no tiene version que contar.
+HUELLAS = {}                     # correo -> {asistente, prompt, modelos, ...}
+# De quien es la huella que sale en /salud. Cualquiera con llave puede dejar la
+# suya —la ruta no distingue—, pero solo esta se publica: /salud es publico y
+# no es sitio para lo que quiera escribir cualquiera.
+CORREO_AURA = os.environ.get('AURA_CORREO', 'aura@ordenglobal.org').lower()
+PULSO_FRESCO = 45
+
+# La presencia que se ENSEÑA es otra cosa que el pulso de arriba. PULSO dice
+# «está mirando este hilo ahora mismo» y sirve para no duplicar el push. Para
+# decir «está en el chat» —el punto verde, y sobre todo si una llamada puede
+# entrarle— la señal buena es el buzón de señales: quien lo está escuchando
+# tiene PULSE2CHAT de pie y una llamada le va a sonar. Se apunta cada vez que
+# alguien viene a escuchar; el ciclo es de 25 segundos, así que 40 de margen
+# separan «se fue» de «está entre dos preguntas».
+OIDO = {}                        # correo -> ultima escucha de señales (epoch)
+PRESENTE_FRESCO = 40
+
+
+def presente(c):
+    ahora = time.time()
+    return (ahora - OIDO.get(c, 0) < PRESENTE_FRESCO
+            or ahora - PULSO.get(c, 0) < PRESENTE_FRESCO)
+
+
+def escuchando(c):
+    """¿Le puede ENTRAR una llamada ahora mismo? Solo si escucha el buzón.
+
+    `presente` mezcla dos cosas a propósito —el punto verde se enciende
+    también con el sondeo de la bandeja—, pero para decidir si el timbre de
+    una llamada se EMPUJA o no, esa mezcla era un fallo: la app del teléfono
+    sondea la bandeja cada tres segundos y no escuchaba señales, así que
+    contaba como «presente», el push del «llamo» se ahorraba, y la llamada no
+    le sonaba nunca a quien tenía el chat abierto. Aquí solo cuenta el buzón:
+    quien lo escucha recibe el timbre por la señal, y al resto se le empuja.
+    """
+    return time.time() - OIDO.get(c, 0) < PRESENTE_FRESCO
+_vapid_pub = None
+_jwt_cache = {}                  # audiencia -> (vence, token)
+
+
+def _b64u(b):
+    return base64.urlsafe_b64encode(b).rstrip(b'=').decode()
+
+
+def llave_publica_avisos():
+    """El punto publico de la llave VAPID, como lo quiere pushManager.subscribe.
+
+    En el DER de una llave publica P-256 el punto sin comprimir son SIEMPRE los
+    ultimos 65 bytes (0x04 + X + Y): no hace falta un parser de ASN.1 para
+    recortarlo. Si no hay llave, cadena vacia — y la app dira que los avisos no
+    estan disponibles, que es la verdad.
+    """
+    global _vapid_pub
+    if _vapid_pub is not None:
+        return _vapid_pub
+    try:
+        r = subprocess.run(['openssl', 'ec', '-in', VAPID_PEM, '-pubout', '-outform', 'DER'],
+                           capture_output=True, timeout=10)
+        punto = r.stdout[-65:]
+        _vapid_pub = _b64u(punto) if r.returncode == 0 and len(punto) == 65 and punto[0] == 4 else ''
+    except Exception:
+        _vapid_pub = ''
+    return _vapid_pub
+
+
+def _der_a_cruda(der):
+    """La firma DER de openssl (SEQUENCE de dos INTEGER) al r||s de 64 bytes
+    que exige JWS. Los enteros DER llevan un 0x00 delante cuando el byte alto
+    esta encendido; se quita, y se rellena a 32 por la izquierda."""
+    def entero(b, i):
+        n = b[i + 1]
+        return b[i + 2:i + 2 + n].lstrip(b'\x00'), i + 2 + n
+    i = 2 + (der[1] & 0x7f if der[1] & 0x80 else 0)
+    r, i = entero(der, i)
+    t, _ = entero(der, i)
+    return r.rjust(32, b'\x00') + t.rjust(32, b'\x00')
+
+
+def _jwt_para(audiencia):
+    ahora = int(time.time())
+    c = _jwt_cache.get(audiencia)
+    if c and c[0] - 600 > ahora:
+        return c[1]
+    cab = _b64u(json.dumps({'typ': 'JWT', 'alg': 'ES256'}).encode())
+    cue = _b64u(json.dumps({'aud': audiencia, 'exp': ahora + 12 * 3600,
+                            'sub': VAPID_CONTACTO}).encode())
+    base = f'{cab}.{cue}'
+    try:
+        r = subprocess.run(['openssl', 'dgst', '-sha256', '-sign', VAPID_PEM],
+                           input=base.encode(), capture_output=True, timeout=10)
+        if r.returncode != 0 or not r.stdout:
+            return None
+        token = f'{base}.{_b64u(_der_a_cruda(r.stdout))}'
+    except Exception:
+        return None
+    _jwt_cache[audiencia] = (ahora + 12 * 3600, token)
+    return token
+
+
+# Se puede apuntar a otro sitio desde el entorno, que es como lo prueban las
+# pruebas sin mandarle avisos de verdad a nadie. Igual que MENSAJES_WALLET_URL.
+EXPO_ENVIO = os.environ.get('MENSAJES_EXPO_URL',
+                            'https://exp.host/--/api/v2/push/send')
+RE_EXPO = re.compile(r'^Expo(nent)?PushToken\[[A-Za-z0-9._\-]{1,120}\]$')
+
+
+def _empujar_expo(sus, urgencia):
+    """El aviso a un TELEFONO, por la red de Expo.
+
+    ══ POR QUE HAY DOS CAMINOS Y NO UNO ══════════════════════════════════════
+
+    El push de la web no llega a la app. PULSE2CHAT vive ahi dentro en una
+    vista de navegador incrustada, y una vista incrustada NO recibe push: no
+    hay obrero de servicio que despertar, ni permiso de notificacion que dar.
+    O sea que en la app —que es donde la gente lo usa— los mensajes llegaban
+    en silencio y las llamadas no sonaban. Se veian al abrir, y nada mas.
+
+    Un telefono se avisa por su propia red. Aqui es la de Expo, que es la que
+    la app ya habla: se le manda el testigo del aparato y ella se encarga de
+    Google. La web sigue por VAPID, sin cambiar nada.
+
+    ══ Y SIGUE SIN VIAJAR NI UNA PALABRA ═════════════════════════════════════
+
+    Expo SI deja mandar cuerpo, y aqui no se manda. La promesa del relevo es
+    que por la red de nadie pasa un dato de un mensaje: solo el hecho de que
+    hay algo. Se manda un titulo generico y `data` con el tipo, y la app pide
+    los detalles al relevo cuando se abre. Que se pueda no quiere decir que
+    convenga.
+    """
+    testigo = sus.get('expo') or ''
+    if not RE_EXPO.match(testigo):
+        return False                         # un testigo con mala pinta se poda
+    llamada = urgencia == 'high'
+    cuerpo = json.dumps([{
+        'to': testigo,
+        'title': 'PULSE2CHAT',
+        'body': 'Llamada entrante' if llamada else 'Tenés un mensaje nuevo',
+        'sound': 'default',
+        'priority': 'high',
+        'channelId': 'llamadas' if llamada else 'mensajes',
+        'ttl': 60 if llamada else 86400,
+        'data': {'tipo': 'llamada' if llamada else 'mensaje'},
+    }]).encode()
+    pet = urllib.request.Request(EXPO_ENVIO, data=cuerpo, method='POST', headers={
+        'Content-Type': 'application/json', 'Accept': 'application/json',
+    })
+    try:
+        with urllib.request.urlopen(pet, timeout=10) as r:
+            resp = json.loads(r.read() or b'{}')
+    except urllib.error.HTTPError as e:
+        return e.code not in (400, 404, 410)
+    except Exception:
+        return True                          # un fallo de red no es una baja
+    # Expo contesta 200 aunque el testigo este muerto: el motivo viene DENTRO.
+    # Sin mirarlo, un telefono desinstalado se quedaria en la lista para
+    # siempre, gastando un intento por cada mensaje de por vida.
+    try:
+        for r in (resp.get('data') or []):
+            if r.get('status') == 'error' and \
+                    (r.get('details') or {}).get('error') == 'DeviceNotRegistered':
+                return False
+    except Exception:
+        pass
+    return True
+
+
+def _empujar_uno(sus, urgencia):
+    """Un POST vacio al servicio de push de este navegador —o a la red de Expo
+    si esta suscripcion es la de un telefono. Devuelve False si la suscripcion
+    ya no existe (404/410) para que se pode."""
+    if sus.get('expo'):
+        return _empujar_expo(sus, urgencia)
+    from urllib.parse import urlsplit
+    punto = sus.get('endpoint') or ''
+    u = urlsplit(punto)
+    # Solo https, salvo el bucle local: los servicios de push reales son todos
+    # https, y las pruebas levantan uno falso en 127.0.0.1.
+    local = (u.hostname or '') in ('127.0.0.1', 'localhost')
+    if (u.scheme != 'https' and not local) or not u.netloc:
+        return False                         # una suscripcion rota se poda
+    jwt = _jwt_para(f'{u.scheme}://{u.netloc}')
+    if not jwt:
+        return True                          # sin llave no se poda a nadie
+    pet = urllib.request.Request(punto, data=b'', method='POST', headers={
+        'TTL': '86400',
+        'Urgency': urgencia,
+        'Content-Length': '0',
+        'Authorization': f'vapid t={jwt}, k={llave_publica_avisos()}',
+    })
+    try:
+        with urllib.request.urlopen(pet, timeout=10):
+            return True
+    except urllib.error.HTTPError as e:
+        return e.code not in (404, 410)
+    except Exception:
+        return True                          # un fallo de red no es una baja
+
+
+def empujar(d, correos, urgencia='normal', aunque_mire=False):
+    """Avisa a esas cuentas, en un hilo aparte: el POST que origino el aviso no
+    espera a la red de Google.
+
+    `aunque_mire` es para el timbre de una llamada: a quien esta mirando el
+    chat un MENSAJE no hace falta empujarselo (ya lo ve), pero una llamada
+    tiene que sonar igual — la pantalla del hilo no timbra sola.
+
+    SE LLAMA CON EL CANDADO YA TOMADO —todas las rutas POST viven dentro de
+    `with candado:`— y por eso NO lo toma: threading.Lock no es reentrante y
+    tomarlo aqui seria un interbloqueo del relevo entero, que fue exactamente
+    el primer borrador de esta funcion. Lee del `d` en memoria lo minimo, y el
+    hilo trabaja sobre su copia; solo la poda de suscripciones muertas vuelve a
+    tomar el candado, y para entonces esta en otro hilo."""
+    hay_vapid = bool(llave_publica_avisos())
+    ahora = time.time()
+    tandas = []
+    for c in correos:
+        if not aunque_mire and ahora - PULSO.get(c, 0) < PULSO_FRESCO:
+            continue                         # esta mirando el chat ahora mismo
+        f = (d.get('fichas') or {}).get(c) or {}
+        for sus in f.get('push', []):
+            # Sin llave VAPID no se puede firmar un push de navegador, pero el
+            # de un telefono va por otra red y no necesita ninguna: antes esta
+            # funcion se iba en la primera linea si faltaba la llave, y con eso
+            # se llevaba por delante tambien los avisos de la app.
+            if not sus.get('expo') and not hay_vapid:
+                continue
+            tandas.append((c, dict(sus)))
+    if not tandas:
+        return
+
+    def tarea():
+        muertos = []
+        for c, sus in tandas:
+            if not _empujar_uno(sus, urgencia):
+                # Se poda POR SU IDENTIDAD, y un telefono no tiene `endpoint`:
+                # podando por endpoint, un testigo de Expo muerto se llevaba
+                # por delante a TODOS los telefonos de esa cuenta —todos tienen
+                # el endpoint vacio, o sea todos «coincidian».
+                muertos.append((c, sus.get('expo') or '', sus.get('endpoint') or ''))
+        if muertos:
+            with candado:
+                d2 = cargar()
+                fichas2 = d2.get('fichas') or {}
+                for c, expo, punto in muertos:
+                    f2 = fichas2.get(c)
+                    if not f2:
+                        continue
+                    f2['push'] = [x for x in f2.get('push', [])
+                                  if (x.get('expo') or '') != expo
+                                  or (x.get('endpoint') or '') != punto]
+                guardar(d2)
+    threading.Thread(target=tarea, daemon=True).start()
+
+
+_version = None
+
+
+def version_servida():
+    """La huella del codigo que este proceso esta corriendo AHORA MISMO.
+
+    ══ POR QUE HACE FALTA ════════════════════════════════════════════════════
+
+    «El chat esta en otro lado» se arreglo el 15 de agosto —el relevo devuelve
+    la llave al dueno que lo prueba con su sesion de la wallet— y siguio
+    rompiendo diez dias mas. El codigo estaba en el repositorio; el proceso de
+    la maquina era el de antes. Y no habia forma de saberlo desde fuera: /salud
+    contestaba «vivo: true» con la misma alegria sirviendo cualquier version.
+
+    Averiguarlo costo medir TIEMPOS de respuesta —el camino nuevo llama al
+    backend de la wallet y eso se nota— que es una manera de trabajar que no se
+    le desea a nadie. Con esto, «¿esta desplegado el arreglo?» se contesta con
+    un GET. Es la misma cura que la casa ya tiene en su ficha de Ajustes.
+
+    Se calcula del propio archivo y una sola vez: es el mismo dato en cada
+    peticion, y leerse a si mismo en cada /salud seria I/O por deporte.
+    """
+    global _version
+    if _version is None:
+        try:
+            import hashlib
+            with open(os.path.abspath(__file__), 'rb') as f:
+                _version = hashlib.sha256(f.read()).hexdigest()[:10]
+        except Exception:
+            _version = 'desconocida'
+    return _version
+
+
+def version_de_aura():
+    """La huella que dejo AU-RA la ultima vez que arranco.
+
+    Llega por POST /huella —AU-RA vive en la maquina de la GPU, no en esta— y
+    se sirve aqui para que «¿esta desplegado el prompt nuevo?» se conteste con
+    un GET, igual que version_servida contesta por este relevo.
+
+    Si no hay nada, se dice que no lo hay. Callarse dejaria «no esta
+    desplegado» y «este relevo no se entero» con la misma cara, que es
+    exactamente el fallo que esto viene a arreglar.
+    """
+    h = HUELLAS.get(CORREO_AURA)
+    if not h:
+        return {'estado': 'sin huella'}
+    return dict(h)
+
+
+def correo_de_sesion(token):
+    """Le pregunta al backend de la wallet de quien es esta sesion.
+
+    Es lo que arregla el chat de raiz. La llave del relevo se acuna UNA vez y
+    se la queda el primer dispositivo; el segundo recibia un 409 sin salida
+    —«tu chat esta en otro lado»— aunque fuera la MISMA persona con la MISMA
+    cuenta. La sesion de la wallet ya prueba quien es (el backend valida el
+    token y devuelve el correo), asi que al dueno demostrado se le devuelve
+    su llave existente en vez de un portazo.
+
+    El relevo no valida el token por su cuenta a proposito: la firma y su
+    vigencia son asunto del backend de la wallet, y duplicar esa logica aqui
+    es tener dos versiones que un dia discrepan. Aqui solo se pregunta.
+
+    Devuelve el correo en minusculas, o None si la sesion no vale o el
+    backend no contesta. None NUNCA se distingue de una sesion mala hacia
+    fuera: en ambos casos queda el 409 de siempre.
+    """
+    return quien_es_la_sesion(token)[0]
+
+
+def quien_es_la_sesion(token):
+    """`(correo, gid)` de esta sesion, preguntandole al backend de la wallet.
+
+    El GID no se le cree al cliente. Antes `/alta` y `/perfil` guardaban el
+    `gid` como texto libre, y la busqueda por GID buscaba sobre eso: cualquiera
+    podia ponerse el GID de otra persona y salir «verificado» en el chat —lo
+    unico que se comprobaba era que el texto tuviera 64 caracteres o menos.
+    Genesis ID tiene motor de verdad (documento, cara, prueba de vida, OFAC) y
+    el chat lo tiraba a la basura en la puerta.
+
+    Se pregunta por el puente que ya existe en el backend de la wallet
+    (`/genesis/estado`, con la misma sesion): si la identidad esta `verificada`
+    devuelve su GID; si no, None. Y el GID que venga en el cuerpo de la
+    peticion se ignora SIEMPRE.
+    """
+    if not token or not isinstance(token, str) or len(token) > 4096:
+        return None, None
+    import urllib.request
+    cab = {'Authorization': 'Bearer ' + token}
+    try:
+        with urllib.request.urlopen(urllib.request.Request(
+                WALLET_URL + '/users/userDate', headers=cab), timeout=6) as r:
+            datos = json.loads(r.read() or b'{}')
+        correo = str(datos.get('email', '')).strip().lower()
+        if not correo_valido(correo):
+            return None, None
+    except Exception:
+        return None, None
+    # TRES respuestas posibles, y la diferencia importa:
+    #   · un GID       → Genesis dice que esta persona esta verificada;
+    #   · ''           → Genesis CONTESTO y dice que no hay identidad (o que
+    #                    no esta verificada): el sello se quita;
+    #   · None         → no se pudo saber (red, ruta que aun no existe en el
+    #                    backend, error). Con None NO SE TOCA lo que la ficha
+    #                    ya tenia: si el puente esta caido un rato, nadie
+    #                    pierde su sello por eso.
+    gid = None
+    try:
+        # `/genesis/gid` es de SOLO LECTURA. `/genesis/estado` crea la
+        # identidad si no existe, y preguntar no puede crear nada.
+        with urllib.request.urlopen(urllib.request.Request(
+                WALLET_URL + '/genesis/gid', headers=cab), timeout=6) as r:
+            idn = json.loads(r.read() or b'{}')
+        gid = ''
+        if isinstance(idn, dict) and idn.get('estado') == 'verificada':
+            g = str(idn.get('gid') or '').strip().upper()
+            if re.fullmatch(r'GEN-[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]', g):
+                gid = g
+    except urllib.error.HTTPError as e:
+        # 404 con «sin identidad» es una respuesta de verdad del puente.
+        # Cualquier otro 404 (la ruta todavia no desplegada) o error, no.
+        try:
+            cuerpo = json.loads(e.read() or b'{}')
+        except Exception:
+            cuerpo = {}
+        if e.code == 404 and isinstance(cuerpo, dict) and cuerpo.get('error') == 'sin identidad':
+            gid = ''
+    except Exception:
+        gid = None
+    return correo, gid
+
+
+ORIGENES = {
+    'https://www.vetawallet.com',
+    'https://vetawallet.com',
+    'https://app.vetawallet.com',
+    'https://main.d289v5ffkexk23.amplifyapp.com',   # el ensayo
+    'http://localhost:8899',                        # y el escritorio de quien lo hace
+    'http://127.0.0.1:8899',
+}
+
+
+def cargar():
+    try:
+        with open(RUTA, encoding='utf-8') as f:
+            return json.load(f)
+    except Exception:
+        return {'fichas': {}, 'mensajes': []}
+
+
+def guardar(d):
+    tmp = RUTA + '.tmp'
+    with open(tmp, 'w', encoding='utf-8') as f:
+        json.dump(d, f, ensure_ascii=False)
+    os.replace(tmp, RUTA)
+
+
+# Un correo se guarda aquí y después se pinta en la pantalla de OTRA persona.
+# La regla de antes —«cualquier cosa sin arroba ni espacios»— dejaba entrar
+# comillas, paréntesis y punto y coma, y con eso un correo dado de alta a mano
+# podía salirse de la cadena en la que la web lo pinta. La web ya escapa bien
+# ese sitio, pero un dato con forma de correo tiene que tener forma de correo:
+# es la mitad del arreglo que vive de este lado.
+#
+# El apóstrofo SÍ se permite: o'brien@example.com es un correo de verdad y
+# negárselo a alguien por culpa nuestra sería el error contrario.
+CORREO = re.compile(r"[A-Za-z0-9!#$%&'*+/=?^_~.-]{1,64}"
+                    r"@[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?"
+                    r"(?:\.[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?)+")
+
+
+def correo_valido(x):
+    return bool(CORREO.fullmatch(str(x or '').lower()))
+
+
+def foto_valida(d, x):
+    """Una foto es el id de un adjunto YA subido por /subir. Un id inventado
+    se descarta en vez de guardarse: pintaría un hueco gris en cada lista y
+    nadie sabría por qué. Cadena vacía = sin foto, y así se quita."""
+    x = str(x or '')
+    return x if (ID_ARCHIVO.fullmatch(x) and x in d.get('archivos', {})) else ''
+
+
+def en_linea(mime):
+    """¿Este adjunto se PINTA dentro del hilo, o se baja como descarga?
+
+    Un adjunto lo sube cualquiera, y servido «inline» se abre DENTRO de
+    nuestro dominio: un .html o un .svg subidos como adjunto ejecutarían su
+    JavaScript en cerebro.ordenscan.com, con la confianza que la gente le
+    tiene a esa barra de direcciones. Eso es alojarle el phishing a quien lo
+    intente, gratis y con nuestro nombre.
+
+    Así que inline SOLO lo que el chat tiene que enseñar en la burbuja:
+    imágenes, videos y notas de voz. El SVG se queda fuera a propósito aunque
+    su mime empiece por image/ — no es un mapa de píxeles, es XML que puede
+    traer <script> dentro. Todo lo demás baja como archivo y no corre nada.
+
+    Y el audio: una nota de voz hay que poder oírla en la burbuja, y un
+    audio no ejecuta nada — no hay «audio/html». Se deja pasar por eso, no
+    por comodidad.
+    """
+    m = str(mime or '').split(';')[0].strip().lower()
+    if 'svg' in m:
+        return False
+    return m.startswith('image/') or m.startswith('video/') or m.startswith('audio/')
+
+
+def trozo_pedido(cabecera, total):
+    """Traduce un `Range: bytes=i-f` al pedazo que hay que servir.
+
+    Safari (y iOS entero) NO reproduce un <video> al que el servidor le
+    contesta 200 con el archivo completo: pide un trozo y espera un 206. Sin
+    esto, un video mandado por el chat se veía en la app pero no en el
+    navegador — que es donde está la mitad de la gente.
+
+    Devuelve una tupla (qué, i, f):
+      · ('entero', 0, total-1) → servir todo con el 200 de siempre. Es lo que
+        toca sin cabecera Range Y TAMBIÉN con una cabecera que no entendemos
+        (varios rangos, otra unidad): la norma manda ignorar el Range
+        incomprensible, no fallar.
+      · ('trozo', i, f)        → 206 con esos bytes, ambos extremos incluidos.
+      · ('fuera', 0, 0)        → el rango tiene buena forma pero pide algo que
+        no existe (empieza pasado el final, o al revés): eso es un 416.
+    """
+    fin = total - 1
+    if not cabecera or len(cabecera) > 100:
+        return ('entero', 0, fin)
+    m = RANGO.fullmatch(cabecera.strip())
+    if not m:
+        return ('entero', 0, fin)
+    ini, ult = m.group(1), m.group(2)
+    if ini == '' and ult == '':
+        return ('entero', 0, fin)
+    # 20 dígitos ya son más bytes de los que cabrían jamás en un adjunto de
+    # 8MB: no vale la pena convertir a entero un número de mil cifras
+    if len(ini) > 20 or len(ult) > 20:
+        return ('fuera', 0, 0)
+    if ini == '':
+        # 'bytes=-N': los ÚLTIMOS N bytes. Pedir los últimos cero no es un
+        # trozo, es nada.
+        n = int(ult)
+        if n == 0 or total == 0:
+            return ('fuera', 0, 0)
+        return ('trozo', max(0, total - n), fin)
+    i = int(ini)
+    f = int(ult) if ult != '' else fin      # 'bytes=i-' = de ahí hasta el final
+    if total == 0 or i >= total or i > f:
+        return ('fuera', 0, 0)
+    return ('trozo', i, min(f, fin))
+
+
+def miembro(g, correo):
+    return any(m['correo'] == correo for m in g.get('miembros', []))
+
+
+def corte_de(d, correo, con):
+    """Desde cuándo ve ESTA cuenta el hilo con `con`.
+
+    Vaciar o quitar una conversación no borra mensajes —el hilo es de dos y
+    solo se puede decidir sobre la propia vista—: deja una fecha, y de ahí
+    para atrás esta cuenta no lo ve. 0 = nunca se vació, se ve todo.
+    """
+    c = d.get('cortes', {}).get(correo, {}).get(con)
+    return c.get('en', 0) if isinstance(c, dict) else 0
+
+
+def grupo_de(d, gid, correo):
+    """El grupo, pero solo si quien firma es miembro AHORA. Un grupo que no
+    existe y un grupo del que no soy miembro devuelven lo mismo (None → 403)
+    a propósito: quien pruebe ids al azar no averigua cuáles existen."""
+    g = d.get('grupos', {}).get(str(gid or ''))
+    return g if (g and miembro(g, correo)) else None
+
+
+def cuantos_grupos(d, correo):
+    return sum(1 for g in d.get('grupos', {}).values() if miembro(g, correo))
+
+
+# ── el circulo: quien puede escribirle a quien ────────────────────────────────
+#
+# Antes cualquiera con el correo de otro podia escribirle. Eso esta bien para
+# un buzon de soporte y esta mal para una app de mensajes: significa que a
+# cualquiera se le puede llenar el chat de desconocidos, y que basta con
+# adivinar un correo para meterse en la vida de alguien.
+#
+# Ahora hay que PEDIR y que el otro ACEPTE. Es una sola regla y protege dos
+# cosas a la vez: quien no acepto no recibe, y quien no fue aceptado no puede
+# ver ni un estado.
+#
+# La clave es el par ordenado alfabeticamente, no «a→b»: la amistad es una
+# sola cosa entre dos, no dos cosas espejadas que se pueden desincronizar.
+TOPE_PEDIDOS = 200          # pedidos pendientes por cuenta, en cualquier sentido
+
+
+def par(a, b):
+    return '|'.join(sorted([str(a).lower(), str(b).lower()]))
+
+
+def lazo(d, a, b):
+    return d.get('circulo', {}).get(par(a, b))
+
+
+def son_amigos(d, a, b):
+    l = lazo(d, a, b)
+    return bool(l and l.get('estado') == 'ok')
+
+
+def con_quien_hablo(d, correo):
+    """Con quién tiene historial esta cuenta, en UNA sola pasada.
+
+    `ya_hablaron` recorre los mensajes cada vez que se la llama. Para una
+    comprobación suelta da igual; para una lista de cien correos serían cien
+    pasadas por veinte mil mensajes. Donde hay lista, se usa esto.
+    """
+    otros = set()
+    for m in d.get('mensajes', []):
+        if m.get('de') == correo:
+            otros.add(m.get('para'))
+        elif m.get('para') == correo:
+            otros.add(m.get('de'))
+    return otros
+
+
+def ya_hablaron(d, a, b):
+    """¿Hay historial entre estos dos?
+
+    Existe por una razon concreta: el dia que esto se despliega hay cientos de
+    conversaciones abiertas. Exigir de golpe una solicitud aceptada las
+    cortaria todas a la vez, y la gente pensaria que el chat se rompio. Quien
+    ya se escribia se queda como estaba; la regla nueva rige de aqui en
+    adelante. Es una puerta que se cierra sin dejar a nadie fuera de su casa.
+    """
+    for m in d.get('mensajes', []):
+        if (m.get('de') == a and m.get('para') == b) or (m.get('de') == b and m.get('para') == a):
+            return True
+    return False
+
+
+# ── bloquear ──────────────────────────────────────────────────────────────────
+#
+# La solicitud protege de quien todavía no entró. El bloqueo protege de quien YA
+# está dentro, y es la mitad que faltaba: sin él, aceptar a alguien es una
+# puerta que no se puede volver a cerrar, y eso hace que la gente no acepte a
+# nadie.
+#
+# Corta en los dos sentidos a propósito. Si bloqueo a alguien, tampoco quiero
+# escribirle yo: un bloqueo que solo va en una dirección deja abierta la
+# conversación que uno quería terminar.
+TOPE_BLOQUEOS = 500
+
+# ── LAS DENUNCIAS ────────────────────────────────────────────────────────────
+#
+# Los motivos son una LISTA CERRADA a proposito. Un campo libre suena mas
+# flexible, pero en la practica llega todo como «otro» y no se puede ordenar la
+# bandeja de quien revisa ni ver que problema es el que se repite. La nota
+# libre va aparte, para el detalle.
+MOTIVOS_DENUNCIA = ('estafa', 'acoso', 'contenido', 'suplantacion', 'spam', 'otro')
+
+# Por persona. Sin tope, una cuenta puede llenar la bandeja y tapar las
+# denuncias de verdad — que es exactamente lo que haria alguien de mala fe.
+TOPE_DENUNCIAS = 100
+
+
+def bloqueados_de(d, correo):
+    return set(d.get('bloqueos', {}).get(str(correo).lower(), []))
+
+
+def hay_bloqueo(d, a, b):
+    return b in bloqueados_de(d, a) or a in bloqueados_de(d, b)
+
+
+def puede_escribir(d, quien, a_quien):
+    if quien == a_quien:
+        return True
+    if hay_bloqueo(d, quien, a_quien):
+        return False
+    return son_amigos(d, quien, a_quien) or ya_hablaron(d, quien, a_quien)
+
+
+def cuantos_pedidos(d, correo):
+    c = str(correo).lower()
+    return sum(1 for k, v in d.get('circulo', {}).items()
+               if v.get('estado') == 'pedido' and c in k.split('|'))
+
+
+def resumen_ficha(correo, f):
+    return {'correo': correo, 'nombre': f.get('nombre', ''), 'addr': f.get('addr', ''),
+            'gid': f.get('gid', ''), 'foto': f.get('foto', '')}
+
+
+# ── las llaves publicas de cada aparato ───────────────────────────────────────
+#
+# Una cuenta tiene varios aparatos —telefono, computadora— y cada uno se
+# fabrica su propio par de llaves. Aqui solo viven las PUBLICAS: son como un
+# numero de telefono, no sirven para abrir nada. Las privadas nunca salieron
+# del navegador y no hay ninguna ruta por la que pudieran llegar.
+TOPE_APARATOS = 5           # mas que eso son casi siempre navegaciones privadas
+VIDA_APARATO = 180 * 86400  # un aparato que no aparece en medio año se cae solo
+
+
+def apuntar_aparato(f, ident, pub, ahora, fir=''):
+    """Apunta un aparato con su llave de acuerdo y su llave de FIRMA.
+
+    La de firma llego despues, asi que hay aparatos guardados sin ella. No se
+    los tira: se les deja el hueco y se llena en cuanto ese aparato vuelva a
+    publicar. Tirarlos habria dejado sin poder leer a gente que no hizo nada
+    mal.
+    """
+    aps = [a for a in f.get('aparatos', []) if a.get('id') != ident]
+    nuevo = {'id': ident, 'pub': pub, 'visto': ahora}
+    if fir:
+        nuevo['fir'] = fir
+    aps.append(nuevo)
+    # se cae el mas viejo por ULTIMA VEZ VISTO, no por antiguedad de alta: el
+    # telefono de todos los dias no se puede caer por haberse dado de alta
+    # antes que una computadora que se usa una vez al mes
+    aps.sort(key=lambda a: a.get('visto', 0), reverse=True)
+    f['aparatos'] = aps[:TOPE_APARATOS]
+
+
+def aparatos_de(f, ahora):
+    # La llave de firma va SIEMPRE que exista: es contra esta lista, y no
+    # contra lo que venga dentro del mensaje, que el cliente comprueba quien
+    # escribio de verdad.
+    salida = []
+    for a in f.get('aparatos', []):
+        if not a.get('pub'):
+            continue
+        if ahora - a.get('visto', 0) >= VIDA_APARATO * 1000:
+            continue
+        ap = {'id': a['id'], 'pub': a['pub']}
+        if a.get('fir'):
+            ap['fir'] = a['fir']
+        salida.append(ap)
+    return salida
+
+
+# ── los estados de 24 horas ───────────────────────────────────────────────────
+#
+# Un estado es lo contrario de un mensaje: no va dirigido a nadie y se borra
+# solo. Por eso NO se guarda en 'mensajes' ni se cifra de punta a punta — lo
+# ve todo el circulo, que puede ser mucha gente y cambiar mientras el estado
+# esta vivo, y cifrarlo para cada aparato de cada amigo significaria rehacerlo
+# cada vez que alguien acepta una solicitud.
+#
+# Eso quiere decir que un estado SI lo puede ver el servidor, y la app lo dice
+# con esas palabras en la pantalla de subirlo. No se esconde: se avisa donde
+# la persona esta decidiendo.
+VIDA_ESTADO = 24 * 3600 * 1000
+TOPE_ESTADOS = 20           # por cuenta y a la vez
+
+
+def purgar_estados(d, ahora):
+    """Los vencidos se van de verdad: se borra la fila y su archivo.
+
+    Un estado que «se ve borrado» pero sigue en el disco no es un estado de 24
+    horas, es un archivo con una etiqueta. Si se promete que desaparece, tiene
+    que desaparecer.
+    """
+    vivos, muertos = [], []
+    for e in d.get('estados', []):
+        (vivos if e.get('vence', 0) > ahora else muertos).append(e)
+    if not muertos:
+        return
+    d['estados'] = vivos
+    en_uso = {e.get('archivo') for e in vivos if e.get('archivo')}
+    en_uso |= {f.get('foto') for f in d.get('fichas', {}).values() if f.get('foto')}
+    en_uso |= {m.get('archivo') for m in d.get('mensajes', []) if m.get('archivo')}
+    for e in muertos:
+        a = e.get('archivo')
+        if a and a not in en_uso:
+            d.get('archivos', {}).pop(a, None)
+            try:
+                os.remove(os.path.join(CARPETA_ARCHIVOS, a))
+            except OSError:
+                pass
+
+
+def sumar_miembros(d, g, correos, ahora):
+    """Mete en el grupo a los correos que se pueda y dice QUÉ pasó con cada uno.
+
+    Solo gente ya dada de alta en el relevo: un correo sin ficha no podría
+    leer nada y dejaría un miembro fantasma, sin nombre ni foto, en la ficha
+    del grupo. Eso está bien; lo que estaba mal es que se saltaba en
+    SILENCIO. Quien escribía el correo de alguien que todavía no tiene la
+    app veía «Invitación enviada» y se quedaba esperando a una persona que
+    nunca fue invitada a nada — la mentira más cara de todas, porque no se
+    nota hasta días después.
+
+    Por eso ya no se devuelve un número pelado sino qué le tocó a cada
+    correo. Que la respuesta diga «este no existe» permite a la pantalla
+    decirlo con esas palabras en vez de fingir un éxito.
+
+    Devuelve un dict de listas: entraron, noExisten, yaEstaban, sinCupo; y
+    'invalidos' es un CONTEO, no una lista: lo que no tiene forma de correo
+    no se devuelve tal cual — no le devolvemos a nadie su propia cadena rara
+    para que otra pantalla la pinte.
+    """
+    r = {'entraron': [], 'noExisten': [], 'yaEstaban': [], 'sinCupo': [],
+         'invalidos': 0}
+    lista = correos if isinstance(correos, list) else []
+    for c in lista[:TOPE_MIEMBROS]:
+        c = str(c).lower()
+        if not correo_valido(c):
+            r['invalidos'] += 1
+            continue
+        if c not in d['fichas']:
+            # sí, esto dice si un correo está dado de alta. El directorio
+            # (/buscar) ya lo dice desde siempre, y sin esto no hay forma
+            # honesta de avisar de que la invitación no llegó a nadie.
+            r['noExisten'].append(c)
+            continue
+        if miembro(g, c):
+            r['yaEstaban'].append(c)
+            continue
+        if len(g['miembros']) >= TOPE_MIEMBROS or cuantos_grupos(d, c) >= TOPE_GRUPOS:
+            r['sinCupo'].append(c)
+            continue
+        g['miembros'].append({'correo': c, 'desde': ahora})
+        r['entraron'].append(c)
+    # lo que ni se miró por venir detrás del tope tampoco entró: contarlo
+    # como añadido sería la misma mentira por otra puerta
+    for c in lista[TOPE_MIEMBROS:]:
+        c = str(c).lower()
+        if correo_valido(c):
+            r['sinCupo'].append(c)
+        else:
+            r['invalidos'] += 1
+    return r
+
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# EL BUZÓN DE SEÑALES DE LAS LLAMADAS
+#
+# Para montar una llamada, dos navegadores tienen que intercambiar tres cosas
+# —la oferta, la respuesta y los caminos de red (ICE)— y tienen que hacerlo en
+# SEGUNDOS. El chat sondea cada cinco, así que por ahí una llamada tardaría
+# entre quince y veinticinco segundos en conectar: inusable.
+#
+# Esto es un buzón aparte con espera larga: quien escucha deja la petición
+# abierta hasta veinticinco segundos, y en cuanto llega algo para él se le
+# contesta al instante. Es casi un WebSocket, sin serlo, y sin tocar nada de
+# lo que ya funciona.
+#
+# TRES DECISIONES QUE IMPORTAN
+#
+# 1. VIVE EN MEMORIA, NO EN EL ARCHIVO. Una señal dura segundos y no le
+#    interesa a nadie después. Guardarlas en datos.json sería una escritura
+#    del archivo entero por cada candidato ICE —decenas por llamada— y eso sí
+#    tumbaría el relevo.
+#
+# 2. NO USA EL CANDADO GLOBAL. Ese candado es de TODO el relevo: esperar
+#    veinticinco segundos con él en la mano dejaría el chat congelado para
+#    todo el mundo mientras alguien llama. Tiene su propio candado, y solo
+#    protege este buzón.
+#
+# 3. SE VACÍA SOLO. Lo que nadie recogió en un minuto se tira: una señal vieja
+#    no sirve —la llamada ya se cayó— y sin esto el buzón crecería para
+#    siempre con las llamadas que nadie contestó.
+
+ESPERA_SENAL = 25          # lo que aguanta una petición abierta, en segundos
+VIDA_SENAL = 60            # lo que vive una señal sin que nadie la recoja
+TOPE_SENALES = 60          # por buzón: una llamada normal usa unas veinte
+TOPE_SENAL_DATOS = 12_000  # una oferta SDP ronda los 4KB; ICE, unos cientos
+
+senales = {}                          # correo -> [ {de, tipo, datos, en} ]
+aviso_senal = threading.Condition()   # su propio candado, NO el global
+
+
+def _purgar_senales(ahora):
+    """Tira lo que nadie recogió. Se llama con `aviso_senal` en la mano."""
+    for quien in list(senales):
+        senales[quien] = [x for x in senales[quien] if ahora - x['en'] < VIDA_SENAL]
+        if not senales[quien]:
+            del senales[quien]
+
+
+def dejar_senal(para, de, tipo, datos):
+    """Deja una señal para alguien y despierta a quien esté esperando."""
+    ahora = time.time()
+    with aviso_senal:
+        _purgar_senales(ahora)
+        buzon = senales.setdefault(para, [])
+        if len(buzon) >= TOPE_SENALES:
+            return False
+        buzon.append({'de': de, 'tipo': tipo, 'datos': datos, 'en': ahora})
+        aviso_senal.notify_all()
+    return True
+
+
+def recoger_senales(quien, espera=ESPERA_SENAL):
+    """Lo que haya para mí, esperando hasta `espera` segundos si no hay nada.
+
+    Devolver la lista VACÍA tras la espera no es un fallo: es la forma de que
+    el navegador vuelva a preguntar sin que la petición se quede colgada para
+    siempre ni el móvil gaste batería sondeando cada segundo.
+    """
+    hasta = time.time() + espera
+    with aviso_senal:
+        while True:
+            _purgar_senales(time.time())
+            mias = senales.pop(quien, [])
+            if mias:
+                return [{'de': x['de'], 'tipo': x['tipo'], 'datos': x['datos']} for x in mias]
+            queda = hasta - time.time()
+            if queda <= 0:
+                return []
+            aviso_senal.wait(timeout=queda)
+
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# LAS CREDENCIALES DEL TURN DE CLOUDFLARE
+#
+# POR QUE ESTO VIVE EN EL SERVIDOR Y NO EN EL NAVEGADOR
+#
+# Porque para pedirle credenciales a Cloudflare hace falta un token de API que
+# vale para TODA la cuenta. Ese token en el navegador lo puede leer cualquiera
+# abriendo las herramientas de desarrollo, y con él se puede consumir el
+# terabyte gratis del mes en una tarde — o gastar dinero de verdad después.
+#
+# Así que el token se queda aquí, y el navegador pide credenciales CORTAS: se
+# generan al vuelo, duran una hora, y solo sirven para relevar audio y video.
+#
+# QUE PASA SI NO ESTA CONFIGURADO
+#
+# Se contesta 200 con la lista vacía, no un error. Sin TURN las llamadas
+# siguen funcionando —la mayoría conecta con STUN a secas— y un 500 aquí haría
+# que la app tratara como rota una situación que es solo «todavía no lo
+# pagamos». La app mira si vino algo y sigue igual.
+#
+# CONFIGURACION (variables de entorno, ninguna escrita aquí)
+#   TURN_LLAVE_ID    el «TURN Key ID» que da el panel de Cloudflare
+#   TURN_LLAVE_TOKEN el token de API de esa llave
+#   TURN_VIDA        segundos que dura la credencial; por defecto 3600
+
+TURN_ID = os.environ.get('TURN_LLAVE_ID', '').strip()
+TURN_TOKEN = os.environ.get('TURN_LLAVE_TOKEN', '').strip()
+TURN_VIDA = int(os.environ.get('TURN_VIDA', '3600'))
+TURN_URL = 'https://rtc.live.cloudflare.com/v1/turn/keys/{}/credentials/generate-ice-servers'
+
+# Las credenciales se cachean casi toda su vida: son iguales para todo el
+# mundo durante ese rato, y pedir una por llamada sería una llamada de red
+# extra en el momento en que más importa la prisa.
+_turno_cache = {'hasta': 0, 'servidores': []}
+_turno_candado = threading.Lock()
+
+
+def servidores_turno():
+    """Los iceServers de Cloudflare, o [] si no está configurado."""
+    if not TURN_ID or not TURN_TOKEN:
+        return []
+    ahora = time.time()
+    with _turno_candado:
+        if _turno_cache['hasta'] > ahora:
+            return _turno_cache['servidores']
+    try:
+        import urllib.request
+        req = urllib.request.Request(
+            TURN_URL.format(TURN_ID), method='POST',
+            data=json.dumps({'ttl': TURN_VIDA}).encode(),
+            headers={'Authorization': 'Bearer ' + TURN_TOKEN,
+                     'Content-Type': 'application/json',
+                     # El escudo antibots de Cloudflare rechaza con «error code
+                     # 1010» a quien llega con el User-Agent de python-urllib,
+                     # ANTES de mirar el token. Sale un 403 que parece de
+                     # credenciales y no lo es: cuesta media hora de buscar en
+                     # el sitio equivocado. Con una identificación normal pasa.
+                     'User-Agent': 'veta-wallet-relevo/1.0',
+                     'Accept': '*/*'})
+        with urllib.request.urlopen(req, timeout=8) as r:
+            d = json.loads(r.read())
+        srv = d.get('iceServers') or []
+        # Cloudflare devuelve un objeto o una lista segun el caso; se normaliza
+        # a lista para que la app no tenga que saberlo.
+        if isinstance(srv, dict):
+            srv = [srv]
+        with _turno_candado:
+            # Se renueva antes de que venza, no justo al vencer: una credencial
+            # que caduca a mitad de una llamada la corta.
+            _turno_cache['hasta'] = ahora + max(60, TURN_VIDA * 0.8)
+            _turno_cache['servidores'] = srv
+        return srv
+    except Exception as e:
+        print('[turno] no se pudieron pedir credenciales:', e)
+        return []
+
+
+class Relevo(BaseHTTPRequestHandler):
+    server_version = 'relevo/1'
+    # HTTP/1.1 con conexiones que se quedan abiertas. Sin esto el servidor
+    # habla HTTP/1.0 y cierra tras cada respuesta; Chromium reutiliza la
+    # conexion igual y ve ERR_CONNECTION_RESET a rachas — en produccion lo
+    # tapaba Caddy, pero el navegador contra el relevo a pelo (las pruebas, o
+    # cualquier despliegue sin proxy) perdia peticiones. Se puede porque TODAS
+    # las respuestas llevan Content-Length: con 1.1, una sola sin el colgaria
+    # al cliente esperando un final que no llega.
+    protocol_version = 'HTTP/1.1'
+
+    def _permiso(self):
+        """Autoriza al navegador, si quien pregunta es una de nuestras webs."""
+        o = self.headers.get('Origin')
+        if o in ORIGENES:
+            self.send_header('Access-Control-Allow-Origin', o)
+            # el origen decide la respuesta, asi que las caches intermedias
+            # tienen que guardar una copia por origen y no mezclarlas
+            self.send_header('Vary', 'Origin')
+
+    def _json(self, codigo, cuerpo):
+        datos = json.dumps(cuerpo, ensure_ascii=False).encode()
+        self.send_response(codigo)
+        self.send_header('Content-Type', 'application/json; charset=utf-8')
+        self.send_header('Content-Length', str(len(datos)))
+        self._permiso()
+        self.end_headers()
+        self.wfile.write(datos)
+
+    def do_OPTIONS(self):
+        # El vuelo previo: el navegador pregunta antes de mandar el POST de
+        # verdad porque lleva Content-Type: application/json. Sin esto, el
+        # POST ni sale.
+        self.send_response(204)
+        self._permiso()
+        self.send_header('Access-Control-Allow-Methods', 'POST, GET, OPTIONS')
+        self.send_header('Access-Control-Allow-Headers', 'Content-Type')
+        self.send_header('Access-Control-Max-Age', '86400')
+        self.send_header('Content-Length', '0')
+        self.end_headers()
+
+    def log_message(self, *a):   # el journal no necesita cada GET
+        pass
+
+    def do_GET(self):
+        if self.path.rstrip('/').endswith('/salud'):
+            return self._json(200, {'vivo': True, 'cuando': int(time.time()),
+                                    'version': version_servida(),
+                                    'aura': version_de_aura()})
+        # La llave publica de los avisos. Publica de verdad: es la mitad que el
+        # navegador necesita para suscribirse, y sin la privada no firma nada.
+        if self.path.rstrip('/').endswith('/llave-avisos'):
+            return self._json(200, {'llave': llave_publica_avisos()})
+        # GET /archivo/<id> — SIN llave a propósito: el id son 32 hex al azar
+        # (128 bits) y ES el permiso (capability URL). Así el visor de la app,
+        # el navegador o un reproductor externo lo abren sin sesión, igual que
+        # un enlace de foto de cualquier chat. Adivinar un id no es viable.
+        partes = [p for p in self.path.split('?')[0].split('/') if p]
+        if len(partes) >= 2 and partes[-2] == 'archivo' and ID_ARCHIVO.fullmatch(partes[-1]):
+            return self._archivo(partes[-1])
+        return self._json(404, {'error': 'no existe'})
+
+    def _archivo(self, iid):
+        with candado:
+            meta = cargar().get('archivos', {}).get(iid)
+        try:
+            # el id ya pasó el regex estricto: no hay ../ ni sorpresas de ruta
+            with open(os.path.join(CARPETA_ARCHIVOS, iid + '.bin'), 'rb') as fh:
+                cuerpo = fh.read()
+        except OSError:
+            meta = None
+        if not meta:
+            return self._json(404, {'error': 'no existe'})
+        total = len(cuerpo)
+        mime = meta.get('mime') or 'application/octet-stream'
+        # nombre saneado a ASCII simple: es solo cortesía para el "guardar
+        # como" del navegador, no vale la pena la coreografía RFC 5987
+        nombre = re.sub(r'[^A-Za-z0-9._ -]', '_', meta.get('nombre') or iid)[:80]
+
+        que, i, f = trozo_pedido(self.headers.get('Range'), total)
+        if que == 'fuera':
+            # 416 con el tamaño de verdad: el reproductor recalcula y vuelve
+            # a pedir bien, en vez de quedarse mirando un error sin datos
+            self.send_response(416)
+            self.send_header('Content-Range', 'bytes */%d' % total)
+            self.send_header('Accept-Ranges', 'bytes')
+            self.send_header('Content-Length', '0')
+            self._permiso()
+            self.end_headers()
+            return
+
+        self.send_response(206 if que == 'trozo' else 200)
+        self.send_header('Content-Type', mime)
+        # decirlo SIEMPRE, también en el 200: es así como el reproductor se
+        # entera de que puede pedir trozos y de que puede saltar en la barra
+        self.send_header('Accept-Ranges', 'bytes')
+        if que == 'trozo':
+            self.send_header('Content-Range', 'bytes %d-%d/%d' % (i, f, total))
+            self.send_header('Content-Length', str(f - i + 1))
+        else:
+            self.send_header('Content-Length', str(total))
+        # Un adjunto se guarda, no se ejecuta: inline solo lo que la burbuja
+        # tiene que enseñar (imagen y video, nunca SVG). Lo demás, descarga —
+        # ver en_linea(): es lo que impide que nos alojen el phishing.
+        self.send_header('Content-Disposition', '%s; filename="%s"'
+                         % ('inline' if en_linea(mime) else 'attachment', nombre))
+        # y que el navegador no adivine el tipo mirando los bytes: sin esto,
+        # un .html subido con mime de imagen se ejecutaría igual
+        self.send_header('X-Content-Type-Options', 'nosniff')
+        # el binario de un id jamás cambia: que el teléfono lo cachee y no
+        # vuelva a bajar la misma foto en cada scroll del hilo
+        self.send_header('Cache-Control', 'public, max-age=31536000, immutable')
+        self._permiso()
+        if self.headers.get('Origin') in ORIGENES:
+            # sin esto el JavaScript de la web ve la respuesta pero no puede
+            # leer de dónde a dónde va el trozo que le mandaron
+            self.send_header('Access-Control-Expose-Headers',
+                             'Content-Range, Content-Length, Accept-Ranges')
+        self.end_headers()
+        self.wfile.write(cuerpo[i:f + 1] if que == 'trozo' else cuerpo)
+
+    def do_POST(self):
+        # la ruta se decide ANTES de leer el cuerpo: el tope grande es solo
+        # para /subir y el resto de rutas conserva su límite de siempre.
+        # Se lee por el final porque delante puede venir el prefijo de Caddy
+        # (/mensajes/...). Las familias de dos niveles van en una lista y no
+        # sueltas en un `if`: cada vez que se añadía una hacía falta acordarse
+        # de tocar esta línea, y olvidarlo deja la ruta nueva contestando 404
+        # sin que nada lo diga.
+        partes = [p for p in self.path.split('?')[0].split('/') if p]
+        ruta = '/' + (partes[-1] if partes else '')
+        if len(partes) >= 2 and partes[-2] in FAMILIAS:
+            ruta = '/' + partes[-2] + '/' + partes[-1]
+        try:
+            n = int(self.headers.get('Content-Length', 0))
+            if n > (TOPE_POST_SUBIR if ruta == '/subir' else TOPE_POST):
+                return self._json(413, {'error': 'muy grande'})
+            b = json.loads(self.rfile.read(n) or b'{}')
+        except Exception:
+            return self._json(400, {'error': 'json inválido'})
+
+        # La sesion de la wallet se comprueba AQUI, antes del candado: es una
+        # llamada de red y el candado es de todo el relevo — con ella dentro,
+        # seis segundos de Heroku lento serian seis segundos de chat parado
+        # para todo el mundo.
+        correo_probado, gid_probado = None, None
+        if ruta == '/alta' and b.get('sesion'):
+            correo_probado, gid_probado = quien_es_la_sesion(b.get('sesion'))
+
+        # El comprobante de pago se comprueba contra la cadena AQUI, fuera del
+        # candado: puede sondear hasta PAGO_ESPERA segundos y el candado es de
+        # todo el relevo. Antes de gastar red se mira que la llave valga, para
+        # que un desconocido no pueda tenernos sondeando por deporte.
+        pago_veredicto = None
+        if ruta == '/pago':
+            with candado:
+                d0 = cargar()
+                f0 = d0['fichas'].get(str(b.get('correo', '')).lower())
+                if not f0 or b.get('llave') != f0['llave']:
+                    return self._json(401, {'error': 'llave incorrecta'})
+                para0 = str(b.get('para', '')).lower()
+                addr_de0 = f0.get('addr', '')
+                if ID_GRUPO.fullmatch(para0):
+                    g0 = grupo_de(d0, para0, str(b.get('correo', '')).lower())
+                    addrs0 = [d0['fichas'].get(m['correo'], {}).get('addr', '')
+                              for m in (g0 or {}).get('miembros', [])] if g0 else []
+                else:
+                    addrs0 = [d0['fichas'].get(para0, {}).get('addr', '')]
+            hh0 = str(b.get('hash', '')).strip()[:80]
+            monto0 = str(b.get('monto', '')).strip()[:32]
+            moneda0 = str(b.get('moneda', '') or 'ORIGEN').upper()[:12]
+            if (re.fullmatch(r'0x[0-9a-fA-F]{64}', hh0)
+                    and re.fullmatch(r'\d{1,20}(\.\d{1,18})?', monto0)
+                    and addr_de0 and any(addrs0)):
+                pago_veredicto = verificar_pago(hh0, monto0, moneda0, addr_de0, [a for a in addrs0 if a])
+
+        # Se rellena dentro del candado y se usa FUERA: ver la nota en /senales.
+        esperar_para = None
+
+        with candado:
+            d = cargar()
+            fichas = d['fichas']
+
+            if ruta == '/alta':
+                correo = str(b.get('correo', '')).lower()
+                if not correo_valido(correo):
+                    return self._json(400, {'error': 'correo inválido'})
+                f = fichas.get(correo)
+                if f is None:
+                    # El gid (Genesis ID) NO lo declara la persona: lo dice
+                    # Genesis, a traves de la sesion. Sin sesion no hay gid.
+                    # Ver `quien_es_la_sesion`. Las fichas de antes de este
+                    # campo no lo tienen — por eso todas las lecturas usan
+                    # .get('gid', '') y nada se migra.
+                    f = {'llave': secrets.token_hex(24),
+                         'nombre': str(b.get('nombre', ''))[:80],
+                         'addr': str(b.get('addr', ''))[:64],
+                         'gid': (gid_probado or '') if correo_probado == correo else '',
+                         'foto': foto_valida(d, b.get('foto')),
+                         'desde': int(time.time())}
+                    fichas[correo] = f
+                    guardar(d)
+                    return self._json(200, {'llave': f['llave']})
+                # el correo ya existe: su dueño refresca datos y recibe su
+                # llave. Dueño es quien LA TIENE — o quien lo PRUEBA con su
+                # sesión de la wallet, que es lo que salva al segundo
+                # dispositivo del 409 eterno. La llave devuelta es SIEMPRE la
+                # existente: acuñar otra mataría al primer dispositivo, que
+                # sigue firmando con la vieja.
+                if b.get('llave') == f['llave'] or correo_probado == correo:
+                    f['nombre'] = str(b.get('nombre', f['nombre']))[:80]
+                    f['addr'] = str(b.get('addr', f['addr']))[:64]
+                    # El gid solo se toca cuando hay sesion que lo pruebe: con
+                    # sesion, es lo que diga Genesis (o nada); sin sesion —solo
+                    # la llave del relevo— se deja como estaba. Lo que mande el
+                    # cliente en `gid` no se mira.
+                    if correo_probado == correo and gid_probado is not None:
+                        f['gid'] = gid_probado
+                    f['foto'] = foto_valida(d, b.get('foto', f.get('foto', '')))
+                    guardar(d)
+                    return self._json(200, {'llave': f['llave']})
+                # ── Y SE DICE POR QUE ──────────────────────────────────────
+                # Este 409 tenia dos causas muy distintas y contaba la misma
+                # historia: «tu chat esta en otro lado». Una es de verdad otro
+                # aparato; la otra es que la sesion que se mando no valia —casi
+                # siempre porque VENCIO, que pasa a los cuarenta minutos— y esa
+                # se arregla volviendo a entrar a la cuenta, no buscando el
+                # telefono viejo. Sin distinguirlas, la pantalla mandaba a la
+                # gente al sitio equivocado.
+                # No se filtra nada: decir si el token servia no dice de quien
+                # es la cuenta ni si existe.
+                #
+                # ── Y RESULTO QUE ERAN TRES, NO DOS ────────────────────────
+                # La tercera se encontro mirando este mismo sitio: la sesion
+                # valia PERFECTAMENTE, solo que probaba OTRA CUENTA. La app
+                # guarda el correo en un cajon y la sesion en otro, y cuando
+                # los dos se desincronizan la persona esta dentro como A y
+                # pide el chat como B. Se le contaba «tu chat quedo en tu
+                # instalacion anterior», asi que buscaba un telefono viejo que
+                # no tenia nada que ver; y si probaba a volver a entrar,
+                # tampoco, porque la sesion nunca estuvo mal.
+                #
+                # Mientras dura, esa persona no publica la llave de su aparato
+                # —eso pasa DESPUES del alta— y entonces ni siquiera puede
+                # RECIBIR: todo lo que le mandan viene cerrado para aparatos
+                # que ya no son suyos. Se ve como «se me perdieron las
+                # conversaciones» y no lo es.
+                #
+                # Se devuelve el correo que la sesion SI prueba. No es una
+                # fuga: es la cuenta de quien esta preguntando, demostrada
+                # con su propio token. Con eso la app se corrige sola.
+                if correo_probado and correo_probado != correo:
+                    return self._json(409, {'error': 'ese correo ya tiene llave',
+                                            'motivo': 'otra-cuenta',
+                                            'correoReal': correo_probado})
+                motivo = 'sesion-no-vale' if b.get('sesion') else 'sin-sesion'
+                return self._json(409, {'error': 'ese correo ya tiene llave',
+                                        'motivo': motivo})
+
+            # todo lo demás exige la llave del correo que firma
+            correo = str(b.get('correo', '')).lower()
+            f = fichas.get(correo)
+            if not f or b.get('llave') != f['llave']:
+                return self._json(401, {'error': 'llave incorrecta'})
+
+            if ruta == '/turno':
+                # Las credenciales del relevo de video. Exige llave: si no,
+                # cualquiera podría gastarse nuestro terabyte del mes.
+                return self._json(200, {'iceServers': servidores_turno()})
+
+            if ruta == '/senal':
+                # Dejar una señal para el otro lado de la llamada. El permiso
+                # es el mismo que el de escribirle: si es un grupo hay que ser
+                # miembro, y si es una persona tiene que ser un correo válido.
+                para = str(b.get('para', '')).lower()
+                tipo = str(b.get('tipo', ''))[:24]
+                datos = b.get('datos')
+                # Los que empiezan por `g` son de las llamadas de grupo: la
+                # malla habla de todos con todos, asi que hacen falta tipos
+                # propios para no confundirlos con los del cara a cara.
+                if tipo not in ('oferta', 'respuesta', 'ice', 'llamo', 'cuelgo',
+                                'ocupado', 'rechazo',
+                                'gllamo', 'gentro', 'goferta', 'grespuesta',
+                                'gice', 'gsalgo', 'grechazo',
+                                'escribe'):
+                    return self._json(400, {'error': 'tipo inválido'})
+                if not correo_valido(para):
+                    return self._json(400, {'error': 'faltan datos'})
+                # Una llamada hace SONAR el telefono de alguien. Si escribirle
+                # exige que te haya aceptado, hacerle sonar el telefono con
+                # mas razon: es la forma mas ruidosa de molestar que tiene la
+                # app. Las señales de una llamada ya en curso pasan por aqui
+                # tambien, y no es problema: si la llamada empezo es que el
+                # lazo existe.
+                if not puede_escribir(d, correo, para):
+                    return self._json(403, {'error': 'hace falta que te acepte'})
+                if len(json.dumps(datos or {})) > TOPE_SENAL_DATOS:
+                    return self._json(413, {'error': 'señal muy grande'})
+                if not dejar_senal(para, correo, tipo, datos):
+                    # El buzón lleno casi siempre es alguien reintentando en
+                    # bucle, no tráfico legítimo. Se dice y no se acumula.
+                    return self._json(429, {'error': 'demasiadas señales'})
+                # El timbre. Solo el «llamo» inicial empuja —las demas señales
+                # son una llamada YA en curso, con las dos pantallas abiertas—
+                # y va con urgencia alta: un mensaje espera, una llamada no.
+                # Pero solo si NO está escuchando el buzón: a quien escucha,
+                # el timbre le llega directo por la señal y el push sería un
+                # segundo aviso por la misma llamada. (Para los mensajes esa
+                # regla no vale: el buzón de señales sigue vivo mientras se
+                # mira la billetera, y ahí un mensaje sin push no se ve.)
+                # Y «escuchando», no «presente»: ver `escuchando`. Sondear la
+                # bandeja no es poder recibir una llamada.
+                if tipo in ('llamo', 'gllamo') and not escuchando(para):
+                    empujar(d, [para], urgencia='high', aunque_mire=True)
+                return self._json(200, {'ok': True})
+
+            if ruta == '/senales':
+                # LA ESPERA VA FUERA DEL CANDADO. Es lo único importante de
+                # esta ruta: `with candado` es de TODO el relevo, y esperar
+                # veinticinco segundos con él en la mano dejaría el chat
+                # congelado para todo el mundo mientras alguien llama.
+                # Se sale del bloque con un salto y la espera ocurre abajo.
+                # De paso queda apuntado que esta cuenta está escuchando: es
+                # la seña de presencia buena, porque quien escucha el buzón
+                # puede recibir una llamada.
+                OIDO[correo] = time.time()
+                esperar_para = correo
+
+            if False:  # el hueco que deja el salto de /senales
+                pass
+
+            if ruta == '/perfil':
+                # Mi nombre y mi foto, lo único mío que ve el resto. Se mira
+                # si la clave VIENE, no si trae algo: mandar {foto:''} es la
+                # forma de quitarse la foto, y eso no puede confundirse con
+                # "no toques la foto" (que es no mandar la clave).
+                if 'nombre' in b:
+                    f['nombre'] = str(b.get('nombre', ''))[:80]
+                if 'foto' in b:
+                    f['foto'] = foto_valida(d, b.get('foto'))
+                # `gid` ya no se acepta aqui: era la puerta por la que cualquiera
+                # se ponia el GID de otro. Lo pone Genesis en el alta, via la
+                # sesion (ver `quien_es_la_sesion`). Si viene, se ignora.
+                guardar(d)
+                return self._json(200, {'ok': True})
+
+            if ruta == '/subir':
+                # Sube un adjunto y devuelve su id. El binario NO viaja en el
+                # mensaje: primero se sube aquí, después /enviar referencia el
+                # id. Así un adjunto reintentado no duplica megas en el hilo.
+                tipo = str(b.get('tipo', ''))
+                # `voz` es una nota grabada en la app, no un archivo de audio
+                # adjuntado: se pinta como nota con su duración, no como una
+                # tarjeta de descarga. Por eso es un tipo aparte de `archivo`.
+                if tipo not in ('imagen', 'video', 'archivo', 'voz'):
+                    return self._json(400, {'error': 'tipo inválido'})
+                try:
+                    datos = base64.b64decode(str(b.get('datos', '')), validate=True)
+                except Exception:
+                    return self._json(400, {'error': 'base64 inválido'})
+                if not datos:
+                    return self._json(400, {'error': 'archivo vacío'})
+                if len(datos) > TOPE_ARCHIVO:
+                    return self._json(413, {'error': 'más de 8MB'})
+                mime = str(b.get('mime', ''))[:120]
+                # un mime raro no rompe nada, pero saldrá en un header HTTP:
+                # si no parece "tipo/subtipo", octet-stream y a otra cosa
+                if not re.fullmatch(r'[\w.+-]+/[\w.+-]+', mime):
+                    mime = 'application/octet-stream'
+                iid = secrets.token_hex(16)   # 32 hex = la capability URL
+                os.makedirs(CARPETA_ARCHIVOS, exist_ok=True)
+                with open(os.path.join(CARPETA_ARCHIVOS, iid + '.bin'), 'wb') as fh:
+                    fh.write(datos)
+                d.setdefault('archivos', {})[iid] = {
+                    'mime': mime, 'nombre': str(b.get('nombre', ''))[:120],
+                    'tipo': tipo, 'de': correo, 'peso': len(datos),
+                    'cuando': int(time.time() * 1000)}
+                guardar(d)
+                return self._json(200, {'id': iid})
+
+            if ruta == '/enviar':
+                para = str(b.get('para', '')).lower()
+                texto = str(b.get('texto', ''))[:TOPE_TEXTO].strip()
+                # EL BULTO CERRADO. Cuando viene, el relevo no sabe ni puede
+                # saber que dice: es un objeto opaco que se guarda tal cual y
+                # se devuelve tal cual. Ni siquiera se mira por dentro — solo
+                # se comprueba que tenga la forma de un bulto y que no sea
+                # enorme, que es lo unico que le toca al que solo transporta.
+                cif = b.get('cif')
+                if cif is not None:
+                    if (not isinstance(cif, dict) or not cif.get('ct')
+                            or not isinstance(cif.get('s'), list)
+                            or len(json.dumps(cif)) > 60_000):
+                        return self._json(400, {'error': 'bulto inválido'})
+                # adjunto opcional: solo cuenta si el id existe de verdad en el
+                # índice — un id inventado daría burbujas rotas en la app
+                tipo = str(b.get('tipo', ''))
+                archivo = str(b.get('archivo', ''))
+                adj = (tipo in ('imagen', 'video', 'archivo', 'voz')
+                       and archivo in d.get('archivos', {}))
+                if ID_GRUPO.fullmatch(para):
+                    # el permiso de escribir en un grupo es ser miembro AHORA:
+                    # se comprueba en cada envío, no al abrir el hilo, para que
+                    # salir del grupo corte de verdad y en el acto
+                    if not grupo_de(d, para, correo):
+                        return self._json(403, {'error': 'no eres del grupo'})
+                elif not correo_valido(para):
+                    return self._json(400, {'error': 'faltan datos'})
+                elif not puede_escribir(d, correo, para):
+                    # La privacidad no se hace solo escondiendo el boton en la
+                    # app: si la regla no esta AQUI, cualquiera que sepa hablar
+                    # con el relevo se la salta.
+                    return self._json(403, {'error': 'hace falta que te acepte'})
+                # un mensaje puede ser solo texto, solo adjunto, o ambos
+                if not texto and not cif and not adj:
+                    return self._json(400, {'error': 'faltan datos'})
+                m = {'de': correo, 'para': para, 'texto': texto,
+                     'cuando': int(time.time() * 1000),
+                     # Un id propio. Sin el no se puede reaccionar a un mensaje
+                     # ni citarlo: «el tercero de arriba» no es una referencia
+                     # que sobreviva a que lleguen mas mensajes.
+                     'id': secrets.token_hex(8)}
+                # Responder citando: se guarda a QUE mensaje responde. Solo el
+                # id; el texto citado lo pinta la app leyendo el hilo, para que
+                # editar o borrar el original no deje copias viejas por ahi.
+                cita = str(b.get('cita', ''))[:16]
+                if cita:
+                    m['cita'] = cita
+                # «Todavia estoy escribiendo esto». Lo pone AU-RA al soltar su
+                # primera frase, y lo quita al terminar (ver /editar). Sin la
+                # marca, quien recibe no puede distinguir media respuesta de
+                # una respuesta.
+                if b.get('parcial'):
+                    m['parcial'] = 1
+                if cif is not None:
+                    m['cif'] = cif
+                    # El texto en claro NO se guarda al lado del cerrado. Seria
+                    # el error mas tonto posible: cifrar y dejar la copia.
+                    m['texto'] = ''
+                if adj:
+                    m['tipo'] = tipo
+                    m['archivo'] = archivo
+                    m['nombre'] = str(b.get('nombre', ''))[:120]
+                d['mensajes'].append(m)
+                # el histórico no crece sin límite: 20 mil mensajes rodantes
+                if len(d['mensajes']) > 20_000:
+                    d['mensajes'] = d['mensajes'][-20_000:]
+                guardar(d)
+                # El aviso push al otro lado. En un grupo, a cada miembro menos
+                # quien escribe, con tope: un grupo de quinientos no puede
+                # convertir cada mensaje en quinientos POST a Google.
+                if ID_GRUPO.fullmatch(para):
+                    # cada miembro es {correo, desde}: se avisa por su correo
+                    miembros = [x.get('correo') for x in
+                                (d.get('grupos', {}).get(para, {}).get('miembros') or [])
+                                if x.get('correo') and x.get('correo') != correo][:25]
+                    empujar(d, miembros)
+                else:
+                    empujar(d, [para])
+                # El id vuelve porque sin el no hay forma de editarlo despues:
+                # «el ultimo que mande» no es una referencia que aguante que
+                # lleguen otros mensajes en el medio.
+                return self._json(200, {'ok': True, 'id': m['id']})
+
+            if ruta == '/suscribir':
+                # La suscripcion push de ESTE navegador. Se guarda por
+                # dispositivo —una persona tiene telefono y computadora— y se
+                # reemplaza la que tuviera el mismo `endpoint`: el navegador
+                # renueva esa direccion cada tanto y guardar las dos mandaria
+                # el aviso dos veces.
+                # ── EL TELEFONO SE APUNTA IGUAL, CON SU TESTIGO ─────────────
+                # La app no tiene `endpoint` de navegador: tiene un testigo de
+                # Expo. Va a la MISMA lista y con la misma regla de reemplazo,
+                # porque el problema es el mismo —un aparato, un aviso— y dos
+                # listas separadas serian dos sitios donde podar.
+                expo = str(b.get('expo', '') or '').strip()
+                if expo:
+                    if not RE_EXPO.match(expo):
+                        return self._json(400, {'error': 'testigo inválido'})
+                    lista = [x for x in f.setdefault('push', []) if x.get('expo') != expo]
+                    lista.append({'expo': expo, 'desde': int(time.time() * 1000)})
+                    f['push'] = lista[-3:]
+                    guardar(d)
+                    return self._json(200, {'ok': True, 'dispositivos': len(f['push'])})
+                sus = b.get('suscripcion')
+                if not isinstance(sus, dict) or not sus.get('endpoint'):
+                    return self._json(400, {'error': 'faltan datos'})
+                if len(json.dumps(sus)) > 2000:
+                    return self._json(413, {'error': 'suscripcion muy grande'})
+                lista = f.setdefault('push', [])
+                lista = [x for x in lista if x.get('endpoint') != sus['endpoint']]
+                lista.append({'endpoint': sus['endpoint'],
+                              'keys': sus.get('keys', {}),
+                              'desde': int(time.time() * 1000)})
+                # Tres dispositivos por cuenta: mas que eso casi siempre son
+                # suscripciones muertas que nadie limpio.
+                f['push'] = lista[-3:]
+                guardar(d)
+                return self._json(200, {'ok': True, 'dispositivos': len(f['push'])})
+
+            if ruta == '/desuscribir':
+                expo = str(b.get('expo', '') or '').strip()
+                if expo:
+                    f['push'] = [x for x in f.get('push', []) if x.get('expo') != expo]
+                    guardar(d)
+                    return self._json(200, {'ok': True})
+                sus = (b.get('suscripcion') or {}).get('endpoint')
+                f['push'] = [x for x in f.get('push', []) if x.get('endpoint') != sus]
+                guardar(d)
+                return self._json(200, {'ok': True})
+
+            if ruta == '/editar':
+                """Cambiar el texto de un mensaje YA MANDADO. Solo el suyo.
+
+                ── PARA QUE ────────────────────────────────────────────────
+                Para que AU-RA escriba a la vista, como escribe una persona.
+
+                Antes: preguntabas, mirabas los tres puntos cinco o seis
+                segundos, y la respuesta aparecia entera de golpe. Se probo
+                mandar cada frase por separado y fue peor —cinco o seis
+                globos por una sola pregunta, que no es como contesta
+                nadie—. Lo que falta es lo que hace cualquier chat: UN globo
+                que va creciendo. Eso pide poder cambiar un mensaje que ya
+                salio, y eso es esta ruta.
+
+                `parcial` dice si todavia esta escribiendo. Importa mas de lo
+                que parece: sin esa marca, quien recibe no puede distinguir
+                «ya termino» de «va por la mitad», y trataria media respuesta
+                como si fuera la respuesta — la leeria en voz alta cortada, o
+                cerraria la espera antes de tiempo.
+
+                Solo el AUTOR edita, y solo el TEXTO. No se toca `de`,
+                `para`, `cuando` ni el adjunto: editar el texto de lo que uno
+                dijo es una cosa; poder reescribir de quien es un mensaje o
+                cuando se mando es otra muy distinta, y esta ruta no la abre.
+                Un mensaje cifrado tampoco se edita: el texto en claro viaja
+                en `cif` y esto no sabe cerrarlo.
+                """
+                mid = str(b.get('id', ''))[:16]
+                msg = next((x for x in d['mensajes'] if x.get('id') == mid), None)
+                if not msg:
+                    return self._json(404, {'error': 'ese mensaje no existe'})
+                if msg['de'] != correo:
+                    return self._json(403, {'error': 'ese mensaje no es tuyo'})
+                if msg.get('cif'):
+                    return self._json(400, {'error': 'un mensaje cerrado no se edita'})
+                texto = str(b.get('texto', ''))[:TOPE_TEXTO].strip()
+                if not texto:
+                    return self._json(400, {'error': 'faltan datos'})
+                msg['texto'] = texto
+                if b.get('parcial'):
+                    msg['parcial'] = 1
+                else:
+                    msg.pop('parcial', None)
+                guardar(d)
+                # SIN aviso push: es el MISMO mensaje que ya se anuncio al
+                # salir. Un empujon por cada frase seria el telefono vibrando
+                # seis veces por una respuesta.
+                return self._json(200, {'ok': True, 'id': mid})
+
+            if ruta == '/reaccion':
+                # Una reaccion a un mensaje. Se guarda POR PERSONA y no como
+                # un contador: sin saber quien puso que, no se puede quitar la
+                # propia ni impedir que alguien sume diez veces la misma.
+                #
+                # ── Y CERRADA, COMO EL MENSAJE ────────────────────────────
+                # El emoji es contenido: dice que sintio alguien sobre lo que
+                # otro escribio. Viajaba en claro (`emoji`) mientras el texto
+                # iba en sobre, y eso era una rendija: el relevo no lee la
+                # frase pero si el corazon que le pusieron. Ahora la app manda
+                # `cif` —el MISMO bulto que /enviar, un sobre por aparato— y
+                # aqui se guarda opaco. `emoji` en claro se sigue aceptando
+                # para los clientes viejos y para cuando el otro no tiene
+                # ninguna llave publicada (el mensaje tampoco pudo cerrarse).
+                # Como un bulto no se puede comparar, quitar la propia es un
+                # gesto explicito: `quitar: true`.
+                mid = str(b.get('id', ''))[:16]
+                emo = str(b.get('emoji', ''))[:8]
+                cif = b.get('cif')
+                if cif is not None:
+                    if (not isinstance(cif, dict) or not cif.get('ct')
+                            or not isinstance(cif.get('s'), list)
+                            or len(json.dumps(cif)) > 60_000):
+                        return self._json(400, {'error': 'bulto inválido'})
+                msg = next((x for x in d['mensajes'] if x.get('id') == mid), None)
+                if not msg:
+                    return self._json(404, {'error': 'ese mensaje no existe'})
+                # Solo se reacciona en un hilo del que uno es parte.
+                suyo = msg['de'] == correo or msg['para'] == correo
+                if not suyo and not (ID_GRUPO.fullmatch(msg['para']) and grupo_de(d, msg['para'], correo)):
+                    return self._json(403, {'error': 'ese hilo no es tuyo'})
+                r = msg.setdefault('reacciones', {})
+                if b.get('quitar') or (cif is None and (not emo or r.get(correo) == emo)):
+                    r.pop(correo, None)      # tocar la misma la quita
+                elif cif is not None:
+                    r[correo] = {'cif': cif}
+                else:
+                    r[correo] = emo
+                if not r:
+                    msg.pop('reacciones', None)
+                guardar(d)
+                return self._json(200, {'ok': True, 'reacciones': msg.get('reacciones', {})})
+
+            if ruta == '/escribiendo':
+                # «Esta escribiendo…». NO se guarda en el archivo: dura tres
+                # segundos y escribirlo en disco por cada tecla seria una
+                # escritura del archivo entero cada vez que alguien teclea.
+                # Va por el buzon de señales, que ya vive en memoria.
+                para = str(b.get('para', '')).lower()
+                if ID_GRUPO.fullmatch(para):
+                    g = grupo_de(d, para, correo)
+                    if not g:
+                        return self._json(403, {'error': 'no eres del grupo'})
+                    for x in g['miembros']:
+                        if x['correo'] != correo:
+                            dejar_senal(x['correo'], correo, 'escribe', {'donde': para})
+                elif correo_valido(para):
+                    dejar_senal(para, correo, 'escribe', {'donde': correo})
+                else:
+                    return self._json(400, {'error': 'faltan datos'})
+                return self._json(200, {'ok': True})
+
+            if ruta == '/pago':
+                # El comprobante de un envío que la cadena YA confirmó. Aquí
+                # no se mueve dinero ni se verifica la cadena: el relevo solo
+                # deja la tarjeta en el hilo con el hash para que cualquiera
+                # lo compruebe en el explorador. La wallet llama DESPUÉS de la
+                # confirmación, nunca antes — un comprobante de algo que aún
+                # no pasó sería una mentira firmada por nosotros.
+                para = str(b.get('para', '')).lower()
+                # el monto se guarda como TEXTO: pasarlo por un float de JSON
+                # redondearía los decimales de ORIGEN y el comprobante diría
+                # una cantidad distinta de la que firmó la persona
+                monto = str(b.get('monto', '')).strip()[:32]
+                if (not re.fullmatch(r'\d{1,20}(\.\d{1,18})?', monto)
+                        or not any(c in '123456789' for c in monto)):
+                    return self._json(400, {'error': 'monto inválido'})
+                moneda = str(b.get('moneda', '') or 'ORIGEN').upper()[:12]
+                if not re.fullmatch(r'[A-Z0-9]{2,12}', moneda):
+                    return self._json(400, {'error': 'moneda inválida'})
+                # el hash acaba dentro de una URL del explorador: si no parece
+                # un hash no entra — mejor tarjeta sin enlace que enlace roto
+                hh = str(b.get('hash', '')).strip()[:80]
+                # SIN HASH NO HAY COMPROBANTE. Antes el hash era opcional y con
+                # forma bastaba; un comprobante que no apunta a nada no se
+                # puede comprobar, y entonces no es un comprobante.
+                if not re.fullmatch(r'0x[0-9a-fA-F]{64}', hh):
+                    return self._json(400, {'error': 'hash inválido'})
+                if ID_GRUPO.fullmatch(para):
+                    if not grupo_de(d, para, correo):
+                        return self._json(403, {'error': 'no eres del grupo'})
+                elif not correo_valido(para):
+                    return self._json(400, {'error': 'destino inválido'})
+                elif not puede_escribir(d, correo, para):
+                    # Misma regla que /enviar: sin circulo no se le planta nada
+                    # a nadie en su hilo, ni siquiera un comprobante.
+                    return self._json(403, {'error': 'hace falta que te acepte'})
+                if pago_veredicto is None:
+                    return self._json(400, {'error': 'no se pudo comprobar el pago: faltan direcciones'})
+                estado_pago, por_que = pago_veredicto
+                if estado_pago == 'sin-rpc':
+                    return self._json(503, {'error': 'no pude preguntarle a la cadena; probá en un momento'})
+                if estado_pago == 'pendiente':
+                    return self._json(409, {'error': 'la cadena todavía no confirmó ese pago', 'motivo': 'sin-confirmar'})
+                if estado_pago != 'ok':
+                    return self._json(400, {'error': 'el comprobante no cuadra con la cadena: ' + (por_que or ''), 'motivo': 'no-cuadra'})
+                # tipo 'pago' solo puede nacer aquí: /enviar únicamente acepta
+                # los tipos de adjunto, así que nadie fabrica un comprobante
+                # falso mandando un mensaje normal con tipo:'pago'
+                # Con `id`, como cualquier mensaje: sin el no se podia citar,
+                # reaccionar ni borrar una tarjeta de pago. Y `verificado`:
+                # la cadena lo confirmo, no lo dijo el cliente.
+                m = {'id': secrets.token_hex(8), 'de': correo, 'para': para, 'tipo': 'pago',
+                     'monto': monto, 'moneda': moneda,
+                     'texto': str(b.get('nota', ''))[:TOPE_TEXTO].strip(),
+                     'cuando': int(time.time() * 1000), 'hash': hh, 'verificado': True}
+                d['mensajes'].append(m)
+                if len(d['mensajes']) > 20_000:
+                    d['mensajes'] = d['mensajes'][-20_000:]
+                guardar(d)
+                # se devuelve el mensaje entero para que el hilo pinte la
+                # tarjeta al instante, sin esperar a la siguiente /bandeja
+                return self._json(200, {'ok': True, 'mensaje': m})
+
+            if ruta == '/bandeja':
+                # El pulso de presencia: quien consulta su bandeja esta mirando
+                # el chat, y avisarle por push seria duplicar lo que ya ve. En
+                # memoria a proposito — es presencia, no estado.
+                PULSO[correo] = time.time()
+                desde = str(b.get('desde', '')).lower()
+                if ID_GRUPO.fullmatch(desde):
+                    if not grupo_de(d, desde, correo):
+                        return self._json(403, {'error': 'no eres del grupo'})
+                    # en un grupo el hilo es uno solo y lo comparten todos:
+                    # cada mensaje lleva su 'de' para pintar quién habla
+                    hilo = [m for m in d['mensajes'] if m['para'] == desde]
+                else:
+                    hilo = [m for m in d['mensajes']
+                            if (m['de'] == correo and m['para'] == desde)
+                            or (m['de'] == desde and m['para'] == correo)]
+                hilo = [m for m in hilo if m['cuando'] > corte_de(d, correo, desde)]
+                # Lo que ESTA cuenta escondió no viaja. Se filtra aquí y no en
+                # la app: un mensaje que llega al navegador y se esconde al
+                # pintarlo sigue estando en el navegador.
+                ocultos = set(d.get('ocultos', {}).get(correo, []))
+                if ocultos:
+                    hilo = [m for m in hilo if m.get('id') not in ocultos]
+                # ── HACIA ATRÁS, DE A PÁGINAS ─────────────────────────────
+                # El tope de 200 era un muro: lo de antes no se podía ver
+                # desde ningún sitio. Con `antes` (el `cuando` del mensaje
+                # más viejo que ya se tiene) se devuelve la página anterior,
+                # y `hayMas` dice si queda algo detrás. Sin `antes`, la
+                # bandeja es la de siempre: lo último.
+                try:
+                    antes = int(b.get('antes') or 0)
+                except (TypeError, ValueError):
+                    antes = 0
+                if antes > 0:
+                    hilo = [m for m in hilo if m['cuando'] < antes]
+                pagina = hilo[-TOPE_BANDEJA:]
+                # ── HASTA DÓNDE LEYÓ LA OTRA PERSONA ───────────────────────
+                # `/leido` ya guardaba «esta cuenta vio el hilo con fulano
+                # hasta ahora» para contar los sin leer; se devuelve al revés
+                # —hasta cuándo vio EL OTRO mi hilo— y con eso la burbuja
+                # pinta el doble check. Es una fecha, sin contenido. En un
+                # grupo es la menor de todos los demás: leído por todos.
+                vistos = d.get('vistos', {})
+                if ID_GRUPO.fullmatch(desde):
+                    otros = [x['correo'] for x in
+                             d['grupos'][desde].get('miembros', []) if x['correo'] != correo]
+                    leido_hasta = min((vistos.get(o, {}).get(desde, 0) for o in otros), default=0)
+                else:
+                    leido_hasta = vistos.get(desde, {}).get(correo, 0)
+                # `enLinea` viaja con la bandeja porque la app ya la pide cada
+                # cinco segundos con el hilo abierto: la presencia va gratis en
+                # un viaje que ya existe, sin una ruta ni un sondeo más.
+                return self._json(200, {'mensajes': pagina,
+                                        'hayMas': len(hilo) > len(pagina),
+                                        'leidoHasta': leido_hasta,
+                                        'enLinea': (not ID_GRUPO.fullmatch(desde))
+                                                   and presente(desde)})
+
+            if ruta == '/huella':
+                """Quien corre por su cuenta deja dicho que version corre.
+
+                AU-RA no es un servidor: no tiene puerto propio ni /salud donde
+                mirar — lee esta bandeja y contesta. Y vive en OTRA maquina, la
+                de la GPU, asi que tampoco vale dejar un fichero en disco para
+                que este relevo lo lea. Lo manda por el mismo canal que ya usa,
+                con la misma llave, y este /salud lo publica.
+
+                Existe por un caso concreto: un arreglo estuvo diez dias en el
+                repositorio sin estar en la maquina y desde fuera no habia
+                forma de notarlo. Con AU-RA duele mas, porque el prompt es lo
+                que decide COMO contesta, y «¿esta desplegado el prompt nuevo?»
+                solo se podia responder entrando a la maquina o preguntandole a
+                ella y adivinando por el tono.
+
+                Se guarda lo que se entiende y nada mas: es un texto que llega
+                de fuera, y devolverlo tal cual en /salud —que es publico— seria
+                servir lo que quiera escribir quien tenga una llave.
+                """
+                h = b.get('huella') or {}
+                if not isinstance(h, dict):
+                    return self._json(400, {'error': 'huella ilegible'})
+                HUELLAS[correo] = {k: str(h.get(k, ''))[:80]
+                                   for k in ('asistente', 'prompt', 'modelos')
+                                   if h.get(k) is not None}
+                HUELLAS[correo]['abierta'] = bool(h.get('abierta'))
+                HUELLAS[correo]['desde'] = int(time.time())
+                return self._json(200, {'ok': True})
+
+            if ruta == '/olvidar':
+                """Vaciar un hilo, o quitarlo de mi lista. SOLO DE MI LADO.
+
+                El hilo es uno solo y lo comparten los dos: borrarlo de verdad
+                seria borrarselo tambien a la otra persona, y eso no es una
+                opcion que le toque a nadie mas que a su dueño. Asi que esto
+                no borra nada: pone un CORTE con la fecha de hoy, y de ahi en
+                adelante esta cuenta ya no ve lo anterior. La otra conserva su
+                copia entera, y la pantalla lo dice con esas palabras — es la
+                diferencia entre una funcion honesta y una mentira comoda.
+
+                `quitar` ademas saca la fila de la lista hasta que llegue algo
+                nuevo: eso es «borrar la conversacion». Sin el, la fila queda
+                vacia: eso es «vaciar los mensajes».
+                """
+                con = str(b.get('con', '')).lower()
+                if not con:
+                    return self._json(400, {'error': 'falta con'})
+                if ID_GRUPO.fullmatch(con) and not grupo_de(d, con, correo):
+                    return self._json(403, {'error': 'no eres del grupo'})
+                d.setdefault('cortes', {}).setdefault(correo, {})[con] = {
+                    'en': int(time.time() * 1000),
+                    'quitar': bool(b.get('quitar')),
+                }
+                guardar(d)
+                return self._json(200, {'ok': True})
+
+            if ruta == '/buscar':
+                # El directorio del ecosistema: buscar gente por nombre o
+                # correo entre quienes ya tienen Genesis en el chat. Devuelve
+                # poco (10) y solo lo publico: nombre, correo, direccion.
+                q = str(b.get('q', '')).lower().strip()
+                if len(q) < 2:
+                    return self._json(200, {'gente': []})
+                # el GID se busca por empieza-por, no por contiene: es un
+                # identificador que se teclea del principio, no prosa donde
+                # pescar trozos sueltos
+                gente = [{'correo': c, 'nombre': g['nombre'], 'addr': g['addr'],
+                          'gid': g.get('gid', ''), 'foto': g.get('foto', '')}
+                         for c, g in fichas.items()
+                         if q in c or q in g['nombre'].lower()
+                         or g.get('gid', '').lower().startswith(q)]
+                gente = [x for x in gente if x['correo'] != correo][:10]
+                # Cada resultado dice en que punto esta la relacion, para que
+                # el boton diga la verdad: «Agregar», «Pendiente», «Responder»
+                # o «Escribir». Sin esto la app manda solicitudes repetidas a
+                # gente que ya la mando, que es como se llena un buzon de
+                # ruido.
+                viejos = con_quien_hablo(d, correo)
+                mios = bloqueados_de(d, correo)
+                for x in gente:
+                    l = lazo(d, correo, x['correo'])
+                    if x['correo'] in mios:
+                        x['lazo'] = 'bloqueado'
+                    elif hay_bloqueo(d, correo, x['correo']):
+                        # A quien me bloqueó a MI no se le dice que lo hizo: se
+                        # ve como cualquiera a quien todavia no agregaste, y la
+                        # solicitud simplemente no llega. Decirselo convierte
+                        # el bloqueo en un mensaje, y un bloqueo no es un
+                        # mensaje.
+                        x['lazo'] = 'no'
+                    elif (l and l['estado'] == 'ok') or x['correo'] in viejos:
+                        x['lazo'] = 'amigos'
+                    elif l and l['estado'] == 'pedido':
+                        x['lazo'] = 'enviada' if l.get('de') == correo else 'recibida'
+                    else:
+                        x['lazo'] = 'no'
+                return self._json(200, {'gente': gente})
+
+            # ── las llaves de los aparatos ────────────────────────────────
+            #
+            # Publicar la propia y pedir las de aquellos a quienes se puede
+            # escribir. Nada mas. Aqui NO hay ninguna llave privada: si la
+            # hubiera, el cifrado de punta a punta seria un adorno.
+            if ruta == '/llaves/publicar':
+                ident = str(b.get('id', ''))[:40]
+                pub = str(b.get('pub', ''))[:200]
+                fir = str(b.get('fir', ''))[:200]
+                if not ident or not pub:
+                    return self._json(400, {'error': 'faltan datos'})
+                apuntar_aparato(f, ident, pub, int(time.time() * 1000), fir)
+                guardar(d)
+                return self._json(200, {'ok': True})
+
+            if ruta == '/llaves/de':
+                ahora = int(time.time() * 1000)
+                pedidos = [str(x).lower() for x in (b.get('correos') or [])][:120]
+                viejos = con_quien_hablo(d, correo)
+                # ── LOS COMPANEROS DE GRUPO, QUE FALTABAN ─────────────────
+                # El comentario de abajo prometia «y los companeros de un
+                # grupo del que soy» desde el primer dia, y la condicion no lo
+                # hacia. `con_quien_hablo` tampoco lo suplia: en un mensaje de
+                # grupo el destino es `g:...`, asi que los companeros nunca
+                # entraban en `viejos`.
+                #
+                # Lo que provocaba, las dos cosas en silencio:
+                #   · con algun amigo dentro, el mensaje salia cifrado y los
+                #     miembros que no eran amigos tuyos veian «Cifrado para
+                #     otro de tus aparatos» en CADA mensaje del grupo, para
+                #     siempre — se lee como «se me rompio el chat»;
+                #   · sin ningun amigo dentro, la unica llave que devolvia era
+                #     la TUYA, el cliente hacia el sobre para vos mismo y la
+                #     app informaba que habia salido cifrado. Un mensaje que no
+                #     puede leer nadie, dado por bueno.
+                #
+                # En produccion zafaba de milagro: el unico grupo vivo tiene
+                # historial cruzado entre sus tres miembros, asi que `viejos`
+                # los cubria. El hueco se abre con el proximo grupo de gente
+                # que no se haya escrito antes, que es el caso normal.
+                companeros = set()
+                for g in d.get('grupos', {}).values():
+                    if miembro(g, correo):
+                        for m in g.get('miembros', []):
+                            companeros.add(m['correo'])
+                salida, faltan = {}, []
+                for c in pedidos:
+                    otra = fichas.get(c)
+                    # Se entregan las llaves de quien me puede leer: yo mismo,
+                    # mi circulo, y los companeros de un grupo del que soy.
+                    permitido = (c == correo or son_amigos(d, correo, c)
+                                 or c in viejos or c in companeros) and not hay_bloqueo(d, correo, c)
+                    if not permitido or not otra:
+                        continue
+                    aps = aparatos_de(otra, ahora)
+                    if aps:
+                        salida[c] = aps
+                    else:
+                        # No es un error: es alguien que todavia no ha abierto
+                        # la version nueva. La app tiene que poder decirlo con
+                        # esas palabras en vez de fallar en silencio.
+                        faltan.append(c)
+                return self._json(200, {'llaves': salida, 'sinLlave': faltan})
+
+            # ── el circulo ────────────────────────────────────────────────
+            if ruta == '/amistad/pedir':
+                otro = str(b.get('para', '')).lower()
+                if not correo_valido(otro) or otro == correo:
+                    return self._json(400, {'error': 'faltan datos'})
+                if otro not in fichas:
+                    return self._json(404, {'error': 'esa persona no está en el chat'})
+                if hay_bloqueo(d, correo, otro):
+                    # Mismo texto para los dos casos —yo lo bloqueé, o él a mí—
+                    # a proposito: la respuesta no puede servir para averiguar
+                    # si alguien te bloqueó.
+                    return self._json(403, {'error': 'no se puede'})
+                circulo = d.setdefault('circulo', {})
+                k = par(correo, otro)
+                l = circulo.get(k)
+                if l and l['estado'] == 'ok':
+                    return self._json(200, {'estado': 'amigos'})
+                if l and l['estado'] == 'pedido':
+                    if l.get('de') == correo:
+                        return self._json(200, {'estado': 'enviada'})
+                    # Los dos se pidieron a la vez: eso ya es un si de ambos
+                    # lados, y hacerles pulsar «aceptar» seria pedantería.
+                    l['estado'] = 'ok'
+                    l['en'] = int(time.time() * 1000)
+                    guardar(d)
+                    return self._json(200, {'estado': 'amigos'})
+                if cuantos_pedidos(d, correo) >= TOPE_PEDIDOS:
+                    return self._json(429, {'error': 'demasiadas solicitudes abiertas'})
+                circulo[k] = {'estado': 'pedido', 'de': correo,
+                              'en': int(time.time() * 1000),
+                              'nota': str(b.get('nota', ''))[:140]}
+                guardar(d)
+                # Una solicitud es una persona esperando: se avisa. Solo aqui,
+                # en el alta de verdad — no en los reintentos ni en el si
+                # mutuo, que ya son otra conversacion.
+                empujar(d, [otro])
+                return self._json(200, {'estado': 'enviada'})
+
+            if ruta == '/amistad/responder':
+                otro = str(b.get('de', '')).lower()
+                circulo = d.setdefault('circulo', {})
+                l = circulo.get(par(correo, otro))
+                # Solo responde quien RECIBIO. Sin esta comprobacion, quien
+                # pide podria aceptarse a si mismo y la solicitud no serviria
+                # para nada.
+                if not l or l['estado'] != 'pedido' or l.get('de') == correo:
+                    return self._json(404, {'error': 'no hay solicitud'})
+                if b.get('aceptar'):
+                    l['estado'] = 'ok'
+                    l['en'] = int(time.time() * 1000)
+                    guardar(d)
+                    return self._json(200, {'estado': 'amigos'})
+                # Rechazar BORRA la fila. Guardar un «rechazado» permitiria
+                # preguntar «me rechazo?», y eso no le hace bien a nadie: para
+                # quien pidio queda como si no hubiera contestado todavia.
+                circulo.pop(par(correo, otro), None)
+                guardar(d)
+                return self._json(200, {'estado': 'no'})
+
+            if ruta == '/amistad/quitar':
+                otro = str(b.get('con', '')).lower()
+                d.setdefault('circulo', {}).pop(par(correo, otro), None)
+                guardar(d)
+                return self._json(200, {'ok': True})
+
+            if ruta == '/denunciar':
+                """Denunciar a alguien, o un mensaje suyo.
+
+                ── POR QUE ESTA RUTA EXISTE ────────────────────────────────
+
+                No habia ninguna. Se podia bloquear y silenciar, pero no habia
+                forma de DECIRLE A LA CASA que alguien esta haciendo algo malo.
+                Bloquear te protege a vos y deja a esa persona haciendo lo
+                mismo con todos los demas.
+
+                Y para una aplicacion con chat entre personas eso no es solo
+                una carencia de producto: las tiendas lo exigen —Apple lo pide
+                explicitamente para contenido de usuarios— y es de la misma
+                familia que lo que ya nos bloqueo una vez con /privacidad.
+
+                ── QUE SE GUARDA, Y QUE NO ─────────────────────────────────
+
+                Se guarda quien denuncia, a quien, el motivo elegido y —si
+                denuncia UN MENSAJE— su id. NO se guarda el texto del mensaje:
+                viaja cifrado y el relevo no puede abrirlo ni deberia. Con el
+                id, quien revise puede pedirselo a las dos partes si hace
+                falta, que es como se hace en cualquier sitio serio.
+
+                ── BLOQUEAR VA INCLUIDO ────────────────────────────────────
+
+                Quien denuncia casi siempre quiere ademas dejar de ver a esa
+                persona, y pedirselo en dos pasos es hacerle trabajo a alguien
+                que ya lo esta pasando mal. Se bloquea en el mismo gesto, con
+                las mismas consecuencias de /bloquear —incluido romper el lazo.
+                """
+                otro = str(b.get('a', '')).lower()
+                motivo = str(b.get('motivo', ''))[:40]
+                nota = str(b.get('nota', ''))[:500]
+                mid = str(b.get('id', ''))[:60]
+                if not correo_valido(otro) or otro == correo:
+                    return self._json(400, {'error': 'faltan datos'})
+                if motivo not in MOTIVOS_DENUNCIA:
+                    return self._json(400, {'error': 'motivo inválido'})
+
+                mias = [x for x in d.setdefault('denuncias', [])
+                        if x.get('de') == correo]
+                # Un tope por persona: sin el, una cuenta puede llenar la
+                # bandeja de quien revisa y tapar las denuncias de verdad.
+                if len(mias) >= TOPE_DENUNCIAS:
+                    return self._json(429, {'error': 'demasiadas denuncias'})
+
+                d['denuncias'].append({
+                    'id': secrets.token_hex(8), 'de': correo, 'a': otro, 'motivo': motivo,
+                    'nota': nota, 'mensaje': mid,
+                    'cuando': int(time.time() * 1000), 'visto': False,
+                })
+
+                # Y se bloquea, con las mismas consecuencias que /bloquear.
+                lista = d.setdefault('bloqueos', {}).setdefault(correo, [])
+                if otro not in lista and len(lista) < TOPE_BLOQUEOS:
+                    lista.append(otro)
+                d.setdefault('circulo', {}).pop(par(correo, otro), None)
+
+                guardar(d)
+                # Se deja rastro en el registro: una denuncia que solo vive en
+                # un JSON que nadie mira es lo mismo que no tenerla.
+                print(f'DENUNCIA · {correo} -> {otro} · {motivo}'
+                      + (f' · mensaje {mid}' if mid else ''), flush=True)
+                return self._json(200, {'ok': True, 'bloqueado': True})
+
+            if ruta == '/bloquear':
+                otro = str(b.get('a', '')).lower()
+                if not correo_valido(otro) or otro == correo:
+                    return self._json(400, {'error': 'faltan datos'})
+                lista = d.setdefault('bloqueos', {}).setdefault(correo, [])
+                if b.get('bloquear'):
+                    if otro not in lista:
+                        if len(lista) >= TOPE_BLOQUEOS:
+                            return self._json(429, {'error': 'demasiados bloqueados'})
+                        lista.append(otro)
+                    # Bloquear ROMPE el lazo. Dejarlo puesto significaria que al
+                    # desbloquear se vuelve a ser amigo sin que nadie lo haya
+                    # decidido otra vez, y eso no es lo que espera quien bloquea.
+                    d.setdefault('circulo', {}).pop(par(correo, otro), None)
+                else:
+                    d['bloqueos'][correo] = [x for x in lista if x != otro]
+                guardar(d)
+                return self._json(200, {'bloqueado': bool(b.get('bloquear'))})
+
+            if ruta == '/bloqueados':
+                fuera = []
+                for c in d.get('bloqueos', {}).get(correo, []):
+                    otra = fichas.get(c)
+                    fuera.append(resumen_ficha(c, otra) if otra
+                                 else {'correo': c, 'nombre': c, 'addr': '', 'gid': '', 'foto': ''})
+                return self._json(200, {'gente': fuera})
+
+            # ── borrar un mensaje ─────────────────────────────────────────
+            #
+            # Dos cosas distintas que la gente confunde, y por eso la app
+            # pregunta cual de las dos:
+            #
+            #   PARA MI      esconde la fila en mi pantalla. La otra persona
+            #                sigue teniendo su copia, porque el mensaje tambien
+            #                es suyo.
+            #   PARA TODOS   solo el que lo escribio. Se borra el contenido de
+            #                verdad —texto, bulto cifrado y archivo— y queda la
+            #                marca de que ahi hubo algo.
+            #
+            # La marca NO es un descuido: un mensaje que desaparece sin dejar
+            # rastro deja a la otra persona pensando que se le rompio el chat.
+            # Se dice que se borro, y quien lo borro.
+            if ruta == '/borrar':
+                mid = str(b.get('id', ''))[:16]
+                if not mid:
+                    return self._json(400, {'error': 'falta id'})
+                if not b.get('paraTodos'):
+                    ocultos = d.setdefault('ocultos', {}).setdefault(correo, [])
+                    if mid not in ocultos:
+                        ocultos.append(mid)
+                        # No crece sin fin: es una lista de lo escondido, no un
+                        # historial.
+                        d['ocultos'][correo] = ocultos[-5000:]
+                        guardar(d)
+                    return self._json(200, {'ok': True, 'para': 'mi'})
+                for m in d['mensajes']:
+                    if m.get('id') != mid:
+                        continue
+                    if m.get('de') != correo:
+                        return self._json(403, {'error': 'solo lo puede borrar quien lo escribió'})
+                    a = m.get('archivo')
+                    # `de`, `para` y `cuando` se CONSERVAN: son lo que decide en
+                    # que hilo va la fila y en que sitio. Vaciarlos sacaria el
+                    # hueco de la conversacion y con el la explicacion de que
+                    # ahi hubo algo. Se va el contenido, no el sitio.
+                    quedan = {k: m[k] for k in ('id', 'de', 'para', 'cuando') if k in m}
+                    m.clear()
+                    m.update(quedan)
+                    m['borrado'] = True
+                    guardar(d)
+                    # El archivo se va del disco tambien: dejarlo seria borrar
+                    # la burbuja y no la foto, que es lo que la gente cree que
+                    # esta borrando.
+                    if a and not any(x.get('archivo') == a for x in d['mensajes']) \
+                            and not any(f.get('foto') == a for f in fichas.values()) \
+                            and not any(e.get('archivo') == a for e in d.get('estados', [])):
+                        d.get('archivos', {}).pop(a, None)
+                        try:
+                            os.remove(os.path.join(CARPETA_ARCHIVOS, a))
+                        except OSError:
+                            pass
+                        guardar(d)
+                    return self._json(200, {'ok': True, 'para': 'todos'})
+                return self._json(404, {'error': 'no existe ese mensaje'})
+
+            if ruta == '/amistad/lista':
+                circulo = d.get('circulo', {})
+                amigos, recibidas, enviadas = [], [], []
+                for k, l in circulo.items():
+                    lados = k.split('|')
+                    if correo not in lados:
+                        continue
+                    otro = lados[0] if lados[1] == correo else lados[1]
+                    ficha_otro = fichas.get(otro)
+                    if not ficha_otro:
+                        continue
+                    x = resumen_ficha(otro, ficha_otro)
+                    if l['estado'] == 'ok':
+                        amigos.append(x)
+                    elif l.get('de') == correo:
+                        enviadas.append(x)
+                    else:
+                        x['nota'] = l.get('nota', '')
+                        x['en'] = l.get('en', 0)
+                        recibidas.append(x)
+                amigos.sort(key=lambda x: x['nombre'].lower())
+                recibidas.sort(key=lambda x: -x.get('en', 0))
+                bloqueados = [resumen_ficha(c, fichas[c]) for c in d.get('bloqueos', {}).get(correo, [])
+                              if c in fichas]
+                return self._json(200, {'amigos': amigos, 'recibidas': recibidas,
+                                        'enviadas': enviadas, 'bloqueados': bloqueados})
+
+            # ── los estados de 24 horas ───────────────────────────────────
+            if ruta == '/estado/subir':
+                ahora = int(time.time() * 1000)
+                purgar_estados(d, ahora)
+                texto = str(b.get('texto', ''))[:300].strip()
+                archivo = str(b.get('archivo', ''))
+                tiene = archivo in d.get('archivos', {})
+                if not texto and not tiene:
+                    return self._json(400, {'error': 'faltan datos'})
+                mios = [e for e in d.get('estados', []) if e['de'] == correo]
+                if len(mios) >= TOPE_ESTADOS:
+                    return self._json(429, {'error': 'demasiados estados'})
+                e = {'id': secrets.token_hex(8), 'de': correo, 'texto': texto,
+                     'cuando': ahora, 'vence': ahora + VIDA_ESTADO, 'vistas': []}
+                if tiene:
+                    e['archivo'] = archivo
+                    e['tipo'] = 'video' if str(
+                        d['archivos'][archivo].get('tipo', '')).startswith('video') else 'imagen'
+                # El color de fondo de un estado de solo texto. Lo elige la app
+                # y se guarda como un indice, no como un color: asi el dia que
+                # cambie la paleta de la marca cambian todos a la vez.
+                fondo = b.get('fondo')
+                if isinstance(fondo, int) and 0 <= fondo < 8:
+                    e['fondo'] = fondo
+                d.setdefault('estados', []).append(e)
+                guardar(d)
+                return self._json(200, {'id': e['id']})
+
+            if ruta == '/estado/borrar':
+                ahora = int(time.time() * 1000)
+                eid = str(b.get('id', ''))
+                antes = len(d.get('estados', []))
+                d['estados'] = [e for e in d.get('estados', [])
+                                if not (e['id'] == eid and e['de'] == correo)]
+                purgar_estados(d, ahora)
+                if len(d['estados']) != antes:
+                    guardar(d)
+                return self._json(200, {'ok': True})
+
+            if ruta == '/estados':
+                ahora = int(time.time() * 1000)
+                purgar_estados(d, ahora)
+                # Los mios y los de mi circulo, agrupados por persona, como se
+                # miran: una fila por persona, no un revoltijo por fecha.
+                por_quien = {}
+                for e in d.get('estados', []):
+                    if e['de'] != correo and not son_amigos(d, correo, e['de']):
+                        continue
+                    # Bloquear tiene que cortar TODO, no solo los mensajes: un
+                    # estado que sigue viendose es la misma persona en la misma
+                    # pantalla, que es justo lo que se quiso cortar.
+                    if hay_bloqueo(d, correo, e['de']):
+                        continue
+                    ficha_suya = fichas.get(e['de'])
+                    if not ficha_suya:
+                        continue
+                    g = por_quien.setdefault(e['de'], {
+                        **resumen_ficha(e['de'], ficha_suya), 'estados': []})
+                    g['estados'].append({
+                        'id': e['id'], 'texto': e.get('texto', ''),
+                        'archivo': e.get('archivo', ''), 'tipo': e.get('tipo', ''),
+                        'fondo': e.get('fondo'), 'cuando': e['cuando'],
+                        'vence': e['vence'],
+                        'visto': correo in e.get('vistas', []),
+                        # Quien lo subio ve CUANTOS lo vieron. Quien lo mira,
+                        # no: la lista de quien vio que es de su dueño.
+                        'vistas': len(e.get('vistas', [])) if e['de'] == correo else None,
+                    })
+                salida = list(por_quien.values())
+                for g in salida:
+                    g['estados'].sort(key=lambda x: x['cuando'])
+                    g['sinVer'] = sum(1 for x in g['estados'] if not x['visto'])
+                # Primero quien tiene algo sin ver, y dentro de eso lo mas
+                # reciente: es el orden en el que se miran de verdad.
+                salida.sort(key=lambda g: (-g['sinVer'], -g['estados'][-1]['cuando']))
+                guardar(d)
+                return self._json(200, {'gente': salida})
+
+            if ruta == '/estado/visto':
+                eid = str(b.get('id', ''))
+                for e in d.get('estados', []):
+                    if e['id'] == eid and (e['de'] == correo or son_amigos(d, correo, e['de'])) \
+                            and not hay_bloqueo(d, correo, e['de']):
+                        if correo not in e.setdefault('vistas', []):
+                            e['vistas'].append(correo)
+                            guardar(d)
+                        break
+                return self._json(200, {'ok': True})
+
+            if ruta == '/conversaciones':
+                PULSO[correo] = time.time()
+                # Todas mis charlas —personas y grupos en la misma lista, que
+                # es como se usan—: con quien, lo ultimo dicho y cuantos sin
+                # leer. Es lo que pinta la lista principal del chat.
+                vistos = d.setdefault('vistos', {}).get(correo, {})
+                grupos = d.get('grupos', {})
+                mios = {gid for gid, g in grupos.items() if miembro(g, correo)}
+                # los grupos entran aunque nadie haya hablado todavía: un grupo
+                # recién creado tiene que verse, si no parece que no se creó
+                hilos = {gid: {'ultimo': None, 'sinLeer': 0} for gid in mios}
+                cortes = d.get('cortes', {}).get(correo, {})
+                # Una conversación VACIADA sigue en la lista aunque no quede
+                # nada dentro —se pidió vaciarla, no perderla—, así que se
+                # siembra igual que un grupo recién creado. La QUITADA no se
+                # siembra: solo vuelve si llega un mensaje nuevo.
+                for otro, c in cortes.items():
+                    if isinstance(c, dict) and not c.get('quitar') and not ID_GRUPO.fullmatch(otro):
+                        hilos.setdefault(otro, {'ultimo': None, 'sinLeer': 0})
+                for m in d['mensajes']:
+                    para = m['para']
+                    if ID_GRUPO.fullmatch(para):
+                        # de un grupo del que me fui no vuelve a asomar nada,
+                        # ni su último mensaje ni sus sin-leer
+                        if para not in mios:
+                            continue
+                        otro = para
+                    elif m['de'] == correo:
+                        otro = para
+                    elif para == correo:
+                        otro = m['de']
+                    else:
+                        continue
+                    # lo que quedó del otro lado del corte no cuenta para nada:
+                    # ni como último dicho ni —sobre todo— como sin leer. Una
+                    # burbuja con un número que al abrir el hilo no enseña nada
+                    # es peor que no tener la función.
+                    c = cortes.get(otro)
+                    if isinstance(c, dict) and m['cuando'] <= c.get('en', 0):
+                        continue
+                    h = hilos.setdefault(otro, {'ultimo': None, 'sinLeer': 0})
+                    h['ultimo'] = m
+                    ajeno = m['de'] != correo if otro in mios else para == correo
+                    if ajeno and m['cuando'] > vistos.get(otro, 0):
+                        h['sinLeer'] += 1
+                lista = []
+                for otro, h in hilos.items():
+                    if otro in mios:
+                        g = grupos[otro]
+                        lista.append({'correo': otro, 'id': otro, 'esGrupo': True,
+                                      'nombre': g['nombre'], 'foto': g.get('foto', ''),
+                                      'miembros': len(g['miembros']),
+                                      'creado': g.get('creado', 0),
+                                      'ultimo': h['ultimo'], 'sinLeer': h['sinLeer']})
+                        continue
+                    g = fichas.get(otro, {})
+                    # la foto viaja también aquí: sin ella la lista de gente se
+                    # pintaba con iniciales mientras el grupo de al lado sí
+                    # tenía cara, y pedirla ficha por ficha era una llamada por
+                    # cada fila
+                    lista.append({'correo': otro,
+                                  'nombre': g.get('nombre', otro.split('@')[0]),
+                                  'addr': g.get('addr', ''),
+                                  'gid': g.get('gid', ''),
+                                  'foto': g.get('foto', ''),
+                                  'enLinea': presente(otro),
+                                  'ultimo': h['ultimo'], 'sinLeer': h['sinLeer']})
+                # por lo último dicho; el grupo callado se ordena por cuándo se
+                # creó, así el recién hecho aparece arriba y no en el sótano
+                lista.sort(key=lambda x: -((x['ultimo'] or {}).get('cuando')
+                                           or x.get('creado', 0)))
+                return self._json(200, {'conversaciones': lista})
+
+            if ruta == '/leido':
+                # Marca la charla con alguien (o un grupo) como vista hasta ahora.
+                de = str(b.get('de', '')).lower()
+                if ID_GRUPO.fullmatch(de) and not grupo_de(d, de, correo):
+                    return self._json(403, {'error': 'no eres del grupo'})
+                d.setdefault('vistos', {}).setdefault(correo, {})[de] = int(time.time() * 1000)
+                guardar(d)
+                return self._json(200, {'ok': True})
+
+            if ruta == '/ficha':
+                de = str(b.get('de', '')).lower()
+                g = fichas.get(de)
+                # la dirección de la wallet es pública en la cadena; el nombre lo
+                # declaró su dueño para ser encontrado. La llave jamás sale.
+                if not g:
+                    return self._json(404, {'error': 'no está'})
+                return self._json(200, {'nombre': g['nombre'], 'addr': g['addr'],
+                                        'gid': g.get('gid', ''),
+                                        'foto': g.get('foto', '')})
+
+            if ruta == '/grupo/crear':
+                nombre = str(b.get('nombre', '')).strip()[:TOPE_NOMBRE]
+                if not nombre:
+                    return self._json(400, {'error': 'falta el nombre'})
+                if cuantos_grupos(d, correo) >= TOPE_GRUPOS:
+                    return self._json(409, {'error': 'demasiados grupos'})
+                ahora = int(time.time() * 1000)
+                gid = 'g:' + secrets.token_hex(8)      # 16 hex
+                inv = secrets.token_hex(12)            # 24 hex = el permiso de entrar
+                g = {'id': gid, 'nombre': nombre, 'foto': foto_valida(d, b.get('foto')),
+                     'admin': correo, 'invitacion': inv, 'creado': ahora,
+                     # el orden de esta lista es el orden de llegada, y de ahí
+                     # sale el heredero cuando el admin se va
+                     'miembros': [{'correo': correo, 'desde': ahora}]}
+                d.setdefault('grupos', {})[gid] = g
+                d.setdefault('invitaciones', {})[inv] = gid
+                sumar_miembros(d, g, b.get('miembros'), ahora)
+                guardar(d)
+                return self._json(200, {'id': gid, 'invitacion': inv})
+
+            if ruta == '/grupo/info':
+                g = grupo_de(d, b.get('id'), correo)
+                if not g:
+                    return self._json(403, {'error': 'no eres del grupo'})
+                gente = []
+                for m in g['miembros']:
+                    ficha = fichas.get(m['correo'], {})
+                    gente.append({'correo': m['correo'],
+                                  'nombre': ficha.get('nombre') or m['correo'].split('@')[0],
+                                  'foto': ficha.get('foto', '')})
+                # la invitación va dentro porque cualquier miembro puede
+                # invitar: esconderla al no-admin sería teatro, no seguridad
+                return self._json(200, {'id': g['id'], 'nombre': g['nombre'],
+                                        'foto': g.get('foto', ''), 'admin': g['admin'],
+                                        'invitacion': g['invitacion'], 'miembros': gente})
+
+            if ruta == '/grupo/editar':
+                g = grupo_de(d, b.get('id'), correo)
+                if not g:
+                    return self._json(403, {'error': 'no eres del grupo'})
+                if g['admin'] != correo:
+                    return self._json(403, {'error': 'solo el admin'})
+                if 'nombre' in b:
+                    nombre = str(b.get('nombre', '')).strip()[:TOPE_NOMBRE]
+                    if not nombre:
+                        return self._json(400, {'error': 'falta el nombre'})
+                    g['nombre'] = nombre
+                if 'foto' in b:
+                    g['foto'] = foto_valida(d, b.get('foto'))
+                if b.get('nuevaInvitacion'):
+                    # la invitación es una capability: la única forma de
+                    # revocarla es que deje de existir. Se borra del índice y
+                    # nace otra — el enlace viejo, el QR viejo y la captura
+                    # que anda circulando dejan de abrir la puerta.
+                    d.setdefault('invitaciones', {}).pop(g['invitacion'], None)
+                    g['invitacion'] = secrets.token_hex(12)
+                    d['invitaciones'][g['invitacion']] = g['id']
+                guardar(d)
+                # el admin acaba de tocar el grupo: devolver la invitación
+                # vigente le ahorra un /grupo/info para repintar el QR
+                return self._json(200, {'ok': True, 'invitacion': g['invitacion']})
+
+            if ruta == '/grupo/invitar':
+                g = grupo_de(d, b.get('id'), correo)
+                if not g:
+                    return self._json(403, {'error': 'no eres del grupo'})
+                r = sumar_miembros(d, g, b.get('correos'), int(time.time() * 1000))
+                guardar(d)
+                n = len(r['entraron'])
+                # 'añadidos' se queda con ese nombre pase lo que pase: la app
+                # del teléfono y la web ya lo leen y no se actualizan a la vez.
+                # 'agregados' es el mismo número sin la eñe, para quien tenga
+                # que leerlo desde un sitio donde una clave con tilde duele.
+                # Lo nuevo son las listas: sin ellas la pantalla no puede
+                # distinguir «entró» de «ese correo no existe» y acaba diciendo
+                # «invitación enviada» cuando no se invitó a nadie.
+                return self._json(200, {
+                    'ok': True, 'añadidos': n, 'agregados': n,
+                    'entraron': r['entraron'], 'noExisten': r['noExisten'],
+                    'yaEstaban': r['yaEstaban'], 'sinCupo': r['sinCupo'],
+                    'invalidos': r['invalidos']})
+
+            if ruta == '/grupo/unirse':
+                # El token ES el permiso: quien lo tiene entra, venga de un
+                # enlace o de un QR. Por eso no hay lista de invitados que
+                # mantener — y por eso regenerarlo es la forma de cerrar.
+                inv = str(b.get('invitacion', ''))
+                gid = d.get('invitaciones', {}).get(inv)
+                g = d.get('grupos', {}).get(gid or '')
+                if not inv or not g or g['invitacion'] != inv:
+                    return self._json(404, {'error': 'invitación no válida'})
+                if not miembro(g, correo):
+                    if len(g['miembros']) >= TOPE_MIEMBROS:
+                        return self._json(409, {'error': 'grupo lleno'})
+                    if cuantos_grupos(d, correo) >= TOPE_GRUPOS:
+                        return self._json(409, {'error': 'demasiados grupos'})
+                    g['miembros'].append({'correo': correo, 'desde': int(time.time() * 1000)})
+                    guardar(d)
+                # ya ser miembro no es un error: el que abre el enlace dos
+                # veces entra al grupo igual, no a una pantalla de fallo
+                return self._json(200, {'id': g['id'], 'nombre': g['nombre']})
+
+            if ruta == '/grupo/salir':
+                g = grupo_de(d, b.get('id'), correo)
+                if not g:
+                    return self._json(403, {'error': 'no eres del grupo'})
+                gid = g['id']
+                g['miembros'] = [m for m in g['miembros'] if m['correo'] != correo]
+                if not g['miembros']:
+                    # el último apagó la luz: sin miembros nadie podrá volver a
+                    # leer ese hilo jamás, así que el grupo, su invitación y sus
+                    # mensajes se van con él en vez de quedar de basura eterna
+                    d['grupos'].pop(gid, None)
+                    d.setdefault('invitaciones', {}).pop(g['invitacion'], None)
+                    d['mensajes'] = [m for m in d['mensajes'] if m['para'] != gid]
+                elif g['admin'] == correo:
+                    # sin admin nadie podría renombrar ni cerrar la invitación:
+                    # hereda el miembro más antiguo (min devuelve el primero de
+                    # la lista si empatan, que es el que entró antes)
+                    g['admin'] = min(g['miembros'], key=lambda m: m['desde'])['correo']
+                guardar(d)
+                return self._json(200, {'ok': True})
+
+        # ── AQUI, YA FUERA DEL CANDADO, ES DONDE SE ESPERA ──────────────────
+        #
+        # /senales sale del bloque de arriba SIN contestar, dejando su correo
+        # en `esperar_para`. La espera larga tiene que ocurrir con el candado
+        # global ya soltado: dentro, veinticinco segundos de espera serian
+        # veinticinco segundos de chat congelado para todos los demas.
+        if esperar_para:
+            return self._json(200, {'senales': recoger_senales(esperar_para)})
+
+        return self._json(404, {'error': 'no existe'})
+
+
+if __name__ == '__main__':
+    os.makedirs(os.path.dirname(RUTA), exist_ok=True)
+    puerto = int(os.environ.get('MENSAJES_PUERTO', '8390'))
+    print('relevo de mensajes en :%d, datos en %s' % (puerto, RUTA), flush=True)
+    ThreadingHTTPServer(('127.0.0.1', puerto), Relevo).serve_forever()

@@ -452,6 +452,78 @@ export async function marcarError(
 // mueve: dice exactamente en qué pantalla se cae la gente.
 // ─────────────────────────────────────────────────────────────────────────────
 
+/**
+ * Cuánto tarda una verificación, y cuánto lleva esperando la cola.
+ *
+ * ── POR QUE FALTABA, Y POR QUE IMPORTA ──────────────────────────────────────
+ *
+ * La analítica medía cuántas identidades hay en cada estado, y `duracionMedia`
+ * —que es de la telemetría de las apps, o sea lo que tarda una pantalla en
+ * cargar, nada que ver—. Cuánto tarda una PERSONA en quedar verificada no se
+ * medía en ningún sitio, teniendo `verificadaEn` guardado desde siempre.
+ *
+ * Es la cifra sobre la que vive una operación de cumplimiento. «Tenemos 40 en
+ * revisión» no dice nada por sí solo: cuarenta con dos horas de espera es un
+ * equipo trabajando, y cuarenta con nueve días es una persona que ya se fue a
+ * otra app y no vuelve.
+ *
+ * ── LA MEDIANA Y EL PERCENTIL 90, NO EL PROMEDIO ────────────────────────────
+ *
+ * Un promedio de espera lo destroza un solo caso raro: una identidad olvidada
+ * tres semanas sube la media de todo el mes y hace pensar que el equipo va mal
+ * cuando va bien. La mediana dice cómo le fue a la mitad de la gente; el p90,
+ * qué tan malo es el mal día. Las dos juntas son la verdad; el promedio solo,
+ * casi nunca.
+ */
+export function tiemposDeVerificacion(dias = 30) {
+  const ids = store.todo().identidades
+  const ahora = Date.now()
+  const desde = ahora - dias * 24 * 3600 * 1000
+
+  const horas = (ms: number) => Math.round((ms / 3600000) * 10) / 10
+
+  /* Las DECIDIDAS en la ventana, medidas de que empezó a que se aprobó. Se
+     filtra por la fecha de decisión y no por la de creación: si no, una
+     identidad que empezó hace dos meses y se aprobó ayer no contaría, que es
+     justo la que más tardó. */
+  const decididas = ids
+    .filter((i) => i.verificadaEn && Date.parse(i.verificadaEn) >= desde)
+    .map((i) => Date.parse(i.verificadaEn!) - Date.parse(i.creadaEn))
+    .filter((ms) => ms >= 0)
+    .sort((a, b) => a - b)
+
+  const percentil = (p: number) =>
+    decididas.length ? horas(decididas[Math.min(decididas.length - 1,
+      Math.floor(decididas.length * p))]) : null
+
+  /* Y la cola de AHORA, que es otra pregunta: no cuánto tardaron las que ya
+     salieron, sino cuánto lleva esperando quien todavía está dentro. Una cola
+     puede estar creciendo con los tiempos históricos preciosos. */
+  const enCola = ids
+    .filter((i) => i.estado === 'en-revision')
+    .map((i) => ahora - Date.parse(i.actualizadaEn))
+    .sort((a, b) => b - a)
+
+  return {
+    dias,
+    decididas: decididas.length,
+    medianaHoras: percentil(0.5),
+    p90Horas: percentil(0.9),
+    masRapidaHoras: decididas.length ? horas(decididas[0]) : null,
+    masLentaHoras: decididas.length ? horas(decididas[decididas.length - 1]) : null,
+    cola: {
+      esperando: enCola.length,
+      /* La más vieja de la cola es el número que hay que mirar: es el peor
+         caso que está ocurriendo AHORA, y el que se convierte en una queja. */
+      masViejaHoras: enCola.length ? horas(enCola[0]) : null,
+      medianaEsperaHoras: enCola.length ? horas(enCola[Math.floor(enCola.length / 2)]) : null,
+      /* Cuántas llevan más de un día. Es el umbral a partir del cual alguien
+         que se estaba dando de alta ya se fue a hacer otra cosa. */
+      masDeUnDia: enCola.filter((ms) => ms > 24 * 3600000).length,
+    },
+  }
+}
+
 export function embudoKyc() {
   const ids = store.todo().identidades
   const cuenta = (...estados: string[]) => ids.filter((i) => estados.includes(i.estado)).length
@@ -465,15 +537,43 @@ export function embudoKyc() {
     { paso: 'Aprobada', n: cuenta('verificada') },
   ]
 
+  /* ── LA CAIDA DEL ULTIMO PASO NO ERA UNA CAIDA ──────────────────────────
+   *
+   * «Aprobada» cuenta solo `verificada`, y el paso anterior incluye a todo el
+   * que pasó la biometría. Así que la diferencia entre los dos metía en el
+   * mismo saco tres cosas que no se parecen en nada:
+   *
+   *   · quien ESTA ESPERANDO a que el equipo lo mire  (en-revision)
+   *   · quien fue RECHAZADO
+   *   · quien estaba verificado y se le SUSPENDIO
+   *
+   * Y eso se lee como «se nos cae la gente al final del embudo» cuando lo que
+   * hay es una cola sin atender. Son problemas opuestos: uno se arregla
+   * cambiando el producto, el otro poniendo a alguien a revisar. Un embudo que
+   * los confunde manda a arreglar lo que no está roto.
+   */
+  const esperando = cuenta('en-revision')
+  const rechazadas = cuenta('rechazada')
+  const suspendidas = cuenta('suspendida')
+
   return {
     pasos: pasos.map((p, i) => ({
       ...p,
       porcentaje: ids.length ? Math.round((p.n / ids.length) * 1000) / 10 : 0,
       /** Cuántos se pierden en ESTE paso respecto del anterior. */
       caida: i === 0 ? 0 : pasos[i - 1].n - p.n,
+      /* En el último paso, de esa «caída» hay que descontar a quien no se ha
+         ido a ningún sitio: sigue esperando. Va aparte y con su nombre. */
+      esperando: i === pasos.length - 1 ? esperando : 0,
+      /* Lo que de verdad se perdió en el paso: la caída MENOS los que esperan.
+         En los pasos de en medio es igual que `caida`; en el último es la
+         diferencia entre «se nos va la gente» y «hay cola». */
+      perdidos: i === 0 ? 0
+        : Math.max(0, (pasos[i - 1].n - p.n) - (i === pasos.length - 1 ? esperando : 0)),
     })),
-    rechazadas: cuenta('rechazada'),
-    suspendidas: cuenta('suspendida'),
+    esperandoDecision: esperando,
+    rechazadas,
+    suspendidas,
     porNacionalidad: ordenar(
       ids.reduce((o: Record<string, number>, i) => {
         const k = i.nacionalidad || '??'
@@ -506,7 +606,7 @@ export function serviciosVigilados(): Servicio[] {
     { clave: 'mytokenpay', nombre: 'MyTokenPay · API', url: 'https://mytokenpay-api-5ab43b64205a.herokuapp.com/healthz' },
     { clave: 'veta-wallet', nombre: 'Veta Wallet · API', url: 'https://vetawallet-1a2e38ac52b1.herokuapp.com/' },
     { clave: 'ordenscan', nombre: 'Explorador ordenscan', url: 'https://orden-global-scan-c4abe71e8024.herokuapp.com/block/totalBlock' },
-    { clave: 'rpc8532', nombre: 'Cadena 8532 · RPC', url: 'https://rpc.ordenglobal-rpc.com/' },
+    { clave: 'rpc5550', nombre: 'Cadena 5550 · RPC', url: 'https://rpc.ordenglobal-rpc.com/' },
     { clave: 'web-veta', nombre: 'vetawallet.com', url: 'https://www.vetawallet.com/' },
   ]
 }
@@ -543,4 +643,43 @@ export async function saludEcosistema(forzar = false) {
 
   cacheSalud = { en: Date.now(), datos: await Promise.all(serviciosVigilados().map(medir)) }
   return cacheSalud.datos
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Silencio de telemetría
+//
+// El fallo que esto vigila ya ocurrió y no se notó: la clave de ingesta que
+// viaja dentro del APK dejó de valer contra el servidor, todas las apps de la
+// calle empezaron a chocar contra un 401, y el panel siguió enseñando «no hay
+// datos» — que es indistinguible de «no entra nadie». Un panel de uso no puede
+// tener ese punto ciego: si la app que TIENE gente lleva días sin decir ni una
+// palabra, lo más probable no es que nadie la abra, es que el conducto está
+// roto y hay que ir a mirarlo.
+//
+// Se vigilan solo las apps de las que se ESPERA reporte. Una app cuyo cliente
+// todavía no se ha puesto no está callada: está sin encender, y confundir las
+// dos cosas convierte el aviso en ruido que se acaba ignorando.
+// ─────────────────────────────────────────────────────────────────────────────
+
+const APPS_QUE_REPORTAN = (process.env.GENESIS_TELEMETRIA_ESPERA || 'veta-wallet')
+  .split(',').map((s) => s.trim()).filter(Boolean)
+
+const HORAS_DE_SILENCIO = Number(process.env.GENESIS_TELEMETRIA_SILENCIO_H || 48)
+
+export async function silencioDeTelemetria(): Promise<{
+  vigiladas: string[]
+  calladas: { app: string; ultimoDia: string | null; diasCallada: number }[]
+}> {
+  const v = ventana(14)
+  const calladas = []
+  for (const app of APPS_QUE_REPORTAN) {
+    const docs = await diasDe(v, app)
+    const conEventos = docs.filter((d) => (d.eventos ?? 0) > 0).map((d) => d.dia).sort()
+    const ultimoDia = conEventos.length ? conEventos[conEventos.length - 1] : null
+    const diasCallada = ultimoDia
+      ? Math.floor((Date.now() - new Date(ultimoDia + 'T23:59:59Z').getTime()) / DIA)
+      : v.length
+    if (diasCallada * 24 >= HORAS_DE_SILENCIO) calladas.push({ app, ultimoDia, diasCallada })
+  }
+  return { vigiladas: APPS_QUE_REPORTAN, calladas }
 }
