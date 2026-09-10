@@ -1693,14 +1693,49 @@ const VETA = (() => {
     }
     try {
       const d = await pedir('/cards/transactions?limit=50');
-      movsTarjeta = Array.isArray(d) ? d : (d?.items || d?.transactions || d?.data || d?.movements || []);
-      if (!Array.isArray(movsTarjeta)) movsTarjeta = [];
+      const crudos = Array.isArray(d) ? d : (d?.items || d?.transactions || d?.data || d?.movements || []);
+      movsTarjeta = sinDuplicadosMovs(Array.isArray(crudos) ? crudos : []);
       errMovsTarjeta = null;
     } catch (e) {
       // se conserva lo ultimo que llego: vaciarlo diria «no gastaste nada»
       // sobre una tarjeta con movimientos, que es la mentira de siempre
       errMovsTarjeta = e.message || true;
     }
+  }
+
+  /* Una compra deja APPROVED y CLEARED. El emisor los manda los dos; en la
+     lista de la gente es el mismo pago dos veces. Se juntan por comercio y
+     dólares, en cinco días, y se queda la fecha de cuando se tocó. Si el
+     backend ya los juntó, esto no cambia nada. */
+  function rangoDeCicloMov(tipo) {
+    const x = String(tipo || '').toUpperCase();
+    if (x.includes('CLEARED')) return 3;
+    if (x.includes('APPROVED') || x === 'APPROVED') return 2;
+    if (x.includes('AUTHORIZATION')) return 1;
+    return 0;
+  }
+  function sinDuplicadosMovs(lista) {
+    const arr = Array.isArray(lista) ? lista : [];
+    const ciclos = [], otros = [];
+    for (const tx of arr) (rangoDeCicloMov(tx.type) > 0 ? ciclos : otros).push(tx);
+    const VENTANA = 5 * 24 * 60 * 60 * 1000;
+    const grupos = [];
+    for (const tx of ciclos) {
+      const merc = String(tx.merchant || '').trim().toUpperCase().replace(/\s+/g, ' ');
+      const usd = Math.round(Number(tx.amount || 0) * 100);
+      const clave = merc + '|' + usd;
+      const t = Date.parse(tx.date) || 0;
+      let g = grupos.find(x => x.clave === clave && Math.abs((x.t || 0) - t) < VENTANA);
+      if (!g) { g = { clave, t, txs: [] }; grupos.push(g); }
+      g.txs.push(tx);
+      if (t && (!g.t || t < g.t)) g.t = t;
+    }
+    const unicos = grupos.map(g => {
+      const porFecha = g.txs.slice().sort((a, b) => (Date.parse(a.date) || 0) - (Date.parse(b.date) || 0));
+      const porCiclo = g.txs.slice().sort((a, b) => rangoDeCicloMov(b.type) - rangoDeCicloMov(a.type));
+      return { ...porCiclo[0], date: porFecha[0].date };
+    });
+    return [...unicos, ...otros].sort((a, b) => (Date.parse(b.date) || 0) - (Date.parse(a.date) || 0));
   }
 
   /* Los saldos se leen de la cadena, token por token, igual que en el telefono.

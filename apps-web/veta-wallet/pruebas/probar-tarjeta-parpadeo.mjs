@@ -106,8 +106,17 @@ await pag.route('**/cards/transactions**', (r) => {
       currency: 'ORIGEN',
       status: 'SUCCESS',
       type: 'TRANSACTION_CLEARED',
+    }, {
+      id: 'tx-cafe-auth',
+      merchant: 'Café Central',
+      date: '2026-09-09T11:00:00Z',
+      amount: 12.5,
+      origenAmount: 5,
+      currency: 'ORIGEN',
+      status: 'SUCCESS',
+      type: 'TRANSACTION_APPROVED',
     }],
-    total: 1, page: 1, ogTokenPrice: 2.5,
+    total: 2, page: 1, ogTokenPrice: 2.5,
   } });
 });
 await pag.route('**/open.er-api.com/**', (r) => r.fulfill({ json: {
@@ -156,7 +165,7 @@ const cuerpo = await pag.locator('#lienzo').innerText();
 ok('sale el comercio', /Café Central/.test(cuerpo));
 ok('sale en ORIGEN, no en dólares sueltos', /ORIGEN/.test(cuerpo) && /Café Central/.test(cuerpo));
 ok('no dice que no hay consumos', !/Todavía no hay consumos/.test(cuerpo));
-ok('la fila se puede tocar', await pag.locator('button.tar-mov').count() === 1);
+ok('una compra no se lista dos veces', await pag.locator('button.tar-mov').count() === 1);
 
 console.log('\n── tocar un pago abre dólares y lempiras ─────────────────────');
 await pag.locator('button.tar-mov').click();
