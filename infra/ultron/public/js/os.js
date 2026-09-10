@@ -542,7 +542,9 @@ const OS = (() => {
     let lista = null; try { lista = await DATOS.get('/boveda'); } catch { /* sin lectura */ }
     const filas = (lista?.secretos || []).map((x) => `<div class="fila dato bv-fila" data-nombre="${esc(x.nombre)}" data-nota="${esc(x.nota || '')}">
         <span>${esc(x.nombre)}</span>
-        <span class="${x.corto ? 'mal' : x.dias > 90 ? 'amb' : 'ok'}">${x.largo} car. · ${x.dias} d${x.aplicadoEn?.length ? ' · ' + x.aplicadoEn.map((a) => a.app).join(',') : ''}</span>
+        <span class="${x.corto ? 'mal' : x.dias > 90 ? 'amb' : 'ok'}">${x.largo} car. · ${x.dias} d
+          ${soyDueño ? `<button type="button" class="chip bv-x" data-x="${esc(x.nombre)}">X</button>` : ''}
+        </span>
       </div>`).join('');
     const d = dialogo(`<h3>LA BÓVEDA</h3>
       <div class="sub">${lista?.encendida ? 'Los VALORES no se copian ni se muestran: se cifran y no salen. Toque un nombre para editarlo (rotar) o copiar el NOMBRE.' : 'APAGADA: falta ULTRON_BOVEDA_LLAVE en el servidor (32 bytes en hex).'}</div>
@@ -577,19 +579,23 @@ const OS = (() => {
       try { await navigator.clipboard.writeText(nombre); avisar('Nombre copiado: ' + nombre); }
       catch { avisar('No se pudo copiar.', true); }
     };
-    const bor = d.querySelector('#bv-borrar');
-    if (bor) bor.onclick = async () => {
-      const nombre = (d.querySelector('#bv-nombre').value || '').trim();
+    async function borrarNombre(nombre, btn) {
+      nombre = String(nombre || '').trim();
       if (!nombre) { avisar('Toque el secreto a borrar.', true); return; }
-      if (!confirm('Borrar ' + nombre + ' de la bóveda? El valor no se puede recuperar.')) return;
-      bor.disabled = true;
+      if (btn) btn.disabled = true;
       try {
         const r = await fetch('/boveda/' + encodeURIComponent(nombre), { method: 'DELETE', credentials: 'same-origin' });
         const x = await r.json(); if (!r.ok) throw new Error(x.error || r.status);
         avisar(x.ok ? ('Borrado ' + nombre) : 'No estaba');
         d.remove(); abrirBoveda();
-      } catch (e) { avisar('No se borró: ' + e.message, true); bor.disabled = false; }
-    };
+      } catch (e) { avisar('No se borró: ' + e.message, true); if (btn) btn.disabled = false; }
+    }
+    const bor = d.querySelector('#bv-borrar');
+    if (bor) bor.onclick = () => borrarNombre(d.querySelector('#bv-nombre')?.value, bor);
+    d.querySelectorAll('.bv-x').forEach((b) => b.onclick = (ev) => {
+      ev.stopPropagation();
+      borrarNombre(b.dataset.x, b);
+    });
     const g = d.querySelector('#bv-guardar');
     if (g) g.onclick = async () => {
       const nombre = d.querySelector('#bv-nombre').value, valor = d.querySelector('#bv-valor').value, nota = d.querySelector('#bv-nota').value;
