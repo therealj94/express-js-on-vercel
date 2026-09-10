@@ -2878,6 +2878,14 @@ const OS = (() => {
       if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); enviar(ta.value); }
     });
     $('#enviar').addEventListener('click', () => enviar(ta.value));
+    const atajos = document.getElementById('atajos');
+    if (atajos) atajos.addEventListener('click', (e) => {
+      const b = e.target.closest('[data-cmd]'); if (!b) return;
+      const cmd = b.getAttribute('data-cmd') || '';
+      ta.value = cmd; ta.focus();
+      enviar(cmd);
+    });
+
 
     // ── los mandos
     $('#micro').addEventListener('click', () => { despertarVoz(); dictar(); });
