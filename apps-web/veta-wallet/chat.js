@@ -316,18 +316,19 @@ const CHAT = (() => {
    * mensaje. Mandarlo en claro sin decirlo sería exactamente la mentira que
    * este trabajo vino a quitar.
    */
-  async function enviar(para, texto, cita) {
+  async function enviar(para, texto, cita, idCliente) {
     /* LA CITA VA DENTRO DEL SOBRE. Iba en claro al lado del bulto —`cita:
        id`— y el relevo no la necesita: la lee la app del hilo que ya tiene.
        Sólo si el mensaje sale en claro (abajo) la cita también, porque ahí
        ya no hay nada que proteger. */
     const carga = cita ? '{' + JSON.stringify({ t: texto, c: cita }) : texto;
     const r = await cerrarPara(para, carga);
+    const extra = idCliente ? { idCliente } : {};
     if (r.cerrado) {
-      await pedir('/enviar', firmado({ para, cif: r.cerrado }));
+      await pedir('/enviar', firmado({ para, cif: r.cerrado, ...extra }));
       return { ok: true, e2e: true };
     }
-    const base = { para, ...(cita ? { cita } : {}) };
+    const base = { para, ...(cita ? { cita } : {}), ...extra };
     /* SÓLO «sin-aparatos» BAJA A TEXTO PLANO: es la única causa en la que
        mandar en claro es lo único que se puede hacer y el aviso es cierto.
        Un fallo de red, o este navegador sin sus llaves, NO degradan: se

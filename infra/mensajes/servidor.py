@@ -1561,6 +1561,15 @@ class Relevo(BaseHTTPRequestHandler):
                 # un mensaje puede ser solo texto, solo adjunto, o ambos
                 if not texto and not cif and not adj:
                     return self._json(400, {'error': 'faltan datos'})
+                # DOS TOQUES, UN MENSAJE. El id lo acuña el cliente y viaja
+                # con el envío: si la red cortó DESPUÉS de guardar y la app
+                # reintenta, volvía a nacer otro. Con el mismo idCliente se
+                # devuelve el que ya está, sin duplicar.
+                id_cliente = str(b.get('idCliente') or '')[:40]
+                if id_cliente:
+                    prev = (f.setdefault('envios', {}) or {}).get(id_cliente)
+                    if prev:
+                        return self._json(200, {'ok': True, 'id': prev, 'eco': True})
                 m = {'de': correo, 'para': para, 'texto': texto,
                      'cuando': int(time.time() * 1000),
                      # Un id propio. Sin el no se puede reaccionar a un mensaje
@@ -1588,6 +1597,13 @@ class Relevo(BaseHTTPRequestHandler):
                     m['tipo'] = tipo
                     m['archivo'] = archivo
                     m['nombre'] = str(b.get('nombre', ''))[:120]
+                if id_cliente:
+                    envios = f.setdefault('envios', {})
+                    envios[id_cliente] = m['id']
+                    extra = len(envios) - 50
+                    if extra > 0:
+                        for k in list(envios)[:extra]:
+                            envios.pop(k, None)
                 d['mensajes'].append(m)
                 # el histórico no crece sin límite: 20 mil mensajes rodantes
                 if len(d['mensajes']) > 20_000:

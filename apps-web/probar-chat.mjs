@@ -184,6 +184,34 @@ console.log('\n── el grupo, con el modal de verdad ────────�
   decir(cab === 'Los del mercado', 'el grupo queda creado y abierto', cab);
 }
 
+console.log('\n── un parpadeo de red no se come el hilo ───────────────────');
+{
+  await p.evaluate(o => VETA.chatAbrir(o), otra);
+  await p.waitForTimeout(800);
+  await p.evaluate(() => {
+    const orig = CHAT.enviar.bind(CHAT);
+    CHAT.enviar = async () => {
+      const e = new Error('red');
+      e.code = 0;
+      throw e;
+    };
+    window._chatEnviarOrig = orig;
+  });
+  await p.fill('#chat-txt', 'mensaje que no debe perderse');
+  await p.click('.cha-manda');
+  await p.waitForTimeout(600);
+  const sigue = await p.evaluate(() => ({
+    campo: Boolean(document.querySelector('#chat-txt')),
+    valor: document.querySelector('#chat-txt')?.value || '',
+    puerta: /Sin conexión con el chat/.test(document.body.innerText),
+    pie: Boolean(document.querySelector('.cha-pie')),
+  }));
+  decir(sigue.campo && sigue.pie, 'el hilo y el campo siguen ahí', JSON.stringify(sigue));
+  decir(sigue.valor === 'mensaje que no debe perderse', 'el texto vuelve al campo', sigue.valor);
+  decir(!sigue.puerta, 'no tapa todo con «Sin conexión»');
+  await p.evaluate(() => { if (window._chatEnviarOrig) CHAT.enviar = window._chatEnviarOrig; });
+}
+
 console.log('\n── la campana de avisos ──────────────────────────────────────');
 {
   const campana = await p.evaluate(() => ({
