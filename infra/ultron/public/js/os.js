@@ -1408,6 +1408,18 @@ const OS = (() => {
 
   /* Lo último que se hablaron, pintado en el globo al entrar. No es una
      respuesta nueva y no se lee en voz alta: es el hilo de donde se quedó. */
+
+  async function recargarHilo() {
+    try {
+      const c = await DATOS.get('/conversaciones/hoy');
+      if (c?._id) conversacionId = c._id;
+      if (c) pintarDondeQuedamos(c);
+      if (c?.trabajo?.falta) {
+        chips([{ tipo: 'seguir', nombre: 'SEGUIR CON ESTO' }, { tipo: 'hilo', nombre: 'VER TODO EL HILO', conv: c._id }]);
+        avisar('Había trabajo a medias. Toque SEGUIR CON ESTO.');
+      }
+    } catch { /* sin sesión */ }
+  }
   function pintarDondeQuedamos(c) {
     const ultimos = (c?.ultimos || []).filter((t) => String(t.texto || '').trim());
     if (!ultimos.length) return;
@@ -2816,7 +2828,9 @@ const OS = (() => {
        segundos, y en datos móviles eso se paga. Al volver se lee enseguida, que
        es cuando de verdad hace falta el dato fresco. */
     setInterval(() => { if (!document.hidden) leer(); }, 30000);
-    document.addEventListener('visibilitychange', () => { if (!document.hidden) leer(); });
+    document.addEventListener('visibilitychange', () => { if (!document.hidden) { leer(); recargarHilo(); } });
+    addEventListener('pageshow', () => recargarHilo());
+    addEventListener('focus', () => { if (!document.hidden) recargarHilo(); });
     cargarArchivos();
     /* La caja se lee UNA vez al entrar y después solo a mano: son cuatro
        lecturas de cadena y no se piden en bucle por tener la pantalla abierta. */
