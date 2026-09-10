@@ -47,6 +47,12 @@ function funciones() {
     "sinDuplicados",
     "tipoDeMovimiento",
     "esFueraDelGrupo",
+    "comercioVacio",
+    "claseDeMovimiento",
+    "comercioClave",
+    "montosParecidos",
+    "mismoPago",
+    "fusionarGrupo",
   ];
   const ops = TARJETAS.match(/const OPERACIONES_BUSQUEDA = \[[\s\S]*?\];/)?.[0] || "";
   const cuerpos = nombres.map((n) => {
@@ -71,6 +77,9 @@ const {
   sinDuplicados,
   tipoDeMovimiento,
   esFueraDelGrupo,
+  comercioVacio,
+  claseDeMovimiento,
+  mismoPago,
 } = funciones();
 titulo("la puerta, la documentada");
 
@@ -199,6 +208,45 @@ ok(esFueraDelGrupo("TRANSACTION_REFUND") && !esFueraDelGrupo("purchase"),
   "una devolución no se junta; un purchase sí");
 ok(tipoDeMovimiento({ operation: "TRANSACTION_CLEARED" }) === "TRANSACTION_CLEARED",
   "si type falta, se lee operation");
+ok(comercioVacio("NO MERCHANT NAME") && comercioVacio("—") && !comercioVacio("ABARROTERIA RAMOS"),
+  "NO MERCHANT NAME no es un comercio");
+ok(comercioDeMovimiento({ merchant_name: "NO MERCHANT NAME" }) === "—",
+  "el emisor manda NO MERCHANT NAME y se trata como vacío");
+
+const captura = [
+  { merchant: "ABARROTERIA RAMOS", amount: 1.15, origenAmount: 0.451, date: "2026-09-09T18:00:00Z", type: "TRANSACTION_CLEARED" },
+  { merchant: "NO MERCHANT NAME", amount: 1.12, origenAmount: 0.4392, date: "2026-09-09T18:00:00Z", type: "WALLET_WITHDRAWAL" },
+  { merchant: "ABARROTERIA RAMOS", amount: 1.70, origenAmount: 0.6667, date: "2026-07-08T12:00:00Z", type: "TRANSACTION_CLEARED" },
+  { merchant: "NO MERCHANT NAME", amount: 1.66, origenAmount: 0.651, date: "2026-07-08T12:00:00Z", type: "WALLET_WITHDRAWAL" },
+  { merchant: "UNO MONTECARLO", amount: 1.15, origenAmount: 0.451, date: "2026-07-02T12:00:00Z", type: "TRANSACTION_CLEARED" },
+  { merchant: "NO MERCHANT NAME", amount: 1.12, origenAmount: 0.4392, date: "2026-07-02T12:00:00Z", type: "WALLET_WITHDRAWAL" },
+  { merchant: "FARMACIA SIMAN TEG 50", amount: 7.35, origenAmount: 2.8823, date: "2026-06-17T12:00:00Z", type: "TRANSACTION_CLEARED" },
+  { merchant: "FARMACIA SIMAN TEG 50", amount: 7.35, origenAmount: 2.8823, date: "2026-06-17T12:00:00Z", type: "TRANSACTION_APPROVED" },
+  { merchant: "NO MERCHANT NAME", amount: 7.16, origenAmount: 2.8078, date: "2026-06-17T12:00:00Z", type: "WALLET_WITHDRAWAL" },
+];
+const vista = sinDuplicados(captura);
+ok(vista.length === 4, "la captura de José: 4 compras, no 9", String(vista.length));
+ok(vista.filter((x) => /RAMOS/.test(x.merchant)).length === 2, "Ramos 9 sept y 8 jul siguen siendo dos compras");
+ok(vista.every((x) => !comercioVacio(x.merchant) && x.merchant !== "NO MERCHANT NAME"),
+  "no queda ninguna fila NO MERCHANT NAME");
+ok(vista.some((x) => /SIMAN/.test(x.merchant) && Math.abs(x.amount - 7.35) < 0.001),
+  "Siman queda una sola vez, con el monto de la compra");
+
+const rechazada = {
+  merchant: "TIENDA X", amount: 20, date: "2026-09-01T12:00:00Z", type: "TRANSACTION_REJECTED", status: "DECLINED",
+};
+const aprobada = {
+  merchant: "TIENDA X", amount: 20, date: "2026-09-01T12:00:00Z", type: "TRANSACTION_CLEARED", status: "SUCCESS",
+};
+const mix = sinDuplicados([rechazada, aprobada]);
+ok(mix.length === 2, "el rechazo no se esconde detrás de la compra aprobada", String(mix.length));
+ok(mix.some((x) => /REJECT/.test(x.type)), "la rechazada sigue en la lista");
+ok(claseDeMovimiento(rechazada) === "rechazo" && claseDeMovimiento(aprobada) === "compra",
+  "rechazo y compra son clases distintas");
+ok(mismoPago(
+  { merchant: "ABARROTERIA RAMOS", amount: 1.15, date: "2026-09-09", type: "TRANSACTION_CLEARED" },
+  { merchant: "NO MERCHANT NAME", amount: 1.12, date: "2026-09-09", type: "WALLET_WITHDRAWAL" },
+), "Ramos $1.15 y NO MERCHANT NAME $1.12 son el mismo pago");
 
 console.log("");
 if (fallos) {

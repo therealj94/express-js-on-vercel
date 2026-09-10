@@ -71,6 +71,7 @@ const OPERACIONES_BUSQUEDA = [
   "WALLET_DEPOSIT",
   "WALLET_WITHDRAWAL",
   "VISA_DIRECT_DEPOSIT",
+  "OVERRIDE_VIRTUAL_BALANCE",
 ];
 
 function listaDeMovimientos(data) {
@@ -88,8 +89,18 @@ function usdDeMovimiento(tx) {
   return Number.isFinite(v) ? v : 0;
 }
 
+function comercioVacio(s) {
+  const x = String(s || "").trim();
+  if (!x) return true;
+  return /^(?:-|—|n\/?a|none|null|unknown|no merchant name)$/i.test(x);
+}
+
 function comercioDeMovimiento(tx) {
-  return tx.merchant_name || tx.merchant || tx.description || tx.merchantName || "—";
+  const bruto = tx.merchant_name || tx.merchant || tx.merchantName
+    || tx.merchant_data?.name || tx.merchantData?.name
+    || tx.description || "";
+  if (comercioVacio(bruto)) return "—";
+  return String(bruto).trim();
 }
 
 function fechaDeMovimiento(tx) {
@@ -116,12 +127,12 @@ function movimientoAVeta(tx, ogTokenPrice) {
   };
 }
 
-/* Una compra deja dos eventos: APPROVED (el datáfono) y CLEARED (la
-   liquidación, uno o dos días después). En el portal de CryptoMate se
-   ven los dos; en la tarjeta de la gente es el mismo pago dos veces —
-   Abarrotería Ramos 0.4507 ORIGEN el 9 sept y otra vez «hace 20 h».
-   Se juntan por comercio + monto, en una ventana de cinco días, y se
-   queda el CLEARED con la fecha de cuando se tocó el plástico. */
+/* Una compra deja varios eventos: AUTHORIZATION / APPROVED / CLEARED, y a
+   veces un WALLET_WITHDRAWAL sin comercio («NO MERCHANT NAME») con un
+   monto un poco menor por la comisión. En el portal del emisor se ven
+   todos; en la tarjeta de la gente es el mismo pago dos o tres veces.
+   Se juntan por fecha cercana + monto parecido, aunque uno no traiga
+   comercio. El rechazo NO se come: se lista aparte, con su estado. */
 function tipoDeMovimiento(tx) {
   return tx?.type || tx?.operation || tx?.status || "";
 }
@@ -134,54 +145,105 @@ function rangoDeCiclo(tipo) {
   return 0;
 }
 
+function claseDeMovimiento(tx) {
+  const t = String(tipoDeMovimiento(tx)).toUpperCase();
+  if (/REJECT|DECLINE/.test(t)) return "rechazo";
+  if (/REFUND/.test(t)) return "reembolso";
+  if (/REVERS/.test(t)) return "reverso";
+  if (/DEPOSIT/.test(t)) return "deposito";
+  return "compra";
+}
+
 function esFueraDelGrupo(tipo) {
   const t = String(tipo || "").toUpperCase();
-  return /REFUND|REVERS|DEPOSIT|WITHDRAW|REJECT|DECLINE/.test(t);
+  return /REFUND|REVERS|DEPOSIT|REJECT|DECLINE/.test(t);
 }
 
 function esCicloDeCompra(tipo) {
   if (esFueraDelGrupo(tipo)) return false;
-  if (rangoDeCiclo(tipo) > 0) return true;
-  const t = String(tipo || "").toUpperCase();
-  /* El emisor a veces pone type "purchase" en los dos eventos del mismo
-     pago. Si no los juntamos, Ramos 0.4507 aparece dos veces. */
-  return !t || t === "PURCHASE" || t === "DEBIT" || t === "SUCCESS" || t === "COMPLETED";
+  return true;
+}
+
+function comercioClave(tx) {
+  const s = String(tx?.merchant || "").trim().toUpperCase().replace(/\s+/g, " ");
+  if (comercioVacio(s)) return "";
+  return s;
 }
 
 function claveDeCompra(tx) {
-  const merc = String(tx.merchant || "").trim().toUpperCase().replace(/\s+/g, " ");
+  const merc = comercioClave(tx) || "—";
   const usd = Math.round(Number(tx.amount || 0) * 100);
   const ori = Math.round(Number(tx.origenAmount || 0) * 10000);
   return merc + "|" + (usd || ori);
 }
 
+function montosParecidos(a, b) {
+  const x = Number(a?.amount || 0);
+  const y = Number(b?.amount || 0);
+  if (x > 0 && y > 0) {
+    const d = Math.abs(x - y);
+    return d <= 0.40 || d / Math.max(x, y) <= 0.08;
+  }
+  const ox = Number(a?.origenAmount || 0);
+  const oy = Number(b?.origenAmount || 0);
+  if (ox > 0 && oy > 0) {
+    const d = Math.abs(ox - oy);
+    return d <= 0.08 || d / Math.max(ox, oy) <= 0.08;
+  }
+  return false;
+}
+
+function mismoPago(a, b) {
+  if (claseDeMovimiento(a) !== claseDeMovimiento(b)) return false;
+  const clase = claseDeMovimiento(a);
+  if (clase !== "compra" && clase !== "rechazo") return false;
+  const ta = Date.parse(a.date) || 0;
+  const tb = Date.parse(b.date) || 0;
+  if (ta && tb && Math.abs(ta - tb) > 5 * 24 * 60 * 60 * 1000) return false;
+  if (!montosParecidos(a, b)) return false;
+  const ma = comercioClave(a);
+  const mb = comercioClave(b);
+  if (!ma || !mb) return true;
+  return ma === mb;
+}
+
+function fusionarGrupo(txs) {
+  const porFecha = txs.slice().sort((a, b) => (Date.parse(a.date) || 0) - (Date.parse(b.date) || 0));
+  const porCiclo = txs.slice().sort((a, b) => rangoDeCiclo(tipoDeMovimiento(b)) - rangoDeCiclo(tipoDeMovimiento(a)));
+  const conNombre = txs.find((x) => comercioClave(x));
+  const base = { ...porCiclo[0], date: porFecha[0].date };
+  if (conNombre && comercioVacio(base.merchant)) base.merchant = conNombre.merchant;
+  if (conNombre && Number(conNombre.amount) > Number(base.amount || 0)) {
+    base.amount = conNombre.amount;
+    if (conNombre.origenAmount != null) base.origenAmount = conNombre.origenAmount;
+  }
+  return base;
+}
+
 function sinDuplicados(lista) {
   const arr = Array.isArray(lista) ? lista : [];
-  const ciclos = [];
-  const otros = [];
-  for (const tx of arr) {
-    (esCicloDeCompra(tipoDeMovimiento(tx)) ? ciclos : otros).push(tx);
-  }
-  const VENTANA = 5 * 24 * 60 * 60 * 1000;
-  const grupos = [];
-  for (const tx of ciclos) {
-    const clave = claveDeCompra(tx);
-    const t = Date.parse(tx.date) || 0;
-    let g = grupos.find((x) => x.clave === clave && Math.abs((x.t || 0) - t) < VENTANA);
-    if (!g) {
-      g = { clave, t, txs: [] };
-      grupos.push(g);
+  const usados = new Set();
+  const unicos = [];
+  for (let i = 0; i < arr.length; i++) {
+    if (usados.has(i)) continue;
+    const clase = claseDeMovimiento(arr[i]);
+    if (clase !== "compra" && clase !== "rechazo") {
+      usados.add(i);
+      unicos.push(arr[i]);
+      continue;
     }
-    g.txs.push(tx);
-    if (t && (!g.t || t < g.t)) g.t = t;
+    const grupo = [arr[i]];
+    usados.add(i);
+    for (let j = i + 1; j < arr.length; j++) {
+      if (usados.has(j)) continue;
+      if (grupo.some((g) => mismoPago(g, arr[j]))) {
+        grupo.push(arr[j]);
+        usados.add(j);
+      }
+    }
+    unicos.push(fusionarGrupo(grupo));
   }
-  const unicos = grupos.map((g) => {
-    const porFecha = g.txs.slice().sort((a, b) => (Date.parse(a.date) || 0) - (Date.parse(b.date) || 0));
-    const porCiclo = g.txs.slice().sort((a, b) =>
-      rangoDeCiclo(tipoDeMovimiento(b)) - rangoDeCiclo(tipoDeMovimiento(a)));
-    return { ...porCiclo[0], date: porFecha[0].date };
-  });
-  return [...unicos, ...otros].sort((a, b) => (Date.parse(b.date) || 0) - (Date.parse(a.date) || 0));
+  return unicos.sort((a, b) => (Date.parse(b.date) || 0) - (Date.parse(a.date) || 0));
 }
 
 function consultaDeMovimientos({ cardId, page = 1, limit = 10, from, to }) {
@@ -209,30 +271,36 @@ async function movimientosDeLaTarjeta(card, user, { page = 1, limit = 10, from, 
   const ogTokenPrice = await getOrigenPriceUsd().catch(() =>
     parseFloat(process.env.OG_TOKEN_PRICE_USD) || 1
   );
-  const q = consultaDeMovimientos({
-    cardId: card.cryptomateCardId,
-    page,
-    limit,
-    from,
-    to,
-  });
   let crudos = [];
-  let total = 0;
   try {
-    const { data } = await cryptomateClient.get(`${q.path}?${q.qs}`);
-    crudos = listaDeMovimientos(data);
-    total = Number(data?.total_elements ?? data?.total ?? crudos.length) || crudos.length;
+    const tamPagina = 100;
+    for (let p = 1; p <= 8; p++) {
+      const q = consultaDeMovimientos({
+        cardId: card.cryptomateCardId,
+        page: p,
+        limit: tamPagina,
+        from,
+        to,
+      });
+      const { data } = await cryptomateClient.get(`${q.path}?${q.qs}`);
+      const lote = listaDeMovimientos(data);
+      crudos.push(...lote);
+      const totalEmisor = Number(data?.total_elements ?? data?.total ?? 0) || 0;
+      if (lote.length < tamPagina) break;
+      if (totalEmisor && crudos.length >= totalEmisor) break;
+    }
   } catch (err) {
     if (!esNoEncontrado(err)) {
       console.error("Get transactions error:", err?.response?.data || err.message);
     }
-    crudos = [];
+    if (!crudos.length) crudos = [];
   }
   let transactions = sinDuplicados(crudos.map((tx) => movimientoAVeta(tx, ogTokenPrice)));
+  let total = transactions.length;
   /* Si el emisor no contestó nada, se miran los avisos que ya dejó el
      webhook: un pago aprobado que CryptoMate tiene en el portal y que
      nosotros anotamos al autorizarlo no puede desaparecer de la pantalla. */
-  if (!transactions.length) {
+  if (!crudos.length && !transactions.length) {
     const locales = await CardEvent.find({
       userId: user._id,
       cardId: card.cryptomateCardId,
@@ -249,7 +317,11 @@ async function movimientosDeLaTarjeta(card, user, { page = 1, limit = 10, from, 
     }));
     total = transactions.length;
   }
-  return { transactions, total, page, ogTokenPrice };
+  const pageN = Math.max(Number(page) || 1, 1);
+  const lim = Math.min(Math.max(Number(limit) || 50, 1), 100);
+  const desde = (pageN - 1) * lim;
+  transactions = transactions.slice(desde, desde + lim);
+  return { transactions, total, page: pageN, ogTokenPrice };
 }
 
 // Extrae el usuario autenticado del JWT y lo retorna
@@ -1048,7 +1120,7 @@ export const getCardTransactions = async (req, res) => {
     if (!card) return res.status(404).json({ message: "No active card found" });
 
     const page = parseInt(req.query.page) || 1;
-    const limit = parseInt(req.query.limit) || 10;
+    const limit = parseInt(req.query.limit) || 50;
     const { from, to } = req.query;
 
     const { transactions, total, ogTokenPrice } = await movimientosDeLaTarjeta(card, user, {

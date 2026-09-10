@@ -1707,6 +1707,11 @@ const VETA = (() => {
      lista de la gente es el mismo pago dos veces. Se juntan por comercio y
      dólares, en cinco días, y se queda la fecha de cuando se tocó. Si el
      backend ya los juntó, esto no cambia nada. */
+  function comercioVacioMov(s) {
+    const x = String(s || '').trim();
+    if (!x) return true;
+    return /^(?:-|—|n\/?a|none|null|unknown|no merchant name)$/i.test(x);
+  }
   function tipoDeMovLista(tx) {
     return tx?.type || tx?.operation || tx?.status || '';
   }
@@ -1717,39 +1722,79 @@ const VETA = (() => {
     if (x.includes('AUTHORIZATION') || x.includes('AUTH')) return 1;
     return 0;
   }
-  function esFueraDelGrupoMov(tipo) {
-    return /REFUND|REVERS|DEPOSIT|WITHDRAW|REJECT|DECLINE/.test(String(tipo || '').toUpperCase());
+  function claseDeMovLista(tx) {
+    const x = String(tipoDeMovLista(tx)).toUpperCase();
+    if (/REJECT|DECLINE/.test(x)) return 'rechazo';
+    if (/REFUND/.test(x)) return 'reembolso';
+    if (/REVERS/.test(x)) return 'reverso';
+    if (/DEPOSIT/.test(x)) return 'deposito';
+    return 'compra';
   }
-  function esCicloDeCompraMov(tipo) {
-    if (esFueraDelGrupoMov(tipo)) return false;
-    if (rangoDeCicloMov(tipo) > 0) return true;
-    const x = String(tipo || '').toUpperCase();
-    return !x || x === 'PURCHASE' || x === 'DEBIT' || x === 'SUCCESS' || x === 'COMPLETED';
+  function comercioClaveMov(tx) {
+    const s = String(tx?.merchant || tx?.merchantName || tx?.merchant_name || '').trim().toUpperCase().replace(/\s+/g, ' ');
+    if (comercioVacioMov(s)) return '';
+    return s;
+  }
+  function montosParecidosMov(a, b) {
+    const x = Number(a?.amount || 0), y = Number(b?.amount || 0);
+    if (x > 0 && y > 0) {
+      const d = Math.abs(x - y);
+      return d <= 0.40 || d / Math.max(x, y) <= 0.08;
+    }
+    const ox = Number(a?.origenAmount || 0), oy = Number(b?.origenAmount || 0);
+    if (ox > 0 && oy > 0) {
+      const d = Math.abs(ox - oy);
+      return d <= 0.08 || d / Math.max(ox, oy) <= 0.08;
+    }
+    return false;
+  }
+  function mismoPagoMov(a, b) {
+    if (claseDeMovLista(a) !== claseDeMovLista(b)) return false;
+    const clase = claseDeMovLista(a);
+    if (clase !== 'compra' && clase !== 'rechazo') return false;
+    const ta = Date.parse(a.date) || 0, tb = Date.parse(b.date) || 0;
+    if (ta && tb && Math.abs(ta - tb) > 5 * 24 * 60 * 60 * 1000) return false;
+    if (!montosParecidosMov(a, b)) return false;
+    const ma = comercioClaveMov(a), mb = comercioClaveMov(b);
+    if (!ma || !mb) return true;
+    return ma === mb;
+  }
+  function fusionarGrupoMov(txs) {
+    const porFecha = txs.slice().sort((a, b) => (Date.parse(a.date) || 0) - (Date.parse(b.date) || 0));
+    const porCiclo = txs.slice().sort((a, b) => rangoDeCicloMov(tipoDeMovLista(b)) - rangoDeCicloMov(tipoDeMovLista(a)));
+    const conNombre = txs.find(x => comercioClaveMov(x));
+    const base = { ...porCiclo[0], date: porFecha[0].date };
+    if (conNombre && comercioVacioMov(base.merchant)) base.merchant = conNombre.merchant;
+    if (conNombre && Number(conNombre.amount) > Number(base.amount || 0)) {
+      base.amount = conNombre.amount;
+      if (conNombre.origenAmount != null) base.origenAmount = conNombre.origenAmount;
+    }
+    return base;
   }
   function sinDuplicadosMovs(lista) {
     const arr = Array.isArray(lista) ? lista : [];
-    const ciclos = [], otros = [];
-    for (const tx of arr) (esCicloDeCompraMov(tipoDeMovLista(tx)) ? ciclos : otros).push(tx);
-    const VENTANA = 5 * 24 * 60 * 60 * 1000;
-    const grupos = [];
-    for (const tx of ciclos) {
-      const merc = String(tx.merchant || '').trim().toUpperCase().replace(/\s+/g, ' ');
-      const usd = Math.round(Number(tx.amount || 0) * 100);
-      const ori = Math.round(Number(tx.origenAmount || 0) * 10000);
-      const clave = merc + '|' + (usd || ori);
-      const t = Date.parse(tx.date) || 0;
-      let g = grupos.find(x => x.clave === clave && Math.abs((x.t || 0) - t) < VENTANA);
-      if (!g) { g = { clave, t, txs: [] }; grupos.push(g); }
-      g.txs.push(tx);
-      if (t && (!g.t || t < g.t)) g.t = t;
+    const usados = new Set();
+    const unicos = [];
+    for (let i = 0; i < arr.length; i++) {
+      if (usados.has(i)) continue;
+      const clase = claseDeMovLista(arr[i]);
+      if (clase !== 'compra' && clase !== 'rechazo') {
+        usados.add(i);
+        unicos.push(arr[i]);
+        continue;
+      }
+      const grupo = [arr[i]];
+      usados.add(i);
+      for (let j = i + 1; j < arr.length; j++) {
+        if (usados.has(j)) continue;
+        if (grupo.some(g => mismoPagoMov(g, arr[j]))) {
+          grupo.push(arr[j]);
+          usados.add(j);
+        }
+      }
+      unicos.push(fusionarGrupoMov(grupo));
     }
-    const unicos = grupos.map(g => {
-      const porFecha = g.txs.slice().sort((a, b) => (Date.parse(a.date) || 0) - (Date.parse(b.date) || 0));
-      const porCiclo = g.txs.slice().sort((a, b) =>
-        rangoDeCicloMov(tipoDeMovLista(b)) - rangoDeCicloMov(tipoDeMovLista(a)));
-      return { ...porCiclo[0], date: porFecha[0].date };
-    });
-    return [...unicos, ...otros].sort((a, b) => (Date.parse(b.date) || 0) - (Date.parse(a.date) || 0));
+    return unicos.sort((a, b) => (Date.parse(b.date) || 0) - (Date.parse(a.date) || 0));
   }
 
   /* Los saldos se leen de la cadena, token por token, igual que en el telefono.
@@ -4950,7 +4995,8 @@ const VETA = (() => {
     <div class="bloque vidrio">
       <h3>${t('tar.movs')}</h3>
       ${lista.length ? lista.map((m, i) => {
-        const nombre = m.merchant || m.description || m.merchantName || m.merchant_name || '—';
+        const crudoNombre = m.merchant || m.description || m.merchantName || m.merchant_name || '';
+        const nombre = comercioVacioMov(crudoNombre) ? t('tar.sinComercio') : crudoNombre;
         const fecha = m.date || m.createdAt || m.datetime || m.timestamp;
         const origen = m.origenAmount;
         const dolares = m.amount ?? m.billAmount ?? m.value;
@@ -4959,14 +5005,18 @@ const VETA = (() => {
           : tapa(usd(Math.abs(Number(dolares ?? 0))));
         const usdLinea = dolares != null && origen != null
           ? `<small>${esc(usd(Math.abs(Number(dolares))))}</small>` : '';
+        const est = estadoDeMov(m);
+        const fechaTxt = cuando(fecha) || fechaLarga(fecha) || '';
+        const pieFecha = esc(fechaTxt);
+        const pieEst = est ? ` · <span class="tar-est ${est.cls}">${esc(est.rotulo)}</span>` : '';
         return `
         <button type="button" class="hilera tar-mov" onclick="VETA.abrirMov(${i})">
           <div class="ic"><svg viewBox="0 0 24 24">${ICO.tarjeta}</svg></div>
           <div class="txt">
             <b>${esc(nombre)}</b>
-            <small>${esc(cuando(fecha) || fechaLarga(fecha) || m.status || m.type || '')}</small>
+            <small>${pieFecha}${pieEst}</small>
           </div>
-          <div class="val sale">${cifra}${usdLinea}</div>
+          <div class="val ${est && est.cls === 'no' ? 'sale tar-rechazo' : 'sale'}">${cifra}${usdLinea}</div>
         </button>`;
       }).join('')
       : errMovsTarjeta
@@ -4986,12 +5036,26 @@ const VETA = (() => {
       TRANSACTION_REVERSED: 'tar.tipoReverso',
       TRANSACTION_REFUND: 'tar.tipoDevolucion',
       WALLET_DEPOSIT: 'tar.tipoRecarga',
-      WALLET_WITHDRAWAL: 'tar.tipoRetiro',
+      WALLET_WITHDRAWAL: 'tar.tipoCompra',
       VISA_DIRECT_DEPOSIT: 'tar.tipoRecarga',
       APPROVED: 'tar.tipoAprobada',
       DECLINED: 'tar.tipoRechazada',
+      REJECTED: 'tar.tipoRechazada',
+      SUCCESS: 'tar.tipoAprobada',
     }[tipo];
     return k ? t(k) : (tipo || '—');
+  }
+
+  function estadoDeMov(m) {
+    const blob = String(m?.type || m?.operation || m?.status || '').toUpperCase();
+    if (/REJECT|DECLINE/.test(blob)) return { rotulo: t('tar.tipoRechazada'), cls: 'no' };
+    if (/REFUND/.test(blob)) return { rotulo: t('tar.tipoDevolucion'), cls: '' };
+    if (/REVERS/.test(blob)) return { rotulo: t('tar.tipoReverso'), cls: '' };
+    if (/DEPOSIT/.test(blob)) return { rotulo: t('tar.tipoRecarga'), cls: 'ok' };
+    if (/CLEARED|SETTLED|APPROVED|AUTH|SUCCESS|PURCHASE|WITHDRAW/.test(blob))
+      return { rotulo: t('tar.tipoAprobada'), cls: 'ok' };
+    if (blob) return { rotulo: tipoMov(m.type || m.status), cls: '' };
+    return null;
   }
 
   function lempirasDe(usdAmount) {
@@ -5011,17 +5075,19 @@ const VETA = (() => {
     if (!caja || !movAbierto) return;
     const m = movAbierto;
     const d = detalleMov || {};
-    const nombre = d.merchantName || m.merchant || '—';
+    const crudoNom = d.merchantName || m.merchant || '';
+    const nombre = comercioVacioMov(crudoNom) ? t('tar.sinComercio') : crudoNom;
     const origen = d.billAmount ?? m.origenAmount;
     const dolares = d.billAmountUsd ?? m.amount;
     const hnl = lempirasDe(dolares);
     const tasa = (tasas || TASAS_REF).HNL;
     const fecha = d.datetime || m.date;
+    const est = estadoDeMov({ type: d.operation || m.type, status: d.status || m.status });
     const filas = [
       [t('tar.movFecha'), fechaLarga(fecha) || cuando(fecha) || '—'],
       [t('tar.movUsd'), dolares != null ? usd(Math.abs(Number(dolares))) : '—'],
       [t('tar.movHnl'), hnl != null ? cifraHnl(Math.abs(hnl)) : '—'],
-      [t('tar.movEstado'), d.status || m.status || '—'],
+      [t('tar.movEstado'), est ? est.rotulo : (d.status || m.status || '—')],
       [t('tar.movTipo'), tipoMov(d.operation || m.type)],
     ];
     const origAmt = d.transactionAmount ?? m.transactionAmount;
