@@ -1864,6 +1864,7 @@ const OS = (() => {
        Ahora las dos cosas juntas: «LEYENDO EL CÓDIGO · 23 s». Se ve que
        avanza y se ve en qué. */
     queHace = 'pensando'; arranqueTurno = arranque;
+    try { window.ULTRON_TALLER && window.ULTRON_TALLER.inicio(); } catch {}
     const relojPensar = setInterval(() => {
       if (!pensando) return;
       const s = Math.round((Date.now() - arranque) / 1000);
@@ -1945,8 +1946,10 @@ const OS = (() => {
              para el pie de la respuesta, donde sí se quiere el exacto. */
           marcarQueHace(d.hace || n);
           usadas.push(n);
+          try { window.ULTRON_TALLER && window.ULTRON_TALLER.paso(d); } catch {}
         },
         fin: (d) => {
+          try { window.ULTRON_TALLER && window.ULTRON_TALLER.fin({ ok: !d?.error }); } catch {}
           señal();
           /* El cronómetro del turno, a la vista. «Se traba» y «va lento» eran
              quejas sin un número al lado; ahora el panel del cerebro dice
