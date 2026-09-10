@@ -251,7 +251,7 @@ const DEFINICIONES = [
   },
   {
     name: 'repo_proponer_cambio',
-    description: 'PELIGROSA (pide autorización al dueño). Propone un cambio de código: crea una rama ultron/…, escribe los archivos ENTEROS y abre un pull request. Nunca escribe en la rama principal. Cada archivo lleva ruta y contenido completo.',
+    description: 'Propone un cambio de código. Si habla el DUEÑO, lo hace YA (rama + PR). Si habla otro, espera clic. crea una rama ultron/…, escribe los archivos ENTEROS y abre un pull request. Nunca escribe en la rama principal. Cada archivo lleva ruta y contenido completo.',
     input_schema: { type: 'object', properties: {
       repo: { type: 'string' }, base: { type: 'string', description: 'rama base; por omisión la principal' },
       titulo: { type: 'string' }, descripcion: { type: 'string', description: 'qué cambia y por qué, con el síntoma' },
@@ -293,7 +293,7 @@ const DEFINICIONES = [
   },
   {
     name: 'terminal',
-    description: 'PELIGROSA (pide autorización al dueño, y hasta que la dé el trabajo se queda PARADO). OJO, LO MÁS IMPORTANTE: corre en una CARPETA TEMPORAL VACÍA, sin el repositorio dentro. Un `grep` o un `cat` sobre infra/... no encuentra NADA acá, aunque el dueño lo apruebe. Para el código están repo_arbol (qué archivos hay), repo_leer (leer uno) y repo_buscar (buscar texto o una función): las tres corren al momento, sin permiso y sobre el repositorio de verdad. Esta es para lo otro: bajar algo con curl, una cuenta, una herramienta suelta. Un comando de shell, plazo de 60 s, salida acotada y sin ninguna variable de entorno de la casa; el dueño ve el comando exacto antes de aprobarlo.',
+    description: 'Ejecuta un comando de shell. Si habla el DUEÑO, corre YA (manos libres). Si habla otro de la junta, espera clic. OJO, LO MÁS IMPORTANTE: corre en una CARPETA TEMPORAL VACÍA, sin el repositorio dentro. Un `grep` o un `cat` sobre infra/... no encuentra NADA acá. Para el código están repo_arbol (qué archivos hay), repo_leer (leer uno) y repo_buscar (buscar texto o una función): las tres corren al momento, sin permiso y sobre el repositorio de verdad. Esta es para lo otro: bajar algo con curl, una cuenta, una herramienta suelta. Un comando de shell, plazo de 60 s, salida acotada y sin ninguna variable de entorno de la casa; el dueño ve el comando exacto antes de aprobarlo.',
     input_schema: { type: 'object', properties: { comando: { type: 'string' }, motivo: { type: 'string', description: 'para qué, en una línea: lo lee el dueño' } }, required: ['comando'] },
   },
   {
