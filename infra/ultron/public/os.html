@@ -769,6 +769,32 @@ body.arrancando #hablar,body.cerrada #hablar{visibility:hidden;pointer-events:no
   #ultron-lbox img{max-height:72vh}
 }
 
+
+/* ══ ULTRON FP · capa de trabajo ═══════════════════════════════════════════
+   El mercado no se lee a través del renglón. El chat y el input son una capa
+   opaca. En el teléfono hay UN control de voz: el núcleo. Mic y «hey ULTRON»
+   se esconden; el altavoz queda por si quiere silencio. */
+#pie{background:linear-gradient(180deg,rgba(4,7,11,0),rgba(4,7,11,.92) 28%,#04070b);
+  pointer-events:auto}
+#caja>div{background:linear-gradient(180deg,#0a1622,#070e16)!important}
+#globo{max-height:48%;z-index:5}
+#globo>div>div{background:rgba(6,14,22,.94)!important}
+#dicho{font-size:15px;line-height:1.45}
+#globo #dicho,#globo #chips,#globo #fuentes{pointer-events:auto}
+@media (max-width:860px){
+  #micro,#oreja,#clip2{display:none}
+  #pie{padding:8px 12px calc(12px + var(--seguro-ab))}
+  #globo{max-width:none;left:8px;right:8px;max-height:42%}
+  #dicho{font-size:16px}
+  #pista{display:none}
+  #muelle{padding:4px 12px 0}
+  #cuerpo{padding:4px 10px}
+}
+@media (hover:none) and (pointer:coarse){
+  #hablar{z-index:9}
+  #pista-hablar{z-index:9;font-size:10px}
+}
+
 </style>
 </head>
 <body class="arrancando">
