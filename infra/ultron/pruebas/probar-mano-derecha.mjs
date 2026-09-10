@@ -73,7 +73,8 @@ decir(permisos.rolDe(jose, JUNTA) === 'dueño' && permisos.rolDe(melany, JUNTA) 
 decir(permisos.puede(melany, 'estado_vivo', JUNTA).ok, 'la junta lee');
 decir(permisos.puede(melany, 'recordar', JUNTA).ok, 'la junta escribe');
 decir(!permisos.puede(melany, 'terminal', JUNTA).ok && permisos.puede(melany, 'terminal', JUNTA).autorizable, 'lo peligroso no pasa solo, pero es autorizable');
-decir(!permisos.puede(jose, 'terminal', JUNTA).ok, 'NI PARA EL DUEÑO: el clic en el panel es la segunda firma');
+decir(permisos.puede(jose, 'terminal', JUNTA).ok, 'el dueño ejecuta lo peligroso sin segundo clic (manos libres)');
+decir(!permisos.puede(jose, 'avisar_junta', JUNTA).ok && permisos.puede(jose, 'avisar_junta', JUNTA).autorizable, 'lo que sale de la casa (WhatsApp/correo) sigue pidiendo clic, también al dueño');
 decir(permisos.puede(bot, 'anotar_pendiente', JUNTA).ok && !permisos.puede(bot, 'crear_documento', JUNTA).ok && !permisos.puede(bot, 'terminal', JUNTA).autorizable,
   'un bot anota pendientes, no escribe documentos y lo peligroso no es autorizable');
 decir(permisos.huellaDe('terminal', { comando: 'ls', a: 1 }) === permisos.huellaDe('terminal', { a: 1, comando: 'ls' }), 'la huella no depende del orden de las claves');
