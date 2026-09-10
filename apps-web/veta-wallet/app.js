@@ -8465,6 +8465,15 @@ const VETA = (() => {
     return 'red';
   }
 
+  /* Un 401/409 SÍ tiene que tapar el hilo: la llave no sirve y no hay nada
+     que leer. Un parpadeo de red NO: pintaba la puerta «Sin conexión» encima
+     del hilo, el campo dejaba de existir y el texto que ibas a reenviar se
+     iba con él. Medido: 16 segundos después el error ya se había limpiado y
+     la pantalla seguía en la puerta. */
+  function chatEsPuerta(k) {
+    return k === 'llave' || k === 'otra' || k === 'vencida' || k === 'otraCuenta';
+  }
+
   // El boton de desatascar: tira la llave guardada y vuelve a darse de alta.
   // Existe porque «sin conexion» con el wifi perfecto es lo mas exasperante
   // que puede pasarle a alguien, y hasta ahora habia que arreglarlo a mano.
@@ -8656,8 +8665,11 @@ const VETA = (() => {
         auraCharlaSonar();
       }
     } catch (e) {
-      chatSt.error = chatMotivo(e);
-      if (!callado) pintarChat();
+      const k = chatMotivo(e);
+      if (chatEsPuerta(k)) {
+        chatSt.error = k;
+        if (!callado) pintarChat();
+      }
     }
   }
 
@@ -8745,25 +8757,43 @@ const VETA = (() => {
    * que se puede hacer.
    *
    * Devuelve si SALIÓ. Quien llama decide qué hacer con un no. */
+  let chatEnvioPendiente = null;
+
+  function chatIdDeEnvio(texto) {
+    if (chatEnvioPendiente && chatEnvioPendiente.texto === texto) return chatEnvioPendiente.id;
+    let id;
+    try { id = crypto.randomUUID().replace(/-/g, ''); }
+    catch { id = Date.now().toString(16) + Math.random().toString(16).slice(2); }
+    chatEnvioPendiente = { texto, id };
+    return id;
+  }
+
   async function chatMandarTexto(texto) {
     texto = (texto || '').trim();
     if (!texto || chatSt.mandando || !chatSt.con) return false;
     chatSt.mandando = true;
+    const idCliente = chatIdDeEnvio(texto);
     /* PRIMERO SE ACTÚA Y DESPUÉS SE MANDA: abrir la pantalla que te pidieron
        tiene que ser instantáneo, y el viaje al relevo tarda lo que tarde. El
        mensaje se manda igual, así que no se pierde nada por actuar antes. */
     if (esAura(chatSt.con)) { try { auraDesdeElHilo(texto); } catch (e) {} }
     try {
-      await CHAT.enviar(chatSt.con.id, texto, chatSt.citando?.id);
+      await CHAT.enviar(chatSt.con.id, texto, chatSt.citando?.id, idCliente);
       chatSt.citando = null;
+      chatEnvioPendiente = null;
       // A AU-RA se le sabe que va a contestar: se mira rápido hasta que llegue
       if (esAura(chatSt.con)) auraEsperar();
       await chatCargarMsgs();
       chatCargarConvs();
       return true;
     } catch (e) {
-      chatSt.error = chatMotivo(e);
-      pintarChat();
+      const k = chatMotivo(e);
+      if (chatEsPuerta(k)) {
+        chatSt.error = k;
+        pintarChat();
+      } else {
+        avisar(t('cha.eRedP'));
+      }
       return false;
     } finally { chatSt.mandando = false; }
   }
@@ -10400,7 +10430,11 @@ const VETA = (() => {
       await chatCargarConvs();
       if (g?.id) chatAbrir(g.id);
       avisar(t('cha.grHecho'));
-    } catch (e) { chatSt.error = chatMotivo(e); pintarChat(); }
+    } catch (e) {
+      const k = chatMotivo(e);
+      if (chatEsPuerta(k)) { chatSt.error = k; pintarChat(); }
+      else avisar(t('cha.eRedP'));
+    }
   }
 
   /* ── LA FICHA ────────────────────────────────────────────────────────────
