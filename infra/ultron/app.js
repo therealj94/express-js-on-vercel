@@ -723,7 +723,15 @@ app.post('/pensar', puerta, frenoPensar, async (req, res) => {
   res.setHeader('X-Accel-Buffering', 'no');
   res.flushHeaders?.();
   const emitir = (evento, datos) => { try { res.write(`event: ${evento}\ndata: ${JSON.stringify(datos)}\n\n`); } catch { /* se fue */ } };
-  const latido = setInterval(() => { try { res.write(': latido\n\n'); } catch { /* nada */ } }, 15_000);
+  /* Primer BYTE ya: Heroku mata a los 30 s si el cuerpo no sale. El hilo de
+     Mongo puede tardar; el latido no puede esperar a eso. */
+  try { res.write(': latido\n\n'); emitir('pensando', { hace: 'abriendo el hilo' }); } catch { /* se fue */ }
+  const latido = setInterval(() => {
+    try {
+      res.write(': latido\n\n');
+      emitir('pensando', { hace: 'sigue en ello' });
+    } catch { /* nada */ }
+  }, 8_000);
 
   /* ── SI SE VA, SE APAGA EL MOTOR ─────────────────────────────────────────
      Interrumpir a ULTRON —tocar el centro, o hablarle encima— corta el SSE
