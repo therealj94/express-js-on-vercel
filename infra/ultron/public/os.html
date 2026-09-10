@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#04070b">
 <title>ULTRON OS · Orden Global</title>
 <link rel="icon" href="img/ultron.png?v=taller">
-<link rel="manifest" href="manifest.webmanifest">
+<link rel="manifest" href="manifest.webmanifest?v=taller">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="robots" content="noindex,nofollow">
@@ -201,7 +201,7 @@ body.vieja #izq,body.vieja #der,body.vieja #medidas{opacity:.48;filter:saturate(
    Sin fondo ni borde propios: el botón ES el núcleo. Lo único que se dibuja
    aquí es el aro que aparece al apretar y al enfocar — que sí hace falta,
    porque quien navega con teclado tiene que ver dónde está. */
-#hablar{position:absolute;z-index:1;padding:0;border:0;background:none;cursor:pointer;
+#hablar{position:absolute;z-index:8;padding:0;border:0;background:none;cursor:pointer;
   left:var(--nx,50%);top:var(--ny,46%);width:var(--nr,240px);height:var(--nr,240px);
   transform:translate(-50%,-50%);border-radius:50%;touch-action:none;
   -webkit-tap-highlight-color:transparent;transition:transform .18s cubic-bezier(.22,1,.36,1)}
@@ -227,7 +227,7 @@ body.vieja #izq,body.vieja #der,body.vieja #medidas{opacity:.48;filter:saturate(
    separa sin taparle nada al núcleo.
    Y desaparece para siempre en cuanto se usa el botón una vez: está para
    enseñar que el centro se toca, y una vez enseñado sobra. */
-#pista-hablar{position:absolute;z-index:1;left:var(--nx,50%);top:calc(var(--ny,46%) + var(--nr,240px) * .30);
+#pista-hablar{position:absolute;z-index:8;left:var(--nx,50%);top:calc(var(--ny,46%) + var(--nr,240px) * .30);
   transform:translateX(-50%);pointer-events:none;white-space:nowrap;
   padding:4px 11px;background:rgba(4,7,11,.78);
   clip-path:polygon(0 0,calc(100% - 6px) 0,100% 6px,100% 100%,6px 100%,0 calc(100% - 6px));
