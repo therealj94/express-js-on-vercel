@@ -2346,16 +2346,22 @@ const OS = (() => {
       try { b.releasePointerCapture(e.pointerId); } catch { /* ya */ }
       if (!p0 || p0.giro) return;                       // fue un giro, no un toque
       if (Date.now() - p0.t > 700) return;              // se quedó apoyado: tampoco es un toque
-      toqueNucleo();
+      dispararHablar();
     };
     b.addEventListener('pointerup', soltar);
     b.addEventListener('pointercancel', () => { baja = null; b.classList.remove('apretado'); });
 
     /* Enter y la barra: el navegador los convierte en `click`. Se atiende ahí
        y NO en `pointerup`, para no hacerlo dos veces con el ratón. */
-    b.addEventListener('click', (e) => {
-      if (e.detail !== 0) return;                       // detail 0 = vino del teclado
+    let ultimoToqueN = 0;
+    const dispararHablar = () => {
+      if (Date.now() - ultimoToqueN < 450) return;
+      ultimoToqueN = Date.now();
       toqueNucleo();
+    };
+    b.addEventListener('click', (e) => {
+      e.preventDefault();
+      dispararHablar();
     });
     /* La barra espaciadora desplaza la página si no se para. */
     b.addEventListener('keydown', (e) => { if (e.key === ' ') e.preventDefault(); });
@@ -2634,19 +2640,17 @@ const OS = (() => {
       calentar();
       if (!s?.texto) return;
       pintarDicho(s.texto); chips(s.sugerencias || null);
-      /* El saludo se LEE, no se oye, hasta que la persona toque el centro. Lo
-         que dice —buenos días, el clima, lo que quedó pendiente— es igual de
-         útil escrito, y así nadie se lleva un susto al abrir el teléfono. */
-      if (hablaAhora()) {
-        locutor = locutor || locutorNuevo();
-        locutor.despertar?.();
-        /* El saludo se dice ENTERO: es corto y es lo primero que se oye. */
-        const antes = locutor.tope; locutor.tope = 0;
-        locutor.alimentar(s.texto);
-        locutor.cerrar();
-        locutor.tope = antes;
-        marcarSaludoDicho();
-      } else saludoDicho = true;
+      /* Saludo EN VOZ (gesto de entrar ya desbloqueó audio). Después se apaga
+         vozDespierta: las respuestas siguen en texto hasta que toque el centro. */
+      locutor = locutor || locutorNuevo();
+      locutor.despertar?.();
+      const antes = locutor.tope; locutor.tope = 0;
+      locutor.alimentar(s.texto);
+      locutor.cerrar();
+      locutor.tope = antes;
+      marcarSaludoDicho();
+      vozDespierta = false;
+      avisar('Toque el centro para hablar.');
       /* Y AL TERMINAR, ESCUCHA. «Quedo a su disposición, ¿en qué le ayudo?» y
          quedarse callado esperando a que la persona busque un botón es dejar la
          frase a medias. En modo conversación, el micrófono se abre solo cuando
@@ -2657,7 +2661,7 @@ const OS = (() => {
          primera vez sería sacarle a la persona un permiso que no pidió, y con
          el cartel del navegador encima del saludo. La primera vez se toca el
          micrófono una vez; desde entonces, la conversación empieza sola. */
-      if (PREF?.oido === 'conversacion' && VOZ.hayOido?.() && await micYaConcedido()) esperarYEscuchar();
+      /* No abre el mic solo. Hablar = toque en el centro. */
     } catch { /* sin saludo se entra igual */ }
   }
 
