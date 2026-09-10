@@ -116,6 +116,8 @@ const VETA = (() => {
      un no. */
   let emision = null;
   let movsTarjeta = [];
+  let errMovsTarjeta = null;  // distinto de lista vacía: un fallo no es «no gastaste»
+  let tarjetaCargando = false;
   let volteada = false;         // la tarjeta, de frente o de espaldas
   /* El numero, el CVV y el vencimiento viven SOLO en memoria y solo mientras
      dure la pantalla: no se guardan, no se escriben en el navegador, y se
@@ -1547,7 +1549,8 @@ const VETA = (() => {
     // al cierre de sesión seguiría con el micrófono abierto.
     try { llamadaParar(); } catch {}
     sesion = null; cartera = null; errCartera = null; identidad = null;
-    movimientos = null; transferencias = []; tarjeta = null; movsTarjeta = []; ocultos = false;
+    movimientos = null; transferencias = []; tarjeta = null; movsTarjeta = []; errMovsTarjeta = null;
+    emision = null; tarjetaCargando = false; ocultos = false;
     // El expediente de verificación se va con la sesión: dentro hay un número de
     // documento y dos fotografías, y no tienen por qué sobrevivir a un «salir».
     sol = null;
@@ -1681,17 +1684,20 @@ const VETA = (() => {
       // Un 404 SI es una respuesta: el emisor dice que esta persona no tiene
       // tarjeta, y eso manda sobre lo que hubiera guardado.
       tarjeta = e.estado === 404 ? { falta: true } : (antes || { error: e.message });
-      // si se conservo la de antes, sus movimientos siguen siendo los suyos
       if (antes && e.estado !== 404) return;
       movsTarjeta = [];
+      errMovsTarjeta = e.estado === 404 ? null : (e.message || true);
       return;
     }
     try {
       const d = await pedir('/cards/transactions?limit=20');
-      movsTarjeta = Array.isArray(d) ? d : (d?.items || d?.transactions || d?.data || []);
-    } catch {
+      movsTarjeta = Array.isArray(d) ? d : (d?.items || d?.transactions || d?.data || d?.movements || []);
+      if (!Array.isArray(movsTarjeta)) movsTarjeta = [];
+      errMovsTarjeta = null;
+    } catch (e) {
       // se conserva lo ultimo que llego: vaciarlo diria «no gastaste nada»
       // sobre una tarjeta con movimientos, que es la mentira de siempre
+      errMovsTarjeta = e.message || true;
     }
   }
 
@@ -2212,9 +2218,12 @@ const VETA = (() => {
        La clase se quita y se vuelve a poner con un reflow forzado en medio —
        si no, dos vistas seguidas no reinician la animación y la segunda entra
        en seco. */
-    l.classList.remove('lz-dentro', 'lz-fuera');
-    void l.offsetWidth;
-    l.classList.add(cual === 'nucleo' ? 'lz-fuera' : 'lz-dentro');
+    const mismo = veniaDe === cual;
+    if (!mismo) {
+      l.classList.remove('lz-dentro', 'lz-fuera');
+      void l.offsetWidth;
+      l.classList.add(cual === 'nucleo' ? 'lz-fuera' : 'lz-dentro');
+    }
     l.innerHTML = VISTAS[cual]();
     /* El sorteo va encima de las vistas de dinero, no del Nucleo: el cerebro
        es la pantalla del asombro y un banner encima seria un cartel pegado en
@@ -2228,11 +2237,21 @@ const VETA = (() => {
     if (cual === 'cobrar') pintarCobro();
     if (cual === 'enviar') $('#env-monto')?.focus();
     if (cual === 'cambiar') cambioMonto();
-    if (cual === 'tarjeta' && !tarjeta) cargarTarjeta().then(() => { if (vistaActual === 'tarjeta') vista('tarjeta'); });
-    // El precio de emitir se pregunta una sola vez por sesión de pantalla: no
-    // cambia entre un repintado y el siguiente, y pedirlo en cada uno sería
-    // una llamada por cada tecla del formulario.
-    if (cual === 'tarjeta' && !emision) cargarEmision().then(() => { if (vistaActual === 'tarjeta') vista('tarjeta'); });
+    /* LA TARJETA SE PIDE UNA VEZ, Y SE REPINTA UNA VEZ.
+       Antes: vista('tarjeta') disparaba cargarTarjeta y cargarEmision, y
+       CADA una volvía a llamar vista('tarjeta'). Si /cards/emision fallaba,
+       emision quedaba null y el ciclo no paraba: el lienzo se vaciaba y se
+       pintaba una y otra vez —el fondo de café parpadeando detrás, la
+       pestaña de Chrome pidiendo recargar—. Quien ya tiene tarjeta ni
+       siquiera necesita el precio de emitir: eso es del formulario de
+       pedirla. */
+    if (cual === 'tarjeta' && !tarjeta && !tarjetaCargando) {
+      tarjetaCargando = true;
+      cargarTarjeta()
+        .then(() => { if (tarjeta?.falta && !emision) return cargarEmision(); })
+        .finally(() => { tarjetaCargando = false; })
+        .then(() => { if (vistaActual === 'tarjeta') vista('tarjeta'); });
+    }
     if (cual === 'remesas' && !tasas) cargarTasas().then(() => { if (vistaActual === 'remesas') vista('remesas'); });
     if (cual === 'chat') { p2cPortada(); chatEntrar(); } else p2cPortadaFuera();
     if (cual === 'token') montarVelasToken();
@@ -4858,6 +4877,7 @@ const VETA = (() => {
 
   function precioTarjeta() {
     if (!emision) return `<p class="pie" style="margin-top:16px">${t('tar.leyendoPrecio')}</p>`;
+    if (emision.error) return `<p class="pie" style="margin-top:16px">${t('tar.precioErr')}</p>`;
     return `
       <div class="tar-precio">
         <div class="tar-precio-fila">
@@ -4873,19 +4893,32 @@ const VETA = (() => {
   }
 
   function movimientosTarjeta() {
+    const lista = Array.isArray(movsTarjeta) ? movsTarjeta : [];
     return `
     <div class="bloque vidrio">
       <h3>${t('tar.movs')}</h3>
-      ${movsTarjeta.length ? movsTarjeta.map(m => `
+      ${lista.length ? lista.map(m => {
+        const nombre = m.merchant || m.description || m.merchantName || m.merchant_name || '—';
+        const fecha = m.date || m.createdAt || m.datetime || m.timestamp;
+        const origen = m.origenAmount;
+        const dolares = m.amount ?? m.billAmount ?? m.value;
+        const cifra = origen != null && origen !== ''
+          ? `${tapa(oro(Math.abs(Number(origen))))} ORIGEN`
+          : tapa(usd(Math.abs(Number(dolares ?? 0))));
+        return `
         <div class="hilera">
           <div class="ic"><svg viewBox="0 0 24 24">${ICO.tarjeta}</svg></div>
           <div class="txt">
-            <b>${esc(m.merchant || m.description || m.merchantName || '—')}</b>
-            <small>${esc(cuando(m.createdAt || m.date || m.timestamp))}</small>
+            <b>${esc(nombre)}</b>
+            <small>${esc(cuando(fecha) || m.status || m.type || '')}</small>
           </div>
-          <div class="val sale">${tapa(usd(Math.abs(Number(m.amount ?? m.value ?? 0))))}</div>
-        </div>`).join('')
-      : `<p class="pie" style="margin-top:8px">${t('tar.sinMovs')}</p>`}
+          <div class="val sale">${cifra}</div>
+        </div>`;
+      }).join('')
+      : errMovsTarjeta
+        ? `<p class="pie" style="margin-top:8px;color:var(--coral)">${t('tar.movsErr')}</p>
+           <div style="margin-top:12px"><button class="btn btn-linea btn-sm" onclick="VETA.reintentarMovs()">${t('saldo.re')}</button></div>`
+        : `<p class="pie" style="margin-top:8px">${t('tar.sinMovs')}</p>`}
     </div>`;
   }
 
@@ -15997,7 +16030,13 @@ const VETA = (() => {
      precio ni se da por abierta la emisión. */
   async function cargarEmision() {
     try { emision = await pedir('/cards/emision'); }
-    catch { emision = null; }
+    catch { emision = { error: true }; }
+  }
+
+  async function reintentarMovs() {
+    errMovsTarjeta = null;
+    await cargarTarjeta();
+    if (vistaActual === 'tarjeta') vista('tarjeta');
   }
 
   function pedirTarjeta(ev) {
@@ -16358,7 +16397,7 @@ const VETA = (() => {
            llaveAbrir, llaveCerrar, llaveEntrar,
            llaveCuantas, llaveOjo, llaveModo,
            importarAbrir, importarSalir, importarElegir, importarHacer,
-           tapar, copiarContrato, congelar, revelar, pedirTarjeta, recargarTarjeta, cambioMonto, elegirDestino,
+           tapar, copiarContrato, congelar, revelar, pedirTarjeta, recargarTarjeta, reintentarMovs, cambioMonto, elegirDestino,
            voltear, olvidar, remMonto, remPais, refrescarTasas, nuevoContacto, borrarContacto,
            enviarA, abrirCamara, cerrarCamara, pedirSecreto, copiarTexto, guardarNombre,
            // Enviar cualquier token, no solo ORIGEN.
