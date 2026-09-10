@@ -259,6 +259,16 @@ const DEFINICIONES = [
     }, required: ['titulo', 'archivos'] },
   },
   {
+    name: 'repo_mezclar',
+    description: 'Mezcla (merge) un pull request ABIERTO. Solo dueño. Nunca mezcla contra main/master salvo contra_principal=true.',
+    input_schema: { type: 'object', properties: {
+      repo: { type: 'string' },
+      numero: { type: 'number', description: 'número del pull request' },
+      metodo: { type: 'string', description: 'squash, merge o rebase; por omisión squash' },
+      contra_principal: { type: 'boolean', description: 'true solo si el dueño pide mezclar a main' },
+    }, required: ['numero'] },
+  },
+  {
     name: 'pagina_foto',
     description: 'Una FOTO de cómo se ve una página en un navegador de verdad, guardada como documento para poder enseñársela a una persona. Para cuando lo que hace falta es ver la pantalla, no leerla: revisar un diseño, comprobar que un despliegue se ve bien, mandarle a alguien cómo quedó.',
     input_schema: { type: 'object', properties: {
@@ -581,7 +591,7 @@ async function leerPagina(url) {
    la vez. Guardar una memoria y cerrar un pendiente tienen un orden que el
    modelo pidió; leer el mercado y leer la altura de la cadena, no. */
 const ESCRIBEN = new Set(['recordar', 'olvidar', 'anotar_pendiente', 'cerrar_pendiente', 'crear_documento', 'proponer_envio',
-  'aprender', 'habilidad_crear', 'habilidad_publicar', 'repo_proponer_cambio', 'terminal', 'desplegarse', 'boveda_aplicar', 'equipo_correr', 'heroku_reiniciar', 'nodo_comando', 'salud_reparar', 'avisar_junta']);
+  'aprender', 'habilidad_crear', 'habilidad_publicar', 'repo_proponer_cambio', 'repo_mezclar', 'terminal', 'desplegarse', 'boveda_aplicar', 'equipo_correr', 'heroku_reiniciar', 'nodo_comando', 'salud_reparar', 'avisar_junta']);
 
 /* ── UN LOTE DE HERRAMIENTAS, NO UNA FILA ────────────────────────────────────
  *
@@ -629,6 +639,7 @@ const QUE_HACE = {
   repo_buscar: 'buscando en el código',
   repo_llave: 'comprobando mi llave de GitHub',
   repo_proponer_cambio: 'proponiendo el cambio',
+  repo_mezclar: 'mezclando el pull request',
   terminal: 'trabajando en la terminal',
   desplegarse: 'desplegándome',
   buscar_conversaciones: 'buscando en lo que hablamos',
@@ -1192,6 +1203,11 @@ async function correrAdentro(nombre, entrada, ctx) {
         ctx.acciones.push({ tipo: 'pr', url: r.pr, rama: r.rama });
         return `Cambio propuesto: rama ${r.rama}, pull request #${r.numero} → ${r.pr}. Archivos: ${r.archivos.join(', ')}. Lo mezcla una persona después de leerlo.`;
       }
+      case 'repo_mezclar': {
+        const r = await taller.mezclarCambio(entrada);
+        ctx.acciones.push({ tipo: 'pr', url: r.url, rama: r.rama, mezclado: true });
+        return `Mezclado PR #${r.numero} en ${r.base} (${r.sha || 'ok'}). Rama ${r.rama}.`;
+      }
       case 'terminal': return await taller.terminal(entrada);
       case 'desplegarse': {
         const pasos = [];
@@ -1398,7 +1414,7 @@ const GRUPOS = {
   'Lo que le mandan': ['listar_archivos', 'leer_archivo'],
   'Acciones que confirma la persona': ['abrir', 'proponer_envio'],
   'Cuentas': ['calcular', 'gasto'],
-  'El taller (repositorio, terminal, despliegue)': ['repo_llave', 'repo_arbol', 'repo_leer', 'repo_buscar', 'repo_proponer_cambio', 'terminal', 'desplegarse'],
+  'El taller (repositorio, terminal, despliegue)': ['repo_llave', 'repo_arbol', 'repo_leer', 'repo_buscar', 'repo_proponer_cambio', 'repo_mezclar', 'terminal', 'desplegarse'],
   'La bóveda': ['boveda_listar', 'boveda_aplicar'],
   'Aprender': ['aprender', 'habilidad_usar', 'habilidad_crear', 'habilidad_publicar'],
   'El equipo': ['equipo_estado', 'equipo_partes', 'equipo_correr', 'auditar_dependencias', 'autorizaciones'],
