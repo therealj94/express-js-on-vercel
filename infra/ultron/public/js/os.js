@@ -1180,10 +1180,10 @@ const OS = (() => {
     $('#archivos').innerHTML = n ? l.map((a) => {
       const leible = !!a.texto;
       return `<div class="arch">
-        <div class="et ${leible ? '' : 'gris'}">${esc(ETIQ[a.tipo] || '?')}</div>
+        ${/^image\//.test(a.tipo||'') ? `<img class="arch-th" src="/archivos/${esc(a._id)}/bajar" alt="${esc(a.nombre)}" style="width:44px;height:44px;object-fit:cover;border-radius:4px">` : `<div class="et ${leible ? '' : 'gris'}">${esc(ETIQ[a.tipo] || '?')}</div>`}
         <div class="qui">
           <div class="nm" title="${esc(a.nombre)}">${esc(a.nombre)}</div>
-          <div class="mt">${kb(a.bytes)} · ${leible ? `${num(a.texto.length)} letras leídas` : 'sin texto'}</div>
+          <div class="mt">${kb(a.bytes)} · ${/^image\//.test(a.tipo||'') ? 'tocá para ampliar' : (leible ? `${num(a.texto.length)} letras leídas` : 'sin texto')}</div>
         </div>
         <a class="bj" href="/archivos/${esc(a._id)}/bajar" target="_blank" rel="noopener" title="Bajar" aria-label="Bajar ${esc(a.nombre)}">
           <svg viewBox="0 0 24 24"><path d="M12 3v13M7 11.5l5 5 5-5M4.5 20.5h15"/></svg></a>
@@ -1800,6 +1800,39 @@ const OS = (() => {
      hacer. Solo en aparatos de dedo: con ratón se pierde poder seleccionar el
      texto para copiar una cifra, y eso pesa más que un cuarto del botón. */
   const dedo = matchMedia('(hover:none) and (pointer:coarse)');
+
+  function asegurarLightbox() {
+    if (document.getElementById('ultron-lbox')) return;
+    const s = document.createElement('style');
+    s.textContent = '#ultron-lbox{position:fixed;inset:0;z-index:80;background:rgba(0,8,16,.92);display:none;flex-direction:column;align-items:center;justify-content:center;padding:12px;gap:10px}'
+      + '#ultron-lbox.on{display:flex}'
+      + '#ultron-lbox img{max-width:96vw;max-height:78vh;object-fit:contain;border-radius:8px}'
+      + '#ultron-lbox .lb-bar{display:flex;gap:8px;flex-wrap:wrap;justify-content:center}'
+      + '#dicho img,#archivos img.arch-th{cursor:zoom-in;max-width:100%;border-radius:6px}';
+    document.head.appendChild(s);
+    const box = document.createElement('div');
+    box.id = 'ultron-lbox';
+    box.innerHTML = '<img alt="foto"><div class="lb-bar"><a class="chip" id="lb-dl" download>DESCARGAR</a><button class="chip" type="button" id="lb-x">CERRAR</button></div>';
+    document.body.appendChild(box);
+    box.addEventListener('click', (e) => { if (e.target === box || e.target.id === 'lb-x') box.classList.remove('on'); });
+  }
+  function abrirLightbox(src, nombre) {
+    asegurarLightbox();
+    const box = document.getElementById('ultron-lbox');
+    const img = box.querySelector('img');
+    const dl = document.getElementById('lb-dl');
+    img.src = src;
+    dl.href = src;
+    dl.setAttribute('download', nombre || 'ultron.png');
+    box.classList.add('on');
+  }
+  document.addEventListener('click', (e) => {
+    const im = e.target && e.target.closest && e.target.closest('#dicho img, img.arch-th');
+    if (!im) return;
+    e.preventDefault();
+    abrirLightbox(im.currentSrc || im.src, im.getAttribute('alt') || 'foto');
+  });
+
   function pintarDicho(md) {
     $('#globo').classList.remove('oculto');
     const d = $('#dicho');
