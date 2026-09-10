@@ -4,13 +4,13 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#04070b">
-<title>ULTRON OS · Orden Global</title>
-<link rel="icon" href="img/ultron.png?v=hud3">
-<link rel="manifest" href="manifest.webmanifest?v=hud3">
+<title>ULTRON FP · HUD</title>
+<link rel="icon" href="img/ultron.png?v=hud4">
+<link rel="manifest" href="manifest.webmanifest?v=hud4">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="robots" content="noindex,nofollow">
-<link rel="stylesheet" href="vendor/fuentes/fuentes.css?v=hud3">
+<link rel="stylesheet" href="vendor/fuentes/fuentes.css?v=hud4">
 <style>
 /* ══════════════════════════════════════════════════════════════════════════
    ULTRON OS · el sistema operativo del ecosistema
@@ -807,25 +807,63 @@ body.arrancando #hablar,body.cerrada #hablar{visibility:hidden;pointer-events:no
   font-family:var(--mono);font-size:10px;letter-spacing:.12em;cursor:pointer}
 #atajos button:active{background:var(--cian);color:#031014}
 
+/* ══ HUD 4 · 10 SEP 2026 — se ve desde el primer fotograma ═══════════════
+   La cinta cian no es adorno: es la prueba de que esta pantalla NO es la de
+   Ingresar. Va en el HTML (sin JS), con estilo en línea, para que un teléfono
+   con el JavaScript de ayer igual pinte el HUD nuevo. */
+#hud-cinta{position:fixed;top:0;left:0;right:0;z-index:120;
+  background:var(--cian);color:#031014;
+  font-family:var(--mono);font-size:12px;letter-spacing:.2em;font-weight:700;
+  text-align:center;padding:9px 12px calc(9px + env(safe-area-inset-top,0px))}
+#entrada{padding-top:calc(28px + 24px + env(safe-area-inset-top,0px)) !important}
+#entrada{background:
+  repeating-linear-gradient(180deg,transparent 0 2px,rgba(5,225,255,.04) 2px 3px),
+  radial-gradient(ellipse 60% 50% at 50% 45%,rgba(4,7,11,0) 0%,rgba(4,7,11,.72) 62%,rgba(4,7,11,.93) 100%) !important}
+.eco-marca{font-size:clamp(44px,12vw,72px);letter-spacing:.22em;color:var(--cian) !important;
+  text-shadow:0 0 40px rgba(5,225,255,.7)}
+.pt-hud{margin:0 0 10px;font-family:var(--mono);font-size:10px;letter-spacing:.22em;
+  color:#031014;background:var(--cian);padding:7px 10px;font-weight:700;text-align:center}
+.pt-marca{color:var(--cian) !important;font-size:28px !important;letter-spacing:.22em !important}
+.pt-btn{min-height:48px;font-size:14px !important;letter-spacing:.2em !important}
+body:not(.arrancando):not(.cerrada) #os{padding-top:calc(32px + env(safe-area-inset-top,0px));box-sizing:border-box}
+body:not(.arrancando):not(.cerrada) #hud-cinta{font-size:10px;padding:6px 10px calc(6px + env(safe-area-inset-top,0px))}
+#pista-hablar{opacity:1 !important;background:rgba(5,225,255,.16) !important;color:var(--cian) !important;
+  font-size:11px !important;letter-spacing:.16em !important;padding:8px 14px !important}
+body.arrancando #pista-hablar,body.cerrada #pista-hablar,body.escuchando #pista-hablar{opacity:0 !important}
+@media (max-width:860px){
+  #techo{display:grid !important;grid-template-columns:1fr auto auto;align-items:center;gap:8px;
+    padding:10px 12px 8px;background:#04070b;border-bottom:1px solid rgba(5,225,255,.35)}
+  #techo .marca{grid-column:1}
+  #medidas{display:contents}
+  #medidas>div,#m-salud,#m-reloj,#mando-taller{display:none !important}
+  #m-boveda,#m-ajustes{display:inline-flex !important;align-items:center;justify-content:center;
+    min-height:44px;padding:0 12px;font-size:12px;letter-spacing:.16em;font-weight:700;
+    background:rgba(5,225,255,.16);border:1px solid var(--cian);color:var(--cian)}
+}
+
+
+
 </style>
 </head>
 <body class="arrancando">
+<div id="hud-cinta">ULTRON FP · HUD 4 · 10 SEP 2026</div>
 
 <!-- ══ LA ENTRADA ══════════════════════════════════════════════════════════
      El arranque y la puerta, encima del núcleo, que sigue latiendo detrás. -->
 <div id="entrada">
   <div id="arranque">
     <div class="eco-marca">ULTRON FP</div>
-    <div class="eco-por">SISTEMA OPERATIVO · <b>ORDEN GLOBAL</b></div>
+    <div class="eco-por">HUD · 10 SEP 2026 · <b>ORDEN GLOBAL</b></div>
     <div class="eco-barra"><i id="eco-barra-i"></i></div>
     <div class="eco-pasos" id="eco-pasos" role="status" aria-live="polite"></div>
   </div>
 
   <div id="puerta-os" hidden>
     <div class="pt"><div>
+      <div class="pt-hud">HUD DE OPERADOR · 10 SEP 2026</div>
       <div class="pt-marca">ULTRON FP</div>
       <div class="pt-sub">ACCESO DE OPERADOR</div>
-      <p class="pt-hint">Correo y clave de la casa. El sistema no abre el tablero hasta que usted entra.</p>
+      <p class="pt-hint">Correo y clave de la casa. El tablero no se abre hasta que usted entra.</p>
 
       <!-- El pase de la wallet: oculto mientras no se sepa que este servidor
            tiene Genesis. Un botón que no puede funcionar hace creer que la
@@ -847,11 +885,11 @@ body.arrancando #hablar,body.cerrada #hablar{visibility:hidden;pointer-events:no
             </button>
           </div>
         </label>
-        <button class="pt-btn" type="submit" id="pt-entrar">ENTRAR</button>
+        <button class="pt-btn" type="submit" id="pt-entrar">ENTRAR AL SISTEMA</button>
       </form>
 
       <div class="pt-dicho" id="pt-dicho" aria-live="polite"></div>
-      <p class="pt-pie">Acceso reservado a la Junta Directiva<br>Cada sesión queda registrada</p>
+      <p class="pt-pie">Hecho para José · Junta Directiva<br>Cada sesión queda registrada</p>
     </div></div>
     <div class="pt-eco" aria-hidden="true">
       <span>ORDENEX</span><span>AUCORP</span><span>VETA WALLET</span>
@@ -875,7 +913,7 @@ body.arrancando #hablar,body.cerrada #hablar{visibility:hidden;pointer-events:no
   <button id="hablar" aria-label="Hablar con ULTRON" aria-pressed="false">
     <span class="aro" aria-hidden="true"></span>
   </button>
-  <div id="pista-hablar" aria-hidden="true">TOQUE PARA HABLAR</div>
+  <div id="pista-hablar" aria-hidden="true">TOQUE EL NÚCLEO · HUD 4</div>
   <div id="velo" aria-hidden="true"></div>
 
   <!-- Lo que ULTRON contesta se anuncia UNA vez, al terminar. Anunciar cada
@@ -1143,14 +1181,14 @@ body.arrancando #hablar,body.cerrada #hablar{visibility:hidden;pointer-events:no
   <span>PDF, Word, texto, CSV o una imagen · hasta 8 MB</span>
 </div></div>
 
-<script src="markdown.js?v=hud3"></script>
-<script src="js/datos.js?v=hud3"></script>
-<script src="js/os-boca.js?v=hud3"></script>
-<script src="js/voz.js?v=hud3"></script>
-<script src="js/os.js?v=hud3"></script>
-<script src="js/trabajo.js?v=hud3"></script>
+<script src="markdown.js?v=hud4"></script>
+<script src="js/datos.js?v=hud4"></script>
+<script src="js/os-boca.js?v=hud4"></script>
+<script src="js/voz.js?v=hud4"></script>
+<script src="js/os.js?v=hud4"></script>
+<script src="js/trabajo.js?v=hud4"></script>
 <!-- El centro: el núcleo se carga siempre; el busto en 3D solo si se pide. -->
-<script type="module" src="js/os-nucleo.js?v=hud3"></script>
-<script src="js/os-puerta.js?v=hud3"></script>
+<script type="module" src="js/os-nucleo.js?v=hud4"></script>
+<script src="js/os-puerta.js?v=hud4"></script>
 </body>
 </html>
