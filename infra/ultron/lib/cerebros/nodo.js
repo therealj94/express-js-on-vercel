@@ -702,9 +702,13 @@ async function pensar({ miembro, junta, texto, conversacionId, previa: previaDad
   /* Lo que queda del presupuesto del turno. Todo lo opcional lo consulta. */
   const quedaMs = () => presupuestoMs() - (Date.now() - tArranque);
 
-  const pideCambioYa = /repo_proponer_cambio|sin leer|propon[eé] un (pr|cambio|PR)/i.test(String(texto || ''));
+  const rawPedido = String(texto || '');
+  const pideCambioYa = /repo_proponer_cambio|sin leer|propon[eé]|mezcl[aá]|repo_mezclar/i.test(rawPedido);
+  const pideMezcla = /repo_mezclar|mezcl[aá](r| el)?\s*(el )?pr/i.test(rawPedido);
   if (pideCambioYa) {
-    mensajes.push({ role: 'user', content: '[sistema] El dueño pidió PROPONER un cambio ya. En la primera vuelta llamá repo_proponer_cambio. NO llames repo_leer ni repo_arbol ni mas_herramientas.' });
+    mensajes.push({ role: 'user', content: pideMezcla
+      ? '[sistema] El dueño pidió MEZCLAR. Primera vuelta: SOLO repo_mezclar con el número. Cero repo_leer, cero mas_herramientas, cero texto antes de la tool.'
+      : '[sistema] El dueño pidió PROPONER. Primera vuelta: SOLO repo_proponer_cambio. Cero repo_leer, cero repo_arbol, cero mas_herramientas. Si no tenés el archivo entero, escribí el cambio pedido y proponé.' });
   }
   for (let vuelta = 0; vuelta < MAX_VUELTAS; vuelta++) {
     /* Se cortó entre vueltas: ni una herramienta más. Un turno cancelado en la
