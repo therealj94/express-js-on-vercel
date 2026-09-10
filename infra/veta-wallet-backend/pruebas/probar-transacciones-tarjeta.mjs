@@ -41,6 +41,10 @@ function funciones() {
     "fechaDeMovimiento",
     "movimientoAVeta",
     "consultaDeMovimientos",
+    "rangoDeCiclo",
+    "esCicloDeCompra",
+    "claveDeCompra",
+    "sinDuplicados",
   ];
   const ops = TARJETAS.match(/const OPERACIONES_BUSQUEDA = \[[\s\S]*?\];/)?.[0] || "";
   const cuerpos = nombres.map((n) => {
@@ -59,6 +63,10 @@ const {
   fechaDeMovimiento,
   movimientoAVeta,
   consultaDeMovimientos,
+  rangoDeCiclo,
+  esCicloDeCompra,
+  claveDeCompra,
+  sinDuplicados,
 } = funciones();
 titulo("la puerta, la documentada");
 
@@ -124,6 +132,45 @@ const dias = (Date.parse(to) - Date.parse(from)) / 86400000;
 ok(dias > 300, `el rango por omisión cubre un año, no 7 días (${dias.toFixed(0)} días)`);
 ok(consultaDeMovimientos({ cardId: "x", from: "2026-01-01", to: "2026-01-31" }).fromDate === "2026-01-01",
   "from/to del pedido mandan sobre el omisión");
+
+titulo("una compra no se lista dos veces");
+
+ok(rangoDeCiclo("TRANSACTION_CLEARED") > rangoDeCiclo("TRANSACTION_APPROVED"),
+  "CLEARED gana a APPROVED");
+ok(esCicloDeCompra("TRANSACTION_APPROVED") && esCicloDeCompra("TRANSACTION_CLEARED")
+  && !esCicloDeCompra("TRANSACTION_REFUND"),
+  "solo el ciclo de compra se junta; una devolución no");
+ok(claveDeCompra({ merchant: "Abarroteria  Ramos", amount: 1.1268 })
+  === claveDeCompra({ merchant: "ABARROTERIA RAMOS", amount: 1.1268 }),
+  "el comercio se compara sin mayúsculas ni espacios de más");
+
+const ramosAprobada = {
+  id: "tx-ap", merchant: "ABARROTERIA RAMOS", amount: 1.1268,
+  date: "2026-09-08T18:00:00Z", type: "TRANSACTION_APPROVED", status: "SUCCESS",
+};
+const ramosLiquidada = {
+  id: "tx-cl", merchant: "ABARROTERIA RAMOS", amount: 1.1268,
+  date: "2026-09-09T10:00:00Z", type: "TRANSACTION_CLEARED", status: "SUCCESS",
+};
+const ramos = sinDuplicados([ramosLiquidada, ramosAprobada]);
+ok(ramos.length === 1, "Ramos 0.45 ORIGEN no se lista dos veces", String(ramos.length));
+ok(ramos[0].type === "TRANSACTION_CLEARED", "se queda el liquidado");
+ok(ramos[0].date === ramosAprobada.date, "la fecha es la del datáfono, la que la gente recuerda");
+ok(ramos[0].id === "tx-cl", "el id que queda es el del liquidado");
+
+const gas2 = { merchant: "UNO MONTECARLO", amount: 1.13, date: "2026-07-02T12:00:00Z", type: "TRANSACTION_CLEARED" };
+const gas8 = { merchant: "UNO MONTECARLO", amount: 1.13, date: "2026-07-08T12:00:00Z", type: "TRANSACTION_APPROVED" };
+ok(sinDuplicados([gas2, gas8]).length === 2,
+  "dos compras iguales a más de cinco días no se juntan");
+
+const compra = { merchant: "X", amount: 5, date: "2026-09-01T00:00:00Z", type: "TRANSACTION_CLEARED" };
+const devolucion = { merchant: "X", amount: 5, date: "2026-09-02T00:00:00Z", type: "TRANSACTION_REFUND" };
+ok(sinDuplicados([compra, devolucion]).length === 2,
+  "una devolución no se come la compra");
+
+const recarga = { merchant: "WALLET", amount: 10, date: "2026-09-01T00:00:00Z", type: "WALLET_DEPOSIT" };
+ok(sinDuplicados([ramosAprobada, ramosLiquidada, recarga]).length === 2,
+  "una recarga no entra al grupo de la compra");
 
 console.log("");
 if (fallos) {

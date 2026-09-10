@@ -117,6 +117,8 @@ const VETA = (() => {
   let emision = null;
   let movsTarjeta = [];
   let errMovsTarjeta = null;  // distinto de lista vacía: un fallo no es «no gastaste»
+  let movAbierto = null;        // el movimiento cuya ficha está abierta
+  let detalleMov = null;        // el detalle que pidió el emisor, si llegó
   let tarjetaCargando = false;
   let volteada = false;         // la tarjeta, de frente o de espaldas
   /* El numero, el CVV y el vencimiento viven SOLO en memoria y solo mientras
@@ -1550,7 +1552,7 @@ const VETA = (() => {
     try { llamadaParar(); } catch {}
     sesion = null; cartera = null; errCartera = null; identidad = null;
     movimientos = null; transferencias = []; tarjeta = null; movsTarjeta = []; errMovsTarjeta = null;
-    emision = null; tarjetaCargando = false; ocultos = false;
+    emision = null; tarjetaCargando = false; movAbierto = null; detalleMov = null; ocultos = false;
     // El expediente de verificación se va con la sesión: dentro hay un número de
     // documento y dos fotografías, y no tienen por qué sobrevivir a un «salir».
     sol = null;
@@ -1690,7 +1692,7 @@ const VETA = (() => {
       return;
     }
     try {
-      const d = await pedir('/cards/transactions?limit=20');
+      const d = await pedir('/cards/transactions?limit=50');
       movsTarjeta = Array.isArray(d) ? d : (d?.items || d?.transactions || d?.data || d?.movements || []);
       if (!Array.isArray(movsTarjeta)) movsTarjeta = [];
       errMovsTarjeta = null;
@@ -2177,7 +2179,7 @@ const VETA = (() => {
     vistaDato = dato ?? null;
     // Salir de la tarjeta borra el numero y el CVV de la memoria y la deja de
     // frente otra vez. Nadie tiene por que volver y encontrarselos puestos.
-    if (vistaActual === 'tarjeta' && cual !== 'tarjeta') { secretoTarjeta = null; volteada = false; }
+    if (vistaActual === 'tarjeta' && cual !== 'tarjeta') { secretoTarjeta = null; volteada = false; cerrarMov(); }
     if (vistaActual === 'lector' && cual !== 'lector') cerrarCamara();
     // El latido del chat solo late mientras el chat esta en pantalla: un
     // intervalo vivo en segundo plano es trafico que nadie mira.
@@ -4897,7 +4899,7 @@ const VETA = (() => {
     return `
     <div class="bloque vidrio">
       <h3>${t('tar.movs')}</h3>
-      ${lista.length ? lista.map(m => {
+      ${lista.length ? lista.map((m, i) => {
         const nombre = m.merchant || m.description || m.merchantName || m.merchant_name || '—';
         const fecha = m.date || m.createdAt || m.datetime || m.timestamp;
         const origen = m.origenAmount;
@@ -4906,20 +4908,114 @@ const VETA = (() => {
           ? `${tapa(oro(Math.abs(Number(origen))))} ORIGEN`
           : tapa(usd(Math.abs(Number(dolares ?? 0))));
         return `
-        <div class="hilera">
+        <button type="button" class="hilera tar-mov" onclick="VETA.abrirMov(${i})">
           <div class="ic"><svg viewBox="0 0 24 24">${ICO.tarjeta}</svg></div>
           <div class="txt">
             <b>${esc(nombre)}</b>
             <small>${esc(cuando(fecha) || m.status || m.type || '')}</small>
           </div>
           <div class="val sale">${cifra}</div>
-        </div>`;
+        </button>`;
       }).join('')
       : errMovsTarjeta
         ? `<p class="pie" style="margin-top:8px;color:var(--coral)">${t('tar.movsErr')}</p>
            <div style="margin-top:12px"><button class="btn btn-linea btn-sm" onclick="VETA.reintentarMovs()">${t('saldo.re')}</button></div>`
         : `<p class="pie" style="margin-top:8px">${t('tar.sinMovs')}</p>`}
-    </div>`;
+    </div>
+    <div id="tar-ficha" class="tar-ficha oculto" role="dialog" aria-modal="true" aria-labelledby="tar-ficha-tit"></div>`;
+  }
+
+  function tipoMov(tipo) {
+    const k = {
+      TRANSACTION_CLEARED: 'tar.tipoCompra',
+      TRANSACTION_APPROVED: 'tar.tipoAprobada',
+      TRANSACTION_AUTHORIZATION: 'tar.tipoAprobada',
+      TRANSACTION_REJECTED: 'tar.tipoRechazada',
+      TRANSACTION_REVERSED: 'tar.tipoReverso',
+      TRANSACTION_REFUND: 'tar.tipoDevolucion',
+      WALLET_DEPOSIT: 'tar.tipoRecarga',
+      WALLET_WITHDRAWAL: 'tar.tipoRetiro',
+      VISA_DIRECT_DEPOSIT: 'tar.tipoRecarga',
+      APPROVED: 'tar.tipoAprobada',
+      DECLINED: 'tar.tipoRechazada',
+    }[tipo];
+    return k ? t(k) : (tipo || '—');
+  }
+
+  function lempirasDe(usdAmount) {
+    const tasa = (tasas || TASAS_REF).HNL;
+    const n = Number(usdAmount);
+    if (!Number.isFinite(n) || tasa == null) return null;
+    return n * tasa;
+  }
+
+  function cifraHnl(n) {
+    if (n == null || !Number.isFinite(Number(n))) return '—';
+    return 'L ' + Number(n).toLocaleString('es-HN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+
+  function pintarFichaMov() {
+    const caja = $('#tar-ficha');
+    if (!caja || !movAbierto) return;
+    const m = movAbierto;
+    const d = detalleMov || {};
+    const nombre = d.merchantName || m.merchant || '—';
+    const origen = d.billAmount ?? m.origenAmount;
+    const dolares = d.billAmountUsd ?? m.amount;
+    const hnl = lempirasDe(dolares);
+    const tasa = (tasas || TASAS_REF).HNL;
+    const fecha = d.datetime || m.date;
+    const filas = [
+      [t('tar.movFecha'), fechaLarga(fecha) || cuando(fecha) || '—'],
+      [t('tar.movUsd'), dolares != null ? usd(Math.abs(Number(dolares))) : '—'],
+      [t('tar.movHnl'), hnl != null ? cifraHnl(Math.abs(hnl)) : '—'],
+      [t('tar.movEstado'), d.status || m.status || '—'],
+      [t('tar.movTipo'), tipoMov(d.operation || m.type)],
+    ];
+    const origAmt = d.transactionAmount ?? m.transactionAmount;
+    const origCur = d.transactionCurrency ?? m.transactionCurrency;
+    const cambio = d.exchangeRate ?? m.exchangeRate;
+    if (origAmt != null && origCur && origCur !== 'USD') {
+      filas.push([t('tar.movOriginal'), `${origAmt} ${origCur}`]);
+    }
+    if (cambio != null) filas.push([t('tar.movCambio'), String(cambio)]);
+    if (d.newBalance != null) filas.push([t('tar.movSaldo'), `${oro(d.newBalance)} ORIGEN`]);
+    if (d.declineReason) filas.push([t('tar.movRechazo'), d.declineReason]);
+    const alDia = tasas
+      ? rell(t('tar.movAlDia'), { t: cifraHnl(tasa) })
+      : rell(t('tar.movAlDiaRef'), { t: cifraHnl(tasa) });
+    caja.innerHTML = `
+      <div class="tar-ficha-caja" onclick="event.stopPropagation()">
+        <h3 id="tar-ficha-tit">${esc(nombre)}</h3>
+        <p class="tar-ficha-monto">${origen != null ? `${tapa(oro(Math.abs(Number(origen))))} ORIGEN` : '—'}</p>
+        <p class="pie" style="margin-top:6px">${esc(alDia)}</p>
+        <dl class="datos" style="margin-top:16px">${filas.map(([k, v]) =>
+          `<div><dt>${esc(k)}</dt><dd>${esc(v)}</dd></div>`).join('')}</dl>
+        <button class="btn btn-linea btn-full" style="margin-top:18px" onclick="VETA.cerrarMov()">${t('tar.movCerrar')}</button>
+      </div>`;
+    caja.classList.remove('oculto');
+    caja.onclick = cerrarMov;
+  }
+
+  function abrirMov(i) {
+    const lista = Array.isArray(movsTarjeta) ? movsTarjeta : [];
+    const m = lista[i];
+    if (!m) return;
+    movAbierto = m;
+    detalleMov = null;
+    pintarFichaMov();
+    if (!tasas) cargarTasas().then(() => { if (movAbierto) pintarFichaMov(); });
+    if (!m.id) return;
+    pedir(`/cards/transactions/${encodeURIComponent(m.id)}`)
+      .then((d) => { if (movAbierto && movAbierto.id === m.id) { detalleMov = d; pintarFichaMov(); } })
+      .catch(() => {});
+  }
+
+  function cerrarMov() {
+    movAbierto = null;
+    detalleMov = null;
+    const caja = $('#tar-ficha');
+    if (caja) { caja.classList.add('oculto'); caja.innerHTML = ''; caja.onclick = null; }
   }
 
   // El numero de una tarjeta se lee en grupos de cuatro. De corrido no se puede
@@ -16397,7 +16493,7 @@ const VETA = (() => {
            llaveAbrir, llaveCerrar, llaveEntrar,
            llaveCuantas, llaveOjo, llaveModo,
            importarAbrir, importarSalir, importarElegir, importarHacer,
-           tapar, copiarContrato, congelar, revelar, pedirTarjeta, recargarTarjeta, reintentarMovs, cambioMonto, elegirDestino,
+           tapar, copiarContrato, congelar, revelar, pedirTarjeta, recargarTarjeta, reintentarMovs, abrirMov, cerrarMov, cambioMonto, elegirDestino,
            voltear, olvidar, remMonto, remPais, refrescarTasas, nuevoContacto, borrarContacto,
            enviarA, abrirCamara, cerrarCamara, pedirSecreto, copiarTexto, guardarNombre,
            // Enviar cualquier token, no solo ORIGEN.

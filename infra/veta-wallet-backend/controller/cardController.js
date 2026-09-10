@@ -108,7 +108,63 @@ function movimientoAVeta(tx, ogTokenPrice) {
     status: tx.status,
     type: tx.operation || tx.type || "purchase",
     mcc: tx.mcc,
+    billCurrency: tx.bill_currency || tx.billCurrency || "USD",
+    transactionAmount: tx.transaction_amount ?? tx.transactionAmount ?? null,
+    transactionCurrency: tx.transaction_currency || tx.transactionCurrency || null,
+    exchangeRate: tx.exchange_rate ?? tx.exchangeRate ?? null,
   };
+}
+
+/* Una compra deja dos eventos: APPROVED (el datáfono) y CLEARED (la
+   liquidación, uno o dos días después). En el portal de CryptoMate se
+   ven los dos; en la tarjeta de la gente es el mismo pago dos veces —
+   Abarrotería Ramos 0.4507 ORIGEN el 9 sept y otra vez «hace 20 h».
+   Se juntan por comercio + monto, en una ventana de cinco días, y se
+   queda el CLEARED con la fecha de cuando se tocó el plástico. */
+function rangoDeCiclo(tipo) {
+  const t = String(tipo || "").toUpperCase();
+  if (t.includes("CLEARED")) return 3;
+  if (t.includes("APPROVED") || t === "APPROVED") return 2;
+  if (t.includes("AUTHORIZATION")) return 1;
+  return 0;
+}
+
+function esCicloDeCompra(tipo) {
+  return rangoDeCiclo(tipo) > 0;
+}
+
+function claveDeCompra(tx) {
+  const merc = String(tx.merchant || "").trim().toUpperCase().replace(/\s+/g, " ");
+  const usd = Math.round(Number(tx.amount || 0) * 100);
+  return merc + "|" + usd;
+}
+
+function sinDuplicados(lista) {
+  const arr = Array.isArray(lista) ? lista : [];
+  const ciclos = [];
+  const otros = [];
+  for (const tx of arr) {
+    (esCicloDeCompra(tx.type) ? ciclos : otros).push(tx);
+  }
+  const VENTANA = 5 * 24 * 60 * 60 * 1000;
+  const grupos = [];
+  for (const tx of ciclos) {
+    const clave = claveDeCompra(tx);
+    const t = Date.parse(tx.date) || 0;
+    let g = grupos.find((x) => x.clave === clave && Math.abs((x.t || 0) - t) < VENTANA);
+    if (!g) {
+      g = { clave, t, txs: [] };
+      grupos.push(g);
+    }
+    g.txs.push(tx);
+    if (t && (!g.t || t < g.t)) g.t = t;
+  }
+  const unicos = grupos.map((g) => {
+    const porFecha = g.txs.slice().sort((a, b) => (Date.parse(a.date) || 0) - (Date.parse(b.date) || 0));
+    const porCiclo = g.txs.slice().sort((a, b) => rangoDeCiclo(b.type) - rangoDeCiclo(a.type));
+    return { ...porCiclo[0], date: porFecha[0].date };
+  });
+  return [...unicos, ...otros].sort((a, b) => (Date.parse(b.date) || 0) - (Date.parse(a.date) || 0));
 }
 
 function consultaDeMovimientos({ cardId, page = 1, limit = 10, from, to }) {
@@ -155,7 +211,7 @@ async function movimientosDeLaTarjeta(card, user, { page = 1, limit = 10, from, 
     }
     crudos = [];
   }
-  let transactions = crudos.map((tx) => movimientoAVeta(tx, ogTokenPrice));
+  let transactions = sinDuplicados(crudos.map((tx) => movimientoAVeta(tx, ogTokenPrice)));
   /* Si el emisor no contestó nada, se miran los avisos que ya dejó el
      webhook: un pago aprobado que CryptoMate tiene en el portal y que
      nosotros anotamos al autorizarlo no puede desaparecer de la pantalla. */

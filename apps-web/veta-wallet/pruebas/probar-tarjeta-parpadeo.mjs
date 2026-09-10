@@ -19,7 +19,8 @@
  *      se pinta y se queda. No hay bucle.
  *   2. Los movimientos que manda el backend ({ transactions, merchant,
  *      date, origenAmount }) se leen y se ven en ORIGEN.
- *   3. Un 500 de movimientos no se traduce en «todavía no hay consumos».
+ *   3. Tocar un pago abre la ficha: dólares, lempiras al día, fecha.
+ *   4. Un 500 de movimientos no se traduce en «todavía no hay consumos».
  */
 import { chromium } from 'playwright';
 import { spawn } from 'node:child_process';
@@ -78,18 +79,41 @@ await pag.route('**/cards/emision', (r) => {
   emisionVeces++;
   r.fulfill({ status: 500, json: { message: 'boom' } });
 });
-await pag.route('**/cards/transactions**', (r) => r.fulfill({ json: {
-  transactions: [{
-    id: 'tx-cafe',
-    merchant: 'Café Central',
-    date: '2026-09-08T18:40:00Z',
-    amount: 12.5,
-    origenAmount: 5,
-    currency: 'ORIGEN',
-    status: 'SUCCESS',
-    type: 'TRANSACTION_CLEARED',
-  }],
-  total: 1, page: 1, ogTokenPrice: 2.5,
+await pag.route('**/cards/transactions**', (r) => {
+  const path = new URL(r.request().url()).pathname;
+  if (/\/cards\/transactions\/[^/]+$/.test(path)) {
+    return r.fulfill({ json: {
+      id: 'tx-cafe',
+      datetime: '2026-09-08T18:40:00Z',
+      operation: 'TRANSACTION_CLEARED',
+      status: 'SUCCESS',
+      merchantName: 'Café Central',
+      billAmount: 5,
+      billAmountUsd: 12.5,
+      billCurrency: 'USD',
+      transactionAmount: 12.5,
+      transactionCurrency: 'USD',
+      newBalance: 3,
+    } });
+  }
+  return r.fulfill({ json: {
+    transactions: [{
+      id: 'tx-cafe',
+      merchant: 'Café Central',
+      date: '2026-09-08T18:40:00Z',
+      amount: 12.5,
+      origenAmount: 5,
+      currency: 'ORIGEN',
+      status: 'SUCCESS',
+      type: 'TRANSACTION_CLEARED',
+    }],
+    total: 1, page: 1, ogTokenPrice: 2.5,
+  } });
+});
+await pag.route('**/open.er-api.com/**', (r) => r.fulfill({ json: {
+  result: 'success',
+  time_last_update_utc: 'Thu, 10 Sep 2026 00:00:00 +0000',
+  rates: { USD: 1, HNL: 26.12, GTQ: 7.77, NIO: 36.6, CRC: 512, MXN: 18.5, COP: 4050 },
 } }));
 await pag.route('**/herokuapp.com/**', (r) => r.fulfill({ status: 200, json: {} }));
 await pag.route('**/api.coingecko.com/**', (r) => r.fulfill({ json: {} }));
@@ -132,6 +156,24 @@ const cuerpo = await pag.locator('#lienzo').innerText();
 ok('sale el comercio', /Café Central/.test(cuerpo));
 ok('sale en ORIGEN, no en dólares sueltos', /ORIGEN/.test(cuerpo) && /Café Central/.test(cuerpo));
 ok('no dice que no hay consumos', !/Todavía no hay consumos/.test(cuerpo));
+ok('la fila se puede tocar', await pag.locator('button.tar-mov').count() === 1);
+
+console.log('\n── tocar un pago abre dólares y lempiras ─────────────────────');
+await pag.locator('button.tar-mov').click();
+await pag.waitForSelector('#tar-ficha:not(.oculto)', { timeout: 8000 });
+await pag.waitForFunction(() => {
+  const f = document.getElementById('tar-ficha');
+  return f && /Lempiras/.test(f.innerText) && /Dólares/.test(f.innerText);
+}, null, { timeout: 8000 });
+const ficha = await pag.locator('#tar-ficha').innerText();
+ok('la ficha dice el comercio', /Café Central/.test(ficha));
+ok('la ficha dice los dólares', /\$12\.50/.test(ficha));
+ok('la ficha dice lempiras', /Lempiras/.test(ficha) && /L /.test(ficha));
+ok('la ficha dice la fecha', /8 de septiembre|septiembre/.test(ficha.toLowerCase()) || /8 sept/.test(ficha.toLowerCase()));
+await pag.locator('#tar-ficha .btn').click();
+await pag.waitForFunction(() => document.getElementById('tar-ficha')?.classList.contains('oculto'),
+  null, { timeout: 4000 });
+ok('cerrar deja la lista', await pag.locator('#tar-ficha.oculto').count() === 1);
 
 console.log('\n── un fallo de movimientos no miente ─────────────────────────');
 await pag.unroute('**/cards/transactions**');
