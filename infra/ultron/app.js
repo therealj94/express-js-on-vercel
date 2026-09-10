@@ -1356,40 +1356,44 @@ app.get('/apk', (req, res) => {
   res.type('html').send(`<!doctype html><html lang="es"><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>ULTRON FP para Android</title>
+<meta name="theme-color" content="#05090C">
 <style>
  :root{--fondo:#05090C;--cian:#38E1FF;--tenue:#8FA3B0;--linea:rgba(56,225,255,.22)}
  *{box-sizing:border-box}
  body{margin:0;min-height:100dvh;background:var(--fondo);color:#DCE6ED;
-   font:15px/1.6 ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
-   display:flex;align-items:center;justify-content:center;padding:24px}
- .caja{width:100%;max-width:420px}
- .marca{letter-spacing:.34em;font-size:12px;color:var(--cian);margin-bottom:22px}
- h1{font-size:26px;line-height:1.25;margin:0 0 6px;font-weight:600}
- .sub{color:var(--tenue);font-size:13.5px;margin-bottom:26px}
+   font:16px/1.55 ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+   display:flex;align-items:center;justify-content:center;padding:max(20px,env(safe-area-inset-top)) 18px max(24px,env(safe-area-inset-bottom))}
+ .caja{width:100%;max-width:440px}
+ .marca{letter-spacing:.34em;font-size:12px;color:var(--cian);margin-bottom:18px}
+ h1{font-size:24px;line-height:1.25;margin:0 0 6px;font-weight:600}
+ .sub{color:var(--tenue);font-size:14px;margin-bottom:22px}
  a.btn{display:block;text-align:center;text-decoration:none;padding:16px;
-   background:var(--cian);color:#031014;font-weight:700;letter-spacing:.12em;font-size:14px;
-   clip-path:polygon(0 0,calc(100% - 12px) 0,100% 12px,100% 100%,12px 100%,0 calc(100% - 12px))}
- ul{list-style:none;padding:0;margin:26px 0 0;border-top:1px solid var(--linea)}
- li{padding:11px 0;border-bottom:1px solid rgba(143,163,176,.14);display:flex;gap:12px;font-size:13.5px}
- li b{color:var(--cian);font-weight:600;min-width:104px;flex:none}
- .pie{margin-top:22px;color:var(--tenue);font-size:12.5px;line-height:1.65}
+   background:var(--cian);color:#031014;font-weight:700;letter-spacing:.08em;font-size:15px;
+   min-height:48px;clip-path:polygon(0 0,calc(100% - 12px) 0,100% 12px,100% 100%,12px 100%,0 calc(100% - 12px))}
+ a.sec{display:block;text-align:center;margin-top:12px;color:var(--cian);font-size:14px;min-height:44px;padding-top:10px}
+ ol{padding:0 0 0 22px;margin:22px 0 0;border-top:1px solid var(--linea)}
+ li{padding:12px 0;border-bottom:1px solid rgba(143,163,176,.14);font-size:14px}
+ li b{color:var(--cian);font-weight:600}
+ .pie{margin-top:20px;color:var(--tenue);font-size:12.5px;line-height:1.65}
  code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px;word-break:break-all;color:var(--tenue)}
 </style>
 <div class="caja">
  <div class="marca">ORDEN GLOBAL</div>
  <h1>ULTRON FP para Android</h1>
- <div class="sub">Versión ${ficha.version || '?'} · ${mb} MB · Android 7 en adelante</div>
- <a class="btn" href="/apk/ultron.apk">DESCARGAR E INSTALAR</a>
- <ul>
-  <li><b>Al instalar</b><span>Android va a avisar que viene de fuera de la tienda. Es normal: la app la firma Orden Global, no Google. Toque «Instalar de todos modos».</span></li>
-  <li><b>Micrófono</b><span>Lo pide la primera vez que toque el centro para hablar. Sin él se puede escribir igual.</span></li>
-  <li><b>Se actualiza sola</b><span>El tablero se sirve desde aquí, así que lo nuevo aparece sin reinstalar nada. Si algún día cambia la app misma, ella avisa y se actualiza en un toque.</span></li>
- </ul>
+ <div class="sub">App ${ficha.version || '1.2'} · ${mb} MB · Android 7+</div>
+ <a class="btn" href="/apk/ultron.apk">DESCARGAR APK</a>
+ <a class="sec" href="/">Abrir en el navegador (se instala como app)</a>
+ <ol>
+  <li><b>Chrome / Samsung:</b> al bajar, toque el aviso de descarga → Abrir.</li>
+  <li><b>Origen desconocido:</b> Ajustes → Apps → app que usó para bajar (Chrome) → Instalar apps desconocidas → Permitir.</li>
+  <li><b>Instalar de todos modos</b> si Play Protect avisa. La firma de abajo tiene que coincidir.</li>
+  <li><b>Micrófono:</b> la primera vez que toque el centro. Sin él se escribe igual.</li>
+  <li>El tablero se actualiza solo. Reinstale el APK solo si la app se lo pide.</li>
+ </ol>
  <div class="pie">
-  Firma de la app (SHA-256):<br><code>${(ficha.firma_sha256 || '').replace(/(..)(?=.)/g, '$1:').toUpperCase()}</code><br><br>
-  Si alguna vez instala un ULTRON que no muestre esta misma firma, no es el nuestro.
+  Firma SHA-256:<br><code>${(ficha.firma_sha256 || '').replace(/(..)(?=.)/g, '$1:').toUpperCase()}</code>
  </div>
-</div>`);
+</div>
 });
 
 /* LA CONSOLA vive en public/: una sola puerta, en la raíz. */
