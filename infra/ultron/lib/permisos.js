@@ -21,11 +21,11 @@
  *              un documento. Reversible y de puertas adentro.
  *   peligroso  puede romper algo o cuesta dinero: un comando en la terminal,
  *              un cambio propuesto al repositorio, desplegarse, aplicar un
- *              secreto en producción. SIEMPRE con autorización del dueño,
- *              aunque lo pida el propio dueño —el clic en el panel es la
- *              segunda firma, y protege contra un modelo que actúe «en su
- *              nombre» por una instrucción colada en un documento—.
- *   fuera      sale de la casa: un mensaje a un teléfono, un correo. Igual.
+ *              secreto en producción. El DUEÑO lo ejecuta en su sesión
+ *              (manos libres). La junta lo pide y el dueño lo aprueba con un
+ *              clic. Se apaga con ULTRON_MANOS_LIBRES=off.
+ *   fuera      sale de la casa: un mensaje a un teléfono, un correo.
+ *              Siempre con clic, también el dueño.
  *
  * ── TRES ROLES ──────────────────────────────────────────────────────────────
  *
@@ -118,6 +118,11 @@ function rolDe(actor, junta = []) {
  * Devuelve { ok } o { ok:false, nivel, rol, motivo, autorizable }.
  * `autorizable` dice si un pedido al dueño lo destrabaría.
  */
+function manosLibres() {
+  const v = String(process.env.ULTRON_MANOS_LIBRES || 'on').trim().toLowerCase();
+  return v !== 'off' && v !== '0' && v !== 'no' && v !== 'false';
+}
+
 function puede(actor, herramienta, junta = []) {
   const nivel = nivelDe(herramienta);
   const rol = rolDe(actor, junta);
@@ -128,7 +133,13 @@ function puede(actor, herramienta, junta = []) {
       motivo: `Un bot del equipo no ${nivel === 'escribir' ? 'escribe' : 'hace'} eso por su cuenta: lo anota como pendiente y una persona decide.` };
   }
   if (nivel === 'escribir') return { ok: true, nivel, rol };
-  // peligroso o fuera: hace falta un pedido aprobado por el dueño, sea quien sea quien lo pide.
+  /* El dueño, en su sesión, ejecuta lo PELIGROSO. Eso es lo que José pidió
+     cuando dijo que Ultron «no hace cambios»: el segundo clic dejaba el
+     trabajo parado para siempre. Lo que SALE de la casa (WhatsApp, correo)
+     sigue pidiendo clic. ULTRON_MANOS_LIBRES=off vuelve al modo anterior. */
+  if (nivel === 'peligroso' && rol === 'dueño' && manosLibres()) {
+    return { ok: true, nivel, rol, manosLibres: true };
+  }
   return { ok: false, nivel, rol, autorizable: true,
     motivo: `«${herramienta}» es ${nivel === 'fuera' ? 'una acción hacia fuera' : 'una acción peligrosa'}: la aprueba el dueño en el panel antes de correr.` };
 }
@@ -293,7 +304,7 @@ function comprobarCatalogo(nombres = []) {
 }
 
 module.exports = {
-  NIVELES, NIVEL_DE, nivelDe, dueñoDe, rolDe, puede, pedir, consumirAprobacion, resolver, lista, pendientes,
+  NIVELES, NIVEL_DE, nivelDe, dueñoDe, rolDe, puede, manosLibres, pedir, consumirAprobacion, resolver, lista, pendientes,
   aprobadoPorId, marcarUsado, aprobadosSinUsar,
   huellaDe, resumir, comprobarCatalogo, VENCE_MS, _adentro: { provisional, Pedido },
 };
