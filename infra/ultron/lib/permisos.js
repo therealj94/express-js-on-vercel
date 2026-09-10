@@ -308,3 +308,4 @@ module.exports = {
   aprobadoPorId, marcarUsado, aprobadosSinUsar,
   huellaDe, resumir, comprobarCatalogo, VENCE_MS, _adentro: { provisional, Pedido },
 };
+// taller ok
