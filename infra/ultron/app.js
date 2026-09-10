@@ -1393,7 +1393,7 @@ app.get('/apk', (req, res) => {
  <div class="pie">
   Firma SHA-256:<br><code>${(ficha.firma_sha256 || '').replace(/(..)(?=.)/g, '$1:').toUpperCase()}</code>
  </div>
-</div>
+</div>`);
 });
 
 /* LA CONSOLA vive en public/: una sola puerta, en la raíz. */
