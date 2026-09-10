@@ -47,7 +47,7 @@ const CERT = (process.env.ULTRON_NODO_CERT || '').trim();
    gasto y el que sale en el registro. Tiene que cuadrar con
    /etc/ogb-tarjeta.env o los turnos quedan anotados a nombre de otro. */
 const MODELO = process.env.ULTRON_NODO_MODELO || 'orcarouter/Qwen3.8-27B-Uncensored';
-const MAX_VUELTAS = 6;
+const MAX_VUELTAS = 16;
 const PLAZO_MS = 170_000;
 /* ── EL PRESUPUESTO DE TIEMPO DEL TURNO ──────────────────────────────────────
  *
