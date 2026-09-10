@@ -46,7 +46,7 @@ const memoria = require('./memoria');
 
 const MODELO = process.env.ULTRON_MODELO || 'claude-fable-5-1';
 const MAX_SALIDA = Number(process.env.ULTRON_MAX_SALIDA || 6000);
-const MAX_VUELTAS = 8;   // herramientas por turno: suficiente para pensar, no para dar vueltas
+const MAX_VUELTAS = 16;  // herramientas por turno: alcanza para leer + editar + verificar
 
 /* LO QUE CUESTA PENSAR, por millón de fichas. Del cuadro de precios de la API,
    no de una estimación: entrada, salida y lectura de caché.
