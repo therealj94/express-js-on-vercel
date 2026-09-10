@@ -12,3 +12,4 @@ Para volver al modo anterior (todo con clic): `ULTRON_MANOS_LIBRES=off` en Herok
 
 También: 16 vueltas por turno (antes 6–8) y terminal de 120 s (antes 60).
 
+prueba token pr
