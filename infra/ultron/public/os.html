@@ -807,60 +807,125 @@ body.arrancando #hablar,body.cerrada #hablar{visibility:hidden;pointer-events:no
   font-family:var(--mono);font-size:10px;letter-spacing:.12em;cursor:pointer}
 #atajos button:active{background:var(--cian);color:#031014}
 
-/* ══ HUD 4 · 10 SEP 2026 — se ve desde el primer fotograma ═══════════════
-   La cinta cian no es adorno: es la prueba de que esta pantalla NO es la de
-   Ingresar. Va en el HTML (sin JS), con estilo en línea, para que un teléfono
-   con el JavaScript de ayer igual pinte el HUD nuevo. */
-#hud-cinta{position:fixed;top:0;left:0;right:0;z-index:120;
-  background:var(--cian);color:#031014;
-  font-family:var(--mono);font-size:12px;letter-spacing:.2em;font-weight:700;
-  text-align:center;padding:9px 12px calc(9px + env(safe-area-inset-top,0px))}
-#entrada{padding-top:calc(28px + 24px + env(safe-area-inset-top,0px)) !important}
-#entrada{background:
-  repeating-linear-gradient(180deg,transparent 0 2px,rgba(5,225,255,.04) 2px 3px),
-  radial-gradient(ellipse 60% 50% at 50% 45%,rgba(4,7,11,0) 0%,rgba(4,7,11,.72) 62%,rgba(4,7,11,.93) 100%) !important}
-.eco-marca{font-size:clamp(44px,12vw,72px);letter-spacing:.22em;color:var(--cian) !important;
-  text-shadow:0 0 40px rgba(5,225,255,.7)}
-.pt-hud{margin:0 0 10px;font-family:var(--mono);font-size:10px;letter-spacing:.22em;
-  color:#031014;background:var(--cian);padding:7px 10px;font-weight:700;text-align:center}
-.pt-marca{color:var(--cian) !important;font-size:28px !important;letter-spacing:.22em !important}
-.pt-btn{min-height:48px;font-size:14px !important;letter-spacing:.2em !important}
-body:not(.arrancando):not(.cerrada) #os{padding-top:calc(32px + env(safe-area-inset-top,0px));box-sizing:border-box}
-body:not(.arrancando):not(.cerrada) #hud-cinta{font-size:10px;padding:6px 10px calc(6px + env(safe-area-inset-top,0px))}
-#pista-hablar{opacity:1 !important;background:rgba(5,225,255,.16) !important;color:var(--cian) !important;
-  font-size:11px !important;letter-spacing:.16em !important;padding:8px 14px !important}
-body.arrancando #pista-hablar,body.cerrada #pista-hablar,body.escuchando #pista-hablar{opacity:0 !important}
-@media (max-width:860px){
-  #techo{display:grid !important;grid-template-columns:1fr auto auto;align-items:center;gap:8px;
-    padding:10px 12px 8px;background:#04070b;border-bottom:1px solid rgba(5,225,255,.35)}
-  #techo .marca{grid-column:1}
-  #medidas{display:contents}
-  #medidas>div,#m-salud,#m-reloj,#mando-taller{display:none !important}
-  #m-boveda,#m-ajustes{display:inline-flex !important;align-items:center;justify-content:center;
-    min-height:44px;padding:0 12px;font-size:12px;letter-spacing:.16em;font-weight:700;
-    background:rgba(5,225,255,.16);border:1px solid var(--cian);color:var(--cian)}
+/* ══ HUD GROK · el chat es la pantalla, lo demás un botón ═══════════════ */
+body.hud:not(.arrancando):not(.cerrada) #holo,
+body.hud:not(.arrancando):not(.cerrada) #hablar,
+body.hud:not(.arrancando):not(.cerrada) #pista-hablar,
+body.hud:not(.arrancando):not(.cerrada) #velo,
+body.hud:not(.arrancando):not(.cerrada) #pista,
+body.hud:not(.arrancando):not(.cerrada) #tirador,
+body.hud:not(.arrancando):not(.cerrada) #muelle,
+body.hud:not(.arrancando):not(.cerrada) #atajos,
+body.hud:not(.arrancando):not(.cerrada) #globo-quien{
+  display:none !important}
+body.hud:not(.arrancando):not(.cerrada) #os{
+  grid-template-rows:auto minmax(0,1fr) auto;padding-top:0}
+body.hud:not(.arrancando):not(.cerrada) #techo{
+  display:flex;align-items:center;gap:8px;padding:10px 12px;
+  background:#04070b;border-bottom:1px solid rgba(5,225,255,.28)}
+body.hud:not(.arrancando):not(.cerrada) #techo .marca{flex:1;min-width:0}
+body.hud:not(.arrancando):not(.cerrada) #techo .marca i{font-size:13px;letter-spacing:.28em}
+body.hud:not(.arrancando):not(.cerrada) #medidas{display:flex;gap:6px;flex-shrink:0}
+body.hud:not(.arrancando):not(.cerrada) #medidas .esconde,
+body.hud:not(.arrancando):not(.cerrada) #m-reloj,
+body.hud:not(.arrancando):not(.cerrada) #m-salud{display:none !important}
+body.hud:not(.arrancando):not(.cerrada) #m-hilos,
+body.hud:not(.arrancando):not(.cerrada) #m-tablero,
+body.hud:not(.arrancando):not(.cerrada) #m-boveda,
+body.hud:not(.arrancando):not(.cerrada) #m-ajustes{
+  display:inline-flex !important;align-items:center;justify-content:center;
+  min-height:44px;padding:0 12px;font-size:11px;letter-spacing:.16em;font-weight:700;
+  background:rgba(5,225,255,.08);border:1px solid rgba(5,225,255,.35);color:var(--cian)}
+body.hud:not(.arrancando):not(.cerrada) #cuerpo{
+  grid-template-columns:1fr !important;padding:0;pointer-events:auto;min-height:0}
+body.hud:not(.arrancando):not(.cerrada) #paneles{display:none}
+body.hud:not(.arrancando):not(.cerrada) #centro{
+  grid-column:1;display:flex;flex-direction:column;min-height:0;height:100%}
+body.hud:not(.arrancando):not(.cerrada) #estado{
+  position:relative;left:auto;top:auto;padding:8px 16px 0;pointer-events:none}
+body.hud:not(.arrancando):not(.cerrada) #rastro{
+  position:relative;left:auto;right:auto;top:auto;z-index:6;
+  max-height:56px;padding:6px 16px 0;overflow-x:auto;overflow-y:hidden;
+  flex-wrap:nowrap}
+body.hud:not(.arrancando):not(.cerrada) #hilo-vacio{
+  flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  text-align:center;padding:24px 20px;gap:10px}
+body.hud:not(.arrancando):not(.cerrada) #hilo-vacio[hidden]{display:none !important}
+.hv-marca{font-size:28px;letter-spacing:.28em;color:var(--cian);font-weight:700}
+#hilo-vacio p{margin:0;font-size:14px;line-height:1.55;color:var(--tenue);max-width:36ch}
+body.hud:not(.arrancando):not(.cerrada) #globo{
+  position:relative !important;left:auto;right:auto;bottom:auto;
+  max-width:720px;width:100%;margin:0 auto;max-height:none;flex:1;min-height:0;
+  display:flex;animation:none;pointer-events:auto;z-index:5}
+body.hud:not(.arrancando):not(.cerrada) #globo.oculto{display:none}
+body.hud:not(.arrancando):not(.cerrada) #globo>div,
+body.hud:not(.arrancando):not(.cerrada) #globo>div>div{
+  clip-path:none;background:transparent !important;box-shadow:none;
+  padding:8px 16px 12px;flex:1;min-height:0;display:flex;flex-direction:column;overflow:hidden}
+body.hud:not(.arrancando):not(.cerrada) #dicho{
+  flex:1;overflow-y:auto;font-size:16px;line-height:1.5;display:flex;flex-direction:column;gap:12px;
+  pointer-events:auto !important}
+.burbuja{max-width:min(100%,560px);padding:12px 14px;border:1px solid rgba(5,225,255,.18);
+  background:rgba(8,18,28,.88)}
+.burbuja .quien{font-family:var(--mono);font-size:10px;letter-spacing:.18em;color:var(--cian);margin-bottom:6px}
+.burbuja.usted{margin-left:auto;background:rgba(5,225,255,.08);border-color:rgba(5,225,255,.4)}
+.burbuja.usted .quien{color:var(--tenue)}
+.burbuja.ultron{margin-right:auto}
+.burbuja.viva{border-color:var(--cian)}
+.burbuja .cuerpo p{margin:0 0 .55em}
+.burbuja .cuerpo p:last-child{margin:0}
+#dicho > .rg-turno{max-width:min(100%,560px);padding:12px 14px;border:1px solid var(--ambar);background:rgba(255,182,72,.08)}
+.shimmer{color:var(--cian);letter-spacing:.14em;font-family:var(--mono);font-size:12px}
+body.hud:not(.arrancando):not(.cerrada) #chips{pointer-events:auto;flex:none}
+body.hud:not(.arrancando):not(.cerrada) #pie{
+  background:#04070b;border-top:1px solid rgba(5,225,255,.22);padding:10px 12px calc(12px + var(--seguro-ab))}
+#velo-hud{position:fixed;inset:0;z-index:80;background:rgba(4,7,11,.62)}
+#cajon-hilos{position:fixed;inset:0 auto 0 0;width:min(360px,92vw);z-index:85;
+  background:#070e16;border-right:1px solid rgba(5,225,255,.28);
+  display:flex;flex-direction:column;padding:0 0 calc(12px + var(--seguro-ab))}
+#cajon-hilos[hidden],#velo-hud[hidden]{display:none !important}
+.ch-cab{display:flex;align-items:center;justify-content:space-between;padding:12px 14px;
+  border-bottom:1px solid rgba(5,225,255,.18);font-family:var(--mono);letter-spacing:.18em;color:var(--cian);font-size:12px}
+.ch-cab button,#tablero-cerrar{min-height:44px;padding:0 12px}
+#hilo-hoy{margin:10px 12px;width:calc(100% - 24px)}
+#lista-hilos{flex:1;overflow-y:auto;padding:0 12px 12px}
+#tablero-cab{display:flex;align-items:center;justify-content:space-between;padding:8px 4px 12px;
+  font-family:var(--mono);letter-spacing:.16em;color:var(--cian);font-size:12px}
+body.hud.ver-tablero #paneles{
+  display:flex !important;flex-direction:column;position:fixed;inset:0;z-index:82;
+  background:#04070b;overflow-y:auto;padding:12px 12px calc(24px + var(--seguro-ab));
+  transform:none;max-height:none}
+body.hud.ver-tablero #tablero-cab{display:flex}
+body.hud.ver-tablero #izq,body.hud.ver-tablero #der{
+  display:flex !important;flex-direction:column;overflow:visible;gap:10px}
+body.hud.ver-tablero #muelle{display:flex !important;flex-wrap:wrap;padding:8px 0 16px}
+@media (max-width:540px){
+  body.hud:not(.arrancando):not(.cerrada) #m-hilos,
+  body.hud:not(.arrancando):not(.cerrada) #m-tablero,
+  body.hud:not(.arrancando):not(.cerrada) #m-boveda,
+  body.hud:not(.arrancando):not(.cerrada) #m-ajustes{padding:0 8px;font-size:10px;letter-spacing:.1em}
 }
+
+
 
 
 
 </style>
 </head>
-<body class="arrancando">
-<div id="hud-cinta">ULTRON FP · HUD 4 · 10 SEP 2026</div>
+<body class="arrancando hud">
 
 <!-- ══ LA ENTRADA ══════════════════════════════════════════════════════════
      El arranque y la puerta, encima del núcleo, que sigue latiendo detrás. -->
 <div id="entrada">
   <div id="arranque">
     <div class="eco-marca">ULTRON FP</div>
-    <div class="eco-por">HUD · 10 SEP 2026 · <b>ORDEN GLOBAL</b></div>
+    <div class="eco-por">SISTEMA OPERATIVO · <b>ORDEN GLOBAL</b></div>
     <div class="eco-barra"><i id="eco-barra-i"></i></div>
     <div class="eco-pasos" id="eco-pasos" role="status" aria-live="polite"></div>
   </div>
 
   <div id="puerta-os" hidden>
     <div class="pt"><div>
-      <div class="pt-hud">HUD DE OPERADOR · 10 SEP 2026</div>
       <div class="pt-marca">ULTRON FP</div>
       <div class="pt-sub">ACCESO DE OPERADOR</div>
       <p class="pt-hint">Correo y clave de la casa. El tablero no se abre hasta que usted entra.</p>
@@ -885,7 +950,7 @@ body.arrancando #pista-hablar,body.cerrada #pista-hablar,body.escuchando #pista-
             </button>
           </div>
         </label>
-        <button class="pt-btn" type="submit" id="pt-entrar">ENTRAR AL SISTEMA</button>
+        <button class="pt-btn" type="submit" id="pt-entrar">ENTRAR</button>
       </form>
 
       <div class="pt-dicho" id="pt-dicho" aria-live="polite"></div>
@@ -913,7 +978,7 @@ body.arrancando #pista-hablar,body.cerrada #pista-hablar,body.escuchando #pista-
   <button id="hablar" aria-label="Hablar con ULTRON" aria-pressed="false">
     <span class="aro" aria-hidden="true"></span>
   </button>
-  <div id="pista-hablar" aria-hidden="true">TOQUE EL NÚCLEO · HUD 4</div>
+  <div id="pista-hablar" aria-hidden="true">TOQUE PARA HABLAR</div>
   <div id="velo" aria-hidden="true"></div>
 
   <!-- Lo que ULTRON contesta se anuncia UNA vez, al terminar. Anunciar cada
@@ -928,28 +993,18 @@ body.arrancando #pista-hablar,body.cerrada #pista-hablar,body.escuchando #pista-
 
   <!-- ── TECHO ────────────────────────────────────────────────────────────── -->
   <header id="techo">
+    <button id="m-hilos" class="chip" type="button" title="Los hilos" aria-label="Hilos">HILOS</button>
     <div class="marca">
       <div class="rombo"></div>
-      <b>ORDEN GLOBAL</b>
-      <div class="barra"></div>
       <i>ULTRON FP</i>
     </div>
     <div id="medidas">
-      <div><span class="pulso"></span><span id="m-bloque">CADENA 5550 · —</span></div>
+      <div class="esconde"><span class="pulso"></span><span id="m-bloque">CADENA 5550 · —</span></div>
       <div class="esconde">RPC <span id="m-rpc">—</span> ms</div>
-      <!-- «AU» es también la sigla de AuCorp en el muelle: «AU —» se leía como
-           «AuCorp sin dato». Es el oro. -->
       <div class="esconde">ORO <span id="m-oro">—</span></div>
-      <!-- LA NOTA DE ULTRON, SIEMPRE A LA VISTA. En el teléfono los paneles
-           viven en un cajón cerrado: si la salud sólo estuviera ahí dentro, la
-           única manera de saber que ULTRON está mal sería sospecharlo primero y
-           abrir a mirar. Aquí se ve sin tocar nada, y se toca para el detalle. -->
-      <!-- En el teléfono sólo el número: la palabra «ULTRON» le comía el ancho a la
-           marca del techo, que pasaba a leerse «ULTR». El color ya dice lo demás. -->
       <button id="m-salud" class="chip oculto" title="La salud de ULTRON"><span class="esconde">ULTRON </span><span id="m-salud-n">—</span></button>
-      <div id="m-reloj">—</div>
-      <!-- BÓVEDA y AJUSTES en el techo: en el teléfono el chip de EL DUEÑO
-           vive dentro del cajón. La llave se guarda desde aquí, un toque. -->
+      <div id="m-reloj" class="esconde">—</div>
+      <button id="m-tablero" class="chip" type="button" title="El tablero del ecosistema" aria-label="Tablero">TABLERO</button>
       <button id="m-boveda" class="chip" title="La bóveda" aria-label="Bóveda">BÓVEDA</button>
       <button id="m-ajustes" class="chip" title="Ajustes" aria-label="Ajustes">AJUSTES</button>
     </div>
@@ -965,6 +1020,10 @@ body.arrancando #pista-hablar,body.cerrada #pista-hablar,body.escuchando #pista-
          cuatro paneles —mercado, integridad, cerebro, enlaces— no había manera
          de verlos desde un teléfono. -->
     <div id="paneles">
+    <div id="tablero-cab" hidden>
+      <span>TABLERO · ECOSISTEMA</span>
+      <button type="button" id="tablero-cerrar" class="chip">CERRAR</button>
+    </div>
     <div id="der">
       <div class="p" data-panel="ecosistema" data-nombre="ECOSISTEMA" style="--peso:1"><div>
         <div><h2>ECOSISTEMA</h2><div class="sub" id="eco-sub">—</div></div>
@@ -1114,12 +1173,14 @@ body.arrancando #pista-hablar,body.cerrada #pista-hablar,body.escuchando #pista-
     <div id="centro">
       <div id="estado"><span class="luz"></span><span id="estado-txt">EN LÍNEA</span></div>
       <div id="rastro" aria-live="polite"></div>
+      <div id="hilo-vacio">
+        <div class="hv-marca">ULTRON FP</div>
+        <p>Escriba, hable o suelte un archivo.<br>Hilos, tablero, bóveda y ajustes están arriba.</p>
+      </div>
       <div id="pista">ARRASTRE PARA GIRAR · SUELTE UN ARCHIVO PARA QUE LO LEA</div>
       <div id="globo" class="oculto"><div><div>
         <div class="quien" id="globo-quien">ULTRON:</div>
-        <!-- `tabindex=0`: es un contenedor que se desplaza, y sin esto quien
-             navega solo con teclado no puede leer una respuesta larga. -->
-        <div id="dicho" tabindex="0" role="region" aria-label="Respuesta de ULTRON"></div>
+        <div id="dicho" tabindex="0" role="region" aria-label="Conversación con ULTRON"></div>
         <div id="fuentes" class="oculto"></div>
         <div id="chips" class="oculto"></div>
       </div></div></div>
@@ -1175,6 +1236,16 @@ body.arrancando #pista-hablar,body.cerrada #pista-hablar,body.escuchando #pista-
     </div></div>
   </div>
 </div>
+
+<div id="velo-hud" hidden></div>
+<aside id="cajon-hilos" hidden>
+  <div class="ch-cab">
+    <span>HILOS</span>
+    <button type="button" id="hilos-cerrar" aria-label="Cerrar hilos">CERRAR</button>
+  </div>
+  <button type="button" id="hilo-hoy" class="reg hoy">HOY · este hilo</button>
+  <div id="lista-hilos"></div>
+</aside>
 
 <div id="soltar" class="oculto"><div class="aro">
   <b>SUÉLTELO AQUÍ</b>

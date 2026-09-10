@@ -1421,6 +1421,12 @@ const OS = (() => {
     } catch { /* sin sesión */ }
   }
   function pintarDondeQuedamos(c) {
+    try {
+      if (window.ULTRON_TALLER && window.ULTRON_TALLER.hiloDelDia) {
+        window.ULTRON_TALLER.hiloDelDia(c);
+        return;
+      }
+    } catch { /* el HUD no puede impedir el globo de siempre */ }
     const ultimos = (c?.ultimos || []).filter((t) => String(t.texto || '').trim());
     if (!ultimos.length) return;
     const suyo = $('#globo-quien');
@@ -1863,6 +1869,12 @@ const OS = (() => {
   });
 
   function pintarDicho(md) {
+    try {
+      if (window.ULTRON_TALLER && window.ULTRON_TALLER.pintarRespuesta) {
+        window.ULTRON_TALLER.pintarRespuesta(md);
+        return;
+      }
+    } catch { /* el HUD no puede impedir que se pinte */ }
     $('#globo').classList.remove('oculto');
     const d = $('#dicho');
     d.innerHTML = window.MARKDOWN ? MARKDOWN.aHtml(md) : esc(md);
@@ -1944,6 +1956,7 @@ const OS = (() => {
   async function enviar(texto, porVoz = false) {
     const t = String(texto || '').trim();
     if (!t) return;
+    try { window.ULTRON_TALLER && window.ULTRON_TALLER.dichoUsuario(t); } catch {}
     /* ── SI YA ESTABA PENSANDO, ESTO ES UNA INTERRUPCIÓN ────────────────────
        Antes se descartaba en silencio: José interrumpía a ULTRON hablando, y
        la frase con la que interrumpió desaparecía sin un ruido. Ahora manda la
