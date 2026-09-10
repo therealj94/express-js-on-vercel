@@ -540,24 +540,66 @@ const OS = (() => {
   }
   async function abrirBoveda() {
     let lista = null; try { lista = await DATOS.get('/boveda'); } catch { /* sin lectura */ }
-    const filas = (lista?.secretos || []).map((x) => `<div class="fila dato"><span>${esc(x.nombre)}</span><span class="${x.corto ? 'mal' : x.dias > 90 ? 'amb' : 'ok'}">${x.largo} car. · ${x.dias} d${x.aplicadoEn?.length ? ' · ' + x.aplicadoEn.map((a) => a.app).join(',') : ''}</span></div>`).join('');
+    const filas = (lista?.secretos || []).map((x) => `<div class="fila dato bv-fila" data-nombre="${esc(x.nombre)}" data-nota="${esc(x.nota || '')}">
+        <span>${esc(x.nombre)}</span>
+        <span class="${x.corto ? 'mal' : x.dias > 90 ? 'amb' : 'ok'}">${x.largo} car. · ${x.dias} d${x.aplicadoEn?.length ? ' · ' + x.aplicadoEn.map((a) => a.app).join(',') : ''}</span>
+      </div>`).join('');
     const d = dialogo(`<h3>LA BÓVEDA</h3>
-      <div class="sub">${lista?.encendida ? 'Los valores se cifran aquí y no salen por ningún lado: ULTRON solo ve nombres y edades.' : 'APAGADA: falta ULTRON_BOVEDA_LLAVE en el servidor (32 bytes en hex).'}</div>
-      <div style="display:flex;flex-direction:column;gap:3px;max-height:160px;overflow-y:auto">${filas || '<div class="sub">vacía</div>'}</div>
-      ${soyDueño && lista?.encendida ? `<label>NOMBRE<input id="bv-nombre" placeholder="MONGO_PASSWORD" autocomplete="off"></label>
-      <label>VALOR<input id="bv-valor" type="password" autocomplete="new-password" placeholder="se guarda cifrado"></label>
-      <label>NOTA (opcional)<input id="bv-nota" placeholder="para qué es"></label>
-      <div class="fila-btn"><button class="btn" id="bv-cerrar">CERRAR</button><button class="btn si" id="bv-guardar">GUARDAR</button></div>`
+      <div class="sub">${lista?.encendida ? 'Los VALORES no se copian ni se muestran: se cifran y no salen. Toque un nombre para editarlo (rotar) o copiar el NOMBRE.' : 'APAGADA: falta ULTRON_BOVEDA_LLAVE en el servidor (32 bytes en hex).'}</div>
+      <div style="display:flex;flex-direction:column;gap:3px;max-height:180px;overflow-y:auto">${filas || '<div class="sub">vacía</div>'}</div>
+      ${soyDueño && lista?.encendida ? `<label>NOMBRE<input id="bv-nombre" placeholder="GITHUB_TOKEN" autocomplete="off"></label>
+      <label>VALOR (nuevo o rotación)<input id="bv-valor" type="password" autocomplete="new-password" placeholder="se guarda cifrado"></label>
+      <label><input type="checkbox" id="bv-ver"> ver lo que escribo</label>
+      <label>NOTA<input id="bv-nota" placeholder="para qué es"></label>
+      <div class="fila-btn">
+        <button class="btn" id="bv-cerrar">CERRAR</button>
+        <button class="btn" id="bv-copiar">COPIAR NOMBRE</button>
+        <button class="btn" id="bv-borrar">BORRAR</button>
+        <button class="btn si" id="bv-guardar">GUARDAR</button>
+      </div>`
       : `<div class="fila-btn"><button class="btn" id="bv-cerrar">CERRAR</button></div>`}`);
     d.querySelector('#bv-cerrar').onclick = () => d.remove();
+    d.querySelectorAll('.bv-fila').forEach((f) => f.onclick = () => {
+      const n = d.querySelector('#bv-nombre');
+      const nota = d.querySelector('#bv-nota');
+      if (n) n.value = f.dataset.nombre || '';
+      if (nota) nota.value = f.dataset.nota || '';
+    });
+    const ver = d.querySelector('#bv-ver');
+    if (ver) ver.onchange = () => {
+      const i = d.querySelector('#bv-valor');
+      if (i) i.type = ver.checked ? 'text' : 'password';
+    };
+    const copiar = d.querySelector('#bv-copiar');
+    if (copiar) copiar.onclick = async () => {
+      const nombre = (d.querySelector('#bv-nombre').value || '').trim();
+      if (!nombre) { avisar('Toque un secreto o escriba el nombre.', true); return; }
+      try { await navigator.clipboard.writeText(nombre); avisar('Nombre copiado: ' + nombre); }
+      catch { avisar('No se pudo copiar.', true); }
+    };
+    const bor = d.querySelector('#bv-borrar');
+    if (bor) bor.onclick = async () => {
+      const nombre = (d.querySelector('#bv-nombre').value || '').trim();
+      if (!nombre) { avisar('Toque el secreto a borrar.', true); return; }
+      if (!confirm('Borrar ' + nombre + ' de la bóveda? El valor no se puede recuperar.')) return;
+      bor.disabled = true;
+      try {
+        const r = await fetch('/boveda/' + encodeURIComponent(nombre), { method: 'DELETE', credentials: 'same-origin' });
+        const x = await r.json(); if (!r.ok) throw new Error(x.error || r.status);
+        avisar(x.ok ? ('Borrado ' + nombre) : 'No estaba');
+        d.remove(); abrirBoveda();
+      } catch (e) { avisar('No se borró: ' + e.message, true); bor.disabled = false; }
+    };
     const g = d.querySelector('#bv-guardar');
     if (g) g.onclick = async () => {
       const nombre = d.querySelector('#bv-nombre').value, valor = d.querySelector('#bv-valor').value, nota = d.querySelector('#bv-nota').value;
+      if (!nombre || !valor) { avisar('Nombre y valor hacen falta.', true); return; }
       g.disabled = true;
       try {
         const r = await fetch('/boveda', { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ nombre, valor, nota }) });
         const x = await r.json(); if (!r.ok) throw new Error(x.error || r.status);
-        avisar(`Guardado ${x.nombre} (${x.largo} caracteres).`); d.remove();
+        avisar(`Guardado ${x.nombre} (${x.largo} caracteres). El valor no se puede volver a ver: si lo necesita en GitHub, cópielo de donde lo creó.`);
+        d.remove(); abrirBoveda();
       } catch (e) { avisar(`No se guardó: ${e.message}`, true); g.disabled = false; }
     };
   }
