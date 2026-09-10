@@ -745,7 +745,13 @@ app.post('/pensar', puerta, frenoPensar, async (req, res) => {
   const corte = new AbortController();
   let terminado = false;
   pensando++;
-  res.on('close', () => { if (!terminado) { corte.abort(); console.log('[pensar] se cortó: lo dejó quien preguntaba'); } });
+  res.on('close', () => {
+    /* La pestaña se fue: NO se aborta el motor. El turno termina y se guarda
+       en el hilo. Si se abortara, un cambio de app en el teléfono tiraba
+       el trabajo grande. Interrumpir de verdad es un POST nuevo o tocar
+       el centro con la pestaña ABIERTA (el cliente manda abort). */
+    if (!terminado) console.log('[pensar] el cliente se fue; el turno sigue y se guarda');
+  });
 
   const t0 = Date.now();
   const reloj = { llegó: 0, hilo: 0, pensó: 0 };
