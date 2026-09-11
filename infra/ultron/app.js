@@ -1322,13 +1322,17 @@ let osConVersion = null;
 function paginaConVersion() {
   if (osConVersion) return osConVersion;
   const crudo = readFileSync(join(__dirname, 'public', 'os.html'), 'utf8');
-  /* Solo lo de la casa: una dirección de fuera no se toca, y una que ya lleva
-     interrogante tampoco (añadir otra la rompería). */
-  osConVersion = crudo.replace(/\b(src|href)="(?!https?:|\/\/|data:|#)([^"?#]+)"/g, `$1="$2?v=${marcaVersion}"`);
+  /* Se quita cualquier ?v= escrito a mano: si se deja, el reemplazo de abajo
+     no lo toca (para en `?`) y el teléfono se queda un año con el JS viejo
+     porque lo de `?v=` se guarda como inmutable. */
+  const limpio = crudo.replace(/\?v=[^"'\s>]+/g, '');
+  osConVersion = limpio.replace(/\b(src|href)="(?!https?:|\/\/|data:|#)([^"?#]+)"/g, `$1="$2?v=${marcaVersion}"`);
   return osConVersion;
 }
 const paginaOS = (req, res) => {
-  res.set('Cache-Control', 'no-cache');
+  res.set('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
+  res.set('Pragma', 'no-cache');
+  res.set('Expires', '0');
   res.type('html').send(paginaConVersion());
 };
 app.get('/', paginaOS);
@@ -1413,7 +1417,13 @@ app.use((req, res, sig) => { res.locals.conVersion = !!req.query.v; sig(); });
 app.use(express.static(join(__dirname, 'public'), {
   index: false,
   maxAge: '10m',
-  setHeaders(res) { if (res.locals?.conVersion) res.setHeader('Cache-Control', 'public, max-age=31536000, immutable'); },
+  setHeaders(res) {
+    if (res.locals?.conVersion && VERSION.commit && VERSION.commit !== 'taller') {
+      res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+    } else {
+      res.setHeader('Cache-Control', 'no-store, max-age=0');
+    }
+  },
 }));
 app.use((req, res) => res.status(404).json({ error: 'No existe esa ruta.', codigo: 'NO_EXISTE' }));
 app.use((err, req, res, next) => {   // eslint-disable-line no-unused-vars

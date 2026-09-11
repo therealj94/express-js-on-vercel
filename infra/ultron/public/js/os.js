@@ -663,6 +663,22 @@ const OS = (() => {
       UltronNucleo.cambiarFigura(PREF.figura);
     }
     aplicarTablero(PREF.tablero);
+    aplicarInterfaz(PREF.interfaz);
+  }
+
+  /* Chat = HUD Grok (historial, burbujas). Consola = el OS de siempre.
+     Lo pide José en Ajustes: dos modos, el resto de ajustes no se toca. */
+  function aplicarInterfaz(cual) {
+    const chat = (cual || 'chat') !== 'consola';
+    document.body.classList.toggle('hud', chat);
+    if (chat) return;
+    document.body.classList.remove('ver-hilos', 'ver-tablero');
+    const v = document.getElementById('velo-hud');
+    const c = document.getElementById('cajon-hilos');
+    const cab = document.getElementById('tablero-cab');
+    if (v) v.hidden = true;
+    if (c) c.hidden = true;
+    if (cab) cab.hidden = true;
   }
 
   async function guardarPreferencia(cambios) {
@@ -868,6 +884,16 @@ const OS = (() => {
         <div class="aj-fila"><span>WhatsApp para avisos</span><b>${m.whatsapp ? 'puesto' : 'sin número'}</b></div>
       </div>
 
+      <div class="aj-sec"><h4>Modo de la interfaz</h4>
+        <div class="aj-fila"><span>Cómo se ve ULTRON</span>
+          <span class="aj-par">
+            <button data-ifz="chat" aria-pressed="${(PREF?.interfaz || 'chat') === 'chat'}">Chat</button>
+            <button data-ifz="consola" aria-pressed="${PREF?.interfaz === 'consola'}">Consola</button>
+          </span></div>
+        <p class="aj-nota"><b style="color:var(--letra-f)">Chat</b>: el hilo tipo Grok, con historial. El tablero, la bóveda y los ajustes siguen a un botón.
+        <b style="color:var(--letra-f)">Consola</b>: el OS de siempre — núcleo, paneles y muelle. Lo demás de Ajustes no cambia.</p>
+      </div>
+
       <div class="aj-sec"><h4>La voz</h4>
         <div class="aj-fila"><span>Que ULTRON hable</span>
           <span class="aj-par"><button data-voz="1" aria-pressed="${conVoz}">Sí</button><button data-voz="0" aria-pressed="${!conVoz}">No</button></span></div>
@@ -996,6 +1022,11 @@ const OS = (() => {
     d.querySelectorAll('[data-fig]').forEach((b) => b.onclick = async () => {
       await guardarPreferencia({ figura: b.dataset.fig });
       d.querySelectorAll('[data-fig]').forEach((x) => x.setAttribute('aria-pressed', String(x.dataset.fig === b.dataset.fig)));
+    });
+    d.querySelectorAll('[data-ifz]').forEach((b) => b.onclick = async () => {
+      await guardarPreferencia({ interfaz: b.dataset.ifz });
+      d.querySelectorAll('[data-ifz]').forEach((x) => x.setAttribute('aria-pressed', String(x.dataset.ifz === b.dataset.ifz)));
+      avisar(b.dataset.ifz === 'chat' ? 'ULTRON queda en chat, con historial.' : 'ULTRON queda en consola, el tablero de siempre.');
     });
     d.querySelectorAll('[data-oi]').forEach((b) => b.onclick = async () => {
       await guardarPreferencia({ oido: b.dataset.oi });
@@ -1421,6 +1452,12 @@ const OS = (() => {
     } catch { /* sin sesión */ }
   }
   function pintarDondeQuedamos(c) {
+    try {
+      if (window.ULTRON_TALLER && window.ULTRON_TALLER.hiloDelDia) {
+        window.ULTRON_TALLER.hiloDelDia(c);
+        return;
+      }
+    } catch { /* el HUD no puede impedir el globo de siempre */ }
     const ultimos = (c?.ultimos || []).filter((t) => String(t.texto || '').trim());
     if (!ultimos.length) return;
     const suyo = $('#globo-quien');
@@ -1863,6 +1900,12 @@ const OS = (() => {
   });
 
   function pintarDicho(md) {
+    try {
+      if (window.ULTRON_TALLER && window.ULTRON_TALLER.pintarRespuesta) {
+        window.ULTRON_TALLER.pintarRespuesta(md);
+        return;
+      }
+    } catch { /* el HUD no puede impedir que se pinte */ }
     $('#globo').classList.remove('oculto');
     const d = $('#dicho');
     d.innerHTML = window.MARKDOWN ? MARKDOWN.aHtml(md) : esc(md);
@@ -1944,6 +1987,7 @@ const OS = (() => {
   async function enviar(texto, porVoz = false) {
     const t = String(texto || '').trim();
     if (!t) return;
+    try { window.ULTRON_TALLER && window.ULTRON_TALLER.dichoUsuario(t); } catch {}
     /* ── SI YA ESTABA PENSANDO, ESTO ES UNA INTERRUPCIÓN ────────────────────
        Antes se descartaba en silencio: José interrumpía a ULTRON hablando, y
        la frase con la que interrumpió desaparecía sin un ruido. Ahora manda la
@@ -2799,6 +2843,7 @@ const OS = (() => {
       decidir(id, b.dataset.decision);
     });
     $('#b-boveda').addEventListener('click', abrirBoveda);
+    $('#m-boveda')?.addEventListener('click', abrirBoveda);
     $('#b-equipo').addEventListener('click', abrirEquipo);
     $('#b-saber').addEventListener('click', abrirSaberHacer);
     $('#b-nodos').addEventListener('click', abrirNodos);

@@ -174,7 +174,7 @@
       /* El motivo exacto, no «no se pudo entrar»: quien se equivoca de clave y
          quien llega con el servidor caído necesitan hacer cosas distintas. */
       dicho(esc(e?.message || 'No se pudo comprobar.'), true);
-      btn.disabled = false; btn.textContent = 'Ingresar';
+      btn.disabled = false; btn.textContent = 'ENTRAR';
       $('#pt-clave').select();
     }
   }
