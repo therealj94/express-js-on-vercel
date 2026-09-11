@@ -5,12 +5,12 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#04070b">
 <title>ULTRON FP · HUD</title>
-<link rel="icon" href="img/ultron.png?v=hud4">
-<link rel="manifest" href="manifest.webmanifest?v=hud4">
+<link rel="icon" href="img/ultron.png?v=hud5">
+<link rel="manifest" href="manifest.webmanifest?v=hud5">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="robots" content="noindex,nofollow">
-<link rel="stylesheet" href="vendor/fuentes/fuentes.css?v=hud4">
+<link rel="stylesheet" href="vendor/fuentes/fuentes.css?v=hud5">
 <style>
 /* ══════════════════════════════════════════════════════════════════════════
    ULTRON OS · el sistema operativo del ecosistema
@@ -906,6 +906,17 @@ body.hud.ver-tablero #muelle{display:flex !important;flex-wrap:wrap;padding:8px 
   body.hud:not(.arrancando):not(.cerrada) #m-ajustes{padding:0 8px;font-size:10px;letter-spacing:.1em}
 }
 
+/* CONSOLA: el HUD (hilos, overlay Grok, vacío) no se enseña. El resto de
+   Ajustes no cambia: voz, oído, idioma, figura, tablero, cerebro. */
+body:not(.hud) #m-hilos,
+body:not(.hud) #m-tablero,
+body:not(.hud) #hilo-vacio,
+body:not(.hud) #cajon-hilos,
+body:not(.hud) #velo-hud,
+body:not(.hud) #tablero-cab {
+  display: none !important;
+}
+
 
 
 
@@ -1252,14 +1263,14 @@ body.hud.ver-tablero #muelle{display:flex !important;flex-wrap:wrap;padding:8px 
   <span>PDF, Word, texto, CSV o una imagen · hasta 8 MB</span>
 </div></div>
 
-<script src="markdown.js?v=hud4"></script>
-<script src="js/datos.js?v=hud4"></script>
-<script src="js/os-boca.js?v=hud4"></script>
-<script src="js/voz.js?v=hud4"></script>
-<script src="js/os.js?v=hud4"></script>
-<script src="js/trabajo.js?v=hud4"></script>
+<script src="markdown.js?v=hud5"></script>
+<script src="js/datos.js?v=hud5"></script>
+<script src="js/os-boca.js?v=hud5"></script>
+<script src="js/voz.js?v=hud5"></script>
+<script src="js/os.js?v=hud5"></script>
+<script src="js/trabajo.js?v=hud5"></script>
 <!-- El centro: el núcleo se carga siempre; el busto en 3D solo si se pide. -->
-<script type="module" src="js/os-nucleo.js?v=hud4"></script>
-<script src="js/os-puerta.js?v=hud4"></script>
+<script type="module" src="js/os-nucleo.js?v=hud5"></script>
+<script src="js/os-puerta.js?v=hud5"></script>
 </body>
 </html>
