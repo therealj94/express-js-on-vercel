@@ -390,7 +390,7 @@ titulo('las preferencias: idioma, voz y figura, guardadas con su correo');
 {
   const pref = require('../lib/preferencias.js');
   const a = await pref.de('nadie@ordenglobal.org');
-  decir(a.idioma === 'es' && a.figura === 'nucleo' && a.conVoz === true, 'sin nada guardado, valores por omisión razonables');
+  decir(a.idioma === 'es' && a.figura === 'nucleo' && a.conVoz === true && a.interfaz === 'chat', 'sin nada guardado, valores por omisión razonables');
   const b = await pref.guardar('jose@ordenglobal.org', { idioma: 'en', vozId: 'JBFqnCBsd6RMkjVDRZzb', figura: 'busto' });
   decir(b.idioma === 'en' && b.vozId === 'JBFqnCBsd6RMkjVDRZzb' && b.figura === 'busto', 'se guarda lo que vale');
   const c = await pref.guardar('jose@ordenglobal.org', { idioma: 'klingon', figura: 'dragón', vozId: 'rm -rf' });
@@ -408,7 +408,11 @@ titulo('las preferencias: idioma, voz y figura, guardadas con su correo');
   decir(sucio.length === 1 && sucio[0].col === 'izq' && sucio[0].peso === 3,
     'y lo que llegue de la pantalla se limpia: sin columnas inventadas, sin pesos que rompan la rejilla, sin repetidos',
     JSON.stringify(sucio));
-  await pref.guardar('jose@ordenglobal.org', { idioma: 'es', figura: 'nucleo', vozId: null, tablero: [] });
+  const i = await pref.guardar('jose@ordenglobal.org', { interfaz: 'consola' });
+  decir(i.interfaz === 'consola', 'el modo de la interfaz se guarda con su correo: chat o consola');
+  const i2 = await pref.guardar('jose@ordenglobal.org', { interfaz: 'jarvis' });
+  decir(i2.interfaz === 'consola', 'y un modo inventado no se guarda');
+  await pref.guardar('jose@ordenglobal.org', { idioma: 'es', figura: 'nucleo', vozId: null, tablero: [], interfaz: 'chat' });
 }
 
 // ── LAS DOCE A LA MANO, Y LAS CAJAS ─────────────────────────────────────────

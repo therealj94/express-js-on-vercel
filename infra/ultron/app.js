@@ -598,7 +598,13 @@ app.get('/conversaciones/hoy', puerta, async (req, res) => {
       texto: String(t.texto || '').slice(0, 900),
       herramientas: (t.herramientas || []).map((h) => h.nombre),
     }));
-    res.json({ _id: String(c._id), titulo: c.titulo || null, turnos: (c.turnos || []).length, yaExistia: !!c.yaExistia, ultimos });
+    const trabajo = c.trabajo?.falta ? {
+      objetivo: c.trabajo.objetivo || '',
+      hecho: c.trabajo.hecho || '',
+      falta: c.trabajo.falta || '',
+      vueltas: c.trabajo.vueltas || 0,
+    } : null;
+    res.json({ _id: String(c._id), titulo: c.titulo || null, turnos: (c.turnos || []).length, yaExistia: !!c.yaExistia, ultimos, trabajo });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 app.get('/conversaciones/:id', puerta, async (req, res) => {
@@ -626,6 +632,10 @@ app.get('/conversaciones/:id', puerta, async (req, res) => {
  *    cerrar el micrófono es un gesto que se repite.
  * Contesta enseguida y sin esperar al motor: quien llama no espera nada. */
 let pensando = 0;
+/* Un /pensar a la vez por miembro: el siguiente aborta el anterior (re-envío).
+   El corte explícito (tocar el centro) pasa por POST /pensar/cortar — así un
+   cambio de app en el teléfono NO mata el motor solo por cerrar el SSE. */
+const cortePorMiembro = new Map();
 const calentadoEn = new Map();
 app.post('/precalentar', puerta, (req, res) => {
   const modo = req.body?.modo === 'texto' ? 'texto' : 'voz';
@@ -713,6 +723,17 @@ setInterval(() => {
     .catch(() => {});
 }, 1_500).unref();
 
+/* Abort explícito del turno en vuelo (centro / re-envío ya cubierto arriba). */
+app.post('/pensar/cortar', puerta, (req, res) => {
+  const c = cortePorMiembro.get(req.miembro.correo);
+  if (c) {
+    try { c.abort(); } catch { /* ya */ }
+    cortePorMiembro.delete(req.miembro.correo);
+    console.log('[pensar] corte explícito por', req.miembro.correo);
+  }
+  res.json({ ok: true });
+});
+
 app.post('/pensar', puerta, frenoPensar, async (req, res) => {
   const texto = String(req.body?.texto || '').trim().slice(0, 12_000);
   if (!texto) return res.status(400).json({ error: 'Nada que pensar.', codigo: 'VACIO' });
@@ -733,24 +754,25 @@ app.post('/pensar', puerta, frenoPensar, async (req, res) => {
     } catch { /* nada */ }
   }, 8_000);
 
-  /* ── SI SE VA, SE APAGA EL MOTOR ─────────────────────────────────────────
-     Interrumpir a ULTRON —tocar el centro, o hablarle encima— corta el SSE
-     desde la consola. Hasta hoy el servidor no se enteraba: seguía pensando la
-     respuesta entera, ocupando la ÚNICA ranura del nodo, y la pregunta
-     siguiente —la que la persona acababa de hacer— esperaba en fila detrás de
-     una respuesta que ya nadie iba a leer. De ahí venían los diez segundos de
-     silencio después de cada interrupción.
-     Ahora la desconexión aborta: el motor deja de generar, la ranura queda
-     libre en el acto y el turno nuevo arranca de una. */
+  /* ── CORTE DEL TURNO ────────────────────────────────────────────────────
+     Cerrar el SSE (pestaña a segundo plano, cambio de red) NO aborta el motor:
+     el turno termina y se guarda. Interrumpir de verdad es:
+       · POST /pensar/cortar (tocar el centro / cancelar), o
+       · un POST /pensar nuevo del mismo miembro (re-envío), que aborta el previo.
+     El comentario viejo que decía «la desconexión aborta» mentía: el close del
+     SSE no llamaba a corte.abort(). */
   const corte = new AbortController();
   let terminado = false;
+  const correo = req.miembro.correo;
+  const previo = cortePorMiembro.get(correo);
+  if (previo && previo !== corte) {
+    try { previo.abort(); } catch { /* ya */ }
+    console.log('[pensar] re-envío: se aborta el turno anterior del mismo miembro');
+  }
+  cortePorMiembro.set(correo, corte);
   pensando++;
   res.on('close', () => {
-    /* La pestaña se fue: NO se aborta el motor. El turno termina y se guarda
-       en el hilo. Si se abortara, un cambio de app en el teléfono tiraba
-       el trabajo grande. Interrumpir de verdad es un POST nuevo o tocar
-       el centro con la pestaña ABIERTA (el cliente manda abort). */
-    if (!terminado) console.log('[pensar] el cliente se fue; el turno sigue y se guarda');
+    if (!terminado) console.log('[pensar] el cliente se fue; el turno sigue y se guarda (use /pensar/cortar para abortar)');
   });
 
   const t0 = Date.now();
@@ -811,10 +833,13 @@ app.post('/pensar', puerta, frenoPensar, async (req, res) => {
        a medias: se guarda con qué se pidió, qué se hizo y cuál es el paso
        siguiente, para que el turno próximo empiece por ahí en vez de desde
        cero. */
-    if (r.trabajo !== undefined) {
+    /* P0: si el cerebro no manda `trabajo` (undefined), se limpia igual —
+       antes Mongo se saltaba el update y el chip SEGUIR quedaba pegado. */
+    {
       const antes = hilo.conv?.trabajo;
+      const t = r.trabajo === undefined ? null : r.trabajo;
       await memoria.guardarTrabajo(convId, req.miembro.correo,
-        r.trabajo && { ...r.trabajo, vueltas: (antes?.falta ? (antes.vueltas || 1) : 0) + 1 });
+        t && { ...t, vueltas: (antes?.falta ? (antes.vueltas || 1) : 0) + 1 });
     }
     /* ── EL TÍTULO NO RETIENE LA RESPUESTA ──────────────────────────────────
        Titular una conversación nueva es OTRA llamada al modelo, y estaba
@@ -851,6 +876,7 @@ app.post('/pensar', puerta, frenoPensar, async (req, res) => {
     }
   } finally {
     terminado = true;
+    if (cortePorMiembro.get(correo) === corte) cortePorMiembro.delete(correo);
     pensando--;
     clearInterval(latido);
     res.end();
@@ -1322,13 +1348,17 @@ let osConVersion = null;
 function paginaConVersion() {
   if (osConVersion) return osConVersion;
   const crudo = readFileSync(join(__dirname, 'public', 'os.html'), 'utf8');
-  /* Solo lo de la casa: una dirección de fuera no se toca, y una que ya lleva
-     interrogante tampoco (añadir otra la rompería). */
-  osConVersion = crudo.replace(/\b(src|href)="(?!https?:|\/\/|data:|#)([^"?#]+)"/g, `$1="$2?v=${marcaVersion}"`);
+  /* Se quita cualquier ?v= escrito a mano: si se deja, el reemplazo de abajo
+     no lo toca (para en `?`) y el teléfono se queda un año con el JS viejo
+     porque lo de `?v=` se guarda como inmutable. */
+  const limpio = crudo.replace(/\?v=[^"'\s>]+/g, '');
+  osConVersion = limpio.replace(/\b(src|href)="(?!https?:|\/\/|data:|#)([^"?#]+)"/g, `$1="$2?v=${marcaVersion}"`);
   return osConVersion;
 }
 const paginaOS = (req, res) => {
-  res.set('Cache-Control', 'no-cache');
+  res.set('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
+  res.set('Pragma', 'no-cache');
+  res.set('Expires', '0');
   res.type('html').send(paginaConVersion());
 };
 app.get('/', paginaOS);
@@ -1413,7 +1443,13 @@ app.use((req, res, sig) => { res.locals.conVersion = !!req.query.v; sig(); });
 app.use(express.static(join(__dirname, 'public'), {
   index: false,
   maxAge: '10m',
-  setHeaders(res) { if (res.locals?.conVersion) res.setHeader('Cache-Control', 'public, max-age=31536000, immutable'); },
+  setHeaders(res) {
+    if (res.locals?.conVersion && VERSION.commit && VERSION.commit !== 'taller') {
+      res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+    } else {
+      res.setHeader('Cache-Control', 'no-store, max-age=0');
+    }
+  },
 }));
 app.use((req, res) => res.status(404).json({ error: 'No existe esa ruta.', codigo: 'NO_EXISTE' }));
 app.use((err, req, res, next) => {   // eslint-disable-line no-unused-vars

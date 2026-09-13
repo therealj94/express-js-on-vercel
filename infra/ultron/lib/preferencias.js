@@ -45,13 +45,17 @@ const prefSchema = new Schema({
      arma su tablero en la computadora quiere encontrarlo armado en el iPad.
      Vacío = el reparto de fábrica, que es el que decidió el diseño. */
   tablero: { type: [{ _id: false, id: String, col: String, peso: Number, oculto: Boolean }], default: [] },
+  /* Cómo se ve la pantalla. No es otro producto: es el mismo ULTRON.
+       chat     el hilo tipo Grok, con historial. Es el de ahora.
+       consola  el OS de siempre: núcleo, paneles y muelle. */
+  interfaz: { type: String, enum: ['chat', 'consola'], default: 'chat' },
   tocado: { type: Date, default: Date.now },
 }, { versionKey: false });
 const Pref = mongoose.models.Pref || mongoose.model('Pref', prefSchema);
 
 const conMongo = () => mongoose.connection.readyState === 1;
 const provisional = new Map();
-const POR_OMISION = { idioma: 'es', vozId: null, figura: 'nucleo', conVoz: true, lugar: 'Tegucigalpa', oido: 'conversacion', soloYo: true, tablero: [], coords: null };
+const POR_OMISION = { idioma: 'es', vozId: null, figura: 'nucleo', conVoz: true, lugar: 'Tegucigalpa', oido: 'conversacion', soloYo: true, tablero: [], coords: null, interfaz: 'chat' };
 
 /* Cuánto vale una ubicación antes de quedar vieja. José viaja: el tiempo de
    Tegucigalpa dado en Roatán es justo el fallo que la ubicación viene a
@@ -111,6 +115,7 @@ async function guardar(correo, cambios = {}) {
   if (typeof cambios.conVoz === 'boolean') limpio.conVoz = cambios.conVoz;
   if (typeof cambios.soloYo === 'boolean') limpio.soloYo = cambios.soloYo;
   if (['conversacion', 'palabra', 'apagado'].includes(cambios.oido)) limpio.oido = cambios.oido;
+  if (cambios.interfaz === 'chat' || cambios.interfaz === 'consola') limpio.interfaz = cambios.interfaz;
   if (cambios.tablero !== undefined) { const t = limpiarTablero(cambios.tablero); if (t) limpio.tablero = t; }
   /* `null` es una orden: «deja de usar mi ubicación». Se distingue de «no
      mandé coordenadas», que es no tocar nada. */

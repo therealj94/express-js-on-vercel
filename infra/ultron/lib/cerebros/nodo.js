@@ -47,7 +47,16 @@ const CERT = (process.env.ULTRON_NODO_CERT || '').trim();
    gasto y el que sale en el registro. Tiene que cuadrar con
    /etc/ogb-tarjeta.env o los turnos quedan anotados a nombre de otro. */
 const MODELO = process.env.ULTRON_NODO_MODELO || 'orcarouter/Qwen3.8-27B-Uncensored';
-const MAX_VUELTAS = 16;
+const MAX_VUELTAS_BASE = Number(process.env.ULTRON_MAX_VUELTAS || 16);
+const MAX_VUELTAS_CODIGO = Number(process.env.ULTRON_MAX_VUELTAS_CODIGO || 28);
+/** Tope de vueltas: más alto cuando el taller/repo ya está en juego. No sube el presupuesto. */
+function topeDeVueltas({ cajas = [], usadas = [], pideCodigo = false } = {}) {
+  const codigo = pideCodigo
+    || cajas.includes('taller')
+    || usadas.some((h) => /^(repo_|taller)/.test(h?.nombre || ''));
+  const n = codigo ? MAX_VUELTAS_CODIGO : MAX_VUELTAS_BASE;
+  return Number.isFinite(n) && n > 0 ? n : 16;
+}
 const PLAZO_MS = 170_000;
 /* ── EL PRESUPUESTO DE TIEMPO DEL TURNO ──────────────────────────────────────
  *
@@ -107,6 +116,33 @@ function esSoloAnuncio(t) {
   if (ultima.length > 240) return false;           // la última ya dice algo
   return /^(?:bien|listo|perfecto|ok|entendido|de acuerdo|veo que [^.]{0,60})?[,.\s]*(d[ée]jame|d[ée]jeme|voy a|permítame|permitame|primero (?:voy|reviso|miro|veo)|ahora (?:reviso|miro|busco|veo)|un momento|enseguida)\b/i.test(ultima);
 }
+/* ── HECHO / FALTA: lo que deja el checkpoint del turno ─────────────────────
+ * Acepta markdown liviano (**HECHO:**, `FALTA:`). Rechaza el eco de la
+ * plantilla («(en una línea, …)»). «NADA» cierra; «nada más que X» NO. */
+function parseHechoFalta(texto) {
+  /* Markdown liviano se saca antes: **HECHO:**, `FALTA:`, __HECHO__: */
+  const plano = String(texto || '').replace(/\*\*|__|`/g, '');
+  const mHecho = /^\s*HECHO\s*[:：]\s*(.+)$/im.exec(plano);
+  const mFalta = /^\s*FALTA\s*[:：]\s*(.+)$/im.exec(plano);
+  if (!mHecho && !mFalta) return { hallado: false };
+  const limpia = (s) => String(s || '').trim().replace(/\s+/g, ' ');
+  const hecho = limpia(mHecho?.[1]);
+  const falta = limpia(mFalta?.[1]);
+  const eco = (s) => !s
+    || /^\(?\s*(en una l[ií]nea|lo que ya|el siguiente paso|la palabra NADA|\.\.\.|…)/i.test(s)
+    || /lo que ya queda resuelto|siguiente paso concreto/i.test(s)
+    || /^\([^)]{0,80}\)$/.test(s);
+  const hechoOk = eco(hecho) ? '' : hecho;
+  const faltaOk = eco(falta) ? '' : falta;
+  if (!hechoOk && !faltaOk) return { hallado: false, eco: true };
+  /* Cerrar SOLO con NADA exacto (o vacío / raya). «nada más que editar X» sigue abierto. */
+  const esNada = !faltaOk || /^(nada|n\/?a|—|–|-)\.?$/i.test(faltaOk);
+  if (mFalta && esNada) return { hallado: true, hecho: hechoOk, falta: '', cerrado: true };
+  if (mFalta && faltaOk) return { hallado: true, hecho: hechoOk, falta: faltaOk, cerrado: false };
+  if (hechoOk) return { hallado: true, hecho: hechoOk, falta: faltaOk, cerrado: false };
+  return { hallado: false };
+}
+
 /* Una guarda cuesta dos llamadas al modelo; con menos de esto no se empieza. */
 const GUARDA_NECESITA_MS = 14_000;
 
@@ -396,6 +432,21 @@ function armarMensajes({ system, previa, texto, voz = false }) {
   while (hilo.length && largo > tope) { largo -= hilo[0].content.length; hilo = hilo.slice(1); }
   const disponible = PRESUPUESTO - system.length - texto.length - resumen.length;
   while (hilo.length && largo > disponible) { largo -= hilo[0].content.length; hilo = hilo.slice(1); }
+  /* Digest compacto del último turno con herramientas: nombres + rutas, para
+     retomar sin rehacer lo ya mirado. Solo cuando hay trabajo a medias. */
+  if (previa?.trabajo?.falta) {
+    const ultimo = [...(previa?.turnos || [])].reverse().find((x) => x.rol === 'ultron' && (x.herramientas || []).length);
+    const hs = ultimo?.herramientas || [];
+    if (hs.length) {
+      const digest = hs.slice(0, 12).map((h) => {
+        const n = h.nombre || h;
+        const e = h.entrada || {};
+        const ruta = e.ruta || e.path || e.archivo || e.file || e.camino || '';
+        return ruta ? `${n}(${String(ruta).slice(0, 80)})` : String(n);
+      }).join(', ');
+      mensajes.push({ role: 'user', content: `[sistema] En el turno anterior usaste: ${digest}. Retomá desde el paso siguiente; no repitas lo ya hecho.` });
+    }
+  }
   mensajes.push(...hilo, { role: 'user', content: texto });
   return mensajes;
 }
@@ -703,14 +754,19 @@ async function pensar({ miembro, junta, texto, conversacionId, previa: previaDad
   const quedaMs = () => presupuestoMs() - (Date.now() - tArranque);
 
   const rawPedido = String(texto || '');
-  const pideCambioYa = /repo_proponer_cambio|sin leer|propon[eé]|mezcl[aá]|repo_mezclar/i.test(rawPedido);
+  /* P4: solo con tool explícita o «sin leer» claro — no con «proponé/mezclá» sueltos. */
+  const pideCambioYa = /repo_proponer_cambio|\bsin leer\b|repo_mezclar/i.test(rawPedido);
   const pideMezcla = /repo_mezclar|mezcl[aá](r| el)?\s*(el )?pr/i.test(rawPedido);
   if (pideCambioYa) {
     mensajes.push({ role: 'user', content: pideMezcla
       ? '[sistema] El dueño pidió MEZCLAR. Primera vuelta: SOLO repo_mezclar con el número. Cero repo_leer, cero mas_herramientas, cero texto antes de la tool.'
       : '[sistema] El dueño pidió PROPONER. Primera vuelta: SOLO repo_proponer_cambio. Cero repo_leer, cero repo_arbol, cero mas_herramientas. Si no tenés el archivo entero, escribí el cambio pedido y proponé.' });
   }
-  for (let vuelta = 0; vuelta < MAX_VUELTAS; vuelta++) {
+  const pideCodigo = /\b(repo_|taller|infra\/ultron|propon[eé]r?\s+cambio|pull request|\bpr\b)/i.test(rawPedido);
+  let cierrePorTiempo = false;
+  let topeVueltas = topeDeVueltas({ cajas, usadas, pideCodigo });
+  for (let vuelta = 0; vuelta < topeVueltas; vuelta++) {
+    topeVueltas = topeDeVueltas({ cajas, usadas, pideCodigo });
     /* Se cortó entre vueltas: ni una herramienta más. Un turno cancelado en la
        vuelta 3 seguía ejecutando las cinco restantes —con lo que eso significa
        cuando una de ellas escribe. */
@@ -722,6 +778,7 @@ async function pensar({ miembro, junta, texto, conversacionId, previa: previaDad
     if (vuelta > 0 && quedaMs() <= 0 && textoFinal.trim() && !esSoloAnuncio(textoFinal)) {
       emitir('pensando', { vuelta, motivo: 'se acabó el tiempo del turno', hace: 'cierro con lo que tengo' });
       console.warn(`[nodo] se acabó el presupuesto (${presupuestoMs()} ms) en la vuelta ${vuelta}: se cierra con lo que hay`);
+      cierrePorTiempo = true;
       break;
     }
     /* ── Y SI SE ACABÓ EL TIEMPO SIN HABER DICHO NADA ──────────────────────
@@ -820,9 +877,9 @@ async function pensar({ miembro, junta, texto, conversacionId, previa: previaDad
     if (!llamadas.length) { textoFinal += (textoFinal && visible ? '\n\n' : '') + visible; break; }
     /* La vuelta sin tiempo era la ÚLTIMA por definición: fue sin herramientas,
        así que si aun así escribió una llamada en el texto, no se corre. Sin
-       esto el bucle podría seguir hasta MAX_VUELTAS pasado el techo, que es
+       esto el bucle podría seguir hasta el tope de vueltas pasado el techo, que es
        justo lo que este techo existe para impedir. */
-    if (sinTiempo) { textoFinal += (textoFinal && visible ? '\n\n' : '') + visible; break; }
+    if (sinTiempo) { cierrePorTiempo = true; textoFinal += (textoFinal && visible ? '\n\n' : '') + visible; break; }
 
     // Hubo herramientas: lo dicho antes de llamarlas se conserva si es texto de
     // verdad (una frase de «voy a mirar»), no si era la etiqueta.
@@ -860,9 +917,41 @@ async function pensar({ miembro, junta, texto, conversacionId, previa: previaDad
      más, sin herramientas —así no puede pedir otra vuelta— pidiéndole que
      cuente lo que averiguó. Es la llamada más barata del turno y salva el
      turno entero. */
-  if (!senalCorte?.aborted && (!textoFinal.trim() || esSoloAnuncio(textoFinal))) {
-    console.warn(`[nodo] se acabaron las ${MAX_VUELTAS} vueltas ${textoFinal.trim() ? 'con solo un anuncio' : 'sin una palabra'}: se pide la respuesta sin herramientas`);
-    emitir('pensando', { vuelta: MAX_VUELTAS, hace: 'juntando lo que averigüé' });
+  /* ── CHECKPOINT: vueltas / tiempo / vacío ───────────────────────────────
+     P0–P1: al chocar el tope (vueltas o tiempo) SIEMPRE queda trabajo
+     apuntado. Si solo había un anuncio, se pide la respuesta + HECHO/FALTA.
+     Si ya hay texto útil, no se borra ni se pide otra pasada vacía (evita el
+     thrash de anuncios sin herramientas). */
+  topeVueltas = topeDeVueltas({ cajas, usadas, pideCodigo });
+  const chocoVueltas = !senalCorte?.aborted && vueltasDadas >= topeVueltas;
+  const vacioOAnuncio = !textoFinal.trim() || esSoloAnuncio(textoFinal);
+  const aplicarParse = (txt) => {
+    const p = parseHechoFalta(txt);
+    if (!p.hallado) return false;
+    if (p.cerrado) { trabajo = null; return true; }
+    if (p.falta) {
+      trabajo = {
+        objetivo: String(previa?.trabajo?.objetivo || texto).slice(0, 500),
+        hecho: (p.hecho || '').slice(0, 2000),
+        falta: p.falta.slice(0, 2000),
+      };
+      console.warn(`[nodo] el turno queda a medias · falta: ${p.falta.slice(0, 90)}`);
+      return true;
+    }
+    return false;
+  };
+  const checkpointSinModelo = (motivo) => {
+    const hecho = usadas.length
+      ? `Corrí: ${[...new Set(usadas.map((h) => h.nombre))].join(', ')}.`
+      : String(previa?.trabajo?.hecho || '').slice(0, 2000);
+    const falta = String(previa?.trabajo?.falta || 'Seguir con lo pedido (se acabó el turno).').slice(0, 2000);
+    trabajo = { objetivo: String(previa?.trabajo?.objetivo || texto).slice(0, 500), hecho, falta };
+    console.warn(`[nodo] checkpoint (${motivo}) · falta: ${falta.slice(0, 90)}`);
+  };
+
+  if (!senalCorte?.aborted && vacioOAnuncio) {
+    console.warn(`[nodo] se acabaron las ${topeVueltas} vueltas ${textoFinal.trim() ? 'con solo un anuncio' : 'sin una palabra'}: se pide la respuesta sin herramientas`);
+    emitir('pensando', { vuelta: topeVueltas, hace: 'juntando lo que averigüé' });
     if (textoFinal.trim()) { textoFinal = ''; emitir('reemplazo', { texto: '' }); }
     mensajes.push({ role: 'user', content: '[sistema] Se te acabaron las vueltas de herramientas de ESTE turno. Ya no podés llamar a ninguna más, pero el trabajo NO se cancela: sigue en el turno próximo.\n'
       + 'Contestale AHORA a la persona con lo que averiguaste —lo que leíste, lo que viste, con nombres y rutas concretas—.\n'
@@ -874,19 +963,12 @@ async function pensar({ miembro, junta, texto, conversacionId, previa: previaDad
     uso.entrada += r.uso.entrada; uso.salida += r.uso.salida;
     const limpio = llamadasEnTexto(r.content).limpio.trim();
     if (limpio) textoFinal = limpio;
-    /* ── Y DE AHÍ SALE EL TRABAJO, GRATIS ────────────────────────────────
-       Las dos líneas se leen y se guardan; en pantalla se quedan, porque
-       «esto hice, esto falta» es justo lo que la persona quiere ver al final
-       de un turno que se quedó a medias. */
-    const mHecho = /^\s*HECHO:\s*(.+)$/im.exec(textoFinal);
-    const mFalta = /^\s*FALTA:\s*(.+)$/im.exec(textoFinal);
-    const falta = (mFalta?.[1] || '').trim();
-    if (falta && !/^nada\b/i.test(falta)) {
-      trabajo = { objetivo: texto.slice(0, 500), hecho: (mHecho?.[1] || '').trim().slice(0, 2000), falta: falta.slice(0, 2000) };
-      console.warn(`[nodo] el turno queda a medias · falta: ${falta.slice(0, 90)}`);
-    } else if (mFalta) {
-      trabajo = null;   // dijo NADA: el trabajo se cierra
-    }
+    if (!aplicarParse(textoFinal)) checkpointSinModelo(chocoVueltas ? 'vueltas' : 'rescate');
+  } else if (!senalCorte?.aborted && (chocoVueltas || cierrePorTiempo) && trabajo === undefined) {
+    /* Ya hay respuesta útil: no se pide otra pasada. Se parsea o se apunta. */
+    if (!aplicarParse(textoFinal)) checkpointSinModelo(cierrePorTiempo ? 'tiempo' : 'vueltas');
+  } else if (trabajo === undefined) {
+    aplicarParse(textoFinal);
   }
 
   /* ── UN PERMISO PENDIENTE TAMBIÉN ES TRABAJO A MEDIAS ────────────────────
@@ -937,7 +1019,7 @@ async function pensar({ miembro, junta, texto, conversacionId, previa: previaDad
     return false;
   };
   if (!cajas.length && !usadas.length && NEGATIVA.test(textoFinal) && hayTiempoParaGuarda('la negativa')) {
-    emitir('pensando', { vuelta: MAX_VUELTAS, motivo: 'dijo que no sin mirar' });
+    emitir('pensando', { vuelta: topeVueltas, motivo: 'dijo que no sin mirar' });
     mensajes.push({ role: 'assistant', content: textoFinal });
     mensajes.push({ role: 'user', content: '[sistema] Dijiste que no podés o que no sabés, y no llamaste ni una herramienta. '
       + 'Ahora las tenés TODAS a la vista. Mirá con la que corresponda y contestá con lo que devuelva. '
@@ -1007,7 +1089,7 @@ async function pensar({ miembro, junta, texto, conversacionId, previa: previaDad
   const hayPdf = () => ctx.acciones.some((a) => a.tipo === 'abrir' && /formato=pdf/.test(a.url || ''));
   const cumplio = () => (pidioPdf ? hayPdf() : creoDoc());
   if (PROMETE.test(textoFinal) && !cumplio() && hayTiempoParaGuarda('lo prometido')) {
-    emitir('pensando', { vuelta: MAX_VUELTAS, motivo: 'dijo que lo dejó sin haberlo hecho' });
+    emitir('pensando', { vuelta: topeVueltas, motivo: 'dijo que lo dejó sin haberlo hecho' });
     mensajes.push({ role: 'assistant', content: textoFinal });
     /* El aviso dice EXACTAMENTE qué falta, que no es lo mismo según el caso:
        o no escribió nada, o lo escribió y no lo dejó en PDF. */
@@ -1083,7 +1165,7 @@ async function pensar({ miembro, junta, texto, conversacionId, previa: previaDad
      respuesta. Si la persona pregunta, no está pidiendo que se guarde nada. */
   const preguntaron = /[?¿]/.test(texto) || /^\s*(qu[eé]|cu[aá]l|cu[aá]nt|c[oó]mo|d[oó]nde|cu[aá]ndo|qui[eé]n|por qu[eé])\b/i.test(texto.trim());
   if (!preguntaron && dijoQueGuardo(textoFinal) && !guardoDeVerdad() && hayTiempoParaGuarda('lo que dijo que guardó')) {
-    emitir('pensando', { vuelta: MAX_VUELTAS, motivo: 'dijo que lo guardó sin guardarlo' });
+    emitir('pensando', { vuelta: topeVueltas, motivo: 'dijo que lo guardó sin guardarlo' });
     mensajes.push({ role: 'assistant', content: textoFinal });
     mensajes.push({ role: 'user', content: '[sistema] Dijiste que lo guardabas o lo anotabas y NO llamaste a ninguna herramienta, '
       + 'así que no quedó en ningún lado y dentro de diez turnos ese dato no va a existir. '
@@ -1155,7 +1237,7 @@ async function pensar({ miembro, junta, texto, conversacionId, previa: previaDad
   if (falsas.length && !hayTiempoParaGuarda('las citas')) {
     textoFinal += `\n\n_(ULTRON citó ${falsas.join(', ')} sin haberla usado en este turno: tome ese dato con cuidado.)_`;
   } else if (falsas.length) {
-    emitir('pensando', { vuelta: MAX_VUELTAS, motivo: 'cita sin herramienta' });
+    emitir('pensando', { vuelta: topeVueltas, motivo: 'cita sin herramienta' });
     mensajes.push({ role: 'assistant', content: textoFinal });
     mensajes.push({ role: 'user', content: `[sistema] Citaste «${falsas.join('», «')}» pero no la llamaste en este turno. Llamala ahora y contestá con lo que devuelva, o reescribí la respuesta sin esa cita diciendo de dónde sale de verdad el dato.` });
     let dicho = '';
@@ -1191,6 +1273,22 @@ async function pensar({ miembro, junta, texto, conversacionId, previa: previaDad
   // el número honesto, y se anota igual para contar los turnos.
   memoria.anotarGasto({ miembro: miembro.correo, modelo: 'nodo:' + MODELO, ...uso, dolares: 0, canal: ctx.canal || 'panel' })
     .catch((e) => console.error(`[gasto] ${e.message}`));
+  /* P0: siempre devolver la clave `trabajo` — objeto o null. `undefined`
+     hacía que Mongo se saltara el update y el chip SEGUIR quedaba zombie.
+     Si el turno se cortó, se conserva el trabajo previo (no es un cierre real). */
+  if (trabajo === undefined) {
+    if (senalCorte?.aborted) {
+      trabajo = previa?.trabajo?.falta ? {
+        objetivo: String(previa.trabajo.objetivo || texto).slice(0, 500),
+        hecho: String(previa.trabajo.hecho || '').slice(0, 2000),
+        falta: String(previa.trabajo.falta).slice(0, 2000),
+      } : null;
+    } else if (previa?.trabajo?.falta && (chocoVueltas || cierrePorTiempo)) {
+      checkpointSinModelo(cierrePorTiempo ? 'tiempo' : 'vueltas');
+    } else {
+      trabajo = null;   // chat corto / turno cerrado sin trabajo a medias
+    }
+  }
   return { texto: textoFinal, fuentes, herramientas: usadas, memorias: ctx.memorias, documentos: ctx.documentos, trabajo,
            envios: ctx.envios, pendientes: ctx.pendientes, acciones: ctx.acciones, uso: { ...uso, dolares: 0 }, modelo: 'nodo:' + MODELO,
            ms: { contexto: msContexto, primera: msPrimera, cerebro: Date.now() - tArranque, vueltas: vueltasDadas, fichas: uso.entrada } };
@@ -1405,4 +1503,4 @@ async function salud() {
   });
 }
 
-module.exports = { pensar, precalentar, titular, resumirHilo, salud, encendido, MODELO, _adentro: { esSoloAnuncio, pedir, pedirJson, vectorDe, llamadasEnTexto, armarMensajes, sinRepetidos, sinElRestoDeUnaHerramienta, sinCodigoPegadoArriba, hastaOtroAlfabeto, dondeEmpiezaElBucle, fichas, PRESUPUESTO, PRESUPUESTO_FICHAS, CTX, presupuestoMs, GUARDA_NECESITA_MS, VENTANA_HILO, VENTANA_HILO_VOZ, TOPE_RESUMEN } };
+module.exports = { pensar, precalentar, titular, resumirHilo, salud, encendido, MODELO, _adentro: { esSoloAnuncio, parseHechoFalta, topeDeVueltas, pedir, pedirJson, vectorDe, llamadasEnTexto, armarMensajes, sinRepetidos, sinElRestoDeUnaHerramienta, sinCodigoPegadoArriba, hastaOtroAlfabeto, dondeEmpiezaElBucle, fichas, PRESUPUESTO, PRESUPUESTO_FICHAS, CTX, presupuestoMs, GUARDA_NECESITA_MS, VENTANA_HILO, VENTANA_HILO_VOZ, TOPE_RESUMEN, MAX_VUELTAS_BASE, MAX_VUELTAS_CODIGO } };
