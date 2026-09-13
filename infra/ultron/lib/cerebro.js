@@ -46,7 +46,9 @@ const memoria = require('./memoria');
 
 const MODELO = process.env.ULTRON_MODELO || 'claude-fable-5-1';
 const MAX_SALIDA = Number(process.env.ULTRON_MAX_SALIDA || 6000);
-const MAX_VUELTAS = 16;  // herramientas por turno: alcanza para leer + editar + verificar
+const MAX_VUELTAS_BASE = Number(process.env.ULTRON_MAX_VUELTAS || 16);
+const MAX_VUELTAS_CODIGO = Number(process.env.ULTRON_MAX_VUELTAS_CODIGO || 28);
+const MAX_VUELTAS = MAX_VUELTAS_BASE;  // Claude: tope base; el nodo aplica el de código
 
 /* LO QUE CUESTA PENSAR, por millón de fichas. Del cuadro de precios de la API,
    no de una estimación: entrada, salida y lectura de caché.
@@ -431,7 +433,11 @@ async function pensarConClaude({ miembro, junta, texto, conversacionId, previa: 
   ]);
   const secciones = saber.buscar(texto, { maximo: 12, maxBytes: 60_000 });
   ctx.fuentes.push(...secciones.map((s) => ({ id: s.id, titulo: s.titulo, fuente: s.fuente })));
-  const system = sistema({ miembro: extras.miembro, memorias, estadoVivo, secciones, vozCasa: saber.vozDeLaCasa(), pendientes: abiertos, habilidades: extras.habilidades, pedidos: extras.pedidos, aprobados: extras.aprobados, idioma });
+  // El hilo va ANTES del sistema: hace falta el trabajo a medias en el prompt.
+  /* El hilo ya viene leído de app.js: pedirlo otra vez a Mongo con el mismo id
+     era una espera entera antes de la primera palabra, por nada. */
+  const previa = previaDada || (conversacionId ? await memoria.conversacion(conversacionId, miembro.correo) : null);
+  const system = sistema({ miembro: extras.miembro, memorias, estadoVivo, secciones, vozCasa: saber.vozDeLaCasa(), pendientes: abiertos, habilidades: extras.habilidades, pedidos: extras.pedidos, aprobados: extras.aprobados, idioma, trabajo: previa?.trabajo?.falta ? previa.trabajo : null });
   /* Un bot ve solo sus herramientas; una persona, todas. La búsqueda web de
      Claude no se le da a un bot: no le hace falta para vigilar la casa. */
   const HERRAMIENTAS_DE_ESTE = miembro.rol === 'bot'
@@ -439,10 +445,6 @@ async function pensarConClaude({ miembro, junta, texto, conversacionId, previa: 
     : HERRAMIENTAS;
   ctx.pensar = pensar;     // para que equipo_correr pueda pensar con el mismo cerebro
 
-  // El hilo: los turnos anteriores, para que retome.
-  /* El hilo ya viene leído de app.js: pedirlo otra vez a Mongo con el mismo id
-     era una espera entera antes de la primera palabra, por nada. */
-  const previa = previaDada || (conversacionId ? await memoria.conversacion(conversacionId, miembro.correo) : null);
   const mensajes = [];
   for (const t of (previa?.turnos || []).slice(-16)) {
     mensajes.push({ role: t.rol === 'miembro' ? 'user' : 'assistant', content: t.texto });
@@ -509,9 +511,35 @@ async function pensarConClaude({ miembro, junta, texto, conversacionId, previa: 
   memoria.anotarGasto({ miembro: miembro.correo, modelo: MODELO, ...uso, dolares, canal: ctx.canal || 'panel' })
     .catch((e) => console.error(`[gasto] no se pudo anotar: ${e.message}`));
 
+  /* P0: Claude también devuelve `trabajo` (nunca undefined) para que Mongo
+     no se salte el update. */
+  let trabajo = null;
+  const planoTF = String(textoFinal || '').replace(/\*\*|__|`/g, '');
+  const mHecho = /^\s*HECHO\s*[:：]\s*(.+)$/im.exec(planoTF);
+  const mFalta = /^\s*FALTA\s*[:：]\s*(.+)$/im.exec(planoTF);
+  if (mFalta) {
+    const falta = String(mFalta[1] || '').trim();
+    const eco = /^\(?\s*(en una l[ií]nea|lo que ya|el siguiente paso|la palabra NADA)/i.test(falta);
+    if (!eco && /^(nada|n\/?a|—|–|-)\.?$/i.test(falta)) trabajo = null;
+    else if (!eco && falta) {
+      trabajo = {
+        objetivo: String(previa?.trabajo?.objetivo || texto).slice(0, 500),
+        hecho: String(mHecho?.[1] || '').trim().slice(0, 2000),
+        falta: falta.slice(0, 2000),
+      };
+    } else if (previa?.trabajo?.falta) {
+      trabajo = { objetivo: String(previa.trabajo.objetivo || texto).slice(0, 500), hecho: String(previa.trabajo.hecho || '').slice(0, 2000), falta: String(previa.trabajo.falta).slice(0, 2000) };
+    }
+  } else if (previa?.trabajo?.falta) {
+    trabajo = {
+      objetivo: String(previa.trabajo.objetivo || texto).slice(0, 500),
+      hecho: String(previa.trabajo.hecho || '').slice(0, 2000),
+      falta: String(previa.trabajo.falta).slice(0, 2000),
+    };
+  }
   return { texto: textoFinal, fuentes, herramientas: herramientasUsadas,
            memorias: ctx.memorias, documentos: ctx.documentos, envios: ctx.envios,
-           pendientes: ctx.pendientes, acciones: ctx.acciones, uso: { ...uso, dolares }, modelo: MODELO };
+           pendientes: ctx.pendientes, acciones: ctx.acciones, uso: { ...uso, dolares }, modelo: MODELO, trabajo };
 }
 
 /** Un título corto para un hilo nuevo, con el modelo chico y barato. */
