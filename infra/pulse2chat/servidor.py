@@ -1,1 +1,1 @@
-@/workspace/express-js-on-vercel/infra/pulse2chat/servidor.py
+file:///workspace/express-js-on-vercel/infra/pulse2chat/servidor.py
