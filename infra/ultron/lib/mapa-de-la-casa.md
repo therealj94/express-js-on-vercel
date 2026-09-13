@@ -35,7 +35,7 @@ validadores (node1..node7; node2 y node4 en us-east-2, el resto us-east-1). La
 LAS DEMÁS · `infra/veta-wallet-backend/` (vetawallet-1a2e38ac52b1) ·
 `infra/ordenex-api/` (ordenex-api-ba4b27b8b51a) · `infra/aucorp-api/`
 (aucorp-api-e70d3fd481ca) · `infra/genesis-app/` y `genesis-proxy/` identidad ·
-`infra/mytokenpay-api/` cobros · `infra/mensajes/` el chat ·
+`infra/mytokenpay-api/` cobros · `infra/pulse2chat/` el chat ·
 `infra/cerebro/` el panel de doce regiones · `infra/equipo/` y `bots/` los
 agentes · `infra/correo*/` SES · `infra/dns/` Route53.
 

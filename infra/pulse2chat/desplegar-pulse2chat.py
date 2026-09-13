@@ -1,5 +1,8 @@
 #!/usr/bin/env python3
-"""Sube el relevo de mensajes al nodo del cerebro y lo deja corriendo.
+"""Pulse2Chat · sube el relevo al nodo (hoy el del cerebro) y lo deja corriendo.
+
+Producto: infra/pulse2chat. Hosting actual sigue en cerebro.ordenscan.com/mensajes
+hasta un corte de DNS propio — este guion no cambia el hostname público.
 
 Mismo molde que desplegar-voz.py: S3 + SSM, Caddyfile con copia de respaldo
 y `caddy validate` antes de recargar --si no valida, se restaura y se avisa--.
@@ -30,7 +33,7 @@ AQUI = os.path.dirname(os.path.abspath(__file__))
 # Se leen del ENTORNO de quien despliega y se escriben en la unidad de systemd
 # de la maquina. NUNCA se escriben en el repositorio.
 #
-#   TURN_LLAVE_ID=xxx TURN_LLAVE_TOKEN=yyy python3 desplegar-mensajes.py
+#   TURN_LLAVE_ID=xxx TURN_LLAVE_TOKEN=yyy python3 desplegar-pulse2chat.py
 #
 # ESTADO (25-ago-2026): PUESTAS. La llave se llama `orden-global-relevo` en el
 # panel de Cloudflare, y desde entonces /turno devuelve relevos de verdad en
@@ -57,7 +60,7 @@ CUBO = 'og-5550-arranque-548380372606'
 NODO = 'i-0aff688efc52ab8c8'
 
 UNIDAD = """[Unit]
-Description=Relevo de mensajes de Orden Global
+Description=Pulse2Chat · relevo de mensajes de Orden Global
 After=network.target
 
 [Service]
@@ -91,12 +94,12 @@ def main():
     s3, ssm = ses.client('s3'), ses.client('ssm')
 
     cuerpo = open(AQUI + '/servidor.py', 'rb').read()
-    s3.put_object(Bucket=CUBO, Key='cerebro/mensajes-servidor.py', Body=cuerpo)
+    s3.put_object(Bucket=CUBO, Key='pulse2chat/mensajes-servidor.py', Body=cuerpo)
     url = s3.generate_presigned_url('get_object',
                                     Params={'Bucket': CUBO, 'Key': 'cerebro/mensajes-servidor.py'},
                                     ExpiresIn=1800)
     unidad = UNIDAD.replace('{TURNO}', lineas_turno())
-    s3.put_object(Bucket=CUBO, Key='cerebro/mensajes.service', Body=unidad.encode())
+    s3.put_object(Bucket=CUBO, Key='pulse2chat/mensajes.service', Body=unidad.encode())
     url2 = s3.generate_presigned_url('get_object',
                                      Params={'Bucket': CUBO, 'Key': 'cerebro/mensajes.service'},
                                      ExpiresIn=1800)
