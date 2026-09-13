@@ -49,7 +49,7 @@ const { reservar, completar, marcarFallo, seSabeQueNoSalio, responderSiCorrespon
 let fallos = 0
 const ok = (c, m) => { if (c) console.log('  ok   ', m); else { fallos++; console.log('  FALLA', m) } }
 
-const ENVIO = { chain_id: '8532', recipientAddress: '0xaaa', amount: '10' }
+const ENVIO = { chain_id: '5550', recipientAddress: '0xaaa', amount: '10' }
 const USUARIO = '0xmio'
 
 console.log('\n1. Primer envio: pasa')

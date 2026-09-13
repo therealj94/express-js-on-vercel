@@ -3,7 +3,7 @@ import * as SecureStore from 'expo-secure-store';
 
 // ============================================================
 // Veta Wallet — capa de conexión con el backend oficial de
-// Orden Global (Heroku) y la blockchain (nodo RPC, chain 8532).
+// Orden Global (Heroku) y la blockchain (nodo RPC, chain 5550).
 // Nada simulado: login, saldos, historial y envíos son reales.
 //
 // SECRETOS EN EL DISPOSITIVO
@@ -256,7 +256,7 @@ export const walletApi = {
 // y el backend le acredita ORIGEN.
 //
 // Ese ORIGEN es un saldo interno del backend y NO es el ORIGEN nativo de la
-// chain 8532 que la app lee por RPC en apiPortfolio(). Son dos saldos
+// chain 5550 que la app lee por RPC en apiPortfolio(). Son dos saldos
 // distintos a propósito y no hay que sumarlos como si fueran uno: el on-chain
 // se puede firmar y enviar, este todavía no. Más adelante se conectan.
 //
@@ -683,8 +683,8 @@ export async function livePrices() {
   return { prices, changes };
 }
 
-// ---------- registro de tokens on-chain (red Orden Global 8532) ----------
-export const CHAIN_ID = process.env.EXPO_PUBLIC_WALLET_CHAIN_ID || '8532';
+// ---------- registro de tokens on-chain (red Orden Global 5550) ----------
+export const CHAIN_ID = process.env.EXPO_PUBLIC_WALLET_CHAIN_ID || '5550';
 // Ya no hay `fallbackPrice`: si CoinGecko y gold-api caen, es preferible
 // mostrar "—" que un número congelado que un usuario podría confundir con
 // precio de mercado y usar para vender/comprar mal. La app pinta el estado

@@ -1,7 +1,35 @@
 # Runbook de la migración · cadena 8532 → Hyperledger Besu (QBFT)
 
+> ## ✅ EJECUTADA. La cadena vigente es la 5550.
+>
+> Este documento queda como el registro de cómo se hizo. **El plan decía
+> conservar el identificador 8532 y no fue lo que pasó: la cadena nueva salió
+> con el chain ID 5550.** Todo lo demás se cumplió.
+>
+> Comprobado contra el RPC público el 28 de agosto de 2026:
+>
+> | Qué | Valor | Cómo |
+> |---|---|---|
+> | Chain ID | **5550** | `eth_chainId` → `0x15ae` |
+> | Motor | **Besu 26.7.1** (Java 25) | `web3_clientVersion` |
+> | Consenso | QBFT | `qbft_getValidatorsByBlockNumber` responde |
+> | Validadores | **7**, turnándose | 7 proponentes distintos en 31 bloques seguidos |
+> | Nodos en la red | 7 | `net_peerCount` → 6 pares + el propio |
+> | Entre bloques | 10,0 s exactos | medido del bloque 1 al 17.583 |
+> | baseFee | 0 | `baseFeePerGas` del último bloque |
+> | gasLimit | 10.000.000 | como el plan pedía |
+> | Los 14 tokens | en sus mismas direcciones | `symbol()` y `totalSupply()` coinciden uno por uno |
+>
+> Se conservaron las direcciones de los contratos y las emisiones declaradas.
+> Lo que cambió respecto del plan es el identificador de la red, y eso obliga a
+> revisar cualquier sitio donde estuviera escrito el 8532 a mano.
+>
+> **Sin comprobar todavía:** los saldos de cada cuenta contra
+> `inventario-8532.json` (hace falta el archivo del inventario) y el estado de
+> las máquinas en AWS (hace falta una credencial).
+
 Este es el plan de ejecución, paso a paso, con cada verificación y cada punto
-de vuelta atrás. La regla que gobierna todo el documento: **ningún paso
+de vuelta atrás. La regla que gobernó todo el documento: **ningún paso
 destructivo sin haber verificado el anterior, y ninguna apertura al público
 sin que `verificar.py` cuadre al 100 %.**
 
@@ -9,6 +37,7 @@ Comprobado antes de empezar:
 
 - El chain ID **8532 está libre** en el registro público (chainid.network,
   2.681 cadenas; los vecinos ocupados son 8545 y 8569). Se conserva.
+  *(No se conservó: la cadena nueva usa el 5550.)*
 - La cadena vieja tiene ~250 transacciones históricas y ~1 bloque/10 s.
 - Polygon Edge está archivado desde el 4-dic-2024 (motivo de la migración).
 

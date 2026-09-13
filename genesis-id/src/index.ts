@@ -61,7 +61,7 @@ app.get(['/analitica', '/metricas'], (_req, res) => {
  * El cerebro: todo el ecosistema como un grafo navegable en 3D.
  *
  * Se sirve desde aquí y no como página suelta porque necesita dos cosas que
- * solo tiene este servidor: hablar con la cadena 8532 sin que un CSP se lo
+ * solo tiene este servidor: hablar con la cadena 5550 sin que un CSP se lo
  * impida, y preguntarle al panel por el estado real del ecosistema con la
  * sesión del operador que ya está abierta.
  */

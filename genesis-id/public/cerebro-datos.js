@@ -18,6 +18,7 @@
 // ninguna cifra que pueda mirarse en vivo está escrita aquí.
 
 export const GRUPOS = {
+  respaldo:   { nombre: 'El respaldo',      color: '#D4AF37' },
   cadena:     { nombre: 'La cadena',        color: '#C9A961' },
   nodo:       { nombre: 'Nodos',            color: '#EAD79C' },
   token:      { nombre: 'Tokens',           color: '#F0C674' },
@@ -39,32 +40,54 @@ export const GRUPOS = {
  * que le corresponde, si lo hay).
  */
 export const NODOS = [
+  // ── El respaldo ──────────────────────────────────────────────────────────
+  //
+  // Va PRIMERO a propósito. Es de donde sale el valor de todo lo demás: sin
+  // metal en bóveda, ORIGEN es un número. El mapa empezaba en la cadena y eso
+  // contaba la historia al revés — como si el ecosistema naciera del software.
+  { id: 'minas', n: 'Las minas', g: 'respaldo', peso: 3,
+    d: 'Concesiones mineras propias. El oro se extrae aquí, no se compra en mercado: es lo que hace que el respaldo sea nuestro y no un depósito en la cuenta de otro.' },
+  { id: 'boveda', n: 'Bóveda', g: 'respaldo', peso: 2.4,
+    d: 'Custodia del metal certificado bajo el estándar internacional NI 43-101 y anclado 1:1. Antes de existir como saldo, existe como barra.' },
+
   // ── La cadena ────────────────────────────────────────────────────────────
-  { id: 'cadena', n: 'Cadena 8532', g: 'cadena', peso: 4, vivo: 'cadena',
-    d: 'Blockchain propia del ecosistema, respaldada en oro físico certificado (NI 43-101). 1 ORIGEN = 1 gramín = 1/55 g de oro en bóveda.' },
+  { id: 'cadena', n: 'Cadena 5550', g: 'cadena', peso: 4, vivo: 'cadena',
+    d: 'La Layer 1 propia del ecosistema, respaldada en oro físico certificado (NI 43-101). 1 ORIGEN = 1 gramín = 1/55 g de oro en bóveda. Corre sobre Hyperledger Besu con consenso QBFT, un bloque cada 10 s y baseFee 0.' },
   { id: 'rpc', n: 'RPC público', g: 'cadena', peso: 2, vivo: 'rpc',
     d: 'rpc.ordenglobal-rpc.com — la puerta por la que todo el ecosistema lee y escribe en la cadena.' },
   // Es una pieza de la cadena, no un problema: el problema abierto está aparte
   // en 'a-validador'. Tenerlo en rojo hacía que un solo asunto pintara DOS
   // puntos rojos e inflara la cuenta de «sin resolver».
   { id: 'validador', n: 'Conjunto validador', g: 'cadena', peso: 3, vivo: 'validadores',
-    d: 'Quién firma los bloques de verdad. Se lee del extraData de cada bloque, no de una lista escrita a mano.' },
+    d: 'Quién firma los bloques de verdad. Se lee del extraData de cada bloque, no de una lista escrita a mano. Hoy son 7 direcciones turnándose.' },
 
-  // Los seis nodos, con su IP elástica real.
-  { id: 'node1', n: 'node1', g: 'nodo', d: 'EC2 · us-east-1 · IP elástica 23.23.205.33' },
-  { id: 'node2', n: 'node2', g: 'nodo', d: 'EC2 · us-east-2 · IP elástica 18.190.14.28' },
-  { id: 'node3', n: 'node3', g: 'nodo', d: 'EC2 · us-east-1 · IP elástica 54.205.125.99' },
-  { id: 'node4', n: 'node4', g: 'nodo', d: 'EC2 · us-east-2 · IP elástica 18.226.95.184' },
-  { id: 'node5', n: 'node5', g: 'nodo', d: 'EC2 · us-east-1 · IP elástica 18.211.40.149' },
-  { id: 'node6', n: 'node6', g: 'nodo', d: 'EC2 · us-east-1 · IP elástica 3.224.143.231' },
+  // Los siete nodos de la red. El conteo sale de net_peerCount (6 pares + el
+  // propio) y los siete validadores, de qbft_getValidatorsByBlockNumber.
+  //
+  // Las IP son las de las máquinas de la 8532 y NO se han vuelto a comprobar
+  // desde la migración a Besu: hace falta una credencial de AWS para eso. Se
+  // dejan anotadas como lo que son —el último dato verificado— en vez de
+  // borrarlas o de darlas por buenas.
+  { id: 'node1', n: 'node1', g: 'nodo', d: 'EC2 · us-east-1 · IP elástica 23.23.205.33 (sin verificar desde la migración)' },
+  { id: 'node2', n: 'node2', g: 'nodo', d: 'EC2 · us-east-2 · IP elástica 18.190.14.28 (sin verificar desde la migración)' },
+  { id: 'node3', n: 'node3', g: 'nodo', d: 'EC2 · us-east-1 · IP elástica 54.205.125.99 (sin verificar desde la migración)' },
+  { id: 'node4', n: 'node4', g: 'nodo', d: 'EC2 · us-east-2 · IP elástica 18.226.95.184 (sin verificar desde la migración)' },
+  { id: 'node5', n: 'node5', g: 'nodo', d: 'EC2 · us-east-1 · IP elástica 18.211.40.149 (sin verificar desde la migración)' },
+  { id: 'node6', n: 'node6', g: 'nodo', d: 'EC2 · us-east-1 · IP elástica 3.224.143.231 (sin verificar desde la migración)' },
+  { id: 'node7', n: 'node7', g: 'nodo', d: 'El séptimo nodo, sumado en la migración. La cadena lo cuenta y firma bloques; su IP no está verificada desde aquí.' },
   { id: 'watchdog', n: 'Vigilante', g: 'infra', peso: 2,
-    d: 'ogb-watchdog.timer, cada 3 minutos en los 6 nodos. El bucle del syncer se bloqueaba en un canal sin buffer y se quedaba estancado sin avisar; esto lo detecta y reinicia el nodo solo.' },
+    d: 'ogb-watchdog.timer, cada 3 minutos en los nodos. Nació para el syncer de Polygon Edge, que se bloqueaba en un canal sin buffer y se quedaba estancado sin avisar. Con Besu esa falla concreta ya no existe; el vigilante se mantiene como red de seguridad.' },
 
   // ── Tokens ───────────────────────────────────────────────────────────────
-  { id: 'ORIGEN', n: 'ORIGEN', g: 'token', peso: 2.5, d: 'Nativo de la cadena. 1 gramín = 1/55 g de oro.' },
-  { id: 'AUKA', n: 'AUKA', g: 'token', peso: 1.6, d: 'Respaldado en oro — sigue una onza.' },
-  { id: 'AGKA', n: 'AGKA', g: 'token', peso: 1.6, d: 'Respaldado en plata — sigue una onza.' },
-  { id: 'ONDK', n: 'ONDK', g: 'token', peso: 1.6, d: 'Gobernanza y utilidad del ecosistema.' },
+  //
+  // Cuatro llevan el peso —ORIGEN, AUKA, AGKA y ONDK— y once son de sector. La
+  // lista salía plana y hacía parecer que las quince pesan lo mismo; el `peso`
+  // de las cuatro primeras es lo que marca la diferencia en el mapa.
+  { id: 'ORIGEN', n: 'ORIGEN', g: 'token', peso: 3,
+    d: 'La cripto NATIVA de la cadena. No es un contrato: es la moneda de la red. 1 ORIGEN = 1 gramín = 1/55 g de oro certificado en bóveda.' },
+  { id: 'AUKA', n: 'AUKA', g: 'token', peso: 2, d: 'Moneda respaldada en oro — sigue una onza. 55.000.000 emitidos.' },
+  { id: 'AGKA', n: 'AGKA', g: 'token', peso: 2, d: 'Moneda respaldada en plata — sigue una onza. 500.000.000 emitidos.' },
+  { id: 'ONDK', n: 'ONDK', g: 'token', peso: 2, d: 'Orden Kapital: gobernanza y utilidad del ecosistema. 555.000.000 emitidos.' },
   { id: 'MNKA', n: 'MNKA', g: 'token', d: 'Comunidad e innovación.' },
   { id: 'IBS', n: 'IBS', g: 'token', d: 'Token de sector.' },
   { id: 'HARV', n: 'HARV', g: 'token', d: 'Harvi — token de sector agrícola.' },
@@ -90,8 +113,17 @@ export const NODOS = [
     d: 'Generada desde la app, no del sitio viejo. Hoy corre con datos de prueba porque su backend está caído.' },
   { id: 'mtp-back', n: 'Backend MyTokenPay', g: 'abierto', peso: 2,
     d: 'Caído — responde 503. Bloqueado para desplegar por un repositorio de GitLab de terceros.' },
+  // OrdenEx y AuCorp son piezas del ecosistema y faltaban enteras en el mapa.
+  // Van con lo único que consta, y dicho como lo que es: no hay código suyo en
+  // este repositorio, ni dominio que responda, ni nada verificado desde aquí.
+  // Inventarles una descripción sería peor que dejarlas fuera — un mapa que se
+  // adorna deja de servir para decidir.
+  { id: 'ordenex', n: 'OrdenEx', g: 'app', peso: 2.4,
+    d: 'Pieza del ecosistema. PENDIENTE DE DOCUMENTAR: no hay código suyo en este repositorio ni dominio comprobado. Falta qué hace, dónde corre y cómo habla con la cadena y con Genesis ID.' },
+  { id: 'aucorp', n: 'AuCorp', g: 'app', peso: 2.4,
+    d: 'Pieza del ecosistema. Lo único que consta en el repo es una línea del README de MyTokenPay: «Red de comercios afiliados del Sistema Financiero Social (Orden Global · AuCorp · DBNX)». PENDIENTE DE DOCUMENTAR.' },
   { id: 'ordenscan', n: 'ordenscan', g: 'app', peso: 2,
-    d: 'El explorador de la cadena. La ficha de cada persona trae su historial completo: cuentas, identidad y movimiento de los 15 tokens.' },
+    d: 'El explorador de la cadena. No es una app del ecosistema sino su cara auditable: la ficha de cada persona trae cuentas, identidad y movimiento de los 15 tokens.' },
   { id: 'og-web', n: 'ordenglobal.org', g: 'app', peso: 1.6,
     d: 'El sitio corporativo. Sin conexión de datos con el resto: es la cara pública.' },
 
@@ -142,8 +174,8 @@ export const NODOS = [
     d: 'CloudTrail y GuardDuty encendidos, el bucket S3 expuesto cerrado, perfiles de instancia auditados.' },
 
   // ── Lo que sigue abierto ─────────────────────────────────────────────────
-  { id: 'a-validador', n: 'Un solo validador', g: 'abierto', peso: 2.6,
-    d: 'De los 6 nodos, el conjunto validador de la cadena tiene UNA dirección. Los demás sincronizan y sirven RPC, pero no firman. Es centralización real, no de papel. Fondear y poner en staking al resto mueve tesorería: necesita la Junta.' },
+  { id: 'a-validador', n: 'Validadores repartidos', g: 'seguridad', peso: 2.6,
+    d: 'Cerrado con la migración. El conjunto validador tiene 7 direcciones que se turnan para firmar, en vez de una sola. QBFT aguanta 2 caídos sin detener la cadena. El texto exacto lo trae el cerebro leyendo el extraData del último bloque, no de aquí.' },
   { id: 'a-cred', n: 'Credenciales sin rotar', g: 'abierto', peso: 2.4,
     d: 'cPanel, una clave de AWS (las AKIA no expiran solas), un token de Expo, un hook de Render y una API key de Heroku pasaron por el chat. Los valores no se escriben en ningún sitio; lo que hay que hacer es rotarlos.' },
   { id: 'a-corruptos', n: '2 registros corruptos', g: 'abierto',
@@ -152,8 +184,12 @@ export const NODOS = [
     d: 'Ya reportan los DOS clientes de Veta Wallet: la app Android (le faltaba identificar a la persona, por eso llegaban eventos sin dueño) y la web. El alta en el padrón se prueba con la propia sesión del usuario, sin claves secretas en el cliente. Queda: DESPLEGAR la web para que empiece a llegar, y montar el padrón completo en el backend —que sigue fuera de alcance por el token de Heroku— para ver también a quien no abre la app.' },
 
   // ── Decisiones que solo puede tomar Orden Global ─────────────────────────
-  { id: 'dec-staking', n: 'Autorizar staking', g: 'decision', peso: 2,
-    d: 'Fondear y poner en staking los otros nodos. Mueve tesorería: solo con instrucción escrita de la Junta.' },
+  // La decisión de staking desapareció con la migración: el contrato de
+  // garantía propietario de Polygon Edge ya no existe y QBFT gestiona el
+  // conjunto validador sin depósito. Lo que queda de aquella conversación es la
+  // política de comisiones, que sigue sin decidirse.
+  { id: 'dec-comisiones', n: 'Política de comisiones', g: 'decision', peso: 2,
+    d: 'Hoy la cadena tiene baseFee 0: usarla no cuesta nada. Es viable mientras los 7 validadores sean propios. Admitir validadores de terceros exige decidir antes cómo se les remunera — sin comisión ni recompensa, nadie externo tiene motivo para sostener un nodo.' },
   { id: 'dec-remesas', n: 'Decidir Remesas', g: 'decision',
     d: 'Licencia por país, o dejarlo como calculadora sin ejecución, que es lo que es hoy.' },
   { id: 'dec-tiendas', n: 'Cuentas de tiendas', g: 'decision', peso: 2,
@@ -177,6 +213,9 @@ export const NODOS = [
     d: 'Piezas probadas para pegar en los backends: el puente a Genesis ID, la idempotencia, la migración de claves y la telemetría.' },
 ];
 
+/** Los nodos de la red, en un solo sitio: se repiten en cuatro relaciones. */
+const NODOS_RED = ['node1', 'node2', 'node3', 'node4', 'node5', 'node6', 'node7'];
+
 /** `[origen, destino, etiqueta, fuerte?]`. La etiqueta dice QUÉ pasa entre los dos. */
 export const ENLACES = [
   // La cadena y sus nodos
@@ -186,16 +225,26 @@ export const ENLACES = [
   // qué era el dominio.
   ['d-rpc', 'rpc', 'sirve'],
   ['cadena', 'validador', 'la firman', true],
-  ...['node1','node2','node3','node4','node5','node6'].map((n) => [n, 'cadena', 'sincronizan']),
-  ['validador', 'node1', 'una sola dirección firma', true],
-  ...['node1','node2','node3','node4','node5','node6'].map((n) => ['watchdog', n, 'vigila y reinicia']),
-  ...['node1','node2','node3','node4','node5','node6'].map((n) => [n, 'aws', 'corren en EC2']),
-  ['a-validador', 'validador', 'el problema es este', true],
-  ['a-validador', 'dec-staking', 'se resuelve con', true],
+  ...NODOS_RED.map((n) => [n, 'cadena', 'sincronizan']),
+  ...NODOS_RED.map((n) => ['validador', n, 'firma por turnos']),
+  ...NODOS_RED.map((n) => ['watchdog', n, 'vigila y reinicia']),
+  ...NODOS_RED.map((n) => [n, 'aws', 'corren en EC2']),
+  ['a-validador', 'validador', 'esto es lo que se cerró', true],
+
+  // De dónde sale el valor: metal antes que software.
+  ['minas', 'boveda', 'el oro extraído se custodia en', true],
+  ['boveda', 'ORIGEN', 'lo respalda 1:1', true],
+  ['boveda', 'AUKA', 'lo respalda en oro', true],
+  ['boveda', 'AGKA', 'lo respalda en plata', true],
 
   // Los tokens viven en la cadena
   ...['ORIGEN','AUKA','AGKA','ONDK','MNKA','IBS','HARV','AUBEX','ASL','LOVE','REST','SOL','AIT','AGRO','POLITICAL']
     .map((t) => [t, 'cadena', 'vive en']),
+
+  // Las dos piezas que faltaban. Solo se dibuja lo que se sabe: que pertenecen
+  // al ecosistema. En cuanto se documenten, aquí van sus relaciones reales.
+  ['ordenex', 'cadena', 'pieza del ecosistema · relación por documentar'],
+  ['aucorp', 'cadena', 'pieza del ecosistema · relación por documentar'],
 
   // Veta Wallet
   ['vw-app', 'vw-back', 'login · enviar · tarjeta'],

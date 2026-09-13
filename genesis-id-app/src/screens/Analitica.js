@@ -389,7 +389,7 @@ function VistaMonedas({ D }) {
       <Card>
         <Text style={st.titulo}>Las monedas del ecosistema</Text>
         <Text style={st.sub}>
-          Lo que hay emitido en la cadena 8532 y cuánta gente del padrón tiene
+          Lo que hay emitido en la cadena 5550 y cuánta gente del padrón tiene
           cada una. «Emitida, sin repartir» significa que existe el contrato
           pero nadie la tiene todavía.
         </Text>

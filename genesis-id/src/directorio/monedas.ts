@@ -1,7 +1,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 // Las monedas del ecosistema, y cómo se leen sus saldos.
 //
-// Cada contrato de esta lista se comprobó contra la cadena 8532 antes de
+// Cada contrato de esta lista se comprobó contra la cadena 5550 antes de
 // escribirlo: existe, responde `decimals()` y su `symbol()` en cadena coincide
 // con el símbolo de aquí. Una dirección copiada mal no da error — devuelve cero
 // para todo el mundo, y un panel que enseña ceros se ve igual de bien que uno
@@ -52,7 +52,13 @@ export function monedas(): Moneda[] {
   }).filter((m) => m.simbolo)
 }
 
-const RPC = () => process.env.RPC_8532_URL || 'https://rpc.ordenglobal-rpc.com/'
+// El nombre lleva el número de la cadena desde que existe, y en Render está
+// puesto con el viejo. Se aceptan los tres: el neutro primero, luego el de la
+// 5550 y por último el de la 8532, para que renombrar la variable allá sea un
+// trámite y no un despliegue roto.
+const RPC = () =>
+  process.env.RPC_ORDEN_URL || process.env.RPC_5550_URL || process.env.RPC_8532_URL
+  || 'https://rpc.ordenglobal-rpc.com/'
 
 /** `balanceOf(address)` con la dirección rellenada a 32 bytes. */
 const datosBalanceOf = (direccion: string) =>

@@ -10,11 +10,14 @@
 // Una advertencia sobre lo que se ve y lo que no: aquí solo aparece lo que pasó
 // EN LA CADENA. Veta Wallet es una billetera custodia y lleva además su propia
 // contabilidad interna; un movimiento que solo existe en esa base no deja rastro
-// en la 8532 y por tanto no sale en esta lista. Cuando las dos versiones no
+// en la 5550 y por tanto no sale en esta lista. Cuando las dos versiones no
 // coinciden, esa diferencia es justo lo que hay que mirar.
 // ─────────────────────────────────────────────────────────────────────────────
 
-const EXPLORADOR = (process.env.EXPLORADOR_8532_URL
+// Igual que el RPC: se aceptan el nombre neutro y los dos con número, para que
+// renombrar la variable en Render no dependa de un despliegue simultáneo.
+const EXPLORADOR = (process.env.EXPLORADOR_ORDEN_URL
+  || process.env.EXPLORADOR_5550_URL || process.env.EXPLORADOR_8532_URL
   || 'https://orden-global-scan-c4abe71e8024.herokuapp.com').replace(/\/$/, '')
 
 export interface Movimiento {

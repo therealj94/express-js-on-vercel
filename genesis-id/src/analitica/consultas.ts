@@ -506,7 +506,7 @@ export function serviciosVigilados(): Servicio[] {
     { clave: 'mytokenpay', nombre: 'MyTokenPay · API', url: 'https://mytokenpay-api-5ab43b64205a.herokuapp.com/healthz' },
     { clave: 'veta-wallet', nombre: 'Veta Wallet · API', url: 'https://vetawallet-1a2e38ac52b1.herokuapp.com/' },
     { clave: 'ordenscan', nombre: 'Explorador ordenscan', url: 'https://orden-global-scan-c4abe71e8024.herokuapp.com/block/totalBlock' },
-    { clave: 'rpc8532', nombre: 'Cadena 8532 · RPC', url: 'https://rpc.ordenglobal-rpc.com/' },
+    { clave: 'rpc5550', nombre: 'Cadena 5550 · RPC', url: 'https://rpc.ordenglobal-rpc.com/' },
     { clave: 'web-veta', nombre: 'vetawallet.com', url: 'https://www.vetawallet.com/' },
   ]
 }

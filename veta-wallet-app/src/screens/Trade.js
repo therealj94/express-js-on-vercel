@@ -309,7 +309,7 @@ export function Send({ nav, params }) {
         <View style={{ height: 14 }} />
         <Card style={{ padding: 14, marginBottom: 16 }}>
           <Row k={t('send.fee')} v={`${fee.toFixed(6)} ORIGEN`} />
-          <Row k={t('send.network')} v="Orden Global · 8532" />
+          <Row k={t('send.network')} v="Orden Global · 5550" />
           <Row k={t('send.total')} v={`${amount ? (amount + (isNative ? fee : 0)).toFixed(4) : '—'} ${tok.s}`} />
           <Row k={t('send.after')} v={`${amount ? Math.max(0, tok.qty - amount - (isNative ? fee : 0)).toFixed(4) : qtyFmt(tok.qty)} ${tok.s}`} />
         </Card>
@@ -497,7 +497,7 @@ function ReviewSheet({ data, token, onCancel, onConfirm }) {
             <Row k={t('send.fee')} v={`${qtyExacto(data.fee)} ORIGEN`} />
             <Row k={t('send.total')} v={`${data.total.toFixed(4)} ${data.symbol}`} />
             <Row k={t('send.after')} v={`${Math.max(0, data.saldoAntes - data.total).toFixed(4)} ${data.symbol}`} />
-            <Row k={t('send.network')} v="Orden Global · 8532" />
+            <Row k={t('send.network')} v="Orden Global · 5550" />
           </View>
 
           {fase === 0 ? (
@@ -670,7 +670,7 @@ function SentReceipt({ data, contacts, onClose }) {
             {data.saldoAntes != null ? (
               <DoneRow k={t('send.after')} v={`${Math.max(0, data.saldoAntes - (data.total || 0)).toFixed(4)} ${data.symbol}`} />
             ) : null}
-            <DoneRow k={t('send.network')} v="Orden Global · 8532" />
+            <DoneRow k={t('send.network')} v="Orden Global · 5550" />
             {data.bloque != null ? <DoneRow k={t('send.block')} v={`#${data.bloque}`} /> : null}
             {data.gas != null ? <DoneRow k={t('send.gas')} v={String(data.gas)} /> : null}
             <DoneRow k={t('send.date')} v={new Date(data.fecha || Date.now()).toLocaleString()} />

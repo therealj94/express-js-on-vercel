@@ -218,7 +218,7 @@ export function directorio({
 export const personaDirectorio = (email) => llamar('GET', `/panel/directorio/persona/${encodeURIComponent(email)}`);
 export const movimientosPersona = (email) =>
   llamar('GET', `/panel/directorio/persona/${encodeURIComponent(email)}/movimientos`);
-/** Le pide al servidor que vuelva a leer los saldos de la cadena 8532. */
+/** Le pide al servidor que vuelva a leer los saldos de la cadena 5550. */
 export const refrescarSaldos = () => llamar('POST', '/panel/directorio/saldos', {});
 
 // ── Negocios (KYB) ──────────────────────────────────────────────────────────

@@ -1063,14 +1063,14 @@ export const CHANGELOG = [
     build: 1,
     date: '2026-07-27',
     es: [
-      'Primera versión conectada a la blockchain de Orden Global (red 8532).',
+      'Primera versión conectada a la blockchain de Orden Global (red 5550).',
       'Cuentas reales, saldos on-chain y precios en vivo de oro y plata.',
       'Envío de ORIGEN, recepción por QR y actividad real de la red.',
       'Genesis ID: verificación en el portal oficial y pasaporte en la app.',
       'Español e inglés, sesión recordada y gestos de navegación.',
     ],
     en: [
-      'First version connected to the Orden Global blockchain (network 8532).',
+      'First version connected to the Orden Global blockchain (network 5550).',
       'Real accounts, on-chain balances and live gold and silver prices.',
       'Send ORIGEN, receive by QR and real network activity.',
       'Genesis ID: verification on the official portal and passport in the app.',

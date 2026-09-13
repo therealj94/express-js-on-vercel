@@ -9,7 +9,7 @@ const VETA = (() => {
   'use strict';
 
   const API = 'https://vetawallet-1a2e38ac52b1.herokuapp.com';
-  const CHAIN = '8532';
+  const CHAIN = '5550';
   const LLAVE = 'veta.sesion';
 
   const $ = s => document.querySelector(s);
@@ -728,7 +728,7 @@ const VETA = (() => {
     const filas = [
       [t('tok.tipo'), f.t],
       [t('tok.resp'), f.r],
-      [t('tok.red'), 'Orden Global · 8532'],
+      [t('tok.red'), 'Orden Global · 5550'],
       [t('tok.contrato'), x.nativo ? t('tok.nativo') : cortaDir(x.contrato)],
     ];
     return volver + `
@@ -1211,7 +1211,7 @@ const VETA = (() => {
         <button class="btn btn-linea btn-sm" onclick="VETA.compartir()">${t('rec.compartir')}</button>
       </div>
       <dl class="datos" style="margin-top:20px;text-align:left">
-        <div><dt>${t('dep.red')}</dt><dd>Orden Global · 8532</dd></div>
+        <div><dt>${t('dep.red')}</dt><dd>Orden Global · 5550</dd></div>
       </dl>
       <div class="nota nota-cuidado" style="margin-top:16px">${t('dep.aviso')}</div>
     </div>`;

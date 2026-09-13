@@ -14,7 +14,7 @@ import { reservar, completar, marcarFallo, seSabeQueNoSalio } from '/app/lib/ide
 
 const CLAVE = 'prueba_indice_' + Date.now().toString(36)
 const USUARIO = '0xPRUEBA'
-const ENVIO = { chain_id: '8532', recipientAddress: '0xaaa', amount: '1' }
+const ENVIO = { chain_id: '5550', recipientAddress: '0xaaa', amount: '1' }
 
 let fallos = 0
 const ok = (c, m) => { console.log((c ? '  ok    ' : '  FALLA ') + m); if (!c) fallos++ }
