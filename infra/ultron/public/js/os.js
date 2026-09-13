@@ -2178,6 +2178,16 @@ const OS = (() => {
    * queda libre — que es lo que hacía que interrumpir no sirviera de nada.
    */
   function interrumpirTurno() {
+    /* P3: avisar al servidor ANTES de matar el SSE — si solo abortamos el
+       fetch, el motor seguía pensando (el close del SSE no aborta a propósito,
+       para no tirar el turno al cambiar de app en el teléfono). */
+    try {
+      fetch('/pensar/cortar', {
+        method: 'POST', credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json' },
+        body: '{}', keepalive: true,
+      }).catch(() => {});
+    } catch { /* nada */ }
     try { cancelarTurno?.abort(); } catch { /* ya */ }
     cancelarTurno = null;
     pararMuletillas();
