@@ -47,7 +47,7 @@ const CERT = (process.env.ULTRON_NODO_CERT || '').trim();
    gasto y el que sale en el registro. Tiene que cuadrar con
    /etc/ogb-tarjeta.env o los turnos quedan anotados a nombre de otro. */
 const MODELO = process.env.ULTRON_NODO_MODELO || 'orcarouter/Qwen3.8-27B-Uncensored';
-const MAX_VUELTAS = 16;
+const MAX_VUELTAS = Number(process.env.ULTRON_MAX_VUELTAS || 24);
 const PLAZO_MS = 170_000;
 /* ── EL PRESUPUESTO DE TIEMPO DEL TURNO ──────────────────────────────────────
  *
@@ -887,6 +887,17 @@ async function pensar({ miembro, junta, texto, conversacionId, previa: previaDad
     } else if (mFalta) {
       trabajo = null;   // dijo NADA: el trabajo se cierra
     }
+  }
+  /* Si usó varias manos y no escribió FALTA, el trabajo igual se apunta
+     para no empezar de cero el turno siguiente. */
+  if (trabajo === undefined && usadas.length >= 3) {
+    const nombres = [...new Set(usadas.map((h) => h.nombre))];
+    trabajo = {
+      objetivo: String(texto || '').slice(0, 500),
+      hecho: `Corrí: ${nombres.join(', ')}.`,
+      falta: 'Seguir el plan: el paso siguiente concreto, y entregar documento o PR',
+    };
+    console.warn('[nodo] trabajo inferido: usó varias herramientas y no escribió FALTA');
   }
 
   /* ── UN PERMISO PENDIENTE TAMBIÉN ES TRABAJO A MEDIAS ────────────────────
