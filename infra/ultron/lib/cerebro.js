@@ -618,6 +618,17 @@ async function contextoExtra(miembro, junta = []) {
 }
 
 async function pensar(args) {
+  /* Enrutador: en modo relevo/claude, un turno pesado va a Claude
+     aunque el nodo esté vivo. En modo nodo no se toca. */
+  try {
+    const enr = require('./enrutador').decidir(args, { modo: modoCasa(), claudeOn: claudeEncendido() });
+    if (enr.cerebro === 'claude' && cual() !== 'claude') {
+      console.log(`[cerebro] enrutador → Claude (${enr.motivo})`);
+      return pensarConClaude(args);
+    }
+  } catch (e) {
+    console.warn('[cerebro] enrutador no corrió:', e?.message || e);
+  }
   if (cual() === 'nodo') {
     const extras = await contextoExtra(args.miembro, args.junta || []);
     const conExtras = (o) => sistema({ ...o, miembro: { ...o.miembro, esDueño: extras.miembro.esDueño }, habilidades: extras.habilidades, pedidos: extras.pedidos, aprobados: extras.aprobados, idioma: args.idioma || 'es' });
