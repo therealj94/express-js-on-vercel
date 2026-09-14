@@ -866,7 +866,7 @@ async function pensar({ miembro, junta, texto, conversacionId, previa: previaDad
     if (textoFinal.trim()) { textoFinal = ''; emitir('reemplazo', { texto: '' }); }
     mensajes.push({ role: 'user', content: '[sistema] Se te acabaron las vueltas de herramientas de ESTE turno. Ya no podés llamar a ninguna más, pero el trabajo NO se cancela: sigue en el turno próximo.\n'
       + 'Contestale AHORA a la persona con lo que averiguaste —lo que leíste, lo que viste, con nombres y rutas concretas—.\n'
-      + 'Y terminá con estas dos líneas, tal cual, que son las que me dejan retomarlo:\n'
+      + 'Si el pedido era un plan o una estrategia, nombrá el documento (crear_documento) o decí que falta crear_documento.\n'+ 'Y terminá con estas dos líneas, tal cual, que son las que me dejan retomarlo:\n'
       + 'HECHO: (en una línea, lo que ya queda resuelto)\n'
       + 'FALTA: (en una línea, el siguiente paso concreto — o la palabra NADA si ya está todo)' });
     const acum = { t: '' };
