@@ -1144,5 +1144,15 @@ body.arrancando #hablar,body.cerrada #hablar{visibility:hidden;pointer-events:no
 <!-- El centro: el núcleo se carga siempre; el busto en 3D solo si se pide. -->
 <script type="module" src="js/os-nucleo.js?v=taller"></script>
 <script src="js/os-puerta.js?v=taller"></script>
+<script>
+/* El SW no piensa ni autentica: solo deja el cascarón del OS en el teléfono
+   para que la pantalla no salga en blanco con datos móviles. Las rutas que
+   cuestan dinero o llevan cookie van a la red, siempre. */
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', function () {
+    navigator.serviceWorker.register('/sw.js').catch(function () {});
+  });
+}
+</script>
 </body>
 </html>
