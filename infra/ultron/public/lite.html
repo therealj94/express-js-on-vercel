@@ -90,6 +90,9 @@ header button.txt{width:auto;padding:0 8px;font-size:13px;font-weight:600}
 #popupAuth button.ok{background:#fff;color:#000;font-weight:700}
 #authLista .item{border:1px solid #2a2a2a;border-radius:12px;padding:10px;margin:8px 0;font-size:13px}
 #authLista .item button{margin-top:8px;margin-right:6px;border:0;border-radius:8px;padding:8px 10px;background:#2a2a2e;color:#fff}
+#cerrarFijo{display:none;margin:0 12px 8px;border:0;border-radius:14px;padding:14px;background:#c9a227;color:#000;font-weight:800;font-size:15px}
+#cerrarFijo.on{display:block}
+#cerrarTurno{background:#c9a227!important;color:#000!important;font-weight:800!important}
 </style>
 </head>
 <body>
@@ -119,6 +122,7 @@ header button.txt{width:auto;padding:0 8px;font-size:13px;font-weight:600}
   <div id="log"></div>
 </div>
 <div id="bar"></div>
+<button type="button" id="cerrarFijo">TERMINÁ YA · entregá lo que hay</button>
 <form id="box">
   <button type="button" id="adj" aria-label="Adjuntar">＋</button>
   <input id="file" type="file" hidden accept=".pdf,.doc,.docx,.txt,.csv,.png,.jpg,.jpeg,.webp">
@@ -177,6 +181,6 @@ header button.txt{width:auto;padding:0 8px;font-size:13px;font-weight:600}
   </div>
 </div>
 
-<script src="/js/lite.js"></script>
+<script src="/js/lite.js?v=proc3"></script>
 </body>
 </html>
