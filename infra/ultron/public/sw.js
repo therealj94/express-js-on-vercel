@@ -1,13 +1,12 @@
-/* ULTRON OS · service worker
- * Cascarón en caché. Nunca intercepta pensar, voz, entrar ni salud.
+/* ULTRON OS · estrategias de caché
+ *
+ *   red-sola     pensar / voz / entrar / salud / SSE — ni se tocan
+ *   red-primero  HTML del OS — deploy nuevo se ve; offline usa cascarón
+ *   SWR          js / css / fuentes / img — se pinta ya y se actualiza detrás
+ *   cascarón     / /os manifiesto logo — precache al instalar
  */
-const CAJA = 'ultron-os-sw-1';
-const CASCARON = [
-  '/',
-  '/os',
-  '/manifest.webmanifest',
-  '/img/ultron.png',
-];
+const CAJA = 'ultron-os-sw-2';
+const CASCARON = ['/', '/os', '/manifest.webmanifest', '/img/ultron.png'];
 const RED_SOLA = /^\/(pensar|voz|entrar|saludo|salud|herramientas|whatsapp|sesion|preferencias|archivos|documentos|pendientes|bitacora|avisos|apk)\b/;
 
 self.addEventListener('install', (e) => {
@@ -21,30 +20,50 @@ self.addEventListener('activate', (e) => {
   })());
 });
 
+function esEstatico(u) {
+  const p = u.pathname;
+  return p.startsWith('/js/') || p.startsWith('/vendor/') || p.startsWith('/img/')
+    || /\.(css|js|woff2?|png|svg|webp)$/.test(p) || p === '/manifest.webmanifest' || p === '/markdown.js';
+}
+function esHtml(req, u) {
+  return req.mode === 'navigate' || u.pathname === '/' || u.pathname === '/os' || u.pathname === '/os.html' || u.pathname === '/consola';
+}
+
+async function swr(req) {
+  const caja = await caches.open(CAJA);
+  const hit = await caja.match(req);
+  const fondo = fetch(req).then((red) => {
+    if (red.ok) caja.put(req, red.clone());
+    return red;
+  }).catch(() => hit);
+  return hit || fondo;
+}
+
+async function redPrimero(req) {
+  const caja = await caches.open(CAJA);
+  try {
+    const red = await fetch(req);
+    if (red.ok) caja.put(req, red.clone());
+    return red;
+  } catch {
+    return (await caja.match(req)) || (await caja.match('/')) || (await caja.match('/os'));
+  }
+}
+
 self.addEventListener('fetch', (e) => {
   const req = e.request;
   if (req.method !== 'GET') return;
   const u = new URL(req.url);
   if (u.origin !== self.location.origin) return;
   if (RED_SOLA.test(u.pathname)) return;
-  if (req.headers.get('accept') && req.headers.get('accept').includes('text/event-stream')) return;
+  if ((req.headers.get('accept') || '').includes('text/event-stream')) return;
 
-  e.respondWith((async () => {
-    const caja = await caches.open(CAJA);
-    try {
-      const red = await fetch(req);
-      if (red.ok && (u.pathname.startsWith('/js/') || u.pathname.startsWith('/vendor/') || u.pathname.startsWith('/img/') || u.pathname.endsWith('.css') || u.pathname.endsWith('.js') || u.pathname.endsWith('.woff2') || u.pathname === '/manifest.webmanifest')) {
-        caja.put(req, red.clone());
-      }
-      return red;
-    } catch {
-      const hit = await caja.match(req);
-      if (hit) return hit;
-      if (u.pathname === '/' || u.pathname === '/os' || u.pathname === '/os.html') {
-        const home = await caja.match('/') || await caja.match('/os');
-        if (home) return home;
-      }
-      throw new Error('sin red y sin caché');
-    }
-  })());
+  if (esHtml(req, u)) {
+    e.respondWith(redPrimero(req));
+    return;
+  }
+  if (esEstatico(u)) {
+    e.respondWith(swr(req));
+    return;
+  }
 });
