@@ -395,7 +395,7 @@ const OS = (() => {
          número en pantalla que lo dijera. El cronómetro del turno ya viaja en
          el evento `fin`; aquí se ve. La PRIMERA PALABRA es la cifra que
          importa: es el silencio que se siente. */
-      ...(ultimoTurno ? [['ÚLTIMO TURNO', `${(ultimoTurno.primera / 1000).toFixed(1)} s la 1.ª palabra · ${(ultimoTurno.total / 1000).toFixed(1)} s en total`,
+      ...(ultimoTurno ? [['ÚLTIMO TURNO', `${ultimoTurno.toks != null ? ultimoTurno.toks + ' tok/s · ' : ''}${(ultimoTurno.primera / 1000).toFixed(1)} s 1.ª palabra · ${(ultimoTurno.total / 1000).toFixed(1)} s total${ultimoTurno.salida ? ' · ' + ultimoTurno.salida + ' tok' : ''}`,
         ultimoTurno.primera > 4000 ? 'amb' : SI]] : []),
     ];   // cuántos son la junta ya lo dice la puerta; aquí sería un renglón repetido
     $('#nodo-lineas').innerHTML = lineas.map(([a, b, cl]) => fila(a, b, cl)).join('');
@@ -2064,7 +2064,7 @@ const OS = (() => {
           /* El cronómetro del turno, a la vista. «Se traba» y «va lento» eran
              quejas sin un número al lado; ahora el panel del cerebro dice
              cuánto tardó la primera palabra, que es el silencio que se siente. */
-          if (d?.ms?.total) { ultimoTurno = { primera: d.ms.primera || d.ms.total, total: d.ms.total }; pintarSalud(saludUltima); }
+          if (d?.ms?.total || d?.ms?.toks) { ultimoTurno = { primera: d.ms.primera || d.ms.total || 0, total: d.ms.total || 0, toks: d.ms.toks, salida: d.uso && d.uso.salida }; pintarSalud(saludUltima); }
           if (d?.texto) { acum = d.texto; pintarDicho(acum); }
           if (hablaAhora()) locutor?.cerrar?.(); else estado('idle');
           /* ── SI QUEDÓ TRABAJO, UN TOQUE LO SIGUE ────────────────────────
