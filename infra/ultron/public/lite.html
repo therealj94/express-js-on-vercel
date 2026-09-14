@@ -56,6 +56,21 @@ header button{width:40px;height:40px;border:0;background:transparent;color:var(-
 #login input{width:100%;background:#1c1c1e;border:0;border-radius:14px;padding:16px;color:#fff;margin-bottom:10px;font:inherit}
 #login button{width:100%;padding:16px;border:0;border-radius:14px;background:#fff;color:#000;font-weight:700;font-size:16px}
 #login .err{color:#ff6b6b;margin-top:12px;min-height:1.2em}
+
+#ajustes{display:none;position:fixed;inset:0;background:#000a;z-index:25;align-items:flex-end;justify-content:center}
+#ajustes.on{display:flex}
+#ajustes .sheet{width:100%;max-width:640px;background:#111;border-radius:18px 18px 0 0;padding:18px 18px calc(20px + env(safe-area-inset-bottom));max-height:88vh;overflow:auto}
+#ajustes h2{margin-bottom:14px;font-size:20px}
+#ajustes label{display:block;font-size:12px;color:var(--d);margin:14px 0 6px;text-transform:uppercase;letter-spacing:.06em}
+#ajustes .seg{display:flex;gap:6px;flex-wrap:wrap}
+#ajustes .seg button{flex:1;min-width:90px;background:#1c1c1e;color:var(--t);border:1px solid #2a2a2a;border-radius:12px;padding:10px 8px;font-size:13px}
+#ajustes .seg button.on{background:#fff;color:#000;border-color:#fff}
+#ajustes input{width:100%;background:#1c1c1e;border:0;border-radius:12px;padding:12px;color:#fff;font:inherit}
+#ajustes .row{display:flex;gap:8px;margin-top:16px}
+#ajustes .row button,#ajustes .danger,#ajustes #cerrarAjustes,#ajustes #guardarAjustes{border:0;border-radius:12px;padding:12px;font:inherit;color:#fff;background:#2a2a2e}
+#ajustes .danger{background:#3a1515;width:100%;margin-top:10px}
+#ajustes a{display:block;margin:14px 0;color:var(--a);text-decoration:none}
+#ajustes .hint{color:var(--d);font-size:12px;margin-top:8px}
 </style>
 </head>
 <body>
@@ -71,6 +86,7 @@ header button{width:40px;height:40px;border:0;background:transparent;color:var(-
   <button type="button" id="menu" aria-label="Historial">☰</button>
   <b id="titulo">Ultron</b>
   <button type="button" id="nuevo" aria-label="Nuevo">✎</button>
+  <button type="button" id="gear" aria-label="Ajustes">⚙</button>
 </header>
 <div id="scrim"></div>
 <aside id="drawer">
@@ -86,6 +102,44 @@ header button{width:40px;height:40px;border:0;background:transparent;color:var(-
   <textarea id="texto" rows="1" placeholder="Preguntale a Ultron"></textarea>
   <button type="submit" id="go">↑</button>
 </form>
+<div id="ajustes">
+  <div class="sheet">
+    <h2>Ajustes</h2>
+    <label>Interfaz</label>
+    <div class="seg" id="segInterfaz">
+      <button type="button" data-v="lite">Lite</button>
+      <button type="button" data-v="pro">Pro · OS</button>
+    </div>
+    <label>Cerebro</label>
+    <div class="seg" id="segCerebro">
+      <button type="button" data-v="nodo">Nodo 27B</button>
+      <button type="button" data-v="relevo">Relevo</button>
+      <button type="button" data-v="claude">Claude</button>
+    </div>
+    <p class="hint" id="hintCerebro"></p>
+    <label>Idioma</label>
+    <div class="seg" id="segIdioma">
+      <button type="button" data-v="es">Español</button>
+      <button type="button" data-v="en">English</button>
+    </div>
+    <label>Voz</label>
+    <div class="seg" id="segVoz">
+      <button type="button" data-v="on">On</button>
+      <button type="button" data-v="off">Off</button>
+    </div>
+    <label>Lugar (clima)</label>
+    <input id="lugar" placeholder="Tegucigalpa">
+    <div class="row">
+      <button type="button" id="guardarAjustes">Guardar</button>
+      <button type="button" id="cerrarOtras">Cerrar otras sesiones</button>
+    </div>
+    <button type="button" id="salir" class="danger">Salir</button>
+    <a href="/os">Abrir ULTRON OS</a>
+    <button type="button" id="cerrarAjustes">Listo</button>
+    <p class="hint" id="ajErr"></p>
+  </div>
+</div>
+
 <script src="/js/lite.js"></script>
 </body>
 </html>
