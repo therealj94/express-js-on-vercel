@@ -43,7 +43,15 @@ header button.txt{width:auto;padding:0 8px;font-size:13px;font-weight:600}
 .msg.ai .b{max-width:100%}
 .msg .b{white-space:pre-wrap;word-break:break-word}
 .msg .tools{font-size:11px;color:var(--d);margin:6px 0 0}
-#bar{padding:0 16px 6px;font-size:12px;color:var(--d);min-height:16px}
+#bar{padding:0 16px 4px;font-size:12px;color:var(--d)}
+#proceso{display:none;margin:0 12px 8px;background:#0c0c0e;border:1px solid #222;border-radius:12px;overflow:hidden}
+#proceso.on{display:block}
+#proceso .cap{display:flex;align-items:center;gap:8px;padding:8px 10px;border-bottom:1px solid #1a1a1a}
+#proceso .cap b{flex:1;font-size:12px;color:#c9a227}
+#cerrarTurno{border:0;background:#fff;color:#000;border-radius:10px;padding:6px 10px;font-size:12px;font-weight:700}
+#log{max-height:180px;overflow:auto;padding:8px 10px;font:12px/1.4 ui-monospace,Menlo,monospace;color:#cfcfcf;white-space:pre-wrap;word-break:break-word}
+#log .paso{color:#8e8e93;margin:6px 0 2px}
+#log .code{background:#161616;border-radius:8px;padding:8px;margin:4px 0;color:#d8d8d8}
 #box{display:flex;align-items:flex-end;gap:8px;padding:8px 12px calc(10px + env(safe-area-inset-bottom));
   border-top:1px solid #161616;background:#050505}
 #box textarea{flex:1;border:0;background:#1c1c1e;color:var(--t);border-radius:22px;padding:12px 16px;
@@ -106,6 +114,10 @@ header button.txt{width:auto;padding:0 8px;font-size:13px;font-weight:600}
   <div class="foot"><a href="/os">ULTRON OS</a></div>
 </aside>
 <main id="chat"></main>
+<div id="proceso">
+  <div class="cap"><b id="procTit">En ello</b><button type="button" id="cerrarTurno">Terminá ya</button></div>
+  <div id="log"></div>
+</div>
 <div id="bar"></div>
 <form id="box">
   <button type="button" id="adj" aria-label="Adjuntar">＋</button>
