@@ -9,6 +9,8 @@ const PESADO = [
   /\b(mejor(a|ar)|reescrib|implement|arquitect)/i,
   /\b(plan\s+completo|memor[áa]ndum|due diligence|comparar tres)\b/i,
   /\b(debug|stack trace|typeerror|uncaught)\b/i,
+  /\b(estrateg|hoja de ruta|roadmap|plan de|armar un plan|trabajo largo)\b/i,
+  /\b(sub(i|í|ir)|entreg(a|ar)|documento completo|propuesta)\b/i,
 ];
 
 function pedidoDe(args) {
