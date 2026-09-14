@@ -1426,21 +1426,19 @@ app.use((err, req, res, next) => {   // eslint-disable-line no-unused-vars
 
 if (require.main === module) {
   const PUERTO = Number(process.env.PORT || 3900);
+  /* Render mata el deploy si en ~60s no hay puerto. Mongo no puede ir antes. */
+  const server = app.listen(PUERTO, '0.0.0.0', () => {
+    console.log(`[ultron] escuchando en 0.0.0.0:${PUERTO} · cerebro ${cerebro.encendido() ? MODELO_LOG() : 'APAGADO'} · voz ${voz.encendida() ? 'ElevenLabs' : 'del navegador'} · memoria ${memoria.estado()}`);
+  });
+  server.on('error', (e) => console.error('[ultron] listen', e));
   memoria.conectar().finally(() => {
-    /* El vigía arranca con el servidor y no con la pantalla: la avería que
-       importa es la que pasa cuando nadie está mirando. */
     vigia.arrancar();
     permisos.comprobarCatalogo(herramientas.DEFINICIONES.map((d) => d.name));
     equipo.arrancar({ pensar: cerebro.pensar, junta: JUNTA });
-    /* El médico. Arranca con el servidor por la misma razón que el vigía: la
-       avería que importa es la que pasa cuando nadie está mirando. */
     salud.arrancar();
     sesiones.cargar().then((n) => { if (n) console.log(`[sesiones] ${n} sesión(es) cerradas recordadas`); });
     preferencias.casa().then((c) => console.log(`[casa] cerebro: ${c.cerebro}`));
     if (!boveda.encendida()) console.warn('[boveda] apagada: sin ULTRON_BOVEDA_LLAVE no se guardan secretos');
-    app.listen(PUERTO, () => {
-      console.log(`[ultron] escuchando en ${PUERTO} · cerebro ${cerebro.encendido() ? MODELO_LOG() : 'APAGADO'} · voz ${voz.encendida() ? 'ElevenLabs' : 'del navegador'} · memoria ${memoria.estado()}`);
-    });
   });
 }
 function MODELO_LOG() { return cerebro.modelo(); }
