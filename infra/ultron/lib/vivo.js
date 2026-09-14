@@ -203,6 +203,14 @@ async function leer() {
  * reloj sería el doble de tráfico contra las casas y, sin `unref`, dejaría las
  * pruebas colgadas sin cerrar el proceso.
  */
+/* FRESCO: no se toca la red. STALE: se sirve igual y se refresca detrás.
+   MUERTO: más de 5 min — se sirve si hay algo, pero el modelo lo ve viejo.
+   90 s fijos era un techo tonto: o se esperaba a las 6 casas o se mentía
+   «fresco». El pensar no puede esperar 9 s × N. */
+const FRESCO_MS = Number(process.env.ULTRON_VIVO_FRESCO_MS || 45_000);
+const STALE_MS = Number(process.env.ULTRON_VIVO_MS || process.env.ULTRON_VIVO_STALE_MS || 90_000);
+const MUERTO_MS = Number(process.env.ULTRON_VIVO_MUERTO_MS || 300_000);
+
 let cache = null, cacheEn = 0, enVuelo = null;
 
 /** Lee de verdad y llena la despensa. Una sola en vuelo. */
@@ -221,9 +229,14 @@ function refrescar() {
   return enVuelo;
 }
 
-/** La de siempre: espera si no hay nada guardado y fresco. */
-async function leerConCache(maxEdadMs = Number(process.env.ULTRON_VIVO_MS || 90_000)) {
-  if (cache && Date.now() - cacheEn < maxEdadMs) return cache;
+function edadMs() { return cache ? Date.now() - cacheEn : Infinity; }
+
+/** Sirve lo que hay. Si pasó de fresco, refresca DETRÁS. Solo espera si no hay nada. */
+async function leerConCache(maxEdadMs = STALE_MS) {
+  if (cache) {
+    if (edadMs() >= Math.min(FRESCO_MS, maxEdadMs)) refrescar();
+    return cache;
+  }
   return refrescar();
 }
 
@@ -235,9 +248,9 @@ async function leerConCache(maxEdadMs = Number(process.env.ULTRON_VIVO_MS || 90_
  * ser nada. `paraElModelo(null)` dice «no leído», así que nadie inventa un
  * precio que no midió.
  */
-async function leerRapido(maxEdadMs = Number(process.env.ULTRON_VIVO_MS || 90_000)) {
+async function leerRapido(maxEdadMs = FRESCO_MS) {
   if (cache) {
-    if (Date.now() - cacheEn >= maxEdadMs) refrescar();
+    if (edadMs() >= Math.min(FRESCO_MS, maxEdadMs)) refrescar();
     return cache;
   }
   return Promise.race([
@@ -258,7 +271,7 @@ function paraElModelo(v) {
      que poder avisar «esto es de hace cuatro minutos» en vez de cantarlo como
      de ahora mismo. */
   const edad = (() => { const t = Date.parse(v.leidoEn); return Number.isFinite(t) ? Math.round((Date.now() - t) / 1000) : null; })();
-  l.push(`Leído: ${v.leidoEn}${edad !== null && edad > 90 ? ` (hace ${edad >= 120 ? `${Math.round(edad / 60)} minutos` : `${edad} segundos`}: si la cifra pesa, decí de cuándo es o volvé a leer con estado_vivo)` : ''}`);
+  l.push(`Leído: ${v.leidoEn}${edad !== null && edad > Math.round(STALE_MS/1000) ? ` (hace ${edad >= 120 ? `${Math.round(edad / 60)} minutos` : `${edad} segundos`}: si la cifra pesa, decí de cuándo es o volvé a leer con estado_vivo)` : ''}`);
   if (v.origen) l.push(`ORIGEN: $${v.origen.origenUsd.toFixed(6)} (onza de oro $${v.origen.oroOnzaUsd?.toFixed(2) ?? '?'}, fuente ${v.origen.fuente || '?'})`);
   else l.push('ORIGEN: precio no disponible ahora');
   l.push(`Ordenex: ${v.ordenex.vivo ? 'VIVA' : 'NO CONTESTA'} · cadena ${v.ordenex.cadena} · mongo ${v.ordenex.mongo} · bloque 5550 ${v.ordenex.bloque5550} · compra con USDT ${v.ordenex.compraUsdt ?? '?'} · mercados ${v.ordenex.mercados.map((m) => m.mercado).join(', ') || 'ninguno'}`);
@@ -273,4 +286,4 @@ function paraElModelo(v) {
   return l.join('\n');
 }
 
-module.exports = { leer, leerConCache, leerRapido, refrescar, edadDeLaCache, paraElModelo, CASAS, _adentro: { precioDe } };
+module.exports = { leer, leerConCache, leerRapido, refrescar, edadDeLaCache, paraElModelo, CASAS, FRESCO_MS, STALE_MS, MUERTO_MS, _adentro: { precioDe } };
