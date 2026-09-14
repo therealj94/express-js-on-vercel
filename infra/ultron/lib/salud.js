@@ -111,7 +111,7 @@ function fallosRecientes(minutos = 60) {
    El dyno Basic de Heroku da 512 MB. Pasando de 512 el dyno empieza a tirar a
    disco (R14) y todo se arrastra; pasando mucho, Heroku lo mata (R15). Por eso
    el aviso empieza en el 72 %: hay que enterarse ANTES de que duela. */
-const RAM_MB = Number(process.env.ULTRON_RAM_MB || 512);
+const RAM_MB = Number(process.env.ULTRON_RAM_MB || 2048);
 const LIMITES = {
   ramOjo: 0.72, ramMal: 0.88,
   bucleOjo: 120, bucleMal: 400,          // ms de retraso p95
