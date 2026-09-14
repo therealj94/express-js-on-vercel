@@ -1,7 +1,60 @@
 (() => {
   const $ = (id) => document.getElementById(id);
   const chat = $('chat'), bar = $('bar'), hilos = $('hilos');
-  let convId = null, abortar = null, vacio = true;
+  let convId = null, abortar = null, vacio = true, enCurso = false;
+
+  const ETIQUETA = {
+    buscar_web: 'Buscando en Internet',
+    leer_pagina: 'Leyendo una página',
+    pagina_foto: 'Sacando foto de la página',
+    pagina_entrar: 'Entrando al sitio',
+    repo_arbol: 'Mirando el repo',
+    repo_leer: 'Leyendo código',
+    repo_buscar: 'Buscando en el código',
+    repo_proponer_cambio: 'Armando un cambio (PR)',
+    terminal: 'En la terminal',
+    crear_documento: 'Escribiendo un documento',
+    listar_archivos: 'Viendo archivos subidos',
+    leer_archivo: 'Leyendo un archivo',
+    estado_vivo: 'Midiendo las casas',
+    buscar_saber: 'Buscando en el saber',
+    desplegarse: 'Desplegando',
+    heroku_registro: 'Leyendo logs',
+    mongo_consultar: 'Consultando la base',
+  };
+
+  function abrirProceso(titulo) {
+    $('procTit').textContent = titulo || 'En ello';
+    $('log').textContent = '';
+    $('proceso').classList.add('on');
+  }
+  function cerrarProceso() {
+    $('proceso').classList.remove('on');
+    bar.textContent = '';
+    enCurso = false;
+  }
+  function paso(txt) {
+    const el = document.createElement('div');
+    el.className = 'paso';
+    el.textContent = '→ ' + txt;
+    $('log').appendChild(el);
+    $('log').scrollTop = $('log').scrollHeight;
+    bar.textContent = txt;
+    $('procTit').textContent = txt;
+  }
+  function trozo(txt, code) {
+    if (!txt) return;
+    const el = document.createElement('div');
+    el.className = code ? 'code' : 'paso';
+    el.textContent = String(txt).slice(0, 1200);
+    $('log').appendChild(el);
+    $('log').scrollTop = $('log').scrollHeight;
+  }
+  function pareceCodigo(s) {
+    const t = String(s || '');
+    return /function |const |let |import |class |def |```|\/infra\/|{/.test(t) && t.length > 40;
+  }
+
 
   const api = (ruta, opt = {}) => fetch(ruta, { credentials: 'same-origin', ...opt });
   async function json(ruta, opt) {
@@ -136,13 +189,15 @@
     } catch (e) { bar.textContent = String(e.message || e); }
   };
 
-  async function enviar() {
-    const texto = $('texto').value.trim();
+  async function enviar(forzado) {
+    const texto = (forzado || $('texto').value).trim();
     if (!texto) return;
-    $('texto').value = '';
+    if (!forzado) $('texto').value = '';
     add('me', texto);
     const dest = add('ai', '');
-    bar.textContent = 'Pensando…';
+    enCurso = true;
+    abrirProceso('Pensando…');
+    paso(forzado ? 'Cerrando el turno con lo que hay' : 'Arrancó el turno');
     abortar?.abort();
     abortar = new AbortController();
     let acc = '';
@@ -175,24 +230,43 @@
           if (!ev || !raw) continue;
           let d; try { d = JSON.parse(raw); } catch { continue; }
           if (ev === 'texto') { acc += d.texto || d.t || ''; dest.textContent = acc; chat.scrollTop = chat.scrollHeight; }
-          else if (ev === 'pensando') bar.textContent = d.hace || 'Pensando…';
-          else if (ev === 'herramienta') bar.textContent = d.nombre || d.hace || 'herramienta';
-          else if (ev === 'titulo' && d.titulo) $('titulo').textContent = d.titulo;
+          else if (ev === 'pensando') paso(d.hace || 'Pensando…');
+          else if (ev === 'herramienta') {
+            const n = d.nombre || '';
+            paso((ETIQUETA[n] || d.hace || n) + (n ? ' · ' + n : ''));
+            if (d.entrada && (d.entrada.consulta || d.entrada.q || d.entrada.url || d.entrada.ruta || d.entrada.comando)) {
+              trozo(d.entrada.consulta || d.entrada.q || d.entrada.url || d.entrada.ruta || d.entrada.comando);
+            }
+          } else if (ev === 'herramienta-lista') {
+            const s = d.salida || '';
+            paso('Listo · ' + (d.nombre || 'mano'));
+            trozo(s, pareceCodigo(s));
+          } else if (ev === 'titulo' && d.titulo) $('titulo').textContent = d.titulo;
           else if (ev === 'fin') { checarAuth();
             convId = d.conversacionId || convId;
             if (d.texto && !acc) dest.textContent = d.texto;
-            bar.textContent = '';
+            paso('Listo');
+            cerrarProceso();
           } else if (ev === 'error') {
             dest.textContent = d.mensaje || d.error || 'Error';
-            bar.textContent = '';
+            paso(d.mensaje || 'Error');
+            cerrarProceso();
           }
         }
       }
     } catch (e) {
       if (e.name !== 'AbortError') dest.textContent = String(e.message || e);
-      bar.textContent = '';
+      if (e.name === 'AbortError') paso('Corte. Pedí el cierre.');
+      else cerrarProceso();
     }
   }
+
+  $('cerrarTurno').onclick = () => {
+    if (!enCurso) return;
+    abortar?.abort();
+    const cierre = 'PARÁ las herramientas. Entregá AHORA lo que ya tenés: qué hiciste, el código o hallazgo clave, HECHO en una línea y FALTA en una línea (o NADA). No busques más.';
+    setTimeout(() => enviar(cierre), 200);
+  };
 
   $('box').onsubmit = (e) => { e.preventDefault(); enviar(); };
   $('texto').addEventListener('keydown', (e) => {
