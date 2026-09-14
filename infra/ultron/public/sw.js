@@ -5,9 +5,9 @@
  *   SWR          js / css / fuentes / img — se pinta ya y se actualiza detrás
  *   cascarón     / /os manifiesto logo — precache al instalar
  */
-const CAJA = 'ultron-os-sw-2';
+const CAJA = 'ultron-os-sw-3';
 const CASCARON = ['/', '/os', '/manifest.webmanifest', '/img/ultron.png'];
-const RED_SOLA = /^\/(pensar|voz|entrar|saludo|salud|herramientas|whatsapp|sesion|preferencias|archivos|documentos|pendientes|bitacora|avisos|apk)\b/;
+const RED_SOLA = /^\/(pensar|voz|entrar|saludo|salud|herramientas|whatsapp|sesion|preferencias|archivos|documentos|pendientes|bitacora|avisos|apk|lite|js\/lite)\b/;
 
 self.addEventListener('install', (e) => {
   e.waitUntil(caches.open(CAJA).then((c) => c.addAll(CASCARON)).then(() => self.skipWaiting()));
