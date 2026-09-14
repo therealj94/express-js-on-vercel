@@ -21,6 +21,7 @@ const prefSchema = new Schema({
   vozId: { type: String, default: null },          // null = la de la casa
   figura: { type: String, enum: ['nucleo', 'busto'], default: 'nucleo' },
   conVoz: { type: Boolean, default: true },
+  interfaz: { type: String, enum: ['lite', 'pro'], default: 'lite' },
   /* El lugar del que se da el clima al saludar. Base de operaciones por
      omisión; se cambia en Ajustes porque José viaja a Roatán. */
   lugar: { type: String, default: 'Tegucigalpa' },
@@ -51,7 +52,7 @@ const Pref = mongoose.models.Pref || mongoose.model('Pref', prefSchema);
 
 const conMongo = () => mongoose.connection.readyState === 1;
 const provisional = new Map();
-const POR_OMISION = { idioma: 'es', vozId: null, figura: 'nucleo', conVoz: true, lugar: 'Tegucigalpa', oido: 'conversacion', soloYo: true, tablero: [], coords: null };
+const POR_OMISION = { idioma: 'es', vozId: null, figura: 'nucleo', conVoz: true, lugar: 'Tegucigalpa', oido: 'conversacion', soloYo: true, tablero: [], coords: null, interfaz: 'lite' };
 
 /* Cuánto vale una ubicación antes de quedar vieja. José viaja: el tiempo de
    Tegucigalpa dado en Roatán es justo el fallo que la ubicación viene a
@@ -107,6 +108,7 @@ async function guardar(correo, cambios = {}) {
   const c = String(correo || '').toLowerCase();
   const limpio = {};
   if (cambios.idioma === 'es' || cambios.idioma === 'en') limpio.idioma = cambios.idioma;
+  if (cambios.interfaz === 'lite' || cambios.interfaz === 'pro') limpio.interfaz = cambios.interfaz;
   if (cambios.figura === 'nucleo' || cambios.figura === 'busto') limpio.figura = cambios.figura;
   if (typeof cambios.conVoz === 'boolean') limpio.conVoz = cambios.conVoz;
   if (typeof cambios.soloYo === 'boolean') limpio.soloYo = cambios.soloYo;
