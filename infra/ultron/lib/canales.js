@@ -46,6 +46,28 @@ function numeroLimpio(n) {
   return d.length >= 8 ? d : null;
 }
 
+async function zernio(ruta, { metodo = 'GET', cuerpo = null } = {}) {
+  const r = await fetch(`${ZERNIO_BASE}${ruta}`, {
+    method: metodo,
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${ZERNIO_CLAVE}` },
+    body: cuerpo ? JSON.stringify(cuerpo) : undefined,
+    signal: AbortSignal.timeout(20_000),
+  });
+  const texto = await r.text();
+  if (!r.ok) {
+    const e = new Error(`El proveedor contestó ${r.status}.`);
+    e.codigo = 'PROVEEDOR'; e.detalle = texto.slice(0, 200); throw e;
+  }
+  try { return JSON.parse(texto); } catch { return {}; }
+}
+
+async function hiloDe(num) {
+  const d = await zernio(`/inbox/conversations?platform=whatsapp&accountId=${encodeURIComponent(ZERNIO_CUENTA)}&limit=50&sortOrder=desc`);
+  const lista = d.data || d.conversations || [];
+  const hit = lista.find((c) => String(c.participantId || c.phone || '').replace(/\D/g, '').endsWith(num) || String(c.participantId || '').replace(/\D/g, '') === num);
+  return hit?.id || null;
+}
+
 async function whatsapp(numero, texto) {
   if (!ZERNIO_CLAVE || !ZERNIO_CUENTA) {
     const e = new Error('WhatsApp no está configurado (faltan ZERNIO_CLAVE / ZERNIO_CUENTA).');
@@ -53,18 +75,15 @@ async function whatsapp(numero, texto) {
   }
   const num = numeroLimpio(numero);
   if (!num) { const e = new Error('Número inválido.'); e.codigo = 'DESTINO_INVALIDO'; throw e; }
-  const r = await fetch(`${ZERNIO_BASE}/messages`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${ZERNIO_CLAVE}` },
-    body: JSON.stringify({ account: ZERNIO_CUENTA, to: num, type: 'text', text: String(texto).slice(0, 4000) }),
-    signal: AbortSignal.timeout(20_000),
-  });
-  const cuerpo = await r.text();
-  if (!r.ok) {
-    const e = new Error(`El proveedor contestó ${r.status}.`);
-    e.codigo = 'PROVEEDOR'; e.detalle = cuerpo.slice(0, 200); throw e;
+  const hilo = await hiloDe(num);
+  if (!hilo) {
+    const e = new Error('No hay hilo de WhatsApp con ese número en Zernio. Tiene que haber escrito antes por esa línea.');
+    e.codigo = 'SIN_HILO'; throw e;
   }
-  let d = null; try { d = JSON.parse(cuerpo); } catch { /* nada */ }
+  const d = await zernio(`/inbox/conversations/${hilo}/messages`, {
+    metodo: 'POST',
+    cuerpo: { accountId: ZERNIO_CUENTA, message: String(texto).slice(0, 1024) },
+  });
   return { ok: true, id: d?.id || d?.messageId || null };
 }
 
