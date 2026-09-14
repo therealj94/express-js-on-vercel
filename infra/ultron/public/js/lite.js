@@ -199,5 +199,67 @@
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); enviar(); }
   });
 
+
+  let prefs = {}, casa = {}, yo = null, esDueño = false;
+
+  function marcar(seg, v) {
+    document.querySelectorAll('#' + seg + ' button').forEach((b) => b.classList.toggle('on', b.dataset.v === v));
+  }
+
+  async function abrirAjustes() {
+    $('ajErr').textContent = '';
+    prefs = await json('/preferencias');
+    casa = await json('/casa').catch(() => ({}));
+    yo = await json('/yo').catch(() => ({}));
+    esDueño = yo.permiso === 'dueño' || (yo.miembro && yo.miembro.correo === yo.dueño);
+    marcar('segInterfaz', prefs.interfaz === 'pro' ? 'pro' : 'lite');
+    marcar('segCerebro', casa.cerebro || casa.cual || 'nodo');
+    marcar('segIdioma', prefs.idioma === 'en' ? 'en' : 'es');
+    marcar('segVoz', prefs.conVoz === false ? 'off' : 'on');
+    $('lugar').value = prefs.lugar || 'Tegucigalpa';
+    $('hintCerebro').textContent = esDueño
+      ? ('Ahora: ' + (casa.cual || casa.cerebro || '?') + (casa.claudeConfigurado ? ' · Claude listo' : ' · Claude sin llave'))
+      : 'El cerebro de la casa lo cambia solo el dueño.';
+    $('segCerebro').style.opacity = esDueño ? '1' : '.45';
+    $('ajustes').classList.add('on');
+  }
+
+  document.querySelectorAll('#segInterfaz button, #segCerebro button, #segIdioma button, #segVoz button').forEach((b) => {
+    b.onclick = () => {
+      const seg = b.parentElement.id;
+      if (seg === 'segCerebro' && !esDueño) { $('ajErr').textContent = 'Solo el dueño cambia el cerebro.'; return; }
+      marcar(seg, b.dataset.v);
+    };
+  });
+
+  $('gear').onclick = () => abrirAjustes().catch((e) => { $('ajErr').textContent = e.message; $('ajustes').classList.add('on'); });
+  $('cerrarAjustes').onclick = () => $('ajustes').classList.remove('on');
+
+  $('guardarAjustes').onclick = async () => {
+    $('ajErr').textContent = 'Guardando…';
+    const interfaz = document.querySelector('#segInterfaz button.on')?.dataset.v || 'lite';
+    const idioma = document.querySelector('#segIdioma button.on')?.dataset.v || 'es';
+    const voz = document.querySelector('#segVoz button.on')?.dataset.v !== 'off';
+    const cerebro = document.querySelector('#segCerebro button.on')?.dataset.v;
+    try {
+      await json('/preferencias', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ interfaz, idioma, conVoz: voz, lugar: $('lugar').value.trim() }) });
+      if (esDueño && cerebro) {
+        await json('/casa', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ cerebro }) }).catch((e) => { throw e; });
+      }
+      $('ajErr').textContent = 'Guardado.';
+      if (interfaz === 'pro') location.href = '/os';
+    } catch (e) { $('ajErr').textContent = e.message || String(e); }
+  };
+
+  $('cerrarOtras').onclick = async () => {
+    try { const d = await json('/sesiones/cerrar-otras', { method: 'POST' }); $('ajErr').textContent = 'Cerradas: ' + (d.cerradas ?? 'ok'); }
+    catch (e) { $('ajErr').textContent = e.message; }
+  };
+
+  $('salir').onclick = async () => {
+    await api('/salir', { method: 'POST' });
+    location.reload();
+  };
+
   sesion();
 })();
