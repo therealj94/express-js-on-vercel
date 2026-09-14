@@ -222,7 +222,7 @@ function refrescar() {
 }
 
 /** La de siempre: espera si no hay nada guardado y fresco. */
-async function leerConCache(maxEdadMs = 30_000) {
+async function leerConCache(maxEdadMs = Number(process.env.ULTRON_VIVO_MS || 90_000)) {
   if (cache && Date.now() - cacheEn < maxEdadMs) return cache;
   return refrescar();
 }
@@ -235,7 +235,7 @@ async function leerConCache(maxEdadMs = 30_000) {
  * ser nada. `paraElModelo(null)` dice «no leído», así que nadie inventa un
  * precio que no midió.
  */
-async function leerRapido(maxEdadMs = 30_000) {
+async function leerRapido(maxEdadMs = Number(process.env.ULTRON_VIVO_MS || 90_000)) {
   if (cache) {
     if (Date.now() - cacheEn >= maxEdadMs) refrescar();
     return cache;
