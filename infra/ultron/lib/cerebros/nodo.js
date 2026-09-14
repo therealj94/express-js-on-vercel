@@ -744,8 +744,10 @@ async function pensar({ miembro, junta, texto, conversacionId, previa: previaDad
          código: Miré el código: nodo.js es donde vive el turno» — las dos
          cosas seguidas, y la primera sobra. Ya se emitió por el hilo, así que
          se manda `reemplazo` para que el tablero la quite. */
-      textoFinal = '';
-      emitir('reemplazo', { texto: '' });
+      if (textoFinal.trim().length < 80) {
+        textoFinal = '';
+        emitir('reemplazo', { texto: '' });
+      }
     }
     if (sinTiempo) {
       console.warn(`[nodo] se acabó el presupuesto (${presupuestoMs()} ms) en la vuelta ${vuelta} sin respuesta${textoFinal.trim() ? ' (solo un anuncio)' : ''}: se le pide la respuesta sin herramientas`);
@@ -874,7 +876,7 @@ async function pensar({ miembro, junta, texto, conversacionId, previa: previaDad
   if (!senalCorte?.aborted && (!textoFinal.trim() || esSoloAnuncio(textoFinal))) {
     console.warn(`[nodo] se acabaron las ${MAX_VUELTAS} vueltas ${textoFinal.trim() ? 'con solo un anuncio' : 'sin una palabra'}: se pide la respuesta sin herramientas`);
     emitir('pensando', { vuelta: MAX_VUELTAS, hace: 'juntando lo que averigüé' });
-    if (textoFinal.trim()) { textoFinal = ''; emitir('reemplazo', { texto: '' }); }
+    if (textoFinal.trim() && textoFinal.trim().length < 80) { textoFinal = ''; emitir('reemplazo', { texto: '' }); }
     mensajes.push({ role: 'user', content: '[sistema] Se te acabaron las vueltas de herramientas de ESTE turno. Ya no podés llamar a ninguna más, pero el trabajo NO se cancela: sigue en el turno próximo.\n'
       + 'Contestale AHORA a la persona con lo que averiguaste —lo que leíste, lo que viste, con nombres y rutas concretas—.\n'
       + 'Si el pedido era un plan o una estrategia, nombrá el documento (crear_documento) o decí que falta crear_documento.\n'+ 'Y terminá con estas dos líneas, tal cual, que son las que me dejan retomarlo:\n'
