@@ -230,7 +230,10 @@
           const raw = /^data: (.+)$/m.exec(bloque)?.[1];
           if (!ev || !raw) continue;
           let d; try { d = JSON.parse(raw); } catch { continue; }
-          if (ev === 'texto') { acc += d.texto || d.t || ''; dest.textContent = acc; chat.scrollTop = chat.scrollHeight; }
+          if (ev === 'reemplazo') {
+            const nx = d.texto || d.t || '';
+            if (nx.trim()) { acc = nx; dest.textContent = acc; }
+          } else if (ev === 'texto') { acc += d.texto || d.t || ''; dest.textContent = acc; chat.scrollTop = chat.scrollHeight; }
           else if (ev === 'pensando') {
             const h = d.hace || '';
             if (h && h !== 'sigue en ello' && h !== 'abriendo el hilo') paso(h);
@@ -269,7 +272,7 @@
     if (!enCurso) { bar.textContent = 'No hay un turno en curso.'; return; }
     abortar?.abort();
     paso('Cortado. Pidiendo el cierre…');
-    const cierre = 'PARÁ las herramientas. Entregá AHORA lo que ya tenés: qué hiciste, el código o hallazgo clave, HECHO en una línea y FALTA en una línea (o NADA). No busques más.';
+    const cierre = 'NO empieces de cero NI borres lo anterior. NO uses repo_leer. Entregá el resultado: si hay un cambio, llama repo_proponer_cambio ahora; si hay un plan, crear_documento. HECHO y FALTA. Si no podés llamar la tool, pegá el parche completo en el chat.';
     setTimeout(() => enviar(cierre), 250);
   }
   $('cerrarTurno').onclick = pedirCierre;
@@ -278,7 +281,7 @@
   if (false) $('cerrarTurno').onclick = () => {
     if (!enCurso) return;
     abortar?.abort();
-    const cierre = 'PARÁ las herramientas. Entregá AHORA lo que ya tenés: qué hiciste, el código o hallazgo clave, HECHO en una línea y FALTA en una línea (o NADA). No busques más.';
+    const cierre = 'NO empieces de cero NI borres lo anterior. NO uses repo_leer. Entregá el resultado: si hay un cambio, llama repo_proponer_cambio ahora; si hay un plan, crear_documento. HECHO y FALTA. Si no podés llamar la tool, pegá el parche completo en el chat.';
     setTimeout(() => enviar(cierre), 200);
   };
 
