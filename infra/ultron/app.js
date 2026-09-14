@@ -1335,7 +1335,7 @@ app.get('/', paginaOS);
 app.get('/os', paginaOS);
 app.get('/os.html', paginaOS);
 app.get('/consola', (req, res) => res.sendFile(join(__dirname, 'public', 'index.html')));
-app.get('/lite', (req, res) => { res.set('Cache-Control','no-cache'); res.sendFile(join(__dirname, 'public', 'lite.html')); });
+app.get('/lite', (req, res) => { res.set('Cache-Control','no-store, no-cache, must-revalidate'); res.sendFile(join(__dirname, 'public', 'lite.html')); });
 
 /* ── LA APP DE ANDROID ───────────────────────────────────────────────────────
    El APK y su ficha viven en public/apk/, así que el estático ya los sirve.
