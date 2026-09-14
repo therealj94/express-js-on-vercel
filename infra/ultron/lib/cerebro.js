@@ -120,7 +120,8 @@ function motivo(e) {
   if (estado === 529 || /overloaded/i.test(dentro.type || '')) {
     return { codigo: 'SATURADO', mensaje: 'Anthropic está saturado en este momento. Probá de nuevo en un rato.' };
   }
-  return { codigo: 'ERROR', mensaje: 'ULTRON no pudo contestar. Probá de nuevo.' };
+  const detalle = String(e?.message || e || '').replace(/\s+/g,' ').slice(0, 180);
+  return { codigo: e?.codigo || 'ERROR', mensaje: detalle ? `ULTRON no pudo contestar: ${detalle}` : 'ULTRON no pudo contestar. Probá de nuevo.' };
 }
 
 // ── El prompt ───────────────────────────────────────────────────────────────
@@ -630,6 +631,13 @@ async function contextoExtra(miembro, junta = []) {
 }
 
 async function pensar(args) {
+  try {
+    const enr = require('./enrutador').decidir(args, { modo: modoCasa(), claudeOn: claudeEncendido() });
+    if (enr.cerebro === 'claude' && cual() !== 'claude') {
+      console.log(`[cerebro] enrutador → Claude (${enr.motivo})`);
+      return pensarConClaude(args);
+    }
+  } catch (e) { console.warn('[cerebro] enrutador no corrió:', e?.message || e); }
   if (cual() === 'nodo') {
     const extras = await contextoExtra(args.miembro, args.junta || []);
     const conExtras = (o) => sistema({ ...o, miembro: { ...o.miembro, esDueño: extras.miembro.esDueño }, habilidades: extras.habilidades, pedidos: extras.pedidos, aprobados: extras.aprobados, idioma: args.idioma || 'es' });
@@ -639,8 +647,13 @@ async function pensar(args) {
       return r;
     } catch (e) {
       /* Aquí es donde ULTRON deja de quedarse mudo. Si el nodo no está, se
-         contesta igual —con Claude— y se dice en el registro por qué. */
-      if (!RELEVABLES.has(e?.codigo) || !claudeEncendido()) throw e;
+         contesta igual —con Claude— y se dice en el registro por qué.
+         CORTADO no se releva. Con ULTRON_CEREBRO=relevo, cualquier otro
+         fallo del 27B también pasa a Claude: si no, la junta ve el comodín
+         «no pudo contestar» y el relevo no existió. */
+      const envRelevo = (process.env.ULTRON_CEREBRO || '').trim().toLowerCase() === 'relevo';
+      const sePuede = claudeEncendido() && e?.codigo !== 'CORTADO' && (RELEVABLES.has(e?.codigo) || envRelevo || modoCasa() === 'relevo');
+      if (!sePuede) throw e;
       relevar(motivoDeCualquiera(e).mensaje);
       try { require('./salud').anotarFallo(e, 'cerebro/nodo'); } catch { /* la salud puede no estar en pie todavía */ }
       return pensarConClaude(args);
