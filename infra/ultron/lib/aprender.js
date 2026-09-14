@@ -70,7 +70,7 @@ async function borrar(nombre) {
 
 async function usar(nombre) {
   const n = nombreLimpio(nombre);
-  if (!n) throw Object.assign(new Error('Hace falta el nombre de la habilidad.'), { codigo: 'NOMBRE' });
+  if (!n) throw Object.assign(new Error('Hace falta el nombre de la habilidad. Revise que el id llegue con valor.'), { codigo: 'NOMBRE' });
   const h = (await listar()).find((x) => x.nombre === n);
   if (!h) throw Object.assign(new Error(`No hay ninguna habilidad llamada «${n}».`), { codigo: 'NO_EXISTE' });
   return h;
