@@ -274,6 +274,7 @@
   }
   $('cerrarTurno').onclick = pedirCierre;
   if ($('cerrarFijo')) $('cerrarFijo').onclick = pedirCierre;
+  if ($('cerrarHead')) $('cerrarHead').onclick = pedirCierre;
   if (false) $('cerrarTurno').onclick = () => {
     if (!enCurso) return;
     abortar?.abort();
