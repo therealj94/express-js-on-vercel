@@ -181,7 +181,7 @@ async function leer({ repo, ruta, rama = null, desde = 1, lineas = 0 }) {
     if (d.encoding !== 'base64') return `${ruta}: no se pudo leer (codificación ${d.encoding}).`;
     const buf = Buffer.from(d.content, 'base64');
     const texto = buf.toString('utf8');
-    if (/ /.test(texto.slice(0, 2000))) return `${ruta}: es binario (${buf.length} bytes); no se muestra.`;
+    if (//.test(texto.slice(0, 2000))) return `${ruta}: es binario (${buf.length} bytes); no se muestra.`;
     const todas = texto.split('\n');
     const desde1 = Math.max(1, Math.floor(Number(desde) || 1));
     /* Cuántas líneas caben: se calcula por el tope de CARACTERES, no por un
