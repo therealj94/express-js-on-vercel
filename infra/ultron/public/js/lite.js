@@ -178,7 +178,7 @@
           else if (ev === 'pensando') bar.textContent = d.hace || 'Pensando…';
           else if (ev === 'herramienta') bar.textContent = d.nombre || d.hace || 'herramienta';
           else if (ev === 'titulo' && d.titulo) $('titulo').textContent = d.titulo;
-          else if (ev === 'fin') {
+          else if (ev === 'fin') { checarAuth();
             convId = d.conversacionId || convId;
             if (d.texto && !acc) dest.textContent = d.texto;
             bar.textContent = '';
@@ -222,6 +222,7 @@
       : 'El cerebro de la casa lo cambia solo el dueño.';
     $('segCerebro').style.opacity = esDueño ? '1' : '.45';
     $('ajustes').classList.add('on');
+    checarAuth();
   }
 
   document.querySelectorAll('#segInterfaz button, #segCerebro button, #segIdioma button, #segVoz button').forEach((b) => {
@@ -232,7 +233,8 @@
     };
   });
 
-  $('gear').onclick = () => abrirAjustes().catch((e) => { $('ajErr').textContent = e.message; $('ajustes').classList.add('on'); });
+  $('gear').onclick = () => abrirAjustes().catch((e) => { $('ajErr').textContent = e.message; $('ajustes').classList.add('on');
+    checarAuth(); });
   $('cerrarAjustes').onclick = () => $('ajustes').classList.remove('on');
 
   $('guardarAjustes').onclick = async () => {
@@ -261,5 +263,57 @@
     location.reload();
   };
 
+
+  let authPendiente = null;
+
+  function pintarAuthLista(d) {
+    const box = $('authLista');
+    if (!box) return;
+    const pend = d.pendientes || [];
+    const rec = (d.recientes || []).slice(0, 8);
+    if (!pend.length && !rec.length) { box.innerHTML = '<p class="hint">Nada pendiente.</p>'; return; }
+    box.innerHTML = pend.map((p) => `<div class="item"><b>Pendiente · ${p.herramienta || ''}</b><div>${p.resumen || ''}</div>
+      <button type="button" data-id="${p._id || p.id}" data-d="aprobado">Aprobar</button>
+      <button type="button" data-id="${p._id || p.id}" data-d="negado">Denegar</button></div>`).join('')
+      + rec.filter((p) => p.estado !== 'pendiente').map((p) => `<div class="item">${p.estado} · ${p.herramienta || ''} · ${(p.resumen || '').slice(0, 80)}</div>`).join('');
+    box.querySelectorAll('button[data-id]').forEach((b) => {
+      b.onclick = () => decidir(b.dataset.id, b.dataset.d);
+    });
+  }
+
+  function mostrarPopup(p) {
+    if (!p || authPendiente === String(p._id || p.id)) return;
+    authPendiente = String(p._id || p.id);
+    $('authResumen').textContent = p.resumen || p.herramienta || 'Pedido de autorización';
+    $('authMeta').textContent = (p.herramienta || '') + (p.motivo ? ' · ' + p.motivo : '');
+    $('popupAuth').classList.add('on');
+    $('authSi').onclick = () => decidir(authPendiente, 'aprobado');
+    $('authNo').onclick = () => decidir(authPendiente, 'negado');
+  }
+
+  async function decidir(id, decision) {
+    try {
+      await json('/autorizaciones/' + id, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ decision }) });
+      $('popupAuth').classList.remove('on');
+      authPendiente = null;
+      bar.textContent = decision === 'aprobado' ? 'Aprobado. Decile «seguí».' : 'Negado.';
+      const d = await json('/autorizaciones').catch(() => ({ pendientes: [] }));
+      pintarAuthLista(d);
+    } catch (e) { bar.textContent = e.message || String(e); }
+  }
+
+  async function checarAuth() {
+    try {
+      const d = await json('/autorizaciones');
+      pintarAuthLista(d);
+      const p = (d.pendientes || [])[0];
+      if (p) mostrarPopup(p);
+      else $('popupAuth').classList.remove('on');
+    } catch { /* sin sesión */ }
+  }
+
+  setInterval(checarAuth, 8000);
+
   sesion();
+  checarAuth();
 })();
