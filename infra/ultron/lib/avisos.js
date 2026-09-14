@@ -78,14 +78,23 @@ async function avisar({ clave, gravedad = 'leve', titulo, lineas = [], a = null,
   const cuerpo = [`ULTRON · ${g === 'grave' ? 'GRAVE' : 'aviso'} · ${titulo}`, '', ...lineas].join('\n');
   const destinos = junta().filter((m) => !a || a.includes(m.correo));
   for (const m of destinos) {
-    try {
-      if (c.whatsapp && m.whatsapp) { await canales.whatsapp(m.whatsapp, cuerpo); registro.canales.push(`whatsapp:${m.nombre || m.correo}`); }
-      if (c.correo && m.correo) { await canales.correo(m.correo, `ULTRON · ${g === 'grave' ? 'GRAVE' : 'aviso'} · ${titulo}`.slice(0, 180), cuerpo); registro.canales.push(`correo:${m.correo}`); }
-    } catch (e) {
-      /* Un aviso que no sale no puede tumbar a quien avisa. Se anota y se sigue
-         con el siguiente miembro. */
-      console.warn(`[avisos] no salió para ${m.correo}: ${String(e?.message || e).slice(0, 120)}`);
-      registro.motivo = (registro.motivo ? registro.motivo + ' · ' : '') + `falló ${m.correo}`;
+    if (c.whatsapp && m.whatsapp) {
+      try {
+        await canales.whatsapp(m.whatsapp, cuerpo);
+        registro.canales.push(`whatsapp:${m.nombre || m.correo}`);
+      } catch (e) {
+        console.warn(`[avisos] WhatsApp no salió para ${m.correo}: ${String(e?.message || e).slice(0, 160)}`);
+        registro.motivo = (registro.motivo ? registro.motivo + ' · ' : '') + `wa ${m.correo}`;
+      }
+    }
+    if (c.correo && m.correo) {
+      try {
+        await canales.correo(m.correo, `ULTRON · ${g === 'grave' ? 'GRAVE' : 'aviso'} · ${titulo}`.slice(0, 180), cuerpo);
+        registro.canales.push(`correo:${m.correo}`);
+      } catch (e) {
+        console.warn(`[avisos] correo no salió para ${m.correo}: ${String(e?.message || e).slice(0, 160)}`);
+        registro.motivo = (registro.motivo ? registro.motivo + ' · ' : '') + `mail ${m.correo}`;
+      }
     }
   }
   registro.enviado = registro.canales.length > 0;
