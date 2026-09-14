@@ -1,65 +1,104 @@
 (() => {
   const $ = (id) => document.getElementById(id);
-  const chat = $('chat'), estado = $('estado'), hilos = $('hilos');
-  let convId = null, abortar = null, yo = null;
+  const chat = $('chat'), bar = $('bar'), hilos = $('hilos');
+  let convId = null, abortar = null, vacio = true;
 
   const api = (ruta, opt = {}) => fetch(ruta, { credentials: 'same-origin', ...opt });
-
   async function json(ruta, opt) {
     const r = await api(ruta, opt);
     if (r.status === 401) { $('login').style.display = 'flex'; throw new Error('SIN_SESION'); }
     const d = await r.json().catch(() => ({}));
-    if (!r.ok) throw new Error(d.error || r.status);
+    if (!r.ok) throw new Error(d.error || d.mensaje || String(r.status));
     return d;
   }
 
-  function burbuja(rol, texto) {
-    const el = document.createElement('div');
-    el.className = 'msg ' + (rol === 'user' || rol === 'usuario' ? 'user' : 'bot');
-    const pre = document.createElement('pre');
-    pre.textContent = texto || '';
-    el.appendChild(pre);
-    chat.appendChild(el);
-    chat.scrollTop = chat.scrollHeight;
-    return pre;
+  function home() {
+    vacio = true;
+    convId = null;
+    $('titulo').textContent = 'Ultron';
+    chat.innerHTML = `<div class="empty">
+      <h1>Ultron</h1>
+      <p>La junta, en un chat.</p>
+      <div class="pills">
+        <button type="button" data-q="¿Cómo está el tesoro y el ORIGEN ahora?">Tesoro</button>
+        <button type="button" data-q="Seguí el trabajo que quedó a medias. ¿Qué falta?">Trabajo</button>
+        <button type="button" data-q="Listá los pendientes abiertos de la junta.">Pendientes</button>
+        <button type="button" data-q="Dame el parte de salud de las casas.">Casas</button>
+      </div>
+    </div>`;
+    chat.querySelectorAll('[data-q]').forEach((b) => {
+      b.onclick = () => { $('texto').value = b.dataset.q; enviar(); };
+    });
   }
 
-  async function cargarHilos() {
-    const lista = await json('/conversaciones');
-    hilos.innerHTML = '';
-    (Array.isArray(lista) ? lista : lista.conversaciones || []).forEach((c) => {
+  function add(rol, texto) {
+    if (vacio) { chat.innerHTML = ''; vacio = false; }
+    const el = document.createElement('div');
+    el.className = 'msg ' + (rol === 'me' ? 'me' : 'ai');
+    el.innerHTML = '<div class="b"></div>';
+    el.querySelector('.b').textContent = texto || '';
+    chat.appendChild(el);
+    chat.scrollTop = chat.scrollHeight;
+    return el.querySelector('.b');
+  }
+
+  function cuando(iso) {
+    if (!iso) return '';
+    const d = new Date(iso);
+    if (Number.isNaN(d.getTime())) return String(iso).slice(0, 16);
+    return d.toLocaleString('es-HN', { dateStyle: 'short', timeStyle: 'short' });
+  }
+
+  async function lista() {
+    const raw = await json('/conversaciones');
+    const arr = Array.isArray(raw) ? raw : raw.conversaciones || [];
+    hilos.innerHTML = arr.length ? '' : '<a><span class="t">Sin chats aún</span></a>';
+    arr.forEach((c) => {
       const a = document.createElement('a');
       a.href = '#';
-      a.innerHTML = `${c.titulo || 'Sin título'}<small>${(c.trabajo && c.trabajo.falta) ? 'Trabajo: ' + c.trabajo.falta.slice(0, 80) : (c.tocado || c.en || '')}</small>`;
-      a.onclick = (e) => { e.preventDefault(); abrir(c._id || c.id); cerrarMenu(); };
+      const preview = (c.ultimo && (c.ultimo.texto || c.ultimo)) || c.preview || '';
+      a.innerHTML = `<span class="t">${c.titulo || 'Sin título'}</span>
+        <small>${cuando(c.tocado || c.en)} ${preview ? '· ' + String(preview).slice(0, 70) : ''}</small>
+        ${c.trabajo && c.trabajo.falta ? `<div class="w">En curso · ${String(c.trabajo.falta).slice(0, 90)}</div>` : ''}`;
+      a.onclick = (ev) => { ev.preventDefault(); abrir(c._id || c.id); closeNav(); };
       hilos.appendChild(a);
     });
   }
 
   async function abrir(id) {
     const c = await json('/conversaciones/' + id);
-    convId = c._id || id;
+    convId = String(c._id || id);
     $('titulo').textContent = c.titulo || 'Ultron';
     chat.innerHTML = '';
-    (c.turnos || []).forEach((t) => burbuja(t.rol === 'ultron' || t.rol === 'assistant' ? 'bot' : 'user', t.texto));
+    vacio = false;
+    (c.turnos || []).forEach((t) => {
+      const rol = (t.rol === 'ultron' || t.rol === 'assistant') ? 'ai' : 'me';
+      const dest = add(rol, t.texto || '');
+      const hs = (t.herramientas || []).map((h) => h.nombre || h).filter(Boolean);
+      if (hs.length) {
+        const m = document.createElement('div');
+        m.className = 'tools';
+        m.textContent = hs.join(' · ');
+        dest.parentElement.appendChild(m);
+      }
+    });
     if (c.trabajo && c.trabajo.falta) {
-      const w = document.createElement('div');
-      w.className = 'trabajo';
-      w.textContent = 'En curso · ' + (c.trabajo.objetivo || '') + ' → ' + c.trabajo.falta;
-      chat.appendChild(w);
+      const w = add('ai', `Trabajo a medias.\n${c.trabajo.objetivo || ''}\nFalta: ${c.trabajo.falta}`);
+      w.parentElement.style.opacity = '.85';
     }
     chat.scrollTop = chat.scrollHeight;
   }
 
-  function cerrarMenu() { $('lista').classList.remove('abierta'); $('fondo').classList.remove('on'); }
+  function closeNav() { $('drawer').classList.remove('on'); $('scrim').classList.remove('on'); }
 
   async function sesion() {
     try {
-      yo = await json('/yo');
+      await json('/yo');
       $('login').style.display = 'none';
-      await cargarHilos();
+      await lista();
       const hoy = await json('/conversaciones/hoy').catch(() => null);
-      if (hoy && hoy._id) await abrir(hoy._id);
+      if (hoy && hoy._id && (hoy.turnos || hoy.ultimos || []).length) await abrir(hoy._id);
+      else home();
     } catch { $('login').style.display = 'flex'; }
   }
 
@@ -74,18 +113,36 @@
     sesion();
   };
 
-  $('menu').onclick = () => { $('lista').classList.add('abierta'); $('fondo').classList.add('on'); cargarHilos().catch(() => {}); };
-  $('fondo').onclick = cerrarMenu;
-  $('nuevo').onclick = () => { convId = null; chat.innerHTML = ''; $('titulo').textContent = 'Ultron'; };
+  $('menu').onclick = () => { $('drawer').classList.add('on'); $('scrim').classList.add('on'); lista().catch(() => {}); };
+  $('scrim').onclick = closeNav;
+  $('nuevo').onclick = () => { closeNav(); home(); };
 
-  $('caja').onsubmit = async (e) => {
-    e.preventDefault();
+  $('adj').onclick = () => $('file').click();
+  $('file').onchange = async () => {
+    const f = $('file').files && $('file').files[0];
+    $('file').value = '';
+    if (!f) return;
+    bar.textContent = 'Subiendo ' + f.name + '…';
+    try {
+      const r = await api('/archivos', {
+        method: 'POST',
+        headers: { 'Content-Type': f.type || 'application/octet-stream', 'x-nombre': encodeURIComponent(f.name), ...(convId ? { 'x-conversacion': convId } : {}) },
+        body: f,
+      });
+      const d = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(d.error || 'No se subió');
+      $('texto').value = (`Leé el archivo «${f.name}» (id ${d._id || d.id || ''}) y seguí con lo que pido.` + ($('texto').value ? '\n' + $('texto').value : '')).trim();
+      bar.textContent = 'Listo · ' + f.name;
+    } catch (e) { bar.textContent = String(e.message || e); }
+  };
+
+  async function enviar() {
     const texto = $('texto').value.trim();
     if (!texto) return;
     $('texto').value = '';
-    burbuja('user', texto);
-    const dest = burbuja('bot', '');
-    estado.textContent = 'Pensando…';
+    add('me', texto);
+    const dest = add('ai', '');
+    bar.textContent = 'Pensando…';
     abortar?.abort();
     abortar = new AbortController();
     let acc = '';
@@ -100,7 +157,7 @@
       if (!r.ok || !r.body) {
         const d = await r.json().catch(() => ({}));
         dest.textContent = d.error || d.mensaje || 'No pudo contestar';
-        estado.textContent = '';
+        bar.textContent = '';
         return;
       }
       const lector = r.body.getReader();
@@ -118,24 +175,29 @@
           if (!ev || !raw) continue;
           let d; try { d = JSON.parse(raw); } catch { continue; }
           if (ev === 'texto') { acc += d.texto || d.t || ''; dest.textContent = acc; chat.scrollTop = chat.scrollHeight; }
-          else if (ev === 'pensando') estado.textContent = d.hace || 'Pensando…';
-          else if (ev === 'herramienta') estado.textContent = d.nombre || d.hace || 'herramienta';
+          else if (ev === 'pensando') bar.textContent = d.hace || 'Pensando…';
+          else if (ev === 'herramienta') bar.textContent = d.nombre || d.hace || 'herramienta';
           else if (ev === 'titulo' && d.titulo) $('titulo').textContent = d.titulo;
           else if (ev === 'fin') {
             convId = d.conversacionId || convId;
             if (d.texto && !acc) dest.textContent = d.texto;
-            estado.textContent = '';
+            bar.textContent = '';
           } else if (ev === 'error') {
             dest.textContent = d.mensaje || d.error || 'Error';
-            estado.textContent = '';
+            bar.textContent = '';
           }
         }
       }
-    } catch (err) {
-      if (err.name !== 'AbortError') dest.textContent = String(err.message || err);
-      estado.textContent = '';
+    } catch (e) {
+      if (e.name !== 'AbortError') dest.textContent = String(e.message || e);
+      bar.textContent = '';
     }
-  };
+  }
+
+  $('box').onsubmit = (e) => { e.preventDefault(); enviar(); };
+  $('texto').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); enviar(); }
+  });
 
   sesion();
 })();
