@@ -27,6 +27,7 @@
     $('procTit').textContent = titulo || 'En ello';
     $('log').textContent = '';
     $('proceso').classList.add('on');
+    if ($('cerrarFijo')) $('cerrarFijo').classList.add('on');
   }
   function cerrarProceso() {
     $('proceso').classList.remove('on');
@@ -230,7 +231,10 @@
           if (!ev || !raw) continue;
           let d; try { d = JSON.parse(raw); } catch { continue; }
           if (ev === 'texto') { acc += d.texto || d.t || ''; dest.textContent = acc; chat.scrollTop = chat.scrollHeight; }
-          else if (ev === 'pensando') paso(d.hace || 'Pensando…');
+          else if (ev === 'pensando') {
+            const h = d.hace || '';
+            if (h && h !== 'sigue en ello' && h !== 'abriendo el hilo') paso(h);
+          }
           else if (ev === 'herramienta') {
             const n = d.nombre || '';
             paso((ETIQUETA[n] || d.hace || n) + (n ? ' · ' + n : ''));
@@ -261,7 +265,16 @@
     }
   }
 
-  $('cerrarTurno').onclick = () => {
+    function pedirCierre() {
+    if (!enCurso) { bar.textContent = 'No hay un turno en curso.'; return; }
+    abortar?.abort();
+    paso('Cortado. Pidiendo el cierre…');
+    const cierre = 'PARÁ las herramientas. Entregá AHORA lo que ya tenés: qué hiciste, el código o hallazgo clave, HECHO en una línea y FALTA en una línea (o NADA). No busques más.';
+    setTimeout(() => enviar(cierre), 250);
+  }
+  $('cerrarTurno').onclick = pedirCierre;
+  if ($('cerrarFijo')) $('cerrarFijo').onclick = pedirCierre;
+  if (false) $('cerrarTurno').onclick = () => {
     if (!enCurso) return;
     abortar?.abort();
     const cierre = 'PARÁ las herramientas. Entregá AHORA lo que ya tenés: qué hiciste, el código o hallazgo clave, HECHO en una línea y FALTA en una línea (o NADA). No busques más.';
