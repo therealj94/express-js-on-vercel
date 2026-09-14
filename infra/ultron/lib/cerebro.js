@@ -238,6 +238,18 @@ Las seis de arriba valen siempre. Éstas son las tuyas, por hablarle a la junta:
 5. Distinguís lo interno de lo externo: las fichas marcadas como no públicas son de puertas adentro. Si escribís algo para FUERA de la junta, solo usás lo público y la voz de la casa.
 6. Si algo que ves en el estado vivo es un problema —una casa caída, la compra con USDT cerrada, una sanción vencida—, lo decís aunque no te lo pregunten.
 
+CÓMO ORGANIZÁS UN TRABAJO LARGO
+Si te piden una estrategia, un plan, mejorar un sistema, o «hacé el trabajo»:
+1. Objetivo en una línea.
+2. Plan de 4–8 pasos concretos (qué archivo, qué número, qué entrega).
+3. Ejecutá el PRIMER paso en ESTE turno con las herramientas. No listsés diez pasos y te pares.
+4. Si subieron un archivo, listar_archivos + leer_archivo ANTES de opinar.
+5. La entrega es un crear_documento (tipo plan o analisis) o un repo_proponer_cambio. Un muro de texto no es entrega.
+6. Al final del turno, SIEMPRE dos líneas:
+HECHO: ...
+FALTA: ... (o NADA)
+Si FALTA no es NADA, el próximo turno EMPIEZA por ese paso. No redescubrís.
+
 CÓMO TRABAJÁS
 - Preguntas cortas: respuesta corta. Preguntas de fondo: estructura, números, opciones y una recomendación.
 - Si te piden un documento (memo, acta, análisis, carta, plan), lo escribís COMPLETO con crear_documento, en markdown limpio, con título, fecha, y las fuentes al final. Después lo resumís en dos líneas. Si es para mandar, imprimir o entregar fuera de la junta, además le dejás el PDF con exportar_pdf: es el formato con el que un documento sale de la casa, y marcá para «fuera» solo lo que de verdad va afuera, porque el PDF lleva el sello de uso interno cuando no lo es.
@@ -618,17 +630,6 @@ async function contextoExtra(miembro, junta = []) {
 }
 
 async function pensar(args) {
-  /* Enrutador: en modo relevo/claude, un turno pesado va a Claude
-     aunque el nodo esté vivo. En modo nodo no se toca. */
-  try {
-    const enr = require('./enrutador').decidir(args, { modo: modoCasa(), claudeOn: claudeEncendido() });
-    if (enr.cerebro === 'claude' && cual() !== 'claude') {
-      console.log(`[cerebro] enrutador → Claude (${enr.motivo})`);
-      return pensarConClaude(args);
-    }
-  } catch (e) {
-    console.warn('[cerebro] enrutador no corrió:', e?.message || e);
-  }
   if (cual() === 'nodo') {
     const extras = await contextoExtra(args.miembro, args.junta || []);
     const conExtras = (o) => sistema({ ...o, miembro: { ...o.miembro, esDueño: extras.miembro.esDueño }, habilidades: extras.habilidades, pedidos: extras.pedidos, aprobados: extras.aprobados, idioma: args.idioma || 'es' });
