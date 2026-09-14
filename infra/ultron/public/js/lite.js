@@ -252,8 +252,14 @@
           else if (ev === 'fin') { checarAuth();
             convId = d.conversacionId || convId;
             if (d.texto && !acc) dest.textContent = d.texto;
-            paso('Listo');
-            cerrarProceso();
+            const toks = d.ms && d.ms.toks;
+            const prim = d.ms && d.ms.primera;
+            const tot = d.ms && d.ms.total;
+            const linea = [toks != null ? toks + ' tok/s' : null, prim ? (prim/1000).toFixed(1)+' s 1.ª' : null, tot ? (tot/1000).toFixed(1)+' s' : null].filter(Boolean).join(' · ');
+            paso(linea ? ('Listo · ' + linea) : 'Listo');
+            bar.textContent = linea || '';
+            if ($('procTit')) $('procTit').textContent = linea || 'Listo';
+            setTimeout(cerrarProceso, 8000);
           } else if (ev === 'error') {
             dest.textContent = d.mensaje || d.error || 'Error';
             paso(d.mensaje || 'Error');
