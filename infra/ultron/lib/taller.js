@@ -365,7 +365,26 @@ async function heroku(tk, ruta, { metodo = 'GET', cuerpo = null } = {}) {
   return d;
 }
 
+async function desplegarseRender({ rama, avisar = () => {} }) {
+  const tk = (process.env.RENDER_API_KEY || '').trim();
+  const sid = (process.env.RENDER_SERVICE_ID || '').trim();
+  if (!tk || !sid) throw Object.assign(new Error('Falta RENDER_API_KEY o RENDER_SERVICE_ID.'), { codigo: 'RENDER' });
+  avisar(`Render: disparando deploy de ${rama || 'la rama del servicio'}`);
+  const r = await fetch(`https://api.render.com/v1/services/${sid}/deploys`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${tk}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ clearCache: 'do_not_clear' }),
+    signal: AbortSignal.timeout(30_000),
+  });
+  const d = await r.json().catch(() => ({}));
+  if (!r.ok) throw Object.assign(new Error(`Render ${r.status}: ${d.message || ''}`), { codigo: 'RENDER' });
+  return { ok: true, donde: 'render', id: d.id || d.deploy?.id, status: d.status || d.deploy?.status || 'queued', rama: rama || null };
+}
+
 async function desplegarse({ repo, rama, avisar = () => {} }) {
+  if ((process.env.RENDER_API_KEY || ).trim() && (process.env.RENDER_SERVICE_ID || ).trim()) {
+    return desplegarseRender({ rama, avisar });
+  }
   const r = repoValido(repo);
   const ref = String(rama || '').trim();
   if (!ref || !/^[\w./-]+$/.test(ref)) throw Object.assign(new Error('Hace falta la rama que se despliega.'), { codigo: 'RAMA' });
