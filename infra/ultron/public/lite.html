@@ -17,6 +17,7 @@ header{display:flex;align-items:center;gap:8px;padding:8px 10px;padding-top:max(
   border-bottom:1px solid #161616;background:#050505ee;backdrop-filter:blur(12px);position:sticky;top:0;z-index:4}
 header b{flex:1;text-align:center;font-weight:600;font-size:17px;letter-spacing:-.02em}
 header button{width:40px;height:40px;border:0;background:transparent;color:var(--t);font-size:20px}
+header button.txt{width:auto;padding:0 8px;font-size:13px;font-weight:600}
 #drawer{position:fixed;inset:0 auto 0 0;width:min(88vw,340px);background:#0a0a0a;z-index:8;
   transform:translateX(-105%);transition:.22s;display:flex;flex-direction:column;padding-top:env(safe-area-inset-top)}
 #drawer.on{transform:none}
@@ -71,6 +72,16 @@ header button{width:40px;height:40px;border:0;background:transparent;color:var(-
 #ajustes .danger{background:#3a1515;width:100%;margin-top:10px}
 #ajustes a{display:block;margin:14px 0;color:var(--a);text-decoration:none}
 #ajustes .hint{color:var(--d);font-size:12px;margin-top:8px}
+
+#popupAuth{display:none;position:fixed;inset:0;background:#000c;z-index:40;align-items:center;justify-content:center;padding:20px}
+#popupAuth.on{display:flex}
+#popupAuth .card{background:#161616;border-radius:16px;padding:20px;width:100%;max-width:400px}
+#popupAuth h3{margin-bottom:10px}
+#popupAuth .row{display:flex;gap:8px;margin-top:16px}
+#popupAuth button{flex:1;border:0;border-radius:12px;padding:12px;background:#2a2a2e;color:#fff}
+#popupAuth button.ok{background:#fff;color:#000;font-weight:700}
+#authLista .item{border:1px solid #2a2a2a;border-radius:12px;padding:10px;margin:8px 0;font-size:13px}
+#authLista .item button{margin-top:8px;margin-right:6px;border:0;border-radius:8px;padding:8px 10px;background:#2a2a2e;color:#fff}
 </style>
 </head>
 <body>
@@ -86,7 +97,7 @@ header button{width:40px;height:40px;border:0;background:transparent;color:var(-
   <button type="button" id="menu" aria-label="Historial">☰</button>
   <b id="titulo">Ultron</b>
   <button type="button" id="nuevo" aria-label="Nuevo">✎</button>
-  <button type="button" id="gear" aria-label="Ajustes">⚙</button>
+  <button type="button" id="gear" aria-label="Ajustes" class="txt">Ajustes</button>
 </header>
 <div id="scrim"></div>
 <aside id="drawer">
@@ -102,6 +113,18 @@ header button{width:40px;height:40px;border:0;background:transparent;color:var(-
   <textarea id="texto" rows="1" placeholder="Preguntale a Ultron"></textarea>
   <button type="submit" id="go">↑</button>
 </form>
+<div id="popupAuth">
+  <div class="card">
+    <h3>Hace falta tu OK</h3>
+    <p id="authResumen"></p>
+    <p class="hint" id="authMeta"></p>
+    <div class="row">
+      <button type="button" id="authNo">Denegar</button>
+      <button type="button" id="authSi" class="ok">Aprobar</button>
+    </div>
+  </div>
+</div>
+
 <div id="ajustes">
   <div class="sheet">
     <h2>Ajustes</h2>
@@ -133,7 +156,9 @@ header button{width:40px;height:40px;border:0;background:transparent;color:var(-
       <button type="button" id="guardarAjustes">Guardar</button>
       <button type="button" id="cerrarOtras">Cerrar otras sesiones</button>
     </div>
-    <button type="button" id="salir" class="danger">Salir</button>
+    <label>Autorizaciones</label>
+<div id="authLista"></div>
+<button type="button" id="salir" class="danger">Salir</button>
     <a href="/os">Abrir ULTRON OS</a>
     <button type="button" id="cerrarAjustes">Listo</button>
     <p class="hint" id="ajErr"></p>
