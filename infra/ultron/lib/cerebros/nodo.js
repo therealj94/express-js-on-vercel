@@ -613,6 +613,9 @@ async function pensar({ miembro, junta, texto, conversacionId, previa: previaDad
      desde la pantalla. */
   let msPrimera = 0;
   let vueltasDadas = 0;
+  const vecesTool = Object.create(null);
+  let llamoPR = false;
+
   /* Lo que queda por hacer cuando el turno se acaba a medias. `undefined` = el
      turno no tocó el tema; `null` = se terminó y hay que borrarlo. */
   let trabajo;
@@ -840,6 +843,14 @@ async function pensar({ miembro, junta, texto, conversacionId, previa: previaDad
     mensajes.push({ role: 'assistant', content: r.content, tool_calls: r.tool_calls.length ? r.tool_calls : undefined });
     for (const res of await correrLote(llamadas, { ctx, usadas, emitir })) {
       mensajes.push({ role: 'tool', content: recortar(res.salida, TOPE_RESULTADO), tool_name: res.nombre });
+      vecesTool[res.nombre] = (vecesTool[res.nombre] || 0) + 1;
+      if (res.nombre === 'repo_proponer_cambio' || res.nombre === 'repo_mezclar' || res.nombre === 'crear_documento') llamoPR = true;
+    }
+    const lecturas = (vecesTool.repo_leer || 0) + (vecesTool.repo_arbol || 0) + (vecesTool.repo_buscar || 0);
+    const quiereEntrega = /PR|pull request|proponer|documento|mezcl/i.test(String(rawPedido || '') + String((trabajo && trabajo.falta) || '') + String(textoFinal || ''));
+    if (!llamoPR && lecturas >= 4 && quiereEntrega) {
+      emitir('pensando', { vuelta, hace: 'basta de leer: toca proponer o entregar' });
+      mensajes.push({ role: 'user', content: '[sistema] Ya leíste de más. PROHIBIDO repo_leer / repo_arbol / repo_buscar. SOLO repo_proponer_cambio o crear_documento. Luego HECHO y FALTA. No anuncies el PR: llamalo.' });
     }
     // Si con los resultados el pedido se pasa del presupuesto, se sueltan los
     // turnos viejos del hilo (nunca el system ni la pregunta ni los resultados).
