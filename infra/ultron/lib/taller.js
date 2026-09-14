@@ -382,7 +382,7 @@ async function desplegarseRender({ rama, avisar = () => {} }) {
 }
 
 async function desplegarse({ repo, rama, avisar = () => {} }) {
-  if ((process.env.RENDER_API_KEY || ).trim() && (process.env.RENDER_SERVICE_ID || ).trim()) {
+  if ((process.env.RENDER_API_KEY || '').trim() && (process.env.RENDER_SERVICE_ID || '').trim()) {
     return desplegarseRender({ rama, avisar });
   }
   const r = repoValido(repo);
