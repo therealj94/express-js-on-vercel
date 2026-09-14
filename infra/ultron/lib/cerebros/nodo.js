@@ -257,7 +257,7 @@ function pedir(cuerpo, { alTrozo = () => {}, plazo = PLAZO_MS, senalCorte = null
       let resto = ''; let content = ''; const tool_calls = []; let final = null;
       res.setEncoding('utf8');
       let cortado = false, resuelto = false;
-      const terminar = () => { if (resuelto) return; resuelto = true; resolver({ content, tool_calls, uso: { entrada: final?.prompt_eval_count || 0, salida: final?.eval_count || 0 }, final, cortado }); };
+      const terminar = () => { if (resuelto) return; resuelto = true; resolver({ content, tool_calls, uso: { entrada: final?.prompt_eval_count || 0, salida: final?.eval_count || 0, nsGen: final?.eval_duration || 0 }, final, cortado }); };
       res.on('data', (d) => {
         if (cortado) return;
         resto += d;
@@ -620,7 +620,7 @@ async function pensar({ miembro, junta, texto, conversacionId, previa: previaDad
      turno no tocó el tema; `null` = se terminó y hay que borrarlo. */
   let trabajo;
   const usadas = [];
-  const uso = { entrada: 0, salida: 0, lecturaCache: 0, escrituraCache: 0 };
+  const uso = { entrada: 0, salida: 0, nsGen: 0, lecturaCache: 0, escrituraCache: 0 };
   // En voz, la respuesta es corta por diseño: menos fichas de salida es menos
   // segundos hasta la primera frase dicha, y una frase dicha larga no se sigue.
   /* LOS PARÁMETROS QUE PIDE EL FABRICANTE, Y POR QUÉ SE TARDÓ EN PONERLOS.
@@ -759,7 +759,7 @@ async function pensar({ miembro, junta, texto, conversacionId, previa: previaDad
       ...(sinTiempo ? { motivo: 'se acabó el tiempo: cierro con lo que hay' } : {}) });
     const acum = { t: '' };
     let r = await pedirDelTurno({ model: MODELO, messages: mensajes, tools: sinTiempo ? undefined : herramientas.paraOllama({ cajas }), stream: true, options: opciones }, { alTrozo: conGuarda(acum) });
-    uso.entrada += r.uso.entrada; uso.salida += r.uso.salida;
+    uso.entrada += r.uso.entrada; uso.salida += r.uso.salida; uso.nsGen = (uso.nsGen || 0) + (r.uso.nsGen || 0);
     /* SE ENGANCHÓ.
      *
      * Si ya había dicho algo, eso es lo que vale y se cierra el turno con
@@ -797,7 +797,7 @@ async function pensar({ miembro, junta, texto, conversacionId, previa: previaDad
       r = await pedirDelTurno({ model: MODELO, messages: mensajes, tools: herramientas.paraOllama({ cajas }), stream: true,
         options: { ...opciones, temperature: 0.6, seed: Math.floor(Math.random() * 1e9) } },
         { alTrozo: conGuarda(otro) });
-      uso.entrada += r.uso.entrada; uso.salida += r.uso.salida;
+      uso.entrada += r.uso.entrada; uso.salida += r.uso.salida; uso.nsGen = (uso.nsGen || 0) + (r.uso.nsGen || 0);
       if (otro.bucle) {
         console.warn('[nodo] se volvió a enganchar en el reintento: se cierra el turno');
         textoFinal = otro.t;
@@ -812,7 +812,7 @@ async function pensar({ miembro, junta, texto, conversacionId, previa: previaDad
       const sigue = await pedirDelTurno({ model: MODELO, stream: true, options: { ...opciones, temperature: 0.2 },
         messages: [...mensajes, { role: 'assistant', content: hastaAqui }, { role: 'user', content: '[sistema] Te fuiste a otro idioma a media frase. Seguí en ESPAÑOL exactamente desde donde quedaste, sin repetir lo ya escrito y sin herramientas.' }] },
         { alTrozo: conGuarda(acum) });
-      uso.entrada += sigue.uso.entrada; uso.salida += sigue.uso.salida;
+      uso.entrada += sigue.uso.entrada; uso.salida += sigue.uso.salida; uso.nsGen = (uso.nsGen || 0) + (sigue.uso.nsGen || 0);
       // Sin separador: el corte fue a media palabra («rápid|amente») y el
       // modelo sigue exactamente desde ahí.
       r = { ...r, content: hastaAqui + sigue.content, tool_calls: r.tool_calls };
@@ -884,7 +884,7 @@ async function pensar({ miembro, junta, texto, conversacionId, previa: previaDad
       + 'FALTA: (en una línea, el siguiente paso concreto — o la palabra NADA si ya está todo)' });
     const acum = { t: '' };
     const r = await pedirDelTurno({ model: MODELO, messages: mensajes, stream: true, options: opciones }, { alTrozo: conGuarda(acum) });
-    uso.entrada += r.uso.entrada; uso.salida += r.uso.salida;
+    uso.entrada += r.uso.entrada; uso.salida += r.uso.salida; uso.nsGen = (uso.nsGen || 0) + (r.uso.nsGen || 0);
     const limpio = llamadasEnTexto(r.content).limpio.trim();
     if (limpio) textoFinal = limpio;
     /* ── Y DE AHÍ SALE EL TRABAJO, GRATIS ────────────────────────────────
@@ -977,7 +977,7 @@ async function pensar({ miembro, junta, texto, conversacionId, previa: previaDad
     const cajasDeLaGuarda = ['internet', 'cadenas', 'cuentas', 'documentos'].filter((c) => herramientas.CAJAS_UTILES.includes(c));
     let dicho = '';
     const r = await pedirDelTurno({ model: MODELO, messages: mensajes, tools: herramientas.paraOllama({ cajas: cajasDeLaGuarda }), stream: true, options: opciones }, { alTrozo: (t) => { dicho += t; } });
-    uso.entrada += r.uso.entrada; uso.salida += r.uso.salida;
+    uso.entrada += r.uso.entrada; uso.salida += r.uso.salida; uso.nsGen = (uso.nsGen || 0) + (r.uso.nsGen || 0);
     const enTexto = llamadasEnTexto(r.content);
     const llamadas = [...r.tool_calls, ...enTexto.llamadas];
     if (llamadas.length) {
@@ -986,7 +986,7 @@ async function pensar({ miembro, junta, texto, conversacionId, previa: previaDad
         mensajes.push({ role: 'tool', content: recortar(res.salida, TOPE_RESULTADO), tool_name: res.nombre });
       }
       const r2 = await pedirDelTurno({ model: MODELO, messages: mensajes, tools: herramientas.paraOllama({ cajas: cajasDeLaGuarda }), stream: true, options: opciones }, { alTrozo: (t) => {} });
-      uso.entrada += r2.uso.entrada; uso.salida += r2.uso.salida;
+      uso.entrada += r2.uso.entrada; uso.salida += r2.uso.salida; uso.nsGen = (uso.nsGen || 0) + (r2.uso.nsGen || 0);
       const limpio = llamadasEnTexto(r2.content).limpio.trim();
       if (limpio) { textoFinal = limpio; emitir('reemplazo', { texto: textoFinal }); }
     } else if (dicho.trim() && !NEGATIVA.test(dicho)) {
@@ -1042,7 +1042,7 @@ async function pensar({ miembro, junta, texto, conversacionId, previa: previaDad
     for (const c of ['documentos']) if (!cajas.includes(c)) cajas.push(c);
     let dicho = '';
     const r = await pedirDelTurno({ model: MODELO, messages: mensajes, tools: herramientas.paraOllama({ cajas }), stream: true, options: opciones }, { alTrozo: (t) => { dicho += t; } });
-    uso.entrada += r.uso.entrada; uso.salida += r.uso.salida;
+    uso.entrada += r.uso.entrada; uso.salida += r.uso.salida; uso.nsGen = (uso.nsGen || 0) + (r.uso.nsGen || 0);
     const llamadas = [...r.tool_calls, ...llamadasEnTexto(r.content).llamadas];
     if (llamadas.length) {
       mensajes.push({ role: 'assistant', content: r.content, tool_calls: r.tool_calls.length ? r.tool_calls : undefined });
@@ -1050,7 +1050,7 @@ async function pensar({ miembro, junta, texto, conversacionId, previa: previaDad
         mensajes.push({ role: 'tool', content: recortar(res.salida, TOPE_RESULTADO), tool_name: res.nombre });
       }
       const r2 = await pedirDelTurno({ model: MODELO, messages: mensajes, tools: herramientas.paraOllama({ cajas }), stream: true, options: opciones }, { alTrozo: () => {} });
-      uso.entrada += r2.uso.entrada; uso.salida += r2.uso.salida;
+      uso.entrada += r2.uso.entrada; uso.salida += r2.uso.salida; uso.nsGen = (uso.nsGen || 0) + (r2.uso.nsGen || 0);
       const limpio = llamadasEnTexto(r2.content).limpio.trim();
       if (limpio) { textoFinal = limpio; emitir('reemplazo', { texto: textoFinal }); }
     } else if (dicho.trim()) {
@@ -1115,7 +1115,7 @@ async function pensar({ miembro, junta, texto, conversacionId, previa: previaDad
       + 'Después CONTESTALE A LA PERSONA, en una línea, como si este aviso no existiera — no me contestes a mí.' });
     let dicho = '';
     const r = await pedirDelTurno({ model: MODELO, messages: mensajes, tools: herramientas.paraOllama({ cajas }), stream: true, options: opciones }, { alTrozo: (t) => { dicho += t; } });
-    uso.entrada += r.uso.entrada; uso.salida += r.uso.salida;
+    uso.entrada += r.uso.entrada; uso.salida += r.uso.salida; uso.nsGen = (uso.nsGen || 0) + (r.uso.nsGen || 0);
     const llamadas = [...r.tool_calls, ...llamadasEnTexto(r.content).llamadas];
     if (llamadas.length) {
       mensajes.push({ role: 'assistant', content: r.content, tool_calls: r.tool_calls.length ? r.tool_calls : undefined });
@@ -1123,7 +1123,7 @@ async function pensar({ miembro, junta, texto, conversacionId, previa: previaDad
         mensajes.push({ role: 'tool', content: recortar(res.salida, TOPE_RESULTADO), tool_name: res.nombre });
       }
       const r2 = await pedirDelTurno({ model: MODELO, messages: mensajes, tools: herramientas.paraOllama({ cajas }), stream: true, options: opciones }, { alTrozo: () => {} });
-      uso.entrada += r2.uso.entrada; uso.salida += r2.uso.salida;
+      uso.entrada += r2.uso.entrada; uso.salida += r2.uso.salida; uso.nsGen = (uso.nsGen || 0) + (r2.uso.nsGen || 0);
       const limpio = llamadasEnTexto(r2.content).limpio.trim();
       if (limpio) { textoFinal = limpio; emitir('reemplazo', { texto: textoFinal }); }
     }
@@ -1184,7 +1184,7 @@ async function pensar({ miembro, junta, texto, conversacionId, previa: previaDad
     mensajes.push({ role: 'user', content: `[sistema] Citaste «${falsas.join('», «')}» pero no la llamaste en este turno. Llamala ahora y contestá con lo que devuelva, o reescribí la respuesta sin esa cita diciendo de dónde sale de verdad el dato.` });
     let dicho = '';
     const r = await pedirDelTurno({ model: MODELO, messages: mensajes, tools: herramientas.paraOllama({ cajas }), stream: true, options: opciones }, { alTrozo: (t) => { dicho += t; } });
-    uso.entrada += r.uso.entrada; uso.salida += r.uso.salida;
+    uso.entrada += r.uso.entrada; uso.salida += r.uso.salida; uso.nsGen = (uso.nsGen || 0) + (r.uso.nsGen || 0);
     const enTexto = llamadasEnTexto(r.content);
     const llamadas = [...r.tool_calls, ...enTexto.llamadas];
     if (llamadas.length) {
@@ -1198,7 +1198,7 @@ async function pensar({ miembro, junta, texto, conversacionId, previa: previaDad
         mensajes.push({ role: 'tool', content: recortar(res.salida, TOPE_RESULTADO), tool_name: res.nombre });
       }
       const r2 = await pedirDelTurno({ model: MODELO, messages: mensajes, tools: herramientas.paraOllama({ cajas }), stream: true, options: opciones }, { alTrozo: (t) => {} });
-      uso.entrada += r2.uso.entrada; uso.salida += r2.uso.salida;
+      uso.entrada += r2.uso.entrada; uso.salida += r2.uso.salida; uso.nsGen = (uso.nsGen || 0) + (r2.uso.nsGen || 0);
       dicho = llamadasEnTexto(r2.content).limpio;
     } else dicho = enTexto.limpio;
     if (dicho.trim()) { textoFinal = dicho.trim(); emitir('reemplazo', { texto: textoFinal }); }
@@ -1217,7 +1217,7 @@ async function pensar({ miembro, junta, texto, conversacionId, previa: previaDad
     .catch((e) => console.error(`[gasto] ${e.message}`));
   return { texto: textoFinal, fuentes, herramientas: usadas, memorias: ctx.memorias, documentos: ctx.documentos, trabajo,
            envios: ctx.envios, pendientes: ctx.pendientes, acciones: ctx.acciones, uso: { ...uso, dolares: 0 }, modelo: 'nodo:' + MODELO,
-           ms: { contexto: msContexto, primera: msPrimera, cerebro: Date.now() - tArranque, vueltas: vueltasDadas, fichas: uso.entrada } };
+           ms: { contexto: msContexto, primera: msPrimera, cerebro: Date.now() - tArranque, vueltas: vueltasDadas, fichas: uso.entrada, toks: (uso.nsGen > 0 && uso.salida > 0) ? Math.round(uso.salida / (uso.nsGen / 1e9) * 10) / 10 : null } };
 }
 
 /** Un título corto, sin herramientas y con pocas fichas. */
