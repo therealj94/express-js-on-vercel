@@ -145,10 +145,27 @@
 
   function closeNav() { $('drawer').classList.remove('on'); $('scrim').classList.remove('on'); }
 
+
+  function pintarLed(st) {
+    const el = $('led'); if (!el) return;
+    el.className = 'led' + (st.andando ? ' andando' : st.ok ? ' ok' : st.listo ? ' mal' : '');
+    el.title = st.andando ? 'Calentando prefijo…' : st.ok ? ('Caliente · ' + (st.ms || '?') + ' ms') : (st.motivo || 'Frío — tocá para calentar');
+  }
+  async function verLed() {
+    try { pintarLed(await json('/precalentar?modo=texto')); } catch { /* nada */ }
+  }
+  function calentar() {
+    pintarLed({ andando: true });
+    api('/precalentar', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ modo: 'texto' }) })
+      .then(() => setTimeout(verLed, 3000))
+      .catch(() => pintarLed({ listo: true, ok: false, motivo: 'no se pudo' }));
+  }
+
   async function sesion() {
     try {
       await json('/yo');
       $('login').style.display = 'none';
+      calentar();
       await lista();
       const hoy = await json('/conversaciones/hoy').catch(() => null);
       if (hoy && hoy._id && (hoy.turnos || hoy.ultimos || []).length) await abrir(hoy._id);
