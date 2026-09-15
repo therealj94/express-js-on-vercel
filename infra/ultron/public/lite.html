@@ -18,6 +18,10 @@ header{display:flex;align-items:center;gap:8px;padding:8px 10px;padding-top:max(
 header b{flex:1;text-align:center;font-weight:600;font-size:17px;letter-spacing:-.02em}
 header button{width:40px;height:40px;border:0;background:transparent;color:var(--t);font-size:20px}
 header button.txt{width:auto;padding:0 8px;font-size:13px;font-weight:600}
+.led{width:28px!important;font-size:16px;color:#8e8e93}
+.led.andando{color:#c9a227}
+.led.ok{color:#30d158}
+.led.mal{color:#ff453a}
 header button.gold{background:#c9a227;color:#000;border-radius:10px;height:32px;width:auto;padding:0 10px}
 #drawer{position:fixed;inset:0 auto 0 0;width:min(88vw,340px);background:#0a0a0a;z-index:8;
   transform:translateX(-105%);transition:.22s;display:flex;flex-direction:column;padding-top:env(safe-area-inset-top)}
@@ -107,7 +111,7 @@ header button.gold{background:#c9a227;color:#000;border-radius:10px;height:32px;
 </div>
 <header>
   <button type="button" id="menu" aria-label="Historial">☰</button>
-  <b id="titulo">Ultron</b>
+  <b id="titulo">Ultron</b> <button type="button" id="led" class="led" title="Caché del modelo">●</button>
   <button type="button" id="nuevo" aria-label="Nuevo">✎</button>
   <button type="button" id="cerrarHead" class="txt gold">Terminá</button>
   <button type="button" id="gear" aria-label="Ajustes" class="txt">Ajustes</button>
@@ -183,6 +187,6 @@ header button.gold{background:#c9a227;color:#000;border-radius:10px;height:32px;
   </div>
 </div>
 
-<script src="/js/lite.js?v=warm1"></script>
+<script src="/js/lite.js?v=rend1"></script>
 </body>
 </html>
