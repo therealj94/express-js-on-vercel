@@ -9,4 +9,13 @@ function obtenerCatalogo() {
   return Promise.resolve('');
 }
 
-// Resto del archivo equipo.js sin cambios...
+/* ── ESTADO DEL EQUIPO ───────────────────────────────────────────────────────
+   Devuelve el catálogo de bots/agentes que la casa tiene corriendo.
+   salud.js llama equipo.estado() en cada ronda; sin esta exportación el
+   require devolvía {} y la llamada fallaba con "is not a function". */
+async function estado() {
+  const catalogo = await obtenerCatalogo();
+  return { catalogo, ok: true };
+}
+
+module.exports = { estado, obtenerCatalogo };
