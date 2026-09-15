@@ -627,6 +627,12 @@ app.get('/conversaciones/:id', puerta, async (req, res) => {
  * Contesta enseguida y sin esperar al motor: quien llama no espera nada. */
 let pensando = 0;
 const calentadoEn = new Map();
+const calentadoEstado = new Map();
+app.get('/precalentar', puerta, (req, res) => {
+  const modo = req.query.modo === 'voz' ? 'voz' : 'texto';
+  const st = calentadoEstado.get(`${req.miembro.correo}·${modo}`) || { ok: false, listo: false };
+  res.json(st);
+});
 app.post('/precalentar', puerta, (req, res) => {
   const modo = req.body?.modo === 'texto' ? 'texto' : 'voz';
   /* EL FRENO ES POR MIEMBRO Y MODO. Con uno solo por miembro, calentar para
@@ -645,9 +651,16 @@ app.post('/precalentar', puerta, (req, res) => {
      hubo ni una línea que lo dijera: el tablero calentaba, el 200 volvía, y no
      se calentaba nada. Una mejora invisible que falla en silencio es peor que
      no tenerla. */
+  calentadoEstado.set(quien, { ok: false, listo: false, andando: true, modo });
   cerebro.precalentar({ miembro: req.miembro, junta: JUNTA.map(sinClave), modo, alias: null })
-    .then((r) => console.log(r?.ok ? `[calentar] ${modo} · ${r.fichas} fichas en ${r.ms}ms` : `[calentar] ${modo} · NO se calentó: ${r?.motivo || 'sin motivo'}`))
-    .catch((e) => console.warn(`[calentar] falló: ${e?.codigo || ''} ${String(e?.message || e).slice(0, 120)}`));
+    .then((r) => {
+      calentadoEstado.set(quien, { ok: !!r?.ok, listo: true, andando: false, modo, ms: r?.ms, fichas: r?.fichas, motivo: r?.motivo || null, cuando: Date.now() });
+      console.log(r?.ok ? `[calentar] ${modo} · ${r.fichas} fichas en ${r.ms}ms` : `[calentar] ${modo} · NO se calentó: ${r?.motivo || 'sin motivo'}`);
+    })
+    .catch((e) => {
+      calentadoEstado.set(quien, { ok: false, listo: true, andando: false, modo, motivo: String(e?.message || e).slice(0, 120), cuando: Date.now() });
+      console.warn(`[calentar] falló: ${e?.codigo || ''} ${String(e?.message || e).slice(0, 120)}`);
+    });
 });
 
 /* ── LO QUE SALE DE LA VENTANA SE RESUME, Y SE RESUME DESPUÉS ───────────────
