@@ -1,0 +1,143 @@
+{
+  "proyecto": "Orden Global — Parte 2, opción B",
+  "titulo": "Vuelva mañana",
+  "de_donde_sale": {
+    "referencia": "El anuncio de Coinbase que mandó José.",
+    "el_paralelo": "Coinbase repite la misma casa en cuatro décadas hasta que el patrón se rompe con un sello de RECHAZADO. Aquí repetimos la misma ventanilla, y nuestro sello es una mano que empuja tus papeles de vuelta.",
+    "por_que_esta_imagen": "La fila es la experiencia latinoamericana que no hay que explicarle a nadie. Todo el mundo ha pedido el día libre, ha llevado todos los papeles, ha esperado horas y ha oído «vuelva mañana». No hace falta decir de qué trámite se trata: cada espectador pone el suyo."
+  },
+  "regla_de_hierro": {
+    "enunciado": "Nunca se dice qué se está tramitando, ni qué institución es, ni la palabra dinero.",
+    "prohibido": ["dinero", "banco", "comisión", "trámite", "solicitud", "cripto", "token", "cuenta", "préstamo"],
+    "por_que": "Si se nombra, se vuelve el problema de otro. Sin nombrar, cada uno recuerda su propia fila.",
+    "sin_carteles": "Ni un rótulo legible en toda la pieza. La época se cuenta con la ropa, los objetos y la luz, exactamente como hace Coinbase."
+  },
+  "historia": {
+    "una_frase": "La misma ventanilla, tres generaciones. Los tres llevaron todo lo que les pidieron. A los tres les dijeron que volvieran mañana.",
+    "el_bucle": "Tres bloques idénticos: la espera, la ventanilla, la devolución. Mismo encuadre, misma frase, tres épocas. Lo único que cambia es la ropa y las horas que costó.",
+    "el_gesto_que_se_repite": "Una mano al otro lado del mostrador empuja la carpeta de vuelta. Tres veces exactamente igual. Es nuestro sello de RECHAZADO, y no lleva ni una letra.",
+    "el_quiebre": "La tercera no vuelve mañana. Se sienta en el bordillo de la calle y lo resuelve desde el teléfono en cuarenta segundos.",
+    "la_tijera": "Las horas de fila suben —tres, seis, nueve— y el resultado es el mismo las tres veces. Ese es el chiste amargo: pagas más por lo mismo.",
+    "el_cierre": "Una persona con camisa de Orden Global mira a cámara: «Por eso hicimos esto. Por ti.»"
+  },
+  "formato": {"aspect": "9:16 vertical", "gen_w": 720, "gen_h": 1280,
+    "final_w": 1080, "final_h": 1920, "fps": 24, "duracion_total_s": 60,
+    "ritmo": "13 planos de 4,0 s de media. La parte 1 medida: 4,2 s."},
+  "defaults": {
+    "video_workflow": "workflows/h3_calidad_api.json",
+    "duration_s": 4, "fps": 24, "steps": 20,
+    "negative": "text, letters, numbers, subtitles, captions, watermark, brand names, logos, signage with readable words, readable documents, readable forms, screens with readable text, readable user interface, horizontal composition, letterboxing, black bars, cartoon, animation, 3D render, drone shot, gimbal glide, slow motion, orange and teal grading, glossy advertising lighting, beauty retouching, poreless skin, model looks, big smile, celebration, crying, tears, angry shouting, looking at camera, addressing the camera, talking, speaking, moving lips, plastic skin, waxy face, deformed hands, extra fingers, morphing, flicker, crooked teeth, deformed teeth, distorted mouth",
+    "steps_nota": "20 pasos con la LoRA de realismo, igual que las tandas medidas."
+  },
+  "look_base": "shot on full-frame cinema camera, vintage 35mm spherical prime, T2.8, locked off with the smallest organic drift, natural practical light only, real 35mm grain, documentary realism, calm observational framing, no advertising gloss",
+  "el_encuadre_repetido": "Los planos 02, 05 y 08 son EL MISMO ENCUADRE de la ventanilla, y los 03, 06 y 09 son EL MISMO ENCUADRE de la mano devolviendo la carpeta. Si esos seis no casan, no hay bucle y no hay anuncio.",
+  "casting": [
+    {"id": "HOMBRE_1985", "rol": "1985",
+     "retrato": "Vertical portrait of a 28 year old Latin American man in 1985, dark hair combed back, thin moustache, a short-sleeved shirt buttoned to the top and pressed trousers, holding a worn cardboard folder against his chest, patient tired face, warm dusty light from a high window, visible pores and facial asymmetry, even natural teeth, the mild warmth and soft grain of that decade"},
+    {"id": "MUJER_2005", "rol": "2005",
+     "retrato": "Vertical portrait of a 32 year old Latin American woman in 2005, dark hair pulled back in a low ponytail, a plain blouse and a cheap shoulder bag, holding a plastic document wallet, patient tired face, flat fluorescent light, visible pores and facial asymmetry, even natural teeth"},
+    {"id": "JOVEN_HOY", "rol": "hoy",
+     "retrato": "Vertical portrait of a 26 year old Latin American woman today, dark hair tied back with strands escaping, no makeup, faint dark circles under the eyes, a plain oversized shirt over a t-shirt, a phone in one hand and a folder under the other arm, tired patient face, flat cold light, visible pores and facial asymmetry, even natural teeth"},
+    {"id": "PORTAVOZ", "rol": "el cierre",
+     "retrato": "Vertical portrait of a 30 year old Latin American man with an ordinary open face, short dark hair, light stubble, a plain dark navy work shirt buttoned to the second button with a completely clean empty left chest area and no markings on it, calm level expression, warm low afternoon light from camera-left, visible pores and facial asymmetry, even natural teeth, credible rather than polished"}
+  ],
+  "shots": [
+    {"id": "01_espera_1985", "titulo": "1985 · LA ESPERA", "segundos": 4, "move": "static",
+     "reparto": ["HOMBRE_1985"], "hud": "TRES HORAS", "voz": "Llevó todo lo que le pidieron.",
+     "still": "A row of worn wooden chairs against a bare painted wall in a public waiting room in 1985, five people sitting in silence, a 28 year old man in a pressed short-sleeved shirt in the middle holding a cardboard folder flat on his knees, an old ceiling fan turning slowly above, warm dusty light falling from a high window, no readable signs or notices anywhere, natural skin texture with visible pores, facial asymmetry, no beauty retouching, documentary realism, the mild warmth and soft grain of 1985 film stock",
+     "motion": "the fan turns overhead, a woman two seats away shifts her weight, and he glances up at something off frame and then back down at the folder on his knees, straightening its edge with one thumb",
+     "nota": "El ventilador es el reloj de la escena. Se repite en las tres épocas."},
+
+    {"id": "02_ventanilla_1985", "titulo": "1985 · LA VENTANILLA", "segundos": 4, "move": "static",
+     "reparto": [], "hud": "TRES HORAS", "voz": "",
+     "still": "Looking across a scratched wooden counter at a service window in 1985, a pair of man's hands sliding a worn cardboard folder forward across the surface towards a gap in the glass, the counter scarred by decades of use, a metal pen chained to the wood, the space beyond the glass dim and out of focus, no faces in frame and no readable documents or signs, warm dusty light, photographic realism, visible wood grain and skin texture",
+     "motion": "the hands push the folder forward until it is halfway across the counter and then withdraw and rest on the edge of the wood, waiting completely still",
+     "nota": "EL ENCUADRE MADRE. Los planos 05 y 08 lo repiten exactamente."},
+
+    {"id": "03_devuelta_1985", "titulo": "1985 · VUELVA MAÑANA", "segundos": 3, "move": "static",
+     "reparto": [], "hud": "3 h · SIN RESOLVER", "voz": "Le dijeron que volviera mañana.",
+     "still": "The same scratched wooden counter and the same camera position, now a different hand coming from the far side of the glass pushing the worn cardboard folder back towards the near edge, the fingers flat on the cover, an old rubber stamp and an ink pad resting on the wood beside it, no faces in frame and nothing readable on the folder, warm dusty light, photographic realism, visible wood grain",
+     "motion": "the hand from the far side pushes the folder back across the counter in one flat unhurried movement and withdraws, leaving the folder sitting alone on the wood",
+     "nota": "NUESTRO SELLO DE RECHAZADO. Sin una sola letra. Se repite idéntico en los planos 06 y 09."},
+
+    {"id": "04_espera_2005", "titulo": "2005 · LA ESPERA", "segundos": 4, "move": "static",
+     "reparto": ["MUJER_2005"], "hud": "SEIS HORAS", "voz": "Llevó todo lo que le pidieron.",
+     "still": "The same row of worn chairs against the same bare painted wall in 2005, five people sitting in silence, a 32 year old woman in a plain blouse in the middle holding a plastic document wallet flat on her knees, the same ceiling fan turning slowly above, now under flat fluorescent light instead of the window, no readable signs or notices anywhere, natural skin texture with visible pores, facial asymmetry, no beauty retouching, documentary realism",
+     "motion": "the fan turns overhead, a man two seats away shifts his weight, and she glances up at something off frame and then back down at the wallet on her knees, straightening its edge with one thumb",
+     "nota": "Movimiento idéntico al plano 01, con otra persona y otra luz."},
+
+    {"id": "05_ventanilla_2005", "titulo": "2005 · LA VENTANILLA", "segundos": 4, "move": "static",
+     "reparto": [], "hud": "SEIS HORAS", "voz": "",
+     "still": "The same scratched wooden counter and the same service window and the same camera position, twenty years later, a pair of woman's hands sliding a plastic document wallet forward across the surface towards the gap in the glass, the same chained metal pen, the space beyond the glass dim and out of focus, no faces in frame and no readable documents or signs, flat fluorescent light, photographic realism, visible wood grain and skin texture",
+     "motion": "the hands push the wallet forward until it is halfway across the counter and then withdraw and rest on the edge of the wood, waiting completely still"},
+
+    {"id": "06_devuelta_2005", "titulo": "2005 · VUELVA MAÑANA", "segundos": 3, "move": "static",
+     "reparto": [], "hud": "6 h · SIN RESOLVER", "voz": "Le dijeron que volviera mañana.",
+     "still": "The same counter and the same camera position, a different hand coming from the far side of the glass pushing the plastic document wallet back towards the near edge, the fingers flat on the cover, the same old rubber stamp and ink pad on the wood beside it, no faces in frame and nothing readable, flat fluorescent light, photographic realism",
+     "motion": "the hand from the far side pushes the wallet back across the counter in one flat unhurried movement and withdraws, leaving it sitting alone on the wood"},
+
+    {"id": "07_espera_hoy", "titulo": "HOY · LA ESPERA", "segundos": 4, "move": "static",
+     "reparto": ["JOVEN_HOY"], "hud": "NUEVE HORAS", "voz": "Llevó todo lo que le pidieron.",
+     "still": "The same row of worn chairs against the same bare painted wall today, five people sitting in silence with phones in their hands, a 26 year old woman in a plain oversized shirt in the middle with a folder under one arm and a phone face down on her knee, the same ceiling fan turning slowly above, cold flat light, no readable signs and no readable screens anywhere, natural skin texture with visible pores and faint dark circles, facial asymmetry, no beauty retouching, documentary realism",
+     "motion": "the fan turns overhead, a man two seats away shifts his weight, and she glances up at something off frame and then back down, straightening the folder edge with one thumb",
+     "nota": "Cuarenta años después: la misma sala, el mismo ventilador, y ahora todos con un teléfono en la mano que no les sirve de nada."},
+
+    {"id": "08_ventanilla_hoy", "titulo": "HOY · LA VENTANILLA", "segundos": 4, "move": "static",
+     "reparto": [], "hud": "NUEVE HORAS", "voz": "",
+     "still": "The same scratched wooden counter and the same service window and the same camera position, today, a pair of young woman's hands sliding a plain folder forward across the surface towards the gap in the glass, the same chained metal pen worn even smoother, the space beyond the glass dim and out of focus, no faces in frame and no readable documents or signs, cold flat light, photographic realism, visible wood grain and skin texture",
+     "motion": "the hands push the folder forward until it is halfway across the counter and then withdraw and rest on the edge of the wood, waiting completely still"},
+
+    {"id": "09_devuelta_hoy", "titulo": "HOY · VUELVA MAÑANA", "segundos": 3, "move": "static",
+     "reparto": [], "hud": "9 h · SIN RESOLVER", "voz": "Le dijeron que volviera mañana.",
+     "still": "The same counter and the same camera position, a different hand coming from the far side of the glass pushing the plain folder back towards the near edge, the fingers flat on the cover, the same old rubber stamp and ink pad still on the wood beside it, no faces in frame and nothing readable, cold flat light, photographic realism",
+     "motion": "the hand from the far side pushes the folder back across the counter in one flat unhurried movement and withdraws, leaving it sitting alone on the wood",
+     "nota": "Tercera vez idéntica. Aquí el espectador ya sabe lo que va a pasar antes de que pase, y eso es exactamente lo que queremos que sienta."},
+
+    {"id": "10_el_bordillo", "titulo": "NO VOLVIÓ MAÑANA", "segundos": 5, "move": "static",
+     "reparto": ["JOVEN_HOY"], "hud": "", "voz": "Ella no volvió.",
+     "still": "A 26 year old woman sitting alone on a kerb on an ordinary city street in warm low late afternoon sun, the folder on the ground beside her, her elbows on her knees and a phone held loosely in both hands, traffic and pedestrians soft and out of focus behind her, long shadows across the asphalt, natural skin texture with visible pores and faint dark circles, facial asymmetry, unstyled hair, no beauty retouching, documentary realism",
+     "motion": "she sits still for a moment looking at nothing, then looks down at the phone in her hands and lifts it slightly",
+     "nota": "Sale del edificio y se sienta en la calle. Es el primer plano de toda la pieza con luz natural de verdad."},
+
+    {"id": "11_el_pulgar", "titulo": "CUARENTA SEGUNDOS", "segundos": 4, "move": "static",
+     "reparto": [], "hud": "40 SEGUNDOS · RESUELTO", "voz": "Lo resolvió en cuarenta segundos.",
+     "still": "Extreme close on a young woman's thumb pressing down on a phone screen held in her other hand outdoors in warm low late afternoon sun, the screen a soft blown-out rectangle with no readable interface, the skin of the thumb and the short unpainted nail lit by daylight, the blurred street beyond falling away, razor-thin depth of field, photographic realism, visible skin texture",
+     "motion": "the thumb presses down once, holds for a beat and lifts away, and the light on the screen changes very slightly as it redraws",
+     "nota": "Después de nueve horas de fila, cuatro segundos de plano. El contraste es el producto."},
+
+    {"id": "12_su_cara", "titulo": "YA ESTÁ", "segundos": 5, "move": "static",
+     "reparto": ["JOVEN_HOY"], "hud": "40 SEGUNDOS", "voz": "",
+     "still": "Medium close on the same 26 year old woman sitting on the kerb in warm low late afternoon sun, the phone lowered in her hands, the folder still on the ground beside her, the blurred street behind, natural skin texture with visible pores and faint dark circles, facial asymmetry, unstyled hair, no makeup, no beauty retouching, documentary realism",
+     "motion": "she looks at the screen, then lifts her head and looks out at the street, and something in her shoulders lets go, and she breathes out once without smiling",
+     "nota": "No sonríe. Alivio, no alegría. Una sonrisa aquí sería mentira."},
+
+    {"id": "13_el_portavoz", "titulo": "EL CIERRE", "segundos": 6, "move": "static",
+     "reparto": ["PORTAVOZ"], "hud": "", "voz": "Por eso hicimos esto. Por ti.",
+     "negative_quitar": ["looking at camera", "addressing the camera"],
+     "negative_añadir": ["open mouth", "singing", "mouthing words"],
+     "still": "Medium close on a 30 year old man standing on an ordinary city street in warm low late afternoon light, wearing a plain dark navy work shirt with a completely clean empty left chest area and no markings of any kind on it, the blurred street soft behind him, the lower quarter of the tall frame dark and clean, natural skin texture with visible pores and light stubble, facial asymmetry, unstyled hair, no beauty retouching, documentary realism",
+     "motion": "he looks straight into the camera lens with a calm level expression, his mouth closed and still throughout, he blinks once slowly, his chest rises and falls with quiet breathing, and he gives one small nod at the very end, no lip movement of any kind",
+     "nota": "BOCA CERRADA: la frase se dobla en español y el labial se rehace después. El pecho va vacío porque el monograma se compone en montaje."}
+  ],
+  "cierre": {"t": "53-60 s", "fuente": "montaje",
+    "que_se_ve": "Fundido a negro y el monograma OG dorado solo, sin eslogan escrito, como en la parte 1.",
+    "hud": "9 HORAS · 40 SEGUNDOS"},
+  "sobreimpresos": {
+    "estilo": "Cartela negra translúcida arriba al centro, sans-serif blanca en caja alta, como en la parte 1.",
+    "la_tijera": "Las horas suben —3, 6, 9— y el resultado no cambia: SIN RESOLVER las tres veces. En el cuarto bloque la unidad cambia a segundos. Nadie lo comenta.",
+    "regla": "El número solo cambia en el fotograma del suceso que lo causa."
+  },
+  "sonido": {
+    "el_bucle_sonoro": "El ventilador del techo es el mismo sonido en las tres épocas: un zumbido lento que no para. Debajo, el rumor de una sala de espera. La carpeta al deslizarse por la madera y el golpe seco al volver.",
+    "la_degradacion": "En cada época se añade una capa más de ruido de fondo, sin que se note, hasta que la sala de hoy es la más ruidosa de las tres.",
+    "el_corte": "Cuando ella sale a la calle, el ventilador desaparece de golpe. Ese silencio repentino es el respiro de toda la pieza.",
+    "el_click": "Uno solo y suave, en la calle. En la parte 1 eran seis dings ásperos."
+  },
+  "riesgos": [
+    {"que": "Los seis planos repetidos (02/05/08 y 03/06/09) tienen que casar de encuadre.",
+     "mitigacion": "Ninguno tiene cara: son los más baratos de repetir. Y los cinco siguientes pueden generarse partiendo del último fotograma del primero de cada serie."},
+    {"que": "El plano 13 es una persona mirando a cámara, donde este modelo más falla.",
+     "mitigacion": "Boca cerrada y voz doblada. Si el labial no convence, se corta al negro sobre la voz."}
+  ],
+  "pendiente": ["Las horas —3, 6 y 9— están puestas para que la tijera se vea. Si tienes cifras reales, mejor."]
+}

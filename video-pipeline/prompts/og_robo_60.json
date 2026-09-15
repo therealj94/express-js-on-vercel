@@ -1,0 +1,154 @@
+{
+  "proyecto": "Orden Global — Enviadas 24, entregadas 14",
+  "formato": {
+    "aspect": "9:16 vertical",
+    "gen_w": 720,
+    "gen_h": 1280,
+    "final_w": 1080,
+    "final_h": 1920,
+    "fps": 24,
+    "nota_duracion": "6 planos x 10 s = 60 s exactos."
+  },
+  "idea": {
+    "premisa": "Un hombre manda 24 rosas. En cada eslabón alguien se queda con algunas. Llegan 14 muertas.",
+    "clave": "La víctima nunca ve el robo. Solo el público. Eso es lo que lo hace gracioso en vez de indignante.",
+    "heroe": "El repartidor de Orden Global es el ÚNICO que no agarra nada — y es quien entrega el desastre. Al final baja el escáner SIN COBRAR.",
+    "regla_de_rodaje": "En cada plano el robo ocurre EN SEGUNDO PLANO o fuera del foco de la acción principal: nadie lo mira, nadie reacciona. El público lo pilla porque la cámara sí lo ve."
+  },
+  "defaults": {
+    "video_workflow": "workflows/h3_calidad_api.json",
+    "duration_s": 10,
+    "fps": 24,
+    "negative": "text, letters, numbers, subtitles, captions, watermark, brand names, logos, signage with readable words, screens with readable text, horizontal composition, letterboxing, black bars, cartoon, animation, 3D render, CGI flowers, artificial flowers, glitter, cellophane, hologram, drone shot, gimbal glide, slow motion, orange and teal grading, glossy advertising lighting, beauty retouching, poreless skin, perfect teeth, model looks, winking at camera, comedic mugging, exaggerated expressions, guilty look, looking at camera, plastic skin, waxy face, deformed hands, extra fingers, morphing, flicker",
+    "steps": 20
+  },
+  "look_base": "shot on full-frame cinema camera, vintage 35mm spherical prime, T2.8, locked off or slow handheld with small organic drift, natural practical light only, real 35mm grain, muted true colour, milky blacks, documentary realism, deadpan observational framing, no advertising gloss, nobody performing for the camera",
+  "casting": [
+    {
+      "id": "FLORISTA",
+      "rol": "se queda 3",
+      "retrato": "Vertical portrait of a 55 year old woman in a grey work apron behind a florist counter, hair tied back, reading glasses pushed up on her head, completely ordinary and unremarkable, neutral bored expression, not looking at camera, warm shop window light, visible pores and expression lines, no makeup"
+    },
+    {
+      "id": "CONDUCTOR",
+      "rol": "se queda 2",
+      "retrato": "Vertical portrait of a 45 year old man in a plain grey polo shirt, thinning hair, three days of stubble, a lanyard around his neck, neutral bored expression, not looking at camera, flat overcast daylight, visible pores and facial asymmetry"
+    },
+    {
+      "id": "REPARTIDOR",
+      "rol": "el único que no agarra nada",
+      "retrato": "Vertical portrait of a 28 year old thin Latin American man with a tired but kind face, dark hair flattened and damp from a helmet, faint sweat at the temples, a small scar through one eyebrow, a clean dark navy work shirt with a small four centimetre embroidered gold monogram on the left chest, a handheld delivery scanner clipped at his hip, completely neutral tired expression, low warm late afternoon sun, visible pores"
+    },
+    {
+      "id": "RECEPTORA",
+      "rol": "la víctima que nunca ve el robo",
+      "retrato": "Vertical portrait of a 40 year old Latin American woman, dark shoulder-length hair loosely tied back with strands escaping at the temples, no makeup, faint freckles across the nose, a small mole under the left eye, cream knit sweater with sleeves pushed to the forearms, neutral expression, warm low sun from a window camera-left, visible pores and facial asymmetry"
+    },
+    {
+      "id": "RAMO_24",
+      "rol": "objeto",
+      "retrato": "Vertical still life of a full bouquet of twenty-four deep red roses in a cone of brown kraft paper, heads packed into an even dome with no gaps, paper taut, cut stems in a clear water sleeve, fresh and heavy"
+    },
+    {
+      "id": "RAMO_14",
+      "rol": "objeto",
+      "retrato": "Vertical still life of a thin bouquet of fourteen red roses in the same brown kraft paper now creased and too wide for the flowers, obvious gaps between the heads, outer petals browning and curling, several heads bending over, the water sleeve empty and dry"
+    }
+  ],
+  "shots": [
+    {
+      "id": "01_floreria",
+      "titulo": "LA FLORERÍA · −3",
+      "segundos": 10,
+      "move": "static",
+      "reparto": ["FLORISTA", "RAMO_24"],
+      "contador": "24 → 21",
+      "still": "A florist shop counter in warm afternoon light, a full bouquet of twenty-four deep red roses in taut brown kraft paper lying across the counter, a 55 year old woman in a grey apron behind it, the back of a customer's shoulder leaving frame on the right, a plain wall of flower buckets behind her, natural skin texture with visible pores and fine hair, facial asymmetry, unstyled hair, working hands with short nails, no beauty retouching, no posing, deadpan documentary realism",
+      "motion": "she watches the customer leave without moving her head, then calmly slides three roses out of the bouquet with one hand and lowers them below the counter out of sight, her face completely neutral throughout, she folds the paper back over the gap and pushes the bouquet aside, she does not look at the camera and does not react at all",
+      "gesto": "she folds the paper back over the gap as if nothing happened",
+      "nota": "El robo es casual y aburrido. Nada de mirada culpable ni guiño: la gracia está en que le da exactamente igual."
+    },
+    {
+      "id": "02_camioneta",
+      "titulo": "LA CAMIONETA · −2",
+      "segundos": 10,
+      "move": "handheld",
+      "reparto": ["CONDUCTOR", "RAMO_24"],
+      "contador": "21 → 19",
+      "still": "The open back of a delivery van in flat overcast daylight, plastic crates stacked inside, the bouquet of red roses in creased kraft paper lying on top of a crate, a 45 year old man in a plain grey polo standing at the open doors with a lanyard around his neck, the street soft and out of focus behind him, natural skin texture with visible pores, facial asymmetry, working hands with short nails, no beauty retouching, deadpan documentary realism",
+      "motion": "he lifts the crate to move it, pauses, pulls two roses out of the bouquet without looking at them and tucks them into the door pocket beside the seat, then closes the van doors, his expression completely flat and bored the whole time",
+      "gesto": "he tucks the two roses into the door pocket without even looking at them"
+    },
+    {
+      "id": "03_banda",
+      "titulo": "LA BANDA · −3",
+      "segundos": 10,
+      "move": "static",
+      "reparto": ["RAMO_24"],
+      "contador": "19 → 16",
+      "still": "A parcel sorting conveyor belt in a warehouse under cold even overhead light, the bouquet of red roses in kraft paper travelling along the belt among cardboard boxes, three pairs of gloved working hands visible at intervals along the belt, no faces in frame at all, only torsos in grey work vests, dust in the cold light, natural fabric and glove texture, documentary realism",
+      "motion": "the bouquet travels steadily along the belt, and as it passes each pair of hands a single rose is drawn out of it and disappears out of frame, three times, without the belt ever stopping, the paper cone visibly emptier each time",
+      "gesto": "cada mano saca una sola rosa sin detener la banda",
+      "nota": "Sin caras: tres pares de manos. Es el plano más barato de repetir y el que mejor lee el chiste — el robo ya es un procedimiento industrial."
+    },
+    {
+      "id": "04_la_noche",
+      "titulo": "LA NOCHE Y EL DESCARTE · −2",
+      "segundos": 10,
+      "move": "static",
+      "reparto": ["RAMO_14"],
+      "contador": "16 → 14",
+      "still": "A metal warehouse shelf at night, the bouquet of red roses in creased kraft paper lying alone among cardboard boxes, no people, one cold overhead light, the roses still holding their shape at the start, dust in the air, deep shadow around the shelf, photographic realism, macro-adjacent detail on petals and paper",
+      "motion": "the light slowly shifts from cold night to pale grey morning across the shelf while the roses wilt in place, heads bending over one by one and outer petals curling and browning, then a gloved hand enters frame, pulls two dead roses out and drops them into a bin below, and the bouquet is left thinner and crooked",
+      "gesto": "la mano enguantada tira las dos rosas muertas al cubo sin mirarlas",
+      "nota": "Aquí salta el reloj del viaje en post: es donde se hacen visibles las 31 horas."
+    },
+    {
+      "id": "05_la_entrega",
+      "titulo": "LA ENTREGA",
+      "segundos": 10,
+      "move": "static",
+      "reparto": ["REPARTIDOR", "RECEPTORA", "RAMO_14"],
+      "contador": "14",
+      "still": "An apartment doorway in warm low late afternoon sun, a 28 year old delivery man in a clean dark navy work shirt with a small gold embroidered monogram on the chest handing a thin bouquet of fourteen red roses in creased kraft paper to a 40 year old woman in a cream knit sweater standing inside the door, the roses visibly sparse with bending heads and browning outer petals, the lower quarter of the tall frame dark and clean, natural skin texture with visible pores and fine hair, facial asymmetry, ordinary teeth, unstyled hair, working hands with short nails, no beauty retouching, no posing, documentary realism",
+      "motion": "he holds the bouquet out with both hands and she takes it, she looks down at the sparse roses and turns them slightly, her expression polite and slightly puzzled but not angry, she says a short thank you, he gives a small tired nod, neither of them looks at the camera",
+      "gesto": "ella gira el ramo buscándole un lado mejor y no lo encuentra",
+      "nota": "Ella no sabe nada. Nunca sabrá que salieron veinticuatro. Esa es la idea entera."
+    },
+    {
+      "id": "06_el_escaner",
+      "titulo": "EL ESCÁNER QUE NO COBRA",
+      "segundos": 10,
+      "move": "push",
+      "reparto": ["REPARTIDOR"],
+      "contador": "14 · el ding que no suena",
+      "still": "Medium close on the 28 year old delivery man standing in the apartment doorway in warm late afternoon light, warm light on one side of his face, a small gold embroidered monogram just visible on the chest of his dark navy work shirt, a handheld delivery scanner in his right hand held up at chest height, the woman soft and out of focus behind him holding the sparse roses, the lower quarter of the tall frame dark and clean, natural skin texture with visible pores and fine hair, facial asymmetry, ordinary teeth, unstyled hair, working hands with short nails, no beauty retouching, documentary realism",
+      "motion": "he holds the scanner up, his thumb hovers over it for a moment, then he lowers the scanner all the way down to his side without pressing it, and he turns his head and looks straight into the camera lens with a completely flat, tired, matter-of-fact expression and speaks three short sentences without smiling, he blinks once before speaking, his throat moves as he swallows, a tired exhale between the sentences, no smile at any point",
+      "gesto": "el pulgar duda sobre el escáner y luego lo baja sin pulsarlo",
+      "nota": "Se genera MUDO. Las tres frases se doblan después con voz latina y van subtituladas. Este es el plano donde el comercial da la vuelta: el público lleva seis dings esperando el séptimo y no llega."
+    }
+  ],
+  "post": {
+    "nota": "TODO lo de abajo se compone encima al editar. NO se le pide al modelo — ningún generador de vídeo hace texto legible ni sincroniza sonido con un gesto. Es la parte más afilada de la idea y es la que está 100% bajo control.",
+    "contador": {
+      "posicion": "arriba al centro",
+      "texto": "ROSAS ENVIADAS · 24",
+      "comportamiento": "Cada robo: un ding de pago tipo Apple Pay, un '−3' / '−2' / '−1' en ámbar que salta hacia arriba, y el número baja.",
+      "saltos": ["24 → 21", "21 → 19", "19 → 18", "18 → 17", "17 → 16", "16 → 14"],
+      "dings": "Seis, sintetizados con dureza creciente: el primero amable, el sexto raspa."
+    },
+    "el_ding_que_no_suena": "En el plano 06, cuando baja el escáner sin cobrar, la píldora del contador TIEMBLA como si fuera a bajar y no baja. No suena nada. El silencio es el remate.",
+    "reloj": {
+      "posicion": "arriba a la izquierda",
+      "recorrido": "MAR 10:40 → MIÉ 17:30",
+      "proposito": "hacer visibles las 31 horas del viaje"
+    },
+    "subtitulos": "Las tres frases finales del repartidor.",
+    "cierre": "Negro, monograma OG dorado, 'ORDEN GLOBAL', y el aguijón 'ENVIADAS 24 · ENTREGADAS 14'."
+  },
+  "pendiente": [
+    "Las tres frases exactas del repartidor (las tuyas, no las mías).",
+    "La referencia del principio del documento (se cortaba en 'Pizza').",
+    "La sección TU TAREA / PASO 1, que en la captura no se lee."
+  ]
+}

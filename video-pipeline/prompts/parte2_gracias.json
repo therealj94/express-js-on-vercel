@@ -1,0 +1,132 @@
+{
+  "proyecto": "Orden Global — Parte 2",
+  "titulo": "Te dio las gracias",
+  "idea": {
+    "el_insight": "En la parte 1 él cree que quedó bien y ella cree que él mandó poco. Ninguno de los dos se entera nunca. Ese hueco entre lo que diste y lo que vieron es el producto entero.",
+    "la_imagen_que_lo_dice_todo": "Ella le mandó una foto de las catorce flores muertas, dándole las gracias. Tuvo que fingir ilusión por un desastre para no hacerle sentir mal. Él lo ve por primera vez.",
+    "por_que_no_es_crueldad": "Todos hemos estado en uno de los dos lados: dando las gracias por algo lamentable, o enterándonos tarde de que lo que mandamos llegó roto. Suavizarlo mata la pieza.",
+    "el_circulo": "El anuncio empieza en el móvil de él con una foto de flores muertas y termina en el móvil de él con una foto de veinticuatro vivas. La misma pantalla, la misma mano, otro mundo.",
+    "el_remate": "Lo que mandaste y lo que llegó, por fin, son lo mismo.",
+    "que_se_corrigio_de_la_version_anterior": "Aquella tenía seis planos de proceso —cortar, contar, envolver, caminar— y se convertía en un reportaje de floristería. A nadie le importa ver cortar tallos. Aquí el método se cuenta en tres golpes de tres segundos y el resto son las dos personas."
+  },
+  "formato": {"aspect": "9:16 vertical", "gen_w": 720, "gen_h": 1280,
+    "final_w": 1080, "final_h": 1920, "fps": 24, "duracion_total_s": 60,
+    "ritmo": "13 planos de 3,9 s de media, contra los 4,2 s medidos en la parte 1."},
+  "defaults": {
+    "video_workflow": "workflows/h3_calidad_api.json",
+    "duration_s": 4, "fps": 24, "steps": 20,
+    "negative": "text, letters, numbers, subtitles, captions, watermark, brand names, logos, embroidered logo, signage with readable words, screens with readable text, readable user interface, app interface, chat bubbles, horizontal composition, letterboxing, black bars, cartoon, animation, 3D render, CGI flowers, artificial flowers, glitter, cellophane, hologram, sparkles, magic effects, teleport, light trails, particles, glowing lines, drone shot, gimbal glide, slow motion, orange and teal grading, glossy advertising lighting, beauty retouching, poreless skin, model looks, big smile, celebration, crying, tears, looking at camera, addressing the camera, talking, speaking, moving lips, plastic skin, waxy face, deformed hands, extra fingers, morphing, flicker, crooked teeth, deformed teeth, distorted mouth"
+  },
+  "look_base": "shot on full-frame cinema camera, vintage 35mm spherical prime, T2.8, locked off with the smallest organic drift, natural practical light only, real 35mm grain, muted desaturated colour, milky blacks, documentary realism, calm observational framing, no advertising gloss",
+  "casting": [
+    {"id": "EL", "rol": "quien manda",
+     "retrato": "Vertical portrait of a 44 year old Latin American man, short dark hair going grey at the temples, a day of stubble, a plain dark blue shirt with the sleeves rolled to the forearms, a worn wedding ring, large ordinary hands with short clean nails, tired calm face, lit only by the cool light of a phone screen in a dark kitchen at night, visible pores and facial asymmetry, even natural teeth"},
+    {"id": "ELLA", "rol": "quien recibe",
+     "retrato": "Vertical portrait of a 40 year old Latin American woman, dark shoulder-length hair loosely tied back with strands escaping at the temples, no makeup, faint freckles across the nose, a small mole under the left eye, cream knit sweater with sleeves pushed to the forearms, calm neutral face, warm low sun from a window camera-left, visible pores and facial asymmetry, even natural teeth"},
+    {"id": "FLORISTA", "rol": "la de la otra ciudad",
+     "retrato": "Vertical portrait of a 34 year old Latin American woman in a dark green work apron over a plain t-shirt, hair tied back in a practical knot, strong bare forearms, hands nicked from stems with short unpainted nails, calm working face, bright flat morning light from a shop window, visible pores, ordinary and unglamorous"}
+  ],
+  "shots": [
+    {"id": "01_la_foto", "titulo": "LA FOTO QUE ELLA MANDÓ", "segundos": 4, "move": "static",
+     "reparto": [], "hud": "", "voz": "Ella te mandó esta foto.",
+     "still": "Extreme close on a phone held in a man's hand in a dark room at night, the screen filling most of the tall frame and showing a photograph of a thin bouquet of fourteen dead red roses lying in creased brown paper on a table, the photo slightly overexposed the way a phone snapshot is, no interface and no text anywhere on the screen, the man's thumb resting at the edge of the glass, the cool screen light falling on his fingers and on nothing else, deep black around, photographic realism, visible skin texture and one short clean nail",
+     "motion": "the phone stays completely still in his hand and the thumb does not move, only the faintest tremor of a hand holding something for too long",
+     "nota": "Sin cara. El plano más barato de toda la pieza y el que más pesa."},
+
+    {"id": "02_el_lee", "titulo": "Y TE DIO LAS GRACIAS", "segundos": 4, "move": "static",
+     "reparto": ["EL"], "hud": "", "voz": "Y te dio las gracias.",
+     "still": "A 44 year old man sitting alone at a kitchen table late at night, the room dark around him, his face and chest lit only by the cool glow of a phone held low in both hands, a cold cup of coffee and a set of keys on the table beside him, the window behind him showing only black, natural skin texture with visible pores and stubble, facial asymmetry, tired eyes, unstyled hair, no beauty retouching, documentary realism",
+     "motion": "he reads without moving, then his eyes flick up from the screen and stay fixed on nothing at all, and he swallows once"},
+
+    {"id": "03_se_da_cuenta", "titulo": "NUNCA LO SUPO", "segundos": 4, "move": "static",
+     "reparto": ["EL"], "hud": "ROSAS ENVIADAS 24 · ENTREGADAS 14", "voz": "Nunca supo que mandaste veinticuatro.",
+     "still": "Tight close on the same 44 year old man's face lit from below by a phone screen in a dark kitchen, the light hard and cold on one cheek and the other side falling into black, stubble and pores clearly visible, the eyes red-rimmed with tiredness, the mouth closed, no phone visible in frame, natural skin texture, facial asymmetry, no beauty retouching, documentary realism",
+     "motion": "his jaw sets, he blinks slowly once, and he breathes out through his nose without any other movement at all"},
+
+    {"id": "04_vuelve_a_pedir", "titulo": "OTRA VEZ", "segundos": 3, "move": "static",
+     "reparto": ["EL"], "hud": "el contador se pone a 24 · 21:04:00", "voz": "",
+     "still": "Medium close on a 44 year old man at a dark kitchen table at night seen from slightly to the side, the phone now held up in both hands with the cool screen light on his face and forearms, the cold coffee and keys on the wood in front of him, the dark window behind, natural skin texture with visible pores and stubble, facial asymmetry, no beauty retouching, documentary realism, the screen itself blown out and unreadable",
+     "motion": "he lifts the phone, scrolls once with his thumb and stops, his shoulders dropping half a centimetre as he settles into the decision"},
+
+    {"id": "05_el_pulgar", "titulo": "CONFIRMA", "segundos": 3, "move": "static",
+     "reparto": [], "hud": "un click suave · −0.1 · 23.9", "voz": "",
+     "still": "Extreme close on a man's thumb pressing down on a phone screen held in his other hand, the screen a soft blown-out rectangle of cool white light with no readable interface, the ridges of the fingerprint and the skin lit hard by that light, everything else falling away into black, razor-thin depth of field, one short clean nail, photographic realism",
+     "motion": "the thumb presses down once, holds for a beat and lifts away, and the light on the skin changes very slightly as the screen redraws",
+     "nota": "Aquí cae el único descuento de la pieza: un click, 0.1, y ya nada más se mueve."},
+
+    {"id": "06_otra_ciudad", "titulo": "OTRA CIUDAD", "segundos": 3, "move": "static",
+     "reparto": [], "hud": "VALOR ENTREGADO · 0.4 s", "voz": "Lo que vale llega en menos de un segundo.",
+     "still": "A phone lying face up on a worn wooden florist counter in bright flat morning light, its screen suddenly lit as a soft rectangle of white with no readable interface, surrounded by the working mess of a flower shop: cut stem ends, a coil of twine, steel shears, water rings on the wood, a bucket of green foliage out of focus behind, no people in frame, photographic realism, visible wood grain and water",
+     "motion": "the screen lights up on its own and the phone buzzes once, shifting a millimetre on the wood, and a cut leaf beside it trembles with the vibration",
+     "nota": "EL GIRO, y el corte más importante del anuncio: de la noche de él al día de allá. Sin efectos: el montaje es el salto."},
+
+    {"id": "07_las_tijeras", "titulo": "A ONCE MINUTOS", "segundos": 4, "move": "static",
+     "reparto": [], "hud": "A 11 MIN DE LA ENTREGA", "voz": "A once minutos de su casa.",
+     "still": "Tight close on steel florist shears cutting through the thick green stem of a fresh deep red rose held over a wooden counter, water beading on the stem, cut leaves and stem ends already scattered on the wood, bright flat morning light from a shop window camera-right, no faces in frame, two working hands with short unpainted nails and small healed cuts, photographic realism, macro detail on the cut and the sap",
+     "motion": "the shears close through the stem with a clean snap and the cut end drops onto the wood, and a second stem enters the frame and is cut the same way",
+     "nota": "El puente. Tres planos bastan para que la solución no parezca magia; seis la convertían en un reportaje."},
+
+    {"id": "08_la_calle", "titulo": "ONCE MINUTOS", "segundos": 4, "move": "handheld",
+     "reparto": [], "hud": "21:15", "voz": "",
+     "still": "A pair of hands carrying a full bouquet of twenty-four deep red roses upright against a plain dark jacket while walking along an ordinary residential pavement in warm low late afternoon sun, the taut kraft paper and full clear water sleeve clearly visible, long shadows and dust in the air, low houses and parked cars soft and out of focus behind, no face in frame, photographic realism",
+     "motion": "the bouquet stays upright and level as the walking rocks it gently, and the low sun sweeps across the paper as the walk passes a gap between buildings",
+     "nota": "Ni camión ni almacén: alguien andando. Esa pobreza visual es el argumento."},
+
+    {"id": "09_la_puerta", "titulo": "LA PUERTA", "segundos": 4, "move": "static",
+     "reparto": ["ELLA"], "hud": "24", "voz": "Llegan veinticuatro.",
+     "still": "An apartment doorway in warm low late afternoon sun, a 40 year old woman in a cream knit sweater taking a full heavy bouquet of twenty-four deep red roses in taut kraft paper with both hands, water beading on the outer petals, her shoulders adjusting to the real weight of it, the warm wall of the hallway behind her, the lower quarter of the tall frame dark and clean, natural skin texture with visible pores and fine hair, facial asymmetry, unstyled hair, no beauty retouching, no posing, documentary realism",
+     "motion": "her arms drop slightly as she takes the full weight and she brings the bouquet in against her chest, her eyebrows lifting for half a second before her face settles"},
+
+    {"id": "10_su_cara", "titulo": "SIN FINGIR", "segundos": 5, "move": "static",
+     "reparto": ["ELLA"], "hud": "24 → 23.9", "voz": "Esta vez no tuvo que fingir.",
+     "still": "Medium close on the same 40 year old woman in the same cream knit sweater in the same warm hallway light, holding the full bouquet of twenty-four deep red roses against her chest, water still beading on the outer petals, the taut kraft paper cone filling the lower half of the tall frame, natural skin texture with visible pores and fine hair, facial asymmetry, unstyled hair, no makeup, no beauty retouching, documentary realism",
+     "motion": "she lowers her face into the roses and breathes in, her eyes closing for half a second, and a small real smile starts at the eyes before it reaches her mouth, and as she lifts her head one outer petal detaches and falls out of the bottom of the frame",
+     "nota": "La frase de la voz es el pago del principio. En la parte 1 fingió; aquí no."},
+
+    {"id": "11_el_petalo", "titulo": "EL COSTO", "segundos": 4, "move": "static",
+     "reparto": [], "hud": "23.9", "voz": "Menos un pétalo. Ese fue el costo.",
+     "still": "Extreme close on a warm wooden floor in low late afternoon sun raking across the grain, a single deep red rose petal lying alone on the boards, one small bead of water on its surface, the fine down along its curled edge catching the light, razor-thin depth of field, dust drifting in the light above, no people at all, photographic realism, macro detail on the petal surface",
+     "motion": "the petal settles and rocks once on the wood and comes to rest completely still, dust drifting slowly through the light above it"},
+
+    {"id": "12_suena_el_movil", "titulo": "LA OTRA FOTO", "segundos": 4, "move": "static",
+     "reparto": [], "hud": "", "voz": "",
+     "still": "Extreme close on the same phone held in the same man's hand in the same dark room at night, the screen filling most of the tall frame and now showing a photograph of a woman holding a full bouquet of twenty-four deep red roses against her chest, the photo slightly overexposed the way a phone snapshot is, no interface and no text anywhere on the screen, his thumb at the edge of the glass, the cool screen light on his fingers and on nothing else, deep black around, photographic realism",
+     "motion": "the screen lights up on its own and the phone moves a few millimetres in his hand as he raises it slightly, nothing else",
+     "nota": "El espejo exacto del plano 01. Misma mano, misma pantalla, misma oscuridad. Solo cambia la foto."},
+
+    {"id": "13_el_ve", "titulo": "Y ESTA VEZ LO VES", "segundos": 4, "move": "static",
+     "reparto": ["EL"], "hud": "ENVIADAS 24 · ENTREGADAS 23.9", "voz": "Y esta vez lo ves.",
+     "still": "Tight close on the same 44 year old man's face lit from below by a phone screen in the same dark kitchen, the same hard cold light on one cheek and black on the other, stubble and pores clearly visible, tired eyes, no phone visible in frame, natural skin texture, facial asymmetry, no beauty retouching, documentary realism",
+     "motion": "he looks down at the screen and something in his face lets go, the corner of his mouth lifting very slightly without becoming a smile, and he breathes out"}
+  ],
+  "cierre": {
+    "t": "53-60 s", "fuente": "montaje, no se genera",
+    "que_se_ve": "Fundido a negro. El monograma OG dorado solo, como en la parte 1.",
+    "hud": "ENVIADAS 24 · ENTREGADAS 23.9",
+    "voz": ["Orden Global.", "Lo que mandaste y lo que llegó,", "por fin, son lo mismo."]
+  },
+  "sonido": {
+    "criterio": "El planteamiento de la parte 1: foley muy presente sobre un colchón casi inaudible.",
+    "foley": [
+      {"t": 14.2, "que": "el click del pulgar — el único sonido de interfaz de la pieza"},
+      {"t": 18.4, "que": "el teléfono vibrando sobre la madera, a mil kilómetros"},
+      {"t": 22.6, "que": "las tijeras cortando el tallo, seco y limpio"},
+      {"t": 39.6, "que": "el pétalo tocando la madera, el sonido más pequeño"},
+      {"t": 43.2, "que": "la vibración del móvil de él, la misma de antes pero en su mano"}
+    ],
+    "la_ausencia": "En la parte 1 el tic-tac del reloj marca la espera durante el time-lapse del almacén. Aquí ese sonido no existe: no hay almacén y no hay espera. Quien vio la primera lo echa de menos sin saber por qué.",
+    "los_silencios": ["Medio segundo mudo entre el pulgar (05) y la pantalla de la otra ciudad (06): es el salto entre ciudades.",
+      "Los cuatro segundos del plano 03 van completamente mudos. Es donde él entiende lo que pasó, y cualquier sonido lo estropea."]
+  },
+  "riesgos": [
+    {"que": "Consistencia de la cara de él en cuatro planos (02, 03, 04, 13)",
+     "mitigacion": "Todos duran 4 s o menos, que es donde el modelo aguanta. El 13 se puede generar partiendo del último fotograma del 03 para fijar la cara."},
+    {"que": "La foto dentro de la pantalla puede salir deformada",
+     "mitigacion": "Si sale mal, la foto se compone en montaje sobre una pantalla en blanco. Coste cero y control total."}
+  ],
+  "pendiente": [
+    "El porcentaje real de comisión, para poner un dato donde ahora hay un pétalo.",
+    "¿Los once minutos son un número vuestro? Un número inventado se nota.",
+    "IMPORTANTE: ¿Orden Global corta las flores cerca de quien las recibe, o eso es una metáfora del valor que viaja? Si no es literal, el plano 07 miente y hay que cambiarlo. Prefiero preguntarlo antes que rodarlo."
+  ]
+}

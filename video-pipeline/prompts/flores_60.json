@@ -1,0 +1,120 @@
+{
+  "proyecto": "Orden Global — Las que son",
+  "formato": {
+    "aspect": "9:16 vertical",
+    "gen_w": 720,
+    "gen_h": 1280,
+    "final_w": 1080,
+    "final_h": 1920,
+    "fps": 24,
+    "nota_duracion": "6 planos x 10 s = 60 s exactos.",
+    "nota": "Se genera a 720x1280 y se sube a 1080x1920 con SeedVR2."
+  },
+  "estructura": {
+    "arco": "Problema -> Orden Global lo resuelve.",
+    "bisagra": "El plano 01 y el plano 06 son el MISMO umbral, la MISMA mujer y la MISMA luz. Lo único que cambia es lo que llega. Ese espejo es el anuncio entero: sin él son seis clips bonitos y con él es una promesa cumplida.",
+    "riesgo": "Elena sale en 01, 02 y 06. Su retrato completo viaja en los tres prompts, palabra por palabra igual. Aun así el modelo no garantiza la misma cara: si en la primera tanda no coincide, el plano 06 se regenera partiendo del último fotograma del 01 (i2v) en vez de texto."
+  },
+  "defaults": {
+    "video_workflow": "workflows/h3_calidad_api.json",
+    "duration_s": 10,
+    "fps": 24,
+    "negative": "text, letters, numbers, subtitles, captions, watermark, brand names, logos, horizontal composition, letterboxing, black bars, cartoon, animation, 3D render, CGI flowers, artificial flowers, plastic flowers, glitter, cellophane, hologram, charts, screens, drone shot, gimbal glide, slow motion, orange and teal grading, glossy advertising lighting, beauty retouching, poreless skin, perfect teeth, model looks, celebration, confetti, luxury imagery, excessive camera shake, plastic skin, waxy face, deformed hands, extra fingers, morphing, flicker, two people where one is described",
+    "steps": 20
+  },
+  "look_base": "shot on full-frame cinema camera, vintage 35mm spherical prime, T2.8, handheld on a shoulder rig with small organic drift, natural practical light only, gentle halation on highlights, real 35mm grain, muted true colour, milky blacks, slight corner softness, documentary realism, no advertising gloss",
+  "casting": [
+    {
+      "id": "ELENA",
+      "rol": "quien recibe",
+      "retrato": "Vertical portrait of a 40 year old Latin American woman, dark shoulder-length hair loosely tied back with strands escaping at the temples, no makeup, faint freckles across the nose, expression lines at the corners of the eyes, a small mole under the left eye, cream knit sweater with slightly pilled sleeves pushed to the forearms, neutral expression, warm low sun from a window camera-left, visible pores and facial asymmetry"
+    },
+    {
+      "id": "MERCEDES",
+      "rol": "florista",
+      "retrato": "Vertical portrait of a 61 year old Latin American woman with a warm round face, silver hair in a loose bun escaping at the sides, reading glasses on a beaded chain, green canvas apron with old dried stains, hands nicked from stems and wet fingers, neutral concentrated expression, not looking at camera, warm soft shop window light with green bounce from flower buckets under her jaw, visible pores and expression lines"
+    },
+    {
+      "id": "KARIM",
+      "rol": "repartidor",
+      "retrato": "Vertical portrait of a 28 year old thin Latin American man with a tired but kind face, dark hair flattened and damp from a helmet, faint sweat at the temples, a small scar through one eyebrow, clean dark navy polo with a small four centimetre embroidered gold monogram on the left chest, neutral expression, low warm late afternoon sun, visible pores"
+    },
+    {
+      "id": "RAMO_MAL",
+      "rol": "objeto",
+      "retrato": "Vertical still life of a thin disappointing bouquet, eleven short-stemmed red roses with heads already bending, outer petals browning and curling at the edges, gaps between the heads, crushed and creased brown paper too wide for the flowers, a dry snapped rubber band instead of ribbon, cut stems dry with no water sleeve, lying unevenly on a wooden table"
+    },
+    {
+      "id": "RAMO_BIEN",
+      "rol": "objeto",
+      "retrato": "Vertical still life of a bouquet of twenty-four deep red roses in a cone of brown kraft paper tied with a cream satin ribbon, heads packed into an even dome with no gaps, paper taut and sharply folded, cut stems bound in damp paper towel inside a clear full water sleeve, water beading on the outer petals, photographic, real flowers with visible petal texture"
+    }
+  ],
+  "shots": [
+    {
+      "id": "01_lo_que_llega_hoy",
+      "titulo": "LO QUE LLEGA HOY",
+      "segundos": 10,
+      "move": "static",
+      "reparto": ["ELENA", "RAMO_MAL"],
+      "still": "An apartment doorway in warm low late afternoon sun, a 40 year old woman in a cream knit sweater standing just inside the open door holding a thin disappointing bouquet of eleven short red roses with bending heads and browning outer petals wrapped in creased oversized brown paper, the doorway frame and the warm wall behind her, the lower quarter of the tall frame dark and clean, natural skin texture with visible pores and fine hair, facial asymmetry, ordinary teeth, unstyled hair, working hands with short nails, no beauty retouching, no posing, documentary realism",
+      "motion": "she holds the bouquet at chest height and turns it slowly once looking for a better side, she lifts one bending rose head with a fingertip and it drops back down, her mouth closes into a thin line, she blinks once and looks off to the side, no smile at any point",
+      "gesto": "she lifts one bending rose head with a fingertip and it drops back down, her mouth closes into a thin line"
+    },
+    {
+      "id": "02_la_mesa",
+      "titulo": "LA MESA",
+      "segundos": 10,
+      "move": "static",
+      "reparto": ["ELENA", "RAMO_MAL"],
+      "still": "Looking straight down at a wooden entry table from directly above, the thin disappointing bouquet of eleven short red roses lying on its side in creased brown paper, heads bent over, three loose browning petals scattered on the wood beside it, a woman's hand resting flat on the table next to the paper, warm late afternoon light from a window camera-left, natural skin texture with visible pores, working hands with short nails and small scars, no beauty retouching, documentary realism",
+      "motion": "her hand slides the bouquet a few centimetres across the table and stops, a single dry petal detaches and settles on the wood, her fingers open and lift away out of frame, the bouquet left alone and completely still",
+      "gesto": "her fingers open and lift away out of frame"
+    },
+    {
+      "id": "03_mercedes_arma",
+      "titulo": "MERCEDES ARMA EL RAMO",
+      "segundos": 10,
+      "move": "push",
+      "reparto": ["MERCEDES", "RAMO_BIEN"],
+      "still": "A neighbourhood florist shop counter in warm morning light, a 61 year old woman in a green canvas apron behind the counter building a bouquet of twenty-four deep red roses on brown kraft paper, cut stems and leaf trimmings on the counter around her, a pair of florist shears and a spool of cream satin ribbon beside her hands, flower buckets bouncing green light under her jaw, natural skin texture with visible pores and fine hair, facial asymmetry, unstyled hair, working hands with short nails and small scars and wet fingertips, no beauty retouching, documentary realism",
+      "motion": "she pushes two roses deeper into the arrangement to close a gap, turns the whole bouquet a quarter turn on the paper to check the dome from the other side, then folds the kraft paper tight around it, she pushes her glasses up with the back of a wrist because her fingertips are wet, her lips move slightly as she counts",
+      "gesto": "she pushes her glasses up with the back of a wrist because her fingertips are wet, her lips move slightly as she counts"
+    },
+    {
+      "id": "04_la_comprobacion",
+      "titulo": "LA COMPROBACIÓN",
+      "segundos": 10,
+      "move": "static",
+      "reparto": ["MERCEDES", "RAMO_BIEN"],
+      "still": "Close on a florist counter from slightly above, the finished bouquet of twenty-four deep red roses in taut kraft paper lying on its side, a small printed paper order slip and a short pencil on the counter beside it, two hands with wet fingertips and short nails moving over the rose heads, a clear water sleeve around the cut stems catching the light, warm morning window light, no faces in frame, natural skin texture with visible pores, documentary realism, macro-adjacent detail on petals and paper",
+      "motion": "the hands touch each rose head in turn as they are counted, pause, then press the folded paper flat along one edge and tighten the cream ribbon into a firm knot, one fingertip taps the order slip once at the end",
+      "gesto": "one fingertip taps the order slip once at the end"
+    },
+    {
+      "id": "05_karim_lleva",
+      "titulo": "KARIM LO LLEVA",
+      "segundos": 10,
+      "move": "handheld",
+      "reparto": ["KARIM", "RAMO_BIEN"],
+      "still": "A young delivery man in a clean dark navy polo walking along a city pavement in low warm late afternoon sun, carrying a complete bouquet of twenty-four deep red roses upright against his chest with both hands, taut kraft paper and a full clear water sleeve around the stems, long shadows and dust in the air, shopfronts soft and out of focus behind him, natural skin texture with visible pores and fine hair, facial asymmetry, ordinary teeth, unstyled hair, working hands with short nails, no beauty retouching, no posing, documentary realism",
+      "motion": "he walks steadily, adjusts his grip so the bouquet stays upright and level, glances down at the rose heads once to check them and back up at the street ahead, he squints against the low sun and wipes his temple with the back of a wrist",
+      "gesto": "he squints against the low sun and wipes his temple with the back of a wrist"
+    },
+    {
+      "id": "06_lo_que_llega_ahora",
+      "titulo": "LO QUE LLEGA AHORA",
+      "segundos": 10,
+      "move": "push",
+      "reparto": ["ELENA", "RAMO_BIEN"],
+      "still": "The same apartment doorway in the same warm low late afternoon sun, the same 40 year old woman in the same cream knit sweater standing just inside the open door, now holding a complete heavy bouquet of twenty-four deep red roses in taut kraft paper with a cream ribbon, water beading on the outer petals, her shoulders adjusting to the real weight of it, the same doorway frame and warm wall behind her, the lower quarter of the tall frame dark and clean, natural skin texture with visible pores and fine hair, facial asymmetry, ordinary teeth, unstyled hair, working hands with short nails, no beauty retouching, no posing, documentary realism",
+      "motion": "her arms drop slightly as she takes the full weight, she brings the bouquet against her chest and lowers her face into the roses and breathes in, her eyes close for half a second, and the smile starts at the eyes before it reaches her mouth, then she looks up and straight into the camera lens with a calm steady expression",
+      "gesto": "the smile starts at the eyes before it reaches her mouth",
+      "nota": "Se genera MUDO. La frase final se dobla después con voz latina."
+    }
+  ],
+  "post": {
+    "espejo": "Los planos 01 y 06 se montan con el mismo encuadre y el mismo etalonaje para que el corte entre ellos lea como el mismo momento repetido, no como dos escenas distintas.",
+    "voz": "Una sola línea al final, doblada en español latino. El plano se genera mudo: el labial en español es una lotería y es la única frase de la pieza."
+  }
+}

@@ -1,0 +1,230 @@
+{
+  "_nota": "Material fotografico de la pelicula del ecosistema, segunda version. La primera era una pelicula DE ORO -cinco de doce planos- con un solo logo al final y verbos sueltos ('Recibi', 'Paga') sin decir de que producto. Nadie podia salir sabiendo como se llama la app. Jose lo pidio dos veces: 'usa todos los logos' y 'que la gente lo entienda'. Esta version hace lo que hace un trailer de Apple: UN producto por plano, su NOMBRE en pantalla y UN verbo. El oro queda en lo que le toca -ORIGEN- y no en el 40% de la pieza, que es lo que en tres pruebas de publico construyo solo 'respaldada en oro'.",
+  "_regla": "Cada plano describe MATERIA y LUZ, nunca conceptos. Oro, cristal, piel, pizarra, metal cepillado. Una sola luz dura desde arriba a la izquierda, negro absoluto detras, macro con poca profundidad de campo. Se mueve la luz o el objeto; la camara solo hace un avance lento en cuatro planos, para que no sea una presentacion de diapositivas. Ninguna pantalla lleva contenido y ningun logo se genera: los ocho logos se componen despues, con la misma luz, en el mismo sitio. Un mismo telefono en todos los planos: 'a matte black smartphone with a flat brushed-aluminium frame'.",
+  "_continuidad": "Telefono: 'a matte black smartphone with a flat brushed-aluminium frame'. Piel: 'olive skin'. Superficie: 'a slab of dark polished slate'. Terminal: 'a dark matte payment terminal'. Se repiten palabra por palabra.",
+  "defaults": {
+    "still_workflow": "workflows/h3_calidad_api.json",
+    "video_workflow": "workflows/h3_calidad_api.json",
+    "duration_s": 4,
+    "fps": 24,
+    "width": 720,
+    "height": 1280,
+    "negative": "cartoon, illustration, 3d render, cgi, plastic, low poly, oversaturated, flat lighting, daylight, window, room, clutter, background objects, text, letters, numbers, logo, engraving, watermark, ui elements, phone screen content, readable screen, face, person, stock photo, motion blur smear, morphing, blurry, low detail, scratches on lens"
+  },
+  "shots": [
+    {
+      "id": "01_oro_superficie",
+      "still": "Extreme macro photograph of the surface of a raw gold nugget filling the entire frame, deep pits and crystalline ridges in the metal, a single hard light from the upper left raking across it so every ridge throws a shadow and every facet catches a hot specular highlight, the pits falling into pure black. Pure black void beyond the edges of the metal. Faint haze in the air and a few motes of dust drifting through the light beam, so the light itself is visible. Studio product macro, very shallow depth of field, focus on the central ridge.",
+      "motion": "the camera pushes in very slowly toward the central ridge while the light source drifts from left to right, so the hot highlights slide across the ridges and the shadows in the pits swing with them",
+      "move": "push",
+      "stills": 4,
+      "seeds": [
+        3101,
+        3102,
+        3103,
+        3104
+      ],
+      "pick": null
+    },
+    {
+      "id": "02_oro_moneda",
+      "still": "Extreme macro of molten gold being poured from the lip of a dark iron crucible into a shallow round mould cut into a slab of dark polished slate, the liquid metal thick and viscous with high surface tension, glowing deep amber at the pour and settling into a perfect flat disc that reflects the single hard light from the upper left as one clean specular band. The disc is plain, smooth, with no engraving or marks. The crucible and the far edge of the slate fall into pure black. Faint heat shimmer above the metal. Studio product macro, very shallow depth of field on the disc.",
+      "motion": "the pour finishes, the last drop joins the disc, the surface levels itself and the sheen slowly cools from bright amber to a deep still gold",
+      "move": "static",
+      "duration_s": 5,
+      "stills": 4,
+      "seeds": [
+        3201,
+        3202,
+        3203,
+        3204
+      ],
+      "pick": null
+    },
+    {
+      "id": "03_gotas_cuatro",
+      "still": "Extreme macro of four identical beads of liquid gold resting in a straight row on a sheet of dark glass in a pure black void, each bead a perfect dome with a hard specular highlight from the upper left and a warm reflection in the glass beneath it, evenly spaced, the glass edge catching one thin line of light. Nothing else in frame. Studio product macro, shallow depth of field with the second bead sharpest and the others softening gently.",
+      "motion": "a narrow beam of light sweeps slowly across the row from left to right so that each bead flares in turn and goes quiet again, and the reflections in the glass follow the beam",
+      "move": "static",
+      "stills": 4,
+      "seeds": [
+        3301,
+        3302,
+        3303,
+        3304
+      ],
+      "pick": null
+    },
+    {
+      "id": "04_telefono_piedra",
+      "still": "A matte black smartphone with a flat brushed-aluminium frame lying on a slab of dark polished slate in a pure black studio, photographed from a low three-quarter angle, macro, a single hard light from the upper left drawing one clean edge highlight along the aluminium frame and a soft reflection of the phone in the slate. The screen is on and throws a soft even warm gold-tinted glow onto the slate, its content out of focus and illegible. Nothing else in frame. Studio product macro, shallow depth of field on the near edge of the phone.",
+      "motion": "the camera pushes in very slowly toward the phone while the screen brightens from dark to lit over two seconds and its glow spreads across the slate, the reflection brightening with it",
+      "move": "push",
+      "stills": 4,
+      "seeds": [
+        3401,
+        3402,
+        3403,
+        3404
+      ],
+      "pick": null
+    },
+    {
+      "id": "05_dedo_cristal",
+      "still": "Extreme macro of a single fingertip with olive skin pressing onto the glass of a matte black smartphone with a flat brushed-aluminium frame, the skin flattening and going pale against the glass, the fine ridges of the fingerprint visible, the glass lit from beneath by the screen's soft warm glow with its content out of focus and illegible, a reflection of the fingertip in the glass. Pure black void around. Studio macro, razor-thin depth of field on the point of contact.",
+      "motion": "the fingertip presses down, the skin flattens and the reflection meets it, holds for a moment, then lifts away leaving a faint print on the glass",
+      "move": "static",
+      "stills": 4,
+      "seeds": [
+        3501,
+        3502,
+        3503,
+        3504
+      ],
+      "pick": null
+    },
+    {
+      "id": "06_mano_recibe",
+      "still": "A single hand with olive skin, palm up, holding a matte black smartphone with a flat brushed-aluminium frame flat on the open palm, entering a shaft of hard light from the upper left in a pure black void, weathered skin with hyper-detailed micro-texture and visible lines at the base of the fingers, the light drawing one clean edge highlight along the aluminium frame, the wrist falling into black. The screen is dark. Faint haze in the air and a few motes of dust drifting through the light beam. Studio macro, shallow depth of field on the phone and the fingertips.",
+      "motion": "the hand rises slowly into the light, the screen lights up with a soft warm gold-tinted glow whose content is out of focus and illegible, the glow spills onto the fingers, and the hand closes a little around the phone as if something has just arrived",
+      "move": "static",
+      "stills": 4,
+      "seeds": [
+        3601,
+        3602,
+        3603,
+        3604
+      ],
+      "pick": null
+    },
+    {
+      "id": "07_telefono_terminal",
+      "still": "Extreme macro of a matte black smartphone with a flat brushed-aluminium frame held by a hand with olive skin just above a dark matte payment terminal resting on a slab of dark polished slate, the phone's top edge almost touching the terminal's dark glass, a single hard light from the upper left drawing one clean highlight along the aluminium frame and a second along the terminal's edge, everything else in pure black. The terminal has one tiny status light, unlit. No text or logos anywhere. Studio product macro, very shallow depth of field on the gap between phone and terminal.",
+      "motion": "the phone lowers the last centimetre and touches the terminal, the tiny status light on the terminal turns on green, and the hand lifts the phone away again",
+      "move": "static",
+      "stills": 4,
+      "seeds": [
+        3701,
+        3702,
+        3703,
+        3704
+      ],
+      "pick": null
+    },
+    {
+      "id": "08_tarjeta_terminal",
+      "still": "Extreme macro of a plain matte black payment card sliding into the slot of a dark matte payment terminal, the card's EMV chip catching a hard gold-tinted light from the upper left, the brushed metal of the slot edge drawing one clean highlight, everything else in pure black. No text or logos on the card. Studio product macro, very shallow depth of field on the chip.",
+      "motion": "the card slides in slowly and seats with a small settle, the highlight on the chip sliding along it as it enters",
+      "move": "static",
+      "stills": 4,
+      "seeds": [
+        3801,
+        3802,
+        3803,
+        3804
+      ],
+      "pick": null
+    },
+    {
+      "id": "09_manos_intercambio",
+      "still": "Two hands meeting in a shaft of hard light in a pure black void: one older hand with weathered brown skin passing a matte black smartphone with a flat brushed-aluminium frame to a younger hand with olive skin, the phone between them catching one edge highlight, both wrists falling into black. Screen off. Faint haze in the air and a few motes of dust drifting through the light beam. Studio macro, shallow depth of field on the phone, nothing else in frame.",
+      "motion": "the older hand extends the phone, the younger hand closes around it, and for a moment both hold it together before the older hand lets go",
+      "move": "static",
+      "stills": 4,
+      "seeds": [
+        3901,
+        3902,
+        3903,
+        3904
+      ],
+      "pick": null
+    },
+    {
+      "id": "10_dos_telefonos",
+      "still": "Two identical matte black smartphones with flat brushed-aluminium frames lying face up on a slab of dark polished slate in a pure black studio, a hand's width apart, facing each other across the gap, both screens on with a soft warm gold-tinted glow, their content out of focus and illegible, the two glows meeting in the slate between them. A single hard light from the upper left draws one clean edge highlight on each frame. Faint haze in the air. Studio product macro from a low angle, shallow depth of field on the gap between the phones.",
+      "motion": "the camera pushes in very slowly on the gap while a thin thread of warm light crosses from the left phone to the right phone through the haze, and the right screen brightens a little as it arrives",
+      "move": "push",
+      "stills": 4,
+      "seeds": [
+        4001,
+        4002,
+        4003,
+        4004
+      ],
+      "pick": null
+    },
+    {
+      "id": "11_moneda_gira",
+      "still": "Extreme macro of a plain smooth gold disc, a blank coin with no engraving or marks, spinning slowly on its edge on a slab of dark polished slate in a pure black studio, a single hard light from the upper left flashing across its face on each half turn and a warm blurred reflection of the disc in the slate beneath it. Faint haze in the air. Studio product macro at slate level, shallow depth of field on the disc, nothing else in frame.",
+      "motion": "the disc spins slowly on its edge, the highlight sweeping across its face with each turn, the spin decaying until it wobbles and settles flat with a small final rock",
+      "move": "static",
+      "stills": 4,
+      "seeds": [
+        4101,
+        4102,
+        4103,
+        4104
+      ],
+      "pick": null
+    },
+    {
+      "id": "12_aucorp_moneda",
+      "still": "Extreme macro of a short neat stack of ordinary dull grey nickel coins, plain and worn with no readable markings, standing on a slab of dark polished slate beside a single plain smooth gold disc with no engraving, the two a finger's width apart, a single hard light from the upper left drawing a cold highlight on the grey stack and a warm one on the gold, both reflected softly in the slate, everything else in pure black. Faint haze in the air. Studio product macro at slate level, shallow depth of field on the gap between them.",
+      "motion": "the light slowly shifts from the grey stack to the gold disc, the cold highlight fading as the warm one brightens, and the gold disc gives one slow gleam while the grey coins fall into shadow",
+      "move": "static",
+      "stills": 4,
+      "seeds": [
+        4251,
+        4252,
+        4253,
+        4254
+      ],
+      "pick": null
+    },
+    {
+      "id": "13_luz_viaja",
+      "still": "A single thin thread of warm golden light travelling through a pure black void thick with faint haze, the thread sharp at its leading point with a soft anamorphic lens flare, the light interacting with microscopic dust suspended in the air so its path is visible as a glowing corridor, a faint reflection on an unseen dark glass surface below. Abstract, no objects, no text. Studio macro, black background, the thread the only thing in frame.",
+      "motion": "the leading point of light travels steadily from the bottom left to the upper right of the frame, leaving the softening trail behind it",
+      "move": "static",
+      "stills": 4,
+      "seeds": [
+        4201,
+        4202,
+        4203,
+        4204
+      ],
+      "pick": null
+    },
+    {
+      "id": "14_familia",
+      "still": "A pure black studio void filled with faint haze, a single wide beam of hard warm light from the upper left cutting through it so the beam itself is visible as a soft volume, thousands of microscopic dust motes drifting slowly inside the beam and invisible outside it, a faint warm reflection on an unseen slab of dark polished slate at the bottom of the frame. No objects, no text, nothing else. Studio macro, black background, the light the only subject.",
+      "motion": "the camera pushes in very slowly into the beam while the haze drifts gently from right to left and the motes turn in the light, the beam brightening a little toward the end",
+      "move": "push",
+      "duration_s": 5,
+      "stills": 4,
+      "seeds": [
+        4301,
+        4302,
+        4303,
+        4304
+      ],
+      "pick": null
+    },
+    {
+      "id": "15_oro_cierre",
+      "still": "A raw gold nugget resting alone on a slab of dark polished slate in a pure black studio, photographed from slightly above, a single hard light from the upper left drawing a hot highlight along its top ridge and a soft warm reflection in the slate, the far side of the nugget falling into black. Faint haze in the air and a few motes of dust drifting through the light beam. Nothing else in frame. Studio product shot, shallow depth of field on the nugget.",
+      "motion": "the light source settles and holds, the highlight on the ridge steadying, the nugget perfectly still while the motes keep drifting",
+      "move": "static",
+      "duration_s": 5,
+      "stills": 4,
+      "seeds": [
+        4401,
+        4402,
+        4403,
+        4404
+      ],
+      "pick": null
+    }
+  ],
+  "_aucorp": "AuCorp, segun Jose: la fintech que une lo fiat con el ecosistema. Su plano: las monedas grises de siempre junto al disco de oro, y la luz pasa de unas al otro. Rotulo 'Deposita.'; nunca 'banco', que suena a licenciado."
+}

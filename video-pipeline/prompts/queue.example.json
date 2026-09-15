@@ -1,0 +1,48 @@
+{
+  "version": 1,
+  "defaults": {
+    "engine": "h3",
+    "workflow": "workflows/h3_fl2va_api.json",
+    "width": 832,
+    "height": 480,
+    "fps": 24,
+    "duration_s": 5,
+    "steps": 30,
+    "cfg": 5.0,
+    "sampler": "euler",
+    "scheduler": "simple",
+    "audio": true,
+    "negative": "blurry, low quality, watermark, text, deformed hands, flicker",
+    "retries": 2
+  },
+  "jobs": [
+    {
+      "id": "01_apertura_mina",
+      "prompt": "Aerial drone shot descending over an open-pit mineral mine at golden hour, dust in the air, heavy machinery moving below, cinematic anamorphic lens, shallow depth of field, warm volumetric light",
+      "duration_s": 8,
+      "seed": 101
+    },
+    {
+      "id": "02_retrato_geologo",
+      "prompt": "Medium close-up of a mining geologist in a black and gold hard hat examining a mineral core sample, natural window light, 85mm lens, subtle handheld motion, ambient sound of a processing plant",
+      "seed": 202,
+      "duration_s": 6
+    },
+    {
+      "id": "03_producto_i2v",
+      "engine": "wan22",
+      "workflow": "workflows/wan22_i2v_api.json",
+      "prompt": "Slow orbit around the product on a black reflective surface, gold rim light sweeping across the logo, studio macro, no camera shake",
+      "image": "inputs/producto.png",
+      "duration_s": 5,
+      "steps": 35,
+      "seed": 303
+    },
+    {
+      "id": "04_variantes_estilo",
+      "prompt": "Time-lapse of clouds over an Andean mountain range at dawn, deep blues turning to gold, ultra-detailed, cinematic grade",
+      "seeds": [401, 402, 403],
+      "duration_s": 5
+    }
+  ]
+}

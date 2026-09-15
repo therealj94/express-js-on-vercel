@@ -1,0 +1,119 @@
+{
+  "proyecto": "Orden Global — Parte 2, opción 2",
+  "titulo": "La mesa",
+  "la_idea": {
+    "una_frase": "La misma mesa de cocina vista desde arriba, tres épocas, y encima lo que trae a casa una semana de trabajo. En 1985 no cabe. Hoy caben tres cosas.",
+    "el_hilo": "La mesa vista en cenital. Es el plano que este modelo hace mejor de todos —lo comprobamos hoy con el pétalo sobre la madera— y es lo único que puede repetirse reconocible tres veces.",
+    "el_golpe": "El plano 10: la mesa vacía. Después de ver tres veces cómo se llena, verla vacía no necesita explicación.",
+    "por_que_es_hermana_de_la_llave": "Mismo recurso —tres épocas, un objeto que se repite, el patrón que se rompe— pero sin ninguna persona hasta el final. Es la versión más segura de la idea: si la de la llave falla por las caras, ésta no puede fallar por lo mismo.",
+    "la_respuesta": "El portavoz cierra con la frase de la parte 1: «Por eso hicimos esto. Por ti.»"
+  },
+  "metodo_de_realismo": {
+    "de_donde_sale": "Las cinco reglas sacadas del anuncio de referencia, escritas dentro de cada prompt.",
+    "reglas": ["luz sucia de cocina o fluorescente, nunca de estudio",
+      "35mm con grano real, nada de nitidez digital",
+      "objetos en primer término y encuadre a través de cosas",
+      "espacios usados: la mesa rayada, la despensa despintada",
+      "encuadre ligeramente descentrado y deriva mínima"],
+    "de_la_auditoria": "Polvo en suspensión en todos los interiores, y el portavoz a cámara en mano para que no parezca anuncio de seguros."
+  },
+  "formato": {"aspect": "9:16 vertical", "gen_w": 720, "gen_h": 1280,
+    "final_w": 1080, "final_h": 1920, "fps": 24, "duracion_total_s": 58},
+  "defaults": {
+    "video_workflow": "workflows/h3_calidad_api.json",
+    "duration_s": 4, "fps": 24, "steps": 20,
+    "negative": "text, letters, numbers, subtitles, captions, watermark, brand names, logos, product labels, readable packaging, signage with readable words, screens with readable text, coins, banknotes, money, horizontal composition, letterboxing, black bars, cartoon, animation, 3D render, studio lighting, golden hour glow, glossy advertising lighting, food styling, beauty retouching, poreless skin, model looks, symmetrical composition, centred composition, clean tidy set, drone shot, gimbal glide, slow motion, orange and teal grading, big smile, celebration, looking at camera, addressing the camera, talking, speaking, moving lips, plastic skin, waxy face, deformed hands, extra fingers, morphing, flicker"
+  },
+  "look_base": "shot on 35mm film, vintage spherical prime, T2.8, organic shallow depth of field, real film grain, natural kitchen light or bare bulb, milky blacks, framing slightly off centre with the smallest handheld drift, lived-in scratched surfaces, observational documentary realism, no food styling, no advertising gloss, Latin American home",
+  "casting": [
+    {"id": "PORTAVOZ", "rol": "quien cierra",
+     "retrato": "Vertical portrait of a 29 year old Latin American man with an ordinary open face, short dark hair, light stubble, a plain dark navy work shirt buttoned to the second button with a completely clean empty left chest area and no markings on it, a look of quiet steadiness without any smile, soft overcast daylight, visible pores and facial asymmetry, even natural teeth, credible rather than polished"}
+  ],
+  "shots": [
+    {"id": "01_mesa_1985", "titulo": "1985 · LA MESA", "segundos": 4, "move": "static",
+     "reparto": [], "hud": "1985 · UNA SEMANA DE TRABAJO",
+     "still": "Looking straight down at a scratched wooden kitchen table completely covered with the shopping from a full week: brown paper bags spilling open, bread, vegetables with the soil still on them, a wrapped parcel of meat, eggs in a cardboard tray, tins with no readable labels, so much that some of it rests on the chairs, warm afternoon light from a window camera-left, floating dust motes in the air, framing slightly off centre, real film grain, no people in frame, observational documentary realism, no food styling and nothing arranged prettily",
+     "motion": "a paper bag settles and slumps slightly to one side under its own weight, and the light shifts a little across the wood",
+     "nota": "EL PLANO MADRE. Cenital sobre madera: lo que este modelo hace mejor de todo, comprobado hoy con el pétalo."},
+
+    {"id": "02_manos_1985", "titulo": "1985 · SACAR", "segundos": 4, "move": "static",
+     "reparto": [], "hud": "1985",
+     "still": "Looking down at the same scratched wooden table, a pair of worn adult hands lifting vegetables out of a paper bag and setting them down one by one in a growing pile, soil falling onto the wood, the bag still half full, warm afternoon light, floating dust motes, framing slightly off centre, real film grain, no faces in frame, observational documentary realism",
+     "motion": "the hands take out three vegetables one after another and set them down, and reach back into the bag which is still not empty"},
+
+    {"id": "03_despensa_1985", "titulo": "1985 · GUARDAR", "segundos": 3, "move": "static",
+     "reparto": [], "hud": "1985",
+     "still": "A narrow kitchen cupboard with its door open, the shelves filling up with tins and packets with no readable labels, a bag of rice standing at the back, the paint of the cupboard chipped and the shelf paper curling at the edges, warm side light, floating dust motes, framing slightly off centre, real film grain, no people in frame, observational documentary realism",
+     "motion": "a hand pushes one last tin onto the shelf, has to press it in to make it fit, and withdraws"},
+
+    {"id": "04_mesa_2005", "titulo": "2005 · LA MESA", "segundos": 4, "move": "static",
+     "reparto": [], "hud": "2005 · UNA SEMANA DE TRABAJO",
+     "still": "Looking straight down at the same scratched wooden kitchen table with the shopping from a week on it, now clearly less: two plastic bags, some vegetables, a small packet of meat, a few tins with no readable labels, and empty wood visible around them at the edges of the table, flatter cooler light from a window, floating dust motes, framing slightly off centre, real film grain, no people in frame, observational documentary realism, no food styling",
+     "motion": "a plastic bag rustles and settles as the weight inside shifts, and the light stays flat and unchanging",
+     "nota": "La madera vacía en los bordes es el dato. No hay que decir nada."},
+
+    {"id": "05_manos_2005", "titulo": "2005 · SACAR", "segundos": 4, "move": "static",
+     "reparto": [], "hud": "2005",
+     "still": "Looking down at the same table, a pair of hands lifting things out of a thin plastic bag and setting them down, the bag emptying quickly, cooler flatter light, floating dust motes, framing slightly off centre, real film grain, no faces in frame, observational documentary realism",
+     "motion": "the hands take out two things, set them down, reach into the bag again and find it already empty, and fold the empty bag flat on the wood"},
+
+    {"id": "06_despensa_2005", "titulo": "2005 · GUARDAR", "segundos": 3, "move": "static",
+     "reparto": [], "hud": "2005",
+     "still": "The same narrow kitchen cupboard with its door open, the shelves now half full with clear gaps between the tins and packets, no readable labels anywhere, the shelf paper more worn, cooler side light, floating dust motes, framing slightly off centre, real film grain, no people in frame, observational documentary realism",
+     "motion": "a hand places two tins on the shelf, leaves space beside them, and pulls the cupboard door most of the way closed"},
+
+    {"id": "07_mesa_hoy", "titulo": "HOY · LA MESA", "segundos": 4, "move": "static",
+     "reparto": [], "hud": "HOY · UNA SEMANA DE TRABAJO",
+     "still": "Looking straight down at the same scratched wooden kitchen table with almost nothing on it: one thin plastic bag holding three items, and the bare scratched wood filling most of the tall frame around it, cold flat light from a window, floating dust motes, framing slightly off centre, real film grain, no people in frame, observational documentary realism, no food styling",
+     "motion": "nothing moves except the plastic bag relaxing very slightly, and the wood grain sits there taking up most of the frame",
+     "nota": "Tercera vez el mismo encuadre. El espectador ya sabe leerlo y no hace falta ni un rótulo."},
+
+    {"id": "08_manos_hoy", "titulo": "HOY · SACAR", "segundos": 4, "move": "static",
+     "reparto": [], "hud": "HOY",
+     "still": "Looking down at the same table, a pair of hands taking three items out of a thin plastic bag and setting them in a row on the bare wood, the bag immediately empty and crumpled beside them, cold flat light, floating dust motes, framing slightly off centre, real film grain, no faces in frame, observational documentary realism",
+     "motion": "the hands set down the three items, straighten one of them so the row is neat, and rest flat on the wood for a beat before lifting away",
+     "nota": "Ese gesto de enderezar lo poco que hay es el que más duele de la pieza."},
+
+    {"id": "09_lo_que_devuelve", "titulo": "HOY · LO QUE NO SE LLEVA", "segundos": 4, "move": "static",
+     "reparto": [], "hud": "",
+     "still": "Tight close on a hand putting a packet back onto a supermarket shelf, the shelf edge and other packets slightly out of focus around it, harsh green fluorescent light from above, the shelf untidy with gaps in it, nothing readable on any packaging, framing slightly off centre, real film grain, no face in frame, observational documentary realism",
+     "motion": "the hand holds the packet for a beat, turns it once, puts it back on the shelf, and the fingers rest on it for a second before letting go",
+     "semillas_extra": 2,
+     "nota": "El plano bisagra: explica por qué la mesa está vacía. Va con tres semillas porque si falla, la pieza no se entiende."},
+
+    {"id": "10_la_mesa_vacia", "titulo": "LA MESA", "segundos": 5, "move": "static",
+     "reparto": [], "hud": "",
+     "still": "Looking straight down at the same scratched wooden kitchen table completely empty, every mark and ring and knife scar in the wood clearly visible, a single crumb near one edge, cold flat light from a window, floating dust motes hanging in the air above the surface, framing slightly off centre, real film grain, no people and no objects at all, observational documentary realism",
+     "motion": "absolutely nothing moves except the dust turning slowly in the light above the empty wood",
+     "nota": "EL GOLPE. Cinco segundos de mesa vacía después de haberla visto llena tres veces. Aquí va el silencio absoluto."},
+
+    {"id": "11_el_telefono", "titulo": "EL QUIEBRE", "segundos": 4, "move": "static",
+     "reparto": [], "hud": "",
+     "still": "Looking straight down at the same empty scratched wooden table with a phone lying face up in the middle of it, the screen a soft blown-out rectangle with no readable interface, a hand coming into frame from the bottom edge, floating dust motes, cold flat light, framing slightly off centre, real film grain, no face in frame, observational documentary realism",
+     "motion": "the thumb comes down onto the screen and presses once, holds for a beat and lifts away, and the light on the wood changes very slightly as the screen redraws",
+     "nota": "El mismo encuadre cenital de la mesa, cuatro veces ya. Lo único que hay encima ahora es un teléfono."},
+
+    {"id": "12_el_portavoz", "titulo": "EL CIERRE", "segundos": 6, "move": "handheld",
+     "reparto": ["PORTAVOZ"], "hud": "",
+     "voz_que_le_doblamos": "Por eso hicimos esto. Por ti.",
+     "negative_quitar": ["looking at camera", "addressing the camera"],
+     "negative_añadir": ["open mouth", "singing", "mouthing words"],
+     "still": "Medium close on a 29 year old Latin American man standing in a plain kitchen in soft overcast daylight from a window camera-left, wearing a plain dark navy work shirt with a completely clean empty left chest area and no markings of any kind on it, a wall behind him with the paint marked and a nail with nothing hanging on it, handheld with a very subtle organic shake and never locked off, framing slightly off centre, real film grain, natural skin texture with visible pores and light stubble, facial asymmetry, no beauty retouching, observational documentary realism",
+     "motion": "he looks straight into the camera lens with a steady expression and no smile at all, his mouth closed and still throughout, he blinks once slowly, his chest rises and falls with quiet breathing, and he gives one small nod at the very end, no lip movement of any kind",
+     "nota": "Boca cerrada y doblaje. Cámara en mano con deriva mínima, que es lo que lo separa de un anuncio de seguros."}
+  ],
+  "cierre": {"t": "52-58 s", "fuente": "montaje",
+    "que_se_ve": "Fundido a negro y el monograma OG dorado solo, sin eslogan escrito, como en la parte 1."},
+  "sonido": {
+    "el_hilo": "Las bolsas de papel en 1985, las de plástico en 2005 y hoy. El mismo gesto, tres materiales, y cada uno suena más barato que el anterior.",
+    "el_silencio": "En el plano 10, la mesa vacía, no hay absolutamente nada. Después de tres bloques con ruido de bolsas, ese vacío es el golpe.",
+    "la_cocina": "Bajo todo, un frigorífico zumbando. Se apaga en el plano 10 y no vuelve.",
+    "el_click": "Uno solo, suave, en el plano 11."
+  },
+  "por_que_es_la_mas_segura": [
+    "Once de doce planos no tienen cara. El único que la tiene es el portavoz, y va con la boca cerrada.",
+    "Cuatro planos son el mismo cenital sobre una mesa de madera, que es el tipo de plano que mejor sale con este modelo.",
+    "No hay ninguna acción compleja: manos poniendo y quitando cosas de una mesa.",
+    "Si la opción 1 falla por las caras o por los encuadres de casa, ésta no puede fallar por lo mismo."
+  ]
+}
