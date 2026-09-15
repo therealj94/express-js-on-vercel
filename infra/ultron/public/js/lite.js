@@ -303,6 +303,40 @@
   $('cerrarTurno').onclick = pedirCierre;
   if ($('cerrarFijo')) $('cerrarFijo').onclick = pedirCierre;
   if ($('cerrarHead')) $('cerrarHead').onclick = pedirCierre;
+
+  let reco = null, hablando = false;
+  function speech() {
+    const C = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!C) { bar.textContent = 'Este navegador no dicta. Usá Chrome.'; return null; }
+    const r = new C();
+    r.lang = 'es-HN';
+    r.interimResults = true;
+    r.continuous = false;
+    r.onresult = (e) => {
+      let t = '';
+      for (let i = e.resultIndex; i < e.results.length; i++) t += e.results[i][0].transcript;
+      $('texto').value = (($('texto').value ? $('texto').value + ' ' : '') + t).trim();
+    };
+    r.onend = () => { hablando = false; $('hablar').classList.remove('on'); };
+    r.onerror = () => { hablando = false; $('hablar').classList.remove('on'); };
+    return r;
+  }
+  $('hablar').onclick = () => {
+    if (hablando) { reco && reco.stop(); return; }
+    reco = reco || speech();
+    if (!reco) return;
+    hablando = true;
+    $('hablar').classList.add('on');
+    bar.textContent = 'Hablá. Tocá otra vez para cortar.';
+    try { reco.start(); } catch { hablando = false; $('hablar').classList.remove('on'); }
+  };
+
+  function pedirDesahogo() {
+    enviar('DESAHOGO DE PROYECTO LARGO. No uses repo_leer ni buscar_web. Llamá crear_documento ahora con: objetivo, lo ya hecho, PRs/archivos, FALTA (un paso), y lo que no hay que repetir. Título corto. HECHO y FALTA. Después paramos este capítulo.');
+  }
+  $('desahogo').onclick = pedirDesahogo;
+  const _enviar = enviar;
+
   if (false) $('cerrarTurno').onclick = () => {
     if (!enCurso) return;
     abortar?.abort();
