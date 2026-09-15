@@ -182,6 +182,14 @@ header button.gold{background:#c9a227;color:#000;border-radius:10px;height:32px;
       <button type="button" id="cerrarOtras">Cerrar otras sesiones</button>
     </div>
     <label>Autorizaciones</label>
+<label>Memoria larga</label>
+<p class="hint">Hechos que sobreviven al chat. Junta = todos. Miembro = solo vos.</p>
+<div id="memLista"></div>
+<input id="memTexto" placeholder="Recordar…">
+<div class="row">
+  <button type="button" id="memMia">Guardar mío</button>
+  <button type="button" id="memJunta">Guardar junta</button>
+</div>
 <div id="authLista"></div>
 <button type="button" id="salir" class="danger">Salir</button>
     <a href="/os">Abrir ULTRON OS</a>
@@ -190,6 +198,6 @@ header button.gold{background:#c9a227;color:#000;border-radius:10px;height:32px;
   </div>
 </div>
 
-<script src="/js/lite.js?v=hab1"></script>
+<script src="/js/lite.js?v=mem1"></script>
 </body>
 </html>
