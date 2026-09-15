@@ -164,12 +164,9 @@
     });
     const d = await r.json().catch(() => ({}));
     if (!r.ok) { $('loginErr').textContent = d.error || 'No entra'; return; }
-  
-  function calentar() {
-    api('/precalentar', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ modo: 'texto' }) }).catch(() => {});
-  }
+    if ($('led')) $('led').onclick = () => { calentar(); };
   sesion();
-  document.addEventListener('visibilitychange', () => { if (!document.hidden) calentar(); });
+  verLed();
   };
 
   $('menu').onclick = () => { $('drawer').classList.add('on'); $('scrim').classList.add('on'); lista().catch(() => {}); };
@@ -265,7 +262,6 @@
             bar.textContent = linea || '';
             if ($('procTit')) $('procTit').textContent = linea || 'Listo';
             setTimeout(cerrarProceso, 8000);
-            setTimeout(calentar, 1500);
           } else if (ev === 'error') {
             dest.textContent = d.mensaje || d.error || 'Error';
             paso(d.mensaje || 'Error');
@@ -417,11 +413,8 @@
 
   setInterval(checarAuth, 8000);
 
-
-  function calentar() {
-    api('/precalentar', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ modo: 'texto' }) }).catch(() => {});
-  }
+  if ($('led')) $('led').onclick = () => { calentar(); };
   sesion();
-  document.addEventListener('visibilitychange', () => { if (!document.hidden) calentar(); });
+  verLed();
   checarAuth();
 })();
