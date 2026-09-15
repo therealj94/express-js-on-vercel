@@ -9,4 +9,9 @@ function obtenerCatalogo() {
   return Promise.resolve('');
 }
 
-// Resto del archivo equipo.js sin cambios...
+// Estado del signo "equipo": true si el módulo aprender expone la función esperada.
+function estado() {
+  return typeof aprender.catalogoParaElModelo === 'function';
+}
+
+module.exports = { obtenerCatalogo, estado };
