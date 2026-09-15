@@ -271,6 +271,11 @@
           else if (ev === 'fin') { checarAuth();
             convId = d.conversacionId || convId;
             if (d.texto && !acc) dest.textContent = d.texto;
+            const hecho = /HECHO:\s*(.+)/i.exec(d.texto || acc || '');
+            if (hecho && d.trabajo) {
+              json('/memorias', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ texto: hecho[1].slice(0, 500), alcance: 'junta', tema: 'trabajo' }) }).catch(() => {});
+            }
             const toks = d.ms && d.ms.toks;
             const prim = d.ms && d.ms.primera;
             const tot = d.ms && d.ms.total;
@@ -303,40 +308,6 @@
   $('cerrarTurno').onclick = pedirCierre;
   if ($('cerrarFijo')) $('cerrarFijo').onclick = pedirCierre;
   if ($('cerrarHead')) $('cerrarHead').onclick = pedirCierre;
-
-  let reco = null, hablando = false;
-  function speech() {
-    const C = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (!C) { bar.textContent = 'Este navegador no dicta. Usá Chrome.'; return null; }
-    const r = new C();
-    r.lang = 'es-HN';
-    r.interimResults = true;
-    r.continuous = false;
-    r.onresult = (e) => {
-      let t = '';
-      for (let i = e.resultIndex; i < e.results.length; i++) t += e.results[i][0].transcript;
-      $('texto').value = (($('texto').value ? $('texto').value + ' ' : '') + t).trim();
-    };
-    r.onend = () => { hablando = false; $('hablar').classList.remove('on'); };
-    r.onerror = () => { hablando = false; $('hablar').classList.remove('on'); };
-    return r;
-  }
-  $('hablar').onclick = () => {
-    if (hablando) { reco && reco.stop(); return; }
-    reco = reco || speech();
-    if (!reco) return;
-    hablando = true;
-    $('hablar').classList.add('on');
-    bar.textContent = 'Hablá. Tocá otra vez para cortar.';
-    try { reco.start(); } catch { hablando = false; $('hablar').classList.remove('on'); }
-  };
-
-  function pedirDesahogo() {
-    enviar('DESAHOGO DE PROYECTO LARGO. No uses repo_leer ni buscar_web. Llamá crear_documento ahora con: objetivo, lo ya hecho, PRs/archivos, FALTA (un paso), y lo que no hay que repetir. Título corto. HECHO y FALTA. Después paramos este capítulo.');
-  }
-  $('desahogo').onclick = pedirDesahogo;
-  const _enviar = enviar;
-
   if (false) $('cerrarTurno').onclick = () => {
     if (!enCurso) return;
     abortar?.abort();
@@ -356,6 +327,33 @@
     document.querySelectorAll('#' + seg + ' button').forEach((b) => b.classList.toggle('on', b.dataset.v === v));
   }
 
+
+  async function pintarMemorias() {
+    const box = $('memLista'); if (!box) return;
+    try {
+      const lista = await json('/memorias');
+      const arr = Array.isArray(lista) ? lista : (lista.memorias || []);
+      if (!arr.length) { box.innerHTML = '<p class="hint">Nada guardado aún.</p>'; return; }
+      box.innerHTML = arr.slice(0, 30).map((m) => {
+        const id = m._id || m.id;
+        return `<div class="item"><b>${m.alcance === 'junta' ? 'Junta' : 'Mío'}</b> · ${(m.texto || '').slice(0, 180)}
+          <button type="button" data-olvida="${id}">Olvidar</button></div>`;
+      }).join('');
+      box.querySelectorAll('[data-olvida]').forEach((b) => {
+        b.onclick = async () => {
+          await json('/memorias/' + b.dataset.olvida, { method: 'DELETE' });
+          pintarMemorias();
+        };
+      });
+    } catch (e) { box.innerHTML = '<p class="hint">' + (e.message || 'sin memoria') + '</p>'; }
+  }
+  async function guardarMem(alcance) {
+    const texto = ($('memTexto') && $('memTexto').value || '').trim();
+    if (!texto) return;
+    await json('/memorias', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ texto, alcance }) });
+    $('memTexto').value = '';
+    pintarMemorias();
+  }
   async function abrirAjustes() {
     $('ajErr').textContent = '';
     prefs = await json('/preferencias');
@@ -467,5 +465,7 @@
   if ($('led')) $('led').onclick = () => { calentar(); };
   sesion();
   verLed();
+  if ($('memMia')) $('memMia').onclick = () => guardarMem('miembro');
+  if ($('memJunta')) $('memJunta').onclick = () => guardarMem('junta');
   checarAuth();
 })();
