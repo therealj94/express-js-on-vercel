@@ -37,6 +37,7 @@ const vivo = require('./vivo');
 const memoria = require('./memoria');
 const permisos = require('./permisos');
 const ojo = require('./ojo');
+const navegador = require('./navegador');
 const tesoro = require('./tesoro');
 const archivos = require('./archivos');
 const boveda = require('./boveda');
@@ -554,6 +555,14 @@ async function leerPagina(url) {
          salió, que era el fallo entero.
          El ojo cuesta un segundo más y usa otro dyno, así que NO se llama
          siempre: solo cuando el fetch ya demostró que trae la cáscara vacía. */
+      if (navegador.hay()) {
+        try {
+          const visto = await navegador.leer({ url: u.toString() });
+          if (visto?.ok && String(visto.texto || '').trim().length > 80) return navegador.comoTexto(visto);
+        } catch (e) {
+          console.warn('[herramientas] navegador local falló:', String(e.message || e).slice(0, 160));
+        }
+      }
       if (ojo.hay()) {
         try {
           const visto = await ojo.mirar({ url: u.toString(), esperar: null });
@@ -820,8 +829,17 @@ async function correrAdentro(nombre, entrada, ctx) {
 
       case 'pagina_foto': {
         const t = !!entrada.telefono;
-        const d = await ojo.foto({ url: String(entrada.url || ''), esperar: entrada.esperar || null,
-          completa: !!entrada.completa, ancho: t ? 390 : 1280, alto: t ? 844 : 900 });
+        const d = ojo.hay()
+          ? await ojo.foto({ url: String(entrada.url || ''), esperar: entrada.esperar || null,
+            completa: !!entrada.completa, ancho: t ? 390 : 1280, alto: t ? 844 : 900 })
+          : await (async () => {
+              if (!navegador.hay()) throw Object.assign(new Error('No hay ojo ni Playwright. En el dyno: npm run instalar-navegador'), { codigo: 'SIN_OJO' });
+              const v = await navegador.foto({ url: String(entrada.url || ''), esperar: entrada.esperar || null,
+                completa: !!entrada.completa, ancho: t ? 390 : 1280, alto: t ? 844 : 900 });
+              if (!v?.ok) throw Object.assign(new Error(v?.error || 'El navegador no pudo sacar la foto'), { codigo: 'NAV' });
+              const buf = Buffer.isBuffer(v.png) ? v.png : Buffer.from(v.png || '', 'base64');
+              return { url: v.url, titulo: v.titulo || '', png: buf.toString('base64'), bytes: buf.length };
+            })();
         /* ── LA FOTO SE GUARDA DE VERDAD Y SE VE DENTRO DE LA RESPUESTA ────
            Estaba en un mapa en memoria de cinco huecos: se perdía al
            reiniciar y se abría en otra pestaña. José, 7-sep: «que pueda tomar
@@ -862,9 +880,14 @@ async function correrAdentro(nombre, entrada, ctx) {
           } else pasos.push(p);
         }
         const t = !!entrada.telefono;
-        const d = await ojo.guion({ pasos, ancho: t ? 390 : 1280, alto: t ? 844 : 900 });
+        const d = ojo.hay()
+          ? await ojo.guion({ pasos, ancho: t ? 390 : 1280, alto: t ? 844 : 900 })
+          : await (async () => {
+              if (!navegador.hay()) throw Object.assign(new Error('No hay ojo ni Playwright. En el dyno: npm run instalar-navegador'), { codigo: 'SIN_OJO' });
+              return navegador.guion({ pasos, ancho: t ? 390 : 1280, alto: t ? 844 : 900 });
+            })();
         const diario = (d.diario || []).map((s) => `  ${s.ok ? '✓' : '✗'} ${s.paso}. ${s.tipo} ${s.que}${s.valor ? ` = ${s.valor}` : ''}${s.porQue ? ` — ${s.porQue}` : ''}`).join('\n');
-        return `${d.ok ? 'El guion corrió entero.' : 'EL GUION SE CORTÓ en el paso que falló; los de después NO se hicieron.'}\n${diario}\n\n${ojo.comoTexto(d)}`;
+        return `${d.ok ? 'El guion corrió entero.' : 'EL GUION SE CORTÓ en el paso que falló; los de después NO se hicieron.'}\n${diario}\n\n${(ojo.hay() ? ojo.comoTexto(d) : navegador.comoTexto(d))}`;
       }
 
       case 'tesoro_tarjeta': return tesoro.comoTexto(await tesoro.estado());

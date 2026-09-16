@@ -285,7 +285,7 @@ app.get('/salud', async (req, res) => {
     genesis: genesis.configurado(), genesisPase: !!genesis.dondeSacarElPase(), juntaConGid: CON_GID,
     voz: voz.encendida(), memoria: memoria.estado(), canales: canales.estado(),
     saber: saber.resumen().total, saberArmado: saber.resumen().armadoEn,
-    boveda: boveda.encendida(), equipo: equipo.estado().encendido, dueño: !!DUENO, herramientas: herramientas.DEFINICIONES.length,
+    boveda: boveda.encendida(), equipo: equipo.estado().encendido, dueño: !!DUENO, herramientas: herramientas.DEFINICIONES.length, harness: true, navegador: require("./lib/navegador").estado(),
     /* La nota de la última ronda del médico. Es lo que hace que «¿está bien
        ULTRON?» tenga una respuesta sin entrar al panel. */
     nota: salud.ultima()?.puntaje ?? null, relevo: cerebro.relevo?.().activo || false, avisos: avisos.MODO(),

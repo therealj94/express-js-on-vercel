@@ -27,6 +27,7 @@ const saber = require('../saber');
 const vivo = require('../vivo');
 const memoria = require('../memoria');
 const herramientas = require('../herramientas');
+const harness = require('../harness');
 const correrLote = herramientas.correrLote;
 
 const URL_NODO = (process.env.ULTRON_NODO_URL || '').replace(/\/$/, '');
@@ -216,6 +217,34 @@ function encendido() { return !!(URL_NODO && SECRETO); }
    ÚNICA ranura del nodo ocupada (`OLLAMA_NUM_PARALLEL=1`), así que la pregunta
    siguiente se ponía en fila detrás de la respuesta abandonada. Ese era el
    «súper lento» de después de interrumpir. */
+
+function trozoDeJson(j) {
+  if (!j || typeof j !== 'object') return { content: '', tool_calls: [], done: false, raw: j };
+  let content = '';
+  const tool_calls = [];
+  if (j.message) {
+    if (j.message.content) content += String(j.message.content);
+    for (const tc of j.message.tool_calls || []) tool_calls.push(tc);
+  }
+  if (typeof j.content === 'string') content += j.content;
+  if (typeof j.response === 'string') content += j.response;
+  const choice = (j.choices && j.choices[0]) || null;
+  if (choice) {
+    const d = choice.delta || choice.message || {};
+    if (d.content) content += String(d.content);
+    for (const tc of d.tool_calls || []) tool_calls.push(tc);
+  }
+  const done = !!(j.done || j.stop || choice?.finish_reason);
+  return { content, tool_calls, done, raw: j };
+}
+function lineaAJson(l) {
+  let t = String(l || '').trim();
+  if (!t) return null;
+  if (t === '[DONE]' || t === 'data: [DONE]') return { done: true };
+  if (t.startsWith('data:')) t = t.slice(5).trim();
+  try { return JSON.parse(t); } catch { return null; }
+}
+
 function pedir(cuerpo, { alTrozo = () => {}, plazo = PLAZO_MS, senalCorte = null } = {}) {
   return new Promise((resolver, fallar) => {
     if (senalCorte?.aborted) return fallar(conCodigo('CORTADO', 'el turno se canceló antes de empezar'));
@@ -263,24 +292,21 @@ function pedir(cuerpo, { alTrozo = () => {}, plazo = PLAZO_MS, senalCorte = null
         resto += d;
         const lineas = resto.split('\n'); resto = lineas.pop();
         for (const l of lineas) {
-          if (!l.trim()) continue;
-          let j; try { j = JSON.parse(l); } catch { continue; }
-          const m = j.message || {};
-          if (m.content) {
-            /* `alTrozo` puede devolver el trozo RECORTADO (una cadena) o false
-               para cortar la respuesta aquí mismo: es lo que ataja una deriva
-               a otro idioma sin esperar a que termine de escribirla. */
-            const r = alTrozo(m.content);
+          const j = lineaAJson(l);
+          if (!j) continue;
+          const t = trozoDeJson(j);
+          if (t.content) {
+            const r = alTrozo(t.content);
             if (r === false) { cortado = true; req.destroy(); terminar(); return; }
-            content += typeof r === 'string' ? r : m.content;
-            if (typeof r === 'string' && r.length < m.content.length) { cortado = true; req.destroy(); terminar(); return; }
+            content += typeof r === 'string' ? r : t.content;
+            if (typeof r === 'string' && r.length < t.content.length) { cortado = true; req.destroy(); terminar(); return; }
           }
-          for (const tc of m.tool_calls || []) tool_calls.push(tc);
-          if (j.done) final = j;
+          for (const tc of t.tool_calls) tool_calls.push(tc);
+          if (t.done) final = t.raw || j;
         }
       });
       res.on('end', () => {
-        if (resto.trim() && !cortado) { try { const j = JSON.parse(resto); if (j.message?.content) { content += j.message.content; alTrozo(j.message.content); } for (const tc of j.message?.tool_calls || []) tool_calls.push(tc); if (j.done) final = j; } catch { /* trozo roto */ } }
+        if (resto.trim() && !cortado) { const j = lineaAJson(resto); if (j) { const t = trozoDeJson(j); if (t.content) { content += t.content; alTrozo(t.content); } for (const tc of t.tool_calls) tool_calls.push(tc); if (t.done) final = t.raw || j; } }
         terminar();
       });
       res.on('close', terminar);
@@ -701,6 +727,23 @@ async function pensar({ miembro, junta, texto, conversacionId, previa: previaDad
      con las demás. Es por TURNO: las cajas se cierran solas al terminar, así
      que la pregunta siguiente vuelve a salir ligera. */
   const cajas = [];
+  /* El arnés elige cajas y, si el pedido es claro, CORRE las manos
+     antes de que el modelo hable. Qwen 27B uncensored lista el catálogo
+     si se le deja decidir; el arnés no se lo pregunta. */
+  const plan = harness.planear(String(texto || ''));
+  for (const c of plan.cajas) if (!cajas.includes(c)) cajas.push(c);
+  if (plan.regla) mensajes.push({ role: 'user', content: '[sistema] ' + plan.regla });
+  if (plan.forzar.length) {
+    emitir('pensando', { vuelta: 0, hace: 'el arnés ya eligió las manos', motivo: plan.motivo });
+    console.warn(`[nodo] arnés: ${plan.motivo}`);
+    const forzadas = harness.llamadasDe(plan);
+    mensajes.push({ role: 'assistant', content: '', tool_calls: forzadas });
+    for (const res of await correrLote(forzadas, { ctx, usadas, emitir })) {
+      mensajes.push({ role: 'tool', content: recortar(res.salida, TOPE_RESULTADO), tool_name: res.nombre });
+      vecesTool[res.nombre] = (vecesTool[res.nombre] || 0) + 1;
+    }
+    mensajes.push({ role: 'user', content: '[sistema] Esas herramientas YA CORRIERON. Contestá con lo que devolvieron, en palabras. Prohibido listar el catálogo. Prohibido decir que no tenés internet o bóveda. Si falta un dato concreto, llamá UNA herramienta más.' });
+  }
 
   /* Lo que queda del presupuesto del turno. Todo lo opcional lo consulta. */
   const quedaMs = () => presupuestoMs() - (Date.now() - tArranque);
@@ -822,6 +865,27 @@ async function pensar({ miembro, junta, texto, conversacionId, previa: previaDad
     const enTexto = llamadasEnTexto(r.content);
     const llamadas = [...r.tool_calls, ...enTexto.llamadas];
     let visible = enTexto.limpio;
+    /* El modelo listó el catálogo en vez de usarlo. No se enseña eso:
+       se corren las manos que el arnés ya había elegido y se sigue. */
+    if (!llamadas.length && harness.esCatalogo(visible)) {
+      emitir('reemplazo', { texto: '' });
+      emitir('pensando', { vuelta, motivo: 'listó el catálogo: el arnés corre las manos' });
+      console.warn('[nodo] arnés: el modelo listó el catálogo; se rescata');
+      const rescate = harness.llamadasDe({ forzar: plan.rescate.length ? plan.rescate : plan.forzar });
+      if (rescate.length && quedaMs() > 8_000) {
+        mensajes.push({ role: 'assistant', content: '', tool_calls: rescate });
+        for (const res of await correrLote(rescate, { ctx, usadas, emitir })) {
+          mensajes.push({ role: 'tool', content: recortar(res.salida, TOPE_RESULTADO), tool_name: res.nombre });
+          vecesTool[res.nombre] = (vecesTool[res.nombre] || 0) + 1;
+        }
+        mensajes.push({ role: 'user', content: '[sistema] No listes herramientas. Acá está lo que ya se corrió. Contestá el pedido con eso, en palabras.' });
+        visible = '';
+        continue;
+      }
+      mensajes.push({ role: 'user', content: '[sistema] Acabás de listar herramientas. Prohibido. Llamá UNA con tool_calls o contestá el pedido con palabras. No enumerés el catálogo.' });
+      visible = '';
+      continue;
+    }
     if (!llamadas.length) { textoFinal += (textoFinal && visible ? '\n\n' : '') + visible; break; }
     /* La vuelta sin tiempo era la ÚLTIMA por definición: fue sin herramientas,
        así que si aun así escribió una llamada en el texto, no se corre. Sin
@@ -1207,7 +1271,14 @@ async function pensar({ miembro, junta, texto, conversacionId, previa: previaDad
     if (todavia.length) textoFinal += `\n\n_(ULTRON citó ${todavia.join(', ')} sin haberla usado en este turno: tome ese dato con cuidado.)_`;
   }
   textoFinal = sinRepetidos(sinCodigoPegadoArriba(sinElRestoDeUnaHerramienta(textoFinal)));
-  if (!textoFinal.trim()) textoFinal = 'Revisé lo que me pidió y no me salió una respuesta con palabras. Le pido que me lo plantee de otra forma.';
+  if (!textoFinal.trim()) {
+    const hechos = usadas.filter((h) => h.salida && !/^ya consultado/i.test(h.salida)).slice(0, 4);
+    if (hechos.length) {
+      textoFinal = hechos.map((h) => `· ${h.nombre}: ${String(h.salida).slice(0, 700).trim()}`).join('\n\n');
+    } else {
+      textoFinal = 'El motor contestó vacío. Probá de nuevo; si se repite, el stream o el contexto están cortando la salida.';
+    }
+  }
 
   const vistas = new Set();
   const fuentes = ctx.fuentes.filter((f) => !vistas.has(f.id) && vistas.add(f.id));
