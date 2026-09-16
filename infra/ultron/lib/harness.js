@@ -14,7 +14,7 @@
  */
 
 const CAJA_POR_GRUPO = {
-  internet: /\b(internet|google|duckduckgo|noticia|noticias|titular|web\b|busc[aáeé]|googlear|en l[ií]nea|qu[eé] se dice|precio|oro|gold|onza|plata|silver|xag|agka|auka|origen|cotiz|mercado)\b/i,
+  internet: /\b(internet|google|duckduckgo|noticia|noticias|titular|web\b|busc[aáeé]|googlear|en l[ií]nea|qu[eé] se dice|precio|oro|gold|onza|plata|silver|xag|agka|auka|origen|cotiz|mercado|lempira|hnl|cmsbio|cambio|d[oó]lar)\b/i,
   boveda: /\b(b[oó]veda|secretos?|api[_ ]?keys?|llaves?|heroku var|credencial|elevenlabs|abrir la b[oó]veda|abr[ií] la b[oó]veda)\b/i,
   taller: /\b(repo|repositorio|c[oó]digo|archivo .+\.(js|ts|py|md)|le[eé] (el )?nodo|despleg|terminal|pull request|\bpr\b|patch)\b/i,
   documentos: /\b(pdf|documento|memor[aá]ndum|acta|informe|carta|exportar)\b/i,
@@ -60,7 +60,7 @@ function planear(texto) {
     if (!cajas.includes('internet')) cajas.push('internet');
     forzar.push({ name: 'leer_pagina', arguments: { url } });
     motivos.push('hay una URL: se lee');
-  } else if (CAJA_POR_GRUPO.internet.test(t) || /\b(busc[aáeé]|google|oro|gold|plata|silver|xag|agka|auka|precio)\b/i.test(t)) {
+  } else if (CAJA_POR_GRUPO.internet.test(t) || /\b(busc[aáeé]|google|oro|gold|plata|silver|xag|agka|auka|precio|lempira|hnl|cmsbio|cambio)\b/i.test(t)) {
     if (!cajas.includes('internet')) cajas.push('internet');
     forzar.push({ name: 'buscar_web', arguments: { consulta: consultaDeInternet(t) } });
     motivos.push('pedido de internet: se busca');

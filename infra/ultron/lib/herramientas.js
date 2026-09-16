@@ -537,11 +537,55 @@ async function buscarWeb(consulta) {
       res.push({ url, titulo: limpiarHtml(m[2]), resumen: limpiarHtml(m[3] || '') });
     }
     if (!res.length) return `${spot}${nota}Sin resultados para «${q}» (o el buscador no contestó bien).`;
-    return spot + nota + res.map((x, i) => `${i + 1}. ${x.titulo}\n   ${x.url}\n   ${x.resumen}`).join('\n');
+    let lista = spot + nota + res.map((x, i) => `${i + 1}. ${x.titulo}\n   ${x.url}\n   ${x.resumen}`).join('\n');
+    if (/\b(lempira|hnl|cmsbio|cambio|conversi[oó]n|d[oó]lar(?:es)? a|usd a hnl|tipo de cambio)\b/i.test(q) && (ojo.hay() || navegador.hay())) {
+      const abiertas = [];
+      for (const x of res.slice(0, 2)) {
+        if (!/^https?:/i.test(x.url)) continue;
+        try {
+          const v = await conNavegador(x.url);
+          abiertas.push(`\n— ABRÍ ${x.url} CON PLAYWRIGHT —\n${String(v.texto || '').slice(0, 2500)}${v.extra || ''}${v.fotoLinea || ''}`);
+        } catch (e) {
+          abiertas.push(`\n— no pude abrir ${x.url}: ${String(e.message || e).slice(0, 80)}`);
+        }
+      }
+      if (abiertas.length) lista += '\n\nPÁGINAS ABIERTAS (no inventes el tipo de cambio; copiá la cifra de acá):' + abiertas.join('\n');
+    }
+    return lista;
   } catch (e) {
     if (spot) return spot + `La búsqueda web falló (${String(e?.message || e).slice(0, 80)}). Usá el spot de arriba; no inventes precio.`;
     return `No pude buscar «${q}»: ${e?.name === 'TimeoutError' ? 'el buscador tardó demasiado' : String(e?.message || e).slice(0, 120)}.`;
   }
+}
+
+function cifrasDeCambio(texto) {
+  const t = String(texto || '');
+  const hits = [];
+  const re = /(?:1\s*(?:USD|US\$|dólar(?:es)?|dolar(?:es)?)\s*(?:=|≈|~|es|son|:)?\s*([\d]{1,3}(?:[.,]\d{2,4})?)\s*(?:HNL|L(?:ps)?\.?|lempiras?)|(?:HNL|L(?:ps)?\.?|lempira)\s*(?:=|≈|:)?\s*([\d.,]+)\s*(?:por\s*)?(?:USD|dólar)|([\d]{2}[.,]\d{2,4})\s*(?:HNL|L\.?|lempiras?).{0,20}(?:USD|dólar)|USD[^\n]{0,40}?([\d]{2}[.,]\d{2,4}))/gi;
+  let m;
+  while ((m = re.exec(t)) && hits.length < 8) hits.push(m[0].replace(/\s+/g, ' ').trim());
+  return hits;
+}
+
+async function conNavegador(url) {
+  let visto = null, foto = null;
+  if (ojo.hay()) {
+    try { visto = await ojo.mirar({ url }); } catch (e) { visto = { error: String(e.message || e) }; }
+    try { foto = await ojo.foto({ url }); } catch { /* sin foto */ }
+  } else if (navegador.hay()) {
+    try { visto = await navegador.leer({ url }); } catch (e) { visto = { error: String(e.message || e) }; }
+    try { foto = await navegador.foto({ url }); } catch { /* sin foto */ }
+  }
+  let fotoLinea = '';
+  if (foto && (foto.png || foto.id)) {
+    const png = foto.png || foto.b64;
+    const id = foto.id || (png ? ojo.guardarFoto(png, { url, titulo: (visto && visto.titulo) || url }) : null);
+    if (id) fotoLinea = `\n\nFOTO_REAL: /ojo/foto/${id}\n![página abierta](/ojo/foto/${id})`;
+  }
+  const texto = visto ? (ojo.comoTexto(visto) || navegador.comoTexto(visto) || '') : '';
+  const cifras = cifrasDeCambio(texto);
+  const extra = cifras.length ? `\nDATOS SACADOS DE LA PANTALLA:\n- ${cifras.join('\n- ')}` : '';
+  return { texto, fotoLinea, extra, visto };
 }
 
 async function leerPagina(url) {
@@ -551,6 +595,17 @@ async function leerPagina(url) {
   // Ni redes privadas ni localhost: una herramienta que lee URLs es una puerta
   // hacia adentro si no se le cierra.
   if (/^(localhost|127\.|10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.|169\.254\.|\[?::1)/.test(u.hostname)) return 'Esa dirección no se lee.';
+  // Siempre Playwright primero. fetch solo si el ojo no está.
+  if (ojo.hay() || navegador.hay()) {
+    try {
+      const { texto, fotoLinea, extra } = await conNavegador(u.toString());
+      if (String(texto || '').trim().length > 40) {
+        return `ENTRÉ CON PLAYWRIGHT a ${u.href}\n${texto.slice(0, TOPE_PAGINA)}${extra}${fotoLinea}\nUsá SOLO lo que está arriba. Si no hay cifra, decí que no estaba en la pantalla.`;
+      }
+    } catch (e) {
+      console.warn('[leer_pagina] playwright:', String(e.message || e).slice(0, 160));
+    }
+  }
   try {
     const r = await fetch(u, { headers: { 'User-Agent': 'Mozilla/5.0 ULTRON/1', Accept: 'text/html,text/plain,application/json' }, signal: AbortSignal.timeout(PLAZO_WEB_MS), redirect: 'follow' });
     const tipo = r.headers.get('content-type') || '';

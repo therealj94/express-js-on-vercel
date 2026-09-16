@@ -96,6 +96,23 @@
     return el.querySelector('.b');
   }
 
+  function pintarFotos(dest, acc) {
+    const urls = [];
+    const re = /\/ojo\/foto\/([a-z0-9]+)/gi;
+    let m; while ((m = re.exec(String(acc || ''))) && urls.length < 3) {
+      const u = '/ojo/foto/' + m[1];
+      if (!urls.includes(u)) urls.push(u);
+    }
+    dest.parentElement.querySelectorAll('img.foto-pag').forEach((x) => x.remove());
+    urls.forEach((u) => {
+      const img = document.createElement('img');
+      img.className = 'foto-pag';
+      img.src = u;
+      img.alt = 'página abierta';
+      img.style.cssText = 'display:block;max-width:100%;border-radius:12px;margin:8px 0;border:1px solid #222';
+      dest.parentElement.appendChild(img);
+    });
+  }
   function cuando(iso) {
     if (!iso) return '';
     const d = new Date(iso);
@@ -327,7 +344,7 @@
           if (ev === 'reemplazo') {
             const nx = d.texto || d.t || '';
             if (nx.trim()) { acc = nx; dest.textContent = acc; }
-          } else if (ev === 'texto') { acc += d.texto || d.t || ''; dest.textContent = acc; chat.scrollTop = chat.scrollHeight; }
+          } else if (ev === 'texto') { acc += d.texto || d.t || ''; dest.textContent = acc; pintarFotos(dest, acc); chat.scrollTop = chat.scrollHeight; }
           else if (ev === 'pensando') {
             const h = d.hace || '';
             if (h && h !== 'sigue en ello' && h !== 'abriendo el hilo') paso(h);
