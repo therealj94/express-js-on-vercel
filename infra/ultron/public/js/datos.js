@@ -30,6 +30,7 @@ const DATOS = (() => {
   const get = (ruta) => pedir(ruta);
   const post = (ruta, cuerpo) => pedir(ruta, { metodo: 'POST', cuerpo });
   const patch = (ruta, cuerpo) => pedir(ruta, { metodo: 'PATCH', cuerpo });
+  const del = (ruta) => pedir(ruta, { metodo: 'DELETE' });
   const borrar = (ruta) => pedir(ruta, { metodo: 'DELETE' });
 
   /**
@@ -88,7 +89,7 @@ const DATOS = (() => {
   }
 
   return {
-    FalloApi, get, post, patch, borrar, pensar, voz,
+    FalloApi, get, post, patch, del, borrar, pensar, voz,
     yo: () => get('/yo'),
     entrar: (correo, clave) => post('/entrar', { correo, clave }),
     /* El pase que trae la wallet en el hash. Se canjea contra el servidor, que

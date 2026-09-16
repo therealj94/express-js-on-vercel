@@ -113,8 +113,22 @@
       const preview = (c.ultimo && (c.ultimo.texto || c.ultimo)) || c.preview || '';
       a.innerHTML = `<span class="t">${c.titulo || 'Sin título'}</span>
         <small>${cuando(c.tocado || c.en)} ${preview ? '· ' + String(preview).slice(0, 70) : ''}</small>
-        ${c.trabajo && c.trabajo.falta ? `<div class="w">En curso · ${String(c.trabajo.falta).slice(0, 90)}</div>` : ''}`;
-      a.onclick = (ev) => { ev.preventDefault(); abrir(c._id || c.id); closeNav(); };
+        ${c.trabajo && c.trabajo.falta ? `<div class="w">En curso · ${String(c.trabajo.falta).slice(0, 90)}</div>` : ''}
+        <button type="button" class="del-hilo" data-id="${c._id || c.id}">borrar</button>`;
+      a.onclick = (ev) => {
+        if (ev.target.closest('.del-hilo')) return;
+        ev.preventDefault(); abrir(c._id || c.id); closeNav();
+      };
+      a.querySelector('.del-hilo').onclick = async (ev) => {
+        ev.preventDefault(); ev.stopPropagation();
+        const id = ev.currentTarget.dataset.id;
+        if (!id) return;
+        if (!confirm('Borrar este chat y la memoria que salió de él?')) return;
+        const r = await fetch('/conversaciones/' + id, { method: 'DELETE', credentials: 'same-origin' });
+        if (!r.ok) { alert('No se pudo borrar'); return; }
+        if (String(convId) === String(id)) { convId = null; chat.innerHTML = ''; $('titulo').textContent = 'Ultron'; }
+        lista();
+      };
       hilos.appendChild(a);
     });
   }

@@ -1348,8 +1348,17 @@ const OS = (() => {
     d.querySelector('div').innerHTML = `<h3>${esc(c?.titulo || fechaCorta(dia))}</h3>
       <div class="sub">${(c?.turnos || []).length} turnos · ${esc(fechaCorta(dia))}</div>
       <div style="max-height:60dvh;overflow-y:auto;display:flex;flex-direction:column;gap:10px;margin-top:10px">${turnos || '<div class="sub">sin turnos</div>'}</div>
-      <div class="fila-btn" style="margin-top:14px"><button class="btn" id="rg-cerrar">CERRAR</button></div>`;
-    d.querySelector('#rg-cerrar').onclick = () => d.remove();
+      <div class="fila-btn" style="margin-top:14px"><button class="btn" id="rg-cerrar">CERRAR</button><button class="btn no" id="rg-borrar">BORRAR DÍA Y MEMORIA</button></div>`;
+    d.querySelector('#rg-borrar').onclick = async () => {
+        if (!confirm('Borrar esta conversación y la memoria ligada?')) return;
+        try {
+          await DATOS.borrar(`/conversaciones/${encodeURIComponent(convId)}`);
+          d.remove();
+          cargarRegistro();
+          avisar('Conversación y memoria borradas.');
+        } catch (e) { avisar(e.message || 'No se pudo borrar', true); }
+      };
+      d.querySelector('#rg-cerrar').onclick = () => d.remove();
   }
   /* La ventana de «ULTRON necesita su permiso». Sale sola cuando una respuesta
      trae un pedido pendiente, y también se puede abrir desde el botón. */

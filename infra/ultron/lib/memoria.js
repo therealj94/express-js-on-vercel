@@ -343,6 +343,41 @@ async function guardarTrabajo(id, miembro, t) {
   return true;
 }
 
+
+async function olvidarConversacion(id, miembro) {
+  const c = await conversacion(id, miembro);
+  if (!c) return { ok: false, motivo: 'NO_EXISTE' };
+  const desde = c.en ? new Date(c.en) : null;
+  const hasta = c.tocado ? new Date(c.tocado) : new Date();
+  let memorias = 0;
+  let documentos = 0;
+  if (conMongo) {
+    const qMem = { miembro, alcance: 'miembro', vigente: true };
+    if (desde) qMem.en = { $gte: desde, $lte: hasta };
+    const rM = await Memoria.updateMany(qMem, { vigente: false });
+    memorias = rM.modifiedCount || 0;
+    if (c._id) {
+      const rD = await Documento.deleteMany({ conversacion: c._id });
+      documentos = rD.deletedCount || 0;
+    }
+    await Conversacion.deleteOne({ _id: c._id, miembro });
+  } else {
+    const cid = String(c._id);
+    for (const m of provisional.memorias) {
+      if (m.miembro === miembro && m.alcance === 'miembro' && m.vigente) {
+        const en = new Date(m.en);
+        if (!desde || (en >= desde && en <= hasta)) { m.vigente = false; memorias += 1; }
+      }
+    }
+    provisional.documentos = provisional.documentos.filter((d) => {
+      if (String(d.conversacion || '') === cid) { documentos += 1; return false; }
+      return true;
+    });
+    provisional.conversaciones.delete(cid);
+  }
+  return { ok: true, id: String(c._id), memorias, documentos };
+}
+
 async function titular(id, miembro, titulo) {
   if (conMongo) return Conversacion.updateOne({ _id: id, miembro, titulo: { $in: [null, ''] } }, { titulo: String(titulo).slice(0, 120) });
   const c = provisional.conversaciones.get(String(id));
@@ -493,7 +528,7 @@ module.exports = {
   anotarPendiente, pendientes, cerrarPendiente, borrarPendiente, mismoPendiente,
   anotarGasto, gasto,
   recordar, olvidar, memoriasDe,
-  abrirConversacion, conversacion, conversacionesDe, anotarTurno, titular, guardarResumen, filtroDeResumen, guardarTrabajo,
+  abrirConversacion, conversacion, conversacionesDe, anotarTurno, titular, guardarResumen, filtroDeResumen, guardarTrabajo, olvidarConversacion,
   conversacionDelDia, registroPorDia, diaDe, bordesDelDia,
   guardarDocumento, documentos, documento,
   Memoria, Conversacion, Documento, Pendiente, Gasto,

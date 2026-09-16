@@ -607,6 +607,12 @@ app.get('/conversaciones/:id', puerta, async (req, res) => {
   res.json(c);
 });
 
+app.delete('/conversaciones/:id', puerta, async (req, res) => {
+  const r = await memoria.olvidarConversacion(req.params.id, req.miembro.correo);
+  if (!r.ok) return res.status(404).json({ error: 'No existe.', codigo: r.motivo || 'NO_EXISTE' });
+  res.json(r);
+});
+
 /* ── PENSAR, en vivo ──────────────────────────────────────────────────────────
    Server-Sent Events: el texto llega a medida que el modelo lo escribe, y las
    herramientas se anuncian cuando corren. Un asistente que se queda mudo
