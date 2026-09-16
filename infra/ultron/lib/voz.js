@@ -14,7 +14,16 @@
 // Y una memoria corta: la misma frase dos veces no se fabrica dos veces. Es la
 // lección de infra/aura/vozmemoria.py, y acá sale gratis con un Map.
 
-const LLAVE = (process.env.ELEVENLABS_API_KEY || '').trim();
+const boveda = require('./boveda');
+let LLAVE = (process.env.ELEVENLABS_API_KEY || '').trim();
+async function cargarLlave() {
+  if (LLAVE) return LLAVE;
+  try {
+    LLAVE = await boveda.usar('ELEVENLABS_API_KEY', (v) => String(v || '').trim());
+  } catch { LLAVE = LLAVE || ''; }
+  return LLAVE;
+}
+cargarLlave().catch(() => {});
 /* La voz por omisión: una voz multilingüe de ElevenLabs que suena bien en
    español. Se cambia con ELEVENLABS_VOZ; el id se ve en la cuenta. */
 const VOZ = (process.env.ELEVENLABS_VOZ || 'XrExE9yKIg1WjnnlVkGX').trim();
@@ -31,6 +40,7 @@ const memoria = new Map();   // sha1(texto) -> Buffer
 const MEMORIA_MAX = 120;   // 60 frases sueltas + las muletillas, que conviene que no se caigan nunca
 
 function encendida() { return !!LLAVE; }
+async function asegurarLlave() { if (!LLAVE) await cargarLlave(); return LLAVE; }
 
 /** Lo que se lee en voz alta no es lo que se lee en pantalla. */
 const numeros = require('./decir-numeros');
@@ -94,7 +104,7 @@ const FORMATO_VIVO = process.env.ELEVENLABS_FORMATO || 'mp3_22050_32';
 
 async function hablarEnVivo(texto, { rapido = true, vozId = null } = {}) {
   const voz = vozPermitida(vozId);
-  if (!LLAVE) { const e = new Error('Voz no configurada.'); e.codigo = 'VOZ_APAGADA'; throw e; }
+  if (!(await asegurarLlave())) { const e = new Error('Voz no configurada.'); e.codigo = 'VOZ_APAGADA'; throw e; }
   const dicho = paraDecir(texto);
   if (!dicho) { const e = new Error('Nada que decir.'); e.codigo = 'VACIO'; throw e; }
   const r = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${encodeURIComponent(voz)}/stream?output_format=${FORMATO_VIVO}`, {
@@ -120,7 +130,7 @@ async function hablarEnVivo(texto, { rapido = true, vozId = null } = {}) {
 
 async function hablar(texto, { rapido = false, vozId = null } = {}) {
   const voz = vozPermitida(vozId);
-  if (!LLAVE) { const e = new Error('Voz no configurada.'); e.codigo = 'VOZ_APAGADA'; throw e; }
+  if (!(await asegurarLlave())) { const e = new Error('Voz no configurada.'); e.codigo = 'VOZ_APAGADA'; throw e; }
   const dicho = paraDecir(texto);
   if (!dicho) { const e = new Error('Nada que decir.'); e.codigo = 'VACIO'; throw e; }
   const modelo = rapido ? MODELO_RAPIDO : MODELO;

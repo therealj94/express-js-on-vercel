@@ -14,8 +14,8 @@
  */
 
 const CAJA_POR_GRUPO = {
-  internet: /\b(internet|google|duckduckgo|noticia|noticias|titular|web\b|busc[aáeé]|googlear|en l[ií]nea|qu[eé] se dice|precio (actual|hoy|ahora)|c[oó]mo est[aá] el mercado)\b/i,
-  boveda: /\b(b[oó]veda|secretos?|api[_ ]?keys?|llaves? (guardad|de la)|heroku var|credencial)/i,
+  internet: /\b(internet|google|duckduckgo|noticia|noticias|titular|web\b|busc[aáeé]|googlear|en l[ií]nea|qu[eé] se dice|precio|oro|gold|onza|auka|origen|cotiz|mercado)\b/i,
+  boveda: /\b(b[oó]veda|secretos?|api[_ ]?keys?|llaves?|heroku var|credencial|elevenlabs|abrir la b[oó]veda|abr[ií] la b[oó]veda)\b/i,
   taller: /\b(repo|repositorio|c[oó]digo|archivo .+\.(js|ts|py|md)|le[eé] (el )?nodo|despleg|terminal|pull request|\bpr\b|patch)\b/i,
   documentos: /\b(pdf|documento|memor[aá]ndum|acta|informe|carta|exportar)\b/i,
   operaciones: /\b(heroku|dyno|reinici(ar|á)|aws|ec2|mongo|nodos? de la casa)\b/i,
@@ -60,10 +60,19 @@ function planear(texto) {
     if (!cajas.includes('internet')) cajas.push('internet');
     forzar.push({ name: 'leer_pagina', arguments: { url } });
     motivos.push('hay una URL: se lee');
-  } else if (CAJA_POR_GRUPO.internet.test(t) || /\b(busc[aáeé]|google)\b/i.test(t)) {
+  } else if (CAJA_POR_GRUPO.internet.test(t) || /\b(busc[aáeé]|google|oro|gold|auka|precio)\b/i.test(t)) {
     if (!cajas.includes('internet')) cajas.push('internet');
     forzar.push({ name: 'buscar_web', arguments: { consulta: consultaDeInternet(t) } });
     motivos.push('pedido de internet: se busca');
+  }
+  if (/\b(auka|origen|ordenex|cotiz)\b/i.test(t)) {
+    if (!cajas.includes('cadenas')) cajas.push('cadenas');
+    if (!cajas.includes('cuentas')) cajas.push('cuentas');
+    if (!forzar.some((f) => f.name === 'estado_vivo')) forzar.push({ name: 'estado_vivo', arguments: {} });
+    if (!forzar.some((f) => f.name === 'cotizar') && /\b(auka|origen|cotiz)\b/i.test(t)) {
+      forzar.push({ name: 'cotizar', arguments: { monto: 1, sentido: 'venta' } });
+    }
+    motivos.push('precio de la casa: estado vivo + cotizar');
   }
 
   if (CAJA_POR_GRUPO.boveda.test(t)) {

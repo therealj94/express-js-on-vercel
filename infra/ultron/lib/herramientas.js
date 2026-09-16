@@ -496,6 +496,16 @@ async function buscarWeb(consulta) {
     ? `(La consulta «${q}» trae artículos de geopolítica, no a la casa: se buscó «${afinada}». Lo que sigue es lo que se dice AFUERA de Orden Global; lo que la casa ES sale de las fichas y del estado vivo, no de aquí. Si un titular dice «respaldado en oro», esa es la palabra de esa fuente: se cita como está y, al comentarlo, la palabra de la casa es «referenciado».)\n\n`
     : '';
   if (afinada) q = afinada;
+  let spot = '';
+  if (/\b(oro|gold|xau|onza)\b/i.test(q)) {
+    try {
+      const g = await fetch('https://api.gold-api.com/price/XAU', { headers: { Accept: 'application/json' }, signal: AbortSignal.timeout(8000) });
+      const j = await g.json();
+      if (j && Number(j.price) > 0) {
+        spot = `PRECIO SPOT DEL ORO (fuente gold-api.com, ${j.updatedAt || 'ahora'}): ${Number(j.price).toFixed(2)} USD por onza troy. NO inventes otro número.\n\n`;
+      }
+    } catch { /* se sigue con la búsqueda */ }
+  }
   const brave = (process.env.ULTRON_BRAVE || '').trim();
   try {
     if (brave) {
@@ -503,8 +513,8 @@ async function buscarWeb(consulta) {
         { headers: { 'X-Subscription-Token': brave, Accept: 'application/json' }, signal: AbortSignal.timeout(PLAZO_WEB_MS) });
       const j = await r.json();
       const res = (j.web?.results || []).slice(0, 6);
-      if (!res.length) return `${nota}Sin resultados para «${q}».`;
-      return nota + res.map((x, i) => `${i + 1}. ${x.title}\n   ${x.url}\n   ${x.description || ''}`).join('\n');
+      if (!res.length) return `${spot}${nota}Sin resultados para «${q}».`;
+      return spot + nota + res.map((x, i) => `${i + 1}. ${x.title}\n   ${x.url}\n   ${x.description || ''}`).join('\n');
     }
     const r = await fetch(`https://html.duckduckgo.com/html/?q=${encodeURIComponent(q)}&kl=es-es`,
       { headers: { 'User-Agent': 'Mozilla/5.0 ULTRON/1' }, signal: AbortSignal.timeout(PLAZO_WEB_MS) });
@@ -517,9 +527,10 @@ async function buscarWeb(consulta) {
       const uddg = /uddg=([^&]+)/.exec(url); if (uddg) url = decodeURIComponent(uddg[1]);
       res.push({ url, titulo: limpiarHtml(m[2]), resumen: limpiarHtml(m[3] || '') });
     }
-    if (!res.length) return `${nota}Sin resultados para «${q}» (o el buscador no contestó bien).`;
-    return nota + res.map((x, i) => `${i + 1}. ${x.titulo}\n   ${x.url}\n   ${x.resumen}`).join('\n');
+    if (!res.length) return `${spot}${nota}Sin resultados para «${q}» (o el buscador no contestó bien).`;
+    return spot + nota + res.map((x, i) => `${i + 1}. ${x.titulo}\n   ${x.url}\n   ${x.resumen}`).join('\n');
   } catch (e) {
+    if (spot) return spot + `La búsqueda web falló (${String(e?.message || e).slice(0, 80)}). Usá el spot de arriba; no inventes precio.`;
     return `No pude buscar «${q}»: ${e?.name === 'TimeoutError' ? 'el buscador tardó demasiado' : String(e?.message || e).slice(0, 120)}.`;
   }
 }
