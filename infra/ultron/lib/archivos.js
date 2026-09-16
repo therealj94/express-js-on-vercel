@@ -408,6 +408,14 @@ async function describir(id, { pregunta = null } = {}) {
   const orden = `Describí esta imagen para alguien que no la ve: qué es, qué hay, y TODO el texto y las cifras que se lean, tal cual (sin inventar lo borroso: decí «ilegible»). Si es una factura, recibo, tabla o pantalla, sacá los datos en filas. En español, sin adornos.${pregunta ? ` Además, en concreto: ${pregunta}` : ''}`;
   const cerebro = require('./cerebro');
   let texto = null, con = null;
+  const conManos = async () => {
+    const ojo = require('./ojo');
+    if (!ojo.hay()) throw new Error('sin ojo');
+    const r = await ojo.ver({ imagen: b64, pregunta: orden });
+    const txt = String(r?.texto || r?.descripcion || '').trim();
+    if (!txt) throw new Error(r?.error || 'el ojo no describió');
+    return txt;
+  };
   const conClaude = async () => {
     const cl = cerebro._adentro.clienteAnthropic();
     const r = await cl.messages.create({ model: cerebro.MODELO, max_tokens: 1200,
@@ -419,7 +427,7 @@ async function describir(id, { pregunta = null } = {}) {
     await cerebro.nodo._adentro.pedir({ model: cerebro.nodo.MODELO, stream: true, messages: [{ role: 'user', content: orden, images: [b64] }], options: { temperature: 0.2, num_predict: 900 } }, { alTrozo: (t) => { dicho += t; } });
     return dicho.trim();
   };
-  const orden2 = cerebro.cual() === 'nodo' ? [['nodo', conNodo], ['claude', conClaude]] : [['claude', conClaude], ['nodo', conNodo]];
+  const orden2 = [['manos', conManos], ['nodo', conNodo], ['claude', conClaude]];
   for (const [nombre, fn] of orden2) {
     try { texto = await fn(); if (texto) { con = nombre; break; } } catch (e) { console.warn(`[archivos] la imagen no se pudo mirar con ${nombre}: ${String(e?.message || e).slice(0, 120)}`); }
   }

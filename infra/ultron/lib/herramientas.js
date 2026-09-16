@@ -502,9 +502,18 @@ async function buscarWeb(consulta) {
       const g = await fetch('https://api.gold-api.com/price/XAU', { headers: { Accept: 'application/json' }, signal: AbortSignal.timeout(8000) });
       const j = await g.json();
       if (j && Number(j.price) > 0) {
-        spot = `PRECIO SPOT DEL ORO (fuente gold-api.com, ${j.updatedAt || 'ahora'}): ${Number(j.price).toFixed(2)} USD por onza troy. NO inventes otro número.\n\n`;
+        spot = `PRECIO SPOT DEL ORO (fuente gold-api.com/price/XAU, ${j.updatedAt || 'ahora'}): ${Number(j.price).toFixed(2)} USD por onza troy. URL: https://api.gold-api.com/price/XAU. NO inventes otro número.\n\n`;
       }
     } catch { /* se sigue con la búsqueda */ }
+  }
+  if (/\b(plata|silver|xag|agka)\b/i.test(q)) {
+    try {
+      const g = await fetch('https://api.gold-api.com/price/XAG', { headers: { Accept: 'application/json' }, signal: AbortSignal.timeout(8000) });
+      const j = await g.json();
+      if (j && Number(j.price) > 0) {
+        spot += `PRECIO SPOT DE LA PLATA (fuente gold-api.com/price/XAG, ${j.updatedAt || 'ahora'}): ${Number(j.price).toFixed(2)} USD por onza troy. URL: https://api.gold-api.com/price/XAG. NO inventes otro número.\n\n`;
+      }
+    } catch { /* se sigue */ }
   }
   const brave = (process.env.ULTRON_BRAVE || '').trim();
   try {

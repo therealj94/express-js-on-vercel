@@ -127,4 +127,13 @@ function guardarFoto(png, { url, titulo }) {
 
 const verFoto = (id) => fotos.get(String(id)) || null;
 
-module.exports = { hay, donde, salud, mirar, foto, guion, comoTexto, guardarFoto, verFoto, PLAZO_MS, _adentro: { fotos } };
+
+async function ver({ imagen, pregunta, url } = {}) {
+  return pedir('/ver', { imagen, pregunta, url, png: imagen });
+}
+
+async function sandbox({ codigo, lenguaje = 'js' } = {}) {
+  return pedir('/sandbox', { codigo, lenguaje });
+}
+
+module.exports = { hay, donde, salud, mirar, foto, guion, ver, sandbox, comoTexto, guardarFoto, verFoto, PLAZO_MS, _adentro: { fotos } };

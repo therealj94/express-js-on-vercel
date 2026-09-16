@@ -905,6 +905,14 @@ app.post('/archivos', puerta, frenoSubir, crudo, async (req, res) => {
       nombre, tipo: req.get('content-type'), buf: req.body,
       miembro: req.miembro.correo, conversacion: req.get('x-conversacion') || null,
     });
+    if (a && /^image\//.test(a.tipo || '')) {
+      try {
+        const vista = await archivos.describir(a._id);
+        if (vista) a.texto = String(vista).slice(0, 4000), a.vista = true, a.porQue = 'descrita por el modelo';
+      } catch (e) {
+        console.warn('[archivos] no se pudo mirar al subir:', e?.message);
+      }
+    }
     res.json(a);
   } catch (e) {
     /* Los cuatro motivos por los que un archivo se rechaza tienen nombre y se

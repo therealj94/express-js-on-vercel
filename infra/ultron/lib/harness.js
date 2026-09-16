@@ -14,7 +14,7 @@
  */
 
 const CAJA_POR_GRUPO = {
-  internet: /\b(internet|google|duckduckgo|noticia|noticias|titular|web\b|busc[aáeé]|googlear|en l[ií]nea|qu[eé] se dice|precio|oro|gold|onza|auka|origen|cotiz|mercado)\b/i,
+  internet: /\b(internet|google|duckduckgo|noticia|noticias|titular|web\b|busc[aáeé]|googlear|en l[ií]nea|qu[eé] se dice|precio|oro|gold|onza|plata|silver|xag|agka|auka|origen|cotiz|mercado)\b/i,
   boveda: /\b(b[oó]veda|secretos?|api[_ ]?keys?|llaves?|heroku var|credencial|elevenlabs|abrir la b[oó]veda|abr[ií] la b[oó]veda)\b/i,
   taller: /\b(repo|repositorio|c[oó]digo|archivo .+\.(js|ts|py|md)|le[eé] (el )?nodo|despleg|terminal|pull request|\bpr\b|patch)\b/i,
   documentos: /\b(pdf|documento|memor[aá]ndum|acta|informe|carta|exportar)\b/i,
@@ -60,12 +60,22 @@ function planear(texto) {
     if (!cajas.includes('internet')) cajas.push('internet');
     forzar.push({ name: 'leer_pagina', arguments: { url } });
     motivos.push('hay una URL: se lee');
-  } else if (CAJA_POR_GRUPO.internet.test(t) || /\b(busc[aáeé]|google|oro|gold|auka|precio)\b/i.test(t)) {
+  } else if (CAJA_POR_GRUPO.internet.test(t) || /\b(busc[aáeé]|google|oro|gold|plata|silver|xag|agka|auka|precio)\b/i.test(t)) {
     if (!cajas.includes('internet')) cajas.push('internet');
     forzar.push({ name: 'buscar_web', arguments: { consulta: consultaDeInternet(t) } });
     motivos.push('pedido de internet: se busca');
   }
-  if (/\b(auka|origen|ordenex|cotiz)\b/i.test(t)) {
+  const idArch = t.match(/\bid\s+([a-f0-9]{24})\b/i) || t.match(/\((id\s+)?([a-f0-9]{24})\)/i);
+  if (/\b(le[eé]|mir[aá]|describ[ií]|archivo|imagen|foto|captura)\b/i.test(t) && idArch) {
+    const id = idArch[1] || idArch[2];
+    forzar.unshift({ name: 'leer_archivo', arguments: { id, pregunta: t.slice(0, 240) } });
+    motivos.push('hay una imagen/archivo: se mira de verdad');
+  } else if (/\b(esta imagen|esta foto|esta captura|mir[aá](?:ste)? la imagen)\b/i.test(t)) {
+    forzar.unshift({ name: 'listar_archivos', arguments: {} });
+    motivos.push('pidió la imagen: se listan archivos subidos');
+  }
+
+  if (/\b(auka|origen|ordenex|cotiz|agka)\b/i.test(t)) {
     if (!cajas.includes('cadenas')) cajas.push('cadenas');
     if (!cajas.includes('cuentas')) cajas.push('cuentas');
     if (!forzar.some((f) => f.name === 'estado_vivo')) forzar.push({ name: 'estado_vivo', arguments: {} });

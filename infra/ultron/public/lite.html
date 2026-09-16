@@ -62,9 +62,19 @@ header button.gold{background:#c9a227;color:#000;border-radius:10px;height:32px;
   border-top:1px solid #161616;background:#050505}
 #box textarea{flex:1;border:0;background:#1c1c1e;color:var(--t);border-radius:22px;padding:12px 16px;
   font:inherit;resize:none;min-height:44px;max-height:140px}
-#adj,#go{width:44px;height:44px;border-radius:22px;border:0;font-size:18px}
-#adj{background:#1c1c1e;color:var(--t)}
+#adj,#go,#hablar{width:44px;height:44px;border-radius:22px;border:0;font-size:18px;flex-shrink:0}
+#adj,#hablar{background:#1c1c1e;color:var(--t)}
+#hablar.on{background:#ff453a;color:#fff;box-shadow:0 0 0 3px #ff453a44}
 #go{background:#fff;color:#000;font-weight:700}
+#prevista{display:none;margin:0 12px 8px;padding:8px;background:#111;border-radius:12px;align-items:center;gap:10px}
+#prevista.on{display:flex}
+#prevista img{width:56px;height:56px;object-fit:cover;border-radius:8px}
+#prevista b{font-size:13px;flex:1}
+#prevista button{border:0;background:#2a2a2e;color:#fff;border-radius:8px;padding:6px 10px}
+#sheetAdj{display:none;position:fixed;inset:0;background:#000a;z-index:20;align-items:flex-end;justify-content:center}
+#sheetAdj.on{display:flex}
+#sheetAdj .s{width:100%;max-width:640px;background:#161616;border-radius:18px 18px 0 0;padding:16px 16px calc(18px + env(safe-area-inset-bottom))}
+#sheetAdj button{width:100%;margin:6px 0;border:0;border-radius:14px;padding:16px;background:#1c1c1e;color:#fff;font-size:16px;text-align:left}
 #login{position:fixed;inset:0;background:#050505;z-index:30;display:flex;flex-direction:column;justify-content:center;padding:32px}
 #login h1{font-size:34px;letter-spacing:-.04em;margin-bottom:6px}
 #login p{color:var(--d);margin-bottom:28px}
@@ -131,10 +141,20 @@ header button.gold{background:#c9a227;color:#000;border-radius:10px;height:32px;
 <div id="bar"></div>
 <button type="button" id="cerrarFijo">TERMINÁ YA · entregá lo que hay</button>
 <button type="button" id="desahogo">Guardá este capítulo</button>
+<div id="prevista"><img id="prevImg" alt=""><b id="prevNom"></b><button type="button" id="prevX">Quitar</button></div>
+<div id="sheetAdj">
+  <div class="s">
+    <button type="button" id="adjCam">Cámara</button>
+    <button type="button" id="adjGal">Galería / foto</button>
+    <button type="button" id="adjFile">Archivo (PDF, Word, texto)</button>
+    <button type="button" id="adjCerrar">Cancelar</button>
+  </div>
+</div>
 <form id="box">
   <button type="button" id="adj" aria-label="Adjuntar">＋</button>
   <button type="button" id="hablar" aria-label="Hablar">🎙</button>
-  <input id="file" type="file" hidden accept=".pdf,.doc,.docx,.txt,.csv,.png,.jpg,.jpeg,.webp">
+  <input id="file" type="file" hidden accept=".pdf,.doc,.docx,.txt,.csv,.png,.jpg,.jpeg,.webp,image/*">
+  <input id="cam" type="file" hidden accept="image/*" capture="environment">
   <textarea id="texto" rows="1" placeholder="Preguntale a Ultron"></textarea>
   <button type="submit" id="go">↑</button>
 </form>
@@ -198,6 +218,6 @@ header button.gold{background:#c9a227;color:#000;border-radius:10px;height:32px;
   </div>
 </div>
 
-<script src="/js/lite.js?v=mem1"></script>
+<script src="/js/lite.js?v=vis2"></script>
 </body>
 </html>

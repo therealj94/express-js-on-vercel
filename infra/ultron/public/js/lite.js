@@ -204,12 +204,16 @@
   $('scrim').onclick = closeNav;
   $('nuevo').onclick = () => { closeNav(); home(); };
 
-  $('adj').onclick = () => $('file').click();
-  $('file').onchange = async () => {
-    const f = $('file').files && $('file').files[0];
-    $('file').value = '';
+  let adjunto = null;
+  function sheet(on) { $('sheetAdj').classList.toggle('on', !!on); }
+  $('adj').onclick = () => sheet(true);
+  $('adjCerrar').onclick = () => sheet(false);
+  $('adjCam').onclick = () => { sheet(false); $('cam').click(); };
+  $('adjGal').onclick = () => { sheet(false); $('file').setAttribute('accept', 'image/*'); $('file').click(); };
+  $('adjFile').onclick = () => { sheet(false); $('file').setAttribute('accept', '.pdf,.doc,.docx,.txt,.csv,.png,.jpg,.jpeg,.webp,image/*'); $('file').click(); };
+  async function subirArchivo(f) {
     if (!f) return;
-    bar.textContent = 'Subiendo ' + f.name + '…';
+    bar.textContent = 'Subiendo y mirando ' + f.name + '…';
     try {
       const r = await api('/archivos', {
         method: 'POST',
@@ -218,10 +222,67 @@
       });
       const d = await r.json().catch(() => ({}));
       if (!r.ok) throw new Error(d.error || 'No se subió');
-      $('texto').value = (`Leé el archivo «${f.name}» (id ${d._id || d.id || ''}) y seguí con lo que pido.` + ($('texto').value ? '\n' + $('texto').value : '')).trim();
-      bar.textContent = 'Listo · ' + f.name;
+      adjunto = { id: d._id || d.id, nombre: f.name, tipo: f.type, vista: d.vista || !!d.texto, texto: d.texto || '' };
+      const esImg = /^image\//.test(f.type);
+      if (esImg) {
+        const url = URL.createObjectURL(f);
+        $('prevImg').src = url;
+        $('prevNom').textContent = f.name + (adjunto.vista ? ' · ya la vio' : '');
+        $('prevista').classList.add('on');
+      }
+      const base = esImg
+        ? `Mirá de verdad esta imagen «${f.name}» (id ${adjunto.id}). Decí TODO lo que se lee y se ve. No inventes firmas, bloques ni cadenas si no están en la foto.`
+        : `Leé el archivo «${f.name}» (id ${adjunto.id}) y contestá con lo que hay adentro.`;
+      if (!$('texto').value.trim()) $('texto').value = base;
+      else $('texto').value = base + '\n' + $('texto').value;
+      bar.textContent = adjunto.vista ? ('La vio · ' + f.name) : ('Listo · ' + f.name);
     } catch (e) { bar.textContent = String(e.message || e); }
+  }
+  $('file').onchange = async () => { const f = $('file').files && $('file').files[0]; $('file').value = ''; await subirArchivo(f); };
+  $('cam').onchange = async () => { const f = $('cam').files && $('cam').files[0]; $('cam').value = ''; await subirArchivo(f); };
+  $('prevX').onclick = () => { adjunto = null; $('prevista').classList.remove('on'); $('prevImg').src = ''; };
+
+  const Rec = window.SpeechRecognition || window.webkitSpeechRecognition;
+  let rec = null, hablando = false;
+  if (Rec) {
+    rec = new Rec();
+    rec.lang = 'es-HN';
+    rec.interimResults = true;
+    rec.continuous = false;
+    rec.onresult = (ev) => {
+      let t = '';
+      for (let i = ev.resultIndex; i < ev.results.length; i++) t += ev.results[i][0].transcript;
+      $('texto').value = t;
+      if (ev.results[ev.results.length - 1].isFinal) {
+        hablando = false; $('hablar').classList.remove('on');
+        enviar();
+      }
+    };
+    rec.onerror = () => { hablando = false; $('hablar').classList.remove('on'); bar.textContent = 'Micrófono: dale permiso en el teléfono.'; };
+    rec.onend = () => { hablando = false; $('hablar').classList.remove('on'); };
+  }
+  $('hablar').onclick = async () => {
+    if (!rec) { bar.textContent = 'Este navegador no trae reconocimiento de voz. Usá Chrome o la app.'; return; }
+    if (hablando) { rec.stop(); hablando = false; $('hablar').classList.remove('on'); return; }
+    try {
+      await navigator.mediaDevices.getUserMedia({ audio: true }).then((s) => s.getTracks().forEach((x) => x.stop()));
+    } catch { bar.textContent = 'Falta el permiso del micrófono.'; return; }
+    rec.lang = (document.querySelector('#segIdioma button.on')?.dataset.v === 'en') ? 'en-US' : 'es-HN';
+    hablando = true; $('hablar').classList.add('on'); bar.textContent = 'Escuchando…';
+    try { rec.start(); } catch (e) { hablando = false; $('hablar').classList.remove('on'); bar.textContent = String(e.message || e); }
   };
+
+  async function sonar(texto) {
+    const vozOn = document.querySelector('#segVoz button.on')?.dataset.v !== 'off';
+    if (!vozOn || !texto) return;
+    try {
+      const r = await api('/voz', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ texto: String(texto).slice(0, 900) }) });
+      if (!r.ok) return;
+      const blob = await r.blob();
+      const a = new Audio(URL.createObjectURL(blob));
+      a.play().catch(() => {});
+    } catch { /* voz opcional */ }
+  }
 
   async function enviar(forzado) {
     const texto = (forzado || $('texto').value).trim();
@@ -285,6 +346,7 @@
           else if (ev === 'fin') { checarAuth();
             convId = d.conversacionId || convId;
             if (d.texto && !acc) dest.textContent = d.texto;
+            sonar(acc || d.texto || '');
             const hecho = /HECHO:\s*(.+)/i.exec(d.texto || acc || '');
             if (hecho && d.trabajo) {
               json('/memorias', { method: 'POST', headers: { 'Content-Type': 'application/json' },
