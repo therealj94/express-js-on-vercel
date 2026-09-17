@@ -6,6 +6,12 @@
   "keywords": [],
   "author": "",
   "license": "ISC",
+  "scripts": {
+    "dev": "tsx watch src/dev.ts",
+    "start": "tsx src/dev.ts",
+    "build": "tsc",
+    "typecheck": "tsc --noEmit"
+  },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.80.0",
     "@types/express": "^5.0.0",
@@ -15,6 +21,8 @@
   },
   "devDependencies": {
     "@types/cors": "^2.8.19",
-    "@types/node": "^22.0.0"
+    "@types/node": "^22.0.0",
+    "tsx": "^4.23.13",
+    "typescript": "^7.0.2"
   }
 }
