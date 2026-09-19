@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Orden Global · Tesorería</title>
+<meta name="description" content="Portal de tesorería del ecosistema Orden Global: security tokens, utility tokens y la Autoridad de Emisión de ORIGEN.">
+<meta name="theme-color" content="#0A1416">
+<link rel="stylesheet" href="./app/estilo.css">
+<style>
+  .puerta.sec{--pa:var(--gold);--ps:var(--gold-soft)}
+  .puerta.utl{--pa:var(--cyan);--ps:var(--cyan-soft)}
+  .puerta.org{--pa:var(--violet);--ps:var(--violet-soft)}
+  .cifras{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-top:40px}
+  @media(max-width:780px){.cifras{grid-template-columns:repeat(2,1fr)}}
+  .tema-btn{position:fixed;top:16px;right:16px;z-index:30}
+  .regla{display:grid;gap:14px;grid-template-columns:repeat(3,1fr);margin-top:14px}
+  @media(max-width:900px){.regla{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<button class="btn chico fantasma tema-btn" id="tema" title="Claro / oscuro">Tema</button>
+
+<div class="hub">
+  <header class="hub-cab">
+    <div class="escudo"><svg viewBox="0 0 24 24"><path d="M12 3l7 3v5c0 4.5-3 8-7 10-4-2-7-5.5-7-10V6l7-3z" fill="none" stroke="currentColor"/><path d="M9 12l2 2 4-4" fill="none" stroke="currentColor"/></svg></div>
+    <div class="kicker">Orden Global Corp</div>
+    <h1>Tesorería de Orden Global</h1>
+    <p>Tres plataformas y una sola regla: <b>ningún token sale al mercado sin respaldo certificado detrás</b>. El valor se certifica primero, el precio se establece con un valuador independiente y solo entonces se emiten los tokens que ese valor aguanta.</p>
+  </header>
+
+  <div class="puertas">
+    <a class="puerta org" href="./origen.html">
+      <div class="ic"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2" fill="none" stroke="currentColor"/><circle cx="12" cy="12" r="4" fill="none" stroke="currentColor"/><path d="M12 8v1.5M12 14.5V16M8 12h1.5M14.5 12H16" stroke="currentColor"/></svg></div>
+      <h2>Autoridad de Emisión ORIGEN</h2>
+      <p>La plataforma de origen: certifica las reservas reales, emite la unidad de respaldo y decide qué emisión se autoriza y cuál no. Ninguna de las otras dos puede emitir sin su firma.</p>
+      <ul>
+        <li>Registro maestro de reservas con aforo y auditor</li>
+        <li>Ratio de respaldo en vivo y freno de emergencia</li>
+        <li>Cola de autorización con multifirma del Consejo</li>
+        <li>Prueba de reservas pública y libro sellado</li>
+      </ul>
+      <div class="ir">Entrar a la Autoridad →</div>
+    </a>
+
+    <a class="puerta sec" href="./security.html">
+      <div class="ic"><svg viewBox="0 0 24 24"><path d="M12 4v16M6 8h12M6 8l-3 6h6l-3-6zM18 8l-3 6h6l-3-6zM8 20h8" fill="none" stroke="currentColor"/></svg></div>
+      <h2>Tesorería de Security Tokens</h2>
+      <p>ONDK y las demás emisiones con valor patrimonial detrás. Valuación certificada, precio establecido que no flota, registro de tenedores y mercado secundario con banda, como en una bolsa.</p>
+      <ul>
+        <li>Expediente de emisión, valuación y Comité</li>
+        <li>Supply cerrado: solo crece con causa y autorización</li>
+        <li>Cap table, transfer agent y lock-ups</li>
+        <li>Ventanas de negociación, banda y suspensión</li>
+      </ul>
+      <div class="ir">Entrar a Security →</div>
+    </a>
+
+    <a class="puerta utl" href="./utility.html">
+      <div class="ic"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3" fill="none" stroke="currentColor"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M18.4 5.6l-2.1 2.1M7.7 16.3l-2.1 2.1" stroke="currentColor"/></svg></div>
+      <h2>Tesorería de Utility Tokens</h2>
+      <p>VETA, OGS y MTP: tokens que pagan un servicio del ecosistema. No dan propiedad ni rendimiento, y solo circulan mientras exista capacidad de servicio contratada que los honre.</p>
+      <ul>
+        <li>Prueba de utilidad: capacidad contra circulante</li>
+        <li>Grifos, sumideros y quema por consumo</li>
+        <li>Precio anclado al costo real del servicio</li>
+        <li>Respaldo ORIGEN sobre la parte redimible</li>
+      </ul>
+      <div class="ir">Entrar a Utility →</div>
+    </a>
+  </div>
+
+  <div class="cifras" id="cifras"></div>
+
+  <div class="jer">
+    <div class="card"><div class="cab"><h3>Cómo se emite un token en Orden Global</h3></div>
+      <div class="cuerpo">
+        <div class="flujo">
+          <div class="n"><b>1 · Activo real</b><span>Un bien existe y se puede tocar: mineral, inmueble, caja, contrato.</span></div>
+          <div class="fl">→</div>
+          <div class="n"><b>2 · Certificación</b><span>Un auditor o valuador independiente lo certifica y se le aplica un aforo por riesgo.</span></div>
+          <div class="fl">→</div>
+          <div class="n autoridad"><b>3 · ORIGEN</b><span>La Autoridad emite unidades de respaldo contra esa reserva y las mantiene en el pozo libre.</span></div>
+          <div class="fl">→</div>
+          <div class="n"><b>4 · Solicitud</b><span>La tesorería pide emitir con causa, evidencia y firmas. Sin ORIGEN libre, se niega.</span></div>
+          <div class="fl">→</div>
+          <div class="n"><b>5 · Emisión</b><span>Se emiten solo los tokens que el valor certificado aguanta, al precio establecido.</span></div>
+        </div>
+
+        <div class="regla">
+          <div class="aviso acento">
+            <svg viewBox="0 0 24 24" style="width:17px;height:17px;stroke:currentColor;fill:none;stroke-width:1.9;flex:none"><rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 118 0v3"/></svg>
+            <div><b>El supply no se imprime</b><span class="txt">No hay minería ni inflación programada. El circulante solo sube con una causa del catálogo, evidencia documental y respaldo libre.</span></div>
+          </div>
+          <div class="aviso acento">
+            <svg viewBox="0 0 24 24" style="width:17px;height:17px;stroke:currentColor;fill:none;stroke-width:1.9;flex:none"><path d="M12 4v16M6 8h12M6 8l-3 6h6l-3-6zM18 8l-3 6h6l-3-6z"/></svg>
+            <div><b>El precio lo fija una valuación</b><span class="txt">No lo fija la especulación. El secundario opera dentro de una banda sobre ese valor certificado, con suspensión automática si se desvía.</span></div>
+          </div>
+          <div class="aviso acento">
+            <svg viewBox="0 0 24 24" style="width:17px;height:17px;stroke:currentColor;fill:none;stroke-width:1.9;flex:none"><path d="M12 3l7 3v5c0 4.5-3 8-7 10-4-2-7-5.5-7-10V6l7-3z"/><path d="M9 12l2 2 4-4"/></svg>
+            <div><b>Todo queda sellado</b><span class="txt">Cada decisión se asienta en un libro encadenado por hash. Alterar un asiento viejo rompe la cadena y salta en el tablero.</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <p class="ts" style="text-align:center;margin-top:34px">
+    Front end completo con estado compartido entre las tres plataformas. El backend viene después —
+    la estructura de datos de <span class="mono">app/datos.js</span> es el contrato de la API.
+  </p>
+</div>
+
+<script src="./app/datos.js"></script>
+<script src="./app/nucleo.js"></script>
+<script>
+(function(){
+  T.cargar();
+  var r = T.respaldo(), E = T.estado;
+  var circUtl = E.utilities.reduce(function(s,t){ return s + T.saludUtility(t).circulante; },0);
+  var valSec  = E.securities.reduce(function(s,t){ return s + T.saludSecurity(t).valorEmitido; },0);
+  var celdas = [
+    ['Reservas certificadas admisibles', T.fmt.dineroCorto(r.admisible), E.reservas.length + ' activos con auditor'],
+    ['ORIGEN en circulación', T.fmt.compacto(r.emitido), 'respaldo ' + (isFinite(r.ratio) ? T.fmt.pct(r.ratio,1) : '∞')],
+    ['Security tokens emitidos', T.fmt.dineroCorto(valSec), E.securities.length + ' emisiones registradas'],
+    ['Utility tokens en circulación', T.fmt.compacto(circUtl), E.utilities.length + ' servicios del ecosistema']
+  ];
+  document.getElementById('cifras').innerHTML = celdas.map(function(c){
+    return '<div class="kpi"><div class="et">' + T.esc(c[0]) + '</div>' +
+           '<div class="val num">' + T.esc(c[1]) + '</div>' +
+           '<div class="nota">' + T.esc(c[2]) + '</div></div>';
+  }).join('');
+  document.getElementById('tema').addEventListener('click', function(){ T.tema(); });
+})();
+</script>
+</body>
+</html>

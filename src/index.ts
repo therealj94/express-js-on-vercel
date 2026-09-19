@@ -15,6 +15,9 @@ app.use(express.json())
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
+// Plataforma de Tesorería (security tokens, utility tokens y emisión de ORIGEN)
+app.use('/tesoreria', express.static(path.join(__dirname, '..', 'tesoreria')))
+
 // Home route - HTML
 app.get('/', (req, res) => {
   res.type('html').send(`
