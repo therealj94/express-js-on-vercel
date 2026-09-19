@@ -19,7 +19,10 @@ import { fileURLToPath } from 'url'
 import type { DatosOrdenExchange, Configuracion, Precios } from './types.js'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
-const ARCHIVO = process.env.ORDENEX_DATA_FILE || join(__dirname, '..', 'data', 'ordenexchange.json')
+// En Vercel el sistema de archivos es de solo lectura salvo /tmp: sin Mongo,
+// el archivo va ahí y dura lo que dure la instancia (es decir, casi nada).
+const ARCHIVO = process.env.ORDENEX_DATA_FILE
+  || (process.env.VERCEL ? '/tmp/ordenexchange.json' : join(__dirname, '..', 'data', 'ordenexchange.json'))
 const MONGO_URL = (process.env.ORDENEX_MONGO_URL || '').trim()
 const MONGO_BASE = process.env.ORDENEX_MONGO_DB || 'ordenexchange'
 
