@@ -113,13 +113,10 @@ export const NODOS = [
     d: 'Generada desde la app, no del sitio viejo. Hoy corre con datos de prueba porque su backend está caído.' },
   { id: 'mtp-back', n: 'Backend MyTokenPay', g: 'abierto', peso: 2,
     d: 'Caído — responde 503. Bloqueado para desplegar por un repositorio de GitLab de terceros.' },
-  // OrdenEx y AuCorp son piezas del ecosistema y faltaban enteras en el mapa.
-  // Van con lo único que consta, y dicho como lo que es: no hay código suyo en
-  // este repositorio, ni dominio que responda, ni nada verificado desde aquí.
-  // Inventarles una descripción sería peor que dejarlas fuera — un mapa que se
-  // adorna deja de servir para decidir.
-  { id: 'ordenex', n: 'OrdenEx', g: 'app', peso: 2.4,
-    d: 'Pieza del ecosistema. PENDIENTE DE DOCUMENTAR: no hay código suyo en este repositorio ni dominio comprobado. Falta qué hace, dónde corre y cómo habla con la cadena y con Genesis ID.' },
+  // OrdenExchange ya tiene código en este repositorio (ordenexchange/): la
+  // casa de cambio P2P. AuCorp sigue sin él, y va dicho como lo que es.
+  { id: 'ordenex', n: 'OrdenExchange', g: 'app', peso: 2.4,
+    d: 'La casa de cambio P2P, estilo Binance P2P: anuncios de compra y venta de ORIGEN, AUKA y AGKA en la moneda y los bancos de cada país de Latinoamérica, custodia (escrow), chat, apelaciones y agentes de cambio. Exige Genesis ID verificado; entra a Genesis ID con clave propia (ordenexchange). Código en ordenexchange/; blueprint en render.yaml.' },
   { id: 'aucorp', n: 'AuCorp', g: 'app', peso: 2.4,
     d: 'Pieza del ecosistema. Lo único que consta en el repo es una línea del README de MyTokenPay: «Red de comercios afiliados del Sistema Financiero Social (Orden Global · AuCorp · DBNX)». PENDIENTE DE DOCUMENTAR.' },
   { id: 'ordenscan', n: 'ordenscan', g: 'app', peso: 2,
@@ -241,9 +238,11 @@ export const ENLACES = [
   ...['ORIGEN','AUKA','AGKA','ONDK','MNKA','IBS','HARV','AUBEX','ASL','LOVE','REST','SOL','AIT','AGRO','POLITICAL']
     .map((t) => [t, 'cadena', 'vive en']),
 
-  // Las dos piezas que faltaban. Solo se dibuja lo que se sabe: que pertenecen
-  // al ecosistema. En cuanto se documenten, aquí van sus relaciones reales.
-  ['ordenex', 'cadena', 'pieza del ecosistema · relación por documentar'],
+  // OrdenExchange: custodia interna, depósitos y retiros comprobados en la
+  // cadena, identidad y AML por Genesis ID.
+  ['ordenex', 'cadena', 'depósitos y retiros de ORIGEN · AUKA · AGKA'],
+  ['ordenex', 'genesis', 'KYC · sesión única · tamiz · monitoreo AML'],
+  // AuCorp: solo se dibuja lo que se sabe, que pertenece al ecosistema.
   ['aucorp', 'cadena', 'pieza del ecosistema · relación por documentar'],
 
   // Veta Wallet

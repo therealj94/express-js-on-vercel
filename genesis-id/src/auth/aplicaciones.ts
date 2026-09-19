@@ -32,7 +32,7 @@ export const ALCANCES = {
 
 export type Alcance = keyof typeof ALCANCES
 
-/** Las tres aplicaciones del ecosistema y lo que necesita cada una. */
+/** Las aplicaciones del ecosistema y lo que necesita cada una. */
 export const APPS_ECOSISTEMA: { clave: string; nombre: string; alcances: Alcance[] }[] = [
   {
     clave: 'veta-wallet',
@@ -61,6 +61,18 @@ export const APPS_ECOSISTEMA: { clave: string; nombre: string; alcances: Alcance
     // Un explorador es público: solo necesita saber si una dirección tiene
     // identidad verificada detrás. Nada de datos personales.
     alcances: ['gid.verificar', 'tamiz.direccion', 'telemetria.enviar'],
+  },
+  {
+    clave: 'ordenexchange',
+    nombre: 'OrdenExchange',
+    // La casa de cambio P2P: la gente se verifica desde ella (puente completo),
+    // entra con sesión única desde las otras apps, tamiza las direcciones de
+    // retiro y manda cada compraventa completada al monitoreo AML.
+    alcances: [
+      'identidad.crear', 'identidad.leer', 'identidad.documento',
+      'gid.verificar', 'gid.perfil', 'vinculo.crear',
+      'movimiento.enviar', 'tamiz.direccion', 'telemetria.enviar', 'directorio.enviar',
+    ],
   },
 ]
 
@@ -107,7 +119,7 @@ export function crearAplicacion(clave: string, nombre: string, alcances: string[
   return { aplicacion, clave_secreta: secreta }
 }
 
-/** Da de alta las tres apps del ecosistema si aún no existen. */
+/** Da de alta las apps del ecosistema que aún no existan (las nuevas entran al redesplegar). */
 export function asegurarAplicaciones(): { clave: string; secreta: string }[] {
   const nuevas: { clave: string; secreta: string }[] = []
   for (const def of APPS_ECOSISTEMA) {

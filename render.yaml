@@ -62,3 +62,60 @@ services:
       #   value: "30"
       # - key: GENESIS_SESION_HORAS        # duración de la sesión del panel
       #   value: "8"
+
+  # ─── OrdenExchange: la casa de cambio P2P ────────────────────────────────
+  - type: web
+    name: ordenexchange
+    runtime: node
+    rootDir: ordenexchange
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /healthz
+    autoDeploy: true
+    envVars:
+      - key: NODE_VERSION
+        value: "20"
+      - key: NODE_ENV
+        value: production
+
+      # ─── Almacenamiento ────────────────────────────────────────────────────
+      # OBLIGATORIO: sin Mongo, cada despliegue borra los saldos en custodia.
+      - key: ORDENEX_MONGO_URL
+        sync: false
+      - key: ORDENEX_MONGO_DB
+        value: ordenexchange
+
+      # ─── Sesiones y primer administrador del panel (/admin) ────────────────
+      - key: ORDENEX_JWT_SECRETO
+        generateValue: true
+      - key: ORDENEX_ADMIN_EMAIL
+        value: admin@ordenglobal.link
+      - key: ORDENEX_ADMIN_PASSWORD
+        sync: false
+
+      # ─── Genesis ID: la clave de la app «ordenexchange» ────────────────────
+      # La imprime el motor Genesis ID al redesplegar con la app nueva, o se
+      # emite desde su panel → Operadores y apps. Sin ella nadie se verifica.
+      - key: GENESIS_URL
+        value: https://genesis-id.onrender.com
+      - key: GENESIS_API_KEY
+        sync: false
+
+      # ─── Cadena 5550 ───────────────────────────────────────────────────────
+      # La tesorería: a dónde deposita la gente y desde dónde se firman los
+      # retiros. Sin ella no se comprueban depósitos.
+      - key: ORDENEX_RPC_URL
+        value: https://ordenglobal-rpc.com
+      - key: ORDENEX_TESORERIA
+        sync: false
+
+      # ─── Precio de referencia (se puede cambiar luego desde el panel) ──────
+      - key: ORDENEX_ORO_USD_ONZA
+        sync: false
+      - key: ORDENEX_PLATA_USD_ONZA
+        sync: false
+
+      # ─── Modo demostración: NUNCA en producción ────────────────────────────
+      - key: ORDENEX_DEMO
+        value: "0"
