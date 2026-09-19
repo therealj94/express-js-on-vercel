@@ -62,3 +62,45 @@ services:
       #   value: "30"
       # - key: GENESIS_SESION_HORAS        # duración de la sesión del panel
       #   value: "8"
+
+  # ─── Tesorería de Orden Global ─────────────────────────────────────────────
+  # La Autoridad de Emisión de ORIGEN y las tesorerías de security y utility
+  # tokens. Sirve su propio front (tesoreria/*.html) y el API bajo /api.
+  - type: web
+    name: tesoreria
+    runtime: node
+    rootDir: tesoreria/servidor
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /healthz
+    autoDeploy: true
+    envVars:
+      - key: NODE_VERSION
+        value: "20"
+      # OBLIGATORIO para operar de verdad: sin Mongo, el libro sellado se pierde
+      # en cada despliegue. Puede ser el mismo clúster de Genesis ID con otra base.
+      - key: TESORERIA_MONGO_URL
+        sync: false
+      - key: TESORERIA_MONGO_DB
+        value: tesoreria
+      # Primer presidente del Consejo. Sin contraseña, se genera una y se imprime
+      # UNA sola vez en el registro de arranque.
+      - key: TESORERIA_ADMIN_EMAIL
+        value: tesoreria@ordenglobal.org
+      - key: TESORERIA_ADMIN_NOMBRE
+        value: Presidente del Consejo
+      - key: TESORERIA_ADMIN_PASSWORD
+        sync: false
+      # Entrada con la sesión única de Genesis ID: clave de API de la app
+      # «tesoreria» emitida desde el panel de Genesis (alcance gid.verificar).
+      - key: TESORERIA_GENESIS_URL
+        value: https://genesis-id.onrender.com
+      - key: TESORERIA_GENESIS_API_KEY
+        sync: false
+      # RPC de la cadena 5550 para conciliar el supply real contra el autorizado.
+      - key: RPC_ORDEN_URL
+        value: https://rpc.ordenglobal-rpc.com/
+      # Orígenes adicionales que pueden llamar al API (la copia estática en Vercel).
+      # - key: TESORERIA_CORS
+      #   value: https://express-js-on-vercel.vercel.app

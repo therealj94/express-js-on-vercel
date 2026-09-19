@@ -1,0 +1,28 @@
+{
+  "name": "tesoreria-orden-global",
+  "version": "1.0.0",
+  "description": "Servidor de la Tesorería de Orden Global: Autoridad de Emisión de ORIGEN, security tokens y utility tokens",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "start": "tsx src/index.ts",
+    "prueba": "node --import tsx --test src/pruebas/*.test.ts",
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.18.2",
+    "mongodb": "^6.9.0",
+    "tsx": "^4.19.0"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.17",
+    "@types/express": "^4.17.21",
+    "@types/node": "^22.0.0",
+    "typescript": "^5.5.0"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

@@ -1,19 +1,22 @@
 # Tesorería de Orden Global
 
-Tres plataformas web que comparten un mismo estado y una sola regla:
+Tres plataformas web, un servidor y una sola regla:
 **ningún token sale al mercado sin respaldo certificado detrás.**
 
-| Página | Qué es | Acento |
-|---|---|---|
-| `index.html` | Portal de entrada y explicación del flujo | oro |
-| `origen.html` | **Autoridad de Emisión de ORIGEN** — la que decide | violeta |
-| `security.html` | Tesorería de Security Tokens (ONDK, MPLE, VTRE) | oro |
-| `utility.html` | Tesorería de Utility Tokens (VETA, OGS, MTP) | cian |
+| Pieza | Qué es |
+|---|---|
+| `index.html` | Portal de entrada y explicación del flujo |
+| `origen.html` | **Autoridad de Emisión de ORIGEN** — la que decide |
+| `security.html` | Tesorería de Security Tokens (ONDK, MPLE, VTRE) |
+| `utility.html` | Tesorería de Utility Tokens (VETA, OGS, MTP) |
+| `app/reglas.js` | **Las reglas del negocio y los comandos.** Corre igual en el navegador y en el servidor |
+| `app/datos.js` | La semilla de datos: el contrato de la API |
+| `servidor/` | El backend: sesiones, firmas Ed25519, libro SHA-256, almacén, cadena 5550, Genesis ID |
 
-Todo es HTML/CSS/JS sin dependencias ni build. Se abre con doble clic o se sirve
-como estático. El estado vive en `localStorage` mientras no exista backend, y se
-comparte entre las tres páginas: lo que se autoriza en ORIGEN aparece al instante
-en las otras dos.
+El front funciona solo (abre `index.html`, o la copia estática en `/tesoreria` del Express del repo):
+en ese caso corre en **modo demostración local**, con el estado en `localStorage`.
+Servido desde `servidor/`, corre en **modo servidor**: pide sesión, cada comando viaja al API
+y vuelve con el estado sellado. Las vistas no distinguen el modo.
 
 ---
 
@@ -27,29 +30,31 @@ Activo real → certificación de un tercero → aforo por riesgo → ORIGEN →
 
 1. **Activo real.** Un bien que existe: mineral, inmueble, caja, cuenta por cobrar.
 2. **Certificación.** Un auditor o valuador independiente lo certifica con folio y vigencia.
-3. **Aforo (haircut).** Descuento por riesgo de realización. Un mineral in situ no vale
-   lo mismo que el efectivo. Solo el valor *después* del aforo respalda.
-4. **ORIGEN.** La Autoridad emite unidades de respaldo contra esa reserva. `1 ORIGEN = 1 USD`
-   de reserva certificada admisible.
+3. **Aforo (haircut).** Descuento por riesgo de realización. Solo el valor *después* del aforo respalda.
+4. **ORIGEN.** La cripto nativa de la cadena 5550: `1 ORIGEN = 1 gramín = 1/55 g de oro certificado en bóveda`.
+   El ORIGEN en circulación se valora al precio de referencia del oro que fija el Consejo
+   (`politica.oroUsdPorGramo`, con fuente y fecha; si pasa de 30 días, el panel avisa).
 5. **Autorización.** La tesorería pide emitir con causa, evidencia y firmas. Sin ORIGEN libre, se niega.
 6. **Emisión.** Salen solo los tokens que el valor certificado aguanta, al precio establecido.
 
 ### Las invariantes que el sistema hace cumplir
 
-Están implementadas en `app/nucleo.js` y se evalúan en cada render, no solo al guardar:
+Están en `app/reglas.js` y se evalúan en cada render en el navegador **y en cada comando en el servidor**:
 
 | Invariante | Dónde |
 |---|---|
-| `ORIGEN emitido ≤ Σ reservas certificadas × (1 − aforo)` | `respaldo()` |
+| `valor del ORIGEN emitido ≤ Σ reservas certificadas × (1 − aforo)` | `respaldo()` |
 | Un certificado vencido o en revisión vale **cero** | `valorAdmisible()` |
 | `ORIGEN comprometido ≤ ORIGEN emitido` → el resto es *libre* | `respaldo()` |
-| No se aprueba emisión si `origenRequerido > libre` o el ratio cae bajo el mínimo | `puedeEmitir()` |
-| Security: `emitidos × precio ≤ valuación certificada` y `≤ ORIGEN asignado` | `saludSecurity()` |
-| Utility: `circulante ≤ capacidad de servicio` y `pasivo redimible ≤ ORIGEN asignado` | `saludUtility()` |
-| Emitir exige cabecera autorizada **y** respaldo, valuación y capacidad suficientes | `emitirTokens()` |
-| Toda mutación se asienta en un libro encadenado por hash | `accion()` / `verificarLibro()` |
-
-Quemar tokens libera el ORIGEN proporcional y lo devuelve al pozo libre (`quemar()`).
+| No se aprueba emisión si `origenRequerido > libre` o el ratio cae bajo el mínimo | `puedeEmitir()` / `solicitud.aprobar` |
+| Security: `autorizado × precio ≤ valuación certificada`; el precio es el del Comité, no el del solicitante | `solicitud.crear`, `valuacion.asentar` |
+| Utility: `circulante ≤ capacidad de servicio` y `pasivo redimible ≤ ORIGEN asignado` | `saludUtility()`, `capacidad.actualizar` |
+| Emitir exige cabecera autorizada **y** respaldo, valuación y capacidad suficientes | `token.emitir` |
+| El secundario solo admite órdenes dentro de la banda sobre el precio certificado | `orden.colocar` |
+| El transfer agent bloquea lock-up y destinatarios sin Genesis ID | `token.transferir` |
+| Quemar libera el ORIGEN proporcional y lo devuelve al pozo libre | `token.quemar` |
+| El ratio mínimo nunca baja de 100 % ni se exigen más firmas que consejeros | `politica.modificar` |
+| Toda mutación es un comando con permiso y se asienta en un libro encadenado por hash | `ejecutar()` / `verificarLibro()` |
 
 ### Security vs Utility
 
@@ -64,110 +69,137 @@ Quemar tokens libera el ORIGEN proporcional y lo devuelve al pozo libre (`quemar
 
 ---
 
-## 2. Qué hace cada plataforma
+## 2. Cómo está construido
 
-### Autoridad de Emisión de ORIGEN (`origen.html`)
+### Una sola fuente de verdad: `app/reglas.js`
 
-- **Panel de respaldo** — ratio en vivo, holgura, composición por reserva, alertas de
-  certificados vencidos o por vencer, freno de emergencia global.
-- **Cola de emisión** — cada solicitud con su dictamen automático (hay respaldo / no hay),
-  causa invocada, evidencias, firmas del Consejo (M-de-N) y ventana de objeción.
-  Se puede **firmar, autorizar, objetar o rechazar**; el botón de autorizar está
-  deshabilitado mientras falten firmas o falte respaldo.
-- **Emitir / quemar ORIGEN** — contra una reserva concreta, con el ratio resultante
-  calculado antes de confirmar. Solo se puede quemar ORIGEN libre.
-- **Reservas** — registro maestro: alta, revaluación, certificar, poner en revisión, retirar.
-- **Prueba de reservas** — documento público imprimible con el sello del libro.
-- **Política y Consejo** — ratio objetivo y mínimo, firmas requeridas, días de objeción,
-  banda del secundario. Exportar o reiniciar el estado.
-- **Libro sellado** — asientos encadenados con verificación de integridad.
+Es un archivo UMD: el navegador lo carga con `<script>` y el servidor con `require()`.
+Contiene las reglas (`respaldo`, `puedeEmitir`, `saludSecurity`, `saludUtility`, `avisos`),
+los catálogos (causas de emisión, roles y permisos) y **los comandos**: cada cambio de estado
+tiene nombre, permiso y validación.
 
-### Tesorería de Security Tokens (`security.html`)
-
-- Panel con valor en circulación, valuación certificada, tenedores, alertas y
-  calendario de obligaciones (revisiones, lock-ups, ventanas, reportes vencidos).
-- Expediente por emisión: supply y los tres techos (valuación, ORIGEN, autorizado),
-  valuación con historial y Comité, distribuciones, mercado, cumplimiento, cap table
-  y el expediente ante la Autoridad.
-- **Solicitar emisión** — asistente con catálogo de causas, evidencia y dictamen
-  anticipado de lo que responderá la Autoridad.
-- **Nueva valuación** — con firmas del Comité; revaluar no emite nada, solo mueve el techo.
-- **Mercado secundario** — libro de órdenes con banda de precio (una orden fuera de banda
-  se rechaza), cruce manual, régimen abierto / por ventanas / suspendido.
-- **Transfer agent** — transferencias que verifican Genesis ID, acreditación y lock-up.
-
-### Tesorería de Utility Tokens (`utility.html`)
-
-- Panel con circulante, capacidad comprometida, pasivo redimible y cobertura de servicio.
-- Expediente por token: supply con los tres techos (capacidad, ORIGEN, techo duro),
-  contrato de capacidad, parámetros económicos, grifos, sumideros y vesting.
-- **Prueba de utilidad** — capacidad contratada contra tokens vivos, con vigencias.
-- **Economía** — rotación real, quema por consumo, telemetría del periodo.
-- Solicitar emisión (con la capacidad nueva que la respalda), emitir, quemar.
-
----
-
-## 3. Archivos
-
-```
-tesoreria/
-├── index.html          portal
-├── origen.html         autoridad de emisión
-├── security.html       tesorería security
-├── utility.html        tesorería utility
-└── app/
-    ├── estilo.css      sistema visual (teal + oro, claro/oscuro, responsive)
-    ├── datos.js        semilla de datos = contrato de la API
-    ├── nucleo.js       estado, reglas, libro sellado, chasis de UI
-    ├── origen.js       vistas de la Autoridad
-    ├── security.js     vistas de security
-    └── utility.js      vistas de utility
+```js
+R.ejecutar(estado, 'solicitud.aprobar', { id: 'SOL-0001' }, { actor, rol, hash, firmar })
+// → { estado: <copia con el cambio>, evento: <asiento sellado>, resultado }
 ```
 
+Si el comando lanza, el estado no cambia. El navegador lo usa para **explicar** (dictamen
+anticipado, techos, alertas); el servidor lo usa para **impedir**.
+
+### El navegador: `app/nucleo.js`
+
+Cliente de estado con dos modos. Al arrancar prueba `api/salud`: si responde, modo servidor
+(y pantalla de entrada si no hay sesión); si no, modo local. `T.ejecutar(nombre, datos)` corre
+el comando localmente o lo manda a `POST api/comandos`; `T.correr(...)` además avisa con un toast.
+
+### El servidor: `servidor/`
+
+Express + TypeScript, con las mismas convenciones que Genesis ID.
+
+| Archivo | Qué hace |
+|---|---|
+| `src/reglas.ts` | Carga `../app/reglas.js` y `../app/datos.js` con `createRequire` |
+| `src/store.ts` | Almacén en archivo (dev) o MongoDB (`TESORERIA_MONGO_URL`), un documento, escritura atómica |
+| `src/cripto.ts` | scrypt para contraseñas, SHA-256 para el libro, **Ed25519** para las firmas del Consejo |
+| `src/operadores.ts` | Operadores, roles, sesiones, primer presidente, bloqueo por fuerza bruta |
+| `src/rutas.ts` | El API. Una sola puerta de escritura: `POST /api/comandos` |
+| `src/cadena.ts` | Lee `totalSupply()` de los contratos en la cadena 5550 y lo concilia con lo autorizado |
+| `src/genesis.ts` | Verifica tokens de sesión única de Genesis ID (`/api/v1/sso/verificar`) |
+| `src/pruebas/` | 26 pruebas con `node:test`: reglas y flujo completo contra un servidor real |
+
+**Roles** (de `reglas.js`, los mismos en los dos lados):
+
+| Rol | Puede |
+|---|---|
+| `presidente` | Todo: política, operadores, freno, dictaminar, firmar |
+| `consejero` | Firmar, dictaminar, objetar, solicitar, operar tesorerías, reservas, emitir/quemar ORIGEN, freno |
+| `tesorero` | Solicitar, operar tesorerías, reservas |
+| `auditor` | Ver todo, no tocar nada |
+
+**Firmas.** Cada operador nace con un par Ed25519. `solicitud.firmar` en el servidor firma el
+texto canónico de la solicitud (id, token, cantidad, precio, respaldo, fecha) con la llave del
+consejero en sesión; `GET /api/solicitudes/:id/firmas` las verifica contra su llave pública.
+La llave privada la custodia hoy el servidor; el siguiente paso es llevarla al dispositivo
+(WebAuthn / llave de hardware) sin cambiar el formato de la firma.
+
+**Libro.** SHA-256 encadenado. `GET /api/libro/verificar` recorre la cadena;
+`GET /api/libro/ancla` da el sello listo para publicarlo en la cadena 5550.
+
+**Contraseña provisional.** Un operador recién creado puede entrar y mirar, pero no operar
+hasta cambiarla (`POST /api/sesion/contrasena`).
+
+### API
+
+| Método | Ruta | Sesión | Qué hace |
+|---|---|---|---|
+| `GET` | `/api/salud` · `/healthz` | no | Estado del servicio, almacén, sello del libro |
+| `GET` | `/api/prueba-de-reservas` · `/api/respaldo` | no | El documento público de respaldo |
+| `GET` | `/api/libro/verificar` · `/api/libro/ancla` | no | Integridad y sello del libro |
+| `GET` | `/api/solicitudes/:id/firmas` | no | Verificación Ed25519 de las firmas |
+| `POST` | `/api/sesion/entrar` · `/genesis` · `/salir` · `/contrasena` | — | Sesión por contraseña o por token de Genesis ID |
+| `GET` | `/api/estado` | sí | El estado completo, con la sesión y el Consejo real |
+| `GET` | `/api/comandos` | sí | Catálogo de comandos y cuáles permite el rol |
+| `POST` | `/api/comandos` `{nombre, datos}` | sí + permiso | **La única puerta de escritura** |
+| `GET` | `/api/libro?desde=&cuantos=` | sí | Asientos paginados |
+| `GET` | `/api/cadena/conciliacion` | sí | Supply en cadena vs. autorizado, por token |
+| `GET/POST` | `/api/operadores` · `POST /:id/baja` | presidente | Alta y baja de operadores |
+| `POST` | `/api/estado/reiniciar` | presidente | Volver a la semilla (queda asentado) |
+
 ---
 
-## 4. Contrato para el backend
-
-`app/datos.js` es la forma exacta de los datos. Al construir el backend, estas rutas
-reemplazan al `localStorage` sin tocar las vistas:
-
-| Método | Ruta | Reemplaza a |
-|---|---|---|
-| `GET` | `/api/tesoreria/estado` | `T.cargar()` |
-| `GET` | `/api/origen/respaldo` | `T.respaldo()` |
-| `GET/POST` | `/api/origen/reservas` | alta y listado de reservas |
-| `PATCH` | `/api/origen/reservas/:id` | revaluar, certificar, retirar |
-| `POST` | `/api/origen/emitir` · `/quemar` | emisión y quema de ORIGEN |
-| `GET/POST` | `/api/solicitudes` | cola de autorización |
-| `POST` | `/api/solicitudes/:id/firmar` · `/aprobar` · `/rechazar` · `/objetar` | dictamen |
-| `GET` | `/api/securities` · `/:id` | emisiones |
-| `POST` | `/api/securities/:id/emitir` · `/valuacion` · `/ordenes` · `/transferir` | operación |
-| `GET` | `/api/utilities` · `/:id` | tokens de servicio |
-| `POST` | `/api/utilities/:id/emitir` · `/quemar` · `/capacidad` | operación |
-| `GET` | `/api/libro` · `/api/libro/verificar` | libro sellado |
-| `GET` | `/api/prueba-de-reservas` | documento público |
-
-Notas para quien lo implemente:
-
-- Las funciones `respaldo()`, `puedeEmitir()`, `saludSecurity()` y `saludUtility()` de
-  `nucleo.js` son la especificación de negocio: hay que portarlas al servidor y
-  **volver a validarlas ahí**. El front valida para explicar, el backend valida para impedir.
-- `hash()` es un FNV-1a de 64 bits, suficiente para encadenar en el navegador.
-  En el servidor debe ser **SHA-256** y las firmas del Consejo, criptográficas de verdad
-  (una llave por consejero), no un nombre en una lista.
-- Ningún endpoint de emisión debe aceptar un monto sin releer el respaldo dentro de la
-  misma transacción: el ratio se calcula en la escritura, no antes.
-
----
-
-## 5. Probar en local
+## 3. Correr en local
 
 ```bash
-# doble clic en tesoreria/index.html, o:
+cd tesoreria/servidor
+npm install
+TESORERIA_ADMIN_PASSWORD='una-contrasena-larga' npm start
+# → http://localhost:4100  (front + API)
+npm run prueba      # 26 pruebas
+npm run typecheck
+```
+
+Sin `TESORERIA_ADMIN_PASSWORD` el servidor genera una y la imprime **una sola vez** al arrancar.
+Entra con `tesoreria@ordenglobal.org` (o `TESORERIA_ADMIN_EMAIL`).
+
+Solo el front, sin servidor (modo demostración local):
+
+```bash
 npx http-server tesoreria -p 8080
 ```
 
-Servido desde este repo (Express), la carpeta queda en `/tesoreria`.
+## 4. Desplegar
 
-El botón **Reiniciar a la semilla** en `origen.html#politica` devuelve los datos de
-demostración cuando la exploración deja el estado hecho un nudo.
+`render.yaml` en la raíz del repo ya trae el servicio `tesoreria` (rootDir `tesoreria/servidor`).
+Variables:
+
+| Variable | Para qué |
+|---|---|
+| `TESORERIA_MONGO_URL` / `TESORERIA_MONGO_DB` | **Obligatoria para operar de verdad.** Sin Mongo, el libro se pierde en cada despliegue |
+| `TESORERIA_ADMIN_EMAIL` / `_PASSWORD` / `_NOMBRE` | El primer presidente del Consejo |
+| `TESORERIA_GENESIS_URL` / `TESORERIA_GENESIS_API_KEY` | Entrada con la sesión única de Genesis ID. La clave se emite en el panel de Genesis para la app `tesoreria` con alcance `gid.verificar` |
+| `RPC_ORDEN_URL` | RPC de la cadena 5550 (por defecto `https://rpc.ordenglobal-rpc.com/`) |
+| `TESORERIA_CORS` | Orígenes adicionales que pueden llamar al API (la copia estática en Vercel) |
+| `TESORERIA_SESION_HORAS` | Duración de la sesión (8 por defecto) |
+
+**Entrar con Genesis ID.** Un consejero con identidad verificada se da de alta en la Tesorería
+con su GID. Genesis emite un token de sesión única (`/api/v1/sso/token`); la Tesorería lo
+recibe en `POST /api/sesion/genesis` (o en la URL como `?gid_token=`), lo verifica con su clave
+de API y abre sesión. La Tesorería nunca ve contraseñas ni documentos de nadie.
+
+**Conciliación con la cadena.** `origen.html#cadena` lee el `totalSupply()` real de cada contrato
+(ONDK en `0xfb83…19c1`) y lo compara con lo autorizado. Si la cadena tiene más de lo autorizado,
+hay supply sin expediente y se marca en rojo. La semilla de ONDK parte de los 555 M que la
+cadena reporta, para que el registro y la cadena cuadren desde el primer día.
+
+---
+
+## 5. Lo que queda por decidir (no por programar)
+
+- **Custodia de llaves.** Hoy las llaves Ed25519 del Consejo las guarda el servidor. Pasarlas a
+  llaves de hardware o WebAuthn es un cambio de custodia, no de formato.
+- **Anclaje en cadena.** `GET /api/libro/ancla` ya da el sello; publicarlo en la 5550 requiere una
+  cuenta con ORIGEN para pagar (hoy baseFee 0) y decidir cada cuánto se ancla.
+- **Emisión on-chain.** La Tesorería autoriza; ejecutar el `mint` en el contrato sigue siendo un
+  acto del operador de la cadena. La conciliación es lo que cierra el círculo mientras tanto.
+- **Fuente del precio del oro.** Se fija a mano con fuente y fecha; puede automatizarse contra un
+  fix público, pero conviene que siga siendo un acto del Consejo que queda en el libro.

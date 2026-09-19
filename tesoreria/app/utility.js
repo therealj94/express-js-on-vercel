@@ -6,8 +6,7 @@
    ============================================================ */
 (function () {
   'use strict';
-  const { fmt, esc, ic, el, toast, modal, cerrarModal, confirmar, medidor, alClic } = T;
-  T.cargar();
+  const { fmt, esc, ic, el, toast, modal, cerrarModal, medidor, alClic } = T;
 
   const E = () => T.estado;
   const UTL = () => E().utilities;
@@ -326,10 +325,9 @@
           el('#cob', f).textContent = nuevo > 0 ? fmt.pct((t.capacidad.comprometida / nuevo) * 100, 1) : '∞';
         };
         q.addEventListener('input', calc); calc();
-        el('[data-ok]', f).addEventListener('click', () => {
+        el('[data-ok]', f).addEventListener('click', async () => {
           const v = Number(q.value);
-          try { T.emitirTokens(id, v); cerrarModal(); toast('Tokens emitidos', `${fmt.num(v)} ${t.simbolo}`, 'ok'); }
-          catch (e) { toast('No se pudo emitir', e.message, 'bad'); }
+          if (await T.correr('token.emitir', { tokenId: id, cantidad: v }, 'Tokens emitidos', `${fmt.num(v)} ${t.simbolo}`)) cerrarModal();
         });
       },
     });
@@ -357,7 +355,7 @@
           <span class="ayuda" id="pide">${esc(causas[0].pide)}</span></div>
         <div class="fila t3">
           <div class="campo"><label>Tokens a emitir</label><input type="number" id="q" min="1" step="1000" placeholder="0"></div>
-          <div class="campo"><label>Precio ancla</label><input type="number" id="p" value="${t.precioAncla}" step="0.01"></div>
+          <div class="campo"><label>Precio ancla</label><input type="number" id="p" value="${t.precioAncla}" step="0.01" readonly></div>
           <div class="campo"><label>Capacidad nueva</label><input type="number" id="cap" min="0" step="1000" value="0">
             <span class="ayuda">Unidades de servicio que suma el contrato.</span></div>
         </div>
@@ -393,27 +391,16 @@
         }
         [q, p, cap].forEach((x) => x.addEventListener('input', recalcular));
         causa.addEventListener('change', () => { el('#pide', f).textContent = (causas.find((c) => c.v === causa.value) || {}).pide || ''; });
-        el('[data-ok]', f).addEventListener('click', () => {
-          const cant = Number(q.value), pre = Number(p.value), m = el('#m', f).value.trim();
-          if (!(cant > 0) || !(pre > 0)) return toast('Faltan datos', 'Cantidad y precio ancla', 'bad');
-          if (!m) return toast('Falta la justificación', '', 'bad');
+        el('[data-ok]', f).addEventListener('click', async () => {
           const evn = el('#ev', f).value.trim();
           const capNueva = Number(cap.value) || 0;
-          T.crearSolicitud({
-            tipo: 'utility', tokenId: t.id, simbolo: t.simbolo,
-            accion: t.supply.emitido > 0 ? 'emision_adicional' : 'emision_inicial',
-            cantidad: cant, precio: pre, origenRequerido: cant * pre * t.redimible,
-            motivo: m + (capNueva ? ` Capacidad adicional contratada: ${fmt.num(capNueva)} ${t.capacidad.unidad}.` : ''),
-            causa: causa.value,
-            evidencias: evn ? [{ nombre: evn, hash: T.hash(evn + Date.now()).slice(0, 8), tipo: 'Adjunto del solicitante' }] : [],
-          });
-          if (capNueva > 0) {
-            T.accion('capacidad.ampliada', `${t.simbolo} · capacidad comprometida +${fmt.num(capNueva)} ${t.capacidad.unidad}`, () => {
-              T.buscar.utility(id).capacidad.comprometida += capNueva;
-            }, 'ok');
-          }
-          cerrarModal();
-          toast('Solicitud enviada', 'Está en la cola de la Autoridad ORIGEN', 'ok');
+          const r = await T.correr('solicitud.crear', {
+            tokenId: t.id, cantidad: Number(q.value), precio: Number(p.value), causa: causa.value,
+            motivo: el('#m', f).value.trim() + (capNueva ? ` Capacidad adicional contratada: ${fmt.num(capNueva)} ${t.capacidad.unidad}.` : ''),
+            capacidadNueva: capNueva || undefined,
+            evidencias: evn ? [{ nombre: evn, tipo: 'Adjunto del solicitante' }] : [],
+          }, 'Solicitud enviada', 'Está en la cola de la Autoridad ORIGEN');
+          if (r) cerrarModal();
         });
       },
     });
@@ -438,11 +425,9 @@
           </select></div>`,
       pie: `<button class="btn" data-cerrar>Cancelar</button><button class="btn peligro" data-ok>Quemar</button>`,
       alAbrir(f) {
-        el('[data-ok]', f).addEventListener('click', () => {
-          const q = Number(el('#q', f).value);
-          if (!(q > 0) || q > s.circulante + t.supply.enTesoreria) return toast('Cantidad inválida', '', 'bad');
-          T.quemar(id, q, el('#m', f).value);
-          cerrarModal(); toast('Tokens quemados', `${fmt.num(q)} ${t.simbolo} · ORIGEN liberado`, 'warn');
+        el('[data-ok]', f).addEventListener('click', async () => {
+          const r = await T.correr('token.quemar', { tokenId: id, cantidad: Number(el('#q', f).value), motivo: el('#m', f).value }, 'Tokens quemados', undefined, 'warn');
+          if (r) cerrarModal();
         });
       },
     });
@@ -466,21 +451,12 @@
         <div class="campo mb0"><label>Unidad de servicio</label><input id="u" value="${esc(t.capacidad.unidad)}"></div>`,
       pie: `<button class="btn" data-cerrar>Cancelar</button><button class="btn pri" data-ok>Guardar</button>`,
       alAbrir(f) {
-        el('[data-ok]', f).addEventListener('click', () => {
-          const c = Number(el('#c', f).value);
-          const s = T.saludUtility(t);
-          if (c < s.circulante) {
-            return toast('Capacidad insuficiente', `Hay ${fmt.num(s.circulante)} tokens en circulación. Reducir por debajo dejaría tokens sin servicio: primero hay que quemarlos.`, 'bad');
-          }
-          T.accion('capacidad.actualizada', `${t.simbolo} · capacidad ${fmt.num(t.capacidad.comprometida)} → ${fmt.num(c)} ${t.capacidad.unidad}`, () => {
-            const x = T.buscar.utility(id);
-            x.capacidad.comprometida = c;
-            x.capacidad.proveedor = el('#p', f).value.trim();
-            x.capacidad.contrato = el('#k', f).value.trim();
-            x.capacidad.unidad = el('#u', f).value.trim();
-            const v = el('#v', f).value; if (v) x.capacidad.vigencia = new Date(v).toISOString();
-          }, 'ok');
-          cerrarModal(); toast('Capacidad actualizada', '', 'ok');
+        el('[data-ok]', f).addEventListener('click', async () => {
+          const r = await T.correr('capacidad.actualizar', {
+            tokenId: id, comprometida: Number(el('#c', f).value), proveedor: el('#p', f).value.trim(), contrato: el('#k', f).value.trim(),
+            unidad: el('#u', f).value.trim(), vigencia: el('#v', f).value || undefined,
+          }, 'Capacidad actualizada', '');
+          if (r) cerrarModal();
         });
       },
     });
@@ -500,18 +476,9 @@
         <div class="campo mb0"><label>Unidad de servicio (texto)</label><input id="u" value="${esc(t.unidadServicio)}"></div>`,
       pie: `<button class="btn" data-cerrar>Cancelar</button><button class="btn pri" data-ok>Guardar</button>`,
       alAbrir(f) {
-        el('[data-ok]', f).addEventListener('click', () => {
-          const p = Number(el('#p', f).value), r = Number(el('#r', f).value) / 100;
-          const s = T.saludUtility(t);
-          const nuevoPasivo = s.circulante * p * r;
-          if (nuevoPasivo > t.origenAsignado) {
-            return toast('Respaldo insuficiente', `Con esos parámetros el pasivo redimible sería ${fmt.dineroCorto(nuevoPasivo)} y solo hay ${fmt.dineroCorto(t.origenAsignado)} de ORIGEN asignado. Pide ampliación a la Autoridad.`, 'bad');
-          }
-          T.accion('utility.parametros', `${t.simbolo} · ancla ${fmt.dinero(p)}, redimible ${fmt.pct(r * 100, 0)}`, () => {
-            const x = T.buscar.utility(id);
-            x.precioAncla = p; x.redimible = r; x.unidadServicio = el('#u', f).value.trim();
-          }, 'warn');
-          cerrarModal(); toast('Parámetros actualizados', '', 'ok');
+        el('[data-ok]', f).addEventListener('click', async () => {
+          const r = await T.correr('utility.parametros', { tokenId: id, precioAncla: Number(el('#p', f).value), redimible: Number(el('#r', f).value) / 100, unidadServicio: el('#u', f).value.trim() }, 'Parámetros actualizados', '');
+          if (r) cerrarModal();
         });
       },
     });
@@ -531,14 +498,9 @@
           <span><b>Aplicar la quema al supply</b><span>Descuenta los tokens quemados del circulante y libera el ORIGEN proporcional.</span></span></label>`,
       pie: `<button class="btn" data-cerrar>Cancelar</button><button class="btn pri" data-ok>Registrar</button>`,
       alAbrir(f) {
-        el('[data-ok]', f).addEventListener('click', () => {
-          const c = Number(el('#c', f).value), q = Number(el('#q', f).value);
-          const aplicar = el('#ap', f).checked;
-          T.accion('utility.telemetria', `${t.simbolo} · ${fmt.num(c)} consumidos y ${fmt.num(q)} quemados en 30 días`, () => {
-            const x = T.buscar.utility(id); x.consumo30d = c; x.quema30d = q;
-          });
-          if (aplicar && q > 0) T.quemar(id, q, 'Quema por consumo del periodo');
-          cerrarModal(); toast('Telemetría registrada', '', 'ok');
+        el('[data-ok]', f).addEventListener('click', async () => {
+          const r = await T.correr('utility.telemetria', { tokenId: id, consumo30d: Number(el('#c', f).value), quema30d: Number(el('#q', f).value), aplicar: el('#ap', f).checked }, 'Telemetría registrada', '');
+          if (r) cerrarModal();
         });
       },
     });
@@ -569,30 +531,13 @@
         </div>`,
       pie: `<button class="btn" data-cerrar>Cancelar</button><button class="btn pri" data-ok>Registrar token</button>`,
       alAbrir(f) {
-        el('[data-ok]', f).addEventListener('click', () => {
-          const s = el('#s', f).value.trim().toUpperCase(), n = el('#n', f).value.trim();
-          const p = Number(el('#p', f).value), mx = Number(el('#mx', f).value);
-          if (!s || !n || !(p > 0) || !(mx > 0)) return toast('Faltan datos', 'Símbolo, nombre, precio ancla y techo', 'bad');
-          if (UTL().some((x) => x.simbolo === s)) return toast('Símbolo duplicado', `Ya existe ${s}`, 'bad');
-          const t = {
-            id: 'UTL-' + s, simbolo: s, nombre: n,
-            servicio: el('#sv', f).value.trim() || '—',
-            unidadServicio: el('#us', f).value.trim() || '—',
-            emisorId: 'EM-OG', cadena: 'Orden Global Chain (5550)',
-            precioAncla: p, moneda: 'USD', redimible: Number(el('#r', f).value) / 100,
-            supply: { maximo: mx, autorizado: 0, emitido: 0, enTesoreria: 0, quemado: 0 },
-            capacidad: {
-              comprometida: Number(el('#cp', f).value) || 0,
-              unidad: el('#cu', f).value.trim() || 'unidades de servicio',
-              proveedor: 'Por definir', contrato: '—',
-              vigencia: new Date(Date.now() + 365 * 86400000).toISOString(),
-            },
-            grifos: [], sumideros: [], consumo30d: 0, quema30d: 0,
-            origenAsignado: 0, estado: 'borrador', creado: new Date().toISOString(), vesting: [],
-          };
-          T.accion('utility.registrado', `${s} · ${n} registrado con ancla de ${fmt.dinero(p)}`, (e) => e.utilities.push(t), 'ok');
-          cerrarModal(); tokenAbierto = t.id;
-          toast('Token registrado', 'Ahora solicita la autorización a ORIGEN', 'ok');
+        el('[data-ok]', f).addEventListener('click', async () => {
+          const r = await T.correr('utility.registrar', {
+            simbolo: el('#s', f).value.trim(), nombre: el('#n', f).value.trim(), servicio: el('#sv', f).value.trim(), unidadServicio: el('#us', f).value.trim(),
+            precioAncla: Number(el('#p', f).value), redimible: Number(el('#r', f).value) / 100, maximo: Number(el('#mx', f).value),
+            capacidad: Number(el('#cp', f).value), unidadCapacidad: el('#cu', f).value.trim(),
+          }, 'Token registrado', 'Ahora solicita la autorización a ORIGEN');
+          if (r) { cerrarModal(); tokenAbierto = r.resultado.creado; render(); }
         });
       },
     });

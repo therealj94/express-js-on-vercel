@@ -1,13 +1,24 @@
 /* ============================================================
-   Orden Global · Tesorería — núcleo compartido
-   Estado, reglas de respaldo, libro sellado y utilidades de UI.
-   Las tres plataformas (security / utility / origen) comparten
-   este estado: lo que se aprueba en ORIGEN se ve en las otras dos.
+   Orden Global · Tesorería — núcleo del navegador
+   ------------------------------------------------------------
+   Cliente de estado con dos modos:
+     · local — sin servidor: el estado vive en localStorage y los
+       comandos corren aquí mismo (demostración, trabajo sin red).
+     · api   — con servidor: cada comando viaja a POST api/comandos,
+       el servidor lo valida con las MISMAS reglas (app/reglas.js),
+       lo sella con SHA-256 y devuelve el estado nuevo.
+   Las vistas no distinguen el modo: llaman a T.ejecutar(...) y
+   reciben una promesa.
    ============================================================ */
 (function (global) {
   'use strict';
 
-  const LLAVE = 'og.tesoreria.v1';
+  const R = global.TesoreriaReglas;
+  const SEMILLA = global.TesoreriaSemilla;
+  const LLAVE = 'og.tesoreria.v2';
+  const LLAVE_SESION = 'og.tesoreria.sesion';
+
+  const ETIQUETA_ROL = { presidente: 'Presidente del Consejo', consejero: 'Consejero', tesorero: 'Tesorero', auditor: 'Auditor' };
 
   /* ---------------- formato ---------------- */
   const fmt = {
@@ -17,385 +28,171 @@
     },
     dinero(n, mon = 'USD', d = 2) {
       if (n === null || n === undefined || Number.isNaN(n)) return '—';
-      const s = Number(n).toLocaleString('es-MX', { minimumFractionDigits: d, maximumFractionDigits: d });
-      return (mon === 'USD' ? '$' : mon === 'MXN' ? 'MX$' : '') + s + (mon === 'USD' ? '' : '');
+      return (mon === 'USD' ? '$' : mon === 'MXN' ? 'MX$' : '') + Number(n).toLocaleString('es-MX', { minimumFractionDigits: d, maximumFractionDigits: d });
     },
-    compacto(n) {
-      const a = Math.abs(Number(n) || 0);
-      if (a >= 1e9) return (n / 1e9).toFixed(2).replace(/\.00$/, '') + ' MM';
-      if (a >= 1e6) return (n / 1e6).toFixed(2).replace(/\.00$/, '') + ' M';
-      if (a >= 1e3) return (n / 1e3).toFixed(1).replace(/\.0$/, '') + ' k';
-      return fmt.num(n);
-    },
-    dineroCorto(n, mon = 'USD') { return (mon === 'USD' ? '$' : 'MX$') + fmt.compacto(n); },
-    pct(n, d = 2) {
-      if (n === null || n === undefined || Number.isNaN(n)) return '—';
-      return Number(n).toFixed(d) + '%';
-    },
-    fecha(iso) {
-      if (!iso) return '—';
-      const f = new Date(iso);
-      return f.toLocaleDateString('es-MX', { day: '2-digit', month: 'short', year: 'numeric' });
-    },
-    fechaHora(iso) {
-      if (!iso) return '—';
-      const f = new Date(iso);
-      return f.toLocaleString('es-MX', { day: '2-digit', month: 'short', year: '2-digit', hour: '2-digit', minute: '2-digit' });
-    },
+    compacto: (n) => R.fmt.compacto(n),
+    dineroCorto: (n, mon = 'USD') => (mon === 'USD' ? '$' : 'MX$') + R.fmt.compacto(n),
+    origen: (u) => R.fmt.compacto(u) + ' ORIGEN',
+    pct(n, d = 2) { return n === null || n === undefined || Number.isNaN(n) ? '—' : Number(n).toFixed(d) + '%'; },
+    fecha(iso) { return iso ? new Date(iso).toLocaleDateString('es-MX', { day: '2-digit', month: 'short', year: 'numeric' }) : '—'; },
+    fechaHora(iso) { return iso ? new Date(iso).toLocaleString('es-MX', { day: '2-digit', month: 'short', year: '2-digit', hour: '2-digit', minute: '2-digit' }) : '—'; },
     relativo(iso) {
       if (!iso) return '—';
-      const ms = new Date(iso) - Date.now();
-      const dias = Math.round(ms / 86400000);
+      const ms = new Date(iso) - Date.now(); const dias = Math.round(ms / 86400000);
       if (Math.abs(dias) >= 1) return dias > 0 ? `en ${dias} d` : `hace ${-dias} d`;
       const hrs = Math.round(ms / 3600000);
       if (Math.abs(hrs) >= 1) return hrs > 0 ? `en ${hrs} h` : `hace ${-hrs} h`;
       const min = Math.round(ms / 60000);
       return min > 0 ? `en ${min} min` : `hace ${Math.max(0, -min)} min`;
     },
+    rol: (r) => ETIQUETA_ROL[r] || r,
   };
 
-  /* ---------------- sello del libro (cadena de hashes) ---------------- */
-  function hash(txt) {
-    // FNV-1a de 64 bits simulado con dos palabras de 32 — suficiente para
-    // encadenar el libro en el front. El backend firmará con SHA-256.
-    let h1 = 0x811c9dc5, h2 = 0x01000193;
-    for (let i = 0; i < txt.length; i++) {
-      const c = txt.charCodeAt(i);
-      h1 ^= c; h1 = Math.imul(h1, 0x01000193) >>> 0;
-      h2 = (h2 + Math.imul(c, 0x85ebca6b)) >>> 0; h2 = ((h2 << 13) | (h2 >>> 19)) >>> 0;
-    }
-    return (h1.toString(16).padStart(8, '0') + h2.toString(16).padStart(8, '0')).toUpperCase();
-  }
-
-  const id = (pre) => pre + '-' + Math.random().toString(36).slice(2, 8).toUpperCase();
-
-  /* ---------------- estado ---------------- */
+  /* ---------------- estado y modo ---------------- */
   let estado = null;
+  let modo = 'local';          // 'local' | 'api'
+  let sesionToken = '';
+  let infoServidor = null;     // lo que responde api/salud
   const oyentes = [];
+  const BASE = new URL('.', location.href);       // carpeta donde vive la página
+  const urlApi = (ruta) => new URL('api/' + ruta.replace(/^\/?api\//, '').replace(/^\//, ''), BASE).toString();
 
-  function cargar() {
-    let crudo = null;
-    try { crudo = localStorage.getItem(LLAVE); } catch (e) { crudo = null; }
-    if (crudo) {
-      try {
-        const d = JSON.parse(crudo);
-        if (d && d.version === global.TesoreriaSemilla.version) { estado = d; return estado; }
-      } catch (e) { /* semilla nueva */ }
-    }
-    estado = JSON.parse(JSON.stringify(global.TesoreriaSemilla.estado));
-    sellarLibro();
-    guardar();
-    return estado;
-  }
-
-  /** Encadena el libro de la semilla (del más viejo al más nuevo). */
-  function sellarLibro() {
-    const l = estado.libro;
-    for (let i = l.length - 1; i >= 0; i--) {
-      const prev = i + 1 < l.length ? l[i + 1].hash : 'GENESIS';
-      l[i].hashPrev = prev;
-      l[i].hash = hash(l[i].id + l[i].ts + l[i].actor + l[i].tipo + l[i].detalle + prev);
-    }
-  }
-
-  function guardar() {
-    try { localStorage.setItem(LLAVE, JSON.stringify(estado)); } catch (e) { /* modo privado: solo memoria */ }
-  }
-
-  function reiniciar() {
-    try { localStorage.removeItem(LLAVE); } catch (e) {}
-    estado = JSON.parse(JSON.stringify(global.TesoreriaSemilla.estado));
-    guardar(); emitir();
-  }
+  try { sesionToken = localStorage.getItem(LLAVE_SESION) || ''; } catch (e) { sesionToken = ''; }
 
   function suscribir(fn) { oyentes.push(fn); return () => { const i = oyentes.indexOf(fn); if (i >= 0) oyentes.splice(i, 1); }; }
   function emitir() { oyentes.forEach((f) => { try { f(estado); } catch (e) { console.error(e); } }); }
 
-  /** Toda mutación pasa por aquí: se aplica, se asienta en el libro y se sella. */
-  function accion(tipo, detalle, mutador, nivel) {
-    const antes = JSON.parse(JSON.stringify(estado));
-    try { mutador(estado); }
-    catch (e) { estado = antes; throw e; }
-    asentar(tipo, detalle, nivel || 'info');
-    guardar(); emitir();
-  }
-
-  function asentar(tipo, detalle, nivel) {
-    const prev = estado.libro.length ? estado.libro[0].hash : 'GENESIS';
-    const ev = {
-      id: id('EV'), ts: new Date().toISOString(), actor: estado.sesion.usuario,
-      rol: estado.sesion.rol, tipo, detalle, nivel: nivel || 'info', hashPrev: prev,
-    };
-    ev.hash = hash(ev.id + ev.ts + ev.actor + ev.tipo + ev.detalle + prev);
-    estado.libro.unshift(ev);
-    if (estado.libro.length > 400) estado.libro.length = 400;
-    return ev;
-  }
-
-  function verificarLibro() {
-    const l = estado.libro;
-    for (let i = 0; i < l.length; i++) {
-      const prev = i + 1 < l.length ? l[i + 1].hash : 'GENESIS';
-      const esperado = hash(l[i].id + l[i].ts + l[i].actor + l[i].tipo + l[i].detalle + prev);
-      if (l[i].hashPrev !== prev || l[i].hash !== esperado) return { ok: false, en: l[i].id, indice: i };
+  /* --- modo local --- */
+  function cargarLocal() {
+    let crudo = null;
+    try { crudo = localStorage.getItem(LLAVE); } catch (e) { crudo = null; }
+    if (crudo) {
+      try { const d = JSON.parse(crudo); if (d && d.version === SEMILLA.version) { estado = d; return estado; } } catch (e) { /* semilla nueva */ }
     }
-    return { ok: true, total: l.length };
+    estado = R.clon(SEMILLA.estado);
+    R.sellarLibro(estado);
+    guardarLocal();
+    return estado;
+  }
+  function guardarLocal() { try { localStorage.setItem(LLAVE, JSON.stringify(estado)); } catch (e) { /* modo privado */ } }
+
+  /** Carga síncrona en modo local. La usan las páginas sin servidor y el arranque. */
+  function cargar() { if (!estado) cargarLocal(); return estado; }
+
+  /* --- modo api --- */
+  async function api(ruta, opciones) {
+    const o = Object.assign({ method: 'GET' }, opciones || {});
+    const cab = Object.assign({ Accept: 'application/json' }, o.headers || {});
+    if (sesionToken) cab.Authorization = 'Bearer ' + sesionToken;
+    if (o.cuerpo !== undefined) { cab['Content-Type'] = 'application/json'; o.body = JSON.stringify(o.cuerpo); }
+    const r = await fetch(urlApi(ruta), { method: o.method, headers: cab, body: o.body });
+    const tipo = r.headers.get('content-type') || '';
+    if (!tipo.includes('application/json')) { const err = new Error('El servidor no respondió JSON'); err.sinApi = true; err.status = r.status; throw err; }
+    const j = await r.json();
+    if (!r.ok) { const err = new Error(j.error || `Error ${r.status}`); err.status = r.status; err.datos = j; throw err; }
+    return j;
   }
 
-  /* ---------------- reglas de respaldo (el corazón) ---------------- */
-
-  /** Valor admisible de una reserva = valor certificado menos el aforo (haircut). */
-  function valorAdmisible(r) {
-    if (r.estado !== 'certificada') return 0;
-    if (r.vence && new Date(r.vence) < new Date()) return 0; // certificado vencido no respalda
-    return r.valorCertificado * (1 - r.haircut);
+  /**
+   * Decide el modo y carga el estado.
+   * Con servidor: api/salud responde → modo api. Sin sesión → pantalla de entrada.
+   * Sin servidor (archivo local, Vercel estático): modo local.
+   */
+  async function arrancar() {
+    // Abierto como archivo no hay servidor posible: ni se intenta.
+    if (location.protocol === 'file:') { modo = 'local'; cargarLocal(); return { modo, sesion: estado.sesion }; }
+    try {
+      infoServidor = await api('salud');
+      modo = 'api';
+    } catch (e) {
+      modo = 'local'; cargarLocal(); return { modo, sesion: estado.sesion };
+    }
+    try {
+      const r = await api('estado');
+      estado = r.estado;
+      return { modo, sesion: estado.sesion };
+    } catch (e) {
+      if (e.status === 401) { estado = null; return { modo, sesion: null }; }
+      throw e;
+    }
   }
 
-  function reservasAdmisibles() {
-    return estado.reservas.reduce((s, r) => s + valorAdmisible(r), 0);
+  async function entrar(email, contrasena) {
+    const r = await api('sesion/entrar', { method: 'POST', cuerpo: { email, contrasena } });
+    sesionToken = r.token;
+    try { localStorage.setItem(LLAVE_SESION, sesionToken); } catch (e) {}
+    const est = await api('estado'); estado = est.estado; emitir();
+    return r;
+  }
+  async function entrarConGenesis(token) {
+    const r = await api('sesion/genesis', { method: 'POST', cuerpo: { token } });
+    sesionToken = r.token;
+    try { localStorage.setItem(LLAVE_SESION, sesionToken); } catch (e) {}
+    const est = await api('estado'); estado = est.estado; emitir();
+    return r;
+  }
+  async function salir() {
+    if (modo === 'api') { try { await api('sesion/salir', { method: 'POST' }); } catch (e) {} }
+    sesionToken = ''; try { localStorage.removeItem(LLAVE_SESION); } catch (e) {}
+    estado = null;
+    location.reload();
   }
 
-  /** Fotografía completa del respaldo. Toda decisión de emisión se toma con esto. */
-  function respaldo() {
-    const admisible = reservasAdmisibles();
-    const emitido = estado.origen.emitido - estado.origen.quemado;
-    const comprometido = estado.asignaciones
-      .filter((a) => a.estado === 'comprometida')
-      .reduce((s, a) => s + a.monto, 0);
-    const libre = emitido - comprometido;
-    const enCola = estado.solicitudes
-      .filter((s) => ['en_revision', 'objecion'].includes(s.estado))
-      .reduce((s, x) => s + x.origenRequerido, 0);
-    const ratio = emitido > 0 ? (admisible / emitido) * 100 : Infinity;
-    const holgura = admisible - emitido;
-    return {
-      admisible, emitido, comprometido, libre, enCola, ratio, holgura,
-      libreTrasCola: libre - enCola,
-      salud: ratio === Infinity ? 'ok' : ratio >= estado.politica.ratioObjetivo ? 'ok'
-        : ratio >= estado.politica.ratioMinimo ? 'warn' : 'bad',
-      congelado: estado.politica.congelado,
-    };
+  /* --- comandos --- */
+
+  /** Ejecuta un comando con nombre. Devuelve { evento, resultado }. Lanza Error con mensaje legible. */
+  async function ejecutar(nombre, datos) {
+    if (modo === 'api') {
+      const r = await api('comandos', { method: 'POST', cuerpo: { nombre, datos: datos || {} } });
+      estado = r.estado; emitir();
+      return { evento: r.evento, resultado: r.resultado };
+    }
+    const r = R.ejecutar(estado, nombre, datos, { actor: estado.sesion.usuario, rol: estado.sesion.rol });
+    estado = r.estado; guardarLocal(); emitir();
+    return { evento: r.evento, resultado: r.resultado };
   }
 
-  /** ¿Puede aprobarse una emisión por `monto` de ORIGEN? Devuelve motivos. */
-  function puedeEmitir(monto) {
-    const r = respaldo();
-    const faltas = [];
-    if (r.congelado) faltas.push('La emisión global está congelada por el Consejo.');
-    if (monto > r.libre) faltas.push(`Solo hay ${fmt.dineroCorto(r.libre)} de ORIGEN libre; se piden ${fmt.dineroCorto(monto)}.`);
-    const ratioDespues = r.emitido > 0 ? (r.admisible / r.emitido) * 100 : Infinity;
-    if (ratioDespues < estado.politica.ratioMinimo) faltas.push(`El ratio de respaldo quedaría en ${fmt.pct(ratioDespues)}, bajo el mínimo de ${estado.politica.ratioMinimo}%.`);
-    return { ok: faltas.length === 0, faltas, respaldo: r };
+  /** Ejecuta y avisa con un toast. Resuelve `true` si salió bien. */
+  async function correr(nombre, datos, tituloOk, textoOk, tipoOk) {
+    try {
+      const r = await ejecutar(nombre, datos);
+      toast(tituloOk || 'Hecho', textoOk === undefined ? r.evento.detalle : textoOk, tipoOk || 'ok');
+      return r;
+    } catch (e) {
+      toast('No se pudo', e.message, 'bad');
+      return null;
+    }
   }
 
-  /* ----- invariantes por token ----- */
-
-  /** Security: valor emitido ≤ valuación certificada y ≤ ORIGEN asignado. */
-  function saludSecurity(t) {
-    const valorEmitido = t.supply.emitido * t.precioUnitario;
-    const cobertura = valorEmitido > 0 ? (t.valuacion.valorCertificado / valorEmitido) * 100 : Infinity;
-    const cabecera = t.supply.autorizado - t.supply.emitido;
-    const origenOk = t.origenAsignado >= valorEmitido;
-    const valVence = t.valuacion.proximaRevision && new Date(t.valuacion.proximaRevision) < new Date();
-    const alertas = [];
-    if (!origenOk) alertas.push('Valor emitido por encima del ORIGEN asignado');
-    if (cobertura < 100) alertas.push('Valor emitido por encima de la valuación certificada');
-    if (valVence) alertas.push('Valuación vencida: requiere revisión del Comité');
-    const reportesVencidos = (t.cumplimiento.reportes || []).filter((r) => r.estado === 'vencido').length;
-    if (reportesVencidos) alertas.push(`${reportesVencidos} reporte(s) periódico(s) vencido(s)`);
-    return {
-      valorEmitido, cobertura, cabecera, origenOk, valVence, alertas,
-      salud: alertas.length === 0 ? 'ok' : (!origenOk || cobertura < 100) ? 'bad' : 'warn',
-    };
+  async function reiniciar() {
+    if (modo === 'api') {
+      const r = await api('estado/reiniciar', { method: 'POST' });
+      estado = r.estado; emitir(); return;
+    }
+    try { localStorage.removeItem(LLAVE); } catch (e) {}
+    estado = R.clon(SEMILLA.estado); R.sellarLibro(estado); guardarLocal(); emitir();
   }
 
-  /** Utility: circulante ≤ capacidad de servicio y la porción redimible ≤ ORIGEN asignado. */
-  function saludUtility(t) {
-    const circulante = t.supply.emitido - t.supply.quemado - t.supply.enTesoreria;
-    const capacidadCubre = t.capacidad.comprometida; // en unidades de servicio
-    const ratioUtilidad = circulante > 0 ? (capacidadCubre / circulante) * 100 : Infinity;
-    const pasivoRedimible = circulante * t.precioAncla * t.redimible;
-    const origenOk = t.origenAsignado >= pasivoRedimible;
-    const alertas = [];
-    if (ratioUtilidad < 100) alertas.push('Circulante por encima de la capacidad de servicio comprometida');
-    if (!origenOk) alertas.push('Pasivo redimible por encima del ORIGEN asignado');
-    if (t.quema30d > 0 && t.consumo30d / Math.max(t.quema30d, 1) < 0.5) alertas.push('Consumo real muy por debajo de la emisión: revisar grifos');
-    return {
-      circulante, ratioUtilidad, pasivoRedimible, origenOk, alertas,
-      salud: alertas.length === 0 ? 'ok' : !origenOk || ratioUtilidad < 100 ? 'bad' : 'warn',
-    };
-  }
-
-  /* ---------------- consultas ---------------- */
+  /* ---------------- consultas ligadas al estado ---------------- */
   const buscar = {
-    security: (i) => estado.securities.find((t) => t.id === i),
-    utility: (i) => estado.utilities.find((t) => t.id === i),
-    token: (i) => estado.securities.find((t) => t.id === i) || estado.utilities.find((t) => t.id === i),
-    reserva: (i) => estado.reservas.find((r) => r.id === i),
-    solicitud: (i) => estado.solicitudes.find((s) => s.id === i),
-    emisor: (i) => estado.emisores.find((e) => e.id === i),
+    security: (i) => R.buscar.security(estado, i),
+    utility: (i) => R.buscar.utility(estado, i),
+    token: (i) => R.buscar.token(estado, i),
+    reserva: (i) => R.buscar.reserva(estado, i),
+    solicitud: (i) => R.buscar.solicitud(estado, i),
+    emisor: (i) => R.buscar.emisor(estado, i),
     asignacionesDe: (i) => estado.asignaciones.filter((a) => a.tokenId === i),
     solicitudesDe: (i) => estado.solicitudes.filter((s) => s.tokenId === i),
-    pendientes: () => estado.solicitudes.filter((s) => ['en_revision', 'objecion'].includes(s.estado)),
+    pendientes: () => R.buscar.pendientes(estado),
   };
-
-  /* ---------------- flujo de solicitudes de emisión ---------------- */
-
-  function crearSolicitud(datos) {
-    const s = {
-      id: id('SOL'),
-      tipo: datos.tipo,                 // 'security' | 'utility'
-      tokenId: datos.tokenId,
-      simbolo: datos.simbolo,
-      accion: datos.accion,             // 'emision_inicial' | 'emision_adicional' | 'recompra' | 'quema'
-      cantidad: datos.cantidad,
-      precio: datos.precio,
-      origenRequerido: datos.origenRequerido,
-      motivo: datos.motivo,
-      causa: datos.causa,               // catálogo de causas admisibles
-      evidencias: datos.evidencias || [],
-      solicitante: estado.sesion.usuario,
-      creada: new Date().toISOString(),
-      estado: 'en_revision',
-      firmas: [],
-      firmasRequeridas: estado.politica.firmasRequeridas,
-      ventanaObjecionHasta: new Date(Date.now() + estado.politica.diasObjecion * 86400000).toISOString(),
-      dictamen: null,
-    };
-    accion('solicitud.creada',
-      `${s.simbolo} · ${etiquetaAccion(s.accion)} de ${fmt.num(s.cantidad)} tokens (${fmt.dineroCorto(s.origenRequerido)} de ORIGEN)`,
-      (e) => e.solicitudes.unshift(s));
-    return s;
-  }
-
-  function firmar(solId, firmante) {
-    const s = buscar.solicitud(solId);
-    if (!s) throw new Error('Solicitud no encontrada');
-    if (s.firmas.some((f) => f.quien === firmante)) throw new Error('Ese consejero ya firmó');
-    accion('solicitud.firmada', `${firmante} firmó ${solId}`, () => {
-      s.firmas.push({ quien: firmante, ts: new Date().toISOString() });
-    });
-    return s;
-  }
-
-  function aprobar(solId) {
-    const s = buscar.solicitud(solId);
-    if (!s) throw new Error('Solicitud no encontrada');
-    if (s.firmas.length < s.firmasRequeridas) throw new Error(`Faltan firmas: ${s.firmas.length}/${s.firmasRequeridas}`);
-    const chequeo = puedeEmitir(s.origenRequerido);
-    if (!chequeo.ok) throw new Error(chequeo.faltas.join(' '));
-
-    accion('solicitud.aprobada', `${s.simbolo} · ${etiquetaAccion(s.accion)} aprobada — se comprometen ${fmt.dineroCorto(s.origenRequerido)} de ORIGEN`, (e) => {
-      s.estado = 'aprobada';
-      s.resuelta = new Date().toISOString();
-      s.dictamen = 'Respaldo verificado. Emisión autorizada.';
-      e.asignaciones.push({
-        id: id('ASG'), tokenId: s.tokenId, solicitudId: s.id, monto: s.origenRequerido,
-        estado: 'comprometida', fecha: new Date().toISOString(),
-      });
-      const t = buscar.token(s.tokenId);
-      if (t) {
-        t.origenAsignado += s.origenRequerido;
-        t.supply.autorizado = (t.supply.autorizado || 0) + s.cantidad;
-        if (t.estado === 'borrador') t.estado = 'en_registro';
-      }
-    }, 'ok');
-    return s;
-  }
-
-  function rechazar(solId, motivo) {
-    const s = buscar.solicitud(solId);
-    if (!s) throw new Error('Solicitud no encontrada');
-    accion('solicitud.rechazada', `${s.simbolo} · ${etiquetaAccion(s.accion)} rechazada — ${motivo}`, () => {
-      s.estado = 'rechazada'; s.resuelta = new Date().toISOString(); s.dictamen = motivo;
-    }, 'bad');
-    return s;
-  }
-
-  function objetar(solId, motivo) {
-    const s = buscar.solicitud(solId);
-    accion('solicitud.objetada', `${s.simbolo} · objeción registrada — ${motivo}`, () => {
-      s.estado = 'objecion'; s.dictamen = motivo;
-    }, 'warn');
-    return s;
-  }
-
-  /** Ejecuta la emisión ya autorizada: pasa de autorizado a emitido. */
-  function emitirTokens(tokenId, cantidad) {
-    const t = buscar.token(tokenId);
-    if (!t) throw new Error('Token no encontrado');
-    const cabecera = t.supply.autorizado - t.supply.emitido;
-    if (cantidad > cabecera) throw new Error(`Solo hay ${fmt.num(cabecera)} tokens autorizados sin emitir.`);
-    // Segundo candado: ni con cabecera disponible se emite por encima del respaldo.
-    const precio = t.precioUnitario || t.precioAncla;
-    const porcion = t.redimible !== undefined ? t.redimible : 1;
-    const consumo = (t.supply.emitido + cantidad) * precio * porcion;
-    if (consumo > t.origenAsignado + 0.01) {
-      throw new Error(`El ORIGEN asignado (${fmt.dineroCorto(t.origenAsignado)}) solo respalda hasta ${fmt.num(Math.floor(t.origenAsignado / (precio * porcion)))} tokens.`);
-    }
-    if (t.valuacion && (t.supply.emitido + cantidad) * precio > t.valuacion.valorCertificado + 0.01) {
-      throw new Error(`Se superaría la valuación certificada de ${fmt.dineroCorto(t.valuacion.valorCertificado)}.`);
-    }
-    if (t.capacidad && (t.supply.emitido + cantidad) - t.supply.quemado - t.supply.enTesoreria > t.capacidad.comprometida) {
-      throw new Error(`No hay capacidad de servicio para tantos tokens (${fmt.num(t.capacidad.comprometida)} ${t.capacidad.unidad}).`);
-    }
-    accion('token.emitido', `${t.simbolo} · se emitieron ${fmt.num(cantidad)} tokens contra respaldo autorizado`, () => {
-      t.supply.emitido += cantidad;
-      if (t.supply.enTesoreria !== undefined) t.supply.enTesoreria += cantidad;
-      if (t.estado === 'en_registro') t.estado = 'listado';
-    }, 'ok');
-    return t;
-  }
-
-  function quemar(tokenId, cantidad, motivo) {
-    const t = buscar.token(tokenId);
-    accion('token.quemado', `${t.simbolo} · se quemaron ${fmt.num(cantidad)} tokens — ${motivo}`, () => {
-      t.supply.quemado += cantidad;
-      const liberado = cantidad * (t.precioUnitario || t.precioAncla) * (t.redimible !== undefined ? t.redimible : 1);
-      t.origenAsignado = Math.max(0, t.origenAsignado - liberado);
-      const asg = estado.asignaciones.filter((a) => a.tokenId === tokenId && a.estado === 'comprometida');
-      let resto = liberado;
-      for (const a of asg) {
-        if (resto <= 0) break;
-        const baja = Math.min(a.monto, resto);
-        a.monto -= baja; resto -= baja;
-        if (a.monto <= 0.01) a.estado = 'liberada';
-      }
-    }, 'warn');
-  }
-
-  const ACCIONES = {
-    emision_inicial: 'Emisión inicial',
-    emision_adicional: 'Emisión adicional',
-    revaluacion: 'Revaluación al alza',
-    recompra: 'Recompra',
-    quema: 'Quema',
-  };
-  const etiquetaAccion = (a) => ACCIONES[a] || a;
-
-  const CAUSAS = {
-    security: [
-      { v: 'nuevo_activo', t: 'Aporte de nuevo activo al patrimonio', pide: 'Certificado de aporte + tasación del activo nuevo' },
-      { v: 'revaluacion', t: 'Revaluación al alza certificada', pide: 'Informe de valuador independiente y acta del Comité' },
-      { v: 'ampliacion_capital', t: 'Ampliación de capital aprobada en asamblea', pide: 'Acta de asamblea y folleto suplementario' },
-      { v: 'canje', t: 'Canje / conversión de instrumento previo', pide: 'Contrato de conversión y quema equivalente' },
-    ],
-    utility: [
-      { v: 'capacidad', t: 'Ampliación de capacidad de servicio', pide: 'Contrato de capacidad e infraestructura verificable' },
-      { v: 'demanda', t: 'Demanda de uso comprobada (consumo > 85%)', pide: 'Métricas de consumo de los últimos 90 días' },
-      { v: 'programa', t: 'Programa de incentivos aprobado', pide: 'Presupuesto del programa y calendario de vesting' },
-      { v: 'reposicion', t: 'Reposición por quema', pide: 'Comprobante de quema equivalente' },
-    ],
-  };
+  const puede = (permiso) => estado && R.puede(estado.sesion.rol, permiso);
 
   /* ---------------- UI ---------------- */
   const el = (sel, raiz) => (raiz || document).querySelector(sel);
   const els = (sel, raiz) => Array.from((raiz || document).querySelectorAll(sel));
-
   function esc(s) {
     return String(s === null || s === undefined ? '' : s)
-      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
   }
 
   const ICONOS = {
@@ -423,10 +220,11 @@
     engrane: '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.6 1.6 0 00.3 1.8l.1.1a2 2 0 11-2.8 2.8l-.1-.1a1.6 1.6 0 00-2.7 1.1V21a2 2 0 11-4 0v-.1A1.6 1.6 0 007.5 19.4l-.1.1a2 2 0 11-2.8-2.8l.1-.1A1.6 1.6 0 003 15H3a2 2 0 110-4h.1A1.6 1.6 0 004.6 8.5l-.1-.1a2 2 0 112.8-2.8l.1.1A1.6 1.6 0 009 4.6V3a2 2 0 114 0v.1a1.6 1.6 0 002.7 1.1l.1-.1a2 2 0 112.8 2.8l-.1.1a1.6 1.6 0 001.1 2.7H21a2 2 0 110 4h-.1a1.6 1.6 0 00-1.5 1.3z"/>',
     pausa: '<rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/>',
     llave: '<circle cx="8" cy="15" r="4"/><path d="M10.9 12.1L20 3M17 6l2 2M14 9l2 2"/>',
+    cadena: '<path d="M10 13a5 5 0 007 0l3-3a5 5 0 00-7-7l-1 1"/><path d="M14 11a5 5 0 00-7 0l-3 3a5 5 0 007 7l1-1"/>',
+    salir: '<path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9"/>',
   };
   const ic = (n, cls) => `<svg viewBox="0 0 24 24" class="${cls || ''}" aria-hidden="true">${ICONOS[n] || ''}</svg>`;
 
-  /* --- toasts --- */
   function toast(titulo, texto, tipo) {
     let cont = el('.toasts');
     if (!cont) { cont = document.createElement('div'); cont.className = 'toasts'; document.body.appendChild(cont); }
@@ -434,66 +232,110 @@
     t.className = 'toast ' + (tipo || '');
     t.innerHTML = `<b>${esc(titulo)}</b>${texto ? `<span>${esc(texto)}</span>` : ''}`;
     cont.appendChild(t);
-    setTimeout(() => { t.style.opacity = '0'; t.style.transition = 'opacity .3s'; setTimeout(() => t.remove(), 320); }, 4200);
+    setTimeout(() => { t.style.opacity = '0'; t.style.transition = 'opacity .3s'; setTimeout(() => t.remove(), 320); }, tipo === 'bad' ? 7000 : 4200);
   }
 
-  /* --- modal --- */
   let modalActual = null;
-  function modal({ titulo, cuerpo, pie, ancho, alAbrir }) {
+  function modal({ titulo, cuerpo, pie, ancho, alAbrir, fijo }) {
     cerrarModal();
     const fondo = document.createElement('div');
     fondo.className = 'modal-fondo';
     fondo.innerHTML = `
       <div class="modal ${ancho ? 'ancho' : ''}" role="dialog" aria-modal="true">
-        <div class="cab"><h3>${esc(titulo)}</h3><button class="x" data-cerrar aria-label="Cerrar">&times;</button></div>
+        <div class="cab"><h3>${esc(titulo)}</h3>${fijo ? '' : '<button class="x" data-cerrar aria-label="Cerrar">&times;</button>'}</div>
         <div class="cuerpo">${cuerpo}</div>
         ${pie ? `<div class="pie">${pie}</div>` : ''}
       </div>`;
-    fondo.addEventListener('click', (e) => { if (e.target === fondo || e.target.closest('[data-cerrar]')) cerrarModal(); });
+    if (!fijo) fondo.addEventListener('click', (e) => { if (e.target === fondo || e.target.closest('[data-cerrar]')) cerrarModal(); });
     document.body.appendChild(fondo);
     document.body.style.overflow = 'hidden';
     modalActual = fondo;
     if (alAbrir) alAbrir(fondo);
     return fondo;
   }
-  function cerrarModal() {
-    if (modalActual) { modalActual.remove(); modalActual = null; document.body.style.overflow = ''; }
-  }
-  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') cerrarModal(); });
+  function cerrarModal() { if (modalActual) { modalActual.remove(); modalActual = null; document.body.style.overflow = ''; } }
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && modalActual && !modalActual.dataset.fijo) cerrarModal(); });
 
   function confirmar(titulo, texto, alSi, textoBoton, peligro) {
     modal({
       titulo,
       cuerpo: `<p style="font-size:13.5px;line-height:1.6;color:var(--muted)">${texto}</p>`,
-      pie: `<button class="btn" data-cerrar>Cancelar</button>
-            <button class="btn ${peligro ? 'peligro' : 'pri'}" data-si>${esc(textoBoton || 'Confirmar')}</button>`,
+      pie: `<button class="btn" data-cerrar>Cancelar</button><button class="btn ${peligro ? 'peligro' : 'pri'}" data-si>${esc(textoBoton || 'Confirmar')}</button>`,
       alAbrir(f) { el('[data-si]', f).addEventListener('click', () => { cerrarModal(); alSi(); }); },
     });
   }
 
-  /* --- tema --- */
+  function pedirMotivo(titulo, etiqueta, fn) {
+    modal({
+      titulo,
+      cuerpo: `<div class="campo mb0"><label>${esc(etiqueta)}</label><textarea id="m" placeholder="Queda asentado en el libro de la Autoridad."></textarea></div>`,
+      pie: `<button class="btn" data-cerrar>Cancelar</button><button class="btn pri" data-ok>Confirmar</button>`,
+      alAbrir(f) {
+        el('[data-ok]', f).addEventListener('click', () => {
+          const m = el('#m', f).value.trim();
+          if (!m) return toast('Escribe el motivo', '', 'bad');
+          cerrarModal(); fn(m);
+        });
+      },
+    });
+  }
+
   function tema(v) {
     const actual = document.documentElement.getAttribute('data-theme');
     const nuevo = v || (actual === 'light' ? 'dark' : 'light');
     document.documentElement.setAttribute('data-theme', nuevo);
     try { localStorage.setItem('og.tema', nuevo); } catch (e) {}
   }
-  (function temaInicial() {
-    try { const t = localStorage.getItem('og.tema'); if (t) document.documentElement.setAttribute('data-theme', t); } catch (e) {}
-  })();
+  (function temaInicial() { try { const t = localStorage.getItem('og.tema'); if (t) document.documentElement.setAttribute('data-theme', t); } catch (e) {} })();
 
-  /* --- medidor circular --- */
   function medidor(pct, etiqueta, color, tam) {
-    const T = tam || 132, R = T / 2 - 10, C = 2 * Math.PI * R;
+    const T = tam || 132, Rr = T / 2 - 10, C = 2 * Math.PI * Rr;
     const p = Math.max(0, Math.min(100, Number.isFinite(pct) ? pct : 100));
     return `<div class="medidor" style="width:${T}px;height:${T}px">
       <svg width="${T}" height="${T}">
-        <circle cx="${T / 2}" cy="${T / 2}" r="${R}" stroke="var(--surface3)" stroke-width="9" fill="none"/>
-        <circle cx="${T / 2}" cy="${T / 2}" r="${R}" stroke="${color}" stroke-width="9" fill="none"
-          stroke-linecap="round" stroke-dasharray="${C}" stroke-dashoffset="${C * (1 - p / 100)}"/>
+        <circle cx="${T / 2}" cy="${T / 2}" r="${Rr}" stroke="var(--surface3)" stroke-width="9" fill="none"/>
+        <circle cx="${T / 2}" cy="${T / 2}" r="${Rr}" stroke="${color}" stroke-width="9" fill="none" stroke-linecap="round" stroke-dasharray="${C}" stroke-dashoffset="${C * (1 - p / 100)}"/>
       </svg>
       <div class="centro"><b>${Number.isFinite(pct) ? fmt.pct(pct, 1) : '∞'}</b><span>${esc(etiqueta)}</span></div>
     </div>`;
+  }
+
+  /* --- pantalla de entrada (modo api sin sesión) --- */
+  function pantallaEntrada(alEntrar) {
+    const params = new URLSearchParams(location.search);
+    const tokenGenesis = params.get('gid_token') || params.get('token') || '';
+    modal({
+      fijo: true,
+      titulo: 'Tesorería de Orden Global',
+      cuerpo: `
+        <p class="muted" style="font-size:13px;line-height:1.6;margin-bottom:16px">
+          Esta plataforma decide cuánto ORIGEN existe. Entra con tu cuenta de operador o con tu sesión de Genesis ID.
+          ${infoServidor && infoServidor.efimero ? '<br><span class="warn-t">El servidor está en modo archivo: los datos no sobreviven a un despliegue.</span>' : ''}
+        </p>
+        <div class="campo"><label>Correo</label><input id="em" type="email" autocomplete="username" placeholder="tu@ordenglobal.org"></div>
+        <div class="campo"><label>Contraseña</label><input id="pw" type="password" autocomplete="current-password"></div>
+        <div id="err" class="bad-t" style="font-size:12.5px;min-height:18px"></div>
+        <details style="margin-top:8px"><summary class="ts" style="cursor:pointer">Entrar con Genesis ID</summary>
+          <div class="campo mt10 mb0"><label>Token de sesión única (GID)</label>
+            <input id="gt" placeholder="Pega el token que emite Genesis ID" value="${esc(tokenGenesis)}">
+            <span class="ayuda">Lo emite el panel de Genesis ID para consejeros con identidad verificada.</span></div>
+          <button class="btn chico mt10" data-genesis>${ic('llave')} Entrar con Genesis ID</button>
+        </details>`,
+      pie: `<a class="btn fantasma izq" href="./index.html">← Portal</a><button class="btn pri" data-entrar>Entrar</button>`,
+      alAbrir(f) {
+        const err = el('#err', f);
+        const ir = async (fn) => {
+          err.textContent = '';
+          try { await fn(); cerrarModal(); alEntrar(); }
+          catch (e) { err.textContent = e.message; }
+        };
+        el('[data-entrar]', f).addEventListener('click', () => ir(() => entrar(el('#em', f).value.trim(), el('#pw', f).value)));
+        el('#pw', f).addEventListener('keydown', (e) => { if (e.key === 'Enter') el('[data-entrar]', f).click(); });
+        el('[data-genesis]', f).addEventListener('click', () => ir(() => entrarConGenesis(el('#gt', f).value.trim())));
+        if (tokenGenesis) el('[data-genesis]', f).click();
+        setTimeout(() => el('#em', f).focus(), 50);
+      },
+    });
   }
 
   /* --- chasis compartido (sidebar + topbar) --- */
@@ -509,10 +351,7 @@
       <div class="velo" data-velo></div>
       <div class="shell">
         <aside class="side" data-side>
-          <div class="brand">
-            <div class="mark">${ic('escudo')}</div>
-            <div><b>${esc(marca)}</b><span>${esc(sub)}</span></div>
-          </div>
+          <div class="brand"><div class="mark">${ic('escudo')}</div><div><b>${esc(marca)}</b><span>${esc(sub)}</span></div></div>
           <nav class="nav">${navHtml}</nav>
           <div class="pie">
             <a href="./index.html">← Portal de Tesorería</a>
@@ -527,11 +366,13 @@
             <button class="menu-btn" data-menu aria-label="Menú">${ic('lista')}</button>
             <div><h1 data-titulo></h1><div class="sub" data-subtitulo></div></div>
             <div class="der">
+              <span class="tag plano" data-modo></span>
               <span class="tag plano" data-sesion></span>
+              <button class="btn chico fantasma" data-salir title="Salir" style="display:none">${ic('salir')}</button>
               <button class="btn chico fantasma" data-tema title="Claro / oscuro">${ic('sol')}</button>
             </div>
           </header>
-          <div class="contenido" data-contenido></div>
+          <div class="contenido" data-contenido><div class="vacio">${ic('reloj')}<div>Cargando…</div></div></div>
         </div>
       </div>`;
 
@@ -540,6 +381,7 @@
     const velo = el('[data-velo]', raiz);
     el('[data-tema]', raiz).addEventListener('click', () => { tema(); render(); });
     el('[data-menu]', raiz).addEventListener('click', () => { side.classList.add('abierto'); velo.classList.add('on'); });
+    el('[data-salir]', raiz).addEventListener('click', () => salir());
     velo.addEventListener('click', () => { side.classList.remove('abierto'); velo.classList.remove('on'); });
 
     let vistaActual = (location.hash || '').replace('#', '') || inicio;
@@ -548,7 +390,7 @@
     els('[data-vista]', raiz).forEach((a) => a.addEventListener('click', () => {
       vistaActual = a.dataset.vista; location.hash = vistaActual;
       side.classList.remove('abierto'); velo.classList.remove('on');
-      render(); cont.scrollTop = 0; window.scrollTo(0, 0);
+      render(); window.scrollTo(0, 0);
     }));
     window.addEventListener('hashchange', () => {
       const v = (location.hash || '').replace('#', '');
@@ -556,28 +398,33 @@
     });
 
     function render() {
+      if (!estado) return;
       const v = vistas[vistaActual] || vistas[inicio];
       els('[data-vista]', raiz).forEach((a) => a.classList.toggle('on', a.dataset.vista === vistaActual));
       el('[data-titulo]', raiz).textContent = v.titulo;
       el('[data-subtitulo]', raiz).textContent = typeof v.sub === 'function' ? v.sub() : (v.sub || '');
-      el('[data-sesion]', raiz).innerHTML = `${esc(estado.sesion.usuario)} · <span class="faint">${esc(estado.sesion.rol)}</span>`;
+      el('[data-sesion]', raiz).innerHTML = `${esc(estado.sesion.usuario)} · <span class="faint">${esc(fmt.rol(estado.sesion.rol))}</span>`;
+      const m = el('[data-modo]', raiz);
+      m.textContent = modo === 'api' ? (infoServidor && infoServidor.efimero ? 'servidor · archivo' : 'servidor') : 'demostración local';
+      m.className = 'tag plano ' + (modo === 'api' ? 'ok' : 'warn');
+      el('[data-salir]', raiz).style.display = modo === 'api' ? '' : 'none';
       const sello = el('[data-sello]', raiz);
       if (sello) sello.innerHTML = `<span class="ts mono">sello ${esc((estado.libro[0] || {}).hash || '—').slice(0, 12)}</span>`;
       cont.innerHTML = v.render();
       if (v.alMontar) v.alMontar(cont);
-      // contadores rojos
-      els('[data-pill]', raiz).forEach((b) => {
-        const n = buscar.pendientes().length;
-        b.textContent = n; b.style.display = n ? '' : 'none';
-      });
+      els('[data-pill]', raiz).forEach((b) => { const n = buscar.pendientes().length; b.textContent = n; b.style.display = n ? '' : 'none'; });
     }
 
     suscribir(render);
-    render();
+    arrancar().then((r) => {
+      if (r.modo === 'api' && !r.sesion) pantallaEntrada(render);
+      else render();
+    }).catch((e) => {
+      cont.innerHTML = `<div class="aviso bad">${ic('alerta')}<div><b>No se pudo cargar el estado</b><span class="txt">${esc(e.message)}</span></div></div>`;
+    });
     return { render, ir: (v) => { vistaActual = v; location.hash = v; render(); } };
   }
 
-  /* --- delegación de clics por atributo --- */
   function alClic(raiz, attr, fn) {
     raiz.addEventListener('click', (e) => {
       const t = e.target.closest('[' + attr + ']');
@@ -585,7 +432,6 @@
     });
   }
 
-  /* --- export --- */
   function exportarJSON(nombre, datos) {
     const blob = new Blob([JSON.stringify(datos, null, 2)], { type: 'application/json' });
     const a = document.createElement('a');
@@ -594,15 +440,23 @@
   }
 
   global.T = {
-    // estado
     get estado() { return estado; },
-    cargar, guardar, reiniciar, suscribir, accion, asentar, verificarLibro, hash, id,
-    // reglas
-    respaldo, puedeEmitir, saludSecurity, saludUtility, valorAdmisible, reservasAdmisibles,
-    crearSolicitud, firmar, aprobar, rechazar, objetar, emitirTokens, quemar,
-    buscar, etiquetaAccion, ACCIONES, CAUSAS,
+    get modo() { return modo; },
+    get servidor() { return infoServidor; },
+    R,
+    cargar, arrancar, ejecutar, correr, reiniciar, suscribir, api, entrar, salir,
+    // reglas ligadas al estado
+    respaldo: () => R.respaldo(estado),
+    puedeEmitir: (m) => R.puedeEmitir(estado, m),
+    saludSecurity: (t) => R.saludSecurity(t),
+    saludUtility: (t) => R.saludUtility(t),
+    valorAdmisible: (r) => R.valorAdmisible(r),
+    reservasAdmisibles: () => R.reservasAdmisibles(estado),
+    verificarLibro: () => R.verificarLibro(estado),
+    avisos: () => R.avisos(estado),
+    buscar, puede, etiquetaAccion: R.etiquetaAccion, ACCIONES: R.ACCIONES, CAUSAS: R.CAUSAS, TIPOS_SEC: R.TIPOS_SEC,
+    hash: R.hashFnv, id: R.idAzar,
     // ui
-    fmt, el, els, esc, ic, ICONOS, toast, modal, cerrarModal, confirmar, tema,
-    medidor, chasis, alClic, exportarJSON,
+    fmt, el, els, esc, ic, ICONOS, toast, modal, cerrarModal, confirmar, pedirMotivo, tema, medidor, chasis, alClic, exportarJSON,
   };
 })(window);

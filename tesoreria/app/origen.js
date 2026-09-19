@@ -6,11 +6,11 @@
    ============================================================ */
 (function () {
   'use strict';
-  const { fmt, esc, ic, el, els, toast, modal, cerrarModal, confirmar, medidor, alClic } = T;
-  T.cargar();
+  const { fmt, esc, ic, el, els, toast, modal, cerrarModal, confirmar, pedirMotivo, medidor, alClic } = T;
 
   const E = () => T.estado;
   const salud = (s) => (s === 'ok' ? 'ok' : s === 'warn' ? 'warn' : 'bad');
+  const enApi = () => T.modo === 'api';
 
   /* ---------- piezas ---------- */
 
@@ -25,8 +25,8 @@
       </div>
       <div class="kpi acento">
         <div class="et">${ic('token')} ORIGEN en circulación</div>
-        <div class="val num">${fmt.compacto(r.emitido)}</div>
-        <div class="nota">${fmt.compacto(E().origen.emitido)} emitidos − ${fmt.compacto(E().origen.quemado)} quemados</div>
+        <div class="val num">${fmt.compacto(r.emitidoUnidades)}<small>≈ ${fmt.dineroCorto(r.emitido)}</small></div>
+        <div class="nota">1 ORIGEN = 1/55 g Au = ${fmt.dinero(r.valorUnidad)} · ${fmt.compacto(E().origen.quemado)} quemados</div>
       </div>
       <div class="kpi">
         <div class="et">${ic('candado')} Comprometido en tokens</div>
@@ -77,18 +77,7 @@
   }
 
   function avisosGlobales() {
-    const r = T.respaldo();
-    const av = [];
-    if (r.congelado) av.push(['bad', 'Emisión congelada', 'El Consejo activó el freno de emergencia. Ninguna solicitud puede aprobarse hasta levantarlo.']);
-    if (r.ratio < E().politica.ratioMinimo) av.push(['bad', 'Ratio bajo el mínimo', `El respaldo está en ${fmt.pct(r.ratio)}. Hay que sumar reservas o quemar ORIGEN antes de cualquier emisión.`]);
-    else if (r.ratio < E().politica.ratioObjetivo) av.push(['warn', 'Ratio bajo el objetivo', `El respaldo está en ${fmt.pct(r.ratio)}, debajo del objetivo de ${E().politica.ratioObjetivo}%.`]);
-    if (r.libreTrasCola < 0) av.push(['warn', 'La cola excede el ORIGEN libre', `Las solicitudes pendientes piden ${fmt.dineroCorto(r.enCola)} y solo hay ${fmt.dineroCorto(r.libre)} libres. No todas pueden aprobarse.`]);
-    const venc = E().reservas.filter((x) => x.estado === 'certificada' && x.vence && new Date(x.vence) < new Date());
-    if (venc.length) av.push(['warn', 'Certificados vencidos', `${venc.length} reserva(s) dejaron de computar: ${venc.map((v) => v.id).join(', ')}.`]);
-    const porVencer = E().reservas.filter((x) => x.estado === 'certificada' && x.vence && new Date(x.vence) > new Date() && new Date(x.vence) - Date.now() < 60 * 86400000);
-    if (porVencer.length) av.push(['warn', 'Certificados por vencer', `${porVencer.length} reserva(s) vencen en menos de 60 días.`]);
-    if (!av.length) av.push(['ok', 'Sistema en regla', 'Todo el ORIGEN en circulación tiene respaldo certificado vigente.']);
-    return av.map(([t, b, p]) => `
+    return T.avisos().map(([t, b, p]) => `
       <div class="aviso ${t}" style="margin-bottom:9px">${ic(t === 'ok' ? 'check' : 'alerta')}
         <div><b>${esc(b)}</b><span class="txt">${esc(p)}</span></div></div>`).join('');
   }
@@ -167,20 +156,18 @@
       alClic(c, 'data-sol', (id) => abrirSolicitud(id));
       alClic(c, 'data-ir', (v) => { location.hash = v; });
       const f = el('[data-freno]', c);
-      if (f) f.addEventListener('click', () => {
-        const on = E().politica.congelado;
-        confirmar(on ? 'Levantar el freno' : 'Congelar toda emisión',
-          on ? 'Se reanuda la facultad de autorizar emisiones. Queda asentado en el libro.'
-             : 'Ninguna solicitud podrá aprobarse hasta que el Consejo levante el freno. Se usa ante una caída del respaldo o una auditoría en curso.',
-          () => {
-            T.accion(on ? 'sistema.descongelado' : 'sistema.congelado',
-              on ? 'El Consejo levantó el freno de emisión' : 'El Consejo congeló toda emisión del ecosistema',
-              (e) => { e.politica.congelado = !on; }, on ? 'ok' : 'bad');
-            toast(on ? 'Freno levantado' : 'Emisión congelada', '', on ? 'ok' : 'bad');
-          }, on ? 'Levantar' : 'Congelar', !on);
-      });
+      if (f) f.addEventListener('click', alternarFreno);
     },
   };
+
+  function alternarFreno() {
+    const on = E().politica.congelado;
+    confirmar(on ? 'Levantar el freno' : 'Congelar toda emisión',
+      on ? 'Se reanuda la facultad de autorizar emisiones. Queda asentado en el libro.'
+         : 'Ninguna solicitud podrá aprobarse hasta que el Consejo levante el freno. Se usa ante una caída del respaldo o una auditoría en curso.',
+      () => T.correr('sistema.freno', { congelar: !on }, on ? 'Freno levantado' : 'Emisión congelada', '', on ? 'ok' : 'bad'),
+      on ? 'Levantar' : 'Congelar', !on);
+  }
 
   function composicion() {
     const rs = E().reservas.slice().sort((a, b) => T.valorAdmisible(b) - T.valorAdmisible(a));
@@ -271,11 +258,15 @@
           <dt>Vence</dt><dd>${fmt.fecha(r.vence)} ${r.vence ? `<span class="faint">(${fmt.relativo(r.vence)})</span>` : ''}</dd>
         </dl>
         <div class="linea"></div>
-        <div class="campo mb0">
+        <div class="campo">
           <label>Ajustar valor certificado (USD)</label>
           <input type="number" id="nv" value="${r.valorCertificado}" min="0" step="1000">
           <span class="ayuda">Solo con un informe de valuador vigente. El cambio se asienta en el libro y recalcula el ratio de respaldo al instante.</span>
-        </div>`,
+        </div>
+        ${r.estado !== 'certificada' ? `<div class="fila mb0">
+          <div class="campo mb0"><label>Folio del certificado</label><input id="folio" value="${r.certificado === '—' ? '' : esc(r.certificado)}" placeholder="CERT-…"></div>
+          <div class="campo mb0"><label>Vigencia</label><input type="date" id="vig"></div>
+        </div>` : ''}`,
       pie: `
         <div class="izq">
           ${r.estado !== 'certificada'
@@ -286,40 +277,25 @@
         <button class="btn" data-cerrar>Cerrar</button>
         <button class="btn pri" data-guardar>Guardar valor</button>`,
       alAbrir(f) {
-        el('[data-guardar]', f).addEventListener('click', () => {
+        el('[data-guardar]', f).addEventListener('click', async () => {
           const v = Number(el('#nv', f).value);
-          if (!(v >= 0)) return toast('Valor inválido', '', 'bad');
-          T.accion('reserva.revaluada', `${r.id} revaluada de ${fmt.dineroCorto(r.valorCertificado)} a ${fmt.dineroCorto(v)}`, () => {
-            const x = T.buscar.reserva(id); x.valorCertificado = v;
-          });
-          cerrarModal(); toast('Reserva actualizada', 'El ratio de respaldo se recalculó', 'ok');
+          if (await T.correr('reserva.revaluar', { id, valorCertificado: v }, 'Reserva actualizada', 'El ratio de respaldo se recalculó')) cerrarModal();
         });
         const cert = el('[data-cert]', f);
-        if (cert) cert.addEventListener('click', () => {
-          T.accion('reserva.certificada', `${r.id} certificada y admitida al respaldo`, () => {
-            const x = T.buscar.reserva(id);
-            x.estado = 'certificada';
-            x.fechaCert = new Date().toISOString();
-            x.vence = new Date(Date.now() + 365 * 86400000).toISOString();
-          }, 'ok');
-          cerrarModal(); toast('Reserva certificada', 'Ya computa al respaldo', 'ok');
+        if (cert) cert.addEventListener('click', async () => {
+          const d = { id, certificado: el('#folio', f).value.trim(), vence: el('#vig', f).value || undefined };
+          if (await T.correr('reserva.certificar', d, 'Reserva certificada', 'Ya computa al respaldo')) cerrarModal();
         });
         const rev = el('[data-rev]', f);
         if (rev) rev.addEventListener('click', () => {
-          confirmar('Poner en revisión', 'Deja de computar al respaldo de inmediato. Si el ORIGEN emitido supera las reservas admisibles, el sistema bloqueará toda emisión nueva.', () => {
-            T.accion('reserva.en_revision', `${r.id} pasó a revisión: deja de computar al respaldo`, () => {
-              T.buscar.reserva(id).estado = 'en_revision';
-            }, 'warn');
-            cerrarModal(); toast('Reserva en revisión', '', 'warn');
-          }, 'Poner en revisión', true);
+          cerrarModal();
+          confirmar('Poner en revisión', 'Deja de computar al respaldo de inmediato. Si el ORIGEN emitido supera las reservas admisibles, el sistema bloqueará toda emisión nueva.',
+            () => T.correr('reserva.revision', { id }, 'Reserva en revisión', '', 'warn'), 'Poner en revisión', true);
         });
         el('[data-ret]', f).addEventListener('click', () => {
-          confirmar('Retirar la reserva', 'El activo sale del respaldo de forma definitiva. Si con eso el respaldo queda corto, hay que quemar ORIGEN por la diferencia.', () => {
-            T.accion('reserva.retirada', `${r.id} retirada del respaldo (${fmt.dineroCorto(r.valorCertificado)})`, () => {
-              T.buscar.reserva(id).estado = 'retirada';
-            }, 'bad');
-            cerrarModal(); toast('Reserva retirada', 'Revisa el ratio de respaldo', 'bad');
-          }, 'Retirar', true);
+          cerrarModal();
+          confirmar('Retirar la reserva', 'El activo sale del respaldo de forma definitiva. Si con eso el respaldo queda corto, hay que quemar ORIGEN por la diferencia.',
+            () => T.correr('reserva.retirar', { id }, 'Reserva retirada', 'Revisa el ratio de respaldo', 'bad'), 'Retirar', true);
         });
       },
     });
@@ -351,23 +327,15 @@
           <span class="ayuda">Al vencer, la reserva deja de computar automáticamente. Sin folio ni vigencia, la reserva entra como “en revisión”.</span></div>`,
       pie: `<button class="btn" data-cerrar>Cancelar</button><button class="btn pri" data-ok>Registrar</button>`,
       alAbrir(f) {
-        el('[data-ok]', f).addEventListener('click', () => {
-          const n = el('#n', f).value.trim(), v = Number(el('#v', f).value);
-          if (!n || !(v > 0)) return toast('Faltan datos', 'Nombre y valor certificado son obligatorios', 'bad');
+        el('[data-ok]', f).addEventListener('click', async () => {
           const ce = el('#ce', f).value.trim(), ve = el('#ve', f).value;
-          const r = {
-            id: T.id('RES'), nombre: n, clase: el('#cl', f).value, detalle: el('#d', f).value.trim(),
-            custodio: el('#cu', f).value.trim() || '—', auditor: el('#au', f).value.trim() || '—',
-            certificado: ce || '—', valorCertificado: v, moneda: 'USD',
-            haircut: Math.min(0.9, Math.max(0, Number(el('#h', f).value) / 100)),
-            estado: ce && ve ? 'certificada' : 'en_revision',
-            fechaCert: ce && ve ? new Date().toISOString() : null,
-            vence: ve ? new Date(ve).toISOString() : null,
-            docHash: T.hash(n + v + Date.now()).slice(0, 8), origenSerie: 'Orden Global Corp',
+          const d = {
+            nombre: el('#n', f).value.trim(), clase: el('#cl', f).value, detalle: el('#d', f).value.trim(),
+            custodio: el('#cu', f).value.trim(), auditor: el('#au', f).value.trim(),
+            certificado: ce, valorCertificado: Number(el('#v', f).value), haircut: Number(el('#h', f).value) / 100,
+            vence: ve || undefined,
           };
-          T.accion('reserva.registrada', `${r.id} · ${n} por ${fmt.dineroCorto(v)} (aforo ${fmt.pct(r.haircut * 100, 0)})`, (e) => e.reservas.push(r), 'ok');
-          cerrarModal();
-          toast('Reserva registrada', r.estado === 'certificada' ? 'Ya computa al respaldo' : 'Queda en revisión hasta certificarse', 'ok');
+          if (await T.correr('reserva.registrar', d, 'Reserva registrada', ce && ve ? 'Ya computa al respaldo' : 'Queda en revisión hasta certificarse')) cerrarModal();
         });
       },
     });
@@ -448,66 +416,47 @@
         <div class="titulo-sec">Firmas del Consejo — ${s.firmas.length} de ${s.firmasRequeridas}</div>
         <div class="barra"><i class="${s.firmas.length >= s.firmasRequeridas ? 'ok' : 'a'}" style="width:${Math.min(100, (s.firmas.length / s.firmasRequeridas) * 100)}%"></i></div>
         <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:12px">
-          ${E().sesion.consejeros.map((cn) => {
+          ${Array.from(new Set([...s.firmas.map((x) => x.quien), ...E().consejo])).map((cn) => {
             const fi = s.firmas.find((x) => x.quien === cn);
-            return `<span class="tag ${fi ? 'ok' : ''}">${esc(cn)}${fi ? ' · firmó' : ''}</span>`;
+            return `<span class="tag ${fi ? 'ok' : ''}" title="${fi && fi.firma ? 'Ed25519 ' + esc(fi.firma.slice(0, 16)) + '…' : ''}">${esc(cn)}${fi ? (fi.firma ? ' · firmó ✓' : ' · firmó') : ''}</span>`;
           }).join('')}
         </div>
-        ${pendiente && faltanFirmas ? `
-          <div class="fila mt16" style="align-items:end">
-            <div class="campo mb0"><label>Firmar como</label>
-              <select id="firmante">${E().sesion.consejeros
-                .filter((cn) => !s.firmas.some((x) => x.quien === cn))
-                .map((cn) => `<option>${esc(cn)}</option>`).join('')}</select></div>
+        ${pendiente && faltanFirmas && T.puede('solicitud.firmar') ? (enApi()
+          ? (E().consejo.includes(E().sesion.usuario) && !s.firmas.some((x) => x.quien === E().sesion.usuario)
+            ? `<div class="mt16"><button class="btn" data-firmar>${ic('llave')} Firmar como ${esc(E().sesion.usuario)}</button>
+               <span class="ts" style="margin-left:10px">La firma se genera con tu llave Ed25519 en el servidor y queda verificable.</span></div>`
+            : `<p class="ts mt10">${E().consejo.includes(E().sesion.usuario) ? 'Ya firmaste esta solicitud.' : 'Solo los consejeros pueden firmar.'}</p>`)
+          : `<div class="fila mt16" style="align-items:end">
+            <div class="campo mb0"><label>Firmar como (demostración)</label>
+              <select id="firmante">${E().consejo.filter((cn) => !s.firmas.some((x) => x.quien === cn)).map((cn) => `<option>${esc(cn)}</option>`).join('')}</select></div>
             <button class="btn" data-firmar style="height:38px">${ic('llave')} Firmar solicitud</button>
-          </div>` : ''}
+          </div>`) : ''}
         ${s.dictamen ? `<div class="aviso ${s.estado === 'aprobada' ? 'ok' : s.estado === 'rechazada' ? 'bad' : 'warn'} mt16">
           ${ic('doc')}<div><b>Dictamen</b><span class="txt">${esc(s.dictamen)}</span></div></div>` : ''}`,
-      pie: pendiente ? `
-        <div class="izq"><button class="btn" data-objetar>${ic('alerta')} Objetar</button></div>
+      pie: pendiente && T.puede('solicitud.dictaminar') ? `
+        <div class="izq"><button class="btn" data-objetar ${s.estado === 'objecion' ? 'disabled' : ''}>${ic('alerta')} Objetar</button></div>
         <button class="btn peligro" data-rechazar>${ic('x')} Rechazar</button>
         <button class="btn pri" data-aprobar ${(!ch.ok || faltanFirmas) ? 'disabled' : ''}>
           ${ic('check')} ${faltanFirmas ? `Faltan ${faltanFirmas} firma(s)` : 'Autorizar emisión'}</button>`
         : `<button class="btn" data-cerrar>Cerrar</button>`,
       alAbrir(f) {
         const fb = el('[data-firmar]', f);
-        if (fb) fb.addEventListener('click', () => {
-          try { T.firmar(id, el('#firmante', f).value); cerrarModal(); abrirSolicitud(id); toast('Firma registrada', '', 'ok'); }
-          catch (e) { toast('No se pudo firmar', e.message, 'bad'); }
+        if (fb) fb.addEventListener('click', async () => {
+          const sel = el('#firmante', f);
+          const r = await T.correr('solicitud.firmar', { id, firmante: sel ? sel.value : undefined }, 'Firma registrada', '');
+          if (r) { cerrarModal(); abrirSolicitud(id); }
         });
         const ap = el('[data-aprobar]', f);
         if (ap) ap.addEventListener('click', () => {
+          cerrarModal();
           confirmar('Autorizar la emisión',
             `Se comprometen ${fmt.dinero(s.origenRequerido)} de ORIGEN y se autoriza la emisión de ${fmt.num(s.cantidad)} ${esc(s.simbolo)}. Queda sellado en el libro y ya no se puede deshacer, solo compensar con una quema.`,
-            () => {
-              try { T.aprobar(id); cerrarModal(); toast('Emisión autorizada', `${s.simbolo} · ${fmt.dineroCorto(s.origenRequerido)} comprometidos`, 'ok'); }
-              catch (e) { toast('No se pudo autorizar', e.message, 'bad'); }
-            }, 'Autorizar');
+            () => T.correr('solicitud.aprobar', { id }, 'Emisión autorizada', `${s.simbolo} · ${fmt.dineroCorto(s.origenRequerido)} comprometidos`), 'Autorizar');
         });
         const rz = el('[data-rechazar]', f);
-        if (rz) rz.addEventListener('click', () => pedirMotivo('Rechazar la solicitud', 'Motivo del rechazo', (m) => {
-          T.rechazar(id, m); cerrarModal(); toast('Solicitud rechazada', '', 'bad');
-        }));
+        if (rz) rz.addEventListener('click', () => { cerrarModal(); pedirMotivo('Rechazar la solicitud', 'Motivo del rechazo', (m) => T.correr('solicitud.rechazar', { id, motivo: m }, 'Solicitud rechazada', '', 'bad')); });
         const ob = el('[data-objetar]', f);
-        if (ob) ob.addEventListener('click', () => pedirMotivo('Registrar una objeción', 'Objeción', (m) => {
-          T.objetar(id, m); cerrarModal(); toast('Objeción registrada', 'La solicitud queda detenida', 'warn');
-        }));
-      },
-    });
-  }
-
-  function pedirMotivo(titulo, etiqueta, fn) {
-    modal({
-      titulo,
-      cuerpo: `<div class="campo mb0"><label>${esc(etiqueta)}</label>
-        <textarea id="m" placeholder="Queda asentado en el libro público de la Autoridad."></textarea></div>`,
-      pie: `<button class="btn" data-cerrar>Cancelar</button><button class="btn pri" data-ok>Confirmar</button>`,
-      alAbrir(f) {
-        el('[data-ok]', f).addEventListener('click', () => {
-          const m = el('#m', f).value.trim();
-          if (!m) return toast('Escribe el motivo', '', 'bad');
-          cerrarModal(); fn(m);
-        });
+        if (ob) ob.addEventListener('click', () => { cerrarModal(); pedirMotivo('Registrar una objeción', 'Objeción', (m) => T.correr('solicitud.objetar', { id, motivo: m }, 'Objeción registrada', 'La solicitud queda detenida', 'warn')); });
       },
     });
   }
@@ -518,18 +467,20 @@
     sub: 'La unidad de respaldo solo nace contra reserva certificada',
     render() {
       const r = T.respaldo();
-      const maxEmitible = Math.max(0, r.admisible / (E().politica.ratioObjetivo / 100) - r.emitido);
+      const maxEmitibleUsd = Math.max(0, r.admisible / (E().politica.ratioObjetivo / 100) - r.emitido);
+      const maxEmitible = Math.floor(maxEmitibleUsd / r.valorUnidad);
       return `
       ${kpisRespaldo()}
       <div class="grid g2 mt16">
         <div class="card"><div class="cab"><h3>Emitir ORIGEN</h3></div><div class="cuerpo">
           <p class="muted" style="font-size:13px;margin-bottom:14px">
             Solo puede emitirse ORIGEN mientras el ratio de respaldo se mantenga en el objetivo de ${E().politica.ratioObjetivo}%.
-            Con las reservas actuales el margen es de <b class="ac-t num">${fmt.dinero(maxEmitible)}</b>.
+            Con las reservas actuales y el oro a ${fmt.dinero(E().politica.oroUsdPorGramo)}/g, el margen es de
+            <b class="ac-t num">${fmt.num(maxEmitible)} ORIGEN</b> (≈ ${fmt.dineroCorto(maxEmitibleUsd)}).
           </p>
-          <div class="campo"><label>Monto a emitir (ORIGEN)</label>
+          <div class="campo"><label>Unidades a emitir (ORIGEN)</label>
             <input type="number" id="me" min="0" step="10000" placeholder="0">
-            <span class="ayuda">1 ORIGEN = 1 USD de reserva certificada admisible.</span></div>
+            <span class="ayuda">1 ORIGEN = 1/55 g de oro certificado = ${fmt.dinero(r.valorUnidad)} al precio de referencia. <span id="me-usd"></span></span></div>
           <div class="campo"><label>Reserva que lo respalda</label>
             <select id="re">${E().reservas.filter((x) => T.valorAdmisible(x) > 0)
               .map((x) => `<option value="${x.id}">${esc(x.nombre)} — ${fmt.dineroCorto(T.valorAdmisible(x))} admisible</option>`).join('')}</select></div>
@@ -539,9 +490,9 @@
         <div class="card"><div class="cab"><h3>Quemar ORIGEN</h3></div><div class="cuerpo">
           <p class="muted" style="font-size:13px;margin-bottom:14px">
             Se quema cuando se retira una reserva, se redime un token o hay que restaurar el ratio.
-            Solo puede quemarse ORIGEN libre: hoy hay <b class="num">${fmt.dinero(r.libre)}</b>.
+            Solo puede quemarse ORIGEN libre: hoy hay <b class="num">${fmt.num(Math.floor(r.libre / r.valorUnidad))} ORIGEN</b> (≈ ${fmt.dineroCorto(r.libre)}).
           </p>
-          <div class="campo"><label>Monto a quemar (ORIGEN)</label>
+          <div class="campo"><label>Unidades a quemar (ORIGEN)</label>
             <input type="number" id="mq" min="0" step="10000" placeholder="0"></div>
           <div class="campo"><label>Motivo</label>
             <select id="mo">
@@ -575,31 +526,21 @@
       </table></div></div>`;
     },
     alMontar(c) {
+      const me = el('#me', c);
+      me.addEventListener('input', () => { const r = T.respaldo(); el('#me-usd', c).textContent = me.value > 0 ? `Equivale a ${fmt.dinero(Number(me.value) * r.valorUnidad)}.` : ''; });
       el('[data-emitir]', c).addEventListener('click', () => {
-        const v = Number(el('#me', c).value);
-        const res = el('#re', c).value;
-        if (!(v > 0)) return toast('Monto inválido', '', 'bad');
+        const v = Number(me.value), res = el('#re', c).value;
+        if (!(v > 0)) return toast('Cantidad inválida', '', 'bad');
         const r = T.respaldo();
-        const ratioDespues = (r.admisible / (r.emitido + v)) * 100;
-        if (ratioDespues < E().politica.ratioMinimo) {
-          return toast('Emisión bloqueada', `El ratio quedaría en ${fmt.pct(ratioDespues)}, bajo el mínimo de ${E().politica.ratioMinimo}%.`, 'bad');
-        }
-        if (E().politica.congelado) return toast('Emisión congelada', 'El Consejo activó el freno', 'bad');
-        confirmar('Emitir ORIGEN', `Se emitirán ${fmt.num(v)} ORIGEN contra ${esc(res)}. El ratio pasará de ${fmt.pct(r.ratio)} a ${fmt.pct(ratioDespues)}.`, () => {
-          T.accion('origen.emitido', `Se emitieron ${fmt.compacto(v)} ORIGEN contra ${res}`, (e) => { e.origen.emitido += v; }, 'ok');
-          toast('ORIGEN emitido', `${fmt.compacto(v)} en circulación`, 'ok');
-        }, 'Emitir');
+        const ratioDespues = (r.admisible / (r.emitido + v * r.valorUnidad)) * 100;
+        confirmar('Emitir ORIGEN', `Se emitirán ${fmt.num(v)} ORIGEN (≈ ${fmt.dinero(v * r.valorUnidad)}) contra ${esc(res)}. El ratio pasará de ${fmt.pct(r.ratio)} a ${fmt.pct(ratioDespues)}.`,
+          () => T.correr('origen.emitir', { unidades: v, reservaId: res }, 'ORIGEN emitido', `${fmt.compacto(v)} más en circulación`), 'Emitir');
       });
       el('[data-quemar]', c).addEventListener('click', () => {
-        const v = Number(el('#mq', c).value);
-        const mo = el('#mo', c).value;
-        if (!(v > 0)) return toast('Monto inválido', '', 'bad');
-        const r = T.respaldo();
-        if (v > r.libre) return toast('No hay ORIGEN libre suficiente', `Libre: ${fmt.dineroCorto(r.libre)}. El resto está comprometido en tokens ya emitidos.`, 'bad');
-        confirmar('Quemar ORIGEN', `Se retirarán ${fmt.num(v)} ORIGEN de circulación. Motivo: ${esc(mo)}.`, () => {
-          T.accion('origen.quemado', `Se quemaron ${fmt.compacto(v)} ORIGEN — ${mo}`, (e) => { e.origen.quemado += v; }, 'warn');
-          toast('ORIGEN quemado', '', 'warn');
-        }, 'Quemar', true);
+        const v = Number(el('#mq', c).value), mo = el('#mo', c).value;
+        if (!(v > 0)) return toast('Cantidad inválida', '', 'bad');
+        confirmar('Quemar ORIGEN', `Se retirarán ${fmt.num(v)} ORIGEN de circulación. Motivo: ${esc(mo)}.`,
+          () => T.correr('origen.quemar', { unidades: v, motivo: mo }, 'ORIGEN quemado', '', 'warn'), 'Quemar', true);
       });
     },
   };
@@ -618,7 +559,7 @@
             <div class="campo"><label>Ratio mínimo %</label><input type="number" id="rm" value="${p.ratioMinimo}" min="100" max="300"></div>
           </div>
           <div class="fila">
-            <div class="campo"><label>Firmas requeridas</label><input type="number" id="fr" value="${p.firmasRequeridas}" min="1" max="${E().sesion.consejeros.length}"></div>
+            <div class="campo"><label>Firmas requeridas</label><input type="number" id="fr" value="${p.firmasRequeridas}" min="1" max="${E().consejo.length}"></div>
             <div class="campo"><label>Días de objeción</label><input type="number" id="do" value="${p.diasObjecion}" min="0" max="60"></div>
           </div>
           <div class="fila">
@@ -631,13 +572,28 @@
         </div></div>
 
         <div>
-          <div class="card"><div class="cab"><h3>Consejo firmante</h3></div><div class="cuerpo">
-            ${E().sesion.consejeros.map((cn) => `
+          <div class="card"><div class="cab"><h3>Oro de referencia</h3></div><div class="cuerpo">
+            <p class="muted" style="font-size:12.5px;line-height:1.55;margin-bottom:12px">
+              El ORIGEN en circulación se valora a <b class="num">${fmt.dinero(p.oroUsdPorGramo)}</b> por gramo de oro
+              (${esc(p.oroFuente || '—')}, ${fmt.fecha(p.oroFecha)}). 1 ORIGEN = 1/55 g = <b class="num">${fmt.dinero(T.respaldo().valorUnidad)}</b>.
+            </p>
+            <div class="fila">
+              <div class="campo mb0"><label>USD por gramo</label><input type="number" id="oro" value="${p.oroUsdPorGramo}" step="0.01" min="1"></div>
+              <div class="campo mb0"><label>Fuente</label><input id="oro-f" value="${esc(p.oroFuente || '')}" placeholder="LBMA PM fix"></div>
+            </div>
+            <button class="btn mt10" data-oro style="width:100%;justify-content:center">Actualizar referencia</button>
+          </div></div>
+
+          <div class="card mt16"><div class="cab"><h3>Consejo firmante</h3>
+            ${enApi() && T.puede('*') ? `<div class="der"><button class="btn chico" data-operadores>${ic('personas')} Operadores</button></div>` : ''}</div>
+            <div class="cuerpo">
+            ${E().consejo.map((cn) => `
               <div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--line)">
                 ${ic('personas')}<div style="flex:1"><b style="font-size:13px">${esc(cn)}</b>
-                <span class="t2 faint">${cn === E().sesion.usuario ? esc(E().sesion.rol) : 'Consejero'}</span></div>
+                <span class="t2 faint">${cn === E().sesion.usuario ? esc(fmt.rol(E().sesion.rol)) : 'Consejero'}</span></div>
                 <span class="tag ok">activo</span></div>`).join('')}
-            <p class="ts mt10">Se requieren ${p.firmasRequeridas} de ${E().sesion.consejeros.length} firmas para autorizar cualquier emisión.</p>
+            <p class="ts mt10">Se requieren ${p.firmasRequeridas} de ${E().consejo.length} firmas para autorizar cualquier emisión.
+              ${enApi() ? 'Cada consejero firma con su propia llave Ed25519.' : 'En modo demostración las firmas son nominales.'}</p>
           </div></div>
 
           <div class="card mt16"><div class="cab"><h3>Freno de emergencia</h3></div><div class="cuerpo">
@@ -649,40 +605,129 @@
           </div></div>
 
           <div class="card mt16"><div class="cab"><h3>Datos de la plataforma</h3></div><div class="cuerpo">
-            <p class="muted" style="font-size:13px;margin-bottom:12px">El estado vive en este navegador mientras no exista el backend. Puedes exportarlo o volver a la semilla.</p>
+            <p class="muted" style="font-size:13px;margin-bottom:12px">
+              ${enApi()
+                ? `Conectado al servidor de Tesorería${T.servidor && T.servidor.version ? ' · ' + esc(T.servidor.version.commit) : ''}. Almacén: <b>${esc((T.servidor || {}).almacen || '—')}</b>${T.servidor && T.servidor.efimero ? ' <span class="warn-t">(efímero: configura TESORERIA_MONGO_URL)</span>' : ''}.`
+                : 'Sin servidor: el estado vive en este navegador. Puedes exportarlo o volver a la semilla.'}
+            </p>
             <div style="display:flex;gap:9px;flex-wrap:wrap">
               <button class="btn" data-exp>${ic('doc')} Exportar estado</button>
-              <button class="btn peligro" data-reset>${ic('x')} Reiniciar a la semilla</button>
+              ${T.puede('*') ? `<button class="btn peligro" data-reset>${ic('x')} Reiniciar a la semilla</button>` : ''}
             </div>
           </div></div>
         </div>
       </div>`;
     },
     alMontar(c) {
-      el('[data-guardar]', c).addEventListener('click', () => {
-        const n = {
-          ratioObjetivo: Number(el('#ro', c).value), ratioMinimo: Number(el('#rm', c).value),
-          firmasRequeridas: Number(el('#fr', c).value), diasObjecion: Number(el('#do', c).value),
-          revisionValuacionMeses: Number(el('#rv', c).value), bandaSecundario: Number(el('#bs', c).value) / 100,
-        };
-        if (n.ratioMinimo > n.ratioObjetivo) return toast('Política inválida', 'El mínimo no puede superar al objetivo', 'bad');
-        T.accion('politica.modificada', `Ratio ${n.ratioObjetivo}%/${n.ratioMinimo}%, ${n.firmasRequeridas} firmas, ${n.diasObjecion} días de objeción`, (e) => Object.assign(e.politica, n), 'warn');
-        toast('Política actualizada', '', 'ok');
-      });
-      el('[data-freno]', c).addEventListener('click', () => {
-        const on = E().politica.congelado;
-        T.accion(on ? 'sistema.descongelado' : 'sistema.congelado',
-          on ? 'El Consejo levantó el freno de emisión' : 'El Consejo congeló toda emisión del ecosistema',
-          (e) => { e.politica.congelado = !on; }, on ? 'ok' : 'bad');
-        toast(on ? 'Freno levantado' : 'Emisión congelada', '', on ? 'ok' : 'bad');
-      });
-      el('[data-exp]', c).addEventListener('click', () => {
-        T.exportarJSON('tesoreria-origen.json', E()); toast('Estado exportado', '', 'ok');
-      });
-      el('[data-reset]', c).addEventListener('click', () => {
-        confirmar('Reiniciar a la semilla', 'Se pierden todos los cambios hechos en este navegador y vuelven los datos de demostración.', () => {
-          T.reiniciar(); toast('Datos reiniciados', '', 'ok');
+      el('[data-guardar]', c).addEventListener('click', () => T.correr('politica.modificar', {
+        ratioObjetivo: Number(el('#ro', c).value), ratioMinimo: Number(el('#rm', c).value),
+        firmasRequeridas: Number(el('#fr', c).value), diasObjecion: Number(el('#do', c).value),
+        revisionValuacionMeses: Number(el('#rv', c).value), bandaSecundario: Number(el('#bs', c).value) / 100,
+      }, 'Política actualizada', ''));
+      el('[data-oro]', c).addEventListener('click', () => T.correr('politica.oro', { usdPorGramo: Number(el('#oro', c).value), fuente: el('#oro-f', c).value.trim() }, 'Referencia actualizada'));
+      el('[data-freno]', c).addEventListener('click', alternarFreno);
+      el('[data-exp]', c).addEventListener('click', () => { T.exportarJSON('tesoreria-origen.json', E()); toast('Estado exportado', '', 'ok'); });
+      const rs = el('[data-reset]', c);
+      if (rs) rs.addEventListener('click', () => {
+        confirmar('Reiniciar a la semilla', 'Se pierden todos los cambios y vuelven los datos de demostración. Queda asentado en el libro.', async () => {
+          try { await T.reiniciar(); toast('Datos reiniciados', '', 'ok'); } catch (e) { toast('No se pudo', e.message, 'bad'); }
         }, 'Reiniciar', true);
+      });
+      const op = el('[data-operadores]', c);
+      if (op) op.addEventListener('click', gestionarOperadores);
+    },
+  };
+
+  /* ---------- operadores (solo con servidor) ---------- */
+  async function gestionarOperadores() {
+    let lista = [];
+    try { lista = (await T.api('operadores')).operadores; } catch (e) { return toast('No se pudo', e.message, 'bad'); }
+    const roles = T.R.ROLES;
+    modal({
+      ancho: true,
+      titulo: 'Operadores y consejeros',
+      cuerpo: `
+        <div class="tabla-wrap"><table class="tabla">
+          <thead><tr><th>Nombre</th><th>Correo</th><th>Rol</th><th>Llave de firma</th><th>Estado</th><th></th></tr></thead>
+          <tbody>${lista.map((o) => `<tr>
+            <td><b>${esc(o.nombre)}</b>${o.gid ? `<span class="t2 mono">${esc(o.gid)}</span>` : ''}</td>
+            <td>${esc(o.email)}</td>
+            <td><span class="tag plano">${esc(fmt.rol(o.rol))}</span></td>
+            <td class="mono ts">${o.clavePublica ? esc(o.clavePublica.slice(0, 14)) + '…' : '—'}</td>
+            <td><span class="tag ${o.activo ? 'ok' : 'bad'}">${o.activo ? 'activo' : 'inactivo'}</span></td>
+            <td class="der">${o.activo ? `<button class="btn chico" data-baja="${esc(o.id)}">Dar de baja</button>` : ''}</td>
+          </tr>`).join('')}</tbody></table></div>
+        <div class="titulo-sec">Alta de operador</div>
+        <div class="fila t3">
+          <div class="campo"><label>Nombre</label><input id="on" placeholder="Nombre como firma en el Consejo"></div>
+          <div class="campo"><label>Correo</label><input id="oe" type="email"></div>
+          <div class="campo"><label>Rol</label><select id="or">${roles.map((r) => `<option value="${r}">${esc(fmt.rol(r))}</option>`).join('')}</select></div>
+        </div>
+        <div class="fila">
+          <div class="campo mb0"><label>Contraseña inicial</label><input id="op" type="password" placeholder="Mínimo 12 caracteres"><span class="ayuda">Tendrá que cambiarla al entrar.</span></div>
+          <div class="campo mb0"><label>GID de Genesis ID (opcional)</label><input id="og" placeholder="GEN-XXXX-XXXX-X"><span class="ayuda">Permite entrar con la sesión única del ecosistema.</span></div>
+        </div>
+        <div id="salida" class="mt10"></div>`,
+      pie: `<button class="btn" data-cerrar>Cerrar</button><button class="btn pri" data-alta>Crear operador</button>`,
+      alAbrir(f) {
+        el('[data-alta]', f).addEventListener('click', async () => {
+          try {
+            const r = await T.api('operadores', { method: 'POST', cuerpo: {
+              nombre: el('#on', f).value.trim(), email: el('#oe', f).value.trim(), rol: el('#or', f).value,
+              contrasena: el('#op', f).value, gid: el('#og', f).value.trim() || undefined,
+            } });
+            el('#salida', f).innerHTML = `<div class="aviso ok">${ic('check')}<div><b>${esc(r.operador.nombre)} creado</b>
+              <span class="txt">Llave pública Ed25519: <span class="mono">${esc(r.operador.clavePublica)}</span></span></div></div>`;
+            toast('Operador creado', r.operador.email, 'ok');
+            const est = await T.api('estado'); // el consejo pudo cambiar
+            if (est && est.estado) { cerrarModal(); gestionarOperadores(); }
+          } catch (e) { toast('No se pudo', e.message, 'bad'); }
+        });
+        alClic(f, 'data-baja', async (id) => {
+          try { await T.api('operadores/' + id + '/baja', { method: 'POST' }); toast('Operador dado de baja', '', 'warn'); cerrarModal(); gestionarOperadores(); }
+          catch (e) { toast('No se pudo', e.message, 'bad'); }
+        });
+      },
+    });
+  }
+
+  /* ---------- vista: cadena 5550 ---------- */
+  const cadena = {
+    titulo: 'Conciliación con la cadena 5550',
+    sub: 'Lo que la cadena dice que existe contra lo que la Autoridad autorizó',
+    render() {
+      return `
+      <div class="aviso acento">${ic('cadena')}<div><b>La cadena es la verdad sobre cuántos tokens existen; esta plataforma es la verdad sobre cuántos pueden existir.</b>
+        <span class="txt">Se lee <span class="mono">totalSupply()</span> de cada contrato en rpc.ordenglobal-rpc.com y se compara con el supply emitido aquí. Cualquier diferencia es supply sin expediente y salta en rojo.</span></div></div>
+      <div class="card mt16"><div class="cab"><h3>Tokens con contrato en la cadena</h3>
+        <div class="der"><button class="btn chico" data-leer>${ic('cadena')} Leer la cadena</button></div></div>
+        <div class="cuerpo plano tabla-wrap" id="conc"><div class="vacio">${ic('cadena')}<div>${enApi() ? 'Pulsa «Leer la cadena» para consultar el RPC.' : 'La conciliación la hace el servidor: en modo local no hay acceso al RPC.'}</div></div></div>
+      </div>
+      <div class="card mt16"><div class="cab"><h3>Ancla del libro</h3></div><div class="cuerpo">
+        <p class="muted" style="font-size:13px;line-height:1.6">El sello del libro (<span class="mono">${esc((E().libro[0] || {}).hash || '—')}</span>) es el hash que se publica en la cadena para que nadie —ni la propia Autoridad— pueda reescribir el pasado sin que se note.
+        ${enApi() ? 'El servidor lo expone en <span class="mono">GET api/libro/ancla</span> listo para anclarlo.' : ''}</p>
+      </div></div>`;
+    },
+    alMontar(c) {
+      const b = el('[data-leer]', c);
+      b.addEventListener('click', async () => {
+        if (!enApi()) return toast('Requiere servidor', 'La lectura del RPC la hace el backend', 'warn');
+        b.disabled = true; el('#conc', c).innerHTML = `<div class="vacio">${ic('reloj')}<div>Consultando la cadena…</div></div>`;
+        try {
+          const r = await T.api('cadena/conciliacion');
+          el('#conc', c).innerHTML = `<table class="tabla">
+            <thead><tr><th>Token</th><th>Contrato</th><th class="der">En cadena</th><th class="der">Emitido aquí</th><th class="der">Autorizado</th><th>Veredicto</th></tr></thead>
+            <tbody>${r.tokens.map((t) => `<tr>
+              <td><b>${esc(t.simbolo)}</b><span class="t2">${esc(t.nombre)}</span></td>
+              <td class="mono ts">${t.contrato ? esc(t.contrato.slice(0, 10)) + '…' : '<span class="faint">sin contrato</span>'}</td>
+              <td class="der num">${t.enCadena === null ? '<span class="faint">sin dato</span>' : fmt.num(t.enCadena)}</td>
+              <td class="der num">${fmt.num(t.emitido)}</td>
+              <td class="der num">${fmt.num(t.autorizado)}</td>
+              <td><span class="tag ${t.veredicto === 'cuadra' ? 'ok' : t.veredicto === 'excede' ? 'bad' : t.veredicto === 'por_emitir' ? 'warn' : 'plano'}">${esc(t.veredicto.replace('_', ' '))}</span>${t.diferencia ? `<span class="t2 bad-t">${t.diferencia > 0 ? '+' : ''}${fmt.num(t.diferencia)} sin expediente</span>` : ''}</td>
+            </tr>`).join('')}</tbody></table>
+            <p class="ts" style="padding:12px 14px">RPC ${esc(r.rpc)} · bloque ${r.bloque === null ? '—' : fmt.num(r.bloque)} · ${fmt.fechaHora(r.en)}</p>`;
+        } catch (e) { el('#conc', c).innerHTML = `<div class="aviso bad" style="margin:14px">${ic('alerta')}<div><span class="txt">${esc(e.message)}</span></div></div>`; }
+        b.disabled = false;
       });
     },
   };
@@ -697,7 +742,7 @@
       <div class="aviso ${v.ok ? 'ok' : 'bad'}">${ic(v.ok ? 'escudo2' : 'alerta')}<div>
         <b>${v.ok ? 'Cadena íntegra' : 'Cadena rota'}</b>
         <span class="txt">${v.ok
-          ? `Los ${v.total} asientos verifican contra su hash anterior. Cualquier alteración de un asiento pasado rompe la cadena y salta aquí.`
+          ? `Los ${v.total} asientos verifican contra su hash anterior${enApi() ? ' (SHA-256, verificado en el servidor)' : ''}. Cualquier alteración de un asiento pasado rompe la cadena y salta aquí.`
           : `El asiento ${esc(v.en)} no coincide con su hash anterior.`}</span></div></div>
       <div class="card mt16"><div class="cab"><h3>Asientos</h3>
         <div class="der"><button class="btn chico" data-exp>${ic('doc')} Exportar libro</button></div></div>
@@ -793,12 +838,13 @@
       { grupo: 'Respaldo', items: [
         { v: 'reservas', t: 'Reservas', ic: 'boveda' },
         { v: 'prueba', t: 'Prueba de reservas', ic: 'escudo2' },
+        { v: 'cadena', t: 'Cadena 5550', ic: 'cadena' },
       ] },
       { grupo: 'Gobierno', items: [
         { v: 'politica', t: 'Política y Consejo', ic: 'engrane' },
         { v: 'libro', t: 'Libro sellado', ic: 'libro' },
       ] },
     ],
-    vistas: { panel, solicitudes, emision, reservas, prueba, politica, libro },
+    vistas: { panel, solicitudes, emision, reservas, prueba, cadena, politica, libro },
   });
 })();

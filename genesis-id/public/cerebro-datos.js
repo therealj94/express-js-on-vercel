@@ -136,6 +136,17 @@ export const NODOS = [
     d: '/admin para cumplimiento, /analitica para métricas, /cerebro para esto que estás mirando.' },
   { id: 'gid-portal', n: 'genesisid.online', g: 'identidad',
     d: 'El portal externo de identidad. El puente con él no funcionaba y se reconstruyó.' },
+  // ── Tesorería ────────────────────────────────────────────────────────────
+  // La autoridad sobre cuánto ORIGEN existe. Va junto a la identidad porque
+  // comparten el mismo modelo: nada se emite solo, cada decisión la firma
+  // alguien identificado y queda en un libro encadenado.
+  { id: 'tesoreria', n: 'Tesorería · ORIGEN', g: 'respaldo', peso: 3,
+    d: 'La Autoridad de Emisión: registro de reservas certificadas con aforo, ratio de respaldo en vivo, cola de autorización con multifirma Ed25519 del Consejo y libro sellado. Ningún token del ecosistema —security o utility— se emite sin una asignación de ORIGEN que lo respalde. Concilia el totalSupply de la cadena contra lo autorizado.' },
+  { id: 'tes-security', n: 'Tesorería · Security', g: 'token', peso: 1.8,
+    d: 'ONDK y las emisiones con valor patrimonial: valuación certificada, precio establecido que no flota, cap table con transfer agent y mercado secundario con banda.' },
+  { id: 'tes-utility', n: 'Tesorería · Utility', g: 'token', peso: 1.6,
+    d: 'Tokens de servicio (VETA, OGS, MTP): solo circulan mientras exista capacidad de servicio contratada, y el ORIGEN respalda la parte redimible.' },
+
   { id: 'telemetria', n: 'Telemetría', g: 'identidad', peso: 2, vivo: 'telemetria',
     d: 'Lo que cada app reporta: quién entró, qué movió, qué se rompió. Nunca guarda quién es nadie — solo una huella irreversible que el panel puede volver a cruzar con el padrón.' },
   { id: 'padron', n: 'Padrón', g: 'identidad', peso: 2, vivo: 'padron',
@@ -245,6 +256,17 @@ export const ENLACES = [
   // al ecosistema. En cuanto se documenten, aquí van sus relaciones reales.
   ['ordenex', 'cadena', 'pieza del ecosistema · relación por documentar'],
   ['aucorp', 'cadena', 'pieza del ecosistema · relación por documentar'],
+
+  // Tesorería: el respaldo manda sobre la emisión
+  ['boveda', 'tesoreria', 'certifica las reservas que respaldan', true],
+  ['tesoreria', 'ORIGEN', 'decide cuánto existe', true],
+  ['tes-security', 'tesoreria', 'pide autorización de emisión'],
+  ['tes-utility', 'tesoreria', 'pide autorización de emisión'],
+  ['tes-security', 'ONDK', 'administra'],
+  ['tesoreria', 'genesis', 'los consejeros entran con Genesis ID'],
+  ['tesoreria', 'rpc', 'concilia el supply real'],
+  ['tesoreria', 'render', 'desplegada en'],
+  ['tesoreria', 'mongo', 'guarda el libro'],
 
   // Veta Wallet
   ['vw-app', 'vw-back', 'login · enviar · tarjeta'],

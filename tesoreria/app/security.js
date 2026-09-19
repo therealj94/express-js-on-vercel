@@ -7,16 +7,12 @@
 (function () {
   'use strict';
   const { fmt, esc, ic, el, toast, modal, cerrarModal, confirmar, medidor, alClic } = T;
-  T.cargar();
 
   const E = () => T.estado;
   const SEC = () => E().securities;
   let tokenAbierto = null;
 
-  const TIPOS = {
-    equity: 'Capital accionario', deuda: 'Instrumento de deuda',
-    asset_backed: 'Respaldado por activos', revenue_share: 'Participación en ingresos',
-  };
+  const TIPOS = T.TIPOS_SEC;
   const ESTADOS = {
     borrador: ['', 'Borrador'], en_registro: ['warn', 'En registro'],
     listado: ['ok', 'Listado'], suspendido: ['bad', 'Suspendido'], redimido: ['', 'Redimido'],
@@ -335,13 +331,8 @@
     alClic(c, 'data-transferir', (id) => transferir(id));
     alClic(c, 'data-distribuir', (id) => distribuir(id));
     alClic(c, 'data-reporte', (v) => {
-      const [id, periodo] = v.split('|');
-      const t = T.buscar.security(id);
-      T.accion('reporte.presentado', `${t.simbolo} · ${periodo} presentado ante el registro`, () => {
-        const r = t.cumplimiento.reportes.find((x) => x.periodo === periodo);
-        r.estado = 'al_corriente'; r.fecha = new Date().toISOString();
-      }, 'ok');
-      toast('Reporte presentado', `${t.simbolo} · ${periodo}`, 'ok');
+      const [tokenId, periodo] = v.split('|');
+      T.correr('reporte.presentar', { tokenId, periodo }, 'Reporte presentado');
     });
   }
 
@@ -367,10 +358,9 @@
       alAbrir(f) {
         const q = el('#q', f);
         q.addEventListener('input', () => { el('#vv', f).textContent = fmt.dinero(Number(q.value) * t.precioUnitario); });
-        el('[data-ok]', f).addEventListener('click', () => {
+        el('[data-ok]', f).addEventListener('click', async () => {
           const v = Number(q.value);
-          try { T.emitirTokens(id, v); cerrarModal(); toast('Tokens emitidos', `${fmt.num(v)} ${t.simbolo}`, 'ok'); }
-          catch (e) { toast('No se pudo emitir', e.message, 'bad'); }
+          if (await T.correr('token.emitir', { tokenId: id, cantidad: v }, 'Tokens emitidos', `${fmt.num(v)} ${t.simbolo}`)) cerrarModal();
         });
       },
     });
@@ -397,8 +387,8 @@
           <span class="ayuda" id="pide">${esc(causas[0].pide)}</span></div>
         <div class="fila">
           <div class="campo"><label>Tokens a emitir</label><input type="number" id="q" min="1" step="1000" placeholder="0"></div>
-          <div class="campo"><label>Precio establecido</label><input type="number" id="p" value="${t.precioUnitario}" step="0.01">
-            <span class="ayuda">Solo el Comité de Valuación puede moverlo.</span></div>
+          <div class="campo"><label>Precio establecido</label><input type="number" id="p" value="${t.precioUnitario}" step="0.01" readonly>
+            <span class="ayuda">Fijo: solo el Comité de Valuación puede moverlo.</span></div>
         </div>
         <div class="campo"><label>Justificación</label>
           <textarea id="m" placeholder="Qué activo nuevo entra, qué informe lo certifica y por qué el mercado necesita estos tokens."></textarea></div>
@@ -420,11 +410,11 @@
         function recalcular() {
           const req = (Number(q.value) || 0) * (Number(p.value) || 0);
           el('#req', f).textContent = fmt.dinero(req);
-          const post = T.saludSecurity(t).valorEmitido + req;
+          const post = t.supply.autorizado * t.precioUnitario + req; // lo ya autorizado también cuenta contra la valuación
           el('#post', f).textContent = fmt.dinero(post);
           const ch = T.puedeEmitir(req);
-          const excedeVal = post > t.valuacion.valorCertificado;
-          const problemas = ch.faltas.concat(excedeVal ? [`El valor emitido (${fmt.dineroCorto(post)}) superaría la valuación certificada (${fmt.dineroCorto(t.valuacion.valorCertificado)}). Hace falta una revaluación primero.`] : []);
+          const excedeVal = post > t.valuacion.valorCertificado + 0.01;
+          const problemas = ch.faltas.concat(excedeVal ? [`El valor autorizado (${fmt.dineroCorto(post)}) superaría la valuación certificada (${fmt.dineroCorto(t.valuacion.valorCertificado)}). Hace falta una revaluación primero.`] : []);
           el('#dict', f).innerHTML = req <= 0 ? '' : `<div class="aviso ${problemas.length ? 'bad' : 'ok'}">${ic(problemas.length ? 'alerta' : 'check')}
             <div><b>${problemas.length ? 'La Autoridad rechazaría esta solicitud' : 'La solicitud cumple los requisitos de respaldo'}</b>
             <span class="txt">${problemas.length ? esc(problemas.join(' ')) : 'Pasará a la cola para firmas del Consejo y ventana de objeción.'}</span></div></div>`;
@@ -433,20 +423,13 @@
         causa.addEventListener('change', () => {
           el('#pide', f).textContent = (causas.find((c) => c.v === causa.value) || {}).pide || '';
         });
-        el('[data-ok]', f).addEventListener('click', () => {
-          const cant = Number(q.value), pre = Number(p.value), m = el('#m', f).value.trim();
-          if (!(cant > 0) || !(pre > 0)) return toast('Faltan datos', 'Cantidad y precio son obligatorios', 'bad');
-          if (!m) return toast('Falta la justificación', 'La Autoridad no admite solicitudes sin motivo', 'bad');
+        el('[data-ok]', f).addEventListener('click', async () => {
           const evn = el('#ev', f).value.trim();
-          T.crearSolicitud({
-            tipo: 'security', tokenId: t.id, simbolo: t.simbolo,
-            accion: t.supply.emitido > 0 ? 'emision_adicional' : 'emision_inicial',
-            cantidad: cant, precio: pre, origenRequerido: cant * pre,
-            motivo: m, causa: causa.value,
-            evidencias: evn ? [{ nombre: evn, hash: T.hash(evn + Date.now()).slice(0, 8), tipo: 'Adjunto del solicitante' }] : [],
-          });
-          cerrarModal();
-          toast('Solicitud enviada', 'Está en la cola de la Autoridad ORIGEN', 'ok');
+          const r = await T.correr('solicitud.crear', {
+            tokenId: t.id, cantidad: Number(q.value), precio: Number(p.value), motivo: el('#m', f).value.trim(), causa: causa.value,
+            evidencias: evn ? [{ nombre: evn, tipo: 'Adjunto del solicitante' }] : [],
+          }, 'Solicitud enviada', 'Está en la cola de la Autoridad ORIGEN');
+          if (r) cerrarModal();
         });
       },
     });
@@ -470,30 +453,17 @@
           <div class="campo"><label>Folio del informe</label><input id="inf" placeholder="VAL-…"></div>
         </div>
         <div class="campo mb0"><label>Miembros del Comité que firman</label>
-          <div>${E().sesion.consejeros.map((c, i) => `<label class="check"><input type="checkbox" class="cm" value="${esc(c)}" ${i < 3 ? 'checked' : ''}><span><b>${esc(c)}</b><span>Comité de Valuación</span></span></label>`).join('')}</div>
+          <div>${E().consejo.map((c, i) => `<label class="check"><input type="checkbox" class="cm" value="${esc(c)}" ${i < 3 ? 'checked' : ''}><span><b>${esc(c)}</b><span>Comité de Valuación</span></span></label>`).join('')}</div>
           <span class="ayuda">Se requieren al menos 3 firmas para asentar la valuación.</span></div>`,
       pie: `<button class="btn" data-cerrar>Cancelar</button><button class="btn pri" data-ok>Asentar valuación</button>`,
       alAbrir(f) {
-        el('[data-ok]', f).addEventListener('click', () => {
-          const v = Number(el('#v', f).value), p = Number(el('#p', f).value);
-          const firmas = T.els('.cm:checked', f).map((x) => x.value);
-          if (!(v > 0) || !(p > 0)) return toast('Cifras inválidas', '', 'bad');
-          if (firmas.length < 3) return toast('Faltan firmas', 'El Comité necesita al menos 3', 'bad');
-          const valorEmitido = t.supply.emitido * p;
-          if (valorEmitido > v) return toast('Valuación incompatible', `Con precio ${fmt.dinero(p)} el valor emitido (${fmt.dineroCorto(valorEmitido)}) superaría la valuación. Baja el precio o sube el valor.`, 'bad');
-          T.accion('valuacion.aprobada', `${t.simbolo} revaluado a ${fmt.dineroCorto(v)} — precio ${fmt.dinero(p)}`, () => {
-            const x = T.buscar.security(id);
-            x.valuacion.valorCertificado = v;
-            x.valuacion.metodo = el('#me', f).value.trim() || x.valuacion.metodo;
-            x.valuacion.valuador = el('#va', f).value.trim() || x.valuacion.valuador;
-            x.valuacion.informeHash = el('#inf', f).value.trim() || x.valuacion.informeHash;
-            x.valuacion.fecha = new Date().toISOString();
-            x.valuacion.proximaRevision = new Date(Date.now() + E().politica.revisionValuacionMeses * 30 * 86400000).toISOString();
-            x.valuacion.comite = firmas;
-            x.valuacion.historial.push({ fecha: new Date().toISOString(), valor: v, precio: p });
-            x.precioUnitario = p; x.mercado.referencia = p;
-          }, 'ok');
-          cerrarModal(); toast('Valuación asentada', 'El techo de emisión se recalculó', 'ok');
+        el('[data-ok]', f).addEventListener('click', async () => {
+          const r = await T.correr('valuacion.asentar', {
+            tokenId: id, valorCertificado: Number(el('#v', f).value), precioUnitario: Number(el('#p', f).value),
+            metodo: el('#me', f).value.trim(), valuador: el('#va', f).value.trim(), informe: el('#inf', f).value.trim(),
+            firmas: T.els('.cm:checked', f).map((x) => x.value),
+          }, 'Valuación asentada', 'El techo de emisión se recalculó');
+          if (r) cerrarModal();
         });
       },
     });
@@ -513,23 +483,15 @@
         <div class="fila">
           <div class="campo"><label>Banda permitida %</label><input type="number" id="b" value="${(t.mercado.banda * 100).toFixed(1)}" step="0.5" min="0" max="50">
             <span class="ayuda">Techo y piso sobre el precio de referencia. Una orden fuera de banda se rechaza.</span></div>
-          <div class="campo"><label>Precio de referencia</label><input type="number" id="ref" value="${t.mercado.referencia}" step="0.01">
-            <span class="ayuda">Debe coincidir con el precio certificado.</span></div>
+          <div class="campo"><label>Precio de referencia</label><input type="number" id="ref" value="${t.mercado.referencia}" step="0.01" readonly>
+            <span class="ayuda">Es el precio certificado; se mueve con una valuación.</span></div>
         </div>
         <div class="campo mb0"><label>Ventanas de negociación</label><input id="v" value="${esc(t.mercado.ventanas)}"></div>`,
       pie: `<button class="btn" data-cerrar>Cancelar</button><button class="btn pri" data-ok>Guardar</button>`,
       alAbrir(f) {
-        el('[data-ok]', f).addEventListener('click', () => {
-          const r = el('#r', f).value;
-          T.accion('mercado.regimen', `${t.simbolo} · régimen de mercado → ${r}`, () => {
-            const x = T.buscar.security(id);
-            x.mercado.estado = r;
-            x.mercado.banda = Number(el('#b', f).value) / 100;
-            x.mercado.referencia = Number(el('#ref', f).value);
-            x.mercado.ventanas = el('#v', f).value.trim();
-            x.estado = r === 'suspendido' && x.estado === 'listado' ? 'suspendido' : (x.estado === 'suspendido' && r !== 'suspendido' ? 'listado' : x.estado);
-          }, r === 'suspendido' ? 'warn' : 'info');
-          cerrarModal(); toast('Régimen actualizado', '', 'ok');
+        el('[data-ok]', f).addEventListener('click', async () => {
+          const r = await T.correr('mercado.regimen', { tokenId: id, estado: el('#r', f).value, banda: Number(el('#b', f).value) / 100, ventanas: el('#v', f).value.trim() }, 'Régimen actualizado', '');
+          if (r) cerrarModal();
         });
       },
     });
@@ -552,14 +514,9 @@
           <span class="txt">Solo se admiten órdenes entre ${fmt.dinero(min)} y ${fmt.dinero(max)} (±${fmt.pct(t.mercado.banda * 100, 1)} sobre el precio certificado de ${fmt.dinero(t.mercado.referencia)}). Fuera de eso, el libro la rechaza.</span></div></div>`,
       pie: `<button class="btn" data-cerrar>Cancelar</button><button class="btn pri" data-ok ${t.mercado.estado === 'suspendido' ? 'disabled' : ''}>Colocar orden</button>`,
       alAbrir(f) {
-        el('[data-ok]', f).addEventListener('click', () => {
-          const q = Number(el('#q', f).value), p = Number(el('#p', f).value), l = el('#l', f).value;
-          if (!(q > 0)) return toast('Cantidad inválida', '', 'bad');
-          if (p < min || p > max) return toast('Precio fuera de banda', `Admitido: ${fmt.dinero(min)} – ${fmt.dinero(max)}`, 'bad');
-          T.accion('orden.colocada', `${t.simbolo} · ${l} de ${fmt.num(q)} @ ${fmt.dinero(p)}`, (e) => {
-            e.ordenes.unshift({ id: T.id('ORD'), tokenId: t.id, lado: l, cantidad: q, precio: p, estado: 'abierta', ts: new Date().toISOString() });
-          });
-          cerrarModal(); toast('Orden colocada', 'Visible en la próxima ventana', 'ok');
+        el('[data-ok]', f).addEventListener('click', async () => {
+          const r = await T.correr('orden.colocar', { tokenId: id, lado: el('#l', f).value, cantidad: Number(el('#q', f).value), precio: Number(el('#p', f).value) }, 'Orden colocada', 'Visible en la próxima ventana');
+          if (r) cerrarModal();
         });
       },
     });
@@ -581,16 +538,9 @@
           <span class="ayuda">El transfer agent verifica Genesis ID, perfil de acreditado y lock-up antes de asentar.</span></div>`,
       pie: `<button class="btn" data-cerrar>Cancelar</button><button class="btn pri" data-ok>Asentar transferencia</button>`,
       alAbrir(f) {
-        el('[data-ok]', f).addEventListener('click', () => {
-          const de = E().tenedores.find((x) => x.id === el('#de', f).value);
-          const a = E().tenedores.find((x) => x.id === el('#a', f).value);
-          const q = Number(el('#q', f).value);
-          if (!de || !a || de === a) return toast('Selecciona dos tenedores distintos', '', 'bad');
-          if (!(q > 0) || q > de.cantidad) return toast('Cantidad inválida', `${de.nombre} tiene ${fmt.num(de.cantidad)}`, 'bad');
-          if (de.lockup && new Date(de.lockup) > new Date()) return toast('Transferencia bloqueada', `${de.nombre} está en lock-up hasta ${fmt.fecha(de.lockup)}`, 'bad');
-          if (a.estado !== 'verificado') return toast('Destinatario no verificado', 'Requiere Genesis ID verificado', 'bad');
-          T.accion('token.transferido', `${t.simbolo} · ${fmt.num(q)} de ${de.nombre} a ${a.nombre}`, () => { de.cantidad -= q; a.cantidad += q; });
-          cerrarModal(); toast('Transferencia asentada', '', 'ok');
+        el('[data-ok]', f).addEventListener('click', async () => {
+          const r = await T.correr('token.transferir', { tokenId: id, de: el('#de', f).value, a: el('#a', f).value, cantidad: Number(el('#q', f).value) }, 'Transferencia asentada', '');
+          if (r) cerrarModal();
         });
       },
     });
@@ -607,16 +557,9 @@
         <div class="campo mb0"><label>Concepto</label><input id="c" placeholder="Distribución semestral 2026-H2"></div>`,
       pie: `<button class="btn" data-cerrar>Cancelar</button><button class="btn pri" data-ok>Registrar distribución</button>`,
       alAbrir(f) {
-        el('[data-ok]', f).addEventListener('click', () => {
-          const m = Number(el('#m', f).value);
-          if (!(m > 0)) return toast('Monto inválido', '', 'bad');
-          const porToken = m / Math.max(t.supply.emitido, 1);
-          T.accion('distribucion.pagada', `${t.simbolo} · ${fmt.dineroCorto(m)} distribuidos (${fmt.dinero(porToken, 'USD', 4)} por token)`, () => {
-            const x = T.buscar.security(id);
-            x.dividendo.ultimoPago = new Date().toISOString();
-            x.dividendo.montoUltimo = m;
-          }, 'ok');
-          cerrarModal(); toast('Distribución registrada', `${fmt.dinero(porToken, 'USD', 4)} por token`, 'ok');
+        el('[data-ok]', f).addEventListener('click', async () => {
+          const r = await T.correr('distribucion.registrar', { tokenId: id, monto: Number(el('#m', f).value), concepto: el('#c', f).value.trim() }, 'Distribución registrada');
+          if (r) cerrarModal();
         });
       },
     });
@@ -650,37 +593,20 @@
           <div class="campo"><label>Valuador independiente</label><input id="va" placeholder="Firma de valuación"></div>
           <div class="campo"><label>Exención / régimen</label><input id="ex" placeholder="Reg S · Reg D 506(c) · LMV art. 8"></div>
         </div>
+        <div class="campo"><label>Contrato en la cadena 5550 (opcional)</label><input id="co" placeholder="0x…" class="mono">
+          <span class="ayuda">Si el token ya vive en la cadena, la Autoridad concilia su totalSupply contra lo autorizado aquí.</span></div>
         <div class="aviso acento">${ic('alerta')}<div><b>Queda en borrador</b>
           <span class="txt">La emisión nace sin supply. Para tener tokens hay que solicitar la autorización a la Autoridad ORIGEN, que verifica que exista respaldo libre.</span></div></div>`,
       pie: `<button class="btn" data-cerrar>Cancelar</button><button class="btn pri" data-ok>Registrar emisión</button>`,
       alAbrir(f) {
-        el('[data-ok]', f).addEventListener('click', () => {
-          const s = el('#s', f).value.trim().toUpperCase(), n = el('#n', f).value.trim();
-          const v = Number(el('#v', f).value), p = Number(el('#p', f).value);
-          if (!s || !n || !(v > 0) || !(p > 0)) return toast('Faltan datos', 'Símbolo, nombre, valuación y precio', 'bad');
-          if (SEC().some((x) => x.simbolo === s)) return toast('Símbolo duplicado', `Ya existe ${s}`, 'bad');
-          const t = {
-            id: 'SEC-' + s, simbolo: s, nombre: n, emisorId: el('#em', f).value, tipo: el('#ti', f).value,
-            jurisdiccion: el('#ju', f).value.trim() || '—', exencion: el('#ex', f).value.trim() || 'Oferta privada',
-            isin: '—', cadena: 'Orden Global Chain (5550)',
-            activo: { descripcion: el('#ac', f).value.trim() || '—', clase: TIPOS[el('#ti', f).value], ubicacion: '—', reservas: [] },
-            valuacion: {
-              metodo: 'Por definir', valorCertificado: v, valuador: el('#va', f).value.trim() || '—',
-              fecha: new Date().toISOString(),
-              proximaRevision: new Date(Date.now() + E().politica.revisionValuacionMeses * 30 * 86400000).toISOString(),
-              informeHash: T.hash(s + v).slice(0, 8), comite: [], historial: [{ fecha: new Date().toISOString(), valor: v, precio: p }],
-            },
-            precioUnitario: p, moneda: 'USD',
-            supply: { autorizado: 0, emitido: 0, enTesoreria: 0, quemado: 0 },
-            tenedores: 0, lockupHasta: new Date(Date.now() + 365 * 86400000).toISOString(),
-            dividendo: { politica: 'Por definir', ultimoPago: null, montoUltimo: 0, yield: 0 },
-            mercado: { estado: 'suspendido', banda: E().politica.bandaSecundario, referencia: p, ultimaOperacion: null, volumen30d: 0, ventanas: 'Sin listar', proximaVentana: null },
-            cumplimiento: { kyc: true, acreditados: true, transferAgent: 'Orden Global Transfer Agent', restricciones: 'Pendiente de autorización de emisión.', reportes: [] },
-            origenAsignado: 0, estado: 'borrador', creado: new Date().toISOString(),
-          };
-          T.accion('security.registrado', `${s} · ${n} registrado con valuación de ${fmt.dineroCorto(v)}`, (e) => e.securities.push(t), 'ok');
-          cerrarModal(); tokenAbierto = t.id;
-          toast('Emisión registrada', 'Ahora solicita la autorización a ORIGEN', 'ok');
+        el('[data-ok]', f).addEventListener('click', async () => {
+          const r = await T.correr('security.registrar', {
+            simbolo: el('#s', f).value.trim(), nombre: el('#n', f).value.trim(), emisorId: el('#em', f).value, tipo: el('#ti', f).value,
+            jurisdiccion: el('#ju', f).value.trim(), exencion: el('#ex', f).value.trim(), activo: el('#ac', f).value.trim(),
+            valorCertificado: Number(el('#v', f).value), precioUnitario: Number(el('#p', f).value), valuador: el('#va', f).value.trim(),
+            contrato: el('#co', f).value.trim(),
+          }, 'Emisión registrada', 'Ahora solicita la autorización a ORIGEN');
+          if (r) { cerrarModal(); tokenAbierto = r.resultado.creado; render(); }
         });
       },
     });
@@ -736,24 +662,7 @@
     alMontar(c) {
       alClic(c, 'data-orden', (id) => colocarOrden(id));
       alClic(c, 'data-mercado', (id) => cambiarMercado(id));
-      alClic(c, 'data-cruzar', (id) => {
-        const t = T.buscar.security(id);
-        const ords = E().ordenes.filter((o) => o.tokenId === id && o.estado === 'abierta');
-        const c1 = ords.filter((o) => o.lado === 'compra').sort((a, b) => b.precio - a.precio)[0];
-        const v1 = ords.filter((o) => o.lado === 'venta').sort((a, b) => a.precio - b.precio)[0];
-        if (!c1 || !v1 || c1.precio < v1.precio) return toast('No hay cruce', '', 'bad');
-        const q = Math.min(c1.cantidad, v1.cantidad);
-        const px = (c1.precio + v1.precio) / 2;
-        T.accion('mercado.cruce', `${t.simbolo} · ${fmt.num(q)} cruzados @ ${fmt.dinero(px)}`, () => {
-          c1.cantidad -= q; v1.cantidad -= q;
-          if (c1.cantidad <= 0) c1.estado = 'ejecutada';
-          if (v1.cantidad <= 0) v1.estado = 'ejecutada';
-          const x = T.buscar.security(id);
-          x.mercado.ultimaOperacion = px;
-          x.mercado.volumen30d += q * px;
-        }, 'ok');
-        toast('Cruce ejecutado', `${fmt.num(q)} ${t.simbolo} @ ${fmt.dinero(px)}`, 'ok');
-      });
+      alClic(c, 'data-cruzar', (id) => T.correr('mercado.cruzar', { tokenId: id }, 'Cruce ejecutado'));
     },
   };
 

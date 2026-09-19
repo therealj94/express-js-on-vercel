@@ -1,0 +1,1 @@
+{ "comentario": "Almacén del modo archivo. Se crea solo al arrancar; en producción se usa TESORERIA_MONGO_URL." }

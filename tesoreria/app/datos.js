@@ -4,21 +4,21 @@
    ORIGEN emitido ≤ reservas admisibles, y cada token emitido
    consume una asignación de ORIGEN. Cambiar aquí = cambiar todo.
    ============================================================ */
-(function (global) {
+(function (raiz, fabrica) {
+  if (typeof module === 'object' && module.exports) module.exports = fabrica();
+  else raiz.TesoreriaSemilla = fabrica();
+})(typeof window !== 'undefined' ? window : globalThis, function () {
   'use strict';
 
   const hoy = new Date('2026-09-19T12:00:00Z');
   const dias = (n) => new Date(hoy.getTime() + n * 86400000).toISOString();
 
   const estado = {
-    version: 1,
-    sesion: {
-      usuario: 'J. Enamorado',
-      rol: 'Presidente del Consejo',
-      consejeros: [
-        'J. Enamorado', 'M. Arroyo', 'L. Bermúdez', 'R. Castellanos', 'A. Villalobos',
-      ],
-    },
+    version: 2,
+    /* Quién está mirando. En modo local es fijo; con servidor lo pone la sesión. */
+    sesion: { usuario: 'J. Enamorado', rol: 'presidente', modo: 'local' },
+    /* El Consejo firmante. Con servidor sale de los operadores con rol de consejero. */
+    consejo: ['J. Enamorado', 'M. Arroyo', 'L. Bermúdez', 'R. Castellanos', 'A. Villalobos'],
 
     /* --- política del ecosistema: las reglas duras --- */
     politica: {
@@ -30,14 +30,22 @@
       moneda: 'USD',
       revisionValuacionMeses: 6,
       bandaSecundario: 0.05,     // ±5% sobre el precio de referencia certificado
+      // Precio de referencia del oro con el que se valora el ORIGEN en circulación.
+      // Lo fija el Consejo contra un fix público; si tiene más de 30 días, el panel avisa.
+      oroUsdPorGramo: 110.00,
+      oroFuente: 'LBMA PM fix · promedio 5 días',
+      oroFecha: dias(-3),
     },
 
     /* --- ORIGEN: la unidad de respaldo --- */
+    /* ORIGEN es la cripto nativa de la cadena 5550: 1 ORIGEN = 1 gramín = 1/55 g de oro en bóveda. */
     origen: {
-      emitido: 52000000,
-      quemado: 1500000,
+      emitido: 26000000,
+      quemado: 750000,
       unidad: 'ORIGEN',
-      paridad: '1 ORIGEN = 1 USD de reserva certificada admisible',
+      gramosPorUnidad: 1 / 55,
+      paridad: '1 ORIGEN = 1 gramín = 1/55 g de oro certificado en bóveda',
+      cadena: 5550,
     },
 
     /* --- reservas reales certificadas --- */
@@ -102,7 +110,7 @@
 
     /* --- asignaciones de ORIGEN comprometidas por token --- */
     asignaciones: [
-      { id: 'ASG-0001', tokenId: 'SEC-ONDK', solicitudId: 'SOL-0004', monto: 32000000, estado: 'comprometida', fecha: dias(-210) },
+      { id: 'ASG-0001', tokenId: 'SEC-ONDK', solicitudId: 'SOL-0004', monto: 33300000, estado: 'comprometida', fecha: dias(-210) },
       { id: 'ASG-0002', tokenId: 'SEC-MPLE', solicitudId: 'SOL-0005', monto: 8400000, estado: 'comprometida', fecha: dias(-150) },
       { id: 'ASG-0003', tokenId: 'UTL-VETA', solicitudId: 'SOL-0006', monto: 1850000, estado: 'comprometida', fecha: dias(-120) },
       { id: 'ASG-0004', tokenId: 'UTL-OGS', solicitudId: 'SOL-0007', monto: 420000, estado: 'comprometida', fecha: dias(-96) },
@@ -135,6 +143,7 @@
         emisorId: 'EM-OG', tipo: 'asset_backed',
         jurisdiccion: 'Panamá', exencion: 'Reg S + Reg D 506(c)',
         isin: 'PA000ONDK019', cadena: 'Orden Global Chain (5550)',
+        contrato: '0xfb83eEA4B384a4b18E5A1EBa7a4bb4C0b7CA19c1',
         activo: {
           descripcion: 'Canasta de reservas minerales certificadas e inmueble corporativo',
           clase: 'Multi-activo respaldado', ubicacion: 'México · Panamá',
@@ -146,17 +155,18 @@
           fecha: dias(-52), proximaRevision: dias(129), informeHash: 'VAL-ONDK-2026-Q3',
           comite: ['J. Enamorado', 'M. Arroyo', 'R. Castellanos'],
           historial: [
-            { fecha: dias(-418), valor: 24000000, precio: 8.00 },
-            { fecha: dias(-236), valor: 29500000, precio: 8.00 },
-            { fecha: dias(-52), valor: 34000000, precio: 8.00 },
+            { fecha: dias(-418), valor: 24000000, precio: 0.06 },
+            { fecha: dias(-236), valor: 29500000, precio: 0.06 },
+            { fecha: dias(-52), valor: 34000000, precio: 0.06 },
           ],
         },
-        precioUnitario: 8.00, moneda: 'USD',
-        supply: { autorizado: 4000000, emitido: 4000000, enTesoreria: 180000, quemado: 0 },
+        // 555 M es lo que la cadena 5550 dice que existe de ONDK: el registro parte de ahí.
+        precioUnitario: 0.06, moneda: 'USD',
+        supply: { autorizado: 555000000, emitido: 555000000, enTesoreria: 24975000, quemado: 0 },
         tenedores: 412, lockupHasta: dias(-30),
         dividendo: { politica: 'Distribución del 40% del flujo neto por venta de concentrados, semestral', ultimoPago: dias(-96), montoUltimo: 640000, yield: 4.8 },
         mercado: {
-          estado: 'ventana', banda: 0.05, referencia: 8.00, ultimaOperacion: 8.12,
+          estado: 'ventana', banda: 0.05, referencia: 0.06, ultimaOperacion: 0.061,
           volumen30d: 1840000, ventanas: 'Martes y jueves, 10:00–14:00 CDMX',
           proximaVentana: dias(1),
         },
@@ -169,7 +179,7 @@
             { periodo: '2026-Q4', tipo: 'Estado financiero auditado', estado: 'programado', fecha: dias(84) },
           ],
         },
-        origenAsignado: 32000000,
+        origenAsignado: 33300000,
         estado: 'listado',
         creado: dias(-418),
       },
@@ -177,7 +187,7 @@
         id: 'SEC-MPLE', simbolo: 'MPLE', nombre: 'Maple Minerals Equity',
         emisorId: 'EM-MPL', tipo: 'equity',
         jurisdiccion: 'México', exencion: 'Oferta privada (LMV art. 8)',
-        isin: 'MX00MPLE0015', cadena: 'Orden Global Chain (5550)',
+        isin: 'MX00MPLE0015', cadena: 'Orden Global Chain (5550)', contrato: null,
         activo: {
           descripcion: 'Participación accionaria del 18% en Maple Commercial Minerals',
           clase: 'Capital accionario', ubicacion: 'Coahuila, México',
@@ -218,7 +228,7 @@
         id: 'SEC-VTRE', simbolo: 'VTRE', nombre: 'Veta Real Estate Series I',
         emisorId: 'EM-VT', tipo: 'revenue_share',
         jurisdiccion: 'México', exencion: 'Oferta privada (LMV art. 8)',
-        isin: '—', cadena: 'Orden Global Chain (5550)',
+        isin: '—', cadena: 'Orden Global Chain (5550)', contrato: null,
         activo: {
           descripcion: 'Participación en la renta neta del inmueble corporativo Polanco',
           clase: 'Participación en ingresos', ubicacion: 'Ciudad de México',
@@ -256,7 +266,7 @@
         id: 'UTL-VETA', simbolo: 'VETA', nombre: 'Veta Wallet Credits',
         servicio: 'Veta Wallet — comisiones de red, envíos y servicios de cartera',
         unidadServicio: '1 VETA = 1 transferencia interna con prioridad',
-        emisorId: 'EM-OG', cadena: 'Orden Global Chain (5550)',
+        emisorId: 'EM-OG', cadena: 'Orden Global Chain (5550)', contrato: null,
         precioAncla: 0.85, moneda: 'USD',
         redimible: 0.30,
         supply: { maximo: 12000000, autorizado: 10000000, emitido: 9000000, enTesoreria: 1350000, quemado: 400000 },
@@ -281,7 +291,7 @@
         id: 'UTL-OGS', simbolo: 'OGS', nombre: 'OGScan Query Credits',
         servicio: 'OGScan — consultas al explorador, índices y API de la cadena',
         unidadServicio: '1 OGS = 1,000 consultas a la API indexada',
-        emisorId: 'EM-OG', cadena: 'Orden Global Chain (5550)',
+        emisorId: 'EM-OG', cadena: 'Orden Global Chain (5550)', contrato: null,
         precioAncla: 0.35, moneda: 'USD',
         redimible: 0.40,
         supply: { maximo: 8000000, autorizado: 4200000, emitido: 4000000, enTesoreria: 380000, quemado: 620000 },
@@ -302,7 +312,7 @@
         id: 'UTL-MTP', simbolo: 'MTP', nombre: 'MyTokenPay Gateway Credits',
         servicio: 'MyTokenPay — procesamiento de cobros y liquidación a comercios',
         unidadServicio: '1 MTP = 1 liquidación a comercio sin comisión variable',
-        emisorId: 'EM-OG', cadena: 'Orden Global Chain (5550)',
+        emisorId: 'EM-OG', cadena: 'Orden Global Chain (5550)', contrato: null,
         precioAncla: 0.50, moneda: 'USD',
         redimible: 0.20,
         supply: { maximo: 6000000, autorizado: 3000000, emitido: 2800000, enTesoreria: 250000, quemado: 150000 },
@@ -351,8 +361,8 @@
       },
       {
         id: 'SOL-0003', tipo: 'security', tokenId: 'SEC-ONDK', simbolo: 'ONDK',
-        accion: 'emision_adicional', cantidad: 2000000, precio: 8.00,
-        origenRequerido: 16000000,
+        accion: 'emision_adicional', cantidad: 277500000, precio: 0.06,
+        origenRequerido: 16650000,
         causa: 'revaluacion',
         motivo: 'Solicitud de ampliación apoyada en la planta de beneficio (RES-PLA-06).',
         evidencias: [{ nombre: 'Tasación preliminar de planta', hash: '0E93A155', tipo: 'Valuación preliminar' }],
@@ -364,8 +374,8 @@
       },
       {
         id: 'SOL-0004', tipo: 'security', tokenId: 'SEC-ONDK', simbolo: 'ONDK',
-        accion: 'emision_inicial', cantidad: 4000000, precio: 8.00,
-        origenRequerido: 32000000, causa: 'nuevo_activo',
+        accion: 'emision_inicial', cantidad: 555000000, precio: 0.06,
+        origenRequerido: 33300000, causa: 'nuevo_activo',
         motivo: 'Emisión fundacional de ONDK contra la canasta de reservas certificadas.',
         evidencias: [{ nombre: 'Informe NI 43-101', hash: 'D7B23E10', tipo: 'Valuación independiente' }],
         solicitante: 'J. Enamorado', creada: dias(-214), resuelta: dias(-210),
@@ -390,21 +400,21 @@
 
     /* --- libro de órdenes de la ventana de negociación (mercado secundario) --- */
     ordenes: [
-      { id: 'ORD-101', tokenId: 'SEC-ONDK', lado: 'compra', cantidad: 12000, precio: 8.05, estado: 'abierta', ts: dias(-1) },
-      { id: 'ORD-102', tokenId: 'SEC-ONDK', lado: 'compra', cantidad: 8500, precio: 7.98, estado: 'abierta', ts: dias(-1) },
-      { id: 'ORD-103', tokenId: 'SEC-ONDK', lado: 'compra', cantidad: 25000, precio: 7.90, estado: 'abierta', ts: dias(-2) },
-      { id: 'ORD-104', tokenId: 'SEC-ONDK', lado: 'venta', cantidad: 9000, precio: 8.14, estado: 'abierta', ts: dias(-1) },
-      { id: 'ORD-105', tokenId: 'SEC-ONDK', lado: 'venta', cantidad: 16000, precio: 8.22, estado: 'abierta', ts: dias(-2) },
-      { id: 'ORD-106', tokenId: 'SEC-ONDK', lado: 'venta', cantidad: 30000, precio: 8.38, estado: 'abierta', ts: dias(-3) },
+      { id: 'ORD-101', tokenId: 'SEC-ONDK', lado: 'compra', cantidad: 1660000, precio: 0.0603, estado: 'abierta', ts: dias(-1) },
+      { id: 'ORD-102', tokenId: 'SEC-ONDK', lado: 'compra', cantidad: 1180000, precio: 0.0598, estado: 'abierta', ts: dias(-1) },
+      { id: 'ORD-103', tokenId: 'SEC-ONDK', lado: 'compra', cantidad: 3470000, precio: 0.0592, estado: 'abierta', ts: dias(-2) },
+      { id: 'ORD-104', tokenId: 'SEC-ONDK', lado: 'venta', cantidad: 1250000, precio: 0.0611, estado: 'abierta', ts: dias(-1) },
+      { id: 'ORD-105', tokenId: 'SEC-ONDK', lado: 'venta', cantidad: 2220000, precio: 0.0617, estado: 'abierta', ts: dias(-2) },
+      { id: 'ORD-106', tokenId: 'SEC-ONDK', lado: 'venta', cantidad: 4160000, precio: 0.0628, estado: 'abierta', ts: dias(-3) },
     ],
 
     /* --- registro de tenedores (muestra del cap table) --- */
     tenedores: [
-      { id: 'TEN-001', tokenId: 'SEC-ONDK', nombre: 'Fondo Atlante I', genesisId: 'GEN-4821-0093', tipo: 'Institucional', pais: 'Panamá', cantidad: 780000, desde: dias(-206), estado: 'verificado', lockup: null },
-      { id: 'TEN-002', tokenId: 'SEC-ONDK', nombre: 'J. Enamorado', genesisId: 'GEN-1001-0001', tipo: 'Fundador', pais: 'México', cantidad: 1200000, desde: dias(-210), estado: 'verificado', lockup: dias(120) },
-      { id: 'TEN-003', tokenId: 'SEC-ONDK', nombre: 'Grupo Sierra Madre', genesisId: 'GEN-7730-1184', tipo: 'Institucional', pais: 'México', cantidad: 540000, desde: dias(-160), estado: 'verificado', lockup: null },
-      { id: 'TEN-004', tokenId: 'SEC-ONDK', nombre: 'Inversionistas acreditados (409)', genesisId: '—', tipo: 'Retail acreditado', pais: 'Varios', cantidad: 1300000, desde: dias(-150), estado: 'verificado', lockup: null },
-      { id: 'TEN-005', tokenId: 'SEC-ONDK', nombre: 'Tesorería Orden Global', genesisId: 'GEN-0000-0000', tipo: 'Tesorería', pais: 'Panamá', cantidad: 180000, desde: dias(-210), estado: 'verificado', lockup: null },
+      { id: 'TEN-001', tokenId: 'SEC-ONDK', nombre: 'Fondo Atlante I', genesisId: 'GEN-4821-0093', tipo: 'Institucional', pais: 'Panamá', cantidad: 108225000, desde: dias(-206), estado: 'verificado', lockup: null },
+      { id: 'TEN-002', tokenId: 'SEC-ONDK', nombre: 'J. Enamorado', genesisId: 'GEN-1001-0001', tipo: 'Fundador', pais: 'México', cantidad: 166500000, desde: dias(-210), estado: 'verificado', lockup: dias(120) },
+      { id: 'TEN-003', tokenId: 'SEC-ONDK', nombre: 'Grupo Sierra Madre', genesisId: 'GEN-7730-1184', tipo: 'Institucional', pais: 'México', cantidad: 74925000, desde: dias(-160), estado: 'verificado', lockup: null },
+      { id: 'TEN-004', tokenId: 'SEC-ONDK', nombre: 'Inversionistas acreditados (409)', genesisId: '—', tipo: 'Retail acreditado', pais: 'Varios', cantidad: 180375000, desde: dias(-150), estado: 'verificado', lockup: null },
+      { id: 'TEN-005', tokenId: 'SEC-ONDK', nombre: 'Tesorería Orden Global', genesisId: 'GEN-0000-0000', tipo: 'Tesorería', pais: 'Panamá', cantidad: 24975000, desde: dias(-210), estado: 'verificado', lockup: null },
       { id: 'TEN-006', tokenId: 'SEC-MPLE', nombre: 'Maple Holding B.V.', genesisId: 'GEN-3312-8890', tipo: 'Institucional', pais: 'Países Bajos', cantidad: 200000, desde: dias(-150), estado: 'verificado', lockup: dias(96) },
       { id: 'TEN-007', tokenId: 'SEC-MPLE', nombre: 'Inversionistas acreditados (86)', genesisId: '—', tipo: 'Retail acreditado', pais: 'México', cantidad: 124000, desde: dias(-140), estado: 'verificado', lockup: dias(96) },
       { id: 'TEN-008', tokenId: 'SEC-MPLE', nombre: 'Tesorería Orden Global', genesisId: 'GEN-0000-0000', tipo: 'Tesorería', pais: 'Panamá', cantidad: 12000, desde: dias(-150), estado: 'verificado', lockup: null },
@@ -417,12 +427,13 @@
       { id: 'EV-0007', ts: dias(-4), actor: 'L. Bermúdez', rol: 'Consejero', tipo: 'solicitud.creada', detalle: 'VTRE · Emisión inicial de 60,000 tokens ($6 M de ORIGEN)', nivel: 'info' },
       { id: 'EV-0006', ts: dias(-8), actor: 'Grant Thornton', rol: 'Auditor', tipo: 'reserva.certificada', detalle: 'Prueba de reservas 2026-Q3 publicada para ONDK', nivel: 'ok' },
       { id: 'EV-0005', ts: dias(-12), actor: 'Tesorería', rol: 'Operaciones', tipo: 'reserva.actualizada', detalle: 'RES-CAJ-04 actualizada a $6.25 M tras conciliación bancaria', nivel: 'info' },
-      { id: 'EV-0004', ts: dias(-17), actor: 'Consejo', rol: 'Autoridad ORIGEN', tipo: 'solicitud.rechazada', detalle: 'ONDK · emisión adicional rechazada: la planta de beneficio no computa como reserva admisible', nivel: 'bad' },
+      { id: 'EV-0004', ts: dias(-17), actor: 'Consejo', rol: 'Autoridad ORIGEN', tipo: 'solicitud.rechazada', detalle: 'ONDK · emisión adicional de 277.5 M rechazada: la planta de beneficio no computa como reserva admisible', nivel: 'bad' },
       { id: 'EV-0003', ts: dias(-33), actor: 'Sistema', rol: 'Autoridad ORIGEN', tipo: 'reserva.vencida', detalle: 'RES-AG-07 dejó de computar: certificado vencido', nivel: 'warn' },
-      { id: 'EV-0002', ts: dias(-52), actor: 'Comité de Valuación', rol: 'Comité', tipo: 'valuacion.aprobada', detalle: 'ONDK revaluado a $34 M — precio unitario se mantiene en $8.00', nivel: 'ok' },
-      { id: 'EV-0001', ts: dias(-210), actor: 'Consejo', rol: 'Autoridad ORIGEN', tipo: 'solicitud.aprobada', detalle: 'ONDK · emisión fundacional autorizada — $32 M de ORIGEN comprometidos', nivel: 'ok' },
+      { id: 'EV-0002', ts: dias(-52), actor: 'Comité de Valuación', rol: 'Comité', tipo: 'valuacion.aprobada', detalle: 'ONDK revaluado a $34 M — precio unitario se mantiene en $0.06', nivel: 'ok' },
+      { id: 'EV-0001', ts: dias(-210), actor: 'Consejo', rol: 'Autoridad ORIGEN', tipo: 'solicitud.aprobada', detalle: 'ONDK · emisión fundacional de 555 M autorizada — $33.3 M de ORIGEN comprometidos', nivel: 'ok' },
+      { id: 'EV-0000', ts: dias(-420), actor: 'Consejo', rol: 'Autoridad ORIGEN', tipo: 'origen.emitido', detalle: 'Emisión fundacional de 26 M ORIGEN contra las reservas certificadas de Maple Commercial Minerals', nivel: 'ok' },
     ],
   };
 
-  global.TesoreriaSemilla = { version: 1, estado };
-})(window);
+  return { version: 2, estado };
+});

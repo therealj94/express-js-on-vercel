@@ -70,6 +70,7 @@
     </a>
   </div>
 
+  <div style="text-align:center;margin-top:28px"><span class="tag plano" id="modo">…</span></div>
   <div class="cifras" id="cifras"></div>
 
   <div class="jer">
@@ -106,30 +107,41 @@
   </div>
 
   <p class="ts" style="text-align:center;margin-top:34px">
-    Front end completo con estado compartido entre las tres plataformas. El backend viene después —
-    la estructura de datos de <span class="mono">app/datos.js</span> es el contrato de la API.
+    Las tres plataformas comparten un mismo estado y las mismas reglas (<span class="mono">app/reglas.js</span>),
+    que corren igual en el navegador y en el servidor de Tesorería. Sin servidor, funcionan como demostración local.
   </p>
 </div>
 
 <script src="./app/datos.js"></script>
+<script src="./app/reglas.js"></script>
 <script src="./app/nucleo.js"></script>
 <script>
 (function(){
-  T.cargar();
-  var r = T.respaldo(), E = T.estado;
-  var circUtl = E.utilities.reduce(function(s,t){ return s + T.saludUtility(t).circulante; },0);
-  var valSec  = E.securities.reduce(function(s,t){ return s + T.saludSecurity(t).valorEmitido; },0);
-  var celdas = [
-    ['Reservas certificadas admisibles', T.fmt.dineroCorto(r.admisible), E.reservas.length + ' activos con auditor'],
-    ['ORIGEN en circulación', T.fmt.compacto(r.emitido), 'respaldo ' + (isFinite(r.ratio) ? T.fmt.pct(r.ratio,1) : '∞')],
-    ['Security tokens emitidos', T.fmt.dineroCorto(valSec), E.securities.length + ' emisiones registradas'],
-    ['Utility tokens en circulación', T.fmt.compacto(circUtl), E.utilities.length + ' servicios del ecosistema']
-  ];
-  document.getElementById('cifras').innerHTML = celdas.map(function(c){
-    return '<div class="kpi"><div class="et">' + T.esc(c[0]) + '</div>' +
-           '<div class="val num">' + T.esc(c[1]) + '</div>' +
-           '<div class="nota">' + T.esc(c[2]) + '</div></div>';
-  }).join('');
+  function pintar(){
+    var r = T.respaldo(), E = T.estado;
+    var circUtl = E.utilities.reduce(function(s,t){ return s + T.saludUtility(t).circulante; },0);
+    var valSec  = E.securities.reduce(function(s,t){ return s + T.saludSecurity(t).valorEmitido; },0);
+    var celdas = [
+      ['Reservas certificadas admisibles', T.fmt.dineroCorto(r.admisible), E.reservas.length + ' activos con auditor'],
+      ['ORIGEN en circulación', T.fmt.compacto(r.emitidoUnidades), '≈ ' + T.fmt.dineroCorto(r.emitido) + ' · respaldo ' + (isFinite(r.ratio) ? T.fmt.pct(r.ratio,1) : '∞')],
+      ['Security tokens emitidos', T.fmt.dineroCorto(valSec), E.securities.length + ' emisiones registradas'],
+      ['Utility tokens en circulación', T.fmt.compacto(circUtl), E.utilities.length + ' servicios del ecosistema']
+    ];
+    document.getElementById('cifras').innerHTML = celdas.map(function(c){
+      return '<div class="kpi"><div class="et">' + T.esc(c[0]) + '</div>' +
+             '<div class="val num">' + T.esc(c[1]) + '</div>' +
+             '<div class="nota">' + T.esc(c[2]) + '</div></div>';
+    }).join('');
+    var m = document.getElementById('modo');
+    m.textContent = T.modo === 'api' ? 'Conectado al servidor de Tesorería' : 'Demostración local · sin servidor';
+    m.className = 'tag plano ' + (T.modo === 'api' ? 'ok' : 'warn');
+  }
+  T.arrancar().then(function(r){
+    if (r.modo === 'api' && !r.sesion) {
+      document.getElementById('cifras').innerHTML = '<div class="aviso acento" style="grid-column:1/-1">Servidor conectado. Entra en cualquiera de las tres plataformas para ver las cifras.</div>';
+      var m = document.getElementById('modo'); m.textContent = 'Servidor · sin sesión'; m.className = 'tag plano ok';
+    } else pintar();
+  }).catch(function(e){ document.getElementById('cifras').innerHTML = '<div class="aviso bad" style="grid-column:1/-1">' + T.esc(e.message) + '</div>'; });
   document.getElementById('tema').addEventListener('click', function(){ T.tema(); });
 })();
 </script>
