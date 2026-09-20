@@ -4,7 +4,19 @@ import react from '@vitejs/plugin-react'
 export default defineConfig({
   base: './',
   plugins: [react()],
-  server: { host: true },
+  css: { postcss: { plugins: [{
+    postcssPlugin: 'orden-isolated-shell',
+    Rule(rule) {
+      if (!rule.source?.input.file?.endsWith('/experience.css')) return;
+      if (rule.parent?.type === 'atrule' && /keyframes$/.test(rule.parent.name)) return;
+      rule.selectors = rule.selectors.map(selector => {
+        if (selector.includes('.galaxy-os') || selector.startsWith('html.og-standalone')) return selector;
+        if (/^(\.is-embedded|\[data-(motion|contrast))/.test(selector)) return ':where(.galaxy-os)' + selector;
+        return ':where(.galaxy-os) ' + selector;
+      });
+    },
+  }] } },
+  server: { host: '0.0.0.0', allowedHosts: ['terminal.local'] },
   build: {
     target: 'es2022',
     chunkSizeWarningLimit: 1400,
