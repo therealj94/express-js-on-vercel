@@ -82,8 +82,8 @@ export default function CompatibleUniverse({paused,labels}:{paused:boolean;label
   const allWorlds=[...worlds.filter(w=>w.id!=='genesis'),...deepWorlds],sprites=allWorlds.map((w,i)=>planetAsset(w,i)),galaxies=[galaxyAsset(41,'#b0c4df'),...externalGalaxies.map(g=>galaxyAsset(g.seed,g.color))],blackhole=blackHoleAsset();let sun=solarAsset();
   allWorlds.forEach((w,i)=>{void Promise.all([surfacePixels(textureFor(w)),w.kind===1?surfacePixels('earth_clouds'):Promise.resolve(undefined)]).then(([surface,clouds])=>{if(!disposed)sprites[i]=planetAsset(w,i,surface,clouds);}).catch(()=>{});});
   void surfacePixels('sun').then(surface=>{if(!disposed)sun=solarAsset(surface);}).catch(()=>{});
-  const background=new Image();background.src=assetURL('textures/starmap.jpg');
-  const hubble=new Image();hubble.src=assetURL('textures/whirlpool.jpg');let portrait:HTMLCanvasElement|null=null;
+  const background=new Image();background.src=assetURL('textures/starmap.webp');
+  const hubble=new Image();hubble.src=assetURL('textures/whirlpool.webp');let portrait:HTMLCanvasElement|null=null;
   hubble.onload=()=>{if(disposed)return;portrait=document.createElement('canvas');portrait.width=1800;portrait.height=1250;const g=portrait.getContext('2d')!;g.drawImage(hubble,0,0,1800,1250);g.globalCompositeOperation='destination-in';g.translate(900,625);g.scale(1,1250/1800);const mask=g.createRadialGradient(0,0,350,0,0,900);mask.addColorStop(0,'#fff');mask.addColorStop(.55,'#fffd');mask.addColorStop(1,'transparent');g.fillStyle=mask;g.fillRect(-900,-900,1800,1800);};
   const rand=random(54),stars=Array.from({length:780},()=>({x:rand(),y:rand(),r:.3+Math.pow(rand(),6)*1.5,a:.15+rand()*.55}));
   const resize=()=>{const b=canvas.getBoundingClientRect();width=b.width;height=b.height;const q=usePreferences.getState().prefs.quality,dpr=Math.min(devicePixelRatio,q==='high'?2:q==='low'?1:1.5);canvas.width=width*dpr;canvas.height=height*dpr;ctx.setTransform(dpr,0,0,dpr,0,0);camera.aspect=width/height;camera.updateProjectionMatrix();};

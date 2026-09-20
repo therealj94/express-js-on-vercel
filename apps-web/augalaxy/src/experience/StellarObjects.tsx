@@ -3,20 +3,23 @@ import {useFrame} from '@react-three/fiber';
 import * as T from 'three';
 import {noiseGLSL,planetVertex} from './shaders';
 import {SUN_RADIUS,BLACK_HOLE_POSITION,BLACK_HOLE_RADIUS,PULSAR_POSITION,orbitRadii} from './cosmos';
-import {useExperience,motionReduced} from './navigation';
-import {assetURL} from './assets';
+import {mapa,mapaDiferido} from './mapas';
+import {motionReduced, useExperience} from './navigation';
 
 const planeVertex=`varying vec2 vUv;void main(){vUv=uv;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}`;
 export function GalacticPortrait(){
  const mesh=useRef<T.Mesh>(null),uniforms=useMemo(()=>({uMap:{value:null as T.Texture|null},uOpacity:{value:0}}),[]);
- useEffect(()=>{let disposed=false;const texture=new T.TextureLoader().load(assetURL('textures/whirlpool.jpg'),t=>{if(!disposed){t.colorSpace=T.SRGBColorSpace;uniforms.uMap.value=t;}});return()=>{disposed=true;texture.dispose();};},[uniforms]);
+ /* El retrato de M51 solo se mira en el espacio profundo: se pide cuando
+    alguien llega hasta ahí, no para enseñar un login. */
+ const enGalaxias=useExperience(s=>s.stage==='galaxies');
+ useEffect(()=>{if(enGalaxias)mapaDiferido('whirlpool',t=>{uniforms.uMap.value=t;});},[enGalaxias,uniforms]);
  useFrame(({camera,clock},dt)=>{const target=useExperience.getState().stage==='galaxies'?1:0;uniforms.uOpacity.value=T.MathUtils.damp(uniforms.uOpacity.value,target,3,dt);if(mesh.current){mesh.current.quaternion.copy(camera.quaternion);mesh.current.rotateZ(-.23+(motionReduced()?0:clock.elapsedTime*.001));mesh.current.visible=uniforms.uOpacity.value>.005;}});
  return <mesh ref={mesh} position={[10,-12,-40]}><planeGeometry args={[132,92]}/><shaderMaterial uniforms={uniforms} vertexShader={planeVertex} transparent depthWrite={false} blending={T.AdditiveBlending} fragmentShader={`varying vec2 vUv;uniform sampler2D uMap;uniform float uOpacity;void main(){vec2 p=(vUv-.5)*2.;float edge=1.-smoothstep(.62,1.,max(abs(p.x),abs(p.y)));vec3 col=texture2D(uMap,vUv).rgb;gl_FragColor=vec4(col,edge*uOpacity*.86);}`}/></mesh>;
 }
 export function SolarCore(){
  const sphere=useRef<T.Mesh>(null),corona=useRef<T.Mesh>(null),group=useRef<T.Group>(null);
  const uniforms=useMemo(()=>({uMap:{value:null as T.Texture|null},uLoaded:{value:0},uTime:{value:0}}),[]);
- useEffect(()=>{const tex=new T.TextureLoader().load(assetURL('textures/sun.jpg'),t=>{t.colorSpace=T.SRGBColorSpace;uniforms.uMap.value=t;uniforms.uLoaded.value=1;});return()=>tex.dispose();},[uniforms]);
+ useEffect(()=>{const tex=mapa('sun',t=>{uniforms.uMap.value=t;uniforms.uLoaded.value=1;});return()=>tex.dispose();},[uniforms]);
  useFrame(({camera,clock},dt)=>{if(!motionReduced()){uniforms.uTime.value=clock.elapsedTime;if(sphere.current)sphere.current.rotation.y+=dt*.023;}if(corona.current)corona.current.quaternion.copy(camera.quaternion);if(group.current){const target=useExperience.getState().stage==='galaxies'?.08:1;group.current.scale.setScalar(T.MathUtils.damp(group.current.scale.x,target,3,dt));}});
  return <group ref={group}>
  <mesh ref={sphere}><sphereGeometry args={[SUN_RADIUS,96,80]}/><shaderMaterial uniforms={uniforms} vertexShader={planetVertex} fragmentShader={`uniform sampler2D uMap;uniform float uLoaded;uniform float uTime;varying vec3 vP;varying vec3 vN;varying vec3 vWorld;varying vec2 vUv;${noiseGLSL}

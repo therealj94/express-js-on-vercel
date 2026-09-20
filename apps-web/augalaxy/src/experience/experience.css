@@ -266,3 +266,11 @@ html.og-standalone,html.og-standalone body,html.og-standalone #root{margin:0;wid
 .panorama-option{padding:20px 0;border-bottom:1px solid #ffffff20;margin-bottom:20px}.panorama-option p{color:#b4bfce;font-size:16px;line-height:1.6}.panorama-option small{display:block;margin-top:12px;font-size:14px;color:#b4bfce}.panorama-controls{position:absolute;inset:20px 24px auto;display:flex;align-items:center;flex-wrap:wrap;gap:14px;z-index:12}.panorama-controls>span{margin-right:auto;font-size:14px;letter-spacing:.08em}.panorama-controls p{flex-basis:100%;margin:0;font-size:14px;color:#d0d8e3}.galaxy-os[data-immersive="true"] .system-heading,.galaxy-os[data-immersive="true"] .os-footer,.galaxy-os[data-immersive="true"] .orbit-tools,.galaxy-os[data-immersive="true"] .gesture-hint,.galaxy-os[data-immersive="true"] .network-overlay{display:none}.panorama-controls .primary{min-height:44px}
 
 .galaxy-os[data-viewer="carton"] .world-labels,.galaxy-os[data-viewer="carton"] .panorama-controls,.galaxy-os[data-viewer="xr"] .world-labels{display:none}.stereo-exit{position:absolute;inset:0;background:transparent;border:0;z-index:40;cursor:pointer}.stereo-exit:focus-visible{outline:2px solid #e5c487;outline-offset:-6px}
+
+/* La frase de cada mundo: escondida hasta que alguien señala o tabula, siempre
+   presente para un lector de pantalla. */
+.world-label .label-said{display:block;max-width:22ch;margin-top:.25rem;font-style:normal;font-size:.72rem;line-height:1.35;color:var(--muted);opacity:0;transform:translateY(-2px);transition:opacity .18s ease,transform .18s ease;pointer-events:none}
+.world-label:hover .label-said,.world-label:focus-visible .label-said,.world-label.is-selected .label-said{opacity:1;transform:none}
+@media (prefers-reduced-motion: reduce){.world-label .label-said{transition:none}}
+/* La pista de dentro de la wallet no compite con la interfaz de la casa. */
+.embedded-hint{bottom:5.5rem;font-size:.82rem;opacity:.7}

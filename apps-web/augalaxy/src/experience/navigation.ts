@@ -31,6 +31,7 @@ export const navigation={
   if(id&&id!==prev){sound.cue('select');sound.travel('focus');}
  },
  enter(id:string){
+  if(!usePreferences.getState().prefs.tutorialSeen)usePreferences.getState().set({tutorialSeen:true});
   if(!worlds.some(w=>w.id===id)||useExperience.getState().stage==='transit')return;
   if(useExperience.getState().selected!==id)this.focus(id);
   const journey={id,startedAt:now(),duration:motionReduced()?120:2100,token:++token};

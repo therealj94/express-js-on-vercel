@@ -59,7 +59,9 @@ async function fetchOnce(url) {
 }
 
 async function asset(file, url, expected) {
-  const dest = path.join(root, 'public', file);
+  /* Los mapas originales NO se publican: son el respaldo con licencia del que
+     salen los WebP que sí se sirven (scripts/derivar-texturas.py). */
+  const dest = path.join(root, file.startsWith('textures/') ? 'assets-fuente' : 'public', file);
   let existing;
   try { existing = await readFile(dest); } catch { /* todavía no está */ }
   if (existing && sha(existing) === expected) return;
@@ -107,6 +109,10 @@ try {
 } catch (error) {
   missing.push({file: 'vision/wasm', problems: ['no se pudo copiar desde node_modules (' + (error?.message || error) + ')']});
 }
+
+const derivadas = await readdir(path.join(root, 'public/textures')).catch(() => []);
+const sinDerivar = Object.keys(planets).concat('sun', 'starmap', 'whirlpool').filter(n => !derivadas.includes(n + '.webp'));
+if (sinDerivar.length) missing.push({file: 'public/textures/*.webp', problems: ['faltan ' + sinDerivar.join(', ') + ': corré scripts/derivar-texturas.py']});
 
 if (!missing.length) {
   console.log('Texturas planetarias y recursos locales de AirTouch verificados.');

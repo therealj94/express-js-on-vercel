@@ -1,6 +1,14 @@
 import {usePreferences} from './preferences';
 import {navigation,useExperience} from './navigation';
 import {assetURL} from './assets';
+
+/* EL MODELO DE MANOS, UNA SOLA VEZ EN EL SITIO. La wallet ya sirve MediaPipe en
+   /vendor/vision/ —los mismos bytes, comprobados uno a uno— y el motor traía su
+   copia: 43 MB repetidos en el mismo dominio, subidos en cada despliegue. Si la
+   casa dice dónde están los suyos, se usan; si el motor corre solo, los de su
+   propio bundle. */
+const visionHost=()=>{const v=typeof window!=='undefined'?(window as any).__AE_VISION:null;
+ return v&&typeof v==='object'&&typeof v.wasm==='string'&&typeof v.modelo==='string'?v as {wasm:string;modelo:string}:null;};
 type Point={x:number;y:number};
 export type HandStatus='off'|'loading'|'searching'|'tracking'|'error';
 export function measureHand(points:Point[]){
@@ -25,9 +33,10 @@ class AirTouchController {
    const stream=await navigator.mediaDevices.getUserMedia({video:{width:640,height:480,facingMode:'user'},audio:false});
    if(run!==this.run){stream.getTracks().forEach(t=>t.stop());return;}this.stream=stream;
    const vision=await import('@mediapipe/tasks-vision');
-   const files=await vision.FilesetResolver.forVisionTasks(assetURL('vision/'));
+   const casa=visionHost();
+   const files=await vision.FilesetResolver.forVisionTasks(casa?casa.wasm:assetURL('vision/'));
    if(run!==this.run)return;
-   const model=await vision.HandLandmarker.createFromOptions(files,{baseOptions:{modelAssetPath:assetURL('vision/hand_landmarker.task'),delegate:'CPU'},runningMode:'VIDEO',numHands:1,minHandDetectionConfidence:.65,minTrackingConfidence:.65});
+   const model=await vision.HandLandmarker.createFromOptions(files,{baseOptions:{modelAssetPath:casa?casa.modelo:assetURL('vision/hand_landmarker.task'),delegate:'CPU'},runningMode:'VIDEO',numHands:1,minHandDetectionConfidence:.65,minTrackingConfidence:.65});
    if(run!==this.run){model.close();return;}this.model=model;
    const video=this.video=document.createElement('video');video.muted=true;video.playsInline=true;video.srcObject=stream;await video.play();
    if(run!==this.run)return;

@@ -8,7 +8,7 @@ import {useExperience,navigation,motionReduced} from './navigation';
 import {planetVertex,planetFragment,cloudFragment,atmoFragment,pointVertex,pointFragment} from './shaders';
 import CompatibleUniverse from './CompatibleUniverse';
 import {textureFor} from './textures';
-import {assetURL} from './assets';
+import {mapa,mapaDiferido} from './mapas';
 import {CameraDirector,updateOrbits,updateLabels,locationOf,labelNodes,linkNodes,bindSceneInput,deepWorlds} from './cosmos';
 import ViewerDriver from './viewerDriver';
 import {useViewer,immersive} from './immersive';
@@ -59,7 +59,7 @@ function Ring({radius,color}:{radius:number;color:string}){
 function Planet({world,index,deep=false}:{world:World;index:number;deep?:boolean}){
  const mesh=useRef<T.Mesh>(null),cloud=useRef<T.Mesh>(null),group=useRef<T.Group>(null);
  const uniforms=useMemo(()=>({uColor:{value:new T.Color(world.color)},uSecondary:{value:new T.Color(world.secondary)},uKind:{value:world.kind},uSeed:{value:index*7.3+1},uMap:{value:null as T.Texture|null},uHasMap:{value:0}}),[world,index]);
- useEffect(()=>{let disposed=false;const tex=new T.TextureLoader().load(assetURL('textures/'+textureFor(world)+'.jpg'),t=>{if(disposed){t.dispose();return;}t.colorSpace=T.SRGBColorSpace;t.anisotropy=4;uniforms.uMap.value=t;uniforms.uHasMap.value=1;},undefined,()=>{});return()=>{disposed=true;tex.dispose();};},[world,uniforms]);
+ useEffect(()=>{let disposed=false;const tex=mapa(textureFor(world),t=>{if(disposed){return;}t.anisotropy=4;uniforms.uMap.value=t;uniforms.uHasMap.value=1;});return()=>{disposed=true;tex.dispose();};},[world,uniforms]);
  const clouds=useMemo(()=>({uTime:{value:0},uTint:{value:new T.Color('#d8e5e9')}}),[]);
  const atmo=useMemo(()=>({uTint:{value:new T.Color(world.kind===1?'#5aafef':world.color)}}),[world]);
  useFrame(({clock},dt)=>{
@@ -78,7 +78,13 @@ function Planet({world,index,deep=false}:{world:World;index:number;deep?:boolean
 }
 function SkyBackdrop(){
  const [map,setMap]=useState<T.Texture|null>(null);
- useEffect(()=>{let dead=false;const t=new T.TextureLoader().load(assetURL('textures/starmap.jpg'),t=>{if(dead)return;t.colorSpace=T.SRGBColorSpace;setMap(t);},undefined,()=>{});return()=>{dead=true;t.dispose();};},[]);
+ /* El mapa estelar es un fondo al 13% de opacidad: no tiene por qué competir
+    con la primera pantalla. Se pide cuando el navegador está desocupado. */
+ useEffect(()=>{let muerto=false;
+  const pedir=()=>{if(!muerto)mapaDiferido('starmap',t=>{if(!muerto)setMap(t);});};
+  const ocioso=(window as any).requestIdleCallback as undefined|((fn:()=>void,o?:{timeout:number})=>number);
+  const id=ocioso?ocioso(pedir,{timeout:4000}):window.setTimeout(pedir,1500);
+  return()=>{muerto=true;if(!ocioso)clearTimeout(id);};},[]);
  return map?<mesh><sphereGeometry args={[450,48,32]}/><meshBasicMaterial side={T.BackSide} map={map} transparent opacity={.13} depthWrite={false}/></mesh>:null;
 }
 function SceneDriver({onLost}:{onLost:()=>void}){
@@ -89,9 +95,13 @@ function SceneDriver({onLost}:{onLost:()=>void}){
 }
 export function PlanetLabels(){
  const prefs=usePreferences(s=>s.prefs);
- return <><svg className="network-overlay" aria-hidden="true">{worlds.flatMap(w=>(w.id==='genesis'?['label-']:['label-','core-','peer-']).map(prefix=><line key={prefix+w.id} className={prefix.slice(0,-1)} ref={node=>{if(node)linkNodes.set(prefix+w.id,node);else linkNodes.delete(prefix+w.id);}}/>))}</svg><div className="world-labels" aria-label={prefs.lang==='es'?'Aplicaciones planetarias':'Planetary applications'}>{worlds.map((w,i)=><button key={w.id} ref={node=>{if(node)labelNodes.set(w.id,node);else labelNodes.delete(w.id);}} className="world-label" onPointerEnter={()=>navigation.hover(w.id)} onPointerLeave={()=>navigation.hover(null)} onFocus={()=>navigation.hover(w.id)} onBlur={()=>navigation.hover(null)} /* Con la casa detrás no hay ficha nuestra que abrir: tocar un nombre es
+ return <><svg className="network-overlay" aria-hidden="true">{worlds.flatMap(w=>(w.id==='genesis'?['label-']:['label-','core-','peer-']).map(prefix=><line key={prefix+w.id} className={prefix.slice(0,-1)} ref={node=>{if(node)linkNodes.set(prefix+w.id,node);else linkNodes.delete(prefix+w.id);}}/>))}</svg><div className="world-labels" role="group" aria-label={prefs.lang==='es'?'Aplicaciones planetarias':'Planetary applications'}>{worlds.map((w,i)=><button key={w.id} ref={node=>{if(node)labelNodes.set(w.id,node);else labelNodes.delete(w.id);}} className="world-label" onPointerEnter={()=>navigation.hover(w.id)} onPointerLeave={()=>navigation.hover(null)} onFocus={()=>navigation.hover(w.id)} onBlur={()=>navigation.hover(null)} /* Con la casa detrás no hay ficha nuestra que abrir: tocar un nombre es
     viajar y que la wallet abra su app. Sola, el nombre solo elige. */
- onClick={()=>enCasa()?navigation.enter(w.id):navigation.focus(w.id)}><span className="label-rule"/><span className="planet-label-index">{String(i+1).padStart(2,'0')}</span><strong>{worldName(w,prefs.lang)}</strong><small>{word(w.category,prefs.lang)}</small></button>)}</div></>;
+ onClick={()=>enCasa()?navigation.enter(w.id):navigation.focus(w.id)}><span className="label-rule"/><span className="planet-label-index">{String(i+1).padStart(2,'0')}</span><strong>{worldName(w,prefs.lang)}</strong><small>{word(w.category,prefs.lang)}</small>
+ {/* «MINAS · Resources» no le dice nada a quien llega. La frase que ya estaba
+     escrita en el catálogo aparece al señalar o al tabular: sin ocupar sitio
+     cuando no hace falta, y disponible para un lector de pantalla siempre. */}
+ <em className="label-said">{word(w.description,prefs.lang)}</em></button>)}</div></>;
 }
 class RenderGuard extends Component<{children:ReactNode;onError:()=>void},{failed:boolean}>{
  state={failed:false};static getDerivedStateFromError(){return{failed:true};}componentDidCatch(){this.props.onError();}render(){return this.state.failed?null:this.props.children;}
@@ -105,10 +115,15 @@ export default function Universe({paused=false}:{paused?:boolean}){
  const onLost=useMemo(()=>()=>setLost(true),[]);
  useEffect(()=>{useExperience.getState().set({rendererActual:pro?'pro':'lite',webglAvailable:webgl&&!lost});},[pro,webgl,lost]);
  const coarse=matchMedia('(pointer: coarse)').matches,low=prefs.quality==='low'||(prefs.quality==='auto'&&coarse),count=low?14000:prefs.quality==='high'?48000:32000,dpr=prefs.quality==='high'?1.75:low?1:1.35;
- if(!pro)return <div className="universe" data-renderer="lite"><CompatibleUniverse paused={paused} labels={labelNodes}/></div>;
- return <div className="universe" data-renderer="pro"><RenderGuard onError={onLost}><Canvas frameloop={paused?'never':'always'} dpr={dpr} camera={{position:[0,24,42],fov:48,near:.05,far:900}}
+ if(!pro)return <div className="universe" data-renderer="lite" role="img" aria-label={prefs.lang==='es'?'El sistema de Orden Global: GENESIS CORE en el centro y las aplicaciones en órbita':'The Orden Global system: GENESIS CORE at the centre with the applications in orbit'}><CompatibleUniverse paused={paused} labels={labelNodes}/></div>;
+ return <div className="universe" data-renderer="pro" role="img" aria-label={prefs.lang==='es'?'El sistema de Orden Global: GENESIS CORE en el centro y las aplicaciones en órbita':'The Orden Global system: GENESIS CORE at the centre with the applications in orbit'}><RenderGuard onError={onLost}><Canvas frameloop={paused?'never':'always'} dpr={dpr} camera={{position:[0,24,42],fov:48,near:.05,far:900}}
   gl={{antialias:true,alpha:false,powerPreference:'high-performance'}}
-  fallback={<CompatibleUniverse paused={paused} labels={labelNodes}/>}
+  /* SIN `fallback`. R3F lo monta mientras el lienzo arranca, y ese instante le
+     alcanzaba al motor de respaldo para pedir por su cuenta —con Image, fuera
+     de la caché de three— las nueve texturas que el motor Pro ya estaba
+     bajando: medido en produccion, cada mapa dos veces. Quedarse sin WebGL ya
+     esta cubierto dos veces sin esto: supportsWebGL() antes de dibujar, y
+     RenderGuard si el lienzo falla o pierde el contexto. */
   onCreated={({gl})=>{gl.toneMapping=T.ACESFilmicToneMapping;gl.toneMappingExposure=1.1;gl.setClearColor('#02040a');}}>
   <SceneDriver onLost={onLost}/><ViewerDriver/><ambientLight intensity={.25}/><pointLight position={[0,0,0]} intensity={90} decay={1.5}/><directionalLight position={[-30,30,15]} intensity={.3}/>
   <SkyBackdrop/><CosmicNebula/><GalacticPortrait/><StarField count={low?2000:4200} radius={380}/>

@@ -71,7 +71,20 @@ for n in sorted(os.listdir(DIST)):
 # Se copia el arbol compilado entero, y cada carpeta se vacia antes para que un
 # archivo que el motor ya no usa no se quede viviendo en el sitio.
 RAIZ_MOTOR = os.path.dirname(DESTINO)
-for carpeta in sorted(d for d in os.listdir(os.path.dirname(DIST)) if os.path.isdir(os.path.join(os.path.dirname(DIST), d)) and d != 'assets'):
+# Lo que el motor ya no publica tampoco se queda viviendo en el sitio: al dejar
+# de copiar `vision/` quedaban 43 MB huérfanos sirviéndose para nadie.
+_publicadas = {'assets'} | {d for d in os.listdir(os.path.dirname(DIST))
+                            if os.path.isdir(os.path.join(os.path.dirname(DIST), d)) and d not in {'vision'}}
+for sobra in sorted(d for d in os.listdir(RAIZ_MOTOR)
+                    if os.path.isdir(os.path.join(RAIZ_MOTOR, d)) and d not in _publicadas):
+    shutil.rmtree(os.path.join(RAIZ_MOTOR, sobra))
+    print(f'  · quitado del sitio: {sobra}/ (ya no se publica)')
+# `vision/` NO viaja a la wallet: la casa ya sirve los mismos bytes en
+# /vendor/vision/ y se los pasa al motor por window.__AE_VISION. Duplicarlos
+# eran 43 MB repetidos en el mismo dominio y en cada subida. El bundle suelto
+# (el que corre fuera de esta casa) si los lleva.
+SOLO_PARA_LA_WALLET = {'vision'}
+for carpeta in sorted(d for d in os.listdir(os.path.dirname(DIST)) if os.path.isdir(os.path.join(os.path.dirname(DIST), d)) and d != 'assets' and d not in SOLO_PARA_LA_WALLET):
     origen = os.path.join(os.path.dirname(DIST), carpeta)
     destino = os.path.join(RAIZ_MOTOR, carpeta)
     if os.path.isdir(destino):

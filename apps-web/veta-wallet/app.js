@@ -6265,7 +6265,14 @@ const VETA = (() => {
   const VETA_V = 'f7248e626c';
   const VETA_FECHA = '2026-09-20';
 
-  const AET_V = '8dba405e8a';
+  const AET_V = 'ec1cd1c429';
+
+  /* MEDIAPIPE, UNA SOLA COPIA EN EL SITIO. La casa ya sirve el modelo de manos
+     y su WASM en /vendor/vision/ para su propio AirTouch. El motor traia los
+     mismos bytes otra vez —43 MB repetidos, subidos en cada despliegue—; con
+     esto usa los de aqui. Si algun dia el motor corre fuera de esta casa, cae
+     solo a los suyos. */
+  window.__AE_VISION = { wasm: '/vendor/vision/wasm/', modelo: '/vendor/vision/hand_landmarker.task' };
 
   function aetCargar() {
     if (aetCarga) return aetCarga;

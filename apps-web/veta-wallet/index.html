@@ -24,8 +24,8 @@
 <meta http-equiv="Content-Security-Policy" content="
   default-src 'self';
   script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval';
-  style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
-  font-src 'self' data: https://fonts.gstatic.com;
+  style-src 'self' 'unsafe-inline';
+  font-src 'self' data:;
   img-src 'self' data: blob: https://cerebro.ordenscan.com;
   media-src 'self' blob: https://cerebro.ordenscan.com;
   connect-src 'self'
@@ -65,8 +65,11 @@
 <meta property="og:title" content="Orden Global">
 <meta property="og:description" content="Un ecosistema entero, en una sola cuenta.">
 <meta property="og:image" content="https://app.vetawallet.com/assets/veta.png">
-<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<!-- Tipografias propias. Antes se pedian a fonts.googleapis.com en cada visita:
+     bloqueaba el primer pintado, metia a un tercero en el camino de una app
+     financiera y le contaba quien entra. Ahora viajan con el sitio. -->
+<link rel="preload" href="assets/fonts/archivo-400-latin.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="assets/fonts/tipografias.css">
 
 <style>
 /* ═══════════════════════════════════════════════════════════════════════════
