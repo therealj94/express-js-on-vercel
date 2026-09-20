@@ -29,6 +29,7 @@ navegador ──▶ OrdenExchange (Express + TS) ──X-API-Key──▶ Genesi
 | `public/` | La app web (`index.html`, `app.js`, `i18n.js`) y el panel (`admin.html`) |
 | `src/pruebas/` | Pruebas de extremo a extremo sobre el servidor real |
 | `API.md` | El contrato HTTP completo |
+| `docs/` | El documento de diseño (`OrdenExchange-Diseno.pdf`, generado desde `diseno.html`) con la arquitectura, los flujos, el KYC, la seguridad y las capturas |
 
 ## Cómo se pone en marcha
 

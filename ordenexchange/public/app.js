@@ -342,6 +342,16 @@ function elegirPaisInicial() {
 }
 function monedaMercado() { const p = paisDe(S.mercado.pais); return p && p.moneda ? p.moneda.codigo : ''; }
 
+/** La custodia, dicha con una sola frase: dónde está el activo ahora mismo. */
+function custodiaHTML(o) {
+  const cant = esc(fmtActivo(o.cantidadActivo, o.activo));
+  const candado = '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="10.5" width="16" height="10.5" rx="2"/><path d="M8 10.5V7a4 4 0 0 1 8 0v3.5"/></svg>';
+  const visto = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>';
+  const vuelta = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 14l-4-4 4-4"/><path d="M5 10h9a6 6 0 0 1 0 12h-3"/></svg>';
+  if (o.estado === 'completada') return `<div class="custodia liberada"><span class="cand">${visto}</span><div class="cuerpo"><b>${t('orden.custodiaLiberada', { n: cant })}</b><small>${t('orden.custodiaLiberadaSub')}</small></div></div>`;
+  if (o.estado === 'cancelada') return `<div class="custodia devuelta"><span class="cand">${vuelta}</span><div class="cuerpo"><b>${t('orden.custodiaDevuelta', { n: cant })}</b><small>${t('orden.custodiaDevueltaSub')}</small></div></div>`;
+  return `<div class="custodia activa"><span class="cand">${candado}</span><div class="cuerpo"><b>${t('orden.custodiaActiva', { n: cant })}</b><small>${t(o.estado === 'apelacion' ? 'orden.custodiaApelacionSub' : 'orden.custodiaSub')}</small></div></div>`;
+}
 function pizarraHTML(moneda) {
   const p = S.precios[moneda];
   const pais = paisPorMoneda(moneda);
@@ -695,7 +705,11 @@ function reloj() {
   const el = $('#reloj'); const caja = $('#temporizador'); if (!el || !S.v.fin) return;
   const seg = Math.round((S.v.fin - Date.now()) / 1000);
   el.textContent = mmss(seg);
-  if (caja) { caja.classList.toggle('urgente', seg > 0 && seg <= 180); caja.classList.toggle('vencido', seg <= 0); }
+  if (caja) {
+    caja.classList.toggle('urgente', seg > 0 && seg <= 180); caja.classList.toggle('vencido', seg <= 0);
+    const total = ((S.v.orden && S.v.orden.ventanaPagoMin) || 15) * 60;
+    caja.style.setProperty('--p', String(Math.max(0, Math.min(1, seg / total))));
+  }
   if (seg <= 0 && !S.v.vencioAvisado) { S.v.vencioAvisado = true; const tx = $('#temporizador .texto b'); if (tx) tx.textContent = t('orden.vencio'); }
 }
 function pasosHTML(o) {
@@ -775,7 +789,7 @@ const vistaOrden = {
       <div class="fila-1"><a href="#/ordenes" class="btn-icono" aria-label="${t('com.volver')}">${IC.abajo.replace('class="ic"', 'class="ic" style="transform:rotate(90deg)"')}</a>
         <h1>${c ? t('orden.tuCompras') : t('orden.tuVendes')} <span class="activo-etq ${c ? 'verde' : 'rojo'}">${esc(fmtActivo(o.cantidadActivo, o.activo))}</span></h1><span class="estado ${esc(o.estado)}">${t('estado.' + o.estado)}</span></div>
       <div class="numero"><span>${t('orden.numero')}:</span>${copiable(o.numero)}<span>· ${esc(t('orden.abiertaHace', { t: fechaRel(o.creadaEn) }))}</span></div>
-      ${conReloj ? `<div class="temporizador" id="temporizador"><div class="reloj" id="reloj" aria-live="off">${mmss((S.v.fin - Date.now()) / 1000)}</div><div class="texto"><b>${textoReloj}</b>${t('com.ventana')}: ${t('com.minutos', { n: o.ventanaPagoMin })}</div></div>` : ''}
+      ${conReloj ? `<div class="temporizador" id="temporizador"><div class="reloj" id="reloj" aria-live="off">${mmss((S.v.fin - Date.now()) / 1000)}</div><div class="texto"><b>${textoReloj}</b>${t('com.ventana')}: ${t('com.minutos', { n: o.ventanaPagoMin })}</div><div class="progreso" aria-hidden="true"><i></i></div></div>` : ''}
       ${estadoTexto && !conReloj ? notaHTML(esc(estadoTexto), o.estado === 'pagado' && !c ? 'verde' : 'gris', IC.info) : ''}
     </div>
     <div class="orden-grid"><div>
@@ -787,6 +801,7 @@ const vistaOrden = {
           <div class="item"><span>${t('orden.cantidad')}</span><b>${esc(fmtActivo(o.cantidadActivo, o.activo))}</b></div>
           ${num(o.comision) > 0 ? `<div class="item"><span>${t('orden.comision')}</span><b>${esc(fmtActivo(o.comision, o.activo))}</b></div><div class="item"><span>${c ? t('orden.recibiras') : t('orden.entregas')}</span><b>${esc(fmtActivo(c ? num(o.cantidadActivo) - num(o.comision) : o.cantidadActivo, o.activo))}</b></div>` : ''}
         </div>
+        ${custodiaHTML(o)}
         <div class="contraparte"><span class="avatar">${esc(inicial(cp.apodo))}${cp.enLinea ? '<i class="punto"></i>' : ''}</span><div class="cuerpo"><b>${c ? t('orden.vendedor') : t('orden.comprador')}: <a href="#/usuario/${esc(cp.id)}">${esc(cp.apodo)}</a>${insigniasHTML(cp)}</b><small>${repCorta(cp.reputacion)}</small></div><a href="#/usuario/${esc(cp.id)}" class="btn btn-fantasma btn-chico">${t('orden.verPerfil')}</a></div>
       </div>
       ${abierta || o.estado === 'completada' ? `<div class="tarjeta"><div class="tarjeta-cabeza"><h2>${t('orden.pasos')}</h2></div>${pasosHTML(o)}${(abierta || o.miRol === 'vendedor') && o.metodoPago ? datosPagoHTML(o) : ''}${accionesOrdenHTML(o)}</div>` : accionesOrdenHTML(o)}
@@ -1607,7 +1622,9 @@ function render() {
   const app = $('#app'); if (!app) return;
   const vista = VISTAS[S.ruta.vista] || vistaMercado;
   const foco = document.activeElement && document.activeElement.id;
-  app.innerHTML = cabecera() + `<main id="contenido" class="contenido ${vista.clase || ''}">${vista.html()}</main>` + pie() + barraInferior();
+  const clave = S.ruta.vista + '/' + (S.ruta.id || '');
+  const entra = S.vistaPintada !== clave; S.vistaPintada = clave;
+  app.innerHTML = cabecera() + `<main id="contenido" class="contenido ${vista.clase || ''} ${entra ? 'entra' : ''}">${vista.html()}</main>` + pie() + barraInferior();
   document.title = 'OrdenExchange · ' + (S.ruta.vista === 'mercado' ? t('nav.mercado') : (t('nav.' + S.ruta.vista) === 'nav.' + S.ruta.vista ? t('orden.titulo') : t('nav.' + S.ruta.vista)));
   if (foco) { const el = document.getElementById(foco); if (el && el.focus) el.focus(); }
   if (vista.montar) vista.montar();

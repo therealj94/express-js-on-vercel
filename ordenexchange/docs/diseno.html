@@ -1,0 +1,719 @@
+<!doctype html>
+<html lang="es"><head><meta charset="utf-8">
+<title>OrdenExchange · Documento de diseño</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+:root{--tinta:#111418;--gris:#4b5260;--humo:#8a93a3;--linea:#dfe3ea;--fondo:#ffffff;--suave:#f5f6f9;--oro:#b8922f;--oro2:#8a6a1c;--comprar:#1f8f5f;--vender:#c8473f;--noche:#0b0d12;--azul:#2f5fbd}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0;background:var(--fondo);color:var(--tinta);font:10.6pt/1.5 "Inter","Segoe UI","Helvetica Neue",Arial,"Liberation Sans",sans-serif}
+@page{size:A4;margin:18mm 16mm 20mm 16mm}
+h1,h2,h3,h4{font-family:Georgia,"DejaVu Serif","Liberation Serif",serif;font-weight:600;line-height:1.2;color:var(--tinta);margin:0}
+h2{font-size:20pt;margin:0 0 10pt;padding-bottom:6pt;border-bottom:2px solid var(--oro);break-after:avoid;page-break-after:avoid}
+h2 small{font-family:inherit;font-weight:400;color:var(--humo);font-size:11pt;margin-left:6pt}
+h3{font-size:13.5pt;margin:16pt 0 6pt;break-after:avoid;page-break-after:avoid}
+h4{font-size:11pt;margin:12pt 0 4pt;font-family:inherit;color:var(--oro2);text-transform:uppercase;letter-spacing:.06em;font-size:9.5pt}
+p{margin:0 0 7pt}
+ul,ol{margin:0 0 8pt 18pt;padding:0}
+li{margin:0 0 3pt}
+section{break-before:page;page-break-before:always}
+section.sin-salto{break-before:auto;page-break-before:auto}
+table{width:100%;border-collapse:collapse;margin:6pt 0 10pt;font-size:9.4pt;break-inside:auto}
+th,td{border:1px solid var(--linea);padding:4pt 6pt;vertical-align:top;text-align:left}
+th{background:var(--suave);font-weight:600;color:var(--gris);font-size:8.6pt;text-transform:uppercase;letter-spacing:.04em}
+tr{break-inside:avoid;page-break-inside:avoid}
+code,.mono{font-family:"JetBrains Mono","DejaVu Sans Mono","Liberation Mono",monospace;font-size:8.8pt;background:var(--suave);padding:1px 4px;border-radius:3px}
+pre{font-family:"DejaVu Sans Mono","Liberation Mono",monospace;font-size:8.6pt;background:var(--noche);color:#e6e9f0;padding:9pt 11pt;border-radius:6px;white-space:pre-wrap;margin:6pt 0 10pt;break-inside:avoid}
+.portada{height:257mm;display:flex;flex-direction:column;justify-content:space-between;background:var(--noche);color:#f4efe4;margin:-18mm -16mm 0;padding:26mm 22mm 22mm;break-after:page;page-break-after:always}
+.portada .marca{font-family:Georgia,serif;font-size:14pt;letter-spacing:.02em}
+.portada .marca b{color:#d9b45f}
+.portada h1{font-size:40pt;color:#fff;margin:0 0 10pt;line-height:1.05}
+.portada h1 span{color:#d9b45f}
+.portada .bajada{font-size:13.5pt;color:#c9cfdb;max-width:150mm;line-height:1.45}
+.portada .filete{width:60mm;height:3px;background:#d9b45f;margin:0 0 16pt}
+.portada .pie{font-size:9.5pt;color:#9aa2b4;line-height:1.6}
+.portada .pie b{color:#f4efe4}
+.chips{display:flex;flex-wrap:wrap;gap:5pt;margin:8pt 0 0}
+.chips span{border:1px solid #3a4152;color:#c9cfdb;border-radius:20px;padding:2pt 9pt;font-size:8.6pt}
+.resumen-caja{display:grid;grid-template-columns:repeat(3,1fr);gap:8pt;margin:8pt 0 12pt}
+.dato{border:1px solid var(--linea);border-radius:6px;padding:8pt 10pt;background:var(--suave);break-inside:avoid}
+.dato b{display:block;font-size:17pt;font-family:Georgia,serif;color:var(--oro2)}
+.dato span{font-size:8.8pt;color:var(--gris)}
+.nota{border-left:3px solid var(--oro);background:var(--suave);padding:7pt 10pt;margin:8pt 0 10pt;font-size:9.8pt;break-inside:avoid}
+.nota.roja{border-color:var(--vender)}
+.nota.verde{border-color:var(--comprar)}
+.nota b.t{display:block;margin-bottom:2pt}
+figure{margin:8pt 0 12pt;break-inside:avoid;page-break-inside:avoid}
+figure img{width:100%;border:1px solid var(--linea);border-radius:6px;display:block}
+figure svg{width:100%;height:auto;display:block}
+figcaption{font-size:8.8pt;color:var(--humo);margin-top:4pt;text-align:center}
+.galeria{display:grid;grid-template-columns:repeat(3,1fr);gap:8pt;margin:8pt 0 12pt}
+.galeria.dos{grid-template-columns:repeat(2,1fr)}
+.galeria figure{margin:0}
+.galeria img{border-radius:6px;max-height:118mm;object-fit:cover;object-position:top}
+.movil img{max-height:150mm;width:auto;margin:0 auto;object-fit:cover;object-position:top}
+.indice ol{list-style:none;margin:0;padding:0;column-count:2;column-gap:12mm}
+.indice li{padding:3pt 0;border-bottom:1px dotted var(--linea);font-size:10pt;break-inside:avoid}
+.indice li span{color:var(--oro2);font-family:Georgia,serif;margin-right:6pt}
+.dos-col{display:grid;grid-template-columns:1fr 1fr;gap:12pt}
+.pasos{counter-reset:paso;margin:6pt 0 10pt}
+.pasos>div{display:flex;gap:9pt;margin-bottom:6pt;break-inside:avoid}
+.pasos>div>div{flex:1;min-width:0}
+.pasos>div::before{counter-increment:paso;content:counter(paso);flex:none;width:18pt;height:18pt;border-radius:50%;background:var(--oro);color:#fff;font-weight:700;font-size:9.5pt;display:flex;align-items:center;justify-content:center}
+.etq{display:inline-block;font-size:8pt;font-weight:700;text-transform:uppercase;letter-spacing:.05em;padding:1pt 6pt;border-radius:4px;background:var(--suave);color:var(--gris);border:1px solid var(--linea)}
+.etq.ok{color:var(--comprar);border-color:#bfe3d1;background:#eef8f2}
+.etq.no{color:var(--vender);border-color:#f0c9c6;background:#fdf1f0}
+.etq.pend{color:var(--oro2);border-color:#eadcb3;background:#fbf6e8}
+.svg-texto{font-family:"Inter","Helvetica Neue",Arial,sans-serif}
+.pequeno{font-size:8.8pt;color:var(--humo)}
+.firma{margin-top:18pt;padding-top:8pt;border-top:1px solid var(--linea);font-size:8.8pt;color:var(--humo)}
+
+</style></head><body>
+<section class="portada">
+  <div class="marca"><b>Orden</b>Exchange · Ecosistema Orden Global</div>
+  <div>
+    <div class="filete"></div>
+    <h1>OrdenExchange<br><span>Documento de diseño</span></h1>
+    <p class="bajada">La casa de cambio P2P del ecosistema: cómo está construida, cómo funciona una compraventa con custodia, cómo se verifica la identidad contra Genesis ID, qué protege el dinero de la gente, y qué falta para ir a producción.</p>
+    <div class="chips"><span>Express + TypeScript</span><span>23 países · 19 monedas</span><span>Custodia con aritmética exacta</span><span>KYC real contra Genesis ID</span><span>Cadena 5550 · ORIGEN · AUKA · AGKA</span><span>75 pruebas de extremo a extremo</span></div>
+  </div>
+  <div class="pie">
+    <b>Versión 1.0 · 20 de septiembre de 2026</b><br>
+    Rama <span class="mono" style="background:#1c2130;color:#d9b45f">claude/p2p-marketplace-latam-9rfd9g</span> del monorepo <span class="mono" style="background:#1c2130;color:#d9b45f">express-js-on-vercel</span>, carpeta <span class="mono" style="background:#1c2130;color:#d9b45f">ordenexchange/</span><br>
+    Escrito sobre el código tal como está: cada afirmación corresponde a algo que se puede leer en el repositorio o reproducir con las pruebas.
+  </div>
+</section>
+
+<section class="sin-salto indice">
+<h2>Índice</h2>
+<ol><li><span>1</span>Resumen ejecutivo</li><li><span>2</span>Dónde encaja en el ecosistema</li><li><span>3</span>Arquitectura técnica</li><li><span>4</span>Modelo de datos</li><li><span>5</span>Cómo funciona una compraventa</li><li><span>6</span>Custodia: las tres reglas</li><li><span>7</span>Precio de referencia</li><li><span>8</span>Países, monedas y métodos de pago</li><li><span>9</span>Identidad: KYC contra Genesis ID</li><li><span>10</span>Agentes de cambio</li><li><span>11</span>Billetera, depósitos y retiros</li><li><span>12</span>Las pantallas de la app</li><li><span>13</span>Panel de operadores</li><li><span>14</span>Seguridad</li><li><span>15</span>La API, en resumen</li><li><span>16</span>Despliegue y configuración</li><li><span>17</span>Pruebas</li><li><span>18</span>Lo que falta y lo que sigue</li><li><span>19</span>Glosario</li></ol>
+</section>
+
+<section id="resumen">
+<h2>1 · Resumen ejecutivo</h2>
+<p><b>OrdenExchange</b> es un mercado entre personas (P2P) para comprar y vender <b>ORIGEN</b> —y también AUKA y AGKA— a cambio de la moneda de cada país de Latinoamérica, pagando por transferencia bancaria o por las billeteras que cada país usa de verdad: PIX, Nequi, Yape, SINPE Móvil, Tigo Money, Pago Móvil, Mercado Pago, SPEI, Zelle… Funciona como Binance P2P: alguien publica un anuncio, otra persona lo toma, la plataforma <b>custodia el activo</b> mientras el dinero viaja por fuera, y lo libera cuando el vendedor confirma que cobró. Si algo falla, un operador resuelve la apelación leyendo el chat y los comprobantes.</p>
+<p>Para operar hace falta una identidad verificada en <b>Genesis ID</b>, la identidad del ecosistema Orden Global. OrdenExchange no verifica a nadie por su cuenta: acompaña a la persona en el trámite (datos, documento, rostro) y una persona del equipo de cumplimiento aprueba en Genesis ID. Cada compraventa completada se reporta al monitoreo de lavado de activos de ambas partes.</p>
+<div class="resumen-caja">
+  <div class="dato"><b>23</b><span>países de Latinoamérica con su moneda, sus bancos y sus métodos de pago reales</span></div>
+  <div class="dato"><b>3</b><span>activos anclados al metal: ORIGEN (1/55 g de oro), AUKA (1 oz de oro), AGKA (1 oz de plata)</span></div>
+  <div class="dato"><b>75</b><span>pruebas automáticas sobre el servidor real: 47 en demostración y 28 contra un Genesis ID de verdad</span></div>
+  <div class="dato"><b>0</b><span>llaves privadas en el servidor: los depósitos se comprueban en la cadena y los retiros los firma un operador</span></div>
+  <div class="dato"><b>3</b><span>reglas de custodia que ninguna operación puede romper (y una prueba que las verifica sobre todos los saldos)</span></div>
+  <div class="dato"><b>2</b><span>idiomas en toda la app y el panel (español e inglés), con formato de moneda por país</span></div>
+</div>
+<h3>Qué está hecho y funciona hoy</h3>
+<ul>
+  <li><b>Mercado</b> con anuncios de compra y venta por país, moneda, activo y método de pago; precio fijo o flotante sobre la referencia del metal; filtros y orden como en Binance P2P.</li>
+  <li><b>Órdenes</b> con custodia, temporizador de pago (15 a 60 minutos), chat con imágenes (comprobantes), marcar pagado, liberar con contraseña, cancelación, vencimiento automático, apelaciones y calificaciones.</li>
+  <li><b>Billetera</b> con saldo disponible y en custodia por activo, depósitos comprobados en la cadena 5550 por hash, retiros que firma un operador, historial de movimientos.</li>
+  <li><b>Agentes de cambio</b>: comerciantes verificados con garantía en ORIGEN, insignia y límites mayores; solicitud, aprobación, suspensión y renuncia.</li>
+  <li><b>Identidad</b>: registro con confirmación del correo, asistente de verificación en tres pasos contra Genesis ID, sesión única del ecosistema, tamizado de direcciones, monitoreo AML.</li>
+  <li><b>Panel de operadores</b> con roles (admin, soporte, auditor): apelaciones, órdenes, usuarios, retiros, depósitos, agentes, precios, configuración, bitácora encadenada.</li>
+  <li><b>Modo demostración</b> con diez usuarios verificados en nueve países, saldos y anuncios, que nunca se enciende en producción.</li>
+  <li><b>Interfaz</b> en español e inglés, pensada primero para el teléfono, con movimiento gastado en una sola idea: la custodia (sección 12).</li>
+</ul>
+<h3>Qué falta para producción</h3>
+<p>Lo que falta no es código de OrdenExchange sino <b>infraestructura y decisiones</b>: una base MongoDB (el archivo JSON sirve para desarrollo, no para custodiar saldos), la clave real de la app en Genesis ID, el proveedor de correo (Brevo) para los códigos de confirmación, la cuenta tesorería en la cadena 5550 y quién la firma, un proveedor de biometría en Genesis ID (sin él, cada rostro lo coteja una persona), y el precio del metal alimentado desde una fuente automática. Se detallan en la sección 19.</p>
+</section>
+
+<section id="ecosistema">
+<h2>2 · Dónde encaja en el ecosistema</h2>
+<p>OrdenExchange es una pieza más de Orden Global y se apoya en las que ya existen en lugar de repetirlas. No custodia dinero de curso legal: los pagos entre personas van por fuera, por los bancos y billeteras de cada país. Sí custodia el activo digital mientras dura una orden.</p>
+<figure>
+<svg viewBox="0 0 900 420" class="svg-texto" xmlns="http://www.w3.org/2000/svg" font-size="13">
+  <defs><marker id="f" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#4b5260"/></marker></defs>
+  <rect x="20" y="150" width="170" height="110" rx="10" fill="#f5f6f9" stroke="#dfe3ea"/>
+  <text x="105" y="185" text-anchor="middle" font-weight="700">Navegador</text>
+  <text x="105" y="205" text-anchor="middle" fill="#4b5260">app web (SPA)</text>
+  <text x="105" y="223" text-anchor="middle" fill="#4b5260">panel /admin</text>
+  <text x="105" y="241" text-anchor="middle" fill="#8a93a3" font-size="11">móvil y escritorio · ES/EN</text>
+  <rect x="300" y="120" width="300" height="170" rx="12" fill="#0b0d12" stroke="#b8922f" stroke-width="2"/>
+  <text x="450" y="152" text-anchor="middle" fill="#d9b45f" font-weight="700" font-size="16">OrdenExchange</text>
+  <text x="450" y="174" text-anchor="middle" fill="#c9cfdb">Express + TypeScript · un solo servicio</text>
+  <text x="450" y="200" text-anchor="middle" fill="#e6e9f0">mercado · órdenes · custodia · chat</text>
+  <text x="450" y="218" text-anchor="middle" fill="#e6e9f0">billetera · agentes · panel · bitácora</text>
+  <text x="450" y="248" text-anchor="middle" fill="#8a93a3" font-size="11">almacén: JSON (desarrollo) o MongoDB (producción)</text>
+  <text x="450" y="266" text-anchor="middle" fill="#8a93a3" font-size="11">Render (render.yaml) o Vercel (vercel.json)</text>
+  <rect x="700" y="30" width="180" height="100" rx="10" fill="#f5f6f9" stroke="#dfe3ea"/>
+  <text x="790" y="60" text-anchor="middle" font-weight="700">Genesis ID</text>
+  <text x="790" y="80" text-anchor="middle" fill="#4b5260" font-size="11.5">identidad · KYC · GID</text>
+  <text x="790" y="97" text-anchor="middle" fill="#4b5260" font-size="11.5">sanciones · AML · sesión única</text>
+  <text x="790" y="115" text-anchor="middle" fill="#8a93a3" font-size="10.5">app «ordenexchange» con su clave</text>
+  <rect x="700" y="160" width="180" height="100" rx="10" fill="#f5f6f9" stroke="#dfe3ea"/>
+  <text x="790" y="190" text-anchor="middle" font-weight="700">Cadena 5550</text>
+  <text x="790" y="210" text-anchor="middle" fill="#4b5260" font-size="11.5">Besu · ordenglobal-rpc.com</text>
+  <text x="790" y="227" text-anchor="middle" fill="#4b5260" font-size="11.5">ORIGEN nativo · AUKA · AGKA (ERC-20)</text>
+  <text x="790" y="245" text-anchor="middle" fill="#8a93a3" font-size="10.5">solo lectura por JSON-RPC</text>
+  <rect x="700" y="290" width="180" height="100" rx="10" fill="#f5f6f9" stroke="#dfe3ea"/>
+  <text x="790" y="320" text-anchor="middle" font-weight="700">Veta Wallet · OrdenScan</text>
+  <text x="790" y="340" text-anchor="middle" fill="#4b5260" font-size="11.5">la billetera de la persona</text>
+  <text x="790" y="357" text-anchor="middle" fill="#4b5260" font-size="11.5">y el explorador de bloques</text>
+  <text x="790" y="375" text-anchor="middle" fill="#8a93a3" font-size="10.5">deposita / recibe retiros</text>
+  <rect x="300" y="320" width="300" height="70" rx="10" fill="#f5f6f9" stroke="#dfe3ea"/>
+  <text x="450" y="348" text-anchor="middle" font-weight="700">Bancos y billeteras de cada país</text>
+  <text x="450" y="368" text-anchor="middle" fill="#4b5260" font-size="11.5">PIX · Nequi · Yape · SINPE · Tigo Money · Pago Móvil · SPEI · Zelle…</text>
+  <line x1="190" y1="205" x2="298" y2="205" stroke="#4b5260" stroke-width="1.5" marker-end="url(#f)"/>
+  <text x="244" y="196" text-anchor="middle" fill="#4b5260" font-size="10.5">HTTPS · JWT</text>
+  <line x1="600" y1="170" x2="698" y2="95" stroke="#4b5260" stroke-width="1.5" marker-end="url(#f)"/>
+  <text x="660" y="118" text-anchor="middle" fill="#4b5260" font-size="10.5">X-API-Key</text>
+  <line x1="600" y1="210" x2="698" y2="210" stroke="#4b5260" stroke-width="1.5" marker-end="url(#f)"/>
+  <text x="649" y="202" text-anchor="middle" fill="#4b5260" font-size="10.5">JSON-RPC</text>
+  <line x1="105" y1="150" x2="105" y2="80" stroke="#8a93a3" stroke-width="1.5" stroke-dasharray="5 4"/>
+  <line x1="105" y1="80" x2="698" y2="80" stroke="#8a93a3" stroke-width="1.5" stroke-dasharray="5 4"/>
+  <text x="400" y="72" text-anchor="middle" fill="#8a93a3" font-size="10.5">la persona nunca habla con Genesis ID directamente: siempre a través del servidor</text>
+  <line x1="450" y1="290" x2="450" y2="318" stroke="#8a93a3" stroke-width="1.5" stroke-dasharray="5 4"/>
+  <text x="640" y="310" text-anchor="start" fill="#8a93a3" font-size="10.5">el dinero va por fuera</text>
+</svg>
+<figcaption>Figura 1 · OrdenExchange y las piezas del ecosistema con las que habla. Ninguna clave ni llave privada sale del servidor.</figcaption>
+</figure>
+<table><thead><tr><th>Pieza</th><th>Qué le da a OrdenExchange</th><th>Cómo</th></tr></thead><tbody>
+<tr><td><b>Genesis ID</b></td><td>Quién es cada persona (GID), si puede operar, tamizado de sanciones, monitoreo AML, sesión única entre apps.</td><td>App <code>ordenexchange</code> registrada en <code>genesis-id/src/auth/aplicaciones.ts</code> con alcances: identidad.crear/leer/documento, gid.verificar/perfil, vinculo.crear, movimiento.enviar, tamiz.direccion, telemetria.enviar, directorio.enviar.</td></tr>
+<tr><td><b>Cadena 5550</b></td><td>Los activos. Depósitos comprobados por hash de transacción; retiros que un operador firma desde la tesorería.</td><td>JSON-RPC de solo lectura (<code>eth_getTransactionByHash</code>, recibos, evento <code>Transfer</code> para AUKA/AGKA). Sin llaves privadas.</td></tr>
+<tr><td><b>Veta Wallet</b></td><td>La billetera desde la que la persona deposita y a la que retira (su dirección 0x en el perfil).</td><td>La persona pega el hash del depósito; el servidor lo verifica.</td></tr>
+<tr><td><b>ULTRON</b></td><td>El cerebro del ecosistema conoce OrdenExchange (base de conocimiento) para responder sobre él.</td><td><code>ULTRON-APP/src/05-cerebro-og/conocimiento.ts</code>.</td></tr>
+<tr><td><b>Render / Vercel</b></td><td>Despliegue.</td><td>Servicio <code>ordenexchange</code> en <code>render.yaml</code> (raíz del monorepo) y <code>vercel.json</code> propio.</td></tr>
+</tbody></table>
+</section>
+
+<section id="arquitectura">
+<h2>3 · Arquitectura técnica</h2>
+<p>Un solo servicio Node (Express + TypeScript, ESM, ejecutado con <code>tsx</code>) sirve la API, la app web y el panel. La lógica vive en el <b>motor</b>; las rutas son finas: validan la sesión y llaman al motor. El estado entero está en un documento (archivo JSON en desarrollo, documento de MongoDB en producción), con dos colecciones aparte para lo que pesa: las imágenes del chat y, en Mongo, nada más. Es el mismo patrón de almacén que Genesis ID.</p>
+<table><thead><tr><th>Carpeta / archivo</th><th>Qué hay</th></tr></thead><tbody>
+<tr><td><code>src/index.ts</code></td><td>Arranque: CSP y HSTS, CORS, <code>trust proxy</code> condicional, parsers, rutas, app y panel estáticos, <code>/healthz</code>, tareas periódicas (órdenes vencidas cada 30 s, cola AML cada 30 s).</td></tr>
+<tr><td><code>src/types.ts</code></td><td>El modelo de datos entero, comentado (sección 4).</td></tr>
+<tr><td><code>src/motor/</code></td><td><code>billetera</code> (custodia), <code>ordenes</code>, <code>anuncios</code>, <code>usuarios</code>, <code>agentes</code>, <code>metodosPago</code>, <code>precios</code>, <code>genesis</code> (cliente), <code>aml</code> (cola de reportes), <code>cadena</code> (JSON-RPC), <code>correo</code> (Brevo), <code>imagenes</code>, <code>operadores</code>, <code>bitacora</code>, <code>demo</code>.</td></tr>
+<tr><td><code>src/routes/</code></td><td><code>auth</code>, <code>genesis</code>, <code>mercado</code>, <code>anuncios</code>, <code>ordenes</code>, <code>billetera</code>, <code>metodosPago</code>, <code>agentes</code>, <code>panel</code>.</td></tr>
+<tr><td><code>src/lib/</code></td><td><code>decimal</code> (BigInt a 18 decimales), <code>cripto</code> (bcrypt, JWT, HMAC), <code>sesion</code> (guardias), <code>limite</code> (peticiones por minuto), <code>errores</code> (<code>Falla</code> con código), <code>entorno</code> (una sola definición de «producción»), <code>uid</code>.</td></tr>
+<tr><td><code>src/data/</code></td><td><code>latam.ts</code> (23 países: moneda, bancos, métodos de pago con sus campos canónicos), <code>activos.ts</code>, <code>monedas.ts</code>, <code>fxSemilla.ts</code> (tasas iniciales USD → moneda local).</td></tr>
+<tr><td><code>public/</code></td><td>La app (<code>index.html</code>, <code>app.js</code>, <code>app.css</code>, <code>i18n.js</code>) y el panel (<code>admin.html</code>, <code>admin.js</code>, <code>admin.css</code>). Vanilla, sin framework ni compilación; enrutado por <code>#/ruta</code>.</td></tr>
+<tr><td><code>src/pruebas/</code></td><td><code>decimal.test.ts</code>, <code>flujo.test.ts</code> (demostración), <code>genesis.integracion.ts</code> (contra Genesis ID real).</td></tr>
+<tr><td><code>README.md</code> · <code>API.md</code> · <code>DISEÑO.md</code></td><td>Cómo se arranca, el contrato HTTP completo, la guía del frontend.</td></tr>
+</tbody></table>
+<h3>Decisiones que conviene conocer</h3>
+<ul>
+  <li><b>Un único punto muta los saldos.</b> Todo cambio de saldo pasa por <code>billetera.mover()</code>, que aplica el movimiento entero o lo rechaza entero, y deja un registro con su referencia. No hay otra vía.</li>
+  <li><b>Aritmética exacta.</b> Cantidades y precios son cadenas decimales; se opera con BigInt a 18 decimales (<code>lib/decimal.ts</code>) y los recortes van siempre hacia abajo. No hay coma flotante en dinero.</li>
+  <li><b>«Producción» tiene una sola definición</b> (<code>lib/entorno.ts</code>): NODE_ENV=production, Render, Vercel, Mongo configurado o tesorería configurada. Con cualquiera de esas señales, el modo demostración no se enciende aunque se pida, el secreto de sesiones es obligatorio y las cuentas de demostración se congelan.</li>
+  <li><b>La clave de Genesis ID vive solo en el servidor.</b> El navegador habla con <code>/api/genesis/*</code> y el servidor reenvía con <code>X-API-Key</code>, igual que el puente de Veta Wallet y MyTokenPay.</li>
+  <li><b>Sin marco de frontend.</b> La app es HTML/CSS/JS plano con estado en memoria y <code>localStorage</code> solo para la sesión y el país. Sondeo cada pocos segundos dentro de una orden; no hay WebSockets.</li>
+  <li><b>Todo en español, con inglés completo.</b> Código, comentarios, rutas y textos en español; la interfaz cambia a inglés con un clic (<code>i18n.js</code>).</li>
+</ul>
+</section>
+
+<section id="datos">
+<h2>4 · Modelo de datos</h2>
+<p>Todo está en <code>src/types.ts</code>. Las cantidades son cadenas decimales; las fechas, ISO 8601. Los identificadores llevan prefijo (<code>usr_</code>, <code>ord_</code>, <code>anu_</code>…). Lo que sale por la API es una <b>vista</b>: nunca el correo ni el nombre legal entero de otra persona, nunca los datos bancarios fuera de una orden abierta.</p>
+<table><thead><tr><th>Entidad</th><th>Campos clave</th><th>Notas</th></tr></thead><tbody>
+<tr><td><b>Usuario</b></td><td>email, emailVerificado, hashContrasena, apodo, pais, idioma, telefono, direccionCadena, gid, gidEstado, nombreLegal, agente, congelado, reputacion, sesionesDesde</td><td><code>gidEstado</code>: sin-verificar · en-revision · verificada · rechazada · suspendida. <code>sesionesDesde</code> revoca todos los JWT anteriores a ese instante.</td></tr>
+<tr><td><b>Saldo</b></td><td>usuarioId, activo, disponible, congelado</td><td>Dos bolsillos por activo. Ninguno baja de cero.</td></tr>
+<tr><td><b>Movimiento</b></td><td>tipo, activo, disponible (±), congelado (±), referencia, descripción, fecha</td><td>Tipos: deposito, retiro-solicitado/enviado/rechazado, orden-congelar/descongelar/liberar/recibir, comision, garantia-agente, garantia-devuelta, ajuste, faucet. La suma de movimientos ES el saldo.</td></tr>
+<tr><td><b>Anuncio</b></td><td>lado, activo, moneda, pais, tipoPrecio (fijo/flotante), precio o margen, cantidadTotal/Disponible, limiteMin/Max, metodos, ventanaPagoMin (15–60), terminos, respuestaAutomatica, requisitos, estado</td><td>Estados: activo · pausado · agotado · cerrado. Requisitos para la contraparte: GID verificado, órdenes mínimas, tasa de finalización, días registrado, solo agentes.</td></tr>
+<tr><td><b>Orden</b></td><td>numero, anuncioId, compradorId, vendedorId, activo, moneda, precio, cantidadActivo, montoFiat, comision, metodoPago (copia), estado, venceEn, referenciaPago, apelacion, apelacionesPrevias, calificaciones, mensajes, imagenesChat</td><td>Estados: pendiente-pago · pagado · apelacion · completada · cancelada. Guarda una copia del método de pago tal como estaba al abrirse.</td></tr>
+<tr><td><b>Mensaje</b></td><td>de (comprador/vendedor/sistema/operador), texto, imagen (id), fecha, vistoPor</td><td>Máximo 300 mensajes y 6 imágenes por orden; el chat cierra 24 h después de terminar. Las imágenes viven aparte y se sirven con URL firmada.</td></tr>
+<tr><td><b>MetodoPago</b></td><td>pais, tipo, banco, titular, campos (canónicos por método), activo</td><td>Validado contra el catálogo del país. No se desactiva si está en un anuncio abierto.</td></tr>
+<tr><td><b>SolicitudAgente</b></td><td>usuarioId, estado, garantia, decididaPor, motivo</td><td>La garantía se congela al solicitar y se devuelve al renunciar o rechazar.</td></tr>
+<tr><td><b>Deposito · Retiro</b></td><td>activo, cantidad, direccion, txHash, estado, decididoPor</td><td>Retiro: pendiente · enviado · rechazado · cancelado. El hash de retiro es único.</td></tr>
+<tr><td><b>Operador · SesionOperador</b></td><td>email, rol (admin/soporte/auditor), hashContrasena; sesión guardada por hash del token</td><td>Bloqueo por correo+IP tras intentos fallidos.</td></tr>
+<tr><td><b>Precios · Configuracion</b></td><td>oroUsdOnza, plataUsdOnza, fx{}, fuente; comisionPct, garantiaAgente, maxOrdenesAbiertas, minOrdenUsd, maxOrdenUsdSinAgente, confirmacionesDeposito, tesoreria</td><td>Editables desde el panel; al arrancar salen del entorno y de la semilla.</td></tr>
+<tr><td><b>EntradaBitacora</b></td><td>actor, accion, objeto, detalle, hashAnterior, hash</td><td>Cadena de hashes: el panel comprueba que está íntegra.</td></tr>
+<tr><td><b>ReporteAml</b></td><td>gid, movimiento, intentos, ultimoIntento, ultimoError</td><td>Cola persistente hacia el monitoreo de Genesis ID (sección 11).</td></tr>
+</tbody></table>
+<h3>Vistas públicas</h3>
+<p><code>UsuarioPublico</code> (lo que ve cualquiera en el mercado): apodo, país, insignias (verificado, agente), reputación, nombre abreviado («Juan P.», derivado del nombre legal), en línea. <code>UsuarioPropio</code> (solo el dueño): además correo, GID, estado de verificación, nombre legal, dirección de la cadena, <code>puedeOperar</code> y <code>motivoNoOpera</code>. La orden se devuelve con <code>acciones</code> (qué botones tienen sentido para quien la mira) para que el frontend no tenga que reconstruir las reglas.</p>
+</section>
+<section id="compraventa">
+<h2>5 · Cómo funciona una compraventa</h2>
+<p>El modelo es el de Binance P2P: la plataforma no compra ni vende, <b>pone en contacto</b> a dos personas, custodia el activo mientras el dinero viaja por fuera y arbitra si hace falta. Quien vende ORIGEN lo deja congelado en cuanto nace la orden; quien compra paga en su moneda por el método pactado y lo dice; el vendedor comprueba que cobró y libera.</p>
+<figure>
+<svg viewBox="0 0 900 470" class="svg-texto" xmlns="http://www.w3.org/2000/svg" font-size="12.5">
+  <defs><marker id="f2" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#4b5260"/></marker></defs>
+  <g font-weight="700" font-size="13.5">
+    <rect x="30" y="20" width="200" height="34" rx="8" fill="#eef8f2" stroke="#bfe3d1"/><text x="130" y="42" text-anchor="middle" fill="#1f8f5f">Comprador</text>
+    <rect x="350" y="20" width="200" height="34" rx="8" fill="#0b0d12" stroke="#b8922f"/><text x="450" y="42" text-anchor="middle" fill="#d9b45f">OrdenExchange · custodia</text>
+    <rect x="670" y="20" width="200" height="34" rx="8" fill="#fdf1f0" stroke="#f0c9c6"/><text x="770" y="42" text-anchor="middle" fill="#c8473f">Vendedor</text>
+  </g>
+  <g stroke="#dfe3ea" stroke-width="1.5" stroke-dasharray="4 4"><line x1="130" y1="54" x2="130" y2="455"/><line x1="450" y1="54" x2="450" y2="455"/><line x1="770" y1="54" x2="770" y2="455"/></g>
+  <g stroke="#4b5260" stroke-width="1.5" marker-end="url(#f2)" fill="none">
+    <line x1="770" y1="90" x2="452" y2="90"/>
+    <line x1="130" y1="140" x2="448" y2="140"/>
+    <line x1="450" y1="170" x2="768" y2="170"/>
+    <line x1="130" y1="230" x2="448" y2="230"/>
+    <line x1="450" y1="260" x2="768" y2="260"/>
+    <line x1="770" y1="330" x2="452" y2="330"/>
+    <line x1="450" y1="360" x2="132" y2="360"/>
+    <line x1="130" y1="420" x2="448" y2="420"/><line x1="770" y1="420" x2="452" y2="420"/>
+  </g>
+  <g fill="#111418">
+    <text x="610" y="82" text-anchor="middle">1 · publica un anuncio de venta (precio, límites, métodos, ventana)</text>
+    <text x="290" y="132" text-anchor="middle">2 · toma el anuncio: cuánto y con qué método</text>
+    <text x="610" y="162" text-anchor="middle">3 · la cantidad pasa de disponible a congelado</text>
+    <text x="290" y="222" text-anchor="middle">4 · paga por fuera y marca «pagado» (con referencia)</text>
+    <text x="610" y="252" text-anchor="middle">5 · aviso: «el comprador dice que pagó»</text>
+    <text x="610" y="322" text-anchor="middle">6 · comprueba que cobró y libera (con su contraseña)</text>
+    <text x="290" y="352" text-anchor="middle">7 · el activo entra a su saldo disponible</text>
+    <text x="290" y="412" text-anchor="middle">8 · se califican mutuamente</text>
+    <text x="610" y="412" text-anchor="middle">8 · se califican mutuamente</text>
+  </g>
+  <g fill="#8a93a3" font-size="10.5">
+    <text x="450" y="200" text-anchor="middle">temporizador: 15 a 60 minutos para pagar</text>
+    <text x="450" y="290" text-anchor="middle">chat con comprobantes en todo momento · cualquiera puede apelar</text>
+    <text x="450" y="390" text-anchor="middle">la comisión, si hay, la paga el vendedor · se reporta al monitoreo AML</text>
+  </g>
+</svg>
+<figcaption>Figura 2 · Una orden sobre un anuncio de venta. Sobre un anuncio de compra es igual, con los papeles cambiados: quien toma el anuncio es el vendedor y deja el activo en custodia.</figcaption>
+</figure>
+
+<h3>Las reglas, una por una</h3>
+<div class="pasos">
+  <div><div><b>Publicar un anuncio.</b> Lado (compro / vendo), activo, moneda del país, precio fijo o flotante (un porcentaje sobre la referencia, p. ej. 103 %), cantidad total, límites por orden, hasta varios métodos de pago propios, ventana de pago (15, 30, 45 o 60 min), términos, respuesta automática y requisitos para la contraparte (GID verificado, mínimo de órdenes, tasa de finalización, antigüedad, solo agentes). Un anuncio de venta solo aparece en el mercado si el vendedor tiene saldo para la orden mínima; un precio fijo diez veces fuera de la referencia se rechaza (casi siempre es un cero de más).</div></div>
+  <div><div><b>Tomar un anuncio.</b> Se elige el monto en moneda local o la cantidad de activo, dentro de los límites del anuncio, del mínimo de la plataforma (5 USD equivalentes) y del máximo para quien no es agente (5 000 USD). Máximo cinco órdenes abiertas por persona. Nadie toma su propio anuncio. Al nacer la orden, <b>la cantidad del vendedor pasa a custodia</b>; si no la tiene, la orden no nace y el anuncio se pausa.</div></div>
+  <div><div><b>Pagar y marcar pagado.</b> Los datos bancarios del vendedor se ven solo dentro de la orden. El comprador transfiere y marca «pagado», con la referencia si la tiene, antes de que venza el temporizador. Si vence sin marcarse, la orden se cancela sola y el activo vuelve al vendedor.</div></div>
+  <div><div><b>Liberar.</b> Solo el vendedor, y con su contraseña: el activo pasa entero al comprador. La comisión (por defecto 0 %) la paga el vendedor de su saldo disponible; si no le alcanza, se descuenta de lo liberado. Se recalcula la reputación de ambos y se reporta al monitoreo AML.</div></div>
+  <div><div><b>Cancelar.</b> Solo el comprador y solo mientras está pendiente de pago. Una orden marcada como pagada ya no se cancela: se apela. Un operador puede cancelar cualquier orden pendiente o pagada desde el panel, con motivo.</div></div>
+  <div><div><b>Apelar.</b> Cualquiera de los dos, sobre una orden pagada (o pendiente, si el comprador ya pagó; o vencida hace menos de 24 h, si sí pagó: entonces la cantidad se vuelve a congelar). Una apelación por parte: quien la retira no puede abrir otra. Motivos cerrados (no recibí el pago, pagué y no liberan, monto distinto, contraparte no responde, otro). Mientras hay apelación la orden queda congelada; el vendedor puede zanjarla liberando. Un operador la resuelve: <b>liberar</b> al comprador o <b>devolver</b> al vendedor. Queda en la bitácora y cuenta como apelación perdida para quien la pierde.</div></div>
+  <div><div><b>Calificar.</b> Positiva o negativa con comentario, una vez completada. La reputación se recalcula siempre desde las órdenes: total, completadas, tasa de finalización a 30 días (las cancelaciones del sistema no cuentan en contra), tiempos promedio de pago y de liberación, apelaciones perdidas.</div></div>
+  <div><div><b>Chat.</b> Texto e imágenes (comprobantes comprimidos en el teléfono), hasta 300 mensajes y 6 imágenes por orden; mensajes del sistema en cada cambio de estado; el operador puede escribir en una apelación. Cierra 24 horas después de terminar la orden. Las imágenes se sirven con una URL firmada, así que solo las ven las partes y el operador.</div></div>
+</div>
+
+<figure>
+<svg viewBox="0 0 900 250" class="svg-texto" xmlns="http://www.w3.org/2000/svg" font-size="12">
+  <defs><marker id="f3" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#4b5260"/></marker></defs>
+  <g font-weight="700">
+    <rect x="30" y="95" width="150" height="46" rx="23" fill="#fbf6e8" stroke="#eadcb3"/><text x="105" y="123" text-anchor="middle" fill="#8a6a1c">pendiente-pago</text>
+    <rect x="290" y="95" width="130" height="46" rx="23" fill="#eef4ff" stroke="#c9d8f5"/><text x="355" y="123" text-anchor="middle" fill="#2f5fbd">pagado</text>
+    <rect x="530" y="20" width="130" height="46" rx="23" fill="#fdf1f0" stroke="#f0c9c6"/><text x="595" y="48" text-anchor="middle" fill="#c8473f">apelación</text>
+    <rect x="720" y="95" width="150" height="46" rx="23" fill="#eef8f2" stroke="#bfe3d1"/><text x="795" y="123" text-anchor="middle" fill="#1f8f5f">completada</text>
+    <rect x="290" y="185" width="130" height="46" rx="23" fill="#f5f6f9" stroke="#dfe3ea"/><text x="355" y="213" text-anchor="middle" fill="#4b5260">cancelada</text>
+  </g>
+  <g stroke="#4b5260" stroke-width="1.4" fill="none" marker-end="url(#f3)">
+    <line x1="180" y1="118" x2="288" y2="118"/>
+    <line x1="420" y1="118" x2="718" y2="118"/>
+    <line x1="105" y1="141" x2="105" y2="208"/><line x1="105" y1="208" x2="288" y2="208"/>
+    <path d="M420 105 Q470 60 528 48"/>
+    <path d="M660 48 Q720 60 760 93"/>
+    <path d="M540 66 Q450 110 420 190"/>
+    <path d="M180 100 Q330 30 528 40"/>
+    <path d="M110 141 Q300 300 718 130"/>
+  </g>
+  <g fill="#4b5260" font-size="10.5">
+    <text x="234" y="108" text-anchor="middle">comprador marca pagado</text>
+    <text x="569" y="108" text-anchor="middle">vendedor libera (contraseña)</text>
+    <text x="215" y="200" text-anchor="middle">comprador cancela · vence el temporizador</text>
+    <text x="440" y="62" text-anchor="middle">cualquiera apela</text>
+    <text x="745" y="70" text-anchor="middle">operador: liberar · vendedor zanja</text>
+    <text x="440" y="165" text-anchor="middle">operador: devolver</text>
+    <text x="300" y="22" text-anchor="middle">comprador apela (ya pagó) · vencida &lt; 24 h</text>
+    <text x="430" y="243" text-anchor="middle">vendedor libera una pendiente (cobró por fuera)</text>
+  </g>
+</svg>
+<figcaption>Figura 3 · Estados de una orden. Al cancelarse, el activo vuelve al vendedor; al completarse, pasa al comprador. No hay más estados ni más transiciones que estas.</figcaption>
+</figure>
+
+<h3>Así se ve</h3>
+<div class="galeria">
+  <figure><img src="img/flujo-1-hoja.jpg" alt=""><figcaption>Tomar un anuncio: monto, método y resumen</figcaption></figure>
+  <figure><img src="img/flujo-2-orden-comprador.jpg" alt=""><figcaption>La orden del comprador: temporizador, datos de pago, chat</figcaption></figure>
+  <figure><img src="img/flujo-3-confirmar-pagado.jpg" alt=""><figcaption>Confirmar «ya pagué» con referencia</figcaption></figure>
+  <figure><img src="img/flujo-5-orden-vendedor.jpg" alt=""><figcaption>La misma orden vista por el vendedor</figcaption></figure>
+  <figure><img src="img/flujo-6-liberar-dialogo.jpg" alt=""><figcaption>Liberar exige la contraseña</figcaption></figure>
+  <figure><img src="img/flujo-8-completada-comprador.jpg" alt=""><figcaption>Completada: calificar a la contraparte</figcaption></figure>
+</div>
+</section>
+
+<section id="custodia">
+<h2>6 · Custodia: las tres reglas</h2>
+<p>Cada persona tiene por activo dos bolsillos: <b>disponible</b> y <b>congelado</b> (custodia). Todo lo que pasa con el dinero se reduce a mover entre esos bolsillos, y hay tres reglas que ninguna operación puede romper:</p>
+<div class="dos-col">
+<div>
+<div class="nota"><b class="t">1 · Ningún bolsillo baja de cero.</b> Un movimiento que lo haría se rechaza entero. No hay «saldo negativo temporal» ni descubiertos.</div>
+<div class="nota"><b class="t">2 · Todo cambio deja un movimiento con su referencia.</b> La suma de los movimientos ES el saldo. La prueba de extremo a extremo lo comprueba, al final, para todos los usuarios y activos.</div>
+<div class="nota"><b class="t">3 · El activo no se inventa.</b> Entra por un depósito comprobado en la cadena (o por el grifo de demostración, que se ve como tal) y sale por un retiro que firma un operador. Liberar una orden solo mueve custodia del vendedor al comprador; la comisión va a la tesorería.</div>
+</div>
+<div>
+<figure>
+<svg viewBox="0 0 420 300" class="svg-texto" xmlns="http://www.w3.org/2000/svg" font-size="11.5">
+  <defs><marker id="f4" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#4b5260"/></marker></defs>
+  <text x="105" y="22" text-anchor="middle" font-weight="700" fill="#c8473f">Vendedor</text>
+  <rect x="20" y="35" width="170" height="60" rx="8" fill="#eef8f2" stroke="#bfe3d1"/><text x="105" y="60" text-anchor="middle" font-weight="700">disponible</text><text x="105" y="80" text-anchor="middle" fill="#4b5260">100 → 80 ORIGEN</text>
+  <rect x="20" y="115" width="170" height="60" rx="8" fill="#fbf6e8" stroke="#eadcb3"/><text x="105" y="140" text-anchor="middle" font-weight="700">congelado</text><text x="105" y="160" text-anchor="middle" fill="#4b5260">0 → 20 → 0 ORIGEN</text>
+  <text x="315" y="22" text-anchor="middle" font-weight="700" fill="#1f8f5f">Comprador</text>
+  <rect x="230" y="35" width="170" height="60" rx="8" fill="#eef8f2" stroke="#bfe3d1"/><text x="315" y="60" text-anchor="middle" font-weight="700">disponible</text><text x="315" y="80" text-anchor="middle" fill="#4b5260">0 → 20 ORIGEN</text>
+  <rect x="230" y="115" width="170" height="60" rx="8" fill="#fbf6e8" stroke="#eadcb3"/><text x="315" y="140" text-anchor="middle" font-weight="700">congelado</text><text x="315" y="160" text-anchor="middle" fill="#4b5260">0</text>
+  <g stroke="#4b5260" stroke-width="1.4" fill="none" marker-end="url(#f4)"><line x1="105" y1="95" x2="105" y2="113"/><path d="M190 145 Q230 145 250 97"/></g>
+  <text x="140" y="108" fill="#4b5260" font-size="10">orden-congelar</text>
+  <text x="245" y="125" fill="#4b5260" font-size="10">orden-liberar → orden-recibir</text>
+  <rect x="20" y="200" width="380" height="85" rx="8" fill="#f5f6f9" stroke="#dfe3ea"/>
+  <text x="30" y="220" fill="#111418" font-weight="700">Movimientos que quedan escritos</text>
+  <text x="30" y="240" fill="#4b5260" font-family="monospace" font-size="10">orden-congelar   vendedor  disponible −20  congelado +20  ord_…</text>
+  <text x="30" y="256" fill="#4b5260" font-family="monospace" font-size="10">orden-liberar    vendedor  congelado −20                 ord_…</text>
+  <text x="30" y="272" fill="#4b5260" font-family="monospace" font-size="10">orden-recibir    comprador disponible +20                ord_…</text>
+</svg>
+<figcaption>Figura 4 · Una orden de 20 ORIGEN, del anuncio a la liberación. Si se cancela, el único movimiento es «orden-descongelar».</figcaption>
+</figure>
+</div>
+</div>
+<h3>Cómo se garantiza en el código</h3>
+<ul>
+  <li><code>billetera.mover(usuarioId, activo, {disponible, congelado}, tipo, referencia, descripcion)</code> es la <b>única</b> función que toca un saldo. Calcula el resultado con BigInt, rechaza si algún bolsillo quedaría negativo, escribe el saldo y el movimiento en la misma operación y guarda.</li>
+  <li>Las operaciones de negocio se componen de esas llamadas: <code>congelar</code>, <code>descongelar</code>, <code>liberarCustodia</code> (vendedor → comprador, con la comisión a la tesorería), <code>acreditarDeposito</code>, <code>solicitarRetiro</code>, <code>decidirRetiro</code>, <code>ajustar</code> (solo admin, con motivo, queda en bitácora).</li>
+  <li>Un depósito en curso no se puede acreditar dos veces: hay un guardia contra la carrera (el mismo hash mandado dos veces a la vez) y se vuelve a comprobar después de esperar a la cadena.</li>
+  <li>La aritmética es exacta (<code>lib/decimal.ts</code>): cadenas decimales a BigInt con 18 decimales, comparación, suma, resta, multiplicación y división con recorte hacia abajo. El precio por activo, el monto en moneda local y la cantidad se derivan siempre igual, así que comprador y vendedor ven los mismos números.</li>
+  <li>La prueba <code>flujo.test.ts</code> termina recorriendo todos los saldos y comprobando que cada uno es exactamente la suma de sus movimientos.</li>
+</ul>
+</section>
+
+<section id="precios">
+<h2>7 · Precio de referencia</h2>
+<p>Los tres activos están anclados al metal, así que su precio de referencia no sale de un mercado cripto sino del oro y la plata: <b>1 ORIGEN = 1/55 de gramo de oro</b>, 1 AUKA = 1 onza troy de oro, 1 AGKA = 1 onza troy de plata. Con el precio del metal en dólares y la tasa dólar → moneda local sale la referencia en cada moneda.</p>
+<pre>ORIGEN en USD  = oro_usd_onza × (1/55) / 31,1034768        (gramos por onza troy)
+ORIGEN en HNL  = ORIGEN en USD × fx[HNL]
+anuncio flotante al 103 %  → precio = referencia × 1,03
+anuncio fijo               → se acepta si está dentro de 10× la referencia</pre>
+<ul>
+  <li>Sobre la referencia trabajan los anuncios <b>flotantes</b> (un margen en porcentaje: 97 % compra barato, 103 % vende caro) y contra ella se comparan los <b>fijos</b>.</li>
+  <li>El precio del metal y las tasas de cambio los fija un <b>administrador</b> desde el panel (Precios); al arrancar salen de las variables de entorno (<code>ORDENEX_ORO_USD_ONZA</code>, <code>ORDENEX_PLATA_USD_ONZA</code>) y de la semilla <code>fxSemilla.ts</code> (tasas del 19 de septiembre de 2026; el bolívar con la tasa oficial del BCV). Cambiar el precio mueve todos los anuncios flotantes del mercado, por eso solo lo puede hacer el rol admin.</li>
+  <li>Los límites de la plataforma (mínimo por orden, máximo sin ser agente) están en <b>dólares equivalentes</b> y se convierten a cada moneda con la misma tasa, así que valen lo mismo en lempiras que en pesos argentinos.</li>
+  <li>Los montos en moneda local respetan los decimales de cada moneda (el peso chileno y el guaraní no tienen centavos); un monto con más decimales de los que la moneda admite se rechaza.</li>
+</ul>
+<div class="nota"><b class="t">Pendiente</b> Una fuente automática del precio del metal (la misma que usa el resto del ecosistema) y de las tasas, con <code>fuente: 'auto'</code>. El campo ya existe; hoy es manual.</div>
+</section>
+
+<section id="paises">
+<h2>8 · Países, monedas y métodos de pago</h2>
+<p><code>src/data/latam.ts</code> describe 23 países con su moneda (código, símbolo, decimales), sus bancos principales y los métodos de pago que la gente usa de verdad, cada uno con sus <b>campos canónicos</b> (CLABE, llave PIX, número de Nequi, alias de SINPE…) para que el vendedor los rellene bien y el comprador sepa dónde pagar. Se valida contra este catálogo al crear un método de pago o un anuncio.</p>
+<table><thead><tr><th>País</th><th>Moneda</th><th>Métodos de pago</th></tr></thead><tbody>
+<tr><td>🇦🇷 Argentina</td><td>ARS · Peso argentino</td><td>Transferencia bancaria, Mercado Pago, Ualá, Brubank, Lemon, Naranja X</td></tr>
+<tr><td>🇧🇿 Belice</td><td>BZD · Dólar beliceño</td><td>Transferencia bancaria, DigiWallet, E-Kyash, Efectivo en persona</td></tr>
+<tr><td>🇧🇴 Bolivia</td><td>BOB · Boliviano</td><td>Transferencia bancaria, Tigo Money, Yape, Efectivo en persona</td></tr>
+<tr><td>🇧🇷 Brasil</td><td>BRL · Real</td><td>PIX, Transferencia bancaria (TED), Efectivo en persona</td></tr>
+<tr><td>🇨🇱 Chile</td><td>CLP · Peso chileno (sin decimales)</td><td>Transferencia bancaria, MACH, Tenpo, Efectivo en persona</td></tr>
+<tr><td>🇨🇴 Colombia</td><td>COP · Peso colombiano</td><td>Nequi, Daviplata, Bre-B (llave), Transferencia bancaria, Movii, Efectivo en persona</td></tr>
+<tr><td>🇨🇷 Costa Rica</td><td>CRC · Colón</td><td>SINPE Móvil, Transferencia bancaria, Efectivo en persona</td></tr>
+<tr><td>🇪🇨 Ecuador</td><td>USD · Dólar</td><td>Transferencia bancaria, Deuna, Efectivo en persona</td></tr>
+<tr><td>🇸🇻 El Salvador</td><td>USD · Dólar</td><td>Transferencia bancaria (Transfer365), Transfer365 Móvil, Tigo Money, Efectivo en persona</td></tr>
+<tr><td>🇬🇹 Guatemala</td><td>GTQ · Quetzal</td><td>Transferencia bancaria, Tigo Money, Efectivo en persona</td></tr>
+<tr><td>🇬🇾 Guyana</td><td>GYD · Dólar guyanés</td><td>Transferencia bancaria, MMG, Efectivo en persona</td></tr>
+<tr><td>🇭🇹 Haití</td><td>HTG · Gourde</td><td>MonCash, NatCash, Transferencia bancaria, Efectivo en persona</td></tr>
+<tr><td>🇭🇳 Honduras</td><td>HNL · Lempira</td><td>Transferencia bancaria, Tigo Money, Efectivo en persona</td></tr>
+<tr><td>🇲🇽 México</td><td>MXN · Peso mexicano</td><td>Transferencia bancaria (SPEI), Mercado Pago, Depósito en OXXO, Efectivo en persona</td></tr>
+<tr><td>🇳🇮 Nicaragua</td><td>NIO · Córdoba</td><td>Transferencia bancaria, Billetera Móvil Banpro, Efectivo en persona</td></tr>
+<tr><td>🇵🇦 Panamá</td><td>USD · Dólar</td><td>Yappy, Transferencia bancaria, Nequi Panamá, Zelle, Efectivo en persona</td></tr>
+<tr><td>🇵🇾 Paraguay</td><td>PYG · Guaraní (sin decimales)</td><td>Transferencia bancaria, Tigo Money, Personal Pay, Zimple, Efectivo en persona</td></tr>
+<tr><td>🇵🇪 Perú</td><td>PEN · Sol</td><td>Yape, Plin, Transferencia bancaria, Efectivo en persona</td></tr>
+<tr><td>🇵🇷 Puerto Rico</td><td>USD · Dólar</td><td>ATH Móvil, Transferencia bancaria, Zelle, Efectivo en persona</td></tr>
+<tr><td>🇩🇴 República Dominicana</td><td>DOP · Peso dominicano</td><td>Transferencia bancaria, Zelle, Efectivo en persona</td></tr>
+<tr><td>🇸🇷 Surinam</td><td>SRD · Dólar surinamés</td><td>Transferencia bancaria, Uni5Pay+, Efectivo en persona</td></tr>
+<tr><td>🇺🇾 Uruguay</td><td>UYU · Peso uruguayo</td><td>Transferencia bancaria, Prex, Mi Dinero, Efectivo en persona</td></tr>
+<tr><td>🇻🇪 Venezuela</td><td>VES · Bolívar</td><td>Pago Móvil, Transferencia bancaria, Zelle, Efectivo en persona</td></tr>
+</tbody></table>
+<p class="pequeno">Zelle se liquida en dólares aunque el país tenga otra moneda; el efectivo en persona puede pactarse en dólares. Cada método declara si el pago es instantáneo y qué campos lleva; los datos del vendedor se enseñan solo dentro de una orden abierta y con los números parcialmente enmascarados fuera de ella.</p>
+</section>
+
+<section id="kyc">
+<h2>9 · Identidad: KYC contra Genesis ID</h2>
+<p>OrdenExchange no decide quién es quién. La identidad del ecosistema es <b>Genesis ID</b>, y OrdenExchange entra por la misma puerta que Veta Wallet y MyTokenPay: como una app registrada con su clave y sus alcances. Lo que hace OrdenExchange es <b>acompañar el trámite</b> desde su propia interfaz y reflejar en la cuenta lo que Genesis ID diga. La aprobación es un acto humano en el panel de Genesis ID; la clave de la app no sirve para aprobar a nadie, y hay una prueba que lo comprueba.</p>
+<figure>
+<svg viewBox="0 0 900 560" class="svg-texto" xmlns="http://www.w3.org/2000/svg" font-size="12">
+  <defs><marker id="f5" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#4b5260"/></marker></defs>
+  <g font-weight="700" font-size="13">
+    <rect x="20" y="15" width="170" height="34" rx="8" fill="#f5f6f9" stroke="#dfe3ea"/><text x="105" y="37" text-anchor="middle">Persona (app)</text>
+    <rect x="250" y="15" width="200" height="34" rx="8" fill="#0b0d12" stroke="#b8922f"/><text x="350" y="37" text-anchor="middle" fill="#d9b45f">OrdenExchange</text>
+    <rect x="510" y="15" width="170" height="34" rx="8" fill="#f5f6f9" stroke="#dfe3ea"/><text x="595" y="37" text-anchor="middle">Genesis ID</text>
+    <rect x="720" y="15" width="170" height="34" rx="8" fill="#fbf6e8" stroke="#eadcb3"/><text x="805" y="37" text-anchor="middle" fill="#8a6a1c">Operador de cumplimiento</text>
+  </g>
+  <g stroke="#dfe3ea" stroke-width="1.5" stroke-dasharray="4 4"><line x1="105" y1="49" x2="105" y2="545"/><line x1="350" y1="49" x2="350" y2="545"/><line x1="595" y1="49" x2="595" y2="545"/><line x1="805" y1="49" x2="805" y2="545"/></g>
+  <g stroke="#4b5260" stroke-width="1.4" fill="none" marker-end="url(#f5)">
+    <line x1="105" y1="80" x2="348" y2="80"/><line x1="350" y1="105" x2="107" y2="105"/>
+    <line x1="105" y1="145" x2="348" y2="145"/><line x1="350" y1="165" x2="593" y2="165"/>
+    <line x1="105" y1="210" x2="348" y2="210"/><line x1="350" y1="230" x2="593" y2="230"/>
+    <line x1="105" y1="275" x2="348" y2="275"/><line x1="350" y1="295" x2="593" y2="295"/>
+    <line x1="105" y1="340" x2="348" y2="340"/><line x1="350" y1="360" x2="593" y2="360"/>
+    <line x1="805" y1="410" x2="597" y2="410"/><line x1="805" y1="435" x2="597" y2="435"/>
+    <line x1="105" y1="480" x2="348" y2="480"/><line x1="350" y1="500" x2="593" y2="500"/><line x1="595" y1="520" x2="352" y2="520"/><line x1="350" y1="540" x2="107" y2="540"/>
+  </g>
+  <g fill="#111418">
+    <text x="227" y="73" text-anchor="middle">registro (correo, apodo, país, contraseña)</text>
+    <text x="227" y="99" text-anchor="middle">código de 6 dígitos al correo → confirmar</text>
+    <text x="227" y="138" text-anchor="middle">GET /api/genesis/estado</text>
+    <text x="472" y="159" text-anchor="middle">identidad por correo (o se crea)</text>
+    <text x="227" y="203" text-anchor="middle">1 · datos + perfil de cumplimiento</text>
+    <text x="472" y="224" text-anchor="middle">POST /identidades/:id/datos · tamiza el nombre</text>
+    <text x="227" y="268" text-anchor="middle">2 · MRZ del documento</text>
+    <text x="472" y="289" text-anchor="middle">POST …/documento · dígitos de control, vigencia</text>
+    <text x="227" y="333" text-anchor="middle">3 · selfie</text>
+    <text x="472" y="354" text-anchor="middle">POST …/biometria → «en revisión»</text>
+    <text x="700" y="403" text-anchor="middle">coteja el rostro (o el proveedor)</text>
+    <text x="700" y="428" text-anchor="middle">aprueba con motivo → GID</text>
+    <text x="227" y="473" text-anchor="middle">sincronizar (o abrir el perfil)</text>
+    <text x="472" y="494" text-anchor="middle">GET identidad → verificada, GID, nombre legal</text>
+    <text x="472" y="514" text-anchor="middle">POST /vinculos (cuenta = id de usuario)</text>
+    <text x="227" y="534" text-anchor="middle">«Puedes operar» · GID en el perfil</text>
+  </g>
+  <g fill="#8a93a3" font-size="10.5">
+    <text x="350" y="125" text-anchor="middle">sin correo confirmado, el puente responde 403</text>
+    <text x="350" y="185" text-anchor="middle">cada respuesta trae la identidad recortada + la cuenta sincronizada</text>
+    <text x="595" y="385" text-anchor="middle">bloqueos: sin listas cargadas, sin cotejo, documento inválido, perfil incompleto</text>
+    <text x="350" y="460" text-anchor="middle">estados: iniciada/datos/documento → sin verificar · biometria/en-revision → en revisión</text>
+  </g>
+</svg>
+<figcaption>Figura 5 · El trámite completo. La persona nunca habla con Genesis ID; el operador nunca habla con OrdenExchange.</figcaption>
+</figure>
+
+<h3>Por qué primero el correo</h3>
+<p>La identidad se busca en Genesis ID <b>por el correo de la cuenta</b>. Si el correo no estuviera confirmado, cualquiera que se registrara con el correo de otra persona se quedaría con su identidad y su GID. Por eso el registro manda un código de seis dígitos (Brevo) y todas las rutas del trámite exigen el correo confirmado. Sin proveedor de correo y fuera de producción, el código vuelve en la respuesta para poder probar el flujo entero.</p>
+
+<h3>Los tres pasos, en la app</h3>
+<div class="galeria">
+  <figure class="movil"><img src="img/kyc-2-paso-datos.jpg" alt=""><figcaption>Paso 1 · datos y perfil de cumplimiento: ocupación, origen de los fondos, volumen anual, PEP</figcaption></figure>
+  <figure class="movil"><img src="img/kyc-3b-documento-rechazado.jpg" alt=""><figcaption>Paso 2 · MRZ del documento; una MRZ alterada se rechaza con el motivo</figcaption></figure>
+  <figure class="movil"><img src="img/kyc-4-paso-foto.jpg" alt=""><figcaption>Paso 3 · selfie; con proveedor se coteja solo, sin él lo coteja una persona</figcaption></figure>
+</div>
+<div class="galeria">
+  <figure class="movil"><img src="img/kyc-5-en-revision.jpg" alt=""><figcaption>En revisión: la cuenta ya lo refleja y el asistente se retira</figcaption></figure>
+  <figure class="movil"><img src="img/kyc-6-verificada.jpg" alt=""><figcaption>Tras la aprobación en Genesis ID: GID, nombre legal, «Puedes operar»</figcaption></figure>
+  <figure><img src="img/kyc-7-escritorio-verificada.jpg" alt="" style="max-height:150mm;object-fit:cover;object-position:top"><figcaption>Lo mismo en escritorio</figcaption></figure>
+</div>
+<p><b>Paso 1 · Datos y perfil de cumplimiento.</b> Nombre tal como está en el documento, fecha de nacimiento, país de residencia (ISO3), teléfono, dirección, <b>ocupación</b>, <b>origen de los fondos</b>, cuánto espera mover al año y si es persona expuesta políticamente. Genesis ID no aprueba a quien declare mover 10 000 USD o más al año (o no declare nada) sin ocupación y origen de fondos: es lo único contra lo que se puede contrastar un movimiento cuando salta una alerta. Al recibir el nombre, Genesis ID lo tamiza contra las listas de sanciones.</p>
+<p><b>Paso 2 · Documento.</b> La MRZ (las dos o tres líneas de caracteres al pie del pasaporte o la cédula) se lee en el teléfono; la imagen del documento no viaja ni se guarda. Genesis ID comprueba los dígitos de control (ICAO 9303), la vigencia y que coincida con lo declarado. Si no es aceptable, la app lo dice y la persona sigue en el paso 2.</p>
+<p><b>Paso 3 · Rostro.</b> Un selfie (comprimido en el teléfono). Con un proveedor de biometría configurado en Genesis ID (Rekognition o un servicio externo) se coteja contra el documento y se hace una prueba de vida por reto; sin proveedor, queda <code>no-configurada</code> y lo coteja un operador. En ambos casos la cuenta pasa a <b>en revisión</b>. Si el cotejo falla (mala luz, gesto a medias), Genesis ID lo marca como <code>rostroPendiente</code> y la app vuelve a enseñar el paso 3 para repetir la foto.</p>
+<p><b>Aprobación.</b> Un operador de cumplimiento, en el panel de Genesis ID, con las listas de sanciones cargadas y sin bloqueos (documento válido, tamizado hecho, rostro cotejado, perfil completo), aprueba con un motivo escrito. Genesis ID emite el GID (<code>GEN-XXXX-XXXX-C</code>, con dígito verificador). Al abrir el perfil o pulsar «Sincronizar», OrdenExchange lo recoge, guarda el nombre legal, <b>ata la cuenta a la identidad</b> (vínculo app = ordenexchange, cuenta = id del usuario) y la persona ya puede operar.</p>
+
+<h3>Lo que decide Genesis ID manda</h3>
+<table><thead><tr><th>Estado en Genesis ID</th><th>Estado de la cuenta</th><th>Qué ve la persona</th></tr></thead><tbody>
+<tr><td>iniciada · datos · documento</td><td><span class="etq pend">sin-verificar</span></td><td>El asistente, en el paso que toca (<code>paso</code> lo calcula el servidor: 1, 2 o 3)</td></tr>
+<tr><td>biometria · en-revision</td><td><span class="etq pend">en-revision</span></td><td>«Tu identidad está en revisión» y el botón Sincronizar; el paso 3 si hay que repetir la foto</td></tr>
+<tr><td>verificada</td><td><span class="etq ok">verificada</span></td><td>GID, nombre legal, insignia «Verificado», «Puedes operar»</td></tr>
+<tr><td>rechazada</td><td><span class="etq no">rechazada</span></td><td>El motivo genérico y el asistente desde el paso 1</td></tr>
+<tr><td>suspendida</td><td><span class="etq no">suspendida</span></td><td>«Escribe a soporte». No puede publicar, tomar anuncios ni retirar</td></tr>
+</tbody></table>
+<ul>
+  <li><b>Nadie opera sin GID verificado</b>: publicar, tomar un anuncio, depositar y retirar pasan por <code>usuarios.exigirOperar()</code>. Un GID de demostración (sufijo <code>-D</code>) no vale fuera de la demostración.</li>
+  <li><b>Una cuenta ya verificada nunca se degrada</b> porque el correo tenga otra identidad o ninguna (por ejemplo, si entró por sesión única): se avisa y no se cambia nada. Un GID no puede atarse a dos cuentas de OrdenExchange.</li>
+  <li><b>Al usuario se le enseña su trámite, no el expediente</b>: nunca el tamizado, el riesgo, las notas del operador ni las puntuaciones de parecido. La lista de campos permitidos está en <code>routes/genesis.ts</code>.</li>
+  <li><b>Sesión única.</b> Con la cuenta verificada, <code>POST /api/genesis/sso/token</code> emite un token para entrar en otra app del ecosistema; y <code>POST /api/auth/sso</code> acepta el token de otra app: si el GID ya tiene cuenta aquí, entra en ella; si no, completa el registro (correo, apodo, país, contraseña) y queda verificada.</li>
+  <li><b>Tamizado de direcciones.</b> Cada retiro tamiza la dirección destino contra las listas de Genesis ID; una dirección sancionada se rechaza, y si Genesis ID no responde el retiro <b>no sale</b> (se cierra, no se abre).</li>
+  <li><b>Monitoreo AML.</b> Cada orden completada encola un movimiento por cada parte (entrada para el comprador, salida para el vendedor, con monto en USD, país y GID de la contraparte). La cola es persistente (<code>reportesAml</code> en el almacén) y se despacha con reintentos crecientes (5 s, 10 s, 20 s… hasta 10 minutos, 12 intentos): un reporte que no llega se reintenta, no se pierde, y <code>/healthz</code> enseña cuántos hay pendientes. A la persona nunca se le dice nada de esto.</li>
+  <li><b>Suspensión.</b> Si Genesis ID suspende la identidad, la cuenta deja de operar en cuanto se sincroniza (al abrir el perfil, al pulsar Sincronizar o al intentar una acción que lo exija).</li>
+</ul>
+<div class="nota verde"><b class="t">Probado contra un Genesis ID de verdad</b> <code>npm run prueba:genesis</code> levanta el Genesis ID del repositorio en un proceso aparte (clave recién emitida, listas de sanciones de prueba, sin proveedor de biometría) y OrdenExchange en modo real, y recorre las 28 pruebas: registro → correo → estado → datos → MRZ manipulada rechazada → MRZ válida → selfie → en revisión → la clave de la app no aprueba → el operador no aprueba con bloqueos → cotejo manual y aprobación → GID, nombre legal, vínculo, puede operar → sesión única (mismo usuario, token inventado rechazado) → tamizado de una dirección limpia y una sancionada → un segundo usuario verificado, una compraventa completa y sus dos movimientos en el monitoreo → una suspensión que apaga la cuenta.</div>
+<h3>Lo que hizo falta arreglar en Genesis ID</h3>
+<p>Al probar de verdad apareció un defecto en Genesis ID: su limitador de peticiones tenía un solo cubo por IP para todo <code>/api/v1</code>, y la primera ruta que se tocaba fijaba la capacidad de todas (mandar un rostro, 20 por minuto, dejaba sin fichas al monitoreo AML). Como todas las apps del ecosistema hablan con Genesis ID desde una sola IP de servidor, eso habría estrangulado el monitoreo en producción. Ahora el cubo es por ruta (<code>genesis-id/src/middleware/proteger.ts</code>); las 151 pruebas de Genesis ID siguen pasando.</p>
+</section>
+<section id="agentes">
+<h2>10 · Agentes de cambio</h2>
+<p>Un agente de cambio es el equivalente del «comerciante verificado» de Binance P2P: alguien que opera con volumen, responde rápido y ha dejado una <b>garantía</b> en ORIGEN que responde por su conducta. Lleva insignia en el mercado, puede superar el máximo por orden de los usuarios normales y puede publicar anuncios «solo para agentes».</p>
+<table><thead><tr><th>Requisito</th><th>Valor por defecto</th><th>Dónde se cambia</th></tr></thead><tbody>
+<tr><td>Genesis ID verificado</td><td>obligatorio</td><td>—</td></tr>
+<tr><td>Garantía en ORIGEN, congelada mientras sea agente</td><td>500 ORIGEN</td><td>Panel → Configuración (<code>garantiaAgente</code>)</td></tr>
+<tr><td>Órdenes completadas mínimas</td><td>0</td><td><code>ORDENEX_AGENTE_ORDENES_MIN</code></td></tr>
+<tr><td>Máximo por orden sin ser agente</td><td>5 000 USD equivalentes</td><td>Configuración (<code>maxOrdenUsdSinAgente</code>)</td></tr>
+</tbody></table>
+<ul>
+  <li><b>Solicitar</b> congela la garantía en el acto (movimiento <code>garantia-agente</code>). Un operador con permiso <code>agentes.decidir</code> aprueba o rechaza desde el panel; al rechazar, la garantía vuelve.</li>
+  <li><b>Suspender</b> a un agente le quita la insignia y los privilegios pero no le devuelve la garantía; un agente suspendido no puede renunciar ni volver a solicitar hasta que un operador lo decida.</li>
+  <li><b>Renunciar</b> devuelve la garantía (<code>garantia-devuelta</code>) si no tiene órdenes abiertas.</li>
+  <li>La pantalla «Agente de cambio» enseña los requisitos con lo que falta, la garantía y el estado de la solicitud; el panel lista las solicitudes pendientes y los agentes activos.</li>
+</ul>
+<figure><img src="img/escritorio-agente.jpg" alt="" style="max-height:110mm;object-fit:cover;object-position:top"><figcaption>La pantalla del agente: requisitos, garantía y solicitud</figcaption></figure>
+</section>
+
+<section id="billetera">
+<h2>11 · Billetera, depósitos y retiros</h2>
+<p>No hay llaves privadas en OrdenExchange. La cuenta de la plataforma en la cadena 5550 es la <b>tesorería</b> (<code>ORDENEX_TESORERIA</code>): a ella deposita la gente y desde ella firma los retiros un operador, fuera del servidor.</p>
+<h3>Depositar</h3>
+<div class="pasos">
+  <div><div>La persona registra en su perfil la dirección 0x de su billetera (Veta Wallet). Cambiarla guarda la anterior en el historial: una dirección no puede pertenecer a dos cuentas.</div></div>
+  <div><div>Transfiere desde esa dirección a la tesorería (ORIGEN nativo, o AUKA/AGKA por el contrato ERC-20) y pega el hash de la transacción en la billetera.</div></div>
+  <div><div>El servidor comprueba por JSON-RPC: que la transacción existe y tuvo éxito, que el destino es la tesorería, que el origen es la dirección registrada, que tiene las confirmaciones exigidas (3 por defecto) y, para AUKA y AGKA, que el evento <code>Transfer</code> del contrato correcto dice esa cantidad. El hash es único: no se acredita dos veces.</div></div>
+  <div><div>Se acredita al saldo disponible (movimiento <code>deposito</code> con el hash como referencia) y queda en el panel → Depósitos.</div></div>
+</div>
+<h3>Retirar</h3>
+<div class="pasos">
+  <div><div>La persona pide un retiro (activo, cantidad, dirección destino, contraseña). La dirección se <b>tamiza</b> en Genesis ID; sancionada, se rechaza; sin respuesta, no sale.</div></div>
+  <div><div>La cantidad pasa a congelado (<code>retiro-solicitado</code>). Mientras esté pendiente, la persona puede cancelarlo y vuelve a disponible.</div></div>
+  <div><div>Un operador con <code>retiros.decidir</code> firma la transferencia desde la tesorería, fuera del servidor, y anota el hash en el panel: <code>retiro-enviado</code> descuenta de congelado. O lo rechaza con motivo: vuelve a disponible.</div></div>
+</div>
+<div class="nota"><b class="t">Pendiente</b> Firmar los retiros desde un servicio con la llave de la tesorería (o una multifirma) en lugar de a mano. El contrato de la ruta ya está: la decisión del operador con el hash.</div>
+<figure><img src="img/escritorio-billetera.jpg" alt="" style="max-height:120mm;object-fit:cover;object-position:top"><figcaption>La billetera: saldo disponible y en custodia por activo, depósito por hash, retiros e historial</figcaption></figure>
+</section>
+
+<section id="pantallas">
+<h2>12 · Las pantallas de la app</h2>
+<p>La app es una sola página (<code>public/index.html</code> + <code>app.js</code>) con enrutado por <code>#/ruta</code>, en español e inglés, pensada primero para el teléfono. Negro profundo con oro como acento, verde para comprar y rojo-coral para vender, como en cualquier mercado. Las pantallas y lo que hay en cada una:</p>
+<table><thead><tr><th>Ruta</th><th>Pantalla</th><th>Qué hay</th></tr></thead><tbody>
+<tr><td><code>#/</code> · <code>#/mercado</code></td><td>Mercado</td><td>Pestañas comprar/vender, activo, país (con su moneda), método de pago, monto, solo agentes; lista de anuncios con precio, disponible, límites, métodos, reputación e insignias; precio de referencia.</td></tr>
+<tr><td><code>#/anuncio/:id</code></td><td>Tomar un anuncio</td><td>Términos, requisitos, monto en moneda local o cantidad, método, resumen y confirmación.</td></tr>
+<tr><td><code>#/orden/:id</code></td><td>Orden</td><td>Estado y temporizador, resumen, datos de pago del vendedor (solo aquí), chat con imágenes, botones según el estado (pagado, liberar, cancelar, apelar, calificar).</td></tr>
+<tr><td><code>#/ordenes</code></td><td>Mis órdenes</td><td>Abiertas e historial, con filtros.</td></tr>
+<tr><td><code>#/anuncios</code> · <code>#/anuncios/nuevo</code></td><td>Mis anuncios</td><td>Lista con pausar/reanudar/cerrar, editor completo con vista previa del precio.</td></tr>
+<tr><td><code>#/billetera</code></td><td>Billetera</td><td>Saldos, depositar (hash), retirar, historial de movimientos, depósitos y retiros.</td></tr>
+<tr><td><code>#/pagos</code></td><td>Métodos de pago</td><td>Alta por catálogo del país con sus campos, activar/desactivar.</td></tr>
+<tr><td><code>#/agente</code></td><td>Agente de cambio</td><td>Requisitos, garantía, solicitud, renuncia.</td></tr>
+<tr><td><code>#/perfil</code></td><td>Perfil</td><td>Confirmación del correo, Genesis ID (estado, asistente, GID, nombre legal), datos de la cuenta, contraseña, reputación, salir.</td></tr>
+<tr><td><code>#/entrar</code> · <code>#/registro</code></td><td>Entrar y registro</td><td>Correo y contraseña, registro con país; en demostración, entrar con un clic como cualquiera de los diez usuarios.</td></tr>
+</tbody></table>
+<h3>Identidad visual y movimiento</h3>
+<p>Negro profundo, oro como acento (nunca como fondo grande), verde para comprar y coral para vender; tipografía sans para leer y monoespaciada para todo número, con cifras tabulares para que las columnas cuadren. El movimiento está gastado en <b>una sola idea</b>: el activo entra en custodia y sale de ella. Todo lo demás es el acabado que se espera de un mercado, sin nada que distraiga de los números.</p>
+<table><thead><tr><th>Dónde</th><th>Qué se mueve</th><th>Por qué</th></tr></thead><tbody>
+<tr><td>La banda de custodia, en cada orden</td><td>El candado cae y late mientras el activo está retenido; al liberar, el trazo del visto se dibuja en verde; al cancelar, la flecha de vuelta en gris.</td><td>Es el elemento firma: dice en una frase dónde está el activo ahora mismo, que es lo único que de verdad importa en una orden.</td></tr>
+<tr><td>El temporizador</td><td>Una barra dorada que se consume bajo el reloj; a tres minutos se vuelve coral y el reloj late.</td><td>El tiempo que queda se ve sin leer los dígitos.</td></tr>
+<tr><td>La pizarra de precios</td><td>Un destello de bóveda recorre el tablero cada ocho segundos; los precios se encienden al llegar; los puntos de cada activo respiran.</td><td>El tablero está vivo: los precios son de ahora.</td></tr>
+<tr><td>Cambiar de pantalla</td><td>La vista entra con un deslizamiento corto y las listas (anuncios, órdenes, tarjetas) aparecen escalonadas. Las repintadas del sondeo no vuelven a animar.</td><td>Orientación: se nota que la pantalla cambió, sin esperar.</td></tr>
+<tr><td>Estados</td><td>El punto de «pendiente de pago», «en revisión» y «apelación» parpadea despacio.</td><td>Alguien tiene que hacer algo.</td></tr>
+<tr><td>Botones, filas, campos</td><td>Se levantan al pasar, se hunden al pulsar; el botón dorado brilla; el anuncio se acerca y su precio se enciende; el campo enfocado tiene un halo dorado; el subrayado de la navegación y el punto de la barra crecen desde el centro.</td><td>Respuesta inmediata a cada gesto; foco visible con teclado.</td></tr>
+<tr><td>Chat, avisos y diálogos</td><td>Los mensajes suben al aparecer; los avisos y diálogos emergen con una escala mínima.</td><td>Continuidad.</td></tr>
+</tbody></table>
+<p class="pequeno">Con «reducir movimiento» activado en el sistema, todas las animaciones y transiciones se apagan (<code>prefers-reduced-motion</code>). En el teléfono la pizarra enseña cada precio en su renglón, como un tablero de cotizaciones, para que ningún número se corte.</p>
+<div class="galeria dos">
+  <figure><img src="img/escritorio-mercado.jpg" alt="" style="max-height:95mm;object-fit:cover;object-position:top"><figcaption>El mercado en escritorio</figcaption></figure>
+  <figure><img src="img/escritorio-orden.jpg" alt="" style="max-height:95mm;object-fit:cover;object-position:top"><figcaption>Una orden abierta</figcaption></figure>
+  <figure><img src="img/escritorio-anuncios_nuevo.jpg" alt="" style="max-height:95mm;object-fit:cover;object-position:top"><figcaption>Publicar un anuncio</figcaption></figure>
+  <figure><img src="img/escritorio-pagos.jpg" alt="" style="max-height:95mm;object-fit:cover;object-position:top"><figcaption>Métodos de pago por catálogo del país</figcaption></figure>
+</div>
+<div class="galeria">
+  <figure class="movil"><img src="img/movil-mercado.jpg" alt=""><figcaption>Mercado en el teléfono</figcaption></figure>
+  <figure class="movil"><img src="img/movil-orden.jpg" alt=""><figcaption>Orden en el teléfono</figcaption></figure>
+  <figure class="movil"><img src="img/reg-2-perfil-correo.jpg" alt=""><figcaption>Registro: confirmar el correo</figcaption></figure>
+</div>
+</section>
+
+<section id="panel">
+<h2>13 · Panel de operadores</h2>
+<p>En <code>/admin</code>, con sesión propia de operador (no la de usuario). Tres roles, y cada acción del panel exige un permiso concreto:</p>
+<table><thead><tr><th>Permiso</th><th>admin</th><th>soporte</th><th>auditor</th><th>Qué permite</th></tr></thead><tbody>
+<tr><td><code>leer</code></td><td>✓</td><td>✓</td><td>✓</td><td>Ver todo: resumen, órdenes, usuarios, retiros, depósitos, agentes, precios, configuración, bitácora</td></tr>
+<tr><td><code>ordenes.resolver</code> · <code>ordenes.cancelar</code> · <code>ordenes.chatear</code></td><td>✓</td><td>✓</td><td>—</td><td>Resolver apelaciones (liberar / devolver), cancelar órdenes, escribir en el chat de una apelación</td></tr>
+<tr><td><code>agentes.decidir</code> · <code>retiros.decidir</code></td><td>✓</td><td>✓</td><td>—</td><td>Aprobar, rechazar o suspender agentes; marcar retiros enviados (con hash) o rechazados</td></tr>
+<tr><td><code>usuarios.congelar</code></td><td>✓</td><td>✓</td><td>—</td><td>Bloquear una cuenta (cierra todas sus sesiones) y desbloquearla</td></tr>
+<tr><td><code>saldos.ajustar</code></td><td>✓</td><td>—</td><td>—</td><td>Ajuste manual de saldo con motivo (queda en bitácora)</td></tr>
+<tr><td><code>precios.editar</code> · <code>configuracion.editar</code></td><td>✓</td><td>—</td><td>—</td><td>Precio del metal y tasas; comisión, garantía, límites, tesorería</td></tr>
+<tr><td><code>operadores.gestionar</code></td><td>✓</td><td>—</td><td>—</td><td>Crear y desactivar operadores, cambiar roles</td></tr>
+</tbody></table>
+<ul>
+  <li>La <b>bitácora</b> es una cadena de hashes: cada entrada lleva el hash de la anterior y el panel comprueba que está íntegra. Toda decisión de operador queda ahí con su nombre.</li>
+  <li>Las <b>apelaciones</b> se resuelven con el chat completo y los comprobantes a la vista; la resolución escribe un mensaje del sistema en la orden.</li>
+  <li>El primer administrador sale de <code>ORDENEX_ADMIN_EMAIL</code>; si no se fija <code>ORDENEX_ADMIN_PASSWORD</code>, se genera y se imprime una sola vez al arrancar. Bloqueo por correo + IP tras intentos fallidos; el token de sesión se guarda por hash.</li>
+</ul>
+<div class="galeria dos">
+  <figure><img src="img/panel-resumen.jpg" alt="" style="max-height:80mm;object-fit:cover;object-position:top"><figcaption>Resumen</figcaption></figure>
+  <figure><img src="img/panel-usuarios.jpg" alt="" style="max-height:80mm;object-fit:cover;object-position:top"><figcaption>Usuarios: congelar, ajustar, ver</figcaption></figure>
+  <figure><img src="img/panel-precios.jpg" alt="" style="max-height:80mm;object-fit:cover;object-position:top"><figcaption>Precios del metal y tasas</figcaption></figure>
+  <figure><img src="img/panel-bitacora.jpg" alt="" style="max-height:80mm;object-fit:cover;object-position:top"><figcaption>Bitácora encadenada</figcaption></figure>
+</div>
+</section>
+
+<section id="seguridad">
+<h2>14 · Seguridad</h2>
+<p>Lo que protege el dinero y los datos, tal como está en el código. Cada punto salió de una revisión adversarial sobre la aplicación y tiene su prueba.</p>
+<table><thead><tr><th>Riesgo</th><th>Cómo se cubre</th></tr></thead><tbody>
+<tr><td>Sesiones falsificadas</td><td>JWT firmado con <code>ORDENEX_JWT_SECRETO</code>, <b>obligatorio</b> en producción (sin él el servidor no arranca). El usuario se toma siempre de la sesión, nunca del cuerpo de la petición.</td></tr>
+<tr><td>Sesiones que no se pueden cerrar</td><td>Cada usuario lleva <code>sesionesDesde</code>; cualquier token emitido antes deja de valer. Cerrar sesión, cambiar la contraseña o que un operador congele la cuenta mueven la marca. El instante de emisión va en milisegundos para poder revocar y emitir en el mismo segundo.</td></tr>
+<tr><td>Adivinar contraseñas o correos</td><td>bcrypt; la comparación tarda lo mismo aunque la cuenta no exista (hash ficticio); ocho intentos fallidos bloquean 15 minutos; límites de peticiones por ruta e IP.</td></tr>
+<tr><td>Quedarse con la identidad de otro</td><td>El correo se confirma con código antes de abrir el trámite en Genesis ID; un GID no se ata a dos cuentas; una cuenta verificada no se degrada por otra identidad.</td></tr>
+<tr><td>Liberar lo ajeno · cancelar lo pagado · tomar el propio anuncio</td><td>Cada acción comprueba el papel de quien la pide y el estado de la orden; liberar exige la contraseña. Probado negativamente en <code>flujo.test.ts</code>.</td></tr>
+<tr><td>Saldos inventados o negativos</td><td>Un solo punto de mutación, BigInt, rechazo entero, movimientos que suman el saldo (sección 6). Guardia contra la carrera de depósitos; hash de depósito y de retiro únicos.</td></tr>
+<tr><td>Demostración encendida sobre dinero real</td><td>Una sola definición de producción; el grifo y la verificación falsa no existen en producción; las cuentas de demostración se congelan; el GID de demostración no vale.</td></tr>
+<tr><td>Datos bancarios y comprobantes expuestos</td><td>Los métodos de pago se ven solo dentro de una orden abierta (enmascarados fuera); las imágenes del chat se sirven con URL firmada por HMAC y solo a las partes y al operador.</td></tr>
+<tr><td>Inyección y scripts en el navegador</td><td>Content-Security-Policy estricta (sin scripts externos), HSTS, CORS solo a los orígenes configurados en producción, todo el HTML del frontend escapado.</td></tr>
+<tr><td>Retiros a direcciones sancionadas</td><td>Tamizado en Genesis ID antes de aceptar el retiro, que se cierra si Genesis ID no responde.</td></tr>
+<tr><td>Decisiones sin rastro</td><td>Bitácora encadenada con el operador, la acción y el detalle; el panel verifica la integridad.</td></tr>
+<tr><td>Detrás de un proxy</td><td><code>trust proxy</code> solo cuando se sabe que hay uno (Render, Vercel o <code>ORDENEX_TRAS_PROXY=1</code>), para que los límites por IP no se puedan burlar con una cabecera.</td></tr>
+</tbody></table>
+</section>
+
+<section id="api">
+<h2>15 · La API, en resumen</h2>
+<p>El contrato completo, con cada campo y cada código de error, está en <code>ordenexchange/API.md</code>. Todo devuelve JSON; los errores llevan <code>{ error, codigo }</code> y el frontend traduce el código. Sesión de usuario con <code>Authorization: Bearer</code>; sesión de operador aparte para <code>/api/panel</code>.</p>
+<table><thead><tr><th>Grupo</th><th>Rutas</th></tr></thead><tbody>
+<tr><td><b>Público</b></td><td><code>GET /api/mercado/catalogo</code> (países, monedas, métodos, activos, precios, configuración visible, demo) · <code>GET /api/mercado/anuncios</code> (filtros: lado, activo, pais, moneda, metodo, monto, soloAgentes, orden) · <code>GET /api/mercado/anuncios/:id</code> · <code>GET /api/mercado/usuarios/:id</code> · <code>GET /healthz</code></td></tr>
+<tr><td><b>Autenticación</b></td><td><code>POST /api/auth/registro</code> · <code>verificar-correo</code> · <code>reenviar-codigo</code> · <code>entrar</code> · <code>sso</code> · <code>salir</code> · <code>GET/PATCH /api/auth/yo</code> · <code>POST /api/auth/contrasena</code> · demo: <code>demo/usuarios</code>, <code>demo/entrar</code></td></tr>
+<tr><td><b>Genesis ID</b></td><td><code>GET /api/genesis/estado</code> · <code>POST datos</code> · <code>documento</code> · <code>vivacidad</code> · <code>biometria</code> · <code>foto</code> · <code>vincular</code> · <code>sso/token</code> · <code>GET tamiz/:direccion</code> · demo: <code>demo/verificar</code></td></tr>
+<tr><td><b>Billetera</b></td><td><code>GET /api/billetera</code> · <code>movimientos</code> · <code>POST depositos</code> (hash) · <code>GET depositos</code> · <code>POST retiros</code> · <code>GET retiros</code> · <code>POST retiros/:id/cancelar</code> · demo: <code>grifo</code></td></tr>
+<tr><td><b>Métodos de pago</b></td><td><code>GET/POST /api/metodos-pago</code> · <code>PATCH/DELETE /:id</code></td></tr>
+<tr><td><b>Mis anuncios</b></td><td><code>GET/POST /api/anuncios</code> · <code>GET/PATCH /:id</code> · <code>POST /:id/pausar</code> · <code>reanudar</code> · <code>cerrar</code></td></tr>
+<tr><td><b>Órdenes</b></td><td><code>GET/POST /api/ordenes</code> · <code>GET /:id</code> · <code>POST /:id/pagado</code> · <code>liberar</code> · <code>cancelar</code> · <code>apelar</code> · <code>retirar-apelacion</code> · <code>calificar</code> · <code>GET/POST /:id/mensajes</code> · <code>GET /:id/imagenes/:img?f=</code></td></tr>
+<tr><td><b>Agentes</b></td><td><code>GET /api/agentes/estado</code> · <code>POST solicitar</code> · <code>renunciar</code></td></tr>
+<tr><td><b>Panel</b></td><td><code>POST /api/panel/sesion/entrar</code> · <code>GET resumen</code> · <code>apelaciones</code> · <code>ordenes</code> · <code>POST ordenes/:id/resolver</code> · <code>cancelar</code> · <code>mensaje</code> · <code>GET usuarios</code> · <code>usuarios/:id</code> · <code>POST usuarios/:id/congelar</code> · <code>ajuste</code> · <code>agente</code> · <code>GET agentes</code> · <code>retiros</code> · <code>POST retiros/:id/decidir</code> · <code>GET depositos</code> · <code>GET/PUT precios</code> · <code>configuracion</code> · <code>GET bitacora</code> · <code>GET/POST operadores</code> · <code>POST contrasena</code></td></tr>
+</tbody></table>
+<p>Tiempo real: la app sondea la orden abierta cada pocos segundos (<code>GET /api/ordenes/:id/mensajes</code> devuelve el detalle ligero con los mensajes nuevos). No hay WebSockets; con el volumen previsto no hacen falta.</p>
+</section>
+
+<section id="despliegue">
+<h2>16 · Despliegue y configuración</h2>
+<p>Un solo proceso Node 22. En <b>Render</b>, el servicio <code>ordenexchange</code> está en el <code>render.yaml</code> de la raíz del monorepo (rootDir <code>ordenexchange</code>, <code>npm install</code>, <code>npm start</code>, comprobación en <code>/healthz</code>). En <b>Vercel</b>, <code>vercel.json</code> apunta a <code>src/index.ts</code>; ahí Mongo es obligatorio porque el disco es efímero. <code>GET /healthz</code> responde <code>degradado</code> mientras falte algo esencial y dice qué.</p>
+<table><thead><tr><th>Variable</th><th>Para qué</th><th>Obligatoria en producción</th></tr></thead><tbody>
+<tr><td><code>ORDENEX_JWT_SECRETO</code></td><td>Firma de las sesiones de usuario</td><td><b>Sí</b> (sin ella no arranca)</td></tr>
+<tr><td><code>ORDENEX_MONGO_URL</code> · <code>ORDENEX_MONGO_DB</code></td><td>Almacén persistente (sin ella, JSON en disco)</td><td><b>Sí</b> para custodiar saldos reales</td></tr>
+<tr><td><code>ORDENEX_ADMIN_EMAIL</code> · <code>ORDENEX_ADMIN_PASSWORD</code></td><td>Primer administrador del panel</td><td>Recomendada (si no, se genera e imprime)</td></tr>
+<tr><td><code>GENESIS_URL</code> · <code>GENESIS_API_KEY</code></td><td>El puente con Genesis ID (clave de la app <code>ordenexchange</code>)</td><td><b>Sí</b>: sin ella nadie se verifica ni opera</td></tr>
+<tr><td><code>BREVO_API_KEY</code> · <code>ORDENEX_CORREO_REMITENTE</code></td><td>Código de confirmación del correo</td><td><b>Sí</b>: sin proveedor nadie confirma su correo en producción</td></tr>
+<tr><td><code>ORDENEX_TESORERIA</code> · <code>ORDENEX_RPC_URL</code> · <code>ORDENEX_CONFIRMACIONES</code> · <code>ORDENEX_EXPLORADOR</code></td><td>Cadena 5550: cuenta de la plataforma, nodo, confirmaciones, explorador</td><td><b>Sí</b> para depósitos y retiros</td></tr>
+<tr><td><code>ORDENEX_ORO_USD_ONZA</code> · <code>ORDENEX_PLATA_USD_ONZA</code></td><td>Precio inicial del metal (luego desde el panel)</td><td>Sí</td></tr>
+<tr><td><code>ORDENEX_COMISION_PCT</code> · <code>ORDENEX_GARANTIA_AGENTE</code> · <code>ORDENEX_MAX_ORDENES_ABIERTAS</code> · <code>ORDENEX_MIN_ORDEN_USD</code> · <code>ORDENEX_MAX_ORDEN_USD_SIN_AGENTE</code> · <code>ORDENEX_AGENTE_ORDENES_MIN</code></td><td>Reglas de la plataforma (todas editables después desde el panel)</td><td>Opcionales (0 %, 500, 5, 5, 5 000, 0)</td></tr>
+<tr><td><code>ORDENEX_ORIGENES</code> · <code>ORDENEX_TRAS_PROXY</code></td><td>CORS y proxy inverso</td><td>Según despliegue</td></tr>
+<tr><td><code>ORDENEX_DEMO</code></td><td>Forzar la demostración (1/0). Nunca actúa en producción</td><td>No</td></tr>
+</tbody></table>
+<pre>cd ordenexchange
+npm install
+npm start              # http://localhost:4100 → app en /, panel en /admin
+npm run prueba         # 47 pruebas en modo demostración
+npm run prueba:genesis # 28 pruebas contra el Genesis ID del repositorio
+npm run typecheck</pre>
+</section>
+
+<section id="pruebas">
+<h2>17 · Pruebas</h2>
+<p>Las pruebas son de extremo a extremo sobre el servidor de verdad (<code>node:test</code>, sin dobles): arrancan el servidor en un puerto libre, hacen peticiones HTTP y comprueban respuestas y estado. Además se recorrió la interfaz con Chromium (Playwright) en teléfono y escritorio para las capturas de este documento y para comprobar que cada pantalla y cada flujo funcionan en el navegador.</p>
+<table><thead><tr><th>Suite</th><th>Pruebas</th><th>Qué cubre</th></tr></thead><tbody>
+<tr><td><code>decimal.test.ts</code></td><td>incluidas en las 47</td><td>La aritmética exacta: conversión, comparación, suma, resta, multiplicación, división con recorte, validación de decimales.</td></tr>
+<tr><td><code>flujo.test.ts</code> (demostración)</td><td>47 en total</td><td>Catálogo y mercado; registro y confirmación del correo; verificación; orden de compra con custodia, chat, marcar pagado, liberar con contraseña, calificar; orden de venta sobre un anuncio de compra; cancelación y vencimiento; apelaciones resueltas en los dos sentidos; permisos de auditor; congelar cuentas (cierra sesiones); precios; anuncios propios con requisitos; retiros; agentes; y al final, que cada saldo cuadra con sus movimientos. También todo lo que NO se puede hacer: liberar lo ajeno, cancelar lo pagado, tomar el propio anuncio, operar sin GID, mover más de lo que hay en custodia.</td></tr>
+<tr><td><code>genesis.integracion.ts</code> (Genesis ID real)</td><td>28</td><td>Sección 9: el trámite entero contra el Genesis ID del repositorio, sesión única, tamizado, monitoreo AML y suspensión.</td></tr>
+<tr><td>Genesis ID (<code>genesis-id/</code>)</td><td>151</td><td>Siguen pasando tras el arreglo del limitador.</td></tr>
+</tbody></table>
+<p>Total: <b>75 pruebas</b> de OrdenExchange, todas en verde en la fecha de este documento, más las 151 de Genesis ID. <code>npm run typecheck</code> compila sin errores.</p>
+</section>
+
+<section id="pendientes">
+<h2>18 · Lo que falta y lo que sigue</h2>
+<h3>Para salir a producción</h3>
+<table><thead><tr><th>Qué</th><th>Por qué</th><th>Dónde</th></tr></thead><tbody>
+<tr><td>MongoDB</td><td>El archivo JSON sirve para desarrollo; con saldos reales hace falta un almacén persistente y con respaldo.</td><td><code>ORDENEX_MONGO_URL</code>; el código ya lo soporta.</td></tr>
+<tr><td>Clave real de la app en Genesis ID</td><td>La app <code>ordenexchange</code> ya está registrada; hay que fijar su clave <code>gid_live_…</code> en el servidor.</td><td><code>GENESIS_API_KEY</code></td></tr>
+<tr><td>Proveedor de correo</td><td>Sin Brevo nadie puede confirmar su correo y, por tanto, verificarse.</td><td><code>BREVO_API_KEY</code></td></tr>
+<tr><td>Tesorería y firma de retiros</td><td>Cuenta de la plataforma en la cadena 5550 y quién firma; hoy los retiros se firman a mano y se anota el hash.</td><td><code>ORDENEX_TESORERIA</code>; después, un firmante o multifirma.</td></tr>
+<tr><td>Proveedor de biometría en Genesis ID</td><td>Sin él, cada rostro lo coteja una persona. Con Rekognition o un servicio externo el cotejo y la prueba de vida son automáticos.</td><td><code>GENESIS_AWS_ACCESS_KEY_ID</code> o <code>GENESIS_BIOMETRIA_URL</code> en Genesis ID</td></tr>
+<tr><td>Listas de sanciones en Genesis ID</td><td>Genesis ID no aprueba a nadie sin listas cargadas.</td><td><code>GENESIS_LISTAS_DIR</code> o importación OFAC desde su panel</td></tr>
+<tr><td>Precio del metal automático</td><td>Hoy lo fija un administrador.</td><td>Una fuente periódica con <code>fuente: 'auto'</code></td></tr>
+</tbody></table>
+<h3>Mejoras razonables después</h3>
+<ul>
+  <li><b>Lectura de la MRZ con la cámara</b> (OCR en el teléfono) en lugar de teclearla; el contrato ya recibe solo el texto.</li>
+  <li><b>Prueba de vida por reto</b> en la app (la ruta <code>/vivacidad</code> ya existe y el puente reenvía <code>reto</code> y <code>fotogramas</code>).</li>
+  <li><b>Notificaciones</b> (correo o push) al comprador y al vendedor en cada cambio de estado; hoy el aviso es dentro de la app.</li>
+  <li><b>Contrapartes bloqueadas</b> y lista de favoritos, como en Binance.</li>
+  <li><b>Estadísticas del mercado</b> (volumen por país y moneda) en el panel y en el cerebro del ecosistema.</li>
+  <li><b>Aplicación móvil</b> envolviendo la SPA, que ya está pensada para el teléfono.</li>
+</ul>
+</section>
+
+<section id="glosario">
+<h2>19 · Glosario</h2>
+<table><tbody>
+<tr><td><b>Anuncio</b></td><td>Oferta pública de compra o venta con precio, límites y métodos de pago. Lo publica el anunciante; lo toma el tomador.</td></tr>
+<tr><td><b>Orden</b></td><td>Una compraventa concreta sobre un anuncio, con su custodia, su chat y su temporizador.</td></tr>
+<tr><td><b>Custodia (congelado)</b></td><td>El activo del vendedor retenido por la plataforma mientras dura la orden. «Congelar» y «descongelar» en la interfaz.</td></tr>
+<tr><td><b>Liberar</b></td><td>El vendedor entrega el activo en custodia al comprador tras comprobar que cobró.</td></tr>
+<tr><td><b>Apelación</b></td><td>Disputa sobre una orden pagada que resuelve un operador: liberar o devolver.</td></tr>
+<tr><td><b>Agente de cambio</b></td><td>Comerciante verificado con garantía e insignia; puede operar montos mayores.</td></tr>
+<tr><td><b>Genesis ID · GID</b></td><td>La identidad del ecosistema y su identificador (<code>GEN-XXXX-XXXX-C</code>).</td></tr>
+<tr><td><b>MRZ</b></td><td>Zona de lectura mecánica: las líneas de caracteres al pie de un pasaporte o cédula (ICAO 9303).</td></tr>
+<tr><td><b>KYC · AML · PEP</b></td><td>Conocer al cliente; prevención de lavado de activos; persona expuesta políticamente.</td></tr>
+<tr><td><b>Tamizado</b></td><td>Comparar un nombre o una dirección contra listas de sanciones.</td></tr>
+<tr><td><b>Tesorería</b></td><td>La cuenta de la plataforma en la cadena 5550: recibe los depósitos y desde ella salen los retiros y se cobran las comisiones.</td></tr>
+<tr><td><b>Precio de referencia</b></td><td>El valor del activo en cada moneda derivado del metal (oro o plata) y de la tasa de cambio.</td></tr>
+<tr><td><b>Flotante</b></td><td>Precio expresado como porcentaje sobre la referencia; se mueve con ella.</td></tr>
+<tr><td><b>Bitácora</b></td><td>Registro encadenado por hashes de toda decisión y cambio relevante.</td></tr>
+</tbody></table>
+<div class="firma">OrdenExchange · Documento de diseño · versión 1.0 · 20 de septiembre de 2026 · generado desde <code>ordenexchange/docs/diseno.html</code> con Chromium. Las capturas provienen de recorridos reales con Playwright sobre el servidor en modo demostración y, para la identidad, sobre un Genesis ID real levantado desde el repositorio.</div>
+</section>
+
+</body></html>

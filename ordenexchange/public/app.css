@@ -659,3 +659,143 @@ svg.ic{width:1em;height:1em;stroke:currentColor;fill:none;stroke-width:2;stroke-
 .btn-icono svg.ic{width:20px;height:20px}
 .barra-inf a svg.ic{width:22px;height:22px;stroke-width:1.7}
 .mono.pequeno{font-size:12px}
+
+
+/* ══════════════════════════════════════════════════════════════════════════
+   Movimiento. Una sola idea: el activo entra en custodia y sale de ella.
+   Todo lo demás es el acabado que se espera de un mercado: nada que
+   distraiga de los números. Con «reducir movimiento» se apaga todo.
+   ══════════════════════════════════════════════════════════════════════════ */
+:root{--suave:cubic-bezier(.2,.7,.2,1);--d1:.14s;--d2:.24s;--d3:.42s}
+@keyframes vista-entra{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+@keyframes subir-suave{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+@keyframes emerger{from{opacity:0;transform:translateY(6px) scale(.985)}to{opacity:1;transform:none}}
+@keyframes pulso-oro{0%,100%{box-shadow:0 0 0 0 rgba(217,180,95,.45)}70%{box-shadow:0 0 0 7px rgba(217,180,95,0)}}
+@keyframes latido{0%,100%{transform:scale(1)}50%{transform:scale(1.04)}}
+@keyframes destello{from{transform:translateX(-140%) skewX(-12deg)}to{transform:translateX(260%) skewX(-12deg)}}
+@keyframes candado{0%{transform:translateY(-8px) rotate(-6deg);opacity:0}60%{transform:translateY(1px);opacity:1}100%{transform:none}}
+@keyframes trazo{to{stroke-dashoffset:0}}
+@keyframes tic{0%{color:var(--marfil);text-shadow:0 0 0 rgba(217,180,95,0)}100%{color:var(--oro-claro);text-shadow:0 0 18px rgba(217,180,95,.25)}}
+@keyframes punto-vivo{0%,100%{opacity:1}50%{opacity:.35}}
+
+/* La vista entra una vez; las listas, escalonadas. Las repintadas del sondeo no vuelven a animar. */
+.contenido.entra{animation:vista-entra var(--d3) var(--suave) both}
+.entra .anuncio,.entra .orden-fila,.entra .fila,.entra .tarjeta,.entra .pizarra,.entra .como-col{animation:subir-suave .5s var(--suave) both}
+.entra .anuncio:nth-child(2),.entra .orden-fila:nth-child(2),.entra .fila:nth-child(2),.entra .tarjeta:nth-child(2){animation-delay:38ms}
+.entra .anuncio:nth-child(3),.entra .orden-fila:nth-child(3),.entra .fila:nth-child(3),.entra .tarjeta:nth-child(3){animation-delay:76ms}
+.entra .anuncio:nth-child(4),.entra .orden-fila:nth-child(4),.entra .fila:nth-child(4),.entra .tarjeta:nth-child(4){animation-delay:114ms}
+.entra .anuncio:nth-child(5),.entra .orden-fila:nth-child(5),.entra .fila:nth-child(5),.entra .tarjeta:nth-child(5){animation-delay:152ms}
+.entra .anuncio:nth-child(6),.entra .orden-fila:nth-child(6),.entra .fila:nth-child(6),.entra .tarjeta:nth-child(6){animation-delay:190ms}
+.entra .anuncio:nth-child(7),.entra .orden-fila:nth-child(7),.entra .fila:nth-child(7),.entra .tarjeta:nth-child(7){animation-delay:228ms}
+.entra .anuncio:nth-child(8),.entra .orden-fila:nth-child(8),.entra .fila:nth-child(8),.entra .tarjeta:nth-child(8){animation-delay:266ms}
+.entra .anuncio:nth-child(9),.entra .orden-fila:nth-child(9),.entra .fila:nth-child(9),.entra .tarjeta:nth-child(9){animation-delay:304ms}
+.entra .anuncio:nth-child(10),.entra .orden-fila:nth-child(10),.entra .fila:nth-child(10),.entra .tarjeta:nth-child(10){animation-delay:342ms}
+.entra .anuncio:nth-child(11),.entra .orden-fila:nth-child(11),.entra .fila:nth-child(11),.entra .tarjeta:nth-child(11){animation-delay:380ms}
+.entra .anuncio:nth-child(12),.entra .orden-fila:nth-child(12),.entra .fila:nth-child(12),.entra .tarjeta:nth-child(12){animation-delay:418ms}
+.entra .como-col:nth-child(2){animation-delay:80ms}
+.entra .portada-cab h1{animation:subir-suave .55s var(--suave) both}
+.entra .portada-cab p{animation:subir-suave .55s var(--suave) 70ms both}
+.entra .filtros{animation:subir-suave .5s var(--suave) 60ms both}
+.entra .pizarra{animation-delay:40ms}
+
+/* Botones: se levantan al pasar, se hunden al pulsar, brillan según su papel. */
+.btn{transition:transform var(--d1) var(--suave),background var(--d2),border-color var(--d2),box-shadow var(--d2),color var(--d2),opacity var(--d2)}
+.btn:hover:not(:disabled){transform:translateY(-1px)}
+.btn:active:not(:disabled){transform:translateY(0) scale(.985)}
+.btn-oro{background:linear-gradient(180deg,var(--oro-claro) 0%,var(--oro) 50%,#c9a24f 100%);box-shadow:inset 0 1px 0 rgba(255,255,255,.22),0 8px 24px -14px rgba(217,180,95,.65)}
+.btn-oro:hover:not(:disabled){background:linear-gradient(180deg,#fbeec2 0%,var(--oro-claro) 50%,var(--oro) 100%);box-shadow:inset 0 1px 0 rgba(255,255,255,.28),0 12px 30px -12px rgba(217,180,95,.8)}
+.btn-comprar{box-shadow:0 8px 24px -14px rgba(53,208,127,.7)}
+.btn-comprar:hover:not(:disabled){box-shadow:0 12px 30px -12px rgba(53,208,127,.85)}
+.btn-vender{box-shadow:0 8px 24px -14px rgba(255,106,91,.7)}
+.btn-vender:hover:not(:disabled){box-shadow:0 12px 30px -12px rgba(255,106,91,.85)}
+:where(a,button,input,select,textarea,[tabindex]):focus-visible{outline:2px solid var(--oro);outline-offset:2px}
+.entrada,select.entrada,textarea.entrada{transition:border-color var(--d2),box-shadow var(--d2),background var(--d2)}
+.entrada:focus,select.entrada:focus,textarea.entrada:focus{border-color:var(--oro);box-shadow:0 0 0 3px var(--oro-fondo);outline:0}
+.segmento button{transition:background var(--d2),color var(--d2),transform var(--d1) var(--suave)}
+.segmento button:active{transform:scale(.97)}
+.pestanas button{transition:color var(--d2),border-color var(--d2)}
+.interruptor .pista{transition:background var(--d2),border-color var(--d2)}
+.interruptor .pista::after{transition:transform var(--d2) var(--suave),background var(--d2)}
+.opcion,.casilla,.demo-usuario,.fila.enlace-fila{transition:border-color var(--d2),background var(--d2),transform var(--d2) var(--suave)}
+.opcion:hover,.demo-usuario:hover,.fila.enlace-fila:hover{transform:translateY(-1px);border-color:var(--linea2)}
+.copiable{transition:color var(--d2),border-color var(--d2)}
+.copiable:hover{border-color:var(--oro)}
+.copiable:hover svg{stroke:var(--oro)}
+
+/* Navegación: el subrayado y el punto de la barra crecen desde el centro. */
+.nav-sup a{transition:color var(--d2),background var(--d2)}
+.nav-sup a::after{content:"";position:absolute;left:12px;right:12px;bottom:2px;height:2px;background:var(--oro);border-radius:2px;transform:scaleX(0);transition:transform var(--d2) var(--suave)}
+.nav-sup a.activa::after{transform:scaleX(1)}
+.barra-inf a{transition:color var(--d2)}
+.barra-inf a svg{transition:transform var(--d2) var(--suave)}
+.barra-inf a.activa svg{transform:translateY(-2px)}
+.barra-inf a::after{content:"";position:absolute;bottom:5px;left:50%;width:4px;height:4px;margin-left:-2px;border-radius:50%;background:var(--oro);transform:scale(0);transition:transform var(--d2) var(--suave)}
+.barra-inf a.activa::after{transform:scale(1)}
+.cuenta{transition:border-color var(--d2),background var(--d2)}
+.cuenta:hover{border-color:var(--oro);background:var(--linea-suave)}
+
+/* Anuncios: se acercan al pasar; el precio se enciende. */
+.anuncio{transition:border-color var(--d2),background var(--d2),transform var(--d2) var(--suave),box-shadow var(--d2)}
+.anuncio:hover{border-color:var(--linea2);background:var(--panel2);transform:translateY(-1px);box-shadow:0 14px 34px -22px rgba(0,0,0,.85)}
+.a-precio .valor{transition:color var(--d2),text-shadow var(--d2)}
+.anuncio:hover .a-precio .valor{color:var(--oro-claro);text-shadow:0 0 16px rgba(217,180,95,.25)}
+.orden-fila{transition:border-color var(--d2),background var(--d2),transform var(--d2) var(--suave)}
+.orden-fila:hover{border-color:var(--linea2);background:var(--panel2);transform:translateY(-1px)}
+
+/* La pizarra: un destello de bóveda que recorre el tablero, y los precios que se encienden al llegar. */
+.pizarra::after{content:"";position:absolute;top:-10%;bottom:-10%;left:0;width:34%;pointer-events:none;
+  background:linear-gradient(100deg,transparent 0%,rgba(217,180,95,.04) 40%,rgba(243,226,172,.10) 50%,rgba(217,180,95,.04) 60%,transparent 100%);
+  animation:destello 8s var(--suave) 1.4s infinite}
+.pz-item .valor{animation:tic .9s var(--suave) both}
+.pz-item:nth-child(2) .valor{animation-delay:120ms}.pz-item:nth-child(3) .valor{animation-delay:240ms}
+.pz-item .sim i{animation:punto-vivo 2.8s ease-in-out infinite}
+.portada-cab{position:relative}
+.portada-cab::before{content:"";position:absolute;left:-40px;top:-60px;width:520px;height:260px;pointer-events:none;z-index:-1;
+  background:radial-gradient(60% 70% at 25% 20%,rgba(217,180,95,.13),transparent 70%)}
+@media (max-width:899px){
+  /* En el teléfono los tres precios no caben en fila: cada uno es un renglón entero, como un tablero de cotizaciones. */
+  .pz-items{grid-template-columns:1fr;gap:0}
+  .pz-item:not(.metales-esc){display:grid;grid-template-columns:auto 1fr auto;align-items:baseline;gap:0 10px;padding:7px 0;border-bottom:1px dashed var(--linea)}
+  .pz-item:not(.metales-esc):last-of-type{border-bottom:0}
+  .pz-item.metales-esc{display:none}
+  .pz-item .valor{text-align:right;font-size:20px;overflow:visible}
+  .pz-item .usd{text-align:right;min-width:64px}
+}
+
+/* Estados que laten mientras alguien tiene que hacer algo. */
+.estado.pendiente-pago::before,.estado.pendiente::before,.estado.solicitado::before,.estado.en-revision::before{animation:punto-vivo 1.6s ease-in-out infinite}
+.estado.apelacion::before{animation:punto-vivo .9s ease-in-out infinite}
+
+/* El temporizador: una barra que se consume, y que late cuando quedan tres minutos. */
+.temporizador{position:relative;overflow:hidden}
+.temporizador .progreso{position:absolute;left:0;right:0;bottom:0;height:3px;background:var(--linea)}
+.temporizador .progreso i{display:block;height:100%;width:calc(var(--p,1)*100%);background:linear-gradient(90deg,var(--oro-oscuro),var(--oro-claro));transition:width 1s linear,background var(--d3)}
+.temporizador.urgente .progreso i{background:linear-gradient(90deg,#b03a30,var(--vender))}
+.temporizador.urgente .reloj{animation:latido 1s ease-in-out infinite;transform-origin:left center}
+.temporizador.vencido .progreso i{width:0}
+
+/* La custodia: el elemento firma. El candado cae y late mientras el activo está retenido; al liberar, el trazo del visto se dibuja. */
+.custodia{display:flex;align-items:center;gap:12px;margin-top:14px;padding:11px 13px;border-radius:var(--r);border:1px solid var(--linea2);
+  background:linear-gradient(90deg,var(--oro-fondo),transparent 75%);transition:border-color var(--d3),background var(--d3)}
+.custodia .cand{width:36px;height:36px;border-radius:10px;background:var(--panel3);display:inline-flex;align-items:center;justify-content:center;color:var(--oro);flex:none;border:1px solid var(--linea2)}
+.custodia .cand svg{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.custodia .cuerpo{min-width:0}
+.custodia b{display:block;font-size:13.5px;line-height:1.3}
+.custodia small{display:block;color:var(--humo);font-size:12px;line-height:1.35;margin-top:1px}
+.custodia.activa .cand{animation:candado .55s var(--suave) both,pulso-oro 2.6s ease-out 1.2s infinite}
+.custodia.liberada{border-color:var(--comprar-linea);background:linear-gradient(90deg,var(--comprar-fondo),transparent 75%)}
+.custodia.liberada .cand{color:var(--comprar);border-color:var(--comprar-linea)}
+.custodia.liberada .cand path{stroke-dasharray:32;stroke-dashoffset:32;animation:trazo .7s var(--suave) .25s forwards}
+.custodia.devuelta{background:transparent;border-style:dashed}
+.custodia.devuelta .cand{color:var(--humo)}
+.custodia.devuelta .cand svg{animation:subir-suave .4s var(--suave) both}
+
+/* Chat, avisos y diálogos. */
+.entra .burbuja{animation:subir-suave .3s var(--suave) both}
+.burbuja.nueva{animation:subir-suave .3s var(--suave) both}
+.aviso{animation:emerger .28s var(--suave)}
+.dialogo{animation:emerger .24s var(--suave)}
+.hoja{animation:deslizar .26s var(--suave)}
+@media (min-width:900px){.hoja{animation:cajon .26s var(--suave)}}
+.esqueleto{animation:brillo 1.4s linear infinite,subir-suave .4s var(--suave) both}
+.tarjeta-cabeza h2,.titulo-vista h1{transition:color var(--d2)}

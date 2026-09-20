@@ -865,6 +865,10 @@ function render() {
   const vista = document.getElementById('vista');
   vista.scrollTop = 0;
   window.scrollTo(0, 0);
+  // La vista entra animada solo cuando cambia; las repintadas del sondeo no vuelven a animar.
+  vista.classList.remove('entra');
+  if (S.vistaPintada !== S.ruta.vista) { void vista.offsetWidth; vista.classList.add('entra'); }
+  S.vistaPintada = S.ruta.vista;
   const V = {
     resumen: vistaResumen, apelaciones: vistaApelaciones, ordenes: vistaOrdenes, agentes: vistaAgentes,
     retiros: vistaRetiros, depositos: vistaDepositos, usuarios: vistaUsuarios, precios: vistaPrecios,

@@ -416,3 +416,20 @@ details.plegable[open] > summary::before { content: '▾ '; }
   .app { display: block; }
   body { background: #fff; color: #000; }
 }
+
+
+/* ── Movimiento: sobrio, como la herramienta. ─────────────────────────── */
+@keyframes vista-entra { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+@keyframes subir-suave { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+.vista.entra { animation: vista-entra .32s cubic-bezier(.2,.7,.2,1) both; }
+.vista.entra .tarjeta { animation: subir-suave .4s cubic-bezier(.2,.7,.2,1) both; }
+.vista.entra .tarjeta:nth-child(2) { animation-delay: 40ms; } .vista.entra .tarjeta:nth-child(3) { animation-delay: 80ms; } .vista.entra .tarjeta:nth-child(4) { animation-delay: 120ms; }
+.boton { transition: background .2s, border-color .2s, color .2s, transform .12s cubic-bezier(.2,.7,.2,1), box-shadow .2s; }
+.boton:hover:not(:disabled) { transform: translateY(-1px); }
+.boton:active:not(:disabled) { transform: translateY(0) scale(.985); }
+.boton.primario { box-shadow: 0 8px 22px -14px rgba(217, 180, 95, .7); }
+.tabla tbody tr { transition: background .15s; }
+.menu a { transition: background .2s, color .2s; }
+input, select, textarea { transition: border-color .2s, box-shadow .2s; }
+:where(a, button, input, select, textarea, [tabindex]):focus-visible { outline: 2px solid var(--oro); outline-offset: 2px; }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .001ms !important; transition-duration: .001ms !important; } }
