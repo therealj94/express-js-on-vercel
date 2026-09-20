@@ -4,7 +4,7 @@ import {measureHand} from '../src/experience/airtouch';
 import {usePreferences} from '../src/experience/preferences';
 import {navigation,useExperience} from '../src/experience/navigation';
 import {readExperience,navigateExperience} from '../src/experience/webmcp';
-import {lookAtWorld,highlightWorld,touchWorld,transitionState,viewControls} from '../src/experience/hostBridge';
+import {lookAtWorld,highlightWorld,touchWorld,transitionState,viewControls,entryTiming,FLIGHT_MS} from '../src/experience/hostBridge';
 import {updateOrbits,orbitPositions,CameraDirector} from '../src/experience/cosmos';
 test('Incomplete or degenerate hand landmarks are rejected',()=>{assert.equal(measureHand([]),null);assert.equal(measureHand(Array.from({length:21},()=>({x:0,y:0}))),null);});
 test('Pinch measurement is independent of hand scale',()=>{const p=Array.from({length:21},()=>({x:.3,y:.3}));p[17]={x:.5,y:.3};p[4]={x:.4,y:.3};p[8]={x:.42,y:.3};const h=measureHand(p)!;assert.ok(Math.abs(h.pinch-.1)<1e-6);assert.ok(Math.abs(measureHand(p.map(v=>({x:v.x*2,y:v.y*2})))!.pinch-h.pinch)<1e-6);});
@@ -75,4 +75,16 @@ test('Headset start cancellation cleans late sessions and does not resurrect the
 test('Headset driver failure restores the system and exposes an actionable error',async()=>{
  useExperience.getState().set({ready:true});const unregister=registerViewerDriver({start:async()=>{throw Error('Permission denied')},stop:()=>{},recenter:()=>{},tracking:()=>false});
  await assert.rejects(immersive.entrar('carton'),/Permission/);assert.equal(useExperience.getState().immersive,false);assert.equal(useViewer.getState().mode,null);assert.equal(useViewer.getState().error,'Permission denied');unregister();useExperience.getState().set({ready:false});
+});
+
+test('Entry timing honours the host flight contract instead of a fixed delay',()=>{
+ assert.equal(FLIGHT_MS.directo,1100);assert.equal(FLIGHT_MS.descubrir,2300);
+ const direct=entryTiming('directo',false),discover=entryTiming('descubrir',false);
+ assert.equal(direct.duration,1100);assert.equal(direct.callbackAt,880);
+ assert.equal(discover.duration,2300);assert.equal(discover.callbackAt,1840);
+ assert.ok(discover.callbackAt>direct.callbackAt,'the two entries must not behave alike');
+ // Unknown types fall back to the short flight, never to an instant callback.
+ assert.deepEqual(entryTiming('cualquier-cosa',false),direct);
+ // Reduced motion shortens the flight and the handoff with it.
+ const quiet=entryTiming('descubrir',true);assert.equal(quiet.visible,100);assert.equal(quiet.callbackAt,80);
 });

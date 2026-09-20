@@ -41,7 +41,7 @@ export class CameraDirector {
   this.target.set(0,0,0);
   if(state.stage==='gate'){this.target.set(mobile?-2:-4,mobile?0:-4,0);distance=mobile?65:36;pitch=.65;yaw=-.18;}
   if(state.stage==='galaxies'){this.target.set(10,0,-38);distance=mobile?250:176;}
-  if(state.stage==='intro'){const p=Math.min(1,(now-this.introStart)/4200),e=p*p*(3-2*p);distance=base+(150-base)*(1-e);pitch=.6;}
+  if(state.stage==='intro'){const p=Math.min(1,(now-this.introStart)/(state.introDuration*.875)),e=p*p*(3-2*p);distance=base+(150-base)*(1-e);pitch=.6;}
   const world=worlds.find(w=>w.id===state.selected);
   distance*=state.stage==='gate'||state.stage==='intro'?1:navigation.zoom;
   let fov=48;

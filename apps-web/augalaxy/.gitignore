@@ -4,8 +4,10 @@ dist/
 .env
 .env.*
 *.log
+# Los mapas planetarios SÍ se versionan (ver README): así la compilación no
+# depende de descargar nada. El modelo y el WASM de AirTouch no: el script los
+# trae de node_modules y de Google, y su ausencia no rompe la compilación.
 public/vision/
-public/textures/*.jpg
 qa-mobile.html
 publicar.py
 buscar-anillo.mjs

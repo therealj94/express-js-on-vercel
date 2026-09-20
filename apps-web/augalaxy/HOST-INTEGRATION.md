@@ -9,7 +9,7 @@ This branch contains a reviewable replacement visual shell, with the original en
 | `AUGALAXY.montar(element)` | Mounts the visual shell into the supplied host element; honors `__AE_LANG` and `__AE_PUERTA`. |
 | `AUGALAXY.desmontar()` | Cancels visual timers, releases hand tracking and audio, unmounts React and clears view state. |
 | `AUGALAXY.puerta()` | Restores the solar gate behind the existing host login. |
-| `AUGALAXY.entrar(type, callback)` | Starts the brand intro and acknowledges the host handoff after 100 ms, matching the existing callback timing. The UI finishes or skips the intro independently. |
+| `AUGALAXY.entrar(type, callback)` | Honors the original flight contract: 1100 ms for `directo`, 2300 ms for `descubrir`, with the host callback at 80% of the flight (880 / 1840 ms). The intro camera ramp and its automatic end follow the same duration, so the host changes view behind a flight that is still running instead of under a fixed 4.8 s intro. Reduced motion shortens both. An unknown type falls back to `directo`. |
 | `AUGALAXY.exhalar()` | Returns to the solar system. |
 | `AUGALAXY._transito()` | Reports active intro/flight, destination world and visible preview panel. |
 | `__AE_MIRAR(x, y)` | Returns `{key, nombre}` for the visible planet or null while a modal/flight is active. |
@@ -24,6 +24,23 @@ Only the existing chat handoff is exposed in embedded preview mode. Other destin
 The existing fixed entry names, `assets/augalaxy.js` and `assets/augalaxy.css`, remain. Chunks retain hashed names. Texture and hand-model paths resolve relative to the compiled entry, so a host can serve the build at its existing `/augalaxy/` path. Prebuild downloads are SHA-256 checked. Serve the entire output directory together; copying the entry alone omits required textures and chunks.
 
 The Vite CSS transform scopes the shell stylesheet to `.galaxy-os`; host inputs, buttons, body and login styles retain their own rules. Full-page sizing applies only to `html.og-standalone`. Motion, contrast and text size live on the shell element.
+
+## Engine-side globals the production host still calls
+
+Verified against `apps-web/veta-wallet/app.js` on `backup/legacy-webos-2026-09-20`. The previous engine installed these; this shell does not. Every host call site uses `?.` or an early return, so nothing throws — the features simply disappear. This is the concrete reason a bundle swap is still blocked.
+
+| Global | Host call sites | What is lost if the bundle is swapped |
+| --- | --- | --- |
+| `__AE_PORTICO` | 7 | The portal strip over the scene: the ENTRAR / INICIAR / SALIR buttons and their captions. |
+| `__AE_CASA` | 3 | The house menu rendered inside the scene. |
+| `__AE_GENESIS` | 3 | The Genesis choreography the host drives (`saltar`, `vivo`). |
+| `__AE_DECIR` | 2 | Spoken-line subtitles. |
+| `__AE_APPS` | 1 | The world list the host reads from the engine. |
+| `__AE_AURA` | 1 | The AU-RA touch response. |
+| `__AE_BLINDADO` | 6 | The shielded-view flag the host sets and reads. |
+| `__AE_TEATRO`, `__AE_NUCLEO` | 0 in `app.js` | Used by the old engine's own screens and by `pruebas/`. |
+
+`AUGALAXY.acomodo()` also returns a binary 1/0 here, where the previous engine exposed the continuous 0..1 settling value.
 
 ## Remaining integration verification
 

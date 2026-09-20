@@ -4,9 +4,11 @@ An isolated visual proposal based on `claude/veta-wallet-phantom-design-7syah8` 
 
 ## Run
 
-Use Node 22 or later. Run `npm ci --legacy-peer-deps`, then `npm run dev`. `npm run build` produces `dist`. `npm test` checks gesture geometry, bounds, preference validation and preview navigation.
+Use Node 22 or later. Run `npm ci --legacy-peer-deps`, then `npm run dev`. `npm run build` produces `dist`. `npm test` checks gesture geometry, bounds, preference validation, preview navigation and the host entry timing.
 
-`predev` and `prebuild` prepare third-party assets with SHA-256 verification. Downloads are required only if matching local files are absent. Browser runtime loads planet textures and the AirTouch model from its own origin. AirTouch code and WASM are loaded only when enabled.
+`predev` and `prebuild` verify third-party assets by SHA-256. The planet, sun, star and galaxy maps are committed under `public/textures`, so an ordinary build performs no downloads at all. When a file is missing the script retries with backoff, refuses HTML error or captcha pages served in place of a file, and, if it still cannot obtain it, warns and lets the build finish: planets fall back to procedural surfaces and AirTouch reports its own missing model. It aborts only when a real file arrives whose checksum does not match the pinned one. `GALAXY_ASSET_BASE` serves the same paths from your own bucket and is tried before the original source.
+
+Interface fonts are self-hosted with the bundle. The shell makes no third-party request at runtime.
 
 ## Experience
 
@@ -34,11 +36,11 @@ Planet and solar maps by **Solar System Scope / INOVE**, based on NASA data, use
 
 Star map: **NASA/Goddard Space Flight Center Scientific Visualization Studio**, <https://svs.gsfc.nasa.gov/3895>. Public domain per the SVS media policy. M51 image: **NASA, ESA, S. Beckwith (STScI), and The Hubble Heritage Team (STScI/AURA)**, <https://esahubble.org/images/heic0506a/>, CC BY 4.0 under <https://esahubble.org/copyright/>. The composition uses rotation, blending and softened edges; the full linked credit is displayed on the deep-space view. No institutional endorsement is implied.
 
-AirTouch uses the Apache-2.0 MediaPipe Tasks Vision package and Google's Hand Landmarker model. Model source: <https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/latest/hand_landmarker.task>. Original dependency notices are preserved in the distributed package assets. Interface fonts DM Sans and Manrope load from Google Fonts with system-font fallbacks.
+AirTouch uses the Apache-2.0 MediaPipe Tasks Vision package and Google's Hand Landmarker model. Model source: <https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/latest/hand_landmarker.task>. Original dependency notices are preserved in the distributed package assets. Interface fonts DM Sans and Manrope are used under the SIL Open Font License 1.1 and are self-hosted in `src/experience/fonts`, with system-font fallbacks. Nothing is requested from Google Fonts at runtime.
 
 ## Verification
 
-- TypeScript and production bundling pass; nineteen automated logic tests cover bounds, geometry, validated preferences, journey cancellation, the existing host gesture contract, central-core position, drag direction and camera stability on selection, and 3,600 consecutive orbit frames without label side-switching.
+- TypeScript and production bundling pass; twenty automated logic tests cover bounds, geometry, validated preferences, journey cancellation, the existing host gesture contract, central-core position, drag direction and camera stability on selection, and 3,600 consecutive orbit frames without label side-switching.
 - Browser-tested: entry and timed intro, dock selection before entry, flight completion and cancellation, ES/EN labels, deep-space navigation, Pro/Lite fallback, preference persistence and audio activation/mute controls.
 - Responsive layout inspected in a 390 × 690 and 390 × 844 iframe viewports; app search tested there. This is not physical-phone performance or touch-hardware testing.
 - The compiled shell was mounted in an isolated host fixture from a nested build path. Gate, intro callback, unmount/remount and host button/body style isolation were checked. This fixture is not the production wallet or its login.
@@ -47,3 +49,12 @@ AirTouch uses the Apache-2.0 MediaPipe Tasks Vision package and Google's Hand La
 - WebMCP page registry is unavailable in this browser; its integration could not be runtime-validated. Pure action validation is covered by local tests.
 
 - On-screen 360 is available under Visuals & motion. Experimental WebXR/phone-stereo drivers are available only with Pro and compatible APIs; they still require physical-device validation.
+
+## Review fixes — September 20, 2026
+
+A full read of this branch produced four blocking defects; all four are fixed here.
+
+1. **The build depended on live third-party downloads and failed.** `prebuild` fetched seven JPEG maps from solarsystemscope.com on every build. That host rate-limits: it answers with an HTML captcha page and a 202 status, whose bytes fail the pinned checksum, so the build died with `Asset checksum mismatch: textures/jupiter.jpg` — a message describing an integrity problem that had not occurred. On a build machine this is an intermittently broken deploy. The maps are now committed, the script retries with backoff, tells a captcha page apart from a wrong file, accepts a private mirror through `GALAXY_ASSET_BASE`, and never fails the build over an asset the renderer can do without.
+2. **The `entrar()` handoff no longer lands under the intro.** See the entry row in `HOST-INTEGRATION.md`: the original flight durations and the 80%-of-flight callback are restored, the intro camera ramp and its end follow the same duration, and `descubrir` and `directo` stop behaving alike. A regression test covers the timings.
+3. **Interface fonts are self-hosted.** The stylesheet opened with an `@import` to fonts.googleapis.com: a render-blocking third-party request from the wallet's own origin on every visit, which any CSP would reject and which discloses visitors to a third party. The two variable faces (95 KB total, latin and latin-ext) now ship inside the bundle with hashed filenames, while `assets/augalaxy.css` keeps the fixed name the host loads.
+4. **The host-integration gap is documented precisely.** `HOST-INTEGRATION.md` now lists every engine-side global the production wallet still calls, with its call-site count and what disappears if this bundle replaces the live one. The swap stays blocked; this preview is published at its own URL instead.

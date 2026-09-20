@@ -26,3 +26,13 @@ export async function openHostChat(host:unknown):Promise<boolean>{
  if(typeof host!=='function')return false;
  try{const result=await host('chat');return result!==false;}catch{return false;}
 }
+
+/* Tiempos de la entrada, tal como los espera la casa: vuelo corto para una
+   sesión de siempre, descenso largo para una cuenta recién creada, y aviso al
+   80% del vuelo para que la wallet cambie de vista sin costura visible. */
+export const FLIGHT_MS:Record<'descubrir'|'directo',number>={descubrir:2300,directo:1100};
+export function entryTiming(type:string,reduced:boolean){
+ const duration=FLIGHT_MS[type==='descubrir'?'descubrir':'directo'];
+ const visible=reduced?100:duration;
+ return {duration,visible,callbackAt:Math.round(visible*.8)};
+}

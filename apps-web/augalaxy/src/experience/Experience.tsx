@@ -33,7 +33,7 @@ export default function Experience({embedded=false}:{embedded?:boolean}){
  const dockRef=useRef<HTMLElement>(null),flightRef=useRef<HTMLDivElement>(null);
  useEffect(registerExperienceTools,[]);
  useEffect(()=>{if(state.stage==='system'&&!prefs.tutorialSeen&&!embedded)state.set({tutorial:true});},[state.stage,prefs.tutorialSeen,embedded]);
- function enter(){sound.cue('intro');navigation.home();state.set({stage:prefs.intro&&!reduced?'intro':'system',selected:null});}
+ function enter(){sound.cue('intro');navigation.home();state.set({stage:prefs.intro&&!reduced?'intro':'system',selected:null,introDuration:4800});}
  function launch(id:string){navigation.enter(id);}
  useEffect(()=>{if(!state.journey)return;const journey=state.journey;let raf=0;const tick=()=>{const p=Math.min(1,(performance.now()-journey.startedAt)/journey.duration);flightRef.current?.style.setProperty('--journey-progress',String(p));if(p>=1)navigation.complete(journey.token);else raf=requestAnimationFrame(tick);};raf=requestAnimationFrame(tick);return()=>cancelAnimationFrame(raf);},[state.journey]);
  useEffect(()=>{if(state.selected)dockRef.current?.querySelector('[data-world="'+state.selected+'"]')?.scrollIntoView({block:'nearest',inline:'center',behavior:reduced?'instant':'smooth'});},[state.selected,reduced]);
@@ -45,7 +45,7 @@ export default function Experience({embedded=false}:{embedded?:boolean}){
  },[prefs.sound,prefs.volume,prefs.ambient]);
  useEffect(()=>{if(!embedded)document.documentElement.lang=prefs.lang;},[prefs.lang,embedded]);
  useEffect(()=>{void sound.enable(prefs.sound,prefs.volume,prefs.ambient);},[prefs.sound,prefs.volume,prefs.ambient]);
- useEffect(()=>{if(!intro)return;introTimer.current=window.setTimeout(()=>state.set({stage:'system'}),reduced?100:4800);return()=>clearTimeout(introTimer.current);},[intro,reduced]);
+ useEffect(()=>{if(!intro)return;introTimer.current=window.setTimeout(()=>state.set({stage:'system'}),reduced?100:state.introDuration);return()=>clearTimeout(introTimer.current);},[intro,reduced,state.introDuration]);
  useEffect(()=>{const update=()=>setClock(new Date().toLocaleTimeString(prefs.lang,{hour:'2-digit',minute:'2-digit',hour12:false}));update();const t=window.setInterval(update,15000);return()=>clearInterval(t);},[prefs.lang]);
  useEffect(()=>{if(!notice)return;const t=setTimeout(()=>setNotice(''),4500);return()=>clearTimeout(t);},[notice]);
  useEffect(()=>{
