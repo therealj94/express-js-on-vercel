@@ -272,6 +272,10 @@ es: {
   'pagos.titularPh': 'Nombre como aparece en la cuenta', 'pagos.activo': 'Activo', 'pagos.inactivo': 'Inactivo',
   'pagos.guardado': 'Método guardado', 'pagos.eliminado': 'Método eliminado', 'pagos.enUso': 'Este método está en un anuncio activo.',
   'pagos.errCampo': 'Falta: {campo}', 'pagos.elegirBanco': 'Elige el banco', 'pagos.elegirTipo': 'Elige el tipo',
+  'pagos.principales': 'Principales', 'pagos.otrosBancos': 'Otros bancos y entidades', 'pagos.formato': 'Formato: {f}',
+  'pagos.elegirTipoCuenta': 'Elige el tipo de cuenta', 'pagos.tipoCuentaOtro': 'Otro tipo de cuenta',
+  'banco.tipo.comercial': 'Banco comercial', 'banco.tipo.estatal': 'Banco estatal', 'banco.tipo.cooperativa': 'Cooperativa',
+  'banco.tipo.fintech': 'Fintech / banco digital', 'banco.tipo.microfinanciera': 'Microfinanciera', 'banco.tipo.caja': 'Caja',
   'pagos.desactivar': 'Desactivar', 'pagos.activar': 'Activar',
 
   // ── Perfil ───────────────────────────────────────────────────────────
@@ -625,6 +629,10 @@ en: {
   'pagos.titularPh': 'Name as it appears on the account', 'pagos.activo': 'Active', 'pagos.inactivo': 'Inactive',
   'pagos.guardado': 'Method saved', 'pagos.eliminado': 'Method deleted', 'pagos.enUso': 'This method is used in an active ad.',
   'pagos.errCampo': 'Missing: {campo}', 'pagos.elegirBanco': 'Choose the bank', 'pagos.elegirTipo': 'Choose the type',
+  'pagos.principales': 'Main banks', 'pagos.otrosBancos': 'Other banks and institutions', 'pagos.formato': 'Format: {f}',
+  'pagos.elegirTipoCuenta': 'Choose the account type', 'pagos.tipoCuentaOtro': 'Other account type',
+  'banco.tipo.comercial': 'Commercial bank', 'banco.tipo.estatal': 'State bank', 'banco.tipo.cooperativa': 'Credit union',
+  'banco.tipo.fintech': 'Fintech / digital bank', 'banco.tipo.microfinanciera': 'Microfinance institution', 'banco.tipo.caja': 'Savings bank',
   'pagos.desactivar': 'Deactivate', 'pagos.activar': 'Activate',
 
   'perfil.titulo': 'Profile', 'perfil.datos': 'Account details', 'perfil.apodo': 'Nickname', 'perfil.correo': 'Email',

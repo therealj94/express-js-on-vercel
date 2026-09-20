@@ -24,7 +24,7 @@ navegador ──▶ OrdenExchange (Express + TS) ──X-API-Key──▶ Genesi
 | `src/types.ts` | El modelo de datos entero, comentado |
 | `src/motor/` | La lógica: `billetera` (custodia), `ordenes`, `anuncios`, `usuarios`, `agentes`, `precios`, `genesis`, `cadena`, `operadores`, `bitacora`, `demo` |
 | `src/routes/` | Las rutas HTTP, finas: validan la sesión y llaman al motor |
-| `src/data/` | `latam.ts` (países, monedas, bancos, métodos de pago), `activos.ts`, `fxSemilla.ts` |
+| `src/data/` | `latam.ts` (países, monedas, métodos de pago con sus campos), `bancos.ts` (generado: los bancos de cada país con tipos de cuenta y formato, desde `fuentes/bancos.json` con `npm run generar:bancos`), `activos.ts`, `fxSemilla.ts` |
 | `src/lib/` | `decimal.ts` (aritmética exacta con BigInt), sesión, límites, errores |
 | `public/` | La app web (`index.html`, `app.js`, `i18n.js`) y el panel (`admin.html`) |
 | `src/pruebas/` | Pruebas de extremo a extremo sobre el servidor real |

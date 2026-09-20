@@ -73,6 +73,22 @@ after(async () => {
 // ─────────────────────────────────────────────────────────────────────────────
 
 describe('lo público', () => {
+  test('bancos por país, al detalle', async () => {
+    const r = await pedir('/api/mercado/bancos/hn')
+    assert.equal(r.estado, 200)
+    assert.equal(r.datos.pais, 'HN')
+    assert.ok(r.datos.bancos.length >= 10, `solo ${r.datos.bancos.length} bancos en Honduras`)
+    for (const b of r.datos.bancos) {
+      assert.ok(b.nombre && b.tipo && Array.isArray(b.tiposCuenta) && b.importancia, JSON.stringify(b))
+    }
+    // Los nombres de la transferencia bancaria del catálogo salen de la misma fuente.
+    const cat = await pedir('/api/mercado/catalogo')
+    const hn = cat.datos.paises.find((p: any) => p.iso2 === 'HN')
+    const tr = hn.metodos.find((m: any) => m.tipo === 'transferencia')
+    assert.deepEqual(tr.bancos, r.datos.bancos.map((b: any) => b.nombre))
+    assert.equal((await pedir('/api/mercado/bancos/XX')).estado, 404)
+  })
+
   test('catálogo: países, activos, demo', async () => {
     const r = await pedir('/api/mercado/catalogo')
     assert.equal(r.estado, 200)

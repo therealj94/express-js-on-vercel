@@ -9,7 +9,8 @@
     "start": "tsx src/index.ts",
     "prueba": "node --import tsx --test src/pruebas/*.test.ts",
     "typecheck": "tsc --noEmit -p tsconfig.json",
-    "prueba:genesis": "node --import tsx --test src/pruebas/genesis.integracion.ts"
+    "prueba:genesis": "node --import tsx --test src/pruebas/genesis.integracion.ts",
+    "generar:bancos": "node herramientas/generar-bancos.mjs"
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",

@@ -4,7 +4,8 @@ import { Router } from 'express'
 import { seguro, noEncontrado } from '../lib/errores.js'
 import { limite } from '../lib/limite.js'
 import { sesionOpcional } from '../lib/sesion.js'
-import { PAISES } from '../data/latam.js'
+import { PAISES, pais as paisDe } from '../data/latam.js'
+import { bancosDe } from '../data/bancos.js'
 import { ACTIVOS } from '../data/activos.js'
 import { store } from '../store.js'
 import * as anuncios from '../motor/anuncios.js'
@@ -27,6 +28,13 @@ mercadoRouter.get('/catalogo', (_req, res) => {
     demo: modoDemo(),
   })
 })
+
+/** Los bancos de un país al detalle: tipos de cuenta, formato del identificador, código. Para el formulario de métodos de pago. */
+mercadoRouter.get('/bancos/:pais', limite(120), seguro((req, res) => {
+  const p = paisDe(req.params.pais)
+  if (!p) throw noEncontrado('País no disponible en OrdenExchange', 'pais-no-permitido')
+  res.json({ pais: p.iso2, moneda: p.moneda.codigo, bancos: bancosDe(p.iso2) })
+}))
 
 mercadoRouter.get('/precios', (req, res) => {
   res.json(resumenPrecios(String(req.query.moneda || 'USD')))

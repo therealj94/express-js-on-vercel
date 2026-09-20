@@ -47,6 +47,10 @@ Los tipos (`UsuarioPropio`, `UsuarioPublico`, `AnuncioPublico`, `Anuncio`, `Orde
 }
 ```
 
+### `GET /api/mercado/bancos/:pais`
+
+Los bancos de un país al detalle, para el formulario de métodos de pago: `{ pais, moneda, bancos:[{ nombre, nombreCorto?, tipo:'comercial'|'estatal'|'cooperativa'|'fintech'|'microfinanciera'|'caja', tiposCuenta:[], formatoCuenta?, codigo?, importancia:'principal'|'secundario'|'nicho', nota? }] }`. Principales primero. 404 `pais-no-permitido` si el país no está. La fuente es `src/data/fuentes/bancos.json` → `npm run generar:bancos` → `src/data/bancos.ts`; los nombres de la transferencia bancaria del catálogo salen de la misma lista.
+
 ### `GET /api/mercado/anuncios` — filtros (query)
 
 | Parámetro | Valores |

@@ -20,6 +20,8 @@
 //
 // Sin dependencias. Módulo ESM, TypeScript estricto.
 
+import { nombresBancos } from './bancos.js'
+
 export interface CampoMetodo { clave: string; etiqueta: string; etiquetaEn: string; ejemplo?: string; obligatorio: boolean }
 export interface MetodoPais {
   tipo: string
@@ -90,22 +92,13 @@ const USD: MonedaPais = { codigo: 'USD', nombre: 'Dólar estadounidense', nombre
 
 // ── Países ───────────────────────────────────────────────────────────────────
 
-const BANCOS_VE = [
-  'Banco de Venezuela', 'Banesco', 'Banco Mercantil', 'BBVA Provincial', 'Banco Bicentenario', 'Bancamiga',
-  'Banco Nacional de Crédito (BNC)', 'Banco del Tesoro', 'Banco Exterior', 'BFC Banco Fondo Común', 'Banplus',
-  'Bancaribe', 'Banco Sofitasa', '100% Banco', 'Banco Plaza', 'Banco Activo', 'Mi Banco', 'Banco Caroní', 'Bancrecer',
-]
-
 export const PAISES: Pais[] = [
   {
     iso2: 'AR', iso3: 'ARG', nombre: 'Argentina', nombreEn: 'Argentina', bandera: '🇦🇷',
     moneda: { codigo: 'ARS', nombre: 'Peso argentino', nombreEn: 'Argentine peso', simbolo: '$', decimales: 2 },
     prefijoTelefono: '+54',
     metodos: [
-      transferencia(
-        ['Banco Nación', 'Banco Provincia', 'Banco Galicia', 'Santander Argentina', 'BBVA Argentina', 'Banco Macro', 'Banco Ciudad',
-          'ICBC Argentina', 'Banco Credicoop', 'Banco Patagonia', 'Banco Supervielle', 'Banco Hipotecario', 'Banco Comafi',
-          'Banco Santa Fe', 'Bancor (Banco de Córdoba)', 'Brubank', 'Banco Columbia'],
+      transferencia(nombresBancos('AR'),
         [
           campo('cbu', 'CBU o CVU', 'CBU or CVU', true, '0070099030004012345678'),
           alias('nombre.apellido.banco'),
@@ -126,9 +119,7 @@ export const PAISES: Pais[] = [
     moneda: { codigo: 'BOB', nombre: 'Boliviano', nombreEn: 'Bolivian boliviano', simbolo: 'Bs', decimales: 2 },
     prefijoTelefono: '+591',
     metodos: [
-      transferencia(
-        ['Banco Unión', 'Banco Mercantil Santa Cruz', 'Banco BISA', 'Banco Nacional de Bolivia (BNB)', 'Banco de Crédito de Bolivia (BCP)',
-          'Banco Ganadero', 'Banco Económico', 'BancoSol', 'Banco FIE', 'Banco Fortaleza', 'Banco Prodem', 'Banco Ecofuturo'],
+      transferencia(nombresBancos('BO'),
         [cuenta('1234567890'), tipoCuenta('Caja de ahorro / Cuenta corriente'), cedula('1234567 LP')],
       ),
       porTelefono('tigo-money', 'Tigo Money', '+591 7 123 4567'),
@@ -145,9 +136,7 @@ export const PAISES: Pais[] = [
         campo('llave', 'Llave PIX', 'PIX key', true, 'correo, CPF, teléfono o llave aleatoria'),
         campo('tipoLlave', 'Tipo de llave', 'Key type', false, 'CPF / correo / teléfono / aleatoria'),
       ]),
-      transferencia(
-        ['Banco do Brasil', 'Caixa Econômica Federal', 'Itaú Unibanco', 'Bradesco', 'Santander Brasil', 'Nubank', 'Banco Inter', 'C6 Bank',
-          'BTG Pactual', 'Banco Original', 'Sicoob', 'Sicredi', 'Banrisul', 'Banco Safra', 'PicPay', 'Mercado Pago', 'PagBank', 'Neon'],
+      transferencia(nombresBancos('BR'),
         [
           campo('agencia', 'Agencia', 'Branch (agência)', true, '0001'),
           cuenta('12345-6', 'Número de cuenta (con dígito)', 'Account number (with check digit)'),
@@ -164,9 +153,7 @@ export const PAISES: Pais[] = [
     moneda: { codigo: 'CLP', nombre: 'Peso chileno', nombreEn: 'Chilean peso', simbolo: '$', decimales: 0 },
     prefijoTelefono: '+56',
     metodos: [
-      transferencia(
-        ['BancoEstado', 'Banco de Chile', 'Banco Santander Chile', 'Bci', 'Scotiabank Chile', 'Banco Itaú Chile', 'Banco Falabella',
-          'Banco Ripley', 'Banco Security', 'Banco BICE', 'Banco Consorcio', 'Banco Internacional', 'Coopeuch'],
+      transferencia(nombresBancos('CL'),
         [
           cuenta('12345678'),
           tipoCuenta('Cuenta RUT / Vista / Corriente'),
@@ -187,10 +174,7 @@ export const PAISES: Pais[] = [
       porTelefono('nequi', 'Nequi', '+57 310 123 4567'),
       porTelefono('daviplata', 'Daviplata', '+57 310 123 4567'),
       billetera('bre-b', 'Bre-B (llave)', 'Bre-B (key)', [campo('llave', 'Llave Bre-B', 'Bre-B key', true, '@usuario, cédula o teléfono')]),
-      transferencia(
-        ['Bancolombia', 'Davivienda', 'Banco de Bogotá', 'BBVA Colombia', 'Banco de Occidente', 'Banco Popular', 'Banco Caja Social',
-          'Banco AV Villas', 'Scotiabank Colpatria', 'Banco Agrario', 'Banco Falabella', 'Banco Pichincha', 'Itaú Colombia', 'Nu Colombia',
-          'Lulo Bank', 'Bancoomeva', 'Banco Finandina', 'Banco Serfinanza'],
+      transferencia(nombresBancos('CO'),
         [cuenta('12345678901'), tipoCuenta('Ahorros / Corriente'), cedula('1234567890')],
       ),
       porTelefono('movii', 'Movii', '+57 310 123 4567'),
@@ -203,9 +187,7 @@ export const PAISES: Pais[] = [
     prefijoTelefono: '+506',
     metodos: [
       porTelefono('sinpe-movil', 'SINPE Móvil', '+506 8888 1234'),
-      transferencia(
-        ['Banco Nacional de Costa Rica', 'Banco de Costa Rica', 'BAC Credomatic', 'Banco Popular y de Desarrollo Comunal', 'Scotiabank Costa Rica',
-          'Davivienda Costa Rica', 'Banco Promerica', 'Banco Lafise', 'Banco Cathay', 'Banco BCT', 'Banco General Costa Rica', 'Coopenae', 'Coopealianza'],
+      transferencia(nombresBancos('CR'),
         [campo('iban', 'Cuenta IBAN', 'IBAN account', true, 'CR05015202001026284066'), cuentaOpcional('200-01-026-284066'), cedula('1-1234-5678')],
       ),
       efectivo('San José'),
@@ -216,10 +198,7 @@ export const PAISES: Pais[] = [
     moneda: { codigo: 'DOP', nombre: 'Peso dominicano', nombreEn: 'Dominican peso', simbolo: 'RD$', decimales: 2 },
     prefijoTelefono: '+1',
     metodos: [
-      transferencia(
-        ['Banco Popular Dominicano', 'Banreservas', 'Banco BHD', 'Scotiabank República Dominicana', 'Banco Santa Cruz', 'Banco Caribe',
-          'Banco Promerica', 'Banesco', 'Banco Lafise', 'APAP (Asociación Popular de Ahorros y Préstamos)', 'Asociación Cibao', 'Banco Vimenca',
-          'Banco Ademi', 'Qik Banco Digital', 'Banco López de Haro', 'Banco BDI'],
+      transferencia(nombresBancos('DO'),
         [cuenta('789012345'), tipoCuenta('Ahorros / Corriente'), cedula('001-1234567-8')],
       ),
       zelle(),
@@ -231,10 +210,7 @@ export const PAISES: Pais[] = [
     moneda: USD,
     prefijoTelefono: '+593',
     metodos: [
-      transferencia(
-        ['Banco Pichincha', 'Banco del Pacífico', 'Banco Guayaquil', 'Produbanco', 'Banco Bolivariano', 'Banco Internacional', 'Banco del Austro',
-          'BanEcuador', 'Banco Solidario', 'Banco de Machala', 'Banco General Rumiñahui', 'Banco de Loja', 'Banco ProCredit', 'Banco Diners Club',
-          'Cooperativa JEP', 'Cooperativa Jardín Azuayo'],
+      transferencia(nombresBancos('EC'),
         [cuenta('2200123456'), tipoCuenta('Ahorros / Corriente'), cedula('1712345678')],
       ),
       porTelefono('de-una', 'Deuna', '+593 99 123 4567'),
@@ -246,10 +222,7 @@ export const PAISES: Pais[] = [
     moneda: USD,
     prefijoTelefono: '+503',
     metodos: [
-      transferencia(
-        ['Banco Agrícola', 'Banco Cuscatlán', 'Davivienda El Salvador', 'BAC Credomatic', 'Banco Promerica', 'Banco Hipotecario',
-          'Banco Atlántida El Salvador', 'Banco Industrial El Salvador', 'Banco Azul', 'Abank', 'Banco G&T Continental El Salvador',
-          'Fedecrédito', 'Banco de Fomento Agropecuario'],
+      transferencia(nombresBancos('SV'),
         [cuenta('00123456789'), tipoCuenta('Ahorro / Corriente'), documento('DUI del titular', 'Holder DUI', '01234567-8')],
         'Transferencia bancaria (Transfer365)', 'Bank transfer (Transfer365)',
       ),
@@ -263,10 +236,7 @@ export const PAISES: Pais[] = [
     moneda: { codigo: 'GTQ', nombre: 'Quetzal', nombreEn: 'Guatemalan quetzal', simbolo: 'Q', decimales: 2 },
     prefijoTelefono: '+502',
     metodos: [
-      transferencia(
-        ['Banco Industrial', 'Banrural', 'Banco G&T Continental', 'BAC Credomatic', 'Banco Promerica', 'Banco Agromercantil (BAM)', 'Bantrab',
-          'Banco Inmobiliario', 'Interbanco', 'Banco Azteca Guatemala', 'Crédito Hipotecario Nacional (CHN)', 'Vivibanco',
-          'Banco Ficohsa Guatemala', 'Banco de Antigua', 'Banco Internacional'],
+      transferencia(nombresBancos('GT'),
         [cuenta('0010-2233-4455'), tipoCuenta('Monetaria / Ahorro'), documento('DPI del titular', 'Holder DPI', '1234 56789 0101')],
       ),
       porTelefono('tigo-money', 'Tigo Money', '+502 5000 1234'),
@@ -278,9 +248,7 @@ export const PAISES: Pais[] = [
     moneda: { codigo: 'HNL', nombre: 'Lempira', nombreEn: 'Honduran lempira', simbolo: 'L', decimales: 2 },
     prefijoTelefono: '+504',
     metodos: [
-      transferencia(
-        ['Banco Atlántida', 'BAC Credomatic', 'Banco Ficohsa', 'Banpaís', 'Banco de Occidente', 'Davivienda Honduras', 'Banco Promerica',
-          'Banco Lafise', 'Banrural Honduras', 'Banco Azteca Honduras', 'Banco Popular', 'Banhcafé', 'Banco de los Trabajadores'],
+      transferencia(nombresBancos('HN'),
         [cuenta('730012345678'), tipoCuenta('Ahorro / Cheques'), documento('Identidad del titular', 'Holder ID number', '0801-1990-12345')],
       ),
       porTelefono('tigo-money', 'Tigo Money', '+504 9988 7766'),
@@ -292,9 +260,7 @@ export const PAISES: Pais[] = [
     moneda: { codigo: 'MXN', nombre: 'Peso mexicano', nombreEn: 'Mexican peso', simbolo: '$', decimales: 2 },
     prefijoTelefono: '+52',
     metodos: [
-      transferencia(
-        ['BBVA México', 'Banorte', 'Santander México', 'Banamex', 'HSBC México', 'Scotiabank México', 'Banco Azteca', 'BanCoppel', 'Inbursa',
-          'Banregio', 'Afirme', 'BanBajío', 'Banco Multiva', 'Banca Mifel', 'Nu México', 'Hey Banco', 'Klar', 'Ualá México', 'Spin by OXXO', 'Stori'],
+      transferencia(nombresBancos('MX'),
         [
           campo('clabe', 'CLABE (18 dígitos)', 'CLABE (18 digits)', true, '012180001234567890'),
           cuentaOpcional('0123456789'),
@@ -316,8 +282,7 @@ export const PAISES: Pais[] = [
     moneda: { codigo: 'NIO', nombre: 'Córdoba', nombreEn: 'Nicaraguan córdoba', simbolo: 'C$', decimales: 2 },
     prefijoTelefono: '+505',
     metodos: [
-      transferencia(
-        ['Banpro', 'Lafise Bancentro', 'BAC Credomatic', 'Banco Ficohsa Nicaragua', 'Banco Avanz', 'Banco Atlántida Nicaragua', 'Banco de Fomento a la Producción (BFP)'],
+      transferencia(nombresBancos('NI'),
         [cuenta('10012345678901'), tipoCuenta('Ahorro / Corriente'), cedula('001-010190-0001A')],
       ),
       porTelefono('billetera-movil', 'Billetera Móvil Banpro', '+505 8888 1234', 'Banpro Billetera Móvil'),
@@ -330,9 +295,7 @@ export const PAISES: Pais[] = [
     prefijoTelefono: '+507',
     metodos: [
       porTelefono('yappy', 'Yappy', '+507 6000 1234'),
-      transferencia(
-        ['Banco General', 'Banistmo', 'BAC Credomatic', 'Banco Nacional de Panamá', 'Global Bank', 'Multibank', 'Banesco Panamá', 'Caja de Ahorros',
-          'Scotiabank Panamá', 'Mercantil Banco', 'Credicorp Bank', 'St. Georges Bank', 'Banco Aliado', 'Towerbank', 'Banco Lafise Panamá', 'Metrobank'],
+      transferencia(nombresBancos('PA'),
         [cuenta('04-12-34-567890-1'), tipoCuenta('Ahorros / Corriente'), cedula('8-123-4567')],
       ),
       porTelefono('nequi', 'Nequi Panamá', '+507 6000 1234', 'Nequi Panama'),
@@ -345,9 +308,7 @@ export const PAISES: Pais[] = [
     moneda: { codigo: 'PYG', nombre: 'Guaraní', nombreEn: 'Paraguayan guaraní', simbolo: '₲', decimales: 0 },
     prefijoTelefono: '+595',
     metodos: [
-      transferencia(
-        ['Banco Itaú Paraguay', 'Banco Continental', 'Banco Nacional de Fomento', 'Banco GNB Paraguay', 'Sudameris', 'Banco Familiar', 'Banco Atlas',
-          'Visión Banco', 'Banco Basa', 'Ueno Bank', 'Banco Río', 'Solar Banco', 'Interfisa Banco', 'Bancop'],
+      transferencia(nombresBancos('PY'),
         [cuenta('1234567890'), tipoCuenta('Caja de ahorro / Cuenta corriente'), cedula('1234567')],
       ),
       porTelefono('tigo-money', 'Tigo Money', '+595 981 123 456'),
@@ -363,9 +324,7 @@ export const PAISES: Pais[] = [
     metodos: [
       porTelefono('yape', 'Yape', '+51 987 654 321'),
       porTelefono('plin', 'Plin', '+51 987 654 321'),
-      transferencia(
-        ['BCP', 'BBVA Perú', 'Interbank', 'Scotiabank Perú', 'Banco Pichincha Perú', 'BanBif', 'Banco Falabella Perú', 'Banco Ripley Perú', 'Mibanco',
-          'Banco de la Nación', 'Banco GNB Perú', 'Alfin Banco', 'Banco de Comercio', 'Caja Arequipa', 'Caja Huancayo', 'Caja Piura', 'Caja Cusco'],
+      transferencia(nombresBancos('PE'),
         [
           cuenta('19312345678012'),
           campo('cci', 'CCI (código de cuenta interbancario)', 'CCI (interbank account code)', true, '00219300123456789012'),
@@ -382,9 +341,7 @@ export const PAISES: Pais[] = [
     prefijoTelefono: '+1',
     metodos: [
       porTelefono('ath-movil', 'ATH Móvil', '+1 787 555 1234'),
-      transferencia(
-        ['Banco Popular de Puerto Rico', 'FirstBank', 'Oriental Bank', 'Cooperativa Jesús Obrero', 'CoopACA', 'Cooperativa La Sagrada Familia',
-          'VAPR Federal Credit Union', 'Caribe Federal Credit Union'],
+      transferencia(nombresBancos('PR'),
         [cuenta('123456789'), campo('ruta', 'Número de ruta (ABA)', 'Routing number (ABA)', true, '021502011'), tipoCuenta('Checking / Savings')],
       ),
       zelle(),
@@ -396,9 +353,7 @@ export const PAISES: Pais[] = [
     moneda: { codigo: 'UYU', nombre: 'Peso uruguayo', nombreEn: 'Uruguayan peso', simbolo: '$U', decimales: 2 },
     prefijoTelefono: '+598',
     metodos: [
-      transferencia(
-        ['BROU', 'Santander Uruguay', 'Itaú Uruguay', 'Scotiabank Uruguay', 'BBVA Uruguay', 'Banco Heritage', 'Bandes Uruguay', 'HSBC Uruguay',
-          'Banco Hipotecario del Uruguay'],
+      transferencia(nombresBancos('UY'),
         [cuenta('001234567-00001'), campo('sucursal', 'Sucursal', 'Branch', false, '198'), tipoCuenta('Caja de ahorro / Cuenta corriente'), cedula('1.234.567-8')],
       ),
       porTelefono('prex', 'Prex', '+598 99 123 456'),
@@ -411,8 +366,8 @@ export const PAISES: Pais[] = [
     moneda: { codigo: 'VES', nombre: 'Bolívar', nombreEn: 'Venezuelan bolívar', simbolo: 'Bs', decimales: 2 },
     prefijoTelefono: '+58',
     metodos: [
-      billetera('pago-movil', 'Pago Móvil', 'Pago Móvil', [telefono('+58 412 555 9876'), cedula('V-12345678', true)], BANCOS_VE),
-      transferencia(BANCOS_VE, [
+      billetera('pago-movil', 'Pago Móvil', 'Pago Móvil', [telefono('+58 412 555 9876'), cedula('V-12345678', true)], nombresBancos('VE')),
+      transferencia(nombresBancos('VE'), [
         cuenta('01020123456789012345', 'Número de cuenta (20 dígitos)', 'Account number (20 digits)'),
         tipoCuenta('Ahorro / Corriente'),
         cedula('V-12345678', true),
@@ -426,9 +381,7 @@ export const PAISES: Pais[] = [
     moneda: { codigo: 'BZD', nombre: 'Dólar beliceño', nombreEn: 'Belize dollar', simbolo: 'BZ$', decimales: 2 },
     prefijoTelefono: '+501',
     metodos: [
-      transferencia(
-        ['Belize Bank', 'Atlantic Bank', 'Heritage Bank', 'National Bank of Belize', 'Holy Redeemer Credit Union', 'St. Francis Xavier Credit Union',
-          "St. John's Credit Union"],
+      transferencia(nombresBancos('BZ'),
         [cuenta('123456789'), tipoCuenta('Savings / Chequing'), documento('Número de Seguro Social del titular', 'Holder Social Security number', '000123456')],
       ),
       porTelefono('digi-wallet', 'DigiWallet', '+501 600 1234'),
@@ -443,9 +396,7 @@ export const PAISES: Pais[] = [
     metodos: [
       porTelefono('moncash', 'MonCash', '+509 3612 3456'),
       porTelefono('natcash', 'NatCash', '+509 3612 3456'),
-      transferencia(
-        ['Unibank', 'Sogebank', 'Banque Nationale de Crédit (BNC)', 'Capital Bank', "Banque de l'Union Haïtienne (BUH)", 'Sogebel',
-          'Banque Populaire Haïtienne (BPH)'],
+      transferencia(nombresBancos('HT'),
         [cuenta('1234567890'), tipoCuenta('Épargne / Courant'), documento('NIF o CIN del titular', 'Holder NIF or CIN', '003-123-456-7')],
       ),
       efectivo('Port-au-Prince'),
@@ -456,9 +407,7 @@ export const PAISES: Pais[] = [
     moneda: { codigo: 'GYD', nombre: 'Dólar guyanés', nombreEn: 'Guyanese dollar', simbolo: 'G$', decimales: 2 },
     prefijoTelefono: '+592',
     metodos: [
-      transferencia(
-        ['Republic Bank Guyana', 'Demerara Bank', 'Guyana Bank for Trade and Industry (GBTI)', 'Citizens Bank Guyana', 'Bank of Baroda Guyana',
-          'Scotiabank Guyana', 'New Building Society (NBS)'],
+      transferencia(nombresBancos('GY'),
         [cuenta('1234567890'), tipoCuenta('Savings / Chequing'), documento('Número de identificación nacional del titular', 'Holder national ID number', '123456789')],
       ),
       porTelefono('mmg', 'MMG (Mobile Money Guyana)', '+592 600 1234', 'MMG (Mobile Money Guyana)'),
@@ -470,9 +419,7 @@ export const PAISES: Pais[] = [
     moneda: { codigo: 'SRD', nombre: 'Dólar surinamés', nombreEn: 'Surinamese dollar', simbolo: 'Sr$', decimales: 2 },
     prefijoTelefono: '+597',
     metodos: [
-      transferencia(
-        ['De Surinaamsche Bank (DSB)', 'Hakrinbank', 'Republic Bank Suriname', 'Finabank', 'Surichange Bank', 'Godo Bank', 'Volkscredietbank (VCB)',
-          'Surinaamse Postspaarbank (SPSB)', 'Trustbank Amanah', 'Landbouwbank'],
+      transferencia(nombresBancos('SR'),
         [cuenta('1234567890'), tipoCuenta('Spaar / Giro'), documento('Número de identificación del titular', 'Holder ID number', 'AB123456')],
       ),
       porTelefono('uni5pay', 'Uni5Pay+', '+597 800 1234'),

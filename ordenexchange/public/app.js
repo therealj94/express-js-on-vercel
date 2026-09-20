@@ -66,7 +66,7 @@ const S = {
   sesion: null, saldos: [], catalogo: null, errorCatalogo: false, abiertas: 0,
   ruta: { vista: 'mercado' }, despues: null, v: {}, temporizadores: [],
   mercado: { quiero: 'comprar', activo: 'ORIGEN', pais: '', monto: '', metodo: '', soloAgentes: false, orden: 'precio', pagina: 1, anuncios: [], total: 0, cargando: false, cargado: false, error: null },
-  precios: {}, metodos: null, hoja: null, ssoPendiente: null,
+  precios: {}, metodos: null, hoja: null, ssoPendiente: null, bancosDetalle: {},
 };
 
 // Catálogo
@@ -1159,18 +1159,48 @@ function metodoHTML(m) {
     <div class="campos">${Object.entries(m.campos || {}).map(([k, v]) => `<div><span>${esc(etiqueta(k))}</span><b>${esc(enmascarar(v))}</b></div>`).join('')}</div>
     <div class="acciones"><button type="button" class="btn btn-linea btn-chico" data-accion="pago-editar" data-id="${esc(m.id)}">${t('com.editar')}</button><button type="button" class="btn btn-fantasma btn-chico" data-accion="pago-activo" data-id="${esc(m.id)}" data-v="${m.activo === false ? '1' : '0'}">${m.activo === false ? t('pagos.activar') : t('pagos.desactivar')}</button><button type="button" class="btn btn-peligro btn-chico" data-accion="pago-eliminar" data-id="${esc(m.id)}">${t('com.eliminar')}</button></div></article>`;
 }
+/** Los bancos de un país al detalle (tipos de cuenta, formato): se piden una vez por país. */
+async function cargarBancos(pais) {
+  if (S.bancosDetalle[pais] !== undefined) return;
+  S.bancosDetalle[pais] = null;
+  const r = await api('GET', '/mercado/bancos/' + encodeURIComponent(pais));
+  S.bancosDetalle[pais] = r.ok ? (r.datos.bancos || []) : [];
+  if (S.ruta.vista === 'pagos' && S.v.form) render();
+}
+function tipoBancoTexto(tipo) { const k = 'banco.tipo.' + tipo; const v = t(k); return v === k ? '' : v; }
 function formPagoHTML() {
   const f = S.v.form; const pais = paisDe(f.pais); const tipos = pais && pais.metodos ? pais.metodos : [];
   const def = tipos.find(x => x.tipo === f.tipo) || null;
   const bancos = def && def.bancos ? def.bancos : [];
   const campos = def && def.campos ? def.campos : [];
+  // Detalle de los bancos (tipos de cuenta, formato del identificador) para la transferencia bancaria.
+  const conDetalle = def && def.tipo === 'transferencia' && bancos.length > 0;
+  if (conDetalle && S.bancosDetalle[f.pais] === undefined) cargarBancos(f.pais);
+  const detalle = conDetalle ? (S.bancosDetalle[f.pais] || []) : [];
+  const bancoSel = detalle.find(b => b.nombre === f.banco) || null;
+  const opcionBanco = b => `<option value="${esc(b)}" ${f.banco === b ? 'selected' : ''}>${esc(b)}</option>`;
+  const opcionesBancos = detalle.length
+    ? `<optgroup label="${esc(t('pagos.principales'))}">${detalle.filter(b => b.importancia === 'principal').map(b => opcionBanco(b.nombre)).join('')}</optgroup><optgroup label="${esc(t('pagos.otrosBancos'))}">${detalle.filter(b => b.importancia !== 'principal').map(b => opcionBanco(b.nombre)).join('')}</optgroup>`
+    : bancos.map(opcionBanco).join('');
+  const campoHTML = (c, i) => {
+    const etiqueta = `<label for="pg-c-${esc(c.clave)}">${esc(etiquetaCampo(c))}${c.obligatorio ? '' : ` <span class="gris">(${t('com.opcional')})</span>`}</label>`;
+    if (c.clave === 'tipoCuenta' && bancoSel && bancoSel.tiposCuenta && bancoSel.tiposCuenta.length) {
+      const actual = f.campos.tipoCuenta || '';
+      const enLista = bancoSel.tiposCuenta.includes(actual);
+      const otro = f.tipoCuentaOtro || (actual && !enLista);
+      return `<div class="campo">${etiqueta}<select id="pg-c-tipoCuenta" class="entrada" data-cambio="pg-tipocuenta"><option value="">${t('pagos.elegirTipoCuenta')}</option>${bancoSel.tiposCuenta.map(x => `<option value="${esc(x)}" ${actual === x ? 'selected' : ''}>${esc(x)}</option>`).join('')}<option value="__otro" ${otro ? 'selected' : ''}>${t('pagos.tipoCuentaOtro')}</option></select>${otro ? `<input class="entrada mt8" value="${esc(enLista ? '' : actual)}" data-entrada="pg-campo" data-campo="tipoCuenta" maxlength="60" placeholder="${esc(t('pagos.tipoCuentaOtro'))}">` : ''}</div>`;
+    }
+    const formato = i === 0 && bancoSel && bancoSel.formatoCuenta ? `<div class="ayuda">${esc(t('pagos.formato', { f: bancoSel.formatoCuenta }))}</div>` : '';
+    return `<div class="campo">${etiqueta}<input id="pg-c-${esc(c.clave)}" class="entrada mono" value="${esc(f.campos[c.clave] || '')}" data-entrada="pg-campo" data-campo="${esc(c.clave)}" ${c.obligatorio ? 'required' : ''} maxlength="60" autocomplete="off" ${c.ejemplo ? `placeholder="${esc(c.ejemplo)}"` : ''}>${formato}</div>`;
+  };
+  const notaBanco = bancoSel ? `<div class="ayuda">${[tipoBancoTexto(bancoSel.tipo), bancoSel.nota].filter(Boolean).map(esc).join(' · ')}</div>` : '';
   return `<form class="tarjeta" data-form="pago" novalidate><div class="tarjeta-cabeza"><h2>${f.id ? t('pagos.editarTitulo') : t('pagos.agregarTitulo')}</h2><button type="button" class="btn-icono" data-accion="pago-cancelar" aria-label="${t('com.cerrar')}">${IC.x}</button></div>
     <div class="fila-campos">
       <div class="campo"><label for="pg-pais">${t('com.pais')}</label>${f.id ? `<input class="entrada" value="${esc(bandera(f.pais) + ' ' + nombrePais(pais))}" disabled>` : selectPaises('pais', f.pais, 'id="pg-pais" data-cambio="pg-pais"')}</div>
       <div class="campo"><label for="pg-tipo">${t('pagos.tipo')}</label>${f.id ? `<input class="entrada" value="${esc(nombreMetodo(f.tipo, f.pais))}" disabled>` : `<select id="pg-tipo" class="entrada" data-cambio="pg-tipo"><option value="">${t('pagos.elegirTipo')}</option>${tipos.map(x => `<option value="${esc(x.tipo)}" ${f.tipo === x.tipo ? 'selected' : ''}>${esc(IDIOMA === 'en' && x.nombreEn ? x.nombreEn : x.nombre)}</option>`).join('')}</select>`}</div></div>
-    ${def ? `${bancos.length ? `<div class="campo"><label for="pg-banco">${t('pagos.banco')}</label><select id="pg-banco" class="entrada" data-cambio="pg-banco"><option value="">${t('pagos.elegirBanco')}</option>${bancos.map(b => `<option value="${esc(b)}" ${f.banco === b ? 'selected' : ''}>${esc(b)}</option>`).join('')}<option value="__otro" ${f.banco && !bancos.includes(f.banco) ? 'selected' : ''}>${t('pagos.otroBanco')}</option></select>${f.banco && !bancos.includes(f.banco) || f.bancoOtro ? `<input class="entrada mt8" placeholder="${t('pagos.banco')}" value="${esc(bancos.includes(f.banco) ? '' : f.banco)}" data-entrada="pg-banco-otro">` : ''}</div>` : ''}
+    ${def ? `${bancos.length ? `<div class="campo"><label for="pg-banco">${t('pagos.banco')}</label><select id="pg-banco" class="entrada" data-cambio="pg-banco"><option value="">${t('pagos.elegirBanco')}</option>${opcionesBancos}<option value="__otro" ${f.banco && !bancos.includes(f.banco) ? 'selected' : ''}>${t('pagos.otroBanco')}</option></select>${f.banco && !bancos.includes(f.banco) || f.bancoOtro ? `<input class="entrada mt8" placeholder="${t('pagos.banco')}" value="${esc(bancos.includes(f.banco) ? '' : f.banco)}" data-entrada="pg-banco-otro">` : notaBanco}</div>` : ''}
       <div class="campo"><label for="pg-titular">${t('pagos.titular')}</label><input id="pg-titular" class="entrada" value="${esc(f.titular)}" placeholder="${t('pagos.titularPh')}" data-entrada="pg-titular" required maxlength="80"></div>
-      ${campos.map(c => `<div class="campo"><label for="pg-c-${esc(c.clave)}">${esc(etiquetaCampo(c))}${c.obligatorio ? '' : ` <span class="gris">(${t('com.opcional')})</span>`}</label><input id="pg-c-${esc(c.clave)}" class="entrada mono" value="${esc(f.campos[c.clave] || '')}" data-entrada="pg-campo" data-campo="${esc(c.clave)}" ${c.obligatorio ? 'required' : ''} maxlength="60" autocomplete="off"></div>`).join('')}` : ''}
+      ${campos.map(campoHTML).join('')}` : ''}
     ${f.error ? `<div class="error-campo mb12">${esc(f.error)}</div>` : ''}
     <div class="acciones"><button type="button" class="btn btn-fantasma" data-accion="pago-cancelar">${t('com.cancelar')}</button><button type="submit" class="btn btn-oro" ${def ? '' : 'disabled'}>${t('com.guardar')}</button></div></form>`;
 }
@@ -1551,7 +1581,8 @@ const CAM = {
   'ret-activo': el => { S.v.retActivo = el.value; render(); },
   'pg-pais': el => { S.v.form.pais = el.value; S.v.form.tipo = ''; S.v.form.banco = ''; S.v.form.campos = {}; render(); },
   'pg-tipo': el => { S.v.form.tipo = el.value; S.v.form.banco = ''; S.v.form.campos = {}; S.v.form.bancoOtro = false; render(); },
-  'pg-banco': el => { S.v.form.banco = el.value === '__otro' ? '' : el.value; S.v.form.bancoOtro = el.value === '__otro'; render(); },
+  'pg-banco': el => { S.v.form.banco = el.value === '__otro' ? '' : el.value; S.v.form.bancoOtro = el.value === '__otro'; S.v.form.tipoCuentaOtro = false; if (S.v.form.campos.tipoCuenta) delete S.v.form.campos.tipoCuenta; render(); },
+  'pg-tipocuenta': el => { const f = S.v.form; f.tipoCuentaOtro = el.value === '__otro'; if (el.value === '__otro') delete f.campos.tipoCuenta; else if (el.value) f.campos.tipoCuenta = el.value; else delete f.campos.tipoCuenta; render(); },
   'g-foto': async el => { const f = el.files && el.files[0]; if (!f) return; try { S.v.gid.foto = await comprimirImagen(f); } catch (e) { aviso(e && e.message === 'tipo' ? t('err.imagenTipo') : t('err.imagenGrande'), 'mal'); } render(); },
 };
 

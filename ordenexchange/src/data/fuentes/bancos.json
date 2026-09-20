@@ -1,0 +1,2275 @@
+{
+  "AR": {
+    "iso2": "AR",
+    "moneda": "ARS",
+    "bancos": [
+      {
+        "nombre": "Banco Nación",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "Banco Provincia",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "Banco Galicia",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "Santander Argentina",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "BBVA Argentina",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "Banco Macro",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "Banco Ciudad",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "ICBC Argentina",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "Banco Credicoop",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "Banco Patagonia",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "Banco Supervielle",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "Banco Hipotecario",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "Banco Comafi",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "Banco Santa Fe",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "Bancor (Banco de Córdoba)",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "Brubank",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "Banco Columbia",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      }
+    ]
+  },
+  "BO": {
+    "iso2": "BO",
+    "moneda": "BOB",
+    "bancos": [
+      {
+        "nombre": "Banco Unión",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "Banco Mercantil Santa Cruz",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "Banco BISA",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "Banco Nacional de Bolivia (BNB)",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "Banco de Crédito de Bolivia (BCP)",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "Banco Ganadero",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "Banco Económico",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "BancoSol",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "Banco FIE",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "Banco Fortaleza",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "Banco Prodem",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "Banco Ecofuturo",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      }
+    ]
+  },
+  "BR": {
+    "iso2": "BR",
+    "moneda": "BRL",
+    "bancos": [
+      {
+        "nombre": "Banco do Brasil",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "Caixa Econômica Federal",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "Itaú Unibanco",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "Bradesco",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "Santander Brasil",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "Nubank",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "Banco Inter",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "C6 Bank",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "BTG Pactual",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "Banco Original",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "Sicoob",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "Sicredi",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "Banrisul",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "Banco Safra",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "PicPay",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "Mercado Pago",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "PagBank",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "Neon",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      }
+    ]
+  },
+  "CL": {
+    "iso2": "CL",
+    "moneda": "CLP",
+    "bancos": [
+      {
+        "nombre": "BancoEstado",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "Banco de Chile",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "Banco Santander Chile",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "Bci",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "Scotiabank Chile",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "Banco Itaú Chile",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "Banco Falabella",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "Banco Ripley",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "Banco Security",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "Banco BICE",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "Banco Consorcio",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "Banco Internacional",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "Coopeuch",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      }
+    ]
+  },
+  "CO": {
+    "iso2": "CO",
+    "moneda": "COP",
+    "bancos": [
+      {
+        "nombre": "Bancolombia",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "Davivienda",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "Banco de Bogotá",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "BBVA Colombia",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "Banco de Occidente",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "Banco Popular",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "Banco Caja Social",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "Banco AV Villas",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "Scotiabank Colpatria",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "Banco Agrario",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "Banco Falabella",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "Banco Pichincha",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "Itaú Colombia",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "Nu Colombia",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "Lulo Bank",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "Bancoomeva",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "Banco Finandina",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "Banco Serfinanza",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      }
+    ]
+  },
+  "CR": {
+    "iso2": "CR",
+    "moneda": "CRC",
+    "bancos": [
+      {
+        "nombre": "Banco Nacional de Costa Rica",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "Banco de Costa Rica",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "BAC Credomatic",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "Banco Popular y de Desarrollo Comunal",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "Scotiabank Costa Rica",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "Davivienda Costa Rica",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "Banco Promerica",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "Banco Lafise",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "Banco Cathay",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "Banco BCT",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "Banco General Costa Rica",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "Coopenae",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "Coopealianza",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      }
+    ]
+  },
+  "DO": {
+    "iso2": "DO",
+    "moneda": "DOP",
+    "bancos": [
+      {
+        "nombre": "Banco Popular Dominicano",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "Banreservas",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "Banco BHD",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "Scotiabank República Dominicana",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "Banco Santa Cruz",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "Banco Caribe",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "Banco Promerica",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "Banesco",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "Banco Lafise",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "APAP (Asociación Popular de Ahorros y Préstamos)",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "Asociación Cibao",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "Banco Vimenca",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "Banco Ademi",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "Qik Banco Digital",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "Banco López de Haro",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "Banco BDI",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      }
+    ]
+  },
+  "EC": {
+    "iso2": "EC",
+    "moneda": "USD",
+    "bancos": [
+      {
+        "nombre": "Banco Pichincha",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "Banco del Pacífico",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "Banco Guayaquil",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "Produbanco",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "Banco Bolivariano",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "Banco Internacional",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "Banco del Austro",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "BanEcuador",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "Banco Solidario",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "Banco de Machala",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "Banco General Rumiñahui",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "Banco de Loja",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "Banco ProCredit",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "Banco Diners Club",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "Cooperativa JEP",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "Cooperativa Jardín Azuayo",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      }
+    ]
+  },
+  "SV": {
+    "iso2": "SV",
+    "moneda": "USD",
+    "bancos": [
+      {
+        "nombre": "Banco Agrícola",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "Banco Cuscatlán",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "Davivienda El Salvador",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "BAC Credomatic",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "Banco Promerica",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "Banco Hipotecario",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "Banco Atlántida El Salvador",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "Banco Industrial El Salvador",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "Banco Azul",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "Abank",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "Banco G&T Continental El Salvador",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "Fedecrédito",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "Banco de Fomento Agropecuario",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      }
+    ]
+  },
+  "GT": {
+    "iso2": "GT",
+    "moneda": "GTQ",
+    "bancos": [
+      {
+        "nombre": "Banco Industrial",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "Banrural",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "Banco G&T Continental",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "BAC Credomatic",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "Banco Promerica",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "Banco Agromercantil (BAM)",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "Bantrab",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "Banco Inmobiliario",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "Interbanco",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "Banco Azteca Guatemala",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "Crédito Hipotecario Nacional (CHN)",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "Vivibanco",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "Banco Ficohsa Guatemala",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "Banco de Antigua",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "Banco Internacional",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      }
+    ]
+  },
+  "HN": {
+    "iso2": "HN",
+    "moneda": "HNL",
+    "bancos": [
+      {
+        "nombre": "Banco Atlántida",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "BAC Credomatic",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "Banco Ficohsa",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "Banpaís",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "Banco de Occidente",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "Davivienda Honduras",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "Banco Promerica",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "Banco Lafise",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "Banrural Honduras",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "Banco Azteca Honduras",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "Banco Popular",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "Banhcafé",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "Banco de los Trabajadores",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      }
+    ]
+  },
+  "MX": {
+    "iso2": "MX",
+    "moneda": "MXN",
+    "bancos": [
+      {
+        "nombre": "BBVA México",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "Banorte",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "Santander México",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "Banamex",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "HSBC México",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "Scotiabank México",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "Banco Azteca",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "BanCoppel",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "Inbursa",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "Banregio",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "Afirme",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "BanBajío",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "Banco Multiva",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "Banca Mifel",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "Nu México",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "Hey Banco",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "Klar",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "Ualá México",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "Spin by OXXO",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "Stori",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      }
+    ]
+  },
+  "NI": {
+    "iso2": "NI",
+    "moneda": "NIO",
+    "bancos": [
+      {
+        "nombre": "Banpro",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "Lafise Bancentro",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "BAC Credomatic",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "Banco Ficohsa Nicaragua",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "Banco Avanz",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "Banco Atlántida Nicaragua",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "Banco de Fomento a la Producción (BFP)",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      }
+    ]
+  },
+  "PA": {
+    "iso2": "PA",
+    "moneda": "USD",
+    "bancos": [
+      {
+        "nombre": "Banco General",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "Banistmo",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "BAC Credomatic",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "Banco Nacional de Panamá",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "Global Bank",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "Multibank",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "Banesco Panamá",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "Caja de Ahorros",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "Scotiabank Panamá",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "Mercantil Banco",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "Credicorp Bank",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "St. Georges Bank",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "Banco Aliado",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "Towerbank",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "Banco Lafise Panamá",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "Metrobank",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      }
+    ]
+  },
+  "PY": {
+    "iso2": "PY",
+    "moneda": "PYG",
+    "bancos": [
+      {
+        "nombre": "Banco Itaú Paraguay",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "Banco Continental",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "Banco Nacional de Fomento",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "Banco GNB Paraguay",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "Sudameris",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "Banco Familiar",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "Banco Atlas",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "Visión Banco",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "Banco Basa",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "Ueno Bank",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "Banco Río",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "Solar Banco",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "Interfisa Banco",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "Bancop",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      }
+    ]
+  },
+  "PE": {
+    "iso2": "PE",
+    "moneda": "PEN",
+    "bancos": [
+      {
+        "nombre": "BCP",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "BBVA Perú",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "Interbank",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "Scotiabank Perú",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "Banco Pichincha Perú",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "BanBif",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "Banco Falabella Perú",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "Banco Ripley Perú",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "Mibanco",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "Banco de la Nación",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "Banco GNB Perú",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "Alfin Banco",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "Banco de Comercio",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "Caja Arequipa",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "Caja Huancayo",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "Caja Piura",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "Caja Cusco",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      }
+    ]
+  },
+  "PR": {
+    "iso2": "PR",
+    "moneda": "USD",
+    "bancos": [
+      {
+        "nombre": "Banco Popular de Puerto Rico",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "FirstBank",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "Oriental Bank",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "Cooperativa Jesús Obrero",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "CoopACA",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "Cooperativa La Sagrada Familia",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "VAPR Federal Credit Union",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "Caribe Federal Credit Union",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      }
+    ]
+  },
+  "UY": {
+    "iso2": "UY",
+    "moneda": "UYU",
+    "bancos": [
+      {
+        "nombre": "BROU",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "Santander Uruguay",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "Itaú Uruguay",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "Scotiabank Uruguay",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "BBVA Uruguay",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "Banco Heritage",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "Bandes Uruguay",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "HSBC Uruguay",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "Banco Hipotecario del Uruguay",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      }
+    ]
+  },
+  "VE": {
+    "iso2": "VE",
+    "moneda": "VES",
+    "bancos": [
+      {
+        "nombre": "Banco de Venezuela",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "Banesco",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "Banco Mercantil",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "BBVA Provincial",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "Banco Bicentenario",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "Bancamiga",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "Banco Nacional de Crédito (BNC)",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "Banco del Tesoro",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "Banco Exterior",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "BFC Banco Fondo Común",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "Banplus",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "Bancaribe",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "Banco Sofitasa",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "100% Banco",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "Banco Plaza",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "Banco Activo",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "Mi Banco",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "Banco Caroní",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "Bancrecer",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      }
+    ]
+  },
+  "BZ": {
+    "iso2": "BZ",
+    "moneda": "BZD",
+    "bancos": [
+      {
+        "nombre": "Belize Bank",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "Atlantic Bank",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "Heritage Bank",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "National Bank of Belize",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "Holy Redeemer Credit Union",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "St. Francis Xavier Credit Union",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "St. John's Credit Union",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      }
+    ]
+  },
+  "HT": {
+    "iso2": "HT",
+    "moneda": "HTG",
+    "bancos": [
+      {
+        "nombre": "Unibank",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "Sogebank",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "Banque Nationale de Crédit (BNC)",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "Capital Bank",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "Banque de l'Union Haïtienne (BUH)",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "Sogebel",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "Banque Populaire Haïtienne (BPH)",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      }
+    ]
+  },
+  "GY": {
+    "iso2": "GY",
+    "moneda": "GYD",
+    "bancos": [
+      {
+        "nombre": "Republic Bank Guyana",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "Demerara Bank",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "Guyana Bank for Trade and Industry (GBTI)",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "Citizens Bank Guyana",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "Bank of Baroda Guyana",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "Scotiabank Guyana",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "New Building Society (NBS)",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      }
+    ]
+  },
+  "SR": {
+    "iso2": "SR",
+    "moneda": "SRD",
+    "bancos": [
+      {
+        "nombre": "De Surinaamsche Bank (DSB)",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "Hakrinbank",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "Republic Bank Suriname",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "Finabank",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "Surichange Bank",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "Godo Bank",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "Volkscredietbank (VCB)",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "Surinaamse Postspaarbank (SPSB)",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "Trustbank Amanah",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      },
+      {
+        "nombre": "Landbouwbank",
+        "tipo": "comercial",
+        "tiposCuenta": [],
+        "importancia": "principal",
+        "confianza": "media"
+      }
+    ]
+  }
+}
