@@ -1,8 +1,13 @@
 import {navigation,useExperience} from './navigation';
 import {worlds,worldName} from './catalog';
 import {usePreferences} from './preferences';
+import {escenaTomada} from './visorUI';
 
-export function sceneBlocked(){const s=useExperience.getState();return !!(s.windowId||s.settings||s.directory||s.help||s.tutorial||(typeof document!=='undefined'&&document.querySelector('dialog[open]')));}
+/* El puntero de la casa tampoco elige mundos cuando hay algo delante: un panel
+   del visor tapa lo que hay detrás, y durante la historia del origen manda el
+   guion —un gesto que arranque un vuelo a mitad de película deja dos cámaras
+   peleando por el mismo encuadre. */
+export function sceneBlocked(){const s=useExperience.getState();return !!(s.windowId||s.settings||s.directory||s.help||s.tutorial||s.cinema||escenaTomada()||(typeof document!=='undefined'&&document.querySelector('dialog[open]')));}
 
 // Visual compatibility contract used by the existing host gesture controller.
 // No account, authentication or transaction APIs belong in this bridge.

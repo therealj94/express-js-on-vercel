@@ -189,3 +189,18 @@ test('The origin story runs the real act list and can always be cut short',()=>{
  genesis.saltar();
  assert.equal(final,true);
 });
+
+test('Host gestures stand down behind a headset panel and during the story',()=>{
+ casaDePrueba();
+ navigation.home();navigation.hitTest=()=>'chat';
+ assert.deepEqual(lookAtWorld(20,20),{key:'chat',nombre:'PULSE2CHAT'});
+ visorUI.casa({key:'wallet',titulo:'Veta Wallet',botones:[{id:'volver',texto:'Volver'}]});
+ assert.equal(lookAtWorld(20,20),null,'a panel covers whatever is behind it');
+ touchWorld('chat');
+ assert.equal(useExperience.getState().stage,'system','and no flight starts behind it');
+ visorUI.limpiar();
+ useExperience.getState().set({cinema:true});
+ assert.equal(lookAtWorld(20,20),null,'while the story runs, the script owns the camera');
+ useExperience.getState().set({cinema:false});
+ navigation.hitTest=()=>null;navigation.home();
+});

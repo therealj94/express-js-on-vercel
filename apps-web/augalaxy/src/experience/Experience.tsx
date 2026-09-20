@@ -56,6 +56,10 @@ export default function Experience({embedded=false}:{embedded?:boolean}){
   const handle=(e:KeyboardEvent)=>{if(document.querySelector('dialog[open]')||/INPUT|SELECT|TEXTAREA/.test((e.target as HTMLElement)?.tagName)||(e.target as HTMLElement)?.isContentEditable)return;
    if(state.immersive){if(e.key==='Escape')immersive.salir();else if(['ArrowLeft','ArrowRight','ArrowUp','ArrowDown'].includes(e.key)){e.preventDefault();navigation.orbit(e.key==='ArrowLeft'?-24:e.key==='ArrowRight'?24:0,e.key==='ArrowUp'?-16:e.key==='ArrowDown'?16:0);}return;}
    if(e.key==='Escape'){if(genesis.vivo())genesis.saltar();else if(intro)state.set({stage:'system'});else navigation.home();}
+   /* Durante la película solo queda salirse de ella: girar o acercar mientras
+      corre el guion mueve una cámara que nadie está mirando, y al terminar el
+      encuadre aparece torcido sin que se entienda por qué. */
+   if(cinema)return;
    if(!isGate&&!intro&&!travelling){
     if(e.key==='+'||e.key==='='){e.preventDefault();navigation.dolly(.82);}
     if(e.key==='-'){e.preventDefault();navigation.dolly(1.22);}

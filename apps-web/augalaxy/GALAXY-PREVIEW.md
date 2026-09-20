@@ -40,7 +40,7 @@ AirTouch uses the Apache-2.0 MediaPipe Tasks Vision package and Google's Hand La
 
 ## Verification
 
-- TypeScript and production bundling pass; twenty-six automated logic tests cover bounds, geometry, validated preferences, journey cancellation, the existing host gesture contract, central-core position, drag direction and camera stability on selection, and 3,600 consecutive orbit frames without label side-switching.
+- TypeScript and production bundling pass; twenty-seven automated logic tests cover bounds, geometry, validated preferences, journey cancellation, the existing host gesture contract, central-core position, drag direction and camera stability on selection, and 3,600 consecutive orbit frames without label side-switching.
 - Browser-tested: entry and timed intro, dock selection before entry, flight completion and cancellation, ES/EN labels, deep-space navigation, Pro/Lite fallback, preference persistence and audio activation/mute controls.
 - Responsive layout inspected in a 390 × 690 and 390 × 844 iframe viewports; app search tested there. This is not physical-phone performance or touch-hardware testing.
 - The compiled shell was mounted in an isolated host fixture from a nested build path. Gate, intro callback, unmount/remount and host button/body style isolation were checked. This fixture is not the production wallet or its login.
@@ -65,4 +65,4 @@ The four host entry points that only exist inside a headset are implemented: the
 
 Driving the compiled bundle in phone-stereo mode found three defects that reading the code did not: panels that follow the head cannot be aimed at, a dwell timer built from clamped frame deltas doubles on a slow device, and a held gaze re-fires the same button every 1.5 seconds. All three are fixed, and the stereo pair, the panel placement and a gaze press that reaches the host were confirmed on screen.
 
-Still unverified by anyone: a real headset, real head tracking, and the production wallet login. WebXR could not be exercised here — the browser reports no XR device — so the phone-stereo path is the one that was actually driven.
+WebXR was exercised as far as it can be without hardware: capability detection, a refused session and a session that opens but is unusable all leave the viewer closed and the system running. Real stereo rendering, head tracking and the controller trigger still need a headset, and the production wallet login still needs a staging host.

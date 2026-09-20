@@ -43,6 +43,12 @@ Two decisions inside this implementation are worth stating, because both were fo
 - **Panels anchor where they appear.** A panel that follows the head continuously cannot be aimed at: it moves with you and the gaze always lands on the same spot, so its buttons are unreachable. It stays put while you look at it and only re-accommodates once your view has drifted well away.
 - **Gaze time is wall-clock, and one press per aim.** Accumulating clamped frame deltas turned "hold for 1.5 s" into three seconds on an eleven-frame-per-second stereo view, and a held gaze re-fired the same button every 1.5 s — three `Abrir` actions nobody asked for. Leaving the button and returning is now required to press it again.
 
+While a headset panel is open, or while the origin story runs, the host's own pointer bridge (`__AE_MIRAR`, `__AE_TOCAR`) stands down as well: a panel covers what is behind it, and a gesture that starts a flight mid-story leaves two cameras fighting over one frame. Keyboard navigation is limited to skipping while the story runs.
+
+### WebXR — what was exercised, and what was not
+
+There is no headset and no XR device in the verification environment, so the session itself could not be opened. What was driven, with an injected XR device: the mode is offered only when `navigator.xr` reports the session supported and a driver is registered, a refused session (`user activation is required`) surfaces its message and leaves the viewer closed with the system usable, and a session that opens but is unusable is torn down by the same path rather than leaving the viewer half-open — the canvas and the shell survive both. Real stereo rendering, reference-space selection, head tracking and the controller trigger remain unverified until someone puts a headset on. The phone-stereo path is the one that was actually driven end to end.
+
 `AUGALAXY.acomodo()` still reports a binary 1/0 where the previous engine exposed the continuous 0..1 settling value. The old `__AE_TEATRO` and `__AE_NUCLEO` entry points, which `app.js` does not call, remain unimplemented.
 
 ## Remaining integration verification

@@ -82,14 +82,6 @@ export default function ViewerDriver(){
   const view=mode==='xr'?gl.xr.getCamera():camera;
   if(mode==='carton')camera.quaternion.multiply(s.head);
   view.updateMatrixWorld();const origin=new T.Vector3(),direction=new T.Vector3(),quaternion=new T.Quaternion();view.getWorldPosition(origin);view.getWorldDirection(direction);view.getWorldQuaternion(quaternion);
-  const carteles=escenaTomada();
-  for(const l of labels.current){l.sprite.visible=!carteles;if(carteles)continue;l.sprite.position.copy(locationOf(l.world)).add(new T.Vector3(0,l.world.radius+.9,0));const scale=Math.max(2.2,origin.distanceTo(l.sprite.position)*.14);l.sprite.scale.set(scale,scale*96/512,1);}
-  const ray=new T.Ray(origin,direction);
-
-  /* ══ LOS CARTELES DE LA CASA, Y LA MIRADA QUE LOS APRIETA ═══════════════
-     Mientras hay un cartel delante —o mientras la casa pone __AE_BLINDADO—
-     la mirada NO elige planetas: el cartel tapa lo que hay detrás, y leer una
-     casa abriría otra. */
   /* EL TIEMPO DE LA MIRADA SE MIDE CON RELOJ DE PARED, no sumando fotogramas.
      Sumar dt topado a 50 ms parece lo mismo hasta que el aparato va a 11
      cuadros por segundo —un teléfono modesto moviendo estéreo—: ahí «sostené
@@ -97,6 +89,13 @@ export default function ViewerDriver(){
      convencida de que el botón no funciona. */
   const reloj=(typeof performance!=='undefined'?performance.now():Date.now())/1000;
   const ui=useVisorUI.getState(),tomada=escenaTomada();
+  for(const l of labels.current){l.sprite.visible=!tomada;if(tomada)continue;l.sprite.position.copy(locationOf(l.world)).add(new T.Vector3(0,l.world.radius+.9,0));const scale=Math.max(2.2,origin.distanceTo(l.sprite.position)*.14);l.sprite.scale.set(scale,scale*96/512,1);}
+  const ray=new T.Ray(origin,direction);
+
+  /* ══ LOS CARTELES DE LA CASA, Y LA MIRADA QUE LOS APRIETA ═══════════════
+     Mientras hay un cartel delante —o mientras la casa pone __AE_BLINDADO—
+     la mirada NO elige planetas: el cartel tapa lo que hay detrás, y leer una
+     casa abriría otra. */
   const derecha=new T.Vector3(1,0,0).applyQuaternion(quaternion),arriba=new T.Vector3(0,1,0).applyQuaternion(quaternion);
   const suave=1-Math.exp(-Math.min(dt,.08)*3.4);
   let foco='';
