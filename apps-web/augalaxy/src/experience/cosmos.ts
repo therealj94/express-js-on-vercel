@@ -9,12 +9,12 @@ const orbiting=worlds.filter(w=>w.id!=='genesis');
 const angles=[2.55,4.1,5.35,.25,1.5,3.4,5.8,4.65,.9,2.1];
 export const orbitPositions=new Map(worlds.map((w,i)=>[w.id,new Vector3(...w.position)]));
 let orbitalTime=0,lastOrbitFrame=-1;
-export function updateOrbits(now:number,dt:number){
+export function updateOrbits(now:number,dt:number,width=1000){
  if(Math.abs(now-lastOrbitFrame)<.5)return;lastOrbitFrame=now;
  const state=useExperience.getState(),prefs=usePreferences.getState().prefs;
  if(prefs.autoOrbit&&!motionReduced()&&!state.selected&&!state.hovered&&!state.settings&&!state.directory&&!state.windowId&&!state.tutorial&&now-navigation.lastInteraction>650)orbitalTime+=Math.min(.04,dt);
  orbitPositions.get('genesis')!.set(0,0,0);
- orbiting.forEach((w,i)=>{const radius=i<5?11:18,angle=angles[i]+orbitalTime*(i<5?.025:.016);orbitPositions.get(w.id)!.set(Math.cos(angle)*radius,Math.sin(angle*2+i)*.24,Math.sin(angle)*radius);});
+ orbiting.forEach((w,i)=>{const radius=i<5?11:18,angle=angles[i]+orbitalTime*(i<5?.025:.016);orbitPositions.get(w.id)!.set(Math.cos(angle)*radius*(width<700?.74:1),Math.sin(angle*2+i)*.24,Math.sin(angle)*radius*(width<700?1.15:1));});
 }
 export const locationOf=(w:World)=>orbitPositions.get(w.id)||new Vector3(...w.position);
 export const deepWorlds:World[]=[
@@ -30,20 +30,15 @@ export class CameraDirector {
  update(camera:Camera,width:number,height:number,now:number,dt:number){
   const state=useExperience.getState(),mobile=width<700,reduced=motionReduced();
   if(state.stage!==this.stage){if(state.stage==='intro')this.introStart=now;this.stage=state.stage;}
-  const base=mobile?80:43;let distance=base,yaw=navigation.yaw,pitch=navigation.pitch;
+  const base=mobile?76:43;let distance=base,yaw=navigation.yaw,pitch=navigation.pitch+(mobile?.38:0);
   this.target.set(0,0,0);
   if(state.stage==='gate'){this.target.set(mobile?-2:-4,mobile?0:-4,0);distance=mobile?65:36;pitch=.65;yaw=-.18;}
   if(state.stage==='galaxies'){this.target.set(10,0,-38);distance=mobile?250:176;}
   if(state.stage==='intro'){const p=Math.min(1,(now-this.introStart)/4200),e=p*p*(3-2*p);distance=base+(150-base)*(1-e);pitch=.6;}
   const world=worlds.find(w=>w.id===state.selected);
-  if(world&&(state.stage==='system'||state.stage==='transit')){
-   this.target.copy(locationOf(world));this.target.x+=0;
-   this.target.y+=mobile?world.radius*.55:world.radius*.2;
-   distance=world.radius*(mobile?9.3:7.6);pitch=navigation.pitch;
-  }
   distance*=state.stage==='gate'||state.stage==='intro'?1:navigation.zoom;
   let fov=48;
-  if(world&&state.journey){const t=Math.min(1,Math.max(0,(now-state.journey.startedAt)/state.journey.duration)),e=t*t*t;this.target.lerp(locationOf(world),t);distance=world.radius*(7.6*(1-e)+1.035*e);fov=48+Math.sin(t*Math.PI)*10;pitch=.1;}
+  if(world&&state.journey){const t=Math.min(1,Math.max(0,(now-state.journey.startedAt)/state.journey.duration)),e=t*t*t;this.target.lerp(locationOf(world),t*t*(3-2*t));distance=base*navigation.zoom*(1-e)+world.radius*1.035*e;fov=48+Math.sin(t*Math.PI)*10;pitch=pitch*(1-t)+.1*t;}
   this.eye.set(Math.sin(yaw)*Math.cos(pitch)*distance,Math.sin(pitch)*distance,Math.cos(yaw)*Math.cos(pitch)*distance).add(this.target);
   const factor=reduced?1:1-Math.exp(-Math.min(dt,.08)*(state.stage==='transit'?8:state.stage==='system'&&now-navigation.lastInteraction<250?12:5));
   camera.position.lerp(this.eye,factor);this.look.lerp(this.target,factor);camera.lookAt(this.look);camera.updateMatrixWorld();
@@ -61,28 +56,35 @@ export function updateLabels(camera:Camera,width:number,height:number){
  navigation.projected.clear();
  for(const w of worlds){const center=locationOf(w),p=center.clone().project(camera);navigation.projected.set(w.id,{x:(p.x*.5+.5)*width,y:(-p.y*.5+.5)*height,r:height*w.radius/(camera.position.distanceTo(center)*.89),visible:p.z>0&&p.z<1});}
  const core=navigation.projected.get('genesis')!,outer=worlds.filter(w=>w.id!=='genesis');
- const byX=[...outer].sort((a,b)=>navigation.projected.get(a.id)!.x-navigation.projected.get(b.id)!.x);
- const byY=(a:World,b:World)=>navigation.projected.get(a.id)!.y-navigation.projected.get(b.id)!.y;
- const left=byX.slice(0,5).sort(byY),right=byX.slice(5).sort(byY);
- const labelWidth=mobile?122:174;
- const top=mobile?(selected?242:268):255,bottom=mobile?(selected?Math.min(height-330,490):height-280):height-225;
- const gap=Math.max(mobile?32:54,(bottom-top)/4);
- for(const w of worlds){
+ const occupied:{x:number;y:number;w:number;h:number}[]=[];
+ const bodies=[...navigation.projected.values()];
+ const ordered=[...worlds].sort((a,b)=>a.id==='genesis'?-1:b.id==='genesis'?1:0);
+ const top=mobile?162:220,bottom=height-(mobile?selected?192:160:170);
+ for(const w of ordered){
   const p=navigation.projected.get(w.id)!,node=labelNodes.get(w.id);if(!node)continue;
-  let x:number,y:number;
-  if(w.id==='genesis'){x=width/2;y=mobile?207:155;}
-  else{const isLeft=left.includes(w),items=isLeft?left:right;x=isLeft?labelWidth/2+(mobile?9:28):width-labelWidth/2-(mobile?9:28);y=top+items.indexOf(w)*gap;}
-  node.style.transform='translate('+Math.round(x)+'px,'+Math.round(y)+'px) translate(-50%,0)';
+  const lw=Math.max(60,w.name.length*(mobile?7.3:8)+14),lh=mobile?28:32;
+  const raw=w.id==='genesis'?[[p.x,p.y-p.r-lh-7],[p.x,p.y+p.r+8]]:[[p.x,p.y+p.r+6],[p.x,p.y-p.r-lh-5],[p.x-p.r-lw/2-8,p.y-lh/2],[p.x+p.r+lw/2+8,p.y-lh/2]];
+  for(let radius=1;radius<=3;radius++)for(let i=0;i<8;i++){const angle=i*Math.PI/4;raw.push([p.x+Math.cos(angle)*(p.r+lw*.5+radius*15),p.y+Math.sin(angle)*(p.r+radius*22)-lh/2]);}
+  let best={x:width/2,y:top,score:Infinity};
+  for(const [cx,cy] of raw){
+   const x=Math.max(lw/2+10,Math.min(width-lw/2-10,cx)),y=Math.max(top,Math.min(bottom-lh,cy));
+   let score=Math.hypot(x-p.x,y+lh/2-p.y);
+   for(const o of occupied){const ix=Math.max(0,Math.min(x+lw/2,o.x+o.w/2)-Math.max(x-lw/2,o.x-o.w/2)+10),iy=Math.max(0,Math.min(y+lh,o.y+o.h)-Math.max(y,o.y)+8);score+=ix*iy*12;}
+   for(const body of bodies){const dx=Math.max(Math.abs(body.x-x)-lw/2,0),dy=Math.max(y-body.y,body.y-y-lh,0);score+=Math.max(0,body.r+5-Math.hypot(dx,dy))*35;}
+   if(score<best.score)best={x,y,score};
+  }
+  const {x,y}=best;occupied.push({x,y,w:lw,h:lh});
+  node.style.width=lw+'px';node.style.transform='translate('+Math.round(x)+'px,'+Math.round(y)+'px) translate(-50%,0)';
   node.style.visibility=active?'visible':'hidden';node.style.opacity=active?'1':'0';node.tabIndex=active?0:-1;
   node.dataset.core=String(w.id==='genesis');node.dataset.active=String(w.id===state.selected);
-  const anchorX=w.id==='genesis'?x:x<width/2?x+labelWidth/2:x-labelWidth/2;
-  line('label-'+w.id,p.x,p.y,anchorX,y+(mobile?15:23),active&&p.visible);
+  line('label-'+w.id,p.x,p.y,x,y+lh/2,active&&p.visible&&Math.hypot(x-p.x,y+lh/2-p.y)>p.r+30);
   if(w.id!=='genesis'){
-   line('core-'+w.id,core.x,core.y,p.x,p.y,active&&!selected&&p.visible);
+   line('core-'+w.id,core.x,core.y,p.x,p.y,active&&p.visible&&(!selected||w.id===state.selected));
    const other=navigation.projected.get(outer[(outer.indexOf(w)+1)%outer.length].id)!;
-   line('peer-'+w.id,p.x,p.y,other.x,other.y,active&&!selected&&p.visible&&other.visible);
+   line('peer-'+w.id,p.x,p.y,other.x,other.y,active&&w.id===state.selected&&p.visible&&other.visible);
   }
  }
+
 }
 export function projectedHit(x:number,y:number){
  let best:string|null=null,distance=Infinity;

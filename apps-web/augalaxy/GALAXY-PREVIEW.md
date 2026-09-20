@@ -11,11 +11,11 @@ Use Node 22 or later. Run `npm ci --legacy-peer-deps`, then `npm run dev`. `npm 
 ## Experience
 
 - Separate explorer entry, a skippable cinematic transition, invariant Orden Global identity in Spanish and English.
-- GENESIS CORE is the textured central Sun and ecosystem brain. Ten app planets orbit it in two bands. Golden connections link the apps to the core and blue connections link neighboring apps. Orbits pause during selection, tutorials and open panels.
-- All eleven names stay visible in the system view, including while focusing a destination. Reserved label positions with leader lines replace collision-based hiding. Mobile uses two compact label columns and a shorter entry panel.
+- GENESIS CORE is the textured central Sun and ecosystem brain. Ten app planets orbit it in two bands. Quiet radial connections link apps to the core; selecting an app reveals its neighboring connection. Orbits pause during selection, tutorials and open panels.
+- All eleven names stay visible in the system view, including while focusing a destination. Unboxed labels are placed around their planets using collision-cost placement. Mobile reserves separate regions for the heading, navigation, labels and entry strip.
 - Drag direction follows the hand, with a four-pixel threshold, a faster response while dragging and a bounded sensitivity preference. Two-finger zoom and keyboard controls remain available.
 - A six-step ES/EN tutorial appears on first entry, supports a real preview flight, remembers dismissal on this device and can be replayed from the header or Accessibility settings.
-- Dock selection focuses a planet without opening it. An explicit Enter button starts a cancellable 2.1-second flight; the arrival panel opens only after the current journey completes. Previous/next buttons and arrow keys select worlds without dragging.
+- Dock selection highlights a planet without moving the camera or opening it. An explicit Enter button starts a cancellable 2.1-second flight; the arrival panel opens only after the current journey completes. Previous/next buttons and arrow keys select worlds without dragging.
 - Pro WebGL and Lite Canvas modes share camera paths, hit testing, label placement and navigation. Pro is the initial preference; users can save either startup mode. Missing or lost WebGL falls back to Lite with a visible status explanation.
 - Wheel/pinch zoom reaches a separate deep-space overview with moving galaxies, three distant worlds, a pulsar and an illustrative accretion-disk black hole. Hubble imagery adds resolved galactic dust and stellar detail. Distances, sizes and motion are artistic, not a physical simulation.
 - Three.js / WebGL2 rendering with mapped surfaces, atmospheric scattering approximation, clouds and procedural star fields. A Canvas2D compatibility renderer preserves navigation on devices without WebGL2; it is a simplified projected view, not equivalent GPU rendering.
@@ -38,9 +38,9 @@ AirTouch uses the Apache-2.0 MediaPipe Tasks Vision package and Google's Hand La
 
 ## Verification
 
-- TypeScript and production bundling pass; twelve automated logic tests cover bounds, geometry, validated preferences, journey cancellation, the existing host gesture contract, central-core position and drag direction.
+- TypeScript and production bundling pass; thirteen automated logic tests cover bounds, geometry, validated preferences, journey cancellation, the existing host gesture contract, central-core position, drag direction and camera stability on selection.
 - Browser-tested: entry and timed intro, dock selection before entry, flight completion and cancellation, ES/EN labels, deep-space navigation, Pro/Lite fallback, preference persistence and audio activation/mute controls.
-- Responsive layout inspected in a 390 × 844 iframe viewport; app search tested there. This is not physical-phone performance or touch-hardware testing.
+- Responsive layout inspected in a 390 × 690 and 390 × 844 iframe viewports; app search tested there. This is not physical-phone performance or touch-hardware testing.
 - The compiled shell was mounted in an isolated host fixture from a nested build path. Gate, intro callback, unmount/remount and host button/body style isolation were checked. This fixture is not the production wallet or its login.
 - Browser GPU unavailable: full WebGL rendering could not be visually verified in this environment; compatibility rendering was inspected instead.
 - Camera gestures require a real-device test. No camera permission was granted during automation. Sound playback and level should also be checked with headphones on the target device.

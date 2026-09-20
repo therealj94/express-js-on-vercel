@@ -29,7 +29,7 @@ export function SolarCore(){
 export function OrbitPaths(){
  const geometries=useMemo(()=>orbitRadii.map(r=>new T.BufferGeometry().setFromPoints(Array.from({length:257},(_,i)=>new T.Vector3(Math.cos(i/256*Math.PI*2)*r,0,Math.sin(i/256*Math.PI*2)*r)))),[]);
  const group=useRef<T.Group>(null);useEffect(()=>()=>geometries.forEach(g=>g.dispose()),[geometries]);
- useFrame(()=>{if(group.current)group.current.visible=useExperience.getState().stage!=='galaxies'&&useExperience.getState().stage!=='transit';});
+ useFrame(({size})=>{if(group.current){group.current.visible=useExperience.getState().stage!=='galaxies'&&useExperience.getState().stage!=='transit';group.current.scale.set(size.width<700?.74:1,1,size.width<700?1.15:1);}});
  return <group ref={group}>{geometries.map((g,i)=><lineLoop key={i} geometry={g}><lineBasicMaterial color="#a99671" transparent opacity={.12} depthWrite={false}/></lineLoop>)}</group>;
 }
 export function BlackHole(){

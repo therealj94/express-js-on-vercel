@@ -6,17 +6,17 @@ import {Icon} from './Icon';
 export default function Tutorial(){
  const [step,setStep]=useState(0),{prefs,set}=usePreferences(),es=prefs.lang==='es';
  const steps=es?[
-  ['GENESIS CORE: el cerebro','El sol es el núcleo de Orden Global. Las líneas doradas unen cada app con GENESIS CORE; las líneas azules representan conexiones entre apps.'],
+  ['GENESIS CORE: el cerebro','El sol es el núcleo de Orden Global. Las órbitas reúnen las apps alrededor del núcleo. Al seleccionar una app se destaca su conexión.'],
   ['Cada planeta es una app','Los nombres permanecen visibles. Toca el nombre, el planeta o su icono del dock para enfocarlo. Las órbitas se pausan mientras eliges.'],
   ['Muévete con precisión','Arrastra el espacio: acompaña tu mano. En móvil, usa un dedo para girar y dos para acercar o alejar. También tienes botones + y −.'],
-  ['Primero eliges, después entras','Ahora estás frente a PULSE2CHAT. «Entrar» inicia el viaje. Puedes cancelarlo durante el vuelo; cerrar la ventana te devuelve al planeta.'],
+  ['Primero eliges, después entras','PULSE2CHAT está seleccionada, sin mover el sistema. «Entrar» inicia el viaje. Puedes cancelarlo durante el vuelo; cerrar la ventana te devuelve al planeta.'],
   ['Tu sistema tiene un universo alrededor','«Galaxias» o alejar el zoom revela el espacio profundo. «Mi sistema» regresa a GENESIS CORE. Las conexiones externas son espacios futuros.'],
   ['Hazlo tuyo','En Ajustes eliges Pro o Lite, sensibilidad, movimiento, sonido e idioma. AirTouch es opcional y necesita tu permiso de cámara. Puedes repetir esta guía desde el botón ?.'],
  ]:[
-  ['GENESIS CORE: the brain','The sun is the core of Orden Global. Gold lines link every app to GENESIS CORE; blue lines represent connections between apps.'],
+  ['GENESIS CORE: the brain','The sun is the core of Orden Global. The orbits gather apps around the core. Selecting an app highlights its connection.'],
   ['Every planet is an app','Names remain visible. Select a name, planet or dock icon to focus it. Orbits pause while you choose.'],
   ['Move with precision','Drag space: it follows your hand. On mobile, use one finger to orbit and two to zoom. The + and − controls are always available.'],
-  ['Choose first, then enter','You are now facing PULSE2CHAT. Enter starts the journey. You can cancel during the flight; closing its window returns you to the planet.'],
+  ['Choose first, then enter','PULSE2CHAT is selected, without moving the system. Enter starts the journey. You can cancel during the flight; closing its window returns you to the planet.'],
   ['Explore beyond your system','Galaxies or zooming out reveals deep space. My system returns to GENESIS CORE. External connections are future spaces.'],
   ['Make it yours','Settings offers Pro or Lite, sensitivity, motion, sound and language. AirTouch is optional and requires camera permission. Replay this guide with the ? button.'],
  ];

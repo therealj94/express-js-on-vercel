@@ -19,7 +19,7 @@ export const navigation={
  focus(id:string|null){
   if(id!==null&&!worlds.some(w=>w.id===id))return;
   const prev=useExperience.getState().selected;
-  this.zoom=1;this.yaw=0;this.pitch=id?.12:.6;this.lastInteraction=now();this.hovered=null;
+  if(useExperience.getState().stage==='galaxies'){this.zoom=1;this.yaw=0;this.pitch=.6;}this.lastInteraction=now();this.hovered=null;
   useExperience.getState().set({stage:'system',selected:id,journey:null,windowId:null,hovered:null});
   if(id&&id!==prev){sound.cue('select');sound.travel('focus');}
  },

@@ -34,7 +34,7 @@ function StarField({spiral=false,seed=55,position=[0,0,0],radius=100,color='#a6b
  },[spiral,seed,radius,color,count]);
  const mat=useMemo(()=>new T.ShaderMaterial({vertexShader:pointVertex,fragmentShader:pointFragment,vertexColors:true,transparent:true,depthWrite:false,blending:T.AdditiveBlending,uniforms:{uTime:{value:0},uScale:{value:280},uOpacity:{value:spiral?.8:1}}}),[spiral]);
  useEffect(()=>()=>{geo.dispose();mat.dispose();},[geo,mat]);
- useFrame(({clock,size},dt)=>{const reduced=motionReduced();if(!reduced)mat.uniforms.uTime.value=clock.elapsedTime;mat.uniforms.uScale.value=Math.min(size.height,1000)*.4;if(group.current&&spiral&&!reduced)group.current.rotation.y+=dt*.005;});
+ useFrame(({clock,size},dt)=>{const reduced=motionReduced();mat.uniforms.uOpacity.value=useExperience.getState().stage==='galaxies'?(spiral?.8:1):(spiral?.17:.38);if(!reduced)mat.uniforms.uTime.value=clock.elapsedTime;mat.uniforms.uScale.value=Math.min(size.height,1000)*.4;if(group.current&&spiral&&!reduced)group.current.rotation.y+=dt*.005;});
  return <group ref={group} position={position} rotation={[tilt,0,spiral?.15:0]}><points geometry={geo} material={mat} frustumCulled={false}/></group>;
 }
 
@@ -76,12 +76,12 @@ function Planet({world,index,deep=false}:{world:World;index:number;deep?:boolean
 function SkyBackdrop(){
  const [map,setMap]=useState<T.Texture|null>(null);
  useEffect(()=>{let dead=false;const t=new T.TextureLoader().load(assetURL('textures/starmap.jpg'),t=>{if(dead)return;t.colorSpace=T.SRGBColorSpace;setMap(t);},undefined,()=>{});return()=>{dead=true;t.dispose();};},[]);
- return map?<mesh><sphereGeometry args={[450,48,32]}/><meshBasicMaterial side={T.BackSide} map={map} transparent opacity={.24} depthWrite={false}/></mesh>:null;
+ return map?<mesh><sphereGeometry args={[450,48,32]}/><meshBasicMaterial side={T.BackSide} map={map} transparent opacity={.13} depthWrite={false}/></mesh>:null;
 }
 function SceneDriver({onLost}:{onLost:()=>void}){
  const {camera,gl,size}=useThree(),director=useRef(new CameraDirector()),last=useRef(0),frames=useRef(0);
  useEffect(()=>{const remove=bindSceneInput(gl.domElement),lost=(event:Event)=>{event.preventDefault();onLost();};gl.domElement.addEventListener('webglcontextlost',lost);useExperience.getState().set({ready:true});return()=>{remove();gl.domElement.removeEventListener('webglcontextlost',lost);};},[gl,onLost]);
- useFrame((_,dt)=>{const now=performance.now();updateOrbits(now,dt);director.current.update(camera,size.width,size.height,now,dt);updateLabels(camera,size.width,size.height);frames.current++;if(now-last.current>2000){useExperience.getState().set({fps:Math.round(frames.current*1000/(now-last.current))});frames.current=0;last.current=now;}},-2);
+ useFrame((_,dt)=>{const now=performance.now();updateOrbits(now,dt,size.width);director.current.update(camera,size.width,size.height,now,dt);updateLabels(camera,size.width,size.height);frames.current++;if(now-last.current>2000){useExperience.getState().set({fps:Math.round(frames.current*1000/(now-last.current))});frames.current=0;last.current=now;}},-2);
  return null;
 }
 export function PlanetLabels(){
