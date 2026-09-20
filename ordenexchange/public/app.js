@@ -26,6 +26,9 @@ function fijoAbajo(n, dec) { // como fijo(), pero truncando: es lo que hace el s
 }
 function inicial(apodo) { return (apodo || '?').trim().charAt(0).toUpperCase() || '?'; }
 function enmascarar(v) { const s = String(v || ''); return s.length > 4 ? '•••• ' + s.slice(-4) : s; }
+/** Campos de un método de pago que no son identificadores: se enseñan enteros (el tipo de cuenta no es un secreto). */
+const CAMPOS_SIN_MASCARA = ['tipoCuenta', 'ciudad', 'nota', 'tipoLlave', 'agencia', 'sucursal'];
+function enmascararCampo(clave, v) { return CAMPOS_SIN_MASCARA.includes(clave) ? String(v || '') : enmascarar(v); }
 function acortar(s, n = 10) { s = String(s || ''); return s.length > n * 2 + 1 ? s.slice(0, n) + '…' + s.slice(-6) : s; }
 function debounce(fn, ms) { let tm; return (...a) => { clearTimeout(tm); tm = setTimeout(() => fn(...a), ms); }; }
 
@@ -1156,7 +1159,7 @@ function metodoHTML(m) {
   const cat = metodoCatalogo(m.pais, m.tipo);
   const etiqueta = k => { const d = cat && cat.campos ? cat.campos.find(x => x.clave === k) : null; return d ? etiquetaCampo(d) : k; };
   return `<article class="metodo ${m.activo === false ? 'inactivo' : ''}"><div class="cab"><span class="bandera">${esc(bandera(m.pais))}</span><div class="cuerpo"><b>${esc(nombreMetodo(m.tipo, m.pais, m.nombreMetodo))}${m.banco ? ' · ' + esc(m.banco) : ''}</b><small>${esc(m.titular)} · ${esc(m.moneda)}</small></div><span class="chip ${esc(m.categoria || '')}">${m.activo === false ? t('pagos.inactivo') : t('pagos.activo')}</span></div>
-    <div class="campos">${Object.entries(m.campos || {}).map(([k, v]) => `<div><span>${esc(etiqueta(k))}</span><b>${esc(enmascarar(v))}</b></div>`).join('')}</div>
+    <div class="campos">${Object.entries(m.campos || {}).map(([k, v]) => `<div><span>${esc(etiqueta(k))}</span><b>${esc(enmascararCampo(k, v))}</b></div>`).join('')}</div>
     <div class="acciones"><button type="button" class="btn btn-linea btn-chico" data-accion="pago-editar" data-id="${esc(m.id)}">${t('com.editar')}</button><button type="button" class="btn btn-fantasma btn-chico" data-accion="pago-activo" data-id="${esc(m.id)}" data-v="${m.activo === false ? '1' : '0'}">${m.activo === false ? t('pagos.activar') : t('pagos.desactivar')}</button><button type="button" class="btn btn-peligro btn-chico" data-accion="pago-eliminar" data-id="${esc(m.id)}">${t('com.eliminar')}</button></div></article>`;
 }
 /** Los bancos de un país al detalle (tipos de cuenta, formato): se piden una vez por país. */
