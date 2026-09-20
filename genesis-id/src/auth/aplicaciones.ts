@@ -56,6 +56,14 @@ export const APPS_ECOSISTEMA: { clave: string; nombre: string; alcances: Alcance
     ],
   },
   {
+    clave: 'tesoreria',
+    nombre: 'Tesorería de Orden Global',
+    // La Autoridad de Emisión de ORIGEN. Solo necesita saber si el token de
+    // sesión única que le presenta un consejero es de una identidad verificada,
+    // y leer el perfil básico para mostrar quién entró. No crea identidades.
+    alcances: ['gid.verificar', 'gid.perfil', 'telemetria.enviar'],
+  },
+  {
     clave: 'ordenscan',
     nombre: 'ordenscan',
     // Un explorador es público: solo necesita saber si una dirección tiene

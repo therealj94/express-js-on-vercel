@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Prueba de reservas · Orden Global</title>
+<meta name="description" content="Documento público de respaldo del ORIGEN y de los tokens del ecosistema Orden Global. No requiere sesión.">
+<meta name="theme-color" content="#0A1416">
+<link rel="stylesheet" href="./app/estilo.css">
+<style>
+  .doc{max-width:980px;margin:0 auto;padding:44px 22px 80px}
+  .doc header{display:flex;gap:16px;align-items:center;margin-bottom:26px;flex-wrap:wrap}
+  .doc header .escudo{width:52px;height:52px;border-radius:15px;display:grid;place-items:center;border:1px solid var(--line);background:linear-gradient(135deg,var(--violet-soft),transparent)}
+  .doc header .escudo svg{width:26px;height:26px;stroke:var(--violet)}
+  .doc h1{font-size:24px;font-weight:660;letter-spacing:-.02em}
+  .doc header p{color:var(--muted);font-size:13px}
+  .sello{font-size:12px;color:var(--faint);word-break:break-all}
+  @media print{.doc{padding:0}.no-imprimir{display:none}}
+</style>
+</head>
+<body data-acento="origen">
+<div class="doc" id="doc"><div class="vacio">Cargando…</div></div>
+<script src="./app/datos.js"></script>
+<script src="./app/reglas.js"></script>
+<script src="./app/nucleo.js"></script>
+<script>
+(function () {
+  const { fmt, esc, ic } = T;
+  const raiz = document.getElementById('doc');
+
+  function pintar(p, origen) {
+    const ok = p.respaldo.salud === 'ok';
+    raiz.innerHTML = `
+      <header>
+        <div class="escudo">${ic('escudo2')}</div>
+        <div><h1>Prueba de reservas de Orden Global</h1>
+          <p>${esc(p.emisor)} · ${fmt.fechaHora(p.en)} · ${origen}</p></div>
+        <div style="margin-left:auto;display:flex;gap:8px" class="no-imprimir">
+          <button class="btn chico" onclick="window.print()">${ic('doc')} Imprimir / PDF</button>
+          <a class="btn chico fantasma" href="./index.html">Portal</a></div>
+      </header>
+
+      <div class="aviso ${ok ? 'ok' : 'bad'}">${ic(ok ? 'check' : 'alerta')}<div>
+        <b>${ok ? 'Todo el ORIGEN en circulación tiene respaldo certificado vigente' : 'El respaldo está por debajo de lo exigido'}</b>
+        <span class="txt">Ratio ${p.respaldo.ratio === null ? '∞' : fmt.pct(p.respaldo.ratio)} · reservas admisibles ${fmt.dinero(p.respaldo.admisibleUsd, 'USD', 0)} frente a ${fmt.dinero(p.origen.valorUsd, 'USD', 0)} de ORIGEN.</span></div></div>
+
+      <div class="grid g4 mt16">
+        <div class="kpi"><div class="et">ORIGEN en circulación</div><div class="val num">${fmt.num(p.origen.enCirculacion)}</div><div class="nota">${esc(p.origen.paridad)}</div></div>
+        <div class="kpi"><div class="et">Valor del ORIGEN</div><div class="val num">${fmt.dineroCorto(p.origen.valorUsd)}</div><div class="nota">oro a ${fmt.dinero(p.oro.usdPorGramo)}/g · ${esc(p.oro.fuente || '')} · ${fmt.fecha(p.oro.fecha)}</div></div>
+        <div class="kpi"><div class="et">Reservas admisibles</div><div class="val num">${fmt.dineroCorto(p.respaldo.admisibleUsd)}</div><div class="nota">certificadas, vigentes y con aforo</div></div>
+        <div class="kpi ${ok ? 'bien' : 'mal'}"><div class="et">Ratio de respaldo</div><div class="val num">${p.respaldo.ratio === null ? '∞' : fmt.pct(p.respaldo.ratio, 1)}</div><div class="nota">comprometido ${fmt.dineroCorto(p.respaldo.comprometidoUsd)} · libre ${fmt.dineroCorto(p.respaldo.libreUsd)}</div></div>
+      </div>
+
+      <div class="titulo-sec">Activos que respaldan</div>
+      <div class="card"><div class="cuerpo plano tabla-wrap"><table class="tabla">
+        <thead><tr><th>Activo</th><th>Custodio · auditor</th><th>Certificado</th><th class="der">Valor</th><th class="der">Aforo</th><th class="der">Admisible</th></tr></thead>
+        <tbody>${p.reservas.map((x) => `<tr>
+          <td><b>${esc(x.nombre)}</b><span class="t2">${esc(x.clase)}</span></td>
+          <td>${esc(x.custodio)}<span class="t2">${esc(x.auditor)}</span></td>
+          <td class="mono ts">${esc(x.certificado)}<span class="t2">${x.estado === 'certificada' ? (x.vence ? 'vence ' + fmt.fecha(x.vence) : '') : esc(x.estado.replace('_', ' '))}</span></td>
+          <td class="der num">${fmt.dinero(x.valorCertificado, 'USD', 0)}</td>
+          <td class="der num">${fmt.pct(x.haircut * 100, 0)}</td>
+          <td class="der num ${x.admisible > 0 ? 'ok-t' : 'faint'}">${fmt.dinero(x.admisible, 'USD', 0)}</td></tr>`).join('')}</tbody>
+      </table></div></div>
+
+      <div class="titulo-sec">Tokens vivos y su respaldo</div>
+      <div class="card"><div class="cuerpo plano tabla-wrap"><table class="tabla">
+        <thead><tr><th>Token</th><th>Clase</th><th>Contrato 5550</th><th class="der">Emitidos</th><th class="der">Autorizados</th><th class="der">ORIGEN asignado</th></tr></thead>
+        <tbody>${p.tokens.map((t) => `<tr>
+          <td><b>${esc(t.simbolo)}</b><span class="t2">${esc(t.nombre)}</span></td>
+          <td><span class="tag plano">${t.clase}</span></td>
+          <td class="mono ts">${t.contrato ? esc(t.contrato) : '—'}</td>
+          <td class="der num">${fmt.num(t.emitido)}</td><td class="der num">${fmt.num(t.autorizado)}</td>
+          <td class="der num">${fmt.dinero(t.origenAsignadoUsd, 'USD', 0)}</td></tr>`).join('')}</tbody>
+      </table></div></div>
+
+      <div class="card mt16"><div class="cuerpo">
+        <dl class="dl">
+          <dt>Sello del libro</dt><dd class="sello mono">${esc(p.libro.sello)}</dd>
+          <dt>Asientos encadenados</dt><dd class="num">${fmt.num(p.libro.asientos)}</dd>
+          <dt>Integridad</dt><dd class="${p.libro.integro ? 'ok-t' : 'bad-t'}">${p.libro.integro ? 'verificada' : 'rota'}</dd>
+        </dl>
+        <p class="ts mt10">Este documento no lleva datos de personas. Lo publica la Autoridad de Emisión de ORIGEN y cualquiera puede verificar que el libro llega exactamente a este sello.</p>
+      </div></div>`;
+  }
+
+  T.api('prueba-de-reservas').then((p) => pintar(p, 'servidor de Tesorería')).catch(() => {
+    // Sin servidor: se construye el mismo documento con el estado local.
+    T.cargar();
+    const e = T.estado, R = T.R, r = R.respaldo(e), v = R.verificarLibro(e);
+    pintar({
+      emisor: 'Orden Global Corp', en: new Date().toISOString(),
+      origen: { paridad: e.origen.paridad, enCirculacion: r.emitidoUnidades, valorUsd: r.emitido },
+      oro: { usdPorGramo: e.politica.oroUsdPorGramo, fuente: e.politica.oroFuente, fecha: e.politica.oroFecha },
+      respaldo: { admisibleUsd: r.admisible, ratio: Number.isFinite(r.ratio) ? r.ratio : null, salud: r.salud, comprometidoUsd: r.comprometido, libreUsd: r.libre },
+      reservas: e.reservas.map((x) => Object.assign({}, x, { admisible: R.valorAdmisible(x) })),
+      tokens: [...e.securities, ...e.utilities].filter((t) => t.origenAsignado > 0).map((t) => ({ simbolo: t.simbolo, nombre: t.nombre, clase: t.precioUnitario !== undefined ? 'security' : 'utility', contrato: t.contrato || null, emitido: t.supply.emitido - t.supply.quemado, autorizado: t.supply.autorizado, origenAsignadoUsd: t.origenAsignado })),
+      libro: { sello: v.sello, asientos: v.total, integro: v.ok },
+    }, 'demostración local');
+  });
+})();
+</script>
+</body>
+</html>

@@ -71,7 +71,7 @@ export function estadoPara(o: Operador) {
   const e = R.clon(store.todo().estado)
   const c = op.consejo()
   if (c.length) e.consejo = c
-  e.sesion = { usuario: o.nombre, rol: o.rol, permisos: R.PERMISOS[o.rol], modo: 'api', operadorId: o.id, debeCambiarContrasena: o.debeCambiarContrasena }
+  e.sesion = { usuario: o.nombre, email: o.email, rol: o.rol, permisos: R.PERMISOS[o.rol], modo: 'api', operadorId: o.id, debeCambiarContrasena: o.debeCambiarContrasena }
   return e
 }
 

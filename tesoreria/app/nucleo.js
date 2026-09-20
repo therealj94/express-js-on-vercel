@@ -89,7 +89,12 @@
     const tipo = r.headers.get('content-type') || '';
     if (!tipo.includes('application/json')) { const err = new Error('El servidor no respondió JSON'); err.sinApi = true; err.status = r.status; throw err; }
     const j = await r.json();
-    if (!r.ok) { const err = new Error(j.error || `Error ${r.status}`); err.status = r.status; err.datos = j; throw err; }
+    if (!r.ok) {
+      const err = new Error(j.error || `Error ${r.status}`); err.status = r.status; err.datos = j;
+      // Sesión vencida o cerrada en otro sitio: se vuelve a pedir entrada, sin perder la página.
+      if (r.status === 401 && sesionToken && !ruta.startsWith('sesion/')) { sesionToken = ''; try { localStorage.removeItem(LLAVE_SESION); } catch (e) {} setTimeout(() => location.reload(), 300); }
+      throw err;
+    }
     return j;
   }
 
@@ -338,6 +343,38 @@
     });
   }
 
+  /** Cambio de contraseña. Si es obligatorio (contraseña provisional) no se puede cerrar. */
+  function cambiarContrasena(obligatorio, alTerminar) {
+    modal({
+      fijo: !!obligatorio,
+      titulo: obligatorio ? 'Cambia tu contraseña provisional' : 'Cambiar contraseña',
+      cuerpo: `
+        ${obligatorio ? `<div class="aviso warn" style="margin-bottom:16px">${ic('alerta')}<div><b>Con contraseña provisional puedes mirar, no operar</b><span class="txt">El servidor rechaza cualquier comando hasta que la cambies. Mínimo 12 caracteres.</span></div></div>` : ''}
+        <div class="campo"><label>Contraseña actual</label><input id="ca" type="password" autocomplete="current-password"></div>
+        <div class="campo"><label>Contraseña nueva</label><input id="cn" type="password" autocomplete="new-password"></div>
+        <div class="campo mb0"><label>Repetir la nueva</label><input id="cr" type="password" autocomplete="new-password"></div>
+        <div id="err" class="bad-t" style="font-size:12.5px;min-height:18px;margin-top:8px"></div>`,
+      pie: `${obligatorio ? `<button class="btn fantasma izq" data-fuera>Salir</button>` : '<button class="btn" data-cerrar>Cancelar</button>'}<button class="btn pri" data-ok>Guardar</button>`,
+      alAbrir(f) {
+        const fuera = el('[data-fuera]', f); if (fuera) fuera.addEventListener('click', () => salir());
+        el('[data-ok]', f).addEventListener('click', async () => {
+          const err = el('#err', f); err.textContent = '';
+          const nueva = el('#cn', f).value;
+          if (nueva !== el('#cr', f).value) { err.textContent = 'Las contraseñas nuevas no coinciden'; return; }
+          try {
+            await api('sesion/contrasena', { method: 'POST', cuerpo: { actual: el('#ca', f).value, nueva } });
+            // El servidor cierra todas las sesiones: se vuelve a entrar con la nueva.
+            const r = await api('sesion/entrar', { method: 'POST', cuerpo: { email: estado.sesion.email || el('#em') && el('#em').value, contrasena: nueva } }).catch(() => null);
+            if (r) { sesionToken = r.token; try { localStorage.setItem(LLAVE_SESION, sesionToken); } catch (e) {} const est = await api('estado'); estado = est.estado; }
+            cerrarModal(); toast('Contraseña cambiada', r ? 'Sesión renovada' : 'Vuelve a entrar con la nueva', 'ok');
+            if (!r) return salir();
+            emitir(); if (alTerminar) alTerminar();
+          } catch (e) { err.textContent = e.message; }
+        });
+      },
+    });
+  }
+
   /* --- chasis compartido (sidebar + topbar) --- */
   function chasis({ montaje, marca, sub, acento, secciones, vistas, inicio }) {
     document.documentElement.setAttribute('data-acento', acento);
@@ -368,6 +405,7 @@
             <div class="der">
               <span class="tag plano" data-modo></span>
               <span class="tag plano" data-sesion></span>
+              <button class="btn chico fantasma" data-cuenta title="Cambiar contraseña" style="display:none">${ic('llave')}</button>
               <button class="btn chico fantasma" data-salir title="Salir" style="display:none">${ic('salir')}</button>
               <button class="btn chico fantasma" data-tema title="Claro / oscuro">${ic('sol')}</button>
             </div>
@@ -382,6 +420,7 @@
     el('[data-tema]', raiz).addEventListener('click', () => { tema(); render(); });
     el('[data-menu]', raiz).addEventListener('click', () => { side.classList.add('abierto'); velo.classList.add('on'); });
     el('[data-salir]', raiz).addEventListener('click', () => salir());
+    el('[data-cuenta]', raiz).addEventListener('click', () => cambiarContrasena(false));
     velo.addEventListener('click', () => { side.classList.remove('abierto'); velo.classList.remove('on'); });
 
     let vistaActual = (location.hash || '').replace('#', '') || inicio;
@@ -408,6 +447,9 @@
       m.textContent = modo === 'api' ? (infoServidor && infoServidor.efimero ? 'servidor · archivo' : 'servidor') : 'demostración local';
       m.className = 'tag plano ' + (modo === 'api' ? 'ok' : 'warn');
       el('[data-salir]', raiz).style.display = modo === 'api' ? '' : 'none';
+      el('[data-cuenta]', raiz).style.display = modo === 'api' ? '' : 'none';
+      // El rol pinta la página: un auditor no ve botones de acción.
+      document.documentElement.setAttribute('data-rol', estado.sesion.rol || '');
       const sello = el('[data-sello]', raiz);
       if (sello) sello.innerHTML = `<span class="ts mono">sello ${esc((estado.libro[0] || {}).hash || '—').slice(0, 12)}</span>`;
       cont.innerHTML = v.render();
@@ -416,9 +458,10 @@
     }
 
     suscribir(render);
+    const trasEntrar = () => { render(); if (estado.sesion.debeCambiarContrasena) cambiarContrasena(true); };
     arrancar().then((r) => {
-      if (r.modo === 'api' && !r.sesion) pantallaEntrada(render);
-      else render();
+      if (r.modo === 'api' && !r.sesion) pantallaEntrada(trasEntrar);
+      else trasEntrar();
     }).catch((e) => {
       cont.innerHTML = `<div class="aviso bad">${ic('alerta')}<div><b>No se pudo cargar el estado</b><span class="txt">${esc(e.message)}</span></div></div>`;
     });
@@ -444,7 +487,7 @@
     get modo() { return modo; },
     get servidor() { return infoServidor; },
     R,
-    cargar, arrancar, ejecutar, correr, reiniciar, suscribir, api, entrar, salir,
+    cargar, arrancar, ejecutar, correr, reiniciar, suscribir, api, entrar, salir, cambiarContrasena,
     // reglas ligadas al estado
     respaldo: () => R.respaldo(estado),
     puedeEmitir: (m) => R.puedeEmitir(estado, m),

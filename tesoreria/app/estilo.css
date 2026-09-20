@@ -370,3 +370,13 @@ svg{width:16px;height:16px;flex:none;fill:none;stroke:currentColor;stroke-width:
 /* hashes largos dentro de texto corrido: que partan, no que desborden */
 p .mono,.aviso .mono,.ts.mono{word-break:break-all;overflow-wrap:anywhere}
 @media(max-width:480px){.top .der [data-modo]{display:none}}
+
+/* El rol pinta la página. El servidor rechaza igual; esto solo evita enseñar puertas cerradas. */
+:root[data-rol="auditor"] .contenido .btn.pri,:root[data-rol="auditor"] .contenido .btn.peligro,
+:root[data-rol="auditor"] .contenido [data-emitir],:root[data-rol="auditor"] .contenido [data-solicitar],:root[data-rol="auditor"] .contenido [data-quemar],
+:root[data-rol="auditor"] .contenido [data-valuar],:root[data-rol="auditor"] .contenido [data-mercado],:root[data-rol="auditor"] .contenido [data-orden],
+:root[data-rol="auditor"] .contenido [data-transferir],:root[data-rol="auditor"] .contenido [data-distribuir],:root[data-rol="auditor"] .contenido [data-reporte],
+:root[data-rol="auditor"] .contenido [data-capacidad],:root[data-rol="auditor"] .contenido [data-params],:root[data-rol="auditor"] .contenido [data-consumo],
+:root[data-rol="auditor"] .contenido [data-nuevo],:root[data-rol="auditor"] .contenido [data-nueva],:root[data-rol="auditor"] .contenido [data-freno],
+:root[data-rol="auditor"] .contenido [data-res],:root[data-rol="auditor"] .contenido [data-cruzar]{display:none!important}
+:root[data-rol="tesorero"] .contenido [data-freno],:root[data-rol="tesorero"] .contenido [data-firmar]{display:none!important}
