@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
 /* ============================================================
    Orden Global · Tesorería — sistema visual compartido
    Paleta heredada de Genesis Admin (teal profundo + oro)
@@ -53,15 +55,22 @@
 html{color-scheme:dark light}
 body{
   background:var(--bg); color:var(--ink);
-  font:14px/1.55 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  font:14px/1.55 "Manrope",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
   -webkit-font-smoothing:antialiased;
 }
+/* La voz institucional: los títulos y las cifras grandes van en una serif con óptica variable. */
+.top h1,.kpi .val,.hub-cab h1,.puerta h2,.medidor .centro b,.brand b,.card .cab h3{
+  font-family:"Fraunces","Iowan Old Style",Georgia,serif;font-variation-settings:"opsz" 96;font-weight:600;letter-spacing:-.012em;
+}
+.card .cab h3{font-size:15px}
+.kpi .val,.medidor .centro b{font-variant-numeric:tabular-nums lining-nums}
 a{color:inherit;text-decoration:none}
 button,input,select,textarea{font:inherit;color:inherit}
-.num{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-variant-numeric:tabular-nums}
+.num{font-family:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-variant-numeric:tabular-nums}
+.kpi .val.num{font-family:"Fraunces","Iowan Old Style",Georgia,serif;font-size:27px}
 /* Los iconos son trazos, nunca rellenos */
 svg{width:16px;height:16px;flex:none;fill:none;stroke:currentColor;stroke-width:1.85;stroke-linecap:round;stroke-linejoin:round}
-.mono{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+.mono{font-family:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
 
 /* ---------- estructura ---------- */
 .shell{display:grid;grid-template-columns:238px 1fr;min-height:100vh}
@@ -380,3 +389,62 @@ p .mono,.aviso .mono,.ts.mono{word-break:break-all;overflow-wrap:anywhere}
 :root[data-rol="auditor"] .contenido [data-nuevo],:root[data-rol="auditor"] .contenido [data-nueva],:root[data-rol="auditor"] .contenido [data-freno],
 :root[data-rol="auditor"] .contenido [data-res],:root[data-rol="auditor"] .contenido [data-cruzar]{display:none!important}
 :root[data-rol="tesorero"] .contenido [data-freno],:root[data-rol="tesorero"] .contenido [data-firmar]{display:none!important}
+
+
+/* ============================================================
+   Movimiento. Una entrada orquestada por pantalla, micro-interacciones
+   contenidas, y nada que parpadee solo. Todo se apaga con
+   prefers-reduced-motion.
+   ============================================================ */
+@keyframes subir{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+@keyframes dibujar{from{stroke-dashoffset:var(--c)}}
+@keyframes crecer{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+@keyframes aparecer{from{opacity:0;transform:translateY(6px) scale(.985)}to{opacity:1;transform:none}}
+@keyframes aurora{0%{transform:translate(-8%,-6%) rotate(0deg)}50%{transform:translate(6%,4%) rotate(8deg)}100%{transform:translate(-8%,-6%) rotate(0deg)}}
+@keyframes brillo{0%{background-position:-200% 0}100%{background-position:200% 0}}
+
+.contenido > *{animation:subir .55s cubic-bezier(.22,.8,.3,1) both}
+.contenido > *:nth-child(2){animation-delay:.07s} .contenido > *:nth-child(3){animation-delay:.14s}
+.contenido > *:nth-child(4){animation-delay:.2s} .contenido > *:nth-child(5){animation-delay:.26s}
+.contenido > *:nth-child(n+6){animation-delay:.32s}
+.grid > .kpi,.grid > .card{animation:subir .5s cubic-bezier(.22,.8,.3,1) both}
+.grid > :nth-child(2){animation-delay:.06s} .grid > :nth-child(3){animation-delay:.12s} .grid > :nth-child(4){animation-delay:.18s}
+
+.medidor svg circle:last-child{animation:dibujar 1.1s cubic-bezier(.3,.9,.3,1) both;animation-delay:.15s}
+.barra i{transform-origin:left center;animation:crecer .9s cubic-bezier(.3,.9,.3,1) both;animation-delay:.2s}
+
+.card,.kpi{transition:transform .22s cubic-bezier(.22,.8,.3,1),box-shadow .22s,border-color .22s}
+.card[data-abrir]:hover{transform:translateY(-3px);box-shadow:0 26px 48px -26px rgba(0,0,0,.7);border-color:color-mix(in srgb,var(--acento) 45%,var(--line))}
+.kpi.acento{background:linear-gradient(160deg,color-mix(in srgb,var(--acento) 9%,var(--surface)),var(--surface) 60%)}
+.kpi::after{content:"";position:absolute;inset:auto -20% -60% auto;width:60%;aspect-ratio:1;border-radius:99px;background:radial-gradient(closest-side,var(--acento-soft),transparent 70%);opacity:0;transition:opacity .3s;pointer-events:none}
+.kpi:hover::after{opacity:1}
+
+.btn{transition:transform .16s,background .16s,border-color .16s,box-shadow .16s}
+.btn:active{transform:translateY(1px) scale(.99)}
+.btn.pri{box-shadow:0 8px 20px -10px color-mix(in srgb,var(--acento) 70%,transparent)}
+.btn.pri:hover{box-shadow:0 12px 26px -10px color-mix(in srgb,var(--acento) 85%,transparent);transform:translateY(-1px)}
+.nav a{transition:background .18s,color .18s,transform .18s}
+.nav a:hover{transform:translateX(2px)}
+.nav a.on{box-shadow:inset 3px 0 0 var(--acento)}
+.modal{animation:aparecer .26s cubic-bezier(.22,.8,.3,1) both}
+.modal-fondo{animation:subir .2s both}
+.toast{animation:aparecer .3s cubic-bezier(.22,.8,.3,1) both}
+
+/* portal: la aurora detrás del título y el brillo que recorre el nombre */
+.hub-cab{position:relative;isolation:isolate}
+.hub-cab::before{content:"";position:absolute;inset:-40% -20% auto -20%;height:140%;z-index:-1;pointer-events:none;
+  background:radial-gradient(40% 50% at 30% 40%,var(--gold-soft),transparent 70%),radial-gradient(35% 45% at 70% 50%,var(--violet-soft),transparent 70%),radial-gradient(30% 40% at 50% 80%,var(--cyan-soft),transparent 70%);
+  filter:blur(28px);animation:aurora 18s ease-in-out infinite}
+.hub-cab .escudo{box-shadow:0 20px 50px -20px color-mix(in srgb,var(--gold) 60%,transparent)}
+.hub-cab h1{background:linear-gradient(100deg,var(--ink) 0%,var(--ink) 55%,var(--gold) 80%,var(--ink) 100%);background-size:200% 100%;-webkit-background-clip:text;background-clip:text;color:transparent;animation:brillo 7s linear infinite}
+.puertas > .puerta{animation:subir .6s cubic-bezier(.22,.8,.3,1) both}
+.puertas > .puerta:nth-child(2){animation-delay:.1s} .puertas > .puerta:nth-child(3){animation-delay:.2s}
+.puerta .ic{transition:transform .25s cubic-bezier(.22,.8,.3,1)}
+.puerta:hover .ic{transform:rotate(-6deg) scale(1.06)}
+.flujo .n{animation:subir .5s both} .flujo .n:nth-child(3){animation-delay:.1s} .flujo .n:nth-child(5){animation-delay:.2s} .flujo .n:nth-child(7){animation-delay:.3s} .flujo .n:nth-child(9){animation-delay:.4s}
+
+:focus-visible{outline:2px solid var(--acento);outline-offset:2px;border-radius:6px}
+
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation:none!important;transition:none!important}
+}

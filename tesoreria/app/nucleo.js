@@ -299,7 +299,7 @@
     return `<div class="medidor" style="width:${T}px;height:${T}px">
       <svg width="${T}" height="${T}">
         <circle cx="${T / 2}" cy="${T / 2}" r="${Rr}" stroke="var(--surface3)" stroke-width="9" fill="none"/>
-        <circle cx="${T / 2}" cy="${T / 2}" r="${Rr}" stroke="${color}" stroke-width="9" fill="none" stroke-linecap="round" stroke-dasharray="${C}" stroke-dashoffset="${C * (1 - p / 100)}"/>
+        <circle cx="${T / 2}" cy="${T / 2}" r="${Rr}" stroke="${color}" stroke-width="9" fill="none" stroke-linecap="round" stroke-dasharray="${C}" stroke-dashoffset="${C * (1 - p / 100)}" style="--c:${C}"/>
       </svg>
       <div class="centro"><b>${Number.isFinite(pct) ? fmt.pct(pct, 1) : '∞'}</b><span>${esc(etiqueta)}</span></div>
     </div>`;
@@ -454,6 +454,7 @@
       if (sello) sello.innerHTML = `<span class="ts mono">sello ${esc((estado.libro[0] || {}).hash || '—').slice(0, 12)}</span>`;
       cont.innerHTML = v.render();
       if (v.alMontar) v.alMontar(cont);
+      contarCifras(cont);
       els('[data-pill]', raiz).forEach((b) => { const n = buscar.pendientes().length; b.textContent = n; b.style.display = n ? '' : 'none'; });
     }
 
@@ -466,6 +467,25 @@
       cont.innerHTML = `<div class="aviso bad">${ic('alerta')}<div><b>No se pudo cargar el estado</b><span class="txt">${esc(e.message)}</span></div></div>`;
     });
     return { render, ir: (v) => { vistaActual = v; location.hash = v; render(); } };
+  }
+
+  /** Las cifras grandes llegan a su valor en vez de aparecer. Respeta reduced-motion. */
+  function contarCifras(raiz) {
+    if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    els('.kpi .val', raiz).forEach((elv) => {
+      const nodo = Array.from(elv.childNodes).find((n) => n.nodeType === 3 && /\d/.test(n.textContent));
+      if (!nodo) return;
+      const txt = nodo.textContent; const m = txt.match(/^(\D*)([\d.,]+)(.*)$/); if (!m) return;
+      const limpio = m[2].replace(/,/g, ''); const fin = parseFloat(limpio); if (!Number.isFinite(fin)) return;
+      const dec = (limpio.split('.')[1] || '').length; const conComas = m[2].includes(',');
+      const t0 = performance.now(), dur = 750;
+      const paso = (t) => {
+        const k = Math.min(1, (t - t0) / dur); const e = 1 - Math.pow(1 - k, 3); const v = fin * e;
+        nodo.textContent = m[1] + (conComas ? Number(v.toFixed(dec)).toLocaleString('es-MX', { minimumFractionDigits: dec, maximumFractionDigits: dec }) : v.toFixed(dec)) + m[3];
+        if (k < 1) requestAnimationFrame(paso); else nodo.textContent = txt;
+      };
+      requestAnimationFrame(paso);
+    });
   }
 
   function alClic(raiz, attr, fn) {
