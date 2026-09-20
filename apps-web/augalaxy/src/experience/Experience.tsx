@@ -9,7 +9,7 @@ import {airtouch} from './airtouch';
 import {sound} from './sound';
 import './experience.css';
 import Tutorial from './Tutorial';
-import {immersive} from './immersive';
+import {immersive,useViewer} from './immersive';
 import {registerExperienceTools} from './webmcp';
 
 class SceneBoundary extends Component<{children:ReactNode},{failed:boolean}>{
@@ -26,6 +26,8 @@ export default function Experience({embedded=false}:{embedded?:boolean}){
  const reduced=prefs.motion==='reduced'||(prefs.motion==='system'&&systemReduced);
  const cursor=useRef<HTMLDivElement>(null),handStatus=useHandStatus();
  const mainRef=useRef<HTMLDivElement>(null),introTimer=useRef<number>(0);
+ const viewerMode=useViewer(s=>s.mode),viewerError=useViewer(s=>s.error);
+ useEffect(()=>{if(viewerError)setNotice(es?'No se pudo iniciar el visor. Revisa compatibilidad y permisos; el sistema sigue disponible.':'The viewer could not start. Check compatibility and permissions; the system remains available.');},[viewerError,es]);
  const selected=worlds.find(w=>w.id===state.selected);
  const isGate=state.stage==='gate',intro=state.stage==='intro',galaxies=state.stage==='galaxies',travelling=state.stage==='transit';
  const dockRef=useRef<HTMLElement>(null),flightRef=useRef<HTMLDivElement>(null);
@@ -37,8 +39,8 @@ export default function Experience({embedded=false}:{embedded?:boolean}){
  useEffect(()=>{if(state.selected)dockRef.current?.querySelector('[data-world="'+state.selected+'"]')?.scrollIntoView({block:'nearest',inline:'center',behavior:reduced?'instant':'smooth'});},[state.selected,reduced]);
  useEffect(()=>{
   const mq=matchMedia('(prefers-reduced-motion: reduce)');const update=()=>setSystemReduced(mq.matches);mq.addEventListener('change',update);
-  const visibility=()=>{setPageVisible(!document.hidden);if(document.hidden){airtouch.stop();sound.suspend();}else if(prefs.sound)void sound.enable(true,prefs.volume,prefs.ambient);};
-  const unload=()=>{airtouch.stop();sound.suspend();};document.addEventListener('visibilitychange',visibility);window.addEventListener('pagehide',unload);
+  const visibility=()=>{setPageVisible(!document.hidden);if(document.hidden){airtouch.stop();sound.suspend();if(useViewer.getState().mode==='carton')immersive.salir();}else if(prefs.sound)void sound.enable(true,prefs.volume,prefs.ambient);};
+  const unload=()=>{airtouch.stop();sound.suspend();immersive.salir();};document.addEventListener('visibilitychange',visibility);window.addEventListener('pagehide',unload);
   return()=>{mq.removeEventListener('change',update);document.removeEventListener('visibilitychange',visibility);window.removeEventListener('pagehide',unload);};
  },[prefs.sound,prefs.volume,prefs.ambient]);
  useEffect(()=>{if(!embedded)document.documentElement.lang=prefs.lang;},[prefs.lang,embedded]);
@@ -65,7 +67,7 @@ export default function Experience({embedded=false}:{embedded?:boolean}){
  // The host sets its stage before mount; do not overwrite a pending intro here.
  const fullScreen=async()=>{try{if(document.fullscreenElement)await document.exitFullscreen();else if(mainRef.current?.requestFullscreen)await mainRef.current.requestFullscreen();else setNotice(es?'Pantalla completa no disponible en este navegador.':'Fullscreen is unavailable in this browser.');}catch{setNotice(es?'No se pudo abrir pantalla completa.':'Fullscreen could not be opened.');}};
  const openGalaxy=()=>navigation.galaxies();
- return <main className={'galaxy-os '+(isGate?'at-gate':'')+(intro?' in-intro':'')+(travelling?' in-transit':'')+(embedded?' is-embedded':'')} ref={mainRef} lang={prefs.lang} data-immersive={state.immersive} data-selected={!!selected} data-motion={reduced?'reduced':'full'} data-contrast={prefs.contrast?'high':'normal'} style={{'--text-scale':String(prefs.textScale)} as React.CSSProperties}>
+ return <main className={'galaxy-os '+(isGate?'at-gate':'')+(intro?' in-intro':'')+(travelling?' in-transit':'')+(embedded?' is-embedded':'')} ref={mainRef} lang={prefs.lang} data-viewer={viewerMode||'none'} data-immersive={state.immersive} data-selected={!!selected} data-motion={reduced?'reduced':'full'} data-contrast={prefs.contrast?'high':'normal'} style={{'--text-scale':String(prefs.textScale)} as React.CSSProperties}>
  <SceneBoundary><Universe paused={!pageVisible}/></SceneBoundary><div className="edge-shade" aria-hidden="true"/>
  {!state.immersive&&!intro&&!travelling&&<header className="os-header"><button className="brand-button" aria-label={es?'Inicio Orden Global':'Orden Global home'} onClick={()=>!isGate&&navigation.home()}><Brand/></button>
  {!isGate&&<nav className="scale-tabs" aria-label={es?'Escala del universo':'Universe scale'}><button className={!galaxies?'active':''} onClick={()=>navigation.home()}>{es?'Mi sistema':'My system'}</button><button className={galaxies?'active':''} onClick={openGalaxy}>{es?'Galaxias':'Galaxies'}<Icon name="galaxy" size={16}/></button></nav>}
@@ -93,7 +95,8 @@ export default function Experience({embedded=false}:{embedded?:boolean}){
  {!selected&&!galaxies&&<div className="gesture-hint">{es?'Toca un planeta o una app · Pulsa Entrar para viajar':'Choose a planet or an app · Press Enter to travel'}</div>}
  {galaxies&&<p className="galaxy-credit"><a href="https://esahubble.org/images/heic0506a/" target="_blank" rel="noreferrer">M51 · NASA, ESA, S. Beckwith (STScI), and The Hubble Heritage Team (STScI/AURA)</a><span>{es?'Composición adaptada':'Adapted composition'} · <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noreferrer">CC BY 4.0</a></span></p>}
  </>}
- {state.immersive&&<div className="panorama-controls"><span>ORDEN GLOBAL · 360</span><button className="primary" onClick={()=>immersive.salir()}>{es?'Salir de 360':'Exit 360'}</button><p>{es?'Arrastra para mirar · Flechas para girar · Esc para salir':'Drag to look · Arrow keys to turn · Esc to exit'}</p><button className="text-button" onClick={()=>immersive.recentrar()}>{es?'Centrar vista':'Center view'}</button></div>}
+ {state.immersive&&<div className="panorama-controls"><span>ORDEN GLOBAL · {viewerMode==='trescientos60'?'360':viewerMode==='xr'?'WebXR':'Stereo'}</span><button className="primary" onClick={()=>immersive.salir()}>{es?'Salir del visor':'Exit viewer'}</button><p>{es?'Arrastra para mirar · Flechas para girar · Esc para salir':'Drag to look · Arrow keys to turn · Esc to exit'}</p><button className="text-button" onClick={()=>immersive.recentrar()}>{es?'Centrar vista':'Center view'}</button></div>}
+ {viewerMode==='carton'&&<button className="stereo-exit" aria-label={es?'Salir del visor':'Exit viewer'} onClick={()=>immersive.salir()}/>}
  {state.unsupported&&<button className="fallback-apps primary" onClick={()=>state.set({directory:true})}>{es?'Abrir aplicaciones sin 3D':'Open applications without 3D'}</button>}
  {state.tutorial&&<Tutorial/>}
  {state.settings&&<Settings onClose={()=>state.set({settings:false})}/>}

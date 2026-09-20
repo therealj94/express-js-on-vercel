@@ -65,3 +65,14 @@ test('360 rejects unsupported modes and restores normal navigation on exit',asyn
  immersive.salir();assert.equal(immersive.estado().activo,false);assert.equal(navigation.yaw,0);assert.equal(navigation.pitch,.6);
  useExperience.getState().set({ready:false});await assert.rejects(immersive.entrar('trescientos60'),/not-ready/);
 });
+
+import {registerViewerDriver,useViewer} from '../src/experience/immersive';
+test('Headset start cancellation cleans late sessions and does not resurrect the viewer',async()=>{
+ useExperience.getState().set({ready:true});let release!:()=>void,stops=0;
+ const unregister=registerViewerDriver({start:()=>new Promise<void>(r=>{release=r}),stop:()=>{stops++},recenter:()=>{},tracking:()=>false});
+ const pending=immersive.entrar('xr');assert.equal(useViewer.getState().opening,true);immersive.salir();release();await assert.rejects(pending,/cancelled/);assert.equal(useExperience.getState().immersive,false);assert.equal(useViewer.getState().mode,null);assert.equal(useViewer.getState().opening,false);assert.ok(stops>0);unregister();useExperience.getState().set({ready:false});
+});
+test('Headset driver failure restores the system and exposes an actionable error',async()=>{
+ useExperience.getState().set({ready:true});const unregister=registerViewerDriver({start:async()=>{throw Error('Permission denied')},stop:()=>{},recenter:()=>{},tracking:()=>false});
+ await assert.rejects(immersive.entrar('carton'),/Permission/);assert.equal(useExperience.getState().immersive,false);assert.equal(useViewer.getState().mode,null);assert.equal(useViewer.getState().error,'Permission denied');unregister();useExperience.getState().set({ready:false});
+});

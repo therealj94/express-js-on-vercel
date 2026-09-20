@@ -10,6 +10,8 @@ import CompatibleUniverse from './CompatibleUniverse';
 import {textureFor} from './textures';
 import {assetURL} from './assets';
 import {CameraDirector,updateOrbits,updateLabels,locationOf,labelNodes,linkNodes,bindSceneInput,deepWorlds} from './cosmos';
+import ViewerDriver from './viewerDriver';
+import {useViewer,immersive} from './immersive';
 import {SolarCore,BlackHole,CosmicNebula,OrbitPaths,Pulsar,GalacticPortrait} from './StellarObjects';
 
 function rng(seed:number){let s=seed;return()=>{s=(Math.imul(s,1664525)+1013904223)>>>0;return s/4294967296;};}
@@ -81,7 +83,7 @@ function SkyBackdrop(){
 function SceneDriver({onLost}:{onLost:()=>void}){
  const {camera,gl,size}=useThree(),director=useRef(new CameraDirector()),last=useRef(0),frames=useRef(0);
  useEffect(()=>{const remove=bindSceneInput(gl.domElement),lost=(event:Event)=>{event.preventDefault();onLost();};gl.domElement.addEventListener('webglcontextlost',lost);useExperience.getState().set({ready:true});return()=>{remove();gl.domElement.removeEventListener('webglcontextlost',lost);};},[gl,onLost]);
- useFrame((_,dt)=>{const now=performance.now();updateOrbits(now,dt,size.width);director.current.update(camera,size.width,size.height,now,dt);updateLabels(camera,size.width,size.height);frames.current++;if(now-last.current>2000){useExperience.getState().set({fps:Math.round(frames.current*1000/(now-last.current))});frames.current=0;last.current=now;}},-2);
+ useFrame((_,dt)=>{const now=performance.now();updateOrbits(now,dt,size.width);if(useViewer.getState().mode!=='xr')director.current.update(camera,size.width,size.height,now,dt);updateLabels(camera,size.width,size.height);frames.current++;if(now-last.current>2000){useExperience.getState().set({fps:Math.round(frames.current*1000/(now-last.current))});frames.current=0;last.current=now;}},-2);
  return null;
 }
 export function PlanetLabels(){
@@ -94,6 +96,7 @@ class RenderGuard extends Component<{children:ReactNode;onError:()=>void},{faile
 let supported:boolean|undefined;
 function supportsWebGL(){if(supported!==undefined)return supported;try{const c=document.createElement('canvas'),gl=c.getContext('webgl2');supported=!!gl;gl?.getExtension('WEBGL_lose_context')?.loseContext();return supported;}catch{return false;}}
 export default function Universe({paused=false}:{paused?:boolean}){
+ const viewerMode=useViewer(s=>s.mode);
  const prefs=usePreferences(s=>s.prefs),choice=useExperience(s=>s.rendererChoice),[lost,setLost]=useState(false);
  const webgl=useMemo(supportsWebGL,[]),requested=choice||prefs.defaultRenderer,pro=requested==='pro'&&webgl&&!lost;
  const onLost=useMemo(()=>()=>setLost(true),[]);
@@ -104,12 +107,12 @@ export default function Universe({paused=false}:{paused?:boolean}){
   gl={{antialias:true,alpha:false,powerPreference:'high-performance'}}
   fallback={<CompatibleUniverse paused={paused} labels={labelNodes}/>}
   onCreated={({gl})=>{gl.toneMapping=T.ACESFilmicToneMapping;gl.toneMappingExposure=1.1;gl.setClearColor('#02040a');}}>
-  <SceneDriver onLost={onLost}/><ambientLight intensity={.25}/><pointLight position={[0,0,0]} intensity={90} decay={1.5}/><directionalLight position={[-30,30,15]} intensity={.3}/>
+  <SceneDriver onLost={onLost}/><ViewerDriver/><ambientLight intensity={.25}/><pointLight position={[0,0,0]} intensity={90} decay={1.5}/><directionalLight position={[-30,30,15]} intensity={.3}/>
   <SkyBackdrop/><CosmicNebula/><GalacticPortrait/><StarField count={low?2000:4200} radius={380}/>
   <StarField spiral seed={41} count={count} radius={72} position={[0,-12,-36]} color="#94b3cf" tilt={.27}/>
   {externalGalaxies.map(g=><StarField key={g.name} spiral seed={g.seed} count={low?3400:9500} radius={24} position={g.position} color={g.color} tilt={.65}/>)}
   <OrbitPaths/><SolarCore/>{worlds.filter(w=>w.id!=='genesis').map((w,i)=><Planet key={w.id} world={w} index={i}/>)}
   {deepWorlds.map((w,i)=><Planet key={w.id} world={w} index={i+12} deep/>)}<BlackHole/><Pulsar/>
-  {!low&&<EffectComposer multisampling={0}><Bloom intensity={.55} luminanceThreshold={1.1} luminanceSmoothing={.7} mipmapBlur/></EffectComposer>}
+  {!low&&(!viewerMode||viewerMode==='trescientos60')&&<EffectComposer multisampling={0}><Bloom intensity={.55} luminanceThreshold={1.1} luminanceSmoothing={.7} mipmapBlur/></EffectComposer>}
  </Canvas></RenderGuard></div>;
 }

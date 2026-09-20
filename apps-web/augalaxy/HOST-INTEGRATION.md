@@ -30,7 +30,7 @@ The Vite CSS transform scopes the shell stylesheet to `.galaxy-os`; host inputs,
 - Check a staging host through login gate, intro, menu, mount/unmount and return transitions.
 - Check Pro shaders, graphics performance and GPU context loss on actual WebGL2 devices.
 - Check camera gestures and audio levels on physical hardware.
-- The original WebXR path is preserved in the old engine source but has not been ported to this preview entry.
+- The original engine remains preserved. The new headset driver is an experimental replacement, not full parity with the old portal, controller and cinematic contracts.
 - No production app, identity, account or financial flow has been tested or changed.
 
 ## Hardening completed after the release audit
@@ -44,10 +44,18 @@ The Vite CSS transform scopes the shell stylesheet to `.galaxy-os`; host inputs,
 
 `tests/host-fixture.html` is a local, compiled-bundle fixture for mount, intro, immediate cancellation, return and a deliberately failing chat callback. It preserves unrelated host content and does not load account services. Serve the project with its dev server after building and open that fixture locally. This is not a production login test.
 
-The older WebXR/portal/genesis animation APIs are still unsupported. They are not installed as misleading no-op compatibility functions. Production replacement remains blocked on those real requirements and on the hardware checks above.
+The older portal/genesis animation APIs are still unsupported. They are not installed as misleading no-op compatibility functions. Production replacement remains blocked on those real requirements and on the hardware checks above.
 
 ## Screen panorama adapter
 
 `__AE_VISOR` now implements on-screen `trescientos60` entry, exit, state, detection and recentering using the shared camera in both renderers. Camera position remains fixed while pointer/arrow input changes its view direction. Orbits pause during panorama. Exiting restores the solar overview and emits `ae-visor-fuera`, including exits triggered by other navigation.
 
-This adapter reports `xr: false`, `giroscopio: false` and no permission request. It rejects `xr` and `carton` explicitly; it does not present itself as a headset implementation. Settings explains this distinction. No camera, login, account, transaction or remote application service is opened by the panorama. Browser validation covers the screen controls; real headset support remains outstanding.
+The initial panorama-only adapter has now been extended by the headset driver below. No login, account, transaction or remote application service is opened by the viewer. Browser validation covers screen controls; physical headset validation remains outstanding.
+
+## Headset driver implementation and verification boundary
+
+The Pro renderer now registers actual WebXR and phone-stereo drivers. WebXR requests an immersive session only from explicit entry, falls back from local-floor to local reference space, owns stereo rendering, and restores the original camera parent on exit. The phone driver requests orientation permission when required and renders separate eyes with bounded spacing. Planet labels and an exit instruction are rendered inside the 3D scene. Looking at a planet displays its name; no app or account is opened. A controller trigger exits WebXR; tapping the screen exits phone stereo.
+
+Session startup is cancellable. Pending startup cannot revive a dismissed viewer. Permission/driver failure returns to the solar system with an error message. Unmount and renderer loss end sessions and remove sensor listeners. A mode is offered only when its driver and browser API are available; API presence does not prove sensor output or visual correctness.
+
+19 logic tests pass, including mocked driver cancellation and failure. These are controller tests, not GPU, headset, sensor, stereo-comfort or hardware certification. WebXR rendering, phone sensor alignment, calibration and physical exit controls remain unverified on actual devices. Treat the headset drivers as experimental until those checks pass. The production replacement remains on hold. Financial-host authentication and portal actions are not integrated.
