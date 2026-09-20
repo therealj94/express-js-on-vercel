@@ -1,6 +1,6 @@
 import {Camera,PerspectiveCamera,Vector3} from 'three';
 import {worlds,World} from './catalog';
-import {navigation,useExperience,motionReduced} from './navigation';
+import {navigation,useExperience,motionReduced,pelicula} from './navigation';
 import {usePreferences} from './preferences';
 
 export const SUN_RADIUS=2.75;
@@ -12,7 +12,7 @@ let orbitalTime=0,lastOrbitFrame=-1;
 export function updateOrbits(now:number,dt:number,width=1000){
  if(Math.abs(now-lastOrbitFrame)<.5)return;lastOrbitFrame=now;
  const state=useExperience.getState(),prefs=usePreferences.getState().prefs;
- if(!state.immersive&&prefs.autoOrbit&&!motionReduced()&&!state.selected&&!state.hovered&&!state.settings&&!state.directory&&!state.windowId&&!state.tutorial&&now-navigation.lastInteraction>650)orbitalTime+=Math.min(.04,dt);
+ if(!state.immersive&&!pelicula.activo&&prefs.autoOrbit&&!motionReduced()&&!state.selected&&!state.hovered&&!state.settings&&!state.directory&&!state.windowId&&!state.tutorial&&now-navigation.lastInteraction>650)orbitalTime+=Math.min(.04,dt);
  orbitPositions.get('genesis')!.set(0,0,0);
  orbiting.forEach((w,i)=>{const radius=i<5?11:18,angle=angles[i]+orbitalTime*(i<5?.025:.016);orbitPositions.get(w.id)!.set(Math.cos(angle)*radius*(width<700?.74:1),Math.sin(angle*2+i)*.24,Math.sin(angle)*radius*(width<700?1.15:1));});
 }
@@ -37,6 +37,17 @@ export class CameraDirector {
    const c=camera as PerspectiveCamera;if(c.isPerspectiveCamera&&c.fov!==65){c.fov=65;c.updateProjectionMatrix();}return;
   }
   if(state.stage!==this.stage){if(state.stage==='intro')this.introStart=now;this.stage=state.stage;}
+  /* MIENTRAS CORRE LA HISTORIA MANDA LA PELÍCULA. El encuadre lo decide el
+     guion —radio, altura y giro por plano—, no la última vez que alguien
+     arrastró el espacio. */
+  if(pelicula.activo){
+   this.target.copy(pelicula.mira);
+   this.eye.set(Math.sin(pelicula.yaw)*Math.cos(pelicula.pitch)*pelicula.distancia,Math.sin(pelicula.pitch)*pelicula.distancia,Math.cos(pelicula.yaw)*Math.cos(pelicula.pitch)*pelicula.distancia).add(this.target);
+   const cine=reduced?1:1-Math.exp(-Math.min(dt,.08)*4.5);
+   camera.position.lerp(this.eye,cine);this.look.lerp(this.target,cine);camera.lookAt(this.look);camera.updateMatrixWorld();
+   const lente=camera as PerspectiveCamera;if(lente.isPerspectiveCamera&&Math.abs(lente.fov-52)>.01){lente.fov=52;lente.updateProjectionMatrix();}
+   return;
+  }
   const base=mobile?76:43;let distance=base,yaw=navigation.yaw,pitch=navigation.pitch+(mobile?.38:0);
   this.target.set(0,0,0);
   if(state.stage==='gate'){this.target.set(mobile?-2:-4,mobile?0:-4,0);distance=mobile?65:36;pitch=.65;yaw=-.18;}

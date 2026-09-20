@@ -11,6 +11,7 @@ import './experience.css';
 import Tutorial from './Tutorial';
 import {immersive,useViewer} from './immersive';
 import {registerExperienceTools} from './webmcp';
+import {genesis} from './genesis';
 
 class SceneBoundary extends Component<{children:ReactNode},{failed:boolean}>{
  state={failed:false};static getDerivedStateFromError(){return{failed:true};}
@@ -30,6 +31,9 @@ export default function Experience({embedded=false}:{embedded?:boolean}){
  useEffect(()=>{if(viewerError)setNotice(es?'No se pudo iniciar el visor. Revisa compatibilidad y permisos; el sistema sigue disponible.':'The viewer could not start. Check compatibility and permissions; the system remains available.');},[viewerError,es]);
  const selected=worlds.find(w=>w.id===state.selected);
  const isGate=state.stage==='gate',intro=state.stage==='intro',galaxies=state.stage==='galaxies',travelling=state.stage==='transit';
+ /* Mientras corre la historia del origen la escena queda limpia: la casa pone
+    sus palabras y lo demás estorba. */
+ const cinema=state.cinema;
  const dockRef=useRef<HTMLElement>(null),flightRef=useRef<HTMLDivElement>(null);
  useEffect(registerExperienceTools,[]);
  useEffect(()=>{if(state.stage==='system'&&!prefs.tutorialSeen&&!embedded)state.set({tutorial:true});},[state.stage,prefs.tutorialSeen,embedded]);
@@ -51,7 +55,7 @@ export default function Experience({embedded=false}:{embedded?:boolean}){
  useEffect(()=>{
   const handle=(e:KeyboardEvent)=>{if(document.querySelector('dialog[open]')||/INPUT|SELECT|TEXTAREA/.test((e.target as HTMLElement)?.tagName)||(e.target as HTMLElement)?.isContentEditable)return;
    if(state.immersive){if(e.key==='Escape')immersive.salir();else if(['ArrowLeft','ArrowRight','ArrowUp','ArrowDown'].includes(e.key)){e.preventDefault();navigation.orbit(e.key==='ArrowLeft'?-24:e.key==='ArrowRight'?24:0,e.key==='ArrowUp'?-16:e.key==='ArrowDown'?16:0);}return;}
-   if(e.key==='Escape'){if(intro)state.set({stage:'system'});else navigation.home();}
+   if(e.key==='Escape'){if(genesis.vivo())genesis.saltar();else if(intro)state.set({stage:'system'});else navigation.home();}
    if(!isGate&&!intro&&!travelling){
     if(e.key==='+'||e.key==='='){e.preventDefault();navigation.dolly(.82);}
     if(e.key==='-'){e.preventDefault();navigation.dolly(1.22);}
@@ -69,10 +73,10 @@ export default function Experience({embedded=false}:{embedded?:boolean}){
  const openGalaxy=()=>navigation.galaxies();
  return <main className={'galaxy-os '+(isGate?'at-gate':'')+(intro?' in-intro':'')+(travelling?' in-transit':'')+(embedded?' is-embedded':'')} ref={mainRef} lang={prefs.lang} data-viewer={viewerMode||'none'} data-immersive={state.immersive} data-selected={!!selected} data-motion={reduced?'reduced':'full'} data-contrast={prefs.contrast?'high':'normal'} style={{'--text-scale':String(prefs.textScale)} as React.CSSProperties}>
  <SceneBoundary><Universe paused={!pageVisible}/></SceneBoundary><div className="edge-shade" aria-hidden="true"/>
- {!state.immersive&&!intro&&!travelling&&<header className="os-header"><button className="brand-button" aria-label={es?'Inicio Orden Global':'Orden Global home'} onClick={()=>!isGate&&navigation.home()}><Brand/></button>
+ {!state.immersive&&!intro&&!travelling&&!cinema&&<header className="os-header"><button className="brand-button" aria-label={es?'Inicio Orden Global':'Orden Global home'} onClick={()=>!isGate&&navigation.home()}><Brand/></button>
  {!isGate&&<nav className="scale-tabs" aria-label={es?'Escala del universo':'Universe scale'}><button className={!galaxies?'active':''} onClick={()=>navigation.home()}>{es?'Mi sistema':'My system'}</button><button className={galaxies?'active':''} onClick={openGalaxy}>{es?'Galaxias':'Galaxies'}<Icon name="galaxy" size={16}/></button></nav>}
  <div className="header-tools">{!isGate&&<button className="renderer-badge" aria-label={es?'Cambiar modo Pro o Lite':'Change Pro or Lite mode'} onClick={()=>state.set({settings:true})}>{state.rendererActual==='pro'?'PRO':'LITE'}</button>}<span className="private-tag"><Icon name="lock" size={12}/>{es?'VISTA PRIVADA':'PRIVATE PREVIEW'}</span><button className="language-button" onClick={()=>set({lang:es?'en':'es'})} aria-label={es?'Switch to English':'Cambiar a español'}>{es?'EN':'ES'}</button><button className="icon-button" aria-label={prefs.sound?(es?'Silenciar sonido':'Mute sound'):(es?'Activar sonido':'Enable sound')} onClick={()=>{set({sound:!prefs.sound});void sound.enable(!prefs.sound,prefs.volume,prefs.ambient);}}><Icon name={prefs.sound?'sound':'muted'}/></button>{!isGate&&<button className="icon-button tutorial-trigger" aria-label={es?'Ver tutorial':'View tutorial'} onClick={()=>{navigation.home();state.set({tutorial:true});}}><Icon name="help"/></button>}{!isGate&&<button className="icon-button" aria-label={es?'Abrir ajustes':'Open settings'} onClick={()=>state.set({settings:true})}><Icon name="settings"/></button>}</div></header>}
- {isGate&&!embedded&&<section className="entry-layout">
+ {isGate&&!embedded&&!cinema&&<section className="entry-layout">
  <div className="entry-caption"><span className="coordinate">01 / ORDEN GLOBAL</span><h1>{es?'El futuro está en':'The future is in'}<br/><em>Orden Global.</em></h1><p>{es?'Tecnología. Finanzas. Un universo de posibilidades.':'Technology. Finance. A universe of possibilities.'}</p><span className="entry-line"/><small>{es?'Tu ecosistema, en otra dimensión.':'Your ecosystem, in another dimension.'}</small></div>
  <div className="entry-card"><div className="entry-symbol"><Icon name="galaxy" size={36}/></div><p className="eyebrow">{es?'BIENVENIDO A TU UNIVERSO':'WELCOME TO YOUR UNIVERSE'}</p><h2>{es?'Todo empieza aquí.':'It all begins here.'}</h2><p>{es?'Cruza el umbral. Cada mundo abre una nueva posibilidad.':'Cross the threshold. Every world opens a new possibility.'}</p>
  <div className="visitor-profile"><span>OG</span><div><strong>{es?'Explorador':'Explorer'}</strong><small>{es?'Acceso de demostración':'Demonstration access'}</small></div><Icon name="lock" size={17}/></div>
@@ -82,7 +86,7 @@ export default function Experience({embedded=false}:{embedded?:boolean}){
  <footer className="entry-footer"><span>ORDEN GLOBAL / {es?'TECNOLOGÍA SIN FRONTERAS':'TECHNOLOGY WITHOUT BORDERS'}</span><button onClick={()=>setAirOpen(true)}><Icon name="hand" size={18}/>AirTouch<small>{es?'Explora con tus manos':'Explore with your hands'}</small></button></footer></section>}
  {intro&&<div className="intro-sequence" role="status" aria-live="polite"><div className="intro-copy"><span className="intro-kicker">{es?'EL FUTURO ESTÁ EN':'THE FUTURE IS IN'}</span><h1>Orden Global</h1><div className="intro-divider"/><p>{es?'Tu universo está listo.':'Your universe awaits.'}</p></div><button className="skip-intro" onClick={()=>state.set({stage:'system'})}>{es?'Saltar intro':'Skip intro'}<Icon name="arrow" size={17}/></button><span className="intro-caption">GALAXY OS / {es?'INICIANDO EXPERIENCIA':'ENTERING EXPERIENCE'}</span></div>}
  {travelling&&selected&&<div className="planet-flight" ref={flightRef} role="status" aria-live="polite" style={{'--world-color':selected.color} as React.CSSProperties}><div className="flight-vignette"/><div className="flight-readout"><span>{es?'ENTRANDO A':'ENTERING'}</span><h1>{worldName(selected,prefs.lang)}</h1><div className="flight-track"><i/></div></div><button className="skip-intro" onClick={()=>navigation.focus(selected.id)}>{es?'Cancelar viaje':'Cancel journey'}<Icon name="close" size={17}/></button></div>}
- {!isGate&&!intro&&!travelling&&<>
+ {!isGate&&!intro&&!travelling&&!cinema&&<>
  <PlanetLabels/>
  <div className="system-heading"><p className="eyebrow">{galaxies?(es?'MÁS ALLÁ DEL HORIZONTE':'BEYOND THE HORIZON'):'ORDEN GLOBAL / 01'}</p><h1>{galaxies?(es?'Más allá de tu sistema.':'Beyond your system.'):(es?'Tu sistema solar.':'Your solar system.')}</h1><p>{galaxies?(es?'Nuevos mundos. Nuevas conexiones.':'New worlds. New connections.'):(es?'GENESIS CORE conecta todos tus mundos.':'GENESIS CORE connects all your worlds.')}</p></div>
  {galaxies&&<button className="cosmic-destinations" aria-expanded={galaxyMapOpen} aria-controls="galaxy-destinations" onClick={()=>setGalaxyMapOpen(!galaxyMapOpen)}><Icon name={galaxyMapOpen?'close':'galaxy'} size={18}/>{es?'Destinos del universo':'Universe destinations'}</button>}

@@ -88,3 +88,104 @@ test('Entry timing honours the host flight contract instead of a fixed delay',()
  // Reduced motion shortens the flight and the handoff with it.
  const quiet=entryTiming('descubrir',true);assert.equal(quiet.visible,100);assert.equal(quiet.callbackAt,80);
 });
+
+import {visorUI,useVisorUI,escenaTomada} from '../src/experience/visorUI';
+import {dentro} from '../src/experience/visorPaint';
+import {genesis,guion} from '../src/experience/genesis';
+import {pelicula} from '../src/experience/navigation';
+
+/* La casa vive en un navegador; estas pruebas no. Se le pone lo mínimo que el
+   motor toca —despachar un evento, dos relojes— y se mira qué sale. */
+function casaDePrueba(){
+ const eventos:CustomEvent[]=[];
+ let frame=0;const frames=new Map<number,()=>void>();
+ (globalThis as any).window={
+  dispatchEvent:(e:CustomEvent)=>{eventos.push(e);return true;},
+  setTimeout:(fn:()=>void,ms:number)=>setTimeout(fn,ms),
+  clearTimeout:(id:number)=>clearTimeout(id),
+  __AE_BLINDADO:false,
+ };
+ (globalThis as any).requestAnimationFrame=(fn:()=>void)=>{frames.set(++frame,fn);return frame;};
+ (globalThis as any).cancelAnimationFrame=(id:number)=>{frames.delete(id);};
+ return {eventos,correrFrames:()=>{const pendientes=[...frames.values()];frames.clear();pendientes.forEach(fn=>fn());}};
+}
+
+test('The headset portal reaches the host with the shape it already listens for',()=>{
+ const {eventos}=casaDePrueba();
+ visorUI.portico('inicio','ENTRAR','Sostené la mirada');
+ assert.equal(useVisorUI.getState().portico?.boton,'ENTRAR');
+ assert.equal(escenaTomada(),true,'with a panel in front, gaze must not pick planets');
+ visorUI.aprietaPortico();
+ assert.equal(useVisorUI.getState().portico,null,'pressing closes the portal');
+ assert.equal(eventos.at(-1)?.type,'ae-portico');
+ assert.deepEqual((eventos.at(-1) as CustomEvent).detail,{modo:'inicio'});
+ // Pressing twice must not send a second event: the door was already opened.
+ visorUI.aprietaPortico();
+ assert.equal(eventos.length,1);
+ visorUI.portico(null);
+ assert.equal(escenaTomada(),false);
+});
+
+test('The in-scene house panel reports its button and refuses malformed data',()=>{
+ const {eventos}=casaDePrueba();
+ visorUI.casa({key:'wallet',titulo:'Veta Wallet',botones:[{id:'abrir',texto:'Abrir'},{id:'volver',texto:'Volver'}]});
+ assert.equal(useVisorUI.getState().casa?.botones.length,2);
+ visorUI.aprietaCasa('volver');
+ assert.deepEqual((eventos.at(-1) as CustomEvent).detail,{accion:'volver',key:'wallet'});
+ // A panel with no usable buttons is no panel: it would trap the gaze.
+ visorUI.casa({key:'x',titulo:'X',botones:[]});
+ assert.equal(useVisorUI.getState().casa,null);
+ visorUI.casa(null);
+ assert.equal(useVisorUI.getState().casa,null);
+});
+
+test('The host shield alone blocks gaze selection',()=>{
+ casaDePrueba();
+ visorUI.limpiar();
+ assert.equal(escenaTomada(),false);
+ (globalThis as any).window.__AE_BLINDADO=true;
+ assert.equal(escenaTomada(),true);
+ (globalThis as any).window.__AE_BLINDADO=false;
+});
+
+test('Spoken lines are bounded and keep the two voices apart',()=>{
+ casaDePrueba();
+ visorUI.decir('En el principio','escritura');
+ assert.equal(useVisorUI.getState().dicho?.peso,'escritura');
+ visorUI.decir('x'.repeat(400),'inventado');
+ assert.equal(useVisorUI.getState().dicho?.texto.length,220);
+ assert.equal(useVisorUI.getState().dicho?.peso,'normal');
+ visorUI.decir(null);
+ assert.equal(useVisorUI.getState().dicho,null);
+});
+
+test('Panel hit zones are exclusive',()=>{
+ const a={id:'a',x:0,y:.8,w:.45,h:.15},b={id:'b',x:.55,y:.8,w:.45,h:.15};
+ assert.equal(dentro(a,.2,.85),true);
+ assert.equal(dentro(b,.2,.85),false);
+ assert.equal(dentro(a,.5,.85),false,'the gap between buttons belongs to neither');
+});
+
+test('The origin story runs the real act list and can always be cut short',()=>{
+ const {correrFrames}=casaDePrueba();
+ const libreto=guion(['gid','wallet','noexiste']);
+ assert.equal(libreto[0].clave,'titulo');
+ assert.deepEqual(libreto.slice(4,6).map(a=>a.clave),['casa:gid','casa:wallet'],'unknown worlds never become acts');
+ assert.ok(libreto.some(a=>a.clave==='casa:minas')&&libreto.some(a=>a.clave==='cierre'));
+ assert.equal(libreto.reduce((total,a)=>total+a.dura,0)>90000,true,'the act timings match the music the host starts');
+
+ const actos:string[]=[];let final:boolean|null=null;
+ genesis.empezar({casas:['gid'],alActo:c=>actos.push(c),alFin:s=>{final=s;}});
+ assert.equal(genesis.vivo(),true);
+ assert.equal(useExperience.getState().cinema,true,'the shell gets out of the way while the story runs');
+ assert.equal(pelicula.activo,true);
+ assert.deepEqual(actos,['titulo'],'the host writes act by act, not all at once');
+ correrFrames();
+ genesis.saltar();
+ assert.equal(genesis.vivo(),false);
+ assert.equal(final,true,'skipping tells the host it was skipped');
+ assert.equal(pelicula.activo,false,'the camera goes back to the person');
+ assert.equal(useExperience.getState().cinema,false);
+ genesis.saltar();
+ assert.equal(final,true);
+});

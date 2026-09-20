@@ -40,7 +40,7 @@ AirTouch uses the Apache-2.0 MediaPipe Tasks Vision package and Google's Hand La
 
 ## Verification
 
-- TypeScript and production bundling pass; twenty automated logic tests cover bounds, geometry, validated preferences, journey cancellation, the existing host gesture contract, central-core position, drag direction and camera stability on selection, and 3,600 consecutive orbit frames without label side-switching.
+- TypeScript and production bundling pass; twenty-six automated logic tests cover bounds, geometry, validated preferences, journey cancellation, the existing host gesture contract, central-core position, drag direction and camera stability on selection, and 3,600 consecutive orbit frames without label side-switching.
 - Browser-tested: entry and timed intro, dock selection before entry, flight completion and cancellation, ES/EN labels, deep-space navigation, Pro/Lite fallback, preference persistence and audio activation/mute controls.
 - Responsive layout inspected in a 390 × 690 and 390 × 844 iframe viewports; app search tested there. This is not physical-phone performance or touch-hardware testing.
 - The compiled shell was mounted in an isolated host fixture from a nested build path. Gate, intro callback, unmount/remount and host button/body style isolation were checked. This fixture is not the production wallet or its login.
@@ -58,3 +58,11 @@ A full read of this branch produced four blocking defects; all four are fixed he
 2. **The `entrar()` handoff no longer lands under the intro.** See the entry row in `HOST-INTEGRATION.md`: the original flight durations and the 80%-of-flight callback are restored, the intro camera ramp and its end follow the same duration, and `descubrir` and `directo` stop behaving alike. A regression test covers the timings.
 3. **Interface fonts are self-hosted.** The stylesheet opened with an `@import` to fonts.googleapis.com: a render-blocking third-party request from the wallet's own origin on every visit, which any CSP would reject and which discloses visitors to a third party. The two variable faces (95 KB total, latin and latin-ext) now ship inside the bundle with hashed filenames, while `assets/augalaxy.css` keeps the fixed name the host loads.
 4. **The host-integration gap is documented precisely.** `HOST-INTEGRATION.md` now lists every engine-side global the production wallet still calls, with its call-site count and what disappears if this bundle replaces the live one. The swap stays blocked; this preview is published at its own URL instead.
+
+## Headset parity — September 20, 2026
+
+The four host entry points that only exist inside a headset are implemented: the portal that keeps gaze from opening a world by accident, the in-scene world panel with pressable buttons, the spoken line, and the origin story. The host's own `ae-portico` and `ae-casa` events carry the same shape it already listens for, so the wallet needs no change. `__AE_BLINDADO` is honored: while the host raises it, gaze selects no planet.
+
+Driving the compiled bundle in phone-stereo mode found three defects that reading the code did not: panels that follow the head cannot be aimed at, a dwell timer built from clamped frame deltas doubles on a slow device, and a held gaze re-fires the same button every 1.5 seconds. All three are fixed, and the stereo pair, the panel placement and a gaze press that reaches the host were confirmed on screen.
+
+Still unverified by anyone: a real headset, real head tracking, and the production wallet login. WebXR could not be exercised here — the browser reports no XR device — so the phone-stereo path is the one that was actually driven.

@@ -25,22 +25,25 @@ The existing fixed entry names, `assets/augalaxy.js` and `assets/augalaxy.css`, 
 
 The Vite CSS transform scopes the shell stylesheet to `.galaxy-os`; host inputs, buttons, body and login styles retain their own rules. Full-page sizing applies only to `html.og-standalone`. Motion, contrast and text size live on the shell element.
 
-## Engine-side globals the production host still calls
+## Engine-side globals the host calls, and what they are for
 
-Verified against `apps-web/veta-wallet/app.js` on `backup/legacy-webos-2026-09-20`. The previous engine installed these; this shell does not. Every host call site uses `?.` or an early return, so nothing throws — the features simply disappear. This is the concrete reason a bundle swap is still blocked.
+Verified against `apps-web/veta-wallet/app.js` on `backup/legacy-webos-2026-09-20`. Every one of these is **headset-only**: the wallet draws its ordinary HTML on a normal screen and calls the engine only while `VISOR.activo()` is true, because inside a headset the screen is split per eye and a single HTML layer is drawn over both halves, which reads as a doubled smear. They are now implemented.
 
-| Global | Host call sites | What is lost if the bundle is swapped |
+| Global | Host call sites | Implementation |
 | --- | --- | --- |
-| `__AE_PORTICO` | 7 | The portal strip over the scene: the ENTRAR / INICIAR / SALIR buttons and their captions. |
-| `__AE_CASA` | 3 | The house menu rendered inside the scene. |
-| `__AE_GENESIS` | 3 | The Genesis choreography the host drives (`saltar`, `vivo`). |
-| `__AE_DECIR` | 2 | Spoken-line subtitles. |
-| `__AE_APPS` | 1 | The world list the host reads from the engine. |
-| `__AE_AURA` | 1 | The AU-RA touch response. |
-| `__AE_BLINDADO` | 6 | The shielded-view flag the host sets and reads. |
-| `__AE_TEATRO`, `__AE_NUCLEO` | 0 in `app.js` | Used by the old engine's own screens and by `pruebas/`. |
+| `__AE_PORTICO(modo, boton, sub)` | 7 | An in-scene door. Putting a headset on is a clumsy moment; if gaze were already armed, whichever planet sat in the centre would open by itself. The portal is what the person sees first, and until it is pressed gaze opens nothing else. Pressing dispatches `ae-portico` with `{modo}`. |
+| `__AE_CASA(datos \| null)` | 3 | The world panel as a scene object with real buttons, so opening a world does not mean taking the headset off. Pressing a button dispatches `ae-casa` with `{accion, key}`. Malformed data, or a panel with no usable button, is refused rather than left trapping the gaze. |
+| `__AE_DECIR(texto, peso)` | 2 | The spoken line as a scene object. Scripture keeps its italic voice. |
+| `__AE_GENESIS` | 3 | `empezar({alActo, alFin, casas, rotulos})`, `saltar()`, `vivo()`. The host writes the words act by act; this engine owns the timing and the camera. The act list and its durations are the previous engine's, because they are cut against the music the host starts. Staging is this engine's own, not an imitation of the old rig. |
+| `__AE_BLINDADO` | 6 | Set by the host, read here: while it is true, gaze selects no planet. |
+| `__AE_APPS`, `__AE_AURA`, `__AE_ABRIR` | 3 | Installed by the host for the engine. Only `__AE_ABRIR` is consumed (the chat handoff). |
 
-`AUGALAXY.acomodo()` also returns a binary 1/0 here, where the previous engine exposed the continuous 0..1 settling value.
+Two decisions inside this implementation are worth stating, because both were found by driving the compiled bundle rather than by reading it:
+
+- **Panels anchor where they appear.** A panel that follows the head continuously cannot be aimed at: it moves with you and the gaze always lands on the same spot, so its buttons are unreachable. It stays put while you look at it and only re-accommodates once your view has drifted well away.
+- **Gaze time is wall-clock, and one press per aim.** Accumulating clamped frame deltas turned "hold for 1.5 s" into three seconds on an eleven-frame-per-second stereo view, and a held gaze re-fired the same button every 1.5 s — three `Abrir` actions nobody asked for. Leaving the button and returning is now required to press it again.
+
+`AUGALAXY.acomodo()` still reports a binary 1/0 where the previous engine exposed the continuous 0..1 settling value. The old `__AE_TEATRO` and `__AE_NUCLEO` entry points, which `app.js` does not call, remain unimplemented.
 
 ## Remaining integration verification
 
@@ -61,7 +64,7 @@ Verified against `apps-web/veta-wallet/app.js` on `backup/legacy-webos-2026-09-2
 
 `tests/host-fixture.html` is a local, compiled-bundle fixture for mount, intro, immediate cancellation, return and a deliberately failing chat callback. It preserves unrelated host content and does not load account services. Serve the project with its dev server after building and open that fixture locally. This is not a production login test.
 
-The older portal/genesis animation APIs are still unsupported. They are not installed as misleading no-op compatibility functions. Production replacement remains blocked on those real requirements and on the hardware checks above.
+The portal, house, spoken-line and origin-story entry points are implemented above rather than stubbed. Production replacement still waits on the hardware checks above: a real headset, a real phone and the production login.
 
 ## Screen panorama adapter
 
