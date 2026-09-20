@@ -9,7 +9,7 @@ import {planetVertex,planetFragment,cloudFragment,atmoFragment,pointVertex,point
 import CompatibleUniverse from './CompatibleUniverse';
 import {textureFor} from './textures';
 import {assetURL} from './assets';
-import {CameraDirector,updateOrbits,updateLabels,locationOf,labelNodes,bindSceneInput,deepWorlds} from './cosmos';
+import {CameraDirector,updateOrbits,updateLabels,locationOf,labelNodes,linkNodes,bindSceneInput,deepWorlds} from './cosmos';
 import {SolarCore,BlackHole,CosmicNebula,OrbitPaths,Pulsar,GalacticPortrait} from './StellarObjects';
 
 function rng(seed:number){let s=seed;return()=>{s=(Math.imul(s,1664525)+1013904223)>>>0;return s/4294967296;};}
@@ -86,7 +86,7 @@ function SceneDriver({onLost}:{onLost:()=>void}){
 }
 export function PlanetLabels(){
  const prefs=usePreferences(s=>s.prefs);
- return <div className="world-labels" aria-label={prefs.lang==='es'?'Aplicaciones planetarias':'Planetary applications'}>{worlds.map((w,i)=><button key={w.id} ref={node=>{if(node)labelNodes.set(w.id,node);else labelNodes.delete(w.id);}} className="world-label" onPointerEnter={()=>navigation.hover(w.id)} onPointerLeave={()=>navigation.hover(null)} onFocus={()=>navigation.hover(w.id)} onBlur={()=>navigation.hover(null)} onClick={()=>navigation.focus(w.id)}><span className="label-rule"/><span className="planet-label-index">{String(i+1).padStart(2,'0')}</span><strong>{worldName(w,prefs.lang)}</strong><small>{word(w.category,prefs.lang)}</small></button>)}</div>;
+ return <><svg className="network-overlay" aria-hidden="true">{worlds.flatMap(w=>(w.id==='genesis'?['label-']:['label-','core-','peer-']).map(prefix=><line key={prefix+w.id} className={prefix.slice(0,-1)} ref={node=>{if(node)linkNodes.set(prefix+w.id,node);else linkNodes.delete(prefix+w.id);}}/>))}</svg><div className="world-labels" aria-label={prefs.lang==='es'?'Aplicaciones planetarias':'Planetary applications'}>{worlds.map((w,i)=><button key={w.id} ref={node=>{if(node)labelNodes.set(w.id,node);else labelNodes.delete(w.id);}} className="world-label" onPointerEnter={()=>navigation.hover(w.id)} onPointerLeave={()=>navigation.hover(null)} onFocus={()=>navigation.hover(w.id)} onBlur={()=>navigation.hover(null)} onClick={()=>navigation.focus(w.id)}><span className="label-rule"/><span className="planet-label-index">{String(i+1).padStart(2,'0')}</span><strong>{worldName(w,prefs.lang)}</strong><small>{word(w.category,prefs.lang)}</small></button>)}</div></>;
 }
 class RenderGuard extends Component<{children:ReactNode;onError:()=>void},{failed:boolean}>{
  state={failed:false};static getDerivedStateFromError(){return{failed:true};}componentDidCatch(){this.props.onError();}render(){return this.state.failed?null:this.props.children;}
@@ -108,7 +108,7 @@ export default function Universe({paused=false}:{paused?:boolean}){
   <SkyBackdrop/><CosmicNebula/><GalacticPortrait/><StarField count={low?2000:4200} radius={380}/>
   <StarField spiral seed={41} count={count} radius={72} position={[0,-12,-36]} color="#94b3cf" tilt={.27}/>
   {externalGalaxies.map(g=><StarField key={g.name} spiral seed={g.seed} count={low?3400:9500} radius={24} position={g.position} color={g.color} tilt={.65}/>)}
-  <OrbitPaths/><SolarCore/>{worlds.map((w,i)=><Planet key={w.id} world={w} index={i}/>)}
+  <OrbitPaths/><SolarCore/>{worlds.filter(w=>w.id!=='genesis').map((w,i)=><Planet key={w.id} world={w} index={i}/>)}
   {deepWorlds.map((w,i)=><Planet key={w.id} world={w} index={i+12} deep/>)}<BlackHole/><Pulsar/>
   {!low&&<EffectComposer multisampling={0}><Bloom intensity={.55} luminanceThreshold={1.1} luminanceSmoothing={.7} mipmapBlur/></EffectComposer>}
  </Canvas></RenderGuard></div>;

@@ -79,7 +79,7 @@ export default function CompatibleUniverse({paused,labels}:{paused:boolean;label
   const canvas=ref.current!,ctx=canvas.getContext('2d');if(!ctx){useExperience.getState().set({unsupported:true});return;}
   const camera=new PerspectiveCamera(48,1,.05,1000),director=new CameraDirector(),p=new Vector3();camera.position.set(0,24,42);
   let disposed=false,width=0,height=0,raf=0,previous=performance.now(),elapsed=0,frames=0,measure=previous,systemScale=1,deepScale=0;
-  const allWorlds=[...worlds,...deepWorlds],sprites=allWorlds.map((w,i)=>planetAsset(w,i)),galaxies=[galaxyAsset(41,'#b0c4df'),...externalGalaxies.map(g=>galaxyAsset(g.seed,g.color))],blackhole=blackHoleAsset();let sun=solarAsset();
+  const allWorlds=[...worlds.filter(w=>w.id!=='genesis'),...deepWorlds],sprites=allWorlds.map((w,i)=>planetAsset(w,i)),galaxies=[galaxyAsset(41,'#b0c4df'),...externalGalaxies.map(g=>galaxyAsset(g.seed,g.color))],blackhole=blackHoleAsset();let sun=solarAsset();
   allWorlds.forEach((w,i)=>{void Promise.all([surfacePixels(textureFor(w)),w.kind===1?surfacePixels('earth_clouds'):Promise.resolve(undefined)]).then(([surface,clouds])=>{if(!disposed)sprites[i]=planetAsset(w,i,surface,clouds);}).catch(()=>{});});
   void surfacePixels('sun').then(surface=>{if(!disposed)sun=solarAsset(surface);}).catch(()=>{});
   const background=new Image();background.src=assetURL('textures/starmap.jpg');
@@ -102,7 +102,7 @@ export default function CompatibleUniverse({paused,labels}:{paused:boolean;label
    if(portrait&&deepScale>.01){const q=project([10,-12,-40]),r=height*66/(q.depth*.89);ctx.save();ctx.translate(q.x,q.y);ctx.rotate(-.23+elapsed*.001);ctx.globalCompositeOperation='lighter';ctx.globalAlpha=deepScale*.86;ctx.drawImage(portrait,-r,-r*.696,r*2,r*1.392);ctx.restore();}
    if(systemScale>.3){ctx.strokeStyle='rgba(205,171,112,'+(.15*systemScale)+')';ctx.lineWidth=.7;for(const radius of orbitRadii){ctx.beginPath();for(let i=0;i<=160;i++){const a=i/160*Math.PI*2,q=project([Math.cos(a)*radius,0,Math.sin(a)*radius]);if(i===0)ctx.moveTo(q.x,q.y);else ctx.lineTo(q.x,q.y);}ctx.stroke();}}
    const objects:Projection[]=allWorlds.map(world=>{const deep=world.id.startsWith('cosmic-'),q=project(deep?world.position:locationOf(world));return{world,x:q.x,y:q.y,r:q.visible?height*world.radius*(deep?deepScale:systemScale)/(q.depth*.89):0,depth:q.depth};});
-   const sq=project([0,0,0]);objects.push({world:worlds[0],x:sq.x,y:sq.y,r:height*SUN_RADIUS*systemScale/(sq.depth*.89),depth:sq.depth,sun:true});objects.sort((a,b)=>b.depth-a.depth);
+   const sq=project([0,0,0]);objects.push({world:worlds.find(w=>w.id==='genesis')!,x:sq.x,y:sq.y,r:height*SUN_RADIUS*systemScale/(sq.depth*.89),depth:sq.depth,sun:true});objects.sort((a,b)=>b.depth-a.depth);
    for(const h of objects){if(h.r<1||h.x+h.r*2.3<0||h.x-h.r*2.3>width||h.y+h.r*2<0||h.y-h.r*2>height)continue;if(h.sun){drawSun(h.x,h.y,h.r);continue;}
     const w=h.world,i=allWorlds.indexOf(w);ctx.save();ctx.translate(h.x,h.y);ctx.rotate(-.17+i*.025);
     const rings=(front:boolean)=>{if(!w.rings)return;ctx.save();ctx.scale(1,.28);for(let band=0;band<100;band++){const r=h.r*(1.28+band/100*.86);ctx.beginPath();ctx.arc(0,0,r,front?0:Math.PI,front?Math.PI:Math.PI*2);ctx.lineWidth=h.r*.009;ctx.strokeStyle='rgba('+rgb(w.color).join(',')+','+((Math.abs(band-60)<4)?.035:.18+.15*Math.sin(band*2.7))+')';ctx.stroke();}ctx.restore();};

@@ -7,14 +7,14 @@ import {sound} from './sound';
 import {lookAtWorld,highlightWorld,touchWorld,transitionState,viewControls} from './hostBridge';
 let root:Root|null=null;
 let landing=0;
-function desmontar(){clearTimeout(landing);airtouch.stop();sound.dispose();root?.unmount();root=null;navigation.home();useExperience.getState().set({settings:false,directory:false,help:false,ready:false});}
+function desmontar(){clearTimeout(landing);airtouch.stop();sound.dispose();root?.unmount();root=null;navigation.home();useExperience.getState().set({settings:false,directory:false,help:false,tutorial:false,ready:false});}
 function montar(el:HTMLElement){desmontar();const lang=(window as any).__AE_LANG;if(lang==='es'||lang==='en')usePreferences.getState().set({lang});useExperience.getState().set({stage:(window as any).__AE_PUERTA?'gate':'system'});root=createRoot(el);root.render(<Experience embedded/>);}
 function entrar(_type:string,callback?:()=>void){
  delete (window as any).__AE_PUERTA;
  navigation.home();useExperience.getState().set({stage:'intro'});clearTimeout(landing);
  landing=window.setTimeout(()=>callback?.(),100);
 }
-function puerta(){clearTimeout(landing);(window as any).__AE_PUERTA=true;navigation.home();useExperience.getState().set({stage:'gate',settings:false,directory:false,help:false});}
+function puerta(){clearTimeout(landing);(window as any).__AE_PUERTA=true;navigation.home();useExperience.getState().set({stage:'gate',settings:false,directory:false,help:false,tutorial:false});}
 function exhalar(){navigation.home();}
 // Isolated visual engine: uses the host navigation callback only in embedded mode.
 // It never requests auth tokens, balances, keys or transaction APIs.
