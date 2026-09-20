@@ -47,6 +47,12 @@ export class CameraDirector {
 }
 export const labelNodes=new Map<string,HTMLButtonElement>();
 export const linkNodes=new Map<string,SVGLineElement>();
+// Choose an anchor once per viewport, never again during orbit, hover or selection.
+// Re-solving the discrete candidates every frame caused visible side-switching.
+export const labelAnchors=new Map<string,{dx:number;dy:number}>();
+let labelViewport='';
+const labelSides=new Map<string,number>();
+
 function line(id:string,x1:number,y1:number,x2:number,y2:number,visible:boolean){
  const el=linkNodes.get(id);if(!el)return;el.style.visibility=visible?'visible':'hidden';
  el.setAttribute('x1',String(x1));el.setAttribute('y1',String(y1));el.setAttribute('x2',String(x2));el.setAttribute('y2',String(y2));
@@ -56,25 +62,41 @@ export function updateLabels(camera:Camera,width:number,height:number){
  navigation.projected.clear();
  for(const w of worlds){const center=locationOf(w),p=center.clone().project(camera);navigation.projected.set(w.id,{x:(p.x*.5+.5)*width,y:(-p.y*.5+.5)*height,r:height*w.radius/(camera.position.distanceTo(center)*.89),visible:p.z>0&&p.z<1});}
  const core=navigation.projected.get('genesis')!,outer=worlds.filter(w=>w.id!=='genesis');
- const occupied:{x:number;y:number;w:number;h:number}[]=[];
+ const occupied:{id:string;x:number;y:number;w:number;h:number}[]=[];
  const bodies=[...navigation.projected.values()];
  const ordered=[...worlds].sort((a,b)=>a.id==='genesis'?-1:b.id==='genesis'?1:0);
- const top=mobile?162:220,bottom=height-(mobile?selected?192:160:170);
+ const viewport=String(width); // Mobile browser chrome changes height while scrolling.
+ if(viewport!==labelViewport){labelAnchors.clear();labelSides.clear();labelViewport=viewport;}
+ const top=mobile?162:220,bottom=height-(mobile?192:170);
  for(const w of ordered){
   const p=navigation.projected.get(w.id)!,node=labelNodes.get(w.id);if(!node)continue;
   const lw=Math.max(60,w.name.length*(mobile?7.3:8)+14),lh=mobile?28:32;
   const raw=w.id==='genesis'?[[p.x,p.y-p.r-lh-7],[p.x,p.y+p.r+8]]:[[p.x,p.y+p.r+6],[p.x,p.y-p.r-lh-5],[p.x-p.r-lw/2-8,p.y-lh/2],[p.x+p.r+lw/2+8,p.y-lh/2]];
   for(let radius=1;radius<=3;radius++)for(let i=0;i<8;i++){const angle=i*Math.PI/4;raw.push([p.x+Math.cos(angle)*(p.r+lw*.5+radius*15),p.y+Math.sin(angle)*(p.r+radius*22)-lh/2]);}
   let best={x:width/2,y:top,score:Infinity};
-  for(const [cx,cy] of raw){
+  for(const [cx,cy] of labelAnchors.has(w.id)?[]:raw){
    const x=Math.max(lw/2+10,Math.min(width-lw/2-10,cx)),y=Math.max(top,Math.min(bottom-lh,cy));
    let score=Math.hypot(x-p.x,y+lh/2-p.y);
    for(const o of occupied){const ix=Math.max(0,Math.min(x+lw/2,o.x+o.w/2)-Math.max(x-lw/2,o.x-o.w/2)+10),iy=Math.max(0,Math.min(y+lh,o.y+o.h)-Math.max(y,o.y)+8);score+=ix*iy*12;}
    for(const body of bodies){const dx=Math.max(Math.abs(body.x-x)-lw/2,0),dy=Math.max(y-body.y,body.y-y-lh,0);score+=Math.max(0,body.r+5-Math.hypot(dx,dy))*35;}
    if(score<best.score)best={x,y,score};
   }
-  const {x,y}=best;occupied.push({x,y,w:lw,h:lh});
-  node.style.width=lw+'px';node.style.transform='translate('+Math.round(x)+'px,'+Math.round(y)+'px) translate(-50%,0)';
+  let anchor=labelAnchors.get(w.id);
+  if(!anchor&&active){anchor={dx:best.x-p.x,dy:best.y-p.y};labelAnchors.set(w.id,anchor);}
+  const x=anchor?Math.max(lw/2+10,Math.min(width-lw/2-10,p.x+anchor.dx)):best.x;
+  let y=anchor?Math.max(top,Math.min(bottom-lh,p.y+anchor.dy)):best.y;
+  // Continuous separation, with a persistent side for every pair. No candidate flips.
+  for(const o of active?occupied:[]){
+   const key=w.id+':'+o.id;
+   if(!labelSides.has(key))labelSides.set(key,y>=o.y?1:-1);
+   const side=labelSides.get(key)!,overlap=(lw+o.w)/2+12-Math.abs(x-o.x);
+   if(overlap>0){const separation=lh+9,delta=side>0?Math.max(0,o.y+separation-y):Math.min(0,o.y-separation-y);
+    y+=delta*Math.min(1,overlap/24);
+   }
+  }
+  y=Math.max(top,Math.min(bottom-lh,y));
+  occupied.push({id:w.id,x,y,w:lw,h:lh});
+  node.style.width=lw+'px';node.style.transform='translate('+x.toFixed(2)+'px,'+y.toFixed(2)+'px) translate(-50%,0)';
   node.style.visibility=active?'visible':'hidden';node.style.opacity=active?'1':'0';node.tabIndex=active?0:-1;
   node.dataset.core=String(w.id==='genesis');node.dataset.active=String(w.id===state.selected);
   line('label-'+w.id,p.x,p.y,x,y+lh/2,active&&p.visible&&Math.hypot(x-p.x,y+lh/2-p.y)>p.r+30);

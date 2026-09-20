@@ -12,7 +12,7 @@ Use Node 22 or later. Run `npm ci --legacy-peer-deps`, then `npm run dev`. `npm 
 
 - Separate explorer entry, a skippable cinematic transition, invariant Orden Global identity in Spanish and English.
 - GENESIS CORE is the textured central Sun and ecosystem brain. Ten app planets orbit it in two bands. Quiet radial connections link apps to the core; selecting an app reveals its neighboring connection. Orbits pause during selection, tutorials and open panels.
-- All eleven names stay visible in the system view, including while focusing a destination. Unboxed labels are placed around their planets using collision-cost placement. Mobile reserves separate regions for the heading, navigation, labels and entry strip.
+- All eleven names stay visible in the system view, including while focusing a destination. Unboxed labels are placed around their planets using an initial collision-cost placement, then retain that anchor throughout orbit and selection. Height changes from mobile browser chrome do not reset anchors. Mobile reserves separate regions for the heading, navigation, labels and entry strip.
 - Drag direction follows the hand, with a four-pixel threshold, a faster response while dragging and a bounded sensitivity preference. Two-finger zoom and keyboard controls remain available.
 - A six-step ES/EN tutorial appears on first entry, supports a real preview flight, remembers dismissal on this device and can be replayed from the header or Accessibility settings.
 - Dock selection highlights a planet without moving the camera or opening it. An explicit Enter button starts a cancellable 2.1-second flight; the arrival panel opens only after the current journey completes. Previous/next buttons and arrow keys select worlds without dragging.
@@ -38,7 +38,7 @@ AirTouch uses the Apache-2.0 MediaPipe Tasks Vision package and Google's Hand La
 
 ## Verification
 
-- TypeScript and production bundling pass; thirteen automated logic tests cover bounds, geometry, validated preferences, journey cancellation, the existing host gesture contract, central-core position, drag direction and camera stability on selection.
+- TypeScript and production bundling pass; fourteen automated logic tests cover bounds, geometry, validated preferences, journey cancellation, the existing host gesture contract, central-core position, drag direction and camera stability on selection, and 3,600 consecutive orbit frames without label side-switching.
 - Browser-tested: entry and timed intro, dock selection before entry, flight completion and cancellation, ES/EN labels, deep-space navigation, Pro/Lite fallback, preference persistence and audio activation/mute controls.
 - Responsive layout inspected in a 390 × 690 and 390 × 844 iframe viewports; app search tested there. This is not physical-phone performance or touch-hardware testing.
 - The compiled shell was mounted in an isolated host fixture from a nested build path. Gate, intro callback, unmount/remount and host button/body style isolation were checked. This fixture is not the production wallet or its login.

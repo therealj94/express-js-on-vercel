@@ -21,3 +21,24 @@ test('Drag follows the hand and sensitivity has safe bounds',()=>{navigation.hom
 
 import {PerspectiveCamera} from 'three';
 test('Selecting an app preserves the overview camera and orbit controls',()=>{navigation.home();usePreferences.getState().set({motion:'reduced'});navigation.orbit(40,15);navigation.zoom=.9;const director=new CameraDirector(),camera=new PerspectiveCamera(48,390/690,.1,2000);director.update(camera,390,690,10000,.016);const position=camera.position.clone(),quaternion=camera.quaternion.clone(),yaw=navigation.yaw,pitch=navigation.pitch;navigation.focus('chat');director.update(camera,390,690,10016,.016);assert.equal(position.distanceTo(camera.position),0);assert.ok(quaternion.angleTo(camera.quaternion)<1e-7);assert.equal(navigation.yaw,yaw);assert.equal(navigation.pitch,pitch);assert.equal(navigation.zoom,.9);navigation.home();usePreferences.getState().reset();});
+
+import {labelNodes,labelAnchors,updateLabels} from '../src/experience/cosmos';
+import {worlds} from '../src/experience/catalog';
+test('Labels retain their anchors across orbit frames, hover and selection',()=>{
+ navigation.home();usePreferences.getState().set({motion:'reduced'});
+ const camera=new PerspectiveCamera(48,390/690,.1,2000),director=new CameraDirector();
+ const nodes=new Map(worlds.map(w=>[w.id,{style:{transform:'',width:'',visibility:'',opacity:''},dataset:{},tabIndex:0}]));
+ for(const [id,node] of nodes)labelNodes.set(id,node as unknown as HTMLButtonElement);
+ labelAnchors.clear();updateOrbits(30000,.016,390);director.update(camera,390,690,30000,.016);updateLabels(camera,390,690);
+ const anchors=JSON.stringify([...labelAnchors]),initial=nodes.get('chat')!.style.transform;
+ navigation.focus('chat');updateLabels(camera,390,690);assert.equal(nodes.get('chat')!.style.transform,initial);
+ navigation.focus(null);usePreferences.getState().set({motion:'full'});navigation.lastInteraction=0;
+ const xy=(s:string)=>s.match(/translate\(([-\d.]+)px,([-\d.]+)px\)/)!.slice(1).map(Number);
+ let previous=new Map([...nodes].map(([id,n])=>[id,xy(n.style.transform)]));
+ for(let frame=1;frame<=3600;frame++){
+  updateOrbits(30000+frame*16.667,1/60,390);updateLabels(camera,390,690);
+  assert.equal(JSON.stringify([...labelAnchors]),anchors);
+  for(const [id,node] of nodes){const next=xy(node.style.transform),old=previous.get(id)!;assert.ok(Math.hypot(next[0]-old[0],next[1]-old[1])<1,`${id} jumped`);previous.set(id,next);}
+ }
+ labelNodes.clear();labelAnchors.clear();navigation.home();usePreferences.getState().reset();
+});
