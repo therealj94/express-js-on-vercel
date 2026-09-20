@@ -1,0 +1,15 @@
+import {worlds,worldName} from './catalog';
+import {navigation,useExperience} from './navigation';
+import {usePreferences} from './preferences';
+type Tool={name:string;title:string;description:string;inputSchema:object;annotations:{readOnlyHint:boolean;untrustedContentHint:boolean};execute:(input:unknown)=>unknown};
+const empty={type:'object',properties:{},additionalProperties:false};
+function inputObject(input:unknown){if(!input||typeof input!=='object'||Array.isArray(input))throw new Error('Expected an object.');return input as Record<string,unknown>;}
+export function readExperience(input:unknown){if(Object.keys(inputObject(input)).length)throw new Error('No parameters expected.');const s=useExperience.getState(),p=usePreferences.getState().prefs;return{stage:s.stage,selected:s.selected,language:p.lang,worlds:worlds.map(w=>({id:w.id,name:worldName(w,p.lang)})),preview:true,accountsConnected:false};}
+export function navigateExperience(input:unknown){const p=inputObject(input);if(Object.keys(p).some(k=>k!=='destination'))throw new Error('Unknown parameter.');if(typeof p.destination!=='string'||!['system','galaxies','settings','applications',...worlds.map(w=>w.id)].includes(p.destination))throw new Error('Unknown destination.');const state=useExperience.getState();state.set({settings:false,directory:false,help:false,windowId:null});navigation.home();if(p.destination==='galaxies')state.set({stage:'galaxies'});else if(p.destination==='settings'||p.destination==='ajustes')state.set({settings:true});else if(p.destination==='applications')state.set({directory:true});else if(p.destination!=='system')navigation.focus(p.destination);return{destination:p.destination,preview:true};}
+export function registerExperienceTools(){
+ const context=(document as Document&{modelContext?:{registerTool:(tool:Tool,options:{signal:AbortSignal})=>void|Promise<void>}}).modelContext;if(!context?.registerTool)return()=>{};
+ const life=new AbortController();
+ const definitions:Tool[]=[{name:'read_galaxy_preview',title:'Read galaxy preview',description:'Read the current visible preview navigation and app destinations. No account data.',inputSchema:empty,annotations:{readOnlyHint:true,untrustedContentHint:false},execute:readExperience},{name:'navigate_galaxy_preview',title:'Navigate galaxy preview',description:'Navigate to an app planet or open a preview panel. Does not open financial services, authenticate or enable camera.',inputSchema:{type:'object',properties:{destination:{type:'string',enum:['system','galaxies','settings','applications',...worlds.map(w=>w.id)]}},required:['destination'],additionalProperties:false},annotations:{readOnlyHint:false,untrustedContentHint:false},execute:async input=>{const result=navigateExperience(input);await new Promise<void>(resolve=>requestAnimationFrame(()=>requestAnimationFrame(()=>resolve())));return result;}}];
+ for(const tool of definitions){try{void Promise.resolve(context.registerTool(tool,{signal:life.signal})).catch(()=>{});}catch{}}
+ return()=>life.abort();
+}

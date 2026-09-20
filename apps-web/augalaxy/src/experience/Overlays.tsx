@@ -1,0 +1,80 @@
+import {useEffect,useRef,useState,ReactNode} from 'react';
+import {usePreferences,Preferences} from './preferences';
+import {useExperience,navigation} from './navigation';
+import {worlds,worldName,word} from './catalog';
+import {airtouch,HandStatus} from './airtouch';
+import {sound} from './sound';
+import {Icon} from './Icon';
+
+export function Modal({title,onClose,children,className=''}:{title:string;onClose:()=>void;children:ReactNode;className?:string}){
+ const ref=useRef<HTMLDialogElement>(null);
+ useEffect(()=>{const previous=document.activeElement as HTMLElement|null;ref.current?.showModal();return()=>{ref.current?.close();previous?.focus();};},[]);
+ return <dialog ref={ref} className={'os-dialog '+className} aria-label={title} onCancel={e=>{e.preventDefault();onClose();}} onClick={e=>{if(e.target===ref.current){const r=ref.current.getBoundingClientRect();if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)onClose();}}}>
+ <header className="dialog-top"><span><i className="tiny-orbit"/>{title}</span><button className="icon-button" aria-label={usePreferences.getState().prefs.lang==='es'?'Cerrar':'Close'} onClick={onClose}><Icon name="close"/></button></header>{children}</dialog>;
+}
+function Toggle({label,detail,value,onChange}:{label:string;detail?:string;value:boolean;onChange:(v:boolean)=>void}){
+ return <label className="setting-row"><span><strong>{label}</strong>{detail&&<small>{detail}</small>}</span><input className="toggle" type="checkbox" checked={value} onChange={e=>onChange(e.target.checked)}/></label>;
+}
+function Slider({label,detail,value,min,max,step,onChange,format}:{label:string;detail?:string;value:number;min:number;max:number;step:number;onChange:(v:number)=>void;format?:string}){
+ return <label className="setting-row slider-row"><span><strong>{label}</strong>{detail&&<small>{detail}</small>}</span><span className="slider-wrap"><output>{format||Math.round(value*100)+'%'}</output><input type="range" min={min} max={max} step={step} value={value} onChange={e=>onChange(+e.target.value)}/></span></label>;
+}
+export function useHandStatus(){const [status,set]=useState<HandStatus>(airtouch.status);useEffect(()=>airtouch.subscribe(()=>set(airtouch.status)),[]);return status;}
+export function HandControls(){
+ const status=useHandStatus(),prefs=usePreferences(s=>s.prefs),es=prefs.lang==='es';
+ const active=status==='tracking'||status==='searching';
+ const errors:Record<string,[string,string]>={permission:['Permiso de cámara no concedido. Puedes continuar con ratón, teclado o pantalla táctil.','Camera permission was not granted. Continue with mouse, keyboard or touch.'],camera:['No se encontró una cámara.','No camera was found.'],unsupported:['Este navegador no admite acceso a la cámara.','This browser does not support camera access.'],model:['No se pudo iniciar el reconocimiento. La cámara se apagó.','Hand recognition could not start. The camera was stopped.']};
+ return <div className="hand-setup">
+  <div className="hand-heading"><Icon name="hand" size={32}/><div><strong>AirTouch</strong><p>{es?'Tu mano es el cursor.':'Your hand is the cursor.'}</p></div></div>
+  <p>{es?'Apunta con el índice. Junta pulgar e índice para seleccionar. Dos pellizcos abren una app; mantén el pellizco y mueve la mano para girar.':'Point with your index finger. Pinch to select. Pinch twice to open an app; hold and move to orbit.'}</p>
+  <div className="privacy-note"><Icon name="lock"/><span>{es?'El video se procesa en este dispositivo. No se graba ni se envía. La cámara se apaga al desactivar AirTouch o cambiar de pestaña.':'Video stays on this device. It is not recorded or uploaded. The camera stops when you disable AirTouch or switch tabs.'}</span></div>
+  {status==='error'&&<p className="error-note" role="alert">{word(errors[airtouch.error]||errors.model,prefs.lang)}</p>}
+  <button className={'primary '+(active?'secondary':'')} disabled={status==='loading'} onClick={()=>active?airtouch.stop():void airtouch.start()}>{status==='loading'?(es?'Preparando reconocimiento…':'Preparing recognition…'):active?(es?'Apagar cámara':'Stop camera'):(es?'Activar cámara y AirTouch':'Enable camera & AirTouch')}<Icon name={active?'close':'hand'}/></button>
+  {active&&<p className="hand-status" role="status">{status==='tracking'?(es?'Mano detectada. Listo para navegar.':'Hand detected. Ready to navigate.'):(es?'Muestra una mano frente a la cámara.':'Hold one hand in front of the camera.')}</p>}
+ </div>;
+}
+export function Settings({onClose}:{onClose:()=>void}){
+ const {prefs,set,reset,storageAvailable}=usePreferences(),[tab,setTab]=useState('visual'),es=prefs.lang==='es';
+ const fps=useExperience(s=>s.fps);
+ const tabs=[['visual',es?'Imagen y movimiento':'Visuals & motion','galaxy'],['audio',es?'Sonido':'Sound','sound'],['air','AirTouch','hand'],['access',es?'Accesibilidad':'Accessibility','help'],['system',es?'Sistema':'System','settings']];
+ const change=<K extends keyof Preferences>(key:K,value:Preferences[K])=>set({[key]:value});
+ return <Modal title={es?'Ajustes del sistema':'System settings'} onClose={onClose} className="settings-dialog">
+ <div className="settings-layout"><nav aria-label={es?'Categorías de ajustes':'Settings categories'}>{tabs.map(([id,label,icon])=><button key={id} className={tab===id?'active':''} aria-current={tab===id?'page':undefined} onClick={()=>setTab(id)}><Icon name={icon}/>{label}</button>)}<div className="settings-brand">ORDEN GLOBAL<small>GALAXY OS / PREVIEW</small></div></nav>
+ <section className="settings-content">
+ {tab==='visual'&&<><p className="eyebrow">{es?'TU UNIVERSO, A TU RITMO':'YOUR UNIVERSE, YOUR PACE'}</p><h2>{es?'Todo está en los detalles.':'It’s all in the details.'}</h2>
+ <label className="setting-row"><span><strong>{es?'Calidad visual':'Visual quality'}</strong><small>{es?'Automática se adapta a este dispositivo.':'Automatic adapts to this device.'}</small></span><select value={prefs.quality} onChange={e=>change('quality',e.target.value as Preferences['quality'])}><option value="auto">{es?'Automática':'Automatic'}</option><option value="high">{es?'Cinemática':'Cinematic'}</option><option value="balanced">{es?'Equilibrada':'Balanced'}</option><option value="low">{es?'Ahorro de energía':'Energy saving'}</option></select></label>
+ <label className="setting-row"><span><strong>{es?'Movimiento':'Motion'}</strong><small>{es?'Reduce vuelos, rotación y transiciones.':'Reduce flights, rotation and transitions.'}</small></span><select value={prefs.motion} onChange={e=>change('motion',e.target.value as Preferences['motion'])}><option value="system">{es?'Según dispositivo':'Device preference'}</option><option value="full">{es?'Completo':'Full'}</option><option value="reduced">{es?'Reducido':'Reduced'}</option></select></label>
+ <Toggle label={es?'Nombres de los planetas':'Planet labels'} detail={es?'Los nombres se separan para evitar superposiciones.':'Labels separate to avoid overlaps.'} value={prefs.labels} onChange={v=>change('labels',v)}/>
+ <Toggle label={es?'Intro al entrar':'Intro on entry'} value={prefs.intro} onChange={v=>change('intro',v)}/>
+ <button className="text-button" onClick={()=>{onClose();useExperience.getState().set({stage:'intro',selected:null});sound.cue('intro');}}><Icon name="play"/>{es?'Repetir la intro':'Replay intro'}</button></>}
+ {tab==='audio'&&<><p className="eyebrow">{es?'PAISAJE SONORO':'SOUNDSCAPE'}</p><h2>{es?'El espacio también se siente.':'Space has a presence.'}</h2><p>{es?'Texturas suaves y señales breves. El sonido comienza solo cuando tú lo activas.':'Soft textures and brief cues. Sound begins only when you enable it.'}</p>
+ <Toggle label={es?'Activar sonido':'Enable sound'} value={prefs.sound} onChange={v=>{change('sound',v);void sound.enable(v,prefs.volume,prefs.ambient);}}/>
+ <Slider label={es?'Volumen':'Volume'} value={prefs.volume} min={0} max={.7} step={.01} format={Math.round(prefs.volume/.7*100)+'%'} onChange={v=>change('volume',v)}/>
+ <Toggle label={es?'Ambiente espacial':'Space ambience'} detail={es?'Un fondo tenue, sin voces ni música comercial.':'A subtle background, without voices or commercial music.'} value={prefs.ambient} onChange={v=>change('ambient',v)}/>
+ <button className="text-button" onClick={()=>{change('sound',true);void sound.enable(true,prefs.volume,prefs.ambient).then(()=>sound.cue('intro'));}}><Icon name="play"/>{es?'Escuchar firma sonora':'Play sonic signature'}</button></>}
+ {tab==='air'&&<><HandControls/><Slider label={es?'Sensibilidad':'Sensitivity'} value={prefs.sensitivity} min={.5} max={1.8} step={.05} format={prefs.sensitivity.toFixed(2)+'×'} onChange={v=>change('sensitivity',v)}/><Slider label={es?'Suavizado del cursor':'Cursor smoothing'} value={prefs.handSmoothing} min={.1} max={.9} step={.05} onChange={v=>change('handSmoothing',v)}/></>}
+ {tab==='access'&&<><p className="eyebrow">{es?'CLARIDAD Y CONTROL':'CLARITY & CONTROL'}</p><h2>{es?'Un universo para explorar a tu manera.':'Explore on your terms.'}</h2>
+ <Slider label={es?'Tamaño de texto':'Text size'} value={prefs.textScale} min={1} max={1.4} step={.1} onChange={v=>change('textScale',v)}/>
+ <Toggle label={es?'Mayor contraste':'Higher contrast'} detail={es?'Paneles más sólidos y textos más visibles.':'More opaque panels and clearer text.'} value={prefs.contrast} onChange={v=>change('contrast',v)}/>
+ <div className="shortcut-list"><span>Tab</span><p>{es?'Recorrer controles y apps':'Move through controls and apps'}</p><span>Enter</span><p>{es?'Activar selección':'Activate selection'}</p><span>Esc</span><p>{es?'Cerrar ventana o volver al sistema':'Close window or return to system'}</p><span>+ / −</span><p>{es?'Acercar / alejar':'Zoom in / out'}</p><span>← ↑ ↓ →</span><p>{es?'Girar el universo':'Orbit the universe'}</p></div></>}
+ {tab==='system'&&<><p className="eyebrow">ORDEN GLOBAL / GALAXY OS</p><h2>{es?'Tu centro de control.':'Your control center.'}</h2>
+ <label className="setting-row"><span><strong>{es?'Idioma':'Language'}</strong><small>Orden Global {es?'conserva siempre su nombre.':'always keeps its name.'}</small></span><select value={prefs.lang} onChange={e=>change('lang',e.target.value as 'es'|'en')}><option value="es">Español</option><option value="en">English</option></select></label>
+ <dl className="system-facts"><div><dt>{es?'Entorno':'Environment'}</dt><dd>{es?'Vista privada de diseño':'Private design preview'}</dd></div><div><dt>{es?'Cuentas y fondos':'Accounts & funds'}</dt><dd>{es?'Sin conexión':'Not connected'}</dd></div><div><dt>{es?'Rendimiento observado':'Observed performance'}</dt><dd>{fps} FPS</dd></div><div><dt>{es?'Preferencias':'Preferences'}</dt><dd>{storageAvailable?(es?'Guardadas en este navegador':'Saved in this browser'):(es?'Solo para esta sesión':'This session only')}</dd></div></dl>
+ <p className="quiet-note">{es?'Las galaxias externas son espacios conceptuales para integraciones futuras. No representan alianzas existentes.':'External galaxies are conceptual spaces for future integrations. They do not represent existing partnerships.'}</p>
+ <p className="quiet-note">{es?'Superficies planetarias adaptadas de':'Planet surfaces adapted from'} <a href="https://www.solarsystemscope.com/textures/" target="_blank" rel="noreferrer">Solar System Scope / INOVE</a> · <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noreferrer">CC BY 4.0</a>. {es?'Color, iluminación y composición modificados.':'Color, lighting and composition modified.'}</p>
+ <button className="text-button" onClick={()=>{reset();airtouch.stop();}}>{es?'Restaurar preferencias':'Reset preferences'}</button></>}
+ </section></div></Modal>;
+}
+export function Directory({onClose}:{onClose:()=>void}){
+ const [query,setQuery]=useState(''),prefs=usePreferences(s=>s.prefs),es=prefs.lang==='es';
+ const matches=worlds.filter(w=>(worldName(w,prefs.lang)+' '+word(w.category,prefs.lang)).toLowerCase().includes(query.toLowerCase()));
+ return <Modal title={es?'Aplicaciones':'Applications'} onClose={onClose} className="directory-dialog"><div className="directory-search"><Icon name="search"/><input autoFocus placeholder={es?'Buscar un mundo…':'Find a world…'} aria-label={es?'Buscar aplicaciones':'Search applications'} value={query} onChange={e=>setQuery(e.target.value)}/><kbd>ESC</kbd></div>
+ <div className="directory-grid">{matches.map((w,i)=><button key={w.id} onClick={()=>{onClose();useExperience.getState().set({stage:'system'});navigation.focus(w.id);sound.cue();}}><span className="app-monogram" style={{color:w.color,borderColor:w.color+'55'}}>{w.id==='ajustes'?<Icon name="settings"/>:w.name.slice(0,2).toUpperCase()}</span><span><strong>{worldName(w,prefs.lang)}</strong><small>{word(w.category,prefs.lang)}</small></span><Icon name="arrow"/></button>)}</div>
+ {!matches.length&&<p className="empty-state">{es?'No hay aplicaciones con ese nombre.':'No applications match that name.'}</p>}</Modal>;
+}
+export function AppWindow({id,onClose,embedded}:{id:string;onClose:()=>void;embedded:boolean}){
+ const prefs=usePreferences(s=>s.prefs),es=prefs.lang==='es',w=worlds.find(w=>w.id===id)!;
+ return <Modal title={worldName(w,prefs.lang)} onClose={onClose} className="app-dialog"><div className="app-window-body"><p className="eyebrow">{word(w.category,prefs.lang)} / ORDEN GLOBAL</p><h2>{worldName(w,prefs.lang)}</h2><p>{word(w.description,prefs.lang)}</p><div className="app-connection"><Icon name="lock"/><div><strong>{es?'Vista de diseño':'Design preview'}</strong><p>{es?'Esta vista no conecta tu cuenta ni carga información financiera. La aplicación actual permanece intacta.':'This view does not connect your account or load financial information. The current application remains unchanged.'}</p></div></div>
+ <div className="app-actions"><button className="primary" onClick={()=>{onClose();navigation.focus(w.id);}}>{es?'Explorar este planeta':'Explore this planet'}<Icon name="galaxy"/></button>
+ {embedded&&!w.future&&<button className="text-button" onClick={()=>{onClose();(window as any).__AE_ABRIR?.(w.id);}}>{es?'Abrir aplicación existente':'Open existing application'}<Icon name="arrow"/></button>}</div>
+ </div></Modal>;
+}

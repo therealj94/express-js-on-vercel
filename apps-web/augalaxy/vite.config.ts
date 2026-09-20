@@ -4,7 +4,7 @@ import react from '@vitejs/plugin-react'
 export default defineConfig({
   base: './',
   plugins: [react()],
-  server: { host: true },
+  server: { host: '0.0.0.0', allowedHosts: ['terminal.local'] },
   build: {
     target: 'es2022',
     chunkSizeWarningLimit: 1400,

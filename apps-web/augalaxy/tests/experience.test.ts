@@ -1,0 +1,12 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {measureHand} from '../src/experience/airtouch';
+import {usePreferences} from '../src/experience/preferences';
+import {navigation,useExperience} from '../src/experience/navigation';
+import {readExperience,navigateExperience} from '../src/experience/webmcp';
+test('Incomplete or degenerate hand landmarks are rejected',()=>{assert.equal(measureHand([]),null);assert.equal(measureHand(Array.from({length:21},()=>({x:0,y:0}))),null);});
+test('Pinch measurement is independent of hand scale',()=>{const p=Array.from({length:21},()=>({x:.3,y:.3}));p[17]={x:.5,y:.3};p[4]={x:.4,y:.3};p[8]={x:.42,y:.3};const h=measureHand(p)!;assert.ok(Math.abs(h.pinch-.1)<1e-6);assert.ok(Math.abs(measureHand(p.map(v=>({x:v.x*2,y:v.y*2})))!.pinch-h.pinch)<1e-6);});
+test('Preferences clamp values and reject invalid enums',()=>{usePreferences.getState().set({volume:99,textScale:-9,lang:'invalid' as never});const p=usePreferences.getState().prefs;assert.ok(p.volume<=.7);assert.ok(p.textScale>=1);assert.equal(p.lang,'es');usePreferences.getState().reset();});
+test('Zoom and orbit stay bounded',()=>{navigation.dolly(100000);assert.equal(navigation.zoom,3);navigation.dolly(.0000001);assert.equal(navigation.zoom,.55);navigation.orbit(0,99999);assert.equal(navigation.pitch,.6);navigation.home();});
+test('Navigation uses the visible preview state',()=>{navigateExperience({destination:'chat'});assert.equal(useExperience.getState().selected,'chat');navigateExperience({destination:'settings'});assert.equal(useExperience.getState().settings,true);assert.equal(readExperience({}).accountsConnected,false);});
+test('Invalid navigation does not mutate state',()=>{const before=useExperience.getState();assert.throws(()=>navigateExperience({destination:'withdraw'}));assert.equal(useExperience.getState(),before);assert.throws(()=>readExperience({token:'not-used'}));});

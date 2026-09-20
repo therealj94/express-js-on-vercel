@@ -1,0 +1,11 @@
+node_modules/
+dist/
+.sites-runtime/
+.env
+.env.*
+*.log
+public/vision/
+public/textures/*.jpg
+qa-mobile.html
+publicar.py
+buscar-anillo.mjs
