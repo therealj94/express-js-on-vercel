@@ -58,6 +58,28 @@ for n in sorted(os.listdir(DIST)):
     shutil.copy2(os.path.join(DIST, n), os.path.join(DESTINO, n))
     print(f'  · {n}  {os.path.getsize(os.path.join(DIST, n))/1000:.0f} kB')
 
+# ── LO QUE EL MOTOR PIDE POR SU CUENTA ───────────────────────────────────────
+#
+# Esto copiaba `dist/assets` y nada mas. Con el motor anterior alcanzaba; con
+# este no: pide sus texturas y su modelo de manos POR RUTA RELATIVA A SI MISMO
+# (`assets/augalaxy.js` busca `../textures/mars.jpg`), asi que si solo se copian
+# los assets, el sitio publicado sirve un motor que pide nueve imagenes que no
+# existen. No revienta —los planetas caen a superficie dibujada y AirTouch avisa
+# solo— y por eso es de los fallos que no se ven en una prueba rapida: se ve
+# distinto, no roto.
+#
+# Se copia el arbol compilado entero, y cada carpeta se vacia antes para que un
+# archivo que el motor ya no usa no se quede viviendo en el sitio.
+RAIZ_MOTOR = os.path.dirname(DESTINO)
+for carpeta in sorted(d for d in os.listdir(os.path.dirname(DIST)) if os.path.isdir(os.path.join(os.path.dirname(DIST), d)) and d != 'assets'):
+    origen = os.path.join(os.path.dirname(DIST), carpeta)
+    destino = os.path.join(RAIZ_MOTOR, carpeta)
+    if os.path.isdir(destino):
+        shutil.rmtree(destino)
+    shutil.copytree(origen, destino)
+    peso = sum(os.path.getsize(os.path.join(r, f)) for r, _, fs in os.walk(destino) for f in fs)
+    print(f'  · {carpeta}/  {len(os.listdir(destino))} archivos, {peso/1e6:.1f} MB')
+
 # la huella: el motor y su hoja de estilo juntos
 h = hashlib.md5()
 for n in ENTRADA:
