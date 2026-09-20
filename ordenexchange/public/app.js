@@ -1187,23 +1187,46 @@ async function enviarFormPago(form) {
 // ═══════════════════════════════════════════════════════════════════════════
 // 14 · Perfil y Genesis ID
 // ═══════════════════════════════════════════════════════════════════════════
+/** Debajo del estado: el asistente cuando la persona tiene algo que hacer; si no, qué está pasando. */
+function gidCuerpoHTML(u) {
+  if (u.gidEstado === 'verificada' || u.gidEstado === 'suspendida') return '';
+  if (esDemo()) return '';
+  if (!u.emailVerificado) return notaHTML(t('gid.correoPrimero'), '', IC.info);
+  if (S.v.gidNoConfigurado) return notaHTML(t('gid.noConfigurado'), '', IC.info);
+  if (S.v.gidError) return notaHTML(esc(S.v.gidError), 'roja', IC.alerta);
+  const info = S.v.gidInfo;
+  if (!info) {
+    // La primera vez que hace falta, se pide: así aparece también justo después de confirmar el correo.
+    if (!S.v.gidCargando) { S.v.gidCargando = true; sincronizarGid(true).finally(() => { S.v.gidCargando = false; }); }
+    return esqueletos(1);
+  }
+  if (u.gidEstado === 'en-revision' && !info.rostroPendiente) return `<p class="pequeno">${t('gid.siguiente')}: ${esc(info.siguientePaso || t('gidEstado.en-revision'))}</p>`;
+  return asistenteGidHTML();
+}
 function gidTexto(estado) { return { 'sin-verificar': t('gid.sinVerificar'), 'en-revision': t('gid.enRevision'), verificada: t('gid.verificada'), rechazada: t('gid.rechazada'), suspendida: t('gid.suspendida') }[estado] || ''; }
 function asistenteGidHTML() {
   const g = S.v.gid || (S.v.gid = { paso: 1, error: null, ok: null, datos: {}, mrz: '', foto: null, problemas: [] });
   const u = yo() || {};
-  const pasos = ['gid.pasoDatos', 'gid.pasoDocumento', 'gid.pasoFoto', 'gid.pasoVincular'];
+  const info = S.v.gidInfo || {};
+  const pasos = ['gid.pasoDatos', 'gid.pasoDocumento', 'gid.pasoFoto'];
+  const d = g.datos;
+  const volumenes = [['500', '< 1 000 USD'], ['3000', '1 000 – 5 000 USD'], ['7500', '5 000 – 10 000 USD'], ['25000', '> 10 000 USD']];
   let cuerpo = '';
-  if (g.paso === 1) cuerpo = `<div class="fila-campos"><div class="campo"><label for="g-nombre">${t('gid.nombreCompleto')}</label><input id="g-nombre" name="nombreCompleto" class="entrada" required value="${esc(g.datos.nombreCompleto || '')}" autocomplete="name"></div>
-      <div class="campo"><label for="g-fecha">${t('gid.fechaNacimiento')}</label><input id="g-fecha" name="fechaNacimiento" type="date" class="entrada" required value="${esc(g.datos.fechaNacimiento || '')}"></div>
-      <div class="campo"><label for="g-pais">${t('gid.paisResidencia')}</label><select id="g-pais" name="paisResidencia" class="entrada">${paises().map(p => `<option value="${esc(p.iso3)}" ${(g.datos.paisResidencia || (paisDe(u.pais) || {}).iso3) === p.iso3 ? 'selected' : ''}>${esc(p.bandera || '')} ${esc(nombrePais(p))}</option>`).join('')}</select></div>
-      <div class="campo"><label for="g-tel">${t('gid.telefono')} <span class="gris">(${t('com.opcional')})</span></label><input id="g-tel" name="telefono" type="tel" class="entrada" value="${esc(g.datos.telefono || u.telefono || '')}"></div></div>`;
-  else if (g.paso === 2) cuerpo = `<div class="campo"><label for="g-mrz">${t('gid.mrz')}</label><textarea id="g-mrz" name="mrz" class="entrada mono" rows="3" required placeholder="P&lt;HNDAPELLIDO&lt;&lt;NOMBRE&lt;&lt;…" spellcheck="false">${esc(g.mrz)}</textarea><div class="ayuda">${t('gid.mrzAyuda')}</div></div>${g.problemas.length ? notaHTML(esc(t('gid.documentoProblemas', { lista: g.problemas.join(', ') })), 'roja', IC.alerta) : ''}`;
-  else if (g.paso === 3) cuerpo = `<div class="campo"><label for="g-foto">${t('gid.foto')}</label><input id="g-foto" type="file" accept="image/*" capture="user" class="entrada" data-cambio="g-foto"><div class="ayuda">${t('gid.fotoAyuda')}</div>${g.foto ? `<div class="previa-img mt8"><img src="${esc(g.foto)}" alt=""><small>${esc(fmtNum(g.foto.length / 1024, 0))} KB</small></div>` : ''}</div>`;
-  else cuerpo = `<p class="sub mb12">${t('gid.desc')}</p>${!u.direccionCadena ? notaHTML(t('gid.direccionNecesaria'), 'roja', IC.alerta) : ''}`;
-  const boton = g.paso === 4 ? t('gid.vincular') : (g.paso === 3 ? t('gid.enviar') : t('com.continuar'));
+  if (g.paso === 1) cuerpo = `<div class="fila-campos"><div class="campo"><label for="g-nombre">${t('gid.nombreCompleto')}</label><input id="g-nombre" name="nombreCompleto" class="entrada" required value="${esc(d.nombreCompleto || info.nombreDeclarado || '')}" autocomplete="name"><div class="ayuda">${t('gid.nombreAyuda')}</div></div>
+      <div class="campo"><label for="g-fecha">${t('gid.fechaNacimiento')}</label><input id="g-fecha" name="fechaNacimiento" type="date" class="entrada" required value="${esc(d.fechaNacimiento || info.fechaNacimientoDeclarada || '')}"></div>
+      <div class="campo"><label for="g-pais">${t('gid.paisResidencia')}</label><select id="g-pais" name="paisResidencia" class="entrada">${paises().map(p => `<option value="${esc(p.iso3)}" ${(d.paisResidencia || info.paisResidencia || (paisDe(u.pais) || {}).iso3) === p.iso3 ? 'selected' : ''}>${esc(p.bandera || '')} ${esc(nombrePais(p))}</option>`).join('')}</select></div>
+      <div class="campo"><label for="g-tel">${t('gid.telefono')}</label><input id="g-tel" name="telefono" type="tel" class="entrada" value="${esc(d.telefono || u.telefono || '')}" placeholder="${esc((paisDe(u.pais) || {}).prefijoTelefono || '')}"></div>
+      <div class="campo"><label for="g-dir">${t('gid.direccion')}</label><input id="g-dir" name="direccion" class="entrada" value="${esc(d.direccion || '')}" autocomplete="street-address"></div>
+      <div class="campo"><label for="g-ocup">${t('gid.ocupacion')}</label><input id="g-ocup" name="ocupacion" class="entrada" required value="${esc(d.ocupacion || '')}" placeholder="${esc(t('gid.ocupacionEj'))}"></div>
+      <div class="campo"><label for="g-orig">${t('gid.origenFondos')}</label><input id="g-orig" name="origenFondos" class="entrada" required value="${esc(d.origenFondos || '')}" placeholder="${esc(t('gid.origenFondosEj'))}"></div>
+      <div class="campo"><label for="g-vol">${t('gid.volumen')}</label><select id="g-vol" name="volumenEsperadoUsd" class="entrada">${volumenes.map(([v, l]) => `<option value="${v}" ${String(d.volumenEsperadoUsd || '3000') === v ? 'selected' : ''}>${l}</option>`).join('')}</select><div class="ayuda">${t('gid.volumenAyuda')}</div></div></div>
+      <label class="casilla-simple"><input type="checkbox" name="pepDeclarado" ${d.pepDeclarado ? 'checked' : ''}><span>${t('gid.pep')}</span></label>`;
+  else if (g.paso === 2) cuerpo = `<div class="campo"><label for="g-mrz">${t('gid.mrz')}</label><textarea id="g-mrz" name="mrz" class="entrada mono" rows="3" required placeholder="P&lt;HNDAPELLIDO&lt;&lt;NOMBRE&lt;&lt;…" spellcheck="false">${esc(g.mrz)}</textarea><div class="ayuda">${t('gid.mrzAyuda')}</div></div>`;
+  else cuerpo = `${info.rostroPendiente ? notaHTML(t('gid.rostroRepetir'), 'roja', IC.alerta) : ''}<div class="campo"><label for="g-foto">${t('gid.foto')}</label><input id="g-foto" type="file" accept="image/*" capture="user" class="entrada" data-cambio="g-foto"><div class="ayuda">${t('gid.fotoAyuda')}</div>${g.foto ? `<div class="previa-img mt8"><img src="${esc(g.foto)}" alt=""><small>${esc(fmtNum(g.foto.length / 1024, 0))} KB</small></div>` : ''}</div>`;
+  const boton = g.paso === 3 ? t('gid.enviar') : t('com.continuar');
   return `<form data-form="gid" novalidate class="mt12"><div class="etq mb8">${t('gid.asistente')}</div><div class="gid-pasos">${pasos.map((p, i) => `<div class="${i + 1 === g.paso ? 'actual' : (i + 1 < g.paso ? 'hecho' : '')}">${t(p)}</div>`).join('')}</div>
-    ${cuerpo}${g.error ? `<div class="error-campo mb12">${esc(g.error)}</div>` : ''}${g.ok ? `<div class="nota verde">${IC.check}<div>${esc(g.ok)}</div></div>` : ''}
-    <div class="acciones">${g.paso > 1 ? `<button type="button" class="btn btn-fantasma" data-accion="g-paso" data-v="${g.paso - 1}">${t('com.atras')}</button>` : ''}<button type="submit" class="btn btn-oro" ${g.paso === 3 && !g.foto ? 'disabled' : ''}>${boton}</button>${g.paso < 4 ? `<button type="button" class="btn btn-fantasma" data-accion="g-paso" data-v="${g.paso + 1}">${t('com.continuar')} →</button>` : ''}</div></form>`;
+    ${info.siguientePaso && g.paso !== 3 ? `<p class="pequeno mb8">${t('gid.siguiente')}: ${esc(info.siguientePaso)}</p>` : ''}${cuerpo}${g.error ? notaHTML(esc(g.error), 'roja', IC.alerta) : ''}${g.ok ? notaHTML(esc(g.ok), 'verde', IC.check) : ''}
+    <div class="acciones">${g.paso > 1 ? `<button type="button" class="btn btn-fantasma" data-accion="g-paso" data-v="${g.paso - 1}">${t('com.atras')}</button>` : ''}<button type="submit" class="btn btn-oro" ${g.paso === 3 && !g.foto ? 'disabled' : ''}>${boton}</button></div></form>`;
 }
 const vistaPerfil = {
   clase: 'medio',
@@ -1218,7 +1241,7 @@ const vistaPerfil = {
       <p class="sub mb12">${gidTexto(u.gidEstado)}</p>
       ${u.gid ? `<div class="dato"><span>${t('perfil.gidId')}</span>${copiable(u.gid)}</div>` : ''}${u.nombreLegal ? `<div class="dato"><span>${t('perfil.nombreLegal')}</span><b>${esc(u.nombreLegal)}</b></div>` : ''}
       <div class="acciones mt12"><button type="button" class="btn btn-linea btn-chico" data-accion="gid-sincronizar">${t('gid.sincronizar')}</button>${esDemo() && u.gidEstado !== 'verificada' ? `<button type="button" class="btn btn-comprar btn-chico" data-accion="gid-demo">${t('gid.verificarDemo')}</button>` : ''}</div>
-      ${u.gidEstado !== 'verificada' && u.gidEstado !== 'en-revision' && u.gidEstado !== 'suspendida' ? asistenteGidHTML() : ''}</div>
+      ${gidCuerpoHTML(u)}</div>
     <form class="tarjeta" data-form="perfil" novalidate><div class="tarjeta-cabeza"><h2>${t('perfil.datos')}</h2></div>
       <div class="fila-campos"><div class="campo"><label for="p-apodo">${t('perfil.apodo')}</label><input id="p-apodo" name="apodo" class="entrada" value="${esc(u.apodo)}" minlength="3" maxlength="20" pattern="[A-Za-z0-9_]{3,20}" required></div>
       <div class="campo"><label for="p-correo">${t('perfil.correo')}</label><input id="p-correo" class="entrada" value="${esc(u.email)}" disabled></div>
@@ -1238,37 +1261,66 @@ const vistaPerfil = {
       <a href="#/agente" class="fila enlace-fila"><div class="cuerpo"><b>${t('perfil.agenteLink')}</b><small>${t('agenteEstado.' + (u.estadoAgente || 'no'))}</small></div>${IC.abajo.replace('class="ic"', 'class="ic" style="transform:rotate(-90deg);width:18px;height:18px;stroke:var(--humo)"')}</a></div>
     <div class="centrado mt16"><button type="button" class="btn btn-peligro" data-accion="salir">${IC.salir}${t('perfil.salir')}</button></div>`;
   },
-  montar() { if (!S.v.refrescado) { S.v.refrescado = true; refrescarYo().then(() => { if (S.ruta.vista === 'perfil') render(); }); } },
+  montar() {
+    if (S.v.refrescado) return;
+    S.v.refrescado = true;
+    refrescarYo().then(async () => {
+      const u = yo();
+      if (u && !esDemo() && u.emailVerificado && u.gidEstado !== 'verificada' && u.gidEstado !== 'suspendida' && !S.v.gidInfo && !S.v.gidCargando) await sincronizarGid(true);
+      if (S.ruta.vista === 'perfil') render();
+    });
+  },
 };
 async function pasoGid(form) {
   const g = S.v.gid; if (!g) return; g.error = null; g.ok = null;
   const fd = new FormData(form);
+  const campo = n => String(fd.get(n) || '').trim();
   ocupado(form, true);
   let r;
   if (g.paso === 1) {
-    g.datos = { nombreCompleto: (fd.get('nombreCompleto') || '').trim(), fechaNacimiento: fd.get('fechaNacimiento') || '', paisResidencia: fd.get('paisResidencia') || '', telefono: (fd.get('telefono') || '').trim() || undefined };
-    if (!g.datos.nombreCompleto || !g.datos.fechaNacimiento) { g.error = t('com.obligatorio'); render(); return; }
+    g.datos = { nombreCompleto: campo('nombreCompleto'), fechaNacimiento: campo('fechaNacimiento'), paisResidencia: campo('paisResidencia'), telefono: campo('telefono') || undefined,
+      direccion: campo('direccion') || undefined, ocupacion: campo('ocupacion'), origenFondos: campo('origenFondos'), propositoCuenta: t('gid.propositoDefecto'),
+      volumenEsperadoUsd: Number(campo('volumenEsperadoUsd')) || undefined, pepDeclarado: fd.get('pepDeclarado') === 'on' };
+    if (!g.datos.nombreCompleto || !g.datos.fechaNacimiento || !g.datos.ocupacion || !g.datos.origenFondos) { g.error = t('com.obligatorio'); render(); return; }
     r = await api('POST', '/genesis/datos', g.datos);
-    if (r.ok) { g.ok = t('gid.datosOk'); g.paso = 2; }
+    if (r.ok) { g.ok = t('gid.datosOk'); aplicarRespuestaGid(r.datos, 2); }
   } else if (g.paso === 2) {
-    g.mrz = (fd.get('mrz') || '').trim(); if (!g.mrz) { g.error = t('com.obligatorio'); render(); return; }
+    g.mrz = campo('mrz').toUpperCase(); if (!g.mrz) { g.error = t('com.obligatorio'); render(); return; }
     r = await api('POST', '/genesis/documento', { mrz: g.mrz });
-    if (r.ok) { const d = r.datos.documento || {}; g.problemas = d.problemas || []; if (d.aceptable === false) { g.error = t('gid.documentoProblemas', { lista: g.problemas.join(', ') || '—' }); } else { g.ok = t('gid.documentoOk'); g.paso = 3; } }
-  } else if (g.paso === 3) {
+    if (r.ok) {
+      const d = r.datos.documento || {}; g.problemas = d.problemas || [];
+      if (d.aceptable === false) { g.error = t('gid.documentoProblemas', { lista: g.problemas.join(', ') || '—' }); aplicarRespuestaGid(r.datos, 2); }
+      else { g.ok = t('gid.documentoOk'); aplicarRespuestaGid(r.datos, 3); }
+    }
+  } else {
     if (!g.foto) { render(); return; }
     r = await api('POST', '/genesis/biometria', { selfie: g.foto });
-    if (r.ok) { g.ok = t('gid.fotoOk'); g.paso = 4; }
-  } else {
-    r = await api('POST', '/genesis/vincular', {});
-    if (r.ok) { aviso(t('gid.vinculado'), 'ok'); await sincronizarGid(true); return; }
+    if (r.ok) { g.foto = null; aplicarRespuestaGid(r.datos, null); aviso(t('gid.fotoOk'), 'ok'); }
   }
   if (r && !r.ok) g.error = mensajeError(r);
   render();
 }
+/** Lo que el puente devuelve en cada paso: la identidad recortada, la cuenta ya sincronizada y, a veces, un aviso. */
+function aplicarRespuestaGid(d, pasoSiNoDice) {
+  if (!d) return;
+  if (d.identidad) S.v.gidInfo = d.identidad;
+  if (d.usuario) actualizarUsuario(d.usuario);
+  const g = S.v.gid || (S.v.gid = { paso: 1, error: null, ok: null, datos: {}, mrz: '', foto: null, problemas: [] });
+  const paso = d.identidad && d.identidad.paso ? d.identidad.paso : pasoSiNoDice;
+  if (paso) g.paso = paso;
+  if (d.aviso) aviso(d.aviso, 'mal', 8000);
+}
 async function sincronizarGid(silencioso) {
+  S.v.gidError = null;
   const r = await api('GET', '/genesis/estado');
-  if (!r.ok) { aviso(mensajeError(r), 'mal'); return; }
-  if (r.datos.usuario) actualizarUsuario(r.datos.usuario);
+  if (!r.ok) {
+    if (r.estado === 503 && r.datos && r.datos.codigo === 'genesis-no-configurado') { S.v.gidNoConfigurado = true; if (!silencioso) aviso(t('gid.noConfigurado'), 'mal'); render(); return; }
+    S.v.gidError = mensajeError(r);
+    if (!silencioso) aviso(S.v.gidError, 'mal');
+    if (S.ruta.vista === 'perfil') render();
+    return;
+  }
+  aplicarRespuestaGid(r.datos, null);
   if (!silencioso) aviso(t('gid.sincronizado'), 'ok');
   await refrescarYo(); if (S.ruta.vista === 'perfil') render();
 }

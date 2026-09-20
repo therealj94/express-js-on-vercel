@@ -8,6 +8,10 @@
 // Y el correo tiene que estar CONFIRMADO: la identidad se busca en Genesis por
 // el correo de la cuenta, así que sin esa confirmación cualquiera que se
 // registrara con el correo de otra persona se quedaría con su identidad.
+//
+// Cada respuesta que trae la identidad se REFLEJA en la cuenta (estado y GID):
+// así la app ve «en revisión» en cuanto manda el rostro y «verificada» en
+// cuanto sincroniza después de la aprobación, sin pasos aparte.
 
 import express, { Router } from 'express'
 import { seguro, noEncontrado, sinPermiso } from '../lib/errores.js'
@@ -18,6 +22,7 @@ import * as usuarios from '../motor/usuarios.js'
 import * as genesis from '../motor/genesis.js'
 import { store } from '../store.js'
 import type { Request, Response, NextFunction } from 'express'
+import type { Usuario } from '../types.js'
 
 export const genesisRouter = Router()
 
@@ -34,7 +39,13 @@ function exigirCorreoConfirmado(req: Request, res: Response, siguiente: NextFunc
   siguiente()
 }
 
-const responder = (res: express.Response) => (r: genesis.Respuesta) => res.status(r.estado).json(r.cuerpo)
+function exigirGenesis(_req: Request, res: Response, siguiente: NextFunction): void {
+  if (!genesis.genesisConfigurado()) {
+    res.status(503).json({ error: 'Genesis ID no está configurado en este servidor', codigo: 'genesis-no-configurado' })
+    return
+  }
+  siguiente()
+}
 
 async function idDe(email: string): Promise<string> {
   const idn = await genesis.idIdentidad(email)
@@ -42,23 +53,55 @@ async function idDe(email: string): Promise<string> {
   return idn
 }
 
-/** Lo que de la identidad se le enseña al propio usuario: su trámite, no el expediente. */
+/**
+ * Lo que de la identidad se le enseña al propio usuario: su trámite, no el
+ * expediente. Es lo que Genesis ID devuelve en `estadoParaUsuario` más el paso
+ * del asistente; nunca el tamizado, el riesgo ni las notas del operador.
+ */
 function identidadParaUsuario(identidad: any) {
   if (!identidad || typeof identidad !== 'object') return null
-  const permitidos = ['id', 'email', 'estado', 'gid', 'pendientes', 'documento', 'biometria', 'rostroPendiente',
-    'nombreDeclarado', 'fechaNacimientoDeclarada', 'paisResidencia', 'creadaEn', 'actualizadaEn', 'verificadaEn', 'fotoCredencial']
+  const permitidos = ['id', 'email', 'estado', 'gid', 'nombreLegal', 'documentoAceptable', 'rostroPendiente', 'fotoCredencial',
+    'faltanDatos', 'umbralDiligenciaUsd', 'diligencia', 'faltan', 'siguientePaso',
+    'nombreDeclarado', 'fechaNacimientoDeclarada', 'paisResidencia', 'creadaEn', 'actualizadaEn', 'verificadaEn']
   const salida: Record<string, unknown> = {}
   for (const k of permitidos) if (k in identidad) salida[k] = identidad[k]
+  salida.paso = genesis.pasoSugerido(identidad)
   return salida
 }
 
 /**
- * Estado del trámite. Crea la identidad si no existe y refleja en la cuenta
- * lo que Genesis ID diga: estado y GID. Si está verificada y todavía no
- * estaba atada, la ata (cuenta = id del usuario).
+ * Refleja en la cuenta lo que Genesis ID dice de la identidad: estado y GID.
+ * Si está verificada y todavía no estaba atada, la ata (cuenta = id del usuario).
  *
- * Una cuenta que ya tiene un GID verificado (por sesión única, por ejemplo)
- * no se degrada porque el correo no tenga identidad en Genesis: se avisa.
+ * Una cuenta que ya tiene un GID verificado (por sesión única, por ejemplo) no
+ * se degrada porque el correo tenga otra identidad o ninguna: se avisa.
+ */
+async function reflejar(u: Usuario, identidad: any): Promise<string | null> {
+  if (!identidad || typeof identidad !== 'object') return null
+  const estado = genesis.estadoGidDe(identidad.estado)
+  const gid = identidad.gid ? String(identidad.gid).toUpperCase() : null
+  const nombre = identidad.nombreLegal ?? null
+  if (u.gid && u.gidEstado === 'verificada' && gid !== u.gid) {
+    return 'Su cuenta ya está verificada con un Genesis ID distinto al de este correo; no se cambió nada'
+  }
+  const sinAtar = estado === 'verificada' && gid && u.gid !== gid
+  usuarios.sincronizarGenesis(u, estado, gid, nombre)
+  if (sinAtar && identidad.id) await genesis.vincular(String(identidad.id), u.id, u.direccionCadena)
+  return null
+}
+
+/** Devuelve la respuesta de Genesis con la identidad recortada y la cuenta ya sincronizada. */
+async function responderConIdentidad(req: Request, res: Response, r: genesis.Respuesta): Promise<void> {
+  const u = req.usuario!
+  if (!r.ok) { res.status(r.estado).json(r.cuerpo); return }
+  const cuerpo = (r.cuerpo && typeof r.cuerpo === 'object') ? r.cuerpo : {}
+  const aviso = await reflejar(u, cuerpo.identidad)
+  res.json({ ...cuerpo, identidad: identidadParaUsuario(cuerpo.identidad), usuario: usuarios.propio(u), aviso })
+}
+
+/**
+ * Estado del trámite. Crea la identidad en Genesis ID si no existe (por el
+ * correo confirmado de la cuenta) y refleja en la cuenta lo que Genesis diga.
  */
 genesisRouter.get('/estado', limite(30), exigirCorreoConfirmado, seguro(async (req, res) => {
   const u = req.usuario!
@@ -68,70 +111,64 @@ genesisRouter.get('/estado', limite(30), exigirCorreoConfirmado, seguro(async (r
   }
   let r = await genesis.identidadPorEmail(u.email)
   if (!r.ok && r.estado === 404) r = await genesis.crearIdentidad(u.email)
-  if (!r.ok) { res.status(r.estado).json(r.cuerpo); return }
-  const identidad = r.cuerpo?.identidad ?? {}
-  const estado = genesis.estadoGidDe(identidad.estado)
-  const gid = identidad.gid ? String(identidad.gid).toUpperCase() : null
-  const nombre = identidad.nombreLegal ?? identidad.nombre ?? null
-
-  let aviso: string | null = null
-  if (u.gid && u.gidEstado === 'verificada' && gid !== u.gid) {
-    // El GID de la cuenta vino por otra vía y sigue mandando; la identidad
-    // por correo es otra (o todavía no existe).
-    aviso = 'Su cuenta ya está verificada con un Genesis ID distinto al de este correo; no se cambió nada'
-  } else {
-    const sinAtar = estado === 'verificada' && gid && u.gid !== gid
-    usuarios.sincronizarGenesis(u, estado, gid, nombre)
-    if (sinAtar && identidad.id) await genesis.vincular(String(identidad.id), u.id, u.direccionCadena)
-  }
-  res.json({ identidad: identidadParaUsuario(identidad), usuario: usuarios.propio(u), aviso })
+  await responderConIdentidad(req, res, r)
 }))
 
-genesisRouter.post('/foto', limite(10), exigirCorreoConfirmado, seguro(async (req, res) => {
-  const idn = await idDe(req.usuario!.email)
-  responder(res)(await genesis.enviarFoto(idn, req.body?.foto))
-}))
-
-genesisRouter.post('/datos', limite(20), exigirCorreoConfirmado, seguro(async (req, res) => {
+/** Paso 1 del asistente: datos y perfil de cumplimiento (ocupación, origen de fondos…). */
+genesisRouter.post('/datos', limite(20), exigirCorreoConfirmado, exigirGenesis, seguro(async (req, res) => {
   const idn = await idDe(req.usuario!.email)
   const b = req.body ?? {}
-  responder(res)(await genesis.declararDatos(idn, {
+  const volumen = b.volumenEsperadoUsd === undefined || b.volumenEsperadoUsd === null || b.volumenEsperadoUsd === '' ? undefined : Number(b.volumenEsperadoUsd)
+  await responderConIdentidad(req, res, await genesis.declararDatos(idn, {
     nombreCompleto: b.nombreCompleto, fechaNacimiento: b.fechaNacimiento, paisResidencia: b.paisResidencia,
     telefono: b.telefono, direccion: b.direccion, ocupacion: b.ocupacion, origenFondos: b.origenFondos,
-    propositoCuenta: b.propositoCuenta, volumenEsperadoUsd: b.volumenEsperadoUsd, pepDeclarado: b.pepDeclarado,
+    propositoCuenta: b.propositoCuenta, volumenEsperadoUsd: Number.isFinite(volumen) ? volumen : undefined,
+    pepDeclarado: typeof b.pepDeclarado === 'boolean' ? b.pepDeclarado : undefined,
   }))
 }))
 
-genesisRouter.post('/documento', limite(10), exigirCorreoConfirmado, seguro(async (req, res) => {
+/** Paso 2: la MRZ del documento (leída en el teléfono; la imagen no viaja). */
+genesisRouter.post('/documento', limite(10), exigirCorreoConfirmado, exigirGenesis, seguro(async (req, res) => {
   const idn = await idDe(req.usuario!.email)
-  responder(res)(await genesis.enviarDocumento(idn, String(req.body?.mrz || ''), req.body?.textoAnverso))
+  await responderConIdentidad(req, res, await genesis.enviarDocumento(idn, String(req.body?.mrz || ''), req.body?.textoAnverso))
 }))
 
-genesisRouter.post('/vivacidad', limite(10), exigirCorreoConfirmado, seguro(async (req, res) => {
+genesisRouter.post('/vivacidad', limite(10), exigirCorreoConfirmado, exigirGenesis, seguro(async (req, res) => {
   const idn = await idDe(req.usuario!.email)
-  responder(res)(await genesis.pedirVivacidad(idn))
+  const r = await genesis.pedirVivacidad(idn)
+  res.status(r.estado).json(r.cuerpo)
 }))
 
-genesisRouter.post('/biometria', limite(10), exigirCorreoConfirmado, parserRostro, seguro(async (req, res) => {
+/** Paso 3: el rostro. Con proveedor se coteja solo; sin él, lo coteja un operador de Genesis ID. */
+genesisRouter.post('/biometria', limite(10), exigirCorreoConfirmado, exigirGenesis, parserRostro, seguro(async (req, res) => {
   const idn = await idDe(req.usuario!.email)
   const b = req.body ?? {}
-  responder(res)(await genesis.enviarBiometria(idn, { selfie: b.selfie, fotoDocumento: b.fotoDocumento, reto: b.reto, fotogramas: b.fotogramas }))
+  await responderConIdentidad(req, res, await genesis.enviarBiometria(idn, { selfie: b.selfie, fotoDocumento: b.fotoDocumento, reto: b.reto, fotogramas: b.fotogramas }))
 }))
 
-genesisRouter.post('/vincular', limite(10), exigirCorreoConfirmado, seguro(async (req, res) => {
+genesisRouter.post('/foto', limite(10), exigirCorreoConfirmado, exigirGenesis, seguro(async (req, res) => {
+  const idn = await idDe(req.usuario!.email)
+  await responderConIdentidad(req, res, await genesis.enviarFoto(idn, req.body?.foto))
+}))
+
+/** Ata la cuenta a la identidad (cuenta = id del usuario). Se hace solo al verificarse; esto lo permite antes. */
+genesisRouter.post('/vincular', limite(10), exigirCorreoConfirmado, exigirGenesis, seguro(async (req, res) => {
   const u = req.usuario!
   const idn = await idDe(u.email)
-  responder(res)(await genesis.vincular(idn, u.id, u.direccionCadena))
+  const r = await genesis.vincular(idn, u.id, u.direccionCadena)
+  res.status(r.estado).json(r.cuerpo)
 }))
 
-genesisRouter.post('/sso/token', limite(20), seguro(async (req, res) => {
+genesisRouter.post('/sso/token', limite(20), exigirGenesis, seguro(async (req, res) => {
   const u = req.usuario!
   if (!u.gid || u.gidEstado !== 'verificada') throw sinPermiso('Todavía no hay una identidad verificada', 'no-verificado')
-  responder(res)(await genesis.tokenSso(u.gid, u.id))
+  const r = await genesis.tokenSso(u.gid, u.id)
+  res.status(r.estado).json(r.cuerpo)
 }))
 
-genesisRouter.get('/tamiz/:direccion', limite(60), seguro(async (req, res) => {
-  responder(res)(await genesis.tamizDireccion(req.params.direccion))
+genesisRouter.get('/tamiz/:direccion', limite(60), exigirGenesis, seguro(async (req, res) => {
+  const r = await genesis.tamizDireccion(req.params.direccion)
+  res.status(r.estado).json(r.cuerpo)
 }))
 
 /** Solo en demostración: marca la cuenta como verificada con un GID de prueba. */

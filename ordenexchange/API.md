@@ -120,20 +120,30 @@ Guatemala «Banco Industrial»; México «BBVA México»; Venezuela «Banco de V
 
 ## Genesis ID (`/api/genesis`, con sesión) — el puente
 
-Mismo contrato que `infra/genesis-proxy`: el servidor habla con Genesis ID con su clave; el navegador nunca la ve.
+Mismo contrato que `infra/genesis-proxy`: el servidor habla con Genesis ID con su clave (`GENESIS_API_KEY`); el navegador nunca la ve. Todas las rutas del trámite exigen el **correo confirmado** (si no, 403 `correo-no-verificado`), porque la identidad se busca en Genesis ID por el correo de la cuenta.
+
+Cada respuesta que trae la identidad **refleja su estado en la cuenta** (`gidEstado`, `gid`, `nombreLegal`) y devuelve `usuario: UsuarioPropio` ya sincronizado. Así la app ve «en revisión» en cuanto manda el rostro y «verificada» en cuanto sincroniza después de la aprobación.
 
 | Ruta | Para qué |
 | --- | --- |
-| `GET /estado` | Estado del trámite del usuario (por su correo confirmado). Crea la identidad si no existe. **Sincroniza** `gid`/`gidEstado` del usuario (nunca degrada una cuenta ya verificada por otra vía: entonces `aviso`). Devuelve `{ identidad:{ id, estado, gid, pendientes, documento, biometria, … }, usuario: UsuarioPropio, aviso: string\|null }` |
-| `POST /datos` | `{ nombreCompleto, fechaNacimiento (AAAA-MM-DD), paisResidencia (ISO3), telefono?, direccion?, ocupacion?, origenFondos?, propositoCuenta?, volumenEsperadoUsd?, pepDeclarado? }` |
-| `POST /documento` | `{ mrz, textoAnverso? }` → `{ identidad, documento:{ aceptable, problemas:[] } }` |
-| `POST /vivacidad` | — → `{ reto }` o 503 si no hay biometría |
-| `POST /biometria` | `{ selfie, fotoDocumento?, reto?, fotogramas? }` |
-| `POST /vincular` | Ata la cuenta de OrdenExchange al GID (cuenta = id del usuario, dirección = `direccionCadena`) |
-| `POST /sso/token` | `{ token, expiraEnSegundos }` para entrar en otra app del ecosistema |
-| `GET /tamiz/:direccion` | `{ tamizado, sancionada, aviso? }` |
+| `GET /estado` | Estado del trámite. Crea la identidad en Genesis ID si no existe. → `{ identidad, usuario, aviso }` |
+| `POST /datos` | Paso 1. `{ nombreCompleto, fechaNacimiento (AAAA-MM-DD), paisResidencia (ISO3), telefono?, direccion?, ocupacion, origenFondos, propositoCuenta?, volumenEsperadoUsd?, pepDeclarado? }` → `{ identidad, usuario, aviso }`. Sin `ocupacion` y `origenFondos` Genesis ID **no aprueba** a quien declare mover ≥ 10 000 USD al año (o no declare nada). |
+| `POST /documento` | Paso 2. `{ mrz, textoAnverso? }` → `{ identidad, usuario, aviso, documento:{ aceptable, problemas:[] } }`. La MRZ se lee en el teléfono; la imagen del documento no viaja. |
+| `POST /vivacidad` | — → `{ reto }` o 503 si no hay proveedor de biometría |
+| `POST /biometria` | Paso 3. `{ selfie, fotoDocumento?, reto?, fotogramas? }` → `{ identidad, usuario, aviso, biometria:{ estado, motivo, vivacidad, gestos } }`. Con proveedor se coteja solo; sin él (`estado: 'no-configurada'`) lo coteja un operador de Genesis ID. La cuenta pasa a `en-revision`. |
+| `POST /vincular` | Ata la cuenta al GID (cuenta = id del usuario, dirección = `direccionCadena`). Al verificarse, `GET /estado` lo hace solo. |
+| `POST /sso/token` | `{ token, expiraEnSegundos }` para entrar en otra app del ecosistema (exige cuenta verificada) |
+| `GET /tamiz/:direccion` | `{ tamizado, sancionada, aviso?, ficha? }` |
 
-Sin `GENESIS_API_KEY`: 503 `{ error, codigo:'genesis-no-configurado' }`. En modo demo: `POST /api/genesis/demo/verificar` marca la cuenta como verificada con un GID de prueba.
+**`identidad`** (lo que Genesis ID le enseña al propio usuario, nunca el expediente): `{ id, email, estado, gid, nombreLegal, documentoAceptable, rostroPendiente, fotoCredencial, faltanDatos:[], umbralDiligenciaUsd, diligencia:'simplificada'|'completa', faltan (nº de comprobaciones pendientes), siguientePaso, paso }`. `paso` lo calcula OrdenExchange: `1` datos · `2` documento · `3` rostro · `null` nada que hacer aquí (en revisión, verificada o suspendida).
+
+Estados de Genesis ID → `gidEstado` de la cuenta: `iniciada`/`datos`/`documento` → `sin-verificar` (la persona tiene algo que hacer); `biometria`/`en-revision` → `en-revision`; `verificada`, `rechazada`, `suspendida` → igual. Una cuenta ya verificada por otra vía (sesión única) nunca se degrada: entonces vuelve `aviso`.
+
+**Quién aprueba.** Nadie desde OrdenExchange: la clave de la app no vale en el panel de Genesis ID. Un operador de cumplimiento coteja el rostro (`POST /api/panel/identidades/:id/biometria`) y aprueba (`POST /api/panel/identidades/:id/aprobar`) con listas de sanciones cargadas; Genesis ID emite el GID y OrdenExchange lo recoge al sincronizar.
+
+**Monitoreo AML.** Cada orden completada encola un movimiento por cada parte (`reportesAml` en el almacén) y se despacha a `POST /api/v1/movimientos` con reintentos (5 s, 10 s, 20 s… hasta 10 min; 12 intentos). `GET /healthz` enseña `reportesAmlPendientes`.
+
+Sin `GENESIS_API_KEY`: 503 `{ error, codigo:'genesis-no-configurado' }`. En modo demo: `POST /api/genesis/demo/verificar` marca la cuenta como verificada con un GID de prueba (sufijo `-D`, que no vale fuera de la demo).
 
 ---
 

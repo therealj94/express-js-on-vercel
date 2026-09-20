@@ -82,16 +82,22 @@ export function exigeApp(...alcances: string[]) {
 const cubos = new Map<string, { fichas: number; ultimo: number }>()
 
 /**
- * Cubo con goteo, por IP.
+ * Cubo con goteo, por IP y por ruta.
  *
  * Sin esto, las rutas de entrada y de consulta de GID quedan expuestas a
  * fuerza bruta y a barridos: un GID son 8 caracteres, y sin límite alguien
  * puede recorrer el espacio buscando identidades verificadas.
+ *
+ * El cubo es de cada ruta, no del enrutador entero: las aplicaciones del
+ * ecosistema hablan con /api/v1 desde una sola IP de servidor, y con un cubo
+ * compartido la primera ruta que se tocaba fijaba la capacidad de todas
+ * (mandar un rostro, 20 por minuto, dejaba sin fichas al monitoreo AML).
  */
 export function limite(porMinuto: number) {
   const relleno = porMinuto / 60000
   return (req: Request, res: Response, siguiente: NextFunction) => {
-    const llave = `${req.ip}|${req.baseUrl}`
+    const ruta = (req.route as { path?: string } | undefined)?.path ?? req.path
+    const llave = `${req.ip}|${req.baseUrl}${ruta}`
     const ahora = Date.now()
     const cubo = cubos.get(llave) ?? { fichas: porMinuto, ultimo: ahora }
     cubo.fichas = Math.min(porMinuto, cubo.fichas + (ahora - cubo.ultimo) * relleno)

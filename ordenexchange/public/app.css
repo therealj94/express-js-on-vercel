@@ -618,6 +618,8 @@ select.entrada option{background:var(--panel2);color:var(--marfil)}
 .gid-pasos div{flex:1;text-align:center;font-size:11.5px;color:var(--humo);padding:6px 4px;border-bottom:2px solid var(--panel3);font-weight:600}
 .gid-pasos div.actual{color:var(--marfil);border-color:var(--oro)}
 .gid-pasos div.hecho{color:var(--comprar);border-color:var(--comprar)}
+.casilla-simple{display:flex;align-items:flex-start;gap:10px;font-size:13.5px;color:var(--ceniza);margin:4px 0 12px}
+.casilla-simple input{margin-top:3px;accent-color:var(--oro)}
 .req-lista{display:flex;flex-direction:column;gap:8px;margin-bottom:12px}
 .req-lista div{display:flex;align-items:center;gap:10px;font-size:14px}
 .req-lista div svg{width:18px;height:18px;flex:none;stroke:currentColor;fill:none;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}

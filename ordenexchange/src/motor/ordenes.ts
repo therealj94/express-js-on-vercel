@@ -31,7 +31,7 @@ import * as anuncios from './anuncios.js'
 import * as metodosPago from './metodosPago.js'
 import * as imagenes from './imagenes.js'
 import { aUsd } from './precios.js'
-import { enviarMovimientos } from './genesis.js'
+import * as aml from './aml.js'
 import type { Orden, Usuario, Mensaje, UsuarioPublico, EstadoOrden, Apelacion, Calificacion } from '../types.js'
 
 const ABIERTOS: EstadoOrden[] = ['pendiente-pago', 'pagado', 'apelacion']
@@ -128,17 +128,17 @@ function cerrarCompletada(o: Orden, actor: string): void {
   reportarAml(o)
 }
 
-/** Monitoreo AML en Genesis ID: un movimiento por cada parte, sin esperar respuesta. */
+/** Monitoreo AML en Genesis ID: un movimiento por cada parte, por la cola con reintentos. */
 function reportarAml(o: Orden): void {
   const comprador = usuarios.porId(o.compradorId)
   const vendedor = usuarios.porId(o.vendedorId)
   const montoUsd = aUsd(o.montoFiat, o.moneda) ?? 0
   const base = { activo: o.activo, monto: Dec.aNumero(o.cantidadActivo), montoUsd: Math.round(montoUsd * 100) / 100, fecha: o.completadaEn!, app: 'ordenexchange', hash: null }
   if (comprador?.gid) {
-    enviarMovimientos(comprador.gid, [{ ...base, id: `${o.id}:compra`, gid: comprador.gid, direccion: 'entrada', contraparte: vendedor?.gid || o.vendedorId, paisContraparte: vendedor?.pais ?? null }])
+    aml.encolar(comprador.gid, { ...base, id: `${o.id}:compra`, gid: comprador.gid, direccion: 'entrada', contraparte: vendedor?.gid || o.vendedorId, paisContraparte: vendedor?.pais ?? null })
   }
   if (vendedor?.gid) {
-    enviarMovimientos(vendedor.gid, [{ ...base, id: `${o.id}:venta`, gid: vendedor.gid, direccion: 'salida', contraparte: comprador?.gid || o.compradorId, paisContraparte: comprador?.pais ?? null }])
+    aml.encolar(vendedor.gid, { ...base, id: `${o.id}:venta`, gid: vendedor.gid, direccion: 'salida', contraparte: comprador?.gid || o.compradorId, paisContraparte: comprador?.pais ?? null })
   }
 }
 

@@ -102,14 +102,52 @@ OrdenExchange entra por la misma puerta que Veta Wallet y MyTokenPay: la app
 `ordenexchange` en Genesis ID, con su clave y sus alcances (`genesis-id/src/auth/
 aplicaciones.ts`). El navegador nunca ve la clave: habla con `/api/genesis/*` y
 el servidor reenvía (`src/motor/genesis.ts`, el mismo puente que
-`infra/genesis-proxy`). Con ella:
+`infra/genesis-proxy`).
 
-- la persona se verifica desde OrdenExchange (datos, MRZ, rostro) o entra con
-  **sesión única** desde otra app (`POST /api/auth/sso`);
-- ninguna cuenta opera sin GID verificado; si Genesis ID la suspende, deja de
-  operar en cuanto se sincroniza;
-- cada dirección de retiro se **tamiza** contra las listas de sanciones;
-- cada compraventa completada se manda al **monitoreo AML** de ambas partes.
+La verificación (KYC) se hace desde el perfil, en tres pasos, y la decide una
+persona en Genesis ID:
+
+1. **Datos y perfil de cumplimiento**: nombre tal como está en el documento,
+   fecha de nacimiento, país, teléfono, dirección, **ocupación**, **origen de
+   los fondos**, cuánto espera mover al año y si es persona expuesta
+   políticamente. Genesis ID tamiza el nombre contra las listas de sanciones.
+2. **Documento**: la MRZ (las líneas de caracteres del pasaporte o cédula),
+   leída en el teléfono; la imagen no viaja. Genesis ID comprueba los dígitos
+   de control, la vigencia y que coincida con lo declarado.
+3. **Rostro**: un selfie. Con proveedor de biometría se coteja solo; sin él lo
+   coteja un operador. La cuenta queda **en revisión**.
+4. Un **operador de cumplimiento** aprueba en el panel de Genesis ID (con las
+   listas de sanciones cargadas y sin bloqueos). Genesis ID emite el **GID**
+   (`GEN-XXXX-XXXX-C`); OrdenExchange lo recoge al sincronizar, guarda el
+   nombre legal, ata la cuenta a la identidad y la persona ya puede operar.
+
+Cada paso devuelve el estado de la identidad y la cuenta ya sincronizada, así
+que la app siempre sabe en qué paso va (`paso`), qué falta (`faltanDatos`) y si
+hay que repetir la foto (`rostroPendiente`). Además:
+
+- se puede entrar con **sesión única** desde otra app del ecosistema
+  (`POST /api/auth/sso`), y OrdenExchange emite tokens para las demás;
+- ninguna cuenta opera sin GID verificado; si Genesis ID la **suspende**, deja
+  de operar en cuanto se sincroniza;
+- cada dirección de retiro se **tamiza** contra las listas de sanciones (si
+  Genesis ID no responde, el retiro no sale: se cierra, no se abre);
+- cada compraventa completada se manda al **monitoreo AML** de ambas partes por
+  una cola persistente con reintentos (`src/motor/aml.ts`): un reporte que no
+  llega se reintenta, no se pierde.
+
+Todo esto se prueba contra un Genesis ID de verdad, no contra un doble:
+
+```sh
+(cd ../genesis-id && npm install)
+npm run prueba:genesis
+```
+
+`src/pruebas/genesis.integracion.ts` levanta el Genesis ID del repositorio en
+un proceso aparte (clave recién emitida, listas de prueba, sin proveedor de
+biometría) y OrdenExchange en modo real, y recorre registro → correo → datos →
+MRZ → rostro → revisión → aprobación por el operador → GID, sesión única,
+tamizado, una compraventa cuyos movimientos llegan al monitoreo y una
+suspensión que apaga la cuenta.
 
 ## Cadena 5550
 
@@ -143,8 +181,9 @@ configuración y ajustes de saldo); `soporte` resuelve apelaciones, cancela
 npm run prueba
 ```
 
-`decimal.test.ts` prueba la aritmética. `flujo.test.ts` levanta el servidor en
-modo demo y recorre todo: registro y confirmación del correo, verificación, mercado, orden de compra con
+`decimal.test.ts` prueba la aritmética. `genesis.integracion.ts` (`npm run
+prueba:genesis`) es el KYC contra un Genesis ID real (ver arriba). `flujo.test.ts`
+levanta el servidor en modo demo y recorre todo: registro y confirmación del correo, verificación, mercado, orden de compra con
 custodia, chat, marcar pagado, liberar con contraseña, calificar; orden de venta
 sobre un anuncio de compra; cancelación y vencimiento; apelaciones resueltas en
 ambos sentidos desde el panel; permisos de auditor; congelar cuentas; precios;

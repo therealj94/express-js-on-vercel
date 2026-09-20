@@ -54,7 +54,7 @@ export function preciosPorDefecto(): Precios {
 function vacio(): DatosOrdenExchange {
   return {
     usuarios: [], saldos: [], movimientos: [], depositos: [], retiros: [], metodosPago: [],
-    anuncios: [], ordenes: [], solicitudesAgente: [], operadores: [], sesionesOperador: [],
+    anuncios: [], ordenes: [], solicitudesAgente: [], operadores: [], sesionesOperador: [], reportesAml: [],
     precios: preciosPorDefecto(), configuracion: configuracionPorDefecto(), bitacora: [], version: 1,
   }
 }

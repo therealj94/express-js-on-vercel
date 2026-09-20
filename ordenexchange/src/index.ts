@@ -17,6 +17,7 @@ import { asegurarAdministrador, limpiarSesiones } from './motor/operadores.js'
 import { sembrar, CONTRASENA_DEMO } from './motor/demo.js'
 import { genesisConfigurado } from './motor/genesis.js'
 import { correoConfigurado } from './motor/correo.js'
+import * as aml from './motor/aml.js'
 import * as usuarios from './motor/usuarios.js'
 import * as anuncios from './motor/anuncios.js'
 import { revisarVencidas } from './motor/ordenes.js'
@@ -106,6 +107,7 @@ app.get('/healthz', (_req, res) => {
       tesoreriaConfigurada: Boolean(cfg.tesoreria),
       precioMetal: p.oroUsdOnza > 0 && p.plataUsdOnza > 0,
       bitacoraIntegra: cadena.integra,
+      reportesAmlPendientes: aml.pendientes().length,
       demo: modoDemo(),
       produccion: EN_PRODUCCION,
     },
@@ -187,6 +189,8 @@ async function arrancarDeVerdad(): Promise<void> {
   const vencidas = revisarVencidas()
   if (vencidas) console.log(`[ordenexchange] ${vencidas} órdenes vencidas al arrancar`)
   setInterval(() => { try { revisarVencidas() } catch (e: any) { console.error('[ordenexchange] revisando vencidas:', e?.message) } }, 30000).unref?.()
+  aml.pronto()
+  setInterval(() => { aml.despachar().catch((e: any) => console.error('[ordenexchange] monitoreo AML:', e?.message)) }, 30000).unref?.()
 
   console.log(`[ordenexchange] almacén: ${motor} · modo: ${demo ? 'DEMOSTRACIÓN' : 'real'}`)
   const p = precios()

@@ -410,11 +410,20 @@ export function perdioApelacion(idUsuario: string): void {
 
 // ── Vistas ───────────────────────────────────────────────────────────────────
 
+/**
+ * «Juan P.»: el primer nombre y la inicial del primer apellido, como enseña
+ * Binance. El nombre legal viene plano (y en mayúsculas cuando sale de la
+ * MRZ), así que el apellido se estima a la usanza hispana: con dos o tres
+ * palabras es la segunda («Juan Pérez López»); con cuatro o más, la tercera
+ * («Juan Carlos Pérez López»).
+ */
 function nombreAbreviado(u: Usuario): string | null {
   if (u.gidEstado !== 'verificada' || !u.nombreLegal) return null
-  const partes = u.nombreLegal.trim().split(/\s+/)
+  const capital = (p: string) => p.charAt(0).toUpperCase() + p.slice(1).toLowerCase()
+  const partes = u.nombreLegal.trim().split(/\s+/).map(capital)
   if (partes.length === 1) return partes[0]
-  return `${partes[0]} ${partes[1][0]}.`
+  const apellido = partes.length >= 4 ? partes[2] : partes[1]
+  return `${partes[0]} ${apellido[0]}.`
 }
 
 export const diasRegistrado = (u: Usuario): number => Math.floor((Date.now() - Date.parse(u.creadoEn)) / 86400000)

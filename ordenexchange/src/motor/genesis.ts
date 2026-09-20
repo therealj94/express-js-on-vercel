@@ -89,15 +89,7 @@ export const verificarSso = (token: string) =>
 export const tamizDireccion = (direccion: string) =>
   llamar<{ tamizado: boolean; sancionada: boolean; aviso?: string }>(`/api/v1/tamiz/direccion/${encodeURIComponent(direccion)}`)
 
-/**
- * Movimientos para el monitoreo AML. Se manda y no se espera nada de vuelta:
- * la respuesta nunca dice si saltó una alerta, y a la persona no se le avisa.
- */
-export function enviarMovimientos(gid: string, movimientos: Record<string, unknown>[]): void {
-  if (!CLAVE || !gid || !movimientos.length) return
-  llamar('/api/v1/movimientos', { method: 'POST', body: { gid, movimientos } })
-    .catch(() => undefined)
-}
+// Los movimientos para el monitoreo AML van por la cola de motor/aml.ts.
 
 /** De lo que dice Genesis ID sobre una identidad, al estado que guarda OrdenExchange. */
 export function estadoGidDe(estadoGenesis: string | null | undefined): 'sin-verificar' | 'en-revision' | 'verificada' | 'rechazada' | 'suspendida' {
@@ -105,9 +97,31 @@ export function estadoGidDe(estadoGenesis: string | null | undefined): 'sin-veri
     case 'verificada': return 'verificada'
     case 'rechazada': return 'rechazada'
     case 'suspendida': return 'suspendida'
+    // En revisión = ya no depende de la persona: mandó el rostro y espera al
+    // operador. Con el documento aceptado todavía le falta la foto, así que
+    // sigue «sin verificar» y el asistente se le muestra en ese paso.
     case 'en-revision':
-    case 'biometria':
-    case 'documento': return 'en-revision'
+    case 'biometria': return 'en-revision'
     default: return 'sin-verificar'
   }
 }
+
+/**
+ * En qué paso del asistente tiene que estar la persona, según lo que Genesis
+ * ID dice de su trámite. Lo calcula el servidor para que la app no tenga que
+ * conocer los estados internos de Genesis.
+ *   1 datos · 2 documento · 3 rostro · null = no hay nada que hacer aquí
+ */
+export function pasoSugerido(identidad: { estado?: string; documentoAceptable?: boolean | null; rostroPendiente?: boolean } | null | undefined): 1 | 2 | 3 | null {
+  if (!identidad) return 1
+  switch (identidad.estado) {
+    case 'iniciada': return 1
+    case 'datos': return 2
+    case 'documento': return identidad.documentoAceptable === false ? 2 : 3
+    case 'biometria':
+    case 'en-revision': return identidad.rostroPendiente ? 3 : null
+    case 'rechazada': return 1
+    default: return null
+  }
+}
+

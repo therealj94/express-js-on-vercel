@@ -304,6 +304,11 @@ es: {
   'gid.verificada': 'Identidad verificada. Puedes operar.', 'gid.rechazada': 'La verificación fue rechazada. Revisa tus datos y vuelve a intentarlo.',
   'gid.suspendida': 'Tu identidad está suspendida. Escribe a soporte.', 'gid.sinVerificar': 'Necesitas verificar tu identidad para comprar y vender.',
   'gid.enviar': 'Enviar', 'gid.direccionNecesaria': 'Registra tu dirección de la cadena antes de vincular.',
+  'gid.nombreAyuda': 'Tal como aparece en tu documento.', 'gid.direccion': 'Dirección de residencia', 'gid.ocupacion': 'Ocupación', 'gid.ocupacionEj': 'Comerciante, ingeniera, estudiante…',
+  'gid.origenFondos': 'Origen de los fondos', 'gid.origenFondosEj': 'Salario, negocio propio, ahorros, remesas…', 'gid.propositoDefecto': 'Comprar y vender ORIGEN en OrdenExchange',
+  'gid.volumen': 'Cuánto esperas mover al año', 'gid.volumenAyuda': 'Por encima de 10 000 USD la revisión es más completa.', 'gid.pep': 'Soy o he sido persona expuesta políticamente (o familiar cercano de una).',
+  'gid.rostroRepetir': 'La comprobación del rostro no pasó. Tómate otra foto con buena luz, de frente y sin gafas.', 'gid.siguiente': 'Siguiente paso',
+  'gid.correoPrimero': 'Confirma tu correo arriba y aquí aparecerá el asistente de verificación.', 'gid.noConfigurado': 'Este servidor no tiene conexión con Genesis ID; la verificación no está disponible.',
 
   'rep.total': 'Órdenes', 'rep.completadas': 'Completadas', 'rep.tasa': 'Finalización 30 d', 'rep.positivas': 'Positivas',
   'rep.negativas': 'Negativas', 'rep.liberacion': 'Liberación promedio', 'rep.pago': 'Pago promedio',
@@ -648,6 +653,11 @@ en: {
   'gid.verificada': 'Identity verified. You can trade.', 'gid.rechazada': 'Verification was rejected. Check your details and try again.',
   'gid.suspendida': 'Your identity is suspended. Contact support.', 'gid.sinVerificar': 'You need to verify your identity to buy and sell.',
   'gid.enviar': 'Send', 'gid.direccionNecesaria': 'Register your chain address before linking.',
+  'gid.nombreAyuda': 'Exactly as it appears on your ID.', 'gid.direccion': 'Home address', 'gid.ocupacion': 'Occupation', 'gid.ocupacionEj': 'Merchant, engineer, student…',
+  'gid.origenFondos': 'Source of funds', 'gid.origenFondosEj': 'Salary, own business, savings, remittances…', 'gid.propositoDefecto': 'Buy and sell ORIGEN on OrdenExchange',
+  'gid.volumen': 'How much you expect to move per year', 'gid.volumenAyuda': 'Above 10,000 USD the review is more thorough.', 'gid.pep': 'I am or have been a politically exposed person (or a close relative of one).',
+  'gid.rostroRepetir': 'The face check did not pass. Take another photo with good light, facing the camera, no glasses.', 'gid.siguiente': 'Next step',
+  'gid.correoPrimero': 'Confirm your email above and the verification assistant will appear here.', 'gid.noConfigurado': 'This server has no connection to Genesis ID; verification is unavailable.',
 
   'rep.total': 'Orders', 'rep.completadas': 'Completed', 'rep.tasa': '30-day completion', 'rep.positivas': 'Positive',
   'rep.negativas': 'Negative', 'rep.liberacion': 'Average release', 'rep.pago': 'Average payment',

@@ -464,8 +464,20 @@ export interface Configuracion {
   tesoreria: string | null
 }
 
+/** Un movimiento pendiente de reportar al monitoreo AML de Genesis ID (ver motor/aml.ts). */
+export interface ReporteAml {
+  id: string
+  gid: string
+  movimiento: Record<string, unknown>
+  intentos: number
+  creadoEn: string
+  ultimoIntento: string | null
+  ultimoError: string | null
+}
+
 export interface DatosOrdenExchange {
   usuarios: Usuario[]
+  reportesAml: ReporteAml[]
   saldos: Saldo[]
   movimientos: Movimiento[]
   depositos: Deposito[]
