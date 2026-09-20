@@ -37,7 +37,7 @@ export default function Experience({embedded=false}:{embedded?:boolean}){
  useEffect(()=>{
   const mq=matchMedia('(prefers-reduced-motion: reduce)');const update=()=>setSystemReduced(mq.matches);mq.addEventListener('change',update);
   const visibility=()=>{setPageVisible(!document.hidden);if(document.hidden){airtouch.stop();sound.suspend();}else if(prefs.sound)void sound.enable(true,prefs.volume,prefs.ambient);};
-  const unload=()=>airtouch.stop();document.addEventListener('visibilitychange',visibility);window.addEventListener('pagehide',unload);
+  const unload=()=>{airtouch.stop();sound.suspend();};document.addEventListener('visibilitychange',visibility);window.addEventListener('pagehide',unload);
   return()=>{mq.removeEventListener('change',update);document.removeEventListener('visibilitychange',visibility);window.removeEventListener('pagehide',unload);};
  },[prefs.sound,prefs.volume,prefs.ambient]);
  useEffect(()=>{if(!embedded)document.documentElement.lang=prefs.lang;},[prefs.lang,embedded]);
@@ -46,7 +46,7 @@ export default function Experience({embedded=false}:{embedded?:boolean}){
  useEffect(()=>{const update=()=>setClock(new Date().toLocaleTimeString(prefs.lang,{hour:'2-digit',minute:'2-digit',hour12:false}));update();const t=window.setInterval(update,15000);return()=>clearInterval(t);},[prefs.lang]);
  useEffect(()=>{if(!notice)return;const t=setTimeout(()=>setNotice(''),4500);return()=>clearTimeout(t);},[notice]);
  useEffect(()=>{
-  const handle=(e:KeyboardEvent)=>{if(document.querySelector('dialog[open]')||/INPUT|SELECT|TEXTAREA/.test((e.target as HTMLElement)?.tagName))return;
+  const handle=(e:KeyboardEvent)=>{if(document.querySelector('dialog[open]')||/INPUT|SELECT|TEXTAREA/.test((e.target as HTMLElement)?.tagName)||(e.target as HTMLElement)?.isContentEditable)return;
    if(e.key==='Escape'){if(intro)state.set({stage:'system'});else navigation.home();}
    if(!isGate&&!intro&&!travelling){
     if(e.key==='+'||e.key==='='){e.preventDefault();navigation.dolly(.82);}
@@ -60,7 +60,7 @@ export default function Experience({embedded=false}:{embedded?:boolean}){
   };window.addEventListener('keydown',handle);return()=>window.removeEventListener('keydown',handle);
  },[isGate,intro,travelling,state.selected]);
  useEffect(()=>{let raf=0;const animate=()=>{const el=cursor.current,c=airtouch.cursor;if(el){el.style.transform='translate('+c.x+'px,'+c.y+'px)';el.style.opacity=c.visible?'1':'0';el.classList.toggle('pinched',c.pinched);}raf=requestAnimationFrame(animate);};raf=requestAnimationFrame(animate);return()=>{cancelAnimationFrame(raf);airtouch.stop();sound.dispose();};},[]);
- useEffect(()=>{if(embedded)state.set({stage:(window as any).__AE_PUERTA?'gate':'system'});},[embedded]);
+ // The host sets its stage before mount; do not overwrite a pending intro here.
  const fullScreen=async()=>{try{if(document.fullscreenElement)await document.exitFullscreen();else if(mainRef.current?.requestFullscreen)await mainRef.current.requestFullscreen();else setNotice(es?'Pantalla completa no disponible en este navegador.':'Fullscreen is unavailable in this browser.');}catch{setNotice(es?'No se pudo abrir pantalla completa.':'Fullscreen could not be opened.');}};
  const openGalaxy=()=>navigation.galaxies();
  return <main className={'galaxy-os '+(isGate?'at-gate':'')+(intro?' in-intro':'')+(travelling?' in-transit':'')+(embedded?' is-embedded':'')} ref={mainRef} lang={prefs.lang} data-selected={!!selected} data-motion={reduced?'reduced':'full'} data-contrast={prefs.contrast?'high':'normal'} style={{'--text-scale':String(prefs.textScale)} as React.CSSProperties}>

@@ -32,3 +32,16 @@ The Vite CSS transform scopes the shell stylesheet to `.galaxy-os`; host inputs,
 - Check camera gestures and audio levels on physical hardware.
 - The original WebXR path is preserved in the old engine source but has not been ported to this preview entry.
 - No production app, identity, account or financial flow has been tested or changed.
+
+## Hardening completed after the release audit
+
+- Standalone startup requires the explicit `data-orden-standalone` marker. A generic host `#root` is never adopted.
+- Mount validates its target before teardown. Unmount clears pending intro callbacks, hit testing, projected positions and label layout, and releases camera/audio resources.
+- React mounting no longer overwrites a host-requested intro. Return closes stale app/settings/help/tutorial panels.
+- Gesture selection is blocked behind directory, settings, help, tutorial and native dialogs. Editable host text is excluded from keyboard shortcuts.
+- The chat handoff catches missing callbacks, explicit rejection and thrown/rejected errors. Failure keeps its panel open with a retryable message. A successful callback means the host accepted the handoff; it does not verify a remote chat service.
+- Pending audio resume operations are invalidated on mute, suspend and teardown to avoid stale access to disposed audio nodes.
+
+`tests/host-fixture.html` is a local, compiled-bundle fixture for mount, intro, immediate cancellation, return and a deliberately failing chat callback. It preserves unrelated host content and does not load account services. Serve the project with its dev server after building and open that fixture locally. This is not a production login test.
+
+The older WebXR/portal/genesis animation APIs are still unsupported. They are not installed as misleading no-op compatibility functions. Production replacement remains blocked on those real requirements and on the hardware checks above.

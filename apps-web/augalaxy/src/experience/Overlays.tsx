@@ -4,6 +4,7 @@ import {useExperience,navigation} from './navigation';
 import {worlds,worldName,word} from './catalog';
 import {airtouch,HandStatus} from './airtouch';
 import {sound} from './sound';
+import {openHostChat} from './hostBridge';
 import {Icon} from './Icon';
 
 export function Modal({title,onClose,children,className=''}:{title:string;onClose:()=>void;children:ReactNode;className?:string}){
@@ -79,8 +80,11 @@ export function Directory({onClose}:{onClose:()=>void}){
 }
 export function AppWindow({id,onClose,embedded}:{id:string;onClose:()=>void;embedded:boolean}){
  const prefs=usePreferences(s=>s.prefs),es=prefs.lang==='es',w=worlds.find(w=>w.id===id)!;
+ const [opening,setOpening]=useState(false),[failed,setFailed]=useState(false);
+ const alive=useRef(true);useEffect(()=>()=>{alive.current=false;},[]);
+ async function openChat(){if(opening)return;setOpening(true);setFailed(false);const ok=await openHostChat((window as any).__AE_ABRIR);if(!alive.current)return;setOpening(false);if(ok)onClose();else setFailed(true);}
  return <Modal title={worldName(w,prefs.lang)} onClose={onClose} className="app-dialog planet-arrival-dialog"><div className="app-window-body"><p className="eyebrow">{word(w.category,prefs.lang)} / ORDEN GLOBAL</p><h2>{worldName(w,prefs.lang)}</h2><p>{word(w.description,prefs.lang)}</p><div className="app-connection"><Icon name="lock"/><div><strong>{es?'Vista de diseño':'Design preview'}</strong><p>{es?'Esta vista no conecta tu cuenta ni carga información financiera. La aplicación actual permanece intacta.':'This view does not connect your account or load financial information. The current application remains unchanged.'}</p></div></div>
  <div className="app-actions"><button className="primary" onClick={()=>{onClose();navigation.focus(w.id);}}>{es?'Explorar este planeta':'Explore this planet'}<Icon name="galaxy"/></button>
- {embedded&&w.id==='chat'&&<button className="text-button" onClick={()=>{onClose();(window as any).__AE_ABRIR?.(w.id);}}>{es?'Abrir aplicación existente':'Open existing application'}<Icon name="arrow"/></button>}</div>
+ {embedded&&w.id==='chat'&&<button className="text-button" disabled={opening} onClick={()=>void openChat()}>{es?'Abrir aplicación existente':'Open existing application'}<Icon name="arrow"/></button>}{failed&&<p role="alert">{es?'No se pudo abrir el chat. Puedes volver a intentarlo sin salir de aquí.':'Chat could not open. You can try again without leaving this view.'}</p>}</div>
  </div></Modal>;
 }

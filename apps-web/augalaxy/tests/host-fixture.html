@@ -1,0 +1,11 @@
+<!doctype html><html lang="en"><head><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="stylesheet" href="/dist/assets/augalaxy.css"></head><body style="margin:0;background:#202735;color:white;font:16px sans-serif"><div id="root">Existing host content must remain intact</div><nav style="position:relative;z-index:9999;background:#202735"><button id="mount">Mount</button><button id="intro">Intro</button><button id="stop">Unmount</button><button id="cancel">Start and immediately unmount</button><button id="return">Return</button><output id="result">Waiting</output></nav><div id="host" style="position:relative;height:800px"></div><script type="module">
+import '/dist/assets/augalaxy.js';
+const result=document.querySelector('#result');let callbacks=0;
+window.__AE_LANG='en';window.__AE_PUERTA=true;
+document.querySelector('#mount').onclick=()=>{AUGALAXY.montar(document.querySelector('#host'));result.textContent='Mounted'};
+document.querySelector('#intro').onclick=()=>{AUGALAXY.entrar('directo',()=>{callbacks++;result.textContent='Intro callbacks: '+callbacks})};
+document.querySelector('#stop').onclick=()=>{AUGALAXY.desmontar();result.textContent='Unmounted'};
+document.querySelector('#cancel').onclick=()=>{AUGALAXY.entrar('directo',()=>{callbacks++;result.textContent='STALE CALLBACK'});AUGALAXY.desmontar();setTimeout(()=>{result.textContent='Callbacks after cancellation: '+callbacks},200)};
+document.querySelector('#return').onclick=()=>AUGALAXY.exhalar();
+window.__AE_ABRIR=()=>{throw Error('Simulated unavailable chat')};result.textContent='Loaded; host preserved';
+</script></body></html>

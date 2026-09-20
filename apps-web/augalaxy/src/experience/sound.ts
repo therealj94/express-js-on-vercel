@@ -1,9 +1,10 @@
 // Local synthesis. Filtered noise conveys motion; no external audio.
 class Soundscape {
  private context:AudioContext|null=null;private master:GainNode|null=null;private bed:GainNode|null=null;
+ private generation=0;
  private nodes:OscillatorNode[]=[];private enabled=false;private volume=.36;private noise:AudioBuffer|null=null;private lastMotion=0;
  async enable(enabled:boolean,volume=this.volume,ambient=true){
-  this.enabled=enabled;this.volume=volume;
+  const generation=++this.generation;this.enabled=enabled;this.volume=volume;
   if(!enabled){if(this.context&&this.master)this.master.gain.setTargetAtTime(0,this.context.currentTime,.12);return;}
   if(!this.context){const AC=window.AudioContext||(window as any).webkitAudioContext;if(!AC)return;
    const c=this.context=new AC(),m=this.master=c.createGain();m.gain.value=0;
@@ -12,7 +13,8 @@ class Soundscape {
    [55,82.4069,110.15,164.81,220.2].forEach((freq,i)=>{const o=c.createOscillator(),g=c.createGain(),pan=c.createStereoPanner();o.type='sine';o.frequency.value=freq;g.gain.value=.02/(1+i*.35);pan.pan.value=(i-2)*.35;o.connect(g);g.connect(pan);pan.connect(this.bed!);o.start();this.nodes.push(o);});
    this.noise=c.createBuffer(1,c.sampleRate*3,c.sampleRate);const data=this.noise.getChannelData(0);let smooth=0;for(let i=0;i<data.length;i++){smooth=(smooth+(Math.random()*2-1)*.11)/1.11;data[i]=smooth;}
   }
-  try{await this.context.resume();}catch{return;}
+  const context=this.context;try{await context.resume();}catch{return;}
+  if(generation!==this.generation||context!==this.context||!this.enabled||!this.master||!this.bed)return;
   this.master!.gain.setTargetAtTime(volume,this.context.currentTime,.2);this.bed!.gain.setTargetAtTime(ambient?1:0,this.context.currentTime,1.2);
  }
  cue(kind:'select'|'open'|'intro'|'close'|'arrival'='select'){
@@ -27,7 +29,7 @@ class Soundscape {
  }
  motion(velocity:number,direction:number){const t=this.context?.currentTime||0;if(t-this.lastMotion<.12||velocity<1)return;this.lastMotion=t;this.sweep(.22,Math.min(.15,.025+velocity*.002),direction*.025);}
  travel(kind:'focus'|'enter'){this.sweep(kind==='enter'?2:.65,kind==='enter'?.3:.13,kind==='enter'?-.45:.3,kind==='enter');}
- suspend(){void this.context?.suspend();}
- dispose(){this.nodes.forEach(n=>{try{n.stop();}catch{}});this.nodes=[];void this.context?.close();this.context=null;this.master=null;this.bed=null;this.noise=null;}
+ suspend(){++this.generation;void this.context?.suspend().catch(()=>{});}
+ dispose(){++this.generation;this.enabled=false;this.lastMotion=0;this.nodes.forEach(n=>{try{n.stop();}catch{}});this.nodes=[];void this.context?.close().catch(()=>{});this.context=null;this.master=null;this.bed=null;this.noise=null;}
 }
 export const sound=new Soundscape();

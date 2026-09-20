@@ -52,6 +52,7 @@ export const linkNodes=new Map<string,SVGLineElement>();
 export const labelAnchors=new Map<string,{dx:number;dy:number}>();
 let labelViewport='';
 const labelSides=new Map<string,number>();
+export function resetLabelLayout(){labelAnchors.clear();labelSides.clear();labelViewport='';}
 
 function line(id:string,x1:number,y1:number,x2:number,y2:number,visible:boolean){
  const el=linkNodes.get(id);if(!el)return;el.style.visibility=visible?'visible':'hidden';

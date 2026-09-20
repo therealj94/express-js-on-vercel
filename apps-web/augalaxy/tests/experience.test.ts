@@ -42,3 +42,16 @@ test('Labels retain their anchors across orbit frames, hover and selection',()=>
  }
  labelNodes.clear();labelAnchors.clear();navigation.home();usePreferences.getState().reset();
 });
+
+import {sceneBlocked,openHostChat} from '../src/experience/hostBridge';
+test('Host gestures cannot launch through an open overlay',()=>{
+ navigation.home();navigation.hitTest=()=> 'chat';
+ for(const field of ['directory','settings','help','tutorial'] as const){
+  useExperience.getState().set({[field]:true});assert.equal(sceneBlocked(),true);assert.equal(lookAtWorld(1,1),null);touchWorld('chat');assert.equal(useExperience.getState().journey,null);highlightWorld('chat');assert.equal(useExperience.getState().hovered,null);useExperience.getState().set({[field]:false});
+ }
+ navigation.hitTest=()=>null;navigation.home();
+});
+test('Chat handoff reports missing, rejected and failed hosts without exposing other destinations',async()=>{
+ assert.equal(await openHostChat(undefined),false);assert.equal(await openHostChat(()=>false),false);assert.equal(await openHostChat(()=>{throw Error('offline')}),false);assert.equal(await openHostChat(async()=>{throw Error('offline')}),false);
+ const calls:string[]=[];assert.equal(await openHostChat((id:string)=>{calls.push(id)}),true);assert.deepEqual(calls,['chat']);
+});
