@@ -55,3 +55,13 @@ test('Chat handoff reports missing, rejected and failed hosts without exposing o
  assert.equal(await openHostChat(undefined),false);assert.equal(await openHostChat(()=>false),false);assert.equal(await openHostChat(()=>{throw Error('offline')}),false);assert.equal(await openHostChat(async()=>{throw Error('offline')}),false);
  const calls:string[]=[];assert.equal(await openHostChat((id:string)=>{calls.push(id)}),true);assert.deepEqual(calls,['chat']);
 });
+
+import {immersive} from '../src/experience/immersive';
+test('360 rejects unsupported modes and restores normal navigation on exit',async()=>{
+ navigation.home();useExperience.getState().set({ready:true});
+ await assert.rejects(immersive.entrar('xr'),/unsupported/);await assert.rejects(immersive.entrar('carton'),/unsupported/);assert.equal(immersive.estado().activo,false);
+ await immersive.entrar('trescientos60');assert.equal(immersive.estado().activo,true);assert.equal(immersive.estado().cabeza,false);
+ const camera=new PerspectiveCamera(48,1,.1,2000),director=new CameraDirector();director.update(camera,900,900,10000,.016);const position=camera.position.clone(),direction=camera.quaternion.clone();navigation.orbit(100,0);director.update(camera,900,900,10016,.016);assert.equal(position.distanceTo(camera.position),0);assert.ok(direction.angleTo(camera.quaternion)>.1);
+ immersive.salir();assert.equal(immersive.estado().activo,false);assert.equal(navigation.yaw,0);assert.equal(navigation.pitch,.6);
+ useExperience.getState().set({ready:false});await assert.rejects(immersive.entrar('trescientos60'),/not-ready/);
+});

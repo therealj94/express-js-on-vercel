@@ -38,10 +38,12 @@ AirTouch uses the Apache-2.0 MediaPipe Tasks Vision package and Google's Hand La
 
 ## Verification
 
-- TypeScript and production bundling pass; sixteen automated logic tests cover bounds, geometry, validated preferences, journey cancellation, the existing host gesture contract, central-core position, drag direction and camera stability on selection, and 3,600 consecutive orbit frames without label side-switching.
+- TypeScript and production bundling pass; seventeen automated logic tests cover bounds, geometry, validated preferences, journey cancellation, the existing host gesture contract, central-core position, drag direction and camera stability on selection, and 3,600 consecutive orbit frames without label side-switching.
 - Browser-tested: entry and timed intro, dock selection before entry, flight completion and cancellation, ES/EN labels, deep-space navigation, Pro/Lite fallback, preference persistence and audio activation/mute controls.
 - Responsive layout inspected in a 390 × 690 and 390 × 844 iframe viewports; app search tested there. This is not physical-phone performance or touch-hardware testing.
 - The compiled shell was mounted in an isolated host fixture from a nested build path. Gate, intro callback, unmount/remount and host button/body style isolation were checked. This fixture is not the production wallet or its login.
 - Browser GPU unavailable: full WebGL rendering could not be visually verified in this environment; compatibility rendering was inspected instead.
 - Camera gestures require a real-device test. No camera permission was granted during automation. Sound playback and level should also be checked with headphones on the target device.
 - WebMCP page registry is unavailable in this browser; its integration could not be runtime-validated. Pure action validation is covered by local tests.
+
+- On-screen 360 is available under Visuals & motion. Headset WebXR/Cardboard modes remain unavailable and are explicitly rejected.

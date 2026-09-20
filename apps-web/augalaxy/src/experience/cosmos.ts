@@ -12,7 +12,7 @@ let orbitalTime=0,lastOrbitFrame=-1;
 export function updateOrbits(now:number,dt:number,width=1000){
  if(Math.abs(now-lastOrbitFrame)<.5)return;lastOrbitFrame=now;
  const state=useExperience.getState(),prefs=usePreferences.getState().prefs;
- if(prefs.autoOrbit&&!motionReduced()&&!state.selected&&!state.hovered&&!state.settings&&!state.directory&&!state.windowId&&!state.tutorial&&now-navigation.lastInteraction>650)orbitalTime+=Math.min(.04,dt);
+ if(!state.immersive&&prefs.autoOrbit&&!motionReduced()&&!state.selected&&!state.hovered&&!state.settings&&!state.directory&&!state.windowId&&!state.tutorial&&now-navigation.lastInteraction>650)orbitalTime+=Math.min(.04,dt);
  orbitPositions.get('genesis')!.set(0,0,0);
  orbiting.forEach((w,i)=>{const radius=i<5?11:18,angle=angles[i]+orbitalTime*(i<5?.025:.016);orbitPositions.get(w.id)!.set(Math.cos(angle)*radius*(width<700?.74:1),Math.sin(angle*2+i)*.24,Math.sin(angle)*radius*(width<700?1.15:1));});
 }
@@ -29,6 +29,13 @@ export class CameraDirector {
  look=new Vector3(0,0,0);eye=new Vector3();target=new Vector3();stage='';introStart=0;
  update(camera:Camera,width:number,height:number,now:number,dt:number){
   const state=useExperience.getState(),mobile=width<700,reduced=motionReduced();
+  if(state.immersive){
+   camera.position.set(0,7,38);
+   const yaw=-navigation.yaw,pitch=navigation.pitch;
+   this.target.set(Math.sin(yaw)*Math.cos(pitch),-Math.sin(pitch),-Math.cos(yaw)*Math.cos(pitch)).multiplyScalar(80).add(camera.position);
+   this.look.copy(this.target);camera.lookAt(this.look);camera.updateMatrixWorld();
+   const c=camera as PerspectiveCamera;if(c.isPerspectiveCamera&&c.fov!==65){c.fov=65;c.updateProjectionMatrix();}return;
+  }
   if(state.stage!==this.stage){if(state.stage==='intro')this.introStart=now;this.stage=state.stage;}
   const base=mobile?76:43;let distance=base,yaw=navigation.yaw,pitch=navigation.pitch+(mobile?.38:0);
   this.target.set(0,0,0);
@@ -98,7 +105,8 @@ export function updateLabels(camera:Camera,width:number,height:number){
   y=Math.max(top,Math.min(bottom-lh,y));
   occupied.push({id:w.id,x,y,w:lw,h:lh});
   node.style.width=lw+'px';node.style.transform='translate('+x.toFixed(2)+'px,'+y.toFixed(2)+'px) translate(-50%,0)';
-  node.style.visibility=active?'visible':'hidden';node.style.opacity=active?'1':'0';node.tabIndex=active?0:-1;
+  const labelVisible=active&&(!state.immersive||(p.visible&&p.x>0&&p.x<width&&p.y>60&&p.y<height-70));
+  node.style.visibility=labelVisible?'visible':'hidden';node.style.opacity=labelVisible?'1':'0';node.tabIndex=labelVisible?0:-1;
   node.dataset.core=String(w.id==='genesis');node.dataset.active=String(w.id===state.selected);
   line('label-'+w.id,p.x,p.y,x,y+lh/2,active&&p.visible&&Math.hypot(x-p.x,y+lh/2-p.y)>p.r+30);
   if(w.id!=='genesis'){

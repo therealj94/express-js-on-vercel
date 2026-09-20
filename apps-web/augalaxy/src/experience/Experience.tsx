@@ -9,6 +9,7 @@ import {airtouch} from './airtouch';
 import {sound} from './sound';
 import './experience.css';
 import Tutorial from './Tutorial';
+import {immersive} from './immersive';
 import {registerExperienceTools} from './webmcp';
 
 class SceneBoundary extends Component<{children:ReactNode},{failed:boolean}>{
@@ -47,6 +48,7 @@ export default function Experience({embedded=false}:{embedded?:boolean}){
  useEffect(()=>{if(!notice)return;const t=setTimeout(()=>setNotice(''),4500);return()=>clearTimeout(t);},[notice]);
  useEffect(()=>{
   const handle=(e:KeyboardEvent)=>{if(document.querySelector('dialog[open]')||/INPUT|SELECT|TEXTAREA/.test((e.target as HTMLElement)?.tagName)||(e.target as HTMLElement)?.isContentEditable)return;
+   if(state.immersive){if(e.key==='Escape')immersive.salir();else if(['ArrowLeft','ArrowRight','ArrowUp','ArrowDown'].includes(e.key)){e.preventDefault();navigation.orbit(e.key==='ArrowLeft'?-24:e.key==='ArrowRight'?24:0,e.key==='ArrowUp'?-16:e.key==='ArrowDown'?16:0);}return;}
    if(e.key==='Escape'){if(intro)state.set({stage:'system'});else navigation.home();}
    if(!isGate&&!intro&&!travelling){
     if(e.key==='+'||e.key==='='){e.preventDefault();navigation.dolly(.82);}
@@ -58,14 +60,14 @@ export default function Experience({embedded=false}:{embedded?:boolean}){
     if(e.key==='ArrowDown'){e.preventDefault();navigation.orbit(0,24);}
    }
   };window.addEventListener('keydown',handle);return()=>window.removeEventListener('keydown',handle);
- },[isGate,intro,travelling,state.selected]);
+ },[isGate,intro,travelling,state.selected,state.immersive]);
  useEffect(()=>{let raf=0;const animate=()=>{const el=cursor.current,c=airtouch.cursor;if(el){el.style.transform='translate('+c.x+'px,'+c.y+'px)';el.style.opacity=c.visible?'1':'0';el.classList.toggle('pinched',c.pinched);}raf=requestAnimationFrame(animate);};raf=requestAnimationFrame(animate);return()=>{cancelAnimationFrame(raf);airtouch.stop();sound.dispose();};},[]);
  // The host sets its stage before mount; do not overwrite a pending intro here.
  const fullScreen=async()=>{try{if(document.fullscreenElement)await document.exitFullscreen();else if(mainRef.current?.requestFullscreen)await mainRef.current.requestFullscreen();else setNotice(es?'Pantalla completa no disponible en este navegador.':'Fullscreen is unavailable in this browser.');}catch{setNotice(es?'No se pudo abrir pantalla completa.':'Fullscreen could not be opened.');}};
  const openGalaxy=()=>navigation.galaxies();
- return <main className={'galaxy-os '+(isGate?'at-gate':'')+(intro?' in-intro':'')+(travelling?' in-transit':'')+(embedded?' is-embedded':'')} ref={mainRef} lang={prefs.lang} data-selected={!!selected} data-motion={reduced?'reduced':'full'} data-contrast={prefs.contrast?'high':'normal'} style={{'--text-scale':String(prefs.textScale)} as React.CSSProperties}>
+ return <main className={'galaxy-os '+(isGate?'at-gate':'')+(intro?' in-intro':'')+(travelling?' in-transit':'')+(embedded?' is-embedded':'')} ref={mainRef} lang={prefs.lang} data-immersive={state.immersive} data-selected={!!selected} data-motion={reduced?'reduced':'full'} data-contrast={prefs.contrast?'high':'normal'} style={{'--text-scale':String(prefs.textScale)} as React.CSSProperties}>
  <SceneBoundary><Universe paused={!pageVisible}/></SceneBoundary><div className="edge-shade" aria-hidden="true"/>
- {!intro&&!travelling&&<header className="os-header"><button className="brand-button" aria-label={es?'Inicio Orden Global':'Orden Global home'} onClick={()=>!isGate&&navigation.home()}><Brand/></button>
+ {!state.immersive&&!intro&&!travelling&&<header className="os-header"><button className="brand-button" aria-label={es?'Inicio Orden Global':'Orden Global home'} onClick={()=>!isGate&&navigation.home()}><Brand/></button>
  {!isGate&&<nav className="scale-tabs" aria-label={es?'Escala del universo':'Universe scale'}><button className={!galaxies?'active':''} onClick={()=>navigation.home()}>{es?'Mi sistema':'My system'}</button><button className={galaxies?'active':''} onClick={openGalaxy}>{es?'Galaxias':'Galaxies'}<Icon name="galaxy" size={16}/></button></nav>}
  <div className="header-tools">{!isGate&&<button className="renderer-badge" aria-label={es?'Cambiar modo Pro o Lite':'Change Pro or Lite mode'} onClick={()=>state.set({settings:true})}>{state.rendererActual==='pro'?'PRO':'LITE'}</button>}<span className="private-tag"><Icon name="lock" size={12}/>{es?'VISTA PRIVADA':'PRIVATE PREVIEW'}</span><button className="language-button" onClick={()=>set({lang:es?'en':'es'})} aria-label={es?'Switch to English':'Cambiar a español'}>{es?'EN':'ES'}</button><button className="icon-button" aria-label={prefs.sound?(es?'Silenciar sonido':'Mute sound'):(es?'Activar sonido':'Enable sound')} onClick={()=>{set({sound:!prefs.sound});void sound.enable(!prefs.sound,prefs.volume,prefs.ambient);}}><Icon name={prefs.sound?'sound':'muted'}/></button>{!isGate&&<button className="icon-button tutorial-trigger" aria-label={es?'Ver tutorial':'View tutorial'} onClick={()=>{navigation.home();state.set({tutorial:true});}}><Icon name="help"/></button>}{!isGate&&<button className="icon-button" aria-label={es?'Abrir ajustes':'Open settings'} onClick={()=>state.set({settings:true})}><Icon name="settings"/></button>}</div></header>}
  {isGate&&!embedded&&<section className="entry-layout">
@@ -91,6 +93,7 @@ export default function Experience({embedded=false}:{embedded?:boolean}){
  {!selected&&!galaxies&&<div className="gesture-hint">{es?'Toca un planeta o una app · Pulsa Entrar para viajar':'Choose a planet or an app · Press Enter to travel'}</div>}
  {galaxies&&<p className="galaxy-credit"><a href="https://esahubble.org/images/heic0506a/" target="_blank" rel="noreferrer">M51 · NASA, ESA, S. Beckwith (STScI), and The Hubble Heritage Team (STScI/AURA)</a><span>{es?'Composición adaptada':'Adapted composition'} · <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noreferrer">CC BY 4.0</a></span></p>}
  </>}
+ {state.immersive&&<div className="panorama-controls"><span>ORDEN GLOBAL · 360</span><button className="primary" onClick={()=>immersive.salir()}>{es?'Salir de 360':'Exit 360'}</button><p>{es?'Arrastra para mirar · Flechas para girar · Esc para salir':'Drag to look · Arrow keys to turn · Esc to exit'}</p><button className="text-button" onClick={()=>immersive.recentrar()}>{es?'Centrar vista':'Center view'}</button></div>}
  {state.unsupported&&<button className="fallback-apps primary" onClick={()=>state.set({directory:true})}>{es?'Abrir aplicaciones sin 3D':'Open applications without 3D'}</button>}
  {state.tutorial&&<Tutorial/>}
  {state.settings&&<Settings onClose={()=>state.set({settings:false})}/>}
