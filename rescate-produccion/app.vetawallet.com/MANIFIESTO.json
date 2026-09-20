@@ -1,0 +1,182 @@
+[
+ {
+  "archivo": "airtouch.js",
+  "bytes": 7472,
+  "sha256": "9e6701e6b835e0a8d5f6e2610b97dbef827a226c054fb892d1810da9e75e838d"
+ },
+ {
+  "archivo": "app.js",
+  "bytes": 864922,
+  "sha256": "3f5eaa47f9e4e27af52c77383c1f0d0a0376b5b436fb14d3cf98116556a121d0"
+ },
+ {
+  "archivo": "assets/apps/og.png",
+  "bytes": 33556,
+  "sha256": "94cec8c0a19a8a6d61f46c4256f00d46a36f4aec6afe8b96d8bc015abd80b9ba"
+ },
+ {
+  "archivo": "aura.js",
+  "bytes": 54058,
+  "sha256": "15811a04b2fd62aacb086d40f5bd7639427f2f1f3c19cb5cfc2904b4bf10ad3a"
+ },
+ {
+  "archivo": "cadena.js",
+  "bytes": 28653,
+  "sha256": "eaae2c73ea8947b01b440077166e1f44e0ad0ae724216e16ea9f258e1c58de13"
+ },
+ {
+  "archivo": "candado.js",
+  "bytes": 23714,
+  "sha256": "1285e89f9e0af04d04ba5271895f4d91b4b41ca1f96436bb70566a6e61a1c88d"
+ },
+ {
+  "archivo": "cerebro-og.js",
+  "bytes": 18971,
+  "sha256": "1cce64a260b0d6f71439a7a915f042c1ea4a2fe992bc8527418be4b68b756844"
+ },
+ {
+  "archivo": "chat.js",
+  "bytes": 51918,
+  "sha256": "c99f2c388fccbd3d1ebedbeb890d0fb02afc4389b83ac5de920f71ac7095c7ab"
+ },
+ {
+  "archivo": "datos.js",
+  "bytes": 17538,
+  "sha256": "32525b5e51875e7097f31c7497b972a5e8595a9d3b90ad7536c3874b36cad02a"
+ },
+ {
+  "archivo": "eliminar-cuenta.html",
+  "bytes": 7511,
+  "sha256": "648a384341dc1bb31c11fb14749aa63f4d879ba04b7e05584a3f3d433529cd48"
+ },
+ {
+  "archivo": "galaxia.js",
+  "bytes": 20668,
+  "sha256": "058e52fe7e9fc38c40e62b0bcc6386fc205774ccea3734427d7f8bfb4367f254"
+ },
+ {
+  "archivo": "genesis-id.html",
+  "bytes": 16761,
+  "sha256": "521f7dc64a41424c8da113281d23d74f22142288b7cc1ecc8c3907b8d538d60c"
+ },
+ {
+  "archivo": "i18n.js",
+  "bytes": 169772,
+  "sha256": "3ba2eac44f2d603cf85da77021b4717cbcf9a6b27c4aff84ef30c5ab85e07c30"
+ },
+ {
+  "archivo": "index.html",
+  "bytes": 322702,
+  "sha256": "9c92c255eb178b885e279243637b931a9d8e0e1670875e22dc2bb376712d2b3a"
+ },
+ {
+  "archivo": "instalar.html",
+  "bytes": 13044,
+  "sha256": "d075f14883967e43a2fb473c627156c17b103583cd4f1712df7622fcc997e304"
+ },
+ {
+  "archivo": "llamada.js",
+  "bytes": 25129,
+  "sha256": "105eef92404940d36bce0a0c7cbc40bb53ae371dcab1636730eb45805a5232fe"
+ },
+ {
+  "archivo": "llamadaGrupo.js",
+  "bytes": 16440,
+  "sha256": "1f2a0259ac550195a052c841887dca078dfa8d61a70f1cc40b6391ce3e03a666"
+ },
+ {
+  "archivo": "llaves.js",
+  "bytes": 10052,
+  "sha256": "0a4546c011b9304169b37d5be2060a00a37ed0e4215f196cee291a6a1b3ad71f"
+ },
+ {
+  "archivo": "manifest.json",
+  "bytes": 953,
+  "sha256": "1c064d3eaa86da354404d1bdd8c38aab783ae7100a476da491ce169544e9f4b0"
+ },
+ {
+  "archivo": "musica.js",
+  "bytes": 11924,
+  "sha256": "cd2a33702f6cf76b8d588ebfbddf43a8e604b76141b2a09db8ff21765ea3b3f1"
+ },
+ {
+  "archivo": "privacidad.html",
+  "bytes": 13761,
+  "sha256": "04549bf73de7b8b5f7e499d6f61e927239dd164d31c6d41b4b3f0814a61a01ec"
+ },
+ {
+  "archivo": "qr.js",
+  "bytes": 12870,
+  "sha256": "6772d2c32e12cdbc85fc0435be7dd7ec6fbb204062b23b6ea0cc7dabc724f065"
+ },
+ {
+  "archivo": "saber.js",
+  "bytes": 16790,
+  "sha256": "a4d291a3b18f8d6c488af7c7483b60de8835ddb75936b9deb0bf4c1d38738f02"
+ },
+ {
+  "archivo": "sorteo-og.jpg",
+  "bytes": 51170,
+  "sha256": "00301c05594b17389e3dac563337f9aaa9716ccca887efbdce3572fb65b1d080"
+ },
+ {
+  "archivo": "sorteo-orden-global.html",
+  "bytes": 32222,
+  "sha256": "6614414ea15511f0688c4f9d534d54748065c65dcdd0c7d82fec13f8a10025fe"
+ },
+ {
+  "archivo": "sw.js",
+  "bytes": 4901,
+  "sha256": "fd632162c645280384cae9760083b06f99c178b43675a27e90910d3e0619c4bb"
+ },
+ {
+  "archivo": "telemetria.js",
+  "bytes": 9798,
+  "sha256": "913cbaa6e09e0c301bac281d2084448ec78d289d87eb6819d7c496fe1a7a72c1"
+ },
+ {
+  "archivo": "terminos.html",
+  "bytes": 9309,
+  "sha256": "20b95d1de117f58f36dd8acab9a6784c138ef7495666918c3455dc6372b5b095"
+ },
+ {
+  "archivo": "tono.js",
+  "bytes": 8299,
+  "sha256": "bf63b5bcbe9b18ed49f3c7f2018cb6d8caf3c68a7ace447623e6454180c13ad2"
+ },
+ {
+  "archivo": "velas.js",
+  "bytes": 83717,
+  "sha256": "cb51a273c7727a48c2fe36b1a62e55d7884739367f736078dcde6a82af975dc4"
+ },
+ {
+  "archivo": "visor.js",
+  "bytes": 12410,
+  "sha256": "6da4d01e58b3769b860735c5b67c2eaa8d2432923f87706b11b386a98c76b63c"
+ },
+ {
+  "archivo": "augalaxy/assets/augalaxy.css",
+  "bytes": 6576,
+  "sha256": "fd8f8a34524649c060196f8b4bd2211a833d6c8f609701a588ead5732a69a5eb"
+ },
+ {
+  "archivo": "augalaxy/assets/augalaxy.js",
+  "bytes": 322650,
+  "sha256": "3e5610848bb35f4cb032341733c17e36fcabb63f7c6439a4628efbeb7374cda9"
+ },
+ {
+  "archivo": "augalaxy/assets/three-BzR40ZDe.js",
+  "bytes": 690826,
+  "sha256": "7d46989903af4903a8a302cd3ba2501a43f9a8edc95020e72f0ee55a74a01450"
+ },
+ {
+  "archivo": "augalaxy/assets/ui-B5I1CukR.js",
+  "bytes": 130850,
+  "sha256": "140dfe51f1cafada7c45f109bf99d47af98e304772e25dfc47214eeb6b41d6cc"
+ },
+ {
+  "archivo": "augalaxy/assets/r3f-3xVJ-I5i.js",
+  "bytes": 227394,
+  "sha256": "02c0abeb97235ec5b406a59b58265c23b9b2945837768d95145a3108239cea32"
+ }
+]

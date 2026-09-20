@@ -1,0 +1,24 @@
+{
+  "name": "Orden Global",
+  "short_name": "Orden Global",
+  "description": "Tu dinero medido en oro, tu gente y tu identidad, en una sola cuenta.",
+  "id": "/",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#010D0E",
+  "theme_color": "#050510",
+  "lang": "es",
+  "dir": "ltr",
+  "categories": ["finance", "productivity"],
+  "icons": [
+    { "src": "assets/veta-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "assets/veta-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "assets/veta-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    { "name": "Enviar", "url": "/#enviar", "icons": [{ "src": "assets/veta-192.png", "sizes": "192x192" }] },
+    { "name": "Chat", "url": "/#chat", "icons": [{ "src": "assets/veta-192.png", "sizes": "192x192" }] }
+  ]
+}
