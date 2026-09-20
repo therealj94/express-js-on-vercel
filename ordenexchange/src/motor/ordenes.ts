@@ -35,6 +35,14 @@ import * as aml from './aml.js'
 import type { Orden, Usuario, Mensaje, UsuarioPublico, EstadoOrden, Apelacion, Calificacion } from '../types.js'
 
 const ABIERTOS: EstadoOrden[] = ['pendiente-pago', 'pagado', 'apelacion']
+
+/** «1,000.00 HNL» en los mensajes del sistema: un número pelado se lee mal. */
+function montoLegible(monto: string, moneda: string): string {
+  const dec = decimalesMoneda(moneda)
+  const n = Number(monto)
+  const texto = Number.isFinite(n) ? n.toLocaleString('en-US', { minimumFractionDigits: dec, maximumFractionDigits: dec }) : monto
+  return `${texto} ${moneda}`
+}
 const MAX_MENSAJES = 300
 const MAX_TEXTO = 2000
 const MAX_IMAGEN = 2_100_000 // ~1,5 MB en base64
@@ -243,7 +251,7 @@ export function crear(tomador: Usuario, e: { anuncioId?: unknown; montoFiat?: un
   orden.enCustodia = true
   anuncios.reservar(a, cantidadActivo)
 
-  sistema(orden, `Orden creada. ${vendedor.apodo} vende ${cantidadActivo} ${a.activo} a ${comprador.apodo} por ${montoFiat} ${a.moneda}. El activo está en custodia de OrdenExchange. El comprador tiene ${a.ventanaPagoMin} minutos para pagar y marcar la orden como pagada.`)
+  sistema(orden, `Orden creada. ${vendedor.apodo} vende ${cantidadActivo} ${a.activo} a ${comprador.apodo} por ${montoLegible(montoFiat, a.moneda)}. El activo está en custodia de OrdenExchange. El comprador tiene ${a.ventanaPagoMin} minutos para pagar y marcar la orden como pagada.`)
   if (a.respuestaAutomatica) {
     orden.mensajes.push({ id: id('msg'), de: anunciante.id, texto: a.respuestaAutomatica, imagen: null, en: ahora.toISOString() })
   }

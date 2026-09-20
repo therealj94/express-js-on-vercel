@@ -74,7 +74,7 @@ figcaption{font-size:8.8pt;color:var(--humo);margin-top:4pt;text-align:center}
     <div class="filete"></div>
     <h1>OrdenExchange<br><span>Documento de diseño</span></h1>
     <p class="bajada">La casa de cambio P2P del ecosistema: cómo está construida, cómo funciona una compraventa con custodia, cómo se verifica la identidad contra Genesis ID, qué protege el dinero de la gente, y qué falta para ir a producción.</p>
-    <div class="chips"><span>Express + TypeScript</span><span>23 países · 19 monedas</span><span>Custodia con aritmética exacta</span><span>KYC real contra Genesis ID</span><span>Cadena 5550 · ORIGEN · AUKA · AGKA</span><span>75 pruebas de extremo a extremo</span></div>
+    <div class="chips"><span>Express + TypeScript</span><span>23 países · 457 bancos · 19 monedas</span><span>Custodia con aritmética exacta</span><span>KYC real contra Genesis ID</span><span>Cadena 5550 · ORIGEN · AUKA · AGKA</span><span>76 pruebas de extremo a extremo</span></div>
   </div>
   <div class="pie">
     <b>Versión 1.0 · 20 de septiembre de 2026</b><br>
@@ -93,12 +93,12 @@ figcaption{font-size:8.8pt;color:var(--humo);margin-top:4pt;text-align:center}
 <p><b>OrdenExchange</b> es un mercado entre personas (P2P) para comprar y vender <b>ORIGEN</b> —y también AUKA y AGKA— a cambio de la moneda de cada país de Latinoamérica, pagando por transferencia bancaria o por las billeteras que cada país usa de verdad: PIX, Nequi, Yape, SINPE Móvil, Tigo Money, Pago Móvil, Mercado Pago, SPEI, Zelle… Funciona como Binance P2P: alguien publica un anuncio, otra persona lo toma, la plataforma <b>custodia el activo</b> mientras el dinero viaja por fuera, y lo libera cuando el vendedor confirma que cobró. Si algo falla, un operador resuelve la apelación leyendo el chat y los comprobantes.</p>
 <p>Para operar hace falta una identidad verificada en <b>Genesis ID</b>, la identidad del ecosistema Orden Global. OrdenExchange no verifica a nadie por su cuenta: acompaña a la persona en el trámite (datos, documento, rostro) y una persona del equipo de cumplimiento aprueba en Genesis ID. Cada compraventa completada se reporta al monitoreo de lavado de activos de ambas partes.</p>
 <div class="resumen-caja">
-  <div class="dato"><b>23</b><span>países de Latinoamérica con su moneda, sus bancos y sus métodos de pago reales</span></div>
+  <div class="dato"><b>457</b><span>bancos y entidades en 23 países, con sus tipos de cuenta y el formato de cada identificador</span></div>
   <div class="dato"><b>3</b><span>activos anclados al metal: ORIGEN (1/55 g de oro), AUKA (1 oz de oro), AGKA (1 oz de plata)</span></div>
-  <div class="dato"><b>75</b><span>pruebas automáticas sobre el servidor real: 47 en demostración y 28 contra un Genesis ID de verdad</span></div>
+  <div class="dato"><b>76</b><span>pruebas automáticas sobre el servidor real: 48 en demostración y 28 contra un Genesis ID de verdad</span></div>
   <div class="dato"><b>0</b><span>llaves privadas en el servidor: los depósitos se comprueban en la cadena y los retiros los firma un operador</span></div>
   <div class="dato"><b>3</b><span>reglas de custodia que ninguna operación puede romper (y una prueba que las verifica sobre todos los saldos)</span></div>
-  <div class="dato"><b>2</b><span>idiomas en toda la app y el panel (español e inglés), con formato de moneda por país</span></div>
+  <div class="dato"><b>103</b><span>métodos de pago: transferencia y las billeteras que cada país usa de verdad, con sus campos</span></div>
 </div>
 <h3>Qué está hecho y funciona hoy</h3>
 <ul>
@@ -109,6 +109,8 @@ figcaption{font-size:8.8pt;color:var(--humo);margin-top:4pt;text-align:center}
   <li><b>Identidad</b>: registro con confirmación del correo, asistente de verificación en tres pasos contra Genesis ID, sesión única del ecosistema, tamizado de direcciones, monitoreo AML.</li>
   <li><b>Panel de operadores</b> con roles (admin, soporte, auditor): apelaciones, órdenes, usuarios, retiros, depósitos, agentes, precios, configuración, bitácora encadenada.</li>
   <li><b>Modo demostración</b> con diez usuarios verificados en nueve países, saldos y anuncios, que nunca se enciende en producción.</li>
+  <li><b>Avisos</b>: un pulso cada 20 segundos avisa de una orden nueva sobre tu anuncio, de un cambio de estado o de un mensaje sin leer, se esté donde se esté en la app.</li>
+  <li><b>Centro de ayuda</b> con quince preguntas en los dos idiomas, enlazado desde el pie y desde cada orden abierta.</li>
   <li><b>Interfaz</b> en español e inglés, pensada primero para el teléfono, con movimiento gastado en una sola idea: la custodia (sección 12).</li>
 </ul>
 <h3>Qué falta para producción</h3>
@@ -271,6 +273,7 @@ figcaption{font-size:8.8pt;color:var(--humo);margin-top:4pt;text-align:center}
   <div><div><b>Cancelar.</b> Solo el comprador y solo mientras está pendiente de pago. Una orden marcada como pagada ya no se cancela: se apela. Un operador puede cancelar cualquier orden pendiente o pagada desde el panel, con motivo.</div></div>
   <div><div><b>Apelar.</b> Cualquiera de los dos, sobre una orden pagada (o pendiente, si el comprador ya pagó; o vencida hace menos de 24 h, si sí pagó: entonces la cantidad se vuelve a congelar). Una apelación por parte: quien la retira no puede abrir otra. Motivos cerrados (no recibí el pago, pagué y no liberan, monto distinto, contraparte no responde, otro). Mientras hay apelación la orden queda congelada; el vendedor puede zanjarla liberando. Un operador la resuelve: <b>liberar</b> al comprador o <b>devolver</b> al vendedor. Queda en la bitácora y cuenta como apelación perdida para quien la pierde.</div></div>
   <div><div><b>Calificar.</b> Positiva o negativa con comentario, una vez completada. La reputación se recalcula siempre desde las órdenes: total, completadas, tasa de finalización a 30 días (las cancelaciones del sistema no cuentan en contra), tiempos promedio de pago y de liberación, apelaciones perdidas.</div></div>
+  <div><div><b>Lo que la orden enseña siempre.</b> El <b>nombre verificado</b> de la contraparte mientras la orden está abierta (un pago que llega de un tercero es la señal de fraude más común, y sin el nombre no hay con qué compararlo), los <b>términos del anunciante</b>, qué pasa si vence el temporizador y, si ya se marcó el pago, desde cuándo se está esperando. Liberar exige además confirmar que el dinero llegó de esa persona, no solo la contraseña.</div></div>
   <div><div><b>Chat.</b> Texto e imágenes (comprobantes comprimidos en el teléfono), hasta 300 mensajes y 6 imágenes por orden; mensajes del sistema en cada cambio de estado; el operador puede escribir en una apelación. Cierra 24 horas después de terminar la orden. Las imágenes se sirven con una URL firmada, así que solo las ven las partes y el operador.</div></div>
 </div>
 
@@ -379,33 +382,50 @@ anuncio fijo               → se acepta si está dentro de 10× la referencia</
 
 <section id="paises">
 <h2>8 · Países, monedas y métodos de pago</h2>
-<p><code>src/data/latam.ts</code> describe 23 países con su moneda (código, símbolo, decimales), sus bancos principales y los métodos de pago que la gente usa de verdad, cada uno con sus <b>campos canónicos</b> (CLABE, llave PIX, número de Nequi, alias de SINPE…) para que el vendedor los rellene bien y el comprador sepa dónde pagar. Se valida contra este catálogo al crear un método de pago o un anuncio.</p>
-<table><thead><tr><th>País</th><th>Moneda</th><th>Métodos de pago</th></tr></thead><tbody>
-<tr><td>🇦🇷 Argentina</td><td>ARS · Peso argentino</td><td>Transferencia bancaria, Mercado Pago, Ualá, Brubank, Lemon, Naranja X</td></tr>
-<tr><td>🇧🇿 Belice</td><td>BZD · Dólar beliceño</td><td>Transferencia bancaria, DigiWallet, E-Kyash, Efectivo en persona</td></tr>
-<tr><td>🇧🇴 Bolivia</td><td>BOB · Boliviano</td><td>Transferencia bancaria, Tigo Money, Yape, Efectivo en persona</td></tr>
-<tr><td>🇧🇷 Brasil</td><td>BRL · Real</td><td>PIX, Transferencia bancaria (TED), Efectivo en persona</td></tr>
-<tr><td>🇨🇱 Chile</td><td>CLP · Peso chileno (sin decimales)</td><td>Transferencia bancaria, MACH, Tenpo, Efectivo en persona</td></tr>
-<tr><td>🇨🇴 Colombia</td><td>COP · Peso colombiano</td><td>Nequi, Daviplata, Bre-B (llave), Transferencia bancaria, Movii, Efectivo en persona</td></tr>
-<tr><td>🇨🇷 Costa Rica</td><td>CRC · Colón</td><td>SINPE Móvil, Transferencia bancaria, Efectivo en persona</td></tr>
-<tr><td>🇪🇨 Ecuador</td><td>USD · Dólar</td><td>Transferencia bancaria, Deuna, Efectivo en persona</td></tr>
-<tr><td>🇸🇻 El Salvador</td><td>USD · Dólar</td><td>Transferencia bancaria (Transfer365), Transfer365 Móvil, Tigo Money, Efectivo en persona</td></tr>
-<tr><td>🇬🇹 Guatemala</td><td>GTQ · Quetzal</td><td>Transferencia bancaria, Tigo Money, Efectivo en persona</td></tr>
-<tr><td>🇬🇾 Guyana</td><td>GYD · Dólar guyanés</td><td>Transferencia bancaria, MMG, Efectivo en persona</td></tr>
-<tr><td>🇭🇹 Haití</td><td>HTG · Gourde</td><td>MonCash, NatCash, Transferencia bancaria, Efectivo en persona</td></tr>
-<tr><td>🇭🇳 Honduras</td><td>HNL · Lempira</td><td>Transferencia bancaria, Tigo Money, Efectivo en persona</td></tr>
-<tr><td>🇲🇽 México</td><td>MXN · Peso mexicano</td><td>Transferencia bancaria (SPEI), Mercado Pago, Depósito en OXXO, Efectivo en persona</td></tr>
-<tr><td>🇳🇮 Nicaragua</td><td>NIO · Córdoba</td><td>Transferencia bancaria, Billetera Móvil Banpro, Efectivo en persona</td></tr>
-<tr><td>🇵🇦 Panamá</td><td>USD · Dólar</td><td>Yappy, Transferencia bancaria, Nequi Panamá, Zelle, Efectivo en persona</td></tr>
-<tr><td>🇵🇾 Paraguay</td><td>PYG · Guaraní (sin decimales)</td><td>Transferencia bancaria, Tigo Money, Personal Pay, Zimple, Efectivo en persona</td></tr>
-<tr><td>🇵🇪 Perú</td><td>PEN · Sol</td><td>Yape, Plin, Transferencia bancaria, Efectivo en persona</td></tr>
-<tr><td>🇵🇷 Puerto Rico</td><td>USD · Dólar</td><td>ATH Móvil, Transferencia bancaria, Zelle, Efectivo en persona</td></tr>
-<tr><td>🇩🇴 República Dominicana</td><td>DOP · Peso dominicano</td><td>Transferencia bancaria, Zelle, Efectivo en persona</td></tr>
-<tr><td>🇸🇷 Surinam</td><td>SRD · Dólar surinamés</td><td>Transferencia bancaria, Uni5Pay+, Efectivo en persona</td></tr>
-<tr><td>🇺🇾 Uruguay</td><td>UYU · Peso uruguayo</td><td>Transferencia bancaria, Prex, Mi Dinero, Efectivo en persona</td></tr>
-<tr><td>🇻🇪 Venezuela</td><td>VES · Bolívar</td><td>Pago Móvil, Transferencia bancaria, Zelle, Efectivo en persona</td></tr>
+<p><code>src/data/latam.ts</code> describe 23 países con su moneda (código, símbolo, decimales) y los <b>103 métodos de pago</b> que la gente usa de verdad, cada uno con sus <b>campos canónicos</b> (CLABE, llave PIX, número de Nequi, alias de SINPE, CBU o CVU…) para que el vendedor los rellene bien y el comprador sepa dónde pagar. Se valida contra este catálogo al crear un método de pago o un anuncio.</p>
+
+<h3>Los bancos, al detalle</h3>
+<p>Los <b>457 bancos y entidades</b> viven en un dato aparte, porque son lo que más cambia y lo que más se consulta: <code>src/data/fuentes/bancos.json</code> es la fuente, <code>npm run generar:bancos</code> produce <code>src/data/bancos.ts</code>, y de ahí salen los nombres que ve la persona al registrar una cuenta. De cada entidad se guarda:</p>
+<table><thead><tr><th>Campo</th><th>Para qué</th></tr></thead><tbody>
+<tr><td><code>nombre</code> · <code>nombreCorto</code></td><td>Como lo conoce la gente del país, sin «S.A.»</td></tr>
+<tr><td><code>tipo</code></td><td>comercial · estatal · cooperativa · fintech · microfinanciera · caja. Distinguirlo importa: en Guatemala la red MICOOPE o en El Salvador FEDECRÉDITO mueven tanto P2P como un banco.</td></tr>
+<tr><td><code>tiposCuenta</code></td><td>Los que ofrece a personas, con su nombre local: «Monetaria» en Guatemala, «Caja de ahorro» en Argentina, «Cuenta Vista» en Chile, «Conta Poupança» en Brasil, «Cheques» en Honduras. El formulario los ofrece en un desplegable en cuanto se elige el banco.</td></tr>
+<tr><td><code>formatoCuenta</code></td><td>Qué tiene que teclear el vendedor: «CLABE de 18 dígitos», «CBU de 22 dígitos», «agencia de 4 dígitos + cuenta», «cuenta de 14 dígitos; CCI de 20». Se enseña como ayuda bajo el campo.</td></tr>
+<tr><td><code>codigo</code></td><td>El código oficial donde existe: SPEI en México (012 BBVA, 072 Banorte…), el código de banco de Venezuela para el Pago Móvil (0102, 0134…), el código ACH en Colombia.</td></tr>
+<tr><td><code>importancia</code></td><td>principal · secundario · nicho. El formulario agrupa «Principales» y «Otros bancos y entidades» para que no haya que recorrer cuarenta nombres.</td></tr>
+<tr><td><code>nota</code></td><td>Lo que hay que saber: absorciones recientes (Scotiabank por Davivienda en Costa Rica, Panamá y Colombia; Santander por FirstBank y Scotiabank por Oriental en Puerto Rico; Scotiabank por Belize Bank), entidades intervenidas, o que una cuenta se identifica por celular.</td></tr>
 </tbody></table>
-<p class="pequeno">Zelle se liquida en dólares aunque el país tenga otra moneda; el efectivo en persona puede pactarse en dólares. Cada método declara si el pago es instantáneo y qué campos lleva; los datos del vendedor se enseñan solo dentro de una orden abierta y con los números parcialmente enmascarados fuera de ella.</p>
+<p>La app los pide por <code>GET /api/mercado/bancos/:pais</code>, una sola vez por país. Los países chicos llevan todas las entidades que existen; los grandes, los principales y los secundarios: Argentina 46, Bolivia 38, Brasil 36, México 27, Perú 23 (con las cajas municipales), Venezuela 22 con su código de banco, Colombia 30, Ecuador 21 (con las cooperativas JEP, Jardín Azuayo y Policía Nacional), Honduras y Panamá 20.</p>
+<figure class="galeria dos" style="display:grid">
+  <figure><img src="img/pagos-banco.jpg" alt="" style="max-height:120mm"><figcaption>Elegir banco: principales y otros, con el tipo de entidad, los tipos de cuenta del banco y el formato del número</figcaption></figure>
+  <figure><img src="img/pagos-guardado.jpg" alt="" style="max-height:120mm"><figcaption>La cuenta guardada: el número enmascarado, el tipo de cuenta entero</figcaption></figure>
+</figure>
+<table><thead><tr><th>País</th><th>Moneda</th><th>Bancos</th><th>Métodos de pago</th></tr></thead><tbody>
+<tr><td>🇦🇷 Argentina</td><td>ARS · Peso argentino</td><td>46</td><td>Transferencia bancaria, Mercado Pago, Cuenta DNI, MODO, Ualá, Brubank, Lemon, Naranja X, Personal Pay, Prex, Efectivo en persona</td></tr>
+<tr><td>🇧🇿 Belice</td><td>BZD · Dólar beliceño</td><td>7</td><td>Transferencia bancaria, DigiWallet, E-Kyash, Efectivo en persona</td></tr>
+<tr><td>🇧🇴 Bolivia</td><td>BOB · Boliviano</td><td>38</td><td>Transferencia bancaria, Tigo Money, Yape, Bille, Yasta, Efectivo en persona</td></tr>
+<tr><td>🇧🇷 Brasil</td><td>BRL · Real brasileño</td><td>36</td><td>PIX, Transferencia bancaria (TED), Mercado Pago, PicPay, PagBank, Efectivo en persona</td></tr>
+<tr><td>🇨🇱 Chile</td><td>CLP · Peso chileno (sin decimales)</td><td>20</td><td>Transferencia bancaria, MACH, Tenpo, Mercado Pago, Efectivo en persona</td></tr>
+<tr><td>🇨🇴 Colombia</td><td>COP · Peso colombiano</td><td>30</td><td>Nequi, Daviplata, Bre-B (llave), Transferencia bancaria, Movii, Efectivo en persona</td></tr>
+<tr><td>🇨🇷 Costa Rica</td><td>CRC · Colón costarricense</td><td>19</td><td>SINPE Móvil, Transferencia bancaria, Efectivo en persona</td></tr>
+<tr><td>🇪🇨 Ecuador</td><td>USD · Dólar estadounidense</td><td>21</td><td>Transferencia bancaria, Deuna, Peigo, Efectivo en persona</td></tr>
+<tr><td>🇸🇻 El Salvador</td><td>USD · Dólar estadounidense</td><td>15</td><td>Transferencia bancaria (Transfer365), Transfer365 Móvil, Tigo Money, Efectivo en persona</td></tr>
+<tr><td>🇬🇹 Guatemala</td><td>GTQ · Quetzal</td><td>19</td><td>Transferencia bancaria, Tigo Money, Efectivo en persona</td></tr>
+<tr><td>🇬🇾 Guyana</td><td>GYD · Dólar guyanés</td><td>8</td><td>Transferencia bancaria, MMG (Mobile Money Guyana), Efectivo en persona</td></tr>
+<tr><td>🇭🇹 Haití</td><td>HTG · Gourde</td><td>8</td><td>MonCash, NatCash, Transferencia bancaria, Efectivo en persona</td></tr>
+<tr><td>🇭🇳 Honduras</td><td>HNL · Lempira</td><td>20</td><td>Transferencia bancaria, Tigo Money, Efectivo en persona</td></tr>
+<tr><td>🇲🇽 México</td><td>MXN · Peso mexicano</td><td>27</td><td>Transferencia bancaria (SPEI), Mercado Pago, Depósito en OXXO, Efectivo en persona</td></tr>
+<tr><td>🇳🇮 Nicaragua</td><td>NIO · Córdoba</td><td>10</td><td>Transferencia bancaria, Billetera Móvil Banpro, Efectivo en persona</td></tr>
+<tr><td>🇵🇦 Panamá</td><td>USD · Dólar estadounidense</td><td>20</td><td>Yappy, Transferencia bancaria, Nequi Panamá, Zelle, Efectivo en persona</td></tr>
+<tr><td>🇵🇾 Paraguay</td><td>PYG · Guaraní (sin decimales)</td><td>18</td><td>Transferencia bancaria, Tigo Money, Personal Pay, Zimple, Billetera ueno, Efectivo en persona</td></tr>
+<tr><td>🇵🇪 Perú</td><td>PEN · Sol</td><td>23</td><td>Yape, Plin, Transferencia bancaria, Efectivo en persona</td></tr>
+<tr><td>🇵🇷 Puerto Rico</td><td>USD · Dólar estadounidense</td><td>8</td><td>ATH Móvil, Transferencia bancaria, Zelle, Efectivo en persona</td></tr>
+<tr><td>🇩🇴 República Dominicana</td><td>DOP · Peso dominicano</td><td>17</td><td>Transferencia bancaria, Zelle, tPago, Efectivo en persona</td></tr>
+<tr><td>🇸🇷 Surinam</td><td>SRD · Dólar surinamés</td><td>10</td><td>Transferencia bancaria, Uni5Pay+, Efectivo en persona</td></tr>
+<tr><td>🇺🇾 Uruguay</td><td>UYU · Peso uruguayo</td><td>15</td><td>Transferencia bancaria, Prex, Mi Dinero, Efectivo en persona</td></tr>
+<tr><td>🇻🇪 Venezuela</td><td>VES · Bolívar</td><td>22</td><td>Pago Móvil, Transferencia bancaria, Zelle, Efectivo en persona</td></tr>
+</tbody></table>
+<p class="pequeno">Entre las billeteras están Cuenta DNI, MODO, Mercado Pago, Ualá, Naranja X, Brubank, Lemon, Personal Pay y Prex en Argentina; Pix, Mercado Pago, PicPay y PagBank en Brasil; Nequi, Daviplata, Bre-B y Movii en Colombia; Yape y Plin en Perú; SINPE Móvil en Costa Rica; Pago Móvil en Venezuela; Yappy y Nequi en Panamá; Tigo Money en cinco países; MonCash y NatCash en Haití; ATH Móvil en Puerto Rico; tPago en República Dominicana; Peigo en Ecuador; y la billetera ueno en Paraguay. Zelle se liquida en dólares aunque el país tenga otra moneda; el efectivo en persona puede pactarse en dólares. Cada método declara si el pago es instantáneo y qué campos lleva; los datos del vendedor se enseñan solo dentro de una orden abierta y con los números parcialmente enmascarados fuera de ella.</p>
 </section>
 
 <section id="kyc">
@@ -549,6 +569,7 @@ anuncio fijo               → se acepta si está dentro de 10× la referencia</
 <tr><td><code>#/pagos</code></td><td>Métodos de pago</td><td>Alta por catálogo del país con sus campos, activar/desactivar.</td></tr>
 <tr><td><code>#/agente</code></td><td>Agente de cambio</td><td>Requisitos, garantía, solicitud, renuncia.</td></tr>
 <tr><td><code>#/perfil</code></td><td>Perfil</td><td>Confirmación del correo, Genesis ID (estado, asistente, GID, nombre legal), datos de la cuenta, contraseña, reputación, salir.</td></tr>
+<tr><td><code>#/ayuda</code></td><td>Ayuda</td><td>Quince preguntas agrupadas: la garantía, comprar, vender, qué hacer si no liberan o el dinero no llega, apelaciones, ORIGEN, verificación, comisiones, agentes, depósitos, retiros y las dos estafas típicas (pago de un tercero, trato por fuera). Enlazada desde el pie y desde cada orden abierta.</td></tr>
 <tr><td><code>#/entrar</code> · <code>#/registro</code></td><td>Entrar y registro</td><td>Correo y contraseña, registro con país; en demostración, entrar con un clic como cualquiera de los diez usuarios.</td></tr>
 </tbody></table>
 <h3>Identidad visual y movimiento</h3>
@@ -560,7 +581,8 @@ anuncio fijo               → se acepta si está dentro de 10× la referencia</
 <tr><td>Cambiar de pantalla</td><td>La vista entra con un deslizamiento corto y las listas (anuncios, órdenes, tarjetas) aparecen escalonadas. Las repintadas del sondeo no vuelven a animar.</td><td>Orientación: se nota que la pantalla cambió, sin esperar.</td></tr>
 <tr><td>Estados</td><td>El punto de «pendiente de pago», «en revisión» y «apelación» parpadea despacio.</td><td>Alguien tiene que hacer algo.</td></tr>
 <tr><td>Botones, filas, campos</td><td>Se levantan al pasar, se hunden al pulsar; el botón dorado brilla; el anuncio se acerca y su precio se enciende; el campo enfocado tiene un halo dorado; el subrayado de la navegación y el punto de la barra crecen desde el centro.</td><td>Respuesta inmediata a cada gesto; foco visible con teclado.</td></tr>
-<tr><td>Chat, avisos y diálogos</td><td>Los mensajes suben al aparecer; los avisos y diálogos emergen con una escala mínima.</td><td>Continuidad.</td></tr>
+<tr><td>Chat, avisos y diálogos</td><td>Los mensajes suben al aparecer; los avisos y diálogos emergen con una escala mínima, el foco entra en ellos y vuelve a donde estaba al cerrarlos.</td><td>Continuidad, y teclado que no se pierde.</td></tr>
+<tr><td>El pulso de la cuenta</td><td>Cada 20 segundos, un sondeo ligero; si aparece una orden nueva, cambia un estado o llega un mensaje, emerge un aviso que lleva a esa orden y el título del navegador cuenta lo pendiente.</td><td>Quien publica un anuncio se pasa el día en el mercado, no dentro de la orden: sin esto no se entera de que le abrieron una con el reloj corriendo.</td></tr>
 </tbody></table>
 <p class="pequeno">Con «reducir movimiento» activado en el sistema, todas las animaciones y transiciones se apagan (<code>prefers-reduced-motion</code>). En el teléfono la pizarra enseña cada precio en su renglón, como un tablero de cotizaciones, para que ningún número se corte.</p>
 <div class="galeria dos">
@@ -570,6 +592,8 @@ anuncio fijo               → se acepta si está dentro de 10× la referencia</
   <figure><img src="img/escritorio-pagos.jpg" alt="" style="max-height:95mm;object-fit:cover;object-position:top"><figcaption>Métodos de pago por catálogo del país</figcaption></figure>
 </div>
 <div class="galeria">
+  <figure><img src="img/ayuda-escritorio.jpg" alt="" style="max-height:95mm;object-fit:cover;object-position:top"><figcaption>El centro de ayuda</figcaption></figure>
+  <figure class="movil"><img src="img/movil-hoja.jpg" alt=""><figcaption>La hoja de compra en el teléfono, con el botón siempre a la vista</figcaption></figure>
   <figure class="movil"><img src="img/movil-mercado.jpg" alt=""><figcaption>Mercado en el teléfono</figcaption></figure>
   <figure class="movil"><img src="img/movil-orden.jpg" alt=""><figcaption>Orden en el teléfono</figcaption></figure>
   <figure class="movil"><img src="img/reg-2-perfil-correo.jpg" alt=""><figcaption>Registro: confirmar el correo</figcaption></figure>
@@ -624,7 +648,7 @@ anuncio fijo               → se acepta si está dentro de 10× la referencia</
 <h2>15 · La API, en resumen</h2>
 <p>El contrato completo, con cada campo y cada código de error, está en <code>ordenexchange/API.md</code>. Todo devuelve JSON; los errores llevan <code>{ error, codigo }</code> y el frontend traduce el código. Sesión de usuario con <code>Authorization: Bearer</code>; sesión de operador aparte para <code>/api/panel</code>.</p>
 <table><thead><tr><th>Grupo</th><th>Rutas</th></tr></thead><tbody>
-<tr><td><b>Público</b></td><td><code>GET /api/mercado/catalogo</code> (países, monedas, métodos, activos, precios, configuración visible, demo) · <code>GET /api/mercado/anuncios</code> (filtros: lado, activo, pais, moneda, metodo, monto, soloAgentes, orden) · <code>GET /api/mercado/anuncios/:id</code> · <code>GET /api/mercado/usuarios/:id</code> · <code>GET /healthz</code></td></tr>
+<tr><td><b>Público</b></td><td><code>GET /api/mercado/bancos/:pais</code> (los bancos del país al detalle) · <code>GET /api/mercado/catalogo</code> (países, monedas, métodos, activos, precios, configuración visible, demo) · <code>GET /api/mercado/anuncios</code> (filtros: lado, activo, pais, moneda, metodo, monto, soloAgentes, orden) · <code>GET /api/mercado/anuncios/:id</code> · <code>GET /api/mercado/usuarios/:id</code> · <code>GET /healthz</code></td></tr>
 <tr><td><b>Autenticación</b></td><td><code>POST /api/auth/registro</code> · <code>verificar-correo</code> · <code>reenviar-codigo</code> · <code>entrar</code> · <code>sso</code> · <code>salir</code> · <code>GET/PATCH /api/auth/yo</code> · <code>POST /api/auth/contrasena</code> · demo: <code>demo/usuarios</code>, <code>demo/entrar</code></td></tr>
 <tr><td><b>Genesis ID</b></td><td><code>GET /api/genesis/estado</code> · <code>POST datos</code> · <code>documento</code> · <code>vivacidad</code> · <code>biometria</code> · <code>foto</code> · <code>vincular</code> · <code>sso/token</code> · <code>GET tamiz/:direccion</code> · demo: <code>demo/verificar</code></td></tr>
 <tr><td><b>Billetera</b></td><td><code>GET /api/billetera</code> · <code>movimientos</code> · <code>POST depositos</code> (hash) · <code>GET depositos</code> · <code>POST retiros</code> · <code>GET retiros</code> · <code>POST retiros/:id/cancelar</code> · demo: <code>grifo</code></td></tr>
@@ -665,11 +689,11 @@ npm run typecheck</pre>
 <p>Las pruebas son de extremo a extremo sobre el servidor de verdad (<code>node:test</code>, sin dobles): arrancan el servidor en un puerto libre, hacen peticiones HTTP y comprueban respuestas y estado. Además se recorrió la interfaz con Chromium (Playwright) en teléfono y escritorio para las capturas de este documento y para comprobar que cada pantalla y cada flujo funcionan en el navegador.</p>
 <table><thead><tr><th>Suite</th><th>Pruebas</th><th>Qué cubre</th></tr></thead><tbody>
 <tr><td><code>decimal.test.ts</code></td><td>incluidas en las 47</td><td>La aritmética exacta: conversión, comparación, suma, resta, multiplicación, división con recorte, validación de decimales.</td></tr>
-<tr><td><code>flujo.test.ts</code> (demostración)</td><td>47 en total</td><td>Catálogo y mercado; registro y confirmación del correo; verificación; orden de compra con custodia, chat, marcar pagado, liberar con contraseña, calificar; orden de venta sobre un anuncio de compra; cancelación y vencimiento; apelaciones resueltas en los dos sentidos; permisos de auditor; congelar cuentas (cierra sesiones); precios; anuncios propios con requisitos; retiros; agentes; y al final, que cada saldo cuadra con sus movimientos. También todo lo que NO se puede hacer: liberar lo ajeno, cancelar lo pagado, tomar el propio anuncio, operar sin GID, mover más de lo que hay en custodia.</td></tr>
+<tr><td><code>flujo.test.ts</code> (demostración)</td><td>48 en total</td><td>Catálogo y mercado; registro y confirmación del correo; verificación; orden de compra con custodia, chat, marcar pagado, liberar con contraseña, calificar; orden de venta sobre un anuncio de compra; cancelación y vencimiento; apelaciones resueltas en los dos sentidos; permisos de auditor; congelar cuentas (cierra sesiones); precios; anuncios propios con requisitos; retiros; agentes; y al final, que cada saldo cuadra con sus movimientos. También todo lo que NO se puede hacer: liberar lo ajeno, cancelar lo pagado, tomar el propio anuncio, operar sin GID, mover más de lo que hay en custodia.</td></tr>
 <tr><td><code>genesis.integracion.ts</code> (Genesis ID real)</td><td>28</td><td>Sección 9: el trámite entero contra el Genesis ID del repositorio, sesión única, tamizado, monitoreo AML y suspensión.</td></tr>
 <tr><td>Genesis ID (<code>genesis-id/</code>)</td><td>151</td><td>Siguen pasando tras el arreglo del limitador.</td></tr>
 </tbody></table>
-<p>Total: <b>75 pruebas</b> de OrdenExchange, todas en verde en la fecha de este documento, más las 151 de Genesis ID. <code>npm run typecheck</code> compila sin errores.</p>
+<p>Total: <b>76 pruebas</b> de OrdenExchange, todas en verde en la fecha de este documento, más las 151 de Genesis ID. <code>npm run typecheck</code> compila sin errores.</p>
 </section>
 
 <section id="pendientes">

@@ -27,6 +27,7 @@ navegador ──▶ OrdenExchange (Express + TS) ──X-API-Key──▶ Genesi
 | `src/data/` | `latam.ts` (países, monedas, métodos de pago con sus campos), `bancos.ts` (generado: los bancos de cada país con tipos de cuenta y formato, desde `fuentes/bancos.json` con `npm run generar:bancos`), `activos.ts`, `fxSemilla.ts` |
 | `src/lib/` | `decimal.ts` (aritmética exacta con BigInt), sesión, límites, errores |
 | `public/` | La app web (`index.html`, `app.js`, `i18n.js`) y el panel (`admin.html`) |
+| `herramientas/` | `generar-bancos.mjs`: de `src/data/fuentes/bancos.json` a `src/data/bancos.ts` |
 | `src/pruebas/` | Pruebas de extremo a extremo sobre el servidor real |
 | `API.md` | El contrato HTTP completo |
 | `docs/` | El documento de diseño (`OrdenExchange-Diseno.pdf`, generado desde `diseno.html`) con la arquitectura, los flujos, el KYC, la seguridad y las capturas |
@@ -67,6 +68,33 @@ El panel imprime la contraseña del administrador al arrancar.
 5. Si algo falla, cualquiera **apela**: la orden se congela, un operador lee el
    chat y los comprobantes desde el panel y decide: liberar al comprador o
    devolver al vendedor. Queda en la bitácora.
+
+## Los bancos de cada país
+
+457 bancos y entidades en 23 países, con su tipo (comercial, estatal,
+cooperativa, fintech, microfinanciera, caja), los **tipos de cuenta** que
+ofrece cada uno con su nombre local (monetaria, caja de ahorro, cuenta vista,
+conta poupança, cheques), el **formato del identificador** para transferir
+(CLABE de 18 dígitos, CBU de 22, agencia + cuenta, CCI de 20) y el **código
+oficial** donde existe (SPEI en México, código de banco en Venezuela para el
+Pago Móvil, ACH en Colombia). Incluye las cooperativas y cajas que de verdad
+se usan —MICOOPE, FEDECRÉDITO, las cajas municipales del Perú, la JEP en
+Ecuador, APAP en República Dominicana— y anota las absorciones recientes.
+
+La fuente es `src/data/fuentes/bancos.json`; `npm run generar:bancos` produce
+`src/data/bancos.ts`, y de ahí salen los nombres de la transferencia bancaria
+del catálogo. La app los pide por `GET /api/mercado/bancos/:pais` y el
+formulario de métodos de pago agrupa principales y otros, ofrece los tipos de
+cuenta del banco elegido y enseña el formato del número.
+
+## Avisos y ayuda
+
+Un **pulso** cada 20 segundos avisa de una orden nueva sobre tu anuncio, de un
+cambio de estado o de un mensaje sin leer, se esté donde se esté en la app; el
+aviso lleva a la orden. El **centro de ayuda** (`#/ayuda`) responde en los dos
+idiomas las quince preguntas que de verdad se hace quien empieza, incluidas
+las dos estafas típicas: el pago desde la cuenta de un tercero y el trato por
+fuera de la plataforma.
 
 ## Precio de referencia
 
