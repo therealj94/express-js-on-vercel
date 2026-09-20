@@ -59,8 +59,10 @@ El panel imprime la contraseña del administrador al arrancar.
 3. El comprador transfiere el dinero por el método pactado —los datos bancarios
    se ven solo dentro de la orden— y marca **«pagado»** antes de que venza el
    temporizador. Si no, la orden se cancela sola y el activo vuelve al vendedor.
-4. El vendedor comprueba que llegó el dinero y **libera**: el activo pasa al
-   comprador (menos la comisión, si hay). Ambos se califican.
+4. El vendedor comprueba que llegó el dinero y **libera**: el activo pasa
+   entero al comprador; la comisión, si hay, la paga el vendedor. Ambos se
+   califican. Una orden que venció sin marcarse pagada se puede apelar durante
+   24 horas si el comprador sí pagó.
 5. Si algo falla, cualquiera **apela**: la orden se congela, un operador lee el
    chat y los comprobantes desde el panel y decide: liberar al comprador o
    devolver al vendedor. Queda en la bitácora.
@@ -86,6 +88,13 @@ semilla de `fxSemilla.ts`.
 
 Toda la aritmética es exacta (`lib/decimal.ts`, BigInt a 18 decimales); los
 recortes se hacen siempre hacia abajo.
+
+## Confirmación del correo
+
+La identidad se busca en Genesis ID **por el correo de la cuenta**, así que el
+correo se confirma antes con un código de seis dígitos (Brevo, `BREVO_API_KEY`).
+Sin proveedor y fuera de producción, el código se imprime en el registro y
+vuelve en la respuesta (`codigoDemo`), para poder probar el flujo entero.
 
 ## Genesis ID
 
@@ -114,14 +123,16 @@ operador lo firma desde la tesorería y anota el hash en el panel.
 
 Resumen, apelaciones (con el chat completo y los comprobantes), órdenes, agentes,
 retiros, depósitos, usuarios (congelar, ajustar), precios, configuración,
-bitácora encadenada y operadores. Roles: `admin` todo; `soporte` resuelve
-apelaciones, retiros y agentes; `auditor` solo lee.
+bitácora encadenada y operadores. Roles: `admin` todo (incluidos precios,
+configuración y ajustes de saldo); `soporte` resuelve apelaciones, cancela
+órdenes, decide retiros y agentes y bloquea cuentas; `auditor` solo lee.
 
 ## Despliegue
 
 - **Render**: `render.yaml` en la raíz del repo trae el servicio `ordenexchange`
   (rootDir `ordenexchange`). Hay que fijar `ORDENEX_MONGO_URL`, `GENESIS_API_KEY`,
-  `ORDENEX_TESORERIA`, `ORDENEX_ADMIN_PASSWORD` y el precio del metal.
+  `BREVO_API_KEY`, `ORDENEX_TESORERIA`, `ORDENEX_ADMIN_PASSWORD` y el precio del
+  metal. El modo demostración nunca se enciende con Mongo o tesorería configuradas.
 - **Vercel**: `vercel.json` ya apunta a `src/index.ts`. Mongo es obligatorio.
 
 `GET /healthz` responde `degradado` mientras falte algo esencial y dice qué.
@@ -133,7 +144,7 @@ npm run prueba
 ```
 
 `decimal.test.ts` prueba la aritmética. `flujo.test.ts` levanta el servidor en
-modo demo y recorre todo: registro, verificación, mercado, orden de compra con
+modo demo y recorre todo: registro y confirmación del correo, verificación, mercado, orden de compra con
 custodia, chat, marcar pagado, liberar con contraseña, calificar; orden de venta
 sobre un anuncio de compra; cancelación y vencimiento; apelaciones resueltas en
 ambos sentidos desde el panel; permisos de auditor; congelar cuentas; precios;

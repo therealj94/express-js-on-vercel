@@ -102,6 +102,12 @@ services:
       - key: GENESIS_API_KEY
         sync: false
 
+      # ─── Correo saliente (Brevo): códigos de confirmación del correo ───────
+      - key: BREVO_API_KEY
+        sync: false
+      - key: ORDENEX_CORREO_REMITENTE
+        value: OrdenExchange <no-responder@ordenglobal.link>
+
       # ─── Cadena 5550 ───────────────────────────────────────────────────────
       # La tesorería: a dónde deposita la gente y desde dónde se firman los
       # retiros. Sin ella no se comprueban depósitos.

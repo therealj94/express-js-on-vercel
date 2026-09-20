@@ -79,7 +79,7 @@ button{cursor:pointer;background:none;border:0}
 .nav-sup a:hover{color:var(--marfil);background:var(--linea-suave)}
 .nav-sup a.activa{color:var(--marfil)}
 .nav-sup a.activa::after{content:"";position:absolute;left:12px;right:12px;bottom:2px;height:2px;background:var(--oro);border-radius:2px}
-.cabecera-der{margin-left:auto;display:flex;align-items:center;gap:8px}
+.cabecera-der{margin-left:auto;display:flex;align-items:center;gap:8px;min-width:0;flex-shrink:1}
 .contador{display:inline-flex;align-items:center;justify-content:center;min-width:18px;height:18px;padding:0 5px;border-radius:9px;background:var(--oro);color:var(--negro);font-size:11px;font-weight:800;font-family:var(--mono);margin-left:6px;vertical-align:middle}
 .etq-demo{font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--oro);border:1px solid var(--linea2);border-radius:6px;padding:2px 6px}
 
@@ -90,6 +90,8 @@ button{cursor:pointer;background:none;border:0}
 .cuenta{display:inline-flex;align-items:center;gap:8px;padding:4px 10px 4px 4px;border:1px solid var(--linea);border-radius:100px;color:var(--marfil);font-weight:500;max-width:180px}
 .cuenta .apodo{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px}
 .cuenta .avatar{width:28px;height:28px;font-size:12px}
+/* En el teléfono no cabe el apodo junto al logo, las pestañas y el idioma: queda el avatar. */
+@media (max-width:599px){.cuenta{padding:3px;max-width:none}.cuenta .apodo{display:none}}
 
 .barra-inf{
   position:fixed;left:0;right:0;bottom:0;z-index:40;height:calc(var(--barra-inf) + env(safe-area-inset-bottom,0px));
@@ -384,11 +386,11 @@ select.entrada option{background:var(--panel2);color:var(--marfil)}
 }
 .anuncio.propio{opacity:.6}
 .a-quien{grid-area:quien;display:flex;align-items:center;gap:10px;min-width:0}
-.a-quien .cuerpo{min-width:0}
+.a-quien .cuerpo{min-width:0;flex:1}
 .a-quien .nombre{display:flex;align-items:center;gap:6px;font-weight:700;min-width:0}
 .a-quien .nombre a{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .a-quien .nombre a:hover{color:var(--oro)}
-.a-quien .rep{font-size:12px;color:var(--humo);font-family:var(--mono);white-space:nowrap}
+.a-quien .rep{font-size:12px;color:var(--humo);font-family:var(--mono);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block}
 .a-precio{grid-area:precio;text-align:right}
 .a-precio .valor{font-family:var(--mono);font-size:22px;font-weight:700;letter-spacing:-.01em;line-height:1.1;white-space:nowrap}
 .a-precio .valor small{font-size:12px;color:var(--humo);font-weight:400;margin-left:3px}

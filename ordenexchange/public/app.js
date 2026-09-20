@@ -19,6 +19,11 @@ function fijo(n, dec) { // número → cadena decimal sin ceros infinitos
   if (s.includes('.')) s = s.replace(/0+$/, '').replace(/\.$/, '');
   return s === '-0' ? '0' : s;
 }
+function fijoAbajo(n, dec) { // como fijo(), pero truncando: es lo que hace el servidor con el activo
+  if (!Number.isFinite(n)) return '0';
+  const f = Math.pow(10, dec);
+  return fijo(Math.floor(n * f + 1e-9) / f, dec);
+}
 function inicial(apodo) { return (apodo || '?').trim().charAt(0).toUpperCase() || '?'; }
 function enmascarar(v) { const s = String(v || ''); return s.length > 4 ? '•••• ' + s.slice(-4) : s; }
 function acortar(s, n = 10) { s = String(s || ''); return s.length > n * 2 + 1 ? s.slice(0, n) + '…' + s.slice(-6) : s; }
@@ -553,7 +558,7 @@ function convertirHoja(desde, valor) {
   const decF = paisPorMoneda(a.moneda) && paisPorMoneda(a.moneda).moneda ? paisPorMoneda(a.moneda).moneda.decimales : 2;
   const decA = Math.min(8, activoDef(a.activo).decimales === undefined ? 8 : activoDef(a.activo).decimales);
   h.ultimo = desde;
-  if (desde === 'fiat') { h.fiat = valor; const n = num(valor); h.activo = n > 0 && precio > 0 ? fijo(n / precio, decA) : ''; const o = $('#h-activo'); if (o) o.value = h.activo; }
+  if (desde === 'fiat') { h.fiat = valor; const n = num(valor); h.activo = n > 0 && precio > 0 ? fijoAbajo(n / precio, decA) : ''; const o = $('#h-activo'); if (o) o.value = h.activo; }
   else { h.activo = valor; const n = num(valor); h.fiat = n > 0 ? fijo(n * precio, decF) : ''; const o = $('#h-fiat'); if (o) o.value = h.fiat; }
   validarHoja();
 }
@@ -1208,6 +1213,7 @@ const vistaPerfil = {
     const estadoOp = u.congelado ? notaHTML(esc(t('perfil.congelado', { motivo: u.motivoCongelado || '' })), 'roja', IC.alerta) : (u.puedeOperar === false ? notaHTML(esc(t('perfil.noOpera', { motivo: u.motivoNoOpera || '' })), 'roja', IC.alerta) : notaHTML(t('perfil.opera'), 'verde', IC.check));
     return `<div class="perfil-cab"><span class="avatar grande">${esc(inicial(u.apodo))}</span><div class="cuerpo"><h1>${esc(u.apodo)}${insigniasHTML(u)}</h1><p>${esc(u.email)} · ${esc(bandera(u.pais))} ${esc(nombrePais(p))} · ${esc(t('perfil.registrado', { n: u.registradoHaceDias || 0 }))}</p></div></div>
     ${estadoOp}
+    ${correoHTML(u)}
     <div class="tarjeta"><div class="tarjeta-cabeza"><h2>${t('gid.titulo')}</h2><span class="estado ${esc(u.gidEstado)}">${t('gidEstado.' + u.gidEstado)}</span></div>
       <p class="sub mb12">${gidTexto(u.gidEstado)}</p>
       ${u.gid ? `<div class="dato"><span>${t('perfil.gidId')}</span>${copiable(u.gid)}</div>` : ''}${u.nombreLegal ? `<div class="dato"><span>${t('perfil.nombreLegal')}</span><b>${esc(u.nombreLegal)}</b></div>` : ''}
@@ -1356,11 +1362,25 @@ const vistaAuth = {
 function entradaOk(datos, msg) {
   fijarSesion(datos.token, datos.usuario);
   S.ssoPendiente = null; S.v = {};
-  aviso(msg || t('auth.bienvenido', { apodo: datos.usuario ? datos.usuario.apodo : '' }), 'ok');
+  if (datos.codigoDemo) S.codigoDemo = datos.codigoDemo;
+  const pendiente = datos.verificacionPendiente || (datos.usuario && datos.usuario.emailVerificado === false);
+  aviso(msg || (pendiente ? t('correo.enviado') : t('auth.bienvenido', { apodo: datos.usuario ? datos.usuario.apodo : '' })), 'ok');
   refrescarYo().then(() => render());
   if (datos.usuario && datos.usuario.pais && paisDe(datos.usuario.pais) && !S.mercado.cargado) S.mercado.pais = datos.usuario.pais;
-  const destino = S.despues && !/#\/(entrar|registro)/.test(S.despues) ? S.despues : '#/mercado'; S.despues = null;
+  // Con el correo sin confirmar, lo primero es confirmarlo: sin eso no hay Genesis ID.
+  const destino = pendiente ? '#/perfil' : (S.despues && !/#\/(entrar|registro)/.test(S.despues) ? S.despues : '#/mercado'); S.despues = null;
   ir(destino);
+}
+
+/** Tarjeta para confirmar el correo: código de seis dígitos, reenvío, y el código a la vista en la demo. */
+function correoHTML(u) {
+  if (!u || u.emailVerificado !== false) return '';
+  return `<div class="tarjeta" id="correo-pendiente"><div class="tarjeta-cabeza"><h2>${t('correo.titulo')}</h2><span class="estado en-revision">${t('correo.pendiente')}</span></div>
+    <p class="sub mb12">${esc(t('correo.desc', { email: u.email }))}</p>
+    ${S.codigoDemo ? notaHTML(`${t('correo.demo')} <b class="mono">${esc(S.codigoDemo)}</b>`, 'gris', IC.candado) : ''}
+    <form data-form="correo" novalidate><div class="campo"><label for="codigo-correo">${t('correo.codigo')}</label><input id="codigo-correo" class="entrada mono" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="000000" value="${esc(S.v.codigoCorreo || '')}" data-entrada="codigo-correo"></div>
+    ${S.v.errorCorreo ? `<div class="error-campo mb12">${esc(S.v.errorCorreo)}</div>` : ''}
+    <div class="acciones"><button type="submit" class="btn btn-oro">${t('correo.confirmar')}</button><button type="button" class="btn btn-linea" data-accion="correo-reenviar">${t('correo.reenviar')}</button></div></form></div>`;
 }
 function errorAuth(msg) { const e = $('#auth-error'); if (e) { e.textContent = msg; e.hidden = false; } }
 async function entrarSso(token, extra) {
@@ -1419,6 +1439,14 @@ const ACC = {
   'pago-eliminar': el => abrirDialogo({ titulo: t('pagos.eliminarTitulo'), texto: t('pagos.eliminarDesc'), form: 'pago-eliminar', ok: t('com.eliminar'), clase: 'btn-peligro', cuerpo: `<input type="hidden" name="id" value="${esc(el.dataset.id)}">` }),
   // Perfil / Genesis
   'gid-sincronizar': el => { el.disabled = true; sincronizarGid(false).finally(() => { el.disabled = false; }); },
+  'correo-reenviar': async el => {
+    el.disabled = true;
+    const r = await api('POST', '/auth/reenviar-codigo', {});
+    el.disabled = false;
+    if (!r.ok) { aviso(mensajeError(r), 'mal'); return; }
+    if (r.datos.codigoDemo) S.codigoDemo = r.datos.codigoDemo;
+    aviso(t('correo.enviado'), 'ok'); render();
+  },
   'gid-demo': async el => { el.disabled = true; const r = await api('POST', '/genesis/demo/verificar', {}); if (!r.ok) { aviso(mensajeError(r), 'mal'); el.disabled = false; return; } aviso(t('gid.verificadoDemo'), 'ok'); if (r.datos.usuario) actualizarUsuario(r.datos.usuario); await refrescarYo(); render(); },
   'g-paso': el => { S.v.gid.paso = Number(el.dataset.v); S.v.gid.error = null; S.v.gid.ok = null; render(); },
   // Agente
@@ -1462,6 +1490,17 @@ const CAM = {
 
 const FORM = {
   'dialogo-nada': () => cerrarCapa(),
+  correo: async form => {
+    const codigo = String((form.querySelector('#codigo-correo') || {}).value || '').replace(/\s/g, '');
+    S.v.codigoCorreo = codigo;
+    if (!/^\d{6}$/.test(codigo)) { S.v.errorCorreo = t('correo.invalido'); render(); return; }
+    const r = await api('POST', '/auth/verificar-correo', { codigo });
+    if (!r.ok) { S.v.errorCorreo = mensajeError(r); render(); return; }
+    S.v.errorCorreo = null; S.v.codigoCorreo = ''; S.codigoDemo = null;
+    if (S.sesion && r.datos.usuario) { S.sesion.usuario = r.datos.usuario; guardarSesion(); }
+    aviso(t('correo.ok'), 'ok');
+    refrescarYo().then(() => render());
+  },
   hoja: form => enviarHoja(form),
   chat: form => enviarChat(form),
   'orden-pagado': form => accionOrden(form, 'pagado', { referencia: (new FormData(form).get('referencia') || '').trim() || undefined }, t('orden.pagadoOk')),
@@ -1487,8 +1526,9 @@ const FORM = {
     const fd = new FormData(form); const email = (fd.get('email') || '').trim(); const apodo = (fd.get('apodo') || '').trim(); const pais = fd.get('pais'); const idioma = fd.get('idioma');
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { errorAuth(t('auth.correoInvalido')); return; }
     if (!/^[A-Za-z0-9_]{3,20}$/.test(apodo)) { errorAuth(t('auth.apodoFormato')); return; }
-    if (S.ssoPendiente) { ocupado(form, true); const ok = await entrarSso(S.ssoPendiente.token, { email, apodo, pais }); if (!ok) ocupado(form, false); return; }
     const contrasena = fd.get('contrasena') || ''; if (contrasena.length < 8) { errorAuth(t('auth.contrasenaMin')); return; }
+    // Con sesión única la cuenta nace verificada, pero la contraseña hace falta igual: liberar y retirar la piden.
+    if (S.ssoPendiente) { ocupado(form, true); const ok = await entrarSso(S.ssoPendiente.token, { email, apodo, pais, idioma, contrasena }); if (!ok) ocupado(form, false); return; }
     ocupado(form, true);
     const r = await api('POST', '/auth/registro', { email, contrasena, apodo, pais, idioma });
     if (!r.ok) { ocupado(form, false); errorAuth(mensajeError(r)); return; }
