@@ -83,7 +83,13 @@ export interface Reputacion {
 export interface Usuario {
   id: string
   email: string
+  /** Sin confirmar el correo no se toca Genesis ID: es la puerta de la identidad. */
+  emailVerificado: boolean
+  /** Código pendiente de confirmación del correo: solo el hash, con caducidad e intentos. */
+  codigoCorreo: { hash: string; expira: string; intentos: number } | null
   hashContrasena: string
+  /** Cualquier sesión emitida antes de este instante no vale (cerrar sesión, cambio de contraseña, bloqueo). */
+  sesionesDesde: string
   /** Nombre público, como el «nickname» de Binance. Único. */
   apodo: string
   /** Del documento, vía Genesis ID. Solo cuando la identidad está verificada. */
@@ -96,10 +102,14 @@ export interface Usuario {
   telefono: string | null
   /** Dirección 0x en la cadena 5550, para depósitos y retiros. */
   direccionCadena: string | null
+  /** Direcciones que tuvo antes: una dirección con depósitos acreditados no cambia de dueño. */
+  direccionesAnteriores: string[]
   gid: string | null
   gidEstado: EstadoGid
   gidComprobadoEn: string | null
   agente: EstadoAgente
+  /** Cuándo y por qué se suspendió como agente; solo un operador lo levanta. */
+  agenteSuspendido: { en: string; motivo: string } | null
   /** Bloqueado por un operador: no puede operar ni retirar. */
   congelado: boolean
   motivoCongelado: string | null
@@ -293,10 +303,14 @@ export type Calificacion = 'positiva' | 'negativa'
 
 export interface Mensaje {
   id: string
-  /** Id del usuario, o «sistema» para los avisos automáticos. */
+  /** Id del usuario, «sistema» para los avisos automáticos u «operador:<id>». */
   de: string
   texto: string
-  /** Imagen en data URL (comprobante de pago), acotada por tamaño. */
+  /**
+   * Comprobante adjunto. En el almacén va el identificador de la imagen (vive
+   * aparte, ver motor/imagenes.ts); por la API sale como URL firmada
+   * (`/api/ordenes/<orden>/imagenes/<id>?f=…`) que el navegador pone en <img src>.
+   */
   imagen: string | null
   en: string
 }
@@ -351,6 +365,10 @@ export interface Orden {
   canceladaPor: 'comprador' | 'sistema' | 'operador' | null
   motivoCancelacion: string | null
   apelacion: Apelacion | null
+  /** Apelaciones anteriores (retiradas o resueltas); cada parte puede abrir una sola. */
+  apelacionesPrevias: Apelacion[]
+  /** Cuántas imágenes lleva el chat: hay tope por orden. */
+  imagenesChat: number
   calificaciones: {
     delComprador: { tipo: Calificacion; comentario: string | null; en: string } | null
     delVendedor: { tipo: Calificacion; comentario: string | null; en: string } | null
@@ -387,8 +405,10 @@ export interface SolicitudAgente {
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
- * `admin` lo puede todo; `soporte` resuelve apelaciones, retiros y agentes;
- * `auditor` lo lee todo y no toca nada.
+ * `admin` lo puede todo; `soporte` resuelve apelaciones, cancela órdenes,
+ * decide retiros y agentes y bloquea cuentas; `auditor` lo lee todo y no
+ * toca nada. Los precios y la configuración son solo de `admin`: mueven el
+ * mercado entero.
  */
 export type RolOperador = 'admin' | 'soporte' | 'auditor'
 
@@ -483,6 +503,7 @@ export interface UsuarioPublico {
 /** Lo que el dueño ve de sí mismo. */
 export interface UsuarioPropio extends Omit<UsuarioPublico, 'enLinea'> {
   email: string
+  emailVerificado: boolean
   nombreLegal: string | null
   moneda: string
   idioma: 'es' | 'en'

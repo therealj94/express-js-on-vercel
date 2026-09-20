@@ -101,17 +101,20 @@ Guatemala «Banco Industrial»; México «BBVA México»; Venezuela «Banco de V
 
 | Ruta | Cuerpo | Respuesta |
 | --- | --- | --- |
-| `POST /registro` | `{ email, contrasena (≥8), apodo (3–20, letras/números/_), pais (ISO2), idioma?:'es'\|'en' }` | 201 `{ token, usuario: UsuarioPropio }` |
+| `POST /registro` | `{ email, contrasena (≥8), apodo (3–20, letras/números/_), pais (ISO2), idioma?:'es'\|'en' }` | 201 `{ token, usuario: UsuarioPropio, verificacionPendiente:true, correoEnviado:boolean, codigoDemo?:string }`. Se manda un código de 6 dígitos al correo; fuera de producción y sin proveedor de correo, el código vuelve en `codigoDemo` |
+| `POST /verificar-correo` | `{ codigo }` (con sesión) | `{ usuario }` con `emailVerificado:true`. 400 `codigo:'codigo'` (incorrecto) o `'codigo-vencido'` |
+| `POST /reenviar-codigo` | — (con sesión) | `{ ok, correoEnviado, codigoDemo? }` |
 | `POST /entrar` | `{ email, contrasena }` | `{ token, usuario }` |
-| `POST /sso` | `{ token (SSO de Genesis emitido por otra app), email?, apodo?, pais? }` | `{ token, usuario, nuevo }`. Si no hay cuenta con ese GID y faltan `email/apodo/pais`: 409 `{ error, codigo:'necesita-registro', gid }` |
+| `POST /sso` | `{ token (SSO de Genesis emitido por otra app), email?, apodo?, pais?, contrasena? }` | `{ token, usuario, nuevo, correoEnviado?, codigoDemo? }`. Si no hay cuenta con ese GID y faltan `email/apodo/pais/contrasena`: 409 `{ error, codigo:'necesita-registro', gid }`. La cuenta nueva nace verificada en Genesis pero con el correo por confirmar |
 | `GET /yo` | — | `{ usuario: UsuarioPropio, saldos: Saldo[] }` |
-| `PATCH /yo` | `{ apodo?, pais?, idioma?, telefono?, direccionCadena? }` | `{ usuario }` |
-| `POST /contrasena` | `{ actual, nueva }` | `{ ok:true }` |
-| `POST /salir` | — | 204 |
+| `PATCH /yo` | `{ apodo?, pais?, idioma?, telefono?, direccionCadena? }` | `{ usuario }`. Una dirección que alguna vez fue de otra cuenta se rechaza (409 `direccion-en-uso`) |
+| `POST /contrasena` | `{ actual, nueva }` | `{ ok:true, token }` — cierra todas las sesiones y devuelve una nueva para esta |
+| `POST /salir` | — (con sesión) | 204 — invalida los tokens de todos los dispositivos |
 | `POST /demo/entrar` | `{ apodo }` (solo con `demo:true`) | `{ token, usuario }` — entra como uno de los usuarios sembrados |
 | `GET /demo/usuarios` | (solo demo) | `{ usuarios:[{apodo, pais, agente, descripcion}] }` |
 
 `UsuarioPropio.puedeOperar` es `false` (con `motivoNoOpera`) cuando: no tiene GID verificado, está congelado, o su país no está permitido.
+`UsuarioPropio.emailVerificado` dice si el correo está confirmado: sin eso, todo `/api/genesis/*` (salvo `sso/token` y `tamiz`) responde 403 `codigo:'correo-no-verificado'`.
 
 ---
 
@@ -121,7 +124,7 @@ Mismo contrato que `infra/genesis-proxy`: el servidor habla con Genesis ID con s
 
 | Ruta | Para qué |
 | --- | --- |
-| `GET /estado` | Estado del trámite del usuario (por su correo). Crea la identidad si no existe. **Sincroniza** `gid`/`gidEstado` del usuario. Devuelve `{ identidad:{ id, email, estado, gid, … }, usuario: UsuarioPropio }` |
+| `GET /estado` | Estado del trámite del usuario (por su correo confirmado). Crea la identidad si no existe. **Sincroniza** `gid`/`gidEstado` del usuario (nunca degrada una cuenta ya verificada por otra vía: entonces `aviso`). Devuelve `{ identidad:{ id, estado, gid, pendientes, documento, biometria, … }, usuario: UsuarioPropio, aviso: string\|null }` |
 | `POST /datos` | `{ nombreCompleto, fechaNacimiento (AAAA-MM-DD), paisResidencia (ISO3), telefono?, direccion?, ocupacion?, origenFondos?, propositoCuenta?, volumenEsperadoUsd?, pepDeclarado? }` |
 | `POST /documento` | `{ mrz, textoAnverso? }` → `{ identidad, documento:{ aceptable, problemas:[] } }` |
 | `POST /vivacidad` | — → `{ reto }` o 503 si no hay biometría |
@@ -184,17 +187,21 @@ Reglas: en un anuncio de **venta** el disponible del anunciante debe cubrir `can
 | `POST /:id/pagado` | `{ referencia? }` (comprador, en `pendiente-pago`) | `{ orden }` |
 | `POST /:id/liberar` | `{ contrasena }` (vendedor, en `pagado` — también en `pendiente-pago` si quiere) | `{ orden }` → `completada` |
 | `POST /:id/cancelar` | `{ motivo? }` (comprador, solo en `pendiente-pago`) | `{ orden }` |
-| `POST /:id/apelar` | `{ motivo: 'no-recibi-pago'\|'no-liberan'\|'monto-incorrecto'\|'otro', detalle }` (cualquiera de los dos, en `pagado`; el comprador también en `pendiente-pago` si ya pagó) | `{ orden }` → `apelacion` |
-| `POST /:id/apelacion/retirar` | — (quien la abrió) | `{ orden }` (vuelve al estado anterior) |
-| `GET /:id/mensajes?desde=<id del último>` | — | `{ mensajes: Mensaje[], estado, orden: OrdenDetalle }` (para sondeo cada 3–5 s) |
-| `POST /:id/mensajes` | `{ texto?, imagen? (data URL ≤ 1,5 MB) }` | 201 `{ mensaje }` |
+| `POST /:id/apelar` | `{ motivo: 'no-recibi-pago'\|'no-liberan'\|'monto-incorrecto'\|'otro', detalle }` (cualquiera de los dos, en `pagado`; el comprador también en `pendiente-pago` si ya pagó, y en una orden `cancelada` por vencimiento hace menos de 24 h: la custodia se vuelve a tomar del vendedor). **Una apelación por parte y orden** | `{ orden }` → `apelacion` |
+| `POST /:id/apelacion/retirar` | — (quien la abrió) | `{ orden }` (vuelve al estado anterior; si la ventana de pago ya venció, la orden vence en el acto). La apelación retirada cuenta en contra en la reputación |
+| `GET /:id/mensajes?desde=<id del último>` | — | `{ mensajes: Mensaje[], estado, orden: OrdenDetalle sin `mensajes` + totalMensajes }` (para sondeo cada 3–5 s) |
+| `POST /:id/mensajes` | `{ texto?, imagen? (data URL ≤ 1,5 MB) }` — máximo 6 imágenes por orden; el chat cierra 24 h después de completar/cancelar | 201 `{ mensaje }`. `mensaje.imagen` vuelve como **URL firmada** (`/api/ordenes/<id>/imagenes/<img>?f=…`) para poner directo en `<img src>` |
+| `GET /:id/imagenes/:img?f=<firma>` | sin sesión (la firma la conocen solo las partes) | la imagen (PNG/JPEG/WebP/GIF) |
+| `POST /:id/liberar` durante una `apelacion` | el vendedor puede liberar en cualquier momento: zanja la apelación a favor del comprador | `{ orden }` → `completada` |
 | `POST /:id/calificar` | `{ tipo:'positiva'\|'negativa', comentario? }` (solo `completada`, una vez por parte) | `{ orden }` |
 
 `OrdenResumen` = `Orden` sin `mensajes` ni `metodoPago.campos`, más `{ contraparte: UsuarioPublico, miRol:'comprador'\|'vendedor', noLeidos:number }`.
 `OrdenDetalle` = `Orden` completa más `{ contraparte, miRol, noLeidos, acciones: { pagar, liberar, cancelar, apelar, retirarApelacion, calificar, chatear }: boolean, segundosRestantes:number\|null }`.
 `metodoPago.campos` solo se incluye si la orden está abierta (`pendiente-pago`, `pagado`, `apelacion`) o el que consulta es el vendedor.
 
-Cuándo se congela: al crear la orden se congela `cantidadActivo` del vendedor (si no le alcanza, 409 `codigo:'sin-saldo'` y el anuncio se pausa). Al liberar: `cantidadActivo − comision` pasa al disponible del comprador y la comisión a la tesorería. Al cancelar (comprador, vencimiento, operador o apelación resuelta como `devolver`): vuelve al disponible del vendedor.
+Cuándo se congela: al crear la orden se congela `cantidadActivo` del vendedor (si no le alcanza, 409 `codigo:'sin-saldo'` y el anuncio se pausa). Al liberar: `cantidadActivo` entera pasa al disponible del comprador y la comisión la paga el **vendedor** de su disponible (si no le alcanza, se descuenta de lo entregado); la comisión va a la tesorería. Al cancelar (comprador, vencimiento, operador o apelación resuelta como `devolver`): vuelve al disponible del vendedor. Una cuenta congelada por un operador no inicia ninguna transición (403 `congelado`); la contraparte y el operador sí.
+
+En un anuncio de venta con varios métodos del mismo tipo, el comprador puede precisar `metodoBanco` además de `metodoTipo`.
 
 ---
 
@@ -226,7 +233,7 @@ Cuándo se congela: al crear la orden se congela `cantidadActivo` del vendedor (
 | `GET /apelaciones` | — | `{ ordenes: OrdenResumenPanel[] }` (estado `apelacion`, más viejas primero) |
 | `GET /agentes?estado=pendiente` | — | `{ solicitudes: (SolicitudAgente & { usuario: UsuarioPublico })[] }` |
 | `POST /agentes/:id/decidir` | `{ decision:'aprobar'\|'rechazar', nota }` | `{ solicitud }` |
-| `POST /usuarios/:id/agente` | `{ estado:'aprobado'\|'suspendido', nota }` | `{ usuario }` |
+| `POST /usuarios/:id/agente` | `{ estado:'aprobado'\|'suspendido'\|'retirado', nota }` — suspender deja la garantía en custodia y pausa sus anuncios; `retirado` la devuelve y lo saca del rol | `{ usuario }` |
 | `GET /retiros?estado=pendiente` | — | `{ retiros: (Retiro & { usuario: UsuarioPublico, direccionSancionada:boolean\|null })[] }` |
 | `POST /retiros/:id/decidir` | `{ decision:'enviado'\|'rechazado', txHash?, motivo? }` | `{ retiro }` |
 | `GET /depositos?pagina=` | — | `{ depositos }` |
@@ -235,7 +242,7 @@ Cuándo se congela: al crear la orden se congela `cantidadActivo` del vendedor (
 | `POST /usuarios/:id/congelar` | `{ congelado:boolean, motivo }` | `{ usuario }` |
 | `POST /usuarios/:id/ajuste` | `{ activo, cantidad (con signo), motivo }` (`admin`) | `{ saldos }` |
 | `GET /precios` | — | `{ precios: Precios, monedas:[{codigo,nombre,pais}] }` |
-| `PUT /precios` | `{ oroUsdOnza?, plataUsdOnza?, fx?:{ HNL:26.1, … } }` | `{ precios }` |
+| `PUT /precios` | `{ oroUsdOnza?, plataUsdOnza?, fx?:{ HNL:26.1, … } }` (solo `admin`) | `{ precios }` |
 | `GET /configuracion` | — | `{ configuracion }` |
 | `PUT /configuracion` | campos parciales de `Configuracion` (`admin`) | `{ configuracion }` |
 | `GET /bitacora?pagina=&q=` | — | `{ entradas: EntradaBitacora[], total, integra:boolean }` |
@@ -252,7 +259,8 @@ Cuándo se congela: al crear la orden se congela `cantidadActivo` del vendedor (
 
 | `codigo` | Cuándo |
 | --- | --- |
-| `sin-sesion` | 401 sin token o vencido |
+| `sin-sesion` | 401 sin token, vencido o revocado (cerrar sesión, cambio de contraseña, bloqueo) |
+| `correo-no-verificado` | 403 el correo de la cuenta no está confirmado (rutas de Genesis ID) |
 | `no-verificado` | 403 la cuenta no tiene GID verificado |
 | `congelado` | 403 la cuenta está bloqueada por un operador |
 | `pais-no-permitido` | 403 |

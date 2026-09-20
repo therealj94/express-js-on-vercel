@@ -81,11 +81,23 @@ function escribirArchivo(d: DatosOrdenExchange): void {
   renameSync(temporal, ARCHIVO)
 }
 
+let baseMongo: any = null
+
 async function abrirMongo(): Promise<void> {
   const { MongoClient } = await import('mongodb')
   const cliente = new MongoClient(MONGO_URL)
   await cliente.connect()
-  coleccion = cliente.db(MONGO_BASE).collection('estado')
+  baseMongo = cliente.db(MONGO_BASE)
+  coleccion = baseMongo.collection('estado')
+}
+
+/**
+ * Una colección aparte, para lo que no cabe en el documento de estado (las
+ * imágenes del chat). Devuelve `null` con el motor de archivo: quien la use
+ * tiene que saber arreglárselas sin ella.
+ */
+export function coleccionAparte(nombre: string): any | null {
+  return baseMongo ? baseMongo.collection(nombre) : null
 }
 
 export async function iniciar(): Promise<void> {

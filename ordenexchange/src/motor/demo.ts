@@ -16,19 +16,12 @@ import * as usuarios from './usuarios.js'
 import * as billetera from './billetera.js'
 import * as metodosPago from './metodosPago.js'
 import * as anuncios from './anuncios.js'
-import { genesisConfigurado } from './genesis.js'
-import { hayPrecioMetal, referenciaFiat } from './precios.js'
+import { hayPrecioMetal, referenciaFiat, tasa } from './precios.js'
 import { registrar } from './bitacora.js'
+import { modoDemo } from '../lib/entorno.js'
 import type { Usuario } from '../types.js'
 
-const EN_PRODUCCION = process.env.NODE_ENV === 'production'
-
-export function modoDemo(): boolean {
-  const v = (process.env.ORDENEX_DEMO || '').trim()
-  if (v === '1' || v === 'true') return true
-  if (v === '0' || v === 'false') return false
-  return !EN_PRODUCCION && !genesisConfigurado()
-}
+export { modoDemo }
 
 export interface UsuarioDemo {
   apodo: string; pais: string; agente: boolean; descripcion: string; email: string
@@ -59,21 +52,34 @@ const SEMILLA: (Omit<UsuarioDemo, 'email'> & { metodos: { tipo: string; banco?: 
     metodos: [{ tipo: 'transferencia', banco: 'Banco Atlántida', campos: { cuenta: '1234567890', tipoCuenta: 'Ahorro' } }] },
 ]
 
-const ANUNCIOS: { apodo: string; lado: 'compra' | 'venta'; activo: 'ORIGEN' | 'AUKA' | 'AGKA'; margen?: number; cantidad: string; min: string; max: string; ventana: 15 | 30 | 45 | 60; terminos: string }[] = [
-  { apodo: 'OroTegus', lado: 'venta', activo: 'ORIGEN', margen: 101.5, cantidad: '5000', min: '500', max: '60000', ventana: 15, terminos: 'Solo cuentas a nombre del comprador. No escriba «ORIGEN» en la referencia del pago.' },
-  { apodo: 'OroTegus', lado: 'compra', activo: 'ORIGEN', margen: 98.5, cantidad: '5000', min: '500', max: '60000', ventana: 30, terminos: 'Pago inmediato tras confirmar. Libere con calma: pago solo desde mi cuenta BAC.' },
-  { apodo: 'CambioChapin', lado: 'venta', activo: 'ORIGEN', margen: 102, cantidad: '3000', min: '200', max: '25000', ventana: 30, terminos: 'Transferencia desde cualquier banco de Guatemala.' },
-  { apodo: 'PixBrasil', lado: 'venta', activo: 'ORIGEN', margen: 101, cantidad: '10000', min: '100', max: '50000', ventana: 15, terminos: 'PIX instantâneo. Envie o comprovante no chat.' },
-  { apodo: 'PixBrasil', lado: 'venta', activo: 'AUKA', margen: 102.5, cantidad: '5', min: '1000', max: '80000', ventana: 30, terminos: 'Onças de ouro. Somente PIX.' },
-  { apodo: 'NequiCol', lado: 'venta', activo: 'ORIGEN', margen: 103, cantidad: '2000', min: '50000', max: '4000000', ventana: 30, terminos: 'Nequi únicamente. Pago con comprobante.' },
-  { apodo: 'YapePeru', lado: 'venta', activo: 'ORIGEN', margen: 102, cantidad: '1500', min: '50', max: '5000', ventana: 15, terminos: 'Yape al instante.' },
-  { apodo: 'SpeiMX', lado: 'venta', activo: 'ORIGEN', margen: 101.2, cantidad: '8000', min: '500', max: '150000', ventana: 30, terminos: 'SPEI a la CLABE indicada. Sin terceros.' },
-  { apodo: 'SpeiMX', lado: 'compra', activo: 'ORIGEN', margen: 99, cantidad: '8000', min: '500', max: '150000', ventana: 30, terminos: 'Compro ORIGEN, pago por SPEI en minutos.' },
-  { apodo: 'SinpeCR', lado: 'venta', activo: 'ORIGEN', margen: 102.8, cantidad: '900', min: '5000', max: '500000', ventana: 15, terminos: 'SINPE Móvil al número indicado.' },
-  { apodo: 'PagoMovilVE', lado: 'venta', activo: 'ORIGEN', margen: 104, cantidad: '6000', min: '2000', max: '400000', ventana: 15, terminos: 'Pago Móvil BDV. Enviar capture del pago.' },
-  { apodo: 'PagoMovilVE', lado: 'venta', activo: 'AGKA', margen: 103, cantidad: '100', min: '2000', max: '400000', ventana: 30, terminos: 'Onzas de plata digital.' },
-  { apodo: 'MercadoAR', lado: 'venta', activo: 'ORIGEN', margen: 105, cantidad: '2500', min: '20000', max: '4000000', ventana: 30, terminos: 'Mercado Pago o transferencia al CVU.' },
+/**
+ * Los límites de los anuncios sembrados van en DÓLARES y se convierten con la
+ * tasa vigente al sembrar: así la semilla sigue teniendo sentido aunque la
+ * tasa de una moneda cambie (el bolívar, sin ir más lejos).
+ */
+const ANUNCIOS: { apodo: string; lado: 'compra' | 'venta'; activo: 'ORIGEN' | 'AUKA' | 'AGKA'; margen?: number; cantidad: string; minUsd: number; maxUsd: number; ventana: 15 | 30 | 45 | 60; terminos: string }[] = [
+  { apodo: 'OroTegus', lado: 'venta', activo: 'ORIGEN', margen: 101.5, cantidad: '5000', minUsd: 20, maxUsd: 2500, ventana: 15, terminos: 'Solo cuentas a nombre del comprador. No escriba «ORIGEN» en la referencia del pago.' },
+  { apodo: 'OroTegus', lado: 'compra', activo: 'ORIGEN', margen: 98.5, cantidad: '5000', minUsd: 20, maxUsd: 2500, ventana: 30, terminos: 'Pago inmediato tras confirmar. Libere con calma: pago solo desde mi cuenta BAC.' },
+  { apodo: 'CambioChapin', lado: 'venta', activo: 'ORIGEN', margen: 102, cantidad: '3000', minUsd: 25, maxUsd: 3000, ventana: 30, terminos: 'Transferencia desde cualquier banco de Guatemala.' },
+  { apodo: 'PixBrasil', lado: 'venta', activo: 'ORIGEN', margen: 101, cantidad: '10000', minUsd: 20, maxUsd: 10000, ventana: 15, terminos: 'PIX instantâneo. Envie o comprovante no chat.' },
+  { apodo: 'PixBrasil', lado: 'venta', activo: 'AUKA', margen: 102.5, cantidad: '5', minUsd: 200, maxUsd: 15000, ventana: 30, terminos: 'Onças de ouro. Somente PIX.' },
+  { apodo: 'NequiCol', lado: 'venta', activo: 'ORIGEN', margen: 103, cantidad: '2000', minUsd: 15, maxUsd: 1200, ventana: 30, terminos: 'Nequi únicamente. Pago con comprobante.' },
+  { apodo: 'YapePeru', lado: 'venta', activo: 'ORIGEN', margen: 102, cantidad: '1500', minUsd: 15, maxUsd: 1500, ventana: 15, terminos: 'Yape al instante.' },
+  { apodo: 'SpeiMX', lado: 'venta', activo: 'ORIGEN', margen: 101.2, cantidad: '8000', minUsd: 30, maxUsd: 9000, ventana: 30, terminos: 'SPEI a la CLABE indicada. Sin terceros.' },
+  { apodo: 'SpeiMX', lado: 'compra', activo: 'ORIGEN', margen: 99, cantidad: '8000', minUsd: 30, maxUsd: 9000, ventana: 30, terminos: 'Compro ORIGEN, pago por SPEI en minutos.' },
+  { apodo: 'SinpeCR', lado: 'venta', activo: 'ORIGEN', margen: 102.8, cantidad: '900', minUsd: 10, maxUsd: 1000, ventana: 15, terminos: 'SINPE Móvil al número indicado.' },
+  { apodo: 'PagoMovilVE', lado: 'venta', activo: 'ORIGEN', margen: 104, cantidad: '6000', minUsd: 10, maxUsd: 500, ventana: 15, terminos: 'Pago Móvil BDV. Enviar capture del pago.' },
+  { apodo: 'PagoMovilVE', lado: 'venta', activo: 'AGKA', margen: 103, cantidad: '100', minUsd: 10, maxUsd: 500, ventana: 30, terminos: 'Onzas de plata digital.' },
+  { apodo: 'MercadoAR', lado: 'venta', activo: 'ORIGEN', margen: 105, cantidad: '2500', minUsd: 15, maxUsd: 3000, ventana: 30, terminos: 'Mercado Pago o transferencia al CVU.' },
 ]
+
+/** De dólares a la moneda local, redondeado a una cifra «bonita» hacia arriba para el mínimo. */
+function enMonedaLocal(usd: number, moneda: string): string {
+  const t = tasa(moneda) ?? 1
+  const v = usd * t
+  const magnitud = Math.pow(10, Math.max(0, Math.floor(Math.log10(v)) - 1))
+  return String(Math.ceil(v / magnitud) * magnitud)
+}
 
 export const usuariosDemo = (): UsuarioDemo[] =>
   SEMILLA.map((s) => ({ apodo: s.apodo, pais: s.pais, agente: s.agente, descripcion: s.descripcion, email: `${s.apodo.toLowerCase()}@demo.ordenexchange` }))
@@ -91,7 +97,7 @@ export function sembrar(): { sembrado: boolean; usuarios: number; anuncios: numb
   }
   const creados = new Map<string, Usuario>()
   for (const s of SEMILLA) {
-    const u = usuarios.crear({ email: `${s.apodo.toLowerCase()}@demo.ordenexchange`, contrasena: CONTRASENA, apodo: s.apodo, pais: s.pais }, 'demo')
+    const u = usuarios.crear({ email: `${s.apodo.toLowerCase()}@demo.ordenexchange`, contrasena: CONTRASENA, apodo: s.apodo, pais: s.pais }, 'demo', { emailVerificado: true })
     usuarios.verificarDemo(u, `${s.apodo} Demo`)
     // Que parezca una cuenta con historia: registrada hace tiempo.
     u.creadoEn = new Date(Date.now() - (30 + SEMILLA.indexOf(s) * 17) * 86400000).toISOString()
@@ -126,7 +132,7 @@ export function sembrar(): { sembrado: boolean; usuarios: number; anuncios: numb
       anuncios.crear(u, {
         lado: a.lado, activo: a.activo, moneda: u.moneda, pais: u.pais,
         tipoPrecio: 'flotante', margen: a.margen ?? 100,
-        cantidadTotal: a.cantidad, limiteMin: a.min, limiteMax: a.max,
+        cantidadTotal: a.cantidad, limiteMin: enMonedaLocal(a.minUsd, u.moneda), limiteMax: enMonedaLocal(a.maxUsd, u.moneda),
         metodosPagoIds: a.lado === 'venta' ? misMetodos.map((m) => m.id) : undefined,
         metodosTipos: a.lado === 'compra' ? misMetodos.map((m) => m.tipo) : undefined,
         ventanaPagoMin: a.ventana, terminos: a.terminos,

@@ -335,13 +335,27 @@ export interface Filtros {
   metodo?: string; soloAgentes?: string; orden?: string; pagina?: string; porPagina?: string
 }
 
-/** ¿Se puede tomar este anuncio ahora mismo? Lo mismo que filtra el mercado. */
+/**
+ * ¿Se puede tomar este anuncio ahora mismo? Lo mismo que filtra el mercado.
+ *
+ * Un anuncio de venta necesita que el anunciante tenga disponible al menos
+ * lo que cuesta una orden mínima; y cualquier anuncio necesita que lo que le
+ * queda alcance para su propio límite mínimo, si no nadie puede tomarlo.
+ */
 export function disponibleEnMercado(a: Anuncio): boolean {
   if (a.estado !== 'activo') return false
   const anunciante = usuarios.porId(a.usuarioId)
   if (!anunciante || usuarios.motivoNoOpera(anunciante)) return false
-  if (a.lado === 'venta' && Dec.menor(billetera.saldo(a.usuarioId, a.activo).disponible, Dec.min(a.cantidadDisponible, a.cantidadDisponible))) return false
-  return Dec.esPositivo(a.cantidadDisponible)
+  if (!Dec.esPositivo(a.cantidadDisponible)) return false
+  const precio = precioEfectivo(a)
+  if (precio == null) return false
+  const valorRestante = Dec.multiplicar(a.cantidadDisponible, precio)
+  if (Dec.menor(valorRestante, a.limiteMin)) return false
+  if (a.lado === 'venta') {
+    const minimoActivo = Dec.min(a.cantidadDisponible, Dec.dividir(a.limiteMin, precio))
+    if (Dec.menor(billetera.saldo(a.usuarioId, a.activo).disponible, minimoActivo)) return false
+  }
+  return true
 }
 
 export function buscar(f: Filtros, consultante: Usuario | null): { anuncios: AnuncioPublico[]; total: number; pagina: number; porPagina: number } {
@@ -400,7 +414,8 @@ export function anunciosPublicosDe(usuarioId: string, consultante: Usuario | nul
 
 export function exigirPropietario(u: Usuario, idAnuncio: string): Anuncio {
   const a = exigir(idAnuncio)
-  if (a.usuarioId !== u.id) throw sinPermiso('Ese anuncio no es suyo')
+  // 404 y no 403: un anuncio ajeno no existe para quien no es su dueño.
+  if (a.usuarioId !== u.id) throw noEncontrado('Anuncio no encontrado')
   return a
 }
 

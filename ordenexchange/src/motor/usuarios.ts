@@ -5,11 +5,17 @@
 // verificación la decide un operador de cumplimiento en Genesis ID; aquí solo
 // se refleja el estado. Nada en este módulo puede marcar a alguien como
 // verificado, salvo en modo demostración y con un GID que se reconoce como
-// de prueba.
+// de prueba (sufijo -D) y que fuera de la demo no vale.
+//
+// EL CORREO SE CONFIRMA ANTES DE TOCAR GENESIS ID. La identidad se busca en
+// Genesis por el correo de la cuenta: si cualquiera pudiera registrarse con
+// el correo de otra persona, se llevaría su identidad verificada. Por eso el
+// puente con Genesis exige `emailVerificado`.
 
 import { store } from '../store.js'
-import { hashContrasena, contrasenaCoincide } from '../lib/cripto.js'
+import { hashContrasena, contrasenaCoincide, sha256, codigoNumerico } from '../lib/cripto.js'
 import { id, gidDemo } from '../lib/uid.js'
+import { modoDemo } from '../lib/entorno.js'
 import { malaPeticion, conflicto, sinPermiso, noEncontrado } from '../lib/errores.js'
 import { pais as paisDe, PAISES } from '../data/latam.js'
 import { esDireccion } from './cadena.js'
@@ -19,11 +25,25 @@ import type { Usuario, UsuarioPublico, UsuarioPropio, Reputacion, EstadoGid, Ord
 const APODO = /^[A-Za-z0-9_]{3,20}$/
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 const MINUTOS_EN_LINEA = 5
+const MINUTOS_CODIGO = 15
+const INTENTOS_CODIGO = 5
+const DOMINIO_DEMO = '@demo.ordenexchange'
 
 export function reputacionVacia(): Reputacion {
   return {
     ordenesTotales: 0, ordenesCompletadas: 0, ordenes30d: 0, completadas30d: 0, tasaFinalizacion30d: 100,
     positivas: 0, negativas: 0, tiempoPromedioLiberacionSeg: null, tiempoPromedioPagoSeg: null, apelacionesPerdidas: 0,
+  }
+}
+
+/** Rellena los campos que no existían en versiones anteriores del almacén. */
+export function migrar(): void {
+  for (const u of store.todo().usuarios) {
+    if (u.emailVerificado === undefined) u.emailVerificado = true
+    if (u.codigoCorreo === undefined) u.codigoCorreo = null
+    if (!u.sesionesDesde) u.sesionesDesde = u.creadoEn
+    if (!Array.isArray(u.direccionesAnteriores)) u.direccionesAnteriores = []
+    if (u.agenteSuspendido === undefined) u.agenteSuspendido = null
   }
 }
 
@@ -41,6 +61,9 @@ export const porGid = (gid: string): Usuario | undefined => {
   return g ? store.todo().usuarios.find((u) => u.gid === g) : undefined
 }
 
+export const esDemo = (u: Usuario): boolean => u.email.endsWith(DOMINIO_DEMO)
+export const esGidDemo = (gid: string | null): boolean => Boolean(gid && gid.endsWith('-D'))
+
 export function exigir(idUsuario: string): Usuario {
   const u = porId(idUsuario)
   if (!u) throw noEncontrado('Usuario no encontrado')
@@ -50,7 +73,7 @@ export function exigir(idUsuario: string): Usuario {
 export function validarApodo(apodo: unknown): string {
   const a = String(apodo || '').trim()
   if (!APODO.test(a)) throw malaPeticion('El apodo debe tener de 3 a 20 letras, números o guiones bajos', 'apodo')
-  if (/^(sistema|operador|tesoreria|ordenexchange|admin)$/i.test(a)) throw malaPeticion('Ese apodo está reservado', 'apodo')
+  if (/^(sistema|operador|tesoreria|ordenexchange|admin|soporte)$/i.test(a)) throw malaPeticion('Ese apodo está reservado', 'apodo')
   return a
 }
 
@@ -60,11 +83,16 @@ export function validarPais(pais: unknown): string {
   return p
 }
 
-export function crear(entrada: { email?: unknown; contrasena?: unknown; apodo?: unknown; pais?: unknown; idioma?: unknown }, origen = 'registro'): Usuario {
+export function crear(
+  entrada: { email?: unknown; contrasena?: unknown; apodo?: unknown; pais?: unknown; idioma?: unknown },
+  origen = 'registro',
+  opciones: { emailVerificado?: boolean } = {},
+): Usuario {
   const email = String(entrada.email || '').toLowerCase().trim()
-  if (!EMAIL.test(email)) throw malaPeticion('Hace falta un correo válido', 'email')
+  if (!EMAIL.test(email) || email.length > 120) throw malaPeticion('Hace falta un correo válido', 'email')
+  if (email.endsWith(DOMINIO_DEMO) && origen !== 'demo') throw malaPeticion('Ese dominio está reservado', 'email')
   const contrasena = String(entrada.contrasena || '')
-  if (contrasena.length < 8) throw malaPeticion('La contraseña debe tener al menos 8 caracteres', 'contrasena-corta')
+  if (contrasena.length < 8 || contrasena.length > 200) throw malaPeticion('La contraseña debe tener al menos 8 caracteres', 'contrasena-corta')
   const apodo = validarApodo(entrada.apodo)
   const pais = validarPais(entrada.pais)
   const idioma = entrada.idioma === 'en' ? 'en' : 'es'
@@ -75,7 +103,10 @@ export function crear(entrada: { email?: unknown; contrasena?: unknown; apodo?: 
   const usuario: Usuario = {
     id: id('usr'),
     email,
+    emailVerificado: Boolean(opciones.emailVerificado),
+    codigoCorreo: null,
     hashContrasena: hashContrasena(contrasena),
+    sesionesDesde: ahora,
     apodo,
     nombreLegal: null,
     pais,
@@ -83,10 +114,12 @@ export function crear(entrada: { email?: unknown; contrasena?: unknown; apodo?: 
     idioma,
     telefono: null,
     direccionCadena: null,
+    direccionesAnteriores: [],
     gid: null,
     gidEstado: 'sin-verificar',
     gidComprobadoEn: null,
     agente: 'no',
+    agenteSuspendido: null,
     congelado: false,
     motivoCongelado: null,
     reputacion: reputacionVacia(),
@@ -99,26 +132,87 @@ export function crear(entrada: { email?: unknown; contrasena?: unknown; apodo?: 
   return usuario
 }
 
+// ── Confirmación del correo ──────────────────────────────────────────────────
+
+const hashCodigo = (u: Usuario, codigo: string) => sha256(`codigo:${u.id}:${codigo}`)
+
+/** Emite un código nuevo (invalida el anterior) y lo devuelve en claro para enviarlo. */
+export function emitirCodigo(u: Usuario): string {
+  if (u.emailVerificado) throw conflicto('El correo ya está confirmado', 'estado-invalido')
+  const codigo = codigoNumerico()
+  u.codigoCorreo = { hash: hashCodigo(u, codigo), expira: new Date(Date.now() + MINUTOS_CODIGO * 60000).toISOString(), intentos: 0 }
+  store.guardar()
+  return codigo
+}
+
+export function confirmarCorreo(u: Usuario, codigo: unknown): Usuario {
+  if (u.emailVerificado) return u
+  const c = String(codigo || '').replace(/\s/g, '')
+  const pendiente = u.codigoCorreo
+  if (!pendiente) throw malaPeticion('No hay un código pendiente; pida uno nuevo', 'codigo')
+  if (Date.parse(pendiente.expira) < Date.now()) throw malaPeticion('El código venció; pida uno nuevo', 'codigo-vencido')
+  if (pendiente.intentos >= INTENTOS_CODIGO) throw malaPeticion('Demasiados intentos; pida un código nuevo', 'codigo-vencido')
+  pendiente.intentos += 1
+  if (!/^\d{6}$/.test(c) || hashCodigo(u, c) !== pendiente.hash) {
+    store.guardar()
+    throw malaPeticion('El código no es correcto', 'codigo')
+  }
+  u.emailVerificado = true
+  u.codigoCorreo = null
+  registrar(u.id, 'usuario.correo-confirmado', u.id, {})
+  store.guardar()
+  return u
+}
+
+// ── Entrar y contraseña ──────────────────────────────────────────────────────
+
 export function entrar(email: unknown, contrasena: unknown): Usuario {
   const u = porEmail(String(email || ''))
-  if (!u || !contrasenaCoincide(String(contrasena || ''), u.hashContrasena)) {
-    throw sinPermiso('Correo o contraseña incorrectos', 'credenciales')
-  }
+  // Se compara siempre, exista o no la cuenta, para que el tiempo de respuesta
+  // no diga qué correos están registrados.
+  const ok = contrasenaCoincide(String(contrasena || ''), u?.hashContrasena)
+  if (!u || !ok) throw sinPermiso('Correo o contraseña incorrectos', 'credenciales')
+  if (esDemo(u) && !modoDemo()) throw sinPermiso('Las cuentas de demostración no entran fuera del modo demo', 'credenciales')
   u.ultimoAcceso = new Date().toISOString()
   store.guardar()
   return u
 }
 
-export function cambiarContrasena(u: Usuario, actual: unknown, nueva: unknown): void {
-  if (!contrasenaCoincide(String(actual || ''), u.hashContrasena)) throw sinPermiso('La contraseña actual no coincide', 'contrasena')
-  if (typeof nueva !== 'string' || nueva.length < 8) throw malaPeticion('La contraseña nueva debe tener al menos 8 caracteres', 'contrasena-corta')
-  u.hashContrasena = hashContrasena(nueva)
-  registrar(u.id, 'usuario.contrasena', u.id, {})
+/** Todas las sesiones abiertas dejan de valer. */
+export function cerrarSesiones(u: Usuario): void {
+  u.sesionesDesde = new Date().toISOString()
   store.guardar()
 }
 
-export const contrasenaValida = (u: Usuario, contrasena: unknown): boolean =>
-  contrasenaCoincide(String(contrasena || ''), u.hashContrasena)
+export function cambiarContrasena(u: Usuario, actual: unknown, nueva: unknown): void {
+  if (!contrasenaValida(u, actual)) throw sinPermiso('La contraseña actual no coincide', 'contrasena')
+  if (typeof nueva !== 'string' || nueva.length < 8 || nueva.length > 200) throw malaPeticion('La contraseña nueva debe tener al menos 8 caracteres', 'contrasena-corta')
+  u.hashContrasena = hashContrasena(nueva)
+  cerrarSesiones(u)
+  registrar(u.id, 'usuario.contrasena', u.id, {})
+}
+
+/**
+ * Comprobación de contraseña para las acciones sensibles (liberar, retirar).
+ * Lleva su propio contador por cuenta: el límite por IP no basta cuando el
+ * atacante cambia de origen, y aquí lo que se protege es la custodia.
+ */
+const fallosContrasena = new Map<string, { n: number; hasta: number }>()
+
+export function contrasenaValida(u: Usuario, contrasena: unknown): boolean {
+  const reg = fallosContrasena.get(u.id)
+  if (reg && reg.hasta > Date.now()) return false
+  const ok = contrasenaCoincide(String(contrasena || ''), u.hashContrasena)
+  if (ok) {
+    fallosContrasena.delete(u.id)
+    return true
+  }
+  const r = reg && reg.hasta <= Date.now() ? { n: 0, hasta: 0 } : (reg ?? { n: 0, hasta: 0 })
+  r.n += 1
+  if (r.n >= 8) { r.hasta = Date.now() + 15 * 60000; r.n = 0; registrar(u.id, 'usuario.contrasena-bloqueada', u.id, { minutos: 15 }) }
+  fallosContrasena.set(u.id, r)
+  return false
+}
 
 export function actualizar(u: Usuario, entrada: { apodo?: unknown; pais?: unknown; idioma?: unknown; telefono?: unknown; direccionCadena?: unknown }): Usuario {
   const cambios: Record<string, unknown> = {}
@@ -143,12 +237,18 @@ export function actualizar(u: Usuario, entrada: { apodo?: unknown; pais?: unknow
   }
   if (entrada.direccionCadena !== undefined) {
     if (entrada.direccionCadena === null || entrada.direccionCadena === '') {
+      if (u.direccionCadena) u.direccionesAnteriores.push(u.direccionCadena.toLowerCase())
       u.direccionCadena = null
     } else {
       if (!esDireccion(entrada.direccionCadena)) throw malaPeticion('La dirección tiene que empezar con 0x y llevar 40 caracteres hexadecimales', 'direccion')
       const d = (entrada.direccionCadena as string).toLowerCase()
-      const otro = store.todo().usuarios.find((x) => x.direccionCadena?.toLowerCase() === d && x.id !== u.id)
+      // Una dirección que alguna vez fue de otra cuenta no cambia de dueño: si
+      // se pudiera, quien la registrara después reclamaría los depósitos que
+      // salieron de ella.
+      const otro = store.todo().usuarios.find((x) => x.id !== u.id
+        && (x.direccionCadena?.toLowerCase() === d || x.direccionesAnteriores.includes(d)))
       if (otro) throw conflicto('Esa dirección ya está registrada en otra cuenta', 'direccion-en-uso')
+      if (u.direccionCadena && u.direccionCadena.toLowerCase() !== d) u.direccionesAnteriores.push(u.direccionCadena.toLowerCase())
       u.direccionCadena = entrada.direccionCadena as string
       cambios.direccionCadena = d
     }
@@ -170,7 +270,7 @@ export function tocar(u: Usuario): void {
 
 /** Refleja lo que Genesis ID dice de la identidad del usuario. */
 export function sincronizarGenesis(u: Usuario, estado: EstadoGid, gid: string | null, nombreLegal?: string | null): Usuario {
-  const gidNuevo = estado === 'verificada' && gid ? gid.toUpperCase() : (gid ? gid.toUpperCase() : u.gid)
+  const gidNuevo = gid ? gid.toUpperCase() : u.gid
   if (gidNuevo) {
     const otro = porGid(gidNuevo)
     if (otro && otro.id !== u.id) throw conflicto('Ese Genesis ID ya está atado a otra cuenta de OrdenExchange', 'gid-en-uso')
@@ -186,7 +286,9 @@ export function sincronizarGenesis(u: Usuario, estado: EstadoGid, gid: string | 
 }
 
 export function verificarDemo(u: Usuario, nombre?: string): Usuario {
-  return sincronizarGenesis(u, 'verificada', u.gid?.endsWith('-D') ? u.gid : gidDemo(), nombre ?? `${u.apodo} Demo`)
+  if (!modoDemo()) throw noEncontrado('Solo en modo demostración', 'demo-solamente')
+  u.emailVerificado = true
+  return sincronizarGenesis(u, 'verificada', esGidDemo(u.gid) ? u.gid : gidDemo(), nombre ?? `${u.apodo} Demo`)
 }
 
 // ── Operar ───────────────────────────────────────────────────────────────────
@@ -197,6 +299,10 @@ export function motivoNoOpera(u: Usuario): { codigo: string; motivo: string } | 
   if (u.gidEstado !== 'verificada' || !u.gid) {
     return { codigo: 'no-verificado', motivo: 'Para comprar y vender hace falta un Genesis ID verificado' }
   }
+  // Un GID de demostración vale solo en la demostración.
+  if ((esGidDemo(u.gid) || esDemo(u)) && !modoDemo()) {
+    return { codigo: 'no-verificado', motivo: 'La verificación de demostración no vale en el servicio real' }
+  }
   return null
 }
 
@@ -205,12 +311,32 @@ export function exigirOperar(u: Usuario): void {
   if (m) throw sinPermiso(m.motivo, m.codigo)
 }
 
+export function exigirNoCongelado(u: Usuario): void {
+  if (u.congelado) throw sinPermiso(`Su cuenta está bloqueada: ${u.motivoCongelado || 'contacte a soporte'}`, 'congelado')
+}
+
 export function congelar(u: Usuario, congelado: boolean, motivo: string, actor: string): Usuario {
   u.congelado = congelado
   u.motivoCongelado = congelado ? (motivo || 'Bloqueada por un operador') : null
+  if (congelado) cerrarSesiones(u)
   registrar(actor, congelado ? 'usuario.congelado' : 'usuario.descongelado', u.id, { motivo })
   store.guardar()
   return u
+}
+
+/** Al pasar a modo real, las cuentas de demostración quedan bloqueadas. */
+export function bloquearCuentasDemo(): number {
+  let n = 0
+  for (const u of store.todo().usuarios) {
+    if (esDemo(u) && !u.congelado) {
+      u.congelado = true
+      u.motivoCongelado = 'cuenta de demostración fuera del modo demo'
+      u.sesionesDesde = new Date().toISOString()
+      n++
+    }
+  }
+  if (n) { registrar('sistema', 'demo.bloqueada', 'demo', { cuentas: n }); store.guardar() }
+  return n
 }
 
 // ── Reputación ───────────────────────────────────────────────────────────────
@@ -249,11 +375,13 @@ export function recalcularReputacion(idUsuario: string): Reputacion {
     } else if (o.estado === 'cancelada') {
       r.ordenesTotales++
       // Cuenta en contra solo lo que el usuario canceló o dejó vencer siendo
-      // comprador, o lo que perdió en apelación. Una orden que canceló la otra
-      // parte no dice nada de él.
+      // comprador, lo que perdió en apelación, y las apelaciones que abrió y
+      // retiró (abrir y retirar sin pagar es una forma de bloquear al vendedor).
+      const apelacionRetirada = o.apelacionesPrevias?.some((a) => a.abiertaPor === idUsuario && a.estado === 'retirada')
       const enContra = (o.canceladaPor === 'comprador' && soyComprador)
         || (o.canceladaPor === 'sistema' && soyComprador)
         || (o.canceladaPor === 'operador' && o.apelacion?.resolucion === 'devolver' && soyComprador)
+        || Boolean(apelacionRetirada)
       if (reciente && enContra) abiertas30++
     }
   }
@@ -298,7 +426,7 @@ export function publico(u: Usuario): UsuarioPublico {
     nombreAbreviado: nombreAbreviado(u),
     pais: u.pais,
     agente: u.agente === 'aprobado',
-    verificado: u.gidEstado === 'verificada',
+    verificado: u.gidEstado === 'verificada' && !motivoNoOpera(u)?.codigo.startsWith('no-verificado'),
     reputacion: u.reputacion,
     registradoHaceDias: diasRegistrado(u),
     enLinea: Boolean(u.ultimoAcceso && Date.now() - Date.parse(u.ultimoAcceso) < MINUTOS_EN_LINEA * 60000),
@@ -311,6 +439,7 @@ export function propio(u: Usuario): UsuarioPropio {
   return {
     ...pub,
     email: u.email,
+    emailVerificado: u.emailVerificado,
     nombreLegal: u.nombreLegal,
     moneda: u.moneda,
     idioma: u.idioma,

@@ -4,7 +4,9 @@
 // A cambio lleva insignia en el mercado, puede publicar sin el tope de monto
 // de los usuarios corrientes, y los anunciantes pueden exigir «solo agentes».
 // La garantía es lo que responde si un operador resuelve una apelación en su
-// contra y hay que compensar a alguien.
+// contra y hay que compensar a alguien: por eso un agente SUSPENDIDO no la
+// recupera por su cuenta —solo un operador levanta la suspensión o la
+// devuelve—, y una cuenta bloqueada no mueve custodia.
 
 import { store } from '../store.js'
 import { Dec } from '../lib/decimal.js'
@@ -23,6 +25,10 @@ export const garantiaRequerida = (): string => store.todo().configuracion.garant
 export const solicitudDe = (usuarioId: string): SolicitudAgente | null =>
   store.todo().solicitudesAgente.filter((s) => s.usuarioId === usuarioId).pop() ?? null
 
+/** La solicitud aprobada vigente: la que tiene la garantía en custodia. */
+const aprobadaDe = (usuarioId: string): SolicitudAgente | null =>
+  store.todo().solicitudesAgente.filter((s) => s.usuarioId === usuarioId && s.estado === 'aprobada').pop() ?? null
+
 export function estado(u: Usuario) {
   const solicitud = solicitudDe(u.id)
   const garantia = garantiaRequerida()
@@ -33,14 +39,14 @@ export function estado(u: Usuario) {
     ordenesMin: ORDENES_MIN,
     ordenesCompletadas: u.reputacion.ordenesCompletadas,
   }
-  const cumple = requisitos.gidVerificado && requisitos.saldoSuficiente && requisitos.ordenesCompletadas >= ORDENES_MIN && !u.congelado
-  return { estadoAgente: u.agente, solicitud, garantiaRequerida: garantia, requisitos, cumple }
+  const cumple = requisitos.gidVerificado && requisitos.saldoSuficiente && requisitos.ordenesCompletadas >= ORDENES_MIN && !u.congelado && !u.agenteSuspendido
+  return { estadoAgente: u.agente, solicitud, garantiaRequerida: garantia, requisitos, cumple, suspendido: u.agenteSuspendido }
 }
 
 export function solicitar(u: Usuario, descripcion: unknown): SolicitudAgente {
   usuarios.exigirOperar(u)
   if (u.agente === 'aprobado') throw conflicto('Ya es agente de cambio', 'estado-invalido')
-  if (u.agente === 'suspendido') throw conflicto('Su condición de agente está suspendida; escriba a soporte', 'estado-invalido')
+  if (u.agente === 'suspendido' || u.agenteSuspendido) throw conflicto('Su condición de agente está suspendida; escriba a soporte', 'estado-invalido')
   if (u.agente === 'solicitado') throw conflicto('Ya tiene una solicitud pendiente', 'estado-invalido')
   if (u.reputacion.ordenesCompletadas < ORDENES_MIN) throw malaPeticion(`Hacen falta al menos ${ORDENES_MIN} órdenes completadas`, 'requisitos')
   const texto = String(descripcion || '').trim().slice(0, 1000)
@@ -59,6 +65,7 @@ export function solicitar(u: Usuario, descripcion: unknown): SolicitudAgente {
 }
 
 export function retirar(u: Usuario): SolicitudAgente {
+  usuarios.exigirNoCongelado(u)
   const s = solicitudDe(u.id)
   if (!s || s.estado !== 'pendiente') throw conflicto('No hay una solicitud pendiente', 'estado-invalido')
   s.estado = 'retirada'
@@ -72,14 +79,19 @@ export function retirar(u: Usuario): SolicitudAgente {
 }
 
 export function renunciar(u: Usuario): Usuario {
-  if (u.agente !== 'aprobado' && u.agente !== 'suspendido') throw conflicto('No es agente de cambio', 'estado-invalido')
+  usuarios.exigirNoCongelado(u)
+  if (u.agente === 'suspendido' || u.agenteSuspendido) throw conflicto('Un agente suspendido no puede renunciar; la garantía la resuelve un operador', 'estado-invalido')
+  if (u.agente !== 'aprobado') throw conflicto('No es agente de cambio', 'estado-invalido')
   const abiertas = store.todo().ordenes.some((o) =>
     (o.compradorId === u.id || o.vendedorId === u.id) && (o.estado === 'pendiente-pago' || o.estado === 'pagado' || o.estado === 'apelacion'))
   if (abiertas) throw conflicto('Tiene órdenes abiertas; espere a que terminen', 'ordenes-abiertas')
   const anunciosAbiertos = store.todo().anuncios.some((a) => a.usuarioId === u.id && a.estado !== 'cerrado')
   if (anunciosAbiertos) throw conflicto('Cierre sus anuncios antes de renunciar', 'anuncios-abiertos')
-  const s = store.todo().solicitudesAgente.filter((x) => x.usuarioId === u.id && x.estado === 'aprobada').pop()
-  if (s) billetera.descongelar(u.id, 'ORIGEN', s.garantia, 'garantia-devuelta', s.id, 'Renuncia como agente de cambio')
+  const s = aprobadaDe(u.id)
+  if (s) {
+    billetera.descongelar(u.id, 'ORIGEN', s.garantia, 'garantia-devuelta', s.id, 'Renuncia como agente de cambio')
+    s.nota = `${s.nota ? s.nota + ' · ' : ''}garantía devuelta por renuncia`
+  }
   u.agente = 'no'
   registrar(u.id, 'agente.renuncia', u.id, {})
   store.guardar()
@@ -95,6 +107,7 @@ export function decidir(idSolicitud: string, decision: unknown, nota: unknown, a
   if (decision === 'aprobar') {
     s.estado = 'aprobada'
     u.agente = 'aprobado'
+    u.agenteSuspendido = null
   } else if (decision === 'rechazar') {
     if (!texto) throw malaPeticion('Hace falta una nota con el motivo del rechazo', 'nota')
     s.estado = 'rechazada'
@@ -111,12 +124,33 @@ export function decidir(idSolicitud: string, decision: unknown, nota: unknown, a
   return s
 }
 
+/**
+ * Suspender o reactivar a un agente. Suspender deja la garantía en custodia
+ * y pausa sus anuncios; `retirado` (solo operador) además la devuelve y lo
+ * saca del rol.
+ */
 export function fijarEstado(u: Usuario, estadoNuevo: unknown, nota: unknown, actor: string): Usuario {
-  if (estadoNuevo !== 'aprobado' && estadoNuevo !== 'suspendido') throw malaPeticion('El estado tiene que ser «aprobado» o «suspendido»')
+  const texto = String(nota || '').trim().slice(0, 500)
+  if (estadoNuevo !== 'aprobado' && estadoNuevo !== 'suspendido' && estadoNuevo !== 'retirado') {
+    throw malaPeticion('El estado tiene que ser «aprobado», «suspendido» o «retirado»')
+  }
   if (u.agente !== 'aprobado' && u.agente !== 'suspendido') throw conflicto('Ese usuario no es agente', 'estado-invalido')
-  u.agente = estadoNuevo
-  if (estadoNuevo === 'suspendido') anuncios.pausarTodos(u.id, 'agente suspendido')
-  registrar(actor, `agente.${estadoNuevo}`, u.id, { nota: String(nota || '').slice(0, 500) })
+  if (estadoNuevo === 'suspendido') {
+    if (texto.length < 5) throw malaPeticion('Hace falta el motivo de la suspensión', 'nota')
+    u.agente = 'suspendido'
+    u.agenteSuspendido = { en: new Date().toISOString(), motivo: texto }
+    anuncios.pausarTodos(u.id, 'agente suspendido')
+  } else if (estadoNuevo === 'aprobado') {
+    u.agente = 'aprobado'
+    u.agenteSuspendido = null
+  } else {
+    const s = aprobadaDe(u.id)
+    if (s) billetera.descongelar(u.id, 'ORIGEN', s.garantia, 'garantia-devuelta', s.id, `Garantía devuelta por un operador: ${texto || 'sin nota'}`)
+    u.agente = 'no'
+    u.agenteSuspendido = null
+    anuncios.pausarTodos(u.id, 'dejó de ser agente')
+  }
+  registrar(actor, `agente.${estadoNuevo}`, u.id, { nota: texto })
   store.guardar()
   return u
 }

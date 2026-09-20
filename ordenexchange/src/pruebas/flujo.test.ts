@@ -131,6 +131,7 @@ describe('lo público', () => {
 
 describe('cuenta y verificación', () => {
   let token = ''
+  let codigoCorreo = ''
 
   test('registro exige datos válidos', async () => {
     assert.equal((await pedir('/api/auth/registro', { cuerpo: { email: 'x', contrasena: '12345678', apodo: 'Ana_1', pais: 'HN' } })).estado, 400)
@@ -149,6 +150,10 @@ describe('cuenta y verificación', () => {
     assert.equal(r.datos.usuario.moneda, 'HNL')
     assert.equal(r.datos.usuario.puedeOperar, false)
     assert.equal(r.datos.usuario.gidEstado, 'sin-verificar')
+    assert.equal(r.datos.usuario.emailVerificado, false)
+    assert.equal(r.datos.verificacionPendiente, true)
+    assert.match(r.datos.codigoDemo, /^\d{6}$/, 'sin proveedor de correo y fuera de producción, el código vuelve')
+    codigoCorreo = r.datos.codigoDemo
 
     const dup = await pedir('/api/auth/registro', { cuerpo: { email: 'ana@prueba.local', contrasena: '12345678', apodo: 'Otra', pais: 'HN' } })
     assert.equal(dup.estado, 409)
@@ -163,10 +168,22 @@ describe('cuenta y verificación', () => {
     assert.equal(yo.datos.saldos.length, 3)
   })
 
-  test('sin Genesis ID verificado no se opera', async () => {
+  test('sin Genesis ID verificado no se opera; sin correo confirmado no se toca Genesis', async () => {
     const r = await pedir('/api/anuncios', { token, cuerpo: { lado: 'venta', activo: 'ORIGEN', tipoPrecio: 'flotante', margen: 101, cantidadTotal: '10', limiteMin: '500', limiteMax: '1000', metodosPagoIds: [], ventanaPagoMin: 15 } })
     assert.equal(r.estado, 403)
     assert.equal(r.datos.codigo, 'no-verificado')
+    const sinCorreo = await pedir('/api/genesis/estado', { token })
+    assert.equal(sinCorreo.estado, 403)
+    assert.equal(sinCorreo.datos.codigo, 'correo-no-verificado')
+
+    const mal = await pedir('/api/auth/verificar-correo', { token, cuerpo: { codigo: '000000' } })
+    assert.equal(mal.estado, 400)
+    assert.equal(mal.datos.codigo, 'codigo')
+    const ok = await pedir('/api/auth/verificar-correo', { token, cuerpo: { codigo: codigoCorreo } })
+    assert.equal(ok.estado, 200, JSON.stringify(ok.datos))
+    assert.equal(ok.datos.usuario.emailVerificado, true)
+    assert.equal((await pedir('/api/auth/reenviar-codigo', { token, cuerpo: {} })).estado, 409)
+
     const g = await pedir('/api/genesis/estado', { token })
     assert.equal(g.estado, 503)
     assert.equal(g.datos.codigo, 'genesis-no-configurado')
@@ -187,8 +204,17 @@ describe('cuenta y verificación', () => {
     assert.equal(ok.estado, 200)
     assert.equal(ok.datos.usuario.idioma, 'en')
     assert.equal((await pedir('/api/auth/contrasena', { token, cuerpo: { actual: 'mala', nueva: 'nueva-contrasena' } })).estado, 403)
-    assert.equal((await pedir('/api/auth/contrasena', { token, cuerpo: { actual: '12345678', nueva: 'nueva-contrasena' } })).estado, 200)
-    assert.equal((await pedir('/api/auth/entrar', { cuerpo: { email: 'ana@prueba.local', contrasena: 'nueva-contrasena' } })).estado, 200)
+    const cambio = await pedir('/api/auth/contrasena', { token, cuerpo: { actual: '12345678', nueva: 'nueva-contrasena' } })
+    assert.equal(cambio.estado, 200)
+    await new Promise((ok) => setTimeout(ok, 1100))
+    assert.equal((await pedir('/api/auth/yo', { token })).estado, 401, 'el token viejo ya no vale')
+    assert.equal((await pedir('/api/auth/yo', { token: cambio.datos.token })).estado, 200, 'el nuevo sí')
+    token = cambio.datos.token
+    const entrada = await pedir('/api/auth/entrar', { cuerpo: { email: 'ana@prueba.local', contrasena: 'nueva-contrasena' } })
+    assert.equal(entrada.estado, 200)
+    assert.equal((await pedir('/api/auth/salir', { token: entrada.datos.token, cuerpo: {} })).estado, 204)
+    await new Promise((ok) => setTimeout(ok, 1100))
+    assert.equal((await pedir('/api/auth/yo', { token: entrada.datos.token })).estado, 401, 'salir revoca la sesión')
   })
 })
 
@@ -313,10 +339,11 @@ describe('comprar: el flujo entero con custodia', () => {
     const comision = r.datos.orden.comision
     assert.equal(comision, Dec.truncar(Dec.multiplicar(orden.cantidadActivo, '0.005'), 8))
 
+    // El comprador recibe exactamente lo que compró; la comisión la paga el vendedor.
     const despuesComprador = await saldoDe(comprador)
-    assert.equal(despuesComprador.disponible, Dec.sumar(antesComprador.disponible, Dec.restar(orden.cantidadActivo, comision)))
+    assert.equal(despuesComprador.disponible, Dec.sumar(antesComprador.disponible, orden.cantidadActivo))
     const sVendedor = await saldoDe(vendedor)
-    assert.equal(sVendedor.disponible, Dec.restar(disponibleVendedorAntes, orden.cantidadActivo))
+    assert.equal(sVendedor.disponible, Dec.restar(Dec.restar(disponibleVendedorAntes, orden.cantidadActivo), comision))
     assert.equal(sVendedor.congelado, congeladoVendedorAntes)
 
     const tes = store.todo().saldos.find((s) => s.usuarioId === 'tesoreria' && s.activo === 'ORIGEN')
@@ -385,7 +412,7 @@ describe('vender: tomar un anuncio de compra', () => {
     assert.equal(l.estado, 200)
     assert.equal(l.datos.orden.estado, 'completada')
     const despues = await saldoDe(anunciante)
-    assert.equal(despues.disponible, Dec.sumar(antes.disponible, Dec.restar('25', l.datos.orden.comision)))
+    assert.equal(despues.disponible, Dec.sumar(antes.disponible, '25'))
   })
 })
 
@@ -450,10 +477,11 @@ describe('apelaciones y panel', () => {
     vendedor = await demo('PagoMovilVE')
   })
 
-  async function ordenPagada(monto: string) {
+  async function ordenPagada(veces: string) {
     const m = await pedir('/api/mercado/anuncios?quiero=comprar&moneda=VES', { token: comprador })
     const a = m.datos.anuncios.find((x: any) => x.anunciante.apodo === 'PagoMovilVE' && x.activo === 'ORIGEN')
     assert.ok(a, `no está el anuncio de PagoMovilVE: ${JSON.stringify(m.datos).slice(0, 600)}`)
+    const monto = Dec.multiplicar(a.limiteMin, veces)
     const r = await pedir('/api/ordenes', { token: comprador, cuerpo: { anuncioId: a.id, montoFiat: monto } })
     assert.equal(r.estado, 201, JSON.stringify(r.datos))
     assert.equal((await pedir(`/api/ordenes/${r.datos.orden.id}/pagado`, { token: comprador, cuerpo: {} })).estado, 200)
@@ -472,14 +500,14 @@ describe('apelaciones y panel', () => {
   })
 
   test('apelación resuelta a favor del vendedor: devolver', async () => {
-    const o = await ordenPagada('5000')
+    const o = await ordenPagada('2')
     const antes = await saldoDe(vendedor)
     const mal = await pedir(`/api/ordenes/${o.id}/apelar`, { token: vendedor, cuerpo: { motivo: 'inventado', detalle: 'no llegó nada de nada' } })
     assert.equal(mal.estado, 400)
     const ap = await pedir(`/api/ordenes/${o.id}/apelar`, { token: vendedor, cuerpo: { motivo: 'no-recibi-pago', detalle: 'No llegó ningún pago móvil a mi cuenta' } })
     assert.equal(ap.estado, 200, JSON.stringify(ap.datos))
     assert.equal(ap.datos.orden.estado, 'apelacion')
-    assert.equal((await pedir(`/api/ordenes/${o.id}/liberar`, { token: vendedor, cuerpo: { contrasena: 'demo1234' } })).estado, 409)
+    assert.equal((await pedir(`/api/ordenes/${o.id}/liberar`, { token: vendedor, cuerpo: { contrasena: 'incorrecta' } })).estado, 403, 'liberar en apelación sigue exigiendo la contraseña')
     assert.equal((await pedir(`/api/ordenes/${o.id}/cancelar`, { token: comprador, cuerpo: {} })).estado, 409)
     assert.equal((await pedir(`/api/ordenes/${o.id}/apelacion/retirar`, { token: comprador, cuerpo: {} })).estado, 403)
 
@@ -506,20 +534,22 @@ describe('apelaciones y panel', () => {
   })
 
   test('apelación resuelta a favor del comprador: liberar', async () => {
-    const o = await ordenPagada('7500')
+    const o = await ordenPagada('3')
     const antes = await saldoDe(comprador)
     const ap = await pedir(`/api/ordenes/${o.id}/apelar`, { token: comprador, cuerpo: { motivo: 'no-liberan', detalle: 'Pagué hace una hora y no liberan' } })
     assert.equal(ap.estado, 200)
     const retiro = await pedir(`/api/ordenes/${o.id}/apelacion/retirar`, { token: comprador, cuerpo: {} })
     assert.equal(retiro.estado, 200)
     assert.equal(retiro.datos.orden.estado, 'pagado')
-    const ap2 = await pedir(`/api/ordenes/${o.id}/apelar`, { token: comprador, cuerpo: { motivo: 'no-liberan', detalle: 'Sigue sin liberar, adjunto comprobante' } })
-    assert.equal(ap2.estado, 200)
+    const otraVez = await pedir(`/api/ordenes/${o.id}/apelar`, { token: comprador, cuerpo: { motivo: 'no-liberan', detalle: 'Sigue sin liberar, adjunto comprobante' } })
+    assert.equal(otraVez.estado, 409, 'una apelación por parte y orden')
+    const ap2 = await pedir(`/api/ordenes/${o.id}/apelar`, { token: vendedor, cuerpo: { motivo: 'monto-incorrecto', detalle: 'Llegó menos dinero del pactado' } })
+    assert.equal(ap2.estado, 200, JSON.stringify(ap2.datos))
     const r = await pedir(`/api/panel/ordenes/${o.id}/resolver`, { token: admin, cuerpo: { resolucion: 'liberar', nota: 'Comprobante válido del banco' } })
     assert.equal(r.estado, 200)
     assert.equal(r.datos.orden.estado, 'completada')
     const despues = await saldoDe(comprador)
-    assert.equal(despues.disponible, Dec.sumar(antes.disponible, Dec.restar(o.cantidadActivo, r.datos.orden.comision)))
+    assert.equal(despues.disponible, Dec.sumar(antes.disponible, o.cantidadActivo))
   })
 
   test('un auditor lee pero no resuelve', async () => {
@@ -529,7 +559,7 @@ describe('apelaciones y panel', () => {
     assert.equal(s.estado, 200)
     assert.equal(s.datos.operador.debeCambiarContrasena, true)
     assert.equal((await pedir('/api/panel/resumen', { token: s.datos.token })).estado, 200)
-    const o = await ordenPagada('4000')
+    const o = await ordenPagada('1.5')
     await pedir(`/api/ordenes/${o.id}/apelar`, { token: comprador, cuerpo: { motivo: 'otro', detalle: 'Prueba de permisos del auditor' } })
     const r = await pedir(`/api/panel/ordenes/${o.id}/resolver`, { token: s.datos.token, cuerpo: { resolucion: 'liberar', nota: 'no debería poder' } })
     assert.equal(r.estado, 403)
@@ -543,16 +573,23 @@ describe('apelaciones y panel', () => {
     assert.equal(r.estado, 200)
     const mercado = await pedir('/api/mercado/anuncios?quiero=comprar&moneda=VES')
     assert.ok(!mercado.datos.anuncios.some((a: any) => a.anunciante.apodo === 'PagoMovilVE'))
+    await new Promise((ok) => setTimeout(ok, 1100))
+    assert.equal((await pedir('/api/auth/yo', { token: vendedor })).estado, 401, 'bloquear cierra las sesiones')
+    vendedor = await demo('PagoMovilVE')
     const mis = await pedir('/api/anuncios', { token: vendedor })
     assert.ok(mis.datos.anuncios.every((a: any) => a.estado !== 'activo'))
     const yo2 = await pedir('/api/auth/yo', { token: vendedor })
     assert.equal(yo2.datos.usuario.puedeOperar, false)
+    assert.equal((await pedir('/api/agentes/renunciar', { token: vendedor, cuerpo: {} })).datos.codigo, 'congelado', 'bloqueado no mueve la garantía')
     await pedir(`/api/panel/usuarios/${yo.datos.usuario.id}/congelar`, { token: admin, cuerpo: { congelado: false, motivo: 'listo' } })
     const yo3 = await pedir('/api/auth/yo', { token: vendedor })
     assert.equal(yo3.datos.usuario.puedeOperar, true)
   })
 
-  test('precios: solo un operador con permiso, y con valores sensatos', async () => {
+  test('precios: solo un administrador, y con valores sensatos', async () => {
+    const sop = await pedir('/api/panel/operadores', { token: admin, cuerpo: { email: 'soporte@prueba.local', nombre: 'Soporte', rol: 'soporte' } })
+    const sesionSoporte = await pedir('/api/panel/sesion/entrar', { cuerpo: { email: 'soporte@prueba.local', contrasena: sop.datos.contrasenaTemporal } })
+    assert.equal((await pedir('/api/panel/precios', { token: sesionSoporte.datos.token, metodo: 'PUT', cuerpo: { oroUsdOnza: 4001 } })).estado, 403)
     assert.equal((await pedir('/api/panel/precios', { token: admin, metodo: 'PUT', cuerpo: { oroUsdOnza: -5 } })).estado, 400)
     const r = await pedir('/api/panel/precios', { token: admin, metodo: 'PUT', cuerpo: { oroUsdOnza: 4100, fx: { HNL: 26.5 } } })
     assert.equal(r.estado, 200)
@@ -700,6 +737,70 @@ describe('anuncios propios, billetera y agentes', () => {
     assert.equal(ren.estado, 200)
     s = await saldoDe(token)
     assert.equal(s.congelado, antes.congelado)
+  })
+
+  test('un agente suspendido no recupera la garantía por su cuenta', async () => {
+    const r = await pedir('/api/auth/registro', { cuerpo: { email: 'agente2@prueba.local', contrasena: '12345678', apodo: 'AgenteDos', pais: 'GT' } })
+    const t = r.datos.token
+    await pedir('/api/genesis/demo/verificar', { token: t, cuerpo: {} })
+    await pedir('/api/billetera/faucet', { token: t, cuerpo: { activo: 'ORIGEN', cantidad: '600' } })
+    const sol = await pedir('/api/agentes/solicitar', { token: t, cuerpo: { descripcion: 'Agente de prueba en Guatemala con horario de oficina' } })
+    assert.equal(sol.estado, 201, JSON.stringify(sol.datos))
+    const admin = (await pedir('/api/panel/sesion/entrar', { cuerpo: { email: 'admin@prueba.local', contrasena: 'contrasena-admin-de-prueba' } })).datos.token
+    await pedir(`/api/panel/agentes/${sol.datos.solicitud.id}/decidir`, { token: admin, cuerpo: { decision: 'aprobar', nota: 'ok' } })
+    const uid = r.datos.usuario.id
+    const susp = await pedir(`/api/panel/usuarios/${uid}/agente`, { token: admin, cuerpo: { estado: 'suspendido', nota: 'Revisión por reclamo' } })
+    assert.equal(susp.estado, 200, JSON.stringify(susp.datos))
+    const ren = await pedir('/api/agentes/renunciar', { token: t, cuerpo: {} })
+    assert.equal(ren.estado, 409)
+    assert.equal((await saldoDe(t)).congelado, '500', 'la garantía sigue en custodia')
+    const nueva = await pedir('/api/agentes/solicitar', { token: t, cuerpo: { descripcion: 'Intento de volver a solicitar tras la suspensión' } })
+    assert.equal(nueva.estado, 409)
+    const ret = await pedir(`/api/panel/usuarios/${uid}/agente`, { token: admin, cuerpo: { estado: 'retirado', nota: 'Se devuelve la garantía' } })
+    assert.equal(ret.estado, 200)
+    assert.equal((await saldoDe(t)).congelado, '0')
+  })
+
+  test('un anuncio ajeno no existe (404), y la orden no se abre con más decimales que la moneda', async () => {
+    const yape = await demo('YapePeru')
+    const mio = await pedir('/api/anuncios', { token: yape })
+    const otro = await demo('NequiCol')
+    const m = await pedir('/api/mercado/anuncios?quiero=comprar&moneda=PEN', { token: otro })
+    const a = m.datos.anuncios[0]
+    assert.ok(a)
+    assert.equal((await pedir('/api/anuncios/' + a.id, { token: otro })).estado, 404)
+    assert.ok(mio.datos.anuncios.length >= 1)
+    const r = await pedir('/api/ordenes', { token: otro, cuerpo: { anuncioId: a.id, montoFiat: Dec.sumar(a.limiteMin, '0.001') } })
+    assert.equal(r.estado, 400)
+    assert.equal(r.datos.codigo, 'monto')
+  })
+
+  test('el chat: una imagen sale como URL firmada y se limita por orden', async () => {
+    const comprador = await demo('Comprador1')
+    const vendedor = await demo('OroTegus')
+    const m = await pedir('/api/mercado/anuncios?quiero=comprar&moneda=HNL', { token: comprador })
+    const a = m.datos.anuncios.find((x: any) => x.anunciante.apodo === 'OroTegus')
+    const r = await pedir('/api/ordenes', { token: comprador, cuerpo: { anuncioId: a.id, montoFiat: Dec.multiplicar(a.limiteMin, '2'), metodoTipo: 'transferencia' } })
+    assert.equal(r.estado, 201, JSON.stringify(r.datos))
+    const o = r.datos.orden
+    const png = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg=='
+    const img = await pedir(`/api/ordenes/${o.id}/mensajes`, { token: comprador, cuerpo: { imagen: png } })
+    assert.equal(img.estado, 201)
+    assert.match(img.datos.mensaje.imagen, /^\/api\/ordenes\/.+\/imagenes\/img_.+\?f=[0-9a-f]{32}$/)
+    const cruda = await fetch(base + img.datos.mensaje.imagen)
+    assert.equal(cruda.status, 200)
+    assert.equal(cruda.headers.get('content-type'), 'image/png')
+    const sinFirma = await fetch(base + img.datos.mensaje.imagen.replace(/\?f=.*$/, '?f=0000'))
+    assert.equal(sinFirma.status, 404)
+    for (let i = 0; i < 5; i++) await pedir(`/api/ordenes/${o.id}/mensajes`, { token: vendedor, cuerpo: { imagen: png } })
+    const tope = await pedir(`/api/ordenes/${o.id}/mensajes`, { token: comprador, cuerpo: { imagen: png } })
+    assert.equal(tope.estado, 409)
+    const detalle = await pedir('/api/ordenes/' + o.id, { token: comprador })
+    assert.ok(!('id' in detalle.datos.orden.metodoPago), 'el id del método del vendedor no sale')
+    assert.ok(!('vistaPor' in detalle.datos.orden))
+    const sondeo = await pedir(`/api/ordenes/${o.id}/mensajes`, { token: comprador })
+    assert.ok(!('mensajes' in sondeo.datos.orden), 'el sondeo no repite los mensajes dentro de la orden')
+    assert.equal((await pedir(`/api/ordenes/${o.id}/cancelar`, { token: comprador, cuerpo: {} })).estado, 200)
   })
 
   test('los saldos cuadran con los movimientos', async () => {

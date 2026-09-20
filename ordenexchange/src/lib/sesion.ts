@@ -4,6 +4,11 @@
 //   - un USUARIO, con el JWT de la app (`exigirSesion`, `sesionOpcional`);
 //   - un OPERADOR del panel, con su sesión de operador (`exigirPanel`).
 // El usuario se toma SIEMPRE de la sesión, nunca del cuerpo de la petición.
+//
+// Un JWT no se puede «borrar», así que cada usuario lleva la marca
+// `sesionesDesde`: cualquier token emitido antes de ese momento deja de
+// valer. Cambiar la contraseña, cerrar sesión o que un operador congele la
+// cuenta mueven la marca, y con ella caen todas las sesiones abiertas.
 
 import type { Request, Response, NextFunction } from 'express'
 import { leerSesion } from './cripto.js'
@@ -30,10 +35,11 @@ function tokenDe(req: Request): string {
 function usuarioDe(req: Request): Usuario | null {
   const token = tokenDe(req)
   if (!token) return null
-  const idUsuario = leerSesion(token)
-  if (!idUsuario) return null
-  const u = usuarios.porId(idUsuario)
+  const sesion = leerSesion(token)
+  if (!sesion) return null
+  const u = usuarios.porId(sesion.usuarioId)
   if (!u) return null
+  if (u.sesionesDesde && sesion.emitidaEn < Date.parse(u.sesionesDesde)) return null
   usuarios.tocar(u)
   return u
 }

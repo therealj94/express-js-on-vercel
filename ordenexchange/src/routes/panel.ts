@@ -27,7 +27,7 @@ export const panelRouter = Router()
 
 panelRouter.post('/sesion/entrar', limite(10), seguro((req, res) => {
   const b = req.body ?? {}
-  res.json(operadores.entrar(b.email, b.contrasena))
+  res.json(operadores.entrar(b.email, b.contrasena, req.ip || ''))
 }))
 
 panelRouter.get('/sesion/yo', exigirPanel(), (req, res) => {
@@ -41,7 +41,7 @@ panelRouter.post('/sesion/salir', exigirPanel(), (req, res) => {
 
 panelRouter.post('/sesion/contrasena', exigirPanel(), seguro((req, res) => {
   const b = req.body ?? {}
-  operadores.cambiarContrasena(req.operador!, b.actual, b.nueva)
+  operadores.cambiarContrasena(req.operador!, b.actual, b.nueva, req.tokenPanel || '')
   res.json({ ok: true })
 }))
 
@@ -152,9 +152,9 @@ panelRouter.get('/retiros', exigirPanel(), seguro(async (req, res) => {
   res.json({ retiros: salida })
 }))
 
-panelRouter.post('/retiros/:id/decidir', exigirPanel('retiros.decidir'), seguro((req, res) => {
+panelRouter.post('/retiros/:id/decidir', exigirPanel('retiros.decidir'), seguro(async (req, res) => {
   const b = req.body ?? {}
-  res.json({ retiro: billetera.decidirRetiro(req.params.id, b.decision, { txHash: b.txHash, motivo: b.motivo }, req.operador!.email) })
+  res.json({ retiro: await billetera.decidirRetiro(req.params.id, b.decision, { txHash: b.txHash, motivo: b.motivo }, req.operador!.email) })
 }))
 
 panelRouter.get('/depositos', exigirPanel(), (req, res) => {

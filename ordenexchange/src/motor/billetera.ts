@@ -24,6 +24,7 @@ import { activo as defActivo, SIMBOLOS, esActivo } from '../data/activos.js'
 import { registrar } from './bitacora.js'
 import { verificarDeposito, esDireccion, esHash } from './cadena.js'
 import { tamizDireccion, genesisConfigurado } from './genesis.js'
+import * as usuarios from './usuarios.js'
 import type { Activo, Saldo, Movimiento, TipoMovimiento, Usuario, Retiro, Deposito } from '../types.js'
 
 /** La cuenta de la plataforma: recibe las comisiones. No es un usuario. */
@@ -44,7 +45,8 @@ export const saldos = (usuarioId: string): Saldo[] => SIMBOLOS.map((a) => saldo(
 /** Valida y normaliza una cantidad del activo: positiva y con los decimales permitidos. */
 export function cantidadValida(x: unknown, activo: Activo, permitirCero = false): string {
   if (!Dec.esValido(x)) throw malaPeticion('La cantidad tiene que ser un número decimal', 'cantidad')
-  const c = Dec.n(x as string)
+  let c: string
+  try { c = Dec.n(x as string) } catch { throw malaPeticion('La cantidad tiene demasiados decimales', 'cantidad') }
   const def = defActivo(activo)!
   if (Dec.decimalesDe(c) > def.decimales) throw malaPeticion(`${activo} admite hasta ${def.decimales} decimales`, 'cantidad')
   if (Dec.esNegativo(c) || (!permitirCero && Dec.esCero(c))) throw malaPeticion('La cantidad tiene que ser mayor que cero', 'cantidad')
@@ -105,19 +107,29 @@ export const acreditar = (usuarioId: string, activo: Activo, cantidad: string, t
   mover(usuarioId, activo, { disponible: cantidad }, tipo, ref, detalle)
 
 /**
- * Liberar una orden: la custodia del vendedor pasa al comprador, menos la
- * comisión, que va a la tesorería. Tres movimientos que se anotan juntos.
+ * Liberar una orden: la custodia del vendedor pasa al comprador entera, y la
+ * comisión la paga el VENDEDOR aparte, de su disponible (como cobra Binance al
+ * anunciante: el comprador recibe exactamente lo que compró). Si el vendedor
+ * no tiene disponible para la comisión, se le descuenta de lo que entrega;
+ * antes que bloquear la liberación de un pago ya hecho.
  */
-export function liberarCustodia(vendedorId: string, compradorId: string, activo: Activo, cantidad: string, comision: string, ordenId: string): void {
-  const neto = Dec.restar(cantidad, comision)
-  if (Dec.esNegativo(neto)) throw conflicto('La comisión supera la cantidad', 'comision')
+export function liberarCustodia(vendedorId: string, compradorId: string, activo: Activo, cantidad: string, comision: string, ordenId: string): { comisionDelVendedor: boolean } {
   // Primero se comprueba que el vendedor tenga esa custodia: si falla, no se
   // tocó nada del comprador.
   mover(vendedorId, activo, { congelado: Dec.negar(cantidad) }, 'orden-liberar', ordenId, `Liberación de la orden ${ordenId}`)
-  mover(compradorId, activo, { disponible: neto }, 'orden-recibir', ordenId, `Recibido por la orden ${ordenId}`)
+  let comisionDelVendedor = true
+  let neto = cantidad
   if (Dec.esPositivo(comision)) {
+    try {
+      mover(vendedorId, activo, { disponible: Dec.negar(comision) }, 'comision', ordenId, `Comisión de la orden ${ordenId}`)
+    } catch {
+      comisionDelVendedor = false
+      neto = Dec.restar(cantidad, comision)
+    }
     mover(TESORERIA_ID, activo, { disponible: comision }, 'comision', ordenId, `Comisión de la orden ${ordenId}`)
   }
+  mover(compradorId, activo, { disponible: neto }, 'orden-recibir', ordenId, `Recibido por la orden ${ordenId}`)
+  return { comisionDelVendedor }
 }
 
 export function movimientos(usuarioId: string, filtro: { activo?: string; pagina?: number; porPagina?: number } = {}) {
@@ -142,32 +154,48 @@ export function custodiaTotal(): Record<Activo, string> {
 
 // ── Depósitos ────────────────────────────────────────────────────────────────
 
+/**
+ * Hashes que se están comprobando ahora mismo. Comprobar en la cadena tarda
+ * (un await), y sin esto varias peticiones con el mismo hash pasaban todas la
+ * comprobación de duplicado antes de que ninguna se anotara: el mismo
+ * depósito se acreditaba tantas veces como peticiones llegaran juntas.
+ */
+const depositosEnCurso = new Set<string>()
+
+const yaAcreditado = (txHash: string) =>
+  store.todo().depositos.some((d) => d.txHash === txHash && d.estado === 'acreditado')
+
 export async function acreditarDeposito(u: Usuario, entrada: { txHash?: unknown; activo?: unknown }): Promise<Deposito> {
   const activo = validarActivo(entrada.activo)
   if (!esHash(entrada.txHash)) throw malaPeticion('El hash de la transacción tiene que empezar con 0x y llevar 64 caracteres hexadecimales', 'tx-hash')
   const txHash = entrada.txHash.toLowerCase()
   const cfg = store.todo().configuracion
   if (!cfg.tesoreria) throw new Falla(503, 'La tesorería de la plataforma no está configurada (ORDENEX_TESORERIA); los depósitos no se pueden comprobar', 'cadena-no-configurada')
+  usuarios.exigirOperar(u)
   if (!u.direccionCadena) throw malaPeticion('Registre primero su dirección de la cadena 5550 en el perfil', 'sin-direccion')
-  if (u.congelado) throw sinPermiso('La cuenta está bloqueada', 'congelado')
-  if (store.todo().depositos.some((d) => d.txHash === txHash && d.estado === 'acreditado')) {
-    throw conflicto('Esa transacción ya fue acreditada', 'tx-ya-acreditada')
-  }
+  if (yaAcreditado(txHash) || depositosEnCurso.has(txHash)) throw conflicto('Esa transacción ya fue acreditada o se está comprobando', 'tx-ya-acreditada')
 
-  const r = await verificarDeposito({ txHash, activo, tesoreria: cfg.tesoreria, desde: u.direccionCadena, confirmaciones: cfg.confirmacionesDeposito })
-  if (!r.ok) throw malaPeticion(r.error, r.codigo)
+  depositosEnCurso.add(txHash)
+  try {
+    const r = await verificarDeposito({ txHash, activo, tesoreria: cfg.tesoreria, desde: u.direccionCadena, confirmaciones: cfg.confirmacionesDeposito })
+    if (!r.ok) throw malaPeticion(r.error, r.codigo)
+    // Se vuelve a mirar después del await: es la comprobación que vale.
+    if (yaAcreditado(txHash)) throw conflicto('Esa transacción ya fue acreditada', 'tx-ya-acreditada')
 
-  const def = defActivo(activo)!
-  const cantidad = Dec.truncar(r.cantidad, def.decimales)
-  const deposito: Deposito = {
-    id: id('dep'), usuarioId: u.id, activo, cantidad, txHash, desde: r.desde.toLowerCase(),
-    bloque: r.bloque, confirmaciones: r.confirmaciones, estado: 'acreditado', motivo: null, en: new Date().toISOString(),
+    const def = defActivo(activo)!
+    const cantidad = Dec.truncar(r.cantidad, def.decimales)
+    const deposito: Deposito = {
+      id: id('dep'), usuarioId: u.id, activo, cantidad, txHash, desde: r.desde.toLowerCase(),
+      bloque: r.bloque, confirmaciones: r.confirmaciones, estado: 'acreditado', motivo: null, en: new Date().toISOString(),
+    }
+    store.todo().depositos.push(deposito)
+    acreditar(u.id, activo, cantidad, 'deposito', txHash, `Depósito desde la cadena 5550, bloque ${r.bloque}`)
+    registrar(u.id, 'deposito.acreditado', deposito.id, { activo, cantidad, txHash, bloque: r.bloque })
+    await store.guardarYa()
+    return deposito
+  } finally {
+    depositosEnCurso.delete(txHash)
   }
-  store.todo().depositos.push(deposito)
-  acreditar(u.id, activo, cantidad, 'deposito', txHash, `Depósito desde la cadena 5550, bloque ${r.bloque}`)
-  registrar(u.id, 'deposito.acreditado', deposito.id, { activo, cantidad, txHash, bloque: r.bloque })
-  await store.guardarYa()
-  return deposito
 }
 
 export const depositosDe = (usuarioId: string): Deposito[] =>
@@ -188,12 +216,16 @@ export async function solicitarRetiro(u: Usuario, entrada: { activo?: unknown; c
   const activo = validarActivo(entrada.activo)
   const cantidad = cantidadValida(entrada.cantidad, activo)
   if (!esDireccion(entrada.direccion)) throw malaPeticion('La dirección tiene que empezar con 0x y llevar 40 caracteres hexadecimales', 'direccion')
-  if (u.congelado) throw sinPermiso(`La cuenta está bloqueada: ${u.motivoCongelado || ''}`, 'congelado')
+  // Retirar exige lo mismo que operar: identidad verificada y cuenta sin bloqueo.
+  usuarios.exigirOperar(u)
   const direccion = entrada.direccion as string
 
   if (genesisConfigurado()) {
     const t = await tamizDireccion(direccion)
-    if (t.ok && t.cuerpo?.sancionada) {
+    // Sin respuesta de Genesis no se acepta el retiro: un tamiz que no se pudo
+    // hacer no es un tamiz limpio.
+    if (!t.ok) throw new Falla(503, 'No se pudo comprobar la dirección contra las listas de sanciones; intente más tarde', 'tamiz-no-disponible')
+    if (t.cuerpo?.sancionada) {
       registrar(u.id, 'retiro.direccion-sancionada', direccion, { activo, cantidad })
       throw malaPeticion('Esa dirección aparece en una lista de sanciones; el retiro no se puede procesar', 'direccion-sancionada')
     }
@@ -216,6 +248,9 @@ export const retirosDe = (usuarioId: string): Retiro[] =>
 export function cancelarRetiro(u: Usuario, idRetiro: string): Retiro {
   const r = store.todo().retiros.find((x) => x.id === idRetiro && x.usuarioId === u.id)
   if (!r) throw noEncontrado('Retiro no encontrado')
+  // Una cuenta bloqueada no mueve custodia: si un operador la congeló en
+  // revisión, lo retenido se queda retenido hasta que él decida.
+  usuarios.exigirNoCongelado(u)
   if (r.estado !== 'pendiente') throw conflicto('Solo se puede cancelar un retiro pendiente', 'estado-invalido')
   r.estado = 'cancelado'
   r.resueltoEn = new Date().toISOString()
@@ -226,14 +261,18 @@ export function cancelarRetiro(u: Usuario, idRetiro: string): Retiro {
   return r
 }
 
-export function decidirRetiro(idRetiro: string, decision: unknown, extra: { txHash?: unknown; motivo?: unknown }, actor: string): Retiro {
+export async function decidirRetiro(idRetiro: string, decision: unknown, extra: { txHash?: unknown; motivo?: unknown }, actor: string): Promise<Retiro> {
   const r = store.todo().retiros.find((x) => x.id === idRetiro)
   if (!r) throw noEncontrado('Retiro no encontrado')
   if (r.estado !== 'pendiente') throw conflicto('El retiro ya fue resuelto', 'estado-invalido')
   const ahora = new Date().toISOString()
   if (decision === 'enviado') {
     if (!esHash(extra.txHash)) throw malaPeticion('Hace falta el hash de la transacción de envío', 'tx-hash')
-    r.txHash = (extra.txHash as string).toLowerCase()
+    const hash = (extra.txHash as string).toLowerCase()
+    // Un mismo envío no puede cerrar dos retiros: si el operador lo pega dos
+    // veces, la segunda es un error suyo, no un segundo pago.
+    if (store.todo().retiros.some((x) => x.txHash === hash)) throw conflicto('Ese hash ya cerró otro retiro', 'tx-ya-usada')
+    r.txHash = hash
     r.estado = 'enviado'
     // Sale de la custodia y de la plataforma.
     mover(r.usuarioId, r.activo, { congelado: Dec.negar(r.cantidad) }, 'retiro-enviado', r.id, `Retiro enviado, tx ${r.txHash}`)
@@ -247,7 +286,8 @@ export function decidirRetiro(idRetiro: string, decision: unknown, extra: { txHa
   r.resueltoEn = ahora
   r.resueltoPor = actor
   registrar(actor, `retiro.${r.estado}`, r.id, { usuarioId: r.usuarioId, activo: r.activo, cantidad: r.cantidad, txHash: r.txHash, motivo: r.motivo })
-  store.guardar()
+  // Irreversible fuera de la plataforma: se vuelca antes de responder.
+  await store.guardarYa()
   return r
 }
 
@@ -257,7 +297,8 @@ export const retirosPendientes = (): Retiro[] => store.todo().retiros.filter((r)
 export function ajustar(usuarioId: string, entrada: { activo?: unknown; cantidad?: unknown; motivo?: unknown }, actor: string): Saldo[] {
   const activo = validarActivo(entrada.activo)
   if (!Dec.esValido(entrada.cantidad)) throw malaPeticion('La cantidad tiene que ser un decimal, con signo si es un débito', 'cantidad')
-  const cantidad = Dec.n(entrada.cantidad as string)
+  let cantidad: string
+  try { cantidad = Dec.n(entrada.cantidad as string) } catch { throw malaPeticion('La cantidad tiene demasiados decimales', 'cantidad') }
   if (Dec.esCero(cantidad)) throw malaPeticion('La cantidad no puede ser cero', 'cantidad')
   const motivo = String(entrada.motivo || '').trim()
   if (motivo.length < 5) throw malaPeticion('Hace falta un motivo (mínimo 5 caracteres)', 'motivo')
@@ -265,3 +306,5 @@ export function ajustar(usuarioId: string, entrada: { activo?: unknown; cantidad
   registrar(actor, 'saldo.ajustado', usuarioId, { activo, cantidad, motivo })
   return saldos(usuarioId)
 }
+
+export { sinPermiso }

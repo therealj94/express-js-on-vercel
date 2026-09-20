@@ -6,18 +6,21 @@
 //        └───────────(apelación)──▶ apelacion ◀─────┘
 //                                       │
 //                       operador: liberar ▶ completada · devolver ▶ cancelada
+//                       vendedor: liberar ▶ completada (zanja la apelación)
 //
 // Lo que este módulo garantiza:
 //   - el activo del vendedor está en custodia desde que la orden existe hasta
 //     que termina, y solo sale hacia el comprador (liberar) o de vuelta al
 //     vendedor (cancelar / devolver);
 //   - cada transición comprueba el estado actual y quién la pide; nadie libera
-//     lo ajeno ni cancela lo que ya se pagó;
+//     lo ajeno ni cancela lo que ya se pagó; una cuenta bloqueada no inicia
+//     ninguna transición (la contraparte y el operador sí);
 //   - todo cambio deja mensaje de sistema en el chat y entrada en la bitácora.
 
 import { store } from '../store.js'
 import { Dec } from '../lib/decimal.js'
 import { id, numeroOrden } from '../lib/uid.js'
+import { firmaCorta } from '../lib/cripto.js'
 import { Falla, malaPeticion, conflicto, noEncontrado, sinPermiso } from '../lib/errores.js'
 import { decimalesMoneda } from '../data/monedas.js'
 import { activo as defActivo } from '../data/activos.js'
@@ -26,14 +29,18 @@ import * as usuarios from './usuarios.js'
 import * as billetera from './billetera.js'
 import * as anuncios from './anuncios.js'
 import * as metodosPago from './metodosPago.js'
+import * as imagenes from './imagenes.js'
 import { aUsd } from './precios.js'
 import { enviarMovimientos } from './genesis.js'
 import type { Orden, Usuario, Mensaje, UsuarioPublico, EstadoOrden, Apelacion, Calificacion } from '../types.js'
 
 const ABIERTOS: EstadoOrden[] = ['pendiente-pago', 'pagado', 'apelacion']
-const MAX_MENSAJES = 500
+const MAX_MENSAJES = 300
 const MAX_TEXTO = 2000
 const MAX_IMAGEN = 2_100_000 // ~1,5 MB en base64
+const MAX_IMAGENES_POR_ORDEN = 6
+const HORAS_CHAT_TRAS_CIERRE = 24
+const HORAS_APELAR_TRAS_VENCER = 24
 const MOTIVOS_APELACION = ['no-recibi-pago', 'no-liberan', 'monto-incorrecto', 'otro']
 
 export const porId = (idOrden: string): Orden | undefined => store.todo().ordenes.find((o) => o.id === idOrden)
@@ -41,6 +48,8 @@ export const porId = (idOrden: string): Orden | undefined => store.todo().ordene
 export function exigir(idOrden: string): Orden {
   const o = porId(idOrden)
   if (!o) throw noEncontrado('Orden no encontrada')
+  if (!o.apelacionesPrevias) o.apelacionesPrevias = []
+  if (o.imagenesChat === undefined) o.imagenesChat = o.mensajes.filter((m) => m.imagen).length
   return o
 }
 
@@ -88,10 +97,12 @@ function cerrarCancelada(o: Orden, por: 'comprador' | 'sistema' | 'operador', mo
     billetera.descongelar(o.vendedorId, o.activo, o.cantidadActivo, 'orden-descongelar', o.id, `Orden ${o.numero} cancelada: ${motivo}`)
     o.enCustodia = false
   }
-  if (a) anuncios.devolver(a, o.cantidadActivo)
+  // Solo se devuelve al anuncio lo que seguía reservado: una orden que ya
+  // había vencido lo devolvió entonces.
+  if (a && o.estado !== 'cancelada') anuncios.devolver(a, o.cantidadActivo)
   o.estado = 'cancelada'
-  o.canceladaEn = new Date().toISOString()
-  o.canceladaPor = por
+  o.canceladaEn = o.canceladaEn ?? new Date().toISOString()
+  o.canceladaPor = o.canceladaPor ?? por
   o.motivoCancelacion = motivo
   sistema(o, `Orden cancelada (${por === 'comprador' ? 'por el comprador' : por === 'sistema' ? 'por vencimiento' : 'por un operador'}): ${motivo}`)
   registrar(por === 'comprador' ? o.compradorId : por, 'orden.cancelada', o.id, { numero: o.numero, motivo, por })
@@ -101,15 +112,17 @@ function cerrarCancelada(o: Orden, por: 'comprador' | 'sistema' | 'operador', mo
 
 function cerrarCompletada(o: Orden, actor: string): void {
   const a = anuncios.porId(o.anuncioId)
-  billetera.liberarCustodia(o.vendedorId, o.compradorId, o.activo, o.cantidadActivo, o.comision, o.id)
+  const veniaDeCancelada = o.estadoAntesApelacion === 'cancelada'
+  const r = billetera.liberarCustodia(o.vendedorId, o.compradorId, o.activo, o.cantidadActivo, o.comision, o.id)
   o.enCustodia = false
-  if (a) anuncios.consumir(a)
+  if (a && !veniaDeCancelada) anuncios.consumir(a)
+  else if (a) { a.ordenesCompletadas += 1 }
   o.estado = 'completada'
   o.completadaEn = new Date().toISOString()
   if (!o.pagadaEn) o.pagadaEn = o.completadaEn
-  const neto = Dec.restar(o.cantidadActivo, o.comision)
-  sistema(o, `El vendedor liberó ${neto} ${o.activo}. Orden completada.`)
-  registrar(actor, 'orden.completada', o.id, { numero: o.numero, cantidad: o.cantidadActivo, comision: o.comision, montoFiat: o.montoFiat, moneda: o.moneda })
+  const recibido = r.comisionDelVendedor ? o.cantidadActivo : Dec.restar(o.cantidadActivo, o.comision)
+  sistema(o, `El vendedor liberó ${recibido} ${o.activo}. Orden completada.`)
+  registrar(actor, 'orden.completada', o.id, { numero: o.numero, cantidad: o.cantidadActivo, comision: o.comision, comisionDelVendedor: r.comisionDelVendedor, montoFiat: o.montoFiat, moneda: o.moneda })
   usuarios.recalcularReputacion(o.compradorId)
   usuarios.recalcularReputacion(o.vendedorId)
   reportarAml(o)
@@ -131,7 +144,7 @@ function reportarAml(o: Orden): void {
 
 // ── Crear ────────────────────────────────────────────────────────────────────
 
-export function crear(tomador: Usuario, e: { anuncioId?: unknown; montoFiat?: unknown; cantidadActivo?: unknown; metodoId?: unknown; metodoTipo?: unknown }): Orden {
+export function crear(tomador: Usuario, e: { anuncioId?: unknown; montoFiat?: unknown; cantidadActivo?: unknown; metodoId?: unknown; metodoTipo?: unknown; metodoBanco?: unknown }): Orden {
   usuarios.exigirOperar(tomador)
   const a = anuncios.exigir(String(e.anuncioId || ''))
   if (a.usuarioId === tomador.id) throw conflicto('No puede tomar su propio anuncio', 'anuncio-propio')
@@ -151,7 +164,8 @@ export function crear(tomador: Usuario, e: { anuncioId?: unknown; montoFiat?: un
   let montoFiat: string, cantidadActivo: string
   if (e.montoFiat !== undefined && e.montoFiat !== null && e.montoFiat !== '') {
     if (!Dec.esValido(e.montoFiat) || !Dec.esPositivo(e.montoFiat as string)) throw malaPeticion('El monto tiene que ser un número mayor que cero', 'monto')
-    montoFiat = Dec.redondear(e.montoFiat as string, decMon)
+    montoFiat = Dec.n(e.montoFiat as string)
+    if (Dec.decimalesDe(montoFiat) > decMon) throw malaPeticion(`${a.moneda} admite ${decMon} decimales`, 'monto')
     cantidadActivo = Dec.truncar(Dec.dividir(montoFiat, precio), decAct)
   } else if (e.cantidadActivo !== undefined && e.cantidadActivo !== null && e.cantidadActivo !== '') {
     cantidadActivo = billetera.cantidadValida(e.cantidadActivo, a.activo)
@@ -179,13 +193,16 @@ export function crear(tomador: Usuario, e: { anuncioId?: unknown; montoFiat?: un
   let metodo
   if (a.lado === 'venta') {
     // Al público no salen los ids de los métodos del anunciante (son suyos),
-    // así que el comprador elige por TIPO; el id se acepta por si lo tiene.
+    // así que el comprador elige por TIPO y, si hay varios del mismo tipo, por
+    // banco; el id se acepta por si lo tiene.
     const tipo = e.metodoTipo ? String(e.metodoTipo).toLowerCase() : null
-    const enAnuncio = e.metodoId
-      ? a.metodos.find((m) => m.id === String(e.metodoId))
+    const banco = e.metodoBanco ? String(e.metodoBanco) : null
+    const candidatos = e.metodoId
+      ? a.metodos.filter((m) => m.id === String(e.metodoId))
       : tipo
-        ? a.metodos.find((m) => m.tipo === tipo)
-        : (a.metodos.length === 1 ? a.metodos[0] : undefined)
+        ? a.metodos.filter((m) => m.tipo === tipo && (!banco || m.banco === banco))
+        : (a.metodos.length === 1 ? a.metodos : [])
+    const enAnuncio = candidatos[0]
     if (!enAnuncio || !enAnuncio.id) throw malaPeticion('Elija uno de los métodos de pago del anuncio', 'metodo')
     const real = metodosPago.porId(anunciante.id, enAnuncio.id)
     if (!real || !real.activo) throw conflicto('El anunciante desactivó ese método de pago; elija otro', 'metodo')
@@ -207,7 +224,7 @@ export function crear(tomador: Usuario, e: { anuncioId?: unknown; montoFiat?: un
     metodoPago: metodo, estado: 'pendiente-pago', estadoAntesApelacion: null,
     ventanaPagoMin: a.ventanaPagoMin, venceEn: new Date(ahora.getTime() + a.ventanaPagoMin * 60000).toISOString(),
     referenciaPago: null, creadaEn: ahora.toISOString(), pagadaEn: null, completadaEn: null, canceladaEn: null,
-    canceladaPor: null, motivoCancelacion: null, apelacion: null,
+    canceladaPor: null, motivoCancelacion: null, apelacion: null, apelacionesPrevias: [], imagenesChat: 0,
     calificaciones: { delComprador: null, delVendedor: null }, mensajes: [], enCustodia: false,
     vistaPor: { [tomador.id]: ahora.toISOString() },
   }
@@ -241,6 +258,7 @@ export function crear(tomador: Usuario, e: { anuncioId?: unknown; montoFiat?: un
 export function marcarPagado(u: Usuario, idOrden: string, referencia: unknown): Orden {
   const o = exigir(idOrden)
   if (exigirParte(o, u) !== 'comprador') throw sinPermiso('Solo el comprador puede marcar la orden como pagada', 'estado-invalido')
+  usuarios.exigirNoCongelado(u)
   if (expirarSiCorresponde(o)) { store.guardar(); throw conflicto('La orden venció y se canceló', 'estado-invalido') }
   if (o.estado !== 'pendiente-pago') throw conflicto('La orden no está pendiente de pago', 'estado-invalido')
   o.estado = 'pagado'
@@ -255,10 +273,22 @@ export function marcarPagado(u: Usuario, idOrden: string, referencia: unknown): 
 export async function liberar(u: Usuario, idOrden: string, contrasena: unknown): Promise<Orden> {
   const o = exigir(idOrden)
   if (exigirParte(o, u) !== 'vendedor') throw sinPermiso('Solo el vendedor puede liberar el activo', 'estado-invalido')
+  usuarios.exigirNoCongelado(u)
   if (expirarSiCorresponde(o)) { store.guardar(); throw conflicto('La orden venció y se canceló', 'estado-invalido') }
-  if (o.estado !== 'pagado' && o.estado !== 'pendiente-pago') throw conflicto('La orden no se puede liberar en su estado actual', 'estado-invalido')
+  if (o.estado !== 'pagado' && o.estado !== 'pendiente-pago' && o.estado !== 'apelacion') throw conflicto('La orden no se puede liberar en su estado actual', 'estado-invalido')
   if (!usuarios.contrasenaValida(u, contrasena)) throw sinPermiso('Contraseña incorrecta', 'contrasena')
+  if (o.estado === 'apelacion' && o.apelacion) {
+    // El vendedor zanja la apelación entregando: es la resolución más limpia.
+    o.apelacion.estado = 'resuelta'
+    o.apelacion.resolucion = 'liberar'
+    o.apelacion.resueltaPor = u.id
+    o.apelacion.resueltaEn = new Date().toISOString()
+    o.apelacion.nota = 'El vendedor liberó durante la apelación'
+    o.apelacionesPrevias.push(o.apelacion)
+    o.apelacion = null
+  }
   cerrarCompletada(o, u.id)
+  o.estadoAntesApelacion = null
   await store.guardarYa()
   return o
 }
@@ -267,6 +297,7 @@ export function cancelar(u: Usuario, idOrden: string, motivo: unknown): Orden {
   const o = exigir(idOrden)
   const rol = exigirParte(o, u)
   if (rol !== 'comprador') throw sinPermiso('Solo el comprador puede cancelar; si hay un problema, abra una apelación', 'estado-invalido')
+  usuarios.exigirNoCongelado(u)
   if (o.estado !== 'pendiente-pago') throw conflicto('Una orden marcada como pagada ya no se cancela; abra una apelación', 'estado-invalido')
   cerrarCancelada(o, 'comprador', String(motivo || 'cancelada por el comprador').trim().slice(0, 300))
   store.guardar()
@@ -276,19 +307,37 @@ export function cancelar(u: Usuario, idOrden: string, motivo: unknown): Orden {
 export function apelar(u: Usuario, idOrden: string, e: { motivo?: unknown; detalle?: unknown }): Orden {
   const o = exigir(idOrden)
   const rol = exigirParte(o, u)
-  if (expirarSiCorresponde(o)) { store.guardar(); throw conflicto('La orden venció y se canceló', 'estado-invalido') }
+  usuarios.exigirNoCongelado(u)
+  if (expirarSiCorresponde(o)) store.guardar()
   if (o.estado === 'apelacion') throw conflicto('La orden ya está en apelación', 'estado-invalido')
-  if (o.estado !== 'pagado' && !(o.estado === 'pendiente-pago' && rol === 'comprador')) {
-    throw conflicto('Solo se apela una orden pagada (o pendiente, si usted es el comprador y ya pagó)', 'estado-invalido')
+  if (o.apelacionesPrevias.some((a) => a.abiertaPor === u.id)) {
+    throw conflicto('Ya abrió una apelación en esta orden; si la retiró y sigue el problema, escriba a soporte', 'estado-invalido')
+  }
+  // Una orden que venció y se canceló sola todavía se puede apelar un día: el
+  // comprador que pagó tarde tiene que tener a quién recurrir. La custodia se
+  // vuelve a tomar del vendedor; si ya no la tiene, lo resuelve soporte.
+  const vencidaReciente = o.estado === 'cancelada' && o.canceladaPor === 'sistema' && rol === 'comprador'
+    && o.canceladaEn && Date.now() - Date.parse(o.canceladaEn) < HORAS_APELAR_TRAS_VENCER * 3600000
+  if (o.estado !== 'pagado' && !(o.estado === 'pendiente-pago' && rol === 'comprador') && !vencidaReciente) {
+    throw conflicto('Solo se apela una orden pagada (o pendiente, si usted es el comprador y ya pagó; o vencida hace menos de 24 h)', 'estado-invalido')
   }
   const motivo = String(e.motivo || '')
   if (!MOTIVOS_APELACION.includes(motivo)) throw malaPeticion(`El motivo tiene que ser uno de: ${MOTIVOS_APELACION.join(', ')}`, 'motivo')
   const detalle = String(e.detalle || '').trim().slice(0, 2000)
   if (detalle.length < 10) throw malaPeticion('Explique qué pasó (al menos 10 caracteres)', 'detalle')
+  if (vencidaReciente) {
+    try {
+      billetera.congelar(o.vendedorId, o.activo, o.cantidadActivo, 'orden-congelar', o.id, `En custodia de nuevo por apelación de la orden ${o.numero}`)
+    } catch (err: any) {
+      if (err?.codigo === 'sin-saldo') throw conflicto('El vendedor ya no tiene el activo disponible; escriba a soporte con su comprobante', 'sin-saldo')
+      throw err
+    }
+    o.enCustodia = true
+  }
   o.estadoAntesApelacion = o.estado
   o.estado = 'apelacion'
   o.apelacion = { abiertaPor: u.id, motivo, detalle, abiertaEn: new Date().toISOString(), estado: 'abierta', resolucion: null, resueltaPor: null, resueltaEn: null, nota: null }
-  sistema(o, `${u.apodo} abrió una apelación (${motivo}). Un operador de OrdenExchange revisará el chat y los comprobantes. El activo sigue en custodia; ninguna de las partes puede cancelar ni liberar hasta que se resuelva.`)
+  sistema(o, `${u.apodo} abrió una apelación (${motivo}). Un operador de OrdenExchange revisará el chat y los comprobantes. El activo está en custodia; ninguna de las partes puede cancelar hasta que se resuelva (el vendedor sí puede liberar).`)
   registrar(u.id, 'orden.apelada', o.id, { numero: o.numero, motivo })
   store.guardar()
   return o
@@ -301,15 +350,25 @@ export function retirarApelacion(u: Usuario, idOrden: string): Orden {
   if (o.apelacion.abiertaPor !== u.id) throw sinPermiso('Solo quien abrió la apelación puede retirarla', 'estado-invalido')
   o.apelacion.estado = 'retirada'
   o.apelacion.resueltaEn = new Date().toISOString()
-  o.estado = o.estadoAntesApelacion ?? 'pagado'
+  o.apelacionesPrevias.push(o.apelacion)
+  o.apelacion = null
+  const previo = o.estadoAntesApelacion ?? 'pagado'
   o.estadoAntesApelacion = null
-  // Si vuelve a «pendiente de pago» y la ventana ya pasó, se le dan 15 minutos
-  // para que no se cancele en el mismo instante en que retira la apelación.
-  if (o.estado === 'pendiente-pago' && Date.parse(o.venceEn) < Date.now() + 60000) {
-    o.venceEn = new Date(Date.now() + 15 * 60000).toISOString()
+  if (previo === 'cancelada') {
+    // Vuelve a cancelada: la custodia que se retomó regresa al vendedor.
+    if (o.enCustodia) {
+      billetera.descongelar(o.vendedorId, o.activo, o.cantidadActivo, 'orden-descongelar', o.id, `Apelación retirada en la orden ${o.numero}`)
+      o.enCustodia = false
+    }
+    o.estado = 'cancelada'
+  } else {
+    o.estado = previo
+    // No se regala tiempo: si la ventana ya pasó mientras apelaba, la orden vence.
+    expirarSiCorresponde(o)
   }
-  sistema(o, `${u.apodo} retiró la apelación. La orden vuelve a «${o.estado}».`)
+  sistema(o, `${u.apodo} retiró la apelación. La orden queda en «${o.estado}».`)
   registrar(u.id, 'orden.apelacion-retirada', o.id, { numero: o.numero })
+  usuarios.recalcularReputacion(u.id)
   store.guardar()
   return o
 }
@@ -328,13 +387,24 @@ export async function resolver(idOrden: string, resolucion: unknown, nota: unkno
   o.apelacion.nota = texto
   sistema(o, `Un operador resolvió la apelación: ${resolucion === 'liberar' ? 'el activo se libera al comprador' : 'el activo vuelve al vendedor'}. Nota: ${texto}`)
   registrar(actor, 'orden.apelacion-resuelta', o.id, { numero: o.numero, resolucion, nota: texto })
+  const veniaDeCancelada = o.estadoAntesApelacion === 'cancelada'
   if (resolucion === 'liberar') {
     cerrarCompletada(o, actor)
     usuarios.perdioApelacion(o.vendedorId)
+  } else if (veniaDeCancelada) {
+    if (o.enCustodia) {
+      billetera.descongelar(o.vendedorId, o.activo, o.cantidadActivo, 'orden-descongelar', o.id, `Apelación resuelta a favor del vendedor en la orden ${o.numero}`)
+      o.enCustodia = false
+    }
+    o.estado = 'cancelada'
+    usuarios.perdioApelacion(o.compradorId)
   } else {
     cerrarCancelada(o, 'operador', `apelación resuelta a favor del vendedor: ${texto}`)
     usuarios.perdioApelacion(o.compradorId)
   }
+  o.apelacionesPrevias.push(o.apelacion)
+  // La apelación resuelta se conserva a la vista en `apelacion` para el frontend.
+  o.estadoAntesApelacion = null
   await store.guardarYa()
   return o
 }
@@ -351,29 +421,51 @@ export function cancelarPorOperador(idOrden: string, nota: unknown, actor: strin
 
 // ── Chat ─────────────────────────────────────────────────────────────────────
 
+function chatAbierto(o: Orden): boolean {
+  if (esAbierta(o)) return true
+  const cierre = o.completadaEn ?? o.canceladaEn
+  return Boolean(cierre && Date.now() - Date.parse(cierre) < HORAS_CHAT_TRAS_CIERRE * 3600000)
+}
+
 function validarMensaje(e: { texto?: unknown; imagen?: unknown }): { texto: string; imagen: string | null } {
   const texto = String(e.texto ?? '').trim().slice(0, MAX_TEXTO)
   let imagen: string | null = null
   if (e.imagen) {
     const img = String(e.imagen)
-    if (!/^data:image\/(png|jpe?g|webp|gif);base64,[A-Za-z0-9+/=]+$/.test(img)) throw malaPeticion('La imagen tiene que ser un data URL de PNG, JPEG, WebP o GIF', 'imagen')
     if (img.length > MAX_IMAGEN) throw new Falla(413, 'La imagen pesa demasiado (máximo 1,5 MB)', 'imagen')
+    if (!/^data:image\/(png|jpe?g|webp|gif);base64,[A-Za-z0-9+/=]+$/.test(img)) throw malaPeticion('La imagen tiene que ser un data URL de PNG, JPEG, WebP o GIF', 'imagen')
     imagen = img
   }
   if (!texto && !imagen) throw malaPeticion('Escriba un mensaje o adjunte una imagen', 'mensaje')
   return { texto, imagen }
 }
 
-export function enviarMensaje(u: Usuario, idOrden: string, e: { texto?: unknown; imagen?: unknown }): Mensaje {
+/** URL firmada de una imagen del chat: el navegador la pone en <img src> sin cabeceras. */
+export function urlImagen(ordenId: string, imagenId: string): string {
+  return `/api/ordenes/${ordenId}/imagenes/${imagenId}?f=${firmaCorta(`${ordenId}:${imagenId}`)}`
+}
+
+export const firmaImagenValida = (ordenId: string, imagenId: string, f: string): boolean =>
+  Boolean(f) && f === firmaCorta(`${ordenId}:${imagenId}`)
+
+function conUrl(o: Orden, m: Mensaje): Mensaje {
+  return m.imagen ? { ...m, imagen: urlImagen(o.id, m.imagen) } : m
+}
+
+export async function enviarMensaje(u: Usuario, idOrden: string, e: { texto?: unknown; imagen?: unknown }): Promise<Mensaje> {
   const o = exigir(idOrden)
   exigirParte(o, u)
+  if (!chatAbierto(o)) throw conflicto('El chat de esta orden ya está cerrado', 'estado-invalido')
   if (o.mensajes.length >= MAX_MENSAJES) throw conflicto('El chat de esta orden llegó a su límite', 'limite')
   const { texto, imagen } = validarMensaje(e)
-  const m: Mensaje = { id: id('msg'), de: u.id, texto, imagen, en: new Date().toISOString() }
+  if (imagen && o.imagenesChat >= MAX_IMAGENES_POR_ORDEN) throw conflicto(`Solo se pueden adjuntar ${MAX_IMAGENES_POR_ORDEN} imágenes por orden`, 'limite')
+  const idImagen = imagen ? await imagenes.guardar(imagen) : null
+  const m: Mensaje = { id: id('msg'), de: u.id, texto, imagen: idImagen, en: new Date().toISOString() }
   o.mensajes.push(m)
+  if (idImagen) o.imagenesChat += 1
   o.vistaPor[u.id] = m.en
   store.guardar()
-  return m
+  return conUrl(o, m)
 }
 
 export function mensajeOperador(idOrden: string, texto: unknown, operadorId: string): Mensaje {
@@ -394,7 +486,13 @@ export function mensajesDesde(u: Usuario, idOrden: string, desdeId: string | und
   const i = desdeId ? o.mensajes.findIndex((m) => m.id === desdeId) : -1
   const nuevos = i >= 0 ? o.mensajes.slice(i + 1) : o.mensajes
   o.vistaPor[u.id] = new Date().toISOString()
-  return { mensajes: nuevos, orden: o }
+  return { mensajes: nuevos.map((m) => conUrl(o, m)), orden: o }
+}
+
+export async function imagenDe(idOrden: string, idImagen: string): Promise<string | null> {
+  const o = porId(idOrden)
+  if (!o || !o.mensajes.some((m) => m.imagen === idImagen)) return null
+  return imagenes.leer(idImagen)
 }
 
 // ── Calificar ────────────────────────────────────────────────────────────────
@@ -420,10 +518,11 @@ function noLeidosDe(o: Orden, usuarioId: string): number {
   return o.mensajes.filter((m) => m.de !== usuarioId && (!vista || m.en > vista)).length
 }
 
-function ocultarCampos(o: Orden, consultanteId: string | null): Orden['metodoPago'] {
-  if (esAbierta(o) || o.vendedorId === consultanteId) return o.metodoPago
-  const { campos: _c, ...resto } = o.metodoPago
-  return { ...resto, campos: {} }
+/** Los datos bancarios solo mientras la orden está abierta, o para el vendedor (son suyos). */
+function metodoParaVista(o: Orden, consultanteId: string | null): Omit<Orden['metodoPago'], 'id'> {
+  const { id: _id, ...m } = o.metodoPago
+  if (esAbierta(o) || o.vendedorId === consultanteId) return m
+  return { ...m, campos: {} }
 }
 
 export function resumen(o: Orden, consultante: Usuario) {
@@ -431,30 +530,45 @@ export function resumen(o: Orden, consultante: Usuario) {
   const miRol = rolDe(o, consultante.id)!
   const contraparteId = miRol === 'comprador' ? o.vendedorId : o.compradorId
   const contraparte = usuarios.porId(contraparteId)
-  const { mensajes: _m, ...sinMensajes } = o
+  const { mensajes: _m, vistaPor: _v, ...sinMensajes } = o
   return {
     ...sinMensajes,
-    metodoPago: ocultarCampos(o, consultante.id),
+    metodoPago: metodoParaVista(o, consultante.id),
     contraparte: contraparte ? usuarios.publico(contraparte) : null,
     miRol,
     noLeidos: noLeidosDe(o, consultante.id),
     segundosRestantes: o.estado === 'pendiente-pago' ? Math.max(0, Math.floor((Date.parse(o.venceEn) - Date.now()) / 1000)) : null,
+    chatAbierto: chatAbierto(o),
   }
 }
 
-export function detalle(o: Orden, consultante: Usuario) {
-  const r = resumen(o, consultante)
-  const miRol = r.miRol
-  const acciones = {
-    pagar: miRol === 'comprador' && o.estado === 'pendiente-pago',
-    liberar: miRol === 'vendedor' && (o.estado === 'pagado' || o.estado === 'pendiente-pago'),
-    cancelar: miRol === 'comprador' && o.estado === 'pendiente-pago',
-    apelar: (o.estado === 'pagado') || (o.estado === 'pendiente-pago' && miRol === 'comprador'),
+export function acciones(o: Orden, consultante: Usuario) {
+  const miRol = rolDe(o, consultante.id)
+  const congelado = consultante.congelado
+  const yaApelo = o.apelacionesPrevias.some((a) => a.abiertaPor === consultante.id)
+  const vencidaReciente = o.estado === 'cancelada' && o.canceladaPor === 'sistema' && miRol === 'comprador'
+    && Boolean(o.canceladaEn && Date.now() - Date.parse(o.canceladaEn) < HORAS_APELAR_TRAS_VENCER * 3600000)
+  return {
+    pagar: !congelado && miRol === 'comprador' && o.estado === 'pendiente-pago',
+    liberar: !congelado && miRol === 'vendedor' && (o.estado === 'pagado' || o.estado === 'pendiente-pago' || o.estado === 'apelacion'),
+    cancelar: !congelado && miRol === 'comprador' && o.estado === 'pendiente-pago',
+    apelar: !congelado && !yaApelo && ((o.estado === 'pagado') || (o.estado === 'pendiente-pago' && miRol === 'comprador') || vencidaReciente),
     retirarApelacion: o.estado === 'apelacion' && o.apelacion?.abiertaPor === consultante.id,
     calificar: o.estado === 'completada' && !o.calificaciones[miRol === 'comprador' ? 'delComprador' : 'delVendedor'],
-    chatear: true,
+    chatear: chatAbierto(o),
   }
-  return { ...r, mensajes: o.mensajes, acciones }
+}
+
+/** La orden entera para su dueño: con mensajes y acciones. */
+export function detalle(o: Orden, consultante: Usuario) {
+  const r = resumen(o, consultante)
+  return { ...r, mensajes: o.mensajes.map((m) => conUrl(o, m)), acciones: acciones(o, consultante) }
+}
+
+/** Lo mismo sin los mensajes: para el sondeo del chat, que ya trae los nuevos aparte. */
+export function detalleLigero(o: Orden, consultante: Usuario) {
+  const r = resumen(o, consultante)
+  return { ...r, acciones: acciones(o, consultante), totalMensajes: o.mensajes.length }
 }
 
 export function ver(u: Usuario, idOrden: string) {
@@ -481,7 +595,7 @@ export function listar(u: Usuario, f: { estado?: string; rol?: string; pagina?: 
   }).reverse()
   const desde = (pagina - 1) * porPagina
   return {
-    ordenes: lista.slice(desde, desde + porPagina).map((o) => resumen(o, u)),
+    ordenes: lista.slice(desde, desde + porPagina).map((o) => resumen(exigir(o.id), u)),
     total: lista.length,
     abiertas: abiertasDe(u.id),
   }
@@ -526,7 +640,11 @@ export function detallePanel(idOrden: string) {
   expirarSiCorresponde(o)
   const comprador = usuarios.porId(o.compradorId)
   const vendedor = usuarios.porId(o.vendedorId)
-  return { orden: o, comprador: comprador ? usuarios.publico(comprador) : null, vendedor: vendedor ? usuarios.publico(vendedor) : null }
+  return {
+    orden: { ...o, mensajes: o.mensajes.map((m) => conUrl(o, m)) },
+    comprador: comprador ? usuarios.publico(comprador) : null,
+    vendedor: vendedor ? usuarios.publico(vendedor) : null,
+  }
 }
 
 export function ordenesDe(usuarioId: string) {

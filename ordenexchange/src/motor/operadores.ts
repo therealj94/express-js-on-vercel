@@ -22,7 +22,8 @@ export const PERMISOS: Record<string, RolOperador[]> = {
   'retiros.decidir': ['admin', 'soporte'],
   'usuarios.congelar': ['admin', 'soporte'],
   'saldos.ajustar': ['admin'],
-  'precios.editar': ['admin', 'soporte'],
+  // Los precios mueven todos los anuncios flotantes del mercado: solo admin.
+  'precios.editar': ['admin'],
   'configuracion.editar': ['admin'],
   'operadores.gestionar': ['admin'],
 }
@@ -61,24 +62,32 @@ export function asegurarAdministrador(): { creado: boolean; email: string; contr
   return { creado: true, email, contrasena: fijada ? null : contrasena }
 }
 
+/**
+ * Fallos por correo Y origen: si se contara solo por correo, cualquiera
+ * bloquearía al administrador cinco intentos y el dueño se quedaría fuera.
+ */
 const intentos = new Map<string, { fallos: number; hasta: number }>()
 
-export function entrar(email: unknown, contrasena: unknown): { token: string; operador: ReturnType<typeof sinHash> } {
+export function entrar(email: unknown, contrasena: unknown, ip = ''): { token: string; operador: ReturnType<typeof sinHash> } {
   const e = String(email || '').toLowerCase().trim()
-  const bloqueo = intentos.get(e)
+  const llave = `${e}|${ip}`
+  const bloqueo = intentos.get(llave)
   if (bloqueo && bloqueo.hasta > Date.now()) {
     throw sinPermiso('Demasiados intentos fallidos. Espere 15 minutos.', 'bloqueado')
   }
   const operador = store.todo().operadores.find((o) => o.email === e)
-  if (!operador || !operador.activo || !contrasenaCoincide(String(contrasena || ''), operador.hashContrasena)) {
-    const reg = intentos.get(e) ?? { fallos: 0, hasta: 0 }
+  // Se compara siempre, exista o no el operador: el tiempo no debe delatarlo.
+  const ok = contrasenaCoincide(String(contrasena || ''), operador?.hashContrasena)
+  if (!operador || !operador.activo || !ok) {
+    const reg = intentos.get(llave) ?? { fallos: 0, hasta: 0 }
     reg.fallos += 1
     if (reg.fallos >= 5) { reg.hasta = Date.now() + 15 * 60000; reg.fallos = 0 }
-    intentos.set(e, reg)
+    intentos.set(llave, reg)
     registrar('anonimo', 'panel.entrada-fallida', e, {})
     throw sinPermiso('Credenciales inválidas', 'credenciales')
   }
-  intentos.delete(e)
+  intentos.delete(llave)
+  limpiarSesiones()
   const token = tokenSesion()
   const ahora = new Date()
   store.todo().sesionesOperador.push({
@@ -115,11 +124,15 @@ export function limpiarSesiones(): void {
   d.sesionesOperador = d.sesionesOperador.filter((s) => Date.parse(s.expiraEn) > ahora)
 }
 
-export function cambiarContrasena(operador: Operador, actual: unknown, nueva: unknown): void {
+export function cambiarContrasena(operador: Operador, actual: unknown, nueva: unknown, tokenActual = ''): void {
   if (!contrasenaCoincide(String(actual || ''), operador.hashContrasena)) throw sinPermiso('La contraseña actual no coincide', 'contrasena')
   if (typeof nueva !== 'string' || nueva.length < 10) throw malaPeticion('La contraseña nueva debe tener al menos 10 caracteres')
   operador.hashContrasena = hashContrasena(nueva)
   operador.debeCambiarContrasena = false
+  // Caen las demás sesiones del operador; la que hizo el cambio sigue.
+  const h = hashToken(tokenActual)
+  const d = store.todo()
+  d.sesionesOperador = d.sesionesOperador.filter((s) => s.operadorId !== operador.id || s.token === h)
   registrar(operador.email, 'operador.contrasena', operador.id, {})
   store.guardar()
 }

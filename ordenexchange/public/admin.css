@@ -226,8 +226,8 @@ table.tabla { width: 100%; border-collapse: collapse; font-size: 13px; }
 .tabla tr.clic { cursor: pointer; }
 .tabla td.envolver { white-space: normal; min-width: 200px; }
 .tabla .num, .tabla .mono { font-variant-numeric: tabular-nums; }
-.tabla td.acciones { text-align: right; }
-.tabla td.acciones .boton + .boton { margin-left: 4px; }
+.tabla td.acciones { text-align: right; white-space: normal; min-width: 170px; }
+.tabla td.acciones .boton { margin: 1px 0 1px 4px; }
 .tabla tr.marcada td { background: rgba(240, 119, 107, .06); }
 .vacio { padding: 26px 16px; text-align: center; color: var(--ash); font-size: 13px; }
 .paginacion { display: flex; align-items: center; gap: 10px; margin-top: 10px; font-size: 12.5px; color: var(--ash); }
@@ -351,7 +351,7 @@ details.plegable[open] > summary::before { content: '▾ '; }
 .secreto { font-family: var(--mono); font-size: 18px; letter-spacing: .04em; background: var(--fondo); border: 1px dashed var(--oro-dp); border-radius: var(--r); padding: 10px 12px; display: flex; align-items: center; justify-content: space-between; gap: 10px; overflow-wrap: anywhere; }
 
 /* ── Diálogos ────────────────────────────────────────────── */
-.dialogo { border: 1px solid var(--linea2); border-radius: 12px; background: var(--panel); color: var(--crema); padding: 0; width: min(92vw, 460px); box-shadow: var(--sombra); }
+.dialogo { margin: auto; border: 1px solid var(--linea2); border-radius: 12px; background: var(--panel); color: var(--crema); padding: 0; width: min(92vw, 460px); box-shadow: var(--sombra); }
 .dialogo::backdrop { background: rgba(3, 4, 7, .7); backdrop-filter: blur(3px); }
 .dialogo form { padding: 18px 20px 16px; }
 .dialogo h3 { font-size: 15px; font-weight: 600; margin-bottom: 6px; }
@@ -403,6 +403,7 @@ details.plegable[open] > summary::before { content: '▾ '; }
   .linea-tiempo li { grid-template-columns: 1fr; gap: 0; }
 }
 @media (max-width: 480px) {
+  .vivo span { display: none; }
   .rejilla.c4 { grid-template-columns: 1fr 1fr; }
   .cabecera-detalle h2 { font-size: 16px; }
   .avisos { right: 8px; left: 8px; max-width: none; }

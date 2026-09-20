@@ -9,12 +9,19 @@ const CLAVE_SESION = 'ordenexchange.panel';
 const CLAVE_IDIOMA = 'ordenexchange.panel.idioma';
 const BASE = '/api/panel';
 const SONDEO_MS = 20000;
+/** La orden abierta se vuelve a pedir cada 5 s: API.md no da al panel mensajes incrementales. */
+const SONDEO_ORDEN_MS = 5000;
 const ESPERA_MS = 25000;
+/** El servidor exige notas/motivos de al menos 5 caracteres y contraseñas de operador de 10 (FALTA EN API). */
+const MIN_NOTA = 5;
+const MIN_CONTRASENA = 10;
 const ACTIVOS = ['ORIGEN', 'AUKA', 'AGKA'];
+const ABIERTOS = ['pendiente-pago', 'pagado', 'apelacion'];
 /** 1 ORIGEN = 1/55 g de oro; 1 onza troy = 31.1034768 g. */
 const ONZAS_ORIGEN = (1 / 55) / 31.1034768;
 const RE_IMAGEN = /^data:image\/(png|jpe?g|gif|webp);base64,[a-z0-9+/=\s]+$/i;
 const RE_HASH = /^0x[0-9a-f]{64}$/i;
+const RE_DIRECCION = /^0x[0-9a-f]{40}$/i;
 
 // ── Estado único ─────────────────────────────────────────────
 const S = {
@@ -36,6 +43,9 @@ const S = {
   refrescar: {},
   ordenActual: null,
   temporizador: null,
+  sondeoOrden: null,
+  /** Lista de agentes aprobados/suspendidos que GET /agentes devuelve además de las solicitudes. */
+  agentesLista: null,
   menuAbierto: false,
   shellIdioma: null,
 };
@@ -50,12 +60,12 @@ const TEXTOS = {
   'entrar.intro': ['Acceso restringido a operadores de OrdenExchange.', 'Restricted to OrdenExchange operators.'],
   'entrar.entrando': ['Entrando…', 'Signing in…'],
   'contrasena.titulo': ['Cambiar contraseña', 'Change password'],
-  'contrasena.obligatoria': ['Tu contraseña es temporal. Elige una nueva para continuar.', 'Your password is temporary. Choose a new one to continue.'],
+  'contrasena.obligatoria': ['La contraseña es temporal. Elige una nueva para continuar.', 'Your password is temporary. Choose a new one to continue.'],
   'contrasena.actual': ['Contraseña actual', 'Current password'],
-  'contrasena.nueva': ['Contraseña nueva (mínimo 8 caracteres)', 'New password (at least 8 characters)'],
+  'contrasena.nueva': ['Contraseña nueva (mínimo 10 caracteres)', 'New password (at least 10 characters)'],
   'contrasena.repetir': ['Repetir contraseña nueva', 'Repeat new password'],
   'contrasena.noCoincide': ['Las contraseñas no coinciden.', 'Passwords do not match.'],
-  'contrasena.corta': ['Mínimo 8 caracteres.', 'At least 8 characters.'],
+  'contrasena.corta': ['Mínimo 10 caracteres.', 'At least 10 characters.'],
   'contrasena.cambiada': ['Contraseña actualizada.', 'Password updated.'],
   'guardar': ['Guardar', 'Save'],
   'cancelar': ['Cancelar', 'Cancel'],
@@ -70,11 +80,12 @@ const TEXTOS = {
   'de.total': ['{n} en total', '{n} in total'],
   'anterior': ['Anterior', 'Previous'],
   'siguiente': ['Siguiente', 'Next'],
-  'soloLectura': ['Solo lectura: el rol de auditor no permite cambios.', 'Read only: the auditor role cannot make changes.'],
-  'sinPermiso': ['Tu rol no permite esta acción.', 'Your role cannot perform this action.'],
+  'soloLectura': ['Solo lectura: este rol no permite cambios aquí.', 'Read only: this role cannot make changes here.'],
+  'sinPermiso': ['Este rol no permite esa acción.', 'This role cannot perform that action.'],
   'nota': ['Nota', 'Note'],
   'motivo': ['Motivo', 'Reason'],
   'obligatorio': ['Este campo es obligatorio.', 'This field is required.'],
+  'minimo': ['Mínimo {n} caracteres.', 'At least {n} characters.'],
   'error.red': ['No se pudo conectar con el servidor.', 'Could not reach the server.'],
   'error.tiempo': ['El servidor tardó demasiado en responder.', 'The server took too long to respond.'],
   'error.generico': ['Algo salió mal.', 'Something went wrong.'],
@@ -87,6 +98,7 @@ const TEXTOS = {
   'sesion.vencida': ['La sesión venció. Vuelve a entrar.', 'Session expired. Sign in again.'],
   'nueva.apelacion': ['Nueva apelación en la cola.', 'New appeal in the queue.'],
   'nuevo.retiro': ['Nuevo retiro pendiente.', 'New pending withdrawal.'],
+  'nueva.solicitud': ['Nueva solicitud de agente.', 'New agent request.'],
   'v.resumen': ['Resumen', 'Overview'],
   'v.apelaciones': ['Apelaciones', 'Appeals'],
   'v.ordenes': ['Órdenes', 'Orders'],
@@ -108,6 +120,7 @@ const TEXTOS = {
   'eo.completada': ['Completada', 'Completed'],
   'eo.cancelada': ['Cancelada', 'Cancelled'],
   'eo.todas': ['Todas', 'All'],
+  'eo.abiertas': ['Abiertas', 'Open'],
   'ma.no-recibi-pago': ['No recibí el pago', 'Payment not received'],
   'ma.no-liberan': ['No liberan el activo', 'Asset not released'],
   'ma.monto-incorrecto': ['Monto incorrecto', 'Wrong amount'],
@@ -133,6 +146,9 @@ const TEXTOS = {
   'r.congelados': ['Congelados', 'Frozen'],
   'r.custodia': ['Custodia (bóveda)', 'Custody (vault)'],
   'r.custodia.nota': ['Activo retenido por órdenes abiertas, retiros pendientes y garantías de agente.', 'Assets held for open orders, pending withdrawals and agent bonds.'],
+  'r.tesoreria': ['Tesorería (comisiones cobradas)', 'Treasury (collected fees)'],
+  'r.anunciosActivos': ['Anuncios activos', 'Active ads'],
+  'r.sinGenesis': ['Genesis ID no está configurado: el tamiz de direcciones de los retiros no está disponible.', 'Genesis ID is not configured: withdrawal address screening is unavailable.'],
   'r.depositos24h': ['Depósitos 24 h', 'Deposits 24h'],
   'r.precios': ['Precios de referencia', 'Reference prices'],
   'r.oro': ['Oro USD/oz', 'Gold USD/oz'],
@@ -168,6 +184,10 @@ const TEXTOS = {
   'o.operacion': ['Operación', 'Trade'],
   'o.partes': ['Partes', 'Parties'],
   'o.metodo': ['Método de pago del vendedor', 'Seller payment method'],
+  'o.metodoTipo': ['Método', 'Method'],
+  'u.apelacionesPerdidas': ['Apelaciones perdidas', 'Appeals lost'],
+  'u.tLiberacion': ['Tiempo medio de liberación', 'Avg. release time'],
+  'u.tPago': ['Tiempo medio de pago', 'Avg. payment time'],
   'o.banco': ['Banco', 'Bank'],
   'o.titular': ['Titular', 'Account holder'],
   'o.camposOcultos': ['Los datos de la cuenta no vienen en esta vista.', 'Account details are not included in this view.'],
@@ -251,7 +271,7 @@ const TEXTOS = {
   'ag.buscar': ['Buscar agente por apodo o correo', 'Search agent by nickname or email'],
   'ag.suspender': ['Suspender', 'Suspend'],
   'ag.reactivar': ['Reactivar', 'Reactivate'],
-  'ag.suspender.desc': ['El agente pierde la insignia y no podrá operar como agente hasta que lo reactives.', 'The agent loses the badge until reactivated.'],
+  'ag.suspender.desc': ['El agente pierde la insignia y sus anuncios se pausan hasta que se reactive.', 'The agent loses the badge and their ads are paused until reactivated.'],
   'ag.reactivar.desc': ['El usuario recupera la insignia de agente.', 'The user gets the agent badge back.'],
   'ag.estadoCambiado': ['Estado de agente actualizado.', 'Agent status updated.'],
   'ag.sinResultados': ['Ningún agente coincide con la búsqueda.', 'No agent matches the search.'],
@@ -336,6 +356,11 @@ const TEXTOS = {
   'u.sinOrdenes': ['Sin órdenes.', 'No orders.'],
   'u.sinAnuncios': ['Sin anuncios.', 'No ads.'],
   'u.sinMetodos': ['Sin métodos de pago.', 'No payment methods.'],
+  'u.retiros': ['Retiros', 'Withdrawals'],
+  'u.depositos': ['Depósitos', 'Deposits'],
+  'u.sinRetiros': ['Sin retiros.', 'No withdrawals.'],
+  'u.sinDepositos': ['Sin depósitos.', 'No deposits.'],
+  'u.solicitudAgente': ['Solicitud de agente', 'Agent request'],
   'u.registradoHace': ['hace {d} d', '{d}d ago'],
   'gid.sin-verificar': ['Sin verificar', 'Unverified'],
   'gid.en-revision': ['En revisión', 'In review'],
@@ -397,6 +422,9 @@ const TEXTOS = {
   'c.tesoreria': ['Cuenta tesorería en la cadena 5550', 'Treasury account on chain 5550'],
   'c.guardada': ['Configuración guardada.', 'Settings saved.'],
   'c.aviso': ['Estos valores afectan a todas las órdenes nuevas de inmediato.', 'These values affect all new orders immediately.'],
+  'c.rango': ['{campo}: debe estar entre {min} y {max}.', '{campo}: must be between {min} and {max}.'],
+  'c.garantiaInvalida': ['La garantía debe ser un número decimal mayor o igual que cero (hasta 8 decimales).', 'The bond must be a decimal number of zero or more (up to 8 decimals).'],
+  'c.tesoreriaInvalida': ['La tesorería debe ser una dirección 0x de 40 caracteres hexadecimales, o quedar vacía.', 'The treasury must be a 0x address of 40 hex characters, or be left empty.'],
   'b.integra': ['Cadena de hashes íntegra', 'Hash chain intact'],
   'b.rota': ['Integridad comprometida: alguna entrada fue alterada', 'Integrity compromised: an entry was altered'],
   'b.buscar': ['Buscar por actor, acción u objeto', 'Search by actor, action or object'],
@@ -421,9 +449,10 @@ const TEXTOS = {
   'op.activar': ['Activar', 'Activate'],
   'op.desactivar': ['Desactivar', 'Deactivate'],
   'op.restablecer': ['Restablecer contraseña', 'Reset password'],
+  'op.restablecerCorto': ['Restablecer', 'Reset'],
   'op.crear.desc': ['Se generará una contraseña temporal que deberá cambiar al entrar.', 'A temporary password will be generated; they must change it at first sign-in.'],
   'op.restablecer.desc': ['Se generará una contraseña temporal nueva para {nombre}. La actual dejará de funcionar.', 'A new temporary password will be generated for {nombre}. The current one stops working.'],
-  'op.desactivar.desc': ['{nombre} no podrá entrar al panel hasta que lo actives de nuevo.', '{nombre} will not be able to sign in until reactivated.'],
+  'op.desactivar.desc': ['{nombre} no podrá entrar al panel hasta que se active de nuevo.', '{nombre} will not be able to sign in until reactivated.'],
   'op.secreto.titulo': ['Contraseña temporal de {nombre}', 'Temporary password for {nombre}'],
   'op.secreto.desc': ['Se muestra una sola vez. Cópiala y entrégala por un canal seguro.', 'Shown only once. Copy it and hand it over through a secure channel.'],
   'op.creadoOk': ['Operador creado.', 'Operator created.'],
@@ -447,6 +476,22 @@ const TEXTOS = {
   'cod.congelado': ['La cuenta está congelada.', 'The account is frozen.'],
   'cod.no-verificado': ['La cuenta no tiene Genesis ID verificado.', 'The account has no verified Genesis ID.'],
   'cod.ordenes-abiertas': ['Tiene órdenes abiertas.', 'There are open orders.'],
+  'cod.sin-permiso': ['Este rol no tiene permiso para esa acción.', 'This role has no permission for that action.'],
+  'cod.credenciales': ['Correo o contraseña incorrectos.', 'Wrong email or password.'],
+  'cod.bloqueado': ['Demasiados intentos fallidos. Espera 15 minutos.', 'Too many failed attempts. Wait 15 minutes.'],
+  'cod.limite': ['Demasiadas peticiones. Espera un momento.', 'Too many requests. Wait a moment.'],
+  'cod.nota': ['La nota es obligatoria (mínimo 5 caracteres).', 'A note is required (at least 5 characters).'],
+  'cod.motivo': ['El motivo es obligatorio (mínimo 5 caracteres).', 'A reason is required (at least 5 characters).'],
+  'cod.tx-hash': ['El hash de la transacción no es válido.', 'The transaction hash is not valid.'],
+  'cod.cantidad': ['La cantidad no es válida.', 'The amount is not valid.'],
+  'cod.mensaje': ['Escribe un mensaje.', 'Write a message.'],
+  'cod.pais-no-permitido': ['El país del usuario no está permitido.', 'The user country is not allowed.'],
+  'cod.genesis-no-configurado': ['Genesis ID no está configurado en el servidor.', 'Genesis ID is not configured on the server.'],
+  'cod.cadena-no-configurada': ['La cadena 5550 no está configurada en el servidor.', 'Chain 5550 is not configured on the server.'],
+  'cod.demo-solamente': ['Esa función solo existe en modo demo.', 'That feature only exists in demo mode.'],
+  'cod.fuera-de-limites': ['Monto fuera de los límites.', 'Amount out of limits.'],
+  'cod.requisitos': ['No cumple los requisitos.', 'Requirements not met.'],
+  'cod.anuncio-propio': ['No se puede tomar el propio anuncio.', 'Cannot take your own ad.'],
 };
 
 function t(k, vars) {
@@ -598,11 +643,11 @@ function chipAgente(e) {
   const c = { aprobado: 'oro', suspendido: 'coral', solicitado: 'ambar', no: 'gris' }[e] || '';
   return chip(tv('ea2.', e), c);
 }
-function insignias(u) {
+function insignias(u, todo) {
   let h = '';
   if (u.verificado) h += chip(t('o.verificado'), 'verde');
   if (u.agente) h += chip(t('o.agente'), 'oro');
-  if (u.enLinea) h += chip(t('o.enLinea'), 'senal');
+  if (todo && u.enLinea) h += chip(t('o.enLinea'), 'senal');
   return h;
 }
 function reputacionLinea(rep) {
@@ -618,7 +663,9 @@ function paginacionHtml(clave, pagina, mostrados, total) {
   const f = S.filtros[clave];
   if (mostrados && !f.tam) f.tam = mostrados;
   const tam = f.tam || mostrados || 1;
-  const hayMas = mostrados > 0 && (pagina - 1) * tam + mostrados < (total ?? 0);
+  // FALTA EN API: ninguna ruta del panel documenta `porPagina`; sin `total` se asume que una página
+  // llena puede tener continuación.
+  const hayMas = mostrados > 0 && (total != null ? (pagina - 1) * tam + mostrados < total : mostrados >= tam);
   return `<div class="paginacion">
     <span>${esc(t('pagina', { n: pagina }))}</span>
     ${total != null ? `<span class="tenue2">· ${esc(t('de.total', { n: fmtNum(total) }))}</span>` : ''}
@@ -629,6 +676,10 @@ function paginacionHtml(clave, pagina, mostrados, total) {
 }
 function soloLecturaHtml() {
   return `<span class="solo-lectura">${icono('candado')} ${esc(t('soloLectura'))}</span>`;
+}
+/** Campo de nota/motivo para los diálogos; con `minimo` aplica el largo mínimo que exige el servidor. */
+function campoNota(nombre, etiqueta, requerido = true, minimo = 0) {
+  return { nombre, etiqueta: etiqueta || t('nota'), tipo: 'textarea', requerido, min: minimo };
 }
 function campoHtml(c) {
   const id = 'd-' + c.nombre;
@@ -669,6 +720,7 @@ function dialogo(op) {
         if (err) err.textContent = '';
         let msg = '';
         if (c.requerido && !v) msg = t('obligatorio');
+        else if (v && c.min && v.length < c.min) msg = t('minimo', { n: c.min });
         else if (v && c.validar) msg = c.validar(v, valores) || '';
         if (msg) { valido = false; if (caja) caja.classList.add('invalido'); if (err) err.textContent = msg; }
         valores[c.nombre] = v;
@@ -736,13 +788,19 @@ function guardarSesion() {
 }
 function cerrarSesion(vencida) {
   const habia = !!S.token;
-  S.token = null; S.operador = null; S.ordenActual = null;
+  S.token = null; S.operador = null; S.ordenActual = null; S.agentesLista = null;
   S.cola = { apelaciones: null, retiros: null, agentes: null };
+  S.sondeo.ultimo = null; S.sondeo.error = false;
   try { localStorage.removeItem(CLAVE_SESION); } catch { /* sin almacenamiento */ }
-  detenerSondeo(); detenerTemporizador();
+  detenerSondeo(); detenerTemporizador(); detenerSondeoOrden();
+  const d = document.getElementById('dialogo');
+  if (d && d.open) d.close();
   if (vencida && habia) aviso(t('sesion.vencida'), 'error');
   if (location.hash !== '#/entrar') location.hash = '#/entrar'; else render();
 }
+/** Permisos de ESCRITURA por rol (src/types.ts: admin todo; soporte apelaciones, retiros, agentes; auditor solo lee).
+ *  Toda vista se puede LEER con cualquier rol: el auditor «lo lee todo», así que Configuración y Operadores
+ *  se muestran a todos y solo se bloquean los cambios. */
 const PERMISOS = {
   resolver: ['admin', 'soporte'], cancelar: ['admin', 'soporte'], chatear: ['admin', 'soporte'],
   agentes: ['admin', 'soporte'], retiros: ['admin', 'soporte'], congelar: ['admin', 'soporte'],
@@ -755,8 +813,8 @@ function esAuditor() { return !!S.operador && S.operador.rol === 'auditor'; }
 const MENU = [
   { vista: 'resumen' }, { vista: 'apelaciones', cola: 'apelaciones' }, { vista: 'ordenes' },
   { vista: 'agentes', cola: 'agentes' }, { vista: 'retiros', cola: 'retiros' }, { vista: 'depositos' },
-  { vista: 'usuarios' }, { vista: 'precios' }, { vista: 'configuracion', permiso: 'configuracion' },
-  { vista: 'bitacora' }, { vista: 'operadores', permiso: 'operadores' },
+  { vista: 'usuarios' }, { vista: 'precios' }, { vista: 'configuracion' },
+  { vista: 'bitacora' }, { vista: 'operadores' },
 ];
 function leerRuta() {
   const h = location.hash.replace(/^#\/?/, '');
@@ -771,7 +829,7 @@ function ir(hash) { location.hash = hash; }
 // ── Render ───────────────────────────────────────────────────
 function render() {
   S.ruta = leerRuta();
-  detenerTemporizador();
+  detenerTemporizador(); detenerSondeoOrden();
   S.acciones = {}; S.refrescar = {};
   const app = document.getElementById('app');
   if (!S.token) {
@@ -789,14 +847,18 @@ function render() {
     return;
   }
   const item = MENU.find(m => m.vista === S.ruta.vista);
-  if (S.ruta.vista !== 'contrasena' && (!item || (item.permiso && !puede(item.permiso)))) { ir('#/resumen'); return; }
+  if (S.ruta.vista !== 'contrasena' && !item) { ir('#/resumen'); return; }
   if (S.shellIdioma !== S.idioma || !document.getElementById('lateral')) {
     app.className = 'app';
     app.innerHTML = htmlShell();
     bindShell(app);
     S.shellIdioma = S.idioma;
   }
-  app.querySelectorAll('.menu a').forEach(a => a.classList.toggle('act', a.dataset.vista === S.ruta.vista));
+  app.querySelectorAll('.menu a').forEach(a => {
+    const act = a.dataset.vista === S.ruta.vista;
+    a.classList.toggle('act', act);
+    if (act) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current');
+  });
   pintarContadores();
   cerrarMenu();
   pintarTitulo(t('v.' + S.ruta.vista));
@@ -819,7 +881,7 @@ function htmlShell() {
   return `<aside class="lateral" id="lateral" aria-label="${t('menu')}">
     ${marcaHtml()}
     <nav class="menu">
-      ${MENU.filter(m => !m.permiso || puede(m.permiso)).map(m => `<a href="#/${m.vista}" data-vista="${m.vista}">${icono(m.vista)}<span>${t('v.' + m.vista)}</span>${m.cola ? `<b class="cuenta" data-cola="${m.cola}">–</b>` : ''}</a>`).join('')}
+      ${MENU.map(m => `<a href="#/${m.vista}" data-vista="${m.vista}">${icono(m.vista)}<span>${t('v.' + m.vista)}</span>${m.cola ? `<b class="cuenta" data-cola="${m.cola}">–</b>` : ''}</a>`).join('')}
     </nav>
     <div class="lateral-pie">
       <div class="operador-caja"><b>${esc(o.nombre || o.email || '')}</b><span>${esc(o.email || '')}</span><span style="margin-top:4px"><span class="rol ${esc(o.rol || '')}">${tv('rol.', o.rol)}</span></span></div>
@@ -833,7 +895,7 @@ function htmlShell() {
   <div class="telon oculto" id="telon"></div>
   <div class="principal">
     <header class="barra">
-      <button type="button" class="boton icono fantasma menu-boton" data-menu aria-label="${t('menu')}" aria-controls="lateral">${icono('menu')}</button>
+      <button type="button" class="boton icono fantasma menu-boton" data-menu aria-label="${t('menu')}" aria-controls="lateral" aria-expanded="false">${icono('menu')}</button>
       <h1 id="titulo"></h1>
       <span class="espacio"></span>
       <span class="vivo pausa" id="vivo" title="${t('vivo')}"><i></i><span>${t('vivo')}</span></span>
@@ -848,8 +910,8 @@ function bindShell(app) {
   app.querySelector('#telon').addEventListener('click', cerrarMenu);
   app.querySelectorAll('.menu a').forEach(a => a.addEventListener('click', cerrarMenu));
 }
-function abrirMenu() { S.menuAbierto = true; const l = document.getElementById('lateral'); if (l) l.classList.add('abierto'); const tl = document.getElementById('telon'); if (tl) tl.classList.remove('oculto'); }
-function cerrarMenu() { S.menuAbierto = false; const l = document.getElementById('lateral'); if (l) l.classList.remove('abierto'); const tl = document.getElementById('telon'); if (tl) tl.classList.add('oculto'); }
+function abrirMenu() { S.menuAbierto = true; const l = document.getElementById('lateral'); if (l) l.classList.add('abierto'); const tl = document.getElementById('telon'); if (tl) tl.classList.remove('oculto'); const b = document.querySelector('[data-menu]'); if (b) b.setAttribute('aria-expanded', 'true'); }
+function cerrarMenu() { S.menuAbierto = false; const l = document.getElementById('lateral'); if (l) l.classList.remove('abierto'); const tl = document.getElementById('telon'); if (tl) tl.classList.add('oculto'); const b = document.querySelector('[data-menu]'); if (b) b.setAttribute('aria-expanded', 'false'); }
 function cambiarIdioma() {
   S.idioma = S.idioma === 'es' ? 'en' : 'es';
   try { localStorage.setItem(CLAVE_IDIOMA, S.idioma); } catch { /* sin almacenamiento */ }
@@ -883,6 +945,7 @@ function htmlEntrar() {
 function bindEntrar(app) {
   app.querySelector('[data-idioma]').addEventListener('click', cambiarIdioma);
   const form = app.querySelector('#form-entrar');
+  if (form.elements.email && !form.elements.email.value) form.elements.email.focus();
   form.addEventListener('submit', async ev => {
     ev.preventDefault();
     const email = form.elements.email.value.trim();
@@ -907,7 +970,7 @@ function htmlCambioContrasena(forzado) {
     ${forzado ? banda('ambar', esc(t('contrasena.obligatoria'))) : ''}
     <form id="form-contrasena" novalidate>
       <div class="campo"><label for="c-actual">${t('contrasena.actual')}</label><input id="c-actual" name="actual" type="password" autocomplete="current-password" required></div>
-      <div class="campo"><label for="c-nueva">${t('contrasena.nueva')}</label><input id="c-nueva" name="nueva" type="password" autocomplete="new-password" required minlength="8"></div>
+      <div class="campo"><label for="c-nueva">${t('contrasena.nueva')}</label><input id="c-nueva" name="nueva" type="password" autocomplete="new-password" required minlength="${MIN_CONTRASENA}"></div>
       <div class="campo"><label for="c-repetir">${t('contrasena.repetir')}</label><input id="c-repetir" name="repetir" type="password" autocomplete="new-password" required></div>
       <div id="contrasena-error"></div>
       <div class="formulario-acciones"><button class="boton primario" type="submit">${t('guardar')}</button>${forzado ? `<button type="button" class="boton fantasma" data-salir-forzado>${t('salir')}</button>` : ''}</div>
@@ -916,7 +979,7 @@ function htmlCambioContrasena(forzado) {
 function bindCambioContrasena(raiz, forzado) {
   const form = raiz.querySelector('#form-contrasena');
   const salir = raiz.querySelector('[data-salir-forzado]');
-  if (salir) salir.addEventListener('click', () => cerrarSesion(false));
+  if (salir) salir.addEventListener('click', async () => { salir.disabled = true; await api('/sesion/salir', { metodo: 'POST' }); cerrarSesion(false); });
   form.addEventListener('submit', async ev => {
     ev.preventDefault();
     const actual = form.elements.actual.value, nueva = form.elements.nueva.value, repetir = form.elements.repetir.value;
@@ -924,7 +987,7 @@ function bindCambioContrasena(raiz, forzado) {
     err.innerHTML = '';
     let msg = '';
     if (!actual || !nueva || !repetir) msg = t('obligatorio');
-    else if (nueva.length < 8) msg = t('contrasena.corta');
+    else if (nueva.length < MIN_CONTRASENA) msg = t('contrasena.corta');
     else if (nueva !== repetir) msg = t('contrasena.noCoincide');
     if (msg) { err.innerHTML = `<div class="mensaje-error">${esc(msg)}</div>`; return; }
     const btn = form.querySelector('button[type=submit]');
@@ -934,7 +997,7 @@ function bindCambioContrasena(raiz, forzado) {
     if (!r.ok) { err.innerHTML = `<div class="mensaje-error">${esc(mensajeError(r))}</div>`; return; }
     aviso(t('contrasena.cambiada'), 'ok');
     if (S.operador) { S.operador.debeCambiarContrasena = false; guardarSesion(); }
-    if (forzado) { ir('#/resumen'); render(); } else ir('#/resumen');
+    if (location.hash === '#/resumen') render(); else ir('#/resumen');
   });
 }
 function vistaContrasena(el) {
@@ -950,11 +1013,15 @@ async function vistaResumen(el) {
   if (!r.ok) { el.innerHTML = errorHtml(r, 'reintentar'); S.acciones.reintentar = () => vistaResumen(el); return; }
   const d = r.datos || {};
   const u = d.usuarios || {}, o = d.ordenes || {}, c = d.custodia || {}, p = d.precios || {}, al = d.almacen || {};
+  // FALTA EN API: el servidor añade `tesoreria` (saldo de comisiones por activo), `anunciosActivos` y
+  // `genesisConfigurado`; se muestran solo si vienen.
+  const tes = d.tesoreria && typeof d.tesoreria === 'object' ? d.tesoreria : null;
   actualizarCola({ apelaciones: o.apelaciones, retiros: d.retirosPendientes, agentes: d.solicitudesAgente });
   const cifra = (href, etiqueta, valor, cola) => `<a class="cifra ${cola ? 'cola' : ''} ${cola && Number(valor) > 0 ? 'hay' : ''}" href="${href}"><div class="etiqueta">${etiqueta}</div><div class="valor">${fmtNum(valor ?? 0)}</div></a>`;
-  const def = pares => `<dl class="def">${pares.map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join('')}</dl>`;
+  const def = pares => `<dl class="def">${pares.filter(Boolean).map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join('')}</dl>`;
   el.innerHTML = `
     ${al.efimero ? banda('ambar', esc(t('r.efimero', { motor: al.motor || '?' }))) : ''}
+    ${d.genesisConfigurado === false ? banda('ambar', esc(t('r.sinGenesis'))) : ''}
     <div class="seccion-titulo">${t('r.colas')}</div>
     <div class="rejilla c4">
       ${cifra('#/apelaciones', t('r.apelacionesAbiertas'), o.apelaciones, true)}
@@ -971,6 +1038,7 @@ async function vistaResumen(el) {
         [t('r.completadas24h'), `<span class="num">${fmtNum(o.completadas24h ?? 0)}</span>`],
         [t('r.completadas30d'), `<span class="num">${fmtNum(o.completadas30d ?? 0)}</span>`],
         [t('r.volumen30d'), `<span class="mono">${fmtNum(o.volumenUsd30d ?? 0, 0, 0)} USD</span>`],
+        d.anunciosActivos != null ? [t('r.anunciosActivos'), `<span class="num">${fmtNum(d.anunciosActivos)}</span>`] : null,
       ])}</div>
       <div class="tarjeta"><h2>${t('r.usuarios')}</h2>${def([
         [t('r.total'), `<b class="num">${fmtNum(u.total ?? 0)}</b>`],
@@ -979,7 +1047,7 @@ async function vistaResumen(el) {
         [t('r.congelados'), `<span class="num ${Number(u.congelados) > 0 ? 'coral' : ''}">${fmtNum(u.congelados ?? 0)}</span>`],
         [t('r.depositos24h'), `<span class="num">${fmtNum(d.depositos24h ?? 0)}</span>`],
       ])}</div>
-      <div class="tarjeta"><h2>${t('r.custodia')}</h2>${def(ACTIVOS.map(a => [a, `<span class="mono oro">${fmtActivo(c[a] ?? '0')}</span>`]))}<p class="pequeno tenue2" style="margin-top:8px">${t('r.custodia.nota')}</p></div>
+      <div class="tarjeta"><h2>${t('r.custodia')}</h2>${def(ACTIVOS.map(a => [a, `<span class="mono oro">${fmtActivo(c[a] ?? '0')}</span>${tes && tes[a] != null ? `<div class="pequeno tenue">${esc(t('r.tesoreria'))}: <span class="mono">${fmtActivo(tes[a])}</span></div>` : ''}`]))}<p class="pequeno tenue2" style="margin-top:8px">${t('r.custodia.nota')}</p></div>
     </div>
     <div class="rejilla c2" style="margin-top:12px">
       <div class="tarjeta"><h2>${t('r.precios')}<span class="espacio"></span><a class="boton chico" href="#/precios">${puede('precios') ? t('r.editarPrecios') : t('v.precios')}</a></h2>${def([
@@ -998,23 +1066,36 @@ async function vistaResumen(el) {
 }
 
 // ── Detalle de orden (compartido por Apelaciones y Órdenes) ──
+const esAbierta = o => !!o && ABIERTOS.includes(o.estado);
+/** Mientras la orden está abierta se vuelve a pedir cada 5 s (chat y estado); se detiene al cerrarse o al salir. */
+function iniciarSondeoOrden() {
+  detenerSondeoOrden();
+  S.sondeoOrden = setInterval(() => { if (!document.hidden && S.token && S.refrescar.orden) S.refrescar.orden(); }, SONDEO_ORDEN_MS);
+}
+function detenerSondeoOrden() { if (S.sondeoOrden) { clearInterval(S.sondeoOrden); S.sondeoOrden = null; } }
 async function vistaOrdenDetalle(el, id, modo) {
   el.innerHTML = cargando();
+  detenerSondeoOrden();
   const r = await api('/ordenes/' + encodeURIComponent(id));
-  if (S.ruta.id !== id) return;
+  if (S.ruta.id !== id || S.ruta.vista !== modo) return;
   if (!r.ok) { el.innerHTML = errorHtml(r, 'reintentar'); S.acciones.reintentar = () => vistaOrdenDetalle(el, id, modo); return; }
   S.ordenActual = r.datos;
   pintarOrden(el, modo);
+  let refrescando = false;
   S.refrescar.orden = async () => {
+    if (refrescando) return;
+    refrescando = true;
     const rr = await api('/ordenes/' + encodeURIComponent(id));
-    if (!rr.ok || S.ruta.id !== id) return;
+    refrescando = false;
+    if (!rr.ok || S.ruta.id !== id || S.ruta.vista !== modo) return;
     const antes = S.ordenActual && S.ordenActual.orden;
     S.ordenActual = rr.datos;
     const ahora = rr.datos.orden || {};
-    const cambio = !antes || antes.estado !== ahora.estado || (antes.mensajes || []).length !== (ahora.mensajes || []).length;
     if (!antes || antes.estado !== ahora.estado) pintarOrden(el, modo);
-    else if (cambio) pintarChat();
+    else if ((antes.mensajes || []).length !== (ahora.mensajes || []).length) pintarChat();
+    if (!esAbierta(ahora)) detenerSondeoOrden();
   };
+  if (esAbierta(r.datos.orden)) iniciarSondeoOrden();
 }
 function quienEs(id) {
   const d = S.ordenActual || {};
@@ -1033,7 +1114,7 @@ function pintarOrden(el, modo) {
   const o = d.orden || {};
   const comprador = d.comprador || { id: o.compradorId, apodo: '—' };
   const vendedor = d.vendedor || { id: o.vendedorId, apodo: '—' };
-  const abierta = ['pendiente-pago', 'pagado', 'apelacion'].includes(o.estado);
+  const abierta = esAbierta(o);
   const ap = o.apelacion;
   const mp = o.metodoPago || {};
   const lectura = esAuditor();
@@ -1041,7 +1122,7 @@ function pintarOrden(el, modo) {
 
   const parte = (clase, quien, u) => `<div class="parte-caja ${clase}">
       <div class="quien">${quien}</div>
-      <div class="apodo">${enlaceUsuario(u.id, u.apodo)} ${insignias(u)}</div>
+      <div class="apodo">${enlaceUsuario(u.id, u.apodo)} ${insignias(u, true)}</div>
       <div class="rep">${reputacionLinea(u.reputacion)}${u.pais ? ` · ${esc(u.pais)}` : ''}${u.registradoHaceDias != null ? ` · ${esc(t('o.registrado', { d: u.registradoHaceDias }))}` : ''}</div>
     </div>`;
   const acciones = [];
@@ -1059,7 +1140,7 @@ function pintarOrden(el, modo) {
   if (ap && ap.abiertaEn) tiempo.push([ap.abiertaEn, `${t('o.apelacion')} · ${tv('ma.', ap.motivo)}`]);
   if (ap && ap.resueltaEn) tiempo.push([ap.resueltaEn, `${t('o.resueltaEn')} · ${tv('res.', ap.resolucion)}`]);
   if (o.completadaEn) tiempo.push([o.completadaEn, t('o.completada')]);
-  if (o.canceladaEn) tiempo.push([o.canceladaEn, `${t('o.cancelada')} ${esc(t('o.canceladaPor', { quien: t('cp.' + o.canceladaPor) }))}${o.motivoCancelacion ? ` · ${esc(o.motivoCancelacion)}` : ''}`]);
+  if (o.canceladaEn) tiempo.push([o.canceladaEn, `${t('o.cancelada')}${o.canceladaPor ? ' ' + esc(t('o.canceladaPor', { quien: TEXTOS['cp.' + o.canceladaPor] ? t('cp.' + o.canceladaPor) : o.canceladaPor })) : ''}${o.motivoCancelacion ? ` · ${esc(o.motivoCancelacion)}` : ''}`]);
   const cal = o.calificaciones || {};
   const calHtml = (c) => c ? `${chip(tv('cal.', c.tipo), c.tipo === 'positiva' ? 'verde' : 'coral')}${c.comentario ? ` <span class="tenue">${esc(c.comentario)}</span>` : ''}` : `<span class="tenue2">${t('o.sinCalificar')}</span>`;
 
@@ -1100,7 +1181,7 @@ function pintarOrden(el, modo) {
           </dl></div>` : ''}
         <div class="tarjeta"><h2>${t('o.metodo')}</h2>
           <dl class="def">
-            <dt>${t('an.estado')}</dt><dd>${esc(mp.nombreMetodo || mp.tipo || '—')}${mp.categoria ? ` <span class="tenue">· ${esc(mp.categoria)}</span>` : ''}</dd>
+            <dt>${t('o.metodoTipo')}</dt><dd>${esc(mp.nombreMetodo || mp.tipo || '—')}${mp.categoria ? ` <span class="tenue">· ${esc(mp.categoria)}</span>` : ''}</dd>
             ${mp.banco ? `<dt>${t('o.banco')}</dt><dd>${esc(mp.banco)}</dd>` : ''}
             <dt>${t('o.titular')}</dt><dd>${esc(mp.titular || '—')}</dd>
             ${camposMp ? camposMp.map(([k, v]) => `<dt>${esc(k)}</dt><dd>${copiable(v)}</dd>`).join('') : `<dt></dt><dd class="tenue2 pequeno">${t('o.camposOcultos')}</dd>`}
@@ -1124,19 +1205,18 @@ function pintarOrden(el, modo) {
     const v = await dialogo({
       titulo: t(res === 'liberar' ? 'o.liberar' : 'o.devolver') + ' · ' + (o.numero || ''),
       descripcion: t(res === 'liberar' ? 'o.liberar.desc' : 'o.devolver.desc'),
-      campos: [{ nombre: 'nota', etiqueta: t('nota'), tipo: 'textarea', requerido: true }],
+      campos: [campoNota('nota', t('nota'), true, MIN_NOTA)],
       confirmar: t(res === 'liberar' ? 'o.liberar' : 'o.devolver'), peligro: res === 'devolver', clase: 'verde',
     });
     if (!v) return;
     const rr = await api(`/ordenes/${encodeURIComponent(o.id)}/resolver`, { metodo: 'POST', cuerpo: { resolucion: res, nota: v.nota } });
     if (!rr.ok) { aviso(mensajeError(rr), 'error'); return; }
     aviso(t('o.resuelta'), 'ok');
-    S.ordenActual = Object.assign({}, S.ordenActual, { orden: rr.datos.orden || o });
     sondear();
     vistaOrdenDetalle(el, o.id, modo);
   };
   S.acciones['cancelar-orden'] = async () => {
-    const v = await dialogo({ titulo: t('o.cancelarOrden') + ' · ' + (o.numero || ''), descripcion: t('o.cancelar.desc'), campos: [{ nombre: 'nota', etiqueta: t('nota'), tipo: 'textarea', requerido: true }], confirmar: t('o.cancelarOrden'), peligro: true });
+    const v = await dialogo({ titulo: t('o.cancelarOrden') + ' · ' + (o.numero || ''), descripcion: t('o.cancelar.desc'), campos: [campoNota('nota', t('nota'), true, MIN_NOTA)], confirmar: t('o.cancelarOrden'), peligro: true });
     if (!v) return;
     const rr = await api(`/ordenes/${encodeURIComponent(o.id)}/cancelar`, { metodo: 'POST', cuerpo: { nota: v.nota } });
     if (!rr.ok) { aviso(mensajeError(rr), 'error'); return; }
@@ -1181,20 +1261,30 @@ function pintarChat() {
 }
 function iniciarTemporizador(venceEn) {
   detenerTemporizador();
+  const vence = new Date(venceEn).getTime();
+  if (isNaN(vence)) return;
   const f = () => {
     const el = document.getElementById('temporizador');
-    if (!el) { detenerTemporizador(); return; }
-    const s = Math.floor((new Date(venceEn).getTime() - Date.now()) / 1000);
+    if (!el) { detenerTemporizador(); return false; }
+    const s = Math.floor((vence - Date.now()) / 1000);
     el.textContent = s <= 0 ? t('o.vencida') : mmss(s);
     el.classList.toggle('urgente', s <= 300);
+    if (s <= 0) {
+      // Vencida: el temporizador se detiene y se vuelve a pedir la orden (el servidor la cancela al leerla).
+      detenerTemporizador();
+      if (S.refrescar.orden) S.refrescar.orden();
+      return false;
+    }
+    return true;
   };
-  f();
-  S.temporizador = setInterval(f, 1000);
+  if (f()) S.temporizador = setInterval(f, 1000);
 }
 function detenerTemporizador() { if (S.temporizador) { clearInterval(S.temporizador); S.temporizador = null; } }
 
 // ── Órdenes: lista con búsqueda y filtros ────────────────────
-const ESTADOS_ORDEN = ['', 'pendiente-pago', 'pagado', 'apelacion', 'completada', 'cancelada'];
+// `estado=abiertas` agrupa pendiente-pago|pagado|apelacion (API.md lo documenta para /api/ordenes;
+// FALTA EN API: confirmarlo para /panel/ordenes, el servidor actual lo acepta).
+const ESTADOS_ORDEN = ['', 'abiertas', 'pendiente-pago', 'pagado', 'apelacion', 'completada', 'cancelada'];
 function vistaOrdenes(el) {
   if (S.ruta.id) return vistaOrdenDetalle(el, S.ruta.id, 'ordenes');
   const f = S.filtros.ordenes;
@@ -1299,9 +1389,9 @@ function vistaAgentes(el) {
   el.innerHTML = `<div class="seccion-titulo">${t('ag.solicitudes')}</div>
     <div class="filtros"><div class="pestanas" id="agentes-estados">${ESTADOS_SOLICITUD.map(e => `<button type="button" data-accion="agentes-estado" data-estado="${e}" class="${f.estado === e ? 'act' : ''}">${t('ag.' + ({ pendiente: 'pendientes', aprobada: 'aprobadas', rechazada: 'rechazadas', retirada: 'retiradas' })[e])}</button>`).join('')}</div>${lectura ? soloLecturaHtml() : ''}</div>
     <div id="tabla-agentes">${cargando()}</div>
-    <div class="tarjeta" style="margin-top:20px"><h2>${t('ag.activos')}</h2>
+    <div class="tarjeta" style="margin-top:20px"><h2>${t('ag.activos')} <span class="tenue2 num" id="agentes-n"></span></h2>
       <div class="filtros"><div class="buscador">${icono('buscar')}<input class="entrada" id="agentes-q" type="search" value="${esc(f.q)}" placeholder="${t('ag.buscar')}" aria-label="${t('buscar')}"></div></div>
-      <div id="tabla-agentes-activos">${f.q ? cargando() : `<div class="vacio">${t('ag.buscaPrimero')}</div>`}</div>
+      <div id="tabla-agentes-activos">${cargando()}</div>
     </div>`;
   S.acciones['agentes-estado'] = ds => { f.estado = ESTADOS_SOLICITUD.includes(ds.estado) ? ds.estado : 'pendiente'; el.querySelectorAll('#agentes-estados button').forEach(b => b.classList.toggle('act', b.dataset.estado === f.estado)); cargarSolicitudes(); };
   S.acciones.reintentar = cargarSolicitudes;
@@ -1321,12 +1411,12 @@ function vistaAgentes(el) {
     const r = await api(`/usuarios/${encodeURIComponent(ds.id)}/agente`, { metodo: 'POST', cuerpo: { estado: suspender ? 'suspendido' : 'aprobado', nota: v.nota } });
     if (!r.ok) { aviso(mensajeError(r), 'error'); return; }
     aviso(t('ag.estadoCambiado'), 'ok');
-    if (S.ruta.vista === 'agentes') cargarAgentesActivos(); else if (S.ruta.vista === 'usuarios' && S.ruta.id) vistaUsuarioFicha(document.getElementById('vista'), S.ruta.id);
+    cargarSolicitudes();
   };
   let debounce = null;
   el.querySelector('#agentes-q').addEventListener('input', ev => { clearTimeout(debounce); debounce = setTimeout(() => { f.q = ev.target.value.trim(); cargarAgentesActivos(); }, 350); });
+  S.refrescar.solicitudes = lista => { if (f.estado === 'pendiente') pintarSolicitudes(lista); };
   cargarSolicitudes();
-  if (f.q) cargarAgentesActivos();
 }
 async function cargarSolicitudes() {
   const f = S.filtros.agentes;
@@ -1339,6 +1429,16 @@ async function cargarSolicitudes() {
   if (!r.ok) { caja2.innerHTML = errorHtml(r, 'reintentar'); return; }
   const lista = r.datos.solicitudes || [];
   if (f.estado === 'pendiente') actualizarCola({ agentes: lista.length });
+  pintarSolicitudes(lista);
+  // FALTA EN API: la respuesta trae además `agentes` (usuarios aprobados/suspendidos); si viene se usa
+  // para la sección de agentes activos sin obligar a buscar.
+  S.agentesLista = Array.isArray(r.datos.agentes) ? r.datos.agentes : null;
+  cargarAgentesActivos();
+}
+function pintarSolicitudes(lista) {
+  const f = S.filtros.agentes;
+  const caja2 = document.getElementById('tabla-agentes');
+  if (!caja2) return;
   if (!lista.length) { caja2.innerHTML = vacio(t('ag.vacia')); return; }
   const pend = f.estado === 'pendiente';
   caja2.innerHTML = `<div class="tabla-envoltura"><table class="tabla"><thead><tr>
@@ -1346,7 +1446,7 @@ async function cargarSolicitudes() {
     </tr></thead><tbody>${lista.map(s => {
       const u = s.usuario || { id: s.usuarioId, apodo: s.usuarioId };
       return `<tr>
-        <td>${enlaceUsuario(u.id, u.apodo)} ${insignias(u)}<div class="pequeno tenue">${esc(u.pais || '')}${u.registradoHaceDias != null ? ` · ${esc(t('o.registrado', { d: u.registradoHaceDias }))}` : ''}</div></td>
+        <td>${enlaceUsuario(u.id, u.apodo)} ${insignias(u)}<div class="pequeno tenue">${esc(u.pais || '')}${s.email ? ` · ${esc(s.email)}` : ''}${u.registradoHaceDias != null ? ` · ${esc(t('o.registrado', { d: u.registradoHaceDias }))}` : ''}</div></td>
         <td class="pequeno tenue envolver">${reputacionLinea(u.reputacion)}</td>
         <td class="derecha mono">${fmtActivo(s.garantia, 'ORIGEN')}</td>
         <td class="envolver" style="max-width:360px">${esc(s.descripcion)}</td>
@@ -1360,16 +1460,26 @@ async function cargarAgentesActivos() {
   const f = S.filtros.agentes;
   const caja = document.getElementById('tabla-agentes-activos');
   if (!caja) return;
+  if (S.agentesLista) {
+    const q = f.q.toLowerCase();
+    pintarAgentesActivos(S.agentesLista.filter(u => !q || String(u.apodo || '').toLowerCase().includes(q) || String(u.email || '').toLowerCase().includes(q)), S.agentesLista.length);
+    return;
+  }
   if (!f.q) { caja.innerHTML = `<div class="vacio">${t('ag.buscaPrimero')}</div>`; return; }
   caja.innerHTML = cargando();
   // FALTA EN API: no hay filtro por estadoAgente en GET /usuarios; se busca por q y se filtra aquí.
   const r = await api('/usuarios?q=' + encodeURIComponent(f.q));
-  const caja2 = document.getElementById('tabla-agentes-activos');
-  if (!caja2) return;
-  if (!r.ok) { caja2.innerHTML = errorHtml(r); return; }
-  const lista = (r.datos.usuarios || []).filter(u => u.estadoAgente === 'aprobado' || u.estadoAgente === 'suspendido');
-  if (!lista.length) { caja2.innerHTML = vacio(t('ag.sinResultados')); return; }
-  caja2.innerHTML = `<div class="tabla-envoltura"><table class="tabla"><thead><tr><th>${t('u.apodo')}</th><th>${t('correo')}</th><th>${t('u.pais')}</th><th>${t('u.agente')}</th><th>${t('u.reputacion')}</th><th></th></tr></thead><tbody>${lista.map(u => `<tr>
+  if (!document.getElementById('tabla-agentes-activos')) return;
+  if (!r.ok) { document.getElementById('tabla-agentes-activos').innerHTML = errorHtml(r); return; }
+  pintarAgentesActivos((r.datos.usuarios || []).filter(u => u.estadoAgente === 'aprobado' || u.estadoAgente === 'suspendido'), null);
+}
+function pintarAgentesActivos(lista, total) {
+  const caja = document.getElementById('tabla-agentes-activos');
+  if (!caja) return;
+  const n = document.getElementById('agentes-n');
+  if (n) n.textContent = total != null ? String(total) : '';
+  if (!lista.length) { caja.innerHTML = vacio(t('ag.sinResultados')); return; }
+  caja.innerHTML = `<div class="tabla-envoltura"><table class="tabla"><thead><tr><th>${t('u.apodo')}</th><th>${t('correo')}</th><th>${t('u.pais')}</th><th>${t('u.agente')}</th><th>${t('u.reputacion')}</th><th></th></tr></thead><tbody>${lista.map(u => `<tr>
       <td>${enlaceUsuario(u.id, u.apodo)}</td><td class="tenue">${esc(u.email)}</td><td>${esc(u.pais)}</td><td>${chipAgente(u.estadoAgente)}</td><td class="pequeno tenue envolver">${reputacionLinea(u.reputacion)}</td>
       <td class="acciones">${puede('agentes') ? botonEstadoAgente(u) : ''}</td></tr>`).join('')}</tbody></table></div>`;
 }
@@ -1428,19 +1538,23 @@ function pintarRetiros(lista) {
   const caja = document.getElementById('tabla-retiros');
   if (!caja) return;
   const pend = S.filtros.retiros.estado === 'pendiente';
-  if (!lista.length) { caja.innerHTML = vacio(t('rt.vacio')); return; }
+  caja.innerHTML = tablaRetirosHtml(lista, { pendientes: pend, conUsuario: true, vacioTexto: t('rt.vacio') });
+}
+/** Tabla de retiros: en la cola de pendientes lleva tamiz y acciones; en el resto, estado y resolución. */
+function tablaRetirosHtml(lista, op) {
+  if (!lista.length) return vacio(op.vacioTexto || t('rt.vacio'));
+  const pend = !!op.pendientes;
   const tamiz = s => s === true ? chip(`${icono('alerta')} ${t('rt.sancionada')}`, 'coral') : s === false ? chip(t('rt.limpia'), 'verde') : chip(t('rt.sinTamiz'), 'gris');
-  caja.innerHTML = `<div class="tabla-envoltura"><table class="tabla"><thead><tr>
-      <th>${t('rt.solicitado')}</th><th>${t('ag.usuario')}</th><th class="derecha">${t('o.cantidad')}</th><th>${t('rt.direccion')}</th><th>${t('rt.tamiz')}</th>${pend ? '<th></th>' : `<th>${t('o.estado')}</th><th>${t('rt.resuelto')}</th><th>${t('rt.txHash')} / ${t('motivo')}</th>`}
+  return `<div class="tabla-envoltura"><table class="tabla"><thead><tr>
+      <th>${t('rt.solicitado')}</th>${op.conUsuario ? `<th>${t('ag.usuario')}</th>` : ''}<th class="derecha">${t('o.cantidad')}</th><th>${t('rt.direccion')}</th>${pend ? `<th>${t('rt.tamiz')}</th><th></th>` : `<th>${t('o.estado')}</th><th>${t('rt.resuelto')}</th><th>${t('rt.txHash')} / ${t('motivo')}</th>`}
     </tr></thead><tbody>${lista.map(rt => {
       const u = rt.usuario || { id: rt.usuarioId, apodo: rt.usuarioId };
       return `<tr class="${rt.direccionSancionada === true ? 'marcada' : ''}">
         <td class="tenue" title="${fmtFecha(rt.solicitadoEn)}">${esc(hace(rt.solicitadoEn))}</td>
-        <td>${enlaceUsuario(u.id, u.apodo)} ${insignias(u)}</td>
+        ${op.conUsuario ? `<td>${enlaceUsuario(u.id, u.apodo)} ${insignias(u)}</td>` : ''}
         <td class="derecha mono">${fmtActivo(rt.cantidad, rt.activo)}</td>
         <td>${copiable(rt.direccion, corto(rt.direccion, 10, 8))}</td>
-        <td>${tamiz(rt.direccionSancionada)}</td>
-        ${pend ? `<td class="acciones">${puede('retiros') ? `<button class="boton chico verde" data-accion="decidir-retiro" data-decision="enviado" data-id="${esc(rt.id)}" data-apodo="${esc(u.apodo)}" data-cantidad="${esc(rt.cantidad)}" data-activo="${esc(rt.activo)}" data-direccion="${esc(rt.direccion)}" data-sancionada="${rt.direccionSancionada === true ? '1' : '0'}">${t('rt.marcarEnviado')}</button><button class="boton chico coral" data-accion="decidir-retiro" data-decision="rechazado" data-id="${esc(rt.id)}" data-apodo="${esc(u.apodo)}">${t('rt.rechazar')}</button>` : ''}</td>`
+        ${pend ? `<td>${tamiz(rt.direccionSancionada)}</td><td class="acciones">${puede('retiros') ? `<button class="boton chico verde" data-accion="decidir-retiro" data-decision="enviado" data-id="${esc(rt.id)}" data-apodo="${esc(u.apodo)}" data-cantidad="${esc(rt.cantidad)}" data-activo="${esc(rt.activo)}" data-direccion="${esc(rt.direccion)}" data-sancionada="${rt.direccionSancionada === true ? '1' : '0'}">${t('rt.marcarEnviado')}</button><button class="boton chico coral" data-accion="decidir-retiro" data-decision="rechazado" data-id="${esc(rt.id)}" data-apodo="${esc(u.apodo)}">${t('rt.rechazar')}</button>` : ''}</td>`
           : `<td>${chipRetiro(rt.estado)}</td><td class="tenue">${fmtFecha(rt.resueltoEn)}${rt.resueltoPor ? `<div class="pequeno">${esc(rt.resueltoPor)}</div>` : ''}</td><td class="envolver" style="max-width:280px">${rt.txHash ? copiable(rt.txHash, corto(rt.txHash, 10, 8)) : `<span class="tenue">${esc(rt.motivo || '—')}</span>`}</td>`}
       </tr>`;
     }).join('')}</tbody></table></div>`;
@@ -1465,20 +1579,26 @@ async function cargarDepositos() {
   if (!r.ok) { caja2.innerHTML = errorHtml(r, 'reintentar'); return; }
   const lista = r.datos.depositos || [];
   if (!lista.length && f.pagina === 1) { caja2.innerHTML = vacio(t('dp.vacio')); return; }
-  // FALTA EN API: Deposito solo trae usuarioId (sin apodo); si el servidor añade `usuario`, se usa.
-  caja2.innerHTML = `<div class="tabla-envoltura"><table class="tabla"><thead><tr>
-      <th>${t('dp.cuando')}</th><th>${t('dp.usuario')}</th><th class="derecha">${t('o.cantidad')}</th><th>${t('rt.txHash')}</th><th>${t('dp.desde')}</th><th class="derecha">${t('dp.bloque')}</th><th class="derecha">${t('dp.conf')}</th><th>${t('o.estado')}</th><th>${t('motivo')}</th>
+  // FALTA EN API: `GET /depositos` no documenta `total`; el servidor lo devuelve y la paginación lo usa si viene.
+  caja2.innerHTML = tablaDepositosHtml(lista, true) + paginacionHtml('depositos', f.pagina, lista.length, r.datos.total);
+}
+function tablaDepositosHtml(lista, conUsuario) {
+  if (!lista.length) return vacio(t('dp.vacio'));
+  // FALTA EN API: Deposito solo trae usuarioId; el servidor añade `apodo` (o `usuario.apodo`) y se usa si viene.
+  const apodoDe = d => d.apodo || (d.usuario && d.usuario.apodo) || corto(d.usuarioId, 8, 4);
+  return `<div class="tabla-envoltura"><table class="tabla"><thead><tr>
+      <th>${t('dp.cuando')}</th>${conUsuario ? `<th>${t('dp.usuario')}</th>` : ''}<th class="derecha">${t('o.cantidad')}</th><th>${t('rt.txHash')}</th><th>${t('dp.desde')}</th><th class="derecha">${t('dp.bloque')}</th><th class="derecha">${t('dp.conf')}</th><th>${t('o.estado')}</th><th>${t('motivo')}</th>
     </tr></thead><tbody>${lista.map(d => `<tr>
       <td class="tenue" title="${fmtFecha(d.en)}">${fmtFecha(d.en)}</td>
-      <td>${enlaceUsuario(d.usuarioId, d.usuario && d.usuario.apodo ? d.usuario.apodo : corto(d.usuarioId, 8, 4))}</td>
+      ${conUsuario ? `<td>${enlaceUsuario(d.usuarioId, apodoDe(d))}</td>` : ''}
       <td class="derecha mono">${fmtActivo(d.cantidad, d.activo)}</td>
-      <td>${copiable(d.txHash, corto(d.txHash, 10, 6))}</td>
-      <td>${copiable(d.desde, corto(d.desde, 8, 6))}</td>
+      <td>${copiable(d.txHash, corto(d.txHash, 8, 4))}</td>
+      <td>${copiable(d.desde, corto(d.desde, 6, 4))}</td>
       <td class="derecha mono">${fmtNum(d.bloque)}</td>
       <td class="derecha mono">${fmtNum(d.confirmaciones)}</td>
       <td>${chip(tv('ed.', d.estado), d.estado === 'acreditado' ? 'verde' : 'coral')}</td>
       <td class="tenue envolver" style="max-width:240px">${esc(d.motivo || '—')}</td>
-    </tr>`).join('')}</tbody></table></div>` + paginacionHtml('depositos', f.pagina, lista.length, r.datos.total);
+    </tr>`).join('')}</tbody></table></div>`;
 }
 
 // ── Usuarios: búsqueda + ficha ───────────────────────────────
@@ -1537,7 +1657,7 @@ async function vistaUsuarioFicha(el, id) {
   el.innerHTML = `
     <div class="cabecera-detalle">
       <div>
-        <h2><a class="boton icono fantasma" href="#/usuarios" aria-label="${t('o.volver')}">${icono('atras')}</a>${esc(u.apodo)} ${insignias(u)}${u.congelado ? chip(t('u.congelado'), 'coral') : ''}${u.estadoAgente === 'suspendido' ? chipAgente('suspendido') : ''}</h2>
+        <h2><a class="boton icono fantasma" href="#/usuarios" aria-label="${t('o.volver')}">${icono('atras')}</a>${esc(u.apodo)} ${insignias(u, true)}${u.congelado ? chip(t('u.congelado'), 'coral') : ''}${u.estadoAgente === 'suspendido' ? chipAgente('suspendido') : ''}</h2>
         <div class="sub">${esc(u.email)} · ${esc(u.pais)} · ${copiable(u.id, corto(u.id, 10, 6))}</div>
       </div>
       <span class="espacio"></span>
@@ -1560,20 +1680,24 @@ async function vistaUsuarioFicha(el, id) {
         <dt>${t('r.ordenes')}</dt><dd class="num">${fmtNum(rep.ordenesCompletadas ?? 0)} / ${fmtNum(rep.ordenesTotales ?? 0)}</dd>
         <dt>30 d</dt><dd class="num">${fmtNum(rep.completadas30d ?? 0)} / ${fmtNum(rep.ordenes30d ?? 0)} · ${fmtNum(rep.tasaFinalizacion30d ?? 0, 0, 1)} %</dd>
         <dt>+ / −</dt><dd><span class="verde num">+${fmtNum(rep.positivas ?? 0)}</span> · <span class="coral num">−${fmtNum(rep.negativas ?? 0)}</span></dd>
-        <dt>${t('o.apelacionesPerdidas', { n: '' }).replace(/^\s+/, '')}</dt><dd class="num ${Number(rep.apelacionesPerdidas) > 0 ? 'coral' : ''}">${fmtNum(rep.apelacionesPerdidas ?? 0)}</dd>
-        <dt>⌀ ${t('o.liberar').toLowerCase()}</dt><dd class="num">${rep.tiempoPromedioLiberacionSeg != null ? mmss(Math.round(rep.tiempoPromedioLiberacionSeg)) : '—'}</dd>
-        <dt>⌀ ${t('eo.pagado').toLowerCase()}</dt><dd class="num">${rep.tiempoPromedioPagoSeg != null ? mmss(Math.round(rep.tiempoPromedioPagoSeg)) : '—'}</dd>
+        <dt>${t('u.apelacionesPerdidas')}</dt><dd class="num ${Number(rep.apelacionesPerdidas) > 0 ? 'coral' : ''}">${fmtNum(rep.apelacionesPerdidas ?? 0)}</dd>
+        <dt>${t('u.tLiberacion')}</dt><dd class="num">${rep.tiempoPromedioLiberacionSeg != null ? mmss(Math.round(rep.tiempoPromedioLiberacionSeg)) : '—'}</dd>
+        <dt>${t('u.tPago')}</dt><dd class="num">${rep.tiempoPromedioPagoSeg != null ? mmss(Math.round(rep.tiempoPromedioPagoSeg)) : '—'}</dd>
       </dl></div>
     </div>
     <div class="tarjeta" style="margin-top:12px"><h2>${t('u.ordenes')} <span class="tenue2 num">${(d.ordenes || []).length}</span></h2>${(d.ordenes || []).length ? tablaOrdenes(d.ordenes, 'ordenes') : vacio(t('u.sinOrdenes'))}</div>
     <div class="tarjeta"><h2>${t('u.movimientos')} <span class="tenue2 num">${(d.movimientos || []).length}</span></h2>${tablaMovimientos(d.movimientos || [])}</div>
+    ${Array.isArray(d.retiros) || Array.isArray(d.depositos) ? `<div class="rejilla c2" style="margin-top:12px">
+      ${Array.isArray(d.retiros) ? `<div class="tarjeta"><h2>${t('u.retiros')} <span class="tenue2 num">${d.retiros.length}</span></h2>${tablaRetirosHtml(d.retiros, { pendientes: false, conUsuario: false, vacioTexto: t('u.sinRetiros') })}</div>` : ''}
+      ${Array.isArray(d.depositos) ? `<div class="tarjeta"><h2>${t('u.depositos')} <span class="tenue2 num">${d.depositos.length}</span></h2>${d.depositos.length ? tablaDepositosHtml(d.depositos, false) : vacio(t('u.sinDepositos'))}</div>` : ''}
+    </div>` : ''}
     <div class="rejilla c2" style="margin-top:12px">
       <div class="tarjeta"><h2>${t('u.anuncios')} <span class="tenue2 num">${(d.anuncios || []).length}</span></h2>${tablaAnuncios(d.anuncios || [])}</div>
       <div class="tarjeta"><h2>${t('u.metodos')} <span class="tenue2 num">${(d.metodosPago || []).length}</span></h2>${metodosHtml(d.metodosPago || [])}</div>
     </div>`;
   S.acciones.congelar = async ds => {
     const congelar = ds.congelar === '1';
-    const v = await dialogo({ titulo: `${t(congelar ? 'u.congelar' : 'u.descongelar')} · ${u.apodo}`, descripcion: t(congelar ? 'u.congelar.desc' : 'u.descongelar.desc'), campos: [{ nombre: 'motivo', etiqueta: t('motivo'), tipo: 'textarea', requerido: true }], confirmar: t(congelar ? 'u.congelar' : 'u.descongelar'), peligro: congelar, clase: 'verde' });
+    const v = await dialogo({ titulo: `${t(congelar ? 'u.congelar' : 'u.descongelar')} · ${u.apodo}`, descripcion: t(congelar ? 'u.congelar.desc' : 'u.descongelar.desc'), campos: [campoNota('motivo', t('motivo'), true, congelar ? MIN_NOTA : 0)], confirmar: t(congelar ? 'u.congelar' : 'u.descongelar'), peligro: congelar, clase: 'verde' });
     if (!v) return;
     const rr = await api(`/usuarios/${encodeURIComponent(u.id)}/congelar`, { metodo: 'POST', cuerpo: { congelado: congelar, motivo: v.motivo } });
     if (!rr.ok) { aviso(mensajeError(rr), 'error'); return; }
@@ -1592,8 +1716,8 @@ async function vistaUsuarioFicha(el, id) {
   S.acciones.ajuste = async () => {
     const v = await dialogo({ titulo: `${t('u.ajuste')} · ${u.apodo}`, descripcion: t('u.ajuste.desc'), campos: [
       { nombre: 'activo', etiqueta: t('o.activo'), tipo: 'select', opciones: ACTIVOS.map(a => [a, a]), valor: 'ORIGEN' },
-      { nombre: 'cantidad', etiqueta: t('u.ajuste.cantidad'), mono: true, requerido: true, marcador: '-1.25', validar: x => (/^-?\d+(\.\d+)?$/.test(x) && Number(x) !== 0 ? '' : t('u.ajuste.invalida')) },
-      { nombre: 'motivo', etiqueta: t('motivo'), tipo: 'textarea', requerido: true },
+      { nombre: 'cantidad', etiqueta: t('u.ajuste.cantidad'), mono: true, requerido: true, marcador: '-1.25', validar: x => (/^-?\d+(\.\d{1,8})?$/.test(x) && Number(x) !== 0 ? '' : t('u.ajuste.invalida')) },
+      campoNota('motivo', t('motivo'), true, MIN_NOTA),
     ], confirmar: t('u.ajuste'), peligro: true });
     if (!v) return;
     const rr = await api(`/usuarios/${encodeURIComponent(u.id)}/ajuste`, { metodo: 'POST', cuerpo: { activo: v.activo, cantidad: v.cantidad, motivo: v.motivo } });
@@ -1638,7 +1762,7 @@ async function vistaPrecios(el) {
   const refUsd = { ORIGEN: oro * ONZAS_ORIGEN, AUKA: oro, AGKA: plata };
   el.innerHTML = `<form id="form-precios" novalidate>
     <div class="rejilla c2">
-      <div class="tarjeta"><h2>${t('p.metales')}<span class="espacio"></span><span class="pequeno tenue" style="text-transform:none;letter-spacing:0">${tv('fuente.', p.fuente)} · ${esc(hace(p.actualizadoEn))}${p.actualizadoPor ? ` · ${esc(t('p.actualizadoPor', { quien: p.actualizadoPor }))}` : ''}</span></h2>
+      <div class="tarjeta"><h2>${t('p.metales')}<span class="espacio"></span><span class="pequeno tenue" style="text-transform:none;letter-spacing:0;font-weight:400">${tv('fuente.', p.fuente)} · ${esc(hace(p.actualizadoEn))}${p.actualizadoPor ? ` · ${esc(t('p.actualizadoPor', { quien: p.actualizadoPor }))}` : ''}</span></h2>
         <div class="formulario-fila">
           <div class="campo"><label for="p-oro">${t('r.oro')}</label><input id="p-oro" name="oroUsdOnza" class="mono" type="number" step="0.01" min="0" inputmode="decimal" value="${esc(p.oroUsdOnza ?? '')}" ${editable ? '' : 'disabled'}></div>
           <div class="campo"><label for="p-plata">${t('r.plata')}</label><input id="p-plata" name="plataUsdOnza" class="mono" type="number" step="0.01" min="0" inputmode="decimal" value="${esc(p.plataUsdOnza ?? '')}" ${editable ? '' : 'disabled'}></div>
@@ -1651,8 +1775,8 @@ async function vistaPrecios(el) {
     </div>
     <div class="tarjeta" style="margin-top:12px"><h2>${t('p.fx')}<span class="espacio"></span><span class="pequeno" id="precios-cambios" style="text-transform:none;letter-spacing:0"></span></h2>
       <div class="tabla-envoltura"><table class="tabla"><thead><tr><th>${t('p.moneda')}</th><th>${t('p.nombre')}</th><th>${t('u.pais')}</th><th class="derecha">${t('p.tasa')}</th><th class="derecha">ORIGEN</th><th class="derecha">AUKA</th><th class="derecha">AGKA</th></tr></thead><tbody>
-        ${monedas.map(m => { const c = m.codigo; const v = fx[c]; return `<tr data-moneda="${esc(c)}">
-          <td class="mono"><b>${esc(c)}</b></td><td>${esc(m.nombre || '')}</td><td class="tenue">${esc(m.pais || '')}</td>
+        ${monedas.map(m => { const c = m.codigo; const v = fx[c]; const paises = m.pais || (Array.isArray(m.paises) ? m.paises.join(', ') : ''); return `<tr data-moneda="${esc(c)}">
+          <td class="mono"><b>${esc(c)}</b></td><td>${esc(m.nombre || '')}</td><td class="tenue">${esc(paises)}</td>
           <td class="derecha"><input class="fx" name="fx:${esc(c)}" type="number" step="0.0001" min="0" inputmode="decimal" value="${esc(v ?? '')}" data-original="${esc(v ?? '')}" aria-label="${esc(c)}" ${editable && c !== 'USD' ? '' : 'disabled'}></td>
           <td class="derecha mono" data-ref-fx="ORIGEN">${fmtNum(refUsd.ORIGEN * (Number(v) || 0), 2, 4)}</td><td class="derecha mono" data-ref-fx="AUKA">${fmtNum(refUsd.AUKA * (Number(v) || 0), 2, 2)}</td><td class="derecha mono" data-ref-fx="AGKA">${fmtNum(refUsd.AGKA * (Number(v) || 0), 2, 2)}</td>
         </tr>`; }).join('')}
@@ -1709,9 +1833,10 @@ async function vistaPrecios(el) {
 }
 
 // ── Configuración (solo admin) ───────────────────────────────
+// [clave, tipo, paso, mín, máx]. Los rangos son los que aplica el servidor (FALTA EN API: no están documentados).
 const CAMPOS_CONFIG = [
-  ['comisionPct', 'number', '0.01'], ['garantiaAgente', 'text', null], ['maxOrdenesAbiertas', 'number', '1'],
-  ['minOrdenUsd', 'number', '1'], ['maxOrdenUsdSinAgente', 'number', '1'], ['confirmacionesDeposito', 'number', '1'], ['tesoreria', 'text', null],
+  ['comisionPct', 'number', '0.01', 0, 5], ['garantiaAgente', 'text', null], ['maxOrdenesAbiertas', 'number', '1', 1, 50],
+  ['minOrdenUsd', 'number', '1', 0, 10000], ['maxOrdenUsdSinAgente', 'number', '1', 10, 10000000], ['confirmacionesDeposito', 'number', '1', 1, 100], ['tesoreria', 'text', null],
 ];
 async function vistaConfiguracion(el) {
   el.innerHTML = cargando();
@@ -1722,7 +1847,7 @@ async function vistaConfiguracion(el) {
   const editable = puede('configuracion');
   el.innerHTML = `<form id="form-config" class="tarjeta" style="max-width:720px" novalidate><h2>${t('c.titulo')}</h2>
     ${banda('ambar', esc(t('c.aviso')))}
-    <div class="formulario-fila">${CAMPOS_CONFIG.map(([k, tipo, paso]) => `<div class="campo" ${k === 'tesoreria' ? 'style="grid-column:1/-1"' : ''}><label for="cfg-${k}">${t('c.' + k)}</label><input id="cfg-${k}" name="${k}" type="${tipo}" ${paso ? `step="${paso}"` : ''} ${tipo === 'number' ? 'min="0" inputmode="decimal"' : ''} class="mono" value="${esc(c[k] ?? '')}" data-original="${esc(c[k] ?? '')}" ${editable ? '' : 'disabled'}></div>`).join('')}</div>
+    <div class="formulario-fila">${CAMPOS_CONFIG.map(([k, tipo, paso, min, max]) => `<div class="campo" ${k === 'tesoreria' ? 'style="grid-column:1/-1"' : ''}><label for="cfg-${k}">${t('c.' + k)}</label><input id="cfg-${k}" name="${k}" type="${tipo}" ${paso ? `step="${paso}"` : ''} ${tipo === 'number' ? `min="${min}" max="${max}" inputmode="decimal"` : ''} ${k === 'tesoreria' ? 'placeholder="0x…" spellcheck="false"' : ''} class="mono" value="${esc(c[k] ?? '')}" data-original="${esc(c[k] ?? '')}" ${editable ? '' : 'disabled'}></div>`).join('')}</div>
     <div class="formulario-acciones">${editable ? `<button class="boton primario" type="submit">${t('guardar')}</button>` : soloLecturaHtml()}</div>
   </form>`;
   const form = el.querySelector('#form-config');
@@ -1730,11 +1855,21 @@ async function vistaConfiguracion(el) {
     ev.preventDefault();
     if (!editable) return;
     const cuerpo = {};
-    for (const [k, tipo] of CAMPOS_CONFIG) {
+    for (const [k, tipo, , min, max] of CAMPOS_CONFIG) {
       const inp = form.elements[k];
       if (inp.value === inp.dataset.original) continue;
-      if (tipo === 'number') { if (inp.value === '' || !isFinite(Number(inp.value)) || Number(inp.value) < 0) { aviso(t('p.invalido', { campo: t('c.' + k) }), 'error'); inp.focus(); return; } cuerpo[k] = Number(inp.value); }
-      else cuerpo[k] = inp.value.trim() || null;
+      const v = inp.value.trim();
+      if (tipo === 'number') {
+        const n = Number(v);
+        if (v === '' || !isFinite(n) || n < min || n > max) { aviso(t('c.rango', { campo: t('c.' + k), min, max }), 'error'); inp.focus(); return; }
+        cuerpo[k] = n;
+      } else if (k === 'garantiaAgente') {
+        if (!/^\d+(\.\d{1,8})?$/.test(v)) { aviso(t('c.garantiaInvalida'), 'error'); inp.focus(); return; }
+        cuerpo[k] = v;
+      } else if (k === 'tesoreria') {
+        if (v && !RE_DIRECCION.test(v)) { aviso(t('c.tesoreriaInvalida'), 'error'); inp.focus(); return; }
+        cuerpo[k] = v || null;
+      } else cuerpo[k] = v || null;
     }
     if (!Object.keys(cuerpo).length) { aviso(t('p.sinCambios')); return; }
     const btn = form.querySelector('button[type=submit]');
@@ -1857,11 +1992,11 @@ async function cargarOperadores() {
     <td>${o.activo ? chip(t('op.activo'), 'verde') : chip(t('op.inactivo'), 'gris')}${o.debeCambiarContrasena ? ' ' + chip(t('op.debeCambiar'), 'ambar') : ''}</td>
     <td class="tenue">${o.ultimoAcceso ? fmtFecha(o.ultimoAcceso) : t('op.nunca')}</td>
     <td class="tenue">${fmtFecha(o.creadoEn, false)}</td>
-    <td class="acciones">${puede('operadores') && o.id !== yo ? `<button class="boton chico ${o.activo ? '' : 'verde'}" data-accion="estado-operador" data-id="${esc(o.id)}" data-nombre="${esc(o.nombre)}" data-activo="${o.activo ? '0' : '1'}">${o.activo ? t('op.desactivar') : t('op.activar')}</button><button class="boton chico" data-accion="restablecer-operador" data-id="${esc(o.id)}" data-nombre="${esc(o.nombre)}">${t('op.restablecer')}</button>` : ''}</td>
+    <td class="acciones">${puede('operadores') && o.id !== yo ? `<button class="boton chico ${o.activo ? '' : 'verde'}" data-accion="estado-operador" data-id="${esc(o.id)}" data-nombre="${esc(o.nombre)}" data-activo="${o.activo ? '0' : '1'}">${o.activo ? t('op.desactivar') : t('op.activar')}</button><button class="boton chico" data-accion="restablecer-operador" data-id="${esc(o.id)}" data-nombre="${esc(o.nombre)}" title="${t('op.restablecer')}">${t('op.restablecerCorto')}</button>` : ''}</td>
   </tr>`).join('')}</tbody></table></div>`;
 }
 
-// ── Sondeo: apelaciones y retiros pendientes cada 20 s ───────
+// ── Sondeo: apelaciones, retiros y solicitudes pendientes cada 20 s ──
 function actualizarCola(parcial) {
   for (const k of Object.keys(parcial)) if (typeof parcial[k] === 'number') S.cola[k] = parcial[k];
   pintarContadores();
@@ -1882,7 +2017,7 @@ async function sondear() {
   if (!S.token || sondeando || document.hidden) { pintarVivo(); return; }
   sondeando = true;
   try {
-    const [a, r] = await Promise.all([api('/apelaciones'), api('/retiros?estado=pendiente')]);
+    const [a, r, g] = await Promise.all([api('/apelaciones'), api('/retiros?estado=pendiente'), api('/agentes?estado=pendiente')]);
     if (!S.token) return;
     const nuevo = {};
     if (a.ok) {
@@ -1897,10 +2032,17 @@ async function sondear() {
       nuevo.retiros = n;
       if (S.refrescar.retirosPendientes) S.refrescar.retirosPendientes(r.datos.retiros || []);
     }
+    if (g.ok) {
+      const n = (g.datos.solicitudes || []).length;
+      if (S.cola.agentes != null && n > S.cola.agentes) aviso(t('nueva.solicitud'));
+      nuevo.agentes = n;
+      if (S.refrescar.solicitudes) S.refrescar.solicitudes(g.datos.solicitudes || []);
+    }
     actualizarCola(nuevo);
-    S.sondeo.error = !(a.ok && r.ok);
+    S.sondeo.error = !(a.ok && r.ok && g.ok);
     S.sondeo.ultimo = Date.now();
-    if (S.refrescar.orden) S.refrescar.orden();
+    // La orden abierta ya tiene su propio ciclo de 5 s; aquí solo se refresca si está cerrada.
+    if (S.refrescar.orden && !S.sondeoOrden) S.refrescar.orden();
   } finally {
     sondeando = false;
     pintarVivo();
@@ -1932,7 +2074,8 @@ async function arrancar() {
     const c = ev.target.closest('[data-copiar]');
     if (c) { ev.preventDefault(); copiar(c.dataset.copiar || ''); }
   });
-  document.addEventListener('visibilitychange', () => { if (!document.hidden && S.token) sondear(); else pintarVivo(); });
+  document.addEventListener('visibilitychange', () => { if (!document.hidden && S.token) { sondear(); if (S.sondeoOrden && S.refrescar.orden) S.refrescar.orden(); } else pintarVivo(); });
+  document.addEventListener('keydown', ev => { if (ev.key === 'Escape' && S.menuAbierto) cerrarMenu(); });
   window.addEventListener('hashchange', render);
   if (S.token) {
     const r = await api('/sesion/yo');

@@ -11,14 +11,18 @@ import { fileURLToPath } from 'url'
 import { dirname, join } from 'path'
 
 import { store, iniciar, motor } from './store.js'
+import { EN_PRODUCCION, modoDemo, TRAS_PROXY, ORIGENES } from './lib/entorno.js'
 import { prepararPrecios, precios } from './motor/precios.js'
 import { asegurarAdministrador, limpiarSesiones } from './motor/operadores.js'
-import { modoDemo, sembrar, CONTRASENA_DEMO } from './motor/demo.js'
+import { sembrar, CONTRASENA_DEMO } from './motor/demo.js'
 import { genesisConfigurado } from './motor/genesis.js'
+import { correoConfigurado } from './motor/correo.js'
+import * as usuarios from './motor/usuarios.js'
+import * as anuncios from './motor/anuncios.js'
 import { revisarVencidas } from './motor/ordenes.js'
 import { verificarCadena } from './motor/bitacora.js'
 import { authRouter } from './routes/auth.js'
-import { genesisRouter, parserRostro } from './routes/genesis.js'
+import { genesisRouter } from './routes/genesis.js'
 import { mercadoRouter, usuariosRouter } from './routes/mercado.js'
 import { billeteraRouter } from './routes/billetera.js'
 import { metodosPagoRouter } from './routes/metodosPago.js'
@@ -32,15 +36,25 @@ const __dirname = dirname(__filename)
 const PUBLICO = join(__dirname, '..', 'public')
 
 const app = express()
-app.set('trust proxy', 1)
-app.use(cors())
+// Solo se confía en X-Forwarded-For cuando de verdad hay un proxy delante:
+// si no, cualquiera se inventa una IP por petición y el límite por IP no vale.
+if (TRAS_PROXY) app.set('trust proxy', 1)
+// En producción la API solo se abre a los orígenes declarados (vacío = mismo
+// origen); en desarrollo, a cualquiera.
+app.use(cors(EN_PRODUCCION ? { origin: ORIGENES.length ? ORIGENES : false } : {}))
 
-// Cabeceras de seguridad básicas.
+// Cabeceras de seguridad. La CSP permite lo que la app usa: sus propios
+// archivos, estilos e íconos en línea, las fuentes de Google e imágenes en
+// data: (los comprobantes se muestran desde la propia API).
 app.use((_req, res, siguiente) => {
   res.setHeader('X-Content-Type-Options', 'nosniff')
   res.setHeader('X-Frame-Options', 'DENY')
   res.setHeader('Referrer-Policy', 'no-referrer')
   res.setHeader('Permissions-Policy', 'geolocation=(), microphone=()')
+  res.setHeader('Content-Security-Policy',
+    "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; " +
+    "font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob:; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'")
+  if (EN_PRODUCCION) res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains')
   siguiente()
 })
 
@@ -52,14 +66,16 @@ app.use(async (_req, _res, siguiente) => {
     await arrancar()
     siguiente()
   } catch (e) {
+    // Un arranque fallido (Mongo inalcanzable un momento) no se queda pegado:
+    // la siguiente petición vuelve a intentarlo.
+    arranque = null
     siguiente(e)
   }
 })
 
-// Los fotogramas del rostro para Genesis ID no caben en el límite general; el
-// cuerpo lo parsea el primer parser que lo alcanza, así que este va antes.
-app.use('/api/genesis/biometria', parserRostro)
 // 3 MB: un comprobante de pago en el chat (≤ 1,5 MB en base64) más holgura.
+// Los fotogramas del rostro para Genesis ID (25 MB) tienen su propio parser
+// dentro del router, DESPUÉS de comprobar la sesión: sin token no se parsea nada.
 app.use(express.json({ limit: '3mb' }))
 
 // ── Páginas ──────────────────────────────────────────────────────────────────
@@ -78,7 +94,7 @@ app.get('/healthz', (_req, res) => {
   const cadena = verificarCadena()
   const p = precios()
   const cfg = store.todo().configuracion
-  const listo = motor === 'mongodb' && cadena.integra && genesisConfigurado() && Boolean(cfg.tesoreria) && p.oroUsdOnza > 0
+  const listo = motor === 'mongodb' && cadena.integra && genesisConfigurado() && Boolean(cfg.tesoreria) && p.oroUsdOnza > 0 && correoConfigurado()
   res.json({
     estado: listo ? 'ok' : 'degradado',
     en: new Date().toISOString(),
@@ -86,10 +102,12 @@ app.get('/healthz', (_req, res) => {
     comprobaciones: {
       almacenPersistente: motor === 'mongodb',
       genesisConfigurado: genesisConfigurado(),
+      correoConfigurado: correoConfigurado(),
       tesoreriaConfigurada: Boolean(cfg.tesoreria),
       precioMetal: p.oroUsdOnza > 0 && p.plataUsdOnza > 0,
       bitacoraIntegra: cadena.integra,
       demo: modoDemo(),
+      produccion: EN_PRODUCCION,
     },
   })
 })
@@ -149,6 +167,7 @@ export function arrancar(): Promise<void> {
 
 async function arrancarDeVerdad(): Promise<void> {
   await iniciar()
+  usuarios.migrar()
   prepararPrecios()
   const admin = asegurarAdministrador()
   limpiarSesiones()
@@ -156,6 +175,14 @@ async function arrancarDeVerdad(): Promise<void> {
   if (demo) {
     const r = sembrar()
     if (r.sembrado) console.log(`[ordenexchange] demo sembrada: ${r.usuarios} usuarios, ${r.anuncios} anuncios (contraseña de todos: ${CONTRASENA_DEMO})`)
+  } else {
+    // Si el almacén trae cuentas de demostración de una arrancada anterior,
+    // quedan bloqueadas y sus anuncios fuera del mercado.
+    const bloqueadas = usuarios.bloquearCuentasDemo()
+    if (bloqueadas) {
+      for (const u of store.todo().usuarios) if (usuarios.esDemo(u)) anuncios.pausarTodos(u.id, 'cuenta de demostración fuera del modo demo')
+      console.warn(`[ordenexchange] AVISO — ${bloqueadas} cuentas de demostración bloqueadas al pasar a modo real`)
+    }
   }
   const vencidas = revisarVencidas()
   if (vencidas) console.log(`[ordenexchange] ${vencidas} órdenes vencidas al arrancar`)
@@ -171,6 +198,7 @@ async function arrancarDeVerdad(): Promise<void> {
   if (!store.todo().configuracion.tesoreria) avisos.push('SIN ORDENEX_TESORERIA: no se pueden comprobar depósitos de la cadena.')
   if (!(p.oroUsdOnza > 0)) avisos.push('SIN PRECIO DEL ORO: no hay precio de referencia; fíjelo en el panel (Precios) o con ORDENEX_ORO_USD_ONZA.')
   if (!process.env.ORDENEX_JWT_SECRETO) avisos.push('SIN ORDENEX_JWT_SECRETO: las sesiones se firman con el secreto de desarrollo.')
+  if (!correoConfigurado() && !demo) avisos.push('SIN BREVO_API_KEY: no se pueden mandar los códigos de confirmación del correo; nadie podrá verificar su identidad.')
   for (const a of avisos) console.warn(`[ordenexchange] AVISO — ${a}`)
 
   if (admin.creado) {

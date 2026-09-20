@@ -30,7 +30,7 @@ function limpiarCampos(campos: unknown, definicion: { clave: string; obligatorio
   return salida
 }
 
-export function crear(u: Usuario, entrada: { pais?: unknown; tipo?: unknown; banco?: unknown; titular?: unknown; campos?: unknown }): MetodoPago {
+export function crear(u: Usuario, entrada: { pais?: unknown; tipo?: unknown; banco?: unknown; titular?: unknown; campos?: unknown; moneda?: unknown }): MetodoPago {
   if (listar(u.id).length >= MAXIMO) throw conflicto(`No se pueden tener más de ${MAXIMO} métodos de pago`)
   const iso2 = String(entrada.pais || u.pais).toUpperCase()
   const p = paisDe(iso2)
@@ -46,11 +46,17 @@ export function crear(u: Usuario, entrada: { pais?: unknown; tipo?: unknown; ban
   } else if (entrada.banco) {
     banco = String(entrada.banco).trim().slice(0, 80) || null
   }
+  // Zelle mueve dólares en cualquier país; el efectivo puede pactarse en
+  // dólares donde la gente los usa. Lo demás va en la moneda del país.
+  const monedaPedida = entrada.moneda ? String(entrada.moneda).toUpperCase() : null
+  const moneda = def.tipo === 'zelle' ? 'USD'
+    : (def.tipo === 'efectivo' && monedaPedida === 'USD') ? 'USD'
+      : p.moneda.codigo
   const metodo: MetodoPago = {
     id: id('mp'),
     usuarioId: u.id,
     pais: iso2,
-    moneda: p.moneda.codigo,
+    moneda,
     tipo: def.tipo,
     nombreMetodo: def.nombre,
     categoria: def.categoria,
@@ -81,7 +87,17 @@ export function actualizar(u: Usuario, idMetodo: string, entrada: { titular?: un
     m.banco = b || null
   }
   if (entrada.campos !== undefined && def) m.campos = limpiarCampos(entrada.campos, def.campos)
-  if (entrada.activo !== undefined) m.activo = Boolean(entrada.activo)
+  if (entrada.activo !== undefined) {
+    const activo = Boolean(entrada.activo)
+    if (!activo && m.activo) {
+      // Desactivarlo con un anuncio abierto dejaría el anuncio en el mercado
+      // con un método muerto: las órdenes fallarían al abrirse.
+      const enAnuncio = store.todo().anuncios.some((a) =>
+        a.usuarioId === u.id && a.estado !== 'cerrado' && a.metodos.some((x) => x.id === m.id))
+      if (enAnuncio) throw conflicto('Ese método está en un anuncio abierto; edite o cierre el anuncio primero', 'metodo-en-uso')
+    }
+    m.activo = activo
+  }
   registrar(u.id, 'metodo.actualizado', m.id, {})
   store.guardar()
   return m

@@ -648,3 +648,10 @@ select.entrada option{background:var(--panel2);color:var(--marfil)}
 @media (min-width:900px){.oculto-esc{display:none}}
 .solo-esc{display:none}
 @media (min-width:900px){.solo-esc{display:block}}
+
+/* ── Iconos inline ──────────────────────────────────────────────────────── */
+svg.ic{width:1em;height:1em;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex:none;vertical-align:-.15em}
+.btn svg.ic{width:18px;height:18px}
+.btn-icono svg.ic{width:20px;height:20px}
+.barra-inf a svg.ic{width:22px;height:22px;stroke-width:1.7}
+.mono.pequeno{font-size:12px}
