@@ -389,7 +389,7 @@
       <div class="shell">
         <aside class="side" data-side>
           <div class="brand"><div class="mark">${ic('escudo')}</div><div><b>${esc(marca)}</b><span>${esc(sub)}</span></div></div>
-          <nav class="nav">${navHtml}</nav>
+          <nav class="nav"><i class="nav-ind" data-ind></i>${navHtml}</nav>
           <div class="pie">
             <a href="./index.html">← Portal de Tesorería</a>
             <a href="./origen.html">Emisión de ORIGEN</a>
@@ -410,7 +410,7 @@
               <button class="btn chico fantasma" data-tema title="Claro / oscuro">${ic('sol')}</button>
             </div>
           </header>
-          <div class="contenido" data-contenido><div class="vacio">${ic('reloj')}<div>Cargando…</div></div></div>
+          <div class="contenido" data-contenido><div class="esqueleto" aria-label="Cargando"><i></i><i></i><i></i><i></i><b></b></div></div>
         </div>
       </div>`;
 
@@ -436,10 +436,16 @@
       if (vistas[v] && v !== vistaActual) { vistaActual = v; render(); }
     });
 
+    function moverIndicador() {
+      const ind = el('[data-ind]', raiz); const on = el('[data-vista].on', raiz);
+      if (!ind || !on) return;
+      ind.style.top = on.offsetTop + 8 + 'px'; ind.style.height = on.offsetHeight - 16 + 'px'; ind.classList.add('on');
+    }
     function render() {
       if (!estado) return;
       const v = vistas[vistaActual] || vistas[inicio];
       els('[data-vista]', raiz).forEach((a) => a.classList.toggle('on', a.dataset.vista === vistaActual));
+      moverIndicador();
       el('[data-titulo]', raiz).textContent = v.titulo;
       el('[data-subtitulo]', raiz).textContent = typeof v.sub === 'function' ? v.sub() : (v.sub || '');
       el('[data-sesion]', raiz).innerHTML = `${esc(estado.sesion.usuario)} · <span class="faint">${esc(fmt.rol(estado.sesion.rol))}</span>`;
@@ -472,7 +478,7 @@
   /** Las cifras grandes llegan a su valor en vez de aparecer. Respeta reduced-motion. */
   function contarCifras(raiz) {
     if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-    els('.kpi .val', raiz).forEach((elv) => {
+    els('.kpi .val, .medidor .centro b', raiz).forEach((elv) => {
       const nodo = Array.from(elv.childNodes).find((n) => n.nodeType === 3 && /\d/.test(n.textContent));
       if (!nodo) return;
       const txt = nodo.textContent; const m = txt.match(/^(\D*)([\d.,]+)(.*)$/); if (!m) return;
@@ -520,6 +526,6 @@
     buscar, puede, etiquetaAccion: R.etiquetaAccion, ACCIONES: R.ACCIONES, CAUSAS: R.CAUSAS, TIPOS_SEC: R.TIPOS_SEC,
     hash: R.hashFnv, id: R.idAzar,
     // ui
-    fmt, el, els, esc, ic, ICONOS, toast, modal, cerrarModal, confirmar, pedirMotivo, tema, medidor, chasis, alClic, exportarJSON,
+    fmt, el, els, esc, ic, ICONOS, toast, modal, cerrarModal, confirmar, pedirMotivo, tema, medidor, chasis, alClic, exportarJSON, contarCifras,
   };
 })(window);

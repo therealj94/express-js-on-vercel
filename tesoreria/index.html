@@ -23,7 +23,7 @@
 
 <div class="hub">
   <header class="hub-cab">
-    <div class="escudo"><svg viewBox="0 0 24 24"><path d="M12 3l7 3v5c0 4.5-3 8-7 10-4-2-7-5.5-7-10V6l7-3z" fill="none" stroke="currentColor"/><path d="M9 12l2 2 4-4" fill="none" stroke="currentColor"/></svg></div>
+    <div class="escudo"><svg viewBox="0 0 24 24"><path pathLength="1" d="M12 3l7 3v5c0 4.5-3 8-7 10-4-2-7-5.5-7-10V6l7-3z" fill="none" stroke="currentColor"/><path pathLength="1" d="M9 12l2 2 4-4" fill="none" stroke="currentColor"/></svg></div>
     <div class="kicker">Orden Global Corp</div>
     <h1>Tesorería de Orden Global</h1>
     <p>Tres plataformas y una sola regla: <b>ningún token sale al mercado sin respaldo certificado detrás</b>. El valor se certifica primero, el precio se establece con un valuador independiente y solo entonces se emiten los tokens que ese valor aguanta.</p>
@@ -132,6 +132,7 @@
              '<div class="val num">' + T.esc(c[1]) + '</div>' +
              '<div class="nota">' + T.esc(c[2]) + '</div></div>';
     }).join('');
+    setTimeout(function(){ if (T.contarCifras) T.contarCifras(document.getElementById('cifras')); }, 1900);
     var m = document.getElementById('modo');
     m.textContent = T.modo === 'api' ? 'Conectado al servidor de Tesorería' : 'Demostración local · sin servidor';
     m.className = 'tag plano ' + (T.modo === 'api' ? 'ok' : 'warn');
