@@ -81,7 +81,7 @@ await pagina.addInitScript(() => {
   }
 })
 
-await pagina.goto(base, { waitUntil: 'load' })
+await pagina.goto(base + '/historia/', { waitUntil: 'load' })
 await pagina.waitForTimeout(600)
 
 // Entrar con el sonido encendido, como haría cualquiera.
@@ -338,7 +338,7 @@ decir(sonPuente.gan.alma > 0 && sonPuente.gan.senal === 0,
 decir(sonPuente.fx.includes('puente'), 'y suena el capital cruzando de un lado al otro')
 
 // ── 11. la portada habla los dos idiomas ────────────────────────────────────
-await pagina.goto(base, { waitUntil: 'load' })
+await pagina.goto(base + '/historia/', { waitUntil: 'load' })
 await pagina.waitForTimeout(500)
 const portada = await pagina.evaluate(() => {
   const g = document.getElementById('gate')

@@ -1,8 +1,24 @@
 # El sitio de ordenglobal.org
 
-"El viaje del valor" es una sola pagina: `index.html`, sin dependencias ni
-compilacion. Todo lo demas son medios (216 fotogramas y 9 imagenes) que la
-pagina carga a mano.
+Tres páginas sin dependencias ni compilación, servidas tal cual:
+
+| Ruta | Archivo | Qué es |
+|---|---|---|
+| `/` | `index.html` | La portada: el ecosistema como constelación, las cifras vivas, ORIGEN, la cadena |
+| `/en/` | `en/index.html` | La misma portada en inglés |
+| `/historia/` | `historia/index.html` | "El viaje del valor": un solo desplazamiento con sonido |
+| cualquier otra | `404.html` | La página que no existe (Amplify la sirve con estado 404) |
+
+El código compartido vive en `assets/`: `portada.css` (con las `@font-face` al
+principio), `portada.js` (menú, cielo, cifras vivas), `constelacion.js` (los
+planetas) y `galaxia.js` (el cielo, el mismo archivo que la puerta de Veta
+Wallet). Las cuatro letras de la casa están en `assets/fuentes/` como woff2
+variables, servidas desde aquí y no desde Google: dos dominios menos que
+resolver antes del titular, y la CSP cerrada a `self`.
+
+Los medios no están en el repositorio: 216 fotogramas WebP (`seq/`), 19 MP3
+(`audio/`) y las imágenes de `assets/`. Viven en producción y `reconstruir.sh`
+los baja de ahí.
 
 ## Donde vive
 
@@ -20,41 +36,52 @@ media otra.
 
 ## Reconstruir la copia de trabajo
 
-Los medios no estan en el repositorio: son 11 MB de JPEG que ya viven en
-produccion y se bajan de ahi.
-
 ```sh
-mkdir -p /tmp/ogsite/assets /tmp/ogsite/audio
-cd /tmp/ogsite
-cp <repo>/sitio-ordenglobal/index.html .
-for a in og veta veta-mark veta-icon origen origen-mark genesis-mark favicon-og; do
-  curl -so assets/$a.png https://www.ordenglobal.org/assets/$a.png
-done
-curl -so assets/genesis.ico https://www.ordenglobal.org/assets/genesis.ico
-for s in hero gold blockchain origen; do
-  mkdir -p seq/$s
-  for i in $(seq -w 0 53); do
-    curl -so seq/$s/$i.jpg https://www.ordenglobal.org/seq/$s/$i.jpg
-  done
-done
-python3 <repo>/sitio-ordenglobal/musica/componer.py   # capas/*.wav y mezcla.wav
-python3 <repo>/sitio-ordenglobal/musica/efectos.py    # efectos/*.wav
-# a MP3: capas a 72k, efectos a 64k, la mezcla plana a 96k (ver "La musica")
+sh reconstruir.sh /tmp/ogsite     # código de aquí + medios de producción
 ```
 
-Al terminar tienen que ser 237 archivos y ~16 MB.
+Al terminar tienen que ser 272 archivos y ~14 MB. Si hay que rehacer la
+música desde cero (ver "La musica"):
+
+```sh
+python3 musica/componer.py        # /tmp/musica/capas/*.wav y mezcla.wav
+python3 musica/efectos.py         # /tmp/musica/efectos/*.wav
+python3 musica/mp3.py /tmp/musica /tmp/ogsite/audio   # pip install lameenc
+```
+
+Los fotogramas se sirven en WebP (calidad 76, un tercio menos que los JPEG
+originales sin diferencia a la vista). Si aparecen fotogramas nuevos en JPEG:
+
+```python
+from PIL import Image; Image.open("00.jpg").save("00.webp", "WEBP", quality=76, method=6)
+```
+
+## Versiones y caché
+
+Amplify manda `Cache-Control` por patrón (`configurar-amplify.py`): los
+fotogramas, el audio, las fuentes y las imágenes son inmutables por un año;
+CSS y JS duran una semana en el navegador. Por eso el HTML los pide con
+`?v=AAAAMMDD`: **al tocar `portada.css` o cualquier `.js`, cambiá la fecha en
+las tres páginas y en `404.html`**, o media gente seguirá con la versión vieja
+hasta una semana. El HTML no se cachea en el navegador.
+
+`configurar-amplify.py` también fija la CSP y la regla del 404. Se corre una
+vez cuando cambia algo de eso, con las mismas credenciales que el despliegue.
 
 ## Publicar
 
 ```sh
 AWS_ACCESS_KEY_ID=... AWS_SECRET_ACCESS_KEY=... python3 desplegar.py /tmp/ogsite
-node probar-bso.mjs                # comprueba la banda sonora en un navegador
+node probar-bso.mjs                # comprueba la banda sonora de /historia/ en un navegador
+SITIO=https://www.ordenglobal.org node probar-bso.mjs   # lo mismo, contra producción
 ```
 
 Amplify **reemplaza el manifiesto entero** en cada despliegue: lo que no va en
 la subida desaparece del sitio. Por eso el script recorre el arbol completo y
-sube los 237 archivos aunque solo haya cambiado uno. Nunca subir un archivo
-suelto.
+sube los 272 archivos aunque solo haya cambiado uno. Nunca subir un archivo
+suelto. (Así se perdieron una vez las cuatro capas y los trece efectos de la
+banda sonora: un despliegue hecho desde una copia sin `audio/` completo dejó
+/historia/ sonando con una sola capa durante semanas.)
 
 El espejo del servidor viejo ya **no recibe trafico**: `www` resuelve a
 CloudFront en todos los resolutores que se probaron, y el apex (`ordenglobal.org`
@@ -146,4 +173,4 @@ tiene costura audible — el ultimo instante y el primero coinciden en energia
 (0,180 contra 0,174) y todo lo que crece a lo largo de la pieza vuelve a su
 punto de partida antes de cerrar.
 
-El `.wav` que sale hay que convertirlo a MP3 y dejarlo en `audio/ambiente.mp3`.
+El `.wav` que sale se convierte con `musica/mp3.py` y queda en `audio/ambiente.mp3`.
