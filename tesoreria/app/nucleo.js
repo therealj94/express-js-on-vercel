@@ -158,7 +158,10 @@
   }
 
   /** Ejecuta y avisa con un toast. Resuelve `true` si salió bien. */
+  let ultimoBoton = null;
+  document.addEventListener('mousedown', (e) => { const b = e.target.closest && e.target.closest('.btn'); if (b) ultimoBoton = b; }, true);
   async function correr(nombre, datos, tituloOk, textoOk, tipoOk) {
+    const b = ultimoBoton; if (b && modo === 'api') b.classList.add('ocupado');
     try {
       const r = await ejecutar(nombre, datos);
       toast(tituloOk || 'Hecho', textoOk === undefined ? r.evento.detalle : textoOk, tipoOk || 'ok');
@@ -166,8 +169,21 @@
     } catch (e) {
       toast('No se pudo', e.message, 'bad');
       return null;
+    } finally {
+      if (b) b.classList.remove('ocupado');
     }
   }
+
+  /* onda al pulsar cualquier botón */
+  document.addEventListener('click', (e) => {
+    const b = e.target.closest && e.target.closest('.btn');
+    if (!b || b.disabled) return;
+    if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    const r = b.getBoundingClientRect(); const d = Math.max(r.width, r.height);
+    const o = document.createElement('span'); o.className = 'onda';
+    o.style.width = o.style.height = d + 'px'; o.style.left = (e.clientX - r.left - d / 2) + 'px'; o.style.top = (e.clientY - r.top - d / 2) + 'px';
+    b.appendChild(o); setTimeout(() => o.remove(), 600);
+  });
 
   async function reiniciar() {
     if (modo === 'api') {
@@ -376,7 +392,7 @@
   }
 
   /* --- chasis compartido (sidebar + topbar) --- */
-  function chasis({ montaje, marca, sub, acento, secciones, vistas, inicio }) {
+  function chasis({ montaje, marca, sub, acento, secciones, vistas, inicio, tour }) {
     document.documentElement.setAttribute('data-acento', acento);
     const raiz = el(montaje);
     const navHtml = secciones.map((g) => `
@@ -395,6 +411,7 @@
             <a href="./origen.html">Emisión de ORIGEN</a>
             <a href="./security.html">Tesorería Security</a>
             <a href="./utility.html">Tesorería Utility</a>
+            <a href="./guia.html">Cómo funciona</a>
             <div style="padding:10px 12px 0" data-sello></div>
           </div>
         </aside>
@@ -405,6 +422,7 @@
             <div class="der">
               <span class="tag plano" data-modo></span>
               <span class="tag plano" data-sesion></span>
+              <button class="btn chico fantasma" data-guia title="Cómo funciona esta pantalla">?</button>
               <button class="btn chico fantasma" data-cuenta title="Cambiar contraseña" style="display:none">${ic('llave')}</button>
               <button class="btn chico fantasma" data-salir title="Salir" style="display:none">${ic('salir')}</button>
               <button class="btn chico fantasma" data-tema title="Claro / oscuro">${ic('sol')}</button>
@@ -421,6 +439,14 @@
     el('[data-menu]', raiz).addEventListener('click', () => { side.classList.add('abierto'); velo.classList.add('on'); });
     el('[data-salir]', raiz).addEventListener('click', () => salir());
     el('[data-cuenta]', raiz).addEventListener('click', () => cambiarContrasena(false));
+    const llaveTour = 'og.guia.' + acento;
+    function lanzarTour() {
+      if (!tour || !global.Guia) return;
+      const pasos = typeof tour === 'function' ? tour() : tour;
+      if (pasos[0] && pasos[0].vista && vistaActual !== pasos[0].vista) { vistaActual = pasos[0].vista; location.hash = vistaActual; render(); }
+      setTimeout(() => global.Guia.recorrido(pasos, { llave: llaveTour }), 350);
+    }
+    el('[data-guia]', raiz).addEventListener('click', lanzarTour);
     velo.addEventListener('click', () => { side.classList.remove('abierto'); velo.classList.remove('on'); });
 
     let vistaActual = (location.hash || '').replace('#', '') || inicio;
@@ -465,7 +491,11 @@
     }
 
     suscribir(render);
-    const trasEntrar = () => { render(); if (estado.sesion.debeCambiarContrasena) cambiarContrasena(true); };
+    const trasEntrar = () => {
+      render();
+      if (estado.sesion.debeCambiarContrasena) cambiarContrasena(true);
+      else if (tour && global.Guia && !global.Guia.yaVisto(llaveTour)) setTimeout(lanzarTour, 900);
+    };
     arrancar().then((r) => {
       if (r.modo === 'api' && !r.sesion) pantallaEntrada(trasEntrar);
       else trasEntrar();

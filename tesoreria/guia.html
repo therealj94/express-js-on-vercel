@@ -1,0 +1,228 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Cómo funciona · Tesorería Orden Global</title>
+<meta name="description" content="Explicación visual de cómo se emite un token en Orden Global: activo real, certificación, aforo, ORIGEN, autorización y emisión. Con simulador de respaldo.">
+<meta name="theme-color" content="#0A1416">
+<link rel="stylesheet" href="./app/estilo.css">
+<style>
+  .g{max-width:1080px;margin:0 auto;padding:48px 22px 90px}
+  .g header{text-align:center;margin-bottom:38px}
+  .g header .kicker{font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--faint);margin-bottom:10px}
+  .g h1{font-family:"Fraunces",Georgia,serif;font-size:36px;font-weight:600;letter-spacing:-.02em;line-height:1.12;text-wrap:balance}
+  .g header p{color:var(--muted);font-size:15.5px;max-width:640px;margin:12px auto 0;line-height:1.6}
+  .cap{margin-top:54px}
+  .cap .n{font-family:"JetBrains Mono",monospace;font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--acento)}
+  .cap h2{font-family:"Fraunces",Georgia,serif;font-size:24px;font-weight:600;letter-spacing:-.015em;margin:6px 0 10px;text-wrap:balance}
+  .cap > p{color:var(--muted);font-size:14.5px;line-height:1.65;max-width:680px}
+  /* diagrama del flujo */
+  .diag{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:22px;margin-top:18px;box-shadow:var(--shadow);overflow:hidden}
+  .diag svg{width:100%;height:auto;display:block;min-width:680px}
+  .diag{overflow-x:auto}
+  .diag text{font-family:"Manrope",system-ui,sans-serif;fill:var(--ink);font-size:11px;stroke:none}
+  .diag svg{overflow:visible}
+  .diag .et{fill:var(--faint);font-size:9.5px;letter-spacing:.12em;text-transform:uppercase}
+  .diag .caja{fill:var(--surface2);stroke:var(--line);stroke-width:1}
+  .diag .caja.a{fill:var(--violet-soft);stroke:var(--violet)}
+  .diag .ruta{fill:none;stroke:var(--line2);stroke-width:1.5;stroke-dasharray:4 5}
+  .diag circle{stroke:none}
+  .diag .moneda{fill:var(--gold);filter:drop-shadow(0 0 6px color-mix(in srgb,var(--gold) 70%,transparent))}
+  .diag .moneda2{fill:var(--violet);filter:drop-shadow(0 0 6px color-mix(in srgb,var(--violet) 70%,transparent))}
+  .pasos-g{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:14px}
+  @media(max-width:860px){.pasos-g{grid-template-columns:1fr}}
+  .paso-g{border:1px solid var(--line);border-radius:12px;padding:14px 16px;background:var(--surface)}
+  .paso-g b{display:block;font-size:13.5px;margin-bottom:4px}
+  .paso-g span{font-size:12.5px;color:var(--muted);line-height:1.55}
+  /* techos */
+  .techos{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:16px}
+  @media(max-width:860px){.techos{grid-template-columns:1fr}}
+  .techo{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:18px}
+  .techo h3{font-size:14px;font-weight:650;margin-bottom:10px}
+  .nivel{display:flex;align-items:center;gap:10px;margin:8px 0;font-size:12.5px}
+  .nivel .barra{flex:1}
+  .nivel .barra i{animation-duration:1.2s}
+  .nivel b{width:150px;color:var(--muted);font-weight:500}
+  .nivel span{width:64px;text-align:right}
+  /* simulador */
+  .sim{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:22px;margin-top:18px;box-shadow:var(--shadow)}
+  .sim .cuerpo-sim{display:grid;grid-template-columns:1fr 200px;gap:24px;align-items:center}
+  @media(max-width:760px){.sim .cuerpo-sim{grid-template-columns:1fr}}
+  .sim label{display:block;font-size:11.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--faint);font-weight:600;margin:14px 0 6px}
+  .sim label b{color:var(--ink);float:right;font-family:"JetBrains Mono",monospace;font-weight:500;text-transform:none;letter-spacing:0}
+  .sim input[type=range]{width:100%;accent-color:var(--gold)}
+  .sim .veredicto{margin-top:16px}
+  .roles{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-top:16px}
+  @media(max-width:860px){.roles{grid-template-columns:1fr 1fr}}
+  .rol{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:16px;transition:transform .2s var(--ease),border-color .2s}
+  .rol:hover{transform:translateY(-3px);border-color:var(--acento)}
+  .rol b{display:block;font-family:"Fraunces",Georgia,serif;font-size:17px;margin-bottom:6px}
+  .rol span{font-size:12.5px;color:var(--muted);line-height:1.55}
+  .cta{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin-top:44px}
+  .barra-sup{position:sticky;top:0;z-index:20;background:color-mix(in srgb,var(--bg) 82%,transparent);backdrop-filter:blur(10px);border-bottom:1px solid var(--line);padding:10px 22px;display:flex;gap:10px;align-items:center}
+  .barra-sup a{color:var(--muted);font-size:13px}
+  .barra-sup .der{margin-left:auto;display:flex;gap:8px}
+  @media(max-width:640px){.barra-sup .der{display:none}}
+</style>
+</head>
+<body data-acento="security">
+<div class="barra-sup"><a href="./index.html">← Portal</a><span class="faint">·</span><span style="font-size:13px">Cómo funciona</span>
+  <div class="der"><a class="btn chico" href="./origen.html">Autoridad ORIGEN</a><a class="btn chico" href="./security.html">Security</a><a class="btn chico" href="./utility.html">Utility</a></div></div>
+
+<div class="g">
+  <header>
+    <div class="kicker">Orden Global · Tesorería</div>
+    <h1>Un token solo existe si hay algo real detrás</h1>
+    <p>Aquí está, paso a paso y con las cifras vivas de la plataforma, cómo nace un token en Orden Global, quién decide, qué límites no se pueden cruzar y qué pasa cuando cambia el precio del oro. Mueve el simulador del final: usa las mismas reglas que el servidor.</p>
+  </header>
+
+  <section class="cap" id="flujo">
+    <div class="n">01 · El flujo</div>
+    <h2>Del activo real al token, sin saltarse ningún paso</h2>
+    <p>Sigue la moneda dorada: es el respaldo viajando. Sale de la bóveda, pasa por el certificado del auditor, se convierte en ORIGEN y solo entonces puede convertirse en tokens. La moneda violeta es una solicitud que vuelve rechazada por falta de respaldo.</p>
+    <div class="diag">
+      <svg viewBox="0 0 1000 300" role="img" aria-label="Flujo de emisión">
+        <defs><marker id="p" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5 0 10z" fill="var(--line2)"/></marker></defs>
+        <!-- cajas -->
+        <g transform="translate(20,110)"><rect class="caja" width="150" height="80" rx="12"/><text x="14" y="26" class="et">Activo real</text><text x="14" y="48">Oro en bóveda</text><text x="14" y="64" fill="var(--muted)">12,400 oz · Brink's</text></g>
+        <g transform="translate(220,110)"><rect class="caja" width="150" height="80" rx="12"/><text x="14" y="26" class="et">Certificación</text><text x="14" y="48">Auditor independiente</text><text x="14" y="64" fill="var(--muted)">folio · vigencia · aforo 15 %</text></g>
+        <g transform="translate(420,95)"><rect class="caja a" width="160" height="110" rx="14"/><text x="16" y="28" class="et" fill="var(--violet)">Autoridad</text><text x="16" y="52" style="font-size:14px;font-weight:600">ORIGEN</text><text x="16" y="70" fill="var(--muted)">1 = 1/55 g Au</text><text x="16" y="88" fill="var(--muted)">emite · autoriza · niega</text></g>
+        <g transform="translate(630,40)"><rect class="caja" width="150" height="70" rx="12"/><text x="14" y="24" class="et">Solicitud</text><text x="14" y="44">Causa + evidencia</text><text x="14" y="60" fill="var(--muted)">firmas M-de-N</text></g>
+        <g transform="translate(630,190)"><rect class="caja" width="150" height="70" rx="12"/><text x="14" y="24" class="et">Solicitud</text><text x="14" y="44">Sin ORIGEN libre</text><text x="14" y="60" fill="var(--bad)">rechazada</text></g>
+        <g transform="translate(830,40)"><rect class="caja" width="150" height="70" rx="12"/><text x="14" y="24" class="et">Emisión</text><text x="14" y="44">Tokens al precio fijo</text><text x="14" y="60" fill="var(--ok)">con respaldo</text></g>
+        <!-- rutas -->
+        <path id="r1" class="ruta" d="M170 150 H220" marker-end="url(#p)"/>
+        <path id="r2" class="ruta" d="M370 150 H420" marker-end="url(#p)"/>
+        <path id="r3" class="ruta" d="M580 130 C610 130 610 75 630 75" marker-end="url(#p)"/>
+        <path id="r4" class="ruta" d="M780 75 H830" marker-end="url(#p)"/>
+        <path id="r5" class="ruta" d="M580 170 C610 170 610 225 630 225" marker-end="url(#p)"/>
+        <!-- moneda de respaldo -->
+        <circle class="moneda" r="7">
+          <animateMotion dur="7s" repeatCount="indefinite" keyPoints="0;0.2;0.2;0.45;0.45;0.75;0.75;1;1" keyTimes="0;0.15;0.25;0.4;0.5;0.7;0.78;0.92;1" calcMode="linear"
+            path="M95 150 H220 H370 H420 C500 150 560 130 630 75 H830 H905"/>
+        </circle>
+        <!-- solicitud rechazada -->
+        <circle class="moneda2" r="6">
+          <animateMotion dur="7s" repeatCount="indefinite" keyPoints="0;0;0.5;1;1" keyTimes="0;0.5;0.62;0.74;1" calcMode="linear"
+            path="M705 225 C640 225 600 200 500 150 C600 200 640 225 705 225"/>
+        </circle>
+        <text x="500" y="285" text-anchor="middle" fill="var(--faint)" style="font-size:10.5px">La moneda violeta va y vuelve: sin ORIGEN libre, la Autoridad no autoriza.</text>
+      </svg>
+    </div>
+    <div class="pasos-g">
+      <div class="paso-g"><b>Aforo: el descuento por realidad</b><span>Un mineral bajo tierra no vale lo mismo que efectivo en cuenta. A cada reserva se le resta un porcentaje por riesgo de realización. Solo lo que queda respalda.</span></div>
+      <div class="paso-g"><b>Un certificado vencido vale cero</b><span>Si el auditor no renueva el certificado a tiempo, la reserva deja de computar automáticamente. El sistema no espera a que alguien se dé cuenta.</span></div>
+      <div class="paso-g"><b>Emitir más exige una causa</b><span>Nuevo activo aportado, revaluación certificada, ampliación de capital o canje. Fuera del catálogo no hay solicitud posible.</span></div>
+    </div>
+  </section>
+
+  <section class="cap" id="techos">
+    <div class="n">02 · Los tres techos</div>
+    <h2>Manda el límite más bajo, siempre</h2>
+    <p>Un security token no puede emitirse por encima de su valuación certificada, ni por encima del ORIGEN que la Autoridad le asignó, ni por encima de lo que la Autoridad autorizó. Un utility, además, no puede circular por encima de la capacidad de servicio contratada.</p>
+    <div class="techos" id="techos-datos"></div>
+  </section>
+
+  <section class="cap" id="sim">
+    <div class="n">03 · Simulador</div>
+    <h2>Qué pasa si cambia el oro o cae una reserva</h2>
+    <p>Estas son las cifras de la plataforma y las reglas exactas de <span class="mono">app/reglas.js</span>. Mueve el precio del oro o retira una reserva y mira si la Autoridad seguiría autorizando emisiones.</p>
+    <div class="sim">
+      <div class="cuerpo-sim">
+        <div>
+          <label>Precio del oro <b id="s-oro"></b></label><input type="range" id="r-oro" min="60" max="220" step="1">
+          <label>Reserva retirada <b id="s-res"></b></label><input type="range" id="r-res" min="0" max="7" step="1" value="0">
+          <label>Solicitud de emisión a autorizar <b id="s-sol"></b></label><input type="range" id="r-sol" min="0" max="20000000" step="250000" value="6000000">
+          <div class="veredicto" id="veredicto"></div>
+        </div>
+        <div id="medidor" style="display:grid;place-items:center"></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="cap" id="roles">
+    <div class="n">04 · Quién hace qué</div>
+    <h2>Cuatro roles, ninguno puede solo</h2>
+    <p>El sistema separa quien pide de quien firma y de quien dictamina. Ninguna cuenta, por alta que sea, puede fabricar respaldo: emitir ORIGEN exige reservas certificadas; autorizar tokens exige firmas y ORIGEN libre.</p>
+    <div class="roles">
+      <div class="rol"><b>Presidente</b><span>Fija la política y el precio de referencia del oro, da de alta operadores, activa el freno, dictamina y firma.</span></div>
+      <div class="rol"><b>Consejero</b><span>Firma con su llave Ed25519, objeta, dictamina, solicita y opera. Las firmas se verifican contra su llave pública.</span></div>
+      <div class="rol"><b>Tesorero</b><span>Registra tokens, pide emisión, emite lo autorizado, opera el mercado. No firma ni dictamina.</span></div>
+      <div class="rol"><b>Auditor</b><span>Ve todo, no toca nada. La interfaz no le enseña botones y el servidor los rechaza igual.</span></div>
+    </div>
+  </section>
+
+  <section class="cap" id="libro">
+    <div class="n">05 · La memoria</div>
+    <h2>Todo queda en un libro que no se puede reescribir</h2>
+    <p>Cada decisión es un asiento con el hash del anterior. Cambiar uno viejo rompe la cadena y salta en el tablero. Y el sello del libro se publica en la cadena 5550: desde ese momento, ni la propia Autoridad puede reescribir el pasado sin que se note. Cualquiera puede leer la <a href="./prueba.html">prueba de reservas</a> sin sesión.</p>
+  </section>
+
+  <div class="cta">
+    <a class="btn pri" href="./origen.html">Entrar a la Autoridad ORIGEN</a>
+    <a class="btn" href="./security.html">Tesorería Security</a>
+    <a class="btn" href="./utility.html">Tesorería Utility</a>
+    <a class="btn fantasma" href="./prueba.html">Prueba de reservas</a>
+  </div>
+</div>
+
+<script src="./app/datos.js"></script>
+<script src="./app/reglas.js"></script>
+<script src="./app/nucleo.js"></script>
+<script>
+(function () {
+  const { fmt, esc, medidor } = T;
+  const R = T.R;
+  T.arrancar().catch(() => null).then(function () {
+    if (!T.estado) T.cargar();
+    const E = T.estado;
+
+    /* --- techos con datos reales --- */
+    const ondk = R.buscar.security(E, 'SEC-ONDK'), veta = R.buscar.utility(E, 'UTL-VETA');
+    const sS = R.saludSecurity(ondk), sU = R.saludUtility(veta);
+    const techoVal = Math.floor(ondk.valuacion.valorCertificado / ondk.precioUnitario), techoOr = Math.floor(ondk.origenAsignado / ondk.precioUnitario);
+    const maxS = Math.max(techoVal, techoOr, ondk.supply.autorizado, ondk.supply.emitido);
+    const nivel = (nombre, v, max, clase, txt) => `<div class="nivel"><b>${nombre}</b><div class="barra"><i class="${clase}" style="width:${(v / max) * 100}%"></i></div><span class="num">${txt}</span></div>`;
+    document.getElementById('techos-datos').innerHTML = `
+      <div class="techo"><h3>${esc(ondk.simbolo)} · security</h3>
+        ${nivel('Techo por valuación', techoVal, maxS, 'n', fmt.compacto(techoVal))}
+        ${nivel('Techo por ORIGEN asignado', techoOr, maxS, 'n', fmt.compacto(techoOr))}
+        ${nivel('Autorizado', ondk.supply.autorizado, maxS, 'w', fmt.compacto(ondk.supply.autorizado))}
+        ${nivel('Emitido', ondk.supply.emitido, maxS, 'ok', fmt.compacto(ondk.supply.emitido))}
+        <p class="ts mt10">Emitido ${fmt.num(ondk.supply.emitido)} de un techo de ${fmt.num(Math.min(techoVal, techoOr, ondk.supply.autorizado))}: cabecera ${fmt.num(sS.cabecera)}. Para pasar de ahí hace falta una revaluación y una nueva autorización.</p></div>
+      <div class="techo"><h3>${esc(veta.simbolo)} · utility</h3>
+        ${nivel('Capacidad de servicio', veta.capacidad.comprometida, veta.supply.maximo, 'n', fmt.compacto(veta.capacidad.comprometida))}
+        ${nivel('Techo duro', veta.supply.maximo, veta.supply.maximo, 'n', fmt.compacto(veta.supply.maximo))}
+        ${nivel('Circulante', sU.circulante, veta.supply.maximo, sU.ratioUtilidad >= 100 ? 'ok' : 'b', fmt.compacto(sU.circulante))}
+        ${nivel('Pasivo redimible', sU.pasivoRedimible, veta.origenAsignado, 'w', fmt.dineroCorto(sU.pasivoRedimible))}
+        <p class="ts mt10">Cobertura de servicio ${fmt.pct(sU.ratioUtilidad, 1)}: cada VETA en circulación tiene una transferencia priorizada contratada que lo honra. Lo consumido se quema y libera respaldo.</p></div>`;
+
+    /* --- simulador con las reglas reales --- */
+    const rOro = document.getElementById('r-oro'), rRes = document.getElementById('r-res'), rSol = document.getElementById('r-sol');
+    rOro.value = E.politica.oroUsdPorGramo;
+    const reservas = E.reservas.filter((x) => R.valorAdmisible(x) > 0);
+    rRes.max = reservas.length;
+    function pintar() {
+      const e = R.clon(E);
+      e.politica.oroUsdPorGramo = Number(rOro.value);
+      const k = Number(rRes.value);
+      if (k > 0) { const r = e.reservas.find((x) => x.id === reservas[k - 1].id); r.estado = 'retirada'; }
+      const r = R.respaldo(e), ch = R.puedeEmitir(e, Number(rSol.value));
+      document.getElementById('s-oro').textContent = fmt.dinero(Number(rOro.value)) + '/g · 1 ORIGEN = ' + fmt.dinero(r.valorUnidad);
+      document.getElementById('s-res').textContent = k ? reservas[k - 1].nombre + ' (−' + fmt.dineroCorto(R.valorAdmisible(reservas[k - 1])) + ')' : 'ninguna';
+      document.getElementById('s-sol').textContent = fmt.dineroCorto(Number(rSol.value)) + ' de ORIGEN';
+      const color = r.salud === 'ok' ? 'var(--ok)' : r.salud === 'warn' ? 'var(--warn)' : 'var(--bad)';
+      document.getElementById('medidor').innerHTML = medidor(Math.min(r.ratio, 200), 'respaldo', ch.ok ? color : 'var(--bad)', 170);
+      document.getElementById('veredicto').innerHTML = `
+        <div class="aviso ${ch.ok ? 'ok' : 'bad'}">${T.ic(ch.ok ? 'check' : 'alerta')}<div>
+          <b>${ch.ok ? 'La Autoridad autorizaría' : 'La Autoridad negaría'}</b>
+          <span class="txt">${ch.ok ? `Quedan ${fmt.dineroCorto(r.libre)} libres de ${fmt.dineroCorto(r.emitido)} en circulación; el ratio es ${fmt.pct(r.ratio, 1)} (mínimo ${e.politica.ratioMinimo}%).` : esc(ch.faltas.join(' ')) + (r.libre < 0 ? ' Con el oro más barato cada ORIGEN vale menos y lo ya comprometido en tokens supera la circulación: habría que emitir ORIGEN nuevo contra reservas, o reducir asignaciones.' : '')}</span></div></div>`;
+    }
+    [rOro, rRes, rSol].forEach((x) => x.addEventListener('input', pintar));
+    pintar();
+  });
+})();
+</script>
+</body>
+</html>

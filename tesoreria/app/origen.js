@@ -869,5 +869,16 @@
       ] },
     ],
     vistas: { panel, solicitudes, emision, reservas, prueba, cadena, politica, libro },
+    tour: () => [
+      { vista: 'panel', titulo: 'Esta es la Autoridad', texto: 'Aquí se decide cuánto <b>ORIGEN</b> existe y qué emisión de tokens se autoriza. Nada sale al mercado sin pasar por esta pantalla.' },
+      { sel: '.grid.g4', titulo: 'Las cuatro cifras que mandan', texto: '<b>Reservas admisibles</b> (certificadas, vigentes, con aforo), <b>ORIGEN en circulación</b>, lo <b>comprometido</b> en tokens y lo que queda <b>libre</b> para autorizar. Si libre llega a cero, no se autoriza nada.', pos: 'abajo' },
+      { sel: '.medidor', titulo: 'El ratio de respaldo', texto: 'Reservas admisibles entre ORIGEN emitido. El Consejo fija un objetivo y un mínimo; por debajo del mínimo la Autoridad se bloquea sola.', pos: 'derecha' },
+      { sel: '[data-freno]', titulo: 'El freno de emergencia', texto: 'Congela toda emisión del ecosistema en un clic. Se usa ante una caída del respaldo o una auditoría. Queda asentado en el libro con tu nombre.', pos: 'izquierda' },
+      { sel: '[data-sol]', titulo: 'La cola de autorización', texto: 'Cada solicitud llega con su dictamen automático: <b>hay respaldo</b> o no. Pulsa <b>Revisar</b> para ver la causa, las evidencias, firmar y autorizar o rechazar.', pos: 'arriba' },
+      { sel: '[data-vista="reservas"]', titulo: 'Las reservas', texto: 'El registro maestro: oro, concesiones, inmuebles, caja. Cada una con custodio, auditor, folio y vigencia. Un certificado vencido vale cero automáticamente.', pos: 'derecha' },
+      { sel: '[data-vista="cadena"]', titulo: 'La cadena 5550', texto: 'Lee el supply real de cada contrato y lo compara con lo autorizado. Lo que exceda es supply sin expediente. Desde aquí también se ancla el sello del libro.', pos: 'derecha' },
+      { sel: '[data-vista="libro"]', titulo: 'El libro sellado', texto: 'Cada decisión es un asiento con el hash del anterior. Alterar uno viejo rompe la cadena. Puedes exportarlo en JSON o CSV.', pos: 'derecha' },
+      { sel: '[data-guia]', titulo: 'Volver a ver esto', texto: 'Este botón repite el recorrido cuando quieras. Y en <b>Cómo funciona</b> (menú de abajo) tienes la explicación completa con simulador.', pos: 'izquierda' },
+    ],
   });
 })();

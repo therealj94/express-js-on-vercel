@@ -798,6 +798,14 @@
       ] },
     ],
     vistas: { panel, tokens, mercado, tenedores, cumplimiento, libro },
+    tour: () => [
+      { vista: 'panel', titulo: 'Tesorería de Security Tokens', texto: 'ONDK y las demás emisiones con valor patrimonial detrás. El precio no flota: lo fija el Comité contra una valuación independiente.' },
+      { sel: '.grid.g4', titulo: 'Valor en circulación', texto: 'Tokens emitidos por su precio establecido, frente a la <b>valuación certificada</b>. Si el valor emitido supera la valuación, hay alerta.', pos: 'abajo' },
+      { sel: '[data-abrir]', titulo: 'Cada emisión tiene expediente', texto: 'Pulsa una tarjeta para ver los <b>tres techos</b> (valuación, ORIGEN asignado, autorizado), la valuación con historial, el cap table, el mercado y el cumplimiento.', pos: 'derecha' },
+      { sel: '[data-vista="mercado"]', titulo: 'Mercado con banda', texto: 'El secundario opera entre ±5 % del precio certificado. Una orden fuera de banda se rechaza; el emisor puede abrir por ventanas o suspender.', pos: 'derecha' },
+      { sel: '[data-vista="tenedores"]', titulo: 'Transfer agent', texto: 'Toda transferencia verifica Genesis ID, perfil de acreditado y lock-up antes de asentarse.', pos: 'derecha' },
+      { sel: '[data-guia]', titulo: 'Volver a ver esto', texto: 'Repite el recorrido cuando quieras. La explicación completa con simulador está en <b>Cómo funciona</b>.', pos: 'izquierda' },
+    ],
   });
   // Al pulsar cualquier entrada del menú se cierra el expediente abierto.
   // En fase de captura, para que corra antes del render del chasis.

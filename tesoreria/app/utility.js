@@ -676,6 +676,13 @@
       ] },
     ],
     vistas: { panel, tokens, economia, capacidad, libro },
+    tour: () => [
+      { vista: 'panel', titulo: 'Tesorería de Utility Tokens', texto: 'VETA, OGS y MTP pagan un servicio. No dan propiedad ni rendimiento, y solo circulan mientras exista capacidad contratada que los honre.' },
+      { sel: '.grid.g4', titulo: 'Capacidad contra circulante', texto: 'La <b>capacidad comprometida</b> es la promesa que el ecosistema puede cumplir. El <b>pasivo redimible</b> es la parte que se puede cambiar por efectivo, y solo esa consume ORIGEN.', pos: 'abajo' },
+      { sel: '.medidor', titulo: 'Prueba de utilidad', texto: 'Capacidad entre circulante. Bajo 100 % hay tokens que nadie puede honrar: la Autoridad bloquea emisión y hay que ampliar capacidad o quemar.', pos: 'derecha' },
+      { sel: '[data-vista="economia"]', titulo: 'Grifos y sumideros', texto: 'Por dónde entran tokens y por dónde salen. Lo consumido se quema y libera respaldo. Si la rotación cae, el token se está usando como apuesta.', pos: 'derecha' },
+      { sel: '[data-guia]', titulo: 'Volver a ver esto', texto: 'Repite el recorrido cuando quieras. La explicación completa con simulador está en <b>Cómo funciona</b>.', pos: 'izquierda' },
+    ],
   });
   document.addEventListener('click', (e) => {
     if (e.target.closest && e.target.closest('[data-vista]')) tokenAbierto = null;

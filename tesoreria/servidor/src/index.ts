@@ -47,7 +47,7 @@ app.use('/api', rutas({ commit: COMMIT.slice(0, 12), rama: RAMA, arranque: ARRAN
 
 // El front: index.html, origen.html, security.html, utility.html y app/.
 // Solo esos archivos; la carpeta del servidor no se sirve.
-const PAGINAS = ['index.html', 'origen.html', 'security.html', 'utility.html', 'prueba.html', 'acta.html']
+const PAGINAS = ['index.html', 'origen.html', 'security.html', 'utility.html', 'prueba.html', 'acta.html', 'guia.html']
 app.get('/', (_req, res) => res.sendFile(join(CARPETA_FRONT, 'index.html')))
 for (const p of PAGINAS) app.get('/' + p, (_req, res) => res.sendFile(join(CARPETA_FRONT, p)))
 app.use('/app', express.static(join(CARPETA_FRONT, 'app'), { index: false, extensions: [] }))

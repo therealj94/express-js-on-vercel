@@ -531,3 +531,39 @@ p .mono,.aviso .mono,.ts.mono{word-break:break-all;overflow-wrap:anywhere}
   .flujo .fl{opacity:1}
 }
 .hub{overflow-x:clip}
+
+/* ============================================================
+   Guía interactiva, botones con respuesta y estados ocupados.
+   ============================================================ */
+/* recorrido: todo se oscurece salvo el elemento del paso */
+.guia-capa{position:absolute;inset:0;z-index:300;pointer-events:none}
+.guia-foco{position:absolute;border-radius:14px;box-shadow:0 0 0 9999px rgba(4,10,11,.72),0 0 0 2px var(--acento),0 0 40px -6px color-mix(in srgb,var(--acento) 70%,transparent);transition:left .35s var(--ease),top .35s var(--ease),width .35s var(--ease),height .35s var(--ease),opacity .25s;pointer-events:auto}
+body.guia-abierta{overflow:hidden}
+.guia-tarjeta{position:absolute;width:360px;max-width:calc(100vw - 32px);background:var(--surface);border:1px solid var(--line2);border-radius:14px;padding:16px 18px;box-shadow:0 30px 70px -20px rgba(0,0,0,.75);pointer-events:auto;transition:left .35s var(--ease),top .35s var(--ease);animation:aparecer .3s var(--ease) both}
+.guia-paso{font-family:"JetBrains Mono",monospace;font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--acento);margin-bottom:6px}
+.guia-tarjeta h4{font-family:"Fraunces",Georgia,serif;font-size:17px;font-weight:600;margin-bottom:6px;letter-spacing:-.01em}
+.guia-tarjeta p{font-size:13px;color:var(--muted);line-height:1.55}
+.guia-tarjeta p b{color:var(--ink)}
+.guia-pie{display:flex;align-items:center;gap:8px;margin-top:14px}
+.guia-puntos{display:flex;gap:4px;margin-left:auto;margin-right:auto}
+.guia-puntos i{width:6px;height:6px;border-radius:99px;background:var(--line2);transition:background .2s,transform .2s}
+.guia-puntos i.on{background:var(--acento);transform:scale(1.3)}
+.top .der [data-guia]{display:inline-flex}
+
+/* botones: onda al pulsar, estado ocupado con giro, inhabilitado claro */
+.btn{position:relative;overflow:hidden}
+.onda{position:absolute;border-radius:99px;transform:scale(0);background:currentColor;opacity:.22;pointer-events:none;animation:onda .55s var(--ease) forwards}
+@keyframes onda{to{transform:scale(2.6);opacity:0}}
+.btn.ocupado{pointer-events:none;color:transparent!important}
+.btn.ocupado::before{content:"";position:absolute;left:50%;top:50%;width:16px;height:16px;margin:-8px 0 0 -8px;border-radius:99px;border:2px solid currentColor;border-right-color:transparent;color:var(--ink);animation:girar-s .7s linear infinite}
+.btn.pri.ocupado::before{color:#0A1416}
+@keyframes girar-s{to{transform:rotate(360deg)}}
+.btn:disabled{filter:saturate(.4)}
+.btn:disabled:hover{transform:none;box-shadow:none}
+.btn:focus-visible{box-shadow:0 0 0 3px var(--acento-soft)}
+.segm button{transition:background .18s,color .18s}
+input[type=range]{cursor:pointer}
+.campo input:hover,.campo select:hover,.campo textarea:hover{border-color:color-mix(in srgb,var(--acento) 45%,var(--line2))}
+.tabla tbody tr.click:hover td:first-child{box-shadow:inset 3px 0 0 var(--acento)}
+.check:hover{border-color:color-mix(in srgb,var(--acento) 45%,var(--line))}
+.hub .btn-guia{display:inline-flex;margin-top:22px}
