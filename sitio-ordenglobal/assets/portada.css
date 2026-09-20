@@ -210,7 +210,11 @@ h2{font:600 12px var(--sans);letter-spacing:.16em;text-transform:uppercase;
 
 /* ── la constelación ─────────────────────────────────────────────────────── */
 .sistema{padding:clamp(8px,2vw,20px) 0 clamp(30px,5vw,54px)}
-#constelacion{--modo:orbita;position:relative;height:clamp(390px,54vh,560px);touch-action:pan-y}
+/* Más alto que antes: desde que el ecosistema es un sistema de verdad y no
+   siete círculos, esto es la pieza que sostiene la portada y merece el sitio.
+   El motor calcula la cámara a partir de este tamaño, así que cambiarlo aquí
+   reencuadra la escena sola. */
+#constelacion{--modo:orbita;position:relative;height:clamp(420px,62vh,640px);touch-action:pan-y}
 #constelacion .campo{position:absolute;inset:0}
 #constelacion canvas{z-index:1}
 #constelacion canvas{position:absolute;inset:0;width:100%;height:100%}

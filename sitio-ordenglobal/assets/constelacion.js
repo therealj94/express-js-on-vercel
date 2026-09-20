@@ -436,7 +436,12 @@
       return getComputedStyle(campo).getPropertyValue('--modo').trim() === 'lista';
     };
     if (!lienzo || !lienzo.getContext) return;
+    /* Puede venir null: un lienzo que ya sirvió un contexto WebGL no devuelve
+       uno 2D nunca más. Quien llame aquí después del motor 3D tiene que haber
+       puesto un lienzo nuevo; si no lo hizo, mejor no dibujar nada que
+       reventar la portada entera con un error. */
     ctx = lienzo.getContext('2d');
+    if (!ctx) return;
     etiquetas = CASAS.map(function (casa) {
       return campo.querySelector('.orbe[data-casa="' + casa.id + '"]');
     });
@@ -477,6 +482,20 @@
       rafId = requestAnimationFrame(cuadro);
     }
   }
+
+  /* ── QUIÉN DIBUJA ────────────────────────────────────────────────────────
+     Desde que existe `sistema.js` este archivo ya no es el motor de la
+     portada: es el repliegue. Manda el de WebGL —mundos de verdad, con
+     relieve, atmósfera y órbitas keplerianas—; esto entra cuando no hay
+     tarjeta gráfica que valga, o cuando el navegador pierde el contexto a
+     media sesión, y pinta lo de siempre sobre el MISMO documento. Nadie se
+     queda sin el ecosistema por no tener una GPU.
+
+     Y ya no viaja con la página: `portada.js` lo pide solo si hace falta, así
+     que los ocho kilobytes de este archivo los paga quien los usa y no el
+     noventa y tantos por ciento que nunca los va a ejecutar. Por eso arranca
+     solo al cargarse: si está aquí, es que le toca. */
+  window.CONSTELACION = { arrancar: arrancar };
 
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', arrancar);

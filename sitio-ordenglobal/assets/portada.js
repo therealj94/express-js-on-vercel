@@ -91,3 +91,38 @@
   setInterval(function(){ if(!document.hidden) cadena(); }, 20000);
   document.addEventListener('visibilitychange', function(){ if(!document.hidden) cadena(); });
 })();
+
+/* ── EL ECOSISTEMA: QUÉ MOTOR LO DIBUJA ─────────────────────────────────────
+   Se intenta el de WebGL, que es el bueno. Si no arranca —no hay tarjeta
+   gráfica, el navegador la tiene en lista negra, el contexto no se crea, o
+   `sistema.js` ni siquiera llegó por lo que sea— se pide el dibujo plano de
+   `constelacion.js` y la portada sigue teniendo su ecosistema.
+
+   La decisión vive AQUÍ, en el archivo pequeño que se carga siempre, y no
+   dentro de ninguno de los dos motores: si viviera dentro del de WebGL, un
+   fallo al descargar ESE archivo dejaría la sección vacía y sin nadie que se
+   diera cuenta. La versión se copia de la de este mismo script para que el
+   repliegue no se sirva de una caché vieja. */
+(function () {
+  var esto = document.currentScript;
+  var v = (esto && esto.src && esto.src.indexOf('?') >= 0) ? esto.src.slice(esto.src.indexOf('?')) : '';
+
+  function replegar() {
+    if (document.querySelector('script[data-constelacion]')) return;
+    var s = document.createElement('script');
+    s.src = '/assets/constelacion.js' + v;
+    s.defer = true;
+    s.setAttribute('data-constelacion', '');
+    document.head.appendChild(s);
+  }
+  window.REPLEGAR_ECOSISTEMA = replegar;
+
+  function decidir() {
+    var ok = false;
+    try { ok = !!(window.SISTEMA && window.SISTEMA.arrancar()); } catch (e) { ok = false; }
+    if (!ok) replegar();
+  }
+
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', decidir);
+  else decidir();
+})();

@@ -10,11 +10,46 @@ Tres páginas sin dependencias ni compilación, servidas tal cual:
 | cualquier otra | `404.html` | La página que no existe (Amplify la sirve con estado 404) |
 
 El código compartido vive en `assets/`: `portada.css` (con las `@font-face` al
-principio), `portada.js` (menú, cielo, cifras vivas), `constelacion.js` (los
-planetas) y `galaxia.js` (el cielo, el mismo archivo que la puerta de Veta
-Wallet). Las cuatro letras de la casa están en `assets/fuentes/` como woff2
-variables, servidas desde aquí y no desde Google: dos dominios menos que
-resolver antes del titular, y la CSP cerrada a `self`.
+principio), `portada.js` (menú, cielo, cifras vivas y **quién dibuja el
+ecosistema**), `sistema.js` (los mundos, en WebGL), `constelacion.js` (el
+dibujo plano de repliegue) y `galaxia.js` (el cielo de fondo, el mismo archivo
+que la puerta de Veta Wallet). Las cuatro letras de la casa están en
+`assets/fuentes/` como woff2 variables, servidas desde aquí y no desde Google:
+dos dominios menos que resolver antes del titular, y la CSP cerrada a `self`.
+
+## El ecosistema: siete mundos y una estrella
+
+`sistema.js` dibuja la constelación de la portada en WebGL2, sin ninguna
+dependencia: las superficies no se descargan, las calcula la tarjeta gráfica
+con ruido simplex. Cada casa es un tipo de mundo (roca con filones de oro,
+mundo vivo con océanos y luces de ciudad, hielo, cristal, gigante gaseoso con
+anillos, bronce craterizado) y las órbitas son keplerianas de verdad —
+elipses con su excentricidad e inclinación, y periodos sacados de la tercera
+ley, así que la casa de fuera tarda unas cuatro veces más que la de dentro.
+
+Tres cosas que conviene no deshacer:
+
+- **La decisión de qué motor dibuja vive en `portada.js`**, que es el archivo
+  pequeño que se carga siempre, y no dentro de `sistema.js`. Si viviera dentro
+  del motor de WebGL, un fallo al descargar ESE archivo dejaría la sección
+  vacía sin que nadie se enterara. `constelacion.js` se pide solo cuando hace
+  falta, así que sus ocho kilobytes los paga quien los usa.
+- **La página se mide a sí misma.** No hay lista de tarjetas gráficas buenas y
+  malas —esa lista envejece mal—: el motor cuenta cuántos cuadros tardan más de
+  lo que deberían y, si va justo, apaga el brillo, luego el relieve, y si aun
+  así no llega se retira y entra el dibujo plano. Al retirarse cambia el
+  `<canvas>` por uno nuevo: uno que ya dio contexto WebGL no devuelve nunca un
+  contexto 2D.
+- **Los rótulos son botones del documento**, no texto pintado en el lienzo; se
+  proyectan con la misma matriz que dibujó la escena. Un planeta que no se
+  puede tocar con el teclado ni leer con un lector de pantalla es una
+  decoración, no un menú.
+
+La cámara se calcula, no se pone a ojo: la elevación sale de la proporción del
+lienzo (casi rasante en un monitor ancho, casi cenital en un teléfono de pie) y
+la distancia por bisección, proyectando la órbita exterior hasta dar con la
+mínima en la que cabe entera. Cambiar el alto de `#constelacion` en el CSS
+reencuadra la escena sola.
 
 Los medios no están en el repositorio: 216 fotogramas WebP (`seq/`), 19 MP3
 (`audio/`) y las imágenes de `assets/`. Viven en producción y `reconstruir.sh`
