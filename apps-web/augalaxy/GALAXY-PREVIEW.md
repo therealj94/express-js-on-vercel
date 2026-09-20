@@ -11,28 +11,34 @@ Use Node 22 or later. Run `npm ci --legacy-peer-deps`, then `npm run dev`. `npm 
 ## Experience
 
 - Separate explorer entry, a skippable cinematic transition, invariant Orden Global identity in Spanish and English.
-- Eleven app planets, close-up flight, orbit, wheel/touch zoom, application search, keyboard navigation and distant conceptual galaxies.
+- A textured central Sun, solar corona and two orbital bands carry eleven app planets. Slow automatic orbits pause on hover, focus or an open panel; manual pause is available.
+- Dock selection focuses a planet without opening it. An explicit Enter button starts a cancellable 2.1-second flight; the arrival panel opens only after the current journey completes. Previous/next buttons and arrow keys select worlds without dragging.
+- Pro WebGL and Lite Canvas modes share camera paths, hit testing, label placement and navigation. Pro is the initial preference; users can save either startup mode. Missing or lost WebGL falls back to Lite with a visible status explanation.
+- Wheel/pinch zoom reaches a separate deep-space overview with moving galaxies, three distant worlds, a pulsar and an illustrative accretion-disk black hole. Hubble imagery adds resolved galactic dust and stellar detail. Distances, sizes and motion are artistic, not a physical simulation.
 - Three.js / WebGL2 rendering with mapped surfaces, atmospheric scattering approximation, clouds and procedural star fields. A Canvas2D compatibility renderer preserves navigation on devices without WebGL2; it is a simplified projected view, not equivalent GPU rendering.
-- Opt-in, locally synthesized Web Audio ambience and transition cues. No third-party music or audio recordings.
+- Opt-in, locally synthesized Web Audio ambience, throttled spatial orbit cues, focus sweeps and flight/arrival signatures, with a master compressor and independent ambience toggle. No third-party music or audio recordings.
 - Persistent, validated device-only preferences, reduced motion, contrast, text scaling and native modal focus handling.
 - MediaPipe hand tracking, explicit camera consent, local inference, pinch selection and orbit gestures. No microphone request, recording, video upload or account access. The camera stops on disable, navigation away or tab hiding.
 - Optional feature-detected WebMCP navigation/read tools. They cannot authenticate, transact or enable the camera.
 
 ## Boundaries
 
-This is a design preview, not a replacement financial application. Each app opens a labeled preview panel. Other galaxies are conceptual placeholders, not connected services or partnership claims. The visual host bridge in `entry.tsx` preserves the existing AUGALAXY entry points, but production host integration must be separately reviewed and regression-tested before use. Do not replace the live bundle from this branch without that review.
+This is a design preview, not a replacement financial application. Each app opens a labeled preview panel. Other galaxies are conceptual placeholders, not connected services or partnership claims. The visual host bridge preserves the existing AUGALAXY entry points and gesture return shapes; see `HOST-INTEGRATION.md`. CSS is isolated to the new shell and texture/model URLs resolve relative to the bundle for nested hosting. Production host integration must be separately reviewed and regression-tested before use. Do not replace the live bundle from this branch without that review.
 
 ## Assets and credit
 
-Planet maps by **Solar System Scope / INOVE**, based on NASA data, used under **CC BY 4.0**: <https://www.solarsystemscope.com/textures/> and <https://creativecommons.org/licenses/by/4.0/>. Color, illumination, spherical projection and composition are modified. Credits are also shown in System settings.
+Planet and solar maps by **Solar System Scope / INOVE**, based on NASA data, used under **CC BY 4.0**: <https://www.solarsystemscope.com/textures/> and <https://creativecommons.org/licenses/by/4.0/>. Color, illumination, spherical projection and composition are modified. Credits are also shown in System settings.
+
+Star map: **NASA/Goddard Space Flight Center Scientific Visualization Studio**, <https://svs.gsfc.nasa.gov/3895>. Public domain per the SVS media policy. M51 image: **NASA, ESA, S. Beckwith (STScI), and The Hubble Heritage Team (STScI/AURA)**, <https://esahubble.org/images/heic0506a/>, CC BY 4.0 under <https://esahubble.org/copyright/>. The composition uses rotation, blending and softened edges; the full linked credit is displayed on the deep-space view. No institutional endorsement is implied.
 
 AirTouch uses the Apache-2.0 MediaPipe Tasks Vision package and Google's Hand Landmarker model. Model source: <https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/latest/hand_landmarker.task>. Original dependency notices are preserved in the distributed package assets. Interface fonts DM Sans and Manrope load from Google Fonts with system-font fallbacks.
 
 ## Verification
 
-- TypeScript and production bundling pass; six automated logic tests pass.
-- Browser-tested: entry and timed intro, planet selection/close-up, ES/EN labels, gallery scale navigation, preference selection and persistence.
+- TypeScript and production bundling pass; ten automated logic tests cover bounds, geometry, validated preferences, journey cancellation and the existing host gesture contract.
+- Browser-tested: entry and timed intro, dock selection before entry, flight completion and cancellation, ES/EN labels, deep-space navigation, Pro/Lite fallback, preference persistence and audio activation/mute controls.
 - Responsive layout inspected in a 390 × 844 iframe viewport; app search tested there. This is not physical-phone performance or touch-hardware testing.
+- The compiled shell was mounted in an isolated host fixture from a nested build path. Gate, intro callback, unmount/remount and host button/body style isolation were checked. This fixture is not the production wallet or its login.
 - Browser GPU unavailable: full WebGL rendering could not be visually verified in this environment; compatibility rendering was inspected instead.
 - Camera gestures require a real-device test. No camera permission was granted during automation. Sound playback and level should also be checked with headphones on the target device.
 - WebMCP page registry is unavailable in this browser; its integration could not be runtime-validated. Pure action validation is covered by local tests.

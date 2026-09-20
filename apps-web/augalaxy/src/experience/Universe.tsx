@@ -1,16 +1,17 @@
-import {useEffect,useMemo,useRef} from 'react';
+import {Component,ReactNode,useEffect,useMemo,useRef,useState} from 'react';
 import {Canvas,useFrame,useThree} from '@react-three/fiber';
+import {Bloom,EffectComposer} from '@react-three/postprocessing';
 import * as T from 'three';
 import {worlds,externalGalaxies,worldName,word,World} from './catalog';
 import {usePreferences} from './preferences';
-import {useExperience,navigation} from './navigation';
+import {useExperience,navigation,motionReduced} from './navigation';
 import {planetVertex,planetFragment,cloudFragment,atmoFragment,pointVertex,pointFragment} from './shaders';
-import {sound} from './sound';
 import CompatibleUniverse from './CompatibleUniverse';
 import {textureFor} from './textures';
+import {assetURL} from './assets';
+import {CameraDirector,updateOrbits,updateLabels,locationOf,labelNodes,bindSceneInput,deepWorlds} from './cosmos';
+import {SolarCore,BlackHole,CosmicNebula,OrbitPaths,Pulsar,GalacticPortrait} from './StellarObjects';
 
-const locations=new Map<string,T.Mesh>();
-const labelNodes=new Map<string,HTMLButtonElement>();
 function rng(seed:number){let s=seed;return()=>{s=(Math.imul(s,1664525)+1013904223)>>>0;return s/4294967296;};}
 
 function StarField({spiral=false,seed=55,position=[0,0,0],radius=100,color='#a6b9d9',count=5000,tilt=0}:{
@@ -33,7 +34,7 @@ function StarField({spiral=false,seed=55,position=[0,0,0],radius=100,color='#a6b
  },[spiral,seed,radius,color,count]);
  const mat=useMemo(()=>new T.ShaderMaterial({vertexShader:pointVertex,fragmentShader:pointFragment,vertexColors:true,transparent:true,depthWrite:false,blending:T.AdditiveBlending,uniforms:{uTime:{value:0},uScale:{value:280},uOpacity:{value:spiral?.8:1}}}),[spiral]);
  useEffect(()=>()=>{geo.dispose();mat.dispose();},[geo,mat]);
- useFrame(({clock,size},dt)=>{const reduced=document.documentElement.dataset.motion==='reduced';if(!reduced)mat.uniforms.uTime.value=clock.elapsedTime;mat.uniforms.uScale.value=Math.min(size.height,1000)*.4;if(group.current&&spiral&&!reduced)group.current.rotation.y+=dt*.005;});
+ useFrame(({clock,size},dt)=>{const reduced=motionReduced();if(!reduced)mat.uniforms.uTime.value=clock.elapsedTime;mat.uniforms.uScale.value=Math.min(size.height,1000)*.4;if(group.current&&spiral&&!reduced)group.current.rotation.y+=dt*.005;});
  return <group ref={group} position={position} rotation={[tilt,0,spiral?.15:0]}><points geometry={geo} material={mat} frustumCulled={false}/></group>;
 }
 
@@ -48,105 +49,67 @@ function Ring({radius,color}:{radius:number;color:string}){
  return <mesh geometry={geometry} rotation={[-1.12,.12,.24]}>
   <shaderMaterial side={T.DoubleSide} transparent depthWrite={false} uniforms={uniforms}
    vertexShader="varying vec2 vUv; void main(){vUv=uv;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}"
-   fragmentShader={`uniform vec3 uColor;varying vec2 vUv;void main(){float r=vUv.x;float bands=.52+.2*sin(r*280.)+.13*sin(r*643.);float gap=1.-smoothstep(.0,.035,abs(r-.58));float a=smoothstep(0.,.07,r)*smoothstep(1.,.85,r)*bands*(1.-gap*.94);float shadow=smoothstep(-.4,.6,cos(vUv.y+.4));gl_FragColor=vec4(uColor*(.24+.76*shadow),a*.75);}`}/>
+   fragmentShader={`uniform vec3 uColor;varying vec2 vUv;void main(){float r=vUv.x;float bands=.52+.2*sin(r*280.)+.13*sin(r*643.);float gap=1.-smoothstep(.0,.035,abs(r-.58));float a=smoothstep(0.,.07,r)*(1.-smoothstep(.85,1.,r))*bands*(1.-gap*.94);float shadow=smoothstep(-.4,.6,cos(vUv.y+.4));gl_FragColor=vec4(uColor*(.24+.76*shadow),a*.75);}`}/>
  </mesh>;
 }
-function Planet({world,index}:{world:World;index:number}){
+
+function Planet({world,index,deep=false}:{world:World;index:number;deep?:boolean}){
  const mesh=useRef<T.Mesh>(null),cloud=useRef<T.Mesh>(null),group=useRef<T.Group>(null);
  const uniforms=useMemo(()=>({uColor:{value:new T.Color(world.color)},uSecondary:{value:new T.Color(world.secondary)},uKind:{value:world.kind},uSeed:{value:index*7.3+1},uMap:{value:null as T.Texture|null},uHasMap:{value:0}}),[world,index]);
- useEffect(()=>{let disposed=false;const tex=new T.TextureLoader().load('/textures/'+textureFor(world)+'.jpg',t=>{if(disposed){t.dispose();return;}t.colorSpace=T.SRGBColorSpace;t.anisotropy=4;uniforms.uMap.value=t;uniforms.uHasMap.value=1;},undefined,()=>{});return()=>{disposed=true;tex.dispose();};},[world,uniforms]);
+ useEffect(()=>{let disposed=false;const tex=new T.TextureLoader().load(assetURL('textures/'+textureFor(world)+'.jpg'),t=>{if(disposed){t.dispose();return;}t.colorSpace=T.SRGBColorSpace;t.anisotropy=4;uniforms.uMap.value=t;uniforms.uHasMap.value=1;},undefined,()=>{});return()=>{disposed=true;tex.dispose();};},[world,uniforms]);
  const clouds=useMemo(()=>({uTime:{value:0},uTint:{value:new T.Color('#d8e5e9')}}),[]);
  const atmo=useMemo(()=>({uTint:{value:new T.Color(world.kind===1?'#5aafef':world.color)}}),[world]);
- useEffect(()=>{if(mesh.current)locations.set(world.id,mesh.current);return()=>{locations.delete(world.id);};},[world.id]);
  useFrame(({clock},dt)=>{
-  const reduced=document.documentElement.dataset.motion==='reduced';
-  if(mesh.current&&!reduced)mesh.current.rotation.y+=dt*(world.kind===0?.037:.024);
-  if(cloud.current&&!reduced){cloud.current.rotation.y+=dt*.033;clouds.uTime.value=clock.elapsedTime;}
-  if(group.current)group.current.position.y=world.position[1]+(reduced?0:Math.sin(clock.elapsedTime*.16+index)*.08);
-  if(group.current){const desired=useExperience.getState().stage==='galaxies'?.015:1;group.current.scale.setScalar(reduced?desired:T.MathUtils.damp(group.current.scale.x,desired,2.5,dt));}
+  const reduced=motionReduced(),state=useExperience.getState();
+  if(mesh.current&&!reduced)mesh.current.rotation.y+=dt*(world.kind===0?.027:.018);
+  if(cloud.current&&!reduced){cloud.current.rotation.y+=dt*.027;clouds.uTime.value=clock.elapsedTime;}
+  if(group.current){if(!deep)group.current.position.copy(locationOf(world));const desired=deep?(state.stage==='galaxies'?1:0):(state.stage==='galaxies'?.025:1);group.current.scale.setScalar(reduced?desired:T.MathUtils.damp(group.current.scale.x,desired,3,dt));group.current.visible=group.current.scale.x>.005;}
  });
- const select=()=>{if(useExperience.getState().stage!=='system')return;navigation.focus(world.id);sound.cue('select');};
- const open=()=>{select();if(world.id==='ajustes')useExperience.getState().set({settings:true});else useExperience.getState().set({windowId:world.id});};
  return <group ref={group} position={world.position} rotation={[0,index*.8,.15+index*.025]}>
-  <mesh ref={mesh} onClick={e=>{if(e.delta<6){e.stopPropagation();select();}}} onDoubleClick={e=>{e.stopPropagation();open();}}>
-   <sphereGeometry args={[world.radius,80,64]}/>
-   <shaderMaterial vertexShader={planetVertex} fragmentShader={planetFragment} uniforms={uniforms}/>
-  </mesh>
+  <mesh ref={mesh}><sphereGeometry args={[world.radius,80,64]}/><shaderMaterial vertexShader={planetVertex} fragmentShader={planetFragment} uniforms={uniforms}/></mesh>
   {world.kind===1&&<mesh ref={cloud}><sphereGeometry args={[world.radius*1.017,64,48]}/><shaderMaterial vertexShader={planetVertex} fragmentShader={cloudFragment} uniforms={clouds} transparent depthWrite={false}/></mesh>}
   <mesh><sphereGeometry args={[world.radius*1.04,48,32]}/><shaderMaterial vertexShader={planetVertex} fragmentShader={atmoFragment} uniforms={atmo} transparent depthWrite={false} blending={T.AdditiveBlending}/></mesh>
   {world.rings&&<Ring radius={world.radius} color={world.color}/>}
-  {index<5&&<mesh position={[world.radius*2.1,world.radius*.5,-world.radius]}><sphereGeometry args={[world.radius*.12,20,16]}/><meshStandardMaterial color="#807e77" roughness={.98}/></mesh>}
+  {!deep&&index<5&&<mesh position={[world.radius*2.1,world.radius*.5,-world.radius]}><sphereGeometry args={[world.radius*.12,20,16]}/><meshStandardMaterial color="#807e77" roughness={.98}/></mesh>}
  </group>;
 }
-
-function CameraRig(){
- const {camera,gl,size}=useThree();const look=useRef(new T.Vector3(0,1,0));const position=useRef(new T.Vector3());const target=useRef(new T.Vector3());
- const introStart=useRef(0),lastStage=useRef(''),lastMeasure=useRef(0),samples=useRef<number[]>([]);
- const projected=useMemo(()=>new T.Vector3(),[]),actual=useMemo(()=>new T.Vector3(),[]),ray=useMemo(()=>new T.Raycaster(),[]),pointer=useMemo(()=>new T.Vector2(),[]);
- useEffect(()=>{
-  const element=gl.domElement;let down=false,x=0,y=0;const points=new Map<number,{x:number;y:number}>();let pinch=0;
-  const start=(e:PointerEvent)=>{if(useExperience.getState().stage!=='system'&&useExperience.getState().stage!=='galaxies')return;points.set(e.pointerId,{x:e.clientX,y:e.clientY});down=true;x=e.clientX;y=e.clientY;element.setPointerCapture(e.pointerId);if(points.size===2){const p=[...points.values()];pinch=Math.hypot(p[0].x-p[1].x,p[0].y-p[1].y);}};
-  const move=(e:PointerEvent)=>{if(!down)return;points.set(e.pointerId,{x:e.clientX,y:e.clientY});if(points.size===2){const p=[...points.values()];const d=Math.hypot(p[0].x-p[1].x,p[0].y-p[1].y);if(pinch>0)navigation.dolly(pinch/d);pinch=d;}else navigation.orbit(e.clientX-x,e.clientY-y);x=e.clientX;y=e.clientY;};
-  const end=(e:PointerEvent)=>{points.delete(e.pointerId);down=points.size>0;pinch=0;};
-  const wheel=(e:WheelEvent)=>{const stage=useExperience.getState().stage;if(stage==='gate'||stage==='intro')return;e.preventDefault();navigation.dolly(Math.exp(e.deltaY*.001));};
-  element.addEventListener('pointerdown',start);element.addEventListener('pointermove',move);element.addEventListener('pointerup',end);element.addEventListener('pointercancel',end);element.addEventListener('wheel',wheel,{passive:false});
-  navigation.hitTest=(x,y)=>{const bounds=element.getBoundingClientRect();pointer.set((x-bounds.left)/bounds.width*2-1,-(y-bounds.top)/bounds.height*2+1);ray.setFromCamera(pointer,camera);const hits=ray.intersectObjects([...locations.values()]);if(!hits.length)return null;return [...locations].find(([,m])=>m===hits[0].object)?.[0]||null;};
-  useExperience.getState().set({ready:true});
-  return()=>{element.removeEventListener('pointerdown',start);element.removeEventListener('pointermove',move);element.removeEventListener('pointerup',end);element.removeEventListener('pointercancel',end);element.removeEventListener('wheel',wheel);navigation.hitTest=()=>null;};
- },[camera,gl]);
- useFrame(({clock},dt)=>{
-  const {stage,selected}=useExperience.getState(),prefs=usePreferences.getState().prefs;
-  const reduced=prefs.motion==='reduced'||(prefs.motion==='system'&&matchMedia('(prefers-reduced-motion: reduce)').matches);
-  const mobile=size.width<700,world=worlds.find(w=>w.id===selected);
-  if(stage!==lastStage.current){if(stage==='intro')introStart.current=clock.elapsedTime;lastStage.current=stage;}
-  target.current.set(0,.6,-1);let distance=mobile?48:29;
-  if(stage==='gate'){target.current.set(-3,mobile?1:-3,0);distance=mobile?38:23;}
-  if(stage==='galaxies'){target.current.set(0,0,-45);distance=mobile?230:160;}
-  if(stage==='intro'){const p=Math.min(1,(clock.elapsedTime-introStart.current)/4.4);const e=p*p*(3-2*p);distance=(mobile?110:78)*(1-e)+(mobile?48:29)*e;}
-  if(world&&stage==='system'){target.current.fromArray(world.position);target.current.x+=mobile?0:world.radius*1.1;distance=world.radius*(mobile?8:6.4);}
-  const yaw=stage==='gate'?-.1:navigation.yaw,pitch=stage==='gate'?.06:navigation.pitch;
-  distance*=stage==='gate'||stage==='intro'?1:navigation.zoom;
-  position.current.set(Math.sin(yaw)*distance,Math.sin(pitch)*distance+2.5,Math.cos(yaw)*distance).add(target.current);
-  const factor=reduced?1:1-Math.exp(-dt*(stage==='intro'?4:2.5));
-  camera.position.lerp(position.current,factor);look.current.lerp(target.current,factor);camera.lookAt(look.current);
-  camera.updateMatrixWorld();
-  const occupied:{x:number;y:number;w:number}[]=[];
-  const ordered=[...worlds].sort((a,b)=>(a.id===selected?-1:b.id===selected?1:camera.position.distanceToSquared(new T.Vector3(...a.position))-camera.position.distanceToSquared(new T.Vector3(...b.position))));
-  for(const w of ordered){
-   const node=labelNodes.get(w.id),body=locations.get(w.id);if(!node||!body)continue;
-   body.getWorldPosition(actual);projected.copy(actual);projected.y-=w.radius*1.2;projected.project(camera);
-   const x=(projected.x*.5+.5)*size.width,y=(-projected.y*.5+.5)*size.height;
-   const width=160*prefs.textScale;const overlap=occupied.some(o=>Math.abs(x-o.x)<(width+o.w)*.5&&Math.abs(y-o.y)<55*prefs.textScale);
-   const visible=stage==='system'&&prefs.labels&&projected.z<1&&projected.z>0&&x>80&&x<size.width-80&&y>100&&y<size.height-130&&!overlap&&(!selected||w.id===selected);
-   node.style.transform='translate('+x+'px,'+y+'px) translate(-50%,0)';
-   node.style.visibility=visible?'visible':'hidden';node.style.opacity=visible?'1':'0';node.tabIndex=visible?0:-1;
-   if(visible)occupied.push({x,y,w:width});
-  }
-  if(dt<.2)samples.current.push(dt);
-  if(clock.elapsedTime-lastMeasure.current>2){const average=samples.current.reduce((a,b)=>a+b,0)/Math.max(1,samples.current.length);useExperience.getState().set({fps:Math.round(1/Math.max(.001,average))});samples.current=[];lastMeasure.current=clock.elapsedTime;}
- });
+function SkyBackdrop(){
+ const [map,setMap]=useState<T.Texture|null>(null);
+ useEffect(()=>{let dead=false;const t=new T.TextureLoader().load(assetURL('textures/starmap.jpg'),t=>{if(dead)return;t.colorSpace=T.SRGBColorSpace;setMap(t);},undefined,()=>{});return()=>{dead=true;t.dispose();};},[]);
+ return map?<mesh><sphereGeometry args={[450,48,32]}/><meshBasicMaterial side={T.BackSide} map={map} transparent opacity={.24} depthWrite={false}/></mesh>:null;
+}
+function SceneDriver({onLost}:{onLost:()=>void}){
+ const {camera,gl,size}=useThree(),director=useRef(new CameraDirector()),last=useRef(0),frames=useRef(0);
+ useEffect(()=>{const remove=bindSceneInput(gl.domElement),lost=(event:Event)=>{event.preventDefault();onLost();};gl.domElement.addEventListener('webglcontextlost',lost);useExperience.getState().set({ready:true});return()=>{remove();gl.domElement.removeEventListener('webglcontextlost',lost);};},[gl,onLost]);
+ useFrame((_,dt)=>{const now=performance.now();updateOrbits(now,dt);director.current.update(camera,size.width,size.height,now,dt);updateLabels(camera,size.width,size.height);frames.current++;if(now-last.current>2000){useExperience.getState().set({fps:Math.round(frames.current*1000/(now-last.current))});frames.current=0;last.current=now;}},-2);
  return null;
 }
 export function PlanetLabels(){
  const prefs=usePreferences(s=>s.prefs);
- return <div className="world-labels" aria-label={prefs.lang==='es'?'Aplicaciones planetarias':'Planetary applications'}>{worlds.map(w=><button key={w.id} ref={node=>{if(node)labelNodes.set(w.id,node);else labelNodes.delete(w.id);}} className="world-label" onClick={()=>{navigation.focus(w.id);sound.cue();}} onDoubleClick={()=>useExperience.getState().set(w.id==='ajustes'?{settings:true}:{windowId:w.id})}><span className="label-rule"/><strong>{worldName(w,prefs.lang)}</strong><small>{word(w.category,prefs.lang)}</small></button>)}</div>;
+ return <div className="world-labels" aria-label={prefs.lang==='es'?'Aplicaciones planetarias':'Planetary applications'}>{worlds.map((w,i)=><button key={w.id} ref={node=>{if(node)labelNodes.set(w.id,node);else labelNodes.delete(w.id);}} className="world-label" onPointerEnter={()=>navigation.hover(w.id)} onPointerLeave={()=>navigation.hover(null)} onFocus={()=>navigation.hover(w.id)} onBlur={()=>navigation.hover(null)} onClick={()=>navigation.focus(w.id)}><span className="label-rule"/><span className="planet-label-index">{String(i+1).padStart(2,'0')}</span><strong>{worldName(w,prefs.lang)}</strong><small>{word(w.category,prefs.lang)}</small></button>)}</div>;
 }
+class RenderGuard extends Component<{children:ReactNode;onError:()=>void},{failed:boolean}>{
+ state={failed:false};static getDerivedStateFromError(){return{failed:true};}componentDidCatch(){this.props.onError();}render(){return this.state.failed?null:this.props.children;}
+}
+let supported:boolean|undefined;
+function supportsWebGL(){if(supported!==undefined)return supported;try{const c=document.createElement('canvas'),gl=c.getContext('webgl2');supported=!!gl;gl?.getExtension('WEBGL_lose_context')?.loseContext();return supported;}catch{return false;}}
 export default function Universe({paused=false}:{paused?:boolean}){
- const prefs=usePreferences(s=>s.prefs),fps=useExperience(s=>s.fps);
- const webgl=useMemo(()=>{try{const c=document.createElement('canvas'),gl=c.getContext('webgl2');if(!gl)return false;gl.getExtension('WEBGL_lose_context')?.loseContext();return true;}catch{return false;}},[]);
- const coarse=matchMedia('(pointer: coarse)').matches;
- const low=prefs.quality==='low'||(prefs.quality==='auto'&&(coarse||fps<28));
- const count=low?12000:prefs.quality==='high'?42000:26000;
- const dpr=prefs.quality==='high'?1.75:low?1:1.35;
- if(!webgl)return <div className="universe" data-renderer="compatible"><CompatibleUniverse paused={paused} labels={labelNodes}/></div>;
- return <div className="universe" data-renderer="webgl"><Canvas frameloop={paused?'never':'always'} dpr={dpr} camera={{position:[0,5,38],fov:48,near:.1,far:800}}
+ const prefs=usePreferences(s=>s.prefs),choice=useExperience(s=>s.rendererChoice),[lost,setLost]=useState(false);
+ const webgl=useMemo(supportsWebGL,[]),requested=choice||prefs.defaultRenderer,pro=requested==='pro'&&webgl&&!lost;
+ const onLost=useMemo(()=>()=>setLost(true),[]);
+ useEffect(()=>{useExperience.getState().set({rendererActual:pro?'pro':'lite',webglAvailable:webgl&&!lost});},[pro,webgl,lost]);
+ const coarse=matchMedia('(pointer: coarse)').matches,low=prefs.quality==='low'||(prefs.quality==='auto'&&coarse),count=low?14000:prefs.quality==='high'?48000:32000,dpr=prefs.quality==='high'?1.75:low?1:1.35;
+ if(!pro)return <div className="universe" data-renderer="lite"><CompatibleUniverse paused={paused} labels={labelNodes}/></div>;
+ return <div className="universe" data-renderer="pro"><RenderGuard onError={onLost}><Canvas frameloop={paused?'never':'always'} dpr={dpr} camera={{position:[0,24,42],fov:48,near:.05,far:900}}
   gl={{antialias:true,alpha:false,powerPreference:'high-performance'}}
-  fallback={<div className="canvas-fallback">Orden Global · {prefs.lang==='es'?'Vista de aplicaciones disponible en el menú.':'App view available in the menu.'}</div>}
-  onCreated={({gl})=>{gl.toneMapping=T.ACESFilmicToneMapping;gl.toneMappingExposure=1.05;gl.setClearColor('#02040a');}}>
-  <CameraRig/><ambientLight intensity={.15}/><directionalLight position={[-12,9,18]} intensity={2}/>
-  <StarField count={low?1600:3600} radius={380}/>
-  <StarField spiral seed={41} count={count} radius={62} position={[0,-7,-28]} color="#91a6cd" tilt={.27}/>
-  {externalGalaxies.map(g=><StarField key={g.name} spiral seed={g.seed} count={low?3200:8500} radius={24} position={g.position} color={g.color} tilt={.65}/>)}
-  {worlds.map((w,i)=><Planet key={w.id} world={w} index={i}/>)}
- </Canvas></div>;
+  fallback={<CompatibleUniverse paused={paused} labels={labelNodes}/>}
+  onCreated={({gl})=>{gl.toneMapping=T.ACESFilmicToneMapping;gl.toneMappingExposure=1.1;gl.setClearColor('#02040a');}}>
+  <SceneDriver onLost={onLost}/><ambientLight intensity={.25}/><pointLight position={[0,0,0]} intensity={90} decay={1.5}/><directionalLight position={[-30,30,15]} intensity={.3}/>
+  <SkyBackdrop/><CosmicNebula/><GalacticPortrait/><StarField count={low?2000:4200} radius={380}/>
+  <StarField spiral seed={41} count={count} radius={72} position={[0,-12,-36]} color="#94b3cf" tilt={.27}/>
+  {externalGalaxies.map(g=><StarField key={g.name} spiral seed={g.seed} count={low?3400:9500} radius={24} position={g.position} color={g.color} tilt={.65}/>)}
+  <OrbitPaths/><SolarCore/>{worlds.map((w,i)=><Planet key={w.id} world={w} index={i}/>)}
+  {deepWorlds.map((w,i)=><Planet key={w.id} world={w} index={i+12} deep/>)}<BlackHole/><Pulsar/>
+  {!low&&<EffectComposer multisampling={0}><Bloom intensity={.55} luminanceThreshold={1.1} luminanceSmoothing={.7} mipmapBlur/></EffectComposer>}
+ </Canvas></RenderGuard></div>;
 }

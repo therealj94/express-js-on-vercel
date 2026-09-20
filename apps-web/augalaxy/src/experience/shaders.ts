@@ -48,11 +48,11 @@ void main(){
  }
  if(uHasMap>.5){col=texture2D(uMap,vUv).rgb;if(uKind>1.5&&uKind<2.5)col*=mix(vec3(.7),uColor,.3);}
  vec3 N=normalize(vN);
- vec3 L=normalize(vec3(-12.,9.,18.)-vWorld);
+ vec3 L=normalize(-vWorld);
  float light=dot(N,L);
  float grain=(fine-.5)*.18;
  float diffuse=smoothstep(-.13,.86,light+grain);
- col*=.065+diffuse*1.55;
+ col*=.12+diffuse*1.55;
  vec3 V=normalize(cameraPosition-vWorld);
  float spec=pow(max(0.,dot(reflect(-L,N),V)),65.)*sea*.45;
  col+=vec3(.8,.9,1.)*spec;
@@ -70,7 +70,7 @@ void main(){
  float curl=fbm(vP*3.+uTime*.005);
  float cloud=fbm(vP*9.+vec3(curl*3.,uTime*.008,0.));
  float a=smoothstep(.53,.7,cloud)*.8;
- float light=smoothstep(-.1,.8,dot(normalize(vN),normalize(vec3(-12.,9.,18.)-vWorld)));
+ float light=smoothstep(-.1,.8,dot(normalize(vN),normalize(-vWorld)));
  gl_FragColor=vec4(mix(vec3(.18,.25,.32),uTint,light),a);
  #include <tonemapping_fragment>
  #include <colorspace_fragment>
@@ -81,7 +81,7 @@ varying vec3 vP;varying vec3 vN;varying vec3 vWorld;varying vec2 vUv;
 void main(){
  vec3 V=normalize(cameraPosition-vWorld);
  float rim=pow(1.-abs(dot(normalize(vN),V)),3.8);
- float sun=max(.12,dot(normalize(vN),normalize(vec3(-12.,9.,18.)-vWorld)));
+ float sun=max(.12,dot(normalize(vN),normalize(-vWorld)));
  gl_FragColor=vec4(uTint,rim*.65*sun);
 }`;
 export const pointVertex=`

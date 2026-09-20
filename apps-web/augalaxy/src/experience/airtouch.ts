@@ -1,5 +1,6 @@
 import {usePreferences} from './preferences';
 import {navigation,useExperience} from './navigation';
+import {assetURL} from './assets';
 type Point={x:number;y:number};
 export type HandStatus='off'|'loading'|'searching'|'tracking'|'error';
 export function measureHand(points:Point[]){
@@ -24,9 +25,9 @@ class AirTouchController {
    const stream=await navigator.mediaDevices.getUserMedia({video:{width:640,height:480,facingMode:'user'},audio:false});
    if(run!==this.run){stream.getTracks().forEach(t=>t.stop());return;}this.stream=stream;
    const vision=await import('@mediapipe/tasks-vision');
-   const files=await vision.FilesetResolver.forVisionTasks(new URL('vision/',document.baseURI).href);
+   const files=await vision.FilesetResolver.forVisionTasks(assetURL('vision/'));
    if(run!==this.run)return;
-   const model=await vision.HandLandmarker.createFromOptions(files,{baseOptions:{modelAssetPath:new URL('vision/hand_landmarker.task',document.baseURI).href,delegate:'CPU'},runningMode:'VIDEO',numHands:1,minHandDetectionConfidence:.65,minTrackingConfidence:.65});
+   const model=await vision.HandLandmarker.createFromOptions(files,{baseOptions:{modelAssetPath:assetURL('vision/hand_landmarker.task'),delegate:'CPU'},runningMode:'VIDEO',numHands:1,minHandDetectionConfidence:.65,minTrackingConfidence:.65});
    if(run!==this.run){model.close();return;}this.model=model;
    const video=this.video=document.createElement('video');video.muted=true;video.playsInline=true;video.srcObject=stream;await video.play();
    if(run!==this.run)return;
@@ -55,7 +56,7 @@ class AirTouchController {
        if(!pressed&&wasPinched&&now-downAt<850&&Math.hypot(this.cursor.x-downX,this.cursor.y-downY)<38){
         const control=element?.closest('button') as HTMLButtonElement|null;
         if(control&&!control.disabled){control.click();}
-        else{const hit=navigation.hitTest(this.cursor.x,this.cursor.y);if(hit){navigation.focus(hit);if(hit===lastTarget&&now-lastPinchEnd<850)useExperience.getState().set(hit==='ajustes'?{settings:true}:{windowId:hit});lastTarget=hit;lastPinchEnd=now;}}
+        else if(!document.querySelector('dialog[open]')&&useExperience.getState().stage==='system'){const hit=navigation.hitTest(this.cursor.x,this.cursor.y);if(hit){if(hit===lastTarget&&now-lastPinchEnd<850)navigation.enter(hit);else navigation.focus(hit);lastTarget=hit;lastPinchEnd=now;}}
        }
        oldX=this.cursor.x;oldY=this.cursor.y;wasPinched=pressed;
       }

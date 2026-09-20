@@ -7,6 +7,8 @@ export function Icon({name,size=20}:{name:string;size?:number}){
   muted:<><path d="M11 4 6 8H3v8h3l5 4Z"/><path d="m16 9 6 6m0-6-6 6"/></>,
   hand:<><path d="M8 13V5a2 2 0 0 1 4 0v7-9a2 2 0 0 1 4 0v9-6a2 2 0 0 1 4 0v9c0 5-3 7-7 7-3 0-5-2-7-5l-3-4a2 2 0 0 1 3-2l2 2Z"/></>,
   arrow:<path d="M4 12h16m-6-6 6 6-6 6"/>,
+  left:<path d="M20 12H4m6-6-6 6 6 6"/>,
+  pause:<><path d="M8 5v14M16 5v14"/></>,
   close:<path d="m6 6 12 12M6 18 18 6"/>,
   plus:<path d="M12 5v14M5 12h14"/>,
   minus:<path d="M5 12h14"/>,
