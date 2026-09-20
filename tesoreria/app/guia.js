@@ -61,9 +61,15 @@
         tarjeta.style.left = '50%'; tarjeta.style.top = '50%'; tarjeta.style.transform = 'translate(-50%,-50%)';
         return;
       }
-      elm.scrollIntoView({ block: 'center', behavior: 'smooth' });
+      // Elementos en barras pegajosas o fijas se marcan en coordenadas de ventana.
+      let fijo = false;
+      for (let n = elm; n && n !== document.body; n = n.parentElement) { const ps = getComputedStyle(n).position; if (ps === 'sticky' || ps === 'fixed') { fijo = true; break; } }
+      foco.classList.toggle('fijo', fijo); tarjeta.classList.toggle('fijo', fijo);
+      if (!fijo) elm.scrollIntoView({ block: 'center', behavior: 'smooth' });
       setTimeout(() => {
         const r = rect(elm), m = 8;
+        if (fijo) { r.x = r.vx; r.y = r.vy; }
+        const sx = fijo ? 0 : window.scrollX, sy = fijo ? 0 : window.scrollY;
         foco.style.opacity = '1';
         foco.style.left = (r.x - m) + 'px'; foco.style.top = (r.y - m) + 'px';
         foco.style.width = (r.w + m * 2) + 'px'; foco.style.height = (r.h + m * 2) + 'px';
@@ -76,11 +82,11 @@
         else if (pos === 'izquierda') { left = r.x - ancho - 16; top = r.y; }
         else if (pos === 'arriba') { left = r.x; top = r.y - 16 - 190; }
         else { left = r.x; top = r.y + r.h + 16; }
-        left = Math.max(window.scrollX + 16, Math.min(left, window.scrollX + window.innerWidth - ancho - 16));
+        left = Math.max(sx + 16, Math.min(left, sx + window.innerWidth - ancho - 16));
         if (pos === 'abajo' && r.vy + r.h + 220 > window.innerHeight) top = r.y - 16 - 190;
-        if (top < window.scrollY + 12) top = r.y + r.h + 16;
+        if (top < sy + 12) top = r.y + r.h + 16;
         tarjeta.style.left = left + 'px'; tarjeta.style.top = top + 'px';
-      }, 260);
+      }, fijo ? 60 : 420);
     }
 
     function terminar() {

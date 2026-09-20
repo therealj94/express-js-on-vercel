@@ -540,6 +540,7 @@ p .mono,.aviso .mono,.ts.mono{word-break:break-all;overflow-wrap:anywhere}
 .guia-foco{position:absolute;border-radius:14px;box-shadow:0 0 0 9999px rgba(4,10,11,.72),0 0 0 2px var(--acento),0 0 40px -6px color-mix(in srgb,var(--acento) 70%,transparent);transition:left .35s var(--ease),top .35s var(--ease),width .35s var(--ease),height .35s var(--ease),opacity .25s;pointer-events:auto}
 body.guia-abierta{overflow:hidden}
 .guia-tarjeta{position:absolute;width:360px;max-width:calc(100vw - 32px);background:var(--surface);border:1px solid var(--line2);border-radius:14px;padding:16px 18px;box-shadow:0 30px 70px -20px rgba(0,0,0,.75);pointer-events:auto;transition:left .35s var(--ease),top .35s var(--ease);animation:aparecer .3s var(--ease) both}
+.guia-foco.fijo,.guia-tarjeta.fijo{position:fixed}
 .guia-paso{font-family:"JetBrains Mono",monospace;font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--acento);margin-bottom:6px}
 .guia-tarjeta h4{font-family:"Fraunces",Georgia,serif;font-size:17px;font-weight:600;margin-bottom:6px;letter-spacing:-.01em}
 .guia-tarjeta p{font-size:13px;color:var(--muted);line-height:1.55}
