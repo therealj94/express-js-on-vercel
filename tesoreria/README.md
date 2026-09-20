@@ -9,6 +9,8 @@ Tres plataformas web, un servidor y una sola regla:
 | `origen.html` | **Autoridad de Emisión de ORIGEN** — la que decide |
 | `security.html` | Tesorería de Security Tokens (ONDK, MPLE, VTRE) |
 | `utility.html` | Tesorería de Utility Tokens (VETA, OGS, MTP) |
+| `prueba.html` | Prueba de reservas pública, sin sesión |
+| `acta.html?sol=ID` | Acta de dictamen de una solicitud con sus firmas verificadas |
 | `app/reglas.js` | **Las reglas del negocio y los comandos.** Corre igual en el navegador y en el servidor |
 | `app/datos.js` | La semilla de datos: el contrato de la API |
 | `servidor/` | El backend: sesiones, firmas Ed25519, libro SHA-256, almacén, cadena 5550, Genesis ID |
@@ -105,7 +107,8 @@ Express + TypeScript, con las mismas convenciones que Genesis ID.
 | `src/rutas.ts` | El API. Una sola puerta de escritura: `POST /api/comandos` |
 | `src/cadena.ts` | Lee `totalSupply()` de los contratos en la cadena 5550 y lo concilia con lo autorizado |
 | `src/genesis.ts` | Verifica tokens de sesión única de Genesis ID (`/api/v1/sso/verificar`) |
-| `src/pruebas/` | 26 pruebas con `node:test`: reglas y flujo completo contra un servidor real |
+| `src/ancla.ts` | Ancla el sello del libro en la cadena 5550 (transacción firmada, probada sin red) |
+| `src/pruebas/` | 28 pruebas con `node:test`: reglas, anclaje y flujo completo contra un servidor real |
 
 **Roles** (de `reglas.js`, los mismos en los dos lados):
 
@@ -123,7 +126,9 @@ La llave privada la custodia hoy el servidor; el siguiente paso es llevarla al d
 (WebAuthn / llave de hardware) sin cambiar el formato de la firma.
 
 **Libro.** SHA-256 encadenado. `GET /api/libro/verificar` recorre la cadena;
-`GET /api/libro/ancla` da el sello listo para publicarlo en la cadena 5550.
+`POST /api/libro/anclar` publica el sello en la cadena 5550 en una transacción a la propia cuenta
+de la Tesorería (`src/ancla.ts`, con ethers) y `GET /api/libro/anclas` lista las anclas. El libro
+se exporta en JSON y CSV.
 
 **Contraseña provisional.** Un operador recién creado puede entrar y mirar, pero no operar
 hasta cambiarla (`POST /api/sesion/contrasena`).
@@ -134,7 +139,9 @@ hasta cambiarla (`POST /api/sesion/contrasena`).
 |---|---|---|---|
 | `GET` | `/api/salud` · `/healthz` | no | Estado del servicio, almacén, sello del libro |
 | `GET` | `/api/prueba-de-reservas` · `/api/respaldo` | no | El documento público de respaldo |
-| `GET` | `/api/libro/verificar` · `/api/libro/ancla` | no | Integridad y sello del libro |
+| `GET` | `/api/libro/verificar` · `/api/libro/ancla` · `/api/libro/anclas` | no | Integridad, sello y anclas publicadas |
+| `POST` | `/api/libro/anclar` | presidente | Publica el sello en la cadena 5550 (`TESORERIA_ANCLA_CLAVE`) |
+| `GET` | `/api/libro.csv` | sí | El libro en CSV |
 | `GET` | `/api/solicitudes/:id/firmas` | no | Verificación Ed25519 de las firmas |
 | `POST` | `/api/sesion/entrar` · `/genesis` · `/salir` · `/contrasena` | — | Sesión por contraseña o por token de Genesis ID |
 | `GET` | `/api/estado` | sí | El estado completo, con la sesión y el Consejo real |
@@ -154,7 +161,7 @@ cd tesoreria/servidor
 npm install
 TESORERIA_ADMIN_PASSWORD='una-contrasena-larga' npm start
 # → http://localhost:4100  (front + API)
-npm run prueba      # 26 pruebas
+npm run prueba      # 28 pruebas
 npm run typecheck
 ```
 
@@ -177,6 +184,7 @@ Variables:
 | `TESORERIA_MONGO_URL` / `TESORERIA_MONGO_DB` | **Obligatoria para operar de verdad.** Sin Mongo, el libro se pierde en cada despliegue |
 | `TESORERIA_ADMIN_EMAIL` / `_PASSWORD` / `_NOMBRE` | El primer presidente del Consejo |
 | `TESORERIA_GENESIS_URL` / `TESORERIA_GENESIS_API_KEY` | Entrada con la sesión única de Genesis ID. La clave se emite en el panel de Genesis para la app `tesoreria` con alcance `gid.verificar` |
+| `TESORERIA_ANCLA_CLAVE` | Llave privada de la cuenta que ancla el libro en la cadena 5550 (solo necesita ORIGEN para el gas) |
 | `RPC_ORDEN_URL` | RPC de la cadena 5550 (por defecto `https://rpc.ordenglobal-rpc.com/`) |
 | `TESORERIA_CORS` | Orígenes adicionales que pueden llamar al API (la copia estática en Vercel) |
 | `TESORERIA_SESION_HORAS` | Duración de la sesión (8 por defecto) |
@@ -197,8 +205,8 @@ cadena reporta, para que el registro y la cadena cuadren desde el primer día.
 
 - **Custodia de llaves.** Hoy las llaves Ed25519 del Consejo las guarda el servidor. Pasarlas a
   llaves de hardware o WebAuthn es un cambio de custodia, no de formato.
-- **Anclaje en cadena.** `GET /api/libro/ancla` ya da el sello; publicarlo en la 5550 requiere una
-  cuenta con ORIGEN para pagar (hoy baseFee 0) y decidir cada cuánto se ancla.
+- **Cadencia del anclaje.** El anclaje está implementado; falta la cuenta (`TESORERIA_ANCLA_CLAVE`)
+  y decidir cuándo se ancla: tras cada dictamen, a diario o a mano desde el panel.
 - **Emisión on-chain.** La Tesorería autoriza; ejecutar el `mint` en el contrato sigue siendo un
   acto del operador de la cadena. La conciliación es lo que cierra el círculo mientras tanto.
 - **Fuente del precio del oro.** Se fija a mano con fuente y fecha; puede automatizarse contra un

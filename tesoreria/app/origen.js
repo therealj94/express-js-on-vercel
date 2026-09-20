@@ -434,11 +434,12 @@
         ${s.dictamen ? `<div class="aviso ${s.estado === 'aprobada' ? 'ok' : s.estado === 'rechazada' ? 'bad' : 'warn'} mt16">
           ${ic('doc')}<div><b>Dictamen</b><span class="txt">${esc(s.dictamen)}</span></div></div>` : ''}`,
       pie: pendiente && T.puede('solicitud.dictaminar') ? `
-        <div class="izq"><button class="btn" data-objetar ${s.estado === 'objecion' ? 'disabled' : ''}>${ic('alerta')} Objetar</button></div>
+        <div class="izq"><a class="btn" href="./acta.html?sol=${esc(s.id)}" target="_blank">${ic('doc')} Acta</a>
+        <button class="btn" data-objetar ${s.estado === 'objecion' ? 'disabled' : ''}>${ic('alerta')} Objetar</button></div>
         <button class="btn peligro" data-rechazar>${ic('x')} Rechazar</button>
         <button class="btn pri" data-aprobar ${(!ch.ok || faltanFirmas) ? 'disabled' : ''}>
           ${ic('check')} ${faltanFirmas ? `Faltan ${faltanFirmas} firma(s)` : 'Autorizar emisión'}</button>`
-        : `<button class="btn" data-cerrar>Cerrar</button>`,
+        : `<div class="izq"><a class="btn" href="./acta.html?sol=${esc(s.id)}" target="_blank">${ic('doc')} Acta de dictamen</a></div><button class="btn" data-cerrar>Cerrar</button>`,
       alAbrir(f) {
         const fb = el('[data-firmar]', f);
         if (fb) fb.addEventListener('click', async () => {
@@ -703,12 +704,26 @@
         <div class="der"><button class="btn chico" data-leer>${ic('cadena')} Leer la cadena</button></div></div>
         <div class="cuerpo plano tabla-wrap" id="conc"><div class="vacio">${ic('cadena')}<div>${enApi() ? 'Pulsa «Leer la cadena» para consultar el RPC.' : 'La conciliación la hace el servidor: en modo local no hay acceso al RPC.'}</div></div></div>
       </div>
-      <div class="card mt16"><div class="cab"><h3>Ancla del libro</h3></div><div class="cuerpo">
-        <p class="muted" style="font-size:13px;line-height:1.6">El sello del libro (<span class="mono">${esc((E().libro[0] || {}).hash || '—')}</span>) es el hash que se publica en la cadena para que nadie —ni la propia Autoridad— pueda reescribir el pasado sin que se note.
-        ${enApi() ? 'El servidor lo expone en <span class="mono">GET api/libro/ancla</span> listo para anclarlo.' : ''}</p>
+      <div class="card mt16"><div class="cab"><h3>Ancla del libro en la cadena</h3>
+        <div class="der">${enApi() && T.puede('*') ? `<button class="btn pri chico" data-anclar ${T.servidor && T.servidor.anclaje ? '' : 'disabled title="Falta TESORERIA_ANCLA_CLAVE en el servidor"'}>${ic('candado')} Anclar el sello ahora</button>` : ''}</div></div>
+        <div class="cuerpo">
+        <p class="muted" style="font-size:13px;line-height:1.6">El sello vigente (<span class="mono">${esc((E().libro[0] || {}).hash || '—')}</span>, ${fmt.num(E().libro.length)} asientos) se publica en una transacción de la cadena 5550 para que nadie —ni la propia Autoridad— pueda reescribir el pasado sin que se note.
+        ${enApi() ? (T.servidor && T.servidor.anclaje ? 'El servidor tiene cuenta para anclar.' : '<span class="warn-t">El servidor no tiene cuenta configurada para anclar (TESORERIA_ANCLA_CLAVE); el sello se expone en <span class="mono">GET api/libro/ancla</span>.</span>') : ''}</p>
+        <div class="titulo-sec">Anclas publicadas</div>
+        ${(E().anclas || []).length ? `<div class="tabla-wrap"><table class="tabla"><thead><tr><th>Fecha</th><th>Sello</th><th class="der">Asientos</th><th>Transacción</th><th class="der">Bloque</th><th>Por</th></tr></thead>
+          <tbody>${(E().anclas || []).map((a) => `<tr><td class="ts">${fmt.fechaHora(a.en)}</td><td class="mono ts">${esc(a.sello.slice(0, 16))}…</td><td class="der num">${fmt.num(a.asientos)}</td><td class="mono ts">${esc(a.tx.slice(0, 18))}…</td><td class="der num">${a.bloque === null ? '<span class="faint">pendiente</span>' : fmt.num(a.bloque)}</td><td>${esc(a.por)}</td></tr>`).join('')}</tbody></table></div>`
+          : '<p class="faint" style="font-size:12.5px">Todavía no se ha anclado ningún sello.</p>'}
       </div></div>`;
     },
     alMontar(c) {
+      const an = el('[data-anclar]', c);
+      if (an) an.addEventListener('click', () => confirmar('Anclar el sello en la cadena 5550',
+        'Se envía una transacción a la cuenta de la Tesorería con el sello y el número de asientos. Queda asentado en el libro. No se puede deshacer.',
+        async () => {
+          an.disabled = true;
+          try { const r = await T.api('libro/anclar', { method: 'POST' }); toast('Sello anclado', `tx ${r.ancla.tx.slice(0, 18)}…`, 'ok'); const est = await T.api('estado'); T.estado.anclas = est.estado.anclas; T.estado.libro = est.estado.libro; location.hash = 'cadena'; location.reload(); }
+          catch (e) { toast('No se pudo anclar', e.message, 'bad'); an.disabled = false; }
+        }, 'Anclar'));
       const b = el('[data-leer]', c);
       b.addEventListener('click', async () => {
         if (!enApi()) return toast('Requiere servidor', 'La lectura del RPC la hace el backend', 'warn');
@@ -745,7 +760,7 @@
           ? `Los ${v.total} asientos verifican contra su hash anterior${enApi() ? ' (SHA-256, verificado en el servidor)' : ''}. Cualquier alteración de un asiento pasado rompe la cadena y salta aquí.`
           : `El asiento ${esc(v.en)} no coincide con su hash anterior.`}</span></div></div>
       <div class="card mt16"><div class="cab"><h3>Asientos</h3>
-        <div class="der"><button class="btn chico" data-exp>${ic('doc')} Exportar libro</button></div></div>
+        <div class="der">${enApi() ? `<button class="btn chico" data-csv>${ic('doc')} CSV</button>` : ''}<button class="btn chico" data-exp>${ic('doc')} Exportar JSON</button></div></div>
         <div class="cuerpo plano tabla-wrap"><table class="tabla">
           <thead><tr><th>Fecha</th><th>Tipo</th><th>Detalle</th><th>Actor</th><th>Hash</th></tr></thead>
           <tbody>${E().libro.map((ev) => `<tr>
@@ -760,6 +775,14 @@
     },
     alMontar(c) {
       el('[data-exp]', c).addEventListener('click', () => { T.exportarJSON('libro-origen.json', E().libro); toast('Libro exportado', '', 'ok'); });
+      const csv = el('[data-csv]', c);
+      if (csv) csv.addEventListener('click', async () => {
+        try {
+          const r = await fetch(new URL('api/libro.csv', location.href), { headers: { Authorization: 'Bearer ' + (localStorage.getItem('og.tesoreria.sesion') || '') } });
+          const blob = await r.blob(); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'libro-tesoreria.csv'; a.click();
+          toast('CSV descargado', '', 'ok');
+        } catch (e) { toast('No se pudo', e.message, 'bad'); }
+      });
     },
   };
 

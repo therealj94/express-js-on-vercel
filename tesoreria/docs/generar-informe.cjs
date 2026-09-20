@@ -43,7 +43,7 @@ async function jpeg(page, archivo, ancho) {
   const p = await b.newPage();
   await p.setContent('<html><body></body></html>');
   const I = {};
-  for (const f of ['pdf-hub', 'pdf-origen-panel', 'pdf-origen-reservas', 'pdf-solicitud', 'pdf-operadores', 'pdf-libro', 'pdf-cadena', 'pdf-security-panel', 'pdf-security-ondk', 'pdf-mercado', 'pdf-utility-panel', 'pdf-utility-capacidad', 'api-cambio-contrasena', 'api-prueba', 'api-security-auditor']) {
+  for (const f of ['pdf-hub', 'pdf-origen-panel', 'pdf-origen-reservas', 'pdf-solicitud', 'pdf-operadores', 'pdf-libro', 'pdf-cadena', 'pdf-security-panel', 'pdf-security-ondk', 'pdf-mercado', 'pdf-utility-panel', 'pdf-utility-capacidad', 'api-cambio-contrasena', 'api-prueba', 'api-security-auditor', 'pdf-acta']) {
     I[f] = await jpeg(p, f + '.png', 1600);
   }
   const fig = (k, pie, alto) => `<figure><img src="${I[k]}" style="${alto ? 'max-height:' + alto + 'mm;object-fit:cover;object-position:top' : ''}"><figcaption>${pie}</figcaption></figure>`;
@@ -102,7 +102,7 @@ async function jpeg(page, archivo, ancho) {
   <div class="meta">
     ${FECHA}<br>
     Repositorio <span class="mono">therealj94/express-js-on-vercel</span> · rama <span class="mono">claude/security-tokens-treasury-platform-tk5g77</span><br>
-    Commits <span class="mono">65c99ef → 0bfc368 → 8032fea</span> · carpeta <span class="mono">tesoreria/</span><br>
+    Commits <span class="mono">65c99ef → 0bfc368 → 8032fea → 9cc3107 → (este)</span> · carpeta <span class="mono">tesoreria/</span><br>
     Preparado para J. Enamorado, Presidente del Consejo
   </div>
 </div>
@@ -112,9 +112,9 @@ async function jpeg(page, archivo, ancho) {
 <p><b>Qué es.</b> Una plataforma de tesorería con una sola regla: <b>ningún token sale al mercado sin respaldo certificado detrás</b>. No funciona como una cripto: el valor se certifica primero, el precio lo establece un valuador independiente y el Comité, y solo entonces se emiten los tokens que ese valor aguanta. Emitir más exige una causa admisible, evidencia, firmas del Consejo y ORIGEN libre.</p>
 <p><b>Qué hay.</b> Tres plataformas web (Autoridad ORIGEN, Security, Utility), un portal, una página pública de prueba de reservas y un servidor con API. Las reglas de negocio viven en un solo archivo que corre igual en el navegador y en el servidor. Está conectado al ecosistema: ORIGEN se valora como en la cadena 5550 (1/55 g de oro), los consejeros entran con Genesis ID y la Autoridad concilia el supply real de la cadena contra lo que autorizó.</p>
 <div class="estado">
-  <div class="e listo"><b>Listo y probado</b>Front completo en dos modos, servidor con sesiones, roles, firmas Ed25519, libro SHA-256, conciliación con la cadena, 26 pruebas automáticas, smoke de navegador, blueprint de Render.</div>
-  <div class="e pend"><b>Requiere configuración</b>Mongo (sin él, el libro se pierde en cada despliegue), contraseña del presidente, clave de API de Genesis para la sesión única.</div>
-  <div class="e pend"><b>Decisiones del Consejo</b>Custodia de llaves de firma, cadencia de anclaje del libro en la cadena, quién ejecuta el <i>mint</i> on-chain, fuente del precio del oro.</div>
+  <div class="e listo"><b>Listo y probado</b>Front completo en dos modos, servidor con sesiones, roles, firmas Ed25519, libro SHA-256 con anclaje en la cadena, acta de dictamen, conciliación con la cadena, 28 pruebas automáticas, smoke de navegador, blueprint de Render.</div>
+  <div class="e pend"><b>Requiere configuración</b>Mongo (sin él, el libro se pierde en cada despliegue), contraseña del presidente, clave de API de Genesis para la sesión única, cuenta para anclar en la cadena.</div>
+  <div class="e pend"><b>Decisiones del Consejo</b>Custodia de llaves de firma, cadencia del anclaje, quién ejecuta el <i>mint</i> on-chain, fuente del precio del oro, desde qué app entra el Consejo con Genesis.</div>
 </div>
 <div class="cuatro">
   <div class="kpi"><div class="et">Reservas admisibles</div><div class="v">${usd(r.admisible)}</div><div class="n">7 activos, 5 computan</div></div>
@@ -135,7 +135,20 @@ async function jpeg(page, archivo, ancho) {
 </section>
 
 <section class="sec">
-<h2>2. Las reglas que el sistema hace cumplir</h2>
+<h2>2. Cómo quedó: las rondas de mejora</h2>
+<p>El sistema se construyó en cuatro rondas. Cada una cerró algo que la anterior dejaba abierto, y todo lo que se afirma aquí está cubierto por una prueba automática o por una comprobación en navegador real.</p>
+<table><thead><tr><th>Ronda</th><th>Qué se hizo</th><th>Qué cerró</th></tr></thead><tbody>
+<tr><td><b>1 · Front</b><br><span class="mono faint">65c99ef</span></td><td>Portal y tres plataformas con estado compartido en el navegador; reglas de respaldo, cola de autorización con multifirma, mercado con banda, prueba de utilidad, libro encadenado.</td><td>El modelo completo se podía ver y tocar antes de escribir una línea de servidor.</td></tr>
+<tr><td><b>2 · Backend</b><br><span class="mono faint">0bfc368</span></td><td>Reglas isomórficas (un archivo para navegador y servidor), servidor Express + TypeScript con sesiones, roles, firmas Ed25519, libro SHA-256, almacén archivo/Mongo, conciliación con la cadena 5550, puente con Genesis ID. ORIGEN valorado como en la cadena (1/55 g de oro). Semilla de ONDK alineada con los 555 M en cadena.</td><td>El navegador ya no decide nada: explica. El servidor impide. 26 pruebas.</td></tr>
+<tr><td><b>3 · Operación</b><br><span class="mono faint">8032fea</span></td><td>Cambio de contraseña (obligatorio con provisional), sesión vencida vuelve a la entrada, el rol pinta la página (auditor sin botones), prueba de reservas pública sin sesión, Tesorería dada de alta como app en Genesis ID.</td><td>Un operador nuevo puede entrar y trabajar sin que nadie toque el servidor.</td></tr>
+<tr><td><b>4 · Auditoría</b><br><span class="mono faint">este informe</span></td><td><b>Anclaje del libro en la cadena 5550</b> (transacción firmada con el sello y los asientos; <code>POST /api/libro/anclar</code>, registro de anclas público), <b>acta de dictamen</b> imprimible por solicitud con verificación de cada firma, <b>libro en CSV</b> para auditores, historial de valuación graficado.</td><td>El pasado no se puede reescribir sin que se note fuera del sistema, y cada dictamen tiene un documento con firmas verificables. 28 pruebas.</td></tr>
+</tbody></table>
+<h3>Lo que el anclaje hace y lo que no</h3>
+<p>El libro está encadenado por hash, pero quien controle la base de datos podría recalcular la cadena entera con cuidado. Publicar el sello en la cadena 5550 lo vuelve irreversible: desde ese momento cualquiera puede pedir el libro y comprobar que llega exactamente a ese hash. La transacción va a la propia cuenta de la Tesorería con el sello y el número de asientos en el campo de datos, legible en cualquier explorador. Requiere <code>TESORERIA_ANCLA_CLAVE</code> (la llave de una cuenta con ORIGEN para el gas; hoy la cadena tiene baseFee 0). Sin ella, la ruta responde 503 y el botón aparece deshabilitado con el motivo. La firma de la transacción se prueba sin red y sin fondos, descodificándola.</p>
+</section>
+
+<section class="sec">
+<h2>3. Las reglas que el sistema hace cumplir</h2>
 <p>Están en <code>app/reglas.js</code>. El navegador las evalúa en cada pantalla para <b>explicar</b> (dictamen anticipado, techos, alertas); el servidor las evalúa en cada comando para <b>impedir</b>. Si un comando falla, el estado no cambia.</p>
 <table><thead><tr><th>Invariante</th><th>Dónde se aplica</th></tr></thead><tbody>
 <tr><td>Valor del ORIGEN emitido ≤ Σ reservas certificadas × (1 − aforo)</td><td class="mono">respaldo() · origen.emitir</td></tr>
@@ -170,7 +183,7 @@ async function jpeg(page, archivo, ancho) {
 </section>
 
 <section class="sec">
-<h2>3. El portal y la Autoridad de Emisión de ORIGEN</h2>
+<h2>4. El portal y la Autoridad de Emisión de ORIGEN</h2>
 ${fig('pdf-hub', 'Portal: las tres puertas, el modo (servidor o demostración local), cifras vivas y el flujo de emisión.', 92)}
 <p>La Autoridad es el banco central del ecosistema. Certifica reservas, emite y quema ORIGEN, y autoriza o niega toda emisión de tokens. Vistas: panel de respaldo, cola de emisión, emitir/quemar, reservas, prueba de reservas, cadena 5550, política y Consejo, libro sellado.</p>
 ${fig('pdf-origen-panel', 'Panel de respaldo: reservas admisibles, ORIGEN en circulación con su equivalente en USD, comprometido y libre; ratio con objetivo y mínimo; avisos (certificados vencidos y por vencer); freno de emergencia; cola con dictamen automático.')}
@@ -182,12 +195,13 @@ ${fig('pdf-solicitud', 'Expediente de una solicitud: dictamen de respaldo, causa
 </section>
 
 <section>
-${fig('pdf-libro', 'Libro sellado: cada asiento lleva el hash del anterior. En el servidor es SHA-256; alterar un asiento viejo rompe la cadena y se ve aquí.')}
-${fig('pdf-cadena', 'Conciliación con la cadena 5550: totalSupply() real por RPC contra lo emitido y autorizado. ONDK cuadra: 555 M en cadena = 555 M en registro. Lo que exceda lo autorizado es supply sin expediente y sale en rojo.')}
+${fig('pdf-acta', 'Acta de dictamen (acta.html?sol=…): la solicitud, su causa y evidencias, cada firma del Consejo verificada contra la llave pública (✓ Ed25519) y el rastro en el libro. Imprimible.', 108)}
+${fig('pdf-libro', 'Libro sellado: cada asiento lleva el hash del anterior. En el servidor es SHA-256; alterar un asiento viejo rompe la cadena y se ve aquí. Exportable en JSON y CSV.')}
+${fig('pdf-cadena', 'Conciliación con la cadena 5550: totalSupply() real por RPC contra lo emitido y autorizado. ONDK cuadra: 555 M en cadena = 555 M en registro. Abajo, el ancla del libro: el sello vigente, el botón de anclar (deshabilitado hasta configurar la cuenta) y el registro de anclas publicadas.')}
 </section>
 
 <section class="sec">
-<h2>4. Tesorería de Security Tokens</h2>
+<h2>5. Tesorería de Security Tokens</h2>
 <p>ONDK, MPLE y VTRE: emisiones con valor patrimonial. Precio establecido por el Comité contra un informe independiente, que no flota. Tres techos simultáneos sobre el supply: valuación certificada, ORIGEN asignado y lo autorizado por la Autoridad. Cap table con transfer agent, distribuciones, reportes periódicos y mercado secundario con banda.</p>
 ${fig('pdf-security-panel', 'Panel de security: valor en circulación, valuación, tenedores, alertas (MPLE con un reporte vencido) y calendario de obligaciones.')}
 ${fig('pdf-security-ondk', 'Expediente de ONDK: supply y límites, valuación con historial, distribuciones, mercado, cumplimiento, tenedores y el expediente ante la Autoridad.', 108)}
@@ -195,7 +209,7 @@ ${fig('pdf-security-ondk', 'Expediente de ONDK: supply y límites, valuación co
 
 <section>
 ${fig('pdf-mercado', 'Mercado secundario regulado: precio de referencia certificado, banda admitida, libro de órdenes y cruce. Una orden fuera de banda se rechaza; el régimen puede ser abierto, por ventanas o suspendido.')}
-<h2 style="margin-top:14pt">5. Tesorería de Utility Tokens</h2>
+<h2 style="margin-top:14pt">6. Tesorería de Utility Tokens</h2>
 <p>VETA, OGS y MTP: tokens que pagan un servicio. No dan propiedad ni rendimiento. Solo circulan mientras exista capacidad de servicio contratada que los honre; el ORIGEN respalda únicamente la parte redimible. Lo consumido se quema y libera respaldo.</p>
 ${fig('pdf-utility-panel', 'Panel de utility: circulante, capacidad comprometida, pasivo redimible, ORIGEN asignado y prueba de utilidad. MTP está deliberadamente en alerta (95 % de cobertura de servicio).')}
 </section>
@@ -206,7 +220,7 @@ ${fig('api-prueba', 'Prueba de reservas pública (prueba.html): el documento que
 </section>
 
 <section class="sec">
-<h2>6. Arquitectura técnica</h2>
+<h2>7. Arquitectura técnica</h2>
 <div class="arq">
   <div class="b g"><b>Navegador</b><span class="mono">index · origen · security · utility · prueba</span><br>HTML/CSS/JS sin framework. <code>app/nucleo.js</code> es el cliente de estado: modo servidor (sesión + <code>POST api/comandos</code>) o modo local (localStorage). Las vistas llaman <code>T.ejecutar(nombre, datos)</code> y no distinguen el modo.</div>
   <div class="b v"><b>Reglas isomórficas</b><span class="mono">app/reglas.js · app/datos.js</span><br>Un archivo UMD con las reglas, catálogos, roles y ${R.nombresComandos.length} comandos. El navegador lo carga con <code>&lt;script&gt;</code>; el servidor con <code>require()</code>. Una sola fuente de verdad: no hay copia del negocio en el backend.</div>
@@ -228,11 +242,13 @@ ${fig('api-prueba', 'Prueba de reservas pública (prueba.html): el documento que
 </section>
 
 <section class="sec">
-<h2>7. API del servidor</h2>
+<h2>8. API del servidor</h2>
 <table><thead><tr><th>Método</th><th>Ruta</th><th>Sesión</th><th>Qué hace</th></tr></thead><tbody>
 <tr><td>GET</td><td class="mono">/api/salud · /healthz</td><td>no</td><td>Estado del servicio, almacén, commit, sello del libro</td></tr>
 <tr><td>GET</td><td class="mono">/api/prueba-de-reservas · /api/respaldo</td><td>no</td><td>El documento público de respaldo</td></tr>
-<tr><td>GET</td><td class="mono">/api/libro/verificar · /api/libro/ancla</td><td>no</td><td>Integridad y sello del libro</td></tr>
+<tr><td>GET</td><td class="mono">/api/libro/verificar · /api/libro/ancla · /api/libro/anclas</td><td>no</td><td>Integridad, sello y anclas publicadas del libro</td></tr>
+<tr><td>POST</td><td class="mono">/api/libro/anclar</td><td>presidente</td><td>Publica el sello en la cadena 5550 y lo asienta en el libro (503 sin cuenta configurada; 409 si el libro no verifica)</td></tr>
+<tr><td>GET</td><td class="mono">/api/libro.csv</td><td>sí</td><td>El libro completo en CSV</td></tr>
 <tr><td>GET</td><td class="mono">/api/solicitudes/:id/firmas</td><td>no</td><td>Verificación Ed25519 de las firmas de una solicitud</td></tr>
 <tr><td>POST</td><td class="mono">/api/sesion/entrar · /genesis · /salir · /contrasena</td><td>—</td><td>Sesión por contraseña o por token de Genesis ID; cambio de contraseña</td></tr>
 <tr><td>GET</td><td class="mono">/api/estado</td><td>sí</td><td>El estado completo, con la sesión y el Consejo real</td></tr>
@@ -248,7 +264,7 @@ ${fig('api-prueba', 'Prueba de reservas pública (prueba.html): el documento que
 </section>
 
 <section class="sec">
-<h2>8. Datos de la semilla</h2>
+<h2>9. Datos de la semilla</h2>
 <p>La semilla de demostración (<code>app/datos.js</code>) es también el contrato de datos del API. Cuadra con todas las reglas: ratio ${num(r.ratio, 1)} %, ${usd(r.libre)} libres, y dos casos deliberados en alerta (MTP por capacidad, MPLE por un reporte vencido) para que se vean las alarmas trabajando.</p>
 <h3>Reservas</h3>
 <table><thead><tr><th>Activo</th><th>Clase</th><th class="der">Certificado</th><th class="der">Aforo</th><th class="der">Admisible</th><th>Estado</th></tr></thead><tbody>${reservas}</tbody></table>
@@ -258,17 +274,18 @@ ${fig('api-prueba', 'Prueba de reservas pública (prueba.html): el documento que
 </section>
 
 <section class="sec">
-<h2>9. Verificación</h2>
+<h2>10. Verificación</h2>
 <div class="dos">
-  <div class="caja"><b class="t">26 pruebas automáticas (node:test)</b>
+  <div class="caja"><b class="t">28 pruebas automáticas (node:test)</b>
     <ul>
       <li>Reglas: semilla cuadra; certificado vencido vale cero; el oro mueve el ratio; no se emite bajo el mínimo; no se quema ORIGEN comprometido; el rol decide; aprobar exige firmas y respaldo; la valuación es un techo; emitir exige cabecera, respaldo y capacidad; banda y régimen del secundario; transfer agent; quemar libera respaldo; utility sin capacidad; el libro se rompe al tocar un asiento; límites de la política.</li>
+      <li>Anclaje: la transacción firmada se descodifica con el sello, los asientos y la cadena 5550; una transacción cualquiera no pasa por ancla.</li>
       <li>API contra un servidor real: sin sesión nada; prueba pública; entrada y bloqueo por contraseña; alta de operadores solo por el presidente; contraseña provisional; auditor de solo lectura; flujo completo con tres firmas Ed25519 verificadas, aprobación, emisión y rechazo por encima del respaldo; baja de consejero; reinicio.</li>
     </ul></div>
   <div class="caja"><b class="t">Navegador real (Chromium)</b>
     <ul>
       <li>Modo local: 19 vistas sin errores de consola; expediente, dictamen anticipado, firma y aprobación.</li>
-      <li>Modo servidor: entrada, contraseña provisional obligatoria, firma real del consejero, freno, alta de reserva sellada, conciliación viva con la cadena, prueba pública sin sesión, salida.</li>
+      <li>Modo servidor: entrada, contraseña provisional obligatoria, firma real del consejero, freno, alta de reserva sellada, conciliación viva con la cadena, prueba pública sin sesión, acta con firma verificada, CSV del libro, anclaje rechazado con 503 sin cuenta, salida.</li>
       <li>Auditor: sin botones de acción en ninguna vista.</li>
       <li>Sin desbordes horizontales de 360 a 1440 px; claro y oscuro; impresión.</li>
     </ul></div>
@@ -278,12 +295,13 @@ ${fig('api-security-auditor', 'La misma pantalla vista por un auditor: sin boton
 </section>
 
 <section class="sec">
-<h2>10. Despliegue</h2>
+<h2>11. Despliegue</h2>
 <p><code>render.yaml</code> en la raíz del repo ya trae el servicio <b>tesoreria</b> (rootDir <code>tesoreria/servidor</code>, Node 20, <code>npm start</code>, healthcheck <code>/healthz</code>). En Render: New → Blueprint → este repo y rama.</p>
 <table><thead><tr><th>Variable</th><th>Para qué</th><th>Estado</th></tr></thead><tbody>
 <tr><td class="mono">TESORERIA_MONGO_URL / _DB</td><td>Almacén persistente. <b>Obligatoria para operar de verdad</b>: sin Mongo el libro se pierde en cada despliegue. Puede ser el clúster de Genesis con otra base.</td><td><span class="tag warn">por definir</span></td></tr>
 <tr><td class="mono">TESORERIA_ADMIN_EMAIL / _PASSWORD / _NOMBRE</td><td>El primer presidente del Consejo. Sin contraseña se genera una y se imprime una sola vez.</td><td><span class="tag warn">por definir</span></td></tr>
 <tr><td class="mono">TESORERIA_GENESIS_URL / _API_KEY</td><td>Sesión única con Genesis ID. La clave la imprime Genesis al arrancar tras este cambio (app <code>tesoreria</code>).</td><td><span class="tag warn">por definir</span></td></tr>
+<tr><td class="mono">TESORERIA_ANCLA_CLAVE</td><td>Llave privada de la cuenta que ancla el libro en la cadena 5550. Solo necesita ORIGEN para el gas.</td><td><span class="tag warn">por definir</span></td></tr>
 <tr><td class="mono">RPC_ORDEN_URL</td><td>RPC de la cadena 5550. Por defecto rpc.ordenglobal-rpc.com.</td><td><span class="tag ok">listo</span></td></tr>
 <tr><td class="mono">TESORERIA_CORS</td><td>Orígenes adicionales (la copia estática en Vercel, si se usa contra este API).</td><td><span class="tag">opcional</span></td></tr>
 </tbody></table>
@@ -300,25 +318,25 @@ ${fig('api-security-auditor', 'La misma pantalla vista por un auditor: sin boton
 </section>
 
 <section class="sec">
-<h2>11. Lo que queda por decidir</h2>
+<h2>12. Lo que queda por decidir</h2>
 <div class="caja"><b class="t">Custodia de las llaves de firma</b>Hoy las llaves Ed25519 del Consejo las guarda el servidor y las usa solo con sesión abierta (firma electrónica custodiada). Llevarlas al dispositivo del consejero (WebAuthn o llave de hardware) cambia la custodia, no el formato de la firma.</div>
-<div class="caja"><b class="t">Anclaje del libro en la cadena</b><code>/api/libro/ancla</code> ya entrega el sello. Publicarlo en la 5550 requiere una cuenta con ORIGEN para pagar (hoy baseFee 0) y decidir la cadencia (por asiento, diaria, por dictamen).</div>
+<div class="caja"><b class="t">Cadencia del anclaje</b>El anclaje ya está implementado y probado; falta la cuenta (<code>TESORERIA_ANCLA_CLAVE</code>) y decidir cuándo se ancla: tras cada dictamen, una vez al día, o a mano desde el panel. Puede automatizarse en el servidor sin cambiar nada más.</div>
 <div class="caja"><b class="t">Ejecución on-chain</b>La Tesorería autoriza; el <i>mint</i> en el contrato sigue siendo un acto del operador de la cadena. La conciliación es lo que cierra el círculo mientras tanto. MPLE, VTRE, VETA, OGS y MTP no tienen contrato registrado todavía: cuando lo tengan, entran en la conciliación.</div>
 <div class="caja"><b class="t">Precio de referencia del oro</b>Se fija a mano con fuente y fecha, y queda en el libro. Puede automatizarse contra un fix público, pero conviene que siga siendo un acto del Consejo.</div>
 <div class="caja"><b class="t">Genesis ID</b>El flujo de sesión única exige que el consejero tenga identidad verificada y su cuenta atada a la app que emite el token. Hay que decidir desde qué app entra el Consejo (el panel de Genesis o Veta Wallet).</div>
 <h3>Estructura de archivos</h3>
 <table><thead><tr><th>Archivo</th><th>Qué es</th></tr></thead><tbody>
-<tr><td class="mono">tesoreria/index.html · origen.html · security.html · utility.html · prueba.html</td><td>Las páginas</td></tr>
+<tr><td class="mono">tesoreria/index.html · origen.html · security.html · utility.html · prueba.html · acta.html</td><td>Las páginas</td></tr>
 <tr><td class="mono">tesoreria/app/estilo.css</td><td>Sistema visual: teal profundo y oro, claro/oscuro, responsive, impresión</td></tr>
 <tr><td class="mono">tesoreria/app/reglas.js</td><td>Reglas, catálogos, roles y comandos (isomórfico)</td></tr>
 <tr><td class="mono">tesoreria/app/datos.js</td><td>Semilla y contrato de datos</td></tr>
 <tr><td class="mono">tesoreria/app/nucleo.js</td><td>Cliente de estado, sesión, chasis de interfaz</td></tr>
 <tr><td class="mono">tesoreria/app/origen.js · security.js · utility.js</td><td>Las vistas de cada plataforma</td></tr>
-<tr><td class="mono">tesoreria/servidor/src/index.ts · rutas.ts · store.ts · operadores.ts · cripto.ts · cadena.ts · genesis.ts · reglas.ts</td><td>El servidor</td></tr>
-<tr><td class="mono">tesoreria/servidor/src/pruebas/reglas.test.ts · api.test.ts</td><td>Las 26 pruebas</td></tr>
+<tr><td class="mono">tesoreria/servidor/src/index.ts · rutas.ts · store.ts · operadores.ts · cripto.ts · cadena.ts · ancla.ts · genesis.ts · reglas.ts</td><td>El servidor</td></tr>
+<tr><td class="mono">tesoreria/servidor/src/pruebas/reglas.test.ts · api.test.ts · ancla.test.ts</td><td>Las 28 pruebas</td></tr>
 <tr><td class="mono">tesoreria/README.md · render.yaml · genesis-id/public/cerebro-datos.js · genesis-id/src/auth/aplicaciones.ts</td><td>Documentación, despliegue e integración con Genesis</td></tr>
 </tbody></table>
-<p class="small faint">Unas 5 500 líneas entre front, servidor y pruebas, sin dependencias en el navegador y cuatro en el servidor (express, cors, mongodb, tsx).</p>
+<p class="small faint">Unas 5 500 líneas entre front, servidor y pruebas, sin dependencias en el navegador y cinco en el servidor (express, cors, mongodb, ethers, tsx).</p>
 </section>
 </body></html>`;
 

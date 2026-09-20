@@ -420,6 +420,9 @@
       { id: 'TEN-008', tokenId: 'SEC-MPLE', nombre: 'Tesorería Orden Global', genesisId: 'GEN-0000-0000', tipo: 'Tesorería', pais: 'Panamá', cantidad: 12000, desde: dias(-150), estado: 'verificado', lockup: null },
     ],
 
+    /* --- anclas del libro publicadas en la cadena 5550 --- */
+    anclas: [],
+
     /* --- libro sellado: se encadena al cargar --- */
     libro: [
       { id: 'EV-0009', ts: dias(-1), actor: 'A. Villalobos', rol: 'Consejero', tipo: 'solicitud.firmada', detalle: 'A. Villalobos firmó SOL-0002', nivel: 'info' },

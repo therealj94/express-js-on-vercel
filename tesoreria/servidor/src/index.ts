@@ -16,6 +16,7 @@ import { CARPETA_FRONT, R } from './reglas.js'
 import { rutas } from './rutas.js'
 import { asegurarPresidente, limpiarSesiones } from './operadores.js'
 import { genesisConfigurado } from './genesis.js'
+import { anclajeConfigurado } from './ancla.js'
 import { sha256 } from './cripto.js'
 
 const app = express()
@@ -46,7 +47,7 @@ app.use('/api', rutas({ commit: COMMIT.slice(0, 12), rama: RAMA, arranque: ARRAN
 
 // El front: index.html, origen.html, security.html, utility.html y app/.
 // Solo esos archivos; la carpeta del servidor no se sirve.
-const PAGINAS = ['index.html', 'origen.html', 'security.html', 'utility.html', 'prueba.html']
+const PAGINAS = ['index.html', 'origen.html', 'security.html', 'utility.html', 'prueba.html', 'acta.html']
 app.get('/', (_req, res) => res.sendFile(join(CARPETA_FRONT, 'index.html')))
 for (const p of PAGINAS) app.get('/' + p, (_req, res) => res.sendFile(join(CARPETA_FRONT, p)))
 app.use('/app', express.static(join(CARPETA_FRONT, 'app'), { index: false, extensions: [] }))
@@ -76,6 +77,7 @@ export async function arrancar(): Promise<void> {
   const avisos: string[] = []
   if (motor === 'archivo') avisos.push('ALMACEN EN ARCHIVO: en Render el disco es efímero y el libro se pierde en cada despliegue. Configure TESORERIA_MONGO_URL.')
   if (!genesisConfigurado()) avisos.push('SIN TESORERIA_GENESIS_API_KEY: la entrada con Genesis ID está desactivada; solo contraseña.')
+  if (!anclajeConfigurado()) avisos.push('SIN TESORERIA_ANCLA_CLAVE: el libro no se ancla en la cadena 5550; el sello solo se publica por API.')
   if (!v.ok) avisos.push('EL LIBRO NO VERIFICA: alguien tocó el almacén por fuera. No opere hasta aclararlo.')
   for (const a of avisos) console.warn(`[tesoreria] AVISO — ${a}`)
 

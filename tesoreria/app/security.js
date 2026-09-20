@@ -236,6 +236,7 @@
               <dt>Próxima revisión</dt><dd class="${s.valVence ? 'bad-t' : ''}">${fmt.fecha(t.valuacion.proximaRevision)}</dd>
             </dl>
             <div class="titulo-sec">Historial</div>
+            ${sparkline(t.valuacion.historial.map((h) => h.valor))}
             ${t.valuacion.historial.map((h) => `<div style="display:flex;gap:8px;font-size:12.5px;padding:5px 0;border-bottom:1px solid var(--line)">
               <span class="ts">${fmt.fecha(h.fecha)}</span>
               <span class="num" style="margin-left:auto">${fmt.dineroCorto(h.valor)}</span>
@@ -320,6 +321,20 @@
         </div>
       </div>
     </div>`;
+  }
+
+  /** Línea de la valuación en el tiempo: dice más que tres cifras sueltas. */
+  function sparkline(valores) {
+    if (!valores || valores.length < 2) return '';
+    const W = 260, H = 46, min = Math.min(...valores), max = Math.max(...valores), r = max - min || 1;
+    const pts = valores.map((v, i) => [(i / (valores.length - 1)) * (W - 8) + 4, H - 6 - ((v - min) / r) * (H - 12)]);
+    const d = pts.map((p, i) => (i ? 'L' : 'M') + p[0].toFixed(1) + ' ' + p[1].toFixed(1)).join(' ');
+    const ult = pts[pts.length - 1];
+    return `<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:46px;display:block;margin-bottom:6px" aria-label="Valuación en el tiempo">
+      <path d="${d} L${ult[0].toFixed(1)} ${H} L4 ${H} Z" fill="var(--acento-soft)" stroke="none"/>
+      <path d="${d}" fill="none" stroke="var(--acento)" stroke-width="2"/>
+      <circle cx="${ult[0].toFixed(1)}" cy="${ult[1].toFixed(1)}" r="3" fill="var(--acento)" stroke="none"/>
+    </svg>`;
   }
 
   function montarDetalle(c) {

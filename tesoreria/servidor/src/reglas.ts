@@ -46,6 +46,7 @@ export interface Reglas {
   nombresComandos: string[]
   ejecutar: (estado: any, nombre: string, datos: any, ctx: Contexto) => { estado: any; evento: Evento; resultado: any }
   sellarLibro: (estado: any, hashFn?: (s: string) => string) => void
+  asentar: (estado: any, ev: { tipo: string; detalle: string; nivel: string; actor: string; rol: string; ahora: Date }, hashFn?: (s: string) => string) => Evento
   verificarLibro: (estado: any, hashFn?: (s: string) => string) => { ok: boolean; total?: number; sello?: string; en?: string }
   canonSolicitud: (s: any) => string
   clon: <T>(o: T) => T

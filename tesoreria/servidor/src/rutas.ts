@@ -15,6 +15,7 @@ import { sha256, firmar, verificarFirma } from './cripto.js'
 import * as op from './operadores.js'
 import { conciliar } from './cadena.js'
 import { verificarTokenGenesis, genesisConfigurado } from './genesis.js'
+import { anclar, anclajeConfigurado } from './ancla.js'
 
 declare global {
   // eslint-disable-next-line @typescript-eslint/no-namespace
@@ -98,7 +99,7 @@ export function rutas(info: { commit: string; rama: string; arranque: string }) 
       estado: v.ok && s.motor === 'mongodb' ? 'ok' : 'degradado',
       en: new Date().toISOString(),
       version: info, almacen: s.motor, efimero: s.efimero, asientos: s.asientos, operadores: s.operadores,
-      libroIntegro: v.ok, sello: v.sello ?? null, genesis: genesisConfigurado(),
+      libroIntegro: v.ok, sello: v.sello ?? null, genesis: genesisConfigurado(), anclaje: anclajeConfigurado(),
     })
   })
 
@@ -209,7 +210,38 @@ export function rutas(info: { commit: string; rama: string; arranque: string }) 
     const v = R.verificarLibro(e, sha256)
     // Lo que se publica en la cadena: el sello y cuántos asientos cubre. Con eso
     // cualquiera puede pedir el libro y comprobar que llega exactamente a ese hash.
-    res.json({ sello: v.sello, asientos: v.total, integro: v.ok, en: new Date().toISOString(), algoritmo: 'SHA-256 encadenado', cadena: 5550 })
+    res.json({ sello: v.sello, asientos: v.total, integro: v.ok, en: new Date().toISOString(), algoritmo: 'SHA-256 encadenado', cadena: 5550, anclajeConfigurado: anclajeConfigurado(), ultimaAncla: (e.anclas || [])[0] ?? null })
+  })
+
+  /** Las anclas ya publicadas (sello, asientos, transacción, bloque). Público: es la prueba de que el pasado no se reescribió. */
+  api.get('/libro/anclas', (_req, res) => res.json({ anclas: store.todo().estado.anclas || [], configurado: anclajeConfigurado() }))
+
+  /** Publica el sello actual en la cadena 5550. Solo el presidente; queda asentado en el libro. */
+  api.post('/libro/anclar', exigePermiso('*'), async (req, res) => {
+    const e = store.todo().estado
+    const v = R.verificarLibro(e, sha256)
+    if (!v.ok) return res.status(409).json({ error: `El libro no verifica (asiento ${v.en}); no se ancla un libro roto` })
+    try {
+      const a = await anclar(v.sello!, v.total!)
+      const ancla = { sello: v.sello, asientos: v.total, tx: a.tx, bloque: a.bloque, de: a.de, en: a.carga.en, por: req.operador!.nombre, cadena: 5550 }
+      e.anclas = [ancla, ...(e.anclas || [])].slice(0, 500)
+      R.asentar(e, { tipo: 'libro.anclado', detalle: `Sello ${v.sello!.slice(0, 12)}… (${v.total} asientos) anclado en la cadena 5550 · tx ${a.tx.slice(0, 14)}…`, nivel: 'ok', actor: req.operador!.nombre, rol: req.operador!.rol, ahora: new Date() }, sha256)
+      await store.guardarYa()
+      res.json({ ancla, estado: estadoPara(req.operador!) })
+    } catch (err: any) {
+      res.status(err?.codigo === 503 ? 503 : 502).json({ error: err?.message || 'No se pudo anclar' })
+    }
+  })
+
+  /** El libro en CSV, para auditores que trabajan en hoja de cálculo. */
+  api.get('/libro.csv', exigeSesion, (_req, res) => {
+    const l = store.todo().estado.libro
+    const celda = (v: unknown) => '"' + String(v ?? '').replace(/"/g, '""') + '"'
+    const filas = [['id', 'fecha', 'actor', 'rol', 'tipo', 'nivel', 'detalle', 'hash', 'hashPrev'].join(',')]
+    for (const a of l) filas.push([a.id, a.ts, a.actor, a.rol, a.tipo, a.nivel, a.detalle, a.hash, a.hashPrev].map(celda).join(','))
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8')
+    res.setHeader('Content-Disposition', 'attachment; filename="libro-tesoreria.csv"')
+    res.send('\ufeff' + filas.join('\n'))
   })
 
   /** Verifica una firma Ed25519 de una solicitud contra la llave pública de un consejero. */

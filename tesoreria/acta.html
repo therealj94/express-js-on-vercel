@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Acta de dictamen · Orden Global</title>
+<meta name="description" content="Acta de dictamen de una solicitud de emisión ante la Autoridad de Emisión de ORIGEN, con sus firmas verificables.">
+<link rel="stylesheet" href="./app/estilo.css">
+<style>
+  .doc{max-width:900px;margin:0 auto;padding:44px 22px 80px}
+  .doc header{display:flex;gap:16px;align-items:center;margin-bottom:22px;flex-wrap:wrap}
+  .doc h1{font-size:22px;font-weight:660;letter-spacing:-.02em}
+  .doc header p{color:var(--muted);font-size:13px}
+  .firma{display:flex;gap:12px;align-items:flex-start;padding:12px 0;border-bottom:1px solid var(--line)}
+  .firma .cuadro{width:34px;height:34px;border-radius:9px;display:grid;place-items:center;border:1px solid var(--line);flex:none}
+  .firma .cuadro svg{width:18px;height:18px}
+  .firma .cuadro.ok{color:var(--ok);border-color:color-mix(in srgb,var(--ok) 40%,var(--line))}
+  .firma .cuadro.no{color:var(--faint)}
+  .firma .datos{flex:1;min-width:0}
+  .firma .datos b{display:block;font-size:13.5px}
+  .firma .datos .mono{word-break:break-all;font-size:11px;color:var(--faint)}
+  .sello{word-break:break-all}
+  @media print{.doc{padding:0}.no-imprimir{display:none}body{background:#fff}}
+</style>
+</head>
+<body data-acento="origen">
+<div class="doc" id="doc"><div class="vacio">Cargando…</div></div>
+<script src="./app/datos.js"></script>
+<script src="./app/reglas.js"></script>
+<script src="./app/nucleo.js"></script>
+<script>
+(async function () {
+  const { fmt, esc, ic } = T;
+  const raiz = document.getElementById('doc');
+  const id = new URLSearchParams(location.search).get('sol');
+
+  const r = await T.arrancar().catch(() => ({ modo: 'local' }));
+  if (r.modo === 'api' && !r.sesion) {
+    raiz.innerHTML = `<div class="aviso warn">${ic('candado')}<div><b>Hace falta sesión</b><span class="txt">El acta se lee con sesión de operador. <a href="./origen.html#solicitudes">Entrar</a></span></div></div>`;
+    return;
+  }
+  const E = T.estado;
+  const s = id && T.buscar.solicitud(id);
+  if (!s) {
+    raiz.innerHTML = `<div class="aviso bad">${ic('alerta')}<div><b>Solicitud no encontrada</b><span class="txt">Abre el acta desde el expediente: origen.html → Cola de emisión → Revisar → Acta.</span></div></div>`;
+    return;
+  }
+  const t = T.buscar.token(s.tokenId);
+  const causa = (T.CAUSAS[s.tipo] || []).find((c) => c.v === s.causa);
+  let verif = null;
+  if (r.modo === 'api') { try { verif = await T.api('solicitudes/' + id + '/firmas'); } catch (e) { verif = null; } }
+  const estadoTag = { en_revision: ['warn', 'En revisión'], objecion: ['bad', 'Con objeción'], aprobada: ['ok', 'Aprobada'], rechazada: ['bad', 'Rechazada'] }[s.estado] || ['', s.estado];
+  const asientos = E.libro.filter((a) => a.detalle.includes(s.id) || (a.detalle.startsWith(s.simbolo + ' ·') && a.ts >= s.creada));
+
+  raiz.innerHTML = `
+    <header>
+      <div class="brand" style="border:0;padding:0;margin:0"><div class="mark">${ic('escudo2')}</div></div>
+      <div><h1>Acta de dictamen · ${esc(s.id)}</h1>
+        <p>Autoridad de Emisión de ORIGEN · Orden Global Corp · ${r.modo === 'api' ? 'servidor de Tesorería' : 'demostración local'}</p></div>
+      <div style="margin-left:auto;display:flex;gap:8px" class="no-imprimir">
+        <button class="btn chico" onclick="window.print()">${ic('doc')} Imprimir / PDF</button>
+        <a class="btn chico fantasma" href="./origen.html#solicitudes">Volver</a></div>
+    </header>
+
+    <div class="card"><div class="cab"><h3>${esc(s.simbolo)} — ${esc(T.etiquetaAccion(s.accion))}</h3>
+      <div class="der"><span class="tag ${estadoTag[0]}">${esc(estadoTag[1])}</span></div></div>
+      <div class="cuerpo"><div class="grid g2">
+        <dl class="dl">
+          <dt>Token</dt><dd>${esc(s.simbolo)} — ${esc(t ? t.nombre : '—')}</dd>
+          <dt>Clase</dt><dd>${s.tipo === 'security' ? 'Security token' : 'Utility token'}</dd>
+          <dt>Cantidad</dt><dd class="num">${fmt.num(s.cantidad)}</dd>
+          <dt>Precio establecido</dt><dd class="num">${fmt.dinero(s.precio)}</dd>
+          <dt>ORIGEN requerido</dt><dd class="num ac-t">${fmt.dinero(s.origenRequerido)}</dd>
+        </dl>
+        <dl class="dl">
+          <dt>Solicitante</dt><dd>${esc(s.solicitante)}</dd>
+          <dt>Recibida</dt><dd>${fmt.fechaHora(s.creada)}</dd>
+          <dt>Ventana de objeción</dt><dd>${fmt.fecha(s.ventanaObjecionHasta)}</dd>
+          <dt>Resuelta</dt><dd>${s.resuelta ? fmt.fechaHora(s.resuelta) : '—'}</dd>
+          <dt>Dictaminó</dt><dd>${esc(s.dictaminadaPor || '—')}</dd>
+        </dl>
+      </div>
+      <div class="titulo-sec">Causa invocada</div>
+      <p><b>${esc(causa ? causa.t : s.causa)}</b> <span class="faint">— requiere: ${esc(causa ? causa.pide : '')}</span></p>
+      <p class="muted" style="margin-top:8px;line-height:1.6">${esc(s.motivo)}</p>
+      <div class="titulo-sec">Evidencias (${s.evidencias.length})</div>
+      ${s.evidencias.length ? s.evidencias.map((ev) => `<div style="display:flex;gap:9px;padding:6px 0;border-bottom:1px solid var(--line);font-size:13px">${ic('doc')}<span style="flex:1"><b>${esc(ev.nombre)}</b> <span class="faint">${esc(ev.tipo)}</span></span><span class="mono ts">${esc(ev.hash)}</span></div>`).join('') : '<p class="faint">Sin evidencias adjuntas.</p>'}
+      ${s.dictamen ? `<div class="aviso ${s.estado === 'aprobada' ? 'ok' : s.estado === 'rechazada' ? 'bad' : 'warn'} mt16">${ic('doc')}<div><b>Dictamen</b><span class="txt">${esc(s.dictamen)}</span></div></div>` : ''}
+    </div></div>
+
+    <div class="card mt16"><div class="cab"><h3>Firmas del Consejo — ${s.firmas.length} de ${s.firmasRequeridas}</h3></div><div class="cuerpo">
+      ${s.firmas.length ? s.firmas.map((f) => {
+        const v = verif && verif.firmas.find((x) => x.quien === f.quien);
+        const estado = v ? (v.verificada === true ? 'ok' : v.verificada === false ? 'mal' : 'nominal') : (f.firma ? 'sin-verificar' : 'nominal');
+        return `<div class="firma">
+          <div class="cuadro ${estado === 'ok' ? 'ok' : 'no'}">${ic(estado === 'ok' ? 'check' : estado === 'mal' ? 'x' : 'llave')}</div>
+          <div class="datos"><b>${esc(f.quien)}</b>
+            <span class="ts">${fmt.fechaHora(f.ts)} · ${estado === 'ok' ? 'firma Ed25519 verificada contra la llave pública' : estado === 'mal' ? 'LA FIRMA NO VERIFICA' : f.firma ? 'firma Ed25519 (verificación disponible con servidor)' : 'firma nominal (demostración)'}</span>
+            ${f.clavePublica ? `<div class="mono">llave ${esc(f.clavePublica)}</div>` : ''}
+            ${f.firma ? `<div class="mono">firma ${esc(f.firma)}</div>` : ''}
+          </div></div>`;
+      }).join('') : '<p class="faint">Sin firmas.</p>'}
+      ${verif ? `<p class="ts mt10">Texto canónico firmado: <span class="mono sello">${esc(verif.canon)}</span></p>` : ''}
+    </div></div>
+
+    <div class="card mt16"><div class="cab"><h3>Rastro en el libro sellado</h3></div><div class="cuerpo">
+      ${asientos.length ? `<div class="linea-tiempo">${asientos.map((a) => `<div class="ev ${a.nivel === 'ok' ? 'ok' : a.nivel === 'bad' ? 'bad' : a.nivel === 'warn' ? 'warn' : ''}"><b>${esc(a.detalle)}</b><p>${esc(a.tipo)} · ${esc(a.actor)}</p><div class="ts mono">${fmt.fechaHora(a.ts)} · ${esc(a.hash)}</div></div>`).join('')}</div>` : '<p class="faint">Sin asientos relacionados.</p>'}
+      <p class="ts mt10">Sello vigente del libro: <span class="mono sello">${esc((E.libro[0] || {}).hash || '—')}</span></p>
+    </div></div>`;
+})();
+</script>
+</body>
+</html>
