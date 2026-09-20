@@ -3,6 +3,7 @@ import {Vector3} from 'three';
 import {worlds} from './catalog';
 import {usePreferences} from './preferences';
 import {sound} from './sound';
+import {puenteCasa} from './hostBridge';
 export type Stage='gate'|'intro'|'system'|'galaxies'|'transit';
 export interface Journey {id:string;startedAt:number;duration:number;token:number;}
 interface ExperienceData {
@@ -18,7 +19,8 @@ export const motionReduced=()=>{const p=usePreferences.getState().prefs;return p
    en genesis.ts, para que la cámara pueda mirarlo sin que los dos módulos se
    importen en círculo. */
 export const pelicula={activo:false,yaw:0,pitch:.6,distancia:43,mira:new Vector3()};
-let token=0;
+let token=0,entrega=0;
+export const cancelarEntrega=()=>clearTimeout(entrega);
 export const navigation={
  zoom:1,yaw:0,pitch:.6,lastInteraction:0,hovered:null as string|null,
  focus(id:string|null){
@@ -35,7 +37,19 @@ export const navigation={
   useExperience.getState().set({stage:'transit',selected:id,journey,windowId:null,hovered:null});
   sound.travel('enter');sound.cue('open');
  },
- complete(tokenToComplete:number){const s=useExperience.getState();if(s.journey?.token!==tokenToComplete)return;const id=s.journey.id;s.set({stage:'system',journey:null,...(id==='ajustes'?{settings:true,windowId:null}:{windowId:id})});sound.cue('arrival');},
+ complete(tokenToComplete:number){
+  const s=useExperience.getState();if(s.journey?.token!==tokenToComplete)return;
+  const id=s.journey.id,puente=puenteCasa();
+  /* CON LA CASA DETRÁS, LLEGAR ES ABRIR. Medio segundo para que el ojo termine
+     el aterrizaje, y la wallet toma el mando: es su app, no un panel nuestro.
+     Sin casa detrás, este motor corre solo y enseña su propia ficha. */
+  if(puente&&id!=='ajustes'){
+   s.set({stage:'system',journey:null,windowId:null});sound.cue('arrival');
+   clearTimeout(entrega);entrega=window.setTimeout(()=>{try{puente(id);}catch{/* la casa dirá lo suyo */}},520);
+   return;
+  }
+  s.set({stage:'system',journey:null,...(id==='ajustes'?{settings:true,windowId:null}:{windowId:id})});sound.cue('arrival');
+ },
  step(direction:number){const s=useExperience.getState(),i=worlds.findIndex(w=>w.id===s.selected);this.focus(worlds[(i+direction+worlds.length)%worlds.length].id);},
  hover(id:string|null){this.hovered=id;useExperience.getState().set({hovered:id});},
  orbit(dx:number,dy:number){if(useExperience.getState().stage==='transit'||!Number.isFinite(dx)||!Number.isFinite(dy))return;this.lastInteraction=now();const gain=usePreferences.getState().prefs.orbitSensitivity;this.yaw-=dx*.0042*gain;this.pitch=Math.max(-.35,Math.min(1.18,this.pitch+dy*.0028*gain));sound.motion(Math.hypot(dx,dy),dx);},

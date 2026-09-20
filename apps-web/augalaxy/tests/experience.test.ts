@@ -204,3 +204,34 @@ test('Host gestures stand down behind a headset panel and during the story',()=>
  useExperience.getState().set({cinema:false});
  navigation.hitTest=()=>null;navigation.home();
 });
+
+test('With the house behind it, arriving opens the real app instead of a preview panel',()=>{
+ const {correrFrames}=casaDePrueba();
+ const abiertos:string[]=[];
+ (globalThis as any).window.__AE_ABRIR=(k:string)=>{abiertos.push(k);return true;};
+ useExperience.getState().set({settings:false,windowId:null});
+ navigation.enter('wallet');
+ const viaje=useExperience.getState().journey!;
+ navigation.complete(viaje.token);
+ assert.equal(useExperience.getState().windowId,null,'no preview panel when the house can open its own app');
+ assert.deepEqual(abiertos,[],'and not before the landing has been seen');
+ correrFrames();
+ delete (globalThis as any).window.__AE_ABRIR;
+ // Sin casa detrás, el motor sigue siendo el de la vista previa.
+ navigation.enter('wallet');
+ navigation.complete(useExperience.getState().journey!.token);
+ assert.equal(useExperience.getState().windowId,'wallet','standalone keeps its own panel');
+ useExperience.getState().set({windowId:null});navigation.home();
+});
+
+test('Settings stay the engine own panel even with the house behind',()=>{
+ casaDePrueba();
+ (globalThis as any).window.__AE_ABRIR=()=>true;
+ useExperience.getState().set({settings:false,windowId:null});
+ navigation.enter('ajustes');
+ navigation.complete(useExperience.getState().journey!.token);
+ assert.equal(useExperience.getState().settings,true,'the house has no screen for the engine own settings');
+ useExperience.getState().set({settings:false});
+ delete (globalThis as any).window.__AE_ABRIR;
+ navigation.home();
+});

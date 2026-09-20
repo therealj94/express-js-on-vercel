@@ -41,3 +41,10 @@ export function entryTiming(type:string,reduced:boolean){
  const visible=reduced?100:duration;
  return {duration,visible,callbackAt:Math.round(visible*.8)};
 }
+
+/* EL PUENTE DE LA CASA. Si la wallet dejó `__AE_ABRIR`, aterrizar en un mundo
+   ABRE LA APP DE VERDAD y la casa toma el mando; el panel de vista previa es
+   solo para cuando este motor corre solo. Su presencia es el interruptor entre
+   las dos vidas del motor, igual que en el motor anterior. */
+export const puenteCasa=()=>{const p=typeof window!=='undefined'?(window as any).__AE_ABRIR:undefined;return typeof p==='function'?p as (k:string)=>unknown:undefined;};
+export const enCasa=()=>!!puenteCasa();

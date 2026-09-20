@@ -12,6 +12,7 @@ import {assetURL} from './assets';
 import {CameraDirector,updateOrbits,updateLabels,locationOf,labelNodes,linkNodes,bindSceneInput,deepWorlds} from './cosmos';
 import ViewerDriver from './viewerDriver';
 import {useViewer,immersive} from './immersive';
+import {enCasa} from './hostBridge';
 import {SolarCore,BlackHole,CosmicNebula,OrbitPaths,Pulsar,GalacticPortrait} from './StellarObjects';
 
 function rng(seed:number){let s=seed;return()=>{s=(Math.imul(s,1664525)+1013904223)>>>0;return s/4294967296;};}
@@ -88,7 +89,9 @@ function SceneDriver({onLost}:{onLost:()=>void}){
 }
 export function PlanetLabels(){
  const prefs=usePreferences(s=>s.prefs);
- return <><svg className="network-overlay" aria-hidden="true">{worlds.flatMap(w=>(w.id==='genesis'?['label-']:['label-','core-','peer-']).map(prefix=><line key={prefix+w.id} className={prefix.slice(0,-1)} ref={node=>{if(node)linkNodes.set(prefix+w.id,node);else linkNodes.delete(prefix+w.id);}}/>))}</svg><div className="world-labels" aria-label={prefs.lang==='es'?'Aplicaciones planetarias':'Planetary applications'}>{worlds.map((w,i)=><button key={w.id} ref={node=>{if(node)labelNodes.set(w.id,node);else labelNodes.delete(w.id);}} className="world-label" onPointerEnter={()=>navigation.hover(w.id)} onPointerLeave={()=>navigation.hover(null)} onFocus={()=>navigation.hover(w.id)} onBlur={()=>navigation.hover(null)} onClick={()=>navigation.focus(w.id)}><span className="label-rule"/><span className="planet-label-index">{String(i+1).padStart(2,'0')}</span><strong>{worldName(w,prefs.lang)}</strong><small>{word(w.category,prefs.lang)}</small></button>)}</div></>;
+ return <><svg className="network-overlay" aria-hidden="true">{worlds.flatMap(w=>(w.id==='genesis'?['label-']:['label-','core-','peer-']).map(prefix=><line key={prefix+w.id} className={prefix.slice(0,-1)} ref={node=>{if(node)linkNodes.set(prefix+w.id,node);else linkNodes.delete(prefix+w.id);}}/>))}</svg><div className="world-labels" aria-label={prefs.lang==='es'?'Aplicaciones planetarias':'Planetary applications'}>{worlds.map((w,i)=><button key={w.id} ref={node=>{if(node)labelNodes.set(w.id,node);else labelNodes.delete(w.id);}} className="world-label" onPointerEnter={()=>navigation.hover(w.id)} onPointerLeave={()=>navigation.hover(null)} onFocus={()=>navigation.hover(w.id)} onBlur={()=>navigation.hover(null)} /* Con la casa detrás no hay ficha nuestra que abrir: tocar un nombre es
+    viajar y que la wallet abra su app. Sola, el nombre solo elige. */
+ onClick={()=>enCasa()?navigation.enter(w.id):navigation.focus(w.id)}><span className="label-rule"/><span className="planet-label-index">{String(i+1).padStart(2,'0')}</span><strong>{worldName(w,prefs.lang)}</strong><small>{word(w.category,prefs.lang)}</small></button>)}</div></>;
 }
 class RenderGuard extends Component<{children:ReactNode;onError:()=>void},{failed:boolean}>{
  state={failed:false};static getDerivedStateFromError(){return{failed:true};}componentDidCatch(){this.props.onError();}render(){return this.state.failed?null:this.props.children;}
