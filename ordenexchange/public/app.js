@@ -30,9 +30,12 @@ function enmascarar(v) { const s = String(v || ''); return s.length > 4 ? '•�
 const CAMPOS_SIN_MASCARA = ['tipoCuenta', 'ciudad', 'nota', 'tipoLlave', 'agencia', 'sucursal'];
 function enmascararCampo(clave, v) { return CAMPOS_SIN_MASCARA.includes(clave) ? String(v || '') : enmascarar(v); }
 function acortar(s, n = 10) { s = String(s || ''); return s.length > n * 2 + 1 ? s.slice(0, n) + '…' + s.slice(-6) : s; }
+function fechaHora(iso) { try { return new Date(iso).toLocaleString(IDIOMA === 'en' ? 'en-US' : 'es', { dateStyle: 'medium', timeStyle: 'short' }); } catch (e) { return String(iso || ''); } }
 function debounce(fn, ms) { let tm; return (...a) => { clearTimeout(tm); tm = setTimeout(() => fn(...a), ms); }; }
 
 const IC = {
+  refrescar: '<svg class="ic" viewBox="0 0 24 24"><path d="M20 11a8 8 0 1 0-.9 4.5"/><path d="M20 5v6h-6"/></svg>',
+  ayuda: '<svg class="ic" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.6 2.6 0 1 1 3.4 2.5c-.6.2-.9.8-.9 1.4v.4"/><path d="M12 17.2h.01"/></svg>',
   mercado: '<svg class="ic" viewBox="0 0 24 24"><path d="M3 17l5-6 4 4 5-7 4 5"/><path d="M3 21h18"/></svg>',
   ordenes: '<svg class="ic" viewBox="0 0 24 24"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/></svg>',
   anuncios: '<svg class="ic" viewBox="0 0 24 24"><path d="M4 11V7a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v4"/><path d="M4 11h16v7a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z"/><path d="M9 15h6"/></svg>',
@@ -128,7 +131,7 @@ function fechaRel(iso) {
   return fechaCorta(iso);
 }
 function mmss(seg) { seg = Math.max(0, Math.round(seg)); const m = Math.floor(seg / 60); const s = seg % 60; return String(m).padStart(2, '0') + ':' + String(s).padStart(2, '0'); }
-function duracion(seg) { if (seg === null || seg === undefined) return '—'; if (seg < 60) return Math.round(seg) + ' s'; if (seg < 3600) return Math.round(seg / 60) + ' ' + t('com.min'); return fmtNum(seg / 3600, 1) + ' ' + t('com.h'); }
+function duracion(seg) { if (seg === null || seg === undefined) return '—'; if (seg < 60) return t('com.menosDeUnMin'); if (seg < 3600) return Math.round(seg / 60) + ' ' + t('com.min'); return fmtNum(seg / 3600, 1) + ' ' + t('com.h'); }
 function bandera(iso2) { const p = paisDe(iso2); return p && p.bandera ? p.bandera : ''; }
 function tasa(rep) { return rep ? fmtNum(num(rep.tasaFinalizacion30d), 1, null) : '0'; }
 
@@ -313,7 +316,18 @@ function insigniasHTML(u) {
   if (u && u.verificado && !u.agente) s += `<span class="insignia verificado">${IC.escudo}${t('com.verificado')}</span>`;
   return s;
 }
-function repCorta(rep) { if (!rep) return ''; const n = rep.ordenesTotales || 0; return `${n === 1 ? t('com.orden1') : t('com.ordenes', { n })} · ${t('com.completadas', { pct: tasa(rep) })}`; }
+function pctPositivas(rep) { const p = (rep && rep.positivas) || 0, ng = (rep && rep.negativas) || 0; return p + ng > 0 ? Math.round((p / (p + ng)) * 100) : null; }
+/** Lo que se ve de la contraparte en la lista: dos renglones, como en Binance. */
+function repCorta(rep) {
+  if (!rep) return '';
+  const n = rep.ordenesTotales || 0;
+  const pos = pctPositivas(rep);
+  const linea2 = [
+    rep.tiempoPromedioLiberacionSeg != null ? t('com.liberaEn', { t: duracion(rep.tiempoPromedioLiberacionSeg) }) : null,
+    pos != null ? t('com.positivasPct', { pct: pos }) : null,
+  ].filter(Boolean).join(' · ');
+  return `<span class="r1">${n === 1 ? t('com.orden1') : t('com.ordenes', { n })} · ${t('com.completadas', { pct: tasa(rep) })}</span>${linea2 ? `<span class="r2">${linea2}</span>` : ''}`;
+}
 function reputacionHTML(rep) {
   rep = rep || {};
   return `<div class="rep">
@@ -401,9 +415,19 @@ function requisitosTexto(req) {
   return l.join(' · ');
 }
 function chipsMetodos(metodos, pais, max) {
-  const l = (metodos || []).slice(0, max || 4).map(m => `<span class="chip ${esc(m.categoria || '')}">${esc(nombreMetodo(m.tipo, pais, m.nombre))}${m.banco ? ' · ' + esc(m.banco) : ''}</span>`);
+  const l = (metodos || []).slice(0, max || 4).map(m => {
+    const nombre = nombreMetodo(m.tipo, pais, m.nombre);
+    return `<span class="chip ${esc(m.categoria || '')}"${m.banco ? ` title="${esc(nombre + ' · ' + m.banco)}"` : ''}>${esc(m.banco ? m.banco : nombre)}</span>`;
+  });
   if ((metodos || []).length > (max || 4)) l.push(`<span class="chip">+${metodos.length - (max || 4)}</span>`);
   return `<div class="chips">${l.join('')}</div>`;
+}
+/** «+1,5 % sobre la referencia» se entiende; «Flotante 101,5 %» no. */
+function textoMargen(a) {
+  if (a.tipoPrecio !== 'flotante' || !a.margen) return t('anuncios.fijo');
+  const dif = a.margen - 100;
+  if (Math.abs(dif) < 0.05) return t('anuncios.enReferencia');
+  return t(dif > 0 ? 'anuncios.sobreRef' : 'anuncios.bajoRef', { pct: fmtNum(Math.abs(dif), 1) });
 }
 function anuncioHTML(a, ctx) {
   const u = a.anunciante || {}; const rep = u.reputacion || {};
@@ -415,7 +439,7 @@ function anuncioHTML(a, ctx) {
       <div class="cuerpo"><div class="nombre"><a href="#/usuario/${esc(u.id)}">${esc(u.apodo)}</a>${insigniasHTML(u)}</div>
       <div class="rep">${repCorta(rep)}</div></div></div>
     <div class="a-precio"><div class="valor">${esc(fmtFiat(a.precio, a.moneda))}<small>${esc(a.moneda)}</small></div>
-      <div class="flot">${a.tipoPrecio === 'flotante' && a.margen ? esc(t('anuncios.flotante') + ' ' + fmtNum(a.margen, 1) + ' %') : t('anuncios.fijo')}</div></div>
+      <div class="flot">${textoMargen(a)}</div></div>
     <div class="a-disp"><div><span>${t('mercado.disponibleDe')}</span><b>${esc(fmtActivo(a.cantidadDisponible, a.activo))}</b></div>
       <div><span>${t('mercado.limitesDe')}</span><b>${esc(fmtFiat(a.limiteMin, a.moneda))} – ${esc(fmtFiat(a.limiteMax, a.moneda))}</b></div></div>
     <div class="a-metodos">${chipsMetodos(a.metodos, a.pais)}<span class="ventana">${IC.reloj}${t('com.minutos', { n: a.ventanaPagoMin })}</span></div>
@@ -435,10 +459,11 @@ function listaAnunciosHTML() {
 function metaMercadoHTML() {
   const m = S.mercado;
   return `<div class="mercado-meta"><span>${m.cargado ? t('mercado.mostrando', { n: m.anuncios.length, total: m.total }) : ''}</span>
-    <label>${t('mercado.ordenarPor')} <select data-cambio="m-orden" aria-label="${t('mercado.ordenarPor')}">
+    <label class="meta-der">${t('mercado.ordenarPor')} <select data-cambio="m-orden" aria-label="${t('mercado.ordenarPor')}">
       <option value="precio" ${m.orden === 'precio' ? 'selected' : ''}>${t('mercado.porPrecio')}</option>
       <option value="completadas" ${m.orden === 'completadas' ? 'selected' : ''}>${t('mercado.porCompletadas')}</option>
-      <option value="reciente" ${m.orden === 'reciente' ? 'selected' : ''}>${t('mercado.porReciente')}</option></select></label></div>`;
+      <option value="reciente" ${m.orden === 'reciente' ? 'selected' : ''}>${t('mercado.porReciente')}</option></select>
+      <button type="button" class="btn-icono refrescar ${m.cargando ? 'girando' : ''}" data-accion="m-refrescar" aria-label="${t('mercado.refrescar')}" title="${t('mercado.refrescar')}">${IC.refrescar}</button></label></div>`;
 }
 function comoFuncionaHTML() {
   const paso = (n, tt, dd) => `<div class="como-paso"><i>${n}</i><div><b>${t(tt)}</b><p>${t(dd)}</p></div></div>`;
@@ -464,6 +489,8 @@ const vistaMercado = {
     if (!S.precios[moneda] || S.precios[moneda].error) cargarPrecios(moneda).then(() => { const p = $('#pizarra'); if (p && S.ruta.vista === 'mercado') p.outerHTML = pizarraHTML(monedaMercado()); });
     if (!S.mercado.cargado && !S.mercado.cargando) cargarMercado();
     cada(() => { const mo = monedaMercado(); cargarPrecios(mo).then(() => { const p = $('#pizarra'); if (p && S.ruta.vista === 'mercado') p.outerHTML = pizarraHTML(mo); }); }, 60000);
+    // El disponible y los precios flotantes cambian con cada orden: la lista se refresca sola.
+    cada(() => { if (!S.hoja && !document.hidden && !S.mercado.cargando && S.ruta.vista === 'mercado') cargarMercado(); }, 25000);
   },
 };
 function pintarLista() { const l = $('#lista-anuncios'); if (l) l.innerHTML = listaAnunciosHTML(); const mm = $('.mercado-meta'); if (mm) mm.outerHTML = metaMercadoHTML(); }
@@ -611,6 +638,7 @@ async function enviarHoja(form) {
 // ═══════════════════════════════════════════════════════════════════════════
 // 9 · Orden
 // ═══════════════════════════════════════════════════════════════════════════
+const MOTIVOS_CANCELAR = ['no-puedo-pagar', 'me-equivoque', 'contraparte-no-responde', 'metodo-no-funciona', 'otro'];
 const ABIERTOS = ['pendiente-pago', 'pagado', 'apelacion'];
 function fijarOrden(o) {
   S.v.orden = o;
@@ -721,7 +749,9 @@ function pasosHTML(o) {
   const pasos = c
     ? [['orden.c1', t('orden.c1d', { monto: fmtFiat(o.montoFiat, o.moneda, true) })], ['orden.c2', t('orden.c2d')], ['orden.c3', t('orden.c3d', { activo: o.activo })]]
     : [['orden.v1', t('orden.v1d', { n: o.ventanaPagoMin, monto: fmtFiat(o.montoFiat, o.moneda, true) })], ['orden.v2', t('orden.v2d')], ['orden.v3', t('orden.v3d')]];
-  const actual = o.estado === 'pendiente-pago' ? (c ? 0 : 0) : (o.estado === 'pagado' ? (c ? 2 : 1) : idx);
+  // En apelación el trámite se detuvo donde estaba: el paso que quedó a medias
+  // es el último hecho, no el siguiente.
+  const actual = o.estado === 'apelacion' ? (c ? 2 : 1) : (o.estado === 'pendiente-pago' ? 0 : (o.estado === 'pagado' ? (c ? 2 : 1) : idx));
   return `<div class="pasos">${pasos.map((p, i) => { const hecho = i < actual || o.estado === 'completada'; const act = i === actual && o.estado !== 'completada'; return `<div class="paso ${hecho ? 'hecho' : ''} ${act ? 'actual' : ''} ${!hecho && !act ? 'pendiente-p' : ''}"><span class="n">${hecho ? IC.check : i + 1}</span><div><b>${t(p[0])}</b><p>${esc(p[1])}</p></div></div>`; }).join('')}</div>`;
 }
 function datosPagoHTML(o) {
@@ -736,6 +766,7 @@ function datosPagoHTML(o) {
     <div class="dato"><span>${t('orden.montoFiat')}</span>${copiable(fijo(num(o.montoFiat), 2), fmtFiat(o.montoFiat, o.moneda, true))}</div>
     ${o.referenciaPago ? `<div class="dato"><span>${t('orden.referencia')}</span><b>${esc(o.referenciaPago)}</b></div>` : ''}
     ${c && ABIERTOS.includes(o.estado) ? notaHTML(t('orden.avisoPago'), '', IC.alerta).replace('class="nota ', 'class="nota mt12 mb0 ') : ''}
+    ${!c && ABIERTOS.includes(o.estado) && o.contraparteNombreLegal ? notaHTML(esc(t('orden.avisoPagador', { nombre: o.contraparteNombreLegal })), 'roja', IC.alerta).replace('class="nota ', 'class="nota mt12 mb0 ') : ''}
   </div>`;
 }
 function accionesOrdenHTML(o) {
@@ -787,12 +818,15 @@ const vistaOrden = {
     const abierta = ABIERTOS.includes(o.estado);
     const conReloj = o.estado === 'pendiente-pago' && S.v.fin !== null;
     const textoReloj = o.estado === 'pendiente-pago' ? (c ? t('orden.pagaEn') : t('orden.vendedorEspera')) : '';
-    const estadoTexto = o.estado === 'pagado' ? (c ? t('orden.esperaVendedor') : t('orden.compruebaYLibera')) : (o.estado === 'pendiente-pago' && !c ? t('orden.esperaComprador') : '');
+    const desdePago = o.pagadaEn ? t('orden.desdeQuePago', { t: fechaRel(o.pagadaEn) }) : '';
+    const estadoTexto = o.estado === 'pagado'
+      ? (c ? t('orden.esperaVendedor') + (desdePago ? ' ' + desdePago : '') : t('orden.compruebaYLibera') + (desdePago ? ' ' + desdePago : ''))
+      : (o.estado === 'pendiente-pago' && !c ? t('orden.esperaComprador') : '');
     return `<div class="orden-cab">
       <div class="fila-1"><a href="#/ordenes" class="btn-icono" aria-label="${t('com.volver')}">${IC.abajo.replace('class="ic"', 'class="ic" style="transform:rotate(90deg)"')}</a>
         <h1>${c ? t('orden.tuCompras') : t('orden.tuVendes')} <span class="activo-etq ${c ? 'verde' : 'rojo'}">${esc(fmtActivo(o.cantidadActivo, o.activo))}</span></h1><span class="estado ${esc(o.estado)}">${t('estado.' + o.estado)}</span></div>
-      <div class="numero"><span>${t('orden.numero')}:</span>${copiable(o.numero)}<span>· ${esc(t('orden.abiertaHace', { t: fechaRel(o.creadaEn) }))}</span></div>
-      ${conReloj ? `<div class="temporizador" id="temporizador"><div class="reloj" id="reloj" aria-live="off">${mmss((S.v.fin - Date.now()) / 1000)}</div><div class="texto"><b>${textoReloj}</b>${t('com.ventana')}: ${t('com.minutos', { n: o.ventanaPagoMin })}</div><div class="progreso" aria-hidden="true"><i></i></div></div>` : ''}
+      <div class="numero"><span>${t('orden.numero')}:</span>${copiable(o.numero)}<span>· <time datetime="${esc(o.creadaEn)}" title="${esc(fechaHora(o.creadaEn))}">${esc(t('orden.abiertaHace', { t: fechaRel(o.creadaEn) }))}</time>${o.completadaEn ? ' · ' + esc(t('orden.completadaHace', { t: fechaRel(o.completadaEn) })) : (o.canceladaEn ? ' · ' + esc(t('orden.canceladaHace', { t: fechaRel(o.canceladaEn) })) : '')}</span></div>
+      ${conReloj ? `<div class="temporizador" id="temporizador"><div class="reloj" id="reloj" aria-live="off">${mmss((S.v.fin - Date.now()) / 1000)}</div><div class="texto"><b>${textoReloj}</b>${t('com.ventana')}: ${t('com.minutos', { n: o.ventanaPagoMin })}<span class="alVencer">${t(c ? 'orden.alVencerComprador' : 'orden.alVencerVendedor')}</span></div><div class="progreso" aria-hidden="true"><i></i></div></div>` : ''}
       ${estadoTexto && !conReloj ? notaHTML(esc(estadoTexto), o.estado === 'pagado' && !c ? 'verde' : 'gris', IC.info) : ''}
     </div>
     <div class="orden-grid"><div>
@@ -805,11 +839,13 @@ const vistaOrden = {
           ${num(o.comision) > 0 ? `<div class="item"><span>${t('orden.comision')}</span><b>${esc(fmtActivo(o.comision, o.activo))}</b></div><div class="item"><span>${c ? t('orden.recibiras') : t('orden.entregas')}</span><b>${esc(fmtActivo(c ? num(o.cantidadActivo) - num(o.comision) : o.cantidadActivo, o.activo))}</b></div>` : ''}
         </div>
         ${custodiaHTML(o)}
-        <div class="contraparte"><span class="avatar">${esc(inicial(cp.apodo))}${cp.enLinea ? '<i class="punto"></i>' : ''}</span><div class="cuerpo"><b>${c ? t('orden.vendedor') : t('orden.comprador')}: <a href="#/usuario/${esc(cp.id)}">${esc(cp.apodo)}</a>${insigniasHTML(cp)}</b><small>${repCorta(cp.reputacion)}</small></div><a href="#/usuario/${esc(cp.id)}" class="btn btn-fantasma btn-chico">${t('orden.verPerfil')}</a></div>
+        ${o.terminosAnuncio ? `<div class="terminos-orden"><b>${t('orden.terminos')}</b><p>${esc(o.terminosAnuncio)}</p></div>` : ''}
+        <div class="contraparte"><span class="avatar">${esc(inicial(cp.apodo))}${cp.enLinea ? '<i class="punto"></i>' : ''}</span><div class="cuerpo"><b>${c ? t('orden.vendedor') : t('orden.comprador')}: <a href="#/usuario/${esc(cp.id)}">${esc(cp.apodo)}</a>${insigniasHTML(cp)}</b>${o.contraparteNombreLegal ? `<small class="nombre-legal">${t('orden.nombreVerificado')}: <b>${esc(o.contraparteNombreLegal)}</b></small>` : ''}<small>${repCorta(cp.reputacion)}</small></div><a href="#/usuario/${esc(cp.id)}" class="btn btn-fantasma btn-chico">${t('orden.verPerfil')}</a></div>
       </div>
       ${abierta || o.estado === 'completada' ? `<div class="tarjeta"><div class="tarjeta-cabeza"><h2>${t('orden.pasos')}</h2></div>${pasosHTML(o)}${(abierta || o.miRol === 'vendedor') && o.metodoPago ? datosPagoHTML(o) : ''}${accionesOrdenHTML(o)}</div>` : accionesOrdenHTML(o)}
       ${calificacionesHTML(o)}
-    </div><div class="orden-chat-col">${chatHTML()}</div></div>`;
+    </div><div class="orden-chat-col" id="chat-col">${chatHTML()}</div></div>
+    ${o.chatAbierto ? `<button type="button" class="chat-flotante" data-accion="ir-chat">${IC.ordenes}${t('orden.chatVer')}${o.noLeidos > 0 ? `<span class="contador">${o.noLeidos}</span>` : ''}</button>` : ''}`;
   },
   montar() {
     const id = S.ruta.id;
@@ -823,9 +859,22 @@ const vistaOrden = {
 function dialogoOrden(clave) {
   const o = S.v.orden; if (!o) return; const cp = o.contraparte || {};
   const monto = fmtFiat(o.montoFiat, o.moneda, true);
-  if (clave === 'pagado') abrirDialogo({ titulo: t('orden.pagadoTitulo'), texto: esc(t('orden.pagadoDesc', { monto })), form: 'orden-pagado', ok: t('orden.marcarPagado'), clase: 'btn-comprar', cuerpo: `<div class="campo"><label for="d-ref">${t('orden.referencia')} <span class="gris">(${t('com.opcional')})</span></label><input id="d-ref" name="referencia" class="entrada" maxlength="80" placeholder="${t('orden.referenciaPh')}"></div>` });
-  if (clave === 'cancelar') abrirDialogo({ titulo: t('orden.cancelarTitulo'), texto: t('orden.cancelarDesc'), form: 'orden-cancelar', ok: t('orden.cancelar'), clase: 'btn-peligro', cuerpo: `<div class="campo"><label for="d-motivo">${t('orden.motivo')}</label><input id="d-motivo" name="motivo" class="entrada" maxlength="200" placeholder="${t('orden.motivoPh')}"></div>` });
-  if (clave === 'liberar') abrirDialogo({ titulo: esc(t('orden.liberarTitulo', { cantidad: fmtActivo(o.cantidadActivo, o.activo) })), texto: esc(t('orden.liberarDesc', { monto })), form: 'orden-liberar', ok: t('orden.liberar', { activo: o.activo }), clase: 'btn-comprar', cuerpo: `<div class="campo"><label for="d-pass">${t('com.contrasena')}</label><input id="d-pass" name="contrasena" type="password" class="entrada" autocomplete="current-password" required></div>` });
+  if (clave === 'pagado') abrirDialogo({
+    titulo: t('orden.pagadoTitulo'), texto: esc(t('orden.pagadoDesc', { monto })), form: 'orden-pagado', ok: t('orden.marcarPagado'), clase: 'btn-comprar',
+    cuerpo: `<div class="campo"><label for="d-ref">${t('orden.referencia')} <span class="gris">(${t('com.opcional')})</span></label><input id="d-ref" name="referencia" class="entrada" maxlength="80" placeholder="${t('orden.referenciaPh')}"></div>
+      <div class="campo"><label for="d-comp">${t('orden.comprobante')} <span class="gris">(${t('com.opcional')})</span></label><input id="d-comp" type="file" accept="image/*" class="entrada" data-cambio="d-comprobante"><div class="ayuda">${t('orden.comprobanteAyuda')}</div>${S.v.comprobante ? `<div class="previa-img mt8"><img src="${esc(S.v.comprobante)}" alt=""></div>` : ''}</div>
+      <p class="pequeno">${esc(t('orden.confirmoPago', { monto }))}</p>` });
+  if (clave === 'cancelar') abrirDialogo({
+    titulo: t('orden.cancelarTitulo'), texto: t('orden.cancelarDesc'), form: 'orden-cancelar', ok: t('orden.cancelar'), clase: 'btn-peligro',
+    cuerpo: `${notaHTML(t('orden.cancelarAviso'), 'roja', IC.alerta)}
+      <div class="campo"><label for="d-motivo">${t('orden.motivo')}</label>
+        <select id="d-motivo" class="entrada" data-cambio="d-motivo-sel">${MOTIVOS_CANCELAR.map(m => `<option value="${m}">${t('orden.motivoCancelar.' + m)}</option>`).join('')}</select>
+        <input id="d-motivo-otro" name="motivo" class="entrada mt8" maxlength="200" placeholder="${t('orden.motivoPh')}" value="${esc(t('orden.motivoCancelar.' + MOTIVOS_CANCELAR[0]))}"></div>` });
+  if (clave === 'liberar') abrirDialogo({
+    titulo: esc(t('orden.liberarTitulo', { cantidad: fmtActivo(o.cantidadActivo, o.activo) })), texto: esc(t('orden.liberarDesc', { monto })),
+    form: 'orden-liberar', ok: t('orden.liberar', { activo: o.activo }), clase: 'btn-comprar',
+    cuerpo: `<label class="casilla-simple"><input type="checkbox" name="cotejado" required><span>${esc(o.contraparteNombreLegal ? t('orden.confirmoCobroNombre', { monto, nombre: o.contraparteNombreLegal }) : t('orden.confirmoCobro', { monto }))}</span></label>
+      <div class="campo"><label for="d-pass">${t('com.contrasena')}</label><input id="d-pass" name="contrasena" type="password" class="entrada" autocomplete="current-password" required></div>` });
   if (clave === 'apelar') abrirDialogo({ titulo: t('orden.apelarTitulo'), texto: t('orden.apelarDesc'), form: 'orden-apelar', ok: t('orden.apelar'), cuerpo: `<div class="campo"><label for="d-mot">${t('orden.motivo')}</label><select id="d-mot" name="motivo" class="entrada">${['no-recibi-pago', 'no-liberan', 'monto-incorrecto', 'otro'].filter(m => o.miRol === 'comprador' ? m !== 'no-recibi-pago' : m !== 'no-liberan').map(m => `<option value="${m}">${t('orden.motivoApelacion.' + m)}</option>`).join('')}</select></div><div class="campo"><label for="d-det">${t('com.detalle')}</label><textarea id="d-det" name="detalle" class="entrada" maxlength="1000" required placeholder="${t('orden.detallePh')}"></textarea></div>` });
   if (clave === 'retirar') abrirDialogo({ titulo: t('orden.retirarApelacionTitulo'), texto: t('orden.retirarApelacionDesc'), form: 'orden-retirar-apelacion', ok: t('orden.retirarApelacion') });
   if (clave === 'calificar') abrirDialogo({ titulo: esc(t('orden.calificarTitulo', { apodo: cp.apodo || '' })), texto: t('orden.calificarDesc'), form: 'orden-calificar', ok: t('orden.calificar'), cuerpo: `<div class="calif mb12"><button type="button" class="pos activa" data-accion="calif-tipo" data-v="positiva">${IC.bien}${t('orden.positiva')}</button><button type="button" class="neg" data-accion="calif-tipo" data-v="negativa">${IC.mal}${t('orden.negativa')}</button></div><input type="hidden" name="tipo" value="positiva"><div class="campo"><label for="d-com">${t('orden.comentario')}</label><textarea id="d-com" name="comentario" class="entrada" maxlength="300" placeholder="${t('orden.comentarioPh')}"></textarea></div>` });
@@ -858,8 +907,8 @@ function ordenFilaHTML(o) {
   const c = o.miRol === 'comprador'; const cp = o.contraparte || {};
   let resto = '';
   if (o.estado === 'pendiente-pago' && o.venceEn) { const seg = (new Date(o.venceEn).getTime() - Date.now()) / 1000; resto = `<span class="resto ${seg < 180 ? 'urgente' : ''}" data-vence="${esc(o.venceEn)}">${seg > 0 ? mmss(seg) : t('orden.vencio')}</span>`; }
-  return `<a class="orden-fila" href="#/orden/${esc(o.id)}"><span class="lado ${c ? 'comprar' : 'vender'}">${c ? t('mercado.comprar').slice(0, 3).toUpperCase() : t('mercado.vender').slice(0, 3).toUpperCase()}</span>
-    <div class="cuerpo"><b>${esc(fmtActivo(o.cantidadActivo, o.activo))} · ${esc(fmtFiat(o.montoFiat, o.moneda, true))}</b><small>${esc(t('ordenes.con', { apodo: cp.apodo || '' }))} · ${esc(o.numero)} · ${esc(fechaRel(o.creadaEn))}</small></div>
+  return `<a class="orden-fila" href="#/orden/${esc(o.id)}"><span class="lado ${c ? 'comprar' : 'vender'}">${c ? t('ordenes.ladoCompra') : t('ordenes.ladoVenta')}</span>
+    <div class="cuerpo"><b>${esc(fmtActivo(o.cantidadActivo, o.activo))} · ${esc(fmtFiat(o.montoFiat, o.moneda, true))}</b><small>${esc(t('ordenes.con', { apodo: cp.apodo || '' }))} · <span class="num-orden">${esc(o.numero)}</span> · <time datetime="${esc(o.creadaEn)}" title="${esc(fechaHora(o.creadaEn))}">${esc(fechaRel(o.creadaEn))}</time></small></div>
     <div class="derecha"><span class="estado ${esc(o.estado)}">${t('estado.' + o.estado)}</span>${resto}${o.noLeidos > 0 ? `<span class="pequeno oro">${t('ordenes.noLeidos', { n: o.noLeidos })}</span>` : ''}</div></a>`;
 }
 const vistaOrdenes = {
@@ -903,7 +952,7 @@ function anuncioMioHTML(a) {
       <div><span>${t('anuncios.precioEfectivo')}</span><b>${esc(fmtFiat(precio, a.moneda))}${a.tipoPrecio === 'flotante' ? ` <small class="gris">${esc(fmtNum(a.margen, 1))} %</small>` : ''}</b></div>
       <div><span>${t('com.disponible')}</span><b>${esc(fmtActivo(a.cantidadDisponible, a.activo, true))} / ${esc(fmtActivo(a.cantidadTotal, a.activo, true))}</b></div>
       <div><span>${t('anuncios.limitesPorOrden')}</span><b>${esc(fmtFiat(a.limiteMin, a.moneda))} – ${esc(fmtFiat(a.limiteMax, a.moneda))}</b></div>
-      <div><span>${t('com.ordenes')}</span><b>${t('anuncios.ordenesAbiertas', { n: a.ordenesAbiertas || 0 })} · ${t('anuncios.ordenesCompletadas', { n: a.ordenesCompletadas || 0 })}</b></div>
+      <div><span>${t('anuncios.ordenesEtq')}</span><b>${t('anuncios.ordenesAbiertas', { n: a.ordenesAbiertas || 0 })} · ${t('anuncios.ordenesCompletadas', { n: a.ordenesCompletadas || 0 })}</b></div>
     </div>
     <div class="pequeno" style="grid-column:1/-1">${esc(metodos.join(', '))} · ${t('com.minutos', { n: a.ventanaPagoMin })}</div>
     ${a.estado !== 'cerrado' ? `<div class="acciones">
@@ -1505,6 +1554,8 @@ const ACC = {
   'm-quiero': el => { S.mercado.quiero = el.dataset.v; cambioFiltro(true); },
   'm-activo': el => { S.mercado.activo = el.dataset.v; cambioFiltro(true); },
   'm-mas': () => { S.mercado.pagina += 1; cargarMercado(true); },
+  'ir-chat': () => { const c = $('#chat-col'); if (c) c.scrollIntoView({ behavior: 'smooth', block: 'start' }); const e = $('#chat-texto'); if (e) setTimeout(() => e.focus(), 400); },
+  'm-refrescar': () => { if (!S.mercado.cargando) { cargarMercado(); cargarPrecios(monedaMercado()).then(() => { const p = $('#pizarra'); if (p && S.ruta.vista === 'mercado') p.outerHTML = pizarraHTML(monedaMercado()); }); } },
   'abrir-hoja': el => abrirHoja(el.dataset.id),
   'h-max': () => { const { max } = limitesHoja(); const i = $('#h-fiat'); if (i) { i.value = fijo(max, 2); convertirHoja('fiat', i.value); } },
   'h-min': () => { const { min } = limitesHoja(); const i = $('#h-fiat'); if (i) { i.value = fijo(min, 2); convertirHoja('fiat', i.value); } },
@@ -1586,6 +1637,8 @@ const CAM = {
   'pg-tipo': el => { S.v.form.tipo = el.value; S.v.form.banco = ''; S.v.form.campos = {}; S.v.form.bancoOtro = false; render(); },
   'pg-banco': el => { S.v.form.banco = el.value === '__otro' ? '' : el.value; S.v.form.bancoOtro = el.value === '__otro'; S.v.form.tipoCuentaOtro = false; if (S.v.form.campos.tipoCuenta) delete S.v.form.campos.tipoCuenta; render(); },
   'pg-tipocuenta': el => { const f = S.v.form; f.tipoCuentaOtro = el.value === '__otro'; if (el.value === '__otro') delete f.campos.tipoCuenta; else if (el.value) f.campos.tipoCuenta = el.value; else delete f.campos.tipoCuenta; render(); },
+  'd-comprobante': async el => { const f = el.files && el.files[0]; if (!f) return; try { S.v.comprobante = await comprimirImagen(f); } catch (e) { errorDialogo(e && e.message === 'tipo' ? t('err.imagenTipo') : t('err.imagenGrande')); return; } dialogoOrden('pagado'); },
+  'd-motivo-sel': el => { const o = $('#d-motivo-otro'); if (!o) return; o.value = el.value === 'otro' ? '' : t('orden.motivoCancelar.' + el.value); if (el.value === 'otro') o.focus(); },
   'g-foto': async el => { const f = el.files && el.files[0]; if (!f) return; try { S.v.gid.foto = await comprimirImagen(f); } catch (e) { aviso(e && e.message === 'tipo' ? t('err.imagenTipo') : t('err.imagenGrande'), 'mal'); } render(); },
 };
 
@@ -1604,9 +1657,24 @@ const FORM = {
   },
   hoja: form => enviarHoja(form),
   chat: form => enviarChat(form),
-  'orden-pagado': form => accionOrden(form, 'pagado', { referencia: (new FormData(form).get('referencia') || '').trim() || undefined }, t('orden.pagadoOk')),
+  'orden-pagado': async form => {
+    const fd = new FormData(form);
+    const comprobante = S.v.comprobante;
+    await accionOrden(form, 'pagado', { referencia: (fd.get('referencia') || '').trim() || undefined }, t('orden.pagadoOk'));
+    if (comprobante && S.v.orden && S.v.orden.estado === 'pagado') {
+      S.v.comprobante = null;
+      const r = await api('POST', `/ordenes/${encodeURIComponent(S.v.orden.id)}/mensajes`, { imagen: comprobante, texto: t('orden.comprobanteEnviado') });
+      if (r.ok && r.datos.mensajes) { S.v.mensajes = r.datos.mensajes; render(); }
+    }
+    S.v.comprobante = null;
+  },
   'orden-cancelar': form => accionOrden(form, 'cancelar', { motivo: (new FormData(form).get('motivo') || '').trim() || undefined }, t('orden.canceladaOk')),
-  'orden-liberar': form => { const c = new FormData(form).get('contrasena') || ''; if (!c) { errorDialogo(t('com.obligatorio')); return; } accionOrden(form, 'liberar', { contrasena: c }, t('orden.liberadoOk')); },
+  'orden-liberar': form => {
+    const fd = new FormData(form); const c = fd.get('contrasena') || '';
+    if (!fd.get('cotejado')) { errorDialogo(t('orden.confirmaCobroPrimero')); return; }
+    if (!c) { errorDialogo(t('com.obligatorio')); return; }
+    accionOrden(form, 'liberar', { contrasena: c }, t('orden.liberadoOk'));
+  },
   'orden-apelar': form => { const fd = new FormData(form); const detalle = (fd.get('detalle') || '').trim(); if (!detalle) { errorDialogo(t('com.obligatorio')); return; } accionOrden(form, 'apelar', { motivo: fd.get('motivo'), detalle }, t('orden.apeladaOk')); },
   'orden-retirar-apelacion': form => accionOrden(form, 'apelacion/retirar', undefined, t('orden.apelacionRetiradaOk')),
   'orden-calificar': form => { const fd = new FormData(form); accionOrden(form, 'calificar', { tipo: fd.get('tipo') || 'positiva', comentario: (fd.get('comentario') || '').trim() || undefined }, t('orden.calificadaOk')); },

@@ -799,3 +799,61 @@ svg.ic{width:1em;height:1em;stroke:currentColor;fill:none;stroke-width:2;stroke-
 @media (min-width:900px){.hoja{animation:cajon .26s var(--suave)}}
 .esqueleto{animation:brillo 1.4s linear infinite,subir-suave .4s var(--suave) both}
 .tarjeta-cabeza h2,.titulo-vista h1{transition:color var(--d2)}
+
+
+/* ══ Mercado: la ficha del anunciante en dos renglones, chips que no invaden ══ */
+.a-quien .rep{display:flex;flex-direction:column;gap:1px;white-space:normal;overflow:visible;text-overflow:clip}
+.a-quien .rep .r1,.a-quien .rep .r2{display:block;font-family:var(--mono);text-transform:none;letter-spacing:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:400}
+.a-quien .rep .r1{font-size:12px;color:var(--ceniza)}
+.a-quien .rep .r2{font-size:11.5px;color:var(--humo)}
+.a-metodos{min-width:0}
+.a-metodos .chips{min-width:0;flex-wrap:wrap}
+.a-metodos .chip{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:inline-block;line-height:1.5}
+.a-metodos .chip::before{display:none}
+.mercado-meta .meta-der{display:inline-flex;align-items:center;gap:6px}
+.mercado-meta .refrescar{min-height:30px;min-width:30px;padding:0 6px}
+.mercado-meta .refrescar svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.mercado-meta .refrescar.girando svg{animation:girar .9s linear infinite}
+@keyframes girar{to{transform:rotate(360deg)}}
+
+/* El perfil público usa la columna estrecha: los anuncios van con el diseño de teléfono. */
+.contenido.medio .ta-cab{display:none}
+.contenido.medio .anuncio{grid-template-columns:1fr auto;grid-template-areas:"quien precio" "disp disp" "metodos metodos" "accion accion";padding:14px}
+.contenido.medio .a-quien,.contenido.medio .a-precio,.contenido.medio .a-disp,.contenido.medio .a-metodos,.contenido.medio .a-accion{grid-area:auto}
+.contenido.medio .a-quien{grid-area:quien}.contenido.medio .a-precio{grid-area:precio;text-align:right}
+.contenido.medio .a-disp{grid-area:disp;grid-template-columns:1fr 1fr}.contenido.medio .a-metodos{grid-area:metodos}
+.contenido.medio .a-accion{grid-area:accion}.contenido.medio .a-accion .btn{width:100%}
+.contenido.medio .a-ventana-esc{display:none}
+.contenido.medio .a-metodos .ventana{display:inline-flex}
+
+/* Los límites no pueden salirse de la tarjeta en pantallas angostas. */
+.a-disp b{overflow-wrap:anywhere;white-space:normal}
+
+
+/* ══ Orden: lo que hay que hacer siempre a mano, también en el teléfono ══ */
+.contraparte .nombre-legal{display:block;color:var(--ceniza)}
+.contraparte .nombre-legal b{font-family:var(--mono);color:var(--marfil);font-weight:600}
+.terminos-orden{margin-top:12px;padding:10px 12px;border:1px dashed var(--linea2);border-radius:var(--r);background:var(--carbon)}
+.terminos-orden b{display:block;font-size:11.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--ceniza);margin-bottom:4px}
+.terminos-orden p{font-size:13.5px;line-height:1.45;color:var(--marfil);white-space:pre-wrap;overflow-wrap:anywhere}
+.temporizador .texto .alVencer{display:block;margin-top:4px;font-size:12px;color:var(--humo);line-height:1.4}
+.temporizador{align-items:flex-start}
+.previa-img img{max-width:100%;border-radius:var(--r);border:1px solid var(--linea)}
+
+/* En el teléfono las acciones de la orden quedan siempre a la vista. */
+@media (max-width:899px){
+  .orden-grid .acciones.mt16{position:sticky;bottom:calc(var(--barra-inf) + 8px);z-index:20;margin:16px -14px -14px;padding:10px 14px;
+    background:linear-gradient(180deg,rgba(18,21,29,0) 0%,var(--panel) 28%);border-radius:0 0 var(--r2) var(--r2)}
+  .orden-grid .acciones.mt16 .btn{flex:1 1 100%}
+  .temporizador .reloj{font-size:32px;min-width:96px}
+}
+
+/* Botón flotante del chat en el teléfono, con los no leídos. */
+.chat-flotante{display:none}
+@media (max-width:899px){
+  .chat-flotante{display:inline-flex;align-items:center;gap:8px;position:fixed;right:14px;bottom:calc(var(--barra-inf) + 14px);z-index:30;
+    padding:0 16px;min-height:44px;border-radius:100px;background:var(--panel3);border:1px solid var(--linea2);color:var(--marfil);
+    font-weight:700;font-size:14px;box-shadow:var(--sombra);animation:emerger .28s var(--suave)}
+  .chat-flotante svg{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+  .chat-flotante .contador{margin-left:0}
+}

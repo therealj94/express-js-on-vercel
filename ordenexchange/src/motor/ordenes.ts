@@ -535,6 +535,17 @@ export function resumen(o: Orden, consultante: Usuario) {
     ...sinMensajes,
     metodoPago: metodoParaVista(o, consultante.id),
     contraparte: contraparte ? usuarios.publico(contraparte) : null,
+    /**
+     * El nombre legal de la contraparte, solo mientras la orden está abierta.
+     *
+     * El vendedor tiene que poder cotejar que quien le transfirió es la misma
+     * persona con la que está operando: un pago que llega de un tercero es la
+     * señal de fraude más común del P2P, y sin el nombre no hay con qué
+     * compararlo. Fuera de la orden no se enseña.
+     */
+    contraparteNombreLegal: contraparte && esAbierta(o) && contraparte.gidEstado === 'verificada' ? contraparte.nombreLegal : null,
+    /** Los términos que el anunciante escribió: siguen valiendo dentro de la orden. */
+    terminosAnuncio: anuncios.porId(o.anuncioId)?.terminos ?? null,
     miRol,
     noLeidos: noLeidosDe(o, consultante.id),
     segundosRestantes: o.estado === 'pendiente-pago' ? Math.max(0, Math.floor((Date.parse(o.venceEn) - Date.now()) / 1000)) : null,
