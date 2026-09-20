@@ -8,6 +8,7 @@ import { C, G } from '../theme';
 import { LOGO_ORDEN, Button3D, ListRow, Toggle, SectionHead, Skeleton, useToast, useAccount, hap } from '../ui';
 import { qtyFmt, money } from '../data';
 import { cardApi, depositApi, sinTarjeta } from '../api';
+import * as wallet from '../googleWallet';
 import { useT } from '../i18n';
 import PedirClave from '../PedirClave';
 
@@ -296,6 +297,11 @@ function TarjetaViva({ card, account, nav, t, toast, onCambio }) {
 
   // Datos sensibles: viven solo en memoria y se borran solos.
   const [secreto, setSecreto] = useState(null);   // { pan, cvv, expiry, panUrl }
+  /* Google Wallet. `null` mientras se pregunta; después, uno de wallet.ESTADO.
+     Se pregunta UNA vez al abrir: la respuesta no cambia sola mientras se mira
+     la pantalla, y preguntar en cada pintado hace parpadear el botón. */
+  const [gw, setGw] = useState(null);
+  const [gwOcupado, setGwOcupado] = useState(false);
   const [pin, setPin] = useState(null);
   const copiadoRef = useRef(null);                // último dato sensible copiado
   const [pedirPw, setPedirPw] = useState(null);   // 'pan' | 'pin' | 'crearPin' | null
@@ -342,6 +348,10 @@ function TarjetaViva({ card, account, nav, t, toast, onCambio }) {
     cardApi.transactions({ page: 1 })
       .then((d) => { if (vivo) setMovs(Array.isArray(d?.transactions) ? d.transactions : []); })
       .catch(() => { if (vivo) { setMovs([]); setMovsErr(true); } });
+    /* ¿Se puede ofrecer Google Wallet? Si no hay módulo nativo, si el teléfono
+       no tiene billetera o si algo falla, esto contesta 'no-disponible' y el
+       botón no se pinta. Nunca lanza. */
+    wallet.estado(card?.last4).then((e) => { if (vivo) setGw(e); }).catch(() => {});
     // Los avisos son complementarios: si fallan, la pantalla sigue sirviendo.
     cardApi.notifications()
       .then((d) => { if (vivo) setAvisos(Array.isArray(d?.notifications) ? d.notifications : []); })
@@ -355,6 +365,37 @@ function TarjetaViva({ card, account, nav, t, toast, onCambio }) {
     setAvisos([]);                       // respuesta inmediata
     try { await cardApi.markNotificationsRead(); }
     catch (e) { setAvisos(previos); toast(mensajeDeError(e, t), 'error'); }
+  };
+
+  /* Añadir a Google Wallet. Todo el trabajo sucio —pedirle los identificadores
+     a Google, cambiarlos por la credencial en nuestro backend, entregársela al
+     SDK— vive en src/googleWallet.js. Aquí solo se decide qué se le dice a la
+     persona en cada final posible. */
+  const aGoogleWallet = async () => {
+    if (gwOcupado) return;
+    hap();
+    setGwOcupado(true);
+    try {
+      const r = await wallet.anadir({ last4: card?.last4, titular: card?.cardHolderName });
+      if (r.ok) {
+        setGw(wallet.ESTADO.YA_ESTA);
+        toast(t('card.gwListo'), 'success');
+      } else if (r.fallo === wallet.FALLO.CANCELADO) {
+        // Cerró la pantalla de Google a propósito. No es un error: no se grita.
+      } else if (r.fallo === wallet.FALLO.PROGRAMA) {
+        /* El emisor todavía no habilita esto para nuestro programa. No se
+           arregla reintentando, así que el botón se retira en vez de invitar a
+           intentarlo otra vez. */
+        setGw(wallet.ESTADO.NO_DISPONIBLE);
+        toast(t('card.gwNoPrograma'), 'error');
+      } else if (r.fallo === wallet.FALLO.TARJETA) {
+        toast(t('card.gwTarjeta'), 'error');
+      } else {
+        toast(t('card.gwFallo'), 'error');
+      }
+    } finally {
+      setGwOcupado(false);
+    }
   };
 
   const voltear = () => {
@@ -542,8 +583,20 @@ function TarjetaViva({ card, account, nav, t, toast, onCambio }) {
       <ComprarOrigen nav={nav} t={t} />
 
       <View style={styles.group}>
+        {/* Pagar acercando el teléfono. Solo aparece si de verdad se puede:
+            Android, módulo nativo compilado y billetera lista. */}
+        {(gw === wallet.ESTADO.SE_PUEDE || gw === wallet.ESTADO.YA_ESTA) && (
+          <ListRow
+            first
+            icon={gw === wallet.ESTADO.YA_ESTA ? 'checkmark-circle' : 'phone-portrait'}
+            title={gw === wallet.ESTADO.YA_ESTA ? t('card.gwYaEsta') : t('card.gwAnadir')}
+            sub={gw === wallet.ESTADO.YA_ESTA ? t('card.gwYaEstaSub') : t('card.gwAnadirSub')}
+            onPress={gw === wallet.ESTADO.YA_ESTA ? undefined : aGoogleWallet}
+            right={gwOcupado ? <ActivityIndicator size="small" color={C.gold} /> : undefined}
+          />
+        )}
         <ListRow
-          first
+          first={!(gw === wallet.ESTADO.SE_PUEDE || gw === wallet.ESTADO.YA_ESTA)}
           icon="snow"
           title={t('card.freeze')}
           sub={t('card.freezeSub')}
