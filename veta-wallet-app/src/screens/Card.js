@@ -9,6 +9,7 @@ import { LOGO_ORDEN, Button3D, ListRow, Toggle, SectionHead, Skeleton, useToast,
 import { qtyFmt, money } from '../data';
 import { cardApi, depositApi, sinTarjeta } from '../api';
 import * as wallet from '../googleWallet';
+import { sePuedePagar } from './Pagar';
 import { useT } from '../i18n';
 import PedirClave from '../PedirClave';
 
@@ -583,11 +584,25 @@ function TarjetaViva({ card, account, nav, t, toast, onCambio }) {
       <ComprarOrigen nav={nav} t={t} />
 
       <View style={styles.group}>
-        {/* Pagar acercando el teléfono. Solo aparece si de verdad se puede:
-            Android, módulo nativo compilado y billetera lista. */}
-        {(gw === wallet.ESTADO.SE_PUEDE || gw === wallet.ESTADO.YA_ESTA) && (
+        {/* PAGAR. Lo primero de la lista porque es lo que más se va a tocar:
+            el resto son ajustes, esto es usar la tarjeta. Lleva a una pantalla
+            que espera el cobro y se convierte en comprobante, así que no hace
+            falta salir de la app ni volver a buscar el movimiento. */}
+        {sePuedePagar(card) && (
           <ListRow
             first
+            icon="contactless"
+            title={t('pagar.cta')}
+            sub={t('pagar.ctaSub')}
+            onPress={() => { hap(); nav.go('pagar', { card }); }}
+          />
+        )}
+
+        {/* Meter la tarjeta en Google Wallet. Solo aparece si de verdad se
+            puede: Android, módulo nativo compilado y billetera lista. */}
+        {(gw === wallet.ESTADO.SE_PUEDE || gw === wallet.ESTADO.YA_ESTA) && (
+          <ListRow
+            first={!sePuedePagar(card)}
             icon={gw === wallet.ESTADO.YA_ESTA ? 'checkmark-circle' : 'phone-portrait'}
             title={gw === wallet.ESTADO.YA_ESTA ? t('card.gwYaEsta') : t('card.gwAnadir')}
             sub={gw === wallet.ESTADO.YA_ESTA ? t('card.gwYaEstaSub') : t('card.gwAnadirSub')}
@@ -596,7 +611,7 @@ function TarjetaViva({ card, account, nav, t, toast, onCambio }) {
           />
         )}
         <ListRow
-          first={!(gw === wallet.ESTADO.SE_PUEDE || gw === wallet.ESTADO.YA_ESTA)}
+          first={!sePuedePagar(card) && !(gw === wallet.ESTADO.SE_PUEDE || gw === wallet.ESTADO.YA_ESTA)}
           icon="snow"
           title={t('card.freeze')}
           sub={t('card.freezeSub')}

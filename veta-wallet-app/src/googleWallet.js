@@ -103,6 +103,72 @@ export const FALLO = {
   OTRO: 'otro',
 };
 
+/* ── LO QUE SE PUEDE PEDIRLE A GOOGLE, Y LO QUE NO ──────────────────────────
+   Tres capacidades que el SDK TapAndPay sí expone, y que cambian el
+   recorrido de verdad. Van todas condicionadas a que el módulo nativo las
+   traiga: hay varios envoltorios de ese SDK y no todos exponen lo mismo, así
+   que se pregunta antes de llamar y, si no está, se sigue sin ella.
+
+   Y lo que NO existe, para que nadie lo vuelva a buscar:
+
+     · No hay ningún aviso en el teléfono de que se hizo un pago. Ni callback,
+       ni broadcast, ni listener. `registerDataChangedListener` existe pero
+       avisa de cambios en las TARJETAS del wallet —una añadida, una borrada,
+       otra puesta por defecto—, no de cobros. Enterarse de un pago es cosa
+       del emisor, y por eso la pantalla de pago pregunta a nuestro backend.
+     · No hay forma de volver a la app después de pagar. El tap no lo origina
+       nuestra app: lo enruta el sistema operativo a quien tenga el papel de
+       billetera, y no hay a quién devolverle el control. Por eso la app se
+       queda esperando en vez de irse. */
+
+/** Abrir Google Wallet directamente en NUESTRA tarjeta. Solo funciona con
+ *  tokens que provisionó una app con el mismo paquete que llama, o sea la
+ *  nuestra: no se puede fisgonear la tarjeta de nadie. Devuelve false si el
+ *  módulo no trae esta capacidad, y entonces la pantalla abre la app a secas. */
+export async function abrirEnWallet(last4) {
+  if (!hayModulo() || typeof api.viewToken !== 'function') return false;
+  try {
+    await api.viewToken(String(last4 || ''));
+    return true;
+  } catch (e) {
+    return false;
+  }
+}
+
+/** Pedirle a la persona que Veta sea la tarjeta con la que se paga al acercar
+ *  el teléfono. Abre un diálogo del sistema y decide ella: no se puede fijar
+ *  a la fuerza, y está bien que no se pueda. */
+export async function pedirSerLaPredeterminada(last4) {
+  if (!hayModulo()) return false;
+  const fn = api.requestSelectToken || api.setDefaultToken;
+  if (typeof fn !== 'function') return false;
+  try {
+    await fn.call(api, String(last4 || ''));
+    return true;
+  } catch (e) {
+    return false;
+  }
+}
+
+/** ¿Trae el módulo la capacidad de elegir tarjeta? Se pregunta aparte para no
+ *  pintar un botón que al tocarlo no va a hacer nada. */
+export async function sePuedeElegirTarjeta() {
+  if (!hayModulo()) return false;
+  return typeof api.requestSelectToken === 'function' || typeof api.setDefaultToken === 'function';
+}
+
+/** ¿Es Google Wallet la app que contesta cuando se acerca el teléfono? Si no
+ *  lo es, el tap no va a hacer nada y conviene decirlo ANTES de que la persona
+ *  esté de pie en la caja con el brazo estirado. `null` = no se pudo saber. */
+export async function googleEsLaAppDePago() {
+  if (!hayModulo() || typeof api.isGPayDefaultNFCApp !== 'function') return null;
+  try {
+    return Boolean(await api.isGPayDefaultNFCApp());
+  } catch (e) {
+    return null;
+  }
+}
+
 /**
  * El flujo entero, en orden:
  *

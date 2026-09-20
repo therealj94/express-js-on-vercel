@@ -24,6 +24,7 @@ import Home from './src/screens/Home';
 import TokenDetail from './src/screens/TokenDetail';
 import { Send, Receive, Buy, Swap } from './src/screens/Trade';
 import CardScreen from './src/screens/Card';
+import Pagar from './src/screens/Pagar';
 import CardSettings from './src/screens/CardSettings';
 import FundCard from './src/screens/FundCard';
 import Deposit from './src/screens/Deposit';
@@ -43,7 +44,7 @@ import { arrancarTelemetria, fallo, identificar, olvidar, confirmarEnPadron, idD
 const SCREENS = {
   splash: Splash, auth: Auth, kyc: Kyc, seedview: SeedView, genesisOffer: GenesisOffer,
   home: Home, token: TokenDetail, send: Send, receive: Receive, buy: Buy, swap: Swap,
-  card: CardScreen, cardSettings: CardSettings, fundCard: FundCard, deposit: Deposit, activity: Activity, notifs: Notifications, settings: Settings,
+  card: CardScreen, pagar: Pagar, cardSettings: CardSettings, fundCard: FundCard, deposit: Deposit, activity: Activity, notifs: Notifications, settings: Settings,
   profile: Profile, mytokenpay: MyTokenPay, passport: Passport, blocked: Blocked, privatekey: PrivateKey,
   scan: Scan, contacts: Contacts, about: About,
   onboarding: Onboarding, watchOnly: WatchOnly, sessions: Sessions, help: Help,
