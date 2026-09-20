@@ -107,12 +107,18 @@ const LLAMADA = (() => {
     }, PLAZO_CONEXION);
   }
 
+  let cara = 'user';          // 'user' adelante · 'environment' atrás
+  let porAltavoz = true;
+
   const cuento = () => ({
     estado, conQuien, soyQuienLlama,
     hayVideo: !!miPista?.getVideoTracks().length,
     micAbierto: !!miPista?.getAudioTracks()[0]?.enabled,
     camAbierta: !!miPista?.getVideoTracks()[0]?.enabled,
     compartiendo: !!pistaPantalla,
+    camTrasera: cara === 'environment',
+    porAltavoz,
+    puedeAltavoz: puedeAltavoz(),
   });
 
   const anunciar = () => { try { avisar(cuento()); } catch {} };
@@ -152,12 +158,24 @@ const LLAMADA = (() => {
     c.oniceconnectionstatechange = () => {
       if (c.iceConnectionState === 'failed') colgar('sin-camino');
       if (c.iceConnectionState === 'disconnected') {
-        // Un corte de un segundo se recupera solo; se le da margen antes de
-        // matar la llamada, que si no se cae con cada túnel del camino.
+        // Un corte de un segundo se recupera solo. Se intenta un ICE restart
+        // (mismos tipos de señal: ice + oferta/respuesta) y si a los diez
+        // segundos sigue caído, ahí sí se cuelga.
+        try { if (typeof c.restartIce === 'function') c.restartIce(); } catch {}
         setTimeout(() => {
-          if (pc === c && c.iceConnectionState === 'disconnected') colgar('corte');
-        }, 6000);
+          if (pc === c && (c.iceConnectionState === 'disconnected' || c.iceConnectionState === 'failed'))
+            colgar('corte');
+        }, 10000);
       }
+    };
+
+    c.onnegotiationneeded = async () => {
+      if (c !== pc || estado !== 'hablando' || !conQuien) return;
+      try {
+        const of = await c.createOffer();
+        await c.setLocalDescription(of);
+        mandarSenal(conQuien, 'oferta', { sdp: c.localDescription.toJSON() });
+      } catch { /* un restart fallido no tumba la llamada: el plazo de corte sí */ }
     };
 
     c.onconnectionstatechange = () => {
@@ -179,9 +197,11 @@ const LLAMADA = (() => {
 
   /** Abre micrófono, y cámara si es una llamada de video. */
   async function abrirMedios(conVideo) {
+    cara = 'user';
+    porAltavoz = !!conVideo;   // video: parlante. voz: el default del aparato.
     return navigator.mediaDevices.getUserMedia({
       audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
-      video: conVideo ? { width: { ideal: 1280 }, height: { ideal: 720 }, facingMode: 'user' } : false,
+      video: conVideo ? { width: { ideal: 1280 }, height: { ideal: 720 }, facingMode: cara } : false,
     });
   }
 
@@ -306,6 +326,9 @@ const LLAMADA = (() => {
   function colgar(motivo = 'yo') {
     const otro = conQuien;
     const avisarAlOtro = otro && ['yo', 'corte'].includes(motivo) && estado !== 'libre';
+    const fui = soyQuienLlama;
+    const videoEra = !!miPista?.getVideoTracks().length;
+    const conEra = conQuien;
     /* El diagnóstico se arma ANTES de soltar todo, que es cuando todavía se
        puede mirar. Sirve para decirle a la persona por qué no conectó, y a
        nosotros para saber si hace falta pagar el TURN o si es otra cosa. */
@@ -318,8 +341,10 @@ const LLAMADA = (() => {
     conQuien = null;
     soyQuienLlama = false;
     entrante = null;
+    cara = 'user';
     if (avisarAlOtro) { try { mandarSenal(otro, 'cuelgo', {}); } catch {} }
-    try { avisar({ ...cuento(), motivo, caminos, hizoFaltaRelevo }); } catch {}
+    try { avisar({ ...cuento(), motivo, caminos, hizoFaltaRelevo,
+                   fuiQuienLlamo: fui, conQuienEra: conEra, hayVideoEra: videoEra }); } catch {}
   }
 
   /* ── MICRÓFONO, CÁMARA Y PANTALLA ─────────────────────────────────────── */
@@ -335,6 +360,65 @@ const LLAMADA = (() => {
     const t = miPista?.getVideoTracks()[0];
     if (!t) return;
     t.enabled = encender === undefined ? !t.enabled : !!encender;
+    anunciar();
+  }
+
+  /**
+   * Cambia entre la cámara de adelante y la de atrás SIN colgar.
+   * Es lo que el teléfono ya hacía; en la web se pide un flujo nuevo con
+   * `facingMode` y se reemplaza la pista. Con la pantalla compartida no se
+   * toca: el emisor lleva la pantalla, no la cámara.
+   */
+  async function voltear() {
+    if (!pc || !miPista || pistaPantalla) return;
+    const vieja = miPista.getVideoTracks()[0];
+    if (!vieja) return;
+    const siguiente = cara === 'user' ? 'environment' : 'user';
+    let flujo;
+    try {
+      flujo = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: { exact: siguiente }, width: { ideal: 1280 }, height: { ideal: 720 } },
+      });
+    } catch {
+      try {
+        flujo = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: siguiente, width: { ideal: 1280 }, height: { ideal: 720 } },
+        });
+      } catch { return; }
+    }
+    const nueva = flujo.getVideoTracks()[0];
+    if (!nueva) return;
+    nueva.enabled = vieja.enabled;
+    const emisor = pc.getSenders().find((s) => s.track?.kind === 'video');
+    if (emisor) { try { await emisor.replaceTrack(nueva); } catch { return; } }
+    try { miPista.removeTrack(vieja); vieja.stop(); } catch {}
+    miPista.addTrack(nueva);
+    cara = siguiente;
+    pintarLocal();
+    anunciar();
+  }
+
+  function puedeAltavoz() {
+    return typeof HTMLMediaElement !== 'undefined'
+      && typeof HTMLMediaElement.prototype.setSinkId === 'function';
+  }
+
+  /** Manos libres. En la web solo si el navegador deja elegir la salida. */
+  async function altavoz(encender) {
+    porAltavoz = encender === undefined ? !porAltavoz : !!encender;
+    const v = document.getElementById('lla-remoto');
+    if (v && typeof v.setSinkId === 'function') {
+      try {
+        if (porAltavoz) {
+          await v.setSinkId('');
+        } else {
+          const devs = await navigator.mediaDevices.enumerateDevices();
+          const outs = devs.filter((d) => d.kind === 'audiooutput');
+          const oreja = outs.find((d) => /communication|earpiece|headset|auricular/i.test(d.label));
+          if (oreja) await v.setSinkId(oreja.deviceId);
+        }
+      } catch { /* el aparato no dejó cambiar: el botón igual refleja el pedido */ }
+    }
     anunciar();
   }
 
@@ -444,6 +528,17 @@ const LLAMADA = (() => {
         await vaciarCola();
         return anunciar();
       }
+      if (s.tipo === 'oferta' && pc) {
+        /* ICE restart: el otro lado pidió un camino nuevo. Se contesta con
+           el mismo tipo `respuesta` de siempre, para que un cliente viejo
+           que no conoce `oferta` no rompa — simplemente la ignora. */
+        await pc.setRemoteDescription(new RTCSessionDescription(d.sdp));
+        await vaciarCola();
+        const resp = await pc.createAnswer();
+        await pc.setLocalDescription(resp);
+        mandarSenal(conQuien, 'respuesta', { sdp: pc.localDescription.toJSON() });
+        return anunciar();
+      }
       if (s.tipo === 'ice') {
         const cand = d.candidato;
         if (!cand) return;
@@ -477,7 +572,8 @@ const LLAMADA = (() => {
 
   return { puede, puedePantalla, arrancar, recibir, llamar, contestar, rechazar,
            reengancharVideo, hayTurno, aparatos, usarAparato,
-           colgar, micro, camara, pantalla, dejarPantalla, ponerTurno,
+           colgar, micro, camara, voltear, altavoz, puedeAltavoz,
+           pantalla, dejarPantalla, ponerTurno,
            estado: () => estado, cuento, entrante: () => entrante };
 })();
 

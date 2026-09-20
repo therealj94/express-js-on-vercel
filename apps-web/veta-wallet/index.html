@@ -1915,6 +1915,15 @@ body.en-cerebro .lienzo{max-width:none;padding:0}
 .cha-pago p{margin-top:6px;font-size:13px;color:var(--bruma)}
 .cha-pago a{display:inline-block;margin-top:9px;font-size:12.5px;color:var(--oroLt)}
 
+/* Una llamada en el hilo: no es un mensaje, es un hecho. Va al centro, en
+   gris, para no confundirse con lo que se dijo. */
+.cha-llamada{align-self:center;max-width:86%;margin:10px 0 6px;text-align:center;
+  padding:8px 14px;border-radius:100px;background:rgba(255,255,255,.05);
+  border:1px solid rgba(126,216,196,.12);
+  font:600 12.5px/1.35 var(--sans);color:var(--bruma)}
+.cha-llamada b{font-weight:700;color:var(--crema)}
+.cha-llamada.perdida b{color:var(--coral,#E5484D)}
+
 .cha-pie{display:flex;align-items:center;gap:9px;padding:11px 12px;border-top:1px solid var(--linea2)}
 
 /* ── LA LLAMADA ───────────────────────────────────────────────────────────
@@ -1927,6 +1936,8 @@ body.en-cerebro .lienzo{max-width:none;padding:0}
 #lla-local{position:absolute;right:14px;top:78px;width:104px;height:150px;object-fit:cover;
   border-radius:14px;border:1px solid var(--linea2);background:#04100F;z-index:2;
   transform:scaleX(-1);box-shadow:0 8px 26px rgba(0,0,0,.45)}
+/* Cámara de atrás: no se espeja. Uno no se mira, mira el mundo. */
+#lla.trasera #lla-local{transform:none}
 @media (min-width:620px){#lla-local{width:150px;height:210px}}
 
 .lla-cab{position:absolute;top:0;left:0;right:0;z-index:3;padding:22px 18px 30px;
@@ -1935,7 +1946,7 @@ body.en-cerebro .lienzo{max-width:none;padding:0}
 .lla-estado{margin-top:4px;font-size:13px;color:var(--bruma)}
 
 .lla-entra,.lla-mandos{position:absolute;left:0;right:0;bottom:0;z-index:3;
-  display:flex;justify-content:center;gap:16px;padding:26px 18px 40px;
+  display:flex;justify-content:center;flex-wrap:wrap;gap:12px;padding:22px 12px 36px;
   background:linear-gradient(0deg,rgba(4,16,15,.85),transparent)}
 .lla-b{width:62px;height:62px;border-radius:50%;border:0;display:grid;place-items:center;
   cursor:pointer;transition:transform .16s,background .18s,color .18s}
@@ -1999,7 +2010,7 @@ body.en-cerebro .lienzo{max-width:none;padding:0}
   border-top-color:var(--oro);animation:llaGira .9s linear infinite}
 @keyframes llaGira{to{transform:rotate(360deg)}}
 
-.gru-entra,.gru-mandos{flex:none;display:flex;justify-content:center;gap:16px;padding:20px 16px 34px}
+.gru-entra,.gru-mandos{flex:none;display:flex;justify-content:center;flex-wrap:wrap;gap:12px;padding:20px 12px 34px}
 @media (prefers-reduced-motion: reduce){.gru-cuadro.esperando::after{animation:none}}
 
 /* ── LA LLAMADA CHIQUITA ──────────────────────────────────────────────────
@@ -3600,6 +3611,35 @@ body.en-p2c .cha-puerta p{color:var(--p2c-bruma)}
 .tar-precio-fila b{color:var(--oro);font-variant-numeric:tabular-nums;font-weight:700}
 .tar-precio .pie{margin-top:8px}
 .tar-botones{display:flex;flex-wrap:wrap;gap:9px;margin-top:16px}
+/* Cada fila de la lista es un botón: tocar abre la ficha del pago
+   (dólares, lempiras al día, comercio, fecha). Sin esto el hilera
+   hereda el fondo y el borde de un <button> de formulario. */
+button.tar-mov{width:100%;background:none;border:0;border-bottom:1px solid rgba(255,255,255,.05);
+  color:inherit;font:inherit;text-align:left;cursor:pointer;appearance:none}
+button.tar-mov:last-child{border-bottom:0}
+button.tar-mov:hover{background:rgba(201,169,97,.06)}
+button.tar-mov:focus-visible{outline:2px solid var(--oro);outline-offset:2px;border-radius:10px}
+.tar-ficha{position:fixed;inset:0;z-index:40;display:flex;align-items:flex-end;
+  justify-content:center;background:rgba(1,7,8,.62);backdrop-filter:blur(3px);
+  animation:fichaEntra .22s ease-out}
+.tar-ficha-caja{position:relative;width:min(100%,420px);max-height:92%;overflow-y:auto;
+  padding:26px 20px 22px;text-align:center;
+  background:linear-gradient(180deg,rgba(8,32,34,.98),rgba(3,18,20,.99));
+  border:1px solid rgba(201,169,97,.3);border-radius:20px 20px 0 0;
+  box-shadow:0 -18px 50px -20px rgba(0,0,0,.8);
+  animation:hojaSube .26s cubic-bezier(.2,.8,.3,1)}
+@media(min-width:700px){.tar-ficha{align-items:center}
+  .tar-ficha-caja{border-radius:20px}}
+@media(prefers-reduced-motion:reduce){.tar-ficha,.tar-ficha-caja{animation:none}}
+.tar-ficha-caja h3{font-size:19px;color:var(--crema);margin:0 0 8px;word-break:break-word}
+.tar-ficha-monto{margin:0;font-family:var(--mono);font-size:26px;font-weight:700;color:var(--oro)}
+.tar-ficha-fx{margin:6px 0 0;font-family:var(--mono);font-size:14.5px;color:var(--crema);letter-spacing:.01em}
+.hilera .val small{display:block;font-size:11.5px;font-weight:500;color:var(--humo);margin-top:2px}
+.tar-est{font-weight:600}
+.tar-est.ok{color:var(--jade)}
+.tar-est.no{color:var(--coral)}
+.val.tar-rechazo{color:var(--coral)}
+.tar-ficha-caja .datos{text-align:left}
 .tar-vacia{text-align:center}
 .tar-vacia .tar-plastico{margin:0 auto 22px}
 .btn-ic{width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:1.8;
@@ -4774,9 +4814,9 @@ body.en-ventana .lienzo::before{
 
 <!-- El saber publico que Genesis dejo salir. Lo genera
      infra/cerebro/publicar-saber.mjs; no se edita a mano. -->
-<script src="saber.js?v=7a7c5ba095"></script>
-<script src="telemetria.js?v=7a7c5ba095"></script>
-<script src="qr.js?v=7a7c5ba095"></script>
+<script src="saber.js?v=6439c6538a"></script>
+<script src="telemetria.js?v=6439c6538a"></script>
+<script src="qr.js?v=6439c6538a"></script>
 <!-- La cripto para entrar con la frase semilla. Se carga aparte y no dentro
      de app.js porque son 13 KB que solo hacen falta si alguien elige ese
      camino, y porque asi se puede probar sola (pruebas/probar-llaves.mjs). -->
@@ -4852,6 +4892,12 @@ body.en-ventana .lienzo::before{
     <button class="lla-b lla-g" id="lla-cam" onclick="VETA.llamadaCam()" aria-label="Cámara">
       <svg viewBox="0 0 24 24"><path d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>
     </button>
+    <button class="lla-b lla-g" id="lla-voltear" onclick="VETA.llamadaVoltear()" aria-label="Cambiar de cámara">
+      <svg viewBox="0 0 24 24"><path d="M16 4h2a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><circle cx="12" cy="13" r="3.2"/><path d="M9 4 12 1 15 4"/></svg>
+    </button>
+    <button class="lla-b lla-g oculto" id="lla-altavoz" onclick="VETA.llamadaAltavoz()" aria-label="Altavoz">
+      <svg viewBox="0 0 24 24"><path d="M11 5 6 9H2v6h4l5 4V5z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/><path d="M19 5a9 9 0 0 1 0 14"/></svg>
+    </button>
     <button class="lla-b lla-g oculto" id="lla-pant" onclick="VETA.llamadaPantalla()" aria-label="Compartir pantalla">
       <svg viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
     </button>
@@ -4910,6 +4956,9 @@ body.en-ventana .lienzo::before{
     <button class="lla-b lla-g" id="gru-cam" onclick="VETA.grupoCam()" aria-label="Cámara">
       <svg viewBox="0 0 24 24"><path d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>
     </button>
+    <button class="lla-b lla-g" id="gru-voltear" onclick="VETA.grupoVoltear()" aria-label="Cambiar de cámara">
+      <svg viewBox="0 0 24 24"><path d="M16 4h2a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><circle cx="12" cy="13" r="3.2"/><path d="M9 4 12 1 15 4"/></svg>
+    </button>
     <button class="lla-b lla-g oculto" id="gru-pant" onclick="VETA.grupoPantalla()" aria-label="Compartir pantalla">
       <svg viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
     </button>
@@ -4919,24 +4968,24 @@ body.en-ventana .lienzo::before{
   </div>
 </div>
 
-<script src="vendor/cripto-llaves.js?v=7a7c5ba095"></script>
-<script src="llaves.js?v=7a7c5ba095"></script>
-<script src="tono.js?v=7a7c5ba095"></script>
-<script src="llamada.js?v=7a7c5ba095"></script>
-<script src="llamadaGrupo.js?v=7a7c5ba095"></script>
-<script src="velas.js?v=7a7c5ba095"></script>
-<script src="cadena.js?v=7a7c5ba095"></script>
-<script src="datos.js?v=7a7c5ba095"></script>
-<script src="aura.js?v=7a7c5ba095"></script>
-<script src="candado.js?v=7a7c5ba095"></script>
-<script src="chat.js?v=7a7c5ba095"></script>
-<script src="i18n.js?v=7a7c5ba095"></script>
-<script src="galaxia.js?v=7a7c5ba095"></script>
+<script src="vendor/cripto-llaves.js?v=6439c6538a"></script>
+<script src="llaves.js?v=6439c6538a"></script>
+<script src="tono.js?v=6439c6538a"></script>
+<script src="llamada.js?v=6439c6538a"></script>
+<script src="llamadaGrupo.js?v=6439c6538a"></script>
+<script src="velas.js?v=6439c6538a"></script>
+<script src="cadena.js?v=6439c6538a"></script>
+<script src="datos.js?v=6439c6538a"></script>
+<script src="aura.js?v=6439c6538a"></script>
+<script src="candado.js?v=6439c6538a"></script>
+<script src="chat.js?v=6439c6538a"></script>
+<script src="i18n.js?v=6439c6538a"></script>
+<script src="galaxia.js?v=6439c6538a"></script>
 <!-- GENESIS CORE: el cerebro del ecosistema, el mismo volumen que se proyecta
      en la sala de Genesis ID. Solo lo usa su vista. -->
-<script src="cerebro-og.js?v=7a7c5ba095"></script>
+<script src="cerebro-og.js?v=6439c6538a"></script>
 <!-- MODO VISOR: la casa dentro de un visor (WebXR, cartón o 360 en pantalla). -->
-<script src="visor.js?v=7a7c5ba095"></script>
-<script src="musica.js?v=7a7c5ba095"></script>
-<script src="airtouch.js?v=7a7c5ba095"></script>
-<script src="app.js?v=7a7c5ba095"></script>
+<script src="visor.js?v=6439c6538a"></script>
+<script src="musica.js?v=6439c6538a"></script>
+<script src="airtouch.js?v=6439c6538a"></script>
+<script src="app.js?v=6439c6538a"></script>

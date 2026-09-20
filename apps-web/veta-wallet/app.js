@@ -116,6 +116,12 @@ const VETA = (() => {
      un no. */
   let emision = null;
   let movsTarjeta = [];
+  let totalMovsTarjeta = 0;
+  let paginaMovsTarjeta = 1;
+  let errMovsTarjeta = null;  // distinto de lista vacía: un fallo no es «no gastaste»
+  let movAbierto = null;        // el movimiento cuya ficha está abierta
+  let detalleMov = null;        // el detalle que pidió el emisor, si llegó
+  let tarjetaCargando = false;
   let volteada = false;         // la tarjeta, de frente o de espaldas
   /* El numero, el CVV y el vencimiento viven SOLO en memoria y solo mientras
      dure la pantalla: no se guardan, no se escriben en el navegador, y se
@@ -1547,7 +1553,8 @@ const VETA = (() => {
     // al cierre de sesión seguiría con el micrófono abierto.
     try { llamadaParar(); } catch {}
     sesion = null; cartera = null; errCartera = null; identidad = null;
-    movimientos = null; transferencias = []; tarjeta = null; movsTarjeta = []; ocultos = false;
+    movimientos = null; transferencias = []; tarjeta = null; movsTarjeta = []; totalMovsTarjeta = 0; paginaMovsTarjeta = 1; errMovsTarjeta = null;
+    emision = null; tarjetaCargando = false; movAbierto = null; detalleMov = null; ocultos = false;
     // El expediente de verificación se va con la sesión: dentro hay un número de
     // documento y dos fotografías, y no tienen por qué sobrevivir a un «salir».
     sol = null;
@@ -1681,18 +1688,119 @@ const VETA = (() => {
       // Un 404 SI es una respuesta: el emisor dice que esta persona no tiene
       // tarjeta, y eso manda sobre lo que hubiera guardado.
       tarjeta = e.estado === 404 ? { falta: true } : (antes || { error: e.message });
-      // si se conservo la de antes, sus movimientos siguen siendo los suyos
       if (antes && e.estado !== 404) return;
       movsTarjeta = [];
+      totalMovsTarjeta = 0;
+      paginaMovsTarjeta = 1;
+      errMovsTarjeta = e.estado === 404 ? null : (e.message || true);
       return;
     }
     try {
-      const d = await pedir('/cards/transactions?limit=20');
-      movsTarjeta = Array.isArray(d) ? d : (d?.items || d?.transactions || d?.data || []);
-    } catch {
+      paginaMovsTarjeta = 1;
+      const d = await pedir('/cards/transactions?limit=100&page=1');
+      const crudos = Array.isArray(d) ? d : (d?.items || d?.transactions || d?.data || d?.movements || []);
+      movsTarjeta = sinDuplicadosMovs(Array.isArray(crudos) ? crudos : []);
+      totalMovsTarjeta = Number(d?.total) || movsTarjeta.length;
+      errMovsTarjeta = null;
+    } catch (e) {
       // se conserva lo ultimo que llego: vaciarlo diria «no gastaste nada»
       // sobre una tarjeta con movimientos, que es la mentira de siempre
+      errMovsTarjeta = e.message || true;
     }
+  }
+
+  /* Una compra deja APPROVED y CLEARED. El emisor los manda los dos; en la
+     lista de la gente es el mismo pago dos veces. Se juntan por comercio y
+     dólares, en cinco días, y se queda la fecha de cuando se tocó. Si el
+     backend ya los juntó, esto no cambia nada. */
+  function comercioVacioMov(s) {
+    const x = String(s || '').trim();
+    if (!x) return true;
+    return /^(?:-|—|n\/?a|none|null|unknown|no merchant name)$/i.test(x);
+  }
+  function tipoDeMovLista(tx) {
+    return tx?.type || tx?.operation || tx?.status || '';
+  }
+  function rangoDeCicloMov(tipo) {
+    const x = String(tipo || '').toUpperCase();
+    if (x.includes('CLEARED') || x.includes('SETTLED')) return 3;
+    if (x.includes('APPROVED')) return 2;
+    if (x.includes('AUTHORIZATION') || x.includes('AUTH')) return 1;
+    return 0;
+  }
+  function claseDeMovLista(tx) {
+    const x = String(tipoDeMovLista(tx)).toUpperCase();
+    if (/REJECT|DECLINE/.test(x)) return 'rechazo';
+    if (/REFUND/.test(x)) return 'reembolso';
+    if (/REVERS/.test(x)) return 'reverso';
+    if (/DEPOSIT/.test(x)) return 'deposito';
+    return 'compra';
+  }
+  function comercioClaveMov(tx) {
+    const s = String(tx?.merchant || tx?.merchantName || tx?.merchant_name || '').trim().toUpperCase().replace(/\s+/g, ' ');
+    if (comercioVacioMov(s)) return '';
+    return s;
+  }
+  function montosParecidosMov(a, b) {
+    const x = Number(a?.amount || 0), y = Number(b?.amount || 0);
+    if (x > 0 && y > 0) {
+      const d = Math.abs(x - y);
+      return d <= 0.40 || d / Math.max(x, y) <= 0.08;
+    }
+    const ox = Number(a?.origenAmount || 0), oy = Number(b?.origenAmount || 0);
+    if (ox > 0 && oy > 0) {
+      const d = Math.abs(ox - oy);
+      return d <= 0.08 || d / Math.max(ox, oy) <= 0.08;
+    }
+    return false;
+  }
+  function mismoPagoMov(a, b) {
+    if (claseDeMovLista(a) !== claseDeMovLista(b)) return false;
+    const clase = claseDeMovLista(a);
+    if (clase !== 'compra' && clase !== 'rechazo') return false;
+    const ta = Date.parse(a.date) || 0, tb = Date.parse(b.date) || 0;
+    if (ta && tb && Math.abs(ta - tb) > 5 * 24 * 60 * 60 * 1000) return false;
+    if (!montosParecidosMov(a, b)) return false;
+    const ma = comercioClaveMov(a), mb = comercioClaveMov(b);
+    if (!ma || !mb) return true;
+    return ma === mb;
+  }
+  function fusionarGrupoMov(txs) {
+    const porFecha = txs.slice().sort((a, b) => (Date.parse(a.date) || 0) - (Date.parse(b.date) || 0));
+    const porCiclo = txs.slice().sort((a, b) => rangoDeCicloMov(tipoDeMovLista(b)) - rangoDeCicloMov(tipoDeMovLista(a)));
+    const conNombre = txs.find(x => comercioClaveMov(x));
+    const base = { ...porCiclo[0], date: porFecha[0].date };
+    if (conNombre && comercioVacioMov(base.merchant)) base.merchant = conNombre.merchant;
+    if (conNombre && Number(conNombre.amount) > Number(base.amount || 0)) {
+      base.amount = conNombre.amount;
+      if (conNombre.origenAmount != null) base.origenAmount = conNombre.origenAmount;
+    }
+    return base;
+  }
+  function sinDuplicadosMovs(lista) {
+    const arr = Array.isArray(lista) ? lista : [];
+    const usados = new Set();
+    const unicos = [];
+    for (let i = 0; i < arr.length; i++) {
+      if (usados.has(i)) continue;
+      const clase = claseDeMovLista(arr[i]);
+      if (clase !== 'compra' && clase !== 'rechazo') {
+        usados.add(i);
+        unicos.push(arr[i]);
+        continue;
+      }
+      const grupo = [arr[i]];
+      usados.add(i);
+      for (let j = i + 1; j < arr.length; j++) {
+        if (usados.has(j)) continue;
+        if (grupo.some(g => mismoPagoMov(g, arr[j]))) {
+          grupo.push(arr[j]);
+          usados.add(j);
+        }
+      }
+      unicos.push(fusionarGrupoMov(grupo));
+    }
+    return unicos.sort((a, b) => (Date.parse(b.date) || 0) - (Date.parse(a.date) || 0));
   }
 
   /* Los saldos se leen de la cadena, token por token, igual que en el telefono.
@@ -2171,7 +2279,7 @@ const VETA = (() => {
     vistaDato = dato ?? null;
     // Salir de la tarjeta borra el numero y el CVV de la memoria y la deja de
     // frente otra vez. Nadie tiene por que volver y encontrarselos puestos.
-    if (vistaActual === 'tarjeta' && cual !== 'tarjeta') { secretoTarjeta = null; volteada = false; }
+    if (vistaActual === 'tarjeta' && cual !== 'tarjeta') { secretoTarjeta = null; volteada = false; cerrarMov(); }
     if (vistaActual === 'lector' && cual !== 'lector') cerrarCamara();
     // El latido del chat solo late mientras el chat esta en pantalla: un
     // intervalo vivo en segundo plano es trafico que nadie mira.
@@ -2212,9 +2320,12 @@ const VETA = (() => {
        La clase se quita y se vuelve a poner con un reflow forzado en medio —
        si no, dos vistas seguidas no reinician la animación y la segunda entra
        en seco. */
-    l.classList.remove('lz-dentro', 'lz-fuera');
-    void l.offsetWidth;
-    l.classList.add(cual === 'nucleo' ? 'lz-fuera' : 'lz-dentro');
+    const mismo = veniaDe === cual;
+    if (!mismo) {
+      l.classList.remove('lz-dentro', 'lz-fuera');
+      void l.offsetWidth;
+      l.classList.add(cual === 'nucleo' ? 'lz-fuera' : 'lz-dentro');
+    }
     l.innerHTML = VISTAS[cual]();
     /* El sorteo va encima de las vistas de dinero, no del Nucleo: el cerebro
        es la pantalla del asombro y un banner encima seria un cartel pegado en
@@ -2228,11 +2339,22 @@ const VETA = (() => {
     if (cual === 'cobrar') pintarCobro();
     if (cual === 'enviar') $('#env-monto')?.focus();
     if (cual === 'cambiar') cambioMonto();
-    if (cual === 'tarjeta' && !tarjeta) cargarTarjeta().then(() => { if (vistaActual === 'tarjeta') vista('tarjeta'); });
-    // El precio de emitir se pregunta una sola vez por sesión de pantalla: no
-    // cambia entre un repintado y el siguiente, y pedirlo en cada uno sería
-    // una llamada por cada tecla del formulario.
-    if (cual === 'tarjeta' && !emision) cargarEmision().then(() => { if (vistaActual === 'tarjeta') vista('tarjeta'); });
+    /* LA TARJETA SE PIDE UNA VEZ, Y SE REPINTA UNA VEZ.
+       Antes: vista('tarjeta') disparaba cargarTarjeta y cargarEmision, y
+       CADA una volvía a llamar vista('tarjeta'). Si /cards/emision fallaba,
+       emision quedaba null y el ciclo no paraba: el lienzo se vaciaba y se
+       pintaba una y otra vez —el fondo de café parpadeando detrás, la
+       pestaña de Chrome pidiendo recargar—. Quien ya tiene tarjeta ni
+       siquiera necesita el precio de emitir: eso es del formulario de
+       pedirla. */
+    if (cual !== 'tarjeta' && movAbierto) cerrarMov();
+    if (cual === 'tarjeta' && !tarjeta && !tarjetaCargando) {
+      tarjetaCargando = true;
+      cargarTarjeta()
+        .then(() => { if (tarjeta?.falta && !emision) return cargarEmision(); })
+        .finally(() => { tarjetaCargando = false; })
+        .then(() => { if (vistaActual === 'tarjeta') vista('tarjeta'); });
+    }
     if (cual === 'remesas' && !tasas) cargarTasas().then(() => { if (vistaActual === 'remesas') vista('remesas'); });
     if (cual === 'chat') { p2cPortada(); chatEntrar(); } else p2cPortadaFuera();
     if (cual === 'token') montarVelasToken();
@@ -4858,6 +4980,7 @@ const VETA = (() => {
 
   function precioTarjeta() {
     if (!emision) return `<p class="pie" style="margin-top:16px">${t('tar.leyendoPrecio')}</p>`;
+    if (emision.error) return `<p class="pie" style="margin-top:16px">${t('tar.precioErr')}</p>`;
     return `
       <div class="tar-precio">
         <div class="tar-precio-fila">
@@ -4873,20 +4996,158 @@ const VETA = (() => {
   }
 
   function movimientosTarjeta() {
+    const lista = Array.isArray(movsTarjeta) ? movsTarjeta : [];
     return `
     <div class="bloque vidrio">
       <h3>${t('tar.movs')}</h3>
-      ${movsTarjeta.length ? movsTarjeta.map(m => `
-        <div class="hilera">
+      ${lista.length ? lista.map((m, i) => {
+        const crudoNombre = m.merchant || m.description || m.merchantName || m.merchant_name || '';
+        const nombre = comercioVacioMov(crudoNombre) ? t('tar.sinComercio') : crudoNombre;
+        const fecha = m.date || m.createdAt || m.datetime || m.timestamp;
+        const origen = m.origenAmount;
+        const dolares = m.amount ?? m.billAmount ?? m.value;
+        const cifra = origen != null && origen !== ''
+          ? `${tapa(oro(Math.abs(Number(origen))))} ORIGEN`
+          : tapa(usd(Math.abs(Number(dolares ?? 0))));
+        const usdLinea = dolares != null && origen != null
+          ? `<small>${esc(usd(Math.abs(Number(dolares))))}</small>` : '';
+        const est = estadoDeMov(m);
+        const fechaTxt = cuando(fecha) || fechaLarga(fecha) || '';
+        const pieFecha = esc(fechaTxt);
+        const pieEst = est ? ` · <span class="tar-est ${est.cls}">${esc(est.rotulo)}</span>` : '';
+        return `
+        <button type="button" class="hilera tar-mov" onclick="VETA.abrirMov(${i})">
           <div class="ic"><svg viewBox="0 0 24 24">${ICO.tarjeta}</svg></div>
           <div class="txt">
-            <b>${esc(m.merchant || m.description || m.merchantName || '—')}</b>
-            <small>${esc(cuando(m.createdAt || m.date || m.timestamp))}</small>
+            <b>${esc(nombre)}</b>
+            <small>${pieFecha}${pieEst}</small>
           </div>
-          <div class="val sale">${tapa(usd(Math.abs(Number(m.amount ?? m.value ?? 0))))}</div>
-        </div>`).join('')
-      : `<p class="pie" style="margin-top:8px">${t('tar.sinMovs')}</p>`}
-    </div>`;
+          <div class="val ${est && est.cls === 'no' ? 'sale tar-rechazo' : 'sale'}">${cifra}${usdLinea}</div>
+        </button>`;
+      }).join('')
+      + (movsTarjeta.length < totalMovsTarjeta
+        ? `<button type="button" class="btn btn-linea btn-sm" style="margin-top:12px" onclick="VETA.verMasMovs()">${t('tar.verMas')}</button>`
+        : '')
+      : errMovsTarjeta
+        ? `<p class="pie" style="margin-top:8px;color:var(--coral)">${t('tar.movsErr')}</p>
+           <div style="margin-top:12px"><button class="btn btn-linea btn-sm" onclick="VETA.reintentarMovs()">${t('saldo.re')}</button></div>`
+        : `<p class="pie" style="margin-top:8px">${t('tar.sinMovs')}</p>`}
+    </div>
+    <div id="tar-ficha" class="tar-ficha oculto" role="dialog" aria-modal="true" aria-labelledby="tar-ficha-tit"></div>`;
+  }
+
+  function tipoMov(tipo) {
+    const k = {
+      TRANSACTION_CLEARED: 'tar.tipoCompra',
+      TRANSACTION_APPROVED: 'tar.tipoAprobada',
+      TRANSACTION_AUTHORIZATION: 'tar.tipoAprobada',
+      TRANSACTION_REJECTED: 'tar.tipoRechazada',
+      TRANSACTION_REVERSED: 'tar.tipoReverso',
+      TRANSACTION_REFUND: 'tar.tipoDevolucion',
+      WALLET_DEPOSIT: 'tar.tipoRecarga',
+      WALLET_WITHDRAWAL: 'tar.tipoCompra',
+      VISA_DIRECT_DEPOSIT: 'tar.tipoRecarga',
+      APPROVED: 'tar.tipoAprobada',
+      DECLINED: 'tar.tipoRechazada',
+      REJECTED: 'tar.tipoRechazada',
+      SUCCESS: 'tar.tipoAprobada',
+    }[tipo];
+    return k ? t(k) : (tipo || '—');
+  }
+
+  function estadoDeMov(m) {
+    const blob = String(m?.type || m?.operation || m?.status || '').toUpperCase();
+    if (/REJECT|DECLINE/.test(blob)) return { rotulo: t('tar.tipoRechazada'), cls: 'no' };
+    if (/REFUND/.test(blob)) return { rotulo: t('tar.tipoDevolucion'), cls: '' };
+    if (/REVERS/.test(blob)) return { rotulo: t('tar.tipoReverso'), cls: '' };
+    if (/DEPOSIT/.test(blob)) return { rotulo: t('tar.tipoRecarga'), cls: 'ok' };
+    if (/CLEARED|SETTLED|APPROVED|AUTH|SUCCESS|PURCHASE|WITHDRAW/.test(blob))
+      return { rotulo: t('tar.tipoAprobada'), cls: 'ok' };
+    if (blob) return { rotulo: tipoMov(m.type || m.status), cls: '' };
+    return null;
+  }
+
+  function lempirasDe(usdAmount) {
+    const tasa = (tasas || TASAS_REF).HNL;
+    const n = Number(usdAmount);
+    if (!Number.isFinite(n) || tasa == null) return null;
+    return n * tasa;
+  }
+
+  function cifraHnl(n) {
+    if (n == null || !Number.isFinite(Number(n))) return '—';
+    return 'L ' + Number(n).toLocaleString('es-HN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+
+  function pintarFichaMov() {
+    const caja = $('#tar-ficha');
+    if (!caja || !movAbierto) return;
+    const m = movAbierto;
+    const d = detalleMov || {};
+    const crudoNom = d.merchantName || m.merchant || '';
+    const nombre = comercioVacioMov(crudoNom) ? t('tar.sinComercio') : crudoNom;
+    const origen = d.billAmount ?? m.origenAmount;
+    const dolares = d.billAmountUsd ?? m.amount;
+    const hnl = lempirasDe(dolares);
+    const tasa = (tasas || TASAS_REF).HNL;
+    const fecha = d.datetime || m.date;
+    const est = estadoDeMov({ type: d.operation || m.type, status: d.status || m.status });
+    const filas = [
+      [t('tar.movFecha'), fechaLarga(fecha) || cuando(fecha) || '—'],
+      [t('tar.movUsd'), dolares != null ? usd(Math.abs(Number(dolares))) : '—'],
+      [t('tar.movHnl'), hnl != null ? cifraHnl(Math.abs(hnl)) : '—'],
+      [t('tar.movEstado'), est ? est.rotulo : (d.status || m.status || '—')],
+      [t('tar.movTipo'), tipoMov(d.operation || m.type)],
+    ];
+    const origAmt = d.transactionAmount ?? m.transactionAmount;
+    const origCur = d.transactionCurrency ?? m.transactionCurrency;
+    const cambio = d.exchangeRate ?? m.exchangeRate;
+    if (origAmt != null && origCur && origCur !== 'USD') {
+      filas.push([t('tar.movOriginal'), `${origAmt} ${origCur}`]);
+    }
+    if (cambio != null) filas.push([t('tar.movCambio'), String(cambio)]);
+    if (d.newBalance != null) filas.push([t('tar.movSaldo'), `${oro(d.newBalance)} ORIGEN`]);
+    if (d.declineReason) filas.push([t('tar.movRechazo'), d.declineReason]);
+    const alDia = tasas
+      ? rell(t('tar.movAlDia'), { t: cifraHnl(tasa) })
+      : rell(t('tar.movAlDiaRef'), { t: cifraHnl(tasa) });
+    const fx = [
+      dolares != null ? usd(Math.abs(Number(dolares))) : null,
+      hnl != null ? cifraHnl(Math.abs(hnl)) : null,
+    ].filter(Boolean).join(' · ');
+    caja.innerHTML = `
+      <div class="tar-ficha-caja" onclick="event.stopPropagation()">
+        <h3 id="tar-ficha-tit">${esc(nombre)}</h3>
+        <p class="tar-ficha-monto">${origen != null ? `${tapa(oro(Math.abs(Number(origen))))} ORIGEN` : '—'}</p>
+        ${fx ? `<p class="tar-ficha-fx">${esc(fx)}</p>` : ''}
+        <p class="pie" style="margin-top:6px">${esc(alDia)}</p>
+        <dl class="datos" style="margin-top:16px">${filas.map(([k, v]) =>
+          `<div><dt>${esc(k)}</dt><dd>${esc(v)}</dd></div>`).join('')}</dl>
+        <button class="btn btn-linea btn-full" style="margin-top:18px" onclick="VETA.cerrarMov()">${t('tar.movCerrar')}</button>
+      </div>`;
+    caja.classList.remove('oculto');
+    caja.onclick = cerrarMov;
+  }
+
+  function abrirMov(i) {
+    const lista = Array.isArray(movsTarjeta) ? movsTarjeta : [];
+    const m = lista[i];
+    if (!m) return;
+    movAbierto = m;
+    detalleMov = null;
+    pintarFichaMov();
+    if (!tasas) cargarTasas().then(() => { if (movAbierto) pintarFichaMov(); });
+    if (!m.id) return;
+    pedir(`/cards/transactions/${encodeURIComponent(m.id)}`)
+      .then((d) => { if (movAbierto && movAbierto.id === m.id) { detalleMov = d; pintarFichaMov(); } })
+      .catch(() => {});
+  }
+
+  function cerrarMov() {
+    movAbierto = null;
+    detalleMov = null;
+    const caja = $('#tar-ficha');
+    if (caja) { caja.classList.add('oculto'); caja.innerHTML = ''; caja.onclick = null; }
   }
 
   // El numero de una tarjeta se lee en grupos de cuatro. De corrido no se puede
@@ -6001,8 +6262,8 @@ const VETA = (() => {
      se puede contestar: «¿esto que estoy viendo es lo último que subimos, o
      mi navegador se quedó con una copia vieja?». La ficha de Ajustes lo
      enseña, y con eso se sabe. */
-  const VETA_V = '7a7c5ba095';
-  const VETA_FECHA = '2026-09-08';
+  const VETA_V = '6439c6538a';
+  const VETA_FECHA = '2026-09-10';
 
   const AET_V = 'fc53e9b8bf';
 
@@ -8213,6 +8474,15 @@ const VETA = (() => {
     return 'red';
   }
 
+  /* Un 401/409 SÍ tiene que tapar el hilo: la llave no sirve y no hay nada
+     que leer. Un parpadeo de red NO: pintaba la puerta «Sin conexión» encima
+     del hilo, el campo dejaba de existir y el texto que ibas a reenviar se
+     iba con él. Medido: 16 segundos después el error ya se había limpiado y
+     la pantalla seguía en la puerta. */
+  function chatEsPuerta(k) {
+    return k === 'llave' || k === 'otra' || k === 'vencida' || k === 'otraCuenta';
+  }
+
   // El boton de desatascar: tira la llave guardada y vuelve a darse de alta.
   // Existe porque «sin conexion» con el wifi perfecto es lo mas exasperante
   // que puede pasarle a alguien, y hasta ahora habia que arreglarlo a mano.
@@ -8404,8 +8674,11 @@ const VETA = (() => {
         auraCharlaSonar();
       }
     } catch (e) {
-      chatSt.error = chatMotivo(e);
-      if (!callado) pintarChat();
+      const k = chatMotivo(e);
+      if (chatEsPuerta(k)) {
+        chatSt.error = k;
+        if (!callado) pintarChat();
+      }
     }
   }
 
@@ -8493,25 +8766,43 @@ const VETA = (() => {
    * que se puede hacer.
    *
    * Devuelve si SALIÓ. Quien llama decide qué hacer con un no. */
+  let chatEnvioPendiente = null;
+
+  function chatIdDeEnvio(texto) {
+    if (chatEnvioPendiente && chatEnvioPendiente.texto === texto) return chatEnvioPendiente.id;
+    let id;
+    try { id = crypto.randomUUID().replace(/-/g, ''); }
+    catch { id = Date.now().toString(16) + Math.random().toString(16).slice(2); }
+    chatEnvioPendiente = { texto, id };
+    return id;
+  }
+
   async function chatMandarTexto(texto) {
     texto = (texto || '').trim();
     if (!texto || chatSt.mandando || !chatSt.con) return false;
     chatSt.mandando = true;
+    const idCliente = chatIdDeEnvio(texto);
     /* PRIMERO SE ACTÚA Y DESPUÉS SE MANDA: abrir la pantalla que te pidieron
        tiene que ser instantáneo, y el viaje al relevo tarda lo que tarde. El
        mensaje se manda igual, así que no se pierde nada por actuar antes. */
     if (esAura(chatSt.con)) { try { auraDesdeElHilo(texto); } catch (e) {} }
     try {
-      await CHAT.enviar(chatSt.con.id, texto, chatSt.citando?.id);
+      await CHAT.enviar(chatSt.con.id, texto, chatSt.citando?.id, idCliente);
       chatSt.citando = null;
+      chatEnvioPendiente = null;
       // A AU-RA se le sabe que va a contestar: se mira rápido hasta que llegue
       if (esAura(chatSt.con)) auraEsperar();
       await chatCargarMsgs();
       chatCargarConvs();
       return true;
     } catch (e) {
-      chatSt.error = chatMotivo(e);
-      pintarChat();
+      const k = chatMotivo(e);
+      if (chatEsPuerta(k)) {
+        chatSt.error = k;
+        pintarChat();
+      } else {
+        avisar(t('cha.eRedP'));
+      }
       return false;
     } finally { chatSt.mandando = false; }
   }
@@ -8629,6 +8920,7 @@ const VETA = (() => {
   const grupoColgar = () => GRUPO.colgar('yo');
   const grupoMic = () => GRUPO.micro();
   const grupoCam = () => GRUPO.camara();
+  const grupoVoltear = () => GRUPO.voltear().catch(() => avisar(t('lla.aparatoNo')));
   const grupoPantalla = () => puedeCompartir()
     ? GRUPO.pantalla().catch(() => avisar(t('lla.pantallaNo')))
     : avisarSinPantalla();
@@ -8661,6 +8953,9 @@ const VETA = (() => {
     pintarBotonPantalla('#gru-pant');
     $('#gru-mic').classList.toggle('apagado', !c.micAbierto);
     $('#gru-cam').classList.toggle('apagado', !c.camAbierta);
+    $('#gru-cam')?.classList.toggle('oculto', !c.conVideo);
+    $('#gru-voltear')?.classList.toggle('oculto', !c.conVideo || !c.camAbierta);
+    $('#gru')?.classList.toggle('trasera', !!c.camTrasera);
 
     const rej = $('#gru-rejilla');
     const vivos = new Set(['yo', ...c.gente.map((g) => g.correo)]);
@@ -8830,6 +9125,61 @@ const VETA = (() => {
   let llaSono = false;      // ya se dio el golpe de «conectado»
   let llaHabla0 = 0;        // cuándo entró la llamada, para el contador
 
+  /* ── EL HISTORIAL DE LLAMADAS EN EL HILO ─────────────────────────────────
+   *
+   * El relevo no guarda llamadas: una pestaña vacía sería peor que no
+   * tenerla. Lo que SÍ se puede es dejar en la conversación el hecho de
+   * que alguien llamó —perdida, hecha, sin respuesta— para que no se
+   * esfume al colgar. Vive en este aparato, junto a la sesión. */
+  function llaHistClave() {
+    return 'veta.p2c.llhist.' + String(sesion?.correo || '').toLowerCase();
+  }
+  function llaHistLeer() {
+    try { return JSON.parse(localStorage.getItem(llaHistClave()) || '[]'); } catch { return []; }
+  }
+  function llaHistGuardar(arr) {
+    try { localStorage.setItem(llaHistClave(), JSON.stringify((arr || []).slice(-80))); } catch {}
+  }
+  function llaHistDeCorte(c) {
+    const con = String(c.conQuienEra || c.conQuien || '').toLowerCase();
+    if (!con || !c.motivo) return;
+    const arr = llaHistLeer();
+    const last = arr[arr.length - 1];
+    if (last && last.con === con && Date.now() - last.cuando < 2500) return;
+    const saliente = !!c.fuiQuienLlamo;
+    const video = !!c.hayVideoEra;
+    const dur = llaHabla0 ? Math.max(0, Math.floor((Date.now() - llaHabla0) / 1000)) : 0;
+    let resultado = 'ok';
+    if (c.motivo === 'el-otro') resultado = dur ? 'ok' : (saliente ? 'sin-respuesta' : 'perdida');
+    else if (c.motivo === 'yo') resultado = dur ? 'ok' : 'cancelada';
+    else if (c.motivo === 'sin-respuesta') resultado = 'sin-respuesta';
+    else if (c.motivo === 'rechazada') resultado = 'rechazada';
+    else if (c.motivo === 'ocupado') resultado = 'ocupado';
+    else if (c.motivo === 'sin-camino' || c.motivo === 'no-se-pudo' || c.motivo === 'corte')
+      resultado = dur ? 'corte' : 'fallo';
+    arr.push({ con, cuando: Date.now(), video, saliente, resultado, duracion: dur });
+    llaHistGuardar(arr);
+  }
+  function llaHistDelHilo(conId) {
+    const id = String(conId || '').toLowerCase();
+    const yo = String(sesion?.correo || '').toLowerCase();
+    return llaHistLeer().filter((e) => e.con === id).map((e) => ({
+      id: 'lla-' + e.cuando,
+      tipo: 'llamada',
+      cuando: e.cuando,
+      de: e.saliente ? yo : e.con,
+      video: e.video,
+      resultado: e.resultado,
+      duracion: e.duracion || 0,
+      saliente: e.saliente,
+    }));
+  }
+  function mezclarHilo(msgs, extra) {
+    if (!msgs) return msgs;
+    if (!extra || !extra.length) return msgs;
+    return msgs.concat(extra).sort((a, b) => (a.cuando || 0) - (b.cuando || 0));
+  }
+
   function llamadaArrancar() {
     if (!window.LLAMADA || !LLAMADA.puede()) return;
     LLAMADA.arrancar({
@@ -8891,6 +9241,8 @@ const VETA = (() => {
   const llamadaColgar = () => LLAMADA.colgar('yo');
   const llamadaMic = () => LLAMADA.micro();
   const llamadaCam = () => LLAMADA.camara();
+  const llamadaVoltear = () => LLAMADA.voltear().catch(() => avisar(t('lla.aparatoNo')));
+  const llamadaAltavoz = () => LLAMADA.altavoz();
   const llamadaPantalla = () => puedeCompartir()
     ? LLAMADA.pantalla().catch(() => avisar(t('lla.pantallaNo')))
     : avisarSinPantalla();
@@ -9442,7 +9794,11 @@ const VETA = (() => {
     if (!activa) {
       // Al colgar, la ventana vuelve a su sitio: la proxima llamada no debe
       // aparecer chiquita en una esquina porque la anterior quedo asi.
-      capa.classList.remove('mini', 'sonando');
+      if (c.motivo) {
+        llaHistDeCorte(c);
+        try { pintarChat(); } catch {}
+      }
+      capa.classList.remove('mini', 'sonando', 'trasera');
       capa.style.inset = '';
       $('#lla-ajustes')?.classList.add('oculto');
       llaMini = false; llaPos = null; llaSono = false; llaHabla0 = 0;
@@ -9517,8 +9873,14 @@ const VETA = (() => {
        arranca la reproducción, y el resultado es el recuadro propio en negro
        aunque la cámara esté encendida. */
     LLAMADA.reengancharVideo();
+    capa.classList.toggle('trasera', !!c.camTrasera);
     $('#lla-mic').classList.toggle('apagado', !c.micAbierto);
     $('#lla-cam').classList.toggle('apagado', !c.camAbierta);
+    $('#lla-cam')?.classList.toggle('oculto', !c.hayVideo);
+    $('#lla-voltear')?.classList.toggle('oculto', !c.hayVideo || !c.camAbierta || !!c.compartiendo);
+    const hayAlt = !!c.puedeAltavoz;
+    $('#lla-altavoz')?.classList.toggle('oculto', !hayAlt);
+    $('#lla-altavoz')?.classList.toggle('apagado', hayAlt && !c.porAltavoz);
     $('#lla-si-video').classList.toggle('oculto', !LLAMADA.entrante()?.video);
 
     const est = $('#lla-estado');
@@ -10148,7 +10510,11 @@ const VETA = (() => {
       await chatCargarConvs();
       if (g?.id) chatAbrir(g.id);
       avisar(t('cha.grHecho'));
-    } catch (e) { chatSt.error = chatMotivo(e); pintarChat(); }
+    } catch (e) {
+      const k = chatMotivo(e);
+      if (chatEsPuerta(k)) { chatSt.error = k; pintarChat(); }
+      else avisar(t('cha.eRedP'));
+    }
   }
 
   /* ── LA FICHA ────────────────────────────────────────────────────────────
@@ -12194,8 +12560,9 @@ const VETA = (() => {
                                    && esOrdenDeAjuste(m.texto)))
       : ms);
     const lista = sinOrdenes(aguja
-      ? (chatSt.msgs || []).filter(m => (m.texto || '').toLowerCase().includes(aguja))
-      : chatSt.msgs);
+      ? (chatSt.msgs || []).filter(m => (m.texto || '').toLowerCase().includes(aguja)
+          || (m.tipo === 'llamada' && t('cha.llamadaHecha').toLowerCase().includes(aguja)))
+      : mezclarHilo(chatSt.msgs, (c && !c.esGrupo && !esAura(c)) ? llaHistDelHilo(c.id) : []));
     /* ── EL HILO DICE QUE ESTÁ PENSANDO ────────────────────────────────────
      *
      * El estado existía y solo se pintaba en la pantalla de voz. En el hilo
@@ -12626,6 +12993,24 @@ const VETA = (() => {
     const mio = m.de === (sesion?.correo || '').toLowerCase();
     const hora = new Date(m.cuando).toLocaleTimeString(idiomaActivo() === 'en' ? 'en-US' : 'es-HN',
       { hour: '2-digit', minute: '2-digit' });
+
+    if (m.tipo === 'llamada') {
+      const video = !!m.video;
+      const r = m.resultado;
+      let clave = video ? 'cha.llamadaVideoHecha' : 'cha.llamadaHecha';
+      if (r === 'perdida') clave = video ? 'cha.llamadaVideoPerdida' : 'cha.llamadaPerdida';
+      else if (r === 'sin-respuesta') clave = 'cha.llamadaSinRespuesta';
+      else if (r === 'rechazada') clave = 'cha.llamadaRechazada';
+      else if (r === 'cancelada') clave = 'cha.llamadaCancelada';
+      else if (r === 'ocupado') clave = 'cha.llamadaOcupado';
+      else if (r === 'fallo' || r === 'corte') clave = 'cha.llamadaFallo';
+      const dur = m.duracion > 0
+        ? ` · ${Math.floor(m.duracion / 60)}:${String(m.duracion % 60).padStart(2, '0')}`
+        : '';
+      return `<div class="cha-llamada${r === 'perdida' ? ' perdida' : ''}" data-id="${esc(m.id || '')}">
+        <b>${t(clave)}${dur}</b> ${esc(hora)}
+      </div>`;
+    }
 
     /* El comprobante de un pago no es un mensaje con formato: es una tarjeta.
        Lleva el hash porque el hash es lo unico que hace verificable lo que
@@ -15997,7 +16382,29 @@ const VETA = (() => {
      precio ni se da por abierta la emisión. */
   async function cargarEmision() {
     try { emision = await pedir('/cards/emision'); }
-    catch { emision = null; }
+    catch { emision = { error: true }; }
+  }
+
+  async function reintentarMovs() {
+    errMovsTarjeta = null;
+    await cargarTarjeta();
+    if (vistaActual === 'tarjeta') vista('tarjeta');
+  }
+
+  async function verMasMovs() {
+    const next = paginaMovsTarjeta + 1;
+    try {
+      const d = await pedir(`/cards/transactions?limit=100&page=${next}`);
+      const crudos = Array.isArray(d) ? d : (d?.items || d?.transactions || d?.data || d?.movements || []);
+      const mas = sinDuplicadosMovs(Array.isArray(crudos) ? crudos : []);
+      movsTarjeta = sinDuplicadosMovs(movsTarjeta.concat(mas));
+      paginaMovsTarjeta = next;
+      if (Number(d?.total)) totalMovsTarjeta = Number(d.total);
+      errMovsTarjeta = null;
+    } catch (e) {
+      errMovsTarjeta = e.message || true;
+    }
+    if (vistaActual === 'tarjeta') vista('tarjeta');
   }
 
   function pedirTarjeta(ev) {
@@ -16358,7 +16765,7 @@ const VETA = (() => {
            llaveAbrir, llaveCerrar, llaveEntrar,
            llaveCuantas, llaveOjo, llaveModo,
            importarAbrir, importarSalir, importarElegir, importarHacer,
-           tapar, copiarContrato, congelar, revelar, pedirTarjeta, recargarTarjeta, cambioMonto, elegirDestino,
+           tapar, copiarContrato, congelar, revelar, pedirTarjeta, recargarTarjeta, reintentarMovs, verMasMovs, abrirMov, cerrarMov, cambioMonto, elegirDestino,
            voltear, olvidar, remMonto, remPais, refrescarTasas, nuevoContacto, borrarContacto,
            enviarA, abrirCamara, cerrarCamara, pedirSecreto, copiarTexto, guardarNombre,
            // Enviar cualquier token, no solo ORIGEN.
@@ -16409,10 +16816,10 @@ const VETA = (() => {
            chatCitar, chatDejarCita, chatReaccion, chatAbrirReaccion, chatTecleando,
            airToca, airTutoActivar, airTutoCerrar,
            llamadaLlamar, llamadaContestar, llamadaRechazar, llamadaColgar,
-           llamadaMic, llamadaCam, llamadaPantalla, llamadaAjustes, llamadaAparato,
+           llamadaMic, llamadaCam, llamadaVoltear, llamadaAltavoz, llamadaPantalla, llamadaAjustes, llamadaAparato,
            llamadaMini, llamadaGrande,
            grupoLlamar, grupoContestar, grupoRechazar, grupoColgar,
-           grupoMic, grupoCam, grupoPantalla, grupoMini, grupoGrande, chatReparar, chatCodigo, chatCodigoCopiar,
+           grupoMic, grupoCam, grupoVoltear, grupoPantalla, grupoMini, grupoGrande, chatReparar, chatCodigo, chatCodigoCopiar,
            chatVerFicha, chatFichaCerrar, chatEnviarOrigen, chatGuardarContacto,
            // Lo que le faltaba a una app de mensajeria: bloquear, borrar un
            // mensaje, buscar dentro del hilo, silenciar y comparar el codigo.

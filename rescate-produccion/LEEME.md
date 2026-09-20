@@ -1,64 +1,71 @@
-# El código que está corriendo en app.vetawallet.com
+# El código de app.vetawallet.com, rescatado y ya junto
 
-Fecha del rescate: 2026-09-20. Obtenido **del propio dominio**, no de una máquina
-ni de una rama: cada archivo se descargó de `https://app.vetawallet.com/` y su
-SHA-256 está en `app.vetawallet.com/MANIFIESTO.json`.
+Fecha: 2026-09-20.
 
-## Por qué existe esta carpeta
+## Qué pasaba
 
 El sitio vivo se desplegó el **10-sep-2026** con el sello `6439c6538a`. Ese commit
-no está en este repositorio, ni en `veta-wallet-backend-`, ni en ninguna rama:
-se compiló y se subió a mano desde una máquina, y esa copia era la única que
-existía. Mientras eso siguiera así, cualquier despliegue hecho desde el
-repositorio **borraba de producción** lo que solo vivía ahí — que es exactamente
-el accidente del 12-ago que ya costó funciones en producción una vez.
+no existía en ningún repositorio: se compiló y se subió a mano desde una máquina,
+y esa copia era la única. Mientras siguiera así, cualquier despliegue hecho desde
+el repositorio **borraba de producción** lo que solo vivía ahí — el accidente del
+12-ago, otra vez.
 
-La wallet sirve JavaScript sin minificar, así que lo publicado ES el código
-fuente. Por eso se pudo rescatar entero sin esperar a nadie.
+Se buscó en los cuatro repositorios donde podía estar —`express-js-on-vercel`,
+`veta-wallet-backend-` (es la API, no la web), `ordenglobalfinale` y
+`ULTRON-APP`— y no estaba en ninguno.
 
-## Qué hay, y en qué se diferencia del repositorio
+La wallet sirve JavaScript sin minificar, así que lo publicado ES el fuente. Se
+descargó entero del propio dominio, con su SHA-256 en `MANIFIESTO.json`.
 
-Comparado con `origin/claude/veta-wallet-phantom-design-7syah8`, que es la rama
-que sirve este mismo sitio: **36 archivos idénticos y 6 distintos.**
+## Qué se juntó
 
-| Archivo | Solo en producción | Solo en el repositorio |
-| --- | --- | --- |
-| `app.js` | 444 líneas | 37 líneas |
-| `llamada.js` | 103 | 7 |
-| `index.html` | 72 | 23 |
-| `i18n.js` | 56 | 4 |
-| `llamadaGrupo.js` | 36 | 2 |
-| `chat.js` | 4 | 3 |
+Seis archivos diferían entre el repositorio y producción: `app.js`, `chat.js`,
+`i18n.js`, `index.html`, `llamada.js` y `llamadaGrupo.js`. Los otros 36 ya eran
+idénticos.
 
-Lo que solo está en producción es, sobre todo, la tarjeta: movimientos paginados
-(`/cards/transactions`), el detalle de un movimiento, el estado de emisión, el
-giro de la tarjeta para ver el secreto, y sus textos en `i18n.js`. Más lo de
-llamadas.
+**Producción resultó ser más nueva en los seis**, y por dos vías que coinciden:
 
-Y al revés: hay 76 líneas **commiteadas y nunca desplegadas**. Las dos
-direcciones importan, y por eso esto se junta antes de tocar el dominio, no
-después.
+1. El último cambio del repositorio a cada uno de esos archivos es del **8-sep o
+   anterior**; el despliegue es del **10-sep**. Lo que producción tiene de más es
+   el trabajo de esos dos días —la tarjeta, sobre todo: movimientos paginados,
+   detalle de un movimiento, estado de emisión, el giro para ver el secreto, sus
+   textos— más lo de llamadas.
+2. Las 78 líneas que solo estaban en el repositorio no eran trabajo sin
+   desplegar, sino la **versión anterior** de líneas que producción reescribió.
+   Se comprobó una por una: cada identificador, ruta de API, clave de traducción
+   e id de HTML que aparecía solo en el lado del repositorio existe también en
+   producción. Nada quedaba fuera.
 
-También se rescató el motor de galaxia que está sirviendo hoy
-(`augalaxy/assets/`, 5 archivos, 1,4 MB). Sus texturas no se bajaron: son las
-mismas que ya están versionadas en `backup/legacy-webos-2026-09-20`.
+Así que junta = producción manda en esos seis, y así está ahora en
+`apps-web/veta-wallet/`. `comparar-publicado.py` lo confirma: **42 iguales, 0
+distintos**. Los cinco JavaScript pasan `node --check`.
 
-## Cómo se despliega este sitio
+El motor de galaxia que sirve hoy (`augalaxy/assets/`) ya estaba en el
+repositorio byte por byte; no hubo nada que juntar ahí.
 
-AWS Amplify, con `apps-web/subir.py <carpeta> <appId> [rama]`. **Amplify
-reemplaza el manifiesto entero en cada subida: lo que no va en la subida
-desaparece del sitio.** No existe el despliegue parcial. Por eso la carpeta que
-se suba tiene que ser el sitio completo y correcto, no un recorte.
+## Cómo comprobarlo
 
-## Qué falta para poner la galaxia nueva en el dominio
+    sha256sum apps-web/veta-wallet/app.js     # contra MANIFIESTO.json
+    python3 apps-web/comparar-publicado.py apps-web/veta-wallet https://app.vetawallet.com
 
-1. Que quien conserve la copia del 10-sep confirme que esto es lo mismo que
-   tiene — el manifiesto con los SHA-256 lo resuelve en un minuto.
-2. Juntar las dos direcciones del diff de arriba en un solo árbol, con los
-   dueños de la tarjeta y de las llamadas mirando sus propios cambios.
-3. Recién ahí: `apps-web/augalaxy/publicar.py` deja el motor nuevo en
-   `veta-wallet/augalaxy/assets/` y le sella la versión en `app.js`, y `subir.py`
-   sube el árbol completo.
+`MANIFIESTO.json` guarda la huella de los 36 archivos tal como los servía el
+dominio el 20-sep, más los 5 del motor. Los archivos en sí no se dejan
+duplicados aquí: su contenido es exactamente el de `apps-web/veta-wallet/`.
 
-Nada de esto se ha hecho todavía: el dominio sigue sirviendo lo del 10-sep,
-intacto.
+## Lo que sigue
+
+Ahora que el repositorio y el dominio dicen lo mismo, poner la galaxia nueva es
+el camino normal y sin sorpresas:
+
+1. `python3 apps-web/augalaxy/publicar.py` — compila el motor nuevo, lo deja en
+   `veta-wallet/augalaxy/assets/` y le sella la versión en `app.js`.
+2. `python3 apps-web/subir.py apps-web/veta-wallet <appId>` — sube el árbol
+   completo a Amplify. **Amplify reemplaza el manifiesto entero: lo que no va en
+   la subida desaparece del sitio**, y por eso importaba tanto que el árbol
+   estuviera completo antes de tocarlo.
+3. Volver a correr `comparar-publicado.py` después de subir.
+
+Y antes del paso 2, lo que sigue sin comprobar de la galaxia nueva: un visor de
+verdad, un teléfono de verdad y el login de producción.
+
+No se ha tocado el dominio. Sigue sirviendo lo del 10-sep.

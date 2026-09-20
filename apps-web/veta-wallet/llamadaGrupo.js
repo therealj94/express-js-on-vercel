@@ -60,6 +60,7 @@ const GRUPO = (() => {
   let miPista = null;
   let estado = 'libre';        // libre · llamando · entrando · hablando
   let conVideo = true;
+  let cara = 'user';
   const pares = new Map();     // correo -> { pc, flujo, cola: [] }
   let entrante = null;         // { de, grupo, nombre }
 
@@ -97,6 +98,7 @@ const GRUPO = (() => {
     micAbierto: !!miPista?.getAudioTracks()[0]?.enabled,
     camAbierta: !!miPista?.getVideoTracks()[0]?.enabled,
     conVideo,
+    camTrasera: cara === 'environment',
     lleno: pares.size + 1 >= TOPE,
   });
 
@@ -111,9 +113,10 @@ const GRUPO = (() => {
   }
 
   async function abrirMedios(video) {
+    cara = 'user';
     return navigator.mediaDevices.getUserMedia({
       audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
-      video: video ? VIDEO : false,
+      video: video ? { ...VIDEO, facingMode: cara } : false,
     });
   }
 
@@ -243,6 +246,7 @@ const GRUPO = (() => {
     porConectar.clear();
     try { miPista?.getTracks().forEach((t) => t.stop()); } catch {}
     miPista = null;
+    cara = 'user';
     if (g && motivo === 'yo') {
       for (const c of gente) mandarSenal(c, 'gsalgo', { grupo: g });
     }
@@ -331,6 +335,36 @@ const GRUPO = (() => {
     anunciar();
   }
 
+  async function voltear() {
+    if (!miPista) return;
+    const vieja = miPista.getVideoTracks()[0];
+    if (!vieja) return;
+    const siguiente = cara === 'user' ? 'environment' : 'user';
+    let flujo;
+    try {
+      flujo = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: { exact: siguiente }, ...VIDEO },
+      });
+    } catch {
+      try {
+        flujo = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: siguiente, ...VIDEO },
+        });
+      } catch { return; }
+    }
+    const nueva = flujo.getVideoTracks()[0];
+    if (!nueva) return;
+    nueva.enabled = vieja.enabled;
+    for (const { pc } of pares.values()) {
+      const emisor = pc.getSenders().find((s) => s.track?.kind === 'video');
+      if (emisor) { try { await emisor.replaceTrack(nueva); } catch {} }
+    }
+    try { miPista.removeTrack(vieja); vieja.stop(); } catch {}
+    miPista.addTrack(nueva);
+    cara = siguiente;
+    anunciar();
+  }
+
   /** Compartir pantalla: se reemplaza la pista en TODAS las conexiones. */
   async function pantalla() {
     if (!pares.size || !navigator.mediaDevices?.getDisplayMedia) return null;
@@ -366,7 +400,7 @@ const GRUPO = (() => {
   const flujoDe = (correo) => pares.get(String(correo || '').toLowerCase())?.flujo || null;
 
   return { puede, arrancar, recibir, llamar, contestar, rechazar, colgar, flujoDe,
-           micro, camara, pantalla, cuento, entrante: () => entrante,
+           micro, camara, voltear, pantalla, cuento, entrante: () => entrante,
            miPista: () => miPista, TOPE };
 })();
 
