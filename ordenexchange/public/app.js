@@ -157,9 +157,21 @@ async function copiar(texto) {
 function copiable(texto, mostrar) {
   return `<button type="button" class="copiable" data-accion="copiar" data-texto="${esc(texto)}" title="${t('com.copiar')}">${esc(mostrar === undefined ? texto : mostrar)}${IC.copiar}</button>`;
 }
-function cerrarCapa() { const c = $('#capa'); if (c) c.innerHTML = ''; S.hoja = null; document.body.style.overflow = ''; }
+function cerrarCapa() {
+  const c = $('#capa'); if (c) c.innerHTML = '';
+  S.hoja = null; document.body.style.overflow = '';
+  if (S.focoPrevio && S.focoPrevio.focus) { try { S.focoPrevio.focus(); } catch (e) { /* nada */ } }
+  S.focoPrevio = null;
+}
+/** Al abrir una capa el foco entra en ella; al cerrarse, vuelve a donde estaba. */
+function enfocarCapa() {
+  const c = $('#capa'); if (!c) return;
+  const objetivo = c.querySelector('input:not([type=hidden]),select,textarea,button[type=submit]') || c.querySelector('[role=dialog]');
+  if (objetivo) setTimeout(() => { try { objetivo.focus({ preventScroll: true }); } catch (e) { /* nada */ } }, 60);
+}
 function abrirDialogo(o) {
   const c = $('#capa'); if (!c) return;
+  if (!c.innerHTML) S.focoPrevio = document.activeElement;
   c.innerHTML = `<div class="telon" data-accion="cerrar-capa"></div>
   <div class="dialogo" role="dialog" aria-modal="true" aria-labelledby="dlg-titulo">
     <button type="button" class="btn-icono cerrar-x" data-accion="cerrar-capa" aria-label="${t('com.cerrar')}">${IC.x}</button>
@@ -175,8 +187,8 @@ function abrirDialogo(o) {
     </form>
   </div>`;
   document.body.style.overflow = 'hidden';
-  const primero = $('.dialogo input, .dialogo textarea, .dialogo select');
-  if (primero) setTimeout(() => primero.focus(), 30);
+  const primero = $('.dialogo input, .dialogo textarea, .dialogo select, #dlg-ok');
+  if (primero) setTimeout(() => { try { primero.focus({ preventScroll: true }); } catch (e) { primero.focus(); } }, 30);
 }
 function errorDialogo(msg) { const e = $('#dlg-error'); if (e) { e.textContent = msg; e.hidden = !msg; } const b = $('#dlg-ok'); if (b) b.disabled = false; }
 function ocupado(form, si) { const b = form ? form.querySelector('button[type=submit]') : null; if (b) { b.disabled = !!si; if (si) { b.dataset.txt = b.innerHTML; b.textContent = t('com.cargando'); } else if (b.dataset.txt) { b.innerHTML = b.dataset.txt; } } }
@@ -187,12 +199,12 @@ function notaHTML(texto, tipo, icono) { return `<div class="nota ${tipo || ''}">
 // ═══════════════════════════════════════════════════════════════════════════
 function cargarSesion() { try { const j = JSON.parse(localStorage.getItem(CLAVE_SESION) || 'null'); if (j && j.token && j.usuario) S.sesion = j; } catch (_) { S.sesion = null; } }
 function guardarSesion() { try { if (S.sesion) localStorage.setItem(CLAVE_SESION, JSON.stringify(S.sesion)); else localStorage.removeItem(CLAVE_SESION); } catch (_) { /* nada */ } }
-function fijarSesion(token, usuario) { S.sesion = { token, usuario }; guardarSesion(); if (usuario && usuario.idioma && usuario.idioma !== IDIOMA) fijarIdioma(usuario.idioma); }
+function fijarSesion(token, usuario) { S.sesion = { token, usuario }; guardarSesion(); if (usuario && usuario.idioma && usuario.idioma !== IDIOMA) fijarIdioma(usuario.idioma); arrancarPulso(); }
 function actualizarUsuario(u) { if (S.sesion && u) { S.sesion.usuario = u; guardarSesion(); } }
 function cerrarSesion(vencida) {
   const habia = !!S.sesion;
   S.sesion = null; S.saldos = []; S.abiertas = 0; S.metodos = null; guardarSesion();
-  detenerSondeos(); cerrarCapa();
+  detenerSondeos(); detenerPulso(); cerrarCapa();
   if (vencida && habia) aviso(t('auth.sesionVencida'), 'mal');
   if (VISTAS_PRIVADAS.includes(S.ruta.vista)) { S.despues = location.hash; ir('#/entrar'); } else render();
 }
@@ -254,6 +266,62 @@ function parsearRuta() {
 function ir(hash) { if (location.hash === hash) navegar(); else location.hash = hash; }
 function cada(fn, ms) { const id = setInterval(fn, ms); S.temporizadores.push(id); return id; }
 function detenerSondeos() { S.temporizadores.forEach(clearInterval); S.temporizadores = []; }
+/**
+ * El pulso de la cuenta.
+ *
+ * Dentro de una orden hay sondeo, pero quien publica un anuncio se pasa el día
+ * en el mercado o fuera de la app: sin esto no se entera de que alguien le
+ * abrió una orden con el reloj corriendo, ni de que le escribieron. Es un solo
+ * sondeo ligero cada 20 s, aparte de los de cada vista, que solo avisa de lo
+ * que cambió.
+ */
+function arrancarPulso() {
+  if (S.pulso) return;
+  S.pulso = setInterval(pulso, 20000);
+  setTimeout(pulso, 1500);
+}
+function detenerPulso() { if (S.pulso) { clearInterval(S.pulso); S.pulso = null; } S.ultimasAbiertas = null; tituloConPendientes(0); }
+async function pulso() {
+  if (!S.sesion || document.hidden) return;
+  const r = await api('GET', '/ordenes?estado=abiertas&porPagina=30');
+  if (!r.ok || !S.sesion) return;
+  const lista = r.datos.ordenes || [];
+  if (r.datos.abiertas !== undefined) S.abiertas = r.datos.abiertas;
+  const antes = S.ultimasAbiertas;
+  const ahora = new Map(lista.map(o => [o.id, { estado: o.estado, noLeidos: o.noLeidos || 0, rol: o.miRol }]));
+  S.ultimasAbiertas = ahora;
+  const sinLeer = lista.reduce((n, o) => n + (o.noLeidos || 0), 0);
+  tituloConPendientes(sinLeer);
+  $$('.contador').forEach(c => { c.textContent = S.abiertas; c.hidden = S.abiertas === 0; });
+  if (!antes) return; // la primera vuelta solo toma la foto
+  for (const [id, o] of ahora) {
+    const viejo = antes.get(id);
+    const enEsaOrden = S.ruta.vista === 'orden' && S.ruta.id === id;
+    if (!viejo) {
+      if (!enEsaOrden) avisoIr(t(o.rol === 'vendedor' ? 'pulso.ordenNueva' : 'pulso.ordenAbierta'), id);
+    } else if (viejo.estado !== o.estado) {
+      if (!enEsaOrden) avisoIr(t('pulso.cambioEstado', { estado: t('estado.' + o.estado) }), id);
+    } else if (o.noLeidos > viejo.noLeidos && !enEsaOrden) {
+      avisoIr(t('pulso.mensajeNuevo'), id);
+    }
+  }
+}
+/** Un aviso que, al tocarlo, lleva a la orden. */
+function avisoIr(texto, idOrden) {
+  const caja = $('#avisos'); if (!caja) return;
+  const el = document.createElement('button');
+  el.type = 'button';
+  el.className = 'aviso pulsa';
+  el.setAttribute('data-accion', 'ir-orden');
+  el.setAttribute('data-id', idOrden);
+  el.textContent = texto + ' →';
+  caja.appendChild(el);
+  setTimeout(() => { el.style.opacity = '0'; el.style.transition = 'opacity .3s'; setTimeout(() => el.remove(), 320); }, 9000);
+}
+function tituloConPendientes(n) {
+  const base = document.title.replace(/^\(\d+\)\s*/, '');
+  document.title = n > 0 ? `(${n}) ${base}` : base;
+}
 function navegar() {
   detenerSondeos(); cerrarCapa();
   const r = parsearRuta();
@@ -302,6 +370,7 @@ function pie() {
   return `<footer class="pie"><div class="pie-in">
     <div><span class="marca"><b>Orden</b><span>Exchange</span></span> · ${t('pie.ecosistema')}</div>
     <div>${t('pie.aviso')}</div>
+    <div class="pie-enlaces"><a href="#/ayuda">${IC.ayuda}${t('ayuda.titulo')}</a></div>
   </div></footer>`;
 }
 function vacioHTML(titulo, texto, boton) { return `<div class="vacio"><h3>${titulo}</h3>${texto ? `<p>${texto}</p>` : ''}${boton || ''}</div>`; }
@@ -422,12 +491,16 @@ function chipsMetodos(metodos, pais, max) {
   if ((metodos || []).length > (max || 4)) l.push(`<span class="chip">+${metodos.length - (max || 4)}</span>`);
   return `<div class="chips">${l.join('')}</div>`;
 }
-/** «+1,5 % sobre la referencia» se entiende; «Flotante 101,5 %» no. */
+/**
+ * «+1,5 %» en la lista, con la frase entera en el título: «Flotante 101,5 %»
+ * no lo entiende nadie, y la frase larga le comía el nombre al anunciante.
+ */
 function textoMargen(a) {
   if (a.tipoPrecio !== 'flotante' || !a.margen) return t('anuncios.fijo');
   const dif = a.margen - 100;
-  if (Math.abs(dif) < 0.05) return t('anuncios.enReferencia');
-  return t(dif > 0 ? 'anuncios.sobreRef' : 'anuncios.bajoRef', { pct: fmtNum(Math.abs(dif), 1) });
+  if (Math.abs(dif) < 0.05) return `<span title="${esc(t('anuncios.enReferencia'))}">${t('anuncios.enReferencia')}</span>`;
+  const largo = t(dif > 0 ? 'anuncios.sobreRef' : 'anuncios.bajoRef', { pct: fmtNum(Math.abs(dif), 1) });
+  return `<span title="${esc(largo)}">${dif > 0 ? '+' : '−'}${esc(fmtNum(Math.abs(dif), 1))} %<span class="ref-larga"> ${esc(t('anuncios.vsRef'))}</span></span>`;
 }
 function anuncioHTML(a, ctx) {
   const u = a.anunciante || {}; const rep = u.reputacion || {};
@@ -544,11 +617,17 @@ async function abrirHoja(id) {
     pintarHoja();
   }
 }
+function saldoDisponible(activo) {
+  const s = (S.saldos || []).find(x => x.activo === activo);
+  return s ? num(s.disponible) : 0;
+}
 function limitesHoja() {
   const a = S.hoja.anuncio; const precio = num(a.precio);
   const min = num(a.limiteMin);
-  const max = Math.min(num(a.limiteMax), num(a.cantidadDisponible) * precio);
-  return { min, max, precio };
+  let max = Math.min(num(a.limiteMax), num(a.cantidadDisponible) * precio);
+  // Al vender, el techo real es el saldo propio: proponer más es prometer lo que no hay.
+  if (!S.hoja.compra) max = Math.min(max, saldoDisponible(a.activo) * precio);
+  return { min, max: Math.max(0, max), precio };
 }
 function hojaHTML() {
   const h = S.hoja; const a = h.anuncio; const u = a.anunciante || {}; const usr = yo();
@@ -581,6 +660,7 @@ function hojaHTML() {
     <form data-form="hoja" novalidate>
       <div class="conversion">${h.compra ? campoFiat : campoActivo}<span class="flecha">${IC.cambio}</span>${h.compra ? campoActivo : campoFiat}</div>
       <div class="limites"><span data-accion="h-min" title="${t('com.limites')}">${t('hoja.limiteMin', { min: fmtFiat(min, a.moneda) })}</span><span data-accion="h-max" title="${t('com.limites')}">${t('hoja.limiteMax', { max: fmtFiat(max, a.moneda) })}</span></div>
+      ${!h.compra ? `<div class="pequeno mb12">${esc(t('hoja.tuSaldo', { saldo: fmtActivo(saldoDisponible(a.activo), a.activo) }))}${max < min ? ` · <a href="#/billetera" class="enlace" data-accion="cerrar-capa-ir">${t('hoja.saldoCorto')}</a>` : ''}</div>` : ''}
       <div id="h-error" class="error-campo mb12" hidden></div>
       ${metodosHTML}
       <div class="campo"><label>${t('hoja.terminos')}</label><div class="terminos">${a.terminos ? esc(a.terminos) : `<span class="gris">${t('hoja.sinTerminos')}</span>`}</div></div>
@@ -588,11 +668,11 @@ function hojaHTML() {
       ${noCumple ? notaHTML(esc(a.motivoNoCumple || t('hoja.noCumples')), 'roja', IC.alerta) : ''}
       ${noOpera ? notaHTML(`<b>${t('hoja.noOpera')}</b><br>${esc(usr.motivoNoOpera || t('err.no-verificado'))}<div class="mt8"><a href="#/perfil" class="btn btn-linea btn-chico" data-accion="cerrar-capa-ir">${t('hoja.irPerfil')}</a></div>`, 'roja', IC.alerta) : ''}
       ${notaHTML(esc(h.compra ? t('hoja.custodiaCompra', { activo: a.activo }) : t('hoja.custodiaVenta', { activo: a.activo })) + ' ' + esc(h.compra ? t('hoja.ventana', { n: a.ventanaPagoMin }) : t('hoja.ventanaVenta', { n: a.ventanaPagoMin })), 'gris', IC.candado)}
-      <button type="submit" class="btn btn-bloque ${h.compra ? 'btn-comprar' : 'btn-vender'}" id="h-ok" ${puede ? '' : 'disabled'}>${h.enviando ? t('hoja.abriendo') : (h.compra ? t('mercado.comprarBtn', { activo: a.activo }) : t('mercado.venderBtn', { activo: a.activo }))}</button>
+      <div class="hoja-pie"><button type="submit" class="btn btn-bloque ${h.compra ? 'btn-comprar' : 'btn-vender'}" id="h-ok" ${puede ? '' : 'disabled'}>${h.enviando ? t('hoja.abriendo') : (h.compra ? t('mercado.comprarBtn', { activo: a.activo }) : t('mercado.venderBtn', { activo: a.activo }))}</button></div>
     </form>
   </aside>`;
 }
-function pintarHoja() { const c = $('#capa'); if (!c || !S.hoja) return; c.innerHTML = hojaHTML(); document.body.style.overflow = 'hidden'; validarHoja(); }
+function pintarHoja() { const c = $('#capa'); if (!c || !S.hoja) return; const primera = !c.innerHTML; c.innerHTML = hojaHTML(); document.body.style.overflow = 'hidden'; validarHoja(); if (primera) { S.focoPrevio = document.activeElement; enfocarCapa(); } }
 function convertirHoja(desde, valor) {
   const h = S.hoja; const a = h.anuncio; const { precio } = limitesHoja();
   const decF = paisPorMoneda(a.moneda) && paisPorMoneda(a.moneda).moneda ? paisPorMoneda(a.moneda).moneda.decimales : 2;
@@ -771,6 +851,7 @@ function datosPagoHTML(o) {
 }
 function accionesOrdenHTML(o) {
   const a = o.acciones || {}; const l = [];
+  if (ABIERTOS.includes(o.estado)) l.push(`<a class="btn btn-fantasma" href="#/ayuda">${IC.ayuda}${t('ayuda.titulo')}</a>`);
   if (a.pagar) l.push(`<button type="button" class="btn btn-comprar" data-accion="orden-pagado">${t('orden.marcarPagado')}</button>`);
   if (a.liberar) l.push(`<button type="button" class="btn btn-comprar" data-accion="orden-liberar">${IC.candado}${t('orden.liberar', { activo: o.activo })}</button>`);
   if (a.calificar) l.push(`<button type="button" class="btn btn-oro" data-accion="orden-calificar">${t('orden.calificar')}</button>`);
@@ -875,7 +956,7 @@ function dialogoOrden(clave) {
     form: 'orden-liberar', ok: t('orden.liberar', { activo: o.activo }), clase: 'btn-comprar',
     cuerpo: `<label class="casilla-simple"><input type="checkbox" name="cotejado" required><span>${esc(o.contraparteNombreLegal ? t('orden.confirmoCobroNombre', { monto, nombre: o.contraparteNombreLegal }) : t('orden.confirmoCobro', { monto }))}</span></label>
       <div class="campo"><label for="d-pass">${t('com.contrasena')}</label><input id="d-pass" name="contrasena" type="password" class="entrada" autocomplete="current-password" required></div>` });
-  if (clave === 'apelar') abrirDialogo({ titulo: t('orden.apelarTitulo'), texto: t('orden.apelarDesc'), form: 'orden-apelar', ok: t('orden.apelar'), cuerpo: `<div class="campo"><label for="d-mot">${t('orden.motivo')}</label><select id="d-mot" name="motivo" class="entrada">${['no-recibi-pago', 'no-liberan', 'monto-incorrecto', 'otro'].filter(m => o.miRol === 'comprador' ? m !== 'no-recibi-pago' : m !== 'no-liberan').map(m => `<option value="${m}">${t('orden.motivoApelacion.' + m)}</option>`).join('')}</select></div><div class="campo"><label for="d-det">${t('com.detalle')}</label><textarea id="d-det" name="detalle" class="entrada" maxlength="1000" required placeholder="${t('orden.detallePh')}"></textarea></div>` });
+  if (clave === 'apelar') abrirDialogo({ titulo: t('orden.apelarTitulo'), texto: t('orden.apelarDesc') + ' ' + t('orden.apelarComo'), form: 'orden-apelar', ok: t('orden.apelar'), cuerpo: `<div class="campo"><label for="d-mot">${t('orden.motivo')}</label><select id="d-mot" name="motivo" class="entrada">${['no-recibi-pago', 'no-liberan', 'monto-incorrecto', 'otro'].filter(m => o.miRol === 'comprador' ? m !== 'no-recibi-pago' : m !== 'no-liberan').map(m => `<option value="${m}">${t('orden.motivoApelacion.' + m)}</option>`).join('')}</select></div><div class="campo"><label for="d-det">${t('com.detalle')}</label><textarea id="d-det" name="detalle" class="entrada" maxlength="1000" required placeholder="${t('orden.detallePh')}"></textarea></div>` });
   if (clave === 'retirar') abrirDialogo({ titulo: t('orden.retirarApelacionTitulo'), texto: t('orden.retirarApelacionDesc'), form: 'orden-retirar-apelacion', ok: t('orden.retirarApelacion') });
   if (clave === 'calificar') abrirDialogo({ titulo: esc(t('orden.calificarTitulo', { apodo: cp.apodo || '' })), texto: t('orden.calificarDesc'), form: 'orden-calificar', ok: t('orden.calificar'), cuerpo: `<div class="calif mb12"><button type="button" class="pos activa" data-accion="calif-tipo" data-v="positiva">${IC.bien}${t('orden.positiva')}</button><button type="button" class="neg" data-accion="calif-tipo" data-v="negativa">${IC.mal}${t('orden.negativa')}</button></div><input type="hidden" name="tipo" value="positiva"><div class="campo"><label for="d-com">${t('orden.comentario')}</label><textarea id="d-com" name="comentario" class="entrada" maxlength="300" placeholder="${t('orden.comentarioPh')}"></textarea></div>` });
 }
@@ -1330,7 +1411,14 @@ const vistaPerfil = {
   html() {
     const u = yo(); if (!u) return '';
     const p = paisDe(u.pais);
-    const estadoOp = u.congelado ? notaHTML(esc(t('perfil.congelado', { motivo: u.motivoCongelado || '' })), 'roja', IC.alerta) : (u.puedeOperar === false ? notaHTML(esc(t('perfil.noOpera', { motivo: u.motivoNoOpera || '' })), 'roja', IC.alerta) : notaHTML(t('perfil.opera'), 'verde', IC.check));
+    // Un solo estado: congelada, o lo que falta para operar, o que ya se puede.
+    // Si lo que falta es confirmar el correo, lo dice la tarjeta del correo y aquí no se repite en rojo.
+    const faltaCorreo = u.emailVerificado === false;
+    const estadoOp = u.congelado
+      ? notaHTML(esc(t('perfil.congelado', { motivo: u.motivoCongelado || '' })), 'roja', IC.alerta)
+      : (faltaCorreo
+        ? notaHTML(`<b>${t('perfil.bienvenida', { apodo: u.apodo })}</b><br>${t('perfil.primerPaso')}`, '', IC.info)
+        : (u.puedeOperar === false ? notaHTML(esc(t('perfil.noOpera', { motivo: u.motivoNoOpera || '' })), 'roja', IC.alerta) : notaHTML(t('perfil.opera'), 'verde', IC.check)));
     return `<div class="perfil-cab"><span class="avatar grande">${esc(inicial(u.apodo))}</span><div class="cuerpo"><h1>${esc(u.apodo)}${insigniasHTML(u)}</h1><p>${esc(u.email)} · ${esc(bandera(u.pais))} ${esc(nombrePais(p))} · ${esc(t('perfil.registrado', { n: u.registradoHaceDias || 0 }))}</p></div></div>
     ${estadoOp}
     ${correoHTML(u)}
@@ -1555,6 +1643,7 @@ const ACC = {
   'm-activo': el => { S.mercado.activo = el.dataset.v; cambioFiltro(true); },
   'm-mas': () => { S.mercado.pagina += 1; cargarMercado(true); },
   'ir-chat': () => { const c = $('#chat-col'); if (c) c.scrollIntoView({ behavior: 'smooth', block: 'start' }); const e = $('#chat-texto'); if (e) setTimeout(() => e.focus(), 400); },
+  'ir-orden': el => ir('#/orden/' + el.dataset.id),
   'm-refrescar': () => { if (!S.mercado.cargando) { cargarMercado(); cargarPrecios(monedaMercado()).then(() => { const p = $('#pizarra'); if (p && S.ruta.vista === 'mercado') p.outerHTML = pizarraHTML(monedaMercado()); }); } },
   'abrir-hoja': el => abrirHoja(el.dataset.id),
   'h-max': () => { const { max } = limitesHoja(); const i = $('#h-fiat'); if (i) { i.value = fijo(max, 2); convertirHoja('fiat', i.value); } },
@@ -1719,7 +1808,32 @@ document.addEventListener('keydown', ev => { if (ev.key === 'Escape' && $('#capa
 // ═══════════════════════════════════════════════════════════════════════════
 // 19 · Render y arranque
 // ═══════════════════════════════════════════════════════════════════════════
-const VISTAS = { mercado: vistaMercado, orden: vistaOrden, ordenes: vistaOrdenes, anuncios: vistaAnuncios, billetera: vistaBilletera, pagos: vistaPagos, perfil: vistaPerfil, agente: vistaAgente, usuario: vistaUsuario, entrar: vistaAuth, registro: vistaAuth };
+/** Las preguntas que de verdad se hace quien entra por primera vez. */
+const AYUDA = [
+  ['seguro', 'custodia'], ['comoCompro', 'flujo'], ['comoVendo', 'flujo'], ['noLibera', 'problemas'],
+  ['noLlego', 'problemas'], ['vencio', 'problemas'], ['apelar', 'problemas'], ['queEsOrigen', 'activo'],
+  ['porQueKyc', 'cuenta'], ['comision', 'cuenta'], ['agente', 'cuenta'], ['deposito', 'billetera'],
+  ['retiro', 'billetera'], ['tercero', 'seguridad'], ['fuera', 'seguridad'],
+];
+const vistaAyuda = {
+  clase: 'medio',
+  html() {
+    const abierta = S.v.abierta || '';
+    const grupos = [];
+    for (const [clave, grupo] of AYUDA) {
+      let g = grupos.find(x => x.grupo === grupo);
+      if (!g) { g = { grupo, items: [] }; grupos.push(g); }
+      g.items.push(clave);
+    }
+    return `<div class="titulo-vista"><div><h1>${t('ayuda.titulo')}</h1><p>${t('ayuda.sub')}</p></div></div>
+      ${grupos.map(g => `<div class="tarjeta"><div class="tarjeta-cabeza"><h2>${t('ayuda.grupo.' + g.grupo)}</h2></div>
+        <div class="faq">${g.items.map(k => `<details ${abierta === k ? 'open' : ''}><summary>${t('ayuda.' + k + '.p')}</summary><div>${t('ayuda.' + k + '.r')}</div></details>`).join('')}</div></div>`).join('')}
+      <div class="tarjeta"><div class="tarjeta-cabeza"><h2>${t('ayuda.contacto')}</h2></div>
+        <p class="sub">${t('ayuda.contactoDesc')}</p>
+        <div class="acciones mt12"><a class="btn btn-linea" href="mailto:soporte@ordenglobal.link">${t('ayuda.escribir')}</a><a class="btn btn-fantasma" href="#/ordenes">${t('ayuda.misOrdenes')}</a></div></div>`;
+  },
+};
+const VISTAS = { ayuda: vistaAyuda, mercado: vistaMercado, orden: vistaOrden, ordenes: vistaOrdenes, anuncios: vistaAnuncios, billetera: vistaBilletera, pagos: vistaPagos, perfil: vistaPerfil, agente: vistaAgente, usuario: vistaUsuario, entrar: vistaAuth, registro: vistaAuth };
 function render() {
   const app = $('#app'); if (!app) return;
   const vista = VISTAS[S.ruta.vista] || vistaMercado;
@@ -1737,6 +1851,7 @@ async function arrancar() {
   const sso = params.get('sso');
   if (!location.hash) history.replaceState(null, '', location.pathname + '#/mercado');
   S.ruta = parsearRuta(); render();
+  if (S.sesion) arrancarPulso();
   const [cat] = await Promise.all([api('GET', '/mercado/catalogo'), S.sesion ? refrescarYo() : Promise.resolve()]);
   if (cat.ok) { S.catalogo = cat.datos; S.errorCatalogo = false; } else S.errorCatalogo = true;
   elegirPaisInicial();

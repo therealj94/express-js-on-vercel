@@ -750,8 +750,8 @@ svg.ic{width:1em;height:1em;stroke:currentColor;fill:none;stroke-width:2;stroke-
 .pz-item:nth-child(2) .valor{animation-delay:120ms}.pz-item:nth-child(3) .valor{animation-delay:240ms}
 .pz-item .sim i{animation:punto-vivo 2.8s ease-in-out infinite}
 .portada-cab{position:relative}
-.portada-cab::before{content:"";position:absolute;left:-40px;top:-60px;width:520px;height:260px;pointer-events:none;z-index:-1;
-  background:radial-gradient(60% 70% at 25% 20%,rgba(217,180,95,.13),transparent 70%)}
+.portada-cab::before{content:"";position:absolute;left:0;right:0;top:-60px;height:260px;max-width:100%;pointer-events:none;z-index:-1;
+  background:radial-gradient(420px 220px at 18% 30%,rgba(217,180,95,.13),transparent 70%)}
 @media (max-width:899px){
   /* En el teléfono los tres precios no caben en fila: cada uno es un renglón entero, como un tablero de cotizaciones. */
   .pz-items{grid-template-columns:1fr;gap:0}
@@ -856,4 +856,76 @@ svg.ic{width:1em;height:1em;stroke:currentColor;fill:none;stroke-width:2;stroke-
     font-weight:700;font-size:14px;box-shadow:var(--sombra);animation:emerger .28s var(--suave)}
   .chat-flotante svg{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
   .chat-flotante .contador{margin-left:0}
+}
+
+
+/* ══ Nada puede empujar el ancho de la página ══ */
+html,body{max-width:100%;overflow-x:hidden}
+.contenido{min-width:0}
+.demo-usuarios,.demo-usuario{max-width:100%;min-width:0}
+.demo-usuario .cuerpo{min-width:0;overflow:hidden}
+.demo-usuario b,.demo-usuario small{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.portada-cab h1{overflow-wrap:break-word}
+
+/* En el teléfono, el botón de la hoja siempre visible al pie. */
+@media (max-width:899px){
+  .hoja form{padding-bottom:4px}
+  /* El pie de la hoja es opaco: el texto pasa por debajo sin leerse encima del botón. */
+  .hoja .hoja-pie{position:sticky;bottom:0;z-index:5;margin:14px -18px -4px;padding:12px 18px calc(4px + env(safe-area-inset-bottom,0px));
+    background:var(--panel);border-top:1px solid var(--linea)}
+  .hoja{padding-bottom:max(14px,env(safe-area-inset-bottom,0px))}
+
+  /* El mercado es lo que se viene a ver: el titular no se come la pantalla. */
+  .portada-cab{margin:2px 0 12px}
+  .portada-cab h1{font-size:22px;max-width:24ch}
+  .portada-cab p{display:none}
+  .pizarra{padding:10px 13px 9px;margin-bottom:12px}
+  .pz-cab{margin-bottom:6px}
+  .pz-item:not(.metales-esc){padding:5px 0}
+  .pz-item .valor{font-size:18px}
+  .pz-pie{margin-top:7px;padding-top:7px;font-size:11px}
+  .filtros{gap:8px;margin-bottom:10px}
+}
+
+/* Un aviso que lleva a la orden se toca. */
+.aviso.pulsa{cursor:pointer;text-align:left;font:inherit;font-weight:500;border-color:var(--oro);width:100%}
+.aviso.pulsa:hover{background:var(--panel2)}
+
+
+/* ══ Ayuda ══ */
+.faq details{border-bottom:1px solid var(--linea)}
+.faq details:last-child{border-bottom:0}
+.faq summary{list-style:none;cursor:pointer;padding:12px 28px 12px 0;font-weight:600;font-size:14.5px;position:relative;color:var(--marfil)}
+.faq summary::-webkit-details-marker{display:none}
+.faq summary::after{content:"";position:absolute;right:6px;top:50%;width:8px;height:8px;margin-top:-5px;border-right:2px solid var(--humo);border-bottom:2px solid var(--humo);transform:rotate(45deg);transition:transform var(--d2) var(--suave)}
+.faq details[open] summary{color:var(--oro)}
+.faq details[open] summary::after{transform:rotate(-135deg);border-color:var(--oro)}
+.faq summary:hover{color:var(--oro-claro)}
+.faq details>div{padding:0 0 14px;font-size:14px;line-height:1.55;color:var(--ceniza);animation:subir-suave .3s var(--suave) both}
+.faq details>div b{color:var(--marfil)}
+.pie-enlaces{display:flex;gap:14px}
+.pie-enlaces a{display:inline-flex;align-items:center;gap:6px;color:var(--ceniza);font-weight:600}
+.pie-enlaces a:hover{color:var(--oro)}
+.pie-enlaces svg{width:15px;height:15px;stroke:currentColor;fill:none;stroke-width:1.8}
+
+/* El precio no puede comerse el nombre del anunciante en el teléfono. */
+@media (max-width:899px){
+  .anuncio{grid-template-columns:minmax(0,1fr) minmax(0,42%)}
+  .a-precio .valor{font-size:19px}
+  .a-precio .flot{white-space:normal;line-height:1.25}
+  .a-quien .nombre a{max-width:100%}
+}
+.hoja-pie{margin-top:14px}
+
+.a-precio .flot .ref-larga{color:var(--humo)}
+@media (max-width:899px){
+  .anuncio{grid-template-columns:minmax(0,1fr) minmax(0,34%)}
+  .a-precio .flot .ref-larga{display:none}
+}
+
+@media (max-width:899px){
+  /* Antes que cortar el apodo, que baje a dos líneas. */
+  .a-quien .nombre{flex-wrap:wrap;row-gap:2px}
+  .a-quien .nombre a{white-space:normal;overflow:visible;text-overflow:clip;overflow-wrap:anywhere;line-height:1.2}
+  .a-quien .avatar{width:32px;height:32px;font-size:13px}
 }
