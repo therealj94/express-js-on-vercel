@@ -72,6 +72,7 @@
 <link rel="stylesheet" href="assets/fonts/tipografias.css?v=915c224eb7">
 
 <style>
+
 /* ═══════════════════════════════════════════════════════════════════════════
    Veta Wallet · web
 
@@ -973,7 +974,16 @@ button:not(:disabled):active,[role=button]:active,summary:active,
   box-shadow:0 30px 80px -40px rgba(0,0,0,.9)}
 
 /* ── acceso: el formulario a un lado, la promesa al otro ─────────────────── */
-#acceso{position:relative;z-index:2;min-height:100svh;display:grid;align-items:center;
+/* LA PANTALLA DE ENTRADA SE DESPLAZA SOLA.
+   Esta pagina no lleva <!DOCTYPE html>, asi que el navegador la dibuja en modo
+   quirks: ahi el que se desplaza es el CUERPO, y el gesto del dedo va al
+   documento, que no tiene nada que desplazar. La rueda del raton si funciona
+   —apunta al elemento de debajo—, por eso en escritorio no se veia y en el
+   telefono la gente se quedaba sin poder llegar al boton de entrar.
+   Arreglar el modo del documento toca TODA la app y necesita su propia
+   revision; esto arregla la entrada ya: se le da a #acceso su propio
+   contenedor desplazable, que el dedo si mueve. */
+#acceso{position:relative;z-index:2;min-height:100svh;max-height:100svh;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;display:grid;align-items:center;
   grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:clamp(24px,5vw,70px);
   padding:clamp(86px,13vh,110px) clamp(20px,5vw,64px) 48px}
 .acc-lado{max-width:430px;justify-self:end}
@@ -4123,6 +4133,19 @@ body.en-ventana .lienzo::before{
 .gid-late{animation:gidLate 1.5s ease-in-out infinite}
 @keyframes gidLate{50%{transform:scale(.94);opacity:.7}}
 @media (prefers-reduced-motion:reduce){.gid-late{animation:none}}
+
+/* PANTALLAS CORTAS: primero entrar, despues el espectaculo.
+   Con 640-700 px de alto —iPhone SE, Android de gama media, o cualquier
+   telefono con el teclado abierto— el orbe de AU-RA y su titular empujaban el
+   boton de entrar fuera de la vista. Aqui se encogen: siguen estando, dejan de
+   estorbar. */
+@media (max-height: 720px){
+  #acceso{padding-top:64px;padding-bottom:28px;gap:16px}
+  .ag-orbe{width:104px;height:104px;margin:4px 0 0}
+  .acc-lado h2{font-size:clamp(22px,5.4vw,28px);margin-bottom:6px}
+  .ag-voz{display:none}
+  .acc{padding:20px}
+}
 </style>
 
 <!-- El velo de apertura. El texto de respaldo es el español plano: si el
