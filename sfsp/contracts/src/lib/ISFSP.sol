@@ -17,16 +17,25 @@ interface ISFSPAssetRegistry {
 }
 
 interface ISFSPIdentityAdapter {
-    function subjectRefOf(address account) external view returns (bytes32);
-    function hasValidClaim(bytes32 subjectRef, bytes32 purpose) external view returns (bool);
-    function claimStatus(bytes32 subjectRef, bytes32 purpose)
+    /// @dev H16 · `subjectRefOf(address)` se RETIRÓ. Devolvía la referencia
+    ///      global del sujeto y con ella dos direcciones cualesquiera se
+    ///      comparaban para saber si eran de la misma persona. Lo que queda son
+    ///      preguntas que se responden con booleanos, y una comprobación que
+    ///      RECIBE el compromiso en vez de devolverlo.
+    function purposeStatus(address account, bytes32 purpose)
+        external
+        view
+        returns (bool bound, bool blocked, bool claimKnown, bool claimValid);
+    function isCommitmentBound(address account, bytes32 purpose, bytes32 commitment) external view returns (bool);
+    function hasValidClaim(bytes32 subjectCommitment, bytes32 purpose) external view returns (bool);
+    function claimStatus(bytes32 subjectCommitment, bytes32 purpose)
         external
         view
         returns (bool known, bool valid, uint64 validUntil);
 }
 
 interface ISFSPEligibilityEngine {
-    function evaluate(bytes32 subject, bytes32 assetId, bytes32 action, bytes32 context)
+    function evaluate(address account, bytes32 assetId, bytes32 action, bytes32 context)
         external
         view
         returns (uint8 result, bytes32 reasonCode, uint32 policyVersion);
@@ -35,7 +44,7 @@ interface ISFSPEligibilityEngine {
     ///      dos viajaban en la misma palabra `bytes32(amount)`, así que dos
     ///      operaciones distintas del mismo monto compartían autorización.
     function evaluateOperation(
-        bytes32 subject,
+        address account,
         bytes32 assetId,
         bytes32 action,
         uint256 amount,
@@ -48,8 +57,6 @@ interface ISFSPGovernanceController {
     function pauseReason() external view returns (bytes32 reasonCode, uint64 expiresAt);
     function quorumThreshold() external view returns (uint256);
     function isSigner(address account) external view returns (bool);
-    function isActionApproved(bytes32 operationId) external view returns (bool);
-    function consumeApprovedAction(bytes32 operationId) external returns (bool);
     /// @dev H01/H06 · aprobación ligada al contenido: lo aprobado es el digest
     ///      del §12.1, no un identificador elegido por el llamador.
     function isAuthorizationApproved(bytes32 digest) external view returns (bool);

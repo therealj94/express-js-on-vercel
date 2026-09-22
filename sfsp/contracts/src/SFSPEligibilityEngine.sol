@@ -4,6 +4,7 @@ pragma solidity 0.8.28;
 import {SFSPAccessControl} from "./lib/SFSPAccessControl.sol";
 import {SFSPCodes} from "./lib/SFSPCodes.sol";
 import {SFSPTypes} from "./lib/SFSPTypes.sol";
+import {SFSPAuthorization} from "./lib/SFSPAuthorization.sol";
 import {ISFSPAssetRegistry, ISFSPIdentityAdapter, ISFSPGovernanceController} from "./lib/ISFSP.sol";
 
 /// @title Motor de elegibilidad.
@@ -21,6 +22,18 @@ contract SFSPEligibilityEngine is SFSPAccessControl {
     bytes32 public constant ACTION_REDEEM = bytes32("REDEEM");
     bytes32 public constant ACTION_MIGRATION_CLAIM = bytes32("MIGRATION_CLAIM");
 
+    /// @dev H16 · propósito BASE. Con la referencia global del sujeto fuera de la
+    ///      cadena, «sujeto conocido» deja de poder preguntarse en abstracto: una
+    ///      dirección se conoce DENTRO de un propósito o no se conoce. Cuando la
+    ///      política no exige ningún claim, el alcance que se comprueba es éste:
+    ///      una dirección sin alta en BASE es fuente desconocida, no denegada.
+    bytes32 public constant PURPOSE_BASE = bytes32("BASE");
+
+    /// @dev §12.5 · alcance canónico de SET_POLICY sobre el motor. Va en
+    ///      `evidenceRoot` junto con la acción y el contenido de la política; el
+    ///      `assetId` del payload es el activo afectado de verdad.
+    bytes32 public constant POLICY_SCOPE = bytes32("SFSP:GOV:ELIGIBILITY_POLICY");
+
     struct Policy {
         bool configured;             // false => BLOCKED_DECISION; no hay default
         bool actionAllowed;          // false => DENY_POLICY
@@ -35,7 +48,15 @@ contract SFSPEligibilityEngine is SFSPAccessControl {
 
     event PolicyConfigured(bytes32 indexed assetId, bytes32 indexed action, uint32 version);
     event JurisdictionAllowed(bytes32 indexed assetId, bytes32 indexed jurisdiction, bool allowed);
-    event SubjectBlocked(bytes32 indexed subjectRef, bytes32 reasonCode, bool blocked);
+    /// @dev H16 · la lista de bloqueo se mudó al adaptador de identidad y pasó a
+    ///      estar indexada por (propósito, compromiso). Aquí ya no hay ninguna
+    ///      referencia de sujeto con la que indexarla, y ése es el punto.
+    event PolicyAuthorizationConsumed(bytes32 indexed assetId, bytes32 indexed action, bytes32 digest);
+
+    error PolicyNotAuthorized(bytes32 digest);
+    error AuthorizationActionMismatch(bytes32 expected, bytes32 got);
+    error PolicyVersionMismatch(uint32 expected, uint32 got);
+    error PolicyContentMismatch(bytes32 expected, bytes32 got);
 
     ISFSPAssetRegistry public immutable registry;
     ISFSPIdentityAdapter public immutable identity;
@@ -43,7 +64,6 @@ contract SFSPEligibilityEngine is SFSPAccessControl {
 
     mapping(bytes32 => Policy) private _policies;                 // key(assetId,action)
     mapping(bytes32 => mapping(bytes32 => bool)) private _jurisdictionAllowed;
-    mapping(bytes32 => bool) private _blockedSubject;             // lista de bloqueo por expediente
     mapping(bytes32 => bool) private _authorizedContext;          // (assetId,action,context) autorizado
 
     constructor(address board, address registry_, address identity_, address governance_)
@@ -61,12 +81,79 @@ contract SFSPEligibilityEngine is SFSPAccessControl {
 
     // ------------------------------------------------------------- configuración
 
-    function setPolicy(bytes32 assetId, bytes32 action, Policy calldata p) external onlyRole(TECH_OPS) {
+    /// @notice Fija la política de (activo, acción) con DOBLE CONTROL.
+    /// @dev P03/§12.5 · fila `SET_POLICY`. Hasta este lote bastaba el rol
+    ///      TECH_OPS: una sola cuenta podía abrir una acción prohibida, subir un
+    ///      límite o quitar el claim exigido, y todas las rutas de dinero pasan
+    ///      por aquí. Ahora el ejecutor recalcula el digest del §12.1 desde sus
+    ///      argumentos REALES y lo consume:
+    ///        · `assetId`        el activo afectado;
+    ///        · `amount`         la versión ANTERIOR de esa política;
+    ///        · `amountSecondary` la versión NUEVA, que es la anterior más uno;
+    ///        · `evidenceRoot`   keccak256(POLICY_SCOPE, acción, política), es
+    ///          decir el contenido exacto que se va a escribir.
+    ///      Cambiar un solo campo de `p`, o apuntar a otra acción, cambia el
+    ///      `evidenceRoot`, cambia el digest y la aprobación deja de servir. El
+    ///      rol TECH_OPS se conserva para EJECUTAR: es separación de funciones,
+    ///      no autorización.
+    /// @param policyAction acción de la política (`MINT`, `TRANSFER_OUT`, ...).
+    ///        Va aparte del `action` del payload, que vale siempre `SET_POLICY`.
+    function setPolicy(
+        bytes32 assetId,
+        bytes32 policyAction,
+        Policy calldata p,
+        SFSPAuthorization.Payload calldata auth,
+        bytes32 approvedDigest
+    ) external onlyRole(TECH_OPS) {
+        if (auth.action != bytes32("SET_POLICY")) {
+            revert AuthorizationActionMismatch(bytes32("SET_POLICY"), auth.action);
+        }
+        if (auth.assetId != assetId) revert AuthorizationActionMismatch(assetId, auth.assetId);
+
+        uint32 previous = _policies[_key(assetId, policyAction)].version;
+        uint32 next = previous + 1;
+        // Versión anterior y nueva, las dos dentro del digest (§12.5). Con las dos
+        // comprometidas, una aprobación no se puede aplicar sobre un estado
+        // distinto del que vieron los aprobadores.
+        if (auth.amount != previous) revert PolicyVersionMismatch(previous, uint32(auth.amount));
+        if (auth.amountSecondary != next) revert PolicyVersionMismatch(next, uint32(auth.amountSecondary));
+
+        bytes32 contenido = policyDigest(policyAction, p);
+        if (auth.evidenceRoot != contenido) revert PolicyContentMismatch(contenido, auth.evidenceRoot);
+
+        if (!governance.isAuthorizationApproved(approvedDigest)) revert PolicyNotAuthorized(approvedDigest);
+        SFSPAuthorization.Payload memory m = auth;
+        SFSPAuthorization.authorize(m, approvedDigest);
+        governance.consumeAuthorization(approvedDigest);
+
         Policy memory stored = p;
         stored.configured = true;
-        stored.version = _policies[_key(assetId, action)].version + 1;
-        _policies[_key(assetId, action)] = stored;
-        emit PolicyConfigured(assetId, action, stored.version);
+        stored.version = next;
+        _policies[_key(assetId, policyAction)] = stored;
+        emit PolicyConfigured(assetId, policyAction, next);
+        emit PolicyAuthorizationConsumed(assetId, policyAction, approvedDigest);
+    }
+
+    /// @notice Compromiso del CONTENIDO de una política, campo a campo.
+    /// @dev `pure` y pública para que el aprobador calcule exactamente lo mismo
+    ///      que recalculará el ejecutor. Se usa `abi.encode` y no
+    ///      `encodePacked` por la misma razón del §12.1: con posición fija por
+    ///      campo, dos políticas distintas no se pueden reagrupar en la misma
+    ///      cadena de bytes.
+    function policyDigest(bytes32 policyAction, Policy calldata p) public pure returns (bytes32) {
+        return keccak256(
+            abi.encode(
+                POLICY_SCOPE,
+                policyAction,
+                p.actionAllowed,
+                p.requiresHumanReview,
+                p.requiresAuthorization,
+                p.requiresDecimalsKnown,
+                p.jurisdictionAllowlist,
+                p.requiredPurpose,
+                p.maxAmount
+            )
+        );
     }
 
     function policyOf(bytes32 assetId, bytes32 action) external view returns (Policy memory) {
@@ -81,12 +168,6 @@ contract SFSPEligibilityEngine is SFSPAccessControl {
         emit JurisdictionAllowed(assetId, jurisdiction, allowed);
     }
 
-    function setSubjectBlocked(bytes32 subjectRef, bool blocked, bytes32 reasonCode) external onlyRole(TECH_OPS) {
-        require(reasonCode != bytes32(0), "SFSP: motivo requerido");
-        _blockedSubject[subjectRef] = blocked;
-        emit SubjectBlocked(subjectRef, reasonCode, blocked);
-    }
-
     /// @dev Contexto autorizado: el hash de una operación concreta que ya pasó
     ///      por gobierno. Sin él, una política que exija autorización deniega.
     function setContextAuthorized(bytes32 assetId, bytes32 action, bytes32 context, bool ok)
@@ -99,7 +180,10 @@ contract SFSPEligibilityEngine is SFSPAccessControl {
     // ------------------------------------------------------------- evaluación
 
     /// @notice VIEW. No escribe, no emite eventos, no consume gas de estado.
-    /// @param subject referencia opaca del sujeto (nunca un dato personal)
+    /// @param account dirección evaluada. H16 · el motor ya NO recibe una
+    ///        referencia de sujeto: la resolución por propósito ocurre dentro del
+    ///        adaptador de identidad y aquí sólo entra la dirección que va a
+    ///        operar, que es un dato público de todas formas.
     /// @param context compatibilidad: una sola palabra que hacía de monto Y de
     ///        contexto de autorización a la vez.
     /// @dev H06 · CAMINO HEREDADO. Se conserva porque hay lecturas de interfaz que
@@ -107,12 +191,12 @@ contract SFSPEligibilityEngine is SFSPAccessControl {
     ///      sola palabra, `maxAmount` y el contexto autorizado son el mismo valor,
     ///      de forma que dos operaciones distintas del mismo monto comparten
     ///      autorización. Las rutas de dinero usan `evaluateOperation`.
-    function evaluate(bytes32 subject, bytes32 assetId, bytes32 action, bytes32 context)
+    function evaluate(address account, bytes32 assetId, bytes32 action, bytes32 context)
         external
         view
         returns (uint8 result, bytes32 reasonCode, uint32 policyVersion)
     {
-        return _evaluate(subject, assetId, action, uint256(context), context);
+        return _evaluate(account, assetId, action, uint256(context), context);
     }
 
     /// @notice Evaluación con el monto y el contexto de autorización SEPARADOS.
@@ -121,16 +205,16 @@ contract SFSPEligibilityEngine is SFSPAccessControl {
     ///        completo. `0` significa «sin autorización de gobierno presentada»:
     ///        una política que exija autorización deniega, no pasa.
     function evaluateOperation(
-        bytes32 subject,
+        address account,
         bytes32 assetId,
         bytes32 action,
         uint256 amount,
         bytes32 authorizationDigest
     ) external view returns (uint8 result, bytes32 reasonCode, uint32 policyVersion) {
-        return _evaluate(subject, assetId, action, amount, authorizationDigest);
+        return _evaluate(account, assetId, action, amount, authorizationDigest);
     }
 
-    function _evaluate(bytes32 subject, bytes32 assetId, bytes32 action, uint256 amount, bytes32 authContext)
+    function _evaluate(address account, bytes32 assetId, bytes32 action, uint256 amount, bytes32 authContext)
         internal
         view
         returns (uint8 result, bytes32 reasonCode, uint32 policyVersion)
@@ -163,20 +247,14 @@ contract SFSPEligibilityEngine is SFSPAccessControl {
             if (!known) return (SFSPCodes.UNKNOWN_SOURCE, SFSPCodes.R_DECIMALS_UNKNOWN, policyVersion);
         }
 
-        // 7. Sujeto: sin referencia opaca no hay sujeto legible.
-        if (subject == bytes32(0)) {
-            return (SFSPCodes.UNKNOWN_SOURCE, SFSPCodes.R_SUBJECT_UNKNOWN, policyVersion);
-        }
-        if (_blockedSubject[subject]) {
-            return (SFSPCodes.DENY_ELIGIBILITY, bytes32("SUBJECT_BLOCKED"), policyVersion);
-        }
-
-        // 8. Claim de identidad por propósito: "no consta" no equivale a "no cumple".
-        if (p.requiredPurpose != bytes32(0)) {
-            (bool known, bool valid,) = identity.claimStatus(subject, p.requiredPurpose);
-            if (!known) return (SFSPCodes.UNKNOWN_SOURCE, SFSPCodes.R_CLAIM_MISSING, policyVersion);
-            if (!valid) return (SFSPCodes.DENY_ELIGIBILITY, SFSPCodes.R_CLAIM_MISSING, policyVersion);
-        }
+        // 7 y 8. Sujeto y claim, SIEMPRE dentro de un propósito (H16). El motor
+        //     ya no recibe ni pide la referencia global del sujeto: le pregunta
+        //     al adaptador por (dirección, propósito) y recibe booleanos. El
+        //     propósito es el que la política exige; si no exige ninguno, el
+        //     alcance es `PURPOSE_BASE`, que es lo mínimo para que una dirección
+        //     cuente como sujeto conocido.
+        (uint8 subjCode, bytes32 subjReason) = _subjectCheck(account, p.requiredPurpose);
+        if (subjCode != SFSPCodes.ALLOW) return (subjCode, subjReason, policyVersion);
 
         // 9. Jurisdicción: si el pasaporte no la tiene, no se adivina.
         if (p.jurisdictionAllowlist) {
@@ -207,6 +285,29 @@ contract SFSPEligibilityEngine is SFSPAccessControl {
         if (p.requiresHumanReview) return (SFSPCodes.REVIEW_REQUIRED, SFSPCodes.R_REVIEW, policyVersion);
 
         return (SFSPCodes.ALLOW, SFSPCodes.R_OK, policyVersion);
+    }
+
+    /// @dev H16 · sujeto y claim, SIEMPRE dentro de un propósito. Va en función
+    ///      aparte por dos razones: el marco de pila de `_evaluate` no admite
+    ///      cuatro booleanos más en el EVM de Paris, y así la comprobación de
+    ///      identidad se lee entera de una vez.
+    ///      "No consta" no equivale a "no cumple": el primero es fuente
+    ///      desconocida, el segundo es una denegación de elegibilidad.
+    function _subjectCheck(address account, bytes32 requiredPurpose)
+        internal
+        view
+        returns (uint8 code, bytes32 reason)
+    {
+        if (account == address(0)) return (SFSPCodes.UNKNOWN_SOURCE, SFSPCodes.R_SUBJECT_UNKNOWN);
+        bytes32 alcance = requiredPurpose != bytes32(0) ? requiredPurpose : PURPOSE_BASE;
+        (bool bound, bool blocked, bool claimKnown, bool claimValid) = identity.purposeStatus(account, alcance);
+        if (!bound) return (SFSPCodes.UNKNOWN_SOURCE, SFSPCodes.R_SUBJECT_UNKNOWN);
+        if (blocked) return (SFSPCodes.DENY_ELIGIBILITY, bytes32("SUBJECT_BLOCKED"));
+        if (requiredPurpose != bytes32(0)) {
+            if (!claimKnown) return (SFSPCodes.UNKNOWN_SOURCE, SFSPCodes.R_CLAIM_MISSING);
+            if (!claimValid) return (SFSPCodes.DENY_ELIGIBILITY, SFSPCodes.R_CLAIM_MISSING);
+        }
+        return (SFSPCodes.ALLOW, SFSPCodes.R_OK);
     }
 
     /// @dev Los ejes se leen por separado. DELISTED no toca saldos ni visibilidad,

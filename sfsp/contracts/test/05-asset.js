@@ -31,11 +31,7 @@ describe("SFSPRegulatedAsset · restricciones impuestas de verdad", function () 
 
   it("negativo: una transferencia restringida se bloquea de verdad", async function () {
     // La política de entrada exige un claim que el destinatario no tiene.
-    await f.engine.send(
-      "setPolicy",
-      [f.ASSET_NEW, H.b32("TRANSFER_IN"), F.policy({ requiredPurpose: H.b32("KYC") })],
-      f.board
-    );
+    await F.fijarPolitica(f, f.ASSET_NEW, H.b32("TRANSFER_IN"), F.policy({ requiredPurpose: H.b32("KYC") }), "t05a");
     const check = await f.assetNew.call("checkTransfer", [f.alice, f.bob, 100]);
     assert.equal(Number(check[0]), F.CODE.UNKNOWN_SOURCE);
     await H.expectRevert(f.assetNew.send("transferUnits", [f.bob, 100], f.alice), "TransferRejected");
@@ -43,11 +39,7 @@ describe("SFSPRegulatedAsset · restricciones impuestas de verdad", function () 
   });
 
   it("negativo: el adaptador ERC-20 no elude las reglas (ni transfer ni transferFrom)", async function () {
-    await f.engine.send(
-      "setPolicy",
-      [f.ASSET_NEW, H.b32("TRANSFER_IN"), F.policy({ requiredPurpose: H.b32("KYC") })],
-      f.board
-    );
+    await F.fijarPolitica(f, f.ASSET_NEW, H.b32("TRANSFER_IN"), F.policy({ requiredPurpose: H.b32("KYC") }), "t05b");
     await H.expectRevert(f.assetNew.send("transfer", [f.bob, 100], f.alice), "TransferRejected");
     await f.assetNew.send("approve", [f.board, 100], f.alice);
     await H.expectRevert(f.assetNew.send("transferFrom", [f.alice, f.bob, 100], f.board), "TransferRejected");
@@ -56,7 +48,7 @@ describe("SFSPRegulatedAsset · restricciones impuestas de verdad", function () 
     assert.equal((await f.assetNew.call("balanceOf", [f.bob])).toString(), "0");
   });
 
-  it("negativo: una cuenta sin referencia opaca no puede recibir", async function () {
+  it("negativo: una cuenta sin alta en el propósito base no puede recibir", async function () {
     await H.expectRevert(f.assetNew.send("transferUnits", [f.mallory, 10], f.alice), "TransferRejected");
   });
 

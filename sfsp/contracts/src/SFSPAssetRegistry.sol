@@ -3,6 +3,8 @@ pragma solidity 0.8.28;
 
 import {SFSPAccessControl} from "./lib/SFSPAccessControl.sol";
 import {SFSPTypes} from "./lib/SFSPTypes.sol";
+import {SFSPAuthorization} from "./lib/SFSPAuthorization.sol";
+import {ISFSPGovernanceController} from "./lib/ISFSP.sol";
 
 /// @title Registro de activos SFSP (catálogo + pasaporte del §2.3).
 /// @notice Registrar un activo legacy NO le añade capacidades. Lo único que
@@ -41,6 +43,12 @@ contract SFSPAssetRegistry is SFSPAccessControl {
     error InvalidPassport(bytes32 reason);
     error AlreadyPermanentlyExcluded(bytes32 assetId);
     error PermanentExclusionIsIrreversible(bytes32 assetId);
+    // §12.5 · SET_POLICY sobre el pasaporte.
+    error GovernanceNotWired();
+    error PolicyNotAuthorized(bytes32 digest);
+    error AuthorizationActionMismatch(bytes32 expected, bytes32 got);
+    error PolicyVersionMismatch(uint32 expected, uint32 got);
+    error PolicyContentMismatch(bytes32 expected, bytes32 got);
 
     mapping(bytes32 => SFSPTypes.Passport) private _passports;
     mapping(bytes32 => bool) private _registered;
@@ -49,7 +57,23 @@ contract SFSPAssetRegistry is SFSPAccessControl {
     mapping(bytes32 => bytes32) private _permanentExclusion;
     bytes32[] private _assetIndex;
 
+    /// @dev Se cablea después del despliegue en vez de entrar por el constructor
+    ///      para no cambiar la firma con la que el árbol despliega este contrato.
+    ///      Mientras no esté cableado, `updatePolicy` REVIERTE: no hay ruta que
+    ///      pase sin doble control por no haber configurado gobierno.
+    ISFSPGovernanceController public governance;
+
+    /// @dev §12.5 · alcance canónico de SET_POLICY sobre el pasaporte. Distingue
+    ///      esta política de la del motor de elegibilidad: una aprobación de una
+    ///      no sirve para la otra aunque coincidieran activo y versiones.
+    bytes32 public constant POLICY_SCOPE = bytes32("SFSP:GOV:PASSPORT_POLICY");
+
     constructor(address board) SFSPAccessControl(board) {}
+
+    function setGovernanceController(address governance_) external onlyRole(DBNX_BOARD) {
+        require(governance_ != address(0), "SFSP: governance=0");
+        governance = ISFSPGovernanceController(governance_);
+    }
 
     // ---------------------------------------------------------------- registro
 
@@ -138,11 +162,21 @@ contract SFSPAssetRegistry is SFSPAccessControl {
 
     /// @dev PolicyUpdated lleva versión anterior y nueva (§3): un indexador debe
     ///      poder reconstruir qué política regía en cada bloque.
-    function updatePolicy(bytes32 assetId, bytes32 policyKind, bytes32 newPolicyId)
-        external
-        onlyRole(TECH_OPS)
-    {
+    ///      P03/§12.5 · fila `SET_POLICY`. Antes bastaba el rol TECH_OPS. Ahora el
+    ///      ejecutor recalcula el digest del §12.1 desde sus argumentos reales:
+    ///      `assetId` el activo, `amount` la versión anterior, `amountSecondary`
+    ///      la nueva y `evidenceRoot` el contenido —alcance, tipo de política e
+    ///      identificador nuevo—. El rol se conserva para EJECUTAR, que es
+    ///      separación de funciones, no autorización.
+    function updatePolicy(
+        bytes32 assetId,
+        bytes32 policyKind,
+        bytes32 newPolicyId,
+        SFSPAuthorization.Payload calldata auth,
+        bytes32 approvedDigest
+    ) external onlyRole(TECH_OPS) {
         if (!_registered[assetId]) revert NotRegistered(assetId);
+        _authorizePolicyChange(assetId, policyKind, newPolicyId, auth, approvedDigest);
         SFSPTypes.Passport storage p = _passports[assetId];
         bytes32 previous;
         if (policyKind == bytes32("TRANSFER")) {
@@ -161,6 +195,42 @@ contract SFSPAssetRegistry is SFSPAccessControl {
         uint32 newVersion = prevVersion + 1;
         _policyVersion[assetId] = newVersion;
         emit PolicyUpdated(assetId, policyKind, previous, newPolicyId, prevVersion, newVersion);
+    }
+
+    /// @notice Compromiso del contenido del cambio de política.
+    /// @dev `abi.encode` con posición fija por campo, igual que el §12.1: dos
+    ///      cambios distintos no se pueden reagrupar en la misma cadena de bytes.
+    function policyDigest(bytes32 policyKind, bytes32 newPolicyId) public pure returns (bytes32) {
+        return keccak256(abi.encode(POLICY_SCOPE, policyKind, newPolicyId));
+    }
+
+    /// @dev Separado de `updatePolicy` para mantener el marco de pila dentro de lo
+    ///      que admite el EVM de Paris.
+    function _authorizePolicyChange(
+        bytes32 assetId,
+        bytes32 policyKind,
+        bytes32 newPolicyId,
+        SFSPAuthorization.Payload calldata auth,
+        bytes32 approvedDigest
+    ) internal {
+        if (address(governance) == address(0)) revert GovernanceNotWired();
+        if (auth.action != bytes32("SET_POLICY")) {
+            revert AuthorizationActionMismatch(bytes32("SET_POLICY"), auth.action);
+        }
+        if (auth.assetId != assetId) revert AuthorizationActionMismatch(assetId, auth.assetId);
+
+        uint32 previous = _policyVersion[assetId];
+        uint32 next = previous + 1;
+        if (auth.amount != previous) revert PolicyVersionMismatch(previous, uint32(auth.amount));
+        if (auth.amountSecondary != next) revert PolicyVersionMismatch(next, uint32(auth.amountSecondary));
+
+        bytes32 contenido = policyDigest(policyKind, newPolicyId);
+        if (auth.evidenceRoot != contenido) revert PolicyContentMismatch(contenido, auth.evidenceRoot);
+
+        if (!governance.isAuthorizationApproved(approvedDigest)) revert PolicyNotAuthorized(approvedDigest);
+        SFSPAuthorization.Payload memory m = auth;
+        SFSPAuthorization.authorize(m, approvedDigest);
+        governance.consumeAuthorization(approvedDigest);
     }
 
     /// @notice Declara la exclusión técnica permanente de un activo (H04).

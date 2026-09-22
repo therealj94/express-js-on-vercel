@@ -5,7 +5,8 @@ import {SFSPAccessControl} from "./lib/SFSPAccessControl.sol";
 import {SFSPEIP712} from "./lib/SFSPEIP712.sol";
 import {SFSPReentrancyGuard} from "./lib/SFSPReentrancyGuard.sol";
 import {SFSPTypes} from "./lib/SFSPTypes.sol";
-import {ISFSPAssetRegistry} from "./lib/ISFSP.sol";
+import {SFSPAuthorization} from "./lib/SFSPAuthorization.sol";
+import {ISFSPAssetRegistry, ISFSPGovernanceController} from "./lib/ISFSP.sol";
 
 interface IMigratableAsset {
     function assetId() external view returns (bytes32);
@@ -66,6 +67,12 @@ contract SFSPMigrationRegistry is SFSPAccessControl, SFSPEIP712, SFSPReentrancyG
     error RatioInvalid(uint256 num, uint256 den);
     error ScopeExceeded(uint256 excluded, uint256 s0);
     error DomainMismatch();
+    // §12.5 · la fila MIGRATION_CLAIM pide DOS cosas: doble control Y nullifier
+    // por posición de origen. Hasta este lote sólo estaba la segunda.
+    error GovernanceNotWired();
+    error ClaimNotAuthorized(bytes32 digest);
+    error AuthorizationActionMismatch(bytes32 expected, bytes32 got);
+    error ClaimDoesNotMatchAuthorization(bytes32 field);
 
     struct Migration {
         Mode mode;
@@ -94,6 +101,10 @@ contract SFSPMigrationRegistry is SFSPAccessControl, SFSPEIP712, SFSPReentrancyG
     }
 
     ISFSPAssetRegistry public immutable registry;
+    /// @dev Se cablea tras el despliegue para no cambiar la firma del
+    ///      constructor. Sin cablear, `claim` revierte: no hay ruta que reclame
+    ///      sin doble control por no haber configurado gobierno.
+    ISFSPGovernanceController public governance;
 
     mapping(bytes32 => Migration) private _migrations;
     mapping(bytes32 => bool) private _nullifierUsed;   // anti-replay del derecho, GLOBAL
@@ -110,6 +121,11 @@ contract SFSPMigrationRegistry is SFSPAccessControl, SFSPEIP712, SFSPReentrancyG
     {
         require(registry_ != address(0), "SFSP: registry=0");
         registry = ISFSPAssetRegistry(registry_);
+    }
+
+    function setGovernanceController(address governance_) external onlyRole(DBNX_BOARD) {
+        require(governance_ != address(0), "SFSP: governance=0");
+        governance = ISFSPGovernanceController(governance_);
     }
 
     // ------------------------------------------------------------- apertura
@@ -263,7 +279,28 @@ contract SFSPMigrationRegistry is SFSPAccessControl, SFSPEIP712, SFSPReentrancyG
 
     // ------------------------------------------------------------- claim
 
-    function claim(ClaimInput calldata c, bytes32[] calldata proof, bytes calldata signature) external nonReentrant {
+    /// @notice Reclama el derecho nuevo contra la posición de origen.
+    /// @dev §12.5 · la fila `MIGRATION_CLAIM` exige «doble control + nullifier por
+    ///      posición de origen». El nullifier ya estaba y sigue igual; lo que
+    ///      faltaba era el doble control: bastaba la firma de UN atestador
+    ///      autorizado para mover el reemplazo de una posición entera. Ahora hacen
+    ///      falta las dos cosas, y son independientes:
+    ///        · la firma del atestador acredita que el claim viene del directorio
+    ///          que conoce la posición; y
+    ///        · el digest aprobado por gobierno acredita que DOS firmantes
+    ///          distintos —ninguno de ellos el proponente— vieron y aprobaron este
+    ///          reemplazo concreto: posición de origen (`assetId`), beneficiario
+    ///          (`destination`), unidades (`amount`) y raíz de prueba
+    ///          (`evidenceRoot`).
+    ///      El `nonce` del payload es el del claim, así que la aprobación tampoco
+    ///      se puede despegar de la firma que la acompaña.
+    function claim(
+        ClaimInput calldata c,
+        bytes32[] calldata proof,
+        bytes calldata signature,
+        SFSPAuthorization.Payload calldata auth,
+        bytes32 approvedDigest
+    ) external nonReentrant {
         Migration storage m = _migrations[c.migrationId];
         if (m.ratioDen == 0) revert UnknownMigration(c.migrationId);
         if (!m.open) revert MigrationNotOpen(c.migrationId);
@@ -273,32 +310,51 @@ contract SFSPMigrationRegistry is SFSPAccessControl, SFSPEIP712, SFSPReentrancyG
         if (block.timestamp >= m.expiry) revert MigrationExpired(m.expiry);
         if (block.timestamp >= c.expiry) revert ClaimExpired(c.expiry);
 
-        // 1. Firma del atestador autorizado sobre el payload completo.
-        address signer = _recover(hashClaim(c), signature);
-        if (!hasRole(ATTESTOR, signer)) revert NotAttestor(signer);
+        // 1 y 2. Firma del atestador autorizado y anti-replay de la FIRMA.
+        _checkAttestorSignature(c, signature);
 
-        // 2. Anti-replay de la FIRMA (nonce) ...
-        if (_nonceUsed[c.nonce]) revert NonceUsed(c.nonce);
-        _nonceUsed[c.nonce] = true;
-
-        // 3. ... y anti-replay del DERECHO (nullifier), que es independiente:
-        //    otra firma válida del mismo derecho tampoco puede cobrarlo dos veces.
+        // 3. Anti-replay del DERECHO (nullifier), que es independiente: otra firma
+        //    válida del mismo derecho tampoco puede cobrarlo dos veces.
         bytes32 nullifier = nullifierOf(m.oldAssetId, c.beneficiary);
         if (_nullifierUsed[nullifier]) revert NullifierUsed(nullifier);
         _nullifierUsed[nullifier] = true;
 
-        // 4. Prueba de pertenencia al árbol de entitlements.
+        // 4. DOBLE CONTROL sobre el contenido exacto de este reemplazo (§12.5).
+        _authorizeClaim(m, c, auth, approvedDigest);
+
+        // 5. Prueba de pertenencia al árbol de entitlements.
         if (!_verifyProof(proof, m.merkleRoot, leafOf(c.migrationId, c.beneficiary, c.oldUnits))) revert BadProof();
 
-        // 5. Exclusión del derecho viejo, según el modo.
+        // 6. Exclusión del derecho viejo, según el modo.
         _excludeOldRight(m, c);
 
-        // 6. Ratio con regla de restos: el resto NO se trunca en silencio.
+        // 7 y 8. Ratio con regla de restos y conciliación S0 = A + N + P.
+        uint256 newUnits = _applyRatio(m, c);
+
+        if (newUnits > 0) {
+            IMigratableAsset(m.newAsset).mintForMigration(c.beneficiary, newUnits, c.migrationId);
+        }
+
+        _emitClaimed(m, c, newUnits, nullifier);
+    }
+
+    /// @dev Separado de `claim` por el marco de pila del EVM de Paris. EIP-712 no
+    ///      aporta anti-replay: el contador de `nonce` va aparte de la firma.
+    function _checkAttestorSignature(ClaimInput calldata c, bytes calldata signature) internal {
+        address signer = _recover(hashClaim(c), signature);
+        if (!hasRole(ATTESTOR, signer)) revert NotAttestor(signer);
+        if (_nonceUsed[c.nonce]) revert NonceUsed(c.nonce);
+        _nonceUsed[c.nonce] = true;
+    }
+
+    /// @dev Ratio con regla de restos —el resto NO se trunca en silencio— y
+    ///      conciliación del §6.3 en unidades escaladas. Separado de `claim` por
+    ///      el marco de pila; la aritmética no cambió.
+    function _applyRatio(Migration storage m, ClaimInput calldata c) internal returns (uint256 newUnits) {
         uint256 scaled = c.oldUnits * m.ratioNum;
-        uint256 newUnits = scaled / m.ratioDen;
+        newUnits = scaled / m.ratioDen;
         uint256 residual = scaled % m.ratioDen;
 
-        // 7. Conciliación S0 = A + N + P, en unidades escaladas.
         uint256 excluded = m.excludedScaled + scaled;
         if (excluded > m.s0Scaled) revert ScopeExceeded(excluded, m.s0Scaled);
         m.excludedScaled = excluded;
@@ -309,12 +365,33 @@ contract SFSPMigrationRegistry is SFSPAccessControl, SFSPEIP712, SFSPReentrancyG
             _residual[c.migrationId][c.beneficiary] += residual;
             emit ResidualEntitlementRecorded(c.migrationId, c.beneficiary, residual, m.ratioDen);
         }
+    }
 
-        if (newUnits > 0) {
-            IMigratableAsset(m.newAsset).mintForMigration(c.beneficiary, newUnits, c.migrationId);
+    /// @dev Separado de `claim` para mantener el marco de pila dentro de lo que
+    ///      admite el EVM de Paris, y para que la comprobación se lea entera.
+    function _authorizeClaim(
+        Migration storage m,
+        ClaimInput calldata c,
+        SFSPAuthorization.Payload calldata auth,
+        bytes32 approvedDigest
+    ) internal {
+        if (address(governance) == address(0)) revert GovernanceNotWired();
+        if (auth.action != bytes32("MIGRATION_CLAIM")) {
+            revert AuthorizationActionMismatch(bytes32("MIGRATION_CLAIM"), auth.action);
         }
+        // La posición de origen es el ACTIVO VIEJO, no el identificador de la
+        // migración: es exactamente el mismo criterio que sostiene el nullifier
+        // (§12.4), y por eso los dos se derivan de lo mismo.
+        if (auth.assetId != m.oldAssetId) revert ClaimDoesNotMatchAuthorization(bytes32("ORIGEN"));
+        if (auth.destination != c.beneficiary) revert ClaimDoesNotMatchAuthorization(bytes32("BENEFICIARIO"));
+        if (auth.amount != c.oldUnits) revert ClaimDoesNotMatchAuthorization(bytes32("UNIDADES"));
+        if (auth.evidenceRoot != m.merkleRoot) revert ClaimDoesNotMatchAuthorization(bytes32("RAIZ"));
+        if (auth.nonce != c.nonce) revert ClaimDoesNotMatchAuthorization(bytes32("NONCE"));
 
-        _emitClaimed(m, c, newUnits, nullifier);
+        if (!governance.isAuthorizationApproved(approvedDigest)) revert ClaimNotAuthorized(approvedDigest);
+        SFSPAuthorization.Payload memory mem = auth;
+        SFSPAuthorization.authorize(mem, approvedDigest);
+        governance.consumeAuthorization(approvedDigest);
     }
 
     /// @dev Emitir desde una función aparte mantiene el marco de pila de `claim`

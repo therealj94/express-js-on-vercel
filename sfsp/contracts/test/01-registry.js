@@ -2,6 +2,7 @@
 const assert = require("node:assert/strict");
 const F = require("./fixture");
 const H = require("./helpers");
+const OA = require("./orden-autorizada");
 
 describe("SFSPAssetRegistry · pasaporte y cinco ejes", function () {
   let f;
@@ -66,11 +67,50 @@ describe("SFSPAssetRegistry · pasaporte y cinco ejes", function () {
     assert.equal(d[1], 0);
   });
 
-  it("positivo: PolicyUpdated sube la versión y conserva la anterior", async function () {
+  /* P03/§12.5 · `updatePolicy` dejó de ser un `send` con rol TECH_OPS. El
+     comportamiento cambió a propósito: la fila SET_POLICY exige doble control, y
+     la versión anterior y la nueva entran en el digest. Lo que la prueba sigue
+     comprobando es lo mismo —la versión sube de uno en uno y la anterior queda
+     publicada—, pero por el camino autorizado. */
+  it("positivo (SET_POLICY): PolicyUpdated sube la versión y conserva la anterior", async function () {
     const before = await f.registry.call("policyVersionOf", [f.ASSET_NEW]);
-    await f.registry.send("updatePolicy", [f.ASSET_NEW, H.b32("TRANSFER"), H.b32("pol_transfer_2")], f.board);
+    await F.actualizarPoliticaPasaporte(f, f.ASSET_NEW, H.b32("TRANSFER"), H.b32("pol_transfer_2"), "reg1");
     const after = await f.registry.call("policyVersionOf", [f.ASSET_NEW]);
     assert.equal(Number(after) - Number(before), 1);
+  });
+
+  it("negativo (SET_POLICY): sin aprobación de gobierno la política no cambia", async function () {
+    const before = await f.registry.call("policyVersionOf", [f.ASSET_NEW]);
+    // Payload bien formado, pero nadie lo propuso ni lo aprobó.
+    const previa = Number(before);
+    const contenido = H.keccak256(
+      H.defaultAbiCoder.encode(
+        ["bytes32", "bytes32", "bytes32"],
+        [H.b32("SFSP:GOV:PASSPORT_POLICY"), H.b32("TRANSFER"), H.b32("pol_transfer_3")],
+      ),
+    );
+    const payload = await OA.orden({
+      verifyingContract: f.registry.address,
+      action: H.b32("SET_POLICY"),
+      assetId: f.ASSET_NEW,
+      amount: String(previa),
+      amountSecondary: String(previa + 1),
+      nonce: H.b32("n_reg_sin_aprobar"),
+      evidenceRoot: contenido,
+    });
+    await H.expectRevert(
+      f.registry.send(
+        "updatePolicy",
+        [f.ASSET_NEW, H.b32("TRANSFER"), H.b32("pol_transfer_3"), OA.tupla(payload), OA.digestDe(payload)],
+        f.board,
+      ),
+      "PolicyNotAuthorized",
+    );
+    assert.equal(
+      (await f.registry.call("policyVersionOf", [f.ASSET_NEW])).toString(),
+      before.toString(),
+      "una política sin doble control no cambia nada",
+    );
   });
 
   it("negativo: fijar riesgo sin metodología firmada revierte", async function () {

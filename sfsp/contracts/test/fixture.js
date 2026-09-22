@@ -2,6 +2,112 @@
 // Fixture sintético completo. Todos los parámetros (quórums, límites, TTL) son
 // valores de prueba: ningún número aquí es una recomendación económica.
 const H = require("./helpers");
+const OA = require("./orden-autorizada");
+
+/* H16 · las direcciones ya no guardan la referencia del sujeto, sino un
+   COMPROMISO POR PROPÓSITO: keccak256(ETIQUETA, subjectRef, purpose, salt). El
+   `salt` es secreto y propio de cada par (sujeto, propósito); por eso dos
+   direcciones del mismo sujeto dadas de alta en propósitos distintos guardan
+   valores sin relación observable. Aquí es sintético, como todo el fixture. */
+const COMMITMENT_TAG = H.keccak256(Buffer.from("SFSP.SUBJECT.COMMITMENT.v1", "utf8"));
+const PURPOSE_BASE = H.b32("BASE");
+
+const SUBJ = {
+  treasury: H.b32("subj_treasury"),
+  alice: H.b32("subj_alice"),
+  bob: H.b32("subj_bob"),
+};
+const SALT = {
+  treasury: H.b32("salt_treasury_sintetico"),
+  alice: H.b32("salt_alice_sintetico"),
+  bob: H.b32("salt_bob_sintetico"),
+};
+
+function compromiso(subjectRef, purpose, salt) {
+  return H.keccak256(
+    H.defaultAbiCoder.encode(
+      ["bytes32", "bytes32", "bytes32", "bytes32"],
+      [COMMITMENT_TAG, subjectRef, purpose, salt],
+    ),
+  );
+}
+
+/* P03/§12.5 · `SET_POLICY`. Fijar una política dejó de ser un `send` con rol y
+   pasó a exigir doble control: se construye el payload del §12.1 con la versión
+   anterior, la nueva y el compromiso del CONTENIDO, se hace aprobar por dos
+   firmantes distintos del proponente, y el motor lo recalcula y lo consume. */
+const POLICY_SCOPE_ENGINE = H.b32("SFSP:GOV:ELIGIBILITY_POLICY");
+const POLICY_SCOPE_PASSPORT = H.b32("SFSP:GOV:PASSPORT_POLICY");
+
+let _seqNonce = 0;
+function nonceUnico(tag) {
+  _seqNonce += 1;
+  return H.b32("n_" + String(tag).slice(0, 18) + "_" + _seqNonce);
+}
+
+function digestPolitica(policyAction, p) {
+  return H.keccak256(
+    H.defaultAbiCoder.encode(
+      ["bytes32", "bytes32", "bool", "bool", "bool", "bool", "bool", "bytes32", "uint256"],
+      [
+        POLICY_SCOPE_ENGINE,
+        policyAction,
+        p.actionAllowed,
+        p.requiresHumanReview,
+        p.requiresAuthorization,
+        p.requiresDecimalsKnown,
+        p.jurisdictionAllowlist,
+        p.requiredPurpose,
+        String(p.maxAmount),
+      ],
+    ),
+  );
+}
+
+/** Fija una política de elegibilidad con doble control real. */
+async function fijarPolitica(f, assetId, policyAction, pol, tag) {
+  const actual = await f.engine.call("policyOf", [assetId, policyAction]);
+  const previa = Number(actual.version);
+  const payload = await OA.orden({
+    verifyingContract: f.engine.address,
+    action: H.b32("SET_POLICY"),
+    assetId,
+    amount: String(previa),
+    amountSecondary: String(previa + 1),
+    nonce: nonceUnico(tag || "pol"),
+    evidenceRoot: digestPolitica(policyAction, pol),
+  });
+  const d = OA.digestDe(payload);
+  await OA.aprobar(f, d, H.b32("SET_POLICY"));
+  return await f.engine.send("setPolicy", [assetId, policyAction, pol, OA.tupla(payload), d], f.board);
+}
+
+/** Cambia una política del PASAPORTE (registro) con doble control real. */
+async function actualizarPoliticaPasaporte(f, assetId, policyKind, newPolicyId, tag) {
+  const previa = Number(await f.registry.call("policyVersionOf", [assetId]));
+  const contenido = H.keccak256(
+    H.defaultAbiCoder.encode(
+      ["bytes32", "bytes32", "bytes32"],
+      [POLICY_SCOPE_PASSPORT, policyKind, newPolicyId],
+    ),
+  );
+  const payload = await OA.orden({
+    verifyingContract: f.registry.address,
+    action: H.b32("SET_POLICY"),
+    assetId,
+    amount: String(previa),
+    amountSecondary: String(previa + 1),
+    nonce: nonceUnico(tag || "pas"),
+    evidenceRoot: contenido,
+  });
+  const d = OA.digestDe(payload);
+  await OA.aprobar(f, d, H.b32("SET_POLICY"));
+  return await f.registry.send(
+    "updatePolicy",
+    [assetId, policyKind, newPolicyId, OA.tupla(payload), d],
+    f.board,
+  );
+}
 
 const Legal = { UNCLASSIFIED: 0, UNDER_REVIEW: 1, CLASSIFIED: 2, RESTRICTED_BY_LAW: 3 };
 const Admission = { DRAFT: 0, REVIEW: 1, APPROVED: 2, REJECTED: 3, WITHDRAWN: 4 };
@@ -100,11 +206,17 @@ const GOV = { threshold: 2, upgradeThreshold: 3, timelockDelay: 3600, maxPause: 
 async function deployAll() {
   const acc = await H.accounts();
   const board = acc[0];
-  const signers = [acc[1], acc[2], acc[3]].slice().sort((a, b) => (BigInt(a) < BigInt(b) ? -1 : 1));
+  // CUATRO firmantes, no tres. Con tres y un quórum de upgrade de tres, la
+  // separación de funciones hacía inejecutable la propia acción: el proponente no
+  // cuenta como aprobador, así que quedaban dos aprobadores posibles para un
+  // quórum de tres. El número de firmantes es un parámetro del fixture, no una
+  // recomendación; lo que la prueba exige es que el quórum se pueda alcanzar SIN
+  // que nadie cuente dos veces.
+  const signers = [acc[1], acc[2], acc[3], acc[8]].slice().sort((a, b) => (BigInt(a) < BigInt(b) ? -1 : 1));
   const treasury = acc[4];
   const alice = acc[5];
   const bob = acc[6];
-  const mallory = acc[7]; // sin subjectRef: fuente desconocida, no "denegado por política"
+  const mallory = acc[7]; // sin alta en ningún propósito: fuente desconocida, no "denegado por política"
 
   const registry = await H.deploy("SFSPAssetRegistry", [board], board);
   const governance = await H.deploy(
@@ -153,25 +265,39 @@ async function deployAll() {
   // Los EJECUTORES consumen aprobaciones ligadas al contenido en gobierno. Cada
   // uno necesita el rol TECH_OPS del propio gobierno para poder gastarlas; el
   // rol sólo permite GASTAR una aprobación que ya alcanzó quórum, nunca crearla.
-  for (const ejecutor of [assetNew, assetOld, issuance, settlement]) {
+  // P03 · se suman el registro, el motor de elegibilidad y el registro de
+  // migraciones: los tres ejecutan ahora acciones del §12.5 (SET_POLICY sobre el
+  // pasaporte, SET_POLICY sobre la elegibilidad y MIGRATION_CLAIM) y por tanto
+  // tienen que poder GASTAR la aprobación que ya alcanzó quórum.
+  for (const ejecutor of [assetNew, assetOld, issuance, settlement, registry, engine, migration]) {
     await governance.send("grantRole", [await governance.call("TECH_OPS"), ejecutor.address], board);
   }
+  // Cableado de gobierno en las piezas que lo reciben después del despliegue.
+  await registry.send("setGovernanceController", [governance.address], board);
+  await migration.send("setGovernanceController", [governance.address], board);
 
   // --- catálogo
   await registry.send("registerAsset", [passport(ASSET_NEW)], board);
   await registry.send("registerAsset", [passport(ASSET_OLD)], board);
 
-  // --- políticas por acción para AMBOS activos: ninguna clase "pasa automáticamente"
+  // --- políticas por acción para AMBOS activos: ninguna clase "pasa automáticamente".
+  //     Cada una con su doble control (P03/§12.5): quien propone no aprueba.
+  const fParcial = { engine, registry, governance, signers, board };
   for (const assetId of [ASSET_NEW, ASSET_OLD]) {
     for (const action of ACTIONS) {
-      await engine.send("setPolicy", [assetId, H.b32(action), policy({})], board);
+      await fijarPolitica(fParcial, assetId, H.b32(action), policy({}), "base");
     }
   }
 
-  // --- identidad: referencias opacas, nunca datos personales
-  await identity.send("bindSubjectRef", [treasury, H.b32("subj_treasury")], board);
-  await identity.send("bindSubjectRef", [alice, H.b32("subj_alice")], board);
-  await identity.send("bindSubjectRef", [bob, H.b32("subj_bob")], board);
+  // --- identidad: compromisos POR PROPÓSITO, nunca la referencia del sujeto y
+  //     nunca datos personales. `mallory` queda sin alta a propósito.
+  for (const [quien, dir] of [["treasury", treasury], ["alice", alice], ["bob", bob]]) {
+    await identity.send(
+      "bindPurposeCommitment",
+      [dir, PURPOSE_BASE, compromiso(SUBJ[quien], PURPOSE_BASE, SALT[quien])],
+      board,
+    );
+  }
 
   // --- cableado
   await assetNew.send("setIssuanceController", [issuance.address], board);
@@ -191,6 +317,7 @@ async function deployAll() {
   return {
     acc, board, signers, treasury, alice, bob, mallory,
     registry, governance, identity, engine, assetNew, assetOld,
+    SUBJ, SALT, PURPOSE_BASE,
     issuance, vault, settlement, migration, fee,
     ASSET_NEW, ASSET_OLD, ASSET_CASH, GOV,
   };
@@ -198,6 +325,8 @@ async function deployAll() {
 
 module.exports = {
   deployAll, passport, policy, ACTIONS,
+  compromiso, fijarPolitica, actualizarPoliticaPasaporte, digestPolitica, nonceUnico,
+  SUBJ, SALT, PURPOSE_BASE, COMMITMENT_TAG,
   Legal, Admission, Trading, Transferability, Redemption, Visibility,
   Profile, Kind, Risk, Report, Supply, Axis, CODE,
   ASSET_NEW, ASSET_OLD, ASSET_CASH, GOV,

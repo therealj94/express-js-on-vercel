@@ -142,16 +142,17 @@ contract SFSPRegulatedAsset is SFSPAccessControl, SFSPReentrancyGuard {
             return (SFSPCodes.DENY_ASSET_STATE, SFSPCodes.R_ASSET_STATE);
         }
 
-        bytes32 subjFrom = identity.subjectRefOf(from);
-        bytes32 subjTo = identity.subjectRefOf(to);
         // H06 · el monto va como monto y el contexto de autorización va aparte.
         // Antes los dos eran la misma palabra `bytes32(amount)`, de forma que dos
         // operaciones distintas del mismo monto compartían autorización.
+        // H16 · se pasan las DIRECCIONES. El activo ya no resuelve ninguna
+        // referencia de sujeto: la resolución por propósito ocurre dentro del
+        // adaptador de identidad y nunca sale de él.
         (uint8 c1, bytes32 r1,) =
-            engine.evaluateOperation(subjFrom, assetId, bytes32("TRANSFER_OUT"), amount, bytes32(0));
+            engine.evaluateOperation(from, assetId, bytes32("TRANSFER_OUT"), amount, bytes32(0));
         if (c1 != SFSPCodes.ALLOW) return (c1, r1);
         (uint8 c2, bytes32 r2,) =
-            engine.evaluateOperation(subjTo, assetId, bytes32("TRANSFER_IN"), amount, bytes32(0));
+            engine.evaluateOperation(to, assetId, bytes32("TRANSFER_IN"), amount, bytes32(0));
         if (c2 != SFSPCodes.ALLOW) return (c2, r2);
         return (SFSPCodes.ALLOW, SFSPCodes.R_OK);
     }
@@ -197,9 +198,8 @@ contract SFSPRegulatedAsset is SFSPAccessControl, SFSPReentrancyGuard {
         if (_frozen[to]) revert AccountIsFrozen(to);
 
         // El destino también se evalúa: emitir a una cuenta no elegible es emitir mal.
-        bytes32 subjTo = identity.subjectRefOf(to);
         (uint8 code, bytes32 reason,) =
-            engine.evaluateOperation(subjTo, assetId, bytes32("MINT"), amount, bytes32(0));
+            engine.evaluateOperation(to, assetId, bytes32("MINT"), amount, bytes32(0));
         if (code != SFSPCodes.ALLOW) revert TransferRejected(code, reason);
 
         _totalSupply += amount;
@@ -279,9 +279,8 @@ contract SFSPRegulatedAsset is SFSPAccessControl, SFSPReentrancyGuard {
         if (to == address(0) || amount == 0) revert TransferRejected(SFSPCodes.DENY_POLICY, bytes32("MINT_ARGS"));
         if (governance.isPaused()) revert TransferRejected(SFSPCodes.DENY_ASSET_STATE, SFSPCodes.R_PAUSED);
         if (_frozen[to]) revert AccountIsFrozen(to);
-        bytes32 subjTo = identity.subjectRefOf(to);
         (uint8 code, bytes32 reason,) =
-            engine.evaluateOperation(subjTo, assetId, bytes32("MIGRATION_CLAIM"), amount, bytes32(0));
+            engine.evaluateOperation(to, assetId, bytes32("MIGRATION_CLAIM"), amount, bytes32(0));
         if (code != SFSPCodes.ALLOW) revert TransferRejected(code, reason);
         _totalSupply += amount;
         _balances[to] += amount;

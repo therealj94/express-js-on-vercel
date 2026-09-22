@@ -2,6 +2,34 @@
 const assert = require("node:assert/strict");
 const F = require("./fixture");
 const H = require("./helpers");
+const OA = require("./orden-autorizada");
+
+/* §12.5 · la fila `MIGRATION_CLAIM` pide DOS cosas: doble control Y nullifier por
+   posición de origen. Hasta este lote sólo estaba la segunda: bastaba la firma de
+   un atestador para mover el reemplazo de una posición entera. Ahora cada claim
+   lleva además una orden aprobada por dos firmantes distintos del proponente, y
+   el digest compromete posición de origen, beneficiario, unidades y raíz de
+   prueba. El nullifier no cambió: sigue derivándose de (activo viejo, titular). */
+async function ordenClaim(f, c, root, oldAssetId) {
+  const p = await OA.orden({
+    verifyingContract: f.migration.address,
+    action: H.b32("MIGRATION_CLAIM"),
+    assetId: oldAssetId || f.ASSET_OLD,
+    destination: c.beneficiary,
+    amount: String(c.oldUnits),
+    nonce: c.nonce,
+    evidenceRoot: root,
+  });
+  const d = OA.digestDe(p);
+  await OA.aprobar(f, d, H.b32("MIGRATION_CLAIM"));
+  return { tupla: OA.tupla(p), digest: d };
+}
+
+/** Reclama con firma del atestador Y orden de gobierno aprobada. */
+async function reclamar(f, c, proof, sig, root, oldAssetId) {
+  const o = await ordenClaim(f, c, root, oldAssetId);
+  return await f.migration.send("claim", [c, proof, sig, o.tupla, o.digest], f.board);
+}
 
 const CLAIM_TYPES = {
   MigrationClaim: [
@@ -78,7 +106,7 @@ describe("SFSPMigrationRegistry · dos modos, nullifier y regla de restos", func
     await openMigration(MODE.SURRENDER_ON_CLAIM);
     const c = { migrationId, beneficiary: f.alice, oldUnits: 5, nonce: H.b32("n_1"), expiry };
     const sig = await signClaim(f, c);
-    await f.migration.send("claim", [c, H.merkleProof(tree, 0), sig], f.board);
+    await reclamar(f, c, H.merkleProof(tree, 0), sig, tree.root);
 
     // 5 * 3 / 2 = 7 unidades nuevas y 1/2 de resto: nada se trunca en silencio.
     assert.equal((await f.assetNew.call("balanceOf", [f.alice])).toString(), "7");
@@ -106,7 +134,7 @@ describe("SFSPMigrationRegistry · dos modos, nullifier y regla de restos", func
     await openMigration(MODE.FROZEN_SNAPSHOT);
     const c = { migrationId, beneficiary: f.bob, oldUnits: 4, nonce: H.b32("n_2"), expiry };
     const sig = await signClaim(f, c);
-    await f.migration.send("claim", [c, H.merkleProof(tree, 1), sig], f.board);
+    await reclamar(f, c, H.merkleProof(tree, 1), sig, tree.root);
     // 4 * 3 / 2 = 6 exactas, sin resto.
     assert.equal((await f.assetNew.call("balanceOf", [f.bob])).toString(), "6");
     assert.equal((await f.assetOld.call("balanceOf", [f.bob])).toString(), "4", "no hay entrega en este modo");
@@ -129,17 +157,28 @@ describe("SFSPMigrationRegistry · dos modos, nullifier y regla de restos", func
   it("negativo: doble claim revierte por nullifier, aunque la firma sea nueva", async function () {
     await openMigration(MODE.SURRENDER_ON_CLAIM);
     const c1 = { migrationId, beneficiary: f.alice, oldUnits: 5, nonce: H.b32("n_4"), expiry };
-    await f.migration.send("claim", [c1, H.merkleProof(tree, 0), await signClaim(f, c1)], f.board);
+    // La orden de gobierno se construye UNA vez: su digest compromete el `nonce`
+    // del claim, así que repetir el claim es repetir el digest. Se reutiliza tal
+    // cual para que lo que pare el segundo intento sea el contador de `nonce` del
+    // registro y no el registro de autorizaciones.
+    const o1 = await ordenClaim(f, c1, tree.root);
+    await f.migration.send("claim", [c1, H.merkleProof(tree, 0), await signClaim(f, c1), o1.tupla, o1.digest], f.board);
 
     // Misma firma: lo para el contador de nonce.
     await H.expectRevert(
-      f.migration.send("claim", [c1, H.merkleProof(tree, 0), await signClaim(f, c1)], f.board),
+      f.migration.send(
+        [c1, H.merkleProof(tree, 0), await signClaim(f, c1), o1.tupla, o1.digest].length === 5
+          ? "claim"
+          : "claim",
+        [c1, H.merkleProof(tree, 0), await signClaim(f, c1), o1.tupla, o1.digest],
+        f.board,
+      ),
       "NonceUsed"
     );
     // Firma nueva sobre el mismo derecho: lo para el nullifier, que va aparte.
     const c2 = { migrationId, beneficiary: f.alice, oldUnits: 5, nonce: H.b32("n_5"), expiry };
     await H.expectRevert(
-      f.migration.send("claim", [c2, H.merkleProof(tree, 0), await signClaim(f, c2)], f.board),
+      reclamar(f, c2, H.merkleProof(tree, 0), await signClaim(f, c2), tree.root),
       "NullifierUsed"
     );
   });
@@ -148,14 +187,14 @@ describe("SFSPMigrationRegistry · dos modos, nullifier y regla de restos", func
     await openMigration(MODE.SURRENDER_ON_CLAIM);
     const c = { migrationId, beneficiary: f.alice, oldUnits: 5, nonce: H.b32("n_6"), expiry };
     const sig = await signClaim(f, c, f.alice);
-    await H.expectRevert(f.migration.send("claim", [c, H.merkleProof(tree, 0), sig], f.board), "NotAttestor");
+    await H.expectRevert(reclamar(f, c, H.merkleProof(tree, 0), sig, tree.root), "NotAttestor");
   });
 
   it("negativo: una prueba de Merkle que no corresponde se rechaza", async function () {
     await openMigration(MODE.SURRENDER_ON_CLAIM);
     const c = { migrationId, beneficiary: f.alice, oldUnits: 5, nonce: H.b32("n_7"), expiry };
     const sig = await signClaim(f, c);
-    await H.expectRevert(f.migration.send("claim", [c, H.merkleProof(tree, 1), sig], f.board), "BadProof");
+    await H.expectRevert(reclamar(f, c, H.merkleProof(tree, 1), sig, tree.root), "BadProof");
   });
 
   it("negativo: en SURRENDER_ON_CLAIM quien ya no tiene los tokens no puede reclamar", async function () {
@@ -164,7 +203,7 @@ describe("SFSPMigrationRegistry · dos modos, nullifier y regla de restos", func
     const c = { migrationId, beneficiary: f.alice, oldUnits: 5, nonce: H.b32("n_8"), expiry };
     const sig = await signClaim(f, c);
     await H.expectRevert(
-      f.migration.send("claim", [c, H.merkleProof(tree, 0), sig], f.board),
+      reclamar(f, c, H.merkleProof(tree, 0), sig, tree.root),
       "SurrenderRequired"
     );
   });
@@ -177,7 +216,7 @@ describe("SFSPMigrationRegistry · dos modos, nullifier y regla de restos", func
     const c = { migrationId, beneficiary: f.alice, oldUnits: 5, nonce: H.b32("n_9"), expiry: expiry - 1800 };
     const sig = await signClaim(f, c);
     await H.increaseTime(2000);
-    await H.expectRevert(f.migration.send("claim", [c, H.merkleProof(tree, 0), sig], f.board), "ClaimExpired");
+    await H.expectRevert(reclamar(f, c, H.merkleProof(tree, 0), sig, tree.root), "ClaimExpired");
   });
 
   it("negativo: un ratio con denominador cero no se admite", async function () {

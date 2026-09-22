@@ -36,6 +36,13 @@ contract SFSPSettlementEngine is SFSPAccessControl, SFSPReentrancyGuard {
     // H05 · el contrato del activo NO lo elige el operador de la liquidación.
     error AssetNotCanonical(bytes32 assetId);
     error CanonicalMismatch(bytes32 assetId, address registered, address declared);
+    /// @dev El contrato que hay HOY en la dirección canónica no es el que el
+    ///      órgano registró. Una dirección puede cambiar de código sin cambiar de
+    ///      número: `CREATE2` + `SELFDESTRUCT` en el EVM anterior, y en general
+    ///      cualquier proxy cuyo implementador se mueva. Guardar el `codehash`
+    ///      sólo en el evento dejaba la detección a un observador externo que
+    ///      además tenía que estar mirando.
+    error CanonicalCodehashMismatch(bytes32 assetId, bytes32 registered, bytes32 present);
     // H05 · la entrega se comprueba por el SALDO, no por lo que devuelva el contrato.
     error DeliveryNotObserved(address party, uint256 before_, uint256 afterwards, uint256 expected);
     error CashNotObserved(address payee, uint256 before_, uint256 afterwards, uint256 expected);
@@ -53,6 +60,10 @@ contract SFSPSettlementEngine is SFSPAccessControl, SFSPReentrancyGuard {
     // efectivo sin entregar nada; que el operador pudiera pasar la dirección era
     // justamente lo que lo permitía.
     mapping(bytes32 => address) private _canonicalAsset;
+    // H05 · el `codehash` del contrato canónico en el momento de registrarlo. Se
+    // GUARDA y se revalida en cada liquidación; el evento por sí solo no defendía
+    // nada dentro de la transacción.
+    mapping(bytes32 => bytes32) private _canonicalCodehash;
 
     constructor(address board, address vault_, address engine_, address identity_, address governance_)
         SFSPAccessControl(board)
@@ -75,22 +86,33 @@ contract SFSPSettlementEngine is SFSPAccessControl, SFSPReentrancyGuard {
         return _canonicalAsset[assetId];
     }
 
+    /// @notice `codehash` registrado del contrato canónico de un activo.
+    function canonicalCodehashOf(bytes32 assetId) external view returns (bytes32) {
+        return _canonicalCodehash[assetId];
+    }
+
     /// @notice Declara cuál es el contrato canónico de un activo.
-    /// @dev Lo declara el órgano, no el operador. Se guarda además el `codehash`
-    ///      en el evento para que una sustitución del código en esa dirección sea
-    ///      detectable desde fuera; el contrato comprueba el `assetId` que el
+    /// @dev Lo declara el órgano, no el operador. El `codehash` se GUARDA —no
+    ///      sólo se publica en el evento— y `settle` lo vuelve a comprobar en cada
+    ///      operación: un contrato sustituido en la misma dirección hace revertir
+    ///      la liquidación en vez de quedar anotado en un log que alguien tenía
+    ///      que estar mirando. El contrato comprueba además el `assetId` que el
     ///      candidato declara, pero esa comprobación por sí sola no distingue un
-    ///      contrato honesto de uno que miente: por eso además existe la
-    ///      comprobación de entrega real en `settle`.
+    ///      contrato honesto de uno que miente: por eso sigue existiendo, intacta,
+    ///      la comprobación de entrega real en `settle`. Son dos defensas
+    ///      distintas: ésta ata la IDENTIDAD del código, aquélla el EFECTO.
     function registerCanonicalAsset(bytes32 assetId, address contractAddress) external onlyRole(DBNX_BOARD) {
         require(assetId != bytes32(0) && contractAddress != address(0), "SFSP: canonico invalido");
         bytes32 declared = ISFSPRegulatedAsset(contractAddress).assetId();
         if (declared != assetId) revert CanonicalMismatch(assetId, contractAddress, address(0));
-        _canonicalAsset[assetId] = contractAddress;
         bytes32 codehash;
         assembly {
             codehash := extcodehash(contractAddress)
         }
+        // Una dirección sin código no es un contrato canónico de nada.
+        require(codehash != bytes32(0) && contractAddress.code.length > 0, "SFSP: canonico sin codigo");
+        _canonicalAsset[assetId] = contractAddress;
+        _canonicalCodehash[assetId] = codehash;
         emit CanonicalAssetRegistered(assetId, contractAddress, codehash);
     }
 
@@ -126,6 +148,16 @@ contract SFSPSettlementEngine is SFSPAccessControl, SFSPReentrancyGuard {
 
         address assetContract = _canonicalAsset[p.assetId];
         if (assetContract == address(0)) revert AssetNotCanonical(p.assetId);
+        // H05 · revalidación del `codehash` ANTES de llamar a nada. Si el código
+        // que hay en esa dirección no es el que el órgano registró, no se liquida:
+        // el registro canónico dejaría de significar lo que dice significar.
+        bytes32 presente;
+        assembly {
+            presente := extcodehash(assetContract)
+        }
+        if (presente != _canonicalCodehash[p.assetId]) {
+            revert CanonicalCodehashMismatch(p.assetId, _canonicalCodehash[p.assetId], presente);
+        }
 
         if (!governance.isAuthorizationApproved(approvedDigest)) revert SettlementNotAuthorized(approvedDigest);
         SFSPAuthorization.Payload memory m = p;
@@ -134,8 +166,10 @@ contract SFSPSettlementEngine is SFSPAccessControl, SFSPReentrancyGuard {
 
         // Elegibilidad de liquidación para ambas patas, antes de mover nada. El
         // digest va como contexto de autorización y el monto va como monto (H06).
-        _requireSettleAllowed(identity.subjectRefOf(p.origin), p.assetId, p.amount, approvedDigest);
-        _requireSettleAllowed(identity.subjectRefOf(p.destination), p.assetId, p.amount, approvedDigest);
+        // H16 · se evalúan las DIRECCIONES. El motor resuelve el sujeto por
+        // propósito dentro del adaptador; aquí no se pide ninguna referencia.
+        _requireSettleAllowed(p.origin, p.assetId, p.amount, approvedDigest);
+        _requireSettleAllowed(p.destination, p.assetId, p.amount, approvedDigest);
 
         _move(assetContract, p);
 
@@ -173,12 +207,12 @@ contract SFSPSettlementEngine is SFSPAccessControl, SFSPReentrancyGuard {
         }
     }
 
-    function _requireSettleAllowed(bytes32 subject, bytes32 assetId, uint256 amount, bytes32 authDigest)
+    function _requireSettleAllowed(address account, bytes32 assetId, uint256 amount, bytes32 authDigest)
         internal
         view
     {
         (uint8 code, bytes32 reason,) =
-            engine.evaluateOperation(subject, assetId, bytes32("SETTLE"), amount, authDigest);
+            engine.evaluateOperation(account, assetId, bytes32("SETTLE"), amount, authDigest);
         if (code != SFSPCodes.ALLOW) revert SettlementRejected(code, reason);
     }
 }
