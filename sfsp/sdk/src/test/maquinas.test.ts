@@ -203,7 +203,7 @@ test('C09 · la cuenta nace PENDING, y PENDING no resuelve', () => {
   d.cambiarEstadoBinding(b.bindingId, 'ACTIVE', 'operador', 'alta');
   d.cambiarEstadoBinding(b.bindingId, 'PRIMARY', 'operador', 'principal');
   assert.throws(
-    () => d.resolver(cuenta.accountNumber, 5550, 'PAYMENTS'),
+    () => d.resolver(cuenta.accountNumber, 5550, new Date().toISOString()),
     /activa|ACTIVE/i,
     'una cuenta que todavía no opera no puede recibir un pago',
   );

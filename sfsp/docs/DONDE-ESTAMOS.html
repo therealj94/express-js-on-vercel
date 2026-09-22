@@ -1,0 +1,658 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Dónde estamos · SFSP</title>
+<style>
+  @page { size: A4; margin: 18mm 16mm 20mm 16mm; }
+  :root{
+    --tinta:#14171c; --suave:#4a5260; --linea:#d8dce3; --papel:#fff;
+    --acento:#1f4f8f; --verde:#146b45; --ambar:#8a5a00; --rojo:#9b2226;
+    --fondo-caja:#f6f8fa;
+  }
+  *{box-sizing:border-box}
+  body{
+    font-family:"Charter","Bitstream Charter","Georgia","Times New Roman",serif;
+    color:var(--tinta); background:var(--papel);
+    font-size:10.6pt; line-height:1.55; margin:0;
+    -webkit-print-color-adjust:exact; print-color-adjust:exact;
+  }
+  h1,h2,h3,.etiqueta,th,.num,code,.mono{font-family:"Helvetica Neue",Helvetica,Arial,sans-serif}
+  h1{font-size:25pt; line-height:1.15; margin:0 0 6pt; letter-spacing:-.015em}
+  h2{font-size:14pt; margin:22pt 0 7pt; padding-bottom:4pt; border-bottom:1.5px solid var(--tinta); letter-spacing:-.01em; break-after:avoid}
+  h3{font-size:11pt; margin:14pt 0 4pt; color:var(--acento); break-after:avoid}
+  p{margin:0 0 7pt}
+  ul,ol{margin:0 0 7pt; padding-left:16pt}
+  li{margin-bottom:3pt}
+  code,.mono{font-family:"DejaVu Sans Mono","Menlo",monospace; font-size:8.9pt}
+  code{background:var(--fondo-caja); padding:.5pt 3pt; border-radius:2px}
+  .etiqueta{font-size:7.6pt; letter-spacing:.11em; text-transform:uppercase; color:var(--suave); font-weight:700}
+  .sub{color:var(--suave); font-size:11pt; margin-bottom:14pt}
+  .regla{height:3px; background:var(--tinta); margin:10pt 0 14pt}
+  .portada{padding-top:34mm; break-after:page}
+  .ficha{border:1px solid var(--linea); background:var(--fondo-caja); padding:9pt 11pt; margin:12pt 0; border-radius:3px}
+  .ficha .etiqueta{display:block; margin-bottom:5pt}
+  table{width:100%; border-collapse:collapse; margin:8pt 0 10pt; font-size:9.3pt}
+  th{text-align:left; font-size:7.8pt; letter-spacing:.07em; text-transform:uppercase; color:var(--suave);
+     border-bottom:1.5px solid var(--tinta); padding:0 6pt 4pt 0; font-weight:700}
+  td{padding:4.5pt 6pt 4.5pt 0; border-bottom:1px solid var(--linea); vertical-align:top}
+  tr{break-inside:avoid}
+  .terminal{background:#14171c; color:#e9edf2; padding:9pt 11pt; border-radius:3px; margin:8pt 0 10pt;
+            font-family:"DejaVu Sans Mono",monospace; font-size:8.3pt; line-height:1.5; white-space:pre-wrap;
+            break-inside:avoid}
+  .terminal .c{color:#7f8a99}
+  .terminal .ok{color:#7ee2b0}
+  .terminal .no{color:#ff9d9d}
+  .terminal .k{color:#8fc4ff}
+  .nota{border-left:3px solid var(--acento); padding:5pt 0 5pt 10pt; margin:9pt 0; color:var(--suave)}
+  .alto{border-left:3px solid var(--rojo); padding:6pt 0 6pt 10pt; margin:10pt 0}
+  .alto strong{color:var(--rojo)}
+  .verde{color:var(--verde); font-weight:700}
+  .ambar{color:var(--ambar); font-weight:700}
+  .rojo{color:var(--rojo); font-weight:700}
+  .pastilla{display:inline-block; font-family:Helvetica,Arial,sans-serif; font-size:7.6pt; font-weight:700;
+            letter-spacing:.05em; padding:1.5pt 5pt; border-radius:9pt; border:1px solid currentColor}
+  .rejilla{display:grid; grid-template-columns:1fr 1fr; gap:10pt; margin:10pt 0}
+  .caja{border:1px solid var(--linea); padding:8pt 10pt; border-radius:3px; break-inside:avoid}
+  .caja h4{margin:0 0 4pt; font-size:9.6pt; font-family:Helvetica,Arial,sans-serif}
+  .cifra{font-family:Helvetica,Arial,sans-serif; font-size:21pt; font-weight:700; line-height:1; letter-spacing:-.02em}
+  .cifra span{font-size:9pt; font-weight:400; color:var(--suave); letter-spacing:0}
+  .flujo{margin:10pt 0; font-size:9.4pt}
+  .paso{display:flex; gap:9pt; margin-bottom:7pt; break-inside:avoid}
+  .paso .n{flex:0 0 17pt; height:17pt; border-radius:50%; background:var(--tinta); color:#fff;
+           font-family:Helvetica,Arial,sans-serif; font-size:8.6pt; font-weight:700; display:flex;
+           align-items:center; justify-content:center; margin-top:1pt}
+  .paso .t{flex:1}
+  .paso .t b{display:block; font-family:Helvetica,Arial,sans-serif; font-size:9.4pt}
+  .pagina{break-before:page}
+  .pie{margin-top:20pt; padding-top:7pt; border-top:1px solid var(--linea); font-size:8.4pt; color:var(--suave)}
+  .evita{break-inside:avoid}
+</style>
+</head>
+<body>
+
+<section class="portada">
+  <div class="etiqueta">Social Financial System Protocol · draft-0.3</div>
+  <h1>Dónde estamos,<br>cómo funciona,<br>y qué falta para migrar</h1>
+  <div class="regla"></div>
+  <p class="sub">Un recorrido con ejemplos reales, corridos contra el código de hoy.<br>
+  Ninguna cifra de este documento está inventada.</p>
+
+  <div class="rejilla" style="margin-top:22pt">
+    <div class="caja"><div class="cifra">470 <span>pruebas</span></div>
+      <p style="margin:5pt 0 0; font-size:9pt; color:var(--suave)">Todas en verde. Se vuelven a correr con una orden.</p></div>
+    <div class="caja"><div class="cifra">45<span> / 46</span></div>
+      <p style="margin:5pt 0 0; font-size:9pt; color:var(--suave)">Hallazgos de auditoría cerrados con prueba.</p></div>
+    <div class="caja"><div class="cifra">20 <span>decisiones</span></div>
+      <p style="margin:5pt 0 0; font-size:9pt; color:var(--suave)">Pendientes de que alguien con autoridad las firme.</p></div>
+    <div class="caja"><div class="cifra">0 <span>migrados</span></div>
+      <p style="margin:5pt 0 0; font-size:9pt; color:var(--suave)">Todavía no se ha tocado una sola cuenta real.</p></div>
+  </div>
+
+  <div class="alto" style="margin-top:20pt">
+    <strong>Lo más importante de esta portada.</strong> El sistema está construido y probado,
+    pero probado <em>en aislamiento</em>: contra datos inventados, en una máquina, sin red y sin
+    dinero. Eso no es lo mismo que probado en producción. La página 7 explica la diferencia,
+    y es la razón por la que todavía no migramos.
+  </div>
+
+  <div class="pie">Generado el 22 de septiembre de 2026 · rama <code>claude/galaxy-web-review-260wt4</code></div>
+</section>
+
+<!-- ───────────────────────────── 1 ───────────────────────────── -->
+<h2>1 · Dónde estamos, en una página</h2>
+
+<p>Hay un árbol de código nuevo, separado de todo lo que hoy está en producción, que se llama
+<code>sfsp/</code>. No toca nada de lo que funciona. Se puede borrar entero hoy y no se cae nada.</p>
+
+<p>Dentro hay cinco piezas, y cada una tiene sus propias pruebas:</p>
+
+<table>
+<tr><th style="width:24%">Pieza</th><th style="width:13%">Pruebas</th><th>Qué hace</th></tr>
+<tr><td><b>sdk</b></td><td class="verde">125</td><td>Las reglas: cuentas, números, alias, rutas, reservas, suministro, migración. Es el cerebro.</td></tr>
+<tr><td><b>contracts</b></td><td class="verde">178</td><td>Lo que vive en la cadena: activos, gobierno, identidad, liquidación, migración.</td></tr>
+<tr><td><b>indexer</b></td><td class="verde">67</td><td>Lee la cadena y la vuelve consultable. Sabe deshacer una reorganización.</td></tr>
+<tr><td><b>dbnx-api</b></td><td class="verde">86</td><td>Admisión de activos: expedientes, firmas, informes.</td></tr>
+<tr><td><b>adversarias</b></td><td class="verde">16</td><td>Pruebas escritas para <em>romper</em> lo anterior. Una por cada defecto que encontró la auditoría.</td></tr>
+</table>
+
+<h3>El semáforo honesto</h3>
+
+<table>
+<tr><th style="width:30%">Cosa</th><th style="width:16%">Estado</th><th>Qué significa</th></tr>
+<tr><td>El código</td><td><span class="pastilla verde">LISTO</span></td><td>Escrito, probado y auditado por fuera.</td></tr>
+<tr><td>Los números económicos</td><td><span class="pastilla rojo">VACÍOS</span></td><td>A propósito. Ni un precio, ni un ratio, ni un quórum está escrito en el código.</td></tr>
+<tr><td>Las decisiones</td><td><span class="pastilla rojo">20 PENDIENTES</span></td><td>Nadie con autoridad ha firmado todavía. Sin firma no hay número.</td></tr>
+<tr><td>Los accesos</td><td><span class="pastilla rojo">NO TENEMOS</span></td><td>Ni a la red real, ni a los servidores, ni a las llaves.</td></tr>
+<tr><td>Prueba en la red real</td><td><span class="pastilla rojo">CERO</span></td><td>Nada de esto ha visto la red 5550 ni un saldo de verdad.</td></tr>
+<tr><td>Migración</td><td><span class="pastilla rojo">NO EMPEZADA</span></td><td>Ninguna cuenta real ha sido tocada.</td></tr>
+</table>
+
+<div class="nota">
+En cristiano: <b>tenemos el motor armado y probado en el banco de pruebas. No lo hemos montado
+en el carro, y el carro todavía no tiene dueño que firme el papel.</b>
+</div>
+
+<!-- ───────────────────────────── 2 ───────────────────────────── -->
+<h2>2 · Qué es SFSP, y qué no es</h2>
+
+<div class="rejilla">
+<div class="caja">
+<h4 style="color:var(--verde)">Qué SÍ es</h4>
+<ul style="margin:0">
+<li>Una capa de <b>reglas sobre activos</b> que se apoya en la cadena que ya tenemos.</li>
+<li>Un <b>directorio</b>: convierte un número de cuenta en una dirección de billetera.</li>
+<li>Un <b>portero</b>: decide si una operación se permite, y siempre dice por qué no.</li>
+<li>Un <b>libro de cuentas de la migración</b>: qué se registró, qué quedó fuera y si cuadra.</li>
+</ul>
+</div>
+<div class="caja">
+<h4 style="color:var(--rojo)">Qué NO es</h4>
+<ul style="margin:0">
+<li><b>No es una cadena nueva.</b> No es un fork. La red 5550 sigue siendo la misma.</li>
+<li><b>No es un cambio de consenso.</b> Los validadores no se enteran.</li>
+<li><b>No mueve saldos por sí solo.</b> La migración registra, no traslada.</li>
+<li><b>No es un banco.</b> No promete respaldo, ni rendimiento, ni recuperación de fondos.</li>
+</ul>
+</div>
+</div>
+
+<h3>Las cuatro cosas que todo el mundo confunde</h3>
+<p>Esta tabla es la que más vas a necesitar. Son <b>cuatro cosas distintas</b>, y tratarlas como
+una sola es el origen de la mitad de los problemas que puede tener una migración.</p>
+
+<table>
+<tr><th style="width:22%">Cosa</th><th style="width:30%">Ejemplo</th><th>Para qué sirve y quién la ve</th></tr>
+<tr><td><b>Cuenta SFSP</b></td><td class="mono">SF-0324-8432-6581-4</td>
+<td>Lo que le das a alguien para que te pague. <b>Pública.</b> No da ningún poder sobre el dinero.</td></tr>
+<tr><td><b>Genesis ID</b></td><td class="mono">gsr_…</td>
+<td>La identidad de la persona dentro del sistema. Interna. No se publica.</td></tr>
+<tr><td><b>Dirección de billetera</b></td><td class="mono">0x7099…79C8</td>
+<td>Dónde está el saldo de verdad, en la cadena. Pública, pero el usuario no tiene que verla.</td></tr>
+<tr><td><b>Llave privada / semilla</b></td><td class="mono">(nunca se escribe)</td>
+<td>El poder de gastar. <b>Secreta.</b> El sistema está diseñado para no necesitarla nunca.</td></tr>
+</table>
+
+<div class="alto">
+<strong>Por qué importa para la migración.</strong> Como la cuenta SFSP y la billetera son cosas
+distintas, <b>podemos darle a alguien un número de cuenta nuevo sin tocarle ni un centavo</b>.
+Su ONDK se queda exactamente donde está. Eso es todo el truco, y está explicado en la sección 8.
+</div>
+
+<!-- ───────────────────────────── 3 ───────────────────────────── -->
+<h2 class="pagina">3 · Cómo nace una cuenta, de verdad</h2>
+
+<p>Esto no es un dibujo. Es la salida real de correr el código hoy, sin retocar:</p>
+
+<div class="terminal"><span class="c">$ node demo.mjs</span>
+
+ALTA:      SF-0324-8432-6581-4   <span class="c">← el número que se le da a la persona</span>
+estado:    <span class="k">PENDING</span>                <span class="c">← existe, pero TODAVÍA NO RECIBE DINERO</span>
+
+<span class="c">… alguien con autoridad aprueba el alta …</span>
+ACTIVADA:  <span class="ok">ACTIVE</span>
+
+ALIAS:     @medardo
+RUTA:      red 5550 → 0x7099…79C8 · propósito PAYMENTS
+
+RESUELVE A: {
+  "accountNumber": "SF-0324-8432-6581-4",
+  "address":       "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
+  "expiraEnISO":   "2026-09-22T16:01:27.817Z"   <span class="c">← caduca en 60 segundos</span>
+}</div>
+
+<h3>Tres detalles que parecen pequeños y no lo son</h3>
+
+<div class="paso"><div class="n">1</div><div class="t">
+<b>La cuenta nace apagada.</b>
+Nace en <code>PENDING</code> y en ese estado <b>no resuelve</b>: si alguien intenta pagarle, el
+sistema rechaza. Hay que activarla a propósito, con un nombre y un motivo escritos. Esto era un
+defecto hasta hace unos días: las cuentas nacían activas, es decir, se daba por aprobada un alta
+que nadie había aprobado. La auditoría lo encontró y está corregido.
+</div></div>
+
+<div class="paso"><div class="n">2</div><div class="t">
+<b>El número no es correlativo.</b>
+<code>SF-0324-8432-6581-4</code> no viene después de <code>SF-0324-8432-6581-3</code>. Son doce
+dígitos al azar de verdad más un dígito de control. Nadie puede adivinar cuántos clientes tenemos
+ni tantear cuentas ajenas. Y un número usado <b>no se recicla jamás</b>, ni aunque la cuenta se
+cierre, porque alguien pudo haberlo apuntado en su agenda.
+</div></div>
+
+<div class="paso"><div class="n">3</div><div class="t">
+<b>La resolución caduca en 60 segundos.</b>
+Cuando el sistema dice «esa cuenta es esta dirección», esa respuesta lleva fecha de vencimiento.
+Si alguien la guarda y la usa media hora después, ya no vale. Así, cambiar de billetera no deja
+pagos volando hacia la billetera vieja.
+</div></div>
+
+<!-- ───────────────────────────── 4 ───────────────────────────── -->
+<h2>4 · El alias, y por qué rechaza nombres parecidos</h2>
+
+<p>Un alias es el nombre bonito: <code>@medardo</code> en vez de un número de catorce dígitos.
+El peligro obvio es que alguien registre algo que <em>se vea</em> igual y cobre lo que no es suyo.
+Esta es la salida real de intentarlo:</p>
+
+<div class="terminal"><span class="c">$ node alias.mjs      # @medardo ya lo tiene otra persona</span>
+
+  "@medardo"    → <span class="no">RECHAZADO</span>  ese alias ya está tomado
+  "@MEDARDO"    → <span class="no">RECHAZADO</span>  ese alias ya está tomado          <span class="c">← mayúsculas no cuentan</span>
+  "@medardo "   → <span class="no">RECHAZADO</span>  ese alias ya está tomado          <span class="c">← el espacio tampoco</span>
+  "@medard0"    → <span class="no">RECHAZADO</span>  ya existe un alias que se ve igual <span class="c">← cero por o</span>
+  "@rnedardo"   → <span class="no">RECHAZADO</span>  ya existe un alias que se ve igual <span class="c">← "rn" por "m"</span></div>
+
+<p>Los dos últimos son los importantes. <code>@medard0</code> con cero y <code>@rnedardo</code>
+con «rn» son cadenas de texto <b>distintas</b> — un sistema ingenuo las acepta sin dudar. SFSP
+calcula el «esqueleto» de cada nombre, que es cómo se ve una vez que se le quitan las diferencias
+que el ojo no capta, y compara por ahí.</p>
+
+<div class="nota">Y hay dos índices distintos en la base de datos, no uno: el primero impide el
+mismo alias, el segundo impide uno que se vea igual. Que el segundo nunca dispare es la prueba de
+que el primero funciona.</div>
+
+<!-- ───────────────────────────── 5 ───────────────────────────── -->
+<h2>5 · Qué pasa cuando alguien intenta pagar</h2>
+
+<div class="flujo">
+<div class="paso"><div class="n">1</div><div class="t"><b>Llega un destino</b>
+Puede ser el número <code>SF-…</code> o el alias <code>@medardo</code>. Los dos caminos llegan al mismo sitio.</div></div>
+<div class="paso"><div class="n">2</div><div class="t"><b>¿La cuenta está activa?</b>
+Si está en <code>PENDING</code>, <code>SUSPENDED</code> o <code>CLOSED</code>, se acabó ahí. El estado no es una etiqueta: le cierra la puerta al dinero.</div></div>
+<div class="paso"><div class="n">3</div><div class="t"><b>¿Tiene una ruta vigente en esa red?</b>
+Una cuenta puede tener varias billeteras. Se elige la marcada como principal, y sólo si está vigente hoy.</div></div>
+<div class="paso"><div class="n">4</div><div class="t"><b>¿La política lo permite?</b>
+Aquí entran identidad, jurisdicción, estado del activo y límites. Es el portero.</div></div>
+<div class="paso"><div class="n">5</div><div class="t"><b>Se entrega una respuesta con fecha de caducidad</b>
+Y quien la ejecute debe volver a comprobar que nada cambió entre medias.</div></div>
+</div>
+
+<h3>Las respuestas posibles, y la regla de oro</h3>
+
+<table>
+<tr><th style="width:30%">Respuesta</th><th>Cuándo</th></tr>
+<tr><td class="mono verde">ALLOW</td><td>Adelante.</td></tr>
+<tr><td class="mono">DENY_POLICY</td><td>La política dice que no.</td></tr>
+<tr><td class="mono">DENY_ELIGIBILITY</td><td>Esa persona no cumple los requisitos para este activo.</td></tr>
+<tr><td class="mono">DENY_JURISDICTION</td><td>No en ese país.</td></tr>
+<tr><td class="mono">DENY_ASSET_STATE</td><td>El activo está pausado, congelado o no es transferible.</td></tr>
+<tr><td class="mono">DENY_AUTHORIZATION</td><td>Falta una firma, o la que hay no vale.</td></tr>
+<tr><td class="mono">DENY_LIMIT</td><td>Se pasa de un tope.</td></tr>
+<tr><td class="mono">REVIEW_REQUIRED</td><td>Hace falta que lo mire una persona.</td></tr>
+<tr><td class="mono rojo">UNKNOWN_SOURCE</td><td><b>No sé.</b> Un dato no llegó, o llegó roto.</td></tr>
+</table>
+
+<div class="alto">
+<strong>La regla de oro del sistema.</strong> <code>UNKNOWN_SOURCE</code> <b>nunca</b> se convierte
+en cero ni en «permitido». Si el sistema no sabe, dice que no sabe y se detiene. Suena obvio;
+es justo lo que falla en la mayoría de los sistemas de pago, donde un dato que no llega se trata
+como un cero y un cero parece que está todo bien.
+</div>
+
+<!-- ───────────────────────────── 6 ───────────────────────────── -->
+<h2 class="pagina">6 · Nadie firma solo</h2>
+
+<p>Toda acción que puede hacer daño exige <b>dos personas distintas</b>: una propone y otra
+aprueba. Quien propone <b>no cuenta</b> como aprobador, aunque tenga permiso para aprobar.</p>
+
+<p>Y la autorización no es un permiso suelto que después se aplica a cualquier cosa. Es una huella
+que compromete <em>todo</em>: qué acción, sobre qué activo, entre quiénes, por cuánto, en qué red,
+en qué contrato, hasta cuándo, y con qué número de serie. Quien ejecuta <b>recalcula esa huella
+desde los argumentos reales</b> y la gasta una sola vez.</p>
+
+<div class="nota">
+Esto arregla de una sola vez <b>siete de los nueve defectos más graves</b> que encontró la
+auditoría. Todos eran la misma cosa: una autorización identificada por algo débil (un nombre, un
+número de operación) que después se aplicaba a otra cosa distinta de la que se aprobó.
+</div>
+
+<h3>Las diez acciones, todas con doble control</h3>
+<p style="font-size:9.4pt">
+<code>MINT</code> emitir ·
+<code>BURN</code> quemar ·
+<code>FORCED_TRANSFER</code> transferencia forzosa ·
+<code>UNPAUSE</code> reanudar ·
+<code>SETTLE_DVP</code> liquidar ·
+<code>UPGRADE</code> actualizar ·
+<code>RECOVERY</code> recuperar ·
+<code>SET_QUORUM</code> cambiar quórums ·
+<code>SET_POLICY</code> cambiar política ·
+<code>MIGRATION_CLAIM</code> reclamo de migración.
+</p>
+
+<p>Hay una prueba que las recorre las diez contra el ejecutor real y comprueba tres cosas en cada
+una: que quien propone no puede aprobar, que con un solo aprobador la operación se rechaza, y que
+después del rechazo <b>el estado no se movió</b>.</p>
+
+<h3>El caso más delicado: cambiar los quórums</h3>
+<p><code>SET_QUORUM</code> es la acción que cambia cuántas firmas hacen falta para las demás. Si se
+pudiera usar para rebajarse a sí misma, una sola persona podría abrirse la puerta. Tiene dos
+candados, con una prueba cada uno:</p>
+<ul>
+<li><b>En la misma operación:</b> lo que valida el cambio es el número <em>anterior</em>, no el nuevo.</li>
+<li><b>Encadenada:</b> bajar el quórum hoy no abarata una autorización que ya estaba propuesta.
+El exigible es el <em>mayor</em> entre el congelado al proponer y el vigente.</li>
+</ul>
+
+<h3>La única excepción, y por qué</h3>
+<p>La <b>pausa de emergencia</b> la puede echar una sola persona. Es deliberado: una pausa que
+tuviera que reunir quórum llegaría tarde, y para entonces el daño está hecho. El contrapeso es
+que <b>caduca sola</b> y que <b>levantarla sí exige doble control</b> atado al incidente. Es más
+fácil parar que arrancar, que es como debe ser.</p>
+
+<!-- ───────────────────────────── 7 ───────────────────────────── -->
+<h2>7 · Qué probamos, y qué no · <span style="font-weight:400">la página más importante</span></h2>
+
+<p>El sistema no dice «probado» o «sin probar». Tiene seis niveles, y sabe en cuál está cada cosa.
+Esto existe para que nadie —yo incluido— pueda decir que algo está probado cuando no lo está.</p>
+
+<table>
+<tr><th style="width:26%">Nivel</th><th>Qué significa de verdad</th></tr>
+<tr><td class="mono">DECLARADO</td><td>Alguien lo escribió en un documento. No hay código.</td></tr>
+<tr><td class="mono">CODIGO_LEIDO</td><td>Hay código y alguien lo leyó. No se ejecutó.</td></tr>
+<tr><td class="mono verde">PROBADO_AISLADO</td><td><b>Aquí estamos hoy.</b> Se ejecuta y pasa, contra datos inventados, en una máquina, sin red.</td></tr>
+<tr><td class="mono">VERIFICADO_RUNTIME</td><td>Funciona en un servicio desplegado, contra la red real.</td></tr>
+<tr><td class="mono">NO_VERIFICADO</td><td>Se intentó y no se pudo comprobar.</td></tr>
+<tr><td class="mono">BLOQUEADO</td><td>No se puede comprobar porque falta un acceso o una decisión.</td></tr>
+</table>
+
+<div class="alto">
+<strong>La distancia que separa hoy de la migración.</strong> Estamos en
+<code>PROBADO_AISLADO</code>. Para migrar hace falta <code>VERIFICADO_RUNTIME</code>. Entre los dos
+hay: accesos que no tenemos, decisiones que nadie ha firmado, y un entorno de pruebas aislado que
+todavía no existe. <b>Ninguna de las tres las resuelve escribir más código.</b>
+</div>
+
+<h3>Cómo se comprueba, y qué salió mal en el camino</h3>
+<p>Hay una orden que corre las 470 pruebas, comprueba los tipos, cuenta las decisiones pendientes,
+verifica que no haya ni un número económico escrito, y <b>firma un archivo de evidencia con el
+commit exacto del código que probó</b>.</p>
+
+<div class="terminal"><span class="c">$ node scripts/verificar-todo.mjs</span>
+
+  sdk                  <span class="ok">PROBADO_AISLADO</span>    125 pruebas
+  contracts            <span class="ok">PROBADO_AISLADO</span>    178 pruebas
+  indexer              <span class="ok">PROBADO_AISLADO</span>     67 pruebas
+  dbnx-api             <span class="ok">PROBADO_AISLADO</span>     86 pruebas
+  pruebas-adversarias  <span class="ok">PROBADO_AISLADO</span>     14 pruebas
+
+  árbol limpio: sí
+  decisiones pendientes: 20
+  parámetros económicos con valor: <span class="ok">0</span>
+
+  cobertura: <span class="ok">VERIFICACION_COMPLETA</span>
+  estado:    <span class="ok">PROBADO_AISLADO</span></div>
+
+<div class="nota">
+<b>Una cosa que te debo contar, porque es la que más me preocupa de todo este trabajo.</b>
+Ese «árbol limpio: sí» estuvo <em>mintiendo</em> desde que escribí la herramienta. Preguntaba por
+una carpeta con la ruta mal puesta; el sistema devolvía una lista vacía sin quejarse, y la lista
+vacía se leía como «no hay nada sucio». O sea: <b>la herramienta escrita para impedir que
+firmáramos evidencia de un árbol sin guardar llevaba meses firmando que estaba limpio sin haber
+mirado nunca</b>. Lo encontré ayer, al ver que decía «limpio» con dos documentos sin guardar
+delante. Está corregido, y ahora «no hay nada sucio» y «pregunté mal» son dos respuestas
+distintas. Toda la evidencia anterior vale por lo que probó, pero no por su afirmación de
+procedencia.
+</div>
+
+<!-- ───────────────────────────── 8 ───────────────────────────── -->
+<h2 class="pagina">8 · La migración · <span style="font-weight:400">registrar sin mover</span></h2>
+
+<p>Esta es la sección que te importa. La pregunta que planteaste desde el principio era: <b>¿cómo
+hacemos esto sin que nadie se dé cuenta y sin que nadie pierda sus ONDK ni ninguna otra moneda?</b></p>
+
+<p>La respuesta es una sola frase: <b>no movemos nada</b>.</p>
+
+<div class="ficha">
+<span class="etiqueta">La idea completa</span>
+Los saldos se quedan exactamente donde están, en las mismas billeteras, en la misma cadena.
+Lo único que hacemos es <b>anotar en un directorio nuevo</b> que la billetera
+<code>0x…1001</code> ahora también responde al número <code>SF-8375-3040-2151-0</code>.
+Ratio 1 a 1. Cero transacciones sobre el saldo. Cero riesgo de que un traslado se caiga a la mitad.
+</div>
+
+<h3>Por qué esto es seguro, y por qué la alternativa no lo es</h3>
+<div class="rejilla">
+<div class="caja">
+<h4 style="color:var(--rojo)">Mover los saldos</h4>
+<ul style="margin:0; font-size:9.3pt">
+<li>Miles de transacciones que pueden fallar a la mitad.</li>
+<li>Hay que pagar el gas de todas.</li>
+<li>Hay que tener las llaves de todo el mundo.</li>
+<li>Si se cae a medias, unos tienen y otros no.</li>
+<li>El usuario ve movimiento y se asusta.</li>
+</ul>
+</div>
+<div class="caja">
+<h4 style="color:var(--verde)">Registrar sin mover</h4>
+<ul style="margin:0; font-size:9.3pt">
+<li>El saldo nunca se toca. No hay nada que se caiga.</li>
+<li>No hace falta gas para los saldos.</li>
+<li><b>No hace falta la llave de nadie.</b></li>
+<li>Se puede parar a la mitad sin dejar a nadie colgado.</li>
+<li>El usuario no ve nada: gana un número, no pierde saldo.</li>
+</ul>
+</div>
+</div>
+
+<h3>Corrido de verdad, con el censo de prueba</h3>
+<p>Cuatro cuentas inventadas, dos con saldo en <code>ORIGEN</code> y en <code>ONDK</code>. Esta es
+la salida real:</p>
+
+<div class="terminal"><span class="c">─── PASO 1 · SIMULACRO (ensayo general, no escribe nada) ───</span>
+  cuentasOrigen:      4
+  cuentasSFSP:        4
+  saldosIguales:      <span class="ok">true</span>        <span class="c">← nadie ganó ni perdió nada</span>
+  excepciones:        0
+  cuadra:             <span class="ok">true</span>
+
+  cuentas creadas de verdad en el directorio: <span class="ok">0</span>   <span class="c">← el ensayo NO dejó rastro</span>
+
+<span class="c">─── PASO 2 · APLICAR (esta vez sí) ───</span>
+  pares: 4 · cuadra: <span class="ok">true</span> · saldosIguales: <span class="ok">true</span>
+     sint_0001  →  SF-8375-3040-2151-0
+     sint_0002  →  SF-6369-2926-3231-5
+     sint_0003  →  SF-5730-5873-0919-3
+  excepciones: []
+  cuentas en el directorio: 4
+
+<span class="c">─── PASO 3 · CORRERLO OTRA VEZ POR ERROR ───</span>
+  yaExistentes: <span class="ok">4</span>  ·  total sigue en: <span class="ok">4</span>   <span class="c">← nadie recibió una segunda cuenta</span></div>
+
+<h3>Los tres seguros que acabas de ver funcionando</h3>
+
+<div class="paso"><div class="n">1</div><div class="t">
+<b>El ensayo no deja rastro.</b>
+Fíjate en «cuentas creadas de verdad: 0» después de un simulacro que reportó 4. Esto también era
+un defecto: el simulacro escribía en el directorio de verdad, así que ensayar la migración
+<em>era</em> migrar. Corregido: el simulacro trabaja sobre una copia.
+</div></div>
+
+<div class="paso"><div class="n">2</div><div class="t">
+<b>Correrlo dos veces no hace daño.</b>
+Si el proceso se cae y alguien lo vuelve a lanzar, las cuentas que ya tenían número no reciben
+otro. Suena menor; es la diferencia entre un susto y un desastre, porque en una migración real
+el proceso <em>se va a caer</em> alguna vez.
+</div></div>
+
+<div class="paso"><div class="n">3</div><div class="t">
+<b>Nadie se queda fuera en silencio.</b>
+Si una cuenta no se puede migrar, <b>no se borra del censo</b>: se abre un expediente con el
+motivo. Y el contador <code>direccionesConSaldoSinDueno</code> existe precisamente para gritar si
+apareciera una billetera con dinero que no le corresponde a nadie.
+</div></div>
+
+<h3>La cuadratura: la prueba de que nadie perdió nada</h3>
+<p>Al final de cada corrida se comprueba una suma que no puede fallar:</p>
+
+<div class="ficha" style="text-align:center; font-family:Helvetica,Arial,sans-serif; font-size:13pt; padding:12pt">
+<b>S0 = A + N + P</b>
+<div style="font-size:8.6pt; color:var(--suave); margin-top:6pt; font-family:inherit">
+todo lo que había  =  lo migrado  +  lo no reclamado  +  lo pendiente
+</div>
+</div>
+
+<div class="terminal">CUADRA:     <span class="ok">true</span>   diferencia: 0
+<span class="c">… ahora le quito UNA unidad de mil millones a lo migrado …</span>
+NO CUADRA:  <span class="no">false</span>  diferencia: 1   <span class="c">← lo pilla al instante</span></div>
+
+<p>Una sola unidad de diferencia y la corrida se marca como no cuadrada. No hay tolerancia, no hay
+redondeo, no hay «casi». Y hay una segunda igualdad, <code>E = N + P</code>, que comprueba lo
+mismo desde el otro lado, para que un error tenga que mentir dos veces de forma coherente para
+pasar desapercibido.</p>
+
+<div class="nota">
+<b>Sobre los ONDK en concreto.</b> En el censo de prueba aparecen como
+<code>SFSP:LEGACY:OG:ONDK</code>, la etiqueta que marca un activo de la vida anterior. Se registran
+con ratio 1:1 y con su saldo intacto. Una conversión con ratio distinto de 1:1 está prevista en
+el código, pero <b>con resto explícito</b>: si la división no es exacta, el resto no se pierde ni
+se redondea a favor de nadie, se reporta.
+</div>
+
+<!-- ───────────────────────────── 9 ───────────────────────────── -->
+<h2 class="pagina">9 · Las 20 decisiones que bloquean todo</h2>
+
+<p>Cada número económico del sistema vale <code>null</code> —vacío— a propósito. No es que falte
+escribirlos: es que <b>el código se niega a funcionar con un número que nadie firmó</b>. Si se
+intenta usar un parámetro cuya decisión no está aprobada, el sistema para.</p>
+
+<p>Estas son las que hacen falta, ordenadas por lo que desbloquean:</p>
+
+<h3>Bloquean la migración directamente</h3>
+<table>
+<tr><th style="width:8%">ID</th><th style="width:44%">Tema</th><th>Quién tiene que firmarla</th></tr>
+<tr><td class="mono"><b>D09</b></td><td>Modo, ratio, gas, corte y claims de migración por activo</td><td>Junta / DBNX / tecnología</td></tr>
+<tr><td class="mono"><b>D10</b></td><td>Custodia canónica, excepciones y recuperación</td><td>seguridad / operaciones / legal</td></tr>
+<tr><td class="mono"><b>D18</b></td><td>Arquitectura final de custodia gestionada (llaves, quórum, respaldo)</td><td>seguridad / Junta</td></tr>
+<tr><td class="mono"><b>D19</b></td><td>Política de recuperación por activo y perfil</td><td>DBNX / legal / seguridad</td></tr>
+<tr><td class="mono"><b>D07</b></td><td>Quórums, firmantes, pausa, upgrade y recuperación</td><td>Junta / seguridad</td></tr>
+<tr><td class="mono"><b>D12</b></td><td>Recursos de staging y aislamiento efectivo</td><td>operaciones / seguridad</td></tr>
+<tr><td class="mono"><b>D11</b></td><td>Repositorios y fuente de despliegue por servicio</td><td>tecnología</td></tr>
+</table>
+
+<h3>Bloquean el dinero y las promesas</h3>
+<table>
+<tr><th style="width:8%">ID</th><th style="width:44%">Tema</th><th>Qué no se puede hacer sin ella</th></tr>
+<tr><td class="mono">D01</td><td>Política de precio de ORIGEN</td><td>Conversión, valuación, tarjeta, comisiones</td></tr>
+<tr><td class="mono">D02</td><td>Objetivo de USD 0.01, mínimos, patrocinio de gas</td><td>Activar un cobro nuevo</td></tr>
+<tr><td class="mono">D03</td><td>Suministro nativo: respaldo total o liberación controlada</td><td>Afirmar respaldo, liberar tesorería</td></tr>
+<tr><td class="mono">D04</td><td>Reservas elegibles, descuentos, concentración</td><td>Capacidad de reserva distinta de cero</td></tr>
+<tr><td class="mono">D05</td><td>Custodia y redención de AUKA / AGK</td><td>Serie redimible, emisiones nuevas</td></tr>
+<tr><td class="mono">D15</td><td>Proveedor de pagos, contratos, liquidez</td><td>Modo real en tarjeta y punto de venta</td></tr>
+</table>
+
+<h3>Bloquean lo legal y lo público</h3>
+<table>
+<tr><th style="width:8%">ID</th><th style="width:44%">Tema</th><th>Qué no se puede hacer sin ella</th></tr>
+<tr><td class="mono">D08</td><td>Clasificación, derechos y elegibilidad por activo y país</td><td>Ofrecer, cambiar derechos, negociar</td></tr>
+<tr><td class="mono">D13</td><td>Identidad, jurisdicción, permisos y alcance regulatorio</td><td>Toda actividad que requiera licencia</td></tr>
+<tr><td class="mono">D06</td><td>Alcance y diseño de privacidad</td><td>Cualquier promesa de privacidad</td></tr>
+<tr><td class="mono">D17</td><td>Política de alias: reservados, disputas, recuperación</td><td>Activar los alias en público</td></tr>
+<tr><td class="mono">D00</td><td>Nombre SFSP y limpieza de marca</td><td>Usar el nombre en público</td></tr>
+<tr><td class="mono">D14</td><td>Retiro de la cadena 8532 y continuidad histórica</td><td>Apagar o descartar nada</td></tr>
+<tr><td class="mono">D16</td><td>Resolver la especificación OGFP referida</td><td>Cerrar contradicciones normativas</td></tr>
+</table>
+
+<div class="alto">
+<strong>Lo que esto significa en la práctica.</strong> Si mañana tuviéramos todos los accesos,
+<b>todavía no podríamos migrar</b>, porque el sistema se negaría a usar un ratio que nadie firmó.
+Eso es a propósito y es lo que impide una migración con un número puesto a ojo.
+</div>
+
+<!-- ───────────────────────────── 10 ───────────────────────────── -->
+<h2 class="pagina">10 · El camino de aquí a la migración</h2>
+
+<div class="flujo">
+<div class="paso"><div class="n">1</div><div class="t"><b>Firmar las siete decisiones que bloquean la migración</b>
+<span style="color:var(--suave)">D07, D09, D10, D11, D12, D18, D19. No hace falta código; hacen falta firmas.
+Es lo único de esta lista que se puede empezar hoy mismo.</span></div></div>
+
+<div class="paso"><div class="n">2</div><div class="t"><b>Conseguir accesos y levantar un entorno aislado</b>
+<span style="color:var(--suave)">Una copia de la red donde se pueda romper todo sin consecuencias. Esto es D12.</span></div></div>
+
+<div class="paso"><div class="n">3</div><div class="t"><b>Que un tercero corra las pruebas desde cero</b>
+<span style="color:var(--suave)">Es el único punto de auditoría que sigue abierto (P11). Están escritas las cinco
+órdenes para hacerlo. No lo cierro yo: cerrarlo es que lo corra otro.</span></div></div>
+
+<div class="paso"><div class="n">4</div><div class="t"><b>Desplegar en el entorno aislado y pasar a VERIFICADO_RUNTIME</b>
+<span style="color:var(--suave)">Aquí es donde dejamos de creer en las pruebas y empezamos a creer en los hechos.</span></div></div>
+
+<div class="paso"><div class="n">5</div><div class="t"><b>Censo real y simulacro contra datos reales</b>
+<span style="color:var(--suave)">El simulacro no escribe. Se corre las veces que haga falta hasta que cuadre y el
+número de expedientes sea explicable uno por uno.</span></div></div>
+
+<div class="paso"><div class="n">6</div><div class="t"><b>Migrar un lote pequeño, con nombre y apellido</b>
+<span style="color:var(--suave)">Cuentas nuestras, no de clientes. Comprobar que los saldos siguen intactos y que
+los pagos resuelven.</span></div></div>
+
+<div class="paso"><div class="n">7</div><div class="t"><b>Migrar por lotes, con la cuadratura verde en cada uno</b>
+<span style="color:var(--suave)">Cualquier lote que no cuadre detiene todo. Sin excepciones y sin «es sólo una
+unidad».</span></div></div>
+
+<div class="paso"><div class="n">8</div><div class="t"><b>Fusionar el árbol nuevo con el que está en producción</b>
+<span style="color:var(--suave)">Al final, no al principio. El código está preparado para extraerse limpio.</span></div></div>
+
+<h3>Lo que puede salir mal, y qué lo para</h3>
+<table>
+<tr><th style="width:38%">Riesgo</th><th>Qué lo detiene</th></tr>
+<tr><td>Alguien pierde saldo</td><td>Nunca se mueve un saldo. Y la cuadratura pilla una unidad de diferencia.</td></tr>
+<tr><td>Dos cuentas con el mismo número</td><td>Índice único en la base + tabla de números consumidos que nunca se borra. Probado con hilos reales peleando por el mismo archivo.</td></tr>
+<tr><td>Alguien recibe dos cuentas</td><td>Una cuenta de origen tiene una sola cuenta SFSP, impuesto por la base, no por el código.</td></tr>
+<tr><td>El proceso se cae a la mitad</td><td>Volver a lanzarlo no duplica nada. Sólo una corrida a la vez por censo.</td></tr>
+<tr><td>Un pago va a la billetera vieja</td><td>La resolución caduca en 60 segundos y se revalida antes de ejecutar.</td></tr>
+<tr><td>Alias parecido que roba pagos</td><td>Comparación por esqueleto, con dos índices distintos.</td></tr>
+<tr><td>Alguien firma solo algo grave</td><td>Doble control en las diez acciones, con el proponente excluido.</td></tr>
+<tr><td>Se migra con un número inventado</td><td>El sistema se niega a usar un parámetro cuya decisión no esté firmada.</td></tr>
+</table>
+
+<!-- ───────────────────────────── 11 ───────────────────────────── -->
+<h2>11 · Lo que no te voy a maquillar</h2>
+
+<p>Tres cosas que un informe optimista omitiría, y que prefiero que sepas antes de decidir nada:</p>
+
+<div class="paso"><div class="n">1</div><div class="t">
+<b>La herramienta de verificación me falló a mí.</b>
+Durante todo este tiempo firmó «árbol limpio» sin haber mirado nunca. Está corregido y ahora hay
+una prueba que lo vigila, pero el hecho es que la herramienta escrita para garantizar la
+procedencia de la evidencia tenía exactamente el fallo que existía para impedir. Si eso pasó una
+vez, puede haber pasado otra en algo que todavía no he encontrado. Por eso el punto P11 —que un
+tercero corra todo desde cero— importa de verdad y no es un trámite.
+</div></div>
+
+<div class="paso"><div class="n">2</div><div class="t">
+<b>La privacidad tiene un límite escrito.</b>
+Dos billeteras de la misma persona ya <b>no</b> se pueden enlazar entre propósitos distintos —que
+es lo que la identificaba a través de sus cuentas—. Pero <em>dentro</em> de un mismo propósito sí
+se puede comprobar que son la misma. Es deliberado, porque es lo que permite tratarlas como un
+solo sujeto. Cerrarlo del todo cambia el modelo de ejecución entero y no se hizo.
+</div></div>
+
+<div class="paso"><div class="n">3</div><div class="t">
+<b>Nada de esto ha visto dinero real.</b>
+470 pruebas en verde contra datos inventados no son 470 pruebas contra la red 5550. La diferencia
+entre esas dos cosas es donde se pierden los proyectos, y es exactamente por eso que el sistema
+se niega a llamarlo <code>VERIFICADO_RUNTIME</code>.
+</div></div>
+
+<h2>12 · Si sólo te quedas con una página</h2>
+
+<div class="ficha">
+<span class="etiqueta">Resumen</span>
+<p style="margin-bottom:6pt"><b>Lo que está hecho:</b> el sistema completo, escrito, probado con 470 pruebas,
+auditado por fuera, con 45 de 46 hallazgos cerrados con una prueba que se puede volver a correr.</p>
+<p style="margin-bottom:6pt"><b>Lo que falta:</b> que alguien firme 20 decisiones, que consigamos accesos,
+que un tercero lo verifique, y que se pruebe contra la red real.</p>
+<p style="margin-bottom:6pt"><b>Cómo migraremos:</b> sin mover un solo saldo. Cada persona gana un número de
+cuenta; su ONDK se queda donde está, con ratio 1:1. Ensayo que no deja rastro, se puede repetir
+sin daño, y una suma que no admite ni una unidad de diferencia.</p>
+<p style="margin-bottom:0"><b>Lo siguiente, hoy:</b> las siete decisiones que bloquean la migración
+—D07, D09, D10, D11, D12, D18, D19—. No hace falta escribir una línea de código para empezar por ahí.</p>
+</div>
+
+<div class="pie">
+Todos los ejemplos de este documento son salida real del código, corrida el 22 de septiembre de
+2026. Los datos son sintéticos: ninguna dirección, saldo ni referencia corresponde a una cuenta
+real. Fuente: <code>sfsp/docs/DONDE-ESTAMOS.html</code>.
+</div>
+
+</body>
+</html>
