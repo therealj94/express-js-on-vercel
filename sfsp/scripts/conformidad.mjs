@@ -19,6 +19,12 @@
  * por buena una conformidad que no se comprobó es peor que no comprobarla: es
  * la misma clase de afirmación sin evidencia que este árbol dice no permitirse.
  *
+ * Las ocho máquinas que vigila: estados y transiciones del binding, su
+ * terminalidad, estados y transiciones de la cuenta, transiciones del alias, y
+ * ejes y transiciones del ciclo de vida del activo. El lado del código sale de
+ * `sdk/src/tipos.ts`, `sdk/src/binding.ts` y `sdk/src/maquinas.ts`; ninguna de
+ * las tres se lee interpretando lógica, todas declaran la máquina en una tabla.
+ *
  *   node scripts/conformidad.mjs              informa; falla sólo si hay divergencia
  *   node scripts/conformidad.mjs --estricto   falla también si algo quedó NO_COMPROBADA
  *
@@ -36,6 +42,7 @@ const RUTA_130 = join(raiz, 'spec', 'SFSP-130-ACCOUNT-KEY.md');
 const RUTA_100 = join(raiz, 'spec', 'SFSP-100-CORE.md');
 const RUTA_TIPOS = join(raiz, 'sdk', 'src', 'tipos.ts');
 const RUTA_BINDING = join(raiz, 'sdk', 'src', 'binding.ts');
+const RUTA_MAQUINAS = join(raiz, 'sdk', 'src', 'maquinas.ts');
 
 /* --------------------------------------------------------------- utilidades */
 
@@ -63,25 +70,37 @@ function seccion(texto, patronTitulo) {
   return inicio === -1 ? null : lineas.slice(inicio).join('\n');
 }
 
-/** Filas de la primera tabla markdown de un texto, sin cabecera ni separador. */
-function filasDeTabla(texto) {
-  const filas = [];
-  let dentro = false;
+/** Todas las tablas markdown de un texto, cada una como filas sin cabecera ni
+ *  separador. Se devuelven todas porque una sección puede llevar la tabla de
+ *  estados y la de transiciones, y cada comprobación quiere una distinta. */
+function tablas(texto) {
+  const encontradas = [];
+  let actual = null;
   for (const linea of texto.split('\n')) {
     const esFila = /^\s*\|.*\|\s*$/.test(linea);
     if (!esFila) {
-      if (dentro) break;
+      if (actual) {
+        encontradas.push(actual);
+        actual = null;
+      }
       continue;
     }
     const celdas = linea.trim().slice(1, -1).split('|').map((c) => c.trim());
     if (/^:?-{2,}:?$/.test(celdas[0])) {
-      dentro = true;
+      actual = actual ?? [];
       continue;
     }
-    if (dentro) filas.push(celdas);
+    if (actual) actual.push(celdas);
   }
-  return filas;
+  if (actual) encontradas.push(actual);
+  return encontradas;
 }
+
+/** Filas de la primera tabla markdown de un texto. */
+const filasDeTabla = (texto) => tablas(texto)[0] ?? [];
+
+/** Filas de la tabla número `n` (base 0), o lista vacía si no hay tantas. */
+const filasDeTablaN = (texto, n) => tablas(texto)[n] ?? [];
 
 /** Los ESTADOS que una celda menciona, en mayúsculas con guión bajo. */
 const estadosDe = (celda) => [...celda.matchAll(/`([A-Z][A-Z_]{2,})`/g)].map((m) => m[1]);
@@ -104,13 +123,31 @@ function unionDeCampo(codigo, interfaz, campo) {
   return [...linea[1].matchAll(/'([A-Z_]+)'/g)].map((x) => x[1]);
 }
 
-/** El mapa `const TRANSICIONES: Record<...> = { A: ['B'], ... }` de binding.ts. */
-function mapaDeTransiciones(codigo) {
-  const m = /const TRANSICIONES[^=]*=\s*\{([\s\S]*?)\n\};/.exec(codigo);
+/** Un mapa `const NOMBRE: Record<...> = { A: ['B'], ... }` del SDK. */
+function mapaDeTransiciones(codigo, nombre = 'TRANSICIONES') {
+  const m = new RegExp(`const ${nombre}[^=]*=\\s*\\{([\\s\\S]*?)\\n\\};`).exec(codigo);
+  if (!m) return null;
+  return mapaDeCuerpo(m[1]);
+}
+
+/** El cuerpo `A: ['B', 'C'], D: []` convertido en objeto. */
+function mapaDeCuerpo(cuerpo) {
+  const mapa = {};
+  for (const fila of cuerpo.matchAll(/([A-Z_]+)\s*:\s*\[([^\]]*)\]/g)) {
+    mapa[fila[1]] = [...fila[2].matchAll(/'([A-Z_]+)'/g)].map((x) => x[1]);
+  }
+  return Object.keys(mapa).length ? mapa : null;
+}
+
+/** El mapa anidado `const NOMBRE: ... = { eje: { A: ['B'] }, ... }`, un nivel
+ *  más hondo: devuelve `{ eje: { A: ['B'] } }`. */
+function mapaAnidadoDeTransiciones(codigo, nombre) {
+  const m = new RegExp(`const ${nombre}[^=]*=\\s*\\{([\\s\\S]*?)\\n\\};`).exec(codigo);
   if (!m) return null;
   const mapa = {};
-  for (const fila of m[1].matchAll(/([A-Z_]+)\s*:\s*\[([^\]]*)\]/g)) {
-    mapa[fila[1]] = [...fila[2].matchAll(/'([A-Z_]+)'/g)].map((x) => x[1]);
+  for (const bloque of m[1].matchAll(/\n {2}([a-zA-Z]+):\s*\{([\s\S]*?)\n {2}\}/g)) {
+    const interno = mapaDeCuerpo(bloque[2]);
+    if (interno) mapa[bloque[1]] = interno;
   }
   return Object.keys(mapa).length ? mapa : null;
 }
@@ -142,6 +179,20 @@ function comparar(delEspec, delCodigo) {
 const doc130 = leer(RUTA_130);
 const tipos = leer(RUTA_TIPOS);
 const codigoBinding = leer(RUTA_BINDING);
+const codigoMaquinas = leer(RUTA_MAQUINAS);
+
+/** Pares `desde -> hacia` de una tabla markdown con las columnas desde y hacia
+ *  en las posiciones dadas. Una celda sin ningún estado (por ejemplo
+ *  `(ninguna)`) no aporta par: declara un estado terminal, no una transición. */
+function paresDeTabla(filas, iDesde, iHacia) {
+  const pares = [];
+  for (const f of filas) {
+    const desde = estadosDe(f[iDesde] ?? '')[0];
+    if (!desde) continue;
+    for (const hacia of estadosDe(f[iHacia] ?? '')) pares.push(`${desde} -> ${hacia}`);
+  }
+  return pares;
+}
 
 if (doc130 === null) {
   noComprobada('binding.estados', `no se encontró ${RUTA_130}`);
@@ -183,41 +234,32 @@ if (doc130 === null) {
       'no se pudo extraer el mapa TRANSICIONES de sdk/src/binding.ts',
     );
   } else {
-    /* Lo único que se puede leer de forma fiable del §5.2 son las flechas que
-       caben en una línea: `[ A ] --motivo--> [ B ]`. El resto del diagrama son
-       flechas dibujadas con `|`, `v`, `\` y `+--` repartidas por varias líneas,
-       y leerlas exigiría adivinar. No se adivina. */
-    const legibles = new Set();
-    for (const l of secMaquina.split('\n')) {
-      for (const m of l.matchAll(/\[\s*([A-Z_]+)\s*\][^[\]]*?<?-{2,}>?[^[\]]*?\[\s*([A-Z_]+)\s*\]/g)) {
-        const [, a, b] = m;
-        legibles.add(`${a} -> ${b}`);
-        if (/<-{2,}/.test(m[0]) && /-{2,}>/.test(m[0])) legibles.add(`${b} -> ${a}`);
-      }
-    }
+    /* §5.2 declara la máquina en una tabla `desde | hacia | quién autoriza |
+       motivo`. Antes la dibujaba con flechas repartidas por varias líneas y
+       sólo se leían cuatro de las catorce transiciones: el resto habría que
+       adivinarlo, y aquí no se adivina. Si alguien devuelve el dibujo y quita
+       la tabla, esto vuelve a decir NO_COMPROBADA en vez de dar por buena una
+       lectura parcial. */
+    const filas = filasDeTabla(secMaquina);
+    const paresEspec = paresDeTabla(filas, 0, 1);
     const hayArteMultilinea = /^\s*[|v+\\/]/m.test(secMaquina);
     const paresCodigo = aPares(transCodigo);
-    const sinRespaldo = paresCodigo.filter((p) => !legibles.has(p));
 
-    if (hayArteMultilinea) {
+    if (paresEspec.length === 0) {
       noComprobada(
         'binding.transiciones',
-        'el §5.2 de SFSP-130 dibuja la máquina como arte ASCII con flechas de varias ' +
-          'líneas (|, v, \\, +--). Sólo se pueden leer con fiabilidad las flechas de una ' +
-          'sola línea, así que la comparación completa NO se hizo.',
-        [
-          `flechas de una línea leídas de la spec (${legibles.size}): ${[...legibles].join(', ') || 'ninguna'}`,
-          `transiciones que el código admite (${paresCodigo.length}): ${paresCodigo.join(', ')}`,
-          `transiciones del código sin una flecha legible que las respalde (${sinRespaldo.length}): ` +
-            `${sinRespaldo.join(', ') || 'ninguna'}. Puede que el diagrama las dibuje en vertical; ` +
-            `no se afirma que sobren.`,
-          'Para cerrar esto: que §5.2 lleve, además del dibujo, una tabla `desde | hacia | quién autoriza`.',
-        ],
+        'el §5.2 de SFSP-130 no declara las transiciones en una tabla legible ' +
+          `${hayArteMultilinea ? '(sigue habiendo arte ASCII de varias líneas) ' : ''}` +
+          'y no hay nada fiable que comparar con TRANSICIONES de binding.ts.',
+        [`transiciones que el código admite (${paresCodigo.length}): ${paresCodigo.join(', ')}`],
       );
     } else {
-      const d = comparar([...legibles], paresCodigo);
+      const d = comparar(paresEspec, paresCodigo);
       if (d.soloEspec.length === 0 && d.soloCodigo.length === 0) {
-        conforme('binding.transiciones', `${paresCodigo.length} transiciones, iguales en spec y código`);
+        conforme(
+          'binding.transiciones',
+          `${paresCodigo.length} transiciones, iguales en spec §5.2 y en TRANSICIONES`,
+        );
       } else {
         divergente('binding.transiciones', 'las transiciones declaradas y las implementadas no coinciden', [
           ...d.soloEspec.map((x) => `la spec declara «${x}» y el código no la admite`),
@@ -263,13 +305,38 @@ if (doc130 === null) {
     }
   }
 
-  noComprobada(
-    'cuenta.transiciones',
-    'el código no declara en ningún sitio la máquina de estado de la cuenta: no hay un ' +
-      'mapa de transiciones equivalente a TRANSICIONES de binding.ts, y los estados se ' +
-      'asignan sueltos en directorio.ts. No hay nada que comparar contra §5.3.',
-    ['Para cerrar esto: un mapa de transiciones de AccountStatus en el SDK, y una tabla en §5.3.'],
-  );
+  /* §5.3 lleva dos tablas: la primera es estado a efecto, la segunda es la
+     máquina. Se pide la segunda por posición, no por adivinanza. */
+  const paresCuentaEspec = secCuenta ? paresDeTabla(filasDeTablaN(secCuenta, 1), 0, 1) : [];
+  const transCuentaCodigo = codigoMaquinas
+    ? mapaDeTransiciones(codigoMaquinas, 'TRANSICIONES_CUENTA')
+    : null;
+
+  if (paresCuentaEspec.length === 0) {
+    noComprobada(
+      'cuenta.transiciones',
+      'el §5.3 de SFSP-130 no declara las transiciones de la cuenta en una tabla legible',
+    );
+  } else if (transCuentaCodigo === null) {
+    noComprobada(
+      'cuenta.transiciones',
+      'no se pudo extraer TRANSICIONES_CUENTA de sdk/src/maquinas.ts',
+    );
+  } else {
+    const paresCuentaCodigo = aPares(transCuentaCodigo);
+    const d = comparar(paresCuentaEspec, paresCuentaCodigo);
+    if (d.soloEspec.length === 0 && d.soloCodigo.length === 0) {
+      conforme(
+        'cuenta.transiciones',
+        `${paresCuentaCodigo.length} transiciones, iguales en spec §5.3 y en TRANSICIONES_CUENTA`,
+      );
+    } else {
+      divergente('cuenta.transiciones', 'las transiciones de cuenta declaradas y las implementadas no coinciden', [
+        ...d.soloEspec.map((x) => `la spec declara «${x}» y el código no la admite`),
+        ...d.soloCodigo.map((x) => `el código admite «${x}» y la spec no la declara`),
+      ]);
+    }
+  }
 
   /* ================================================== 4 · alias, transiciones */
 
@@ -279,22 +346,29 @@ if (doc130 === null) {
     .map((f) => ({ desde: estadosDe(f[0])[0], hacia: estadosDe(f[2] ?? '') }))
     .filter((t) => t.desde);
 
+  const transAliasCodigo = codigoMaquinas
+    ? mapaDeTransiciones(codigoMaquinas, 'TRANSICIONES_ALIAS')
+    : null;
+
   if (transAlias.length === 0) {
     noComprobada('alias.transiciones', 'no se pudo leer la tabla §4.4 de SFSP-130');
+  } else if (transAliasCodigo === null) {
+    noComprobada('alias.transiciones', 'no se pudo extraer TRANSICIONES_ALIAS de sdk/src/maquinas.ts');
   } else {
-    noComprobada(
-      'alias.transiciones',
-      'la spec §4.4 sí declara las transiciones en tabla, pero el código no declara la ' +
-        'máquina de alias en ningún sitio: los estados se asignan en `directorio.ts` ' +
-        '(`viejo.status = \'RELEASED\'`) sin un mapa de transiciones que comparar. No se ' +
-        'da por conforme lo que no se pudo leer.',
-      [
-        `declaradas en la spec: ${transAlias
-          .map((t) => (t.hacia.length ? t.hacia.map((h) => `${t.desde} -> ${h}`).join(', ') : `${t.desde} -> (ninguna)`))
-          .join(', ')}`,
-        'Para cerrar esto: un mapa de transiciones de alias en el SDK, como el de binding.ts.',
-      ],
-    );
+    const paresAliasEspec = transAlias.flatMap((t) => t.hacia.map((h) => `${t.desde} -> ${h}`));
+    const paresAliasCodigo = aPares(transAliasCodigo);
+    const d = comparar(paresAliasEspec, paresAliasCodigo);
+    if (d.soloEspec.length === 0 && d.soloCodigo.length === 0) {
+      conforme(
+        'alias.transiciones',
+        `${paresAliasCodigo.length} transiciones, iguales en spec §4.4 y en TRANSICIONES_ALIAS`,
+      );
+    } else {
+      divergente('alias.transiciones', 'las transiciones de alias declaradas y las implementadas no coinciden', [
+        ...d.soloEspec.map((x) => `la spec declara «${x}» y el código no la admite`),
+        ...d.soloCodigo.map((x) => `el código admite «${x}» y la spec no la declara`),
+      ]);
+    }
   }
 }
 
@@ -341,13 +415,60 @@ if (doc100 === null || tipos === null) {
     }
   }
 
-  noComprobada(
-    'activo.transiciones',
-    'SFSP-100 §4 declara los VALORES de cada eje pero ninguna tabla de transiciones: ' +
-      'dice que cada eje tiene su propia autoridad y su propio registro, sin decir qué ' +
-      'transición es admisible. El código tampoco las declara. No hay dos cosas que comparar.',
-    ['Para cerrar esto: una tabla `eje | desde | hacia | autoridad` en SFSP-100 §4, y su mapa en el SDK.'],
-  );
+  /* §4.1 declara `eje | desde | hacia | autoridad`. Son seis máquinas, no una,
+     así que se comparan eje por eje: decir «hay 33 transiciones y coinciden»
+     escondería que dos ejes se intercambiaron las suyas. */
+  const filasTrans = filasDeTablaN(sec ?? '', 1);
+  const transEspec = {};
+  for (const f of filasTrans) {
+    const eje = (/`([a-zA-Z]+)`/.exec(f[0] ?? '') ?? [])[1];
+    const desde = estadosDe(f[1] ?? '')[0];
+    if (!eje || !desde) continue;
+    transEspec[eje] = transEspec[eje] ?? new Set();
+    /* Una celda «hacia» sin ningún estado declara un eje terminal en ese valor:
+       no aporta par, y no aportarlo es justamente lo que hay que comparar. */
+    for (const hacia of estadosDe(f[2] ?? '')) transEspec[eje].add(`${desde} -> ${hacia}`);
+  }
+  const transCodigoActivo = codigoMaquinas
+    ? mapaAnidadoDeTransiciones(codigoMaquinas, 'TRANSICIONES_ACTIVO')
+    : null;
+
+  if (Object.keys(transEspec).length === 0) {
+    noComprobada('activo.transiciones', 'la tabla §4.1 de SFSP-100 no se pudo leer como tabla');
+  } else if (transCodigoActivo === null) {
+    noComprobada(
+      'activo.transiciones',
+      'no se pudo extraer TRANSICIONES_ACTIVO de sdk/src/maquinas.ts',
+    );
+  } else {
+    const dif = [];
+    let total = 0;
+    const ejes = new Set([...Object.keys(transEspec), ...Object.keys(transCodigoActivo)]);
+    for (const eje of ejes) {
+      const enEspec = [...(transEspec[eje] ?? [])];
+      const enCodigo = transCodigoActivo[eje] ? aPares(transCodigoActivo[eje]) : null;
+      if (enCodigo === null) {
+        dif.push(`la spec declara transiciones del eje ${eje} y TRANSICIONES_ACTIVO no lo tiene`);
+        continue;
+      }
+      if (enEspec.length === 0) {
+        dif.push(`TRANSICIONES_ACTIVO tiene el eje ${eje} y la spec §4.1 no lo declara`);
+        continue;
+      }
+      total += enCodigo.length;
+      const d = comparar(enEspec, enCodigo);
+      for (const x of d.soloEspec) dif.push(`${eje}: la spec declara «${x}» y el código no la admite`);
+      for (const x of d.soloCodigo) dif.push(`${eje}: el código admite «${x}» y la spec no la declara`);
+    }
+    if (dif.length === 0) {
+      conforme(
+        'activo.transiciones',
+        `${total} transiciones en ${ejes.size} ejes, iguales en spec §4.1 y en TRANSICIONES_ACTIVO`,
+      );
+    } else {
+      divergente('activo.transiciones', 'las transiciones del ciclo de vida del activo divergen', dif);
+    }
+  }
 }
 
 /* ------------------------------------------------------------------ salida */

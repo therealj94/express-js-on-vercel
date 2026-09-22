@@ -266,28 +266,31 @@ Un binding es **una ruta técnica de una cuenta hacia una dirección en una red*
 
 ### 5.2 Máquina de estado del binding
 
-```
-   crear
-     |
-     v
-[ PENDING ] --verificación fallida--> [ REVOKED ]
-     |
-     | verificación + aprobación
-     v
-[ ACTIVE ] <----designar/quitar PRIMARY----> [ PRIMARY ]
-   |  ^  \
-   |  |   \--- riesgo o solicitud del titular ---> [ SUSPENDED ]
-   |  |                                                  |
-   |  +--------------- levantamiento aprobado -----------+
-   |                                                     |
-   |                                                     v
-   |                                               [ REVOKED ]
-   |
-   | apertura de expediente de recuperación
-   v
-[ RECOVERY_PENDING ] --aprobación dual + espera--> [ REVOKED ] (el viejo)
-                     --disputa o rechazo--------> [ ACTIVE ]
-```
+Las catorce transiciones admisibles, una por fila. Antes esto era un dibujo con
+flechas repartidas por varias líneas, y un dibujo no se puede contrastar contra
+el código sin adivinar: cuatro de estas catorce no se leían en él. Lo que no se
+puede leer no se puede comprobar, y lo que no se comprueba se separa.
+
+| Desde | Hacia | Quién autoriza | Motivo |
+|---|---|---|---|
+| `PENDING` | `ACTIVE` | Verificación de control de la dirección más aprobación del titular | La ruta demostró ser suya y queda vigente para su propósito. |
+| `PENDING` | `REVOKED` | El verificador, por sí solo | La verificación falló o caducó. Una ruta no verificada no espera indefinidamente. |
+| `ACTIVE` | `PRIMARY` | El titular | Designa la ruta preferida de la cuenta en esa red. |
+| `ACTIVE` | `SUSPENDED` | El titular, o cumplimiento por riesgo | Se detiene el uso sin dar la ruta por muerta. |
+| `ACTIVE` | `REVOKED` | El titular, o cumplimiento con expediente | Baja definitiva de la ruta. |
+| `ACTIVE` | `RECOVERY_PENDING` | Apertura de expediente de recuperación | Se abre la espera con posibilidad de disputa del §9. |
+| `PRIMARY` | `ACTIVE` | El titular, o el propio protocolo al designar otra primaria | Deja de ser la preferida. La degradación ocurre en la MISMA operación que promueve a la otra, porque dos primarias a la vez son un destino ambiguo. |
+| `PRIMARY` | `SUSPENDED` | El titular, o cumplimiento por riesgo | Igual que desde `ACTIVE`: ser la preferida no protege de la suspensión. |
+| `PRIMARY` | `REVOKED` | El titular, o cumplimiento con expediente | Igual que desde `ACTIVE`. La cuenta queda sin ruta primaria hasta que se designe otra. |
+| `PRIMARY` | `RECOVERY_PENDING` | Apertura de expediente de recuperación | La ruta preferida es justo la que un expediente de recuperación suele tener que reemplazar. |
+| `SUSPENDED` | `ACTIVE` | Levantamiento aprobado | Vuelve al uso. No vuelve a `PRIMARY` sola: hay que designarla otra vez. |
+| `SUSPENDED` | `REVOKED` | El titular, o cumplimiento con expediente | La suspensión se resuelve en baja. |
+| `RECOVERY_PENDING` | `ACTIVE` | Disputa atendida o expediente rechazado | La recuperación no prosperó y la ruta de siempre sigue siendo la buena. |
+| `RECOVERY_PENDING` | `REVOKED` | Aprobación dual más plazo de espera cumplido | La recuperación prosperó: la ruta vieja se da de baja y la nueva se crea aparte. |
+
+`PRIMARY` admite exactamente las mismas salidas que `ACTIVE` porque es `ACTIVE`
+y además preferida, no un estado con menos caminos. Escribirlo es lo que
+distingue una máquina declarada de una implícita.
 
 Reglas:
 
@@ -301,22 +304,27 @@ Reglas:
 
 ### 5.3 Máquina de estado de la cuenta
 
-```
-[ PENDING ] --alta completa--> [ ACTIVE ] --riesgo/solicitud--> [ SUSPENDED ]
-     |                             |    ^                            |
-     |                             |    +---- levantamiento ---------+
-     |                             |
-     | alta rechazada              | cierre aprobado
-     v                             v
-  [ CLOSED ]                  [ CLOSED ]
-```
-
 | Estado | Efecto |
 |---|---|
 | `PENDING` | La cuenta existe en el directorio; no opera. |
 | `ACTIVE` | Opera conforme a política y elegibilidad. |
 | `SUSPENDED` | No inicia operaciones nuevas. **Conserva** visibilidad de saldos, documentos y derechos. |
 | `CLOSED` | Terminal. El `accountNumber` queda retirado y **nunca se recicla**. |
+
+Transiciones admisibles:
+
+| Desde | Hacia | Quién autoriza | Motivo |
+|---|---|---|---|
+| `PENDING` | `ACTIVE` | Alta completa: identidad verificada y política aceptada | La cuenta pasa a operar. |
+| `PENDING` | `CLOSED` | Alta rechazada | La cuenta nunca llegó a operar. El `accountNumber` igual queda retirado: llegó a existir. |
+| `ACTIVE` | `SUSPENDED` | El titular, o cumplimiento por riesgo | No inicia operaciones nuevas y conserva la visibilidad. |
+| `ACTIVE` | `CLOSED` | Cierre aprobado | Cierre a petición o por expediente. |
+| `SUSPENDED` | `ACTIVE` | Levantamiento aprobado | Se resolvió lo que motivó la suspensión. |
+| `SUSPENDED` | `CLOSED` | Cierre aprobado | Una cuenta suspendida se puede cerrar sin levantarle antes la suspensión. Obligar a reactivarla para poder cerrarla sería pedirle al registro que finja un estado por el que la cuenta nunca pasó. |
+
+`CLOSED` es terminal. Una cuenta cerrada no se reabre: el `accountNumber` quedó
+retirado y no se recicla, así que reabrirla haría resolver otra vez un número
+que ya se dio por muerto. Se abre una cuenta nueva.
 
 Regla: cerrar una cuenta **no** elimina derechos previos ni documentos. La lectura de derechos no se suspende.
 

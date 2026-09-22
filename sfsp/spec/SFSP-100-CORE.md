@@ -91,6 +91,56 @@ Reglas invariables:
 4. Retirar un activo del catálogo no elimina saldo, documentos ni acceso del titular.
 5. Un eje en un valor restrictivo no se propaga automáticamente a otro eje. Cada cambio de eje tiene su propia autoridad y su propio registro.
 
+### 4.1 Transiciones admisibles de cada eje
+
+Los valores de cada eje estaban declarados; los pasos de un valor a otro no. Un
+eje sin transiciones declaradas admite cualquier salto, incluido el que devuelve
+un expediente rechazado a borrador o el que relista un activo retirado sin que
+nadie vuelva a decidirlo. Son seis máquinas independientes, una por eje: ninguna
+fila de aquí menciona el valor de otro eje, y la regla 5 de más abajo sigue en
+pie.
+
+| Eje | Desde | Hacia | Quién autoriza |
+|---|---|---|---|
+| `legal` | `UNCLASSIFIED` | `UNDER_REVIEW` | Apertura de revisión jurídica |
+| `legal` | `UNDER_REVIEW` | `CLASSIFIED` | Dictamen jurídico |
+| `legal` | `UNDER_REVIEW` | `RESTRICTED_BY_LAW` | Dictamen jurídico o mandato de autoridad |
+| `legal` | `UNDER_REVIEW` | `UNCLASSIFIED` | Revisión cerrada sin dictamen |
+| `legal` | `CLASSIFIED` | `UNDER_REVIEW` | Reapertura por cambio normativo o documental |
+| `legal` | `CLASSIFIED` | `RESTRICTED_BY_LAW` | Mandato de autoridad |
+| `legal` | `RESTRICTED_BY_LAW` | `UNDER_REVIEW` | Levantamiento del mandato, con revisión previa |
+| `admission` | `DRAFT` | `REVIEW` | El emisor presenta el expediente |
+| `admission` | `DRAFT` | `WITHDRAWN` | El emisor retira el expediente |
+| `admission` | `REVIEW` | `APPROVED` | Comité de admisión DBNX |
+| `admission` | `REVIEW` | `REJECTED` | Comité de admisión DBNX |
+| `admission` | `REVIEW` | `WITHDRAWN` | El emisor retira el expediente |
+| `admission` | `APPROVED` | `WITHDRAWN` | El emisor, o revocación de la admisión con expediente |
+| `admission` | `REJECTED` | (ninguna) | Terminal. Volver a intentarlo es un expediente NUEVO en `DRAFT`, no el mismo reabierto, para que el rechazo quede en el historial. |
+| `admission` | `WITHDRAWN` | (ninguna) | Terminal, por la misma razón. |
+| `trading` | `NOT_LISTED` | `LISTED` | Decisión de listado de mercado |
+| `trading` | `LISTED` | `SUSPENDED` | Mercado, por riesgo o por evento del emisor |
+| `trading` | `LISTED` | `DELISTED` | Decisión de retirada de mercado |
+| `trading` | `SUSPENDED` | `LISTED` | Levantamiento de la suspensión |
+| `trading` | `SUSPENDED` | `DELISTED` | La suspensión se resuelve en retirada |
+| `trading` | `DELISTED` | `NOT_LISTED` | Readmisión al catálogo. Vuelve al punto de partida y NO salta a `LISTED`: relistar exige la misma decisión de listado que la primera vez. |
+| `transferability` | `FREE` | `RESTRICTED` | Política de transferencia del activo |
+| `transferability` | `FREE` | `FROZEN` | Congelación por autoridad u orden judicial |
+| `transferability` | `RESTRICTED` | `FREE` | Política de transferencia del activo |
+| `transferability` | `RESTRICTED` | `FROZEN` | Congelación por autoridad u orden judicial |
+| `transferability` | `FROZEN` | `RESTRICTED` | Levantamiento parcial de la congelación |
+| `transferability` | `FROZEN` | `FREE` | Levantamiento total de la congelación |
+| `redemption` | `NONE` | `AVAILABLE` | Apertura del derecho de redención |
+| `redemption` | `AVAILABLE` | `SUSPENDED` | Suspensión temporal de la redención |
+| `redemption` | `AVAILABLE` | `NONE` | Cierre del derecho de redención |
+| `redemption` | `SUSPENDED` | `AVAILABLE` | Levantamiento de la suspensión |
+| `redemption` | `SUSPENDED` | `NONE` | Cierre del derecho de redención |
+| `visibility` | `VISIBLE_TO_HOLDER` | `HIDDEN_FROM_CATALOG` | Catálogo de oportunidades |
+| `visibility` | `HIDDEN_FROM_CATALOG` | `VISIBLE_TO_HOLDER` | Catálogo de oportunidades |
+
+Ocultar del catálogo no es retirar del mercado ni tocar el saldo: `visibility`
+es un eje de presentación y por eso sus dos valores se alcanzan el uno al otro
+sin expediente de mercado.
+
 ---
 
 ## 5 · `implementationProfile`

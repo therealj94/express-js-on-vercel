@@ -5,10 +5,21 @@ import {SFSPAccessControl} from "./lib/SFSPAccessControl.sol";
 import {SFSPCodes} from "./lib/SFSPCodes.sol";
 import {SFSPAuthorization} from "./lib/SFSPAuthorization.sol";
 
-/// @title Gobierno SFSP: multisig por umbral, timelock de upgrades y pausa caduca.
+/// @title Gobierno SFSP: doble control sobre digests, timelock y pausa caduca.
 /// @notice Los quórums, el retardo del timelock y el techo de pausa son parámetros
 ///         del constructor. No se hardcodea ningún número "recomendado": el
 ///         despliegue los recibe y una prueba usa fixtures sintéticos.
+/// @dev P03 · CIERRE COMPLETO. Hasta draft-0.3 convivían dos caminos:
+///      `propose(operationId, actionKind, detail)`, donde quien proponía contaba
+///      como primer aprobador y el objeto aprobado era un identificador elegido
+///      por el llamador; y `proposeAuthorization(digest)`, con separación de
+///      funciones real. El primero se ha retirado ENTERO —struct, mapas,
+///      `isActionApproved` y `consumeApprovedAction` incluidos— porque mientras
+///      existiera seguía habiendo una ruta crítica de un solo rol: `UPGRADE`,
+///      `RECOVERY`, `SET_QUORUM` y `SET_POLICY` pasaban por él. Ahora las nueve
+///      acciones del §12.5 con ejecutor en este árbol usan el mismo patrón:
+///      aprobación sobre el digest del §12.1, el proponente no aprueba, y el
+///      ejecutor recalcula el digest desde sus argumentos reales y lo consume.
 contract SFSPGovernanceController is SFSPAccessControl {
     // §3 · Eventos emitidos por GovernanceController.
     event GovernanceAction(
@@ -31,39 +42,33 @@ contract SFSPGovernanceController is SFSPAccessControl {
     event AuthorizationConsumed(bytes32 indexed digest, address indexed executor, uint64 consumedAt);
 
     error NotSigner(address account);
-    error UnknownProposal(bytes32 operationId);
-    error DuplicateProposal(bytes32 operationId);
-    error AlreadyApproved(bytes32 operationId, address signer);
-    error QuorumNotReached(bytes32 operationId, uint256 have, uint256 need);
-    error TimelockPending(bytes32 operationId, uint64 readyAt);
     error PauseReasonRequired();
     error PauseExpiryInvalid(uint64 expiresAt, uint64 maxAllowed);
-    error AlreadyExecuted(bytes32 operationId);
     error InvalidQuorum(uint256 threshold, uint256 signers);
     error AuthorizationUnknown(bytes32 digest);
     error AuthorizationDuplicate(bytes32 digest);
     error AuthorizationSpent(bytes32 digest);
     error AuthorizationQuorumNotReached(bytes32 digest, uint256 have, uint256 need);
+    error AuthorizationActionMismatch(bytes32 expected, bytes32 got);
     // P03/§12.5 · separacion de funciones: quien propone NO aprueba. Un mismo
     // actor no puede contar dos veces por proponer y aprobar lo mismo.
     error ProposerCannotApprove(bytes32 digest, address proposer);
     error AlreadyApprovedAuthorization(bytes32 digest, address signer);
+    // §12.5 · UPGRADE y RECOVERY llevan espera ademas de doble control.
+    error TimelockPending(bytes32 digest, uint64 readyAt);
     // H19 · la reanudacion se ata al incidente concreto que levanta.
     error PauseMismatch(bytes32 expectedPauseId, bytes32 presentedNonce);
     error NotPaused();
+    error UpgradeTargetRequired();
+    error RecoveryCaseIncomplete();
 
-    struct Proposal {
-        bytes32 actionKind;   // PAUSE | UPGRADE | ROTATE | QUORUM | RECOVERY | ISSUANCE | ...
-        bytes32 detail;       // hash del payload aprobado; el payload no vive en cadena
-        uint64 proposedAt;
-        uint64 readyAt;       // timelock: 0 para acciones sin retardo
-        uint32 approvals;
-        bool executed;
-        bool consumed;        // lo consumió el contrato ejecutor (mint, forced transfer...)
-    }
+    // §12.5 · alcances canonicos de las acciones de gobierno que no tienen un
+    // activo concreto. `assetId` no puede ser cero (§12.2), asi que cada accion
+    // de gobierno declara aqui SU alcance y una aprobacion de una no vale para
+    // otra ni aunque coincidiera el resto del payload.
+    bytes32 public constant SCOPE_UPGRADE = bytes32("SFSP:GOV:UPGRADE");
+    bytes32 public constant SCOPE_QUORUM = bytes32("SFSP:GOV:QUORUM");
 
-    mapping(bytes32 => Proposal) private _proposals;
-    mapping(bytes32 => mapping(address => bool)) private _approved;
     mapping(address => bool) private _signers;
     address[] private _signerList;
 
@@ -93,6 +98,15 @@ contract SFSPGovernanceController is SFSPAccessControl {
         uint64 proposedAt;
         uint32 approvals;
         bool consumed;
+        /// @dev §12.5 · quórum EXIGIBLE EN EL MOMENTO DE PROPONER, congelado aquí.
+        ///      Sin este número guardado, `SET_QUORUM` se podría usar para
+        ///      rebajarse a sí misma: bastaría bajar el quórum general con una
+        ///      operación y ejecutar con el quórum nuevo, más barato, todas las
+        ///      autorizaciones que estaban pendientes bajo el anterior. Con el
+        ///      congelado, una aprobación nunca se valida con un quórum menor
+        ///      que el que regía cuando se propuso; subirlo sí la afecta, porque
+        ///      se exige el mayor de los dos.
+        uint32 quorumAtProposal;
     }
 
     mapping(bytes32 => ContentAuthorization) private _contentAuth;
@@ -158,92 +172,8 @@ contract SFSPGovernanceController is SFSPAccessControl {
         return (_pauseReason, _pauseExpiresAt);
     }
 
-    function proposalOf(bytes32 operationId) external view returns (Proposal memory) {
-        return _proposals[operationId];
-    }
-
-    /// @dev H01 · CAMINO RETIRADO COMO CONTROL DE AUTORIZACIÓN. Un `operationId`
-    ///      lo elige el llamador y no dice nada de lo que se va a hacer: sirve
-    ///      para idempotencia, no para autorizar. Ningún ejecutor lo consulta ya;
-    ///      se conserva porque hay propuestas de gobierno (UPGRADE, QUORUM,
-    ///      RECOVERY) cuyo efecto es la propia decisión registrada y no una
-    ///      operación con contenido. Si algún día un ejecutor de dinero volviera
-    ///      a llamarlo, eso sería la reaparición de H01 (§12.4).
-    function isActionApproved(bytes32 operationId) public view returns (bool) {
-        Proposal storage p = _proposals[operationId];
-        if (p.proposedAt == 0 || p.consumed) return false;
-        if (p.approvals < _requiredFor(p.actionKind)) return false;
-        if (p.readyAt > block.timestamp) return false;
-        return true;
-    }
-
     function _requiredFor(bytes32 actionKind) internal view returns (uint256) {
         return actionKind == bytes32("UPGRADE") ? _upgradeThreshold : _threshold;
-    }
-
-    // ------------------------------------------------------------ propuestas
-
-    /// @dev `operationId` es la unidad de idempotencia (§1): una propuesta por id.
-    function propose(bytes32 operationId, bytes32 actionKind, bytes32 detail) external {
-        if (!_signers[msg.sender]) revert NotSigner(msg.sender);
-        if (operationId == bytes32(0)) revert UnknownProposal(operationId);
-        if (_proposals[operationId].proposedAt != 0) revert DuplicateProposal(operationId);
-
-        // Sólo los upgrades llevan timelock: una pausa que esperase no serviría.
-        uint64 readyAt = actionKind == bytes32("UPGRADE")
-            ? uint64(block.timestamp) + timelockDelay
-            : uint64(block.timestamp);
-
-        _proposals[operationId] = Proposal({
-            actionKind: actionKind,
-            detail: detail,
-            proposedAt: uint64(block.timestamp),
-            readyAt: readyAt,
-            approvals: 0,
-            executed: false,
-            consumed: false
-        });
-        emit GovernanceAction(operationId, bytes32("PROPOSED"), msg.sender, detail, readyAt);
-        _approve(operationId);
-    }
-
-    function approve(bytes32 operationId) external {
-        if (!_signers[msg.sender]) revert NotSigner(msg.sender);
-        if (_proposals[operationId].proposedAt == 0) revert UnknownProposal(operationId);
-        _approve(operationId);
-    }
-
-    function _approve(bytes32 operationId) internal {
-        if (_approved[operationId][msg.sender]) revert AlreadyApproved(operationId, msg.sender);
-        _approved[operationId][msg.sender] = true;
-        _proposals[operationId].approvals += 1;
-        emit GovernanceAction(
-            operationId, bytes32("APPROVED"), msg.sender, bytes32(uint256(_proposals[operationId].approvals)), 0
-        );
-    }
-
-    /// @dev Ejecutar sólo marca la decisión como tomada en cadena. El efecto lo
-    ///      aplica el contrato afectado, que vuelve a comprobar el quórum.
-    function execute(bytes32 operationId) external {
-        Proposal storage p = _proposals[operationId];
-        if (p.proposedAt == 0) revert UnknownProposal(operationId);
-        if (p.executed) revert AlreadyExecuted(operationId);
-        uint256 need = _requiredFor(p.actionKind);
-        if (p.approvals < need) revert QuorumNotReached(operationId, p.approvals, need);
-        if (p.readyAt > block.timestamp) revert TimelockPending(operationId, p.readyAt);
-        p.executed = true;
-        emit GovernanceAction(operationId, p.actionKind, msg.sender, p.detail, uint64(block.timestamp));
-    }
-
-    /// @dev H01 · retirado igual que `isActionApproved`, y por la misma razón:
-    ///      impide repetir la misma operación, no impide sustituirla por otra.
-    ///      El camino vivo es `consumeAuthorization(digest)`, que además revierte
-    ///      en vez de devolver un booleano que el llamador pueda ignorar.
-    function consumeApprovedAction(bytes32 operationId) external onlyRole(TECH_OPS) returns (bool) {
-        if (!isActionApproved(operationId)) return false;
-        _proposals[operationId].consumed = true;
-        emit GovernanceAction(operationId, bytes32("CONSUMED"), msg.sender, bytes32(0), uint64(block.timestamp));
-        return true;
     }
 
     // ------------------------------------------------------------ pausa
@@ -286,9 +216,9 @@ contract SFSPGovernanceController is SFSPAccessControl {
     function liftPause(SFSPAuthorization.Payload calldata p, bytes32 approvedDigest) external {
         if (!_signers[msg.sender]) revert NotSigner(msg.sender);
         if (!isPaused()) revert NotPaused();
-        if (p.action != bytes32("UNPAUSE")) revert AuthorizationUnknown(approvedDigest);
+        if (p.action != bytes32("UNPAUSE")) revert AuthorizationActionMismatch(bytes32("UNPAUSE"), p.action);
         if (p.nonce != _pauseId) revert PauseMismatch(_pauseId, p.nonce);
-        _requireAuthorizationApproved(approvedDigest);
+        _requireAuthorizationApproved(approvedDigest, bytes32("UNPAUSE"));
 
         // Recalcula el digest desde el payload real, comprueba atadura y
         // vigencia, y lo gasta. Un payload alterado en un campo no autoriza.
@@ -308,7 +238,7 @@ contract SFSPGovernanceController is SFSPAccessControl {
 
     /// @notice Propone un digest del §12.1. El proponente NO cuenta como aprobador.
     /// @dev P03/§12.5: doble control con separación de funciones en TODA acción
-    ///      crítica. El camino viejo de `propose` cuenta al proponente como primer
+    ///      crítica. El camino viejo de `propose` contaba al proponente como primer
     ///      aprobador; éste no, a propósito: ahí estaba la mitad del control.
     function proposeAuthorization(bytes32 digest, bytes32 action) external {
         if (!_signers[msg.sender]) revert NotSigner(msg.sender);
@@ -319,7 +249,8 @@ contract SFSPGovernanceController is SFSPAccessControl {
             proposer: msg.sender,
             proposedAt: uint64(block.timestamp),
             approvals: 0,
-            consumed: false
+            consumed: false,
+            quorumAtProposal: uint32(_requiredFor(action))
         });
         emit AuthorizationProposed(digest, action, msg.sender);
     }
@@ -340,17 +271,40 @@ contract SFSPGovernanceController is SFSPAccessControl {
         return _contentAuth[digest];
     }
 
+    /// @dev El quórum exigible es el MAYOR entre el congelado al proponer y el
+    ///      vigente. Ver `ContentAuthorization.quorumAtProposal`.
+    function _needFor(ContentAuthorization storage a) internal view returns (uint256) {
+        uint256 vigente = _requiredFor(a.action);
+        return vigente > a.quorumAtProposal ? vigente : a.quorumAtProposal;
+    }
+
     function isAuthorizationApproved(bytes32 digest) public view returns (bool) {
         ContentAuthorization storage a = _contentAuth[digest];
         if (a.proposedAt == 0 || a.consumed) return false;
-        return a.approvals >= _requiredFor(a.action);
+        return a.approvals >= _needFor(a);
     }
 
-    function _requireAuthorizationApproved(bytes32 digest) internal view {
+    /// @notice Instante en que un digest quedó propuesto; `0` si no existe.
+    /// @dev Lo consultan los ejecutores que llevan espera (§12.5: UPGRADE y
+    ///      RECOVERY). La espera se mide desde la PROPUESTA, no desde la última
+    ///      aprobación: si se midiera desde la última, juntar las aprobaciones
+    ///      tarde acortaría la ventana de reacción a cero.
+    function authorizationProposedAt(bytes32 digest) external view returns (uint64) {
+        return _contentAuth[digest].proposedAt;
+    }
+
+    function _requireAuthorizationApproved(bytes32 digest, bytes32 expectedAction) internal view {
         ContentAuthorization storage a = _contentAuth[digest];
         if (a.proposedAt == 0) revert AuthorizationUnknown(digest);
         if (a.consumed) revert AuthorizationSpent(digest);
-        uint256 need = _requiredFor(a.action);
+        // La acción con la que se propuso tiene que ser la que se va a ejecutar:
+        // un digest aprobado "como SET_POLICY" no puede gastarse como SET_QUORUM
+        // aunque el payload lo dijera, porque lo que los aprobadores vieron en el
+        // registro era la otra etiqueta.
+        if (expectedAction != bytes32(0) && a.action != expectedAction) {
+            revert AuthorizationActionMismatch(expectedAction, a.action);
+        }
+        uint256 need = _needFor(a);
         if (a.approvals < need) revert AuthorizationQuorumNotReached(digest, a.approvals, need);
     }
 
@@ -365,40 +319,122 @@ contract SFSPGovernanceController is SFSPAccessControl {
     ///      responsabilidad de mirar el booleano; un ejecutor que lo ignorase
     ///      ejecutaba sin autorización. Aquí no hay booleano que ignorar.
     function consumeAuthorization(bytes32 digest) external onlyRole(TECH_OPS) {
-        _requireAuthorizationApproved(digest);
+        _requireAuthorizationApproved(digest, bytes32(0));
         _consumeAuthorization(digest, msg.sender);
     }
 
-    // ------------------------------------------------------------ quórum y recuperación
+    // ------------------------------------------------------------ §12.5 · UPGRADE
 
-    /// @dev Cambiar el quórum es una acción de gobierno aprobada, no un setter libre.
-    function setQuorum(bytes32 operationId, uint256 newThreshold, uint256 newUpgradeThreshold) external {
-        Proposal storage p = _proposals[operationId];
-        if (p.proposedAt == 0 || p.actionKind != bytes32("QUORUM")) revert UnknownProposal(operationId);
-        if (p.consumed) revert AlreadyExecuted(operationId);
-        if (p.approvals < _threshold) revert QuorumNotReached(operationId, p.approvals, _threshold);
+    /// @notice Registra en cadena la decisión de actualización, con doble control
+    ///         y espera.
+    /// @dev P03. Antes esto era `propose(op, "UPGRADE", detail)` + `execute(op)`:
+    ///      el proponente contaba como aprobador y lo aprobado era un
+    ///      `operationId` con un `detail` opaco que nadie recalculaba. Ahora el
+    ///      payload compromete la implementación destino (`destination`), la
+    ///      versión (`evidenceRoot`) y el `nonce`, el digest se recalcula aquí y
+    ///      se consume, y hace falta el quórum REFORZADO de upgrade más la espera
+    ///      del timelock del despliegue.
+    /// @param p payload del §12.1: `destination` implementación destino,
+    ///        `evidenceRoot` versión destino, `assetId` el alcance `SCOPE_UPGRADE`.
+    function executeUpgrade(SFSPAuthorization.Payload calldata p, bytes32 approvedDigest) external {
+        if (!_signers[msg.sender]) revert NotSigner(msg.sender);
+        if (p.action != bytes32("UPGRADE")) revert AuthorizationActionMismatch(bytes32("UPGRADE"), p.action);
+        if (p.assetId != SCOPE_UPGRADE) revert AuthorizationActionMismatch(SCOPE_UPGRADE, p.assetId);
+        // Una actualización sin implementación destino ni versión no es auditable:
+        // el aprobador estaría firmando "actualizar" sin decir a qué.
+        if (p.destination == address(0) || p.evidenceRoot == bytes32(0)) revert UpgradeTargetRequired();
+        _requireAuthorizationApproved(approvedDigest, bytes32("UPGRADE"));
+        _requireWait(approvedDigest);
+
+        SFSPAuthorization.Payload memory m = p;
+        SFSPAuthorization.authorize(m, approvedDigest);
+        _consumeAuthorization(approvedDigest, msg.sender);
+        emit GovernanceAction(approvedDigest, bytes32("UPGRADE"), msg.sender, p.evidenceRoot, uint64(block.timestamp));
+    }
+
+    /// @dev La espera del §12.5. Se reutiliza `timelockDelay`, que es el ÚNICO
+    ///      retardo que el despliegue entrega: inventar aquí un segundo número
+    ///      para la recuperación sería fijar un valor económico en el código, que
+    ///      es exactamente lo que D07 prohíbe.
+    function _requireWait(bytes32 digest) internal view {
+        uint64 readyAt = _contentAuth[digest].proposedAt + timelockDelay;
+        if (block.timestamp < readyAt) revert TimelockPending(digest, readyAt);
+    }
+
+    // ---------------------------------------------------------- §12.5 · RECOVERY
+
+    /// @notice Recuperación con expediente, doble control y espera.
+    /// @dev P03. `recordRecovery(operationId, caseId, evidenceRoot)` aceptaba una
+    ///      propuesta auto-aprobada y, además, el `caseId` y la evidencia eran
+    ///      argumentos libres del ejecutor: la decisión aprobada y el expediente
+    ///      publicado podían no ser el mismo. Ahora los dos están dentro del
+    ///      digest —el expediente en `nonce`, la evidencia en `evidenceRoot`—
+    ///      junto con la cuenta (`origin`), el activo (`assetId`) y el destino.
+    function executeRecovery(SFSPAuthorization.Payload calldata p, bytes32 approvedDigest) external {
+        if (!_signers[msg.sender]) revert NotSigner(msg.sender);
+        if (p.action != bytes32("RECOVERY")) revert AuthorizationActionMismatch(bytes32("RECOVERY"), p.action);
+        // Expediente y evidencia obligatorios (§7: nunca datos personales, sólo raíces).
+        if (p.evidenceRoot == bytes32(0) || p.origin == address(0) || p.destination == address(0)) {
+            revert RecoveryCaseIncomplete();
+        }
+        _requireAuthorizationApproved(approvedDigest, bytes32("RECOVERY"));
+        _requireWait(approvedDigest);
+
+        SFSPAuthorization.Payload memory m = p;
+        SFSPAuthorization.authorize(m, approvedDigest);
+        _consumeAuthorization(approvedDigest, msg.sender);
+        // `caseId` es el `nonce` del payload: es lo que ata la recuperación a SU
+        // expediente y lo que impide que dos recuperaciones por lo demás iguales
+        // colapsen en el mismo digest.
+        emit RecoveryExecuted(p.nonce, approvedDigest, p.evidenceRoot, uint64(block.timestamp));
+    }
+
+    // -------------------------------------------------------- §12.5 · SET_QUORUM
+
+    /// @notice Cambia los quórums, con doble control bajo el quórum ANTERIOR.
+    /// @dev P03 y §12.5. Es la más delicada de las cuatro porque cambia el
+    ///      control de todas las demás. Tres cosas la sujetan:
+    ///        1. la aprobación se comprueba ANTES de escribir, así que el número
+    ///           que la valida es el viejo y nunca el que ella misma introduce;
+    ///        2. el quórum exigible está congelado en la autorización desde que
+    ///           se propuso (`quorumAtProposal`), así que bajar el quórum no
+    ///           abarata retroactivamente ninguna aprobación pendiente —incluida
+    ///           una segunda `SET_QUORUM`—; y
+    ///        3. el digest se consume, así que la misma decisión no se aplica dos
+    ///           veces.
+    ///      Los valores nuevos vienen del payload aprobado, no del código: aquí no
+    ///      hay ningún número (D07).
+    /// @param p `amount` quórum general nuevo, `amountSecondary` quórum de upgrade
+    ///        nuevo, `assetId` el alcance `SCOPE_QUORUM`.
+    function setQuorum(SFSPAuthorization.Payload calldata p, bytes32 approvedDigest) external {
+        if (!_signers[msg.sender]) revert NotSigner(msg.sender);
+        if (p.action != bytes32("SET_QUORUM")) revert AuthorizationActionMismatch(bytes32("SET_QUORUM"), p.action);
+        if (p.assetId != SCOPE_QUORUM) revert AuthorizationActionMismatch(SCOPE_QUORUM, p.assetId);
+
+        uint256 newThreshold = p.amount;
+        uint256 newUpgradeThreshold = p.amountSecondary;
         if (newThreshold == 0 || newThreshold > _signerList.length) {
             revert InvalidQuorum(newThreshold, _signerList.length);
         }
         if (newUpgradeThreshold < newThreshold || newUpgradeThreshold > _signerList.length) {
             revert InvalidQuorum(newUpgradeThreshold, _signerList.length);
         }
-        p.consumed = true;
+
+        // Comprobación del quórum ANTERIOR, antes de tocar nada.
+        _requireAuthorizationApproved(approvedDigest, bytes32("SET_QUORUM"));
+
+        SFSPAuthorization.Payload memory m = p;
+        SFSPAuthorization.authorize(m, approvedDigest);
+        _consumeAuthorization(approvedDigest, msg.sender);
+
         _threshold = newThreshold;
         _upgradeThreshold = newUpgradeThreshold;
-        emit GovernanceAction(operationId, bytes32("QUORUM"), msg.sender, bytes32(newThreshold), uint64(block.timestamp));
+        emit GovernanceAction(
+            approvedDigest, bytes32("SET_QUORUM"), msg.sender, bytes32(newThreshold), uint64(block.timestamp)
+        );
     }
 
-    /// @dev Recuperación con expediente y evidencia; NUNCA datos personales (§7).
-    function recordRecovery(bytes32 operationId, bytes32 caseId, bytes32 evidenceRoot) external {
-        Proposal storage p = _proposals[operationId];
-        if (p.proposedAt == 0 || p.actionKind != bytes32("RECOVERY")) revert UnknownProposal(operationId);
-        if (p.consumed) revert AlreadyExecuted(operationId);
-        if (p.approvals < _threshold) revert QuorumNotReached(operationId, p.approvals, _threshold);
-        require(caseId != bytes32(0) && evidenceRoot != bytes32(0), "SFSP: expediente incompleto");
-        p.consumed = true;
-        emit RecoveryExecuted(caseId, operationId, evidenceRoot, uint64(block.timestamp));
-    }
+    // ------------------------------------------------------------ capacidad
 
     /// @dev Registra en cadena que DBNX autorizó una capacidad con monto y vigencia.
     function recordSupplyAuthorization(bytes32 assetId, bytes32 authorizationId, uint256 amount, uint64 expiry)
