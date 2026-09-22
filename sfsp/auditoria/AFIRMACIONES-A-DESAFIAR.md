@@ -58,9 +58,9 @@ Leyenda del estado:
 
 | # | Afirmación | Auditoría | Prueba que la fija |
 |---|---|---|---|
-| D1 | `S0 = A + N + P`, con `E = N + P` como contraparte. | Parcial: la ecuación del SDK aguanta; la interpretación contractual de congelado no | `sdk` reconciliación, propiedades · **pendiente L3** para H04 |
+| D1 | `S0 = A + N + P`, con `E = N + P` como contraparte. | Parcial → cerrada: `A` es derecho de origen no reemplazado, y la conciliación publica además el circulante viejo, que es cero desde la apertura en modo congelado | `sdk` reconciliación · `contracts` 07 |
 | D2 | Un ratio con resto no pierde derechos. | Resistió | `sdk` propiedades |
-| D3 | Un derecho no se puede reclamar dos veces. | Parcial: dentro de una migración sí; entre migraciones no | `sdk` reconciliación · **pendiente L3** para H04 |
+| D3 | Un derecho no se puede reclamar dos veces. | Parcial → cerrada: el nullifier ya no depende del identificador de migración, sino de la posición de origen | `contracts` 10 · H04 |
 | D4 | Toda cantidad es entera; no hay coma flotante en decisiones financieras. | **Refutada → corregida**: la cobertura perdía precisión y devolvía `number` | `adversarias` H12 |
 | D5 | `decimals: null` nunca se sustituye por 18. | Resistió | `sdk` reservas, indexador |
 
@@ -79,14 +79,14 @@ Leyenda del estado:
 | # | Afirmación | Auditoría | Prueba que la fija |
 |---|---|---|---|
 | F1 | `evaluate` es de sólo lectura y no emite eventos. | Resistió | `contracts` 03 |
-| F2 | Lo acuñado acumulado nunca supera lo aprobado, y quemar no renueva. | Parcial: la emisión ordinaria aguanta; la migración permitía doble reemplazo | `contracts` 04 · **pendiente L3** |
+| F2 | Lo acuñado acumulado nunca supera lo aprobado, y quemar no renueva. | Parcial → cerrada con D3 | `contracts` 04, 10 |
 | F3 | El inventario de tesorería cuenta dentro del outstanding. | Resistió | `contracts` 04 |
 | F4 | Las restricciones se imponen también por la ruta ERC-20. | Resistió | `contracts` 05 |
-| F5 | El forced transfer exige aprobación de gobierno y la consume. | Parcial: la aprobación no estaba ligada a la ejecución exacta | **pendiente L3** para H01 |
-| F6 | En DvP, si una pata falla no se mueve la otra. | Parcial: la atomicidad aguanta; la autenticidad del activo no | **pendiente L3** para H05 |
-| F7 | ~~El vault no crea efectivo sin pasivo.~~ **El vault mantiene solvencia: activo on-chain ≥ pasivos, y un superávit forzado se clasifica.** | **Refutada → reescrita**: se puede forzar Ether con `SELFDESTRUCT` | **pendiente L3** para H24 |
-| F8 | La pausa exige motivo y caduca sola. | Parcial: una aprobación de reanudación antigua se reutilizaba | **pendiente L3** para H19 |
-| F9 | ~~Ningún quórum ni parámetro económico está escrito en el código.~~ **Ningún parámetro económico está escrito en el código, y toda acción crítica exige doble control.** | **Refutada → reescrita**: había rutas de un solo rol, entre ellas pausa y quema | `spec/SFSP-800` §12 · **pendiente L3** para P03 |
+| F5 | El forced transfer exige aprobación de gobierno ligada al contenido y la consume. | **Refutada → corregida**: el ejecutor recalcula el digest y un intento fallido no gasta la aprobación | `contracts` 10 · H01 |
+| F6 | En DvP, si una pata falla no se mueve la otra, y el activo entregado es el canónico. | Parcial → cerrada: registro canónico, orden autorizada y comprobación de la entrega real | `contracts` 10 · activo falso |
+| F7 | ~~El vault no crea efectivo sin pasivo.~~ **El vault mantiene solvencia y un superávit forzado se clasifica.** | **Refutada → reescrita y corregida** | `contracts` 10 · forzador de efectivo |
+| F8 | La pausa exige motivo, caduca sola, y su reanudación va ligada a la pausa concreta. | Parcial → cerrada: cada pausa tiene identificador y la aprobación lo compromete | `contracts` 10 · H19 |
+| F9 | ~~…toda acción crítica exige doble control.~~ **Ningún parámetro económico está escrito en el código. Cinco acciones críticas exigen doble control; cuatro todavía no.** | **Refutada → reescrita, cierre PARCIAL**: transferencia forzosa, quema, emisión, liquidación y reanudación lo tienen. `UPGRADE`, `RECOVERY`, `SET_QUORUM` y `SET_POLICY` siguen en el camino viejo, donde quien propone se auto-aprueba | `contracts` 10 · **abierto** |
 
 ## G · Decisiones y honestidad de estado
 
@@ -96,7 +96,7 @@ Leyenda del estado:
 | G2 | `UNKNOWN_SOURCE` nunca se degrada a cero ni a `ALLOW`. | **Refutada → corregida**: el suministro se presentaba como conocido sin cobertura | `indexer` supply-cobertura, reorg |
 | G3 | Registrar un activo legacy no le añade capacidades. | Resistió, con límite | `contracts` 01, `sdk` fixtures |
 | G4 | Retirar un activo del catálogo no borra saldo ni acceso del titular. | Resistió | `contracts` 01 |
-| G5 | No se afirma privacidad en ninguna parte. | Parcial: el adaptador de identidad permite correlación enumerable | **pendiente L3** para H16 |
+| G5 | No se afirma privacidad en ninguna parte, y la correlación que existe está descrita. | Parcial → **cierre PARCIAL declarado**: se quitaron los indexados, pero recorrer los logs reconstruye lo mismo. Hay una prueba que afirma esa correlación para que falle el día que se arregle | `contracts` identidad · **abierto** |
 | G6 | El README no dice «probado» de nada sin una prueba que se pueda repetir. | Parcial → cerrada: la frase «sin red» era falsa y el verificador era indulgente | `adversarias` H22, README |
 
 ## H · Seguridad del propio árbol
@@ -123,10 +123,19 @@ aunque todo lo demás esté bien.
 
 ## Lo que sigue abierto
 
-Las filas marcadas **pendiente** son trabajo identificado, no defectos
-olvidados: D1, D3, F2, F5, F6, F7, F8, F9 y G5 esperan al lote de contratos.
-Mientras sigan ahí, la verificación no puede ser completa, y el verificador lo
-dice.
+Quedan **dos filas con cierre parcial**, y las dos están declaradas como tales
+en el código, no escondidas:
+
+- **F9** · cinco acciones críticas exigen doble control; `UPGRADE`, `RECOVERY`,
+  `SET_QUORUM` y `SET_POLICY` siguen en el camino antiguo, donde quien propone
+  se auto-aprueba. Es la mitad de P03 que falta.
+- **G5** · quitar los `indexed` del evento de identidad encarece la correlación,
+  no la impide. Referencias no enlazables por propósito exigen rehacer motor,
+  attestations y adaptador.
+
+Ninguna de las dos se presenta como cerrada, y la de identidad lleva una prueba
+que **afirma la correlación que hoy existe**, para que el día que se arregle esa
+prueba falle y avise.
 
 H5 se cerró sin añadir una dependencia: los selectores y temas de evento de
 ERC-20 son constantes públicas que dependen enteramente de keccak, así que

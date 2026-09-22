@@ -5,6 +5,30 @@ plan: el plan dice qué hay que hacer, esto dice qué se hizo.
 
 Ninguna fila dice «cerrado» sin una prueba que se pueda volver a correr.
 
+## Verificación del cierre
+
+```
+sdk                  99 pruebas
+contracts           149
+indexer              67
+dbnx-api             86
+pruebas-adversarias  14
+                    ───
+                    415
+```
+
+`node scripts/verificar-todo.mjs` sobre el árbol limpio devuelve
+**`VERIFICACION_COMPLETA`** y `PROBADO_AISLADO`, con los tipos en modo estricto
+compilando en los tres paquetes, veinte decisiones pendientes y **cero
+parámetros económicos con valor**.
+
+La suite adversaria reporta 14 y no 15 porque una de sus pruebas, la que lanza
+el propio verificador para comprobar que el modo rápido no emite evidencia, se
+salta cuando ya corre dentro de él. Corrida suelta da 15.
+
+`PROBADO_AISLADO` no es `VERIFICADO_RUNTIME`: nada de esto acredita el
+comportamiento de un servicio desplegado, de la red 5550 ni de un saldo real.
+
 ---
 
 ## Los 25 hallazgos del informe de Codex
@@ -26,7 +50,7 @@ Ninguna fila dice «cerrado» sin una prueba que se pueda volver a correr.
 | H13 liberación sin inventario | **Cerrado** | `adversarias` H13, `sdk` propiedades |
 | H14 reorganización incompleta | **Cerrado** | `indexer` reorg ×8 |
 | H15 eventos incompatibles | **Cerrado** | `indexer` esquema ×9, `spec/eventos.json` |
-| H16 identidad enumerable | Cerrado | `contracts` identidad |
+| H16 identidad enumerable | **PARCIAL, declarado** | `contracts` identidad: se quitaron los indexados, pero recorrer los logs reconstruye lo mismo |
 | H17 expiración ignorada | Cerrado | `contracts` 07 |
 | H18 reserva sin activo | Cerrado | `contracts` 04 |
 | H19 reanudación reutilizable | Cerrado | `contracts` 02 |
@@ -50,7 +74,7 @@ describió; la ruta del informe es lo que estaba mal.
 |---|---|---|
 | P01 unicidad sólo en memoria | **Abierto, documentado** | `RESTRICCIONES_DURABLES`, `concurrencia.md`, I-08 |
 | P02 confusables ad hoc | Cerrado | `sdk` alias P02: la cobertura está enumerada y es revisable |
-| P03 rutas de un solo rol | Cerrado en norma y en código | `spec/SFSP-800` §12, `contracts` |
+| P03 rutas de un solo rol | **PARCIAL** | `spec/SFSP-800` §12 completo. En código: cinco acciones con doble control; `UPGRADE`, `RECOVERY`, `SET_QUORUM` y `SET_POLICY` siguen sin él |
 | P04 keccak con pocos vectores | **Cerrado** | `sdk` keccak P04 ×3, con constantes públicas de ERC-20 |
 | P05 `MANAGED` presupone custodia | **Cerrado como supuesto declarado** | `sdk` custodia P05 |
 | P06 revocación de identidad | **Cerrado** | `dbnx-api` firmas P06 ×4 |
@@ -81,7 +105,7 @@ describió; la ruta del informe es lo que estaba mal.
 
 ## Lo que sigue abierto, y por qué
 
-Tres puntos, y ninguno es un olvido:
+Seis puntos, y ninguno es un olvido:
 
 - **P01 y P10** esperan al adaptador durable. Las invariantes que hoy sostiene
   un solo hilo las tiene que sostener mañana un índice único en la base, y las
@@ -94,5 +118,31 @@ Tres puntos, y ninguno es un olvido:
   porque la especificación las dibuja con flechas en vez de con una tabla, y
   dos porque el código no declara la máquina en ninguna parte.
 
-Además, nueve afirmaciones del registro dependían del lote de contratos y se
-actualizan cuando ese lote cierre.
+- **H16** cierra a medias y está dicho en el código: quitar los `indexed` del
+  evento de identidad encarece la correlación pero no la impide, porque
+  recorrer todos los logs reconstruye lo mismo y `subjectRefOf` tiene que ser
+  pública para que el motor la consulte. Hay una prueba que **afirma la
+  correlación que hoy existe**, para que el día que se arregle esa prueba falle.
+- **P03** cierra a medias: transferencia forzosa, quema, emisión, liquidación y
+  reanudación exigen doble control con separación de funciones real. `UPGRADE`,
+  `RECOVERY`, `SET_QUORUM` y `SET_POLICY` siguen en el camino antiguo, donde
+  quien propone se auto-aprueba. Son cuatro rutas de gobierno, no de dinero,
+  pero una de ellas cambia los quórums de las demás.
+
+Hay además dos cosas más que el lote de contratos dejó anotadas y conviene no
+perder: el claim de migración se autoriza con la firma de un atestador y no con
+doble control, y el registro canónico de la liquidación guarda el `codehash`
+sólo en el evento sin revalidarlo en cada operación. La defensa que sí corre
+siempre ahí es la comprobación de la entrega real.
+
+## El recuento, sin redondear a favor
+
+| | Cuántos | Cuáles |
+|---|---:|---|
+| Cerrados con prueba | **40** | los 24 hallazgos restantes, 7 pendientes, 9 propios |
+| Cierre parcial declarado | **3** | H16 identidad, P03 doble control, C09 conformidad |
+| Abiertos y documentados | **3** | P01 y P10 esperan al adaptador durable, P11 a la re-auditoría |
+| | **46** | |
+
+Un cierre parcial no se cuenta como cerrado. Es la diferencia entre este
+documento y el que habría escrito si quisiera que el número quedara bonito.
