@@ -30,13 +30,18 @@ contract SFSPMigrationRegistry is SFSPAccessControl, SFSPEIP712, SFSPReentrancyG
         "MigrationClaim(bytes32 migrationId,address beneficiary,uint256 oldUnits,uint256 ratioNum,uint256 ratioDen,uint256 sourceChainId,uint256 targetChainId,address registry,bytes32 nonce,uint64 expiry)"
     );
 
-    // §3 · MigrationClaimed lo emite MigrationRegistry.
+    // §3 · MigrationClaimed lo emite MigrationRegistry. H15: nombra los DOS
+    // activos, porque sin ellos el reemplazo no se puede imputar a ningún
+    // circulante. `residualNumerator` no se pierde: sigue en
+    // `ResidualEntitlementRecorded`, que lleva numerador y denominador juntos,
+    // que es la única forma de leer una fracción sin inventar el denominador.
     event MigrationClaimed(
         bytes32 indexed migrationId,
         address indexed beneficiary,
+        bytes32 indexed assetIdAnterior,
+        bytes32 assetIdNuevo,
         uint256 oldUnits,
         uint256 newUnits,
-        uint256 residualNumerator,
         bytes32 nullifier
     );
     event MigrationOpened(bytes32 indexed migrationId, uint8 mode, bytes32 merkleRoot, uint256 s0);
@@ -51,6 +56,12 @@ contract SFSPMigrationRegistry is SFSPAccessControl, SFSPEIP712, SFSPReentrancyG
     error ClaimExpired(uint64 expiry);
     error NotAttestor(address signer);
     error OldAssetNotFrozen(bytes32 oldAssetId);
+    // H04 · el origen tiene que estar excluido de forma técnica y PERMANENTE,
+    // no llevar una etiqueta de ciclo de vida que puede volver a cambiar.
+    error OldAssetNotPermanentlyExcluded(bytes32 oldAssetId);
+    // H04 · un mismo origen no puede tener dos migraciones abiertas a la vez.
+    error SourceAlreadyMigrating(bytes32 oldAssetId, bytes32 openMigrationId);
+    error MigrationExpired(uint64 expiry);
     error SurrenderRequired();
     error RatioInvalid(uint256 num, uint256 den);
     error ScopeExceeded(uint256 excluded, uint256 s0);
@@ -85,7 +96,9 @@ contract SFSPMigrationRegistry is SFSPAccessControl, SFSPEIP712, SFSPReentrancyG
     ISFSPAssetRegistry public immutable registry;
 
     mapping(bytes32 => Migration) private _migrations;
-    mapping(bytes32 => bool) private _nullifierUsed;   // anti-replay del derecho
+    mapping(bytes32 => bool) private _nullifierUsed;   // anti-replay del derecho, GLOBAL
+    // H04 · oldAssetId => migración abierta sobre ese origen. Cero = ninguna.
+    mapping(bytes32 => bytes32) private _openMigrationOf;
     mapping(bytes32 => bool) private _nonceUsed;       // anti-replay de la firma
     // FALTA EN CONTRATO-INTERNO: el §5 exige "registro de fracciones" sin fijar
     // su forma. Se implementa como numerador residual sobre ratioDen.
@@ -116,10 +129,26 @@ contract SFSPMigrationRegistry is SFSPAccessControl, SFSPEIP712, SFSPReentrancyG
         require(_migrations[migrationId].ratioDen == 0, "SFSP: migracion existente");
         if (ratioNum == 0 || ratioDen == 0) revert RatioInvalid(ratioNum, ratioDen);
         require(oldAsset != address(0) && newAsset != address(0), "SFSP: activos=0");
+        require(expiry > block.timestamp, "SFSP: ventana vencida");
+
+        bytes32 oldAssetId = IMigratableAsset(oldAsset).assetId();
+        // H04 · unicidad global por origen. Con dos migraciones abiertas sobre el
+        // mismo activo viejo, cada una llevaba su propio dominio de nullifier y la
+        // misma posición se podía reemplazar dos veces.
+        bytes32 abierta = _openMigrationOf[oldAssetId];
+        if (abierta != bytes32(0)) revert SourceAlreadyMigrating(oldAssetId, abierta);
+        // H04 · en FROZEN_SNAPSHOT la exclusión tiene que estar declarada ANTES de
+        // habilitar claims, y ser irreversible. Un eje de ciclo de vida no sirve:
+        // TECH_OPS podía devolverlo a FREE después de emitir el activo nuevo, y
+        // entonces el viejo y el nuevo circulaban a la vez.
+        if (mode == Mode.FROZEN_SNAPSHOT && !registry.isPermanentlyExcluded(oldAssetId)) {
+            revert OldAssetNotPermanentlyExcluded(oldAssetId);
+        }
+        _openMigrationOf[oldAssetId] = migrationId;
 
         _migrations[migrationId] = Migration({
             mode: mode,
-            oldAssetId: IMigratableAsset(oldAsset).assetId(),
+            oldAssetId: oldAssetId,
             newAssetId: IMigratableAsset(newAsset).assetId(),
             oldAsset: oldAsset,
             newAsset: newAsset,
@@ -144,6 +173,10 @@ contract SFSPMigrationRegistry is SFSPAccessControl, SFSPEIP712, SFSPReentrancyG
         if (m.ratioDen == 0) revert UnknownMigration(migrationId);
         require(reasonCode != bytes32(0), "SFSP: motivo requerido");
         m.open = false;
+        // El candado del origen se libera, pero los nullifiers NO: son globales y
+        // no dependen de la migración, así que una migración posterior sobre el
+        // mismo origen no puede reemplazar una posición ya reemplazada.
+        if (_openMigrationOf[m.oldAssetId] == migrationId) _openMigrationOf[m.oldAssetId] = bytes32(0);
         emit MigrationClosed(migrationId, reasonCode);
     }
 
@@ -161,12 +194,25 @@ contract SFSPMigrationRegistry is SFSPAccessControl, SFSPEIP712, SFSPReentrancyG
         return _nullifierUsed[nullifier];
     }
 
+    function openMigrationOf(bytes32 oldAssetId) external view returns (bytes32) {
+        return _openMigrationOf[oldAssetId];
+    }
+
     /// @notice Conciliación del §6.3, en unidades escaladas por ratioNum.
     /// @dev E es CONTRAPARTE de N + P, no un tercer sumando de S0.
+    ///      H04 · sobre `A = S0` al abrir. `A` es «derecho de origen todavía no
+    ///      reemplazado», y al abrir vale S0 porque no se ha reemplazado nada:
+    ///      eso es correcto. Lo que era incompatible con «congelado y excluido»
+    ///      era leer ese `A` como circulación del activo viejo. En
+    ///      FROZEN_SNAPSHOT la circulación del viejo es CERO desde la apertura,
+    ///      porque la exclusión es técnica, permanente y anterior a cualquier
+    ///      claim; en SURRENDER_ON_CLAIM sí coincide con `A`, porque lo que
+    ///      todavía no se entregó sigue circulando. Se devuelve por separado para
+    ///      que nadie tenga que deducirlo.
     function reconcile(bytes32 migrationId)
         external
         view
-        returns (uint256 s0, uint256 a, uint256 e, uint256 n, uint256 p, bool ok)
+        returns (uint256 s0, uint256 a, uint256 e, uint256 n, uint256 p, bool ok, uint256 oldCirculatingScaled)
     {
         Migration storage m = _migrations[migrationId];
         s0 = m.s0Scaled;
@@ -175,14 +221,23 @@ contract SFSPMigrationRegistry is SFSPAccessControl, SFSPEIP712, SFSPReentrancyG
         p = m.pendingScaled;
         a = s0 - e;
         ok = (s0 == a + n + p) && (e == n + p);
+        oldCirculatingScaled = m.mode == Mode.FROZEN_SNAPSHOT ? 0 : a;
     }
 
     function leafOf(bytes32 migrationId, address beneficiary, uint256 oldUnits) public pure returns (bytes32) {
         return keccak256(abi.encode(migrationId, beneficiary, oldUnits));
     }
 
-    function nullifierOf(bytes32 migrationId, address beneficiary, uint256 oldUnits) public pure returns (bytes32) {
-        return keccak256(abi.encode("SFSP.NULLIFIER", migrationId, beneficiary, oldUnits));
+    /// @notice Nullifier de una POSICIÓN DE ORIGEN, no de una migración.
+    /// @dev H04 · antes el nullifier incluía `migrationId`, que es un
+    ///      identificador arbitrario que elige quien abre la migración: abrir otra
+    ///      migración abría otro dominio de nullifiers y permitía reemplazar dos
+    ///      veces la misma posición. Ahora se deriva del activo de origen y del
+    ///      titular, y por eso vale en TODAS las migraciones presentes y futuras.
+    ///      Tampoco entra `oldUnits`: si entrara, dos migraciones con recuentos
+    ///      distintos para el mismo titular volverían a ser dos dominios.
+    function nullifierOf(bytes32 oldAssetId, address beneficiary) public pure returns (bytes32) {
+        return keccak256(abi.encode("SFSP.NULLIFIER.POSICION.v2", oldAssetId, beneficiary));
     }
 
     function hashClaim(ClaimInput calldata c) public view returns (bytes32) {
@@ -212,6 +267,10 @@ contract SFSPMigrationRegistry is SFSPAccessControl, SFSPEIP712, SFSPReentrancyG
         Migration storage m = _migrations[c.migrationId];
         if (m.ratioDen == 0) revert UnknownMigration(c.migrationId);
         if (!m.open) revert MigrationNotOpen(c.migrationId);
+        // H17 · las DOS vigencias. Antes sólo se comprobaba la del claim, así que
+        // una migración vencida seguía abierta de hecho si el claim traía un
+        // vencimiento posterior: el atestador podía extender la ventana solo.
+        if (block.timestamp >= m.expiry) revert MigrationExpired(m.expiry);
         if (block.timestamp >= c.expiry) revert ClaimExpired(c.expiry);
 
         // 1. Firma del atestador autorizado sobre el payload completo.
@@ -224,7 +283,7 @@ contract SFSPMigrationRegistry is SFSPAccessControl, SFSPEIP712, SFSPReentrancyG
 
         // 3. ... y anti-replay del DERECHO (nullifier), que es independiente:
         //    otra firma válida del mismo derecho tampoco puede cobrarlo dos veces.
-        bytes32 nullifier = nullifierOf(c.migrationId, c.beneficiary, c.oldUnits);
+        bytes32 nullifier = nullifierOf(m.oldAssetId, c.beneficiary);
         if (_nullifierUsed[nullifier]) revert NullifierUsed(nullifier);
         _nullifierUsed[nullifier] = true;
 
@@ -255,7 +314,9 @@ contract SFSPMigrationRegistry is SFSPAccessControl, SFSPEIP712, SFSPReentrancyG
             IMigratableAsset(m.newAsset).mintForMigration(c.beneficiary, newUnits, c.migrationId);
         }
 
-        emit MigrationClaimed(c.migrationId, c.beneficiary, c.oldUnits, newUnits, residual, nullifier);
+        emit MigrationClaimed(
+            c.migrationId, c.beneficiary, m.oldAssetId, m.newAssetId, c.oldUnits, newUnits, nullifier
+        );
     }
 
     /// @dev FROZEN_SNAPSHOT exige congelación efectiva verificada ANTES de
@@ -265,6 +326,12 @@ contract SFSPMigrationRegistry is SFSPAccessControl, SFSPEIP712, SFSPReentrancyG
     ///      un snapshot informativo no autoriza a quien ya vendió sus tokens.
     function _excludeOldRight(Migration storage m, ClaimInput calldata c) internal {
         if (m.mode == Mode.FROZEN_SNAPSHOT) {
+            // Se comprueban las dos cosas: la exclusión permanente declarada (que
+            // no se puede deshacer) y el eje efectivo. La segunda sin la primera
+            // era el defecto de H04.
+            if (!registry.isPermanentlyExcluded(m.oldAssetId)) {
+                revert OldAssetNotPermanentlyExcluded(m.oldAssetId);
+            }
             SFSPTypes.Lifecycle memory lc = registry.lifecycleOf(m.oldAssetId);
             if (lc.transferability != SFSPTypes.Transferability.FROZEN) revert OldAssetNotFrozen(m.oldAssetId);
         } else {

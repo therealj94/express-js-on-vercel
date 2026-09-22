@@ -38,7 +38,33 @@ contract SFSPIdentityAdapter is SFSPAccessControl, SFSPEIP712 {
 
     event AttestationRecorded(bytes32 indexed subjectRef, bytes32 indexed purpose, bytes32 attestationId, uint64 validUntil);
     event AttestationRevoked(bytes32 indexed subjectRef, bytes32 indexed purpose, bytes32 attestationId, bytes32 reasonCode);
-    event SubjectRefBound(address indexed account, bytes32 indexed subjectRef);
+    /// @notice Vínculo dirección ↔ referencia opaca.
+    /// @dev H16 · NINGÚN campo va indexado, y no es cosmética. Un campo indexado
+    ///      viaja en los `topics` del log, así que cualquiera puede pedir al nodo
+    ///      «dame todos los eventos con este `subjectRef`» o «con esta dirección»
+    ///      y obtener la lista completa de direcciones de un mismo sujeto en una
+    ///      sola consulta barata. Sin índices esa consulta deja de existir: hay
+    ///      que recorrer y decodificar todos los logs del contrato.
+    ///
+    ///      LO QUE SIGUE SIENDO POSIBLE, dicho sin adornos:
+    ///        · Recorriendo todos los logs de este contrato se reconstruye la
+    ///          misma correlación. Es más caro, no imposible.
+    ///        · `subjectRefOf(address)` es una vista pública: dada una dirección,
+    ///          cualquiera obtiene su `subjectRef`. Tiene que ser pública porque
+    ///          el motor de elegibilidad la consulta en cada transferencia.
+    ///        · Con dos direcciones se puede comprobar si pertenecen al mismo
+    ///          sujeto comparando sus `subjectRef`. Eso es correlación de
+    ///          billeteras, y hoy es posible.
+    ///        · La `subjectRef` es única por sujeto y no por propósito, así que es
+    ///          un identificador estable que sobrevive a cualquier rotación de
+    ///          direcciones.
+    ///      Eliminar esto de verdad exige referencias no enlazables por propósito
+    ///      —una `subjectRef` distinta por (sujeto, propósito) con prueba de que
+    ///      todas pertenecen al mismo sujeto—, lo que cambia el motor de
+    ///      elegibilidad, el registro de attestations y el adaptador entero. No se
+    ///      hace aquí, y mientras tanto NO se afirma que haya privacidad: hay
+    ///      menos facilidad de consulta, que no es lo mismo.
+    event SubjectRefBound(address account, bytes32 subjectRef);
 
     error UnauthorizedIssuer(address signer);
     error AttestationReplayed(bytes32 attestationId);
