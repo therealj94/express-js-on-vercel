@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Respuesta · Solicitud SFSP v0.2</title>
+<style>
+  @page { size: A4; margin: 18mm 16mm 20mm 16mm; }
+  :root{
+    --tinta:#14171c; --suave:#4a5260; --linea:#d8dce3; --papel:#fff;
+    --acento:#1f4f8f; --verde:#146b45; --ambar:#8a5a00; --rojo:#9b2226;
+    --fondo-caja:#f6f8fa;
+  }
+  *{box-sizing:border-box}
+  body{
+    font-family:"Charter","Bitstream Charter","Georgia","Times New Roman",serif;
+    color:var(--tinta); background:var(--papel);
+    font-size:10.6pt; line-height:1.55; margin:0;
+    -webkit-print-color-adjust:exact; print-color-adjust:exact;
+  }
+  h1,h2,h3,.etiqueta,th,.num,code,.mono{font-family:"Helvetica Neue",Helvetica,Arial,sans-serif}
+  h1{font-size:25pt; line-height:1.15; margin:0 0 6pt; letter-spacing:-.015em}
+  h2{font-size:14pt; margin:22pt 0 7pt; padding-bottom:4pt; border-bottom:1.5px solid var(--tinta); letter-spacing:-.01em; break-after:avoid}
+  h3{font-size:11pt; margin:14pt 0 4pt; color:var(--acento); break-after:avoid}
+  p{margin:0 0 7pt}
+  ul,ol{margin:0 0 7pt; padding-left:16pt}
+  li{margin-bottom:3pt}
+  code,.mono{font-family:"DejaVu Sans Mono","Menlo",monospace; font-size:8.9pt}
+  code{background:var(--fondo-caja); padding:.5pt 3pt; border-radius:2px}
+  .etiqueta{font-size:7.6pt; letter-spacing:.11em; text-transform:uppercase; color:var(--suave); font-weight:700}
+  .sub{color:var(--suave); font-size:11pt; margin-bottom:14pt}
+  .regla{height:3px; background:var(--tinta); margin:10pt 0 14pt}
+  .portada{padding-top:34mm; break-after:page}
+  .ficha{border:1px solid var(--linea); background:var(--fondo-caja); padding:9pt 11pt; margin:12pt 0; border-radius:3px}
+  .ficha .etiqueta{display:block; margin-bottom:5pt}
+  table{width:100%; border-collapse:collapse; margin:8pt 0 10pt; font-size:9.3pt}
+  th{text-align:left; font-size:7.8pt; letter-spacing:.07em; text-transform:uppercase; color:var(--suave);
+     border-bottom:1.5px solid var(--tinta); padding:0 6pt 4pt 0; font-weight:700}
+  td{padding:4.5pt 6pt 4.5pt 0; border-bottom:1px solid var(--linea); vertical-align:top}
+  tr{break-inside:avoid}
+  .terminal{background:#14171c; color:#e9edf2; padding:9pt 11pt; border-radius:3px; margin:8pt 0 10pt;
+            font-family:"DejaVu Sans Mono",monospace; font-size:8.3pt; line-height:1.5; white-space:pre-wrap;
+            break-inside:avoid}
+  .terminal .c{color:#7f8a99}
+  .terminal .ok{color:#7ee2b0}
+  .terminal .no{color:#ff9d9d}
+  .terminal .k{color:#8fc4ff}
+  .nota{border-left:3px solid var(--acento); padding:5pt 0 5pt 10pt; margin:9pt 0; color:var(--suave)}
+  .alto{border-left:3px solid var(--rojo); padding:6pt 0 6pt 10pt; margin:10pt 0}
+  .alto strong{color:var(--rojo)}
+  .verde{color:var(--verde); font-weight:700}
+  .ambar{color:var(--ambar); font-weight:700}
+  .rojo{color:var(--rojo); font-weight:700}
+  .pastilla{display:inline-block; font-family:Helvetica,Arial,sans-serif; font-size:7.6pt; font-weight:700;
+            letter-spacing:.05em; padding:1.5pt 5pt; border-radius:9pt; border:1px solid currentColor}
+  .rejilla{display:grid; grid-template-columns:1fr 1fr; gap:10pt; margin:10pt 0}
+  .caja{border:1px solid var(--linea); padding:8pt 10pt; border-radius:3px; break-inside:avoid}
+  .caja h4{margin:0 0 4pt; font-size:9.6pt; font-family:Helvetica,Arial,sans-serif}
+  .cifra{font-family:Helvetica,Arial,sans-serif; font-size:21pt; font-weight:700; line-height:1; letter-spacing:-.02em}
+  .cifra span{font-size:9pt; font-weight:400; color:var(--suave); letter-spacing:0}
+  .flujo{margin:10pt 0; font-size:9.4pt}
+  .paso{display:flex; gap:9pt; margin-bottom:7pt; break-inside:avoid}
+  .paso .n{flex:0 0 17pt; height:17pt; border-radius:50%; background:var(--tinta); color:#fff;
+           font-family:Helvetica,Arial,sans-serif; font-size:8.6pt; font-weight:700; display:flex;
+           align-items:center; justify-content:center; margin-top:1pt}
+  .paso .t{flex:1}
+  .paso .t b{display:block; font-family:Helvetica,Arial,sans-serif; font-size:9.4pt}
+  .pagina{break-before:page}
+  .pie{margin-top:20pt; padding-top:7pt; border-top:1px solid var(--linea); font-size:8.4pt; color:var(--suave)}
+  .evita{break-inside:avoid}
+</style>
+<style>td.nd{background:#fbecd1}.niv{font-family:Helvetica,Arial,sans-serif;font-size:7.4pt;font-weight:700;letter-spacing:.04em;color:#4a5260;white-space:nowrap}</style>
+</head>
+<body>
+<section class="portada" style="padding-top:22mm">
+  <div class="etiqueta">Respuesta a la solicitud de información técnica · SFSP v0.2</div>
+  <h1>Estado actual del sistema<br>para la especificación</h1>
+  <div class="regla"></div>
+  <p class="sub">Bloques 1 a 7. Corte de lectura: red 5550, bloque 241.307 y siguientes, 22 de septiembre de 2026.<br>
+  El inventario del Bloque 1 va en la hoja de cálculo adjunta, <b>BLOQUE-1-INVENTARIO.xlsx</b>.</p>
+
+  <div class="ficha">
+    <span class="etiqueta">Cómo leer cada dato</span>
+    Cada respuesta dice de dónde sale:
+    <span class="niv">CADENA</span> leído directamente del nodo, sólo con consultas ·
+    <span class="niv">CÓDIGO</span> leído en el repositorio ·
+    <span class="niv">DOCUMENTO</span> escrito por el equipo en el repositorio, con su fecha ·
+    <span class="niv">SERVICIO</span> respuesta pública de un servicio en producción ·
+    <b style="background:#fbecd1;padding:0 3pt">NO DISPONIBLE</b> no se puede obtener sin acceso; no se estimó.
+  </div>
+
+  <h2 style="margin-top:14pt">Seis hallazgos que cambian el diseño</h2>
+  <div class="paso"><div class="n">1</div><div class="t"><b>La 5550 no tiene ni un solo despliegue de contrato.</b>
+  Los 172 contratos se sembraron en el génesis del 25 de agosto, copiados de la 8532 con su almacenamiento. En 241.307 bloques hubo 95 transacciones y cero despliegues. El inventario coincide 172 de 172 con lo que registró el constructor del génesis.</div></div>
+  <div class="paso"><div class="n">2</div><div class="t"><b>La tesorería del génesis está vacía.</b>
+  Las cuatro cuentas que el génesis dejó con los 250.000 millones de ORIGEN cada una tienen hoy saldo 0. El 14 de septiembre, entre las 03:33 y las 04:28 UTC, todo pasó a seis direcciones nuevas, cada una con una transferencia de prueba de 1 ORIGEN antes del grueso. Ninguna de las seis figura en el repositorio. El total emitido sigue cuadrando: un billón exacto.</div></div>
+  <div class="paso"><div class="n">3</div><div class="t"><b>Lo mismo pasó con ONDK tres días antes.</b>
+  El 11 de septiembre, entre las 20:50 y las 22:04 UTC, nueve direcciones pasaron casi todo su ONDK (≈ 553 millones) a nueve direcciones nuevas. Tampoco están documentadas.</div></div>
+  <div class="paso"><div class="n">4</div><div class="t"><b>Los siete validadores no son independientes.</b>
+  Un solo operador, un solo proveedor (AWS) y una sola cuenta de AWS, donde viven también las llaves cifradas en SSM. Siete validadores aguantan dos caídas, pero perder o comprometer esa cuenta las tumba todas a la vez.</div></div>
+  <div class="paso"><div class="n">5</div><div class="t"><b>Cualquiera puede desplegar contratos.</b>
+  No hay lista de cuentas autorizadas: ni en la configuración del repositorio, ni en el comando de arranque documentado, y la API de permisos está desactivada en el RPC.</div></div>
+  <div class="paso"><div class="n">6</div><div class="t"><b>Hay dos precios de ORIGEN a la vez.</b>
+  La billetera usa 0,01 USD fijo (decisión de la Junta del 12 de agosto). Ordenex muestra como referencia ≈ 2,55 USD (un gramo de oro entre 55). Uno es 255 veces el otro.</div></div>
+</section>
+
+<h2>Bloque 1 · Inventario de contratos</h2>
+<p>Entregado en la hoja de cálculo. Resumen:</p>
+<table>
+<tr><th style="width:36%">Qué</th><th>Resultado</th><th style="width:12%">Fuente</th></tr>
+<tr><td>Contratos en la 5550</td><td><b>172</b>: 60 ERC-20 (incluye 4 envoltorios del nativo), 4 ERC-721 (gestores de posiciones Uniswap V3), 35 factorías AMM, 30 pools V3, 18 pares V2, 25 otros (routers, contratos mínimos)</td><td class="niv">CADENA</td></tr>
+<tr><td>Bloque y fecha de despliegue</td><td>Todos en el bloque 0, génesis del 25-ago-2026 (bloque 1: 23:40:15 UTC). El despliegue original en la 8532: NO DISPONIBLE.</td><td class="niv">CADENA</td></tr>
+<tr><td>Tenedores y concentración</td><td>Exactos para 57 de 67 tokens: la suma de saldos iguala el supply al último decimal. HARV y USDK también cierran, leyendo por su huella los saldos de direcciones que no están en el repositorio. AUKA y ONDK quedan casi completos: faltan 9.823,01 AUKA y 792,5 ONDK por ubicar.</td><td class="niv">CADENA</td></tr>
+<tr><td>Código verificado</td><td><b>Ninguno.</b> El repositorio no tiene la fuente Solidity de ningún contrato. ORDENSCAN registra la huella del bytecode de 15.</td><td class="niv">CÓDIGO</td></tr>
+<tr><td>Roles privilegiados</td><td>No hay control de acceso por roles en ninguno. Donde hay privilegio, es un único dueño (<code>owner()</code>). En la hoja figuran las funciones de emisión, quema y pausa presentes en cada bytecode.</td><td class="niv">CADENA</td></tr>
+<tr><td>Supply circulante, responsable interno, origen</td><td class="nd">NO DISPONIBLE: hace falta la lista oficial de billeteras de control interno y alguien que responda por cada contrato. La hoja trae, como hechos, el saldo de la cuenta desplegadora y los duplicados de bytecode.</td><td class="niv">—</td></tr>
+<tr><td>1.2 · Contratos en la 8532</td><td><b>173</b>: 172 migrados a la misma dirección en la 5550 y 1 abandonado a propósito (<code>0x…1001</code>, el staking de Polygon Edge). De 18 sólo se conocía la huella; se recuperó su dirección emparejándolos con la 5550.</td><td class="niv">DOCUMENTO + CADENA</td></tr>
+<tr><td>La 8532 hoy</td><td>No responde (23.23.205.33 rechaza la conexión). Esa IP es ahora la del validador node1 de la 5550. Último dato medido de la 8532: 21 de agosto.</td><td class="niv">CADENA + DOCUMENTO</td></tr>
+<tr><td>1.3 · Mercados</td><td><b>Ordenex:</b> 5 mercados abiertos (AUKA, AGKA, ONDK, IBS, HARV, todos contra ORIGEN), con <b>cero operaciones</b>. Es un libro de órdenes fuera de la cadena, sin contrato. <b>En la cadena:</b> 48 pares y pools AMM; 13 declaran liquidez, y de ellos 12 son contra WETH con 0 WETH real (ver Alertas de la hoja).</td><td class="niv">SERVICIO + CADENA</td></tr>
+</table>
+
+<h2 class="pagina">Bloque 2 · Red y validadores</h2>
+<h3>2.1 Configuración</h3>
+<table>
+<tr><th style="width:34%">Dato</th><th>Valor</th><th style="width:12%">Fuente</th></tr>
+<tr><td>Archivo génesis completo</td><td class="nd">NO DISPONIBLE en el repositorio: está en cada nodo. Se construyó con <code>reinicio-5550/construir-genesis-nuevo.py</code> (343 cuentas, 1.361 ranuras). Hash del bloque 0: <code>0x56b3cf56694f61c8a1ff1eae8bb50c57723899a1f493910a59f797b3ce734405</code>, que coincide con el acta del corte.</td><td class="niv">CADENA + DOCUMENTO</td></tr>
+<tr><td>Chain ID</td><td><b>5550</b> (<code>0x15ae</code>), <code>net_version</code> 5550. En el registro público (chainid.network): «Orden Global», estado <b>active</b>, RPC <code>ordenglobal-rpc.com</code> y <code>rpc.ordenglobal-rpc.com</code>, explorador ordenscan.com. El README del repositorio todavía dice <code>incubating</code>: está desactualizado.</td><td class="niv">CADENA + SERVICIO</td></tr>
+<tr><td>Cliente</td><td>Besu 26.7.1, Java Corretto 25</td><td class="niv">CADENA</td></tr>
+<tr><td>QBFT</td><td>Bloque cada <b>10 s</b> · época <b>30.000</b> bloques · espera de ronda <b>20 s</b>. Heredados del génesis anterior; el reinicio sólo reemplazó cuentas y validadores.</td><td class="niv">CÓDIGO</td></tr>
+<tr><td>Gas y comisión</td><td>Tarifa base 0 (<code>zeroBaseFee</code>) · límite de gas por bloque 10.000.000 · precio mínimo del cliente <b>93 gwei</b> (<code>--min-gas-price</code> + <code>--tx-pool-no-local-priority</code>). Una transferencia simple cuesta 21.000 × 93 gwei = <b>0,001953 ORIGEN</b>, que se lleva el validador.</td><td class="niv">CADENA + CÓDIGO</td></tr>
+<tr><td>Intervalo medio, últimos 30 días</td><td><b>10,0 s exactos.</b> La red actual tiene 28 días, así que la ventana empieza en el bloque 1.</td><td class="niv">CADENA</td></tr>
+<tr><td>Altura</td><td>241.475 al cierre de esta respuesta (22-sep-2026, 22:23 UTC)</td><td class="niv">CADENA</td></tr>
+</table>
+
+<h3>2.2 Validadores</h3>
+<table style="font-size:8.6pt">
+<tr><th>Validador</th><th>Nodo</th><th>Operador</th><th>Proveedor · zona</th><th>Custodia de la llave</th><th>Estado</th></tr>
+<tr><td class="mono">0xbc820391…caf2a</td><td>node1</td><td>Orden Global</td><td>AWS EC2 · us-east-1e</td><td class="nd">NO DISPONIBLE (entró el 20-ago; la custodia documentada es la de los 4 originales)</td><td>En línea</td></tr>
+<tr><td class="mono">0x4c03eb38…98036</td><td>node2</td><td>Orden Global</td><td>AWS EC2 · us-east-2b</td><td class="nd">NO DISPONIBLE (ídem)</td><td>En línea</td></tr>
+<tr><td class="mono">0x69e8a7b2…ae36c</td><td>node3</td><td>Orden Global</td><td>AWS EC2 · us-east-1e</td><td>En el nodo + cifrada en SSM, misma cuenta AWS</td><td>En línea</td></tr>
+<tr><td class="mono">0x48ccec9a…6a833</td><td>node4</td><td>Orden Global</td><td>AWS EC2 · us-east-2b</td><td>En el nodo + cifrada en SSM, misma cuenta AWS</td><td>En línea</td></tr>
+<tr><td class="mono">0x65f98726…36382</td><td>node5</td><td>Orden Global</td><td>AWS EC2 · us-east-1d</td><td>En el nodo + cifrada en SSM, misma cuenta AWS</td><td>En línea</td></tr>
+<tr><td class="mono">0xc5484647…29514</td><td>node6</td><td>Orden Global</td><td>AWS EC2 · us-east-1d</td><td>En el nodo + cifrada en SSM, misma cuenta AWS</td><td>En línea</td></tr>
+<tr><td class="mono">0x453493fc…fc12e</td><td>node7</td><td>Orden Global</td><td class="nd">AWS EC2 · zona NO DISPONIBLE; sin IP fija</td><td class="nd">NO DISPONIBLE</td><td>En línea</td></tr>
+</table>
+<p style="font-size:9pt"><b>Estado:</b> los siete propusieron bloques dentro de los últimos cien (entre 14 y 15 cada uno), según <code>qbft_getSignerMetrics</code>, y el nodo público tiene 6 pares. <span class="niv">CADENA</span>
+<b>Operador, proveedor, zona y custodia:</b> <code>SIETE-VALIDADORES-20-AGO.md</code> y <code>COPIA-FRIA-LLAVES.md</code>. <span class="niv">DOCUMENTO</span>
+<b>Copia fría de las llaves:</b> el procedimiento está escrito y se probó el 11 de agosto con un par de prueba. Si se hizo la copia real: NO DISPONIBLE.</p>
+<div class="alto"><strong>Independencia: no.</strong> Los siete comparten operador, proveedor y cuenta de AWS, y las llaves cifradas de los originales viven en el SSM de esa misma cuenta. Hay reparto físico (tres zonas en dos regiones), que protege contra la caída de un centro de datos, pero no contra la pérdida o el compromiso de la cuenta, que es el punto único de falla.</div>
+
+<h3>2.3 Permisos de red</h3>
+<p><b>No existe lista de cuentas autorizadas para desplegar.</b> No hay configuración de permisos en el repositorio, el comando de arranque documentado (<code>RUNBOOK.md</code>) no tiene banderas <code>--permissions-*</code>, y <code>perm_getAccountsAllowlist</code> responde «Method not enabled» en el RPC público.
+<span class="niv">CÓDIGO + CADENA</span> Tampoco hay un procedimiento escrito para autorizar un despliegue. <b>Límite de esta respuesta:</b> la configuración real de cada máquina no se pudo ver sin acceso, y no se intentó desplegar nada para comprobarlo.</p>
+
+<h2 class="pagina">Bloque 3 · Genesis ID</h2>
+<table>
+<tr><th style="width:30%">Pregunta</th><th>Respuesta</th><th style="width:12%">Fuente</th></tr>
+<tr><td>3.1 Implementación en producción</td><td><code>genesis-id/</code> en Render, <code>genesis-id.onrender.com</code>; responde en <code>/healthz</code>. Rama y commit desplegado: NO DISPONIBLE sin acceso a Render.</td><td class="niv">CÓDIGO + SERVICIO</td></tr>
+<tr><td>Implementaciones alternativas</td><td>El portal <code>genesisid.online</code> está retirado y el panel <code>genesis-admin.html</code> es obsoleto (sus rutas devuelven 404 a propósito). <b>Dos copias del puente con Veta Wallet divergen</b>: <code>infra/veta-wallet-backend/lib/genesisPuente.js</code> (la montada) y <code>infra/genesis-proxy/</code>. ORDENSCAN consulta el motor para verificar identificadores.</td><td class="niv">DOCUMENTO (2-sep)</td></tr>
+<tr><td>3.2 Identidades registradas y verificadas</td><td class="nd">NO DISPONIBLE: están en MongoDB y requieren acceso de operador.</td><td class="niv">—</td></tr>
+<tr><td>Motor de verificación</td><td>Lectura de la zona MRZ del documento, lectura del anverso con AWS Rekognition y cotejo de rostro (Rekognition o un proveedor externo configurable). Además, filtrado de riesgo por país según las listas del GAFI.</td><td class="niv">CÓDIGO</td></tr>
+<tr><td>Revisión humana</td><td><b>Sí, obligatoria.</b> «Verificada» sólo la pone un operador (<code>motor/identidades.ts: aprobar()</code>); no hay ninguna ruta automática. Los operadores tienen segundo factor (TOTP).</td><td class="niv">CÓDIGO</td></tr>
+<tr><td>Estados</td><td><code>iniciada → datos → documento → biometria → en-revision → verificada</code>, más <code>rechazada</code> y <code>suspendida</code>. El bloqueo por política es aparte: no borra el estado y se levanta con fecha.</td><td class="niv">CÓDIGO</td></tr>
+<tr><td>Documentos y países</td><td>El tipo de documento es un campo libre, sin lista cerrada en el código; se lee la MRZ, así que sirven documentos con MRZ. No hay lista de países cubiertos: los países se clasifican por riesgo (GAFI), no por cobertura.</td><td class="niv">CÓDIGO</td></tr>
+<tr><td>3.3 Vinculación de billeteras</td><td>Cada cuenta de cada app queda atada al Genesis ID con su dirección, cuando la app la tiene. Una identidad puede tener <b>varias</b> billeteras.</td><td class="niv">CÓDIGO</td></tr>
+<tr><td><b>¿Se puede saber que dos direcciones son de la misma persona?</b></td><td><b>Sí, dentro de la base de Genesis ID:</b> dos vínculos con el mismo identificador. Si las apps rellenan de verdad la dirección en cada vínculo: NO DISPONIBLE, depende de los datos. Desde la cadena no se puede.</td><td class="niv">CÓDIGO</td></tr>
+<tr><td>3.4 Datos y retención</td><td>Imágenes de documento y fotograma del rostro: cifradas con AES-256-GCM, <b>5 años</b> desde la decisión. Expediente sin decidir: 1 año. Telemetría: 90 días. <b>Sin plazo</b>: movimientos vigilados, padrón de personas por aplicación (incluye billetera) y casos de cumplimiento. El borrado lo hace un índice de MongoDB.</td><td class="niv">DOCUMENTO</td></tr>
+<tr><td>Registro de accesos</td><td>Bitácora firmada (HMAC), que detecta firmas quitadas, con ancla diaria en la cadena.</td><td class="niv">CÓDIGO</td></tr>
+</table>
+
+<h2>Bloque 4 · Usuarios y operación actual</h2>
+<table>
+<tr><th style="width:34%">Dato</th><th>Respuesta</th><th style="width:12%">Fuente</th></tr>
+<tr><td>Usuarios registrados, activos 30 días, con saldo</td><td class="nd">NO DISPONIBLE: están en las bases de Veta Wallet y de Genesis ID.</td><td class="niv">—</td></tr>
+<tr><td>Billeteras en la cadena al arrancar la 5550</td><td>El génesis del 25-ago dejó <b>155 billeteras</b> con 1 ORIGEN cada una (acta ETAPA-3; cuadra con el saldo del tesoro: 250.000 millones − 155). Son direcciones, no «usuarios».</td><td class="niv">DOCUMENTO</td></tr>
+<tr><td>Tarjetas emitidas y activas</td><td class="nd">NO DISPONIBLE: están en el proveedor de tarjetas y en la base de Veta Wallet. El modo real de tarjeta está bloqueado por la decisión D15.</td><td class="niv">—</td></tr>
+<tr><td>Volumen en la cadena, agosto (desde el 25)</td><td>ORIGEN: 3 transferencias, 725 (520 salieron de las cuentas de tesorería). ONDK: 4, 21.002.</td><td class="niv">CADENA</td></tr>
+<tr><td>Volumen en la cadena, septiembre</td><td>ORIGEN: 29 transferencias de uso normal, 10.229,02, más 21 de reorganización de tesorería por 999.999.999.324,96. ONDK: 28, 609.936.689,26, casi todo la rotación del 11-sep. AUKA: 7, 1.122,35. MNKA: 1, 10.000. AUBEX: 1, 5.000. AGKA: 1, 0,2.</td><td class="niv">CADENA</td></tr>
+<tr><td>Volumen fuera de la cadena</td><td>Ordenex: 0 operaciones. Tarjeta y compras fiat: NO DISPONIBLE.</td><td class="niv">SERVICIO</td></tr>
+</table>
+<p><b>Qué opera contra servicios reales y qué contra datos de demostración</b> (documento del ecosistema, verificado contra producción el 1-sep; los servicios se volvieron a comprobar vivos el 22-sep):</p>
+<table style="font-size:9pt">
+<tr><th>Operación</th><th>Estado</th></tr>
+<tr><td>Mandar y recibir ORIGEN y tokens, ver saldos, verificar identidad, tarjeta con QR de Genesis ID</td><td class="verde">Real</td></tr>
+<tr><td>Ordenex (libro de órdenes)</td><td>Real, abierto, sin una sola operación en su historia</td></tr>
+<tr><td>MyTokenPay (cobro en comercio)</td><td>App real; <b>el directorio son 30 comercios de muestra</b> en seis países</td></tr>
+<tr><td>Tarjeta</td><td>Pedirla exige Genesis ID verificado; el modo real está bloqueado por D15</td></tr>
+<tr><td>Ahorro en grupo</td><td class="rojo">No existe</td></tr>
+</table>
+<p><b>Términos aceptados.</b> Ordenex: versión <code>2026-09-02</code>; guarda la versión aceptada y la fecha (<code>terminosVersion</code>, <code>terminosEn</code>) y no deja operar sin haberla aceptado. Veta Wallet: la tarjeta exige aceptar los términos y guarda <b>sólo la fecha</b> (<code>acceptedCardTermsAt</code>), sin versión. En el alta general de la billetera no consta en el código ningún registro de aceptación. Los textos que se publican salen de <code>apps-web/veta-wallet/</code>, no de <code>veta-wallet-legal/</code>. <span class="niv">CÓDIGO</span></p>
+
+<h2 class="pagina">Bloque 5 · Hallazgos de auditoría</h2>
+<table>
+<tr><th style="width:30%">Hallazgo</th><th>Estado al 22-sep</th></tr>
+<tr><td>Credencial administrativa en el repositorio (H01)</td><td class="rojo"><b>ABIERTO.</b> <code>infra/mytokenpay-api/ENTREGA.md</code>, línea 27, sigue teniendo una contraseña en texto plano en la rama de trabajo. No consta ninguna revocación: <b>la constancia la tiene que dar quien tiene el acceso</b>. Aunque se borre del archivo, sigue en el historial de git, así que lo que la cierra es la rotación. El alcance de la revisión de exposición: NO DISPONIBLE.</td></tr>
+<tr><td>Barrera para pruebas destructivas (H02)</td><td class="rojo"><b>ABIERTO.</b> En <code>ULTRON-APP</code>, rama <code>main</code>, <code>tests/electrum-db.test.ts</code> ejecuta <code>TRUNCATE … CASCADE</code> sobre cualquier base a la que apunte <code>ELECTRUM_DB_URL</code>. Sólo tiene un comentario de aviso. Falta la barrera técnica que pide el plan: exigir <code>_test</code> en el nombre y abortar si el host es el de producción.</td></tr>
+</table>
+<h3>Manifiesto de despliegue por servicio</h3>
+<p>No existía. Esto es lo que el repositorio y los servicios públicos permiten afirmar. Commit desplegado, respaldo y recuperación: <b>NO DISPONIBLE en todos</b>; ningún servicio publica su commit y hace falta acceso a cada plataforma. Propietario: pendiente de D21.</p>
+<table style="font-size:8.4pt">
+<tr><th>Servicio</th><th>Código</th><th>Plataforma · dominio</th><th>Datos</th><th>Salud 22-sep</th></tr>
+<tr><td>Veta Wallet web</td><td><code>apps-web/veta-wallet/</code></td><td>AWS Amplify · app.vetawallet.com, legal.vetawallet.com</td><td>—</td><td class="verde">200</td></tr>
+<tr><td>Veta Wallet backend</td><td><code>infra/veta-wallet-backend/</code> (hay un segundo árbol, <code>veta-wallet-backend-</code>: cuál publica es D11)</td><td>Heroku · vetawallet-1a2e38ac52b1</td><td>MongoDB</td><td class="verde">200</td></tr>
+<tr><td>Genesis ID</td><td><code>genesis-id/</code></td><td>Render · genesis-id.onrender.com</td><td>MongoDB</td><td class="verde">200</td></tr>
+<tr><td>ORDENSCAN</td><td><code>ogscan-frontend/</code>, <code>ogscan-backend/</code></td><td>Vercel · ordenscan.com · Heroku · orden-global-scan-c4abe71e8024</td><td>su propio índice</td><td class="verde">200</td></tr>
+<tr><td>Ordenex API</td><td><code>infra/ordenex-api/</code></td><td>Heroku · ordenex-api-ba4b27b8b51a</td><td>MongoDB (<code>mongo: true</code>)</td><td class="verde">200</td></tr>
+<tr><td>MyTokenPay API</td><td><code>infra/mytokenpay-api/</code></td><td>Heroku · mytokenpay-api-5ab43b64205a</td><td>NO DISPONIBLE</td><td class="verde">200 en /healthz</td></tr>
+<tr><td>AuCorp API</td><td><code>infra/aucorp-api/</code></td><td>Heroku · aucorp-api-e70d3fd481ca</td><td>NO DISPONIBLE</td><td class="verde">200</td></tr>
+<tr><td>AU-RA FP (antes ULTRON)</td><td>repositorio <code>ULTRON-APP</code></td><td>Render · ultron-looi-desk</td><td>S3 (memoria)</td><td class="verde">200</td></tr>
+<tr><td>Nodos 5550</td><td><code>infra/migracion-cadena/</code></td><td>AWS EC2 · 7 nodos · rpc.ordenglobal-rpc.com</td><td>estado de la cadena</td><td class="verde">avanza</td></tr>
+</table>
+
+<h2>Bloque 6 · Tesorería y reservas</h2>
+<h3>6.1 ORIGEN</h3>
+<p>Emisión: <b>1.000.000.000.000 ORIGEN exactos</b>. La suma de todas las cuentas conocidas da exactamente eso: no hay ORIGEN sin ubicar. <span class="niv">CADENA</span></p>
+<table style="font-size:9pt">
+<tr><th>Cuenta de tesorería del génesis</th><th>Saldo en el génesis</th><th>Saldo hoy</th><th>Movimientos en la 5550</th></tr>
+<tr><td class="mono">0x3d5510e5…c32c9 · tesoro</td><td>≈ 249.999.999.845</td><td><b>0</b></td><td>8 salidas</td></tr>
+<tr><td class="mono">0xacc03b7f…f44b8 · preservada 1</td><td>250.000.000.000</td><td><b>0</b></td><td>7 salidas</td></tr>
+<tr><td class="mono">0x50219186…67f74 · preservada 2</td><td>250.000.000.000</td><td><b>0</b></td><td>5 salidas</td></tr>
+<tr><td class="mono">0x3011f7f9…95718 · preservada 3</td><td>250.000.000.000</td><td><b>0</b></td><td>3 salidas</td></tr>
+</table>
+<p>Dónde está hoy casi todo el ORIGEN (ninguna de estas direcciones figura en el repositorio):</p>
+<table style="font-size:9pt">
+<tr><th>Dirección</th><th>ORIGEN</th><th>Recibido</th></tr>
+<tr><td class="mono">0xef9885d2443345c982bcfebd7683fcb34bedcb45</td><td>300.000.000.000</td><td>14-sep 03:33–03:40</td></tr>
+<tr><td class="mono">0xba0cd2a8ffee5ec54c852589651770bff06c1c22</td><td>180.000.000.000</td><td>14-sep 03:43–03:45</td></tr>
+<tr><td class="mono">0x62ad1d5f1757c6294d6873f213408583d8edc5fe</td><td>169.999.988.919,90</td><td>14-sep 04:28</td></tr>
+<tr><td class="mono">0x8520039aa69bbd47efb2d4919f41aa44ed3feb64</td><td>150.000.000.000</td><td>14-sep 03:59–04:07</td></tr>
+<tr><td class="mono">0x48fa946df41d38a5f75f54a009df71f75105a5d2</td><td>100.000.000.000</td><td>14-sep 04:18–04:23</td></tr>
+<tr><td class="mono">0xf2c3045d1603aa87f1d262ace3c836c132343b2c</td><td>100.000.000.000</td><td>14-sep 04:12–04:14</td></tr>
+</table>
+<p style="font-size:9pt">Otras cuentas internas con saldo relevante: la cuenta desplegadora <code>0xa07a…5714</code> y las operadoras de liquidez <code>0x0186450c…</code> y <code>0x3063a26b…</code> (acta ETAPAS-1-Y-2). Los validadores cobran las comisiones.</p>
+<div class="alto"><strong>Lo que hay que confirmar.</strong> La solicitud habla de «cuatro billeteras de tesorería». Las cuatro del génesis están vacías, y hoy el ORIGEN está en seis direcciones sin documentar. El patrón (1 ORIGEN de prueba y después el grueso, todo en 55 minutos) es el de un traspaso deliberado a billeteras nuevas, pero <b>quién las controla y cuáles son hoy «la tesorería» sólo lo puede decir quien firmó esas transacciones.</b></div>
+
+<h3>6.2 Metales</h3>
+<table>
+<tr><th style="width:34%">Dato</th><th>Respuesta</th><th style="width:12%">Fuente</th></tr>
+<tr><td>Metal custodiado: custodio, bóveda, lote, peso, pureza, atestación</td><td><b>No existe a la fecha.</b> Según el documento del ecosistema (verificado el 1-sep): «ORIGEN, AUKA y AGKA NO están respaldadas… no hay oro en bóveda». El repositorio no tiene ningún registro de custodia.</td><td class="niv">DOCUMENTO</td></tr>
+<tr><td>AUKA emitidas</td><td>55.000.000 (contrato <code>0x6Facc8…6B9B</code>)</td><td class="niv">CADENA</td></tr>
+<tr><td>AGKA emitidas</td><td>500.000.000 (contrato <code>0x961f79…7a4B</code>, el del catálogo). Hay otros contratos con el símbolo AGKA: ver la hoja.</td><td class="niv">CADENA</td></tr>
+<tr><td>En circulación</td><td class="nd">NO DISPONIBLE: falta la lista de control interno. La distribución completa por tenedor está en la hoja «Tenedores».</td><td class="niv">—</td></tr>
+<tr><td><b>Conciliación de cobertura</b></td><td><b>0 onzas custodiadas frente a 55.000.000 AUKA y 500.000.000 AGKA emitidos.</b> Cobertura: 0 %. Con esto, cualquier parámetro de la serie de commodities parte de cero onzas.</td><td class="niv">DOCUMENTO + CADENA</td></tr>
+</table>
+
+<h2>Bloque 7 · Oráculo de precios</h2>
+<table>
+<tr><th style="width:15%">Activo</th><th>Fuente</th><th>Frecuencia · almacenamiento</th><th>Quién lo cambia</th><th>Si la fuente cae</th></tr>
+<tr><td><b>ORIGEN</b> en la billetera</td><td><b>0,01 USD fijo</b> (Junta, 12-ago). Modo alterno por variable de entorno <code>OG_PRECIO_MODO=oro</code>.</td><td>Constante en código; sin llamada de red</td><td>Quien despliegue el backend</td><td>No aplica</td></tr>
+<tr><td><b>ORIGEN</b> en Ordenex (referencia)</td><td>Un gramo de oro entre 55 ≈ <b>2,55 USD</b> hoy</td><td>Igual que AUKA</td><td>—</td><td>Igual que AUKA</td></tr>
+<tr><td><b>AUKA</b> · oro</td><td>CoinGecko <code>pax-gold</code>; respaldo gold-api.com (XAU). Binance descartado: responde 451 desde Estados Unidos.</td><td>Caché de 30 s, máximo 10 min; historial en MongoDB, colección <code>velasRef</code></td><td>Nadie: se mide</td><td>Se muestra un guion; nunca un número viejo</td></tr>
+<tr><td><b>AGKA</b> · plata</td><td>CoinGecko <code>kinesis-silver</code>; respaldo gold-api.com (XAG)</td><td>Igual que AUKA</td><td>Nadie: se mide</td><td>Igual que AUKA</td></tr>
+<tr><td><b>ONDK</b></td><td><b>Declarado por la Junta</b>, con acta y firmante. Vigente: 2,15 USD (acta JD-2026-08-16)</td><td>MongoDB, con historial: 1 (jul-2024) → 1,5 → 1,7 → 2,1 → 2,15</td><td>Un administrador de Ordenex (<code>POST /admin/precio-declarado</code>)</td><td>No aplica: no se mueve entre actas</td></tr>
+<tr><td>Resto de tokens (MNKA, IBS, HARV, AUBEX…)</td><td colspan="4"><b>Sin precio.</b> La API responde <code>SIN_REFERENCIA</code> y no inventa una línea plana.</td></tr>
+</table>
+<div class="alto"><strong>Incoherencia a resolver.</strong> Hay dos precios de ORIGEN a la vez: 0,01 USD en los caminos de dinero de la billetera y ≈ 2,55 USD como referencia en Ordenex. El código de Ordenex lo reconoce y dice que manda el documento de diseño. Es una decisión de la Junta (D01), y la especificación no puede suponer ninguno de los dos.</div>
+
+<h2 class="pagina">Lo que queda pendiente, y quién lo tiene</h2>
+<table>
+<tr><th>Dato</th><th style="width:36%">Quién lo puede dar</th></tr>
+<tr><td>Quién controla las 6 direcciones que hoy tienen el ORIGEN, y las 9 que recibieron el ONDK</td><td>Quien firmó las transacciones del 11 y del 14 de septiembre</td></tr>
+<tr><td>Lista oficial de billeteras de tesorería y control interno (para el supply circulante)</td><td>Dirección / finanzas</td></tr>
+<tr><td>Rotación de la credencial de ENTREGA.md, con constancia</td><td>Quien tiene acceso a esa cuenta</td></tr>
+<tr><td>Commit desplegado, respaldo y recuperación por servicio</td><td>Quien tiene acceso a Heroku, Render, Amplify y AWS</td></tr>
+<tr><td>Archivo génesis de la 5550; custodia de las llaves de node1, node2 y node7; zona de node7; si se hizo la copia fría</td><td>Quien tiene acceso a los nodos (SSM)</td></tr>
+<tr><td>Usuarios registrados, activos y con saldo; tarjetas; identidades registradas y verificadas</td><td>Quien tiene acceso de operador a Veta Wallet, Genesis ID y al proveedor de tarjetas</td></tr>
+<tr><td>Responsable y origen de cada contrato (producción, prueba o demo)</td><td>El equipo que los desplegó en la 8532</td></tr>
+<tr><td>Los 9.823,01 AUKA y 792,5 ONDK sin ubicar</td><td>El volcado de la 5550 intermedia (15 al 25 de agosto) o la base de usuarios</td></tr>
+</table>
+
+<div class="pie">Todo lo leído de la cadena se hizo con consultas de lectura contra rpc.ordenglobal-rpc.com: no se firmó ni se envió ninguna transacción. Las direcciones son datos públicos de la cadena; este documento no contiene datos personales ni credenciales. Los scripts de lectura y los datos crudos están guardados junto a la hoja, para repetir la extracción.</div>
+</body>
+</html>

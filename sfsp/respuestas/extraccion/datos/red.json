@@ -1,0 +1,65 @@
+{
+ "altura": 241461,
+ "fechaUltimo": "2026-09-22T22:23:35.000Z",
+ "ventana30d": {
+  "desde": 1,
+  "fechaDesde": "2026-08-25T23:40:15.000Z",
+  "intervaloMedioSeg": 10
+ },
+ "desdeElBloque1": {
+  "intervaloMedioSeg": 10,
+  "primerBloque": "2026-08-25T23:40:15.000Z"
+ },
+ "gasLimitUltimo": 10000000,
+ "baseFeePerGas": 0,
+ "gasPrice": 93000000000,
+ "validadores": [
+  "0x453493fcf778f133c51505cb81397f08850fc12e",
+  "0x48ccec9a54b9357623458f26afadcd7412a6a833",
+  "0x4c03eb38c7dc49eed7784c323089a4af2c698036",
+  "0x65f987264bd77c3a094badfd88e4ba84c0b36382",
+  "0x69e8a7b25586511a0c14430b45100e9439aae36c",
+  "0xbc820391f2a8ae402d00ef8bf4d0ec09ea0caf2a",
+  "0xc548464725d5fd4a15b882a221da67b9cfd29514"
+ ],
+ "metricas": [
+  {
+   "address": "0xc548464725d5fd4a15b882a221da67b9cfd29514",
+   "proposedBlockCount": "0xe",
+   "lastProposedBlockNumber": "0x3af31"
+  },
+  {
+   "address": "0x4c03eb38c7dc49eed7784c323089a4af2c698036",
+   "proposedBlockCount": "0xf",
+   "lastProposedBlockNumber": "0x3af34"
+  },
+  {
+   "address": "0x69e8a7b25586511a0c14430b45100e9439aae36c",
+   "proposedBlockCount": "0xe",
+   "lastProposedBlockNumber": "0x3af2f"
+  },
+  {
+   "address": "0x65f987264bd77c3a094badfd88e4ba84c0b36382",
+   "proposedBlockCount": "0xe",
+   "lastProposedBlockNumber": "0x3af2e"
+  },
+  {
+   "address": "0x453493fcf778f133c51505cb81397f08850fc12e",
+   "proposedBlockCount": "0xe",
+   "lastProposedBlockNumber": "0x3af32"
+  },
+  {
+   "address": "0xbc820391f2a8ae402d00ef8bf4d0ec09ea0caf2a",
+   "proposedBlockCount": "0xe",
+   "lastProposedBlockNumber": "0x3af30"
+  },
+  {
+   "address": "0x48ccec9a54b9357623458f26afadcd7412a6a833",
+   "proposedBlockCount": "0xf",
+   "lastProposedBlockNumber": "0x3af33"
+  }
+ ],
+ "peers": "0x6",
+ "cliente": "besu/v26.7.1/linux-x86_64/corretto-java-25",
+ "syncing": false
+}

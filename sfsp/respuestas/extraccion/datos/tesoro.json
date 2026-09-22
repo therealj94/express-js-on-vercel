@@ -1,0 +1,116 @@
+{
+ "bloque": 241475,
+ "tesoreria": [
+  {
+   "direccion": "0x3d5510e5081822877d14cd51b356bf01df2c32c9",
+   "rol": "Tesoro (destino de la consolidación)",
+   "saldo": "0",
+   "movimientos5550": {
+    "salidas": 8,
+    "salidoORIGEN": "249.999.999.844,984376",
+    "entradas": 0,
+    "entradoORIGEN": "0"
+   }
+  },
+  {
+   "direccion": "0xacc03b7fe0c658cb3872726d05da24d0554f44b8",
+   "rol": "Asignación preservada 1",
+   "saldo": "0",
+   "movimientos5550": {
+    "salidas": 7,
+    "salidoORIGEN": "249.999.999.999,986329",
+    "entradas": 0,
+    "entradoORIGEN": "0"
+   }
+  },
+  {
+   "direccion": "0x50219186545980b35912adc89550522e63667f74",
+   "rol": "Asignación preservada 2",
+   "saldo": "0",
+   "movimientos5550": {
+    "salidas": 5,
+    "salidoORIGEN": "249.999.999.999,990235",
+    "entradas": 0,
+    "entradoORIGEN": "0"
+   }
+  },
+  {
+   "direccion": "0x3011f7f9d263d7f73a1ac2130ac7afe426495718",
+   "rol": "Asignación preservada 3",
+   "saldo": "0",
+   "movimientos5550": {
+    "salidas": 3,
+    "salidoORIGEN": "249.999.999.999,994141",
+    "entradas": 0,
+    "entradoORIGEN": "0"
+   }
+  }
+ ],
+ "enTesoreria": "0",
+ "fueraDeTesoreria": "1.000.000.000.000",
+ "sumaDeTodasLasConocidas": "1.000.000.000.000",
+ "emisionEsperada": "1.000.000.000.000",
+ "diferenciaConEmision": "0",
+ "otrasRelevantes": [
+  [
+   "0x31dbade047fa07669955686a8691bffd7062b82b",
+   "2,014376016"
+  ],
+  [
+   "0x3409f79cae2ca2312254ae51708a4380ab38da9e",
+   "4,925387156"
+  ],
+  [
+   "0x48fa946df41d38a5f75f54a009df71f75105a5d2",
+   "100.000.000.000,000001"
+  ],
+  [
+   "0x51279aa19dff9820158b461998e213b93759c861",
+   "203,998047"
+  ],
+  [
+   "0x58de1466cef3ab27781ec4e7031e89440a81f450",
+   "204,947"
+  ],
+  [
+   "0x62ad1d5f1757c6294d6873f213408583d8edc5fe",
+   "169.999.988.919,904163"
+  ],
+  [
+   "0x746268404cc9ca2ef0ac344f02b236db232c3ad8",
+   "4,761195936"
+  ],
+  [
+   "0x8520039aa69bbd47efb2d4919f41aa44ed3feb64",
+   "150.000.000.000"
+  ],
+  [
+   "0xa30f1e21f05bee8863a8c9abd205b2814bcb9e00",
+   "1,75"
+  ],
+  [
+   "0xba0cd2a8ffee5ec54c852589651770bff06c1c22",
+   "180.000.000.000"
+  ],
+  [
+   "0xd894df2b1eedd017c7bb2b01d9a16391ccc4bda5",
+   "10.007"
+  ],
+  [
+   "0xdb11c06794d779eaf8aac59f099ae32ef493bdd4",
+   "305,998047"
+  ],
+  [
+   "0xde23eb4e6318e6c0660d3eeb616538926a8dd4a2",
+   "198,338579504507439296"
+  ],
+  [
+   "0xef9885d2443345c982bcfebd7683fcb34bedcb45",
+   "300.000.000.000,000011"
+  ],
+  [
+   "0xf2c3045d1603aa87f1d262ace3c836c132343b2c",
+   "100.000.000.000"
+  ]
+ ]
+}
