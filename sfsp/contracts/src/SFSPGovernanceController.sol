@@ -162,6 +162,13 @@ contract SFSPGovernanceController is SFSPAccessControl {
         return _proposals[operationId];
     }
 
+    /// @dev H01 · CAMINO RETIRADO COMO CONTROL DE AUTORIZACIÓN. Un `operationId`
+    ///      lo elige el llamador y no dice nada de lo que se va a hacer: sirve
+    ///      para idempotencia, no para autorizar. Ningún ejecutor lo consulta ya;
+    ///      se conserva porque hay propuestas de gobierno (UPGRADE, QUORUM,
+    ///      RECOVERY) cuyo efecto es la propia decisión registrada y no una
+    ///      operación con contenido. Si algún día un ejecutor de dinero volviera
+    ///      a llamarlo, eso sería la reaparición de H01 (§12.4).
     function isActionApproved(bytes32 operationId) public view returns (bool) {
         Proposal storage p = _proposals[operationId];
         if (p.proposedAt == 0 || p.consumed) return false;
@@ -228,8 +235,10 @@ contract SFSPGovernanceController is SFSPAccessControl {
         emit GovernanceAction(operationId, p.actionKind, msg.sender, p.detail, uint64(block.timestamp));
     }
 
-    /// @dev Un ejecutor autorizado (emisión, forced transfer, migración) consume
-    ///      la aprobación: una misma aprobación no vale para dos operaciones.
+    /// @dev H01 · retirado igual que `isActionApproved`, y por la misma razón:
+    ///      impide repetir la misma operación, no impide sustituirla por otra.
+    ///      El camino vivo es `consumeAuthorization(digest)`, que además revierte
+    ///      en vez de devolver un booleano que el llamador pueda ignorar.
     function consumeApprovedAction(bytes32 operationId) external onlyRole(TECH_OPS) returns (bool) {
         if (!isActionApproved(operationId)) return false;
         _proposals[operationId].consumed = true;
