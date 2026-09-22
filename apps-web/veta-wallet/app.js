@@ -6263,7 +6263,7 @@ const VETA = (() => {
      mi navegador se quedó con una copia vieja?». La ficha de Ajustes lo
      enseña, y con eso se sabe. */
   const VETA_V = '0854c9917f';
-  const VETA_FECHA = '2026-09-21';
+  const VETA_FECHA = '2026-09-22';
 
   const AET_V = 'ec1cd1c429';
 
