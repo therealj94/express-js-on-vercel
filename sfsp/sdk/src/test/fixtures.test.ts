@@ -1,6 +1,6 @@
 /* Los fixtures sintéticos se usan de verdad (C04).
  *
-  * Los archivos de `fixtures/` existían sin que ninguna prueba los
+ * Los archivos de `fixtures/` existían sin que ninguna prueba los
  * abriera. Eso es peor que no tenerlos: un lector razonable supone que si están
  * ahí es porque algo los ejercita, y la cobertura parecía mayor de lo que era.
  *

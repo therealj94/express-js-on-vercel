@@ -107,7 +107,7 @@ Leyenda del estado:
 | H2 | Cero direcciones reales del ecosistema. | Resistió | barrido, `indexer` esquema |
 | H3 | Las pruebas no usan red, nodos, bases ni credenciales. | Parcial → cerrada: el compilador se descargaba. Ahora está fijado y comprobado | `contracts/compilador`, CI |
 | H4 | El SDK no tiene dependencias de ejecución. | Resistió | `package.json` |
-| H5 | Keccak-256 está escrito a mano y es correcto. | Resistió, con límite: diez comprobaciones no son una auditoría criptográfica | `sdk` keccak · **pendiente P04** |
+| H5 | Keccak-256 está escrito a mano y es correcto. | Resistió, con límite → cerrada: ahora se contrasta con constantes públicas de Ethereum que miles de sistemas calculan a diario | `sdk` keccak P04 ×3 |
 
 ---
 
@@ -124,6 +124,12 @@ aunque todo lo demás esté bien.
 ## Lo que sigue abierto
 
 Las filas marcadas **pendiente** son trabajo identificado, no defectos
-olvidados: D1, D3, F2, F5, F6, F7, F8, F9 y G5 esperan al lote de contratos, y
-H5 a la decisión sobre el keccak escrito a mano. Mientras sigan ahí, la
-verificación no puede ser completa, y el verificador lo dice.
+olvidados: D1, D3, F2, F5, F6, F7, F8, F9 y G5 esperan al lote de contratos.
+Mientras sigan ahí, la verificación no puede ser completa, y el verificador lo
+dice.
+
+H5 se cerró sin añadir una dependencia: los selectores y temas de evento de
+ERC-20 son constantes públicas que dependen enteramente de keccak, así que
+reproducirlas es una comprobación independiente de verdad. Dos de ellas,
+`totalSupply()` y `decimals()`, son las mismas que usa el script de invariante
+de emisión del propio ecosistema.

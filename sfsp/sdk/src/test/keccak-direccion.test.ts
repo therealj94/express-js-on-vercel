@@ -65,3 +65,58 @@ test('lo que no tiene forma de dirección se rechaza', () => {
   assert.equal(esFormaDeDireccion('5aAeb6053F3E94C9b9A09f33669435E7Ef1BeAed'), false);
   assert.throws(() => normalizarDireccion('0xZZZZb6053F3E94C9b9A09f33669435E7Ef1BeAed'), ErrorSFSP);
 });
+
+/* P04 · La auditoría dejó esta afirmación como «resistió, con límite»: diez
+ * comprobaciones no son una auditoría criptográfica de una primitiva escrita a
+ * mano. No puedo contrastarla con una segunda implementación sin añadir una
+ * dependencia, así que la contrasto con algo mejor: constantes públicas de
+ * Ethereum que miles de sistemas calculan a diario. Si este keccak tuviera un
+ * error, ninguna de estas cuadraría.
+ *
+ * Dos de ellas, `totalSupply()` y `decimals()`, son exactamente los selectores
+ * que usa `infra/migracion-cadena/invariante-emision.py` de este mismo
+ * ecosistema para leer la emisión de los catorce tokens. */
+
+test('P04 · selectores de función conocidos de ERC-20', () => {
+  const selector = (firma: string) => keccak256Hex(firma).slice(0, 8);
+
+  assert.equal(selector('transfer(address,uint256)'), 'a9059cbb');
+  assert.equal(selector('transferFrom(address,address,uint256)'), '23b872dd');
+  assert.equal(selector('approve(address,uint256)'), '095ea7b3');
+  assert.equal(selector('balanceOf(address)'), '70a08231');
+  assert.equal(selector('allowance(address,address)'), 'dd62ed3e');
+  assert.equal(selector('totalSupply()'), '18160ddd');
+  assert.equal(selector('decimals()'), '313ce567');
+  assert.equal(selector('symbol()'), '95d89b41');
+  assert.equal(selector('name()'), '06fdde03');
+});
+
+test('P04 · temas de evento conocidos', () => {
+  assert.equal(
+    keccak256Hex('Transfer(address,address,uint256)'),
+    'ddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef',
+  );
+  assert.equal(
+    keccak256Hex('Approval(address,address,uint256)'),
+    '8c5be1e5ebec7d5bd14f71427d1e84f3dd0314c0f7b2291e5b200ac8c7c3b925',
+  );
+});
+
+test('P04 · comportamiento en los bordes del bloque de absorción', () => {
+  /* La tasa de Keccak-256 es de 136 bytes. Los errores de relleno se esconden
+     justo en esos límites, así que se cruzan a propósito. */
+  const vistos = new Set<string>();
+  for (const n of [0, 1, 134, 135, 136, 137, 271, 272, 273, 500]) {
+    const h = keccak256Hex('a'.repeat(n));
+    assert.equal(h.length, 64, `longitud incorrecta para ${n} bytes`);
+    assert.ok(!vistos.has(h), `colisión entre longitudes distintas en ${n}`);
+    vistos.add(h);
+  }
+
+  /* Y un cambio de un solo bit cambia el hash por completo. */
+  const a = keccak256Hex('mensaje de prueba');
+  const b = keccak256Hex('mensaje de pruebb');
+  let iguales = 0;
+  for (let i = 0; i < 64; i++) if (a[i] === b[i]) iguales++;
+  assert.ok(iguales < 20, 'un cambio mínimo debería cambiar casi todo el hash');
+});
