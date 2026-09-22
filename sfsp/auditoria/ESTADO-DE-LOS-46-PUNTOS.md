@@ -22,9 +22,15 @@ pruebas-adversarias  14
 compilando en los tres paquetes, veinte decisiones pendientes y **cero
 parámetros económicos con valor**.
 
-La suite adversaria reporta 14 y no 15 porque una de sus pruebas, la que lanza
-el propio verificador para comprobar que el modo rápido no emite evidencia, se
-salta cuando ya corre dentro de él. Corrida suelta da 15.
+La suite adversaria reporta 14 y no 16 porque dos de sus pruebas lanzan el
+propio verificador —una comprueba que el modo rápido no emite evidencia, otra
+que un árbol sucio se detecta— y se saltan cuando ya corren dentro de él.
+Corrida suelta da 16.
+
+`árbol limpio: sí` significa algo desde el commit que arregló C02 por segunda
+vez. Antes de eso el verificador preguntaba por una ruta que no existía, git
+devolvía vacío y el vacío se leía como limpio: toda evidencia anterior declara
+una limpieza que nadie comprobó. Vale por lo que probó, no por su procedencia.
 
 `PROBADO_AISLADO` no es `VERIFICADO_RUNTIME`: nada de esto acredita el
 comportamiento de un servicio desplegado, de la red 5550 ni de un saldo real.
