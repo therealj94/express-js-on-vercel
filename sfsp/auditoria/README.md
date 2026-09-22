@@ -6,11 +6,24 @@ modelo o para una persona: lo que cambia es quién lee, no qué se le pide.
 
 ```
 auditoria/
-  PROMPT-AUDITORIA.md          lo que recibe el auditor
-  AFIRMACIONES-A-DESAFIAR.md   lo que el árbol afirma, fila por fila, con cómo romperlo
+  PROMPT-AUDITORIA.md          lo que recibe el auditor en una primera vuelta
+  PROMPT-REAUDITORIA.md        lo que recibe la segunda vuelta, que hace OTRO auditor
+  AFIRMACIONES-A-DESAFIAR.md   las 48 afirmaciones, con el veredicto y la prueba que fija cada una
+  PLAN-DE-CORRECCION.md        los 46 puntos de trabajo y en qué lote se cierra cada uno
   correr-auditoria.sh          lanza la auditoría y guarda el informe fechado
   informes/                    los informes, uno por corrida, con fecha y commit
 ```
+
+## Estado
+
+La primera vuelta la hizo Codex el 22 de septiembre de 2026 sobre el commit
+`f1d57a31`. Encontró 25 hallazgos, 9 de ellos capaces de mover dinero ajeno si
+el árbol se conectara. Se verificaron todos los que se revisaron y **ninguno
+resultó inflado**.
+
+Del informe salieron además 11 puntos que él dejó sin numerar en sus secciones
+4, 6 y 7. Una auditoría del propio trabajo añadió 10 más. Total: 46, todos en
+`PLAN-DE-CORRECCION.md`.
 
 ## Correrla
 
