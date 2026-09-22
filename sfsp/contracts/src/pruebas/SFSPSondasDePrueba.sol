@@ -44,3 +44,19 @@ contract SFSPActivoFalso {
 
     function burnForMigration(address, uint256, bytes32) external {}
 }
+
+/// @notice Fuerza Ether a una dirección sin que ésta ejecute código.
+/// @dev H24 · existe para que la prueba pueda demostrar el caso que el comentario
+///      de `SFSPCashVault` afirmaba imposible: `SELFDESTRUCT` deposita el saldo en
+///      el destinatario sin llamar a `receive` ni a `fallback`, así que «sin
+///      `receive` todo el efectivo tiene pasivo» era falso. El opcode sigue
+///      transfiriendo el saldo en el EVM de Paris, que es el objetivo fijado.
+contract SFSPForzadorDeEfectivo {
+    constructor() payable {}
+
+    /// @dev `payable` para que la prueba pueda fondear y forzar en una sola
+    ///      llamada: el Ether entra aquí y sale por `SELFDESTRUCT`.
+    function forzar(address payable destino) external payable {
+        selfdestruct(destino);
+    }
+}
