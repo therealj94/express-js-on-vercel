@@ -2,7 +2,7 @@
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { capacidadDeRecuperacion } from '../custodia.js';
+import { capacidadDeRecuperacion, SUPUESTO_CUSTODIA_MANAGED } from '../custodia.js';
 import type { AssetPassport, ImplementationProfile } from '../tipos.js';
 
 function pasaporte(
@@ -141,4 +141,13 @@ test('institucional sin quórum no tiene ruta', () => {
     politicaD19Aprobada: true,
   });
   assert.equal(conQuorum.ejecutable, true);
+});
+
+test('P05 · el supuesto sobre la custodia gestionada está declarado, no dado por bueno', () => {
+  /* El auditor lo dejó como sospecha sin confirmar y tenía razón: este árbol no
+     puede acreditar que la custodia externa sea efectiva. Lo que sí puede hacer
+     es decirlo en vez de suponerlo en silencio. */
+  assert.equal(SUPUESTO_CUSTODIA_MANAGED.evidencia, 'NO_VERIFICADO');
+  assert.equal(SUPUESTO_CUSTODIA_MANAGED.decisionQueLoCierra, 'D18');
+  assert.match(SUPUESTO_CUSTODIA_MANAGED.consecuenciaSiEsFalso, /NONE/);
 });

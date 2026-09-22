@@ -12,6 +12,30 @@
 
 import type { CustodyProfile, RecoveryCapability, AssetPassport } from './tipos.js';
 
+/**
+ * SUPUESTO EXPLÍCITO SOBRE `MANAGED` (P05).
+ *
+ * Todo lo que este módulo dice de una cuenta gestionada descansa en que la
+ * custodia externa sea efectiva: que alguien conserve de verdad el control de
+ * la llave, con los controles y la separación de funciones que se le atribuyen.
+ *
+ * Este árbol **no tiene ninguna evidencia de eso**, y no puede tenerla: no hay
+ * acceso a la custodia real. El auditor lo señaló como sospecha sin confirmar,
+ * y tiene razón en no darla por buena.
+ *
+ * Por eso se declara aquí como supuesto, no como propiedad del sistema. La
+ * arquitectura de custodia gestionada la fija D18, y mientras siga pendiente,
+ * «tu cuenta es de custodia gestionada» es una descripción de cómo está
+ * configurada, no una garantía de que el custodio pueda cumplir.
+ */
+export const SUPUESTO_CUSTODIA_MANAGED = {
+  supuesto: 'la custodia externa de una cuenta MANAGED es efectiva y conserva el control de la llave',
+  evidencia: 'NO_VERIFICADO',
+  decisionQueLoCierra: 'D18',
+  consecuenciaSiEsFalso:
+    'una cuenta MANAGED se comporta como PERSONAL con la llave perdida: la capacidad real sería NONE',
+} as const;
+
 export interface EscenarioDeRecuperacion {
   perfil: CustodyProfile;
   pasaporte: AssetPassport;
