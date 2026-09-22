@@ -1,6 +1,6 @@
 /* Los fixtures sintéticos se usan de verdad (C04).
  *
- * Los cuatro archivos de `fixtures/` existían sin que ninguna prueba los
+  * Los archivos de `fixtures/` existían sin que ninguna prueba los
  * abriera. Eso es peor que no tenerlos: un lector razonable supone que si están
  * ahí es porque algo los ejercita, y la cobertura parecía mayor de lo que era.
  *
@@ -33,6 +33,7 @@ test('todo fixture se declara sintético', () => {
     'pasaportes-sinteticos.json',
     'reservas-sinteticas.json',
     'autorizacion-sintetica.json',
+    'vectores-autorizacion.json',
   ]) {
     const f = leer<{ sintetico: boolean; advertencia?: string }>(nombre);
     assert.equal(f.sintetico, true, `${nombre} debe declararse sintético`);

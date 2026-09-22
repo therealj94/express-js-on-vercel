@@ -23,3 +23,8 @@ Reglas:
 | `pasaportes-sinteticos.json` | Un activo de cada perfil de implementación. |
 | `reservas-sinteticas.json` | Cartera de reservas de los cinco tiers, con factores de prueba. |
 | `autorizacion-sintetica.json` | Una autorización firmada con todos sus campos. |
+| `vectores-autorizacion.json` | Veinte payloads con su digest esperado, para comprobar que Solidity y TypeScript calculan lo mismo. |
+
+Una suite del SDK abre los cinco archivos, los valida contra los tipos y los
+usa en un recorrido real. Antes no los abría ninguna, y eso hacía parecer la
+cobertura mayor de lo que era.
