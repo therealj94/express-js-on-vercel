@@ -16,3 +16,6 @@ evidence/corridas/
 .env.*
 *.key
 *.pem
+
+# Los informes de auditoria se guardan, pero no los temporales de Codex.
+.codex/
