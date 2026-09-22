@@ -233,8 +233,8 @@ export function evaluarReporting(
         enPreaviso ? 'DUE' : 'CURRENT',
         null,
         enPreaviso
-          ? 'Entrega pendiente de esta obligacion, dentro del periodo de preaviso.'
-          : 'Entrega de esta obligacion aun no exigible ni dentro del preaviso.',
+          ? 'Sin entrega de esta obligacion: pendiente, dentro del periodo de preaviso.'
+          : 'Sin entrega de esta obligacion: todavia no exigible ni dentro del preaviso.',
       );
     }
     // Entregada antes del vencimiento: la obligacion esta satisfecha y el texto

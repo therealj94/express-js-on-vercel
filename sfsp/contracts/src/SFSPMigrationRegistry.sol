@@ -314,6 +314,14 @@ contract SFSPMigrationRegistry is SFSPAccessControl, SFSPEIP712, SFSPReentrancyG
             IMigratableAsset(m.newAsset).mintForMigration(c.beneficiary, newUnits, c.migrationId);
         }
 
+        _emitClaimed(m, c, newUnits, nullifier);
+    }
+
+    /// @dev Emitir desde una función aparte mantiene el marco de pila de `claim`
+    ///      dentro de lo que admite el EVM de Paris (el evento lleva siete campos).
+    function _emitClaimed(Migration storage m, ClaimInput calldata c, uint256 newUnits, bytes32 nullifier)
+        internal
+    {
         emit MigrationClaimed(
             c.migrationId, c.beneficiary, m.oldAssetId, m.newAssetId, c.oldUnits, newUnits, nullifier
         );

@@ -597,6 +597,64 @@ tratarla como cualquiera de las dos habilita una segunda ejecución.
 
 `GovernanceAction` (§3) lleva un `GovernanceActionKind` en su campo `actionKind`.
 
+#### Firmantes y verificación (H03)
+
+`signature: string` no dice contra qué clave se verifica ni cuándo deja de
+valer. Sin un registro de firmantes, una firma es una cadena que alguien dijo
+que era una firma, y eso fue exactamente el defecto H03: la API de admisión no
+tenía una sola llamada criptográfica.
+
+```ts
+interface FirmanteRegistrado {
+  actorId: string;
+  rol: ApprovalRole;
+  /** Clave pública en formato SPKI. Ed25519. */
+  clavePublica: string;
+  notBefore: string;
+  expiry: string;
+  /** Fecha de revocación. No se borra la fila: se fecha. */
+  revocadoEnUTC: string | null;
+}
+```
+
+La fila se identifica por **(actorId, rol)**. Un cambio de rol no es editar un
+campo: es cerrar una vigencia y abrir otra, porque si no, una firma hecha con
+el rol anterior seguiría valiendo con el rol nuevo.
+
+Dos relojes, y no son el mismo:
+
+| Qué se comprueba | Contra qué instante |
+|---|---|
+| Vigencia del firmante | el momento en que **firmó** |
+| Revocación | el momento en que se **presenta** |
+
+De ahí que una autorización se vuelva a verificar en cada presentación y no
+sólo al emitirse: una firma legítima de ayer no vale si a su autor se le
+revocaron los poderes hoy.
+
+#### Dominios de separación
+
+Cada digest se calcula bajo una etiqueta de dominio propia, para que un valor
+nunca pueda hacerse pasar por otro:
+
+| Etiqueta | Para qué | Hash |
+|---|---|---|
+| `SFSP-AUTH-v1` | autorización en cadena, compartida entre Solidity y el SDK | keccak256 |
+| `SFSP-DBNX-AUTH-v1` | autorización de admisión, fuera de cadena | SHA-256 |
+| `SFSP-DBNX-APPROVAL-v1` | mensaje que firma cada aprobador | SHA-256 |
+
+Los dominios de admisión están separados del de cadena **a propósito**, y no por
+descuido: el payload de admisión lleva número de cuenta, identificadores
+textuales y fechas ISO, campos que del lado Solidity no existen. Forzar una sola
+construcción habría obligado a truncar o pre-hashear, y habría producido un
+digest distinto con apariencia de ser el mismo. Si algún día un contrato tiene
+que verificar el digest de admisión, hay que fijar vectores compartidos como los
+de `fixtures/vectores-autorizacion.json`.
+
+`payloadDigest` es un valor **derivado**. Se conserva por comodidad de lectura y
+**nunca se usa para verificar**: el verificador lo recalcula siempre desde el
+payload. Un digest que viene del firmante no prueba nada.
+
 ### 2.16 Operación (SFSP-900)
 
 ```ts

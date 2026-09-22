@@ -274,7 +274,7 @@ contract SFSPRegulatedAsset is SFSPAccessControl, SFSPReentrancyGuard {
     ///      alcance S0 que el propio registro concilia (§6.3). No pasa por el
     ///      cap de emisión ordinario porque no es emisión nueva: es la
     ///      contrapartida de derechos viejos ya excluidos de circulación.
-    function mintForMigration(address to, uint256 amount, bytes32 migrationId) external nonReentrant {
+    function mintForMigration(address to, uint256 amount, bytes32 /*migrationId*/ ) external nonReentrant {
         if (msg.sender != migrationRegistry) revert NotMigrationRegistry(msg.sender);
         if (to == address(0) || amount == 0) revert TransferRejected(SFSPCodes.DENY_POLICY, bytes32("MINT_ARGS"));
         if (governance.isPaused()) revert TransferRejected(SFSPCodes.DENY_ASSET_STATE, SFSPCodes.R_PAUSED);

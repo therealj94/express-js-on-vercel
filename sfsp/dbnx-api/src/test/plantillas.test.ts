@@ -138,3 +138,73 @@ test('plantillas de distinto tipo no son el mismo derecho aunque compartan id', 
   const b: PlantillaDerechos = { ...a, tipo: 'ROYALTY' };
   assert.equal(mismoDerecho(a, b), false);
 });
+
+/* ------------------------------------------------------------------- H23 */
+
+test('H23 · negativo: no se deja un requerido en nulo sobre una plantilla emitida', () => {
+  const emitida = emitirPlantilla(crear('DEBT'));
+  if (!emitida.ok) throw new Error('inesperado');
+  assert.equal(emitida.valor.emitida, true);
+
+  // Esto es exactamente lo que reprodujo el auditor: reparametrizar dejando un
+  // requerido en nulo mientras `emitida` seguia en verdadero.
+  const r = reparametrizar(
+    emitida.valor,
+    [{ clave: 'vencimiento', valor: null, forma: 'ISO8601' }],
+    '2.0.0',
+  );
+  assert.equal(r.ok, false);
+  if (r.ok) throw new Error('una emision vigente quedo sin un parametro requerido');
+  assert.equal(r.codigo, 'DENY_ASSET_STATE');
+  assert.match(r.motivo, /emision vigente/);
+
+  // Y la plantilla emitida original no se toco.
+  assert.equal(emitida.valor.emitida, true);
+  assert.equal(emitida.valor.parametrosPendientes.length, 0);
+});
+
+test('H23 · positivo: reparametrizar una emitida produce una revision pendiente', () => {
+  const emitida = emitirPlantilla(crear('ROYALTY'));
+  if (!emitida.ok) throw new Error('inesperado');
+
+  const revision = reparametrizar(
+    emitida.valor,
+    [{ clave: 'territorio', valor: 'territorio-sintetico-2', forma: 'TEXTO' }],
+    '2.0.0',
+  );
+  assert.equal(revision.ok, true);
+  if (!revision.ok) throw new Error('inesperado');
+  // La revision nace PENDIENTE: no hereda la emision de la que viene.
+  assert.equal(revision.valor.emitida, false);
+  assert.equal(revision.valor.revisionDe, '1.0.0');
+  assert.equal(revision.valor.version, '2.0.0');
+  assert.equal(revision.valor.parametrosPendientes.length, 0);
+
+  // Y se puede emitir explicitamente, que es el acto que faltaba.
+  const emitidaDeNuevo = emitirPlantilla(revision.valor);
+  assert.equal(emitidaDeNuevo.ok, true);
+  if (!emitidaDeNuevo.ok) throw new Error('inesperado');
+  assert.equal(emitidaDeNuevo.valor.emitida, true);
+});
+
+test('H23 · positivo: sobre una plantilla NO emitida, un requerido puede quedar pendiente', () => {
+  // POR QUE sigue permitiendose: antes de emitir, una plantilla incompleta es un
+  // borrador legitimo. Lo que no puede existir es una EMISION incompleta.
+  const borrador = crear('EQUITY');
+  const r = reparametrizar(
+    borrador,
+    [{ clave: 'prelacion', valor: null, forma: 'TEXTO' }],
+    '1.1.0',
+  );
+  assert.equal(r.ok, true);
+  if (!r.ok) throw new Error('inesperado');
+  assert.equal(r.valor.emitida, false);
+  assert.equal(r.valor.revisionDe, null);
+  assert.deepEqual(r.valor.parametrosPendientes, ['prelacion']);
+
+  // Y emitirla se bloquea, sin inventar un valor.
+  const e = emitirPlantilla(r.valor);
+  assert.equal(e.ok, false);
+  if (e.ok) throw new Error('inesperado');
+  assert.equal(e.codigo, 'BLOCKED_DECISION');
+});

@@ -59,10 +59,17 @@ describe("SFSPMigrationRegistry · dos modos, nullifier y regla de restos", func
     expiry = (await H.now()) + 3600;
   });
 
-  async function openMigration(mode) {
+  /* H04 · FROZEN_SNAPSHOT ya no se apoya en el eje de transferibilidad, que
+     TECH_OPS puede volver a cambiar, sino en una exclusión técnica PERMANENTE
+     declarada por el órgano antes de abrir la migración. */
+  async function excluirOrigen() {
+    await f.registry.send("declarePermanentExclusion", [f.ASSET_OLD, H.b32("ev_exclusion_1")], f.board);
+  }
+
+  async function openMigration(mode, id) {
     await f.migration.send(
       "openMigration",
-      [migrationId, mode, f.assetOld.address, f.assetNew.address, tree.root, RATIO_NUM, RATIO_DEN, expiry, 9],
+      [id || migrationId, mode, f.assetOld.address, f.assetNew.address, tree.root, RATIO_NUM, RATIO_DEN, expiry, 9],
       f.board
     );
   }
@@ -83,6 +90,8 @@ describe("SFSPMigrationRegistry · dos modos, nullifier y regla de restos", func
 
     const r = await f.migration.call("reconcile", [migrationId]);
     assert.equal(r[5], true, "S0 = A + N + P y E = N + P");
+    // En SURRENDER_ON_CLAIM lo que todavía no se entregó sigue circulando.
+    assert.equal(r[6].toString(), r[1].toString());
     assert.equal(r[0].toString(), "27"); // S0 escalado
     assert.equal(r[1].toString(), "12"); // A
     assert.equal(r[2].toString(), "15"); // E
@@ -90,13 +99,11 @@ describe("SFSPMigrationRegistry · dos modos, nullifier y regla de restos", func
     assert.equal(r[4].toString(), "1");  // P
   });
 
-  it("positivo (FROZEN_SNAPSHOT): con el activo viejo congelado el claim procede sin entrega", async function () {
+  it("positivo (FROZEN_SNAPSHOT): con el activo viejo excluido de forma permanente el claim procede sin entrega", async function () {
+    // La exclusión va ANTES de abrir: abrir una migración congelada sobre un
+    // origen que todavía circula era el agujero de H04.
+    await excluirOrigen();
     await openMigration(MODE.FROZEN_SNAPSHOT);
-    await f.registry.send(
-      "setLifecycleAxis",
-      [f.ASSET_OLD, F.Axis.TRANSFERABILITY, F.Transferability.FROZEN],
-      f.board
-    );
     const c = { migrationId, beneficiary: f.bob, oldUnits: 4, nonce: H.b32("n_2"), expiry };
     const sig = await signClaim(f, c);
     await f.migration.send("claim", [c, H.merkleProof(tree, 1), sig], f.board);
@@ -105,15 +112,17 @@ describe("SFSPMigrationRegistry · dos modos, nullifier y regla de restos", func
     assert.equal((await f.assetOld.call("balanceOf", [f.bob])).toString(), "4", "no hay entrega en este modo");
     const r = await f.migration.call("reconcile", [migrationId]);
     assert.equal(r[5], true);
+    // H04 · en modo congelado la circulación del origen es CERO desde la
+    // apertura: la exclusión es técnica, permanente y anterior a todo claim.
+    assert.equal(r[6].toString(), "0");
   });
 
-  it("negativo (FROZEN_SNAPSHOT): sin congelación efectiva del viejo no hay claim", async function () {
-    await openMigration(MODE.FROZEN_SNAPSHOT);
-    const c = { migrationId, beneficiary: f.bob, oldUnits: 4, nonce: H.b32("n_3"), expiry };
-    const sig = await signClaim(f, c);
+  it("negativo (FROZEN_SNAPSHOT): sin exclusión permanente del viejo no se abre la migración", async function () {
+    // El rechazo llegó antes que en draft-0.3: ya no se puede abrir la migración
+    // congelada y descubrir en el primer claim que el origen seguía circulando.
     await H.expectRevert(
-      f.migration.send("claim", [c, H.merkleProof(tree, 1), sig], f.board),
-      "OldAssetNotFrozen"
+      openMigration(MODE.FROZEN_SNAPSHOT),
+      "OldAssetNotPermanentlyExcluded"
     );
   });
 
@@ -160,11 +169,14 @@ describe("SFSPMigrationRegistry · dos modos, nullifier y regla de restos", func
     );
   });
 
+  /* Se acorta la ventana del claim para que venza ANTES que la de la migración.
+     Con las dos ventanas iguales, el rechazo llegaba ahora por `MigrationExpired`
+     y esta prueba dejaba de ejercitar `ClaimExpired`, que es lo que le toca. */
   it("negativo: un claim vencido revierte", async function () {
     await openMigration(MODE.SURRENDER_ON_CLAIM);
-    const c = { migrationId, beneficiary: f.alice, oldUnits: 5, nonce: H.b32("n_9"), expiry };
+    const c = { migrationId, beneficiary: f.alice, oldUnits: 5, nonce: H.b32("n_9"), expiry: expiry - 1800 };
     const sig = await signClaim(f, c);
-    await H.increaseTime(4000);
+    await H.increaseTime(2000);
     await H.expectRevert(f.migration.send("claim", [c, H.merkleProof(tree, 0), sig], f.board), "ClaimExpired");
   });
 

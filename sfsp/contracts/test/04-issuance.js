@@ -2,7 +2,8 @@
 const assert = require("node:assert/strict");
 const F = require("./fixture");
 const H = require("./helpers");
-const { buildAuthorization } = require("./authorization");
+const { buildAuthorization, acunar, quemarConGobierno } = require("./authorization");
+const OA = require("./orden-autorizada");
 
 describe("SFSPIssuanceController · autorización firmada y topes", function () {
   let f;
@@ -14,7 +15,7 @@ describe("SFSPIssuanceController · autorización firmada y topes", function () 
 
   it("positivo: acuña exactamente lo autorizado y acumula contra la autorización", async function () {
     const { auth, sigs } = await buildAuthorization(f, {});
-    await f.issuance.send("mint", [auth, sigs, 1000, H.b32("op_mint_1")], f.board);
+    await acunar(f, { auth, sigs }, 1000, H.b32("op_mint_1"));
     assert.equal((await f.assetNew.call("totalSupply")).toString(), "1000");
     assert.equal((await f.assetNew.call("balanceOf", [f.treasury])).toString(), "1000");
     assert.equal(
@@ -26,7 +27,7 @@ describe("SFSPIssuanceController · autorización firmada y topes", function () 
   it("negativo: acuñar por encima del monto autorizado revierte", async function () {
     const { auth, sigs } = await buildAuthorization(f, { amount: 1000 });
     await H.expectRevert(
-      f.issuance.send("mint", [auth, sigs, 1001, H.b32("op_mint_over")], f.board),
+      acunar(f, { auth, sigs }, 1001, H.b32("op_mint_over")),
       "AuthorizationAmountExceeded"
     );
     assert.equal((await f.assetNew.call("totalSupply")).toString(), "0");
@@ -34,9 +35,9 @@ describe("SFSPIssuanceController · autorización firmada y topes", function () 
 
   it("negativo: dos acuñaciones con el mismo nonce revierten (EIP-712 no da anti-replay)", async function () {
     const { auth, sigs } = await buildAuthorization(f, {});
-    await f.issuance.send("mint", [auth, sigs, 500, H.b32("op_mint_a")], f.board);
+    await acunar(f, { auth, sigs }, 500, H.b32("op_mint_a"));
     await H.expectRevert(
-      f.issuance.send("mint", [auth, sigs, 400, H.b32("op_mint_b")], f.board),
+      acunar(f, { auth, sigs }, 400, H.b32("op_mint_b")),
       "NonceAlreadyUsed"
     );
     assert.equal((await f.assetNew.call("totalSupply")).toString(), "500");
@@ -47,26 +48,26 @@ describe("SFSPIssuanceController · autorización firmada y topes", function () 
     const { auth, sigs } = await buildAuthorization(f, { expiry: ts + 60, nonce: H.b32("nonce_exp") });
     await H.increaseTime(120);
     await H.expectRevert(
-      f.issuance.send("mint", [auth, sigs, 100, H.b32("op_mint_exp")], f.board),
+      acunar(f, { auth, sigs }, 100, H.b32("op_mint_exp")),
       "AuthorizationExpired"
     );
   });
 
   it("negativo: quemar NO renueva la autorización agotada", async function () {
     const { auth, sigs } = await buildAuthorization(f, { amount: 1000 });
-    await f.issuance.send("mint", [auth, sigs, 1000, H.b32("op_mint_full")], f.board);
-    await f.assetNew.send("burn", [f.treasury, 1000, H.b32("REASON_TEST"), H.b32("op_burn_1")], f.board);
+    await acunar(f, { auth, sigs }, 1000, H.b32("op_mint_full"));
+    await quemarConGobierno(f, f.assetNew, f.ASSET_NEW, f.treasury, 1000, H.b32("REASON_TEST"), H.b32("op_burn_1"));
     assert.equal((await f.assetNew.call("totalSupply")).toString(), "0");
 
     // Mismo sobre: el nonce ya se consumió.
     await H.expectRevert(
-      f.issuance.send("mint", [auth, sigs, 1000, H.b32("op_mint_again")], f.board),
+      acunar(f, { auth, sigs }, 1000, H.b32("op_mint_again")),
       "NonceAlreadyUsed"
     );
     // Mismo authorizationId con nonce nuevo: el acumulado de esa autorización ya está lleno.
     const renewed = await buildAuthorization(f, { amount: 1000, nonce: H.b32("nonce_0002") });
     await H.expectRevert(
-      f.issuance.send("mint", [renewed.auth, renewed.sigs, 1000, H.b32("op_mint_again2")], f.board),
+      acunar(f, renewed, 1000, H.b32("op_mint_again2")),
       "AuthorizationAmountExceeded"
     );
   });
@@ -74,8 +75,8 @@ describe("SFSPIssuanceController · autorización firmada y topes", function () 
   it("negativo: el cap acumulado de emisión no se recupera al quemar (cap de flujo != cap de stock)", async function () {
     await f.issuance.send("setInstrumentLimits", [f.ASSET_NEW, 5000, 1000], f.board);
     const a1 = await buildAuthorization(f, { amount: 1000 });
-    await f.issuance.send("mint", [a1.auth, a1.sigs, 1000, H.b32("op_c1")], f.board);
-    await f.assetNew.send("burn", [f.treasury, 1000, H.b32("REASON_TEST"), H.b32("op_cb")], f.board);
+    await acunar(f, a1, 1000, H.b32("op_c1"));
+    await quemarConGobierno(f, f.assetNew, f.ASSET_NEW, f.treasury, 1000, H.b32("REASON_TEST"), H.b32("op_cb"));
     // El stock volvió a cero, pero la emisión acumulada sigue en 1000 = cap.
     const a2 = await buildAuthorization(f, {
       authorizationId: H.b32("auth_0002"),
@@ -83,7 +84,7 @@ describe("SFSPIssuanceController · autorización firmada y topes", function () 
       amount: 500,
     });
     await H.expectRevert(
-      f.issuance.send("mint", [a2.auth, a2.sigs, 500, H.b32("op_c2")], f.board),
+      acunar(f, a2, 500, H.b32("op_c2")),
       "CumulativeIssuanceCapExceeded"
     );
     assert.equal((await f.issuance.call("cumulativeIssued", [f.ASSET_NEW])).toString(), "1000");
@@ -94,11 +95,11 @@ describe("SFSPIssuanceController · autorización firmada y topes", function () 
     await f.issuance.send("openIssuanceReserve", [f.ASSET_NEW, H.b32("res_1"), 600], f.board);
     const { auth, sigs } = await buildAuthorization(f, { amount: 1000 });
     await H.expectRevert(
-      f.issuance.send("mint", [auth, sigs, 500, H.b32("op_res")], f.board),
+      acunar(f, { auth, sigs }, 500, H.b32("op_res")),
       "OutstandingLimitExceeded"
     );
     // Con 400 sí cabe: 0 outstanding + 600 reservado + 400 = 1000.
-    await f.issuance.send("mint", [auth, sigs, 400, H.b32("op_res_ok")], f.board);
+    await acunar(f, { auth, sigs }, 400, H.b32("op_res_ok"));
     assert.equal((await f.assetNew.call("totalSupply")).toString(), "400");
   });
 
@@ -113,7 +114,7 @@ describe("SFSPIssuanceController · autorización firmada y topes", function () 
   it("negativo: firmas por debajo del quórum revierten", async function () {
     const { auth, sigs } = await buildAuthorization(f, { signers: [f.signers[0]] });
     await H.expectRevert(
-      f.issuance.send("mint", [auth, sigs, 100, H.b32("op_q")], f.board),
+      acunar(f, { auth, sigs }, 100, H.b32("op_q")),
       "QuorumNotReached"
     );
   });

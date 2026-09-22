@@ -31,6 +31,8 @@ const CODE = {
 
 const ASSET_NEW = H.b32("SFSP:SEC:ISS1:S1");
 const ASSET_OLD = H.b32("SFSP:LEGACY:ISS1:S0");
+// H15 · la bóveda de efectivo también tiene activo: `TreasuryReleased` lo lleva.
+const ASSET_CASH = H.b32("SFSP:CASH:NATIVE:TEST");
 
 function passport(assetId, opts) {
   const o = opts || {};
@@ -127,7 +129,7 @@ async function deployAll() {
     board
   );
   const issuance = await H.deploy("SFSPIssuanceController", [board, governance.address], board);
-  const vault = await H.deploy("SFSPCashVault", [board], board);
+  const vault = await H.deploy("SFSPCashVault", [board, ASSET_CASH], board);
   const settlement = await H.deploy(
     "SFSPSettlementEngine",
     [board, vault.address, engine.address, identity.address, governance.address],
@@ -148,8 +150,12 @@ async function deployAll() {
     await a.send("grantRole", [await a.call("TECH_OPS"), board], board);
     await a.send("grantRole", [await a.call("ISSUER"), board], board);
   }
-  // El activo consume aprobaciones de gobierno para la transferencia forzosa.
-  await governance.send("grantRole", [await governance.call("TECH_OPS"), assetNew.address], board);
+  // Los EJECUTORES consumen aprobaciones ligadas al contenido en gobierno. Cada
+  // uno necesita el rol TECH_OPS del propio gobierno para poder gastarlas; el
+  // rol sólo permite GASTAR una aprobación que ya alcanzó quórum, nunca crearla.
+  for (const ejecutor of [assetNew, assetOld, issuance, settlement]) {
+    await governance.send("grantRole", [await governance.call("TECH_OPS"), ejecutor.address], board);
+  }
 
   // --- catálogo
   await registry.send("registerAsset", [passport(ASSET_NEW)], board);
@@ -177,12 +183,16 @@ async function deployAll() {
   await assetOld.send("setMigrationRegistry", [migration.address], board);
   await vault.send("setSettlementEngine", [settlement.address], board);
   await issuance.send("registerAssetContract", [ASSET_NEW, assetNew.address], board);
+  await issuance.send("registerAssetContract", [ASSET_OLD, assetOld.address], board);
+  // H05 · el contrato canónico de cada activo lo declara el órgano, no el
+  // operador que liquida.
+  await settlement.send("registerCanonicalAsset", [ASSET_NEW, assetNew.address], board);
 
   return {
     acc, board, signers, treasury, alice, bob, mallory,
     registry, governance, identity, engine, assetNew, assetOld,
     issuance, vault, settlement, migration, fee,
-    ASSET_NEW, ASSET_OLD, GOV,
+    ASSET_NEW, ASSET_OLD, ASSET_CASH, GOV,
   };
 }
 
@@ -190,5 +200,5 @@ module.exports = {
   deployAll, passport, policy, ACTIONS,
   Legal, Admission, Trading, Transferability, Redemption, Visibility,
   Profile, Kind, Risk, Report, Supply, Axis, CODE,
-  ASSET_NEW, ASSET_OLD, GOV,
+  ASSET_NEW, ASSET_OLD, ASSET_CASH, GOV,
 };

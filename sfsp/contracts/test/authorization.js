@@ -1,6 +1,7 @@
 "use strict";
 // Constructor de SignedAuthorization (§2.4) firmada EIP-712 por firmantes de gobierno.
 const H = require("./helpers");
+const OA = require("./orden-autorizada");
 
 const AUTH_TYPES = {
   SignedAuthorization: [
@@ -62,4 +63,62 @@ async function buildAuthorization(f, overrides) {
   return { auth, sigs };
 }
 
-module.exports = { buildAuthorization, AUTH_TYPES };
+/**
+ * H01 aplicado a la emisión: además del sobre firmado del §2.4, cada acuñación
+ * necesita su propia orden de gobierno ligada al contenido. El monto efectivo y
+ * el `operationId` viajan DENTRO del digest (`amount` y `nonce`), así que ya no
+ * son parámetros libres del emisor.
+ */
+async function ordenDeEmision(f, auth, amount, operationId) {
+  const p = await OA.orden({
+    verifyingContract: f.issuance.address,
+    action: H.b32("MINT"),
+    assetId: auth.assetId,
+    origin: H.ZERO_ADDR,
+    destination: auth.destination,
+    amount: String(amount),
+    nonce: operationId,
+  });
+  const digest = OA.digestDe(p);
+  await OA.aprobar(f, digest, p.action);
+  return { p, tupla: OA.tupla(p), digest };
+}
+
+/** Acuña: aprueba la orden de esta acuñación concreta y la ejecuta. */
+async function acunar(f, sobre, amount, operationId, from) {
+  const o = await ordenDeEmision(f, sobre.auth, amount, operationId);
+  return await f.issuance.send("mint", [sobre.auth, sobre.sigs, o.tupla, o.digest], from || f.board);
+}
+
+/**
+ * H02: quema con decisión de gobierno. El digest compromete activo, titular,
+ * monto y motivo (`evidenceRoot`), y se consume al ejecutarse.
+ */
+async function ordenDeQuema(f, asset, assetId, holder, amount, reason, nonce) {
+  const p = await OA.orden({
+    verifyingContract: asset.address,
+    action: H.b32("BURN"),
+    assetId,
+    origin: holder,
+    destination: H.ZERO_ADDR,
+    amount: String(amount),
+    nonce,
+    evidenceRoot: reason,
+  });
+  return { p, tupla: OA.tupla(p), digest: OA.digestDe(p) };
+}
+
+async function quemarConGobierno(f, asset, assetId, holder, amount, reason, nonce, from) {
+  const o = await ordenDeQuema(f, asset, assetId, holder, amount, reason, nonce);
+  await OA.aprobar(f, o.digest, H.b32("BURN"));
+  return await asset.send("burn", [o.tupla, o.digest], from || f.board);
+}
+
+module.exports = {
+  buildAuthorization,
+  ordenDeEmision,
+  acunar,
+  ordenDeQuema,
+  quemarConGobierno,
+  AUTH_TYPES,
+};

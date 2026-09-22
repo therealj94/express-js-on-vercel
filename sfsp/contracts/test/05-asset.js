@@ -2,7 +2,8 @@
 const assert = require("node:assert/strict");
 const F = require("./fixture");
 const H = require("./helpers");
-const { buildAuthorization } = require("./authorization");
+const { buildAuthorization, acunar, quemarConGobierno } = require("./authorization");
+const OA = require("./orden-autorizada");
 
 async function seed(f, to, amount, tag) {
   await f.issuance.send("setInstrumentLimits", [f.ASSET_NEW, 1000000, 1000000], f.board);
@@ -12,7 +13,7 @@ async function seed(f, to, amount, tag) {
     authorizationId: H.b32("auth_seed_" + tag),
     nonce: H.b32("nonce_seed_" + tag),
   });
-  await f.issuance.send("mint", [auth, sigs, amount, H.b32("op_seed_" + tag)], f.board);
+  await acunar(f, { auth, sigs }, amount, H.b32("op_seed_" + tag));
 }
 
 describe("SFSPRegulatedAsset · restricciones impuestas de verdad", function () {
@@ -79,33 +80,65 @@ describe("SFSPRegulatedAsset · restricciones impuestas de verdad", function () 
     );
   });
 
+  /* Antes esta prueba pedía una transferencia forzosa con un `operationId` sin
+     aprobación. Ahora el argumento es el payload completo y el digest aprobado,
+     porque el ejecutor recalcula el digest desde sus argumentos reales (H01). */
   it("negativo: una transferencia forzosa sin autorización de gobierno revierte", async function () {
+    const p = await OA.orden({
+      verifyingContract: f.assetNew.address,
+      action: H.b32("FORCED_TRANSFER"),
+      assetId: f.ASSET_NEW,
+      origin: f.alice,
+      destination: f.bob,
+      amount: "100",
+      nonce: H.b32("op_ft_sin_auth"),
+    });
     await H.expectRevert(
-      f.assetNew.send("forcedTransfer", [f.alice, f.bob, 100, H.b32("op_ft_sin_auth")], f.board),
+      f.assetNew.send("forcedTransfer", [OA.tupla(p), OA.digestDe(p)], f.board),
       "ForcedTransferNotAuthorized"
     );
     assert.equal((await f.assetNew.call("balanceOf", [f.alice])).toString(), "1000");
   });
 
   it("positivo: una transferencia forzosa con quórum se ejecuta y consume la aprobación", async function () {
-    const op = H.b32("op_ft_1");
-    await f.governance.send("propose", [op, H.b32("RECOVERY"), H.b32("detalle")], f.signers[0]);
-    await f.governance.send("approve", [op], f.signers[1]);
-    await f.assetNew.send("forcedTransfer", [f.alice, f.bob, 100, op], f.board);
+    const p = await OA.orden({
+      verifyingContract: f.assetNew.address,
+      action: H.b32("FORCED_TRANSFER"),
+      assetId: f.ASSET_NEW,
+      origin: f.alice,
+      destination: f.bob,
+      amount: "100",
+      nonce: H.b32("op_ft_1"),
+    });
+    const d = OA.digestDe(p);
+    await OA.aprobar(f, d, H.b32("FORCED_TRANSFER"));
+    await f.assetNew.send("forcedTransfer", [OA.tupla(p), d], f.board);
     assert.equal((await f.assetNew.call("balanceOf", [f.bob])).toString(), "100");
     // La misma aprobación no vale dos veces.
     await H.expectRevert(
-      f.assetNew.send("forcedTransfer", [f.alice, f.bob, 100, op], f.board),
+      f.assetNew.send("forcedTransfer", [OA.tupla(p), d], f.board),
       "ForcedTransferNotAuthorized"
     );
   });
 
+  /* La quema dejó de tomar `(from, amount, reasonCode, operationId)`: ese cuarteto
+     no estaba atado a ninguna autorización y era H02. Ahora toma el payload y su
+     digest, y el motivo viaja en `evidenceRoot`, comprometido dentro del digest. */
   it("negativo: quemar sin motivo revierte", async function () {
-    await H.expectRevert(
-      f.assetNew.send("burn", [f.alice, 10, H.ZERO32, H.b32("op_burn_x")], f.board),
-      "ReasonRequired"
-    );
-    await f.assetNew.send("burn", [f.alice, 10, H.b32("MOTIVO_TEST"), H.b32("op_burn_y")], f.board);
+    const sin = await OA.orden({
+      verifyingContract: f.assetNew.address,
+      action: H.b32("BURN"),
+      assetId: f.ASSET_NEW,
+      origin: f.alice,
+      amount: "10",
+      nonce: H.b32("op_burn_x"),
+      evidenceRoot: H.ZERO32,
+    });
+    const dSin = OA.digestDe(sin);
+    await OA.aprobar(f, dSin, H.b32("BURN"));
+    await H.expectRevert(f.assetNew.send("burn", [OA.tupla(sin), dSin], f.board), "ReasonRequired");
+
+    await quemarConGobierno(f, f.assetNew, f.ASSET_NEW, f.alice, 10, H.b32("MOTIVO_TEST"), H.b32("op_burn_y"));
     assert.equal((await f.assetNew.call("totalSupply")).toString(), "990");
   });
 
