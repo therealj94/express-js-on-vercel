@@ -1,0 +1,16 @@
+{
+  "name": "@sfsp/dbnx-api",
+  "version": "0.3.0-draft",
+  "private": true,
+  "type": "module",
+  "description": "API de DBNX (P7c): expedientes, autorizaciones firmadas, riesgo, reporting, plantillas de derechos y copiloto. Logica pura, sin red ni base de datos.",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "tsc -p tsconfig.json && node --test dist/test/*.test.js"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.4"
+  },
+  "license": "UNLICENSED"
+}
