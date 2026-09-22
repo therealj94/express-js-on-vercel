@@ -41,7 +41,8 @@ sfsp/
 | Indexador de Orden Ledger | implementado | **38 pruebas** |
 | API de DBNX: casos, autorizaciones, riesgo, divulgación, plantillas, copiloto | implementado | **62 pruebas** |
 | Runbooks de operación e incidentes | escritos · 13 | `runbooks/` |
-| **Total** | | **222 pruebas en verde, sin red ni credenciales** |
+| Suite adversaria: una prueba por hallazgo de auditoría | ejecutable | `pruebas-adversarias/` |
+| **Total** | | ver «qué necesita red», más abajo |
 | Motores de reservas, commodity y oráculos | **NO implementados** | son P8 y dependen de D04 y D05 |
 | Privacidad confidencial | **NO implementada** | `privacy/` contiene evaluación, no producto |
 | Despliegue en 5534 o 5550 | **NO hecho** | requiere D11, D12 y la compuerta P11 |
@@ -53,13 +54,37 @@ Ningún estado de esta tabla asciende por una afirmación en prosa. Lo que dice
 ## Correr las pruebas
 
 ```bash
-cd sfsp/sdk       && npm test     # lógica de cuenta, alias, binding, migración, reservas
-cd sfsp/contracts && npm test     # contratos sobre una EVM en proceso
-cd sfsp           && node scripts/verificar-todo.mjs   # las dos suites y el informe
+cd sfsp && node scripts/verificar-todo.mjs
 ```
 
-Las pruebas no usan red, no leen nodos, no tocan bases de datos y no necesitan
-credenciales. Todos los datos son sintéticos y están etiquetados en `fixtures/`.
+Corre las cinco suites, comprueba los tipos en modo estricto, la integridad del
+archivo de decisiones y la procedencia, y deja un registro de evidencia. Sólo
+dice `VERIFICACION_COMPLETA` si todo eso está limpio. Cualquier otra cosa es
+`VERIFICACION_PARCIAL`, y eso **no es evidencia de nada**.
+
+Cada suite se puede correr por separado con `npm test` en su carpeta.
+
+### Qué necesita red, exactamente
+
+Con las dependencias de desarrollo instaladas y el binario del compilador
+presente, **compilar los contratos y correr las cinco suites no necesita red ni
+credenciales**. Sin esas dos cosas sí hace falta red, y sólo para ellas:
+`npm install` en cada paquete, y una vez
+
+```bash
+node contracts/compilador/preparar.mjs
+```
+
+que descarga el compilador fijado y comprueba su huella SHA-256. Ningún paso, en
+ningún momento, necesita credenciales, claves ni un nodo.
+
+La versión anterior de este archivo decía «222 pruebas en verde, sin red ni
+credenciales». Era falso en una máquina limpia, porque Hardhat descargaba el
+compilador. Lo señaló la auditoría de mi propio trabajo como C05, y es
+exactamente el tipo de frase que este proyecto dice no permitirse.
+
+Todos los datos de prueba son sintéticos y están en `fixtures/`, y una suite
+comprueba que sigan siéndolo.
 
 ## Las reglas que este árbol no puede romper
 

@@ -1,0 +1,250 @@
+{
+  "$comentario": [
+    "FUENTE UNICA de los eventos del §3 de CONTRATO-INTERNO.md.",
+    "POR QUE existe este archivo: hasta draft-0.3 los contratos emitian una cosa",
+    "y el indexador esperaba otra (H15). Habia dos tablas escritas a mano, una en",
+    "Solidity y otra en TypeScript, y nada obligaba a que coincidieran.",
+    "Desde aqui: los decodificadores del indexador se GENERAN de este archivo y una",
+    "prueba falla si el archivo generado y este JSON divergen. Los ABI de los",
+    "contratos se comprueban contra el mismo archivo (ver PENDIENTE-CONTRATOS-EVENTOS.md).",
+    "Nada aqui contiene direcciones reales ni valores economicos."
+  ],
+  "version": "draft-0.3",
+  "reglas": [
+    "El nombre canonico de un evento es el de este archivo. Un nombre retirado no se reutiliza: se declara en 'aliasesRetirados' y se sigue decodificando al canonico.",
+    "Todo evento que cambie el suministro lleva 'assetId'. Sin 'assetId' el evento no se puede atribuir y el suministro del activo sale DESCONOCIDO.",
+    "Un evento cuya firma no figure aqui NO se descarta: se conserva crudo con sus topics y su data, para poder redecodificarlo cuando exista su entrada.",
+    "Toda cantidad viaja como entero en unidades base (§5). Una cantidad que no lo sea marca el registro invalido; no se corrige a cero.",
+    "Solidity admite como maximo tres campos indexados por evento: 'indexado' nunca supera tres por evento.",
+    "Un suministro derivado de estos eventos NUNCA se etiqueta 'CHAIN_TOTALSUPPLY'. Esa etiqueta se reserva para una lectura directa de 'totalSupply()' en cadena."
+  ],
+  "aliasesRetirados": {
+    "UnitsMinted": {
+      "canonico": "MintExecuted",
+      "porQue": "SFSPRegulatedAsset emitia 'UnitsMinted(address,uint256,bytes32)' sin assetId mientras SFSPIssuanceController emitia 'MintExecuted'. Dos nombres para el mismo hecho economico hacen imposible contar una sola vez. Gana 'MintExecuted', que es el que ya figura en el §3 del contrato interno y el que lleva la autorizacion consumida."
+    }
+  },
+  "eventos": [
+    {
+      "nombre": "AssetRegistered",
+      "emisor": "AssetRegistry",
+      "significado": "Un assetId entra al catalogo con su pasaporte.",
+      "atribucion": "POR_ACTIVO",
+      "afectaSuministro": "NINGUNO",
+      "implementadoEnContratos": true,
+      "campos": [
+        { "nombre": "assetId", "tipo": "bytes32", "indexado": true, "obligatorio": true, "atribuyeActivo": true, "esCantidad": false },
+        { "nombre": "issuerId", "tipo": "bytes32", "indexado": true, "obligatorio": true, "atribuyeActivo": false, "esCantidad": false },
+        { "nombre": "implementationProfile", "tipo": "uint8", "indexado": false, "obligatorio": true, "atribuyeActivo": false, "esCantidad": false }
+      ]
+    },
+    {
+      "nombre": "PolicyUpdated",
+      "emisor": "AssetRegistry",
+      "significado": "Cambia una politica del activo; lleva version anterior y nueva.",
+      "atribucion": "POR_ACTIVO",
+      "afectaSuministro": "NINGUNO",
+      "implementadoEnContratos": true,
+      "campos": [
+        { "nombre": "assetId", "tipo": "bytes32", "indexado": true, "obligatorio": true, "atribuyeActivo": true, "esCantidad": false },
+        { "nombre": "policyKind", "tipo": "bytes32", "indexado": true, "obligatorio": true, "atribuyeActivo": false, "esCantidad": false },
+        { "nombre": "previousPolicyId", "tipo": "bytes32", "indexado": false, "obligatorio": true, "atribuyeActivo": false, "esCantidad": false },
+        { "nombre": "newPolicyId", "tipo": "bytes32", "indexado": false, "obligatorio": true, "atribuyeActivo": false, "esCantidad": false },
+        { "nombre": "previousVersion", "tipo": "uint32", "indexado": false, "obligatorio": true, "atribuyeActivo": false, "esCantidad": false },
+        { "nombre": "newVersion", "tipo": "uint32", "indexado": false, "obligatorio": true, "atribuyeActivo": false, "esCantidad": false }
+      ]
+    },
+    {
+      "nombre": "SupplyAuthorized",
+      "emisor": "GovernanceController",
+      "significado": "DBNX autoriza una capacidad de emision con monto y vigencia. NO es emision.",
+      "atribucion": "POR_ACTIVO",
+      "afectaSuministro": "AUTORIZA",
+      "implementadoEnContratos": true,
+      "campos": [
+        { "nombre": "assetId", "tipo": "bytes32", "indexado": true, "obligatorio": true, "atribuyeActivo": true, "esCantidad": false },
+        { "nombre": "authorizationId", "tipo": "bytes32", "indexado": true, "obligatorio": true, "atribuyeActivo": false, "esCantidad": false },
+        { "nombre": "amount", "tipo": "uint256", "indexado": false, "obligatorio": true, "atribuyeActivo": false, "esCantidad": true },
+        { "nombre": "expiry", "tipo": "uint64", "indexado": false, "obligatorio": true, "atribuyeActivo": false, "esCantidad": false }
+      ]
+    },
+    {
+      "nombre": "MintExecuted",
+      "emisor": "IssuanceController",
+      "significado": "Se crearon unidades contra una autorizacion concreta. Unico evento canonico de creacion de unidades.",
+      "atribucion": "POR_ACTIVO",
+      "afectaSuministro": "AUMENTA",
+      "implementadoEnContratos": true,
+      "campos": [
+        { "nombre": "assetId", "tipo": "bytes32", "indexado": true, "obligatorio": true, "atribuyeActivo": true, "esCantidad": false },
+        { "nombre": "authorizationId", "tipo": "bytes32", "indexado": true, "obligatorio": true, "atribuyeActivo": false, "esCantidad": false },
+        { "nombre": "destination", "tipo": "address", "indexado": true, "obligatorio": true, "atribuyeActivo": false, "esCantidad": false },
+        { "nombre": "amount", "tipo": "uint256", "indexado": false, "obligatorio": true, "atribuyeActivo": false, "esCantidad": true },
+        { "nombre": "operationId", "tipo": "bytes32", "indexado": false, "obligatorio": true, "atribuyeActivo": false, "esCantidad": false },
+        { "nombre": "evidenceRoot", "tipo": "bytes32", "indexado": false, "obligatorio": true, "atribuyeActivo": false, "esCantidad": false }
+      ]
+    },
+    {
+      "nombre": "BurnExecuted",
+      "emisor": "RegulatedAsset",
+      "significado": "Se destruyeron unidades, con motivo codificado. Unico evento que reduce lo emitido.",
+      "atribucion": "POR_ACTIVO",
+      "afectaSuministro": "DISMINUYE",
+      "implementadoEnContratos": true,
+      "campos": [
+        { "nombre": "assetId", "tipo": "bytes32", "indexado": true, "obligatorio": true, "atribuyeActivo": true, "esCantidad": false },
+        { "nombre": "from", "tipo": "address", "indexado": true, "obligatorio": true, "atribuyeActivo": false, "esCantidad": false },
+        { "nombre": "amount", "tipo": "uint256", "indexado": false, "obligatorio": true, "atribuyeActivo": false, "esCantidad": true },
+        { "nombre": "reasonCode", "tipo": "bytes32", "indexado": false, "obligatorio": true, "atribuyeActivo": false, "esCantidad": false },
+        { "nombre": "operationId", "tipo": "bytes32", "indexado": false, "obligatorio": true, "atribuyeActivo": false, "esCantidad": false }
+      ]
+    },
+    {
+      "nombre": "TreasuryReleased",
+      "emisor": "CashVault",
+      "significado": "Salieron unidades de tesoreria al circulante. NO cambia lo emitido.",
+      "atribucion": "POR_ACTIVO",
+      "afectaSuministro": "NINGUNO",
+      "implementadoEnContratos": true,
+      "campos": [
+        { "nombre": "assetId", "tipo": "bytes32", "indexado": true, "obligatorio": true, "atribuyeActivo": true, "esCantidad": false },
+        { "nombre": "to", "tipo": "address", "indexado": true, "obligatorio": true, "atribuyeActivo": false, "esCantidad": false },
+        { "nombre": "amount", "tipo": "uint256", "indexado": false, "obligatorio": true, "atribuyeActivo": false, "esCantidad": true },
+        { "nombre": "reasonCode", "tipo": "bytes32", "indexado": false, "obligatorio": true, "atribuyeActivo": false, "esCantidad": false }
+      ]
+    },
+    {
+      "nombre": "ReserveAttested",
+      "emisor": "ReserveEngine",
+      "significado": "Una reserva recibio evidencia con vigencia.",
+      "atribucion": "POR_ACTIVO",
+      "afectaSuministro": "NINGUNO",
+      "implementadoEnContratos": false,
+      "campos": [
+        { "nombre": "reserveAssetId", "tipo": "bytes32", "indexado": true, "obligatorio": true, "atribuyeActivo": false, "esCantidad": false },
+        { "nombre": "assetId", "tipo": "bytes32", "indexado": true, "obligatorio": true, "atribuyeActivo": true, "esCantidad": false },
+        { "nombre": "evidenceId", "tipo": "bytes32", "indexado": false, "obligatorio": true, "atribuyeActivo": false, "esCantidad": false },
+        { "nombre": "validUntil", "tipo": "uint64", "indexado": false, "obligatorio": true, "atribuyeActivo": false, "esCantidad": false }
+      ]
+    },
+    {
+      "nombre": "ReserveExpired",
+      "emisor": "ReserveEngine",
+      "significado": "Una reserva perdio vigencia; la capacidad de emision baja.",
+      "atribucion": "POR_ACTIVO",
+      "afectaSuministro": "NINGUNO",
+      "implementadoEnContratos": false,
+      "campos": [
+        { "nombre": "reserveAssetId", "tipo": "bytes32", "indexado": true, "obligatorio": true, "atribuyeActivo": false, "esCantidad": false },
+        { "nombre": "assetId", "tipo": "bytes32", "indexado": true, "obligatorio": true, "atribuyeActivo": true, "esCantidad": false },
+        { "nombre": "expiredAt", "tipo": "uint64", "indexado": false, "obligatorio": true, "atribuyeActivo": false, "esCantidad": false }
+      ]
+    },
+    {
+      "nombre": "DisclosurePublished",
+      "emisor": "AssetRegistry",
+      "significado": "Hash de un informe con su fecha limite y el estado resultante.",
+      "atribucion": "POR_ACTIVO",
+      "afectaSuministro": "NINGUNO",
+      "implementadoEnContratos": true,
+      "campos": [
+        { "nombre": "assetId", "tipo": "bytes32", "indexado": true, "obligatorio": true, "atribuyeActivo": true, "esCantidad": false },
+        { "nombre": "reportHash", "tipo": "bytes32", "indexado": false, "obligatorio": true, "atribuyeActivo": false, "esCantidad": false },
+        { "nombre": "dueDate", "tipo": "uint64", "indexado": false, "obligatorio": true, "atribuyeActivo": false, "esCantidad": false },
+        { "nombre": "reportStatus", "tipo": "uint8", "indexado": false, "obligatorio": true, "atribuyeActivo": false, "esCantidad": false }
+      ]
+    },
+    {
+      "nombre": "RiskChanged",
+      "emisor": "AssetRegistry",
+      "significado": "R1-R5 o SIN_EVALUAR, con metodologia y responsable.",
+      "atribucion": "POR_ACTIVO",
+      "afectaSuministro": "NINGUNO",
+      "implementadoEnContratos": true,
+      "campos": [
+        { "nombre": "assetId", "tipo": "bytes32", "indexado": true, "obligatorio": true, "atribuyeActivo": true, "esCantidad": false },
+        { "nombre": "previousLevel", "tipo": "uint8", "indexado": false, "obligatorio": true, "atribuyeActivo": false, "esCantidad": false },
+        { "nombre": "newLevel", "tipo": "uint8", "indexado": false, "obligatorio": true, "atribuyeActivo": false, "esCantidad": false },
+        { "nombre": "methodologyVersion", "tipo": "bytes32", "indexado": false, "obligatorio": true, "atribuyeActivo": false, "esCantidad": false },
+        { "nombre": "responsible", "tipo": "address", "indexado": true, "obligatorio": true, "atribuyeActivo": false, "esCantidad": false }
+      ]
+    },
+    {
+      "nombre": "TradeSettled",
+      "emisor": "SettlementEngine",
+      "significado": "Liquidacion atomica de una ejecucion. Mueve unidades entre titulares; no cambia lo emitido.",
+      "atribucion": "POR_ACTIVO",
+      "afectaSuministro": "NINGUNO",
+      "implementadoEnContratos": true,
+      "campos": [
+        { "nombre": "operationId", "tipo": "bytes32", "indexado": true, "obligatorio": true, "atribuyeActivo": false, "esCantidad": false },
+        { "nombre": "assetId", "tipo": "bytes32", "indexado": true, "obligatorio": true, "atribuyeActivo": true, "esCantidad": false },
+        { "nombre": "buyer", "tipo": "address", "indexado": true, "obligatorio": true, "atribuyeActivo": false, "esCantidad": false },
+        { "nombre": "seller", "tipo": "address", "indexado": false, "obligatorio": true, "atribuyeActivo": false, "esCantidad": false },
+        { "nombre": "assetAmount", "tipo": "uint256", "indexado": false, "obligatorio": true, "atribuyeActivo": false, "esCantidad": true },
+        { "nombre": "cashAmount", "tipo": "uint256", "indexado": false, "obligatorio": true, "atribuyeActivo": false, "esCantidad": true }
+      ]
+    },
+    {
+      "nombre": "RedemptionUpdated",
+      "emisor": "CommodityEngine",
+      "significado": "Avance en la maquina de redencion (SFSP-300 §RedemptionState).",
+      "atribucion": "POR_ACTIVO",
+      "afectaSuministro": "NINGUNO",
+      "implementadoEnContratos": false,
+      "campos": [
+        { "nombre": "redemptionId", "tipo": "bytes32", "indexado": true, "obligatorio": true, "atribuyeActivo": false, "esCantidad": false },
+        { "nombre": "assetId", "tipo": "bytes32", "indexado": true, "obligatorio": true, "atribuyeActivo": true, "esCantidad": false },
+        { "nombre": "previousState", "tipo": "uint8", "indexado": false, "obligatorio": true, "atribuyeActivo": false, "esCantidad": false },
+        { "nombre": "newState", "tipo": "uint8", "indexado": false, "obligatorio": true, "atribuyeActivo": false, "esCantidad": false },
+        { "nombre": "amount", "tipo": "uint256", "indexado": false, "obligatorio": true, "atribuyeActivo": false, "esCantidad": true }
+      ]
+    },
+    {
+      "nombre": "RecoveryExecuted",
+      "emisor": "GovernanceController",
+      "significado": "Recuperacion ejecutada con expediente, sin datos personales.",
+      "atribucion": "GLOBAL",
+      "afectaSuministro": "NINGUNO",
+      "implementadoEnContratos": true,
+      "campos": [
+        { "nombre": "caseId", "tipo": "bytes32", "indexado": true, "obligatorio": true, "atribuyeActivo": false, "esCantidad": false },
+        { "nombre": "operationId", "tipo": "bytes32", "indexado": true, "obligatorio": true, "atribuyeActivo": false, "esCantidad": false },
+        { "nombre": "evidenceRoot", "tipo": "bytes32", "indexado": false, "obligatorio": true, "atribuyeActivo": false, "esCantidad": false },
+        { "nombre": "executedAt", "tipo": "uint64", "indexado": false, "obligatorio": true, "atribuyeActivo": false, "esCantidad": false }
+      ]
+    },
+    {
+      "nombre": "MigrationClaimed",
+      "emisor": "MigrationRegistry",
+      "significado": "Un derecho viejo quedo excluido y uno nuevo emitido. Atribuye a DOS activos.",
+      "atribucion": "POR_ACTIVO",
+      "afectaSuministro": "NINGUNO",
+      "implementadoEnContratos": true,
+      "campos": [
+        { "nombre": "migrationId", "tipo": "bytes32", "indexado": true, "obligatorio": true, "atribuyeActivo": false, "esCantidad": false },
+        { "nombre": "beneficiary", "tipo": "address", "indexado": true, "obligatorio": true, "atribuyeActivo": false, "esCantidad": false },
+        { "nombre": "assetIdAnterior", "tipo": "bytes32", "indexado": true, "obligatorio": true, "atribuyeActivo": true, "esCantidad": false },
+        { "nombre": "assetIdNuevo", "tipo": "bytes32", "indexado": false, "obligatorio": true, "atribuyeActivo": true, "esCantidad": false },
+        { "nombre": "oldUnits", "tipo": "uint256", "indexado": false, "obligatorio": true, "atribuyeActivo": false, "esCantidad": true },
+        { "nombre": "newUnits", "tipo": "uint256", "indexado": false, "obligatorio": true, "atribuyeActivo": false, "esCantidad": true },
+        { "nombre": "nullifier", "tipo": "bytes32", "indexado": false, "obligatorio": true, "atribuyeActivo": false, "esCantidad": false }
+      ]
+    },
+    {
+      "nombre": "GovernanceAction",
+      "emisor": "GovernanceController",
+      "significado": "Pausa, upgrade, rotacion o cambio de quorum.",
+      "atribucion": "GLOBAL",
+      "afectaSuministro": "NINGUNO",
+      "implementadoEnContratos": true,
+      "campos": [
+        { "nombre": "operationId", "tipo": "bytes32", "indexado": true, "obligatorio": true, "atribuyeActivo": false, "esCantidad": false },
+        { "nombre": "actionKind", "tipo": "bytes32", "indexado": true, "obligatorio": true, "atribuyeActivo": false, "esCantidad": false },
+        { "nombre": "actor", "tipo": "address", "indexado": true, "obligatorio": true, "atribuyeActivo": false, "esCantidad": false },
+        { "nombre": "detail", "tipo": "bytes32", "indexado": false, "obligatorio": true, "atribuyeActivo": false, "esCantidad": false },
+        { "nombre": "effectiveAt", "tipo": "uint64", "indexado": false, "obligatorio": true, "atribuyeActivo": false, "esCantidad": false }
+      ]
+    }
+  ]
+}

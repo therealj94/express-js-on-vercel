@@ -9,6 +9,7 @@ export * from './tipos.js';
 export * from './codigos.js';
 export * from './ids.js';
 export * from './keccak.js';
+export * from './autorizacion.js';
 export * from './direccion.js';
 export * from './numeroCuenta.js';
 export * from './alias.js';
@@ -20,5 +21,6 @@ export * from './reconciliacion.js';
 export * from './reservas.js';
 export * from './supply.js';
 export * from './decisiones.js';
+export * from './rutas.js';
 
 export const VERSION_SFSP = 'draft-0.3';

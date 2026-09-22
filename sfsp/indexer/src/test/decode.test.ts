@@ -15,10 +15,12 @@ test('un evento conocido se decodifica a registro tipado y completo', () => {
     log({
       firma: 'MintExecuted',
       parametros: {
-        authorizationId: 'auth_0000000000000000000000000000abcd',
         assetId: 'SFSP:SEC:iss_demo:S1',
+        authorizationId: 'auth_0000000000000000000000000000abcd',
+        destination: '0xTEST_DESTINO',
         amount: '1000',
-        destination: 'SF-1111-2222-3333-9',
+        operationId: 'op_0000000000000000000000000000abcd',
+        evidenceRoot: '0xTEST_EVIDENCIA',
       },
     }),
   );
@@ -52,7 +54,10 @@ test('un campo requerido ausente marca el registro incompleto, no lo descarta', 
   assert.equal(r.tipo, 'DECODIFICADO');
   if (r.tipo !== 'DECODIFICADO') throw new Error('tipo inesperado');
   assert.equal(r.completo, false);
-  assert.deepEqual([...r.camposFaltantes].sort(), ['amount', 'motivo']);
+  assert.deepEqual(
+    [...r.camposFaltantes].sort(),
+    ['amount', 'from', 'operationId', 'reasonCode'],
+  );
 });
 
 test('una cantidad con coma flotante no se corrige a cero: se marca invalida', () => {

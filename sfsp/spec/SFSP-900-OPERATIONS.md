@@ -239,10 +239,72 @@ Reglas:
 
 ## 11 · Propuestas para el contrato interno
 
-1. **`ServiceManifestEntry`**: estructura del manifiesto del §8, con su variante pública minimizada. Hoy no está en el contrato interno.
-2. **`AlertDefinition`**: `alertId`, componente, señal, umbral, severidad, dueño y `runbookId`.
-3. **`runbookId`**: identificador con forma `rb_` + 32 hex.
-4. **`ReconciliationRun`**: resultado de una conciliación diaria: fecha, bloque y hash comunes, concepto, cifras comparadas, diferencia y expediente abierto si la hay.
-5. **`AcceptedRisk`**: riesgo aceptado con aprobador, alcance, vencimiento y evidencia, referido por el §6 del plan maestro y hoy sin estructura.
+`runbookId`, `ReconciliationRun` y `AcceptedRisk` están integradas en
+`../CONTRATO-INTERNO.md` §1 y §2.16 (punto C01 del plan de corrección).
 
-Ninguna se usa como si existiera hasta que se agregue a `CONTRATO-INTERNO.md`.
+1. **`ServiceManifestEntry`** — **RECHAZADA.** El manifiesto de servicios vive en
+   `../deploy/MANIFIESTO.md` y no aparece en ninguna ruta de dinero: no hay dos
+   piezas que necesiten acordar su forma.
+2. **`AlertDefinition`** — **RECHAZADA.** Es configuración de observabilidad,
+   propia de `../runbooks/`. Lo que sí necesitaban varias piezas era el
+   `runbookId`, y ése sí se integró.
+
+## 12 · Concurrencia del directorio (P10)
+
+Hasta draft-0.3 no existía modelo de concurrencia en ninguna parte del árbol. La
+implementación de referencia del directorio (`sdk/src/directorio.ts`) es en
+memoria y de un solo hilo, así que entre la comprobación y la escritura no cabe
+nadie y las carreras no pueden ocurrir. El sistema real atiende peticiones a la
+vez: ahí sí caben.
+
+El modelo completo, con las carreras una por una y las trece pruebas que las
+demostrarían, está en **`scripts/concurrencia.md`**. Esta sección fija lo
+normativo.
+
+### 12.1 Regla de origen
+
+> Una invariante que hoy sostiene el hecho de haber un solo hilo, mañana la
+> sostiene el almacén durable o no la sostiene nadie.
+
+Derivada, y de aplicación directa: **el código de aplicación no arbitra las
+carreras.** No se reserva con una lectura previa; se intenta la escritura, decide
+el índice único o la comparación de versión, y el fallo del motor se traduce a un
+código del §4 del contrato interno. Comprobar antes de escribir se admite sólo
+para dar un mensaje mejor, nunca como mecanismo.
+
+### 12.2 Las carreras y su mecanismo
+
+| # | Carrera | Qué se pierde si nadie la cierra | Mecanismo exigido | Pruebas |
+|---|---|---|---|---|
+| C1 | Dos altas de cuenta simultáneas | Dos cuentas con el mismo `accountNumber`, o un número ya mostrado entregado a otra persona | Índice único sobre `claveDeIndice(accountNumber)`; el consumo del número se confirma **fuera** de la transacción del alta y no se deshace | T-CONC-01, T-CONC-02 |
+| C2 | Dos solicitudes del mismo alias a la vez | Dos alias que se ven iguales resolviendo a cuentas distintas | Único sobre `normalized`; único **parcial** sobre `skeleton` para `ACTIVE`, `RESERVED` y `DISPUTED`; los dos índices en una sola transacción | T-CONC-03, T-CONC-04, T-CONC-05 |
+| C3 | Cambio de ruta mientras se resuelve un destino | El dinero va a una dirección que el titular ya no reconoce; dos rutas `PRIMARY` a la vez | Versión optimista (`WHERE version = $n`); único parcial `(accountId, chainId) WHERE status='PRIMARY'`; `UNIQUE (bindingId, version)` en el historial; la revalidación pasa a ser la **condición de la escritura**, no un paso previo | T-CONC-06 … T-CONC-09 |
+| C4 | Dos migraciones del mismo censo | Dos cuentas SFSP para la misma cuenta de origen, con dos números ya mostrados | Clave primaria `(censoId, refCuentaOrigen)`; único global por `refCuentaOrigen`; único parcial de corrida `EN_CURSO` por censo; el simulacro corre contra una copia | T-CONC-10, T-CONC-11, T-CONC-12 |
+| C5 | El mismo `operationId` dos veces | Un efecto repetido, o un identificador de idempotencia reusado para otra cosa | `operationId` como clave primaria **con huella de la petición**, escrito en la misma transacción que el efecto; huella distinta con el mismo identificador se rechaza con `DENY_AUTHORIZATION` | T-CONC-13 |
+
+### 12.3 Aislamiento
+
+Ninguna de las cinco exige `SERIALIZABLE`: todas se cierran con índices y con
+versión optimista bajo `READ COMMITTED`. Subir el nivel de aislamiento para no
+tener que pensar el índice correcto queda **prohibido por omisión**: si aparece
+una invariante que ningún índice puede expresar, se documenta primero aquí, con
+el motivo, y después se sube.
+
+### 12.4 Lo que el adaptador durable no puede hacer
+
+1. Sostener una invariante con una lectura previa.
+2. Reintentar en silencio una operación que decide a dónde va el dinero.
+3. Devolver un número de cuenta al sorteo por cualquier ruta, incluidas una
+   reversión y un simulacro.
+4. Escribir los dos índices de un alias en dos transacciones.
+5. Dar por válida una prueba de concurrencia que corra en un solo proceso: hacen
+   falta conexiones distintas y solapamiento real forzado con puntos de
+   sincronización, no con esperas.
+
+### 12.5 Estado
+
+Las trece pruebas `T-CONC-xx` **no existen** y no pueden escribirse hasta que
+exista el adaptador durable. Hasta entonces, las invariantes de concurrencia
+figuran en `INVARIANTES.md` como **sin prueba**, y ninguna se cuenta como
+cerrada. El modelo se escribe antes que el adaptador, para que el adaptador se
+escriba contra él y no al revés.

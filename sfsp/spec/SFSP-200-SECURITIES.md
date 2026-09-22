@@ -253,10 +253,7 @@ Cualquier capacidad que dependa de estos devuelve `BLOCKED_DECISION`.
 
 ## 10 · Propuestas para el contrato interno
 
-1. **`AdmissionCaseState`**: `DRAFT` / `REVIEW` / `NEEDS_INFO` / `APPROVED` / `REJECTED` / `WITHDRAWN`. El contrato interno define `AssetLifecycle.admission` pero no `NEEDS_INFO`, que es un estado del caso.
-2. **`RightsTemplateId`**: enumeración de las cinco plantillas del §2 (`EQUITY`, `DEBT`, `REVENUE_SHARE`, `ROYALTY`, `VEHICLE_INTEREST`) para `rightsTemplate.id`.
-3. **`CorporateAction`**: estructura con `actionId`, `assetId`, tipo, `recordDate`, bloque de referencia, base de cálculo, estado y reconciliación.
-4. **`Entitlement`**: estructura con `entitlementId`, `assetId`, titular, cantidad en unidades base, estado (`PENDING` / `CLAIMED` / `UNCLAIMED_SEGREGATED`) y referencia a la corporate action o a la migración que lo originó.
-5. **`IssuanceState`**: `AUTORIZADA` / `EN_EJECUCION` / `EJECUTADA` / `FALLIDA` / `UNKNOWN` / `NO_DISPONIBLE`.
+Integradas en `../CONTRATO-INTERNO.md` (punto C01 del plan de corrección). Esta
+sección ya no propone nada: lo que este documento necesitaba está en el contrato
+interno, que vuelve a ser la fuente única.
 
-Ninguna se usa como si existiera hasta que se agregue a `CONTRATO-INTERNO.md`.

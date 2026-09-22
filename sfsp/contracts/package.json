@@ -4,10 +4,25 @@
   "private": true,
   "type": "commonjs",
   "scripts": {
+    "comprobar:compilador": "node compilador/comprobar-compilador.mjs",
+    "preparar:compilador": "node compilador/preparar.mjs",
+    "prebuild": "node compilador/comprobar-compilador.mjs",
     "build": "hardhat compile",
+    "pretest": "node compilador/comprobar-compilador.mjs",
     "test": "hardhat test"
   },
   "devDependencies": {
     "hardhat": "2.22.17"
+  },
+  "sfsp": {
+    "comentario": [
+      "P09 · el compilador está fijado en compilador/compilador.json, con su huella",
+      "SHA-256, y vendorizado en compilador/. Los ganchos pretest y prebuild comprueban",
+      "que el compilador presente es el fijado ANTES de compilar o probar: un resultado",
+      "obtenido con otro compilador no es el resultado de esta suite.",
+      "El paquete 'solc' 0.8.26 que aparece en package-lock.json es una dependencia",
+      "interna de Hardhat, NO el compilador que compila estos contratos. Los .sol de",
+      "src/ se compilan con el binario nativo 0.8.28 fijado aquí."
+    ]
   }
 }

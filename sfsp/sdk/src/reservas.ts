@@ -8,18 +8,24 @@
  * Tres advertencias que este módulo impone en código, no en prosa:
  *
  *   1. NetRealizableValue NO es «onzas por spot». Es el valor de los derechos
- *      netos realizables: descontados costes, permisos, deuda y tiempo. El
- *      módulo lo recibe ya calculado por la metodología firmada; lo que sí
- *      impide es que alguien meta un valor de mercado bruto sin declararlo.
- *   2. Los tres factores son distintos y no se duplican entre sí. Aplicar un
- *      haircut y además un factor de elegibilidad que ya lo incluía descuenta
- *      dos veces, y eso también es un error, no una prudencia.
- *   3. Una reserva vencida, o ya asignada a otra obligación, aporta CERO. No se
- *      cuenta el mismo oro para respaldar dos cosas.
+ *      netos realizables: descontados costes, permisos, deuda y tiempo.
+ *   2. Los tres factores son distintos y no se duplican entre sí.
+ *   3. Una reserva vencida, o ya asignada a otra obligación, aporta CERO.
+ *
+ * DOS DEFECTOS QUE LA AUDITORÍA ENCONTRÓ AQUÍ (H09), y cómo se cierran:
+ *
+ *   · La suma de una cartera no deduplicaba. Pasar dos veces la misma reserva
+ *     la contaba dos veces, y una reserva marcada como asignada a dos
+ *     obligaciones aportaba su valor completo a las dos. Eso es exactamente
+ *     «contar el mismo oro dos veces», que es el fraude contable clásico de
+ *     este negocio. Ahora se deduplica por identificador y la asignación es a
+ *     UNA obligación, no a una lista.
+ *   · No se validaba el rango de los factores. Un factor de 20000 puntos
+ *     básicos, que es el 200 %, se aceptaba y multiplicaba la capacidad. Ahora
+ *     un factor fuera de 0 a 10000 es un rechazo, no una capacidad extra.
  *
  * Todos los porcentajes concretos son decisión D04 y aquí valen null hasta que
- * se aprueben. Con un factor en null el resultado es BLOCKED_DECISION, nunca un
- * número «recomendado». */
+ * se aprueben. */
 
 import { bloqueadoPorDecision, permitir, negar } from './codigos.js';
 import type { Resultado } from './codigos.js';
@@ -35,16 +41,22 @@ export interface ReserveAsset {
   eligibilityFactorBps: number | null;
   haircutBps: number | null;
   concentrationFactorBps: number | null;
-  /** Fecha de vencimiento de la acreditación. */
   expiresAtISO: string;
-  /** Obligaciones a las que ya está asignada en exclusiva. */
-  asignadaA: string[];
+  /**
+   * La obligación a la que esta reserva está asignada en exclusiva, o null si
+   * está libre. Es UNA, no una lista: una lista admitía la lectura «respalda a
+   * las dos», que es la que permite contar el mismo activo dos veces.
+   */
+  asignadaA: string | null;
   /** Integridad del expediente. NO prueba que el activo exista. */
   evidenceHash: string;
   estado: 'PENDING' | 'VERIFIED' | 'ELIGIBLE' | 'DEGRADED' | 'EXPIRED' | 'RELEASED';
 }
 
 const BPS = 10000n;
+const BPS_MAX = 10000;
+
+const enRango = (v: number): boolean => Number.isInteger(v) && v >= 0 && v <= BPS_MAX;
 
 /** Valor elegible de una reserva, en centavos. */
 export function valorElegible(
@@ -58,16 +70,43 @@ export function valorElegible(
       `la reserva ${r.reserveAssetId} no tiene metodología aprobada de elegibilidad, haircut o concentración`,
     );
   }
+
+  /* Un factor fuera de rango no es un valor generoso: es un dato corrupto, y
+     con él la capacidad calculada no significa nada. */
+  for (const [nombre, valor] of [
+    ['factor de elegibilidad', r.eligibilityFactorBps],
+    ['haircut', r.haircutBps],
+    ['factor de concentración', r.concentrationFactorBps],
+  ] as const) {
+    if (!enRango(valor)) {
+      return negar<bigint>(
+        'DENY_POLICY',
+        `el ${nombre} de ${r.reserveAssetId} vale ${valor} puntos básicos, fuera del rango 0 a 10000`,
+      );
+    }
+  }
+
+  if (r.netRealizableValueCents < 0n) {
+    return negar<bigint>('DENY_POLICY', `el valor de ${r.reserveAssetId} es negativo`);
+  }
+
   if (r.estado !== 'ELIGIBLE' && r.estado !== 'VERIFIED') {
     return negar<bigint>('DENY_ASSET_STATE', `la reserva está en estado ${r.estado}`);
   }
-  if (Date.parse(r.expiresAtISO) <= Date.parse(ahoraISO)) {
+
+  const vence = Date.parse(r.expiresAtISO);
+  const ahora = Date.parse(ahoraISO);
+  if (Number.isNaN(vence) || Number.isNaN(ahora)) {
+    return negar<bigint>('UNKNOWN_SOURCE', 'fecha de vencimiento o de referencia ilegible');
+  }
+  if (vence <= ahora) {
     return negar<bigint>('DENY_ASSET_STATE', 'la acreditación de la reserva está vencida');
   }
-  if (r.asignadaA.length > 0 && !r.asignadaA.includes(obligacion)) {
+
+  if (r.asignadaA !== null && r.asignadaA !== obligacion) {
     return negar<bigint>(
       'DENY_LIMIT',
-      `la reserva ya está asignada en exclusiva a ${r.asignadaA.join(', ')}`,
+      `la reserva ya está asignada en exclusiva a ${r.asignadaA}`,
     );
   }
 
@@ -81,21 +120,56 @@ export function valorElegible(
   return permitir(v);
 }
 
-/** Suma el valor elegible de una cartera. Si una parte está bloqueada, el total también. */
+export interface TotalDeCartera {
+  valorCents: bigint;
+  contadas: number;
+  /** Identificadores que aparecían más de una vez. Se contaron una sola. */
+  duplicadas: string[];
+  /** Las que no aportan, con su motivo. */
+  descartadas: Array<{ reserveAssetId: string; codigo: string; detalle: string }>;
+}
+
+/**
+ * Suma el valor elegible de una cartera.
+ *
+ * Deduplica por identificador: la misma reserva presentada dos veces se cuenta
+ * una. Y si una parte está bloqueada por falta de decisión, el total también
+ * lo está, porque un total parcial que parece completo es peor que ninguno.
+ */
 export function valorElegibleTotal(
   reservas: ReserveAsset[],
   ahoraISO: string,
   obligacion: string,
-): Resultado<bigint> {
+): Resultado<TotalDeCartera> {
+  const vistas = new Set<string>();
+  const duplicadas: string[] = [];
+  const descartadas: TotalDeCartera['descartadas'] = [];
   let total = 0n;
+  let contadas = 0;
+
   for (const r of reservas) {
+    if (vistas.has(r.reserveAssetId)) {
+      duplicadas.push(r.reserveAssetId);
+      continue;
+    }
+    vistas.add(r.reserveAssetId);
+
     const v = valorElegible(r, ahoraISO, obligacion);
-    if (v.codigo === 'BLOCKED_DECISION') return v;
-    if (v.codigo === 'ALLOW') total += v.valor as bigint;
-    /* Un DENY (vencida, asignada, estado) aporta cero y no rompe el total: es
-       una reserva que no cuenta, no un fallo de lectura. */
+    if (v.codigo === 'BLOCKED_DECISION') {
+      return { codigo: 'BLOCKED_DECISION', valor: null, detalle: v.detalle, ...(v.decision ? { decision: v.decision } : {}) };
+    }
+    if (v.codigo === 'UNKNOWN_SOURCE') {
+      return { codigo: 'UNKNOWN_SOURCE', valor: null, detalle: v.detalle };
+    }
+    if (v.codigo === 'ALLOW') {
+      total += v.valor as bigint;
+      contadas++;
+    } else {
+      descartadas.push({ reserveAssetId: r.reserveAssetId, codigo: v.codigo, detalle: v.detalle });
+    }
   }
-  return permitir(total);
+
+  return permitir({ valorCents: total, contadas, duplicadas, descartadas });
 }
 
 /**
@@ -118,6 +192,12 @@ export function capacidadAutorizada(
   }
   if (decimals === null) {
     return negar<bigint>('UNKNOWN_SOURCE', 'decimales del activo desconocidos: no se sustituyen por 18');
+  }
+  if (!Number.isInteger(decimals) || decimals < 0 || decimals > 36) {
+    return negar<bigint>('DENY_POLICY', `decimales fuera de rango: ${decimals}`);
+  }
+  if (valorElegibleCents < 0n) {
+    return negar<bigint>('DENY_POLICY', 'el valor elegible no puede ser negativo');
   }
   const escala = 10n ** BigInt(decimals);
   return permitir((valorElegibleCents * escala) / referenciaCentavosPorUnidad);

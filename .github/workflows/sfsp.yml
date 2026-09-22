@@ -1,0 +1,125 @@
+# Compuerta de SFSP.
+#
+# Corre en cada empuje y en cada pull request que toque `sfsp/`. Hace tres cosas
+# y ninguna más: instala dependencias, comprueba que el compilador es el fijado,
+# y corre el verificador oficial, que a su vez corre las cuatro suites.
+#
+# Lo que NO hace, a propósito:
+#   · no usa ni un secreto. Este workflow no declara `secrets` en ningún sitio y
+#     no necesita ninguno: las cuatro suites son lógica pura, sin red y sin RPC;
+#   · no despliega nada, ni a un entorno de pruebas;
+#   · no publica artefactos. La evidencia de una corrida vive en el árbol de
+#     quien la corre, con su SHA y su estado de árbol limpio; una evidencia
+#     subida desde CI no añade procedencia, añade una copia;
+#   · no toca la red para conseguir el compilador: el binario de solc está
+#     vendorizado en `sfsp/contracts/compilador/` con su SHA-256 comprobado.
+#
+# Verde significa exactamente una cosa: el verificador dijo
+# VERIFICACION_COMPLETA. Cualquier otra cosa es rojo. Hoy se espera rojo, y eso
+# es correcto: hay hallazgos de la auditoría sin cerrar y el verificador los
+# nombra. Un verde prematuro sería el defecto, no el objetivo.
+
+name: SFSP
+
+on:
+  push:
+    paths:
+      - 'sfsp/**'
+      - '.github/workflows/sfsp.yml'
+  pull_request:
+    paths:
+      - 'sfsp/**'
+      - '.github/workflows/sfsp.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: sfsp-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verificacion:
+    name: Verificación completa de SFSP
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Traer el árbol
+        uses: actions/checkout@v4
+        # El verificador comprueba que no haya cambios sin guardar en sfsp/
+        # (C02): un checkout limpio es justo lo que necesita.
+
+      - name: Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      # Las dependencias son todas de desarrollo. El SDK sigue sin dependencias
+      # de ejecución; esto instala TypeScript, @types/node y Hardhat.
+      - name: Instalar dependencias de las cinco carpetas
+        working-directory: sfsp
+        run: |
+          set -e
+          for carpeta in sdk contracts indexer dbnx-api pruebas-adversarias; do
+            if [ -f "$carpeta/package-lock.json" ]; then
+              ( cd "$carpeta" && npm ci )
+            else
+              ( cd "$carpeta" && npm install )
+            fi
+          done
+
+      # P09: el compilador tiene que ser el fijado, con su huella. Si no lo es,
+      # la suite de contratos no debe ni arrancar, así que esto va antes.
+      - name: Comprobar que el compilador es el fijado
+        working-directory: sfsp/contracts
+        run: npm run comprobar:compilador
+
+      # P09: y que compilar no necesite red. Si Hardhat hubiera descargado el
+      # compilador, habría creado su caché; que no exista lo demuestra.
+      - name: Compilar los contratos sin tocar la red
+        working-directory: sfsp/contracts
+        run: |
+          set -e
+          rm -rf "$HOME/.cache/hardhat-nodejs/compilers-v2"
+          npx hardhat compile
+          if [ -d "$HOME/.cache/hardhat-nodejs/compilers-v2" ]; then
+            echo "FALLO P09: Hardhat creó su caché de compiladores, o sea que descargó uno."
+            echo "El binario vendorizado de contracts/compilador/ no se estaba usando."
+            exit 1
+          fi
+          echo "Compilado con el binario vendorizado. Ninguna descarga."
+
+      # C09: especificación contra código. No falla por NO_COMPROBADA (eso se
+      # informa), sí falla por divergencia: spec y código diciendo cosas
+      # distintas es un defecto, no una diferencia de estilo.
+      - name: Conformidad entre spec/ y código
+        working-directory: sfsp
+        run: node scripts/conformidad.mjs
+
+      # El verificador corre las cuatro suites obligatorias más la adversaria,
+      # comprueba tipos en modo estricto, la huella de DECISIONES-SFSP.json y
+      # que el árbol esté limpio. Sale 1 si no es VERIFICACION_COMPLETA.
+      - name: Verificador oficial
+        working-directory: sfsp
+        run: node scripts/verificar-todo.mjs | tee /tmp/verificacion.txt
+
+      # Cinturón y tirantes: el paso anterior ya falla por código de salida,
+      # pero la compuerta se dice en voz alta y no se deduce de un exit code.
+      - name: La compuerta es VERIFICACION_COMPLETA
+        if: always()
+        run: |
+          set -e
+          if [ ! -f /tmp/verificacion.txt ]; then
+            echo "El verificador no llegó a producir salida."
+            exit 1
+          fi
+          if grep -q 'VERIFICACION_COMPLETA' /tmp/verificacion.txt; then
+            echo "Compuerta abierta: VERIFICACION_COMPLETA."
+            exit 0
+          fi
+          echo "Compuerta cerrada: el verificador NO dijo VERIFICACION_COMPLETA."
+          echo "Motivos, tal como los nombró:"
+          sed -n '/por qué NO es una verificación completa/,$p' /tmp/verificacion.txt
+          exit 1

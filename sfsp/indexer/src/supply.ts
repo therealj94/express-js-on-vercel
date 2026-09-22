@@ -16,9 +16,20 @@
 //   - Si una parte es DESCONOCIDA, el total sale DESCONOCIDO. No se rellena con
 //     cero: cero es una afirmacion, y no la tenemos.
 //
+// CORRECCION H15. Antes este modulo hacia dos cosas mal:
+//   1. Ignoraba la marca `completo` del registro. Un mint incompleto por 999
+//      entraba como 999 y salia marcado como conocido.
+//   2. Etiquetaba `CHAIN_TOTALSUPPLY` una cifra derivada de eventos. Esa
+//      etiqueta significa "lo lei de `totalSupply()` en la cadena" y aqui no se
+//      lee la cadena: lo que hay es una reconstruccion a partir del registro de
+//      eventos, cuyo origen honesto es `REGISTRY` (o `UNKNOWN` si falta algo).
+// Ademas, un burn que no se puede atribuir a un activo (el caso real del
+// contrato, que emitia `BurnExecuted` sin `assetId`) ya no se ignora en
+// silencio dejando el emitido inflado: vuelve la cifra DESCONOCIDA.
+//
 // Toda cantidad es `bigint` y se publica como cadena (§5): nunca `number`.
 
-import type { RegistroIndexado } from './decode.js';
+import { ESQUEMA_EVENTOS, type RegistroIndexado } from './decode.js';
 
 /** Origen de una cifra, exactamente como lo nombra el pasaporte (§2.3). */
 export type OrigenSuministro =
@@ -26,6 +37,13 @@ export type OrigenSuministro =
   | 'REGISTRY'
   | 'CUSTODIAL_LEDGER'
   | 'UNKNOWN';
+
+/**
+ * Origen de toda cifra reconstruida a partir de eventos.
+ * POR QUE una constante y no un literal suelto: deja escrito, en un solo sitio,
+ * que este modulo NUNCA puede producir `CHAIN_TOTALSUPPLY`. Una prueba lo exige.
+ */
+export const ORIGEN_DERIVADO_DE_EVENTOS = 'REGISTRY' as const;
 
 /** Una cifra con su procedencia. `valor: null` significa desconocida. */
 export interface CifraSuministro {
@@ -46,6 +64,11 @@ export interface SuministroActivo {
   readonly decimals: number | null;
   /** true si alguna cifra quedo desconocida. La UI debe decirlo. */
   readonly parcial: boolean;
+  /**
+   * Huecos de cobertura encontrados, en texto. Vacio = cobertura completa.
+   * Es lo que hay que arreglar para que las cifras dejen de ser desconocidas.
+   */
+  readonly huecosDeCobertura: readonly string[];
 }
 
 /**
@@ -71,16 +94,6 @@ function cifraDesconocida(motivo: string): CifraSuministro {
   return { valor: null, origen: 'UNKNOWN', motivo };
 }
 
-/** Acumulador interno mientras se recorren los eventos. */
-interface Acumulado {
-  autorizado: bigint;
-  emitido: bigint;
-  vioAutorizacion: boolean;
-  vioEmision: boolean;
-  /** Eventos que debieron aportar una cantidad y no la traian utilizable. */
-  camposRotos: string[];
-}
-
 function leerCantidad(v: string | undefined): bigint | null {
   if (typeof v !== 'string' || !/^[0-9]+$/.test(v)) return null;
   try {
@@ -90,13 +103,27 @@ function leerCantidad(v: string | undefined): bigint | null {
   }
 }
 
+/** Acumulador interno mientras se recorren los eventos. */
+interface Acumulado {
+  autorizado: bigint;
+  emitido: bigint;
+  vioAutorizacion: boolean;
+  vioEmision: boolean;
+  /** Todo lo que impide afirmar la cifra. Si no esta vacio, sale DESCONOCIDA. */
+  huecos: string[];
+}
+
 /**
  * Agrega suministro a partir de registros ya decodificados y deduplicados.
  *
- * Los registros CRUDO (evento desconocido) NO se ignoran a efectos de calidad:
- * si hay crudos para un activo, el resultado se marca desconocido, porque un
- * evento que no sabemos leer podria ser justamente un `BurnExecuted` nuevo.
- * Esto es lo contrario de "si no lo entiendo, no paso nada".
+ * Tres formas de perder cobertura, y las tres dan DESCONOCIDO:
+ *  1. Un registro CRUDO (evento que no sabemos leer). Podria ser justamente un
+ *     `BurnExecuted` nuevo. Esto es lo contrario de "si no lo entiendo, no paso
+ *     nada".
+ *  2. Un registro cuya atribucion a activo esta incompleta: no sabemos si es de
+ *     este activo, asi que no podemos descartarlo.
+ *  3. Un registro de este activo marcado `completo: false`, o con una cantidad
+ *     que no es entero en cadena.
  */
 export function agregarSuministro(
   assetId: string,
@@ -108,83 +135,85 @@ export function agregarSuministro(
     emitido: 0n,
     vioAutorizacion: false,
     vioEmision: false,
-    camposRotos: [],
+    huecos: [],
   };
-  let hayCrudoDelActivo = false;
 
   for (const r of registros) {
     if (r.tipo === 'CRUDO') {
-      // No sabemos a que activo pertenece un evento que no sabemos leer.
-      // Se asume que puede afectar a este: conservador, no optimista.
-      hayCrudoDelActivo = true;
+      acc.huecos.push(
+        `evento sin decodificar (${r.firma}) en el bloque ${r.blockNumber}: podria afectar a este activo`,
+      );
       continue;
     }
-    if (r.campos['assetId'] !== assetId) continue;
 
-    switch (r.evento) {
-      case 'SupplyAuthorized': {
-        const m = leerCantidad(r.campos['amount']);
-        if (m === null) {
-          acc.camposRotos.push('SupplyAuthorized.amount');
-          break;
-        }
-        acc.autorizado += m;
-        acc.vioAutorizacion = true;
-        break;
-      }
-      case 'MintExecuted': {
-        const m = leerCantidad(r.campos['amount']);
-        if (m === null) {
-          acc.camposRotos.push('MintExecuted.amount');
-          break;
-        }
-        acc.emitido += m;
-        acc.vioEmision = true;
-        break;
-      }
-      case 'BurnExecuted': {
-        const m = leerCantidad(r.campos['amount']);
-        if (m === null) {
-          acc.camposRotos.push('BurnExecuted.amount');
-          break;
-        }
-        acc.emitido -= m;
-        acc.vioEmision = true;
-        break;
-      }
-      // TreasuryReleased mueve unidades de tesoreria al circulante. NO cambia el
-      // emitido: por eso no se toca `acc.emitido` aqui. El saldo de tesoreria lo
-      // da la fuente custodial, que ya refleja la salida.
-      case 'TreasuryReleased':
-        break;
-      default:
-        break;
+    if (r.atribucionIncompleta) {
+      // Caso real de H15: `BurnExecuted` emitido sin `assetId`. Antes se
+      // descartaba y el emitido quedaba inflado con apariencia de dato firme.
+      acc.huecos.push(
+        `${r.evento} en el bloque ${r.blockNumber} sin campos de atribucion (${r.camposFaltantes.join(', ')}): no se puede saber de que activo es`,
+      );
+      continue;
+    }
+
+    // Evento global (no pertenece a ningun activo) o de otro activo: no aporta.
+    if (r.activosAtribuidos.length === 0) continue;
+    if (!r.activosAtribuidos.includes(assetId)) continue;
+
+    if (!r.completo) {
+      acc.huecos.push(
+        `${r.evento} en el bloque ${r.blockNumber} incompleto (faltan: ${r.camposFaltantes.join(', ') || '-'}; cantidades invalidas: ${r.cantidadesInvalidas.join(', ') || '-'})`,
+      );
+      continue;
+    }
+
+    // El efecto sobre el suministro lo declara la fuente unica, no un `switch`
+    // escrito a mano que podria quedarse atras cuando se agregue un evento.
+    const efecto = ESQUEMA_EVENTOS[r.evento].afectaSuministro;
+    if (efecto === 'NINGUNO') continue;
+
+    // Los tres eventos que mueven suministro nombran su monto `amount`; el
+    // cargador lo exige como cantidad obligatoria, asi que aqui solo puede
+    // faltar si alguien cambio el JSON sin regenerar (y la prueba lo caza).
+    const m = leerCantidad(r.campos['amount']);
+    if (m === null) {
+      acc.huecos.push(`${r.evento} en el bloque ${r.blockNumber}: monto no utilizable`);
+      continue;
+    }
+    if (efecto === 'AUTORIZA') {
+      acc.autorizado += m;
+      acc.vioAutorizacion = true;
+    } else if (efecto === 'AUMENTA') {
+      acc.emitido += m;
+      acc.vioEmision = true;
+    } else {
+      acc.emitido -= m;
+      acc.vioEmision = true;
     }
   }
 
-  const rotos = acc.camposRotos.length > 0;
+  const sinCobertura = acc.huecos.length > 0;
+  const motivoHuecos = `cobertura incompleta: ${acc.huecos.join(' | ')}`;
 
-  const autorizado: CifraSuministro =
-    rotos || hayCrudoDelActivo
-      ? cifraDesconocida(
-          rotos
-            ? `cantidades no utilizables: ${acc.camposRotos.join(', ')}`
-            : 'hay eventos sin decodificar que podrian afectar la cifra',
-        )
-      : acc.vioAutorizacion
-        ? cifraConocida(acc.autorizado, 'REGISTRY')
-        : cifraDesconocida('no se observo ningun SupplyAuthorized para el activo');
+  const autorizado: CifraSuministro = sinCobertura
+    ? cifraDesconocida(motivoHuecos)
+    : acc.vioAutorizacion
+      ? cifraConocida(acc.autorizado, ORIGEN_DERIVADO_DE_EVENTOS)
+      : cifraDesconocida('no se observo ningun SupplyAuthorized para el activo');
 
-  const emitido: CifraSuministro =
-    rotos || hayCrudoDelActivo
-      ? cifraDesconocida(
-          rotos
-            ? `cantidades no utilizables: ${acc.camposRotos.join(', ')}`
-            : 'hay eventos sin decodificar que podrian afectar la cifra',
-        )
-      : acc.vioEmision
-        ? cifraConocida(acc.emitido, 'CHAIN_TOTALSUPPLY')
-        : cifraDesconocida('no se observo emision ni quema para el activo');
+  let emitido: CifraSuministro;
+  if (sinCobertura) {
+    emitido = cifraDesconocida(motivoHuecos);
+  } else if (!acc.vioEmision) {
+    emitido = cifraDesconocida('no se observo emision ni quema para el activo');
+  } else if (acc.emitido < 0n) {
+    // Quemar mas de lo emitido dentro de la ventana observada no es un negativo:
+    // es que la ventana no cubre la emision original. Decirlo, no publicarlo.
+    emitido = cifraDesconocida(
+      'lo quemado supera lo emitido en la ventana observada: la ventana no cubre toda la historia',
+    );
+  } else {
+    emitido = cifraConocida(acc.emitido, ORIGEN_DERIVADO_DE_EVENTOS);
+  }
 
   const fuente = opciones.tesoreria;
   let tesoreria: CifraSuministro;
@@ -213,7 +242,9 @@ export function agregarSuministro(
         ? cifraDesconocida(
             'tesoreria supera lo emitido: las fuentes no son consistentes entre si',
           )
-        : cifraConocida(resultado, 'CUSTODIAL_LEDGER');
+        : // El circulante no es mejor que la peor de sus dos partes: hereda el
+          // origen de la tesoreria, que es la mas debil de las dos.
+          cifraConocida(resultado, tesoreria.origen);
   }
 
   const decimals = opciones.decimalsPorActivo?.[assetId] ?? null;
@@ -230,6 +261,7 @@ export function agregarSuministro(
       emitido.valor === null ||
       tesoreria.valor === null ||
       circulante.valor === null,
+    huecosDeCobertura: [...acc.huecos],
   };
 }
 

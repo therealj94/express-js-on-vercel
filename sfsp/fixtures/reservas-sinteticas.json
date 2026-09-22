@@ -1,16 +1,82 @@
 {
   "sintetico": true,
-  "advertencia": "Factores de prueba. NO son una propuesta de metodologia: los reales los fija D04.",
+  "advertencia": "Factores de prueba. NO son una propuesta de metodologia: los reales los fija D04. La asignacion es a UNA obligacion, no a una lista: una lista permitia leer que respalda a las dos.",
   "reservas": [
-    { "reserveAssetId": "res_sint_A", "tier": "A", "netRealizableValueCents": 500000000, "eligibilityFactorBps": 10000, "haircutBps": 0, "concentrationFactorBps": 10000, "expiresAtISO": "2027-01-01T00:00:00.000Z", "asignadaA": [], "evidenceHash": "sha256:sintetico-a", "estado": "ELIGIBLE" },
-    { "reserveAssetId": "res_sint_B", "tier": "B", "netRealizableValueCents": 200000000, "eligibilityFactorBps": 9000, "haircutBps": 1000, "concentrationFactorBps": 9500, "expiresAtISO": "2027-01-01T00:00:00.000Z", "asignadaA": [], "evidenceHash": "sha256:sintetico-b", "estado": "ELIGIBLE" },
-    { "reserveAssetId": "res_sint_C", "tier": "C", "netRealizableValueCents": 900000000, "eligibilityFactorBps": 5000, "haircutBps": 4000, "concentrationFactorBps": 7000, "expiresAtISO": "2026-12-01T00:00:00.000Z", "asignadaA": [], "evidenceHash": "sha256:sintetico-c", "estado": "VERIFIED" },
-    { "reserveAssetId": "res_sint_D", "tier": "D", "netRealizableValueCents": 1500000000, "eligibilityFactorBps": 2000, "haircutBps": 7000, "concentrationFactorBps": 5000, "expiresAtISO": "2026-11-01T00:00:00.000Z", "asignadaA": [], "evidenceHash": "sha256:sintetico-d", "estado": "PENDING" },
-    { "reserveAssetId": "res_sint_E", "tier": "E", "netRealizableValueCents": 3000000000, "eligibilityFactorBps": 0, "haircutBps": 10000, "concentrationFactorBps": 0, "expiresAtISO": "2026-10-01T00:00:00.000Z", "asignadaA": [], "evidenceHash": "sha256:sintetico-e", "estado": "PENDING" },
-    { "reserveAssetId": "res_sint_AUKA", "tier": "A", "netRealizableValueCents": 400000000, "eligibilityFactorBps": 10000, "haircutBps": 0, "concentrationFactorBps": 10000, "expiresAtISO": "2027-01-01T00:00:00.000Z", "asignadaA": ["AUKA"], "evidenceHash": "sha256:sintetico-auka", "estado": "ELIGIBLE" }
+    {
+      "reserveAssetId": "res_sint_A",
+      "tier": "A",
+      "netRealizableValueCents": 500000000,
+      "eligibilityFactorBps": 10000,
+      "haircutBps": 0,
+      "concentrationFactorBps": 10000,
+      "expiresAtISO": "2027-01-01T00:00:00.000Z",
+      "asignadaA": null,
+      "evidenceHash": "sha256:sintetico-a",
+      "estado": "ELIGIBLE"
+    },
+    {
+      "reserveAssetId": "res_sint_B",
+      "tier": "B",
+      "netRealizableValueCents": 200000000,
+      "eligibilityFactorBps": 9000,
+      "haircutBps": 1000,
+      "concentrationFactorBps": 9500,
+      "expiresAtISO": "2027-01-01T00:00:00.000Z",
+      "asignadaA": null,
+      "evidenceHash": "sha256:sintetico-b",
+      "estado": "ELIGIBLE"
+    },
+    {
+      "reserveAssetId": "res_sint_C",
+      "tier": "C",
+      "netRealizableValueCents": 900000000,
+      "eligibilityFactorBps": 5000,
+      "haircutBps": 4000,
+      "concentrationFactorBps": 7000,
+      "expiresAtISO": "2026-12-01T00:00:00.000Z",
+      "asignadaA": null,
+      "evidenceHash": "sha256:sintetico-c",
+      "estado": "VERIFIED"
+    },
+    {
+      "reserveAssetId": "res_sint_D",
+      "tier": "D",
+      "netRealizableValueCents": 1500000000,
+      "eligibilityFactorBps": 2000,
+      "haircutBps": 7000,
+      "concentrationFactorBps": 5000,
+      "expiresAtISO": "2026-11-01T00:00:00.000Z",
+      "asignadaA": null,
+      "evidenceHash": "sha256:sintetico-d",
+      "estado": "PENDING"
+    },
+    {
+      "reserveAssetId": "res_sint_E",
+      "tier": "E",
+      "netRealizableValueCents": 3000000000,
+      "eligibilityFactorBps": 0,
+      "haircutBps": 10000,
+      "concentrationFactorBps": 0,
+      "expiresAtISO": "2026-10-01T00:00:00.000Z",
+      "asignadaA": null,
+      "evidenceHash": "sha256:sintetico-e",
+      "estado": "PENDING"
+    },
+    {
+      "reserveAssetId": "res_sint_AUKA",
+      "tier": "A",
+      "netRealizableValueCents": 400000000,
+      "eligibilityFactorBps": 10000,
+      "haircutBps": 0,
+      "concentrationFactorBps": 10000,
+      "expiresAtISO": "2027-01-01T00:00:00.000Z",
+      "asignadaA": "AUKA",
+      "evidenceHash": "sha256:sintetico-auka",
+      "estado": "ELIGIBLE"
+    }
   ],
   "notas": [
-    "res_sint_AUKA esta asignada en exclusiva: no puede respaldar ademas ORIGEN.",
+    "res_sint_AUKA esta asignada en exclusiva a UNA obligacion: no puede respaldar ademas ORIGEN.",
     "El tier E entra con cero: estar en el expediente no es ser elegible.",
     "Un evidenceHash prueba integridad del documento presentado, no que el activo exista."
   ]

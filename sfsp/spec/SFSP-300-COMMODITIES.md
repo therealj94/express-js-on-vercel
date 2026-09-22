@@ -264,11 +264,13 @@ Una diferencia **bloquea la acción que aumenta el riesgo**. No borra balances n
 
 ## 11 · Propuestas para el contrato interno
 
-1. **`MetalLot`**: el contrato interno define `lotId` pero no la estructura. Se propone: `lotId`, `grossWeight`, `purity`, `fineOunces`, `custodian`, `location`, `jurisdiction`, `evidenceId`, `assignedTo`, `status`.
-2. **`MetalLotStatus`**: `INTAKE` / `ATTESTED` / `ASSIGNED` / `RESERVED_FOR_DELIVERY` / `DELIVERED` / `EXPIRED_EVIDENCE`.
-3. **`RedemptionState`**: `REQUESTED` / `VALIDATED` / `TOKENS_LOCKED` / `METAL_RESERVED` / `TOKENS_BURNED` / `DELIVERY_PENDING` / `DELIVERED` / `CANCELLED` / `UNKNOWN`. Hoy el contrato interno nombra `RedemptionUpdated` como evento pero no enumera los estados.
-4. **`DeliveryObligation`**: estructura de la obligación exigible entre `TOKENS_BURNED` y `DELIVERED`: `obligationId`, `redemptionId`, `assetId`, onzas finas, `lotId` reservado, plazo y estado.
-5. **`ReserveAsset`**: estructura del activo de reserva referida por `reserveAssetId`: titular, custodio, ubicación jurídica, tipo, unidad, derechos exigibles, gravámenes, disponibilidad, valoración, fuentes, fecha, expiración, attestor, porcentaje reconocido y asignaciones exclusivas.
-6. **`OracleQuoteKind`**: `REFERENCE_PRICE` / `EXECUTION_QUOTE` / `RESERVE_VALUATION` / `LIQUIDITY_AVAILABLE`.
+Las cinco primeras propuestas de esta serie (`MetalLot`, `MetalLotStatus`,
+`RedemptionState`, `DeliveryObligation`, `ReserveAsset`) están integradas en
+`../CONTRATO-INTERNO.md` §2.10 (punto C01 del plan de corrección).
 
-Ninguna se usa como si existiera hasta que se agregue a `CONTRATO-INTERNO.md`.
+1. **`OracleQuoteKind`** (`REFERENCE_PRICE` / `EXECUTION_QUOTE` /
+   `RESERVE_VALUATION` / `LIQUIDITY_AVAILABLE`) — **RECHAZADA.** Duplica
+   `PriceKind` del §2.12, al que se le añadió `RESERVE_VALUATION`: dos
+   enumeraciones para la misma distinción se desincronizan y entonces la
+   distinción deja de proteger de nada.
+

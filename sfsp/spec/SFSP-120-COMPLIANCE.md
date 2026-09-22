@@ -188,8 +188,7 @@ Una capacidad que dependa de cualquiera de estos devuelve `BLOCKED_DECISION`.
 
 ## 9 · Propuestas para el contrato interno
 
-1. **`EligibilityResult`**: el contrato interno define los códigos del §4 pero no la estructura de respuesta de `evaluate`. Se propone añadirla con `decision`, `reasonCode`, `policyVersion` y `evaluatedAt`.
-2. **`EligibilityAction`**: enumeración de las once acciones del §3 (`ISSUE`, `HOLD`, `TRANSFER`, `RECEIVE`, `TRADE`, `SETTLE`, `REDEEM`, `BURN`, `MIGRATE_CLAIM`, `RECOVER`, `RELEASE`).
-3. **`policyId`**: identificador con forma `pol_` + 32 hex, referido hoy por `transferPolicyId`, `redemptionPolicyId` y `listingPolicyId` sin forma declarada.
+Integradas en `../CONTRATO-INTERNO.md` (punto C01 del plan de corrección). Esta
+sección ya no propone nada: lo que este documento necesitaba está en el contrato
+interno, que vuelve a ser la fuente única.
 
-Hasta que existan allí, ninguna implementación las usa como si estuvieran definidas.

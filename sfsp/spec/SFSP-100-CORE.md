@@ -282,4 +282,7 @@ Reglas transversales:
 
 ## 14 · Propuestas para el contrato interno
 
-Ninguna. SFSP-100 usa exclusivamente los tipos, eventos y códigos ya definidos en `CONTRATO-INTERNO.md`.
+Integradas en `../CONTRATO-INTERNO.md` (punto C01 del plan de corrección). Esta
+sección ya no propone nada: lo que este documento necesitaba está en el contrato
+interno, que vuelve a ser la fuente única.
+

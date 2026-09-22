@@ -289,10 +289,7 @@ Mientras D09 esté pendiente, **cada P9b está bloqueada** y toda ruta de claim 
 
 ## 11 · Propuestas para el contrato interno
 
-1. **`MigrationMode`**: `FROZEN_SNAPSHOT` / `SURRENDER_ON_CLAIM`. Hoy el contrato interno define `migrationId` y `MigrationClaimed` pero no el modo.
-2. **`MigrationPlan`**: estructura con `migrationId`, `assetIdOld`, `assetIdNew`, `mode`, ratio como fracción racional, decimales de origen y destino, fecha de corte, alcance `S0`, pagador del gas y política de claims.
-3. **`MigrationReconciliation`**: estructura con `S0`, `A`, `E`, `N`, `P`, bloque y hash de la lectura, y el resultado de las tres comprobaciones del §3.2.
-4. **`MigrationUserState`**: `ELEGIBLE` / `CLAIM_SOLICITADO` / `EXCLUSION_CONFIRMADA` / `EMITIDO` / `PENDIENTE` / `UNKNOWN` / `EXCEPCION`.
-5. **`FractionRegistry`**: registro de fracciones residuales aprobado, con titular, activo, resto en unidades base y su destino.
+Integradas en `../CONTRATO-INTERNO.md` (punto C01 del plan de corrección). Esta
+sección ya no propone nada: lo que este documento necesitaba está en el contrato
+interno, que vuelve a ser la fuente única.
 
-Ninguna se usa como si existiera hasta que se agregue a `CONTRATO-INTERNO.md`.

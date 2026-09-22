@@ -17,9 +17,10 @@
 1. Cada documento empieza con serie, estado, decisiones que lo bloquean y una línea de qué **no** afirma.
 2. **Ningún valor económico concreto.** Porcentajes, quórums, precios, haircuts y límites son `null` o «pendiente Dxx».
 3. **Ninguna promesa.** Privacidad, respaldo, recuperación y disponibilidad se describen con su alcance probado, que hoy es **ninguno en producción**.
-4. Los nombres de tipos, eventos y códigos son **exactamente** los de `../CONTRATO-INTERNO.md`. Lo que haga falta y no exista allí va en la sección «Propuestas para el contrato interno» de cada documento y **no se usa como si existiera**.
-5. Cada serie termina con sus pruebas de aceptación numeradas, referenciando T01–T68 del plan maestro donde aplique.
-6. Un valor `null` **no se sustituye** por una recomendación. Toda capacidad que dependa de un `null` devuelve `BLOCKED_DECISION`.
+4. Los nombres de tipos, eventos y códigos son **exactamente** los de `../CONTRATO-INTERNO.md`. Lo que haga falta y no exista allí va en la sección «Propuestas para el contrato interno» de cada documento y **no se usa como si existiera**. Una propuesta no puede quedarse ahí indefinidamente: o se integra al contrato interno, o se marca **RECHAZADA** con el motivo en una línea. La prueba `indexer/src/test/deriva-spec.test.ts` falla si un documento propone un tipo que el contrato interno no tiene y que no está rechazado. Eso es lo que impide que vuelva la deriva del punto C01.
+5. La forma exacta de los eventos (campos, tipos, `indexed`, obligatoriedad) vive en [`eventos.json`](eventos.json), fuente única desde la que se genera el decodificador del indexador.
+6. Cada serie termina con sus pruebas de aceptación numeradas, referenciando T01–T68 del plan maestro donde aplique.
+7. Un valor `null` **no se sustituye** por una recomendación. Toda capacidad que dependa de un `null` devuelve `BLOCKED_DECISION`.
 
 ---
 

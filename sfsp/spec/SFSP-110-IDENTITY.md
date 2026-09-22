@@ -169,10 +169,7 @@ Ningún estado de esta tabla asciende por una afirmación en prosa.
 
 ## 10 · Propuestas para el contrato interno
 
-Las siguientes estructuras se usan en esta serie pero **no** están definidas en `CONTRATO-INTERNO.md`. No se usan como si existieran hasta que se agreguen allí.
+Integradas en `../CONTRATO-INTERNO.md` (punto C01 del plan de corrección). Esta
+sección ya no propone nada: lo que este documento necesitaba está en el contrato
+interno, que vuelve a ser la fuente única.
 
-1. **`SFSPAttestation`**: estructura firmada con `schemaVersion`, `attestationId`, `subjectRef` opaco, `purpose`, `audience`, `policyVersion`, `notBefore`, `expiry`, `status`, `issuerId` y firma. Hoy el contrato interno define el perímetro del dato (§7) pero no la estructura.
-2. **`AttestationStatus`**: `VALID` / `SUSPENDED` / `REVOKED` / `EXPIRED`, con transiciones y autoridad.
-3. **`attestationId`**: identificador con forma `att_` + 32 hex, alineado con la convención del §1.
-
-Mientras no estén en el contrato interno, toda implementación que las necesite devuelve `BLOCKED_DECISION`.

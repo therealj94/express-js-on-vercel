@@ -41,6 +41,7 @@ export type CodigoErrorIndexador =
   | 'GAP_DETECTADO'        // falta al menos un bloque en la secuencia
   | 'BLOQUE_RETROCEDE'     // llego un bloque con numero menor o igual al cursor
   | 'REORG_SIN_ANCESTRO'   // la reorganizacion excede el historial retenido
+  | 'RAMA_INVALIDA'        // la rama suministrada no es una cadena contigua
   | 'CADENA_DISTINTA'      // chainId distinto al del checkpoint
   | 'HASH_INVALIDO';       // forma del hash no utilizable como clave
 

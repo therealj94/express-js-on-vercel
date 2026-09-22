@@ -1,0 +1,12 @@
+{
+  "name": "@ordenglobal/sfsp-pruebas-adversarias",
+  "version": "0.0.0-draft.3",
+  "private": true,
+  "type": "module",
+  "description": "Una prueba por hallazgo de auditoria. Si una pasa a roja, el defecto volvio.",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "npm --prefix ../sdk run build --silent && tsc -p tsconfig.json && node --test dist/*.test.js"
+  },
+  "devDependencies": { "@types/node": "^22.20.4", "typescript": "^5.7.2" }
+}

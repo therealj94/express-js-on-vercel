@@ -1,5 +1,12 @@
 // Decodificacion de los eventos del §3 del contrato interno a registros tipados.
 //
+// FUENTE UNICA: este modulo NO tiene tabla propia. Todo lo que sabe de eventos
+// viene de `esquema-generado.ts`, que se genera desde `spec/eventos.json`.
+// POR QUE: hasta draft-0.3 habia una tabla aqui y otra en Solidity, y no
+// coincidian (H15: el contrato emitia `UnitsMinted` y un `BurnExecuted` sin
+// `assetId`, el indexador esperaba `MintExecuted` y un burn con activo). Con una
+// sola fuente la divergencia deja de ser posible en vez de sólo detectable.
+//
 // REGLA CENTRAL: un evento desconocido NO se descarta. Se conserva como crudo
 // con su firma. POR QUE: descartar lo que no se reconoce hace que el indice
 // mienta por omision (el portal mostraria "no paso nada") y ademas impide
@@ -10,98 +17,31 @@
 // Un campo de monto que no lo sea NO se corrige ni se pone en cero: el registro
 // sale marcado como invalido, que es informacion distinta de "cero".
 
+import {
+  ALIASES_RETIRADOS,
+  ESQUEMA_EVENTOS,
+  EVENTOS_CONOCIDOS,
+  VERSION_ESPEC_EVENTOS,
+  type EventoGenerado,
+  type NombreEvento,
+} from './esquema-generado.js';
 import type { LogCrudo } from './tipos.js';
 
-/** Los quince eventos del §3, con su emisor declarado. */
-export const EVENTOS_CONOCIDOS = {
-  AssetRegistered: 'AssetRegistry',
-  PolicyUpdated: 'AssetRegistry',
-  SupplyAuthorized: 'GovernanceController',
-  MintExecuted: 'IssuanceController',
-  BurnExecuted: 'RegulatedAsset',
-  TreasuryReleased: 'CashVault',
-  ReserveAttested: 'ReserveEngine',
-  ReserveExpired: 'ReserveEngine',
-  DisclosurePublished: 'AssetRegistry',
-  RiskChanged: 'AssetRegistry',
-  TradeSettled: 'SettlementEngine',
-  RedemptionUpdated: 'CommodityEngine',
-  RecoveryExecuted: 'GovernanceController',
-  MigrationClaimed: 'MigrationRegistry',
-  GovernanceAction: 'GovernanceController',
-} as const;
-
-export type NombreEvento = keyof typeof EVENTOS_CONOCIDOS;
-
-/**
- * Campos requeridos por evento y cuales de ellos son cantidades enteras.
- * POR QUE declarativo: agregar un evento del §3 no debe implicar escribir un
- * decodificador a mano y arriesgar que se olvide la validacion de enteros.
- */
-interface EsquemaEvento {
-  readonly requeridos: readonly string[];
-  readonly cantidades: readonly string[];
-}
-
-const ESQUEMAS: Readonly<Record<NombreEvento, EsquemaEvento>> = {
-  AssetRegistered: { requeridos: ['assetId', 'issuerId'], cantidades: [] },
-  PolicyUpdated: {
-    requeridos: ['assetId', 'policyId', 'versionAnterior', 'versionNueva'],
-    cantidades: [],
-  },
-  SupplyAuthorized: {
-    requeridos: ['authorizationId', 'assetId', 'amount', 'expiry'],
-    cantidades: ['amount'],
-  },
-  MintExecuted: {
-    requeridos: ['authorizationId', 'assetId', 'amount', 'destination'],
-    cantidades: ['amount'],
-  },
-  BurnExecuted: {
-    requeridos: ['assetId', 'amount', 'motivo'],
-    cantidades: ['amount'],
-  },
-  TreasuryReleased: {
-    requeridos: ['assetId', 'amount', 'destination'],
-    cantidades: ['amount'],
-  },
-  ReserveAttested: {
-    requeridos: ['reserveAssetId', 'evidenceId', 'validUntil'],
-    cantidades: [],
-  },
-  ReserveExpired: { requeridos: ['reserveAssetId'], cantidades: [] },
-  DisclosurePublished: {
-    requeridos: ['assetId', 'reportHash', 'deadline'],
-    cantidades: [],
-  },
-  RiskChanged: {
-    requeridos: ['assetId', 'level', 'methodologyVersion'],
-    cantidades: [],
-  },
-  TradeSettled: {
-    requeridos: ['operationId', 'assetId', 'amount'],
-    cantidades: ['amount'],
-  },
-  RedemptionUpdated: {
-    requeridos: ['assetId', 'estado'],
-    cantidades: [],
-  },
-  RecoveryExecuted: {
-    requeridos: ['operationId', 'caseId'],
-    cantidades: [],
-  },
-  MigrationClaimed: {
-    requeridos: ['migrationId', 'assetIdAnterior', 'assetIdNuevo', 'amount'],
-    cantidades: ['amount'],
-  },
-  GovernanceAction: { requeridos: ['accion'], cantidades: [] },
+export {
+  ALIASES_RETIRADOS,
+  ESQUEMA_EVENTOS,
+  EVENTOS_CONOCIDOS,
+  VERSION_ESPEC_EVENTOS,
 };
+export type { EventoGenerado, NombreEvento };
 
 /** Registro decodificado de un evento reconocido. */
 export interface RegistroDecodificado {
   readonly tipo: 'DECODIFICADO';
   readonly evento: NombreEvento;
   readonly emisorEsperado: string;
+  /** Nombre retirado con el que llego el log, si llego con uno. */
+  readonly aliasOrigen: string | null;
   readonly chainId: number;
   readonly blockNumber: number;
   readonly blockHash: string;
@@ -113,6 +53,14 @@ export interface RegistroDecodificado {
   readonly camposFaltantes: readonly string[];
   /** Campos de cantidad que no eran enteros en cadena (§5). */
   readonly cantidadesInvalidas: readonly string[];
+  /**
+   * Activos a los que el evento se atribuye sin ambiguedad. Vacio cuando el
+   * evento es global (no pertenece a un activo) o cuando falta un campo de
+   * atribucion: los dos casos se distinguen con `atribucionIncompleta`.
+   */
+  readonly activosAtribuidos: readonly string[];
+  /** true si el evento era POR_ACTIVO y no se pudo saber de que activo es. */
+  readonly atribucionIncompleta: boolean;
   /** `false` si falta algo: el consumidor NO debe tratarlo como dato firme. */
   readonly completo: boolean;
 }
@@ -142,8 +90,19 @@ function esEnteroEnCadena(v: string | undefined): boolean {
   return typeof v === 'string' && ENTERO_EN_CADENA.test(v);
 }
 
-function esEventoConocido(firma: string): firma is NombreEvento {
-  return Object.prototype.hasOwnProperty.call(EVENTOS_CONOCIDOS, firma);
+/**
+ * Resuelve la firma recibida a un nombre canonico.
+ * Devuelve tambien el alias con el que llego, para no perder ese dato.
+ */
+export function resolverNombre(
+  firma: string,
+): { canonico: NombreEvento; alias: string | null } | null {
+  if (Object.prototype.hasOwnProperty.call(ESQUEMA_EVENTOS, firma)) {
+    return { canonico: firma as NombreEvento, alias: null };
+  }
+  const retirado = ALIASES_RETIRADOS[firma];
+  if (retirado !== undefined) return { canonico: retirado, alias: firma };
+  return null;
 }
 
 /**
@@ -151,11 +110,11 @@ function esEventoConocido(firma: string): firma is NombreEvento {
  * esos casos son datos, no excepciones, y deben quedar en el indice.
  */
 export function decodificar(log: LogCrudo): RegistroIndexado {
-  const firma = log.firma;
-  if (!esEventoConocido(firma)) {
+  const resuelto = resolverNombre(log.firma);
+  if (resuelto === null) {
     return {
       tipo: 'CRUDO',
-      firma,
+      firma: log.firma,
       chainId: log.chainId,
       blockNumber: log.blockNumber,
       blockHash: log.blockHash,
@@ -168,20 +127,29 @@ export function decodificar(log: LogCrudo): RegistroIndexado {
     };
   }
 
-  const esquema = ESQUEMAS[firma];
+  const esquema = ESQUEMA_EVENTOS[resuelto.canonico];
   const campos: Record<string, string> = { ...(log.parametros ?? {}) };
 
-  const camposFaltantes = esquema.requeridos.filter(
-    (c) => typeof campos[c] !== 'string' || campos[c] === '',
-  );
+  const presente = (c: string): boolean =>
+    typeof campos[c] === 'string' && campos[c] !== '';
+
+  const camposFaltantes = esquema.requeridos.filter((c) => !presente(c));
   const cantidadesInvalidas = esquema.cantidades.filter(
     (c) => campos[c] !== undefined && !esEnteroEnCadena(campos[c]),
   );
 
+  // Atribucion a activo. POR QUE se calcula aqui y no en el agregador: el
+  // esquema es quien sabe cuales campos identifican el activo, y el agregador
+  // no debe volver a adivinarlo leyendo `campos['assetId']` a mano.
+  const atribucion = esquema.camposDeAtribucion;
+  const valores = atribucion.filter(presente).map((c) => campos[c] as string);
+  const atribucionIncompleta = valores.length !== atribucion.length;
+
   return {
     tipo: 'DECODIFICADO',
-    evento: firma,
-    emisorEsperado: EVENTOS_CONOCIDOS[firma],
+    evento: resuelto.canonico,
+    emisorEsperado: EVENTOS_CONOCIDOS[resuelto.canonico],
+    aliasOrigen: resuelto.alias,
     chainId: log.chainId,
     blockNumber: log.blockNumber,
     blockHash: log.blockHash,
@@ -191,6 +159,8 @@ export function decodificar(log: LogCrudo): RegistroIndexado {
     campos: Object.freeze(campos),
     camposFaltantes,
     cantidadesInvalidas,
+    activosAtribuidos: atribucionIncompleta ? [] : valores,
+    atribucionIncompleta,
     completo: camposFaltantes.length === 0 && cantidadesInvalidas.length === 0,
   };
 }

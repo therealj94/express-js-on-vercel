@@ -550,10 +550,7 @@ El directorio cuenta → wallet es **privado por defecto**. Exponer una direcci�
 
 ## 15 · Propuestas para el contrato interno
 
-1. **`AccountLifecycleTransition`**: estructura para registrar una transición de `AccountStatus` con autoridad, motivo codificado, `operationId` y marca de tiempo. Hoy el contrato interno define los estados pero no el registro de la transición.
-2. **`RecoveryCase`**: estructura del expediente de recuperación: `caseId`, `accountId`, `assetId` cuando aplique, `recoveryCapability` resuelta, estado de la máquina del §9, aprobaciones separadas por rol, `notBefore`/`expiry` de la espera y referencia de evidencia.
-3. **`RecoveryCaseState`**: `SOLICITADA` / `VERIFICACION` / `AVISO` / `ESPERA` / `EN_DISPUTA` / `APROBADA` / `EJECUTADA` / `RECHAZADA`.
-4. **`aliasPolicyVersion`**: versión de la tabla de confusables y del conjunto de scripts permitido, referida por `AliasRecord`.
-5. **`retiredAccountNumbers`**: registro permanente de números retirados, necesario para garantizar el no reciclaje y hoy implícito.
+Integradas en `../CONTRATO-INTERNO.md` (punto C01 del plan de corrección). Esta
+sección ya no propone nada: lo que este documento necesitaba está en el contrato
+interno, que vuelve a ser la fuente única.
 
-Ninguna de estas se usa como si existiera hasta que se agregue a `CONTRATO-INTERNO.md`.

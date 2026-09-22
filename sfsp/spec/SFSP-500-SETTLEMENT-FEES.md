@@ -244,11 +244,7 @@ Reglas:
 
 ## 12 · Propuestas para el contrato interno
 
-1. **`OrderState`**: `RECEIVED` / `REJECTED` / `OPEN` / `PARTIALLY_FILLED` / `FILLED` / `CANCEL_PENDING` / `CANCELLED` / `EXPIRED`.
-2. **`ExecutionState`**: `SETTLEMENT_PENDING` / `SUBMITTED` / `CONFIRMED` / `FAILED_FINAL` / `UNKNOWN`.
-3. **`FeeQuote`**: estructura versionada y firmada con los campos del §5, incluido `expiry` y `gasSponsored`.
-4. **`GasSponsorshipMode`**: `NONE` / `CUSTODIAL` / `APPROVED_SUBSIDY` / `SMART_ACCOUNT`, por tipo de cuenta y activo.
-5. **`SettlementJournalEntry`**: entrada del journal con `operationId`, `orderId`, `executionId`, estado, bloque, nonce, `txHash` o referencia de proveedor, y resultado de la relectura del recibo.
-6. **`PriceKind`**: `INDICATIVE` / `DECLARED` / `REFERENCE` / `TRADE`, para impedir la sustitución entre ellos.
+Integradas en `../CONTRATO-INTERNO.md` (punto C01 del plan de corrección). Esta
+sección ya no propone nada: lo que este documento necesitaba está en el contrato
+interno, que vuelve a ser la fuente única.
 
-Ninguna se usa como si existiera hasta que se agregue a `CONTRATO-INTERNO.md`.

@@ -4,7 +4,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { DirectorioDeCuentas } from '../directorio.js';
 import { migrarCuentas, reporteSanitizado } from '../migracionCuentas.js';
-import type { CuentaDeOrigen, ParDeMigracion } from '../migracionCuentas.js';
+import type { CuentaDeOrigen } from '../migracionCuentas.js';
 import { nuevaReferenciaDeSujeto } from '../ids.js';
 import { claveDeIndice } from '../numeroCuenta.js';
 
@@ -64,17 +64,20 @@ test('T67 · el censo cuadra N/N y los saldos no cambian', () => {
   assert.equal(numeros.size, 500);
 });
 
-test('T67 · correr la migración dos veces no reparte números nuevos', () => {
+test('T67, H10 · la idempotencia es del directorio, no de un mapa que el llamador puede olvidar', () => {
   const censo = censoSintetico(50);
   const d = new DirectorioDeCuentas();
 
   const primera = migrarCuentas(censo, d, { modo: 'APLICAR' });
-  const mapa = new Map<string, ParDeMigracion>(primera.pares.map((p) => [p.refCuentaOrigen, p]));
 
-  const segunda = migrarCuentas(censo, d, { modo: 'APLICAR', yaMigradas: mapa });
+  /* Sin pasar NADA: la segunda corrida encuentra la correspondencia en el
+     directorio. Antes, olvidar el mapa creaba cincuenta cuentas de más. */
+  const segunda = migrarCuentas(censo, d, { modo: 'APLICAR' });
 
   assert.equal(d.totalCuentas, 50, 'la segunda corrida no debe crear cuentas');
   assert.equal(segunda.cuentasSFSP, 50);
+  assert.equal(segunda.yaExistentes, 50);
+  assert.ok(segunda.cuadra);
   assert.deepEqual(
     segunda.pares.map((p) => p.accountNumber).sort(),
     primera.pares.map((p) => p.accountNumber).sort(),
@@ -91,7 +94,7 @@ test('T67 · una cuenta con dirección inutilizable queda como excepción, no se
   assert.equal(r.cuadra, false, 'con una excepción abierta el lote no cuadra');
   assert.equal(r.excepciones.length, 1);
   assert.equal(r.excepciones[0]?.refCuentaOrigen, 'origen_3');
-  assert.ok(r.excepciones[0]?.expediente.startsWith('exp_dir_'));
+  assert.ok(r.excepciones[0]?.expediente.startsWith('exp_'));
   assert.equal(r.direccionesConSaldoSinDueno, 1, 'tenía saldo y se contabiliza');
   /* Las otras nueve sí se proponen: una excepción no detiene el resto. */
   assert.equal(r.cuentasSFSP, 9);

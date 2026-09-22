@@ -200,9 +200,11 @@ Mientras D06 esté pendiente, el carril confidencial está **desactivado por def
 
 ## 10 · Propuestas para el contrato interno
 
-1. **`ActorView`**: declaración de visibilidad por actor (`PUBLIC`, `HOLDER`, `OPERATOR`, `AUDITOR`, `AUTHORITY`, `CUSTODIAN`) con propósito, retención y condición de revocación. Hoy el §7 del contrato interno define el perímetro del dato pero no la vista por actor.
-2. **`PrivacyProfile`**: `LEGACY_TRANSPARENT` / `CUSTODIAL_PROTOTYPE` / `CRYPTOGRAPHIC_PROTOTYPE` / `DISABLED`, con su estado de evidencia asociado, para que el pasaporte pueda declarar qué carril aplica.
-3. **`MetadataClass`**: clasificación del metadato (`AMOUNT`, `TIMING`, `COUNTERPARTY`, `SELECTOR`, `RECEIPT`, `AGGREGATE`) usada por la prueba de fuga.
-4. **`disclosureAccessId`**: identificador de una concesión de acceso ampliado con propósito, alcance, periodo y bitácora.
+`ActorView`, `PrivacyProfile` y `disclosureAccessId` están integradas en
+`../CONTRATO-INTERNO.md` §1 y §2.13 (punto C01 del plan de corrección).
 
-Ninguna se usa como si existiera hasta que se agregue a `CONTRATO-INTERNO.md`.
+1. **`MetadataClass`** (`AMOUNT` / `TIMING` / `COUNTERPARTY` / `SELECTOR` /
+   `RECEIPT` / `AGGREGATE`) — **RECHAZADA.** La usa sólo la prueba de fuga de
+   `../privacy/`; no la comparten dos piezas, y el contrato interno es para lo
+   compartido. Vive donde se usa.
+

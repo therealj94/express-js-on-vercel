@@ -9,7 +9,7 @@
 // se escribe ningun cliente RPC: eso es un adaptador fuera de la logica pura.
 
 import type { PosicionCheckpoint } from './checkpoint.js';
-import type { EncabezadoBloque } from './tipos.js';
+import { esHashUtilizable, type EncabezadoBloque } from './tipos.js';
 
 /**
  * Lector de cadena inyectable.
@@ -131,13 +131,33 @@ export async function reconciliar(
     };
   }
 
+  // CORRECCION H14: la conciliacion compara IDENTIDAD DE BLOQUE, no altura.
+  // Un hash nulo, vacio o ausente en cualquiera de los dos lados no se salta en
+  // silencio: sin identidad comparada no hay nada que permita decir OK.
+  if (!esHashUtilizable(punta.blockHash)) {
+    return {
+      estado: 'UNKNOWN_SOURCE',
+      motivo: 'la punta del indice no tiene un blockHash utilizable',
+      alturaIndice: punta.blockNumber,
+    };
+  }
+
   // 1. Divergencia: se recorre de abajo hacia arriba dentro de la ventana para
   //    poder nombrar el PRIMER bloque que no cuadra, no cualquiera.
   const techo = Math.min(punta.blockNumber, alturaCadena);
   const piso = Math.max(0, techo - ventana + 1);
+  let identidadesComparadas = 0;
   for (let altura = piso; altura <= techo; altura += 1) {
     const hashIndexado = indice.hashEnAltura(altura);
     if (hashIndexado === null) continue; // el indice no cubre esa altura
+    if (!esHashUtilizable(hashIndexado)) {
+      // El indice dice cubrir la altura pero no tiene identidad que ofrecer.
+      return {
+        estado: 'UNKNOWN_SOURCE',
+        motivo: `el indice no tiene un blockHash utilizable en la altura ${altura}`,
+        alturaIndice: punta.blockNumber,
+      };
+    }
 
     let encabezado: EncabezadoBloque | null;
     try {
@@ -156,6 +176,20 @@ export async function reconciliar(
         alturaIndice: punta.blockNumber,
       };
     }
+    if (!esHashUtilizable(encabezado.blockHash)) {
+      return {
+        estado: 'UNKNOWN_SOURCE',
+        motivo: `la fuente devolvio el encabezado ${altura} sin blockHash utilizable`,
+        alturaIndice: punta.blockNumber,
+      };
+    }
+    if (encabezado.chainId !== lector.chainId) {
+      return {
+        estado: 'UNKNOWN_SOURCE',
+        motivo: `el encabezado ${altura} declara otra cadena que el lector`,
+        alturaIndice: punta.blockNumber,
+      };
+    }
     if (encabezado.blockHash !== hashIndexado) {
       return {
         estado: 'DIVERGENTE',
@@ -166,6 +200,25 @@ export async function reconciliar(
         hashCadena: encabezado.blockHash,
       };
     }
+    identidadesComparadas += 1;
+  }
+
+  // La punta del indice es la que importa: si cae dentro de lo que la cadena ya
+  // tiene y no se pudo comparar su identidad, no se afirma nada.
+  if (punta.blockNumber <= alturaCadena && indice.hashEnAltura(punta.blockNumber) === null) {
+    return {
+      estado: 'UNKNOWN_SOURCE',
+      motivo: 'el indice no expone el hash de su propia punta: no hay identidad que comparar',
+      alturaIndice: punta.blockNumber,
+    };
+  }
+
+  if (identidadesComparadas === 0) {
+    return {
+      estado: 'UNKNOWN_SOURCE',
+      motivo: 'no se comparo ninguna identidad de bloque: coincidir en altura no es coincidir en rama',
+      alturaIndice: punta.blockNumber,
+    };
   }
 
   // 2. Retraso.

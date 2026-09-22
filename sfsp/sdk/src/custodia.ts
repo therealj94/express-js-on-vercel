@@ -25,9 +25,25 @@ export interface EscenarioDeRecuperacion {
   politicaD19Aprobada: boolean;
 }
 
+/**
+ * Qué se recupera.
+ *
+ * La auditoría refutó la afirmación B4 tal como estaba escrita (H25): decía que
+ * sin la política D19 no hay ninguna recuperación ejecutable, y eso es falso,
+ * porque restablecer el ACCESO de alguien que no perdió su llave no mueve nada
+ * y debe poder ofrecerse siempre. La afirmación era demasiado amplia, no el
+ * código.
+ *
+ * Este campo hace la distinción explícita para que nadie vuelva a confundirlas:
+ * `ACCESO` no toca posiciones; `FONDOS` sí, y ésa es la que D19 gobierna.
+ */
+export type AlcanceDeRecuperacion = 'ACCESO' | 'FONDOS';
+
 export interface DictamenDeRecuperacion {
   capacidad: RecoveryCapability;
-  /** Si es false, la interfaz NO puede ofrecer la recuperación todavía. */
+  /** Qué se recupera: el acceso a la cuenta, o el control de las posiciones. */
+  alcance: AlcanceDeRecuperacion;
+  /** Si es false, la interfaz NO puede ofrecer esta recuperación todavía. */
   ejecutable: boolean;
   motivo: string;
   /** Decisión pendiente que impide ejecutar, si la hay. */
@@ -48,6 +64,7 @@ export function capacidadDeRecuperacion(e: EscenarioDeRecuperacion): DictamenDeR
   if (!e.llavePerdida) {
     return {
       capacidad: 'ACCESS_ONLY',
+      alcance: 'ACCESO',
       ejecutable: true,
       motivo: 'la llave sigue bajo control; se restablece la sesión, no la titularidad',
       mensajeParaTitular:
@@ -61,6 +78,7 @@ export function capacidadDeRecuperacion(e: EscenarioDeRecuperacion): DictamenDeR
   if (e.perfil === 'MANAGED') {
     return {
       capacidad: 'CUSTODIAL_KEY_RECOVERY',
+      alcance: 'FONDOS',
       ejecutable: e.politicaD19Aprobada,
       motivo: 'el custodio conserva el control de la llave de esta cuenta',
       ...(e.politicaD19Aprobada ? {} : { decision: 'D19' }),
@@ -75,6 +93,7 @@ export function capacidadDeRecuperacion(e: EscenarioDeRecuperacion): DictamenDeR
     const hayQuorum = e.quorumDisponible === true;
     return {
       capacidad: hayQuorum ? 'CUSTODIAL_KEY_RECOVERY' : 'NONE',
+      alcance: 'FONDOS',
       ejecutable: hayQuorum && e.politicaD19Aprobada,
       motivo: hayQuorum
         ? 'queda quórum suficiente de firmantes'
@@ -92,6 +111,7 @@ export function capacidadDeRecuperacion(e: EscenarioDeRecuperacion): DictamenDeR
   if (pasaporte.implementationProfile === 'SFSP_ENFORCED' && alcance.forcedTransfer) {
     return {
       capacidad: e.poderAdministrativoDocumentado ? 'CONTRACT_RECOVERY' : 'NONE',
+      alcance: 'FONDOS',
       ejecutable: e.poderAdministrativoDocumentado && e.politicaD19Aprobada,
       motivo: e.poderAdministrativoDocumentado
         ? 'el contrato del activo admite recuperación reglada con autoridad documentada'
@@ -106,6 +126,7 @@ export function capacidadDeRecuperacion(e: EscenarioDeRecuperacion): DictamenDeR
   if (pasaporte.implementationProfile === 'CUSTODIAL_ACCOUNTING') {
     return {
       capacidad: 'CUSTODIAL_KEY_RECOVERY',
+      alcance: 'FONDOS',
       ejecutable: e.politicaD19Aprobada,
       motivo: 'la posición es un registro bajo custodia, no un saldo en cadena bajo tu llave',
       ...(e.politicaD19Aprobada ? {} : { decision: 'D19' }),
@@ -117,6 +138,7 @@ export function capacidadDeRecuperacion(e: EscenarioDeRecuperacion): DictamenDeR
   if (alcance.forcedTransfer && e.poderAdministrativoDocumentado) {
     return {
       capacidad: 'ADMIN_FORCED_TRANSFER',
+      alcance: 'FONDOS',
       ejecutable: e.politicaD19Aprobada,
       motivo: 'existe un poder administrativo documentado sobre el contrato legacy',
       ...(e.politicaD19Aprobada ? {} : { decision: 'D19' }),
@@ -128,6 +150,7 @@ export function capacidadDeRecuperacion(e: EscenarioDeRecuperacion): DictamenDeR
   /* Legacy sin poderes y llave perdida: no hay ruta. Y así se dice. */
   return {
     capacidad: 'NONE',
+    alcance: 'FONDOS',
     ejecutable: false,
     motivo: 'activo legacy sin poderes de recuperación y llave fuera de control',
     mensajeParaTitular: SIN_RUTA,

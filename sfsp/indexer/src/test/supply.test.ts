@@ -22,16 +22,24 @@ const eventos = decodificarLote([
     firma: 'MintExecuted',
     logIndex: 1,
     parametros: {
-      authorizationId: 'auth_0000000000000000000000000000aaaa',
       assetId: ACTIVO,
+      authorizationId: 'auth_0000000000000000000000000000aaaa',
+      destination: '0xTEST_DESTINO',
       amount: '400000',
-      destination: 'SF-0000-0000-0001-7',
+      operationId: 'op_0000000000000000000000000000aaaa',
+      evidenceRoot: '0xTEST_EVIDENCIA',
     },
   }),
   log({
     firma: 'BurnExecuted',
     logIndex: 2,
-    parametros: { assetId: ACTIVO, amount: '50000', motivo: 'prueba sintetica' },
+    parametros: {
+      assetId: ACTIVO,
+      from: '0xTEST_TITULAR',
+      amount: '50000',
+      reasonCode: 'PRUEBA_SINTETICA',
+      operationId: 'op_0000000000000000000000000000bbbb',
+    },
   }),
 ]);
 
@@ -44,7 +52,8 @@ test('las cuatro cifras se distinguen y cada una declara su origen', () => {
   assert.equal(s.autorizado.valor, '1000000');
   assert.equal(s.autorizado.origen, 'REGISTRY');
   assert.equal(s.emitido.valor, '350000'); // 400000 emitido - 50000 quemado
-  assert.equal(s.emitido.origen, 'CHAIN_TOTALSUPPLY');
+  // H15: una cifra reconstruida de eventos NUNCA se etiqueta CHAIN_TOTALSUPPLY.
+  assert.equal(s.emitido.origen, 'REGISTRY');
   assert.equal(s.tesoreria.valor, '100000');
   assert.equal(s.tesoreria.origen, 'CUSTODIAL_LEDGER');
   assert.equal(s.circulante.valor, '250000');
@@ -92,7 +101,12 @@ test('TreasuryReleased no cambia lo emitido: solo mueve de tesoreria a circulant
     log({
       firma: 'TreasuryReleased',
       logIndex: 3,
-      parametros: { assetId: ACTIVO, amount: '10000', destination: 'SF-0000-0000-0002-5' },
+      parametros: {
+        assetId: ACTIVO,
+        to: '0xTEST_DESTINO',
+        amount: '10000',
+        reasonCode: 'RELEASE_SINTETICO',
+      },
     }),
   ]);
   const s = agregarSuministro(ACTIVO, [...eventos, ...conRelease], {

@@ -2,12 +2,14 @@
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { fileURLToPath } from 'node:url';
-import { dirname, join } from 'node:path';
 import { cargarDecisiones, parametro, pendientes, aprobada, GOBIERNA } from '../decisiones.js';
+import { rutaDeDecisiones } from '../rutas.js';
 
-const aqui = dirname(fileURLToPath(import.meta.url));
-const RUTA = join(aqui, '..', '..', '..', 'DECISIONES-SFSP.json');
+/* P07: se busca el archivo subiendo, en vez de contar carpetas a mano. Así la
+   prueba corre desde src, desde dist y desde una copia, que es justo lo que
+   impidió al auditor ejecutar estas cuatro. */
+const RUTA = rutaDeDecisiones();
+if (!RUTA) throw new Error('no se encontró DECISIONES-SFSP.json subiendo desde este archivo');
 
 test('todo parámetro económico sin aprobar devuelve BLOCKED_DECISION con su decisión', () => {
   const archivo = cargarDecisiones(RUTA);

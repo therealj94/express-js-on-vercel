@@ -1,0 +1,515 @@
+{
+  "sintetico": true,
+  "schemaVersion": "sfsp-auth/v1",
+  "dominio": "SFSP-AUTH-v1",
+  "etiquetaDominio": "0xab53f72d4691ed77a6706bdbb649264fca541afcb6397cb2fd27775fea8f912e",
+  "cadenaTipo": "SFSPAuthPayload(uint256 chainId,address verifyingContract,bytes32 action,bytes32 assetId,address origin,address destination,uint256 amount,uint256 amountSecondary,bytes32 nonce,uint64 notBefore,uint64 expiry,bytes32 evidenceRoot)",
+  "typehashPayload": "0xfda73e816b1515727b80c0c40e1037c087fbd861546d9debb5c0c0d8df1388d2",
+  "advertencia": "Todo inventado. Ninguna dirección corresponde a una cuenta; ningún monto es un valor economico aprobado. Los montos existen solo para que el digest tenga que comprometerlos.",
+  "codificacion": "catorce palabras de 32 bytes en orden fijo: etiquetaDominio, typehashPayload, chainId, verifyingContract, action, assetId, origin, destination, amount, amountSecondary, nonce, notBefore, expiry, evidenceRoot. Equivale a abi.encode con la misma lista.",
+  "instanteReferencia": 1758499200,
+  "vectores": [
+    {
+      "id": "V01",
+      "sintetico": true,
+      "descripcion": "MINT a tesorería. Caso base; `origin` es cero porque acuñar no mueve unidades desde nadie.",
+      "hallazgos": [
+        "H01"
+      ],
+      "payload": {
+        "chainId": 31337,
+        "verifyingContract": "0x00000000000000000000000000000000000c0001",
+        "action": "0x4d494e5400000000000000000000000000000000000000000000000000000000",
+        "assetId": "0x534653503a5345433a495353313a533100000000000000000000000000000000",
+        "origin": "0x0000000000000000000000000000000000000000",
+        "destination": "0x00000000000000000000000000000000000a0001",
+        "amount": "1000",
+        "amountSecondary": "0",
+        "nonce": "0x6e6f6e63655f3030303100000000000000000000000000000000000000000000",
+        "notBefore": 1758499200,
+        "expiry": 1758502800,
+        "evidenceRoot": "0x0000000000000000000000000000000000000000000000000000000000000000"
+      },
+      "digest": "0x41c528a222fb1e98ce9f40b87cecc9ebea434404f5cf4d905c563802249acbc8"
+    },
+    {
+      "id": "V02",
+      "sintetico": true,
+      "descripcion": "El mismo MINT con una unidad más. H06 identificaba por bytes32(amount): aquí un monto distinto es otro digest.",
+      "hallazgos": [
+        "H06"
+      ],
+      "payload": {
+        "chainId": 31337,
+        "verifyingContract": "0x00000000000000000000000000000000000c0001",
+        "action": "0x4d494e5400000000000000000000000000000000000000000000000000000000",
+        "assetId": "0x534653503a5345433a495353313a533100000000000000000000000000000000",
+        "origin": "0x0000000000000000000000000000000000000000",
+        "destination": "0x00000000000000000000000000000000000a0001",
+        "amount": "1001",
+        "amountSecondary": "0",
+        "nonce": "0x6e6f6e63655f3030303100000000000000000000000000000000000000000000",
+        "notBefore": 1758499200,
+        "expiry": 1758502800,
+        "evidenceRoot": "0x0000000000000000000000000000000000000000000000000000000000000000"
+      },
+      "digest": "0xb3385b3214420114cb6a8a5729672fd6edd3f87831f8b3336da6156db7f0f673"
+    },
+    {
+      "id": "V03",
+      "sintetico": true,
+      "descripcion": "El mismo MINT a otro destino. H01: una aprobación no puede servir para pagar a otro.",
+      "hallazgos": [
+        "H01"
+      ],
+      "payload": {
+        "chainId": 31337,
+        "verifyingContract": "0x00000000000000000000000000000000000c0001",
+        "action": "0x4d494e5400000000000000000000000000000000000000000000000000000000",
+        "assetId": "0x534653503a5345433a495353313a533100000000000000000000000000000000",
+        "origin": "0x0000000000000000000000000000000000000000",
+        "destination": "0x00000000000000000000000000000000000b0001",
+        "amount": "1000",
+        "amountSecondary": "0",
+        "nonce": "0x6e6f6e63655f3030303100000000000000000000000000000000000000000000",
+        "notBefore": 1758499200,
+        "expiry": 1758502800,
+        "evidenceRoot": "0x0000000000000000000000000000000000000000000000000000000000000000"
+      },
+      "digest": "0x85886d6a191e587031802608857b15a98bbbd5b7106988702b2cd001e4e0e402"
+    },
+    {
+      "id": "V04",
+      "sintetico": true,
+      "descripcion": "BURN sobre el saldo de un titular concreto. H02: la quema compromete titular, activo y monto.",
+      "hallazgos": [
+        "H02"
+      ],
+      "payload": {
+        "chainId": 31337,
+        "verifyingContract": "0x00000000000000000000000000000000000c0001",
+        "action": "0x4255524e00000000000000000000000000000000000000000000000000000000",
+        "assetId": "0x534653503a5345433a495353313a533100000000000000000000000000000000",
+        "origin": "0x00000000000000000000000000000000000b0001",
+        "destination": "0x0000000000000000000000000000000000000000",
+        "amount": "500",
+        "amountSecondary": "0",
+        "nonce": "0x6e6f6e63655f3030303200000000000000000000000000000000000000000000",
+        "notBefore": 1758499200,
+        "expiry": 1758502800,
+        "evidenceRoot": "0x0000000000000000000000000000000000000000000000000000000000000000"
+      },
+      "digest": "0x0d08aaef9b24ce596b0010f90124752a850afbb9265df90d45c682f865225557"
+    },
+    {
+      "id": "V05",
+      "sintetico": true,
+      "descripcion": "El mismo BURN sobre otro titular. Mismo monto y mismo activo; digest distinto.",
+      "hallazgos": [
+        "H02"
+      ],
+      "payload": {
+        "chainId": 31337,
+        "verifyingContract": "0x00000000000000000000000000000000000c0001",
+        "action": "0x4255524e00000000000000000000000000000000000000000000000000000000",
+        "assetId": "0x534653503a5345433a495353313a533100000000000000000000000000000000",
+        "origin": "0x00000000000000000000000000000000000b0002",
+        "destination": "0x0000000000000000000000000000000000000000",
+        "amount": "500",
+        "amountSecondary": "0",
+        "nonce": "0x6e6f6e63655f3030303200000000000000000000000000000000000000000000",
+        "notBefore": 1758499200,
+        "expiry": 1758502800,
+        "evidenceRoot": "0x0000000000000000000000000000000000000000000000000000000000000000"
+      },
+      "digest": "0x00f7c06b3716379b1933c62656cb7e655652113d062afad952bae38ec1056859"
+    },
+    {
+      "id": "V06",
+      "sintetico": true,
+      "descripcion": "FORCED_TRANSFER con quórum. H01: la ejecución queda atada al contenido aprobado.",
+      "hallazgos": [
+        "H01"
+      ],
+      "payload": {
+        "chainId": 31337,
+        "verifyingContract": "0x00000000000000000000000000000000000c0002",
+        "action": "0x464f524345445f5452414e534645520000000000000000000000000000000000",
+        "assetId": "0x534653503a5345433a495353313a533100000000000000000000000000000000",
+        "origin": "0x00000000000000000000000000000000000b0001",
+        "destination": "0x00000000000000000000000000000000000b0002",
+        "amount": "250",
+        "amountSecondary": "0",
+        "nonce": "0x6e6f6e63655f3030303300000000000000000000000000000000000000000000",
+        "notBefore": 1758499200,
+        "expiry": 1758502800,
+        "evidenceRoot": "0x0000000000000000000000000000000000000000000000000000000000000000"
+      },
+      "digest": "0x809d0ad5c8ddb5b25d97c13126eaaf5eef44c2a56874d67762b08beecba1443c"
+    },
+    {
+      "id": "V07",
+      "sintetico": true,
+      "descripcion": "El mismo FORCED_TRANSFER cambiando sólo el origen. Confiscar a otro es otra autorización.",
+      "hallazgos": [
+        "H01"
+      ],
+      "payload": {
+        "chainId": 31337,
+        "verifyingContract": "0x00000000000000000000000000000000000c0002",
+        "action": "0x464f524345445f5452414e534645520000000000000000000000000000000000",
+        "assetId": "0x534653503a5345433a495353313a533100000000000000000000000000000000",
+        "origin": "0x00000000000000000000000000000000000b0002",
+        "destination": "0x00000000000000000000000000000000000b0002",
+        "amount": "250",
+        "amountSecondary": "0",
+        "nonce": "0x6e6f6e63655f3030303300000000000000000000000000000000000000000000",
+        "notBefore": 1758499200,
+        "expiry": 1758502800,
+        "evidenceRoot": "0x0000000000000000000000000000000000000000000000000000000000000000"
+      },
+      "digest": "0xf78fd56052ae7c878f95f4ec55b483679d07dae6710b667cc5b53f2fdac95112"
+    },
+    {
+      "id": "V08",
+      "sintetico": true,
+      "descripcion": "SETTLE_DVP con dos montos: activo contra efectivo. H05: el precio entra en el digest.",
+      "hallazgos": [
+        "H05"
+      ],
+      "payload": {
+        "chainId": 31337,
+        "verifyingContract": "0x00000000000000000000000000000000000c0003",
+        "action": "0x534554544c455f44565000000000000000000000000000000000000000000000",
+        "assetId": "0x534653503a5345433a495353313a533100000000000000000000000000000000",
+        "origin": "0x00000000000000000000000000000000000b0001",
+        "destination": "0x00000000000000000000000000000000000b0002",
+        "amount": "100",
+        "amountSecondary": "7000",
+        "nonce": "0x6e6f6e63655f3030303400000000000000000000000000000000000000000000",
+        "notBefore": 1758499200,
+        "expiry": 1758502800,
+        "evidenceRoot": "0x0000000000000000000000000000000000000000000000000000000000000000"
+      },
+      "digest": "0x28ee0418fe8f409094b8485ebb0659367d0f1cd5be56a9908ecbe472b5c144e7"
+    },
+    {
+      "id": "V09",
+      "sintetico": true,
+      "descripcion": "El mismo SETTLE_DVP con otro efectivo. H05: el operador no puede cambiar el precio después de aprobado.",
+      "hallazgos": [
+        "H05"
+      ],
+      "payload": {
+        "chainId": 31337,
+        "verifyingContract": "0x00000000000000000000000000000000000c0003",
+        "action": "0x534554544c455f44565000000000000000000000000000000000000000000000",
+        "assetId": "0x534653503a5345433a495353313a533100000000000000000000000000000000",
+        "origin": "0x00000000000000000000000000000000000b0001",
+        "destination": "0x00000000000000000000000000000000000b0002",
+        "amount": "100",
+        "amountSecondary": "7001",
+        "nonce": "0x6e6f6e63655f3030303400000000000000000000000000000000000000000000",
+        "notBefore": 1758499200,
+        "expiry": 1758502800,
+        "evidenceRoot": "0x0000000000000000000000000000000000000000000000000000000000000000"
+      },
+      "digest": "0xd91d00d2cd97d8f6381923d757fb72ccfc1b3fed1e7fdc2be2d49b9a54e41170"
+    },
+    {
+      "id": "V10",
+      "sintetico": true,
+      "descripcion": "UNPAUSE del incidente 1. H19: la reanudación se ata a la pausa concreta vía nonce.",
+      "hallazgos": [
+        "H19"
+      ],
+      "payload": {
+        "chainId": 31337,
+        "verifyingContract": "0x00000000000000000000000000000000000c0002",
+        "action": "0x554e504155534500000000000000000000000000000000000000000000000000",
+        "assetId": "0x534653503a5345433a495353313a533100000000000000000000000000000000",
+        "origin": "0x0000000000000000000000000000000000000000",
+        "destination": "0x0000000000000000000000000000000000000000",
+        "amount": "0",
+        "amountSecondary": "0",
+        "nonce": "0x70617573655f696e636964656e74655f31000000000000000000000000000000",
+        "notBefore": 1758499200,
+        "expiry": 1758502800,
+        "evidenceRoot": "0x0000000000000000000000000000000000000000000000000000000000000000"
+      },
+      "digest": "0xbb6def92a01df16570ee87fc2db15a43d2368827330764627afd8bcf49a22dc0"
+    },
+    {
+      "id": "V11",
+      "sintetico": true,
+      "descripcion": "UNPAUSE del incidente 2. Misma acción, otro incidente, otro digest: una aprobación vieja no levanta la pausa nueva.",
+      "hallazgos": [
+        "H19"
+      ],
+      "payload": {
+        "chainId": 31337,
+        "verifyingContract": "0x00000000000000000000000000000000000c0002",
+        "action": "0x554e504155534500000000000000000000000000000000000000000000000000",
+        "assetId": "0x534653503a5345433a495353313a533100000000000000000000000000000000",
+        "origin": "0x0000000000000000000000000000000000000000",
+        "destination": "0x0000000000000000000000000000000000000000",
+        "amount": "0",
+        "amountSecondary": "0",
+        "nonce": "0x70617573655f696e636964656e74655f32000000000000000000000000000000",
+        "notBefore": 1758499200,
+        "expiry": 1758502800,
+        "evidenceRoot": "0x0000000000000000000000000000000000000000000000000000000000000000"
+      },
+      "digest": "0x54a9ce1d48645756fad8baf0c73246e61fcf7191fa8eb50be10d732a2cb768b8"
+    },
+    {
+      "id": "V12",
+      "sintetico": true,
+      "descripcion": "MIGRATION_CLAIM con raíz de evidencia. H04: la posición de origen y su prueba entran en el digest.",
+      "hallazgos": [
+        "H04"
+      ],
+      "payload": {
+        "chainId": 31337,
+        "verifyingContract": "0x00000000000000000000000000000000000c0001",
+        "action": "0x4d4947524154494f4e5f434c41494d0000000000000000000000000000000000",
+        "assetId": "0x534653503a5345433a495353313a533100000000000000000000000000000000",
+        "origin": "0x00000000000000000000000000000000000b0001",
+        "destination": "0x00000000000000000000000000000000000b0001",
+        "amount": "42",
+        "amountSecondary": "0",
+        "nonce": "0x706f735f6f726967656e5f303030310000000000000000000000000000000000",
+        "notBefore": 1758499200,
+        "expiry": 1758502800,
+        "evidenceRoot": "0x1111111111111111111111111111111111111111111111111111111111111111"
+      },
+      "digest": "0x8aa332de5d69071d0253277acd2e0fa3c86387d797b730cde893c5cc5d927190"
+    },
+    {
+      "id": "V13",
+      "sintetico": true,
+      "descripcion": "El mismo MIGRATION_CLAIM sin evidencia. El campo opcional también se compromete: no se puede quitar después.",
+      "hallazgos": [
+        "H04"
+      ],
+      "payload": {
+        "chainId": 31337,
+        "verifyingContract": "0x00000000000000000000000000000000000c0001",
+        "action": "0x4d4947524154494f4e5f434c41494d0000000000000000000000000000000000",
+        "assetId": "0x534653503a5345433a495353313a533100000000000000000000000000000000",
+        "origin": "0x00000000000000000000000000000000000b0001",
+        "destination": "0x00000000000000000000000000000000000b0001",
+        "amount": "42",
+        "amountSecondary": "0",
+        "nonce": "0x706f735f6f726967656e5f303030310000000000000000000000000000000000",
+        "notBefore": 1758499200,
+        "expiry": 1758502800,
+        "evidenceRoot": "0x0000000000000000000000000000000000000000000000000000000000000000"
+      },
+      "digest": "0x09f53059335481d188ac3bf4de0e731a3adcb92a82d9fdd121d97d85a634d532"
+    },
+    {
+      "id": "V14",
+      "sintetico": true,
+      "descripcion": "RESERVE_CLOSE contra el activo A. H18: la reserva lleva activo, no sólo monto.",
+      "hallazgos": [
+        "H18"
+      ],
+      "payload": {
+        "chainId": 31337,
+        "verifyingContract": "0x00000000000000000000000000000000000c0001",
+        "action": "0x524553455256455f434c4f534500000000000000000000000000000000000000",
+        "assetId": "0x534653503a5345433a495353313a533100000000000000000000000000000000",
+        "origin": "0x0000000000000000000000000000000000000000",
+        "destination": "0x00000000000000000000000000000000000a0001",
+        "amount": "900",
+        "amountSecondary": "0",
+        "nonce": "0x7265735f30303031000000000000000000000000000000000000000000000000",
+        "notBefore": 1758499200,
+        "expiry": 1758502800,
+        "evidenceRoot": "0x0000000000000000000000000000000000000000000000000000000000000000"
+      },
+      "digest": "0x956d04f21b5d1f9d03afcf073907b8337cc8c130fe390298683a667eaae1ea8c"
+    },
+    {
+      "id": "V15",
+      "sintetico": true,
+      "descripcion": "RESERVE_CLOSE con el mismo monto contra el activo B. No puede cerrarse la reserva de A contra B.",
+      "hallazgos": [
+        "H18"
+      ],
+      "payload": {
+        "chainId": 31337,
+        "verifyingContract": "0x00000000000000000000000000000000000c0001",
+        "action": "0x524553455256455f434c4f534500000000000000000000000000000000000000",
+        "assetId": "0x534653503a5345433a495353313a533200000000000000000000000000000000",
+        "origin": "0x0000000000000000000000000000000000000000",
+        "destination": "0x00000000000000000000000000000000000a0001",
+        "amount": "900",
+        "amountSecondary": "0",
+        "nonce": "0x7265735f30303031000000000000000000000000000000000000000000000000",
+        "notBefore": 1758499200,
+        "expiry": 1758502800,
+        "evidenceRoot": "0x0000000000000000000000000000000000000000000000000000000000000000"
+      },
+      "digest": "0x33cfb713cde0fe0161f7c9e8e36b106758ab1f94c06f59dcc25c7e076add7e0a"
+    },
+    {
+      "id": "V16",
+      "sintetico": true,
+      "descripcion": "Reagrupación, mitad A: action=\"AB\", assetId=\"C\". Concatenar sin prefijo de longitud daría \"ABC\".",
+      "hallazgos": [
+        "H01"
+      ],
+      "payload": {
+        "chainId": 31337,
+        "verifyingContract": "0x00000000000000000000000000000000000c0001",
+        "action": "0x4142000000000000000000000000000000000000000000000000000000000000",
+        "assetId": "0x4300000000000000000000000000000000000000000000000000000000000000",
+        "origin": "0x0000000000000000000000000000000000000000",
+        "destination": "0x00000000000000000000000000000000000a0001",
+        "amount": "1000",
+        "amountSecondary": "0",
+        "nonce": "0x726567726f757000000000000000000000000000000000000000000000000000",
+        "notBefore": 1758499200,
+        "expiry": 1758502800,
+        "evidenceRoot": "0x0000000000000000000000000000000000000000000000000000000000000000"
+      },
+      "digest": "0x1aa18baaf303f36046dd5fb9da1ca8dc8b9e8c4de9b83bc0d6987be578e9b03a"
+    },
+    {
+      "id": "V17",
+      "sintetico": true,
+      "descripcion": "Reagrupación, mitad B: action=\"A\", assetId=\"BC\". Misma concatenación ingenua, digest obligatoriamente distinto.",
+      "hallazgos": [
+        "H01"
+      ],
+      "payload": {
+        "chainId": 31337,
+        "verifyingContract": "0x00000000000000000000000000000000000c0001",
+        "action": "0x4100000000000000000000000000000000000000000000000000000000000000",
+        "assetId": "0x4243000000000000000000000000000000000000000000000000000000000000",
+        "origin": "0x0000000000000000000000000000000000000000",
+        "destination": "0x00000000000000000000000000000000000a0001",
+        "amount": "1000",
+        "amountSecondary": "0",
+        "nonce": "0x726567726f757000000000000000000000000000000000000000000000000000",
+        "notBefore": 1758499200,
+        "expiry": 1758502800,
+        "evidenceRoot": "0x0000000000000000000000000000000000000000000000000000000000000000"
+      },
+      "digest": "0x08882e3e8aca6dcc40a62e764cd34d0ec6fe445fb94ec80aff4e17ba566c3f04"
+    },
+    {
+      "id": "V18",
+      "sintetico": true,
+      "descripcion": "El caso base en otra red. Una aprobación emitida para otra cadena no se presenta aquí.",
+      "hallazgos": [
+        "H01"
+      ],
+      "payload": {
+        "chainId": 1,
+        "verifyingContract": "0x00000000000000000000000000000000000c0001",
+        "action": "0x4d494e5400000000000000000000000000000000000000000000000000000000",
+        "assetId": "0x534653503a5345433a495353313a533100000000000000000000000000000000",
+        "origin": "0x0000000000000000000000000000000000000000",
+        "destination": "0x00000000000000000000000000000000000a0001",
+        "amount": "1000",
+        "amountSecondary": "0",
+        "nonce": "0x6e6f6e63655f3030303100000000000000000000000000000000000000000000",
+        "notBefore": 1758499200,
+        "expiry": 1758502800,
+        "evidenceRoot": "0x0000000000000000000000000000000000000000000000000000000000000000"
+      },
+      "digest": "0x21ed53380e895627668182a93feaca0e99cda786b8758a0bb31c03b9b2686658"
+    },
+    {
+      "id": "V19",
+      "sintetico": true,
+      "descripcion": "El caso base en otro contrato verificador. Una aprobación no cruza de contrato dentro del mismo despliegue.",
+      "hallazgos": [
+        "H01"
+      ],
+      "payload": {
+        "chainId": 31337,
+        "verifyingContract": "0x00000000000000000000000000000000000c0002",
+        "action": "0x4d494e5400000000000000000000000000000000000000000000000000000000",
+        "assetId": "0x534653503a5345433a495353313a533100000000000000000000000000000000",
+        "origin": "0x0000000000000000000000000000000000000000",
+        "destination": "0x00000000000000000000000000000000000a0001",
+        "amount": "1000",
+        "amountSecondary": "0",
+        "nonce": "0x6e6f6e63655f3030303100000000000000000000000000000000000000000000",
+        "notBefore": 1758499200,
+        "expiry": 1758502800,
+        "evidenceRoot": "0x0000000000000000000000000000000000000000000000000000000000000000"
+      },
+      "digest": "0xd63be9b0beccca2dd934d1161e3701f2a2026474351c8e34a2415cf7314321fc"
+    },
+    {
+      "id": "V20",
+      "sintetico": true,
+      "descripcion": "El caso base con otro nonce. Dos autorizaciones idénticas en todo lo demás siguen siendo dos.",
+      "hallazgos": [
+        "H19"
+      ],
+      "payload": {
+        "chainId": 31337,
+        "verifyingContract": "0x00000000000000000000000000000000000c0001",
+        "action": "0x4d494e5400000000000000000000000000000000000000000000000000000000",
+        "assetId": "0x534653503a5345433a495353313a533100000000000000000000000000000000",
+        "origin": "0x0000000000000000000000000000000000000000",
+        "destination": "0x00000000000000000000000000000000000a0001",
+        "amount": "1000",
+        "amountSecondary": "0",
+        "nonce": "0x6e6f6e63655f3939393900000000000000000000000000000000000000000000",
+        "notBefore": 1758499200,
+        "expiry": 1758502800,
+        "evidenceRoot": "0x0000000000000000000000000000000000000000000000000000000000000000"
+      },
+      "digest": "0x7283d1435d7e102623a73ad4b2cc752ceb89432c2a77736e059e6eaaec0cba93"
+    }
+  ],
+  "vigencia": [
+    {
+      "id": "W01",
+      "vector": "V01",
+      "ahoraSegundos": 1758499199,
+      "codigoEsperado": "DENY_AUTHORIZATION",
+      "detalleEsperado": "NOT_YET_VALID",
+      "nota": "un segundo antes de notBefore todavía no vale"
+    },
+    {
+      "id": "W02",
+      "vector": "V01",
+      "ahoraSegundos": 1758499200,
+      "codigoEsperado": "ALLOW",
+      "detalleEsperado": "",
+      "nota": "notBefore es inclusivo"
+    },
+    {
+      "id": "W03",
+      "vector": "V01",
+      "ahoraSegundos": 1758502799,
+      "codigoEsperado": "ALLOW",
+      "detalleEsperado": "",
+      "nota": "último segundo vigente"
+    },
+    {
+      "id": "W04",
+      "vector": "V01",
+      "ahoraSegundos": 1758502800,
+      "codigoEsperado": "DENY_AUTHORIZATION",
+      "detalleEsperado": "EXPIRED",
+      "nota": "expiry es exclusivo: en el segundo exacto ya venció"
+    },
+    {
+      "id": "W05",
+      "vector": "V01",
+      "ahoraSegundos": 1758599200,
+      "codigoEsperado": "DENY_AUTHORIZATION",
+      "detalleEsperado": "EXPIRED",
+      "nota": "mucho después sigue vencido"
+    }
+  ]
+}

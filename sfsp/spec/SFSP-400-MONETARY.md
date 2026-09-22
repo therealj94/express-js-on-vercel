@@ -265,9 +265,7 @@ Auditoría de módulos, guards y upgrades. Un cambio que permita eludir el contr
 
 ## 10 · Propuestas para el contrato interno
 
-1. **`ReleaseState`**: `SOLICITADO` / `VALIDADO` / `EJECUTADO` / `RECHAZADO` / `BLOQUEADO` / `UNKNOWN`. Hoy el contrato interno nombra `TreasuryReleased` como evento pero no enumera los estados del release.
-2. **`NativeSupplySnapshot`**: estructura para fijar `S_genesis`, `I_consensus`, `B_protocol`, `S_native`, `U_unactivated`, `R_released`, el `blockNumber` y el `blockHash` de la lectura. Necesaria para que dos cifras sean comparables.
-3. **`UnactivatedPerimeter`**: declaración explícita de qué cuentas y qué condiciones integran `U_unactivated`, versionada, para que el perímetro sea auditable y no una convención tácita.
-4. **`CoverageReport`**: resultado de la evaluación de cobertura, con la alternativa de D03 bajo la que se evalúa, el alcance, la fecha y sus limitaciones.
+Integradas en `../CONTRATO-INTERNO.md` (punto C01 del plan de corrección). Esta
+sección ya no propone nada: lo que este documento necesitaba está en el contrato
+interno, que vuelve a ser la fuente única.
 
-Ninguna se usa como si existiera hasta que se agregue a `CONTRATO-INTERNO.md`.

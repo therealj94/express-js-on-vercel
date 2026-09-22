@@ -19,3 +19,9 @@ evidence/corridas/
 
 # Los informes de auditoria se guardan, pero no los temporales de Codex.
 .codex/
+
+# El compilador vendorizado NO se versiona: son 15,7 MB que quedarían en la
+# historia de git para siempre. La garantía la da la huella SHA-256 fijada en
+# contracts/compilador/compilador.json, que se comprueba antes de compilar, y
+# `node contracts/compilador/preparar.mjs` lo reconstruye en un paso.
+contracts/compilador/solc-*

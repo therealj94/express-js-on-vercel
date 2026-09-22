@@ -255,13 +255,182 @@ Una rama llamada `main` o la salida de un agente **no es por sí sola la verdad 
 
 ---
 
-## 12 · Propuestas para el contrato interno
+## 12 · Autorización ligada al contenido (SFSP-AUTH-v1)
 
-1. **`Approval`**: el §2.4 del contrato interno referencia `approvals: Approval[]` pero no define la estructura. Se propone: `approverRef`, `role`, `actionId`, `scope`, `limit`, `destination`, `environment`, `version`, `notBefore`, `expiry`, `evidenceId`, `nonce` y firma.
-2. **`ApprovalRole`**: `BOARD` / `DBNX` / `TECH` / `SECURITY` / `LEGAL` / `OPERATIONS` / `CUSTODIAN` / `AUDITOR`.
-3. **`AuthorizationState`**: `ISSUED` / `ACTIVE` / `PARTIALLY_CONSUMED` / `CONSUMED` / `REVOKED` / `EXPIRED`.
-4. **`GovernanceActionKind`**: enumeración de las acciones de la tabla del §2, para que `GovernanceAction` lleve un tipo estable.
-5. **`LegalApprovalRegister`**: estructura con denominación, entidad autorizante, jurisdicción, actividades permitidas, restricciones transfronterizas, derechos de clientes, vigencia y evidencia.
-6. **`releaseId`**: identificador con forma `rel_` + 32 hex, usado por P11 y hoy sin forma declarada.
+**Normativo.** Añadido tras la auditoría del commit `f1d57a31`, que encontró la
+misma raíz en siete hallazgos: H01, H02, H04, H05, H06, H18 y H19. En todos
+ellos la autorización se identificaba por una clave que **no compromete el
+contenido** de lo que se va a hacer —un `operationId`, un `bytes32(amount)`, un
+`migrationId`, un tipo de acción— y en algunos no se consumía una sola vez.
 
-Ninguna se usa como si existiera hasta que se agregue a `CONTRATO-INTERNO.md`.
+Implementación de referencia: `contracts/src/lib/SFSPAuthorization.sol` y
+`sdk/src/autorizacion.ts`. Vectores compartidos:
+`fixtures/vectores-autorizacion.json`.
+
+### 12.1 Forma canónica
+
+```
+digest = keccak256(abi.encode(
+    ETIQUETA_DOMINIO,      // keccak256("SFSP-AUTH-v1")
+    TYPEHASH_PAYLOAD,      // keccak256(cadena de tipo del §12.2)
+    chainId, verifyingContract,
+    action, assetId,
+    origin, destination,
+    amount, amountSecondary,
+    nonce, notBefore, expiry,
+    evidenceRoot))
+```
+
+Catorce palabras de **32 bytes exactos**, en ese orden, sin excepción.
+
+**Prohibido `abi.encodePacked` y toda concatenación equivalente.** Concatenar
+campos de longitud variable sin prefijo de longitud permite reagrupar dos
+contenidos distintos en la misma cadena de bytes: `action="AB", assetId="C"` y
+`action="A", assetId="BC"` producirían el mismo digest, y una aprobación para
+uno habilitaría el otro. Con posición fija por campo la reagrupación es
+imposible por construcción, no improbable.
+
+**La etiqueta de dominio está versionada.** Cambiar la versión cambia la
+etiqueta e invalida de golpe toda aprobación emitida bajo la anterior. Es el
+comportamiento deseado: un formato nuevo no puede reinterpretar aprobaciones
+viejas.
+
+**El typehash entra en el digest.** Así el formato queda comprometido junto con
+los valores: añadir un campo cambia el typehash, y ninguna aprobación anterior
+se puede releer contra el formato nuevo.
+
+### 12.2 Campos
+
+Cadena de tipo, byte a byte idéntica en las dos implementaciones:
+
+```
+SFSPAuthPayload(uint256 chainId,address verifyingContract,bytes32 action,
+bytes32 assetId,address origin,address destination,uint256 amount,
+uint256 amountSecondary,bytes32 nonce,uint64 notBefore,uint64 expiry,
+bytes32 evidenceRoot)
+```
+
+| Campo | Obligatorio | Qué impide que se cambie después |
+|---|---|---|
+| `chainId` | sí | Presentar en una red una aprobación emitida para otra. |
+| `verifyingContract` | sí | Usar la aprobación en otro contrato del mismo despliegue. |
+| `action` | sí, no nulo | Ejecutar un `BURN` con una aprobación de `MINT`. |
+| `assetId` | sí, no nulo | Cerrar contra B una reserva abierta sobre A (H18). |
+| `origin` | sí; puede ser la dirección cero | Confiscar o quemar el saldo de otro titular (H01, H02). El cero es legítimo cuando la acción no tiene origen —`MINT` crea unidades, no las mueve desde nadie— y ese cero también se compromete. |
+| `destination` | sí | Desviar el destino de lo aprobado (H01). |
+| `amount` | sí | Reutilizar la aprobación para otra operación del mismo monto (H06). |
+| `amountSecondary` | sí; 0 si no aplica | Cambiar el efectivo o el precio de una liquidación ya aprobada (H05). |
+| `nonce` | sí, no nulo | Que dos autorizaciones idénticas en todo lo demás colapsen en un digest y la segunda sea irrepresentable tras consumir la primera. Es también lo que ata una reanudación a **su** incidente (H19). |
+| `notBefore` | sí | Adelantar la ventana. |
+| `expiry` | sí, `> notBefore` | Extender la ventana. |
+| `evidenceRoot` | opcional; 0 = ausente | Añadir o quitar la evidencia asociada después de aprobada. Aunque sea opcional, **entra siempre en el digest**. |
+
+Vigencia: `notBefore` es **inclusivo** y `expiry` es **exclusivo**, para que dos
+ventanas consecutivas de la misma acción no compartan nunca un segundo.
+`block.timestamp` lo elige el productor del bloque dentro de un margen: la
+ventana es un control grueso y **no sustituye al consumo único**.
+
+### 12.3 El ejecutor recalcula
+
+```
+aprobar(digest)   →   ejecutar(payload) recalcula el digest desde sus
+                      argumentos REALES, compara, comprueba atadura y
+                      vigencia, y lo consume
+```
+
+1. El aprobador aprueba un **digest**, nunca un identificador.
+2. El ejecutor **recalcula** el digest desde los argumentos que va a ejecutar.
+   No lee el digest de la petición. Si se limitara a confiar en el digest
+   recibido, H01 volvería con más ceremonia.
+3. El digest se **consume una sola vez**, como efecto y antes de cualquier
+   interacción externa (checks-effects-interactions).
+
+Un intento fallido **no** gasta la autorización: un payload alterado, una
+ventana cerrada o una atadura equivocada rechazan sin consumir, para que un
+tercero no pueda quemar una aprobación legítima presentándola mal.
+
+Todo rechazo lleva `DENY_AUTHORIZATION` (§4 del contrato interno), con motivo
+estable: `CHAIN_MISMATCH`, `CONTRACT_MISMATCH`, `ACTION_EMPTY`, `ASSET_EMPTY`,
+`NONCE_EMPTY`, `WINDOW_EMPTY`, `NOT_YET_VALID`, `EXPIRED`, `DIGEST_MISMATCH`,
+`CONSUMED_AT:<t>`. Un reloj ilegible es `UNKNOWN_SOURCE` y nunca se degrada a
+`ALLOW`.
+
+### 12.4 Prohibición explícita
+
+**Ninguna acción crítica puede autorizarse por una clave que no comprometa el
+contenido.** Quedan prohibidos como control de autorización, por sí solos:
+
+- `operationId` y cualquier identificador arbitrario elegido por el llamador.
+  Es idempotencia, no autorización: impide repetir, no impide sustituir.
+- `bytes32(amount)` o cualquier proyección de un solo campo.
+- `migrationId`, que además abre un dominio de nullifier nuevo por migración y
+  permite reemplazar dos veces la misma posición de origen (H04). El nullifier
+  se deriva de la **posición de origen**, globalmente, no del identificador de
+  la migración.
+- El tipo de acción sin el objeto concreto sobre el que se actúa (H19).
+- Un registro `approved: true`, un `detail` de texto libre o un hash genérico
+  que no sea el digest de §12.1.
+
+**Ninguna implementación redefine el digest por su cuenta.** Las dos
+implementaciones de referencia se comprueban contra los mismos vectores, y la
+prueba que exige que coincidan es obligatoria: si Solidity y TypeScript
+divergen en un vector, la suite se pone roja en los dos lados.
+
+### 12.5 Acciones críticas y su control mínimo (P03)
+
+La fila F9 de `AFIRMACIONES-A-DESAFIAR.md` quedó **refutada en su alcance
+universal**: existen rutas críticas gobernadas por un solo rol, entre ellas la
+pausa y la quema. La regla se corrige aquí:
+
+> **Toda acción crítica lleva doble control.** No sólo la transferencia forzada.
+> Doble control significa quórum de aprobadores con **separación de funciones**:
+> quien propone no aprueba, y un mismo actor no cuenta dos veces por llevar dos
+> roles.
+
+| Acción | `action` | Control mínimo | Qué compromete el digest |
+|---|---|---|---|
+| Emisión | `MINT` | Doble control + autorización de capacidad vigente | activo, destino, monto, nonce, ventana |
+| Quema | `BURN` | Doble control **o** autorización del titular; motivo obligatorio | activo, titular (`origin`), monto, motivo en `evidenceRoot`, nonce |
+| Transferencia forzosa | `FORCED_TRANSFER` | Doble control + expediente | activo, origen, destino, monto, nonce |
+| Pausa | `PAUSE` | Doble control | alcance de la pausa en `assetId`, incidente en `nonce` |
+| Reanudación | `UNPAUSE` | Doble control, atada al **incidente concreto** | el `nonce` de la pausa que levanta |
+| Actualización | `UPGRADE` | Doble control + timelock | implementación destino, versión, nonce |
+| Recuperación | `RECOVERY` | Doble control + separación de funciones + espera | cuenta, activo, destino, expediente, nonce |
+| Migración | `MIGRATION_CLAIM` | Doble control + nullifier por posición de origen | posición de origen, beneficiario, unidades, raíz de prueba |
+| Release de tesorería | `TREASURY_RELEASE` | Doble control + techo y capacidad vigentes | activo, monto, nonce, ventana |
+| Liquidación | `SETTLE_DVP` | Orden autorizada por ambas partes + contrato canónico | activo, partes, cantidad, efectivo, nonce |
+| Cambio de quórum | `SET_QUORUM` | Doble control con el quórum **anterior** | acción afectada, valor nuevo, nonce |
+| Cambio de política | `SET_POLICY` | Doble control | política, versión anterior y nueva, nonce |
+
+Los quórums concretos de cada fila son `null` hasta **D07**. Una acción con su
+quórum sin fijar devuelve `BLOCKED_DECISION` y **no** se ejecuta con un valor
+recomendado (§10, T-800-07). Que el control mínimo esté escrito aquí no lo
+convierte en un número aprobado.
+
+### 12.6 Pruebas de aceptación añadidas
+
+18. **T-800-18**: Los vectores compartidos de `fixtures/vectores-autorizacion.json`
+    producen el mismo digest en Solidity y en TypeScript. Una divergencia en un
+    solo vector pone roja la suite en los dos lados. Ref. T36.
+19. **T-800-19**: Cambiar un solo campo del payload cambia el digest, campo por
+    campo, incluidos `amountSecondary` y `evidenceRoot`. Ref. T-800-02.
+20. **T-800-20**: Una aprobación legítima no ejecuta un payload que difiera en
+    un campo; el intento fallido **no** consume la autorización. Ref. T-800-02.
+21. **T-800-21**: El segundo consumo del mismo digest revierte en cadena y
+    devuelve `DENY_AUTHORIZATION` en el SDK. Ref. T-800-04.
+22. **T-800-22**: Un payload vencido y uno aún no vigente se rechazan, con
+    `notBefore` inclusivo y `expiry` exclusivo. Ref. T36.
+23. **T-800-23**: Dos payloads que una concatenación sin prefijo de longitud
+    confundiría producen digests distintos. Ref. T-800-02.
+24. **T-800-24**: Ninguna acción de la tabla de §12.5 se ejecuta con un solo
+    rol. Ref. T53, F9. **Pendiente**: esta prueba exige los ejecutores reales y
+    entra con el lote de contratos, no con el patrón.
+
+---
+
+## 13 · Propuestas para el contrato interno
+
+Integradas en `../CONTRATO-INTERNO.md` (punto C01 del plan de corrección). Esta
+sección ya no propone nada: lo que este documento necesitaba está en el contrato
+interno, que vuelve a ser la fuente única.
+

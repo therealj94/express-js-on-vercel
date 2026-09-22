@@ -10,6 +10,7 @@
  * de la decisión que falta. */
 
 import { readFileSync } from 'node:fs';
+import { createHash } from 'node:crypto';
 import { bloqueadoPorDecision, permitir } from './codigos.js';
 import type { Resultado } from './codigos.js';
 
@@ -54,14 +55,29 @@ export function cargarDecisiones(ruta: string): ArchivoDeDecisiones {
 }
 
 /**
- * Pide un parámetro económico. Si vale null, devuelve BLOCKED_DECISION con la
- * decisión que lo desbloquea. No hay segundo argumento con un valor por
- * defecto, y es a propósito: no existe forma de llamar a esto y seguir con un
- * número inventado.
+ * Pide un parámetro económico.
+ *
+ * Comprueba TRES cosas, no una. La versión anterior sólo miraba que el valor no
+ * fuese nulo (H21), así que bastaba con escribir un número en el JSON para que
+ * el sistema lo usara aunque la decisión que lo gobierna siguiera pendiente. Un
+ * cambio de una línea desbloqueaba un parámetro monetario sin que nadie lo
+ * aprobara.
+ *
+ * Ahora: el valor existe, la decisión que lo gobierna está APROBADA, y la
+ * versión de política del archivo coincide con la que se espera. Cualquiera de
+ * las tres que falte devuelve `BLOCKED_DECISION`.
+ *
+ * No hay segundo argumento con un valor por defecto, y es a propósito: no
+ * existe forma de llamar a esto y seguir con un número inventado.
  */
-export function parametro<T>(archivo: ArchivoDeDecisiones, nombre: string): Resultado<T> {
+export function parametro<T>(
+  archivo: ArchivoDeDecisiones,
+  nombre: string,
+  policyVersionEsperada?: string,
+): Resultado<T> {
   const valor = archivo.parametrosEconomicos[nombre];
   const decision = GOBIERNA[nombre] ?? 'desconocida';
+
   if (valor === null || valor === undefined) {
     return bloqueadoPorDecision<T>(decision, `el parámetro ${nombre} no está aprobado`);
   }
@@ -71,7 +87,40 @@ export function parametro<T>(archivo: ArchivoDeDecisiones, nombre: string): Resu
       return bloqueadoPorDecision<T>(decision, `el parámetro ${nombre} está aprobado sólo en parte`);
     }
   }
+
+  /* H21: tener valor no es estar aprobado. */
+  if (decision === 'desconocida') {
+    return bloqueadoPorDecision<T>(
+      'desconocida',
+      `el parámetro ${nombre} no tiene una decisión que lo gobierne: no se puede usar`,
+    );
+  }
+  if (!aprobada(archivo, decision)) {
+    return bloqueadoPorDecision<T>(
+      decision,
+      `el parámetro ${nombre} tiene valor pero ${decision} sigue pendiente`,
+    );
+  }
+
+  if (policyVersionEsperada !== undefined && archivo.schemaVersion !== policyVersionEsperada) {
+    return bloqueadoPorDecision<T>(
+      decision,
+      `versión de política incoherente: el archivo dice ${archivo.schemaVersion} y se esperaba ${policyVersionEsperada}`,
+    );
+  }
+
   return permitir(valor as T);
+}
+
+/**
+ * Huella del archivo de decisiones (C07).
+ *
+ * Sirve para que el verificador detecte que alguien cambió el archivo sin
+ * anunciarlo. Un parámetro monetario no debería poder desbloquearse con una
+ * edición silenciosa.
+ */
+export function huellaDeDecisiones(contenido: string | Uint8Array): string {
+  return createHash('sha256').update(contenido).digest('hex');
 }
 
 /** Decisiones que siguen pendientes. Lo que bloquean no se puede ejecutar. */

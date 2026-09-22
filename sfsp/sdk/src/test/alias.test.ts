@@ -2,7 +2,13 @@
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { normalizarAlias, esqueleto, esReservado } from '../alias.js';
+import {
+  normalizarAlias,
+  esqueleto,
+  esReservado,
+  paresColapsados,
+  secuenciasColapsadas,
+} from '../alias.js';
 import { DirectorioDeCuentas } from '../directorio.js';
 import { nuevaReferenciaDeSujeto } from '../ids.js';
 import { ErrorSFSP } from '../codigos.js';
@@ -82,4 +88,34 @@ test('el esqueleto colapsa lo que se confunde y nada más', () => {
   assert.equal(esqueleto('medard0'), esqueleto('medardo'));
   assert.equal(esqueleto('rnedardo'), esqueleto('medardo'));
   assert.notEqual(esqueleto('medardo'), esqueleto('medarda'));
+});
+
+test('P02 · la cobertura anti-confusables está enumerada y es revisable', () => {
+  /* Esta prueba no comprueba que la lista sea la «correcta»: comprueba que sea
+     la ACORDADA. Si alguien añade o quita una regla, salta y hay que decidirlo
+     a propósito, en vez de descubrirlo cuando dos alias parecidos convivan. */
+  const grupos = paresColapsados().map((g) => g.join('')).sort();
+  assert.deepEqual(
+    grupos,
+    [
+      '._', // los separadores no distinguen lo suficiente como para dar un alias
+      '0o',
+      '1il',
+      '5s',
+      '6b',
+    ],
+    'la cobertura anti-confusables cambió: revisalo a propósito',
+  );
+
+  /* Y las secuencias que se leen como una sola letra. */
+  const secuencias = secuenciasColapsadas();
+  for (const [muchas, una] of secuencias) {
+    assert.equal(esqueleto(muchas), esqueleto(una), `${muchas} debería colapsar en ${una}`);
+  }
+
+  /* Las tres reglas que se quitaron por colapsar de más: 9 no es g, 2 no es z,
+     7 no es t. Negárselas a alguien sería quitarle un alias legítimo. */
+  assert.notEqual(esqueleto('9'), esqueleto('g'));
+  assert.notEqual(esqueleto('2'), esqueleto('z'));
+  assert.notEqual(esqueleto('7'), esqueleto('t'));
 });
