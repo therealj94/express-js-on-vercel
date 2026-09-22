@@ -27,7 +27,7 @@ Leyenda del estado:
 |---|---|---|---|
 | A1 | El número de cuenta es aleatorio, no secuencial y no codifica datos de la persona. | Resistió | `sdk` T57, T59 |
 | A2 | El muestreo de dígitos no tiene sesgo. | Resistió | `sdk` T59, propiedades |
-| A3 | Un número retirado o de una corrida deshecha nunca se vuelve a entregar. | Resistió, con límite: sólo en memoria | `sdk` T68 · falta el adaptador durable (P01, I-08) |
+| A3 | Un número retirado o de una corrida deshecha nunca se vuelve a entregar. | **Resistió, y ya no sólo en memoria**: `numero_consumido` es una tabla monotónica con clave primaria, y el árbitro es el índice, no una lectura previa | `sdk` T68 · `durable/esquema.ts` C1 · T-CONC-01..04 con hilos de verdad |
 | A4 | Dos alias que se ven iguales no pueden convivir. | Parcial → cerrada: la cobertura ahora está enumerada y es revisable | `sdk` T60, P02 |
 | A5 | Cambiar alias o ruta no cambia el número de cuenta. | Parcial → cerrada con A6 | `sdk` T61, T62 |
 | A6 | Nunca hay dos rutas primarias a la vez en una cuenta. | **Refutada → corregida**: los clones eran superficiales | `adversarias` H07a |

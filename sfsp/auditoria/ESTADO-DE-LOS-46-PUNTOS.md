@@ -72,7 +72,7 @@ describió; la ruta del informe es lo que estaba mal.
 
 | ID | Estado | Dónde |
 |---|---|---|
-| P01 unicidad sólo en memoria | **Abierto, documentado** | `RESTRICCIONES_DURABLES`, `concurrencia.md`, I-08 |
+| P01 unicidad sólo en memoria | **Cerrado** | `durable/esquema.ts`: 10 restricciones en SQL, comprobadas por `sdk` T-CONC-01..13 |
 | P02 confusables ad hoc | Cerrado | `sdk` alias P02: la cobertura está enumerada y es revisable |
 | P03 rutas de un solo rol | **PARCIAL** | `spec/SFSP-800` §12 completo. En código: cinco acciones con doble control; `UPGRADE`, `RECOVERY`, `SET_QUORUM` y `SET_POLICY` siguen sin él |
 | P04 keccak con pocos vectores | **Cerrado** | `sdk` keccak P04 ×3, con constantes públicas de ERC-20 |
@@ -81,8 +81,8 @@ describió; la ruta del informe es lo que estaba mal.
 | P07 ruta frágil de los JSON | **Cerrado** | `sdk` rutas, decisiones |
 | P08 tipos y verificador fuera de la compuerta | **Cerrado** | verificador |
 | P09 arranque limpio sin red | **Cerrado** | compilador fijado con huella, CI |
-| P10 concurrencia sin modelo | **Abierto, documentado** | `concurrencia.md`, 13 pruebas que esperan al adaptador |
-| P11 un tercero corre las 74 de contratos | **Abierto** | pedido en `PROMPT-REAUDITORIA.md` |
+| P10 concurrencia sin modelo | **Cerrado** | `sdk` concurrencia ×13, con hilos de verdad contra el mismo archivo |
+| P11 un tercero corre las 74 de contratos | **Abierto: preparado, falta el tercero** | `REPRODUCIR.md`, cinco órdenes. No lo puedo cerrar yo: cerrarlo es que lo corra otro |
 
 ---
 
@@ -98,7 +98,7 @@ describió; la ruta del informe es lo que estaba mal.
 | C06 sin pruebas de propiedades | **Cerrado** | `sdk` propiedades ×7 |
 | C07 decisiones sin integridad | **Cerrado** | `adversarias` C07, sello en el verificador |
 | C08 simulacro escribe en el original | **Cerrado** | `adversarias` C08 |
-| C09 sin conformidad spec a código | **Cerrado parcialmente** | `conformidad.mjs`: 4 conformes, 4 no comprobadas |
+| C09 sin conformidad spec a código | **Cerrado** | `conformidad.mjs --estricto`: 8 conformes, 0 divergentes, 0 no comprobadas |
 | C10 un solo auditor | **Cerrado** | `PROMPT-REAUDITORIA.md` lo asigna a otro |
 
 ---
