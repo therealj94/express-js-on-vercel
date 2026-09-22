@@ -1,0 +1,1532 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Cómo funcionará SFSP</title>
+<style>
+@font-face{font-family:Inter;font-weight:400;src:url(fuentes/inter-latin-400-normal.woff2)}
+@font-face{font-family:Inter;font-weight:500;src:url(fuentes/inter-latin-500-normal.woff2)}
+@font-face{font-family:Inter;font-weight:600;src:url(fuentes/inter-latin-600-normal.woff2)}
+@font-face{font-family:Inter;font-weight:700;src:url(fuentes/inter-latin-700-normal.woff2)}
+@font-face{font-family:Inter;font-weight:800;src:url(fuentes/inter-latin-800-normal.woff2)}
+@font-face{font-family:Fraunces;font-weight:400;src:url(fuentes/fraunces-latin-400-normal.woff2)}
+@font-face{font-family:Fraunces;font-weight:600;src:url(fuentes/fraunces-latin-600-normal.woff2)}
+@font-face{font-family:Fraunces;font-weight:700;src:url(fuentes/fraunces-latin-700-normal.woff2)}
+@font-face{font-family:Fraunces;font-style:italic;font-weight:400;src:url(fuentes/fraunces-latin-400-italic.woff2)}
+@font-face{font-family:Fraunces;font-style:italic;font-weight:600;src:url(fuentes/fraunces-latin-600-italic.woff2)}
+@font-face{font-family:Mono;font-weight:400;src:url(fuentes/jetbrains-mono-latin-400-normal.woff2)}
+@font-face{font-family:Mono;font-weight:500;src:url(fuentes/jetbrains-mono-latin-500-normal.woff2)}
+
+@page{size:1280px 720px;margin:0}
+:root{
+  --noche:#0e1a2b; --noche2:#16263d; --papel:#f6f2ea; --blanco:#fffdf9;
+  --tinta:#18212f; --gris:#5f6878; --gris2:#9aa2ae; --linea:#e2dccf;
+  --oro:#c28f2c; --oro2:#f0d9a6; --oro3:#fbf1dc;
+  --verde:#1e7a52; --verde2:#d8efe3;
+  --rojo:#b23a30; --rojo2:#f6dcd8;
+  --azul:#2a5ca8; --azul2:#dde7f6;
+  --ambar:#b7791f; --ambar2:#fbecd1;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{background:#888}
+body{font-family:Inter,sans-serif;color:var(--tinta);-webkit-print-color-adjust:exact;print-color-adjust:exact}
+.s{width:1280px;height:720px;position:relative;overflow:hidden;background:var(--papel);
+   page-break-after:always;break-after:page;padding:56px 72px 60px}
+.s.osc{background:var(--noche);color:#eef1f6}
+.s.oro{background:var(--oro3)}
+.cab{position:absolute;top:26px;left:72px;right:72px;display:flex;justify-content:space-between;
+     font:600 11px/1 Inter;letter-spacing:.14em;text-transform:uppercase;color:var(--gris2)}
+.cab b{color:var(--oro);font-weight:700}
+.osc .cab{color:#6f7d93}
+.pag{position:absolute;bottom:24px;right:72px;font:500 11px Inter;color:var(--gris2);letter-spacing:.06em}
+.osc .pag{color:#5d6b80}
+h1{font:600 46px/1.08 Fraunces,serif;letter-spacing:-.015em;margin:26px 0 14px;max-width:1000px}
+h1 em{font-style:italic;color:var(--oro)}
+.osc h1{color:#fff}
+h2{font:700 19px/1.25 Inter;margin-bottom:6px}
+h3{font:700 14px/1.3 Inter;margin-bottom:4px}
+.lead{font:400 20px/1.5 Inter;color:var(--gris);max-width:980px}
+.osc .lead{color:#b7c1d1}
+p{font-size:15.5px;line-height:1.55}
+.peq{font-size:13px;line-height:1.5;color:var(--gris)}
+.osc .peq{color:#8d9ab0}
+.mono{font-family:Mono,monospace}
+.fila{display:flex;gap:22px}
+.col{flex:1}
+.tarjeta{background:var(--blanco);border:1px solid var(--linea);border-radius:14px;padding:18px 20px}
+.osc .tarjeta{background:var(--noche2);border-color:#243751}
+.pill{display:inline-block;font:700 10.5px/1 Inter;letter-spacing:.09em;text-transform:uppercase;
+      padding:6px 10px;border-radius:99px}
+.p-verde{background:var(--verde2);color:var(--verde)}
+.p-rojo{background:var(--rojo2);color:var(--rojo)}
+.p-oro{background:var(--oro2);color:#7a5711}
+.p-azul{background:var(--azul2);color:var(--azul)}
+.p-gris{background:#e7e3da;color:var(--gris)}
+.p-ambar{background:var(--ambar2);color:var(--ambar)}
+.nota{position:absolute;left:72px;right:72px;bottom:56px;border-left:4px solid var(--oro);
+      padding:10px 16px;background:var(--blanco);border-radius:0 10px 10px 0;font-size:14.5px;line-height:1.5}
+.osc .nota{background:var(--noche2);color:#dbe2ec}
+.nota.roja{border-color:var(--rojo)}
+.nota.verde{border-color:var(--verde)}
+svg{font-family:Inter,sans-serif}
+.num{font:700 64px/1 Fraunces;letter-spacing:-.02em}
+.sep{display:flex;flex-direction:column;justify-content:center;padding-left:110px}
+.sep .parte{font:700 13px Inter;letter-spacing:.2em;text-transform:uppercase;color:var(--oro);margin-bottom:18px}
+.sep h1{font-size:64px;margin:0 0 20px;max-width:900px}
+.sep .gran{position:absolute;right:70px;bottom:-60px;font:700 420px/1 Fraunces;color:rgba(194,143,44,.12)}
+.ico{width:46px;height:46px;border-radius:12px;display:flex;align-items:center;justify-content:center;flex:0 0 46px}
+ul.l{list-style:none}
+ul.l li{position:relative;padding-left:20px;margin-bottom:8px;font-size:15px;line-height:1.5}
+ul.l li:before{content:"";position:absolute;left:2px;top:9px;width:7px;height:7px;border-radius:50%;background:var(--oro)}
+ul.l.no li:before{background:var(--rojo)}
+ul.l.si li:before{background:var(--verde)}
+table.t{width:100%;border-collapse:collapse;font-size:15px}
+table.t th{text-align:left;font:700 10.5px Inter;letter-spacing:.1em;text-transform:uppercase;color:var(--gris2);
+           padding:0 10px 8px 0;border-bottom:2px solid var(--tinta)}
+table.t td{padding:12px 12px 12px 0;border-bottom:1px solid var(--linea);vertical-align:top;line-height:1.4}
+</style>
+</head>
+<body>
+
+<!-- ═════════════ 1 · PORTADA ═════════════ -->
+<section class="s osc" style="padding:0">
+  <svg width="1280" height="720" style="position:absolute;inset:0">
+    <defs>
+      <radialGradient id="g1" cx="78%" cy="40%" r="60%">
+        <stop offset="0" stop-color="#2a3f5f"/><stop offset="1" stop-color="#0e1a2b"/>
+      </radialGradient>
+    </defs>
+    <rect width="1280" height="720" fill="url(#g1)"/>
+    <!-- red de nodos -->
+    <g stroke="#c28f2c" stroke-opacity=".35" stroke-width="1.2" fill="none">
+      <path d="M820 150 L960 250 L1110 190 M960 250 L930 410 L1080 470 M930 410 L790 480 M1110 190 L1180 330 L1080 470 M820 150 L790 300 L930 410 M790 300 L790 480 L900 590 L1080 470"/>
+    </g>
+    <g fill="#c28f2c">
+      <circle cx="820" cy="150" r="6"/><circle cx="960" cy="250" r="9"/><circle cx="1110" cy="190" r="5"/>
+      <circle cx="930" cy="410" r="14"/><circle cx="1080" cy="470" r="7"/><circle cx="790" cy="480" r="5"/>
+      <circle cx="1180" cy="330" r="5"/><circle cx="790" cy="300" r="6"/><circle cx="900" cy="590" r="6"/>
+    </g>
+    <circle cx="930" cy="410" r="34" fill="none" stroke="#f0d9a6" stroke-opacity=".5"/>
+    <circle cx="930" cy="410" r="58" fill="none" stroke="#f0d9a6" stroke-opacity=".22"/>
+  </svg>
+  <div style="position:absolute;left:90px;top:150px;width:680px">
+    <div style="font:700 13px Inter;letter-spacing:.22em;color:#c28f2c;text-transform:uppercase">Orden Global · SFSP</div>
+    <h1 style="font-size:72px;margin:22px 0 22px">Cómo va a <em>funcionar</em> todo</h1>
+    <p class="lead" style="font-size:22px">El sistema explicado para alguien que no es técnico: qué es, cómo se mueve la plata,
+    qué le cambia a cada parte del ecosistema, y cómo pasamos a todo el mundo sin que pierda nada.</p>
+  </div>
+  <div style="position:absolute;left:90px;bottom:60px;font:500 13px Inter;color:#6f7d93">
+    Social Financial System Protocol · borrador 0.3 · 22 de septiembre de 2026
+  </div>
+</section>
+
+<!-- ═════════════ 2 · ANTES DE EMPEZAR ═════════════ -->
+<section class="s">
+  <div class="cab"><span><b>Antes de empezar</b></span><span>Cómo leer esto</span></div>
+  <h1>Esta presentación describe el sistema <em>terminado</em>.<br>Hoy todavía no está encendido.</h1>
+  <p class="lead">Todo lo que vas a ver está construido y probado en un laboratorio. Nada está conectado todavía a la plata
+  de verdad. Para que nunca se confunda una cosa con la otra, donde haga falta distinguirlo verás una de estas marcas:</p>
+  <div class="fila" style="margin-top:34px">
+    <div class="tarjeta col"><span class="pill p-verde">Construido y probado</span>
+      <p style="margin-top:12px">Existe, funciona y se comprobó con pruebas automáticas contra datos de ensayo.</p></div>
+    <div class="tarjeta col"><span class="pill p-oro">Espera una firma</span>
+      <p style="margin-top:12px">El sistema está listo, pero necesita que alguien con autoridad decida un número o una regla.</p></div>
+    <div class="tarjeta col"><span class="pill p-rojo">Todavía no</span>
+      <p style="margin-top:12px">No se ha hecho. Nunca se presenta como hecho.</p></div>
+  </div>
+  <div class="nota">Una regla que atraviesa todo el sistema: <b>si no se sabe algo, se dice que no se sabe</b>. Esta presentación sigue la misma regla.</div>
+  <div class="pag">2</div>
+</section>
+
+<!-- ═════════════ 3 · EL ECOSISTEMA HOY ═════════════ -->
+<section class="s">
+  <div class="cab"><span><b>El punto de partida</b></span><span>El ecosistema hoy</span></div>
+  <h1 style="margin-bottom:6px">Nueve piezas vivas alrededor de <em>una</em> cadena</h1>
+  <p class="peq" style="font-size:14px">Comprobado contra producción el 1 de septiembre de 2026.</p>
+  <svg width="1136" height="520" viewBox="0 0 1136 520" style="position:absolute;left:72px;top:170px">
+    <!-- líneas -->
+    <g stroke="#d8cfbd" stroke-width="2">
+      <line x1="568" y1="265" x2="568" y2="70"/><line x1="568" y1="265" x2="820" y2="120"/>
+      <line x1="568" y1="265" x2="930" y2="280"/><line x1="568" y1="265" x2="820" y2="430"/>
+      <line x1="568" y1="265" x2="568" y2="470"/><line x1="568" y1="265" x2="316" y2="430"/>
+      <line x1="568" y1="265" x2="206" y2="280"/><line x1="568" y1="265" x2="316" y2="120"/>
+    </g>
+    <!-- centro -->
+    <circle cx="568" cy="265" r="92" fill="#0e1a2b"/>
+    <circle cx="568" cy="265" r="104" fill="none" stroke="#c28f2c" stroke-width="2" stroke-dasharray="4 6"/>
+    <text x="568" y="250" text-anchor="middle" fill="#c28f2c" font-size="13" font-weight="700" letter-spacing="2">CADENA</text>
+    <text x="568" y="286" text-anchor="middle" fill="#fff" font-size="40" font-weight="800" font-family="Fraunces">5550</text>
+    <text x="568" y="310" text-anchor="middle" fill="#8d9ab0" font-size="12">un bloque cada 10 s</text>
+    <!-- nodos -->
+    <g font-size="14">
+      <g transform="translate(568,62)"><rect x="-96" y="-30" width="192" height="60" rx="14" fill="#fff" stroke="#e2dccf"/>
+        <text y="-4" text-anchor="middle" font-weight="700">Veta Wallet</text><text y="16" text-anchor="middle" fill="#5f6878" font-size="12">la billetera</text></g>
+      <g transform="translate(830,112)"><rect x="-96" y="-30" width="192" height="60" rx="14" fill="#fff" stroke="#e2dccf"/>
+        <text y="-4" text-anchor="middle" font-weight="700">Genesis ID</text><text y="16" text-anchor="middle" fill="#5f6878" font-size="12">identidad y KYC</text></g>
+      <g transform="translate(950,280)"><rect x="-96" y="-30" width="192" height="60" rx="14" fill="#fff" stroke="#e2dccf"/>
+        <text y="-4" text-anchor="middle" font-weight="700">ordenscan.com</text><text y="16" text-anchor="middle" fill="#5f6878" font-size="12">el explorador</text></g>
+      <g transform="translate(830,440)"><rect x="-96" y="-30" width="192" height="60" rx="14" fill="#fff" stroke="#e2dccf"/>
+        <text y="-4" text-anchor="middle" font-weight="700">Ordenex</text><text y="16" text-anchor="middle" fill="#5f6878" font-size="12">casa de cambio</text></g>
+      <g transform="translate(568,478)"><rect x="-96" y="-30" width="192" height="60" rx="14" fill="#fff" stroke="#e2dccf"/>
+        <text y="-4" text-anchor="middle" font-weight="700">MyTokenPay</text><text y="16" text-anchor="middle" fill="#5f6878" font-size="12">cobrar en un negocio</text></g>
+      <g transform="translate(306,440)"><rect x="-96" y="-30" width="192" height="60" rx="14" fill="#fff" stroke="#e2dccf"/>
+        <text y="-4" text-anchor="middle" font-weight="700">AuCorp</text><text y="16" text-anchor="middle" fill="#5f6878" font-size="12">puente a dinero fiat</text></g>
+      <g transform="translate(186,280)"><rect x="-96" y="-30" width="192" height="60" rx="14" fill="#fff" stroke="#e2dccf"/>
+        <text y="-4" text-anchor="middle" font-weight="700">AU-RA</text><text y="16" text-anchor="middle" fill="#5f6878" font-size="12">la asistente</text></g>
+      <g transform="translate(306,112)"><rect x="-96" y="-30" width="192" height="60" rx="14" fill="#fff" stroke="#e2dccf"/>
+        <text y="-4" text-anchor="middle" font-weight="700">PULSE2CHAT</text><text y="16" text-anchor="middle" fill="#5f6878" font-size="12">el chat</text></g>
+    </g>
+    <!-- monedas -->
+    <g transform="translate(990,380)">
+      <text font-size="11" font-weight="700" fill="#9aa2ae" letter-spacing="1.5">MONEDAS Y ACTIVOS</text>
+      <g transform="translate(0,22)"><circle cx="11" cy="11" r="11" fill="#c28f2c"/><text x="30" y="16" font-weight="700" font-size="13">ORIGEN</text></g>
+      <g transform="translate(0,52)"><circle cx="11" cy="11" r="11" fill="#7a8599"/><text x="30" y="16" font-weight="700" font-size="13">ONDK</text></g>
+      <g transform="translate(0,82)"><circle cx="11" cy="11" r="11" fill="#e0b64c"/><text x="30" y="16" font-weight="700" font-size="13">AUKA</text></g>
+      <g transform="translate(0,112)"><circle cx="11" cy="11" r="11" fill="#b8bec8"/><text x="30" y="16" font-weight="700" font-size="13">AGK</text></g>
+    </g>
+    <g transform="translate(0,420)">
+      <rect width="170" height="64" rx="12" fill="#fff" stroke="#b23a30" stroke-dasharray="5 4"/>
+      <text x="16" y="27" font-weight="700" font-size="14">Cadena 8532</text>
+      <text x="16" y="47" font-size="12" fill="#b23a30">la vieja · por retirar</text>
+    </g>
+  </svg>
+  <div class="pag">3</div>
+</section>
+
+<!-- ═════════════ 4 · EL PROBLEMA ═════════════ -->
+<section class="s">
+  <div class="cab"><span><b>El problema</b></span><span>Por qué hace falta</span></div>
+  <h1>Hoy cada pieza habla su propio idioma</h1>
+  <div class="fila" style="margin-top:28px;gap:36px">
+    <div class="col">
+      <span class="pill p-rojo">Hoy</span>
+      <div class="tarjeta" style="margin-top:14px">
+        <p class="peq">Para mandarle plata a alguien necesitas esto:</p>
+        <p class="mono" style="font-size:17px;margin:10px 0 14px;word-break:break-all;color:var(--rojo)">0x70997970C51812dc3A010C7d01b50e0d17dc79C8</p>
+        <ul class="l no">
+          <li>Imposible de dictar por teléfono. Un carácter mal y la plata se pierde.</li>
+          <li>Si la persona cambia de billetera, el dato viejo sigue circulando.</li>
+          <li>Cada app decide sus propias reglas: quién puede, cuánto, cuándo.</li>
+          <li>Nadie tiene una lista común de qué activo es cuál ni en qué estado está.</li>
+        </ul>
+      </div>
+    </div>
+    <div class="col">
+      <span class="pill p-verde">Con SFSP</span>
+      <div class="tarjeta" style="margin-top:14px;border-color:var(--verde)">
+        <p class="peq">Para mandarle plata a alguien basta con esto:</p>
+        <p style="margin:10px 0 14px"><span class="mono" style="font-size:22px;color:var(--verde)">SF-0324-8432-6581-4</span>
+          <span style="color:var(--gris);margin:0 8px">o</span><span class="mono" style="font-size:22px;color:var(--verde)">@medardo</span></p>
+        <ul class="l si">
+          <li>Se dicta, se copia y detecta si te equivocaste en un número.</li>
+          <li>La persona cambia de billetera y su número sigue siendo el mismo.</li>
+          <li>Todas las apps consultan al mismo portero, con las mismas reglas.</li>
+          <li>Cada activo tiene un pasaporte que dice qué es y en qué estado está.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+  <div class="pag">4</div>
+</section>
+
+<!-- ═════════════ 5 · QUÉ ES SFSP ═════════════ -->
+<section class="s">
+  <div class="cab"><span><b>La idea</b></span><span>Qué es SFSP</span></div>
+  <h1>SFSP es una <em>capa de reglas</em> entre las apps y la cadena</h1>
+  <p class="lead">Piensa en el sistema de números de cuenta y en las normas de un banco, pero sin el banco:
+  las reglas viven encima de la cadena que ya tenemos, y cualquier app las usa igual.</p>
+  <svg width="1136" height="340" viewBox="0 0 1136 340" style="position:absolute;left:72px;top:320px">
+    <!-- apps -->
+    <g font-size="13" font-weight="600" text-anchor="middle">
+      <rect x="0" y="0" width="1136" height="78" rx="14" fill="#fff" stroke="#e2dccf"/>
+      <text x="22" y="26" text-anchor="start" font-size="11" fill="#9aa2ae" letter-spacing="1.5" font-weight="700">LAS APPS</text>
+      <g transform="translate(0,46)">
+        <text x="160">Veta Wallet</text><text x="330">MyTokenPay</text><text x="490">Ordenex</text>
+        <text x="640">ordenscan</text><text x="790">AuCorp</text><text x="940">AU-RA</text><text x="1060">PULSE2CHAT</text>
+      </g>
+    </g>
+    <!-- flechas -->
+    <g stroke="#c28f2c" stroke-width="2.5" marker-end="url(#fl)">
+      <line x1="300" y1="84" x2="300" y2="118"/><line x1="568" y1="84" x2="568" y2="118"/><line x1="836" y1="84" x2="836" y2="118"/>
+    </g>
+    <defs><marker id="fl" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="#c28f2c"/></marker></defs>
+    <!-- SFSP -->
+    <rect x="0" y="124" width="1136" height="118" rx="14" fill="#0e1a2b"/>
+    <text x="22" y="152" font-size="11" fill="#c28f2c" letter-spacing="1.5" font-weight="700">SFSP · LA CAPA NUEVA</text>
+    <g font-size="14" font-weight="600" fill="#fff" text-anchor="middle">
+      <g transform="translate(120,200)"><text>Directorio</text><text y="20" font-size="11.5" font-weight="400" fill="#8d9ab0">número → billetera</text></g>
+      <g transform="translate(330,200)"><text>Portero</text><text y="20" font-size="11.5" font-weight="400" fill="#8d9ab0">¿se permite?</text></g>
+      <g transform="translate(540,200)"><text>Pasaportes</text><text y="20" font-size="11.5" font-weight="400" fill="#8d9ab0">qué es cada activo</text></g>
+      <g transform="translate(750,200)"><text>Doble firma</text><text y="20" font-size="11.5" font-weight="400" fill="#8d9ab0">nadie decide solo</text></g>
+      <g transform="translate(960,200)"><text>Libro de cuentas</text><text y="20" font-size="11.5" font-weight="400" fill="#8d9ab0">todo cuadra</text></g>
+    </g>
+    <g stroke="#c28f2c" stroke-width="2.5" marker-end="url(#fl)">
+      <line x1="568" y1="248" x2="568" y2="272"/>
+    </g>
+    <!-- cadena -->
+    <rect x="0" y="278" width="1136" height="58" rx="14" fill="#fff" stroke="#e2dccf"/>
+    <text x="22" y="303" font-size="11" fill="#9aa2ae" letter-spacing="1.5" font-weight="700">LA CADENA 5550</text>
+    <text x="22" y="324" font-size="13.5" fill="#5f6878">La misma de hoy. No se cambia, no se bifurca, los validadores ni se enteran. Aquí siguen viviendo los saldos.</text>
+  </svg>
+  <div class="pag">5</div>
+</section>
+
+<!-- ═════════════ 6 · QUÉ NO ES ═════════════ -->
+<section class="s">
+  <div class="cab"><span><b>La idea</b></span><span>Qué no es</span></div>
+  <h1>Igual de importante: lo que SFSP <em>no</em> es</h1>
+  <div class="fila" style="margin-top:34px;flex-wrap:wrap;gap:18px">
+    <div class="tarjeta" style="flex:0 0 calc(50% - 9px);display:flex;gap:16px">
+      <div class="ico" style="background:var(--rojo2)"><svg width="24" height="24"><path d="M4 4L20 20M20 4L4 20" stroke="#b23a30" stroke-width="3" stroke-linecap="round"/></svg></div>
+      <div><h2>No es una cadena nueva</h2><p class="peq">La 5550 sigue igual. No hay que migrar de red, ni convencer a nadie de mover sus monedas a otra parte.</p></div></div>
+    <div class="tarjeta" style="flex:0 0 calc(50% - 9px);display:flex;gap:16px">
+      <div class="ico" style="background:var(--rojo2)"><svg width="24" height="24"><path d="M4 4L20 20M20 4L4 20" stroke="#b23a30" stroke-width="3" stroke-linecap="round"/></svg></div>
+      <div><h2>No es un banco</h2><p class="peq">No promete respaldo, rendimiento, ni recuperar la plata de nadie. Esas promesas sólo existen si alguien con autoridad las firma.</p></div></div>
+    <div class="tarjeta" style="flex:0 0 calc(50% - 9px);display:flex;gap:16px">
+      <div class="ico" style="background:var(--rojo2)"><svg width="24" height="24"><path d="M4 4L20 20M20 4L4 20" stroke="#b23a30" stroke-width="3" stroke-linecap="round"/></svg></div>
+      <div><h2>No mueve saldos por su cuenta</h2><p class="peq">Anota, ordena y vigila. Los saldos se quedan en las mismas billeteras donde están hoy.</p></div></div>
+    <div class="tarjeta" style="flex:0 0 calc(50% - 9px);display:flex;gap:16px">
+      <div class="ico" style="background:var(--rojo2)"><svg width="24" height="24"><path d="M4 4L20 20M20 4L4 20" stroke="#b23a30" stroke-width="3" stroke-linecap="round"/></svg></div>
+      <div><h2>No inventa precios</h2><p class="peq">Ni un precio, ni una comisión, ni un tope está escrito en el sistema. Todos están vacíos hasta que se firmen.</p></div></div>
+  </div>
+  <div class="nota">Por eso se puede construir <b>al lado</b> de lo que ya funciona sin tocarlo: si mañana se borrara todo SFSP, las nueve piezas seguirían funcionando igual.</div>
+  <div class="pag">6</div>
+</section>
+
+<!-- ═════════════ 7 · SEPARADOR PARTE 1 ═════════════ -->
+<section class="s osc sep">
+  <div class="parte">Parte 1</div>
+  <h1>La persona y <em>su cuenta</em></h1>
+  <p class="lead" style="max-width:700px">Qué recibe cada persona, qué es cada cosa, y por qué separarlas es lo que después permite migrar sin tocar un centavo.</p>
+  <div class="gran">1</div>
+</section>
+
+<!-- ═════════════ 8 · LAS CUATRO COSAS ═════════════ -->
+<section class="s">
+  <div class="cab"><span><b>Parte 1 · La persona</b></span><span>Las cuatro cosas distintas</span></div>
+  <h1>Cuatro cosas que parecen una, <em>y no lo son</em></h1>
+  <p class="lead" style="font-size:17px">La idea más importante de toda la presentación. Con una analogía de la vida real:</p>
+  <div class="fila" style="margin-top:26px;gap:16px">
+    <!-- 1 -->
+    <div class="tarjeta col" style="padding:0;overflow:hidden">
+      <div style="background:var(--verde2);height:128px;display:flex;align-items:center;justify-content:center">
+        <svg width="150" height="92"><rect x="4" y="8" width="142" height="80" rx="10" fill="#fff" stroke="#1e7a52" stroke-width="2"/>
+          <rect x="16" y="24" width="50" height="7" rx="3" fill="#1e7a52"/><text x="16" y="60" font-family="Mono" font-size="12.5" fill="#1e7a52">SF-0324-8432</text>
+          <text x="16" y="76" font-family="Mono" font-size="12.5" fill="#1e7a52">-6581-4</text></svg></div>
+      <div style="padding:16px 18px">
+        <span class="pill p-verde">Pública</span>
+        <h2 style="margin-top:10px">Cuenta SFSP</h2>
+        <p class="peq" style="margin-bottom:8px"><b>Como tu número de cuenta del banco.</b> Se lo das a quien te va a pagar.</p>
+        <p class="peq">No da ningún poder sobre la plata. Que alguien lo conozca no es un riesgo.</p>
+      </div></div>
+    <!-- 2 -->
+    <div class="tarjeta col" style="padding:0;overflow:hidden">
+      <div style="background:var(--azul2);height:128px;display:flex;align-items:center;justify-content:center">
+        <svg width="150" height="92"><rect x="4" y="8" width="142" height="80" rx="10" fill="#fff" stroke="#2a5ca8" stroke-width="2"/>
+          <circle cx="38" cy="44" r="15" fill="#2a5ca8" opacity=".25"/><circle cx="38" cy="40" r="7" fill="#2a5ca8"/><path d="M26 58 Q38 46 50 58" fill="#2a5ca8"/>
+          <rect x="66" y="30" width="64" height="6" rx="3" fill="#2a5ca8"/><rect x="66" y="44" width="48" height="5" rx="2.5" fill="#9fb6dc"/><rect x="66" y="56" width="56" height="5" rx="2.5" fill="#9fb6dc"/></svg></div>
+      <div style="padding:16px 18px">
+        <span class="pill p-azul">Privada</span>
+        <h2 style="margin-top:10px">Genesis ID</h2>
+        <p class="peq" style="margin-bottom:8px"><b>Como tu cédula.</b> Dice quién eres y qué verificaciones pasaste.</p>
+        <p class="peq">Nunca se publica. Nunca va a la cadena. La consultan sólo quienes la necesitan.</p>
+      </div></div>
+    <!-- 3 -->
+    <div class="tarjeta col" style="padding:0;overflow:hidden">
+      <div style="background:var(--oro3);height:128px;display:flex;align-items:center;justify-content:center">
+        <svg width="150" height="100"><rect x="30" y="10" width="90" height="82" rx="8" fill="#fff" stroke="#c28f2c" stroke-width="2"/>
+          <circle cx="75" cy="51" r="20" fill="none" stroke="#c28f2c" stroke-width="2.5"/><circle cx="75" cy="51" r="4" fill="#c28f2c"/>
+          <line x1="75" y1="31" x2="75" y2="38" stroke="#c28f2c" stroke-width="2.5"/><line x1="95" y1="51" x2="88" y2="51" stroke="#c28f2c" stroke-width="2.5"/>
+          <rect x="112" y="36" width="6" height="30" rx="2" fill="#c28f2c"/></svg></div>
+      <div style="padding:16px 18px">
+        <span class="pill p-oro">Visible, no se muestra</span>
+        <h2 style="margin-top:10px">Billetera</h2>
+        <p class="peq" style="margin-bottom:8px"><b>Como la caja fuerte.</b> Es donde está la plata de verdad, en la cadena.</p>
+        <p class="peq">Se llama <span class="mono">0x7099…</span>. La persona no necesita verla nunca.</p>
+      </div></div>
+    <!-- 4 -->
+    <div class="tarjeta col" style="padding:0;overflow:hidden">
+      <div style="background:var(--rojo2);height:128px;display:flex;align-items:center;justify-content:center">
+        <svg width="150" height="92"><circle cx="52" cy="46" r="22" fill="none" stroke="#b23a30" stroke-width="4"/><circle cx="52" cy="46" r="7" fill="#b23a30"/>
+          <path d="M74 46 H128 M112 46 V60 M124 46 V56" stroke="#b23a30" stroke-width="5" stroke-linecap="round"/></svg></div>
+      <div style="padding:16px 18px">
+        <span class="pill p-rojo">Secreta</span>
+        <h2 style="margin-top:10px">Llave privada</h2>
+        <p class="peq" style="margin-bottom:8px"><b>Como la llave de la caja fuerte.</b> Quien la tiene, puede gastar.</p>
+        <p class="peq">SFSP está diseñado para no necesitarla <b>nunca</b>. Ni para migrar.</p>
+      </div></div>
+  </div>
+  <div class="nota verde" style="bottom:44px">Como son cuatro cosas separadas, <b>se le puede dar a alguien un número de cuenta nuevo sin abrir su caja fuerte</b>. Ese es todo el secreto de la migración.</div>
+  <div class="pag">8</div>
+</section>
+
+<!-- ═════════════ 9 · ANATOMÍA DEL NÚMERO ═════════════ -->
+<section class="s">
+  <div class="cab"><span><b>Parte 1 · La persona</b></span><span>El número de cuenta</span></div>
+  <h1>Anatomía de un número de cuenta</h1>
+  <p class="lead" style="font-size:17px">Éste es un número real, salido del sistema. Cada parte está pensada para algo.</p>
+  <svg width="1136" height="400" viewBox="0 0 1136 400" style="position:absolute;left:72px;top:250px">
+    <!-- número grande -->
+    <g font-family="Mono" font-size="68" font-weight="500">
+      <text x="120" y="120" fill="#9aa2ae">SF-</text>
+      <text x="262" y="120" fill="#18212f">0324-8432-6581</text>
+      <text x="850" y="120" fill="#9aa2ae">-</text>
+      <text x="892" y="120" fill="#c28f2c">4</text>
+    </g>
+    <!-- llaves -->
+    <g fill="none" stroke-width="2.5">
+      <path d="M124 146 V160 H236 V146" stroke="#9aa2ae"/>
+      <path d="M266 146 V160 H836 V146" stroke="#18212f"/>
+      <path d="M892 146 V160 H934 V146" stroke="#c28f2c"/>
+    </g>
+    <g stroke-width="2" stroke-dasharray="3 4">
+      <line x1="180" y1="162" x2="180" y2="214" stroke="#9aa2ae"/>
+      <line x1="551" y1="162" x2="551" y2="214" stroke="#18212f"/>
+      <line x1="913" y1="162" x2="913" y2="214" stroke="#c28f2c"/>
+    </g>
+    <!-- explicaciones -->
+    <g>
+      <foreignObject x="30" y="222" width="310" height="170"><div xmlns="http://www.w3.org/1999/xhtml" style="font:14px/1.5 Inter;color:#5f6878">
+        <div style="font:700 15px Inter;color:#18212f;margin-bottom:4px">El prefijo</div>
+        Dice «esto es una cuenta SFSP». No dice país, ni banco, ni tipo de persona. <b>A propósito:</b> un número que revela algo de ti es un número que te expone.</div></foreignObject>
+      <foreignObject x="390" y="222" width="330" height="170"><div xmlns="http://www.w3.org/1999/xhtml" style="font:14px/1.5 Inter;color:#5f6878">
+        <div style="font:700 15px Inter;color:#18212f;margin-bottom:4px">Doce dígitos al azar</div>
+        No van en orden. El siguiente cliente no es el <span style="font-family:Mono">…6582</span>. Así nadie calcula cuántos clientes hay, ni prueba números vecinos para encontrar cuentas.</div></foreignObject>
+      <foreignObject x="770" y="222" width="340" height="170"><div xmlns="http://www.w3.org/1999/xhtml" style="font:14px/1.5 Inter;color:#5f6878">
+        <div style="font:700 15px Inter;color:#c28f2c;margin-bottom:4px">El dígito de control</div>
+        Se calcula de los otros doce. Si alguien teclea mal un número, <b>el sistema lo detecta antes de mandar nada</b>, y casi siempre también si invierte dos números vecinos. Como el último dígito de una tarjeta de crédito.</div></foreignObject>
+    </g>
+  </svg>
+  <div class="nota" style="bottom:40px">Y una regla de oro: <b>un número usado nunca se vuelve a entregar</b>, ni aunque la cuenta se cierre. Alguien pudo haberlo guardado en su agenda, y un pago viejo nunca debe llegarle a otra persona.</div>
+  <div class="pag">9</div>
+</section>
+
+<!-- ═════════════ 10 · EL ALIAS ═════════════ -->
+<section class="s">
+  <div class="cab"><span><b>Parte 1 · La persona</b></span><span>El alias</span></div>
+  <h1>El alias: un nombre fácil, <em>imposible de imitar</em></h1>
+  <p class="lead" style="font-size:17px">En vez de catorce dígitos, un nombre: <span class="mono" style="color:var(--verde)">@medardo</span>. El peligro obvio es que alguien registre
+  algo que <b>se vea</b> igual y cobre lo que no es suyo. Así respondió el sistema cuando lo intentamos:</p>
+  <div style="position:absolute;left:72px;right:72px;top:300px">
+    <div class="tarjeta" style="display:flex;align-items:center;gap:18px;border-color:var(--verde);margin-bottom:14px;padding:14px 20px">
+      <span class="mono" style="font-size:24px;width:200px;color:var(--verde)">@medardo</span>
+      <span class="pill p-verde">Dueño original</span>
+      <span class="peq">Registrado primero. Todo lo que sigue intenta hacerse pasar por él.</span>
+    </div>
+    <div class="fila" style="gap:12px">
+      <div class="tarjeta col" style="padding:14px 16px"><div class="mono" style="font-size:20px">@MEDARDO</div>
+        <span class="pill p-rojo" style="margin:8px 0">Rechazado</span><p class="peq">Las mayúsculas no cuentan.</p></div>
+      <div class="tarjeta col" style="padding:14px 16px"><div class="mono" style="font-size:20px">@medardo␣</div>
+        <span class="pill p-rojo" style="margin:8px 0">Rechazado</span><p class="peq">El espacio invisible tampoco.</p></div>
+      <div class="tarjeta col" style="padding:14px 16px;border-color:var(--rojo)"><div class="mono" style="font-size:20px">@medard<span style="color:var(--rojo)">0</span></div>
+        <span class="pill p-rojo" style="margin:8px 0">Rechazado</span><p class="peq">Un <b>cero</b> en vez de la letra o.</p></div>
+      <div class="tarjeta col" style="padding:14px 16px;border-color:var(--rojo)"><div class="mono" style="font-size:20px">@<span style="color:var(--rojo)">rn</span>edardo</div>
+        <span class="pill p-rojo" style="margin:8px 0">Rechazado</span><p class="peq"><b>r + n</b> juntas, que parecen una m.</p></div>
+    </div>
+  </div>
+  <div class="nota" style="bottom:40px">Los dos últimos son los que importan: para una computadora son textos <b>distintos</b>, y un sistema ingenuo los acepta. SFSP calcula el «esqueleto» de cada nombre —cómo se ve a simple vista— y compara por ahí.</div>
+  <div class="pag">10</div>
+</section>
+
+<!-- ═════════════ 11 · RUTAS ═════════════ -->
+<section class="s">
+  <div class="cab"><span><b>Parte 1 · La persona</b></span><span>Una cuenta, varias billeteras</span></div>
+  <h1>Una cuenta puede tener <em>varias</em> billeteras</h1>
+  <p class="lead" style="font-size:17px">Cada conexión entre la cuenta y una billetera se llama <b>ruta</b>. Una de ellas es la principal: ahí llegan los pagos.</p>
+  <svg width="1136" height="380" viewBox="0 0 1136 380" style="position:absolute;left:72px;top:260px">
+    <defs><marker id="fl2" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="#1e7a52"/></marker></defs>
+    <!-- cuenta -->
+    <rect x="0" y="130" width="300" height="110" rx="16" fill="#0e1a2b"/>
+    <text x="24" y="162" fill="#c28f2c" font-size="11" font-weight="700" letter-spacing="1.5">CUENTA</text>
+    <text x="24" y="196" fill="#fff" font-family="Mono" font-size="20">SF-0324-8432-6581-4</text>
+    <text x="24" y="222" fill="#8d9ab0" font-size="13">@medardo</text>
+    <!-- rutas -->
+    <path d="M300 185 C400 185 420 60 560 60" fill="none" stroke="#1e7a52" stroke-width="4" marker-end="url(#fl2)"/>
+    <path d="M300 185 C420 185 440 185 560 185" fill="none" stroke="#9aa2ae" stroke-width="2.5" stroke-dasharray="7 6"/>
+    <path d="M300 185 C400 185 420 310 560 310" fill="none" stroke="#b23a30" stroke-width="2.5" stroke-dasharray="3 6"/>
+    <!-- billeteras -->
+    <g>
+      <rect x="566" y="22" width="270" height="76" rx="14" fill="#fff" stroke="#1e7a52" stroke-width="2"/>
+      <text x="586" y="50" font-weight="700" font-size="15">Billetera del teléfono</text>
+      <text x="586" y="74" font-family="Mono" font-size="12.5" fill="#5f6878">0x7099…79C8 · red 5550</text>
+      <rect x="850" y="44" width="92" height="28" rx="14" fill="#d8efe3"/><text x="896" y="63" text-anchor="middle" font-size="10.5" font-weight="700" fill="#1e7a52">PRINCIPAL</text>
+    </g>
+    <g>
+      <rect x="566" y="147" width="270" height="76" rx="14" fill="#fff" stroke="#e2dccf"/>
+      <text x="586" y="175" font-weight="700" font-size="15">Billetera de ahorro</text>
+      <text x="586" y="199" font-family="Mono" font-size="12.5" fill="#5f6878">0x3C44…93BC · red 5550</text>
+      <rect x="850" y="169" width="92" height="28" rx="14" fill="#e7e3da"/><text x="896" y="188" text-anchor="middle" font-size="10.5" font-weight="700" fill="#5f6878">ACTIVA</text>
+    </g>
+    <g>
+      <rect x="566" y="272" width="270" height="76" rx="14" fill="#fff" stroke="#e2dccf"/>
+      <text x="586" y="300" font-weight="700" font-size="15" fill="#9aa2ae">Teléfono que se perdió</text>
+      <text x="586" y="324" font-family="Mono" font-size="12.5" fill="#9aa2ae">0x90F7…b906 · red 5550</text>
+      <rect x="850" y="294" width="92" height="28" rx="14" fill="#f6dcd8"/><text x="896" y="313" text-anchor="middle" font-size="10.5" font-weight="700" fill="#b23a30">REVOCADA</text>
+    </g>
+    <foreignObject x="966" y="14" width="170" height="360"><div xmlns="http://www.w3.org/1999/xhtml" style="font:13.5px/1.5 Inter;color:#5f6878">
+      <b style="color:#18212f">¿Cambias de teléfono?</b><br>Tu número de cuenta sigue siendo el mismo. Quien te pagaba te sigue pagando igual.<br><br>
+      <b style="color:#18212f">¿Pierdes uno?</b><br>Esa ruta se revoca. Ningún pago vuelve a ir hacia allá.</div></foreignObject>
+  </svg>
+  <div class="pag">11</div>
+</section>
+
+<!-- ═════════════ 12 · VIDA DE UNA CUENTA ═════════════ -->
+<section class="s">
+  <div class="cab"><span><b>Parte 1 · La persona</b></span><span>La vida de una cuenta</span></div>
+  <h1>Una cuenta <em>nace apagada</em>, y cerrada no se reabre</h1>
+  <svg width="1136" height="320" viewBox="0 0 1136 320" style="position:absolute;left:72px;top:200px">
+    <defs><marker id="fl3" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0 0L10 5L0 10z" fill="#18212f"/></marker></defs>
+    <g stroke="#18212f" stroke-width="2.5" fill="none" marker-end="url(#fl3)">
+      <line x1="222" y1="80" x2="322" y2="80"/>
+      <path d="M542 58 C590 14 620 14 662 58"/>
+      <path d="M662 104 C620 148 590 148 542 104"/>
+      <path d="M872 80 C930 80 960 120 990 170"/>
+    </g>
+    <g stroke="#18212f" stroke-width="2" fill="none" stroke-dasharray="6 5">
+      <path d="M116 132 V262 H1050"/>
+      <path d="M436 132 V262"/>
+      <path d="M1050 262 V238" marker-end="url(#fl3)"/>
+    </g>
+    <g font-size="12" fill="#5f6878" text-anchor="middle">
+      <text x="272" y="68">se aprueba</text>
+      <text x="602" y="22">suspender</text><text x="602" y="152">reactivar</text>
+      <text x="940" y="112">cerrar</text>
+      <text x="740" y="286">cerrar, desde cualquier estado</text>
+    </g>
+    <g text-anchor="middle">
+      <rect x="10" y="30" width="212" height="100" rx="18" fill="#fbecd1" stroke="#b7791f" stroke-width="2"/>
+      <text x="116" y="70" font-weight="800" font-size="17" fill="#b7791f">PENDIENTE</text>
+      <text x="116" y="94" font-size="12.5" fill="#5f6878">existe, pero no recibe</text><text x="116" y="112" font-size="12.5" fill="#5f6878">ni un pago</text>
+      <rect x="330" y="30" width="212" height="100" rx="18" fill="#d8efe3" stroke="#1e7a52" stroke-width="2"/>
+      <text x="436" y="70" font-weight="800" font-size="17" fill="#1e7a52">ACTIVA</text>
+      <text x="436" y="94" font-size="12.5" fill="#5f6878">opera con</text><text x="436" y="112" font-size="12.5" fill="#5f6878">normalidad</text>
+      <rect x="662" y="30" width="210" height="100" rx="18" fill="#fff" stroke="#9aa2ae" stroke-width="2"/>
+      <text x="767" y="70" font-weight="800" font-size="17" fill="#5f6878">SUSPENDIDA</text>
+      <text x="767" y="94" font-size="12.5" fill="#5f6878">en pausa por una</text><text x="767" y="112" font-size="12.5" fill="#5f6878">revisión</text>
+      <rect x="960" y="160" width="176" height="78" rx="18" fill="#18212f"/>
+      <text x="1048" y="196" font-weight="800" font-size="17" fill="#fff">CERRADA</text>
+      <text x="1048" y="218" font-size="12" fill="#f09a90" font-weight="700">sin vuelta atrás</text>
+    </g>
+  </svg>
+  <div class="fila" style="position:absolute;left:72px;right:72px;bottom:44px;gap:16px">
+    <div class="tarjeta col"><h3>Nace apagada</h3><p class="peq">Una cuenta recién creada no recibe plata hasta que alguien aprueba el alta. Si alguien intenta pagarle antes, el sistema lo rechaza.</p></div>
+    <div class="tarjeta col"><h3>Cada cambio tiene nombre</h3><p class="peq">Nadie cambia el estado de una cuenta sin dejar escrito <b>quién</b> fue y <b>por qué</b>. Si falta cualquiera de los dos, no se hace.</p></div>
+    <div class="tarjeta col"><h3>Cerrada es cerrada</h3><p class="peq">Una cuenta cerrada que se pudiera reabrir haría que un número dado por muerto volviera a recibir pagos.</p></div>
+  </div>
+  <div class="pag">12</div>
+</section>
+
+<!-- ═════════════ 13 · SEPARADOR PARTE 2 ═════════════ -->
+<section class="s osc sep">
+  <div class="parte">Parte 2</div>
+  <h1>La plata <em>en movimiento</em></h1>
+  <p class="lead" style="max-width:700px">Qué pasa por dentro cuando alguien manda plata, quién decide si se puede, y por qué nadie puede hacer algo grave él solo.</p>
+  <div class="gran">2</div>
+</section>
+
+<!-- ═════════════ 14 · CÓMO VIAJA UN PAGO ═════════════ -->
+<section class="s">
+  <div class="cab"><span><b>Parte 2 · La plata en movimiento</b></span><span>Cómo viaja un pago</span></div>
+  <h1>Ana le manda plata a <em>@medardo</em>. Esto es lo que pasa:</h1>
+  <svg width="1136" height="250" viewBox="0 0 1136 250" style="position:absolute;left:72px;top:215px">
+    <defs><marker id="fl4" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="#c28f2c"/></marker></defs>
+    <line x1="80" y1="60" x2="1056" y2="60" stroke="#e2dccf" stroke-width="4"/>
+    <g stroke="#c28f2c" stroke-width="4" marker-end="url(#fl4)">
+      <line x1="80" y1="60" x2="1010" y2="60"/>
+    </g>
+    <g text-anchor="middle">
+      <g transform="translate(80,60)"><circle r="40" fill="#0e1a2b"/><text y="8" fill="#fff" font-size="24" font-weight="800" font-family="Fraunces">1</text></g>
+      <g transform="translate(275,60)"><circle r="40" fill="#0e1a2b"/><text y="8" fill="#fff" font-size="24" font-weight="800" font-family="Fraunces">2</text></g>
+      <g transform="translate(470,60)"><circle r="40" fill="#0e1a2b"/><text y="8" fill="#fff" font-size="24" font-weight="800" font-family="Fraunces">3</text></g>
+      <g transform="translate(665,60)"><circle r="40" fill="#0e1a2b"/><text y="8" fill="#fff" font-size="24" font-weight="800" font-family="Fraunces">4</text></g>
+      <g transform="translate(860,60)"><circle r="40" fill="#0e1a2b"/><text y="8" fill="#fff" font-size="24" font-weight="800" font-family="Fraunces">5</text></g>
+      <g transform="translate(1056,60)"><circle r="40" fill="#1e7a52"/><path d="M-13 1 L-4 10 L14 -9" stroke="#fff" stroke-width="5" fill="none" stroke-linecap="round"/></g>
+    </g>
+    <g font-size="13.5">
+      <foreignObject x="5" y="116" width="150" height="140"><div xmlns="http://www.w3.org/1999/xhtml" style="font:13.5px/1.45 Inter;color:#5f6878;text-align:center">
+        <b style="color:#18212f;display:block;font-size:15px;margin-bottom:4px">Escribe</b>En Veta Wallet pone <b>@medardo</b> y el monto.</div></foreignObject>
+      <foreignObject x="200" y="116" width="150" height="140"><div xmlns="http://www.w3.org/1999/xhtml" style="font:13.5px/1.45 Inter;color:#5f6878;text-align:center">
+        <b style="color:#18212f;display:block;font-size:15px;margin-bottom:4px">Busca</b>El directorio encuentra la cuenta detrás del alias.</div></foreignObject>
+      <foreignObject x="395" y="116" width="150" height="140"><div xmlns="http://www.w3.org/1999/xhtml" style="font:13.5px/1.45 Inter;color:#5f6878;text-align:center">
+        <b style="color:#18212f;display:block;font-size:15px;margin-bottom:4px">Revisa</b>¿La cuenta está activa? ¿Tiene billetera principal vigente?</div></foreignObject>
+      <foreignObject x="590" y="116" width="150" height="140"><div xmlns="http://www.w3.org/1999/xhtml" style="font:13.5px/1.45 Inter;color:#5f6878;text-align:center">
+        <b style="color:#18212f;display:block;font-size:15px;margin-bottom:4px">Pregunta</b>El portero decide si ese pago se permite.</div></foreignObject>
+      <foreignObject x="785" y="116" width="150" height="140"><div xmlns="http://www.w3.org/1999/xhtml" style="font:13.5px/1.45 Inter;color:#5f6878;text-align:center">
+        <b style="color:#18212f;display:block;font-size:15px;margin-bottom:4px">Firma</b>Ana confirma. Justo antes, se vuelve a revisar todo.</div></foreignObject>
+      <foreignObject x="976" y="116" width="160" height="140"><div xmlns="http://www.w3.org/1999/xhtml" style="font:13.5px/1.45 Inter;color:#5f6878;text-align:center">
+        <b style="color:#1e7a52;display:block;font-size:15px;margin-bottom:4px">Llegó</b>Y se puede comprobar en ordenscan.com</div></foreignObject>
+    </g>
+  </svg>
+  <div class="fila" style="position:absolute;left:72px;right:72px;bottom:46px;gap:16px">
+    <div class="tarjeta col" style="border-left:4px solid var(--oro)"><h3>La respuesta caduca en 60 segundos</h3>
+      <p class="peq">Cuando el directorio dice «@medardo es esta billetera», esa respuesta vence en un minuto. Si Medardo acaba de cambiar de teléfono, ningún pago se va a la billetera vieja.</p></div>
+    <div class="tarjeta col" style="border-left:4px solid var(--oro)"><h3>Se revisa dos veces</h3>
+      <p class="peq">Entre el paso 2 y el paso 5 pueden pasar cosas: que la cuenta se suspenda, que la ruta cambie. Por eso, justo antes de firmar, se revisa otra vez contra lo que se aprobó.</p></div>
+    <div class="tarjeta col" style="border-left:4px solid var(--oro)"><h3>Para Ana es igual que hoy</h3>
+      <p class="peq">Tres toques. Todo lo de arriba ocurre por dentro, en una fracción de segundo. Lo único que cambia para ella es que no tiene que copiar un <span class="mono">0x…</span>.</p></div>
+  </div>
+  <div class="pag">14</div>
+</section>
+
+<!-- ═════════════ 15 · EL PORTERO ═════════════ -->
+<section class="s">
+  <div class="cab"><span><b>Parte 2 · La plata en movimiento</b></span><span>El portero</span></div>
+  <h1>El portero siempre contesta, y siempre dice <em>por qué</em></h1>
+  <div class="fila" style="margin-top:22px;gap:26px;align-items:flex-start">
+    <!-- semáforo -->
+    <svg width="170" height="400" viewBox="0 0 170 400" style="flex:0 0 170px">
+      <rect x="25" y="0" width="120" height="360" rx="30" fill="#0e1a2b"/>
+      <circle cx="85" cy="62" r="40" fill="#1e7a52"/><circle cx="85" cy="62" r="40" fill="none" stroke="#7fe0b0" stroke-opacity=".5" stroke-width="3"/>
+      <circle cx="85" cy="152" r="40" fill="#b7791f"/>
+      <circle cx="85" cy="242" r="40" fill="#b23a30"/>
+      <circle cx="85" cy="316" r="26" fill="#3b4a61"/><text x="85" y="324" text-anchor="middle" fill="#fff" font-size="22" font-weight="800">?</text>
+      <rect x="75" y="360" width="20" height="40" fill="#0e1a2b"/>
+    </svg>
+    <div style="flex:1">
+      <div class="tarjeta" style="display:flex;gap:16px;align-items:center;margin-bottom:10px;padding:14px 18px">
+        <span class="pill p-verde" style="width:150px;text-align:center">Adelante</span>
+        <p class="peq" style="flex:1"><b style="color:var(--tinta)">Se permite.</b> Todo en regla: la cuenta, el activo, la persona, el monto.</p></div>
+      <div class="tarjeta" style="display:flex;gap:16px;align-items:center;margin-bottom:10px;padding:14px 18px">
+        <span class="pill p-ambar" style="width:150px;text-align:center">Que lo mire alguien</span>
+        <p class="peq" style="flex:1"><b style="color:var(--tinta)">Revisión humana.</b> No es un no, pero tampoco un sí automático.</p></div>
+      <div class="tarjeta" style="padding:14px 18px;margin-bottom:10px">
+        <div style="display:flex;gap:16px;align-items:center"><span class="pill p-rojo" style="width:150px;text-align:center">No, y el motivo</span>
+          <p class="peq" style="flex:1"><b style="color:var(--tinta)">Se niega, siempre con una razón concreta:</b></p></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px 18px;margin:10px 0 0 166px;font-size:12.5px;color:var(--gris)">
+          <span>· la política no lo permite</span><span>· la persona no cumple requisitos</span><span>· no en ese país</span>
+          <span>· el activo está congelado</span><span>· falta una firma válida</span><span>· se pasa de un tope</span></div></div>
+      <div class="tarjeta" style="display:flex;gap:16px;align-items:center;padding:14px 18px;border:2px solid var(--tinta)">
+        <span class="pill" style="width:150px;text-align:center;background:#3b4a61;color:#fff">No sé</span>
+        <p class="peq" style="flex:1"><b style="color:var(--tinta)">Falta un dato, o llegó roto.</b> Y el sistema se detiene.</p></div>
+    </div>
+  </div>
+  <div class="nota roja" style="bottom:36px"><b>La regla de oro: «no sé» nunca se convierte en «sí».</b> En muchos sistemas de pago, un dato que no llega se trata como un cero, y un cero parece que está todo bien. Aquí un dato que falta detiene la operación.</div>
+  <div class="pag">15</div>
+</section>
+
+<!-- ═════════════ 16 · DOBLE FIRMA ═════════════ -->
+<section class="s">
+  <div class="cab"><span><b>Parte 2 · La plata en movimiento</b></span><span>Nadie decide solo</span></div>
+  <h1>Todo lo grave necesita <em>dos</em> personas distintas</h1>
+  <div class="fila" style="margin-top:24px;gap:30px">
+    <div style="flex:0 0 480px">
+      <svg width="480" height="260" viewBox="0 0 480 260">
+        <!-- persona 1 -->
+        <g transform="translate(70,70)"><circle r="30" fill="#dde7f6"/><circle cy="-6" r="11" fill="#2a5ca8"/><path d="M-18 20 Q0 2 18 20" fill="#2a5ca8"/></g>
+        <text x="70" y="130" text-anchor="middle" font-weight="700" font-size="14">Propone</text>
+        <text x="70" y="148" text-anchor="middle" font-size="12" fill="#5f6878">«emitir 1.000 de X</text><text x="70" y="164" text-anchor="middle" font-size="12" fill="#5f6878">para la cuenta Y»</text>
+        <!-- persona 2 -->
+        <g transform="translate(410,70)"><circle r="30" fill="#d8efe3"/><circle cy="-6" r="11" fill="#1e7a52"/><path d="M-18 20 Q0 2 18 20" fill="#1e7a52"/></g>
+        <text x="410" y="130" text-anchor="middle" font-weight="700" font-size="14">Aprueba</text>
+        <text x="410" y="148" text-anchor="middle" font-size="12" fill="#5f6878">otra persona,</text><text x="410" y="164" text-anchor="middle" font-size="12" fill="#5f6878">que lee lo mismo</text>
+        <!-- sobre sellado -->
+        <g transform="translate(240,70)">
+          <rect x="-70" y="-40" width="140" height="84" rx="8" fill="#fff" stroke="#c28f2c" stroke-width="2"/>
+          <path d="M-70 -40 L0 8 L70 -40" fill="none" stroke="#c28f2c" stroke-width="2"/>
+          <circle cy="16" r="15" fill="#c28f2c"/><text y="21" text-anchor="middle" fill="#fff" font-size="13" font-weight="800">✓</text>
+        </g>
+        <g stroke="#c28f2c" stroke-width="2" stroke-dasharray="4 4"><line x1="104" y1="70" x2="168" y2="70"/><line x1="312" y1="70" x2="376" y2="70"/></g>
+        <text x="240" y="140" text-anchor="middle" font-size="12.5" font-weight="700" fill="#7a5711">sobre sellado</text>
+        <foreignObject x="0" y="186" width="480" height="80"><div xmlns="http://www.w3.org/1999/xhtml" style="font:13.5px/1.5 Inter;color:#5f6878;text-align:center">
+          La aprobación es un <b>sobre sellado</b> con todo adentro: qué, cuánto, para quién, hasta cuándo. Si al abrirlo cualquier detalle es distinto, <b>no se ejecuta</b>. Y sólo se puede abrir una vez.</div></foreignObject>
+      </svg>
+    </div>
+    <div style="flex:1">
+      <h2 style="margin-bottom:12px">Las diez acciones con doble firma</h2>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+        <div class="tarjeta" style="padding:9px 14px;font-size:13.5px"><b>Emitir</b> monedas nuevas</div>
+        <div class="tarjeta" style="padding:9px 14px;font-size:13.5px"><b>Quemar</b> monedas</div>
+        <div class="tarjeta" style="padding:9px 14px;font-size:13.5px"><b>Mover a la fuerza</b> por orden legal</div>
+        <div class="tarjeta" style="padding:9px 14px;font-size:13.5px"><b>Reanudar</b> tras una pausa</div>
+        <div class="tarjeta" style="padding:9px 14px;font-size:13.5px"><b>Liquidar</b> una compraventa</div>
+        <div class="tarjeta" style="padding:9px 14px;font-size:13.5px"><b>Actualizar</b> el sistema</div>
+        <div class="tarjeta" style="padding:9px 14px;font-size:13.5px"><b>Recuperar</b> una cuenta</div>
+        <div class="tarjeta" style="padding:9px 14px;font-size:13.5px"><b>Cambiar</b> cuántas firmas hacen falta</div>
+        <div class="tarjeta" style="padding:9px 14px;font-size:13.5px"><b>Cambiar</b> las reglas</div>
+        <div class="tarjeta" style="padding:9px 14px;font-size:13.5px"><b>Reclamar</b> en la migración</div>
+      </div>
+      <p class="peq" style="margin-top:12px">Quien propone <b>no cuenta</b> como aprobador, aunque tenga permiso para aprobar. Y bajar el número de firmas nunca abarata algo que ya estaba propuesto.</p>
+    </div>
+  </div>
+  <div class="nota" style="bottom:36px"><b>La única excepción: el botón de pausa.</b> Una sola persona puede parar todo en una emergencia, porque juntar firmas tarda y el daño no espera. Pero la pausa <b>caduca sola</b>, y <b>volver a arrancar sí exige dos firmas</b>. Es más fácil frenar que acelerar.</div>
+  <div class="pag">16</div>
+</section>
+
+<!-- ═════════════ 17 · LIQUIDACIÓN ═════════════ -->
+<section class="s">
+  <div class="cab"><span><b>Parte 2 · La plata en movimiento</b></span><span>Comprar y vender</span></div>
+  <h1>Cuando se compra algo: <em>o se entregan las dos cosas, o ninguna</em></h1>
+  <p class="lead" style="font-size:17px">Se llama «entrega contra pago». El miedo de cualquier compraventa es pagar y no recibir, o entregar y no cobrar. Aquí no puede pasar.</p>
+  <svg width="1136" height="300" viewBox="0 0 1136 300" style="position:absolute;left:72px;top:290px">
+    <defs><marker id="fl5" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="#18212f"/></marker></defs>
+    <!-- comprador -->
+    <rect x="0" y="40" width="250" height="170" rx="16" fill="#fff" stroke="#e2dccf"/>
+    <text x="24" y="74" font-size="11" font-weight="700" fill="#9aa2ae" letter-spacing="1.5">COMPRADOR</text>
+    <text x="24" y="106" font-size="20" font-weight="700">Luisa</text>
+    <g transform="translate(24,130)"><circle cx="16" cy="16" r="16" fill="#c28f2c"/><text x="44" y="21" font-size="14">tiene <tspan font-weight="700">ORIGEN</tspan></text></g>
+    <!-- vendedor -->
+    <rect x="886" y="40" width="250" height="170" rx="16" fill="#fff" stroke="#e2dccf"/>
+    <text x="910" y="74" font-size="11" font-weight="700" fill="#9aa2ae" letter-spacing="1.5">VENDEDOR</text>
+    <text x="910" y="106" font-size="20" font-weight="700">Pedro</text>
+    <g transform="translate(910,130)"><circle cx="16" cy="16" r="16" fill="#e0b64c"/><text x="44" y="21" font-size="14">tiene <tspan font-weight="700">AUKA</tspan></text></g>
+    <!-- motor -->
+    <rect x="380" y="10" width="376" height="230" rx="20" fill="#0e1a2b"/>
+    <text x="568" y="44" text-anchor="middle" font-size="11" font-weight="700" fill="#c28f2c" letter-spacing="1.5">EL MOTOR DE LIQUIDACIÓN</text>
+    <g transform="translate(568,128)">
+      <circle r="62" fill="none" stroke="#c28f2c" stroke-width="2" stroke-dasharray="5 5"/>
+      <path d="M-40 -18 A44 44 0 0 1 36 -24" fill="none" stroke="#f0d9a6" stroke-width="4" marker-end="url(#fl6)"/>
+      <path d="M40 18 A44 44 0 0 1 -36 24" fill="none" stroke="#f0d9a6" stroke-width="4" marker-end="url(#fl6)"/>
+      <defs><marker id="fl6" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="5" markerHeight="5" orient="auto"><path d="M0 0L10 5L0 10z" fill="#f0d9a6"/></marker></defs>
+      <text y="6" text-anchor="middle" fill="#fff" font-size="15" font-weight="800">al mismo</text><text y="24" text-anchor="middle" fill="#fff" font-size="15" font-weight="800">tiempo</text>
+    </g>
+    <text x="568" y="222" text-anchor="middle" font-size="12.5" fill="#8d9ab0">si una mitad falla, la otra se deshace</text>
+    <!-- flechas -->
+    <g stroke="#18212f" stroke-width="2.5" marker-end="url(#fl5)" fill="none">
+      <path d="M250 100 H372"/><path d="M764 100 H878"/>
+      <path d="M878 170 H764"/><path d="M372 170 H258"/>
+    </g>
+    <g font-size="12.5" fill="#5f6878" text-anchor="middle">
+      <text x="311" y="90">paga</text><text x="821" y="90">recibe pago</text>
+      <text x="821" y="190">entrega</text><text x="311" y="190">recibe AUKA</text>
+    </g>
+    <foreignObject x="0" y="248" width="1136" height="60"><div xmlns="http://www.w3.org/1999/xhtml" style="font:14px/1.5 Inter;color:#5f6878">
+      <b style="color:#18212f">Y un detalle que casi nadie cuida:</b> si la red se corta a la mitad y no se sabe si la operación pasó, el estado es <b>«desconocido»</b> — no «falló» ni «pasó». Se averigua antes de reintentar, para no cobrar dos veces.</div></foreignObject>
+  </svg>
+  <div class="pag">17</div>
+</section>
+
+<!-- ═════════════ 18 · TARJETA Y COBROS ═════════════ -->
+<section class="s">
+  <div class="cab"><span><b>Parte 2 · La plata en movimiento</b></span><span>Tarjeta, cobros y comisiones</span></div>
+  <h1>Tarjeta, cobros en negocios y <em>comisiones</em></h1>
+  <div class="fila" style="margin-top:22px;gap:18px">
+    <div class="tarjeta col">
+      <svg width="60" height="42"><rect x="1" y="1" width="58" height="40" rx="6" fill="#0e1a2b"/><rect x="8" y="12" width="12" height="9" rx="2" fill="#c28f2c"/><rect x="8" y="28" width="36" height="4" rx="2" fill="#5d6b80"/></svg>
+      <h2 style="margin-top:10px">La tarjeta</h2>
+      <ul class="l" style="margin-top:8px">
+        <li>Pedirla exige Genesis ID verificado.</li>
+        <li>Los datos de la tarjeta <b>nunca</b> se guardan en nuestros registros: los guarda el proveedor.</li>
+        <li><b>Una tarjeta no entrega oro físico.</b> Necesita plata fiat real detrás para funcionar.</li>
+      </ul>
+      <span class="pill p-oro" style="margin-top:6px">Espera firma · D15 proveedor</span>
+    </div>
+    <div class="tarjeta col">
+      <svg width="60" height="42"><rect x="10" y="1" width="40" height="40" rx="4" fill="#fff" stroke="#18212f" stroke-width="2"/><rect x="16" y="7" width="10" height="10" fill="#18212f"/><rect x="34" y="7" width="10" height="10" fill="#18212f"/><rect x="16" y="25" width="10" height="10" fill="#18212f"/><rect x="32" y="27" width="4" height="4" fill="#18212f"/><rect x="38" y="31" width="6" height="4" fill="#18212f"/></svg>
+      <h2 style="margin-top:10px">Cobrar en un negocio</h2>
+      <ul class="l" style="margin-top:8px">
+        <li>MyTokenPay cobra en ORIGEN con un QR.</li>
+        <li>El negocio recibe en su cuenta SFSP, no en un <span class="mono">0x…</span> que alguien pueda cambiar.</li>
+        <li>Si el proveedor avisa dos veces del mismo pago, <b>se anota una sola vez</b>.</li>
+      </ul>
+      <span class="pill p-oro" style="margin-top:6px">Espera firma · D15</span>
+    </div>
+    <div class="tarjeta col">
+      <svg width="60" height="42"><circle cx="21" cy="21" r="19" fill="#c28f2c"/><text x="21" y="27" text-anchor="middle" fill="#fff" font-size="16" font-weight="800">%</text><circle cx="44" cy="28" r="12" fill="#f0d9a6"/></svg>
+      <h2 style="margin-top:10px">Comisiones</h2>
+      <ul class="l" style="margin-top:8px">
+        <li>Cada comisión se cotiza <b>antes</b> y queda con fecha y versión.</li>
+        <li>Si el pago sale bien pero la comisión falla, <b>el pago no se deshace</b>: la comisión se anota como pendiente.</li>
+        <li>Quién paga el costo de red puede depender del tipo de cuenta.</li>
+      </ul>
+      <span class="pill p-oro" style="margin-top:6px">Espera firma · D01 · D02</span>
+    </div>
+  </div>
+  <div class="nota" style="bottom:40px">Ninguno de estos tres tiene hoy un precio escrito. El sistema está listo para cobrar; <b>cuánto</b> se cobra es una decisión que tiene que firmar la Junta.</div>
+  <div class="pag">18</div>
+</section>
+
+<!-- ═════════════ 19 · SEPARADOR PARTE 3 ═════════════ -->
+<section class="s osc sep">
+  <div class="parte">Parte 3</div>
+  <h1>Las monedas <em>y los activos</em></h1>
+  <p class="lead" style="max-width:720px">ORIGEN, ONDK, los metales y todo lo que venga después: cómo sabe el sistema qué es cada cosa, cuánto hay de verdad y qué lo respalda.</p>
+  <div class="gran">3</div>
+</section>
+
+<!-- ═════════════ 20 · PASAPORTE ═════════════ -->
+<section class="s">
+  <div class="cab"><span><b>Parte 3 · Los activos</b></span><span>El pasaporte</span></div>
+  <h1>Cada activo tiene un <em>pasaporte</em></h1>
+  <p class="lead" style="font-size:17px">Como el pasaporte de una persona: dice quién es, de dónde viene y qué puede hacer. Y tiene seis «sellos» independientes.</p>
+  <div class="fila" style="margin-top:24px;gap:30px;align-items:flex-start">
+    <!-- pasaporte -->
+    <svg width="300" height="380" viewBox="0 0 300 380" style="flex:0 0 300px">
+      <rect x="4" y="4" width="292" height="372" rx="18" fill="#0e1a2b"/>
+      <rect x="4" y="4" width="292" height="372" rx="18" fill="none" stroke="#c28f2c" stroke-width="2" stroke-opacity=".6"/>
+      <text x="150" y="52" text-anchor="middle" fill="#c28f2c" font-size="11" font-weight="700" letter-spacing="2.5">PASAPORTE DE ACTIVO</text>
+      <circle cx="150" cy="120" r="44" fill="#c28f2c"/><text x="150" y="130" text-anchor="middle" font-family="Fraunces" font-size="30" font-weight="700" fill="#0e1a2b">Au</text>
+      <text x="150" y="200" text-anchor="middle" fill="#fff" font-family="Fraunces" font-size="26" font-weight="600">AUKA</text>
+      <g font-size="12" fill="#8d9ab0">
+        <text x="30" y="240">Identificador</text><text x="270" y="240" text-anchor="end" fill="#dbe2ec" font-family="Mono" font-size="11">SFSP:COM:…</text>
+        <text x="30" y="266">Unidad</text><text x="270" y="266" text-anchor="end" fill="#dbe2ec">1 onza troy fina</text>
+        <text x="30" y="292">Emisor</text><text x="270" y="292" text-anchor="end" fill="#dbe2ec">por referencia privada</text>
+        <text x="30" y="318">Riesgo</text><text x="270" y="318" text-anchor="end" fill="#dbe2ec">sin evaluar</text>
+        <text x="30" y="344">Versión</text><text x="270" y="344" text-anchor="end" fill="#dbe2ec">cada cambio, una nueva</text>
+      </g>
+    </svg>
+    <div style="flex:1;display:grid;grid-template-columns:1fr 1fr;gap:12px">
+      <div class="tarjeta" style="padding:14px 16px"><span class="pill p-azul">Sello 1 · Legal</span>
+        <p class="peq" style="margin-top:8px">¿Qué es jurídicamente? Sin clasificar → en revisión → clasificado → restringido por ley.</p></div>
+      <div class="tarjeta" style="padding:14px 16px"><span class="pill p-azul">Sello 2 · Admisión</span>
+        <p class="peq" style="margin-top:8px">¿Lo aceptamos? Borrador → revisión → aprobado o rechazado. <b>Rechazado no vuelve.</b></p></div>
+      <div class="tarjeta" style="padding:14px 16px"><span class="pill p-azul">Sello 3 · Mercado</span>
+        <p class="peq" style="margin-top:8px">¿Se compra y vende? No listado → listado → suspendido → retirado.</p></div>
+      <div class="tarjeta" style="padding:14px 16px"><span class="pill p-azul">Sello 4 · Transferencia</span>
+        <p class="peq" style="margin-top:8px">¿Se puede mandar? Libre, restringido o congelado.</p></div>
+      <div class="tarjeta" style="padding:14px 16px"><span class="pill p-azul">Sello 5 · Canje</span>
+        <p class="peq" style="margin-top:8px">¿Se puede cambiar por lo que representa? No, disponible, o suspendido.</p></div>
+      <div class="tarjeta" style="padding:14px 16px"><span class="pill p-azul">Sello 6 · Visibilidad</span>
+        <p class="peq" style="margin-top:8px">¿Aparece en el catálogo? <b>Ocultarlo del catálogo nunca lo oculta a quien lo tiene.</b></p></div>
+    </div>
+  </div>
+  <div class="nota" style="bottom:36px">Los sellos son <b>independientes</b>: un activo puede estar aprobado pero congelado, o listado pero sin canje. Y cada sello sólo puede pasar a ciertos estados; el sistema rechaza los saltos que no tienen sentido.</div>
+  <div class="pag">20</div>
+</section>
+
+<!-- ═════════════ 21 · ORIGEN ═════════════ -->
+<section class="s">
+  <div class="cab"><span><b>Parte 3 · Los activos</b></span><span>ORIGEN</span></div>
+  <h1>ORIGEN: la moneda de la casa, <em>y cuánta hay de verdad</em></h1>
+  <p class="lead" style="font-size:17px">ORIGEN es nativa de la cadena: no la crea un contrato, nace con la cadena misma. Por eso el sistema separa siempre lo que circula de lo que está guardado.</p>
+  <svg width="1136" height="250" viewBox="0 0 1136 250" style="position:absolute;left:72px;top:285px">
+    <text x="0" y="16" font-size="11" font-weight="700" fill="#9aa2ae" letter-spacing="1.5">TODO EL ORIGEN QUE EXISTE · la barra es ilustrativa, no una proporción real</text>
+    <rect x="0" y="32" width="1136" height="70" rx="12" fill="#e7e3da"/>
+    <rect x="0" y="32" width="430" height="70" rx="12" fill="#c28f2c"/>
+    <rect x="420" y="32" width="10" height="70" fill="#c28f2c"/>
+    <text x="24" y="74" fill="#fff" font-size="18" font-weight="800">Liberado</text>
+    <text x="454" y="74" fill="#5f6878" font-size="18" font-weight="800">Todavía sin activar</text>
+    <g font-size="13.5" fill="#5f6878">
+      <foreignObject x="0" y="118" width="410" height="130"><div xmlns="http://www.w3.org/1999/xhtml" style="font:14px/1.5 Inter;color:#5f6878">
+        <b style="color:#18212f">Liberado</b> es lo que circula: lo que las personas tienen y usan. Es lo que tiene que estar cubierto por reservas.</div></foreignObject>
+      <foreignObject x="440" y="118" width="360" height="130"><div xmlns="http://www.w3.org/1999/xhtml" style="font:14px/1.5 Inter;color:#5f6878">
+        <b style="color:#18212f">Sin activar</b> existe en la cadena pero está guardado. Sólo sale si cabe a la vez bajo el techo aprobado <b>y</b> bajo lo que cubren las reservas, y <b>nunca más de lo que hay guardado</b>.</div></foreignObject>
+      <foreignObject x="820" y="118" width="316" height="130"><div xmlns="http://www.w3.org/1999/xhtml" style="font:14px/1.5 Inter;color:#5f6878">
+        <b style="color:#18212f">Subir un techo en papel no crea moneda.</b> Si alguien cambia un límite administrativo, el saldo técnico real no cambia ni un centavo.</div></foreignObject>
+    </g>
+  </svg>
+  <div class="fila" style="position:absolute;left:72px;right:72px;bottom:40px;gap:14px">
+    <div class="tarjeta col" style="padding:14px 16px;border-top:4px solid var(--oro)"><h3>La cobertura se calcula, no se declara</h3>
+      <p class="peq">Cobertura = valor de las reservas que cuentan ÷ lo liberado. Sin redondeos a favor: la división se hace una sola vez, al final.</p></div>
+    <div class="tarjeta col" style="padding:14px 16px;border-top:4px solid var(--rojo)"><h3>Qué no se dice hasta que se firme</h3>
+      <p class="peq">Que ORIGEN esté «totalmente respaldado». Es una de tres opciones que la Junta tiene que elegir (decisión D03).</p></div>
+    <div class="tarjeta col" style="padding:14px 16px;border-top:4px solid var(--oro)"><h3>Si falta el dato, no se libera</h3>
+      <p class="peq">Si el precio o una reserva no se puede comprobar, la respuesta es «no sé», y no se libera nada.</p></div>
+  </div>
+  <div class="pag">21</div>
+</section>
+
+<!-- ═════════════ 22 · RESERVAS ═════════════ -->
+<section class="s">
+  <div class="cab"><span><b>Parte 3 · Los activos</b></span><span>Las reservas</span></div>
+  <h1>No todo lo que se tiene <em>cuenta</em> como reserva</h1>
+  <p class="lead" style="font-size:17px">Una reserva pasa por cuatro filtros antes de contar. Cada uno la achica, nunca la agranda.</p>
+  <svg width="1136" height="250" viewBox="0 0 1136 250" style="position:absolute;left:72px;top:215px">
+    <path d="M0 10 H300 L290 230 H10 Z" fill="#f0d9a6"/>
+    <text x="150" y="112" text-anchor="middle" font-size="15" font-weight="800">Lo que vale</text><text x="150" y="134" text-anchor="middle" font-size="12.5" fill="#5f6878">si se vendiera hoy</text>
+    <path d="M300 34 H530 L520 206 H310 Z" fill="#e7c67f"/>
+    <text x="415" y="112" text-anchor="middle" font-size="15" font-weight="800">¿Es elegible?</text><text x="415" y="134" text-anchor="middle" font-size="12.5" fill="#5f6878">¿qué parte cuenta?</text>
+    <path d="M530 58 H740 L730 182 H540 Z" fill="#d4a94a"/>
+    <text x="635" y="112" text-anchor="middle" font-size="15" font-weight="800">Menos un descuento</text><text x="635" y="134" text-anchor="middle" font-size="12.5" fill="#3b2c0a">por si baja el precio</text>
+    <path d="M740 82 H930 L920 158 H750 Z" fill="#c28f2c"/>
+    <text x="835" y="114" text-anchor="middle" font-size="15" font-weight="800" fill="#fff">Por concentración</text><text x="835" y="136" text-anchor="middle" font-size="12.5" fill="#fff">no todo en un lugar</text>
+    <rect x="950" y="80" width="186" height="80" rx="14" fill="#0e1a2b"/>
+    <text x="1043" y="114" text-anchor="middle" fill="#c28f2c" font-size="12" font-weight="700" letter-spacing="1">LO QUE CUENTA</text>
+    <text x="1043" y="140" text-anchor="middle" fill="#fff" font-size="14">como reserva</text>
+  </svg>
+  <div class="fila" style="position:absolute;left:72px;right:72px;bottom:40px;gap:14px">
+    <div class="tarjeta col" style="padding:14px 16px"><h3>Nunca se cuenta dos veces</h3>
+      <p class="peq">Una misma reserva no puede respaldar a ORIGEN y a AUKA a la vez. Si aparece dos veces en la lista, se cuenta una sola. Esto fue un defecto real que la auditoría encontró y está corregido.</p></div>
+    <div class="tarjeta col" style="padding:14px 16px"><h3>Con fecha de vencimiento</h3>
+      <p class="peq">Cada certificado de reserva tiene fecha. Vencido, deja de contar y la capacidad baja sola. No hace falta que nadie se acuerde.</p></div>
+    <div class="tarjeta col" style="padding:14px 16px"><h3>Los porcentajes, sin firmar</h3>
+      <p class="peq">Qué es elegible, cuánto descuento y cuánta concentración se permite los decide DBNX con especialistas (decisión D04). Hoy valen cero.</p></div>
+  </div>
+  <div class="pag">22</div>
+</section>
+
+<!-- ═════════════ 23 · METALES ═════════════ -->
+<section class="s">
+  <div class="cab"><span><b>Parte 3 · Los activos</b></span><span>AUKA y AGK</span></div>
+  <h1>Los metales: <em>una unidad, una onza</em></h1>
+  <p class="lead" style="font-size:17px">Una unidad de AUKA representa una onza troy fina de metal, y se puede tener en fracciones. Así se canjea por el metal físico:</p>
+  <svg width="1136" height="200" viewBox="0 0 1136 200" style="position:absolute;left:72px;top:250px">
+    <defs><marker id="fl7" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0L10 5L0 10z" fill="#9aa2ae"/></marker></defs>
+    <g stroke="#9aa2ae" stroke-width="2" marker-end="url(#fl7)">
+      <line x1="150" y1="50" x2="176" y2="50"/><line x1="318" y1="50" x2="344" y2="50"/><line x1="486" y1="50" x2="512" y2="50"/>
+      <line x1="654" y1="50" x2="680" y2="50"/><line x1="822" y1="50" x2="848" y2="50"/><line x1="990" y1="50" x2="1016" y2="50"/>
+    </g>
+    <g text-anchor="middle" font-size="12.5">
+      <g><rect x="0" y="10" width="150" height="80" rx="12" fill="#fff" stroke="#e2dccf"/><text x="75" y="44" font-weight="800" font-size="14">Pide</text><text x="75" y="64" fill="#5f6878">la persona</text></g>
+      <g><rect x="168" y="10" width="150" height="80" rx="12" fill="#fff" stroke="#e2dccf"/><text x="243" y="44" font-weight="800" font-size="14">Se valida</text><text x="243" y="64" fill="#5f6878">mínimos y entrega</text></g>
+      <g><rect x="336" y="10" width="150" height="80" rx="12" fill="#fff" stroke="#e2dccf"/><text x="411" y="44" font-weight="800" font-size="14">Se bloquea</text><text x="411" y="64" fill="#5f6878">su AUKA</text></g>
+      <g><rect x="504" y="10" width="150" height="80" rx="12" fill="#fff" stroke="#e2dccf"/><text x="579" y="44" font-weight="800" font-size="14">Se aparta</text><text x="579" y="64" fill="#5f6878">el lote de metal</text></g>
+      <g><rect x="672" y="10" width="150" height="80" rx="12" fill="#fbecd1" stroke="#b7791f" stroke-width="2"/><text x="747" y="44" font-weight="800" font-size="14">Se quema</text><text x="747" y="64" fill="#5f6878">el AUKA</text></g>
+      <g><rect x="840" y="10" width="150" height="80" rx="12" fill="#fff" stroke="#e2dccf"/><text x="915" y="44" font-weight="800" font-size="14">En camino</text><text x="915" y="64" fill="#5f6878">custodio y logística</text></g>
+      <g><rect x="1008" y="10" width="128" height="80" rx="12" fill="#d8efe3" stroke="#1e7a52" stroke-width="2"/><text x="1072" y="44" font-weight="800" font-size="14" fill="#1e7a52">Entregado</text><text x="1072" y="64" fill="#5f6878">en su mano</text></g>
+    </g>
+    <path d="M747 100 V130" stroke="#b7791f" stroke-width="2"/>
+    <foreignObject x="560" y="132" width="400" height="70"><div xmlns="http://www.w3.org/1999/xhtml" style="font:13px/1.45 Inter;color:#7a5711;text-align:center">
+      Aquí nace la obligación de entregar. Entre la quema y la entrega hay días de logística real: <b>no es instantáneo, y no se promete que lo sea.</b></div></foreignObject>
+  </svg>
+  <div class="fila" style="position:absolute;left:72px;right:72px;bottom:40px;gap:14px">
+    <div class="tarjeta col" style="padding:14px 16px"><h3>Un lote, un solo dueño</h3>
+      <p class="peq">Cada lote de metal está asignado a tokens concretos. Un lote apartado para una entrega no puede respaldar tokens nuevos.</p></div>
+    <div class="tarjeta col" style="padding:14px 16px"><h3>AGK y AGKA son lo mismo</h3>
+      <p class="peq">Corregir el nombre no crea una moneda nueva: se anota como alias en el pasaporte. Nadie puede reclamar dos veces por tener los dos nombres.</p></div>
+    <div class="tarjeta col" style="padding:14px 16px;border-color:var(--rojo)"><h3>Sin «onza garantizada» todavía</h3>
+      <p class="peq">La serie que ya existe no se ofrece como canjeable hasta verificar metal, pureza, títulos y cobertura de <b>todo</b> lo prometido (D05).</p></div>
+  </div>
+  <div class="pag">23</div>
+</section>
+
+<!-- ═════════════ 24 · DBNX ═════════════ -->
+<section class="s">
+  <div class="cab"><span><b>Parte 3 · Los activos</b></span><span>Cómo entra un activo nuevo</span></div>
+  <h1>Cómo entra un activo nuevo: <em>la aduana de DBNX</em></h1>
+  <p class="lead" style="font-size:17px">Nadie puede crear un activo y ponerlo a circular. Tiene que pasar por la admisión, como un producto que entra por aduana.</p>
+  <svg width="1136" height="240" viewBox="0 0 1136 240" style="position:absolute;left:72px;top:260px">
+    <defs><marker id="fl8" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="#c28f2c"/></marker></defs>
+    <line x1="30" y1="70" x2="1100" y2="70" stroke="#c28f2c" stroke-width="3" marker-end="url(#fl8)"/>
+    <g>
+      <g transform="translate(90,70)"><circle r="36" fill="#fff" stroke="#c28f2c" stroke-width="3"/>
+        <path d="M-12 -16 H6 L14 -8 V16 H-12 Z" fill="none" stroke="#18212f" stroke-width="2.5"/><line x1="-6" y1="0" x2="8" y2="0" stroke="#18212f" stroke-width="2"/><line x1="-6" y1="7" x2="8" y2="7" stroke="#18212f" stroke-width="2"/></g>
+      <g transform="translate(330,70)"><circle r="36" fill="#fff" stroke="#c28f2c" stroke-width="3"/>
+        <circle cx="-2" cy="-3" r="11" fill="none" stroke="#18212f" stroke-width="2.5"/><line x1="6" y1="5" x2="15" y2="14" stroke="#18212f" stroke-width="3"/></g>
+      <g transform="translate(570,70)"><circle r="36" fill="#fff" stroke="#c28f2c" stroke-width="3"/>
+        <path d="M-14 6 Q-6 -14 2 4 T16 -4" fill="none" stroke="#18212f" stroke-width="2.5"/><path d="M-14 14 Q-6 -2 2 12 T16 6" fill="none" stroke="#18212f" stroke-width="2.5"/></g>
+      <g transform="translate(810,70)"><circle r="36" fill="#fff" stroke="#c28f2c" stroke-width="3"/>
+        <rect x="-12" y="-16" width="24" height="32" rx="4" fill="none" stroke="#18212f" stroke-width="2.5"/><circle cy="-4" r="5" fill="#c28f2c"/></g>
+      <g transform="translate(1030,70)"><circle r="36" fill="#1e7a52"/><path d="M-12 1 L-3 10 L13 -8" stroke="#fff" stroke-width="5" fill="none" stroke-linecap="round"/></g>
+    </g>
+    <g text-anchor="middle">
+      <foreignObject x="0" y="118" width="180" height="120"><div xmlns="http://www.w3.org/1999/xhtml" style="font:13.5px/1.45 Inter;color:#5f6878;text-align:center">
+        <b style="color:#18212f;display:block;font-size:15px;margin-bottom:4px">Expediente</b>Quién lo emite, qué es, qué derechos da.</div></foreignObject>
+      <foreignObject x="240" y="118" width="180" height="120"><div xmlns="http://www.w3.org/1999/xhtml" style="font:13.5px/1.45 Inter;color:#5f6878;text-align:center">
+        <b style="color:#18212f;display:block;font-size:15px;margin-bottom:4px">Revisión</b>Legal, riesgo y reservas, con evidencia.</div></foreignObject>
+      <foreignObject x="480" y="118" width="180" height="120"><div xmlns="http://www.w3.org/1999/xhtml" style="font:13.5px/1.45 Inter;color:#5f6878;text-align:center">
+        <b style="color:#18212f;display:block;font-size:15px;margin-bottom:4px">Dos firmas</b>Con firma digital de verdad, no un clic.</div></foreignObject>
+      <foreignObject x="720" y="118" width="180" height="120"><div xmlns="http://www.w3.org/1999/xhtml" style="font:13.5px/1.45 Inter;color:#5f6878;text-align:center">
+        <b style="color:#18212f;display:block;font-size:15px;margin-bottom:4px">Pasaporte</b>Se le emite con sus seis sellos.</div></foreignObject>
+      <foreignObject x="940" y="118" width="180" height="120"><div xmlns="http://www.w3.org/1999/xhtml" style="font:13.5px/1.45 Inter;color:#5f6878;text-align:center">
+        <b style="color:#1e7a52;display:block;font-size:15px;margin-bottom:4px">Registrado</b>Ya existe para el ecosistema.</div></foreignObject>
+    </g>
+  </svg>
+  <div class="nota" style="bottom:40px">Los informes de DBNX llevan fecha y huella. <b>Un informe viejo no vale para una decisión nueva</b>, y una plantilla de informe no se puede re-usar con otros números sin que se note. Las dos cosas eran defectos reales y están corregidas.</div>
+  <div class="pag">24</div>
+</section>
+
+<!-- ═════════════ 25 · SEPARADOR PARTE 4 ═════════════ -->
+<section class="s osc sep">
+  <div class="parte">Parte 4</div>
+  <h1>Cada pieza <em>del ecosistema</em></h1>
+  <p class="lead" style="max-width:740px">Cómo quedaría conectada cada app al protocolo, qué le pregunta, y qué nota la persona que la usa.</p>
+  <div class="gran">4</div>
+</section>
+
+<!-- ═════════════ 26 · MAPA CONECTADO ═════════════ -->
+<section class="s">
+  <div class="cab"><span><b>Parte 4 · El ecosistema</b></span><span>Así quedaría conectado</span></div>
+  <h1 style="margin-bottom:4px">Todas las apps le preguntan <em>a la misma capa</em></h1>
+  <p class="peq" style="font-size:14px"><span class="pill p-rojo" style="margin-right:8px">Todavía no</span>Hoy ninguna app está conectada: SFSP está construido aparte, a propósito, para no tocar lo que funciona.</p>
+  <svg width="1136" height="500" viewBox="0 0 1136 500" style="position:absolute;left:72px;top:176px">
+    <!-- centro -->
+    <rect x="428" y="160" width="280" height="150" rx="22" fill="#0e1a2b"/>
+    <text x="568" y="198" text-anchor="middle" fill="#c28f2c" font-size="12" font-weight="700" letter-spacing="2">SFSP</text>
+    <text x="568" y="228" text-anchor="middle" fill="#fff" font-size="14">directorio · portero · pasaportes</text>
+    <text x="568" y="250" text-anchor="middle" fill="#fff" font-size="14">doble firma · libro de cuentas</text>
+    <rect x="468" y="266" width="200" height="30" rx="15" fill="#16263d"/><text x="568" y="286" text-anchor="middle" fill="#8d9ab0" font-size="12">sobre la cadena 5550</text>
+    <!-- conectores -->
+    <g stroke="#c28f2c" stroke-width="2" fill="none">
+      <path d="M428 190 C360 190 330 60 270 60"/><path d="M428 235 C360 235 330 200 270 200"/>
+      <path d="M428 270 C360 270 330 340 270 340"/><path d="M428 300 C380 330 330 460 270 460"/>
+      <path d="M708 190 C776 190 806 60 866 60"/><path d="M708 235 C776 235 806 200 866 200"/>
+      <path d="M708 270 C776 270 806 340 866 340"/><path d="M708 300 C756 330 806 460 866 460"/>
+      <path d="M568 160 V100"/>
+    </g>
+    <!-- centro arriba: DBNX -->
+    <g><rect x="458" y="20" width="220" height="80" rx="14" fill="#fff" stroke="#c28f2c" stroke-width="2"/>
+      <text x="568" y="50" text-anchor="middle" font-weight="800" font-size="15">DBNX</text>
+      <text x="568" y="72" text-anchor="middle" font-size="12" fill="#5f6878">«admito este activo,</text><text x="568" y="88" text-anchor="middle" font-size="12" fill="#5f6878">con estos sellos»</text></g>
+    <!-- izquierda -->
+    <g font-size="12">
+      <g><rect x="0" y="22" width="270" height="76" rx="14" fill="#fff" stroke="#e2dccf"/>
+        <text x="18" y="50" font-weight="800" font-size="15">Veta Wallet</text><text x="18" y="72" fill="#5f6878">«¿quién es @medardo?</text><text x="18" y="88" fill="#5f6878">¿puedo mandarle esto?»</text></g>
+      <g><rect x="0" y="162" width="270" height="76" rx="14" fill="#fff" stroke="#e2dccf"/>
+        <text x="18" y="190" font-weight="800" font-size="15">Genesis ID</text><text x="18" y="212" fill="#5f6878">«esta persona pasó KYC</text><text x="18" y="228" fill="#5f6878">para este propósito»</text></g>
+      <g><rect x="0" y="302" width="270" height="76" rx="14" fill="#fff" stroke="#e2dccf"/>
+        <text x="18" y="330" font-weight="800" font-size="15">PULSE2CHAT</text><text x="18" y="352" fill="#5f6878">«mándale plata a este</text><text x="18" y="368" fill="#5f6878">contacto por su alias»</text></g>
+      <g><rect x="0" y="422" width="270" height="76" rx="14" fill="#fff" stroke="#e2dccf"/>
+        <text x="18" y="450" font-weight="800" font-size="15">AU-RA</text><text x="18" y="472" fill="#5f6878">«explícale en palabras por</text><text x="18" y="488" fill="#5f6878">qué no se pudo»</text></g>
+    </g>
+    <!-- derecha -->
+    <g font-size="12">
+      <g><rect x="866" y="22" width="270" height="76" rx="14" fill="#fff" stroke="#e2dccf"/>
+        <text x="884" y="50" font-weight="800" font-size="15">Ordenex</text><text x="884" y="72" fill="#5f6878">«¿este activo se puede</text><text x="884" y="88" fill="#5f6878">negociar? liquida a la vez»</text></g>
+      <g><rect x="866" y="162" width="270" height="76" rx="14" fill="#fff" stroke="#e2dccf"/>
+        <text x="884" y="190" font-weight="800" font-size="15">MyTokenPay</text><text x="884" y="212" fill="#5f6878">«cobra a la cuenta SF- del</text><text x="884" y="228" fill="#5f6878">negocio, no a un 0x»</text></g>
+      <g><rect x="866" y="302" width="270" height="76" rx="14" fill="#fff" stroke="#e2dccf"/>
+        <text x="884" y="330" font-weight="800" font-size="15">AuCorp</text><text x="884" y="352" fill="#5f6878">«entra y sale plata fiat;</text><text x="884" y="368" fill="#5f6878">que cuadre con la cadena»</text></g>
+      <g><rect x="866" y="422" width="270" height="76" rx="14" fill="#fff" stroke="#e2dccf"/>
+        <text x="884" y="450" font-weight="800" font-size="15">ordenscan.com</text><text x="884" y="472" fill="#5f6878">«muestra estados y eventos</text><text x="884" y="488" fill="#5f6878">sin exponer a nadie»</text></g>
+    </g>
+  </svg>
+  <div class="pag">26</div>
+</section>
+
+<!-- ═════════════ 27 · PIEZA POR PIEZA (1) ═════════════ -->
+<section class="s">
+  <div class="cab"><span><b>Parte 4 · El ecosistema</b></span><span>Pieza por pieza · 1 de 2</span></div>
+  <h1>Qué le cambia <em>a cada una</em></h1>
+  <table class="t" style="margin-top:18px">
+    <tr><th style="width:15%">Pieza</th><th style="width:25%">Hoy</th><th style="width:32%">Con SFSP</th><th>Qué nota la persona</th></tr>
+    <tr><td><b>Veta Wallet</b><br><span class="peq">la billetera</span></td>
+      <td class="peq" style="font-size:14px">Se manda a una dirección 0x o a un contacto guardado.</td>
+      <td>Se manda a un número <span class="mono">SF-</span> o a un <span class="mono">@alias</span>. Antes de firmar, el portero confirma que se puede.</td>
+      <td class="peq" style="font-size:14px">Aparece su número de cuenta. Mandar es igual de rápido, y un error de dedo se detecta antes de enviar.</td></tr>
+    <tr><td><b>Genesis ID</b><br><span class="peq">identidad y KYC</span></td>
+      <td class="peq" style="font-size:14px">Verifica a la persona.</td>
+      <td>Sigue siendo la fuente de identidad. Responde por <b>propósito</b>: «apto para pagos», «apto para metales», sin entregar los datos.</td>
+      <td class="peq" style="font-size:14px">Nada distinto. Sus datos siguen sin salir de Genesis ID.</td></tr>
+    <tr><td><b>PULSE2CHAT</b><br><span class="peq">el chat</span></td>
+      <td class="peq" style="font-size:14px">Chat entre personas.</td>
+      <td>Puede usar el alias del contacto para mandarle plata sin salir de la conversación.</td>
+      <td class="peq" style="font-size:14px">Mandar plata a alguien del chat se vuelve natural.</td></tr>
+    <tr><td><b>AU-RA</b><br><span class="peq">la asistente</span></td>
+      <td class="peq" style="font-size:14px">Responde por WhatsApp y dentro de la app.</td>
+      <td>Recibe el motivo exacto de cada «no» del portero y lo puede explicar en palabras sencillas.</td>
+      <td class="peq" style="font-size:14px">Cuando algo no se puede, sabe <b>por qué</b> y qué hacer.</td></tr>
+    <tr><td><b>ordenscan.com</b><br><span class="peq">el explorador</span></td>
+      <td class="peq" style="font-size:14px">Muestra bloques y transacciones.</td>
+      <td>Muestra también los pasaportes, estados y eventos de cada activo. Nunca datos personales.</td>
+      <td class="peq" style="font-size:14px">Puede comprobar por su cuenta que un activo está en regla.</td></tr>
+  </table>
+  <div class="pag">27</div>
+</section>
+
+<!-- ═════════════ 28 · PIEZA POR PIEZA (2) ═════════════ -->
+<section class="s">
+  <div class="cab"><span><b>Parte 4 · El ecosistema</b></span><span>Pieza por pieza · 2 de 2</span></div>
+  <h1>Qué le cambia <em>a cada una</em> <span style="font-size:26px;color:var(--gris2)">(continúa)</span></h1>
+  <table class="t" style="margin-top:18px">
+    <tr><th style="width:15%">Pieza</th><th style="width:25%">Hoy</th><th style="width:32%">Con SFSP</th><th>Qué nota la persona</th></tr>
+    <tr><td><b>Ordenex</b><br><span class="peq">casa de cambio</span></td>
+      <td class="peq" style="font-size:14px">Viva, y nunca ha operado.</td>
+      <td>Sólo lista activos cuyo pasaporte lo permite. Cada compraventa se liquida con entrega contra pago.</td>
+      <td class="peq" style="font-size:14px">Nunca paga sin recibir, ni entrega sin cobrar.</td></tr>
+    <tr><td><b>MyTokenPay</b><br><span class="peq">cobrar en negocio</span></td>
+      <td class="peq" style="font-size:14px">App viva, con comercios de muestra.</td>
+      <td>El negocio cobra a su cuenta SFSP. Un aviso doble del proveedor no produce un cobro doble.</td>
+      <td class="peq" style="font-size:14px">El comercio tiene un número fijo para cobrar, aunque cambie de equipo.</td></tr>
+    <tr><td><b>AuCorp</b><br><span class="peq">puente fiat</span></td>
+      <td class="peq" style="font-size:14px">Fintech en Próspera. No es un banco.</td>
+      <td>Cada entrada y salida de dinero fiat se concilia contra la cadena antes de dar nada por hecho.</td>
+      <td class="peq" style="font-size:14px">Lo que ve en su cuenta fiat y en su billetera cuadra.</td></tr>
+    <tr><td><b>DBNX</b><br><span class="peq">admisión</span></td>
+      <td class="peq" style="font-size:14px">—</td>
+      <td>La aduana de los activos: expedientes, revisión, dos firmas digitales reales y el pasaporte.</td>
+      <td class="peq" style="font-size:14px">Sólo ve activos que alguien revisó y aprobó.</td></tr>
+    <tr><td><b>Cadena 8532</b><br><span class="peq">la vieja</span></td>
+      <td class="peq" style="font-size:14px">Por retirar.</td>
+      <td>No se apaga ni se borra nada sin una decisión firmada (D14). Su historia se conserva.</td>
+      <td class="peq" style="font-size:14px">Nada. Nadie pierde el registro de lo que pasó ahí.</td></tr>
+  </table>
+  <div class="pag">28</div>
+</section>
+
+<!-- ═════════════ 29 · PRIVACIDAD ═════════════ -->
+<section class="s">
+  <div class="cab"><span><b>Parte 4 · El ecosistema</b></span><span>Privacidad</span></div>
+  <h1>Tu identidad vive en <em>compartimentos</em></h1>
+  <p class="lead" style="font-size:17px">Si Marta tiene dos billeteras, una para pagos y otra para metales, desde afuera nadie puede demostrar que las dos son de ella.</p>
+  <svg width="1136" height="300" viewBox="0 0 1136 300" style="position:absolute;left:72px;top:262px">
+    <!-- persona -->
+    <g transform="translate(110,150)"><circle r="62" fill="#dde7f6"/><circle cy="-14" r="22" fill="#2a5ca8"/><path d="M-36 38 Q0 0 36 38" fill="#2a5ca8"/></g>
+    <text x="110" y="244" text-anchor="middle" font-weight="800" font-size="16">Marta</text>
+    <text x="110" y="264" text-anchor="middle" font-size="12" fill="#5f6878">Genesis ID: privado</text>
+    <g stroke="#2a5ca8" stroke-width="2" fill="none" stroke-dasharray="5 5">
+      <path d="M176 130 C260 130 280 70 360 70"/><path d="M176 170 C260 170 280 230 360 230"/>
+    </g>
+    <!-- compartimentos -->
+    <g>
+      <rect x="360" y="20" width="330" height="100" rx="16" fill="#fff" stroke="#1e7a52" stroke-width="2"/>
+      <text x="380" y="50" font-size="11" font-weight="700" fill="#1e7a52" letter-spacing="1.5">COMPARTIMENTO · PAGOS</text>
+      <text x="380" y="78" font-family="Mono" font-size="13">billetera 0x3C44…</text>
+      <text x="380" y="100" font-family="Mono" font-size="12" fill="#9aa2ae">huella: 7f2a…c19e</text>
+      <rect x="360" y="180" width="330" height="100" rx="16" fill="#fff" stroke="#c28f2c" stroke-width="2"/>
+      <text x="380" y="210" font-size="11" font-weight="700" fill="#c28f2c" letter-spacing="1.5">COMPARTIMENTO · METALES</text>
+      <text x="380" y="238" font-family="Mono" font-size="13">billetera 0x90F7…</text>
+      <text x="380" y="260" font-family="Mono" font-size="12" fill="#9aa2ae">huella: e03b…4d71</text>
+    </g>
+    <!-- pared -->
+    <line x1="525" y1="126" x2="525" y2="174" stroke="#b23a30" stroke-width="4"/>
+    <text x="545" y="156" font-size="13" font-weight="700" fill="#b23a30">sin conexión visible</text>
+    <!-- observador -->
+    <g transform="translate(900,150)">
+      <circle r="56" fill="#f6dcd8"/>
+      <circle cx="-10" cy="-6" r="20" fill="none" stroke="#b23a30" stroke-width="4"/><line x1="4" y1="8" x2="24" y2="28" stroke="#b23a30" stroke-width="6" stroke-linecap="round"/>
+    </g>
+    <text x="900" y="238" text-anchor="middle" font-weight="800" font-size="15">Alguien mirando la cadena</text>
+    <foreignObject x="770" y="248" width="260" height="60"><div xmlns="http://www.w3.org/1999/xhtml" style="font:12.5px/1.45 Inter;color:#5f6878;text-align:center">ve dos huellas distintas y no puede saber que son la misma persona</div></foreignObject>
+    <g stroke="#b23a30" stroke-width="2" stroke-dasharray="3 5"><line x1="696" y1="70" x2="840" y2="130"/><line x1="696" y1="230" x2="840" y2="170"/></g>
+  </svg>
+  <div class="nota" style="bottom:40px"><b>El límite, dicho sin esconderlo:</b> <i>dentro</i> de un mismo compartimento sí se puede ver que dos billeteras son de la misma persona. Es a propósito: así el sistema la trata como una sola. Lo que ya no se puede es cruzar compartimentos, que es lo que la identificaba.</div>
+  <div class="pag">29</div>
+</section>
+
+<!-- ═════════════ 30 · SEPARADOR PARTE 5 ═════════════ -->
+<section class="s osc sep">
+  <div class="parte">Parte 5</div>
+  <h1>La migración: <em>que nadie pierda nada</em></h1>
+  <p class="lead" style="max-width:760px">Cómo pasamos a todo el mundo al sistema nuevo sin que pierda sus ONDK, su ORIGEN ni ninguna otra moneda, y sin que tenga que hacer nada.</p>
+  <div class="gran">5</div>
+</section>
+
+<!-- ═════════════ 31 · REGISTRAR SIN MOVER ═════════════ -->
+<section class="s">
+  <div class="cab"><span><b>Parte 5 · La migración</b></span><span>La idea central</span></div>
+  <h1>Registrar <em>sin mover</em></h1>
+  <p class="lead" style="font-size:17px">No trasladamos la plata a ninguna parte. Le ponemos una etiqueta nueva a la caja fuerte donde ya está.</p>
+  <svg width="1136" height="340" viewBox="0 0 1136 340" style="position:absolute;left:72px;top:250px">
+    <!-- ANTES -->
+    <text x="220" y="18" text-anchor="middle" font-size="12" font-weight="700" fill="#9aa2ae" letter-spacing="2">ANTES</text>
+    <g transform="translate(90,40)">
+      <rect width="260" height="220" rx="20" fill="#fff" stroke="#c28f2c" stroke-width="2.5"/>
+      <rect x="0" y="0" width="260" height="52" rx="20" fill="#fbf1dc"/><rect x="0" y="30" width="260" height="22" fill="#fbf1dc"/>
+      <text x="130" y="33" text-anchor="middle" font-family="Mono" font-size="14" fill="#7a5711">0x…1001</text>
+      <g transform="translate(34,80)"><circle cx="14" cy="14" r="14" fill="#c28f2c"/><text x="40" y="19" font-size="15">ORIGEN</text><text x="192" y="19" text-anchor="end" font-family="Mono" font-size="15" font-weight="500">1,5</text></g>
+      <g transform="translate(34,124)"><circle cx="14" cy="14" r="14" fill="#7a8599"/><text x="40" y="19" font-size="15">ONDK</text><text x="192" y="19" text-anchor="end" font-family="Mono" font-size="15" font-weight="500">42</text></g>
+      <text x="130" y="200" text-anchor="middle" font-size="12.5" fill="#9aa2ae">sin número de cuenta</text>
+    </g>
+    <!-- flecha -->
+    <g transform="translate(420,150)">
+      <path d="M0 0 H200" stroke="#18212f" stroke-width="3"/><path d="M200 -10 L216 0 L200 10 Z" fill="#18212f"/>
+      <text x="108" y="-22" text-anchor="middle" font-size="14" font-weight="800">se anota en el directorio</text>
+      <text x="108" y="30" text-anchor="middle" font-size="12.5" fill="#5f6878">ninguna transacción sobre el saldo</text>
+    </g>
+    <!-- DESPUÉS -->
+    <text x="840" y="18" text-anchor="middle" font-size="12" font-weight="700" fill="#9aa2ae" letter-spacing="2">DESPUÉS</text>
+    <g transform="translate(710,40)">
+      <rect width="260" height="220" rx="20" fill="#fff" stroke="#c28f2c" stroke-width="2.5"/>
+      <rect x="0" y="0" width="260" height="52" rx="20" fill="#fbf1dc"/><rect x="0" y="30" width="260" height="22" fill="#fbf1dc"/>
+      <text x="130" y="33" text-anchor="middle" font-family="Mono" font-size="14" fill="#7a5711">0x…1001</text>
+      <g transform="translate(34,80)"><circle cx="14" cy="14" r="14" fill="#c28f2c"/><text x="40" y="19" font-size="15">ORIGEN</text><text x="192" y="19" text-anchor="end" font-family="Mono" font-size="15" font-weight="500">1,5</text></g>
+      <g transform="translate(34,124)"><circle cx="14" cy="14" r="14" fill="#7a8599"/><text x="40" y="19" font-size="15">ONDK</text><text x="192" y="19" text-anchor="end" font-family="Mono" font-size="15" font-weight="500">42</text></g>
+      <!-- etiqueta nueva -->
+      <g transform="translate(150,176) rotate(-4)">
+        <rect x="-20" y="-6" width="176" height="46" rx="8" fill="#1e7a52"/>
+        <circle cx="-6" cy="17" r="5" fill="#fff"/>
+        <text x="72" y="23" text-anchor="middle" font-family="Mono" font-size="12.5" fill="#fff">SF-8375-3040-2151-0</text>
+      </g>
+    </g>
+    <foreignObject x="0" y="282" width="1136" height="60"><div xmlns="http://www.w3.org/1999/xhtml" style="font:14.5px/1.5 Inter;color:#5f6878;text-align:center">
+      Saldos de ejemplo tomados del censo de prueba. <b style="color:#18212f">Mismos saldos, misma billetera, misma cadena, ratio 1 a 1.</b> Lo único nuevo es el número de cuenta.</div></foreignObject>
+  </svg>
+  <div class="pag">31</div>
+</section>
+
+<!-- ═════════════ 32 · MOVER VS REGISTRAR ═════════════ -->
+<section class="s">
+  <div class="cab"><span><b>Parte 5 · La migración</b></span><span>Por qué así</span></div>
+  <h1>Por qué registrar es <em>mucho más seguro</em> que mover</h1>
+  <div class="fila" style="margin-top:28px;gap:24px">
+    <div class="tarjeta col" style="border-top:5px solid var(--rojo);padding:22px 24px">
+      <h2 style="color:var(--rojo)">Si moviéramos los saldos</h2>
+      <ul class="l no" style="margin-top:14px">
+        <li><b>Miles de transacciones</b>, y cualquiera puede fallar a la mitad.</li>
+        <li>Habría que <b>pagar el costo de red</b> de todas.</li>
+        <li>Haría falta la <b>llave de cada persona</b>, o custodiarlas todas.</li>
+        <li>Si se cae a medias, <b>unos tienen y otros no</b>, y hay que reconstruir quién es quién.</li>
+        <li>La persona ve movimientos que no hizo, <b>y se asusta</b>.</li>
+      </ul>
+    </div>
+    <div class="tarjeta col" style="border-top:5px solid var(--verde);padding:22px 24px">
+      <h2 style="color:var(--verde)">Registrando sin mover</h2>
+      <ul class="l si" style="margin-top:14px">
+        <li>El saldo <b>nunca se toca</b>. No hay nada que se pueda caer a la mitad.</li>
+        <li><b>No hay costo de red</b> por los saldos.</li>
+        <li><b>No hace falta la llave de nadie.</b> Ni una.</li>
+        <li>Se puede <b>parar en cualquier momento</b> sin dejar a nadie colgado.</li>
+        <li>La persona no ve nada raro: <b>gana un número, no pierde saldo</b>.</li>
+      </ul>
+    </div>
+  </div>
+  <div class="nota verde" style="bottom:44px">Es la diferencia entre mudarse de casa y cambiar el número de la casa. En la segunda, los muebles no se mueven de su lugar.</div>
+  <div class="pag">32</div>
+</section>
+
+<!-- ═════════════ 33 · DOS FASES ═════════════ -->
+<section class="s">
+  <div class="cab"><span><b>Parte 5 · La migración</b></span><span>Las dos fases</span></div>
+  <h1>Dos fases, y la segunda <em>casi nunca</em> hace falta</h1>
+  <div class="fila" style="margin-top:26px;gap:24px;align-items:stretch">
+    <div class="tarjeta col" style="padding:22px 24px;border:2px solid var(--verde)">
+      <div style="display:flex;justify-content:space-between;align-items:center"><span class="pill p-verde">Fase A · para todos</span><span class="num" style="font-size:40px;color:var(--verde)">A</span></div>
+      <h2 style="margin-top:8px">Registro sin movimiento</h2>
+      <p class="peq" style="margin:8px 0 12px">A cada persona se le crea su cuenta SFSP y se conecta a su billetera de hoy.</p>
+      <ul class="l si">
+        <li>No mueve plata.</li><li>No cambia semillas ni llaves.</li><li>No cambia contratos.</li>
+        <li>Se completa <b>antes</b> de cualquier otra cosa.</li>
+      </ul>
+    </div>
+    <div class="tarjeta col" style="padding:22px 24px">
+      <div style="display:flex;justify-content:space-between;align-items:center"><span class="pill p-gris">Fase B · sólo si hace falta</span><span class="num" style="font-size:40px;color:var(--gris2)">B</span></div>
+      <h2 style="margin-top:8px">Reemplazo de un activo</h2>
+      <p class="peq" style="margin:8px 0 12px">Cuando un token viejo tiene que cambiarse por uno nuevo. Nunca en masa, nunca por defecto. Se elige <b>uno</b> de dos modos:</p>
+      <div class="fila" style="gap:10px">
+        <div style="flex:1;background:var(--papel);border-radius:10px;padding:10px 12px"><h3>Foto congelada</h3>
+          <p class="peq">Se congela el viejo de verdad, se toma la foto, y cada quien reclama lo suyo en el nuevo.</p></div>
+        <div style="flex:1;background:var(--papel);border-radius:10px;padding:10px 12px"><h3>Entregar al reclamar</h3>
+          <p class="peq">Se entrega el viejo y en el mismo momento se recibe el nuevo.</p></div>
+      </div>
+    </div>
+  </div>
+  <div class="nota roja" style="bottom:40px"><b>Si no hay forma segura de sacar de circulación el viejo, no se migra ese activo automáticamente.</b> Se registra como está, se respetan las tenencias, y se arma un plan aparte. Nunca pueden existir el viejo y el nuevo con valor al mismo tiempo.</div>
+  <div class="pag">33</div>
+</section>
+
+<!-- ═════════════ 34 · PASO A PASO ═════════════ -->
+<section class="s">
+  <div class="cab"><span><b>Parte 5 · La migración</b></span><span>Paso a paso</span></div>
+  <h1>El ensayo general, <em>corrido de verdad</em></h1>
+  <p class="lead" style="font-size:17px">Esto no es un dibujo: es lo que respondió el sistema con cuatro cuentas de prueba, dos de ellas con ORIGEN y ONDK.</p>
+  <div class="fila" style="margin-top:22px;gap:16px">
+    <div class="tarjeta col" style="padding:0;overflow:hidden">
+      <div style="background:var(--noche);color:#fff;padding:14px 18px"><div style="font:700 11px Inter;letter-spacing:.14em;color:var(--oro)">PASO 1</div><h2 style="color:#fff;margin:4px 0 0">Simulacro</h2></div>
+      <div style="padding:16px 18px">
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--linea)"><span class="peq">cuentas procesadas</span><span class="num" style="font-size:34px">4</span></div>
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--linea)"><span class="peq">creadas de verdad</span><span class="num" style="font-size:34px;color:var(--verde)">0</span></div>
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--linea)"><span class="peq">¿cuadra?</span><span class="pill p-verde">sí</span></div>
+        <p class="peq" style="margin-top:12px">Un ensayo que <b>no deja rastro</b>. Se repite las veces que haga falta.</p>
+      </div></div>
+    <div class="tarjeta col" style="padding:0;overflow:hidden">
+      <div style="background:var(--noche);color:#fff;padding:14px 18px"><div style="font:700 11px Inter;letter-spacing:.14em;color:var(--oro)">PASO 2</div><h2 style="color:#fff;margin:4px 0 0">Aplicar</h2></div>
+      <div style="padding:16px 18px">
+        <div class="mono" style="font-size:13px;line-height:1.9">
+          sint_0001 → <span style="color:var(--verde)">SF-8375-3040-2151-0</span><br>
+          sint_0002 → <span style="color:var(--verde)">SF-6369-2926-3231-5</span><br>
+          sint_0003 → <span style="color:var(--verde)">SF-5730-5873-0919-3</span><br>
+          <span style="color:var(--gris2)">… y la cuarta</span></div>
+        <p class="peq" style="margin-top:10px">Saldos iguales antes y después. <b>Cero excepciones.</b></p>
+      </div></div>
+    <div class="tarjeta col" style="padding:0;overflow:hidden">
+      <div style="background:var(--noche);color:#fff;padding:14px 18px"><div style="font:700 11px Inter;letter-spacing:.14em;color:var(--oro)">PASO 3</div><h2 style="color:#fff;margin:4px 0 0">Repetirlo por error</h2></div>
+      <div style="padding:16px 18px">
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--linea)"><span class="peq">ya existían</span><span class="num" style="font-size:34px">4</span></div>
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--linea)"><span class="peq">cuentas nuevas</span><span class="num" style="font-size:34px;color:var(--verde)">0</span></div>
+        <p class="peq" style="margin-top:12px">Si el proceso se cae y alguien lo relanza, <b>nadie recibe una segunda cuenta</b>. En una migración real, el proceso se va a caer alguna vez.</p>
+      </div></div>
+  </div>
+  <div class="pag">34</div>
+</section>
+
+<!-- ═════════════ 35 · LA BALANZA ═════════════ -->
+<section class="s">
+  <div class="cab"><span><b>Parte 5 · La migración</b></span><span>La prueba de que nadie perdió nada</span></div>
+  <h1>La balanza: <em>ni una unidad</em> de diferencia</h1>
+  <svg width="1136" height="330" viewBox="0 0 1136 330" style="position:absolute;left:72px;top:150px">
+    <!-- poste -->
+    <rect x="560" y="80" width="16" height="200" fill="#18212f"/><rect x="480" y="276" width="176" height="18" rx="6" fill="#18212f"/>
+    <circle cx="568" cy="76" r="14" fill="#c28f2c"/>
+    <rect x="200" y="68" width="736" height="10" rx="5" fill="#18212f"/>
+    <!-- platos -->
+    <line x1="260" y1="78" x2="220" y2="150" stroke="#18212f" stroke-width="2"/><line x1="260" y1="78" x2="300" y2="150" stroke="#18212f" stroke-width="2"/>
+    <path d="M150 150 H370 Q360 180 260 180 Q160 180 150 150 Z" fill="#c28f2c"/>
+    <line x1="876" y1="78" x2="836" y2="150" stroke="#18212f" stroke-width="2"/><line x1="876" y1="78" x2="916" y2="150" stroke="#18212f" stroke-width="2"/>
+    <path d="M766 150 H986 Q976 180 876 180 Q776 180 766 150 Z" fill="#c28f2c"/>
+    <!-- izquierda -->
+    <rect x="175" y="96" width="170" height="52" rx="10" fill="#fff" stroke="#e2dccf"/>
+    <text x="260" y="118" text-anchor="middle" font-size="12" fill="#5f6878">todo lo que había</text>
+    <text x="260" y="140" text-anchor="middle" font-family="Mono" font-size="17" font-weight="500">1.000.000</text>
+    <!-- derecha: tres bloques -->
+    <g font-size="11" text-anchor="middle">
+      <rect x="760" y="96" width="80" height="52" rx="8" fill="#d8efe3"/><text x="800" y="114" fill="#1e7a52" font-weight="700">migrado</text><text x="800" y="136" font-family="Mono" font-size="13">940.000</text>
+      <rect x="844" y="96" width="80" height="52" rx="8" fill="#e7e3da"/><text x="884" y="114" fill="#5f6878" font-weight="700">no reclamado</text><text x="884" y="136" font-family="Mono" font-size="13">50.000</text>
+      <rect x="928" y="96" width="80" height="52" rx="8" fill="#fbecd1"/><text x="968" y="114" fill="#b7791f" font-weight="700">pendiente</text><text x="968" y="136" font-family="Mono" font-size="13">10.000</text>
+    </g>
+    <text x="568" y="40" text-anchor="middle" font-family="Fraunces" font-size="30" font-weight="600">lo que había = migrado + no reclamado + pendiente</text>
+  </svg>
+  <div class="fila" style="position:absolute;left:72px;right:72px;bottom:40px;gap:16px">
+    <div class="tarjeta col" style="border-left:5px solid var(--verde)"><span class="pill p-verde">Cuadra</span>
+      <p class="peq" style="margin-top:8px">1.000.000 = 940.000 + 50.000 + 10.000. Diferencia: <b>cero</b>. La corrida se da por buena.</p></div>
+    <div class="tarjeta col" style="border-left:5px solid var(--rojo)"><span class="pill p-rojo">No cuadra</span>
+      <p class="peq" style="margin-top:8px">Le quitamos <b>una sola unidad</b> a lo migrado. El sistema lo detectó al instante y marcó la corrida como mala. Sin tolerancia, sin redondeo, sin «casi».</p></div>
+    <div class="tarjeta col"><span class="pill p-gris">Doble control</span>
+      <p class="peq" style="margin-top:8px">Hay una segunda cuenta que comprueba lo mismo desde el otro lado. Un error tendría que mentir dos veces, y de forma coherente, para pasar.</p></div>
+  </div>
+  <div class="pag">35</div>
+</section>
+
+<!-- ═════════════ 36 · SEGUROS EXTRA ═════════════ -->
+<section class="s">
+  <div class="cab"><span><b>Parte 5 · La migración</b></span><span>Los seguros</span></div>
+  <h1>Seis seguros para que <em>nadie</em> pierda ni gane de más</h1>
+  <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin-top:24px">
+    <div class="tarjeta"><div class="num" style="font-size:30px;color:var(--oro)">1</div><h3>Nadie se queda fuera en silencio</h3>
+      <p class="peq">Si una cuenta no se puede migrar, no se borra: se abre un expediente con el motivo, para resolverlo uno por uno.</p></div>
+    <div class="tarjeta"><div class="num" style="font-size:30px;color:var(--oro)">2</div><h3>Una persona, una cuenta</h3>
+      <p class="peq">Una cuenta de origen recibe una sola cuenta SFSP, aunque existan dos censos que se solapen. Lo impone la base de datos, no la buena voluntad.</p></div>
+    <div class="tarjeta"><div class="num" style="font-size:30px;color:var(--oro)">3</div><h3>Plata sin dueño, alarma</h3>
+      <p class="peq">Si aparece una billetera con saldo que no le corresponde a nadie del censo, el informe lo grita. No se esconde en un total.</p></div>
+    <div class="tarjeta"><div class="num" style="font-size:30px;color:var(--oro)">4</div><h3>Nadie reclama dos veces</h3>
+      <p class="peq">Cada posición del activo viejo se puede reclamar una sola vez. El segundo intento se rechaza, aunque venga con otra firma.</p></div>
+    <div class="tarjeta"><div class="num" style="font-size:30px;color:var(--oro)">5</div><h3>Los restos no se pierden</h3>
+      <p class="peq">Si alguna vez el cambio no fuera 1 a 1 y la división no diera exacta, el resto no se redondea a favor de nadie: se reporta.</p></div>
+    <div class="tarjeta"><div class="num" style="font-size:30px;color:var(--oro)">6</div><h3>Una sola corrida a la vez</h3>
+      <p class="peq">No pueden correr dos migraciones a la vez sobre el mismo censo, que producirían dos informes distintos sobre lo mismo.</p></div>
+  </div>
+  <div class="pag">36</div>
+</section>
+
+<!-- ═════════════ 37 · QUÉ NOTA EL USUARIO ═════════════ -->
+<section class="s oro">
+  <div class="cab"><span><b>Parte 5 · La migración</b></span><span>Desde el lado de la persona</span></div>
+  <h1>¿Qué nota la persona el día de la migración?</h1>
+  <div class="fila" style="margin-top:30px;gap:26px">
+    <div class="col">
+      <h2 style="color:var(--verde);margin-bottom:14px">Lo que sí nota</h2>
+      <div class="tarjeta" style="margin-bottom:12px;display:flex;gap:14px;align-items:center"><span class="ico" style="background:var(--verde2);font:800 20px Inter;color:var(--verde)">+</span>
+        <p>Aparece <b>su número de cuenta</b> en la app, listo para compartir.</p></div>
+      <div class="tarjeta" style="margin-bottom:12px;display:flex;gap:14px;align-items:center"><span class="ico" style="background:var(--verde2);font:800 20px Inter;color:var(--verde)">+</span>
+        <p>Puede elegir un <b>alias</b> fácil de recordar.</p></div>
+      <div class="tarjeta" style="display:flex;gap:14px;align-items:center"><span class="ico" style="background:var(--verde2);font:800 20px Inter;color:var(--verde)">+</span>
+        <p>Cuando algo no se puede, <b>le dicen por qué</b>.</p></div>
+    </div>
+    <div class="col">
+      <h2 style="color:var(--gris);margin-bottom:14px">Lo que no nota</h2>
+      <div class="tarjeta" style="margin-bottom:12px;display:flex;gap:14px;align-items:center"><span class="ico" style="background:#e7e3da;font:800 20px Inter;color:var(--gris)">=</span>
+        <p>Su saldo: <b>el mismo</b>, en la misma billetera.</p></div>
+      <div class="tarjeta" style="margin-bottom:12px;display:flex;gap:14px;align-items:center"><span class="ico" style="background:#e7e3da;font:800 20px Inter;color:var(--gris)">=</span>
+        <p>Su contraseña, su llave, su forma de entrar: <b>igual</b>.</p></div>
+      <div class="tarjeta" style="display:flex;gap:14px;align-items:center"><span class="ico" style="background:#e7e3da;font:800 20px Inter;color:var(--gris)">=</span>
+        <p>Movimientos raros en su historial: <b>ninguno</b>.</p></div>
+    </div>
+  </div>
+  <div class="nota" style="bottom:44px">No tiene que hacer nada, ni firmar nada, ni aceptar nada para no perder lo que tiene. <b>Lo que tiene ya es suyo, y sigue siéndolo.</b></div>
+  <div class="pag">37</div>
+</section>
+
+<!-- ═════════════ 38 · SEPARADOR PARTE 6 ═════════════ -->
+<section class="s osc sep">
+  <div class="parte">Parte 6</div>
+  <h1>Dónde estamos <em>hoy</em></h1>
+  <p class="lead" style="max-width:740px">Qué está hecho, qué tan probado está, qué falta, y quién tiene que hacer lo que falta.</p>
+  <div class="gran">6</div>
+</section>
+
+<!-- ═════════════ 39 · TERMÓMETRO ═════════════ -->
+<section class="s">
+  <div class="cab"><span><b>Parte 6 · Dónde estamos</b></span><span>Qué tan probado está</span></div>
+  <h1>«Probado» tiene niveles. <em>Estamos aquí:</em></h1>
+  <svg width="1136" height="300" viewBox="0 0 1136 300" style="position:absolute;left:72px;top:200px">
+    <!-- barra base -->
+    <rect x="0" y="120" width="1136" height="20" rx="10" fill="#e7e3da"/>
+    <rect x="0" y="120" width="650" height="20" rx="10" fill="#c28f2c"/>
+    <!-- hitos -->
+    <g text-anchor="middle">
+      <g transform="translate(110,130)"><circle r="22" fill="#c28f2c"/><path d="M-8 0 L-2 7 L9 -6" stroke="#fff" stroke-width="3.5" fill="none" stroke-linecap="round"/></g>
+      <text x="110" y="190" font-weight="800" font-size="15">Escrito</text>
+      <foreignObject x="10" y="200" width="200" height="90"><div xmlns="http://www.w3.org/1999/xhtml" style="font:13px/1.45 Inter;color:#5f6878;text-align:center">Alguien lo describió en un documento.</div></foreignObject>
+
+      <g transform="translate(380,130)"><circle r="22" fill="#c28f2c"/><path d="M-8 0 L-2 7 L9 -6" stroke="#fff" stroke-width="3.5" fill="none" stroke-linecap="round"/></g>
+      <text x="380" y="190" font-weight="800" font-size="15">Código escrito</text>
+      <foreignObject x="280" y="200" width="200" height="90"><div xmlns="http://www.w3.org/1999/xhtml" style="font:13px/1.45 Inter;color:#5f6878;text-align:center">Existe el programa y alguien lo leyó.</div></foreignObject>
+
+      <g transform="translate(650,130)"><circle r="34" fill="#0e1a2b"/><circle r="44" fill="none" stroke="#c28f2c" stroke-width="3"/><circle r="12" fill="#c28f2c"/></g>
+      <text x="650" y="200" font-weight="800" font-size="16" fill="#c28f2c">Probado en laboratorio</text>
+      <foreignObject x="530" y="208" width="240" height="90"><div xmlns="http://www.w3.org/1999/xhtml" style="font:13px/1.45 Inter;color:#5f6878;text-align:center">Se ejecuta y pasa. Con datos de ensayo, en una máquina, sin red, sin plata real.</div></foreignObject>
+      <g transform="translate(650,40)"><rect x="-70" y="-22" width="140" height="36" rx="18" fill="#c28f2c"/><text y="2" fill="#fff" font-weight="800" font-size="14">AQUÍ ESTAMOS</text><path d="M-8 14 L0 26 L8 14 Z" fill="#c28f2c"/></g>
+
+      <g transform="translate(990,130)"><circle r="22" fill="#fff" stroke="#9aa2ae" stroke-width="3" stroke-dasharray="4 4"/></g>
+      <text x="990" y="190" font-weight="800" font-size="15" fill="#5f6878">Verificado en vivo</text>
+      <foreignObject x="880" y="200" width="220" height="90"><div xmlns="http://www.w3.org/1999/xhtml" style="font:13px/1.45 Inter;color:#5f6878;text-align:center">Funciona desplegado, contra la red 5550 real. <b>Esto hace falta para migrar.</b></div></foreignObject>
+    </g>
+  </svg>
+  <div class="nota roja" style="bottom:44px"><b>La distancia entre «laboratorio» y «en vivo» no la cierra escribir más código.</b> La cierran tres cosas que no dependen del código: accesos que todavía no tenemos, decisiones que nadie ha firmado, y un entorno de pruebas aislado que todavía no existe.</div>
+  <div class="pag">39</div>
+</section>
+
+<!-- ═════════════ 40 · CIFRAS ═════════════ -->
+<section class="s">
+  <div class="cab"><span><b>Parte 6 · Dónde estamos</b></span><span>Las cifras</span></div>
+  <h1>470 pruebas automáticas, <em>todas en verde</em></h1>
+  <div class="fila" style="margin-top:22px;gap:34px;align-items:flex-start">
+    <div style="flex:0 0 640px">
+      <p class="peq" style="margin-bottom:10px"><b style="color:var(--tinta)">Pruebas por pieza.</b> Cada una se puede volver a correr con una sola orden.</p>
+      <svg width="640" height="330" viewBox="0 0 640 330">
+        <!-- escala: 178 → 400px -->
+        <g font-size="14">
+          <g transform="translate(0,20)"><text y="18" font-weight="700">Contratos</text><text y="36" font-size="12" fill="#5f6878">lo que vive en la cadena</text>
+            <rect x="190" y="4" width="400" height="26" rx="4" fill="#c28f2c"/><text x="598" y="23" font-family="Mono" font-weight="500">178</text></g>
+          <g transform="translate(0,80)"><text y="18" font-weight="700">Reglas</text><text y="36" font-size="12" fill="#5f6878">cuentas, alias, migración</text>
+            <rect x="190" y="4" width="281" height="26" rx="4" fill="#c28f2c"/><text x="479" y="23" font-family="Mono" font-weight="500">125</text></g>
+          <g transform="translate(0,140)"><text y="18" font-weight="700">Admisión DBNX</text><text y="36" font-size="12" fill="#5f6878">expedientes y firmas</text>
+            <rect x="190" y="4" width="193" height="26" rx="4" fill="#c28f2c"/><text x="391" y="23" font-family="Mono" font-weight="500">86</text></g>
+          <g transform="translate(0,200)"><text y="18" font-weight="700">Lector de la cadena</text><text y="36" font-size="12" fill="#5f6878">lo que alimenta al explorador</text>
+            <rect x="190" y="4" width="151" height="26" rx="4" fill="#c28f2c"/><text x="349" y="23" font-family="Mono" font-weight="500">67</text></g>
+          <g transform="translate(0,260)"><text y="18" font-weight="700">Ataques a propósito</text><text y="36" font-size="12" fill="#5f6878">escritas para romper lo demás</text>
+            <rect x="190" y="4" width="36" height="26" rx="4" fill="#c28f2c"/><text x="234" y="23" font-family="Mono" font-weight="500">14</text></g>
+        </g>
+        <line x1="190" y1="14" x2="190" y2="316" stroke="#18212f" stroke-width="1.5"/>
+      </svg>
+    </div>
+    <div style="flex:1;display:flex;flex-direction:column;gap:14px">
+      <div class="tarjeta"><div class="num">45<span style="font-size:26px;color:var(--gris2)"> / 46</span></div>
+        <p class="peq" style="margin-top:6px">problemas encontrados por la auditoría externa, cerrados con una prueba que lo demuestra.</p></div>
+      <div class="tarjeta"><div class="num" style="color:var(--oro)">20</div>
+        <p class="peq" style="margin-top:6px">decisiones esperando la firma de alguien con autoridad.</p></div>
+      <div class="tarjeta"><div class="num" style="color:var(--gris)">0</div>
+        <p class="peq" style="margin-top:6px">cuentas reales tocadas. Ni una.</p></div>
+    </div>
+  </div>
+  <p class="peq" style="position:absolute;left:72px;bottom:30px;font-size:12px">Los «ataques a propósito» cuentan 14 dentro de la verificación completa y 16 sueltos: dos de ellos lanzan la verificación completa y no pueden correr dentro de sí mismos.</p>
+  <div class="pag">40</div>
+</section>
+
+<!-- ═════════════ 41 · AUDITORÍA ═════════════ -->
+<section class="s">
+  <div class="cab"><span><b>Parte 6 · Dónde estamos</b></span><span>La auditoría</span></div>
+  <h1>Alguien de afuera <em>intentó romperlo</em></h1>
+  <p class="lead" style="font-size:17px">Un auditor independiente revisó todo buscando fallas. Encontró 25. Sumamos 11 pendientes que él dejó anotados, y 10 más que encontramos revisando nuestro propio trabajo.</p>
+  <div class="fila" style="margin-top:26px;gap:16px">
+    <div class="tarjeta col" style="text-align:center"><div class="num" style="font-size:54px">25</div><p class="peq">hallazgos del auditor</p></div>
+    <div class="tarjeta col" style="text-align:center"><div class="num" style="font-size:54px">11</div><p class="peq">pendientes que dejó anotados</p></div>
+    <div class="tarjeta col" style="text-align:center"><div class="num" style="font-size:54px">10</div><p class="peq">que encontramos nosotros</p></div>
+    <div class="tarjeta col" style="text-align:center;background:var(--noche);border-color:var(--noche)"><div class="num" style="font-size:54px;color:#fff">45</div><p class="peq" style="color:#b7c1d1">cerrados, cada uno con su prueba</p></div>
+  </div>
+  <div class="fila" style="position:absolute;left:72px;right:72px;bottom:40px;gap:16px">
+    <div class="tarjeta col" style="border-left:5px solid var(--oro)"><h3>Siete de los nueve más graves eran el mismo error</h3>
+      <p class="peq">Una autorización se aprobaba para una cosa y se podía usar para otra. Se arregló una sola vez, de raíz, con el «sobre sellado» de la doble firma.</p></div>
+    <div class="tarjeta col" style="border-left:5px solid var(--rojo)"><h3>El que queda abierto</h3>
+      <p class="peq">Que un tercero levante todo desde cero y corra las pruebas por su cuenta. Las instrucciones están escritas; cerrarlo no depende de nosotros, depende de que lo haga otro.</p></div>
+  </div>
+  <div class="pag">41</div>
+</section>
+
+<!-- ═════════════ 42 · DECISIONES ═════════════ -->
+<section class="s">
+  <div class="cab"><span><b>Parte 6 · Dónde estamos</b></span><span>Lo que falta decidir</span></div>
+  <h1>20 decisiones. <em>Siete</em> bloquean la migración.</h1>
+  <p class="peq" style="font-size:14.5px;margin-bottom:16px">Mientras no se firmen, el sistema <b>se niega</b> a usar un número que nadie aprobó. Es a propósito: impide migrar con un valor puesto a ojo.</p>
+  <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:9px">
+    <div class="tarjeta" style="padding:10px 12px;border:2px solid var(--oro)"><b class="mono" style="color:var(--oro)">D07</b><p class="peq" style="font-size:12.5px">Cuántas firmas, pausa, actualizar, recuperar</p></div>
+    <div class="tarjeta" style="padding:10px 12px;border:2px solid var(--oro)"><b class="mono" style="color:var(--oro)">D09</b><p class="peq" style="font-size:12.5px">Modo, ratio, costo y corte de la migración</p></div>
+    <div class="tarjeta" style="padding:10px 12px;border:2px solid var(--oro)"><b class="mono" style="color:var(--oro)">D10</b><p class="peq" style="font-size:12.5px">Custodia, excepciones y recuperación</p></div>
+    <div class="tarjeta" style="padding:10px 12px;border:2px solid var(--oro)"><b class="mono" style="color:var(--oro)">D11</b><p class="peq" style="font-size:12.5px">Qué repositorio publica cada servicio</p></div>
+    <div class="tarjeta" style="padding:10px 12px;border:2px solid var(--oro)"><b class="mono" style="color:var(--oro)">D12</b><p class="peq" style="font-size:12.5px">Entorno de pruebas aislado</p></div>
+    <div class="tarjeta" style="padding:10px 12px;border:2px solid var(--oro)"><b class="mono" style="color:var(--oro)">D18</b><p class="peq" style="font-size:12.5px">Cómo se guardan las llaves gestionadas</p></div>
+    <div class="tarjeta" style="padding:10px 12px;border:2px solid var(--oro)"><b class="mono" style="color:var(--oro)">D19</b><p class="peq" style="font-size:12.5px">Qué se puede recuperar, y para quién</p></div>
+    <div class="tarjeta" style="padding:10px 12px"><b class="mono">D01</b><p class="peq" style="font-size:12.5px">Precio de ORIGEN</p></div>
+    <div class="tarjeta" style="padding:10px 12px"><b class="mono">D02</b><p class="peq" style="font-size:12.5px">Meta de USD 0,01 y costo de red</p></div>
+    <div class="tarjeta" style="padding:10px 12px"><b class="mono">D03</b><p class="peq" style="font-size:12.5px">Respaldo de ORIGEN</p></div>
+    <div class="tarjeta" style="padding:10px 12px"><b class="mono">D04</b><p class="peq" style="font-size:12.5px">Qué cuenta como reserva</p></div>
+    <div class="tarjeta" style="padding:10px 12px"><b class="mono">D05</b><p class="peq" style="font-size:12.5px">Canje de AUKA y AGK</p></div>
+    <div class="tarjeta" style="padding:10px 12px"><b class="mono">D15</b><p class="peq" style="font-size:12.5px">Proveedor de tarjeta y pagos</p></div>
+    <div class="tarjeta" style="padding:10px 12px"><b class="mono">D08</b><p class="peq" style="font-size:12.5px">Derechos por activo y país</p></div>
+    <div class="tarjeta" style="padding:10px 12px"><b class="mono">D13</b><p class="peq" style="font-size:12.5px">Permisos y licencias</p></div>
+    <div class="tarjeta" style="padding:10px 12px"><b class="mono">D06</b><p class="peq" style="font-size:12.5px">Privacidad</p></div>
+    <div class="tarjeta" style="padding:10px 12px"><b class="mono">D17</b><p class="peq" style="font-size:12.5px">Reglas de los alias</p></div>
+    <div class="tarjeta" style="padding:10px 12px"><b class="mono">D00</b><p class="peq" style="font-size:12.5px">Nombre y marca SFSP</p></div>
+    <div class="tarjeta" style="padding:10px 12px"><b class="mono">D14</b><p class="peq" style="font-size:12.5px">Retiro de la cadena 8532</p></div>
+    <div class="tarjeta" style="padding:10px 12px"><b class="mono">D16</b><p class="peq" style="font-size:12.5px">Especificación OGFP</p></div>
+  </div>
+  <p class="peq" style="margin-top:12px"><span class="pill p-oro" style="margin-right:8px">Borde dorado</span>las siete que bloquean la migración. Firmarlas no requiere escribir ni una línea de código: se pueden empezar hoy.</p>
+  <div class="pag">42</div>
+</section>
+
+<!-- ═════════════ 43 · HOJA DE RUTA ═════════════ -->
+<section class="s">
+  <div class="cab"><span><b>Parte 6 · Dónde estamos</b></span><span>El camino</span></div>
+  <h1>De aquí a la migración, <em>en ocho pasos</em></h1>
+  <svg width="1136" height="440" viewBox="0 0 1136 440" style="position:absolute;left:72px;top:185px">
+    <path d="M40 60 H1096" stroke="#e2dccf" stroke-width="4"/>
+    <path d="M40 280 H1096" stroke="#e2dccf" stroke-width="4"/>
+    <path d="M1096 60 C1136 60 1136 280 1096 280" fill="none" stroke="#e2dccf" stroke-width="4"/>
+    <g text-anchor="middle">
+      <g transform="translate(80,60)"><circle r="26" fill="#c28f2c"/><text y="7" fill="#fff" font-weight="800" font-size="18">1</text></g>
+      <g transform="translate(360,60)"><circle r="26" fill="#0e1a2b"/><text y="7" fill="#fff" font-weight="800" font-size="18">2</text></g>
+      <g transform="translate(640,60)"><circle r="26" fill="#0e1a2b"/><text y="7" fill="#fff" font-weight="800" font-size="18">3</text></g>
+      <g transform="translate(920,60)"><circle r="26" fill="#0e1a2b"/><text y="7" fill="#fff" font-weight="800" font-size="18">4</text></g>
+      <g transform="translate(920,280)"><circle r="26" fill="#0e1a2b"/><text y="7" fill="#fff" font-weight="800" font-size="18">5</text></g>
+      <g transform="translate(640,280)"><circle r="26" fill="#0e1a2b"/><text y="7" fill="#fff" font-weight="800" font-size="18">6</text></g>
+      <g transform="translate(360,280)"><circle r="26" fill="#0e1a2b"/><text y="7" fill="#fff" font-weight="800" font-size="18">7</text></g>
+      <g transform="translate(80,280)"><circle r="26" fill="#1e7a52"/><text y="7" fill="#fff" font-weight="800" font-size="18">8</text></g>
+    </g>
+    <g>
+      <foreignObject x="0" y="96" width="220" height="130"><div xmlns="http://www.w3.org/1999/xhtml" style="font:13px/1.45 Inter;color:#5f6878;text-align:center"><b style="display:block;color:#7a5711;font-size:14.5px;margin-bottom:3px">Firmar las 7 decisiones</b>Lo único que se puede empezar hoy mismo. No hace falta código.</div></foreignObject>
+      <foreignObject x="250" y="96" width="220" height="130"><div xmlns="http://www.w3.org/1999/xhtml" style="font:13px/1.45 Inter;color:#5f6878;text-align:center"><b style="display:block;color:#18212f;font-size:14.5px;margin-bottom:3px">Accesos y entorno aislado</b>Una copia donde se pueda romper todo sin consecuencias.</div></foreignObject>
+      <foreignObject x="530" y="96" width="220" height="130"><div xmlns="http://www.w3.org/1999/xhtml" style="font:13px/1.45 Inter;color:#5f6878;text-align:center"><b style="display:block;color:#18212f;font-size:14.5px;margin-bottom:3px">Un tercero lo verifica</b>Levanta todo desde cero y corre las pruebas por su cuenta.</div></foreignObject>
+      <foreignObject x="810" y="96" width="220" height="130"><div xmlns="http://www.w3.org/1999/xhtml" style="font:13px/1.45 Inter;color:#5f6878;text-align:center"><b style="display:block;color:#18212f;font-size:14.5px;margin-bottom:3px">Pasar a «en vivo»</b>Desplegado en el entorno aislado, contra la red real.</div></foreignObject>
+      <foreignObject x="810" y="316" width="220" height="130"><div xmlns="http://www.w3.org/1999/xhtml" style="font:13px/1.45 Inter;color:#5f6878;text-align:center"><b style="display:block;color:#18212f;font-size:14.5px;margin-bottom:3px">Censo real y simulacro</b>Hasta que cuadre y cada excepción tenga explicación.</div></foreignObject>
+      <foreignObject x="530" y="316" width="220" height="130"><div xmlns="http://www.w3.org/1999/xhtml" style="font:13px/1.45 Inter;color:#5f6878;text-align:center"><b style="display:block;color:#18212f;font-size:14.5px;margin-bottom:3px">Piloto con cuentas propias</b>Nuestras, no de clientes. Se comprueba saldo y pagos.</div></foreignObject>
+      <foreignObject x="250" y="316" width="220" height="130"><div xmlns="http://www.w3.org/1999/xhtml" style="font:13px/1.45 Inter;color:#5f6878;text-align:center"><b style="display:block;color:#18212f;font-size:14.5px;margin-bottom:3px">Por lotes, con balanza</b>Un lote que no cuadra detiene todo. Sin excepciones.</div></foreignObject>
+      <foreignObject x="0" y="316" width="220" height="130"><div xmlns="http://www.w3.org/1999/xhtml" style="font:13px/1.45 Inter;color:#5f6878;text-align:center"><b style="display:block;color:#1e7a52;font-size:14.5px;margin-bottom:3px">Unir con producción</b>Al final, no al principio. Todo está listo para separarse limpio.</div></foreignObject>
+    </g>
+  </svg>
+  <div class="pag">43</div>
+</section>
+
+<!-- ═════════════ 44 · RIESGOS ═════════════ -->
+<section class="s">
+  <div class="cab"><span><b>Parte 6 · Dónde estamos</b></span><span>Riesgos y candados</span></div>
+  <h1>Lo que podría salir mal, <em>y qué lo impide</em></h1>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px 22px;margin-top:26px">
+    <div class="tarjeta" style="display:flex;gap:16px;padding:18px 20px;border-left:5px solid var(--rojo)"><div style="flex:0 0 190px;font:700 16px/1.3 Inter;color:var(--rojo)">Alguien pierde saldo</div><p class="peq" style="font-size:14.5px">Nunca se mueve un saldo. Y la balanza detecta una sola unidad de diferencia.</p></div>
+    <div class="tarjeta" style="display:flex;gap:16px;padding:18px 20px;border-left:5px solid var(--rojo)"><div style="flex:0 0 190px;font:700 16px/1.3 Inter;color:var(--rojo)">Dos con el mismo número</div><p class="peq" style="font-size:14.5px">La base de datos lo impide, probado con procesos reales peleando por el mismo archivo.</p></div>
+    <div class="tarjeta" style="display:flex;gap:16px;padding:18px 20px;border-left:5px solid var(--rojo)"><div style="flex:0 0 190px;font:700 16px/1.3 Inter;color:var(--rojo)">Alguien recibe dos cuentas</div><p class="peq" style="font-size:14.5px">Una cuenta de origen, una cuenta SFSP. Lo impone la base, no la buena voluntad.</p></div>
+    <div class="tarjeta" style="display:flex;gap:16px;padding:18px 20px;border-left:5px solid var(--rojo)"><div style="flex:0 0 190px;font:700 16px/1.3 Inter;color:var(--rojo)">Se cae a la mitad</div><p class="peq" style="font-size:14.5px">Relanzarlo no duplica nada. Sólo una corrida a la vez por censo.</p></div>
+    <div class="tarjeta" style="display:flex;gap:16px;padding:18px 20px;border-left:5px solid var(--rojo)"><div style="flex:0 0 190px;font:700 16px/1.3 Inter;color:var(--rojo)">Pago a billetera vieja</div><p class="peq" style="font-size:14.5px">La respuesta caduca en un minuto y se revisa otra vez antes de firmar.</p></div>
+    <div class="tarjeta" style="display:flex;gap:16px;padding:18px 20px;border-left:5px solid var(--rojo)"><div style="flex:0 0 190px;font:700 16px/1.3 Inter;color:var(--rojo)">Alias impostor</div><p class="peq" style="font-size:14.5px">Se compara cómo se ve el nombre, no sólo cómo se escribe.</p></div>
+    <div class="tarjeta" style="display:flex;gap:16px;padding:18px 20px;border-left:5px solid var(--rojo)"><div style="flex:0 0 190px;font:700 16px/1.3 Inter;color:var(--rojo)">Alguien firma solo</div><p class="peq" style="font-size:14.5px">Doble firma en las diez acciones graves; quien propone no aprueba.</p></div>
+    <div class="tarjeta" style="display:flex;gap:16px;padding:18px 20px;border-left:5px solid var(--rojo)"><div style="flex:0 0 190px;font:700 16px/1.3 Inter;color:var(--rojo)">Un número inventado</div><p class="peq" style="font-size:14.5px">El sistema se niega a usar un valor cuya decisión no esté firmada.</p></div>
+  </div>
+  <div class="pag">44</div>
+</section>
+
+<!-- ═════════════ 45 · SIN MAQUILLAJE ═════════════ -->
+<section class="s">
+  <div class="cab"><span><b>Parte 6 · Dónde estamos</b></span><span>Sin maquillaje</span></div>
+  <h1>Tres cosas que un informe optimista <em>no te diría</em></h1>
+  <div class="fila" style="margin-top:26px;gap:18px">
+    <div class="tarjeta col" style="padding:22px">
+      <div class="num" style="font-size:44px;color:var(--rojo)">1</div>
+      <h2 style="margin:8px 0">La herramienta de control nos falló</h2>
+      <p class="peq">La herramienta que verifica todo decía «todo guardado y en orden» sin haberlo revisado nunca: preguntaba por una carpeta mal escrita y leía el silencio como un «sí». Está corregida y ahora hay una prueba que la vigila. Pero por eso importa de verdad que un tercero revise todo desde cero.</p></div>
+    <div class="tarjeta col" style="padding:22px">
+      <div class="num" style="font-size:44px;color:var(--ambar)">2</div>
+      <h2 style="margin:8px 0">La privacidad tiene un límite</h2>
+      <p class="peq">Entre compartimentos, nadie puede enlazar tus billeteras. Dentro de un mismo compartimento, sí se puede ver que son de la misma persona. Es deliberado, y está escrito. Cerrarlo del todo cambiaría el sistema entero.</p></div>
+    <div class="tarjeta col" style="padding:22px">
+      <div class="num" style="font-size:44px;color:var(--gris)">3</div>
+      <h2 style="margin:8px 0">Nada de esto ha visto plata real</h2>
+      <p class="peq">470 pruebas en verde con datos de ensayo no son 470 pruebas en la red 5550. Justo en esa distancia es donde se pierden los proyectos, y por eso el sistema se niega a llamarse «verificado en vivo».</p></div>
+  </div>
+  <div class="pag">45</div>
+</section>
+
+<!-- ═════════════ 46 · CIERRE ═════════════ -->
+<section class="s osc" style="padding:0">
+  <svg width="1280" height="720" style="position:absolute;inset:0">
+    <rect width="1280" height="720" fill="#0e1a2b"/>
+    <g stroke="#c28f2c" stroke-opacity=".18" stroke-width="1.2" fill="none">
+      <circle cx="1080" cy="560" r="120"/><circle cx="1080" cy="560" r="200"/><circle cx="1080" cy="560" r="280"/>
+    </g>
+  </svg>
+  <div style="position:absolute;left:90px;top:90px;right:90px">
+    <div style="font:700 13px Inter;letter-spacing:.22em;color:#c28f2c;text-transform:uppercase">En una sola frase</div>
+    <h1 style="font-size:50px;max-width:1060px;margin:22px 0 34px">Cada persona gana un número de cuenta; <em>su plata no se mueve de donde está.</em></h1>
+    <div class="fila" style="gap:18px;max-width:1100px">
+      <div class="tarjeta col"><div style="font:700 11px Inter;letter-spacing:.14em;color:#c28f2c">LO HECHO</div>
+        <p style="margin-top:8px;color:#dbe2ec;font-size:15px">El sistema completo, probado con 470 pruebas y auditado por fuera: 45 de 46 cerrados.</p></div>
+      <div class="tarjeta col"><div style="font:700 11px Inter;letter-spacing:.14em;color:#c28f2c">LO QUE FALTA</div>
+        <p style="margin-top:8px;color:#dbe2ec;font-size:15px">Firmar 20 decisiones, conseguir accesos, que un tercero lo verifique, y probarlo en vivo.</p></div>
+      <div class="tarjeta col" style="border-color:#c28f2c"><div style="font:700 11px Inter;letter-spacing:.14em;color:#c28f2c">LO SIGUIENTE, HOY</div>
+        <p style="margin-top:8px;color:#fff;font-size:15px">Las siete decisiones que bloquean la migración: <b class="mono" style="color:#f0d9a6">D07 D09 D10 D11 D12 D18 D19</b></p></div>
+    </div>
+  </div>
+  <div style="position:absolute;left:90px;bottom:50px;font:500 12.5px Inter;color:#6f7d93;max-width:1000px">
+    Los ejemplos de esta presentación son salida real del sistema, con datos de ensayo: ninguna dirección, saldo ni referencia corresponde a una cuenta real.
+  </div>
+</section>
+
+</body>
+</html>
