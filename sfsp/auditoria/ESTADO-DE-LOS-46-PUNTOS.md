@@ -8,13 +8,13 @@ Ninguna fila dice «cerrado» sin una prueba que se pueda volver a correr.
 ## Verificación del cierre
 
 ```
-sdk                  99 pruebas
-contracts           149
+sdk                 125 pruebas
+contracts           178
 indexer              67
 dbnx-api             86
 pruebas-adversarias  14
                     ───
-                    415
+                    470
 ```
 
 `node scripts/verificar-todo.mjs` sobre el árbol limpio devuelve
@@ -50,7 +50,7 @@ comportamiento de un servicio desplegado, de la red 5550 ni de un saldo real.
 | H13 liberación sin inventario | **Cerrado** | `adversarias` H13, `sdk` propiedades |
 | H14 reorganización incompleta | **Cerrado** | `indexer` reorg ×8 |
 | H15 eventos incompatibles | **Cerrado** | `indexer` esquema ×9, `spec/eventos.json` |
-| H16 identidad enumerable | **PARCIAL, declarado** | `contracts` identidad: se quitaron los indexados, pero recorrer los logs reconstruye lo mismo |
+| H16 identidad enumerable | **Cerrado entre propósitos** | `contracts` identidad ×4: compromiso por propósito, ninguna vista de una sola dirección, y los logs no lo dicen. Queda correlación DENTRO de un propósito, declarada y con prueba |
 | H17 expiración ignorada | Cerrado | `contracts` 07 |
 | H18 reserva sin activo | Cerrado | `contracts` 04 |
 | H19 reanudación reutilizable | Cerrado | `contracts` 02 |
@@ -74,7 +74,7 @@ describió; la ruta del informe es lo que estaba mal.
 |---|---|---|
 | P01 unicidad sólo en memoria | **Cerrado** | `durable/esquema.ts`: 10 restricciones en SQL, comprobadas por `sdk` T-CONC-01..13 |
 | P02 confusables ad hoc | Cerrado | `sdk` alias P02: la cobertura está enumerada y es revisable |
-| P03 rutas de un solo rol | **PARCIAL** | `spec/SFSP-800` §12 completo. En código: cinco acciones con doble control; `UPGRADE`, `RECOVERY`, `SET_QUORUM` y `SET_POLICY` siguen sin él |
+| P03 rutas de un solo rol | **Cerrado** | `contracts` T-800-24: las diez acciones contra el ejecutor real. El camino viejo se retiró entero |
 | P04 keccak con pocos vectores | **Cerrado** | `sdk` keccak P04 ×3, con constantes públicas de ERC-20 |
 | P05 `MANAGED` presupone custodia | **Cerrado como supuesto declarado** | `sdk` custodia P05 |
 | P06 revocación de identidad | **Cerrado** | `dbnx-api` firmas P06 ×4 |
@@ -105,44 +105,72 @@ describió; la ruta del informe es lo que estaba mal.
 
 ## Lo que sigue abierto, y por qué
 
-Seis puntos, y ninguno es un olvido:
+**Un punto, y no depende de mí.**
 
-- **P01 y P10** esperan al adaptador durable. Las invariantes que hoy sostiene
-  un solo hilo las tiene que sostener mañana un índice único en la base, y las
-  trece pruebas de concurrencia no se pueden escribir contra un almacén que no
-  existe. El contrato que tendrá que cumplir está escrito.
-- **P11** es de la re-auditoría: hace falta alguien de fuera que corra las
-  pruebas de contratos, porque el primer auditor no pudo.
-- **C09** cierra cuatro máquinas de estado de ocho. Las otras cuatro salen
-  `NO_COMPROBADA` en vez de darse por buenas, y la salida dice por qué: dos
-  porque la especificación las dibuja con flechas en vez de con una tabla, y
-  dos porque el código no declara la máquina en ninguna parte.
+- **P11**: `REPRODUCIR.md` deja las cinco órdenes para levantar esto desde cero
+  y correr las 178 de contratos. Cerrarlo no es escribir el documento: es que
+  lo corra alguien de fuera. Mientras eso no pase, se queda abierto. Darlo por
+  cerrado porque las instrucciones existen sería justo el redondeo a favor que
+  este documento evita.
 
-- **H16** cierra a medias y está dicho en el código: quitar los `indexed` del
-  evento de identidad encarece la correlación pero no la impide, porque
-  recorrer todos los logs reconstruye lo mismo y `subjectRefOf` tiene que ser
-  pública para que el motor la consulte. Hay una prueba que **afirma la
-  correlación que hoy existe**, para que el día que se arregle esa prueba falle.
-- **P03** cierra a medias: transferencia forzosa, quema, emisión, liquidación y
-  reanudación exigen doble control con separación de funciones real. `UPGRADE`,
-  `RECOVERY`, `SET_QUORUM` y `SET_POLICY` siguen en el camino antiguo, donde
-  quien propone se auto-aprueba. Son cuatro rutas de gobierno, no de dinero,
-  pero una de ellas cambia los quórums de las demás.
+## Lo que se cierra declarando el límite, no escondiéndolo
 
-Hay además dos cosas más que el lote de contratos dejó anotadas y conviene no
-perder: el claim de migración se autoriza con la firma de un atestador y no con
-doble control, y el registro canónico de la liquidación guarda el `codehash`
-sólo en el evento sin revalidarlo en cada operación. La defensa que sí corre
-siempre ahí es la comprobación de la entrega real.
+Dos cierres traen un límite escrito, y conviene leerlo antes de usarlos:
+
+- **H16** cierra la correlación ENTRE propósitos, que es la que identificaba a
+  la persona a través de sus billeteras. DENTRO de un mismo propósito dos
+  direcciones del mismo sujeto guardan el mismo compromiso, y el almacenamiento
+  de un contrato es público: eso se puede leer. Es deliberado, porque es lo que
+  permite al motor tratarlas como un solo sujeto. Cerrarlo también exigiría que
+  el compromiso no viviera en el contrato —una prueba de conocimiento en cada
+  operación—, lo que cambia el modelo de ejecución entero. Está en el
+  comentario de cabecera del adaptador y en una prueba que lo afirma.
+- **`CommitmentBlocked`** publica el compromiso a propósito: una lista de
+  bloqueo que nadie puede comprobar no es una lista de bloqueo. El precio es
+  que un sujeto bloqueado queda correlacionable dentro de ese propósito sin
+  leer el almacenamiento.
+- **`PAUSE` y `TREASURY_RELEASE`** no entran en T-800-24 porque no tienen
+  ejecutor con orden ligada al contenido: `emergencyPause` es de un solo
+  firmante a propósito (una pausa que tuviera que reunir quórum llegaría
+  tarde), y el contrapeso es que caduca sola y que levantarla sí exige doble
+  control atado al incidente.
+
+## Lo que encontré revisando el trabajo de los lotes
+
+Los dos encargos entregaron en verde, y revisarlos encontró tres cosas que sus
+propios informes no decían. Van aquí porque el punto de auditar el trabajo
+propio es que también se audite al que audita.
+
+1. **La conformidad spec-código** halló dos divergencias reales en
+   `directorio.ts` y las dejó afirmadas sin arreglarlas, porque ese archivo no
+   era suyo: el alta nacía `ACTIVE` —daba por completada un alta que nadie
+   aprobó— y la máquina de estado de la cuenta era una tabla que ningún camino
+   recorría. Arregladas: el alta nace `PENDING` y `PENDING` no resuelve;
+   `cambiarEstadoCuenta` es el único camino y `CLOSED` no tiene vuelta. La
+   migración pide `ACTIVE` de forma explícita, porque esa persona ya opera y
+   dejarla en `PENDING` le cortaría los cobros en mitad del traslado.
+2. **El lote de contratos** afirmó que ningún log publica el compromiso. Era
+   cierto de `PurposeCommitmentBound`, pero `AttestationRecorded` y
+   `AttestationRevoked` lo llevaban INDEXADO. Con `isCommitmentBound` pública,
+   eso daba un camino de correlación MÁS BARATO que el residual declarado, y no
+   estaba dicho en ninguna parte. Los dos eventos dejan de publicarlo.
+3. **La prueba que recorría los logs** pasaba por la razón equivocada: recorría
+   un contrato al que nadie había atestado nada. Ahora atesta antes de
+   recorrer, y está comprobado que sujeta el arreglo — con el evento viejo
+   falla, con el nuevo pasa.
 
 ## El recuento, sin redondear a favor
 
 | | Cuántos | Cuáles |
 |---|---:|---|
-| Cerrados con prueba | **40** | los 24 hallazgos restantes, 7 pendientes, 9 propios |
-| Cierre parcial declarado | **3** | H16 identidad, P03 doble control, C09 conformidad |
-| Abiertos y documentados | **3** | P01 y P10 esperan al adaptador durable, P11 a la re-auditoría |
+| Cerrados con prueba | **45** | los 25 hallazgos, 10 pendientes, 10 propios |
+| Cierre parcial declarado | **0** | |
+| Abiertos | **1** | P11: falta que lo corra un tercero, y eso no lo cierro yo |
 | | **46** | |
+
+Dos de los cerrados traen un límite escrito —H16 dentro de un mismo propósito,
+y `PAUSE`/`TREASURY_RELEASE` fuera de T-800-24—. Están arriba, con su prueba.
+Un límite dicho no es un cierre parcial; un límite callado sí lo sería.
 
 Un cierre parcial no se cuenta como cerrado. Es la diferencia entre este
 documento y el que habría escrito si quisiera que el número quedara bonito.

@@ -86,7 +86,7 @@ Leyenda del estado:
 | F6 | En DvP, si una pata falla no se mueve la otra, y el activo entregado es el canónico. | Parcial → cerrada: registro canónico, orden autorizada y comprobación de la entrega real | `contracts` 10 · activo falso |
 | F7 | ~~El vault no crea efectivo sin pasivo.~~ **El vault mantiene solvencia y un superávit forzado se clasifica.** | **Refutada → reescrita y corregida** | `contracts` 10 · forzador de efectivo |
 | F8 | La pausa exige motivo, caduca sola, y su reanudación va ligada a la pausa concreta. | Parcial → cerrada: cada pausa tiene identificador y la aprobación lo compromete | `contracts` 10 · H19 |
-| F9 | ~~…toda acción crítica exige doble control.~~ **Ningún parámetro económico está escrito en el código. Cinco acciones críticas exigen doble control; cuatro todavía no.** | **Refutada → reescrita, cierre PARCIAL**: transferencia forzosa, quema, emisión, liquidación y reanudación lo tienen. `UPGRADE`, `RECOVERY`, `SET_QUORUM` y `SET_POLICY` siguen en el camino viejo, donde quien propone se auto-aprueba | `contracts` 10 · **abierto** |
+| F9 | Ningún parámetro económico está escrito en el código, y toda acción crítica con ejecutor exige doble control. | **Refutada → reescrita → CERRADA**: el camino viejo se retiró entero, no se dejó convivir. T-800-24 recorre las diez acciones contra el ejecutor real y comprueba que el proponente no se auto-aprueba, que un solo aprobador no basta y que el estado no se movió. `PAUSE` y `TREASURY_RELEASE` quedan fuera a propósito y está dicho por qué | `contracts` 12-t800-24 · `contracts` 02 |
 
 ## G · Decisiones y honestidad de estado
 
@@ -96,7 +96,7 @@ Leyenda del estado:
 | G2 | `UNKNOWN_SOURCE` nunca se degrada a cero ni a `ALLOW`. | **Refutada → corregida**: el suministro se presentaba como conocido sin cobertura | `indexer` supply-cobertura, reorg |
 | G3 | Registrar un activo legacy no le añade capacidades. | Resistió, con límite | `contracts` 01, `sdk` fixtures |
 | G4 | Retirar un activo del catálogo no borra saldo ni acceso del titular. | Resistió | `contracts` 01 |
-| G5 | No se afirma privacidad en ninguna parte, y la correlación que existe está descrita. | Parcial → **cierre PARCIAL declarado**: se quitaron los indexados, pero recorrer los logs reconstruye lo mismo. Hay una prueba que afirma esa correlación para que falle el día que se arregle | `contracts` identidad · **abierto** |
+| G5 | La identidad no se puede enlazar ENTRE propósitos, y la correlación que queda dentro de uno está descrita. | **Resistió, tras darle la vuelta a la prueba**: la que afirmaba la correlación ahora afirma que no se puede. Revisando la entrega apareció un camino más barato que el declarado —los eventos de attestation publicaban el compromiso indexado, y `isCommitmentBound` es pública—; cerrado. Queda la correlación dentro de un mismo propósito, deliberada, escrita en la cabecera y con prueba | `contracts` identidad ×4 · `10-hallazgos-l3` |
 | G6 | El README no dice «probado» de nada sin una prueba que se pueda repetir. | Parcial → cerrada: la frase «sin red» era falsa y el verificador era indulgente | `adversarias` H22, README |
 
 ## H · Seguridad del propio árbol

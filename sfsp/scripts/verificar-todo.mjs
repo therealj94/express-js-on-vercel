@@ -67,9 +67,31 @@ function procedencia() {
     anota('SIN_GIT', 'no se pudo leer el commit: la evidencia no tendría procedencia');
     return { sourceSHA: null, arbolLimpio: false, sucios: [] };
   }
-  /* Sólo importa lo que está dentro de sfsp/: un cambio en otra parte del
-     monorepo no altera lo que estas suites prueban. */
-  const estado = git('status --porcelain -- sfsp') ?? '';
+  /* Sólo importa lo que está dentro de este árbol: un cambio en otra parte
+     del monorepo no altera lo que estas suites prueban.
+
+     La ruta es `.`, relativa al cwd, y NO el literal `sfsp`. Con el literal,
+     `git` corría ya dentro de sfsp/ y preguntaba por sfsp/sfsp, que no existe.
+     Una ruta que no casa con nada no es un error para git: devuelve vacío. Y
+     el vacío se leía como «limpio». El verificador escrito para impedir que
+     saliera evidencia de un árbol sucio (C02) llevaba desde entonces firmando
+     que todo estaba limpio sin haber mirado nunca.
+
+     De ahí la comprobación siguiente, que es la lección y no el parche: aquí
+     una respuesta vacía puede significar «no hay nada sucio» o «pregunté mal»,
+     y las dos se veían igual. Se separan preguntando primero si la ruta cubre
+     algún archivo. Si no cubre ninguno, la pregunta estaba mal hecha, y eso se
+     anota en vez de pasar por bueno. */
+  const cubiertos = (git('ls-files -- .') ?? '').split('\n').filter(Boolean);
+  if (cubiertos.length === 0) {
+    anota(
+      'PROCEDENCIA_CIEGA',
+      'la ruta consultada no cubre ningún archivo versionado: el árbol no se comprobó, no es que esté limpio',
+    );
+    return { sourceSHA: sha, arbolLimpio: false, sucios: [] };
+  }
+
+  const estado = git('status --porcelain -- .') ?? '';
   const sucios = estado.split('\n').map((l) => l.trim()).filter(Boolean);
   if (sucios.length) {
     anota(

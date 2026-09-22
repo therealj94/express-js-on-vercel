@@ -14,6 +14,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
+import { writeFileSync, rmSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
@@ -369,4 +370,36 @@ test('H22, C02 · el verificador no emite evidencia en modo rápido', { skip: pr
   assert.notEqual(codigo, 0, 'una corrida parcial no puede salir con éxito');
   assert.match(salida, /VERIFICACION_PARCIAL/);
   assert.match(salida, /MODO_RAPIDO/);
+});
+
+test('C02 · el verificador ve un árbol sucio, y no lo da por limpio', { skip: process.env['SFSP_DENTRO_DEL_VERIFICADOR'] === '1' ? 'ya se corre dentro del verificador' : false }, () => {
+  /* Esta es la mitad de C02 que faltaba. La prueba de arriba afirmaba que el
+     modo rápido no emite evidencia; nadie afirmaba que el árbol sucio se
+     detecta. Y no se detectaba: el verificador corría ya dentro de sfsp/ y
+     preguntaba a git por la ruta `sfsp`, es decir, por sfsp/sfsp. Una ruta que
+     no casa con nada devuelve vacío sin error, y el vacío se leía como
+     «limpio». El verificador escrito para impedir que saliera evidencia de un
+     árbol sucio llevaba desde entonces firmando que estaba limpio sin mirar.
+
+     Se ensucia con un archivo NUEVO en vez de tocar uno existente: si la
+     prueba se muere a la mitad, lo peor que deja es un archivo de sobra, no un
+     archivo del proyecto a medio restaurar. */
+  const testigo = join(RAIZ, `.sucio-de-prueba-${process.pid}`);
+  writeFileSync(testigo, 'este archivo existe para ensuciar el árbol\n');
+  try {
+    let salida = '';
+    try {
+      salida = execFileSync('node', [join(RAIZ, 'scripts', 'verificar-todo.mjs'), '--rapido'], {
+        cwd: RAIZ,
+        encoding: 'utf8',
+        timeout: 600_000,
+      });
+    } catch (error) {
+      salida = (error as { stdout?: string }).stdout ?? '';
+    }
+    assert.match(salida, /ARBOL_SUCIO/, 'un árbol con cambios sin guardar tiene que decirlo');
+    assert.doesNotMatch(salida, /VERIFICACION_COMPLETA/);
+  } finally {
+    rmSync(testigo, { force: true });
+  }
 });
