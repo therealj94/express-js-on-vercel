@@ -1,0 +1,18 @@
+{
+  "sintetico": true,
+  "advertencia": "Datos inventados. Ninguna direccion, saldo ni referencia corresponde a una cuenta real.",
+  "censoId": "censo_sintetico_0001",
+  "fechaISO": "2026-09-22T00:00:00.000Z",
+  "chainId": 5550,
+  "cuentas": [
+    { "refCuentaOrigen": "sint_0001", "genesisSubjectRef": "gsr_sintetico_0001", "chainId": 5550, "address": "0x0000000000000000000000000000000000001001", "custodyProfile": "MANAGED", "saldos": { "SFSP:MON:OG:ORIGEN": "1500000000000000000", "SFSP:LEGACY:OG:ONDK": "42000000000000000000" } },
+    { "refCuentaOrigen": "sint_0002", "genesisSubjectRef": "gsr_sintetico_0002", "chainId": 5550, "address": "0x0000000000000000000000000000000000001002", "custodyProfile": "MANAGED", "saldos": { "SFSP:MON:OG:ORIGEN": "0", "SFSP:LEGACY:OG:ONDK": "0" } },
+    { "refCuentaOrigen": "sint_0003", "genesisSubjectRef": "gsr_sintetico_0003", "chainId": 5550, "address": "0x0000000000000000000000000000000000001003", "custodyProfile": "PERSONAL", "saldos": { "SFSP:MON:OG:ORIGEN": "700000000000000000", "SFSP:COM:OG:AUKA": "3000000000000000000" } },
+    { "refCuentaOrigen": "sint_0004", "genesisSubjectRef": "gsr_sintetico_0004", "chainId": 5550, "address": "0x0000000000000000000000000000000000001004", "custodyProfile": "INSTITUTIONAL", "saldos": { "SFSP:MON:OG:ORIGEN": "98000000000000000000" } }
+  ],
+  "notas": [
+    "sint_0002 no tiene saldo: comprueba que una cuenta vacia tambien recibe numero.",
+    "sint_0003 es PERSONAL: su capacidad de recuperacion depende del activo.",
+    "sint_0004 es INSTITUTIONAL: depende de quorum, no de una frase semilla."
+  ]
+}

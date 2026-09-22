@@ -1,0 +1,18 @@
+# Nada compilado ni descargado entra al repositorio.
+node_modules/
+dist/
+artifacts/
+cache/
+typechain-types/
+coverage/
+*.tsbuildinfo
+
+# Las corridas de evidencia se generan; se conserva la plantilla, no la salida.
+evidence/corridas/
+
+# Por si acaso: aquí nunca debe haber un secreto, y si alguien crea uno por
+# error, que al menos no se suba.
+.env
+.env.*
+*.key
+*.pem

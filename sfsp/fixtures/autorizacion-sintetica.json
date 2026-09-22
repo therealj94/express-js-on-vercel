@@ -1,0 +1,28 @@
+{
+  "sintetico": true,
+  "advertencia": "Firmas inventadas. No validan contra ninguna clave real.",
+  "autorizacion": {
+    "schemaVersion": "sfsp-auth/draft-0.3",
+    "authorizationId": "auth_sintetica000000000000000000000",
+    "actionId": "MINT",
+    "chainId": 5534,
+    "genesisHash": null,
+    "verifyingContract": "0x0000000000000000000000000000000000009001",
+    "assetId": "SFSP:SEC:DBNX:000001",
+    "amount": "1000000000",
+    "destination": "0x0000000000000000000000000000000000001001",
+    "policyVersion": "draft-0.3",
+    "evidenceRoot": "0x0000000000000000000000000000000000000000000000000000000000000001",
+    "nonce": "1",
+    "notBefore": "2026-09-22T00:00:00.000Z",
+    "expiry": "2026-09-29T00:00:00.000Z",
+    "approvals": [
+      { "actor": "dbnx_operador_sintetico", "role": "DBNX_BOARD", "signature": "0xsintetica", "signedAt": "2026-09-22T00:00:00.000Z" },
+      { "actor": "tech_operador_sintetico", "role": "TECH_OPS", "signature": "0xsintetica", "signedAt": "2026-09-22T00:00:01.000Z" }
+    ]
+  },
+  "casosNegativos": {
+    "aprobadoPorJson": { "approved": true },
+    "nota": "Un objeto con approved:true no es una autorizacion y debe ser rechazado."
+  }
+}
