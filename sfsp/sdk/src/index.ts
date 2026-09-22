@@ -22,5 +22,9 @@ export * from './reservas.js';
 export * from './supply.js';
 export * from './decisiones.js';
 export * from './rutas.js';
+export * from './maquinas.js';
+
+export * from './durable/esquema.js';
+export * from './durable/directorioDurable.js';
 
 export const VERSION_SFSP = 'draft-0.3';
