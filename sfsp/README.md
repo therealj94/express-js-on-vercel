@@ -26,6 +26,8 @@ sfsp/
   DECISIONES-SFSP.json   copia legible por herramientas · valores no aprobados = null
   CONTRATO-INTERNO.md    tipos, IDs, eventos y códigos compartidos por todo el árbol
   BASELINE-SFSP.md       línea base observada del ecosistema y sus discrepancias
+  COMO-FUSIONAR.md       el camino de vuelta: extraer, conectar y migrar sin que nadie note nada
+  OPUS-START-SFSP-v3.0.md  cómo se trabaja aquí: reglas, permisos y cierre de sesión
 ```
 
 ## Qué está construido y probado, y qué no
