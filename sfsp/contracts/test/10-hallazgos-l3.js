@@ -109,14 +109,10 @@ describe("H01/H06 · la autorización compromete el contenido, no un identificad
 
   it("H06 positivo: el contexto autorizado es el digest, y el monto va por su cuenta", async function () {
     const d1 = OA.digestDe((await ordenFT(f, { nonce: H.b32("ctx_1") })).p);
-    await f.engine.send(
-      "setPolicy",
-      [f.ASSET_NEW, H.b32("TRANSFER_OUT"), F.policy({ requiresAuthorization: true })],
-      f.board,
-    );
+    await F.fijarPolitica(f, f.ASSET_NEW, H.b32("TRANSFER_OUT"), F.policy({ requiresAuthorization: true }), "h06");
     await f.engine.send("setContextAuthorized", [f.ASSET_NEW, H.b32("TRANSFER_OUT"), d1, true], f.board);
     const r = await f.engine.call("evaluateOperation", [
-      H.b32("subj_alice"), f.ASSET_NEW, H.b32("TRANSFER_OUT"), 100, d1,
+      f.alice, f.ASSET_NEW, H.b32("TRANSFER_OUT"), 100, d1,
     ]);
     assert.equal(Number(r[0]), F.CODE.ALLOW);
   });
@@ -127,19 +123,15 @@ describe("H01/H06 · la autorización compromete el contenido, no un identificad
     // las dos operaciones caían en la misma clave.
     const d2 = OA.digestDe((await ordenFT(f, { nonce: H.b32("ctx_2") })).p);
     assert.notEqual(d1, d2);
-    await f.engine.send(
-      "setPolicy",
-      [f.ASSET_NEW, H.b32("TRANSFER_OUT"), F.policy({ requiresAuthorization: true })],
-      f.board,
-    );
+    await F.fijarPolitica(f, f.ASSET_NEW, H.b32("TRANSFER_OUT"), F.policy({ requiresAuthorization: true }), "h06");
     await f.engine.send("setContextAuthorized", [f.ASSET_NEW, H.b32("TRANSFER_OUT"), d1, true], f.board);
     const r = await f.engine.call("evaluateOperation", [
-      H.b32("subj_alice"), f.ASSET_NEW, H.b32("TRANSFER_OUT"), 100, d2,
+      f.alice, f.ASSET_NEW, H.b32("TRANSFER_OUT"), 100, d2,
     ]);
     assert.equal(Number(r[0]), F.CODE.DENY_AUTHORIZATION);
     // Y presentar el monto desnudo como contexto tampoco autoriza.
     const sinDigest = await f.engine.call("evaluateOperation", [
-      H.b32("subj_alice"), f.ASSET_NEW, H.b32("TRANSFER_OUT"), 100, H.ZERO32,
+      f.alice, f.ASSET_NEW, H.b32("TRANSFER_OUT"), 100, H.ZERO32,
     ]);
     assert.equal(Number(sinDigest[0]), F.CODE.DENY_AUTHORIZATION);
   });
@@ -277,6 +269,32 @@ describe("H05 · la liquidación no confía en lo que pasa el operador", functio
     assert.equal((await f.vault.call("balanceOfAccount", [f.alice])).toString(), "0");
   });
 
+  it("H05 positivo: el codehash canónico queda GUARDADO, no sólo publicado en el evento", async function () {
+    const guardado = await f.settlement.call("canonicalCodehashOf", [f.ASSET_NEW]);
+    const enCadena = await H.provider.send("eth_getCode", [f.assetNew.address, "latest"]);
+    assert.equal(guardado, H.keccak256(enCadena), "el codehash registrado es el del contrato declarado");
+  });
+
+  it("H05 negativo: un CONTRATO SUSTITUIDO en la misma dirección hace revertir la liquidación", async function () {
+    // Una dirección puede cambiar de código sin cambiar de número. Guardar el
+    // `codehash` sólo en el evento dejaba la detección a un observador externo
+    // que además tenía que estar mirando; ahora la comprobación corre dentro de
+    // la transacción, antes de llamar a nada.
+    const o = await orden({ nonce: H.b32("n_dvp_codehash") });
+    await OA.aprobar(f, o.digest, H.b32("SETTLE_DVP"));
+
+    const falso = await H.deploy("SFSPActivoFalso", [f.ASSET_NEW], f.board);
+    const codigoFalso = await H.provider.send("eth_getCode", [falso.address, "latest"]);
+    await H.provider.send("hardhat_setCode", [f.assetNew.address, codigoFalso]);
+
+    await H.expectRevert(
+      f.settlement.send("settle", [o.tupla, o.digest], f.board),
+      "CanonicalCodehashMismatch",
+    );
+    // El efectivo del comprador sigue entero: no se liquidó nada.
+    assert.equal((await f.vault.call("balanceOfAccount", [f.bob])).toString(), String(CASH));
+  });
+
   it("H05 negativo: un contrato que declara otro assetId no entra al registro canónico", async function () {
     const falso = await H.deploy("SFSPActivoFalso", [H.b32("SFSP:OTRO:ACTIVO")], f.board);
     await H.expectRevert(
@@ -342,6 +360,32 @@ describe("H04/H17 · migración: exclusión permanente, unicidad de origen y dos
     );
   }
 
+  /* §12.5 · el claim exige ahora doble control además de la firma del atestador.
+     La orden compromete posición de origen, beneficiario, unidades y raíz. */
+  async function ordenClaim(c, root) {
+    const p = await OA.orden({
+      verifyingContract: f.migration.address,
+      action: H.b32("MIGRATION_CLAIM"),
+      assetId: f.ASSET_OLD,
+      destination: c.beneficiary,
+      amount: String(c.oldUnits),
+      nonce: c.nonce,
+      evidenceRoot: root,
+    });
+    const d = OA.digestDe(p);
+    await OA.aprobar(f, d, H.b32("MIGRATION_CLAIM"));
+    return { tupla: OA.tupla(p), digest: d };
+  }
+
+  async function reclamar(c, proof, root, sig) {
+    const o = await ordenClaim(c, root);
+    return await f.migration.send(
+      "claim",
+      [c, proof, sig || (await firmar(c)), o.tupla, o.digest],
+      f.board,
+    );
+  }
+
   function arbol(migrationId) {
     const hojas = [H.merkleLeaf(migrationId, f.alice, 5), H.merkleLeaf(migrationId, f.bob, 4)];
     return { hojas, t: H.merkleTree(hojas) };
@@ -400,7 +444,7 @@ describe("H04/H17 · migración: exclusión permanente, unicidad de origen y dos
     await f.registry.send("declarePermanentExclusion", [f.ASSET_OLD, H.b32("ev_1")], f.board);
     await abrir(H.b32("mig_A"), MODE.FROZEN_SNAPSHOT, tree.t.root);
     const c1 = { migrationId: H.b32("mig_A"), beneficiary: f.alice, oldUnits: 5, nonce: H.b32("nn_1"), expiry };
-    await f.migration.send("claim", [c1, H.merkleProof(tree.t, 0), await firmar(c1)], f.board);
+    await reclamar(c1, H.merkleProof(tree.t, 0), tree.t.root);
     assert.equal((await f.assetNew.call("balanceOf", [f.alice])).toString(), "7");
 
     await f.migration.send("closeMigration", [H.b32("mig_A"), H.b32("FIN")], f.board);
@@ -409,7 +453,7 @@ describe("H04/H17 · migración: exclusión permanente, unicidad de origen y dos
     await abrir(H.b32("mig_B"), MODE.FROZEN_SNAPSHOT, b.t.root);
     const c2 = { migrationId: H.b32("mig_B"), beneficiary: f.alice, oldUnits: 5, nonce: H.b32("nn_2"), expiry };
     await H.expectRevert(
-      f.migration.send("claim", [c2, H.merkleProof(b.t, 0), await firmar(c2)], f.board),
+      reclamar(c2, H.merkleProof(b.t, 0), b.t.root),
       "NullifierUsed",
     );
     assert.equal((await f.assetNew.call("balanceOf", [f.alice])).toString(), "7", "no hubo segundo reemplazo");
@@ -419,13 +463,13 @@ describe("H04/H17 · migración: exclusión permanente, unicidad de origen y dos
     await f.registry.send("declarePermanentExclusion", [f.ASSET_OLD, H.b32("ev_1")], f.board);
     await abrir(H.b32("mig_A"), MODE.FROZEN_SNAPSHOT, tree.t.root);
     const c1 = { migrationId: H.b32("mig_A"), beneficiary: f.alice, oldUnits: 5, nonce: H.b32("nn_3"), expiry };
-    await f.migration.send("claim", [c1, H.merkleProof(tree.t, 0), await firmar(c1)], f.board);
+    await reclamar(c1, H.merkleProof(tree.t, 0), tree.t.root);
     await f.migration.send("closeMigration", [H.b32("mig_A"), H.b32("FIN")], f.board);
 
     const b = arbol(H.b32("mig_B"));
     await abrir(H.b32("mig_B"), MODE.FROZEN_SNAPSHOT, b.t.root);
     const c2 = { migrationId: H.b32("mig_B"), beneficiary: f.bob, oldUnits: 4, nonce: H.b32("nn_4"), expiry };
-    await f.migration.send("claim", [c2, H.merkleProof(b.t, 1), await firmar(c2)], f.board);
+    await reclamar(c2, H.merkleProof(b.t, 1), b.t.root);
     assert.equal((await f.assetNew.call("balanceOf", [f.bob])).toString(), "6");
   });
 
@@ -460,9 +504,12 @@ describe("H04/H17 · migración: exclusión permanente, unicidad de origen y dos
       expiry: (await H.now()) + 100000, // claim ampliamente vigente
     };
     const sig = await firmar(c);
+    // La orden de gobierno se aprueba ANTES de correr el reloj: así lo que
+    // detiene el claim es la vigencia de la MIGRACIÓN y no otra cosa.
+    const o = await ordenClaim(c, tree.t.root);
     await H.increaseTime(1200);
     await H.expectRevert(
-      f.migration.send("claim", [c, H.merkleProof(tree.t, 0), sig], f.board),
+      f.migration.send("claim", [c, H.merkleProof(tree.t, 0), sig, o.tupla, o.digest], f.board),
       "MigrationExpired",
     );
     assert.equal((await f.assetNew.call("balanceOf", [f.alice])).toString(), "0");
@@ -472,7 +519,7 @@ describe("H04/H17 · migración: exclusión permanente, unicidad de origen y dos
     const corta = (await H.now()) + 600;
     await abrir(H.b32("mig_A"), MODE.SURRENDER_ON_CLAIM, tree.t.root, corta);
     const c = { migrationId: H.b32("mig_A"), beneficiary: f.alice, oldUnits: 5, nonce: H.b32("nn_6"), expiry: corta - 10 };
-    await f.migration.send("claim", [c, H.merkleProof(tree.t, 0), await firmar(c)], f.board);
+    await reclamar(c, H.merkleProof(tree.t, 0), tree.t.root);
     assert.equal((await f.assetNew.call("balanceOf", [f.alice])).toString(), "7");
   });
 });
@@ -615,27 +662,140 @@ describe("H19 · la reanudación se ata a su incidente y se consume", function (
 
 // ---------------------------------------------------------------------- H16
 
-describe("H16 · el vínculo de identidad deja de ser consultable por índice", function () {
+describe("H16 · referencias no enlazables por propósito", function () {
   let f;
   beforeEach(async function () { f = await F.deployAll(); });
 
-  it("H16 positivo: SubjectRefBound no lleva NINGÚN campo indexado", async function () {
-    const ev = f.identity.abi.find((x) => x.type === "event" && x.name === "SubjectRefBound");
-    assert.ok(ev, "el evento debe existir");
+  const KYC = H.b32("KYC");
+  const PAGOS = H.b32("PAYMENTS");
+
+  it("H16 positivo: no existe ninguna consulta que DEVUELVA la referencia de una dirección", async function () {
+    // El cierre anterior era parcial precisamente por esto: `subjectRefOf` era
+    // pública y con dos direcciones se comparaban sus referencias. Ya no existe,
+    // ni ella ni ningún getter del compromiso.
+    const nombres = f.identity.abi.filter((x) => x.type === "function").map((x) => x.name);
+    for (const retirado of ["subjectRefOf", "bindSubjectRef", "unbindSubjectRef", "purposeCommitmentOf"]) {
+      assert.equal(nombres.includes(retirado), false, retirado + " sigue en el ABI del adaptador");
+    }
+    // Y el evento de vínculo tampoco publica el compromiso: sólo cuenta y propósito.
+    const ev = f.identity.abi.find((x) => x.type === "event" && x.name === "PurposeCommitmentBound");
+    assert.ok(ev, "el evento de alta por propósito debe existir");
+    assert.deepEqual(ev.inputs.map((i) => i.name), ["account", "purpose", "bound"]);
     for (const input of ev.inputs) {
-      assert.equal(input.indexed, false, "ningún campo de SubjectRefBound puede ir en los topics: " + input.name);
+      assert.equal(input.indexed, false, "ningún campo va en los topics: " + input.name);
+    }
+    assert.equal(
+      ev.inputs.some((i) => i.name.toLowerCase().includes("commitment")),
+      false,
+      "el compromiso NO puede viajar en el log",
+    );
+  });
+
+  it("H16 positivo: la comprobación RECIBE el compromiso y responde sí o no", async function () {
+    const c = F.compromiso(F.SUBJ.alice, KYC, F.SALT.alice);
+    await f.identity.send("bindPurposeCommitment", [f.alice, KYC, c], f.board);
+    assert.equal(await f.identity.call("isCommitmentBound", [f.alice, KYC, c]), true);
+    // Un compromiso que no es el suyo responde que no, y no filtra cuál es.
+    const ajeno = F.compromiso(F.SUBJ.bob, KYC, F.SALT.bob);
+    assert.equal(await f.identity.call("isCommitmentBound", [f.alice, KYC, ajeno]), false);
+    assert.equal(await f.identity.call("isCommitmentBound", [f.alice, KYC, H.ZERO32]), false);
+  });
+
+  /* LA PRUEBA QUE SUSTITUYE A LA QUE AFIRMABA LA CORRELACIÓN.
+     Antes había aquí una prueba que ATESTIGUABA que dos direcciones del mismo
+     sujeto eran correlacionables, para que fallara el día que se arreglase. Ese
+     día es éste, así que la prueba se da la vuelta: lo que ahora se exige es que
+     la correlación NO se pueda establecer desde la cadena. */
+  it("H16 negativo: dos direcciones del mismo sujeto en propósitos distintos NO se pueden vincular", async function () {
+    const cKyc = F.compromiso(F.SUBJ.alice, KYC, F.SALT.alice);
+    // El `salt` es propio de cada par (sujeto, propósito): en PAGOS es otro.
+    const saltPagos = H.b32("salt_alice_pagos");
+    const cPagos = F.compromiso(F.SUBJ.alice, PAGOS, saltPagos);
+
+    // `alice` y `mallory` son la MISMA persona con dos billeteras, dadas de alta
+    // en propósitos distintos.
+    await f.identity.send("bindPurposeCommitment", [f.alice, KYC, cKyc], f.board);
+    await f.identity.send("bindPurposeCommitment", [f.mallory, PAGOS, cPagos], f.board);
+
+    assert.notEqual(cKyc, cPagos, "el mismo sujeto produce compromisos distintos por propósito");
+
+    // 1. No hay función que devuelva nada comparable entre las dos direcciones.
+    const lecturas = f.identity.abi
+      .filter((x) => x.type === "function" && x.stateMutability === "view")
+      .filter((x) => x.inputs.length === 1 && x.inputs[0].type === "address");
+    assert.deepEqual(lecturas, [], "ninguna vista toma sólo una dirección y devuelve algo del sujeto");
+
+    // 2. Lo único público es una comprobación que hay que ALIMENTAR con el
+    //    compromiso. Probar el de un propósito contra el otro da que no.
+    assert.equal(await f.identity.call("isCommitmentBound", [f.mallory, PAGOS, cKyc]), false);
+    assert.equal(await f.identity.call("isCommitmentBound", [f.alice, KYC, cPagos]), false);
+    assert.equal(await f.identity.call("isCommitmentBound", [f.mallory, KYC, cKyc]), false);
+
+    // 3. Y el estado por propósito tampoco iguala nada: cada dirección sólo está
+    //    dada de alta en el suyo.
+    const sKyc = await f.identity.call("purposeStatus", [f.alice, KYC]);
+    const sPagos = await f.identity.call("purposeStatus", [f.mallory, PAGOS]);
+    assert.equal(sKyc[0], true);
+    assert.equal(sPagos[0], true);
+    assert.equal((await f.identity.call("purposeStatus", [f.alice, PAGOS]))[0], false);
+    assert.equal((await f.identity.call("purposeStatus", [f.mallory, KYC]))[0], false);
+
+    // 4. Los LOGS del contrato tampoco lo dicen: se recorren todos, y ninguno
+    //    lleva el compromiso. Recorrerlos enteros era justamente lo que
+    //    reconstruía la tabla en el cierre anterior.
+    //
+    //    Se ATESTA antes de recorrer. Sin esto la prueba recorría un contrato
+    //    al que nadie había atestado nada, y pasaba por una razón que no era
+    //    la buena: los eventos de attestation publicaban el compromiso
+    //    indexado, y con `isCommitmentBound` —que es pública— probar cada
+    //    compromiso del log contra cada dirección reconstruía la tabla sin
+    //    tocar el almacenamiento. Ese camino se cerró; esto lo vigila.
+    await F.atestar(f, { subjectCommitment: cKyc, purpose: KYC, attestationId: H.b32("att_k") });
+    await F.atestar(f, { subjectCommitment: cPagos, purpose: PAGOS, attestationId: H.b32("att_p") });
+    const logs = await H.provider.send("eth_getLogs", [
+      { address: f.identity.address, fromBlock: "0x0", toBlock: "latest" },
+    ]);
+    assert.ok(logs.length > 0, "tiene que haber logs que recorrer, si no la prueba no prueba nada");
+    for (const l of logs) {
+      const crudo = (l.data + l.topics.join("")).toLowerCase();
+      assert.equal(crudo.includes(cKyc.slice(2).toLowerCase()), false, "un log publica el compromiso de KYC");
+      assert.equal(crudo.includes(cPagos.slice(2).toLowerCase()), false, "un log publica el compromiso de PAGOS");
+      assert.equal(
+        crudo.includes(F.SUBJ.alice.slice(2).toLowerCase()),
+        false,
+        "un log publica la referencia global del sujeto",
+      );
     }
   });
 
-  it("H16 negativo: la correlación que SIGUE siendo posible queda documentada, no negada", async function () {
-    // Esta prueba existe para que nadie afirme una privacidad que no hay: con dos
-    // direcciones cualquiera puede comprobar si son del mismo sujeto. Si algún día
-    // se implementan referencias no enlazables por propósito, esta prueba tendrá
-    // que cambiar, y ese cambio es justamente la señal de que el arreglo llegó.
-    await f.identity.send("bindSubjectRef", [f.mallory, H.b32("subj_alice")], f.board);
-    const a = await f.identity.call("subjectRefOf", [f.alice]);
-    const b = await f.identity.call("subjectRefOf", [f.mallory]);
-    assert.equal(a, b, "hoy dos direcciones del mismo sujeto son correlacionables por `subjectRefOf`");
+  /* CORRELACIÓN RESIDUAL, declarada y encerrada en una prueba en vez de
+     escondida: el almacenamiento de un contrato es público. Dentro de UN MISMO
+     propósito, quien lea las ranuras de dos direcciones puede ver si guardan el
+     mismo compromiso. Lo que ya no se puede es cruzar propósitos, que es el
+     vínculo que identificaba a la persona a través de sus billeteras. La prueba
+     afirma las dos mitades para que ninguna se pueda olvidar. */
+  it("H16 negativo: la correlación residual que QUEDA es sólo dentro del mismo propósito, y está dicha", async function () {
+    const cKyc = F.compromiso(F.SUBJ.alice, KYC, F.SALT.alice);
+    const saltPagos = H.b32("salt_alice_pagos");
+    const cPagos = F.compromiso(F.SUBJ.alice, PAGOS, saltPagos);
+
+    // Dos direcciones del mismo sujeto DENTRO del mismo propósito comparten
+    // compromiso: eso es deliberado, porque es lo que permite que el motor las
+    // trate como un solo sujeto en ese propósito.
+    await f.identity.send("bindPurposeCommitment", [f.alice, KYC, cKyc], f.board);
+    await f.identity.send("bindPurposeCommitment", [f.mallory, KYC, cKyc], f.board);
+    assert.equal(await f.identity.call("isCommitmentBound", [f.alice, KYC, cKyc]), true);
+    assert.equal(
+      await f.identity.call("isCommitmentBound", [f.mallory, KYC, cKyc]),
+      true,
+      "mismo propósito, mismo compromiso: correlación residual DECLARADA",
+    );
+
+    // Cruzar propósitos sigue sin poder hacerse: ni siquiera conociendo el
+    // compromiso de KYC se puede afirmar nada del de PAGOS.
+    await f.identity.send("bindPurposeCommitment", [f.bob, PAGOS, cPagos], f.board);
+    assert.equal(await f.identity.call("isCommitmentBound", [f.bob, PAGOS, cKyc]), false);
+    assert.notEqual(cKyc, cPagos);
   });
 });
 

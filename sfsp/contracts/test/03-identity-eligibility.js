@@ -2,6 +2,7 @@
 const assert = require("node:assert/strict");
 const F = require("./fixture");
 const H = require("./helpers");
+const OA = require("./orden-autorizada");
 
 /* H16 · las attestations dejaron de firmarse sobre la referencia global del
    sujeto y pasan a firmarse sobre el COMPROMISO POR PROPÓSITO. El typehash
@@ -186,5 +187,48 @@ describe("SFSPEligibilityEngine · evaluate es view y devuelve códigos del §4"
     await f.governance.send("emergencyPause", [H.b32("INCIDENT_TEST"), 600], f.signers[0]);
     const r = await f.engine.call("evaluate", [f.alice, f.ASSET_NEW, H.b32("TRANSFER_OUT"), H.ZERO32]);
     assert.equal(Number(r[0]), F.CODE.DENY_ASSET_STATE);
+  });
+});
+
+/* P03/§12.5 · fila `SET_POLICY` sobre el motor de elegibilidad. Es la política
+   que gatea TODAS las rutas de dinero: hasta este lote la fijaba una sola cuenta
+   con rol TECH_OPS, así que abrir una acción prohibida, subir un límite o quitar
+   el claim exigido era una firma. Ahora lleva doble control sobre el digest, con
+   la versión anterior, la nueva y el CONTENIDO exacto comprometidos. */
+describe("P03/SET_POLICY · la política de elegibilidad lleva doble control", function () {
+  let f;
+  beforeEach(async function () { f = await F.deployAll(); });
+
+  it("P03 positivo (SET_POLICY): con doble control la política cambia, sube de versión y consume la orden", async function () {
+    const antes = await f.engine.call("policyOf", [f.ASSET_NEW, H.b32("TRANSFER_OUT")]);
+    const nueva = F.policy({ maxAmount: 7 });
+    await F.fijarPolitica(f, f.ASSET_NEW, H.b32("TRANSFER_OUT"), nueva, "p03ok");
+    const despues = await f.engine.call("policyOf", [f.ASSET_NEW, H.b32("TRANSFER_OUT")]);
+    assert.equal(Number(despues.version), Number(antes.version) + 1);
+    assert.equal(despues.maxAmount.toString(), "7");
+  });
+
+  it("P03 negativo (SET_POLICY): una orden aprobada NO fija una política distinta de la aprobada", async function () {
+    const aprobada = F.policy({ maxAmount: 7 });
+    const otra = F.policy({ maxAmount: 7, actionAllowed: false }); // un solo campo distinto
+    const previa = Number((await f.engine.call("policyOf", [f.ASSET_NEW, H.b32("TRANSFER_OUT")])).version);
+    const payload = await OA.orden({
+      verifyingContract: f.engine.address,
+      action: H.b32("SET_POLICY"),
+      assetId: f.ASSET_NEW,
+      amount: String(previa),
+      amountSecondary: String(previa + 1),
+      nonce: H.b32("n_p03_swap"),
+      evidenceRoot: F.digestPolitica(H.b32("TRANSFER_OUT"), aprobada),
+    });
+    const d = OA.digestDe(payload);
+    await OA.aprobar(f, d, H.b32("SET_POLICY"));
+    await H.expectRevert(
+      f.engine.send("setPolicy", [f.ASSET_NEW, H.b32("TRANSFER_OUT"), otra, OA.tupla(payload), d], f.board),
+      "PolicyContentMismatch",
+    );
+    const despues = await f.engine.call("policyOf", [f.ASSET_NEW, H.b32("TRANSFER_OUT")]);
+    assert.equal(Number(despues.version), previa, "nada cambió");
+    assert.equal(despues.actionAllowed, true);
   });
 });

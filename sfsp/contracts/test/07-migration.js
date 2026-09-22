@@ -167,9 +167,7 @@ describe("SFSPMigrationRegistry · dos modos, nullifier y regla de restos", func
     // Misma firma: lo para el contador de nonce.
     await H.expectRevert(
       f.migration.send(
-        [c1, H.merkleProof(tree, 0), await signClaim(f, c1), o1.tupla, o1.digest].length === 5
-          ? "claim"
-          : "claim",
+        "claim",
         [c1, H.merkleProof(tree, 0), await signClaim(f, c1), o1.tupla, o1.digest],
         f.board,
       ),
@@ -217,6 +215,56 @@ describe("SFSPMigrationRegistry · dos modos, nullifier y regla de restos", func
     const sig = await signClaim(f, c);
     await H.increaseTime(2000);
     await H.expectRevert(reclamar(f, c, H.merkleProof(tree, 0), sig, tree.root), "ClaimExpired");
+  });
+
+  /* §12.5 · MIGRATION_CLAIM = doble control + nullifier por posición de origen.
+     Antes bastaba la firma de un atestador. */
+  it("positivo (MIGRATION_CLAIM): con firma del atestador Y doble control, la orden se consume", async function () {
+    await openMigration(MODE.SURRENDER_ON_CLAIM);
+    const c = { migrationId, beneficiary: f.alice, oldUnits: 5, nonce: H.b32("n_dc_1"), expiry };
+    const o = await ordenClaim(f, c, tree.root);
+    await f.migration.send("claim", [c, H.merkleProof(tree, 0), await signClaim(f, c), o.tupla, o.digest], f.board);
+    assert.equal((await f.assetNew.call("balanceOf", [f.alice])).toString(), "7");
+    assert.equal(
+      await f.governance.call("isAuthorizationApproved", [o.digest]),
+      false,
+      "la orden del claim se gasta una sola vez",
+    );
+  });
+
+  it("negativo (MIGRATION_CLAIM): la firma del atestador SOLA ya no basta", async function () {
+    await openMigration(MODE.SURRENDER_ON_CLAIM);
+    const c = { migrationId, beneficiary: f.alice, oldUnits: 5, nonce: H.b32("n_dc_2"), expiry };
+    // Orden bien formada, pero nadie la propuso ni la aprobó en gobierno.
+    const p = await OA.orden({
+      verifyingContract: f.migration.address,
+      action: H.b32("MIGRATION_CLAIM"),
+      assetId: f.ASSET_OLD,
+      destination: c.beneficiary,
+      amount: String(c.oldUnits),
+      nonce: c.nonce,
+      evidenceRoot: tree.root,
+    });
+    await H.expectRevert(
+      f.migration.send(
+        "claim",
+        [c, H.merkleProof(tree, 0), await signClaim(f, c), OA.tupla(p), OA.digestDe(p)],
+        f.board,
+      ),
+      "ClaimNotAuthorized",
+    );
+    assert.equal((await f.assetNew.call("balanceOf", [f.alice])).toString(), "0");
+  });
+
+  it("negativo (MIGRATION_CLAIM): una orden aprobada para otro beneficiario no reclama", async function () {
+    await openMigration(MODE.SURRENDER_ON_CLAIM);
+    const c = { migrationId, beneficiary: f.alice, oldUnits: 5, nonce: H.b32("n_dc_3"), expiry };
+    // Aprobada para bob; se presenta con el claim de alice.
+    const o = await ordenClaim(f, { beneficiary: f.bob, oldUnits: 5, nonce: c.nonce }, tree.root);
+    await H.expectRevert(
+      f.migration.send("claim", [c, H.merkleProof(tree, 0), await signClaim(f, c), o.tupla, o.digest], f.board),
+      "ClaimDoesNotMatchAuthorization",
+    );
   });
 
   it("negativo: un ratio con denominador cero no se admite", async function () {

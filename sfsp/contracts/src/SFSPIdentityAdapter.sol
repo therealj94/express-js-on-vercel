@@ -43,6 +43,13 @@ import {SFSPCodes} from "./lib/SFSPCodes.sol";
 ///           Cerrar también eso exige que el compromiso no viva en el contrato
 ///           —una prueba de conocimiento presentada en cada operación—, lo que
 ///           cambia el modelo de ejecución entero y no se hace aquí.
+///        1-bis. `CommitmentBlocked` SÍ publica el compromiso, y es a
+///           propósito: una lista de bloqueo que nadie puede comprobar no es
+///           una lista de bloqueo. El precio es que un sujeto BLOQUEADO queda
+///           correlacionable dentro de ese propósito por los logs, sin leer el
+///           almacenamiento. Los eventos de attestation no pagan ese precio
+///           porque ahí el conjunto sería TODO el que tiene claim, no el puñado
+///           que está bloqueado.
 ///        2. `PurposeCommitmentBound` publica la cuenta y el propósito, nunca el
 ///           compromiso: de los logs se deduce QUÉ propósitos tiene dada de alta
 ///           una dirección, no a quién pertenece ni con qué otras comparte
@@ -90,15 +97,19 @@ contract SFSPIdentityAdapter is SFSPAccessControl, SFSPEIP712 {
         address issuer;
     }
 
-    /// @dev Los eventos de attestation llevan el COMPROMISO, no la referencia:
-    ///      agrupar por compromiso agrupa por (sujeto, propósito), que es el
-    ///      alcance que el propósito ya publica de por sí.
-    event AttestationRecorded(
-        bytes32 indexed subjectCommitment, bytes32 indexed purpose, bytes32 attestationId, uint64 validUntil
-    );
-    event AttestationRevoked(
-        bytes32 indexed subjectCommitment, bytes32 indexed purpose, bytes32 attestationId, bytes32 reasonCode
-    );
+    /// @dev H16 · estos eventos NO publican el compromiso, ni indexado ni en
+    ///      datos. Publicarlo dejaba en los logs el conjunto de compromisos de
+    ///      cada propósito, y con `isCommitmentBound` —que es pública— probar
+    ///      cada compromiso contra cada dirección reconstruía la tabla entera
+    ///      sin necesidad de leer el almacenamiento. Era un camino más barato
+    ///      que el de la correlación residual declarada arriba, y no estaba
+    ///      dicho en ninguna parte.
+    ///
+    ///      El asidero que queda es `attestationId`, que lo elige quien emite
+    ///      la attestation: quien la emitió sabe cuál es la suya, y quien no,
+    ///      no deduce de él ni el sujeto ni el compromiso.
+    event AttestationRecorded(bytes32 indexed purpose, bytes32 attestationId, uint64 validUntil);
+    event AttestationRevoked(bytes32 indexed purpose, bytes32 attestationId, bytes32 reasonCode);
 
     /// @notice Alta o baja de una dirección en un propósito.
     /// @dev H16 · el compromiso NO viaja en el evento, ni en los topics ni en los
@@ -280,7 +291,7 @@ contract SFSPIdentityAdapter is SFSPAccessControl, SFSPEIP712 {
             revoked: false,
             issuer: issuer
         });
-        emit AttestationRecorded(a.subjectCommitment, a.purpose, a.attestationId, a.validUntil);
+        emit AttestationRecorded(a.purpose, a.attestationId, a.validUntil);
     }
 
     function revokeAttestation(bytes32 subjectCommitment, bytes32 purpose, bytes32 reasonCode)
@@ -291,7 +302,7 @@ contract SFSPIdentityAdapter is SFSPAccessControl, SFSPEIP712 {
         require(r.exists, "SFSP: sin attestation");
         require(reasonCode != bytes32(0), "SFSP: motivo requerido");
         r.revoked = true;
-        emit AttestationRevoked(subjectCommitment, purpose, r.attestationId, reasonCode);
+        emit AttestationRevoked(purpose, r.attestationId, reasonCode);
     }
 
     /// @dev RECIBE el compromiso y responde sí o no. No hay forma de obtener el

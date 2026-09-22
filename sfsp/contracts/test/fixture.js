@@ -323,9 +323,56 @@ async function deployAll() {
   };
 }
 
+/** Registra una attestation firmada. Existe para que las pruebas que recorren
+ *  los logs puedan hacerlo sobre el caso REAL, con attestations dentro, y no
+ *  sobre un contrato al que nadie ha atestado nada todavía. */
+const ATT_TYPES = {
+  Attestation: [
+    { name: "attestationId", type: "bytes32" },
+    { name: "subjectCommitment", type: "bytes32" },
+    { name: "purpose", type: "bytes32" },
+    { name: "claimsRoot", type: "bytes32" },
+    { name: "validFrom", type: "uint64" },
+    { name: "validUntil", type: "uint64" },
+    { name: "policyVersion", type: "bytes32" },
+    { name: "chainId", type: "uint256" },
+    { name: "verifyingContract", type: "address" },
+  ],
+};
+
+async function atestar(f, o) {
+  const opts = o || {};
+  const cid = await H.chainId();
+  const ts = await H.now();
+  const att = {
+    attestationId: opts.attestationId || H.b32("att_log"),
+    subjectCommitment: opts.subjectCommitment,
+    purpose: opts.purpose,
+    claimsRoot: H.b32("claims_root"),
+    validFrom: ts - 10,
+    validUntil: ts + 3600,
+    policyVersion: H.b32("pol_v1"),
+  };
+  const domain = {
+    name: "SFSPIdentityAdapter",
+    version: "draft-0.3",
+    chainId: cid,
+    verifyingContract: f.identity.address,
+  };
+  const message = Object.assign({}, att, {
+    validFrom: String(att.validFrom),
+    validUntil: String(att.validUntil),
+    chainId: String(cid),
+    verifyingContract: f.identity.address,
+  });
+  const sig = await H.signTypedData(f.board, domain, ATT_TYPES, "Attestation", message);
+  await f.identity.send("recordAttestation", [att, sig], f.board);
+  return att;
+}
+
 module.exports = {
   deployAll, passport, policy, ACTIONS,
-  compromiso, fijarPolitica, actualizarPoliticaPasaporte, digestPolitica, nonceUnico,
+  compromiso, atestar, fijarPolitica, actualizarPoliticaPasaporte, digestPolitica, nonceUnico,
   SUBJ, SALT, PURPOSE_BASE, COMMITMENT_TAG,
   Legal, Admission, Trading, Transferability, Redemption, Visibility,
   Profile, Kind, Risk, Report, Supply, Axis, CODE,
