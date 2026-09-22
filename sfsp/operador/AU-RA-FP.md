@@ -94,7 +94,7 @@ Una empresa **sólo** puede llamar a los servicios que tiene contratados. Llamar
 Tres capas, de la más fuerte a la más débil:
 
 1. **Por construcción.** Los servicios mismos se niegan: el directorio no resuelve una cuenta PENDING, el portero no deja pasar un «no sé», Ordenex no puede escribir un pasaporte. Aquí no hay nada que vigilar porque no hay nada que saltarse.
-2. **Por separación de funciones.** Reglas del §6, comprobadas en código (`operador/separacion.ts`) antes de conceder un permiso.
+2. **Por separación de funciones.** Reglas del §6. R1–R5 en `operador/separacion.ts`, R6 en `operador/servicios.ts`, R8 en `operador/cumplimiento.ts`. **R7 todavía no tiene código**: es una regla de diseño hasta que los servicios manejen datos de clientes reales.
 3. **Por vigilancia.** Lo que no se puede impedir por construcción se comprueba con evidencia (`operador/cumplimiento.ts`) y queda en un informe por empresa.
 
 ### 5.1 El informe de cumplimiento

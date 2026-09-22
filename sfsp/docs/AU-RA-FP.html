@@ -1,0 +1,456 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>AU-RA FP</title>
+<style>
+@font-face{font-family:Inter;font-weight:400;src:url(fuentes/inter-latin-400-normal.woff2)}
+@font-face{font-family:Inter;font-weight:500;src:url(fuentes/inter-latin-500-normal.woff2)}
+@font-face{font-family:Inter;font-weight:600;src:url(fuentes/inter-latin-600-normal.woff2)}
+@font-face{font-family:Inter;font-weight:700;src:url(fuentes/inter-latin-700-normal.woff2)}
+@font-face{font-family:Inter;font-weight:800;src:url(fuentes/inter-latin-800-normal.woff2)}
+@font-face{font-family:Fraunces;font-weight:400;src:url(fuentes/fraunces-latin-400-normal.woff2)}
+@font-face{font-family:Fraunces;font-weight:600;src:url(fuentes/fraunces-latin-600-normal.woff2)}
+@font-face{font-family:Fraunces;font-weight:700;src:url(fuentes/fraunces-latin-700-normal.woff2)}
+@font-face{font-family:Fraunces;font-style:italic;font-weight:400;src:url(fuentes/fraunces-latin-400-italic.woff2)}
+@font-face{font-family:Fraunces;font-style:italic;font-weight:600;src:url(fuentes/fraunces-latin-600-italic.woff2)}
+@font-face{font-family:Mono;font-weight:400;src:url(fuentes/jetbrains-mono-latin-400-normal.woff2)}
+@font-face{font-family:Mono;font-weight:500;src:url(fuentes/jetbrains-mono-latin-500-normal.woff2)}
+
+@page{size:1280px 720px;margin:0}
+:root{
+  --noche:#0e1a2b; --noche2:#16263d; --papel:#f6f2ea; --blanco:#fffdf9;
+  --tinta:#18212f; --gris:#5f6878; --gris2:#9aa2ae; --linea:#e2dccf;
+  --oro:#c28f2c; --oro2:#f0d9a6; --oro3:#fbf1dc;
+  --verde:#1e7a52; --verde2:#d8efe3;
+  --rojo:#b23a30; --rojo2:#f6dcd8;
+  --azul:#2a5ca8; --azul2:#dde7f6;
+  --ambar:#b7791f; --ambar2:#fbecd1;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{background:#888}
+body{font-family:Inter,sans-serif;color:var(--tinta);-webkit-print-color-adjust:exact;print-color-adjust:exact}
+.s{width:1280px;height:720px;position:relative;overflow:hidden;background:var(--papel);
+   page-break-after:always;break-after:page;padding:56px 72px 60px}
+.s.osc{background:var(--noche);color:#eef1f6}
+.s.oro{background:var(--oro3)}
+.cab{position:absolute;top:26px;left:72px;right:72px;display:flex;justify-content:space-between;
+     font:600 11px/1 Inter;letter-spacing:.14em;text-transform:uppercase;color:var(--gris2)}
+.cab b{color:var(--oro);font-weight:700}
+.osc .cab{color:#6f7d93}
+.pag{position:absolute;bottom:24px;right:72px;font:500 11px Inter;color:var(--gris2);letter-spacing:.06em}
+.osc .pag{color:#5d6b80}
+h1{font:600 46px/1.08 Fraunces,serif;letter-spacing:-.015em;margin:26px 0 14px;max-width:1000px}
+h1 em{font-style:italic;color:var(--oro)}
+.osc h1{color:#fff}
+h2{font:700 19px/1.25 Inter;margin-bottom:6px}
+h3{font:700 14px/1.3 Inter;margin-bottom:4px}
+.lead{font:400 20px/1.5 Inter;color:var(--gris);max-width:980px}
+.osc .lead{color:#b7c1d1}
+p{font-size:15.5px;line-height:1.55}
+.peq{font-size:13px;line-height:1.5;color:var(--gris)}
+.osc .peq{color:#8d9ab0}
+.mono{font-family:Mono,monospace}
+.fila{display:flex;gap:22px}
+.col{flex:1}
+.tarjeta{background:var(--blanco);border:1px solid var(--linea);border-radius:14px;padding:18px 20px}
+.osc .tarjeta{background:var(--noche2);border-color:#243751}
+.pill{display:inline-block;font:700 10.5px/1 Inter;letter-spacing:.09em;text-transform:uppercase;
+      padding:6px 10px;border-radius:99px}
+.p-verde{background:var(--verde2);color:var(--verde)}
+.p-rojo{background:var(--rojo2);color:var(--rojo)}
+.p-oro{background:var(--oro2);color:#7a5711}
+.p-azul{background:var(--azul2);color:var(--azul)}
+.p-gris{background:#e7e3da;color:var(--gris)}
+.p-ambar{background:var(--ambar2);color:var(--ambar)}
+.nota{position:absolute;left:72px;right:72px;bottom:56px;border-left:4px solid var(--oro);
+      padding:10px 16px;background:var(--blanco);border-radius:0 10px 10px 0;font-size:14.5px;line-height:1.5}
+.osc .nota{background:var(--noche2);color:#dbe2ec}
+.nota.roja{border-color:var(--rojo)}
+.nota.verde{border-color:var(--verde)}
+svg{font-family:Inter,sans-serif}
+.num{font:700 64px/1 Fraunces;letter-spacing:-.02em}
+.sep{display:flex;flex-direction:column;justify-content:center;padding-left:110px}
+.sep .parte{font:700 13px Inter;letter-spacing:.2em;text-transform:uppercase;color:var(--oro);margin-bottom:18px}
+.sep h1{font-size:64px;margin:0 0 20px;max-width:900px}
+.sep .gran{position:absolute;right:70px;bottom:-60px;font:700 420px/1 Fraunces;color:rgba(194,143,44,.12)}
+.ico{width:46px;height:46px;border-radius:12px;display:flex;align-items:center;justify-content:center;flex:0 0 46px}
+ul.l{list-style:none}
+ul.l li{position:relative;padding-left:20px;margin-bottom:8px;font-size:15px;line-height:1.5}
+ul.l li:before{content:"";position:absolute;left:2px;top:9px;width:7px;height:7px;border-radius:50%;background:var(--oro)}
+ul.l.no li:before{background:var(--rojo)}
+ul.l.si li:before{background:var(--verde)}
+table.t{width:100%;border-collapse:collapse;font-size:15px}
+table.t th{text-align:left;font:700 10.5px Inter;letter-spacing:.1em;text-transform:uppercase;color:var(--gris2);
+           padding:0 10px 8px 0;border-bottom:2px solid var(--tinta)}
+table.t td{padding:12px 12px 12px 0;border-bottom:1px solid var(--linea);vertical-align:top;line-height:1.4}
+</style>
+</head>
+<body>
+
+<!-- 1 · PORTADA -->
+<section class="s osc" style="padding:0">
+  <svg width="1280" height="720" style="position:absolute;inset:0">
+    <defs><radialGradient id="gp" cx="76%" cy="46%" r="60%"><stop offset="0" stop-color="#2a3f5f"/><stop offset="1" stop-color="#0e1a2b"/></radialGradient></defs>
+    <rect width="1280" height="720" fill="url(#gp)"/>
+    <g transform="translate(960,340)">
+      <circle r="70" fill="#c28f2c"/>
+      <text y="12" text-anchor="middle" font-family="Fraunces" font-size="34" font-weight="700" fill="#0e1a2b">FP</text>
+      <g stroke="#c28f2c" stroke-opacity=".5" stroke-width="1.5"><line x1="-70" y1="0" x2="-200" y2="-120"/><line x1="70" y1="0" x2="200" y2="-120"/><line x1="-70" y1="0" x2="-200" y2="120"/><line x1="70" y1="0" x2="200" y2="120"/></g>
+      <g font-size="13" font-weight="700" fill="#fff" text-anchor="middle">
+        <circle cx="-220" cy="-135" r="34" fill="#16263d" stroke="#c28f2c"/><text x="-220" y="-131">Orden</text><text x="-220" y="-116" font-size="11" font-weight="500" fill="#8d9ab0">Global</text>
+        <circle cx="220" cy="-135" r="34" fill="#16263d" stroke="#c28f2c"/><text x="220" y="-131">AuCorp</text>
+        <circle cx="-220" cy="135" r="34" fill="#16263d" stroke="#c28f2c"/><text x="-220" y="139">DBNX</text>
+        <circle cx="220" cy="135" r="34" fill="#16263d" stroke="#c28f2c" stroke-dasharray="4 4"/><text x="220" y="133" font-size="10.5" fill="#8d9ab0">por</text><text x="220" y="147" font-size="10.5" fill="#8d9ab0">confirmar</text>
+      </g>
+    </g>
+  </svg>
+  <div style="position:absolute;left:90px;top:160px;width:600px">
+    <div style="font:700 13px Inter;letter-spacing:.22em;color:#c28f2c;text-transform:uppercase">Financial Protocol · antes ULTRON FP</div>
+    <h1 style="font-size:78px;margin:22px 0 22px">AU-RA <em>FP</em></h1>
+    <p class="lead" style="font-size:22px">El operador del protocolo: cómo entra a cada empresa, qué servicios le da, y cómo asegura que se cumpla SFSP sin convertirse en juez y parte.</p>
+  </div>
+  <div style="position:absolute;left:90px;bottom:60px;font:500 13px Inter;color:#6f7d93">Diseño y código de referencia · 22 de septiembre de 2026</div>
+</section>
+
+<!-- 2 · EN UNA FRASE -->
+<section class="s">
+  <div class="cab"><span><b>La idea</b></span><span>En una frase</span></div>
+  <h1>Opera y comprueba. <em>No aprueba nada monetario.</em></h1>
+  <p class="lead" style="font-size:17px">AU-RA FP hace funcionar el protocolo para todas las empresas del ecosistema, y vigila que cada una cumpla las reglas. Pero no decide por ninguna.</p>
+  <div class="fila" style="margin-top:34px;gap:18px">
+    <div class="tarjeta col" style="padding:24px"><div class="ico" style="background:var(--verde2)"><svg width="26" height="26"><path d="M4 13 H22 M13 4 V22" stroke="#1e7a52" stroke-width="3.5" stroke-linecap="round"/></svg></div>
+      <h2 style="margin-top:14px">Presta los servicios</h2><p class="peq">Directorio de cuentas, portero, pasaportes, liquidación, conciliación… Uno solo para todos, así un número <span class="mono">SF-</span> de Veta Wallet se entiende igual en Ordenex.</p></div>
+    <div class="tarjeta col" style="padding:24px"><div class="ico" style="background:var(--azul2)"><svg width="26" height="26"><circle cx="11" cy="11" r="7" fill="none" stroke="#2a5ca8" stroke-width="3"/><line x1="16" y1="16" x2="23" y2="23" stroke="#2a5ca8" stroke-width="3.5" stroke-linecap="round"/></svg></div>
+      <h2 style="margin-top:14px">Vigila el cumplimiento</h2><p class="peq">Un informe por empresa. Lo que no tiene evidencia sale «no verificable», nunca «cumple».</p></div>
+    <div class="tarjeta col" style="padding:24px;border-color:var(--rojo)"><div class="ico" style="background:var(--rojo2)"><svg width="26" height="26"><path d="M6 6L20 20M20 6L6 20" stroke="#b23a30" stroke-width="3.5" stroke-linecap="round"/></svg></div>
+      <h2 style="margin-top:14px">Nunca aprueba</h2><p class="peq">Ni la persona que opera ni la asistente firman una aprobación de dinero. Aprueba la dueña de cada cosa, y da fe un tercero.</p></div>
+  </div>
+  <div class="nota">Esa última regla no es nueva: SFSP-800 ya decía que los asistentes (Ultron incluido) no aprueban. Ahora se aplica al operador entero. Es lo que le permite servir a todos <b>sin ser juez y parte</b>.</div>
+  <div class="pag">2</div>
+</section>
+
+<!-- 3 · QUIÉN ES DUEÑO DE QUÉ -->
+<section class="s">
+  <div class="cab"><span><b>La estructura</b></span><span>Quién es dueño de qué</span></div>
+  <h1 style="margin-bottom:4px">Cuatro empresas, <em>cuatro papeles</em></h1>
+  <p class="peq" style="font-size:14px">La estructura que dio la dirección. Lo que no se dijo queda marcado, no adivinado.</p>
+  <svg width="1136" height="470" viewBox="0 0 1136 470" style="position:absolute;left:72px;top:176px">
+    <!-- operador -->
+    <rect x="418" y="170" width="300" height="130" rx="20" fill="#0e1a2b"/>
+    <text x="568" y="204" text-anchor="middle" font-size="11" font-weight="700" fill="#c28f2c" letter-spacing="2">OPERADOR</text>
+    <text x="568" y="240" text-anchor="middle" font-family="Fraunces" font-size="30" font-weight="600" fill="#fff">AU-RA FP</text>
+    <text x="568" y="266" text-anchor="middle" font-size="12.5" fill="#8d9ab0">presta servicios · vigila · no aprueba</text>
+    <text x="568" y="286" text-anchor="middle" font-size="11.5" fill="#f0d9a6">dueño: por confirmar (D21)</text>
+    <g stroke="#c28f2c" stroke-width="2" fill="none" stroke-dasharray="6 5">
+      <path d="M418 205 C360 205 330 110 290 110"/><path d="M718 205 C776 205 806 110 846 110"/>
+      <path d="M418 265 C360 265 330 360 290 360"/><path d="M718 265 C776 265 806 360 846 360"/>
+    </g>
+    <!-- Orden Global -->
+    <g><rect x="0" y="20" width="290" height="180" rx="16" fill="#fff" stroke="#e2dccf"/>
+      <text x="20" y="50" font-size="11" font-weight="700" fill="#1e7a52" letter-spacing="1.5">CLIENTE</text>
+      <text x="20" y="80" font-family="Fraunces" font-size="24" font-weight="600">Orden Global</text>
+      <g font-size="13.5" fill="#18212f"><circle cx="26" cy="110" r="4" fill="#c28f2c"/><text x="38" y="115">Veta Wallet</text>
+        <circle cx="26" cy="138" r="4" fill="#c28f2c"/><text x="38" y="143">La cadena 5550</text>
+        <circle cx="26" cy="166" r="4" fill="#c28f2c"/><text x="38" y="171">La tesorería de ORIGEN</text></g></g>
+    <!-- AuCorp -->
+    <g><rect x="846" y="20" width="290" height="180" rx="16" fill="#fff" stroke="#e2dccf"/>
+      <text x="866" y="50" font-size="11" font-weight="700" fill="#1e7a52" letter-spacing="1.5">CLIENTE</text>
+      <text x="866" y="80" font-family="Fraunces" font-size="24" font-weight="600">AuCorp</text>
+      <g font-size="13.5" fill="#18212f"><circle cx="872" cy="110" r="4" fill="#c28f2c"/><text x="884" y="115">Ordenex, la casa de cambio</text>
+        <circle cx="872" cy="138" r="4" fill="#c28f2c"/><text x="884" y="143">La plataforma fiat</text></g></g>
+    <!-- DBNX -->
+    <g><rect x="0" y="270" width="290" height="180" rx="16" fill="#fff" stroke="#2a5ca8" stroke-width="2"/>
+      <text x="20" y="300" font-size="11" font-weight="700" fill="#2a5ca8" letter-spacing="1.5">AUDITOR · EMPRESA APARTE</text>
+      <text x="20" y="330" font-family="Fraunces" font-size="24" font-weight="600">DBNX</text>
+      <foreignObject x="20" y="342" width="255" height="100"><div xmlns="http://www.w3.org/1999/xhtml" style="font:13px/1.45 Inter;color:#5f6878">Admite activos, escribe los pasaportes, verifica suministro y reservas, y publica los datos al estilo de CoinMarketCap.</div></foreignObject></g>
+    <!-- Por confirmar -->
+    <g><rect x="846" y="270" width="290" height="180" rx="16" fill="#fbf1dc" stroke="#c28f2c" stroke-dasharray="6 5"/>
+      <text x="866" y="300" font-size="11" font-weight="700" fill="#7a5711" letter-spacing="1.5">DUEÑO POR CONFIRMAR · D21</text>
+      <g font-size="13.5" fill="#18212f"><text x="866" y="330">Genesis ID</text><text x="866" y="354">MyTokenPay</text><text x="866" y="378">ordenscan.com</text>
+        <text x="1006" y="330">PULSE2CHAT</text><text x="1006" y="354">Cadena 8532</text><text x="1006" y="378">AU-RA FP</text></g>
+      <foreignObject x="866" y="392" width="255" height="60"><div xmlns="http://www.w3.org/1999/xhtml" style="font:12px/1.4 Inter;color:#7a5711">Ningún servicio depende de adivinarlo. Hasta que se diga, no reciben credenciales.</div></foreignObject></g>
+  </svg>
+  <div class="pag">3</div>
+</section>
+
+<!-- 4 · POR QUÉ IMPORTA QUIÉN ES DUEÑO -->
+<section class="s">
+  <div class="cab"><span><b>La estructura</b></span><span>Por qué importa</span></div>
+  <h1>Ser dueño de algo te quita voz <em>sobre ese algo</em></h1>
+  <p class="lead" style="font-size:17px">Suena al revés, pero es lo que evita los conflictos de interés. Tres ejemplos del ecosistema:</p>
+  <div class="fila" style="margin-top:28px;gap:18px">
+    <div class="tarjeta col" style="padding:22px;border-top:5px solid var(--oro)"><span class="pill p-oro">AuCorp · Ordenex</span>
+      <h2 style="margin:12px 0 8px">AuCorp no decide qué se lista en Ordenex</h2>
+      <p class="peq">Si pudiera, listaría lo suyo sin que nadie lo revisara. Qué es apto lo decide DBNX, con un pasaporte que sólo DBNX puede escribir.</p></div>
+    <div class="tarjeta col" style="padding:22px;border-top:5px solid var(--oro)"><span class="pill p-oro">Orden Global · tesorería</span>
+      <h2 style="margin:12px 0 8px">Orden Global no certifica sus propias reservas</h2>
+      <p class="peq">Su Junta aprueba liberar ORIGEN, porque es suyo. Pero que las reservas alcanzan lo dice DBNX o un custodio, y lo ejecuta AU-RA FP. Tres partes.</p></div>
+    <div class="tarjeta col" style="padding:22px;border-top:5px solid var(--oro)"><span class="pill p-oro">AU-RA FP · informes</span>
+      <h2 style="margin:12px 0 8px">AU-RA FP no revisa sus propios informes</h2>
+      <p class="peq">Los produce; los revisa DBNX. Y el informe de DBNX lo revisa un auditor de fuera, porque tampoco DBNX se revisa a sí misma.</p></div>
+  </div>
+  <div class="nota roja"><b>Por eso falta saber de quién es AU-RA FP.</b> Si resultara ser de Orden Global, estaría ejecutando las liberaciones de su propia dueña. El sistema no lo supone: hasta que se decida (D21), esas operaciones quedan bloqueadas.</div>
+  <div class="pag">4</div>
+</section>
+
+<!-- 5 · CÓMO ENTRA UNA EMPRESA -->
+<section class="s">
+  <div class="cab"><span><b>El alta</b></span><span>Cómo entra una empresa</span></div>
+  <h1>Cómo entra una empresa, <em>en siete pasos</em></h1>
+  <svg width="1136" height="420" viewBox="0 0 1136 420" style="position:absolute;left:72px;top:190px">
+    <path d="M40 60 H1096" stroke="#e2dccf" stroke-width="4"/>
+    <path d="M40 270 H700" stroke="#e2dccf" stroke-width="4"/>
+    <path d="M1096 60 C1136 60 1136 270 1096 270 H700" fill="none" stroke="#e2dccf" stroke-width="4"/>
+    <g text-anchor="middle" font-weight="800" font-size="18">
+      <g transform="translate(90,60)"><circle r="26" fill="#0e1a2b"/><text y="7" fill="#fff">1</text></g>
+      <g transform="translate(370,60)"><circle r="26" fill="#0e1a2b"/><text y="7" fill="#fff">2</text></g>
+      <g transform="translate(650,60)"><circle r="26" fill="#0e1a2b"/><text y="7" fill="#fff">3</text></g>
+      <g transform="translate(930,60)"><circle r="26" fill="#0e1a2b"/><text y="7" fill="#fff">4</text></g>
+      <g transform="translate(930,270)"><circle r="26" fill="#0e1a2b"/><text y="7" fill="#fff">5</text></g>
+      <g transform="translate(650,270)"><circle r="26" fill="#b7791f"/><text y="7" fill="#fff">6</text></g>
+      <g transform="translate(370,270)"><circle r="26" fill="#1e7a52"/><text y="7" fill="#fff">7</text></g>
+    </g>
+    <g>
+      <foreignObject x="0" y="96" width="180" height="130"><div xmlns="http://www.w3.org/1999/xhtml" style="font:13px/1.45 Inter;color:#5f6878;text-align:center"><b style="display:block;color:#18212f;font-size:14.5px;margin-bottom:3px">Genesis ID corporativo</b>La empresa se identifica. Sus datos no salen de Genesis ID.</div></foreignObject>
+      <foreignObject x="280" y="96" width="180" height="130"><div xmlns="http://www.w3.org/1999/xhtml" style="font:13px/1.45 Inter;color:#5f6878;text-align:center"><b style="display:block;color:#18212f;font-size:14.5px;margin-bottom:3px">Contrato de servicio</b>Qué servicios usa y hasta dónde. Es D21.</div></foreignObject>
+      <foreignObject x="560" y="96" width="180" height="130"><div xmlns="http://www.w3.org/1999/xhtml" style="font:13px/1.45 Inter;color:#5f6878;text-align:center"><b style="display:block;color:#18212f;font-size:14.5px;margin-bottom:3px">Cuentas SFSP</b>Las cuentas <span style="font-family:Mono">SF-</span> de la empresa. Nacen PENDIENTE.</div></foreignObject>
+      <foreignObject x="840" y="96" width="180" height="130"><div xmlns="http://www.w3.org/1999/xhtml" style="font:13px/1.45 Inter;color:#5f6878;text-align:center"><b style="display:block;color:#18212f;font-size:14.5px;margin-bottom:3px">Firmantes</b>Quién firma por ella en las acciones de doble firma.</div></foreignObject>
+      <foreignObject x="840" y="306" width="180" height="130"><div xmlns="http://www.w3.org/1999/xhtml" style="font:13px/1.45 Inter;color:#5f6878;text-align:center"><b style="display:block;color:#18212f;font-size:14.5px;margin-bottom:3px">Credenciales</b>Una por servicio y por entorno. Lo mínimo. Rotables.</div></foreignObject>
+      <foreignObject x="560" y="306" width="180" height="130"><div xmlns="http://www.w3.org/1999/xhtml" style="font:13px/1.45 Inter;color:#5f6878;text-align:center"><b style="display:block;color:#7a5711;font-size:14.5px;margin-bottom:3px">Primer informe</b>Todo «no verificable» hasta que haya evidencia.</div></foreignObject>
+      <foreignObject x="280" y="306" width="180" height="130"><div xmlns="http://www.w3.org/1999/xhtml" style="font:13px/1.45 Inter;color:#5f6878;text-align:center"><b style="display:block;color:#1e7a52;font-size:14.5px;margin-bottom:3px">Empieza a operar</b>Sus cuentas pasan a ACTIVA.</div></foreignObject>
+    </g>
+    <foreignObject x="0" y="300" width="250" height="120"><div xmlns="http://www.w3.org/1999/xhtml" style="font:13.5px/1.5 Inter;color:#18212f;border-left:4px solid #c28f2c;padding-left:12px">Una empresa sólo puede usar <b>lo que contrató</b>. Pedir otro servicio no es un error de configuración: el sistema lo niega.</div></foreignObject>
+  </svg>
+  <div class="pag">5</div>
+</section>
+
+<!-- 6 · LOS 14 SERVICIOS -->
+<section class="s">
+  <div class="cab"><span><b>Los servicios</b></span><span>El catálogo</span></div>
+  <h1>Catorce servicios, <em>uno solo para todos</em></h1>
+  <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:22px">
+    <div class="tarjeta" style="padding:12px 14px"><b class="mono" style="color:var(--oro)">S01</b> <b>Directorio de cuentas</b><p class="peq" style="font-size:12.5px">Número, alias, rutas, resolución que caduca.</p></div>
+    <div class="tarjeta" style="padding:12px 14px"><b class="mono" style="color:var(--oro)">S02</b> <b>Portero</b><p class="peq" style="font-size:12.5px">Decide cada operación y dice por qué.</p></div>
+    <div class="tarjeta" style="padding:12px 14px;border-color:var(--azul)"><b class="mono" style="color:var(--oro)">S03</b> <b>Pasaportes</b><p class="peq" style="font-size:12.5px">Todos leen. <b>Sólo DBNX escribe.</b></p></div>
+    <div class="tarjeta" style="padding:12px 14px"><b class="mono" style="color:var(--oro)">S04</b> <b>Liquidación</b><p class="peq" style="font-size:12.5px">Entrega contra pago: las dos o ninguna.</p></div>
+    <div class="tarjeta" style="padding:12px 14px"><b class="mono" style="color:var(--oro)">S05</b> <b>Comisiones</b><p class="peq" style="font-size:12.5px">Cotizadas antes, con fecha y versión.</p></div>
+    <div class="tarjeta" style="padding:12px 14px"><b class="mono" style="color:var(--oro)">S06</b> <b>Suministro y tesorería</b><p class="peq" style="font-size:12.5px">Calcula lo liberable. <b>Aprueba la dueña.</b></p></div>
+    <div class="tarjeta" style="padding:12px 14px;border-color:var(--azul)"><b class="mono" style="color:var(--oro)">S07</b> <b>Reservas y cobertura</b><p class="peq" style="font-size:12.5px">Las atestaciones las da DBNX o un custodio.</p></div>
+    <div class="tarjeta" style="padding:12px 14px"><b class="mono" style="color:var(--oro)">S08</b> <b>Lector de la cadena</b><p class="peq" style="font-size:12.5px">Índice de eventos, para ordenscan y DBNX.</p></div>
+    <div class="tarjeta" style="padding:12px 14px"><b class="mono" style="color:var(--oro)">S09</b> <b>Migración y conciliación</b><p class="peq" style="font-size:12.5px">Registrar sin mover; la balanza.</p></div>
+    <div class="tarjeta" style="padding:12px 14px"><b class="mono" style="color:var(--oro)">S10</b> <b>Registro de autorizaciones</b><p class="peq" style="font-size:12.5px">El sobre sellado de la doble firma. No firma.</p></div>
+    <div class="tarjeta" style="padding:12px 14px"><b class="mono" style="color:var(--oro)">S11</b> <b>Pagos externos</b><p class="peq" style="font-size:12.5px">Fiat y tarjeta contra la cadena.</p></div>
+    <div class="tarjeta" style="padding:12px 14px"><b class="mono" style="color:var(--oro)">S12</b> <b>Monitor de cumplimiento</b><p class="peq" style="font-size:12.5px">Un informe por empresa. Lo revisa DBNX.</p></div>
+    <div class="tarjeta" style="padding:12px 14px;border-color:var(--rojo)"><b class="mono" style="color:var(--oro)">S13</b> <b>Asistente AU-RA</b><p class="peq" style="font-size:12.5px">Explica y alerta. <b>Nunca aprueba.</b></p></div>
+    <div class="tarjeta" style="padding:12px 14px;border-color:var(--rojo)"><b class="mono" style="color:var(--oro)">S14</b> <b>Copiloto de admisión</b><p class="peq" style="font-size:12.5px">Revisa expedientes para DBNX. <b>Nunca aprueba.</b></p></div>
+    <div class="tarjeta" style="padding:12px 14px;grid-column:span 2;background:var(--noche);border-color:var(--noche)"><p style="color:#dbe2ec;font-size:14px;line-height:1.5"><b style="color:#f0d9a6">Borde azul:</b> sólo el auditor escribe. <b style="color:#f0d9a6">Borde rojo:</b> sólo analiza; el sistema le niega cualquier permiso de escritura, aunque un contrato se lo diera.</p></div>
+  </div>
+  <div class="pag">6</div>
+</section>
+
+<!-- 7 · QUÉ RECIBE CADA EMPRESA -->
+<section class="s">
+  <div class="cab"><span><b>Los servicios</b></span><span>Qué recibe cada empresa</span></div>
+  <h1 style="margin-bottom:4px">Qué servicios usa <em>cada una</em></h1>
+  <p class="peq" style="font-size:14px">Salida real del registro del código, sin retocar.</p>
+  <table class="t" style="margin-top:16px;font-size:13px;text-align:center">
+    <tr><th style="text-align:left;width:22%">Empresa</th>
+      <th>S01</th><th>S02</th><th>S03</th><th>S04</th><th>S05</th><th>S06</th><th>S07</th><th>S08</th><th>S09</th><th>S10</th><th>S11</th><th>S12</th><th>S13</th><th>S14</th></tr>
+    <tr><td style="text-align:left"><b>Orden Global</b><br><span class="peq" style="font-size:11.5px">Veta Wallet, Cadena 5550, Tesorería de ORIGEN</span></td><td style="font-size:18px;color:#c28f2c">●</td><td style="font-size:18px;color:#c28f2c">●</td><td style="color:#d8cfbd">·</td><td style="color:#d8cfbd">·</td><td style="font-size:18px;color:#c28f2c">●</td><td style="font-size:18px;color:#c28f2c">●</td><td style="font-size:18px;color:#c28f2c">●</td><td style="font-size:18px;color:#c28f2c">●</td><td style="font-size:18px;color:#c28f2c">●</td><td style="font-size:18px;color:#c28f2c">●</td><td style="color:#d8cfbd">·</td><td style="color:#d8cfbd">·</td><td style="font-size:18px;color:#c28f2c">●</td><td style="color:#d8cfbd">·</td></tr>
+    <tr><td style="text-align:left"><b>AuCorp</b><br><span class="peq" style="font-size:11.5px">Ordenex, Plataforma fiat AuCorp</span></td><td style="color:#d8cfbd">·</td><td style="font-size:18px;color:#c28f2c">●</td><td style="font-size:18px;color:#c28f2c">●</td><td style="font-size:18px;color:#c28f2c">●</td><td style="font-size:18px;color:#c28f2c">●</td><td style="color:#d8cfbd">·</td><td style="color:#d8cfbd">·</td><td style="color:#d8cfbd">·</td><td style="font-size:18px;color:#c28f2c">●</td><td style="font-size:18px;color:#c28f2c">●</td><td style="font-size:18px;color:#c28f2c">●</td><td style="color:#d8cfbd">·</td><td style="color:#d8cfbd">·</td><td style="color:#d8cfbd">·</td></tr>
+    <tr><td style="text-align:left"><b>DBNX</b><br><span class="peq" style="font-size:11.5px">Admisión, auditoría y datos de DBNX</span></td><td style="color:#d8cfbd">·</td><td style="color:#d8cfbd">·</td><td style="font-size:18px;color:#2a5ca8">●</td><td style="color:#d8cfbd">·</td><td style="color:#d8cfbd">·</td><td style="color:#d8cfbd">·</td><td style="font-size:18px;color:#2a5ca8">●</td><td style="font-size:18px;color:#c28f2c">●</td><td style="color:#d8cfbd">·</td><td style="font-size:18px;color:#c28f2c">●</td><td style="color:#d8cfbd">·</td><td style="font-size:18px;color:#c28f2c">●</td><td style="color:#d8cfbd">·</td><td style="font-size:18px;color:#c28f2c">●</td></tr>
+    <tr><td style="text-align:left"><b>AU-RA FP</b><br><span class="peq" style="font-size:11.5px">Asistente AU-RA</span></td><td style="color:#d8cfbd">·</td><td style="font-size:18px;color:#c28f2c">●</td><td style="font-size:18px;color:#c28f2c">●</td><td style="color:#d8cfbd">·</td><td style="color:#d8cfbd">·</td><td style="color:#d8cfbd">·</td><td style="color:#d8cfbd">·</td><td style="color:#d8cfbd">·</td><td style="color:#d8cfbd">·</td><td style="color:#d8cfbd">·</td><td style="color:#d8cfbd">·</td><td style="font-size:18px;color:#c28f2c">●</td><td style="font-size:18px;color:#c28f2c">●</td><td style="color:#d8cfbd">·</td></tr>
+    <tr><td style="text-align:left"><b>Por confirmar</b><br><span class="peq" style="font-size:11.5px">Genesis ID, MyTokenPay, ordenscan.com, PULSE2CHAT, Cadena 8532 (por retirar)</span></td><td style="font-size:18px;color:#c28f2c">●</td><td style="font-size:18px;color:#c28f2c">●</td><td style="font-size:18px;color:#c28f2c">●</td><td style="color:#d8cfbd">·</td><td style="font-size:18px;color:#c28f2c">●</td><td style="color:#d8cfbd">·</td><td style="color:#d8cfbd">·</td><td style="font-size:18px;color:#c28f2c">●</td><td style="color:#d8cfbd">·</td><td style="color:#d8cfbd">·</td><td style="font-size:18px;color:#c28f2c">●</td><td style="color:#d8cfbd">·</td><td style="color:#d8cfbd">·</td><td style="color:#d8cfbd">·</td></tr>
+    
+  </table>
+  <div class="fila" style="position:absolute;left:72px;right:72px;bottom:40px;gap:14px">
+    <div class="tarjeta col" style="padding:12px 16px"><p class="peq"><span style="color:var(--oro);font-size:16px">●</span> usa el servicio · <span style="color:var(--azul);font-size:16px">●</span> además escribe (sólo DBNX, en pasaportes y reservas)</p></div>
+    <div class="tarjeta col" style="padding:12px 16px"><p class="peq">«Por confirmar» agrupa los productos sin dueño declarado: Genesis ID, MyTokenPay, ordenscan, PULSE2CHAT y la 8532.</p></div>
+  </div>
+  <div class="pag">7</div>
+</section>
+
+<!-- 8 · TRES CAPAS -->
+<section class="s">
+  <div class="cab"><span><b>El cumplimiento</b></span><span>Cómo asegura SFSP</span></div>
+  <h1>Tres capas, <em>de la más fuerte a la más débil</em></h1>
+  <svg width="1136" height="400" viewBox="0 0 1136 400" style="position:absolute;left:72px;top:200px">
+    <g>
+      <rect x="0" y="0" width="1136" height="112" rx="18" fill="#0e1a2b"/>
+      <text x="30" y="40" font-size="12" font-weight="700" fill="#c28f2c" letter-spacing="2">CAPA 1 · POR CONSTRUCCIÓN</text>
+      <text x="30" y="72" font-family="Fraunces" font-size="24" font-weight="600" fill="#fff">El servicio mismo se niega</text>
+      <foreignObject x="560" y="22" width="560" height="80"><div xmlns="http://www.w3.org/1999/xhtml" style="font:14px/1.5 Inter;color:#b7c1d1">El directorio no resuelve una cuenta pendiente. El portero no deja pasar un «no sé». Ordenex no puede escribir un pasaporte. <b style="color:#fff">No hay nada que vigilar porque no hay nada que saltarse.</b></div></foreignObject>
+    </g>
+    <g transform="translate(60,130)">
+      <rect x="0" y="0" width="1016" height="112" rx="18" fill="#16263d"/>
+      <text x="30" y="40" font-size="12" font-weight="700" fill="#c28f2c" letter-spacing="2">CAPA 2 · POR SEPARACIÓN DE FUNCIONES</text>
+      <text x="30" y="72" font-family="Fraunces" font-size="24" font-weight="600" fill="#fff">Quién puede hacer qué</text>
+      <foreignObject x="500" y="22" width="500" height="80"><div xmlns="http://www.w3.org/1999/xhtml" style="font:14px/1.5 Inter;color:#b7c1d1">Quién aprueba, quién escribe, quién revisa a quién. Siete de las ocho reglas ya se comprueban en código; la de no ver los clientes de otra empresa todavía es sólo de diseño.</div></foreignObject>
+    </g>
+    <g transform="translate(120,260)">
+      <rect x="0" y="0" width="896" height="112" rx="18" fill="#fff" stroke="#c28f2c" stroke-width="2"/>
+      <text x="30" y="40" font-size="12" font-weight="700" fill="#7a5711" letter-spacing="2">CAPA 3 · POR VIGILANCIA</text>
+      <text x="30" y="72" font-family="Fraunces" font-size="24" font-weight="600">El informe de cada empresa</text>
+      <foreignObject x="420" y="22" width="460" height="80"><div xmlns="http://www.w3.org/1999/xhtml" style="font:14px/1.5 Inter;color:#5f6878">Lo que no se puede impedir se comprueba con evidencia. <b style="color:#18212f">Sin evidencia, «no verificable», nunca «cumple».</b></div></foreignObject>
+    </g>
+  </svg>
+  <div class="pag">8</div>
+</section>
+
+<!-- 9 · LAS 8 REGLAS -->
+<section class="s">
+  <div class="cab"><span><b>El cumplimiento</b></span><span>Las reglas</span></div>
+  <h1>Ocho reglas que <em>ningún contrato</em> puede cambiar</h1>
+  <p class="peq" style="font-size:14px">Siete ya están en código con sus pruebas. La 7 todavía es sólo de diseño.</p>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px 22px;margin-top:22px">
+    <div class="tarjeta" style="display:flex;gap:14px;padding:14px 18px"><div class="num" style="font-size:28px;color:var(--oro);flex:0 0 34px">1</div><div><h3>AU-RA FP no aprueba nada monetario</h3><p class="peq">Ni la persona que opera ni la asistente.</p></div></div>
+    <div class="tarjeta" style="display:flex;gap:14px;padding:14px 18px"><div class="num" style="font-size:28px;color:var(--oro);flex:0 0 34px">2</div><div><h3>Sólo DBNX escribe pasaportes</h3><p class="peq">Quien emite o lista no decide si su activo es apto.</p></div></div>
+    <div class="tarjeta" style="display:flex;gap:14px;padding:14px 18px"><div class="num" style="font-size:28px;color:var(--oro);flex:0 0 34px">3</div><div><h3>Quien emite un activo no lo admite</h3><p class="peq">Ni lo audita. DBNX no admite activos propios.</p></div></div>
+    <div class="tarjeta" style="display:flex;gap:14px;padding:14px 18px"><div class="num" style="font-size:28px;color:var(--oro);flex:0 0 34px">4</div><div><h3>Quien opera no se audita</h3><p class="peq">Y nadie revisa su propio informe.</p></div></div>
+    <div class="tarjeta" style="display:flex;gap:14px;padding:14px 18px"><div class="num" style="font-size:28px;color:var(--oro);flex:0 0 34px">5</div><div><h3>La tesorería necesita tres partes</h3><p class="peq">Aprueba la dueña, ejecuta el operador, da fe un tercero.</p></div></div>
+    <div class="tarjeta" style="display:flex;gap:14px;padding:14px 18px"><div class="num" style="font-size:28px;color:var(--oro);flex:0 0 34px">6</div><div><h3>Cada una usa sólo lo contratado</h3><p class="peq">Con sus propias credenciales, lo mínimo.</p></div></div>
+    <div class="tarjeta" style="display:flex;gap:14px;padding:14px 18px"><div class="num" style="font-size:28px;color:var(--oro);flex:0 0 34px">7</div><div><h3>Nadie ve los clientes de otra</h3><p class="peq">Entre Veta y Ordenex sólo viaja un número <span class="mono">SF-</span>. <b>Aún sin código.</b></p></div></div>
+    <div class="tarjeta" style="display:flex;gap:14px;padding:14px 18px"><div class="num" style="font-size:28px;color:var(--oro);flex:0 0 34px">8</div><div><h3>Sin evidencia, no se cumple</h3><p class="peq">«No verificable» nunca se convierte en «cumple».</p></div></div>
+  </div>
+  <div class="pag">9</div>
+</section>
+
+<!-- 10 · EJEMPLO TESORERÍA -->
+<section class="s">
+  <div class="cab"><span><b>Ejemplos</b></span><span>Liberar ORIGEN de la tesorería</span></div>
+  <h1>Ejemplo: liberar ORIGEN <em>de la tesorería</em></h1>
+  <div class="fila" style="margin-top:14px;gap:30px;align-items:flex-start">
+    <svg width="520" height="400" viewBox="0 0 520 400" style="flex:0 0 520px">
+      <g stroke="#c28f2c" stroke-width="2.5" fill="none"><line x1="260" y1="95" x2="95" y2="300"/><line x1="260" y1="95" x2="425" y2="300"/><line x1="135" y1="330" x2="385" y2="330"/></g>
+      <g text-anchor="middle">
+        <circle cx="260" cy="70" r="62" fill="#d8efe3" stroke="#1e7a52" stroke-width="2"/>
+        <text x="260" y="62" font-weight="800" font-size="14">Orden Global</text><text x="260" y="82" font-size="12" fill="#1e7a52" font-weight="700">APRUEBA</text><text x="260" y="98" font-size="11" fill="#5f6878">su Junta · es suyo</text>
+        <circle cx="90" cy="320" r="62" fill="#0e1a2b"/>
+        <text x="90" y="312" font-weight="800" font-size="14" fill="#fff">AU-RA FP</text><text x="90" y="330" font-size="11.5" fill="#f0d9a6" font-weight="700">CALCULA</text><text x="90" y="345" font-size="11.5" fill="#f0d9a6" font-weight="700">Y EJECUTA</text><text x="90" y="361" font-size="11" fill="#8d9ab0">no aprueba</text>
+        <circle cx="430" cy="320" r="62" fill="#dde7f6" stroke="#2a5ca8" stroke-width="2"/>
+        <text x="430" y="312" font-weight="800" font-size="14">DBNX</text><text x="430" y="332" font-size="12" fill="#2a5ca8" font-weight="700">DA FE</text><text x="430" y="348" font-size="11" fill="#5f6878">de las reservas</text>
+      </g>
+      <text x="260" y="205" text-anchor="middle" font-family="Fraunces" font-size="20" font-weight="600">tres partes</text>
+      <text x="260" y="228" text-anchor="middle" font-size="12.5" fill="#5f6878">nadie se autoriza, se calcula</text>
+      <text x="260" y="246" text-anchor="middle" font-size="12.5" fill="#5f6878">y se certifica a sí mismo</text>
+    </svg>
+    <div style="flex:1">
+      <p class="peq" style="margin-bottom:10px"><b style="color:var(--tinta)">Lo que respondió el sistema hoy, con el registro real:</b></p>
+      <div class="tarjeta" style="margin-bottom:10px;padding:12px 16px;border-left:5px solid var(--ambar)"><p class="peq" style="margin-bottom:6px"><b style="color:var(--tinta)">Orden Global aprueba, AU-RA FP ejecuta, DBNX da fe</b></p>
+        <span class="pill p-ambar">Bloqueado · D21</span><p class="peq" style="margin-top:6px">«No se sabe de quién es AU-RA FP.» Si fuera de Orden Global, sería la dueña ejecutando su propia liberación.</p></div>
+      <div class="tarjeta" style="margin-bottom:10px;padding:12px 16px;border-left:5px solid var(--rojo)"><p class="peq" style="margin-bottom:6px"><b style="color:var(--tinta)">Orden Global da fe de sus propias reservas</b></p>
+        <span class="pill p-rojo">No</span><p class="peq" style="margin-top:6px">«La dueña no certifica sus propias reservas.»</p></div>
+      <div class="tarjeta" style="padding:12px 16px;border-left:5px solid var(--rojo)"><p class="peq" style="margin-bottom:6px"><b style="color:var(--tinta)">La asistente AU-RA aprueba</b></p>
+        <span class="pill p-rojo">No</span><p class="peq" style="margin-top:6px">«Un asistente no aprueba nada monetario.»</p></div>
+    </div>
+  </div>
+  <div class="pag">10</div>
+</section>
+
+<!-- 11 · EJEMPLO ORDENEX -->
+<section class="s">
+  <div class="cab"><span><b>Ejemplos</b></span><span>Listar un activo en Ordenex</span></div>
+  <h1>Ejemplo: AuCorp quiere listar <em>un activo suyo</em> en Ordenex</h1>
+  <svg width="1136" height="220" viewBox="0 0 1136 220" style="position:absolute;left:72px;top:210px">
+    <defs><marker id="fa" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="#18212f"/></marker></defs>
+    <g stroke="#18212f" stroke-width="2.5" marker-end="url(#fa)"><line x1="250" y1="70" x2="300" y2="70"/><line x1="560" y1="70" x2="610" y2="70"/><line x1="870" y1="70" x2="920" y2="70"/></g>
+    <g>
+      <rect x="0" y="10" width="250" height="120" rx="16" fill="#fff" stroke="#e2dccf"/><text x="20" y="40" font-size="11" font-weight="700" fill="#9aa2ae" letter-spacing="1.5">1 · AUCORP</text>
+      <text x="20" y="70" font-weight="800" font-size="16">Presenta el activo</text><foreignObject x="20" y="80" width="220" height="50"><div xmlns="http://www.w3.org/1999/xhtml" style="font:12.5px/1.4 Inter;color:#5f6878">Es la emisora. No decide si es apto.</div></foreignObject>
+      <rect x="310" y="10" width="250" height="120" rx="16" fill="#dde7f6" stroke="#2a5ca8" stroke-width="2"/><text x="330" y="40" font-size="11" font-weight="700" fill="#2a5ca8" letter-spacing="1.5">2 · DBNX</text>
+      <text x="330" y="70" font-weight="800" font-size="16">Admite y escribe</text><foreignObject x="330" y="80" width="220" height="50"><div xmlns="http://www.w3.org/1999/xhtml" style="font:12.5px/1.4 Inter;color:#5f6878">Revisa, dos firmas, y escribe el pasaporte.</div></foreignObject>
+      <rect x="620" y="10" width="250" height="120" rx="16" fill="#fff" stroke="#e2dccf"/><text x="640" y="40" font-size="11" font-weight="700" fill="#9aa2ae" letter-spacing="1.5">3 · ORDENEX</text>
+      <text x="640" y="70" font-weight="800" font-size="16">Lista, si el pasaporte</text><foreignObject x="640" y="80" width="220" height="50"><div xmlns="http://www.w3.org/1999/xhtml" style="font:12.5px/1.4 Inter;color:#5f6878">dice admitido, listado y no congelado.</div></foreignObject>
+      <rect x="930" y="10" width="206" height="120" rx="16" fill="#0e1a2b"/><text x="950" y="40" font-size="11" font-weight="700" fill="#c28f2c" letter-spacing="1.5">4 · AU-RA FP</text>
+      <text x="950" y="70" font-weight="800" font-size="16" fill="#fff">Liquida</text><foreignObject x="950" y="80" width="180" height="50"><div xmlns="http://www.w3.org/1999/xhtml" style="font:12.5px/1.4 Inter;color:#b7c1d1">entrega contra pago, cada operación.</div></foreignObject>
+    </g>
+  </svg>
+  <div class="fila" style="position:absolute;left:72px;right:72px;bottom:44px;gap:16px">
+    <div class="tarjeta col" style="border-left:5px solid var(--rojo);padding:14px 18px"><p class="peq" style="margin-bottom:6px"><b style="color:var(--tinta)">¿Y si Ordenex escribe el pasaporte ella misma?</b></p>
+      <span class="pill p-rojo">No</span><p class="peq" style="margin-top:6px">Respuesta real: «en Registro de pasaportes sólo escribe DBNX; ningún contrato lo cambia». Aunque alguien lo pusiera en el contrato.</p></div>
+    <div class="tarjeta col" style="border-left:5px solid var(--verde);padding:14px 18px"><p class="peq" style="margin-bottom:6px"><b style="color:var(--tinta)">¿Puede listar un activo de su propia dueña?</b></p>
+      <span class="pill p-verde">Sí</span><p class="peq" style="margin-top:6px">Sí, <b>si lo admitió DBNX</b>. Ser dueña del mercado no la descalifica; decidir sola sí la descalificaría.</p></div>
+  </div>
+  <div class="pag">11</div>
+</section>
+
+<!-- 12 · EL INFORME -->
+<section class="s">
+  <div class="cab"><span><b>El cumplimiento</b></span><span>El informe por empresa</span></div>
+  <h1>Así se ve un informe de cumplimiento</h1>
+  <p class="peq" style="font-size:14px">Dos informes reales del código. El primero, de hoy, sin evidencia conectada. El segundo, con evidencia de ejemplo.</p>
+  <div class="fila" style="margin-top:18px;gap:22px;align-items:flex-start">
+    <div class="tarjeta col" style="padding:0;overflow:hidden">
+      <div style="background:var(--noche);padding:14px 18px;display:flex;justify-content:space-between;align-items:center"><h2 style="color:#fff;margin:0">Orden Global · hoy</h2><span class="pill p-ambar">No verificable</span></div>
+      <div style="padding:10px 18px">
+        <table class="t" style="font-size:13px"><tr><td class="mono">VW-01</td><td>Ningún envío sin resolución vigente</td><td><span class="pill p-ambar">?</span></td></tr>
+        <tr><td class="mono">VW-02</td><td>Ninguna cuenta nace activa sin aprobación</td><td><span class="pill p-ambar">?</span></td></tr>
+        <tr><td class="mono">VW-03</td><td>Ningún envío sin decisión del portero</td><td><span class="pill p-ambar">?</span></td></tr>
+        <tr><td class="mono">TS-01</td><td>Liberado ≤ mínimo entre techo y reservas</td><td><span class="pill p-ambar">?</span></td></tr>
+        <tr><td class="mono">TS-02</td><td>Cada liberación con autorización sellada</td><td><span class="pill p-ambar">?</span></td></tr></table>
+        <p class="peq" style="margin:8px 0 6px">5 no verificables · 0 cumplen. <b>Lo honesto:</b> todavía no hay nada conectado que mirar.</p>
+      </div></div>
+    <div class="tarjeta col" style="padding:0;overflow:hidden">
+      <div style="background:var(--noche);padding:14px 18px;display:flex;justify-content:space-between;align-items:center"><h2 style="color:#fff;margin:0">AuCorp · ejemplo</h2><span class="pill p-rojo">Incumple</span></div>
+      <div style="padding:10px 18px">
+        <table class="t" style="font-size:13px"><tr><td class="mono">OX-01</td><td>Mercados con pasaporte válido</td><td><span class="pill p-verde">sí</span></td></tr>
+        <tr><td class="mono">OX-02</td><td>Todo se liquida entrega contra pago</td><td><span class="pill p-rojo">2 casos</span></td></tr>
+        <tr><td class="mono">OX-03</td><td>Toda orden pasó por el portero</td><td><span class="pill p-verde">sí</span></td></tr>
+        <tr><td class="mono">AC-01</td><td>Fiat conciliado con la cadena</td><td><span class="pill p-verde">sí</span></td></tr>
+        <tr><td class="mono">AC-02</td><td>Aviso doble, un solo asiento</td><td><span class="pill p-verde">sí</span></td></tr>
+        <tr><td class="mono">AC-03</td><td>Sin datos de tarjeta guardados</td><td><span class="pill p-ambar">?</span></td></tr></table>
+        <p class="peq" style="margin:8px 0 6px">Un solo incumplimiento manda sobre todo lo demás.</p>
+      </div></div>
+  </div>
+  <div class="nota" style="bottom:36px">Una evidencia vencida, sin fuente, con fecha rota o con un número que no es número sale «no verificable». Y un límite que falta no es «sin límite»: es un límite que no se sabe.</div>
+  <div class="pag">12</div>
+</section>
+
+<!-- 13 · EL NOMBRE -->
+<section class="s">
+  <div class="cab"><span><b>El nombre</b></span><span>De ULTRON FP a AU-RA FP</span></div>
+  <h1>El nombre cambió <em>donde se ve y se oye</em></h1>
+  <div class="fila" style="margin-top:22px;gap:22px">
+    <div class="tarjeta col" style="padding:20px 22px;border-top:5px solid var(--verde)"><h2 style="color:var(--verde)">Ya cambió</h2>
+      <ul class="l si" style="margin-top:12px">
+        <li>Cómo se presenta: «Eres AU-RA».</li>
+        <li>El nombre de la app en el teléfono, y los permisos.</li>
+        <li>La web, las pantallas, Telegram, los PDF.</li>
+        <li>La voz dice «Aura», sin deletrear.</li>
+        <li>Responde a «aura» y sigue respondiendo a «ultron».</li>
+      </ul></div>
+    <div class="tarjeta col" style="padding:20px 22px;border-top:5px solid var(--gris2)"><h2 style="color:var(--gris)">No cambió, a propósito</h2>
+      <ul class="l" style="margin-top:12px">
+        <li><b>El paquete de la APK.</b> Cambiarlo la convertiría en otra app: se perderían sesión y memoria.</li>
+        <li>Las rutas y encabezados que usan las APK ya instaladas.</li>
+        <li>Las variables, el dominio y el servicio en Render.</li>
+        <li>La memoria ya guardada de la junta.</li>
+      </ul></div>
+  </div>
+  <div class="fila" style="position:absolute;left:72px;right:72px;bottom:40px;gap:16px">
+    <div class="tarjeta col" style="padding:12px 16px;border-left:5px solid var(--ambar)"><h3>La bienvenida grabada dice «ULTRON»</h3><p class="peq">Queda fuera hasta regrabarla. Una orden, con la clave de ElevenLabs. La APK la baja del servidor: se arregla sola.</p></div>
+    <div class="tarjeta col" style="padding:12px 16px;border-left:5px solid var(--ambar)"><h3>«AU-RA» también se revisa como marca</h3><p class="peq">Es la decisión D20. Pasar de un nombre ajeno a otro sin revisarlo sería repetir el problema.</p></div>
+  </div>
+  <div class="pag">13</div>
+</section>
+
+<!-- 14 · HOY Y LO QUE SIGUE -->
+<section class="s osc" style="padding:0">
+  <div style="position:absolute;left:90px;top:80px;right:90px">
+    <div style="font:700 13px Inter;letter-spacing:.22em;color:#c28f2c;text-transform:uppercase">Dónde estamos</div>
+    <h1 style="font-size:46px;max-width:1060px;margin:18px 0 26px">Diseñado, programado y probado. <em>Casi todo bloqueado hasta D21, a propósito.</em></h1>
+    <div class="fila" style="gap:18px">
+      <div class="tarjeta col"><div style="font:700 11px Inter;letter-spacing:.14em;color:#c28f2c">HECHO</div>
+        <p style="margin-top:8px;color:#dbe2ec;font-size:14.5px">Diseño y ADR-014. Registro, servicios, reglas e informe en código: 39 pruebas nuevas; la verificación completa de SFSP, 509 en verde. Nombre cambiado en la app, 188 pruebas en verde.</p></div>
+      <div class="tarjeta col"><div style="font:700 11px Inter;letter-spacing:.14em;color:#c28f2c">FALTA DECIDIR · D21</div>
+        <p style="margin-top:8px;color:#dbe2ec;font-size:14.5px">De quién es AU-RA FP, Genesis ID, MyTokenPay, ordenscan, PULSE2CHAT y la 8532. Y los contratos de servicio con cada empresa.</p></div>
+      <div class="tarjeta col" style="border-color:#c28f2c"><div style="font:700 11px Inter;letter-spacing:.14em;color:#c28f2c">LO SIGUIENTE</div>
+        <p style="margin-top:8px;color:#fff;font-size:14.5px">Firmar D20 y D21. Regrabar la bienvenida. Después, conectar la evidencia real para que los informes dejen de decir «no verificable».</p></div>
+    </div>
+  </div>
+  <div style="position:absolute;left:90px;bottom:50px;font:500 12.5px Inter;color:#6f7d93;max-width:1000px">Las respuestas del sistema que aparecen aquí son salida real del código con el registro declarado. Diseño: sfsp/operador/AU-RA-FP.md · ADR-014 · Migración del nombre: ULTRON-APP/docs/RENOMBRE-AU-RA-FP.md</div>
+</section>
+
+</body>
+</html>

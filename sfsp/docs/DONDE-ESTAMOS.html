@@ -79,11 +79,11 @@
   Ninguna cifra de este documento está inventada.</p>
 
   <div class="rejilla" style="margin-top:22pt">
-    <div class="caja"><div class="cifra">470 <span>pruebas</span></div>
+    <div class="caja"><div class="cifra">509 <span>pruebas</span></div>
       <p style="margin:5pt 0 0; font-size:9pt; color:var(--suave)">Todas en verde. Se vuelven a correr con una orden.</p></div>
     <div class="caja"><div class="cifra">45<span> / 46</span></div>
       <p style="margin:5pt 0 0; font-size:9pt; color:var(--suave)">Hallazgos de auditoría cerrados con prueba.</p></div>
-    <div class="caja"><div class="cifra">20 <span>decisiones</span></div>
+    <div class="caja"><div class="cifra">22 <span>decisiones</span></div>
       <p style="margin:5pt 0 0; font-size:9pt; color:var(--suave)">Pendientes de que alguien con autoridad las firme.</p></div>
     <div class="caja"><div class="cifra">0 <span>migrados</span></div>
       <p style="margin:5pt 0 0; font-size:9pt; color:var(--suave)">Todavía no se ha tocado una sola cuenta real.</p></div>
@@ -109,7 +109,7 @@
 
 <table>
 <tr><th style="width:24%">Pieza</th><th style="width:13%">Pruebas</th><th>Qué hace</th></tr>
-<tr><td><b>sdk</b></td><td class="verde">125</td><td>Las reglas: cuentas, números, alias, rutas, reservas, suministro, migración. Es el cerebro.</td></tr>
+<tr><td><b>sdk</b></td><td class="verde">164</td><td>Las reglas: cuentas, números, alias, rutas, reservas, suministro, migración. Es el cerebro.</td></tr>
 <tr><td><b>contracts</b></td><td class="verde">178</td><td>Lo que vive en la cadena: activos, gobierno, identidad, liquidación, migración.</td></tr>
 <tr><td><b>indexer</b></td><td class="verde">67</td><td>Lee la cadena y la vuelve consultable. Sabe deshacer una reorganización.</td></tr>
 <tr><td><b>dbnx-api</b></td><td class="verde">86</td><td>Admisión de activos: expedientes, firmas, informes.</td></tr>
@@ -122,7 +122,7 @@
 <tr><th style="width:30%">Cosa</th><th style="width:16%">Estado</th><th>Qué significa</th></tr>
 <tr><td>El código</td><td><span class="pastilla verde">LISTO</span></td><td>Escrito, probado y auditado por fuera.</td></tr>
 <tr><td>Los números económicos</td><td><span class="pastilla rojo">VACÍOS</span></td><td>A propósito. Ni un precio, ni un ratio, ni un quórum está escrito en el código.</td></tr>
-<tr><td>Las decisiones</td><td><span class="pastilla rojo">20 PENDIENTES</span></td><td>Nadie con autoridad ha firmado todavía. Sin firma no hay número.</td></tr>
+<tr><td>Las decisiones</td><td><span class="pastilla rojo">22 PENDIENTES</span></td><td>Nadie con autoridad ha firmado todavía. Sin firma no hay número.</td></tr>
 <tr><td>Los accesos</td><td><span class="pastilla rojo">NO TENEMOS</span></td><td>Ni a la red real, ni a los servidores, ni a las llaves.</td></tr>
 <tr><td>Prueba en la red real</td><td><span class="pastilla rojo">CERO</span></td><td>Nada de esto ha visto la red 5550 ni un saldo de verdad.</td></tr>
 <tr><td>Migración</td><td><span class="pastilla rojo">NO EMPEZADA</span></td><td>Ninguna cuenta real ha sido tocada.</td></tr>
@@ -363,20 +363,20 @@ todavía no existe. <b>Ninguna de las tres las resuelve escribir más código.</
 </div>
 
 <h3>Cómo se comprueba, y qué salió mal en el camino</h3>
-<p>Hay una orden que corre las 470 pruebas, comprueba los tipos, cuenta las decisiones pendientes,
+<p>Hay una orden que corre las 509 pruebas, comprueba los tipos, cuenta las decisiones pendientes,
 verifica que no haya ni un número económico escrito, y <b>firma un archivo de evidencia con el
 commit exacto del código que probó</b>.</p>
 
 <div class="terminal"><span class="c">$ node scripts/verificar-todo.mjs</span>
 
-  sdk                  <span class="ok">PROBADO_AISLADO</span>    125 pruebas
+  sdk                  <span class="ok">PROBADO_AISLADO</span>    164 pruebas
   contracts            <span class="ok">PROBADO_AISLADO</span>    178 pruebas
   indexer              <span class="ok">PROBADO_AISLADO</span>     67 pruebas
   dbnx-api             <span class="ok">PROBADO_AISLADO</span>     86 pruebas
   pruebas-adversarias  <span class="ok">PROBADO_AISLADO</span>     14 pruebas
 
   árbol limpio: sí
-  decisiones pendientes: 20
+  decisiones pendientes: 22
   parámetros económicos con valor: <span class="ok">0</span>
 
   cobertura: <span class="ok">VERIFICACION_COMPLETA</span>
@@ -509,7 +509,7 @@ se redondea a favor de nadie, se reporta.
 </div>
 
 <!-- ───────────────────────────── 9 ───────────────────────────── -->
-<h2 class="pagina">9 · Las 20 decisiones que bloquean todo</h2>
+<h2 class="pagina">9 · Las 22 decisiones que bloquean todo</h2>
 
 <p>Cada número económico del sistema vale <code>null</code> —vacío— a propósito. No es que falte
 escribirlos: es que <b>el código se niega a funcionar con un número que nadie firmó</b>. Si se
@@ -550,6 +550,8 @@ intenta usar un parámetro cuya decisión no está aprobada, el sistema para.</p
 <tr><td class="mono">D00</td><td>Nombre SFSP y limpieza de marca</td><td>Usar el nombre en público</td></tr>
 <tr><td class="mono">D14</td><td>Retiro de la cadena 8532 y continuidad histórica</td><td>Apagar o descartar nada</td></tr>
 <tr><td class="mono">D16</td><td>Resolver la especificación OGFP referida</td><td>Cerrar contradicciones normativas</td></tr>
+<tr><td class="mono">D20</td><td>Nombre AU-RA FP y revisión de marca</td><td>Usar el nombre en público</td></tr>
+<tr><td class="mono">D21</td><td>De quién es AU-RA FP y sus contratos con cada empresa</td><td>Dar de alta a cualquier empresa</td></tr>
 </table>
 
 <div class="alto">
@@ -628,7 +630,7 @@ solo sujeto. Cerrarlo del todo cambia el modelo de ejecución entero y no se hiz
 
 <div class="paso"><div class="n">3</div><div class="t">
 <b>Nada de esto ha visto dinero real.</b>
-470 pruebas en verde contra datos inventados no son 470 pruebas contra la red 5550. La diferencia
+509 pruebas en verde contra datos inventados no son 509 pruebas contra la red 5550. La diferencia
 entre esas dos cosas es donde se pierden los proyectos, y es exactamente por eso que el sistema
 se niega a llamarlo <code>VERIFICADO_RUNTIME</code>.
 </div></div>
@@ -637,9 +639,9 @@ se niega a llamarlo <code>VERIFICADO_RUNTIME</code>.
 
 <div class="ficha">
 <span class="etiqueta">Resumen</span>
-<p style="margin-bottom:6pt"><b>Lo que está hecho:</b> el sistema completo, escrito, probado con 470 pruebas,
+<p style="margin-bottom:6pt"><b>Lo que está hecho:</b> el sistema completo, escrito, probado con 509 pruebas,
 auditado por fuera, con 45 de 46 hallazgos cerrados con una prueba que se puede volver a correr.</p>
-<p style="margin-bottom:6pt"><b>Lo que falta:</b> que alguien firme 20 decisiones, que consigamos accesos,
+<p style="margin-bottom:6pt"><b>Lo que falta:</b> que alguien firme 22 decisiones, que consigamos accesos,
 que un tercero lo verifique, y que se pruebe contra la red real.</p>
 <p style="margin-bottom:6pt"><b>Cómo migraremos:</b> sin mover un solo saldo. Cada persona gana un número de
 cuenta; su ONDK se queda donde está, con ratio 1:1. Ensayo que no deja rastro, se puede repetir

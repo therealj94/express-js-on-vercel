@@ -8,7 +8,7 @@ import { fileURLToPath } from 'node:url';
 const aqui = dirname(fileURLToPath(import.meta.url));
 const CHROME = process.env['CHROME_BIN'] ?? '/opt/pw-browsers/chromium-1194/chrome-linux/chrome';
 
-for (const nombre of ['DONDE-ESTAMOS', 'PRESENTACION']) {
+for (const nombre of ['DONDE-ESTAMOS', 'PRESENTACION', 'AU-RA-FP']) {
   execFileSync(CHROME, [
     '--headless', '--disable-gpu', '--no-sandbox', '--no-pdf-header-footer',
     '--allow-file-access-from-files',
