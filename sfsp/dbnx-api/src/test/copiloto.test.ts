@@ -1,6 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
+import { FirmantesEnMemoria } from '../firmas.js';
+
 import {
   LIMITE_DOCUMENTO_CARACTERES,
   recibirAnalisis,
@@ -96,6 +98,7 @@ test('la propuesta no puede representar un permiso de emision', () => {
     },
     reloj,
     new ConsumoEnMemoria(),
+    new FirmantesEnMemoria(),
   );
   assert.equal(r.ok, false);
   if (r.ok) throw new Error('inesperado');

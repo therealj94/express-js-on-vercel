@@ -5,6 +5,7 @@ import {SFSPAccessControl} from "./lib/SFSPAccessControl.sol";
 import {SFSPEIP712} from "./lib/SFSPEIP712.sol";
 import {SFSPReentrancyGuard} from "./lib/SFSPReentrancyGuard.sol";
 import {SFSPCodes} from "./lib/SFSPCodes.sol";
+import {SFSPAuthorization} from "./lib/SFSPAuthorization.sol";
 import {ISFSPGovernanceController, ISFSPRegulatedAsset} from "./lib/ISFSP.sol";
 
 /// @title Controlador de emisión: consume SignedAuthorization del §2.4.
@@ -68,6 +69,16 @@ contract SFSPIssuanceController is SFSPAccessControl, SFSPEIP712, SFSPReentrancy
     error LimitsNotFixed(bytes32 assetId, uint8 code);
     error AssetMismatch(bytes32 expected, bytes32 got);
     error Paused();
+    // H18 · una reserva pertenece a UN activo; cerrarla contra otro corrompía los
+    // contadores de los dos.
+    error ReserveAssetMismatch(bytes32 reserveId, bytes32 opened, bytes32 presented);
+    error ReserveUnknown(bytes32 reserveId);
+    // H18 · un activo sin contrato registrado no vale cero: no se sabe.
+    error AssetContractUnknown(bytes32 assetId, uint8 code);
+    // H01 · la emisión también se autoriza por contenido, no por identificador.
+    error MintNotAuthorized(bytes32 digest);
+    error AuthorizationActionMismatch(bytes32 expected, bytes32 got);
+    error PayloadDoesNotMatchEnvelope(bytes32 reason);
 
     struct InstrumentLimits {
         bool configured;          // sin fijar => BLOCKED_DECISION, no un número por defecto
@@ -83,7 +94,15 @@ contract SFSPIssuanceController is SFSPAccessControl, SFSPEIP712, SFSPReentrancy
     mapping(bytes32 => bool) private _usedOperationId;         // idempotencia (§1)
     mapping(bytes32 => uint256) private _cumulativeIssued;     // assetId => emitido histórico
     mapping(bytes32 => uint256) private _reservedIssuance;     // assetId => reservas abiertas
-    mapping(bytes32 => uint256) private _reserveAmount;        // reserveId => monto
+    // H18 · la reserva guarda ACTIVO y monto. Guardando sólo el monto se podía
+    // abrir contra A y cerrar contra B: el contador de B bajaba sin que nadie
+    // hubiera reservado nada en B, y el de A se quedaba alto para siempre.
+    struct IssuanceReserve {
+        bytes32 assetId;
+        uint256 amount;
+    }
+
+    mapping(bytes32 => IssuanceReserve) private _reserves;     // reserveId => reserva
     mapping(bytes32 => address) private _assetContract;        // assetId => contrato
 
     constructor(address board, address governance_)
@@ -134,12 +153,16 @@ contract SFSPIssuanceController is SFSPAccessControl, SFSPEIP712, SFSPReentrancy
         return _usedNonce[nonce];
     }
 
+    function reserveOf(bytes32 reserveId) external view returns (IssuanceReserve memory) {
+        return _reserves[reserveId];
+    }
+
     // ------------------------------------------------------------- reservas concurrentes
 
     /// @dev Una reserva es capacidad comprometida todavía no acuñada. Cuenta en
     ///      el tope de stock para que dos emisiones en vuelo no lo superen juntas.
     function openIssuanceReserve(bytes32 assetId, bytes32 reserveId, uint256 amount) external onlyRole(ISSUER) {
-        require(_reserveAmount[reserveId] == 0 && amount > 0, "SFSP: reserva invalida");
+        require(_reserves[reserveId].amount == 0 && amount > 0 && assetId != bytes32(0), "SFSP: reserva invalida");
         InstrumentLimits memory lim = _limits[assetId];
         if (!lim.configured) revert LimitsNotFixed(assetId, SFSPCodes.BLOCKED_DECISION);
         uint256 outstanding = _outstanding(assetId);
@@ -147,26 +170,39 @@ contract SFSPIssuanceController is SFSPAccessControl, SFSPEIP712, SFSPReentrancy
         if (outstanding + reserved + amount > lim.outstandingLimit) {
             revert OutstandingLimitExceeded(outstanding, reserved, amount, lim.outstandingLimit);
         }
-        _reserveAmount[reserveId] = amount;
+        _reserves[reserveId] = IssuanceReserve({assetId: assetId, amount: amount});
         _reservedIssuance[assetId] = reserved + amount;
         emit IssuanceReserveOpened(assetId, reserveId, amount);
     }
 
+    /// @dev H18 · cerrar exige el MISMO activo con el que se abrió. Antes la
+    ///      reserva guardaba sólo el monto y el activo lo ponía el llamador al
+    ///      cerrar, así que una reserva abierta sobre A se podía cerrar contra B.
     function closeIssuanceReserve(bytes32 assetId, bytes32 reserveId, bytes32 reasonCode) external onlyRole(ISSUER) {
-        uint256 amount = _reserveAmount[reserveId];
-        require(amount > 0 && reasonCode != bytes32(0), "SFSP: reserva/motivo invalido");
-        _reserveAmount[reserveId] = 0;
-        _reservedIssuance[assetId] -= amount;
-        emit IssuanceReserveClosed(assetId, reserveId, amount, reasonCode);
+        IssuanceReserve memory r = _reserves[reserveId];
+        if (r.amount == 0) revert ReserveUnknown(reserveId);
+        if (r.assetId != assetId) revert ReserveAssetMismatch(reserveId, r.assetId, assetId);
+        require(reasonCode != bytes32(0), "SFSP: motivo requerido");
+        delete _reserves[reserveId];
+        _reservedIssuance[r.assetId] -= r.amount;
+        emit IssuanceReserveClosed(r.assetId, reserveId, r.amount, reasonCode);
     }
 
     /// @dev El outstanding se lee del propio contrato del activo: el inventario
     ///      de tesorería ya acuñado CUENTA. Depositarlo en tesorería no lo
     ///      convierte en "no emitido".
+    ///      H18 · un activo sin contrato registrado REVIERTE. Devolver cero era
+    ///      indistinguible de «este activo no tiene nada emitido», y con ese cero
+    ///      todos los topes de stock pasaban: el error quedaba oculto justo en el
+    ///      sitio donde más caro sale (§5, UNKNOWN_SOURCE nunca se degrada a 0).
     function _outstanding(bytes32 assetId) internal view returns (uint256) {
         address a = _assetContract[assetId];
-        if (a == address(0)) return 0;
+        if (a == address(0)) revert AssetContractUnknown(assetId, SFSPCodes.UNKNOWN_SOURCE);
         return ISFSPRegulatedAsset(a).totalSupply();
+    }
+
+    function outstandingOf(bytes32 assetId) external view returns (uint256) {
+        return _outstanding(assetId);
     }
 
     // ------------------------------------------------------------- emisión
@@ -192,22 +228,55 @@ contract SFSPIssuanceController is SFSPAccessControl, SFSPEIP712, SFSPReentrancy
         return _hashTypedData(hashAuthorization(a));
     }
 
-    /// @notice Acuña contra una autorización firmada concreta.
-    /// @param amount permite acuñar menos de lo aprobado, nunca más.
+    /// @notice Acuña contra una autorización firmada Y contra una orden de
+    ///         gobierno ligada al contenido de ESTA acuñación concreta.
+    /// @dev H01 aplicado a la emisión. El sobre firmado del §2.4 dice cuánto se
+    ///      PUEDE acuñar como máximo y a dónde; el monto efectivo y el
+    ///      identificador de operación eran, hasta ahora, parámetros libres del
+    ///      emisor. Dicho de otro modo: una autorización de 1000 al destino D
+    ///      dejaba al emisor elegir cuándo y en cuántos trozos, sin que nadie
+    ///      aprobara cada trozo.
+    ///      Ahora el monto efectivo es `p.amount` y el `operationId` es `p.nonce`:
+    ///      los dos van dentro del digest que gobierno aprobó con doble control,
+    ///      el ejecutor lo recalcula desde `p` y lo consume. Acuñar menos de lo
+    ///      aprobado en el sobre sigue siendo posible —una acuñación parcial es
+    ///      legítima— pero cada parcial necesita su propia orden.
+    /// @param p payload del §12.1 con los argumentos REALES de la acuñación.
+    /// @param approvedDigest digest que gobierno aprobó.
     function mint(
         SignedAuthorization calldata a,
         bytes[] calldata signatures,
-        uint256 amount,
-        bytes32 operationId
+        SFSPAuthorization.Payload calldata p,
+        bytes32 approvedDigest
     ) external onlyRole(ISSUER) nonReentrant {
         if (governance.isPaused()) revert Paused();
-        if (_usedOperationId[operationId]) revert OperationReplay(operationId);
-        _usedOperationId[operationId] = true;
+        _checkPayload(a, p);
+        if (_usedOperationId[p.nonce]) revert OperationReplay(p.nonce);
+        _usedOperationId[p.nonce] = true;
+
+        if (!governance.isAuthorizationApproved(approvedDigest)) revert MintNotAuthorized(approvedDigest);
+        SFSPAuthorization.Payload memory m = p;
+        SFSPAuthorization.authorize(m, approvedDigest);
+        governance.consumeAuthorization(approvedDigest);
 
         _checkEnvelope(a);
         _checkApprovals(a, signatures);
-        _applyCaps(a, amount);
-        _executeMint(a, amount, operationId);
+        _applyCaps(a, p.amount);
+        _executeMint(a, p.amount, p.nonce);
+    }
+
+    /// @dev El payload tiene que describir la MISMA acuñación que el sobre
+    ///      firmado. Si no se comprobara, habría dos verdades a la vez: la que
+    ///      firmaron los aprobadores del sobre y la que aprobó gobierno.
+    function _checkPayload(SignedAuthorization calldata a, SFSPAuthorization.Payload calldata p) internal view {
+        if (p.action != ACTION_MINT) revert AuthorizationActionMismatch(ACTION_MINT, p.action);
+        if (p.assetId != a.assetId) revert PayloadDoesNotMatchEnvelope(bytes32("ASSET"));
+        if (p.destination != a.destination) revert PayloadDoesNotMatchEnvelope(bytes32("DESTINATION"));
+        // Acuñar no mueve unidades desde nadie: el origen es la dirección cero, y
+        // ese cero también entra en el digest.
+        if (p.origin != address(0)) revert PayloadDoesNotMatchEnvelope(bytes32("ORIGIN"));
+        if (p.amount == 0) revert PayloadDoesNotMatchEnvelope(bytes32("AMOUNT_ZERO"));
+        if (p.verifyingContract != address(this)) revert PayloadDoesNotMatchEnvelope(bytes32("CONTRACT"));
     }
 
     /// @dev Los tres topes, en orden, con sus efectos. Separado de `mint` para

@@ -20,8 +20,15 @@ import {
   type MarcaTiempo,
   type Reloj,
   type Resultado,
-  type Rol,
 } from './tipos.js';
+import {
+  comprobarFormaAprobacion,
+  digestoCanonico,
+  verificarQuorum,
+  type AprobacionFirmada,
+  type PayloadAutorizacionDBNX,
+  type RegistroFirmantes,
+} from './firmas.js';
 
 /** Acciones que una autorizacion puede habilitar. Lista cerrada a proposito. */
 export type ActionId =
@@ -30,14 +37,13 @@ export type ActionId =
   | 'RECOVERY'
   | 'MIGRATION_CLAIM';
 
-/** Una firma con su rol. Humanas y tecnicas quedan separadas por `rol`. */
-export interface Approval {
-  readonly actorId: string;
-  readonly rol: Rol;
-  /** Digest del payload que esta firma cubre. Sintetico en pruebas. */
-  readonly payloadDigest: string;
-  readonly firmadoEnUTC: MarcaTiempo;
-}
+/**
+ * Una firma con su rol. Humanas y tecnicas quedan separadas por `rol`, y la
+ * firma es una firma Ed25519 de verdad: el tipo vive en `firmas.ts` junto a su
+ * verificador, para que no pueda existir una `Approval` sin un camino que la
+ * compruebe. El antiguo campo `payloadDigest` sigue ahi y SE IGNORA (H03.1).
+ */
+export type Approval = AprobacionFirmada;
 
 /** §2.4 del contrato interno, campo por campo. */
 export interface SignedAuthorization {
@@ -59,6 +65,14 @@ export interface SignedAuthorization {
   readonly approvals: readonly Approval[];
   /** Expediente del que nace. Referencia, NO sustituto de esta autorizacion. */
   readonly caseId: string;
+  /**
+   * Digest canonico DERIVADO, puesto por el emisor para que un panel pueda
+   * mostrarlo. No es una entrada de confianza: `validarAutorizacion` lo
+   * recalcula siempre desde los campos y NUNCA lee este. Si alguien lo sustituye
+   * por `no-es-el-hash`, la validacion da exactamente el mismo veredicto, y hay
+   * una prueba que lo exige.
+   */
+  readonly payloadDigest: string;
 }
 
 /** Lo que el ejecutor pide hacer, y que debe coincidir con la autorizacion. */
@@ -93,16 +107,15 @@ export interface EntradaEmision {
 
 export const SCHEMA_VERSION_AUTORIZACION = 'draft-0.3';
 
-/**
- * Minimo de firmas. POR QUE dos roles y no un contador: dos firmas del mismo rol
- * no son separacion de funciones. Se exige al menos una humana de COMITE y una
- * tecnica de CUMPLIMIENTO o SISTEMA.
- */
-const ROLES_HUMANOS: readonly Rol[] = ['COMITE'];
-const ROLES_TECNICOS: readonly Rol[] = ['CUMPLIMIENTO', 'SISTEMA'];
+// El minimo de firmas —una humana de COMITE y una tecnica de CUMPLIMIENTO o
+// SISTEMA, de actores DISTINTOS— lo impone `verificarQuorum` en `firmas.ts`,
+// junto con la verificacion criptografica. Estaban separados y por eso se podia
+// cumplir el reparto de roles sin que ninguna firma fuese real.
 
 export function emitirAutorizacion(
   entrada: EntradaEmision,
+  registro: RegistroFirmantes,
+  reloj: Reloj,
 ): Resultado<SignedAuthorization> {
   if (entrada.estadoCaso !== 'APPROVED') {
     return fallo(
@@ -146,25 +159,32 @@ export function emitirAutorizacion(
     return fallo('BLOCKED_DECISION', 'falta policyVersion: no se elige por defecto');
   }
 
-  const tieneHumana = entrada.approvals.some((a) => ROLES_HUMANOS.includes(a.rol));
-  const tieneTecnica = entrada.approvals.some((a) => ROLES_TECNICOS.includes(a.rol));
-  if (!tieneHumana || !tieneTecnica) {
-    return fallo(
-      'REVIEW_REQUIRED',
-      'faltan firmas: se exige una humana (COMITE) y una tecnica (CUMPLIMIENTO/SISTEMA)',
-      { humana: tieneHumana ? 1 : 0, tecnica: tieneTecnica ? 1 : 0 },
-    );
-  }
+  // El digest lo calcula EL EMISOR a partir de los campos que acaba de validar,
+  // no lo aporta ningun firmante. §2.4: «La aprobacion humana y la validacion
+  // tecnica deben coincidir exactamente en este payload» — y coincidir se
+  // comprueba verificando las dos firmas contra ESTE digest, no comparando entre
+  // si dos cadenas que los firmantes eligieron.
+  const payload: PayloadAutorizacionDBNX = {
+    schemaVersion: SCHEMA_VERSION_AUTORIZACION,
+    authorizationId: entrada.authorizationId,
+    actionId: entrada.actionId,
+    chainId: entrada.chainId,
+    genesisHash: entrada.genesisHash,
+    verifyingContract: entrada.verifyingContract,
+    assetId: entrada.assetId,
+    amount: entrada.amount,
+    destination: entrada.destination,
+    policyVersion: entrada.policyVersion,
+    evidenceRoot: entrada.evidenceRoot,
+    nonce: entrada.nonce,
+    notBefore: entrada.notBefore,
+    expiry: entrada.expiry,
+    caseId: entrada.caseId,
+  };
+  const digest = digestoCanonico(payload);
 
-  // Todas las firmas deben cubrir EL MISMO payload. §2.4: «La aprobacion humana
-  // y la validacion tecnica deben coincidir exactamente en este payload».
-  const digest = entrada.approvals[0]!.payloadDigest;
-  if (entrada.approvals.some((a) => a.payloadDigest !== digest)) {
-    return fallo(
-      'DENY_AUTHORIZATION',
-      'las firmas cubren payloads distintos: no hay acuerdo sobre que se autoriza',
-    );
-  }
+  const quorum = verificarQuorum(digest, entrada.approvals, registro, reloj.ahora());
+  if (!quorum.ok) return quorum;
 
   return ok({
     schemaVersion: SCHEMA_VERSION_AUTORIZACION,
@@ -183,6 +203,7 @@ export function emitirAutorizacion(
     expiry: entrada.expiry,
     approvals: [...entrada.approvals],
     caseId: entrada.caseId,
+    payloadDigest: digest,
   });
 }
 
@@ -215,6 +236,7 @@ export function validarAutorizacion(
   peticion: PeticionUso,
   reloj: Reloj,
   consumo: RegistroConsumo,
+  registro: RegistroFirmantes,
 ): Resultado<SignedAuthorization> {
   // Paso 0: ¿esto tiene forma de autorizacion? Un objeto arbitrario con
   // `approved: true` cae aqui y no pasa de aqui.
@@ -245,6 +267,35 @@ export function validarAutorizacion(
       ahora,
     });
   }
+
+  // Firmas. El digest se RECALCULA aqui desde los campos de la autorizacion que
+  // se esta presentando: si el validador se fiara de `a.payloadDigest`, quien
+  // presenta la autorizacion elegiria sobre que se firmo, que es H03 con mas
+  // ceremonia. Y se re-verifica en CADA presentacion, no solo al emitir, porque
+  // entre la emision y el uso un firmante puede haber sido revocado.
+  const quorum = verificarQuorum(
+    digestoCanonico({
+      schemaVersion: a.schemaVersion,
+      authorizationId: a.authorizationId,
+      actionId: a.actionId,
+      chainId: a.chainId,
+      genesisHash: a.genesisHash,
+      verifyingContract: a.verifyingContract,
+      assetId: a.assetId,
+      amount: a.amount,
+      destination: a.destination,
+      policyVersion: a.policyVersion,
+      evidenceRoot: a.evidenceRoot,
+      nonce: a.nonce,
+      notBefore: a.notBefore,
+      expiry: a.expiry,
+      caseId: a.caseId,
+    }),
+    a.approvals,
+    registro,
+    ahora,
+  );
+  if (!quorum.ok) return quorum;
 
   if (consumo.yaConsumido(a.chainId, a.nonce)) {
     // Consumo unico: reusar una autorizacion vigente es el mismo riesgo que
@@ -311,8 +362,9 @@ export function consumir(
   peticion: PeticionUso,
   reloj: Reloj,
   consumo: RegistroConsumo,
+  registro: RegistroFirmantes,
 ): Resultado<SignedAuthorization> {
-  const r = validarAutorizacion(autorizacion, peticion, reloj, consumo);
+  const r = validarAutorizacion(autorizacion, peticion, reloj, consumo, registro);
   if (!r.ok) return r;
   consumo.marcarConsumido(r.valor.chainId, r.valor.nonce);
   return r;
@@ -360,8 +412,18 @@ function comprobarForma(v: unknown): Resultado<SignedAuthorization> {
   if (typeof o['chainId'] !== 'number' || !Number.isInteger(o['chainId'])) {
     return fallo('DENY_AUTHORIZATION', 'chainId invalido');
   }
+  if (o['genesisHash'] !== null && typeof o['genesisHash'] !== 'string') {
+    return fallo('DENY_AUTHORIZATION', 'genesisHash invalido: se espera cadena o null');
+  }
   if (!Array.isArray(o['approvals']) || (o['approvals'] as unknown[]).length === 0) {
     return fallo('DENY_AUTHORIZATION', 'no hay firmas');
+  }
+  // La forma de CADA aprobacion, antes que nada. Aqui muere `approvals: [{}]`,
+  // la primera prueba de concepto del auditor: un arreglo de objetos vacios no
+  // es una lista de aprobaciones, y no debe llegar siquiera a la criptografia.
+  for (const cruda of o['approvals'] as unknown[]) {
+    const f = comprobarFormaAprobacion(cruda);
+    if (!f.ok) return f;
   }
   if (!esCantidadValida(o['amount'])) {
     return fallo('DENY_LIMIT', 'amount no es un entero en unidades base');

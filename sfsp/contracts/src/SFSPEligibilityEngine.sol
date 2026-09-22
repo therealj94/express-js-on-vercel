@@ -100,9 +100,38 @@ contract SFSPEligibilityEngine is SFSPAccessControl {
 
     /// @notice VIEW. No escribe, no emite eventos, no consume gas de estado.
     /// @param subject referencia opaca del sujeto (nunca un dato personal)
-    /// @param context hash de la operación concreta que se está evaluando
+    /// @param context compatibilidad: una sola palabra que hacía de monto Y de
+    ///        contexto de autorización a la vez.
+    /// @dev H06 · CAMINO HEREDADO. Se conserva porque hay lecturas de interfaz que
+    ///      sólo quieren el monto, pero **no debe usarse para autorizar**: con una
+    ///      sola palabra, `maxAmount` y el contexto autorizado son el mismo valor,
+    ///      de forma que dos operaciones distintas del mismo monto comparten
+    ///      autorización. Las rutas de dinero usan `evaluateOperation`.
     function evaluate(bytes32 subject, bytes32 assetId, bytes32 action, bytes32 context)
         external
+        view
+        returns (uint8 result, bytes32 reasonCode, uint32 policyVersion)
+    {
+        return _evaluate(subject, assetId, action, uint256(context), context);
+    }
+
+    /// @notice Evaluación con el monto y el contexto de autorización SEPARADOS.
+    /// @param amount monto real de la operación, para el límite por operación.
+    /// @param authorizationDigest digest del §12.1 que compromete el contenido
+    ///        completo. `0` significa «sin autorización de gobierno presentada»:
+    ///        una política que exija autorización deniega, no pasa.
+    function evaluateOperation(
+        bytes32 subject,
+        bytes32 assetId,
+        bytes32 action,
+        uint256 amount,
+        bytes32 authorizationDigest
+    ) external view returns (uint8 result, bytes32 reasonCode, uint32 policyVersion) {
+        return _evaluate(subject, assetId, action, amount, authorizationDigest);
+    }
+
+    function _evaluate(bytes32 subject, bytes32 assetId, bytes32 action, uint256 amount, bytes32 authContext)
+        internal
         view
         returns (uint8 result, bytes32 reasonCode, uint32 policyVersion)
     {
@@ -158,13 +187,18 @@ contract SFSPEligibilityEngine is SFSPAccessControl {
             }
         }
 
-        // 10. Límite por operación. El contexto lleva el importe codificado por el llamante.
-        if (p.maxAmount != 0 && uint256(context) > p.maxAmount) {
+        // 10. Límite por operación, contra el MONTO y no contra una palabra que
+        //     también hace de clave de autorización (H06).
+        if (p.maxAmount != 0 && amount > p.maxAmount) {
             return (SFSPCodes.DENY_LIMIT, SFSPCodes.R_LIMIT, policyVersion);
         }
 
-        // 11. Autorización previa de gobierno para esa operación concreta.
-        if (p.requiresAuthorization && !_authorizedContext[keccak256(abi.encode(assetId, action, context))]) {
+        // 11. Autorización previa de gobierno para esa operación concreta. El
+        //     contexto es el digest ligado al contenido, no el monto (H06).
+        if (
+            p.requiresAuthorization
+                && (authContext == bytes32(0) || !_authorizedContext[keccak256(abi.encode(assetId, action, authContext))])
+        ) {
             return (SFSPCodes.DENY_AUTHORIZATION, SFSPCodes.R_AUTHORIZATION, policyVersion);
         }
 

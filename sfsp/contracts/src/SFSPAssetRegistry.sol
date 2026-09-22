@@ -30,14 +30,23 @@ contract SFSPAssetRegistry is SFSPAccessControl {
     // FALTA EN CONTRATO-INTERNO: el §3 no lista un evento de cambio de eje.
     // Se añade porque sin él un indexador no puede reconstruir los cinco ejes.
     event LifecycleUpdated(bytes32 indexed assetId, uint8 axis, uint8 previousValue, uint8 newValue);
+    // H04 · Exclusión técnica PERMANENTE. No es un eje del ciclo de vida: los ejes
+    // vuelven a cambiar, y una migración que se apoye en un eje reversible puede
+    // quedarse con el activo viejo descongelado y el nuevo ya emitido, es decir,
+    // con doble circulación. Esto se declara una vez y no se deshace nunca.
+    event PermanentExclusionDeclared(bytes32 indexed assetId, bytes32 evidenceRoot, uint64 declaredAt);
 
     error AlreadyRegistered(bytes32 assetId);
     error NotRegistered(bytes32 assetId);
     error InvalidPassport(bytes32 reason);
+    error AlreadyPermanentlyExcluded(bytes32 assetId);
+    error PermanentExclusionIsIrreversible(bytes32 assetId);
 
     mapping(bytes32 => SFSPTypes.Passport) private _passports;
     mapping(bytes32 => bool) private _registered;
     mapping(bytes32 => uint32) private _policyVersion;
+    // assetId => raíz de evidencia de la exclusión; 0 = no excluido.
+    mapping(bytes32 => bytes32) private _permanentExclusion;
     bytes32[] private _assetIndex;
 
     constructor(address board) SFSPAccessControl(board) {}
@@ -109,6 +118,14 @@ contract SFSPAssetRegistry is SFSPAccessControl {
         return _policyVersion[assetId];
     }
 
+    function isPermanentlyExcluded(bytes32 assetId) external view returns (bool) {
+        return _permanentExclusion[assetId] != bytes32(0);
+    }
+
+    function permanentExclusionOf(bytes32 assetId) external view returns (bytes32) {
+        return _permanentExclusion[assetId];
+    }
+
     function assetCount() external view returns (uint256) {
         return _assetIndex.length;
     }
@@ -146,10 +163,36 @@ contract SFSPAssetRegistry is SFSPAccessControl {
         emit PolicyUpdated(assetId, policyKind, previous, newPolicyId, prevVersion, newVersion);
     }
 
+    /// @notice Declara la exclusión técnica permanente de un activo (H04).
+    /// @dev La declara el órgano, una sola vez, con evidencia, y **no existe
+    ///      función que la deshaga**. Al declararla se fuerza el eje de
+    ///      transferibilidad a FROZEN y ese eje queda clavado: `setLifecycleAxis`
+    ///      rechaza cualquier intento posterior de sacarlo de FROZEN.
+    ///      Sin esto, «congelado» era una etiqueta que TECH_OPS podía revertir
+    ///      después de que la migración hubiera emitido el activo nuevo.
+    function declarePermanentExclusion(bytes32 assetId, bytes32 evidenceRoot) external onlyRole(DBNX_BOARD) {
+        if (!_registered[assetId]) revert NotRegistered(assetId);
+        if (evidenceRoot == bytes32(0)) revert InvalidPassport(bytes32("EVIDENCE_REQUIRED"));
+        if (_permanentExclusion[assetId] != bytes32(0)) revert AlreadyPermanentlyExcluded(assetId);
+        _permanentExclusion[assetId] = evidenceRoot;
+        SFSPTypes.Lifecycle storage lc = _passports[assetId].status;
+        uint8 previous = uint8(lc.transferability);
+        lc.transferability = SFSPTypes.Transferability.FROZEN;
+        emit LifecycleUpdated(assetId, 3, previous, uint8(SFSPTypes.Transferability.FROZEN));
+        emit PermanentExclusionDeclared(assetId, evidenceRoot, uint64(block.timestamp));
+    }
+
     /// @dev Cinco ejes independientes: se mueve uno por llamada para que ningún
     ///      cambio arrastre a otro. DELISTED no puede ocultar ni tocar saldos.
     function setLifecycleAxis(bytes32 assetId, uint8 axis, uint8 value) external onlyRole(TECH_OPS) {
         if (!_registered[assetId]) revert NotRegistered(assetId);
+        // H04 · una exclusión permanente no se levanta por un cambio de eje.
+        if (
+            axis == 3 && _permanentExclusion[assetId] != bytes32(0)
+                && value != uint8(SFSPTypes.Transferability.FROZEN)
+        ) {
+            revert PermanentExclusionIsIrreversible(assetId);
+        }
         SFSPTypes.Lifecycle storage s = _passports[assetId].status;
         uint8 previous;
         if (axis == 0) {

@@ -34,6 +34,19 @@ export type Frecuencia = 'MENSUAL' | 'TRIMESTRAL' | 'SEMESTRAL' | 'ANUAL' | 'EVE
 
 export interface PlantillaReporte {
   readonly templateId: string;
+  /**
+   * Obligacion concreta que esta plantilla esta evaluando (H20). POR QUE existe:
+   * sin ella, «hay una entrega de esta plantilla» contaba para CUALQUIER
+   * vencimiento posterior, y un informe de enero de 2025 aparecia como CURRENT
+   * frente a un vencimiento de septiembre de 2026.
+   */
+  readonly obligationId: string;
+  /**
+   * Periodo cubierto, en forma estable y comparable ('2030-Q1', '2030-01', ...).
+   * Una entrega cubre UN periodo: la obligacion dice cual se exige y la entrega
+   * dice cual trae. Si no coinciden, la entrega no satisface esta obligacion.
+   */
+  readonly periodo: string;
   readonly frecuencia: Frecuencia;
   /** Fecha limite de la entrega en curso. */
   readonly deadlineUTC: MarcaTiempo;
@@ -59,6 +72,11 @@ export interface EventoMaterial {
 
 export interface EntregaReporte {
   readonly templateId: string;
+  /** Obligacion que esta entrega dice satisfacer. No es opcional: una entrega
+   *  que no dice a que obligacion responde no satisface ninguna. */
+  readonly obligationId: string;
+  /** Periodo cubierto por el informe entregado. */
+  readonly periodo: string;
   readonly entregadoEnUTC: MarcaTiempo;
   readonly reportHash: string;
 }
@@ -75,6 +93,16 @@ export interface ResultadoReporting {
   readonly responsableActorId: string;
   readonly deadlineUTC: MarcaTiempo;
   readonly finSubsanacionUTC: MarcaTiempo | null;
+  /** Obligacion y periodo evaluados: el veredicto no es sobre «la plantilla». */
+  readonly obligationId: string;
+  readonly periodo: string;
+  /**
+   * Instante de la entrega que se considero para decidir, o `null` si no hubo
+   * ninguna. POR QUE se publica: el estado y su explicacion tienen que poder
+   * contrastarse. Una prueba exige que un texto que diga «sin entrega» venga
+   * siempre con este campo en `null`, y al reves.
+   */
+  readonly entregaConsideradaEnUTC: MarcaTiempo | null;
   /** Explicacion para la interfaz. Describe, no sanciona. */
   readonly explicacion: string;
 }
@@ -117,6 +145,43 @@ export function evaluarReporting(
 
   const restriccionMercado = entrada.restriccionMercadoVigente ?? 'NINGUNA';
 
+  /**
+   * La entrega aplicable es la de ESTA obligacion y ESTE periodo (H20). No
+   * «alguna entrega de la misma plantilla»: la plantilla se repite todos los
+   * trimestres y el informe de uno no informa de otro. Si hubiera varias, se
+   * toma la mas temprana, porque la que fija si se llego a tiempo es la primera.
+   */
+  const aplicables = entrada.entregas
+    .filter(
+      (e) =>
+        e.templateId === p.templateId &&
+        e.obligationId === p.obligationId &&
+        e.periodo === p.periodo &&
+        esMarcaTiempoValida(e.entregadoEnUTC),
+    )
+    .sort((x, y) => Date.parse(x.entregadoEnUTC) - Date.parse(y.entregadoEnUTC));
+  const entregaAplicable: EntregaReporte | null = aplicables[0] ?? null;
+
+  /** Constructor unico del resultado: el estado, la entrega considerada y la
+   *  explicacion salen siempre del mismo sitio, para que no puedan discrepar. */
+  const base = (
+    divulgacion: EstadoDivulgacion,
+    entregaConsideradaEnUTC: MarcaTiempo | null,
+    explicacion: string,
+  ): Resultado<ResultadoReporting> =>
+    ok({
+      templateId: p.templateId,
+      divulgacion,
+      restriccionMercado,
+      responsableActorId: p.responsableActorId,
+      deadlineUTC: p.deadlineUTC,
+      finSubsanacionUTC,
+      obligationId: p.obligationId,
+      periodo: p.periodo,
+      entregaConsideradaEnUTC,
+      explicacion,
+    });
+
   // Evento material pendiente de notificar dentro de plazo -> WARNING.
   for (const ev of entrada.eventosMateriales ?? []) {
     if (ev.horasNotificacion === null) {
@@ -136,6 +201,9 @@ export function evaluarReporting(
           responsableActorId: p.responsableActorId,
           deadlineUTC: p.deadlineUTC,
           finSubsanacionUTC,
+          obligationId: p.obligationId,
+          periodo: p.periodo,
+          entregaConsideradaEnUTC: entregaAplicable?.entregadoEnUTC ?? null,
           explicacion:
             'Evento material no notificado dentro del plazo. Describe la divulgacion; ' +
             'no implica por si solo restriccion de mercado.',
@@ -148,78 +216,72 @@ export function evaluarReporting(
         responsableActorId: p.responsableActorId,
         deadlineUTC: p.deadlineUTC,
         finSubsanacionUTC,
+        obligationId: p.obligationId,
+        periodo: p.periodo,
+        entregaConsideradaEnUTC: entregaAplicable?.entregadoEnUTC ?? null,
         explicacion:
           'Evento material ocurrido y aun no notificado, dentro de plazo.',
       });
     }
   }
 
-  const entregada = entrada.entregas.some(
-    (e) =>
-      e.templateId === p.templateId &&
-      esMarcaTiempoValida(e.entregadoEnUTC) &&
-      Date.parse(e.entregadoEnUTC) <= deadline,
-  );
-  if (entregada) {
-    return ok({
-      templateId: p.templateId,
-      divulgacion: 'CURRENT',
-      restriccionMercado,
-      responsableActorId: p.responsableActorId,
-      deadlineUTC: p.deadlineUTC,
-      finSubsanacionUTC,
-      explicacion: 'Informe entregado dentro del plazo.',
-    });
-  }
-
-  const entregadaEnSubsanacion = entrada.entregas.some(
-    (e) =>
-      e.templateId === p.templateId &&
-      esMarcaTiempoValida(e.entregadoEnUTC) &&
-      Date.parse(e.entregadoEnUTC) <= finSubsanacion,
-  );
-
   if (ahora < deadline) {
     const faltan = deadline - ahora;
-    return ok({
-      templateId: p.templateId,
-      divulgacion: faltan <= p.diasPreaviso * MS_DIA ? 'DUE' : 'CURRENT',
-      restriccionMercado,
-      responsableActorId: p.responsableActorId,
-      deadlineUTC: p.deadlineUTC,
-      finSubsanacionUTC,
-      explicacion:
-        faltan <= p.diasPreaviso * MS_DIA
-          ? 'Entrega pendiente dentro del periodo de preaviso.'
-          : 'Sin entrega pendiente en el horizonte de preaviso.',
-    });
+    const enPreaviso = faltan <= p.diasPreaviso * MS_DIA;
+    if (entregaAplicable === null) {
+      return base(
+        enPreaviso ? 'DUE' : 'CURRENT',
+        null,
+        enPreaviso
+          ? 'Entrega pendiente de esta obligacion, dentro del periodo de preaviso.'
+          : 'Entrega de esta obligacion aun no exigible ni dentro del preaviso.',
+      );
+    }
+    // Entregada antes del vencimiento: la obligacion esta satisfecha y el texto
+    // lo dice; no queda un CURRENT cuya explicacion hable de «pendiente».
+    return base('CURRENT', entregaAplicable.entregadoEnUTC, 'Informe de esta obligacion entregado dentro del plazo.');
+  }
+
+  if (entregaAplicable !== null) {
+    const t = Date.parse(entregaAplicable.entregadoEnUTC);
+    if (t <= deadline) {
+      return base('CURRENT', entregaAplicable.entregadoEnUTC, 'Informe de esta obligacion entregado dentro del plazo.');
+    }
+    if (t <= finSubsanacion) {
+      // POR QUE no vuelve a LATE cuando pasa la subsanacion: la entrega ocurrio
+      // y el hecho no se deshace con el reloj. Antes, esta rama y la de «sin
+      // entrega» producian la MISMA advertencia y el texto posterior afirmaba
+      // que no habia habido entrega.
+      return base(
+        'WARNING',
+        entregaAplicable.entregadoEnUTC,
+        'Informe entregado fuera de plazo, dentro del periodo de subsanacion. ' +
+          'Es un estado de divulgacion; la decision de mercado es separada.',
+      );
+    }
+    return base(
+      'LATE',
+      entregaAplicable.entregadoEnUTC,
+      'Informe entregado despues del periodo de subsanacion. Describe la divulgacion; ' +
+        'cualquier restriccion de mercado es una decision aparte y proporcionada.',
+    );
   }
 
   if (ahora <= finSubsanacion) {
-    return ok({
-      templateId: p.templateId,
-      divulgacion: entregadaEnSubsanacion ? 'WARNING' : 'WARNING',
-      restriccionMercado,
-      responsableActorId: p.responsableActorId,
-      deadlineUTC: p.deadlineUTC,
-      finSubsanacionUTC,
-      explicacion:
-        'Plazo vencido y dentro del periodo de subsanacion. ' +
+    return base(
+      'WARNING',
+      null,
+      'Sin entrega de esta obligacion: plazo vencido y dentro del periodo de subsanacion. ' +
         'Es un estado de divulgacion; la decision de mercado es separada.',
-    });
+    );
   }
 
-  return ok({
-    templateId: p.templateId,
-    divulgacion: 'LATE',
-    restriccionMercado,
-    responsableActorId: p.responsableActorId,
-    deadlineUTC: p.deadlineUTC,
-    finSubsanacionUTC,
-    explicacion:
-      'Plazo y subsanacion vencidos sin entrega. Describe la divulgacion; ' +
+  return base(
+    'LATE',
+    null,
+    'Sin entrega de esta obligacion: plazo y subsanacion vencidos. Describe la divulgacion; ' +
       'cualquier restriccion de mercado es una decision aparte y proporcionada.',
-  });
+  );
 }
 
 /**

@@ -81,7 +81,8 @@ test('cambiar un campo NO convierte una plantilla en otra: el tipo no muta', () 
   const emitida = emitirPlantilla(equity);
   if (!emitida.ok) throw new Error('inesperado');
 
-  // Reparametrizar mantiene el tipo.
+  // Reparametrizar mantiene el tipo. Sobre una plantilla ya emitida lo que sale
+  // es una REVISION pendiente (H23), no la misma emision con otros valores.
   const cambiada = reparametrizar(
     emitida.valor,
     [{ clave: 'derechoDividendo', valor: 'otro-valor-sintetico', forma: 'TEXTO' }],
@@ -91,6 +92,8 @@ test('cambiar un campo NO convierte una plantilla en otra: el tipo no muta', () 
   if (!cambiada.ok) throw new Error('inesperado');
   assert.equal(cambiada.valor.tipo, 'EQUITY');
   assert.equal(cambiada.valor.version, '1.1.0');
+  assert.equal(cambiada.valor.emitida, false);
+  assert.equal(cambiada.valor.revisionDe, '1.0.0');
   assert.ok(mismoDerecho(emitida.valor, cambiada.valor));
 
   // Intentar cambiar el tipo se rechaza con codigo.

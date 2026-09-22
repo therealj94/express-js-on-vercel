@@ -11,6 +11,9 @@ interface ISFSPAssetRegistry {
     function decimalsOf(bytes32 assetId) external view returns (bool known, uint8 value);
     function jurisdictionOf(bytes32 assetId) external view returns (bytes32);
     function policyVersionOf(bytes32 assetId) external view returns (uint32);
+    /// @dev H04 · exclusión técnica PERMANENTE del activo, declarada e irreversible.
+    ///      No es un eje del ciclo de vida: un eje puede volver a cambiar.
+    function isPermanentlyExcluded(bytes32 assetId) external view returns (bool);
 }
 
 interface ISFSPIdentityAdapter {
@@ -27,6 +30,17 @@ interface ISFSPEligibilityEngine {
         external
         view
         returns (uint8 result, bytes32 reasonCode, uint32 policyVersion);
+
+    /// @dev H06 · separa el MONTO del CONTEXTO DE AUTORIZACIÓN. En `evaluate` los
+    ///      dos viajaban en la misma palabra `bytes32(amount)`, así que dos
+    ///      operaciones distintas del mismo monto compartían autorización.
+    function evaluateOperation(
+        bytes32 subject,
+        bytes32 assetId,
+        bytes32 action,
+        uint256 amount,
+        bytes32 authorizationDigest
+    ) external view returns (uint8 result, bytes32 reasonCode, uint32 policyVersion);
 }
 
 interface ISFSPGovernanceController {
@@ -36,6 +50,10 @@ interface ISFSPGovernanceController {
     function isSigner(address account) external view returns (bool);
     function isActionApproved(bytes32 operationId) external view returns (bool);
     function consumeApprovedAction(bytes32 operationId) external returns (bool);
+    /// @dev H01/H06 · aprobación ligada al contenido: lo aprobado es el digest
+    ///      del §12.1, no un identificador elegido por el llamador.
+    function isAuthorizationApproved(bytes32 digest) external view returns (bool);
+    function consumeAuthorization(bytes32 digest) external;
 }
 
 interface ISFSPRegulatedAsset {

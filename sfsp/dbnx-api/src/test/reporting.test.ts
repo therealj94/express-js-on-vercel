@@ -10,6 +10,8 @@ import {
 
 const plantilla: PlantillaReporte = {
   templateId: 'tpl-trimestral-sintetica',
+  obligationId: 'obl_00000000000000000000000000000001',
+  periodo: '2029-Q4',
   frecuencia: 'TRIMESTRAL',
   deadlineUTC: '2030-01-31T00:00:00Z',
   responsableActorId: 'act_finanzas',
@@ -30,7 +32,13 @@ test('entrega dentro de plazo da CURRENT', () => {
   const r = evaluar({
     plantilla,
     entregas: [
-      { templateId: plantilla.templateId, entregadoEnUTC: '2030-01-20T00:00:00Z', reportHash: '0xTEST_H' },
+      {
+        templateId: plantilla.templateId,
+        obligationId: plantilla.obligationId,
+        periodo: plantilla.periodo,
+        entregadoEnUTC: '2030-01-20T00:00:00Z',
+        reportHash: '0xTEST_H',
+      },
     ],
     ahoraUTC: '2030-01-25T00:00:00Z',
   });
@@ -75,7 +83,13 @@ test('la restriccion de mercado viene de fuera y no la calcula este modulo', () 
   const alDiaSuspendido = evaluar({
     plantilla,
     entregas: [
-      { templateId: plantilla.templateId, entregadoEnUTC: '2030-01-20T00:00:00Z', reportHash: '0xTEST_H' },
+      {
+        templateId: plantilla.templateId,
+        obligationId: plantilla.obligationId,
+        periodo: plantilla.periodo,
+        entregadoEnUTC: '2030-01-20T00:00:00Z',
+        reportHash: '0xTEST_H',
+      },
     ],
     ahoraUTC: '2030-01-25T00:00:00Z',
     restriccionMercadoVigente: 'SUSPENSION',

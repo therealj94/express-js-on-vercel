@@ -42,6 +42,14 @@ export interface PlantillaDerechos {
   readonly emitida: boolean;
   /** Parametros requeridos que siguen sin definir. */
   readonly parametrosPendientes: readonly string[];
+  /**
+   * Version de la que esta plantilla es revision, o `null` si es originaria.
+   * POR QUE existe (H23): una plantilla emitida NO se reparametriza en el sitio.
+   * Reparametrizar sobre una emitida produce una REVISION nueva, en estado
+   * pendiente, que deja constancia de cual emision la origino; la emision
+   * vigente sigue siendo la anterior hasta que alguien emita la revision.
+   */
+  readonly revisionDe: string | null;
 }
 
 /**
@@ -91,6 +99,7 @@ export function crearPlantilla(
     parametros: Object.freeze(mapa),
     emitida: false,
     parametrosPendientes: pendientes,
+    revisionDe: null,
   });
 }
 
@@ -142,6 +151,34 @@ export function reparametrizar(
   const pendientes = PARAMETROS_REQUERIDOS[plantilla.tipo].filter(
     (k) => mapa[k] === undefined || mapa[k]!.valor === null || mapa[k]!.valor === '',
   );
+
+  if (plantilla.emitida) {
+    // H23. Antes, esto dejaba `emitida: true` con un requerido en nulo: una
+    // emision vigente cuyos derechos ya no estaban definidos. Dos reglas:
+    //
+    // 1. Un cambio que invalidaria la emision vigente se RECHAZA. No se degrada
+    //    a revision pendiente, porque el llamador pidio algo que no se puede
+    //    hacer y decirle que si a medias es como se pierde un derecho.
+    if (pendientes.length > 0) {
+      return fallo(
+        'DENY_ASSET_STATE',
+        'el cambio dejaria sin definir un parametro requerido de una plantilla ' +
+          'emitida: una emision vigente no se invalida reparametrizando',
+        { pendientes: pendientes.join(', ') },
+      );
+    }
+    // 2. Lo que sale es una REVISION en estado pendiente, no la misma plantilla
+    //    con otros valores. Quien tenga la emitida sigue teniendo la emitida.
+    return ok({
+      ...plantilla,
+      version: nuevaVersion,
+      parametros: Object.freeze(mapa),
+      parametrosPendientes: pendientes,
+      emitida: false,
+      revisionDe: plantilla.version,
+    });
+  }
+
   return ok({
     ...plantilla,
     version: nuevaVersion,
