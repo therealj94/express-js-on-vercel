@@ -51,10 +51,10 @@ test('las decisiones de arquitectura ya adoptadas están afirmadas', () => {
 
 test('las diecinueve decisiones siguen pendientes y cada una dice qué bloquea', () => {
   const archivo = cargarDecisiones(RUTA);
-  assert.equal(archivo.decisiones.length, 20, 'D00 a D19');
+  assert.equal(archivo.decisiones.length, 22, 'D00 a D21');
 
   const sinCerrar = pendientes(archivo);
-  assert.equal(sinCerrar.length, 20, 'hoy no hay ninguna aprobada');
+  assert.equal(sinCerrar.length, 22, 'hoy no hay ninguna aprobada');
 
   for (const d of archivo.decisiones) {
     assert.match(d.id, /^D\d{2}$/);

@@ -79,7 +79,8 @@ export const RESERVADOS = new Set([
   'admin', 'administrador', 'soporte', 'support', 'ayuda', 'help', 'oficial', 'official',
   'ordenglobal', 'orden', 'sfsp', 'veta', 'vetawallet', 'genesis', 'genesisid', 'dbnx',
   'ordenledger', 'ordenmarkets', 'ordenex', 'ordenscan', 'aucorp', 'mytokenpay', 'pulse2chat',
-  'origen', 'auka', 'agk', 'agka', 'ondk', 'ultron', 'aura', 'root', 'system', 'sistema',
+  'origen', 'auka', 'agk', 'agka', 'ondk', 'ultron', 'ultronfp', 'aura', 'aurafp', 'aura_fp',
+  'aura.fp', 'au_ra', 'au.ra', 'root', 'system', 'sistema',
   'seguridad', 'security', 'tesoreria', 'treasury', 'junta', 'banco', 'bank',
 ]);
 

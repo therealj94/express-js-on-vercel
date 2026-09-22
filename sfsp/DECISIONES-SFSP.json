@@ -39,7 +39,9 @@
     { "id": "D16", "tema": "Resolver o sustituir la especificacion OGFP v1.0 referida", "autoridad": "arquitectura / Junta", "estado": "PENDIENTE", "valor": null, "bloquea": ["cierre de G1 si permanecen contradicciones normativas"] },
     { "id": "D17", "tema": "Politica de alias: nombres reservados, disputas, cambio y recuperacion", "autoridad": "producto / legal", "estado": "PENDIENTE", "valor": null, "bloquea": ["activacion publica de aliases"] },
     { "id": "D18", "tema": "Arquitectura final de custodia MANAGED (KMS/HSM/MPC, quorum, backup, rotacion)", "autoridad": "seguridad / Junta", "estado": "PENDIENTE", "valor": null, "bloquea": ["migracion de material criptografico", "nuevas cuentas managed a escala"] },
-    { "id": "D19", "tema": "Politica de recuperacion por activo y perfil, incluidos legacy EOA y forced-transfer", "autoridad": "DBNX / legal / seguridad", "estado": "PENDIENTE", "valor": null, "bloquea": ["prometer recuperacion de fondos", "ejecutar recovery de activos"] }
+    { "id": "D19", "tema": "Politica de recuperacion por activo y perfil, incluidos legacy EOA y forced-transfer", "autoridad": "DBNX / legal / seguridad", "estado": "PENDIENTE", "valor": null, "bloquea": ["prometer recuperacion de fondos", "ejecutar recovery de activos"] },
+    { "id": "D20", "tema": "Nombre AU-RA FP y clearance de marca (sustituye a ULTRON FP)", "autoridad": "asesor de marca", "estado": "PENDIENTE", "valor": null, "bloquea": ["uso publico del nombre AU-RA FP", "renombre de dominio, servicio y APK"], "noBloquea": ["textos internos", "documentacion"] },
+    { "id": "D21", "tema": "Estructura societaria y contratos de servicio de AU-RA FP con cada empresa", "autoridad": "Junta / legal", "estado": "PENDIENTE", "valor": null, "bloquea": ["alta de cualquier empresa como cliente de AU-RA FP", "credenciales de servicio en produccion", "asignar duenos POR_CONFIRMAR"], "noBloquea": ["diseno", "implementacion de referencia", "pruebas con datos sinteticos"] }
   ],
   "parametrosEconomicos": {
     "precioOrigenModo": null,

@@ -17,12 +17,14 @@
 | Rol | Qué hace | Qué NO hace |
 |---|---|---|
 | **Junta** | Aprueba la acción empresarial, los parámetros económicos y el alcance | No reemplaza la revisión técnica, jurídica ni del custodio |
-| **DBNX** | Recibe empresas, valida Genesis ID corporativo, revisa documentos, riesgos y derechos, y emite autorizaciones **dentro de su mandato documentado** | No ejecuta la parte tecnológica |
-| **Orden Global (tecnología)** | Comprueba la autorización y ejecuta | No aprueba monetariamente |
+| **DBNX** | Empresa aparte. Recibe empresas, valida Genesis ID corporativo, revisa documentos, riesgos y derechos, emite autorizaciones **dentro de su mandato documentado**, es la única que escribe pasaportes y publica los datos de cada activo | No ejecuta la parte tecnológica. No admite ni audita activos que ella emita |
+| **AU-RA FP (operador del protocolo)** | Presta los servicios de SFSP a todas las empresas, comprueba la autorización, ejecuta y vigila el cumplimiento (ADR-014) | No aprueba monetariamente. No se audita a sí mismo |
+| **Orden Global** | Dueña de Veta Wallet, de la cadena y de la tesorería. Su Junta aprueba lo que es suyo | No certifica sus propias reservas ni ejecuta sola su propia liberación |
+| **AuCorp** | Dueña de Ordenex y de la plataforma fiat | No decide qué activos son aptos para listarse en su propio mercado |
 | **Custodio o proveedor** | Da fe del hecho externo bajo su responsabilidad | No sustituye evidencia técnica |
 | **Seguridad** | Revoca, rota, preserva evidencia, revisa alcance de incidentes | No aprueba emisiones |
 | **Auditor independiente** | Revisa caminos críticos; **distinto del autor** | No firma aprobaciones operativas |
-| **Asistentes y agentes (Ultron, Opus)** | Preparan análisis y referencias | **No son aprobadores monetarios ni reguladores.** No firman aprobaciones ni habilitan herramientas monetarias |
+| **Asistentes y agentes (la asistente AU-RA y el copiloto de admisión de AU-RA FP, Opus)** | Preparan análisis y referencias | **No son aprobadores monetarios ni reguladores.** No firman aprobaciones ni habilitan herramientas monetarias |
 
 Reglas de separación:
 

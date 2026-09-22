@@ -27,4 +27,9 @@ export * from './maquinas.js';
 export * from './durable/esquema.js';
 export * from './durable/directorioDurable.js';
 
+export * from './operador/ecosistema.js';
+export * from './operador/servicios.js';
+export * from './operador/separacion.js';
+export * from './operador/cumplimiento.js';
+
 export const VERSION_SFSP = 'draft-0.3';

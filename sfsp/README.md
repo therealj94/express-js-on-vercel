@@ -18,6 +18,7 @@ sfsp/
   indexer/      checkpoints, deduplicación y reconciliación de eventos
   dbnx-api/     casos de admisión, autorizaciones y reporting
   privacy/      prototipos y modelo de amenazas · DESACTIVADO por defecto
+  operador/     AU-RA FP: quién opera el protocolo para cada empresa y cómo se vigila · código en sdk/src/operador/
   deploy/       manifiestos por red · sin llaves, sin destinos inventados
   evidence/     plantillas y resultados sanitizados
   runbooks/     operación, incidentes, release y recuperación
