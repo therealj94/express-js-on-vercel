@@ -1,0 +1,72 @@
+{
+  "schemaVersion": "sfsp-deploy-direcciones/draft-0.3",
+  "generadoEn": "2026-09-22",
+  "regla": "PLANTILLA. Ningun despliegue ocurrio. Todos los valores son null y asi permanecen hasta que exista un despliegue real verificado. Esta prohibido escribir una direccion de ejemplo, de otro entorno o inventada: una direccion escrita aqui se tratara como real por las herramientas que lean este archivo.",
+  "comoSeCompleta": [
+    "Una entrada por contrato y por red, creada solo despues de un despliegue efectivo.",
+    "address se copia de la lectura del nodo, nunca de un log de consola ni de un documento.",
+    "bytecodeHash es el hash del runtime bytecode leido de la cadena, no el SHA de la fuente.",
+    "El SHA de la fuente y el hash del bytecode son cosas distintas y ambos son obligatorios.",
+    "eth_getCode distinto de 0x no prueba equivalencia: hay que comparar el runtime bytecode con el de la build, considerando parametros e inmutables.",
+    "Cada entrada exige un evidenceId del registro de evidencia y un releaseId de la compuerta P11."
+  ],
+  "despliegues": [
+    {
+      "contrato": null,
+      "red": {
+        "nombre": null,
+        "chainId": null,
+        "genesisHash": null
+      },
+      "address": null,
+      "bytecodeHash": null,
+      "bytecodeHashEsperadoDeLaBuild": null,
+      "commit": null,
+      "sourceSHA": null,
+      "artifactDigest": null,
+      "compilador": {
+        "nombre": null,
+        "version": null,
+        "evmTarget": null,
+        "optimizador": null,
+        "runsOptimizador": null,
+        "metadataHash": null
+      },
+      "parametrosDeConstruccion": null,
+      "inmutables": null,
+      "desplegadoPor": null,
+      "bloqueDeDespliegue": null,
+      "txHashDespliegue": null,
+      "timestampUTC": null,
+      "roles": null,
+      "poderesAdministrativos": null,
+      "rutaDeActualizacion": null,
+      "verificadoContraLaBuild": null,
+      "revisadoPor": null,
+      "releaseId": null,
+      "evidenceId": null,
+      "estadoVerificado": "NO_VERIFICADO"
+    }
+  ],
+  "contratosPrevistos": [
+    "SFSPAssetRegistry",
+    "SFSPRegulatedAsset",
+    "IssuanceController",
+    "GovernanceController",
+    "IdentityAdapter",
+    "EligibilityEngine",
+    "MigrationRegistry",
+    "FeeController",
+    "SettlementEngine",
+    "CashVault",
+    "ReserveEngine",
+    "CommodityEngine"
+  ],
+  "notaSobreContratosPrevistos": "La lista nombra los componentes del diseno. Ninguno esta desplegado en ninguna red. Aparecer en esta lista no implica que exista, que este compilado ni que este auditado.",
+  "prohibiciones": [
+    "No escribir direcciones reales de contratos legacy en este archivo.",
+    "No escribir direcciones de ejemplo ni de documentacion de terceros.",
+    "No escribir llaves, semillas, endpoints privados ni credenciales de ninguna clase.",
+    "No escribir direcciones de personas ni vinculos entre cuenta y direccion."
+  ]
+}

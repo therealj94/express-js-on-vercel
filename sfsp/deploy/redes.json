@@ -1,0 +1,90 @@
+{
+  "schemaVersion": "sfsp-deploy-redes/draft-0.3",
+  "generadoEn": "2026-09-22",
+  "regla": "Ninguna red de este archivo esta verificada. chainId es el valor DECLARADO en la documentacion de origen. genesisHash y rpc son null a proposito: no se escriben endpoints ni hashes no comprobados. Un despliegue exige estadoVerificado distinto de NO_VERIFICADO, mas D11, D12 y la compuerta P11.",
+  "sinCredenciales": true,
+  "sinEndpointsPrivados": true,
+  "redes": [
+    {
+      "nombre": "principal",
+      "descripcion": "Red declarada como operativa con consenso QBFT.",
+      "chainId": 5550,
+      "genesisHash": null,
+      "rpc": null,
+      "estadoVerificado": "NO_VERIFICADO",
+      "origenDelDato": "DECLARADO en la documentacion de linea base",
+      "usoPermitidoHoy": "ninguno desde este arbol",
+      "comprobarAntesDeUsar": [
+        "version exacta del cliente y si soporta el EVM target compilado",
+        "genesisHash real leido del nodo, no copiado de un documento",
+        "chainId efectivo devuelto por el nodo",
+        "reglas de emision y de gas vigentes, incluida la recompensa por bloque",
+        "censo de validadores efectivamente participantes y sus dependencias compartidas",
+        "si existen opcodes posteriores a la version asumida en compilacion",
+        "quien tiene poderes administrativos sobre los contratos ya desplegados"
+      ],
+      "bloqueadaPor": ["D11", "D12", "P11"]
+    },
+    {
+      "nombre": "pruebas",
+      "descripcion": "Red declarada como entorno de pruebas sobre hardware compartido.",
+      "chainId": 5534,
+      "genesisHash": null,
+      "rpc": null,
+      "estadoVerificado": "NO_VERIFICADO",
+      "origenDelDato": "DECLARADO en la documentacion de linea base",
+      "usoPermitidoHoy": "ninguno desde este arbol",
+      "comprobarAntesDeUsar": [
+        "aislamiento efectivo respecto de la red principal: red, credenciales, almacenamiento y facturacion",
+        "equivalencia del perfil de ejecucion con la red principal, o declaracion de las diferencias",
+        "que no comparta hardware ni cuenta con recursos productivos antes de pruebas de carga o de fallo",
+        "genesisHash y chainId leidos del nodo",
+        "que las llaves usadas sean sinteticas y nuevas"
+      ],
+      "notas": "El hardware compartido declarado impide usarla para pruebas de carga o de fallo hasta acreditar aislamiento. Sin ese aislamiento se usa una devnet desechable.",
+      "bloqueadaPor": ["D12", "P11"]
+    },
+    {
+      "nombre": "congelada",
+      "descripcion": "Red declarada como congelada. Se conserva por continuidad historica y posibles derechos.",
+      "chainId": 8532,
+      "genesisHash": null,
+      "rpc": null,
+      "estadoVerificado": "NO_VERIFICADO",
+      "origenDelDato": "DECLARADO en la documentacion de linea base",
+      "usoPermitidoHoy": "ninguno. No se apaga, no se descarta y no se reutilizan sus firmas.",
+      "comprobarAntesDeUsar": [
+        "si existen derechos vigentes de terceros representados en esa red",
+        "si existen usuarios externos o vias de cobro activas",
+        "si existen puentes o rutas de doble reclamacion abiertas",
+        "que la evidencia historica este preservada antes de cualquier retiro"
+      ],
+      "notas": "No concluir que nadie la usa por falta de acceso. Que este congelada es DECLARADO, no verificado. Una copia historica no cuenta como reserva adicional.",
+      "bloqueadaPor": ["D14"]
+    },
+    {
+      "nombre": "devnet-desechable",
+      "descripcion": "Red efimera provisionada para una unica ejecucion de pruebas, destruida al terminar.",
+      "chainId": null,
+      "genesisHash": null,
+      "rpc": null,
+      "estadoVerificado": "NO_VERIFICADO",
+      "origenDelDato": "propuesta de este plan; no existe ninguna instancia",
+      "usoPermitidoHoy": "es el unico destino admisible para pruebas destructivas, una vez provisionada con D12",
+      "comprobarAntesDeUsar": [
+        "chainId propio distinto del de cualquier red real, elegido al provisionar",
+        "llaves generadas en el acto, nunca reutilizadas",
+        "salida de red denegada hacia produccion, probada primero la negativa y despues la limpieza",
+        "sin datos reales de ninguna clase",
+        "procedimiento de destruccion del recurso al terminar"
+      ],
+      "notas": "chainId es null porque se asigna al provisionar. No se usa el identificador de ninguna red real. Ningun nombre de base ni variable de entorno habilita un bypass hacia produccion.",
+      "bloqueadaPor": ["D12"]
+    }
+  ],
+  "decisionesQueBloqueanTodoDespliegue": {
+    "D11": "repositorios y release source por servicio; sin esto no se escribe ni se despliega sobre una copia dudosa",
+    "D12": "recursos de staging y aislamiento efectivo; sin esto no hay pruebas integradas ni destructivas",
+    "P11": "compuerta obligatoria de cada release, con aprobacion humana de alcance y caducidad"
+  }
+}

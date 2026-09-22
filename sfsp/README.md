@@ -34,16 +34,17 @@ sfsp/
 
 | Capa | Estado | Evidencia |
 |---|---|---|
-| Especificación SFSP-100/110/120/130 | escrita | `spec/` |
-| Especificación SFSP-200…900 | escrita | `spec/` |
-| ADR-001…012 | escritos | `adr/` |
-| SDK de cuenta, alias, binding, custodia, recuperación | implementado | `sdk/`, pruebas T57–T68 |
-| Reconciliación de migración y fórmulas de reserva | implementado | `sdk/`, pruebas |
-| Contratos Solidity | escritos y compilados | `contracts/` |
-| Pruebas de contratos sobre EVM en proceso | ejecutadas | `contracts/test/` |
-| Indexador y API de DBNX | esqueleto con pruebas de lógica pura | `indexer/`, `dbnx-api/` |
-| Privacidad confidencial | **NO implementada** | `privacy/` sólo evaluación |
-| Despliegue en 5534 o 5550 | **NO hecho** | requiere D11/D12 y la compuerta P11 |
+| Especificación SFSP-100 a SFSP-900 | escrita · 13 documentos, 3.418 líneas | `spec/` |
+| ADR-001 a ADR-012 | escritos · 4 aceptados, 8 propuestos a la espera de una decisión | `adr/` |
+| SDK: cuenta, alias, binding, custodia, recuperación, migración, reservas, suministro | implementado | **48 pruebas** · incluye T57–T68 |
+| Contratos Solidity: registro, gobierno, identidad, elegibilidad, activo regulado, emisión, vault, liquidación, migración, comisión | escritos y compilados | **74 pruebas** sobre EVM en proceso |
+| Indexador de Orden Ledger | implementado | **38 pruebas** |
+| API de DBNX: casos, autorizaciones, riesgo, divulgación, plantillas, copiloto | implementado | **62 pruebas** |
+| Runbooks de operación e incidentes | escritos · 13 | `runbooks/` |
+| **Total** | | **222 pruebas en verde, sin red ni credenciales** |
+| Motores de reservas, commodity y oráculos | **NO implementados** | son P8 y dependen de D04 y D05 |
+| Privacidad confidencial | **NO implementada** | `privacy/` contiene evaluación, no producto |
+| Despliegue en 5534 o 5550 | **NO hecho** | requiere D11, D12 y la compuerta P11 |
 | Lectura de la red, de llaves o de cuentas reales | **NO hecha** | no hay accesos en este entorno |
 
 Ningún estado de esta tabla asciende por una afirmación en prosa. Lo que dice

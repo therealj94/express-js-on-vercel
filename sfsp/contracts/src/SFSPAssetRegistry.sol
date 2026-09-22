@@ -1,0 +1,206 @@
+// SPDX-License-Identifier: UNLICENSED
+pragma solidity 0.8.28;
+
+import {SFSPAccessControl} from "./lib/SFSPAccessControl.sol";
+import {SFSPTypes} from "./lib/SFSPTypes.sol";
+
+/// @title Registro de activos SFSP (catálogo + pasaporte del §2.3).
+/// @notice Registrar un activo legacy NO le añade capacidades. Lo único que
+///         cambia al registrarlo es que existe un pasaporte que describe
+///         honestamente lo que el contrato ya hacía.
+contract SFSPAssetRegistry is SFSPAccessControl {
+    // §3 · Eventos emitidos por AssetRegistry.
+    event AssetRegistered(bytes32 indexed assetId, bytes32 indexed issuerId, uint8 implementationProfile);
+    event PolicyUpdated(
+        bytes32 indexed assetId,
+        bytes32 indexed policyKind,
+        bytes32 previousPolicyId,
+        bytes32 newPolicyId,
+        uint32 previousVersion,
+        uint32 newVersion
+    );
+    event DisclosurePublished(bytes32 indexed assetId, bytes32 reportHash, uint64 dueDate, uint8 reportStatus);
+    event RiskChanged(
+        bytes32 indexed assetId,
+        uint8 previousLevel,
+        uint8 newLevel,
+        bytes32 methodologyVersion,
+        address indexed responsible
+    );
+    // FALTA EN CONTRATO-INTERNO: el §3 no lista un evento de cambio de eje.
+    // Se añade porque sin él un indexador no puede reconstruir los cinco ejes.
+    event LifecycleUpdated(bytes32 indexed assetId, uint8 axis, uint8 previousValue, uint8 newValue);
+
+    error AlreadyRegistered(bytes32 assetId);
+    error NotRegistered(bytes32 assetId);
+    error InvalidPassport(bytes32 reason);
+
+    mapping(bytes32 => SFSPTypes.Passport) private _passports;
+    mapping(bytes32 => bool) private _registered;
+    mapping(bytes32 => uint32) private _policyVersion;
+    bytes32[] private _assetIndex;
+
+    constructor(address board) SFSPAccessControl(board) {}
+
+    // ---------------------------------------------------------------- registro
+
+    /// @dev El pasaporte entra completo en una struct para no perder campos por
+    ///      el camino: un campo omitido sería un valor inventado.
+    function registerAsset(SFSPTypes.Passport calldata p) external onlyRole(TECH_OPS) {
+        if (p.assetId == bytes32(0)) revert InvalidPassport(bytes32("ASSET_ID_EMPTY"));
+        if (p.issuerId == bytes32(0)) revert InvalidPassport(bytes32("ISSUER_ID_EMPTY"));
+        if (_registered[p.assetId]) revert AlreadyRegistered(p.assetId);
+
+        // Un legacy registrado que declare imposición de restricciones sería falso:
+        // su transfer() no pasa por SFSP, así que el bypass debe quedar escrito.
+        if (p.implementationProfile == SFSPTypes.ImplementationProfile.LEGACY_REGISTERED) {
+            if (!p.enforcement.directTransferBypass) revert InvalidPassport(bytes32("LEGACY_NEEDS_BYPASS"));
+            if (p.enforcement.transferRestrictions) revert InvalidPassport(bytes32("LEGACY_CANNOT_ENFORCE"));
+        }
+        // El perfil SFSP_ENFORCED sí impone de verdad: declararlo con bypass sería marketing.
+        if (p.implementationProfile == SFSPTypes.ImplementationProfile.SFSP_ENFORCED) {
+            if (p.enforcement.directTransferBypass) revert InvalidPassport(bytes32("ENFORCED_NO_BYPASS"));
+        }
+        // decimals desconocido se conserva como desconocido; nunca se sustituye por 18 (§5).
+        if (!p.decimalsKnown && p.decimals != 0) revert InvalidPassport(bytes32("DECIMALS_INCONSISTENT"));
+
+        _passports[p.assetId] = p;
+        _registered[p.assetId] = true;
+        _policyVersion[p.assetId] = 1;
+        _assetIndex.push(p.assetId);
+
+        emit AssetRegistered(p.assetId, p.issuerId, uint8(p.implementationProfile));
+    }
+
+    // ---------------------------------------------------------------- lecturas
+
+    function isRegistered(bytes32 assetId) external view returns (bool) {
+        return _registered[assetId];
+    }
+
+    function passportOf(bytes32 assetId) external view returns (SFSPTypes.Passport memory) {
+        if (!_registered[assetId]) revert NotRegistered(assetId);
+        return _passports[assetId];
+    }
+
+    function lifecycleOf(bytes32 assetId) external view returns (SFSPTypes.Lifecycle memory) {
+        if (!_registered[assetId]) revert NotRegistered(assetId);
+        return _passports[assetId].status;
+    }
+
+    function enforcementOf(bytes32 assetId) external view returns (SFSPTypes.EnforcementScope memory) {
+        if (!_registered[assetId]) revert NotRegistered(assetId);
+        return _passports[assetId].enforcement;
+    }
+
+    /// @dev Devuelve `known=false` en vez de un 18 por defecto: quien decida con
+    ///      esto debe responder UNKNOWN_SOURCE, no calcular con un número inventado.
+    function decimalsOf(bytes32 assetId) external view returns (bool known, uint8 value) {
+        if (!_registered[assetId]) return (false, 0);
+        SFSPTypes.Passport storage p = _passports[assetId];
+        return (p.decimalsKnown, p.decimalsKnown ? p.decimals : 0);
+    }
+
+    function jurisdictionOf(bytes32 assetId) external view returns (bytes32) {
+        return _passports[assetId].jurisdiction;
+    }
+
+    function policyVersionOf(bytes32 assetId) external view returns (uint32) {
+        return _policyVersion[assetId];
+    }
+
+    function assetCount() external view returns (uint256) {
+        return _assetIndex.length;
+    }
+
+    function assetAt(uint256 i) external view returns (bytes32) {
+        return _assetIndex[i];
+    }
+
+    // ---------------------------------------------------------------- mutación
+
+    /// @dev PolicyUpdated lleva versión anterior y nueva (§3): un indexador debe
+    ///      poder reconstruir qué política regía en cada bloque.
+    function updatePolicy(bytes32 assetId, bytes32 policyKind, bytes32 newPolicyId)
+        external
+        onlyRole(TECH_OPS)
+    {
+        if (!_registered[assetId]) revert NotRegistered(assetId);
+        SFSPTypes.Passport storage p = _passports[assetId];
+        bytes32 previous;
+        if (policyKind == bytes32("TRANSFER")) {
+            previous = p.transferPolicyId;
+            p.transferPolicyId = newPolicyId;
+        } else if (policyKind == bytes32("REDEMPTION")) {
+            previous = p.redemptionPolicyId;
+            p.redemptionPolicyId = newPolicyId;
+        } else if (policyKind == bytes32("LISTING")) {
+            previous = p.listingPolicyId;
+            p.listingPolicyId = newPolicyId;
+        } else {
+            revert InvalidPassport(bytes32("UNKNOWN_POLICY_KIND"));
+        }
+        uint32 prevVersion = _policyVersion[assetId];
+        uint32 newVersion = prevVersion + 1;
+        _policyVersion[assetId] = newVersion;
+        emit PolicyUpdated(assetId, policyKind, previous, newPolicyId, prevVersion, newVersion);
+    }
+
+    /// @dev Cinco ejes independientes: se mueve uno por llamada para que ningún
+    ///      cambio arrastre a otro. DELISTED no puede ocultar ni tocar saldos.
+    function setLifecycleAxis(bytes32 assetId, uint8 axis, uint8 value) external onlyRole(TECH_OPS) {
+        if (!_registered[assetId]) revert NotRegistered(assetId);
+        SFSPTypes.Lifecycle storage s = _passports[assetId].status;
+        uint8 previous;
+        if (axis == 0) {
+            previous = uint8(s.legal);
+            s.legal = SFSPTypes.Legal(value);
+        } else if (axis == 1) {
+            previous = uint8(s.admission);
+            s.admission = SFSPTypes.Admission(value);
+        } else if (axis == 2) {
+            previous = uint8(s.trading);
+            s.trading = SFSPTypes.Trading(value);
+        } else if (axis == 3) {
+            previous = uint8(s.transferability);
+            s.transferability = SFSPTypes.Transferability(value);
+        } else if (axis == 4) {
+            previous = uint8(s.redemption);
+            s.redemption = SFSPTypes.Redemption(value);
+        } else if (axis == 5) {
+            previous = uint8(s.visibility);
+            s.visibility = SFSPTypes.Visibility(value);
+        } else {
+            revert InvalidPassport(bytes32("UNKNOWN_AXIS"));
+        }
+        emit LifecycleUpdated(assetId, axis, previous, value);
+    }
+
+    /// @dev Se publica el hash del informe y su fecha límite, no el informe.
+    function publishDisclosure(bytes32 assetId, bytes32 reportHash, uint64 dueDate, SFSPTypes.ReportStatus status)
+        external
+        onlyRole(TECH_OPS)
+    {
+        if (!_registered[assetId]) revert NotRegistered(assetId);
+        if (reportHash == bytes32(0)) revert InvalidPassport(bytes32("REPORT_HASH_EMPTY"));
+        _passports[assetId].reportStatus = status;
+        emit DisclosurePublished(assetId, reportHash, dueDate, uint8(status));
+    }
+
+    /// @dev El riesgo sin metodología firmada no es un nivel: vuelve a SIN_EVALUAR.
+    function setRisk(bytes32 assetId, SFSPTypes.RiskLevel level, bytes32 methodologyVersion)
+        external
+        onlyRole(AUDITOR)
+    {
+        if (!_registered[assetId]) revert NotRegistered(assetId);
+        if (level != SFSPTypes.RiskLevel.SIN_EVALUAR && methodologyVersion == bytes32(0)) {
+            revert InvalidPassport(bytes32("METHODOLOGY_REQUIRED"));
+        }
+        SFSPTypes.RiskStatus storage r = _passports[assetId].risk;
+        uint8 previous = uint8(r.level);
+        r.level = level;
+        r.methodologyVersion = methodologyVersion;
+        r.evaluatedAt = uint64(block.timestamp);
+        emit RiskChanged(assetId, previous, uint8(level), methodologyVersion, msg.sender);
+    }
+}
