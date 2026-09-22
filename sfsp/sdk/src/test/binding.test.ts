@@ -15,6 +15,10 @@ const alta = () => ({
   genesisSubjectRef: nuevaReferenciaDeSujeto(),
   custodyProfile: 'MANAGED' as const,
   policyVersion: 'prueba',
+  /* Estas pruebas son sobre rutas, y una cuenta que no opera no tiene rutas
+     que probar. El alta nace ACTIVE aquí a propósito y de forma explícita; el
+     valor por omisión, PENDING, lo ejercita `maquinas.test.ts`. */
+  status: 'ACTIVE' as const,
 });
 
 test('T62 · cambiar de ruta no cambia el número de cuenta', () => {

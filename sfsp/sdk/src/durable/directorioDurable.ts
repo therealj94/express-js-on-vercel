@@ -32,6 +32,7 @@ import type {
   CustodyProfile,
   BindingPurpose,
   BindingStatus,
+  AccountStatus,
 } from '../tipos.js';
 
 /* Mismo techo que el directorio en memoria, con otro nombre para que los dos
@@ -63,6 +64,8 @@ export interface DatosDeAltaDurable {
   createdAt?: string;
   refCuentaOrigen?: string;
   censoId?: string;
+  /** Igual que en el directorio en memoria: por omisión `PENDING`. */
+  status?: Extract<AccountStatus, 'PENDING' | 'ACTIVE'>;
 }
 
 export class DirectorioDurable {
@@ -136,7 +139,7 @@ export class DirectorioDurable {
       const cuenta: SFSPAccount = {
         accountId: nuevoId('acc'),
         accountNumber: numero,
-        status: 'ACTIVE',
+        status: datos.status ?? 'PENDING',
         createdAt: cuando,
         genesisSubjectRef: datos.genesisSubjectRef,
         custodyProfile: datos.custodyProfile,

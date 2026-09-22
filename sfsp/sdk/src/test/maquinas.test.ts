@@ -185,37 +185,73 @@ test('C09 · los estados de binding que el directorio produce son transiciones d
   assert.equal(d.binding(b.bindingId)?.status, 'REVOKED');
 });
 
-/* -------------------------------------------- diferencias reales, declaradas */
+/* ------------------------------ las dos divergencias que la conformidad halló */
 
-test('C09 · DIFERENCIA DECLARADA: el directorio da de alta la cuenta en ACTIVE, no en PENDING', () => {
-  /* SFSP-130 §5.3 declara `PENDING` como el estado de una cuenta que existe en
-     el directorio y todavía no opera, y la máquina arranca ahí. `crearCuenta`
-     salta directamente a `ACTIVE`, es decir, da por completada un alta que
-     nadie aprobó.
-     No se corrige aquí porque `directorio.ts` está fuera del alcance de este
-     cambio. Se afirma el comportamiento de hoy para que arreglarlo rompa esta
-     prueba y obligue a venir a borrarla. */
+/* La conformidad spec-código encontró dos diferencias reales en `directorio.ts`
+   y las dejó afirmadas como estaban, para que arreglarlas rompiera la prueba.
+   Se arreglaron. Esto es lo que quedó. */
+
+test('C09 · la cuenta nace PENDING, y PENDING no resuelve', () => {
+  /* Era el defecto: el alta saltaba a ACTIVE, es decir, daba por completada un
+     alta que nadie aprobó. Que no resuelva es la mitad que importa: el estado
+     no es una etiqueta, le cierra la puerta al dinero. */
   const d = new DirectorioDeCuentas();
   const cuenta = d.crearCuenta(alta());
-  assert.equal(cuenta.status, 'ACTIVE');
-  assert.ok(
-    transicionDeCuentaPermitida('PENDING', 'ACTIVE'),
-    'cuando el alta empiece en PENDING, la tabla ya admite el paso',
+  assert.equal(cuenta.status, 'PENDING');
+
+  const b = d.crearBinding(cuenta.accountId, 5550, DIR_A, 'PAYMENTS', 'MANAGED');
+  d.cambiarEstadoBinding(b.bindingId, 'ACTIVE', 'operador', 'alta');
+  d.cambiarEstadoBinding(b.bindingId, 'PRIMARY', 'operador', 'principal');
+  assert.throws(
+    () => d.resolver(cuenta.accountNumber, 5550, 'PAYMENTS'),
+    /activa|ACTIVE/i,
+    'una cuenta que todavía no opera no puede recibir un pago',
   );
 });
 
-test('C09 · DIFERENCIA DECLARADA: el directorio no expone ninguna forma de cambiar el estado de una cuenta', () => {
-  /* La máquina de la cuenta está declarada y comprobada contra la
-     especificación, pero hoy ningún camino del SDK la recorre: no hay un
-     `cambiarEstadoCuenta`. Las transiciones de §5.3 son, en el código, una
-     promesa sin implementación. Se afirma para que no pase por conformidad
-     completa lo que es una tabla sin uso. */
+test('C09 · el alta nace ACTIVE sólo cuando se pide, y nunca en los otros dos estados', () => {
   const d = new DirectorioDeCuentas();
-  const metodos = Object.getOwnPropertyNames(DirectorioDeCuentas.prototype);
-  assert.equal(
-    metodos.some((m) => /estadoCuenta|suspenderCuenta|cerrarCuenta/i.test(m)),
-    false,
+  assert.equal(d.crearCuenta({ ...alta(), status: 'ACTIVE' }).status, 'ACTIVE');
+  /* SUSPENDED y CLOSED no son estados de nacimiento: se llega a ellos por una
+     transición con actor y motivo. El tipo ya lo impide; esto lo comprueba
+     también en tiempo de ejecución, porque el tipo no viaja por la red. */
+  assert.throws(
+    () => d.crearCuenta({ ...alta(), status: 'CLOSED' as 'ACTIVE' }),
+    /no puede nacer/,
   );
-  const cuenta = d.crearCuenta(alta());
-  assert.equal(d.cuentaPorId(cuenta.accountId)?.status, 'ACTIVE');
+});
+
+test('C09 · cambiarEstadoCuenta recorre la tabla de §5.3, y CLOSED no tiene vuelta', () => {
+  const d = new DirectorioDeCuentas();
+  const c = d.crearCuenta(alta());
+
+  assert.equal(d.cambiarEstadoCuenta(c.accountId, 'ACTIVE', 'operador', 'alta aprobada').status, 'ACTIVE');
+  assert.equal(d.cambiarEstadoCuenta(c.accountId, 'SUSPENDED', 'cumplimiento', 'revisión').status, 'SUSPENDED');
+  assert.throws(
+    () => d.cambiarEstadoCuenta(c.accountId, 'PENDING', 'operador', 'volver atrás'),
+    /no puede pasar de SUSPENDED a PENDING/,
+  );
+  d.cambiarEstadoCuenta(c.accountId, 'CLOSED', 'titular', 'cierre a petición');
+  for (const destino of ['PENDING', 'ACTIVE', 'SUSPENDED'] as const) {
+    assert.throws(
+      () => d.cambiarEstadoCuenta(c.accountId, destino, 'operador', 'reabrir'),
+      /no puede pasar de CLOSED/,
+      'una cuenta cerrada que se reabre hace resolver un número que alguien dio por muerto',
+    );
+  }
+});
+
+test('C09 · un cambio de estado sin actor o sin motivo no se acepta', () => {
+  const d = new DirectorioDeCuentas();
+  const c = d.crearCuenta(alta());
+  assert.throws(() => d.cambiarEstadoCuenta(c.accountId, 'ACTIVE', '  ', 'motivo'), /actor y motivo/);
+  assert.throws(() => d.cambiarEstadoCuenta(c.accountId, 'ACTIVE', 'operador', ''), /actor y motivo/);
+  assert.equal(d.cuentaPorId(c.accountId)?.status, 'PENDING', 'y no deja el estado a medias');
+});
+
+test('C09 · la migración da de alta ACTIVE, porque esa persona ya opera', () => {
+  /* El único sitio donde nacer activo es correcto, y por eso es explícito. */
+  const d = new DirectorioDeCuentas();
+  const c = d.crearCuenta({ ...alta(), status: 'ACTIVE', refCuentaOrigen: 'legacy_1' });
+  assert.equal(c.status, 'ACTIVE');
 });

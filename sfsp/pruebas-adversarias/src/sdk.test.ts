@@ -44,6 +44,10 @@ const alta = () => ({
   genesisSubjectRef: nuevaReferenciaDeSujeto(),
   custodyProfile: 'MANAGED' as const,
   policyVersion: 'prueba',
+  /* Estas pruebas atacan la revalidación del destino, y para revalidar un
+     destino la cuenta tiene que poder resolver. El alta nace PENDING desde que
+     se cerró la divergencia de C09; aquí se pide ACTIVE a la cara. */
+  status: 'ACTIVE' as const,
 });
 
 /* La vigencia arranca antes del instante que usan las pruebas: si el binding

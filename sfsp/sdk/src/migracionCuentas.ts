@@ -179,6 +179,11 @@ export function migrarCuentas(
         policyVersion,
         createdAt: fechaISO,
         refCuentaOrigen: ref,
+        /* Nace ACTIVE, y es el único sitio del sistema donde eso es correcto:
+           esta persona YA tiene saldo y una billetera que funciona. Darla de
+           alta en PENDING le cortaría los cobros en mitad del traslado, que es
+           exactamente lo que la migración promete que no va a pasar. */
+        status: 'ACTIVE',
       });
 
       const clave = claveDeIndice(nueva.accountNumber);

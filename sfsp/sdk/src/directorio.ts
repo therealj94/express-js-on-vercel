@@ -44,7 +44,9 @@ import type {
   CustodyProfile,
   BindingPurpose,
   BindingStatus,
+  AccountStatus,
 } from './tipos.js';
+import { transicionDeCuentaPermitida, transicionDeAliasPermitida } from './maquinas.js';
 
 export const MAX_REINTENTOS_NUMERO = 8;
 
@@ -127,6 +129,21 @@ export interface DatosDeAlta {
   createdAt?: string;
   /** Si viene, la cuenta queda ligada de forma durable a esa cuenta de origen. */
   refCuentaOrigen?: string;
+  /**
+   * Estado con el que nace la cuenta. Por omisión `PENDING`, que es lo que
+   * declara SFSP-130 §5.3: la cuenta existe en el directorio y todavía no
+   * opera, porque `resolver` exige `ACTIVE`.
+   *
+   * `ACTIVE` sólo es legítimo cuando quien da el alta ya sabe que la persona
+   * opera: la migración registra a alguien que YA tiene saldo y una billetera
+   * funcionando, y dejarlo en `PENDING` le cortaría los cobros en mitad del
+   * traslado. Fuera de ese caso, un alta que nace activa es un alta que nadie
+   * aprobó.
+   *
+   * Los otros dos estados no son estados de nacimiento: a `SUSPENDED` y a
+   * `CLOSED` se llega por una transición con actor y motivo, nunca de origen.
+   */
+  status?: Extract<AccountStatus, 'PENDING' | 'ACTIVE'>;
 }
 
 export class DirectorioDeCuentas {
@@ -146,11 +163,16 @@ export class DirectorioDeCuentas {
       );
     }
 
+    const nacimiento = datos.status ?? 'PENDING';
+    if (nacimiento !== 'PENDING' && nacimiento !== 'ACTIVE') {
+      throw new ErrorSFSP('DENY_POLICY', `una cuenta no puede nacer en ${nacimiento}`);
+    }
+
     const accountNumber = this.reservarNumeroLibre();
     const cuenta: SFSPAccount = {
       accountId: nuevoId('acc'),
       accountNumber,
-      status: 'ACTIVE',
+      status: nacimiento,
       createdAt: datos.createdAt ?? new Date().toISOString(),
       genesisSubjectRef: datos.genesisSubjectRef,
       custodyProfile: datos.custodyProfile,
@@ -173,6 +195,36 @@ export class DirectorioDeCuentas {
       return candidato;
     }
     throw new ErrorSFSP('UNKNOWN_SOURCE', 'no se consiguió un número libre tras varios intentos');
+  }
+
+  /**
+   * Mueve la cuenta por la máquina de SFSP-130 §5.3. Es el único camino: el
+   * estado no se escribe a mano en ninguna parte, para que la tabla de
+   * `maquinas.ts` sea la que manda y no una promesa sin uso.
+   *
+   * `CLOSED` no tiene salidas. Una cuenta cerrada que pudiera reabrirse haría
+   * que el número volviera a resolver después de que alguien lo diera por
+   * muerto, que es justo lo que la tabla impide.
+   */
+  cambiarEstadoCuenta(
+    accountId: string,
+    hacia: AccountStatus,
+    actor: string,
+    motivo: string,
+  ): Readonly<SFSPAccount> {
+    const cuenta = this.cuentaViva(accountId);
+    if (!cuenta) throw new ErrorSFSP('DENY_POLICY', 'la cuenta no existe');
+    if (!actor.trim() || !motivo.trim()) {
+      throw new ErrorSFSP('DENY_AUTHORIZATION', 'un cambio de estado exige actor y motivo');
+    }
+    if (!transicionDeCuentaPermitida(cuenta.status, hacia)) {
+      throw new ErrorSFSP(
+        'DENY_ASSET_STATE',
+        `la cuenta no puede pasar de ${cuenta.status} a ${hacia}`,
+      );
+    }
+    cuenta.status = hacia;
+    return afuera(cuenta);
   }
 
   private cuentaViva(accountId: string): SFSPAccount | null {
@@ -275,6 +327,12 @@ export class DirectorioDeCuentas {
     const nuevo = this.registrarAlias(accountId, aliasNuevo, cuandoISO);
     const cuando = cuandoISO ?? new Date().toISOString();
     for (const viejo of vivos) {
+      if (!transicionDeAliasPermitida(viejo.status, 'RELEASED')) {
+        throw new ErrorSFSP(
+          'DENY_ASSET_STATE',
+          `el alias no puede pasar de ${viejo.status} a RELEASED`,
+        );
+      }
       viejo.status = 'RELEASED';
       viejo.releasedAt = cuando;
       if (this.estado.aliasPorEsqueleto.get(viejo.skeleton) === viejo.normalized) {
