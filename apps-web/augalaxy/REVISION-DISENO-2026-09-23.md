@@ -27,13 +27,13 @@ La revisé como la ve la gente: la wallet real servida en local, con la galaxia 
 | D2 | **Nombres en cuatro estilos:** «MINAS», «Genesis ID», «PULSE2CHAT», «Ordenex». Sin sistema tipográfico. | ✅ Una sola voz: mayúsculas espaciadas y el núcleo en oro |
 | D3 | **MINAS y DBNX se veían como mundos disponibles.** El Plan Maestro, regla 6, dice que no se anuncia como disponible lo que no está. | ✅ Llevan la marca «PRONTO» |
 | D4 | **Escritorio:** el contenido quedaba pegado al menú, con 300 px de foto vacía a la derecha. | ✅ Centrado en el espacio útil (`03-billetera-escritorio.jpg`) |
-| D5 | **Planetas de la NASA.** Dos Tierras (PULSE2CHAT y MyTokenPay), tres Lunas y Saturno para la billetera. Parece el sistema solar, no Orden Global: nada es oro y negro, nada dice «marca». | ❌ **Pendiente.** Es la mejora grande (sección 2). |
-| D6 | **Los planetas no dicen nada.** Son iguales tengas 3 mensajes sin leer o ninguno, saldo o no. Es decoración, no un Inicio. | ❌ Pendiente, es decisión de producto (sección 2) |
-| D7 | **Genesis ID muestra dos tarjetas de identidad** con los mismos datos, una debajo de la otra. | ❌ Pendiente: dejar una |
-| D8 | **MyTokenPay y Remesas se ven apagados:** gris sobre gris, parecen deshabilitados aunque no lo estén. | ❌ Pendiente |
-| D9 | **El chat abre con otra marca:** splash azul de PULSE2CHAT sobre azul marino, que rompe el oro y negro de todo lo demás. | ❌ Pendiente |
+| D5 | **Planetas de la NASA.** Dos Tierras (PULSE2CHAT y MyTokenPay), tres Lunas y Saturno para la billetera. Parece el sistema solar, no Orden Global: nada es oro y negro, nada dice «marca». | ✅ Segunda ronda: nueve mundos de la marca (sección 5) |
+| D6 | **Los planetas no dicen nada.** Son iguales tengas 3 mensajes sin leer o ninguno, saldo o no. Es decoración, no un Inicio. | ✅ Segunda ronda: contadores y candados, nunca montos |
+| D7 | **Genesis ID muestra dos tarjetas de identidad** con los mismos datos, una debajo de la otra. | ✅ Queda una sola credencial |
+| D8 | **MyTokenPay y Remesas se ven apagados:** gris sobre gris, parecen deshabilitados aunque no lo estén. | ✅ No era diseño: la pantalla se redibujaba en bucle. Corregido |
+| D9 | **El chat abre con otra marca:** splash azul de PULSE2CHAT sobre azul marino, que rompe el oro y negro de todo lo demás. | ↩️ Retirada: es su manual de marca |
 | D10 | **AuCorp y Ordenex se abren en un marco vacío** (ícono de página rota). Desde aquí no se puede saber si es la red de este entorno o si esas webs prohíben abrirse dentro de otra. | ⚠️ Revisar en el dominio real |
-| D11 | **El login ofrece «Entrar con mi frase semilla o llave privada»,** y el pie de la marca dice «Nunca te pedimos… doce palabras». Para alguien que llega, suena a contradicción. | ⚠️ Decisión: renombrar a «Importar una billetera existente» y separarlo del login |
+| D11 | **El login ofrece «Entrar con mi frase semilla o llave privada»,** y el pie de la marca dice «Nunca te pedimos… doce palabras». Para alguien que llega, suena a contradicción. | ✅ Ahora dice «Ya tengo una billetera: importarla» |
 | D12 | **Deuda de CSS:** `.world-label` está definido **seis veces**, cada capa pisando la anterior. Por eso cada arreglo rompía otra cosa. | ❌ Pendiente: una sola hoja limpia |
 
 ---
@@ -84,7 +84,7 @@ Un **Inicio que sea de Orden Global y que diga algo.**
 
 - **Nada se publicó en producción.** Hay que seguir la regla «producción = repositorio»: correr `comparar-publicado.py` antes de subir.
 - **No se probó con GPU real ni en un teléfono físico.** Este entorno dibuja por software.
-- **Las mejoras D5 a D12 quedan propuestas.** D5 (mundos de marca) y D6 (estados) son decisiones de diseño y de producto que conviene ver primero en maqueta.
+- **Siguen pendientes D10** (marcos de AuCorp y Ordenex, que hay que revisar en el dominio real) **y D12** (las capas de CSS de `.world-label`).
 
 ---
 
