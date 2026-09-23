@@ -195,7 +195,7 @@ Mismo prompt. Cambios:
 
 | Archivo | Qué es |
 |---------|--------|
-| `ORIGEN-trailer-9x16.mp4` | Tráiler terminado: 30 s, 1080×1920, 30 fps, H.264 a 9 Mbps con audio AAC (33 MB, listo para redes). Todo generado por código: shaders WebGL, tipografía y audio sintetizado. No usa material de terceros. El máster de alta calidad (CRF 18, 66 MB) no se sube al repositorio; se genera con `render/`. |
+| `ORIGEN-trailer-9x16.mp4` | Tráiler terminado: 30 s, 1080×1920, 30 fps, H.264 a 7 Mbps con audio AAC (unos 26 MB, listo para redes y WhatsApp). Todo generado por código: shaders WebGL, tipografía y audio sintetizado. No usa material de terceros. El máster de alta calidad (CRF 18, 66 MB) no se sube al repositorio; se genera con `render/`. |
 | `PROMPT-MAESTRO.md` | Este documento. |
 | `PROMPTS-REFERENCIAS.md` | Prompts para generar las imágenes de referencia en Midjourney, Imagen o Flux. |
 | `referencias/` | Cuadros del tráiler exportados, para usar como imagen de referencia o primer cuadro. |
