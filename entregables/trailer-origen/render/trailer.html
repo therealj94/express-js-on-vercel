@@ -1,0 +1,515 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>ORIGEN — tráiler</title>
+<style>
+@font-face{font-family:Fraunces;src:url(fraunces-latin-400-normal.woff2) format('woff2');font-weight:400;font-style:normal}
+@font-face{font-family:Fraunces;src:url(fraunces-latin-600-normal.woff2) format('woff2');font-weight:600;font-style:normal}
+@font-face{font-family:Fraunces;src:url(fraunces-latin-400-italic.woff2) format('woff2');font-weight:400;font-style:italic}
+@font-face{font-family:Inter;src:url(inter-latin-400-normal.woff2) format('woff2');font-weight:400}
+@font-face{font-family:Inter;src:url(inter-latin-500-normal.woff2) format('woff2');font-weight:500}
+@font-face{font-family:Inter;src:url(inter-latin-600-normal.woff2) format('woff2');font-weight:600}
+html,body{margin:0;background:#000}
+canvas{display:block}
+#gl{display:none}
+</style>
+</head>
+<body>
+<canvas id="gl"></canvas>
+<canvas id="out"></canvas>
+<script>
+// ============================================================
+// ORIGEN · tráiler 9:16 · 1080x1920 · 30 fps · 30 s
+// Todo se dibuja con renderFrame(t): determinista, cuadro a cuadro.
+// ============================================================
+const W = 1080, H = 1920, DUR = 30;
+const GLS = 0.75;                       // el shader corre a 810x1440 y se escala
+const gw = Math.round(W*GLS), gh = Math.round(H*GLS);
+
+const out = document.getElementById('out');
+out.width = W; out.height = H;
+const ctx = out.getContext('2d');
+
+const glc = document.getElementById('gl');
+glc.width = gw; glc.height = gh;
+const gl = glc.getContext('webgl2', {preserveDrawingBuffer:true, antialias:false});
+
+const VS = `#version 300 es
+in vec2 a; void main(){ gl_Position = vec4(a,0.,1.); }`;
+
+const FS = `#version 300 es
+precision highp float;
+uniform vec2 uRes;
+uniform float uT, uTopY, uR, uPlanet, uDawn, uFlash, uSeed, uSpeed, uScale;
+uniform int uMat;
+out vec4 o;
+
+float h21(vec2 p){ p=fract(p*vec2(123.34,456.21)); p+=dot(p,p+45.32); return fract(p.x*p.y); }
+vec2 h22(vec2 p){ float n=h21(p); return vec2(n,h21(p+n)); }
+float noise(vec2 p){ vec2 i=floor(p), f=fract(p); vec2 u=f*f*(3.-2.*f);
+  return mix(mix(h21(i),h21(i+vec2(1,0)),u.x), mix(h21(i+vec2(0,1)),h21(i+vec2(1,1)),u.x), u.y); }
+float fbm(vec2 p){ float a=.5,s=0.; mat2 m=mat2(1.6,1.2,-1.2,1.6);
+  for(int i=0;i<5;i++){ s+=a*noise(p); p=m*p; a*=.5; } return s; }
+// x: distancia al centro de la celda, y: distancia al borde, z: id de celda
+vec3 voro(vec2 x){
+  vec2 n=floor(x), f=fract(x), mg=vec2(0), mr=vec2(0); float md=8.;
+  for(int j=-1;j<=1;j++) for(int i=-1;i<=1;i++){
+    vec2 g=vec2(i,j); vec2 r=g+h22(n+g)-f; float d=dot(r,r);
+    if(d<md){ md=d; mr=r; mg=g; } }
+  float me=8.;
+  for(int j=-1;j<=1;j++) for(int i=-1;i<=1;i++){
+    vec2 g=mg+vec2(i,j); vec2 r=g+h22(n+g)-f;
+    if(dot(mr-r,mr-r)>1e-5) me=min(me, dot(.5*(mr+r), normalize(r-mr))); }
+  return vec3(length(mr), me, h21(n+mg));
+}
+
+struct M { vec3 c; float h; float e; float g; };
+
+vec3 aguayoPal(float i){
+  i=mod(i,7.);
+  if(i<1.) return vec3(.86,.08,.42);
+  if(i<2.) return vec3(.97,.45,.05);
+  if(i<3.) return vec3(.98,.80,.12);
+  if(i<4.) return vec3(.06,.52,.28);
+  if(i<5.) return vec3(.10,.16,.55);
+  if(i<6.) return vec3(.78,.06,.10);
+  return vec3(.05,.03,.05);
+}
+vec3 strataPal(float i){
+  i=mod(i,6.);
+  if(i<1.) return vec3(.60,.18,.12);
+  if(i<2.) return vec3(.86,.55,.20);
+  if(i<3.) return vec3(.90,.80,.58);
+  if(i<4.) return vec3(.30,.50,.42);
+  if(i<5.) return vec3(.55,.33,.45);
+  return vec3(.74,.34,.17);
+}
+
+M material(int id, vec2 uv, float t){
+  M m; m.e=0.; m.g=.3;
+  if(id==0){ // oro fundido
+    vec2 q=uv*1.1; float w=fbm(q+vec2(0.,t*.07));
+    float f=fbm(q*1.3+w*2.3+vec2(t*.04,0.));
+    m.h=f;
+    m.c=mix(vec3(.30,.14,.02), vec3(.95,.64,.20), smoothstep(.25,.72,f));
+    m.c=mix(m.c, vec3(1.,.88,.58), smoothstep(.68,.92,f));
+    m.g=1.2;
+  } else if(id==1){ // sal · Uyuni
+    vec3 v=voro(uv*2.6);
+    float ridge=1.-smoothstep(0.,.07,v.y);
+    m.h=ridge*.7+fbm(uv*18.)*.12;
+    m.c=mix(vec3(.74,.77,.86), vec3(.99,.97,.94), ridge*.8+.25*fbm(uv*7.));
+    m.c*= .92+.08*v.z; m.g=.35;
+  } else if(id==2){ // mar Caribe
+    vec2 w=uv*3.+vec2(fbm(uv*1.7+t*.25), fbm(uv*1.7-t*.21))*1.3;
+    vec3 v=voro(w);
+    float l=pow(1.-smoothstep(0.,.16,v.y),2.2);
+    m.c=mix(vec3(0.,.20,.30), vec3(.02,.58,.64), fbm(uv*1.2+t*.05))+l*vec3(.55,1.,.92)*.8;
+    m.h=l*.35; m.g=1.;
+  } else if(id==3){ // estratos · Vinicunca
+    float y=uv.y*2.6+uv.x*.5+fbm(uv*1.1)*1.7;
+    float id2=floor(y); float b=fract(y);
+    m.c=strataPal(id2)*(.78+.35*fbm(uv*9.));
+    m.h=b*.35+fbm(uv*7.)*.45; m.g=.08;
+  } else if(id==4){ // hoja · Amazonía
+    vec2 r=vec2(uv.x, mod(uv.y,1.6)-.8);
+    float mid=abs(r.y-.05*sin(r.x*2.));
+    float side=abs(fract(r.x*1.4+abs(r.y)*1.3)-.5);
+    float vein=smoothstep(.035,0.,mid)+smoothstep(.028,0.,side)*.8*smoothstep(0.,.08,abs(r.y));
+    vec3 v=voro(uv*8.); float micro=1.-smoothstep(0.,.045,v.y);
+    m.c=mix(vec3(.03,.20,.05), vec3(.22,.52,.10), fbm(uv*2.5));
+    m.c=mix(m.c, vec3(.70,.88,.32), clamp(max(vein,micro*.35),0.,1.));
+    m.h=vein*.5+micro*.2; m.g=.6; m.e=vein*.12;
+  } else if(id==5){ // aguayo · Andes
+    float y=uv.y*7.; float id2=floor(y); float fy=fract(y);
+    float band=floor(h21(vec2(id2,3.))*7.);
+    vec3 c=aguayoPal(band);
+    float d=abs(fract(uv.x*2.2)-.5)+abs(fy-.5);
+    float motif=step(.5,h21(vec2(id2,9.)))*(step(d,.34)-step(d,.2));
+    c=mix(c, aguayoPal(band+3.), motif);
+    float weave=.82+.18*sin(uv.x*140.)*sin(uv.y*140.);
+    m.c=c*weave*(.85+.2*fbm(uv*5.)); m.h=weave*.25+motif*.2; m.g=.1;
+  } else if(id==6){ // basalto y lava
+    vec3 v=voro(uv*2.2);
+    float crack=1.-smoothstep(0.,.05,v.y);
+    m.c=vec3(.07,.065,.065)*(.55+.9*fbm(uv*11.));
+    float pulse=.75+.25*sin(t*3.+v.z*6.28);
+    m.e=(crack+exp(-v.y*22.)*.5)*pulse;
+    m.h=smoothstep(0.,.12,v.y)*.6+fbm(uv*9.)*.25; m.g=.5;
+  } else if(id==7){ // piedra escalonada · Mitla
+    vec2 g=floor(uv*9.);
+    float k=mod(g.x+abs(mod(g.y,14.)-7.),7.);
+    float bit=step(k,1.5);
+    vec3 stone=vec3(.74,.63,.48)*(.68+.5*fbm(uv*6.));
+    m.c=mix(stone*.42, stone, bit); m.h=bit*.9+fbm(uv*14.)*.15; m.g=.08;
+  } else { // cacao
+    float f=fbm(uv*1.4+fbm(uv*1.4+vec2(t*.09,0.))*1.9);
+    m.c=mix(vec3(.06,.018,.01), vec3(.36,.12,.05), smoothstep(.3,.72,f));
+    m.c=mix(m.c, vec3(.55,.25,.14), smoothstep(.75,.95,f)*.6);
+    m.h=f; m.g=1.4;
+  }
+  return m;
+}
+
+void main(){
+  float s=uScale;
+  vec2 p=vec2(gl_FragCoord.x, uRes.y-gl_FragCoord.y)/s;   // píxeles del lienzo final
+  vec2 c=vec2(540., uTopY+uR);
+  vec2 q=p-c; float d=length(q); float edge=uR-d;
+  float yh=c.y-sqrt(max(uR*uR-q.x*q.x,0.));
+
+  // cielo
+  vec3 col=mix(vec3(.008,.010,.022), vec3(.028,.030,.052), p.y/1920.);
+  float above=max(-edge,0.);
+  col+=uDawn*vec3(1.,.50,.16)*exp(-above/260.)*.55;
+  col+=uDawn*vec3(1.,.78,.45)*exp(-above/30.)*.65;
+  float st=step(.9975,h21(floor(p/3.)+uSeed*.0))*smoothstep(0.,400.,above)*.5;
+  col+=st*vec3(.9,.9,1.)*(1.-uDawn*.6);
+
+  if(uPlanet>0.001){
+    float dy=max(p.y-yh,0.);
+    float dist=230./(dy+7.);
+    vec2 uv=vec2((p.x-540.)/540.*dist*.85, dist+uT*uSpeed)+vec2(uSeed*3.7,uSeed*1.3);
+    M m=material(uMat, uv, uT);
+    float bump=55.*smoothstep(25.,260.,dy);
+    vec3 n=normalize(vec3(-dFdx(m.h)*bump, dFdy(m.h)*bump, 1.));
+    vec3 L=normalize(vec3(.25,.75,.55));
+    float dif=.32+.8*max(dot(n,L),0.);
+    vec3 Hh=normalize(L+vec3(0.,0.,1.));
+    float sp=pow(max(dot(n,Hh),0.),36.)*m.g*smoothstep(15.,200.,dy);
+    vec3 g=m.c*dif+sp*vec3(1.,.9,.72)+m.e*vec3(1.,.36,.06)*1.6;
+    float fog=exp(-dy/105.);
+    vec3 fogc=mix(vec3(.55,.34,.14), vec3(1.,.74,.38), uDawn);
+    g=mix(g, fogc, fog*.92);
+    g*=mix(1., smoothstep(1.35,.15,dy/800.), .55);
+    float inside=smoothstep(-1.2,1.2,edge);
+    float rim=exp(-abs(edge)/1.6)*1.1+exp(-abs(edge)/9.)*.35;
+    col=mix(col, g, inside*uPlanet);
+    col+=rim*vec3(1.,.84,.55)*uPlanet;
+  }
+  col+=uFlash*vec3(1.,.86,.62)*.45;
+  col=1.-exp(-col*1.25);
+  o=vec4(col,1.);
+}`;
+
+function sh(type, src){ const s=gl.createShader(type); gl.shaderSource(s,src); gl.compileShader(s);
+  if(!gl.getShaderParameter(s,gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(s)); return s; }
+const prog=gl.createProgram();
+gl.attachShader(prog, sh(gl.VERTEX_SHADER,VS)); gl.attachShader(prog, sh(gl.FRAGMENT_SHADER,FS));
+gl.linkProgram(prog); if(!gl.getProgramParameter(prog,gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(prog));
+gl.useProgram(prog);
+const buf=gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER,buf);
+gl.bufferData(gl.ARRAY_BUFFER,new Float32Array([-1,-1,3,-1,-1,3]),gl.STATIC_DRAW);
+const al=gl.getAttribLocation(prog,'a'); gl.enableVertexAttribArray(al); gl.vertexAttribPointer(al,2,gl.FLOAT,false,0,0);
+const U={}; for(const n of ['uRes','uT','uTopY','uR','uPlanet','uDawn','uFlash','uSeed','uSpeed','uScale','uMat']) U[n]=gl.getUniformLocation(prog,n);
+gl.viewport(0,0,gw,gh);
+
+// ---------------- utilidades ----------------
+const clamp=(x,a=0,b=1)=>Math.min(b,Math.max(a,x));
+const lerp=(a,b,x)=>a+(b-a)*x;
+const ss=(a,b,x)=>{ const u=clamp((x-a)/(b-a)); return u*u*(3-2*u); };
+const eOut=x=>1-Math.pow(1-clamp(x),3);
+const eInOut=x=>{ x=clamp(x); return x<.5?4*x*x*x:1-Math.pow(-2*x+2,3)/2; };
+const win=(t,a,b,fi=.35,fo=.35)=>ss(a,a+fi,t)*(1-ss(b-fo,b,t));
+
+const CREMA='#F4EBDD', ORO1='#FFE3A3', ORO2='#E0A43A', ORO3='#9A6414';
+
+// ---------------- línea de tiempo (compartida con el audio) ----------------
+const R_PLANETA=1400;
+const CORTES=[1,2,3,4,5,6,7,8];             // sal, mar, estratos, hoja, aguayo, basalto, piedra, cacao
+const T_CORTES=2.2, PASO=0.525;
+const LUGARES=['SALAR DE UYUNI · BOLIVIA','MAR CARIBE','VINICUNCA · PERÚ','AMAZONÍA',
+  'AGUAYO · LOS ANDES','BASALTO Y FUEGO · CENTROAMÉRICA','GRECAS DE MITLA · OAXACA','CACAO · MESOAMÉRICA'];
+const T_TICKS0=10.9, T_TICKS_DUR=1.3;
+const tickTime=i=>T_TICKS0+T_TICKS_DUR*Math.sqrt(i/54);
+
+function planeta(t){
+  const s={mat:0, topY:1150, planet:1, dawn:.9, flash:0, speed:.12, seed:0};
+  if(t<T_CORTES){
+    s.topY=lerp(2080,1150,eOut(t/T_CORTES)); s.dawn=ss(0,2.2,t)*.95; s.speed=.18;
+    s.planet=ss(0.05,.6,t);
+  } else if(t<6.4){
+    const k=Math.floor((t-T_CORTES)/PASO);
+    s.mat=CORTES[k]; s.seed=k*1.7+.3; s.speed=.42;
+    s.flash=Math.exp(-(t-(T_CORTES+k*PASO))*14)*.7;
+    s.dawn=.85;
+  } else if(t<12.8){
+    s.mat=0; s.speed=.10; s.flash=Math.exp(-(t-6.4)*6)*.9;
+    s.topY=lerp(1150,1185,ss(6.4,12,t));
+    if(t>12){ s.planet=1-ss(12,12.8,t); s.topY=lerp(1185,1500,eInOut((t-12)/.8)); }
+  } else if(t<21){
+    s.planet=0; s.dawn=.12; s.topY=1600;
+  } else if(t<24.5){
+    s.mat=0; s.speed=.06; s.planet=ss(21,21.7,t); s.topY=lerp(1750,1480,eOut((t-21)/1.2)); s.dawn=.75; s.seed=4.2;
+  } else {
+    s.mat=0; s.speed=.05; s.seed=9.1; s.planet=1; s.dawn=1;
+    s.topY=lerp(1950,1760,eOut((t-24.5)/1.6));
+    s.flash=Math.exp(-(t-24.5)*5)*1.1;
+  }
+  return s;
+}
+
+// ---------------- texto ----------------
+function fuente(st, px){
+  if(st==='oro') return `italic 400 ${px}px Fraunces`;
+  if(st==='serifB') return `600 ${px}px Fraunces`;
+  if(st==='sans') return `500 ${px}px Inter`;
+  if(st==='sansR') return `400 ${px}px Inter`;
+  return `400 ${px}px Fraunces`;
+}
+function pintar(st, x, y, w, px){
+  if(st==='oro' || st==='serifB'){
+    const g=ctx.createLinearGradient(0,y-px*.8,0,y+px*.2);
+    g.addColorStop(0,ORO1); g.addColorStop(.55,ORO2); g.addColorStop(1,ORO3);
+    return g;
+  }
+  return CREMA;
+}
+// palabras: [{w, t0, st}] en una línea centrada
+function linea(t, palabras, y, px, salida, opts={}){
+  const ls=opts.ls||0;
+  ctx.save(); ctx.textBaseline='alphabetic'; ctx.textAlign='left';
+  let total=0; const anchos=[];
+  const esp=px*.28;
+  for(const p of palabras){ ctx.font=fuente(p.st||'serif',px); ctx.letterSpacing=ls+'px';
+    const a=ctx.measureText(p.w).width; anchos.push(a); total+=a; }
+  total+=esp*(palabras.length-1);
+  let x=540-total/2;
+  const fo=salida?1-ss(salida,salida+.45,t):1;
+  palabras.forEach((p,i)=>{
+    const a=clamp((t-p.t0)/.55); const e=eOut(a);
+    const al=e*fo;
+    if(al>0.002){
+      ctx.font=fuente(p.st||'serif',px); ctx.letterSpacing=ls+'px';
+      ctx.globalAlpha=al;
+      const bl=(1-e)*16+(1-fo)*10;
+      ctx.filter=bl>.3?`blur(${bl.toFixed(1)}px)`:'none';
+      ctx.fillStyle=pintar(p.st||'serif', x, y, anchos[i], px);
+      ctx.shadowColor='rgba(0,0,0,.55)'; ctx.shadowBlur=30;
+      ctx.fillText(p.w, x, y+(1-e)*22);
+    }
+    x+=anchos[i]+esp;
+  });
+  ctx.restore();
+}
+function rotulo(t, txt, y, px, a, st='sans', ls=.32, color=CREMA){
+  if(a<=0.002) return;
+  ctx.save(); ctx.font=fuente(st,px); ctx.letterSpacing=(px*ls)+'px';
+  ctx.textAlign='center'; ctx.globalAlpha=a; ctx.fillStyle=color;
+  ctx.shadowColor='rgba(0,0,0,.6)'; ctx.shadowBlur=18;
+  ctx.fillText(txt, 540+px*ls/2, y); ctx.restore();
+}
+
+// ---------------- anillo de 55 marcas ----------------
+function marcaPos(cx,cy,r,i,rot){ const a=-Math.PI/2+rot+i*2*Math.PI/55; return [cx+Math.cos(a)*r, cy+Math.sin(a)*r, a]; }
+function anillo(cx,cy,r,o){
+  const {trazo=1, marcas=1, rot=0, brillo=-1, amtBrillo=0, alpha=1, grosor=3}=o;
+  ctx.save(); ctx.globalAlpha=alpha;
+  ctx.shadowColor='rgba(255,196,90,.85)'; ctx.shadowBlur=r*.12;
+  ctx.strokeStyle=ORO2; ctx.lineWidth=grosor;
+  if(trazo>0){ ctx.beginPath(); ctx.arc(cx,cy,r,-Math.PI/2+rot,-Math.PI/2+rot+trazo*2*Math.PI); ctx.stroke(); }
+  for(let i=0;i<55;i++){
+    const vis=clamp(marcas*55-i); if(vis<=0) continue;
+    const [x,y,a]=marcaPos(cx,cy,r,i,rot);
+    const largo=(i%5===0?.16:.09)*r*vis;
+    const hi=(i===brillo)?amtBrillo:0;
+    ctx.strokeStyle=hi>0?`rgba(255,${Math.round(236+19*hi)},${Math.round(190+60*hi)},1)`:ORO1;
+    ctx.lineWidth=(i%5===0?grosor*1.1:grosor*.8)*(1+hi*1.6);
+    ctx.shadowBlur=r*.12*(1+hi*3);
+    ctx.beginPath();
+    ctx.moveTo(x-Math.cos(a)*r*.04, y-Math.sin(a)*r*.04);
+    ctx.lineTo(x-Math.cos(a)*(r*.04+largo+hi*r*.08), y-Math.sin(a)*(r*.04+largo+hi*r*.08));
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+
+// ---------------- mapa de ciudades ----------------
+const CIUDADES=[['Ciudad de México',19.4,-99.1],['Tijuana',32.5,-117.0],['Monterrey',25.7,-100.3],['Guadalajara',20.7,-103.3],
+['Cancún',21.2,-86.85],['La Habana',23.1,-82.4],['San Juan',18.5,-66.1],['Santo Domingo',18.5,-69.9],['Puerto Príncipe',18.6,-72.3],
+['Guatemala',14.6,-90.5],['Tegucigalpa',14.1,-87.2],['San Salvador',13.7,-89.2],['Managua',12.1,-86.3],['San José',9.9,-84.1],
+['Panamá',9.0,-79.5],['Caracas',10.5,-66.9],['Cartagena',10.4,-75.5],['Medellín',6.25,-75.6],['Bogotá',4.7,-74.1],['Quito',-0.2,-78.5],
+['Guayaquil',-2.2,-79.9],['Manaos',-3.1,-60.0],['Belém',-1.45,-48.5],['Fortaleza',-3.7,-38.5],['Recife',-8.05,-34.9],
+['Lima',-12.05,-77.0],['Salvador',-12.97,-38.5],['Cusco',-13.5,-71.97],['Brasilia',-15.8,-47.9],['La Paz',-16.5,-68.15],
+['Santa Cruz',-17.8,-63.2],['Río de Janeiro',-22.9,-43.2],['São Paulo',-23.55,-46.6],['Asunción',-25.3,-57.6],['Córdoba',-31.4,-64.2],
+['Mendoza',-32.9,-68.8],['Santiago',-33.45,-70.65],['Buenos Aires',-34.6,-58.4],['Montevideo',-34.9,-56.2],['Punta Arenas',-53.2,-70.9],['Ushuaia',-54.8,-68.3]];
+const MAPA={x0:70, y0:560, k:11.2, lon0:-118, lat0:33};
+const proy=(lat,lon)=>[MAPA.x0+(lon-MAPA.lon0)*MAPA.k, MAPA.y0+(MAPA.lat0-lat)*MAPA.k];
+const ORDEN=[CIUDADES[0], ...CIUDADES.slice(1).sort((a,b)=>b[1]-a[1])];
+const PUNTOS=ORDEN.map(c=>proy(c[1],c[2]));
+const T_MAPA0=17.6, T_MAPA_DUR=2.6;
+const ciudadT=i=>T_MAPA0+T_MAPA_DUR*i/(ORDEN.length-1);
+const ENLACE=PUNTOS.map((p,i)=>{ if(i===0) return -1; let b=0,bd=1e9;
+  for(let j=0;j<i;j++){ const d=Math.hypot(p[0]-PUNTOS[j][0],p[1]-PUNTOS[j][1]); if(d<bd){bd=d;b=j;} } return b; });
+
+function mapa(t, alpha){
+  if(alpha<=0) return;
+  ctx.save(); ctx.globalAlpha=alpha;
+  // polvo de oro de fondo
+  for(let i=0;i<260;i++){
+    const x=(Math.sin(i*12.9898)*43758.5453%1+1)%1*W, y=(Math.sin(i*78.233)*12543.21%1+1)%1*H;
+    const tw=.25+.25*Math.sin(t*1.7+i);
+    ctx.fillStyle=`rgba(255,210,140,${(tw*.35).toFixed(3)})`; ctx.fillRect(x,y,2,2);
+  }
+  ctx.lineCap='round';
+  PUNTOS.forEach((p,i)=>{
+    const t0=ciudadT(i);
+    if(ENLACE[i]>=0){
+      const q=PUNTOS[ENLACE[i]]; const a=eOut((t-t0+.15)/.45);
+      if(a>0){ ctx.strokeStyle='rgba(224,164,58,.55)'; ctx.lineWidth=1.6; ctx.shadowColor='rgba(255,196,90,.8)'; ctx.shadowBlur=8;
+        ctx.beginPath(); ctx.moveTo(q[0],q[1]); ctx.lineTo(lerp(q[0],p[0],a), lerp(q[1],p[1],a)); ctx.stroke(); }
+    }
+    const a=clamp((t-t0)/.3); if(a<=0) return;
+    const pop=1+Math.exp(-(t-t0)*6)*1.8;
+    ctx.shadowColor='rgba(255,200,110,1)'; ctx.shadowBlur=22;
+    ctx.fillStyle=ORO1; ctx.beginPath(); ctx.arc(p[0],p[1],(i===0?7:4.6)*pop*a,0,7); ctx.fill();
+  });
+  ctx.restore();
+}
+
+// ---------------- grano y viñeta ----------------
+const grano=document.createElement('canvas'); grano.width=grano.height=512;
+(()=>{ const g=grano.getContext('2d'); const im=g.createImageData(512,512); let s=1337;
+  for(let i=0;i<im.data.length;i+=4){ s=(s*1103515245+12345)&0x7fffffff; const v=(s>>16)&255; im.data[i]=im.data[i+1]=im.data[i+2]=v; im.data[i+3]=255; }
+  g.putImageData(im,0,0); })();
+function acabado(t, fundido){
+  ctx.save();
+  ctx.globalCompositeOperation='overlay'; ctx.globalAlpha=.10;
+  const f=Math.floor(t*30); const ox=-((f*197)%512), oy=-((f*331)%512);
+  for(let y=oy;y<H;y+=512) for(let x=ox;x<W;x+=512) ctx.drawImage(grano,x,y);
+  ctx.restore();
+  ctx.save();
+  const v=ctx.createRadialGradient(540,900,300,540,960,1250);
+  v.addColorStop(0,'rgba(0,0,0,0)'); v.addColorStop(1,'rgba(0,0,0,.62)');
+  ctx.fillStyle=v; ctx.fillRect(0,0,W,H);
+  if(fundido>0){ ctx.fillStyle=`rgba(0,0,0,${fundido})`; ctx.fillRect(0,0,W,H); }
+  ctx.restore();
+}
+
+// ---------------- cuadro ----------------
+function renderFrame(t){
+  const s=planeta(t);
+  gl.uniform2f(U.uRes,gw,gh); gl.uniform1f(U.uScale,GLS);
+  gl.uniform1f(U.uT,t); gl.uniform1f(U.uTopY,s.topY); gl.uniform1f(U.uR,R_PLANETA);
+  gl.uniform1f(U.uPlanet,s.planet); gl.uniform1f(U.uDawn,s.dawn); gl.uniform1f(U.uFlash,s.flash);
+  gl.uniform1f(U.uSeed,s.seed); gl.uniform1f(U.uSpeed,s.speed); gl.uniform1i(U.uMat,s.mat);
+  gl.drawArrays(gl.TRIANGLES,0,3);
+
+  ctx.save(); ctx.imageSmoothingQuality='high';
+  ctx.drawImage(glc,0,0,W,H); ctx.restore();
+
+  // 0 – 6.4 · la tierra
+  if(t>2.2 && t<6.4){
+    const k=Math.floor((t-T_CORTES)/PASO), tk=t-(T_CORTES+k*PASO);
+    rotulo(t, LUGARES[k], 1840, 23, ss(0,.12,tk)*(1-ss(PASO-.08,PASO,tk))*.8);
+  }
+  linea(t,[{w:'Una',t0:2.35},{w:'tierra.',t0:2.6}], 930, 92, 5.05);
+  linea(t,[{w:'Mil',t0:3.5},{w:'paisajes.',t0:3.75}], 1045, 92, 5.05);
+  linea(t,[{w:'Un',t0:5.35},{w:'mismo',t0:5.55},{w:'brillo.',t0:5.8,st:'oro'}], 990, 92, 6.2);
+
+  // 6.4 – 12 · el gramo
+  linea(t,[{w:'Un',t0:6.55},{w:'gramo',t0:6.8}], 940, 104, 9.35);
+  linea(t,[{w:'de',t0:7.5,st:'oro'},{w:'oro.',t0:7.75,st:'oro'}], 1060, 104, 9.35);
+  linea(t,[{w:'Dividido',t0:9.75}], 940, 104, 11.9);
+  linea(t,[{w:'en',t0:10.4,st:'oro'},{w:'55.',t0:10.6,st:'oro'}], 1060, 104, 11.9);
+
+  // marcas sobre el horizonte que se vuelven anillo
+  if(t>=T_TICKS0 && t<17.7){
+    const s0=planeta(Math.min(t,11.99)); const cy=s0.topY+R_PLANETA;
+    const morphT=t;
+    const rot=(t-12)*.08;
+    const RC={x:540,y:860,r:300};
+    let cx=RC.x, cyr=RC.y, rr=RC.r, alphaR=1;
+    if(t>17){ const k=eInOut((t-17)/.6); cx=lerp(540,PUNTOS[0][0],k); cyr=lerp(860,PUNTOS[0][1],k); rr=lerp(300,6,k); alphaR=1-ss(17.45,17.65,t); }
+    const hi=ss(13.55,13.8,t)*(1-ss(16.6,17.0,t)*.6);
+    ctx.save(); ctx.globalAlpha=alphaR;
+    for(let i=0;i<55;i++){
+      const ap=clamp((t-tickTime(i))/.12); if(ap<=0) continue;
+      const morph=eInOut((morphT-12.05-Math.abs(i-27)*.012)/.8);
+      const u=i/54, xa=lerp(90,990,u);
+      const ya=cy-Math.sqrt(R_PLANETA*R_PLANETA-(xa-540)**2);
+      const aa=Math.atan2(ya-cy, xa-540);
+      const j=(i-27+55)%55;
+      const [xr,yr,ar]=marcaPos(cx,cyr,rr,j,rot);
+      const x=lerp(xa,xr,morph), y=lerp(ya-10,yr,morph);
+      const a=lerp(aa,ar,morph);
+      const largo=lerp(i%5===0?26:15, (i%5===0?.16:.09)*rr, morph)*ap;
+      const glow=(i===27?hi:0);
+      ctx.strokeStyle=glow>0?'#FFF6DA':ORO1; ctx.lineWidth=(i%5===0?3.4:2.4)*(1+glow*1.5);
+      ctx.shadowColor='rgba(255,196,90,.95)'; ctx.shadowBlur=14+glow*40;
+      ctx.beginPath();
+      ctx.moveTo(x-Math.cos(a)*rr*.04*morph, y-Math.sin(a)*rr*.04*morph);
+      const L=largo+glow*rr*.08;
+      ctx.lineTo(x-Math.cos(a)*(rr*.04*morph+L)-(1-morph)*0, y-Math.sin(a)*(rr*.04*morph+L));
+      ctx.stroke();
+    }
+    ctx.restore();
+    const tr=eInOut((t-13.0)/.6);
+    if(tr>0) anillo(cx,cyr,rr,{trazo:tr,marcas:0,rot,alpha:alphaR,grosor:2.6});
+    // «1 / 55»
+    const a155=win(t,13.8,16.8,.4,.4);
+    if(a155>0){
+      const [x0,y0]=marcaPos(RC.x,RC.y,RC.r,0,rot);
+      rotulo(t,'1 / 55', y0-70, 34, a155, 'sans', .18, ORO1);
+    }
+  }
+  linea(t,[{w:'Eso',t0:14.55},{w:'es',t0:14.75}], 1330, 96, 16.75);
+  linea(t,[{w:'un',t0:15.2,st:'oro'},{w:'gramín.',t0:15.4,st:'oro'}], 1445, 110, 16.75);
+  rotulo(t,'1 ORIGEN = 1 GRAMÍN', 1545, 28, win(t,16.0,16.95,.35,.35)*.9, 'sans', .3);
+
+  // 17 – 21 · Latinoamérica
+  const aM=ss(17.3,17.7,t)*(1-ss(20.7,21.1,t));
+  mapa(t,aM);
+  linea(t,[{w:'De',t0:17.5},{w:'México',t0:17.7}], 330, 96, 20.65);
+  linea(t,[{w:'a',t0:18.9,st:'oro'},{w:'la',t0:19.05,st:'oro'},{w:'Patagonia.',t0:19.25,st:'oro'}], 450, 96, 20.65);
+
+  // 21 – 24.5 · la ecuación
+  const eq=1-ss(24.1,24.45,t);
+  if(t>21 && t<24.5){
+    linea(t,[{w:'1',t0:21.3,st:'serifB'},{w:'ORIGEN',t0:21.45,st:'serifB'}], 720, 128, 24.0, {ls:6});
+    rotulo(t,'=', 830, 74, ss(21.9,22.3,t)*eq, 'serif', 0, CREMA);
+    linea(t,[{w:'1',t0:22.2,st:'oro'},{w:'gramín',t0:22.35,st:'oro'}], 960, 110, 24.0);
+    ctx.save(); const al=ss(22.8,23.3,t)*eq; ctx.globalAlpha=al;
+    ctx.strokeStyle='rgba(224,164,58,.7)'; ctx.lineWidth=1.5;
+    const lw=eOut((t-22.8)/.6)*320; ctx.beginPath(); ctx.moveTo(540-lw,1030); ctx.lineTo(540+lw,1030); ctx.stroke(); ctx.restore();
+    rotulo(t,'precio de 1 g de oro ÷ 55', 1110, 46, ss(23.0,23.4,t)*eq, 'sansR', .02);
+    rotulo(t,'REFERENCIADO AL PRECIO DEL ORO', 1185, 24, ss(23.35,23.75,t)*eq*.75, 'sans', .34);
+  }
+
+  // 24.5 – 30 · marca
+  if(t>=24.5){
+    const rot=(t-24.5)*.05;
+    anillo(540,760,150,{trazo:eInOut((t-24.55)/.8), marcas:eOut((t-24.6)/1.0), rot, brillo:0, amtBrillo:ss(25.4,25.8,t), grosor:3});
+    // ORIGEN letra por letra
+    ctx.save(); ctx.font='600 132px Fraunces'; ctx.letterSpacing='26px'; ctx.textAlign='left';
+    const txt='ORIGEN'; const tw=ctx.measureText(txt).width-26; let x=540-tw/2;
+    for(let i=0;i<txt.length;i++){
+      const a=eOut((t-25.0-i*.08)/.6);
+      const ch=txt[i]; const cw=ctx.measureText(ch).width+26;
+      if(a>0){ ctx.globalAlpha=a; ctx.filter=a<.98?`blur(${((1-a)*14).toFixed(1)}px)`:'none';
+        const g=ctx.createLinearGradient(0,1000,0,1110); g.addColorStop(0,ORO1); g.addColorStop(.55,ORO2); g.addColorStop(1,ORO3);
+        ctx.fillStyle=g; ctx.shadowColor='rgba(255,180,80,.45)'; ctx.shadowBlur=30;
+        ctx.fillText(ch,x,1100+(1-a)*18); }
+      x+=cw;
+    }
+    ctx.restore();
+    linea(t,[{w:'Una',t0:26.0},{w:'moneda',t0:26.15},{w:'para',t0:26.3}], 1215, 54);
+    linea(t,[{w:'toda',t0:26.5,st:'oro'},{w:'Latinoamérica.',t0:26.65,st:'oro'}], 1290, 54);
+    rotulo(t,'EN VETA WALLET', 1450, 26, ss(27.4,27.9,t)*.9, 'sans', .42);
+    rotulo(t,'ORIGEN está referenciado al precio del oro.', 1610, 22, ss(27.9,28.4,t)*.62, 'sansR', .02);
+    rotulo(t,'No está respaldado por oro.', 1645, 22, ss(27.9,28.4,t)*.62, 'sansR', .02);
+  }
+
+  const fundido=Math.max(1-ss(0,.5,t), ss(29.35,30,t));
+  acabado(t, fundido);
+  return out.toDataURL('image/jpeg', .95);
+}
+window.renderFrame=renderFrame;
+window.listo=document.fonts.ready.then(async()=>{
+  await Promise.all(['400 40px Fraunces','600 40px Fraunces','italic 400 40px Fraunces','400 40px Inter','500 40px Inter','600 40px Inter'].map(f=>document.fonts.load(f)));
+  return true;
+});
+</script>
+</body>
+</html>
