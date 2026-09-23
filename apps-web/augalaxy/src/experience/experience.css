@@ -286,3 +286,26 @@ html.og-standalone,html.og-standalone body,html.og-standalone #root{margin:0;wid
 .is-embedded .world-label[data-future="true"] strong{color:#b9c1cf}
 /* La pista sube: abajo la pisaba el saludo de la casa («HOLA, JOSÉ»). */
 .is-embedded .embedded-hint{top:70px;bottom:auto;white-space:nowrap;max-width:none;font-size:12px;letter-spacing:.06em;color:#c9d2df;opacity:.85;background:#050a13b3;padding:6px 14px;border-radius:20px;border:1px solid #e5c48733}
+/* Estados junto al nombre: cuenta en oro, candado, o un punto que late. */
+.world-label .label-cuenta{display:inline-block;min-width:17px;height:17px;margin-left:6px;padding:0 5px;border-radius:9px;background:linear-gradient(135deg,#f3d58f,#c99a45);color:#1a1206;font-size:10px;font-weight:700;line-height:17px;letter-spacing:0;vertical-align:1px;box-shadow:0 0 12px #e7b65a88}
+.world-label .label-candado{display:inline-block;margin-left:6px;color:#f0c46a;font-size:9px;vertical-align:1px;text-shadow:0 0 8px #f0c46a}
+.world-label .label-nuevo{display:inline-block;width:7px;height:7px;margin-left:6px;border-radius:50%;background:#f3d58f;box-shadow:0 0 10px #f3d58f;vertical-align:2px;animation:og-late 1.6s ease-in-out infinite}
+@keyframes og-late{50%{transform:scale(1.5);opacity:.6}}
+@media (prefers-reduced-motion: reduce){.world-label .label-nuevo{animation:none}}
+/* LA CAJA DEL BOTÓN ES LA DEL TEXTO. La frase descriptiva escondida seguía
+   ocupando alto (opacity 0, display block) y la regla de 52 px de alto mínimo
+   agrandaba cada nombre: el botón invisible de «Ordenex» tapaba el nombre
+   «PULSE2CHAT» y tocarlo abría Ordenex. Aquí dentro el botón mide lo que se ve. */
+.is-embedded .world-label,.is-embedded .world-label[data-core="true"],.is-embedded .world-label[data-active="true"]{min-height:0!important;height:auto;padding:3px 6px!important;line-height:16px}
+.is-embedded .world-label .label-said{position:absolute!important;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;margin:0}
+.is-embedded .world-label .label-rule,.is-embedded .world-label .planet-label-index,.is-embedded .world-label small{display:none!important}
+.is-embedded .world-label .label-pronto{display:block;width:max-content;margin:2px auto 0}
+/* El viaje dentro de la wallet: el color del destino llena el cuadro mientras
+   la cámara se acerca, y el nombre aparece grande, como una llegada. */
+.is-embedded .planet-flight .flight-vignette{background:radial-gradient(circle at 50% 46%,transparent 8%,color-mix(in srgb,var(--world-color) 38%,transparent) 42%,#02040af0 88%);opacity:calc(.15 + var(--journey-progress) * .85)}
+.is-embedded .planet-flight .flight-readout{position:absolute;left:0;right:0;top:40%;text-align:center;opacity:calc(var(--journey-progress) * 1.4);transform:translateY(calc((1 - var(--journey-progress)) * 14px))}
+.is-embedded .planet-flight .flight-readout span{font-size:11px;letter-spacing:.3em;color:#e5c487}
+.is-embedded .planet-flight .flight-readout h1{margin:.3em 0 .6em;font-size:30px;font-weight:600;letter-spacing:.04em;color:#fff;text-shadow:0 0 30px var(--world-color)}
+.is-embedded .planet-flight .flight-track{width:140px;height:2px;margin:0 auto;background:#ffffff22;border-radius:2px;overflow:hidden}
+.is-embedded .planet-flight .flight-track i{display:block;height:100%;width:calc(var(--journey-progress) * 100%);background:linear-gradient(90deg,#c99a45,#f3d58f)}
+.is-embedded .planet-flight .skip-intro{position:absolute;left:50%;bottom:190px;transform:translateX(-50%);font-size:12px;opacity:.8}

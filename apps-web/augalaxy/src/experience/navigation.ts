@@ -6,13 +6,17 @@ import {sound} from './sound';
 import {puenteCasa} from './hostBridge';
 export type Stage='gate'|'intro'|'system'|'galaxies'|'transit';
 export interface Journey {id:string;startedAt:number;duration:number;token:number;}
+/** Lo que cada mundo tiene para decir sin abrirlo: solo contadores y marcas,
+    nunca montos ni datos de la cuenta. Lo pone la casa (AUGALAXY.estados). */
+export interface Estado {n?:number;candado?:boolean;nuevo?:boolean;}
 interface ExperienceData {
+ estados:Record<string,Estado>;
  immersive:boolean;stage:Stage;selected:string|null;windowId:string|null;settings:boolean;directory:boolean;
  help:boolean;ready:boolean;unsupported:boolean;fps:number;hovered:string|null;tutorial:boolean;
  journey:Journey|null;introDuration:number;cinema:boolean;rendererChoice:'pro'|'lite'|null;rendererActual:'pro'|'lite';webglAvailable:boolean|null;
 }
 interface ExperienceState extends ExperienceData {set:(v:Partial<ExperienceData>)=>void;}
-export const useExperience=create<ExperienceState>((set)=>({immersive:false,stage:'gate',selected:null,windowId:null,settings:false,directory:false,help:false,ready:false,unsupported:false,fps:60,hovered:null,tutorial:false,journey:null,introDuration:4800,cinema:false,rendererChoice:null,rendererActual:'lite',webglAvailable:null,set}));
+export const useExperience=create<ExperienceState>((set)=>({estados:{},immersive:false,stage:'gate',selected:null,windowId:null,settings:false,directory:false,help:false,ready:false,unsupported:false,fps:60,hovered:null,tutorial:false,journey:null,introDuration:4800,cinema:false,rendererChoice:null,rendererActual:'lite',webglAvailable:null,set}));
 const now=()=>typeof performance!=='undefined'?performance.now():Date.now();
 export const motionReduced=()=>{const p=usePreferences.getState().prefs;return p.motion==='reduced'||(p.motion==='system'&&typeof matchMedia!=='undefined'&&matchMedia('(prefers-reduced-motion: reduce)').matches);};
 /* Lo que la cámara lee mientras corre la historia del origen. Vive aquí, y no

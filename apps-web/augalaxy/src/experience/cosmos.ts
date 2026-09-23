@@ -91,7 +91,8 @@ const embebido=()=>typeof document!=='undefined'&&!!document.querySelector?.('.g
 export function updateLabels(camera:Camera,width:number,height:number){
  const state=useExperience.getState(),mobile=width<700,active=state.stage==='system',selected=!!state.selected;
  navigation.projected.clear();
- for(const w of worlds){const center=locationOf(w),p=center.clone().project(camera);navigation.projected.set(w.id,{x:(p.x*.5+.5)*width,y:(-p.y*.5+.5)*height,r:height*w.radius/(camera.position.distanceTo(center)*.89),visible:p.z>0&&p.z<1});}
+ const sinAjustes=embebido(); // dentro de la wallet Ajustes ya está en su barra: como planeta sobra
+ for(const w of worlds){const center=locationOf(w),p=center.clone().project(camera);navigation.projected.set(w.id,{x:(p.x*.5+.5)*width,y:(-p.y*.5+.5)*height,r:height*w.radius/(camera.position.distanceTo(center)*.89),visible:p.z>0&&p.z<1&&!(sinAjustes&&w.id==='ajustes')});}
  const core=navigation.projected.get('genesis')!,outer=worlds.filter(w=>w.id!=='genesis');
  const occupied:{id:string;x:number;y:number;w:number;h:number}[]=[];
  /* Dentro de la wallet no hay cabecera ni dock nuestros: el margen es el de la
@@ -103,7 +104,7 @@ export function updateLabels(camera:Camera,width:number,height:number){
  const reduced=motionReduced();
  for(const w of ordered){
   const p=navigation.projected.get(w.id)!,node=labelNodes.get(w.id);if(!node)continue;
-  const lw=Math.max(56,worldNameLength(w)*8.6+16),lh=w.future?38:26,gap=4;
+  const lw=Math.max(56,worldNameLength(w)*8.6+16),lh=w.future?40:22,gap=4;
   // Los cuatro sitios pegados al planeta: [x del centro del nombre, y de su borde de arriba]
   const sitios:[number,number][]=[[p.x,p.y+p.r+gap],[p.x,p.y-p.r-lh-gap],[p.x+p.r+gap+lw/2,p.y-lh/2],[p.x-p.r-gap-lw/2,p.y-lh/2]];
   const antes=labelSides.get(w.id);

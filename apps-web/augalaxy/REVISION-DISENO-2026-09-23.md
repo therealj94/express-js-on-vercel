@@ -85,3 +85,31 @@ Un **Inicio que sea de Orden Global y que diga algo.**
 - **Nada se publicó en producción.** Hay que seguir la regla «producción = repositorio»: correr `comparar-publicado.py` antes de subir.
 - **No se probó con GPU real ni en un teléfono físico.** Este entorno dibuja por software.
 - **Las mejoras D5 a D12 quedan propuestas.** D5 (mundos de marca) y D6 (estados) son decisiones de diseño y de producto que conviene ver primero en maqueta.
+
+---
+
+## 5 · Segunda ronda: «10 de 10, funcionando e inmersivo»
+
+José dio libertad de diseño. Esto es lo que se decidió y se hizo.
+
+| Qué | Antes | Ahora |
+|-----|-------|-------|
+| **Mundos** | Texturas de la NASA: dos Tierras, tres Lunas, Saturno | **Nueve mundos de la marca**, pintados por un shader propio (`brandFragment`): billetera de oro con bandas, Genesis ID de obsidiana con retícula que late, PULSE2CHAT como océano de corrientes, MyTokenPay esmeralda con vetas de oro, ORDENSCAN de hielo con franja de lectura, Ordenex de hierro con brasa, AuCorp de bronce con anillos de bóveda, MINAS de roca con oro vivo y DBNX de acero con cuadrícula. Sus líneas brillan solas y se ven también en la cara de noche. |
+| **Estados** | Los planetas no decían nada | La casa manda solo contadores y marcas, nunca montos (`AUGALAXY.estados`): mensajes sin leer junto a PULSE2CHAT, y un candado en los mismos mundos que la wallet cierra sin Genesis ID. El planeta con algo nuevo late. |
+| **Ajustes** | Planeta y además pestaña | Solo pestaña: dentro de la wallet ya no es planeta |
+| **Entrar a un mundo** | Salto seco de la galaxia a la pantalla | Vuelo con el color del destino, «ENTRANDO A · Veta Wallet» y barra de avance |
+| **Tocar un nombre** | La descripción escondida agrandaba cada botón: tocar «PULSE2CHAT» abría Ordenex | Cada botón mide lo que se ve. Prueba nueva `pruebas/galaxia-toques.mjs`: cada nombre abre su mundo, en teléfono y escritorio |
+| **MyTokenPay, Remesas, Tarjeta y Mi comercio** | Si su API no contestaba, la vista se redibujaba varias veces por segundo sin fin: la pantalla se quedaba apagada, a medio aparecer, y el servidor recibía una ráfaga | Un reintento como máximo cada 20 a 30 s. Revisadas **todas** las pantallas: ninguna queda en bucle. |
+| **Genesis ID** | Dos tarjetas con los mismos datos | Una sola credencial cuando está verificada |
+| **Login** | «Entrar con mi frase semilla o llave privada» | «Ya tengo una billetera: importarla», para que no choque con «nunca te pedimos doce palabras» |
+| **Cielo** | Estrellas ruidosas compitiendo con los mundos | Más tenue dentro de la wallet |
+
+**Retiro de la crítica D9:** el azul de PULSE2CHAT **no es un error**. Es su manual de marca («donde dice PULSE2CHAT, manda el azul») y se respeta.
+
+**A revisar, sin tocar:** el lema del chat dice «Cada latido, cifrado de punta a punta», y en el código conviven dos notas que se contradicen: «NO hay cifrado de punta a punta» y «sigue siendo cifrado de punta a punta». Además, el plan maestro (H04) dice que degrada a texto claro sin aparatos. Antes de usar ese lema en campaña hay que confirmar qué es verdad hoy.
+
+**Pruebas:**
+- Motor: 29/29.
+- `galaxia-toques.mjs`: en verde.
+- `inicio-ida-y-vuelta.mjs`: en verde.
+- `aetherion-inicio.mjs` y `galaxia-entrada.mjs` siguen fallando **igual que antes de estos cambios**: prueban el motor y el cielo 2D que se reemplazaron, y hay que reescribirlas para el motor actual.

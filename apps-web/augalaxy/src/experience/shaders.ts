@@ -94,3 +94,82 @@ export const pointFragment=`
 varying vec3 vColor;varying float vAlpha;
 void main(){float d=length(gl_PointCoord-.5)*2.;if(d>1.)discard;float a=exp(-d*d*5.)*(1.-smoothstep(.6,1.,d));gl_FragColor=vec4(vColor,a*vAlpha);}
 `;
+
+/* ── LOS MUNDOS DE ORDEN GLOBAL ───────────────────────────────────────────
+   Antes eran la Tierra, Marte, Júpiter, Saturno y la Luna con otro nombre:
+   dos Tierras, tres Lunas, un sistema solar de libro de escuela. Estos son de
+   la casa: la misma familia —oro, obsidiana, verde veta— y cada uno con un
+   rasgo que dice qué hace. Sus líneas brillan por sí solas, así que también se
+   leen en la cara de noche: eso es lo que los hace sentir vivos.
+     0 wallet  gigante de oro con bandas e hilos
+     1 gid     obsidiana con retícula hexagonal que late (la identidad)
+     2 chat    océano profundo con corrientes de luz (la conversación)
+     3 pay     esmeralda con vetas de oro como circuito (el comercio)
+     4 scan    hielo con una franja de lectura que recorre el mundo (la cadena a la vista)
+     5 oxch    hierro con grietas de brasa (la forja del cambio)
+     6 aucorp  bronce con anillos de bóveda (la casa de cuentas)
+     7 minas   roca con vetas de oro vivo (el metal en la piedra)
+     8 dbnx    acero con cuadrícula (la norma) */
+export const brandFragment=`
+precision highp float;
+uniform vec3 uColor;uniform float uNat;uniform float uSeed;uniform float uTime;uniform float uPulse;
+varying vec3 vP;varying vec3 vN;varying vec3 vWorld;varying vec2 vUv;
+${noiseGLSL}
+float hexLine(vec2 p){vec2 r=vec2(1.,1.7320508),h=r*.5;vec2 a=mod(p,r)-h,b=mod(p-h,r)-h;vec2 g=dot(a,a)<dot(b,b)?a:b;vec2 q=abs(g);float d=max(dot(q,vec2(.8660254,.5)),q.x);return 1.-smoothstep(.0,.06,.5-d);}
+float gridLine(vec2 p,float w){vec2 f=abs(fract(p)-.5);return 1.-smoothstep(.5-w,.5,max(f.x,f.y));}
+void main(){
+ vec3 p=vP;float n=fbm(p*4.+uSeed);float fine=fbm(p*48.+uSeed);
+ vec2 sph=vec2(atan(p.z,p.x)/6.2831853,asin(clamp(p.y,-1.,1.))/3.1415927);
+ vec3 col;vec3 emis=vec3(0.);float gloss=0.;
+ if(uNat<.5){ // oro
+  float curl=fbm(vec3(p.x*4.,p.y*14.,p.z*4.)+uSeed+uTime*.004);
+  float bands=sin(p.y*46.+curl*8.)*.5+.5;float thread=pow(sin(p.y*230.+curl*22.)*.5+.5,9.);
+  col=mix(vec3(.25,.16,.06),vec3(.93,.74,.38),.18+.82*bands);col=mix(col,vec3(1.,.9,.62),thread*.35);col*=.82+fine*.3;
+  emis=vec3(1.,.78,.4)*thread*.08;gloss=.25;
+ }else if(uNat<1.5){ // obsidiana + retícula
+  col=vec3(.035,.06,.06)*(.7+fine*.7);
+  float l=hexLine(sph*vec2(22.,11.));float wave=.55+.45*sin(uTime*1.6-length(p.xz)*6.+p.y*5.);
+  emis=vec3(.33,.86,.76)*l*wave*.9;col+=vec3(.12,.3,.28)*l*.4;gloss=.6;
+ }else if(uNat<2.5){ // océano de corrientes
+  vec3 q=p*3.;q.x+=uTime*.02;float w=fbm(q+fbm(q*1.7+uSeed));
+  float c=pow(1.-abs(sin(w*18.+p.y*6.)),10.);
+  col=mix(vec3(.01,.08,.11),vec3(.03,.24,.29),n);emis=vec3(.25,.85,.95)*c*.55;gloss=.8;
+ }else if(uNat<3.5){ // esmeralda con vetas de oro
+  col=mix(vec3(.02,.13,.09),vec3(.08,.36,.25),smoothstep(.3,.75,n))*(.75+fine*.5);
+  float v=1.-smoothstep(.0,.035,abs(fbm(p*6.+uSeed)-.5));float v2=1.-smoothstep(.0,.02,abs(fbm(p*15.+uSeed+3.)-.5));
+  float vena=max(v,v2*.6);col=mix(col,vec3(.85,.66,.3),vena*.5);emis=vec3(1.,.76,.35)*vena*(.35+.25*sin(uTime*1.3+n*9.));gloss=.4;
+ }else if(uNat<4.5){ // hielo con lectura
+  col=mix(vec3(.55,.68,.76),vec3(.9,.96,.99),smoothstep(.25,.8,n))*(.85+fine*.25);
+  float lat=gridLine(vec2(sph.x*36.,sph.y*18.),.03);col=mix(col,vec3(.4,.6,.75),lat*.35);
+  float franja=exp(-pow((sph.y-(fract(uTime*.05)*1.2-.6))*14.,2.));
+  emis=vec3(.55,.85,1.)*(franja*.7+lat*franja*1.2);gloss=.9;
+ }else if(uNat<5.5){ // hierro y brasa
+  col=vec3(.09,.07,.065)*(.6+fine*.9);
+  float grieta=1.-smoothstep(.0,.04,abs(fbm(p*5.+uSeed)-.5));float g2=1.-smoothstep(.0,.025,abs(fbm(p*12.+uSeed+1.)-.5));
+  float brasa=max(grieta,g2*.7)*(.7+.3*sin(uTime*2.+n*12.));emis=vec3(1.,.38,.08)*brasa*.9;gloss=.2;
+ }else if(uNat<6.5){ // bronce de bóveda
+  float anillos=sin(abs(sph.y)*120.)*.5+.5;
+  col=mix(vec3(.28,.2,.1),vec3(.74,.58,.32),smoothstep(.2,.8,n)*.6+anillos*.4)*(.8+fine*.35);
+  float grabado=pow(anillos,14.);emis=vec3(1.,.8,.45)*grabado*.12;gloss=.55;
+ }else if(uNat<7.5){ // roca con oro vivo
+  col=mix(vec3(.08,.07,.06),vec3(.26,.22,.18),fbm(p*7.+uSeed))*(.6+fine*.8);
+  float vena=1.-smoothstep(.0,.03,abs(fbm(p*9.+uSeed)-.5));float pepita=smoothstep(.78,.86,fbm(p*30.+uSeed));
+  col=mix(col,vec3(.95,.74,.32),vena*.7);emis=vec3(1.,.75,.3)*(vena*.55+pepita*.8);gloss=.35;
+ }else{ // acero con cuadrícula
+  col=mix(vec3(.08,.11,.17),vec3(.25,.32,.44),n)*(.8+fine*.4);
+  float l=gridLine(vec2(sph.x*28.,sph.y*14.),.04);float on=step(.72,hash(floor(vec3(sph.x*28.,sph.y*14.,uSeed))));
+  emis=vec3(.62,.75,.95)*(l*.35+on*(1.-l)*.25*(.5+.5*sin(uTime*2.+sph.x*40.)));gloss=.7;
+ }
+ vec3 N=normalize(vN);vec3 L=normalize(-vWorld);float light=dot(N,L);
+ float diffuse=smoothstep(-.13,.86,light+(fine-.5)*.18);
+ col*=.10+diffuse*1.55;
+ vec3 V=normalize(cameraPosition-vWorld);
+ col+=vec3(1.,.93,.8)*pow(max(0.,dot(reflect(-L,N),V)),48.)*gloss*.5;
+ float rim=pow(1.-max(0.,dot(N,V)),3.5);
+ col+=uColor*rim*(.22+.25*uPulse)*max(.25,light);
+ col+=emis*(1.+uPulse*.8);
+ gl_FragColor=vec4(col,1.);
+ #include <tonemapping_fragment>
+ #include <colorspace_fragment>
+}`;
+export const NATURA:Record<string,number>={wallet:0,gid:1,chat:2,pay:3,scan:4,oxch:5,aucorp:6,minas:7,dbnx:8,ajustes:4};

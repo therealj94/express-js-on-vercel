@@ -5,7 +5,7 @@ import * as T from 'three';
 import {worlds,externalGalaxies,worldName,word,World} from './catalog';
 import {usePreferences} from './preferences';
 import {useExperience,navigation,motionReduced} from './navigation';
-import {planetVertex,planetFragment,cloudFragment,atmoFragment,pointVertex,pointFragment} from './shaders';
+import {planetVertex,planetFragment,cloudFragment,atmoFragment,pointVertex,pointFragment,brandFragment,NATURA} from './shaders';
 import CompatibleUniverse from './CompatibleUniverse';
 import {textureFor} from './textures';
 import {mapa,mapaDiferido} from './mapas';
@@ -37,7 +37,9 @@ function StarField({spiral=false,seed=55,position=[0,0,0],radius=100,color='#a6b
  },[spiral,seed,radius,color,count]);
  const mat=useMemo(()=>new T.ShaderMaterial({vertexShader:pointVertex,fragmentShader:pointFragment,vertexColors:true,transparent:true,depthWrite:false,blending:T.AdditiveBlending,uniforms:{uTime:{value:0},uScale:{value:280},uOpacity:{value:spiral?.8:1}}}),[spiral]);
  useEffect(()=>()=>{geo.dispose();mat.dispose();},[geo,mat]);
- useFrame(({clock,size},dt)=>{const reduced=motionReduced();mat.uniforms.uOpacity.value=useExperience.getState().stage==='galaxies'?(spiral?.8:1):(spiral?.17:.38);if(!reduced)mat.uniforms.uTime.value=clock.elapsedTime;mat.uniforms.uScale.value=Math.min(size.height,1000)*.4;if(group.current&&spiral&&!reduced)group.current.rotation.y+=dt*.005;});
+ useFrame(({clock,size},dt)=>{const reduced=motionReduced();/* En el sistema el cielo acompaña y no compite: dentro de la wallet se
+    apaga un poco más, porque ahí lo que se lee son los mundos. */
+  const sistemaMul=enCasa()?.62:1;mat.uniforms.uOpacity.value=useExperience.getState().stage==='galaxies'?(spiral?.8:1):(spiral?.17:.38)*sistemaMul;if(!reduced)mat.uniforms.uTime.value=clock.elapsedTime;mat.uniforms.uScale.value=Math.min(size.height,1000)*.4;if(group.current&&spiral&&!reduced)group.current.rotation.y+=dt*.005;});
  return <group ref={group} position={position} rotation={[tilt,0,spiral?.15:0]}><points geometry={geo} material={mat} frustumCulled={false}/></group>;
 }
 
@@ -58,19 +60,27 @@ function Ring({radius,color}:{radius:number;color:string}){
 
 function Planet({world,index,deep=false}:{world:World;index:number;deep?:boolean}){
  const mesh=useRef<T.Mesh>(null),cloud=useRef<T.Mesh>(null),group=useRef<T.Group>(null);
- const uniforms=useMemo(()=>({uColor:{value:new T.Color(world.color)},uSecondary:{value:new T.Color(world.secondary)},uKind:{value:world.kind},uSeed:{value:index*7.3+1},uMap:{value:null as T.Texture|null},uHasMap:{value:0}}),[world,index]);
- useEffect(()=>{let disposed=false;const tex=mapa(textureFor(world),t=>{if(disposed){return;}t.anisotropy=4;uniforms.uMap.value=t;uniforms.uHasMap.value=1;});return()=>{disposed=true;tex.dispose();};},[world,uniforms]);
+ /* Los mundos de la casa se pintan con su propio shader (sin mapas de la NASA);
+    los lejanos del espacio profundo conservan sus texturas. */
+ const marca=!deep;
+ const uniforms=useMemo(()=>({uColor:{value:new T.Color(world.color)},uSecondary:{value:new T.Color(world.secondary)},uKind:{value:world.kind},uSeed:{value:index*7.3+1},uMap:{value:null as T.Texture|null},uHasMap:{value:0},uNat:{value:NATURA[world.id]??4},uTime:{value:0},uPulse:{value:0}}),[world,index]);
+ useEffect(()=>{if(marca)return;let disposed=false;const tex=mapa(textureFor(world),t=>{if(disposed){return;}t.anisotropy=4;uniforms.uMap.value=t;uniforms.uHasMap.value=1;});return()=>{disposed=true;tex.dispose();};},[world,uniforms,marca]);
  const clouds=useMemo(()=>({uTime:{value:0},uTint:{value:new T.Color('#d8e5e9')}}),[]);
  const atmo=useMemo(()=>({uTint:{value:new T.Color(world.kind===1?'#5aafef':world.color)}}),[world]);
  useFrame(({clock},dt)=>{
   const reduced=motionReduced(),state=useExperience.getState();
   if(mesh.current&&!reduced)mesh.current.rotation.y+=dt*(world.kind===0?.027:.018);
   if(cloud.current&&!reduced){cloud.current.rotation.y+=dt*.027;clouds.uTime.value=clock.elapsedTime;}
+  if(marca){if(!reduced)uniforms.uTime.value=clock.elapsedTime;
+   /* Un mundo con algo nuevo late; el que se señala se enciende. */
+   const e=state.estados[world.id],aviso=!!(e&&(e.nuevo||(e.n||0)>0));
+   const quiere=state.hovered===world.id||state.selected===world.id?.9:aviso?(reduced?.6:.45+.45*Math.sin(clock.elapsedTime*3.2)):0;
+   uniforms.uPulse.value=T.MathUtils.damp(uniforms.uPulse.value,quiere,6,dt);}
   if(group.current){if(!deep)group.current.position.copy(locationOf(world));const desired=deep?(state.stage==='galaxies'?1:0):(state.stage==='galaxies'?.025:1);group.current.scale.setScalar(reduced?desired:T.MathUtils.damp(group.current.scale.x,desired,3,dt));group.current.visible=group.current.scale.x>.005;}
  });
  return <group ref={group} position={world.position} rotation={[0,index*.8,.15+index*.025]}>
-  <mesh ref={mesh}><sphereGeometry args={[world.radius,80,64]}/><shaderMaterial vertexShader={planetVertex} fragmentShader={planetFragment} uniforms={uniforms}/></mesh>
-  {world.kind===1&&<mesh ref={cloud}><sphereGeometry args={[world.radius*1.017,64,48]}/><shaderMaterial vertexShader={planetVertex} fragmentShader={cloudFragment} uniforms={clouds} transparent depthWrite={false}/></mesh>}
+  <mesh ref={mesh}><sphereGeometry args={[world.radius,80,64]}/><shaderMaterial vertexShader={planetVertex} fragmentShader={marca?brandFragment:planetFragment} uniforms={uniforms}/></mesh>
+  {world.kind===1&&!marca&&<mesh ref={cloud}><sphereGeometry args={[world.radius*1.017,64,48]}/><shaderMaterial vertexShader={planetVertex} fragmentShader={cloudFragment} uniforms={clouds} transparent depthWrite={false}/></mesh>}
   <mesh><sphereGeometry args={[world.radius*1.04,48,32]}/><shaderMaterial vertexShader={planetVertex} fragmentShader={atmoFragment} uniforms={atmo} transparent depthWrite={false} blending={T.AdditiveBlending}/></mesh>
   {world.rings&&<Ring radius={world.radius} color={world.color}/>}
   {!deep&&index<5&&<mesh position={[world.radius*2.1,world.radius*.5,-world.radius]}><sphereGeometry args={[world.radius*.12,20,16]}/><meshStandardMaterial color="#807e77" roughness={.98}/></mesh>}
@@ -94,10 +104,10 @@ function SceneDriver({onLost}:{onLost:()=>void}){
  return null;
 }
 export function PlanetLabels(){
- const prefs=usePreferences(s=>s.prefs);
+ const prefs=usePreferences(s=>s.prefs),estados=useExperience(s=>s.estados);
  return <><svg className="network-overlay" aria-hidden="true">{worlds.flatMap(w=>(w.id==='genesis'?['label-']:['label-','core-','peer-']).map(prefix=><line key={prefix+w.id} className={prefix.slice(0,-1)} ref={node=>{if(node)linkNodes.set(prefix+w.id,node);else linkNodes.delete(prefix+w.id);}}/>))}</svg><div className="world-labels" role="group" aria-label={prefs.lang==='es'?'Aplicaciones planetarias':'Planetary applications'}>{worlds.map((w,i)=><button key={w.id} ref={node=>{if(node)labelNodes.set(w.id,node);else labelNodes.delete(w.id);}} className="world-label" data-future={String(!!w.future)} onPointerEnter={()=>navigation.hover(w.id)} onPointerLeave={()=>navigation.hover(null)} onFocus={()=>navigation.hover(w.id)} onBlur={()=>navigation.hover(null)} /* Con la casa detrás no hay ficha nuestra que abrir: tocar un nombre es
     viajar y que la wallet abra su app. Sola, el nombre solo elige. */
- onClick={()=>enCasa()?navigation.enter(w.id):navigation.focus(w.id)}><span className="label-rule"/><span className="planet-label-index">{String(i+1).padStart(2,'0')}</span><strong>{worldName(w,prefs.lang)}</strong>{w.future&&<em className="label-pronto">{prefs.lang==='es'?'PRONTO':'SOON'}</em>}<small>{word(w.category,prefs.lang)}</small>
+ onClick={()=>enCasa()?navigation.enter(w.id):navigation.focus(w.id)}><span className="label-rule"/><span className="planet-label-index">{String(i+1).padStart(2,'0')}</span><strong>{worldName(w,prefs.lang)}{estados[w.id]?.candado?<span className="label-candado" aria-label={prefs.lang==='es'?'falta verificarte':'verification needed'}>●</span>:(estados[w.id]?.n||0)>0?<span className="label-cuenta">{Math.min(99,estados[w.id]!.n!)}</span>:estados[w.id]?.nuevo?<span className="label-nuevo"/>:null}</strong>{w.future&&<em className="label-pronto">{prefs.lang==='es'?'PRONTO':'SOON'}</em>}<small>{word(w.category,prefs.lang)}</small>
  {/* «MINAS · Resources» no le dice nada a quien llega. La frase que ya estaba
      escrita en el catálogo aparece al señalar o al tabular: sin ocupar sitio
      cuando no hace falta, y disponible para un lector de pantalla siempre. */}
@@ -129,7 +139,7 @@ export default function Universe({paused=false}:{paused?:boolean}){
   <SkyBackdrop/><CosmicNebula/><GalacticPortrait/><StarField count={low?2000:4200} radius={380}/>
   <StarField spiral seed={41} count={count} radius={72} position={[0,-12,-36]} color="#94b3cf" tilt={.27}/>
   {externalGalaxies.map(g=><StarField key={g.name} spiral seed={g.seed} count={low?3400:9500} radius={24} position={g.position} color={g.color} tilt={.65}/>)}
-  <OrbitPaths/><SolarCore/>{worlds.filter(w=>w.id!=='genesis').map((w,i)=><Planet key={w.id} world={w} index={i}/>)}
+  <OrbitPaths/><SolarCore/>{worlds.filter(w=>w.id!=='genesis'&&!(w.id==='ajustes'&&enCasa())).map((w,i)=><Planet key={w.id} world={w} index={i}/>)}
   {deepWorlds.map((w,i)=><Planet key={w.id} world={w} index={i+12} deep/>)}<BlackHole/><Pulsar/>
   {!low&&(!viewerMode||viewerMode==='trescientos60')&&<EffectComposer multisampling={0}><Bloom intensity={.55} luminanceThreshold={1.1} luminanceSmoothing={.7} mipmapBlur/></EffectComposer>}
  </Canvas></RenderGuard></div>;

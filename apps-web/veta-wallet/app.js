@@ -2251,6 +2251,21 @@ const VETA = (() => {
   const SIN_VISOR = ['enviar', 'cobrar', 'cambiar', 'comprar', 'lector', 'mtp',
                      'tarjeta', 'llaves', 'seguridad', 'aucorp', 'ordenex'];
 
+  /* UN REINTENTO CADA TANTO, NO EN BUCLE. Varias vistas piden sus datos al
+     entrar y se vuelven a dibujar cuando llegan. Si la respuesta falla, el dato
+     sigue vacío, el redibujo vuelve a pedirlo, falla otra vez… y la vista se
+     rehace varias veces por segundo: la animación de entrada vuelve a empezar
+     cada vez y la pantalla se queda apagada, a medio aparecer. Así se veían
+     Remesas y MyTokenPay. Con esto, cada dato se reintenta como mucho una vez
+     cada 30 segundos. */
+  const ultimoIntento = {};
+  function puedeIntentar(clave, ms = 30000) {
+    const ahora = Date.now();
+    if (ultimoIntento[clave] && ahora - ultimoIntento[clave] < ms) return false;
+    ultimoIntento[clave] = ahora;
+    return true;
+  }
+
   function vista(cual, dato) {
     if (!VISTAS[cual]) cual = 'nucleo';
     if (window.VISOR?.activo()) {
@@ -2351,14 +2366,14 @@ const VETA = (() => {
        siquiera necesita el precio de emitir: eso es del formulario de
        pedirla. */
     if (cual !== 'tarjeta' && movAbierto) cerrarMov();
-    if (cual === 'tarjeta' && !tarjeta && !tarjetaCargando) {
+    if (cual === 'tarjeta' && !tarjeta && !tarjetaCargando && puedeIntentar('tarjeta')) {
       tarjetaCargando = true;
       cargarTarjeta()
         .then(() => { if (tarjeta?.falta && !emision) return cargarEmision(); })
         .finally(() => { tarjetaCargando = false; })
         .then(() => { if (vistaActual === 'tarjeta') vista('tarjeta'); });
     }
-    if (cual === 'remesas' && !tasas) cargarTasas().then(() => { if (vistaActual === 'remesas') vista('remesas'); });
+    if (cual === 'remesas' && !tasas && puedeIntentar('tasas')) cargarTasas().then(() => { if (vistaActual === 'remesas') vista('remesas'); });
     if (cual === 'chat') { p2cPortada(); chatEntrar(); } else p2cPortadaFuera();
     if (cual === 'token') montarVelasToken();
     else { velasApagar(); velasAmpliarCerrar(); }
@@ -2386,6 +2401,7 @@ const VETA = (() => {
     }
     /* genesis también es cerebro: mismo cielo negro, misma respiración */
     document.body.classList.toggle('en-cerebro', cual === 'nucleo' || cual === 'genesis');
+    if (cual === 'nucleo') aetEstados();
     /* PULSE2CHAT se queda con la pantalla entera. La billetera no desaparece
        —el riel y las pestañas siguen ahí— pero el fondo, el ancho y el relleno
        pasan a ser los suyos: dentro de su casa manda su marca. */
@@ -3726,8 +3742,9 @@ const VETA = (() => {
   function vIdentidad() {
     return `
     <div class="cab gid-cab">${selloGenesis(40)}<div><h2>Genesis ID</h2><div class="sub">${t('id.sub')}</div></div></div>
-    ${esVerificada() ? credencial() : ''}
-    ${tarjetaIdentidad()}
+    ${/* Verificada: UNA credencial, no dos. La tarjeta de estado repetía los
+       mismos datos debajo; queda solo mientras la identidad está en trámite. */
+      esVerificada() ? credencial() : tarjetaIdentidad()}
     <div class="bloque vidrio">
       <h3>${t('id.unaT')}</h3>
       <p class="pie" style="margin-top:8px">${t('id.unaP')}</p>
@@ -6268,7 +6285,7 @@ const VETA = (() => {
   const VETA_V = '0854c9917f';
   const VETA_FECHA = '2026-09-22';
 
-  const AET_V = '30e2eeec94';
+  const AET_V = 'e88ef64f69';
 
   /* MEDIAPIPE, UNA SOLA COPIA EN EL SITIO. La casa ya sirve el modelo de manos
      y su WASM en /vendor/vision/ para su propio AirTouch. El motor traia los
@@ -6725,6 +6742,26 @@ const VETA = (() => {
      iniciar sesión llega directo — y del otro lado la casa la ADOPTA sin
      remontarla. Si el bundle no carga o hay movimiento reducido, la puerta
      conserva su cielo 2D de siempre: jamás una pantalla en negro. */
+  /* LO QUE CADA MUNDO TIENE PARA DECIR, sin abrirlo. La galaxia recibe
+     contadores y marcas —nunca montos—: mensajes sin leer en PULSE2CHAT y el
+     candado de Genesis ID mientras falte verificarse. Con eso el Inicio deja
+     de ser decoración: el planeta que tiene algo para vos, late. */
+  function aetEstados() {
+    try {
+      const verificada = esVerificada();
+      const sinLeer = (chatSt.convs || []).reduce((acc, c) => acc + (Number(c.sinLeer) || 0), 0)
+        + (chatSt.circulo?.recibidas?.length || 0);
+      /* El candado va en los MISMOS mundos que la casa cierra sin identidad
+         (MUNDOS[].pideGid): la galaxia no puede prometer una puerta abierta
+         que al tocarla manda a verificarse. */
+      const est = { gid: { candado: !!sesion && !verificada } };
+      for (const m of MUNDOS) if (m.pideGid && !verificada) est[m.id] = { candado: true };
+      est.chat = { ...(est.chat || {}), n: sinLeer };
+      window.AUGALAXY?.estados?.(est);
+    } catch { /* la galaxia todavía no cargó: se repite en el próximo latido */ }
+  }
+  setInterval(() => { if (document.body.classList.contains('en-cerebro')) aetEstados(); }, 8000);
+
   function aetIdentidad() {
     window.__AE_LANG = idiomaActivo();
     window.__AE_APPS = MUNDOS.map((m) => ({
@@ -7240,8 +7277,13 @@ const VETA = (() => {
      `datos.js` mientras la API sirve diecinueve. Estas tres rutas son publicas:
      mirar la vitrina no exige identificarse. */
   async function cargarComercios(forzar) {
-    if (mtpCargando || (mtpNegocios && !forzar)) return;
-    mtpCargando = true; mtpFalloDirectorio = null;
+    /* Un fallo también cuenta como «ya se intentó»: sin esto, con la API caída,
+       cada intento fallido redibujaba la vista, la vista volvía a pedir, y así
+       cuatro veces por segundo — la pantalla nunca terminaba de aparecer (se
+       quedaba apagada, a medio fundido) y el servidor recibía una ráfaga sin
+       fin. Reintentar queda para `forzar`. */
+    if (mtpCargando || ((mtpNegocios || mtpFalloDirectorio) && !forzar)) return;
+    mtpCargando = true; mtpFalloDirectorio = null; // se limpia solo al reintentar de verdad
     try {
       const [neg, cats, paises] = await Promise.all([
         mtpCrudo('/api/companies'),
@@ -7782,10 +7824,19 @@ const VETA = (() => {
   };
 
   function paymio() {
-    if (!mtpMioCargado) { negCargar(); return `
+    if (!mtpMioCargado) {
+      /* Si la consulta falla, no se reintenta en cada redibujo (era un bucle
+         de nueve vueltas en tres segundos): se dice y se reintenta después. */
+      const reintento = puedeIntentar('negocio-mio', 20000);
+      if (reintento) negCargar();
+      const fallo = !reintento && mtpFallo;
+      const es = idiomaActivo() === 'es';
+      return `
       <button class="volver" onclick="VETA.vista('pay')"><svg viewBox="0 0 24 24">${ICO.atras}</svg>MyTokenPay</button>
-      <div class="bloque vidrio centrado"><span class="girando"></span>
-        <p class="pie" style="margin-top:12px">${t('mtp.cargando')}</p></div>`; }
+      <div class="bloque vidrio centrado">${fallo
+        ? `<p class="pie">${es ? 'No pudimos traer tu comercio. Probá de nuevo en unos segundos.' : 'We could not load your business. Try again in a few seconds.'}</p>
+           <button class="btn btn-linea btn-sm" style="margin-top:12px" onclick="VETA.vista('paymio')">${es ? 'Reintentar' : 'Retry'}</button>`
+        : `<span class="girando"></span><p class="pie" style="margin-top:12px">${t('mtp.cargando')}</p>`}</div>`; }
 
     const cab = `
     <button class="volver" onclick="VETA.vista('pay')">
