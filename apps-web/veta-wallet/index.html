@@ -4146,6 +4146,41 @@ body.en-ventana .lienzo::before{
   .ag-voz{display:none}
   .acc{padding:20px}
 }
+
+/* ══ REVISIÓN DE DISEÑO · 23-sep-2026 ══════════════════════════════════════
+   Lo que se vio en las capturas y se corrige aquí, sin tocar la portada:
+
+   1. DENTRO de la app, la foto del restaurante detrás de cada pantalla se
+      comía el contraste: cada tarjeta de vidrio tenía que pelear contra caras,
+      teléfonos y lámparas. La foto se queda en la portada, que es donde cuenta
+      una historia; adentro manda un fondo de marca, oscuro y quieto, con el
+      brillo de oro arriba.
+   2. Los botones flotantes (AirTouch y AU-RA) tapaban justo el final de cada
+      tarjeta en el teléfono. Fuera del Inicio, AirTouch sube a la barra de
+      arriba, junto a pantalla completa, y el contenido deja libre el rincón de
+      AU-RA.
+   3. En escritorio el contenido vivía pegado al menú con 300 px de foto vacía
+      a la derecha. Se centra en el espacio que queda. */
+body:has(#app:not(.oculto)){
+  background-image:
+    radial-gradient(110% 55% at 50% -8%, rgba(214,178,106,.13), transparent 62%),
+    radial-gradient(80% 60% at 105% 105%, rgba(22,92,84,.30), transparent 70%),
+    linear-gradient(180deg,#051615 0%,#030e0e 55%,#020909 100%);
+  background-size:cover; background-attachment:fixed;
+}
+body:not(.en-cerebro):has(#app:not(.oculto)) #at-boton{top:14px;bottom:auto;right:64px;width:40px;height:40px}
+@media (max-width:760px), (orientation:portrait) and (max-width:900px){
+  /* En el teléfono la fila del título ya tiene su botón («Actualizar»): los
+     dos íconos flotantes se le montaban encima. AirTouch queda en el Inicio,
+     que es donde se usa; y la fila del título deja libre la esquina de
+     pantalla completa. */
+  body:not(.en-cerebro):has(#app:not(.oculto)) #at-boton{display:none}
+  body:not(.en-cerebro) .lienzo>.cab{padding-right:48px}
+  body:not(.en-cerebro) .lienzo{padding-bottom:150px}
+}
+@media (min-width:1200px){
+  .lienzo{margin-left:max(232px, calc(232px + (100vw - 232px - 920px) / 2))}
+}
 </style>
 
 <!-- El velo de apertura. El texto de respaldo es el español plano: si el

@@ -593,6 +593,9 @@ const VETA = (() => {
     if (cual !== 'es' && cual !== 'en') return;
     idiomaActual = cual;
     try { localStorage.setItem('veta.idioma', cual); } catch {}
+    /* La galaxia del Inicio tiene que hablar el mismo idioma que la casa. */
+    window.__AE_LANG = cual;
+    try { window.AUGALAXY?.idioma?.(cual); } catch { /* galaxia sin cargar */ }
     pintarIdioma();
     pestana(modo);
     if (!$('#app').classList.contains('oculto')) vista(vistaActual);
@@ -6265,7 +6268,7 @@ const VETA = (() => {
   const VETA_V = '0854c9917f';
   const VETA_FECHA = '2026-09-22';
 
-  const AET_V = 'ec1cd1c429';
+  const AET_V = '30e2eeec94';
 
   /* MEDIAPIPE, UNA SOLA COPIA EN EL SITIO. La casa ya sirve el modelo de manos
      y su WASM en /vendor/vision/ para su propio AirTouch. El motor traia los

@@ -22,16 +22,22 @@ function montar(el:HTMLElement){if(!(el instanceof HTMLElement)||!el.isConnected
    vista de la app debajo de la intro. */
 function entrar(type:string,callback?:()=>void){
  if(!root||!mountedElement?.isConnected)return;
+ idioma();
  delete (window as any).__AE_PUERTA;
  const {duration,callbackAt}=entryTiming(type,motionReduced());
  navigation.home();useExperience.getState().set({stage:'intro',introDuration:duration});clearTimeout(landing);
  landing=window.setTimeout(()=>callback?.(),callbackAt);
 }
-function puerta(){genesis.saltar();visorUI.limpiar();clearTimeout(landing);(window as any).__AE_PUERTA=true;navigation.home();useExperience.getState().set({stage:'gate',settings:false,directory:false,help:false,tutorial:false});}
+function puerta(){idioma();genesis.saltar();visorUI.limpiar();clearTimeout(landing);(window as any).__AE_PUERTA=true;navigation.home();useExperience.getState().set({stage:'gate',settings:false,directory:false,help:false,tutorial:false});}
 function exhalar(){visorUI.limpiar();navigation.home();useExperience.getState().set({settings:false,directory:false,help:false,tutorial:false});}
 // Isolated visual engine: uses the host navigation callback only in embedded mode.
 // It never requests auth tokens, balances, keys or transaction APIs.
-const api={montar,desmontar,entrar,puerta,exhalar,acomodo:()=>useExperience.getState().stage==='gate'?1:0,_transito:transitionState};
+/* EL IDIOMA LO MANDA LA CASA. La galaxia guardaba su propio idioma (el del
+   navegador la primera vez) y la wallet el suyo: con la wallet en español se
+   leía «Settings» y «Tap a world to enter». Ahora la casa avisa cada vez que
+   cambia y la galaxia la sigue, también al entrar y al volver a la puerta. */
+function idioma(l?:string){const lang=l||(window as any).__AE_LANG;if(lang==='es'||lang==='en')usePreferences.getState().set({lang});}
+const api={idioma,montar,desmontar,entrar,puerta,exhalar,acomodo:()=>useExperience.getState().stage==='gate'?1:0,_transito:transitionState};
 (window as any).AUGALAXY=api;
 (window as any).__AE_VISOR=immersive;
 (window as any).__AE_MIRAR=lookAtWorld;

@@ -274,3 +274,15 @@ html.og-standalone,html.og-standalone body,html.og-standalone #root{margin:0;wid
 @media (prefers-reduced-motion: reduce){.world-label .label-said{transition:none}}
 /* La pista de dentro de la wallet no compite con la interfaz de la casa. */
 .embedded-hint{bottom:5.5rem;font-size:.82rem;opacity:.7}
+
+/* ── DENTRO DE LA WALLET · revisión 23-sep ─────────────────────────────────
+   Los nombres: una sola voz. Mayúsculas espaciadas para todos (antes convivían
+   «MINAS», «Genesis ID» y «PULSE2CHAT» cada uno en su tipo), el núcleo en oro,
+   y los mundos que todavía no abren lo dicen con una marca «PRONTO». */
+.is-embedded .world-label strong{font-size:12px;font-weight:600;letter-spacing:.09em;text-transform:uppercase;line-height:16px;color:#eef1f6}
+.is-embedded .world-label[data-core="true"] strong{color:#f0d49a;font-size:11px;letter-spacing:.14em}
+.is-embedded .world-label[data-active="true"] strong{color:#ffe0a1}
+.is-embedded .world-label .label-pronto{display:inline-block;margin-top:3px;padding:1px 6px;border:1px solid #e5c48755;border-radius:20px;font-size:9px;letter-spacing:.12em;color:#e5c487;font-style:normal}
+.is-embedded .world-label[data-future="true"] strong{color:#b9c1cf}
+/* La pista sube: abajo la pisaba el saludo de la casa («HOLA, JOSÉ»). */
+.is-embedded .embedded-hint{top:70px;bottom:auto;white-space:nowrap;max-width:none;font-size:12px;letter-spacing:.06em;color:#c9d2df;opacity:.85;background:#050a13b3;padding:6px 14px;border-radius:20px;border:1px solid #e5c48733}
