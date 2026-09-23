@@ -6285,7 +6285,7 @@ const VETA = (() => {
   const VETA_V = '0854c9917f';
   const VETA_FECHA = '2026-09-22';
 
-  const AET_V = 'e88ef64f69';
+  const AET_V = '5b96c356fa';
 
   /* MEDIAPIPE, UNA SOLA COPIA EN EL SITIO. La casa ya sirve el modelo de manos
      y su WASM en /vendor/vision/ para su propio AirTouch. El motor traia los
@@ -6652,7 +6652,14 @@ const VETA = (() => {
   }
   function musicaMarca(puesta) {
     $('#musica-btn')?.classList.toggle('callada', !puesta);
+    /* UN SOLO INTERRUPTOR PARA TODO EL SONIDO. La galaxia no tiene botón propio
+       dentro de la casa: si la música está puesta, tocar un mundo y viajar
+       suenan (bajo, y la música se agacha para dejarlos oír); si está callada,
+       la galaxia también calla. */
+    window.__AE_SONIDO = !!puesta;
+    try { window.AUGALAXY?.sonido?.(!!puesta); } catch { /* galaxia sin cargar */ }
   }
+  window.__AE_AGACHAR = (ms) => { try { window.MUSICA?.agachar?.(ms); } catch { /* nada */ } };
 
   /* ── PANTALLA COMPLETA ───────────────────────────────────────────────────
      La galaxia y las casas se ven mejor sin la barra del navegador comiéndose
@@ -6805,7 +6812,12 @@ const VETA = (() => {
 
   /* El Inicio decide su cuerpo: AuGalaxy si puede, el cerebro si no. */
   function encenderInicio() {
-    if (matchMedia('(prefers-reduced-motion: reduce)').matches) return encenderCerebro(false);
+    /* MOVIMIENTO REDUCIDO YA NO ES OTRA CASA. Antes, quien pedía menos
+       movimiento recibía el cerebro 2D: otro diseño, otros nombres y un
+       planeta de Ajustes que la galaxia ya no tiene. El motor 3D respeta esa
+       preferencia por su cuenta (órbitas quietas, sin intro, viaje de 120 ms),
+       así que todos ven el mismo Inicio. El cerebro queda para quien no tiene
+       3D. */
     /* LA IDENTIDAD VA PRIMERO. El motor arma el mapa de casas al EVALUARSE, no
        al montarse: si el idioma y las marcas llegan después, los planetas
        nacen mudos y en español aunque la persona esté en inglés. */

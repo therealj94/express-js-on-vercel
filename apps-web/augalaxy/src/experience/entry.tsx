@@ -41,7 +41,12 @@ function idioma(l?:string){const lang=l||(window as any).__AE_LANG;if(lang==='es
    —mensajes sin leer, cobros nuevos, identidad sin verificar— y la galaxia
    hace latir ese planeta y pone la marca junto a su nombre. Nunca montos. */
 function estados(e:Record<string,{n?:number;candado?:boolean;nuevo?:boolean}>){const limpio:Record<string,{n?:number;candado?:boolean;nuevo?:boolean}>={};for(const [k,v] of Object.entries(e||{})){if(!v||typeof v!=='object')continue;limpio[k]={n:Number.isFinite(v.n)?Math.max(0,Math.floor(v.n!)):undefined,candado:!!v.candado,nuevo:!!v.nuevo};}useExperience.getState().set({estados:limpio});}
-const api={idioma,estados,montar,desmontar,entrar,puerta,exhalar,acomodo:()=>useExperience.getState().stage==='gate'?1:0,_transito:transitionState};
+/* EL SONIDO LO MANDA LA CASA. Dentro de la wallet no hay interruptor nuestro:
+   manda el de la música. Si la persona la tiene puesta, tocar un mundo y viajar
+   suena —bajo, sin zumbido de fondo— y la música se agacha; si la calló, la
+   galaxia también calla. Nunca suena nada que nadie pidió. */
+function sonido(on?:boolean){const v=on===undefined?(window as any).__AE_SONIDO===true:on===true;(window as any).__AE_SONIDO=v;if(root)void sound.enable(v,.22,false);}
+const api={idioma,estados,sonido,montar,desmontar,entrar,puerta,exhalar,acomodo:()=>useExperience.getState().stage==='gate'?1:0,_transito:transitionState};
 (window as any).AUGALAXY=api;
 (window as any).__AE_VISOR=immersive;
 (window as any).__AE_MIRAR=lookAtWorld;

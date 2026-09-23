@@ -52,12 +52,12 @@ export default function Experience({embedded=false}:{embedded?:boolean}){
  useEffect(()=>{if(state.selected)dockRef.current?.querySelector('[data-world="'+state.selected+'"]')?.scrollIntoView({block:'nearest',inline:'center',behavior:reduced?'instant':'smooth'});},[state.selected,reduced]);
  useEffect(()=>{
   const mq=matchMedia('(prefers-reduced-motion: reduce)');const update=()=>setSystemReduced(mq.matches);mq.addEventListener('change',update);
-  const visibility=()=>{setPageVisible(!document.hidden);if(document.hidden){airtouch.stop();sound.suspend();if(useViewer.getState().mode==='carton')immersive.salir();}else if(prefs.sound)void sound.enable(true,prefs.volume,prefs.ambient);};
+  const visibility=()=>{setPageVisible(!document.hidden);if(document.hidden){airtouch.stop();sound.suspend();if(useViewer.getState().mode==='carton')immersive.salir();}else if(embedded?(window as any).__AE_SONIDO===true:prefs.sound)void sound.enable(true,embedded?.22:prefs.volume,embedded?false:prefs.ambient);};
   const unload=()=>{airtouch.stop();sound.suspend();immersive.salir();};document.addEventListener('visibilitychange',visibility);window.addEventListener('pagehide',unload);
   return()=>{mq.removeEventListener('change',update);document.removeEventListener('visibilitychange',visibility);window.removeEventListener('pagehide',unload);};
  },[prefs.sound,prefs.volume,prefs.ambient]);
  useEffect(()=>{if(!embedded)document.documentElement.lang=prefs.lang;},[prefs.lang,embedded]);
- useEffect(()=>{void sound.enable(prefs.sound,prefs.volume,prefs.ambient);},[prefs.sound,prefs.volume,prefs.ambient]);
+ useEffect(()=>{if(embedded)void sound.enable((window as any).__AE_SONIDO===true,.22,false);else void sound.enable(prefs.sound,prefs.volume,prefs.ambient);},[prefs.sound,prefs.volume,prefs.ambient,embedded]);
  useEffect(()=>{if(!intro)return;introTimer.current=window.setTimeout(()=>state.set({stage:'system'}),reduced?100:state.introDuration);return()=>clearTimeout(introTimer.current);},[intro,reduced,state.introDuration]);
  useEffect(()=>{const update=()=>setClock(new Date().toLocaleTimeString(prefs.lang,{hour:'2-digit',minute:'2-digit',hour12:false}));update();const t=window.setInterval(update,15000);return()=>clearInterval(t);},[prefs.lang]);
  useEffect(()=>{if(!notice)return;const t=setTimeout(()=>setNotice(''),4500);return()=>clearTimeout(t);},[notice]);
@@ -121,7 +121,7 @@ export default function Experience({embedded=false}:{embedded?:boolean}){
      espacio negro con once nombres y ninguna instrucción. Vuelve, pero como
      corresponde aquí dentro: una sola vez, se va al primer toque y no vuelve a
      aparecer en este dispositivo. */}
- {soloEscena&&!prefs.tutorialSeen&&!selected&&!galaxies&&state.ready&&<div className="gesture-hint embedded-hint" role="status">{es?'Toca un mundo para entrar':'Tap a world to enter'}</div>}
+ {soloEscena&&!prefs.tutorialSeen&&!selected&&!galaxies&&state.ready&&<div className="gesture-hint embedded-hint" role="status">{es?'Elige un mundo para entrar':'Choose a world to enter'}</div>}
  {!soloEscena&&!selected&&!galaxies&&<div className="gesture-hint">{es?'Toca un planeta o una app · Pulsa Entrar para viajar':'Choose a planet or an app · Press Enter to travel'}</div>}
  {galaxies&&<p className="galaxy-credit"><a href="https://esahubble.org/images/heic0506a/" target="_blank" rel="noreferrer">M51 · NASA, ESA, S. Beckwith (STScI), and The Hubble Heritage Team (STScI/AURA)</a><span>{es?'Composición adaptada':'Adapted composition'} · <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noreferrer">CC BY 4.0</a></span></p>}
  </>}

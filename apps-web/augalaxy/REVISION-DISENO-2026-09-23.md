@@ -113,3 +113,28 @@ José dio libertad de diseño. Esto es lo que se decidió y se hizo.
 - `galaxia-toques.mjs`: en verde.
 - `inicio-ida-y-vuelta.mjs`: en verde.
 - `aetherion-inicio.mjs` y `galaxia-entrada.mjs` siguen fallando **igual que antes de estos cambios**: prueban el motor y el cielo 2D que se reemplazaron, y hay que reescribirlas para el motor actual.
+
+---
+
+## 6 · Tercera pasada: diseño, animación y sonido
+
+La recorrí entera otra vez: portada, entrada, Inicio, tocar, vuelo, mundo y vuelta, en teléfono y en escritorio con «movimiento reducido». El sonido lo medí contando las voces que se crean en el audio del navegador. Evidencia: `06-auditoria-final.jpg`.
+
+| # | Hallazgo | Arreglo |
+|---|----------|---------|
+| A1 | **La galaxia era muda dentro de la wallet.** Su motor de sonido existe (notas al elegir, ráfaga al viajar), pero dentro de la casa no había interruptor y nacía apagado: tocar un mundo no sonaba nada. | **Un solo interruptor para todo el sonido: el de la música.** Con la música puesta, tocar y viajar suenan bajo, sin zumbido de fondo, y la música se agacha para dejarlos oír. Con la música callada, la galaxia calla. Comprobado en las dos direcciones. |
+| A2 | **«Movimiento reducido» mostraba otra casa:** el cerebro 2D, con otro diseño, «Ordenexchange», un planeta de Ajustes y una franja oscura entre el menú y el cielo en escritorio. | Todos ven la misma galaxia 3D. El motor ya respeta esa preferencia: órbitas quietas, sin intro y viaje de 120 ms. El cerebro queda solo para quien no tiene 3D, y ya no deja la franja. |
+| A3 | **«DBNX · PRONTO» quedaba cortado debajo del botón de AirTouch.** | La casa marca sus botones flotantes (`data-ae-obstaculo`) y los nombres los esquivan como a un planeta. En 12 s de órbita, ningún nombre queda debajo de un botón, en teléfono ni en escritorio. |
+| A4 | El candado de «falta verificarte» era un punto (●) que se confundía con «hay algo nuevo». | Es un candado de verdad. |
+| A5 | **El nombre del destino no se leía en el vuelo:** «ENTRANDO A MyTokenPay» pasaba a media opacidad por encima del sol. | Lleva su propia sombra y aparece antes. |
+| A6 | «Cancelar viaje»: una píldora suelta a media pantalla en un vuelo de un segundo. | Fuera, dentro de la wallet. |
+| A7 | Los nombres aparecían de golpe al terminar la entrada. | Entran con un fundido. |
+| A8 | En escritorio, señalar un nombre con el ratón no se notaba, y la pista decía «Toca» a quien usa ratón. | Se enciende en oro al señalarlo. La pista dice «Elige un mundo para entrar». |
+
+**Descartado tras medir:**
+- el «parpadeo» de nombres en la entrada: era una hoja de capturas desordenada, porque la secuencia real es intro y después nombres;
+- el título cortado de la portada: es AU-RA escribiendo letra por letra.
+
+**La prueba de toques** fallaba a veces en escritorio **también con el código anterior**: esperaba 3,2 s fijos, y dibujando por software el vuelo tarda más. Ahora espera al pedido. Pasa dos veces seguidas.
+
+**Sin medir aquí:** la fluidez real, en cuadros por segundo. Este entorno dibuja sin tarjeta gráfica, a unos 6 cuadros por segundo, y ese número no dice nada del teléfono de nadie. Hay que medirlo en un aparato real.

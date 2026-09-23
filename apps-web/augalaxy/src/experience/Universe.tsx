@@ -4,6 +4,7 @@ import {Bloom,EffectComposer} from '@react-three/postprocessing';
 import * as T from 'three';
 import {worlds,externalGalaxies,worldName,word,World} from './catalog';
 import {usePreferences} from './preferences';
+import {Icon} from './Icon';
 import {useExperience,navigation,motionReduced} from './navigation';
 import {planetVertex,planetFragment,cloudFragment,atmoFragment,pointVertex,pointFragment,brandFragment,NATURA} from './shaders';
 import CompatibleUniverse from './CompatibleUniverse';
@@ -107,7 +108,7 @@ export function PlanetLabels(){
  const prefs=usePreferences(s=>s.prefs),estados=useExperience(s=>s.estados);
  return <><svg className="network-overlay" aria-hidden="true">{worlds.flatMap(w=>(w.id==='genesis'?['label-']:['label-','core-','peer-']).map(prefix=><line key={prefix+w.id} className={prefix.slice(0,-1)} ref={node=>{if(node)linkNodes.set(prefix+w.id,node);else linkNodes.delete(prefix+w.id);}}/>))}</svg><div className="world-labels" role="group" aria-label={prefs.lang==='es'?'Aplicaciones planetarias':'Planetary applications'}>{worlds.map((w,i)=><button key={w.id} ref={node=>{if(node)labelNodes.set(w.id,node);else labelNodes.delete(w.id);}} className="world-label" data-future={String(!!w.future)} onPointerEnter={()=>navigation.hover(w.id)} onPointerLeave={()=>navigation.hover(null)} onFocus={()=>navigation.hover(w.id)} onBlur={()=>navigation.hover(null)} /* Con la casa detrás no hay ficha nuestra que abrir: tocar un nombre es
     viajar y que la wallet abra su app. Sola, el nombre solo elige. */
- onClick={()=>enCasa()?navigation.enter(w.id):navigation.focus(w.id)}><span className="label-rule"/><span className="planet-label-index">{String(i+1).padStart(2,'0')}</span><strong>{worldName(w,prefs.lang)}{estados[w.id]?.candado?<span className="label-candado" aria-label={prefs.lang==='es'?'falta verificarte':'verification needed'}>●</span>:(estados[w.id]?.n||0)>0?<span className="label-cuenta">{Math.min(99,estados[w.id]!.n!)}</span>:estados[w.id]?.nuevo?<span className="label-nuevo"/>:null}</strong>{w.future&&<em className="label-pronto">{prefs.lang==='es'?'PRONTO':'SOON'}</em>}<small>{word(w.category,prefs.lang)}</small>
+ onClick={()=>enCasa()?navigation.enter(w.id):navigation.focus(w.id)}><span className="label-rule"/><span className="planet-label-index">{String(i+1).padStart(2,'0')}</span><strong>{worldName(w,prefs.lang)}{estados[w.id]?.candado?<span className="label-candado" aria-label={prefs.lang==='es'?'falta verificarte':'verification needed'}><Icon name="lock" size={11}/></span>:(estados[w.id]?.n||0)>0?<span className="label-cuenta">{Math.min(99,estados[w.id]!.n!)}</span>:estados[w.id]?.nuevo?<span className="label-nuevo"/>:null}</strong>{w.future&&<em className="label-pronto">{prefs.lang==='es'?'PRONTO':'SOON'}</em>}<small>{word(w.category,prefs.lang)}</small>
  {/* «MINAS · Resources» no le dice nada a quien llega. La frase que ya estaba
      escrita en el catálogo aparece al señalar o al tabular: sin ocupar sitio
      cuando no hace falta, y disponible para un lector de pantalla siempre. */}

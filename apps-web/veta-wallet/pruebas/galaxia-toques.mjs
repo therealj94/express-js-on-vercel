@@ -90,12 +90,25 @@ for (const [nombre, vp, tactil] of [['teléfono', { width: 390, height: 844 }, t
     // antes y tocar después es tocar donde el nombre ya no está
     await p.evaluate(() => { window.__AE_PEDIDOS = []; AUGALAXY.exhalar(); });
     await p.waitForTimeout(1400);
-    const c = await p.evaluate((i) => { const r = document.querySelectorAll('.world-label')[i].getBoundingClientRect(); return [r.x + r.width / 2, r.y + r.height / 2]; }, i);
+    // y se toca cuando el nombre está quieto: con el dibujo por software un
+    // cuadro puede tardar medio segundo y el nombre seguir deslizándose
+    const donde = (i) => p.evaluate((i) => { const r = document.querySelectorAll('.world-label')[i].getBoundingClientRect(); return [r.x + r.width / 2, r.y + r.height / 2]; }, i);
+    let c = await donde(i);
+    for (let k = 0; k < 10; k++) {
+      await p.waitForTimeout(250);
+      const d = await donde(i);
+      const quieto = Math.hypot(d[0] - c[0], d[1] - c[1]) < 2;
+      c = d;
+      if (quieto) break;
+    }
     if (tactil) await p.touchscreen.tap(c[0], c[1]); else await p.mouse.click(c[0], c[1]);
-    await p.waitForTimeout(3200);
+    // el vuelo dura 2,1 s en una pantalla de verdad; dibujando por software
+    // puede tardar el triple, así que se espera al pedido y no a un reloj fijo
+    await p.waitForFunction(() => window.__AE_PEDIDOS.length > 0, null, { timeout: 9000 }).catch(() => {});
     const pedido = await p.evaluate(() => window.__AE_PEDIDOS.at(-1) || null);
     if (!pedido) console.log('    (debajo del dedo:', await p.evaluate(([x, y]) => { const e = document.elementFromPoint(x, y); return e ? e.tagName + '.' + e.className + ' «' + (e.textContent || '').trim().slice(0, 20) + '»' : 'nada'; }, c), ')');
     abiertos.push({ texto, pedido });
+    await p.waitForFunction(() => !document.querySelector('main.galaxy-os.in-transit'), null, { timeout: 9000 }).catch(() => {});
     await p.evaluate(() => AUGALAXY.exhalar());
     await p.waitForTimeout(900);
   }

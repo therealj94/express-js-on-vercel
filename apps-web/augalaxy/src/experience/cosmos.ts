@@ -87,6 +87,19 @@ function line(id:string,x1:number,y1:number,x2:number,y2:number,visible:boolean)
  el.setAttribute('x1',String(x1));el.setAttribute('y1',String(y1));el.setAttribute('x2',String(x2));el.setAttribute('y2',String(y2));
 }
 const embebido=()=>typeof document!=='undefined'&&!!document.querySelector?.('.galaxy-os.is-embedded');
+/* LO QUE LA CASA TIENE FLOTANDO ENCIMA. AirTouch, el orbe de AU-RA y la música
+   viven sobre el cielo: un nombre que cae debajo queda cortado («PRONT») y no
+   se puede tocar. La casa marca esos botones con data-ae-obstaculo y los
+   nombres los esquivan igual que esquivan otro planeta. Se miden dos veces por
+   segundo, no en cada cuadro: casi nunca se mueven. */
+let obstaculos:{x:number;y:number;w:number;h:number}[]=[],obstaculosEn=0;
+function medirObstaculos(){
+ const ahora=performance.now();if(ahora-obstaculosEn<500)return obstaculos;obstaculosEn=ahora;
+ const lienzo=document.querySelector('.galaxy-os canvas')?.getBoundingClientRect();if(!lienzo)return obstaculos=[];
+ obstaculos=[...document.querySelectorAll<HTMLElement>('[data-ae-obstaculo]')].map(e=>e.getBoundingClientRect())
+  .filter(r=>r.width>0&&r.height>0).map(r=>({x:r.left-lienzo.left-6,y:r.top-lienzo.top-6,w:r.width+12,h:r.height+12}));
+ return obstaculos;
+}
 
 export function updateLabels(camera:Camera,width:number,height:number){
  const state=useExperience.getState(),mobile=width<700,active=state.stage==='system',selected=!!state.selected;
@@ -102,6 +115,7 @@ export function updateLabels(camera:Camera,width:number,height:number){
  // Primero los grandes y el núcleo: son los que más estorban si llegan tarde.
  const ordered=[...worlds].sort((a,b)=>a.id==='genesis'?-1:b.id==='genesis'?1:(navigation.projected.get(b.id)!.r-navigation.projected.get(a.id)!.r));
  const reduced=motionReduced();
+ const flotan=emb?medirObstaculos():[];
  for(const w of ordered){
   const p=navigation.projected.get(w.id)!,node=labelNodes.get(w.id);if(!node)continue;
   const lw=Math.max(56,worldNameLength(w)*8.6+16),lh=w.future?40:22,gap=4;
@@ -114,6 +128,8 @@ export function updateLabels(camera:Camera,width:number,height:number){
    // fuera de pantalla o metido en la zona de la casa
    coste+=Math.max(0,lw/2+8-cx)*40+Math.max(0,cx+lw/2+8-width)*40+Math.max(0,top-cy)*40+Math.max(0,cy+lh-bottom)*40;
    // encima de otro nombre
+   // debajo de un botón de la casa
+   for(const o of flotan){const ix=Math.max(0,Math.min(cx+lw/2,o.x+o.w)-Math.max(cx-lw/2,o.x)),iy=Math.max(0,Math.min(cy+lh,o.y+o.h)-Math.max(cy,o.y));coste+=ix*iy*12;}
    for(const o of occupied){const ix=Math.max(0,Math.min(cx+lw/2,o.x+o.w/2)-Math.max(cx-lw/2,o.x-o.w/2)+6),iy=Math.max(0,Math.min(cy+lh,o.y+o.h)-Math.max(cy,o.y)+4);coste+=ix*iy*8;}
    // encima de OTRO planeta: lo que hacía que tocar uno abriera otro
    for(const [id,b] of navigation.projected){if(id===w.id||!b.visible)continue;

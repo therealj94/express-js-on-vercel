@@ -309,3 +309,22 @@ html.og-standalone,html.og-standalone body,html.og-standalone #root{margin:0;wid
 .is-embedded .planet-flight .flight-track{width:140px;height:2px;margin:0 auto;background:#ffffff22;border-radius:2px;overflow:hidden}
 .is-embedded .planet-flight .flight-track i{display:block;height:100%;width:calc(var(--journey-progress) * 100%);background:linear-gradient(90deg,#c99a45,#f3d58f)}
 .is-embedded .planet-flight .skip-intro{position:absolute;left:50%;bottom:190px;transform:translateX(-50%);font-size:12px;opacity:.8}
+/* ── Auditoría 23-sep, 2.ª pasada ─────────────────────────────────────────
+   Los nombres aparecen con un fundido, no de golpe al terminar la entrada.
+   Solo la opacidad: una transición en transform arrastraría la posición, que
+   se recalcula en cada cuadro. */
+.is-embedded .world-label{transition:opacity .55s ease!important}
+/* El candado es un candado, no un punto que se confunde con «hay algo nuevo». */
+.is-embedded .world-label .label-candado{display:inline-flex;vertical-align:-1px;text-shadow:none;filter:drop-shadow(0 0 5px #f0c46a88)}
+.is-embedded .world-label .label-candado svg{width:11px;height:11px;stroke:currentColor;fill:none;stroke-width:2}
+/* En la wallet el vuelo dura poco más de un segundo: «Cancelar viaje» era una
+   píldora suelta en medio de la pantalla que nadie alcanza a tocar. */
+.is-embedded .planet-flight .skip-intro{display:none}
+@media (prefers-reduced-motion: reduce){.is-embedded .world-label{transition:none!important}}
+/* El nombre del destino pasaba por encima del sol a media opacidad y no se
+   leía. Ahora lleva su propia sombra y aparece antes. */
+.is-embedded .planet-flight .flight-readout{opacity:min(1,calc(.25 + var(--journey-progress) * 2))}
+.is-embedded .planet-flight .flight-readout::before{content:"";position:absolute;left:50%;top:50%;width:min(420px,92vw);height:170px;transform:translate(-50%,-50%);background:radial-gradient(closest-side,#02040ae6,#02040a99 55%,transparent);z-index:-1}
+.is-embedded .planet-flight .flight-readout h1{text-shadow:0 2px 12px #000,0 0 30px var(--world-color)}
+/* Con ratón, señalar un nombre se nota: se enciende en oro. */
+@media (hover:hover){.is-embedded .world-label:hover strong,.is-embedded .world-label:focus-visible strong{color:#f3d58f!important;text-shadow:0 0 14px #f3d58f88}}

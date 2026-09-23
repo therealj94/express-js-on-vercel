@@ -4180,6 +4180,9 @@ body:not(.en-cerebro):has(#app:not(.oculto)) #at-boton{top:14px;bottom:auto;righ
 }
 @media (min-width:1200px){
   .lienzo{margin-left:max(232px, calc(232px + (100vw - 232px - 920px) / 2))}
+  /* El Inicio sin 3D (el cerebro) ocupa todo: centrarlo dejaba una franja
+     oscura entre el menú y el cielo. */
+  body.en-cerebro .lienzo{margin-left:232px}
 }
 </style>
 
@@ -4711,7 +4714,7 @@ body:not(.en-cerebro):has(#app:not(.oculto)) #at-boton{top:14px;bottom:auto;righ
   <audio id="musica-cosmos" loop preload="none" crossorigin="anonymous"></audio>
   <!-- El interruptor de la música, al lado de pantalla completa: a la vista,
        de un toque, y la decisión sobrevive a la recarga. -->
-  <button id="musica-btn" onclick="VETA.musicaAlterna()"
+  <button id="musica-btn" data-ae-obstaculo onclick="VETA.musicaAlterna()"
           aria-label="Música del ecosistema" title="Música del ecosistema">
     <svg class="mu-on" viewBox="0 0 24 24" aria-hidden="true">
       <path d="M9 18V5l11-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="17" cy="16" r="3"/>
@@ -4725,7 +4728,7 @@ body:not(.en-cerebro):has(#app:not(.oculto)) #at-boton{top:14px;bottom:auto;righ
   <!-- PANTALLA COMPLETA. Arriba a la derecha, la misma esquina en el teléfono
        y en la computadora. Se esconde solo si el navegador no sabe hacerlo
        (iPhone, por ejemplo): un botón que no hace nada es peor que ninguno. -->
-  <button id="pantalla-llena" class="oculto" onclick="VETA.pantallaLlena()"
+  <button id="pantalla-llena" data-ae-obstaculo class="oculto" onclick="VETA.pantallaLlena()"
           aria-label="Pantalla completa" title="Pantalla completa">
     <svg class="pl-abrir" viewBox="0 0 24 24" aria-hidden="true">
       <path d="M4 9V5.6c0-.9.7-1.6 1.6-1.6H9M15 4h3.4c.9 0 1.6.7 1.6 1.6V9M20 15v3.4c0 .9-.7 1.6-1.6 1.6H15M9 20H5.6C4.7 20 4 19.3 4 18.4V15"/>
@@ -4811,7 +4814,7 @@ body:not(.en-cerebro):has(#app:not(.oculto)) #at-boton{top:14px;bottom:auto;righ
      La mano en el aire mueve la casa: el índice apunta, el pellizco toca.
      El botón enciende y apaga; la primera vez se enseña QUÉ se puede hacer
      y que el video no sale del aparato. El cursor es la mano en pantalla. -->
-<button id="at-boton" class="oculto" onclick="VETA.airToca()" aria-label="AIR TOUCH" title="AIR TOUCH">
+<button id="at-boton" data-ae-obstaculo class="oculto" onclick="VETA.airToca()" aria-label="AIR TOUCH" title="AIR TOUCH">
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"
        stroke-linecap="round" stroke-linejoin="round">
     <path d="M8 12V5.5a1.5 1.5 0 0 1 3 0V11"/>
@@ -4859,7 +4862,7 @@ body:not(.en-cerebro):has(#app:not(.oculto)) #at-boton{top:14px;bottom:auto;righ
   </div>
 </div>
 
-<button id="aura-orbe" data-oculto onclick="VETA.auraToca()" aria-label="AU-RA">
+<button id="aura-orbe" data-ae-obstaculo data-oculto onclick="VETA.auraToca()" aria-label="AU-RA">
   <canvas></canvas>
   <span class="aura-nombre">AU-RA</span>
 </button>
