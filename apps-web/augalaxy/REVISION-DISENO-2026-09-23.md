@@ -157,3 +157,26 @@ José: «al entrar a una app es muy fea la experiencia, las letras, seleccionarl
 - Motor: 31/31. Hay dos pruebas nuevas: la inercia (sigue, se detiene y no lanza al soltar quieto) y la distancia constante al girar. Dos pruebas viejas fijaban el tope de inclinación (1,18) y la ganancia del giro; se actualizaron a los valores nuevos a propósito.
 - `galaxia-toques.mjs`: en verde.
 - `inicio-ida-y-vuelta.mjs`: en verde.
+
+---
+
+## 8 · Vuelta al respaldo (decisión de José)
+
+José: «no me gusta, podemos regresar a la versión anterior, donde el logo era todo un planeta».
+
+- **La wallet vuelve al respaldo `a63bb194`:** el árbol que servía app.vetawallet.com antes de montar la galaxia de texturas (el que `rescate-produccion/SUBIR.md` deja como vuelta atrás). El Inicio es otra vez el motor anterior (`src/main.tsx`, `sky/`, `kernel/`), donde cada planeta es el logo de su app.
+- **Encima van solo los arreglos que no son de la galaxia:**
+  - `4b1ec3c9`: el botón de entrar ya no cae fuera de la pantalla en teléfonos chicos;
+  - MyTokenPay, Remesas, Tarjeta y Mi comercio ya no se redibujan en bucle cuando su API falla;
+  - Genesis ID muestra una sola credencial;
+  - el login dice «Ya tengo una billetera: importarla».
+- **El código de la galaxia de texturas sigue en `src/experience/`**, con todo lo de las secciones 1 a 7, por si se quiere retomar. Solo dejó de servirse.
+- **Comprobado en local:**
+  - iPhone SE con el botón a la vista;
+  - Inicio con la galaxia de los logos, en teléfono y escritorio;
+  - ninguna de esas vistas en bucle;
+  - Genesis ID con una sola credencial;
+  - sin errores de página;
+  - `inicio-ida-y-vuelta.mjs` en verde.
+- **Siguen fallando** `aetherion-inicio.mjs` («el Inicio clásico aparece») y `galaxia-entrada.mjs` (`getImageData` con un valor infinito). Fallan **igual en el respaldo puro**, sin los arreglos: ya venían así.
+- **Nada subido.** El dominio sirve la galaxia de texturas desde el 20-sep. Para que la gente vea esta versión, hay que subirla siguiendo `rescate-produccion/SUBIR.md`, con `comparar-publicado.py` antes y después.

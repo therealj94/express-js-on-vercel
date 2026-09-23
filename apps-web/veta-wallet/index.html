@@ -24,8 +24,8 @@
 <meta http-equiv="Content-Security-Policy" content="
   default-src 'self';
   script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval';
-  style-src 'self' 'unsafe-inline';
-  font-src 'self' data:;
+  style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
+  font-src 'self' data: https://fonts.gstatic.com;
   img-src 'self' data: blob: https://cerebro.ordenscan.com;
   media-src 'self' blob: https://cerebro.ordenscan.com;
   connect-src 'self'
@@ -65,11 +65,8 @@
 <meta property="og:title" content="Orden Global">
 <meta property="og:description" content="Un ecosistema entero, en una sola cuenta.">
 <meta property="og:image" content="https://app.vetawallet.com/assets/veta.png">
-<!-- Tipografias propias. Antes se pedian a fonts.googleapis.com en cada visita:
-     bloqueaba el primer pintado, metia a un tercero en el camino de una app
-     financiera y le contaba quien entra. Ahora viajan con el sitio. -->
-<link rel="preload" href="assets/fonts/archivo-400-latin.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="assets/fonts/tipografias.css?v=0854c9917f">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
 
 <style>
 
@@ -4146,56 +4143,6 @@ body.en-ventana .lienzo::before{
   .ag-voz{display:none}
   .acc{padding:20px}
 }
-
-/* ══ REVISIÓN DE DISEÑO · 23-sep-2026 ══════════════════════════════════════
-   Lo que se vio en las capturas y se corrige aquí, sin tocar la portada:
-
-   1. DENTRO de la app, la foto del restaurante detrás de cada pantalla se
-      comía el contraste: cada tarjeta de vidrio tenía que pelear contra caras,
-      teléfonos y lámparas. La foto se queda en la portada, que es donde cuenta
-      una historia; adentro manda un fondo de marca, oscuro y quieto, con el
-      brillo de oro arriba.
-   2. Los botones flotantes (AirTouch y AU-RA) tapaban justo el final de cada
-      tarjeta en el teléfono. Fuera del Inicio, AirTouch sube a la barra de
-      arriba, junto a pantalla completa, y el contenido deja libre el rincón de
-      AU-RA.
-   3. En escritorio el contenido vivía pegado al menú con 300 px de foto vacía
-      a la derecha. Se centra en el espacio que queda. */
-body:has(#app:not(.oculto)){
-  background-image:
-    radial-gradient(110% 55% at 50% -8%, rgba(214,178,106,.13), transparent 62%),
-    radial-gradient(80% 60% at 105% 105%, rgba(22,92,84,.30), transparent 70%),
-    linear-gradient(180deg,#051615 0%,#030e0e 55%,#020909 100%);
-  background-size:cover; background-attachment:fixed;
-}
-body:not(.en-cerebro):has(#app:not(.oculto)) #at-boton{top:14px;bottom:auto;right:64px;width:40px;height:40px}
-@media (max-width:760px), (orientation:portrait) and (max-width:900px){
-  /* En el teléfono la fila del título ya tiene su botón («Actualizar»): los
-     dos íconos flotantes se le montaban encima. AirTouch queda en el Inicio,
-     que es donde se usa; y la fila del título deja libre la esquina de
-     pantalla completa. */
-  body:not(.en-cerebro):has(#app:not(.oculto)) #at-boton{display:none}
-  body:not(.en-cerebro) .lienzo>.cab{padding-right:48px}
-  body:not(.en-cerebro) .lienzo{padding-bottom:150px}
-}
-@media (min-width:1200px){
-  .lienzo{margin-left:max(232px, calc(232px + (100vw - 232px - 920px) / 2))}
-  /* El Inicio sin 3D (el cerebro) ocupa todo: centrarlo dejaba una franja
-     oscura entre el menú y el cielo. */
-  body.en-cerebro .lienzo{margin-left:232px}
-}
-
-/* El velo de llegada (ver veloLlegada en app.js): la continuación exacta del
-   último cuadro del viaje, que se retira mientras la app sube. */
-#velo-llegada{position:fixed;z-index:4;pointer-events:none;
-  background:radial-gradient(120% 80% at 50% 42%,color-mix(in srgb,var(--c) 24%,#04100f) 0%,#030e0e 58%,#020909 100%);
-  animation:veloSale .75s .1s cubic-bezier(.4,0,.2,1) forwards}
-#velo-llegada .vl-texto{position:absolute;left:0;right:0;top:40%;text-align:center;animation:veloTexto .5s cubic-bezier(.4,0,.2,1) forwards}
-#velo-llegada .vl-texto span{display:block;font-size:11px;letter-spacing:.3em;color:#e5c487}
-#velo-llegada .vl-texto b{display:block;margin:.3em 0 .6em;font:700 28px/1.2 var(--serif);letter-spacing:.06em;color:#fff;
-  text-shadow:0 2px 12px #000,0 0 30px var(--c)}
-@keyframes veloSale{to{opacity:0}}
-@keyframes veloTexto{to{opacity:0;transform:translateY(-10px) scale(.98)}}
 </style>
 
 <!-- El velo de apertura. El texto de respaldo es el español plano: si el
@@ -4726,7 +4673,7 @@ body:not(.en-cerebro):has(#app:not(.oculto)) #at-boton{top:14px;bottom:auto;righ
   <audio id="musica-cosmos" loop preload="none" crossorigin="anonymous"></audio>
   <!-- El interruptor de la música, al lado de pantalla completa: a la vista,
        de un toque, y la decisión sobrevive a la recarga. -->
-  <button id="musica-btn" data-ae-obstaculo onclick="VETA.musicaAlterna()"
+  <button id="musica-btn" onclick="VETA.musicaAlterna()"
           aria-label="Música del ecosistema" title="Música del ecosistema">
     <svg class="mu-on" viewBox="0 0 24 24" aria-hidden="true">
       <path d="M9 18V5l11-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="17" cy="16" r="3"/>
@@ -4740,7 +4687,7 @@ body:not(.en-cerebro):has(#app:not(.oculto)) #at-boton{top:14px;bottom:auto;righ
   <!-- PANTALLA COMPLETA. Arriba a la derecha, la misma esquina en el teléfono
        y en la computadora. Se esconde solo si el navegador no sabe hacerlo
        (iPhone, por ejemplo): un botón que no hace nada es peor que ninguno. -->
-  <button id="pantalla-llena" data-ae-obstaculo class="oculto" onclick="VETA.pantallaLlena()"
+  <button id="pantalla-llena" class="oculto" onclick="VETA.pantallaLlena()"
           aria-label="Pantalla completa" title="Pantalla completa">
     <svg class="pl-abrir" viewBox="0 0 24 24" aria-hidden="true">
       <path d="M4 9V5.6c0-.9.7-1.6 1.6-1.6H9M15 4h3.4c.9 0 1.6.7 1.6 1.6V9M20 15v3.4c0 .9-.7 1.6-1.6 1.6H15M9 20H5.6C4.7 20 4 19.3 4 18.4V15"/>
@@ -4766,7 +4713,7 @@ body:not(.en-cerebro):has(#app:not(.oculto)) #at-boton{top:14px;bottom:auto;righ
       <path d="M3.4 9.6c0-1 .8-1.8 1.8-1.8h13.6c1 0 1.8.8 1.8 1.8v4.2c0 1-.8 1.8-1.8 1.8h-3.1c-.6 0-1.1-.3-1.4-.8l-.9-1.4c-.5-.8-1.7-.8-2.2 0l-.9 1.4c-.3.5-.8.8-1.4.8H5.2c-1 0-1.8-.8-1.8-1.8z"/>
     </svg>
   </button>
-  <nav class="riel" data-ae-obstaculo aria-label="Secciones">
+  <nav class="riel" aria-label="Secciones">
     <div class="riel-marca marca"><img src="assets/apps/og.png" alt="">ORDEN <em>GLOBAL</em></div>
     <button class="nav" aria-current="page" data-vista="nucleo" onclick="VETA.vista('nucleo')"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.2"/><circle cx="12" cy="3.7" r="1.7"/><circle cx="20.3" cy="12" r="1.7"/><circle cx="12" cy="20.3" r="1.7"/><circle cx="3.7" cy="12" r="1.7"/><path d="M12 5.4v3.4M15.2 12h3.4M12 15.2v3.4M5.4 12h3.4"/></svg><span data-t="nav.nucleo"></span></button>
     <button class="nav" data-vista="billetera" onclick="VETA.vista('billetera')"><svg viewBox="0 0 24 24"><path d="M3 7.5A2.5 2.5 0 0 1 5.5 5H18a2 2 0 0 1 2 2v1"/><rect x="3" y="8" width="18" height="11" rx="2.5"/><circle cx="16.5" cy="13.5" r="1.3"/></svg><span data-t="nav.billetera"></span></button>
@@ -4787,7 +4734,7 @@ body:not(.en-cerebro):has(#app:not(.oculto)) #at-boton{top:14px;bottom:auto;righ
     </div>
   </nav>
   <div class="lienzo" id="lienzo"></div>
-  <nav class="tabs" data-ae-obstaculo aria-label="Secciones">
+  <nav class="tabs" aria-label="Secciones">
     <button class="nav" aria-current="page" data-vista="nucleo" onclick="VETA.vista('nucleo')"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.2"/><circle cx="12" cy="3.7" r="1.7"/><circle cx="20.3" cy="12" r="1.7"/><circle cx="12" cy="20.3" r="1.7"/><circle cx="3.7" cy="12" r="1.7"/><path d="M12 5.4v3.4M15.2 12h3.4M12 15.2v3.4M5.4 12h3.4"/></svg><span data-t="nav.nucleo"></span></button>
     <button class="nav" data-vista="billetera" onclick="VETA.vista('billetera')"><svg viewBox="0 0 24 24"><path d="M3 7.5A2.5 2.5 0 0 1 5.5 5H18a2 2 0 0 1 2 2v1"/><rect x="3" y="8" width="18" height="11" rx="2.5"/><circle cx="16.5" cy="13.5" r="1.3"/></svg><span data-t="nav.billetera"></span></button>
     <button class="nav" data-vista="tarjeta" onclick="VETA.vista('tarjeta')"><svg viewBox="0 0 24 24"><rect x="2" y="5" width="20" height="14" rx="2.5"/><path d="M2 10h20M6 15h4"/></svg><span data-t="nav.tarjeta"></span></button>
@@ -4826,7 +4773,7 @@ body:not(.en-cerebro):has(#app:not(.oculto)) #at-boton{top:14px;bottom:auto;righ
      La mano en el aire mueve la casa: el índice apunta, el pellizco toca.
      El botón enciende y apaga; la primera vez se enseña QUÉ se puede hacer
      y que el video no sale del aparato. El cursor es la mano en pantalla. -->
-<button id="at-boton" data-ae-obstaculo class="oculto" onclick="VETA.airToca()" aria-label="AIR TOUCH" title="AIR TOUCH">
+<button id="at-boton" class="oculto" onclick="VETA.airToca()" aria-label="AIR TOUCH" title="AIR TOUCH">
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"
        stroke-linecap="round" stroke-linejoin="round">
     <path d="M8 12V5.5a1.5 1.5 0 0 1 3 0V11"/>
@@ -4874,7 +4821,7 @@ body:not(.en-cerebro):has(#app:not(.oculto)) #at-boton{top:14px;bottom:auto;righ
   </div>
 </div>
 
-<button id="aura-orbe" data-ae-obstaculo data-oculto onclick="VETA.auraToca()" aria-label="AU-RA">
+<button id="aura-orbe" data-oculto onclick="VETA.auraToca()" aria-label="AU-RA">
   <canvas></canvas>
   <span class="aura-nombre">AU-RA</span>
 </button>
@@ -4890,9 +4837,9 @@ body:not(.en-cerebro):has(#app:not(.oculto)) #at-boton{top:14px;bottom:auto;righ
 
 <!-- El saber publico que Genesis dejo salir. Lo genera
      infra/cerebro/publicar-saber.mjs; no se edita a mano. -->
-<script src="saber.js?v=0854c9917f"></script>
-<script src="telemetria.js?v=0854c9917f"></script>
-<script src="qr.js?v=0854c9917f"></script>
+<script src="saber.js?v=6439c6538a"></script>
+<script src="telemetria.js?v=6439c6538a"></script>
+<script src="qr.js?v=6439c6538a"></script>
 <!-- La cripto para entrar con la frase semilla. Se carga aparte y no dentro
      de app.js porque son 13 KB que solo hacen falta si alguien elige ese
      camino, y porque asi se puede probar sola (pruebas/probar-llaves.mjs). -->
@@ -5044,24 +4991,24 @@ body:not(.en-cerebro):has(#app:not(.oculto)) #at-boton{top:14px;bottom:auto;righ
   </div>
 </div>
 
-<script src="vendor/cripto-llaves.js?v=0854c9917f"></script>
-<script src="llaves.js?v=0854c9917f"></script>
-<script src="tono.js?v=0854c9917f"></script>
-<script src="llamada.js?v=0854c9917f"></script>
-<script src="llamadaGrupo.js?v=0854c9917f"></script>
-<script src="velas.js?v=0854c9917f"></script>
-<script src="cadena.js?v=0854c9917f"></script>
-<script src="datos.js?v=0854c9917f"></script>
-<script src="aura.js?v=0854c9917f"></script>
-<script src="candado.js?v=0854c9917f"></script>
-<script src="chat.js?v=0854c9917f"></script>
-<script src="i18n.js?v=0854c9917f"></script>
-<script src="galaxia.js?v=0854c9917f"></script>
+<script src="vendor/cripto-llaves.js?v=6439c6538a"></script>
+<script src="llaves.js?v=6439c6538a"></script>
+<script src="tono.js?v=6439c6538a"></script>
+<script src="llamada.js?v=6439c6538a"></script>
+<script src="llamadaGrupo.js?v=6439c6538a"></script>
+<script src="velas.js?v=6439c6538a"></script>
+<script src="cadena.js?v=6439c6538a"></script>
+<script src="datos.js?v=6439c6538a"></script>
+<script src="aura.js?v=6439c6538a"></script>
+<script src="candado.js?v=6439c6538a"></script>
+<script src="chat.js?v=6439c6538a"></script>
+<script src="i18n.js?v=6439c6538a"></script>
+<script src="galaxia.js?v=6439c6538a"></script>
 <!-- GENESIS CORE: el cerebro del ecosistema, el mismo volumen que se proyecta
      en la sala de Genesis ID. Solo lo usa su vista. -->
-<script src="cerebro-og.js?v=0854c9917f"></script>
+<script src="cerebro-og.js?v=6439c6538a"></script>
 <!-- MODO VISOR: la casa dentro de un visor (WebXR, cartón o 360 en pantalla). -->
-<script src="visor.js?v=0854c9917f"></script>
-<script src="musica.js?v=0854c9917f"></script>
-<script src="airtouch.js?v=0854c9917f"></script>
-<script src="app.js?v=0854c9917f"></script>
+<script src="visor.js?v=6439c6538a"></script>
+<script src="musica.js?v=6439c6538a"></script>
+<script src="airtouch.js?v=6439c6538a"></script>
+<script src="app.js?v=6439c6538a"></script>

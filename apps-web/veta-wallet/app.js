@@ -593,9 +593,6 @@ const VETA = (() => {
     if (cual !== 'es' && cual !== 'en') return;
     idiomaActual = cual;
     try { localStorage.setItem('veta.idioma', cual); } catch {}
-    /* La galaxia del Inicio tiene que hablar el mismo idioma que la casa. */
-    window.__AE_LANG = cual;
-    try { window.AUGALAXY?.idioma?.(cual); } catch { /* galaxia sin cargar */ }
     pintarIdioma();
     pestana(modo);
     if (!$('#app').classList.contains('oculto')) vista(vistaActual);
@@ -2401,7 +2398,6 @@ const VETA = (() => {
     }
     /* genesis también es cerebro: mismo cielo negro, misma respiración */
     document.body.classList.toggle('en-cerebro', cual === 'nucleo' || cual === 'genesis');
-    if (cual === 'nucleo') aetEstados();
     /* PULSE2CHAT se queda con la pantalla entera. La billetera no desaparece
        —el riel y las pestañas siguen ahí— pero el fondo, el ancho y el relleno
        pasan a ser los suyos: dentro de su casa manda su marca. */
@@ -6282,17 +6278,10 @@ const VETA = (() => {
      se puede contestar: «¿esto que estoy viendo es lo último que subimos, o
      mi navegador se quedó con una copia vieja?». La ficha de Ajustes lo
      enseña, y con eso se sabe. */
-  const VETA_V = '0854c9917f';
-  const VETA_FECHA = '2026-09-22';
+  const VETA_V = '6439c6538a';
+  const VETA_FECHA = '2026-09-10';
 
-  const AET_V = 'b35b4016d8';
-
-  /* MEDIAPIPE, UNA SOLA COPIA EN EL SITIO. La casa ya sirve el modelo de manos
-     y su WASM en /vendor/vision/ para su propio AirTouch. El motor traia los
-     mismos bytes otra vez —43 MB repetidos, subidos en cada despliegue—; con
-     esto usa los de aqui. Si algun dia el motor corre fuera de esta casa, cae
-     solo a los suyos. */
-  window.__AE_VISION = { wasm: '/vendor/vision/wasm/', modelo: '/vendor/vision/hand_landmarker.task' };
+  const AET_V = 'fc53e9b8bf';
 
   function aetCargar() {
     if (aetCarga) return aetCarga;
@@ -6652,14 +6641,7 @@ const VETA = (() => {
   }
   function musicaMarca(puesta) {
     $('#musica-btn')?.classList.toggle('callada', !puesta);
-    /* UN SOLO INTERRUPTOR PARA TODO EL SONIDO. La galaxia no tiene botón propio
-       dentro de la casa: si la música está puesta, tocar un mundo y viajar
-       suenan (bajo, y la música se agacha para dejarlos oír); si está callada,
-       la galaxia también calla. */
-    window.__AE_SONIDO = !!puesta;
-    try { window.AUGALAXY?.sonido?.(!!puesta); } catch { /* galaxia sin cargar */ }
   }
-  window.__AE_AGACHAR = (ms) => { try { window.MUSICA?.agachar?.(ms); } catch { /* nada */ } };
 
   /* ── PANTALLA COMPLETA ───────────────────────────────────────────────────
      La galaxia y las casas se ven mejor sin la barra del navegador comiéndose
@@ -6749,26 +6731,6 @@ const VETA = (() => {
      iniciar sesión llega directo — y del otro lado la casa la ADOPTA sin
      remontarla. Si el bundle no carga o hay movimiento reducido, la puerta
      conserva su cielo 2D de siempre: jamás una pantalla en negro. */
-  /* LO QUE CADA MUNDO TIENE PARA DECIR, sin abrirlo. La galaxia recibe
-     contadores y marcas —nunca montos—: mensajes sin leer en PULSE2CHAT y el
-     candado de Genesis ID mientras falte verificarse. Con eso el Inicio deja
-     de ser decoración: el planeta que tiene algo para vos, late. */
-  function aetEstados() {
-    try {
-      const verificada = esVerificada();
-      const sinLeer = (chatSt.convs || []).reduce((acc, c) => acc + (Number(c.sinLeer) || 0), 0)
-        + (chatSt.circulo?.recibidas?.length || 0);
-      /* El candado va en los MISMOS mundos que la casa cierra sin identidad
-         (MUNDOS[].pideGid): la galaxia no puede prometer una puerta abierta
-         que al tocarla manda a verificarse. */
-      const est = { gid: { candado: !!sesion && !verificada } };
-      for (const m of MUNDOS) if (m.pideGid && !verificada) est[m.id] = { candado: true };
-      est.chat = { ...(est.chat || {}), n: sinLeer };
-      window.AUGALAXY?.estados?.(est);
-    } catch { /* la galaxia todavía no cargó: se repite en el próximo latido */ }
-  }
-  setInterval(() => { if (document.body.classList.contains('en-cerebro')) aetEstados(); }, 8000);
-
   function aetIdentidad() {
     window.__AE_LANG = idiomaActivo();
     window.__AE_APPS = MUNDOS.map((m) => ({
@@ -6805,37 +6767,6 @@ const VETA = (() => {
     }).catch(() => { /* la puerta 2D sigue puesta: nada que hacer */ }), { timeout: 1200 });
   }
 
-  /* EL VELO DE LLEGADA. El viaje termina con la escena cubierta por un velo
-     del color del mundo y su nombre encima. Desmontar la galaxia se llevaba
-     ese velo de golpe y aparecía la app en seco. Aquí se deja uno igual, en
-     el mismo sitio y con el mismo nombre, y se retira despacio mientras la app
-     sube por debajo: la persona ve un solo movimiento, no dos pantallas. */
-  function veloLlegada() {
-    const vuelo = document.querySelector('.galaxy-os .planet-flight');
-    if (!vuelo || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-    const caja = vuelo.getBoundingClientRect();
-    const lectura = vuelo.querySelector('.flight-readout')?.getBoundingClientRect();
-    const velo = document.createElement('div');
-    velo.id = 'velo-llegada';
-    velo.setAttribute('aria-hidden', 'true');
-    velo.style.cssText = `left:${caja.left}px;top:${caja.top}px;width:${caja.width}px;height:${caja.height}px;`
-      + `--c:${vuelo.style.getPropertyValue('--world-color') || '#d9b56a'}`;
-    const texto = document.createElement('div');
-    texto.className = 'vl-texto';
-    if (lectura) texto.style.top = (lectura.top - caja.top) + 'px';
-    texto.innerHTML = `<span>${esc(vuelo.querySelector('.flight-readout span')?.textContent || '')}</span>`
-      + `<b>${esc(vuelo.querySelector('.flight-readout h1')?.textContent || '')}</b>`;
-    velo.appendChild(texto);
-    document.getElementById('velo-llegada')?.remove();
-    /* Dentro de #app y por debajo de sus barras (menú, pestañas; el techo va
-       aparte y ya queda encima): el velo cubre el cielo, no el marco de la casa. */
-    (document.getElementById('app') || document.body).appendChild(velo);
-    const fuera = () => velo.remove();
-    // el texto termina antes y su animationend sube hasta aquí: solo cuenta el del velo
-    velo.addEventListener('animationend', (e) => { if (e.target === velo) fuera(); });
-    setTimeout(fuera, 1600);
-  }
-
   /* ¿La puerta 3D está viva y volando se entra? */
   const aetPuertaViva = () =>
     !!(window.AUGALAXY?.entrar && document.getElementById('ae-casa')
@@ -6843,12 +6774,7 @@ const VETA = (() => {
 
   /* El Inicio decide su cuerpo: AuGalaxy si puede, el cerebro si no. */
   function encenderInicio() {
-    /* MOVIMIENTO REDUCIDO YA NO ES OTRA CASA. Antes, quien pedía menos
-       movimiento recibía el cerebro 2D: otro diseño, otros nombres y un
-       planeta de Ajustes que la galaxia ya no tiene. El motor 3D respeta esa
-       preferencia por su cuenta (órbitas quietas, sin intro, viaje de 120 ms),
-       así que todos ven el mismo Inicio. El cerebro queda para quien no tiene
-       3D. */
+    if (matchMedia('(prefers-reduced-motion: reduce)').matches) return encenderCerebro(false);
     /* LA IDENTIDAD VA PRIMERO. El motor arma el mapa de casas al EVALUARSE, no
        al montarse: si el idioma y las marcas llegan después, los planetas
        nacen mudos y en español aunque la persona esté en inglés. */
@@ -6879,7 +6805,6 @@ const VETA = (() => {
             nuAbrir(k);
             setTimeout(() => window.AUGALAXY?.exhalar?.(), 600);
           } else {
-            veloLlegada();
             window.AUGALAXY.desmontar();
             nuAbrir(k);
           }
