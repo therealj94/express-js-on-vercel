@@ -138,3 +138,22 @@ La recorrí entera otra vez: portada, entrada, Inicio, tocar, vuelo, mundo y vue
 **La prueba de toques** fallaba a veces en escritorio **también con el código anterior**: esperaba 3,2 s fijos, y dibujando por software el vuelo tarda más. Ahora espera al pedido. Pasa dos veces seguidas.
 
 **Sin medir aquí:** la fluidez real, en cuadros por segundo. Este entorno dibuja sin tarjeta gráfica, a unos 6 cuadros por segundo, y ese número no dice nada del teléfono de nadie. Hay que medirlo en un aparato real.
+
+---
+
+## 7 · Entrar a una app, las letras y el giro con el ratón
+
+José: «al entrar a una app es muy fea la experiencia, las letras, seleccionarlo y rotar con el mouse es muy duro, no hay rotación ordenada».
+
+| Qué | Por qué se sentía mal | Ahora |
+|-----|----------------------|-------|
+| **Entrar a una app** | El viaje llegaba al planeta, **la cámara se volvía a alejar** medio segundo y recién ahí la wallet cortaba en seco a su pantalla: dos movimientos y un salto. | La cámara **se queda aparcada** en el planeta. En el último tercio del viaje un velo del color del mundo cubre la escena con «ENTRANDO A · GENESIS ID», y la wallet abre la app **detrás del mismo velo** (`#velo-llegada`), que se retira mientras la app sube. Menú, pestañas y encabezado no parpadean. `07-entrar-a-una-app.jpg` |
+| **Girar con el ratón** | La cámara iba **en línea recta** de un punto del círculo a otro: cada giro rápido acercaba y alejaba el sistema, y se sentía como un tirón. Al soltar se frenaba en seco. La inclinación dejaba el sistema torcido para siempre. | La cámara se suaviza en giro, inclinación y distancia, así que la distancia no cambia al girar (hay prueba). **Inercia:** un gesto rápido sigue girando y se frena solo; soltar después de quedarse quieto no lanza nada. **Giro ordenado:** arrastrar gira como un plato, la inclinación va acotada con resistencia, y al soltar el sistema vuelve despacio a estar derecho. Volver al Inicio toma siempre el camino corto. |
+| **Los nombres al girar** | Se recolocaban en cada cuadro y saltaban de lado mientras el sistema giraba. | Mientras gira, los nombres se apagan y no se pueden tocar. Vuelven con un fundido cuando el giro se asienta. `08-giro-con-raton.jpg` |
+| **Las letras** | Los nombres y el destino iban en una letra genérica, distinta de «ORDEN GLOBAL» y del saludo. | **Cinzel**, la letra de la marca, con sombra para leerse sobre cualquier planeta. |
+| **Nombres bajo el menú** | En escritorio el cielo pasa por debajo del menú lateral, y un nombre podía quedar escondido ahí: tocarlo abría «Chat». | El menú y las pestañas se marcan como obstáculos y los nombres los esquivan. |
+
+**Pruebas:**
+- Motor: 31/31. Hay dos pruebas nuevas: la inercia (sigue, se detiene y no lanza al soltar quieto) y la distancia constante al girar. Dos pruebas viejas fijaban el tope de inclinación (1,18) y la ganancia del giro; se actualizaron a los valores nuevos a propósito.
+- `galaxia-toques.mjs`: en verde.
+- `inicio-ida-y-vuelta.mjs`: en verde.

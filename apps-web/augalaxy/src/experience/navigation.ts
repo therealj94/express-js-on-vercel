@@ -27,6 +27,11 @@ let token=0,entrega=0;
 export const cancelarEntrega=()=>clearTimeout(entrega);
 export const navigation={
  zoom:1,yaw:0,pitch:.6,lastInteraction:0,hovered:null as string|null,
+ /* EL GIRO CON PESO. Arrastrar gira como un plato (la inclinación va acotada) y
+    al soltar el sistema sigue girando por inercia y se frena solo; la
+    inclinación vuelve despacio a la de siempre. Así el cielo siempre acaba
+    derecho y nunca se detiene en seco. */
+ dragging:false,vyaw:0,
  focus(id:string|null){
   if(id!==null&&!worlds.some(w=>w.id===id))return;
   const prev=useExperience.getState().selected;
@@ -49,18 +54,28 @@ export const navigation={
      el aterrizaje, y la wallet toma el mando: es su app, no un panel nuestro.
      Sin casa detrás, este motor corre solo y enseña su propia ficha. */
   if(puente&&id!=='ajustes'){
-   s.set({stage:'system',journey:null,windowId:null});sound.cue('arrival');
-   clearTimeout(entrega);entrega=window.setTimeout(()=>{try{puente(id);}catch{/* la casa dirá lo suyo */}},520);
+   /* LLEGAR NO ES VOLVER A SALIR. Antes el viaje terminaba, la cámara se
+      alejaba otra vez medio segundo y recién ahí la casa cortaba a su
+      pantalla: un ir y volver seguido de un salto. Ahora la cámara se queda
+      aparcada en el planeta, el velo del color del mundo termina de cubrir la
+      escena y la casa abre su app detrás del mismo velo. */
+   sound.cue('arrival');
+   clearTimeout(entrega);entrega=window.setTimeout(()=>{try{puente(id);}catch{/* la casa dirá lo suyo */}},motionReduced()?0:320);
    return;
   }
   s.set({stage:'system',journey:null,...(id==='ajustes'?{settings:true,windowId:null}:{windowId:id})});sound.cue('arrival');
  },
  step(direction:number){const s=useExperience.getState(),i=worlds.findIndex(w=>w.id===s.selected);this.focus(worlds[(i+direction+worlds.length)%worlds.length].id);},
  hover(id:string|null){this.hovered=id;useExperience.getState().set({hovered:id});},
- orbit(dx:number,dy:number){if(useExperience.getState().stage==='transit'||!Number.isFinite(dx)||!Number.isFinite(dy))return;this.lastInteraction=now();const gain=usePreferences.getState().prefs.orbitSensitivity;this.yaw-=dx*.0042*gain;this.pitch=Math.max(-.35,Math.min(1.18,this.pitch+dy*.0028*gain));sound.motion(Math.hypot(dx,dy),dx);},
+ orbit(dx:number,dy:number){if(useExperience.getState().stage==='transit'||!Number.isFinite(dx)||!Number.isFinite(dy))return;this.lastInteraction=now();const gain=usePreferences.getState().prefs.orbitSensitivity,d=-dx*.0036*gain;this.yaw+=d;this.vyaw=this.dragging?this.vyaw*.4+d*.6:0;
+  // la inclinación resiste al acercarse a sus topes, como una goma
+  const p=this.pitch+dy*.0022*gain,lo=.22,hi=1.05;this.pitch=p<lo?lo-(lo-p)*.25:p>hi?hi+(p-hi)*.25:p;this.pitch=Math.max(.1,Math.min(1.15,this.pitch));
+  if(Math.abs(dx)>6)sound.motion(Math.hypot(dx,dy)*.5,dx);},
+ // soltar después de quedarse quieto no lanza nada: la inercia es del gesto, no del último movimiento viejo
+ release(){this.dragging=false;if(Math.abs(this.vyaw)<.0006||now()-this.lastInteraction>90)this.vyaw=0;},
  dolly(factor:number){if(!Number.isFinite(factor)||factor<=0)return;const s=useExperience.getState();if(s.stage==='transit')return;this.lastInteraction=now();this.zoom=Math.max(.6,Math.min(3,this.zoom*factor));sound.motion(Math.abs(1-factor)*120,factor>1?12:-12);if(s.stage==='system'&&!s.selected&&this.zoom>2.4)this.galaxies();},
  galaxies(){this.zoom=1;this.yaw=0;this.pitch=.38;this.lastInteraction=now();useExperience.getState().set({immersive:false,stage:'galaxies',selected:null,journey:null,windowId:null});sound.travel('focus');},
- home(){this.zoom=1;this.yaw=0;this.pitch=.6;this.lastInteraction=now();this.hovered=null;useExperience.getState().set({immersive:false,selected:null,stage:'system',windowId:null,journey:null,hovered:null});},
+ home(){this.zoom=1;this.yaw=0;this.pitch=.6;this.vyaw=0;this.dragging=false;this.lastInteraction=now();this.hovered=null;useExperience.getState().set({immersive:false,selected:null,stage:'system',windowId:null,journey:null,hovered:null});},
  hitTest:(_x:number,_y:number):string|null=>null,
  projected:new Map<string,{x:number;y:number;r:number;visible:boolean}>(),
 };

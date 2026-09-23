@@ -27,13 +27,18 @@ export const BLACK_HOLE_RADIUS=6.4;
 export const PULSAR_POSITION:[number,number,number]=[-44,29,-110];
 export class CameraDirector {
  look=new Vector3(0,0,0);eye=new Vector3();target=new Vector3();stage='';introStart=0;
+ /* La cámara se suaviza en sus propias coordenadas (giro, inclinación,
+    distancia), no punto a punto: interpolar la posición en línea recta corta
+    por dentro del círculo, y cada giro rápido se sentía como un tirón que
+    además acercaba y alejaba el sistema. */
+ private s:{yaw:number;pitch:number;dist:number}|null=null;
  update(camera:Camera,width:number,height:number,now:number,dt:number){
   const state=useExperience.getState(),mobile=width<700,reduced=motionReduced();
   if(state.immersive){
    camera.position.set(0,7,38);
    const yaw=-navigation.yaw,pitch=navigation.pitch;
    this.target.set(Math.sin(yaw)*Math.cos(pitch),-Math.sin(pitch),-Math.cos(yaw)*Math.cos(pitch)).multiplyScalar(80).add(camera.position);
-   this.look.copy(this.target);camera.lookAt(this.look);camera.updateMatrixWorld();
+   this.s=null;this.look.copy(this.target);camera.lookAt(this.look);camera.updateMatrixWorld();
    const c=camera as PerspectiveCamera;if(c.isPerspectiveCamera&&c.fov!==65){c.fov=65;c.updateProjectionMatrix();}return;
   }
   if(state.stage!==this.stage){if(state.stage==='intro')this.introStart=now;this.stage=state.stage;}
@@ -44,9 +49,16 @@ export class CameraDirector {
    this.target.copy(pelicula.mira);
    this.eye.set(Math.sin(pelicula.yaw)*Math.cos(pelicula.pitch)*pelicula.distancia,Math.sin(pelicula.pitch)*pelicula.distancia,Math.cos(pelicula.yaw)*Math.cos(pelicula.pitch)*pelicula.distancia).add(this.target);
    const cine=reduced?1:1-Math.exp(-Math.min(dt,.08)*4.5);
-   camera.position.lerp(this.eye,cine);this.look.lerp(this.target,cine);camera.lookAt(this.look);camera.updateMatrixWorld();
+   this.s=null;camera.position.lerp(this.eye,cine);this.look.lerp(this.target,cine);camera.lookAt(this.look);camera.updateMatrixWorld();
    const lente=camera as PerspectiveCamera;if(lente.isPerspectiveCamera&&Math.abs(lente.fov-52)>.01){lente.fov=52;lente.updateProjectionMatrix();}
    return;
+  }
+  // inercia del giro y vuelta suave a la inclinación de siempre
+  if(state.stage==='system'&&!navigation.dragging){
+   if(reduced)navigation.vyaw=0;
+   else if(Math.abs(navigation.vyaw)>.00004){navigation.yaw+=navigation.vyaw*Math.min(dt,.08)*60;navigation.vyaw*=Math.exp(-Math.min(dt,.08)*3.2);navigation.lastInteraction=now;}
+   else navigation.vyaw=0;
+   if(!state.selected&&now-navigation.lastInteraction>900){const k=1-Math.exp(-Math.min(dt,.08)*1.4);navigation.pitch+=(.6-navigation.pitch)*k;}
   }
   const base=mobile?76:43;let distance=base,yaw=navigation.yaw,pitch=navigation.pitch+(mobile?.38:0);
   this.target.set(0,0,0);
@@ -57,9 +69,16 @@ export class CameraDirector {
   distance*=state.stage==='gate'||state.stage==='intro'?1:navigation.zoom;
   let fov=48;
   if(world&&state.journey){const t=Math.min(1,Math.max(0,(now-state.journey.startedAt)/state.journey.duration)),e=t*t*t;this.target.lerp(locationOf(world),t*t*(3-2*t));distance=base*navigation.zoom*(1-e)+world.radius*1.035*e;fov=48+Math.sin(t*Math.PI)*10;pitch=pitch*(1-t)+.1*t;}
-  this.eye.set(Math.sin(yaw)*Math.cos(pitch)*distance,Math.sin(pitch)*distance,Math.cos(yaw)*Math.cos(pitch)*distance).add(this.target);
-  const factor=reduced?1:1-Math.exp(-Math.min(dt,.08)*(state.stage==='transit'?8:state.stage==='system'&&now-navigation.lastInteraction<250?12:5));
-  camera.position.lerp(this.eye,factor);this.look.lerp(this.target,factor);camera.lookAt(this.look);camera.updateMatrixWorld();
+  const factor=reduced?1:1-Math.exp(-Math.min(dt,.08)*(state.stage==='transit'?9:navigation.dragging?10:4.5));
+  if(!this.s){
+   // se retoma desde donde está la cámara de verdad (tras la película o el visor), sin salto
+   const rel=camera.position.clone().sub(this.look),d=rel.length()||distance;
+   this.s=d>.001?{yaw:Math.atan2(rel.x,rel.z),pitch:Math.asin(Math.max(-1,Math.min(1,rel.y/d))),dist:d}:{yaw,pitch,dist:distance};
+  }
+  // el giro siempre por el camino corto: volver al inicio tras diez vueltas no desenrolla diez vueltas
+  const sm=this.s,vuelta=Math.PI*2;let dYaw=yaw-sm.yaw;dYaw=((dYaw+Math.PI)%vuelta+vuelta)%vuelta-Math.PI;sm.yaw+=dYaw*factor;sm.pitch+=(pitch-sm.pitch)*factor;sm.dist+=(distance-sm.dist)*factor;
+  this.eye.set(Math.sin(sm.yaw)*Math.cos(sm.pitch)*sm.dist,Math.sin(sm.pitch)*sm.dist,Math.cos(sm.yaw)*Math.cos(sm.pitch)*sm.dist);
+  this.look.lerp(this.target,factor);camera.position.copy(this.eye).add(this.look);camera.lookAt(this.look);camera.updateMatrixWorld();
   const c=camera as PerspectiveCamera;if(c.isPerspectiveCamera&&Math.abs(c.fov-fov)>.01){c.fov=fov;c.updateProjectionMatrix();}
  }
 }
@@ -116,9 +135,10 @@ export function updateLabels(camera:Camera,width:number,height:number){
  const ordered=[...worlds].sort((a,b)=>a.id==='genesis'?-1:b.id==='genesis'?1:(navigation.projected.get(b.id)!.r-navigation.projected.get(a.id)!.r));
  const reduced=motionReduced();
  const flotan=emb?medirObstaculos():[];
+ const girando=navigation.dragging||Math.abs(navigation.vyaw)>.0025;
  for(const w of ordered){
   const p=navigation.projected.get(w.id)!,node=labelNodes.get(w.id);if(!node)continue;
-  const lw=Math.max(56,worldNameLength(w)*8.6+16),lh=w.future?40:22,gap=4;
+  const lw=Math.max(56,worldNameLength(w)*(emb?9.6:8.6)+16),lh=w.future?40:22,gap=4;
   // Los cuatro sitios pegados al planeta: [x del centro del nombre, y de su borde de arriba]
   const sitios:[number,number][]=[[p.x,p.y+p.r+gap],[p.x,p.y-p.r-lh-gap],[p.x+p.r+gap+lw/2,p.y-lh/2],[p.x-p.r-gap-lw/2,p.y-lh/2]];
   const antes=labelSides.get(w.id);
@@ -140,12 +160,14 @@ export function updateLabels(camera:Camera,width:number,height:number){
   let [x,y]=sitios[mejor];
   x=Math.max(lw/2+8,Math.min(width-lw/2-8,x));y=Math.max(top,Math.min(bottom-lh,y));
   const previo=labelPos.get(w.id);
-  if(previo&&!reduced&&active){const k=.35;x=previo.x+(x-previo.x)*k;y=previo.y+(y-previo.y)*k;}
+  if(previo&&!reduced&&active&&!girando){const k=.35;x=previo.x+(x-previo.x)*k;y=previo.y+(y-previo.y)*k;}
   labelPos.set(w.id,{x,y});
   occupied.push({id:w.id,x,y,w:lw,h:lh});
   node.style.width=lw+'px';node.style.transform='translate('+x.toFixed(2)+'px,'+y.toFixed(2)+'px) translate(-50%,0)';
   const labelVisible=active&&p.visible&&(!state.immersive||(p.x>0&&p.x<width&&p.y>60&&p.y<height-70));
-  node.style.visibility=labelVisible?'visible':'hidden';node.style.opacity=labelVisible?'1':'0';node.tabIndex=labelVisible?0:-1;
+  // Mientras el sistema gira, los nombres se apagan en vez de bailar de un lado
+  // a otro; vuelven con un fundido cuando el giro se asienta.
+  node.style.visibility=labelVisible?'visible':'hidden';node.style.opacity=labelVisible&&!girando?'1':'0';node.style.pointerEvents=girando?'none':'';node.tabIndex=labelVisible?0:-1;
   node.dataset.core=String(w.id==='genesis');node.dataset.active=String(w.id===state.selected);
   // Pegado al planeta ya no hace falta la línea guía; solo si quedó lejos por el borde.
   line('label-'+w.id,p.x,p.y,x,y+lh/2,active&&p.visible&&Math.hypot(x-p.x,y+lh/2-p.y)>p.r+lh+24);
@@ -170,11 +192,11 @@ export function bindSceneInput(canvas:HTMLCanvasElement){
   if(!points.has(e.pointerId)){const id=useExperience.getState().stage==='system'?hit(e):null;if(id!==navigation.hovered)navigation.hover(id);canvas.style.cursor=id?'pointer':'grab';return;}
   points.set(e.pointerId,{x:e.clientX,y:e.clientY});travel=Math.max(travel,Math.hypot(e.clientX-startX,e.clientY-startY));
   if(points.size===2){const p=[...points.values()],d=Math.hypot(p[0].x-p[1].x,p[0].y-p[1].y);if(pinch>1&&d>1)navigation.dolly(pinch/d);pinch=d;dragging=true;}
-  else if(travel>4){dragging=true;navigation.orbit(e.clientX-lastX,e.clientY-lastY);canvas.style.cursor='grabbing';}
+  else if(travel>4){dragging=true;navigation.dragging=true;navigation.orbit(e.clientX-lastX,e.clientY-lastY);canvas.style.cursor='grabbing';}
   lastX=e.clientX;lastY=e.clientY;
  };
- const up=(e:PointerEvent)=>{if(points.has(e.pointerId)&&!dragging&&travel<=4&&useExperience.getState().stage==='system'){const id=hit(e);if(id)navigation.focus(id);}points.delete(e.pointerId);pinch=0;canvas.style.cursor='grab';};
- const cancel=(e:PointerEvent)=>{points.delete(e.pointerId);pinch=0;};
+ const up=(e:PointerEvent)=>{if(dragging&&points.size<=1)navigation.release();if(points.has(e.pointerId)&&!dragging&&travel<=4&&useExperience.getState().stage==='system'){const id=hit(e);if(id)navigation.focus(id);}points.delete(e.pointerId);pinch=0;canvas.style.cursor='grab';};
+ const cancel=(e:PointerEvent)=>{points.delete(e.pointerId);pinch=0;if(!points.size)navigation.release();};
  const leave=()=>navigation.hover(null);
  const wheel=(e:WheelEvent)=>{if(!['system','galaxies'].includes(useExperience.getState().stage))return;e.preventDefault();navigation.dolly(Math.exp(Math.max(-120,Math.min(120,e.deltaY))*.0018));};
  canvas.addEventListener('pointerdown',down);canvas.addEventListener('pointermove',move);canvas.addEventListener('pointerup',up);canvas.addEventListener('pointercancel',cancel);canvas.addEventListener('pointerleave',leave);canvas.addEventListener('wheel',wheel,{passive:false});

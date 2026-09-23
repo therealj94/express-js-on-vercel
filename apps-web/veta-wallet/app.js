@@ -6285,7 +6285,7 @@ const VETA = (() => {
   const VETA_V = '0854c9917f';
   const VETA_FECHA = '2026-09-22';
 
-  const AET_V = '5b96c356fa';
+  const AET_V = 'b35b4016d8';
 
   /* MEDIAPIPE, UNA SOLA COPIA EN EL SITIO. La casa ya sirve el modelo de manos
      y su WASM en /vendor/vision/ para su propio AirTouch. El motor traia los
@@ -6805,6 +6805,37 @@ const VETA = (() => {
     }).catch(() => { /* la puerta 2D sigue puesta: nada que hacer */ }), { timeout: 1200 });
   }
 
+  /* EL VELO DE LLEGADA. El viaje termina con la escena cubierta por un velo
+     del color del mundo y su nombre encima. Desmontar la galaxia se llevaba
+     ese velo de golpe y aparecía la app en seco. Aquí se deja uno igual, en
+     el mismo sitio y con el mismo nombre, y se retira despacio mientras la app
+     sube por debajo: la persona ve un solo movimiento, no dos pantallas. */
+  function veloLlegada() {
+    const vuelo = document.querySelector('.galaxy-os .planet-flight');
+    if (!vuelo || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    const caja = vuelo.getBoundingClientRect();
+    const lectura = vuelo.querySelector('.flight-readout')?.getBoundingClientRect();
+    const velo = document.createElement('div');
+    velo.id = 'velo-llegada';
+    velo.setAttribute('aria-hidden', 'true');
+    velo.style.cssText = `left:${caja.left}px;top:${caja.top}px;width:${caja.width}px;height:${caja.height}px;`
+      + `--c:${vuelo.style.getPropertyValue('--world-color') || '#d9b56a'}`;
+    const texto = document.createElement('div');
+    texto.className = 'vl-texto';
+    if (lectura) texto.style.top = (lectura.top - caja.top) + 'px';
+    texto.innerHTML = `<span>${esc(vuelo.querySelector('.flight-readout span')?.textContent || '')}</span>`
+      + `<b>${esc(vuelo.querySelector('.flight-readout h1')?.textContent || '')}</b>`;
+    velo.appendChild(texto);
+    document.getElementById('velo-llegada')?.remove();
+    /* Dentro de #app y por debajo de sus barras (menú, pestañas; el techo va
+       aparte y ya queda encima): el velo cubre el cielo, no el marco de la casa. */
+    (document.getElementById('app') || document.body).appendChild(velo);
+    const fuera = () => velo.remove();
+    // el texto termina antes y su animationend sube hasta aquí: solo cuenta el del velo
+    velo.addEventListener('animationend', (e) => { if (e.target === velo) fuera(); });
+    setTimeout(fuera, 1600);
+  }
+
   /* ¿La puerta 3D está viva y volando se entra? */
   const aetPuertaViva = () =>
     !!(window.AUGALAXY?.entrar && document.getElementById('ae-casa')
@@ -6848,6 +6879,7 @@ const VETA = (() => {
             nuAbrir(k);
             setTimeout(() => window.AUGALAXY?.exhalar?.(), 600);
           } else {
+            veloLlegada();
             window.AUGALAXY.desmontar();
             nuAbrir(k);
           }

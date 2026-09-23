@@ -101,7 +101,7 @@ export default function Experience({embedded=false}:{embedded?:boolean}){
  {/* El viaje se ve también dentro de la wallet: sin esto, tocar un mundo era un
      salto seco de la galaxia a la pantalla. Ahora hay un tránsito con el color y
      el nombre del destino. */}
- {travelling&&selected&&<div className="planet-flight" ref={flightRef} role="status" aria-live="polite" style={{'--world-color':selected.color} as React.CSSProperties}><div className="flight-vignette"/><div className="flight-readout"><span>{es?'ENTRANDO A':'ENTERING'}</span><h1>{worldName(selected,prefs.lang)}</h1><div className="flight-track"><i/></div></div><button className="skip-intro" onClick={()=>navigation.focus(selected.id)}>{es?'Cancelar viaje':'Cancel journey'}<Icon name="close" size={17}/></button></div>}
+ {travelling&&selected&&<div className="planet-flight" ref={flightRef} role="status" aria-live="polite" style={{'--world-color':selected.color} as React.CSSProperties}><div className="flight-vignette"/><div className="flight-cover"/><div className="flight-readout"><span>{es?'ENTRANDO A':'ENTERING'}</span><h1>{worldName(selected,prefs.lang)}</h1><div className="flight-track"><i/></div></div><button className="skip-intro" onClick={()=>navigation.focus(selected.id)}>{es?'Cancelar viaje':'Cancel journey'}<Icon name="close" size={17}/></button></div>}
  {!isGate&&!intro&&!travelling&&!cinema&&<>
  {/* En la puerta, detrás del login, los nombres van callados: la galaxia se
      mueve a la deriva y no le pide nada a quien todavía está entrando. */}

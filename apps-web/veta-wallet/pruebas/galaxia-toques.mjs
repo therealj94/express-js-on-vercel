@@ -108,7 +108,8 @@ for (const [nombre, vp, tactil] of [['teléfono', { width: 390, height: 844 }, t
     const pedido = await p.evaluate(() => window.__AE_PEDIDOS.at(-1) || null);
     if (!pedido) console.log('    (debajo del dedo:', await p.evaluate(([x, y]) => { const e = document.elementFromPoint(x, y); return e ? e.tagName + '.' + e.className + ' «' + (e.textContent || '').trim().slice(0, 20) + '»' : 'nada'; }, c), ')');
     abiertos.push({ texto, pedido });
-    await p.waitForFunction(() => !document.querySelector('main.galaxy-os.in-transit'), null, { timeout: 9000 }).catch(() => {});
+    // la cámara se queda aparcada en el planeta hasta que la casa abre su app;
+    // aquí la casa no abre nada, así que se la devuelve al cielo a mano
     await p.evaluate(() => AUGALAXY.exhalar());
     await p.waitForTimeout(900);
   }

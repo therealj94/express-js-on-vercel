@@ -9,7 +9,7 @@ import {updateOrbits,orbitPositions,CameraDirector} from '../src/experience/cosm
 test('Incomplete or degenerate hand landmarks are rejected',()=>{assert.equal(measureHand([]),null);assert.equal(measureHand(Array.from({length:21},()=>({x:0,y:0}))),null);});
 test('Pinch measurement is independent of hand scale',()=>{const p=Array.from({length:21},()=>({x:.3,y:.3}));p[17]={x:.5,y:.3};p[4]={x:.4,y:.3};p[8]={x:.42,y:.3};const h=measureHand(p)!;assert.ok(Math.abs(h.pinch-.1)<1e-6);assert.ok(Math.abs(measureHand(p.map(v=>({x:v.x*2,y:v.y*2})))!.pinch-h.pinch)<1e-6);});
 test('Preferences clamp values and reject invalid enums',()=>{usePreferences.getState().set({volume:99,textScale:-9,lang:'invalid' as never});const p=usePreferences.getState().prefs;assert.ok(p.volume<=.7);assert.ok(p.textScale>=1);assert.equal(p.lang,'es');usePreferences.getState().reset();});
-test('Zoom and orbit stay bounded; overview zoom opens deep space',()=>{navigation.home();navigation.dolly(100000);assert.equal(useExperience.getState().stage,'galaxies');navigation.dolly(100000);assert.equal(navigation.zoom,3);navigation.dolly(.0000001);assert.equal(navigation.zoom,.6);navigation.orbit(0,99999);assert.equal(navigation.pitch,1.18);navigation.home();});
+test('Zoom and orbit stay bounded; overview zoom opens deep space',()=>{navigation.home();navigation.dolly(100000);assert.equal(useExperience.getState().stage,'galaxies');navigation.dolly(100000);assert.equal(navigation.zoom,3);navigation.dolly(.0000001);assert.equal(navigation.zoom,.6);navigation.orbit(0,99999);assert.equal(navigation.pitch,1.15);navigation.orbit(0,-999999);assert.equal(navigation.pitch,.1);navigation.home();});
 test('Navigation uses the visible preview state',()=>{navigateExperience({destination:'chat'});assert.equal(useExperience.getState().selected,'chat');navigateExperience({destination:'settings'});assert.equal(useExperience.getState().settings,true);assert.equal(readExperience({}).accountsConnected,false);});
 test('Invalid navigation does not mutate state',()=>{const before=useExperience.getState();assert.throws(()=>navigateExperience({destination:'withdraw'}));assert.equal(useExperience.getState(),before);assert.throws(()=>readExperience({token:'not-used'}));});
 test('Focusing never opens an app; completion opens only the current journey',()=>{useExperience.getState().set({settings:false});navigation.focus('chat');assert.equal(useExperience.getState().windowId,null);navigation.enter('chat');const first=useExperience.getState().journey!;assert.equal(transitionState().active,true);navigation.focus('gid');navigation.complete(first.token);assert.equal(useExperience.getState().windowId,null);navigation.enter('gid');const second=useExperience.getState().journey!;navigation.complete(first.token);assert.equal(useExperience.getState().stage,'transit');navigation.complete(second.token);assert.equal(useExperience.getState().windowId,'gid');navigation.home();});
@@ -17,7 +17,7 @@ test('Reduced motion preserves destination and settings enter through the same f
 test('Renderer and orbit preferences survive validation; invalid renderer defaults to Pro',()=>{usePreferences.getState().set({defaultRenderer:'lite',autoOrbit:false});assert.equal(usePreferences.getState().prefs.defaultRenderer,'lite');assert.equal(usePreferences.getState().prefs.autoOrbit,false);usePreferences.getState().set({defaultRenderer:'unknown' as never});assert.equal(usePreferences.getState().prefs.defaultRenderer,'pro');usePreferences.getState().reset();});
 test('Legacy gesture bridge returns the host shape and respects visible state',()=>{navigation.home();navigation.hitTest=()=> 'chat';assert.deepEqual(lookAtWorld(20,20),{key:'chat',nombre:'PULSE2CHAT'});highlightWorld('chat');assert.equal(useExperience.getState().hovered,'chat');touchWorld('chat');assert.equal(transitionState().wid,'chat');assert.equal(lookAtWorld(20,20),null);navigation.home();viewControls.zoom(.8);assert.equal(navigation.zoom,.8);viewControls.zoom(NaN);assert.equal(navigation.zoom,.8);viewControls.girar(NaN,3);assert.equal(navigation.yaw,0);navigation.hitTest=()=>null;navigation.home();});
 test('GENESIS CORE remains the center while apps orbit it',()=>{navigation.home();usePreferences.getState().set({motion:'full',autoOrbit:true});navigation.lastInteraction=0;updateOrbits(10000,.03);const p=orbitPositions.get('chat')!.clone();updateOrbits(10040,.03);assert.deepEqual(orbitPositions.get('genesis')!.toArray(),[0,0,0]);assert.ok(p.distanceTo(orbitPositions.get('chat')!)>0);navigation.focus('chat');const frozen=orbitPositions.get('chat')!.clone();updateOrbits(10080,.03);assert.equal(frozen.distanceTo(orbitPositions.get('chat')!),0);navigation.home();usePreferences.getState().reset();});
-test('Drag follows the hand and sensitivity has safe bounds',()=>{navigation.home();navigation.orbit(100,0);assert.ok(navigation.yaw<0);assert.ok(Math.abs(navigation.yaw-.0+.42)<.00001);usePreferences.getState().set({orbitSensitivity:99});assert.equal(usePreferences.getState().prefs.orbitSensitivity,1.4);navigation.home();usePreferences.getState().reset();});
+test('Drag follows the hand and sensitivity has safe bounds',()=>{navigation.home();navigation.orbit(100,0);assert.ok(navigation.yaw<0);assert.ok(Math.abs(navigation.yaw+.36)<.00001);usePreferences.getState().set({orbitSensitivity:99});assert.equal(usePreferences.getState().prefs.orbitSensitivity,1.4);navigation.home();usePreferences.getState().reset();});
 
 import {PerspectiveCamera} from 'three';
 test('Selecting an app preserves the overview camera and orbit controls',()=>{navigation.home();usePreferences.getState().set({motion:'reduced'});navigation.orbit(40,15);navigation.zoom=.9;const director=new CameraDirector(),camera=new PerspectiveCamera(48,390/690,.1,2000);director.update(camera,390,690,10000,.016);const position=camera.position.clone(),quaternion=camera.quaternion.clone(),yaw=navigation.yaw,pitch=navigation.pitch;navigation.focus('chat');director.update(camera,390,690,10016,.016);assert.equal(position.distanceTo(camera.position),0);assert.ok(quaternion.angleTo(camera.quaternion)<1e-7);assert.equal(navigation.yaw,yaw);assert.equal(navigation.pitch,pitch);assert.equal(navigation.zoom,.9);navigation.home();usePreferences.getState().reset();});
@@ -241,4 +241,27 @@ test('Settings stay the engine own panel even with the house behind',()=>{
  useExperience.getState().set({settings:false});
  delete (globalThis as any).window.__AE_ABRIR;
  navigation.home();
+});
+
+test('A flick keeps turning and settles; releasing after holding still does not fling',()=>{
+ navigation.home();usePreferences.getState().set({motion:'full'});
+ const director=new CameraDirector(),camera=new PerspectiveCamera(48,390/844,.1,2000);
+ navigation.dragging=true;for(let i=0;i<5;i++)navigation.orbit(-30,0);navigation.release();
+ const soltado=navigation.yaw;let t=10000;
+ for(let i=0;i<30;i++){t+=16;director.update(camera,390,844,t,.016);}
+ assert.ok(navigation.yaw>soltado+.05,'sigue girando por inercia');
+ for(let i=0;i<400;i++){t+=16;director.update(camera,390,844,t,.016);}
+ assert.equal(navigation.vyaw,0,'y se detiene solo');
+ navigation.home();navigation.dragging=true;navigation.orbit(-30,0);navigation.lastInteraction-=300;navigation.release();
+ assert.equal(navigation.vyaw,0,'soltar tras quedarse quieto no lanza');
+ navigation.home();usePreferences.getState().reset();
+});
+test('The camera never cuts inside the orbit: a fast turn keeps the distance',()=>{
+ navigation.home();usePreferences.getState().set({motion:'full'});
+ const director=new CameraDirector(),camera=new PerspectiveCamera(48,1440/900,.1,2000);let t=10000;
+ for(let i=0;i<120;i++){t+=16;director.update(camera,1440,900,t,.016);}
+ const d0=camera.position.length();navigation.yaw+=Math.PI*.9;
+ let min=Infinity;for(let i=0;i<60;i++){t+=16;director.update(camera,1440,900,t,.016);min=Math.min(min,camera.position.length());}
+ assert.ok(min>d0*.97,'la distancia se mantiene al girar');
+ navigation.home();usePreferences.getState().reset();
 });

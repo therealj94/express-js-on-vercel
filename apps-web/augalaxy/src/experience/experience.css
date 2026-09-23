@@ -328,3 +328,12 @@ html.og-standalone,html.og-standalone body,html.og-standalone #root{margin:0;wid
 .is-embedded .planet-flight .flight-readout h1{text-shadow:0 2px 12px #000,0 0 30px var(--world-color)}
 /* Con ratón, señalar un nombre se nota: se enciende en oro. */
 @media (hover:hover){.is-embedded .world-label:hover strong,.is-embedded .world-label:focus-visible strong{color:#f3d58f!important;text-shadow:0 0 14px #f3d58f88}}
+/* ── Entrar a una app: un solo gesto, sin costura ─────────────────────────
+   La cámara aterriza y se queda; en el último tercio del viaje un velo con el
+   color del mundo cubre la escena y la casa abre su app detrás del MISMO velo,
+   que ella misma retira (veta-wallet, #velo-llegada). */
+.is-embedded .planet-flight .flight-cover{position:absolute;inset:0;background:radial-gradient(120% 80% at 50% 42%,color-mix(in srgb,var(--world-color) 24%,#04100f) 0%,#030e0e 58%,#020909 100%);opacity:calc((var(--journey-progress) - .55) * 2.3)}
+.is-embedded .planet-flight .flight-readout{z-index:2}
+/* Las letras de la casa: Cinzel, la misma de «ORDEN GLOBAL» y del saludo. */
+.is-embedded .planet-flight .flight-readout h1{font-family:var(--serif,'Cinzel'),serif;font-weight:700;font-size:28px;letter-spacing:.06em}
+.is-embedded .world-label strong{font-family:var(--serif,'Cinzel'),serif!important;font-weight:700!important;font-size:11.5px!important;letter-spacing:.08em!important;text-shadow:0 1px 3px #000d,0 0 12px #000a}
