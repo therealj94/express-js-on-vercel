@@ -100,6 +100,8 @@ Todo lo que dice «existe» se comprobó en el árbol, y las pruebas se corriero
 
 ## 5 · El plan por fases
 
+> **Actualización del 24-sep.** La construcción de las fases 3 a 5 (código, servicios, conexión con los productos, ensayo y encendido) se detalla en `PLAN-DE-CONSTRUCCION-2026-09-24.md`, que manda sobre lo que aquí se dice de esas fases.
+
 Cada fase tiene una **condición de salida verificable**. No se pasa a la siguiente sin cumplirla.
 
 ### Fase 0 · Seguridad y verdad de base (semana 1)
