@@ -3,12 +3,51 @@
 | Campo | Valor |
 |---|---|
 | Serie | SFSP-800 · Governance |
-| Estado | `draft-0.3` |
+| Estado | `draft-0.4` (alineada con el borrador SFSP v0.2) |
 | Fuente de tipos | `CONTRATO-INTERNO.md` §1, §2.4, §3, §4 |
 | Parte del plan maestro | P3 entregable 7, P4 (GovernanceController), P5 paso 5, §2.5, P11 |
 | Decisiones que la bloquean | **D07 (quórums, firmantes, pausa, upgrade y recovery)**, D10 (custodia canónica), D18 (custodia MANAGED), D19 (recuperación por activo), D13 (autoridad legal), D11 (release source) |
 
 **Qué NO afirma este documento:** no afirma que exista ningún quórum aprobado, ningún firmante designado, ninguna multisig auditada ni ningún poder de gobierno operativo; todos los quórums son `null`.
+
+---
+
+## 0 · Alineación con el borrador SFSP v0.2 (23-sep-2026)
+
+> **Cómo leer esta sección.** El borrador SFSP v0.2 (`../fuente/`) es un borrador de trabajo: lo que sigue es **su posición**, llevada a esta serie. Hasta que la Junta lo firme, las decisiones afectadas siguen `PENDIENTE` en `../DECISIONES-SFSP.json` y todo lo que dependa de ellas devuelve `BLOCKED_DECISION`. Donde el v0.2 **cambia** una regla de más abajo, se dice aquí y la regla de abajo queda sustituida en cuanto se firme. La trazabilidad completa está en `../TRAZABILIDAD-SFSP-v0.2.md`.
+
+### 0.1 Roles y límites (v0.2 §5)
+
+| Rol | Puede | No puede |
+|---|---|---|
+| DBNX | Admitir, clasificar, autorizar supply, evaluar riesgo, exigir reporte, suspender | Emitir ni acuñar; administrar el negocio del emisor; valuar cuando el emisor es del ecosistema |
+| Orden Global | Desplegar módulos, ejecutar emisiones autorizadas, operar nodos y liquidación, operar MyTokenPay | Crear supply sin autorización de DBNX; valuar; administrar recursos de terceros |
+| Au Corp. (por Ordenex y AuBank) | Operar el mercado secundario (Ordenex); custodia y moneda fiduciaria (AuBank) | Admitir ni clasificar; valuar; acuñar; ser fuente del registro |
+| **AU-RA FP** (antes Ultron FP) | Analizar documentación, detectar inconsistencias, proponer clasificación y riesgo, generar listas de verificación | **Aprobar, firmar emisiones, mover fondos u omitir controles** |
+| Custodios y atestadores | Acreditar metal, efectivo, lotes y vigencia | Emitir tokens |
+| Emisor | Presentar, reportar, ejecutar acciones corporativas | Cambiar derechos o riesgo sin proceso formal |
+| Adquirente | Adquirir, mantener, transferir, ejercer derechos | Eludir elegibilidad o restricciones |
+| Auditor y autoridad | Acceso ampliado con procedimiento | Acceso ilimitado sin registro ni fundamento |
+
+**Denominación:** DBNX es operador y entidad de autorregulación del Mercado de Valores Inclusivo. **«Regulador» queda reservado a RFSA.** La escala R1–R5 es clasificación interna de admisión divulgada con advertencia, no calificación de agencia.
+
+### 0.2 Regla de control y firmas críticas (v0.2 §5.2 y §5.3)
+
+Ninguna llave individual puede crear oferta monetaria, modificar reservas, reescribir identidad, forzar una transferencia **ni alterar la lista de permisos de la red**.
+
+| Acción | Control mínimo |
+|---|---|
+| Emisión de security | Autorización de DBNX + ejecución de Orden Global + verificación de política |
+| Emisión de commodity | Lote verificado + atestación del custodio + doble autorización |
+| Ampliación de supply | Gobernanza + divulgación + demora programada + mayoría calificada |
+| Transferencia por recuperación | Reverificación de identidad + doble control + demora proporcional al riesgo |
+| Pausa de emergencia | Firma múltiple rápida + código de motivo + vencimiento y revisión + estado público |
+| Actualización de módulo | Propuesta versionada + evidencia de pruebas + demora + plan de reversión |
+| **Permisos de red o filtro de transacciones** (SFSP-150) | Firma múltiple + código de motivo + registro público |
+| **Habilitación de módulo por licencia** (SFSP-140) | Acción registrada con código de motivo y número de licencia |
+| **Cambio de estado de un país** (SFSP-120) | Acción registrada con su fundamento |
+
+Firmantes y umbrales por acción: **`null` (D07)**. `SFSPGovernanceController` ya implementa propuesta, aprobación, demora programada y pausa que caduca; falta cargarle los firmantes reales.
 
 ---
 

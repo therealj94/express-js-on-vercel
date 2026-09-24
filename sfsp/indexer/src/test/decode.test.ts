@@ -4,8 +4,15 @@ import assert from 'node:assert/strict';
 import { decodificar, decodificarLote, EVENTOS_CONOCIDOS } from '../decode.js';
 import { log } from './ayudas.js';
 
-test('los quince eventos del §3 estan registrados', () => {
-  assert.equal(Object.keys(EVENTOS_CONOCIDOS).length, 15);
+// Los quince del §3 del contrato interno, mas los catorce del Apendice B del
+// borrador SFSP v0.2 (draft-0.4). Se nombran uno por uno: un conteo solo no
+// distingue entre «falta uno» y «sobra otro».
+const DEL_TRES = ['AssetRegistered','PolicyUpdated','SupplyAuthorized','MintExecuted','BurnExecuted','TreasuryReleased','ReserveAttested','ReserveExpired','DisclosurePublished','RiskChanged','TradeSettled','RedemptionUpdated','RecoveryExecuted','MigrationClaimed','GovernanceAction'] as const;
+const DEL_V02 = ['PassportUpdated','AssetStatusChanged','SupplyExpansionDeclared','SplitExecuted','IdentityLinkChanged','EligibilityRecorded','ExposureLimitRecorded','AcquirerDeclarationRecorded','CoveragePublished','LicenseStatusChanged','ModuleAvailabilityChanged','CountryStatusChanged','NetworkPermissionChanged','ConciliationRecorded'] as const;
+
+test('los quince eventos del §3 y los catorce del v0.2 estan registrados', () => {
+  for (const n of [...DEL_TRES, ...DEL_V02]) assert.ok(n in EVENTOS_CONOCIDOS, 'falta ' + n);
+  assert.equal(Object.keys(EVENTOS_CONOCIDOS).length, DEL_TRES.length + DEL_V02.length);
   assert.equal(EVENTOS_CONOCIDOS.MintExecuted, 'IssuanceController');
   assert.equal(EVENTOS_CONOCIDOS.RiskChanged, 'AssetRegistry');
 });

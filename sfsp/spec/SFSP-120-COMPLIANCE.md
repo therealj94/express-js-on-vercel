@@ -3,12 +3,62 @@
 | Campo | Valor |
 |---|---|
 | Serie | SFSP-120 · Compliance |
-| Estado | `draft-0.3` |
+| Estado | `draft-0.4` (alineada con el borrador SFSP v0.2) |
 | Fuente de tipos | `CONTRATO-INTERNO.md` §2.3, §3, §4 |
 | Parte del plan maestro | P3 entregable 6, P6 paso 4, P7c |
 | Decisiones que la bloquean | D08 (clasificación, derechos y elegibilidad por activo y país), D13 (jurisdicción y permisos), D07 (quórums para acciones críticas), D03 (semántica monetaria) |
 
 **Qué NO afirma este documento:** no afirma que exista ninguna política aprobada para ninguna clase de activo, ni que ningún contrato imponga hoy las restricciones que el registro declara; describe el motor de evaluación y sus obligaciones, no un conjunto de reglas vigentes.
+
+---
+
+## 0 · Alineación con el borrador SFSP v0.2 (23-sep-2026)
+
+> **Cómo leer esta sección.** El borrador SFSP v0.2 (`../fuente/`) es un borrador de trabajo: lo que sigue es **su posición**, llevada a esta serie. Hasta que la Junta lo firme, las decisiones afectadas siguen `PENDIENTE` en `../DECISIONES-SFSP.json` y todo lo que dependa de ellas devuelve `BLOCKED_DECISION`. Donde el v0.2 **cambia** una regla de más abajo, se dice aquí y la regla de abajo queda sustituida en cuanto se firme. La trazabilidad completa está en `../TRAZABILIDAD-SFSP-v0.2.md`.
+
+### 0.1 Acceso abierto por defecto (v0.2 §7)
+
+Cualquier persona, desde cualquier país, puede crear un Genesis ID, mantener activos, recibir, transferir, operar en el mercado secundario y redimir. **El control por jurisdicción se aplica en solo dos puntos:** la **suscripción en oferta primaria** y la **promoción dirigida**.
+
+### 0.2 La matriz de países
+
+DBNX mantiene una matriz versionada con cuatro estados:
+
+| Estado | `SUBSCRIBE` (primaria) | `HOLD` · `RECEIVE` · `TRANSFER` · `TRADE` · `REDEEM` |
+|---|---|---|
+| `PERMITIDO` | `ALLOW` | `ALLOW` |
+| `PERMITIDO_CON_CONDICIONES` | según la regla del instrumento | según la regla del instrumento |
+| **`SOLO_ENTRANTE`** (por defecto) | **`DENY`** | `ALLOW` |
+| `BLOQUEADO` | `DENY` | `DENY` (la transferencia se rechaza) |
+
+**Cómo encaja con el cierre por defecto de §3.** No hay contradicción: el motor sigue cerrado si falta política. La matriz **es** una política versionada. Sin matriz aprobada, toda acción que la consulte devuelve `BLOCKED_DECISION`, como hoy. Con matriz aprobada, **un país no evaluado se resuelve como `SOLO_ENTRANTE`**, no como bloqueado.
+
+Reglas:
+
+1. `BLOQUEADO` procede **solo** por sanción internacional o por orden formal de la autoridad del país. El cambio lleva código de motivo `SANCION_INTERNACIONAL` u `ORDEN_AUTORIDAD` y la referencia documental. **No hay bloqueo por precaución.**
+2. Todo cambio de estado de un país es acción de gobernanza (SFSP-800) y emite `CountryStatusChanged`.
+3. La apertura de la suscripción es progresiva: un país pasa a `PERMITIDO` cuando existe asesoría local que lo respalde.
+4. **Acción nueva `SUBSCRIBE`**: la suscripción del adquirente en oferta primaria. Es distinta de `ISSUE` (la emisión del lado del emisor) y se añade a la matriz de §3 como obligatoria para `SEC`.
+
+### 0.3 Regla de promoción
+
+No se hacen campañas segmentadas por país, contenido dirigido a un mercado ni acuerdos con socios locales en países que no estén en `PERMITIDO`. Una plataforma abierta en español no es promoción dirigida; **una campaña pagada apuntada a una ciudad o a un país sí lo es.** Esta regla no se puede imponer por contrato: es un control de operación y de mercadeo (SFSP-900) y se audita.
+
+### 0.4 El límite de exposición entra como insumo
+
+El motor recibe, para `SUBSCRIBE` y `TRADE` en el Mercado de Crecimiento, la **exposición agregada por Genesis ID** (SFSP-200 §0). Sin ese dato, la acción es `UNKNOWN_SOURCE`; nunca se supone cero.
+
+### 0.5 Diferencia con el código actual
+
+`SFSPEligibilityEngine.sol` implementa una **lista blanca de jurisdicciones por activo** (`setJurisdictionAllowed`). Faltan: los cuatro estados, el estado por defecto `SOLO_ENTRANTE`, la acción `SUBSCRIBE` y el evento `CountryStatusChanged`. Es trabajo de la fase 3.
+
+### 0.6 Pruebas de aceptación nuevas
+
+1. **T-120-20**: Sin matriz aprobada, `SUBSCRIBE` y `TRANSFER` devuelven `BLOCKED_DECISION`.
+2. **T-120-21**: Con matriz aprobada, un país no evaluado se resuelve `SOLO_ENTRANTE`: `RECEIVE`, `TRANSFER`, `TRADE` y `REDEEM` pasan; `SUBSCRIBE` devuelve `DENY`.
+3. **T-120-22**: Pasar un país a `BLOQUEADO` sin código `SANCION_INTERNACIONAL` u `ORDEN_AUTORIDAD` se rechaza.
+4. **T-120-23**: Un cambio de estado de país sin autorización de gobernanza se rechaza y no emite evento.
+5. **T-120-24**: En el Mercado de Crecimiento, sin exposición agregada disponible, la acción es `UNKNOWN_SOURCE`, no `ALLOW`.
 
 ---
 

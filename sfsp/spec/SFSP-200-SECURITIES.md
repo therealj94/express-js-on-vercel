@@ -3,12 +3,109 @@
 | Campo | Valor |
 |---|---|
 | Serie | SFSP-200 · Securities |
-| Estado | `draft-0.3` |
+| Estado | `draft-0.4` (alineada con el borrador SFSP v0.2) |
 | Fuente de tipos | `CONTRATO-INTERNO.md` §1, §2.3, §2.4, §3 |
 | Parte del plan maestro | P7c (DBNX), P4 emisión de securities, P3 entregables 3 y 5 |
 | Decisiones que la bloquean | D08 (clasificación, derechos y elegibilidad por activo y país), D13 (autorizaciones RFSA/RFCA), D07 (quórums de emisión), D04 (metodología de valoración cuando haya reservas involucradas) |
 
 **Qué NO afirma este documento:** no afirma que exista ninguna autorización jurídica para ofrecer, emitir o negociar ningún instrumento, ni que ninguna plantilla de derechos haya sido aprobada; no clasifica ningún activo existente.
+
+---
+
+## 0 · Alineación con el borrador SFSP v0.2 (23-sep-2026)
+
+> **Cómo leer esta sección.** El borrador SFSP v0.2 (`../fuente/`) es un borrador de trabajo: lo que sigue es **su posición**, llevada a esta serie. Hasta que la Junta lo firme, las decisiones afectadas siguen `PENDIENTE` en `../DECISIONES-SFSP.json` y todo lo que dependa de ellas devuelve `BLOCKED_DECISION`. Donde el v0.2 **cambia** una regla de más abajo, se dice aquí y la regla de abajo queda sustituida en cuanto se firme. La trazabilidad completa está en `../TRAZABILIDAD-SFSP-v0.2.md`.
+
+### 0.1 Modelo de supply (v0.2 §8.1)
+
+```
+supplyAutorizado = floor(capitalAutorizadoACaptar / precioVigente)
+```
+
+La valuación admisible de DBNX fija el **precio** por token, no la cantidad.
+
+Toda ampliación declara cuál de estas dos operaciones es, y **presenta su prueba de neutralidad**:
+
+| Operación | Mecánica | Efecto sobre el tenedor | Evento |
+|---|---|---|---|
+| `COLOCACION_NUEVA` | Se colocan tokens nuevos al precio vigente | Neutro si el precio es correcto; **dilutivo si se coloca por debajo** | `SupplyExpansionDeclared` y después `MintExecuted` |
+| `DIVISION` | Se multiplican las unidades de **todos** los tenedores en la misma proporción, sin captar capital | Neutro por definición; el precio se ajusta a la inversa | `SupplyExpansionDeclared` y `SplitExecuted` |
+
+Una ampliación sin declaración, o una colocación por debajo del precio vigente sin la declaración de dilución, se **rechaza**.
+
+### 0.2 Colocación 51/49 (v0.2 §8.2)
+
+Se coloca el 51 % al público con calendario de liberación progresiva y el emisor retiene el 49 %. DBNX autoriza en cada periodo el porcentaje en circulación. Pendiente: vesting, aceleración y trato de la porción retenida ante cambio de control.
+
+### 0.3 Expediente de admisión en ocho bloques (v0.2 §8.3)
+
+Bloques 0 a 7: apertura, identidad y control, activos y titularidad, valuación, instrumento, riesgo, divulgación continua, responsabilidades y deslindes. La máquina de estados del caso es la del Apéndice A del v0.2 (`ESTADOS-Y-EVENTOS.md`).
+
+**Valor admisible de cada activo de la canasta:**
+
+```
+V_admisible_i = V_valuado_i × participaciónEfectiva_i × factorTitularidad_i
+                × (1 − descuentoFaltaDeControl_i) × (1 − descuentoIliquidez_i)
+                × factorConcentración_i
+ValorCanasta  = Σ V_admisible_i        (no es la suma de los avalúos)
+```
+
+| Estado de titularidad | Factor |
+|---|---|
+| Perfeccionada | Pleno |
+| Perfeccionada con gravamen | Reducido por el monto del gravamen |
+| En trámite | Parcial, **con vencimiento**: si vence sin resolverse, el factor baja solo |
+| Contingente | Mínimo o nulo |
+| No perfeccionada | Nulo |
+
+Reglas nuevas:
+
+1. La concentración se mide **por activo y por familia**. Los activos en trámite y contingentes tienen tope de concentración.
+2. **Prohibición de circularidad:** los activos digitales del propio ecosistema **computan cero** en una canasta.
+3. Créditos de carbono: reconocimiento bajo o reservados hasta tener política propia.
+4. Si el emisor pertenece al ecosistema, el **valuador es externo** e independiente, y DBNX solo verifica el cumplimiento formal.
+5. Un activo que no encaja en ninguna familia se admite si responde las cuatro preguntas (existe, es del solicitante, se puede transferir, cuánto vale), y DBNX registra la familia nueva.
+
+### 0.4 Segmentos (v0.2 §8.4)
+
+`PRINCIPAL` y `CRECIMIENTO`; `INSTITUCIONAL` queda reservado sin activar. El segmento (madurez del emisor) y el nivel de riesgo (riesgo del instrumento) son **variables distintas y se publican las dos**. Se asciende y se desciende de segmento.
+
+### 0.5 Límite de exposición en el Mercado de Crecimiento (v0.2 §8.5)
+
+Se controla por **límite de exposición**, no por perfil de inversionista.
+
+1. Por **Genesis ID**, no por dirección.
+2. Sobre la **exposición agregada al segmento**, no por activo.
+3. Contra el **valor de adquisición**, no el de mercado.
+4. Como porcentaje del ingreso o patrimonio **autodeclarado**, con piso y techo, sin comprobación documental.
+5. Expresado en la **unidad de cuenta del protocolo**, no en moneda local.
+
+Lo acompañan la **fricción proporcional al riesgo** (a más riesgo, reconocimiento más explícito) y el registro versionado del reconocimiento (`AcquirerDeclarationRecorded`, `ExposureLimitRecorded`). Porcentaje, piso y techo: `null`.
+
+### 0.6 Plantillas (v0.2 §8.6)
+
+| v0.2 | `dbnx-api/src/plantillas.ts` |
+|---|---|
+| Patrimonial (canasta) | **No existe**: hay que añadirla |
+| Capital | `EQ` |
+| Deuda | `DEBT` |
+| Participación en ingresos | `REV` |
+| Regalía | `ROY` |
+| Interés inmobiliario | `RE` |
+
+### 0.7 Motor de pagos y acciones corporativas (v0.2 §8.7 y §8.8)
+
+**No existen.** Mientras no existan, la admisión de `DEBT` y `REV` devuelve `BLOCKED_DECISION`.
+
+### 0.8 Pruebas de aceptación nuevas
+
+1. **T-200-20**: Una ampliación sin `SupplyExpansionDeclared` se rechaza.
+2. **T-200-21**: Una `DIVISION` multiplica todas las tenencias en la misma proporción y deja igual el valor agregado a precio ajustado.
+3. **T-200-22**: El límite de exposición se agrega entre todas las direcciones del mismo Genesis ID.
+4. **T-200-23**: La exposición se computa contra el valor de adquisición: una subida de precio no bloquea compras nuevas.
+5. **T-200-24**: Un token del propio ecosistema dentro de una canasta computa cero.
+6. **T-200-25**: Una atestación en trámite vencida baja el factor sin acción humana.
+7. **T-200-26**: La admisión de `DEBT` o `REV` sin motor de pagos devuelve `BLOCKED_DECISION`.
 
 ---
 

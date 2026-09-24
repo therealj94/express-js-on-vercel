@@ -3,12 +3,27 @@
 | Campo | Valor |
 |---|---|
 | Serie | SFSP-110 · Identity |
-| Estado | `draft-0.3` |
+| Estado | `draft-0.4` (alineada con el borrador SFSP v0.2) |
 | Fuente de tipos | `CONTRATO-INTERNO.md` §1, §7 |
 | Parte del plan maestro | P3 entregable 9, P5 pasos 1–3, §2.6 |
 | Decisiones que la bloquean | D13 (identidad, jurisdicción, permisos y alcance RFSA/RFCA), D08 (elegibilidad por activo y país), D06 (alcance de privacidad), D17 (política de alias) |
 
 **Qué NO afirma este documento:** no afirma compatibilidad W3C VC 2.0, no afirma que exista un registro canónico de Genesis ID ya resuelto entre las dos implementaciones observadas, y no afirma que ninguna protección contra enumeración esté implementada o probada.
+
+---
+
+## 0 · Alineación con el borrador SFSP v0.2 (23-sep-2026)
+
+> **Cómo leer esta sección.** El borrador SFSP v0.2 (`../fuente/`) es un borrador de trabajo: lo que sigue es **su posición**, llevada a esta serie. Hasta que la Junta lo firme, las decisiones afectadas siguen `PENDIENTE` en `../DECISIONES-SFSP.json` y todo lo que dependa de ellas devuelve `BLOCKED_DECISION`. Donde el v0.2 **cambia** una regla de más abajo, se dice aquí y la regla de abajo queda sustituida en cuanto se firme. La trazabilidad completa está en `../TRAZABILIDAD-SFSP-v0.2.md`.
+
+| v0.2 | Efecto en esta serie |
+|---|---|
+| §11 · Estados de identidad: pendiente, en revisión, verificada, rechazada, vencida, suspendida | Son los estados canónicos (`ESTADOS-Y-EVENTOS.md`). El código de Genesis ID debe mapearse a estos seis sin estados propios fuera de la tabla |
+| §11 · **Un solo puente** entre Genesis ID y Veta Wallet | Hoy hay dos con código divergente (`infra/genesis-proxy/genesis.router.js` y `infra/veta-wallet-backend/lib/genesisPuente.js`). Hasta unificarlos, la lectura de identidad para el protocolo es `UNKNOWN_SOURCE` si los dos discrepan |
+| §11 · Cada vínculo registra la dirección de billetera | Condición del **límite de exposición por identidad** (SFSP-200 §0): sin la dirección en el vínculo, la exposición agregada no se puede calcular y la compra en Mercado de Crecimiento devuelve `BLOCKED_DECISION` |
+| §11 · Desde la cadena no se sabe que dos direcciones son de la misma persona; esa relación vive en la base de Genesis ID | Coherente con los compromisos no enlazables de esta serie. El agregado por identidad se calcula **fuera de la cadena**, y a la cadena solo llega el resultado |
+| §11 · Aprobación exclusivamente humana; bitácora firmada y anclada a diario | Se mantiene. Ninguna ruta automática emite `VERIFIED` |
+| §11 · Recuperación con doble control y comprobante inmutable sin datos personales | Coherente con SFSP-130 y SFSP-800 |
 
 ---
 

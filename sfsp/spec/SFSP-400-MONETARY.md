@@ -3,12 +3,64 @@
 | Campo | Valor |
 |---|---|
 | Serie | SFSP-400 · Monetary |
-| Estado | `draft-0.3` |
+| Estado | `draft-0.4` (alineada con el borrador SFSP v0.2) |
 | Fuente de tipos | `CONTRATO-INTERNO.md` §2.3, §3, §6.1, §6.2 |
 | Parte del plan maestro | P8-O (ORIGEN nativo: suministro real y distribución controlada), P8-R, §2.8 |
 | Decisiones que la bloquean | **D03 (respaldo total frente a release controlado)**, D01 (política vigente de precio y sus consumidores), D04 (reservas elegibles y metodología), D02 (alcance del objetivo de fee y patrocinio de gas) |
 
 **Qué NO afirma este documento:** no afirma respaldo, cobertura, paridad con ningún metal, estabilidad ni derecho individual de redención; no elige ninguna de las tres alternativas de D03; no declara cuál es la configuración de precio efectivamente vigente.
+
+---
+
+## 0 · Alineación con el borrador SFSP v0.2 (23-sep-2026)
+
+> **Cómo leer esta sección.** El borrador SFSP v0.2 (`../fuente/`) es un borrador de trabajo: lo que sigue es **su posición**, llevada a esta serie. Hasta que la Junta lo firme, las decisiones afectadas siguen `PENDIENTE` en `../DECISIONES-SFSP.json` y todo lo que dependa de ellas devuelve `BLOCKED_DECISION`. Donde el v0.2 **cambia** una regla de más abajo, se dice aquí y la regla de abajo queda sustituida en cuanto se firme. La trazabilidad completa está en `../TRAZABILIDAD-SFSP-v0.2.md`.
+
+### 0.1 Qué fija el v0.2
+
+| v0.2 | Efecto en esta serie |
+|---|---|
+| §10.1 · ORIGEN: **supply fijo de 1.000.000.000.000 unidades, sin emisión nueva** | `S_genesis` = 10¹² ORIGEN; `I_consensus` y `B_protocol` **se espera que sean cero y se comprueba** (T-400-16 sigue vigente). La cifra cuadra en la cadena (respuesta a la solicitud de información, bloque 7) |
+| §10.1 · **Referenciado, no respaldado**: sin reserva asignada ni derecho de redención | Ya lo recoge §6. Se vuelve regla de comunicación en todo material |
+| §10.1 · **Se descarta la capacidad de emisión contra reservas** | **Cierra D03 si la Junta firma**: ninguna de las alternativas (a), (b) o (c) de §4 se adopta para ORIGEN. `RAC_units` y la regla de release de §3.3 y §3.4 **dejan de aplicarse a ORIGEN**. Se conservan solo para una futura unidad de liquidación que sí declare reservas |
+| §10.1 · Gramín = 1/55 de gramo de oro; es la referencia de valor | Referencia, no paridad ni promesa (§7). 1 oz troy = 1.710,6925 gramín |
+| §10.2 · Unidades de liquidación autorizadas: categoría abierta; hoy **solo ORIGEN** | Nueva categoría del registro; designar otra unidad no exige enmendar la especificación |
+| §10.3 · Comisión objetivo **USD 0,01 por transacción, pagada en ORIGEN** al precio del oráculo, cotizada antes de la firma y separada del gas | Es el objetivo de `SFSPFeeController`. No está vigente: el código de producción cobra 0,001 ORIGEN y lo tiene apagado, y el gas cuesta 0,001953 ORIGEN por transferencia simple (93 gwei). Falta el acta (D02) |
+| §10.4 · **Tesorería que cotiza** compra y venta contra el oráculo, con cinco controles | Ver §0.2 |
+| §10.5 · **Oráculo único** de oro para ORIGEN y AUKA | Ver §0.3 |
+| §10.1 · Política de estabilización | Pendiente: bandas, inventario, operaciones y divulgación |
+
+### 0.2 Tesorería cotizadora
+
+La tesorería cotiza de forma permanente contra el oráculo, con diferencial publicado y fijo, para que quien tiene posiciones pequeñas acceda al precio de referencia sin depender del libro de órdenes.
+
+| Control | Función |
+|---|---|
+| Diferencial igual o más amplio que el del mercado | Quita el incentivo de arbitrar contra la tesorería |
+| **Frescura del oráculo con tolerancia** | Si el precio es más viejo o se movió más de lo permitido, **la tesorería deja de cotizar sola** |
+| Límite por **identidad** y ventana | Impide saltárselo con varias direcciones |
+| Inventario asignado y publicado | Agotado, cierra hasta la ventana siguiente |
+| Asimetría permitida | Compra y venta pueden tener diferenciales distintos |
+
+La tesorería **no condiciona** su actuación a que el precio alcance un nivel. Deja de cotizar cuando la referencia deja de ser confiable, no cuando el precio no le gusta.
+
+Diferencial, tolerancia de frescura, límites por identidad e inventario: `null`.
+
+### 0.3 Oráculo único
+
+1. **Un solo registro** de precio del oro alimenta ORIGEN, AUKA y la liquidación de AGKA (ratio oro/plata). Dos fuentes o frecuencias distintas para el mismo subyacente abren arbitraje dentro del ecosistema.
+2. Sin dato fresco, la interfaz muestra un **guion**, nunca el último valor (es lo que ya hace el servicio actual de precio del oro).
+3. **El modo de precio fijo del backend de la billetera no consume este oráculo y se retira.** Hoy es el modo por defecto: si falta la variable de modo, el backend usa 0,01 USD en conversiones de dinero. Esto es una condición crítica de arranque (v0.2 §16).
+4. ONDK: precio por acta de Junta, con historial y firmante. Los tokens sin precio se muestran **sin referencia**.
+
+### 0.4 Pruebas de aceptación nuevas
+
+1. **T-400-17**: ORIGEN y AUKA se valoran con la **misma lectura** del oráculo (misma fuente y marca de tiempo); dos lecturas distintas en una operación se rechazan.
+2. **T-400-18**: Con el oráculo fuera de tolerancia, la tesorería no cotiza y la interfaz muestra un guion.
+3. **T-400-19**: El límite de la tesorería se aplica por Genesis ID: dos direcciones de la misma identidad comparten ventana.
+4. **T-400-20**: Agotado el inventario publicado, la tesorería rechaza hasta la ventana siguiente.
+5. **T-400-21**: Ninguna ruta aplica un precio fijo cuando falta la configuración: la falta es `BLOCKED_DECISION` o un guion, **nunca 0,01**.
+6. **T-400-22**: La comisión se cotiza antes de la firma y se registra aparte del precio del activo y del gas.
 
 ---
 

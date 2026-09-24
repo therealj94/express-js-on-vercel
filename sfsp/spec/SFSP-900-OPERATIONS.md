@@ -3,12 +3,49 @@
 | Campo | Valor |
 |---|---|
 | Serie | SFSP-900 · Operations |
-| Estado | `draft-0.3` |
+| Estado | `draft-0.4` (alineada con el borrador SFSP v0.2) |
 | Fuente de tipos | `CONTRATO-INTERNO.md` §2.5, §3, §4 |
 | Parte del plan maestro | P10 (operación, liquidez y continuidad), P1 (manifiesto y trazabilidad), P11 |
 | Decisiones que la bloquean | D12 (recursos de staging y aislamiento efectivo), D11 (repositorios y release source), D14 (retiro de la red histórica), D15 (proveedor de pagos y liquidez), D07 (poderes críticos) |
 
 **Qué NO afirma este documento:** no afirma que exista monitoreo desplegado, alertas probadas, respaldos verificados, RPO/RTO medidos ni ningún runbook ensayado; no fija ningún presupuesto, porque se fija tras medir.
+
+---
+
+## 0 · Alineación con el borrador SFSP v0.2 (23-sep-2026)
+
+> **Cómo leer esta sección.** El borrador SFSP v0.2 (`../fuente/`) es un borrador de trabajo: lo que sigue es **su posición**, llevada a esta serie. Hasta que la Junta lo firme, las decisiones afectadas siguen `PENDIENTE` en `../DECISIONES-SFSP.json` y todo lo que dependa de ellas devuelve `BLOCKED_DECISION`. Donde el v0.2 **cambia** una regla de más abajo, se dice aquí y la regla de abajo queda sustituida en cuanto se firme. La trazabilidad completa está en `../TRAZABILIDAD-SFSP-v0.2.md`.
+
+### 0.1 Conciliación diaria mínima (v0.2 §15)
+
+Supply y circulación de ORIGEN; onzas elegibles frente a lo **colocado** de AUKA y AGKA, más lo acuñado en tesorería y lo bloqueado por redención; supply autorizado frente al emitido y tenedores en securities; operaciones calzadas frente a liquidadas; saldos de liquidación en moneda fiduciaria. **Una diferencia fuera de tolerancia detiene la emisión nueva y escala.** La conformidad es evidencia generada (`ConciliationRecorded`), no una conclusión informal.
+
+### 0.2 El manifiesto de despliegue va antes que la red cerrada
+
+Restringir qué se puede desplegar exige antes poder demostrar **qué está desplegado y en qué versión**. `deploy/MANIFIESTO.md` está en `null` y es condición previa de SFSP-150.
+
+### 0.3 Condiciones de arranque (v0.2 §16)
+
+Ninguna operación real se registra en el protocolo hasta cerrar, con evidencia:
+
+| Prioridad | Condición |
+|---|---|
+| Crítica | Credencial administrativa en texto plano (rotar: sigue en el historial) |
+| Crítica | Pruebas con operaciones destructivas sin barrera técnica |
+| Crítica | Modo de precio de ORIGEN en producción sin verificar |
+| Alta | Validadores con el mismo operador, proveedor y cuenta de nube |
+| Alta | Constancia de la copia fría de las llaves de validador |
+| Alta | Red sin permisos de despliegue ni filtro de transacciones |
+| Alta | Manifiesto de despliegue por servicio |
+| Alta | Dos copias del puente entre Genesis ID y Veta Wallet |
+| Alta | Acta de los movimientos de tesorería del 11 y 14 de septiembre |
+| Media | Restauración completa de la historia de la 8532 |
+| Media | Degradación a texto en claro en la mensajería frente a la promesa de cifrado |
+| Media | Nodo de la 8532 produciendo bloques con el RPC abierto (D14) |
+
+### 0.4 Regla de promoción
+
+El control de la regla de promoción de SFSP-120 §0.3 es operativo: toda campaña pagada se revisa contra la matriz de países antes de publicarse, y la revisión queda registrada.
 
 ---
 

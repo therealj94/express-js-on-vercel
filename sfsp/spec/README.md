@@ -28,18 +28,20 @@
 
 | Serie | Archivo | Contenido | Estado | Decisiones bloqueantes |
 |---|---|---|---|---|
-| SFSP-100 | `SFSP-100-CORE.md` | `assetId`, pasaporte, cinco ejes de estado, versionado, eventos, `implementationProfile`, `enforcementScope`, NATIVE vs CONTRACT, unidades y aritmética entera | escrita `draft-0.3` | D08, D03, D16, D11 |
-| SFSP-110 | `SFSP-110-IDENTITY.md` | Genesis ID canónico, attestations por propósito y audiencia, revocación, anti enumeración, qué no va on-chain, W3C VC 2.0 como objetivo | escrita `draft-0.3` | D13, D08, D06, D17 |
-| SFSP-120 | `SFSP-120-COMPLIANCE.md` | `EligibilityEngine`, `evaluate` sin escritura, ALLOW/DENY/REVIEW, revalidación al liquidar, políticas por acción para todas las clases, cliente frente a contrato | escrita `draft-0.3` | D08, D13, D07, D03 |
+| SFSP-100 | `SFSP-100-CORE.md` | `assetId`, pasaporte, cinco ejes de estado, versionado, eventos, `implementationProfile`, `enforcementScope`, NATIVE vs CONTRACT, unidades y aritmética entera | `draft-0.4`, alineada con v0.2 | D08, D03, D16, D11 |
+| SFSP-110 | `SFSP-110-IDENTITY.md` | Genesis ID canónico, attestations por propósito y audiencia, revocación, anti enumeración, qué no va on-chain, W3C VC 2.0 como objetivo | `draft-0.4`, alineada con v0.2 | D13, D08, D06, D17 |
+| SFSP-120 | `SFSP-120-COMPLIANCE.md` | `EligibilityEngine`, `evaluate` sin escritura, ALLOW/DENY/REVIEW, revalidación al liquidar, políticas por acción para todas las clases, cliente frente a contrato | `draft-0.4`, alineada con v0.2 | D08, D13, D07, D03 |
 | SFSP-130 | `SFSP-130-ACCOUNT-KEY.md` | `SFSPAccount`, Account Number, CSPRNG, Luhn, Alias Registry, `WalletBinding`, perfiles de custodia, `recoveryCapability`, máquinas de estado, las cuatro operaciones distintas | escrita `draft-0.3` | D17, D18, D19, D10, D07 |
-| SFSP-200 | `SFSP-200-SECURITIES.md` | Admisión DBNX, cinco plantillas de derechos, reporting como divulgación, corporate actions, R1–R5 y `SIN_EVALUAR`, delisting | escrita `draft-0.3` | D08, D13, D07, D04 |
-| SFSP-300 | `SFSP-300-COMMODITIES.md` | AUKA y AGK/AGKA como alias, `MetalLot`, invariante en onzas finas, máquina de redención no atómica, obligación exigible, mínimos distintos | escrita `draft-0.3` | D05, D04, D02, D08 |
-| SFSP-400 | `SFSP-400-MONETARY.md` | ORIGEN nativo, fórmulas del §6.1, las tres alternativas de D03, `U_unactivated`, techo administrativo frente a saldo técnico | escrita `draft-0.3` | **D03**, D01, D04, D02 |
-| SFSP-500 | `SFSP-500-SETTLEMENT-FEES.md` | DvP, `CashVault`, estados de orden y de ejecución, `UNKNOWN` como estado real, cotización de fee con TTL, patrocinio de gas, pago frente a comisión | escrita `draft-0.3` | D02, D01, D15, D03 |
-| SFSP-600 | `SFSP-600-PRIVACY-TRANSPARENCY.md` | Línea base transparente, qué ve cada actor, metadatos y correlación, los dos prototipos no implementados, Tessera no es la base, qué se puede anunciar | escrita `draft-0.3` | **D06**, D13, D14 |
-| SFSP-700 | `SFSP-700-MIGRATION.md` | `FROZEN_SNAPSHOT` y `SURRENDER_ON_CLAIM`, conciliación `S0 = A + N + P`, regla de restos, anti doble derecho, claims sin vencimiento, journal | escrita `draft-0.3` | **D09**, D08, D10, D03, D14 |
-| SFSP-800 | `SFSP-800-GOVERNANCE.md` | Roles y separación de funciones, firmas críticas por acción, `SignedAuthorization`, revocación y nonce, upgrades con timelock y reversión | escrita `draft-0.3` | **D07**, D10, D18, D19, D13, D11 |
-| SFSP-900 | `SFSP-900-OPERATIONS.md` | Observabilidad por componente, conciliación diaria, runbooks, RPO/RTO, presupuestos, estados de evidencia | escrita `draft-0.3` | D12, D11, D14, D15, D07 |
+| SFSP-140 | `SFSP-140-LICENSES.md` | **Nueva (v0.2 §6).** Registro de licencias por titular, dependencia de cada módulo, estados, vista pública que nunca anuncia lo no otorgado, taxonomía única de disponibilidad | `draft-0.4`, nueva | D13, titularidad de licencias compartidas, D07 |
+| SFSP-150 | `SFSP-150-NETWORK-ADMISSION.md` | **Nueva (v0.2 §2.1).** Red cerrada: lista de despliegue y filtro de transacciones por destino derivado del registro; orden de encendido | `draft-0.4`, nueva | **D07**, D12, D11, mecanismo de Besu |
+| SFSP-200 | `SFSP-200-SECURITIES.md` | Admisión DBNX, cinco plantillas de derechos, reporting como divulgación, corporate actions, R1–R5 y `SIN_EVALUAR`, delisting | `draft-0.4`, alineada con v0.2 | D08, D13, D07, D04 |
+| SFSP-300 | `SFSP-300-COMMODITIES.md` | AUKA y AGK/AGKA como alias, `MetalLot`, invariante en onzas finas, máquina de redención no atómica, obligación exigible, mínimos distintos | `draft-0.4`, alineada con v0.2 | D05, D04, D02, D08 |
+| SFSP-400 | `SFSP-400-MONETARY.md` | ORIGEN nativo, fórmulas del §6.1, las tres alternativas de D03, `U_unactivated`, techo administrativo frente a saldo técnico | `draft-0.4`, alineada con v0.2 | **D03**, D01, D04, D02 |
+| SFSP-500 | `SFSP-500-SETTLEMENT-FEES.md` | DvP, `CashVault`, estados de orden y de ejecución, `UNKNOWN` como estado real, cotización de fee con TTL, patrocinio de gas, pago frente a comisión | `draft-0.4`, alineada con v0.2 | D02, D01, D15, D03 |
+| SFSP-600 | `SFSP-600-PRIVACY-TRANSPARENCY.md` | Línea base transparente, qué ve cada actor, metadatos y correlación, los dos prototipos no implementados, Tessera no es la base, qué se puede anunciar | `draft-0.4`, alineada con v0.2 | **D06**, D13, D14 |
+| SFSP-700 | `SFSP-700-MIGRATION.md` | `FROZEN_SNAPSHOT` y `SURRENDER_ON_CLAIM`, conciliación `S0 = A + N + P`, regla de restos, anti doble derecho, claims sin vencimiento, journal | `draft-0.4`, alineada con v0.2 | **D09**, D08, D10, D03, D14 |
+| SFSP-800 | `SFSP-800-GOVERNANCE.md` | Roles y separación de funciones, firmas críticas por acción, `SignedAuthorization`, revocación y nonce, upgrades con timelock y reversión | `draft-0.4`, alineada con v0.2 | **D07**, D10, D18, D19, D13, D11 |
+| SFSP-900 | `SFSP-900-OPERATIONS.md` | Observabilidad por componente, conciliación diaria, runbooks, RPO/RTO, presupuestos, estados de evidencia | `draft-0.4`, alineada con v0.2 | D12, D11, D14, D15, D07 |
 
 Las categorías jurídicas **no se derivan de la numeración**. SFSP-200 se llama «Securities» por su contenido económico habitual, no porque clasifique nada como valor negociable.
 

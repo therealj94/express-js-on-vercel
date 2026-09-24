@@ -88,12 +88,13 @@ Todo lo que dice «existe» se comprobó en el árbol, y las pruebas se corriero
    - ORIGEN sigue «referenciado, nunca respaldado» (el §10.1 ya lo dice bien).
 2. **«Ultron» en el §5** debe decir **AU-RA FP** (renombrado el 22-sep; decisión D20 pendiente de marca).
 3. **Evento «Elegibilidad evaluada».** El v0.2 lo pide y el repo lo eliminó a propósito (para no publicar evaluaciones que permitan correlacionar identidades). **Propuesta:** que el evento solo publique una referencia o *hash* sin datos, o que viva en el dominio privado.
-4. **El estado por defecto de un país.** El v0.2 dice «solo entrante» (acceso abierto). El motor de elegibilidad actual **bloquea** si no hay política. Hay que cambiar el contrato y sus pruebas.
+4. **El estado por defecto de un país.** El v0.2 dice «solo entrante» (acceso abierto). *(Corregido el 24-sep.)* No es una contradicción de principio: el motor bloquea **cuando no hay política**, y eso se conserva. Lo que falta es la **matriz de países como política**, que resuelve un país no evaluado a `SOLO_ENTRANTE` (`spec/SFSP-120` §0.2).
 5. **La emisión de ORIGEN contra reservas.** El v0.2 la descarta (supply fijo de un billón). `SFSP-400` y el SDK aún la modelan. Esto **cierra D03** si la Junta firma el v0.2.
 6. **La comisión.** El código cobra 0,001 ORIGEN (apagada). El plan maestro dice «0,01 ORIGEN». El v0.2 dice **USD 0,01 pagados en ORIGEN**. Queda un solo valor: el del v0.2, que depende de D02 y del acta.
 7. **El precio de ORIGEN.** La billetera usa 0,01 USD por defecto y Ordenex unos 2,55 USD. El v0.2 exige una sola fuente (§10.5). **Mientras no se verifique el modo de producción, ningún material debe mostrar el precio en pantalla.**
 8. **La 8532.** El §14.1 la da por detenida, pero `LA-8532-SIGUE-VIVA.md` documenta un nodo produciendo bloques.
 9. **Nombre OGFP → SFSP.** El v0.2 adopta SFSP. `COMO-FUSIONAR.md` **prohíbe** renombrar dentro de los bytes firmados (dominios EIP-712 «OGFP»): el nombre visible cambia, los dominios de firma no. Hay que dejarlo escrito.
+10. **Acuñar AUKA y AGKA por adelantado** *(encontrado el 24-sep).* La norma del repo lo prohibía (exigía metal para acuñar). El v0.2 lo permite y pone el control en la **colocación**. Se adopta la del v0.2, con salvaguardas en la frontera de la tesorería (`spec/SFSP-300` §0.2).
 
 ---
 
@@ -127,7 +128,9 @@ Cada fase tiene una **condición de salida verificable**. No se pasa a la siguie
 | Subir MyTokenPay web y la API de AuCorp | Tras B4 y B5 |
 | Unificar el puente Genesis ↔ Veta en una sola copia | Técnico |
 
-### Fase 2 · Llevar el v0.2 a la especificación (semanas 2 y 3)
+### Fase 2 · Llevar el v0.2 a la especificación (semanas 2 y 3) · ✅ hecha el 24-sep
+
+Resultado: la especificación pasa a `draft-0.4`. Las series nuevas son SFSP-140 (licencias) y SFSP-150 (red cerrada). Los estados y eventos están unificados en `spec/ESTADOS-Y-EVENTOS.md`, con 29 eventos. La trazabilidad está en `TRAZABILIDAD-SFSP-v0.2.md`. El documento corregido con control de cambios está en `fuente/`.
 
 *Esto lo puedo hacer yo en cuanto José lo pida.* Es texto y pruebas, sin tocar ninguna red.
 

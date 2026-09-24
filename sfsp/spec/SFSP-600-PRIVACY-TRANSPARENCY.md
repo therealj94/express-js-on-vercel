@@ -3,12 +3,25 @@
 | Campo | Valor |
 |---|---|
 | Serie | SFSP-600 · Privacy & Transparency |
-| Estado | `draft-0.3` |
+| Estado | `draft-0.4` (alineada con el borrador SFSP v0.2) |
 | Fuente de tipos | `CONTRATO-INTERNO.md` §7, §3 |
 | Parte del plan maestro | P8-P (privacidad verificable), P7a (Orden Ledger), §2.7, gate G4 |
 | Decisiones que la bloquean | **D06 (alcance y diseño de privacidad)**, D13 (jurisdicción y permisos), D14 (retiro de la 8532 y continuidad histórica) |
 
 **Qué NO afirma este documento:** no afirma que exista ninguna capacidad de privacidad implementada, probada o desplegada; ninguno de los dos prototipos está implementado; la privacidad efectivamente demostrada hoy es **ninguna**.
+
+---
+
+## 0 · Alineación con el borrador SFSP v0.2 (23-sep-2026)
+
+> **Cómo leer esta sección.** El borrador SFSP v0.2 (`../fuente/`) es un borrador de trabajo: lo que sigue es **su posición**, llevada a esta serie. Hasta que la Junta lo firme, las decisiones afectadas siguen `PENDIENTE` en `../DECISIONES-SFSP.json` y todo lo que dependa de ellas devuelve `BLOCKED_DECISION`. Donde el v0.2 **cambia** una regla de más abajo, se dice aquí y la regla de abajo queda sustituida en cuanto se firme. La trazabilidad completa está en `../TRAZABILIDAD-SFSP-v0.2.md`.
+
+| v0.2 | Efecto en esta serie |
+|---|---|
+| §12 · Ocultar en la interfaz no es privacidad | Principio ya adoptado |
+| §12 · La privacidad heredada de Besu **se retiró en la versión 25.6.0**: el diseño no se apoya en ella | Queda descartada como opción de D06 |
+| Apéndice B · Evento de **elegibilidad evaluada** | Se publica **solo una referencia verificable** (`EligibilityRecorded`: compromiso del resultado, activo y versión de política), **sin identidad, sin dirección y sin resultado detallado**. El detalle vive en el dominio privado. Publicar cada evaluación completa permitiría correlacionar qué direcciones son de la misma identidad; por eso se había retirado |
+| §12 · La bitácora de accesos de Genesis ID, firmada y anclada a diario, es el precedente del modelo | Se toma como patrón para el registro de accesos de auditoría |
 
 ---
 

@@ -3,12 +3,53 @@
 | Campo | Valor |
 |---|---|
 | Serie | SFSP-100 · Core |
-| Estado | `draft-0.3` |
+| Estado | `draft-0.4` (alineada con el borrador SFSP v0.2) |
 | Fuente de tipos | `CONTRATO-INTERNO.md` §1, §2.3, §3, §4, §5 |
 | Parte del plan maestro | P3 entregables 3, 4, 5, 8 |
 | Decisiones que la bloquean | D08 (`legalClass`, derechos y elegibilidad), D03 (semántica monetaria del activo nativo), D16 (resolver o sustituir la spec OGFP v1.0 referida), D11 (repositorio y release source) |
 
 **Qué NO afirma este documento:** no afirma que exista un despliegue, un registro poblado, un enforcement técnico efectivo sobre ningún activo legacy, ni una clasificación jurídica de ningún activo; describe estructuras de datos y reglas de interpretación, no capacidades verificadas en una red real.
+
+---
+
+## 0 · Alineación con el borrador SFSP v0.2 (23-sep-2026)
+
+> **Cómo leer esta sección.** El borrador SFSP v0.2 (`../fuente/`) es un borrador de trabajo: lo que sigue es **su posición**, llevada a esta serie. Hasta que la Junta lo firme, las decisiones afectadas siguen `PENDIENTE` en `../DECISIONES-SFSP.json` y todo lo que dependa de ellas devuelve `BLOCKED_DECISION`. Donde el v0.2 **cambia** una regla de más abajo, se dice aquí y la regla de abajo queda sustituida en cuanto se firme. La trazabilidad completa está en `../TRAZABILIDAD-SFSP-v0.2.md`.
+
+### 0.1 Qué fija el v0.2 para el core
+
+| v0.2 | Efecto en esta serie |
+|---|---|
+| §2 · SFSP corre sobre la EVM de Besu en la 5550, sin tocar el consenso ni bifurcar el cliente; ERC-20 deja de ser el modelo canónico para emisiones nuevas | Sin cambios de fondo: ya es el modelo de esta serie (el activo conoce sus reglas; el cumplimiento está en la infraestructura) |
+| §2.1 · **Red cerrada**: nadie despliega en la 5550 sin implementar SFSP; filtro de transacciones por destino | Serie nueva **SFSP-150 · Network Admission**. El registro de activos pasa a ser también la lista de destinos admitidos por el filtro |
+| §4.1 · Clases `SECURITY`, `COMMODITY`, `MONETARY`, `UTILITY` | Corresponden a `SEC`, `COM`, `MON`, `UTIL`. `LEGACY` se conserva como clase **transitoria** del registro transitorio de SFSP-700; no es una quinta clase de negocio |
+| §4.2 · **Asset Passport** con unos 25 campos, versionado; un campo vencido se muestra **vencido**, no con su último valor | Ver §0.2 |
+| §4.2 · Identificador estable, independiente de la dirección, **jerárquico por clase, autoridad de admisión y correlativo** | `assetId` ya es independiente de la dirección. Formato visible propuesto: `SEC:DBNX:000001`. El `bytes32` se deriva de esa cadena; el formato de firma no cambia |
+| §4.3 · Vocabulario **acuñar / asignar / colocar / circular**; tesorería = acuñado sin colocar | Se adopta en la interfaz y en los reportes. Correspondencia con las fórmulas de SFSP-400: *colocado* = liberado a terceros; *tesorería* = acuñado en billeteras internas |
+| §6 · **Registro de licencias** en el core | Serie nueva **SFSP-140 · Licenses** |
+| Nombre: SFSP sustituye a OGFP | Cambia el nombre visible. **Los dominios EIP-712 y cualquier byte firmado conservan «OGFP»** (`../COMO-FUSIONAR.md`) |
+
+### 0.2 Asset Passport: campos del v0.2 que el pasaporte actual no tiene
+
+Estos campos pasan a ser **obligatorios en el pasaporte**. Mientras el contrato no los tenga, el pasaporte se considera incompleto y el activo no pasa de `aprobado` a `activo`.
+
+| Campo v0.2 | Regla |
+|---|---|
+| Segmento (Principal / Crecimiento) | Solo `SEC`. Distinto del nivel de riesgo; se publican los dos (SFSP-200 §0) |
+| Supply autorizado / emitido / en circulación | Tres cifras separadas; circulación excluye tesorería y bloqueos |
+| Precio de referencia, con fecha | Derivado de la valuación admisible; vence con ella |
+| Valuación, metodología, fecha, vigencia | Vencida se muestra vencida |
+| **Valuador** y su declaración de independencia | **No se omite por razones comerciales** (bloque 7) |
+| Composición de la canasta, por familia y por estado de titularidad | Solo canastas `SEC` |
+| **Custodio(s)** | Obligatorio si hay respaldo bajo guarda. No se omite |
+| Cobertura y fecha de la última atestación | `COM`: calculada contra lo **colocado** (SFSP-300 §0) |
+| Nivel de riesgo R1–R5, fecha e historial | El historial no se borra |
+| Estado de divulgación | Al día / próximo a vencer / vencido / en advertencia / suspendido |
+| Licencias de las que depende y su estado | De SFSP-140. Nunca se muestra como disponible lo que depende de una licencia no otorgada |
+| Calendario de liberación y porcentaje en circulación autorizado | `SEC` (51/49 con liberación progresiva) |
+| Condiciones de redención | Canales, mínimos, plazos y costos publicados; `COM` |
+
+Regla transversal nueva: **cada campo con vigencia lleva fecha y vencimiento, y la interfaz muestra «vencido» en vez del último valor conocido.**
 
 ---
 

@@ -3,12 +3,59 @@
 | Campo | Valor |
 |---|---|
 | Serie | SFSP-700 · Migration |
-| Estado | `draft-0.3` |
+| Estado | `draft-0.4` (alineada con el borrador SFSP v0.2) |
 | Fuente de tipos | `CONTRATO-INTERNO.md` §1, §2.4, §3, §5, §6.3 |
 | Parte del plan maestro | P9a (registro sin movimiento), P9b (reemplazo técnico por activo), §6.3 |
 | Decisiones que la bloquean | **D09 (modo, ratio, gas, corte y claims por activo)**, D08 (derechos), D10 (custodia y recuperación), D03 (semántica monetaria si el activo es el nativo), D14 (continuidad de la 8532) |
 
 **Qué NO afirma este documento:** no afirma que ninguna migración esté aprobada, simulada ni ejecutada; no fija ratio, modo ni fecha de corte para ningún activo; no promete que ningún derecho pueda recuperarse si no existe una ruta técnica.
+
+---
+
+## 0 · Alineación con el borrador SFSP v0.2 (23-sep-2026)
+
+> **Cómo leer esta sección.** El borrador SFSP v0.2 (`../fuente/`) es un borrador de trabajo: lo que sigue es **su posición**, llevada a esta serie. Hasta que la Junta lo firme, las decisiones afectadas siguen `PENDIENTE` en `../DECISIONES-SFSP.json` y todo lo que dependa de ellas devuelve `BLOCKED_DECISION`. Donde el v0.2 **cambia** una regla de más abajo, se dice aquí y la regla de abajo queda sustituida en cuanto se firme. La trazabilidad completa está en `../TRAZABILIDAD-SFSP-v0.2.md`.
+
+### 0.1 La migración es dentro de la misma cadena
+
+La migración de la 8532 a la 5550 **ya ocurrió**: el génesis de la 5550 (25-ago-2026) copió 172 contratos con su código y su almacenamiento, sin que ningún tenedor perdiera saldo. Por eso esta serie regula **el paso de los contratos heredados al régimen del protocolo dentro de la 5550**, sin cambio de red.
+
+### 0.2 Tres salidas por contrato (v0.2 §14.2)
+
+| Salida | Condición | Efecto |
+|---|---|---|
+| Registro transitorio | Activo del catálogo publicado por la Junta, con responsable | Opera mientras migra a un contrato conforme. Clase `LEGACY` |
+| Migración a contrato conforme | El activo debe cumplir una serie | Instantánea, bloqueo, acuñación equivalente y conciliación |
+| Inactivación | Contrato fuera del catálogo | Sigue en el estado **sin poder operar**, con constancia |
+
+### 0.3 El flujo, con el filtro de transacciones como bloqueo
+
+1. Desplegar el contrato conforme con su Asset Passport.
+2. Anunciar un **bloque de corte** reproducible.
+3. Instantánea de saldos con **raíz de Merkle** publicada en `SFSPMigrationRegistry`.
+4. **Bloquear el heredado con el filtro de transacciones** (SFSP-150) desde el bloque de corte. Esto **sustituye** la pausa o la quema que los contratos heredados no tienen. El modo es `FROZEN_SNAPSHOT`.
+5. Acuñar en el conforme los saldos equivalentes **en la misma dirección**. Al no cambiar de cadena, el reclamo por firma de `SURRENDER_ON_CLAIM` no hace falta.
+6. Conciliar instantánea contra acuñado y cerrar con historia consultable.
+
+La equivalencia es **por contrato, no por símbolo**: hay varios contratos con el mismo símbolo y lógica distinta.
+
+### 0.4 Catálogo (v0.2 §14.4)
+
+| Activo | Contrato canónico | Tratamiento |
+|---|---|---|
+| AUKA | `0x6facc8df79cedc6c5065442ce27e915aa3a26b9b` | Transitorio → conforme SFSP-300 |
+| AGKA | `0x961f798f998c7ff44d47d62c7fa1b572ef187a4b` | Transitorio → conforme SFSP-300 |
+| ONDK | `0xfb83eea4b384a4b18e5a1eba7a4bb4c0b7ca19c1` | Transitorio → conforme SFSP-200 |
+| HARV | `0x0fa04d11f28b28cbc9b98dd016f02023addb1923` | Publicado; clase y serie por definir (D08) |
+| IBS | por confirmar entre dos contratos con el mismo símbolo | Publicado; clase y serie por definir (D08) |
+
+Propuestos para inactivación: SILVER KAPITAL, los cuatro WORIGEN, el envoltorio WETH y los doce pools V3, los catorce HARVI duplicados, los dos AUBEX y el resto sin propósito acreditado. MONARKA: por definir. El nombre de marca sale del Asset Passport, no de la función `name()` del contrato.
+
+### 0.5 Condiciones previas que bloquean
+
+1. **Conciliar los 9.823,01 AUKA y 792,5 ONDK sin ubicar** con el respaldo del reinicio del 25 de agosto (su lectura exige credenciales rotadas). **Ninguna migración de AUKA ni de ONDK se ejecuta antes.**
+2. El trato de los adquirentes tempranos de ONDK se decide antes de migrar ONDK.
+3. **La 8532 no está del todo detenida**: consta que un nodo seguía produciendo bloques con el RPC abierto (`infra/migracion-cadena/LA-8532-SIGUE-VIVA.md`). Se aplica §8.1 y D14 antes de dar la red por histórica.
 
 ---
 

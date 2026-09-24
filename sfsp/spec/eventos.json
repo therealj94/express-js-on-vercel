@@ -7,9 +7,10 @@
     "Desde aqui: los decodificadores del indexador se GENERAN de este archivo y una",
     "prueba falla si el archivo generado y este JSON divergen. Los ABI de los",
     "contratos se comprueban contra el mismo archivo (ver PENDIENTE-CONTRATOS-EVENTOS.md).",
-    "Nada aqui contiene direcciones reales ni valores economicos."
+    "Nada aqui contiene direcciones reales ni valores economicos.",
+    "draft-0.4: se anaden los eventos del Apendice B del borrador SFSP v0.2 que faltaban, todos sin contrato todavia (implementadoEnContratos: false). La correspondencia con el Apendice B esta en spec/ESTADOS-Y-EVENTOS.md."
   ],
-  "version": "draft-0.3",
+  "version": "draft-0.4",
   "reglas": [
     "El nombre canonico de un evento es el de este archivo. Un nombre retirado no se reutiliza: se declara en 'aliasesRetirados' y se sigue decodificando al canonico.",
     "Todo evento que cambie el suministro lleva 'assetId'. Sin 'assetId' el evento no se puede atribuir y el suministro del activo sale DESCONOCIDO.",
@@ -33,9 +34,30 @@
       "afectaSuministro": "NINGUNO",
       "implementadoEnContratos": true,
       "campos": [
-        { "nombre": "assetId", "tipo": "bytes32", "indexado": true, "obligatorio": true, "atribuyeActivo": true, "esCantidad": false },
-        { "nombre": "issuerId", "tipo": "bytes32", "indexado": true, "obligatorio": true, "atribuyeActivo": false, "esCantidad": false },
-        { "nombre": "implementationProfile", "tipo": "uint8", "indexado": false, "obligatorio": true, "atribuyeActivo": false, "esCantidad": false }
+        {
+          "nombre": "assetId",
+          "tipo": "bytes32",
+          "indexado": true,
+          "obligatorio": true,
+          "atribuyeActivo": true,
+          "esCantidad": false
+        },
+        {
+          "nombre": "issuerId",
+          "tipo": "bytes32",
+          "indexado": true,
+          "obligatorio": true,
+          "atribuyeActivo": false,
+          "esCantidad": false
+        },
+        {
+          "nombre": "implementationProfile",
+          "tipo": "uint8",
+          "indexado": false,
+          "obligatorio": true,
+          "atribuyeActivo": false,
+          "esCantidad": false
+        }
       ]
     },
     {
@@ -46,12 +68,54 @@
       "afectaSuministro": "NINGUNO",
       "implementadoEnContratos": true,
       "campos": [
-        { "nombre": "assetId", "tipo": "bytes32", "indexado": true, "obligatorio": true, "atribuyeActivo": true, "esCantidad": false },
-        { "nombre": "policyKind", "tipo": "bytes32", "indexado": true, "obligatorio": true, "atribuyeActivo": false, "esCantidad": false },
-        { "nombre": "previousPolicyId", "tipo": "bytes32", "indexado": false, "obligatorio": true, "atribuyeActivo": false, "esCantidad": false },
-        { "nombre": "newPolicyId", "tipo": "bytes32", "indexado": false, "obligatorio": true, "atribuyeActivo": false, "esCantidad": false },
-        { "nombre": "previousVersion", "tipo": "uint32", "indexado": false, "obligatorio": true, "atribuyeActivo": false, "esCantidad": false },
-        { "nombre": "newVersion", "tipo": "uint32", "indexado": false, "obligatorio": true, "atribuyeActivo": false, "esCantidad": false }
+        {
+          "nombre": "assetId",
+          "tipo": "bytes32",
+          "indexado": true,
+          "obligatorio": true,
+          "atribuyeActivo": true,
+          "esCantidad": false
+        },
+        {
+          "nombre": "policyKind",
+          "tipo": "bytes32",
+          "indexado": true,
+          "obligatorio": true,
+          "atribuyeActivo": false,
+          "esCantidad": false
+        },
+        {
+          "nombre": "previousPolicyId",
+          "tipo": "bytes32",
+          "indexado": false,
+          "obligatorio": true,
+          "atribuyeActivo": false,
+          "esCantidad": false
+        },
+        {
+          "nombre": "newPolicyId",
+          "tipo": "bytes32",
+          "indexado": false,
+          "obligatorio": true,
+          "atribuyeActivo": false,
+          "esCantidad": false
+        },
+        {
+          "nombre": "previousVersion",
+          "tipo": "uint32",
+          "indexado": false,
+          "obligatorio": true,
+          "atribuyeActivo": false,
+          "esCantidad": false
+        },
+        {
+          "nombre": "newVersion",
+          "tipo": "uint32",
+          "indexado": false,
+          "obligatorio": true,
+          "atribuyeActivo": false,
+          "esCantidad": false
+        }
       ]
     },
     {
@@ -62,10 +126,38 @@
       "afectaSuministro": "AUTORIZA",
       "implementadoEnContratos": true,
       "campos": [
-        { "nombre": "assetId", "tipo": "bytes32", "indexado": true, "obligatorio": true, "atribuyeActivo": true, "esCantidad": false },
-        { "nombre": "authorizationId", "tipo": "bytes32", "indexado": true, "obligatorio": true, "atribuyeActivo": false, "esCantidad": false },
-        { "nombre": "amount", "tipo": "uint256", "indexado": false, "obligatorio": true, "atribuyeActivo": false, "esCantidad": true },
-        { "nombre": "expiry", "tipo": "uint64", "indexado": false, "obligatorio": true, "atribuyeActivo": false, "esCantidad": false }
+        {
+          "nombre": "assetId",
+          "tipo": "bytes32",
+          "indexado": true,
+          "obligatorio": true,
+          "atribuyeActivo": true,
+          "esCantidad": false
+        },
+        {
+          "nombre": "authorizationId",
+          "tipo": "bytes32",
+          "indexado": true,
+          "obligatorio": true,
+          "atribuyeActivo": false,
+          "esCantidad": false
+        },
+        {
+          "nombre": "amount",
+          "tipo": "uint256",
+          "indexado": false,
+          "obligatorio": true,
+          "atribuyeActivo": false,
+          "esCantidad": true
+        },
+        {
+          "nombre": "expiry",
+          "tipo": "uint64",
+          "indexado": false,
+          "obligatorio": true,
+          "atribuyeActivo": false,
+          "esCantidad": false
+        }
       ]
     },
     {
@@ -76,12 +168,54 @@
       "afectaSuministro": "AUMENTA",
       "implementadoEnContratos": true,
       "campos": [
-        { "nombre": "assetId", "tipo": "bytes32", "indexado": true, "obligatorio": true, "atribuyeActivo": true, "esCantidad": false },
-        { "nombre": "authorizationId", "tipo": "bytes32", "indexado": true, "obligatorio": true, "atribuyeActivo": false, "esCantidad": false },
-        { "nombre": "destination", "tipo": "address", "indexado": true, "obligatorio": true, "atribuyeActivo": false, "esCantidad": false },
-        { "nombre": "amount", "tipo": "uint256", "indexado": false, "obligatorio": true, "atribuyeActivo": false, "esCantidad": true },
-        { "nombre": "operationId", "tipo": "bytes32", "indexado": false, "obligatorio": true, "atribuyeActivo": false, "esCantidad": false },
-        { "nombre": "evidenceRoot", "tipo": "bytes32", "indexado": false, "obligatorio": true, "atribuyeActivo": false, "esCantidad": false }
+        {
+          "nombre": "assetId",
+          "tipo": "bytes32",
+          "indexado": true,
+          "obligatorio": true,
+          "atribuyeActivo": true,
+          "esCantidad": false
+        },
+        {
+          "nombre": "authorizationId",
+          "tipo": "bytes32",
+          "indexado": true,
+          "obligatorio": true,
+          "atribuyeActivo": false,
+          "esCantidad": false
+        },
+        {
+          "nombre": "destination",
+          "tipo": "address",
+          "indexado": true,
+          "obligatorio": true,
+          "atribuyeActivo": false,
+          "esCantidad": false
+        },
+        {
+          "nombre": "amount",
+          "tipo": "uint256",
+          "indexado": false,
+          "obligatorio": true,
+          "atribuyeActivo": false,
+          "esCantidad": true
+        },
+        {
+          "nombre": "operationId",
+          "tipo": "bytes32",
+          "indexado": false,
+          "obligatorio": true,
+          "atribuyeActivo": false,
+          "esCantidad": false
+        },
+        {
+          "nombre": "evidenceRoot",
+          "tipo": "bytes32",
+          "indexado": false,
+          "obligatorio": true,
+          "atribuyeActivo": false,
+          "esCantidad": false
+        }
       ]
     },
     {
@@ -92,11 +226,46 @@
       "afectaSuministro": "DISMINUYE",
       "implementadoEnContratos": true,
       "campos": [
-        { "nombre": "assetId", "tipo": "bytes32", "indexado": true, "obligatorio": true, "atribuyeActivo": true, "esCantidad": false },
-        { "nombre": "from", "tipo": "address", "indexado": true, "obligatorio": true, "atribuyeActivo": false, "esCantidad": false },
-        { "nombre": "amount", "tipo": "uint256", "indexado": false, "obligatorio": true, "atribuyeActivo": false, "esCantidad": true },
-        { "nombre": "reasonCode", "tipo": "bytes32", "indexado": false, "obligatorio": true, "atribuyeActivo": false, "esCantidad": false },
-        { "nombre": "operationId", "tipo": "bytes32", "indexado": false, "obligatorio": true, "atribuyeActivo": false, "esCantidad": false }
+        {
+          "nombre": "assetId",
+          "tipo": "bytes32",
+          "indexado": true,
+          "obligatorio": true,
+          "atribuyeActivo": true,
+          "esCantidad": false
+        },
+        {
+          "nombre": "from",
+          "tipo": "address",
+          "indexado": true,
+          "obligatorio": true,
+          "atribuyeActivo": false,
+          "esCantidad": false
+        },
+        {
+          "nombre": "amount",
+          "tipo": "uint256",
+          "indexado": false,
+          "obligatorio": true,
+          "atribuyeActivo": false,
+          "esCantidad": true
+        },
+        {
+          "nombre": "reasonCode",
+          "tipo": "bytes32",
+          "indexado": false,
+          "obligatorio": true,
+          "atribuyeActivo": false,
+          "esCantidad": false
+        },
+        {
+          "nombre": "operationId",
+          "tipo": "bytes32",
+          "indexado": false,
+          "obligatorio": true,
+          "atribuyeActivo": false,
+          "esCantidad": false
+        }
       ]
     },
     {
@@ -107,10 +276,38 @@
       "afectaSuministro": "NINGUNO",
       "implementadoEnContratos": true,
       "campos": [
-        { "nombre": "assetId", "tipo": "bytes32", "indexado": true, "obligatorio": true, "atribuyeActivo": true, "esCantidad": false },
-        { "nombre": "to", "tipo": "address", "indexado": true, "obligatorio": true, "atribuyeActivo": false, "esCantidad": false },
-        { "nombre": "amount", "tipo": "uint256", "indexado": false, "obligatorio": true, "atribuyeActivo": false, "esCantidad": true },
-        { "nombre": "reasonCode", "tipo": "bytes32", "indexado": false, "obligatorio": true, "atribuyeActivo": false, "esCantidad": false }
+        {
+          "nombre": "assetId",
+          "tipo": "bytes32",
+          "indexado": true,
+          "obligatorio": true,
+          "atribuyeActivo": true,
+          "esCantidad": false
+        },
+        {
+          "nombre": "to",
+          "tipo": "address",
+          "indexado": true,
+          "obligatorio": true,
+          "atribuyeActivo": false,
+          "esCantidad": false
+        },
+        {
+          "nombre": "amount",
+          "tipo": "uint256",
+          "indexado": false,
+          "obligatorio": true,
+          "atribuyeActivo": false,
+          "esCantidad": true
+        },
+        {
+          "nombre": "reasonCode",
+          "tipo": "bytes32",
+          "indexado": false,
+          "obligatorio": true,
+          "atribuyeActivo": false,
+          "esCantidad": false
+        }
       ]
     },
     {
@@ -121,10 +318,38 @@
       "afectaSuministro": "NINGUNO",
       "implementadoEnContratos": false,
       "campos": [
-        { "nombre": "reserveAssetId", "tipo": "bytes32", "indexado": true, "obligatorio": true, "atribuyeActivo": false, "esCantidad": false },
-        { "nombre": "assetId", "tipo": "bytes32", "indexado": true, "obligatorio": true, "atribuyeActivo": true, "esCantidad": false },
-        { "nombre": "evidenceId", "tipo": "bytes32", "indexado": false, "obligatorio": true, "atribuyeActivo": false, "esCantidad": false },
-        { "nombre": "validUntil", "tipo": "uint64", "indexado": false, "obligatorio": true, "atribuyeActivo": false, "esCantidad": false }
+        {
+          "nombre": "reserveAssetId",
+          "tipo": "bytes32",
+          "indexado": true,
+          "obligatorio": true,
+          "atribuyeActivo": false,
+          "esCantidad": false
+        },
+        {
+          "nombre": "assetId",
+          "tipo": "bytes32",
+          "indexado": true,
+          "obligatorio": true,
+          "atribuyeActivo": true,
+          "esCantidad": false
+        },
+        {
+          "nombre": "evidenceId",
+          "tipo": "bytes32",
+          "indexado": false,
+          "obligatorio": true,
+          "atribuyeActivo": false,
+          "esCantidad": false
+        },
+        {
+          "nombre": "validUntil",
+          "tipo": "uint64",
+          "indexado": false,
+          "obligatorio": true,
+          "atribuyeActivo": false,
+          "esCantidad": false
+        }
       ]
     },
     {
@@ -135,9 +360,30 @@
       "afectaSuministro": "NINGUNO",
       "implementadoEnContratos": false,
       "campos": [
-        { "nombre": "reserveAssetId", "tipo": "bytes32", "indexado": true, "obligatorio": true, "atribuyeActivo": false, "esCantidad": false },
-        { "nombre": "assetId", "tipo": "bytes32", "indexado": true, "obligatorio": true, "atribuyeActivo": true, "esCantidad": false },
-        { "nombre": "expiredAt", "tipo": "uint64", "indexado": false, "obligatorio": true, "atribuyeActivo": false, "esCantidad": false }
+        {
+          "nombre": "reserveAssetId",
+          "tipo": "bytes32",
+          "indexado": true,
+          "obligatorio": true,
+          "atribuyeActivo": false,
+          "esCantidad": false
+        },
+        {
+          "nombre": "assetId",
+          "tipo": "bytes32",
+          "indexado": true,
+          "obligatorio": true,
+          "atribuyeActivo": true,
+          "esCantidad": false
+        },
+        {
+          "nombre": "expiredAt",
+          "tipo": "uint64",
+          "indexado": false,
+          "obligatorio": true,
+          "atribuyeActivo": false,
+          "esCantidad": false
+        }
       ]
     },
     {
@@ -148,10 +394,38 @@
       "afectaSuministro": "NINGUNO",
       "implementadoEnContratos": true,
       "campos": [
-        { "nombre": "assetId", "tipo": "bytes32", "indexado": true, "obligatorio": true, "atribuyeActivo": true, "esCantidad": false },
-        { "nombre": "reportHash", "tipo": "bytes32", "indexado": false, "obligatorio": true, "atribuyeActivo": false, "esCantidad": false },
-        { "nombre": "dueDate", "tipo": "uint64", "indexado": false, "obligatorio": true, "atribuyeActivo": false, "esCantidad": false },
-        { "nombre": "reportStatus", "tipo": "uint8", "indexado": false, "obligatorio": true, "atribuyeActivo": false, "esCantidad": false }
+        {
+          "nombre": "assetId",
+          "tipo": "bytes32",
+          "indexado": true,
+          "obligatorio": true,
+          "atribuyeActivo": true,
+          "esCantidad": false
+        },
+        {
+          "nombre": "reportHash",
+          "tipo": "bytes32",
+          "indexado": false,
+          "obligatorio": true,
+          "atribuyeActivo": false,
+          "esCantidad": false
+        },
+        {
+          "nombre": "dueDate",
+          "tipo": "uint64",
+          "indexado": false,
+          "obligatorio": true,
+          "atribuyeActivo": false,
+          "esCantidad": false
+        },
+        {
+          "nombre": "reportStatus",
+          "tipo": "uint8",
+          "indexado": false,
+          "obligatorio": true,
+          "atribuyeActivo": false,
+          "esCantidad": false
+        }
       ]
     },
     {
@@ -162,11 +436,46 @@
       "afectaSuministro": "NINGUNO",
       "implementadoEnContratos": true,
       "campos": [
-        { "nombre": "assetId", "tipo": "bytes32", "indexado": true, "obligatorio": true, "atribuyeActivo": true, "esCantidad": false },
-        { "nombre": "previousLevel", "tipo": "uint8", "indexado": false, "obligatorio": true, "atribuyeActivo": false, "esCantidad": false },
-        { "nombre": "newLevel", "tipo": "uint8", "indexado": false, "obligatorio": true, "atribuyeActivo": false, "esCantidad": false },
-        { "nombre": "methodologyVersion", "tipo": "bytes32", "indexado": false, "obligatorio": true, "atribuyeActivo": false, "esCantidad": false },
-        { "nombre": "responsible", "tipo": "address", "indexado": true, "obligatorio": true, "atribuyeActivo": false, "esCantidad": false }
+        {
+          "nombre": "assetId",
+          "tipo": "bytes32",
+          "indexado": true,
+          "obligatorio": true,
+          "atribuyeActivo": true,
+          "esCantidad": false
+        },
+        {
+          "nombre": "previousLevel",
+          "tipo": "uint8",
+          "indexado": false,
+          "obligatorio": true,
+          "atribuyeActivo": false,
+          "esCantidad": false
+        },
+        {
+          "nombre": "newLevel",
+          "tipo": "uint8",
+          "indexado": false,
+          "obligatorio": true,
+          "atribuyeActivo": false,
+          "esCantidad": false
+        },
+        {
+          "nombre": "methodologyVersion",
+          "tipo": "bytes32",
+          "indexado": false,
+          "obligatorio": true,
+          "atribuyeActivo": false,
+          "esCantidad": false
+        },
+        {
+          "nombre": "responsible",
+          "tipo": "address",
+          "indexado": true,
+          "obligatorio": true,
+          "atribuyeActivo": false,
+          "esCantidad": false
+        }
       ]
     },
     {
@@ -177,12 +486,54 @@
       "afectaSuministro": "NINGUNO",
       "implementadoEnContratos": true,
       "campos": [
-        { "nombre": "operationId", "tipo": "bytes32", "indexado": true, "obligatorio": true, "atribuyeActivo": false, "esCantidad": false },
-        { "nombre": "assetId", "tipo": "bytes32", "indexado": true, "obligatorio": true, "atribuyeActivo": true, "esCantidad": false },
-        { "nombre": "buyer", "tipo": "address", "indexado": true, "obligatorio": true, "atribuyeActivo": false, "esCantidad": false },
-        { "nombre": "seller", "tipo": "address", "indexado": false, "obligatorio": true, "atribuyeActivo": false, "esCantidad": false },
-        { "nombre": "assetAmount", "tipo": "uint256", "indexado": false, "obligatorio": true, "atribuyeActivo": false, "esCantidad": true },
-        { "nombre": "cashAmount", "tipo": "uint256", "indexado": false, "obligatorio": true, "atribuyeActivo": false, "esCantidad": true }
+        {
+          "nombre": "operationId",
+          "tipo": "bytes32",
+          "indexado": true,
+          "obligatorio": true,
+          "atribuyeActivo": false,
+          "esCantidad": false
+        },
+        {
+          "nombre": "assetId",
+          "tipo": "bytes32",
+          "indexado": true,
+          "obligatorio": true,
+          "atribuyeActivo": true,
+          "esCantidad": false
+        },
+        {
+          "nombre": "buyer",
+          "tipo": "address",
+          "indexado": true,
+          "obligatorio": true,
+          "atribuyeActivo": false,
+          "esCantidad": false
+        },
+        {
+          "nombre": "seller",
+          "tipo": "address",
+          "indexado": false,
+          "obligatorio": true,
+          "atribuyeActivo": false,
+          "esCantidad": false
+        },
+        {
+          "nombre": "assetAmount",
+          "tipo": "uint256",
+          "indexado": false,
+          "obligatorio": true,
+          "atribuyeActivo": false,
+          "esCantidad": true
+        },
+        {
+          "nombre": "cashAmount",
+          "tipo": "uint256",
+          "indexado": false,
+          "obligatorio": true,
+          "atribuyeActivo": false,
+          "esCantidad": true
+        }
       ]
     },
     {
@@ -193,11 +544,46 @@
       "afectaSuministro": "NINGUNO",
       "implementadoEnContratos": false,
       "campos": [
-        { "nombre": "redemptionId", "tipo": "bytes32", "indexado": true, "obligatorio": true, "atribuyeActivo": false, "esCantidad": false },
-        { "nombre": "assetId", "tipo": "bytes32", "indexado": true, "obligatorio": true, "atribuyeActivo": true, "esCantidad": false },
-        { "nombre": "previousState", "tipo": "uint8", "indexado": false, "obligatorio": true, "atribuyeActivo": false, "esCantidad": false },
-        { "nombre": "newState", "tipo": "uint8", "indexado": false, "obligatorio": true, "atribuyeActivo": false, "esCantidad": false },
-        { "nombre": "amount", "tipo": "uint256", "indexado": false, "obligatorio": true, "atribuyeActivo": false, "esCantidad": true }
+        {
+          "nombre": "redemptionId",
+          "tipo": "bytes32",
+          "indexado": true,
+          "obligatorio": true,
+          "atribuyeActivo": false,
+          "esCantidad": false
+        },
+        {
+          "nombre": "assetId",
+          "tipo": "bytes32",
+          "indexado": true,
+          "obligatorio": true,
+          "atribuyeActivo": true,
+          "esCantidad": false
+        },
+        {
+          "nombre": "previousState",
+          "tipo": "uint8",
+          "indexado": false,
+          "obligatorio": true,
+          "atribuyeActivo": false,
+          "esCantidad": false
+        },
+        {
+          "nombre": "newState",
+          "tipo": "uint8",
+          "indexado": false,
+          "obligatorio": true,
+          "atribuyeActivo": false,
+          "esCantidad": false
+        },
+        {
+          "nombre": "amount",
+          "tipo": "uint256",
+          "indexado": false,
+          "obligatorio": true,
+          "atribuyeActivo": false,
+          "esCantidad": true
+        }
       ]
     },
     {
@@ -208,10 +594,38 @@
       "afectaSuministro": "NINGUNO",
       "implementadoEnContratos": true,
       "campos": [
-        { "nombre": "caseId", "tipo": "bytes32", "indexado": true, "obligatorio": true, "atribuyeActivo": false, "esCantidad": false },
-        { "nombre": "operationId", "tipo": "bytes32", "indexado": true, "obligatorio": true, "atribuyeActivo": false, "esCantidad": false },
-        { "nombre": "evidenceRoot", "tipo": "bytes32", "indexado": false, "obligatorio": true, "atribuyeActivo": false, "esCantidad": false },
-        { "nombre": "executedAt", "tipo": "uint64", "indexado": false, "obligatorio": true, "atribuyeActivo": false, "esCantidad": false }
+        {
+          "nombre": "caseId",
+          "tipo": "bytes32",
+          "indexado": true,
+          "obligatorio": true,
+          "atribuyeActivo": false,
+          "esCantidad": false
+        },
+        {
+          "nombre": "operationId",
+          "tipo": "bytes32",
+          "indexado": true,
+          "obligatorio": true,
+          "atribuyeActivo": false,
+          "esCantidad": false
+        },
+        {
+          "nombre": "evidenceRoot",
+          "tipo": "bytes32",
+          "indexado": false,
+          "obligatorio": true,
+          "atribuyeActivo": false,
+          "esCantidad": false
+        },
+        {
+          "nombre": "executedAt",
+          "tipo": "uint64",
+          "indexado": false,
+          "obligatorio": true,
+          "atribuyeActivo": false,
+          "esCantidad": false
+        }
       ]
     },
     {
@@ -222,13 +636,62 @@
       "afectaSuministro": "NINGUNO",
       "implementadoEnContratos": true,
       "campos": [
-        { "nombre": "migrationId", "tipo": "bytes32", "indexado": true, "obligatorio": true, "atribuyeActivo": false, "esCantidad": false },
-        { "nombre": "beneficiary", "tipo": "address", "indexado": true, "obligatorio": true, "atribuyeActivo": false, "esCantidad": false },
-        { "nombre": "assetIdAnterior", "tipo": "bytes32", "indexado": true, "obligatorio": true, "atribuyeActivo": true, "esCantidad": false },
-        { "nombre": "assetIdNuevo", "tipo": "bytes32", "indexado": false, "obligatorio": true, "atribuyeActivo": true, "esCantidad": false },
-        { "nombre": "oldUnits", "tipo": "uint256", "indexado": false, "obligatorio": true, "atribuyeActivo": false, "esCantidad": true },
-        { "nombre": "newUnits", "tipo": "uint256", "indexado": false, "obligatorio": true, "atribuyeActivo": false, "esCantidad": true },
-        { "nombre": "nullifier", "tipo": "bytes32", "indexado": false, "obligatorio": true, "atribuyeActivo": false, "esCantidad": false }
+        {
+          "nombre": "migrationId",
+          "tipo": "bytes32",
+          "indexado": true,
+          "obligatorio": true,
+          "atribuyeActivo": false,
+          "esCantidad": false
+        },
+        {
+          "nombre": "beneficiary",
+          "tipo": "address",
+          "indexado": true,
+          "obligatorio": true,
+          "atribuyeActivo": false,
+          "esCantidad": false
+        },
+        {
+          "nombre": "assetIdAnterior",
+          "tipo": "bytes32",
+          "indexado": true,
+          "obligatorio": true,
+          "atribuyeActivo": true,
+          "esCantidad": false
+        },
+        {
+          "nombre": "assetIdNuevo",
+          "tipo": "bytes32",
+          "indexado": false,
+          "obligatorio": true,
+          "atribuyeActivo": true,
+          "esCantidad": false
+        },
+        {
+          "nombre": "oldUnits",
+          "tipo": "uint256",
+          "indexado": false,
+          "obligatorio": true,
+          "atribuyeActivo": false,
+          "esCantidad": true
+        },
+        {
+          "nombre": "newUnits",
+          "tipo": "uint256",
+          "indexado": false,
+          "obligatorio": true,
+          "atribuyeActivo": false,
+          "esCantidad": true
+        },
+        {
+          "nombre": "nullifier",
+          "tipo": "bytes32",
+          "indexado": false,
+          "obligatorio": true,
+          "atribuyeActivo": false,
+          "esCantidad": false
+        }
       ]
     },
     {
@@ -239,11 +702,682 @@
       "afectaSuministro": "NINGUNO",
       "implementadoEnContratos": true,
       "campos": [
-        { "nombre": "operationId", "tipo": "bytes32", "indexado": true, "obligatorio": true, "atribuyeActivo": false, "esCantidad": false },
-        { "nombre": "actionKind", "tipo": "bytes32", "indexado": true, "obligatorio": true, "atribuyeActivo": false, "esCantidad": false },
-        { "nombre": "actor", "tipo": "address", "indexado": true, "obligatorio": true, "atribuyeActivo": false, "esCantidad": false },
-        { "nombre": "detail", "tipo": "bytes32", "indexado": false, "obligatorio": true, "atribuyeActivo": false, "esCantidad": false },
-        { "nombre": "effectiveAt", "tipo": "uint64", "indexado": false, "obligatorio": true, "atribuyeActivo": false, "esCantidad": false }
+        {
+          "nombre": "operationId",
+          "tipo": "bytes32",
+          "indexado": true,
+          "obligatorio": true,
+          "atribuyeActivo": false,
+          "esCantidad": false
+        },
+        {
+          "nombre": "actionKind",
+          "tipo": "bytes32",
+          "indexado": true,
+          "obligatorio": true,
+          "atribuyeActivo": false,
+          "esCantidad": false
+        },
+        {
+          "nombre": "actor",
+          "tipo": "address",
+          "indexado": true,
+          "obligatorio": true,
+          "atribuyeActivo": false,
+          "esCantidad": false
+        },
+        {
+          "nombre": "detail",
+          "tipo": "bytes32",
+          "indexado": false,
+          "obligatorio": true,
+          "atribuyeActivo": false,
+          "esCantidad": false
+        },
+        {
+          "nombre": "effectiveAt",
+          "tipo": "uint64",
+          "indexado": false,
+          "obligatorio": true,
+          "atribuyeActivo": false,
+          "esCantidad": false
+        }
+      ]
+    },
+    {
+      "nombre": "PassportUpdated",
+      "emisor": "AssetRegistry",
+      "significado": "Cambia un campo del Asset Passport; conserva la version anterior consultable (v0.2 §4.2, Apendice B).",
+      "atribucion": "POR_ACTIVO",
+      "afectaSuministro": "NINGUNO",
+      "implementadoEnContratos": false,
+      "campos": [
+        {
+          "nombre": "assetId",
+          "tipo": "bytes32",
+          "indexado": true,
+          "obligatorio": true,
+          "atribuyeActivo": true,
+          "esCantidad": false
+        },
+        {
+          "nombre": "previousVersion",
+          "tipo": "uint32",
+          "indexado": false,
+          "obligatorio": true,
+          "atribuyeActivo": false,
+          "esCantidad": false
+        },
+        {
+          "nombre": "newVersion",
+          "tipo": "uint32",
+          "indexado": false,
+          "obligatorio": true,
+          "atribuyeActivo": false,
+          "esCantidad": false
+        },
+        {
+          "nombre": "passportHash",
+          "tipo": "bytes32",
+          "indexado": false,
+          "obligatorio": true,
+          "atribuyeActivo": false,
+          "esCantidad": false
+        },
+        {
+          "nombre": "reasonCode",
+          "tipo": "bytes32",
+          "indexado": false,
+          "obligatorio": true,
+          "atribuyeActivo": false,
+          "esCantidad": false
+        }
+      ]
+    },
+    {
+      "nombre": "AssetStatusChanged",
+      "emisor": "AssetRegistry",
+      "significado": "Cambio en el ciclo de vida del activo, en uno de sus ejes de estado.",
+      "atribucion": "POR_ACTIVO",
+      "afectaSuministro": "NINGUNO",
+      "implementadoEnContratos": false,
+      "campos": [
+        {
+          "nombre": "assetId",
+          "tipo": "bytes32",
+          "indexado": true,
+          "obligatorio": true,
+          "atribuyeActivo": true,
+          "esCantidad": false
+        },
+        {
+          "nombre": "axis",
+          "tipo": "uint8",
+          "indexado": false,
+          "obligatorio": true,
+          "atribuyeActivo": false,
+          "esCantidad": false
+        },
+        {
+          "nombre": "previousState",
+          "tipo": "uint8",
+          "indexado": false,
+          "obligatorio": true,
+          "atribuyeActivo": false,
+          "esCantidad": false
+        },
+        {
+          "nombre": "newState",
+          "tipo": "uint8",
+          "indexado": false,
+          "obligatorio": true,
+          "atribuyeActivo": false,
+          "esCantidad": false
+        },
+        {
+          "nombre": "reasonCode",
+          "tipo": "bytes32",
+          "indexado": false,
+          "obligatorio": true,
+          "atribuyeActivo": false,
+          "esCantidad": false
+        }
+      ]
+    },
+    {
+      "nombre": "SupplyExpansionDeclared",
+      "emisor": "GovernanceController",
+      "significado": "Declaracion del tipo de ampliacion (COLOCACION_NUEVA o DIVISION) y de su prueba de neutralidad (SFSP-200 §0.1). No mueve suministro por si misma.",
+      "atribucion": "POR_ACTIVO",
+      "afectaSuministro": "NINGUNO",
+      "implementadoEnContratos": false,
+      "campos": [
+        {
+          "nombre": "assetId",
+          "tipo": "bytes32",
+          "indexado": true,
+          "obligatorio": true,
+          "atribuyeActivo": true,
+          "esCantidad": false
+        },
+        {
+          "nombre": "operationId",
+          "tipo": "bytes32",
+          "indexado": true,
+          "obligatorio": true,
+          "atribuyeActivo": false,
+          "esCantidad": false
+        },
+        {
+          "nombre": "expansionKind",
+          "tipo": "bytes32",
+          "indexado": false,
+          "obligatorio": true,
+          "atribuyeActivo": false,
+          "esCantidad": false
+        },
+        {
+          "nombre": "neutralityProofHash",
+          "tipo": "bytes32",
+          "indexado": false,
+          "obligatorio": true,
+          "atribuyeActivo": false,
+          "esCantidad": false
+        },
+        {
+          "nombre": "dilutive",
+          "tipo": "bool",
+          "indexado": false,
+          "obligatorio": true,
+          "atribuyeActivo": false,
+          "esCantidad": false
+        }
+      ]
+    },
+    {
+      "nombre": "SplitExecuted",
+      "emisor": "IssuanceController",
+      "significado": "Division de denominacion: multiplica las unidades de todos los tenedores sin captar capital. 'amount' son las unidades anadidas al total.",
+      "atribucion": "POR_ACTIVO",
+      "afectaSuministro": "AUMENTA",
+      "implementadoEnContratos": false,
+      "campos": [
+        {
+          "nombre": "assetId",
+          "tipo": "bytes32",
+          "indexado": true,
+          "obligatorio": true,
+          "atribuyeActivo": true,
+          "esCantidad": false
+        },
+        {
+          "nombre": "operationId",
+          "tipo": "bytes32",
+          "indexado": true,
+          "obligatorio": true,
+          "atribuyeActivo": false,
+          "esCantidad": false
+        },
+        {
+          "nombre": "ratioNumerator",
+          "tipo": "uint32",
+          "indexado": false,
+          "obligatorio": true,
+          "atribuyeActivo": false,
+          "esCantidad": false
+        },
+        {
+          "nombre": "ratioDenominator",
+          "tipo": "uint32",
+          "indexado": false,
+          "obligatorio": true,
+          "atribuyeActivo": false,
+          "esCantidad": false
+        },
+        {
+          "nombre": "amount",
+          "tipo": "uint256",
+          "indexado": false,
+          "obligatorio": true,
+          "atribuyeActivo": false,
+          "esCantidad": true
+        }
+      ]
+    },
+    {
+      "nombre": "IdentityLinkChanged",
+      "emisor": "IdentityAdapter",
+      "significado": "Alta, cambio o revocacion del vinculo entre una billetera y una identidad. Solo la referencia del vinculo: ni direccion ni datos personales.",
+      "atribucion": "GLOBAL",
+      "afectaSuministro": "NINGUNO",
+      "implementadoEnContratos": false,
+      "campos": [
+        {
+          "nombre": "linkRef",
+          "tipo": "bytes32",
+          "indexado": true,
+          "obligatorio": true,
+          "atribuyeActivo": false,
+          "esCantidad": false
+        },
+        {
+          "nombre": "previousState",
+          "tipo": "uint8",
+          "indexado": false,
+          "obligatorio": true,
+          "atribuyeActivo": false,
+          "esCantidad": false
+        },
+        {
+          "nombre": "newState",
+          "tipo": "uint8",
+          "indexado": false,
+          "obligatorio": true,
+          "atribuyeActivo": false,
+          "esCantidad": false
+        },
+        {
+          "nombre": "reasonCode",
+          "tipo": "bytes32",
+          "indexado": false,
+          "obligatorio": true,
+          "atribuyeActivo": false,
+          "esCantidad": false
+        }
+      ]
+    },
+    {
+      "nombre": "EligibilityRecorded",
+      "emisor": "EligibilityEngine",
+      "significado": "Referencia verificable de una evaluacion de elegibilidad. Sin identidad, sin direccion y sin resultado detallado: el detalle vive en el dominio privado (SFSP-600 §0). Sustituye al evento retirado que publicaba la evaluacion completa.",
+      "atribucion": "POR_ACTIVO",
+      "afectaSuministro": "NINGUNO",
+      "implementadoEnContratos": false,
+      "campos": [
+        {
+          "nombre": "assetId",
+          "tipo": "bytes32",
+          "indexado": true,
+          "obligatorio": true,
+          "atribuyeActivo": true,
+          "esCantidad": false
+        },
+        {
+          "nombre": "evaluationCommitment",
+          "tipo": "bytes32",
+          "indexado": true,
+          "obligatorio": true,
+          "atribuyeActivo": false,
+          "esCantidad": false
+        },
+        {
+          "nombre": "action",
+          "tipo": "bytes32",
+          "indexado": false,
+          "obligatorio": true,
+          "atribuyeActivo": false,
+          "esCantidad": false
+        },
+        {
+          "nombre": "policyVersion",
+          "tipo": "uint32",
+          "indexado": false,
+          "obligatorio": true,
+          "atribuyeActivo": false,
+          "esCantidad": false
+        }
+      ]
+    },
+    {
+      "nombre": "ExposureLimitRecorded",
+      "emisor": "EligibilityEngine",
+      "significado": "Registro del regimen de limite de exposicion aplicable a una identidad (Mercado de Crecimiento). Solo la referencia de la declaracion.",
+      "atribucion": "GLOBAL",
+      "afectaSuministro": "NINGUNO",
+      "implementadoEnContratos": false,
+      "campos": [
+        {
+          "nombre": "declarationRef",
+          "tipo": "bytes32",
+          "indexado": true,
+          "obligatorio": true,
+          "atribuyeActivo": false,
+          "esCantidad": false
+        },
+        {
+          "nombre": "regime",
+          "tipo": "bytes32",
+          "indexado": false,
+          "obligatorio": true,
+          "atribuyeActivo": false,
+          "esCantidad": false
+        },
+        {
+          "nombre": "validUntil",
+          "tipo": "uint64",
+          "indexado": false,
+          "obligatorio": true,
+          "atribuyeActivo": false,
+          "esCantidad": false
+        }
+      ]
+    },
+    {
+      "nombre": "AcquirerDeclarationRecorded",
+      "emisor": "AssetRegistry",
+      "significado": "El adquirente reconoce los terminos, con la version del documento aceptado (v0.2 §8.3 bloque 7).",
+      "atribucion": "POR_ACTIVO",
+      "afectaSuministro": "NINGUNO",
+      "implementadoEnContratos": false,
+      "campos": [
+        {
+          "nombre": "assetId",
+          "tipo": "bytes32",
+          "indexado": true,
+          "obligatorio": true,
+          "atribuyeActivo": true,
+          "esCantidad": false
+        },
+        {
+          "nombre": "declarationRef",
+          "tipo": "bytes32",
+          "indexado": true,
+          "obligatorio": true,
+          "atribuyeActivo": false,
+          "esCantidad": false
+        },
+        {
+          "nombre": "documentHash",
+          "tipo": "bytes32",
+          "indexado": false,
+          "obligatorio": true,
+          "atribuyeActivo": false,
+          "esCantidad": false
+        },
+        {
+          "nombre": "documentVersion",
+          "tipo": "uint32",
+          "indexado": false,
+          "obligatorio": true,
+          "atribuyeActivo": false,
+          "esCantidad": false
+        }
+      ]
+    },
+    {
+      "nombre": "CoveragePublished",
+      "emisor": "CommodityEngine",
+      "significado": "Ratio de cobertura de una serie con respaldo, calculado contra lo COLOCADO; la tesorería se reporta aparte (SFSP-300 §0.2).",
+      "atribucion": "POR_ACTIVO",
+      "afectaSuministro": "NINGUNO",
+      "implementadoEnContratos": false,
+      "campos": [
+        {
+          "nombre": "assetId",
+          "tipo": "bytes32",
+          "indexado": true,
+          "obligatorio": true,
+          "atribuyeActivo": true,
+          "esCantidad": false
+        },
+        {
+          "nombre": "fineOuncesAssigned",
+          "tipo": "uint256",
+          "indexado": false,
+          "obligatorio": true,
+          "atribuyeActivo": false,
+          "esCantidad": true
+        },
+        {
+          "nombre": "unitsPlaced",
+          "tipo": "uint256",
+          "indexado": false,
+          "obligatorio": true,
+          "atribuyeActivo": false,
+          "esCantidad": true
+        },
+        {
+          "nombre": "unitsInTreasury",
+          "tipo": "uint256",
+          "indexado": false,
+          "obligatorio": true,
+          "atribuyeActivo": false,
+          "esCantidad": true
+        },
+        {
+          "nombre": "attestedAt",
+          "tipo": "uint64",
+          "indexado": false,
+          "obligatorio": true,
+          "atribuyeActivo": false,
+          "esCantidad": false
+        }
+      ]
+    },
+    {
+      "nombre": "LicenseStatusChanged",
+      "emisor": "LicenseRegistry",
+      "significado": "Transicion de estado de una licencia del registro (SFSP-140).",
+      "atribucion": "GLOBAL",
+      "afectaSuministro": "NINGUNO",
+      "implementadoEnContratos": false,
+      "campos": [
+        {
+          "nombre": "licenseId",
+          "tipo": "bytes32",
+          "indexado": true,
+          "obligatorio": true,
+          "atribuyeActivo": false,
+          "esCantidad": false
+        },
+        {
+          "nombre": "previousState",
+          "tipo": "uint8",
+          "indexado": false,
+          "obligatorio": true,
+          "atribuyeActivo": false,
+          "esCantidad": false
+        },
+        {
+          "nombre": "newState",
+          "tipo": "uint8",
+          "indexado": false,
+          "obligatorio": true,
+          "atribuyeActivo": false,
+          "esCantidad": false
+        },
+        {
+          "nombre": "reasonCode",
+          "tipo": "bytes32",
+          "indexado": false,
+          "obligatorio": true,
+          "atribuyeActivo": false,
+          "esCantidad": false
+        }
+      ]
+    },
+    {
+      "nombre": "ModuleAvailabilityChanged",
+      "emisor": "LicenseRegistry",
+      "significado": "Un modulo se habilita o se bloquea por dependencia de licencia (SFSP-140).",
+      "atribucion": "GLOBAL",
+      "afectaSuministro": "NINGUNO",
+      "implementadoEnContratos": false,
+      "campos": [
+        {
+          "nombre": "moduleId",
+          "tipo": "bytes32",
+          "indexado": true,
+          "obligatorio": true,
+          "atribuyeActivo": false,
+          "esCantidad": false
+        },
+        {
+          "nombre": "licenseId",
+          "tipo": "bytes32",
+          "indexado": true,
+          "obligatorio": true,
+          "atribuyeActivo": false,
+          "esCantidad": false
+        },
+        {
+          "nombre": "newAvailability",
+          "tipo": "uint8",
+          "indexado": false,
+          "obligatorio": true,
+          "atribuyeActivo": false,
+          "esCantidad": false
+        },
+        {
+          "nombre": "reasonCode",
+          "tipo": "bytes32",
+          "indexado": false,
+          "obligatorio": true,
+          "atribuyeActivo": false,
+          "esCantidad": false
+        }
+      ]
+    },
+    {
+      "nombre": "CountryStatusChanged",
+      "emisor": "EligibilityEngine",
+      "significado": "Cambio de estado de un pais en la matriz de jurisdicciones (SFSP-120 §0.2).",
+      "atribucion": "GLOBAL",
+      "afectaSuministro": "NINGUNO",
+      "implementadoEnContratos": false,
+      "campos": [
+        {
+          "nombre": "countryCode",
+          "tipo": "bytes32",
+          "indexado": true,
+          "obligatorio": true,
+          "atribuyeActivo": false,
+          "esCantidad": false
+        },
+        {
+          "nombre": "previousState",
+          "tipo": "uint8",
+          "indexado": false,
+          "obligatorio": true,
+          "atribuyeActivo": false,
+          "esCantidad": false
+        },
+        {
+          "nombre": "newState",
+          "tipo": "uint8",
+          "indexado": false,
+          "obligatorio": true,
+          "atribuyeActivo": false,
+          "esCantidad": false
+        },
+        {
+          "nombre": "reasonCode",
+          "tipo": "bytes32",
+          "indexado": false,
+          "obligatorio": true,
+          "atribuyeActivo": false,
+          "esCantidad": false
+        },
+        {
+          "nombre": "evidenceHash",
+          "tipo": "bytes32",
+          "indexado": false,
+          "obligatorio": true,
+          "atribuyeActivo": false,
+          "esCantidad": false
+        }
+      ]
+    },
+    {
+      "nombre": "NetworkPermissionChanged",
+      "emisor": "NetworkAdmission",
+      "significado": "Alta o baja en la lista de despliegue o en el filtro de transacciones (SFSP-150).",
+      "atribucion": "GLOBAL",
+      "afectaSuministro": "NINGUNO",
+      "implementadoEnContratos": false,
+      "campos": [
+        {
+          "nombre": "subject",
+          "tipo": "address",
+          "indexado": true,
+          "obligatorio": true,
+          "atribuyeActivo": false,
+          "esCantidad": false
+        },
+        {
+          "nombre": "permissionKind",
+          "tipo": "bytes32",
+          "indexado": true,
+          "obligatorio": true,
+          "atribuyeActivo": false,
+          "esCantidad": false
+        },
+        {
+          "nombre": "granted",
+          "tipo": "bool",
+          "indexado": false,
+          "obligatorio": true,
+          "atribuyeActivo": false,
+          "esCantidad": false
+        },
+        {
+          "nombre": "reasonCode",
+          "tipo": "bytes32",
+          "indexado": false,
+          "obligatorio": true,
+          "atribuyeActivo": false,
+          "esCantidad": false
+        },
+        {
+          "nombre": "operationId",
+          "tipo": "bytes32",
+          "indexado": false,
+          "obligatorio": true,
+          "atribuyeActivo": false,
+          "esCantidad": false
+        }
+      ]
+    },
+    {
+      "nombre": "ConciliationRecorded",
+      "emisor": "ReconciliationJob",
+      "significado": "Resultado de la conciliacion diaria, incluidos los descuadres (SFSP-900 §0.1).",
+      "atribucion": "GLOBAL",
+      "afectaSuministro": "NINGUNO",
+      "implementadoEnContratos": false,
+      "campos": [
+        {
+          "nombre": "runId",
+          "tipo": "bytes32",
+          "indexado": true,
+          "obligatorio": true,
+          "atribuyeActivo": false,
+          "esCantidad": false
+        },
+        {
+          "nombre": "blockNumber",
+          "tipo": "uint64",
+          "indexado": false,
+          "obligatorio": true,
+          "atribuyeActivo": false,
+          "esCantidad": false
+        },
+        {
+          "nombre": "resultHash",
+          "tipo": "bytes32",
+          "indexado": false,
+          "obligatorio": true,
+          "atribuyeActivo": false,
+          "esCantidad": false
+        },
+        {
+          "nombre": "discrepancies",
+          "tipo": "uint32",
+          "indexado": false,
+          "obligatorio": true,
+          "atribuyeActivo": false,
+          "esCantidad": false
+        }
       ]
     }
   ]

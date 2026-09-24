@@ -39,9 +39,18 @@ test('la version del esquema cargado es la que expone el indexador', () => {
   assert.equal(VERSION_ESPEC_EVENTOS, espec.version);
 });
 
-test('los quince eventos del §3 estan en la fuente unica, con su emisor', () => {
-  assert.equal(espec.eventos.length, 15);
-  assert.equal(Object.keys(ESQUEMA_EVENTOS).length, 15);
+// Quince del §3 del contrato interno y catorce del Apendice B del borrador v0.2.
+const DEL_TRES = ['AssetRegistered','PolicyUpdated','SupplyAuthorized','MintExecuted','BurnExecuted','TreasuryReleased','ReserveAttested','ReserveExpired','DisclosurePublished','RiskChanged','TradeSettled','RedemptionUpdated','RecoveryExecuted','MigrationClaimed','GovernanceAction'];
+const DEL_V02 = ['PassportUpdated','AssetStatusChanged','SupplyExpansionDeclared','SplitExecuted','IdentityLinkChanged','EligibilityRecorded','ExposureLimitRecorded','AcquirerDeclarationRecorded','CoveragePublished','LicenseStatusChanged','ModuleAvailabilityChanged','CountryStatusChanged','NetworkPermissionChanged','ConciliationRecorded'];
+
+test('los quince eventos del §3 y los catorce del v0.2 estan en la fuente unica, con su emisor', () => {
+  const nombres = espec.eventos.map((e) => e.nombre);
+  for (const n of [...DEL_TRES, ...DEL_V02]) assert.ok(nombres.includes(n), 'falta ' + n);
+  assert.equal(espec.eventos.length, DEL_TRES.length + DEL_V02.length);
+  assert.equal(Object.keys(ESQUEMA_EVENTOS).length, DEL_TRES.length + DEL_V02.length);
+  // Los del v0.2 todavia no tienen contrato: si alguno dijera lo contrario, la
+  // prueba H15 de contracts/ exigiria un ABI que no existe.
+  for (const e of espec.eventos) if (DEL_V02.includes(e.nombre)) assert.equal(e.implementadoEnContratos, false, e.nombre);
   for (const ev of espec.eventos) {
     assert.equal(EVENTOS_CONOCIDOS[ev.nombre as keyof typeof EVENTOS_CONOCIDOS], ev.emisor);
   }

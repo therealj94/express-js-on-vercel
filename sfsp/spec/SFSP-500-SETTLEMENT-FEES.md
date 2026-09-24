@@ -3,12 +3,27 @@
 | Campo | Valor |
 |---|---|
 | Serie | SFSP-500 · Settlement & Fees |
-| Estado | `draft-0.3` |
+| Estado | `draft-0.4` (alineada con el borrador SFSP v0.2) |
 | Fuente de tipos | `CONTRATO-INTERNO.md` §2.4, §3, §4, §5 |
 | Parte del plan maestro | P4 (DvP nativo, CashVault), P7b (Orden Markets), P6 pasos 5–7, §2.8 |
 | Decisiones que la bloquean | D02 (alcance del objetivo de fee, mínimos y patrocinio de gas), D01 (política de precio), D15 (proveedor de pagos y liquidez), D03 (release de tesorería al vault) |
 
 **Qué NO afirma este documento:** no afirma que exista un fee vigente, un carril patrocinado activo, un proveedor de pagos contratado ni liquidación DvP probada en ninguna red; no afirma que un relayer genérico pague la transacción de ningún usuario.
+
+---
+
+## 0 · Alineación con el borrador SFSP v0.2 (23-sep-2026)
+
+> **Cómo leer esta sección.** El borrador SFSP v0.2 (`../fuente/`) es un borrador de trabajo: lo que sigue es **su posición**, llevada a esta serie. Hasta que la Junta lo firme, las decisiones afectadas siguen `PENDIENTE` en `../DECISIONES-SFSP.json` y todo lo que dependa de ellas devuelve `BLOCKED_DECISION`. Donde el v0.2 **cambia** una regla de más abajo, se dice aquí y la regla de abajo queda sustituida en cuanto se firme. La trazabilidad completa está en `../TRAZABILIDAD-SFSP-v0.2.md`.
+
+| v0.2 | Efecto en esta serie |
+|---|---|
+| §13 · Calce **fuera de la cadena**, determinista, auditado y numerado; liquidación en el protocolo con entrega contra pago | Es el modelo de esta serie (`SFSPSettlementEngine`) |
+| §13 · **Ordenex conserva su nombre**, pertenece a Au Corp. y opera con la licencia ATS Clase B **en trámite** | Se descarta el cambio de nombre del borrador anterior. Ordenex depende de esa licencia en el registro de SFSP-140: nada se anuncia como disponible antes de que se otorgue |
+| §13 · MyTokenPay consume la **misma** interfaz de liquidación, sin libro contable paralelo | Requisito de integración: MyTokenPay no liquida por su cuenta |
+| §13 · AuBank es adaptador de custodia y de moneda fiduciaria, **no** fuente del registro | Coherente con la regla de fuente única del core |
+| §10.3 · Comisión USD 0,01 en ORIGEN, separada del gas | SFSP-400 §0.1. Esta serie la cobra con `SFSPFeeController` |
+| Pendiente | Modelo de órdenes, formadores de mercado, tamaños de puja, interruptores de circuito, ciclos de liquidación y vigilancia de mercado (DBNX) |
 
 ---
 

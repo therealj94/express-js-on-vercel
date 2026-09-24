@@ -3,12 +3,91 @@
 | Campo | Valor |
 |---|---|
 | Serie | SFSP-300 · Commodities |
-| Estado | `draft-0.3` |
+| Estado | `draft-0.4` (alineada con el borrador SFSP v0.2) |
 | Fuente de tipos | `CONTRATO-INTERNO.md` §1, §2.3, §3, §6.2, §6.4 |
 | Parte del plan maestro | P8-C (AUKA y AGK/AGKA), P8-R (reservas y oráculos), §1.2 |
 | Decisiones que la bloquean | D05 (custodia, lotes, obligaciones y redención), D04 (reservas elegibles, haircuts, concentración), D02 (mínimos y alcance del cobro), D08 (derechos del instrumento) |
 
 **Qué NO afirma este documento:** no afirma que exista metal asignado, custodia acreditada, derecho de entrega ejercitable ni cobertura de ninguna serie existente; no convierte ninguna emisión histórica en capacidad respaldada.
+
+---
+
+## 0 · Alineación con el borrador SFSP v0.2 (23-sep-2026)
+
+> **Cómo leer esta sección.** El borrador SFSP v0.2 (`../fuente/`) es un borrador de trabajo: lo que sigue es **su posición**, llevada a esta serie. Hasta que la Junta lo firme, las decisiones afectadas siguen `PENDIENTE` en `../DECISIONES-SFSP.json` y todo lo que dependa de ellas devuelve `BLOCKED_DECISION`. Donde el v0.2 **cambia** una regla de más abajo, se dice aquí y la regla de abajo queda sustituida en cuanto se firme. La trazabilidad completa está en `../TRAZABILIDAD-SFSP-v0.2.md`.
+
+### 0.1 Naturaleza y comunicación
+
+AUKA y AGKA **se diseñan** para quedar respaldadas por oro y plata **desde su primera colocación con terceros**, con derecho de redención reconocido en el protocolo desde la primera versión. Unidad: la onza troy fina. El valor visible fluctúa con el metal.
+
+**Hoy hay 0 onzas custodiadas y ningún custodio contratado.** Por eso, y por la regla de la Junta del 14 de agosto de 2026, **ningún material público describe hoy a AUKA ni a AGKA como respaldadas**. La calificación de respaldado se adquiere con la primera atestación vigente y se pierde sola si la atestación vence.
+
+ORIGEN es otra cosa: **referenciado, nunca respaldado** (SFSP-400). Las dos afirmaciones no se mezclan en ningún material.
+
+### 0.2 ⚠ Cambio de norma: acuñar antes, colocar solo con metal (v0.2 §9.4)
+
+El v0.2 **sustituye** las reglas 1 y 6 de §2.1 (que exigían metal para acuñar y prohibían acuñar por adelantado):
+
+| Concepto | Regla v0.2 |
+|---|---|
+| Acuñado | Total creado en la cadena; **no acredita reservas** |
+| Tesorería | Acuñado en billeteras internas, sin colocar |
+| **Capacidad de colocación** | Onzas finas verificadas, asignadas y **no comprometidas** con unidades ya colocadas |
+| Colocado y circulante | En manos de terceros. **Nunca excede las onzas verificadas** |
+| Bloqueo por redención | Bloqueadas durante el proceso; se queman antes de liberar el metal |
+
+Esto describe la realidad (hay 55.000.000 AUKA y 500.000.000 AGKA acuñados en tesorería), pero **mueve el riesgo a la frontera de la tesorería**. Salvaguardas obligatorias:
+
+1. Las billeteras internas de tesorería de cada serie `COM` se registran en el protocolo (bajo el protocolo de seguridad, sin publicar su correspondencia con categorías).
+2. **Toda salida de una billetera de tesorería hacia un tercero es una colocación**: pasa por la acción `RELEASE`, que exige capacidad de colocación. En SFSP-120 §3, `RELEASE` pasa de `n/a` a **obligatoria para `COM`**.
+3. El invariante de §3 se reescribe contra lo colocado:
+
+```
+FineOunces_assigned_not_delivered  >=  Units_placed_in_oz + PendingDeliveryObligations_burned
+```
+
+   Las unidades en tesorería no entran en el lado derecho, pero **se reportan aparte** y la conciliación diaria verifica que ninguna salió sin `RELEASE`.
+4. La prueba de reservas y el ratio de cobertura se publican **contra lo colocado**.
+
+### 0.3 Custodia (v0.2 §9.2)
+
+1. Varias bóvedas en jurisdicciones distintas, custodios independientes del emisor y entre sí, cada uno atestando por separado y con vencimiento.
+2. AuBank puede custodiar solo con la licencia de custodia Clase G y, entonces, con límite de concentración (`null`) y auditoría externa más frecuente. El porcentaje custodiado dentro del sistema se publica.
+3. Metal asignado, segregado del patrimonio del emisor y sin gravámenes.
+4. El grueso en barras Good Delivery; una porción en barras de kilogramo para envíos.
+5. Registro de lote con **peso bruto y pureza por separado**, nunca solo el peso bruto.
+6. Auditor externo rotativo; prueba de reservas en cadena; **la conciliación diaria detiene la emisión ante cualquier descuadre**.
+7. **No doble cómputo:** cada onza tiene un solo destino contable.
+8. Formulación pública: «registro descentralizado con custodia distribuida y atestación verificable en cadena». **No se dice que el respaldo sea descentralizado.**
+
+### 0.4 Redención (v0.2 §9.3)
+
+| Canal | Mínimo | Estado inicial |
+|---|---|---|
+| Envío asegurado | 1 kg = 32,1507 oz finas | **Cerrado por parámetro** hasta la licencia de custodia Clase G |
+| Retiro presencial (con cita y verificación de Genesis ID en persona) | 1 oz troy fina | **Cerrado por parámetro** hasta la licencia de custodia Clase G |
+| Liquidación en ORIGEN | Sin mínimo | Abierto cuando exista oráculo único y tesorería (SFSP-400) |
+
+1. **Denominación:** 1 oz troy = 31,1035 g = **1.710,6925 gramín**, así que 1 AUKA se liquida en 1.710,6925 ORIGEN **sin operación cambiaria**. AGKA se liquida con el ratio oro/plata del mismo oráculo, con marca de tiempo y tolerancia.
+2. AGKA: liquidación en ORIGEN **permanente**; físico solo por acuerdo institucional (barra de unas 1.000 oz).
+3. La quema es **simultánea o anterior** a la entrega, nunca posterior. En el retiro presencial la quema ocurre **contra la entrega**, no antes de que la persona se presente.
+4. Aviso de 5 a 10 días hábiles, por orden de llegada. El remanente por debajo del mínimo se conserva o se liquida en ORIGEN.
+5. Una redención no afecta la cobertura de los demás tenedores: sale metal y se queman tokens uno a uno.
+
+Esto **sustituye** el `null` de «mínimo de redención física» en §5 por los mínimos derivados de la denominación de custodia.
+
+### 0.5 Diferencia con el código actual
+
+No hay código de esta serie: ni lotes, ni capacidad de colocación, ni redención. Los eventos `ReserveAttested`, `ReserveExpired` y `RedemptionUpdated` están en `eventos.json` sin emisor. Todo es fase 3.
+
+### 0.6 Pruebas de aceptación nuevas
+
+1. **T-300-20**: Una transferencia desde una billetera de tesorería `COM` a un tercero sin `RELEASE` se rechaza.
+2. **T-300-21**: `RELEASE` de `x` onzas se rechaza si `x` supera la capacidad de colocación libre.
+3. **T-300-22**: La cobertura publicada se calcula contra lo colocado, y las unidades en tesorería se reportan aparte.
+4. **T-300-23**: Con los canales físicos cerrados por parámetro, una solicitud de envío o retiro se rechaza con el código `LICENCIA_NO_OTORGADA`, y la liquidación en ORIGEN sigue disponible.
+5. **T-300-24**: 1 AUKA liquidado en ORIGEN da 1.710,6925 ORIGEN (redondeo hacia abajo en unidades base).
+6. **T-300-25**: En el retiro presencial, una solicitud a la que la persona no se presenta queda `vencida por incomparecencia` sin quemar tokens.
 
 ---
 

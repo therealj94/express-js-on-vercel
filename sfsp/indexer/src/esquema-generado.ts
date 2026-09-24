@@ -5,7 +5,7 @@
 // La prueba 'esquema.test.ts' falla si este archivo y el JSON divergen.
 
 /** Version de la fuente unica desde la que se genero este modulo. */
-export const VERSION_ESPEC_EVENTOS = "draft-0.3";
+export const VERSION_ESPEC_EVENTOS = "draft-0.4";
 
 /** Un campo de un evento, con todo lo que el indexador necesita saber. */
 export interface CampoEventoGenerado {
@@ -36,7 +36,7 @@ export interface EventoGenerado {
   readonly camposDeAtribucion: readonly string[];
 }
 
-/** Los 15 eventos del §3, por su nombre canonico. */
+/** Los 29 eventos del §3, por su nombre canonico. */
 export type NombreEvento =
   | "AssetRegistered"
   | "PolicyUpdated"
@@ -52,7 +52,21 @@ export type NombreEvento =
   | "RedemptionUpdated"
   | "RecoveryExecuted"
   | "MigrationClaimed"
-  | "GovernanceAction";
+  | "GovernanceAction"
+  | "PassportUpdated"
+  | "AssetStatusChanged"
+  | "SupplyExpansionDeclared"
+  | "SplitExecuted"
+  | "IdentityLinkChanged"
+  | "EligibilityRecorded"
+  | "ExposureLimitRecorded"
+  | "AcquirerDeclarationRecorded"
+  | "CoveragePublished"
+  | "LicenseStatusChanged"
+  | "ModuleAvailabilityChanged"
+  | "CountryStatusChanged"
+  | "NetworkPermissionChanged"
+  | "ConciliationRecorded";
 
 /** Esquema completo por evento. Generado: editar el JSON, no esto. */
 export const ESQUEMA_EVENTOS: Readonly<Record<NombreEvento, EventoGenerado>> = {
@@ -322,6 +336,250 @@ export const ESQUEMA_EVENTOS: Readonly<Record<NombreEvento, EventoGenerado>> = {
     cantidades: [],
     camposDeAtribucion: [],
   },
+  PassportUpdated: {
+    nombre: "PassportUpdated",
+    emisor: "AssetRegistry",
+    significado: "Cambia un campo del Asset Passport; conserva la version anterior consultable (v0.2 §4.2, Apendice B).",
+    atribucion: "POR_ACTIVO",
+    afectaSuministro: "NINGUNO",
+    implementadoEnContratos: false,
+    campos: [
+      { nombre: "assetId", tipo: "bytes32", indexado: true, obligatorio: true, atribuyeActivo: true, esCantidad: false },
+      { nombre: "previousVersion", tipo: "uint32", indexado: false, obligatorio: true, atribuyeActivo: false, esCantidad: false },
+      { nombre: "newVersion", tipo: "uint32", indexado: false, obligatorio: true, atribuyeActivo: false, esCantidad: false },
+      { nombre: "passportHash", tipo: "bytes32", indexado: false, obligatorio: true, atribuyeActivo: false, esCantidad: false },
+      { nombre: "reasonCode", tipo: "bytes32", indexado: false, obligatorio: true, atribuyeActivo: false, esCantidad: false },
+    ],
+    requeridos: ["assetId", "previousVersion", "newVersion", "passportHash", "reasonCode"],
+    cantidades: [],
+    camposDeAtribucion: ["assetId"],
+  },
+  AssetStatusChanged: {
+    nombre: "AssetStatusChanged",
+    emisor: "AssetRegistry",
+    significado: "Cambio en el ciclo de vida del activo, en uno de sus ejes de estado.",
+    atribucion: "POR_ACTIVO",
+    afectaSuministro: "NINGUNO",
+    implementadoEnContratos: false,
+    campos: [
+      { nombre: "assetId", tipo: "bytes32", indexado: true, obligatorio: true, atribuyeActivo: true, esCantidad: false },
+      { nombre: "axis", tipo: "uint8", indexado: false, obligatorio: true, atribuyeActivo: false, esCantidad: false },
+      { nombre: "previousState", tipo: "uint8", indexado: false, obligatorio: true, atribuyeActivo: false, esCantidad: false },
+      { nombre: "newState", tipo: "uint8", indexado: false, obligatorio: true, atribuyeActivo: false, esCantidad: false },
+      { nombre: "reasonCode", tipo: "bytes32", indexado: false, obligatorio: true, atribuyeActivo: false, esCantidad: false },
+    ],
+    requeridos: ["assetId", "axis", "previousState", "newState", "reasonCode"],
+    cantidades: [],
+    camposDeAtribucion: ["assetId"],
+  },
+  SupplyExpansionDeclared: {
+    nombre: "SupplyExpansionDeclared",
+    emisor: "GovernanceController",
+    significado: "Declaracion del tipo de ampliacion (COLOCACION_NUEVA o DIVISION) y de su prueba de neutralidad (SFSP-200 §0.1). No mueve suministro por si misma.",
+    atribucion: "POR_ACTIVO",
+    afectaSuministro: "NINGUNO",
+    implementadoEnContratos: false,
+    campos: [
+      { nombre: "assetId", tipo: "bytes32", indexado: true, obligatorio: true, atribuyeActivo: true, esCantidad: false },
+      { nombre: "operationId", tipo: "bytes32", indexado: true, obligatorio: true, atribuyeActivo: false, esCantidad: false },
+      { nombre: "expansionKind", tipo: "bytes32", indexado: false, obligatorio: true, atribuyeActivo: false, esCantidad: false },
+      { nombre: "neutralityProofHash", tipo: "bytes32", indexado: false, obligatorio: true, atribuyeActivo: false, esCantidad: false },
+      { nombre: "dilutive", tipo: "bool", indexado: false, obligatorio: true, atribuyeActivo: false, esCantidad: false },
+    ],
+    requeridos: ["assetId", "operationId", "expansionKind", "neutralityProofHash", "dilutive"],
+    cantidades: [],
+    camposDeAtribucion: ["assetId"],
+  },
+  SplitExecuted: {
+    nombre: "SplitExecuted",
+    emisor: "IssuanceController",
+    significado: "Division de denominacion: multiplica las unidades de todos los tenedores sin captar capital. 'amount' son las unidades anadidas al total.",
+    atribucion: "POR_ACTIVO",
+    afectaSuministro: "AUMENTA",
+    implementadoEnContratos: false,
+    campos: [
+      { nombre: "assetId", tipo: "bytes32", indexado: true, obligatorio: true, atribuyeActivo: true, esCantidad: false },
+      { nombre: "operationId", tipo: "bytes32", indexado: true, obligatorio: true, atribuyeActivo: false, esCantidad: false },
+      { nombre: "ratioNumerator", tipo: "uint32", indexado: false, obligatorio: true, atribuyeActivo: false, esCantidad: false },
+      { nombre: "ratioDenominator", tipo: "uint32", indexado: false, obligatorio: true, atribuyeActivo: false, esCantidad: false },
+      { nombre: "amount", tipo: "uint256", indexado: false, obligatorio: true, atribuyeActivo: false, esCantidad: true },
+    ],
+    requeridos: ["assetId", "operationId", "ratioNumerator", "ratioDenominator", "amount"],
+    cantidades: ["amount"],
+    camposDeAtribucion: ["assetId"],
+  },
+  IdentityLinkChanged: {
+    nombre: "IdentityLinkChanged",
+    emisor: "IdentityAdapter",
+    significado: "Alta, cambio o revocacion del vinculo entre una billetera y una identidad. Solo la referencia del vinculo: ni direccion ni datos personales.",
+    atribucion: "GLOBAL",
+    afectaSuministro: "NINGUNO",
+    implementadoEnContratos: false,
+    campos: [
+      { nombre: "linkRef", tipo: "bytes32", indexado: true, obligatorio: true, atribuyeActivo: false, esCantidad: false },
+      { nombre: "previousState", tipo: "uint8", indexado: false, obligatorio: true, atribuyeActivo: false, esCantidad: false },
+      { nombre: "newState", tipo: "uint8", indexado: false, obligatorio: true, atribuyeActivo: false, esCantidad: false },
+      { nombre: "reasonCode", tipo: "bytes32", indexado: false, obligatorio: true, atribuyeActivo: false, esCantidad: false },
+    ],
+    requeridos: ["linkRef", "previousState", "newState", "reasonCode"],
+    cantidades: [],
+    camposDeAtribucion: [],
+  },
+  EligibilityRecorded: {
+    nombre: "EligibilityRecorded",
+    emisor: "EligibilityEngine",
+    significado: "Referencia verificable de una evaluacion de elegibilidad. Sin identidad, sin direccion y sin resultado detallado: el detalle vive en el dominio privado (SFSP-600 §0). Sustituye al evento retirado que publicaba la evaluacion completa.",
+    atribucion: "POR_ACTIVO",
+    afectaSuministro: "NINGUNO",
+    implementadoEnContratos: false,
+    campos: [
+      { nombre: "assetId", tipo: "bytes32", indexado: true, obligatorio: true, atribuyeActivo: true, esCantidad: false },
+      { nombre: "evaluationCommitment", tipo: "bytes32", indexado: true, obligatorio: true, atribuyeActivo: false, esCantidad: false },
+      { nombre: "action", tipo: "bytes32", indexado: false, obligatorio: true, atribuyeActivo: false, esCantidad: false },
+      { nombre: "policyVersion", tipo: "uint32", indexado: false, obligatorio: true, atribuyeActivo: false, esCantidad: false },
+    ],
+    requeridos: ["assetId", "evaluationCommitment", "action", "policyVersion"],
+    cantidades: [],
+    camposDeAtribucion: ["assetId"],
+  },
+  ExposureLimitRecorded: {
+    nombre: "ExposureLimitRecorded",
+    emisor: "EligibilityEngine",
+    significado: "Registro del regimen de limite de exposicion aplicable a una identidad (Mercado de Crecimiento). Solo la referencia de la declaracion.",
+    atribucion: "GLOBAL",
+    afectaSuministro: "NINGUNO",
+    implementadoEnContratos: false,
+    campos: [
+      { nombre: "declarationRef", tipo: "bytes32", indexado: true, obligatorio: true, atribuyeActivo: false, esCantidad: false },
+      { nombre: "regime", tipo: "bytes32", indexado: false, obligatorio: true, atribuyeActivo: false, esCantidad: false },
+      { nombre: "validUntil", tipo: "uint64", indexado: false, obligatorio: true, atribuyeActivo: false, esCantidad: false },
+    ],
+    requeridos: ["declarationRef", "regime", "validUntil"],
+    cantidades: [],
+    camposDeAtribucion: [],
+  },
+  AcquirerDeclarationRecorded: {
+    nombre: "AcquirerDeclarationRecorded",
+    emisor: "AssetRegistry",
+    significado: "El adquirente reconoce los terminos, con la version del documento aceptado (v0.2 §8.3 bloque 7).",
+    atribucion: "POR_ACTIVO",
+    afectaSuministro: "NINGUNO",
+    implementadoEnContratos: false,
+    campos: [
+      { nombre: "assetId", tipo: "bytes32", indexado: true, obligatorio: true, atribuyeActivo: true, esCantidad: false },
+      { nombre: "declarationRef", tipo: "bytes32", indexado: true, obligatorio: true, atribuyeActivo: false, esCantidad: false },
+      { nombre: "documentHash", tipo: "bytes32", indexado: false, obligatorio: true, atribuyeActivo: false, esCantidad: false },
+      { nombre: "documentVersion", tipo: "uint32", indexado: false, obligatorio: true, atribuyeActivo: false, esCantidad: false },
+    ],
+    requeridos: ["assetId", "declarationRef", "documentHash", "documentVersion"],
+    cantidades: [],
+    camposDeAtribucion: ["assetId"],
+  },
+  CoveragePublished: {
+    nombre: "CoveragePublished",
+    emisor: "CommodityEngine",
+    significado: "Ratio de cobertura de una serie con respaldo, calculado contra lo COLOCADO; la tesorería se reporta aparte (SFSP-300 §0.2).",
+    atribucion: "POR_ACTIVO",
+    afectaSuministro: "NINGUNO",
+    implementadoEnContratos: false,
+    campos: [
+      { nombre: "assetId", tipo: "bytes32", indexado: true, obligatorio: true, atribuyeActivo: true, esCantidad: false },
+      { nombre: "fineOuncesAssigned", tipo: "uint256", indexado: false, obligatorio: true, atribuyeActivo: false, esCantidad: true },
+      { nombre: "unitsPlaced", tipo: "uint256", indexado: false, obligatorio: true, atribuyeActivo: false, esCantidad: true },
+      { nombre: "unitsInTreasury", tipo: "uint256", indexado: false, obligatorio: true, atribuyeActivo: false, esCantidad: true },
+      { nombre: "attestedAt", tipo: "uint64", indexado: false, obligatorio: true, atribuyeActivo: false, esCantidad: false },
+    ],
+    requeridos: ["assetId", "fineOuncesAssigned", "unitsPlaced", "unitsInTreasury", "attestedAt"],
+    cantidades: ["fineOuncesAssigned", "unitsPlaced", "unitsInTreasury"],
+    camposDeAtribucion: ["assetId"],
+  },
+  LicenseStatusChanged: {
+    nombre: "LicenseStatusChanged",
+    emisor: "LicenseRegistry",
+    significado: "Transicion de estado de una licencia del registro (SFSP-140).",
+    atribucion: "GLOBAL",
+    afectaSuministro: "NINGUNO",
+    implementadoEnContratos: false,
+    campos: [
+      { nombre: "licenseId", tipo: "bytes32", indexado: true, obligatorio: true, atribuyeActivo: false, esCantidad: false },
+      { nombre: "previousState", tipo: "uint8", indexado: false, obligatorio: true, atribuyeActivo: false, esCantidad: false },
+      { nombre: "newState", tipo: "uint8", indexado: false, obligatorio: true, atribuyeActivo: false, esCantidad: false },
+      { nombre: "reasonCode", tipo: "bytes32", indexado: false, obligatorio: true, atribuyeActivo: false, esCantidad: false },
+    ],
+    requeridos: ["licenseId", "previousState", "newState", "reasonCode"],
+    cantidades: [],
+    camposDeAtribucion: [],
+  },
+  ModuleAvailabilityChanged: {
+    nombre: "ModuleAvailabilityChanged",
+    emisor: "LicenseRegistry",
+    significado: "Un modulo se habilita o se bloquea por dependencia de licencia (SFSP-140).",
+    atribucion: "GLOBAL",
+    afectaSuministro: "NINGUNO",
+    implementadoEnContratos: false,
+    campos: [
+      { nombre: "moduleId", tipo: "bytes32", indexado: true, obligatorio: true, atribuyeActivo: false, esCantidad: false },
+      { nombre: "licenseId", tipo: "bytes32", indexado: true, obligatorio: true, atribuyeActivo: false, esCantidad: false },
+      { nombre: "newAvailability", tipo: "uint8", indexado: false, obligatorio: true, atribuyeActivo: false, esCantidad: false },
+      { nombre: "reasonCode", tipo: "bytes32", indexado: false, obligatorio: true, atribuyeActivo: false, esCantidad: false },
+    ],
+    requeridos: ["moduleId", "licenseId", "newAvailability", "reasonCode"],
+    cantidades: [],
+    camposDeAtribucion: [],
+  },
+  CountryStatusChanged: {
+    nombre: "CountryStatusChanged",
+    emisor: "EligibilityEngine",
+    significado: "Cambio de estado de un pais en la matriz de jurisdicciones (SFSP-120 §0.2).",
+    atribucion: "GLOBAL",
+    afectaSuministro: "NINGUNO",
+    implementadoEnContratos: false,
+    campos: [
+      { nombre: "countryCode", tipo: "bytes32", indexado: true, obligatorio: true, atribuyeActivo: false, esCantidad: false },
+      { nombre: "previousState", tipo: "uint8", indexado: false, obligatorio: true, atribuyeActivo: false, esCantidad: false },
+      { nombre: "newState", tipo: "uint8", indexado: false, obligatorio: true, atribuyeActivo: false, esCantidad: false },
+      { nombre: "reasonCode", tipo: "bytes32", indexado: false, obligatorio: true, atribuyeActivo: false, esCantidad: false },
+      { nombre: "evidenceHash", tipo: "bytes32", indexado: false, obligatorio: true, atribuyeActivo: false, esCantidad: false },
+    ],
+    requeridos: ["countryCode", "previousState", "newState", "reasonCode", "evidenceHash"],
+    cantidades: [],
+    camposDeAtribucion: [],
+  },
+  NetworkPermissionChanged: {
+    nombre: "NetworkPermissionChanged",
+    emisor: "NetworkAdmission",
+    significado: "Alta o baja en la lista de despliegue o en el filtro de transacciones (SFSP-150).",
+    atribucion: "GLOBAL",
+    afectaSuministro: "NINGUNO",
+    implementadoEnContratos: false,
+    campos: [
+      { nombre: "subject", tipo: "address", indexado: true, obligatorio: true, atribuyeActivo: false, esCantidad: false },
+      { nombre: "permissionKind", tipo: "bytes32", indexado: true, obligatorio: true, atribuyeActivo: false, esCantidad: false },
+      { nombre: "granted", tipo: "bool", indexado: false, obligatorio: true, atribuyeActivo: false, esCantidad: false },
+      { nombre: "reasonCode", tipo: "bytes32", indexado: false, obligatorio: true, atribuyeActivo: false, esCantidad: false },
+      { nombre: "operationId", tipo: "bytes32", indexado: false, obligatorio: true, atribuyeActivo: false, esCantidad: false },
+    ],
+    requeridos: ["subject", "permissionKind", "granted", "reasonCode", "operationId"],
+    cantidades: [],
+    camposDeAtribucion: [],
+  },
+  ConciliationRecorded: {
+    nombre: "ConciliationRecorded",
+    emisor: "ReconciliationJob",
+    significado: "Resultado de la conciliacion diaria, incluidos los descuadres (SFSP-900 §0.1).",
+    atribucion: "GLOBAL",
+    afectaSuministro: "NINGUNO",
+    implementadoEnContratos: false,
+    campos: [
+      { nombre: "runId", tipo: "bytes32", indexado: true, obligatorio: true, atribuyeActivo: false, esCantidad: false },
+      { nombre: "blockNumber", tipo: "uint64", indexado: false, obligatorio: true, atribuyeActivo: false, esCantidad: false },
+      { nombre: "resultHash", tipo: "bytes32", indexado: false, obligatorio: true, atribuyeActivo: false, esCantidad: false },
+      { nombre: "discrepancies", tipo: "uint32", indexado: false, obligatorio: true, atribuyeActivo: false, esCantidad: false },
+    ],
+    requeridos: ["runId", "blockNumber", "resultHash", "discrepancies"],
+    cantidades: [],
+    camposDeAtribucion: [],
+  },
 };
 
 /** Nombre de evento -> emisor declarado. Compatibilidad con el §3. */
@@ -341,6 +599,20 @@ export const EVENTOS_CONOCIDOS: Readonly<Record<NombreEvento, string>> = {
   RecoveryExecuted: "GovernanceController",
   MigrationClaimed: "MigrationRegistry",
   GovernanceAction: "GovernanceController",
+  PassportUpdated: "AssetRegistry",
+  AssetStatusChanged: "AssetRegistry",
+  SupplyExpansionDeclared: "GovernanceController",
+  SplitExecuted: "IssuanceController",
+  IdentityLinkChanged: "IdentityAdapter",
+  EligibilityRecorded: "EligibilityEngine",
+  ExposureLimitRecorded: "EligibilityEngine",
+  AcquirerDeclarationRecorded: "AssetRegistry",
+  CoveragePublished: "CommodityEngine",
+  LicenseStatusChanged: "LicenseRegistry",
+  ModuleAvailabilityChanged: "LicenseRegistry",
+  CountryStatusChanged: "EligibilityEngine",
+  NetworkPermissionChanged: "NetworkAdmission",
+  ConciliationRecorded: "ReconciliationJob",
 };
 
 /**
