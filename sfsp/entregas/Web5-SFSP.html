@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="es"><head><meta charset="utf-8"><title>Web5 y SFSP</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500&display=swap">
+<style>
+:root{--bg:#0E0C09;--card:#17140F;--line:#3A3222;--ink:#EFE6CF;--muted:#A89D84;--gold:#D6B04A;--gold2:#8E6C0F;--w2:#5B8DEF;--w3:#9B6BE8;--w5:#3FB68B;--soc:#E08A4B}
+*{box-sizing:border-box;margin:0}
+body{width:1920px;height:1080px;background:radial-gradient(1200px 700px at 50% 40%,#1D1810 0%,var(--bg) 70%);color:var(--ink);font:500 20px/1.4 "IBM Plex Sans",sans-serif;padding:56px 80px;display:flex;flex-direction:column;gap:30px}
+.top{display:flex;justify-content:space-between;align-items:flex-end}
+.eyebrow{font:500 15px "IBM Plex Mono",monospace;letter-spacing:.28em;text-transform:uppercase;color:var(--gold)}
+h1{white-space:nowrap;font:700 52px/1.05 "Cinzel",Georgia,serif;letter-spacing:.02em;margin-top:10px}
+h1 span{color:var(--gold)}
+.sub{color:var(--muted);font-size:20px;max-width:640px;text-align:right}
+.eq{display:grid;grid-template-columns:1fr 70px 1fr 70px 1.15fr;align-items:stretch}
+.op{display:grid;place-items:center;font:700 64px "Cinzel",Georgia,serif;color:var(--gold)}
+.box{background:var(--card);border:1.5px solid var(--line);border-radius:22px;padding:22px 26px;display:flex;flex-direction:column;gap:10px;position:relative}
+.box .tag{font:500 13px "IBM Plex Mono",monospace;letter-spacing:.2em;text-transform:uppercase}
+.box h2{font:700 38px/1 "Cinzel",Georgia,serif;display:flex;align-items:center;gap:14px}
+.box p{color:var(--muted);font-size:18px}
+.box ul{list-style:none;padding:0;display:grid;gap:5px;font-size:18px}
+.box li::before{content:"› ";color:var(--c)}
+.box{--c:var(--gold)}
+.box .tag,.box h2{color:var(--c)}
+.box{border-top:5px solid var(--c)}
+.w2{--c:var(--w2)}.w3{--c:var(--w3)}.w5{--c:var(--w5)}.soc{--c:var(--soc)}
+.sfsp{--c:var(--gold);background:linear-gradient(160deg,#2A2213,#15120C);border:2px solid var(--gold);border-top:5px solid var(--gold);box-shadow:0 0 60px rgba(214,176,74,.18)}
+.sfsp h2{font-size:52px}
+.ico{width:44px;height:44px;flex:none}
+.foot{display:grid;grid-template-columns:repeat(4,1fr);gap:18px;margin-top:auto}
+.f{border-left:3px solid var(--c);padding:4px 0 4px 16px}
+.f b{display:block;font:600 14px "IBM Plex Mono",monospace;letter-spacing:.14em;text-transform:uppercase;color:var(--c)}
+.f span{font-size:18px;color:var(--ink)}
+.nota{font:500 13px "IBM Plex Mono",monospace;color:var(--muted);letter-spacing:.06em;display:flex;justify-content:space-between;border-top:1px solid var(--line);padding-top:12px}
+</style></head><body>
+<div class="top">
+  <div><div class="eyebrow">Orden Global · Cómo se arma</div>
+  <h1>Web2 + Web3 = Web5<br><span>Web5 + Finanzas Sociales = SFSP</span></h1></div>
+  <p class="sub">Tomamos lo fácil de internet, lo verificable de la blockchain y la identidad que controla la persona. Encima ponemos las reglas de un sistema financiero social. El resultado es el protocolo SFSP.</p>
+</div>
+
+<!-- Fila 1 -->
+<div class="eq">
+  <div class="box w2"><span class="tag">Internet de hoy</span>
+    <h2><svg class="ico" viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="3"><rect x="6" y="9" width="36" height="26" rx="3"/><path d="M17 41h14M24 35v6"/></svg>Web2</h2>
+    <ul><li>Apps fáciles de usar</li><li>Cuenta, clave, notificaciones</li><li>Rápido y conocido por todos</li></ul>
+    <p>Pero la empresa es dueña de tus datos.</p></div>
+  <div class="op">+</div>
+  <div class="box w3"><span class="tag">Blockchain</span>
+    <h2><svg class="ico" viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="3"><rect x="4" y="17" width="12" height="14" rx="2"/><rect x="18" y="17" width="12" height="14" rx="2"/><rect x="32" y="17" width="12" height="14" rx="2"/></svg>Web3</h2>
+    <ul><li>Registro público que no se borra</li><li>Tú tienes tus activos</li><li>Se verifica sin intermediario</li></ul>
+    <p>Pero es difícil de usar y todo queda expuesto.</p></div>
+  <div class="op">=</div>
+  <div class="box w5"><span class="tag">Identidad propia</span>
+    <h2><svg class="ico" viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="3"><circle cx="24" cy="17" r="8"/><path d="M9 42c2-9 8-13 15-13s13 4 15 13"/><path d="M34 6l4 4 7-7" stroke-width="3.4"/></svg>Web5</h2>
+    <ul><li>Tu identidad es tuya (DID), no de una app</li><li>Credenciales que otros verifican al instante</li><li>Revelas solo lo que te piden</li><li>Tus datos cifrados, con tu permiso</li></ul></div>
+</div>
+
+<!-- Fila 2 -->
+<div class="eq">
+  <div class="box w5"><span class="tag">Lo de arriba</span>
+    <h2><svg class="ico" viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="3"><circle cx="24" cy="17" r="8"/><path d="M9 42c2-9 8-13 15-13s13 4 15 13"/></svg>Web5</h2>
+    <p>La persona controla su identidad y sus datos. En SFSP se llama <b style="color:var(--w5)">SFSP-ID</b> y usa nuestro método propio: <b style="color:var(--ink)">did:sfsp</b>.</p></div>
+  <div class="op">+</div>
+  <div class="box soc"><span class="tag">Las reglas del dinero</span>
+    <h2><svg class="ico" viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="3"><path d="M6 20L24 8l18 12"/><path d="M10 20v16M19 20v16M29 20v16M38 20v16M6 40h36"/></svg>Finanzas Sociales</h2>
+    <ul><li>Cada activo con su pasaporte</li><li>Cumplimiento por país</li><li>Pago y entrega en el mismo acto</li><li>Comisión mínima y acceso para todos</li><li>Gobierno de la Junta: nada sin acta</li></ul></div>
+  <div class="op">=</div>
+  <div class="box sfsp"><span class="tag">Nuestro protocolo · cadena 5550</span>
+    <h2><svg class="ico" viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="3"><path d="M24 4l17 7v12c0 11-7 18-17 21C14 41 7 34 7 23V11z"/><path d="M16 24l6 6 11-12"/></svg>SFSP</h2>
+    <ul><li>Fácil como una app <span style="color:var(--w2)">(Web2)</span></li><li>Verificable en cadena <span style="color:var(--w3)">(Web3)</span></li><li>Identidad en manos de la persona <span style="color:var(--w5)">(Web5)</span></li><li>Con reglas financieras justas <span style="color:var(--soc)">(Social)</span></li></ul></div>
+</div>
+
+<div class="foot">
+  <div class="f w2" style="--c:var(--w2)"><b>Web2 aporta</b><span>Veta Wallet, DBNX, MyTokenPay: apps que cualquiera sabe usar</span></div>
+  <div class="f" style="--c:var(--w3)"><b>Web3 aporta</b><span>La cadena 5550: cada movimiento con evento público y sin datos personales</span></div>
+  <div class="f" style="--c:var(--w5)"><b>Web5 aporta</b><span>Genesis ID emite credenciales, y la persona prueba "mayor de edad" sin enseñar su expediente</span></div>
+  <div class="f" style="--c:var(--soc)"><b>Lo social aporta</b><span>Reglas iguales para todos, con un solo precio y una sola comisión fijados por acta</span></div>
+</div>
+<div class="nota"><span>SFSP es la base. Web5 es una capa que usamos, no nuestro dueño.</span><span>Concepto interno · Orden Global · 2026</span></div>
+</body></html>
