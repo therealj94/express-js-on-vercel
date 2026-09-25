@@ -1,0 +1,401 @@
+<!doctype html>
+<html lang="es"><head><meta charset="utf-8">
+<title>SFSP · Informe a la Junta</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+@page{size:A4 landscape;margin:0}
+:root{--paper:#FBF8F1;--sunk:#F2ECDD;--ink:#1C1912;--muted:#6A6150;--line:#DCD2BD;--gold:#8E6C0F;--gold2:#C09A2B;--goldsoft:#F2E6C3;--ok:#2F7A45;--oksoft:#DDEEDF;--stop:#A2412A;--stopsoft:#F5DED6;--off:#5E6470;--offsoft:#E6E8EC;--night:#0E0C09;
+--display:"Cinzel",Georgia,serif;--body:"IBM Plex Sans",system-ui,sans-serif;--mono:"IBM Plex Mono",monospace}
+*{box-sizing:border-box}
+html,body{margin:0;background:#777}
+body{font:10.5pt/1.45 var(--body);color:var(--ink);-webkit-print-color-adjust:exact;print-color-adjust:exact}
+.pagina{width:297mm;height:210mm;background:var(--paper);padding:15mm 17mm 13mm;position:relative;overflow:hidden;page-break-after:always;display:flex;flex-direction:column;gap:6mm}
+.pagina:last-child{page-break-after:auto}
+.cab{display:flex;justify-content:space-between;align-items:baseline;border-bottom:1px solid var(--line);padding-bottom:3mm}
+.cab .eyebrow{font:500 7.5pt var(--mono);letter-spacing:.16em;text-transform:uppercase;color:var(--muted)}
+h1,h2,h3{font-family:var(--display);font-weight:600;margin:0;letter-spacing:.02em}
+h2{font-size:21pt;color:var(--ink)}
+h2 em{font-style:normal;color:var(--gold)}
+h3{font-size:11.5pt;color:var(--gold)}
+p{margin:0}
+.lead{font-size:11.5pt;color:var(--muted);max-width:200mm}
+.pie{position:absolute;left:17mm;right:17mm;bottom:7mm;display:flex;justify-content:space-between;font:500 7pt var(--mono);letter-spacing:.08em;color:var(--muted);text-transform:uppercase}
+.fila{display:grid;gap:5mm}
+.col2{grid-template-columns:1fr 1fr}.col3{grid-template-columns:repeat(3,1fr)}.col4{grid-template-columns:repeat(4,1fr)}
+.tarjeta{background:#fff;border:1px solid var(--line);border-radius:3mm;padding:4mm 5mm;display:grid;gap:2mm;align-content:start}
+.tarjeta ul{margin:0;padding-left:4.5mm;display:grid;gap:1.2mm}
+.kpi{background:#fff;border:1px solid var(--line);border-radius:3mm;padding:3.5mm 4.5mm}
+.kpi b{display:block;font:600 22pt/1 var(--display);color:var(--gold);font-variant-numeric:tabular-nums}
+.kpi span{font-size:8.5pt;color:var(--muted)}
+.kpi.ok b{color:var(--ok)}
+table{border-collapse:collapse;width:100%;font-size:9pt}
+th{font:500 7.5pt var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);text-align:left;padding:1.6mm 2.4mm;border-bottom:1px solid var(--ink)}
+td{padding:1.6mm 2.4mm;border-bottom:1px solid var(--line);vertical-align:top}
+td.serie{font:600 9pt var(--mono);color:var(--gold);white-space:nowrap}
+.chip{display:inline-block;font:500 7pt var(--mono);letter-spacing:.05em;text-transform:uppercase;padding:.6mm 2.2mm;border-radius:10mm;white-space:nowrap}
+.c-ok{background:var(--oksoft);color:var(--ok)}.c-parte{background:var(--goldsoft);color:var(--gold)}.c-spec{background:var(--offsoft);color:var(--off)}.c-stop{background:var(--stopsoft);color:var(--stop)}
+figure{margin:0;flex:1;display:flex;flex-direction:column;gap:2mm;min-height:0}
+figure svg{width:100%;height:auto;max-height:118mm;color:var(--ink)}
+figcaption{font-size:8.5pt;color:var(--muted)}
+svg text{font-family:var(--body);fill:currentColor}
+svg .t-s{font-size:11px}svg .t-m{font-size:12.5px}svg .t-l{font-size:15px;font-weight:600}
+svg .t-cap{font-family:var(--mono);font-size:10px;letter-spacing:.08em;fill:var(--muted)}
+svg .caja{fill:#fff;stroke:var(--line);stroke-width:1}
+svg .caja-oro{fill:var(--goldsoft);stroke:var(--gold);stroke-width:1.4}
+svg .privado{fill:var(--stopsoft);stroke:var(--stop);stroke-dasharray:5 4;stroke-width:1.2}
+svg .cadena{fill:#F7EFD6;stroke:var(--gold);stroke-width:1.2}
+svg .flecha{stroke:currentColor;stroke-width:1.3;fill:none}
+svg .flecha-oro{stroke:var(--gold);stroke-width:1.8;fill:none}
+svg .flecha-roja{stroke:var(--stop);stroke-width:1.5;fill:none;stroke-dasharray:4 3}
+svg .muted{fill:var(--muted)}svg .oro{fill:var(--gold)}svg .roja{fill:var(--stop)}svg .verde{fill:var(--ok)}
+svg .punta{fill:currentColor}svg .punta-oro{fill:var(--gold)}svg .punta-roja{fill:var(--stop)}
+svg .barra{fill:var(--gold2)}svg .barra2{fill:var(--goldsoft);stroke:var(--gold);stroke-width:1}
+svg .grid{stroke:var(--line);stroke-width:1}
+/* portada */
+.portada{background:var(--night);color:#EFE6CF;justify-content:space-between;padding:22mm 24mm}
+.portada .marca{font:500 8pt var(--mono);letter-spacing:.3em;color:#C9A94E;text-transform:uppercase}
+.portada h1{font-size:46pt;line-height:1.02;color:#EFE6CF}
+.portada h1 span{color:#D6B04A}
+.portada .sub{font-size:14pt;color:#B9AE93;max-width:190mm;margin-top:6mm}
+.portada .datos{display:flex;gap:14mm;font:500 8.5pt var(--mono);letter-spacing:.08em;color:#B9AE93;text-transform:uppercase;border-top:1px solid #3A3222;padding-top:5mm}
+.portada .datos b{display:block;color:#EFE6CF;font:600 11pt var(--body);letter-spacing:0;text-transform:none;margin-top:1mm}
+.linea{position:absolute;right:24mm;top:22mm;width:62mm;height:62mm;border:1px solid #3A3222;border-radius:50%}
+.linea::after{content:"";position:absolute;inset:9mm;border:1px solid #6B5620;border-radius:50%}
+.linea::before{content:"5550";position:absolute;inset:0;display:grid;place-items:center;font:600 20pt var(--display);color:#D6B04A;letter-spacing:.1em}
+/* escalera */
+.peld{display:grid;grid-template-columns:10mm 1fr 78mm;gap:4mm;align-items:center;background:#fff;border:1px solid var(--line);border-radius:2.5mm;padding:2.2mm 4mm}
+.peld .n{font:600 13pt var(--display);color:var(--gold);text-align:center}
+.peld small{display:block;color:var(--muted);font-size:8.3pt}
+.peld.nuevo{border-color:var(--gold);background:#FFFBEF}
+.firmas{display:flex;flex-wrap:wrap;gap:1.5mm;justify-content:flex-end}
+.firma{font:500 7.3pt var(--mono);padding:.5mm 2mm;border:1px solid var(--line);border-radius:1.5mm;color:var(--muted)}
+.firma.k{border-color:var(--gold);color:var(--gold)}
+.dec{display:grid;grid-template-columns:11mm 1fr;gap:2mm;padding:1.3mm 0;border-bottom:1px solid var(--line);font-size:8.6pt}
+.dec b{font:600 8.6pt var(--mono);color:var(--gold)}
+.dec small{color:var(--muted)}
+.frase{display:grid;grid-template-columns:1fr 60mm;gap:6mm;align-items:center;background:#fff;border:1px solid var(--line);border-radius:2.5mm;padding:3mm 5mm}
+.frase q{font:500 11pt var(--display);quotes:"«" "»"}
+.frase small{color:var(--muted);font-size:8.6pt}
+.frase.nunca q{text-decoration:line-through;text-decoration-color:var(--stop);color:var(--muted)}
+.hito{display:grid;grid-template-columns:24mm 1fr;gap:4mm;padding:2mm 0;border-bottom:1px solid var(--line)}
+.hito b{font:600 9pt var(--mono);color:var(--gold)}
+code{font-family:var(--mono);font-size:.9em;background:var(--sunk);padding:0 1.2mm;border-radius:1mm}
+</style></head><body>
+
+<!-- 1 · PORTADA -->
+<section class="pagina portada">
+  <div class="linea"></div>
+  <div>
+    <div class="marca">Orden Global · Informe a la Junta Directiva</div>
+    <h1 style="margin-top:14mm">SFSP<br><span>cómo queda el protocolo</span></h1>
+    <p class="sub">El estándar propio de Orden Global sobre su cadena 5550: lo que se construyó, cómo queda al final y lo que la Junta tiene que decidir para encenderlo.</p>
+  </div>
+  <div class="datos">
+    <div>Fecha<b>25 de septiembre de 2026</b></div>
+    <div>Versión<b>SFSP draft-0.4</b></div>
+    <div>Estado<b>Construido y probado · nada encendido</b></div>
+    <div>Clasificación<b>Confidencial · uso de la Junta</b></div>
+  </div>
+</section>
+
+<!-- 2 · RESUMEN -->
+<section class="pagina">
+  <div class="cab"><span class="eyebrow">1 · Resumen para la Junta</span><span class="eyebrow">SFSP draft-0.4</span></div>
+  <h2>En una página</h2>
+  <div class="fila col4">
+    <div class="kpi ok"><b>553</b><span>pruebas automáticas en verde, verificación completa</span></div>
+    <div class="kpi"><b>15</b><span>series del protocolo especificadas</span></div>
+    <div class="kpi"><b>11</b><span>contratos inteligentes escritos y probados</span></div>
+    <div class="kpi"><b>21</b><span>decisiones del protocolo esperando a la Junta</span></div>
+  </div>
+  <div class="fila col3" style="flex:1">
+    <div class="tarjeta"><h3>Qué es SFSP</h3>
+      <p>El protocolo que ordena todo lo que se emite, se negocia y se liquida en la cadena 5550 de Orden Global.</p>
+      <ul><li>Cada activo con su <b>pasaporte</b>: quién lo emite, qué respalda, qué riesgo tiene.</li><li>Cada movimiento con un <b>evento público</b>, sin datos personales.</li><li>Una <b>identidad propia</b> (SFSP-ID): la persona controla qué revela.</li><li>Una <b>red cerrada</b>: solo opera lo que cumple SFSP.</li></ul></div>
+    <div class="tarjeta"><h3>Dónde estamos</h3>
+      <ul><li>La especificación está alineada con el borrador SFSP v0.2 que conoce la Junta, con correcciones marcadas.</li><li>Los contratos base están escritos y probados. También el SDK que usarán todos los productos, el indexador y la API de DBNX.</li><li>Se sumó la <b>identidad propia de SFSP</b>, con su registro de emisores en la cadena.</li><li><b>Nada está encendido</b> en la 5550 y ningún parámetro económico tiene valor.</li></ul></div>
+    <div class="tarjeta"><h3>Qué pedimos a la Junta</h3>
+      <ul><li><b>Aprobar el plan final</b> y el orden de encendido (página 9).</li><li><b>Firmar las decisiones</b> que abren cada paso, empezando por D07 (firmantes) y D22 (identidad) (página 10).</li><li><b>Nombrar la auditoría externa</b> de los contratos antes de la 5550.</li><li>Autorizar el <b>entorno de ensayo</b> (D12), que es el camino crítico.</li></ul></div>
+  </div>
+  <div class="pie"><span>Orden Global · SFSP · Confidencial</span><span>2</span></div>
+</section>
+
+<!-- 3 · LAS 15 SERIES -->
+<section class="pagina">
+  <div class="cab"><span class="eyebrow">2 · El protocolo por dentro</span><span class="eyebrow">15 series</span></div>
+  <h2>Las <em>15 series</em> de SFSP</h2>
+  <table>
+    <thead><tr><th>Serie</th><th>Qué gobierna</th><th>Código</th><th>Serie</th><th>Qué gobierna</th><th>Código</th></tr></thead>
+    <tbody>
+      <tr><td class="serie">100</td><td>Núcleo: registro de activos y su pasaporte</td><td><span class="chip c-ok">Código y pruebas</span></td><td class="serie">200</td><td>Valores: emisión, derechos, segmentos</td><td><span class="chip c-parte">En parte</span></td></tr>
+      <tr><td class="serie">110</td><td>Identidad: Genesis ID y atestaciones</td><td><span class="chip c-ok">Código y pruebas</span></td><td class="serie">300</td><td>Commodities: AUKA y AGKA, lotes, redención</td><td><span class="chip c-spec">Especificación</span></td></tr>
+      <tr><td class="serie">120</td><td>Cumplimiento: elegibilidad por país y activo</td><td><span class="chip c-parte">En parte</span></td><td class="serie">400</td><td>Monetario: ORIGEN, tesorería y oráculo</td><td><span class="chip c-parte">En parte</span></td></tr>
+      <tr><td class="serie">130</td><td>Cuenta SFSP y llaves: número SF-XXXX-XXXX-XXXX-C</td><td><span class="chip c-ok">Código y pruebas</span></td><td class="serie">500</td><td>Liquidación entrega contra pago y comisión</td><td><span class="chip c-ok">Código y pruebas</span></td></tr>
+      <tr><td class="serie">140</td><td>Licencias: quién puede operar qué módulo</td><td><span class="chip c-spec">Especificación</span></td><td class="serie">600</td><td>Privacidad y transparencia pública</td><td><span class="chip c-parte">En parte</span></td></tr>
+      <tr><td class="serie">150</td><td>Red cerrada: solo opera lo registrado</td><td><span class="chip c-spec">Especificación</span></td><td class="serie">700</td><td>Migración de los contratos heredados</td><td><span class="chip c-ok">Código y pruebas</span></td></tr>
+      <tr><td class="serie">160</td><td><b>SFSP-ID</b>: identidad propia, did:sfsp</td><td><span class="chip c-ok">Código y pruebas</span></td><td class="serie">800</td><td>Gobierno: multifirma, pausa, recuperación</td><td><span class="chip c-ok">Código y pruebas</span></td></tr>
+      <tr><td></td><td></td><td></td><td class="serie">900</td><td>Operación: conciliación diaria, salud</td><td><span class="chip c-parte">En parte</span></td></tr>
+    </tbody>
+  </table>
+  <p class="lead" style="font-size:9.5pt">«En parte» significa que la regla está escrita y una parte ya tiene contrato. «Especificación» significa que la regla está escrita y aprobable, y su contrato se construye en la ola 2 del plan. Ninguna serie queda sin especificar.</p>
+  <div class="pie"><span>Orden Global · SFSP · Confidencial</span><span>3</span></div>
+</section>
+
+<!-- 4 · ARQUITECTURA -->
+<section class="pagina">
+  <div class="cab"><span class="eyebrow">3 · Cómo queda al final</span><span class="eyebrow">Arquitectura</span></div>
+  <h2>El ecosistema <em>terminado</em></h2>
+  <figure>
+    <svg viewBox="0 0 1000 470" role="img" aria-label="Personas y empresas usan los productos; los productos pasan por los servicios de SFSP; los servicios escriben en los contratos de la 5550.">
+      <defs>
+        <marker id="a1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="punta"/></marker>
+        <marker id="a1o" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="punta-oro"/></marker>
+      </defs>
+      <text x="20" y="22" class="t-cap">PERSONAS Y EMPRESAS</text>
+      <rect x="20" y="30" width="300" height="56" rx="8" class="caja-oro"/><text x="36" y="54" class="t-l">Persona</text><text x="36" y="74" class="t-s">did:sfsp por relación · credenciales en su billetera</text>
+      <rect x="350" y="30" width="300" height="56" rx="8" class="caja"/><text x="366" y="54" class="t-l">Empresa emisora o cliente</text><text x="366" y="74" class="t-s">did:sfsp:5550:org · admitida por la Junta</text>
+      <rect x="680" y="30" width="300" height="56" rx="8" class="caja"/><text x="696" y="54" class="t-l">Junta · DBNX</text><text x="696" y="74" class="t-s">admite, firma decisiones, gobierna</text>
+      <text x="20" y="120" class="t-cap">PRODUCTOS</text>
+      <g class="t-m">
+        <rect x="20" y="128" width="150" height="42" rx="7" class="caja-oro"/><text x="95" y="154" text-anchor="middle">Veta Wallet</text>
+        <rect x="186" y="128" width="150" height="42" rx="7" class="caja"/><text x="261" y="154" text-anchor="middle">DBNX</text>
+        <rect x="352" y="128" width="150" height="42" rx="7" class="caja"/><text x="427" y="154" text-anchor="middle">ORDENSCAN</text>
+        <rect x="518" y="128" width="150" height="42" rx="7" class="caja"/><text x="593" y="154" text-anchor="middle">Ordenex</text>
+        <rect x="684" y="128" width="140" height="42" rx="7" class="caja"/><text x="754" y="154" text-anchor="middle">MyTokenPay</text>
+        <rect x="840" y="128" width="140" height="42" rx="7" class="caja"/><text x="910" y="154" text-anchor="middle">AuCorp</text>
+      </g>
+      <text x="980" y="214" text-anchor="end" class="t-cap">SERVICIOS DE SFSP</text>
+      <g class="t-m">
+        <rect x="20" y="222" width="180" height="54" rx="7" class="caja-oro"/><text x="110" y="245" text-anchor="middle" class="t-l">Genesis ID</text><text x="110" y="264" text-anchor="middle" class="t-s">emisor de credenciales</text>
+        <rect x="216" y="222" width="180" height="54" rx="7" class="caja"/><text x="306" y="245" text-anchor="middle" class="t-l">Indexador</text><text x="306" y="264" text-anchor="middle" class="t-s">lee los 35 eventos</text>
+        <rect x="412" y="222" width="180" height="54" rx="7" class="caja"/><text x="502" y="245" text-anchor="middle" class="t-l">Conciliación</text><text x="502" y="264" text-anchor="middle" class="t-s">cadena contra libros, diaria</text>
+        <rect x="608" y="222" width="180" height="54" rx="7" class="caja"/><text x="698" y="245" text-anchor="middle" class="t-l">Precio y oráculo</text><text x="698" y="264" text-anchor="middle" class="t-s">una sola referencia</text>
+        <rect x="804" y="222" width="176" height="54" rx="7" class="caja"/><text x="892" y="245" text-anchor="middle" class="t-l">Nodo personal</text><text x="892" y="264" text-anchor="middle" class="t-s">datos cifrados, con permiso</text>
+      </g>
+      <rect x="20" y="312" width="960" height="150" rx="10" class="cadena"/>
+      <text x="36" y="332" class="t-cap">CADENA 5550 · RED CERRADA · CONTRATOS SFSP</text>
+      <g class="t-m">
+        <rect x="36" y="342" width="176" height="48" rx="6" class="caja"/><text x="124" y="363" text-anchor="middle">Registro de activos</text><text x="124" y="380" text-anchor="middle" class="t-s muted">pasaporte de cada activo</text>
+        <rect x="224" y="342" width="176" height="48" rx="6" class="caja"/><text x="312" y="363" text-anchor="middle">Elegibilidad</text><text x="312" y="380" text-anchor="middle" class="t-s muted">países, límites</text>
+        <rect x="412" y="342" width="176" height="48" rx="6" class="caja-oro"/><text x="500" y="363" text-anchor="middle">Adaptador de identidad</text><text x="500" y="380" text-anchor="middle" class="t-s muted">atestaciones sin datos</text>
+        <rect x="600" y="342" width="176" height="48" rx="6" class="caja-oro"/><text x="688" y="363" text-anchor="middle">SFSPDidRegistry</text><text x="688" y="380" text-anchor="middle" class="t-s muted">nuevo · emisores</text>
+        <rect x="788" y="342" width="176" height="48" rx="6" class="caja"/><text x="876" y="363" text-anchor="middle">Licencias</text><text x="876" y="380" text-anchor="middle" class="t-s muted">quién opera qué</text>
+        <rect x="36" y="400" width="176" height="48" rx="6" class="caja"/><text x="124" y="421" text-anchor="middle">Emisión</text><text x="124" y="438" text-anchor="middle" class="t-s muted">acuñar con autorización</text>
+        <rect x="224" y="400" width="176" height="48" rx="6" class="caja"/><text x="312" y="421" text-anchor="middle">Liquidación</text><text x="312" y="438" text-anchor="middle" class="t-s muted">entrega contra pago</text>
+        <rect x="412" y="400" width="176" height="48" rx="6" class="caja"/><text x="500" y="421" text-anchor="middle">Commodities</text><text x="500" y="438" text-anchor="middle" class="t-s muted">AUKA · AGKA con metal</text>
+        <rect x="600" y="400" width="176" height="48" rx="6" class="caja"/><text x="688" y="421" text-anchor="middle">Gobierno</text><text x="688" y="438" text-anchor="middle" class="t-s muted">multifirma y pausa</text>
+        <rect x="788" y="400" width="176" height="48" rx="6" class="caja"/><text x="876" y="421" text-anchor="middle">Migración</text><text x="876" y="438" text-anchor="middle" class="t-s muted">heredados a SFSP</text>
+      </g>
+      <line x1="170" y1="86" x2="100" y2="126" class="flecha-oro" marker-end="url(#a1o)"/><text x="146" y="112" class="t-s oro">usa</text>
+      <line x1="830" y1="86" x2="270" y2="126" class="flecha" marker-end="url(#a1)" opacity=".45"/><text x="560" y="104" class="t-s muted">admite y firma</text>
+      <line x1="95" y1="170" x2="105" y2="220" class="flecha-oro" marker-end="url(#a1o)"/><text x="108" y="200" class="t-s oro">pide y guarda credenciales</text>
+      <line x1="502" y1="170" x2="502" y2="220" class="flecha" marker-end="url(#a1)"/><text x="510" y="200" class="t-s">consultan</text>
+      <line x1="110" y1="276" x2="480" y2="340" class="flecha-oro" marker-end="url(#a1o)"/><text x="28" y="300" class="t-s oro">proyecta la atestación</text>
+      <line x1="140" y1="276" x2="660" y2="340" class="flecha-oro" marker-end="url(#a1o)" opacity=".7"/><text x="520" y="306" class="t-s oro">se resuelve el emisor</text>
+      <line x1="306" y1="310" x2="306" y2="278" class="flecha" marker-end="url(#a1)"/><text x="314" y="296" class="t-s">lee eventos</text>
+    </svg>
+    <figcaption>Los productos nunca escriben en la cadena por su cuenta: pasan por los servicios de SFSP, y los servicios por los contratos. En dorado, lo que agrega la identidad SFSP-ID. <b>SFSPDidRegistry</b> es el único contrato nuevo; el adaptador de identidad ya existía.</figcaption>
+  </figure>
+  <div class="pie"><span>Orden Global · SFSP · Confidencial</span><span>4</span></div>
+</section>
+
+<!-- 5 · IDENTIDAD -->
+<section class="pagina">
+  <div class="cab"><span class="eyebrow">4 · SFSP-ID</span><span class="eyebrow">La identidad propia de SFSP</span></div>
+  <h2>GID y <em>did:sfsp</em>: una persona, sin rastro</h2>
+  <figure>
+    <svg viewBox="0 0 1000 360" role="img" aria-label="El GID privado en Genesis ID genera un compromiso en la cadena y vínculos privados a varios did:sfsp en la billetera; desde fuera no se pueden unir.">
+      <defs>
+        <marker id="b2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="punta"/></marker>
+        <marker id="b2o" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="punta-oro"/></marker>
+      </defs>
+      <rect x="20" y="20" width="330" height="320" rx="12" class="privado"/>
+      <text x="36" y="44" class="t-cap roja">PRIVADO · SOLO GENESIS ID</text>
+      <rect x="50" y="64" width="270" height="66" rx="8" class="caja-oro"/><text x="185" y="92" text-anchor="middle" class="t-l">GID</text><text x="185" y="114" text-anchor="middle" class="t-s">una persona = un GID · con su KYC</text>
+      <rect x="50" y="176" width="270" height="50" rx="8" class="caja"/><text x="185" y="198" text-anchor="middle" class="t-m">referencia opaca + sal</text><text x="185" y="215" text-anchor="middle" class="t-s muted">no se deduce del GID</text>
+      <rect x="50" y="262" width="270" height="54" rx="8" class="caja"/><text x="185" y="285" text-anchor="middle" class="t-m">Vínculos GID → did:sfsp</text><text x="185" y="303" text-anchor="middle" class="t-s muted">solo Genesis sabe que son la misma persona</text>
+      <line x1="185" y1="130" x2="185" y2="174" class="flecha" marker-end="url(#b2)"/>
+      <rect x="420" y="30" width="250" height="104" rx="10" class="cadena"/><text x="436" y="54" class="t-cap">CADENA 5550</text><text x="436" y="80" class="t-m">compromiso por propósito</text><text x="436" y="100" class="t-s muted">KYC, KYB… sin datos personales</text><text x="436" y="118" class="t-s muted">no identifica a nadie</text>
+      <line x1="320" y1="200" x2="418" y2="96" class="flecha-oro" marker-end="url(#b2o)"/>
+      <rect x="720" y="20" width="260" height="320" rx="12" class="caja-oro"/>
+      <text x="736" y="44" class="t-cap">BILLETERA DE LA PERSONA</text><text x="736" y="68" class="t-s">una semilla → un did:sfsp por relación</text>
+      <g class="t-s">
+        <rect x="740" y="84" width="220" height="44" rx="7" class="caja"/><text x="752" y="103">con el banco</text><text x="752" y="119" class="muted">did:sfsp:5550:p:z6MkA…</text>
+        <rect x="740" y="140" width="220" height="44" rx="7" class="caja"/><text x="752" y="159">con DBNX</text><text x="752" y="175" class="muted">did:sfsp:5550:p:z6MkQ…</text>
+        <rect x="740" y="196" width="220" height="44" rx="7" class="caja"/><text x="752" y="215">con una tienda</text><text x="752" y="231" class="muted">did:sfsp:5550:p:z6Mk9…</text>
+      </g>
+      <text x="736" y="274" class="t-s">se recuperan todos con la semilla</text><text x="736" y="292" class="t-s">número público: SF-XXXX-XXXX-XXXX-C</text>
+      <line x1="320" y1="289" x2="738" y2="220" class="flecha-oro" marker-end="url(#b2o)"/><line x1="320" y1="289" x2="738" y2="164" class="flecha-oro" marker-end="url(#b2o)" opacity=".7"/><line x1="320" y1="289" x2="738" y2="108" class="flecha-oro" marker-end="url(#b2o)" opacity=".5"/>
+      <text x="360" y="326" class="t-s oro">emite credenciales a cada uno</text>
+      <line x1="690" y1="330" x2="690" y2="150" class="flecha-roja"/><text x="440" y="352" class="t-s roja">desde fuera nadie puede unir los identificadores ni llegar al GID</text>
+    </svg>
+  </figure>
+  <div class="fila col4">
+    <div class="tarjeta"><h3>Nuestro</h3><p style="font-size:9pt">Método propio <code>did:sfsp</code> sobre la 5550. Web5 aporta solo los formatos W3C, para que un banco o un regulador pueda verificar sin depender de nosotros.</p></div>
+    <div class="tarjeta"><h3>El GID no se publica</h3><p style="font-size:9pt">Evita duplicados dentro de Genesis ID. Si fuera público, seguiría a la persona por todas partes.</p></div>
+    <div class="tarjeta"><h3>Emisores en la cadena</h3><p style="font-size:9pt">Las empresas emisoras se registran en <code>SFSPDidRegistry</code>. La Junta las admite; cada una maneja sus llaves.</p></div>
+    <div class="tarjeta"><h3>La persona decide</h3><p style="font-size:9pt">Revela solo lo que le piden, da y quita permisos, y sus datos van cifrados a su llave.</p></div>
+  </div>
+  <div class="pie"><span>Orden Global · SFSP · Confidencial</span><span>5</span></div>
+</section>
+
+<!-- 6 · FLUJO -->
+<section class="pagina">
+  <div class="cab"><span class="eyebrow">5 · En la práctica</span><span class="eyebrow">Una credencial de punta a punta</span></div>
+  <h2>Probar que se cumple, <em>sin entregar el expediente</em></h2>
+  <p class="lead">Ejemplo: DBNX necesita saber que una persona es mayor de edad y tiene KYC nivel 2. La persona lo prueba sin enseñar su nombre, su país ni su fecha de nacimiento.</p>
+  <figure>
+    <svg viewBox="0 0 1000 280" role="img" aria-label="Genesis emite, la billetera guarda, la persona revela dos datos, DBNX verifica en la cadena y responde permitido; si Genesis revoca, deja de pasar.">
+      <defs>
+        <marker id="c3" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="punta-oro"/></marker>
+        <marker id="c3r" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="punta-roja"/></marker>
+      </defs>
+      <rect x="20" y="30" width="170" height="120" rx="10" class="caja-oro"/><text x="105" y="56" text-anchor="middle" class="t-cap">1 · GENESIS ID</text><text x="105" y="82" text-anchor="middle" class="t-m">Aprobador humano</text><text x="105" y="102" text-anchor="middle" class="t-s">emite la credencial KYC</text><text x="105" y="120" text-anchor="middle" class="t-s muted">sin datos: solo la huella</text><text x="105" y="138" text-anchor="middle" class="t-s muted">+ atestación en la 5550</text>
+      <rect x="230" y="30" width="170" height="120" rx="10" class="caja"/><text x="315" y="56" text-anchor="middle" class="t-cap">2 · BILLETERA</text><text x="315" y="82" text-anchor="middle" class="t-m">Guarda la credencial</text><text x="315" y="102" text-anchor="middle" class="t-s">y los 4 datos con su sal</text><text x="315" y="120" text-anchor="middle" class="t-s muted">nivel · mayorDeEdad</text><text x="315" y="138" text-anchor="middle" class="t-s muted">país · nombre</text>
+      <rect x="440" y="30" width="170" height="120" rx="10" class="caja-oro"/><text x="525" y="56" text-anchor="middle" class="t-cap">3 · LA PERSONA</text><text x="525" y="82" text-anchor="middle" class="t-m">Revela solo 2</text><text x="525" y="102" text-anchor="middle" class="t-s verde">✓ mayorDeEdad  ✓ nivel</text><text x="525" y="120" text-anchor="middle" class="t-s muted">✗ país  ✗ nombre</text><text x="525" y="138" text-anchor="middle" class="t-s muted">firma con su did:sfsp</text>
+      <rect x="650" y="30" width="170" height="120" rx="10" class="caja"/><text x="735" y="56" text-anchor="middle" class="t-cap">4 · DBNX VERIFICA</text><text x="735" y="80" text-anchor="middle" class="t-s">¿emisor en la 5550?</text><text x="735" y="98" text-anchor="middle" class="t-s">¿llave vigente?</text><text x="735" y="116" text-anchor="middle" class="t-s">¿revocada?</text><text x="735" y="134" text-anchor="middle" class="t-s">¿reto de un solo uso?</text>
+      <rect x="860" y="50" width="120" height="80" rx="10" fill="#DDEEDF" stroke="#2F7A45"/><text x="920" y="86" text-anchor="middle" class="t-l verde">PERMITIDO</text><text x="920" y="106" text-anchor="middle" class="t-s">solo esos 2 datos</text>
+      <line x1="190" y1="90" x2="228" y2="90" class="flecha-oro" marker-end="url(#c3)"/><line x1="400" y1="90" x2="438" y2="90" class="flecha-oro" marker-end="url(#c3)"/><line x1="610" y1="90" x2="648" y2="90" class="flecha-oro" marker-end="url(#c3)"/><line x1="820" y1="90" x2="858" y2="90" class="flecha-oro" marker-end="url(#c3)"/>
+      <path d="M105 150 V220 H735 V152" class="flecha-roja" marker-end="url(#c3r)"/>
+      <text x="420" y="214" text-anchor="middle" class="t-s roja">si Genesis revoca: en la lista y en la cadena en el mismo acto → deja de pasar</text>
+      <text x="420" y="252" text-anchor="middle" class="t-s muted">si no se puede comprobar al emisor o la lista: se detiene, nunca se permite por defecto</text>
+    </svg>
+  </figure>
+  <div class="fila col3">
+    <div class="tarjeta"><h3>Para la persona</h3><p style="font-size:9pt">Entrega lo mínimo y ve quién pidió qué. Puede retirar un permiso cuando quiera.</p></div>
+    <div class="tarjeta"><h3>Para la empresa</h3><p style="font-size:9pt">Recibe una prueba verificable al instante, sin guardar expedientes que después tiene que proteger.</p></div>
+    <div class="tarjeta"><h3>Para el regulador</h3><p style="font-size:9pt">Cada aprobación es humana y queda en la cadena. Cada revocación también, sin exponer datos personales.</p></div>
+  </div>
+  <div class="pie"><span>Orden Global · SFSP · Confidencial</span><span>6</span></div>
+</section>
+
+<!-- 7 · LO TRABAJADO -->
+<section class="pagina">
+  <div class="cab"><span class="eyebrow">6 · Lo que se trabajó</span><span class="eyebrow">23 al 25 de septiembre de 2026</span></div>
+  <h2>Del borrador v0.2 a un <em>protocolo probado</em></h2>
+  <div class="fila col2" style="flex:1">
+    <div class="tarjeta">
+      <h3>Hitos</h3>
+      <div class="hito"><b>23-sep</b><span>Revisión del borrador SFSP v0.2 contra lo construido: qué existe, qué falta y el plan maestro.</span></div>
+      <div class="hito"><b>24-sep</b><span>Documento v0.2 corregido con control de cambios. La especificación pasa a <b>draft-0.4</b>, con dos series nuevas: licencias (140) y red cerrada (150). Estados, eventos y códigos de motivo unificados.</span></div>
+      <div class="hito"><b>24-sep</b><span>Plan de construcción en 7 olas: todo armado, conectado y apagado hasta la orden de la Junta.</span></div>
+      <div class="hito"><b>25-sep</b><span><b>SFSP-ID</b>: identidad propia de SFSP con el método <code>did:sfsp</code>, credenciales con divulgación selectiva y el registro de emisores en la cadena.</span></div>
+      <div class="hito" style="border:0"><b>25-sep</b><span>Revisión adversaria del código, con dos fallos encontrados y corregidos. Verificación completa en verde.</span></div>
+    </div>
+    <div class="tarjeta">
+      <h3>Pruebas automáticas por componente</h3>
+      <svg viewBox="0 0 520 230" role="img" aria-label="Pruebas por componente: contratos 200, SDK 186, API DBNX 86, indexador 67, adversarias 14; total 553.">
+        <g class="t-s muted"><text x="170" y="222" text-anchor="middle">0</text><text x="255" y="222" text-anchor="middle">50</text><text x="340" y="222" text-anchor="middle">100</text><text x="425" y="222" text-anchor="middle">150</text><text x="510" y="222" text-anchor="middle">200</text></g>
+        <g><line x1="170" y1="10" x2="170" y2="206" class="grid"/><line x1="255" y1="10" x2="255" y2="206" class="grid"/><line x1="340" y1="10" x2="340" y2="206" class="grid"/><line x1="425" y1="10" x2="425" y2="206" class="grid"/><line x1="510" y1="10" x2="510" y2="206" class="grid"/></g>
+        <g class="t-m">
+          <text x="160" y="34" text-anchor="end">Contratos</text><rect x="170" y="18" width="340" height="24" rx="3" class="barra"/><text x="498" y="35" text-anchor="end" style="fill:#fff;font-weight:600">200</text>
+          <text x="160" y="74" text-anchor="end">SDK</text><rect x="170" y="58" width="316.2" height="24" rx="3" class="barra"/><text x="474" y="75" text-anchor="end" style="fill:#fff;font-weight:600">186</text>
+          <text x="160" y="114" text-anchor="end">API de DBNX</text><rect x="170" y="98" width="146.2" height="24" rx="3" class="barra2"/><text x="324" y="115">86</text>
+          <text x="160" y="154" text-anchor="end">Indexador</text><rect x="170" y="138" width="113.9" height="24" rx="3" class="barra2"/><text x="292" y="155">67</text>
+          <text x="160" y="194" text-anchor="end">Adversarias</text><rect x="170" y="178" width="23.8" height="24" rx="3" class="barra2"/><text x="202" y="195">14</text>
+        </g>
+      </svg>
+      <p style="font-size:9pt"><b>553 en verde</b> con el árbol limpio. Conformidad entre especificación y código: <b>8 de 8</b>. Parámetros económicos con valor: <b>0</b>, a propósito: los fija la Junta por acta.</p>
+      <p style="font-size:9pt;color:var(--muted)">Pendiente: la auditoría externa de los contratos, recomendada antes de la 5550.</p>
+    </div>
+  </div>
+  <div class="pie"><span>Orden Global · SFSP · Confidencial</span><span>7</span></div>
+</section>
+
+<!-- 8 · HOJA DE RUTA -->
+<section class="pagina">
+  <div class="cab"><span class="eyebrow">7 · Hoja de ruta</span><span class="eyebrow">Semanas</span></div>
+  <h2>Siete olas hasta el <em>paquete de encendido</em></h2>
+  <figure>
+    <svg viewBox="0 0 1000 370" role="img" aria-label="Diagrama de Gantt de las olas 0 a 6 en once semanas.">
+      <g class="t-s muted"><text x="250" y="24" text-anchor="middle">0</text><text x="312" y="24" text-anchor="middle">1</text><text x="374" y="24" text-anchor="middle">2</text><text x="436" y="24" text-anchor="middle">3</text><text x="498" y="24" text-anchor="middle">4</text><text x="560" y="24" text-anchor="middle">5</text><text x="622" y="24" text-anchor="middle">6</text><text x="684" y="24" text-anchor="middle">7</text><text x="746" y="24" text-anchor="middle">8</text><text x="808" y="24" text-anchor="middle">9</text><text x="870" y="24" text-anchor="middle">10</text><text x="932" y="24" text-anchor="middle">11</text></g>
+      <text x="20" y="24" class="t-cap">SEMANA</text>
+      <g><line x1="250" y1="34" x2="250" y2="330" class="grid"/><line x1="374" y1="34" x2="374" y2="330" class="grid"/><line x1="498" y1="34" x2="498" y2="330" class="grid"/><line x1="622" y1="34" x2="622" y2="330" class="grid"/><line x1="746" y1="34" x2="746" y2="330" class="grid"/><line x1="870" y1="34" x2="870" y2="330" class="grid"/></g>
+      <g class="t-m">
+        <text x="20" y="62">Ola 0 · Cimientos</text><rect x="250" y="46" width="62" height="24" rx="4" class="barra"/><text x="322" y="63" class="t-s muted">una sola fuente de precio y de red, nada se publica solo</text>
+        <text x="20" y="104">Ola 1 · Diseño</text><rect x="250" y="88" width="124" height="24" rx="4" class="barra"/><text x="384" y="105" class="t-s muted">pantallas para aprobar, incluida «Mis credenciales»</text>
+        <text x="20" y="146">Ola 2 · Protocolo</text><rect x="312" y="130" width="310" height="24" rx="4" class="barra"/><text x="632" y="147" class="t-s muted">licencias, commodities, oráculo, red cerrada</text>
+        <text x="20" y="188">Ola 3 · Servicios</text><rect x="436" y="172" width="248" height="24" rx="4" class="barra"/><text x="694" y="189" class="t-s muted">indexador, DBNX, emisor de Genesis</text>
+        <text x="20" y="230">Ola 4 · Productos en sombra</text><rect x="498" y="214" width="310" height="24" rx="4" class="barra"/><text x="818" y="231" class="t-s muted">comparan sin tocar nada</text>
+        <text x="20" y="272">Ola 5 · Ensayo general</text><rect x="622" y="256" width="186" height="24" rx="4" class="barra2"/><text x="818" y="273" class="t-s muted">16 escenarios + auditoría</text>
+        <text x="20" y="314">Ola 6 · Paquete de encendido</text><rect x="808" y="298" width="124" height="24" rx="4" class="barra2"/>
+      </g>
+      <circle cx="250" cy="348" r="5" fill="#A2412A"/><text x="260" y="352" class="t-s roja">camino crítico: el entorno de ensayo (D12) tiene que existir en la semana 6</text>
+    </svg>
+    <figcaption>Barras sólidas: trabajo que avanza ya. Barras claras: dependen del entorno de ensayo y de las decisiones de la Junta. El paquete para encender queda listo hacia la semana 10 u 11. Encender es otra decisión (página siguiente).</figcaption>
+  </figure>
+  <div class="pie"><span>Orden Global · SFSP · Confidencial</span><span>8</span></div>
+</section>
+
+<!-- 9 · ESCALERA -->
+<section class="pagina">
+  <div class="cab"><span class="eyebrow">8 · Encendido</span><span class="eyebrow">Cada paso es una orden de la Junta</span></div>
+  <h2>La escalera <em>a vivo</em></h2>
+  <div style="display:grid;gap:2mm">
+    <div class="peld"><span class="n">1</span><div>Subir apagado a producción<small>Nadie ve nada distinto</small></div><div class="firmas"><span class="firma">firma de publicación</span></div></div>
+    <div class="peld"><span class="n">2</span><div>Sombra en producción<small>Compara y registra, no decide</small></div><div class="firmas"><span class="firma">firma de publicación</span></div></div>
+    <div class="peld"><span class="n">3</span><div>Equivalencia<small>Cero diferencias sobre el censo real</small></div><div class="firmas"><span class="firma">informe</span></div></div>
+    <div class="peld"><span class="n">4</span><div>Conmutar, producto por producto<small>Siempre con camino de vuelta</small></div><div class="firmas"><span class="firma">firma por producto</span></div></div>
+    <div class="peld nuevo"><span class="n">5</span><div>Contratos en la 5550, con SFSPDidRegistry<small>Pasaportes públicos de los activos</small></div><div class="firmas"><span class="firma k">D07</span><span class="firma">D08</span><span class="firma">D09</span><span class="firma k">D22</span><span class="firma">auditoría</span></div></div>
+    <div class="peld nuevo"><span class="n">5b</span><div>Registrar a Genesis ID como emisor y emitir credenciales reales<small>Desde aquí se puede decir «SFSP-ID»</small></div><div class="firmas"><span class="firma k">D22</span></div></div>
+    <div class="peld"><span class="n">6</span><div>Red cerrada<small>Solo opera lo que cumple SFSP</small></div><div class="firmas"><span class="firma">manifiesto</span><span class="firma k">D07</span></div></div>
+    <div class="peld"><span class="n">7</span><div>Parámetros económicos por acta<small>Un solo precio y una sola comisión</small></div><div class="firmas"><span class="firma">D01</span><span class="firma">D02</span><span class="firma">D03</span><span class="firma">D04</span></div></div>
+    <div class="peld"><span class="n">8</span><div>AUKA y AGKA con metal<small>Colocación y redención física</small></div><div class="firmas"><span class="firma">metal custodiado</span><span class="firma">D05</span><span class="firma">licencia G</span></div></div>
+  </div>
+  <div class="pie"><span>Orden Global · SFSP · Confidencial</span><span>9</span></div>
+</section>
+
+<!-- 10 · DECISIONES -->
+<section class="pagina">
+  <div class="cab"><span class="eyebrow">9 · Decisiones</span><span class="eyebrow">21 pendientes · ninguna aprobada</span></div>
+  <h2>Lo que la Junta <em>tiene que decidir</em></h2>
+  <p class="lead" style="font-size:9.5pt">Mientras una decisión no esté firmada, todo lo que depende de ella responde «bloqueado por decisión» y no elige un valor por su cuenta. Marcadas en dorado, las que abren el encendido.</p>
+  <div class="fila col2" style="gap:10mm">
+    <div>
+      <div class="dec"><b>D00</b><span>Nombre SFSP y registro de marca <small>· asesor de marca</small></span></div>
+      <div class="dec"><b>D01</b><span>Política de precio de ORIGEN <small>· Junta / finanzas</small></span></div>
+      <div class="dec"><b>D02</b><span>Objetivo de comisión de USD 0,01, mínimos y gas <small>· Junta / operaciones</small></span></div>
+      <div class="dec"><b>D03</b><span>Suministro nativo: modelo de emisión <small>· Junta, técnico y legal</small></span></div>
+      <div class="dec"><b>D04</b><span>Reservas elegibles, descuentos y valuación <small>· DBNX</small></span></div>
+      <div class="dec"><b>D05</b><span>Custodia, lotes y redención de AUKA y AGKA <small>· DBNX, custodio y legal</small></span></div>
+      <div class="dec"><b>D06</b><span>Alcance de la privacidad <small>· producto, seguridad y legal</small></span></div>
+      <div class="dec" style="background:#FFFBEF"><b>D07</b><span><b>Quórums, firmantes, pausa y recuperación</b> <small>· Junta / seguridad</small></span></div>
+      <div class="dec"><b>D08</b><span>Derechos y elegibilidad por activo y país <small>· legal / DBNX</small></span></div>
+      <div class="dec"><b>D09</b><span>Migración de cada activo heredado <small>· Junta / DBNX</small></span></div>
+      <div class="dec"><b>D10</b><span>Custodia canónica y recuperación <small>· seguridad y legal</small></span></div>
+    </div>
+    <div>
+      <div class="dec"><b>D11</b><span>Repositorio de origen de cada servicio <small>· tecnología</small></span></div>
+      <div class="dec" style="background:#FFFBEF"><b>D12</b><span><b>Entorno de ensayo aislado</b> <small>· operaciones / seguridad</small></span></div>
+      <div class="dec"><b>D13</b><span>Identidad, jurisdicción y permisos <small>· asesor competente</small></span></div>
+      <div class="dec"><b>D14</b><span>Retiro de la cadena 8532 y continuidad histórica <small>· Junta / legal</small></span></div>
+      <div class="dec"><b>D15</b><span>Proveedor de pagos y liquidez <small>· finanzas / legal</small></span></div>
+      <div class="dec"><b>D16</b><span>Especificación OGFP v1.0: resolver o sustituir <small>· arquitectura / Junta</small></span></div>
+      <div class="dec"><b>D17</b><span>Política de alias de cuentas <small>· producto / legal</small></span></div>
+      <div class="dec"><b>D18</b><span>Arquitectura de custodia gestionada (KMS/HSM/MPC) <small>· seguridad / Junta</small></span></div>
+      <div class="dec"><b>D19</b><span>Recuperación por activo y perfil <small>· DBNX / legal</small></span></div>
+      <div class="dec" style="background:#FFFBEF"><b>D22</b><span><b>SFSP-ID: did:sfsp, registro de emisores y comunicación</b> <small>· Junta, técnico y legal</small></span></div>
+    </div>
+  </div>
+  <div class="pie"><span>Orden Global · SFSP · Confidencial</span><span>10</span></div>
+</section>
+
+<!-- 11 · COMUNICACIÓN -->
+<section class="pagina">
+  <div class="cab"><span class="eyebrow">10 · Comunicación</span><span class="eyebrow">Qué se puede decir y desde cuándo</span></div>
+  <h2>Lo que se dice <em>en público</em></h2>
+  <div style="display:grid;gap:3mm">
+    <div class="frase"><q>SFSP: cada activo con pasaporte y cada movimiento con evento público sin datos personales</q><small>Desde el paso 5: contratos en la 5550</small></div>
+    <div class="frase"><q>SFSP-ID: identidad autosoberana de SFSP, con estándares W3C</q><small>Desde el paso 5b: credenciales reales emitidas</small></div>
+    <div class="frase"><q>Web5</q><small>Solo con verificador en producción, billetera de terceros, nodo personal y revisión externa</small></div>
+    <div class="frase nunca"><q>Respaldado, regulado, licenciado, proyecciones de precio</q><small>Nunca, salvo lo que diga el acta</small></div>
+  </div>
+  <div class="fila col3" style="margin-top:auto">
+    <div class="tarjeta"><h3>Construido, no encendido</h3><p style="font-size:9pt">Todo se sube apagado y se enciende paso a paso, con camino de vuelta.</p></div>
+    <div class="tarjeta"><h3>Nada por defecto</h3><p style="font-size:9pt">Ningún precio, comisión ni tope tiene valor hasta que la Junta lo fije por acta.</p></div>
+    <div class="tarjeta"><h3>Sin datos en la cadena</h3><p style="font-size:9pt">Ni nombres, ni documentos, ni el GID. Solo pruebas que no identifican a nadie.</p></div>
+  </div>
+  <div class="pie"><span>Orden Global · SFSP · Confidencial</span><span>11</span></div>
+</section>
+
+</body></html>
