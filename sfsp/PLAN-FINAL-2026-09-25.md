@@ -167,3 +167,18 @@ La ola 0.2 los pasa a publicación manual. `ultron-looi-desk` sigue publicando d
    - las tres respuestas de la fase 2;
    - rotar la contraseña de H01 y la clave de CoinMarketCap.
 5. **Borrar las llaves que pasaron por el chat.**
+
+---
+
+## Cifras de la verificación (25-sep, commit `082a2a56`)
+
+| Suite | Pruebas |
+|---|---|
+| SDK (incluye SFSP-ID, 22) | 186 |
+| Contratos (incluye `SFSPDidRegistry` y las pruebas cruzadas) | 200 |
+| Indexador | 67 |
+| API de DBNX | 86 |
+| Pruebas adversarias | 14 |
+| **Total** | **553, todas en verde** |
+
+`verificar-todo`: `VERIFICACION_COMPLETA` con el árbol limpio. Conformidad: 8 de 8. Decisiones pendientes: 23. Parámetros económicos con valor: 0.
