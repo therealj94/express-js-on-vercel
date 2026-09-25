@@ -32,6 +32,6 @@ export * from './operador/servicios.js';
 export * from './operador/separacion.js';
 export * from './operador/cumplimiento.js';
 
-export * from './web5/index.js';
+export * from './sfsp-id/index.js';
 
 export const VERSION_SFSP = 'draft-0.3';

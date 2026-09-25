@@ -52,7 +52,8 @@ Cada sección del borrador SFSP v0.2 (`fuente/SFSP-v0.2-2026-09-23-original.docx
 | §17 | Estado de las series | Esta tabla | ✅ | — |
 | §18 | Decisiones abiertas | `DECISIONES-SFSP.json` (`propuestaV02` en D00–D03, D16 y D20) | ✅ | — |
 | Apéndice A | Estados | `spec/ESTADOS-Y-EVENTOS.md` §A | ✅ | ◐ Ver las diferencias por objeto |
-| Apéndice B | Eventos | `spec/eventos.json` (29 eventos) y `ESTADOS-Y-EVENTOS.md` §B | ✅ | ◐ 12 con contrato, 17 sin él |
+| Apéndice B | Eventos | `spec/eventos.json` (35 eventos: 29 del v0.2 y 6 de SFSP-160) y `ESTADOS-Y-EVENTOS.md` §B | ✅ | ◐ 18 con contrato, 17 sin él |
+| — (25-sep) | **SFSP-ID**: identidad de SFSP sobre estándares Web5. `did:sfsp`, GID como raíz privada, credenciales con divulgación selectiva y registro de organizaciones en la 5550 | `spec/SFSP-160-SELF-SOVEREIGN-IDENTITY.md` | ✅ | ✅ `SFSPDidRegistry` y `sdk/src/sfsp-id/`, con pruebas cruzadas |
 | — | Códigos de motivo | `ESTADOS-Y-EVENTOS.md` §C (primer catálogo) | ◐ | ✗ |
 
 ---

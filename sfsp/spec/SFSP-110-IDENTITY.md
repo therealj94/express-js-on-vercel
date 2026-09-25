@@ -8,7 +8,7 @@
 | Parte del plan maestro | P3 entregable 9, P5 pasos 1–3, §2.6 |
 | Decisiones que la bloquean | D13 (identidad, jurisdicción, permisos y alcance RFSA/RFCA), D08 (elegibilidad por activo y país), D06 (alcance de privacidad), D17 (política de alias) |
 
-**Desde el 25-sep:** la capa de identificadores y credenciales W3C (DID y VC 2.0) que se proyecta en las atestaciones de esta serie está en **SFSP-160**. Esta serie sigue gobernando Genesis ID, las atestaciones y la protección contra enumeración.
+**Desde el 25-sep:** los identificadores `did:sfsp` y las credenciales SFSP (en formato W3C DID y VC 2.0) que se proyectan en las atestaciones de esta serie están en **SFSP-160**. El GID sigue siendo la raíz privada: nunca se publica (SFSP-160 §2). Esta serie sigue gobernando Genesis ID, las atestaciones y la protección contra enumeración.
 
 **Qué NO afirma este documento:** no afirma por sí solo compatibilidad W3C VC 2.0 (eso es SFSP-160), no afirma que exista un registro canónico de Genesis ID ya resuelto entre las dos implementaciones observadas, y no afirma que ninguna protección contra enumeración esté implementada o probada.
 

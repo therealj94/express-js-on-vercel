@@ -1,235 +1,261 @@
-# SFSP-160 · Identidad autosoberana (la capa Web5 de SFSP)
+# SFSP-160 · SFSP-ID: la identidad de SFSP
 
 | Campo | Valor |
 |---|---|
-| Serie | SFSP-160 · Self-Sovereign Identity |
+| Serie | SFSP-160 · SFSP-ID (identidad autosoberana de SFSP) |
 | Estado | `draft-0.4` (serie nueva, 25-sep-2026) |
-| Código | `sdk/src/web5/` con 17 pruebas en `sdk/src/test/web5.test.ts` y la prueba cruzada `contracts/test/13-web5-credencial.js` |
-| Se apoya en | SFSP-110 (identidad), SFSP-120 (elegibilidad), SFSP-130 (cuenta y recuperación), SFSP-600 (privacidad), SFSP-150 (red cerrada) |
-| Decisiones que la bloquean | **D22** (métodos DID, dominio y llaves de emisores, comunicación), D13 (identidad y jurisdicción), D06 (privacidad) |
+| Código | Contrato `SFSPDidRegistry.sol`. SDK `sdk/src/sfsp-id/` (21 pruebas en `sfsp-id.test.ts`). Pruebas de contrato `14-did-registry.js`, `13-sfsp-id-credencial.js` y `15-did-sfsp-resolucion.js` |
+| Se apoya en | SFSP-110 (Genesis ID y atestaciones), SFSP-120 (elegibilidad), SFSP-130 (cuenta y recuperación), SFSP-140 (licencias), SFSP-600 (privacidad), SFSP-800 (gobierno) |
+| Decisiones que la bloquean | **D22** (el método `did:sfsp`, los emisores y cuándo comunicarlo), D13 (identidad y jurisdicción), D06 (privacidad) |
 
 **Qué NO afirma este documento:**
-- no afirma que Orden Global «sea Web5» hoy (ver §9);
-- no afirma compatibilidad certificada con ninguna billetera de terceros: la interoperabilidad se prueba en §9, no se supone;
-- no afirma que el formato de divulgación selectiva sea SD-JWT ni BBS+ (es un árbol de Merkle propio, descrito en §4.2);
-- no afirma que exista hoy un nodo personal de datos en producción.
+- no afirma que Orden Global «sea Web5» (ver §10);
+- no afirma compatibilidad certificada con ninguna billetera de terceros; la interoperabilidad se prueba (§10), no se supone;
+- no afirma que el método `did:sfsp` esté inscrito en el registro de métodos del W3C: inscribirlo es un paso de D22;
+- no afirma que exista un nodo personal de datos en producción.
 
 ---
 
-## 1 · La fusión en una frase
+## 1 · La regla de esta serie
 
-**La persona es dueña de su identidad, de sus credenciales y de sus datos; la red de liquidación sigue cerrada y regulada.**
+**La base es SFSP. Web5 aporta formatos, no reglas.**
 
-Web5 descentraliza la *identidad* y los *datos*. No exige que la cadena de liquidación sea pública, y la 5550 sigue con permisos (SFSP-150). No hay contradicción: son capas distintas.
+- Lo que decide quién es quién, qué vale y quién puede qué lo decide SFSP: Genesis ID, la Junta, la 5550 y sus contratos.
+- Los estándares del W3C (DID y credenciales verificables) se usan como **formato de salida**, para que un banco, un regulador o una billetera de fuera puedan comprobar lo nuestro sin depender de nosotros.
+- Nada de esta serie depende de una red, un dominio o un servicio ajeno.
 
-| Capa | Quién la controla | Serie |
+| Pieza | Nuestra | Estándar que usa por fuera |
 |---|---|---|
-| Identificador de la persona (DID) | **La persona**, desde su billetera | 160 |
-| Credenciales (KYC, acreditación, licencias) | **La persona** las guarda y decide qué revela; el emisor solo puede revocarlas | 160 |
-| Datos personales y expedientes | **La persona**, cifrados con su llave; las apps leen con su permiso | 160 |
-| Compliance y aprobación | Genesis ID, con aprobación humana | 110 |
-| Cuenta financiera | SFSP Account, número público sin datos personales | 130 |
-| Liquidación y activos | La 5550, red cerrada | 100, 150, 500 |
-
-El principio canónico de SFSP-110 se amplía:
-
-> **DID ≠ Genesis ID ≠ SFSP Account ≠ Wallet Address ≠ Private Key.**
+| Identificador | **`did:sfsp`**, sobre la 5550 | Sintaxis W3C DID Core 1.0 |
+| Quién es un emisor | **`SFSPDidRegistry`** en la 5550, admitido por la Junta | Documento DID |
+| Credencial | **Credencial SFSP**, emitida por Genesis ID con aprobación humana | W3C VC 2.0 sobre JOSE |
+| Huella en la cadena | **Atestación de `SFSPIdentityAdapter`** (ya existía) | EIP-712 |
+| Revocación | **La cadena** para operar; una lista de estado para fuera | W3C Bitstring Status List |
+| Datos de la persona | **Sobre SFSP v1**, cifrado a su llave | ECDH X25519 + AES-256-GCM |
 
 ---
 
-## 2 · Lo que ya estaba hecho y hace posible la fusión
+## 2 · GID y DID: qué es cada uno y por qué no son lo mismo
 
-El adaptador de identidad (`SFSPIdentityAdapter`) ya guardaba **solo** atestaciones firmadas, sobre un **compromiso por propósito**, con una **raíz de claims** y revocación explícita. Esa es exactamente la huella en cadena de una credencial verificable. Por eso esta serie **no cambia ningún contrato**: la capa Web5 vive en el SDK y en Genesis ID, y se proyecta en la cadena con el formato que el contrato ya acepta (§7).
+La pregunta de fondo: ¿el GID puede ser el identificador de la persona? **No como identificador público.** Pero **sí es la raíz** de todo.
 
----
-
-## 3 · Identificadores (DID)
-
-| Para | Método | Por qué |
+| | GID (Genesis ID) | `did:sfsp` de persona |
 |---|---|---|
-| Personas | `did:key` con Ed25519 | Sin registro en ningún lado: el identificador **es** la llave. Nadie puede darlo de baja |
-| Emisores (Genesis ID, DBNX, custodios) | `did:web` bajo un dominio de Orden Global | Un emisor debe ser público y reconocible |
+| Qué es | La ficha única de la persona en Genesis ID: su KYC, su expediente y su numeración de identidad | El identificador con el que la persona se presenta ante cada empresa o app |
+| Cuántos tiene una persona | **Uno** (así nadie se da de alta dos veces) | **Uno por relación**, derivados de la semilla de su billetera |
+| Quién lo ve | Solo Genesis ID, con acceso autenticado y por propósito | Solo el verificador de esa relación |
+| En la cadena | **Nunca** | **Nunca** (se autocertifica: no se registra) |
+| Si se filtra | Expone la identidad completa | Expone una sola relación, sin datos personales |
 
-Reglas:
+**Por qué el GID no puede ser público:** un número único y estable por persona la sigue por todas partes. El banco, la tienda y el gobierno podrían cruzar sus bases por ese número. SFSP-110 §4 lo prohíbe.
 
-1. **Un `did:key` por relación.** La billetera usa uno distinto con cada verificador. Dos verificadores no pueden cruzar a la misma persona, que es lo que exige SFSP-110 §4. Un DID único y global correlacionaría a la persona en todas partes.
-2. **`did:ethr` no se usa para personas**: publicaría en la cadena el mapa persona → direcciones.
-3. El documento de un `did:key` declara también una llave de acuerdo **X25519** derivada de la misma llave (mapa de Edwards a Montgomery), para recibir datos cifrados (§8).
-4. El documento del emisor declara:
-   - su llave Ed25519 de firma de credenciales (`#firma-N`);
-   - **la dirección en la 5550** con la que firma las atestaciones, como `EcdsaSecp256k1RecoveryMethod2020` con `blockchainAccountId = eip155:5550:0x…`.
+**Cómo se unen, sin que se vea desde fuera:**
 
-   Así la credencial y su proyección en cadena quedan atadas al mismo emisor, comprobable por cualquiera.
-5. Un documento `did:web` cuyo `id` no coincide con el DID pedido se rechaza.
-6. Si el documento no se puede leer, el resultado es `UNKNOWN_SOURCE`, nunca un permiso.
+```
+                 (privado, en Genesis ID)
+ GID ─────────► subjectRef (opaca) ─────────► compromiso por propósito ──► 5550 (atestación)
+  │
+  └── vínculos privados ──► did:sfsp:5550:p:…(banco)
+                          ► did:sfsp:5550:p:…(DBNX)          ◄── en la billetera de la persona
+                          ► did:sfsp:5550:p:…(Veta)
+```
 
-Código: `sdk/src/web5/did.ts`.
-
----
-
-## 4 · Credenciales
-
-### 4.1 Formato
-
-W3C Verifiable Credentials Data Model 2.0, firmado como JWS compacto EdDSA (`typ: vc+jwt`). Tipos: `VerifiableCredential`, `SFSPAtestacion` y los que agregue el propósito.
-
-La credencial **no lleva datos personales**. Su `credentialSubject` lleva solo cuatro cosas:
-- `id`, el `did:key` de la persona para esa relación;
-- `proposito`, uno de los de SFSP-110 §3: KYC, KYB, ACCREDITED, SANCTIONS_CLEAR, LICENSE_G…;
-- `claimsRoot`;
-- `politica`.
-
-### 4.2 Divulgación selectiva
-
-- Cada claim es una hoja: `keccak256("SFSP.CLAIM.v1" ‖ sal₃₂ ‖ keccak256(nombre) ‖ keccak256(JSON canónico del valor))`.
-- La **sal** de 32 bytes es obligatoria: sin ella, un claim predecible (`pais = HN`) se adivina por fuerza bruta (SFSP-110 §4.6).
-- Las hojas se ordenan por nombre y forman un árbol de Merkle de pares ordenados. La raíz es `claimsRoot`.
-- Las **divulgaciones** (nombre, valor, sal) se entregan a la persona por canal cifrado y **el emisor no las guarda**.
-- La persona revela solo las hojas que quiere, con su camino hasta la raíz.
-
-### 4.3 Estado
-
-W3C Bitstring Status List:
-- la lista tiene al menos 131 072 posiciones, está comprimida y la firma el emisor;
-- el verificador descarga la lista entera, así que el emisor no sabe qué credencial se consultó;
-- los índices se asignan **al azar**, porque índices consecutivos revelarían el orden de aprobación.
-
-Código: `credencial.ts`, `estado.ts`.
+- Genesis ID sabe que esos identificadores son de la misma persona, porque los emitió.
+- **Nadie más lo puede deducir**: ni los verificadores, ni quien lee la cadena.
+- La persona los recupera todos con la semilla de su billetera (§3.1). Si pierde la semilla, la recuperación es la de SFSP-130: Genesis ID vuelve a emitir a llaves nuevas.
+- **El número público de la persona sigue siendo su número de cuenta SFSP** (`SF-XXXX-XXXX-XXXX-C`, SFSP-130): no lleva datos personales y sirve para recibir. El GID no se publica nunca.
 
 ---
 
-## 5 · Presentaciones
+## 3 · El método `did:sfsp`
 
-Una presentación (`typ: vp+jwt`) la firma la persona con su `did:key`. Contiene:
-- exactamente una credencial;
-- las divulgaciones que eligió revelar, con su prueba;
-- `aud` (el DID del verificador);
-- `nonce` (el reto de un solo uso que emitió el verificador);
-- `iat` y `exp` (5 minutos por defecto).
+### 3.1 Sintaxis
 
-Orden de verificación. Cada paso devuelve código del §4 del contrato interno, nunca un booleano:
+```
+did:sfsp:<red>:p:<llave>        persona, en una relación
+did:sfsp:<red>:org:<orgId>      organización admitida por la Junta
+```
+
+- `<red>` es el chainId: `5550` (producción) o `5534` (ensayo). **Ensayo y producción no se mezclan**: una credencial con emisor de una red y titular de otra se rechaza (`DENY_POLICY`).
+- `<llave>` es la llave Ed25519 en multibase: `z` más base58btc de `0xed01 ‖ llave`.
+- `<orgId>` tiene de 3 a 31 caracteres (`a-z`, `0-9`, `_`). Se guarda en la cadena como `bytes32`.
+
+**Derivación por relación.** La billetera no guarda una llave por relación, las **deriva**:
+
+```
+semilla_de_relación = HKDF-SHA256(semilla_billetera, sal = "SFSP.ID.RELACION.v1", info = <identificador del verificador>)
+```
+
+Con la misma semilla y la misma relación sale siempre la misma llave. Sin la semilla, dos llaves de dos relaciones no tienen relación observable.
+
+### 3.2 Operaciones
+
+| Operación | Persona (`p`) | Organización (`org`) |
+|---|---|---|
+| Crear | La billetera deriva la llave. Nada se publica | La Junta llama `registerOrg` (admisión, no autoservicio) |
+| Resolver | El documento sale del propio identificador: una llave Ed25519 para firmar y su X25519 derivada para recibir datos cifrados | `SFSPDidRegistry` con `eth_call` (`lectorRpc`). La fuente de verdad es la 5550 |
+| Actualizar | No aplica: cambiar de llave es otro identificador | El controlador de la organización agrega y revoca llaves, fija la dirección que firma atestaciones y ancla la huella del documento |
+| Desactivar | Basta con dejar de usarlo | `deactivate`: irreversible, con código de motivo. La pide la Junta o el propio controlador |
+
+### 3.3 Reglas del registro de organizaciones (`SFSPDidRegistry`)
+
+1. **Solo organizaciones.** No hay función que registre personas ni reciba un sujeto; una prueba lo vigila.
+2. La **Junta admite** y **no firma por nadie**: las llaves las maneja el controlador de la organización (su multifirma).
+3. **Un `orgId` o un `keyId` no se reutilizan jamás.** Rotar es agregar la nueva y revocar la vieja.
+4. **Una llave de firma no cifra y una de cifrado no firma.** Ed25519: aserción y autenticación. X25519: solo acuerdo.
+5. **Revocar una llave invalida todo lo firmado con ella.** Para rotar sin tumbar credenciales vigentes, se agrega la nueva, se emite con ella y la vieja se revoca cuando sus credenciales vencen.
+6. **La baja es para siempre.** Volver exige otro `orgId` con su expediente.
+7. La Junta puede **cambiar el controlador** si la multifirma se pierde, siempre con código de motivo.
+8. Todo cambio emite su evento (`OrgDid*`, 6 eventos en `eventos.json`), que la prueba H15 compara campo a campo con el ABI.
+
+### 3.4 Identificadores de fuera
+
+`did:key` (personas) y `did:web` (emisores) **se aceptan para interoperar**, por ejemplo con un banco extranjero que emite con su propio dominio. Nunca son lo nuestro:
+- ninguna persona recibe un `did:key` de Genesis ID;
+- ningún emisor nuestro se identifica por `did:web`.
+
+Un emisor externo solo se acepta si figura en la lista de emisores aceptados **para ese propósito** (§6).
+
+---
+
+## 4 · La credencial SFSP
+
+- Formato W3C VC 2.0, firmado como JWS compacto EdDSA (`typ: vc+jwt`), con los tipos `VerifiableCredential` y `SFSPAtestacion`.
+- **No lleva datos personales.** Su `credentialSubject` lleva solo cuatro cosas:
+  - el `did:sfsp` de la persona para esa relación;
+  - el `proposito` de SFSP-110 §3 (KYC, KYB, ACCREDITED, SANCTIONS_CLEAR, LICENSE_G…);
+  - la `claimsRoot`;
+  - la `politica`.
+- **Divulgación selectiva:**
+  - cada claim es una hoja `keccak256("SFSP.CLAIM.v1" ‖ sal₃₂ ‖ keccak256(nombre) ‖ keccak256(valor canónico))`;
+  - las hojas, ordenadas por nombre, forman un árbol de Merkle de pares ordenados;
+  - la sal es obligatoria, porque un claim predecible (`pais = HN`) se adivinaría por fuerza bruta.
+- Las divulgaciones (nombre, valor y sal) van a la persona por canal cifrado y **el emisor no las guarda**.
+- **La `claimsRoot` es la misma que la de la atestación en la cadena**: una sola prueba de Merkle vale dentro y fuera.
+
+---
+
+## 5 · La presentación
+
+La firma la persona con su `did:sfsp` de esa relación. Lleva:
+- una credencial;
+- los claims que ella elige revelar, con su prueba;
+- la audiencia (el `did:sfsp` del verificador);
+- un reto de un solo uso;
+- una vigencia de 5 minutos.
+
+Cada paso de la verificación devuelve un código de SFSP, nunca un booleano:
 
 | # | Comprobación | Si falla |
 |---|---|---|
-| 1 | Firma de la persona con la llave de su DID | `DENY_AUTHORIZATION` |
-| 2 | Audiencia, reto, vigencia de la presentación y reto no usado | `DENY_AUTHORIZATION` / `DENY_POLICY` |
-| 3 | La credencial es del titular, el propósito es el pedido y el emisor está aceptado **para ese propósito** | `DENY_AUTHORIZATION` / `DENY_POLICY` |
-| 4 | Documento del emisor, llave en `assertionMethod` y firma de la credencial | `UNKNOWN_SOURCE` si no se lee; `DENY_AUTHORIZATION` si no cuadra |
+| 1 | Firma de la persona con la llave de su identificador | `DENY_AUTHORIZATION` |
+| 2 | Audiencia, reto, vigencia y reto no usado | `DENY_AUTHORIZATION` / `DENY_POLICY` |
+| 3 | La credencial es del titular, el propósito es el pedido, el emisor está aceptado para ese propósito y las redes coinciden | `DENY_AUTHORIZATION` / `DENY_POLICY` |
+| 4 | Emisor resuelto (desde la 5550 si es `did:sfsp`), llave vigente en su `assertionMethod` y firma válida | `UNKNOWN_SOURCE` si no se lee; `DENY_AUTHORIZATION` si no cuadra, si la llave está revocada o si el emisor está de baja |
 | 5 | Vigencia de la credencial | `DENY_POLICY` |
-| 6 | Lista de estado: la firma el mismo emisor y el bit está en 0 | `UNKNOWN_SOURCE` si no se lee; `DENY_ELIGIBILITY` si está revocada |
-| 7 | Cada claim revelado cuadra con `claimsRoot` y están los exigidos | `DENY_AUTHORIZATION` / `DENY_ELIGIBILITY` |
+| 6 | Lista de estado del mismo emisor, con el bit en 0 | `UNKNOWN_SOURCE` si no se lee; `DENY_ELIGIBILITY` si está revocada |
+| 7 | Cada claim revelado cuadra con la raíz y están los exigidos | `DENY_AUTHORIZATION` / `DENY_ELIGIBILITY` |
 
-Una lista de estado ilegible es `UNKNOWN_SOURCE`, **nunca** `ALLOW`. Fallar hacia «válida» es aceptar una credencial revocada el día que el emisor está caído.
-
-Código: `presentacion.ts`.
+**Nada que no se pudo leer se convierte en `ALLOW`.**
 
 ---
 
-## 6 · El emisor de Genesis ID
+## 6 · Genesis ID como emisor (`EmisorGenesis`)
 
-`EmisorGenesis` (`emisor.ts`) aplica la regla. El servicio solo pone lo que depende del entorno: el almacén, la firma de cadena desde el KMS y el envío a la 5550.
+1. **Sin aprobación humana no se emite** (SFSP-110 §0).
+2. Emite la credencial y asigna un índice **al azar** en la lista de estado.
+3. **Proyecta la atestación** a `SFSPIdentityAdapter` (§7) y la firma con la dirección que el registro declara como su firmante (`setAttestor`).
+4. Registra la emisión **sin claims**.
+5. **Revoca en las dos partes**: primero la lista, después la cadena.
+6. **Interruptor propio, apagado por defecto.**
+7. Tiene dos llaves en el KMS, **separadas del ancla**: Ed25519 para credenciales (en `SFSPDidRegistry`) y secp256k1 para atestaciones (el firmante del registro, con el rol `ATTESTOR` del adaptador).
 
-1. **Sin aprobación humana no se emite.** Recibe `aprobadaPor` y `expediente`; sin ellos, `DENY_AUTHORIZATION` (SFSP-110 §0).
-2. Emite la credencial, asigna un índice al azar en la lista y **proyecta** la atestación (§7).
-3. Registra la emisión **sin claims**: el id, el propósito, el índice, el compromiso y la vigencia.
-4. **Revocar es revocar en las dos partes.** Primero la lista (efecto inmediato fuera de la cadena), después `revokeAttestation` en la 5550. Si la cadena falla, la lista ya revocada se queda y la operación se reintenta: la dirección segura es «revocada».
-5. **Interruptor propio, apagado por defecto**, con el patrón de Ordenex. Apagado, emite y firma pero no toca la cadena.
-6. Las llaves del emisor van en el KMS y **separadas de la del ancla**, que ya escribe en la 5550 (plan de construcción, ola 3). Son dos: Ed25519 para credenciales y secp256k1 para atestaciones.
+**Emisores aceptados por propósito.** La lista es de SFSP, no de cada app. Arranca con `did:sfsp:5550:org:genesis_kyc` para KYC y KYB. Crece por acta de la Junta, y cada emisor necesita su licencia en SFSP-140 cuando el propósito la exija.
 
 ---
 
-## 7 · La proyección en la cadena
+## 7 · La huella en la cadena
 
-| Campo de la atestación | Sale de |
+La atestación de `SFSPIdentityAdapter` es la proyección de la credencial. **No se cambió ningún campo del contrato.**
+
+| Campo | Sale de |
 |---|---|
 | `attestationId` | `keccak256(id de la credencial)` |
-| `subjectCommitment` | `keccak256(abi.encode(COMMITMENT_TAG, subjectRef, purpose, salt))`, igual que `purposeCommitment` del contrato |
+| `subjectCommitment` | `keccak256(abi.encode(COMMITMENT_TAG, subjectRef, purpose, salt))`: `subjectRef` y `salt` viven solo en Genesis ID |
 | `purpose` | bytes32 del propósito |
 | `claimsRoot` | **la misma raíz de la credencial** |
-| `validFrom`, `validUntil` | la vigencia de la credencial, en segundos |
+| `validFrom`, `validUntil` | la vigencia, en segundos |
 | `policyVersion` | bytes32 de la política |
 
-El digest es el EIP-712 de `hashAttestation`, con el dominio `SFSPIdentityAdapter / draft-0.3 / chainId / contrato`. La prueba cruzada comprueba:
-- que el compromiso del SDK es el del contrato;
-- que el digest del SDK es `hashAttestation` byte por byte;
-- que la atestación de una credencial se registra y deja de valer al revocarla;
-- que una credencial alterada no pasa.
-
-`subjectRef` y `salt` viven solo en el directorio privado de Genesis ID. En la cadena no queda nada que identifique a la persona (SFSP-110 §5).
+La prueba `13-sfsp-id-credencial.js` comprueba que el compromiso y el digest EIP-712 del SDK son byte por byte los del contrato, que se registran y que se revocan.
 
 ---
 
 ## 8 · Los datos de la persona
 
-### 8.1 Permisos
+- **Permisos** (`sfsp-permiso+jwt`). La persona los firma con su `did:sfsp` y dicen qué app, qué protocolo de datos, qué acciones, para qué y hasta cuándo. Dr Electrum, AU-RA, Veta y DBNX leen expedientes **con ese permiso**. Solo la persona los revoca.
+- **Sobre SFSP v1.** Lo que se guarda para la persona va cifrado a su llave. Orden Global puede alojarlo y no puede leerlo, y la persona se lo puede llevar.
 
-Las apps (Veta, DBNX, AU-RA, Dr Electrum) leen los datos de una persona **porque ella les dio permiso**, no porque estén en nuestros servidores. Un permiso (`typ: sfsp-permiso+jwt`):
-- lo firma la persona con su `did:key`;
-- dice para qué app (`aud`), qué protocolo de datos, qué acciones (`leer`, `escribir`, `consultar`), para qué propósito y hasta cuándo.
-
-Solo la persona lo revoca: una revocación firmada por otro se rechaza.
-
-### 8.2 Cifrado
-
-Lo que se guarda para la persona va en un **sobre SFSP v1**: ECDH-ES con llave efímera X25519 hacia la llave de su DID, HKDF-SHA256 y AES-256-GCM, con datos asociados autenticados. Si Orden Global le aloja el nodo, igual no puede leerlo. Si la persona se va a otro proveedor, se lleva sus datos legibles para ella.
-
-### 8.3 El nodo personal, por fases
-
-| Fase | Qué |
+| Fase del nodo personal | Qué |
 |---|---|
 | A (hecha, en el SDK) | Permisos firmados y sobres cifrados |
-| B | Nodo alojado por Orden Global: guarda sobres, exige permiso en cada lectura y registra accesos sin contenido |
-| C | Exportación completa y portabilidad a otro proveedor |
-| D | Compatibilidad con el protocolo de nodos de la DIF (DWN), si D22 lo decide |
-
-Código: `permisos.ts`, `cifrado.ts`.
+| B | Nodo alojado: guarda sobres, exige permiso en cada lectura y registra accesos sin contenido |
+| C | Exportación completa y portabilidad |
+| D | Compatibilidad con el protocolo DWN de la DIF, si D22 lo decide |
 
 ---
 
-## 9 · Cuándo se puede decir «Web5»
+## 9 · Lo que esta serie agrega a la cadena
 
-Nada de esto autoriza a comunicarlo. **La palabra «Web5» no se usa** hasta que se cumpla todo esto, con evidencia:
-
-1. D22 firmada.
-2. Genesis ID emite credenciales reales a personas reales, a su `did:key`, con aprobación humana.
-3. Veta Wallet guarda las credenciales y las divulgaciones, y la persona elige qué revela.
-4. Al menos un verificador interno (DBNX o el motor de elegibilidad vía la proyección) acepta presentaciones en producción.
-5. Una **billetera de terceros** lee nuestras credenciales y nuestro verificador acepta una credencial de un emisor externo. Es la prueba de interoperabilidad.
-6. Nodo personal en fase B, con permisos exigidos en cada lectura.
-7. Revisión externa del manejo de llaves y de privacidad.
-
-Mientras tanto, la frase que sí es verdad **cuando se cumplan los puntos 2 y 3**: «identidad autosoberana con credenciales verificables (W3C DID y VC)». Antes de eso, ninguna.
+| Qué | Dónde |
+|---|---|
+| `SFSPDidRegistry`, solo organizaciones | Contrato nuevo, ola 2 |
+| 6 eventos `OrgDid*` | `spec/eventos.json` (35 eventos en total) |
+| Nada en el adaptador de identidad | Se usa tal cual |
 
 ---
 
-## 10 · Pruebas de aceptación
+## 10 · Cuándo se puede decir qué
+
+| Frase | Condición |
+|---|---|
+| «SFSP-ID: identidad autosoberana de SFSP, con estándares W3C (DID y VC)» | Genesis ID emite credenciales reales a `did:sfsp` de personas reales y Veta las guarda |
+| «Web5» | Además: un verificador en producción, **una billetera de terceros** que lee nuestras credenciales, nodo personal en fase B y revisión externa de llaves y privacidad |
+
+Hasta entonces, ninguna de las dos.
+
+---
+
+## 11 · Pruebas de aceptación
 
 | Id | Qué | Dónde |
 |---|---|---|
-| T-160-01 | `did:key` ida y vuelta; la X25519 derivada coincide con la calculada por OpenSSL | `web5.test.ts` |
-| T-160-02 | `did:web`: ruta, resolución, documento ajeno rechazado, caída = `UNKNOWN_SOURCE` | `web5.test.ts` |
-| T-160-03 | Toda hoja prueba su pertenencia, con 1 a 9 claims; con otra sal no | `web5.test.ts` |
-| T-160-04 | La persona revela solo lo que elige, y la credencial no lleva datos personales | `web5.test.ts` |
-| T-160-05 | El reto no sirve dos veces; otra audiencia, otro reto o falta de lo exigido no pasan | `web5.test.ts` |
-| T-160-06 | Un claim cambiado no cuadra con la raíz | `web5.test.ts` |
-| T-160-07 | Nadie presenta la credencial de otro | `web5.test.ts` |
-| T-160-08 | Emisor no aceptado para ese propósito | `web5.test.ts` |
-| T-160-09 | Revocada = `DENY_ELIGIBILITY`; lista ilegible = `UNKNOWN_SOURCE`; lista de otro = no pasa | `web5.test.ts` |
-| T-160-10 | Compromiso y digest del SDK iguales a los del contrato; registro y revocación en cadena | `13-web5-credencial.js` |
-| T-160-11 | Permisos: dentro de lo dado, fuera no; solo el titular revoca | `web5.test.ts` |
-| T-160-12 | Solo la persona abre su sobre; un byte cambiado o datos asociados distintos se detectan | `web5.test.ts` |
-| T-160-13 | El emisor no emite sin aprobación humana, no guarda claims y revoca en lista y cadena | `web5.test.ts` |
+| T-160-01 | `did:sfsp` de persona: se autocertifica, se deriva por relación, se recupera con la semilla y no se enlaza entre relaciones | `sfsp-id.test.ts` |
+| T-160-02 | `did:sfsp` de organización: se resuelve desde el registro; una llave revocada no figura; una organización de baja o inexistente no resuelve; otra red no resuelve | `sfsp-id.test.ts` |
+| T-160-03 | El registro en la cadena: solo la Junta admite, solo el controlador maneja llaves, nada se reutiliza, la baja es irreversible, la recuperación exige motivo y no hay funciones para personas | `14-did-registry.js` |
+| T-160-04 | El resolutor del SDK lee el contrato real; al revocar la llave en la cadena, la credencial deja de pasar | `15-did-sfsp-resolucion.js` |
+| T-160-05 | Compromiso y digest del SDK iguales a los del contrato; registro y revocación de la atestación | `13-sfsp-id-credencial.js` |
+| T-160-06 | Revela solo lo elegido, y la credencial no lleva datos personales | `sfsp-id.test.ts` |
+| T-160-07 | Reto de un solo uso; otra audiencia, otro reto o falta de lo exigido no pasan | `sfsp-id.test.ts` |
+| T-160-08 | Claim alterado; credencial ajena; emisor no aceptado; ensayo contra producción | `sfsp-id.test.ts` |
+| T-160-09 | Revocada = `DENY_ELIGIBILITY`; lista ilegible = `UNKNOWN_SOURCE`; lista de otro no pasa | `sfsp-id.test.ts` |
+| T-160-10 | Emisor con llave revocada o de baja: lo que firmó deja de pasar | `sfsp-id.test.ts` |
+| T-160-11 | Permisos y sobres cifrados | `sfsp-id.test.ts` |
+| T-160-12 | Genesis no emite sin aprobación humana, no guarda claims y revoca en lista y cadena | `sfsp-id.test.ts` |
+| T-160-13 | Interoperabilidad: emisor `did:web` y persona `did:key` de fuera | `sfsp-id.test.ts` |
+| T-160-14 | Los 6 eventos del registro coinciden con `eventos.json` (H15) | `11-eventos-contra-spec.js` |
 
 ---
 
-## 11 · Lo que falta, dicho sin adornos
+## 12 · Lo que falta, sin adornos
 
 | Pieza | Dónde | Bloqueada por |
 |---|---|---|
-| Firma secp256k1 del emisor desde el KMS | servicio de Genesis ID | AWS (KMS) y D22 |
-| Publicar el `did.json` de los emisores | dominio de Orden Global | D22 |
-| Servicio emisor (capa fina sobre `EmisorGenesis`) y almacén durable | Genesis ID | Ola 3 del plan |
-| Guardar credenciales y elegir qué revelar | Veta Wallet (web y app) | Ola 1 (diseño) y ola 4 |
-| Aceptar presentaciones | DBNX y el backend de la billetera | Ola 4 |
-| Nodo personal fase B | servicio nuevo | AWS y D22 |
-| Prueba de interoperabilidad con una billetera de terceros | ensayo | Ola 5 |
+| Desplegar `SFSPDidRegistry` y registrar `genesis_kyc` | 5534 y luego 5550 | Ola 5 (ensayo), D22, D07 (firmantes) |
+| Firma secp256k1 y Ed25519 del emisor desde el KMS | Genesis ID | AWS y D22 |
+| Servicio emisor y almacén durable | Genesis ID | Ola 3 |
+| Semilla, derivación por relación, «Mis credenciales» y consentimiento | Veta Wallet | Ola 1 (diseño) y ola 4 |
+| Verificar presentaciones | DBNX y el backend de la billetera | Ola 4 |
+| Nodo personal fase B | Servicio nuevo | AWS y D22 |
+| Inscribir `did:sfsp` en el registro de métodos del W3C | W3C | D22 |
+| Prueba con una billetera de terceros | Ensayo | Ola 5 |

@@ -34,11 +34,11 @@ describe("SFSP-160 · credencial W3C → atestación SFSP en el adaptador", func
 
   async function emitirYProyectar() {
     const ts = await H.now();
-    const emisor = { did: "did:web:genesis.ordenglobal.link:emisores:kyc", kid: "#firma-1", llaves: sdk.nuevasLlaves() };
+    const emisor = { did: sdk.didOrganizacion("genesis_kyc"), kid: "#firma-1", llaves: sdk.nuevasLlaves() };
     const persona = sdk.nuevasLlaves();
     const e = sdk.emitirCredencial({
       emisor,
-      sujeto: sdk.didKeyDe(persona.publica),
+      sujeto: sdk.didPersona(persona.publica),
       proposito: "KYC",
       claims: { nivel: 2, mayorDeEdad: true, pais: "HN" },
       politica: "kyc-hn-v1",

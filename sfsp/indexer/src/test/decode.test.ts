@@ -9,10 +9,12 @@ import { log } from './ayudas.js';
 // distingue entre «falta uno» y «sobra otro».
 const DEL_TRES = ['AssetRegistered','PolicyUpdated','SupplyAuthorized','MintExecuted','BurnExecuted','TreasuryReleased','ReserveAttested','ReserveExpired','DisclosurePublished','RiskChanged','TradeSettled','RedemptionUpdated','RecoveryExecuted','MigrationClaimed','GovernanceAction'] as const;
 const DEL_V02 = ['PassportUpdated','AssetStatusChanged','SupplyExpansionDeclared','SplitExecuted','IdentityLinkChanged','EligibilityRecorded','ExposureLimitRecorded','AcquirerDeclarationRecorded','CoveragePublished','LicenseStatusChanged','ModuleAvailabilityChanged','CountryStatusChanged','NetworkPermissionChanged','ConciliationRecorded'] as const;
+// Los seis del registro did:sfsp de organizaciones (SFSP-160).
+const DEL_160 = ['OrgDidRegistered','OrgDidControllerChanged','OrgDidKeyChanged','OrgDidAttestorChanged','OrgDidDocumentChanged','OrgDidDeactivated'] as const;
 
-test('los quince eventos del §3 y los catorce del v0.2 estan registrados', () => {
-  for (const n of [...DEL_TRES, ...DEL_V02]) assert.ok(n in EVENTOS_CONOCIDOS, 'falta ' + n);
-  assert.equal(Object.keys(EVENTOS_CONOCIDOS).length, DEL_TRES.length + DEL_V02.length);
+test('los quince eventos del §3, los catorce del v0.2 y los seis de SFSP-160 estan registrados', () => {
+  for (const n of [...DEL_TRES, ...DEL_V02, ...DEL_160]) assert.ok(n in EVENTOS_CONOCIDOS, 'falta ' + n);
+  assert.equal(Object.keys(EVENTOS_CONOCIDOS).length, DEL_TRES.length + DEL_V02.length + DEL_160.length);
   assert.equal(EVENTOS_CONOCIDOS.MintExecuted, 'IssuanceController');
   assert.equal(EVENTOS_CONOCIDOS.RiskChanged, 'AssetRegistry');
 });

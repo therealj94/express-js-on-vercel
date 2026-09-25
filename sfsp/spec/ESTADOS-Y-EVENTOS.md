@@ -89,8 +89,9 @@ El v0.2 da al activo **un único estado en línea**. El repositorio usa **seis e
 | Acción de gobernanza | `GovernanceAction` | ✅ |
 | Conciliación registrada | `ConciliationRecorded` | nuevo, sin contrato |
 | *(del repo, no del v0.2)* | `PolicyUpdated`, `TreasuryReleased` | ✅ |
+| *(de SFSP-160, no del v0.2)* | `OrgDidRegistered`, `OrgDidControllerChanged`, `OrgDidKeyChanged`, `OrgDidAttestorChanged`, `OrgDidDocumentChanged`, `OrgDidDeactivated` (registro `did:sfsp` de organizaciones) | ✅ `SFSPDidRegistry` |
 
-Total: **29 eventos**, 12 con contrato y 17 sin contrato. La prueba H15 de `contracts/` exigirá la firma exacta de cada uno en cuanto se escriba su contrato.
+Total: **35 eventos**, 18 con contrato y 17 sin contrato. La prueba H15 de `contracts/` exige la firma exacta de cada uno que tenga contrato, y la exigirá del resto en cuanto se escriba.
 
 ---
 

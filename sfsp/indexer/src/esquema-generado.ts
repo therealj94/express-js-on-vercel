@@ -36,7 +36,7 @@ export interface EventoGenerado {
   readonly camposDeAtribucion: readonly string[];
 }
 
-/** Los 29 eventos del §3, por su nombre canonico. */
+/** Los 35 eventos del §3, por su nombre canonico. */
 export type NombreEvento =
   | "AssetRegistered"
   | "PolicyUpdated"
@@ -66,7 +66,13 @@ export type NombreEvento =
   | "ModuleAvailabilityChanged"
   | "CountryStatusChanged"
   | "NetworkPermissionChanged"
-  | "ConciliationRecorded";
+  | "ConciliationRecorded"
+  | "OrgDidRegistered"
+  | "OrgDidControllerChanged"
+  | "OrgDidKeyChanged"
+  | "OrgDidAttestorChanged"
+  | "OrgDidDocumentChanged"
+  | "OrgDidDeactivated";
 
 /** Esquema completo por evento. Generado: editar el JSON, no esto. */
 export const ESQUEMA_EVENTOS: Readonly<Record<NombreEvento, EventoGenerado>> = {
@@ -580,6 +586,101 @@ export const ESQUEMA_EVENTOS: Readonly<Record<NombreEvento, EventoGenerado>> = {
     cantidades: [],
     camposDeAtribucion: [],
   },
+  OrgDidRegistered: {
+    nombre: "OrgDidRegistered",
+    emisor: "DidRegistry",
+    significado: "Una organizacion (emisor, custodio, valuador) recibe su identificador did:sfsp por decision de la Junta.",
+    atribucion: "GLOBAL",
+    afectaSuministro: "NINGUNO",
+    implementadoEnContratos: true,
+    campos: [
+      { nombre: "orgId", tipo: "bytes32", indexado: true, obligatorio: true, atribuyeActivo: false, esCantidad: false },
+      { nombre: "controller", tipo: "address", indexado: false, obligatorio: true, atribuyeActivo: false, esCantidad: false },
+      { nombre: "docHash", tipo: "bytes32", indexado: false, obligatorio: true, atribuyeActivo: false, esCantidad: false },
+    ],
+    requeridos: ["orgId", "controller", "docHash"],
+    cantidades: [],
+    camposDeAtribucion: [],
+  },
+  OrgDidControllerChanged: {
+    nombre: "OrgDidControllerChanged",
+    emisor: "DidRegistry",
+    significado: "La Junta cambia el controlador de una organizacion (recuperacion), con codigo de motivo.",
+    atribucion: "GLOBAL",
+    afectaSuministro: "NINGUNO",
+    implementadoEnContratos: true,
+    campos: [
+      { nombre: "orgId", tipo: "bytes32", indexado: true, obligatorio: true, atribuyeActivo: false, esCantidad: false },
+      { nombre: "controller", tipo: "address", indexado: false, obligatorio: true, atribuyeActivo: false, esCantidad: false },
+      { nombre: "reasonCode", tipo: "bytes32", indexado: false, obligatorio: true, atribuyeActivo: false, esCantidad: false },
+    ],
+    requeridos: ["orgId", "controller", "reasonCode"],
+    cantidades: [],
+    camposDeAtribucion: [],
+  },
+  OrgDidKeyChanged: {
+    nombre: "OrgDidKeyChanged",
+    emisor: "DidRegistry",
+    significado: "Alta o revocacion de una llave de la organizacion. Un keyId no se reutiliza.",
+    atribucion: "GLOBAL",
+    afectaSuministro: "NINGUNO",
+    implementadoEnContratos: true,
+    campos: [
+      { nombre: "orgId", tipo: "bytes32", indexado: true, obligatorio: true, atribuyeActivo: false, esCantidad: false },
+      { nombre: "keyId", tipo: "bytes32", indexado: false, obligatorio: true, atribuyeActivo: false, esCantidad: false },
+      { nombre: "relations", tipo: "uint8", indexado: false, obligatorio: true, atribuyeActivo: false, esCantidad: false },
+      { nombre: "revoked", tipo: "bool", indexado: false, obligatorio: true, atribuyeActivo: false, esCantidad: false },
+    ],
+    requeridos: ["orgId", "keyId", "relations", "revoked"],
+    cantidades: [],
+    camposDeAtribucion: [],
+  },
+  OrgDidAttestorChanged: {
+    nombre: "OrgDidAttestorChanged",
+    emisor: "DidRegistry",
+    significado: "Alta o baja de la direccion con la que la organizacion firma atestaciones EIP-712.",
+    atribucion: "GLOBAL",
+    afectaSuministro: "NINGUNO",
+    implementadoEnContratos: true,
+    campos: [
+      { nombre: "orgId", tipo: "bytes32", indexado: true, obligatorio: true, atribuyeActivo: false, esCantidad: false },
+      { nombre: "account", tipo: "address", indexado: false, obligatorio: true, atribuyeActivo: false, esCantidad: false },
+      { nombre: "enabled", tipo: "bool", indexado: false, obligatorio: true, atribuyeActivo: false, esCantidad: false },
+    ],
+    requeridos: ["orgId", "account", "enabled"],
+    cantidades: [],
+    camposDeAtribucion: [],
+  },
+  OrgDidDocumentChanged: {
+    nombre: "OrgDidDocumentChanged",
+    emisor: "DidRegistry",
+    significado: "Cambia la huella del documento DID completo publicado fuera de la cadena.",
+    atribucion: "GLOBAL",
+    afectaSuministro: "NINGUNO",
+    implementadoEnContratos: true,
+    campos: [
+      { nombre: "orgId", tipo: "bytes32", indexado: true, obligatorio: true, atribuyeActivo: false, esCantidad: false },
+      { nombre: "docHash", tipo: "bytes32", indexado: false, obligatorio: true, atribuyeActivo: false, esCantidad: false },
+    ],
+    requeridos: ["orgId", "docHash"],
+    cantidades: [],
+    camposDeAtribucion: [],
+  },
+  OrgDidDeactivated: {
+    nombre: "OrgDidDeactivated",
+    emisor: "DidRegistry",
+    significado: "Baja irreversible de una organizacion. Volver exige otro orgId.",
+    atribucion: "GLOBAL",
+    afectaSuministro: "NINGUNO",
+    implementadoEnContratos: true,
+    campos: [
+      { nombre: "orgId", tipo: "bytes32", indexado: true, obligatorio: true, atribuyeActivo: false, esCantidad: false },
+      { nombre: "reasonCode", tipo: "bytes32", indexado: false, obligatorio: true, atribuyeActivo: false, esCantidad: false },
+    ],
+    requeridos: ["orgId", "reasonCode"],
+    cantidades: [],
+    camposDeAtribucion: [],
+  },
 };
 
 /** Nombre de evento -> emisor declarado. Compatibilidad con el §3. */
@@ -613,6 +714,12 @@ export const EVENTOS_CONOCIDOS: Readonly<Record<NombreEvento, string>> = {
   CountryStatusChanged: "EligibilityEngine",
   NetworkPermissionChanged: "NetworkAdmission",
   ConciliationRecorded: "ReconciliationJob",
+  OrgDidRegistered: "DidRegistry",
+  OrgDidControllerChanged: "DidRegistry",
+  OrgDidKeyChanged: "DidRegistry",
+  OrgDidAttestorChanged: "DidRegistry",
+  OrgDidDocumentChanged: "DidRegistry",
+  OrgDidDeactivated: "DidRegistry",
 };
 
 /**

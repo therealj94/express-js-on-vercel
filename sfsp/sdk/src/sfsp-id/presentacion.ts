@@ -19,7 +19,9 @@ import {
   pruebaDeClaim,
   verificarPrueba,
 } from './credencial.js';
-import { didKeyDe, type Obtener, type ParDeLlaves, publicaDeDidKey, publicaDeMetodo, resolverDid } from './did.js';
+import { type Obtener, type ParDeLlaves, publicaDeMetodo } from './did.js';
+import { didPersona, esDidPersona, fragmentoDePersona, type LectorRegistro, publicaDePersona, redDe, type RedSFSP } from './did-sfsp.js';
+import { resolver } from './resolver.js';
 import { ListaDeEstado, leerLista } from './estado.js';
 import { firmaValida, firmarJws, leerJws } from './jws.js';
 
@@ -50,8 +52,10 @@ export function presentar(o: {
   nonce: string;
   ahora?: Date;
   duracionSeg?: number;
+  /** La red de la persona. Por defecto, producción. */
+  red?: RedSFSP;
 }): string {
-  const did = didKeyDe(o.titular.publica);
+  const did = didPersona(o.titular.publica, o.red ?? '5550');
   const cred = leerCredencial(o.credencialJwt).payload;
   if (cred.credentialSubject.id !== did) throw new ErrorSFSP('DENY_AUTHORIZATION', 'esa credencial no es de este titular');
   const t = Math.floor((o.ahora ?? new Date()).getTime() / 1000);
@@ -71,7 +75,7 @@ export function presentar(o: {
     iat: t,
     exp: t + (o.duracionSeg ?? 300),
   };
-  return firmarJws(vp, { typ: 'vp+jwt', kid: `${did}#${did.slice('did:key:'.length)}` }, o.titular);
+  return firmarJws(vp, { typ: 'vp+jwt', kid: `${did}#${fragmentoDePersona(did)}` }, o.titular);
 }
 
 export interface Verificado {
@@ -97,6 +101,8 @@ export interface OpcionesVerificacion {
   proposito: string;
   exigir?: string[];
   obtener?: Obtener;
+  /** El registro did:sfsp en la cadena, para resolver emisores `did:sfsp:…:org:`. */
+  registro?: LectorRegistro;
   /** Devuelve el JWT de la lista de estado. Se inyecta como `obtener`. */
   obtenerLista?: (url: string) => Promise<string>;
   ahora?: Date;
@@ -112,12 +118,12 @@ export async function verificarPresentacion(vpJwt: string, o: OpcionesVerificaci
     return negar('DENY_POLICY', (e as Error).message);
   }
   const vp = vpL.payload;
-  if (vpL.cabecera.typ !== 'vp+jwt' || !vp?.holder?.startsWith('did:key:')) return negar('DENY_POLICY', 'presentación mal formada');
+  if (vpL.cabecera.typ !== 'vp+jwt' || !vp?.holder || !esDidPersona(vp.holder)) return negar('DENY_POLICY', 'presentación mal formada');
 
   // 1 · La firma de la persona, con la llave de su propio DID.
   let pubTitular: Uint8Array;
   try {
-    pubTitular = publicaDeDidKey(vp.holder);
+    pubTitular = publicaDePersona(vp.holder);
   } catch (e) {
     return negar('DENY_POLICY', (e as Error).message);
   }
@@ -143,10 +149,20 @@ export async function verificarPresentacion(vpJwt: string, o: OpcionesVerificaci
   if (c.credentialSubject.id !== vp.holder) return negar('DENY_AUTHORIZATION', 'la credencial es de otra persona');
   if (c.credentialSubject.proposito !== o.proposito) return negar('DENY_POLICY', `propósito ${c.credentialSubject.proposito}, se pidió ${o.proposito}`);
   if (!(o.emisoresConfiables[o.proposito] ?? []).includes(c.issuer)) return negar('DENY_AUTHORIZATION', 'emisor no aceptado para este propósito');
+  // Ensayo y producción no se mezclan: una credencial de la 5534 no vale en la 5550.
+  let redTitular: RedSFSP | null;
+  let redEmisor: RedSFSP | null;
+  try {
+    redTitular = redDe(vp.holder);
+    redEmisor = redDe(c.issuer);
+  } catch (e) {
+    return negar('DENY_POLICY', (e as Error).message);
+  }
+  if (redTitular && redEmisor && redTitular !== redEmisor) return negar('DENY_POLICY', `titular en la red ${redTitular} y emisor en la ${redEmisor}`);
 
   let docEmisor;
   try {
-    docEmisor = await resolverDid(c.issuer, o.obtener);
+    docEmisor = await resolver(c.issuer, { obtener: o.obtener, registro: o.registro });
   } catch (e) {
     const err = e as ErrorSFSP;
     return err.codigo === 'UNKNOWN_SOURCE' ? fuenteDesconocida(err.message) : negar('DENY_AUTHORIZATION', err.message);

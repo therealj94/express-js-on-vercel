@@ -13,7 +13,8 @@
 import { createCipheriv, createDecipheriv, createPrivateKey, createPublicKey, diffieHellman, generateKeyPairSync, hkdfSync, randomBytes } from 'node:crypto';
 import { ErrorSFSP } from '../codigos.js';
 import { aBase64url, deBase64url } from './codificacion.js';
-import { publicaDeDidKey, type ParDeLlaves, x25519PrivadaDesdeEd25519, x25519PublicaDesdeEd25519 } from './did.js';
+import { type ParDeLlaves, x25519PrivadaDesdeEd25519, x25519PublicaDesdeEd25519 } from './did.js';
+import { publicaDePersona } from './did-sfsp.js';
 
 export interface SobreSFSP {
   v: 'sfsp-sobre-1';
@@ -37,7 +38,7 @@ function clave(compartido: Buffer, epk: Uint8Array, destino: Uint8Array): Buffer
 }
 
 export function cifrarPara(did: string, datos: Uint8Array | string, aad?: string): SobreSFSP {
-  const destino = x25519PublicaDesdeEd25519(publicaDeDidKey(did));
+  const destino = x25519PublicaDesdeEd25519(publicaDePersona(did));
   const { privateKey, publicKey } = generateKeyPairSync('x25519');
   const epk = deBase64url((publicKey.export({ format: 'jwk' }) as { x: string }).x);
   const k = clave(diffieHellman({ privateKey, publicKey: pubX(destino) }), epk, destino);

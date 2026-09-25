@@ -28,6 +28,7 @@ const CONTRATO = {
   CashVault: "SFSPCashVault",
   SettlementEngine: "SFSPSettlementEngine",
   MigrationRegistry: "SFSPMigrationRegistry",
+  DidRegistry: "SFSPDidRegistry",
 };
 
 describe("H15 · el ABI compilado coincide con spec/eventos.json", function () {

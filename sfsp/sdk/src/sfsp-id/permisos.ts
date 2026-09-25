@@ -11,7 +11,8 @@
 
 import { randomUUID } from 'node:crypto';
 import { ErrorSFSP, negar, permitir, type Resultado } from '../codigos.js';
-import { didKeyDe, type ParDeLlaves, publicaDeDidKey } from './did.js';
+import type { ParDeLlaves } from './did.js';
+import { didPersona, esDidPersona, fragmentoDePersona, publicaDePersona, type RedSFSP } from './did-sfsp.js';
 import { firmaValida, firmarJws, leerJws } from './jws.js';
 
 export const ACCIONES = ['leer', 'escribir', 'consultar'] as const;
@@ -39,14 +40,15 @@ export function concederPermiso(o: {
   proposito: string;
   vence: Date;
   ahora?: Date;
+  red?: RedSFSP;
 }): string {
   if (!o.acciones.length || o.acciones.some((a) => !ACCIONES.includes(a))) throw new ErrorSFSP('DENY_POLICY', 'acciones inválidas');
-  const iss = didKeyDe(o.titular.publica);
+  const iss = didPersona(o.titular.publica, o.red ?? '5550');
   const iat = Math.floor((o.ahora ?? new Date()).getTime() / 1000);
   const exp = Math.floor(o.vence.getTime() / 1000);
   if (exp <= iat) throw new ErrorSFSP('DENY_POLICY', 'un permiso tiene que vencer después de darse');
   const p: Permiso = { jti: `urn:uuid:${randomUUID()}`, iss, aud: o.app, protocolo: o.protocolo, acciones: [...new Set(o.acciones)], proposito: o.proposito, iat, exp };
-  return firmarJws(p, { typ: 'sfsp-permiso+jwt', kid: `${iss}#${iss.slice('did:key:'.length)}` }, o.titular);
+  return firmarJws(p, { typ: 'sfsp-permiso+jwt', kid: `${iss}#${fragmentoDePersona(iss)}` }, o.titular);
 }
 
 export function verificarPermiso(
@@ -60,10 +62,10 @@ export function verificarPermiso(
     return negar('DENY_POLICY', (e as Error).message);
   }
   const p = l.payload;
-  if (l.cabecera.typ !== 'sfsp-permiso+jwt' || !p?.iss?.startsWith('did:key:')) return negar('DENY_POLICY', 'no es un permiso');
+  if (l.cabecera.typ !== 'sfsp-permiso+jwt' || !p?.iss || !esDidPersona(p.iss)) return negar('DENY_POLICY', 'no es un permiso');
   let pub: Uint8Array;
   try {
-    pub = publicaDeDidKey(p.iss);
+    pub = publicaDePersona(p.iss);
   } catch (e) {
     return negar('DENY_POLICY', (e as Error).message);
   }
@@ -80,9 +82,9 @@ export function verificarPermiso(
 }
 
 /** La revocación también la firma la persona: nadie más puede quitarle un permiso que dio ella… ni dárselo. */
-export function revocarPermiso(titular: ParDeLlaves, jti: string, ahora?: Date): string {
-  const iss = didKeyDe(titular.publica);
-  return firmarJws({ iss, revoca: jti, iat: Math.floor((ahora ?? new Date()).getTime() / 1000) }, { typ: 'sfsp-revocacion+jwt', kid: `${iss}#${iss.slice('did:key:'.length)}` }, titular);
+export function revocarPermiso(titular: ParDeLlaves, jti: string, ahora?: Date, red: RedSFSP = '5550'): string {
+  const iss = didPersona(titular.publica, red);
+  return firmarJws({ iss, revoca: jti, iat: Math.floor((ahora ?? new Date()).getTime() / 1000) }, { typ: 'sfsp-revocacion+jwt', kid: `${iss}#${fragmentoDePersona(iss)}` }, titular);
 }
 
 /** Aplica una revocación solo si la firmó quien dio el permiso. Devuelve el jti revocado. */
@@ -90,6 +92,6 @@ export function aplicarRevocacion(revocacionJws: string, permisoJws: string): st
   const r = leerJws<{ iss: string; revoca: string }>(revocacionJws);
   const p = leerJws<Permiso>(permisoJws).payload;
   if (r.cabecera.typ !== 'sfsp-revocacion+jwt' || r.payload.revoca !== p.jti) throw new ErrorSFSP('DENY_POLICY', 'la revocación no es de ese permiso');
-  if (r.payload.iss !== p.iss || !firmaValida(r, publicaDeDidKey(p.iss))) throw new ErrorSFSP('DENY_AUTHORIZATION', 'solo el titular revoca su permiso');
+  if (r.payload.iss !== p.iss || !firmaValida(r, publicaDePersona(p.iss))) throw new ErrorSFSP('DENY_AUTHORIZATION', 'solo el titular revoca su permiso');
   return p.jti;
 }
