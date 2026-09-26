@@ -49,12 +49,12 @@ test('las decisiones de arquitectura ya adoptadas están afirmadas', () => {
   assert.equal(a['checkDigitCongelado'], false);
 });
 
-test('las veintitrés decisiones siguen pendientes y cada una dice qué bloquea', () => {
+test('las veintiocho decisiones siguen pendientes y cada una dice qué bloquea', () => {
   const archivo = cargarDecisiones(RUTA);
-  assert.equal(archivo.decisiones.length, 23, 'D00 a D22 (D22: capa Web5, SFSP-160)');
+  assert.equal(archivo.decisiones.length, 28, 'D00 a D27 (D22: capa Web5, SFSP-160; D23-D27: política de suministro, SFSP-410)');
 
   const sinCerrar = pendientes(archivo);
-  assert.equal(sinCerrar.length, 23, 'hoy no hay ninguna aprobada');
+  assert.equal(sinCerrar.length, 28, 'hoy no hay ninguna aprobada');
 
   for (const d of archivo.decisiones) {
     assert.match(d.id, /^D\d{2}$/);

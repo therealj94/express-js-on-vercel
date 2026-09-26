@@ -1,5 +1,7 @@
 # SFSP-400 · Monetary
 
+> **Enmienda SFSP-410 (propuesta, 26-sep-2026, pendiente D23 y D03):** para ORIGEN se adopta la alternativa **(b) de D03: bóveda sellada** (`SFSPNativeVault`). Todo el ORIGEN que no es de usuarios vive en la bóveda; liberar a un usuario es emitir y devolver a la bóveda es quemar. El circulante publicado es `génesis − bóveda − cuentas internas fuera de la bóveda`. No es respaldo ni cambia el suministro del génesis. Ver `spec/SFSP-410-SUPPLY-POLICY.md` §4 y ADR-015.
+
 | Campo | Valor |
 |---|---|
 | Serie | SFSP-400 · Monetary |

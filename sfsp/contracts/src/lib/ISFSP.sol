@@ -61,6 +61,12 @@ interface ISFSPGovernanceController {
     ///      del §12.1, no un identificador elegido por el llamador.
     function isAuthorizationApproved(bytes32 digest) external view returns (bool);
     function consumeAuthorization(bytes32 digest) external;
+    /// @dev Política de suministro (SFSP-410) · el cupo de emisión se fija con
+    ///      espera: el ejecutor necesita saber cuándo se propuso, con qué acción,
+    ///      y cuál es la espera del despliegue.
+    function authorizationProposedAt(bytes32 digest) external view returns (uint64);
+    function authorizationActionOf(bytes32 digest) external view returns (bytes32);
+    function timelockDelay() external view returns (uint64);
 }
 
 interface ISFSPRegulatedAsset {

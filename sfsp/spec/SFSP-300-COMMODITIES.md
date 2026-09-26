@@ -1,5 +1,7 @@
 # SFSP-300 · Commodities
 
+> **Enmienda SFSP-410 (propuesta, 26-sep-2026, pendiente D23):** se **anula el §0.2 del borrador v0.2** («acuñar antes, colocar sólo con metal») y se restablece la regla original §2.1 #6: **no hay suministro acuñado por adelantado**. AUKA y AGKA se acuñan sólo contra un lote `ATTESTED` libre y hacia el usuario que compra; hasta que exista el motor de reservas, sólo por orden de gobierno, sin cupo. El inventario preacuñado actual (55 M AUKA, 500 M AGKA) no se migra (D26). Ver `spec/SFSP-410-SUPPLY-POLICY.md`.
+
 | Campo | Valor |
 |---|---|
 | Serie | SFSP-300 · Commodities |

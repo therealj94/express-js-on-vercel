@@ -29,6 +29,7 @@ const CONTRATO = {
   SettlementEngine: "SFSPSettlementEngine",
   MigrationRegistry: "SFSPMigrationRegistry",
   DidRegistry: "SFSPDidRegistry",
+  NativeVault: "SFSPNativeVault",
 };
 
 describe("H15 · el ABI compilado coincide con spec/eventos.json", function () {

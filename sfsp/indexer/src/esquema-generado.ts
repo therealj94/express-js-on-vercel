@@ -5,7 +5,7 @@
 // La prueba 'esquema.test.ts' falla si este archivo y el JSON divergen.
 
 /** Version de la fuente unica desde la que se genero este modulo. */
-export const VERSION_ESPEC_EVENTOS = "draft-0.4";
+export const VERSION_ESPEC_EVENTOS = "draft-0.5";
 
 /** Un campo de un evento, con todo lo que el indexador necesita saber. */
 export interface CampoEventoGenerado {
@@ -36,7 +36,7 @@ export interface EventoGenerado {
   readonly camposDeAtribucion: readonly string[];
 }
 
-/** Los 35 eventos del §3, por su nombre canonico. */
+/** Los 44 eventos del §3, por su nombre canonico. */
 export type NombreEvento =
   | "AssetRegistered"
   | "PolicyUpdated"
@@ -72,7 +72,16 @@ export type NombreEvento =
   | "OrgDidKeyChanged"
   | "OrgDidAttestorChanged"
   | "OrgDidDocumentChanged"
-  | "OrgDidDeactivated";
+  | "OrgDidDeactivated"
+  | "InternalAccountFlagged"
+  | "MintBudgetSet"
+  | "MintBudgetRevoked"
+  | "MintOnDemand"
+  | "NativeAbsorbed"
+  | "NativeReleased"
+  | "ReleaseBudgetSet"
+  | "ReleaseBudgetRevoked"
+  | "VaultInternalAccountFlagged";
 
 /** Esquema completo por evento. Generado: editar el JSON, no esto. */
 export const ESQUEMA_EVENTOS: Readonly<Record<NombreEvento, EventoGenerado>> = {
@@ -681,6 +690,167 @@ export const ESQUEMA_EVENTOS: Readonly<Record<NombreEvento, EventoGenerado>> = {
     cantidades: [],
     camposDeAtribucion: [],
   },
+  InternalAccountFlagged: {
+    nombre: "InternalAccountFlagged",
+    emisor: "IssuanceController",
+    significado: "SFSP-410 · una cuenta queda marcada (o desmarcada) como interna de la organizacion; hacia ella no se acuna nunca.",
+    atribucion: "GLOBAL",
+    afectaSuministro: "NINGUNO",
+    implementadoEnContratos: true,
+    campos: [
+      { nombre: "account", tipo: "address", indexado: true, obligatorio: true, atribuyeActivo: false, esCantidad: false },
+      { nombre: "internalAccount", tipo: "bool", indexado: false, obligatorio: true, atribuyeActivo: false, esCantidad: false },
+      { nombre: "by", tipo: "address", indexado: true, obligatorio: true, atribuyeActivo: false, esCantidad: false },
+      { nombre: "reasonCode", tipo: "bytes32", indexado: false, obligatorio: true, atribuyeActivo: false, esCantidad: false },
+    ],
+    requeridos: ["account", "internalAccount", "by", "reasonCode"],
+    cantidades: [],
+    camposDeAtribucion: [],
+  },
+  MintBudgetSet: {
+    nombre: "MintBudgetSet",
+    emisor: "IssuanceController",
+    significado: "SFSP-410 · gobierno fijo, con doble control y espera, el cupo de emision bajo demanda de un activo. No crea unidades. Fija un limite, no autoriza unidades concretas: cada emision o liberacion dentro del cupo se cuenta por su propio evento.",
+    atribucion: "POR_ACTIVO",
+    afectaSuministro: "NINGUNO",
+    implementadoEnContratos: true,
+    campos: [
+      { nombre: "assetId", tipo: "bytes32", indexado: true, obligatorio: true, atribuyeActivo: true, esCantidad: false },
+      { nombre: "digest", tipo: "bytes32", indexado: true, obligatorio: true, atribuyeActivo: false, esCantidad: false },
+      { nombre: "perPeriod", tipo: "uint256", indexado: false, obligatorio: true, atribuyeActivo: false, esCantidad: true },
+      { nombre: "period", tipo: "uint64", indexado: false, obligatorio: true, atribuyeActivo: false, esCantidad: false },
+      { nombre: "maxPerOperation", tipo: "uint256", indexado: false, obligatorio: true, atribuyeActivo: false, esCantidad: true },
+      { nombre: "validUntil", tipo: "uint64", indexado: false, obligatorio: true, atribuyeActivo: false, esCantidad: false },
+      { nombre: "termsDocRoot", tipo: "bytes32", indexado: false, obligatorio: true, atribuyeActivo: false, esCantidad: false },
+    ],
+    requeridos: ["assetId", "digest", "perPeriod", "period", "maxPerOperation", "validUntil", "termsDocRoot"],
+    cantidades: ["perPeriod", "maxPerOperation"],
+    camposDeAtribucion: ["assetId"],
+  },
+  MintBudgetRevoked: {
+    nombre: "MintBudgetRevoked",
+    emisor: "IssuanceController",
+    significado: "SFSP-410 · se corto el cupo de emision de un activo.",
+    atribucion: "POR_ACTIVO",
+    afectaSuministro: "NINGUNO",
+    implementadoEnContratos: true,
+    campos: [
+      { nombre: "assetId", tipo: "bytes32", indexado: true, obligatorio: true, atribuyeActivo: true, esCantidad: false },
+      { nombre: "by", tipo: "address", indexado: true, obligatorio: true, atribuyeActivo: false, esCantidad: false },
+      { nombre: "reasonCode", tipo: "bytes32", indexado: false, obligatorio: true, atribuyeActivo: false, esCantidad: false },
+    ],
+    requeridos: ["assetId", "by", "reasonCode"],
+    cantidades: [],
+    camposDeAtribucion: ["assetId"],
+  },
+  MintOnDemand: {
+    nombre: "MintOnDemand",
+    emisor: "IssuanceController",
+    significado: "SFSP-410 · detalle de cupo de una emision bajo demanda. La creacion de unidades la cuenta SOLO el MintExecuted que se emite en la misma transaccion; este evento no se suma.",
+    atribucion: "POR_ACTIVO",
+    afectaSuministro: "NINGUNO",
+    implementadoEnContratos: true,
+    campos: [
+      { nombre: "assetId", tipo: "bytes32", indexado: true, obligatorio: true, atribuyeActivo: true, esCantidad: false },
+      { nombre: "destination", tipo: "address", indexado: true, obligatorio: true, atribuyeActivo: false, esCantidad: false },
+      { nombre: "paymentRef", tipo: "bytes32", indexado: true, obligatorio: true, atribuyeActivo: false, esCantidad: false },
+      { nombre: "amount", tipo: "uint256", indexado: false, obligatorio: true, atribuyeActivo: false, esCantidad: true },
+      { nombre: "usedInPeriod", tipo: "uint256", indexado: false, obligatorio: true, atribuyeActivo: false, esCantidad: false },
+      { nombre: "periodIndex", tipo: "uint64", indexado: false, obligatorio: true, atribuyeActivo: false, esCantidad: false },
+    ],
+    requeridos: ["assetId", "destination", "paymentRef", "amount", "usedInPeriod", "periodIndex"],
+    cantidades: ["amount"],
+    camposDeAtribucion: ["assetId"],
+  },
+  NativeAbsorbed: {
+    nombre: "NativeAbsorbed",
+    emisor: "NativeVault",
+    significado: "SFSP-410 §4 · ORIGEN nativo devuelto a la boveda sellada: sale del circulante. El suministro nativo del genesis no cambia.",
+    atribucion: "POR_ACTIVO",
+    afectaSuministro: "NINGUNO",
+    implementadoEnContratos: true,
+    campos: [
+      { nombre: "assetId", tipo: "bytes32", indexado: true, obligatorio: true, atribuyeActivo: true, esCantidad: false },
+      { nombre: "from", tipo: "address", indexado: true, obligatorio: true, atribuyeActivo: false, esCantidad: false },
+      { nombre: "reasonCode", tipo: "bytes32", indexado: true, obligatorio: true, atribuyeActivo: false, esCantidad: false },
+      { nombre: "amount", tipo: "uint256", indexado: false, obligatorio: true, atribuyeActivo: false, esCantidad: true },
+    ],
+    requeridos: ["assetId", "from", "reasonCode", "amount"],
+    cantidades: ["amount"],
+    camposDeAtribucion: ["assetId"],
+  },
+  NativeReleased: {
+    nombre: "NativeReleased",
+    emisor: "NativeVault",
+    significado: "SFSP-410 §4 · ORIGEN nativo liberado de la boveda a un usuario (por orden de gobierno o dentro del cupo): entra al circulante. El suministro nativo del genesis no cambia.",
+    atribucion: "POR_ACTIVO",
+    afectaSuministro: "NINGUNO",
+    implementadoEnContratos: true,
+    campos: [
+      { nombre: "assetId", tipo: "bytes32", indexado: true, obligatorio: true, atribuyeActivo: true, esCantidad: false },
+      { nombre: "destination", tipo: "address", indexado: true, obligatorio: true, atribuyeActivo: false, esCantidad: false },
+      { nombre: "operationId", tipo: "bytes32", indexado: true, obligatorio: true, atribuyeActivo: false, esCantidad: false },
+      { nombre: "amount", tipo: "uint256", indexado: false, obligatorio: true, atribuyeActivo: false, esCantidad: true },
+      { nombre: "route", tipo: "bytes32", indexado: false, obligatorio: true, atribuyeActivo: false, esCantidad: false },
+      { nombre: "evidenceRoot", tipo: "bytes32", indexado: false, obligatorio: true, atribuyeActivo: false, esCantidad: false },
+    ],
+    requeridos: ["assetId", "destination", "operationId", "amount", "route", "evidenceRoot"],
+    cantidades: ["amount"],
+    camposDeAtribucion: ["assetId"],
+  },
+  ReleaseBudgetSet: {
+    nombre: "ReleaseBudgetSet",
+    emisor: "NativeVault",
+    significado: "SFSP-410 §4 · gobierno fijo con doble control y espera el cupo de liberacion de la boveda nativa. Fija un limite, no autoriza unidades concretas: cada emision o liberacion dentro del cupo se cuenta por su propio evento.",
+    atribucion: "POR_ACTIVO",
+    afectaSuministro: "NINGUNO",
+    implementadoEnContratos: true,
+    campos: [
+      { nombre: "assetId", tipo: "bytes32", indexado: true, obligatorio: true, atribuyeActivo: true, esCantidad: false },
+      { nombre: "digest", tipo: "bytes32", indexado: true, obligatorio: true, atribuyeActivo: false, esCantidad: false },
+      { nombre: "perPeriod", tipo: "uint256", indexado: false, obligatorio: true, atribuyeActivo: false, esCantidad: true },
+      { nombre: "period", tipo: "uint64", indexado: false, obligatorio: true, atribuyeActivo: false, esCantidad: false },
+      { nombre: "maxPerOperation", tipo: "uint256", indexado: false, obligatorio: true, atribuyeActivo: false, esCantidad: true },
+      { nombre: "validUntil", tipo: "uint64", indexado: false, obligatorio: true, atribuyeActivo: false, esCantidad: false },
+      { nombre: "termsDocRoot", tipo: "bytes32", indexado: false, obligatorio: true, atribuyeActivo: false, esCantidad: false },
+    ],
+    requeridos: ["assetId", "digest", "perPeriod", "period", "maxPerOperation", "validUntil", "termsDocRoot"],
+    cantidades: ["perPeriod", "maxPerOperation"],
+    camposDeAtribucion: ["assetId"],
+  },
+  ReleaseBudgetRevoked: {
+    nombre: "ReleaseBudgetRevoked",
+    emisor: "NativeVault",
+    significado: "SFSP-410 §4 · se corto el cupo de liberacion de la boveda nativa.",
+    atribucion: "POR_ACTIVO",
+    afectaSuministro: "NINGUNO",
+    implementadoEnContratos: true,
+    campos: [
+      { nombre: "assetId", tipo: "bytes32", indexado: true, obligatorio: true, atribuyeActivo: true, esCantidad: false },
+      { nombre: "by", tipo: "address", indexado: true, obligatorio: true, atribuyeActivo: false, esCantidad: false },
+      { nombre: "reasonCode", tipo: "bytes32", indexado: false, obligatorio: true, atribuyeActivo: false, esCantidad: false },
+    ],
+    requeridos: ["assetId", "by", "reasonCode"],
+    cantidades: [],
+    camposDeAtribucion: ["assetId"],
+  },
+  VaultInternalAccountFlagged: {
+    nombre: "VaultInternalAccountFlagged",
+    emisor: "NativeVault",
+    significado: "SFSP-410 §4 · una cuenta queda marcada como interna para la boveda: su saldo nativo cuenta fuera del circulante y no puede recibir liberaciones.",
+    atribucion: "GLOBAL",
+    afectaSuministro: "NINGUNO",
+    implementadoEnContratos: true,
+    campos: [
+      { nombre: "account", tipo: "address", indexado: true, obligatorio: true, atribuyeActivo: false, esCantidad: false },
+      { nombre: "internalAccount", tipo: "bool", indexado: false, obligatorio: true, atribuyeActivo: false, esCantidad: false },
+      { nombre: "by", tipo: "address", indexado: true, obligatorio: true, atribuyeActivo: false, esCantidad: false },
+      { nombre: "reasonCode", tipo: "bytes32", indexado: false, obligatorio: true, atribuyeActivo: false, esCantidad: false },
+    ],
+    requeridos: ["account", "internalAccount", "by", "reasonCode"],
+    cantidades: [],
+    camposDeAtribucion: [],
+  },
 };
 
 /** Nombre de evento -> emisor declarado. Compatibilidad con el §3. */
@@ -720,6 +890,15 @@ export const EVENTOS_CONOCIDOS: Readonly<Record<NombreEvento, string>> = {
   OrgDidAttestorChanged: "DidRegistry",
   OrgDidDocumentChanged: "DidRegistry",
   OrgDidDeactivated: "DidRegistry",
+  InternalAccountFlagged: "IssuanceController",
+  MintBudgetSet: "IssuanceController",
+  MintBudgetRevoked: "IssuanceController",
+  MintOnDemand: "IssuanceController",
+  NativeAbsorbed: "NativeVault",
+  NativeReleased: "NativeVault",
+  ReleaseBudgetSet: "NativeVault",
+  ReleaseBudgetRevoked: "NativeVault",
+  VaultInternalAccountFlagged: "NativeVault",
 };
 
 /**

@@ -1,5 +1,7 @@
 # SFSP-800 · Governance
 
+> **Enmienda SFSP-410 (propuesta, 26-sep-2026, pendiente D23 y D07):** acciones nuevas `SET_MINT_BUDGET`, `SET_RELEASE_BUDGET` (doble control **y espera**) y `RELEASE_NATIVE` (doble control). Cortar un cupo lo puede hacer un solo firmante; desmarcar una cuenta interna sólo la Junta. El ISSUER de servicio ejecuta dentro del cupo y no aprueba nada. Tabla completa en `spec/SFSP-410-SUPPLY-POLICY.md` §5.
+
 | Campo | Valor |
 |---|---|
 | Serie | SFSP-800 · Governance |

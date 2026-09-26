@@ -80,6 +80,41 @@ contract SFSPIssuanceController is SFSPAccessControl, SFSPEIP712, SFSPReentrancy
     error AuthorizationActionMismatch(bytes32 expected, bytes32 got);
     error PayloadDoesNotMatchEnvelope(bytes32 reason);
 
+    // ---- SFSP-410 · política de suministro "circulante = en manos de usuarios"
+    error MintToInternalAccount(address destination);
+    error InternalAccountUnflagNeedsBoard(address account);
+    error BudgetNotSet(bytes32 assetId, uint8 code);
+    error BudgetExpired(bytes32 assetId, uint64 validUntil);
+    error BudgetPeriodExceeded(bytes32 assetId, uint256 used, uint256 requested, uint256 perPeriod);
+    error BudgetOperationTooLarge(bytes32 assetId, uint256 requested, uint256 maxPerOperation);
+    error BudgetTermsMismatch(bytes32 evidenceRoot, bytes32 recomputed);
+    error BudgetWaitPending(bytes32 digest, uint64 readyAt);
+    error BudgetInvalid(bytes32 reason);
+    error PaymentReferenceRequired();
+
+    event InternalAccountFlagged(address indexed account, bool internalAccount, address indexed by, bytes32 reasonCode);
+    event MintBudgetSet(
+        bytes32 indexed assetId,
+        bytes32 indexed digest,
+        uint256 perPeriod,
+        uint64 period,
+        uint256 maxPerOperation,
+        uint64 validUntil,
+        bytes32 termsDocRoot
+    );
+    event MintBudgetRevoked(bytes32 indexed assetId, address indexed by, bytes32 reasonCode);
+    /// @dev Emisión bajo demanda dentro del cupo. `paymentRef` es la referencia
+    ///      del pago del usuario (hash del recibo): va como operationId y no se
+    ///      puede repetir, así que un mismo pago no acuña dos veces.
+    event MintOnDemand(
+        bytes32 indexed assetId,
+        address indexed destination,
+        bytes32 indexed paymentRef,
+        uint256 amount,
+        uint256 usedInPeriod,
+        uint64 periodIndex
+    );
+
     struct InstrumentLimits {
         bool configured;          // sin fijar => BLOCKED_DECISION, no un número por defecto
         uint256 outstandingLimit; // cap de STOCK
@@ -205,6 +240,190 @@ contract SFSPIssuanceController is SFSPAccessControl, SFSPEIP712, SFSPReentrancy
         return _outstanding(assetId);
     }
 
+    // ------------------------------------------------ SFSP-410 · cuentas internas
+
+    /// @dev Cuentas de la propia organización (tesorería, operación, liquidez,
+    ///      ejecutores). Con la política de SFSP-410 no se acuña NUNCA hacia una
+    ///      de ellas: acuñar a tesorería es fabricar inventario, y el circulante
+    ///      tiene que ser exactamente lo que está en manos de usuarios.
+    mapping(address => bool) private _internalAccount;
+
+    function isInternalAccount(address account) external view returns (bool) {
+        return _internalAccount[account];
+    }
+
+    /// @notice Marca o desmarca una cuenta como interna.
+    /// @dev Marcar RESTRINGE, así que basta TECH_OPS o la Junta. Desmarcar
+    ///      AMPLÍA lo que se puede acuñar, así que sólo la Junta.
+    function setInternalAccount(address account, bool internalAccount, bytes32 reasonCode) external {
+        require(account != address(0), "SFSP: account=0");
+        require(reasonCode != bytes32(0), "SFSP: motivo requerido");
+        if (internalAccount) {
+            if (!hasRole(TECH_OPS, msg.sender) && !hasRole(DBNX_BOARD, msg.sender)) {
+                revert Unauthorized(TECH_OPS, msg.sender);
+            }
+        } else if (!hasRole(DBNX_BOARD, msg.sender)) {
+            revert InternalAccountUnflagNeedsBoard(account);
+        }
+        _internalAccount[account] = internalAccount;
+        emit InternalAccountFlagged(account, internalAccount, msg.sender, reasonCode);
+    }
+
+    // ------------------------------------------------ SFSP-410 · cupo de emisión
+
+    bytes32 public constant ACTION_SET_MINT_BUDGET = bytes32("SET_MINT_BUDGET");
+    bytes32 public constant BUDGET_TERMS_TAG = keccak256("SFSP.MINT_BUDGET.TERMS.v1");
+
+    /// @dev Cupo pre-aprobado por gobierno para emitir BAJO DEMANDA: cuando el
+    ///      pago de un usuario se confirma, el emisor acuña exactamente eso al
+    ///      usuario, sin una orden de gobierno por cada compra, pero nunca más de
+    ///      `perPeriod` por periodo ni más de `maxPerOperation` por operación, y
+    ///      siempre bajo los topes de stock y acumulado del instrumento.
+    struct MintBudget {
+        uint256 perPeriod;
+        uint64 period;
+        uint256 maxPerOperation;
+        uint64 validUntil;
+        uint64 periodIndex;
+        uint256 usedInPeriod;
+    }
+
+    mapping(bytes32 => MintBudget) private _budget;
+
+    function mintBudgetOf(bytes32 assetId) external view returns (MintBudget memory) {
+        return _budget[assetId];
+    }
+
+    /// @notice Lo que queda del cupo en el periodo en curso (0 si no hay cupo vigente).
+    function budgetRemaining(bytes32 assetId) external view returns (uint256) {
+        MintBudget memory b = _budget[assetId];
+        if (b.period == 0 || block.timestamp >= b.validUntil) return 0;
+        uint64 idx = uint64(block.timestamp / b.period);
+        uint256 used = idx == b.periodIndex ? b.usedInPeriod : 0;
+        return used >= b.perPeriod ? 0 : b.perPeriod - used;
+    }
+
+    /// @notice Huella de los términos del cupo que no caben en el payload común.
+    /// @dev El payload del §12.1 tiene dos montos (`amount` = por periodo,
+    ///      `amountSecondary` = máximo por operación). La duración del periodo, la
+    ///      vigencia y el documento de respaldo van comprometidos en `evidenceRoot`
+    ///      con esta huella, así que entran en el digest que gobierno aprueba.
+    function budgetTermsRoot(uint64 period, uint64 validUntil, bytes32 termsDocRoot) public pure returns (bytes32) {
+        return keccak256(abi.encode(BUDGET_TERMS_TAG, period, validUntil, termsDocRoot));
+    }
+
+    /// @notice Fija el cupo de un activo con doble control Y espera.
+    /// @dev Cambiar un cupo es cambiar cuánto puede crear el sistema sin volver a
+    ///      preguntar: se exige la acción SET_MINT_BUDGET, quórum, la espera del
+    ///      timelock contada desde la propuesta, y el digest se gasta.
+    function setMintBudget(
+        SFSPAuthorization.Payload calldata p,
+        bytes32 approvedDigest,
+        uint64 period,
+        uint64 validUntil,
+        bytes32 termsDocRoot
+    ) external nonReentrant {
+        if (!hasRole(TECH_OPS, msg.sender) && !hasRole(DBNX_BOARD, msg.sender)) revert Unauthorized(TECH_OPS, msg.sender);
+        if (p.action != ACTION_SET_MINT_BUDGET) revert AuthorizationActionMismatch(ACTION_SET_MINT_BUDGET, p.action);
+        if (p.origin != address(0) || p.destination != address(0)) revert BudgetInvalid(bytes32("PARTIES"));
+        if (p.amount == 0 || p.amountSecondary == 0 || p.amountSecondary > p.amount) revert BudgetInvalid(bytes32("AMOUNTS"));
+        if (period == 0 || validUntil <= block.timestamp) revert BudgetInvalid(bytes32("WINDOW"));
+        bytes32 terms = budgetTermsRoot(period, validUntil, termsDocRoot);
+        if (p.evidenceRoot != terms) revert BudgetTermsMismatch(p.evidenceRoot, terms);
+        if (!_limits[p.assetId].configured) revert LimitsNotFixed(p.assetId, SFSPCodes.BLOCKED_DECISION);
+
+        if (governance.authorizationActionOf(approvedDigest) != ACTION_SET_MINT_BUDGET) {
+            revert AuthorizationActionMismatch(ACTION_SET_MINT_BUDGET, governance.authorizationActionOf(approvedDigest));
+        }
+        if (!governance.isAuthorizationApproved(approvedDigest)) revert MintNotAuthorized(approvedDigest);
+        uint64 readyAt = governance.authorizationProposedAt(approvedDigest) + governance.timelockDelay();
+        if (block.timestamp < readyAt) revert BudgetWaitPending(approvedDigest, readyAt);
+
+        SFSPAuthorization.Payload memory m = p;
+        SFSPAuthorization.authorize(m, approvedDigest);
+        governance.consumeAuthorization(approvedDigest);
+
+        _budget[p.assetId] = MintBudget({
+            perPeriod: p.amount,
+            period: period,
+            maxPerOperation: p.amountSecondary,
+            validUntil: validUntil,
+            periodIndex: uint64(block.timestamp / period),
+            usedInPeriod: 0
+        });
+        emit MintBudgetSet(p.assetId, approvedDigest, p.amount, period, p.amountSecondary, validUntil, termsDocRoot);
+    }
+
+    /// @notice Revoca el cupo al instante. Reducir poder no necesita quórum:
+    ///      cualquier firmante de gobierno, TECH_OPS o la Junta puede cortarlo.
+    function revokeMintBudget(bytes32 assetId, bytes32 reasonCode) external {
+        if (!hasRole(TECH_OPS, msg.sender) && !hasRole(DBNX_BOARD, msg.sender) && !governance.isSigner(msg.sender)) {
+            revert Unauthorized(TECH_OPS, msg.sender);
+        }
+        require(reasonCode != bytes32(0), "SFSP: motivo requerido");
+        delete _budget[assetId];
+        emit MintBudgetRevoked(assetId, msg.sender, reasonCode);
+    }
+
+    /// @notice Emisión bajo demanda: acuña al USUARIO exactamente lo que pagó.
+    /// @param paymentRef hash del recibo del pago confirmado; es el operationId
+    ///        y no se puede repetir.
+    /// @param evidenceRoot raíz de la evidencia del pago (recibo, tx de USDT, etc.).
+    function mintOnDemand(bytes32 assetId, address destination, uint256 amount, bytes32 paymentRef, bytes32 evidenceRoot)
+        external
+        onlyRole(ISSUER)
+        nonReentrant
+    {
+        if (governance.isPaused()) revert Paused();
+        if (paymentRef == bytes32(0)) revert PaymentReferenceRequired();
+        if (_usedOperationId[paymentRef]) revert OperationReplay(paymentRef);
+        _usedOperationId[paymentRef] = true;
+        if (amount == 0) revert BudgetInvalid(bytes32("AMOUNT_ZERO"));
+
+        MintBudget storage b = _budget[assetId];
+        if (b.period == 0) revert BudgetNotSet(assetId, SFSPCodes.BLOCKED_DECISION);
+        if (block.timestamp >= b.validUntil) revert BudgetExpired(assetId, b.validUntil);
+        if (amount > b.maxPerOperation) revert BudgetOperationTooLarge(assetId, amount, b.maxPerOperation);
+        uint64 idx = uint64(block.timestamp / b.period);
+        uint256 used = idx == b.periodIndex ? b.usedInPeriod : 0;
+        if (used + amount > b.perPeriod) revert BudgetPeriodExceeded(assetId, used, amount, b.perPeriod);
+
+        _applyInstrumentCaps(assetId, amount);
+        b.periodIndex = idx;
+        b.usedInPeriod = used + amount;
+
+        _mintTo(assetId, destination, amount, paymentRef);
+        emit MintExecuted(assetId, bytes32("BUDGET"), destination, amount, paymentRef, evidenceRoot);
+        emit MintOnDemand(assetId, destination, paymentRef, amount, used + amount, idx);
+    }
+
+    /// @dev Topes 2 y 3 del instrumento, comunes a los dos caminos de emisión.
+    function _applyInstrumentCaps(bytes32 assetId, uint256 amount) internal {
+        InstrumentLimits memory lim = _limits[assetId];
+        if (!lim.configured) revert LimitsNotFixed(assetId, SFSPCodes.BLOCKED_DECISION);
+        uint256 outstanding = _outstanding(assetId);
+        uint256 reserved = _reservedIssuance[assetId];
+        if (outstanding + reserved + amount > lim.outstandingLimit) {
+            revert OutstandingLimitExceeded(outstanding, reserved, amount, lim.outstandingLimit);
+        }
+        uint256 issued = _cumulativeIssued[assetId];
+        if (issued + amount > lim.cumulativeCap) {
+            revert CumulativeIssuanceCapExceeded(issued, amount, lim.cumulativeCap);
+        }
+        _cumulativeIssued[assetId] = issued + amount;
+    }
+
+    /// @dev Único punto que llama al activo. Aquí vive la regla de SFSP-410: no
+    ///      se acuña hacia una cuenta interna, venga la emisión de donde venga.
+    function _mintTo(bytes32 assetId, address destination, uint256 amount, bytes32 operationId) internal {
+        if (_internalAccount[destination]) revert MintToInternalAccount(destination);
+        address assetContract = _assetContract[assetId];
+        require(assetContract != address(0), "SFSP: activo no registrado");
+        bytes32 declared = ISFSPRegulatedAsset(assetContract).assetId();
+        if (declared != assetId) revert AssetMismatch(assetId, declared);
+        ISFSPRegulatedAsset(assetContract).mintFromIssuance(destination, amount, operationId);
+    }
+
     // ------------------------------------------------------------- emisión
 
     /// @dev Se parte en dos codificaciones para no agotar la pila del EVM Paris.
@@ -293,34 +512,14 @@ contract SFSPIssuanceController is SFSPAccessControl, SFSPEIP712, SFSPReentrancy
             revert AuthorizationAmountExceeded(a.authorizationId, minted, amount, a.amount);
         }
 
-        InstrumentLimits memory lim = _limits[a.assetId];
-        if (!lim.configured) revert LimitsNotFixed(a.assetId, SFSPCodes.BLOCKED_DECISION);
-
-        // --- tope 2: stock. El inventario de tesorería ya acuñado CUENTA aquí.
-        uint256 outstanding = _outstanding(a.assetId);
-        uint256 reserved = _reservedIssuance[a.assetId];
-        if (outstanding + reserved + amount > lim.outstandingLimit) {
-            revert OutstandingLimitExceeded(outstanding, reserved, amount, lim.outstandingLimit);
-        }
-
-        // --- tope 3: flujo acumulado. Quemar NO lo reduce: quemar no renueva
-        //     una autorización ni devuelve capacidad de emisión.
-        uint256 issued = _cumulativeIssued[a.assetId];
-        if (issued + amount > lim.cumulativeCap) {
-            revert CumulativeIssuanceCapExceeded(issued, amount, lim.cumulativeCap);
-        }
-
-        // Efectos antes de la interacción (checks-effects-interactions).
+        // --- topes 2 (stock; el inventario de tesorería ya acuñado CUENTA) y
+        //     3 (flujo acumulado; quemar NO lo reduce). Efectos incluidos.
+        _applyInstrumentCaps(a.assetId, amount);
         _mintedUnderAuth[a.authorizationId] = minted + amount;
-        _cumulativeIssued[a.assetId] = issued + amount;
     }
 
     function _executeMint(SignedAuthorization calldata a, uint256 amount, bytes32 operationId) internal {
-        address assetContract = _assetContract[a.assetId];
-        require(assetContract != address(0), "SFSP: activo no registrado");
-        bytes32 declared = ISFSPRegulatedAsset(assetContract).assetId();
-        if (declared != a.assetId) revert AssetMismatch(a.assetId, declared);
-        ISFSPRegulatedAsset(assetContract).mintFromIssuance(a.destination, amount, operationId);
+        _mintTo(a.assetId, a.destination, amount, operationId);
         emit MintExecuted(a.assetId, a.authorizationId, a.destination, amount, operationId, a.evidenceRoot);
     }
 

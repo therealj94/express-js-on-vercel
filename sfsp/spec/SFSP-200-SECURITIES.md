@@ -1,5 +1,7 @@
 # SFSP-200 · Securities
 
+> **Enmienda SFSP-410 (propuesta, 26-sep-2026, pendiente D23):** el 49 % que retiene el emisor en la colocación 51/49 es **supply autorizado, no acuñado**: se acuña al colocarse, al inversor, y nunca hacia el emisor ni hacia una cuenta interna (R1). Con emisión y quema continuas, el tope que gobierna el día a día es el de stock; el acumulado queda como techo de vida del instrumento (D24). Ver `spec/SFSP-410-SUPPLY-POLICY.md`.
+
 | Campo | Valor |
 |---|---|
 | Serie | SFSP-200 · Securities |

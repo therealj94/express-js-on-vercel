@@ -44,12 +44,14 @@ const DEL_TRES = ['AssetRegistered','PolicyUpdated','SupplyAuthorized','MintExec
 const DEL_V02 = ['PassportUpdated','AssetStatusChanged','SupplyExpansionDeclared','SplitExecuted','IdentityLinkChanged','EligibilityRecorded','ExposureLimitRecorded','AcquirerDeclarationRecorded','CoveragePublished','LicenseStatusChanged','ModuleAvailabilityChanged','CountryStatusChanged','NetworkPermissionChanged','ConciliationRecorded'];
 // Los seis del registro did:sfsp de organizaciones (SFSP-160).
 const DEL_160 = ['OrgDidRegistered','OrgDidControllerChanged','OrgDidKeyChanged','OrgDidAttestorChanged','OrgDidDocumentChanged','OrgDidDeactivated'];
+// SFSP-410 · política de suministro: cupo de emisión, cuentas internas y bóveda nativa.
+const DEL_410 = ['InternalAccountFlagged', 'MintBudgetSet', 'MintBudgetRevoked', 'MintOnDemand', 'NativeAbsorbed', 'NativeReleased', 'ReleaseBudgetSet', 'ReleaseBudgetRevoked', 'VaultInternalAccountFlagged'];
 
-test('los quince eventos del §3, los catorce del v0.2 y los seis de SFSP-160 estan en la fuente unica, con su emisor', () => {
+test('los quince eventos del §3, los catorce del v0.2 los seis de SFSP-160 y los nueve de SFSP-410 estan en la fuente unica, con su emisor', () => {
   const nombres = espec.eventos.map((e) => e.nombre);
-  for (const n of [...DEL_TRES, ...DEL_V02, ...DEL_160]) assert.ok(nombres.includes(n), 'falta ' + n);
-  assert.equal(espec.eventos.length, DEL_TRES.length + DEL_V02.length + DEL_160.length);
-  assert.equal(Object.keys(ESQUEMA_EVENTOS).length, DEL_TRES.length + DEL_V02.length + DEL_160.length);
+  for (const n of [...DEL_TRES, ...DEL_V02, ...DEL_160, ...DEL_410]) assert.ok(nombres.includes(n), 'falta ' + n);
+  assert.equal(espec.eventos.length, DEL_TRES.length + DEL_V02.length + DEL_160.length + DEL_410.length);
+  assert.equal(Object.keys(ESQUEMA_EVENTOS).length, DEL_TRES.length + DEL_V02.length + DEL_160.length + DEL_410.length);
   // Los del v0.2 todavia no tienen contrato: si alguno dijera lo contrario, la
   // prueba H15 de contracts/ exigiria un ABI que no existe.
   for (const e of espec.eventos) if (DEL_V02.includes(e.nombre)) assert.equal(e.implementadoEnContratos, false, e.nombre);

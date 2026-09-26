@@ -293,6 +293,14 @@ contract SFSPGovernanceController is SFSPAccessControl {
         return _contentAuth[digest].proposedAt;
     }
 
+    /// @notice Acción con la que se propuso un digest; `0` si no existe.
+    /// @dev SFSP-410 · un ejecutor que no es este contrato también tiene que
+    ///      poder exigir que lo aprobado lo fuera CON SU acción: un digest
+    ///      aprobado como MINT no puede gastarse para fijar un cupo.
+    function authorizationActionOf(bytes32 digest) external view returns (bytes32) {
+        return _contentAuth[digest].action;
+    }
+
     function _requireAuthorizationApproved(bytes32 digest, bytes32 expectedAction) internal view {
         ContentAuthorization storage a = _contentAuth[digest];
         if (a.proposedAt == 0) revert AuthorizationUnknown(digest);

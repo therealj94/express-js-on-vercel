@@ -139,6 +139,12 @@ nombra el archivo. **P11** sigue abierto: nadie de fuera las ha ejecutado.
 | I-60 | Una autorización compromete el **contenido** de lo que autoriza y se consume una sola vez. | Autorizar por `operationId`, por monto, o reusar una aprobación. | `contracts/src/lib/SFSPAuthorization.sol`, `sdk/src/autorizacion.ts` | lote **L1** en curso · hallazgos **H01, H02, H05, H06, H18, H19** |
 | I-61 | Un derecho de migración no se puede reclamar dos veces, ni por otra migración. | Un doble claim por nonce, por nullifier, o abriendo otro dominio con otro `migrationId`. | `SFSPMigrationRegistry.sol` | `test/07-migration.js` · **H04 abierto**: la unicidad global por posición no está |
 | I-62 | Toda acción crítica exige doble control, no sólo la transferencia forzada. | Una ruta crítica con un solo rol, pausa y quema incluidas. | `SFSPGovernanceController.sol` | **SIN PRUEBA** · punto **P03** |
+| I-79 | Ninguna emisión llega a una cuenta interna, ni por orden de gobierno ni por cupo (SFSP-410 R1). | Acuñar hacia tesorería u operación por cualquier ruta. | `SFSPIssuanceController.sol` | `test/16-politica-suministro.js` |
+| I-80 | Un cupo de emisión sólo se fija con su acción, quórum, espera y consumo único; cambiar un término tras aprobar invalida la aprobación. | Fijar un cupo con un digest de otra acción, antes de la espera, o con otro periodo. | `SFSPIssuanceController.sol`, `SFSPNativeVault.sol` | `test/16-politica-suministro.js`, `test/17-boveda-nativa.js` |
+| I-81 | Dentro del cupo: máximo por operación, máximo por periodo, un pago no emite dos veces, y los topes del instrumento siguen mandando. | Emitir por encima de cualquiera de los cuatro. | `SFSPIssuanceController.sol` | `test/16-politica-suministro.js` |
+| I-82 | Tras emitir bajo demanda y quemar al devolver, `totalSupply` = suma de saldos de usuarios. | Una unidad acuñada que no esté en manos de un usuario. | `SFSPIssuanceController.sol`, `SFSPRegulatedAsset.sol` | `test/16-politica-suministro.js` |
+| I-83 | La bóveda nativa sólo paga por `release` (quórum) o `releaseOnDemand` (cupo), nunca a una cuenta interna ni a un destino no elegible, y no tiene retiro de administrador. | Una tercera salida, o un pago a una cuenta interna. | `SFSPNativeVault.sol` | `test/17-boveda-nativa.js` |
+| I-84 | `circulating()` = génesis − bóveda − cuentas internas fuera de la bóveda. | Un circulante que no se pueda recalcular con lecturas de saldo. | `SFSPNativeVault.sol` | `test/17-boveda-nativa.js` |
 
 ## 9 · Eventos e indexador
 
@@ -183,11 +189,11 @@ vigilancia**, que no es lo mismo y tampoco es aceptable.
 
 ## 12 · Recuento
 
-Son **78 invariantes**, I-01 a I-78.
+Son **84 invariantes**, I-01 a I-84 (I-79 a I-84: política de suministro, SFSP-410).
 
 | Estado | Cuántas | Cuáles |
 |---|---|---|
-| Con prueba que la fija | 51 | el resto |
+| Con prueba que la fija | 57 | el resto |
 | Con prueba **parcial** | 9 | I-20 y I-34 (probadas en un proceso, no en concurrencia); I-59, I-60, I-61, I-63, I-65, I-66, I-67 (hallazgo abierto o lote en curso) |
 | **SIN PRUEBA** | 16 | I-05, I-06, I-10, I-11, I-12, I-21, I-22, I-30, I-31, I-37, I-45, I-50, I-51, I-62, I-77, I-78 |
 | **NO_COMPROBADA** | 2 | I-19 y I-76: existe una comprobación y declara que no pudo comprobarlo |
