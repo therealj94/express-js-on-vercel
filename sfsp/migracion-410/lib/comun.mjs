@@ -57,6 +57,26 @@ export async function rpc(method, params) {
   }
 }
 
+/** Lote JSON-RPC (misma lista blanca). `llamadas` = [[método, params], …]; devuelve los `result` (null si falló). */
+export async function rpcLote(llamadas) {
+  for (const [m] of llamadas) if (!METODOS_LECTURA.has(m)) throw new Error(`método no permitido (sólo lectura): ${m}`);
+  for (let intento = 1; ; intento++) {
+    try {
+      const r = await fetch(RPC, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(llamadas.map(([method, params], i) => ({ jsonrpc: "2.0", id: i, method, params }))),
+      });
+      const j = await r.json();
+      const porId = new Map(j.map((x) => [x.id, x]));
+      return llamadas.map((_, i) => (porId.get(i) && !porId.get(i).error ? porId.get(i).result : null));
+    } catch (e) {
+      if (intento >= 4) throw e;
+      await new Promise((ok) => setTimeout(ok, 400 * intento));
+    }
+  }
+}
+
 export async function bloqueFijo(bloque) {
   const tag = bloque ? "0x" + BigInt(bloque).toString(16) : "latest";
   const b = await rpc("eth_getBlockByNumber", [tag, false]);

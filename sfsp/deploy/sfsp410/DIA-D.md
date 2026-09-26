@@ -33,14 +33,15 @@ distinta de quien ejecuta.
 - [ ] Acceso de sólo lectura a Veta, Ordenex y Genesis ID (variables en la configuración del entorno, nunca en el chat). 26-sep:
   - **Genesis ID**: no se leyó. Sacar sus credenciales de Render no está autorizado para el agente. Hace falta una variable de sólo lectura propia.
   - **Veta**: el proxy del entorno inyecta una credencial AWS en `vetawallet.com` y responde 502. Hay que corregir esa regla.
-- [x] Resolver las posiciones de ONDK sin dirección: **139/139 claves resueltas** (`migracion-410/censo-ondk-5550.mjs`).
-  - Saldos de la 5550 a la fecha, bloque 273.468. De la 8532 sólo se usan las direcciones, como diccionario, nunca los saldos.
-  - Queda un **residuo de 804,5 ONDK** en claves del génesis sin titular identificado. Ninguna de las 78 direcciones con actividad en la 5550 lo tiene. Candidatos: Veta y Genesis ID.
+- [x] Resolver las posiciones sin dirección: **todas las claves resueltas en los 46 tokens con emisión** de la 5550 (`migracion-410/censo-tokens-5550.mjs`).
+  - Saldos de la 5550 a la fecha, bloque 273.508. De la 8532 sólo se usan las direcciones, como diccionario, nunca los saldos.
+  - 44 tokens cuadran exacto con `totalSupply`.
+  - Residuos sin titular identificado: **804,5 ONDK** y **9.823,01 AUKA**. Ninguna dirección conocida los tiene. Candidatos: Veta y Genesis ID.
 - [x] Padrón de ONDK y lote de 1 ORIGEN **sin firmar**, armados fuera del repositorio y simulados en hardhat.
   - Lote: 92 envíos, 91,80 ORIGEN, máx. 1 ORIGEN por operación.
   - Ninguno es «firme»: falta la hoja de aceptación y D25.
 - [ ] Conciliar los saldos de ORIGEN que Veta anota sólo en su base (`scripts/conciliar-origen-interno.js`).
-- [ ] Ubicar los 9.823,01 AUKA pendientes (SFSP-700 §0.5 bloquea migrar AUKA hasta entonces).
+- [ ] Ubicar los 9.823,01 AUKA pendientes (SFSP-700 §0.5 bloquea migrar AUKA hasta entonces). 26-sep: confirmado en la 5550 como residuo sin titular; no está en ninguna dirección conocida.
 
 ## Compuerta 3 · Identidad (rojo)
 

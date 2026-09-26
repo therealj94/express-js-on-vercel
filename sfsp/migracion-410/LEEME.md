@@ -16,7 +16,7 @@ Nada de lo que hay aquí firma ni envía transacciones. El cliente RPC
 |---|---|
 | `construir-padron.mjs` | Padrón por activo (ONDK, AUKA, IBS, HARV): beneficiarios, árbol de Merkle, pruebas, pendientes, excluidos, conflictos y reserva por ranura. |
 | `verificar-padron.mjs` | Verificación independiente, sin red, de los padrones ya construidos. |
-| `censo-ondk-5550.mjs` | Censo de ONDK en la 5550: resuelve cada clave de saldo del contrato a su dirección cruzando fuentes (respaldo de la 8532, Veta, Genesis ID, eventos), relee en vivo y concilia contra `totalSupply()`. Produce el `censo-ondk.json` de los otros dos. |
+| `censo-tokens-5550.mjs` | Censo de **todos** los tokens ERC-20 de la 5550, con saldos a la fecha. Resuelve cada clave de saldo a su dirección con un solo conjunto de candidatas para todos los tokens (actividad de la 5550 + respaldo de la 8532 como diccionario + Veta/Genesis ID). Concilia cada token contra `totalSupply()`. Produce `censo-tokens.*`, `padron-titulares.csv` y el `censo-ondk.json` de los otros dos. |
 | `lote-origen-ondk.mjs` | Lote «todo tenedor de ONDK con dirección llega a ≥ 1 ORIGEN», sin firmar, en dos formatos. `--simular` lo ejecuta en hardhat local. |
 | `simular-lote-origen.cjs` | Simulacro del lote en la cadena hardhat en memoria (chainId 31337). |
 | `lib/comun.mjs` | RPC de sólo lectura, Merkle idéntico al contrato, ids, lector xlsx mínimo, CSV. |
@@ -33,50 +33,50 @@ Nada de lo que hay aquí firma ni envía transacciones. El cliente RPC
 | `SALIDA` | Carpeta de salida de datos. |
 | `RPC` | Nodo de la 5550 (lectura). Detrás del proxy del entorno: `NODE_USE_ENV_PROXY=1`. |
 
-## Censo de ONDK en la 5550 (26-sep-2026)
+## Censo de todos los tokens en la 5550 (26-sep-2026)
 
 ```bash
-NODE_USE_ENV_PROXY=1 SALIDA=… BLOQUE=<n> \
+NODE_USE_ENV_PROXY=1 SALIDA=… [BLOQUE=<n>] \
 FUENTES=<copia del respaldo S3 sin llaves/ ni testnet-5534/>:<exportación Veta>:<exportación Genesis ID> \
 INTERNAS=<internas.json fuera del repo> EN_REVISION=<en-revision.json fuera del repo> \
-node censo-ondk-5550.mjs
+node censo-tokens-5550.mjs
 ```
 
-- El script **se niega a leer** cualquier ruta con `llaves/`, `testnet-5534/`, `.tar`/`.tar.gz` o `.key`, aunque esté dentro de una fuente.
-- Una clave `R` del inventario es de `A` si `keccak256(abi.encode(A, 0)) == R`
-  (saldo). Si no, se prueba como permiso: `keccak256(abi.encode(S, keccak256(abi.encode(A, 1))))`.
-- Se comprueba `balanceOf(A) == ranura(R)` para cada tenedor. Si no coincide, se aborta.
-- Además se hace un barrido de `balanceOf` sobre todas las candidatas: la 8532 se
-  movió después de la foto del 10-ago, así que el inventario del génesis no es la
-  última palabra.
-- Sin la hoja de aceptación, la clase sale del censo:
-  - `INTERNAS` → `INTERNA-OrdenGlobal`;
-  - `EN_REVISION` → `EN-REVISION`;
-  - con código → `CONTRATO`;
-  - el resto → `USUARIO`.
+- **Saldos**: siempre `balanceOf` en la 5550, en un bloque fijo. De la 8532 no se
+  toma ningún saldo; su respaldo sirve sólo como diccionario de direcciones.
+- **Candidatas**: un único conjunto para todos los tokens. Quien tiene cualquier
+  token es candidato en todos. Entran:
+  - toda la actividad de la 5550 desde el bloque 0 (transacciones y eventos de cualquier contrato);
+  - las fuentes indicadas en `FUENTES`.
+- **Rutas prohibidas**: el script se niega a leer `llaves/`, `testnet-5534/`,
+  `.tar`/`.tar.gz` y `.key`.
+- **Ranura del mapping de saldos**: se detecta por token (la que más claves
+  resuelve). Una clave que no es de saldo se prueba como permiso.
+- **Comprobaciones por token**: `balanceOf == ranura` para cada tenedor, y
+  conciliación contra `totalSupply()`. Si no cuadra, se hace un barrido de
+  `balanceOf` sobre todas las candidatas.
 
-  Sin la hoja, además, ningún envío del lote es «firme».
-
-**Resultado en el bloque 273.468 de la 5550** (26-sep, 15:18 UTC; datos fuera del repositorio):
-
-Los **saldos son los de la 5550 a la fecha**, sin usar ningún saldo de la 8532.
-El respaldo de la 8532 sirve sólo como diccionario de direcciones: dice a quién
-pertenece cada clave. No dice cuánto tiene. Toda la actividad propia de la 5550
-también está cubierta: 95 transacciones y 42 eventos, 78 direcciones.
+**Resultado en el bloque 273.508** (datos fuera del repositorio):
 
 | | |
 |---|---|
-| Claves de mapping de ONDK en el inventario | 139 (+5 fijas) |
-| Resueltas a dirección | **139 / 139**: 138 saldos y 1 permiso. 87 sólo aparecen en `traspaso/` del respaldo S3 |
-| Tenedores con saldo | 134: 121 usuarios, 3 en revisión, 9 internas (propuesta D25), 1 contrato |
-| `totalSupply` | 555.000.000 ONDK |
-| Suma con dirección | 554.999.195,5 |
-| **Residuo sin titular identificado** | **804,5 ONDK** |
+| Contratos ERC-20 en la 5550 | 78, de ellos 46 con emisión |
+| Claves de saldo resueltas | **todas**, en los 46 tokens |
+| Titulares distintos | 184 |
+| Tokens que cuadran exacto con `totalSupply` | 44 |
+| **ONDK** | 134 tenedores; residuo sin titular **804,5 ONDK** |
+| **AUKA** | 34 tenedores; residuo sin titular **9.823,01 AUKA**, los mismos «AUKA pendientes» de SFSP-700 §0.5 |
 
-El residuo es saldo que la 5550 guarda en claves de su génesis que ninguna fuente
-disponible resuelve. Ninguna de las 78 direcciones con actividad en la 5550 lo
-tiene. En la 5550 no se puede enumerar el almacenamiento: Bonsai no sirve
-`debug_storageRangeAt`. No entra en `S0` ni en el lote. Candidatos: Veta y Genesis ID.
+En los dos residuos, el inventario del génesis cuadraba exacto con `totalSupply`.
+El faltante aparece sólo en la 5550 de hoy: son claves que no están en el
+inventario, y ninguna de las candidatas, entre ellas todas las direcciones con
+actividad en la 5550, las tiene. En la 5550 no se puede enumerar el almacenamiento:
+Bonsai no sirve `debug_storageRangeAt`. Candidatos: Veta y Genesis ID. Nada del
+residuo entra en `S0` ni en el lote.
+
+La clase de cada titular sale de `INTERNAS` y `EN_REVISION`. La lista de internas
+actual es la de ONDK (D25). En los demás tokens, las tenedoras grandes de la
+organización salen como «USUARIO» hasta que D25 las declare.
 
 ## Reconstruir
 
@@ -85,7 +85,7 @@ cd sfsp/migracion-410
 export NODE_USE_ENV_PROXY=1
 BLOQUE_CORTE=<bloque> node construir-padron.mjs   # padron-<ACTIVO>.json/.csv + raices-merkle.json
 node verificar-padron.mjs                          # recalcula hojas, raíces, pruebas y S0
-node censo-ondk-5550.mjs                           # censo-ondk.json/.csv (CENSO_ONDK de los siguientes)
+node censo-tokens-5550.mjs                         # censo-tokens.*, padron-titulares.csv, censo-ondk.json
 node lote-origen-ondk.mjs --simular                # lote-origen-ondk.* + simulacion-lote-origen.json
 cd ../contracts && npx hardhat test                # incluye 18-migracion-padron.js
 ```
