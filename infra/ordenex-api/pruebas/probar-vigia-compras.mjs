@@ -6,6 +6,9 @@
  * cuánto ORIGEN pueden vender los contratos de las dos redes. Equivocarla no
  * da un error: da una venta que cobra por ORIGEN que no existe, y eso solo se
  * descubre cuando alguien reclama lo que pagó.
+ *
+ * Y el precio que se sella: el contrato cuenta su caducidad desde el sellado,
+ * así que una lectura vieja del oro no se re-sella como si fuera nueva.
  */
 import vigia from '../lib/vigiaCompras.js';
 import { ethers } from 'ethers';
@@ -90,6 +93,72 @@ decir('sin llaves, el vigía no hace nada');
     'y la fila se crea ANTES de firmar el pago, no después');
   comprobar(/nunca se paga «lo que se pueda»|media compra/.test(src),
     'no existe el pago parcial: media compra parece completada');
+}
+
+decir('un precio viejo no se re-sella como nuevo');
+{
+  /* VentaOrigen.sol cuenta la caducidad del precio (30 min) desde que se le
+     PONE, no desde que se leyó el oro. El oráculo sirve la última lectura
+     buena hasta 10 min: si el vigía la re-sellara cada minuto, un feed caído
+     alargaría la venta con el precio viejo de 30 a ~40 min. Aquí se monta un
+     oráculo de verdad (lib/oraculo.js) con fuente y reloj fingidos, se le
+     cuelga al módulo que carga el vigía, y el reloj del vigía es el mismo. */
+  const { createRequire } = await import('node:module');
+  const requerir = createRequire(import.meta.url);
+  const mod = requerir('../lib/oraculo.js');
+  const originales = { metales: mod.metales, cotizacion: mod.cotizacion, precioOrigenUsd: mod.precioOrigenUsd };
+  const dateNow = Date.now;
+
+  let t = 1_700_000_000_000;
+  let resp = { oro: 4400, plata: 52 };
+  const o = mod.crearOraculo({ fuentes: [{ nombre: 'f', leer: async () => resp }], ahora: () => t });
+  Object.assign(mod, { metales: o.metales, cotizacion: o.cotizacion, precioOrigenUsd: o.precioOrigenUsd });
+  Date.now = () => t;
+  const sello = (oro) => ethers.parseUnits((oro / mod.GRAMIN_POR_ONZA).toFixed(18), 18);
+  const lanza = async () => { try { await vigia.precioOrigen(); return null; } catch (e) { return e; } };
+
+  try {
+    comprobar((await vigia.precioOrigen()) === sello(4400), 'con el feed sano se sella el gramin de la lectura');
+
+    resp = null;                 // los feeds caen
+    t += 60_000;
+    comprobar((await vigia.precioOrigen()) === sello(4400),
+      'una vuelta con el feed caído (lectura de 60 s) todavía se sella',
+      'un fallo suelto no cierra la venta');
+
+    t += 4 * 60_000;             // lectura de 5 min
+    comprobar((await o.metales())?.oro === 4400, 'a los 5 min el oráculo aún sirve el oro, para la pantalla');
+    const e5 = await lanza();
+    comprobar(e5 instanceof Error, 'pero el vigía NO lo re-sella: lanza y no se refresca el contrato',
+      e5 ? e5.message : 'devolvió un precio de hace 5 min como si fuera nuevo');
+
+    t += 4 * 60_000;             // lectura de 9 min
+    comprobar((await lanza()) instanceof Error, 'a los 9 min, tampoco');
+
+    resp = { oro: 4500, plata: 53 };   // vuelve el feed
+    t += 30_000;
+    comprobar((await vigia.precioOrigen()) === sello(4500), 'cuando el feed vuelve se sella el precio nuevo');
+
+    // Lo que cuenta es la hora del ORO, no la de la plata.
+    resp = { oro: null, plata: 54 };
+    t += 2 * 60_000;
+    const m = await o.metales();
+    comprobar(m?.oro === 4500 && m?.plata === 54, 'llega sólo la plata: el oráculo conserva el oro de hace 2 min');
+    comprobar((await lanza()) instanceof Error, 'y el vigía no sella ese oro de 2 min aunque la plata sea nueva');
+    resp = { oro: 4510, plata: null };
+    t += 31_000;
+    comprobar((await vigia.precioOrigen()) === sello(4510), 'oro nuevo con plata vieja: se sella, el precio es del oro');
+  } finally {
+    Date.now = dateNow;
+    Object.assign(mod, originales);
+  }
+
+  const { readFile } = await import('node:fs/promises');
+  const src = await readFile(new URL('../lib/vigiaCompras.js', import.meta.url), 'utf8');
+  const cuerpo = src.slice(src.indexOf('async function vuelta'));
+  comprobar(/try \{ precio = await precioOrigen\(\); \}\s*catch \(e\) \{[\s\S]{0,400}?return;\s*\}/.test(cuerpo)
+    && cuerpo.indexOf('precioOrigen()') < cuerpo.indexOf('refrescar('),
+    'y en la vuelta, sin precio sellable se sale ANTES de refrescar el contrato');
 }
 
 console.log(fallos ? `\n${fallos} comprobación(es) fallaron\n` : '\nTodo en verde\n');
