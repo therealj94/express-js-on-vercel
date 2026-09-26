@@ -68,7 +68,7 @@ Financiero Social».
 **Orden Global Corp no tiene NINGUNA licencia emitida.** El paquete está en
 preparación ante la **RFSA de Próspera**. Primera ola, cuatro trámites:
 
-1. FinTech ATS Clase B — para GoldeX Swap
+1. FinTech ATS Clase B — para la red de pagos (GoldeX Swap se retiró y su intercambio pasó a Ordenex, SFSP v0.3 §6)
 2. Aviso de Oferta Exenta — para ORIGEN, AUKA, AGKA y ONDK
 3. Licencia de Compañía de Inversión — cien mil dólares de capital
 4. Prestamista No Bancario

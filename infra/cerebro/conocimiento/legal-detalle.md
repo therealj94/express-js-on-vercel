@@ -36,7 +36,7 @@ La figura jurídica es **referenciado**, nunca respaldado. Esta distinción es t
 
 **Estado:** `confirmado` — Escritura de Constitución y Estatutos firmados, Registro de Entidades de Próspera
 
-Orden Global Corp es la sociedad responsable de todo el ecosistema. De ella dependen la cadena de bloques, la criptomoneda ORIGEN y la totalidad de las plataformas: Veta Wallet (billetera del ecosistema), Genesis ID (verificación de identidad y empresas), MyTokenPay (plataforma de pagos de comercio), Ordenscan (explorador de la cadena), GoldeX Swap (intercambio descentralizado), AuPad, LaunchPad y las tarjetas.
+Orden Global Corp es la sociedad responsable de todo el ecosistema. De ella dependen la cadena de bloques, la criptomoneda ORIGEN y la totalidad de las plataformas: Veta Wallet (billetera del ecosistema), Genesis ID (verificación de identidad y empresas), MyTokenPay (plataforma de pagos de comercio), Ordenscan (explorador de la cadena), AuPad, LaunchPad y las tarjetas.
 
 Orden Global no es un proyecto aislado: es el eje operativo del **Pilar 2 (Orden Global)** del Sistema Financiero Social, y convive como tal dentro de ese sistema.
 
@@ -69,7 +69,7 @@ A la fecha, Orden Global Corp **no tiene ninguna licencia emitida**. Todo el paq
 
 | Trámite | Base | Objeto | Notas |
 |---|---|---|---|
-| FinTech ATS Clase B | § 3-2-190 | GoldeX Swap y ecosistema de tokens transaccionales | Carga liviana. 15 días hábiles evaluación + 20 días hábiles inscripción |
+| FinTech ATS Clase B | § 3-2-190 | Red de pagos y conversión de ORIGEN a moneda fiduciaria para la Freedom Card (el intercambio en cadena pasó a Ordenex, de Au Corp.) | Carga liviana. 15 días hábiles evaluación + 20 días hábiles inscripción |
 | Exempt Offering Notice | Aviso RFSA (no es licencia) | ORIGEN, AUKA, AGKA, ONDK — colocación privada | Fee USD 225. Se presenta dentro de 15 días desde la primera venta u oferta. Solo colocación privada a inversionistas calificados |
 | Investment Company License | § 3-2-164 | Oferta de tokens a acreditados/sofisticados; SPVs; tokenización RWA | La más robusta del paquete. Capital USD 100.000 o sustituto por confirmar |
 | Non-Banking Lender | Regulación Financiera A | Complemento de actividad DEX con tokens autorizados | Fee anual USD 200 |

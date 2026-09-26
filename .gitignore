@@ -32,3 +32,6 @@ apps-web/veta-wallet/pruebas/_*.mjs
 # cualquiera puede publicar una version de la app en nuestro nombre.
 .secretos/
 *play-service-account*.json
+
+# Copias de trabajo de agentes (nunca se versionan)
+.claude/worktrees/

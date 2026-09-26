@@ -20,15 +20,14 @@ administración invisible para quien no es administrador.
 
 ## Acceso de administrador
 
-El panel que verifica negocios y paga los retiros:
+El panel que verifica negocios y paga los retiros usa una cuenta de administrador
+cuya contraseña **no vive en el repositorio**. Se entrega por un canal privado y
+se configura en la variable de entorno del backend en Heroku.
 
-```
-correo:      admin@ordenglobal.link
-contraseña:  Mtp-Y8phx8FdtO
-```
-
-> **Cambiala** en cuanto entres. Es la llave que aprueba comercios y libera
-> dinero. Se pone en la variable `ADMIN_PASSWORD` del backend en Heroku.
+> **Rotación pendiente (26-sep-2026):** una versión anterior de este archivo
+> publicó la contraseña, que sigue en el historial de git. Hay que cambiarla antes
+> de cualquier uso real (condición de arranque §16 de SFSP v0.3). Es la llave que
+> aprueba comercios y libera dinero.
 
 ## Cómo probarlo, de punta a punta
 

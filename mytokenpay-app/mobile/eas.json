@@ -17,7 +17,8 @@
         "buildType": "app-bundle"
       },
       "env": {
-        "EXPO_PUBLIC_GENESIS_URL": "https://genesis-id.onrender.com"
+        "EXPO_PUBLIC_GENESIS_URL": "https://genesis-id.onrender.com",
+        "EXPO_PUBLIC_USE_MOCK_API": "0"
       }
     }
   }

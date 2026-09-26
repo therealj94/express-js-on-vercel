@@ -7,10 +7,11 @@ import { mockApi } from './mockApi'
 export { getToken, setToken } from './token'
 export { ApiError } from './apiError'
 
-// Flip to false once a real backend is reachable (deployed, or your phone and
-// computer are on the same Wi-Fi with the server running) — everything else
-// in the app keeps working unchanged, since mockApi matches this same shape.
-export const USE_MOCK_API = true
+// Datos simulados SOLO en desarrollo. Se apagan con EXPO_PUBLIC_USE_MOCK_API=0
+// (el perfil «production» de eas.json lo fija así, y `scripts/barrera-mock.js`
+// hace fallar cualquier compilación de producción que los lleve encendidos:
+// una app de tienda con saldos inventados es peor que no tener app).
+export const USE_MOCK_API = process.env.EXPO_PUBLIC_USE_MOCK_API !== '0'
 
 function resolveApiUrl(): string {
   const envUrl = process.env.EXPO_PUBLIC_API_URL

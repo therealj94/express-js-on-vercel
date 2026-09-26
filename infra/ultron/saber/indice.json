@@ -1,5 +1,5 @@
 {
- "armadoEn": "2026-09-07T14:01:13.891Z",
+ "armadoEn": "2026-09-26T16:16:52.135Z",
  "fuentes": [
   {
    "ruta": "ECOSISTEMA-ORDEN-GLOBAL.md",
@@ -11,7 +11,7 @@
    "ruta": "TRASPASO-CONOCIMIENTO.md",
    "tema": "Traspaso de conocimiento",
    "secciones": 50,
-   "bytes": 33829
+   "bytes": 33903
   },
   {
    "ruta": "LEEME.md",
@@ -113,7 +113,7 @@
    "ruta": "infra/cerebro/conocimiento/legal-detalle.md",
    "tema": "Legal",
    "secciones": 13,
-   "bytes": 20080
+   "bytes": 20118
   },
   {
    "ruta": "infra/cerebro/conocimiento/legal-contradicciones.md",
@@ -221,12 +221,12 @@
    "ruta": "infra/cerebro/conocimiento/saber.json",
    "tema": "Fichas de AU-RA",
    "secciones": 40,
-   "bytes": 52060
+   "bytes": 52073
   }
  ],
  "huellas": {
   "ECOSISTEMA-ORDEN-GLOBAL.md": "2bc1d068c1bfa18150a8eaf131cae1595f331100",
-  "TRASPASO-CONOCIMIENTO.md": "db791da60b36baca52028847f2710f548dd67ef0",
+  "TRASPASO-CONOCIMIENTO.md": "a62d6266959950ef401193317b516893cf9a9622",
   "LEEME.md": "05480432166bb4be4193a235a36575446b3a965e",
   "README.md": "e1f9854ad4508ed4e766dbaf9569ef95550a5d62",
   "AUCORP.md": "39d4e628ac4d659478f38896310a0f0f5fdde029",
@@ -243,7 +243,7 @@
   "ESTADO-MANANA-15-AGO.md": "103ab3d2de8c9ec05a659e828d2f602fc917de46",
   "COMO_GENERAR_APK.md": "8a9e3fc0bf0121c96a98037f830a947728ccd53f",
   "EMPEZAR-EN-MI-COMPUTADORA.md": "ec4b71647d08e3be144621bb880bfeb81f180099",
-  "infra/cerebro/conocimiento/legal-detalle.md": "d87c314ff8381cd20a1fb2f62c64d23ae3c36554",
+  "infra/cerebro/conocimiento/legal-detalle.md": "5966564c87896cb53cb85475bc8410469e853d1e",
   "infra/cerebro/conocimiento/legal-contradicciones.md": "013fb603e82c50ae97678835beeb2b6a1969882f",
   "infra/cerebro/conocimiento/mineria-pendiente-legal.md": "6fbbed1aa52e476393cbc9a4c172ea7600406aa5",
   "infra/cerebro/conocimiento/portafolio-minero.md": "deab4f063c05bbfbda15d836e727f54ec2a04b29",
@@ -261,8 +261,8 @@
   "documentos-junta/06-Migracion-Blockchain.html": "c16952747dffd6f63842a553eaf02b72fe51aa8a",
   "documentos-junta/07-Decisiones-Migracion-Gas-Nodos.html": "926d94ff656a8024f1f9f458bbb4b590a9a6fe4a",
   "documentos-junta/08-Migracion-Cadena-5550.html": "23866f2e6746b0435f3c149823f018651e7eb3fc",
-  "infra/cerebro/conocimiento/saber.json": "94f7dd299d8273a7d49cf56e31caab222359c848"
+  "infra/cerebro/conocimiento/saber.json": "fc2508a76361021d2f6c0cf2f06e845afa79bab2"
  },
  "total": 679,
- "bytes": 450531
+ "bytes": 450656
 }
