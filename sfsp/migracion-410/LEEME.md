@@ -56,23 +56,23 @@ node censo-tokens-5550.mjs
   conciliación contra `totalSupply()`. Si no cuadra, se hace un barrido de
   `balanceOf` sobre todas las candidatas.
 
-**Resultado en el bloque 273.508** (datos fuera del repositorio):
+**Resultado en el bloque 273.831** (datos fuera del repositorio). Fuentes de
+direcciones:
+- la actividad de la 5550;
+- el respaldo de la 8532;
+- el respaldo del reinicio del 25-ago de la 5550 (`ranuras-tokens.json`, sin tocar
+  las carpetas de llaves).
 
 | | |
 |---|---|
 | Contratos ERC-20 en la 5550 | 78, de ellos 46 con emisión |
 | Claves de saldo resueltas | **todas**, en los 46 tokens |
-| Titulares distintos | 184 |
-| Tokens que cuadran exacto con `totalSupply` | 44 |
-| **ONDK** | 134 tenedores; residuo sin titular **804,5 ONDK** |
-| **AUKA** | 34 tenedores; residuo sin titular **9.823,01 AUKA**, los mismos «AUKA pendientes» de SFSP-700 §0.5 |
+| Titulares distintos | 188 |
+| **Tokens que cuadran exacto con `totalSupply`** | **46 / 46**, sin residuo |
+| ONDK | 136 tenedores. Los 804,5 que faltaban (800 + 4,5) eran saldos creados en la cadena intermedia del 15 al 25-ago |
+| AUKA | 37 tenedores. Los 9.823,01 que faltaban (9.821 + 2 + 0,01) tienen el mismo origen |
 
-En los dos residuos, el inventario del génesis cuadraba exacto con `totalSupply`.
-El faltante aparece sólo en la 5550 de hoy: son claves que no están en el
-inventario, y ninguna de las candidatas, entre ellas todas las direcciones con
-actividad en la 5550, las tiene. En la 5550 no se puede enumerar el almacenamiento:
-Bonsai no sirve `debug_storageRangeAt`. Candidatos: Veta y Genesis ID. Nada del
-residuo entra en `S0` ni en el lote.
+Con esto se cierra la conciliación de SFSP-700 §0.5 y del v0.3 §14.5.
 
 La clase de cada titular sale de `INTERNAS` y `EN_REVISION`. La lista de internas
 actual es la de ONDK (D25). En los demás tokens, las tenedoras grandes de la

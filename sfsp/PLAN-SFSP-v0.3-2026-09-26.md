@@ -33,8 +33,8 @@ Todo lo marcado «existe» se comprobó hoy. Las pruebas se corrieron hoy. El pl
 
 | # | El v0.3 dice | La medición dice | Qué hacer |
 |---|---|---|---|
-| C1 | §14.5: «792,5 ONDK no ubicados» | **804,5 ONDK** en el bloque 273.508. La diferencia (12 ONDK) es la única clave de **permiso** del contrato, que se contó como saldo. AUKA: 9.823,01, **coincide** | Corregir la cifra en el v0.4. Método: `migracion-410/censo-tokens-5550.mjs` |
-| C2 | §14.5: la fuente para conciliar es el respaldo del reinicio del 25-ago | Coincide. En la foto de la 8532 del 10-ago los dos tokens cuadraban exacto; el faltante aparece después. El respaldo del 25-ago está en un bucket de arranque de la 5550 (`reinicio-5550/ETAPA-0-RESPALDO.md`) | Leerlo cuando haya credenciales rotadas (fase 0). **No se buscan saldos en la 8532**: los saldos son los de la 5550 hoy |
+| C1 | §14.5: «792,5 ONDK no ubicados» (**cerrado 26-sep**) | **804,5 ONDK** en el bloque 273.508. La diferencia (12 ONDK) es la única clave de **permiso** del contrato, que se contó como saldo. AUKA: 9.823,01, **coincide** | Corregir la cifra en el v0.4. Método: `migracion-410/censo-tokens-5550.mjs` |
+| C2 | §14.5: la fuente para conciliar es el respaldo del reinicio del 25-ago | Coincide. En la foto de la 8532 del 10-ago los dos tokens cuadraban exacto; el faltante aparece después. El respaldo del 25-ago está en un bucket de arranque de la 5550 (`reinicio-5550/ETAPA-0-RESPALDO.md`) | **Hecho el 26-sep.** Con ese respaldo, los 46 tokens cuadran exacto: 804,5 ONDK en 2 direcciones y 9.823,01 AUKA en 3 |
 | C3 | §2.1: la 5534 existe y se destina a ensayos | `rpc-testnet.ordenglobal-rpc.com` **responde con la 5550**, con el mismo génesis. La 5534 está parada desde el 15-ago | Arreglar el DNS o el proxy del nombre de ensayo, y levantar la 5534 (hace falta para probar la red cerrada) |
 | C4 | §10.5: los demás tokens se declaran «sin referencia» | Las apps tienen **precios fijos** para AUBEX (10 USD), HARV, IBS, REST, SOL, AGRO, AIT, ASL, LOVE y POLITICAL (`orden-global-app/src/api.js:664`, `veta-wallet-app/src/api.js:669`, `apps-web/veta-wallet/cadena.js:170`) | Fase 0: quitarlos todos, no solo el de AUBEX |
 | C5 | §10.5: un único registro de oráculo | Hay **tres lecturas independientes**. `origenPrice.js` no tiene caché ni edad máxima. `referencia.js` usa caché de 30 s con un máximo de 5 min, no 10. Las apps llaman directo a CoinGecko con 2,35 USD fijo de respaldo | Fase 0: un solo módulo de oráculo para backends y apps. Sin dato fresco, guion |
@@ -86,7 +86,7 @@ Regla que manda sobre todo: **se construye completo y se sube apagado.** Nada se
 | 0.6 | Un solo puente Genesis↔Veta con dirección obligatoria. Estado `vencida` en Genesis ID (C10) | Código |
 | 0.7 | Retirar «GoldeX» de los textos. Corregir el comentario obsoleto de `ordenex-api/lib/referencia.js` | Código |
 | 0.8 | Barrera en la app móvil de MyTokenPay: no se puede compilar para tienda con `USE_MOCK_API = true` | Código |
-| 0.9 | Credenciales rotadas para leer el respaldo del 25-ago y conciliar C1/C2 | Humano (AWS) |
+| 0.9 | ~~Leer el respaldo del 25-ago y conciliar C1/C2~~ **hecho** | — |
 | 0.10 | Accesos de solo lectura para Genesis ID y Veta, como variables del entorno y nunca por el chat. Corregir la regla del proxy que inyecta AWS en `vetawallet.com` | Humano (configuración) |
 
 ### Fase 1 · Especificación alineada al v0.3 (`draft-0.5`)
