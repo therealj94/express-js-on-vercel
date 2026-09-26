@@ -11,11 +11,16 @@
 // Uso (ver sfsp/red/RED-CERRADA.md §6):
 //   BESU_HOME=<besu-26.7.1 descomprimido, con el jar en plugins/> JAVA_HOME=<JDK 25> \
 //   ENSAYO_DIR=<carpeta vacía fuera del repo> node ensayo-besu-local.mjs
+//
+// ENSAYO_DIR se VACÍA en cada ensayo, así que solo se acepta una carpeta vacía o
+// una que el propio ensayo marcó (ver carpeta-ensayo.mjs): nunca $HOME, `/`, el
+// repositorio ni el --data-path de un nodo.
 import { spawn, spawnSync } from "node:child_process";
-import { mkdirSync, writeFileSync, readFileSync, existsSync, rmSync, readdirSync } from "node:fs";
+import { writeFileSync, readFileSync, readdirSync } from "node:fs";
 import { createRequire } from "node:module";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { motivoParaNoUsar, prepararCarpetaEnsayo } from "./carpeta-ensayo.mjs";
 
 const AQUI = dirname(fileURLToPath(import.meta.url));
 const CONTRATOS = join(AQUI, "..", "..", "contracts");
@@ -30,6 +35,8 @@ const { hexlify, zeroPad } = req("@ethersproject/bytes");
 const BESU_HOME = process.env.BESU_HOME;
 const ENSAYO = process.env.ENSAYO_DIR;
 if (!BESU_HOME || !ENSAYO || !process.env.JAVA_HOME) throw new Error("faltan BESU_HOME, JAVA_HOME o ENSAYO_DIR");
+// Antes de nada: si la carpeta no es del ensayo, no se arranca (y no se borra).
+{ const motivo = motivoParaNoUsar(ENSAYO); if (motivo) throw new Error(`ENSAYO_DIR=${ENSAYO} no se usa: ${motivo}`); }
 const CHAIN_ID = 1337;
 const PUERTO = Number(process.env.PUERTO || 18545);
 const RPC = `http://127.0.0.1:${PUERTO}`;
@@ -132,8 +139,7 @@ async function parar() {
 
 // ------------------------------------------------------------------ génesis QBFT de 1 validador
 function genesis() {
-  if (existsSync(ENSAYO)) rmSync(ENSAYO, { recursive: true, force: true });
-  mkdirSync(ENSAYO, { recursive: true });
+  prepararCarpetaEnsayo(ENSAYO);
   const conf = {
     genesis: {
       config: { chainId: CHAIN_ID, berlinBlock: 0, londonBlock: 0, zeroBaseFee: true, qbft: { blockperiodseconds: 1, epochlength: 30000, requesttimeoutseconds: 4 } },
