@@ -10,7 +10,9 @@ import { AnimatedScreen } from '../src/components/AnimatedScreen'
 import { TextField } from '../src/components/ui/TextField'
 import { GradientButton } from '../src/components/ui/GradientButton'
 import { ConfirmDialog } from '../src/components/ConfirmDialog'
-import { useWalletStore, ORIGEN_USD, type WalletKind } from '../src/store/wallet'
+import { useWalletStore, type WalletKind } from '../src/store/wallet'
+import { useOrigenUsd } from '../src/store/precio'
+import { toUsd, fmtUsd } from '../src/lib/commerce'
 import { useNotificationsStore } from '../src/store/notifications'
 import { fonts, radius, shadow } from '../src/lib/theme'
 import { useTheme, type ThemeColors } from '../src/hooks/useTheme'
@@ -26,6 +28,7 @@ export default function ConnectWallet() {
   const styles = createStyles(colors)
   const wallet = useWalletStore((s) => s.wallet)
   const origenBalance = useWalletStore((s) => s.origenBalance)
+  const origenUsd = useOrigenUsd() // null sin precio fresco del oro: «—»
   const connect = useWalletStore((s) => s.connect)
   const disconnect = useWalletStore((s) => s.disconnect)
   const pushNotif = useNotificationsStore((s) => s.push)
@@ -107,7 +110,7 @@ export default function ConnectWallet() {
                 <Text style={styles.balanceRowLabel}>Saldo reflejado</Text>
                 <Text style={styles.balanceRowValue}>
                   {origenBalance.toLocaleString('es-HN', { maximumFractionDigits: 4 })} ORIGEN
-                  <Text style={styles.balanceRowUsd}>  ≈ ${(origenBalance * ORIGEN_USD).toFixed(2)} USD</Text>
+                  <Text style={styles.balanceRowUsd}>  ≈ {fmtUsd(toUsd(origenBalance, origenUsd))} USD</Text>
                 </Text>
               </View>
               <AnimatedPressable onPress={() => setConfirmDisconnect(true)} style={styles.disconnectBtn}>

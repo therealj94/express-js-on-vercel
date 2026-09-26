@@ -24,7 +24,9 @@ import { GradientButton } from '../../src/components/ui/GradientButton'
 import { api } from '../../src/lib/api'
 import type { Company } from '../../src/lib/types'
 import { useAuthStore } from '../../src/store/auth'
-import { useWalletStore, ORIGEN_USD } from '../../src/store/wallet'
+import { useWalletStore } from '../../src/store/wallet'
+import { useOrigenUsd } from '../../src/store/precio'
+import { toUsd, fmtUsd } from '../../src/lib/commerce'
 import { useGenesisStore } from '../../src/store/genesis'
 import { useNotificationsStore } from '../../src/store/notifications'
 import { fonts, radius, shadow } from '../../src/lib/theme'
@@ -46,6 +48,7 @@ export default function Dashboard() {
   const { user } = useAuthStore()
   const wallet = useWalletStore((s) => s.wallet)
   const origenBalance = useWalletStore((s) => s.origenBalance)
+  const origenUsd = useOrigenUsd() // null sin precio fresco del oro: «—»
   const genesisStep = useGenesisStore((s) => s.step)
   const genesisUid = useGenesisStore((s) => s.genesisUid)
   const unread = useNotificationsStore((s) => s.items.filter((n) => !n.read).length)
@@ -152,7 +155,7 @@ export default function Dashboard() {
               <Text style={styles.vetaLabel}>Saldo Veta Wallet</Text>
               <Text style={styles.vetaValue}>
                 {origenBalance.toLocaleString('es-HN', { maximumFractionDigits: 4 })} ORIGEN
-                <Text style={styles.vetaUsd}>  ≈ ${(origenBalance * ORIGEN_USD).toFixed(2)}</Text>
+                <Text style={styles.vetaUsd}>  ≈ {fmtUsd(toUsd(origenBalance, origenUsd))}</Text>
               </Text>
             </View>
             <View style={styles.vetaPayBtn}>

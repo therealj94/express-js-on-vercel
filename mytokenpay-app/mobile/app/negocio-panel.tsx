@@ -37,8 +37,8 @@ import { GradientButton } from '../src/components/ui/GradientButton'
 import { SelectField } from '../src/components/ui/SelectField'
 import { useBusinessStore, isCashoutError, type Cashout } from '../src/store/business'
 import { useNotificationsStore } from '../src/store/notifications'
-import { payoutInfo, origenToLocal, fmtLocal, fmtOrigen, fmtUsd } from '../src/lib/commerce'
-import { ORIGEN_USD } from '../src/store/wallet'
+import { payoutInfo, origenToLocal, toUsd, fmtLocal, fmtOrigen, fmtUsd } from '../src/lib/commerce'
+import { useOrigenUsd, SIN_PRECIO } from '../src/store/precio'
 import { fonts, radius, shadow } from '../src/lib/theme'
 import { useTheme, type ThemeColors } from '../src/hooks/useTheme'
 
@@ -74,10 +74,17 @@ export default function BusinessPanel() {
   const avgTicket = sales.length ? sales.reduce((a, s) => a + s.totalOrigen, 0) / sales.length : 0
 
   const amountNum = parseFloat(amount.replace(',', '.')) || 0
-  const amountLocal = origenToLocal(amountNum, info)
+  // El retiro se paga en moneda local: sin precio fresco del oro no hay
+  // conversión, y el retiro se bloquea en vez de usar un precio inventado.
+  const origenUsd = useOrigenUsd()
+  const amountLocal = origenToLocal(amountNum, info, origenUsd)
 
   function submitCashout() {
     if (!company) return
+    if (amountLocal == null) {
+      setError(SIN_PRECIO)
+      return
+    }
     const res = business.requestCashout({
       companyId: company.id,
       amountOrigen: amountNum,
@@ -146,7 +153,7 @@ export default function BusinessPanel() {
                 </View>
                 <Text style={styles.balNumber}>{fmtOrigen(balance)} ORIGEN</Text>
                 <Text style={styles.balLabel}>
-                  ≈ {fmtLocal(origenToLocal(balance, info), info)} · {fmtUsd(balance * ORIGEN_USD)}
+                  ≈ {fmtLocal(origenToLocal(balance, info, origenUsd), info)} · {fmtUsd(toUsd(balance, origenUsd))}
                 </Text>
               </LinearGradient>
 
@@ -262,7 +269,7 @@ export default function BusinessPanel() {
               <Card style={{ gap: 4 }}>
                 <Text style={styles.coLabel}>Saldo disponible</Text>
                 <Text style={styles.coBalance}>{fmtOrigen(balance)} ORIGEN</Text>
-                <Text style={styles.coLocal}>≈ {fmtLocal(origenToLocal(balance, info), info)}</Text>
+                <Text style={styles.coLocal}>≈ {fmtLocal(origenToLocal(balance, info, origenUsd), info)}</Text>
               </Card>
 
               <View>
@@ -282,7 +289,7 @@ export default function BusinessPanel() {
                 </View>
                 <Text style={styles.convPreview}>
                   Recibirás ≈ <Text style={{ color: colors.text, fontFamily: fonts.bodySemiBold }}>{fmtLocal(amountLocal, info)}</Text>
-                  {'  '}(tasa: 1 ORIGEN = {fmtLocal(origenToLocal(1, info), info)})
+                  {'  '}(tasa: 1 ORIGEN = {fmtLocal(origenToLocal(1, info, origenUsd), info)})
                 </Text>
               </View>
 
@@ -305,16 +312,16 @@ export default function BusinessPanel() {
                 />
               </View>
 
-              {error && (
+              {(error || origenUsd == null) && (
                 <View style={styles.errorBox}>
-                  <Text style={styles.errorText}>{error}</Text>
+                  <Text style={styles.errorText}>{error ?? SIN_PRECIO}</Text>
                 </View>
               )}
 
               <GradientButton
                 label={amountNum > 0 ? `Retirar ${fmtOrigen(amountNum)} ORIGEN` : 'Retirar'}
                 onPress={submitCashout}
-                disabled={amountNum <= 0 || !bank || account.trim().length === 0}
+                disabled={amountNum <= 0 || !bank || account.trim().length === 0 || amountLocal == null}
                 icon={<Landmark size={16} color={colors.bg} />}
               />
               <Text style={styles.coNote}>

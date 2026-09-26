@@ -3,7 +3,11 @@
 // Todo simulado y determinístico — al conectar el backend real, este módulo
 // se reemplaza por la API sin tocar las pantallas.
 import type { Company } from './types'
-import { ORIGEN_USD } from '../store/wallet'
+//
+// EL PRECIO SE PASA, NO SE SUPONE. Aquí se importaba un ORIGEN_USD = 2,35
+// fijo. Ahora cada conversión recibe el precio del momento (useOrigenUsd, en
+// src/store/precio.ts), y si no lo hay devuelve null y los formatos pintan «—».
+// Nunca un precio inventado.
 
 export interface CatalogItem {
   id: string
@@ -12,15 +16,27 @@ export interface CatalogItem {
   priceUsd: number
 }
 
-export function toOrigen(usd: number): number {
-  return Math.round((usd / ORIGEN_USD) * 100) / 100
+const hayPrecio = (p: number | null | undefined): p is number => p != null && Number.isFinite(p) && p > 0
+
+/** USD → ORIGEN al precio dado; null sin precio. */
+export function toOrigen(usd: number, origenUsd: number | null): number | null {
+  if (!hayPrecio(origenUsd)) return null
+  return Math.round((usd / origenUsd) * 100) / 100
 }
 
-export function fmtOrigen(n: number): string {
+/** ORIGEN → USD al precio dado; null sin precio. */
+export function toUsd(amountOrigen: number, origenUsd: number | null): number | null {
+  if (!hayPrecio(origenUsd)) return null
+  return amountOrigen * origenUsd
+}
+
+export function fmtOrigen(n: number | null): string {
+  if (n == null || !Number.isFinite(n)) return '—'
   return n.toLocaleString('es-HN', { maximumFractionDigits: 2 })
 }
 
-export function fmtUsd(n: number): string {
+export function fmtUsd(n: number | null): string {
+  if (n == null || !Number.isFinite(n)) return '—'
   return `$${n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 }
 
@@ -122,10 +138,12 @@ export function payoutInfo(countrySlug: string): PayoutInfo {
 }
 
 /** Convierte ORIGEN a moneda local del país. */
-export function origenToLocal(amountOrigen: number, info: PayoutInfo): number {
-  return Math.round(amountOrigen * ORIGEN_USD * info.ratePerUsd * 100) / 100
+export function origenToLocal(amountOrigen: number, info: PayoutInfo, origenUsd: number | null): number | null {
+  if (!hayPrecio(origenUsd)) return null
+  return Math.round(amountOrigen * origenUsd * info.ratePerUsd * 100) / 100
 }
 
-export function fmtLocal(n: number, info: PayoutInfo): string {
+export function fmtLocal(n: number | null, info: PayoutInfo): string {
+  if (n == null || !Number.isFinite(n)) return '—'
   return `${info.symbol}${n.toLocaleString('es-HN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${info.currency}`
 }

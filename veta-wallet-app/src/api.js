@@ -658,16 +658,13 @@ export async function fetchMetalPrices() {
 // se inventan velas, se avisa en pantalla.
 const CG_ID = { AUKA: 'pax-gold', ORIGEN: 'pax-gold', AGKA: 'kinesis-silver' };
 
-// Precios fijos de referencia para los tokens de sector que no cotizan en
-// ningún mercado público (no están en CoinGecko ni tienen un feed propio como
-// ONDK). Son los mismos valores que usa la billetera web — se confirmaron
-// leyendo su propio bundle compilado (vetawallet.com), donde aparecen como
-// una serie plana: el mismo número repetido en cada punto del histórico, lo
-// que confirma que son fijos y no un precio de mercado real.
-const FIXED_PRICES = {
-  AGRO: 13.13, AIT: 5.32, SOL: 0.75, REST: 8.57, LOVE: 0.1,
-  POLITICAL: 0.33, ASL: 2.328, AUBEX: 10, HARV: 0.75, IBS: 1.2,
-};
+// Los tokens de sector (AUBEX, HARV, IBS, REST, SOL, AGRO, AIT, ASL, LOVE,
+// POLITICAL…) NO tienen precio: se declaran «sin referencia» (SFSP v0.3
+// §10.5; plan v0.3 C4, fase 0.4) y la app los pinta con «—». Aquí hubo una
+// tabla de precios fijos (AUBEX a 10 USD, entre otros) copiada del bundle de
+// la web: eran números planos que nadie cotizaba y entraban al patrimonio
+// como si fueran mercado. Se quitó. ONDK conserva su precio declarado por
+// acta, que llega del backend (ver apiPortfolio).
 const CG_FACTOR = { ORIGEN: 1 / OZ_GRAMS / 55 };
 
 // Temporalidades que se ofrecen en la ficha del token.
@@ -835,17 +832,14 @@ export async function apiPortfolio() {
     } catch (e) {}
     let priceUsd = prices[t.symbol];
     if (priceUsd == null && t.symbol === 'ONDK' && ondkPrice) priceUsd = ondkPrice;
-    if (priceUsd == null && FIXED_PRICES[t.symbol] != null) priceUsd = FIXED_PRICES[t.symbol];
-    // Sin precio real: se envía null (la UI lo pinta como "—"). Nunca un
-    // valor cocinado — el usuario podría tomar decisiones a partir de él.
+    // Sin precio real (y los tokens «sin referencia» nunca lo tienen): se
+    // envía null y la UI lo pinta como "—". Nunca un valor cocinado — el
+    // usuario podría tomar decisiones a partir de él.
     return {
       symbol: t.symbol,
       qty: Number.isFinite(qty) ? qty : 0,
       priceUsd: priceUsd != null && priceUsd > 0 ? priceUsd : null,
-      // Un precio fijo no tiene variación 24h real que reportar — null en vez
-      // de un 0% que se leería como "no se movió hoy" cuando en realidad
-      // nunca se mueve.
-      changePct: FIXED_PRICES[t.symbol] != null ? null : (changes[t.symbol] ?? null),
+      changePct: changes[t.symbol] ?? null,
       contract: t.contract || null,
     };
   }));

@@ -2,7 +2,9 @@
 // Los saldos y precios reales vienen de la blockchain y de CoinGecko
 // (src/api.js). Aquí solo viven nombre, ícono y descripción de cada token.
 
-export const ORIGEN_PRICE = 2.35; // respaldo si el feed de precios no responde
+// Sin precio de respaldo para ORIGEN: sin dato fresco del oro la app pinta
+// «—» y bloquea lo que dependa del precio (plan SFSP v0.3, C5). Aquí hubo un
+// ORIGEN_PRICE = 2,35 USD que nadie usaba y que invitaba a usarse.
 
 // Cada token que tiene logo propio lo trae en `image`; TokenIcon renderiza
 // esa imagen sobre un disco oscuro. Los que no lo tienen (MNKA) siguen con
